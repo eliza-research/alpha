@@ -23,7 +23,7 @@ test('real Gmail withdrawal and a lifecycle-first vault writer finish under forc
  const start=store.indexOf('  if(!"cloud:production".equals(name)');
  const end=store.indexOf('  return AlphaLocalAgentPlugin.mutateCredentials(',start);
  assert.ok(start>=0&&end>start,'the exact noncritical slot branch is present');
- const vault=readFileSync(join(root,'vendor/eliza/plugins/plugin-native-secure-store/android/src/main/java/ai/eliza/plugins/securestore/nativeonly/JsonCredentialSlots.java'),'utf8');
+ const vault=readFileSync(join(root,'vendor/eliza/plugins/plugin-native-secure-store/android-nativeonly/src/main/java/ai/eliza/plugins/securestore/nativeonly/JsonCredentialSlots.java'),'utf8');
  const key=method(vault,' private SecretKey key()');
  const shared=join(root,'vendor/eliza/plugins/plugin-native-notifications/android/src/main/java/ai/eliza/plugins/notifications');
  try{

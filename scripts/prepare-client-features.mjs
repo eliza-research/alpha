@@ -149,6 +149,8 @@ export const CLIENT_FEATURE_PATHS = [
 
   'packages/contracts/src/calendar.ts',
   'packages/core/src/types/effects.ts',
+  // Imported by types/effects.ts at the current pin.
+  'packages/core/src/utils/type-guards.ts',
   'plugins/plugin-assistant/src/services/device-actions/foreground-review-contract.ts',
   'plugins/plugin-calendar/src/api/calendar-api.ts',
   'plugins/plugin-calendar/src/api/client-calendar.ts',
@@ -282,6 +284,9 @@ export const CLIENT_FEATURE_PATHS = [
   'plugins/plugin-notes/test/notes-trash-schedule.test.mjs',
   'plugins/plugin-notes/test/notes-trash-store.test.mjs',
   'packages/cloud/sdk/src/subscription-entitlement.ts',
+  // The signed grant reader subscription-entitlement.ts imports, and its declarations.
+  'packages/cloud/sdk/native-host/subscription-grant.mjs',
+  'packages/cloud/sdk/native-host/subscription-grant.d.mts',
   'packages/ui/src/components/settings/cloud-subscription-summary.tsx',
   'packages/auth/src/auth/native-cloud-sign-in.ts',
   // Credential-bound account billing reader and its snapshot types (AP-03/#410).

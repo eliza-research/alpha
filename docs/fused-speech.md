@@ -124,6 +124,14 @@ content-safety check. The exact-input positive safety cache is not an audio cach
 A production streaming or latency acceptance claim requires the deployed backend
 and a completed physical-device turn, separately from APK checks.
 
+## November 7 engine and pin
+
+The pin `4e91de4cc7` carries engine `6337fd4c4b` (same model bytes as `b3eb2bf63b`) and the
+`eliza-paradee-voice-v2` bundle manifest (the v1 keys plus the Delibes Spanish voice under
+`voices`). The engine's component qualification on Pixel 10a arm64 and the x86_64 emulator, the
+owner's acceptance (P-82) and the November device latency, TPU and GPU findings are in
+[on-device speech](on-device-speech-2026-11-05.md). Bundle sizes below are historical.
+
 ## October 24 source update
 
 Current consumer pin `c95a37be8d56` uses native engine `0d9fd4b9db23`.

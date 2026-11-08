@@ -2,14 +2,14 @@
   "schema": 1,
   "repository": "elizaOS/eliza",
   "base": "develop",
-  "baseCommit": "43e3b05d97f602d096e7d63bd2c1ec80fc23789d",
-  "head": "475a8d59dc1811c2cde093613519906a5a3f6457",
+  "baseCommit": "f05b903938187c151d1f6c94b58490ddb5ea9c45",
+  "head": "4e91de4cc7d747a36c0e2e1fb01f125b3932450d",
   "recordedAt": "2026-11-07",
-  "command": "gh api repos/elizaOS/eliza/compare/develop...475a8d59dc1811c2cde093613519906a5a3f6457",
+  "command": "gh api repos/elizaOS/eliza/compare/develop...4e91de4cc7d747a36c0e2e1fb01f125b3932450d",
   "status": "diverged",
-  "aheadBy": 12,
-  "behindBy": 88,
-  "mergeBase": "0594fc72da4450a84a986ad12e730e3faa902018",
+  "aheadBy": 14,
+  "behindBy": 3,
+  "mergeBase": "a744332dd2ad7437d0f0d38707c6e579d21a67f6",
   "pinOnlyCommits": [
     {
       "sha": "e8484a964435d672f9423972d13779bbf8b54dfe",
@@ -58,6 +58,10 @@
     {
       "sha": "475a8d59dc1811c2cde093613519906a5a3f6457",
       "subject": "Keep Maps admission errors visible during place search"
+    },
+    {
+      "sha": "4e91de4cc7d747a36c0e2e1fb01f125b3932450d",
+      "subject": "Speak streamed reply sentences as they complete and start local speech output sooner"
     }
   ],
   "pullRequests": []

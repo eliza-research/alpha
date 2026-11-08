@@ -30,7 +30,8 @@ const refused = async (promise, code) => assert.rejects(promise, error => error 
 {
   const { cloud, calls } = client(() => granted);
   const result = await cloud.redeemSubscriptionCode(`  ${CODE} `, 'submission-key-0001', signal());
-  assert.deepEqual(result, { planEndsAt: Date.parse('2027-04-14T00:00:00.000Z'), replayed: false, grantEndsAt: Date.parse('2027-04-14T00:00:00.000Z'), paidPlanTakesPrecedence: false, planName: 'Plus' });
+  // The shared grant reader also carries the grant's plan key and start (the receipt it verified).
+  assert.deepEqual(result, { planEndsAt: Date.parse('2027-04-14T00:00:00.000Z'), replayed: false, planKey: 'plus_monthly', startsAt: Date.parse('2026-10-13T00:00:00.000Z'), grantEndsAt: Date.parse('2027-04-14T00:00:00.000Z'), paidPlanTakesPrecedence: false, planName: 'Plus' });
   assert.equal(calls.length, 1);
   assert.equal(calls[0].url, 'https://api.eliza.app/api/v1/subscription/redeem');
   assert.equal(calls[0].method, 'POST');
@@ -45,10 +46,11 @@ const refused = async (promise, code) => assert.rejects(promise, error => error 
   assert.equal(result.paidPlanTakesPrecedence, true);
   assert.equal(result.planName, null);
 }
-// Revoked replays grant nothing, and the effective paid window is distinct from the grant window.
+// Revoked replays grant nothing (the shared reader refuses them as ended), and the effective paid
+// window is distinct from the grant window.
 {
  const revoked=client(()=>({status:200,data:{...granted.data,replayed:true,grant:{...granted.data.grant,revoked:true}}}));
- await refused(revoked.cloud.redeemSubscriptionCode(CODE,'submission-revoked',signal()),'invalid');
+ await refused(revoked.cloud.redeemSubscriptionCode(CODE,'submission-revoked',signal()),'ended');
  const paid=client(()=>({status:200,data:{...granted.data,grant:{...granted.data.grant,paidPlanTakesPrecedence:true},entitlement:{...granted.data.entitlement,effectiveUntil:'2027-05-01T00:00:00.000Z'}}}));
  assert.equal((await paid.cloud.redeemSubscriptionCode(CODE,'submission-paid',signal())).planEndsAt,Date.parse('2027-05-01T00:00:00.000Z'));
 }

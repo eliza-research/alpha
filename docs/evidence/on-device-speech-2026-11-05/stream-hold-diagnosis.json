@@ -1,0 +1,727 @@
+{
+  "description": "Diagnosis of where the Stage-1 reply draft is lost on the Pixel 10a (app versionCode 39, resident at elizaOS/eliza c35106fb14). A temporary logging copy of files/agent/agent-bundle.js (stock sha256 4840ce3e4f958e80a540a606b5311bd658bcbe2ae66f286776ae25c4770edb48) logged sizes, field names, gate inputs, timings and at most 80 characters of reply text to a private JSONL file; no headers, tokens, keys or prompts. Six typed direct questions were sent through the chat composer over CDP. The stock bundle was then restored byte-identical (sha256 verified on the device), the diagnostic log deleted, the agent restarted with Settings > Agent > Restart agent, and the health check passed. ipc-recovery slots stayed at 6 of 8 through the diagnosis.",
+  "recordedAt": "2026-11-06",
+  "upstreamPin": "c35106fb14003a5a85e9793dabcf047118cc09e0",
+  "sourceMapped": "/home/shaw/.cache/alphaphone-voice-36236fc/eliza-stream at c35106fb14",
+  "findings": [
+    {
+      "where": "Stage-1 stream gate: plugins/plugin-assistant/src/services/message/stage1-reply-stream.ts (REQUIRED_WHEN_EMITTED_FIELDS), fed by stage1-decision.ts:764-768 (activeResponseHandlerFields) and :845 (createStage1DirectReplyStreamGate(activeResponseHandlerFields))",
+      "evidence": "Every gate call was denied although all preceding values were direct-answer values (RESPOND, [simple], [], none, [], Notes read_only or unresolved with no operations, navigation none). The emitted-field list the gate receives contains contextRequests, which is not in the HANDLE_RESPONSE tool schema the model received: stage1-decision.ts:586 applies withAvailableContextRequests(fieldSchema, discovery.available), which deletes contextRequests when no references are available (context-discovery.ts:177-189). activeResponseHandlerFields removes only skippedFieldNames, so the gate requires a field the model was never offered. Logged reason on both instrumented turns: missing-emitted:contextRequests.",
+      "effect": "The extractor holds the attempt at passesGate; no chunk reaches downstreamChunk, chat-routes onStreamChunk is never called, and the conversation route writes only the final non-provisional snapshot.",
+      "recommendedFix": "stage1-decision.ts:845: build the gate from the fields actually present in the emitted HANDLE_RESPONSE schema, e.g. filter activeResponseHandlerFields() by Object.hasOwn(<schema given to the HANDLE_RESPONSE tool>.properties, field.name), capturing that schema where referenceSchema/createMessageHandlerTools is built (about lines 470-590, rebuilt at 1540). Leave activeResponseHandlerFields itself unchanged because it also feeds the local grammar. Add a reply-stream-gate test where contextRequests is selected but removed by withAvailableContextRequests."
+    },
+    {
+      "where": "Eliza Cloud chat/completions stream as read by plugins/plugin-elizacloud/src/models/text.ts streamNativeChatCompletion generate()",
+      "evidence": "Every Stage-1 call had three choice frames: an empty tool-call arguments delta 507-1067 ms after the body started, the complete HANDLE_RESPONSE arguments (336-726 characters) in one delta 0-2 ms later, and finish_reason tool_calls 4-17 ms after that. No delta.content and no aggregated re-send. streamReplyToolArgs was true and the plugin yielded the whole envelope as one chunk.",
+      "effect": "With the gate fixed, the draft would still arrive as one provisional chunk a few milliseconds before the final reply, so voice could not start meaningfully earlier.",
+      "recommendedFix": "Determine whether the Cloud gateway chat/completions route or the Cerebras upstream buffers tool-call arguments, and forward argument deltas as they are generated. The client side (text.ts accumulateToolCallDeltas, lowestIndexToolCallArgs, yield of the suffix) already handles incremental deltas."
+    },
+    {
+      "where": "packages/core/src/runtime/model-dispatch.ts deliverModelStreamChunk (GuardedStreamScanner)",
+      "evidence": "A secret/PII guard session was active on every call; it released the envelope minus its last 79-98 characters until flush.",
+      "effect": "Secondary: it trims the tail of a streamed chunk until flush; relevant only after the two issues above are fixed."
+    }
+  ],
+  "dispatchPath": "shouldStream true (the conversation stream context supplies ctxChunk; paramsChunk absent), provider elizaOSCloud, resolvedAcceptsHandlerStream false so no onStreamChunk was passed to the handler. The handler returned a TextStreamResult that model-dispatch consumed in the isTextStreamResult branch and pushed through deliverModelStreamChunk into the structured extractor (fields [replyText], parts {replyText:[text]}, gate present, not suppressed). That path works; the losses are the gate and the one-chunk provider delivery.",
+  "calls": [
+    {
+      "dispatch": {
+        "shouldStream": true,
+        "ctxChunk": true,
+        "paramsChunk": false,
+        "provider": "elizaOSCloud",
+        "resolvedAcceptsHandlerStream": false,
+        "handlerStreamChunk": false,
+        "structuredFields": [
+          "replyText"
+        ],
+        "structuredParts": {
+          "replyText": [
+            "text"
+          ]
+        },
+        "extractor": true,
+        "gate": true,
+        "suppressStructuredStream": false
+      },
+      "rawResponseIsTextStreamResult": true,
+      "providerSseFrames": [
+        {
+          "msSinceBodyStart": 1065,
+          "contentLen": null,
+          "toolArgsLen": [
+            0
+          ],
+          "finish": null
+        },
+        {
+          "msSinceBodyStart": 1067,
+          "contentLen": null,
+          "toolArgsLen": [
+            531
+          ],
+          "finish": null
+        },
+        {
+          "msSinceBodyStart": 1076,
+          "contentLen": null,
+          "toolArgsLen": null,
+          "finish": "tool_calls"
+        }
+      ],
+      "providerYields": [
+        {
+          "len": 531,
+          "ms": 1068
+        }
+      ],
+      "aggregatedResend": 0,
+      "guardScanner": [
+        {
+          "in": 531,
+          "safe": 449
+        }
+      ],
+      "gate": {
+        "allowed": false,
+        "headLen": 331,
+        "precedingKeys": [
+          "shouldRespond",
+          "contexts",
+          "intents",
+          "replyEffectStatus",
+          "calendarReadBindings",
+          "notesRequestEffect",
+          "visualContinuation"
+        ],
+        "precedingValues": {
+          "shouldRespond": "\"RESPOND\"",
+          "contexts": "[\"simple\"]",
+          "intents": "[]",
+          "replyEffectStatus": "\"none\"",
+          "calendarReadBindings": "[]",
+          "notesRequestEffect": "{\"classification\":\"unresolved\",\"operations\":[]}",
+          "visualContinuation": "\"{\\\"disposition\\\": \\\"none\\\", \\\"viewId\\\": \\\"chat\\\", \\\"reason\\"
+        }
+      },
+      "gateEmittedFields": null,
+      "gateFailure": null,
+      "extractorChunksDownstream": 0,
+      "routeOnStreamChunkCalls": 0,
+      "conversationSseWrites": [
+        {
+          "kind": "sse-snapshot",
+          "origin": "model",
+          "len": 83,
+          "head": "Lisbon is the capital of Portugal. It sits on the Tagus River on the western coa"
+        }
+      ]
+    },
+    {
+      "dispatch": {
+        "shouldStream": true,
+        "ctxChunk": true,
+        "paramsChunk": false,
+        "provider": "elizaOSCloud",
+        "resolvedAcceptsHandlerStream": false,
+        "handlerStreamChunk": false,
+        "structuredFields": [
+          "replyText"
+        ],
+        "structuredParts": {
+          "replyText": [
+            "text"
+          ]
+        },
+        "extractor": true,
+        "gate": true,
+        "suppressStructuredStream": false
+      },
+      "rawResponseIsTextStreamResult": true,
+      "providerSseFrames": [
+        {
+          "msSinceBodyStart": 1067,
+          "contentLen": null,
+          "toolArgsLen": [
+            0
+          ],
+          "finish": null
+        },
+        {
+          "msSinceBodyStart": 1068,
+          "contentLen": null,
+          "toolArgsLen": [
+            569
+          ],
+          "finish": null
+        },
+        {
+          "msSinceBodyStart": 1072,
+          "contentLen": null,
+          "toolArgsLen": null,
+          "finish": "tool_calls"
+        }
+      ],
+      "providerYields": [
+        {
+          "len": 569,
+          "ms": 1068
+        }
+      ],
+      "aggregatedResend": 0,
+      "guardScanner": [
+        {
+          "in": 569,
+          "safe": 490
+        }
+      ],
+      "gate": {
+        "allowed": false,
+        "headLen": 297,
+        "precedingKeys": [
+          "shouldRespond",
+          "contexts",
+          "intents",
+          "replyEffectStatus",
+          "calendarReadBindings",
+          "notesRequestEffect",
+          "visualContinuation"
+        ],
+        "precedingValues": {
+          "shouldRespond": "\"RESPOND\"",
+          "contexts": "[\"simple\"]",
+          "intents": "[]",
+          "replyEffectStatus": "\"none\"",
+          "calendarReadBindings": "[]",
+          "notesRequestEffect": "{\"classification\":\"read_only\",\"operations\":[]}",
+          "visualContinuation": "{\"disposition\":\"none\",\"viewId\":\"\",\"reason\":\"No navigation re"
+        }
+      },
+      "gateEmittedFields": null,
+      "gateFailure": null,
+      "extractorChunksDownstream": 0,
+      "routeOnStreamChunkCalls": 0,
+      "conversationSseWrites": [
+        {
+          "kind": "sse-snapshot",
+          "origin": "model",
+          "len": 117,
+          "head": "Leonardo da Vinci painted the Mona Lisa, working on it from around 1503 to 1519."
+        }
+      ]
+    },
+    {
+      "dispatch": {
+        "shouldStream": true,
+        "ctxChunk": true,
+        "paramsChunk": false,
+        "provider": "elizaOSCloud",
+        "resolvedAcceptsHandlerStream": false,
+        "handlerStreamChunk": false,
+        "structuredFields": [
+          "replyText"
+        ],
+        "structuredParts": {
+          "replyText": [
+            "text"
+          ]
+        },
+        "extractor": true,
+        "gate": true,
+        "suppressStructuredStream": false
+      },
+      "rawResponseIsTextStreamResult": true,
+      "providerSseFrames": [
+        {
+          "msSinceBodyStart": 1014,
+          "contentLen": null,
+          "toolArgsLen": [
+            0
+          ],
+          "finish": null
+        },
+        {
+          "msSinceBodyStart": 1016,
+          "contentLen": null,
+          "toolArgsLen": [
+            726
+          ],
+          "finish": null
+        },
+        {
+          "msSinceBodyStart": 1022,
+          "contentLen": null,
+          "toolArgsLen": null,
+          "finish": "tool_calls"
+        }
+      ],
+      "providerYields": [
+        {
+          "len": 726,
+          "ms": 1017
+        }
+      ],
+      "aggregatedResend": 0,
+      "guardScanner": [
+        {
+          "in": 726,
+          "safe": 647
+        }
+      ],
+      "gate": {
+        "allowed": false,
+        "headLen": 265,
+        "precedingKeys": [
+          "shouldRespond",
+          "replyEffectStatus",
+          "notesRequestEffect",
+          "visualContinuation"
+        ],
+        "precedingValues": {
+          "shouldRespond": "\"RESPOND\"",
+          "replyEffectStatus": "\"none\"",
+          "notesRequestEffect": "{\"classification\":\"read_only\",\"operations\":[]}",
+          "visualContinuation": "{\"disposition\":\"none\",\"viewId\":\"chat\",\"reason\":\"No navigatio"
+        }
+      },
+      "gateEmittedFields": null,
+      "gateFailure": null,
+      "extractorChunksDownstream": 0,
+      "routeOnStreamChunkCalls": 0,
+      "conversationSseWrites": [
+        {
+          "kind": "sse-snapshot",
+          "origin": "model",
+          "len": 239,
+          "head": "Blue light has a shorter wavelength, so it scatters much more as sunlight passes"
+        }
+      ]
+    },
+    {
+      "dispatch": {
+        "shouldStream": true,
+        "ctxChunk": true,
+        "paramsChunk": false,
+        "provider": "elizaOSCloud",
+        "resolvedAcceptsHandlerStream": false,
+        "handlerStreamChunk": false,
+        "structuredFields": [
+          "replyText"
+        ],
+        "structuredParts": {
+          "replyText": [
+            "text"
+          ]
+        },
+        "extractor": true,
+        "gate": true,
+        "suppressStructuredStream": false
+      },
+      "rawResponseIsTextStreamResult": true,
+      "providerSseFrames": [
+        {
+          "msSinceBodyStart": 977,
+          "contentLen": null,
+          "toolArgsLen": [
+            0
+          ],
+          "finish": null
+        },
+        {
+          "msSinceBodyStart": 978,
+          "contentLen": null,
+          "toolArgsLen": [
+            336
+          ],
+          "finish": null
+        },
+        {
+          "msSinceBodyStart": 982,
+          "contentLen": null,
+          "toolArgsLen": null,
+          "finish": "tool_calls"
+        }
+      ],
+      "providerYields": [
+        {
+          "len": 336,
+          "ms": 978
+        }
+      ],
+      "aggregatedResend": 0,
+      "guardScanner": [
+        {
+          "in": 336,
+          "safe": 253
+        }
+      ],
+      "gate": null,
+      "gateEmittedFields": null,
+      "gateFailure": null,
+      "extractorChunksDownstream": 0,
+      "routeOnStreamChunkCalls": 0,
+      "conversationSseWrites": []
+    },
+    {
+      "dispatch": {
+        "shouldStream": true,
+        "ctxChunk": true,
+        "paramsChunk": false,
+        "provider": "elizaOSCloud",
+        "resolvedAcceptsHandlerStream": false,
+        "handlerStreamChunk": false,
+        "structuredFields": [
+          "replyText"
+        ],
+        "structuredParts": {
+          "replyText": [
+            "text"
+          ]
+        },
+        "extractor": true,
+        "gate": true,
+        "suppressStructuredStream": false
+      },
+      "rawResponseIsTextStreamResult": true,
+      "providerSseFrames": [
+        {
+          "msSinceBodyStart": 507,
+          "contentLen": null,
+          "toolArgsLen": [
+            0
+          ],
+          "finish": null
+        },
+        {
+          "msSinceBodyStart": 509,
+          "contentLen": null,
+          "toolArgsLen": [
+            609
+          ],
+          "finish": null
+        },
+        {
+          "msSinceBodyStart": 514,
+          "contentLen": null,
+          "toolArgsLen": null,
+          "finish": "tool_calls"
+        }
+      ],
+      "providerYields": [
+        {
+          "len": 609,
+          "ms": 510
+        }
+      ],
+      "aggregatedResend": 0,
+      "guardScanner": [
+        {
+          "in": 609,
+          "safe": 511
+        }
+      ],
+      "gate": {
+        "allowed": false,
+        "headLen": 336,
+        "precedingKeys": [
+          "shouldRespond",
+          "contexts",
+          "intents",
+          "replyEffectStatus",
+          "calendarReadBindings",
+          "notesRequestEffect",
+          "visualContinuation"
+        ],
+        "precedingValues": {
+          "shouldRespond": "\"RESPOND\"",
+          "contexts": "[\"simple\"]",
+          "intents": "[]",
+          "replyEffectStatus": "\"none\"",
+          "calendarReadBindings": "[]",
+          "notesRequestEffect": "{\"classification\":\"read_only\",\"operations\":[]}",
+          "visualContinuation": "{\"disposition\":\"none\",\"viewId\":\"chat\",\"reason\":\"Simple gener"
+        }
+      },
+      "gateEmittedFields": null,
+      "gateFailure": null,
+      "extractorChunksDownstream": 0,
+      "routeOnStreamChunkCalls": 0,
+      "conversationSseWrites": [
+        {
+          "kind": "sse-snapshot",
+          "origin": "model",
+          "len": 156,
+          "head": "A spider has eight legs. As an arachnid, it also has four pairs of appendages on"
+        }
+      ]
+    },
+    {
+      "dispatch": {
+        "shouldStream": true,
+        "ctxChunk": true,
+        "paramsChunk": false,
+        "provider": "elizaOSCloud",
+        "resolvedAcceptsHandlerStream": false,
+        "handlerStreamChunk": false,
+        "structuredFields": [
+          "replyText"
+        ],
+        "structuredParts": {
+          "replyText": [
+            "text"
+          ]
+        },
+        "extractor": true,
+        "gate": true,
+        "suppressStructuredStream": false
+      },
+      "rawResponseIsTextStreamResult": true,
+      "providerSseFrames": [
+        {
+          "msSinceBodyStart": 980,
+          "contentLen": null,
+          "toolArgsLen": [
+            0
+          ],
+          "finish": null
+        },
+        {
+          "msSinceBodyStart": 982,
+          "contentLen": null,
+          "toolArgsLen": [
+            557
+          ],
+          "finish": null
+        },
+        {
+          "msSinceBodyStart": 999,
+          "contentLen": null,
+          "toolArgsLen": null,
+          "finish": "tool_calls"
+        }
+      ],
+      "providerYields": [
+        {
+          "len": 557,
+          "ms": 983
+        }
+      ],
+      "aggregatedResend": 0,
+      "guardScanner": [
+        {
+          "in": 557,
+          "safe": 478
+        }
+      ],
+      "gate": {
+        "allowed": false,
+        "headLen": 319,
+        "precedingKeys": [
+          "shouldRespond",
+          "contexts",
+          "intents",
+          "replyEffectStatus",
+          "calendarReadBindings",
+          "notesRequestEffect",
+          "visualContinuation"
+        ],
+        "precedingValues": {
+          "shouldRespond": "\"RESPOND\"",
+          "contexts": "[\"simple\"]",
+          "intents": "[]",
+          "replyEffectStatus": "\"none\"",
+          "calendarReadBindings": "[]",
+          "notesRequestEffect": "{\"classification\":\"unresolved\",\"operations\":[]}",
+          "visualContinuation": "{\"disposition\":\"none\",\"viewId\":\"chat\",\"reason\":\"Factual ques"
+        }
+      },
+      "gateEmittedFields": [
+        "shouldRespond+pre",
+        "contexts+pre",
+        "contextRequests",
+        "intents+pre",
+        "replyEffectStatus+pre",
+        "calendarReadBindings+dv+pre",
+        "notesRequestEffect+dv+pre",
+        "visualContinuation+dv+pre",
+        "replyText",
+        "facts",
+        "relationships",
+        "addressedTo",
+        "emotion"
+      ],
+      "gateFailure": "missing-emitted:contextRequests",
+      "extractorChunksDownstream": 0,
+      "routeOnStreamChunkCalls": 0,
+      "conversationSseWrites": [
+        {
+          "kind": "sse-snapshot",
+          "origin": "model",
+          "len": 83,
+          "head": "Lisbon is the capital of Portugal. It sits on the Tagus River on the western coa"
+        }
+      ]
+    },
+    {
+      "dispatch": {
+        "shouldStream": true,
+        "ctxChunk": true,
+        "paramsChunk": false,
+        "provider": "elizaOSCloud",
+        "resolvedAcceptsHandlerStream": false,
+        "handlerStreamChunk": false,
+        "structuredFields": [
+          "replyText"
+        ],
+        "structuredParts": {
+          "replyText": [
+            "text"
+          ]
+        },
+        "extractor": true,
+        "gate": true,
+        "suppressStructuredStream": false
+      },
+      "rawResponseIsTextStreamResult": true,
+      "providerSseFrames": [
+        {
+          "msSinceBodyStart": 969,
+          "contentLen": null,
+          "toolArgsLen": [
+            0
+          ],
+          "finish": null
+        },
+        {
+          "msSinceBodyStart": 969,
+          "contentLen": null,
+          "toolArgsLen": [
+            546
+          ],
+          "finish": null
+        },
+        {
+          "msSinceBodyStart": 973,
+          "contentLen": null,
+          "toolArgsLen": null,
+          "finish": "tool_calls"
+        }
+      ],
+      "providerYields": [
+        {
+          "len": 546,
+          "ms": 970
+        }
+      ],
+      "aggregatedResend": 0,
+      "guardScanner": [
+        {
+          "in": 546,
+          "safe": 467
+        }
+      ],
+      "gate": {
+        "allowed": false,
+        "headLen": 327,
+        "precedingKeys": [
+          "shouldRespond",
+          "contexts",
+          "intents",
+          "replyEffectStatus",
+          "calendarReadBindings",
+          "notesRequestEffect",
+          "visualContinuation"
+        ],
+        "precedingValues": {
+          "shouldRespond": "\"RESPOND\"",
+          "contexts": "[\"simple\"]",
+          "intents": "[]",
+          "replyEffectStatus": "\"none\"",
+          "calendarReadBindings": "[]",
+          "notesRequestEffect": "{\"classification\":\"read_only\",\"operations\":[]}",
+          "visualContinuation": "{\"disposition\":\"none\",\"viewId\":\"chat\",\"reason\":\"Trivial fact"
+        }
+      },
+      "gateEmittedFields": [
+        "shouldRespond+pre",
+        "contexts+pre",
+        "contextRequests",
+        "intents+pre",
+        "replyEffectStatus+pre",
+        "calendarReadBindings+dv+pre",
+        "notesRequestEffect+dv+pre",
+        "visualContinuation+dv+pre",
+        "replyText",
+        "facts",
+        "relationships",
+        "addressedTo",
+        "emotion"
+      ],
+      "gateFailure": "missing-emitted:contextRequests",
+      "extractorChunksDownstream": 0,
+      "routeOnStreamChunkCalls": 0,
+      "conversationSseWrites": [
+        {
+          "kind": "sse-snapshot",
+          "origin": "model",
+          "len": 64,
+          "head": "Jane Austen wrote Pride and Prejudice. It was published in 1813."
+        }
+      ]
+    }
+  ],
+  "turnsDuringDiagnosis": [
+    {
+      "prompt": "What is the capital of Portugal? Two sentences.",
+      "tokenFrames": 1,
+      "provisionalFrames": 0,
+      "firstTokenMs": 8976,
+      "replyReadyMs": 9051,
+      "doneMs": 9081
+    },
+    {
+      "prompt": "Who painted the Mona Lisa? Two sentences.",
+      "tokenFrames": 1,
+      "provisionalFrames": 0,
+      "firstTokenMs": 2075,
+      "replyReadyMs": 2119,
+      "doneMs": 2192
+    },
+    {
+      "prompt": "Why is the sky blue? Two sentences.",
+      "tokenFrames": 1,
+      "provisionalFrames": 0,
+      "firstTokenMs": 2117,
+      "replyReadyMs": 2152,
+      "doneMs": 2223
+    },
+    {
+      "prompt": "How many legs does a spider have? Two sentences.",
+      "tokenFrames": 1,
+      "provisionalFrames": 0,
+      "firstTokenMs": 4794,
+      "replyReadyMs": 4849,
+      "doneMs": 4991
+    },
+    {
+      "prompt": "What is the capital of Portugal? Two sentences.",
+      "tokenFrames": 1,
+      "provisionalFrames": 0,
+      "firstTokenMs": 6745,
+      "replyReadyMs": 6804,
+      "doneMs": 6878
+    },
+    {
+      "prompt": "Who wrote Pride and Prejudice? Two sentences.",
+      "tokenFrames": 1,
+      "provisionalFrames": 0,
+      "firstTokenMs": 1916,
+      "replyReadyMs": 1973,
+      "doneMs": 2017
+    }
+  ],
+  "notes": [
+    "The first diagnostic boot attempts used am force-stop and the agent did not come up until the stock bundle was restored; later patched boots used the app's own Agent stop/start and booted in about 6 s, so the failed attempts are attributed to force-stop recovery rather than the patch. That attribution is an inference.",
+    "One RESPONSE_HANDLER call (336-character envelope) reached no gate decision and wrote nothing to the conversation stream; it is listed as recorded."
+  ]
+}

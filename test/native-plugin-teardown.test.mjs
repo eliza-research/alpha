@@ -286,7 +286,7 @@ test("Capacitor's own permission request, and the shared plugins' requests an ap
       // Android version, rather than asking for the obsolete legacy permission together with the current media
       // grants, and a late request is answered with Alpha's LateLaunch wording.
       const media="vendor/eliza/plugins/plugin-native-media/android/src/main/java/ai/eliza/plugins/media/";
-      const base=fs.readFileSync(media+(name==='AlphaPhotosPlugin.java'?"PhotosPlugin.java":"DeviceLibraryPlugin.java"),"utf8");
+      const base=name==='AlphaPhotosPlugin.java'?fs.readFileSync(media+"PhotosPlugin.java","utf8")+fs.readFileSync(media+"PermittedPhotosPlugin.java","utf8"):fs.readFileSync(media+"DeviceLibraryPlugin.java","utf8");
       assert.match(base,/@Override\n {2}@PluginMethod\n {2}public void requestPermissions\(PluginCall call\) \{\n {4}(?:requestLibraryAccess|requestAccess)\(call\);\n {2}\}/);
       if(name==='AlphaPhotosPlugin.java'){
         assert.match(base,/ask\(call, \(\) -> requestPermissionForAliases\(aliases, call, "libraryPermissionResult"\)\);/);

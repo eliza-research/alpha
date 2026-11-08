@@ -85,7 +85,7 @@ the operator's index of build, provisioning, release and support material is the
 
 ## Product boundaries
 
-Current integration pin `475a8d59dc` retains typed Maps admission errors through search and directions. Unchanged dependency and native inputs are recorded in `docs/evidence/sdk-475a8d59dc-build-input-admission-20261107.json`; prior native refusal and release gates remain open.
+Current integration pin `4e91de4cc7` merges elizaOS `develop` (with `b25d8aef29`, native engine `6337fd4c`, and the Stage-1 reply streaming changes) with the Maps admission branch, and adds per-sentence speech of streamed replies and the speech-output warm-up, lead-in trim and first-write mark in the shared voice session and bridge. The Photos library patch was rebased onto upstream's read-only Photos bridge. The engine gitlink moved from `b3eb2bf6` to `6337fd4c`: the voice record carries that engine's component qualification and the owner's acceptance (P-82, `qualified` true); the embedding host still needs requalification. Previous: integration pin `475a8d59dc` retains typed Maps admission errors through search and directions. Unchanged dependency and native inputs are recorded in `docs/evidence/sdk-475a8d59dc-build-input-admission-20261107.json`; prior native refusal and release gates remain open.
 
 Current integration pin `3a2e43de28` restores the verified Google credential, Calendar, Notes and Cloud voice fixes over `3c76d07819`. Source input comparison is recorded in `docs/evidence/sdk-3a2e43de28-build-input-admission-20261107.json`. Native qualification and release acceptance remain open.
 
@@ -137,7 +137,8 @@ The historical October 14 development rebuild used upstream `193d9264fc`; curren
   and disables the optional Android video helper. A consumer wrapper records both clean source revisions around the shared voice build; staging checks
   these and exact engine bytes. The public reachability record records its relation to `develop` at review time.
   Current native build evidence and its limits are recorded in [fused speech](fused-speech.md)
-  and `android/voice-host/qualified-voice-host.json`; qualification remains false.
+  and `android/voice-host/qualified-voice-host.json`; it is qualified on the owner's acceptance of
+  engine `6337fd4c` component evidence (P-82), not on a spoken turn or an AOSP image test.
   Earlier voice, source and browser evidence at `c7a9a0d7e7` remains historical
   ([verification](verification.md#pin-move-to-c7a9a0d7e7-2026-10-14-phonon-2-and-live-voice));
   Every other result in this document is at an earlier pin. The engine gitlink changed, so the

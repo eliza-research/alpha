@@ -11,7 +11,7 @@ const cached=existsSync(cache)?readdirSync(cache).flatMap(hash=>readdirSync(join
 const jar=process.env.ALPHA_JSON_JAR||cached;
 test('patched native secure store handles actual 32 MiB authenticated records within 192 MiB heap',{skip:!jar?'Pinned JVM JSON dependency unavailable':false},()=>{
  const dir=mkdtempSync(join(tmpdir(),'alpha-secure-memory-'));
- const relative='plugins/plugin-native-secure-store/android/src/main/java/ai/eliza/plugins/securestore/nativeonly/JsonCredentialSlots.java';
+ const relative='plugins/plugin-native-secure-store/android-nativeonly/src/main/java/ai/eliza/plugins/securestore/nativeonly/JsonCredentialSlots.java';
  try{
   const source=join(dir,relative);mkdirSync(dirname(source),{recursive:true});
   writeFileSync(source,readFileSync(join(prepareNativeFixture(root,dir).root,relative)));

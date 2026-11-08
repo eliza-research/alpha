@@ -9,6 +9,7 @@ export const embeddingProducerInputPaths=[
  "packages/app/scripts/aosp/vulkan-source-contract.ts",
  "packages/app/scripts/aosp/zig-toolchain.ts",
  "packages/app/scripts/build-helpers/arm64-simd.ts",
+ "packages/app/scripts/build-helpers/elizavoice-build-flags.ts",
  "packages/app/scripts/build-helpers/omnivoice-merged.ts",
  "packages/app/scripts/build-helpers/verify-fused-symbols.ts",
  "packages/app/scripts/lib/repo-root.ts",

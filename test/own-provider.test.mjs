@@ -14,7 +14,7 @@ test('own Cartesia transport aborts and retires without alternate providers',{sk
 });
 
 test('native-issued request leases recover capacity without stale cancellation', {skip:jsonJarSkip},()=>{
- const secure=join(root,'vendor/eliza/plugins/plugin-native-secure-store/android/src/main/java/ai/eliza/plugins/securestore/nativeonly/CredentialIntentFence.java');
+ const secure=join(root,'vendor/eliza/plugins/plugin-native-secure-store/android-nativeonly/src/main/java/ai/eliza/plugins/securestore/nativeonly/CredentialIntentFence.java');
  assert.match(runJvm([secure,join(shared,'CredentialIntentFence.java'),join(shared,'CredentialRequestFence.java'),join(root,'test/own-provider/CredentialRequestFenceTest.java')],'CredentialRequestFenceTest'),/^PASS request lease lifecycle/);
 });
 

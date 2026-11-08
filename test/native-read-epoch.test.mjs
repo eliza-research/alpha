@@ -13,7 +13,8 @@ test('delayed provider results cannot cross a lifecycle or permission boundary',
   // The catalog's own ticket checks live in the shared native media module and are tested there.
   // AlphaPhotos and AlphaPhotoLibrary register the shared Photos plugins, which publish under the ticket.
   const media=join(root,'vendor/eliza/plugins/plugin-native-media/android/src/main/java/ai/eliza/plugins/media');
-  const photos=readFileSync(join(media,'PhotosPlugin.java'),'utf8');
+  // PhotosPlugin extends the shared read-only PermittedPhotosPlugin (elizaOS/eliza#38937).
+  const photos=readFileSync(join(media,'PhotosPlugin.java'),'utf8')+readFileSync(join(media,'PermittedPhotosPlugin.java'),'utf8');
   assert.match(photos,/permitted\.publish\(call, value, ticket\)/);
   const facade=readFileSync(join(media,'DeviceLibraryPlugin.java'),'utf8');
   assert.equal((facade.match(/catalog\.publish\(call,/g)||[]).length,3);

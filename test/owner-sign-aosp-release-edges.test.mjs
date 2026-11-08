@@ -65,32 +65,32 @@ async function keyDirectory(t, { managed = false } = {}) {
     if (!["platform", "releasekey"].includes(name)) writeKey(keys, `${name}.x509.pem`, fs.readFileSync(path.join(keys, "releasekey.x509.pem")));
     if (!managed) writeKey(keys, `${name}.pk8`, "TEST-ONLY-PRIVATE-MARKER");
   }
-  let avb;
+  let avb, apexPayload;
   if (managed) {
     const vbmeta = await avbPublic(), payload = await avbPublic();
     writeKey(keys, "avb.pem", vbmeta.pem); writeKey(keys, "avb_pkmd.bin", vbmeta.metadata);
     writeKey(keys, "apex_payload.pem", payload.pem); writeKey(keys, "apex_payload.avbpubkey", payload.metadata);
-    avb = sha256(vbmeta.metadata);
+    avb = sha256(vbmeta.metadata); apexPayload = sha256(payload.metadata);
   } else {
     writeKey(keys, "apex.pk8", "TEST-ONLY-PRIVATE-MARKER");
     writeKey(keys, "apex_payload.pem", "TEST-ONLY-PRIVATE-MARKER");
     writeKey(keys, "apex_payload.avbpubkey", "release apex payload public key");
     writeKey(keys, "avb.pem", "TEST-ONLY-PRIVATE-MARKER");
     writeKey(keys, "avb_pkmd.bin", "test avb public key metadata");
-    avb = sha256(Buffer.from("test avb public key metadata"));
+    avb = sha256(Buffer.from("test avb public key metadata")); apexPayload = sha256(Buffer.from("release apex payload public key"));
   }
-  return { keys, platform, releasekey, apex, avb };
+  return { keys, platform, releasekey, apex, avb, apexPayload };
 }
 
 /** A copy of Alpha's release inputs, complete for the given keys (apex has its own reviewed digest). */
-function completeRoot(t, { platform, releasekey, apex, avb }) {
+function completeRoot(t, { platform, releasekey, apex, avb, apexPayload }) {
   const dir = temporary(t, "alpha-owner-root-");
   const write = (rel, value) => { fs.mkdirSync(path.dirname(path.join(dir, rel)), { recursive: true }); fs.writeFileSync(path.join(dir, rel), typeof value === "string" ? value : JSON.stringify(value, null, 2)); };
   const lock = JSON.stringify({ schema: 1, target: "pixel10a", device: { codename: "stallion", androidRelease: "17" }, developmentOnly: false, releaseQualified: false, factory: read(LOCK).factory });
   write(LOCK, lock);
   const product = read(PIXEL10A_PRODUCT);
   const others = Object.fromEntries(Object.keys(product.signer.releaseCertificates).map(name => [name, name === "apex" ? apex : releasekey]));
-  write(PIXEL10A_PRODUCT, { ...product, sourceLock: { ...product.sourceLock, sha256: sha256(lock) }, signer: { ...product.signer, platformCertificateSha256: platform, releaseCertificates: others }, avb: { ...product.avb, publicKeySha256: avb } });
+  write(PIXEL10A_PRODUCT, { ...product, sourceLock: { ...product.sourceLock, sha256: sha256(lock) }, signer: { ...product.signer, platformCertificateSha256: platform, releaseCertificates: others, ...(apexPayload ? { apexPayloadAvbPublicKeySha256: apexPayload } : {}) }, avb: { ...product.avb, publicKeySha256: avb } });
   write(CHANNEL, { ...read(CHANNEL), otaCertificateSha256: releasekey, avbPublicKeySha256: avb });
   write("android/release-signer.json", { ...read("android/release-signer.json"), signerSha256: "d".repeat(64) });
   return { dir, write, readBack: rel => JSON.parse(fs.readFileSync(path.join(dir, rel), "utf8")) };

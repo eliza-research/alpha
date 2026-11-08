@@ -309,8 +309,10 @@ test('speech candidate check refuses an APK whose voice bundle or x86_64 engine 
   [files=>{files['lib/x86_64/libelizainference.so']=Buffer.from('rebuilt');},/lib\/x86_64\/libelizainference\.so differs from the recorded engine/],[files=>{delete files['lib/x86_64/libparadeevoicejni.so'];},/libparadeevoicejni\.so is not packaged/]];
  for(const [change,expected] of cases)assert.match(candidateProblems(apk(change),host).join('; '),expected);
  assert.match(candidateProblems(apk(),{...host,abis:[]}).join('; '),/x86_64 has no recorded engine/);
- // The committed record is not qualified, so a passing emulator run never qualifies it by itself.
- assert.equal(JSON.parse(read('android/voice-host/qualified-voice-host.json')).qualified,false);
+ // A passing emulator run never qualifies the record by itself: qualification is the owner's
+ // acceptance (evidence.userAccepted, P-82) of device-executed evidence.
+ const voiceRecord=JSON.parse(read('android/voice-host/qualified-voice-host.json'));
+ assert.equal(voiceRecord.qualified,voiceRecord.evidence.userAccepted===true&&voiceRecord.evidence.deviceExecuted===true);
  assert.ok(fs.existsSync(CANONICAL_TEST));
 });
 

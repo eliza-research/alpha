@@ -42,6 +42,9 @@ class Plugin {final String id;final Bridge bridge;final Activity activity=new Ac
 class PhotoLibraryAccess {
  ${constants}
  ${method(access,'public static String[] permissionAliases(int sdk)')}
+ // The access profile overload the one above delegates to (elizaOS/eliza#38937).
+ enum Profile {LIBRARY,IMAGES}
+ ${method(access,'public static String[] permissionAliases(int sdk, Profile profile)')}
 }
 class PhotosPlugin extends Plugin {
  PhotosPlugin(Bridge bridge){super("AlphaPhotos",bridge);}

@@ -8,7 +8,7 @@ function declaration(source,signature){const start=source.indexOf(signature);ass
 test('Photos QA emits only fixed debug enum markers; exception payloads and release builds stay silent',()=>{
  // The marker enum and its failure categories are the shared PhotosPlugin's; Alpha logs them in debug builds only.
  const source=readFileSync('android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaPhotosPlugin.java','utf8');
- const shared=readFileSync('vendor/eliza/plugins/plugin-native-media/android/src/main/java/ai/eliza/plugins/media/PhotosPlugin.java','utf8');
+ const shared=readFileSync('vendor/eliza/plugins/plugin-native-media/android/src/main/java/ai/eliza/plugins/media/PhotosPlugin.java','utf8')+readFileSync('vendor/eliza/plugins/plugin-native-media/android/src/main/java/ai/eliza/plugins/media/PermittedPhotosPlugin.java','utf8');
  assert.match(source,/@Override protected void diagnostic\(PhotosPlugin\.Diagnostic marker\)\{qaMarker\(marker\);\}/);
  assert.match(shared,/protected void diagnostic\(Diagnostic marker\) \{\}/,'hosts that do not log record nothing');
  assert.match(shared,/diagnostic\(Diagnostic\.readFailure\(failure\)\);\n {8}call\.reject\("This saved media is no longer available"\);/,'a failed read reports its category only');

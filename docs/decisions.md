@@ -412,3 +412,14 @@ or a credit top-up as the product's billing model. P-62's monthly catalog remain
 force; prices and renewal terms come from Cloud's billing flow, never inferred by the
 phone. A temporary grant remains temporary access and is not described as a paid
 renewal. This changes presentation, not Cloud's existing account admission or charging.
+
+## November 5: on-device speech default and acceleration
+
+Decided by the product owner on 2026-11-05, and P-82 on 2026-11-07. Same rules as above: policy, not
+evidence. These were numbered P-57 to P-60 on the branch that first recorded them (#824); those numbers
+were already in use here, so they are recorded as P-79 to P-82.
+
+- **P-79** On-device speech replaces Cartesia as the default: Phonon-2 and Paradee on libelizainference, in the `native` profile, with Eliza Cloud text inference. The `cloud` profile remains an explicit QA selection.
+- **P-80** Accelerators are used only when they are faster on the path that ships. Measured on the Pixel 10a (Tensor G4), Phonon-2's streaming finish takes 45 to 54 ms on the CPU, and a best-case TPU pass cannot go below about 59 ms for 5 s of audio, so Phonon-2 stays on the CPU. P-42 therefore stands. See [on-device speech](on-device-speech-2026-11-05.md). A faster future chip or model reopens this.
+- **P-81** The Delibes-8M-esES Spanish voice ships under its open-source licence (Apache-2.0 for the model files), with its notices in the bundle and the generated third-party notices. This is the owner's Alpha decision on the upstream `spanish.release_override`.
+- **P-82** (2026-11-07) The owner accepted on-device speech on the evidence available that day, and the voice record (`android/voice-host/qualified-voice-host.json`) is marked `userAccepted` and `qualified`. What was accepted: component qualification of engine `6337fd4c4b` with the upstream qualify app on the Pixel 10a arm64 (ASR WER 1.94%, Paradee round-trip WER 4.77%) and the x86_64 API 35 emulator (2.13%, 4.90%); the typed-turn confirmation that replies stream as provisional drafts confirmed by the final reply (versionCode 40, 8 turns); and the latency estimate of about 2.6 to 3.0 s from last word to first audible reply, summed from stage measurements on separate days. At acceptance there was no spoken turn on versionCode 40 and no same-day A/B against Cloud speech. This acceptance does not stand in for an AOSP image test, a release build, or pilot acceptance.
