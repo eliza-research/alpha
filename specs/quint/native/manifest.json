@@ -1922,6 +1922,54 @@
         "maxSteps": 80,
         "maxVerifyDepth": 4
       }
+    },
+    {
+      "path": "specs/quint/native/NativeHostedResultNotices.qnt",
+      "module": "NativeHostedResultNotices",
+      "init": "init",
+      "step": "step",
+      "invariant": "safety",
+      "tests": [
+        "uncertainNeverRepostsTest",
+        "lostPostedReplyRepairsExactRowTest",
+        "pendingProtectedFromSupersessionTest",
+        "replacementAndStaleTokenTest",
+        "foreignReadHiddenAfterPartialWithdrawalTest",
+        "foreignQuestionReleaseLeavesNotificationTest",
+        "retainedBytesChangeDisablesExactReadTest",
+        "consumeCanLeaveOpenedRowAndPendingTest"
+      ],
+      "invariants": [
+        "ExactReadOwner",
+        "PendingHasRoute",
+        "NoReplayPost",
+        "DigestPrecedesEffect",
+        "ReadRetentionIsExact"
+      ],
+      "sources": [
+        "android/app/src/main/java/ai/elizaresearch/alphaphone/HostedResultNotices.java",
+        "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaHostedResultsPlugin.java",
+        "android/app/src/main/java/ai/elizaresearch/alphaphone/HostedNoticePoster.java",
+        "android/app/src/main/java/ai/elizaresearch/alphaphone/HostedInbox.java",
+        "vendor/eliza/plugins/plugin-native-notifications/android/src/main/java/ai/eliza/plugins/notifications/NoticeOwner.java"
+      ],
+      "stateMapping": {
+        "owner": "OWNER slot with an absent bootstrap, explicit sign-out or exact origin/owner/agent identity",
+        "retained/phases/digests": "Exact retained route and payload equivalence, durable notice phase and published digest",
+        "posted/postCount": "Visible synthetic OS tags and irreversible post effect count",
+        "pending/question/token/issued": "Durable tap or question slot and distinct issued UUID classes",
+        "outcome/readKey/readToken/readQuestion/readRetained": "Operation receipt and observed owner-filtered redacted peek result"
+      },
+      "abstractions": [
+        "Four fixed exact routes, four UUID classes and post effects without eviction. The source campaign separately checks the exact 200-row capacity and pending-tap exemption.",
+        "Refused withdrawal models one affected row. Synthetic poster and retained-index ports bound the OS and provider boundary. The active Android notification timeout is an external removal.",
+        "Exact owner readback is fenced even if a partial withdrawal leaves the old token; current foreground mutation still compares that token without a second owner check. This as-built behavior is reproduced through the actual bridge handlers."
+      ],
+      "bounds": {
+        "maxSamples": 1000,
+        "maxSteps": 80,
+        "maxVerifyDepth": 4
+      }
     }
   ]
 }
