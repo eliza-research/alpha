@@ -7,16 +7,16 @@ import {transformSync} from 'esbuild';
 
 // The full native coordinator runs on a JVM with controlled Android, storage and HTTP ports.
 // Each scenario gets its own process because Java's URL factory is process-global.
-test('native sign-in checks successful replacement, burn failures, owned cancellation and recovery against Quint', {timeout: 240000}, () => {
+test('native sign-in checks successful replacement, burn failures, owned cancellation and recovery against Quint', {timeout: 360000}, () => {
   const result = spawnSync(process.execPath, ['--import=tsx', '--input-type=module', '-e', `
     import {runSignInCoordinatorRefinement} from './specs/quint/refinement/services/sign-in-coordinator.mjs';
     const result = await runSignInCoordinatorRefinement();
-    if (!result.passed || result.traces !== 15) throw Error('Incomplete coordinator refinement');
+    if (!result.passed || result.traces !== 17) throw Error('Incomplete coordinator refinement');
     console.log(JSON.stringify({traces: result.traces, checkpoints: result.checkpoints}));
-  `], {cwd: new URL('..', import.meta.url), encoding: 'utf8', timeout: 230000, maxBuffer: 8 * 1024 * 1024});
+  `], {cwd: new URL('..', import.meta.url), encoding: 'utf8', timeout: 350000, maxBuffer: 8 * 1024 * 1024});
   assert.ifError(result.error);
   assert.equal(result.status, 0, `${result.stdout}\n${result.stderr}`);
-  assert.match(result.stdout, /"traces":15/);
+  assert.match(result.stdout, /"traces":17/);
 });
 
 function incompleteNoticeFixture() {

@@ -434,7 +434,8 @@
         "ordinaryStopRetiresVoiceBeforeRestartTest",
         "attachedStartCancellationPreservesVoiceTest",
         "ownedStartupCancellationFencesReplyTest",
-        "pendingReplacementPreservesAccountTest"
+        "pendingReplacementPreservesAccountTest",
+        "heldAcknowledgementPreservesNewAttemptTest"
       ],
       "abstractions": [
         "Actual imported domain transitions run together with explicit frames for every unaffected component.",
@@ -442,7 +443,8 @@
         "Two account identities and the existing finite component bounds. Expected-rejection scenarios execute imported guards, and a test-only uncoordinated transition must violate cross-domain safety.",
         "Coordinated account/reset/lifecycle boundary actions specify the product integration contract. Full implementation refinement and every possible component interleaving remain separate evidence.",
         "MFA, acknowledgement recovery, grant restoration, cancellation and process restart use imported transitions. Each Calendar and Inbox projection retains one durable operation through account retirement.",
-        "A pending replacement attempt preserves the active old account. Voice ownership follows committed ownerEpoch, separately from the pending attempt epoch."
+        "A pending replacement attempt preserves the active old account. Voice ownership follows committed ownerEpoch, separately from the pending attempt epoch.",
+        "A committed activation and a new interactive sign-in can overlap. Account readiness follows the acknowledged activation owning the stored key. Queued replacement work has a separate beginIdentityWork boundary, and readySetup explicitly includes prior transient-session cleanup."
       ]
     },
     {

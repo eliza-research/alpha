@@ -452,6 +452,118 @@ public final class SignInCoordinatorTraces {
     }
     System.out.println(new JSONArray().put(trace.value));
   }
+  static boolean receiptFor(int issued) {
+    String raw = SignInTestPorts.values.get(SignInTestPorts.ACK);
+    return raw != null
+        && new JSONObject(raw)
+               .getString("credentialId")
+               .equals(String.format("00000000-0000-4000-8000-%012d", issued));
+  }
+  static JSONObject currentObservation(int current) {
+    return Trace.fields("owner", SignInTestPorts.owner(), "key", SignInTestPorts.targetStored(current),
+        "receipt", receiptFor(current));
+  }
+  static void activationOverlap(boolean cancelAfterReceipt) throws Exception {
+    Trace trace = new Trace(
+        "held old ACK and replacement " + (cancelAfterReceipt ? "receipt" : "pending") + " cancellation",
+        observed(1));
+    AlphaCloudSignInPlugin plugin = start(trace, 1);
+    try {
+      SignInTestPorts.Event receipt = SignInTestPorts.next("write:" + SignInTestPorts.ACK);
+      trace.macro(
+          "first receipt persisted", observed(1), Trace.action("exchanged"), Trace.action("writeReceipt"));
+      release(receipt);
+      SignInTestPorts.Event key = SignInTestPorts.next("write:" + SignInTestPorts.CREDENTIAL);
+      trace.step("writeKey", observed(1));
+      release(key);
+      SignInTestPorts.Event heldAck = SignInTestPorts.next("http:/api/v1/app-auth/mobile/ack");
+      Object previous = Trace.read(plugin, "attempt");
+      plugin.cancel(new PluginCall(new JSObject()));
+      trace.step("cancel", observed(1));
+      PluginCall nextCall = new PluginCall(new JSObject().put("environment", "production"));
+      plugin.startGoogle(nextCall);
+      Object replacement = Trace.read(plugin, "attempt");
+      if (replacement == null || replacement == previous || nextCall.rejection != null)
+        throw new AssertionError("Replacement was not admitted while previous ACK was held");
+      trace.step("begin",
+          currentObservation(2)
+              .put("s.pending", SignInTestPorts.values.containsKey(SignInTestPorts.PENDING))
+              .put("s.pendingWrite", Trace.read(replacement, "pendingRecord") != null)
+              .put("s.activation.owner", SignInTestPorts.owner())
+              .put("s.activation.receipt", receiptFor(1)),
+          "google");
+      release(heldAck);
+      SignInTestPorts.Event removed = SignInTestPorts.next("remove:" + SignInTestPorts.ACK);
+      trace.step("ack", currentObservation(2).put("s.activation.receipt", receiptFor(1)), true);
+      release(removed);
+      SignInTestPorts.Event logout = SignInTestPorts.next("http:/steward/auth/logout");
+      if (Trace.read(plugin, "attempt") != replacement || nextCall.result != null)
+        throw new AssertionError("Old activation overwrote the new interactive attempt");
+      trace.stutter("old completion preserves the replacement",
+          currentObservation(2).put("s.activation.acknowledged",
+              SignInTestPorts.outcomes.stream().anyMatch(
+                  value -> "authenticated".equals(value.optString("status")))));
+      release(logout);
+      SignInTestPorts.Event pending = SignInTestPorts.next("write:" + SignInTestPorts.PENDING);
+      trace.macro("queued pending write starts after old worker cleanup",
+          currentObservation(2)
+              .put("s.pending", SignInTestPorts.values.containsKey(SignInTestPorts.PENDING))
+              .put("s.activation.receipt", receiptFor(1)),
+          Trace.action("releaseSteward"), Trace.action("beginWork"));
+      release(pending);
+      drain(plugin);
+      if (cancelAfterReceipt) {
+        CloudSignInFlow.Pending saved =
+            CloudSignInFlow.Pending.parse(SignInTestPorts.values.get(SignInTestPorts.PENDING), false);
+        plugin.handleOnNewIntent(new Intent(Intent.ACTION_VIEW,
+            Uri.parse(saved.environment.callback() + "#code=fixture&state=" + saved.state)));
+        SignInTestPorts.Event exchange = SignInTestPorts.next("http:/steward/auth/oauth/exchange");
+        trace.step("callback",
+            currentObservation(2).put(
+                "s.pending", SignInTestPorts.values.containsKey(SignInTestPorts.PENDING)),
+            2);
+        release(exchange);
+        SignInTestPorts.Event secondReceipt = SignInTestPorts.next("write:" + SignInTestPorts.ACK);
+        trace.macro("replacement receipt survives prior activation cleanup",
+            currentObservation(2).put("s.activation.receipt", receiptFor(1)), Trace.action("exchanged"),
+            Trace.action("writeReceipt"));
+        plugin.cancel(new PluginCall(new JSObject()));
+        trace.step("cancel", currentObservation(2));
+        release(secondReceipt);
+        SignInTestPorts.Event secondLogout = SignInTestPorts.next("http:/steward/auth/logout");
+        release(secondLogout);
+        drain(plugin);
+        trace.step("releaseSteward", currentObservation(2));
+      } else {
+        plugin.handleOnDestroy();
+        plugin = new AlphaCloudSignInPlugin();
+        plugin.load();
+        drain(plugin);
+        trace.step("restart",
+            currentObservation(2).put(
+                "s.pending", SignInTestPorts.values.containsKey(SignInTestPorts.PENDING)));
+        plugin.cancel(new PluginCall(new JSObject()));
+        SignInTestPorts.Event cancelledPending = SignInTestPorts.next("remove:" + SignInTestPorts.PENDING);
+        trace.step("cancel",
+            currentObservation(2).put(
+                "s.pending", SignInTestPorts.values.containsKey(SignInTestPorts.PENDING)));
+        release(cancelledPending);
+        drain(plugin);
+      }
+      plugin.handleOnDestroy();
+      plugin = new AlphaCloudSignInPlugin();
+      plugin.load();
+      drain(plugin);
+      if (SignInTestPorts.owner() != 1 || SignInTestPorts.values.containsKey(SignInTestPorts.PENDING)
+          || SignInTestPorts.values.containsKey(SignInTestPorts.ACK))
+        throw new AssertionError("Restart did not preserve the original activated credential");
+      trace.step("restart", observed(1).put("s.pending", false));
+    } finally {
+      plugin.handleOnDestroy();
+      for (SignInTestPorts.Event event : SignInTestPorts.events) release(event);
+    }
+    System.out.println(new JSONArray().put(trace.value));
+  }
   static void receiptFailure() throws Exception {
     Trace trace = new Trace("failed receipt write preserves previous credential", observed(1));
     AlphaCloudSignInPlugin first = start(trace, 1);
@@ -509,6 +621,10 @@ public final class SignInCoordinatorTraces {
     }
     if (scenario.equals("callback-cas-lost")) {
       lostCallbackCas();
+      return;
+    }
+    if (scenario.equals("activation-overlap-pending") || scenario.equals("activation-overlap-receipt")) {
+      activationOverlap(scenario.endsWith("receipt"));
       return;
     }
     if (scenario.equals("receipt-failure")) {

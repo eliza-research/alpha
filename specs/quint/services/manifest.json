@@ -16,13 +16,17 @@
         "receipt/key/acknowledged/ackTries": "persisted ack receipt, credential slot and acknowledge rounds",
         "epoch/attemptOwner/owner": "credential intent and captured account ownership",
         "cancelRequested/steward": "pre-key cancellation versus post-key activation and separate transient Steward cleanup after authentication delivery",
-        "ownerEpoch": "committed credential generation, preserved while a replacement attempt is pending"
+        "ownerEpoch": "committed credential generation, preserved while a replacement attempt is pending",
+        "phase/method/pending/pendingWrite/consumed": "current interactive Attempt, queued versus persisted Google pending record, and callback consumption",
+        "activation": "captured committed owner, durable acknowledgement receipt, bounded ACK rounds and old-attempt revocation/Steward cleanup independent from a newer Attempt",
+        "cleanupOwner": "previous uncommitted attempt whose cancelled worker must release its transient Steward session before queued replacement work"
       },
       "abstractions": [
         "Two sign-in attempts and owners, five wrong-code attempts and three ack attempts.",
         "Opaque PKCE states, proofs and credentials are represented by identities. Cryptography, endpoint shapes and encrypted persistence are checked by existing implementation tests.",
         "Storage failure before the key commit ends the attempt. After key persistence, cancellation cannot stop acknowledgement. Authentication delivery precedes best-effort Steward logout and local-session cleanup.",
-        "Failed durable callback burn and cancellation retain pending bytes and block reuse within that process. A process restart may restore the unretired record and requires successful burn and fresh native authorization. A recovered key acknowledgement loses the transient previous-token revocation capability and never claims it was revoked."
+        "Failed durable callback burn and cancellation retain pending bytes and block reuse within that process. A process restart may restore the unretired record and requires successful burn and fresh native authorization. A recovered key acknowledgement loses the transient previous-token revocation capability and never claims it was revoked.",
+        "Legacy top-level key/receipt/ack fields describe the current Attempt. The canonical activation record retains an older committed owner during replacement admission. CurrentActivationProjection requires matching representations when both refer to the same committed attempt. beginWork represents the queued worker reaching the replacement pending write after old cleanup. Restart preserves durable replacement pending bytes while restoring the stored activation owner."
       ],
       "path": "specs/quint/services/IdentitySession.qnt",
       "module": "IdentitySession",
@@ -38,7 +42,14 @@
         "exhaustedCodesTest",
         "lateReturnTest",
         "postCommitCancelStillActivatesTest",
-        "storageFailureBeforeCommitTest"
+        "storageFailureBeforeCommitTest",
+        "heldAckAllowsQueuedReplacementTest",
+        "queuedReplacementCancellationPreservesActivationTest",
+        "completedAckKeepsReplacementReceiptTest",
+        "cancelledPrecommitWorkerRetainsCleanupTest",
+        "restartDropsUncommittedWorkerTest",
+        "resumedAckFencesPendingCallbackTest",
+        "resumedAckRestoresPendingCallbackTest"
       ],
       "invariants": [
         "KeyBeforeAck",
@@ -48,7 +59,12 @@
         "BoundedAttempts",
         "AuthenticatedKey",
         "TypeOK",
-        "NoExchangeWithPending"
+        "NoExchangeWithPending",
+        "PendingWriteNotDurable",
+        "ActivationOwnsStoredKey",
+        "ActivationReceiptBeforeAck",
+        "CurrentActivationProjection",
+        "SerializedActivationWorker"
       ],
       "bounds": {
         "maxSamples": 1000,

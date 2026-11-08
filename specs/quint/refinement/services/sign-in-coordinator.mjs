@@ -8,6 +8,7 @@ const defaultScenarios = [
   'burn-failure', 'cold-burn-failure', 'cancel-burn-failure',
   'cancel-replacement', 'unowned-cancel-replacement', 'cancel-during-callback-read', 'receipt-failure',
   'stale-read-replacement', 'cancel-then-email', 'cancel-then-phone', 'callback-cas-lost',
+  'activation-overlap-pending', 'activation-overlap-receipt',
 ];
 
 export async function runSignInCoordinatorRefinement(scenarios = defaultScenarios, extraSources = []) {

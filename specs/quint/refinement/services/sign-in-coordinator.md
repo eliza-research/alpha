@@ -12,7 +12,7 @@ node --test test/quint-signin-refinement.test.mjs
 node --import=tsx specs/quint/refinement/services/sign-in-coordinator.mjs
 ```
 
-The adapter runs in the fourteen-model services aggregate and also has a standalone command. Its fifteen schedules
+The adapter runs in the fourteen-model services aggregate and also has a standalone command. Its seventeen schedules
 cover initial successful sign-in, successful replacement, retryable acknowledgement,
 pre-commit cancellation, post-commit cancellation, acknowledgement after restart,
 failed callback retirement with and without a waiting renderer, failed cancellation
@@ -62,6 +62,20 @@ A failed compare-and-exchange is ownership loss and leaves newer attempts alone.
 This API uses `JsonCredentialSlots.LOCK` in the actual store. Its cross-instance guarantee
 is process-local, as specified by the application architecture.
 
+The current interactive attempt and a prior committed activation have separate
+state. A held acknowledgement does not prevent the renderer from admitting the
+next attempt after cancellation. That new Google record remains queued until the
+serialized worker finishes the old acknowledgement and cleanup. `beginWork`
+marks its durable write. Cancelled uncommitted workers retain a separate cleanup owner until their transient session is released. Old acknowledgement and cleanup transitions update only
+the captured activation owner. `CurrentActivationProjection` checks the legacy
+current-attempt fields whenever they refer to that same owner.
+
+The two overlap schedules then cancel the new pending attempt, or receive its
+callback and persist its receipt before cancelling its credential commit. Actual
+restart preserves the first stored credential. One schedule also restarts while
+the replacement pending record is still durable. These schedules observe the
+old activation finishing without overwriting the new attempt or its receipt.
+
 ## Scope and remaining obligations
 
 These are bounded orchestration traces and safety checks of a finite abstraction.
@@ -78,7 +92,7 @@ separate integration obligations. No real credentials or network calls are used.
 The native authorization routine executes with a controlled affirmative dialog
 result. Arbitrary authorization timing, negative authorization, email/phone verification and MFA schedules,
 acknowledged-but-failed receipt cleanup, expiry and all combinations of concurrent
-callbacks remain outside these fifteen schedules. The existing finite model limits
+callbacks remain outside these seventeen schedules. The existing finite model limits
 attempts to two and acknowledgement rounds to three. The source fixture exercises
 a full successful initial sign-in before every credential-replacement flow, so its stored
 credential is produced by the implementation.
