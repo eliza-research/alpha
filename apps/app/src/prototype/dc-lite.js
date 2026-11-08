@@ -123,9 +123,11 @@ import templateHtml from "./template.html?raw";
       var lm = (n.getAttribute("list") || "").match(WHOLE);
       var list = (lm ? lookup(lm[1], scope) : []) || [];
       var as = n.getAttribute("as") || "item";
+      var km = (n.getAttribute("key") || "").match(WHOLE);
       return h(React.Fragment, { key: key }, list.map(function (item, i) {
         var s = Object.create(scope); s[as] = item; s.$index = i;
-        return h(React.Fragment, { key: i }, kids(n.childNodes, s));
+        var itemKey = km ? lookup(km[1], s) : i;
+        return h(React.Fragment, { key: itemKey == null ? i : itemKey }, kids(n.childNodes, s));
       }));
     }
     // Resolve both static IC references and dynamic row paths through one display map.

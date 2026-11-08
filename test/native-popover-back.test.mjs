@@ -6,7 +6,10 @@ import vm from 'node:vm';
 const source=readFileSync('apps/app/src/prototype/agent-adapter.ts','utf8');
 const begin=source.indexOf('this.backHandler = (event: Event) => {'),end=source.indexOf("window.addEventListener('alpha-back', this.backHandler)",begin);
 assert.ok(begin>=0&&end>begin);
-const code=stripTypeScriptTypes(source.slice(begin,end),{mode:'transform'});
+const slice=(from,to)=>{const a=source.indexOf(from),b=source.indexOf(to,a);assert.ok(a>=0&&b>a,from);return source.slice(a,b);};
+const panels=stripTypeScriptTypes(slice('  function modalPanels(){','  // Native Back reaches'),{mode:'strip'});
+const availability=stripTypeScriptTypes(slice('  function updateBackAvailability(','\n  const notesLeave'),{mode:'strip'});
+const code=panels+stripTypeScriptTypes(source.slice(begin,end),{mode:'strip'});
 function fixture({popover=true,dialog=false,supported=true,toast=false,fallback=false}={}){
  const calls={popover:0,focus:0,dialog:0,navigate:0,cancelReply:0};
  const menu={id:'alpha-mail-folders',hidePopover(){calls.popover++;popover=false;}};
@@ -40,4 +43,34 @@ test('legacy folder Back closes only its visible menu before shell navigation',(
  const f=fixture({supported:false,popover:false,fallback:true});assert.equal(f.back().defaultPrevented,true);
  assert.deepEqual(f.calls,{popover:0,focus:1,dialog:0,navigate:0,cancelReply:0});
  f.back();assert.deepEqual(f.calls,{popover:0,focus:1,dialog:0,navigate:1,cancelReply:1});
+});
+
+// MainActivity forwards Back to the renderer only when alphaCanGoBack is true; otherwise standalone finishes.
+const activity=readFileSync('android/app/src/main/java/ai/elizaresearch/alphaphone/MainActivity.java','utf8');
+const script=(()=>{const m=activity.match(/String script = "([^"]+)"\s*\+ \(BuildConfig\.IS_LAUNCHER[^?]+\? "[^"]+" : "([^"]+)"\) \+ "([^"]+)";/);assert.ok(m,'MainActivity Back script');return m[1]+m[2]+m[3];})();
+function phone({drawer=false,digest=false}={}){
+ const calls={navigate:0,cancel:0,back:0};
+ const panel={closest:()=>null,getAttribute:()=>null,getClientRects:()=>[{}],dispatchEvent:event=>{if(event.type==='cancel')calls.cancel++;return true;}};
+ const html={dataset:{}},state={view:null,drawer,shade:false,chat:'hidden',voice:'off'};
+ const window={dispatchEvent:event=>{if(event.type==='alpha-back')calls.back++;return true;}};
+ const context=vm.createContext({Event,window,dismissMailFolderMenu:()=>false,HTMLElement:{prototype:{hidePopover(){}}},getComputedStyle:()=>({visibility:'visible'}),document:{
+  documentElement:html,
+  querySelectorAll:selector=>selector.startsWith('[role="dialog"][aria-modal="true"]')&&digest?[panel]:[],
+  querySelector:selector=>selector==='.os'?{inert:digest}:null,
+ },connectionController:{getSnapshot:()=>({open:false}),cancelViewNavigation:()=>{}},shell:{S:()=>state,back:()=>calls.navigate++}});
+ vm.runInContext(panels+availability+';updateBackAvailability(shell);(function(){'+code+'}).call(shell)',context);
+ return {calls,html,native:()=>vm.runInContext(script,context),back:()=>context.shell.backHandler(new Event('alpha-back',{cancelable:true}))};
+}
+test('native Back reaches the renderer with the All apps drawer open, and closes it',()=>{
+ const f=phone({drawer:true});assert.equal(f.html.dataset.alphaCanGoBack,'true');
+ assert.equal(f.native(),true,'standalone keeps the Activity');assert.equal(f.calls.back,1);
+ f.back();assert.equal(f.calls.navigate,1,'shell Back closes the drawer');
+});
+test('native Back reaches the renderer with the digest panel open, and asks the panel to close',()=>{
+ const f=phone({digest:true});assert.equal(f.html.dataset.alphaCanGoBack,'true');
+ assert.equal(f.native(),true);f.back();
+ assert.deepEqual({navigate:f.calls.navigate,cancel:f.calls.cancel},{navigate:0,cancel:1},'the phone under the panel stays put');
+});
+test('root Home with nothing open still lets standalone finish',()=>{
+ const f=phone();assert.equal(f.html.dataset.alphaCanGoBack,'false');assert.equal(f.native(),false);assert.equal(f.calls.back,0);
 });

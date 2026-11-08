@@ -663,3 +663,15 @@ button[aria-label$=" on or off"][aria-pressed]::before { content:""; position:ab
 .maps-chat-choice { display:flex;flex-wrap:wrap;gap:8px; }
 .maps-chat-choice button { min-height:44px;padding:8px 16px;border-radius:22px;background:var(--s2);color:var(--fg);font:inherit;font-weight:600; }
 .maps-chat-choice button:first-child { background:var(--acc);color:var(--alpha-white); }
+
+.maps-chat-card { background:var(--s2);padding:16px;border-radius:16px;display:flex;flex-direction:column;gap:6px;overflow-wrap:anywhere; }
+.maps-chat-card strong { font-size:15px;line-height:1.4; }
+.maps-chat-card p { margin:0;font-size:14px;line-height:1.4; }
+.maps-chat-card small { color:var(--mut);font-size:12px;line-height:1.4; }
+.maps-chat-choice { display:flex;flex-wrap:wrap;gap:8px; }
+.maps-chat-choice button { min-height:44px;padding:8px 16px;border-radius:22px;background:var(--s2);color:var(--fg);font:inherit;font-weight:600; }
+.maps-chat-choice button:first-child { background:var(--acc);color:var(--alpha-white); }
+
+.home-date-line { min-height:180px; flex-shrink:0; box-sizing:border-box; padding:0 24px 6px; display:flex; flex-direction:column; justify-content:flex-end; align-items:flex-start; gap:14px; }
+.home-date-text { font-size:40px; line-height:1.08; letter-spacing:-.01em; overflow-wrap:anywhere; }
+.home-date-setup { min-height:48px; padding:0 18px; border-radius:24px; background:var(--s2); color:var(--fg); font-size:15px; font-weight:600; }

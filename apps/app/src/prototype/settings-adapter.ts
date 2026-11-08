@@ -479,6 +479,13 @@ export function installSettingsAdapter(Component: any, views: Bag) {
     if (key === 'settings') { void refresh(); void refreshCapabilities(true); }
     return result;
   };
+  const settingsBack = definition.back;
+  const settingsParents: Record<string,string> = {history:'agent-connection',problems:'about',licenses:'about','password-entry':'password-provider'};
+  definition.back = (state:Bag,api:Bag) => {
+    if(!state.sheet&&settingsParents[state.page]){api.set({page:settingsParents[state.page]});return true;}
+    if(!state.sheet&&PASSWORD_PAGES.includes(state.page))leavePasswordManager();
+    return settingsBack ? settingsBack(state,api) : false;
+  };
   definition.render = (state: Bag, api: Bag) => {
     settingsApi = api;
     const out = render({ ...state, page: settingsPage(state.page, developerTools), acct: null, adding: false, sheet: ['conn', 'voice', 'wipe', 'wifiPw', 'forget'].includes(state.sheet?.kind) ? null : state.sheet }, api);
@@ -913,6 +920,16 @@ export function installSettingsAdapter(Component: any, views: Bag) {
       for (const page of out.stack) {
         if (page.title === 'Accounts') page.title = 'Account & plan';
         if (page.title === 'Connections') page.title = 'Google & email';
+      }
+    }
+    // Stable identities keep focused controls attached while async groups change.
+    for(const page of out.stack){
+      const groups=new Map<string,number>();
+      for(const section of page.groups||[]){
+        const name=String(section.id??section.cap??section.rows?.[0]?.label??section.rows?.[0]?.lbl??'group');
+        const occurrence=groups.get(name)??0;groups.set(name,occurrence+1);section.id=JSON.stringify([page.title||'Settings',name,occurrence]);
+        const rows=new Map<string,number>();
+        section.rows=(section.rows||[]).map((row:Bag)=>{const identity=String(row.id??row.aria??row.label??row.lbl??row.time??'')+String(row.text??'');const n=rows.get(identity)??0;rows.set(identity,n+1);return {...row,id:JSON.stringify([identity,n])};});
       }
     }
     if(!Capacitor.isNativePlatform()) {

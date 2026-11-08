@@ -72,6 +72,8 @@ export function monthName(date: Date, width: 'long' | 'short' | 'narrow' = 'long
 export function formatShortDate(date: Date) { return clean(format({weekday: 'short', month: 'short', day: 'numeric'}).format(date)); }
 /** "Wednesday, Oct 8". */
 export function formatLongDate(date: Date) { return clean(format({weekday: 'long', month: 'short', day: 'numeric'}).format(date)); }
+/** Full date for Home. */
+export function formatFullDate(date: Date) { return clean(format({weekday: 'long', month: 'long', day: 'numeric'}).format(date)); }
 /** "Oct 8" or "Oct 8, 2025". */
 export function formatMonthDay(date: Date, withYear = false) { return clean(format(withYear ? {month: 'short', day: 'numeric', year: 'numeric'} : {month: 'short', day: 'numeric'}).format(date)); }
 /** "October" or "October 2027". */

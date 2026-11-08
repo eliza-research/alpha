@@ -3,6 +3,7 @@ import {mockAttentionRows} from './mock-attention';
 import {HOME_DEFAULTS} from './model.js';
 import {browserStorageUsage} from '../browser/storage-usage';
 import {browserDevProfile} from '../browser/dev-profile';
+import {formatFullDate} from './locale-time';
 import {homeCalendarEmptyTitle, homeCalendarName, homeCalendarValues, homeReadIsStale, presentHomeAgendaCard, presentHomeAttention, presentHomeBrief, presentHomeBriefCard, presentHomeCalendarSource, selectHomeAgenda, type HomeAgendaCardInput, type HomeAttentionSummary, type HomeBriefSummary} from './home-cards';
 type Bag = Record<string, any>;
 const installed = new WeakSet<object>();
@@ -13,6 +14,12 @@ const installed = new WeakSet<object>();
 export function installPrototypeDataAdapter(Component: any, views: Record<string, Bag>) {
   if (installed.has(views)) return;
   installed.add(views);
+  // Home draws no card for a failed calendar read, so opening Calendar by any route reads it again.
+  const openView = Component.prototype.openView;
+  Component.prototype.openView = function (key: string, ...args: any[]) {
+    if (key === 'calendar') { try { const source = views.calendar?.displaySources?.(); if (source?.error) source.retry?.(); } catch { /* Calendar still opens */ } }
+    return openView.call(this, key, ...args);
+  };
   const empty: Record<string, Bag> = {
     photos: { list: [], trash: [], albums: [], open: null, album: null, edit: null, sheet: null, filter: null, seq: null, sel: null },
     files: { files: [], folder: null, open: null, asked: {}, asking: null, sel: null, sheet: null },
@@ -151,6 +158,8 @@ export function installPrototypeDataAdapter(Component: any, views: Record<string
       homeAttentionPeople: [], homeAttentionPeopleVisibility: 'hidden',
       ...(browserDevProfile?{homeInboxCount:attention.count,homeInboxRows:unreadRows.slice(0,2).map(mail=>({subject:mail.subj||'(no subject)',from:mail.name||mail.email||''})),homeInboxHasRows:unread>0,homeInboxConfirmedEmpty:unread===0,homeInboxTitle:unread?'':'No unread email',homeInboxStatus:'Development inbox'}:{}),
       homeWorkflowLabel: brief.label, homeWorkflowTitle: brief.title, homeWorkflowTime: brief.time, homeWorkflowSource: brief.source,
+      // Only the later workflow owners publish enabled rows outside the explicit fixture.
+      homeWorkflowRows: [], homeWorkflowHasRows: false,
       // After a failed read, opening Calendar from the card reads it again; Calendar itself does not retry on entry.
       // A stale read is read again when the card is opened (the same forced read Calendar's retry uses).
       // Opening a view resets its state, so the card names the calendar source it showed: Calendar
@@ -190,6 +199,24 @@ export function setHomeSources(next: Partial<typeof homeSources>) {
   if (next.attention) homeSources.attention = safe(next.attention);
   if (next.brief) homeSources.brief = safe(next.brief);
   window.dispatchEvent(new Event(HOME_SOURCES_CHANGED));
+}
+
+/** Which Home cards are drawn (docs/ui-refresh-2026-11, specs/quint/legacy/HomeLayout.qnt). A card is drawn only
+ * when it has something to show: the next event or an overdue reminder, an enabled workflow,
+ * unread mail from a connected account, a retained brief. With none, Home shows the date, and a
+ * Connect Google button while Google is known to be disconnected. Installed outermost, after
+ * every adapter that writes the card values. */
+export function installHomeCardVisibility(Component: any, openGoogle: () => void) {
+  const p = Component.prototype, render = p.renderVals;
+  p.renderVals = function () {
+    const out = render.call(this);
+    const calendar = !!out.homeCalendarHasEvent, workflows = !!out.homeWorkflowHasRows, inbox = !!out.homeInboxHasRows, brief = !!out.homeBriefHas;
+    const none = !calendar && !workflows && !inbox && !brief;
+    return {...out, homeShowCalendar: calendar, homeShowWorkflows: workflows, homeShowInbox: inbox, homeShowDate: none,
+      homeShowSetup: none && out.homeGoogleConnected === false,
+      homeDateLabel: none ? formatFullDate(new Date()) : '',
+      connectGoogle: openGoogle};
+  };
 }
 
 /** Neutral Home card values used when no fixture defaults are bundled. */

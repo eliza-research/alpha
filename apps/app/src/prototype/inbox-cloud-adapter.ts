@@ -674,6 +674,11 @@ export function installInboxCloudAdapter(Component: any, views: Record<string, B
     const disconnected=connectionController.getSnapshot().startupResolved===true&&(!binding||accountsChecked&&!connected);
     const cached=key&&inboxPreview?.key===key&&inboxPreview.sessionId===binding?.sessionId&&inboxPreview.accountId===selected?inboxPreview:restored;
     const pending=phase==='busy'||phase==='scheduled';
+    // Home's Connect Google (installHomeCardVisibility): only while signed in to Eliza Cloud, after the
+    // account list for this session was read and has no connected Google account. Any connected Google
+    // account counts, including one that grants Calendar without Gmail; otherwise unknown.
+    const googleConnected=accounts.some(a=>a.connected)||connected;
+    const homeGoogleConnected=binding&&connectionController.getSnapshot().startupResolved===true&&accountsChecked&&accountsSession===binding.sessionId?googleConnected:undefined;
     // The shared Home mail card from the page the user loaded in Inbox: account and read time, never a body.
     // A page dropped since (an account change or disconnect elsewhere) after a real read says when it last
     // updated, with the last count only in the accessible name.
@@ -685,8 +690,8 @@ export function installInboxCloudAdapter(Component: any, views: Record<string, B
     // Until a page is loaded the card shows only "Inbox". Its name keeps that word and says where it
     // opens: a bare "Inbox" is the Inbox app tile's name. A resolved startup with no email set up is not
     // unknown: it uses the shared "Connect email" card (docs/daily-overview.md), which opens Connections.
-    if(!cached&&!disconnected&&(pending||!binding||!accountsChecked||homeFailure))return {...out,homeAttentionLabel:out.homeAttentionAction==='connections'?'Inbox: set up email in Connections':'Open Inbox',homeInboxCount:'',homeInboxRows:[],homeInboxHasRows:false,homeInboxTitle:'Inbox',homeInboxStatus:'',homeInboxDescription:'',homeInboxState:'pending',homeInboxConfirmedEmpty:false};
-    return {...out,homeAttentionLabel:card.label,homeInboxCount:card.count,homeInboxRows:card.rows.map(row=>({subject:row.title,from:row.detail})),homeInboxHasRows:card.rows.length>0,
+    if(!cached&&!disconnected&&(pending||!binding||!accountsChecked||homeFailure))return {...out,homeGoogleConnected,homeAttentionLabel:out.homeAttentionAction==='connections'?'Inbox: set up email in Connections':'Open Inbox',homeInboxCount:'',homeInboxRows:[],homeInboxHasRows:false,homeInboxTitle:'Inbox',homeInboxStatus:'',homeInboxDescription:'',homeInboxState:'pending',homeInboxConfirmedEmpty:false};
+    return {...out,homeGoogleConnected,homeAttentionLabel:card.label,homeInboxCount:card.count,homeInboxRows:card.rows.map(row=>({subject:row.title,from:row.detail})),homeInboxHasRows:card.rows.length>0,
       homeInboxTitle:card.title,homeInboxStatus:card.status,homeInboxDescription:card.description,homeInboxState:card.state,
       homeInboxConfirmedEmpty:card.state==='ready'&&accountsChecked&&connected&&cached?.more===false&&!card.rows.length
         &&cached.readAt!=null&&cached.readAt>0&&cached.readAt<=now&&!homeReadIsStale(cached.readAt,now)};

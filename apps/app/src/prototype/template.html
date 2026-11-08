@@ -23,6 +23,7 @@
 <sc-element value="{{homeShell}}">
 <sc-slot name="header">
 <sc-if value="{{storageAccessWarning}}"><p role="alert" class="storage-access-warning">{{storageAccessWarning}}</p></sc-if>
+<sc-if value="{{homeShowDate}}"><div class="home-date-line" data-alpha-home-date><span class="serif home-date-text">{{homeDateLabel}}</span><sc-if value="{{homeShowSetup}}"><button class="tap home-date-setup" onClick="{{connectGoogle}}">Connect Google</button></sc-if></div></sc-if>
 <sc-if value="{{homeEdit.on}}">
   <div data-alpha-home-edit style="display: flex; justify-content: space-between; align-items: center; padding: 0 16px 12px">
     <button class="ib" data-alpha-home-add onClick="{{homeEdit.add}}" disabled="{{homeEdit.noAdd}}" aria-label="Add to Home" aria-haspopup="dialog" style="background: var(--s2)"><svg class="i" viewBox="0 0 24 24"><path d="{{ic.plus}}"></path></svg></button>
@@ -67,6 +68,7 @@
 <sc-if value="{{isView}}">
 <div data-alpha-layer="app" onFocusCapture="{{focusAppContent}}" role="region" aria-label="{{activeViewLabel}}" aria-hidden="{{appHidden}}" inert="{{appHidden}}" class="enter" style="position: absolute; inset: 0; z-index: 20; background: {{viewBg}}; color: {{viewFg}}; display: flex; flex-direction: column">
 <sc-if value="{{storageAccessWarning}}"><p role="alert" class="storage-access-warning">{{storageAccessWarning}}</p></sc-if>
+<sc-if value="{{homeShowDate}}"><div class="home-date-line" data-alpha-home-date><span class="serif home-date-text">{{homeDateLabel}}</span><sc-if value="{{homeShowSetup}}"><button class="tap home-date-setup" onClick="{{connectGoogle}}">Connect Google</button></sc-if></div></sc-if>
 
 <sc-if value="{{is.phone}}">
 <sc-if value="{{phone.nativeManaged}}">
@@ -2587,7 +2589,7 @@
     <sc-for list="{{contacts.groups}}" as="g">
       <div>
         <div style="padding: 14px 24px 2px; font-size: 13px; font-weight: 600; color: var(--mut)">{{g.letter}}</div>
-        <sc-for list="{{g.rows}}" as="r">
+        <sc-for list="{{g.rows}}" as="r" key="{{r.id}}">
           <button class="tap" onClick="{{r.open}}" style="width: 100%; display: flex; align-items: center; gap: 14px; padding: 8px 24px; text-align: left; box-sizing: border-box">
             <span style="width: 40px; height: 40px; border-radius: 20px; background: var(--s2); display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 700; flex-shrink: 0; white-space: nowrap">{{r.ini}}</span>
             <span style="font-size: 16px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">{{r.name}}</span>
@@ -3809,12 +3811,12 @@
           </div>
         </sc-if>
 
-        <sc-for list="{{p.groups}}" as="g">
+        <sc-for list="{{p.groups}}" as="g" key="{{g.id}}">
           <sc-if value="{{g.hasCap}}">
             <div style="padding: 2px 30px 8px; font-size: 13px; color: var(--mut)">{{g.cap}}</div>
           </sc-if>
           <div style="margin: 0 16px 12px; border-radius: 26px; overflow: hidden; {{g.css}}">
-            <sc-for list="{{g.rows}}" as="r">
+            <sc-for list="{{g.rows}}" as="r" key="{{r.id}}">
               <sc-if value="{{r.kNav}}">
                 <button class="tap" disabled="{{r.busy}}" onClick="{{r.go}}" aria-label="{{r.lbl}}" style="width: 100%; display: flex; align-items: center; gap: 14px; padding: 8px 16px 8px 18px; min-height: 58px; box-sizing: border-box; text-align: left">
                   <sc-if value="{{r.hasIcon}}"><svg class="i" viewBox="0 0 24 24" style="{{r.labCss}}"><path d="{{r.d}}"></path></svg></sc-if>
@@ -4236,6 +4238,7 @@
 <sc-if value="{{isOn}}">
 <div data-alpha-layer="shade" id="alpha-notifications" role="region" aria-label="Notifications" aria-hidden="{{shadeHidden}}" inert="{{shadeHidden}}" onKeyDown="{{shadeKey}}" style="position: absolute; inset: 0; z-index: 66; background: var(--bg); transform: translateY({{shadeY}}); transition: transform .55s cubic-bezier(.19,1,.22,1); display: flex; flex-direction: column; padding: 56px 14px 0; box-sizing: border-box">
 <sc-if value="{{storageAccessWarning}}"><p role="alert" class="storage-access-warning">{{storageAccessWarning}}</p></sc-if>
+<sc-if value="{{homeShowDate}}"><div class="home-date-line" data-alpha-home-date><span class="serif home-date-text">{{homeDateLabel}}</span><sc-if value="{{homeShowSetup}}"><button class="tap home-date-setup" onClick="{{connectGoogle}}">Connect Google</button></sc-if></div></sc-if>
   <sc-if value="{{systemShell}}">
   <div style="display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px">
     <sc-for list="{{tiles}}" as="t">

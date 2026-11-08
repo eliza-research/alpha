@@ -219,9 +219,14 @@ export async function declineProposal(id:string):Promise<{ok:boolean;message:str
 export function installAgentAdapter(Component: Shell, views: Shell) {
   const p = Component.prototype;
   let activeShell:Shell|null=null,notesRecovery:AbortController|null=null;
+  /** Visible modal panels that are not <dialog>s (digest panel, inline reviews), topmost last. */
+  function modalPanels(){
+    return Array.from(document.querySelectorAll<HTMLElement>('[role="dialog"][aria-modal="true"]:not([data-alpha-layer="drawer"])')).filter(dialog=>!dialog.closest('[inert],[hidden]')&&dialog.getAttribute('aria-hidden')!=='true'&&dialog.getClientRects().length>0&&getComputedStyle(dialog).visibility!=='hidden');
+  }
+  // Native Back reaches the renderer only while this is true: it counts everything backHandler consumes.
   function updateBackAvailability(shell:Shell) {
     const s=shell.S();
-    document.documentElement.dataset.alphaCanGoBack = String(!!document.querySelector('dialog[open]') || connectionController.getSnapshot().open || !!s.view || s.shade || s.chat === 'sheet' || s.chat === 'full' || s.voice !== 'off');
+    document.documentElement.dataset.alphaCanGoBack = String(!!document.querySelector('dialog[open]') || connectionController.getSnapshot().open || !!s.view || !!s.drawer || s.shade || s.chat === 'sheet' || s.chat === 'full' || s.voice !== 'off' || !!document.querySelector<HTMLElement>('.os')?.inert || modalPanels().length>0);
   }
   const notesLeave=views.notes.onLeave;
   views.notes.onLeave=(...args:Shell[])=>{notesRecovery?.abort();return notesLeave?.(...args);};
@@ -700,8 +705,10 @@ export function installAgentAdapter(Component: Shell, views: Shell) {
       // native events must not navigate the shell before its dialog closes.
       const dialog = Array.from(document.querySelectorAll<HTMLDialogElement>('dialog[open]')).at(-1);
       if (dialog) { event.preventDefault(); event.stopImmediatePropagation(); if(dialog.dispatchEvent(new Event('cancel',{cancelable:true})))dialog.close(); return; }
-      const inlineModal=Array.from(document.querySelectorAll<HTMLElement>('.os [role="dialog"][aria-modal="true"]:not([data-alpha-layer="drawer"])')).some(dialog=>!dialog.closest('[inert],[hidden]')&&dialog.getAttribute('aria-hidden')!=='true'&&dialog.getClientRects().length>0&&getComputedStyle(dialog).visibility!=='hidden');
-      if (inlineModal||document.querySelector<HTMLElement>('.os')?.inert) return;
+      // A modal panel that did not take Back itself is asked to close; the phone under it stays put.
+      const panel=modalPanels().at(-1);
+      if (panel) { event.preventDefault(); event.stopImmediatePropagation(); panel.dispatchEvent(new Event('cancel',{cancelable:true})); return; }
+      if (document.querySelector<HTMLElement>('.os')?.inert) return;
       if(dismissMailFolderMenu()){event.preventDefault();event.stopImmediatePropagation();return;}
       // Back that only collapses the chat or a sheet keeps a reply streaming; it arrives in the
       // transcript. Back that changes the view retires the request through the view context, which

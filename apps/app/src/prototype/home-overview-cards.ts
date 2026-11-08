@@ -8,7 +8,7 @@ const maskIcon = (name: string, color: string) => createElement('span', {style: 
 
 /** The Home agenda card: the shared upstream card with Alpha's classes and installed selectors. */
 export function homeAgendaCard(out: Bag): ReactElement | null {
-  if (out.homeCalendarConfirmedEmpty === true) return null;
+  if (out.homeShowCalendar === false || out.homeCalendarConfirmedEmpty === true) return null;
   const next = out.homeCalendarHasNext ? {text: String(out.homeCalendarNext || ''), source: String(out.homeCalendarNextSource || '')} : null;
   return createElement(OverviewAgendaCard, {
     heading: String(out.homeCalendarTime ?? ''), origin: String(out.homeCalendarOrigin ?? ''), title: String(out.homeCalendarTitle ?? ''),
@@ -40,7 +40,7 @@ const INBOX_STATES = new Set(['not-connected', 'idle', 'loading', 'ready', 'stal
  * selectors. It shows no message body and reads no mail.
  */
 export function homeAttentionCard(out: Bag): ReactElement | null {
-  if (out.homeInboxConfirmedEmpty === true) return null;
+  if (out.homeShowInbox === false || out.homeInboxConfirmedEmpty === true) return null;
   const rows = Array.isArray(out.homeInboxRows) && out.homeInboxHasRows !== false
     ? out.homeInboxRows.map((row: Bag) => ({title: String(row?.subject ?? ''), detail: String(row?.from ?? '')})) : [];
   const people = Array.isArray(out.homeAttentionPeople) ? out.homeAttentionPeople.map((person: Bag) => String(person?.ini ?? '')) : [];
@@ -93,7 +93,7 @@ export function installHomeOverviewCards(Component: any) {
   p.renderVals = function () {
     const out = render.call(this);
     const agenda = homeAgendaCard(out), attention = homeAttentionCard(out), brief = homeBriefCard(out);
-    const showWorkflow = out.homeWorkflowConfirmedEmpty !== true;
+    const showWorkflow = out.homeShowWorkflows !== false && out.homeWorkflowConfirmedEmpty !== true;
     return {...out, homeAgendaCard: agenda, homeAttentionCard: attention, homeBriefCard: brief, homeShowWorkflow: showWorkflow,
       homeHasOverviewCards: !!(agenda || attention || brief || showWorkflow)};
   };

@@ -7,6 +7,7 @@ import {
 	DEFAULT_PULL_DISTANCE,
 	TAP_SLOP,
 } from "../../../../.eliza/client-features/packages/ui/src/gestures/constants";
+import { isEditing, keyboardFreeHeight } from "../runtime/canvas-geometry";
 import { visibleDocks } from "../runtime/dock-clearance";
 
 const SHEET_EASE = `cubic-bezier(${OVERLAY_EASE.join(",")})`;
@@ -323,11 +324,59 @@ export function installChatOverlayMotion(Component: Shell) {
 		window.addEventListener("blur", this.cancelChatMotion);
 		window.addEventListener("pagehide", this.cancelChatMotion);
 		document.addEventListener("visibilitychange", this.chatMotionVisibility);
+		// Android can close the keyboard by itself (its hide key, Back) and leave the composer
+		// focused. Keyboard up and composer focus are one state here, so the composer lets go.
+		// MainActivity uses adjustResize, so the WebView itself shrinks with the keyboard: compare
+		// against the keyboard-free height for this width (the shared helper main.tsx also uses),
+		// seeded now, before any keyboard can have shrunk the window.
+		const free = keyboardFreeHeight();
+		const visible = () => {
+			const width = document.documentElement.clientWidth || window.innerWidth,
+				layout = document.documentElement.clientHeight || window.innerHeight;
+			return {
+				width,
+				layout,
+				height: Math.min(layout, window.visualViewport?.height || layout),
+			};
+		};
+		const seed = visible();
+		free(seed.width, seed.layout, false);
+		let keyboardOpen = false;
+		this.dockKeyboardWatch = () => {
+			const now = visible(),
+				covered =
+					free(now.width, now.layout, isEditing(document.activeElement)) -
+						now.height >
+					150;
+			if (keyboardOpen && !covered && this.chatInputFocused) {
+				const active = document.activeElement;
+				if (active instanceof HTMLElement && active.matches("[data-alpha-composer]"))
+					active.blur();
+			}
+			keyboardOpen = covered;
+		};
+		window.visualViewport?.addEventListener("resize", this.dockKeyboardWatch);
+		window.addEventListener("resize", this.dockKeyboardWatch);
+		// Leaving the app ends typing: the keyboard is gone when it returns.
+		this.dockHiddenWatch = () => {
+			if (!document.hidden) return;
+			const active = document.activeElement;
+			if (active instanceof HTMLElement && active.matches("[data-alpha-composer]")) active.blur();
+			this.chatInputFocused = false;
+			this.dockGuardPress = undefined;
+		};
+		document.addEventListener("visibilitychange", this.dockHiddenWatch);
 	};
 	p.componentDidUpdate = function (...args: Shell[]) {
 		update?.apply(this, args);
 		const drag: Drag | undefined = this.chatMotion,
 			s = this.S();
+		// The bar's composer unmounts without a blur event: its focus ends with it.
+		const previousView = args[1]?.view;
+		if ((s.chat !== "input" || (args[1] && previousView !== s.view)) && (this.chatInputFocused || this.dockGuardPress)) {
+			this.chatInputFocused = false;
+			this.dockGuardPress = undefined;
+		}
 		if (
 			drag &&
 			(s.view !== drag.view ||
@@ -348,6 +397,9 @@ export function installChatOverlayMotion(Component: Shell) {
 		window.removeEventListener("blur", this.cancelChatMotion);
 		window.removeEventListener("pagehide", this.cancelChatMotion);
 		document.removeEventListener("visibilitychange", this.chatMotionVisibility);
+		window.visualViewport?.removeEventListener("resize", this.dockKeyboardWatch);
+		window.removeEventListener("resize", this.dockKeyboardWatch);
+		document.removeEventListener("visibilitychange", this.dockHiddenWatch);
 		unmount?.call(this);
 	};
 
