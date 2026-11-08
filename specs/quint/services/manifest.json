@@ -1,0 +1,803 @@
+{
+  "schemaVersion": 1,
+  "models": [
+    {
+      "sources": [
+        "apps/app/src/runtime/cloud-sign-in.ts",
+        "apps/app/src/runtime/cloud-sign-in-ui.tsx",
+        "android/app/src/main/java/ai/elizaresearch/alphaphone/CloudSignInFlow.java",
+        "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaCloudSignInPlugin.java",
+        "android/app/src/main/java/ai/elizaresearch/alphaphone/CloudEmailCode.java",
+        "android/app/src/main/java/ai/elizaresearch/alphaphone/CloudSmsCode.java",
+        "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaCredentialStore.java"
+      ],
+      "stateMapping": {
+        "phase/method/pending/consumed": "native Attempt, encrypted pending record and callback burn",
+        "receipt/key/acknowledged/ackTries": "persisted ack receipt, credential slot and acknowledge rounds",
+        "epoch/attemptOwner/owner": "credential intent and captured account ownership",
+        "cancelRequested/steward": "pre-key cancellation versus post-key activation and separate transient Steward cleanup after authentication delivery",
+        "ownerEpoch": "committed credential generation, preserved while a replacement attempt is pending",
+        "phase/method/pending/pendingWrite/consumed": "current interactive Attempt, queued versus persisted Google pending record, and callback consumption",
+        "activation": "captured committed owner, durable acknowledgement receipt, bounded ACK rounds and old-attempt revocation/Steward cleanup independent from a newer Attempt",
+        "cleanupOwner": "previous uncommitted attempt whose cancelled worker must release its transient Steward session before queued replacement work"
+      },
+      "abstractions": [
+        "Two sign-in attempts and owners, five wrong-code attempts and three ack attempts.",
+        "Opaque PKCE states, proofs and credentials are represented by identities. Cryptography, endpoint shapes and encrypted persistence are checked by existing implementation tests.",
+        "Storage failure before the key commit ends the attempt. After key persistence, cancellation cannot stop acknowledgement. Authentication delivery precedes best-effort Steward logout and local-session cleanup.",
+        "Failed durable callback burn and cancellation retain pending bytes and block reuse within that process. A process restart may restore the unretired record and requires successful burn and fresh native authorization. A recovered key acknowledgement loses the transient previous-token revocation capability and never claims it was revoked.",
+        "Legacy top-level key/receipt/ack fields describe the current Attempt. The canonical activation record retains an older committed owner during replacement admission. CurrentActivationProjection requires matching representations when both refer to the same committed attempt. beginWork represents the queued worker reaching the replacement pending write after old cleanup. Restart preserves durable replacement pending bytes while restoring the stored activation owner."
+      ],
+      "path": "specs/quint/services/IdentitySession.qnt",
+      "module": "IdentitySession",
+      "init": "init",
+      "step": "step",
+      "invariant": "safety",
+      "tests": [
+        "failedCallbackBurnTest",
+        "failedCancelBurnTest",
+        "recoveredAckLosesPreviousRevocationTest",
+        "googleReturnTest",
+        "ackRecoveryTest",
+        "exhaustedCodesTest",
+        "lateReturnTest",
+        "postCommitCancelStillActivatesTest",
+        "storageFailureBeforeCommitTest",
+        "heldAckAllowsQueuedReplacementTest",
+        "queuedReplacementCancellationPreservesActivationTest",
+        "completedAckKeepsReplacementReceiptTest",
+        "cancelledPrecommitWorkerRetainsCleanupTest",
+        "restartDropsUncommittedWorkerTest",
+        "resumedAckFencesPendingCallbackTest",
+        "resumedAckRestoresPendingCallbackTest"
+      ],
+      "invariants": [
+        "KeyBeforeAck",
+        "DurableReceiptBeforeKey",
+        "SingleUseGoogleReturn",
+        "MatchedReturnBurned",
+        "BoundedAttempts",
+        "AuthenticatedKey",
+        "TypeOK",
+        "NoExchangeWithPending",
+        "PendingWriteNotDurable",
+        "ActivationOwnsStoredKey",
+        "ActivationReceiptBeforeAck",
+        "CurrentActivationProjection",
+        "SerializedActivationWorker"
+      ],
+      "bounds": {
+        "maxSamples": 1000,
+        "maxSteps": 60,
+        "seed": "123"
+      }
+    },
+    {
+      "sources": [
+        "apps/app/src/runtime/subscription-entitlement.ts",
+        "apps/app/src/runtime/managed-service-routes.ts",
+        "apps/app/src/runtime/cloud-environment-selection.ts",
+        "backend/managed-google-route-policy.ts",
+        "backend/managed-google-agent-broker.ts"
+      ],
+      "stateMapping": {
+        "plan/validFor/refresh/failures": "EntitlementRefresher cached signed entitlement, expiry and background retry",
+        "signedRefusal/credits": "signed refusal versus authenticated organization-credit fallback",
+        "owner/epoch/requestOwner/requestEpoch": "captured Cloud binding",
+        "request/dispatched": "managedServiceRequest and private Google broker admission",
+        "source/fallback": "signed entitlement, absent-token billing snapshot and signed-no-plan credit supplementation"
+      },
+      "abstractions": [
+        "Opaque exact-route categories summarize URL/method/body validation. The parser remains covered by runtime tests.",
+        "Server authorization is explicit input to dispatch, separate from cached UI entitlement. Local readiness remains independent of Cloud billing.",
+        "Two expiry ticks apply only to signed entitlements. Unsigned active snapshots may have no period end and use periodic refresh. Failed snapshot/credit refresh produces an unavailable view while background retry continues; unexpired signed entitlements retain the active view."
+      ],
+      "path": "specs/quint/services/ServiceAuthorization.qnt",
+      "module": "ServiceAuthorization",
+      "init": "init",
+      "step": "step",
+      "invariant": "safety",
+      "tests": [
+        "signedExpiryTest",
+        "localOutageTest",
+        "refusalTest",
+        "ownerChangeTest",
+        "snapshotWithoutExpiryTest",
+        "creditRefreshFailureTest",
+        "signedNoPlanCreditOnlyTest",
+        "signedOutageKeepsUnexpiredTest"
+      ],
+      "invariants": [
+        "RefusalNotUpgraded",
+        "ExpiryHonest",
+        "SnapshotHasNoSignedLifetime",
+        "CanonicalCreditView",
+        "LocalIndependent",
+        "ExactManagedRoute",
+        "CurrentDispatch",
+        "TypeOK"
+      ],
+      "bounds": {
+        "maxSamples": 1000,
+        "maxSteps": 60,
+        "seed": "123"
+      }
+    },
+    {
+      "sources": [
+        "apps/app/src/runtime/google-accounts.ts",
+        "apps/app/src/runtime/google-connect-flow.ts",
+        "apps/app/src/runtime/google-authorization.ts",
+        "apps/app/src/runtime/gmail-account-selection.ts",
+        "apps/app/src/runtime/gmail-grants.ts",
+        "apps/app/src/runtime/gmail-mailbox.ts",
+        "android/app/src/main/java/ai/elizaresearch/alphaphone/GoogleConnectReturn.java"
+      ],
+      "stateMapping": {
+        "attempt/pendingEpoch/phase/returnMatched": "googleConnect waiting, matching state and foreground return",
+        "account/readGrant/modifyGrant/calendarGrant": "selected connection and granted capabilities",
+        "cacheVisible/review": "gmailGrantChange withdrawal and read-cache invalidation",
+        "disconnectSent/revoked": "one disconnect request followed by readback"
+      },
+      "abstractions": [
+        "Two Google connections and two connect attempts represent arbitrary opaque IDs.",
+        "Partial Gmail write capabilities are grouped as modify for the reviewed-operation gate. Calendar read/write differences are further modeled by CalendarSync.",
+        "A return requests fresh account readback and does not itself grant capabilities."
+      ],
+      "path": "specs/quint/services/GoogleAccounts.qnt",
+      "module": "GoogleAccounts",
+      "init": "init",
+      "step": "step",
+      "invariant": "safety",
+      "tests": [
+        "connectAndReadTest",
+        "grantWithdrawalTest",
+        "disconnectUncertainTest",
+        "explicitDisconnectRetryTest",
+        "retiredAttemptTest"
+      ],
+      "invariants": [
+        "ReviewNeedsCurrentModify",
+        "CacheNeedsRead",
+        "ModifyIncludesRead",
+        "RevokedAccountEmpty",
+        "TypeOK"
+      ],
+      "bounds": {
+        "maxSamples": 1000,
+        "maxSteps": 60,
+        "seed": "123"
+      }
+    },
+    {
+      "sources": [
+        "apps/app/src/runtime/google-calendar-outbox.ts",
+        "apps/app/src/runtime/google-calendar-writer.ts",
+        "apps/app/src/runtime/google-calendar.ts",
+        "apps/app/src/runtime/calendar-sync-controller.ts",
+        "apps/app/src/runtime/calendar-sync-settings.ts",
+        "apps/app/src/runtime/calendar-linked-provider.ts",
+        "apps/app/src/runtime/calendar-linked-store.ts",
+        "apps/app/src/runtime/calendar-sync-host.ts",
+        "android/app/src/main/java/ai/elizaresearch/alphaphone/CalendarSyncConsent.java",
+        "android/app/src/main/java/ai/elizaresearch/alphaphone/CalendarSyncFreshness.java",
+        "android/app/src/main/java/ai/elizaresearch/alphaphone/CalendarSyncMutation.java",
+        "android/app/src/main/java/ai/elizaresearch/alphaphone/CalendarSyncReceiptRecovery.java"
+      ],
+      "stateMapping": {
+        "phase/kind/holder/instance": "GoogleCalendarOutboxOp phase and durable holder recovery",
+        "undoOpen/clockKnown": "monotonic deletion deadline, paused restart and owner choice",
+        "baseRevision/remoteRevision/checked": "read-before-write and conditional event version",
+        "retryAuthorized/applied/sends": "uncertain create matching, explicit retry and write outcome",
+        "consent/localRevision/consentReview": "reviewed linked-sync preference and exact current context",
+        "writable/restorePermission": "Fresh current-account Calendar permission read updates admission without resetting durable operation ownership, unknown outcome or retry authorization"
+      },
+      "abstractions": [
+        "One outbox entry, two revisions, two holders and at most two sends expose interference without the full event collection.",
+        "checking splits the durable dispatching phase into preflight and actual network dispatch. Restarts map both back to source recovery states.",
+        "Recurring-event scope, timestamp parsing, merging multiple queued edits and upstream linked reconciler internals remain abstractions checked by runtime contracts.",
+        "Unknown creates allow an explicit retry after owner review. The model does not claim globally exactly-once Calendar creates.",
+        "Permission restoration is an authorized current-account readback. It preserves pending operation owner, request epoch, unknown-create state and linked-sync consent."
+      ],
+      "path": "specs/quint/services/CalendarSync.qnt",
+      "module": "CalendarSync",
+      "init": "init",
+      "step": "step",
+      "invariant": "safety",
+      "tests": [
+        "reviewedSyncConsentTest",
+        "undoDeleteTest",
+        "conflictTest",
+        "uncertainCreateTest",
+        "restartDeleteTest",
+        "retiredOwnerTest",
+        "permissionRestorationTest",
+        "restoredPermissionKeepsUnknownTest",
+        "restoredPermissionKeepsOwnerFenceTest"
+      ],
+      "invariants": [
+        "NoAutomaticUnknownCreate",
+        "UndoBeforeDispatch",
+        "PausedNeedsDecision",
+        "DurableClaim",
+        "VisibleOwnerBound",
+        "TypeOK"
+      ],
+      "bounds": {
+        "maxSamples": 1000,
+        "maxSteps": 60,
+        "seed": "123"
+      }
+    },
+    {
+      "sources": [
+        "apps/app/src/runtime/inbox-operation.ts",
+        "apps/app/src/runtime/inbox-local-store.ts",
+        "apps/app/src/runtime/inbox-unsaved-record.ts",
+        "apps/app/src/runtime/inbox-attachment.ts",
+        "apps/app/src/runtime/gmail-grants.ts",
+        "apps/app/src/runtime/reviewed-mail-context.ts",
+        "apps/app/src/prototype/inbox-cloud-adapter.ts"
+      ],
+      "stateMapping": {
+        "phase/durable/opOwner/opGrant": "InboxOperationRecord and compareExchange before dispatch",
+        "reviewedRevision/reviewedAttachments/exactReview": "server review validation and current composer binding",
+        "outcome/providerConfirmed/draftExists": "saved receipt and providerAgrees gate before local cleanup",
+        "dispatches": "one network attempt for an operation ID",
+        "read/modify/restoreGrants": "Fresh current-account grants enable new reviewed actions while preserving retired reviews, cleared caches and durable receipt state"
+      },
+      "abstractions": [
+        "One durable operation, one draft and two attachment revisions represent arbitrary mail content and attachment hashes.",
+        "Recipient and byte equality are opaque identity comparisons. Parsing, SHA-256 and exact-byte copy remain runtime test responsibilities.",
+        "Account changes hide and retire pending review while retaining durable unresolved receipts. Unknown delivery is never automatically resent.",
+        "The grant identity denotes the Google connection. As gmailReadCacheKey does, this model keeps a same-session/connection identity through revoke and regrant. Regrant cannot restore a discarded review or cache and cannot redispatch an unresolved operation.",
+        "The optional reserve/persistDispatch/reserveFailed transitions split confirmation admission from its awaited local CAS. confirm remains the existing post-commit macro. committing retains the prior saved review and has not issued a provider request."
+      ],
+      "path": "specs/quint/services/InboxDelivery.qnt",
+      "module": "InboxDelivery",
+      "init": "init",
+      "step": "step",
+      "invariant": "safety",
+      "tests": [
+        "exactReviewTest",
+        "changedDraftTest",
+        "uncertainRecoveryTest",
+        "restoredGrantNeedsFreshReviewTest",
+        "restoredGrantKeepsUnknownTest",
+        "restoredGrantKeepsOwnerFenceTest",
+        "grantRevocationTest",
+        "reservationBeforeDispatchTest"
+      ],
+      "invariants": [
+        "AtMostOneDispatch",
+        "PersistBeforeDispatch",
+        "CacheBound",
+        "SuccessfulCleanup",
+        "UnknownCannotRearm",
+        "TypeOK"
+      ],
+      "bounds": {
+        "maxSamples": 1000,
+        "maxSteps": 60,
+        "seed": "123"
+      }
+    },
+    {
+      "sources": [
+        "apps/app/src/maps/device-navigation.ts",
+        "apps/app/src/maps/agent-navigation.ts",
+        "apps/app/src/maps/cloud-provider.ts",
+        "apps/app/src/maps/cloud-maps.ts",
+        "apps/app/src/maps/navigation-fix.ts",
+        "apps/app/src/maps/guidance.ts",
+        "apps/app/src/prototype/maps-adapter.ts",
+        "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaMapsTransportPlugin.java",
+        "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaNavigationService.java"
+      ],
+      "stateMapping": {
+        "generation/requestGeneration/requestEpoch": "AlphaMapsDeviceNavigation.begin and route callback identity",
+        "locationGranted/fixFresh": "permission and bounded navigation fix freshness",
+        "route/previousRoute/guidance/rerouting": "active guidance, replacement route and failed-reroute preservation",
+        "assistant/foreground": "assistant overlay and activity visibility independent of guidance"
+      },
+      "abstractions": [
+        "Two route generations, two owners and boolean fix freshness summarize coordinate geometry and timestamps.",
+        "Travel modes, polylines, route-distance calculations and detailed maneuver rendering remain stateless/runtime-tested transformations.",
+        "A route callback must retain its request generation and account epoch. Direct agent start requires separate opt-in."
+      ],
+      "path": "specs/quint/services/MapsNavigation.qnt",
+      "module": "MapsNavigation",
+      "init": "init",
+      "step": "step",
+      "invariant": "safety",
+      "tests": [
+        "waitingForLocationTest",
+        "staleReplyTest",
+        "assistantAndRerouteTest",
+        "accountRetirementTest"
+      ],
+      "invariants": [
+        "GuidanceHasRoute",
+        "RerouteKeepsRoute",
+        "RetiredRouteHidden",
+        "FailedRerouteKept",
+        "TypeOK"
+      ],
+      "bounds": {
+        "maxSamples": 1000,
+        "maxSteps": 60,
+        "seed": "123"
+      }
+    },
+    {
+      "sources": [
+        "apps/app/src/runtime/phone-workflow-authoring.ts",
+        "apps/app/src/runtime/workflow-protocol.ts",
+        "apps/app/src/runtime/workflow-intents.ts",
+        "apps/app/src/runtime/workflow-device-contract.ts",
+        "apps/app/src/browser/workflow-trigger-runtime.ts",
+        "apps/app/src/browser/workflow-triggers.ts",
+        "apps/app/src/prototype/workflow-authoring.ts",
+        "apps/app/src/prototype/workflow-adapter.ts",
+        "backend/proposal-action.ts"
+      ],
+      "stateMapping": {
+        "version/reviewedVersion/phase": "normalized authoring, validation and exact-version save/run",
+        "queued/sourceCurrent/enabled/mocks": "development trigger cursor queue and source hash revalidation",
+        "intentSaved/submission/admittedSubmission/executions": "durable submission identity and idempotent reconciliation",
+        "approval/requestDigest/reviewedDigest/effects": "reviewed supported approval and effect execution",
+        "cancelRequested/outcome": "cancellation request versus terminal receipt"
+      },
+      "abstractions": [
+        "One workflow and one submission with two editable versions. Execution count includes reconciliation of an already admitted submission.",
+        "Production supports manual triggers here. Browser event/time/location trigger activity is explicitly marked development-only.",
+        "The upstream workflow engine and multiple action graph steps are composed through receipt/approval contracts rather than reimplemented."
+      ],
+      "path": "specs/quint/services/WorkflowExecution.qnt",
+      "module": "WorkflowExecution",
+      "init": "init",
+      "step": "step",
+      "invariant": "safety",
+      "tests": [
+        "reviewedExecutionTest",
+        "unknownSubmissionTest",
+        "denialAndCancelTest",
+        "triggerDisableTest"
+      ],
+      "invariants": [
+        "AtMostOneExecution",
+        "DurableSubmission",
+        "ReviewedEffect",
+        "DisabledTriggersEmpty",
+        "ProductionTriggerGate",
+        "TypeOK"
+      ],
+      "bounds": {
+        "maxSamples": 1000,
+        "maxSteps": 60,
+        "seed": "123"
+      }
+    },
+    {
+      "sources": [
+        "apps/app/src/runtime/notice-owner-coordinator.ts",
+        "apps/app/src/runtime/service-read-cache.ts",
+        "apps/app/src/runtime/service-read-cache-store.ts",
+        "apps/app/src/runtime/gmail-background.ts",
+        "apps/app/src/runtime/workflow-notice-taps.ts",
+        "apps/app/src/runtime/hosted-result-notices.ts",
+        "android/app/src/main/java/ai/elizaresearch/alphaphone/WorkflowNoticeRecovery.java",
+        "android/app/src/main/java/ai/elizaresearch/alphaphone/WorkflowNoticeIntentDedup.java",
+        "android/app/src/main/java/ai/elizaresearch/alphaphone/WorkflowNoticeDelivery.java",
+        "android/app/src/main/java/ai/elizaresearch/alphaphone/GmailDelivery.java",
+        "android/app/src/main/java/ai/elizaresearch/alphaphone/GmailReconciliation.java"
+      ],
+      "stateMapping": {
+        "epoch/phase/retry": "NoticeOwnerCoordinator generation, immediate privacy transition and retryNeeded",
+        "notice/claim/posted/consumed/acknowledgements": "durable delivery, single claim, tap and acknowledgement",
+        "cacheOwner/cacheEpoch/cacheAge/cacheWritePending": "ServiceReadCache ownership, MAX_AGE, serialized CAS and clear fence"
+      },
+      "abstractions": [
+        "One notice and one cached entry, two claimants and two expiry ticks.",
+        "Native platform post success, uncertain delivery and detailed provider cursor pagination remain external observations. The model checks the admitted claim/consume path.",
+        "Per-entry byte limits and multiple bounded entries are checked by existing cache tests. Cache data never authorizes a provider mutation."
+      ],
+      "path": "specs/quint/services/NoticesAndCaches.qnt",
+      "module": "NoticesAndCaches",
+      "init": "init",
+      "step": "step",
+      "invariant": "safety",
+      "tests": [
+        "deliveredOnceTest",
+        "retirementRetryTest",
+        "clearFencesWriteTest",
+        "expiredCacheTest"
+      ],
+      "invariants": [
+        "CacheOwnerIsolation",
+        "PostedOwnerIsolation",
+        "OneAcknowledgement",
+        "ClaimExclusive",
+        "NoPostAfterConsume",
+        "TypeOK"
+      ],
+      "bounds": {
+        "maxSamples": 1000,
+        "maxSteps": 60,
+        "seed": "123"
+      }
+    },
+    {
+      "sources": [
+        "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaBrowserPlugin.java",
+        "android/app/src/main/java/ai/elizaresearch/alphaphone/BrowserPermissionRecords.java",
+        "android/app/src/main/java/ai/elizaresearch/alphaphone/BrowserPasskeys.java",
+        "android/app/src/main/java/ai/elizaresearch/alphaphone/BrowserHttpAuthOrigin.java",
+        "android/app/src/main/java/ai/elizaresearch/alphaphone/BrowserHttpAuthAutofill.java",
+        "android/app/src/main/java/ai/elizaresearch/alphaphone/BrowserSessionStore.java"
+      ],
+      "stateMapping": {
+        "privateTab/thirdParty/passkeys/phase": "build profile admission with readback of cookie and WebAuthn policy",
+        "decisions/prompt/permissionChoice/androidAllowed": "native site review then OS runtime permission, selected top-origin gate",
+        "authAttempts/passwordPresent/passwordSubmitted": "bounded manual HTTP authentication and clearing values",
+        "autofillExposed/authSave": "current STANDARD_WEBVIEW cannot attest challenge origin and exposes neither"
+      },
+      "abstractions": [
+        "One tab, two exact origin classes and one representative sensor kind; sealed 200-origin record bounds remain covered by source tests.",
+        "Cookie/profile and passkey-policy mismatches refuse tab creation. Private tabs do not persist site decisions.",
+        "The current STANDARD_WEBVIEW engine cannot authenticate a challenge origin, so HTTP autofill remains disabled while manual input works. Shared hypothetical attested-engine behavior is excluded.",
+        "permissionResult records a completed permission callback rather than a claim that an active sensor keeps running."
+      ],
+      "path": "specs/quint/services/BrowserSiteState.qnt",
+      "module": "BrowserSiteState",
+      "init": "init",
+      "step": "step",
+      "invariant": "safety",
+      "tests": [
+        "privateGrantTest",
+        "storedDecisionStillNeedsAndroidTest",
+        "providerAdmissionTest",
+        "manualAuthTest",
+        "switchedTabCancelsPromptTest"
+      ],
+      "invariants": [
+        "PrivateCookiePolicy",
+        "PrivatePermissionPolicy",
+        "CurrentPermission",
+        "PasskeysDisabled",
+        "StandardHttpAuthManual",
+        "PasswordLifetime",
+        "TypeOK"
+      ],
+      "bounds": {
+        "maxSamples": 1000,
+        "maxSteps": 60,
+        "seed": "123"
+      }
+    },
+    {
+      "sources": [
+        "android/app/src/main/java/ai/elizaresearch/alphaphone/BrowserReading.java",
+        "android/app/src/main/java/ai/elizaresearch/alphaphone/BrowserReadingWorld.java",
+        "apps/app/src/browser/reading-review.ts",
+        "apps/app/src/browser/reading-sensitive.ts",
+        "apps/app/src/browser/content-question.ts"
+      ],
+      "stateMapping": {
+        "phase/isolated/ready/sensitive": "isolated-world readiness handshake, native extraction and sensitive-page refusal",
+        "token/approved/reviewedExcerpt/consumed": "expiring, single-use review bound to exact extracted bytes",
+        "owner/epoch/navigation/capturedEpoch/capturedNavigation": "current account and page lifetime at consumption",
+        "draft/sent": "question review inserts a draft, preserving separate chat Send"
+      },
+      "abstractions": [
+        "One excerpt represented by identity, two navigation changes and owner changes, and two abstract expiration ticks. Native reading/token and local playback have different wall-clock durations.",
+        "Sensitivity heuristics and extraction traversal/byte limits are external predicates with source tests. The model has no fallback from a sensitive/unsupported native document.",
+        "Question approval releases reviewed text into the local composer. Sending and agent-response lifecycle remain in AssistantConversation."
+      ],
+      "path": "specs/quint/services/BrowserReadingState.qnt",
+      "module": "BrowserReadingState",
+      "init": "init",
+      "step": "step",
+      "invariant": "safety",
+      "tests": [
+        "readingTest",
+        "spoofedHandshakeTest",
+        "sensitiveDocumentTest",
+        "expiredReviewTest",
+        "pageNavigationCancelsTest",
+        "questionDraftTest"
+      ],
+      "invariants": [
+        "ReviewedSpeech",
+        "CurrentReading",
+        "SingleUseToken",
+        "SensitiveRefused",
+        "QuestionDoesNotSend",
+        "TypeOK"
+      ],
+      "bounds": {
+        "maxSamples": 1000,
+        "maxSteps": 60,
+        "seed": "123"
+      }
+    },
+    {
+      "sources": [
+        "android/app/src/main/java/ai/elizaresearch/alphaphone/BrowserDownloads.java",
+        "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaBrowserPlugin.java"
+      ],
+      "stateMapping": {
+        "phase/kind/reviewed/reviewedNavigation": "public, signed, blob and data download review under a live source navigation",
+        "cookieSent/targetOrigin/sourceOrigin/redirects": "cookie forwarded only to the requesting page exact origin on each redirect hop",
+        "captureToken/nextChunk/chunks/pendingFile": "isolated blob nonce, ordered chunks and temporary capture cleanup",
+        "published/completed/entry/persisted": "pending MediaStore publication, actual provider receipt and private in-memory history"
+      },
+      "abstractions": [
+        "One transfer, two origin classes, at most two modeled redirects/chunks. Source enforces 10 redirects and 64 MiB capture limits.",
+        "Public OS-owned transfer may outlive the tab. Closing a private tab stops its active signed fetch and clears only browser history, preserving files already published.",
+        "Byte parsing, HTTP response bodies, MediaStore operations and OS transfer completion are abstract external observations, not live side effects."
+      ],
+      "path": "specs/quint/services/BrowserDownloads.qnt",
+      "module": "BrowserDownloads",
+      "init": "init",
+      "step": "step",
+      "invariant": "safety",
+      "tests": [
+        "redirectCookieTest",
+        "privateFetchCloseTest",
+        "privateFileRemainsTest",
+        "capturedChunkTest",
+        "outOfOrderChunkTest",
+        "emptyBlobTest",
+        "publicTransferOutlivesTabTest"
+      ],
+      "invariants": [
+        "CookieOrigin",
+        "PrivateListNeverPersisted",
+        "ReviewedPublication",
+        "CompletedFromEvidence",
+        "CapturedBytesOrdered",
+        "CancelledCaptureCleaned",
+        "TypeOK"
+      ],
+      "bounds": {
+        "maxSamples": 1000,
+        "maxSteps": 60,
+        "seed": "123"
+      }
+    },
+    {
+      "path": "specs/quint/services/ScanDocument.qnt",
+      "module": "ScanDocument",
+      "init": "init",
+      "step": "step",
+      "invariant": "safety",
+      "sources": [
+        "apps/app/src/prototype/scan-document.ts",
+        "apps/app/src/browser/scan-draft.ts",
+        "apps/app/src/prototype/scan-pdf.ts",
+        "apps/app/src/prototype/scan-searchable-review.ts",
+        "apps/app/src/prototype/scan-text-layer.ts"
+      ],
+      "sharedSources": [
+        "plugins/plugin-files/src/documents/scan-draft.ts",
+        "plugins/plugin-files/src/documents/scan-text-layer.ts",
+        "plugins/plugin-files/src/documents/scan-pdf.ts"
+      ],
+      "stateMapping": {
+        "pages/exportPages": "ordered image/text-layer pairs and immutable export snapshot",
+        "queued/saving/pendingPages/pendingExpected": "serialized captured autosave work and CAS checked against current stored revision",
+        "storedRevision/expectedRevision/autoSaved": "saved draft ownership, explicit load and automatic-draft cleanup",
+        "phase/picker/closed": "editor operation admission and system-picker visibility exception",
+        "exported/output": "retryable known non-writes versus requested/exported/unverified or thrown export failures",
+        "storedRevision/expectedRevision/autoSaved/userSaved": "saved draft CAS identity, explicit ownership across autosaves and confirmed-export cleanup"
+      },
+      "abstractions": [
+        "Two pages, two queued writes and four non-reused draft revisions represent source limits of 20 pages and arbitrary UUID revisions.",
+        "Opaque image identities encode already-validated MIME, dimensions and size. Each text layer stays with its image through reorder and is cleared on image replacement.",
+        "The exported flag follows the source UI retry lock and does not assert that a provider has saved a PDF. Requested and unverified outcomes lock retry.",
+        "An explicitly saved or loaded draft remains user-owned across subsequent automatic saves. Confirmed export cleans up only a draft created solely by automatic saving."
+      ],
+      "tests": [
+        "orderedLayersTest",
+        "serializedAutosaveTest",
+        "staleCasTest",
+        "nativePickerVisibilityTest",
+        "unknownExportTest",
+        "cancelledExportRetryTest",
+        "exportWaitsForQueuedDraftsTest",
+        "automaticDraftCleanupTest",
+        "explicitSaveAfterAutosavePreservedTest",
+        "autosaveAfterExplicitSaveRetainedTest",
+        "loadedDraftRetainedTest"
+      ],
+      "invariants": [
+        "TextStaysWithPage",
+        "BoundedDraft",
+        "WriterSerialized",
+        "ImmutableExport",
+        "UnknownExportLocked",
+        "ClosedNoWriter",
+        "TypeOK",
+        "ExplicitlySavedDraftPreserved"
+      ],
+      "bounds": {
+        "maxSamples": 1000,
+        "maxSteps": 60,
+        "seed": "123"
+      }
+    },
+    {
+      "sources": [
+        "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaCredentialStore.java",
+        "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaLocalAgentPlugin.java",
+        "android/app/src/main/java/ai/elizaresearch/alphaphone/LocalAgentProviderAdmission.java",
+        "android/app/src/main/java/ai/elizaresearch/alphaphone/ResidentCredentialShutdownRetry.java",
+        "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaConnectionPlugin.java",
+        "android/app/src/main/java/ai/elizaresearch/alphaphone/SerialStorageTasks.java"
+      ],
+      "stateMapping": {
+        "operation/phase/before/capturedProvider": "mutateSlotOnce classification and slot/provider snapshot reread",
+        "requestedStop/acknowledgedStop/stopped": "exact strict resident shutdown before critical write",
+        "ownerEpoch/capturedEpoch": "credential intent and lifecycle ownership recheck",
+        "oldSize/newSize/admissionInvalidated": "retained slot-cap shrink versus rejected growth after admission invalidation",
+        "committed/phase": "source selected-slot commit observation, followed by public success or failure reply"
+      },
+      "abstractions": [
+        "Opaque credential contents and provider configurations are equality classes; providerRevision captures the full stored provider comparison.",
+        "Current versus retained byte caps are scaled to two and three units, with four representing preflight overflow.",
+        "The running resident is stopped only for matching bound critical changes. No-provider Cloud sign-in and ordinary slots may commit without stopping it.",
+        "Rollback restores only its captured provider revision. A newer provider revision makes it fail without overwriting it.",
+        "A same-generation rebind preserves runtime admission and avoids shutdown. Committed writes and later reported outcomes are separate transitions; provider removal updates presence for subsequent operations."
+      ],
+      "path": "specs/quint/services/NativeCredentialMutation.qnt",
+      "module": "NativeCredentialMutation",
+      "init": "init",
+      "step": "step",
+      "invariant": "safety",
+      "tests": [
+        "shutdownAckTest",
+        "staleProviderTest",
+        "retainedShrinkTest",
+        "capacityRollbackTest",
+        "oversizedPreflightTest",
+        "unchangedCredentialAdmissionTest",
+        "unrelatedEnvironmentTest",
+        "unboundSignInTest",
+        "failedWriteKeepsCredentialTest",
+        "committedWriteCanReportFailureTest",
+        "clearedProviderNeedsNoSecondStopTest",
+        "compareConflictKeepsCredentialTest",
+        "sameBindingDoesNotStopRuntimeTest",
+        "writeCheckpointCanPrecedeReportedFailureTest"
+      ],
+      "invariants": [
+        "ShutdownBeforeCriticalWrite",
+        "AdmissionInvalidated",
+        "CurrentMutation",
+        "RejectedWriteRetainsBytes",
+        "Bounded"
+      ],
+      "bounds": {
+        "maxSamples": 1000,
+        "maxSteps": 60,
+        "seed": "123"
+      }
+    },
+    {
+      "sources": [
+        "android/app/src/main/java/ai/elizaresearch/alphaphone/IsolatedPdfService.java"
+      ],
+      "stateMapping": {
+        "isolated/busy/request": "permissionless service admission and single CAS-owned worker request",
+        "descriptor/bitmap/shared/mapped/readOnly": "input file, rendered bitmap and read-only shared-memory handle ownership",
+        "elapsed/phase": "deadline, memory abort, teardown and main-thread reply cleanup",
+        "recipientHandle/publishedReadOnly": "transferred output handle remains read-only after producer cleanup"
+      },
+      "abstractions": [
+        "One in-flight render plus a second request that can be refused. Page count, dimensions, byte size and pixel bounds are grouped as an admission result.",
+        "Two deadline ticks represent the ten-second watchdog. Memory pressure and unbind trigger process cleanup.",
+        "Kernel descriptor transfer and process-death cleanup are external contracts modeled by resource ownership transitions; installed service behavior still requires device tests."
+      ],
+      "path": "specs/quint/services/PdfWorker.qnt",
+      "module": "PdfWorker",
+      "init": "init",
+      "step": "step",
+      "invariant": "safety",
+      "tests": [
+        "renderAndReplyTest",
+        "busyRejectTest",
+        "invalidBoundsTest",
+        "protectionFailureTest",
+        "timeoutCleanupTest",
+        "memoryAbortTest",
+        "nonIsolatedRefusedTest"
+      ],
+      "invariants": [
+        "IsolatedAdmission",
+        "ActiveRequestOwned",
+        "MappingHasStorage",
+        "ReadyResourcesClosed",
+        "PublishedReadOnly",
+        "ReadOnlyNotMapped"
+      ],
+      "bounds": {
+        "maxSamples": 1000,
+        "maxSteps": 60,
+        "seed": "123"
+      }
+    },
+    {
+      "path": "specs/quint/services/InboxCoordinator.qnt",
+      "module": "InboxCoordinator",
+      "init": "init",
+      "step": "step",
+      "invariant": "safety",
+      "sources": [
+        "apps/app/src/prototype/inbox-cloud-adapter.ts",
+        "apps/app/src/prototype/inbox-provider-controls.ts",
+        "apps/app/src/prototype/inbox-drafts.ts",
+        "apps/app/src/prototype/inbox-unsaved.ts",
+        "apps/app/src/runtime/inbox-operation.ts",
+        "apps/app/src/runtime/inbox-local-store.ts",
+        "apps/app/src/runtime/inbox-attachment.ts",
+        "apps/app/src/runtime/inbox-unsaved-record.ts",
+        "apps/app/src/runtime/gmail-grants.ts",
+        "apps/app/src/prototype/assistant-draft-controller.ts"
+      ],
+      "components": [
+        "specs/quint/services/InboxDelivery.qnt"
+      ],
+      "tests": [
+        "unavailableCapabilitiesRefuseConfirmationTest",
+        "oldCapabilityReplyIgnoredTest",
+        "changedComposerRefusesReviewTest",
+        "lostOutcomeRetainsEveryCopyTest",
+        "renewedGrantNeedsFreshReviewTest",
+        "oldAccountCannotDispatchTest",
+        "knownSuccessCleansExactCopiesTest",
+        "editDuringSendPreservesAllCopiesTest",
+        "olderSavedVersionIsKeptTest",
+        "lateAttachmentCannotCrossOwnerTest",
+        "withdrawalDuringCommitKeepsUnknownTest",
+        "attachmentChangesInvalidateReviewTest",
+        "newDraftShelvesLatestCopyTest",
+        "oldAccountCapabilityIgnoredTest",
+        "oldInstanceCapabilityIgnoredTest",
+        "oldAccountCasRefusalRetainsReviewTest",
+        "cleanupFailureKeepsLaterCopiesTest",
+        "lostCleanupReplyRecoversTest",
+        "staleCleanupCannotTouchReplacementTest"
+      ],
+      "invariants": [
+        "AtMostOneNetworkRequest",
+        "EffectHasDurableIntent",
+        "UnavailableCannotConfirm",
+        "CurrentComposerRequired",
+        "EditedCopiesPreserved",
+        "CleanupRequiresFreshSuccess",
+        "TypeOK",
+        "CleanupAfterKnownSend"
+      ],
+      "bounds": {
+        "maxSamples": 1000,
+        "maxSteps": 80,
+        "seed": "123"
+      },
+      "stateMapping": {
+        "First/Second": "Independent retained operation slots for two account/grant identities, preserving old unknown operations across selection changes",
+        "owner/epoch/known/capabilityToken": "current provider binding and capability callbacks fenced by captured account, binding epoch and latest read token",
+        "copies/sourceContent/sourceAttachment": "finite identities and content-equivalence classes for open, saved, retained and shelved drafts and their reviewed source",
+        "network/busy": "actual provider dispatch, separate from a pending local CAS",
+        "withdrawOwner": "deferred removal of undispatched reviews for a withdrawn grant",
+        "cleanupStage/cleanupEpoch/retainedWritable": "Ordered per-write cleanup, captured binding, local retained-controller failure and compensation after a known stale clear"
+      },
+      "abstractions": [
+        "Two logical account/grant identities, two draft identities and content/attachment equivalence classes. Each retained operation instance issues at most one provider request in a trace.",
+        "Current capability readback gates confirmation. Capability callbacks retain account, binding epoch and read token. Grant withdrawal during an already admitted run is deferred, so an in-flight request can remain uncertain and its receipt is retained.",
+        "Cleanup requires a provider-confirmed current send. Edited copies are preserved and an older saved version is marked. The compatibility cleanup action summarizes a complete pass; per-write actions expose retained, shelf and saved CAS completion, lost replies and stale-binding compensation.",
+        "The staged cleanup projection admits one cleanup invocation at a time. Its shelf represents one exact source draft. Arbitrary shelf collections and simultaneous independent cleanup invocations require further schedules."
+      ]
+    }
+  ]
+}
