@@ -100,6 +100,15 @@ module CoreProviderExecution {
   action rawStep = M::Next
   action step = M::Step
   val safety = M::Safety
+  val observed = M::s
+  action Attach(c) = M::Attach(c)
+  action AbortSignal(c) = M::AbortSignal(c)
+  action SettleWork(e) = M::SettleWork(e)
+  action SettleAborted(e) = M::SettleAborted(e)
+  action Cleanup(e) = M::Cleanup(e)
+  action CallerSettle(c) = M::CallerSettle(c)
+  action RequestStop = M::RequestStop
+  action StopComposer = M::StopComposer
   temporal CheckedTemporal = M::Fairness implies (M::AbortedCallerLeaves and M::StopReleasesCallers)
   run lastCallerRetiresExecutionTest = init.then(M::Attach("a")).then(M::Attach("b")).then(M::AbortSignal("a"))
     .expect(safety and M::s.waiters.get(1) == 1 and M::s.cause.get(1) == "none")
@@ -115,6 +124,15 @@ module CoreProviderExecutionOneoff {
   action rawStep = M::Next
   action step = M::Step
   val safety = M::Safety
+  val observed = M::s
+  action Attach(c) = M::Attach(c)
+  action AbortSignal(c) = M::AbortSignal(c)
+  action SettleWork(e) = M::SettleWork(e)
+  action SettleAborted(e) = M::SettleAborted(e)
+  action Cleanup(e) = M::Cleanup(e)
+  action CallerSettle(c) = M::CallerSettle(c)
+  action RequestStop = M::RequestStop
+  action StopComposer = M::StopComposer
   temporal CheckedTemporal = M::Fairness implies (M::AbortedCallerLeaves and M::StopReleasesCallers)
   run independentExecutionTest = init.then(M::Attach("a")).then(M::Attach("c")).then(M::AbortSignal("c"))
     .then(M::Attach("b")).expect(safety and M::s.map == 1 and M::s.waiters.get(1) == 2 and M::s.cause.get(2) == "waiters")

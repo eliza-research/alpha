@@ -73,3 +73,11 @@ export function loadAgentRuntime(extraSources = []) {
 export function loadTurnControllers(extraSources = []) {
   return loadCoreSource("export {TurnControllerRegistry} from './vendor/eliza/packages/core/src/runtime/turn-controller.ts';", extraSources);
 }
+
+export function loadProviderStateComposer(extraSources = []) {
+  return loadCoreSource(`
+    export {AgentRuntime} from './vendor/eliza/packages/core/src/runtime.ts';
+    export {ProviderStateComposer} from './vendor/eliza/packages/core/src/runtime/state-composition.ts';
+    export {runWithStreamingContext} from './vendor/eliza/packages/core/src/streaming-context.ts';
+  `, extraSources);
+}

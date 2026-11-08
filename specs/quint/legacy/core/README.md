@@ -68,3 +68,17 @@ remain outside this bounded trace campaign.
 ```sh
 node specs/quint/legacy/core/check-action-settlement-refinement.mjs
 ```
+
+### Provider execution source correspondence
+
+`node --test test/quint-provider-execution-refinement.test.mjs` executes the
+current `ProviderStateComposer` and actual runtime provider registration. The
+coalesced and one-off profiles pass seven schedules and 40 checkpoints. Source
+observations cover all 12 original state fields through the public composition
+entry point, retained execution records and promise settlement. The fixture
+checks the caller's terminal cancellation or provider error and successful text.
+
+Controlled provider promises and a host stop flag make cancellation ordering
+reproducible. The adapter covers one keyed identity, one provider and at most
+three callers. Authorization, cache publication, pre-aborted admission and
+complete runtime shutdown composition remain distinct source obligations.
