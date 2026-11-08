@@ -12,7 +12,7 @@
   "toolSha256": "403a33cab0dff7ace6219b29e7ffef373319677a7d8be6641466dd16a6750b5b",
   "dependencyLockSha256": "944123c801157a7ba3676a886d0b28a54bef32735ae96da5c6dd0f206c88c8bf",
   "sourcePin": "99b49439ce9d0cb5607e9831b9f7f58d89525029",
-  "ledgerSha256": "df2204465da6ab3d4031646cf09fc405476d7aabf1ce32dd3fdc34ee32c7d105",
+  "ledgerSha256": "0661867ff7d8b59a8d822cc8803e0acf212eb9533158d5434091e4e347a3dbd1",
   "method": "TypeScript syntax trees for JavaScript/TypeScript and JDK compiler trees for Java. Mutable fields, bindings, containers, state hooks, write sites and asynchronous registration calls are candidates for semantic review.",
   "limitations": [
     "Candidate extraction does not establish state-machine coverage or implementation refinement.",
@@ -40319,7 +40319,8 @@
       "allocatedModels": [
         "Application",
         "AgentCalendarEventReturn",
-        "BrowserOwnerReminderRead"
+        "BrowserOwnerReminderRead",
+        "BrowserOwnerReminderAction"
       ],
       "sourcePathClass": "other-source-path",
       "classification": "syntactic-candidates",
@@ -40422,7 +40423,8 @@
         "CalendarSync",
         "AgentCalendarRefresh",
         "AgentCalendarMutation",
-        "AgentCalendarEventReturn"
+        "AgentCalendarEventReturn",
+        "AgentCalendarSyncControl"
       ],
       "sourcePathClass": "other-source-path",
       "classification": "syntactic-candidates",
@@ -40453,7 +40455,8 @@
         "CalendarSync",
         "AgentCalendarRefresh",
         "AgentCalendarMutation",
-        "AgentCalendarEventReturn"
+        "AgentCalendarEventReturn",
+        "AgentCalendarSyncControl"
       ],
       "sourcePathClass": "other-source-path",
       "classification": "syntactic-candidates",
@@ -44078,7 +44081,8 @@
         "NoticesAndCaches",
         "NotificationCollection",
         "ApplicationComposition",
-        "BrowserOwnerReminderRead"
+        "BrowserOwnerReminderRead",
+        "BrowserOwnerReminderAction"
       ],
       "sourcePathClass": "other-source-path",
       "classification": "syntactic-candidates",
@@ -44123,7 +44127,8 @@
       "sha256": "eeaecc508732b1a1ff40861f7ba0f5dbb63b62d5def19f08a66eba524c437ce7",
       "allocatedModels": [
         "DeviceActions",
-        "BrowserOwnerReminderRead"
+        "BrowserOwnerReminderRead",
+        "BrowserOwnerReminderAction"
       ],
       "sourcePathClass": "other-source-path",
       "classification": "syntactic-candidates",
@@ -218408,6 +218413,6 @@
   ],
   "detail": {
     "path": "test-results/quint-state-audit/details.json",
-    "sha256": "66271e9dbd59c450715c6594cb679d94045a9ae86cbd87b7067fbc3002c389dd"
+    "sha256": "d0f0f37bf65045237b5cf360f4de224fd9ce7b4959f3fc130aa06956bd69b4e5"
   }
 }

@@ -439,3 +439,19 @@ service start after withdrawal, and final shutdown lookup clearing. The
 late service instance is stopped while its connector remains registered.
 The original model forbids that orphan. All three original finite profiles
 passed TLC on the translated relation.
+
+Renderer linked Calendar control checks 36 schedules and 267 checkpoints.
+The actual client and shared API bind a review to the current grant,
+destination, calendar role and source version. The adapter compares the
+result with the expected control revision and retains draft ownership
+through refusals and stale readbacks. Settings presentation, the Google
+link sequence and installed provider effects retain separate evidence.
+
+The browser owner-reminder action campaign checks ten schedules and 90
+checkpoints around reviewed revisions, policy, exact conversation and
+message arguments, mark-read and uncertainty. A malformed or missing
+acknowledgement can require readback, with no repeat mark-read while
+uncertainty remains. Shade close can accompany an explicit open. The
+port currently invokes the latest bound UI when a held open completes,
+and detaching that UI makes the call fail before mark-read. This component
+API has no mounted shade consumer in the current checkout.

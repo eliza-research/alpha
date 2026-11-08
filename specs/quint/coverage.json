@@ -36856,7 +36856,8 @@
       "models": [
         "Application",
         "AgentCalendarEventReturn",
-        "BrowserOwnerReminderRead"
+        "BrowserOwnerReminderRead",
+        "BrowserOwnerReminderAction"
       ],
       "scope": "application",
       "treatment": "state-and-transition-projection",
@@ -37195,7 +37196,8 @@
         "CalendarSync",
         "AgentCalendarRefresh",
         "AgentCalendarMutation",
-        "AgentCalendarEventReturn"
+        "AgentCalendarEventReturn",
+        "AgentCalendarSyncControl"
       ],
       "scope": "application",
       "treatment": "domain-contract-or-support",
@@ -37258,7 +37260,8 @@
         "CalendarSync",
         "AgentCalendarRefresh",
         "AgentCalendarMutation",
-        "AgentCalendarEventReturn"
+        "AgentCalendarEventReturn",
+        "AgentCalendarSyncControl"
       ],
       "scope": "application",
       "treatment": "domain-contract-or-support",
@@ -45018,7 +45021,8 @@
         "NoticesAndCaches",
         "NotificationCollection",
         "ApplicationComposition",
-        "BrowserOwnerReminderRead"
+        "BrowserOwnerReminderRead",
+        "BrowserOwnerReminderAction"
       ],
       "scope": "product-state-and-contract",
       "treatment": "domain-contract-or-support",
@@ -45126,7 +45130,8 @@
       "path": "apps/app/src/runtime/owner-reminder-notification-protocol.ts",
       "models": [
         "DeviceActions",
-        "BrowserOwnerReminderRead"
+        "BrowserOwnerReminderRead",
+        "BrowserOwnerReminderAction"
       ],
       "scope": "application",
       "treatment": "domain-contract-or-support",

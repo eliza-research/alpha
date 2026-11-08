@@ -1894,5 +1894,27 @@
       "Current renderer review, selection, resume, pause, recovery and linked event readback. Capture the exact owner/session/scope, control revision and selected source version, and observe draft and preservation fences.",
       "Two owner/session/scope classes, two destinations, eight epochs and seven attempts. Calendar settings modal, Google grant/link orchestration, provider idempotency and remote effects remain separate."
     ]
+  },
+  {
+    "path": "specs/quint/application/BrowserOwnerReminderAction.qnt",
+    "module": "BrowserOwnerReminderAction",
+    "init": "init",
+    "step": "step",
+    "invariant": "safety",
+    "tests": [
+      "lostAcknowledgementNeedsReadbackTest",
+      "deliberateShadeCloseDoesNotCancelAnOpenTest",
+      "ownerReplacementRetiresLateMutationReplyTest",
+      "observedCallbackUsesCurrentUiTest"
+    ],
+    "sources": [
+      "apps/app/src/runtime/owner-reminder-notification-port.ts",
+      "apps/app/src/runtime/owner-reminder-notification-protocol.ts",
+      "apps/app/src/runtime/abort-signal.ts"
+    ],
+    "abstractions": [
+      "Exact reviewed notification, action admission, policy and open callbacks, mark-read and ambiguity reconciliation.",
+      "Two owner identities, two UI callback objects, one active explicit operation and one canonical reminder per reply. No mounted shade, history or actual server writes."
+    ]
   }
 ]
