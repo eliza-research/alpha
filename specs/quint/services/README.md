@@ -231,3 +231,28 @@ receipts remain historical evidence for their previous revisions.
 `InboxCoordinator` composes two retained `InboxDelivery` slots with current shared review and draft controllers. Eighteen coordination schedules and nine cleanup schedules preserve grant changes, current capability checks, queued cleanup, lost persistence replies and the original dispatch identity. The source bundles bind the SDK99 pin and explicit confirmation/cleanup patch inputs.
 
 `IdentitySession` separates the live interactive intent from an encrypted pending record. A cold browser return cannot recreate that intent. A cancelled post-commit interaction can leave a successful acknowledgment receipt for startup cleanup. `NativeCredentialMutation` also distinguishes a durable commit from its reported result. The corresponding native drivers execute current shared Java owners under controlled storage and transport ports.
+
+## Named embedding provenance at the SQL boundary
+
+On product revision `5a672102dd` with upstream pin `99b49439ce9`, a held
+`updateMemoryEmbedding` could pass its width check, wait at PGlite
+initialization, and resume after named activation. The row received the new
+space label and nonce even though the input had no provider marker. The same
+barrier allowed an earlier 768-wide resize to overwrite the active BGE384
+column after named activation.
+
+`NamedEmbeddingProvenance` checks the authenticated replacement against real
+PGlite transactions. A single live snapshot controls vector admission, column
+selection, the named label and nonce, and vector searches. The exact source
+CAS still distinguishes an obsolete text or owner from a refused vector.
+Rejected atomic text-and-vector replacements leave the stored text and vector
+unchanged. Conversation reconciliation and Experience metadata writes omit
+the stored vector when they are only publishing content or metadata.
+
+The current model has seven scenarios and checks eight source schedules.
+It uses a synthetic marked provider through the real model dispatcher and
+observes actual SQL text, space, column and write outcomes. The proof covers
+new writes by one active PGlite adapter. Existing named rows, independent
+database processes and physical BGE execution have separate evidence
+requirements. `EmbeddingStoreIdentity` retains the unlabelled probe model and
+`CoreEmbeddingDimension` retains the historical translation and counterexamples.

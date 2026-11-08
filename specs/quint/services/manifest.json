@@ -1615,6 +1615,55 @@
         "maxSteps": 60,
         "maxVerifyDepth": 4
       }
+    },
+    {
+      "path": "specs/quint/services/NamedEmbeddingProvenance.qnt",
+      "module": "NamedEmbeddingProvenance",
+      "init": "init",
+      "step": "step",
+      "invariant": "safety",
+      "tests": [
+        "delayedCasRefusalTest",
+        "delayedTextRollbackTest",
+        "heldCasLosesToTextEditTest",
+        "delayedResizeRefusalTest",
+        "namedQueriesRequireMarkerTest",
+        "pendingActivationKeepsTextOnlyTest",
+        "staleCasPreservesRowTest"
+      ],
+      "invariants": [
+        "NamedRowUsesPinnedWidth",
+        "NamedRowRequiresExactMarker",
+        "VectorRequiresMemory"
+      ],
+      "sources": [
+        "vendor/eliza/plugins/plugin-sql/src/base.ts",
+        "vendor/eliza/plugins/plugin-sql/src/embedding-space.ts",
+        "vendor/eliza/plugins/plugin-sql/src/pglite/adapter.ts",
+        "vendor/eliza/packages/core/src/embedding-vector-space.ts",
+        "vendor/eliza/packages/core/src/runtime/embeddings.ts",
+        "vendor/eliza/packages/core/src/runtime/model-dispatch.ts",
+        "vendor/eliza/packages/core/src/runtime/data-mutations.ts",
+        "vendor/eliza/packages/agent/src/api/conversation-routes.ts",
+        "vendor/eliza/plugins/plugin-assistant/src/features/advanced-capabilities/experience/service.ts",
+        "patches/eliza/named-embedding-provenance.patch"
+      ],
+      "stateMapping": {
+        "space/width": "Live adapter activation and vector column at SQL construction",
+        "text/rowSpace/rowWidth": "PGlite readback of source text, row label and populated column",
+        "rowInput": "Marker class at the observed committed vector write",
+        "pending": "One real asynchronous adapter call held at its database port with captured arguments",
+        "result": "Observed write, stale CAS, search result or typed refusal"
+      },
+      "abstractions": [
+        "One adapter, one target memory or document fragment, one held adapter call, two widths, and finite exact marker/shape/source classes. The fixture uses real PGlite transactions and an in-process synthetic provider. Legacy malformed width/value normalization and simultaneous independent writers are outside the finite campaign.",
+        "The patch fences new vector admissions. Existing named rows are retained with their stored labels and require separate provenance or migration evidence. The translated CoreEmbeddingDimension model and historical counterexamples retain their own semantics."
+      ],
+      "bounds": {
+        "maxSamples": 1000,
+        "maxSteps": 80,
+        "maxVerifyDepth": 4
+      }
     }
   ]
 }
