@@ -340,7 +340,7 @@ async function linkOperationKey(...parts:unknown[]){
 /** A foreground refresh or another Calendar write holds the control; wait for it instead of failing the link. */
 function calendarSettled(calendar:AgentCalendar,signal:AbortSignal){
  return new Promise<void>((resolve,reject)=>{
-  const check=()=>{if(signal.aborted)done(()=>reject(signal.reason));else if(calendar.state.status!=='loading'&&!calendar.state.mutating)done(resolve);};
+  const check=()=>{if(signal.aborted)done(()=>reject(signal.reason));else if(!calendar.refreshing&&calendar.state.status!=='loading'&&!calendar.state.mutating)done(resolve);};
   const unsubscribe=calendar.subscribe(check),done=(then:()=>void)=>{unsubscribe();signal.removeEventListener('abort',check);then();};
   signal.addEventListener('abort',check);check();
  });
