@@ -616,3 +616,11 @@ membership, canonical selection, conflict-safe moves, Trash and restore,
 and refusal of a stale reviewed identity. Three separate mismatch receipts
 compare the category, conflict and identity ablations. Earlier agent
 proposal transport and installed Android storage retain separate evidence.
+
+`HostedBackgroundAdmission` checks the renderer wrapper against nine
+schedules and 52 checkpoints. It observes the generated attempt identity,
+actual abort signals and forwarding listener cleanup, session-targeted or
+global pause, and reservation, configuration and cancellation settlement.
+Native replies use controlled ports. The campaign holds begin and configure
+replies and coalesces the microtasks between cancellation attempts. The
+native journal and worker run remain separate evidence.

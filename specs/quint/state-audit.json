@@ -12,7 +12,7 @@
   "toolSha256": "403a33cab0dff7ace6219b29e7ffef373319677a7d8be6641466dd16a6750b5b",
   "dependencyLockSha256": "944123c801157a7ba3676a886d0b28a54bef32735ae96da5c6dd0f206c88c8bf",
   "sourcePin": "99b49439ce9d0cb5607e9831b9f7f58d89525029",
-  "ledgerSha256": "affe45a6890aa52be25af4736b61470c47aa2fddc011d59aec4cbde30132f34d",
+  "ledgerSha256": "341472d873344245964112877cc485f811bf09302f21bc410be3db483eabebad",
   "method": "TypeScript syntax trees for JavaScript/TypeScript and JDK compiler trees for Java. Mutable fields, bindings, containers, state hooks, write sites and asynchronous registration calls are candidates for semantic review.",
   "limitations": [
     "Candidate extraction does not establish state-machine coverage or implementation refinement.",
@@ -42814,7 +42814,8 @@
       "path": "apps/app/src/runtime/hosted-background.ts",
       "sha256": "025bd416b47a43326f5cce0e17d531773a24c8eadbc8c46f2c101a390c5865ea",
       "allocatedModels": [
-        "NoticesAndCaches"
+        "NoticesAndCaches",
+        "HostedBackgroundAdmission"
       ],
       "sourcePathClass": "other-source-path",
       "classification": "syntactic-candidates",
@@ -218491,6 +218492,6 @@
   ],
   "detail": {
     "path": "test-results/quint-state-audit/details.json",
-    "sha256": "cbe054a4da2adee7626644fccc446b05ed57b78256398cf6a0eebd781af5aac3"
+    "sha256": "27c17b05d750b573abe64baa1c45a5fbac966ca50930c3d46c20d9c96cbe0c96"
   }
 }

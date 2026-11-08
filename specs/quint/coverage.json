@@ -42256,7 +42256,8 @@
       "path": "apps/app/src/runtime/hosted-background.ts",
       "sha256": "025bd416b47a43326f5cce0e17d531773a24c8eadbc8c46f2c101a390c5865ea",
       "models": [
-        "NoticesAndCaches"
+        "NoticesAndCaches",
+        "HostedBackgroundAdmission"
       ],
       "scope": "application",
       "treatment": "state-and-transition-projection",

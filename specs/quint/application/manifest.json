@@ -2077,6 +2077,24 @@
     ]
   },
   {
+    "path": "specs/quint/application/HostedBackgroundAdmission.qnt",
+    "module": "HostedBackgroundAdmission",
+    "init": "init",
+    "step": "step",
+    "invariant": "safety",
+    "tests": [
+      "pauseTargetsOnlyTheExactSessionTest",
+      "cancelledReservationNeverConfiguresTest",
+      "browserSetupDoesNotReserveNativeStateTest",
+      "failedCancelReplyRemainsObservableTest"
+    ],
+    "sources": ["apps/app/src/runtime/hosted-background.ts"],
+    "abstractions": [
+      "Renderer native setup reservation, exact attempt and session cancellation, port reply settlement and external abort listener cleanup.",
+      "Two attempt slots and two sessions. Held begin and configure replies expose retirement before each boundary. Cancellation microtasks are coalesced. Durable worker and inbox history are separate."
+    ]
+  },
+  {
     "path": "specs/quint/application/RendererDigestQueue.qnt",
     "module": "RendererDigestQueue",
     "init": "init",
