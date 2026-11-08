@@ -12280,7 +12280,8 @@
         "DurableStore",
         "NotesLifecycle",
         "GoogleAccessPublication",
-        "BrowserReminderOrphan"
+        "BrowserReminderOrphan",
+        "BrowserHostedResultNotice"
       ],
       "scope": "application",
       "treatment": "state-and-transition-projection",
@@ -12469,7 +12470,8 @@
       "path": "apps/app/src/browser/hosted-results.ts",
       "sha256": "550a4fca341777981ebb06f82aa76c51aa6119cb014aed57557d09b1ad25e90b",
       "models": [
-        "NoticesAndCaches"
+        "NoticesAndCaches",
+        "BrowserHostedResultNotice"
       ],
       "scope": "application",
       "treatment": "state-and-transition-projection",
@@ -12742,7 +12744,8 @@
       "path": "apps/app/src/browser/notice-action.ts",
       "sha256": "30419b6f6077295504590f41c67af3609fafc0a4087321ada8ce06c955abb284",
       "models": [
-        "NoticesAndCaches"
+        "NoticesAndCaches",
+        "BrowserHostedResultNotice"
       ],
       "scope": "application",
       "treatment": "state-and-transition-projection",
@@ -13443,7 +13446,8 @@
       "path": "apps/app/src/browser/revision.ts",
       "sha256": "d0e978c402271d3c6cb21407be969a899ddb779ad699d0cbac9454e3a58dbfd2",
       "models": [
-        "BrowserSession"
+        "BrowserSession",
+        "BrowserHostedResultNotice"
       ],
       "scope": "application",
       "treatment": "domain-contract-or-support",
@@ -13489,7 +13493,8 @@
       "path": "apps/app/src/browser/screen-locked.ts",
       "sha256": "b931c1d8ff52988e24dafcf9e8f3469f5625aad613a219ace35b1d20efbd4b58",
       "models": [
-        "BrowserSession"
+        "BrowserSession",
+        "BrowserHostedResultNotice"
       ],
       "scope": "application",
       "treatment": "domain-contract-or-support",
@@ -42891,7 +42896,8 @@
       "path": "apps/app/src/runtime/hosted-result-notices.ts",
       "sha256": "41528e72737d99d617c9c0dc84e2649a770936d5b84157e53d8e85d2e516cee4",
       "models": [
-        "NoticesAndCaches"
+        "NoticesAndCaches",
+        "BrowserHostedResultNotice"
       ],
       "scope": "application",
       "treatment": "domain-contract-or-support",

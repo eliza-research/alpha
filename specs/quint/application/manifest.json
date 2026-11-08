@@ -1944,5 +1944,29 @@
       "Current Google Calendar setup from verified grants through bounded review, select, resume and final readback. Preserve exact destination, captured control revision, stable key and most recent readback.",
       "Two owners and account identities, three destinations, three reviews and at most two writes. AgentCalendar control is a controlled interface in this campaign. Mounted caller and installed provider obligations remain separate."
     ]
+  },
+  {
+    "path": "specs/quint/application/BrowserHostedResultNotice.qnt",
+    "module": "BrowserHostedResultNotice",
+    "init": "init",
+    "step": "step",
+    "invariant": "safety",
+    "tests": [
+      "exactReplayAndDigestChangeTest",
+      "latestExactTokenControlsSettlementTest",
+      "browserTokenSurvivesOwnerRetirementTest"
+    ],
+    "sources": [
+      "apps/app/src/browser/hosted-results.ts",
+      "apps/app/src/browser/domain-document.ts",
+      "apps/app/src/browser/notice-action.ts",
+      "apps/app/src/browser/revision.ts",
+      "apps/app/src/browser/screen-locked.ts",
+      "apps/app/src/runtime/hosted-result-notices.ts"
+    ],
+    "abstractions": [
+      "Exact owner, retained result digest and card revision, redacted browser ledger and current tap token.",
+      "Three result identities, two owner scopes, one publication in flight and serialized browser document ports. IndexedDB and mounted renderer settlement are separate."
+    ]
   }
 ]

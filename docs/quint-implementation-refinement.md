@@ -499,3 +499,11 @@ key through selection, repeated review, resume and final readback. It
 separates the caller's result from a publication that still owns the
 current mount. Linked Calendar control retains its own bounded source
 proof and passes symbolic safety through four steps.
+
+The browser hosted-result ledger checks eight schedules and 83
+checkpoints using the actual browser ledger and renderer tap verifier.
+The checks cover retained digest identity, redacted cards, exact pending
+tokens and current owner readback. The current browser ledger allows
+settlement of an exact pending token after retirement even when the
+renderer verifier refuses the old owner's history. The native ledger
+checks settlement ownership separately.
