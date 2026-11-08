@@ -107,6 +107,16 @@ module CoreEmbeddingDimension {
   action rawStep = M::Next
   action step = M::Step
   val safety = M::TypeOK and M::PinMatchesStore and M::StoredInColumn
+  val sourceState = M::s
+  val storedOneSpace = M::StoredOneSpace
+  action startProbe(p) = M::ProbeStart(p)
+  action resizeProbe = M::ProbeResize
+  action spaceProbe = M::ProbeSpace
+  action pinProbe = M::ProbePin
+  action clearProbe(failed) = M::ProbeClearAs(failed)
+  action callEmbedding(e, p) = M::EmbedCall(e, p)
+  action validateEmbedding(e) = M::EmbedValidate(e)
+  action writeEmbedding(e) = M::EmbedWrite(e)
   temporal CheckedTemporal = M::PinSpaceStable
   run pinRefusesDifferentProviderTest = init.then(M::ProbeStart("named")).then(M::ProbeResize).then(M::ProbeSpace)
     .then(M::ProbePin).then(M::ProbeClearAs(true)).then(M::ProbeStart("wide")).then(M::ProbeResize)

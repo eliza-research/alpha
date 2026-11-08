@@ -170,3 +170,18 @@ The authenticated product patch reserves the slot before publishing telemetry.
 The new schedules compare both per-room and total capacity rejection when the
 listener reenters, and verify that throwing diagnostics preserve the outcome
 of accepted work.
+
+## Embedding dimension source comparison
+
+The PGlite campaign executes both the actual runtime validation and the actual
+SQL adapter. The translated width classes two and three represent physical
+384- and 512-coordinate columns. The wrong-width case preserves the memory
+while dropping the vector. In the other case the SQL transaction activates a
+named space before the runtime publishes its provider pin. A delayed unmarked
+vector passes validation and is inserted under the active space. This matches
+the translated model's documented provenance counterexample. The trigger
+separately refuses a stale direct SQL writer that leaves the nonce unchanged.
+
+```sh
+node --test test/quint-embedding-sql-refinement.test.mjs
+```

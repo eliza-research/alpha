@@ -2399,7 +2399,12 @@
         "temporal": "CheckedTemporal"
       }
     ],
-    "sources": [],
+    "sources": [
+      "vendor/eliza/packages/core/src/runtime/embeddings.ts",
+      "vendor/eliza/plugins/plugin-sql/src/base.ts",
+      "vendor/eliza/plugins/plugin-sql/src/embedding-space.ts",
+      "vendor/eliza/plugins/plugin-sql/src/pglite/adapter.ts"
+    ],
     "upstreamSources": [
       {
         "path": "packages/core/tla/EmbeddingDimension.tla",

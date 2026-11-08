@@ -1,6 +1,7 @@
 import {fileURLToPath} from 'node:url';
 import {checkActionSettlementRefinement} from '../../legacy/core/check-action-settlement-refinement.mjs';
 import {checkApprovalServiceRefinement} from '../../legacy/core/check-approval-service-refinement.mjs';
+import {checkEmbeddingSqlRefinement} from '../../legacy/core/check-embedding-sql-refinement.mjs';
 import {checkInteractionSessionRefinement} from '../../legacy/core/check-interaction-session-refinement.mjs';
 import {runProviderExecutionRefinement} from '../../legacy/core/check-provider-execution-refinement.mjs';
 import {checkRoomHandlerQueueRefinement} from '../../legacy/core/check-room-handler-queue-refinement.mjs';
@@ -15,6 +16,7 @@ export async function runLegacyRefinement() {
   const campaigns = [
     ['CoreActionSettlement', checkActionSettlementRefinement],
     ['CoreApprovalService', () => checkApprovalServiceRefinement(undefined, [driver])],
+    ['CoreEmbeddingDimension', () => checkEmbeddingSqlRefinement([driver])],
     ['CoreInteractionSession', () => checkInteractionSessionRefinement(undefined, [driver])],
     ['CoreProviderExecution', runProviderExecutionRefinement],
     ['CoreRoomHandlerQueue', () => checkRoomHandlerQueueRefinement(undefined, [driver])],
