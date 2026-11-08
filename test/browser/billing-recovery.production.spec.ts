@@ -166,7 +166,8 @@ test('Cloud declining a turn mid-use gives one answer and the popup; after plan 
   await expect(bubble(page, 'What is on my calendar this week?')).toHaveCount(1);
   const offer = page.getByRole('button', { name: /^Check subscription or enter a membership code/ });
   await expect(offer).toHaveCount(1);
-  await page.waitForTimeout(2000); // unrelated transient toasts settle before the screenshot
+  // Unrelated transient toasts settle before the screenshot; a long one stays up to 10 s.
+  await expect(page.locator('[data-alpha-toast] .drop')).toHaveCount(0, { timeout: 11_000 });
   await shot(page, info, '08-midturn-refusal-chat.png');
   await offer.click();
   await expect(sheet(page)).toBeVisible();

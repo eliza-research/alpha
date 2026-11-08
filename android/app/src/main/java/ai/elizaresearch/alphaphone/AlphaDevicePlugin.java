@@ -57,6 +57,13 @@ public final class AlphaDevicePlugin extends Plugin {
    applyTextScale((MainActivity)getActivity());JSObject out=new JSObject();out.put("textScalePercent",textScalePercent(getContext()));out.put("effectiveTextZoom",getBridge().getWebView().getSettings().getTextZoom());call.resolve(out);
   });
  }
+ /** Android's "Time to take action" setting applied to a renderer notice timeout; the base when unset or before API 29. */
+ @PluginMethod public void recommendedTimeout(PluginCall call){
+  Integer base=call.getInt("baseMs");if(base==null||base<1||base>600000){call.reject("Base timeout must be 1 to 600000 ms.");return;}
+  int timeout=base;
+  if(Build.VERSION.SDK_INT>=Build.VERSION_CODES.Q){android.view.accessibility.AccessibilityManager accessibility=getContext().getSystemService(android.view.accessibility.AccessibilityManager.class);if(accessibility!=null)timeout=accessibility.getRecommendedTimeoutMillis(base,android.view.accessibility.AccessibilityManager.FLAG_CONTENT_TEXT|android.view.accessibility.AccessibilityManager.FLAG_CONTENT_CONTROLS);}
+  JSObject out=new JSObject();out.put("timeoutMs",timeout);call.resolve(out);
+ }
  @PluginMethod public void snapshot(PluginCall call) {
   JSObject out=new JSObject();
   // System switch, transport and power facts come from the shared reader (ElizaSystem.getSystemFacts):

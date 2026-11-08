@@ -1,4 +1,6 @@
 import { externalVoiceInvocationEnabled } from '../runtime/voice-entry-policy';
+import { accessibilityTimeoutScale } from '../runtime/accessibility-timeout';
+import { testMocksEnabled } from '../build-flags';
 import iconCatalog from '../icon-catalog.json';
 /* Seeds, scripted replies and fixture images. Production builds resolve this
    specifier to ./fixtures.empty.js (same names, empty values). */
@@ -1405,11 +1407,11 @@ registerView("calendar", {
         var inM = gd.getMonth() === mBase.getMonth();
         var has = on(off).length > 0;
         var cs = off === 0 ? "background:var(--acc);color:var(--alpha-white)" : (off === sel ? "box-shadow:inset 0 0 0 1.5px var(--fg)" : "");
-        mdays.push({ n: gd.getDate(), cs: cs + (inM || off === 0 ? "" : ";color:var(--mut)"), dot: has ? (off === 0 ? "var(--acct)" : "var(--fg)") : "transparent", pick: function () { set({ day: off, month: null }); }, label: DAYS[gd.getDay()] + " " + MONS[gd.getMonth()] + " " + gd.getDate() });
+        mdays.push({ inM: inM, n: gd.getDate(), cs: cs + (inM || off === 0 ? "" : ";color:var(--mut)"), dot: has ? (off === 0 ? "var(--acct)" : "var(--fg)") : "transparent", pick: function () { set({ day: off, month: null }); }, label: DAYS[gd.getDay()] + " " + MONS[gd.getMonth()] + " " + gd.getDate() });
       })(gd);
     }
-    var lastRow = mdays.slice(35).every(function (d) { return d.cs.indexOf("opacity") >= 0; });
-    if (lastRow) mdays = mdays.slice(0, 35);
+    // A month that fits five rows drops the sixth (only the tail, so day indices stay valid).
+    if (mdays.slice(35).every(function (d) { return !d.inM; })) mdays = mdays.slice(0, 35);
     var calRows = cals.map(function (c) {
       var patch = function (p) { var pr = Object.assign({}, st.calPrefs || {}); pr[c.id] = Object.assign({}, pr[c.id] || {}, p); set({ calPrefs: pr }); };
       return { name: c.name, sub: c.sub, on: c.on, sw: CAL_COLORS[c.color], track: api.track(c.on), kx: api.kx(c.on), dim: c.on ? "" : "opacity:.5",
@@ -1460,11 +1462,14 @@ registerView("calendar", {
     if (f) {
       var fp = function (p) { set({ form: Object.assign({}, f, p) }); };
       var dayChips = [];
-      var first = Math.min(0, f.off);
-      for (var k = first; k < first + 21; k++) (function (k) {
+      // 21 days around the chosen one, so any later day is reachable chip by chip; Today stays one tap away.
+      var first = f.off <= 13 ? Math.min(0, f.off) : f.off - 7;
+      var dayChip = function (k) {
         var dt = calDate(api, k); var act = k === f.off;
-        dayChips.push({ top: k === 0 ? "Today" : weekdayName(dt, "short"), n: dt.getDate(), css: act ? "background:var(--acc);color:var(--alpha-white)" : "background:var(--s2)", pick: function () { fp({ off: k }); }, label: calDayName(api, k) });
-      })(k);
+        dayChips.push({ on: act, top: k === 0 ? "Today" : weekdayName(dt, "short"), n: dt.getDate(), css: act ? "background:var(--acc);color:var(--alpha-white)" : "background:var(--s2)", pick: function () { fp({ off: k }); }, label: calDayName(api, k) });
+      };
+      if (first > 0) dayChip(0);
+      for (var k = first; k < first + 21; k++) dayChip(k);
       var chosen = f.who.map(function (id) { var p = calPerson(api, id); return { ini: p.ini, first: p.name.split(" ")[0], label: "Remove " + p.name, remove: function () { fp({ who: f.who.filter(function (x) { return x !== id; }) }); } }; });
       var q = (f.pq || "").toLowerCase().trim();
       var sugg = f.pq == null ? [] : calPeople(api).filter(function (p) { return f.who.indexOf(p.id) < 0 && (!q || p.name.toLowerCase().indexOf(q) >= 0 || (p.email || "").toLowerCase().indexOf(q) >= 0); }).slice(0, 4).map(function (p) {
@@ -1478,7 +1483,7 @@ registerView("calendar", {
         onNotes: function (e) { fp({ notes: e.target.value }); },
         days: dayChips,
         start: calAmpm(f.t), end: calAmpm(f.t + f.d), dur: calDur(f.d),
-        sMinus: function () { fp({ t: Math.max(0, f.t - 0.25) }); }, sPlus: function () { fp({ t: Math.min(23.5 - f.d, f.t + 0.25) }); },
+        sMinus: function () { fp({ t: Math.max(0, f.t - 0.25) }); }, sPlus: function () { fp({ t: Math.max(f.t, Math.min(24 - f.d, f.t + 0.25)) }); },
         eMinus: function () { fp({ d: Math.max(0.25, f.d - 0.25) }); }, ePlus: function () { fp({ d: Math.min(24 - f.t, f.d + 0.25) }); },
         video: f.video, vTrack: api.track(f.video), vKx: api.kx(f.video), toggleVideo: function () { fp({ video: !f.video }); },
         chosen: chosen, hasChosen: chosen.length > 0,
@@ -1487,9 +1492,9 @@ registerView("calendar", {
         onPq: function (e) { fp({ pq: e.target.value }); },
         pqKey: function (e) { if (e.key === "Enter" && sugg.length) { e.preventDefault(); sugg[0].pick(); } if (e.key === "Escape") fp({ pq: null }); },
         valid: !!(f.title || "").trim(), saveOff: !(f.title || "").trim(), saveCss: (f.title || "").trim() ? "background:var(--acc);color:var(--alpha-white)" : "background:var(--s2);color:var(--mut)",
-        cals: (Array.isArray(st.canonicalCalendars) ? st.canonicalCalendars : cals).map(function (c) { return { name: c.name, dot: CAL_COLORS[c.color], css: chip(f.cal === c.id), pick: function () { fp({ cal: c.id }); } }; }),
-        repeats: CAL_REPEAT.map(function (r) { return { label: r[1], css: chip(f.repeat === r[0]), pick: function () { fp({ repeat: r[0] }); } }; }),
-        alerts: CAL_ALERT.map(function (a) { return { label: a[1], css: chip(f.alert === a[0]), pick: function () { fp({ alert: a[0] }); } }; }),
+        cals: (Array.isArray(st.canonicalCalendars) ? st.canonicalCalendars : cals).map(function (c) { return { name: c.name, dot: CAL_COLORS[c.color], on: f.cal === c.id, css: chip(f.cal === c.id), pick: function () { fp({ cal: c.id }); } }; }),
+        repeats: CAL_REPEAT.map(function (r) { return { label: r[1], on: f.repeat === r[0], css: chip(f.repeat === r[0]), pick: function () { fp({ repeat: r[0] }); } }; }),
+        alerts: CAL_ALERT.map(function (a) { return { label: a[1], on: f.alert === a[0], css: chip(f.alert === a[0]), pick: function () { fp({ alert: a[0] }); } }; }),
         cancel: function () { set({ form: null }); },
         save: function () {
           var title = (f.title || "").trim();
@@ -1966,7 +1971,7 @@ registerView("camera", {
       openLink: function () { var link = (copy("camera").scan || {}).link; if (link) api.open("browser", { url: link }); else api.toast("No link was read from this scan"); },
       modes: CAM_MODES.map(function (m) {
         var on = st.mode === m[0];
-        return { label: m[1], css: on ? "color:var(--alpha-white)" : "color:rgba(255,255,255,.55)", dot: on ? 1 : 0, pick: function () { setMode(m[0]); } };
+        return { label: m[1], on: on, css: on ? "color:var(--alpha-white)" : "color:rgba(255,255,255,.55)", dot: on ? 1 : 0, pick: function () { setMode(m[0]); } };
       }),
       innerCss: isVideo ? (st.rec ? "width:30px;height:30px;border-radius:8px;background:var(--alpha-record-red)" : "width:62px;height:62px;border-radius:31px;background:var(--alpha-record-red)") : "width:62px;height:62px;border-radius:31px;background:var(--alpha-white)",
       scanGlyph: isScan,
@@ -4689,7 +4694,7 @@ registerView("settings", {
       var bl = accs.map(function (a) { var on = ST_TYPES.filter(function (x) { return a[x[0]]; }).map(function (x) { return x[1].toLowerCase(); }); return a.address + ": " + (on.length ? on.join(", ") : "nothing"); });
       var cs = ST_CONNS.filter(function (c) { return (st.conns || {})[c.id]; }).map(function (c) { return c.name; });
       bl.push(cs.length ? "Apps: " + cs.join(", ") : "No connected apps");
-      bl.push(st.cloud ? "Cloud fallback on, per request" : "Nothing leaves this phone");
+      bl.push(st.cloud ? "Cloud fallback on, per request" : "Hosted requests go to your Cloud account");
       return { text: "Here's everything I can reach. Hosted requests get only the context each task needs.", card: { type: "summary", bullets: bl, go: { view: "settings", patch: { page: "privacy" } } } };
     }
     if (/\b(remove|delete|disconnect) (my )?(work|personal) (email|account|mail)\b/.test(t)) {
@@ -4746,7 +4751,7 @@ registerView("settings", {
     if (/\bwipe (your |my |the )?memory\b|\bforget everything\b|\bclear (your |the )?memory\b/.test(t)) return { text: "That can't be undone, so confirm on screen.", nav: { view: "settings", patch: { page: "privacy", sheet: { kind: "wipe" } } } };
     if (/\bcloud fallback\b|\buse the cloud\b/.test(t)) {
       var cl = !/\b(off|disable|stop|don't|never)\b/.test(t);
-      return { text: cl ? "Cloud fallback on. I'll still ask before sending anything." : "Cloud fallback off. Nothing leaves this phone.", then: function () { api.setView("settings", { cloud: cl }); } };
+      return { text: cl ? "Cloud fallback on. I'll still ask before sending anything." : "Cloud fallback off.", then: function () { api.setView("settings", { cloud: cl }); } };
     }
     if ((m = t.match(/\b(connect|disconnect)\b.*\b(slack|github|notion|linear|figma|spotify)\b/))) {
       var cn = ST_CONNS.filter(function (x) { return x.id === m[2]; })[0];
@@ -4932,7 +4937,7 @@ registerView("settings", {
       ].filter(function (g) { return g.rows.length; }) });
     } else if (P === "models") {
       p1 = page("Models", { hero: { kBig: true, hasIcon: true, d: IC.chip, iconCss: "background:var(--acc);color:var(--alpha-white)", big: ST_DEVICE ? ST_DEVICE.model.name : "No model loaded", sub: ST_DEVICE ? ST_DEVICE.model.sub : "Model details are not reported" }, groups: [
-        { rows: [stTog({ label: "Cloud fallback", sub: st.cloud ? "Asks each time, sends only the question" : "Off · nothing leaves this phone" }, st.cloud, function () { set({ cloud: !api.get("settings").cloud }); })] },
+        { rows: [stTog({ label: "Cloud fallback", sub: st.cloud ? "Asks each time, sends only the question" : "Off" }, st.cloud, function () { set({ cloud: !api.get("settings").cloud }); })] },
         { rows: (st.models || []).map(function (md) {
           var done = md.pct >= 100; var going = md.pct >= 0 && md.pct < 100;
           return stNav({ label: md.name, sub: md.size, val: going ? md.pct + "%" : "", trail: done ? IC.check : (going ? "" : IC.stDownload), trailCss: done ? "color:var(--acct)" : "color:var(--fg)", noChev: true, aria: (done ? "" : "Download ") + md.name,
@@ -5078,13 +5083,18 @@ registerView("settings", {
     return {
       rootRef: function (el) { stNoScroll(); stPageAccess(el); },
       stack: stack,
-      charVal: S.charName, onName: function (e) { api.shell({ charName: e.target.value }); },
+      // The name is the product's character: only a mock build renames it here (docs/decisions.md).
+      charVal: agentName(S), nameEditable: testMocksEnabled, nameFixed: !testMocksEnabled,
+      onName: testMocksEnabled ? function (e) { api.shell({ charName: e.target.value }); } : null,
       persona: persona, openChar: go("character"),
       sheet: sh, hasSheet: !!sh,
       scrollFix: !!sh
     };
   }
 });
+
+/** The assistant's name: the product character, or a mock build's renamed one. */
+function agentName(S) { return (testMocksEnabled && S.charName) || ALPHA_PRODUCT.identity.characterName; }
 
 var BASE = {
   screen: "boot", bootStep: 0, view: null, shade: false, chat: "input",
@@ -5109,7 +5119,15 @@ class Component extends DCLogic {
   componentDidMount() {
     this.G = {}; this.I = {};
     var self = this;
-    this.clock = setInterval(function () { self.setState({ now: Date.now() }); }, 15000);
+    // The clock ticks on the minute and not while the page is hidden; showing it again reads the time.
+    this.tick = function () {
+      clearTimeout(self.clock);
+      if (!document.hidden) self.setState({ now: Date.now() });
+      self.clock = setTimeout(self.tick, 60000 - Date.now() % 60000 + 50);
+    };
+    this.tickVisible = function () { if (!document.hidden) self.tick(); };
+    document.addEventListener("visibilitychange", this.tickVisible);
+    this.clock = setTimeout(this.tick, 60000 - Date.now() % 60000 + 50);
     this.chatWindowScroll = function (event) { self.growChatWindow(event.target); };
     document.addEventListener("scroll", this.chatWindowScroll, true);
     this.chatWindowCommitted = this.chatWindowRows;
@@ -5161,6 +5179,9 @@ class Component extends DCLogic {
   componentDidUpdate(prev) {
     if (prev && prev.initial !== this.props.initial) this.preset(this.props.initial || "boot");
     this.syncShadeFocus();
+    // A long toast belongs to the screen it was raised on: the next screen's top controls are not covered.
+    var shown = this.S();
+    if (shown.toast) { if (this.toastView === undefined) this.toastView = shown.view; else if (this.toastLong && !this.toastHeld && shown.view !== this.toastView) this.endToast(); }
     var list = document.querySelector("[data-alpha-transcript]"), saved = this.chatScrollSnapshot;
     this.chatWindowCommitted = this.chatWindowRows;
     if (list && saved && saved.list === list && saved.fromBottom !== undefined) list.scrollTop = list.scrollHeight - saved.fromBottom;
@@ -5188,7 +5209,7 @@ class Component extends DCLogic {
   componentWillUnmount() {
     this.chatScrollObserver?.disconnect();
     document.removeEventListener("scroll", this.chatWindowScroll, true);
-    clearInterval(this.clock); clearInterval(this.vI);
+    clearTimeout(this.clock); document.removeEventListener("visibilitychange", this.tickVisible); clearInterval(this.vI);
     var G = this.G || {}; Object.keys(G).forEach(function (k) { G[k].forEach(clearTimeout); });
     var I = this.I || {}; Object.keys(I).forEach(function (k) { I[k].forEach(clearInterval); });
   }
@@ -5204,11 +5225,31 @@ class Component extends DCLogic {
   clear(grp) { this.G = this.G || {}; (this.G[grp] || []).forEach(clearTimeout); this.G[grp] = []; }
   every(fn, ms, grp) { this.I = this.I || {}; var id = setInterval(fn, ms); (this.I[grp] = this.I[grp] || []).push(id); return id; }
   stopEvery(grp) { this.I = this.I || {}; (this.I[grp] || []).forEach(clearInterval); this.I[grp] = []; }
+  /**
+   * A toast stays long enough to read (60 ms a character, 1.9 s to 10 s; Undo at least 5 s), scaled
+   * by Android's "Time to take action" setting. Keyboard or switch focus inside it, or a press on it,
+   * holds it; it returns focus to where it was when it expires.
+   */
   toast(msg, opts) {
-    opts = opts || {}; var self = this;
+    opts = opts || {};
     this.undoFn = opts.undo || null;
-    this.setState({ toast: msg, toastUndo: !!opts.undo }); this.clear("t");
-    this.later(function () { self.undoFn = null; self.setState({ toast: "", toastUndo: false }); }, opts.undo ? 5000 : 1900, "t");
+    var base = opts.undo ? 5000 : 1900;
+    this.toastMs = Math.max(base, Math.min(10000, String(msg || "").length * 60)) * accessibilityTimeoutScale();
+    this.toastLong = this.toastMs > base; this.toastView = undefined; this.toastHeld = false;
+    var active = document.activeElement;
+    if (!(active && active.closest && active.closest("[data-alpha-toast]"))) this.toastReturn = active;
+    this.setState({ toast: msg, toastUndo: !!opts.undo });
+    this.armToast(this.toastMs);
+  }
+  armToast(ms) { var self = this; this.clear("t"); this.toastEnds = Date.now() + ms; this.later(function () { self.endToast(); }, ms, "t"); }
+  holdToast() { if (!this.S().toast || this.toastHeld) return; this.toastHeld = true; this.toastLeft = Math.max(0, this.toastEnds - Date.now()); this.clear("t"); }
+  resumeToast() { if (!this.toastHeld) return; this.toastHeld = false; if (this.S().toast) this.armToast(Math.max(1000, this.toastLeft || 0)); }
+  endToast() {
+    var active = document.activeElement, inside = !!(active && active.closest && active.closest("[data-alpha-toast]"));
+    this.clear("t"); this.toastHeld = false; this.undoFn = null; this.toastView = undefined;
+    this.setState({ toast: "", toastUndo: false });
+    var back = this.toastReturn; this.toastReturn = null;
+    if (inside && back && back.isConnected && back.focus) back.focus({ preventScroll: true });
   }
 
   /* ---- per-app state ---- */
@@ -5235,7 +5276,7 @@ class Component extends DCLogic {
     return {
       key: k, S: S, st: this.vget(k), ic: IC, people: PEOPLE, person: function (id) { var c = self.vget("contacts"); var l = (c && c.list) || []; for (var i = 0; i < l.length; i++) if (l[i].id === id) return l[i]; return person(id); },
       isActive: function () { return self.S().view === k; }, now: new Date(S.now), theme: theme,
-      name: S.charName || ALPHA_PRODUCT.identity.characterName, active: S.view === k,
+      name: agentName(S), active: S.view === k,
       set: function (p) { self.vset(k, p); },
       get: function (other) { return self.vget(other); },
       setView: function (other, p) { self.vset(other, p); },
@@ -5316,6 +5357,8 @@ class Component extends DCLogic {
     this.hintDone = true;
   }
   goHome(chat) {
+    // The assistant window has no Home of its own: Home from its conversation closes it.
+    if (this.props && this.props.assistantSurface && !this.S().view) return this.closeAssistant();
     this.clear("hint"); this.leave();
     if (this.S().secure) return this.setState(Object.assign(this.shellNavigate({ type: "home" }), { secure: false, screen: "lock", shade: false, hint: false, heads: false }));
     this.setState(Object.assign(this.shellNavigate({ type: "home", assistant: chat === "sheet" || chat === "full" ? chat : "input" }), { shade: false, hint: false, heads: false }));
@@ -5356,10 +5399,12 @@ class Component extends DCLogic {
     var S = this.S();
     if (S.shade) return this.setState({ shade: false });
     if (this.props && this.props.assistantSurface && !S.view && S.voice === "off") return this.closeAssistant();
-    if (S.drawer && !S.view) return this.setState(this.shellNavigate({ type: "back" }));
+    // Back undoes the top layer first: voice, then an open conversation, then the drawer under it.
     if (S.voice !== "off") return this.stopVoice();
-    // An open conversation lowers one detent (full, sheet, rest) before Back leaves the view.
-    if (S.chat === "full" || S.chat === "sheet") return this.setState(this.shellNavigate({ type: "back" }));
+    // An open conversation lowers one detent (full, sheet, rest) before Back leaves the view. Over
+    // the drawer the shared reducer would close the drawer first, so the detent is lowered here.
+    if (S.chat === "full" || S.chat === "sheet") return this.setState(S.drawer ? { chat: S.chat === "full" ? "sheet" : this.rest() } : this.shellNavigate({ type: "back" }));
+    if (S.drawer && !S.view) return this.setState(this.shellNavigate({ type: "back" }));
     if (S.view) {
       var m = this.mod(S.view);
       if (m.back && m.back(this.vget(S.view), this.api(S.view))) return;
@@ -5575,7 +5620,7 @@ class Component extends DCLogic {
     var d = new Date(S.now);
     var clock = formatClock(d);
     var dateStr = formatLongDate(d);
-    var name = S.charName || ALPHA_PRODUCT.identity.characterName;
+    var name = agentName(S);
     var isOn = S.screen === "home"; var v = S.view; var isView = isOn && !!v;
     var voiceOn = S.voice !== "off";
     var panelOpen = isOn && (S.chat === "sheet" || S.chat === "full");
@@ -5685,7 +5730,11 @@ class Component extends DCLogic {
       backToApps: function (event) { var fromChat = event && event.currentTarget && event.currentTarget.hasAttribute("data-alpha-chat-home"); if (fromChat && event.detail > 0 && self.swallowed()) return; self.goHome(fromChat ? self.S().chat : undefined); },
       showStatus: !P.nativeSystemChrome && S.screen !== "boot" && S.screen !== "off" && !imm.noStatus, micLive: S.voice === "listening",
       showIndicator: !P.nativeSystemChrome && (isOn || S.screen === "lock") && !(isOn && !S.view && !S.drawer && !S.shade && S.chat !== "sheet" && S.chat !== "full"),
-      toast: S.toast, toastOn: !!S.toast, toastUndo: !!S.toastUndo, toastPadR: S.toastUndo ? 5 : 18, doUndo: function () { var f = self.undoFn; self.undoFn = null; self.clear("t"); self.setState({ toast: "", toastUndo: false }); if (f) f(); },
+      toast: S.toast, toastOn: !!S.toast, toastUndo: !!S.toastUndo, toastPadR: S.toastUndo ? 5 : 18, doUndo: function () { var f = self.undoFn; self.endToast(); if (f) f(); },
+      // A plain pill dismisses on tap; one with Undo waits for Undo or its time.
+      toastTap: function () { if (!self.S().toastUndo) self.endToast(); },
+      toastHold: function () { self.holdToast(); }, toastResume: function () { self.resumeToast(); },
+      toastBlur: function (e) { if (!(e.relatedTarget && e.currentTarget.contains(e.relatedTarget))) self.resumeToast(); },
       hasOngoing: !!ongoing && isOn, ongoing: ongoing || {}, sbWifi: S.q.wifi, sbPlane: S.q.plane,
       goCalendar: function () { self.openView("calendar", copy("shell").homeCalendar || null); },
       goTriage: function () { self.send("What needs me?"); },
@@ -5694,7 +5743,7 @@ class Component extends DCLogic {
       tiles: tiles, bright: S.bright, brightHandoff: true, brightSlider: false, onBright: function () { self.openView("settings", { page: "display" }); }, shadeN: shadeN, shadeY: isOn && S.shade && this.simulatedShade() ? "0" : "-100%",
       // Android owns the shade (#416): only the development build renders its stand-in.
       simulatedShade: this.simulatedShade(),
-      closeShade: function () { self.setState({ shade: false }); }, openSystemShade: function () { self.openSystemShade(); },
+      closeShade: function () { self.setState({ shade: false }); },
       shadeKey: function (event) { if (event.key === "Escape" && !event.defaultPrevented) { event.preventDefault(); self.setState({ shade: false }); } }, clearAll: function () { self.setState({ nGone: NOTIFS.map(function (n) { return n.id; }), shade: false }); },
       // Policy P-23: on Android the system Keyguard owns the secure camera; Alpha never
       // opens its own camera, gallery or agent from a locked state. Only the simulated

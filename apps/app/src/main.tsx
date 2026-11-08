@@ -78,6 +78,7 @@ import { installDockClearance } from './runtime/dock-clearance';
 import { canvasGeometry, isEditing, keyboardFreeHeight, publishSurfaceLayout, surfaceLayout } from './runtime/canvas-geometry';
 import { TEXT_SCALE_PROPERTY } from './runtime/text-scale';
 import { installToastLayer } from './runtime/toast-layer';
+import { startAccessibilityTimeout } from './runtime/accessibility-timeout';
 import { installViewFocus } from './runtime/view-focus';
 import './prototype/prototype.css';
 import './prototype/phone.css';
@@ -327,6 +328,8 @@ async function mountPhone() {
   installDockClearance();
   // Dialog feedback is announced in its own flow above the form (runtime/toast-layer.ts).
   installToastLayer();
+  // Toasts follow Android's "Time to take action" setting (runtime/accessibility-timeout.ts).
+  startAccessibilityTimeout(DailyApps);
   // Focus dropped by a screen change or HOME lands on the new screen's title (runtime/view-focus.ts).
   installViewFocus();
   if (testMocksEnabled && mock && isAndroid) {

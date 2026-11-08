@@ -333,6 +333,11 @@ export function installChatOverlayMotion(Component: Shell) {
 			this.chatSheetShare = next.height / Math.max(1, d.full);
 		retire(this, false);
 		this.swallow = Date.now();
+		// The assistant window's conversation has no resting form: dragging it away closes the window.
+		if (next.chat === "hidden" && !collapsed && this.props.assistantSurface && !this.S().view) {
+			this.closeAssistant();
+			return;
+		}
 		// An open chat collapses to its resting form; only the bar itself dismisses to the pill.
 		this.setState({
 			chat: next.chat === "hidden" && !collapsed ? this.rest() : next.chat,
@@ -566,11 +571,13 @@ export function installChatOverlayMotion(Component: Shell) {
 		out.closeChat = () => {
 			retire(shell, false);
 			// A voice session in the chat keeps its controls on the pill.
-			shell.setState({
-				chat: document.querySelector("[data-alpha-chat-recorder]")
-					? "hidden"
-					: shell.rest(),
-			});
+			const recorder = document.querySelector("[data-alpha-chat-recorder]");
+			// On the assistant window the conversation is the whole surface: closing it closes the window.
+			if (!recorder && shell.props.assistantSurface && !shell.S().view) {
+				shell.closeAssistant();
+				return;
+			}
+			shell.setState({ chat: recorder ? "hidden" : shell.rest() });
 		};
 		out.scrimTap = out.closeChat;
 		// Any touch outside the open sheet collapses it and reaches nothing underneath. A tap
