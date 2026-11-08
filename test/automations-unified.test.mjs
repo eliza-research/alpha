@@ -155,3 +155,15 @@ test('Alpha reminder status text follows current canonical English labels',async
  const cases=[['unscheduled',null,null],['blocked',{id:'occurrence',state:'visible'},{outcome:'blocked_channel'}],['duplicate',{id:'occurrence',state:'visible'},{outcome:'skipped_duplicate'}],['unknown',{id:'occurrence',state:'unrecognized'},null]];
  for(const [status,occurrence,latestAttempt] of cases){const f=await fixture(call=>call.path==='/api/lifeops/reminders'?{reminders:[{...reminder,occurrence,latestAttempt}]}:read(call)),app=adapterFixture(f.request);try{app.render();await wait(()=>app.render().cards.length===5&&!app.render().automation.loading);assert.equal(app.render().cards.find(card=>card.name==='Check the draft').statusLabel,strings['automationsreminders.status.'+status]);}finally{app.close();await f.close();}}
 });
+
+
+test('Home lists no automation rows for an empty unified snapshot',async()=>{
+ const f=await fixture(call=>call.path==='/api/automations'?{automations:[]}:call.path.includes('scheduled-tasks')?{tasks:[]}:call.path.includes('/reminders')?{reminders:[]}:{});
+ const app=adapterFixture(f.request,{}, {deviceReminders:[]});
+ try{
+  app.render();await wait(()=>!app.render().automation.loading&&app.home().homeWorkflowTitle==='No automations yet');
+  assert.equal(app.home().homeWorkflowHasRows,false,'with no enabled automation Home draws no workflows card (docs/daily-overview.md)');
+  assert.deepEqual(app.home().homeWorkflowRows,[]);
+  assert.ok(f.calls.every(call=>call.method==='GET'));
+ }finally{app.close();await f.close();}
+});

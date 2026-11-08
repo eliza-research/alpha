@@ -120,7 +120,7 @@ const presentationEvent=(id,calendarId)=>({id,title:id,provider:'eliza',side:'ow
 test('canonical feed ignores obsolete hidden preferences while preserving the saved bytes',()=>{
  const f=fixture({events:[presentationEvent('verified','primary'),presentationEvent('unverified','unknown')]}),before=structuredClone(f.state);
  const out=f.views.calendar.render({},{});
- assert.deepEqual(out.renderedRows.map(row=>row.id),['verified']);assert.match(out.nativeStatusLabel,/could not be verified/);
+ assert.deepEqual(out.renderedRows.map(row=>row.id),['verified']);assert.equal(out.nativeStatusLabel,'Refresh Calendar');
  const prefs={'handle:primary':{on:false,color:'mut'}},saved=structuredClone(prefs),hidden=f.views.calendar.render({calPrefs:prefs},{});
  assert.deepEqual(hidden.renderedRows.map(row=>row.id),['verified']);assert.deepEqual(prefs,saved);assert.deepEqual(f.state,before);
 });
@@ -215,10 +215,10 @@ test('missing canonical authority never relabels the real Reminder choice as an 
 // and the canonical Eliza source id 'primary'. Its 'unverified rows ... display preferences are retained'
 // test is not ported; 'canonical feed ignores obsolete hidden preferences' above supersedes it.
 // Canonical warning presentation stays in the header, which keeps its retry action.
-test('an empty partial Calendar shows its warning once without claiming no events',()=>{
+test('an empty partial Calendar offers refresh once without claiming no events',()=>{
  const f=fixture({status:'partial',empty:true}),before=structuredClone(f.state);
  const out=f.views.calendar.render({},{});
- assert.match(out.nativeStatusLabel,/Some Calendar sources could not be verified/);
+ assert.equal(out.nativeStatusLabel,'Refresh Calendar');
  assert.equal(typeof out.nativeStatusRetry,'function');
  assert.equal(out.empty,false);
  assert.doesNotMatch(out.emptyText,/No events/);
@@ -232,10 +232,10 @@ test('a verified empty Calendar retains its ordinary empty state',()=>{
  assert.equal(out.nativeStatusLabel,'');assert.equal(out.empty,true);
  assert.equal(out.emptyText,'No events in this Calendar window');
 });
-test('ready with an unverified event source warns once and does not claim verified empty',()=>{
+test('ready with an unverified event source offers refresh once and does not claim verified empty',()=>{
  const f=fixture({status:'ready',empty:true,events:[presentationEvent('unverified','unknown')]}),before=structuredClone(f.state);
  const out=f.views.calendar.render({},{});
- assert.match(out.nativeStatusLabel,/Some event sources could not be verified/);
+ assert.equal(out.nativeStatusLabel,'Refresh Calendar');
  assert.deepEqual(out.renderedRows,[]);assert.equal(out.empty,false);
  assert.doesNotMatch(out.emptyText,/No events|Free all day/);assert.deepEqual(f.state,before);
 });
@@ -250,7 +250,7 @@ test('partial empty selected day cannot claim free even when another day has a v
  const f=fixture({status:'partial',empty:true,events:[presentationEvent('verified elsewhere','primary')]}),before=structuredClone(f.state);
  const out=f.views.calendar.render({day:2},{});
  assert.deepEqual(out.renderedRows.map(row=>row.id),['verified elsewhere']);
- assert.match(out.nativeStatusLabel,/Some Calendar sources could not be verified/);
+ assert.equal(out.nativeStatusLabel,'Refresh Calendar');
  assert.doesNotMatch(out.emptyText,/Free all day|Free on these days|Nothing scheduled|No events/);
  assert.equal(out.empty,false);assert.deepEqual(f.state,before);
 });

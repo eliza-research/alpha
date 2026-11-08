@@ -203,12 +203,15 @@ These are the values approved policy deliberately leaves open. None reopens a de
   test-key ceremony, a debug or reused certificate and any change to a recorded digest (key
   rotation needs `--replace` and its own review). It prints the application certificate's SHA-1
   for H-12 and its colon-form SHA-256 for H-13. It reads only public files: copy
-  `fingerprints.json`, the `*.x509.pem` certificates and `avb_pkmd.bin` from the ceremony media to
-  the machine that runs it, never the encrypted private files.
+  `fingerprints.json`, the `*.x509.pem` certificates, `avb_pkmd.bin` and
+  `apex_payload.avbpubkey` from the ceremony media to the machine that runs it. Leave the
+  encrypted private files on the ceremony media.
 - Seam: `android/release-signer.json` (`signerSha256`), `android/aosp/pixel10a-product.json`
-  (platform, image and AVB digests) and `android/aosp/pixel10a-ota-channel.json` (OTA certificate
-  and AVB key).
-- Verify: `npm run human:status` shows H-09 done.
+  (platform, image, APEX payload and AVB digests) and `android/aosp/pixel10a-ota-channel.json`
+  (OTA certificate and AVB key).
+- Verify: `npm run human:status` shows H-09 done after the full ceremony is recorded. The
+  signing job requires the payload digest when it re-signs an APEX and leaves presigned APEXes
+  unchanged.
 - Unblocks: H-10, H-12, H-13, H-21, H-22.
 
 ### H-10 Build and sign the distributable release APKs

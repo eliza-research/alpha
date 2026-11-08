@@ -433,13 +433,15 @@ test('the latest retained brief appears with its agent and run time, reports fai
  expect(await gridTop()).toBe(before);
  await expect(home(page)).not.toContainText('The scheduled time was missed');
  // A newer failed run replaces it and says it failed.
- await page.evaluate(async()=>{
+ const failedAt=await page.evaluate(async()=>{
+  const at=new Date(Date.now()-60000);
   const {rememberRetainedDigests}=await import('/src/runtime/hosted-digests.ts');
-  rememberRetainedDigests([{cursor:4,runId:'run-failed',completedAt:new Date(Date.now()-60000).toISOString(),status:'failed',error:'Synthetic source expired'}] as any,'Synthetic agent');
+  rememberRetainedDigests([{cursor:4,runId:'run-failed',completedAt:at.toISOString(),status:'failed',error:'Synthetic source expired'}] as any,'Synthetic agent');
+  const {whenLabel}=await import('/src/prototype/home-cards.ts');return whenLabel(at.getTime(),Date.now());
  });
  await expect(card).toHaveAttribute('data-alpha-home-brief-failed','true');
  await expect(card).toContainText('Synthetic source expired');
- await expect(card).toContainText(/Synthetic agent · Failed \d{1,2}:\d{2}/);
+ await expect(card).toContainText(`Synthetic agent · Failed ${failedAt}`);
  // Opening it shows the retained results list; nothing is run.
  await card.click();
  await expect(page.getByRole('dialog').getByRole('heading',{name:'Scheduled digests',exact:true})).toBeVisible();

@@ -5,6 +5,7 @@
  *
  *   node scripts/sign-release-apks.mjs --keys-dir DIR [--key-name alphaphone_app] [OPTIONS]
  *   node scripts/sign-release-apks.mjs --pkcs11-config FILE --key-label LABEL [OPTIONS]
+ *   node scripts/sign-release-apks.mjs --keystore FILE --key-label LABEL [OPTIONS]
  *   OPTIONS: [--apk UNSIGNED.apk --out SIGNED.apk] [--apksigner PATH] [--no-verify] [--dry-run]
  *
  * Gradle signs a release only from a keystore file (ELIZAOS_KEYSTORE_*). Alpha's application key
@@ -37,6 +38,7 @@ import { fileURLToPath } from "node:url";
 
 export const DEFAULT_KEY_NAME = "alphaphone_app";
 export const PIN_ENV = "ELIZAOS_PKCS11_PIN";
+export const KEYSTORE_PASSWORD_ENV = "ALPHA_APP_RELEASE_KEYSTORE_PASSWORD";
 export const VARIANTS = Object.freeze(["standalone", "launcher"]);
 /**
  * JDK 9+ keeps sun.security.pkcs11 unexported, so apksigner cannot construct SunPKCS11 from
@@ -48,6 +50,7 @@ const PLAIN = /^[A-Za-z0-9._/@:+=-]+$/;
 const USAGE = [
   "Usage: node scripts/sign-release-apks.mjs --keys-dir DIR [--key-name alphaphone_app] [OPTIONS]",
   "       node scripts/sign-release-apks.mjs --pkcs11-config FILE --key-label LABEL [OPTIONS]",
+  "       node scripts/sign-release-apks.mjs --keystore FILE --key-label LABEL [OPTIONS]",
   "OPTIONS: [--apk UNSIGNED.apk --out SIGNED.apk] [--apksigner PATH] [--no-verify] [--dry-run]",
 ].join("\n");
 
@@ -85,10 +88,13 @@ export function keyFileProblems(directory, name) {
 }
 
 /** The apksigner argument vector for one APK. Private key material is referenced by path or label only. */
-export function signArguments({ mode, keysDir, keyName = DEFAULT_KEY_NAME, pkcs11Config, keyLabel, pin = false, input, output }) {
+export function signArguments({ mode, keysDir, keyName = DEFAULT_KEY_NAME, pkcs11Config, keystore, keyLabel, pin = false, input, output }) {
   const tail = ["--v4-signing-enabled", "false", "--out", output, input];
   if (mode === "key-files")
     return ["sign", "--key", path.join(keysDir, `${keyName}.pk8`), "--cert", path.join(keysDir, `${keyName}.x509.pem`), ...tail];
+  if (mode === "keystore")
+    return ["sign", "--ks", keystore, "--ks-type", "PKCS12", "--ks-key-alias", keyLabel,
+      "--ks-pass", `env:${KEYSTORE_PASSWORD_ENV}`, "--key-pass", `env:${KEYSTORE_PASSWORD_ENV}`, ...tail];
   return [PKCS11_JVM_OPTION, "sign",
     "--provider-class", "sun.security.pkcs11.SunPKCS11", "--provider-arg", pkcs11Config,
     "--ks", "NONE", "--ks-type", "PKCS11", "--ks-key-alias", keyLabel, "--ks-pass", pin ? `env:${PIN_ENV}` : "pass:", ...tail];
@@ -118,7 +124,7 @@ export function signingTargets({ artifacts = "artifacts", apk, out }) {
 
 function parseArgs(argv) {
   const options = { verify: true, dryRun: false };
-  const valued = ["--keys-dir", "--key-name", "--pkcs11-config", "--key-label", "--apk", "--out", "--apksigner"];
+  const valued = ["--keys-dir", "--key-name", "--pkcs11-config", "--keystore", "--key-label", "--apk", "--out", "--apksigner"];
   for (let i = 0; i < argv.length; i++) {
     const arg = argv[i];
     if (arg === "--no-verify") options.verify = false;
@@ -126,10 +132,11 @@ function parseArgs(argv) {
     else if (valued.includes(arg) && argv[i + 1] !== undefined && !argv[i + 1].startsWith("--")) options[arg.slice(2).replace(/-([a-z])/g, (_, c) => c.toUpperCase())] = argv[++i];
     else return null;
   }
-  const keyFiles = options.keysDir !== undefined, pkcs11 = options.pkcs11Config !== undefined || options.keyLabel !== undefined;
-  if (keyFiles === pkcs11) return null;
-  if (pkcs11 && (!options.pkcs11Config || !options.keyLabel || options.keyName)) return null;
-  options.mode = keyFiles ? "key-files" : "pkcs11";
+  const modes = [[options.keysDir, "key-files"], [options.pkcs11Config, "pkcs11"], [options.keystore, "keystore"]]
+    .filter(([value]) => value !== undefined);
+  if (modes.length !== 1) return null;
+  options.mode = modes[0][1];
+  if (options.mode === "key-files" ? options.keyLabel !== undefined : !options.keyLabel || options.keyName !== undefined) return null;
   options.keyName ??= DEFAULT_KEY_NAME;
   return options;
 }
@@ -147,6 +154,14 @@ export async function main(argv, { root = process.cwd(), env = process.env, log 
   if (options.mode === "pkcs11") {
     if (!path.isAbsolute(options.pkcs11Config) || !fs.existsSync(options.pkcs11Config) || !fs.statSync(options.pkcs11Config).isFile()) problems.push(`--pkcs11-config ${options.pkcs11Config} must be an absolute path to the SunPKCS11 configuration file`);
     if (!PLAIN.test(options.keyLabel)) problems.push("--key-label must be a plain label");
+  }
+  if (options.mode === "keystore") {
+    const file = options.keystore;
+    const stat = path.isAbsolute(file) ? fs.lstatSync(file, { throwIfNoEntry: false }) : null;
+    if (!stat?.isFile() || (stat.mode & 0o077) !== 0 || insideGitWorkTree(fs.realpathSync(file)))
+      problems.push("--keystore must be an absolute, owner-only regular file outside Git");
+    if (!PLAIN.test(options.keyLabel)) problems.push("--key-label must be a plain label");
+    if (!options.dryRun && !env[KEYSTORE_PASSWORD_ENV]) problems.push(`${KEYSTORE_PASSWORD_ENV} is required`);
   }
   if (options.keyName && !/^[a-z][a-z0-9_]{0,62}$/.test(options.keyName)) problems.push(`--key-name ${options.keyName} is not a key name`);
   let targets = [];
@@ -169,6 +184,7 @@ export async function main(argv, { root = process.cwd(), env = process.env, log 
   const keysDir = options.mode === "key-files" ? fs.realpathSync(options.keysDir) : null;
   const pin = options.mode === "pkcs11" && typeof env[PIN_ENV] === "string" && env[PIN_ENV] !== "";
   if (pin) toolEnv[PIN_ENV] = env[PIN_ENV];
+  if (options.mode === "keystore") toolEnv[KEYSTORE_PASSWORD_ENV] = env[KEYSTORE_PASSWORD_ENV];
   const signerOf = digest ?? (async file => (await import("./apk.mjs")).signerDigest(file));
   const commands = targets.map(target => ({ target, args: signArguments({ ...options, keysDir, pin, input: target.input, output: `${target.output}.partial` }) }));
   if (options.dryRun) {

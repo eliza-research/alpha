@@ -55,7 +55,7 @@ import { installPrototypeNativeAdapters } from './prototype/native-adapter';
 import { installSelectedDocumentAdapter } from './prototype/selection-adapter';
 import { installPrototypeCameraAdapter } from './prototype/camera-adapter';
 import { installPrototypeHomeBindings, installPrototypeDataAdapter, installHomeCardVisibility, setHomeSources, HOME_SOURCES_CHANGED } from './prototype/data-adapter';
-import { isAndroid, DeviceApps, System, launcherBridge, launcherListens } from './native';
+import { isAndroid, DeviceApps, System, launcherBridge, launcherListens, openAppInfo } from './native';
 import { DailyApps } from './daily';
 import { installPrototypeVoiceAdapter } from './prototype/voice-adapter';
 import { installPrototypeBrowserAdapter } from './prototype/browser-adapter';
@@ -66,6 +66,7 @@ import { protectedPowerLaunchState } from './runtime/power-launch-state';
 import { installListenerInvocation, stopWakeListenerForChatOnly } from './runtime/always-on-listener';
 import {GoogleConnectionsPanel,googleConnectionController} from './runtime/google-connection-ui';
 import { installNotesTrashAdapter } from './prototype/notes-trash-adapter';
+import { installNotesFoldersAdapter } from './prototype/notes-folders-adapter';
 import { installInboxCloudAdapter, inboxAttention, subscribeInboxAttention } from './prototype/inbox-cloud-adapter';
 import { installHomeOverviewCards } from './prototype/home-overview-cards';
 import { installUseInEmailReview } from './prototype/use-in-email-review';
@@ -135,6 +136,7 @@ if (!fixture) {
   installNotesDocumentAdapter(Component, VIEWS);
   installNotesShareAdapter(VIEWS);
   installNotesTrashAdapter(Component, VIEWS);
+  installNotesFoldersAdapter(Component, VIEWS);
   installCanonicalNotesView(Component,VIEWS);
   installNoteSourceAdapter(VIEWS);
   installNoteWebSourceAdapter(VIEWS);
@@ -170,11 +172,12 @@ installHomeCardVisibility(Component, () => googleConnectionController.open());
 // The shared agenda, mail and brief cards render the final Home values of every adapter above.
 installHomeOverviewCards(Component);
 installClockAdapter(Component, VIEWS, { simulated: testMocksEnabled && fixture, browser: !isAndroid });
-// Home, app grid and All apps from the shared mobile shell. Installed apps come from ElizaSystem
-// (Android, or the browser device's app list) through the shared launcher bridge; outermost so Home
-// composes with every binding above.
-installHomeShell(Component, VIEWS, launcherBridge, { icons: isAndroid, follow: launcherListens,
-  aliases: isAndroid ? undefined : Object.fromEntries(browserApps.flatMap(app => { const view = alphaViews.find(app.view); return view ? [[app.packageName, alphaViews.launcherKey(view)]] : []; })),
+// Home and its app grid from the shared mobile shell, and Alpha's Apps drawer. Apps reads
+// ElizaSystem on Android; the browser device inventory remains available in test-mocks builds only.
+// Outermost so Home composes with every binding above. App info exists on Android only.
+const appInventory = isAndroid ? 'android' : testMocksEnabled ? 'simulated' : undefined;
+installHomeShell(Component, VIEWS, launcherBridge, { appInventory, icons: isAndroid, follow: launcherListens, appInfo: isAndroid ? openAppInfo : undefined,
+  aliases: appInventory === 'simulated' ? Object.fromEntries(browserApps.flatMap(app => { const view = alphaViews.find(app.view); return view ? [[app.packageName, alphaViews.launcherKey(view)]] : []; })) : undefined,
 });
 /** A browser cannot read or change radios and sensors; show that instead of fixture toggles. */
 function installBrowserCapabilityTiles(Component:any){

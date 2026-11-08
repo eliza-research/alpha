@@ -122,7 +122,7 @@ function onDeviceLiveFixture(){
  f.box.createOnDeviceVoice=()=>({ready:async()=>true,playbackReady:async()=>true,speak:(text,signal,onStarted)=>s.speak(text,signal,onStarted)});
  return Object.assign(f,{clock,s});
 }
-async function liveTurn(f,gapMs=0){
+async function liveTurn(f,gapMs=400){
  await f.shell.startVoice();await f.clock.flush();const h=f.s.handlers;assert.ok(h,'the live capture is open');
  h.onSpeechStart(0);h.onSpeechEnd(20);h.onSegment('Add lunch with Sam tomorrow.');await f.clock.advance(gapMs);
  // A compatibility close must finish before the first request is allowed to exist.
@@ -452,10 +452,27 @@ function socketFixture({echoCancelled=true}={}){
 }
 async function socketTurn(f){
  await f.shell.startVoice();await f.clock.flush();assert.equal(typeof f.n.emit,'function','the speech socket is open');
- f.n.utter('Add lunch with Sam tomorrow.');await f.clock.advance(0);
+ f.n.utter('Add lunch with Sam tomorrow.');await f.clock.advance(400);
  assert.equal(f.sends,1);return f.sendInputs[0];
 }
 async function closeSocket(f){f.n.releaseCancel?.();f.releaseReply?.();await f.clock.flush();f.close();await f.clock.flush();}
+
+test('Cloud Talk keeps physical input muted until an old buffered turn drains, then hears a fresh Yes',async()=>{
+ const f=socketFixture(),n=f.n;
+ try{
+  await socketTurn(f);
+  n.emit({sessionId:n.sessionId,type:'speech-start'});
+  f.releaseReply();await f.clock.flush();n.audioStart();n.complete();await f.clock.flush();
+  assert.equal(n.physicalActive,false,'reply completion does not reopen over an old provider turn');
+  assert.equal(n.mutes.at(-1),true);
+  n.emit({sessionId:n.sessionId,type:'speech-start'}); // Old turn.resume, not new input.
+  n.emit({sessionId:n.sessionId,type:'speech-end',text:'old buffered words'});await f.clock.flush();
+  assert.equal(n.physicalActive,true,'new physical input opens only after the old final');
+  assert.equal(f.sends,1);
+  n.utter('Yes');await f.clock.advance(400);
+  assert.deepEqual(f.sendInputs.map(input=>input.text),['Add lunch with Sam tomorrow.','Yes']);
+ }finally{await closeSocket(f);}
+});
 
 test('speech socket: the ack plays once; reply_ready cancels it and the reply starts only after the native cancel drains',async()=>{
  const f=socketFixture(),n=f.n;n.holdCancel=true;
@@ -520,7 +537,7 @@ test('speech socket: a normal ack plays out, its turn completes with the reply s
   f.releaseReply();await f.clock.flush();assert.deepEqual(n.spoken,[ACK,REPLY]);
   n.audioStart();n.complete();await f.clock.flush();
   assert.equal(input.signal.aborted,false);assert.equal(seen.reply?.text,REPLY);assert.equal(f.renderChat()?.state,'listening');assert.equal(n.stops,0);
-  n.utter('And lunch on Friday.');await f.clock.advance(0);
+  n.utter('And lunch on Friday.');await f.clock.advance(400);
   assert.equal(f.sends,2);assert.equal(f.sendInputs[1].text,'And lunch on Friday.');
  }finally{await closeSocket(f);}
 });
@@ -665,7 +682,7 @@ async function sameClosedInputWithOrWithoutAck(run){
 const protocolFaults=['its own owner/session check failing (own.check)','a control frame that does not parse','an oversized control frame','an unexpected event in its dispatch','Cloud completing an utterance with no audio, or twice','an unknown fault'];
 const retiredAtOnce=async(f,input,seen,fault)=>{
  const before=f.sends;fault();const abortedAtOnce=input.signal.aborted;await f.clock.flush();
- f.n.utter('Is this still heard?');await f.clock.advance(0);
+ f.n.utter('Is this still heard?');await f.clock.advance(400);
  return {...outcome(f,input,seen),abortedAtOnce,socketStopped:f.n.stops>=1,heardAfter:f.sends-before};
 };
 for(const audible of [false,true])for(const fault of protocolFaults)
@@ -939,7 +956,7 @@ test('native streaming without echo cancellation: a reopened capture (Mute, then
   f.renderChat().toggleMute();await f.clock.flush();ack.finish();f.releaseReply();await f.clock.flush();
   assert.deepEqual(f.s.spoken(),[ACK,REPLY]);
   f.renderChat().toggleMute();await f.clock.flush();assert.equal(f.s.listens,2);
-  const h=f.s.handlers;h.onSpeechStart(1);h.onSpeechEnd(2);h.onSegment('And lunch on Friday.');await f.clock.advance(0);
+  const h=f.s.handlers;h.onSpeechStart(1);h.onSpeechEnd(2);h.onSegment('And lunch on Friday.');await f.clock.advance(400);
   assert.equal(f.sends,2);progress(f.sendInputs[1]);await f.clock.flush();
   assert.deepEqual(f.s.spoken(),[ACK,REPLY,ACK],'the next ack plays: the closed capture no longer counts as speaking');
  }finally{await closeLive(f);}
@@ -947,7 +964,7 @@ test('native streaming without echo cancellation: a reopened capture (Mute, then
 
 // Stale callbacks remain adversarial after busy close, with and without an ACK. Speech ends pass
 // Infinity to preserve the original timing input; none of these callbacks represents new physical input.
-const liveRoutes=[['native streaming',()=>streamingFixture(),0],['on-device live voice',()=>onDeviceLiveFixture(),1300]];
+const liveRoutes=[['native streaming',()=>streamingFixture(),400],['on-device live voice',()=>onDeviceLiveFixture(),1300]];
 // Two delayed bursts from the closed handle cannot concatenate into a fresh turn on either route.
 for(const [route,make,gapMs] of liveRoutes)
 test(`${route}: two bursts from the closed capture cannot create a turn, with or without an ack`,async()=>{
@@ -1044,7 +1061,7 @@ test(`native streaming${fullDuplex?'':' without echo cancellation'}: the ack's e
 // paused turn and its review stay, the same as a turn with no ack and no speech. Handed to the
 // session at the pause instead, its barge-in timer outlived the dropped speech and cut the turn.
 const PAUSE={complete:false,awaitingUserInput:{proposalId:'proposal-1',digest:'digest-1'}};
-for(const [route,make,gapMs,heldIn] of [['native streaming',()=>streamingFixture(),0,['the ack','its tail']],['native streaming without echo cancellation',()=>streamingFixture({fullDuplex:false}),0,['its tail']],['on-device live voice',()=>onDeviceLiveFixture(),1300,['the ack','its tail']]])
+for(const [route,make,gapMs,heldIn] of [['native streaming',()=>streamingFixture(),400,['the ack','its tail']],['native streaming without echo cancellation',()=>streamingFixture({fullDuplex:false}),400,['its tail']],['on-device live voice',()=>onDeviceLiveFixture(),1300,['the ack','its tail']]])
 for(const where of heldIn)
 test(`${route}: speech held in ${where} when the ack's turn pauses for owner review is dropped; the pause stays`,async()=>{
  const run=async label=>{
@@ -1110,7 +1127,7 @@ test(`speech socket${echoCancelled?'':' without echo cancellation'}: Mute during
   assert.equal(f.renderChat()?.state,'listening');assert.equal(f.renderChat()?.muted,'true');assert.deepEqual(n.mutes,[false,true],'still off after the approved reply');
   f.renderChat().toggleMute();await f.clock.flush();
   assert.equal(f.renderChat()?.muted,'false');assert.deepEqual(n.mutes,[false,true,false],'Unmute reopens the socket capture');
-  n.utter('And lunch on Friday.');await f.clock.advance(0);
+  n.utter('And lunch on Friday.');await f.clock.advance(400);
   assert.deepEqual(f.sendInputs.map(value=>value.text),['Add lunch with Sam tomorrow.','And lunch on Friday.'],'the paused correction is never sent; the reopened capture hears the next turn');
   assert.equal(n.stops,0,'the speech socket stays open throughout');
  }finally{await closeSocket(f);}
@@ -1205,7 +1222,7 @@ test(`speech socket with no ack (control): the same speech, Mute, the reply and 
 // With no speech, Mute, an owner-review pause, approval and Unmute run the same with the ack and with
 // no ack, on the speech socket and on-device.
 for(const [route,make,start,audio,gapMs] of [
- ['speech socket',()=>socketFixture(),socketTurn,f=>({start:()=>f.n.audioStart(),end:()=>f.n.complete(),capturing:()=>f.n.mutes.at(-1)===false,utter:text=>f.n.utter(text),spoken:()=>f.n.spoken}),0],
+ ['speech socket',()=>socketFixture(),socketTurn,f=>({start:()=>f.n.audioStart(),end:()=>f.n.complete(),capturing:()=>f.n.mutes.at(-1)===false,utter:text=>f.n.utter(text),spoken:()=>f.n.spoken}),400],
  ['on-device live voice',()=>onDeviceClosingFixture(false),f=>liveTurn(f,1300),f=>({start:()=>{},end:()=>{},capturing:()=>f.s.capturing,utter:text=>{const h=f.s.handlers;h.onSpeechStart(1);h.onSpeechEnd(2);h.onSegment(text);},spoken:()=>f.s.spoken()}),1300],
 ])
 test(`${route}: Mute during the ack's turn with no speech, an owner-review pause, approval and Unmute run as with no ack`,async()=>{
@@ -1356,7 +1373,7 @@ test('busy hold over the speech socket: an ack refused on a healthy socket is si
   n.audioStart();n.complete();await f.clock.flush();
   assert.equal(input.signal.aborted,false);assert.equal(seen.reply?.text,REPLY);assert.equal(f.renderChat()?.state,'listening');
   assert.deepEqual(n.mutes,[false,true,false],'reopened once, after the reply played');
-  n.utter('And lunch on Friday.');await f.clock.advance(0);
+  n.utter('And lunch on Friday.');await f.clock.advance(400);
   assert.equal(f.sends,2);assert.equal(f.sendInputs[1].text,'And lunch on Friday.');
  }finally{await closeSocket(f);}
 });
@@ -1380,7 +1397,7 @@ test('busy hold over the speech socket: a close the native mute refuses ends the
  const f=socketFixture(),n=f.n;n.closeMute=async()=>{throw Error('Voice is closed');};
  try{
   await f.shell.startVoice();await f.clock.flush();
-  n.utter('Add lunch with Sam tomorrow.');await f.clock.advance(0);await f.clock.flush();
+  n.utter('Add lunch with Sam tomorrow.');await f.clock.advance(400);await f.clock.flush();
   assert.equal(f.renderChat()?.state,'error');assert.match(f.renderChat()?.lines?.[0]?.t,/^The microphone stopped\./);
   assert.equal(f.sends,0);assert.deepEqual(n.spoken,[]);assert.ok(n.stops>=1,'the socket is retired');
   await f.clock.advance(5000);assert.deepEqual(n.mutes,[false,true],'no replacement capture');
@@ -1393,7 +1410,7 @@ test('busy hold over the speech socket: a close the native mute does not answer 
  const f=socketFixture(),n=f.n;n.closeMute=()=>new Promise(()=>{});
  try{
   await f.shell.startVoice();await f.clock.flush();
-  n.utter('Add lunch with Sam tomorrow.');await f.clock.advance(2499);
+  n.utter('Add lunch with Sam tomorrow.');await f.clock.advance(400);await f.clock.advance(2499);
   assert.equal(f.renderChat()?.state,'thinking');assert.equal(f.sends,0);assert.deepEqual(n.mutes,[false,true]);
   await f.clock.advance(1);await f.clock.flush();
   assert.equal(f.renderChat()?.state,'error');assert.match(f.renderChat()?.lines?.[0]?.t,/^The microphone stopped\./);
@@ -1490,7 +1507,7 @@ test(`paired busy hold: ${ending} during pending input close, then late native c
  const f=socketFixture(),n=f.n;let confirm,stopping;
  n.closeMute=()=>new Promise(resolve=>confirm=resolve);
  try{
-  await f.shell.startVoice();await f.clock.flush();n.utter('Add lunch with Sam tomorrow.');await f.clock.advance(0);
+  await f.shell.startVoice();await f.clock.flush();n.utter('Add lunch with Sam tomorrow.');await f.clock.advance(400);
   assert.equal(typeof confirm,'function');assert.equal(n.physicalActive,true,'the pending close is not falsely marked off');
   assert.equal(f.sends,0);assert.deepEqual(n.spoken,[]);
   stopping=act(f);await f.clock.flush();assert.equal(n.physicalActive,false,'terminal retirement disposes pending native input');
@@ -1527,7 +1544,7 @@ test('paired busy hold: healthy delayed reopen stays physically off until confir
   f.releaseReply();await f.clock.flush();n.audioStart();n.openMute=()=>new Promise(resolve=>confirm=resolve);n.complete();await f.clock.flush();
   assert.equal(n.physicalActive,false);assert.equal(f.sends,1);assert.deepEqual(n.mutes,[false,true,false]);
   confirm();await f.clock.flush();assert.equal(n.physicalActive,true);assert.equal(f.renderChat()?.state,'listening');
-  n.utter('And lunch on Friday.');await f.clock.advance(0);
+  n.utter('And lunch on Friday.');await f.clock.advance(400);
   assert.deepEqual(f.sendInputs.map(v=>v.text),['Add lunch with Sam tomorrow.','And lunch on Friday.']);assert.equal(n.physicalActive,false,'the next turn also closes input before send');
  }finally{confirm?.();await closeSocket(f);}
 });
@@ -1586,7 +1603,7 @@ test('busy hold over the speech socket: an idle Mute the native mute confirms st
   assert.equal(f.renderChat()?.state,'listening');assert.equal(f.renderChat()?.muted,'true');assert.equal(n.stops,0);
   f.renderChat().toggleMute();await f.clock.flush();
   assert.equal(f.renderChat()?.muted,'false');assert.deepEqual(n.mutes,[false,true,false],'Unmute reopens the socket capture');
-  n.utter('Add lunch with Sam tomorrow.');await f.clock.advance(0);
+  n.utter('Add lunch with Sam tomorrow.');await f.clock.advance(400);
   assert.equal(f.sends,1);assert.equal(f.sendInputs[0].text,'Add lunch with Sam tomorrow.');assert.equal(microphoneNotices(f),0);
  }finally{await closeSocket(f);}
 });

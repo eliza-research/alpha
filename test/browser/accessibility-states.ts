@@ -58,10 +58,7 @@ const legacyNotes = (name: string, steps: string[], shows?: string): State => ({
   },
 });
 /** Fixture screens that finish arriving on a timer: the control that marks them complete. */
-const ARRIVES: Record<string, string> = {
-  // The scan fixture finds its page after about a second; the result actions are the state.
-  'camera:scan': 'Add event',
-};
+const ARRIVES: Record<string, string> = {};
 const mock = (start: string, steps: string[] = [], shows?: string): State => ({
   name: `mock ${[start, ...steps].join(' > ')}`, shows,
   open: async (page, theme) => {
@@ -78,7 +75,6 @@ const mock = (start: string, steps: string[] = [], shows?: string): State => ({
 /** Primary views and the subviews, dialogs and failure states reachable without a provider. */
 export const LIVE_STATES: State[] = [
   live('Home'),
-  live('All apps', ['All apps']),
   live('Conversation', ['Open conversation']),
   live('Inbox (not connected)', ['Inbox']),
   live('Calendar', ['Calendar']),
@@ -92,7 +88,8 @@ export const LIVE_STATES: State[] = [
   live('Maps (no location)', ['Maps']),
   live('Notes (empty)', ['Notes']),
   legacyNotes('Notes new note', ['New note']),
-  legacyNotes('Notes trash', ['Open Trash'], 'notes-trash'),
+  legacyNotes('Notes new folder', ['New folder']),
+  legacyNotes('Notes recently deleted', ['New note', 'More', 'Delete', 'Recently deleted'], 'notes-trash'),
   live('Files', ['Files']),
   live('Workflows', ['Workflows']),
   live('Settings', ['Settings']),
@@ -109,13 +106,14 @@ export const LIVE_STATES: State[] = [
   live('Browser menu', ['Browser', 'Menu']),
   live('Browser address', ['Browser', 'Edit address']),
   live('Calendar alarms', ['Calendar', 'Clock alarms']),
-  live('Photos search', ['Photos', 'Search photos']),
-  legacyNotes('Notes search', ['Search notes']),
+  legacyNotes('Notes note menu', ['New note', 'More']),
   {name:'live Notes source document',open:async(page,theme)=>{await page.addInitScript(offline);await page.goto(theme ? `/?theme=${theme}` : '/');await openLegacyAttachment(page);await settle(page);}},
-  legacyNotes('Notes recording', ['Record and transcribe'], 'notes-recording'),
-  live('Files search', ['Files', 'Search files']),
+  legacyNotes('Notes recorder', ['Record and transcribe'], 'notes-recorder'),
   live('Workflows new automation', ['Workflows', 'New automation'], 'automations-detail'),
 ];
+
+/** The simulated browser inventory exists only in test-mocks builds. */
+export const BROWSER_APP_STATES: State[] = [live('Apps', ['Apps'])];
 
 /** The subview each fixture deep link must put on screen. */
 const SUBVIEW: Record<string, string> = {
@@ -123,7 +121,7 @@ const SUBVIEW: Record<string, string> = {
   'calendar:event': 'calendar-detail', 'calendar:invite': 'calendar-detail', 'calendar:add': 'calendar-detail', 'calendar:new': 'calendar-form',
   'browser:tabs': 'browser-tabs',
   'photos:viewer': 'photos-viewer',
-  'notes:editor': 'notes-editor', 'notes:rec': 'notes-recording', 'notes:voice': 'notes-voice',
+  'notes:editor': 'notes-editor', 'notes:voice': 'notes-voice',
   'files:folder': 'files-folder', 'files:preview': 'files-preview',
   'workflows:flow': 'workflows-detail', 'workflows:run': 'workflows-runOpen', 'workflows:failed': 'workflows-runOpen', 'workflows:new': 'workflows-builder',
 };
@@ -134,10 +132,10 @@ export const MOCK_STATES: State[] = [
   'inbox', 'inbox:mail', 'inbox:compose',
   'calendar', 'calendar:event', 'calendar:invite', 'calendar:month', 'calendar:add', 'calendar:new',
   'browser', 'browser:book', 'browser:tabs',
-  'camera', 'camera:video', 'camera:scan',
+  'camera', 'camera:video',
   'photos', 'photos:viewer', 'photos:albums', 'photos:search',
   'maps', 'maps:search', 'maps:place', 'maps:route', 'maps:nav',
-  'notes', 'notes:editor', 'notes:rec', 'notes:voice',
+  'notes', 'notes:editor', 'notes:voice',
   'files', 'files:folder', 'files:preview',
   'workflows', 'workflows:flow', 'workflows:run', 'workflows:failed', 'workflows:new',
   'settings', 'settings:accounts', 'settings:adding', 'settings:privacy',
@@ -156,12 +154,10 @@ export const MOCK_STATES: State[] = [
   mock('photos:viewer', ['Photo info']),
   mock('photos:viewer', ['Share photo']),
   mock('photos', ['Select photos']),
-  mock('notes', ['Search notes']),
+  mock('notes', ['New folder']),
   mock('notes', ['Open The case for on-device agents'], 'notes-link'),
   mock('notes:editor', ['Share note']),
-  mock('files', ['Search files']),
-  mock('files:folder', ['View and sort']),
-  mock('files:folder', ['Select files']),
+  mock('files:folder', ['Sort and more']),
   mock('files:preview', ['Rename']),
   mock('files:preview', ['Move file']),
   mock('files:preview', ['Share file']),
@@ -372,9 +368,19 @@ const launcher = (name: string, steps: string[] = [], shows?: string): State => 
     await showing(page, shows);
   },
 });
+export const INSTALLED_APPS_STATE: State = {
+  ...launcher('Apps', ['Apps']),
+  open: async (page, theme) => {
+    await launcher('Apps', ['Apps']).open(page, theme);
+    const drawer = page.getByRole('dialog', {name: 'Apps', exact: true});
+    await expect(drawer).toBeVisible();
+    await expect(drawer.getByRole('button', {name: 'Open Synthetic clock', exact: true})).toBeVisible();
+    await expect(drawer.getByRole('button', {name: 'Open Calendar', exact: true})).toHaveCount(0);
+  },
+};
 export const LAUNCHER_STATES: State[] = [
   launcher('Home'),
-  launcher('All apps', ['All apps']),
+  INSTALLED_APPS_STATE,
   launcher('Conversation', ['Open conversation']),
   // Every retained app view in the launcher presentation (its headers and system bars differ).
   launcher('Inbox', ['Inbox']),

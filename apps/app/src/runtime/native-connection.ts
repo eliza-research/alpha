@@ -1,7 +1,7 @@
 import {nativeGoogleWorkspaceReturnAvailable,type GoogleWorkspaceBinding,type GoogleWorkspaceReturnPort} from './google-workspace-return';
 import {cloudStorageSlot} from './cloud-deployment.generated.ts';
 import {browserCloudResidentEnabled,browserCloudManagedServiceAllowed} from './browser-cloud-resident';
-import {managedServiceRequest} from './managed-service-routes';
+import {managedServiceRequest,mapsRequestIdentity} from './managed-service-routes';
 import {ownerRouteAllowed} from './owner-route-policy';
 import {BrowserCloudConnection,BrowserCloudSignIn,clearBrowserCloudCredentialIfCurrent} from '../browser/cloud-connection';
 import {Capacitor} from '@capacitor/core';
@@ -154,7 +154,7 @@ export function createBrowserConnection(options:{fetch?:typeof fetch;secrets?:Br
       if(input.credentialReference)throw new Error('This credential requires its native or development host.');
       if(input.method==='GET'&&input.body!==undefined)throw new Error('Connection request failed');
       const headers=new Headers();
-      for(const [name,value] of Object.entries(input.headers||{})){if(!allowedHeaders.has(name.toLowerCase())||typeof value!=='string'||value.length>16384||/[\r\n]/.test(value))throw new Error('Connection request failed');headers.set(name,value);}
+      for(const [name,value] of Object.entries(input.headers||{})){if(typeof value!=='string'||!allowedHeaders.has(name.toLowerCase())&&!mapsRequestIdentity(name,value,url.pathname,input.method)||value.length>16384||/[\r\n]/.test(value))throw new Error('Connection request failed');headers.set(name,value);}
       if(input.body!==undefined)JSON.parse(input.body);
       const controller=new AbortController();requests.set(input.requestId,controller);
       try{

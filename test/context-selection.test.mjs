@@ -163,7 +163,8 @@ test('a saved capture identity is its id and a local counter, never the library 
  for(const bad of [undefined,{},{id:'native-camera-1'},{id:'native-camera-1',revision:''},{id:'/storage/DCIM/1.jpg',revision:'1'},{id:'has space',revision:'1'},{id:'native-camera-1',revision:7}])assert.equal(captures(bad),null);
  const adapter=readFileSync('apps/app/src/prototype/camera-adapter.ts','utf8');
  assert.match(adapter,/const captureSelection=createCaptureRevisions\(\);/);
- assert.equal((adapter.match(/nativePhotoSelection: ?captureSelection\(/g)||[]).length,2);
+ // Opening, favoriting, and patching an open item after an external change publish its identity.
+ assert.equal((adapter.match(/nativePhotoSelection: ?captureSelection\(/g)||[]).length,3);
  assert.doesNotMatch(adapter,/nativePhotoSelection: ?\{/,'every published photo identity goes through the local mapping');
 });
 test('the native adapter passes an item identity, not a generic wrapper, to the capture question',()=>{

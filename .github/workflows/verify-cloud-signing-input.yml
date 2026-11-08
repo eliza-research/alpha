@@ -1,0 +1,78 @@
+name: Verify Cloud APK signing input
+
+on:
+  workflow_call:
+    inputs:
+      signing_plan:
+        description: Reviewed JSON plan for the exact unsigned producer archive
+        required: true
+        type: string
+    outputs:
+      plan_sha256:
+        description: SHA-256 of the verified plan as supplied
+        value: ${{ jobs.admit.outputs.plan_sha256 }}
+
+permissions: {}
+
+jobs:
+  admit:
+    if: github.repository == 'eliza-research/alphaphone' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      actions: read
+      contents: read
+    outputs:
+      plan_sha256: ${{ steps.verify.outputs.plan_sha256 }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - name: Admit only the reviewed Cloud producer archive
+        id: verify
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SIGNING_PLAN: ${{ inputs.signing_plan }}
+        run: |
+          set -euo pipefail
+          umask 077
+          test "$GITHUB_REF" = refs/heads/main
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          directory=$(mktemp -d "$RUNNER_TEMP/alpha-cloud-input.XXXXXX")
+          printf '%s' "$SIGNING_PLAN" > "$directory/pins.json"
+          unset SIGNING_PLAN
+          jq -e '
+            (.producerRunId | type == "string" and test("^[1-9][0-9]{0,15}$")) and
+            (.artifactId | type == "string" and test("^[1-9][0-9]{0,15}$")) and
+            (.archiveBytes | type == "number" and floor == . and . > 0 and . <= 1500000000) and
+            (.alphaCommit | type == "string" and test("^[0-9a-f]{40}$")) and
+            (.archiveSHA256 | type == "string" and test("^[0-9a-f]{64}$"))
+          ' "$directory/pins.json" >/dev/null
+          run=$(jq -r .producerRunId "$directory/pins.json")
+          artifact=$(jq -r .artifactId "$directory/pins.json")
+          size=$(jq -r .archiveBytes "$directory/pins.json")
+          source=$(jq -r .alphaCommit "$directory/pins.json")
+          digest=$(jq -r .archiveSHA256 "$directory/pins.json")
+          gh api "repos/$GITHUB_REPOSITORY/compare/$source...$GITHUB_SHA" |
+            jq -e --arg source "$source" '
+              (.status == "ahead" or .status == "identical") and
+              .merge_base_commit.sha == $source' >/dev/null
+          gh api "repos/$GITHUB_REPOSITORY/actions/runs/$run" |
+            jq -e --arg source "$source" --arg repo "$GITHUB_REPOSITORY" '
+              .status == "completed" and .conclusion == "success" and
+              .head_sha == $source and .head_repository.full_name == $repo and
+              .path == ".github/workflows/resident-android.yml" and
+              .event == "workflow_dispatch"' >/dev/null
+          gh api "repos/$GITHUB_REPOSITORY/actions/artifacts/$artifact" |
+            jq -e --arg source "$source" --arg run "$run" --arg digest "sha256:$digest" --argjson size "$size" '
+              .expired == false and (.workflow_run.id | tostring) == $run and
+              .workflow_run.head_sha == $source and .digest == $digest and
+              .size_in_bytes == $size and
+              .name == ("resident-cloud-archive-" + $source + "-" + $run)' >/dev/null
+          gh api "repos/$GITHUB_REPOSITORY/actions/artifacts/$artifact/zip" > "$directory/producer.zip"
+          unset GH_TOKEN
+          test "$(wc -c < "$directory/producer.zip")" -eq "$size"
+          python3 -B scripts/ci/admit-cloud-signing-input.py "$directory/producer.zip" "$directory/pins.json"
+          plan_sha=$(sha256sum "$directory/pins.json" | cut -d ' ' -f 1)
+          echo "plan_sha256=$plan_sha" >> "$GITHUB_OUTPUT"

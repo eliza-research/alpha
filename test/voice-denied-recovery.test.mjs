@@ -19,6 +19,6 @@ test('the recorder renders that control and it only opens Android settings for t
  assert.match(adapter,/routeLabel: settingsChoice \? DENIED_SETTINGS_LABEL : /);
  assert.match(adapter,/changeRoute: \(\) => \{ if \(!owned\(\)\|\|stage !== 'ready' \|\| busy\) return; if \(settingsChoice\) \{ openSettings\(\); return; \}/);
  assert.match(adapter,/const openSettings = \(\) => \{ void appSettings\.openSettings\(\{ page: 'privacy' \}\)/);
- // The route slot is the button the template shows for it, named by its label.
- assert.match(template,/<sc-if value="\{\{notes\.rec\.routeChoice\}\}"><button aria-label="\{\{notes\.rec\.routeLabel\}\}" onClick="\{\{notes\.rec\.changeRoute\}\}"/);
+ // The old Notes clip recorder that rendered this slot is gone; Notes records with the Notes recorder.
+ assert.doesNotMatch(template,/notes\.rec\.routeChoice/);
 });

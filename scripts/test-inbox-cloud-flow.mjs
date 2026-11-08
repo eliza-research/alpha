@@ -4,7 +4,7 @@ import {mailSenderImage} from '../apps/app/src/runtime/mail-sender-image.ts';
 import {decodeMailPreview} from '../apps/app/src/runtime/mail-preview.ts';
 import {readGmailAccountChoice,saveGmailAccountChoice} from '../apps/app/src/runtime/gmail-account-selection.ts';
 import {GmailReadAhead} from '../apps/app/src/runtime/gmail-read-ahead.ts';
-import {presentHomeInboxCard} from '../apps/app/src/prototype/home-cards.ts';
+import {homeReadIsStale,presentHomeInboxCard} from '../apps/app/src/prototype/home-cards.ts';
 // Real Inbox adapter lifecycle with an account-bound provider fixture, no real mail.
 import assert from 'node:assert/strict';
 import {test} from 'node:test';
@@ -60,6 +60,7 @@ sandbox.inboxLocalStore=sandbox.secureConnectionStore;vm.createContext(sandbox);
 for(const [file,name] of [['inbox-provider-controls.ts','inboxProviderControls'],['inbox-drafts.ts','inboxDrafts'],['inbox-cloud-adapter.ts',['installInboxCloudAdapter','inboxAttention','openInbox','linkifyMailText','linkTextMismatch']]])vm.runInContext(await strip(file,name),sandbox);
 // Home's mail card is the shared overview presenter, read when Home renders.
 sandbox.presentHomeInboxCard=presentHomeInboxCard;
+sandbox.homeReadIsStale=homeReadIsStale;
 sandbox.installInboxCloudAdapter(Shell,views);const inboxAttentionNow=()=>sandbox.inboxAttention();
 const shell=new Shell();shell.componentDidMount();
 const swipes=new Map();const api={sw:fn=>{const handlers={down(){},up(){}};swipes.set(handlers,fn);return handlers;},swallowed:()=>false,get:()=>shell.st,isActive:()=>inboxActive,set:p=>shell.vset('inbox',p),toast:text=>toasts.push(text)};

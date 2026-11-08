@@ -55,8 +55,8 @@ const server = http.createServer(async (req, res) => {
       if (mode === 'outage') { status = 503; data = {}; }
       else if (req.url.startsWith('/api/v1/maps/')) {
        mapsRequests.push({ path:req.url,method:req.method,key:req.headers['idempotency-key'],body });
-       if(req.method==='POST') assert.match(req.headers['idempotency-key'],/^[a-f0-9-]{36}$/); else assert.equal(req.headers['idempotency-key'],undefined);
-       status=mode==='maps-unknown'?503:200;data=mode==='maps-unknown'?{code:'maps_admission_unknown'}:{};
+       if(req.method==='POST'||/^\/api\/v1\/maps\/tiles\/\d+\//.test(req.url)) assert.match(req.headers['idempotency-key'],/^[a-f0-9-]{36}$/); else assert.equal(req.headers['idempotency-key'],undefined);
+       status=mode==='maps-unknown'?503:200;data=mode==='maps-unknown'?{code:'maps_admission_unknown'}:/^\/api\/v1\/maps\/tiles\/\d+\//.test(req.url)?{encoding:'base64',contentType:'image/png',data:mode==='tile-invalid'?'not base64':Buffer.from([137,80,78,71]).toString('base64')}:{};
       }
       else if (req.url === '/api/v1/user') data = { success: true, data: { id, organization_id: sessionId } };
       else if (req.url.endsWith('/api/conversations') && req.method === 'POST') data = { conversation: { id: conversationId, title: body.title } };
@@ -165,6 +165,10 @@ try {
   assert.equal(mapsRequests.length,3);assert.notEqual(mapsRequests[1].key,mapsRequests[2].key);
   mode='maps-unknown';await assert.rejects(client.mapsRequest('routes',signal(),{from:{latitude:1,longitude:2}}),e=>e.code==='http'&&e.status===503);
   assert.equal(mapsRequests.length,4,'an unknown admission never retries');mode='ok';
+  assert.deepEqual(new Uint8Array(await client.mapsTile(2,1,3,signal())),new Uint8Array([137,80,78,71]));
+  assert.equal(mapsRequests.at(-1).method,'GET');assert.match(mapsRequests.at(-1).key,/^[a-f0-9-]{36}$/);
+  const tileCalls=mapsRequests.length;await assert.rejects(client.mapsTile(2,4,0,signal()),e=>e.code==='invalid-response');assert.equal(mapsRequests.length,tileCalls);
+  mode='tile-invalid';await assert.rejects(client.mapsTile(2,1,3,signal()),e=>e.code==='invalid-response');mode='ok';
   assert.equal((await client.identity(signal())).userId, id);
   assert.equal((await agents.listAgents(signal()))[0].id, id);
   assert.equal((await agents.listConversations(id, signal()))[0].id, conversationId);

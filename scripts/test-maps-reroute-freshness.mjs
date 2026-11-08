@@ -39,7 +39,7 @@ async function fixture() {
   initializeRegionalMaps:async()=>{}, regionalDiagnostics:()=>({}),
   MapsController:class extends MapsController { constructor(c,p){super(c,p,new SavedPlaces('freshness',storage),new Location());} },
   locationPermissionGranted:async()=>true,NativeMapsLocation:Location,BackgroundNavigation:Background,NavigationVoice:Voice,registerPlugin:()=>({}),Capacitor:{isNativePlatform:()=>false},isAndroid:false,
-  regionalMapsConfigured:false,initializeCloudMaps:async()=>{},regionalMap:()=>undefined,cloudMapsCoverage:()=>undefined,cloudMapsDiagnostics:()=>({}),globalBasemap:{attribution:'Fixture'},
+  regionalMapsConfigured:false,initializeCloudMaps:async()=>{},regionalMap:()=>undefined,cloudMapsCoverage:()=>undefined,cloudMapsBasemap:()=>undefined,cloudMapsDiagnostics:()=>({}),globalBasemap:{attribution:'Fixture'},
   mapsConnection:()=>({config,provider}),onMapsConnectionChange:()=>noop,
   bindAgentNavigation:options=>{surface=options.surface;return {dispose:noop,registered:()=>true};},residentMapsNavigationPort:{relay:false},
   publishMapsSelection:noop,clearMapsSelection:noop,mapsEventReturnOffered:()=>undefined,

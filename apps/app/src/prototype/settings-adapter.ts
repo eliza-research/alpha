@@ -22,8 +22,9 @@ import { gmailGrantLabel } from '../runtime/gmail-grants';
 import { clearCrashLog, describeCrashEntry, readCrashLog, recordCloudInferenceFailure, type CrashLog } from '../runtime/crash-log';
 import { buildDiagnostics, diagnosticsFileName, diagnosticsText } from '../runtime/diagnostics-export';
 import {planAdmission} from '../runtime/subscription-entitlement';
-import { exportVoiceTiming, exportRealtimeVoiceTiming } from '../runtime/voice-timing';
+import { exportVoiceTiming, exportRealtimeVoiceTiming, voiceStartupTiming } from '../runtime/voice-timing';
 import { readNativeVoiceTiming } from '../runtime/native-voice-turn';
+import { readNativeCloudStreamTiming } from '../runtime/cloud-voice';
 import { listenerStatus, openListenerSettings, pauseListener, turnOffListener, wakeListeningStopUnconfirmed, type ListenerStatus } from '../runtime/always-on-listener';
 import { reviewDataReset, type DataResetPlugin } from '@elizaos/capacitor-system/reset';
 import { androidRoleLabel, parseRoleStatuses } from '@elizaos/capacitor-system/settings';
@@ -275,13 +276,14 @@ export function installSettingsAdapter(Component: any, views: Bag) {
   }
   const changed = () => owner?.vset('settings', { capabilityReadAt: Date.now() });
   /** Only the existing authenticated local status; no provider/capability refresh. */
-  async function refreshInferenceFailure(){
+  async function refreshResidentDiagnostics(){
     inferenceAbort?.abort();const abort=inferenceAbort=new AbortController(),instance=owner;
     const timer=setTimeout(()=>abort.abort(),10000);
     try{
-      const failure=await connectionController.readCloudInferenceFailure(abort.signal);
+      const status=await connectionController.readResidentDiagnostics(abort.signal);
       if(abort.signal.aborted||owner!==instance||inferenceAbort!==abort)return;
-      if(recordCloudInferenceFailure(failure)){const problems=await readCrashLog();if(!abort.signal.aborted&&owner===instance&&inferenceAbort===abort){crashLog=problems;changed();}}
+      if(recordCloudInferenceFailure(status?.cloudInferenceFailure)){const problems=await readCrashLog();if(!abort.signal.aborted&&owner===instance&&inferenceAbort===abort){crashLog=problems;changed();}}
+      if(!abort.signal.aborted&&owner===instance&&inferenceAbort===abort)return status;
     }catch{/* Support diagnostics never replace the original inference failure. */}
     finally{clearTimeout(timer);if(inferenceAbort===abort)inferenceAbort=null;}
   }
@@ -345,8 +347,9 @@ export function installSettingsAdapter(Component: any, views: Bag) {
     if (diagnosticsBusy) return;
     const instance = owner, native = Capacitor.isNativePlatform(); diagnosticsBusy = true; changed();
     try {
-      await refreshInferenceFailure();
-      const [buildFacts, problems, roleState, nativeTiming] = await Promise.allSettled([native ? device.diagnosticsFacts() : Promise.resolve({}), readCrashLog(), native ? system.getStatus() : Promise.resolve({ roles: [] }), readNativeVoiceTiming()]);
+      const session=connectionController.getSnapshot().session;
+      const diagnostic=await refreshResidentDiagnostics();
+      const [buildFacts, problems, roleState, nativeTiming, nativeCloudTiming] = await Promise.allSettled([native ? device.diagnosticsFacts() : Promise.resolve({}), readCrashLog(), native ? system.getStatus() : Promise.resolve({ roles: [] }), readNativeVoiceTiming(), readNativeCloudStreamTiming()]);
       const value: Bag = buildFacts.status === 'fulfilled' ? buildFacts.value : {};
       const connection = connectionController.getSnapshot();
       const subscription = connection.residentSubscription;
@@ -367,9 +370,12 @@ export function installSettingsAdapter(Component: any, views: Bag) {
         } : undefined,
         // Per-turn voice latency kept on this device; buildDiagnostics copies timing fields only.
         realtimeVoiceTiming: exportRealtimeVoiceTiming(),
+        voiceStartup: voiceStartupTiming(),
         voiceTiming: (() => { try { return JSON.parse(exportVoiceTiming()); } catch { return null; } })(),
         // Native audio-clock voice latency (issue #395): timings, turn ids and hashes only.
         nativeVoiceTiming: nativeTiming.status === 'fulfilled' ? nativeTiming.value : null,
+        nativeCloudStreamTiming: nativeCloudTiming.status === 'fulfilled' ? nativeCloudTiming.value : null,
+        nativeInferenceTiming: connection.session===session ? diagnostic?.nativeInferenceTiming : undefined,
       });
       const text = diagnosticsText(report);
       if (native) {
@@ -778,7 +784,7 @@ export function installSettingsAdapter(Component: any, views: Bag) {
       out.stack.push(subpage('About', [
         group([info('Alpha Phone', version), ...installedRows(facts.appUpdatedAt).map(([label, val]) => info(label, val)), ...(developerTools?[info('Update channel (development)',updateChannelCheckEnabled?'Read-only check on · never downloads or installs':'Off')]:[])]),
         group([
-          row('Problem log', () => { api.set({ page: 'problems' }); void refresh(); void refreshInferenceFailure(); }, problemCount === null ? '' : problemCount ? String(problemCount) : 'None'),
+          row('Problem log', () => { api.set({ page: 'problems' }); void refresh(); void refreshResidentDiagnostics(); }, problemCount === null ? '' : problemCount ? String(problemCount) : 'None'),
           row(diagnosticsBusy ? 'Preparing diagnostics…' : 'Export diagnostics', () => void exportDiagnostics(api), '', { label: 'Export diagnostics' }),
           row('Open source licenses', () => { api.set({ page: 'licenses' }); void loadLicenses(changed); }),
         ]),

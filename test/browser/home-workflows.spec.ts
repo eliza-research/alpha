@@ -20,11 +20,9 @@ const flow=(id:string,name:string,active=true)=>({id,name,active,description:'',
 async function connect(page:Page){await page.evaluate(async()=>{const {connectionController:c}=await import('/src/runtime/connection-ui.tsx');await c.initialize();await c.startDevelopment('local');});}
 async function back(page:Page){await page.getByRole('button',{name:'Back to apps',exact:true}).click();}
 /** Home draws the workflows card only for enabled workflows (docs/daily-overview.md); without one,
- * Workflows opens from its app tile (on Home, or in All apps). */
+ * Workflows opens from its Home app tile (product views live on Home, not in Apps). */
 async function openWorkflows(page:Page){
- const direct=home(page).locator('[data-alpha-home-apps]').getByRole('button',{name:'Workflows',exact:true});
- if(await direct.count())await direct.click();
- else{await home(page).getByRole('button',{name:'All apps',exact:true}).click();await page.getByRole('dialog',{name:'All apps'}).getByRole('button',{name:'Workflows',exact:true}).click();}
+ await home(page).locator('[data-alpha-home-apps]').getByRole('button',{name:'Workflows',exact:true}).click();
  await expect(page.locator('html')).toHaveAttribute('data-active-view','workflows');
 }
 for(const theme of ['light','dark'])test(`Home lists only enabled workflow names, then opens the existing list: ${theme}`,async({page},info)=>{

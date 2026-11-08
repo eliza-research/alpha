@@ -676,7 +676,8 @@ export function installInboxCloudAdapter(Component: any, views: Record<string, B
     // The shared Home mail card from the page the user loaded in Inbox: account and read time, never a body.
     // A page dropped since (an account change or disconnect elsewhere) after a real read says when it last
     // updated, with the last count only in the accessible name.
-    const card=presentHomeInboxCard({now:Date.now(),pending,connected,disconnected,unchecked:!!binding&&!accountsChecked,
+    const now=Date.now();
+    const card=presentHomeInboxCard({now,pending,connected,disconnected,unchecked:!!binding&&!accountsChecked,
       loaded:cached?{unread:cached.messages.filter(m=>m.unread),more:cached.more,label:accounts.find(a=>a.connectionId===selected)?.label||restored?.label||'',readAt:cached.readAt}:null,
       failure:homeFailure?homeFailure==='revoked'?'revoked':'error':null,
       stale:binding&&attention.state==='stale'?{state:'stale',unread:attention.unread,...(attention.source?{source:attention.source}:{}),updatedAt:attention.updatedAt}:null});

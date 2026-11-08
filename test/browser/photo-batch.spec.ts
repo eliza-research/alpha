@@ -8,7 +8,7 @@ test('visible batch favorite, trash, undo and download journey persists exact se
  await page.getByRole('button',{name:'Photos',exact:true}).click();
  const tiles=page.locator('button[data-owned-media-id^="native-camera-"]');await expect(tiles).toHaveCount(3);
  const select=async()=>{await page.getByRole('button',{name:'Select photos',exact:true}).click();await tiles.nth(0).click();await tiles.nth(1).click();};
- await select();await page.getByRole('button',{name:'Favorite selected',exact:true}).click();await expect(page.getByText('2 favorited',{exact:true})).toBeVisible();
+ await select();await page.getByRole('button',{name:'Favorite selected',exact:true}).click();await expect(page.getByText('Added 2 to Favorites',{exact:true})).toBeVisible();
  await select();const selectedIds=await tiles.evaluateAll(nodes=>nodes.slice(0,2).map(n=>n.getAttribute('data-owned-media-id')!.replace(/^native-camera-/,'')));const expected=await page.evaluate(async(ids)=>{const {browserPhotoLibrary:p}=await import('/src/prototype/browser-camera.ts');return Promise.all(ids.map(async id=>{const row=await p.read({id});const bytes=await (await fetch(row.image)).arrayBuffer();return Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',bytes))).map(v=>v.toString(16).padStart(2,'0')).join('');}));},selectedIds);expect(new Set(expected).size).toBe(2);const downloading=page.waitForEvent('download');await page.getByRole('button',{name:'Share selected',exact:true}).click();await page.getByRole('dialog',{name:'Share',exact:true}).getByRole('button',{name:'Save locally',exact:true}).click();const download=await downloading;expect(download.suggestedFilename()).toBe('Alpha photos.zip');const path=await download.path();const entries=JSON.parse(execFileSync('python3',['-c','import zipfile,json,sys,hashlib; z=zipfile.ZipFile(sys.argv[1]); assert z.testzip() is None; print(json.dumps({n:hashlib.sha256(z.read(n)).hexdigest() for n in z.namelist()}))',path!],{encoding:'utf8'}));expect(entries).toEqual({'Alpha-photo-1.jpg':expected[0],'Alpha-photo-2.jpg':expected[1]});
  await page.getByRole('button',{name:'Delete selected',exact:true}).click();await expect(tiles).toHaveCount(1);await page.getByRole('button',{name:'Undo',exact:true}).click();await expect(tiles).toHaveCount(3);
  await page.reload();const result=await page.evaluate(async()=>{const {browserPhotoLibrary:p}=await import('/src/prototype/browser-camera.ts');return {summary:await p.summary(),count:(await p.list()).items.length};});expect(result).toMatchObject({summary:{favorites:2,trash:0},count:3});
@@ -34,20 +34,24 @@ test('batch controls remain reachable above the assistant pill in compact light 
  await page.setViewportSize({width:360,height:640});
  for(const theme of ['light','dark']){
   await page.goto('/?theme='+theme);await page.getByRole('button',{name:'Photos',exact:true}).click();await page.getByRole('button',{name:'Select photos',exact:true}).click();await page.locator('button[data-owned-media-id^="native-camera-"]').first().click();
-  await page.screenshot({path:info.outputPath('batch-'+theme+'.png')});await page.getByRole('button',{name:'Favorite selected',exact:true}).click();await expect(page.getByText('1 favorited',{exact:true})).toBeVisible();
+  await page.screenshot({path:info.outputPath('batch-'+theme+'.png')});// Favorite toggles: the second theme run finds the tile already a favourite and removes it.
+  await page.getByRole('button',{name:/^(Favorite|Unfavorite) selected$/}).click();await expect(page.getByText(/^(Added 1 to|Removed 1 from) Favorites$/)).toBeVisible();
  }
 });
 
-test('cancelling selection returns to the Photos tab it started from',async({page})=>{
+test('cancelling selection returns to the Library; Albums has no Select',async({page})=>{
  await page.getByRole('button',{name:'Photos',exact:true}).click();
- for(const tab of ['Albums','Library']){
-  await page.getByRole('button',{name:tab,exact:true}).click();
-  await expect(page.getByRole('button',{name:tab,exact:true})).toHaveAttribute('aria-pressed','true');
-  await page.getByRole('button',{name:'Select photos',exact:true}).click();
-  await expect(page.getByRole('button',{name:'Cancel selection',exact:true})).toBeVisible();
-  await page.getByRole('button',{name:'Cancel selection',exact:true}).click();
-  await expect(page.getByRole('button',{name:tab,exact:true})).toHaveAttribute('aria-pressed','true');
- }
+ await page.getByRole('button',{name:'Albums',exact:true}).click();
+ await expect(page.getByRole('button',{name:'Albums',exact:true})).toHaveAttribute('aria-pressed','true');
+ await expect(page.getByRole('button',{name:'Select photos',exact:true})).toHaveCount(0);
+ await page.getByRole('button',{name:'Library',exact:true}).click();
+ await page.getByRole('button',{name:'Select photos',exact:true}).click();
+ await expect(page.getByRole('heading',{name:'Select items',exact:true})).toBeVisible();
+ await page.getByRole('button',{name:'Select all',exact:true}).click();
+ await expect(page.getByRole('heading',{name:'3 selected',exact:true})).toBeVisible();
+ await page.getByRole('button',{name:'Deselect all',exact:true}).click();
+ await page.getByRole('button',{name:'Cancel selection',exact:true}).click();
+ await expect(page.getByRole('button',{name:'Library',exact:true})).toHaveAttribute('aria-pressed','true');
  expect(await page.evaluate(async()=>{
   const {browserPhotoLibrary}=await import('/src/prototype/browser-camera.ts');
   return {count:(await browserPhotoLibrary.list()).items.length,trash:(await browserPhotoLibrary.summary()).trash};

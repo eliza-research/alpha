@@ -23,7 +23,7 @@ test('landscape lays Home and the composer side by side and keeps every Home con
   expect(homeBox.x + homeBox.width).toBeLessThanOrEqual(composerBox.x + 1);
   // Home draws no card without something to show (docs/daily-overview.md); the date line stands in the row.
   await expect(page.locator('[data-alpha-home-date]')).toBeVisible();
-  for (const name of ['Settings', 'Notes', 'Calendar', 'All apps'])
+  for (const name of ['Settings', 'Notes', 'Calendar', 'Apps'])
     await reachable(page, page.getByRole('button', { name, exact: true }));
   await page.screenshot({ path: info.outputPath('landscape-home.png') });
 
@@ -41,10 +41,10 @@ test('landscape lays Home and the composer side by side and keeps every Home con
   await reachable(page, page.getByRole('button', { name: 'Settings', exact: true }));
   // And back to landscape with the drawer open: its search and rows stay reachable too.
   await page.setViewportSize({ width: 915, height: 412 });
-  await page.getByRole('button', { name: 'All apps', exact: true }).click();
-  const drawer = page.getByRole('dialog', { name: 'All apps', exact: true });
+  await page.getByRole('button', { name: 'Apps', exact: true }).click();
+  const drawer = page.getByRole('dialog', { name: 'Apps', exact: true });
   await reachable(page, drawer.getByRole('searchbox', { name: 'Search apps', exact: true }));
-  await reachable(page, drawer.getByRole('button', { name: 'Close all apps', exact: true }));
+  await reachable(page, drawer.getByRole('button', { name: 'Close apps', exact: true }));
   await page.screenshot({ path: info.outputPath('landscape-drawer.png') });
 });
 

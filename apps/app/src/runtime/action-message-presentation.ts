@@ -1,6 +1,17 @@
 import {systemNoticeText} from '../../../../.eliza/client-features/packages/core/src/types/system-notice.ts';
 /** Display only. Stored messages, proposals and journal receipts are never rewritten. */
 type Message = Record<string, any>;
+/** Only the service-authored check-in suffix is presentation markup. */
+export function checkinDisplayText(message: {role?:unknown;source?:unknown;text?:unknown}): string | undefined {
+  if(message.role!=='assistant'||message.source!=='lifeops-checkin'||typeof message.text!=='string')return;
+  const text=message.text;
+  const block=/\n\[CHOICE:checkin-([a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12}) id=\1\]\r?\nAll good=All good\r?\ndetails \1=Show details\r?\nsnooze \1=Snooze\r?\n\[\/CHOICE\][ \t\r\n]*$/i.exec(text);
+  if(!block)return;
+  const prose=text.slice(0,block.index);
+  // Quoted examples and ambiguous repeated blocks remain authored text.
+  if(!prose.trim()||/^[ \t]*(?:```|~~~)|\[\/?CHOICE\b/gim.test(prose))return;
+  return prose.trimEnd();
+}
 const REVIEW_TEXT = 'Review this request on your phone before it can run.';
 export function browserNavigationSummary(url: string): string {
   const destination = new URL(url);

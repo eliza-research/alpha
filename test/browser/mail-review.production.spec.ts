@@ -220,14 +220,13 @@ test('Android: Home withholds the old count until a changed account is reverifie
   await androidWithMailbox(page, true);
   await connected(page);
   await button(page, 'Inbox').click();
-  // An unread row may carry an unread mark in its name.
-  const row = page.getByRole('button', { name: /Synthetic sender, Harbour schedule/ });
-  await expect(row).toBeVisible({ timeout: 30_000 });
+  await expect(button(page, 'Unread, Synthetic sender, Harbour schedule')).toBeVisible({ timeout: 30_000 });
   await button(page, 'Back to apps').click();
   const card = page.locator('[data-alpha-layer="home"] [data-alpha-home-inbox]');
   // The read time is in the card's accessible description, not drawn (docs/daily-overview.md).
   await expect(card).toHaveAttribute('aria-description', /Updated \d{1,2}:\d{2}/);
   await expect(card).not.toHaveAttribute('aria-description', /Not updated since/);
+  await expect(card).toHaveAccessibleName('Open Inbox: 1 unread email');
   // Hold the new account lookup: the old read cannot become current merely because
   // Settings announced a change. Home now refreshes its authorized source itself.
   const searches = (await fixture(page)).searches;
@@ -252,10 +251,11 @@ test('Android: Home withholds the old count until a changed account is reverifie
   // The read time is in the card's accessible description, not drawn (docs/daily-overview.md).
   await expect(card).toHaveAttribute('aria-description', /Updated \d{1,2}:\d{2}/);
   await expect(card).not.toHaveAttribute('aria-description', /Not updated since/);
+  await expect(card).toHaveAccessibleName('Open Inbox: 1 unread email');
   await expect.poll(async()=>(await fixture(page)).searches).toBeGreaterThan(searches);
   // The current card still opens the same verified mailbox.
   await card.click();
-  await expect(row).toBeVisible({ timeout: 30_000 });
+  await expect(button(page, 'Unread, Synthetic sender, Harbour schedule')).toBeVisible({ timeout: 30_000 });
   expect((await fixture(page)).unexpected).toEqual([]);
 });
 

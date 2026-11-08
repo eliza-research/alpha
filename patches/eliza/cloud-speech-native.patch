@@ -1,6 +1,6 @@
 --- /dev/null
 +++ b/plugins/plugin-local-inference/native/android/speech-bridge/src/main/java/ai/eliza/voice/SpeechStreamBridgePlugin.java
-@@ -0,0 +1,221 @@
+@@ -0,0 +1,257 @@
 +package ai.eliza.voice;
 +
 +import android.Manifest;
@@ -11,6 +11,7 @@
 +import android.media.audiofx.AcousticEchoCanceler;
 +import android.os.Handler;
 +import android.os.Looper;
++import android.os.SystemClock;
 +import ai.eliza.voice.AudioTrackSpeechOutput;
 +import ai.eliza.voice.SpeechAudioFocus;
 +import ai.eliza.voice.SpeechAudioFocusPolicy;
@@ -42,6 +43,7 @@
 + protected String diagnosticFormat(){return "eliza-cloud-stream-timing-v1";}
 + private static final MediaType JSON=MediaType.get("application/json; charset=utf-8");
 + private static final String BASE="/api/v1/voice/speech/";
++ private static final long HTTP_STARTUP_MS=12_000,RELAY_STARTUP_MS=8_000;
 + private final Handler main=new Handler(Looper.getMainLooper());
 + private final ExecutorService control=Executors.newSingleThreadExecutor();
 + private final ExecutorService media=Executors.newSingleThreadExecutor();
@@ -87,7 +89,7 @@
 +  final String id=call.getString("sessionId"),environment=call.getString("environment"),credential=call.getString("credentialId");
 +  try{UUID.fromString(id);if(credential==null||credential.length()>128)throw new IllegalArgumentException();}catch(Exception invalid){call.reject("Invalid speech session");return;}
 +  final Session own=new Session(id,environment,credential,authorityEpoch(),call);
-+  synchronized(this){if(session!=null||destroyed||!foreground){call.reject("Voice is already active or unavailable");return;}session=own;}mark(own,"start");main.postDelayed(own.deadline,12000);
++  synchronized(this){if(session!=null||destroyed||!foreground){call.reject("Voice is already active or unavailable");return;}session=own;}mark(own,"start");own.scheduleStartupDeadline();
 +  submit(control,()->{try{
 +   own.check();if(focus.callActive())throw new IOException("call-active");
 +   own.origin=cloudOrigin(environment);
@@ -104,16 +106,21 @@
 +   String address=minted.getString("wsUrl"),expected=own.origin.replaceFirst("^https:","wss:")+BASE+"ws?sessionId="+own.serverId;
 +   if(!expected.equals(address))throw new IOException("Invalid speech destination");
 +   own.wireToken=minted.getString("token");if(own.wireToken.isEmpty()||own.wireToken.length()>6144)throw new IOException("Invalid speech token");
-+   own.check();own.socket=http.newWebSocket(new Request.Builder().url(address).build(),new RelayListener(own));
++   own.armRelayStartup();own.check();mark(own,"relay-start");
++   WebSocket socket=http.newWebSocket(new Request.Builder().url(address).build(),new RelayListener(own));
++   own.socket=socket;if(own.closed.get())socket.cancel();
 +  }catch(Exception failure){fail(own,failure instanceof CloudHttpFailure?"cloud-http-"+((CloudHttpFailure)failure).status:failure instanceof java.net.UnknownHostException?"dns":failure instanceof java.net.SocketTimeoutException?"timeout":failure instanceof javax.net.ssl.SSLException?"tls":"connect");}},()->fail(own,"closed"));
 + }
 + private static final class CloudHttpFailure extends IOException {final int status;CloudHttpFailure(int status){super("Cloud speech HTTP refused");this.status=status;}}
 + private JSONObject post(Session own,String path,JSONObject body)throws Exception{
 +  own.check();mark(own,path+"-start");Request request=new Request.Builder().url(own.origin+BASE+path).header("Authorization","Bearer "+own.token).post(RequestBody.create(body.toString(),JSON)).build();
 +  Call pending=http.newCall(request);own.pending=pending;
-+  try(Response response=pending.execute()){
-+   own.check();own.httpStatus=response.code();mark(own,path+"-headers");if(!response.isSuccessful())throw new CloudHttpFailure(response.code());ResponseBody bytes=response.body();if(bytes==null||bytes.contentLength()>32768)throw new IOException("Invalid speech response");
-+   try(java.io.InputStream in=bytes.byteStream()){java.io.ByteArrayOutputStream out=new java.io.ByteArrayOutputStream();byte[] chunk=new byte[4096];int n;while((n=in.read(chunk))!=-1){if(out.size()+n>32768)throw new IOException("Oversized speech response");out.write(chunk,0,n);}mark(own,path+"-body");return new JSONObject(out.toString(StandardCharsets.UTF_8.name()));}
++  try{
++   own.check();
++   try(Response response=pending.execute()){
++    own.check();own.httpStatus=response.code();mark(own,path+"-headers");if(!response.isSuccessful())throw new CloudHttpFailure(response.code());ResponseBody bytes=response.body();if(bytes==null||bytes.contentLength()>32768)throw new IOException("Invalid speech response");
++    try(java.io.InputStream in=bytes.byteStream()){java.io.ByteArrayOutputStream out=new java.io.ByteArrayOutputStream();byte[] chunk=new byte[4096];int n;while((n=in.read(chunk))!=-1){if(out.size()+n>32768)throw new IOException("Oversized speech response");out.write(chunk,0,n);}mark(own,path+"-body");return new JSONObject(out.toString(StandardCharsets.UTF_8.name()));}
++   }
 +  }finally{own.pending=null;}
 + }
 + @PluginMethod public void stopCloudSpeech(PluginCall call){Session own=owned(call);if(own==null){call.resolve();return;}detach(own);queueCleanup(own,call::resolve);}
@@ -145,14 +152,24 @@
 +  try{own.send(new JSONObject().put("t","cancel").put("id",value.id));}catch(Exception ignored){}
 +  main.post(()->{if(session==null||session==own)focus.release();});return value;
 + }
++ private static String preReadyError(JSONObject row)throws IOException{
++  Object code=row.opt("code");boolean hasReason=row.has("reason");
++  boolean known="unauthorized".equals(code)||"protocol".equals(code)||"unavailable".equals(code)||"closed".equals(code);
++  if(!known||row.length()!=(hasReason?3:2)||
++    hasReason&&(!"unavailable".equals(code)||!"insufficient_credits".equals(row.opt("reason"))))throw new IOException("Invalid speech startup error");
++  return hasReason?"insufficient_credits":(String)code;
++ }
 + private final class RelayListener extends WebSocketListener {
 +  final Session own;RelayListener(Session own){this.own=own;}
 +  @Override public void onOpen(WebSocket socket,Response response){try{own.socket=socket;own.check();mark(own,"ws-open");own.send(new JSONObject().put("t","hello").put("token",own.wireToken).put("errorReasons",true));own.wireToken=null;}catch(Exception error){fail(own,"connect");}}
 +  @Override public void onMessage(WebSocket socket,String text){
 +   try{own.check();if(text.getBytes(StandardCharsets.UTF_8).length>8192)throw new IOException("Oversized speech control");JSONObject row=new JSONObject(text);String type=row.getString("t");
 +    if("ready".equals(type)){if(own.ready||row.getInt("version")!=1||row.getInt("sampleRate")!=16000||row.getInt("channels")!=1)throw new IOException("Invalid speech format");own.ready=true;mark(own,"ready");main.postDelayed(()->retire(own,"expired"),Math.max(1,own.expiresAt-System.currentTimeMillis()));return;}
-+    if(!own.ready)throw new IOException("Speech is not ready");
-+    if("stt".equals(type)){JSONObject data=row.getJSONObject("event");String event=data.getString("type");if("connected".equals(event)){if(own.providerReady)throw new IOException("Duplicate provider readiness");own.providerReady=true;mark(own,"stt-connected");submit(media,()->{try{own.startCapture();main.removeCallbacks(own.deadline);}catch(Exception failed){fail(own,"capture");}},()->fail(own,"closed"));return;}String transcript=data.optString("transcript","");if(transcript.length()>16384)throw new IOException("Transcript too large");
++    if(!own.ready){
++     if("error".equals(type)){fail(own,preReadyError(row));return;}
++     throw new IOException("Speech is not ready");
++    }
++    if("stt".equals(type)){JSONObject data=row.getJSONObject("event");String event=data.getString("type");if("connected".equals(event)){if(own.providerReady)return;own.providerReady=true;mark(own,"stt-connected");submit(media,()->{try{own.startCapture();main.removeCallbacks(own.deadline);}catch(Exception failed){fail(own,"capture");}},()->fail(own,"closed"));return;}String transcript=data.optString("transcript","");if(transcript.length()>16384)throw new IOException("Transcript too large");
 +     if("start-of-turn".equals(event)||"turn-resumed".equals(event)){mark(own,"speech-start");emit(own,"speech-start",new JSObject());}
 +     else if("end-of-turn".equals(event)){mark(own,"asr-final");emit(own,"speech-end",new JSObject().put("text",transcript).put("final",true));}
 +     else if("transcript-update".equals(event)||"eager-end-of-turn".equals(event))emit(own,"transcript",new JSObject().put("text",transcript).put("final",false));
@@ -179,9 +196,28 @@
 + private final class Session {
 +  final String id,environment,credential;final long epoch,started=System.nanoTime(),diagnosticId=++timingSequence;final PluginCall startCall;final AtomicBoolean closed=new AtomicBoolean(),startSettled=new AtomicBoolean();
 +  volatile String origin,token,wireToken,serverId;volatile long expiresAt,sentFrames,sentBytes,receivedFrames,receivedBytes;volatile int httpStatus;volatile boolean ready,providerReady,muted,speakerDraining;volatile long muteGeneration;volatile Call pending;volatile WebSocket socket;volatile AudioRecord recorder;volatile AcousticEchoCanceler echo;volatile Thread capture;volatile Utterance spoken;
-+  final Runnable deadline=()->fail(this,"startup-timeout");
++  final long startupStartedMs=SystemClock.elapsedRealtime();
++  volatile long startupEndsMs=startupStartedMs+HTTP_STARTUP_MS;
++  final Runnable deadline=this::expireStartup;
++  synchronized void scheduleStartupDeadline(){
++   main.removeCallbacks(deadline);
++   if(!closed.get())main.postDelayed(deadline,Math.max(0,startupEndsMs-SystemClock.elapsedRealtime()));
++   if(closed.get())main.removeCallbacks(deadline);
++  }
++  synchronized void armRelayStartup()throws IOException{
++   check();long now=SystemClock.elapsedRealtime(),leaseMs=expiresAt-System.currentTimeMillis();
++   if(now>=startupEndsMs||leaseMs<=0)throw new java.net.SocketTimeoutException("Speech startup window expired");
++   // Mint must complete on time. Relay startup is then bounded by both phase and session expiry.
++   startupEndsMs=Math.min(startupStartedMs+HTTP_STARTUP_MS+RELAY_STARTUP_MS,now+Math.min(RELAY_STARTUP_MS,leaseMs));
++   scheduleStartupDeadline();
++  }
++  synchronized void expireStartup(){
++   if(closed.get()||startSettled.get())return;
++   if(SystemClock.elapsedRealtime()<startupEndsMs)scheduleStartupDeadline();
++   else fail(this,"startup-timeout");
++  }
 +  Session(String id,String environment,String credential,long epoch,PluginCall call){this.id=id;this.environment=environment;this.credential=credential;this.epoch=epoch;this.startCall=call;}
-+  void check()throws IOException{if(closed.get()||session!=this||destroyed||!foreground||epoch!=authorityEpoch())throw new IOException("Speech session changed");}
++  void check()throws IOException{if(closed.get()||session!=this||destroyed||!foreground||epoch!=authorityEpoch())throw new IOException("Speech session changed");if(!startSettled.get()&&SystemClock.elapsedRealtime()>=startupEndsMs)throw new java.net.SocketTimeoutException("Speech startup window expired");}
 +  void send(JSONObject value)throws IOException{check();WebSocket peer=socket;if(peer==null||peer.queueSize()>64000||!peer.send(value.toString()))throw new IOException("Speech transport unavailable");}
 +  void startCapture()throws Exception{
 +   check();if(getContext().checkSelfPermission(Manifest.permission.RECORD_AUDIO)!=PackageManager.PERMISSION_GRANTED)throw new SecurityException("Microphone permission denied");
@@ -190,7 +226,7 @@
 +   recorder=next;if(next.getState()!=AudioRecord.STATE_INITIALIZED)throw new IOException("Capture unavailable");if(cancel){echo=AcousticEchoCanceler.create(next.getAudioSessionId());if(echo!=null)echo.setEnabled(true);}boolean echoEnabled=echo!=null&&echo.getEnabled();
 +   check();next.startRecording();if(next.getRecordingState()!=AudioRecord.RECORDSTATE_RECORDING)throw new IOException("Capture unavailable");
 +   capture=new Thread(()->{byte[] frame=new byte[1024];long levelAt=0;try{while(!closed.get()&&!muted&&recorder==next){check();int count=next.read(frame,0,frame.length,AudioRecord.READ_BLOCKING);if(count<=0||count%2!=0)throw new IOException("Microphone stopped");long now=System.nanoTime();if(now-levelAt>50_000_000L){levelAt=now;emit(this,"level",new JSObject().put("peak",muted?0:CloudSpeechWire.peak(frame,count)));}if(!muted){WebSocket peer=socket;if(peer==null||peer.queueSize()>64000||!peer.send(ByteString.of(frame,0,count)))throw new IOException("Speech upload stalled");sentFrames++;sentBytes+=count;}}}catch(Exception error){if(!closed.get()&&!muted&&recorder==next)fail(this,"capture");}finally{Arrays.fill(frame,(byte)0);}},"eliza-cloud-speech-microphone");capture.setDaemon(true);capture.start();
-+   emit(this,"ready",new JSObject().put("sampleRate",16000).put("echoCancelled",echoEnabled));if(startSettled.compareAndSet(false,true))startCall.resolve(new JSObject().put("sessionId",id).put("sampleRate",16000).put("echoCancelled",echoEnabled));
++   synchronized(this){check();emit(this,"ready",new JSObject().put("sampleRate",16000).put("echoCancelled",echoEnabled));if(startSettled.compareAndSet(false,true))startCall.resolve(new JSObject().put("sessionId",id).put("sampleRate",16000).put("echoCancelled",echoEnabled));}
 +  }
 + }
 + private static final class Utterance {final String id;final long started=System.nanoTime();volatile boolean cancelled,finished;volatile long audible;volatile StreamingSpeechPlayback playback;Utterance(Session own,String id){this.id=id;}}

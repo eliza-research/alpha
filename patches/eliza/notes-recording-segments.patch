@@ -1,0 +1,37 @@
+diff --git a/plugins/plugin-local-inference/native/android/src/main/java/ai/eliza/voice/LocalVoiceRecording.java b/plugins/plugin-local-inference/native/android/src/main/java/ai/eliza/voice/LocalVoiceRecording.java
+index e3b9855..f53b3fd 100644
+--- a/plugins/plugin-local-inference/native/android/src/main/java/ai/eliza/voice/LocalVoiceRecording.java
++++ b/plugins/plugin-local-inference/native/android/src/main/java/ai/eliza/voice/LocalVoiceRecording.java
+@@ -9,6 +9,7 @@ import java.io.File;
+ import java.io.IOException;
+ import java.util.UUID;
+ import java.util.function.Consumer;
++import java.util.function.Function;
+ import org.json.JSONException;
+ import org.json.JSONObject;
+ 
+@@ -35,6 +36,7 @@ public final class LocalVoiceRecording {
+  private long startedAt;
+  private long durationMs;
+  private Runnable deadline;
++ private volatile Function<String,File> also;
+ 
+  /** Deletes drafts a previous process left behind under {@code prefix}. */
+  public LocalVoiceRecording(Context context,String prefix,Consumer<JSONObject> events){
+@@ -85,9 +87,15 @@ public final class LocalVoiceRecording {
+   try{events.accept(stop());}
+   catch(RuntimeException error){JSONObject result=new JSONObject();put(result,"recordingId",ownedId);put(result,"status","failed");put(result,"message","Recording could not be saved");events.accept(result);}
+  }
++ /**
++  * The host's own finished recordings that transcription may also select by id, for example the
++  * finished segments of a longer recording the host keeps itself. The source returns null for an
++  * id it does not own; a draft with the same id is always chosen first.
++  */
++ public void selectAlso(Function<String,File> source){also=source;}
+  /** The finished draft for {@code recordingId}, or null while recording or after it changed. */
+  public synchronized File selected(String recordingId){
+-  if(recorder!=null||file==null||!id.equals(recordingId))return null;
++  if(recorder!=null||file==null||!id.equals(recordingId)){Function<String,File> other=also;return other==null||recordingId==null?null:other.apply(recordingId);}
+   return file;
+  }
+  /** Duration of the finished draft, in milliseconds. */

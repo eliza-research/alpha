@@ -11,7 +11,7 @@ const {localAgentPathAllowed}=await import('../scripts/local-agent-dev-bridge.ts
 const source=path=>readFileSync(new URL('../apps/app/src/'+path,import.meta.url),'utf8');
 
 function warmer(context){
- const text=source('runtime/connection-ui.tsx'),method=text.slice(text.indexOf('  warmInference(){'),text.indexOf('  async readCloudInferenceFailure(')).trim().replace(/,$/,'');
+ const text=source('runtime/connection-ui.tsx'),method=text.slice(text.indexOf('  warmInference(){'),text.indexOf('  async readResidentDiagnostics(')).trim().replace(/,$/,'');
  assert.ok(method.startsWith('warmInference(){'));
  vm.runInNewContext(stripTypeScriptTypes('function '+method,{mode:'strip'})+'\nglobalThis.warm=warmInference;',context);
  return context.warm;
