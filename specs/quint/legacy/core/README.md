@@ -96,3 +96,21 @@ insufficient finite window.
 The controlled adapter supplies versioned database results and write
 acknowledgements. Physical database isolation, multi-key eviction, TTL
 scheduling and other mutation wrappers remain separate source obligations.
+
+## Approval service source traces
+
+The approval driver executes the pinned `ApprovalService` and its registered
+task worker against a controlled clock and deferred task-store operations.
+Thirteen schedules compare 81 checkpoints in the failure-enabled profile.
+They cover both selector orders, timeout ownership, failed callbacks, typed
+decline, cancellation and service stop. The callback-success schedules
+also fall within the race profile. The model's transition relation and
+configured checks remain the original translation.
+
+Task lookup and deletion are controlled ports. Task creation races, worker
+restart, role admission, task-store failures and fire-and-forget approvals
+remain outside this source campaign.
+
+```sh
+node --test test/quint-core-approval-service.test.mjs
+```

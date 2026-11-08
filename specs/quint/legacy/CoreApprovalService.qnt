@@ -81,6 +81,23 @@ module CoreApprovalService {
   action rawStep = Model::Next
   val safety = Model::TypeOK and Model::AtMostOneCallback and Model::ResultAgrees and Model::SingleOwner
   temporal CheckedTemporal = Model::Fairness implies Model::SettlesOnce and Model::CallerSettles
+  // Source driver names expose the same transitions and prefix monitor.
+  val state = Model::s
+  val settlementStable = Model::settledOnce
+  action fire = Model::Fire
+  action timeoutTask = Model::TGetTask
+  action timeoutCallbackDone = Model::TCallbackDone
+  action timeoutCallbackFails = Model::TCallbackFails
+  action timeoutResolve = Model::TResolve
+  action timeoutDelete = Model::TDelete
+  action deliver(selector: int): bool = Model::Deliver(selector)
+  action selectionTask(selector: int): bool = Model::SGetTask(selector)
+  action selectionCallbackDone(selector: int): bool = Model::SCallbackDone(selector)
+  action selectionCallbackFails(selector: int): bool = Model::SCallbackFails(selector)
+  action selectionDelete(selector: int): bool = Model::SDelete(selector)
+  action cancel = Model::Cancel
+  action cancelDelete = Model::CancelDelete
+  action stop = Model::Stop
   run selectionFailureSettlesTest = init.then(Model::Deliver(1)).then(Model::SGetTask(1)).then(Model::SCallbackFails(1))
     .then(Model::Deliver(2)).then(Model::SGetTask(2)).then(Model::SDelete(2))
     .expect(Model::s.result == "rejected" and Model::s.selRuns == 1 and Model::settledOnce and safety)
