@@ -26,7 +26,7 @@ test('switches are independent and default on',async()=>{
  await assert.rejects(gmailOnly.host.prepareSend({...send,requestId:'44444444-4444-4444-8444-444444444444'}),/Synthetic transport stops here/);
  await assert.rejects(gmailOnly.host.calendarWrite({operation:'write-capabilities'}),/Calendar edits are turned off/);
  const defaults=host(undefined);
- await assert.rejects(defaults.host.mailbox({kind:'archive',messageId:'alpha-gmail:x',requestId:'44444444-4444-4444-8444-444444444444'}),/Synthetic transport stops here/);
+ await assert.rejects(defaults.host.mailbox({kind:'archive',messageId:'alpha-gmail:'+'a'.repeat(64)+':mail1',requestId:'44444444-4444-4444-8444-444444444444'}),/Synthetic transport stops here/);
  assert.deepEqual(defaults.calls,['/api/v1/user'],'With no owner switch source the host keeps its existing behavior');
 });
 test('the renderer never publishes the default over a saved off before settings load',async()=>{
