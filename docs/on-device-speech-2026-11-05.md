@@ -1,12 +1,16 @@
 # On-device speech: measurements and decisions, 2026-11-05
 
-Device: Pixel 10a `stallion`, `ro.soc.model` Tensor G4, Alpha userdebug image. Engine
-`b3eb2bf63b`, measured at Eliza pin `36236fc059`. The branch measured `b25d8aef29` with engine `6337fd4c4b`
-(same model bytes). Integration uses `ae1a9dda6712`, the reviewed Node26 staging fix over `94c8ca497675`, which preserves the current Alpha source
-and the speech branch. The recorded device measurements remain bound to their original
-source and artifacts, and do not qualify a new APK at the integration pin. Raw results are under
-[evidence](evidence/on-device-speech-2026-11-05). Everything here is development evidence from
-a dirty tree and a debug APK: not release, AOSP image or user acceptance.
+The recorded device was a Pixel 10a `stallion`, with `ro.soc.model` Tensor G4 and
+an Alpha userdebug image. Engine `b3eb2bf63b` was measured at Eliza pin `36236fc059`.
+The later component runs used `b25d8aef29` with engine `6337fd4c4b` and the same model bytes.
+The status and measurements below describe their recorded run dates.
+The earlier `b3eb2bf63b` build record retains its original producer `5d1af326e5`.
+The `6337fd4c4b` component build and qualification have their own evidence records.
+
+The current integration pins SDK `99b49439ce9d0cb5607e9831b9f7f58d89525029` and applies the
+reviewed, hash-bound speech patches in `patches/eliza`. Historical measurements and acceptance
+retain their original source and artifact bindings. Current voice and embedding qualification
+remain pending. Raw results are in [the evidence directory](evidence/on-device-speech-2026-11-05).
 
 ## Status
 
@@ -152,8 +156,29 @@ word; only speed moved, and only on the emulator.
 | Pixel 10a arm64, API 37 | 1.94% | 4.77% | 0.042 / 0.055 |
 | x86_64 emulator, API 35 | 2.13% | 4.90% | 0.488 / 0.118 |
 
-The voice record now has `deviceExecuted` and `emulatorDeviceExecuted` true for this engine;
-`qualified` stays false until the owner accepts real use.
+The historical voice record has `deviceExecuted` and `emulatorDeviceExecuted` for engine
+`6337fd4c4b`. Its [qualification receipt](evidence/voice-engine-6337fd4c/qualify-receipt.json)
+identifies the APK and library hashes that ran. The owner accepted that component evidence on
+November 7 (P-82). That acceptance used the component runs, typed-turn streaming confirmation
+and the separate-day latency estimate. No spoken turn on versionCode 40 or same-day A/B was
+recorded.
+
+The current bridge includes Java changes after `b25d8aef29`, including speech warmup,
+leading-silence trimming and first-write output handling. The current voice record keeps
+`qualified: false` and `userAccepted: false` while those changed inputs await qualification.
+
+### Streamed reply speech
+
+Alpha forwards frame metadata to the shared voice session. A sentence can be spoken early only
+when its text is confirmed and the stream has established a direct reply. Provisional text is
+kept silent. The final confirmed reply skips only matching sentences already spoken under the
+same turn ownership.
+
+A failed streamed reply can report the completed audible prefix through the turn's request
+identity once the reply exists. With no completed audible sentence, that failure submits no
+heard-text truncation. An audio playback failure retains the full visible reply and its recovery
+message. An explicit user interruption continues to use the heard-text report. The controller,
+transport and adapter regressions exercise these cases through the normal prepared client.
 
 ### Where a voice turn's time goes now
 
