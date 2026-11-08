@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { auditPage, auditReadingOrder, auditTabOrder, auditTree, format } from './accessibility-audit';
+import { auditPage, auditReadingOrder, auditTabOrder, auditTree, blocking, format } from './accessibility-audit';
 import { LIVE_STATES } from './accessibility-states';
 
 // The same renderer checks against the flag-off production bundle: no mocks, fixtures or
@@ -8,7 +8,6 @@ import { LIVE_STATES } from './accessibility-states';
 // is checked on the development server only (the scale is applied through a source module).
 // Not a TalkBack, physical large-font, rotation or device pass (MVP-48 acceptance stays open).
 test.describe.configure({ mode: 'parallel' });
-const blocking = (lines: string[]) => lines.filter(line => !line.startsWith('text-truncated:'));
 
 for (const state of LIVE_STATES) {
   test(`production names, roles, focus, contrast and clipping: ${state.name}`, async ({ page }) => {

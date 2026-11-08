@@ -89,7 +89,7 @@ for (const scale of [1, 2]) {
     }
     const found = blocking(format([
       ...await auditTree(page),
-      ...await auditPage(page, scale === 1 ? { contrast: true, targetSize: 24, clipping: true, overlap: true } : { clipping: true, overlap: true }),
+      ...await auditPage(page, scale === 1 ? { contrast: true, targetSize: 24, clipping: true, overlap: true, placeholder: true, selection: true } : { clipping: true, overlap: true }),
       ...await auditReadingOrder(page),
       ...await auditTabOrder(page),
     ]));
@@ -111,4 +111,26 @@ test.describe('landscape', () => {
     expect(await unreachable(page)).toEqual([]);
     expect(foreign).toEqual([]);
   });
+});
+
+// The launcher variant draws under transparent system bars and reports them only as
+// --native-top-inset/--native-bottom-inset (env(safe-area-inset-*) stays 0 in its WebView).
+test('the sign-in page and sheet clear the native system bars', async ({ page }) => {
+  await signedOut(page);
+  const padding = await page.evaluate(() => {
+    const root = document.documentElement.style;
+    root.setProperty('--native-top-inset', '40px');
+    root.setProperty('--native-bottom-inset', '34px');
+    const scrim = document.body.appendChild(document.createElement('div'));
+    scrim.className = 'alpha-connection-scrim';
+    const content = getComputedStyle(document.querySelector('.alpha-auth-page .alpha-auth-content')!);
+    const sheet = getComputedStyle(scrim);
+    const out = { contentTop: parseFloat(content.paddingTop), contentBottom: parseFloat(content.paddingBottom), scrimTop: parseFloat(sheet.paddingTop), scrimBottom: parseFloat(sheet.paddingBottom) };
+    scrim.remove();
+    return out;
+  });
+  expect(padding.contentTop).toBeGreaterThanOrEqual(72);
+  expect(padding.contentBottom).toBeGreaterThanOrEqual(66);
+  expect(padding.scrimTop).toBeGreaterThanOrEqual(40);
+  expect(padding.scrimBottom).toBeGreaterThanOrEqual(34);
 });

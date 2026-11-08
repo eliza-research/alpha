@@ -81,11 +81,20 @@ export type PageAuditOptions = {
    * clipping and from hit tests.
    */
   dock?: boolean;
+  /** Check an empty field's placeholder against the composited background, as text (WCAG 1.4.3). */
+  placeholder?: boolean;
+  /**
+   * Check that a choice shown by colour is also exposed: in a row of three or more sibling buttons
+   * where one has a background the others share none of, some button in the row must expose
+   * aria-pressed, aria-selected, aria-checked or aria-current (WCAG 1.4.1, 4.1.2). Two buttons are
+   * not judged: a primary action beside a secondary one is emphasis, not a selection.
+   */
+  selection?: boolean;
 };
 
 /** Structure, keyboard operability, contrast and clipping measured in the page. */
 export async function auditPage(page: Page, options: PageAuditOptions = {}): Promise<Violation[]> {
-  return page.evaluate(({ contrast, clipping, targetSize, overlap, dock }) => {
+  return page.evaluate(({ contrast, clipping, targetSize, overlap, dock, placeholder, selection }) => {
     const out: Array<{ rule: string; target: string; detail?: string }> = [];
     const describe = (el: Element) => {
       const layer = el.closest('[data-alpha-subview],[data-alpha-layer],[data-screen],dialog,[role=dialog]');
@@ -156,21 +165,43 @@ export async function auditPage(page: Page, options: PageAuditOptions = {}): Pro
     }
 
     // 5. Contrast of rendered text against whatever is painted behind it.
+    const canvas = document.createElement('canvas'); canvas.width = canvas.height = 1;
+    const context = canvas.getContext('2d', { willReadFrequently: true })!;
+    const cache = new Map<string, number[]>();
+    const rgba = (value: string) => {
+      let parsed = cache.get(value);
+      if (!parsed) {
+        context.clearRect(0, 0, 1, 1); context.fillStyle = '#000'; context.fillStyle = value; context.fillRect(0, 0, 1, 1);
+        const data = context.getImageData(0, 0, 1, 1).data; parsed = [data[0], data[1], data[2], data[3] / 255]; cache.set(value, parsed);
+      }
+      return parsed;
+    };
+    const opacity = (el: Element | null) => { let value = 1; for (let node = el; node; node = node.parentElement) value *= Number(getComputedStyle(node).opacity); return value; };
+    const over = (top: number[], under: number[]) => { const a = top[3] + under[3] * (1 - top[3]); return a ? [0, 1, 2].map(i => (top[i] * top[3] + under[i] * under[3] * (1 - top[3])) / a).concat(a) : [0, 0, 0, 0]; };
+    const luminance = (color: number[]) => { const [r, g, b] = color.map(v => { const c = v / 255; return c <= .03928 ? c / 12.92 : ((c + .055) / 1.055) ** 2.4; }); return .2126 * r + .7152 * g + .0722 * b; };
+    // What is painted behind el, from el down its hit-test stack, composited onto white; null when
+    // imagery, a gradient or blur is part of it (the dedicated overlay specs check text over those).
+    const backdrop = (el: Element, stack: Element[]) => {
+      let background = [0, 0, 0, 0];
+      for (const layer of stack.slice(stack.indexOf(el))) {
+        const layerStyle = getComputedStyle(layer);
+        if (layer.matches('img,video,canvas,picture,iframe') || (layer !== el && layer.matches('svg')) || layerStyle.backgroundImage !== 'none' || layerStyle.backdropFilter !== 'none' && layerStyle.backdropFilter) return null;
+        const color = rgba(layerStyle.backgroundColor).slice(); color[3] *= opacity(layer);
+        background = over(background, color);
+        if (background[3] >= .999) break;
+      }
+      return over(background, [255, 255, 255, 1]);
+    };
+    // How far ink on a background falls short of WCAG 1.4.3 for text in this style ('' when it does not).
+    const shortfall = (ink: number[], background: number[], style: CSSStyleDeclaration) => {
+      const foreground = over(ink, background);
+      const l1 = luminance(foreground), l2 = luminance(background);
+      const ratio = (Math.max(l1, l2) + .05) / (Math.min(l1, l2) + .05);
+      const size = parseFloat(style.fontSize), bold = Number(style.fontWeight) >= 700;
+      const needed = size >= 24 || (bold && size >= 18.66) ? 3 : 4.5;
+      return ratio + .005 < needed ? `${ratio.toFixed(2)}:1 < ${needed}:1` : '';
+    };
     if (contrast) {
-      const canvas = document.createElement('canvas'); canvas.width = canvas.height = 1;
-      const context = canvas.getContext('2d', { willReadFrequently: true })!;
-      const cache = new Map<string, number[]>();
-      const rgba = (value: string) => {
-        let parsed = cache.get(value);
-        if (!parsed) {
-          context.clearRect(0, 0, 1, 1); context.fillStyle = '#000'; context.fillStyle = value; context.fillRect(0, 0, 1, 1);
-          const data = context.getImageData(0, 0, 1, 1).data; parsed = [data[0], data[1], data[2], data[3] / 255]; cache.set(value, parsed);
-        }
-        return parsed;
-      };
-      const opacity = (el: Element | null) => { let value = 1; for (let node = el; node; node = node.parentElement) value *= Number(getComputedStyle(node).opacity); return value; };
-      const over = (top: number[], under: number[]) => { const a = top[3] + under[3] * (1 - top[3]); return a ? [0, 1, 2].map(i => (top[i] * top[3] + under[i] * under[3] * (1 - top[3])) / a).concat(a) : [0, 0, 0, 0]; };
-      const luminance = (color: number[]) => { const [r, g, b] = color.map(v => { const c = v / 255; return c <= .03928 ? c / 12.92 : ((c + .055) / 1.055) ** 2.4; }); return .2126 * r + .7152 * g + .0722 * b; };
       const seen = new Set<Element>();
       // Text that is fading or sliding in is judged once it has arrived, not mid-transition.
       const moving = document.getAnimations().filter(item => item.playState === 'running').map(item => (item.effect as KeyframeEffect | null)?.target).filter((target): target is Element => !!target);
@@ -190,24 +221,46 @@ export async function auditPage(page: Page, options: PageAuditOptions = {}): Pro
         const start = stack.indexOf(el); if (start < 0) continue;
         seen.add(el);
         const style = getComputedStyle(el);
-        let background = [0, 0, 0, 0], unknown = false;
-        for (const layer of stack.slice(start)) {
-          const layerStyle = getComputedStyle(layer);
-          if (layer.matches('img,video,canvas,picture,iframe') || (layer !== el && layer.matches('svg')) || layerStyle.backgroundImage !== 'none' || layerStyle.backdropFilter !== 'none' && layerStyle.backdropFilter) { unknown = true; break; }
-          const color = rgba(layerStyle.backgroundColor); color[3] *= opacity(layer);
-          background = over(background, color);
-          if (background[3] >= .999) break;
-        }
         // Text over imagery, gradients and blur is checked by the dedicated overlay specs.
-        if (unknown) continue;
-        background = over(background, [255, 255, 255, 1]);
+        const background = backdrop(el, stack); if (!background) continue;
         const ink = rgba(style.color).slice(); ink[3] *= opacity(el);
-        const foreground = over(ink, background);
-        const l1 = luminance(foreground), l2 = luminance(background);
-        const ratio = (Math.max(l1, l2) + .05) / (Math.min(l1, l2) + .05);
-        const size = parseFloat(style.fontSize), bold = Number(style.fontWeight) >= 700;
-        const needed = size >= 24 || (bold && size >= 18.66) ? 3 : 4.5;
-        if (ratio + .005 < needed) out.push({ rule: 'contrast', target: describe(el), detail: `${ratio.toFixed(2)}:1 < ${needed}:1 "${text.slice(0, 40)}" ${Math.round(size)}px` });
+        const short = shortfall(ink, background, style);
+        if (short) out.push({ rule: 'contrast', target: describe(el), detail: `${short} "${text.slice(0, 40)}" ${Math.round(parseFloat(style.fontSize))}px` });
+      }
+    }
+
+    // 5b. An empty field's placeholder is its only visible hint and is read as text.
+    if (placeholder) for (const el of document.querySelectorAll<HTMLInputElement | HTMLTextAreaElement>('input[placeholder],textarea[placeholder]')) {
+      const hint = (el.placeholder || '').trim();
+      if (!hint || el.value || el.disabled || !exposed(el) || !within(el) || el.closest('[aria-hidden="true"]')) continue;
+      const rect = el.getBoundingClientRect(); if (rect.width < 2 || rect.height < 2) continue;
+      const x = rect.left + rect.width / 2, y = rect.top + rect.height / 2;
+      if (x < 0 || y < 0 || x >= viewport.width || y >= viewport.height) continue;
+      // A covered field is not what the user sees.
+      const stack = document.elementsFromPoint(x, y);
+      if (stack[0] !== el) continue;
+      const background = backdrop(el, stack); if (!background) continue;
+      const style = getComputedStyle(el, '::placeholder');
+      const ink = rgba(style.color).slice(); ink[3] *= Number(style.opacity || 1) * opacity(el);
+      const short = shortfall(ink, background, style);
+      if (short) out.push({ rule: 'placeholder-contrast', target: describe(el), detail: `${short} "${hint.slice(0, 40)}"` });
+    }
+
+    // 5c. A choice shown only by colour: one button in a row painted unlike the rest, and no
+    //     button in the row saying which is chosen.
+    if (selection) {
+      const BUTTON = 'button,[role=button],[role=radio],[role=tab],[role=option]';
+      const STATE = '[aria-pressed],[aria-selected],[aria-checked],[aria-current]:not([aria-current="false"])';
+      const rows = new Set<Element>();
+      for (const el of document.querySelectorAll(BUTTON)) if (el.parentElement && exposed(el) && within(el)) rows.add(el.parentElement);
+      for (const row of rows) {
+        const buttons = Array.from(row.children).filter(el => el.matches(BUTTON) && exposed(el) && !el.closest('[aria-hidden="true"]'));
+        if (buttons.length < 3) continue;
+        const paint = buttons.map(el => { const color = rgba(getComputedStyle(el).backgroundColor); return color[3] ? color.join() : 'none'; });
+        const counts = new Map<string, number>(); for (const value of paint) counts.set(value, (counts.get(value) || 0) + 1);
+        const odd = paint.findIndex(value => counts.get(value) === 1);
+        if (counts.size !== 2 || odd < 0 || buttons.some(el => el.matches(STATE))) continue;
+        out.push({ rule: 'selection-by-colour', target: describe(buttons[odd]), detail: `1 of ${buttons.length} sibling buttons is painted differently and none exposes a pressed, selected, checked or current state` });
       }
     }
 
@@ -474,7 +527,7 @@ export async function auditPage(page: Page, options: PageAuditOptions = {}): Pro
       }
     }
     return out;
-  }, { contrast: !!options.contrast, clipping: !!options.clipping, targetSize: options.targetSize || 0, overlap: !!options.overlap, dock: !!options.dock });
+  }, { contrast: !!options.contrast, clipping: !!options.clipping, targetSize: options.targetSize || 0, overlap: !!options.overlap, dock: !!options.dock, placeholder: !!options.placeholder, selection: !!options.selection });
 }
 
 /** The accessible name of the one semantic group that holds the floating assistant controls. */
@@ -728,6 +781,13 @@ export async function auditTabOrder(page: Page, limit = 120): Promise<Violation[
   }
   return out;
 }
+
+// Deliberate single-line ellipsis and line clamps on previews of user content are allowed: the
+// full text is one tap away and is exposed whole to assistive technology. Hard clipping is not, and
+// neither is a cut app title: it names the screen and has room to wrap.
+export const appTitle = (line: string) => /^text-truncated: .*<[^>]*\bdata-alpha-app-title\b/.test(line);
+/** The formatted findings a sweep fails on: everything but allowed truncation. */
+export const blocking = (lines: string[]) => lines.filter(line => !line.startsWith('text-truncated:') || appTitle(line));
 
 export function format(violations: Violation[]) {
   const seen = new Set<string>();

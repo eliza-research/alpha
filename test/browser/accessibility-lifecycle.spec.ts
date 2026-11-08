@@ -29,8 +29,16 @@ const focusState = (page: Page) => page.evaluate(() => {
     onHome: !!el?.closest('[data-alpha-layer="home"]'),
     name: el ? (el.getAttribute('aria-label') || (el.textContent || '').trim().slice(0, 40)) : '',
     title: !!el?.matches('[data-alpha-app-title]'),
+    region: document.querySelector('[data-alpha-layer="app"][role="region"]')?.getAttribute('aria-label') || '',
   };
 });
+/** Focus is on the screen's name, as view-focus.ts's screenFocusTarget picks it: the app's title, else its labelled region. */
+async function expectScreenName(page: Page, where: string) {
+  await expect.poll(async () => {
+    const focus = await focusState(page);
+    return !focus.dropped && (focus.title || (!!focus.region && focus.name === focus.region));
+  }, { message: `${where}: focus is not on the screen's name` }).toBe(true);
+}
 /** Activates a Home app tile from the keyboard, as Switch Access or a TalkBack double tap does. */
 async function openFromHome(page: Page, view: string) {
   const tile = page.locator('[data-alpha-layer="home"]').getByRole('button', { name: view, exact: true }).and(page.locator('[data-mobile-shell-tile]'));
@@ -64,6 +72,7 @@ test.describe('repeated HOME across views', () => {
       // Opening an app from the keyboard announces it: focus is on its name, not dropped behind Home.
       await expect.poll(async () => (await focusState(page)).dropped, { message: `${view}: focus was dropped when it opened` }).toBe(false);
       expect((await focusState(page)).onHome).toBe(false);
+      await expectScreenName(page, `${view} opened from Home`);
       await pressHome(page, 3);
       await expect.poll(async () => (await focusState(page)).dropped, { message: `${view}: focus was dropped by HOME` }).toBe(false);
       expect((await focusState(page)).onHome).toBe(true);
@@ -114,7 +123,7 @@ test.describe('HOME while a popup, subview or field is open', () => {
       // The app opens again without the popup in front of it.
       await openFromHome(page, steps[0]);
       await expect(page.locator('[role="dialog"][aria-modal="true"]:visible, dialog[open]')).toHaveCount(0);
-      await expect.poll(async () => (await focusState(page)).dropped).toBe(false);
+      await expectScreenName(page, `${steps[0]} reopened after HOME`);
     });
   }
 });
@@ -170,7 +179,7 @@ test.describe('a reload (the renderer restarted)', () => {
     // Every app still opens announced at that size.
     for (const view of ['Settings', 'Files', 'Calendar'] as const) {
       await openFromHome(page, view);
-      await expect.poll(async () => (await focusState(page)).dropped).toBe(false);
+      await expectScreenName(page, `${view} after reload`);
       const found = format([...await auditTree(page), ...await auditReadingOrder(page)]);
       expect(found, `${view} after reload:\n${found.join('\n')}`).toEqual([]);
       await pressHome(page);
@@ -185,6 +194,7 @@ test.describe('a reload (the renderer restarted)', () => {
     await setTextScale(page, 2);
     for (const view of VIEWS) {
       await openFromHome(page, view);
+      await expectScreenName(page, `${view} at 200% after reload`);
       await settled(page);
       const found = format(await auditReadingOrder(page));
       expect(found, `${view} at 200% after reload:\n${found.join('\n')}`).toEqual([]);
