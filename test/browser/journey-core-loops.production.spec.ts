@@ -17,7 +17,7 @@ import {seedCompletedAccessSetup} from './flag-off-android';
 // says the shipped renderer takes the real path or shows an honest unavailable state; it never
 // says the native side of that path works. See docs/core-loop-audit.md.
 import { test, expect, type Page } from '@playwright/test';
-import {completeAccessSetup,expectNoDevelopmentSurface,fenceNetwork} from './flag-off-android';
+import {completeAccessSetup,expectNoDevelopmentSurface,fenceNetwork,openYourAgent} from './flag-off-android';
 
 const SELECTION = 'alpha.connection.selection.v1';
 const offline = () => localStorage.setItem('alpha.connection.selection.v1', JSON.stringify({ kind: 'offline' }));
@@ -301,13 +301,12 @@ test('loop A on Android: the resident agent answers, the conversation follows ac
   expect(await native(page, f => f.streams)).toBe(0);
   // The connection names the agent and where it runs, and no credential is rendered anywhere.
   await page.evaluate(() => window.dispatchEvent(new Event('launcher-home')));
-  await button(page, 'Settings').click();
-  await expect(page.getByRole('button', { name: 'Agent', exact: true })).toContainText('Running');
-  await page.getByRole('button', { name: 'Agent', exact: true }).click();
-  const account = page.getByRole('region', { name: 'Settings',exact:true });
+  const account = await openYourAgent(page);
   await expect(account).toContainText('Running on this device');
   await expect(account.getByText('Eliza Cloud',{exact:true})).toBeVisible();
-  await account.getByRole('button',{name:'Back to Settings',exact:true}).click();
+  await account.getByRole('button',{name:'Back to About',exact:true}).click();
+  await page.evaluate(() => window.dispatchEvent(new Event('launcher-home')));
+  await button(page, 'Settings').click();
   await openCloudPlanFromSettings(page);
   await expect(page.getByRole('button',{name:'Sign out',exact:true})).toBeVisible();
   expect(await page.locator('body').innerText()).not.toContain('synthetic-cloud-key');
@@ -470,7 +469,9 @@ test('loops D and F in the web build: digests and mail name the missing account 
   await page.addInitScript(offline);
   await page.goto('/');
   await button(page, 'Settings').click();
-  await button(page, 'Scheduled digests').click();
+  await button(page, 'Apps').click();
+  await button(page, 'Workflows').click();
+  await button(page, 'Scheduled summaries').click();
   const digests = page.getByRole('dialog', { name: 'Scheduled digests', exact: true });
   await expect(digests).toContainText('Choose where your agent runs to set up scheduled digests.');
   await expect(digests).toContainText('Your agent runs on your phone, not here. Open Alpha on your Android phone to use it.');
@@ -770,10 +771,8 @@ test('loop J05 on Android: a page navigation closes the open review, and an agen
   await expect(page.getByRole('button', { name: /^Review summary note/ })).toHaveCount(1);
   // The resident agent is reconnected (a new verified session) before the answer is saved.
   await page.evaluate(() => window.dispatchEvent(new Event('launcher-home')));
-  await button(page, 'Settings').click();
-  await button(page, 'Agent').click();
-  const account = page.getByRole('region', { name: 'Settings',exact:true });
-  await account.getByRole('button', { name: 'Restart agent', exact: true }).click();
+  const account = await openYourAgent(page);
+  await account.getByRole('button', { name: 'Reconnect agent', exact: true }).click();
   await expect(page.locator('.alpha-connection-scrim')).toHaveCount(0, { timeout: 30_000 });
   expect(await native(page, f => f.calls.filter((call: string) => call === 'Agent.start').length)).toBe(2);
   await button(page, 'Open conversation').click();
@@ -934,7 +933,9 @@ test('loops D and F on Android: schedules are stated as phone-bound, and mail wi
   await android(page);
   await residentHome(page);
   await button(page, 'Settings').click();
-  await button(page, 'Scheduled digests').click();
+  await button(page, 'Apps').click();
+  await button(page, 'Workflows').click();
+  await button(page, 'Scheduled summaries').click();
   const digests = page.getByRole('dialog', { name: 'Scheduled digests', exact: true });
   // The resident agent schedules on the phone and the panel says what that cannot do (decision A-09 is open).
   await expect(digests).toContainText('Your agent runs schedules on this phone. It cannot run while the phone is off.');

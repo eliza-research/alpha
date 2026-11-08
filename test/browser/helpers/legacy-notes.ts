@@ -1,12 +1,13 @@
 import {expect,test,type Page} from '@playwright/test';
 /** Seed only the isolated test's retained legacy document before explicitly opening Older notes.
  * Production source selection never initializes or migrates a missing legacy document. */
-export async function openLegacyNotes(page:Page){
- if(test.info().project.name==='production')await seedRetainedNotes(page);
- else await page.evaluate(async()=>{
+export async function openLegacyNotes(page:Page,records:Record<string,unknown>[]=[]){
+ if(test.info().project.name==='production')await seedRetainedNotes(page,records);
+ else await page.evaluate(async records=>{
   const m=await import('/src/runtime/browser-notes-document.ts');
-  if(!await m.browserNotesPort.read())await m.openBrowserNotes();
- });
+  const store=await m.openBrowserNotes();
+  if(records.length)await store.replace(records);
+ },records);
  await selectLegacyNotes(page);
  await expect(page.getByRole('heading',{name:'Previous notes',exact:true})).toBeVisible();
  await expect(page.getByRole('button',{name:'New note',exact:true})).toBeEnabled();

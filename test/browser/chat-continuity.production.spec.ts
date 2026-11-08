@@ -294,9 +294,8 @@ test('the transcript keeps its reading position through a keyboard resize, Back 
   await noResend(page, foreign, 0);
 });
 
-const MAY_FINISH = 'The agent may still finish this reply. Alpha Phone will check once and show it here if it does.';
-const NOT_CHECKED = /The stopped reply was not checked because another message was sent\./;
-const LOAD_TO_SEE = 'Load this conversation from Agent connection to see whether the stopped reply finished.';
+const MAY_FINISH = 'This reply may still finish. It will appear here if it does.';
+const LOAD_TO_SEE = 'Stopped. To see if it finished, load this conversation in Connection help.';
 /** Past the single stop check's 15 s timer (STOPPED_REPLY_CHECK_MS in connection-ui.tsx). */
 const pastStopCheck = (page: Page) => page.clock.runFor(16_000);
 /** Sends a message whose reply the resident holds until `release()`. */
@@ -365,7 +364,7 @@ test('pressing Send twice dispatches one message', async ({ page }) => {
   await noResend(page, foreign, 1);
 });
 
-test('a new message after Stop retires the pending check and says so; nothing is resent', async ({ page }) => {
+test('a new message after Stop retires the pending check and stale notice; nothing is resent', async ({ page }) => {
   test.setTimeout(120_000);
   const foreign = await connected(page, { clock: true });
   await heldSend(page, 'First question');
@@ -376,7 +375,7 @@ test('a new message after Stop retires the pending check and says so; nothing is
   await composer(page).press('Enter');
   await expect(conversation(page).getByText('Resident reply 2', { exact: true })).toHaveCount(1, { timeout: 30_000 });
   await expect(conversation(page).getByText(MAY_FINISH, { exact: true })).toHaveCount(0);
-  await expect(conversation(page).getByText(NOT_CHECKED)).toHaveCount(1);
+  await expect(conversation(page).getByText(LOAD_TO_SEE, { exact: true })).toHaveCount(0);
   // The retired check never reads, even once its time has passed.
   await pastStopCheck(page);
   await frames(page);

@@ -60,6 +60,7 @@ test('the password manager pauses observation: a message there is not sent and c
   await residentStub(page);
   await residentHome(page);
   await button(page, 'Settings').click();
+  await page.getByRole('button', { name: 'Apps', exact: true }).click();
   await page.getByRole('button', { name: 'Passwords', exact: true }).click();
   if (!await composer(page).isVisible()) await button(page, 'Open conversation').click();
   await composer(page).fill('Context from passwords'); await composer(page).press('Enter');

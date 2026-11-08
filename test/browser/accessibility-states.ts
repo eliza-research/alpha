@@ -89,7 +89,12 @@ export const LIVE_STATES: State[] = [
   live('Maps (no location)', ['Maps']),
   live('Notes (empty)', ['Notes']),
   legacyNotes('Notes new note', ['New note']),
-  legacyNotes('Notes new folder', ['New folder']),
+  // The current Previous notes surface recovers retained records; folder creation belongs to the earlier layout.
+  {name:'live Notes retained records',open:async(page,theme)=>{
+    await page.addInitScript(offline);await page.goto(theme?`/?theme=${theme}`:'/');
+    await openLegacyNotes(page,[{id:'retained-accessibility-note',kind:'text',title:'Retained note',body:'Existing text remains available.'}]);
+    await expect(page.getByRole('button',{name:'Open Retained note',exact:true})).toBeVisible();await settle(page);
+  }},
   legacyNotes('Notes recently deleted', ['New note', 'More', 'Delete', 'Recently deleted'], 'notes-trash'),
   live('Files', ['Files']),
   live('Workflows', ['Workflows']),
@@ -98,7 +103,8 @@ export const LIVE_STATES: State[] = [
   live('Settings display', ['Settings', 'General', 'Display']),
   live('Settings privacy', ['Settings', 'Privacy']),
   live('Settings about', ['Settings', 'About']),
-  live('Settings problem log', ['Settings', 'About', 'Problem log']),
+  // About exposes the existing connection recovery controls in the grouped layout.
+  live('Settings connection help', ['Settings', 'About', 'Connection help']),
   live('Settings licenses', ['Settings', 'About', 'Open source licenses']),
   live('Settings scheduled summaries', ['Settings', 'Apps', 'Workflows', 'Scheduled summaries']),
   live('Settings app permissions', ['Settings', 'Privacy', 'App permissions']),
