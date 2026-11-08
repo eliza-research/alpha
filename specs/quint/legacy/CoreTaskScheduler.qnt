@@ -44,20 +44,28 @@ module CoreTaskSchedulerTemplate {
       activeTick: if (take) k else s.activeTick,
       taken: if (take) s.registry.svc else s.taken}
   }
-  action Query(k: int): bool = all {
-    s.tk.get(k).pc == "query",
-    val service = s.tk.get(k).svc
-    any {
-      all {QueryCanFail, s' = Marks(Settle({...s, dirty: s.dirty or Current(k)}, k), s.taken)},
-      all {not(Current(k)), s' = Marks(Settle(s, k), s.taken)},
-      all {Current(k), s' = Marks(Settle(s, k), s.taken)},
-      all {Current(k), s' = Marks({...s,
-        stale: s.stale or s.tk.get(k).gen != s.gen or s.registry.id != s.tk.get(k).id,
-        tk: s.tk.set(k, {...s.tk.get(k), pc: if (s.stopped.get(service)) "after" else "run"}),
-        inRun: if (s.stopped.get(service)) s.inRun else s.inRun.set(service, s.inRun.get(service) + 1),
-        busy: s.busy.union(Set(service))}, s.taken)}
-    }
+  // Deterministic witnesses for the four original Query branches. Query
+  // remains their union; source traces choose the branch they observed.
+  action QueryFailure(k: int): bool = all {
+    s.tk.get(k).pc == "query", QueryCanFail,
+    s' = Marks(Settle({...s, dirty: s.dirty or Current(k)}, k), s.taken)
   }
+  action QueryStale(k: int): bool = all {
+    s.tk.get(k).pc == "query", not(Current(k)), s' = Marks(Settle(s, k), s.taken)
+  }
+  action QueryEmpty(k: int): bool = all {
+    s.tk.get(k).pc == "query", Current(k), s' = Marks(Settle(s, k), s.taken)
+  }
+  action QueryRows(k: int): bool = all {
+    s.tk.get(k).pc == "query", Current(k),
+    val service = s.tk.get(k).svc
+    s' = Marks({...s,
+      stale: s.stale or s.tk.get(k).gen != s.gen or s.registry.id != s.tk.get(k).id,
+      tk: s.tk.set(k, {...s.tk.get(k), pc: if (s.stopped.get(service)) "after" else "run"}),
+      inRun: if (s.stopped.get(service)) s.inRun else s.inRun.set(service, s.inRun.get(service) + 1),
+      busy: s.busy.union(Set(service))}, s.taken)
+  }
+  action Query(k: int): bool = any {QueryFailure(k), QueryStale(k), QueryEmpty(k), QueryRows(k)}
   action RunDone(k: int): bool = all {
     Set("run", "after").contains(s.tk.get(k).pc),
     val service = s.tk.get(k).svc
@@ -129,6 +137,18 @@ module CoreTaskScheduler {
   action init = Model::Init
   action step = Model::Step
   action rawStep = Model::Next
+  val observed = Model::s
+  action startAdapter(a: int): bool = Model::Start(a)
+  action stopDaemon = Model::Stop
+  action registerService(service: int): bool = Model::Register(service)
+  action stopService(service: int): bool = Model::StopService(service)
+  action markDirty = Model::MarkDirty
+  action fireTick(k: int): bool = Model::Fire(k)
+  action queryFailure(k: int): bool = Model::QueryFailure(k)
+  action queryStale(k: int): bool = Model::QueryStale(k)
+  action queryEmpty(k: int): bool = Model::QueryEmpty(k)
+  action queryRows(k: int): bool = Model::QueryRows(k)
+  action runDone(k: int): bool = Model::RunDone(k)
   val safety = Model::TypeOK and Model::NoStaleDispatch and Model::OneRunTickPerService
     and Model::AttachedTickCurrent and Model::TakenClearsDirty
   temporal CheckedTemporal = Model::Fairness implies Model::DirtyServed and Model::TickSettles
@@ -144,6 +164,18 @@ module CoreTaskSchedulerRestart {
   action init = Model::Init
   action step = Model::Step
   action rawStep = Model::Next
+  val observed = Model::s
+  action startAdapter(a: int): bool = Model::Start(a)
+  action stopDaemon = Model::Stop
+  action registerService(service: int): bool = Model::Register(service)
+  action stopService(service: int): bool = Model::StopService(service)
+  action markDirty = Model::MarkDirty
+  action fireTick(k: int): bool = Model::Fire(k)
+  action queryFailure(k: int): bool = Model::QueryFailure(k)
+  action queryStale(k: int): bool = Model::QueryStale(k)
+  action queryEmpty(k: int): bool = Model::QueryEmpty(k)
+  action queryRows(k: int): bool = Model::QueryRows(k)
+  action runDone(k: int): bool = Model::RunDone(k)
   val safety = Model::TypeOK and Model::NoStaleDispatch and Model::OneRunTickPerService
     and Model::AttachedTickCurrent and Model::TakenClearsDirty
   run stoppingOldServicePreservesReplacementTest = init.then(Model::Start(3)).then(Model::Register(1))

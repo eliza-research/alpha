@@ -47,3 +47,19 @@ start/stop/start sequence require an expanded runtime abstraction. The same
 scheduler source can execute them independently of this first correspondence
 campaign. Real-time timer fairness, crash behavior, SQL guarantees and provider
 side effects are outside this controlled boundary.
+
+## Checked evidence
+
+`runTaskSchedulerRefinement(extraSources = [])` returns the two source receipts
+and explicit uncovered obligations. The live profile passes 7 source traces at
+63 checkpoints, including a disabled stopped-registration canary while capacity
+remains. The restart profile passes 3 source traces at 26 checkpoints. Each
+profile compares 11 observed expressions and checks its safety predicate at
+all checkpoints. Inputs are captured before executing the source schedules.
+
+The query action was factored into the same four alternatives, with named
+witnesses for refusal, stale completion, empty completion and dispatch. The
+original `Next` and fairness continue to use the union of those branches.
+The current Quint bytes pass typechecking, the three original named scenarios,
+and 500 TypeScript simulation traces by 40 steps for each profile with seed 123.
+The earlier exhaustive results are evidence for the pre-witness translation.
