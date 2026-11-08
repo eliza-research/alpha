@@ -54,7 +54,8 @@ export class CloudPersonalProtocol {
   async inspect(signal:AbortSignal):Promise<PersonalView>{const identity=await this.identity(signal);if(identity.runtime==='dedicated'&&(await this.targetStatus(identity.activeAgentId!,signal,identity.apiBase))==='running')return {kind:'ready',identity};return this.quote(identity.personalElizaId,signal,identity.activeAgentId);}
   private async quote(personal:string,signal:AbortSignal,expectedTarget?:string):Promise<PersonalView>{
     const d=data(await this.request(this.route(personal),signal)),a=obj(d.activation);
-    if(a.state==='in_progress'){const target=id(a.dedicatedAgentId),status=str(a.status);if(expectedTarget&&target!==expectedTarget)throw new PersonalProtocolError('invalid-response');if(['pending','provisioning','running'].includes(status)){this.review(d,personal,false,target);return this.pending(personal,target,undefined,status==='running'?'cutover':'provisioning');}
+    if(a.state==='in_progress'){const target=id(a.dedicatedAgentId),status=str(a.status);if(expectedTarget&&target!==expectedTarget)throw new PersonalProtocolError('invalid-response');// Cloud keeps a disconnected target's container and reconnects it; it still owns the upgrade.
+      if(['pending','provisioning','running','disconnected'].includes(status)){this.review(d,personal,false,target);return this.pending(personal,target,undefined,status==='running'?'cutover':'provisioning');}
       if(!['error','stopped','sleeping'].includes(status))throw new PersonalProtocolError('invalid-response');const adopted=await this.adoption(personal,signal,target);return adopted??this.review(d,personal,false,target,status);}
     if(a.state!=='available'||expectedTarget)throw new PersonalProtocolError('invalid-response');return this.review(d,personal);
   }
@@ -76,7 +77,7 @@ export class CloudPersonalProtocol {
     if(!this.receipts.has(receipt))throw new PersonalProtocolError('receipt-invalid');
     const identity=await this.identity(signal);if(identity.personalElizaId!==receipt.personalElizaId)throw new PersonalProtocolError('account-changed');
     if(identity.runtime==='dedicated'){if(identity.activeAgentId!==receipt.dedicatedAgentId)throw new PersonalProtocolError('invalid-response');if((await this.targetStatus(receipt.dedicatedAgentId,signal,identity.apiBase))==='running')return {kind:'ready',identity};}
-    if(!receipt.jobId){const status=await this.targetStatus(receipt.dedicatedAgentId,signal);if(['stopped','sleeping','error'].includes(status))return this.quote(receipt.personalElizaId,signal,receipt.dedicatedAgentId);if(!['pending','provisioning','running'].includes(status))throw new PersonalProtocolError('invalid-response');return {kind:'pending',receipt,phase:status==='running'?'cutover':'provisioning'};}
+    if(!receipt.jobId){const status=await this.targetStatus(receipt.dedicatedAgentId,signal);if(['stopped','sleeping','error'].includes(status))return this.quote(receipt.personalElizaId,signal,receipt.dedicatedAgentId);if(!['pending','provisioning','running','disconnected'].includes(status))throw new PersonalProtocolError('invalid-response');return {kind:'pending',receipt,phase:status==='running'?'cutover':'provisioning'};}
     const r=await this.request(`/api/v1/jobs/${encodeURIComponent(receipt.jobId)}`,signal);
     if([408,429,500,502,503,504].includes(r.status))return {kind:'pending',receipt,phase:'provisioning'};
     const d=data(r);if(d.id!==receipt.jobId)throw new PersonalProtocolError('invalid-response');if(d.status==='failed')throw new PersonalProtocolError('job-failed');if(!['pending','in_progress','completed'].includes(String(d.status)))throw new PersonalProtocolError('invalid-response');return {kind:'pending',receipt,phase:d.status==='completed'?'cutover':'provisioning'};

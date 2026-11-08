@@ -46,7 +46,23 @@ export class ClientObservationSupportSession {
  private check(signal:AbortSignal){signal.throwIfAborted();if(this.retired||!this.current())throw new DOMException('The observation session changed','AbortError');}
  /** Learning happens only here, once. A later process nonce is never learned under this session. */
  handshake(signal:AbortSignal):Promise<void>{
-  return this.initial??=this.learn(signal);
+  // A cancelled or failed learn learned nothing, so the next caller may try again.
+  const pending=this.initial??=this.learn(signal);
+  pending.catch(()=>{if(this.initial===pending&&!this.retired)this.initial=undefined;});
+  return pending;
+ }
+ /** Waits on the shared handshake, but a caller's own cancellation returns at once. */
+ private async joined(signal:AbortSignal):Promise<void>{
+  while(true){
+   const pending=this.handshake(signal);
+   try{
+    await new Promise<void>((resolve,reject)=>{
+     const abort=()=>reject(signal.reason);signal.addEventListener('abort',abort,{once:true});
+     pending.then(resolve,reject).finally(()=>signal.removeEventListener('abort',abort));
+    });
+    return;
+   }catch(error){this.check(signal);if(this.initial===pending)throw error;}
+  }
  }
  private async learn(signal:AbortSignal):Promise<void>{
   this.check(signal);
@@ -62,7 +78,7 @@ export class ClientObservationSupportSession {
  async context(context:ContextEnvelope,signal:AbortSignal):Promise<ContextEnvelope>{
   const ordinary=contextForObservationSupport(context,this.cache,undefined);
   this.check(signal);if(!context.calendarDay)return ordinary;
-  await this.handshake(signal);this.check(signal);
+  await this.joined(signal);this.check(signal);
   const binding=this.known;
   if(!binding||!this.cache.calendarDaySupported(binding))return ordinary;
   try{
