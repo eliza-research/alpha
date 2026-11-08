@@ -9,8 +9,8 @@ The `6337fd4c4b` component build and qualification have their own evidence recor
 
 The current integration pins SDK `99b49439ce9d0cb5607e9831b9f7f58d89525029` and applies the
 reviewed, hash-bound speech patches in `patches/eliza`. Historical measurements and acceptance
-retain their original source and artifact bindings. Current voice and embedding qualification
-remain pending. Raw results are in [the evidence directory](evidence/on-device-speech-2026-11-05).
+retain their original source and artifact bindings. Current voice qualification
+remains pending; the ARM64 embedding host is qualified at this pin (November 8). Raw results are in [the evidence directory](evidence/on-device-speech-2026-11-05).
 
 ## Status
 
@@ -30,7 +30,7 @@ remain pending. Raw results are in [the evidence directory](evidence/on-device-s
   the path, not recognition accuracy for a person.
 - **Those turns used the recorded-clip fallback, not the live route.** The latency table below
   describes the live pipeline, which real turns do not yet take (see Live route).
-- Not done: the live route in a distributable build, an AOSP image with this APK, and the embedding and voice qualification
+- Not done: the live route in a distributable build, an AOSP image with this APK, and the voice qualification
   records (`qualified` stays false).
 
 ## Live route
@@ -181,6 +181,13 @@ The run did not exercise the Alpha application, live recognizer session, microph
 their current qualification and owner-acceptance requirements. The earlier branch's build and
 device-check limitations remain a historical record of that branch.
 [Historical branch device check](evidence/on-device-speech-2026-11-07/v829-device-check.json)
+
+- **November 8:** the ARM64 embedding host was requalified on the Pixel 10a with the voice engine
+  `6337fd4c4b` and the rebuilt JNI bridge; the same bytes are admitted at `99b49439ce`
+  ([receipts](evidence/embedding-host-4787d51a14)). A speech-capable `4787d51a14` launcher debug APK
+  (versionCode 44, runtime packaged) installed in place: agent running, live ASR `ready:true,
+  streaming:true`. No typed turns ran: the Cloud account has no active subscription
+  ([device check](evidence/on-device-speech-2026-11-07/v829-device-check.json)).
 
 ### Streamed reply speech
 
