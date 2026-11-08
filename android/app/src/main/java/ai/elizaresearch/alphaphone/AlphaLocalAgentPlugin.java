@@ -291,8 +291,8 @@ public final class AlphaLocalAgentPlugin extends Plugin {
   call.resolve(new JSObject().put("assistant",assistant));
  }
  /** How this assistant surface was opened, consumed on read: "listener" (the image's always-on
-  * listener, see AssistInvocation) is reported once per launch, then "assist". `locked` reports
-  * whether the keyguard is showing now. */
+  * listener, see ai.eliza.plugins.system.SenseInvocation) is reported once per launch, then
+  * "assist". `locked` reports whether the keyguard is showing now. */
  @PluginMethod public void takeInvocation(PluginCall call) {
   android.app.Activity activity=getActivity();
   boolean assistant=activity instanceof AlphaAssistActivity&&activity.getIntent()!=null&&activity.getIntent().getBooleanExtra(AlphaAssistActivity.EXTRA_ASSISTANT,false);

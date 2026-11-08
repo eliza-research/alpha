@@ -3,12 +3,14 @@ import contextlib
 import importlib.util
 import io
 import json
+import os
 from pathlib import Path
-import subprocess
+import shutil
 import sys
 import tempfile
 import types
 import unittest
+import wave
 from unittest.mock import patch
 
 import grpc
@@ -16,9 +18,9 @@ import grpc_tools
 from grpc_tools import protoc
 
 ROOT = Path(__file__).resolve().parents[1]
-EVIDENCE = Path('/Users/nubs/.local/state/alpha-aosp-pixel10a-20261025/voice-android-qa-prep')
-SDK = Path('/Users/nubs/Library/Android/sdk')
-WAV = EVIDENCE.parent / 'pixel-polish/synthetic-voice-open-calendar/phrase.wav'
+SDK = Path(os.environ.get('ANDROID_SDK_ROOT') or os.environ.get('ANDROID_HOME') or Path.home() / 'Android/Sdk')
+# Every file this test writes lives in its own temporary directory (setUpClass), never in an evidence path.
+SCRATCH = WAV = None
 TOKEN = 'nonsecret-unit-fixture-token'
 SPEC = importlib.util.spec_from_file_location('audio_helper_under_test', ROOT / 'scripts/inject-emulator-audio.py')
 HELPER = importlib.util.module_from_spec(SPEC)
@@ -56,9 +58,17 @@ class FakeStub:
 class MicrophonePreflight(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        cls.temp = tempfile.TemporaryDirectory(dir=EVIDENCE, prefix='mic-preflight-proto-')
-        include = Path(grpc_tools.__file__).parent / '_proto'
         proto = SDK / 'emulator/lib/emulator_controller.proto'
+        if not proto.is_file():
+            raise unittest.SkipTest('No Android emulator proto: set ANDROID_HOME to an SDK with the emulator')
+        global SCRATCH, WAV
+        SCRATCH = Path(tempfile.mkdtemp(prefix='alpha-mic-preflight-'))
+        WAV = SCRATCH / 'phrase.wav'
+        # 1.5 s of mono 16 kHz silence: with the helper's 0.5 s padding on each side, 125 packets.
+        with wave.open(str(WAV), 'wb') as wav:
+            wav.setnchannels(1); wav.setsampwidth(2); wav.setframerate(16000); wav.writeframes(bytes(48000))
+        cls.temp = tempfile.TemporaryDirectory(dir=SCRATCH, prefix='mic-preflight-proto-')
+        include = Path(grpc_tools.__file__).parent / '_proto'
         assert protoc.main(['grpc_tools.protoc', '-I' + str(proto.parent), '-I' + str(include),
                             '--python_out=' + cls.temp.name, '--grpc_python_out=' + cls.temp.name, str(proto)]) == 0
         sys.path.insert(0, cls.temp.name)
@@ -67,7 +77,7 @@ class MicrophonePreflight(unittest.TestCase):
 
     @classmethod
     def tearDownClass(cls):
-        cls.temp.cleanup()
+        shutil.rmtree(SCRATCH, ignore_errors=True)
 
     @contextlib.contextmanager
     def fixture(self, arguments, enabled=False, discovery=None):
@@ -132,7 +142,7 @@ class MicrophonePreflight(unittest.TestCase):
             self.assertTrue(json.loads(output.getvalue().splitlines()[-1])['injected'])
 
     def test_new_check_cannot_prepare_or_inject_before_any_discovery(self):
-        destination = EVIDENCE / 'preflight-must-not-create.wav'
+        destination = SCRATCH / 'preflight-must-not-create.wav'
         self.assertFalse(destination.exists())
         for arguments in (['--check-microphone', '--prepare', str(destination)],
                           ['--check-microphone', '--inject', str(WAV)]):
