@@ -229,7 +229,10 @@ public final class AlphaConnectionPlugin extends Plugin {
    connection.setRequestProperty("Accept","application/json");connection.setRequestProperty("Authorization","Bearer "+token);
    int status=connection.getResponseCode();if(status!=200)throw new LocalAgentProviderAdmission.CloudReadFailure(status);if(connection.getContentLengthLong()>RESPONSE_LIMIT)throw new SecurityException("Cloud read unavailable");
    byte[] bytes;try(InputStream input=connection.getInputStream()){bytes=readBounded(input,RESPONSE_LIMIT);}
-   return (JSONObject)parseJson(new String(bytes,StandardCharsets.UTF_8));
+   // A body that is not one JSON object (an HTML error page, trailing text) is unreadable, not an answer about the account.
+   Object parsed;try{parsed=parseJson(new String(bytes,StandardCharsets.UTF_8));}catch(IllegalArgumentException unreadable){parsed=null;}
+   if(!(parsed instanceof JSONObject))throw new org.json.JSONException("Cloud read unreadable");
+   return (JSONObject)parsed;
   }finally{connection.disconnect();}
  }
  private enum RequestOperation { CLI_CREATE, CLI_POLL, IDENTITY, BILLING_LIMITS, ENTITLEMENT, ENTITLEMENT_KEYS, REDEEM, OTHER }
