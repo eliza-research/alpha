@@ -132,7 +132,8 @@ test('production Settings refuses Developer routes and preserves real About diag
  assert.equal(rows.length,4,'filtering must not mutate the reference model');
  assert.equal(m.settingsPage('developer',false),null);
  for(const page of ['about','problems','licenses','models',null,undefined])assert.equal(m.settingsPage(page,false),page);
- assert.match(source,/page: settingsPage\(state\.page, developerTools\)/);
+ assert.match(source,/settingsPage\(state\.page, developerTools\)/);
+ assert.equal(m.settingsPage('character',false),null);
  assert.match(source,/rows: settingsNavigationRows\(group\.rows, developerTools\)/);
 });
 test('one Developer gate: a development server build opened with ?tools=1, never the product',()=>{

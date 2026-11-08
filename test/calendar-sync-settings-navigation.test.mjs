@@ -83,7 +83,7 @@ console.log('PASS 3 canonical sync dialog cases: same-source review/select/resum
   const calendarView={canConfirmCalendarTransition:transition,confirmCalendarTransition:()=>calls.transition++,
    calendarAuthorityChoices:choices?[{label:'Agent Calendar',go:()=>calls.returned++},{label:'Old source',go:()=>{throw Error('No arbitrary source chooser');}}]:[],
    nativeStatusRetry:()=>calls.retry++};
-  const context=vm.createContext({state,page,out,owner:shell,native,developerTools:false,
+  const context=vm.createContext({delivery:{channels:[]},state,page,out,owner:shell,native,developerTools:false,
    Capacitor:{isNativePlatform:()=>native},views:{calendar:{displaySources:()=>display,render:()=>calendarView}},
    gmailAccounts:grants,gmail,group:rows=>({rows}),info:(label,val)=>({label,val,kInfo:true}),
    api:{set:x=>calls.pages.push(x)},googleConnectionController:{openCalendar:x=>calls.connects.push(x)},

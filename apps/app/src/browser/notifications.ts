@@ -7,7 +7,8 @@ import {listWorkflowNotices,actOnWorkflowNotice} from './workflow-notices';
 import {BrowserCalendar} from './calendar';
 import { browserHostedResults } from './hosted-results';
 import { browserApps } from './apps';
-import { WebPlugin } from '@capacitor/core';
+import { WebPlugin,registerPlugin } from '@capacitor/core';
+import {testMocksEnabled} from '../build-flags';
 import type { BrowserDaily } from './daily';
 import { revision } from './revision';
 import {notificationDocument,notificationState,NotificationPolicyChanged,type NotificationState as State} from './notification-store';
@@ -134,7 +135,13 @@ export class BrowserNotifications extends WebPlugin {
   for(const field of fields){const label=document.createElement('label'),control=document.createElement('input');label.textContent=field.label;label.style.cssText='display:flex;gap:20px;align-items:center;margin:20px 0';control.type='checkbox';control.checked=field.checked;control.onchange=async()=>{control.disabled=true;try{await field.change(control.checked);this.changed();}catch{control.checked=!control.checked;}finally{control.disabled=false;}};label.append(control);dialog.append(label);}
   const done=document.createElement('button');done.textContent='Done';done.onclick=()=>dialog.close();dialog.onclose=()=>{dialog.remove();this.changed();};dialog.append(done);this.show(dialog,[done]);return {status:'opened'};
  }
- async openNotificationAccess(){const state=await this.state();return this.controls('Notification access',[{label:'Allow development app events',checked:state.accessGranted,change:async enabled=>{await notificationDocument.edit(state=>{state.accessGranted=enabled;state.epoch=revision();state.revision=revision();trim(state);});}}]);}
- async openChannelSettings(input:{id:string}){const state=await this.state();if(!(input.id in state.channels))throw Error('Choose a notification channel.');return this.controls(input.id==='calendar'?'Calendar notifications':'Reminders notifications',[{label:input.id==='calendar'?'Show calendar alerts':'Show reminders',checked:state.channels[input.id],change:async enabled=>{await notificationDocument.edit(state=>{state.channels[input.id]=enabled;});}}]);}
- async openAppSettings(){const state=await this.state();return this.controls('Alpha notifications',[{label:'Show Alpha notifications',checked:state.appEnabled,change:async enabled=>{await notificationDocument.edit(state=>{state.appEnabled=enabled;});}}]);}
+ async openNotificationAccess(){if(!testMocksEnabled)return registerPlugin<{openSettings(input:{page:string}):Promise<{status:string}>}>('AlphaDevice').openSettings({page:'privacy'});const state=await this.state();return this.controls('Notification access',[{label:'Allow development app events',checked:state.accessGranted,change:async enabled=>{await notificationDocument.edit(state=>{state.accessGranted=enabled;state.epoch=revision();state.revision=revision();trim(state);});}}]);}
+ async setAlertPreferences(input:{appEnabled?:boolean;channelId?:string;enabled?:boolean}){
+  if(Object.keys(input).some(key=>!['appEnabled','channelId','enabled'].includes(key)))throw Error('Invalid alert preference.');
+  if(input.appEnabled!==undefined){if(typeof input.appEnabled!=='boolean'||input.channelId!==undefined||input.enabled!==undefined)throw Error('Invalid alert preference.');await notificationDocument.edit(state=>{state.appEnabled=input.appEnabled!;});}
+  else{const state=await this.state();if(typeof input.channelId!=='string'||!Object.hasOwn(state.channels,input.channelId)||typeof input.enabled!=='boolean')throw Error('Choose an alert type.');await notificationDocument.edit(state=>{state.channels[input.channelId!]=input.enabled!;});}
+  this.changed();return {status:'saved'};
+ }
+ async openChannelSettings(input:{id:string}){const state=await this.state();if(!(input.id in state.channels))throw Error('Choose a notification channel.');if(!testMocksEnabled)return registerPlugin<{openSettings(input:{page:string}):Promise<{status:string}>}>('AlphaDevice').openSettings({page:input.id==='calendar'?'calendar':'reminders'});return this.controls(input.id==='calendar'?'Calendar notifications':'Reminders notifications',[{label:input.id==='calendar'?'Show calendar alerts':'Show reminders',checked:state.channels[input.id],change:async enabled=>{await notificationDocument.edit(state=>{state.channels[input.id]=enabled;});}}]);}
+ async openAppSettings(){if(!testMocksEnabled)return registerPlugin<{openSettings(input:{page:string}):Promise<{status:string}>}>('AlphaDevice').openSettings({page:'notifications'});const state=await this.state();return this.controls('Alpha notifications',[{label:'Show Alpha notifications',checked:state.appEnabled,change:async enabled=>{await notificationDocument.edit(state=>{state.appEnabled=enabled;});}}]);}
 }

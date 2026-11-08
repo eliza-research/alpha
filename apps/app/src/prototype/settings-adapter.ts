@@ -109,7 +109,7 @@ const device = registerPlugin<{
   checkForUpdate(): Promise<{ manifest?: string }>;
   installUpdate(input: Pick<AppUpdate, 'apkUrl' | 'sha256' | 'sizeBytes' | 'versionCode'>): Promise<void>;
 }>('AlphaDevice');
-const notifications = registerPlugin<{status():Promise<Bag>;openAppSettings():Promise<Bag>;openChannelSettings(input:{id:string}):Promise<{status:string}>;crossAppStatus():Promise<Bag>;notificationApps():Promise<{apps:Bag[]}>;setNotificationPolicy(input:Bag):Promise<Bag>;resumeCrossApp(input:{expectedRevision:string}):Promise<Bag>;openNotificationAccess():Promise<Bag>;notificationHistory():Promise<{items:Bag[]}>;clearNotificationHistory():Promise<void>}>('AlphaNotifications');
+const notifications = registerPlugin<{status():Promise<Bag>;setAlertPreferences(input:{appEnabled?:boolean;channelId?:string;enabled?:boolean}):Promise<Bag>;openAppSettings():Promise<Bag>;openChannelSettings(input:{id:string}):Promise<{status:string}>;crossAppStatus():Promise<Bag>;notificationApps():Promise<{apps:Bag[]}>;setNotificationPolicy(input:Bag):Promise<Bag>;resumeCrossApp(input:{expectedRevision:string}):Promise<Bag>;openNotificationAccess():Promise<Bag>;notificationHistory():Promise<{items:Bag[]}>;clearNotificationHistory():Promise<void>}>('AlphaNotifications');
 const system = registerPlugin<{ getDeviceSettings(): Promise<Bag>; getStatus(): Promise<{ roles?: Bag[] }>; requestRole(input: { role: string }): Promise<{ role: string; held: boolean; resultCode: number }>; getBuildInfo(): Promise<{ launcher?: boolean; version?: string }> }>('ElizaSystem');
 type RoleRow = { role: string; held: boolean; available: boolean; holders: string[] };
 /** Android role state exactly as ElizaSystem.getStatus() reports it (shared parser); malformed rows are dropped. */
@@ -170,7 +170,7 @@ export function cloudPrivacyRow(label: string): [string, string] | null {
 }
 /** A stale or direct Developer selection cannot open the page in a product build. */
 export function settingsPage(page: string | null | undefined, developerSurfaces: boolean): string | null | undefined {
-  return page === 'developer' && !developerSurfaces ? null : page;
+  return (page === 'developer' || page === 'character') && !developerSurfaces ? null : page;
 }
 /** Support diagnostics remain in About; Developer navigation is an explicit development surface. */
 export function settingsNavigationRows<T extends { label?: string; lbl?: string }>(rows: T[], developerSurfaces: boolean): T[] {
@@ -220,7 +220,7 @@ export function installSettingsAdapter(Component: any, views: Bag) {
   const definition = views.settings, render = definition.render, p = Component.prototype;
   const mount = p.componentDidMount, unmount = p.componentWillUnmount, openView = p.openView, update = p.componentDidUpdate;
   let owner: any, facts: Bag = {}, controls: Bag = {}, delivery: Bag = {}, generation = 0,scaleGeneration=0, cross:Bag={}, choices:Bag[]|null=null, history:Bag[]|null=null, notificationBusy=false;
-  let passwordOpening=false,mailImagesSaving=false,photoAccessBusy=false;
+  let passwordOpening=false,photoAccessBusy=false;
   let photoAccess:PhotoAccess|null=null;
   let recovery: RecoveryDomain[] = [];
   let capabilityAbort: AbortController | null = null;
@@ -422,6 +422,8 @@ export function installSettingsAdapter(Component: any, views: Bag) {
   p.componentDidMount = function () {
     mount.call(this); owner = this;
     this.mailImagePreferenceChanged=changed;
+    this.settingsNavigation=(event:Event)=>{const page=(event as CustomEvent).detail?.page;if(typeof page!=='string'||!new Set(['display','sound','notifications','privacy','settings-account','settings-apps','settings-general','calendar','app-settings-workflows']).has(page))return;event.preventDefault();activeSettingsCategory=page==='privacy'?'settings-privacy':page==='settings-account'?'settings-account':['settings-apps','calendar','app-settings-workflows'].includes(page)?'settings-apps':'settings-general';this.openView('settings');this.vset('settings',{page});};
+    window.addEventListener('alpha:settings-page',this.settingsNavigation);
     window.addEventListener('alpha:device-settings',this.mailImagePreferenceChanged);
     initializeDevicePreferences(); void refresh(); void refreshCapabilities(); void checkForUpdate(false)?.then(changed);
     this.passwordLifecycle = passwordManagerLifecycle(changed);
@@ -465,6 +467,7 @@ export function installSettingsAdapter(Component: any, views: Bag) {
   };
   p.componentWillUnmount = function () {
     if (owner === this) { capabilityAbort?.abort(); capabilityAbort = null; inferenceAbort?.abort();inferenceAbort=null; owner = null; ++generation; facts = {}; controls = {}; delivery = {}; cross={}; choices=null; history=null; roles=null; crashLog=null; }
+    window.removeEventListener('alpha:settings-page',this.settingsNavigation);
     window.removeEventListener('alpha:device-settings',this.mailImagePreferenceChanged);
     window.removeEventListener('storage',this.appearanceStorageListener);
     window.removeEventListener('pageshow',this.appearanceResumeListener);
@@ -479,20 +482,27 @@ export function installSettingsAdapter(Component: any, views: Bag) {
     if (key === 'settings') { void refresh(); void refreshCapabilities(true); }
     return result;
   };
+  const categoryNames:Record<string,string>={'settings-account':'Account','settings-general':'General','settings-privacy':'Privacy','settings-help':'Help','settings-apps':'Apps'};
+  let activeSettingsCategory:string|null=null;
   const settingsBack = definition.back;
   const settingsParents: Record<string,string> = {history:'agent-connection',problems:'about',licenses:'about','password-entry':'password-provider'};
   definition.back = (state:Bag,api:Bag) => {
+    if(!state.sheet&&((typeof state.page==='string'&&Object.hasOwn(categoryNames,state.page))||(!state.page&&activeSettingsCategory))){activeSettingsCategory=null;api.set({page:null});return true;}
     if(!state.sheet&&settingsParents[state.page]){api.set({page:settingsParents[state.page]});return true;}
     if(!state.sheet&&PASSWORD_PAGES.includes(state.page))leavePasswordManager();
     return settingsBack ? settingsBack(state,api) : false;
   };
   definition.render = (state: Bag, api: Bag) => {
     settingsApi = api;
-    const out = render({ ...state, page: settingsPage(state.page, developerTools), acct: null, adding: false, sheet: ['conn', 'voice', 'wipe', 'wifiPw', 'forget'].includes(state.sheet?.kind) ? null : state.sheet }, api);
+    const appSettingsPage=typeof state.page==='string'&&state.page.startsWith('app-settings-')?state.page.slice(13):null;
+    const categoryPage=typeof state.page==='string'&&Object.hasOwn(categoryNames,state.page)?state.page:!state.page?activeSettingsCategory:null;
+    const out = render({ ...state, page: categoryPage||appSettingsPage?null:settingsPage(state.page, developerTools), acct: null, adding: false, sheet: ['conn', 'voice', 'wipe', 'wifiPw', 'forget'].includes(state.sheet?.kind) ? null : state.sheet }, api);
     // Prototype personality values are mock-only until the agent reports them.
     out.persona = 'Voice & personality';
     const connection = connectionController.getSnapshot();
     const account = connection.cloudAccount;
+    out.accountEmail=account?(account.email||'Signed in'):'Not signed in';
+    out.openAccount=()=>{activeSettingsCategory='settings-account';api.set({page:'settings-account'});};
     const serviceName = cloudServiceName(connectionController.getCloudClient()?.client.environment ?? account?.environment ?? connection.signIn?.environment ?? 'production');
     const target = connection.session ? connection.name : 'Not connected';
     const runtimeLocation=!connection.session?'Not connected':connection.kind==='resident'?(Capacitor.isNativePlatform()?'On this device':'On this computer · development'):testMocksEnabled?'Remote agent':'Unsupported connection';
@@ -505,6 +515,7 @@ export function installSettingsAdapter(Component: any, views: Bag) {
     const note = (label: string, sub: string): Bag => ({ kInfo: true, label, val: '', hasVal: false, hasSub: true, sub, noAB: true });
     const nav = (label: string, page: string): Bag => ({ kNav: true, label, lbl: label, chev: true, noAB: true, go: manage(page) });
     const group = (rows: Bag[]) => ({ css: 'background:var(--s2);padding:4px 0', rows });
+    const run = async (task:()=>Promise<void>)=>{if(notificationBusy)return;notificationBusy=true;changed();const current=owner;try{await task();if(owner===current)await refresh();}catch{if(owner===current)api.toast('Notification settings changed or are unavailable. Refresh and try again.');}finally{notificationBusy=false;if(owner===current)changed();}};
     // Speech follows the explicit production runtime profile; developer routes stay separate.
     const speechRows = (): Bag[] => [
       info('Speech', connection.residentInference==='direct'?(connection.providerStatus?.voiceConfigured?'Cartesia · own API key':'Off · add a Cartesia key'):developmentCartesiaVoiceEnabled?'Cartesia · development':cloudRuntimeEnabled?`${serviceName} · Cartesia output (uses your plan)`:testMocksEnabled?`${serviceName} (counts toward your plan)`:'On this device'),
@@ -537,13 +548,13 @@ export function installSettingsAdapter(Component: any, views: Bag) {
     const bluetoothValue = switchValue(facts.bluetoothEnabled, Capacitor.isNativePlatform() ? 'Manage in Android' : active('bluetoothActive'));
     const mobileValue = facts.airplaneMode === true ? 'Airplane mode on' : switchValue(facts.mobileDataEnabled, active('cellularActive'), { on: facts.cellularActive === true ? 'On · in use' : 'On' });
     const reported = (value: unknown) => switchValue(value, 'Not reported by Android');
-    const interruptionLabels:Bag={all:'No DND suppression reported',priority:'Priority interruptions only',alarms:'Alarms only',none:'Interruptions suppressed',unknown:'Unavailable'};
+    const interruptionLabels:Bag={all:'Off',priority:'Priority only',alarms:'Alarms only',none:'On',unknown:'Not available'};
     const browserNotifications = delivery.scope === 'browser';
     const topValues: Bag = {
       'Wi-Fi': wifiValue, 'Bluetooth': bluetoothValue, 'Mobile data': mobileValue,
       'Accounts': account ? `${serviceName} connected` : 'Not signed in', 'Connections': gmail,
       'Battery': percent, 'Models': target, 'About': facts.appVersion || 'Unavailable',
-      'Notifications': typeof delivery.appEnabled !== 'boolean' ? 'Unavailable' : !delivery.appEnabled || !delivery.permissionGranted ? (browserNotifications ? 'In-app alerts off' : 'App notifications off') : delivery.channels?.some((c:Bag)=>c.blocked||c.groupBlocked) ? (browserNotifications ? 'Some in-app alerts off' : 'Some channels blocked') : (browserNotifications ? 'In-app alerts enabled' : 'App notifications allowed'),
+      'Notifications': typeof delivery.appEnabled !== 'boolean' ? 'Unavailable' : !delivery.appEnabled || !delivery.permissionGranted ? (browserNotifications ? 'In-app alerts off' : 'App notifications off') : delivery.channels?.some((c:Bag)=>c.blocked||c.groupBlocked) ? (browserNotifications ? 'Some in-app alerts off' : 'Some channels blocked') : (browserNotifications ? 'On' : 'On'),
       'Sound & vibration': Capacitor.isNativePlatform()?'Android settings':'App sound settings',
     };
     for (const page of out.stack) {
@@ -612,6 +623,8 @@ export function installSettingsAdapter(Component: any, views: Bag) {
             groups.push(group([{kNav:true,label:'Review calendar access',lbl:'Review calendar access',chev:true,noAB:true,go:display.connect??display.retry}]));
           }
           if(developerTools&&!Capacitor.isNativePlatform())groups.push({...group([{kNav:true,label:'Calendar backups',lbl:'Calendar backups',sub:'Events saved in this app',hasSub:true,chev:true,noAB:true,go:()=>openCalendarRecovery()}]),cap:'Saved data',hasCap:true});
+          const calendarChannel=(delivery.channels||[]).find((c:Bag)=>c.id==='calendar');
+          if(calendarChannel&&!Capacitor.isNativePlatform())groups.push(group([{kTog:true,label:'Show calendar alerts',aria:'Show calendar alerts',on:!calendarChannel.blocked,track:!calendarChannel.blocked?'background:var(--acc)':'background:var(--line)',kx:!calendarChannel.blocked?20:0,toggle:()=>void run(async()=>{await notifications.setAlertPreferences({channelId:calendarChannel.id,enabled:!!calendarChannel.blocked});})}]));
           out.stack.push({isTop:false,notTop:true,cls:'enter',z:4,title:'Calendar',hasTitle:true,backLabel:'Back to Settings',back:()=>api.set({page:null}),hero:{},groups});
 
         }
@@ -745,25 +758,7 @@ export function installSettingsAdapter(Component: any, views: Bag) {
         const plan=connectionController.residentPlanSettings();
         page.groups = [group([{ kNav:true, label:`${serviceName} account & plan`, lbl:`${serviceName} account & plan`, sub:plan?.keyExpiring?'Sign-in expiring':cloudLabel, hasSub:true, chev:true, noAB:true, go:()=>plan?api.set({page:'cloud-plan'}):connectionController.openCloudAccount() }, ...(Capacitor.isNativePlatform()?[nav('Device accounts in Android', 'accounts')]:[])])];
       } else if (page.title === 'Connections') {
-        const connected = gmailAccounts.filter(a => a.connected && a.connectionId);
-        page.groups = [group([{ kNav:true,label:'Manage Google accounts',lbl:'Manage Google accounts',chev:true,noAB:true,go:()=>googleConnectionController.open() },info('Gmail', gmail),
-          ...connected.map(a => ({...info(a.label, ''), hasSub:true, sub:googleAccountAccessLabel(a)})),
-          { kNav:true, label:'Open Inbox', lbl:'Open Inbox', chev:true, noAB:true, go:()=>api.open('inbox') },
-          ...connected.map(a => { const label = `Disconnect Google account ${a.label}`; return { kNav:true, label, lbl:gmailBusy === a.connectionId ? 'Disconnecting…' : label, chev:true, noAB:true, go:()=>void disconnectGmail(a) }; }),
-          { kNav:true, label:'Check Gmail connection', lbl:'Check Gmail connection', chev:true, noAB:true, go:()=>{ void refreshCapabilities(); } }]),group([{
-            kTog:true,label:'Automatically load email images',aria:'Automatically load email images',
-            hasSub:true,sub:mailImagesSaving?'Saving…':cachedDevicePreferences()?'Load remote images when you open an email.':'Image preference unavailable. Reopen Settings to try again.',
-            on:cachedDevicePreferences()?.autoLoadMailImages===true,
-            track:cachedDevicePreferences()?.autoLoadMailImages?'background:var(--acc)':'background:var(--line)',
-            kx:cachedDevicePreferences()?.autoLoadMailImages?20:0,
-            toggle:async()=>{
-              const saved=cachedDevicePreferences();if(!saved||mailImagesSaving)return;
-              mailImagesSaving=true;changed();
-              try{await editDevicePreferences(state=>{state.autoLoadMailImages=!saved.autoLoadMailImages;});}
-              catch{api.toast('Email image preference could not be saved. Try again.');}
-              finally{mailImagesSaving=false;changed();}
-            }
-          }])];
+        page.groups = [group([{kNav:true,label:'Manage Google accounts',lbl:'Manage Google accounts',chev:true,noAB:true,go:()=>googleConnectionController.open()}])];
       } else if (state.page === 'character' && page.hero?.kChar === true) {
         // The reference character page deliberately has no visible title.
         page.groups = browserDevProfile?[group([
@@ -801,7 +796,6 @@ export function installSettingsAdapter(Component: any, views: Bag) {
         page.groups = [group([info('App version', facts.appVersion || buildVersion), info('Agent memory', connection.session?'Usage not reported by agent':'Not connected')]), group([problemsRow(), diagnosticsRow()]), group([nav('Android developer settings', 'developer')])];
       } else if (page.title === 'Notifications') {
         const custom = (label:string,go:()=>void):Bag=>({kNav:true,label,lbl:label,chev:true,noAB:true,busy:notificationBusy,hasVal:notificationBusy,val:'Working…',go:()=>{if(!notificationBusy)go();}});
-        const run = async (task:()=>Promise<void>)=>{if(notificationBusy)return;notificationBusy=true;changed();const current=owner;try{await task();if(owner===current)await refresh();}catch{if(owner===current)api.toast('Notification settings changed or are unavailable. Refresh and try again.');}finally{notificationBusy=false;if(owner===current)changed();}};
         const policy = (changes:Bag)=>void run(async()=>{await notifications.setNotificationPolicy({expectedRevision:cross.revision,...changes});if(changes.history===false)history=[];});
         const selected:Bag[]=cross.apps||[];
         const showCrossAppNotifications = Capacitor.isNativePlatform() || devSurfacesEnabled;
@@ -826,8 +820,8 @@ export function installSettingsAdapter(Component: any, views: Bag) {
           }),custom('View local metadata history',()=>{if(notificationBusy)return;notificationBusy=true;const current=owner;void notifications.notificationHistory().then(result=>{if(owner===current){history=result.items;owner?.vset('settings',{notificationChanged:Date.now()});}}).catch(()=>api.toast('Local notification history is unavailable.')).finally(()=>{notificationBusy=false;});}),custom('Clear local metadata history',()=>{if(window.confirm('Permanently clear local notification metadata history?'))void run(async()=>{await notifications.clearNotificationHistory();history=[];});}));
           if(history!==null){if(!history.length)crossRows.push(info('History','No retained events'));for(const row of history)crossRows.push(info(row.appLabel,`${row.state} · ${new Date(row.at).toLocaleString()} · no action available`));}
         }
-        page.groups = [group([info(browserNotifications ? 'In-app alerts' : 'Alpha notifications', topValues.Notifications),info('Do Not Disturb',interruptionLabels[delivery.interruption]||'Unavailable'),Capacitor.isNativePlatform()?nav('Manage Alpha notifications', 'notifications'):custom(browserNotifications ? 'Manage in-app alerts' : 'Manage Alpha notifications',()=>void run(async()=>{await notifications.openAppSettings();}))]),
-          ...((delivery.channels||[]).map((channel:Bag)=>group([info(channel.name,browserNotifications ? (channel.blocked||channel.groupBlocked||!delivery.appEnabled||!delivery.permissionGranted ? 'In-app alert off' : 'In-app alert enabled') : channel.blocked?'Channel blocked':channel.groupBlocked?'Channel group blocked':!delivery.appEnabled||!delivery.permissionGranted?'App notifications off':channel.importance<=2?'Silent channel':'Channel allowed'),{kNav:true,label:`Manage ${channel.name}`,lbl:`Manage ${channel.name}`,chev:true,noAB:true,go:()=>void notifications.openChannelSettings({id:channel.id}).catch(()=>api.toast('This notification channel is unavailable.'))}]))),...(crossRows.length ? [group(crossRows)] : [])];
+        page.groups = [group(Capacitor.isNativePlatform()?[info('Alpha notifications',topValues.Notifications),info('Do Not Disturb',interruptionLabels[delivery.interruption]||'Not available'),nav('Manage Alpha notifications','notifications')]:[{kTog:true,label:'Allow alerts',aria:'Allow alerts',on:delivery.appEnabled===true,track:delivery.appEnabled?'background:var(--acc)':'background:var(--line)',kx:delivery.appEnabled?20:0,toggle:()=>void run(async()=>{await notifications.setAlertPreferences({appEnabled:delivery.appEnabled!==true});})}]),
+          ...(Capacitor.isNativePlatform()?(delivery.channels||[]).map((channel:Bag)=>group([{kNav:true,label:channel.name,lbl:channel.name,chev:true,noAB:true,go:()=>void notifications.openChannelSettings({id:channel.id})}])):[]),...(crossRows.length?[group(crossRows)]:[])];
       } else if (page.title === 'Privacy & data') {
         if (cloudRuntimeEnabled) page.groups = page.groups.map((g: Bag) => ({ ...g, rows: g.rows.map((row: Bag) => {
           const fact = cloudPrivacyRow(row.label);
@@ -879,6 +873,9 @@ export function installSettingsAdapter(Component: any, views: Bag) {
             ++generation;void device.setTextScale({percent:requested}).then(result=>{if(owner===instance&&token===scaleGeneration){facts={...facts,...result};instance?.vset('settings',{nativeReadAt:Date.now()});}}).catch(()=>{if(owner===instance&&token===scaleGeneration)api.toast('Text size could not be saved.');});
           }};
         });
+        page.groups=page.groups.map((g:Bag)=>({...g,rows:g.rows.filter((row:Bag)=>row.label!=='Text size'&&(Capacitor.isNativePlatform()||row.label!=='Manage brightness in Android'))})).filter((g:Bag)=>g.rows.length);
+        const percent=Number.isInteger(facts.textScalePercent)?facts.textScalePercent:100;
+        page.groups.push({...group(([['Small',75],['Default',100],['Large',115],['Larger',130],['Largest',150]] as const).map(([label,value])=>({kNav:true,label,lbl:`Text size: ${label}${percent===value?', selected':''}`,val:percent===value?'✓':'',hasVal:percent===value,noAB:true,go:async()=>{const token=++scaleGeneration,instance=owner;++generation;try{const result=await device.setTextScale({percent:value});if(owner===instance&&token===scaleGeneration){facts={...facts,...result};instance?.vset('settings',{nativeReadAt:Date.now()});}}catch{if(owner===instance&&token===scaleGeneration)api.toast('Text size could not be saved.');}}}))),cap:'Text size',hasCap:true});
       }
     }
     const settingsTop = out.stack.find((page: Bag) => page.isTop);
@@ -898,8 +895,9 @@ export function installSettingsAdapter(Component: any, views: Bag) {
       };
       const sections = [
         ['Account', ['Accounts', 'Connections', 'AI provider']],
-        ['Preferences', ['Display', 'Notifications', 'Calendar', 'Scheduled digests']],
-        ['Privacy', ['Privacy & data', 'Set up Alpha access', 'Review phone actions first', 'Password manager', 'Photos']],
+        ['Preferences', ['Display', 'Notifications']],
+        ['Privacy', ['Privacy & data', 'Set up Alpha access', 'Review phone actions first']],
+        ['Apps', ['Calendar', 'Scheduled digests', 'Password manager', 'Photos']],
         ['Help', ['Agent connection', 'About']],
       ] as const;
       rows.delete('Models');
@@ -911,7 +909,7 @@ export function installSettingsAdapter(Component: any, views: Bag) {
           const label = labels[name] || name;
           return [{...row, label, lbl: label, ...(row.aria ? {aria: label} : {}),
             ...(name === 'Accounts' ? {go:()=>connectionController.residentPlanSettings()?api.set({page:'cloud-plan'}):connectionController.openCloudAccount()} : {}),
-            ...(name === 'Connections' && !account ? {sub:'Sign in to connect Google'} : {}),
+            ...(name === 'Connections' ? {go:()=>googleConnectionController.open(),...(!account?{sub:'Sign in to connect Google'}:{})} : {}),
             ...(name === 'Agent connection' ? {hasVal:false, hasSub:false} : {})}];
         });
         return {...group(selected), cap:caption, hasCap:true};
@@ -922,6 +920,34 @@ export function installSettingsAdapter(Component: any, views: Bag) {
         if (page.title === 'Connections') page.title = 'Google & email';
       }
     }
+    if(settingsTop){
+      const detailGroups=settingsTop.groups;
+      const categories=[['settings-account','Account',['Account']],['settings-general','General',['Preferences','Device']],['settings-privacy','Privacy',['Privacy']],['settings-apps','Apps',['Apps']],['settings-help','Help',['Help']]] as const;
+      settingsTop.groups=[group(categories.filter(([key])=>key!=='settings-account').map(([key,title])=>({kNav:true,label:title,lbl:title,chev:true,noAB:true,go:()=>{activeSettingsCategory=key;api.set({page:key});}})))];
+      const appSettingsRows=detailGroups.filter((section:Bag)=>section.cap==='Apps').flatMap((section:Bag)=>section.rows);
+      const appCatalog=[['Browser','browser'],['Calendar','calendar'],['Camera','camera'],['Files','files'],['Inbox','inbox'],['Maps','maps'],['Notes','notes'],['Passwords','passwords'],['Photos','photos'],['Workflows','workflows']] as const;
+      const existingAppRow=(id:string)=>appSettingsRows.find((row:Bag)=>row.label===(id==='calendar'?'Calendar':id==='photos'?'Photos':id==='passwords'?'Password manager':id==='workflows'?'Scheduled summaries':''));
+      const selected=categories.find(([key])=>key===categoryPage);
+      if(selected){
+        const [key,title,captions]=selected;
+        let groups=detailGroups.filter((section:Bag)=>(captions as readonly string[]).includes(section.cap)).map((section:Bag)=>({...section,hasCap:false,cap:undefined}));
+        if(key==='settings-apps')groups=[group(appCatalog.map(([label,id])=>({kNav:true,label,lbl:label,chev:true,noAB:true,go:()=>{activeSettingsCategory='settings-apps';const existing=existingAppRow(id);if(existing&&id!=='workflows')existing.go();else api.set({page:'app-settings-'+id});}})))];
+        out.stack.push({isTop:false,notTop:true,cls:'enter',z:4,title,hasTitle:true,backLabel:'Back to Settings',back:()=>{activeSettingsCategory=null;api.set({page:null});},hero:{},groups});
+      }
+    }
+    if(appSettingsPage){
+      const names:Record<string,string>={browser:'Browser',calendar:'Calendar',camera:'Camera',files:'Files',inbox:'Inbox',maps:'Maps',notes:'Notes',passwords:'Passwords',photos:'Photos',workflows:'Workflows'};
+      const rows:Bag[]=[];
+      if(appSettingsPage==='inbox')rows.push({kNav:true,label:'Google & email',lbl:'Google & email',chev:true,noAB:true,go:()=>googleConnectionController.open()});
+      if(appSettingsPage==='workflows'){rows.push({kNav:true,label:'Scheduled summaries',lbl:'Scheduled summaries',chev:true,noAB:true,go:()=>window.dispatchEvent(new Event('alpha:hosted-digests'))});const channel=(delivery.channels||[]).find((c:Bag)=>c.id==='reminders');if(channel&&!Capacitor.isNativePlatform())rows.push({kTog:true,label:'Show alerts',aria:'Show alerts',on:!channel.blocked,track:!channel.blocked?'background:var(--acc)':'background:var(--line)',kx:!channel.blocked?20:0,toggle:()=>void run(async()=>{await notifications.setAlertPreferences({channelId:channel.id,enabled:!!channel.blocked});})});}
+      const permissions:Record<string,string[]>={camera:['Camera','Microphone'],maps:['Location'],notes:['Microphone']};
+      for(const label of permissions[appSettingsPage]||[])rows.push(info(label,typeof facts.permissions?.[label]==='boolean'?(facts.permissions[label]?'Allowed for Alpha':'Not allowed'):'Managed by your system'));
+      if(appSettingsPage==='photos')rows.push(info('Photo access','Photos you choose'));
+      if(appSettingsPage==='files')rows.push(info('File access','Files and folders you choose'));
+      if(appSettingsPage==='browser')rows.push(info('Website permissions','Managed per website'));
+      out.stack.push({isTop:false,notTop:true,cls:'enter',z:4,title:names[appSettingsPage]||'App settings',hasTitle:true,backLabel:'Back to Apps',back:()=>{activeSettingsCategory='settings-apps';api.set({page:'settings-apps'});},hero:{},groups:rows.length?[group(rows)]:[group([info('Settings','No additional options')])]});
+    }
+    if(activeSettingsCategory&&!categoryPage)for(const page of out.stack)if(!page.isTop&&page.backLabel==='Back to Settings')page.backLabel='Back to '+categoryNames[activeSettingsCategory];
     // Stable identities keep focused controls attached while async groups change.
     for(const page of out.stack){
       const groups=new Map<string,number>();
@@ -929,7 +955,7 @@ export function installSettingsAdapter(Component: any, views: Bag) {
         const name=String(section.id??section.cap??section.rows?.[0]?.label??section.rows?.[0]?.lbl??'group');
         const occurrence=groups.get(name)??0;groups.set(name,occurrence+1);section.id=JSON.stringify([page.title||'Settings',name,occurrence]);
         const rows=new Map<string,number>();
-        section.rows=(section.rows||[]).map((row:Bag)=>{const identity=String(row.id??row.aria??row.label??row.lbl??row.time??'')+String(row.text??'');const n=rows.get(identity)??0;rows.set(identity,n+1);return {...row,id:JSON.stringify([identity,n])};});
+        section.rows=(section.rows||[]).map((row:Bag)=>{if(row.kNav&&row.hasVal&&String(row.val||'').length>24)row={...row,sub:[...new Set([row.hasSub?row.sub:'',row.val].filter(Boolean))].join(' · '),hasSub:true,hasVal:false};const identity=String(row.id??row.aria??row.label??row.lbl??row.time??'')+String(row.text??'');const n=rows.get(identity)??0;rows.set(identity,n+1);return {...row,id:JSON.stringify([identity,n])};});
       }
     }
     if(!Capacitor.isNativePlatform()) {
