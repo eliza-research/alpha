@@ -11,7 +11,8 @@ import com.getcapacitor.annotation.*;
 import java.util.*;
 import java.util.concurrent.*;
 
-/** Files browser over shared storage with all-files access (storage* methods,
+/** Files browser over shared storage with all-files access, or the legacy storage permissions on
+ * API 29 (storage* methods,
  * design/view-refresh-2026-11/PLAN.md section 4, decision F1). Storage paths are volume-relative
  * and checked by StorageBrowser.resolve; the renderer never names an absolute path or a provider
  * URI. The earlier user-selected SAF tree is gone: a tree an earlier version recorded under
@@ -31,13 +32,13 @@ public class AlphaFilesPlugin extends Plugin {
  }
  private static JSObject result(String status,String message){return DocumentFolderTree.result(status,message);}
  private ContentResolver resolver(){return getContext().getContentResolver();}
- // ---- Storage browser (all-files access) ----
+ // ---- Storage browser (all-files access; API 29: legacy storage) ----
  private final ExecutorService storageWorker=Executors.newSingleThreadExecutor();
  private final StorageWatchSlot watch=new StorageWatchSlot();
  private final android.os.Handler main=new android.os.Handler(android.os.Looper.getMainLooper());
  private final Runnable changed=()->notifyListeners("storageChanged",new JSObject());
  private interface StorageWork {JSObject run(StorageBrowser browser)throws Exception;}
- private JSObject denied(){JSObject out=result("denied","Allow all-files access to browse storage.");out.put("access",StorageCatalog.access(getContext()));return out;}
+ private JSObject denied(){JSObject out=result("denied",StorageCatalog.legacy()?"Allow storage access to browse files.":"Allow all-files access to browse storage.");out.put("access",StorageCatalog.access(getContext()));return out;}
  private void storage(PluginCall call,StorageWork task){PluginWorkers.submit(storageWorker,()->{
   try{
    if(!"granted".equals(StorageCatalog.access(getContext()))){call.resolve(denied());return;}
