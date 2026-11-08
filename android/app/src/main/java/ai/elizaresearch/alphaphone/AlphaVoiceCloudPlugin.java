@@ -4,6 +4,7 @@ import ai.eliza.voice.LiveCaptureController;
 import ai.eliza.voice.CartesiaSpeech;
 import ai.eliza.voice.LocalSpeechBridgePlugin;
 import ai.eliza.voice.RecordingPcm;
+import ai.eliza.plugins.media.RecordingWindow;
 import ai.eliza.voice.SpeechRequestGate;
 import ai.eliza.voice.CloudSpeechTimings;
 import ai.eliza.voice.SpeechStreamBridgePlugin;
@@ -186,9 +187,13 @@ public final class AlphaVoiceCloudPlugin extends LocalSpeechBridgePlugin {
   c.setInstanceFollowRedirects(false);c.setConnectTimeout(20000);c.setReadTimeout(120000);c.setUseCaches(false);c.setRequestMethod("POST");c.setDoOutput(true);c.setRequestProperty("Authorization","Bearer "+token);
   requireCloudSpeechAuthority(call,epoch);if(request.cancelled)throw new IOException();return c;
  }
+ private RecordingWindow savedRecording(PluginCall call,SpeechRequestGate.Request request)throws Exception{
+  if(!call.getData().has("savedNoteId"))return null;
+  return RecordingWindow.open(AlphaNoteAudioPlugin.recordings(getContext()),getContext().getCacheDir(),"noteId",call.getString("recordingId"),call.getString("savedNoteId"),call.getLong("offsetMs"),call.getLong("savedDurationMs"),()->request.cancelled||destroyed());
+ }
  @PluginMethod public void transcribeRecording(PluginCall call){final long epoch=AlphaLocalAgentPlugin.credentialAuthorityEpoch();submit(call,request->{
   requireCloudSpeechAuthority(call,epoch);
-  try(SavedNoteSpeech saved=SavedNoteSpeech.open(getContext(),call,()->request.cancelled||destroyed())){
+  try(RecordingWindow saved=savedRecording(call,request)){
   if(saved!=null&&saved.empty){saved.check();JSObject silence=new JSObject();silence.put("text","");silence.put("local",false);silence.put("emptyWindow",true);request.result=silence;return;}
   CloudSpeechTimings.Record timing=cloudTimings.begin("stt");boolean completed=false;try{
   request.failureCode="voice-stt-decode";cloudTimings.mark(timing,"decode-start");
@@ -226,7 +231,7 @@ public final class AlphaVoiceCloudPlugin extends LocalSpeechBridgePlugin {
   public void opened(HttpURLConnection connection)throws Exception{request.connection=connection;check();}
  }
  @PluginMethod public void transcribeOwnRecording(PluginCall call){submit(call,request->{
-  OwnSpeech own=new OwnSpeech(call,request);try(SavedNoteSpeech saved=SavedNoteSpeech.open(getContext(),call,()->request.cancelled||destroyed())){
+  OwnSpeech own=new OwnSpeech(call,request);try(RecordingWindow saved=savedRecording(call,request)){
   if(saved!=null&&saved.empty){saved.check();JSObject silence=new JSObject();silence.put("text","");silence.put("local",false);silence.put("emptyWindow",true);request.result=silence;return;}String recordingId=required(call.getString("recordingId"),256);File file=saved==null?recording().selected(recordingId):saved.file;if(file==null)throw new IOException("Recording unavailable");
   byte[] wav=RecordingPcm.decode(file,()->request.cancelled||destroyed());
   try{if(saved!=null)saved.check();String text=CartesiaSpeech.transcribe(own.key,wav,own,CartesiaSpeech.HTTPS);own.check();if(saved!=null)saved.check();JSObject result=new JSObject();result.put("text",text);result.put("local",false);result.put("provider","cartesia");result.put("route","direct");request.result=result;}finally{Arrays.fill(wav,(byte)0);}

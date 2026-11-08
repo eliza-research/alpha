@@ -82,7 +82,8 @@ public class CloudWavUploadTest {
  static class JSONObject{static int reads;JSONObject(String value){reads++;}Object get(String key){return "transcript";}}
  static class Capture{File file=new File("opaque-selected-recording");File selected(String id){return file;}}
  // This multipart test exercises an unsaved draft; saved-note selection is covered separately.
- static class SavedNoteSpeech implements AutoCloseable{File file;boolean empty;static SavedNoteSpeech open(Object context,PluginCall call,BooleanSupplier cancelled){return null;}void check(){}public void close(){}}
+ static class RecordingWindow implements AutoCloseable{File file;boolean empty;void check(){}public void close(){}}
+ RecordingWindow savedRecording(PluginCall call,Pending request){return null;}
  interface Work{void run(Pending request)throws Exception;}
  void submit(PluginCall call,Work work){pending=new Pending();try{if(failure.equals("authority-before"))AlphaLocalAgentPlugin.authority++;work.run(pending);}catch(Exception e){error=e;}}
  String required(String value,int limit){return value;}
