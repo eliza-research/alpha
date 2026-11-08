@@ -111,7 +111,8 @@ final class BrowserReadingFixture {
   for(Cleanup step:first)failure=attemptCleanup(failure,step);
   failure=attemptCleanup(failure,()->call("Capacitor.Plugins.AlphaVoiceCloud.stopPlayback()"));
   failure=attemptCleanup(failure,()->call("Capacitor.Plugins.AlphaBrowser.cancelReading(window.__readingTab||{})"));
-  if(slot!=null)failure=attemptCleanup(failure,()->call("Capacitor.Plugins.AlphaConnection.secureRemove({slot:"+JSONObject.quote(slot)+"})"));
+  // A speech token left in the credential vault outlives the run, so its removal must succeed.
+  if(slot!=null)failure=attemptCleanup(failure,()->assertFalse("Synthetic speech token removed",call("Capacitor.Plugins.AlphaConnection.secureRemove({slot:"+JSONObject.quote(slot)+"})").has("error")));
   if(installed)failure=attemptCleanup(failure,()->assertEquals("true",child.child("(()=>{const old=window["+JSONObject.quote(key)+"];if(!old)return false;document.body.replaceWith(old);delete window["+JSONObject.quote(key)+"];return !window["+JSONObject.quote(key)+"];})()")));
   failure=attemptCleanup(failure,()->js("if(window.__readingNative)Capacitor.nativePromise=window.__readingNative;for(const k of ['__readingNative','__readingTab','__readingArgs','__readingResult','__readingEnded','__readingSettled'])delete window[k]"));
   if(primary==null&&failure!=null){if(failure instanceof Exception)throw (Exception)failure;throw (AssertionError)failure;}

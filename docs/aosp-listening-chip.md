@@ -254,8 +254,8 @@ SystemUI patch stages only into a new overlay and keeps its preimage fences. Alp
 `test/always-on-listener.test.mjs` and `test/aosp-listener.test.mjs` run those two
 suites and compile Alpha's own listener components against the shared sources. The
 stubs mirror reviewed signatures; they are **not** the pinned SystemUI tree, so Dagger
-wiring, resources and the Kotlin binder are compiled only by a real SystemUI build. None of this executes Android, SystemUI or an
-image.
+wiring, resources and the Kotlin binder are compiled only by a real SystemUI build. None
+of this executes Android, SystemUI or an image.
 
 ## Exact source application
 

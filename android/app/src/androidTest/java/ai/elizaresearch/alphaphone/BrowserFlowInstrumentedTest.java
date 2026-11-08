@@ -368,13 +368,13 @@ public class BrowserFlowInstrumentedTest {
   return out.get();
  }
  /** The presented tab settles on {@code url}: recorded and engine address agree, committed, not loading,
-  * no error, shown, and the page itself is at that address. */
+  * no error, shown, and the page itself is at that address (parsed: Android's JSONObject.quote escapes "/"). */
  private JSONObject settled(String url,String step)throws Exception{
   JSONObject state=new JSONObject();
   for(int i=0;i<100;i++){
    state=tabState();
    if(url.equals(state.optString("url"))&&url.equals(state.optString("engineUrl"))&&state.optBoolean("committed")&&!state.optBoolean("loading")&&state.optString("error").isEmpty()&&state.optBoolean("shown")
-    &&JSONObject.quote(url).equals(child("location.href")))return state;
+    &&url.equals(new org.json.JSONTokener(child("location.href")).nextValue()))return state;
    SystemClock.sleep(100);
   }
   fail(step+": tab did not settle on "+url+"; state="+state+"; "+diagnostics());return state;

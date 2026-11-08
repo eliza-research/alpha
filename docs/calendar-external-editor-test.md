@@ -20,7 +20,8 @@ node scripts/test-calendar-regression.mjs --external
 ```
 
 The runner leases the emulator and refuses existing Alpha or Etar package
-registrations. It installs verified APKs into a fresh secondary user for each
+registrations. It installs the verified `artifacts/test-mocks/` pair (from
+`npm run android:build -- --test-mocks`) into a fresh secondary user for each
 Alpha distribution and scopes Calendar grants to that user. The upstream runner
 checks installed APK bytes; the native test independently checks Etar's version
 and signer. A mismatched dependency fails before instrumentation. Use
