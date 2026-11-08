@@ -2344,6 +2344,8 @@
         </div>
         </sc-if>
 
+        <sc-if value="{{notes.vo.canAddTranscript}}"><button class="note-source-trigger" style="margin:16px 0 0;width:100%" disabled="{{notes.vo.transcriptDisabled}}" onClick="{{notes.vo.addTranscript}}">{{notes.vo.transcriptLabel}}</button></sc-if>
+        <sc-if value="{{notes.vo.transcriptBusy}}"><button class="tap" style="min-height:44px;padding:0 4px;color:var(--mut)" onClick="{{notes.vo.cancelTranscript}}">Cancel transcription</button></sc-if>
         <sc-if value="{{notes.vo.canReviewTranscript}}"><button class="note-source-trigger" style="margin:16px 0 0;width:100%" onClick="{{notes.vo.reviewTranscript}}">Review transcript with Alpha</button></sc-if>
         <sc-if value="{{notes.vo.proc}}">
           <div style="display: flex; flex-direction: column; gap: 12px; padding: 18px; border-radius: 24px; background: var(--s2); margin-top: 22px">

@@ -3,7 +3,8 @@ import {devSurfacesEnabled} from '../build-flags';
 import {browserCloudVoice,browserCloudCredential} from './cloud-connection';
 import type {LocalAgentProtocol} from '../runtime/local-agent';
 import {browserSpeechConnection as connectionController} from './agent-speech';
-import {recordingPcmWav} from '../../../../.eliza/client-features/packages/voice/src/browser-capture/recording-pcm.ts';
+import {recordingPcmWav,decodeRecordingPcm,encodePcm16Wav} from '../../../../.eliza/client-features/packages/voice/src/browser-capture/recording-pcm.ts';
+import type {SpeechRecordingInput} from '../runtime/cloud-voice';
 import {browserMediaVolume} from './audio-settings';
 import {audioRecord,audioMetadata,retainAudio,changeAudioDeleted,audioDeletionStatus,migrateAudio,purgeAudio} from './note-audio-store';
 import { speechError, speechCancelled, type SpeechRequestKind, type SpeechCancelReason } from './speech-errors';
@@ -31,6 +32,27 @@ export class BrowserVoice extends WebPlugin {
  private noteCapture=new BrowserAudioCapture(event=>{const note=this.note;if(note&&event.recordingId===note.recordingId&&note.state!=='stopped'){note.state='stopped';note.stopReason='error';this.noteChanged();}});
  private note?:{recordingId:string;binding:import('../prototype/note-recorder').NoteRecordingBinding;canonicalSavePending?:boolean;state:'recording'|'paused'|'stopped';stopReason?:string;durationMs:number;segments:{segmentId:string;durationMs:number;text?:string}[]};
  private noteSegments=new Map<string,{blob:Blob;durationMs:number}>();
+ private savedSpeech?:{audioId:string;noteId:string;durationMs:number;pcm:Float32Array;requestId:string};
+ private clearSavedSpeech(){this.savedSpeech?.pcm.fill(0);this.savedSpeech=undefined;}
+ private async transcriptionAudio(input:SpeechRecordingInput,signal:AbortSignal){
+  if(input.savedNoteId===undefined){const clip=this.clip(input.recordingId);if(!clip)throw Error('Record a clip first.');return {blob:clip.blob,pcm:undefined as Uint8Array|undefined,empty:false,verify:async()=>{signal.throwIfAborted();}};}
+  const duration=input.savedDurationMs,offset=input.offsetMs;
+  if(typeof duration!=='number'||!Number.isSafeInteger(duration)||duration<=0||typeof offset!=='number'||!Number.isSafeInteger(offset)||offset<0||offset>=duration||offset%25_000!==0)throw Error('Invalid recording window');
+  const verify=async()=>{signal.throwIfAborted();const row=await audioRecord(input.recordingId);signal.throwIfAborted();if(row.audioId!==input.recordingId||row.noteId!==input.savedNoteId||row.durationMs!==duration||row.deletedAt!==undefined)throw Error('Recording changed');return row;};
+  const row=await verify();
+  if(this.savedSpeech?.audioId!==row.audioId||this.savedSpeech.noteId!==row.noteId||this.savedSpeech.durationMs!==duration){
+   this.clearSavedSpeech();
+   // Decode once for this explicit job; requests remain bounded 25-second WAV windows.
+   const pcm=await decodeRecordingPcm(row.blob,signal,{maxSeconds:Math.ceil(duration/1000)+1,maxBytes:row.blob.size});
+   signal.throwIfAborted();await verify();this.savedSpeech={audioId:row.audioId,noteId:row.noteId,durationMs:duration,pcm,requestId:input.requestId};
+  }
+  this.savedSpeech.requestId=input.requestId;
+  const start=Math.floor(offset*16),end=Math.min(this.savedSpeech.pcm.length,Math.floor((offset+25_000)*16));
+  if(start>=end){this.clearSavedSpeech();return {blob:new Blob([]),pcm:undefined,empty:true,verify};}
+  const pcm=encodePcm16Wav(this.savedSpeech.pcm.subarray(start,end));
+  if(offset+25_000>=duration)this.clearSavedSpeech();
+  return {blob:new Blob([pcm],{type:'audio/wav'}),pcm,empty:false,verify};
+ }
  private clip(id:string){return this.capture.get(id)??this.noteCapture.get(id)??this.noteSegments.get(id);}
  private noteChanged(){void this.notifyListeners('noteRecordingChanged',this.noteStatus());}
  private noteStatus(){
@@ -122,12 +144,13 @@ export class BrowserVoice extends WebPlugin {
   const current=()=>{const next=connection.getCloudClient();if(document.hidden||connection.getCloudEnvironment()!==input.environment||next?.sessionId!==binding.sessionId||next.credentialId!==binding.credentialId)throw new DOMException('Cloud account changed','AbortError');};
   current();return {sessionId:binding.sessionId,current};
  }
- async transcribeRecording(input:{recordingId:string;requestId:string;environment:string;credentialId:string}){
+ async transcribeRecording(input:SpeechRecordingInput & {environment:string;credentialId:string}){
   if(!devSurfacesEnabled)throw Error('Cloud voice requires the native app or a development host.');
   return this.withAgentSpeech('stt',async signal=>{
-   const binding=await this.cloudBinding(input),clip=this.clip(input.recordingId);if(!clip)throw Error('Record a clip first.');
-   const response=await browserCloudVoice(input,'stt',clip.blob,signal),result=await response.json();signal.throwIfAborted();binding.current();
-   if(result.local!==false||typeof result.text!=='string'||!result.text.trim())throw Error('Cloud returned no usable transcript.');
+   const binding=await this.cloudBinding(input),audio=await this.transcriptionAudio(input,signal);binding.current();await audio.verify();
+   if(audio.empty)return {text:'',local:false};
+   let result;try{const response=await browserCloudVoice(input,'stt',audio.blob,signal);result=await response.json();signal.throwIfAborted();binding.current();await audio.verify();}finally{audio.pcm?.fill(0);}
+   if(result.local!==false||typeof result.text!=='string'||!result.text.trim()&&input.savedNoteId===undefined)throw Error('Cloud returned no usable transcript.');
    return {text:result.text,local:false};
   },input.requestId);
  }
@@ -142,12 +165,11 @@ export class BrowserVoice extends WebPlugin {
    return {playbackId};
   },input.requestId);
  }
- async transcribeDevelopmentCloudRecording(input:{recordingId:string;requestId:string;route?:'cloud'|'direct'}){
-  const clip=this.clip(input.recordingId);if(!clip)throw Error('Record a clip first.');
+ async transcribeDevelopmentCloudRecording(input:SpeechRecordingInput & {route?:'cloud'|'direct'}){
   return this.withAgentSpeech('stt',async signal=>{const connection=await this.connection,agent=connection.getBrowserSpeechAgent(),snapshot=connection.getSnapshot(),route=input.route??'cloud',session=agent?.session,revision=snapshot.providerStatus?.revision;
    if(!agent||!session)throw Error('Connect the resident agent first.');
    const current=()=>{signal.throwIfAborted();const now=connection.getSnapshot();if(agent!==connection.getBrowserSpeechAgent()||agent.session!==session||(route==='direct'?(now.residentInference!=='direct'||now.providerStatus?.voiceConfigured!==true||now.providerStatus?.revision!==revision):now.residentInference==='direct'))throw new DOMException('Voice selection changed','AbortError');};
-   current();const audio=await recordingPcmWav(clip.blob,signal);current();const result=await agent.developmentCloudSpeech({kind:'asr',audio},signal,route);current();if(!('local' in result))throw Error('Transcription returned no text.');return result;},input.requestId);
+   current();const selected=await this.transcriptionAudio(input,signal);current();await selected.verify();if(selected.empty)return {text:'',local:false as const};const audio=selected.pcm??await recordingPcmWav(selected.blob,signal);current();try{const result=await agent.developmentCloudSpeech({kind:'asr',audio},signal,route);current();await selected.verify();if(!('local' in result))throw Error('Transcription returned no text.');return result;}finally{audio.fill(0);}},input.requestId);
  }
  async synthesizeDevelopmentCloud(input:{text:string;requestId:string;replace?:boolean;route?:'cloud'|'direct'}){
   if(input.replace===false&&(this.activeSpeechId||this.audio||this.pendingAudioId||this.speechRequests.has('stt')||this.speechRequests.has('tts')))throw Object.assign(Error('Playback is busy.'),{code:'playback-busy'});
@@ -265,7 +287,7 @@ export class BrowserVoice extends WebPlugin {
  // Only a newer request of the same kind supersedes: a readiness check never cancels transcription or synthesis.
  private async withAgentSpeech<T>(kind:SpeechRequestKind,run:(signal:AbortSignal)=>Promise<T>,requestId?:string){
   this.abortSpeech(kind,'superseded');const request={controller:new AbortController(),requestId};this.speechRequests.set(kind,request);
-  try{const result=await run(request.controller.signal);request.controller.signal.throwIfAborted();return result;}finally{if(this.speechRequests.get(kind)===request)this.speechRequests.delete(kind);}
+  try{const result=await run(request.controller.signal);request.controller.signal.throwIfAborted();return result;}catch(error){if(kind==='stt'&&this.savedSpeech?.requestId===requestId)this.clearSavedSpeech();throw error;}finally{if(this.speechRequests.get(kind)===request)this.speechRequests.delete(kind);}
  }
  private abortSpeech(kind:SpeechRequestKind,reason:SpeechCancelReason){
   const request=this.speechRequests.get(kind);if(!request)return;this.speechRequests.delete(kind);
@@ -275,6 +297,7 @@ export class BrowserVoice extends WebPlugin {
  }
  async cancel(input?:{requestId?:string},reason:SpeechCancelReason='stopped'){
   const requestId=input?.requestId;
+  if(!requestId||this.savedSpeech?.requestId===requestId)this.clearSavedSpeech();
   if(requestId!==undefined){
    for(const [kind,request] of [...this.speechRequests])if(request.requestId===requestId)this.abortSpeech(kind,'cancelled');
    await this.stopPlayback({requestId});

@@ -188,9 +188,11 @@ public final class AlphaVoiceCloudPlugin extends LocalSpeechBridgePlugin {
  }
  @PluginMethod public void transcribeRecording(PluginCall call){final long epoch=AlphaLocalAgentPlugin.credentialAuthorityEpoch();submit(call,request->{
   requireCloudSpeechAuthority(call,epoch);
+  try(SavedNoteSpeech saved=SavedNoteSpeech.open(getContext(),call,()->request.cancelled||destroyed())){
+  if(saved!=null&&saved.empty){saved.check();JSObject silence=new JSObject();silence.put("text","");silence.put("local",false);silence.put("emptyWindow",true);request.result=silence;return;}
   CloudSpeechTimings.Record timing=cloudTimings.begin("stt");boolean completed=false;try{
   request.failureCode="voice-stt-decode";cloudTimings.mark(timing,"decode-start");
-  String recordingId=required(call.getString("recordingId"),256);File file=recording().selected(recordingId);if(file==null)throw new IOException();
+  String recordingId=required(call.getString("recordingId"),256);File file=saved==null?recording().selected(recordingId):saved.file;if(file==null)throw new IOException();
   // Android's MPEG_4 recorder emits mp42, which the Cloud signature gate classifies as video.
   // Decode the selected bounded mono draft to real PCM WAV; changing its MIME label is insufficient.
   HttpURLConnection c;byte[] audio=RecordingPcm.decode(file,()->request.cancelled||destroyed());cloudTimings.mark(timing,"decode-end");
@@ -198,13 +200,14 @@ public final class AlphaVoiceCloudPlugin extends LocalSpeechBridgePlugin {
   String boundary="AlphaVoice"+UUID.randomUUID().toString().replace("-","");
   byte[] prefix=("--"+boundary+"\r\nContent-Disposition: form-data; name=\"provider\"\r\n\r\ncartesia\r\n--"+boundary+"\r\nContent-Disposition: form-data; name=\"audio\"; filename=\"recording.wav\"\r\nContent-Type: audio/wav\r\n\r\n").getBytes(StandardCharsets.US_ASCII);
   byte[] suffix=("\r\n--"+boundary+"--\r\n").getBytes(StandardCharsets.US_ASCII);
-  request.failureCode="voice-stt-connect";cloudTimings.mark(timing,"upload-start");c=connect(call,"stt",request,epoch);
+  if(saved!=null)saved.check();request.failureCode="voice-stt-connect";cloudTimings.mark(timing,"upload-start");c=connect(call,"stt",request,epoch);
   request.failureCode="voice-stt-upload";c.setRequestProperty("Content-Type","multipart/form-data; boundary="+boundary);c.setFixedLengthStreamingMode(prefix.length+audio.length+suffix.length);
   try(OutputStream out=c.getOutputStream()){if(request.cancelled)throw new IOException();out.write(prefix);out.write(audio);out.write(suffix);}cloudTimings.mark(timing,"upload-end");
   }finally{Arrays.fill(audio,(byte)0);}
   request.failureCode="voice-stt-response";answeredTimed(c,timing);CloudSpeechPolicy.requireProvider(BuildConfig.ELIZA_RUNTIME_PROFILE,c.getHeaderField("X-Eliza-STT-Provider"));byte[] response;try(InputStream in=c.getInputStream()){response=read(in,256*1024,request);}cloudTimings.mark(timing,"body-end");JSONObject data=new JSONObject(new String(response,StandardCharsets.UTF_8));Object transcript=data.get("transcript");if(!(transcript instanceof String))throw new IOException();
-  requireCloudSpeechAuthority(call,epoch);if(request.cancelled||destroyed())throw new IOException();JSObject result=new JSObject();result.put("text",transcript);result.put("local",false);request.result=result;request.failureCode=null;completed=true;
+  if(saved!=null)saved.check();requireCloudSpeechAuthority(call,epoch);if(request.cancelled||destroyed())throw new IOException();JSObject result=new JSObject();result.put("text",transcript);result.put("local",false);request.result=result;request.failureCode=null;completed=true;
   }finally{cloudTimings.finish(timing,request.cancelled||destroyed()?"cancelled":completed?"completed":"failed");}
+  }
  });}
  @PluginMethod public void synthesize(PluginCall call){if(Boolean.FALSE.equals(call.getBoolean("replace",true))&&speakerBusy()){call.reject("Speaker is in use","playback-busy");return;}synthesizeAudio(call,false,null);}
 
@@ -223,9 +226,11 @@ public final class AlphaVoiceCloudPlugin extends LocalSpeechBridgePlugin {
   public void opened(HttpURLConnection connection)throws Exception{request.connection=connection;check();}
  }
  @PluginMethod public void transcribeOwnRecording(PluginCall call){submit(call,request->{
-  OwnSpeech own=new OwnSpeech(call,request);String recordingId=required(call.getString("recordingId"),256);File file=recording().selected(recordingId);if(file==null)throw new IOException("Recording unavailable");
+  OwnSpeech own=new OwnSpeech(call,request);try(SavedNoteSpeech saved=SavedNoteSpeech.open(getContext(),call,()->request.cancelled||destroyed())){
+  if(saved!=null&&saved.empty){saved.check();JSObject silence=new JSObject();silence.put("text","");silence.put("local",false);silence.put("emptyWindow",true);request.result=silence;return;}String recordingId=required(call.getString("recordingId"),256);File file=saved==null?recording().selected(recordingId):saved.file;if(file==null)throw new IOException("Recording unavailable");
   byte[] wav=RecordingPcm.decode(file,()->request.cancelled||destroyed());
-  try{String text=CartesiaSpeech.transcribe(own.key,wav,own,CartesiaSpeech.HTTPS);own.check();JSObject result=new JSObject();result.put("text",text);result.put("local",false);result.put("provider","cartesia");result.put("route","direct");request.result=result;}finally{Arrays.fill(wav,(byte)0);}
+  try{if(saved!=null)saved.check();String text=CartesiaSpeech.transcribe(own.key,wav,own,CartesiaSpeech.HTTPS);own.check();if(saved!=null)saved.check();JSObject result=new JSObject();result.put("text",text);result.put("local",false);result.put("provider","cartesia");result.put("route","direct");request.result=result;}finally{Arrays.fill(wav,(byte)0);}
+  }
  });}
  @PluginMethod public void synthesizeOwn(PluginCall call){if(Boolean.FALSE.equals(call.getBoolean("replace",true))&&speakerBusy()){call.reject("Speaker is in use","playback-busy");return;}submit(call,request->{
   OwnSpeech own=new OwnSpeech(call,request);byte[] audio=CartesiaSpeech.synthesize(own.key,required(call.getString("text"),5000),own,CartesiaSpeech.HTTPS);own.check();publishPreparedAudio(call,request,audio);

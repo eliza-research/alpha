@@ -36,7 +36,7 @@ import { VoiceAssistantSession, type AssistantState } from '../runtime/voice-ass
 import { shouldRespondToVoiceTurn, buildVoiceTurnSignal } from '@elizaos/voice/turn';
 import { toSpeakableText } from '@elizaos/ui/voice/voice-chat-playback';
 import { connectionController } from '../runtime/connection-ui';
-import { NoteRecorderSession, formatRecordingClock, type CanonicalNoteSaveIntent, type SavedNoteAudio } from './note-recorder';
+import { NoteRecorderSession, addSavedNoteTranscript, formatRecordingClock, type CanonicalNoteSaveIntent, type SavedNoteAudio } from './note-recorder';
 import { createNoteRecorderDriver } from '../runtime/note-recorder-driver';
 import { setNotesRecorderControl } from './notes-recorder-control';
 const voiceServiceName = () => connectionController.getSnapshot().residentInference==='direct'?'Cartesia':cloudServiceName(connectionController.getCloudEnvironment() ?? connectionController.getSnapshot().cloudAccount?.environment ?? connectionController.getSnapshot().signIn?.environment ?? 'production');
@@ -78,6 +78,8 @@ export function installPrototypeVoiceAdapter(Component: any, views: Record<strin
   installNativeVoiceTurnMarks();
   const notes = views.notes, render = notes.render, back = notes.back, leave = notes.onLeave;
   let closeTranscriptQuestion:(()=>void)|undefined;
+  let savedTranscription:{noteId:string;controller:AbortController;current:()=>boolean}|undefined;
+  const cancelSavedTranscription=()=>{savedTranscription?.controller.abort();};
   const originalApi = Component.prototype.api;
   Component.prototype.api = function (key: string) {
     const value = originalApi.call(this, key);
@@ -789,6 +791,7 @@ export function installPrototypeVoiceAdapter(Component: any, views: Record<strin
     const token=generation;this.setState({chat:state.chat==='full'?'full':'sheet',voice:'off'},()=>{if(token!==generation||chatDestination!==chat)return;document.querySelector<HTMLElement>('[data-alpha-chat-recorder] button')?.focus({preventScroll:true});maybeStartDictation();});
   };
   Component.prototype.startVoice = async function () {
+    cancelSavedTranscription();
     if(this.live===false||document.hidden||connectionController.getSnapshot().open||chatDestination?.shell===this)return;
     if(this.pendingActionApproval||document.querySelector('dialog[open]')){this.toast('Finish or cancel the current review before starting voice.');return;}
     if(retirement||mediaUnconfirmed)return;
@@ -1051,6 +1054,7 @@ export function installPrototypeVoiceAdapter(Component: any, views: Record<strin
   // Agent and direct controls use the same Stop-and-save operation.
   setNotesRecorderControl({
     start: async () => {
+      cancelSavedTranscription();
       if (noteRecorder.open && noteRecorder.phase !== 'failed') return 'already';
       if (stage !== 'closed') cleanup(); stopLocalSpeechPlayback(); stopSaved();
       try { await noteRecorder.begin(); } catch { return 'failed'; }
@@ -1091,10 +1095,11 @@ export function installPrototypeVoiceAdapter(Component: any, views: Record<strin
       done: save,
     };
   }
-  const startNoteRecorder = () => { if (stage !== 'closed') cleanup(); stopLocalSpeechPlayback(); stopSaved(); void noteRecorder.begin().catch(() => { /* The recorder shows the error line. */ }); };
+  const startNoteRecorder = () => { cancelSavedTranscription();if (stage !== 'closed') cleanup(); stopLocalSpeechPlayback(); stopSaved(); void noteRecorder.begin().catch(() => { /* The recorder shows the error line. */ }); };
   let recordRequested = false;
   notes.render = (state: Bag, current: Bag) => {
     api = current;
+    if(savedTranscription&&!savedTranscription.current())queueMicrotask(cancelSavedTranscription);
     // Folders remain stored for continuity; this Notes surface is one complete list.
     if (state.folder && state.folder !== 'deleted') queueMicrotask(() => current.setView('notes', { folder: null }));
     if (noteDestination && !noteDestination.current()) queueMicrotask(() => noteRecorder.recheckOwner());
@@ -1118,6 +1123,41 @@ export function installPrototypeVoiceAdapter(Component: any, views: Record<strin
       // A retained recording is not automatically summarized or scheduled.
       vo.ready=Array.isArray(selected.summary)&&selected.summary.length>0;vo.noSummary=false;
       vo.canReviewTranscript=!!String(selected.body||selected.audio.transcript||'').trim();
+      const addingTranscript=savedTranscription?.noteId===selected.id;
+      vo.canAddTranscript=!vo.canReviewTranscript;
+      vo.transcriptBusy=addingTranscript;
+      vo.transcriptDisabled=addingTranscript||!!current.canonicalNotes?.dirty||!!current.canonicalNotes?.pending;
+      vo.transcriptLabel=addingTranscript?'Adding transcript…':'Add transcript';
+      vo.cancelTranscript=cancelSavedTranscription;
+      vo.addTranscript=async()=>{
+        if(savedTranscription||vo.canReviewTranscript||current.canonicalNotes?.dirty||noteRecorder.open||stage!=='closed')return;
+        const source=current.voiceNoteStorage(),binding=composerBinding(),snapshot=JSON.stringify(selected),controller=new AbortController();
+        const active=()=>{const next=current.voiceNoteStorage();return current.voiceNoteActive()&&current.isActive()&&!document.hidden&&!connectionController.getSnapshot().open&&(!current.canonicalNotes||current.canonicalNotes.current)&&next.mode===source.mode&&next.epoch===source.epoch&&next.target===source.target&&composerBinding()===binding&&current.get('notes').open===selected.id&&JSON.stringify(current.get('notes').list.find((n:Bag)=>n.id===selected.id))===snapshot;};
+        if(!active())return;
+        const task={noteId:selected.id,controller,current:active};savedTranscription=task;
+        let driver:ReturnType<typeof createCloudVoice>|undefined,requestId:string|undefined;
+        const cancel=()=>{if(driver&&requestId)void driver.cancel({requestId}).catch(()=>{});};
+        controller.signal.addEventListener('abort',cancel,{once:true});
+        const changed=()=>{if(!active())controller.abort();};
+        const unsubscribe=connectionController.subscribe(changed);document.addEventListener('visibilitychange',changed);
+        current.setView('notes',{noteTranscriptRevision:Date.now()});
+        try{
+          driver=createCloudVoice();
+          const okay=await addSavedNoteTranscript({audioId:selected.audio.audioId,noteId:selected.id,durationMs:selected.audio.durationMs},{current:active,
+            describe:()=>noteAudio.describe({audioId:selected.audio.audioId}),
+            transcribe:async(offsetMs,signal)=>{signal.throwIfAborted();requestId=crypto.randomUUID();const result=await driver!.transcribeRecording({recordingId:selected.audio.audioId,savedNoteId:selected.id,savedDurationMs:selected.audio.durationMs,offsetMs,requestId});signal.throwIfAborted();return result.text;},
+            save:async text=>{
+              if(!active())return false;
+              const patch={body:text,lines:[{s:'me',at:0,t:text}]};
+              if(current.canonicalNotes)return await current.canonicalNotes.update(selected.id,patch);
+              const list=current.get('notes').list.map((note:Bag)=>note.id===selected.id?{...note,...patch,modifiedAt:Date.now()}:note);
+              return await current.saveVoiceNote({list})===true;
+            },
+          },controller.signal);
+          if(!okay)current.toast('The transcript save needs review. Your recording is kept.');
+        }catch(failure){if(!controller.signal.aborted)current.toast(cloudVoiceFailure(failure,{recording:true})||(failure instanceof Error&&'code' in failure&&failure.code==='no-speech'?failure.message:'Couldn’t add the transcript. Your recording is kept.'));}
+        finally{controller.signal.removeEventListener('abort',cancel);unsubscribe();document.removeEventListener('visibilitychange',changed);if(driver&&requestId)await driver.cancel({requestId}).catch(()=>{});if(savedTranscription===task)savedTranscription=undefined;if(current.isActive()&&current.voiceNoteActive())current.setView('notes',{noteTranscriptRevision:Date.now()});}
+      };
       vo.reviewTranscript=()=>{
         closeTranscriptQuestion?.();stopSaved();
         const snapshot=JSON.stringify(selected),active=()=>current.voiceNoteActive()&&current.isActive()&&!document.hidden&&!connectionController.getSnapshot().open&&current.get('notes').open===selected.id&&JSON.stringify(current.get('notes').list.find((n:Bag)=>n.id===selected.id))===snapshot;
@@ -1164,7 +1204,7 @@ export function installPrototypeVoiceAdapter(Component: any, views: Record<strin
       vo.playLabel = savedPlaying ? 'Stop recording playback' : 'Play recording';
       vo.playIcon = savedPlaying ? current.ic.stop : current.ic.play;
       vo.play = () => { if (currentNoteReading()?.noteId === selected.id) stopSpeaking(); void playSaved(selected); };
-      vo.lines = [{ ini: 'You', who: 'You', t: selected.body || selected.audio.transcript, at: '0:00', chip: 'background:var(--acc);color:#fff', css: '', seek: () => { void playSaved(selected); } }];
+      vo.lines = vo.canReviewTranscript ? [{ ini: 'You', who: 'You', t: selected.body || selected.audio.transcript, at: '0:00', chip: 'background:var(--acc);color:#fff', css: '', seek: () => { void playSaved(selected); } }] : [];
       vo.bars = vo.bars.map((bar: Bag) => ({ ...bar, h: 4 })); // No invented amplitude analysis.
       vo.share = () => current.toast('Audio stays in this app. Sharing recordings is not available yet.');
       const reviewed=structuredClone(selected);
@@ -1292,7 +1332,7 @@ export function installPrototypeVoiceAdapter(Component: any, views: Record<strin
   notes.back = (state: Bag, current: Bag) => { if (noteRecorder.open) { if (noteRecorder.confirmingDiscard) noteRecorder.keep(); else if (noteRecorder.phase === 'failed' && !noteRecorder.recordingId) void noteRecorder.discard(); else void finishNoteRecording(); return true; } return back?.(state, current); };
   const noteReadingChanged=()=>{if(api)api.setView('notes',{noteReadingRevision:Date.now()});};
   window.addEventListener('alpha:note-reading',noteReadingChanged);
-  notes.onLeave = (current: Bag) => { if(!ownedNavigation?.applying)noteRealtimeCancellation(conversationVoice,'notes-left-unowned');closeTranscriptQuestion?.();stopSpeaking();noteRecorder.leave(!Capacitor.isNativePlatform());noteRecorderAdopted=false;if(!ownedNavigation?.applying)cleanup(); leave?.(current); };
+  notes.onLeave = (current: Bag) => { cancelSavedTranscription();if(!ownedNavigation?.applying)noteRealtimeCancellation(conversationVoice,'notes-left-unowned');closeTranscriptQuestion?.();stopSpeaking();noteRecorder.leave(!Capacitor.isNativePlatform());noteRecorderAdopted=false;if(!ownedNavigation?.applying)cleanup(); leave?.(current); };
   const visibility = () => {
     // Speech preparation is foreground-only; returning prepares the same route again.
     if (!document.hidden) { if (reprepare && stage === 'ready' && !busy) { reprepare = false; reopen(error); } return; }
@@ -1317,7 +1357,7 @@ export function installPrototypeVoiceAdapter(Component: any, views: Record<strin
   document.addEventListener('visibilitychange', visibility);
   window.addEventListener('pagehide', pagehide);
   const unmount = Component.prototype.componentWillUnmount;
-  Component.prototype.componentWillUnmount = function () { noteRealtimeCancellation(conversationVoice,'component-unmounted');window.removeEventListener('alpha:note-reading',noteReadingChanged);window.removeEventListener(voicePreferenceKeys().event,noteRouteChanged);document.removeEventListener('visibilitychange', noteRecorderVisibility);noteRecorder.leave(!Capacitor.isNativePlatform());noteRecorderAdopted=false;stopSpeaking();api = undefined; chatDestination=undefined;cleanup(); unsubscribe(); document.removeEventListener('visibilitychange', visibility); window.removeEventListener('pagehide', pagehide); unmount?.call(this); };
+  Component.prototype.componentWillUnmount = function () { cancelSavedTranscription();noteRealtimeCancellation(conversationVoice,'component-unmounted');window.removeEventListener('alpha:note-reading',noteReadingChanged);window.removeEventListener(voicePreferenceKeys().event,noteRouteChanged);document.removeEventListener('visibilitychange', noteRecorderVisibility);noteRecorder.leave(!Capacitor.isNativePlatform());noteRecorderAdopted=false;stopSpeaking();api = undefined; chatDestination=undefined;cleanup(); unsubscribe(); document.removeEventListener('visibilitychange', visibility); window.removeEventListener('pagehide', pagehide); unmount?.call(this); };
 }
 
 function ownBrowserVoiceActive(){const state=connectionController.getSnapshot();return !Capacitor.isNativePlatform()&&state.residentInference==='direct'&&state.providerStatus?.voiceConfigured===true;}

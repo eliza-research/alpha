@@ -4,17 +4,11 @@
  *
  * The recording has no length limit. The native recorder (AlphaNoteRecorder) writes it as
  * finished segments of under 30 s, so a crash keeps every finished segment
- * (CrashKeepsAudio). Each finished segment is transcribed in order while recording goes on and
- * Notes is shown (TranscriptKeepsUp); segments recorded while it is hidden (screen off, another
- * view) are transcribed when it is shown again, or at Done. Any route the user selected is used; every route accepts a segment, since
- * each is under the on-device window and the 60 s request bound of the paired and Cloud
- * routes. The transcript is always a prefix of the audio (TranscriptPrefixOfAudio). Only
- * Done, Discard, low storage or a microphone error end a recording (NoLengthLimit).
- *
- * While recording, an optional live port (the on-device streaming ASR) adds words as they are
- * spoken. Live text is display only: it is never journaled or saved, and it is shown only for
- * audio after the last transcribed segment, so the committed per-segment transcript stays the
- * source of truth.
+ * (CrashKeepsAudio). Alpha saves audio directly on Stop; remote transcription is a later,
+ * explicit action on the saved note. The optional session transcriber remains available to
+ * callers that explicitly enable it. Saved-note transcription checks the same note/audio owner
+ * before every bounded request and before its single save. It never retries a paid request or
+ * deletes recording bytes. Only Stop, Discard, low storage or a microphone error end a recording.
  *
  * This module has no imports so its logic runs under `node --test`.
  */
@@ -28,6 +22,33 @@ export type NoteRecordingStatus = {
   durationMs?: number; segments?: NoteSegment[]; peak?: number;
 };
 export type SavedNoteAudio = { audioId: string; noteId: string; durationMs: number; transcript: string };
+/** An explicit saved-note action. It never records, deletes, or retries a provider/mutation. */
+export async function addSavedNoteTranscript(
+  audio: Pick<SavedNoteAudio, 'audioId' | 'noteId' | 'durationMs'>,
+  port: {
+    current(): boolean;
+    describe(): Promise<SavedNoteAudio & { deletedAt?: number }>;
+    transcribe(offsetMs: number, signal: AbortSignal): Promise<string>;
+    save(text: string): Promise<boolean>;
+  }, signal: AbortSignal,
+): Promise<boolean> {
+  if (!Number.isSafeInteger(audio.durationMs) || audio.durationMs <= 0) throw Error('Recording unavailable');
+  const check = () => { signal.throwIfAborted(); if (!port.current()) throw new DOMException('Note changed', 'AbortError'); };
+  const owned = async () => {
+    check(); const value = await port.describe(); check();
+    if (value.audioId !== audio.audioId || value.noteId !== audio.noteId || value.durationMs !== audio.durationMs || value.deletedAt !== undefined) throw Error('Recording unavailable');
+  };
+  const parts: string[] = [];
+  for (let offset = 0; offset < audio.durationMs; offset += 25_000) {
+    await owned();
+    const text = await port.transcribe(offset, signal); check();
+    if (typeof text !== 'string') throw Error('Transcript unavailable');
+    if (text.trim()) parts.push(text.trim());
+  }
+  await owned();
+  if (!parts.length) throw Object.assign(Error('No speech was found. Your recording is kept.'), {code: 'no-speech'});
+  return port.save(parts.join('\n'));
+}
 export type CanonicalNoteSaveIntent = {
   pending: boolean;
   claim(): Promise<boolean>;
