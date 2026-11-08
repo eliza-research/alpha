@@ -27,7 +27,7 @@ export function installSelectedDocumentAdapter(_Component: unknown, views: Recor
   let renameBusy = false;
   const marker = '__native_selected_document';
   let closeQuestion:(()=>void)|undefined;
-  const release = (id: string) => { void DailyApps.forgetSelected({ selectionId: id }).catch(() => selectedApi?.toast('Document access could not be released. Reopen Files and try again.')); };
+  const release = (id: string) => { void DailyApps.forgetSelected({ selectionId: id }).catch(() => selectedApi?.toast("Can't release this file. Reopen Files.")); };
   /** Closing keeps a Recent selection's grant so Recent can reopen it; Forget
    * (or eviction from Recent) is what releases it. */
   const clear = (forget = false) => {
@@ -77,7 +77,7 @@ export function installSelectedDocumentAdapter(_Component: unknown, views: Recor
   };
   const rename = async (api: Bag) => {
     const selected = current; if(!selected || renameBusy)return;
-    if(pdfBusySelection === selected.result.selectionId)return api.toast('Wait for the PDF page to finish loading before renaming.');
+    if(pdfBusySelection === selected.result.selectionId)return api.toast('Wait for the PDF to load.');
     const name = String(api.get('files').rn || '').trim();
     if(!name)return api.toast('Enter a file name.');
     renameBusy = true;
@@ -100,7 +100,7 @@ export function installSelectedDocumentAdapter(_Component: unknown, views: Recor
       if(response.selectionId)filesIndex.setOpen(response.selectionId);
       current={...selected,result:response,pdf:undefined,renames:(selected.renames||0)+1};api.set({renaming:false});publish();refresh();
       if(response.mimeType==='application/pdf')await pdfPage(selected.pdf?.page || 0,api);
-    } catch {if(current === selected)api.toast('Rename could not be confirmed. Refresh or reselect before retrying.');}
+    } catch {if(current === selected)api.toast('Rename not confirmed. Refresh first.');}
     finally {renameBusy=false;}
   };
   for (const module of ['files', 'photos']) {
@@ -153,7 +153,7 @@ export function installSelectedDocumentAdapter(_Component: unknown, views: Recor
           renaming: !!st.renaming, notRenaming: !st.renaming, rn: typeof st.rn === 'string' ? st.rn : name, onRn: (event: Event) => api.set({rn:(event.target as HTMLInputElement).value}), saveRn: () => rename(api), rnKey: (event: KeyboardEvent) => {if(event.key === 'Enter'){event.preventDefault();void rename(api);}if(event.key === 'Escape')api.set({renaming:false});}, asking: false, asked: false, canAsk: true,
           askLabel: 'Ask Alpha', ask, close,
           startRename: () => selected.result.status === 'renamed-reselect' ? api.toast('Select the renamed file before making another change.') : api.set({renaming:true,rn:name}),
-          share: () => share(api), move: () => api.toast('Moving requires access to the source and destination folders. This selection cannot be moved here yet.'), del: () => api.toast('Delete in the Android document app.'),
+          share: () => share(api), move: () => api.toast("This file can't be moved here."), del: () => api.toast('Delete in the Android document app.'),
         };
       } else if (image) {
         data.viewing = true; data.viewEmpty = false; data.editing = false;

@@ -37,7 +37,8 @@ export function installFilesTreeAdapter(views:Bag,accept:(module:string,result:N
  let selectionEpoch=0;
  let listing:Listing|undefined,api:Bag|undefined,busy=false,status='',generation=0,selected:Entry|undefined,selectedCapability:string|undefined;
  // Native tree IDs are session capabilities; a new process cannot reopen them.
- if(Capacitor.isNativePlatform())filesIndex.revokeTree();
+ const revokeTree=()=>{const open=filesIndex.open();for(const id of filesIndex.revokeTree()){if(id===open)filesIndex.setOpen(null);void DailyApps.forgetSelected({selectionId:id}).catch(()=>{});}};
+ if(Capacitor.isNativePlatform())revokeTree();
  let selecting=false,picked=new Set<string>();
  const resetSelection=()=>{selecting=false;picked.clear();};
  let dialog:{entries?:Entry[];kind:'create'|'rename'|'delete'|'move';entry?:Entry;name:string;folder?:Entry;rows?:Entry[];error?:string}|undefined;
@@ -62,19 +63,19 @@ export function installFilesTreeAdapter(views:Bag,accept:(module:string,result:N
   closeFolderQuestion?.();
   const live=()=>listing===reviewed&&visible()&&!owner.get('files').open&&owner.isActive()&&!document.hidden;
   closeFolderQuestion=reviewContentQuestion({name:'folder '+scope.folder.name,text:folderExcerpt(scope,typeLabel),question:'What is in this folder?',current:live,validate:text=>!sensitiveReadingText(text),closed:()=>{closeFolderQuestion=undefined;},compose:draft=>{void (async()=>{
-   if(busy||!live()){owner.toast('The folder view changed. Nothing was added to your conversation.');return;}
+   if(busy||!live()){owner.toast('This folder changed. Review it again.');return;}
    busy=true;repaint();
    try{
     const fresh=await tree.list({id:scope.folder.id});
-    if(!live()){owner.toast('The folder view changed. Nothing was added to your conversation.');return;}
+    if(!live()){owner.toast('This folder changed. Review it again.');return;}
     if(folderScopeCurrent(scope,fresh)){owner.composeContentQuestion(draft);return;}
     // Show the folder as it is now (or leave it when access ended) before any new review.
-    apply(fresh);owner.toast(fresh.status==='ready'?'This folder changed while you were reviewing it. Nothing was added to your conversation. Review it again.':(fresh.message||'Folder access ended.')+' Nothing was added to your conversation.');
-   }catch{owner.toast('This folder could not be checked. Nothing was added to your conversation.');}
+    apply(fresh);owner.toast(fresh.status==='ready'?'This folder changed. Review it again.':fresh.message||'Folder access ended.');
+   }catch{owner.toast("Can't check this folder.");}
    finally{busy=false;repaint();}
   })();}});
  }
- const apply=(value:Listing)=>{if(value.status==='ready'){listing=value;resetSelection();status=value.cursor||value.truncated||value.message.includes('250')?value.message:'';folderContext();}else{status=value.message;if(value.status==='revoked'||value.status==='unavailable'){listing=undefined;selected=undefined;selectedCapability=undefined;folderContext();clearSelected();api?.set({open:null});if(value.status==='revoked')filesIndex.revokeTree();}}repaint();};
+ const apply=(value:Listing)=>{if(value.status==='ready'){listing=value;resetSelection();status=value.cursor||value.truncated||value.message.includes('250')?value.message:'';folderContext();}else{status=value.message;if(value.status==='revoked'||value.status==='unavailable'){listing=undefined;selected=undefined;selectedCapability=undefined;folderContext();clearSelected();api?.set({open:null});if(value.status==='revoked')revokeTree();}}repaint();};
  async function loadMore(){
   const current=listing;if(busy||!current?.cursor||!current.folder)return;busy=true;repaint();
   try{const value=await tree.list({id:current.folder.id,cursor:current.cursor});
@@ -96,17 +97,20 @@ export function installFilesTreeAdapter(views:Bag,accept:(module:string,result:N
  }
  async function openRecent(row:RecentFile,owner:Bag){
   if(busy)return;
-  if(row.kind==='scan-pdf'){owner.toast('This PDF was saved to the place you chose. Select it to open it here.');void pick(owner,['application/pdf']);return;}
-  if(row.status==='revoked'||!row.selectionId){filesIndex.remove(row.key);void pick(owner,row.mimeType&&row.mimeType!=='application/octet-stream'?[row.mimeType]:undefined);return;}
+  if(row.kind==='scan-pdf'){owner.toast('Select this PDF to open it here.');void pick(owner,['application/pdf']);return;}
+  if(row.status==='revoked'||!row.selectionId){if(row.selectionId)void DailyApps.forgetSelected({selectionId:row.selectionId}).catch(()=>{});filesIndex.remove(row.key);void pick(owner,row.mimeType&&row.mimeType!=='application/octet-stream'?[row.mimeType]:undefined);return;}
   busy=true;
   try{
    let value:NativeResult;
-   if(row.kind==='tree'&&row.treeId&&!Capacitor.isNativePlatform()){value=await tree.select({id:row.treeId});if(value.status==='selected'&&row.selectionId!==value.selectionId){const old=row.selectionId;filesIndex.remove(row.key);void DailyApps.forgetSelected({selectionId:old}).catch(()=>{});}}
+   // Browser selections end with the page or the file, so a refused read means access ended.
+   if(row.kind==='tree'&&row.treeId&&!Capacitor.isNativePlatform()){value=await tree.select({id:row.treeId}).catch(()=>({status:'unavailable' as const,action:'files' as const}));if(value.status==='selected'&&row.selectionId!==value.selectionId){const old=row.selectionId;filesIndex.remove(row.key);void DailyApps.forgetSelected({selectionId:old}).catch(()=>{});}}
    else if(Capacitor.isNativePlatform())value=await DailyApps.describeSelected({selectionId:row.selectionId});
-   else{const read=await DailyApps.readSelected({selectionId:row.selectionId});value={status:read.status==='unavailable'?'unavailable':'selected',action:'files',selectionId:row.selectionId,name:row.name,mimeType:row.mimeType};}
-   if(value.status!=='selected'||!value.selectionId){filesIndex.revoke(row.key);owner.toast('Access to '+row.name+' ended. Select it again.');return;}
+   else{const read=await DailyApps.readSelected({selectionId:row.selectionId}).catch(()=>({status:'unavailable' as const}));value={status:read.status==='unavailable'?'unavailable':'selected',action:'files',selectionId:row.selectionId,name:row.name,mimeType:row.mimeType};}
+   // Only a grant that is gone ends access; a provider failure keeps the row to retry.
+   if(value.status==='unavailable'){filesIndex.revoke(row.key);owner.toast('Access to '+row.name+' ended. Select it again.');return;}
+   if(value.status!=='selected'||!value.selectionId){owner.toast(value.message||'The document provider is unavailable. Try again.');return;}
    await accept('files',value,owner,row.kind==='tree'&&row.treeId?{kind:'tree',treeId:row.treeId}:{kind:'selected'});
-  }catch{filesIndex.revoke(row.key);owner.toast('Access to '+row.name+' ended. Select it again.');}
+  }catch{owner.toast('The document provider is unavailable. Try again.');}
   finally{busy=false;repaint();}
  }
  const beginDialog=(kind:'create'|'rename'|'delete'|'move',entry?:Entry,trigger?:EventTarget|null)=>{
@@ -172,16 +176,16 @@ export function installFilesTreeAdapter(views:Bag,accept:(module:string,result:N
    out.selShare=()=>selectionAction('shareMany');if(!Capacitor.isNativePlatform())out.selSaveLocally=()=>selectionAction('saveMany');
    const close=()=>{if(busy)return;if(folder?.parentId)void load(folder.parentId);else{dialog=undefined;folderContext();currentApi.set({folder:null,open:null,menu:false});}};
    const sortRow=(next:SortMode,label:string)=>({label,on:mode===next,go:()=>{currentApi.set({menu:false,sort:next});}});
-   const menu=[sortRow('recent','Newest first'),sortRow('name','Name'),{label:'Refresh folder',go:()=>{currentApi.set({menu:false});void load(folder?.id);}},...(folder?[{label:'Ask Alpha about this folder',go:()=>{currentApi.set({menu:false});askFolder(currentApi);}}]:[]),...(folder?.canCreate?[{label:'New folder',go:()=>beginDialog('create')}]:[]),...(folder?.canRename?[{label:'Rename folder',go:()=>beginDialog('rename',folder)}]:[]),...(folder?.canDelete?[{label:'Delete empty folder',go:()=>beginDialog('delete',folder)}]:[]),{label:'Choose another folder',go:()=>choose()},{label:'Forget folder access',go:async()=>{if(busy)return;busy=true;try{const value=await tree.forget();if(value.status==='forgotten'){clearSelected();selected=undefined;listing=undefined;dialog=undefined;folderContext();filesIndex.revokeTree();currentApi.set({folder:null,open:null,menu:false});}currentApi.toast(value.message);}catch{currentApi.toast('Folder access could not be released. Try again.');}finally{busy=false;repaint();}}}];
+   const menu=[sortRow('recent','Newest first'),sortRow('name','Name'),{label:'Refresh folder',go:()=>{currentApi.set({menu:false});void load(folder?.id);}},...(folder?[{label:'Ask Alpha about this folder',go:()=>{currentApi.set({menu:false});askFolder(currentApi);}}]:[]),...(folder?.canCreate?[{label:'New folder',go:()=>beginDialog('create')}]:[]),...(folder?.canRename?[{label:'Rename folder',go:()=>beginDialog('rename',folder)}]:[]),...(folder?.canDelete?[{label:'Delete empty folder',go:()=>beginDialog('delete',folder)}]:[]),{label:'Choose another folder',go:()=>choose()},{label:'Forget folder access',go:async()=>{if(busy)return;busy=true;try{const value=await tree.forget();if(value.status==='forgotten'){clearSelected();selected=undefined;listing=undefined;dialog=undefined;folderContext();revokeTree();currentApi.set({folder:null,open:null,menu:false});}currentApi.toast(value.message);}catch{currentApi.toast('Folder access could not be released. Try again.');}finally{busy=false;repaint();}}}];
    const more=listing?.cursor?[{id:'__more',name:busy?'Loading…':'Load more',sub:status||'More entries are available',d:FOLDER,isFile:false,isFolder:false,selOn:false,selOff:false,rowCss:'',label:'Load more entries',tap:()=>void loadMore()}]:[];
    out.fd={name:folder?.name||'Selected folder',empty:!!folder&&!busy&&!listing?.cursor&&rows.length===0,emptyText:'This folder is empty.',selectDisabled:busy||rows.length===0,close,viewIcon:FILE,openMenu:()=>currentApi.set({menu:true}),toggleView:()=>currentApi.set({grid:!state.grid}),viewLabel:state.grid?'Show as list':'Show as grid',sortLabel:sortLabel(mode),sortCss:mode==='name'?'color: var(--acct)':'',toggleSort:()=>{const next:SortMode=mode==='name'?'recent':'name';currentApi.set({sort:next});},select:()=>{if(busy||!rows.length)return;selecting=true;picked.clear();repaint();},
     items:[...[...rows].sort((a,b)=>compareFilesEntries(mode)({name:a.name,directory:a.directory,modified:modifiedOf(a)},{name:b.name,directory:b.directory,modified:modifiedOf(b)})).map(e=>({id:e.id,name:e.name,sub:e.directory?'Folder':typeLabel(e.mimeType)+(e.size>=0?` · ${e.size} bytes`:'')+(modifiedOf(e)?' · '+relative(modifiedOf(e)!):''),d:e.directory?FOLDER:FILE,isFile:!e.directory,isFolder:e.directory,selOn:selecting&&picked.has(e.id),selOff:selecting&&!picked.has(e.id),rowCss:'',label:(selecting?(picked.has(e.id)?'Deselect ':'Select '):'Open ')+e.name,tap:()=>{if(busy)return;if(selecting){picked.has(e.id)?picked.delete(e.id):picked.add(e.id);repaint();}else void openEntry(e);}})),...(selecting?[]:more)],menuRows:menu.map(m=>({on:false,...m,d:FOLDER}))};
    out.menuOpen=!!state.menu;out.closeMenu=()=>currentApi.set({menu:false});
   }
   if(selected&&selectedCapability===out.pv?.nativeSelectionId&&out.isPreview&&state.open==='__native_selected_document'){
-   out.pv.move=(event:Event)=>selected?.canMove?beginDialog('move',selected,event.currentTarget):currentApi.toast('This provider does not support moving this file.');
-   out.pv.del=(event:Event)=>selected?.canDelete?beginDialog('delete',selected,event.currentTarget):currentApi.toast('This provider does not support deleting this file.');
-   out.pv.startRename=(event:Event)=>selected?.canRename?beginDialog('rename',selected,event.currentTarget):currentApi.toast('This provider does not support renaming this file.');
+   out.pv.move=(event:Event)=>selected?.canMove?beginDialog('move',selected,event.currentTarget):currentApi.toast("This file can't be moved.");
+   out.pv.del=(event:Event)=>selected?.canDelete?beginDialog('delete',selected,event.currentTarget):currentApi.toast("This file can't be deleted.");
+   out.pv.startRename=(event:Event)=>selected?.canRename?beginDialog('rename',selected,event.currentTarget):currentApi.toast("This file can't be renamed.");
   }
   if(dialog){const d=dialog;out.nativeTreeDialog={modalRef:dialogModal.ref,busy,confirmDisabled:busy||(d.kind==='move'&&(!d.folder?.canCreate||d.folder.id===d.entry?.parentId||d.entries?.every(e=>e.parentId===d.folder?.id))),title:d.kind==='delete'?'Permanently delete?':d.kind==='move'?'Move file':d.kind==='rename'?'Rename':'New folder',message:d.error||(d.kind==='delete'?`${d.entries?d.entries.length+' selected items':d.entry?.name}. This cannot be undone. There is no integrated trash. Only empty folders can be deleted here.`:d.kind==='move'?`Destination: ${d.folder?.name||'Choose folder'}`:''),hasName:d.kind==='create'||d.kind==='rename',name:d.name,onName:(e:Event)=>{if(dialog)dialog.name=(e.target as HTMLInputElement).value;repaint();},moving:d.kind==='move',destinations:d.rows?.map(e=>({name:e.name,go:()=>moveFolder(e.id)}))||[],canUp:!!d.folder?.parentId,up:()=>moveFolder(d.folder?.parentId),canRoot:d.kind==='move',root:()=>moveFolder(),confirmLabel:busy?'Working…':d.kind==='delete'?'Delete permanently':d.kind==='move'?'Move here':d.kind==='rename'?'Rename':'Create folder',confirm:mutation,cancel:()=>{if(!busy){dialog=undefined;repaint();}}};}
   else out.nativeTreeDialog=null;
