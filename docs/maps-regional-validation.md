@@ -4,7 +4,7 @@ This is a real **Monaco regional** implementation, not global or San Francisco c
 
 ## Backend evidence
 
-`scripts/maps/prepare-region.py` downloads the dated Geofabrik `monaco-260929.osm.pbf`, Planetiler 0.10.2 and GraphHopper 10.2 into `~/.local/share/alphaphone-maps/monaco`. It builds actual OpenMapTiles vector data; the current output is 23 tiles / 409,600 bytes. The same extract feeds a 2,936-entry named-place/address index and GraphHopper car/foot/bike graphs. Way search locations are representative coordinates, not claimed entrances. No public geocoding, route service, paid credential or device location was used to build the data.
+`scripts/maps/prepare-region.py` downloads the dated Geofabrik `monaco-261011.osm.pbf`, Planetiler 0.10.2, GraphHopper 10.2, Planetiler's water/Natural Earth fixtures and the `lake_centerline` source into `~/.local/share/alphaphone-maps/monaco`. Each file has a committed SHA-256 and byte size, checked for fresh downloads and existing files alike; a mismatch stops the run, so a tool or extract change needs a reviewed pin change. Planetiler runs without `--download` and writes `monaco.partial.mbtiles`, renamed to `monaco.mbtiles` only after a zero exit and an SQLite integrity check. It builds actual OpenMapTiles vector data; the current output is 23 tiles / 409,600 bytes. The same extract feeds a 2,936-entry named-place/address index and GraphHopper car/foot/bike graphs. Way search locations are representative coordinates, not claimed entrances. No public geocoding, route service, paid credential or device location was used to build the data.
 
 `python3 scripts/maps/test-region.py` passes against the actual local gateway and GraphHopper process. Recorded public-coordinate routes are drive 615.739 m / 62.155 s, walk 307.524 m / 223.650 s, bicycle 341.353 m / 147.332 s, with real nonempty geometry/instructions. Search/detail, no-results, missing-place, exact stored tile bytes, outside-region rejection and unsupported transit are checked. Evidence and source/tool hashes: `test-results/maps-regional-development/backend.json`. These are local backend results, not Android or navigation acceptance.
 
@@ -25,6 +25,8 @@ Voice guidance and route/place sharing are implemented. Voice speaks each actual
 The renderer takes the provider id and coverage bounds from the configured gateway's `/capabilities` (validated, non-empty bounds) instead of build-time Monaco constants; `regionalDataset` remains only as the descriptor of the development extract. A production HTTPS gateway is still not deployed.
 
 ## Reproduction
+
+`npm run dev:maps` prints these steps when data is missing or stale.
 
 1. Run `python3 scripts/maps/prepare-region.py` (Java 21, bounded 1 GiB tile JVM, two worker threads).
 2. Install PyOsmium 4.1.1 in an isolated Python environment; run `scripts/maps/index-region.py`. The current Mac required a command-scoped `DYLD_LIBRARY_PATH=/opt/homebrew/opt/expat/lib` for its Homebrew Python ABI. Packages were installed into the owned `~/.local/share/alphaphone-maps/python312` directory, not globally.
