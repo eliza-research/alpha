@@ -1480,6 +1480,37 @@
         "Eight constant PCM amplitudes and millidecibel RMS/floor projection with a two-millidecibel numerical tolerance.",
         "Exact ring and utterance ownership/counts through the 400-frame limit. Source output windows retain individual consumed frame actions."
       ]
+    },
+    {
+      "path": "specs/quint/native/NativeSpeechOutputPreparation.qnt",
+      "module": "NativeSpeechOutputPreparation",
+      "init": "init",
+      "step": "step",
+      "invariant": "safety",
+      "sources": [
+        "patches/eliza/local-speech-streaming.patch",
+        "patches/eliza/native-manifest.json",
+        "vendor/eliza/plugins/plugin-local-inference/native/android/speech-bridge/src/main/java/ai/eliza/voice/LocalSpeechBridgePlugin.java",
+        "vendor/eliza/plugins/plugin-local-inference/native/android/src/main/java/ai/eliza/voice/LocalSpeechEngine.java",
+        "vendor/eliza/plugins/plugin-local-inference/native/android/src/main/java/ai/eliza/voice/VoiceLatencyProbe.java",
+        "vendor/eliza/plugins/plugin-local-inference/native/android/src/main/java/ai/eliza/voice/StreamingSpeechPlayback.java",
+        "vendor/eliza/plugins/plugin-local-inference/native/android/src/main/java/ai/eliza/voice/SpeechPcmQueue.java"
+      ],
+      "tests": [
+        "onsetsPreserveLimitedLeadTest",
+        "callbackFailureIsNotRetriedTest",
+        "exactThresholdAndLaterPassThroughTest"
+      ],
+      "invariants": [
+        "LeadBounded",
+        "FirstReportOnce",
+        "FirstReportPrecedesWrites",
+        "WriteCountMatchesEffects"
+      ],
+      "abstractions": [
+        "Exact representative PCM bit classes at the staged threshold and adjacent Float values, including NaN and both infinities. The source campaign includes the current 727-sample pre-roll and bounded write outcomes.",
+        "Model checking uses a three-sample pre-roll with small representative chunks and a single serialized writer. Physical output timing and unrestricted PCM histories remain external."
+      ]
     }
   ]
 }

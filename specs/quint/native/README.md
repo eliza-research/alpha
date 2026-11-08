@@ -459,3 +459,9 @@ millidecibels with a two-millidecibel tolerance. The source passes the actual
 classifier result and measured floor at each frame. The model checks their
 threshold and update relation, then derives the expected buffer state. Complete
 floating-point coverage and installed microphone behavior remain separate.
+
+`NativeSpeechOutputPreparation` follows the staged lead-trim buffer and first-write report
+through exact threshold boundaries, a full 727-sample production pre-roll, input zeroing,
+post-onset pass-through and callback/write faults. Its symbolic run uses short representative
+chunks and a three-sample pre-roll. The production-sized scenario executes the actual helper
+and compares exact retained and returned sample classes.

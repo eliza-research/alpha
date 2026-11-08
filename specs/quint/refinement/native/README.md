@@ -246,3 +246,10 @@ checks that retained audio owns its frame copy. Multi-frame checkpoints retain
 every actual input and rounded floor observation. They cover ring wrap,
 interrupted opening, short-turn discard, silence trimming, the exact 400-frame
 cap, reset, invalid inputs and steady-noise adaptation.
+
+`speech-output-preparation.mjs` executes the staged `SpeechLeadTrim` and
+`FirstWriteSpeechOutput` under a single writer. It reads the bridge's configured threshold
+and lead size from the authenticated stage and observes retained samples, caller zeroing,
+returned array identity, report-before-write order, and write/delegate results. It checks
+the current production-sized buffer and controlled quiet, threshold, NaN and infinity
+classes. Real audio hardware and arbitrary PCM histories remain outside this campaign.
