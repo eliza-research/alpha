@@ -12,7 +12,7 @@
   "toolSha256": "403a33cab0dff7ace6219b29e7ffef373319677a7d8be6641466dd16a6750b5b",
   "dependencyLockSha256": "944123c801157a7ba3676a886d0b28a54bef32735ae96da5c6dd0f206c88c8bf",
   "sourcePin": "99b49439ce9d0cb5607e9831b9f7f58d89525029",
-  "ledgerSha256": "3ec7881f467a130d25511b57379fbad6b77e30b07856cd27ab78dba4bfd2c67f",
+  "ledgerSha256": "b91d6441a8dab7b9d15c93bcdbdcae9e702ca320d5dd8f066581a84dc832f071",
   "method": "TypeScript syntax trees for JavaScript/TypeScript and JDK compiler trees for Java. Mutable fields, bindings, containers, state hooks, write sites and asynchronous registration calls are candidates for semantic review.",
   "limitations": [
     "Candidate extraction does not establish state-machine coverage or implementation refinement.",
@@ -29,8 +29,8 @@
     "languageReview": 55,
     "parseErrors": 0,
     "candidates": 67112,
-    "writeSites": 66545,
-    "writeAssociations": 59724,
+    "writeSites": 66546,
+    "writeAssociations": 59725,
     "asynchronous": 8300,
     "unassignedWrites": 10189
   },
@@ -18334,7 +18334,8 @@
         "RuntimeUpdatePause",
         "NativeUpdateActivation",
         "NativeUpdateComposition",
-        "NativeUpdateStaging"
+        "NativeUpdateStaging",
+        "NativeTextScaleLifecycle"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -25445,7 +25446,8 @@
       "allocatedModels": [
         "Application",
         "RendererRecovery",
-        "CanonicalNotificationTap"
+        "CanonicalNotificationTap",
+        "NativeTextScaleLifecycle"
       ],
       "sourcePathClass": "other-source-path",
       "classification": "syntactic-candidates",
@@ -33348,13 +33350,14 @@
     },
     {
       "path": "apps/app/src/prototype/agent-calendar-adapter.ts",
-      "sha256": "4f1bcc63e6a663970aea7967ab790669fdb7fb2fd3a68711fc12eb1fdaf0e093",
+      "sha256": "7b6e9e25556a1ed38871cf5133a7ac40c553e3a7dd530a93486c82c2de44c54e",
       "allocatedModels": [
         "CalendarPresentation",
         "AgentCalendarRefresh",
         "AgentCalendarMutation",
         "CalendarPreservationConfirmation",
-        "CanonicalCalendarEditorClose"
+        "CanonicalCalendarEditorClose",
+        "CanonicalCalendarDraftHandoff"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -33380,37 +33383,37 @@
         },
         {
           "owner": "installAgentCalendarAdapter.typedForm",
-          "line": 156,
+          "line": 157,
           "bindings": 1,
           "writes": 1
         },
         {
-          "owner": "installAgentCalendarAdapter.FunctionExpression@165",
-          "line": 166,
+          "owner": "installAgentCalendarAdapter.FunctionExpression@166",
+          "line": 167,
           "bindings": 4,
           "writes": 102
         },
         {
-          "owner": "installAgentCalendarAdapter.FunctionExpression@165.ArrowFunction@193",
-          "line": 196,
+          "owner": "installAgentCalendarAdapter.FunctionExpression@166.ArrowFunction@194",
+          "line": 197,
           "bindings": 1,
           "writes": 0
         },
         {
-          "owner": "installAgentCalendarAdapter.FunctionExpression@165.ArrowFunction@228",
-          "line": 229,
+          "owner": "installAgentCalendarAdapter.FunctionExpression@166.ArrowFunction@229",
+          "line": 230,
           "bindings": 1,
           "writes": 2
         },
         {
-          "owner": "installAgentCalendarAdapter.FunctionExpression@252",
-          "line": 252,
+          "owner": "installAgentCalendarAdapter.FunctionExpression@253",
+          "line": 253,
           "bindings": 1,
           "writes": 1
         },
         {
-          "owner": "installAgentCalendarAdapter.FunctionExpression@253",
-          "line": 258,
+          "owner": "installAgentCalendarAdapter.FunctionExpression@254",
+          "line": 259,
           "bindings": 2,
           "writes": 3
         }
@@ -34063,7 +34066,8 @@
       "allocatedModels": [
         "MediaLifecycle",
         "PhotosWindow",
-        "PhotosTrash"
+        "PhotosTrash",
+        "CanonicalCalendarDraftHandoff"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -34244,11 +34248,12 @@
     },
     {
       "path": "apps/app/src/prototype/canonical-calendar-drafts.ts",
-      "sha256": "5a2668bf545adb17841c0c68d09d7a998998f4cc45a0740ee792a120b891947a",
+      "sha256": "4dce9c067b3f18c1e6dd9a6a09837416526ff3016c06226d7fc6d935378af3a3",
       "allocatedModels": [
         "CalendarPresentation",
         "CanonicalCalendarDraft",
-        "CanonicalCalendarEditorClose"
+        "CanonicalCalendarEditorClose",
+        "CanonicalCalendarDraftHandoff"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -34258,17 +34263,17 @@
           "owner": "installCanonicalCalendarDrafts",
           "line": 12,
           "bindings": 4,
-          "writes": 13
+          "writes": 14
         },
         {
-          "owner": "installCanonicalCalendarDrafts.FunctionExpression@31.ArrowFunction@33",
-          "line": 35,
+          "owner": "installCanonicalCalendarDrafts.FunctionExpression@36.ArrowFunction@38",
+          "line": 40,
           "bindings": 1,
           "writes": 1
         },
         {
-          "owner": "installCanonicalCalendarDrafts.FunctionExpression@115",
-          "line": 116,
+          "owner": "installCanonicalCalendarDrafts.FunctionExpression@120",
+          "line": 121,
           "bindings": 2,
           "writes": 21
         }
@@ -34321,7 +34326,8 @@
       "allocatedModels": [
         "NotesLifecycle",
         "CanonicalNotesFeedback",
-        "CanonicalNotesView"
+        "CanonicalNotesView",
+        "CanonicalCalendarDraftHandoff"
       ],
       "sourcePathClass": "other-source-path",
       "classification": "syntactic-candidates",
@@ -39275,7 +39281,8 @@
       "path": "apps/app/src/prototype/scan-event-review.ts",
       "sha256": "ac73b070e61954e26a820643b00d7596cacd0fa62a96c6c2f27401a3c37fb7c6",
       "allocatedModels": [
-        "MediaLifecycle"
+        "MediaLifecycle",
+        "CanonicalCalendarDraftHandoff"
       ],
       "sourcePathClass": "other-source-path",
       "classification": "syntactic-candidates",
@@ -39417,7 +39424,8 @@
       "path": "apps/app/src/prototype/scan-review.ts",
       "sha256": "0445fe26e84ddc6423df02a3b38647b456a6d66c563cec892490d365c8b98b22",
       "allocatedModels": [
-        "MediaLifecycle"
+        "MediaLifecycle",
+        "CanonicalCalendarDraftHandoff"
       ],
       "sourcePathClass": "other-source-path",
       "classification": "syntactic-candidates",
@@ -40758,7 +40766,8 @@
       "allocatedModels": [
         "AssistantConversation",
         "DraftDispatch",
-        "CanonicalCalendarEditorClose"
+        "CanonicalCalendarEditorClose",
+        "CanonicalCalendarDraftHandoff"
       ],
       "sourcePathClass": "other-source-path",
       "classification": "syntactic-candidates",
@@ -42875,10 +42884,12 @@
     },
     {
       "path": "apps/app/src/runtime/hosted-digest-ui.tsx",
-      "sha256": "8839a9cc64fa961d2ee2511b9ada55af3112d8672ccaf1128d1f809faa939984",
+      "sha256": "fecf5f489319660675a0533e3ae5f1a65948f0c2d7dc4f55a197927aa1e96d28",
       "allocatedModels": [
-        "NoticesAndCaches"
+        "NoticesAndCaches",
+        "HostedDigestRefresh"
       ],
+      "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
       "classification": "syntactic-candidates",
       "owners": [
@@ -42908,37 +42919,37 @@
         },
         {
           "owner": "HostedDigestPanel.refresh",
-          "line": 169,
+          "line": 172,
           "bindings": 2,
           "writes": 3
         },
         {
-          "owner": "HostedDigestPanel.ArrowFunction@229",
-          "line": 248,
+          "owner": "HostedDigestPanel.ArrowFunction@232",
+          "line": 251,
           "bindings": 6,
           "writes": 6
         },
         {
-          "owner": "HostedDigestPanel.ArrowFunction@229.ArrowFunction@251",
-          "line": 259,
+          "owner": "HostedDigestPanel.ArrowFunction@232.ArrowFunction@254",
+          "line": 262,
           "bindings": 2,
           "writes": 2
         },
         {
-          "owner": "HostedDigestPanel.checkRenewal.ArrowFunction@365",
-          "line": 369,
+          "owner": "HostedDigestPanel.checkRenewal.ArrowFunction@375",
+          "line": 379,
           "bindings": 1,
           "writes": 1
         },
         {
           "owner": "HostedDigestPanel.submit",
-          "line": 413,
+          "line": 423,
           "bindings": 1,
           "writes": 1
         },
         {
           "owner": "HostedDigestPanel.prepareNativeSource",
-          "line": 483,
+          "line": 493,
           "bindings": 1,
           "writes": 1
         }
@@ -42954,7 +42965,8 @@
         "NoticesAndCaches",
         "HostedNoticeQuestion",
         "RendererHostedInbox",
-        "RetainedHomeBrief"
+        "RetainedHomeBrief",
+        "HostedDigestRefresh"
       ],
       "sourcePathClass": "other-source-path",
       "classification": "syntactic-candidates",
@@ -218537,6 +218549,6 @@
   ],
   "detail": {
     "path": "test-results/quint-state-audit/details.json",
-    "sha256": "d7b70f066996491ebe6442913c57e3d92ddca47e82bfafbff9528c54237d47c1"
+    "sha256": "d3a5abcc4b7d609c0e000d209e34067ae04b4823beee24fefcf3a2f31600c88b"
   }
 }

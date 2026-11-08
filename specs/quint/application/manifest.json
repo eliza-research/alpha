@@ -2077,6 +2077,29 @@
     ]
   },
   {
+    "path": "specs/quint/application/HostedDigestRefresh.qnt",
+    "module": "HostedDigestRefresh",
+    "init": "init",
+    "step": "step",
+    "invariant": "safety",
+    "tests": [
+      "retiredPromotionCannotLabelReplacementTest",
+      "retiredPollStatusCannotDispatchReplacementReadTest",
+      "sameSessionPromotionKeepsFullFollowUpTest",
+      "visibilityRetiresHeldResultAndResumesTest",
+      "lateHistoryCannotPublishForReplacementTest"
+    ],
+    "sources": [
+      "apps/app/src/runtime/hosted-digest-ui.tsx",
+      "apps/app/src/runtime/hosted-digests.ts",
+      ".eliza/client-features/plugins/plugin-workflow/src/client/hosted-digests.ts"
+    ],
+    "abstractions": [
+      "Mounted browser digest binding, history, visibility, exact pending poll and refresh ownership, single-flight promotion and retained Home attribution.",
+      "Two distinct sessions, bounded result replies and a successful capability port. The model holds status and inbox replies separately. Android setup and digest mutations are separate."
+    ]
+  },
+  {
     "path": "specs/quint/application/HostedBackgroundAdmission.qnt",
     "module": "HostedBackgroundAdmission",
     "init": "init",

@@ -50,6 +50,7 @@ import {checkBrowserHostedResultNotice} from './browser-hosted-result-notice.mjs
 import {checkHostedNoticeQuestion} from './hosted-notice-question.mjs';
 import {checkRendererHostedInbox} from './renderer-hosted-inbox.mjs';
 import {checkHostedBackgroundAdmission} from './hosted-background-admission.mjs';
+import {checkHostedDigestRefresh} from './hosted-digest-refresh.mjs';
 import {checkRendererDigestQueue} from './renderer-digest-queue.mjs';
 import {checkRetainedHomeBrief} from './retained-home-brief.mjs';
 import {checkHomeFailureNotice} from './home-failure-notice.mjs';
@@ -72,7 +73,7 @@ const adapters = [application, shellNavigation, startupPermissions, assistantCon
   permissionWalkthrough, developmentDevice, permanentVoiceDeletion, developmentHost, filesTree,
   calendarPresentation, draftDispatch, notificationCollection, callbackLanding,
   checkBrowserHostedResultNotice, checkHostedNoticeQuestion, checkRendererHostedInbox, checkHostedBackgroundAdmission,
-  checkRendererDigestQueue,
+  checkRendererDigestQueue, checkHostedDigestRefresh,
   checkRetainedHomeBrief,
   checkCalendarPreservationConfirmation,
   checkCanonicalCalendarEditorClose,

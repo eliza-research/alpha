@@ -4,7 +4,7 @@ import {HostedDigestPanel} from '../../apps/app/src/runtime/hosted-digest-ui.tsx
 import {latestRetainedDigest} from '../../apps/app/src/runtime/hosted-digests.ts';
 
 globalThis.IS_REACT_ACT_ENVIRONMENT = true;
-const subscribers = new Set(), intervals = new Map(), requests = [], capabilities = [], releases = [];
+const subscribers = new Set(), intervals = new Map(), requests = [], capabilities = [], releases = [], visited = [];
 let selection = {kind: 'none', session: null}, owner = 0, nextInterval = 0, holdStatus = false;
 const createInterval = window.setInterval.bind(window), clearInterval = window.clearInterval.bind(window);
 window.setInterval = (run, delay, ...args) => {
@@ -18,10 +18,10 @@ window.clearInterval = id => {
   else clearInterval(id);
 };
 
-function request(kind, id, signal) {
+function request(kind, id, signal, full = false) {
   let resolve, reject;
   const promise = new Promise((yes, no) => {resolve = yes; reject = no;});
-  requests.push({kind, id, signal, resolve, reject, done: false});
+  requests.push({kind, id, signal, full, resolve, reject, done: false});
   return promise;
 }
 
@@ -53,7 +53,7 @@ globalThis.hostedDigestRefreshPorts = {
     const id = owner;
     return id ? {sessionId: 'session-'+id, client: {hosted: () => client(id)}} : null;
   },
-  status: () => holdStatus ? request('status', owner) : Promise.resolve(status),
+  status: () => holdStatus ? request('status', owner, undefined, globalThis.inspectHostedDigestRefresh().open) : Promise.resolve(status),
   bind(sessionId, binding) {
     if (sessionId !== 'session-'+owner || binding.scope !== 'owner-'+owner || !binding.current())
       throw Error('Inbox callback registration requires the exact current owner');
@@ -74,6 +74,7 @@ globalThis.hostedDigestRefresh = {
   mount: () => perform(() => root.render(<HostedDigestPanel />)),
   unmount: () => perform(() => root.unmount()),
   select: id => perform(() => {
+    if (id) visited.push(id);
     owner = id;
     selection = id ? {kind: 'resident', name: 'Fixture agent '+id,
       session: {origin: 'https://fixture.invalid', ownerId: 'owner-'+id, agentId: 'agent-'+id, sessionId: 'session-'+id}}
@@ -104,6 +105,6 @@ globalThis.hostedDigestRefresh = {
     document.dispatchEvent(new Event('visibilitychange'));
   }),
   observe: () => ({...globalThis.inspectHostedDigestRefresh(),
-    hidden: document.hidden, brief: latestRetainedDigest(), capabilities: [...capabilities], releases: [...releases],
-    requests: requests.map(({kind, id, signal, done}) => ({kind, id, aborted: signal?.aborted ?? false, done}))}),
+    hidden: document.hidden, brief: latestRetainedDigest(), capabilities: [...capabilities], releases: [...releases], visited: [...visited],
+    requests: requests.map(({kind, id, signal, full, done}) => ({kind, id, aborted: signal?.aborted ?? false, full, done}))}),
 };

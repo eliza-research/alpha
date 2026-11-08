@@ -710,3 +710,23 @@ checkpoints. Six separate receipts cover offline status, origin entry,
 chat retention, arrival and failed reroute. The compact launcher pill
 overlaps the reroute pointer target in the test viewport. The driver uses
 keyboard activation for that control.
+
+`HostedDigestRefresh` checks nine mounted schedules and 73 checkpoints. A
+queued full refresh and a delayed poll status read keep their exact session
+authority. The source regressions reproduce a previous agent's label on
+the replacement result and an early replacement inbox request. The repair
+passes both schedules and preserves same-session promotion. The hidden full
+demand is checked through the resulting dispatch and publication.
+
+`CanonicalCalendarDraftHandoff` checks five mounted schedules and 44
+checkpoints through Notes and the synthetic Camera scan review. A retained
+canonical draft keeps its exact bytes and originating view until explicit
+Resume or Discard. Fresh Note and Camera drafts still enter. Native reminder
+drafts retain their separate path.
+
+`NativeTextScaleLifecycle` checks eight JVM schedules and 73 checkpoints
+covering the actual Activity, persisted scale, queued writes and native
+timeout readback. Android events and durable preference failures are
+controlled. The standard build and APK verifier passed both variants at
+`39d801b512`, including the SMS repair and earlier Calendar changes. Those
+APK results are independent of installed-device and carrier behavior.

@@ -3,7 +3,8 @@ import {resolve} from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {chromium} from '@playwright/test';
 import {build} from 'esbuild';
-import {captureSources, read, root} from './support.mjs';
+import {checkTraces, qmap, qset} from '../check-traces.mjs';
+import {boundInputs, call, captureSources, checkpoint, read, root, trace} from './support.mjs';
 
 const driver = fileURLToPath(import.meta.url);
 const fixture = 'test/fixtures/hosted-digest-refresh.jsx';
@@ -93,4 +94,73 @@ export async function withHostedDigestRefresh(drive, extraSources = []) {
     }
     return {observations: await drive(scenario), sources: compiled.sources};
   } finally {await browser.close();}
+}
+
+const owners = [1, 2];
+const parseIdentity = (value, prefix) => {
+  if (!value) return 0;
+  const id = owners.find(owner => value === prefix+owner);
+  assert.ok(id, 'The campaign uses declared synthetic owner identities');
+  return id;
+};
+
+function observe(state) {
+  const pending = kind => state.requests.filter(row => row.kind === kind && !row.done);
+  const sync = pending('sync'), status = pending('status');
+  assert.ok(sync.length <= 1 && status.length <= 1 && state.results.length <= 1);
+  assert.equal(state.binding, state.session, 'The binding setup macro ends at its held inbox history');
+  assert.equal(state.full !== null, sync.length === 1);
+  return {'s.session': parseIdentity(state.session, 'session-'), 's.hidden': state.hidden, 's.open': state.open,
+    's.available': state.available, 's.histories': qset(pending('history').map(row => row.id)), 's.visited': qset(state.visited),
+    's.statusOwner': status[0]?.id ?? 0, 's.statusFull': status[0]?.full ?? false,
+    's.flightOwner': sync[0]?.id ?? 0, 's.flightMode': sync.length === 0 ? '' : state.full ? 'full' : 'results',
+    's.retired': sync[0]?.aborted ?? false, 's.resultOwner': parseIdentity(state.results[0], 'run-'),
+    's.briefAgent': parseIdentity(state.brief?.agent, 'Fixture agent '),
+    's.fullReads': qmap(owners.map(owner => [owner, state.capabilities.filter(id => id === owner).length]))};
+}
+
+async function schedule(run, name, steps) {
+  const t = trace(name, observe(await run('observe')));
+  for (const [transition, ...args] of steps) {
+    if (transition === 'selectSession') await run('select', ...args);
+    else if (transition === 'historyReply' || transition === 'syncReply') {
+      const [owner, row, ok] = args;
+      await run(transition === 'historyReply' ? 'history' : 'sync', owner, row ? owner : 0, !ok);
+    } else if (transition === 'statusReply') await run('status', ...args);
+    else await run(transition, ...args);
+    checkpoint(t, [transition, ...args].join(' '), call(transition, ...args), observe(await run('observe')));
+  }
+  return t;
+}
+
+export async function checkHostedDigestRefresh(extraSources = []) {
+  const bind = owner => ['selectSession', owner];
+  const history = (owner, row = false, ok = true) => ['historyReply', owner, row, ok];
+  const sync = (owner, row = true, ok = true) => ['syncReply', owner, row, ok];
+  const poll = (held = false) => ['poll', held];
+  const status = (owner, allow = true) => ['statusReply', owner, allow];
+  const ready = [bind(1), history(1), sync(1)];
+  const open = ['open'], close = ['close'], hide = ['visibility', true], show = ['visibility', false];
+  const cases = [
+    ['replacement-retires-an-older-open-promotion', [...ready, poll(), open, bind(2), history(2), sync(1), sync(2)]],
+    ['replacement-retires-an-older-status-poll', [...ready, poll(true), bind(2), status(1), history(2), sync(2)]],
+    ['same-session-open-promotes-result-only-flight', [...ready, poll(), open, sync(1), sync(1), close]],
+    ['history-from-a-retired-binding-cannot-publish', [bind(1), bind(2), history(1, true), history(2, true), sync(2)]],
+    ['hide-retires-transport-and-resume-waits-for-it', [bind(1), history(1), hide, poll(), show, sync(1), sync(1)]],
+    ['native-status-refusal-skips-browser-background-sync', [...ready, poll(true), status(1, false), poll(true), status(1), sync(1)]],
+    ['failed-sync-preserves-current-history-and-refused-history-still-refreshes', [bind(1), history(1, true), sync(1, false, false),
+      bind(2), history(2, false, false), sync(2)]],
+    ['disconnect-retires-live-refresh-and-clears-the-brief', [...ready, open, bind(0), sync(1), close]],
+    ['open-before-history-starts-a-full-flight-and-history-waits', [bind(1), open, history(1, true), sync(1), sync(1), close]],
+  ];
+  const {observations: traces, sources} = await withHostedDigestRefresh(async scenario => {
+    const results = [];
+    for (const [name, steps] of cases) results.push(await scenario(run => schedule(run, name, steps)));
+    return results;
+  }, extraSources);
+  return checkTraces(boundInputs({model: 'HostedDigestRefresh', traces, sources, scope: 'bounded-orchestration', assumptions: [
+    'Actual mounted browser HostedDigestPanel and retained Home store. Cloud client, inbox transport, status and timer delivery are controlled. Scope construction projects two distinct synthetic sessions.',
+    'Two session lifetimes, one result row per reply, successful capability replies, and no mutation or Android setup. Four closed-panel ticks are one checkpoint. A held status poll starts while no inbox flight is pending.',
+    'Queued full demand is a hidden model variable. Its outcome is compared through actual dispatch, abort, state publication and retained Home attribution.',
+  ]}));
 }
