@@ -328,3 +328,21 @@ The aggregate emits explicit remaining obligations for complete native service,
 media, navigation and SystemUI controller orchestration, alongside the Android,
 provider and physical acceptance boundaries. A field absent from concrete source
 observations is reported as unobserved even if its model invariant passes.
+
+## Native segmented Notes recording
+
+`NativeNoteRecording` covers the product-owned `AlphaNoteRecorder` state that the
+older media model did not represent. Capture instances, current and finished
+segment files, exact pause accounting, rollover, two transcript value classes,
+durable journal prefixes, corruption, missing audio, legacy binding recovery and
+remux outcomes remain distinct. A failed journal write may retain newer
+in-memory text or audio until restart. The JVM driver observes the real files and
+public status rather than reconstructing expected storage contents.
+
+`NativeNoteRecordingService` covers the corresponding foreground notification
+owner. A delayed START, STOP or empty legacy STOP cannot remove a newer
+recording's foreground ownership. Initial invalid starts still enter and leave
+the foreground as required by Android. Current-owner and closed-recorder cleanup,
+pause/resume notification state and service recreation execute against controlled
+Android ports. Installed foreground eligibility and physical recording remain
+platform obligations. The renderer's recorder coordination is modeled separately.

@@ -29,6 +29,7 @@ public final class AlphaNoteRecordingService extends Service {
  static final String ACTION_RESUME="ai.elizaresearch.alphaphone.notes.recording.RESUME";
  /** True while this service holds the foreground with its notification. */
  private static volatile boolean foreground;
+ private static volatile String foregroundRecording;
  static final String EXTRA_RECORDING="recording";
 
  static void start(Context context,String recordingId){
@@ -45,6 +46,7 @@ public final class AlphaNoteRecordingService extends Service {
   if(!foreground)return;
   JSObject status=AlphaNoteRecorder.get(context).status();String state=status.optString("state");
   if(!"recording".equals(state)&&!"paused".equals(state))return;
+  if(!java.util.Objects.equals(foregroundRecording,status.getString("recordingId")))return;
   context.getSystemService(NotificationManager.class).notify(NOTIFICATION_ID,notification(context,status));
  }
  private static Intent intent(Context context,String action,String recordingId){
@@ -63,21 +65,29 @@ public final class AlphaNoteRecordingService extends Service {
    return START_NOT_STICKY;
   }
   if(ACTION_STOP.equals(action)){
-   // Commands arrive in order: a later resume starts the service again.
+   // A callback for a closed recording must not hide a successor recording.
+   // An empty recorder admits the empty ID sent by older callers after discard.
+   if(recording==null||recording.isEmpty()){
+    if(recorder.open())return START_NOT_STICKY;
+   }else if(foreground&&!recording.equals(foregroundRecording))return START_NOT_STICKY;
+   foregroundRecording=null;
    foreground=false;stopForeground(STOP_FOREGROUND_REMOVE);stopSelf(startId);
    return START_NOT_STICKY;
   }
-  // A start command always enters the foreground first (the platform requires it).
+  // An already foreground service keeps its owner when a retired start arrives late.
+  if(foreground&&(recording==null||!recorder.owns(recording)))return START_NOT_STICKY;
+  // An initial start enters the foreground first, including one later refused as stale.
   try{
    Notification shown=notification(this,recorder.status());
    if(Build.VERSION.SDK_INT>=Build.VERSION_CODES.R)startForeground(NOTIFICATION_ID,shown,ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE);
    else startForeground(NOTIFICATION_ID,shown);
+   foregroundRecording=recording;
    foreground=true;
   }catch(RuntimeException refused){stopSelf(startId);return START_NOT_STICKY;}
-  if(recording==null||!recorder.owns(recording)){foreground=false;stopForeground(STOP_FOREGROUND_REMOVE);stopSelf(startId);}
+  if(recording==null||!recorder.owns(recording)){foregroundRecording=null;foreground=false;stopForeground(STOP_FOREGROUND_REMOVE);stopSelf(startId);}
   return START_NOT_STICKY;
  }
- @Override public void onDestroy(){foreground=false;super.onDestroy();}
+ @Override public void onDestroy(){foregroundRecording=null;foreground=false;super.onDestroy();}
 
  /** "Recording" with a chronometer at the recording's length and Pause, or "Paused" with Resume. */
  static Notification notification(Context context,JSObject status){

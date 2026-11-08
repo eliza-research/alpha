@@ -11,8 +11,12 @@ import {checkDeletionCoordinator} from './deletion-coordinator.mjs';
 import {checkCredentialCoordinator} from './credential-coordinator.mjs';
 import {checkCredentialLeasePolicies} from './credential-leases.mjs';
 import {checkProviderAdmission} from './provider-admission.mjs';
+import {checkNativeNoteRecording} from './note-recording.mjs';
+import {checkNoteRecordingService} from './note-recording-service.mjs';
 
 const boundaryObligations = [
+  {model:'NativeNoteRecording',obligation:'Physical recording, free-space exhaustion and unrestricted journal histories',reason:'Actual segmented recorder, journal bytes and file recovery execute. MediaRecorder/codec behavior is a controlled port. Two segments and four capture instances bound the source campaign; free-space exhaustion remains an explicit unexecuted source branch.'},
+  {model:'NativeNoteRecordingService',obligation:'Installed foreground eligibility and full plugin permission bridge',reason:'Actual service and recorder identities execute under serialized command/notification ports. AlphaVoiceCloudPlugin permission callbacks and Android service recreation/notification visibility remain separate integration obligations.'},
   {model:'RendererRecovery',obligation:'Installed Activity/WebView and task-manager behavior',reason:'The actual MainActivity, per-task HOME ownership and recovery callbacks execute against controlled Android ports. Real task assignment, Settings visibility and renderer process death require platform observations.'},
   {model:'ResidentScheduling',obligation:'Installed broadcast and service admission',reason:'The full admission table and whole-plugin lifecycle-lock race execute. Android broadcast delivery and service-process launch remain external.'},
   {model:'VadSegmentation',obligation:'PCM model output and capture pre-roll',reason:'The real gate executes every finite probability/counter partition. Microphone frames, inference and capture pre-roll remain separate.'},
@@ -47,6 +51,8 @@ export async function runNativeRefinement(extraSources = []) {
   const credential = await checkCredentialCoordinator(sources);
   receipts.push(...credential.receipts);
   receipts.push(await checkCredentialLeasePolicies(sources));
+  receipts.push(await checkNativeNoteRecording(sources));
+  receipts.push(await checkNoteRecordingService(sources));
   const obligations = [...boundaryObligations,...credential.obligations];
   for (const model of new Set(receipts.map(receipt => receipt.model))) {
     const related = receipts.filter(receipt => receipt.model === model);
