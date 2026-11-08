@@ -15,6 +15,11 @@ export function installCanonicalCalendarDrafts(Component:any,views:Bag){
  let owner:Bag|undefined;
  const ownsDraft=(shell:Bag,key:string,binding:object|undefined)=>!!binding&&owner===shell&&shell.live&&
   shell.agentCalendar?.state.ownerKey===key&&shell.canonicalDraftOwner===key&&shell.canonicalDraftBinding===binding;
+ p.canonicalCalendarDraftEntryBlocker=function(key:string){
+  const pending=this.canonicalDraft?.state;
+  if(!pending||this.canonicalDraftOwner!==key||pending.opening||pending.consuming)return 'Opening your draft. Try again in a moment.';
+  return this.canonicalDraftText?'Finish or discard your draft first.':'';
+ };
  p.flushCalendarForAppUpdate=async function(current:()=>boolean){
   const exact=()=>current()&&!this.calendarSaving&&!this.agentCalendar?.state.mutating&&
    !this.calendarFormValidationError&&!this.calendarEditFormValidationError&&!this.canonicalDraftInvalid;
@@ -126,9 +131,8 @@ export function installCanonicalCalendarDrafts(Component:any,views:Bag){
   out.recoverFormDraft=()=>{if(!current())return;const recovery=controller.recovery();if(!recovery)return;shell.canonicalDraftRecovery?.abort();const abort=shell.canonicalDraftRecovery=new AbortController();openDomainRecovery(recovery,'calendar form','Calendar form recovery','Download this draft before resetting it. Saved events won’t change.',abort.signal);};
   const guardStart=(start:(...args:any[])=>unknown)=>(...args:any[])=>{
    if(!current())return;
-   const form=shell.vget('calendar').form,pending=controller.state;
-   if(!form&&(pending.opening||pending.consuming)){api.toast('Opening your draft. Try again in a moment.');return;}
-   if(!form&&shell.canonicalDraftText){api.toast('Finish or discard your draft first.');return;}
+   const blocked=!shell.vget('calendar').form&&shell.canonicalCalendarDraftEntryBlocker(key);
+   if(blocked){api.toast(blocked);return;}
    return start(...args);
   };
   for(const name of ['newEvent','addAt'])if(typeof out[name]==='function')out[name]=guardStart(out[name].bind(out));

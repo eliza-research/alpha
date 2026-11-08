@@ -140,8 +140,9 @@ export function installAgentCalendarAdapter(Component:any,views:Bag,preservation
   if(deviceCalendarScope(this)){
    this.openView('calendar',{calendarAuthority:nativeCalendarScope(this)?'android-native':'browser-local',form:draft,open:null,month:null,day:draft.off},'hidden');return true;
   }
-  const model=controller?.state,source=newEventSource();
-  if(state.calendarAuthority==='legacy'||!model?.ownerKey||!['ready','partial','unavailable'].includes(model.status)||!source)return false;
+  const model=controller?.state,target=port(),source=newEventSource();
+  if(state.calendarAuthority==='legacy'||!model?.ownerKey||!target?.current()||calendarOwnerKey(target)!==model.ownerKey||
+   !['ready','partial','unavailable'].includes(model.status)||!source||this.canonicalCalendarDraftEntryBlocker?.(model.ownerKey))return false;
   this.openView('calendar',{calendarAuthority:'canonical',form:{...draft,canonicalOwnerKey:model.ownerKey,creationId:crypto.randomUUID(),cal:controller!.sourceHandle(calendarSourceKey(source)),zone:zone()},open:null,month:null,day:draft.off},'hidden');return true;
  };
  function typedForm(f:Bag):CanonicalCalendarForm{
