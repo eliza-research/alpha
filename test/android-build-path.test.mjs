@@ -84,6 +84,12 @@ test('preflight names the exact command for each missing build input', t => {
   f.write('android/app/src/main/assets/agent/alpha-source.json', '{"stamp":0}\n');
   assert.match(preparedRuntimeProblems(f.root, f.source, {embeddingHost})[0], /different prepared source/);
   f.write('android/app/src/main/assets/agent/alpha-source.json', '{"stamp":1}\n');
+  // agent:stage-android writes the profile marker; a native build refuses a missing or Cloud one.
+  const marker = 'android/app/src/main/assets/agent/alpha-runtime-profile.json';
+  assert.match(preparedRuntimeProblems(f.root, f.source, {embeddingHost})[0], /not the native profile .*is missing.*Run: npm run agent:stage-android without --runtime-profile=cloud/);
+  f.write(marker, JSON.stringify({version: 1, runtimeProfile: 'cloud', omittedLocalModels: []}));
+  assert.match(preparedRuntimeProblems(f.root, f.source, {embeddingHost})[0], /not the native profile .*names "cloud"/);
+  f.write(marker, JSON.stringify({version: 1, runtimeProfile: 'native'}, null, 2) + '\n');
   assert.deepEqual(preparedRuntimeProblems(f.root, f.source, {embeddingHost}), []);
 });
 
@@ -166,6 +172,7 @@ test('preflight names the embedding host and who must supply it when the build s
   f.write(path.relative(f.root, path.join(f.source, '.alpha-runtime-source.json')), '{"stamp":1}\n');
   f.write('android/app/src/main/assets/agent/workflow-worker/manifest.json', '{}');
   f.write('android/app/src/main/assets/agent/alpha-source.json', '{"stamp":1}\n');
+  f.write('android/app/src/main/assets/agent/alpha-runtime-profile.json', JSON.stringify({version: 1, runtimeProfile: 'native'}));
   const missing = () => { throw new Error('Qualified embedding host library missing or changed: libelizainference.so'); };
   let problems = preparedRuntimeProblems(f.root, f.source, {embeddingHost: missing});
   assert.equal(problems.length, 1);
