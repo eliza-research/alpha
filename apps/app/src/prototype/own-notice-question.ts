@@ -9,7 +9,7 @@ export function reviewOwnNoticeQuestion(options:{notice:Notice;current:()=>boole
  let abort=()=>{};
  const close=reviewContentQuestion({name:'Alpha Phone notification',text:noticeExcerpt(options.notice),question:'Help me with this notification.',current:options.current,validate:text=>!sensitiveReadingText(text),closed:dismissed=>{queueMicrotask(()=>{if(composing)return;canceled=true;if(dismissed)void options.release().catch(()=>options.report('The question could not be retained. Open the notification again to retry.'));done();});},compose:draft=>{
   composing=true;void(async()=>{let consumed=false;try{
-   if(canceled||!options.current()||!await options.recheck()||!options.current())throw Error();
+   if(canceled||!options.current()||!await options.recheck()||canceled||!options.current())throw Error();
    // The tap is spent once consume resolves, so a later Home or blur still drafts the question.
    await options.consume();consumed=true;if(!options.current())throw Error();options.compose(draft);
   }catch{options.report(consumed?'The question could not be kept. Open the notification again.':'This notification changed.');}finally{done();}})();
