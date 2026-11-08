@@ -275,10 +275,47 @@
           "afterSha256": "a06d439e7682c35b5744c83ac31c474e128473b16655c864a8a003e6bc2a8e1d"
         }
       ]
+    },
+    {
+      "file": "speech-pipe-settlement.patch",
+      "sha256": "482fccdf0cc427722e22ba2c68e16dbbd1856ef7f68cdea73b0d4617777e7bb0",
+      "module": "plugins/plugin-local-inference/native/android",
+      "targets": [
+        {
+          "path": "plugins/plugin-local-inference/native/android/src/main/java/ai/eliza/voice/LiveSegmentPipe.java",
+          "beforeSha256": "01838880e19df9f5b12ed0741d808ac8cb17627a23eb841a4a5c98a5089ce7f9",
+          "afterSha256": "dddb7789528de0bf2cbb716f8be9c74fd748667756e05c0c843017cb8176de4c"
+        }
+      ]
+    },
+    {
+      "file": "indicator-provider-generation.patch",
+      "sha256": "930773aa46cb0cc44157feb8daf70cd16df4349eba69582c0a96d6e3f7ab64b1",
+      "module": "packages/app/platforms/android/sense",
+      "targets": [
+        {
+          "path": "packages/app/platforms/android/sense/src/main/java/ai/eliza/sense/IndicatorLeaseProvider.java",
+          "beforeSha256": "cd9ceb69a92c76ca7eb06ae8bb92b34db461e251f366dfad7036066f219bf373",
+          "afterSha256": "46d5b4779ce49a784bba12b8b37830783f1cd994a6e0c2c49ff2e52b0e680855"
+        }
+      ]
+    },
+    {
+      "file": "listener-service-cleanup.patch",
+      "sha256": "7ff0f822c815d420d2a0d52d389277933699bf3418d58fa1e18b9138b21f0a21",
+      "module": "packages/app/platforms/android/sense",
+      "targets": [
+        {
+          "path": "packages/app/platforms/android/sense/src/main/java/ai/eliza/sense/ListeningService.java",
+          "beforeSha256": "53254aa2bc75047a7893347d7bbac5c2e46d2d095474385ff4c22d814b6820db",
+          "afterSha256": "902bf007189720645823065d6d016dda648c8f3f01b8fbf347ff85132262e3f7"
+        }
+      ]
     }
   ],
   "modules": [
     "packages/app/platforms/android/app/src/main/elizavoice-jni",
+    "packages/app/platforms/android/sense",
     "packages/auth/android",
     "plugins/plugin-local-inference/native/android",
     "plugins/plugin-native-action-journal/android",

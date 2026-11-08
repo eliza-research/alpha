@@ -289,3 +289,109 @@ reservations, physical-source startup, publication, interrupted final events and
 Both run current patched shared Java with controlled Android audio and permission inputs.
 Protected-screen state is fixed inactive in these projections. Provider piping, physical
 audio and installed Android scheduling require their separate acceptance checks.
+
+`NativeAsrPipe` covers the shared `LiveSegmentPipe` worker, readiness and close
+futures, eight-batch queue, serialized JSON copies, per-frame and per-VAD cutoff,
+provider ownership checks and transcript/error replies. Frame and VAD timestamps
+use independent membership bits. NaN cutoff remains NaN and therefore forwards
+no timed items. A canceled warm request can still complete readiness successfully;
+the capture controller must apply its own current-ticket guard.
+
+The source campaign suspends at actual provider posts and compares completed
+source operations, including future settlement. Transient instruction-level
+ordering between the private `finished` flag and `closed.complete` is inside one
+completion observation. Rejected-worker settlement now runs even when cancellation or the
+failure listener throws. ASR_FAILED remains a recoverable per-response outcome;
+transport failures close the pipe. These bounded checks use one worker start and
+at most three posted batches/transcript results. Controller composition and
+physical/native transport remain separate obligations.
+
+`NativePipedCapture` checks the real join between shared bridge admission,
+`LiveCaptureController`, `LiveVoiceCapture` and `LiveSegmentPipe`. Fourteen source
+schedules cover provider warmup before microphone opening, late warmup after
+pause/destruction, call entry while opening, provider retirement, recoverable
+ASR failures, metadata-only renderer frame events and acknowledged/unconfirmed
+pipe closure. A failed pipe can remain referenced by its controller until an
+explicit Stop cleans it up, even after its physical source stopped.
+
+The model uses one initially valid owner-bound pipe, two frame events and two
+transcript results. The provider and physical AudioRecord are controlled ports.
+The detailed pipe queue/response state has its own `NativeAsrPipe` projection;
+these coordinator observations add the ordering between that pipe and capture.
+
+`NativeCaptureFrames` covers the actual `LiveVoiceCapture` loop's input/output
+state. Its observed history contains the detector inputs that were consumed;
+a pure model fold derives VAD counters, the ten-window pre-roll, three-window
+emission cadence and unflushed frames. Actual emitted packets carry distinct PCM
+window markers, so packet membership and ordering are checked independently of
+the model calculation. Stop flushes pending speech frames; a read failure drops
+that unreported tail. The private running flag remains set after a read error
+until Stop, even though the source and detector have closed.
+
+Normal, interrupted and failed cleanup paths observe the actual short, float
+and byte buffers and detached source ownership. The campaign includes partial
+reads, exact threshold windows, non-finite and absent detector output, both
+cleanup failures and the previous cleanup regression. Physical inference and
+microphone timing remain external inputs.
+
+`NativeIndicatorProvider` covers the real `IndicatorLeaseProvider.call` boundary
+and the `IndicatorLease` fields it changes. The generation counter and active
+Binder death recipient are admitted under the same monitor. The source regression
+holds that monitor while two real public calls arrive, then compares the actual
+lease generation with the generation captured by the linked callback. The old
+source mismatched in 31 of 32 recorded schedules. The patched source matched in
+all 32 schedules; bounded symbolic checking covers the finite transition model.
+
+Twenty-seven source schedules cover failed caller authority, missing arguments,
+lease replacement, old death callbacks after unlink failure, reuse of a Binder,
+already-dead tokens, stale renewal/revocation, expiry, reboot and nine visibility
+report classes. A revoked lease retains its registered death link until a later
+acquisition. The model preserves that source behavior. Three lease generations
+and three Binder identities bound the campaign. The actual listener convergence
+method, operating-system Binder behavior, platform signing and SystemUI visibility
+remain external acceptance obligations.
+
+The Sense module is now included in authenticated native staging, and its shared
+consumer Gradle script obtains `src/main` from that staging. The standalone and
+launcher host descriptors include the same product listener project. Assertions
+check this configuration for its debug/release builds. These checks do not
+constitute an APK build or installed AOSP acceptance.
+
+`NativeListenerStore` observes the actual shared `ListenerStore`,
+`ListeningEpoch` and `CrashLoopBreaker`. Separate memory and durable preference
+records preserve the outcome when a commit changes memory but fails to persist,
+or durably writes and then throws. The failed-write latch gates consent getters
+until a successful reset. Reset retires old consent generations and still
+requires a new explicit opt-in. Restart observations execute a fresh JVM against
+the stored fixture file, including a retained open-session marker after a failed
+close. Persisted consent alone remains insufficient in that new process.
+
+The model also covers timed and indefinite pauses across boot changes, epoch
+retirement, explicit clearing of speech/indicator/crash stops, all eight retained
+crash entries, malformed legacy history, permission-revoked starts and package
+updates. Store calls are checked at serialized method boundaries with controlled
+SharedPreferences outcomes. Concurrent arbitrary preference writers, real
+filesystem power loss and whole-service stop acceptance remain external to this
+component campaign.
+
+`NativeListenerService` executes the shared `Listener`, `ListeningService`,
+`ListenerStore`, lease and policy together for service creation, capture startup,
+ASR allocation, pause, disable and destruction. Its source regression showed that
+an `AudioRecord.release()` exception escaped destruction before audio callbacks,
+the ASR engine, executor and superclass lifecycle were cleaned up.
+`listener-service-cleanup.patch` now completes those lifecycle steps, retains an
+unreleased record, preserves its durable open marker and refuses a replacement
+capture while that handle remains. A later Stop can retry the release.
+
+Thirteen source schedules observe all thirty-one lifecycle fields. They include
+successful and failed release, a failed stop plus failed release, retry, attempted
+replacement, late service start, and ASR allocation completing after destruction.
+Physical recording and confirmed resource release are separate observations. A
+failed stop and release can leave the synthetic AudioRecord active; the model
+preserves that uncertainty while checking callback and executor retirement.
+
+The component uses one explicitly opted-in service instance, a fresh visible
+lease and at most two recording allocations. Notification visibility, AudioRecord
+and ASR allocation are controlled platform ports. Arbitrary recording/playback
+callback interleavings, frame content and installed Android scheduling remain
+separate from these lifecycle traces.

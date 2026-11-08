@@ -1138,6 +1138,191 @@
         "Two capture identities/reservations and source instances, with three host epochs. Native open and release are controlled ports.",
         "Provider-piped capture remains a separate source schedule obligation."
       ]
+    },
+    {
+      "path": "specs/quint/native/NativeAsrPipe.qnt",
+      "module": "NativeAsrPipe",
+      "init": "init",
+      "step": "step",
+      "invariant": "safety",
+      "sources": [
+        "vendor/eliza/plugins/plugin-local-inference/native/android/src/main/java/ai/eliza/voice/LiveSegmentPipe.java",
+        "patches/eliza/speech-pipe-settlement.patch"
+      ],
+      "tests": [
+        "warmThenConfirmedCloseTest",
+        "cancelledWarmCanStillReportReadyTest",
+        "staleOwnerCannotSendCleanupTest",
+        "ninthBatchFailsClosedTest",
+        "cutoffDropsLaterFramesTest",
+        "asrFailureDoesNotRetireWholePipeTest",
+        "rejectedCancellationSettlesTest"
+      ],
+      "invariants": [
+        "QueueBound",
+        "CancelledQueueEmpty",
+        "FinishedSettlesFutures",
+        "OneWarmAndClose",
+        "CutoffBoundsDispatch"
+      ],
+      "abstractions": [
+        "One worker start, eight queued batches, three dispatched batches/results, independent early/late frame and VAD masks.",
+        "Controlled owner-bound provider responses and worker scheduling. Physical IPC and controller composition have separate source scopes."
+      ]
+    },
+    {
+      "path": "specs/quint/native/NativePipedCapture.qnt",
+      "module": "NativePipedCapture",
+      "init": "init",
+      "step": "step",
+      "invariant": "safety",
+      "sources": [
+        "vendor/eliza/plugins/plugin-local-inference/native/android/speech-bridge/src/main/java/ai/eliza/voice/LocalSpeechBridgePlugin.java",
+        "vendor/eliza/plugins/plugin-local-inference/native/android/src/main/java/ai/eliza/voice/LiveCaptureController.java",
+        "vendor/eliza/plugins/plugin-local-inference/native/android/src/main/java/ai/eliza/voice/LiveSegmentPipe.java",
+        "vendor/eliza/plugins/plugin-local-inference/native/android/src/main/java/ai/eliza/voice/LiveVoiceCapture.java"
+      ],
+      "tests": [
+        "warmBeforeNativeOpenTest",
+        "callDuringOpenRefusesPublicationTest",
+        "retiredWarmCannotOpenTest",
+        "discardClosesWithoutRendererAudioTest",
+        "failedPipeRetainsControllerUntilStopTest"
+      ],
+      "invariants": [
+        "WarmBeforeCapture",
+        "NoPcmToRenderer",
+        "CompletedStartHasNoPendingOpen",
+        "Bounded"
+      ],
+      "abstractions": [
+        "One piped reservation, two forwarded frame events and transcript callbacks. Controlled original-owner provider and physical audio ports."
+      ]
+    },
+    {
+      "path": "specs/quint/native/NativeCaptureFrames.qnt",
+      "module": "NativeCaptureFrames",
+      "init": "init",
+      "step": "step",
+      "invariant": "safety",
+      "sources": [
+        "vendor/eliza/plugins/plugin-local-inference/native/android/src/main/java/ai/eliza/voice/LiveVoiceCapture.java",
+        "vendor/eliza/plugins/plugin-local-inference/native/android/src/main/java/ai/eliza/voice/LiveVadGate.java",
+        "vendor/eliza/plugins/plugin-local-inference/native/android/src/main/java/ai/eliza/voice/LiveCaptureResource.java",
+        "patches/eliza/speech-recording-admission.patch"
+      ],
+      "tests": [
+        "tenWindowPrerollTest",
+        "stopFlushesOpenTailTest",
+        "readFailureDropsUnpublishedTailTest",
+        "closeFailureStillClearsBuffersTest"
+      ],
+      "invariants": [
+        "PacketAgreement",
+        "TerminalBuffersCleared",
+        "Bounded"
+      ],
+      "abstractions": [
+        "Forty input windows with distinct constant PCM markers, threshold-partitioned VAD outputs, and one/four partial reads.",
+        "Output packets and cleanup flags are observed from the real capture loop. Internal VAD/buffering state is a pure fold of its observed input history."
+      ]
+    },
+    {
+      "path": "specs/quint/native/NativeIndicatorProvider.qnt",
+      "module": "NativeIndicatorProvider",
+      "init": "init",
+      "step": "step",
+      "invariant": "safety",
+      "sources": [
+        "vendor/eliza/packages/app/platforms/android/sense/src/main/java/ai/eliza/sense/IndicatorLeaseProvider.java",
+        "vendor/eliza/packages/app/platforms/android/sense/src/main/java/ai/eliza/sense/IndicatorLease.java",
+        "patches/eliza/indicator-provider-generation.patch",
+        "android/sense/build.gradle"
+      ],
+      "tests": [
+        "replacementKeepsMatchingDeathLinkTest",
+        "deadTokenCannotOwnLiveLeaseTest",
+        "revokeKeepsDeathRegistrationTest",
+        "securityFailurePreservesLeaseTest",
+        "expiryCheckedBeforeMissingArgumentTest",
+        "otherBootRefusesRenewalTest"
+      ],
+      "invariants": [
+        "LiveGenerationOwnsDeathLink",
+        "CallerIdentityRestored",
+        "Bounded",
+        "AcceptedReplyHasGeneration"
+      ],
+      "abstractions": [
+        "Three lease generations and Binder identities; nine visibility report classes and boundary clocks.",
+        "The real provider and lease execute against controlled Android primitives. Full service convergence and installed Binder/authority behavior require platform acceptance."
+      ]
+    },
+    {
+      "path": "specs/quint/native/NativeListenerStore.qnt",
+      "module": "NativeListenerStore",
+      "init": "init",
+      "step": "step",
+      "invariant": "safety",
+      "sources": [
+        "vendor/eliza/packages/app/platforms/android/sense/src/main/java/ai/eliza/sense/ListenerStore.java",
+        "vendor/eliza/packages/app/platforms/android/sense/src/main/java/ai/eliza/sense/ListeningEpoch.java",
+        "vendor/eliza/packages/app/platforms/android/sense/src/main/java/ai/eliza/sense/CrashLoopBreaker.java",
+        "vendor/eliza/packages/app/platforms/android/sense/src/main/java/ai/eliza/sense/ListenerPolicy.java"
+      ],
+      "tests": [
+        "failedCommitCannotRestoreConsentTest",
+        "resetRecoversLatchButNeedsNewConsentTest",
+        "durableLostAcknowledgementStillFailsClosedTest",
+        "thirdUncleanStartTripsTest",
+        "crashWindowExpiryDoesNotClearLatchTest",
+        "fullHistoryRetainsEightNewestTest",
+        "failedCloseRetainsDurableOpenMarkerTest"
+      ],
+      "invariants": [
+        "FailedStoreCannotAdmit",
+        "ConsentNeedsCurrentProcess",
+        "WritesBounded"
+      ],
+      "abstractions": [
+        "Serialized actual source methods with separate in-memory and durable preference records.",
+        "Bounded crash history and reset generations; new JVM observes actual persisted restart data.",
+        "Android storage/stopService and full listener-service lifecycle remain explicit external obligations."
+      ]
+    },
+    {
+      "path": "specs/quint/native/NativeListenerService.qnt",
+      "module": "NativeListenerService",
+      "init": "init",
+      "step": "step",
+      "invariant": "safety",
+      "sources": [
+        "vendor/eliza/packages/app/platforms/android/sense/src/main/java/ai/eliza/sense/ListeningService.java",
+        "vendor/eliza/packages/app/platforms/android/sense/src/main/java/ai/eliza/sense/Listener.java",
+        "vendor/eliza/packages/app/platforms/android/sense/src/main/java/ai/eliza/sense/ListenerStore.java",
+        "vendor/eliza/packages/app/platforms/android/sense/src/main/java/ai/eliza/sense/ListeningEpoch.java",
+        "vendor/eliza/packages/app/platforms/android/sense/src/main/java/ai/eliza/sense/IndicatorLease.java",
+        "vendor/eliza/packages/app/platforms/android/sense/src/main/java/ai/eliza/sense/ListenerPolicy.java",
+        "patches/eliza/listener-service-cleanup.patch"
+      ],
+      "tests": [
+        "releaseFailureStillCleansLifecycleTest",
+        "combinedFailureKeepsPhysicalUncertaintyTest",
+        "failedRecordRefusesReplacementTest",
+        "successfulRetryAllowsNewCaptureTest",
+        "repeatedStartAtCapacityTest",
+        "lateEngineLoadIsClosedTest"
+      ],
+      "invariants": [
+        "DestructionRetiresCallbacks",
+        "DestructionStopsExecutor",
+        "UnreleasedCaptureRetainsMarker",
+        "Bounded"
+      ],
+      "abstractions": [
+        "One explicitly opted-in service instance, fresh visible lease, two AudioRecord allocations, controlled Android/ASR ports.",
+        "Lifecycle projection covers cleanup, ASR loading, retained failed handles and replacement refusal; arbitrary audio/notification callback schedules remain separate obligations."
+      ]
     }
   ]
 }

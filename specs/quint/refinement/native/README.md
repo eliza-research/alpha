@@ -95,3 +95,103 @@ construction from publication to exercise late call, stop, replacement and lifec
 The current native patch manifest binds every compiled patched source. These bounded
 non-piped campaigns use controlled media primitives and fix protected-screen state inactive.
 Provider enrollment, device audio and Android permission delivery remain external obligations.
+
+## ASR pipe state
+
+`asr-pipe.mjs` executes the current staged `LiveSegmentPipe` against a serial
+worker and an owner-bound provider port. `AsrPipeTraces` reads its actual queue,
+flags, cutoff and futures. Provider-post history supplies the dispatched frame
+and VAD membership mask, with the cutoff observed at that posting boundary.
+Source operations are suspended at provider requests and checked after their
+stable return or future completion. No source queue or response algorithm is
+reimplemented by the driver.
+
+The finite scenarios cover maximum queue admission, frame-count and exact JSON
+character limits, copied payload isolation, FIFO delivery, independent timestamp
+filtering, NaN, malformed input/response, recoverable ASR failure, owner retirement,
+discard and close acknowledgment. The executor-refusal regression retains the
+cancellation or listener exception while guaranteeing completion of the public futures. The
+actual controller-to-pipe join and full native transport have separate scopes.
+
+## Piped capture coordinator
+
+`piped-capture.mjs` executes the complete shared bridge and real capture, resource
+and ASR-pipe implementations together. Provider replies are suspended at real
+transport calls. The actual AudioRecord constructor is held until the model
+observes successful ASR readiness. Source frame callbacks pass through the
+controller, which forwards PCM to the pipe and only metadata to the renderer.
+The observer reads actual reservation flags, controller references, public pipe
+futures and bridge results. Its close reason names the outstanding source call
+or lifecycle cleanup that is awaiting the provider.
+
+The fourteen bounded schedules include recoverable and terminal provider
+failures, explicit discard, late warmup and both kinds of owner retirement.
+Installed Android delivery and the product's actual resident credential/IPC
+transport remain external integration obligations. The provider response and
+physical audio ports perform no real network or microphone effects.
+
+## Capture frame buffering
+
+`capture-frames.mjs` drives the real patched `LiveVoiceCapture`, `LiveVadGate`
+and `LiveCaptureResource`. Its source and detector ports provide one distinct
+PCM marker per window and record actual positive read calls and detector inputs.
+Every source checkpoint waits until the next blocking read or the terminal sink,
+so the observed packet list belongs to a completed window. Packet frames are
+decoded from the actual base64 payload; the model computes its own expected
+pre-roll and emission history. No copy of the VAD algorithm runs in the adapter.
+
+The source, detector and Android base64 ports retain the actual reusable short,
+float and byte array references for terminal zeroing checks. A before/after
+source probe shows that failed release previously left buffers uncleared and
+omitted the terminal callback. The patched source clears them and reports the
+capture failure. Clock timestamps, arbitrary PCM and detector accuracy are not
+in this finite equality projection.
+
+### Indicator provider admission
+
+`indicator-provider.mjs` executes the complete staged `IndicatorLeaseProvider`
+with the real `IndicatorLease` and `ListenerPolicy`. `IndicatorProviderTraces`
+reads private source fields and returned Bundles. Android identity, package
+signing, clocks, Binder handles and the `Listener.refresh` destination are
+controlled ports in `indicator-provider-platform.mjs`. All nineteen model fields
+and six entry actions have source observations. The authority and lease payload
+are synthetic.
+
+`IndicatorProviderProbe` separately holds the real provider monitor while two
+acquire calls reach it. Its final assertion checks actual captured callback
+identity, including across repeated replacement. This regression identified the
+source race fixed by `indicator-provider-generation.patch`. Native staging
+includes the exact shared Sense module and the product Gradle wrapper consumes
+that staged source. The full `ListeningService` reaction to refresh remains a
+separate coordinator obligation.
+
+### Listener consent and durable settings
+
+`listener-store.mjs` compiles the actual shared store, epoch and crash breaker.
+`StorePorts` implements the external preferences API with independently observed
+memory and disk maps. Its four commit outcomes preserve successful persistence,
+failed disk acknowledgement, an early exception and a lost acknowledgement after
+durable persistence. `ListenerStoreTraces` observes source fields and getters;
+a fresh JVM reads the disk file for each restart checkpoint. The retained history
+includes eight entries and malformed input normalized by the actual decoder.
+
+The settings coordinator is bounded to serialized source calls. Android's real
+SharedPreferences implementation, stopService acceptance, unrestricted concurrent
+writers and the service's reaction remain explicit obligations. This campaign
+adds no runtime source patch.
+
+### Shared listener service lifecycle
+
+`listener-service.mjs` runs the complete shared listener/service implementation
+with the actual settings, lease and policy helpers. `listener-service-platform`
+provides Android primitives and an externally held ASR allocation. It records
+actual callback registration, foreground calls, AudioRecord state and engine
+close effects. The observer reads every lifecycle model field from source objects and
+platform-port observations.
+
+The release regression compares the original and patched source. Both release-only
+and combined stop/release failures now allow destruction to retire callbacks and
+the recognizer. A failed release remains an owned resource with its durable
+marker, and another start cannot overwrite that reference. The campaign checks a
+later successful release and capture restart. Installed Binder/audio behavior,
+physical release acceptance and arbitrary callbacks remain external obligations.

@@ -1,5 +1,5 @@
 import {fileURLToPath} from 'node:url';
-import {readdirSync, readFileSync} from 'node:fs';
+import {readdirSync} from 'node:fs';
 import {join} from 'node:path';
 import {checkTraces, captureInputs} from '../check-traces.mjs';
 import {app, sense, voice, directory, javaTraces, root} from './java.mjs';
@@ -18,6 +18,14 @@ import {checkCredentialLeasePolicies} from './credential-leases.mjs';
 import {checkRendererCoordinator} from './renderer-coordinator.mjs';
 import {checkSharedRecording} from './shared-recording.mjs';
 import {checkLiveCapture} from './live-capture.mjs';
+
+import {modelStateInventory, unobservedStateFields} from '../model-state.mjs';
+import {checkAsrPipe} from './asr-pipe.mjs';
+import {checkPipedCapture} from './piped-capture.mjs';
+import {checkCaptureFrames} from './capture-frames.mjs';
+import {checkIndicatorProvider} from './indicator-provider.mjs';
+import {checkListenerStore} from './listener-store.mjs';
+import {checkListenerService} from './listener-service.mjs';
 
 export async function runNativeRefinement() {
   const models = ['VadSegmentation', 'RendererRecovery', 'ResidentScheduling'];
@@ -122,6 +130,10 @@ export async function runNativeRefinement() {
   results.push(await checkRendererCoordinator([fileURLToPath(import.meta.url)]));
   results.push(await checkSharedRecording([fileURLToPath(import.meta.url)]));
   results.push(await checkLiveCapture([fileURLToPath(import.meta.url)]));
+  const nativeInputs = [fileURLToPath(import.meta.url), join(root, 'specs/quint/refinement/model-state.mjs')];
+  for (const check of [checkAsrPipe, checkPipedCapture, checkCaptureFrames, checkIndicatorProvider, checkListenerStore, checkListenerService]) {
+    results.push(await check(nativeInputs));
+  }
   const obligations = [
     {model: 'RendererRecovery', obligation: 'Android lifecycle, task selection and HOME-role delivery', reason: 'Actual MainActivity recovery and handoff execute under controlled Android ports. Physical renderer death, background lifecycle and OS task delivery require platform checks.', requires: ['Android Activity/WebView harness']},
     {model: 'ResidentScheduling', obligation: 'Plugin lifecycle and OS broadcasts', reason: 'Current adapter proves the pure admission table and same-lock callbacks.', requires: ['Android service integration']},
@@ -137,7 +149,13 @@ export async function runNativeRefinement() {
     {model: 'ApplicationComposition', obligation: 'Cross-domain implementation orchestration', reason: 'Root integration driver owns this combined scope. Standalone native receipts do not establish composition.'},
     {model: 'ControllerComposition', obligation: 'Cross-controller implementation orchestration', reason: 'The dedicated composition campaign executes these shared-controller schedules. Standalone native receipts do not establish composition.'},
     {model: 'NavigationProgress', obligation: 'Maneuver cursor, reroute timers and background service', reason: 'Fix admission and guidance helpers execute. The maps-adapter closure and Android service are outside the current projection.'},
-    {model: 'ListenerLeaseRecovery', obligation: 'Persistent crash latch, consent and capture integration', reason: 'Actual lease and crash helpers execute. Store commit, process consent and microphone lifecycle remain separate.'},
+    {model: 'ListenerLeaseRecovery', obligation: 'Cross-component crash, consent and capture orchestration', reason: 'Lease and crash helpers execute here. NativeListenerStore and NativeListenerService supply separate persisted-settings and service-lifecycle projections.'},
+    {model: 'NativeAsrPipe', obligation: 'Real provider transport and unbounded frame traffic', reason: 'Actual worker settlement and pipe state run with controlled provider responses. NativePipedCapture checks the controller join.'},
+    {model: 'NativePipedCapture', obligation: 'Physical capture, installed provider delivery and unrestricted schedules', reason: 'Actual bridge/controller/pipe/capture run together with controlled ports. Frame-buffer behavior has a separate source projection.'},
+    {model: 'NativeCaptureFrames', obligation: 'Physical microphone and arbitrary PCM histories', reason: 'Actual capture buffering and cleanup execute with controlled PCM and detector results.'},
+    {model: 'NativeIndicatorProvider', obligation: 'Installed Binder authority and SystemUI visibility', reason: 'Actual provider/lease and controlled death/identity ports execute. SystemUI geometry and service convergence require installed evidence.'},
+    {model: 'NativeListenerStore', obligation: 'Android durability, arbitrary preference writers and service acceptance', reason: 'Actual store executes with separate in-memory and persistent fixture state, including fresh-JVM restart.'},
+    {model: 'NativeListenerService', obligation: 'Installed resource release and arbitrary audio/recognition callbacks', reason: 'Actual service lifecycle, store and lease execute. Unconfirmed physical release remains a distinct observed outcome.'},
     {model: 'StreamingPlayback', obligation: 'All writer interleavings, actual AudioTrack and audibility', reason: 'Five writer traces cover completion, partial writes, failed open/write and canceled opening. Detailed failure-code mapping is unobserved.'},
     {model: 'VoiceIpcAssembly', obligation: 'Deadline scheduling races and actual owner/binding admission', reason: 'Eight actual exchanges check return/cleanup. Static deadline scheduling and local assembly state need a deterministic observer seam.'},
     {model: 'ListenerLeaseProducer', obligation: 'Controller measurement and real SystemUI/Binder identity', reason: 'Actual lease delivery consumes fixture snapshots. Controller/view geometry and real identity checks remain external.'},
@@ -147,13 +165,10 @@ export async function runNativeRefinement() {
     const related = results.filter(receipt => receipt.model === model);
     const coveredActions = new Set(related.flatMap(receipt => Object.keys(receipt.actions)));
     const coveredFields = new Set(related.flatMap(receipt => receipt.observedFields));
-    const text = readFileSync(join(root, modelPaths.get(model)), 'utf8');
-    const missing = [...text.matchAll(/\baction\s+(\w+)/g)].map(match => match[1])
-      .filter(name => !['init', 'check', 'step', 'initFor', 'counterInit', 'budgetInit'].includes(name) && !coveredActions.has(name));
+    const inventory = modelStateInventory(join(root, modelPaths.get(model)), model);
+    const missing = inventory.actions.filter(name => !['init', 'check', 'step', 'initFor', 'counterInit', 'budgetInit'].includes(name) && !coveredActions.has(name));
     if (missing.length) obligations.push({model, obligation: 'Unexecuted model transitions', reason: missing.join(', ')});
-    const state = text.match(/type\s+(?:State|Gate|Recovery|Navigation)\s*=\s*\{([\s\S]*?)\n  \}/)?.[1] || '';
-    const fields = [...state.matchAll(/\b([A-Za-z]\w*)\s*:/g)].map(match => match[1]);
-    const unobserved = fields.filter(field => ![...coveredFields].some(path => path === `s.${field}` || path.startsWith(`s.${field}.`)));
+    const unobserved = unobservedStateFields(inventory, [...coveredFields]);
     if (unobserved.length) obligations.push({model, obligation: 'Unobserved model fields', reason: unobserved.join(', ')});
   }
   return {receipts: results, obligations};

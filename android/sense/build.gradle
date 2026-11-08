@@ -1,6 +1,10 @@
 // Product identities stay here; capture, consent and lifecycle are owned upstream.
 def identity = new groovy.json.JsonSlurper().parse(file('../../app.config.json'))
-ext.elizaSenseSourceDir = file('../../vendor/eliza/packages/app/platforms/android/sense')
+def preparedSense = new groovy.json.JsonSlurper().parseText(providers.exec {
+ workingDir rootProject.projectDir.parentFile
+ commandLine 'node', 'scripts/prepare-patched-native.mjs'
+}.standardOutput.asText.get())
+ext.elizaSenseSourceDir = new File(preparedSense.root.toString(), 'packages/app/platforms/android/sense')
 ext.elizaSenseProfile = file('../../vendor/eliza/packages/os/android/products/pixel10a-alpha.json')
 ext.elizaSenseSpeechProject = ':sense-speech'
 ext.elizaSenseVersionCode = identity.versionCode

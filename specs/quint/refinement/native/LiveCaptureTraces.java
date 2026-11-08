@@ -39,8 +39,17 @@ public final class LiveCaptureTraces {
  static void release(){if(held!=null){held.countDown();held=null;}}
  static void workers()throws Exception {
   ExecutorService stopWorker=(ExecutorService)Trace.read(controller,"stopWorker");
-  if(!stopWorker.isShutdown())stopWorker.submit(()->{}).get(5,TimeUnit.SECONDS);
-  else stopWorker.awaitTermination(5,TimeUnit.SECONDS);
+  long deadline=System.nanoTime()+TimeUnit.SECONDS.toNanos(5);
+  while(!stopWorker.isShutdown()){
+   try{stopWorker.submit(()->{}).get(5,TimeUnit.SECONDS);break;}
+   catch(RejectedExecutionException busy){
+    // The production stop worker has one queue slot. Wait for accepted work
+    // instead of treating rejection of the observer barrier as a source failure.
+    if(System.nanoTime()>=deadline)throw busy;
+    Thread.sleep(1);
+   }
+  }
+  if(stopWorker.isShutdown())stopWorker.awaitTermination(5,TimeUnit.SECONDS);
   for(LiveVoiceCapture capture:captures.values()){
    Thread thread=(Thread)Trace.read(capture,"thread");
    if(thread!=null&&!(boolean)Trace.read(capture,"running"))thread.join(3000);
