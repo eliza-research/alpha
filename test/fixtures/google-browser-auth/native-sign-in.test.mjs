@@ -201,6 +201,11 @@ test("exact native verify/connect/token/ack chain keeps failures explicit and cu
       " private boolean captureCallback(",
       " /** Cancelled, ended or consumed",
     ),
+    ACTUAL_BROWSER_LIFECYCLE: between(
+      plugin,
+      " @Override protected void handleOnPause()",
+      " @Override protected void handleOnDestroy()",
+    ),
     ACTUAL_BURN: between(
       plugin,
       " private void burnUnclaimedPending()",
@@ -264,7 +269,7 @@ test("exact native verify/connect/token/ack chain keeps failures explicit and cu
         [...pure, ...support, file],
         "ai.eliza.auth.cloud.CloudSignInChainTest",
       ),
-      /^PASS native sign-in chain \(59 scenarios; no browser facilities\)/,
+      /^PASS native sign-in chain \(62 scenarios; no browser facilities\)/,
     );
   } finally {
     rmSync(directory, { recursive: true, force: true });
