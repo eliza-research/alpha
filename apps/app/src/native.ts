@@ -6,7 +6,7 @@ const System = registerPlugin<typeof UpstreamSystem>("ElizaSystem");
 /** Alpha's product-only native reads. Installed apps, default handlers and the build, launch and
  * locale facts are the shared ElizaSystem plugin (@elizaos/capacitor-system). */
 export const DeviceApps = registerPlugin<{
-  platformCapabilities(): Promise<{aospImage: boolean; phone: false; contacts: false; sms: false}>;
+  platformCapabilities(): Promise<{aospImage: boolean; phone: boolean; contacts: boolean; sms: boolean}>;
 }>("DeviceApps");
 export const isAndroid = Capacitor.getPlatform() === "android";
 /** The one launcher bridge over ElizaSystem, on Android and in the browser development device. */

@@ -229,3 +229,32 @@ test('an unchanged active subscription does not clear a Cloud billing refusal', 
   expect(await stub(page, s => s.opened)).toEqual([]);
   expect(foreign).toEqual([]);
 });
+
+test('a refused turn refreshes the plan once after its answer, and a second refusal within a minute does not', async ({ page }) => {
+  test.setTimeout(150_000);
+  const foreign = await boot(page, { plan: undefined, balance: 0 });
+  await residentHome(page);
+  const reads = () => stub(page, s => s.cloud.filter((r: { path: string }) => r.path === '/api/v1/subscription/entitlement').length);
+  const stops = () => stub(page, s => s.order.filter((entry: string) => entry === 'Agent.stop').length);
+  const before = await reads(), stopped = await stops(), bound = await configured(page);
+  // The agent's stream for a Cloud 402 subscription_required that ends the turn before any text.
+  await setStub(page, { stream: { failure: 'subscription_required', frame: 'done', runtime: true } });
+  await send(page, 'What is on my calendar this week?');
+  await expect.poll(() => harness(page, f => f.streams)).toBe(1);
+  await button(page, 'Expand chat').click();
+  // The refusal itself is delivered (not replaced by an unknown-outcome notice), then the plan is read again.
+  await expect(conversation(page).getByText(/AI needs an active Eliza Cloud plan/)).toHaveCount(1, { timeout: 30_000 });
+  await expect.poll(reads).toBe(before + 1);
+  // A second refusal inside the once-a-minute limit does not read the plan again.
+  await send(page, 'Try my calendar again');
+  await expect(conversation(page).getByText(/AI needs an active Eliza Cloud plan/)).toHaveCount(2, { timeout: 30_000 });
+  await page.waitForTimeout(1000);
+  expect(await reads()).toBe(before + 1);
+  // Neither refresh stopped or rebound the running agent; nothing was retried or opened.
+  expect(await stops()).toBe(stopped);
+  expect(await configured(page)).toBe(bound);
+  expect(await harness(page, f => f.streams)).toBe(2);
+  expect(await stub(page, s => s.recoveries)).toEqual([]);
+  expect(await stub(page, s => s.opened)).toEqual([]);
+  expect(foreign).toEqual([]);
+});

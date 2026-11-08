@@ -268,7 +268,7 @@ function residentSignInRequired(): boolean { return !ownProviderSelected()&&resi
 function residentEnvironment(): CloudEnvironment { return browserCloudResidentEnabled?browserCloudResidentEnvironment:residentQa() ?? 'production'; }
 /** The on-device agent's Cloud inference binding is production-only (native reads cloud:production). */
 function residentBindable(): boolean { return browserCloudResidentEnabled || isAndroid && residentEnvironment() === 'production'; }
-/** Warn this long before this phone's Cloud sign-in key expires (CLI keys last 30 days). */
+/** Warn this long before this phone's Cloud sign-in key expires (mobile app keys last 30 days). */
 export const CLOUD_KEY_EXPIRY_WARNING_MS = 14 * 24 * 60 * 60 * 1000;
 /**
  * A verified Cloud billing mode within the shared controller's OFFLINE_PLAN_GRACE_MS (7 days) keeps
@@ -285,6 +285,8 @@ const providerRechecks = new Set<string>();
 /** The next return checks the plan inside the once-a-minute limit: set by a return from plan
  * management or a billing refusal during a turn. */
 let planManagementReturn = false;
+/** A billing refusal arrived during a turn: its plan refresh runs once that turn has ended. */
+let refusalRecheckPending = false;
 /** The owner, Cloud environment and provider a plan check is for. With its own provider the Cloud
  * account only serves optional services (a failed read detaches it), so the provider stands for it. */
 function planCheckScope(){return JSON.stringify([ownProviderSelected()||(state.cloudAccount?.credentialId??null),residentEnvironment()]);}
@@ -491,7 +493,7 @@ async function deviceCapabilities(offered:unknown):Promise<string>{
   if((android||!Capacitor.isNativePlatform())&&typeof foregroundExecutor==='function'&&agent.includes('calendar.named-read.v1'))capabilities.push('calendar.named-read.v1');
   // One shared external-handoff policy for every brand: never clock.alarms.v1 (P-17).
   capabilities.push(...clockHandoffCapabilities({offered:agent,handler:android,repeatDays:android&&agent.includes('clock.handoff.v2')&&await clockRepeatDaysSupported()}));
-  // SMS sending is negotiated only on the AOSP image, where Alpha holds the SMS role.
+  // SMS sending is negotiated only on the AOSP image, where the launcher holds SEND_SMS.
   if(aospImage&&agent.includes(SMS_SEND_CAPABILITY))capabilities.push(SMS_SEND_CAPABILITY);
   // The reviewed dial handoff only with the native telephony profile (the verified image). The
   // on-device contact lookup waits for an owner number picker in the review, so it is not offered.
@@ -2890,8 +2892,9 @@ export const connectionController = {
     await ensureResident();
   },
   /**
-   * Native finished a Google return after Alpha restarted (the process stopped while the Custom Tab
-   * was open). Completed sign-ins have a stored key; MFA returns first revalidate the native attempt.
+   * A retained native Google outcome: a live attempt finished after its waiting call was released.
+   * A return after Alpha restarted has no live attempt; native reports it incomplete and the owner
+   * signs in again. Completed sign-ins have a stored key; MFA returns first revalidate the attempt.
    */
   async signInReturned(value: unknown) {
     const environment = residentCloudFlow() ? residentEnvironment() : cloud.environment;
@@ -3056,8 +3059,9 @@ export const connectionController = {
     if(!residentCloudFlow()||!entitlementRefresher)return;
     // Deliver the terminal refusal before refreshing a plan that could rebind the resident.
     // Rebinding here aborts the known failed turn and replaces its billing feedback with an
-    // unknown-outcome notice. The next return from account management performs the check.
-    if(sending){planManagementReturn=true;return;}
+    // unknown-outcome notice. The refresh runs once the turn has ended (send's finally), and the
+    // next return from account management checks too.
+    if(sending){planManagementReturn=true;refusalRecheckPending=true;return;}
     const now=Date.now();if(now-lastRefusalRecheck<PLAN_RECHECK_INTERVAL_MS)return;
     lastRefusalRecheck=now;entitlementRefresher.refreshNow();
   },
@@ -3420,11 +3424,12 @@ export const connectionController = {
       // The native process this send used was replaced: the outcome stays unknown, the agent restarts.
       if (selected.kind === 'resident' && generation === epoch && selected === active && (error as { code?: unknown } | null)?.code === 'LOCAL_AGENT_EPOCH_CHANGED') residentLost(generation);
       throw error;
-    } finally { signal.removeEventListener('abort', cancel); if (sending === controller) { sending = null; /* Let the caller commit this reply before a deferred plan rebind. */ setTimeout(()=>{update({});runQueuedResidentRebind();},0); } }
+    } finally { signal.removeEventListener('abort', cancel); if (sending === controller) { sending = null; /* Let the caller commit this reply before a deferred plan rebind. */ setTimeout(()=>{update({});runQueuedResidentRebind();if(refusalRecheckPending){refusalRecheckPending=false;connectionController.recheckPlanAfterRefusal();}},0); } }
   },
 };
 
-// A Google sign-in that native finished after Alpha restarted arrives as a retained event.
+// A live Google attempt that finished after its waiting call was released arrives as a retained
+// event. A return after a restart has no live attempt and arrives as signInIncomplete instead.
 if (cloudSignIn?.addListener) Promise.resolve(cloudSignIn.addListener('signInCompleted', outcome => { void connectionController.signInReturned(outcome); })).catch(() => { /* No retained return. */ });
 if (cloudSignIn?.addListener) Promise.resolve(cloudSignIn.addListener('signInMfaRequired', outcome => { void connectionController.signInReturned(outcome); })).catch(() => { /* No retained challenge. */ });
 if (cloudSignIn?.addListener) Promise.resolve(cloudSignIn.addListener('signInIncomplete', value => { connectionController.signInIncomplete(value); })).catch(() => { /* No retained return. */ });

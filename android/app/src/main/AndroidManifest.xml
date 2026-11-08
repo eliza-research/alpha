@@ -115,17 +115,15 @@
   <activity android:name=".MainActivity" android:exported="true" android:launchMode="singleTask" android:screenOrientation="${appOrientation}" android:windowSoftInputMode="adjustResize" android:configChanges="orientation|keyboardHidden|keyboard|screenSize|locale|smallestScreenSize|screenLayout|uiMode|density|navigation" android:theme="@style/AppTheme.Launch">
    <intent-filter><action android:name="android.intent.action.MAIN"/><category android:name="android.intent.category.LAUNCHER"/></intent-filter>
    <intent-filter><action android:name="android.intent.action.VIEW"/><category android:name="android.intent.category.DEFAULT"/><category android:name="android.intent.category.BROWSABLE"/><data android:scheme="alphaphone" android:host="cloud-delegation"/></intent-filter>
-   <!-- Verified App Links are build-gated: with the Gradle property ELIZAOS_APP_LINK_HOST set,
-        android/app/product.gradle overlays https autoVerify filters for ${appLinkHost} with pathPrefix
-        /alphaphone/cloud-delegation, path /alphaphone/auth/callback (the in-app Eliza Cloud sign-in
-        return, AlphaCloudSignInPlugin) and path /alphaphone/gmail/callback (the Google Workspace consent
-        return, GoogleWorkspaceReturn). Unset (the default), no such filter exists and the Workspace
-        return reports itself unsupported. Set it only after
-        scripts/render-assetlinks.mjs output (release signer, never a debug or placeholder fingerprint)
-        is published at /.well-known/assetlinks.json on that host. The in-app sign-in is offered only
-        once its Cloud readiness probe sees this phone's App Link verified for the sign-in return
-        host; until then the Cloud sign-in hand-off stays the product path. The custom scheme above
-        remains the active Cloud delegation return path. -->
+   <!-- Verified App Links are in every build: android/app/product.gradle overlays https autoVerify
+        filters on the config/cloud-deployment.json production.web host (ELIZAOS_APP_LINK_HOST, if
+        set, must match it) for pathPrefix /alphaphone/cloud-delegation, path /alphaphone/auth/callback
+        (the in-app Eliza Cloud sign-in return, AlphaCloudSignInPlugin) and path /alphaphone/gmail/callback
+        (the Google Workspace consent return, GoogleWorkspaceReturn). The release signer must be listed
+        in that host's /.well-known/assetlinks.json (scripts/render-assetlinks.mjs; never a debug or
+        placeholder fingerprint). The in-app sign-in is offered only once its Cloud readiness probe
+        sees this phone's App Link verified for the sign-in return host. The custom scheme above is
+        the only Cloud delegation return Alpha consumes; nothing handles the https delegation filter. -->
   </activity>
  </application>
 </manifest>

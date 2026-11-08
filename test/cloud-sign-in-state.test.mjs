@@ -128,7 +128,7 @@ function controllerFixture({isAndroid=false,browserCloudResidentEnabled=false}={
     cancel(){operation?.abort(new DOMException('Cancelled','AbortError'));cloud.cancelLogin();},
     ${part('  async cancelSignIn() {','  async signInGoogle()')}
     ${part('  async signInGoogle()', '  /** Sends a six-digit code')}
-    ${part('  async signInEmail(', '  /**\n   * Native finished a Google return')}
+    ${part('  async signInEmail(', '  /**\n   * A retained native Google outcome')}
     };
     return {state,events,client,connectionController,CloudSignInError,work,setRequired:value=>{required=value;}};
   `;
