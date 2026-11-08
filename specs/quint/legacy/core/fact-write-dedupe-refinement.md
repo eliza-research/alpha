@@ -75,3 +75,26 @@ The insert path awaits `after_memory_persisted` after releasing the per-room
 section, so source liveness additionally depends on hook completion.
 
 Run the campaign with `node --test test/quint-fact-write-dedupe-refinement.test.mjs`.
+
+## Separate current-source model
+
+[FactWriteScope](../../services/FactWriteScope.qnt) models the runtime instance
+and room as separate lane keys. It records the bounded SQL lookup, captured
+candidate, write admission and public settlement. A rejected precommit write
+releases its lane, so a queued successor can insert and the rejected evidence
+can retry against that row. Two runtime instances may capture a miss in the
+same room before either inserts. Distinct rooms may run concurrently within
+one runtime. The model permits both cases and places no uniqueness requirement
+on the normalized fact text.
+
+The [source replay](../../refinement/services/fact-write-scope.mjs) checks SQL
+candidate counts and ranks at 119 and 120 newer rows, including the old row
+that remains durable after it falls out of the candidate window. It also
+checks instance and room boundaries, refusal before an insert or metadata
+update, retry, and replay of evidence already present. The source campaign
+covers distinct IDs, one entity, active evidence, ordered fixture timestamps,
+and known precommit failure. It leaves concurrent hits on the same metadata,
+ambiguous commits, multiple adapters or processes, and persistence hooks as
+separate obligations.
+
+Run it with `node --test test/quint-fact-write-scope.test.mjs`.

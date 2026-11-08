@@ -60,6 +60,7 @@ async function fixture(loaded) {
     assert.equal(params.unique, false);
     assert.equal(ticket.readStarted, false, 'one real lookup per writer');
     ticket.readStarted = true;
+    if (ticket.beforeRead) await ticket.beforeRead.promise;
     const rows = await originalRead(params);
     ticket.readRows = rows;
     ticket.readReady.release();
@@ -87,14 +88,16 @@ async function fixture(loaded) {
       metadata: {type: 'custom', extractionEvidenceIds: [writer], ...fields.metadata}};
   }
   const write = (room, writer, fields, owner = runtime) => owner.createMemory(fact(room, writer, fields), 'facts', true);
-  function start(room, writer, {owner = runtime, failure, fields} = {}) {
-    const ticket = {room, writer, failure, readStarted: false, readRows: null, mutation: null, returned: false,
+  function start(room, writer, {owner = runtime, failure, fields, beforeRead = false} = {}) {
+    const ticket = {room, writer, owner, failure, beforeRead: beforeRead ? gate() : null,
+      readStarted: false, readRows: null, mutation: null, returned: false,
       readReady: gate(), releaseRead: gate(), mutationReady: gate(), releaseMutation: gate()};
     tickets.push(ticket);
     ticket.result = scope.run(ticket, () => write(room, writer, fields, owner)).then(value => {
       ticket.returned = true;
+      ticket.value = value;
       return {value};
-    }, error => ({error}));
+    }, error => {ticket.error = error; return {error};});
     return ticket;
   }
   return {
@@ -107,7 +110,9 @@ async function fixture(loaded) {
       return id;
     },
     async close() {
-      for (const ticket of tickets) {ticket.releaseRead.release();ticket.releaseMutation.release();}
+      for (const ticket of tickets) {
+        ticket.beforeRead?.release(); ticket.releaseRead.release(); ticket.releaseMutation.release();
+      }
       await Promise.all(tickets.map(ticket => ticket.result));
       await database.cleanup();
     },
@@ -262,3 +267,5 @@ export async function checkFactWriteDedupeRefinement(extraSources = []) {
     {model, obligation: 'Production fact generation and deployment scheduling', reason: 'The replay drives the actual write owner with synthetic evidence. Evaluator registration, inference, desktop-only legacy validation, multi-process SQL isolation, retries and arbitrary hook timing remain separate.'},
   ]};
 }
+
+export {fixture as createFactWriteFixture, reach as reachFactWriteBoundary, text as factText, evidence as factEvidence};

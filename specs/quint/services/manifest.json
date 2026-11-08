@@ -1531,6 +1531,48 @@
         "maxSteps": 80,
         "maxVerifyDepth": 4
       }
+    },
+    {
+      "path": "specs/quint/services/FactWriteScope.qnt",
+      "module": "FactWriteScope",
+      "init": "init",
+      "step": "step",
+      "invariant": "safety",
+      "tests": [
+        "newest119RowsStillPermitReuseTest",
+        "newest120RowsEvictOldMatchTest",
+        "independentRuntimeLanesCanBothMissTest",
+        "differentRoomsHaveIndependentOwnersTest",
+        "sameRuntimeRoomSuccessorWaitsTest",
+        "refusalReleasesFifoLaneAndRetryReusesSuccessorTest"
+      ],
+      "invariants": [
+        "OneOwnerPerRuntimeRoom",
+        "ReadsAndRepliesStayInRoom",
+        "UniquePhysicalIdsPerRoom",
+        "NoRejectedInsert",
+        "LookupUsesAtMost120Candidates"
+      ],
+      "sources": [
+        "vendor/eliza/packages/core/src/runtime.ts",
+        "vendor/eliza/packages/core/src/runtime/data-mutations.ts",
+        "vendor/eliza/packages/core/src/runtime/fact-write-dedupe.ts",
+        "vendor/eliza/plugins/plugin-sql/src/base.ts"
+      ],
+      "stateMapping": {
+        "rooms/ranks": "Real equivalent SQL rows, evidence, rank in the full room lookup and intervening unrelated rows",
+        "requests": "Actual runtime and room ownership, captured candidate and lookup count, mutation admission and public returned row ID or rejection",
+        "next": "Bounded source invocation sequence, with distinct timestamps"
+      },
+      "abstractions": [
+        "Two runtime objects share one PGlite adapter and one agent. Two rooms, up to four attempts and one active normalized text and entity per room.",
+        "Ranks retain the exact 120-row cutoff while 119 or 120 newer unrelated rows are summarized. Known precommit refusal is distinguished from successful persistence. Same-ID writes, ambiguous commits, evaluator hooks and cross-process storage are separate."
+      ],
+      "bounds": {
+        "maxSamples": 1000,
+        "maxSteps": 60,
+        "maxVerifyDepth": 4
+      }
     }
   ]
 }
