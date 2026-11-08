@@ -52,6 +52,10 @@ module CoreSerialise {
   val safety = M::TypeOK and M::MutualExclusion and M::CallOrder
   temporal DeadlockFree = M::DeadlockFree
   temporal CheckedTemporal = M::Fairness implies M::CallFinishes
+  val state = M::s
+  action invoke(caller: str): bool = M::Invoke(caller)
+  action start(caller: str): bool = M::Start(caller)
+  action finish(caller: str, outcome: str): bool = M::FinishAs(caller, outcome)
   run rejectionReleasesNextTest = init.then(M::Invoke("a")).then(M::Invoke("b")).then(M::Start("a"))
     .then(M::FinishAs("a", "threw")).then(M::Start("b")).then(M::FinishAs("b", "ok")).expect(safety)
   run arrivalOrderTest = init.then(M::Invoke("d")).then(M::Invoke("a")).then(M::Start("d"))

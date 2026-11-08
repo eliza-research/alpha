@@ -77,6 +77,11 @@ module CoreSemaphore {
   val safety = M::TypeOK and M::PermitConservation and M::NoIdlePermitWithWaiters and M::WaitersQueued and M::FIFOGrants and M::CancelledNeverHolds
   temporal DeadlockFree = M::DeadlockFree
   temporal CheckedTemporal = M::Fairness implies M::WaiterServed
+  val state = M::s
+  action acquire(caller: str): bool = M::Acquire(caller)
+  action abort(caller: str): bool = M::Abort(caller)
+  action cancelListener(caller: str): bool = M::CancelListener(caller)
+  action release(caller: str): bool = M::Release(caller)
   run cancelledHeadSkippedTest = init.then(M::Acquire("c1")).then(M::Acquire("c2")).then(M::Acquire("c3"))
     .then(M::Abort("c2")).then(M::Release("c1")).expect(safety and M::s.pc.get("c3") == "holding" and not(M::s.listener.get("c2")))
   run cancellationListenerTest = init.then(M::Acquire("c1")).then(M::Acquire("c2")).then(M::Abort("c2"))
@@ -92,6 +97,11 @@ module CoreSemaphoreTwo {
   val safety = M::TypeOK and M::PermitConservation and M::NoIdlePermitWithWaiters and M::WaitersQueued and M::FIFOGrants and M::CancelledNeverHolds
   temporal DeadlockFree = M::DeadlockFree
   temporal CheckedTemporal = M::Fairness implies M::WaiterServed
+  val state = M::s
+  action acquire(caller: str): bool = M::Acquire(caller)
+  action abort(caller: str): bool = M::Abort(caller)
+  action cancelListener(caller: str): bool = M::CancelListener(caller)
+  action release(caller: str): bool = M::Release(caller)
   run twoOwnersTest = init.then(M::Acquire("c1")).then(M::Acquire("c2")).then(M::Acquire("c3"))
     .then(M::Release("c2")).expect(safety and M::s.pc.get("c3") == "holding" and M::s.pc.get("c1") == "holding")
 }

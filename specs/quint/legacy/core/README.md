@@ -134,3 +134,21 @@ arbitrary simultaneous database processes remain outside the campaign.
 ```sh
 node --test test/quint-core-interaction-session.test.mjs
 ```
+
+## Task scheduling source traces
+
+Eight Semaphore schedules compare 69 checkpoints in the one- and two-permit
+profiles. Native AbortController listeners expose the actual cancellation race.
+An earlier listener releases a held permit before the semaphore's cancellation
+callback. The source must skip the aborted waiter, grant the next live waiter
+or restore the permit, and detach settled listeners.
+
+The Serialise schedules compare 254 checkpoints across every four-call order.
+Same-turn and staggered arrivals exercise successful operation bodies, rejected
+promises and synchronous exceptions. These are bounded source observations.
+Additional arrival schedules, arbitrary call counts and a nested invocation
+awaited from its own queue remain outside the campaign.
+
+```sh
+node --test test/quint-core-task-scheduling.test.mjs
+```
