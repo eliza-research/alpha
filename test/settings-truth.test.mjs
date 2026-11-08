@@ -147,8 +147,8 @@ test('Settings groups retain account, assistant, app, appearance, notification, 
  for(const name of ['Account','Assistant','Apps','Appearance','Notifications','Privacy']){
   const next=groups.indexOf("'"+name+"'",cursor+1);assert.ok(next>cursor,name);cursor=next;
  }
- assert.match(groups,/group\(present\(\[androidRow, aboutRow, developerRow\]\)\)/);
- assert.match(groups,/group\(present\(\[resetRow\]\)\)/);
+ assert.match(groups,/group\(present\(\[androidRow, aboutRow, developerRow\]\), '', 'system'\)/);
+ assert.match(groups,/group\(present\(\[resetRow\]\), '', 'reset'\)/);
 });
 test('permission summary counts only reported grants',()=>{
  assert.equal(m.permissionSummary({Microphone:true,Camera:true}),'All allowed');
@@ -172,4 +172,17 @@ test('every signed-in account offers explicit code entry without opening it auto
   assert.equal(opened,1);
   assert.equal(row.status,'Plus');
  }
+});
+
+
+test('Settings groups and actions keep identities when async rows are inserted',()=>{
+ const start=source.indexOf('    const info ='),end=source.indexOf('    const back =',start);
+ assert.ok(start>=0&&end>start);
+ const helpers=new Function(stripTypeScriptTypes(source.slice(start,end),{mode:'strip'})+';return {row,group};')();
+ const about=helpers.row('About',()=>{});
+ const before=helpers.group([about],'','system');
+ const after=helpers.group([helpers.row('Finish setup',()=>{}),about],'','system');
+ assert.equal(before.id,after.id);
+ assert.equal(before.rows[0].id,after.rows[1].id);
+ assert.notEqual(after.rows[0].id,after.rows[1].id);
 });
