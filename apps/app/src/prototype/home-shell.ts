@@ -49,12 +49,29 @@ export function installHomeShell(Component: any, views: Record<string, Bag>, bri
 } = {}) {
   const p = Component.prototype, mount = p.componentDidMount, unmount = p.componentWillUnmount, render = p.renderVals;
   const back = p.back, goHome = p.goHome, openView = p.openView;
-  let owner: any = null;
+  let owner: any = null, seenError: string | null = null, seenStatus = 'idle', seenApps: unknown = null, launchReported = false;
+  // The drawer and edit bar report their own errors. Home reports a failed launch once,
+  // and explains why a failed inventory read removed installed favorites.
+  const reportHomeFailure = () => {
+    if (!owner) return;
+    const snapshot = shell.launcher.snapshot(), error = snapshot.launchError, read = snapshot.apps !== seenApps;
+    const failed = snapshot.status === 'failed' && seenStatus !== 'failed', fresh = !!error && error !== seenError;
+    const afterLaunch = launchReported && read;
+    seenError = error; seenStatus = snapshot.status; seenApps = snapshot.apps;
+    if (read) launchReported = false;
+    const state = owner.S();
+    if (state.drawer || state.view || state.homeEdit) return;
+    if (fresh) { owner.toast(error); launchReported = true; }
+    else if (failed && !afterLaunch) {
+      const listed = new Set(snapshot.apps.map(appKey));
+      if (snapshot.favorites.some(key => !listed.has(key))) owner.toast("Apps couldn't load. Open Apps to try again.");
+    }
+  };
   const shell = createMobileShellLauncher({
     bridge, registry: alphaViews, icons: options.icons, aliases: options.aliases,
     favorites: options.favorites, storage: options.storage,
     open: view => owner?.openView(alphaViews.hostKey(view)),
-    changed: () => owner?.setState({launcherRevision: Date.now()}),
+    changed: () => { reportHomeFailure(); owner?.setState({launcherRevision: Date.now()}); },
   });
   const {launcher} = shell, prefix = ALPHA_PRODUCT.storage.launcherBuiltinPrefix;
   const icon = (id: string) => mobileShellIconUrl(ALPHA_PRODUCT, id);

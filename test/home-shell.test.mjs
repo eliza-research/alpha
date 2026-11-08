@@ -25,7 +25,6 @@ function shellClass(opened,toasts=[]){
     openView(key){opened.push(key);}
     back(){if(this.state.drawer)this.setState(this.shellNavigate({type:'back'}));}
     goHome(){this.setState(this.shellNavigate({type:'home'}));}
-    toast(){}
     shellNavigate(action){const next=navigateMobileShell({view:null,stack:[],drawer:!!this.state.drawer,drawerQuery:this.state.drawerQ||''},action);return {view:next.view,stack:[...next.stack],drawer:next.drawer,drawerQ:next.drawerQuery};}
     renderVals(){return {isOn:true,isView:false,homeHidden:false};}
   };
@@ -215,7 +214,7 @@ test('with the drawer closed, Home toasts a failed launch and a failed app read 
   let saved=[...PRODUCT,'com.android.settings'],listing='ok';const toasts=[];
   const Shell=shellClass([],toasts);
   const shell=installHomeShell(Shell,{},{list:async()=>{if(listing==='fail')throw new Error('offline');return {apps};},launch:async()=>{throw new Error('Work apps are paused.');}},
-    {favorites:{read:()=>saved,write:keys=>{saved=[...keys];}}});
+    {appInventory:'simulated',favorites:{read:()=>saved,write:keys=>{saved=[...keys];}}});
   const home=new Shell();home.renderVals();home.componentDidMount();
   try {
     home.openAllApps();await new Promise(setImmediate);
@@ -231,7 +230,7 @@ test('with the drawer closed, Home toasts a failed launch and a failed app read 
     listing='fail';
     await shell.launcher.refresh();await shell.launcher.refresh();
     assert.equal(shell.launcher.snapshot().status,'failed');
-    assert.deepEqual(toasts.slice(1),["Apps couldn't load. Open All apps to try again."]);
+    assert.deepEqual(toasts.slice(1),["Apps couldn't load. Open Apps to try again."]);
     // A failed launch whose follow-up read also fails reports only the launch.
     listing='ok';await shell.launcher.refresh();toasts.length=0;listing='fail';
     await shell.launcher.launch(shell.launcher.snapshot().apps.find(app=>app.packageName==='com.android.settings'));
