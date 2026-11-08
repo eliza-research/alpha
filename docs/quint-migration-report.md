@@ -314,3 +314,41 @@ listed. The merged product passes repository verification and production bundle
 admission. Android distribution, native installation, AOSP and real-provider
 results retain their own qualification requirements. The PR becomes mergeable
 against current main after the reconciled implementation is validated.
+
+## Current-main reconciliation inventory
+
+The PR base changed to current `main` during implementation. The reconciliation
+starts at `f2a0eb035da9c8ede24efe735d981a27dd403283`, with shared upstream
+`475a8d59dc1811c2cde093613519906a5a3f6457`. The earlier branch's successful
+verification remains evidence for that earlier source. Its product source is
+being ported selectively so current-main ownership and behavior are preserved.
+
+The inventory now discovers 1,518 product and consumed shared source files,
+including 678 upstream files selected by the client projection, Android host
+modules, resident helper list and native patch modules. Verification-support
+sources have a separate scope. Domain allocation is recorded independently from
+state-field and transition refinement. Changed and newly discovered sources
+remain explicitly marked `state-audit-required` until their concrete state has
+been reviewed. Broad source hashing cannot discharge this work.
+
+The four newly discovered view-refresh TLA+ designs and their 22 configurations
+now have Quint translations. There are no tracked `.tla` or `.cfg` files in the
+product tree or its pinned upstream checkout. Historical design comparisons
+retain their original source references as historical metadata. Their references
+to deleted implementations are excluded from current runtime conformance.
+
+Current-main work includes shared sign-in ownership, linked Calendar sync,
+Inbox review/provider-draft flows, native task/recovery/credential coordinators,
+renderer recovery and delayed Settings role updates. Remaining source work
+includes the seven-step permission coordinator, canonical Notes recording and
+folders, current Files browser and Photos state, current launcher coordination,
+native media/recorder lifecycles, broader device actions, listener integration,
+and cross-controller refinement. The aggregate report lists unobserved declared
+fields and unexecuted transitions using Quint's parsed state declarations,
+including nested records and imported instances.
+
+The current-main Android build preflight rejects the voice qualification pin
+`47982b8f49d16d520990e14e07cdeb5c6931df81` against the application's `475a8d5`
+pin. APK verification then reports missing distribution artifacts. No Android
+build, emulator role test, AOSP boot or device/provider acceptance is claimed for
+this reconciliation.

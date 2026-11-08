@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto';
-import { readFileSync, readdirSync } from 'node:fs';
+import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { extname, join, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -11,7 +11,7 @@ export const runtimeScriptPaths = ['scripts/browser-cloud-dev-bridge.ts', 'scrip
   'scripts/start-local-agent.mjs', 'scripts/start-local-voice-agent.mjs', 'scripts/start-local-remote.mjs'];
 export const runtimeAssetPaths = ['apps/app/index.html'];
 const omittedDirectories = new Set(['node_modules', 'build', '.gradle', '.cxx', '.kotlin', 'assets', 'jniLibs', 'capacitor-cordova-android-plugins']);
-const sourceExtensions = new Set(['.ts', '.tsx', '.js', '.java', '.kt', '.cpp', '.h', '.c', '.html']);
+const sourceExtensions = new Set(['.ts', '.tsx', '.js', '.java', '.kt', '.cpp', '.h', '.c', '.html', '.mjs', '.jsx', '.cc', '.hpp', '.rs', '.swift']);
 
 export function filesWithin(directory, accept = () => true) {
   const result = [];
@@ -26,7 +26,36 @@ export function filesWithin(directory, accept = () => true) {
 
 export const relativePath = path => relative(repositoryRoot, path).split('\\').join('/');
 export const sha256 = bytes => createHash('sha256').update(bytes).digest('hex');
-export const sourcePaths = () => [...sourceRoots.flatMap(root => filesWithin(join(repositoryRoot, root), path => sourceExtensions.has(extname(path)))).map(relativePath), ...runtimeScriptPaths, ...runtimeAssetPaths].sort();
+/** Discover the shared source consumed by this product from its authenticated inputs. */
+export function sharedSourcePaths() {
+  const pin = readJson(join(repositoryRoot, 'upstream.lock.json'));
+  // Minimal checker fixtures have no product source descriptor.
+  if (!pin.appSource) return [];
+  const client = readJson(join(repositoryRoot, '.eliza/client-features/.source.json'));
+  if (client.baseCommit !== pin.commit) throw Error('Prepare client sources for the current upstream pin before checking Quint coverage');
+  const host = readJson(join(repositoryRoot, 'android/consumer-host.json'));
+  const patches = readJson(join(repositoryRoot, 'patches/eliza/native-manifest.json'));
+  const prefixes = new Set([
+    ...Object.keys(client.sourceFiles),
+    ...host.profile.modules.filter(module => ['upstream', 'patchedNative'].includes(module.source.root)).map(module => module.source.path),
+    ...host.residentHost.helpers,
+    ...(patches.modules || []), ...patches.patches.map(patch => patch.module),
+    'packages/app/platforms/android/sense/src/main',
+    'packages/os/android/sense/systemui/chip/source',
+  ]);
+  const sources = new Set();
+  for (const prefix of prefixes) {
+    const target = join(repositoryRoot, 'vendor/eliza', prefix);
+    const paths = statSync(target).isDirectory() ? filesWithin(target) : [target];
+    for (const path of paths) if (sourceExtensions.has(extname(path))) sources.add(relativePath(path));
+  }
+  return [...sources].sort();
+}
+
+export const sourcePaths = () => [...new Set([
+  ...sourceRoots.flatMap(root => filesWithin(join(repositoryRoot, root), path => sourceExtensions.has(extname(path)))).map(relativePath),
+  ...runtimeScriptPaths, ...runtimeAssetPaths, ...sharedSourcePaths(),
+])].sort();
 export const readJson = path => JSON.parse(readFileSync(path, 'utf8'));
 
 export function detectedCounterexample(output) {

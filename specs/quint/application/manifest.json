@@ -41,7 +41,8 @@
       "hiddenRetiresSendTest",
       "suspendedRetiresSendTest",
       "suspendedClaimRefusedTest",
-      "resumedClaimTest"
+      "resumedClaimTest",
+      "settingsRoleInsertionKeepsFocusTest"
     ],
     "sources": [
       "apps/app/src/prototype/model.js",

@@ -14,11 +14,6 @@
       "currentMissingGoogleTest",
       "currentThreeTapEmailTest"
     ],
-    "sources": [
-      "apps/app/src/runtime/connection-ui.tsx",
-      "apps/app/src/runtime/cloud-sign-in-ui.tsx",
-      "android/app/src/main/java/ai/elizaresearch/alphaphone/CloudSignInFlow.java"
-    ],
     "abstractions": [
       "Historical current/proposed design comparison at source ef9fbf7cd7, not a runtime conformance claim.",
       "All original state variables are fields of s; immutable Design selects behavior; record spreads preserve the original frame conditions.",
@@ -146,6 +141,16 @@
         "GoogleWhenPossible",
         "ReachesHome"
       ]
+    },
+    "sources": [],
+    "classification": "historical-design-comparison",
+    "historicalSources": {
+      "commit": "ef9fbf7cd7",
+      "paths": [
+        "apps/app/src/runtime/connection-ui.tsx",
+        "apps/app/src/runtime/cloud-sign-in-ui.tsx",
+        "android/app/src/main/java/ai/elizaresearch/alphaphone/CloudSignInFlow.java"
+      ]
     }
   },
   {
@@ -164,11 +169,6 @@
       "currentGrantShrinksTest",
       "currentStaleInboxTest",
       "currentTabAndTapCountTest"
-    ],
-    "sources": [
-      "apps/app/src/runtime/google-connect-flow.ts",
-      "apps/app/src/runtime/google-connection-ui.tsx",
-      "apps/app/src/runtime/cloud-protocol.ts"
     ],
     "abstractions": [
       "Historical current/proposed design comparison at source ef9fbf7cd7, not a runtime conformance claim.",
@@ -313,7 +313,17 @@
         "relation": "TwoTapsToMailRelation",
         "invariant": "TwoTapsToMailInvariant"
       }
-    ]
+    ],
+    "sources": [],
+    "classification": "historical-design-comparison",
+    "historicalSources": {
+      "commit": "ef9fbf7cd7",
+      "paths": [
+        "apps/app/src/runtime/google-connect-flow.ts",
+        "apps/app/src/runtime/google-connection-ui.tsx",
+        "apps/app/src/runtime/cloud-protocol.ts"
+      ]
+    }
   },
   {
     "path": "specs/quint/legacy/Calendar.qnt",
@@ -330,11 +340,6 @@
       "currentPickerRequiredTest",
       "currentMalformedFeedTest",
       "currentReadOnlyGoogleTest"
-    ],
-    "sources": [
-      "apps/app/src/runtime/google-calendar.ts",
-      "apps/app/src/runtime/google-calendar-outbox.ts",
-      "apps/app/src/prototype/calendar-adapter.ts"
     ],
     "abstractions": [
       "Historical current/proposed design comparison at source ef9fbf7cd7, not a runtime conformance claim.",
@@ -470,7 +475,17 @@
         "relation": "UndoBeforeSendRelation",
         "invariant": "UndoBeforeSendInvariant"
       }
-    ]
+    ],
+    "sources": [],
+    "classification": "historical-design-comparison",
+    "historicalSources": {
+      "commit": "ef9fbf7cd7",
+      "paths": [
+        "apps/app/src/runtime/google-calendar.ts",
+        "apps/app/src/runtime/google-calendar-outbox.ts",
+        "apps/app/src/prototype/calendar-adapter.ts"
+      ]
+    }
   },
   {
     "path": "specs/quint/legacy/Maps.qnt",
@@ -486,11 +501,6 @@
       "currentProviderTalkTest",
       "currentAssistantStopsGuidanceTest",
       "currentRerouteLosesRouteTest"
-    ],
-    "sources": [
-      "apps/app/src/maps/cloud-provider.ts",
-      "apps/app/src/maps/agent-navigation.ts",
-      "apps/app/src/prototype/maps-adapter.ts"
     ],
     "abstractions": [
       "Historical current/proposed design comparison at source ef9fbf7cd7, not a runtime conformance claim.",
@@ -674,7 +684,17 @@
         "relation": "RouteKeptOnFailureRelation",
         "invariant": "RouteKeptOnFailureInvariant"
       }
-    ]
+    ],
+    "sources": [],
+    "classification": "historical-design-comparison",
+    "historicalSources": {
+      "commit": "ef9fbf7cd7",
+      "paths": [
+        "apps/app/src/maps/cloud-provider.ts",
+        "apps/app/src/maps/agent-navigation.ts",
+        "apps/app/src/prototype/maps-adapter.ts"
+      ]
+    }
   },
   {
     "path": "specs/quint/legacy/ChatInput.qnt",
@@ -689,10 +709,6 @@
       "currentStrayTest",
       "currentBackTest",
       "currentOneTouchTest"
-    ],
-    "sources": [
-      "apps/app/src/prototype/model.js",
-      "apps/app/src/prototype/chat-overlay-motion-adapter.ts"
     ],
     "abstractions": [
       "Historical current/proposed design comparison at source ef9fbf7cd7, not a runtime conformance claim.",
@@ -787,6 +803,15 @@
         "FocusNeedsComposer",
         "OneTouchDown"
       ]
+    },
+    "sources": [],
+    "classification": "historical-design-comparison",
+    "historicalSources": {
+      "commit": "ef9fbf7cd7",
+      "paths": [
+        "apps/app/src/prototype/model.js",
+        "apps/app/src/prototype/chat-overlay-motion-adapter.ts"
+      ]
     }
   },
   {
@@ -801,11 +826,6 @@
       "negativeGridDivisionTest",
       "currentGridShiftTest",
       "currentEmptyCardsTest"
-    ],
-    "sources": [
-      "apps/app/src/prototype/template.html",
-      "apps/app/src/prototype/phone.css",
-      "apps/app/src/runtime/dock-clearance.ts"
     ],
     "abstractions": [
       "Historical current/proposed design comparison at source ef9fbf7cd7, not a runtime conformance claim.",
@@ -893,6 +913,16 @@
         "TopNeverBlank",
         "SetupOnlyWhenNeeded"
       ]
+    },
+    "sources": [],
+    "classification": "historical-design-comparison",
+    "historicalSources": {
+      "commit": "ef9fbf7cd7",
+      "paths": [
+        "apps/app/src/prototype/template.html",
+        "apps/app/src/prototype/phone.css",
+        "apps/app/src/runtime/dock-clearance.ts"
+      ]
     }
   },
   {
@@ -907,10 +937,6 @@
       "currentInfoRowsTest",
       "currentUnconfirmedSignOutTest",
       "currentMirrorPageTest"
-    ],
-    "sources": [
-      "apps/app/src/prototype/model.js",
-      "apps/app/src/prototype/settings-adapter.ts"
     ],
     "abstractions": [
       "Historical current/proposed design comparison at source ef9fbf7cd7, not a runtime conformance claim.",
@@ -1008,6 +1034,15 @@
         "SingleEntry",
         "ConfirmBeforeDestroy",
         "Shallow"
+      ]
+    },
+    "sources": [],
+    "classification": "historical-design-comparison",
+    "historicalSources": {
+      "commit": "ef9fbf7cd7",
+      "paths": [
+        "apps/app/src/prototype/model.js",
+        "apps/app/src/prototype/settings-adapter.ts"
       ]
     }
   },
