@@ -616,3 +616,15 @@ test("no registered instrumented class drives a control the view refresh removed
   }
   for (const label of removed) assert.equal(fs.readFileSync("apps/app/src/prototype/template.html", "utf8").includes(label), false, `the renderer has no "${label}"`);
 });
+
+test("the campaign runbook and the audit's commands name only classes a runner takes", async () => {
+  const { CLASS_REGISTRY, NOT_RUN_BY_A_RUNNER } = await import("../scripts/android-instrumentation.mjs");
+  // The view refresh removed FilesTree and took PosterCalendarJourney off every runner (59badc34ca).
+  // The audit still names two older retired classes (LocalAgentOfflineApps, FusedSpeech) with their own notes.
+  const known = { "docs/runbooks/676-hosted-ci-emulator-campaigns.md": [], "docs/core-loop-audit.md": ["LocalAgentOfflineApps", "FusedSpeech"] };
+  for (const [doc, older] of Object.entries(known)) {
+    const named = [...fs.readFileSync(doc, "utf8").matchAll(/--classes ([A-Za-z0-9,]+)/g)].flatMap(m => m[1].split(","));
+    assert.ok(named.length > 0, `${doc}: no --classes command found`);
+    assert.deepEqual(named.filter(name => (!(name in CLASS_REGISTRY) || name in NOT_RUN_BY_A_RUNNER) && !older.includes(name)), [], `${doc}: commands name removed or unrunnable classes`);
+  }
+});

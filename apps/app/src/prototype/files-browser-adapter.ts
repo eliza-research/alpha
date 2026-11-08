@@ -316,7 +316,7 @@ export function installFilesBrowserAdapter(views: Bag, accept: (module: string, 
       if (!api) return {status: 'failed', summary: 'Files is unavailable. Nothing was changed.'};
       if (!api.isActive?.()) api.open?.('files');
       await refreshState();
-      if (access !== 'granted') return {status: 'failed', summary: 'Files needs all-files access. Nothing was changed.'};
+      if (access !== 'granted') return {status: 'failed', summary: 'Files needs storage access. Nothing was changed.'};
       if (op.type === 'files_filter') { const n = await showFilter(validateFilesFilter(filesFilterOf(op))); return {status: 'succeeded', summary: `Showing ${countLabel(n)} in Files.`}; }
       if (op.type === 'files_open') {
         const currentApi = api, ticket = selectionEpoch;

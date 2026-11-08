@@ -46,20 +46,29 @@ export function mergeWindow<T extends ViewRow>(kept: readonly T[], page: readonl
 
 /** Reads the library window. Paging (`more`) reads one page after `cursor`; a reload re-reads from the
  * top as many rows as were loaded (bounded by `limit`), so a row the owner scrolled to, selected or
- * opened is still in the window after an unrelated library change (FixPatch). */
+ * opened is still in the window after an unrelated library change (FixPatch). Only the first page of
+ * a reload asks for thumbnails; the grid reads the rest for the rows it shows (thumbnailPlan). */
 export async function readWindow<T extends ViewRow>(
-  list: (options: { before?: string }) => Promise<{ items: T[]; next: string }>,
+  list: (options: { before?: string; thumbnails?: boolean }) => Promise<{ items: T[]; next: string }>,
   options: { more: boolean; cursor: string; loaded: number; limit: number },
   current: () => boolean = () => true,
 ): Promise<{ rows: T[]; next: string } | undefined> {
   const want = options.more ? 1 : Math.min(Math.max(options.loaded, 1), options.limit), rows: T[] = [];
   let cursor = options.more ? options.cursor : '';
   do {
-    const result = await list(cursor ? { before: cursor } : {});
+    const result = await list({ ...(cursor ? { before: cursor } : {}), ...(options.more || !rows.length ? {} : { thumbnails: false }) });
     if (!current()) return undefined;
     rows.push(...result.items); cursor = result.next;
   } while (cursor && !options.more && rows.length < want);
   return { rows, next: cursor };
+}
+
+/** A reloaded row keeps the thumbnail its unchanged earlier copy held, so a reload that skipped
+ * thumbnails does not blank the grid. */
+export function keepThumbnails<T extends ViewRow & { image?: string; contentRevision?: string }>(rows: readonly T[], before: readonly T[]): T[] {
+  const held = new Map(before.filter(row => row.image).map(row => [row.id, row] as const));
+  const same = (a: T, b: T) => a.revision === b.revision && a.mutationRevision === b.mutationRevision && a.contentRevision === b.contentRevision;
+  return rows.map(row => { const old = held.get(row.id); return !row.image && old && same(old, row) ? { ...row, image: old.image } : row; });
 }
 
 /** Replace changed rows in place; a row that left this list (trashed/restored/deleted) is removed. Never reorders. */

@@ -1,5 +1,5 @@
 {
-  "$comment": "Shrink-only parity of Alpha with Eliza's reference mobile registration (test/feature-parity.test.mjs, scripts/feature-manifest.mjs --parity). Brands may differ only by identity and theme. 'differences' are the functional manifest differences still open, each with the Alpha module that owns it; 'modules' are the Alpha source files that still carry behaviour (everything but apps/app/src/product). Remove an entry and lower its ceiling when the behaviour moves upstream; never add one.",
+  "$comment": "Shrink-only parity of Alpha with Eliza's reference mobile registration (test/feature-parity.test.mjs, scripts/feature-manifest.mjs --parity). Brands may differ only by identity and theme. 'differences' are the functional manifest differences still open, each with the Alpha module that owns it; 'modules' are the Alpha source files that still carry behaviour (everything but apps/app/src/product). Remove an entry and lower its ceiling when the behaviour moves upstream; never add one. One owner-approved exception: the 2026-11 view refresh raised ceiling.modules 555 -> 564 (design/view-refresh-2026-11/PLAN.md, Decisions).",
   "reference": "ELIZA_MOBILE_PRODUCT",
   "ceiling": {
     "differences": 17,

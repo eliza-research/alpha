@@ -60,3 +60,10 @@ test('the APK policy admits WRITE_EXTERNAL_STORAGE only up to API 29', () => {
   assert.deepEqual(assess([[W, 29]]), []);
   assert.ok(assess([[W]]).includes('WRITE_EXTERNAL_STORAGE is requested above API 29'));
 });
+test('on API 29 a refusal names storage access, not all-files access, which that release does not have', () => {
+  assert.match(plugin, /result\("denied",StorageCatalog\.legacy\(\)\?"Allow storage access to browse files\.":"Allow all-files access to browse storage\."\)/);
+  const adapter = readFileSync('apps/app/src/prototype/files-browser-adapter.ts', 'utf8');
+  assert.match(adapter, /summary: 'Files needs storage access\. Nothing was changed\.'/);
+  assert.doesNotMatch(adapter, /needs all-files access/);
+  assert.match(readFileSync('docs/prototype-camera-integration.md', 'utf8'), /replaces that maximum with\nAPI 29/);
+});

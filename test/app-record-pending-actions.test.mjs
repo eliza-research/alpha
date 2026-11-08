@@ -44,3 +44,19 @@ test('actual Notes binding accepts the existing app-record port independently of
  const shell={live:true,notesSourceMode:'canonical',setState(){}};sync(shell);await shell.notesReady;assert.equal(bindings,1);assert.equal(starts,1);assert.equal(shell.canonicalNotesUi.current,true);sync(shell);assert.equal(bindings,1);
  selected=null;sync(shell);await shell.notesReady;assert.match(updates.at(-1).storageStatus,/unavailable for this agent connection/);assert.equal(bindings,1);
 });
+test('an agent voice note saved before a lost response or a restart is not saved again on a retried Done',async()=>{
+ // The agent's collection, shared by every Controller: a retried Done (also by a new process) reads it fresh.
+ const store=[];let saves=0;
+ class Controller{current=true;pending=false;revision=null;constructor(_port,hooks){this.hooks=hooks;}listen(){}async refresh(){this.revision=store.length+1;const snapshot={notes:store.map(note=>structuredClone(note)),trash:[],revision:this.revision};this.hooks.snapshot(snapshot,'read');return snapshot;}hasViewNote(){return false;}viewNote(){}retire(){this.current=false;}}
+ class Editor{draft=null;hasAuthoredContent=false;constructor(_controller,hooks){this.hooks=hooks;}begin(kind){this.draft={token:'t',version:0,title:'',body:'',format:{kind,data:{}}};}edit(patch){Object.assign(this.draft,patch);this.draft.version++;}close(){this.draft=null;}reconcile(){}async save(){saves++;store.push({id:'n'+saves,title:this.draft.title,body:this.draft.body,format:this.draft.format,updatedAt:new Date(0).toISOString()});return true;}}
+ const module=new Function('parseNoteFormat','projectNoteForModel','noteScheduleDraft','agentPendingText','agentAvailabilityNotice','DailyApps','CanonicalNotesController','CanonicalNotesEditor','window',code+';return {CanonicalNotesUi};')(x=>x,note=>({title:note.title,body:note.body}),async()=>({}),()=>'',()=>'',{},Controller,Editor,{});
+ const first=new module.CanonicalNotesUi({},{paint(){},review(){}});
+ assert.equal(await first.saveVoice('Hello',2000,null,()=>true,'rec-1'),true);
+ assert.equal(store.length,1);
+ // The process died before the recording was discarded: the recovered Done runs again.
+ const recovered=new module.CanonicalNotesUi({},{paint(){},review(){}});
+ assert.equal(await recovered.saveVoice('Hello',2000,null,()=>true,'rec-1'),true);
+ assert.equal(store.length,1,'no duplicate voice note');
+ assert.equal(await recovered.saveVoice('Other',1000,null,()=>true,'rec-2'),true);
+ assert.equal(store.length,2,'a different recording is its own note');
+});

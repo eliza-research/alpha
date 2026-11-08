@@ -32,7 +32,7 @@
      String base = row.getLong(3) + ":" + row.getLong(4);
      String marker = versions.getString(key, "");
      item.put(
-@@ -262,10 +277,16 @@
+@@ -262,10 +277,22 @@
    }
  
    /**
@@ -47,11 +47,17 @@
 +
 +  /** As {@link #list(String, boolean, String)}, with at most {@code limit} (1 to PAGE) items. */
 +  public JSObject list(String before, boolean trashed, String album, int limit) throws Exception {
++    return list(before, trashed, album, limit, true);
++  }
++
++  /** As {@link #list(String, boolean, String, int)}; without {@code thumbnails} no preview is decoded. */
++  public JSObject list(String before, boolean trashed, String album, int limit, boolean thumbnails)
++      throws Exception {
 +    if (limit < 1 || limit > PAGE) throw new IllegalArgumentException("Invalid page size");
      if (trashed && Build.VERSION.SDK_INT < 30)
        throw new UnsupportedOperationException("Android trash requires Android 11 or later");
      long cursor = OwnedMediaSelection.cursor(before);
-@@ -280,7 +301,7 @@
+@@ -280,7 +307,7 @@
          ContentResolver.QUERY_ARG_SORT_COLUMNS, new String[] {MediaStore.Images.Media._ID});
      query.putInt(
          ContentResolver.QUERY_ARG_SORT_DIRECTION, ContentResolver.QUERY_SORT_DIRECTION_DESCENDING);
@@ -60,7 +66,7 @@
      if (Build.VERSION.SDK_INT >= 30)
        query.putInt(
            MediaStore.QUERY_ARG_MATCH_TRASHED,
-@@ -291,7 +312,7 @@
+@@ -291,13 +318,13 @@
      try (Cursor rows = context.getContentResolver().query(CATALOG, fields(), query, null)) {
        if (rows == null) throw new IllegalStateException();
        while (rows.moveToNext()) {
@@ -69,7 +75,14 @@
            next = Long.toString(last);
            break;
          }
-@@ -450,15 +471,15 @@
+         JSObject item = metadata(rows);
+         last = rows.getLong(0);
+-        putPreview(item, key(rows), 240);
++        if (thumbnails) putPreview(item, key(rows), 240);
+         items.put(item);
+       }
+     }
+@@ -450,15 +477,15 @@
    }
  
    /**
@@ -88,7 +101,7 @@
      if (items == null || items.length() < 1 || items.length() > BATCH)
        throw new IllegalArgumentException();
      Set<String> seen = new HashSet<>();
-@@ -480,8 +501,8 @@
+@@ -480,8 +507,8 @@
              changeFlag(
                  item.getString("id"),
                  item.getString("revision"),
@@ -99,7 +112,7 @@
          outcome.put("status", result.getString("status"));
          outcome.put("item", result);
          verified++;
-@@ -498,7 +519,7 @@
+@@ -498,7 +525,7 @@
      return result;
    }
  
@@ -108,7 +121,7 @@
    public JSObject summary() throws Exception {
      Bundle query = new Bundle();
      query.putString(
-@@ -507,9 +528,10 @@
+@@ -507,9 +534,10 @@
      query.putStringArray(ContentResolver.QUERY_ARG_SQL_SELECTION_ARGS, new String[] {owner()});
      if (Build.VERSION.SDK_INT >= 30)
        query.putInt(MediaStore.QUERY_ARG_MATCH_TRASHED, MediaStore.MATCH_INCLUDE);
@@ -120,7 +133,7 @@
        while (rows.moveToNext()) {
          if (Build.VERSION.SDK_INT >= 30 && rows.getInt(7) == 1) {
            trash++;
-@@ -517,11 +539,16 @@
+@@ -517,11 +545,16 @@
          }
          if (rows.getInt(5) == 3) videos++;
          if (Build.VERSION.SDK_INT >= 30 && rows.getInt(10) == 1) favorite++;
@@ -1400,16 +1413,18 @@
    @PluginMethod
    public void editResult(PluginCall call) {
      if (VideoCopyEdits.isVideoOperation(call.getString("operationId"))) {
-@@ -451,22 +488,59 @@
+@@ -451,22 +488,61 @@
            call.resolve(albums.list(album.substring(7), call.getString("before", "")));
            return;
          }
 +        // A caller that needs fewer rows (Camera's last-capture tile reads one) asks for a smaller page.
 +        int limit = Math.max(1, Math.min(OwnedMediaLibrary.PAGE, call.getInt("limit", OwnedMediaLibrary.PAGE)));
++        // A reload re-reading rows the grid already shows skips their thumbnails (read again on view).
++        boolean thumbnails = call.getBoolean("thumbnails", true);
          String[] listing = PhotoLibraryAccess.permittedListing(album, trashed);
          if (PhotoLibraryAccess.readable(permitted.access())) {
 -          call.resolve(permitted.list(call.getString("before", ""), "", listing[0], true, listing[1]));
-+          call.resolve(permitted.list(call.getString("before", ""), "", listing[0], true, listing[1],
++          call.resolve(permitted.list(call.getString("before", ""), "", listing[0], thumbnails, listing[1],
 +              0, Long.MAX_VALUE, limit));
            return;
          }
@@ -1418,7 +1433,7 @@
            return;
          }
 -        call.resolve(owned.list(call.getString("before", ""), trashed, album));
-+        call.resolve(owned.list(call.getString("before", ""), trashed, album, limit));
++        call.resolve(owned.list(call.getString("before", ""), trashed, album, limit, thumbnails));
        } catch (Exception failure) {
          call.reject("Saved media could not be loaded");
        }
@@ -1462,7 +1477,7 @@
    @PluginMethod
    public void read(PluginCall call) {
      diagnostic(Diagnostic.READ_INVOKED);
-@@ -545,7 +619,7 @@
+@@ -545,7 +621,7 @@
      submit(call, () -> {
        try {
          JSArray items = call.getArray("items");
@@ -1471,7 +1486,7 @@
            throw new IllegalArgumentException();
          ArrayList<Uri> uris = new ArrayList<>();
          Set<String> unique = new HashSet<>();
-@@ -635,7 +709,9 @@
+@@ -635,7 +711,9 @@
          String operation = call.getString("operation", "");
          boolean[] change = PhotoLibraryAccess.batchChange(operation);
          JSArray items = call.getArray("items");

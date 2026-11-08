@@ -41,7 +41,8 @@ The generated root build declares Kotlin 2.2.20 and AGP 8.13.0 (the generator's
 reviewed toolchain). Upstream
 applies `org.jetbrains.kotlin.android`, targets Java/Kotlin 21 and declares
 CameraX 1.5.3 and ExifInterface 1.4.2. Its manifest merges CAMERA, RECORD_AUDIO
-and WRITE_EXTERNAL_STORAGE (maximum API 28). This adapter does not request
+and WRITE_EXTERNAL_STORAGE (maximum API 28); Alpha's manifest replaces that maximum with
+API 29 for Files' legacy storage on Android 10. This adapter does not request
 microphone access or invoke video recording. `startPreview` requests the camera
 permission itself. Do not add a duplicate prompt for all upstream permissions.
 Verify both release and debug variants contain the plugin class.

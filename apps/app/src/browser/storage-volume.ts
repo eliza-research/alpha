@@ -78,7 +78,22 @@ export class BrowserStorageVolume {
     if (category === 'downloads') { try { return {entries: (await this.list(DOWNLOAD_FOLDER)).entries.filter(e => !e.directory)}; } catch (error) { if (error instanceof Missing) return {entries: []}; throw error; } }
     return {entries: (await this.walk()).filter(e => inCategory(category, e)).sort((a, b) => b.modified - a.modified)};
   }
-  async query(): Promise<{entries: StorageEntry[]}> { return {entries: await this.walk()}; }
+  /** Every visible folder under `under`, bounded; the agent's folder filter (Android walks the tree too). */
+  private async walkFolders(under: string): Promise<StorageEntry[]> {
+    const start = validPath(under, true);
+    let id: string;
+    try { id = await this.folderId(start); } catch (error) { if (error instanceof Missing) return []; throw error; }
+    const out: StorageEntry[] = [], queue: [string, string][] = [[id, start]];
+    for (let visited = 0; queue.length && visited < WALK_MAX; visited++) {
+      const [folder, path] = queue.shift()!;
+      for (const e of await this.visible(folder)) if (e.directory) { const p = joinPath(path, e.name); queue.push([e.id, p]); out.push(this.row(p, e, (await this.visible(e.id)).length)); }
+    }
+    return out;
+  }
+  /** Candidates for the agent's read-only filter; the renderer applies the exact rules. */
+  async query(input: {folders?: boolean; folder?: string} = {}): Promise<{entries: StorageEntry[]}> {
+    return {entries: input.folders === true ? await this.walkFolders(typeof input.folder === 'string' ? input.folder : '') : await this.walk()};
+  }
 
   async createFolder(parent: string, name: string): Promise<{path: string}> {
     const folder = validPath(parent, true), clean = validName(name);
@@ -283,7 +298,7 @@ export class BrowserStorageVolume {
         case 'storageRequestAccess': return {status: 'ready', access: 'granted'};
         case 'storageList': return {status: 'ready', ...await this.list(input.path ?? '')};
         case 'storageCategory': { const {entries} = await this.category(input.category); return {status: 'ready', ...(input.countOnly ? {count: entries.length} : {entries})}; }
-        case 'storageQuery': return {status: 'ready', ...await this.query()};
+        case 'storageQuery': return {status: 'ready', ...await this.query(input)};
         case 'storageTransfer': return {status: 'ready', ...await this.transfer(input.paths, input.dest ?? '', input.copy === true, input.expect)};
         case 'storageIdentity': return {status: 'ready', ...await this.identity(input.paths)};
         case 'storageRename': return {status: 'ready', ...await this.rename(input.path, input.name)};

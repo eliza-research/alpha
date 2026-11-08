@@ -275,3 +275,11 @@ public final class PhotoRecoveryCheck {
  execFileSync(javaBinary('javac'),['-proc:none','-nowarn','-implicit:none','-d',path.join(work,'out'),'-cp',classpath,...sources],{timeout:120000,stdio:'pipe'});
  assert.equal(execFileSync(javaBinary('java'),['-cp',path.join(work,'out')+path.delimiter+classpath,'ai.eliza.plugins.media.PhotoRecoveryCheck',path.join(work,'data')],{encoding:'utf8',timeout:60000}).trim(),'ok');
 });
+test('Photos 8: list skips thumbnail decoding when asked (thumbnails:false), owned and permitted alike',{skip:!ready&&'vendor/eliza not checked out'},async()=>{
+ const plugin=await source('PhotosPlugin'),owned=await source('OwnedMediaLibrary');
+ const list=method(plugin,'public void list(');
+ assert.match(list,/boolean thumbnails = call\.getBoolean\("thumbnails", true\);/);
+ assert.match(list,/permitted\.list\(call\.getString\("before", ""\), "", listing\[0\], thumbnails, listing\[1\],/);
+ assert.match(list,/owned\.list\(call\.getString\("before", ""\), trashed, album, limit, thumbnails\)/);
+ assert.match(method(owned,'public JSObject list(String before, boolean trashed, String album, int limit, boolean thumbnails)'),/if \(thumbnails\) putPreview\(item, key\(rows\), 240\);/);
+});

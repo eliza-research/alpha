@@ -222,8 +222,8 @@ test('Browse reads category counts only, without walking or sending any row',asy
 test('a folder watch also follows MediaStore, so provider writes (downloads, camera) refresh the open folder (ListingsConverge)',()=>{
  const plugin=readFileSync('android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaFilesPlugin.java','utf8');
  const watch=plugin.slice(plugin.indexOf('public void storageWatch'),plugin.indexOf('public void storageUnwatch'));
- assert.match(watch,/\n  mediaObserver=new android\.database\.ContentObserver/,'the MediaStore observer is registered for every watch, folders included');
- assert.doesNotMatch(watch,/if\(category!=null\|\|path==null\)\{mediaObserver/);
+ assert.match(watch,/\n   android\.database\.ContentObserver media=new android\.database\.ContentObserver/,'the MediaStore observer is registered for every watch, folders included');
+ assert.doesNotMatch(watch,/if\(category!=null\|\|path==null\)\{/);
  assert.match(watch,/"downloads"\.equals\(category\)\?new java\.io\.File\(primaryBrowser\(\)\.root,StorageCatalog\.DOWNLOAD_FOLDER\)/,'Downloads watches the Download folder too');
 });
 test('every Browse category id has a native answer on Android; Downloads is the Download folder',()=>{
@@ -304,4 +304,33 @@ test('the Files agent contract carries the reviewed identity and the runner refu
  assert.match(plugin,/b\.transfer\(paths,call\.getString\("dest",""\),copy,expected\(call,paths\.size\(\)\)\)/);
  assert.match(plugin,/b\.trash\(paths,System\.currentTimeMillis\(\),expected\(call,paths\.size\(\)\)\)/);
  assert.match(plugin,/public void storageIdentity\(PluginCall call\)/);
+});
+test('the production plugin exposes only the storage browser; a retired SAF tree grant is released', () => {
+ const plugin=readFileSync('android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaFilesPlugin.java','utf8');
+ const methods=[...plugin.matchAll(/@PluginMethod public void (\w+)\(/g)].map(m=>m[1]);
+ assert.deepEqual(methods.filter(name=>name!=='requestPermissions'&&!name.startsWith('storage')),[],'no SAF tree bridge method (choose, list, changeMany, shareMany, rename, delete, move, select, forget, ...)');
+ assert.doesNotMatch(plugin,/tree\.(adopt|list|changeMany|shareMany|rename|delete|move|select)\(/);
+ assert.match(plugin,/public void load\(\)\{PluginWorkers\.submit\(storageWorker,this::releaseRetiredTree/);
+ assert.match(plugin,/new DocumentFolderTree\(getContext\(\),PREF,[^)]*\)\.forget\(\)/,'a tree an earlier version chose has its persisted grant released');
+});
+test('a watch whose unwatch lands before the storage worker registers leaves no observer registered',()=>{
+ assert.match(runJvm([nativeSource('StorageBrowser.java'),fixture('android-stubs/android/webkit/MimeTypeMap.java'),fixture('StorageWatchSlotTest.java')],'ai.elizaresearch.alphaphone.StorageWatchSlotTest',{json:true}),/^PASS storage watch slot/);
+ const plugin=readFileSync('android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaFilesPlugin.java','utf8');
+ assert.match(plugin,/public void storageWatch\(PluginCall call\)\{long ticket=watch\.request\(\);storage\(call,b->\{/,'the request is taken on the plugin thread, before the worker runs');
+ assert.match(plugin,/watch\.install\(ticket,\(\)->\{/,'observers are registered only through the slot');
+ assert.match(plugin,/private void stopWatching\(\)\{watch\.clear\(\);\}/);
+ assert.doesNotMatch(plugin,/\bmediaObserver=|\bobserver=new FileObserver/,'no observer field is assigned outside the slot');
+});
+test('the browser volume answers the folder filter with folders, as Android walks them (files_filter kind folder)',async()=>{
+ const v=await fresh();await v.createFolder('Documents','Taxes');await v.createFolder('Documents/Taxes','2025');await v.add('Documents','a.pdf');
+ const all=(await v.run('storageQuery',{folders:true})).entries;
+ assert.ok(all.every(e=>e.directory),'only folders');
+ assert.ok(['DCIM/Camera','Documents/Taxes','Documents/Taxes/2025'].every(p=>all.some(e=>e.path===p)));
+ const under=(await v.run('storageQuery',{folders:true,folder:'Documents'})).entries.map(e=>e.path).sort();
+ assert.deepEqual(under,['Documents/Taxes','Documents/Taxes/2025']);
+ assert.equal((await v.run('storageQuery',{folders:true,folder:'Documents'})).entries.find(e=>e.path==='Documents/Taxes').children,1);
+ const shown=all.filter(e=>storage.filterMatches({kind:'folder',text:'taxes'},e));
+ assert.deepEqual(shown.map(e=>e.path),['Documents/Taxes'],'the renderer\'s filter now has folders to match');
+ assert.deepEqual((await v.run('storageQuery',{folders:true,folder:'Nope'})).entries,[]);
+ assert.ok((await v.run('storageQuery',{})).entries.every(e=>!e.directory),'without folders the query is the file walk');
 });

@@ -58,6 +58,7 @@ export function noteRecorderError(reason: string | undefined): string {
   if (reason === 'permission') return 'Allow the microphone in Settings.';
   if (reason === 'call') return 'Paused for a call.';
   if (reason === 'transcription') return 'Transcription stopped. The audio is kept.';
+  if (reason === 'unavailable') return 'No transcription is available. The audio is kept.';
   if (reason === 'sign-in') return 'Sign in to transcribe. The audio is kept.';
   if (reason === 'save') return 'Couldn’t save. Try Done again.';
   if (reason === 'owner') return 'Return to the original Notes account. Your recording is kept.';
@@ -90,6 +91,8 @@ export class NoteRecorderSession {
   private transcribing?: AbortController;
   private pumping?: Promise<void>;
   private transcriptionFailed = false;
+  /** The last pump found no transcription route at all (none chosen or available). */
+  private noRoute = false;
   private handle?: { remove(): Promise<void> | void };
   private poll?: ReturnType<typeof setTimeout>;
   private epoch = 0;
@@ -336,6 +339,7 @@ export class NoteRecorderSession {
           }
           if (!this.owned(epoch)) return;
         }
+        this.noRoute = !route;
         if (!route) return; // No transcription route: the recording is saved with its audio only.
         const controller = new AbortController(); this.transcribing = controller;
         let text: string;
@@ -400,7 +404,7 @@ export class NoteRecorderSession {
       // A destination that keeps no audio saves only a transcript of every segment; until then
       // the recording stays, so Done never leaves a note without the words or the audio.
       if (!keepAudio && (this.transcriptionFailed || this.segments.some(s => !this.texts.has(s.segmentId)))) {
-        this.phase = 'stopped'; if (!this.transcriptionFailed || !this.error) this.error = noteRecorderError('transcription'); this.changed(); return false;
+        this.phase = 'stopped'; if (!this.transcriptionFailed || !this.error) this.error = noteRecorderError(this.noRoute ? 'unavailable' : 'transcription'); this.changed(); return false;
       }
       const transcript = this.transcript();
       // The note is named by its recording, so a retried Done (also after a restart) saves into

@@ -15,7 +15,7 @@ import {reviewContentQuestion} from '../browser/content-question';
 import {createCaptureRevisions,captureUnchanged} from './context-selection';
 import {createDeviceLibrary,setMainLibraryHost,LibraryAgentRefusal,type HostOperation} from './photo-library-adapter';
 import type {PhotosViewResult} from '../runtime/photos-view-contract';
-import {virtualGrid,newestFirst,mergeWindow,readWindow,changeBatches,runBatches,thumbnailPlan,groupSections,patchRows,insertRows,patchSelection,favoriteTarget,batches,daysLeft,pinchColumns,dragRange,filterMatches,filterLabel,viewerTitle,formatBytes,shotAt,albumOf,GRID_COLUMNS,type PhotosFilter} from '../runtime/photos-view';
+import {virtualGrid,newestFirst,mergeWindow,readWindow,keepThumbnails,changeBatches,runBatches,thumbnailPlan,groupSections,patchRows,insertRows,patchSelection,favoriteTarget,batches,daysLeft,pinchColumns,dragRange,filterMatches,filterLabel,viewerTitle,formatBytes,shotAt,albumOf,GRID_COLUMNS,type PhotosFilter} from '../runtime/photos-view';
 import {LIBRARY_LIMITS,type LibraryAgentOperation,type LibraryAgentResult} from '../runtime/photo-library';
 import {openVideoEditReview} from './video-edit-review';
 import {openScanReview,ScanKeepError} from './scan-review';
@@ -77,7 +77,7 @@ const nativeLibrary = registerPlugin<{
   beginVideoEdit(options:{id:string;revision:string}):Promise<{sessionId:string;operationId:string;duration:number;width:number;height:number}>;
   saveVideoEdit(options:{sessionId:string;start:number;end:number;rotation:number;crop:boolean}):Promise<EditReceipt>;
   cancelVideoEdit(options:{sessionId?:string}):Promise<void>;
-  list(options: { before?: string; trashed?: boolean; album?: string; limit?: number }): Promise<{ items: SavedPhoto[]; next: string }>;
+  list(options: { before?: string; trashed?: boolean; album?: string; limit?: number; thumbnails?: boolean }): Promise<{ items: SavedPhoto[]; next: string }>;
   read(options: { id: string; includeTrashed?: boolean }): Promise<SavedPhoto>;
   /** Grid thumbnails again for rows whose thumbnail the grid dropped (patches/eliza/photos-library.patch). */
   thumbnails?(options: { ids: string[] }): Promise<{ items: { id: string; image: string }[] }>;
@@ -361,7 +361,7 @@ export function installPrototypeCameraAdapter(_Component: unknown, views: Record
       const read=await readWindow(async options=>{const result=await library.list(options);return {items:result.items.map(normalize),next:result.next};},{more,cursor:next,loaded:captures.length,limit:WINDOW},()=>!disposed&&token===libraryEpoch);
       if(!read)return;
       const rows=read.rows,cursor=read.next;
-      captures = more ? mergeWindow(captures, rows, WINDOW) : newestFirst(rows).slice(0, WINDOW);
+      captures = more ? mergeWindow(captures, rows, WINDOW) : keepThumbnails(newestFirst(rows).slice(0, WINDOW), captures);
       next = cursor; loaded = true; loading = false;
       patchView();
       photosApi?.set({ nativeLibraryError: '', nativeCaptureRevision: token });
