@@ -480,7 +480,7 @@ export function installPrototypeVoiceAdapter(Component: any, views: Record<strin
         if(!id){earlyStops.set(value.recordingId,value);return;}
         if(value.recordingId!==id)return;
         stopSeen=true;recording=false;if(poll)clearTimeout(poll);
-        if(value.interrupted==='call-active')problem=Object.assign(new Error(CALL_PAUSED),{code:'call-active'});
+        if(value.interrupted==='call-active')problem=Object.assign(new Error(CALL_PAUSED),{code:'capture-call-active'});
         else if(completeClip(value)){ended=value;batchRecordingEnded(id);}
         else problem=Error('Microphone capture was interrupted.');
         input.onEnd(problem);
@@ -629,7 +629,8 @@ export function installPrototypeVoiceAdapter(Component: any, views: Record<strin
         const failure=value.error as {code?:unknown;reason?:unknown}|undefined,code=failure?.code;
         const denied=voiceFailure(value.error,{transcribing:false,browser:!Capacitor.isNativePlatform()});
         return cloudVoiceFailure(value.error,{conversation:true})
-          ||(failure?.reason==='call-active'||code==='call-active'?CALL_PAUSED
+          ||(code==='capture-call-active'?CALL_PAUSED
+          :failure?.reason==='call-active'||code==='call-active'?'Voice paused for a phone call.'
           :code==='audio-focus-lost'?'Voice stopped because another app took the audio.'
           :code==='expired'?'Voice session ended. Start again.'
           :denied?.kind==='denied'?(conversationDenied=true,denied.message)
