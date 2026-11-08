@@ -609,3 +609,10 @@ non-unknown outcome to the exact durable native receipt. Exact legacy
 terminal replays and unknown outcomes remain supported. The corrected
 model passed depth-four symbolic safety across all four operation classes.
 The evidence ends at Activity handoff.
+
+The historical Files browser campaign checks three mounted schedules and
+23 checkpoints over real IndexedDB browser storage. It observes category
+membership, canonical selection, conflict-safe moves, Trash and restore,
+and refusal of a stale reviewed identity. Three separate mismatch receipts
+compare the category, conflict and identity ablations. Earlier agent
+proposal transport and installed Android storage retain separate evidence.

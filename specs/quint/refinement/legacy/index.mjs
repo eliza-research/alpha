@@ -1,5 +1,6 @@
 import {fileURLToPath} from 'node:url';
 import {checkChatInputRefinement} from '../../legacy/chat-input/check-chat-input-refinement.mjs';
+import {checkFilesBrowserRefinement} from '../../legacy/files-browser/check-files-browser-refinement.mjs';
 import {checkHomeLayoutRefinement} from '../../legacy/home-layout/check-home-layout-refinement.mjs';
 import {checkSettingsNavRefinement} from '../../legacy/settings-nav/check-settings-nav-refinement.mjs';
 import {checkActionSettlementRefinement} from '../../legacy/core/check-action-settlement-refinement.mjs';
@@ -59,6 +60,14 @@ const homeLayoutDifferences = {
   HomeLayoutProposedSetupLink: ['The mounted Home omits the historical setup row',
     'The proposed design exposes its setup row when Home role needs attention. The source checks the Settings offer separately.'],
 };
+const filesBrowserDifferences = {
+  FilesBrowserHistoricalDownloads: ['Downloads remains a physical folder view',
+    'The mounted view excludes the unrelated Camera image. The historical category ablation includes every present file.'],
+  FilesBrowserHistoricalOverwrite: ['A collision preserves both canonical files',
+    'The mounted move creates a distinct conflict name. The historical conflict ablation overwrites the destination.'],
+  FilesBrowserHistoricalStaleReview: ['A rewritten file invalidates the previously reviewed identity',
+    'The mounted runner refuses the old identity and accepts a fresh one. The historical identity ablation admits the stale request.'],
+};
 
 export async function runLegacyRefinement() {
   const receipts = [], obligations = [];
@@ -84,6 +93,14 @@ export async function runLegacyRefinement() {
       const obligations = mismatches.map(mismatch => {
         const [obligation, reason] = homeLayoutDifferences[mismatch.id];
         return {model: 'HomeLayout', obligation, reason, evidence: mismatch.receiptPath};
+      });
+      return {receipts, obligations};
+    }],
+    ['FilesBrowser', async () => {
+      const {receipts, mismatches} = await checkFilesBrowserRefinement([driver]);
+      const obligations = mismatches.map(mismatch => {
+        const [obligation, reason] = filesBrowserDifferences[mismatch.id];
+        return {model: 'FilesBrowser', obligation, reason, evidence: mismatch.receiptPath};
       });
       return {receipts, obligations};
     }],

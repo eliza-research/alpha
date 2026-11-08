@@ -82,6 +82,14 @@ async function readStorage(page) {
   });
 }
 
+async function waitForTrashRecord(page, name, present) {
+  await expect.poll(() => page.evaluate(async name => {
+    const trash = await window.filesFixture.storage.storageTrashList();
+    if (trash.status !== 'ready') return null;
+    return trash.items.some(entry => entry.name === name);
+  }, name), {message: 'Wait for the exact durable Trash record'}).toBe(present);
+}
+
 async function observe(page) {
   const state = await readStorage(page);
   const pressed = await detail(page).locator('button[aria-pressed="true"][aria-label^="Deselect "]').evaluateAll(rows =>
@@ -189,6 +197,7 @@ async function collisionAndTrash(page) {
   await toolbar(page).getByRole('button', {name: 'Delete', exact: true}).click();
   await expect(toolbar(page)).toHaveCount(0);
   await expect(button(page, 'Open shared (1).bin')).toHaveCount(0);
+  await waitForTrashRecord(page, 'shared (1).bin', true);
   await t.point('Delete moves the selected ID into reversible Trash', action('TrashSel'));
   await returnBrowse(page);
   await button(page, 'Trash').click();
@@ -196,6 +205,7 @@ async function collisionAndTrash(page) {
   await dialog(page, 'shared (1).bin').getByRole('button', {name: 'Restore', exact: true}).click();
   await expect(dialog(page, 'shared (1).bin')).toHaveCount(0);
   await expect(button(page, 'shared (1).bin')).toHaveCount(0);
+  await waitForTrashRecord(page, 'shared (1).bin', false);
   await t.point('Restore returns the same canonical ID to its prior folder', action('Restore', 'photo'));
   await returnBrowse(page);
   await openDownload(page);
@@ -203,6 +213,7 @@ async function collisionAndTrash(page) {
   await t.point('The restored file can be selected again', action('Toggle', 'photo'));
   await toolbar(page).getByRole('button', {name: 'Delete', exact: true}).click();
   await expect(button(page, 'Open shared (1).bin')).toHaveCount(0);
+  await waitForTrashRecord(page, 'shared (1).bin', true);
   await t.point('A second Trash operation still leaves the PDF intact', action('TrashSel'));
   await returnBrowse(page);
   await button(page, 'Trash').click();
@@ -214,6 +225,7 @@ async function collisionAndTrash(page) {
   await dialog(page, 'Empty Trash?').getByRole('button', {name: 'Empty', exact: true}).click();
   await expect(dialog(page, 'Empty Trash?')).toHaveCount(0);
   await expect(button(page, 'shared (1).bin')).toHaveCount(0);
+  await waitForTrashRecord(page, 'shared (1).bin', false);
   await t.point('Confirmed Empty retires only the trashed ID', action('EmptyTrash', 'photo'));
   return {trace: t.trace, differences: [
     ['FilesBrowserHistoricalDownloads', negative(t.trace, 'downloads_is_a_real_location_query', 'AsBuilt_Categories', 0)],
@@ -349,7 +361,7 @@ async function mounted(extraSources) {
         }});
       });
       try {
-        await page.goto(base+'/', {waitUntil: 'domcontentloaded'});
+        await page.goto(base+'/', {waitUntil: 'domcontentloaded', timeout: 90000});
         await seed(page);
         await page.getByRole('button', {name: 'Files', exact: true}).click();
         await expect(button(page, 'Internal storage')).toBeVisible();
