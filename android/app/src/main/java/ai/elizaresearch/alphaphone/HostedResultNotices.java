@@ -84,13 +84,21 @@ final class HostedResultNotices {
   try{JSONObject result=result(record);if(!hash(result.toString()).equals(record.getString("digest")))throw new IllegalStateException();out.put("retained",true);}catch(Exception missing){out.put("retained",false);}
   out.put("question",pending.optBoolean("question"));return out;
  }
+ /** Withdrawal writes the owner fence before cancelling notices or clearing pending taps. */
+ private JSONObject requireSettlementOwner(JSONObject ledger,String key)throws Exception {
+  JSONObject record=ledger.optJSONObject(key);
+  if(record==null||!ownerMatches(record))throw new IllegalStateException("Result owner changed");
+  return record;
+ }
  synchronized void releaseQuestion(String token)throws Exception {
   JSONObject pending=read(PENDING);if(!token.equals(pending.optString("token"))||!pending.optBoolean("question"))throw new IllegalStateException("Question changed");
+  requireSettlementOwner(read(LEDGER),pending.getString("key"));
   write(PENDING,new JSONObject()); // Explicit Cancel keeps the original notice route usable.
  }
  synchronized void consume(String token)throws Exception {
   JSONObject pending=read(PENDING);if(!token.equals(pending.optString("token")))throw new IllegalStateException("Tap changed");
-  String key=pending.getString("key");JSONObject ledger=read(LEDGER),record=ledger.optJSONObject(key);
-  if(record!=null){record.put("phase","opened");write(LEDGER,ledger);}write(PENDING,new JSONObject());poster.cancel(key);
+  String key=pending.getString("key");JSONObject ledger=read(LEDGER),record=requireSettlementOwner(ledger,key);
+  record.put("phase","opened");write(LEDGER,ledger);
+  write(PENDING,new JSONObject());poster.cancel(key);
  }
 }

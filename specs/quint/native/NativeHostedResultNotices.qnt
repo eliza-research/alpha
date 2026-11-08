@@ -99,17 +99,17 @@ module NativeHostedResultNotices {
 
   action release(token: int, written: bool): bool = all {
     token.in(0.to(4)),
-    s' = if (s.pending != 0 and s.question and token == s.token and written)
+    s' = if (s.pending != 0 and s.question and token == s.token and matches(s.pending) and written)
       { ...s, pending: 0, question: false, token: 0, outcome: "released" }
     else { ...s, outcome: "rejected" }
   }
 
-  // The exact source token check is independent of the owner check in peek.
-  // A refused withdrawal can leave the prior pending token durable.
+  // A partial withdrawal can leave a durable token. Matching that token
+  // also requires the current owner of its exact retained ledger route.
   action consume(token: int, mode: str): bool = all {
     token.in(0.to(4)),
     Set("complete", "ledger", "pending", "cancel").contains(mode),
-    if (s.pending == 0 or token != s.token or mode == "ledger") s' = { ...s, outcome: "rejected" }
+    if (s.pending == 0 or token != s.token or not(matches(s.pending)) or mode == "ledger") s' = { ...s, outcome: "rejected" }
     else {
       val rows = s.phases.set(s.pending, "opened")
       s' = if (mode == "pending") { ...s, phases: rows, outcome: "rejected" }
@@ -196,13 +196,13 @@ module NativeHostedResultNotices {
     .then(capture(1, false, true)).then(consume(1, "complete"))
     .expect(s.outcome == "rejected" and readToken == 2)
 
-  run foreignReadHiddenAfterPartialWithdrawalTest = posted.then(capture(1, false, true))
+  run foreignTapCannotSettleAfterPartialWithdrawalTest = posted.then(capture(1, false, true))
     .then(withdraw(0, "cancel")).expect(readKey == 0 and s.pending == 1 and s.token == 1)
-    .then(consume(1, "complete")).expect(s.pending == 0 and s.phases.get(1) == "opened")
+    .then(consume(1, "complete")).expect(s.outcome == "rejected" and s.pending == 1 and s.phases.get(1) == "owner-withdrawn" and s.posted.contains(1))
 
-  run foreignQuestionReleaseLeavesNotificationTest = posted.then(capture(1, true, true))
+  run foreignQuestionCannotReleaseAfterPartialWithdrawalTest = posted.then(capture(1, true, true))
     .then(withdraw(0, "cancel")).expect(readKey == 0 and s.pending == 1 and s.posted.contains(1))
-    .then(release(1, true)).expect(s.pending == 0 and s.phases.get(1) == "owner-withdrawn" and s.posted.contains(1))
+    .then(release(1, true)).expect(s.outcome == "rejected" and s.pending == 1 and s.phases.get(1) == "owner-withdrawn" and s.posted.contains(1))
 
   run retainedBytesChangeDisablesExactReadTest = posted.then(capture(1, true, true))
     .then(retain(1, 2)).expect(readKey == 1 and not(readRetained))

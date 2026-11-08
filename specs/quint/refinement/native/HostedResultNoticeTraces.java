@@ -335,16 +335,23 @@ public final class HostedResultNoticeTraces {
    check(f.readObject(HostedResultNotices.PENDING).getString("token").equals(token), "Old pending token durable");
    f.stutter("unlocked bridge readback is empty even while old token and notification survive");
 
+   JSONObject beforeLedger = f.readObject(HostedResultNotices.LEDGER);
+   JSONObject beforePending = f.readObject(HostedResultNotices.PENDING);
+   List<String> beforeCancels = List.copyOf(f.cancels);
    PluginCall settle = bridgeCall(bridge, tokenInput, question ? bridge::releaseResultQuestion : bridge::consumeResult);
-   check(!settle.rejected, "Current source still settles a previously issued exact token");
-   f.outcome = question ? "released" : "consumed";
-   if (question) {
-    check(f.active.contains(key(f.routes.get(1))), "Question release leaves prior notification visible");
-    f.point("release", 1, true);
-   } else {
-    check(!f.active.contains(key(f.routes.get(1))), "Consume cancels prior notification");
-    f.point("consume", 1, "complete");
-   }
+   check(settle.rejected, "A foreign exact token cannot settle through an unlocked current bridge");
+   check(beforeLedger.similar(f.readObject(HostedResultNotices.LEDGER)) &&
+    beforePending.similar(f.readObject(HostedResultNotices.PENDING)) && beforeCancels.equals(f.cancels) &&
+    f.active.contains(key(f.routes.get(1))), "Foreign settlement changes neither durable state nor visible notice");
+   f.outcome = "rejected";
+   if (question) f.point("release", 1, true);
+   else f.point("consume", 1, "complete");
+
+   PluginCall retry = bridgeCall(bridge, new JSONObject().put("owner", requestedOwner), bridge::withdrawOtherOwnerApprovalNotices);
+   check(!retry.rejected && f.readObject(HostedResultNotices.PENDING).isEmpty() && !f.active.contains(key(f.routes.get(1))),
+    "The existing withdrawal retry owns cleanup");
+   f.outcome = "withdrawn";
+   f.point("withdraw", nextOwner, "complete");
    bridge.handleOnDestroy();
    check(bridgeCall(bridge, tokenInput, question ? bridge::releaseResultQuestion : bridge::consumeResult).rejected,
     "Closed worker rejects queued bridge entry");

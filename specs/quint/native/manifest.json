@@ -1934,8 +1934,8 @@
         "lostPostedReplyRepairsExactRowTest",
         "pendingProtectedFromSupersessionTest",
         "replacementAndStaleTokenTest",
-        "foreignReadHiddenAfterPartialWithdrawalTest",
-        "foreignQuestionReleaseLeavesNotificationTest",
+        "foreignTapCannotSettleAfterPartialWithdrawalTest",
+        "foreignQuestionCannotReleaseAfterPartialWithdrawalTest",
         "retainedBytesChangeDisablesExactReadTest",
         "consumeCanLeaveOpenedRowAndPendingTest"
       ],
@@ -1963,7 +1963,7 @@
       "abstractions": [
         "Four fixed exact routes, four UUID classes and post effects without eviction. The source campaign separately checks the exact 200-row capacity and pending-tap exemption.",
         "Refused withdrawal models one affected row. Synthetic poster and retained-index ports bound the OS and provider boundary. The active Android notification timeout is an external removal.",
-        "Exact owner readback is fenced even if a partial withdrawal leaves the old token; current foreground mutation still compares that token without a second owner check. This as-built behavior is reproduced through the actual bridge handlers."
+        "Exact owner readback and settlement are fenced even if a partial withdrawal leaves the old token. Both rejection paths and a later successful withdrawal are exercised through the actual bridge handlers."
       ],
       "bounds": {
         "maxSamples": 1000,

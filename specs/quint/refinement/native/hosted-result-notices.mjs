@@ -156,12 +156,12 @@ export async function checkNativeHostedResultNotices(extraSources = []) {
     'Complete HostedResultNotices.java and the pinned NoticeOwner.java execute on the JVM. Extracted production bridge handlers execute exact foreground checks, a real serial worker and synthetic Android Intent/call ports.',
     'Synthetic storage, retained-inbox and poster ports control write/cancel refusals, dispatch interruption, and OS removal. Durable and readback JSON keys are independently checked for exact route and redaction.',
     'The driver also verifies the exact 200-row cap and pending-tap eviction exemption as a separate real-source assertion. The model covers four fixed routes, the exact owner tuple partition and four token generations.',
-    'Withdrawal and consume can fail after durable writes. After the owner fence changes, readback stays empty even when a surviving prior token can settle through a current unlocked bridge.',
+    'Withdrawal and consume can fail after durable writes. After the owner fence changes, readback stays empty and the prior token cannot settle through a current unlocked bridge. The withdrawal retry still clears the surviving pending slot and notification.',
   ]});
   return {receipt,obligations:[
     {model,obligation:'Installed notification lifecycle and credential storage',
       reason:'Synthetic ports exercise source behavior. Installed PendingIntent delivery, Android notification timeout, Keystore, and arbitrary storage failure/scheduler behavior remain outside the JVM campaign.'},
-    {model,obligation:'Post-withdrawal token settlement policy',
-      reason:'Current Java consumes or releases the exact old token if pending cleanup failed. The owner-fenced read hides the foreign route but exact-token mutation has no second owner check.'},
+    {model,obligation:'Same-tuple reentry after interrupted withdrawal',
+      reason:'The settlement fence uses exact current origin, owner and agent. There is no durable owner generation to distinguish later reentry of the same tuple.'},
   ]};
 }
