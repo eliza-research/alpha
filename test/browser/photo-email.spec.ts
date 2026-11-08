@@ -31,7 +31,7 @@ async function setup(page:Page){
  await expect(dialog(page)).toContainText('source.png');
 }
 test('Photos source requires separate attachment review and preserves source bytes in local draft',async({page})=>{
- await setup(page);await expect(dialog(page)).toContainText('full photo file');
+ await setup(page);await expect(dialog(page)).toContainText('provider-readable source file');await expect(dialog(page)).toContainText('Android privacy redactions are retained.');
  const insert=dialog(page).getByRole('button',{name:'Insert attachment into draft'});await expect(insert).toBeDisabled();
  await page.screenshot({path:test.info().outputPath('photo-email-review.png')});
  await dialog(page).getByRole('checkbox').check();await insert.click();

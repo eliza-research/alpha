@@ -59,7 +59,7 @@ test('a zoomed recording stops when its camera source ends',async({page})=>{
  const saved=await page.evaluate(async()=>{const {browserCamera:c}=await import('/src/prototype/browser-camera.ts');const result=await c.stopRecording();await c.stopPreview();return {bytes:result.fileSize,released:(window as any).controlStreams.every((s:MediaStream)=>s.getTracks().every(t=>t.readyState==='ended'))};});expect(saved.bytes).toBeGreaterThan(0);expect(saved.released).toBe(true);
 });
 
-test('switching with flash on and zoom 2x turns both off first and restores them when the switch fails',async({page})=>{
+test('switching with flash on and zoom 2x keeps both reset when the switch fails',async({page})=>{
  await page.evaluate(async()=>{
   const {browserCamera:c}=await import('/src/prototype/browser-camera.ts');const calls=(window as any).flipCalls=[] as string[],setZoom=c.setZoom,switchCamera=c.switchCamera;
   // Only the control boundary is observed; the browser camera still zooms and switches.
@@ -71,10 +71,10 @@ test('switching with flash on and zoom 2x turns both off first and restores them
  await page.getByRole('button',{name:'Flash off',exact:true}).click();await expect(page.getByRole('button',{name:'Flash on',exact:true})).toBeVisible();
  const calls=()=>page.evaluate(()=>(window as any).flipCalls.splice(0));expect(await calls()).toEqual(['zoom 2','flash on']);
  await page.evaluate(()=>(window as any).failSwitch=true);await page.getByRole('button',{name:'Switch camera',exact:true}).click();
- await expect(page.locator('[data-alpha-camera="said"]')).toContainText("This camera can't use that flash or zoom.");
- expect(await calls()).toEqual(['flash off','zoom 1','switch front','flash on','zoom 2']);
- await expect(page.getByRole('button',{name:'Flash on',exact:true})).toBeVisible();await expect(page.getByRole('button',{name:'Zoom 2x',exact:true})).toHaveCSS('width','40px');
+ await expect(page.locator('[data-alpha-camera="said"]')).toContainText('Not supported on this camera.');
+ expect(await calls()).toEqual(['flash off','zoom 1','switch front']);
+ await expect(page.getByRole('button',{name:'Flash off',exact:true})).toBeVisible();await expect(page.getByRole('button',{name:'Zoom 1x',exact:true})).toHaveCSS('width','40px');
  await page.evaluate(()=>(window as any).failSwitch=false);await page.getByRole('button',{name:'Switch camera',exact:true}).click();
  await expect(page.getByRole('button',{name:'Flash off',exact:true})).toBeVisible();await expect(page.getByRole('button',{name:'Zoom 2x',exact:true})).toHaveCount(0);
- expect(await calls()).toEqual(['flash off','zoom 1','switch front']);
+ expect(await calls()).toEqual(['switch front']);
 });
