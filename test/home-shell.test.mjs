@@ -257,6 +257,21 @@ test('installed favorites with older Alpha view ids are migrated to canonical id
   assert.deepEqual(JSON.parse(store.get('alpha.launcher.favorites.v1')),{version:2,keys:['com.android.settings','alpha:automations'],defaultPolicy:'alpha-apps'});
 });
 
+test('a refused favorites migration keeps the legacy view accessible on Home', () => {
+  const key='alpha.launcher.favorites.v1';
+  const raw=JSON.stringify({version:2,keys:['alpha:workflows'],defaultPolicy:'alpha-apps'});
+  const storage=()=>({
+    getItem: name => name===key ? raw : null,
+    setItem() {throw Error('fixture favorites write refused');},
+  });
+  const Shell=shellClass([]);
+  const shell=installHomeShell(Shell,{},{list:async()=>({apps}),launch:async()=>{}},{storage});
+  assert.equal(shell.migration.status,'failed');
+  assert.deepEqual(shell.launcher.snapshot().favorites,['alpha:automations']);
+  assert.ok(tiles(renderToStaticMarkup(new Shell().renderVals().homeShell)).includes('Workflows'));
+  assert.equal(storage().getItem(key),raw);
+});
+
 test('Home has its built-in tiles without an installed app inventory', () => {
   const Shell = shellClass([]);
   let reads = 0;
