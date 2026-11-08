@@ -4,8 +4,6 @@
 import {build} from 'esbuild';
 import {JSDOM} from 'jsdom';
 const dom=new JSDOM('<!doctype html><html><body></body></html>',{url:'https://alpha.test/',pretendToBeVisual:true});
-for(const name of ['window','document','HTMLElement','HTMLDialogElement','Event','CustomEvent','localStorage','getComputedStyle'])Object.defineProperty(globalThis,name,{value:name==='window'?dom.window:dom.window[name],configurable:true,writable:true});
-globalThis.BroadcastChannel=undefined;
 dom.window.HTMLDialogElement.prototype.showModal=function(){this.open=true;};
 dom.window.HTMLDialogElement.prototype.close=function(){if(!this.open)return;this.open=false;this.dispatchEvent(new dom.window.Event('close'));};
 
@@ -16,7 +14,13 @@ export class MemoryDocuments {
  async compareExchange(key,expected,raw){if(JSON.stringify(this.rows.get(key))!==JSON.stringify(expected))throw Error('Document changed');const next={revision:String(++this.writes),raw};this.rows.set(key,next);return structuredClone(next);}
  async edit(key,editor){const before=await this.read(key),next=await editor(before);await this.compareExchange(key,before,next.raw);return next.result;}
 }
-const harness=globalThis.__alphaTest={documents:new MemoryDocuments(),notifications:true,next:row=>row};
+const harness={documents:new MemoryDocuments(),notifications:true,next:row=>row};
+export function installBrowserDailyFixtures(){
+ for(const name of ['window','document','HTMLElement','HTMLDialogElement','Event','CustomEvent','localStorage','getComputedStyle'])Object.defineProperty(globalThis,name,{value:name==='window'?dom.window:dom.window[name],configurable:true,writable:true});
+ globalThis.BroadcastChannel=undefined;
+ globalThis.__alphaTest=harness;
+}
+installBrowserDailyFixtures();
 const stubs={
  './documents':`const d=()=>globalThis.__alphaTest.documents;export const browserDocuments={read:(...a)=>d().read(...a),readOrCreate:(...a)=>d().readOrCreate(...a),compareExchange:(...a)=>d().compareExchange(...a),edit:(...a)=>d().edit(...a)};`,
  './review':`export class BrowserReviews{async confirm(){return true;}cancel(){}}`,

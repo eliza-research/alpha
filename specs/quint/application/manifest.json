@@ -1059,5 +1059,43 @@
       "Mounted Google panel with owner-bound account list generations, revoke readback, preserved Gmail tier, Calendar permission continuation and consent dispatch.",
       "Two Cloud bindings, six reads, three grant classes and four consent attempts. One held permission continuation, controlled provider and browser ports. Linked Calendar writes and native callback durability remain separate."
     ]
+  },
+  {
+    "path": "specs/quint/application/BrowserDeletionPoll.qnt",
+    "module": "BrowserDeletionPoll",
+    "init": "init",
+    "step": "step",
+    "invariant": "safety",
+    "tests": [
+      "youngerPollSkipsWriteTest",
+      "competingPollLeavesCommittedRevisionTest",
+      "failedPollLeavesWorkForAnotherTest"
+    ],
+    "invariants": [
+      "oneCommit",
+      "expiredAdmission"
+    ],
+    "sources": [
+      "apps/app/src/browser/journal-retention.ts",
+      "apps/app/src/browser/calendar.ts",
+      "apps/app/src/browser/daily.ts",
+      "apps/app/src/browser/calendar-store.ts",
+      "apps/app/src/browser/reminder-store.ts"
+    ],
+    "stateMapping": {
+      "row": "Real Calendar or Reminder deletion phase read from the committed document",
+      "expired": "Controlled renderer monotonic deadline state",
+      "commits": "CAS revisions since the queued deletion was seeded",
+      "phase": "Observed entry into, or completion of, the serialized document edit"
+    },
+    "abstractions": [
+      "Two overlapping polls on a single owned queued deletion. Expiration is a controlled monotonic step.",
+      "Injected edit rejection precedes durable CAS. Larger batches, restart and ownership changes are separate projections."
+    ],
+    "bounds": {
+      "maxSamples": 1000,
+      "maxSteps": 80,
+      "maxVerifyDepth": 5
+    }
   }
 ]

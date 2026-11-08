@@ -19,8 +19,17 @@ export function trimDeletionJournal(data:{deletions?:Record<string,Deletion>;del
 /** Undo polling runs every 500ms. Only an expired queued deletion may change the document;
  * any other edit mints a revision and replaces the one held by recovery and editors. */
 export async function settleExpiredDeletions<T extends {deletions?:Record<string,Deletion>}>(document:{readRaw():Promise<string|null>;edit<D,R>(initial:()=>D,edit:(data:D)=>R):Promise<R>},initial:()=>T,settle:(data:T)=>void){
- const raw=await document.readRaw();if(raw===null)return;
- const data:T=JSON.parse(raw),clock=rendererDeletionClock();
- if(!Object.values(data.deletions||{}).some(entry=>entry.phase==='queued'&&deletionWindow(entry.deadline,clock)==='expired'))return;
- await document.edit(initial,settle);
+ const expired=(data:T)=>{
+  const clock=rendererDeletionClock();
+  return Object.values(data.deletions||{}).some(entry=>entry.phase==='queued'&&deletionWindow(entry.deadline,clock)==='expired');
+ };
+ const raw=await document.readRaw();if(raw===null||!expired(JSON.parse(raw)))return;
+ const alreadySettled=Symbol('Deletion journal changed before settlement');
+ try{
+  await document.edit(initial,data=>{
+   // The lock may have waited for another poll. Exit before its CAS can mint a no-op revision.
+   if(!expired(data))throw alreadySettled;
+   settle(data);
+  });
+ }catch(error){if(error!==alreadySettled)throw error;}
 }
