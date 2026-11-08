@@ -563,3 +563,12 @@ dismissal with the synthetic owner intact. Five independent mismatch
 receipts record current navigation and information that the historical
 profiles describe differently. Installed system Settings and accepted
 sign-out remain separate.
+
+The renderer hosted inbox checks 14 schedules and 85 checkpoints using the
+actual Alpha admission wrapper and pinned inbox. The renderer fallback
+uses a distinct storage scope. The campaign follows exact row and index
+write refusal, lost replies, recovered removal and notice journals, and
+provider acknowledgement after the result is durable. A notice effect
+with a lost reply can be offered again. Native-ready selection keeps the
+separate native inbox. Larger histories and same-scope queue schedules
+retain separate evidence.

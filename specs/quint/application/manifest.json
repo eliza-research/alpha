@@ -2052,5 +2052,27 @@
       "Current mounted Google Calendar intent, separate account/link busy owners, verified account continuation, browser-host permission and exact current result publication.",
       "Three Cloud bindings, four intents, six reads and five attempts. Chromium mounts real React and inert scope over controlled access, account, host, browser and link interfaces. Persistence, native access publication and provider effects remain separate."
     ]
+  },
+  {
+    "path": "specs/quint/application/RendererHostedInbox.qnt",
+    "module": "RendererHostedInbox",
+    "init": "init",
+    "step": "step",
+    "invariant": "safety",
+    "tests": [
+      "orphanReadBackBeforeAcknowledgementTest",
+      "staleProviderBodyCannotReplaceHistoryTest",
+      "refusedNoticeRetainsRetryTest",
+      "retirementAfterAckDispatchKeepsDurableResultTest"
+    ],
+    "sources": [
+      "apps/app/src/runtime/digest-inbox.ts",
+      "apps/app/src/runtime/hosted-digests.ts",
+      ".eliza/client-features/plugins/plugin-workflow/src/client/hosted-digests.ts"
+    ],
+    "abstractions": [
+      "Actual browser and Android renderer-fallback inbox, ordered result/index/notice writes, replay, pending-removal recovery and exact provider acknowledgement.",
+      "Two result identities, one row per provider page and one in-flight sync. Real storage, capacity and same-scope queue interleavings are separate."
+    ]
   }
 ]

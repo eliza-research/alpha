@@ -41310,7 +41310,8 @@
       "path": "apps/app/src/runtime/digest-inbox.ts",
       "sha256": "320ef175dac4dfd94d648999969cf47b363b5205693f71164a63d7d7ef3533b0",
       "models": [
-        "InboxDelivery"
+        "InboxDelivery",
+        "RendererHostedInbox"
       ],
       "scope": "application",
       "treatment": "domain-contract-or-support",
@@ -42809,7 +42810,8 @@
       "sha256": "be3f284715192645684773aa44dfca3364e4e40d5b3fa421fef2846cdc21db66",
       "models": [
         "NoticesAndCaches",
-        "HostedNoticeQuestion"
+        "HostedNoticeQuestion",
+        "RendererHostedInbox"
       ],
       "scope": "application",
       "treatment": "state-and-transition-projection",
