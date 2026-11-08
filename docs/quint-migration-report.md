@@ -323,9 +323,11 @@ starts at `f2a0eb035da9c8ede24efe735d981a27dd403283`, with shared upstream
 verification remains evidence for that earlier source. Its product source is
 being ported selectively so current-main ownership and behavior are preserved.
 
-The inventory now discovers 1,518 product and consumed shared source files,
-including 678 upstream files selected by the client projection, Android host
-modules, resident helper list and native patch modules. Verification-support
+The inventory now discovers 1,523 product and selected shared source files,
+including 683 upstream files selected by the client projection, Android host
+modules, resident helper list and native patch modules. Registered worker source dependencies also join the
+drift ledger. Independent prepared-worker and AgentRuntime import-graph review
+remains open. Verification-support
 sources have a separate scope. Domain allocation is recorded independently from
 state-field and transition refinement. Changed and newly discovered sources
 remain explicitly marked `state-audit-required` until their concrete state has

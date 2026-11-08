@@ -7802,8 +7802,9 @@
       ],
       "scope": "application",
       "treatment": "domain-allocation",
-      "reviewStatus": "state-audit-required",
-      "stateAnchors": []
+      "reviewStatus": "stateless-source-reviewed",
+      "stateAnchors": [],
+      "stateReview": "Immutable parsed retry-fact value and pure static parsing helpers. No retained mutable lifecycle state."
     },
     {
       "path": "android/app/src/main/java/ai/elizaresearch/alphaphone/ConnectionRoutes.java",
@@ -12749,7 +12750,7 @@
       "stateAnchors": [
         {
           "line": 9,
-          "text": "let owner:any,rows:Bag[]=[],status='Choose Contacts access to see this profile’s address book.',readable=false,loading=false,more=false,limit=50,epoch=0,active="
+          "text": "let owner:any,rows:Bag[]=[],status='Choose Contacts access to see this profile\u2019s address book.',readable=false,loading=false,more=false,limit=50,epoch=0,active="
         },
         {
           "line": 10,
@@ -13424,7 +13425,7 @@
         },
         {
           "line": 21,
-          "text": "event.preventDefault();busy=true;const token=generation;status.textContent='Opening browser…';"
+          "text": "event.preventDefault();busy=true;const token=generation;status.textContent='Opening browser\u2026';"
         },
         {
           "line": 22,
@@ -13907,8 +13908,9 @@
       ],
       "scope": "application",
       "treatment": "domain-allocation",
-      "reviewStatus": "state-audit-required",
-      "stateAnchors": []
+      "reviewStatus": "stateless-source-reviewed",
+      "stateAnchors": [],
+      "stateReview": "Pure receipt-to-invalidation projection. Its internal mutation-name sets are initialized once and never changed."
     },
     {
       "path": "apps/app/src/runtime/app-record-route-policy.ts",
@@ -13921,8 +13923,9 @@
       ],
       "scope": "application",
       "treatment": "domain-allocation",
-      "reviewStatus": "state-audit-required",
-      "stateAnchors": []
+      "reviewStatus": "stateless-source-reviewed",
+      "stateAnchors": [],
+      "stateReview": "Pure route assertion and port types. State and mutation authority belong to the invoked record service."
     },
     {
       "path": "apps/app/src/runtime/app-speech.ts",
@@ -14551,8 +14554,9 @@
       ],
       "scope": "application",
       "treatment": "domain-allocation",
-      "reviewStatus": "state-audit-required",
-      "stateAnchors": []
+      "reviewStatus": "stateless-source-reviewed",
+      "stateAnchors": [],
+      "stateReview": "Pure retry-fact parsing and validation. All mutable locals belong to one synchronous call."
     },
     {
       "path": "apps/app/src/runtime/cloud-voice.ts",
@@ -15903,8 +15907,9 @@
       ],
       "scope": "application",
       "treatment": "domain-allocation",
-      "reviewStatus": "state-audit-required",
-      "stateAnchors": []
+      "reviewStatus": "stateless-source-reviewed",
+      "stateAnchors": [],
+      "stateReview": "Read-only route table compiled at module initialization, with pure lookup and validation functions."
     },
     {
       "path": "apps/app/src/runtime/paired-voice.ts",
@@ -16028,8 +16033,9 @@
       ],
       "scope": "application",
       "treatment": "domain-allocation",
-      "reviewStatus": "state-audit-required",
-      "stateAnchors": []
+      "reviewStatus": "stateless-source-reviewed",
+      "stateAnchors": [],
+      "stateReview": "Pure projection of the supplied connection snapshot into protected-launch eligibility."
     },
     {
       "path": "apps/app/src/runtime/prepared-view-navigation.ts",
@@ -16042,8 +16048,9 @@
       ],
       "scope": "application",
       "treatment": "domain-allocation",
-      "reviewStatus": "state-audit-required",
-      "stateAnchors": []
+      "reviewStatus": "stateless-source-reviewed",
+      "stateAnchors": [],
+      "stateReview": "Pure bridge request predicate, with no retained state or callbacks."
     },
     {
       "path": "apps/app/src/runtime/reminder-creations.ts",
@@ -16389,8 +16396,9 @@
       ],
       "scope": "application",
       "treatment": "domain-allocation",
-      "reviewStatus": "state-audit-required",
-      "stateAnchors": []
+      "reviewStatus": "stateless-source-reviewed",
+      "stateAnchors": [],
+      "stateReview": "One immutable feature-policy constant."
     },
     {
       "path": "apps/app/src/runtime/voice-selection.ts",
@@ -25269,7 +25277,8 @@
       "sha256": "c7620d26adef60dd357b5b1f6f9f0b29b3ae4ea355cd5de4ce2dfb32c64f868c",
       "models": [
         "WorkflowEngineAdmission",
-        "WorkflowExecution"
+        "WorkflowExecution",
+        "WorkflowWakeups"
       ],
       "scope": "shared-upstream",
       "treatment": "domain-allocation",
@@ -25578,6 +25587,8 @@
     "hostDescriptor": "android/consumer-host.json",
     "nativePatches": "patches/eliza/native-manifest.json",
     "sharedSourceCount": 683,
-    "meaning": "Consumed shared sources are checked alongside product sources. Generated copies and effective patch hashes are bound by source-trace receipts."
+    "meaning": "Consumed shared sources are checked alongside product sources. Generated copies and effective patch hashes are bound by source-trace receipts.",
+    "modelSourceRegistry": "specs/quint/*/manifest.json",
+    "remainingDiscovery": "Independent prepared worker and AgentRuntime import-graph review remains open."
   }
 }
