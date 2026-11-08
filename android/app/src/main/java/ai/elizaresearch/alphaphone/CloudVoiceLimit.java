@@ -3,6 +3,7 @@ package ai.elizaresearch.alphaphone;
 import java.time.Instant;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.Set;
 import java.util.regex.Pattern;
 
 /**
@@ -16,6 +17,14 @@ final class CloudVoiceLimit {
  static final int MAX_RETRY_AFTER_SECONDS = 86_400;
  /** Longest reset a billing-period allowance can name (a period plus slack). */
  static final long MAX_RESET_MS = 400L * 86_400_000L;
+ /** Longest wait before replaying a cache-warming 503; a longer hint is cut to this. */
+ static final long MAX_WARMING_WAIT_MS = 2_000;
+ /**
+  * Cloud's pre-admission cache-warming refusals (503). Nothing was admitted or billed, so a replay
+  * is safe. A generic 503 may follow admission and is never replayed.
+  */
+ private static final Set<String> WARMING = Set.of("auth_cache_warming", "rate_limit_cache_warming",
+  "inference_dependency_cache_warming", "billing_cache_warming", "inference_admission_cache_warming");
  private static final Pattern CODE = Pattern.compile("[a-z][a-z0-9_]{0,39}");
  private static final Pattern SECONDS = Pattern.compile("\\d{1,9}");
  private static final Pattern HTTP_DATE = Pattern.compile("[A-Z][a-z]{2}, \\d{2} [A-Z][a-z]{2} \\d{4} \\d{2}:\\d{2}:\\d{2} GMT");
@@ -82,5 +91,10 @@ final class CloudVoiceLimit {
   } catch (RuntimeException invalid) {
    return null;
   }
+ }
+ /** The wait before replaying a 503 with these facts, or -1 when it is not a cache-warming refusal. */
+ static long warmingWaitMs(CloudVoiceLimit limit) {
+  if (limit == null || limit.limitCode == null || !WARMING.contains(limit.limitCode)) return -1;
+  return limit.retryAfterSeconds == null ? 1_000 : Math.min(MAX_WARMING_WAIT_MS, limit.retryAfterSeconds * 1_000L);
  }
 }

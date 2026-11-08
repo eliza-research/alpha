@@ -90,7 +90,9 @@ public final class AlphaConnectionPlugin extends Plugin {
    String raw=storage().readCredentialSlot("cloud:production");
    GoogleWorkspaceReturn.Binding binding=workspaceBinding(call,raw);
    JSONObject saved=new JSONObject(raw);if(saved.has("expiresAt")&&saved.getLong("expiresAt")<=System.currentTimeMillis())throw new IllegalArgumentException();
-   JSONObject identity=readCloudIdentity(saved.getString("token"));
+   // The identity read is an optional pre-check: a failure that says nothing about the account falls back to the manual return.
+   String token=saved.getString("token");JSONObject identity;
+   try{identity=readCloudIdentity(token,10000);}catch(Exception unread){if(!GoogleWorkspaceReturnFlow.manualReturn(unread))throw unread;call.resolve(new JSObject().put("supported",false));return;}
    if(!binding.userId.equals(identity.optString("userId"))||!binding.organizationId.equals(identity.optString("organizationId")))throw new SecurityException();
    byte[] bytes=new byte[32];new java.security.SecureRandom().nextBytes(bytes);String nonce=java.util.Base64.getUrlEncoder().withoutPadding().encodeToString(bytes);
    final String redirect=AlphaLocalAgentPlugin.withCredentialAuthority(owner,()->workspaceFlow().prepare(binding,nonce,System.currentTimeMillis()));
@@ -207,8 +209,9 @@ public final class AlphaConnectionPlugin extends Plugin {
  }
  private static byte[] readBounded(InputStream input, int limit) throws Exception { return ConnectionTransport.readBounded(input, limit); }
  /** Native-owned read routes; URLs and credentials never come from Calendar renderer calls. */
- static JSONObject readCloudIdentity(String token)throws Exception {
-  JSONObject response=readCloudObject(token,"/api/v1/user");
+ static JSONObject readCloudIdentity(String token)throws Exception {return readCloudIdentity(token,20000);}
+ static JSONObject readCloudIdentity(String token,int timeoutMs)throws Exception {
+  JSONObject response=readCloudObject(token,"/api/v1/user",timeoutMs);
   if(!Boolean.TRUE.equals(response.opt("success")))throw new SecurityException("Cloud identity unavailable");
   return LocalAgentProviderAdmission.verifiedCloudIdentity(response.getJSONObject("data"));
  }
@@ -217,21 +220,21 @@ public final class AlphaConnectionPlugin extends Plugin {
   JSONObject response=readCloudObject(token,"/api/v1/eliza/google/calendar/sync-v1/capabilities?grantId="+java.net.URLEncoder.encode(grant,"UTF-8")+"&calendarId="+java.net.URLEncoder.encode(calendar,"UTF-8"));
   return response;
  }
- private static JSONObject readCloudObject(String token,String path)throws Exception {
+ private static JSONObject readCloudObject(String token,String path)throws Exception {return readCloudObject(token,path,20000);}
+ private static JSONObject readCloudObject(String token,String path,int timeoutMs)throws Exception {
   if(!AlphaLocalAgentPlugin.validProviderToken(token,16384))throw new IllegalArgumentException();
   HttpURLConnection connection=(HttpURLConnection)validatedUrl(CloudDeployment.PRODUCTION_API+path,false).toURL().openConnection();
   try{
    connection.setInstanceFollowRedirects(false);connection.setUseCaches(false);
-   connection.setConnectTimeout(20000);connection.setReadTimeout(20000);connection.setRequestMethod("GET");
+   connection.setConnectTimeout(timeoutMs);connection.setReadTimeout(timeoutMs);connection.setRequestMethod("GET");
    connection.setRequestProperty("Accept","application/json");connection.setRequestProperty("Authorization","Bearer "+token);
    int status=connection.getResponseCode();if(status!=200)throw new LocalAgentProviderAdmission.CloudReadFailure(status);if(connection.getContentLengthLong()>RESPONSE_LIMIT)throw new SecurityException("Cloud read unavailable");
    byte[] bytes;try(InputStream input=connection.getInputStream()){bytes=readBounded(input,RESPONSE_LIMIT);}
-   return (JSONObject)parseJson(new String(bytes,StandardCharsets.UTF_8));
+   // A body that is not one JSON object (an HTML error page, trailing text) is unreadable, not an answer about the account.
+   Object parsed;try{parsed=parseJson(new String(bytes,StandardCharsets.UTF_8));}catch(IllegalArgumentException unreadable){parsed=null;}
+   if(!(parsed instanceof JSONObject))throw new org.json.JSONException("Cloud read unreadable");
+   return (JSONObject)parsed;
   }finally{connection.disconnect();}
- }
- static boolean validDeviceCapabilities(String value) {
-  Set<String> allowed=Set.of("calendar.local-event.v1","calendar.create.v1","calendar.next-read.v1","notes.local-record.v1","notes.query.v1","reminders.local-record.v1","reminders.local-record.v2","reminders.create.v1","maps.selected-read.v1","clock.handoff.v1","clock.handoff.v2");
-  return ConnectionTransport.deviceCapabilities(value,allowed,new String[][]{{"reminders.local-record.v1","reminders.local-record.v2"}});
  }
  private enum RequestOperation { CLI_CREATE, CLI_POLL, IDENTITY, BILLING_LIMITS, ENTITLEMENT, ENTITLEMENT_KEYS, REDEEM, OTHER }
  private enum RequestStage { VALIDATE, CONNECT, WRITE, STATUS, READ, PARSE, RESOLVE }
@@ -300,7 +303,7 @@ public final class AlphaConnectionPlugin extends Plugin {
      String value = (String) raw;
      if (!ConnectionRoutes.admittedHeader(normalized, BuildConfig.ELIZA_DEV_ALLOW_TEST_MOCKS)&&!ConnectionRoutes.mapsRequestIdentity(normalized,value,url.getRawPath(),method)) throw new IllegalArgumentException();
      if (!ConnectionTransport.headerValue(value)) throw new IllegalArgumentException();
-     if ("x-eliza-device-capabilities".equals(normalized) && !validDeviceCapabilities(value)) throw new IllegalArgumentException();
+     if ("x-eliza-device-capabilities".equals(normalized) && !ConnectionRoutes.deviceCapabilities(value)) throw new IllegalArgumentException();
      if ("x-eliza-phone-protocol".equals(normalized) && !"1".equals(value)) throw new IllegalArgumentException();
      connection.setRequestProperty(name, value);
     }

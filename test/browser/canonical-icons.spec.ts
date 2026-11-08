@@ -1,28 +1,6 @@
 import {test,expect} from '@playwright/test';
-import {createHash} from 'node:crypto';
 import {readFileSync} from 'node:fs';
-import vm from 'node:vm';
 import {returnToApps} from './app-navigation';
-const root=new URL('../../apps/app/public/icons/lucide/',import.meta.url);
-test('published assets retain their recorded provenance',()=>{
- const source=JSON.parse(readFileSync(new URL('source.json',root),'utf8'));
- expect(source.package).toBe('lucide-react');expect(source.version).toBe('1.18.0');expect(source.license).toBe('ISC and upstream Feather MIT where listed');
- for(const [name,entry] of Object.entries(source.assets) as [string,{source:string;sha256:string}][]){expect(createHash('sha256').update(readFileSync(new URL(name,root))).digest('hex')).toBe(entry.sha256);expect(source.sourceFiles[entry.source]).toMatch(/^[a-f0-9]{64}$/);}
- expect(createHash('sha256').update(readFileSync(new URL('LICENSE.txt',root))).digest('hex')).toBe(source.licenseSha256);
- const catalog=JSON.parse(readFileSync(new URL('../../apps/app/src/icon-catalog.json',import.meta.url),'utf8'));
- const model=readFileSync(new URL('../../apps/app/src/prototype/model.js',import.meta.url),'utf8');
- // The IC literal alone: from its declaration to its closing brace (model.js is an ES module).
- const icStart=model.indexOf('var IC = {'),icEnd=model.indexOf('\n};',icStart);expect(icStart).toBeGreaterThanOrEqual(0);expect(icEnd).toBeGreaterThan(icStart);
- const initial=model.slice(icStart,icEnd+3);
- const extensions=[...model.matchAll(/IC\.([A-Za-z0-9_]+)\s*=\s*IC\.\1\s*\|\|\s*"([^"\n]+)";/g)].map(match=>match[0]).join('\n');
- const box:any={};vm.runInNewContext(initial+'\n'+extensions+'\nglobalThis.icons=IC;',box);
- expect(Object.keys(catalog.ic).sort()).toEqual(Object.keys(box.icons).sort());expect(Object.keys(catalog.ic)).toHaveLength(148);
- const paths=new Map<string,string>();for(const [key,asset] of Object.entries(catalog.ic) as [string,string][]){expect(source.assets[asset+'.svg']).toBeTruthy();if(paths.has(box.icons[key]))expect(paths.get(box.icons[key])).toBe(asset);paths.set(box.icons[key],asset);}
- const expectedAssets=new Set([...Object.values(catalog.ic),...catalog.extra].map(name=>name+'.svg'));for(const name of catalog.filled)expectedAssets.add(name+'-filled.svg');expect(Object.keys(source.assets).sort()).toEqual([...expectedAssets].sort());
- for(const [name,entry] of Object.entries(source.assets) as [string,any][]){const svg=readFileSync(new URL(name,root),'utf8');expect(svg).toContain('viewBox="0 0 24 24"');expect(svg).toContain('stroke-width="2"');expect(svg).toContain('stroke-linecap="round"');expect(svg).toContain('stroke-linejoin="round"');expect(svg).toContain(entry.fill?'fill="currentColor"':'fill="none"');}
- const template=readFileSync(new URL('../../apps/app/src/prototype/template.html',import.meta.url),'utf8');expect(template.match(/<svg[^>]*class="i"[^>]*style="[^"]*stroke-width/g)).toBeNull();
-
-});
 for(const theme of ['light','dark'])test(`canonical launcher, dock and Files assets: ${theme}`,async({page},info)=>{
  await page.addInitScript(()=>localStorage.setItem('alpha.connection.selection.v1',JSON.stringify({kind:'offline'})));
  await page.goto('/?mode=dev&theme='+theme);

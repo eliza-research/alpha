@@ -8,6 +8,11 @@ import {sha} from '../scripts/upstream-native-source.mjs';
 const module='plugins/plugin-native-test/android',target=module+'/src/main/java/Test.java';
 function fixture(run,sourceModule=module,sourceTarget=sourceModule+'/src/main/java/Test.java'){const root=fs.mkdtempSync(path.join(os.tmpdir(),'alpha-patch-test-'));try{const before=Buffer.from('old\n'),after=Buffer.from('new\n'),patch=`--- a/${sourceTarget}\n+++ b/${sourceTarget}\n@@ -1 +1 @@\n-old\n+new\n`,patchRoot=path.join(root,'patches'),temporary=path.join(root,'stage');fs.mkdirSync(patchRoot);fs.mkdirSync(temporary);fs.writeFileSync(path.join(patchRoot,'test.patch'),patch);const manifest={schema:1,baseCommit:'pin',patches:[{module:sourceModule,file:'test.patch',sha256:sha(patch),targets:[{path:sourceTarget,beforeSha256:sha(before),afterSha256:sha(after)}]}]};const source={pin:'pin',read:()=>new Map([[sourceTarget,{bytes:before,mode:'100644',sha256:sha(before)}]])};run({root,manifest,source,patchRoot,temporary});}finally{fs.rmSync(root,{recursive:true,force:true});}}
 test('admission materializes only authenticated declared source',()=>fixture(args=>{const result=materializeNativePatches(args);assert.equal(result.files[target],sha('new\n'));assert.equal(fs.readFileSync(path.join(args.temporary,target),'utf8'),'new\n');}));
+test('admission accepts an owner-only executable staged under umask 027',()=>fixture(args=>{
+ const read=args.source.read;args.source.read=()=>new Map([...read()].map(([name,file])=>[name,{...file,mode:'100755'}]));
+ const previous=process.umask(0o027);
+ try{assert.equal(materializeNativePatches(args).modes[target],'100755');assert.equal(fs.statSync(path.join(args.temporary,target)).mode&0o777,0o750);}finally{process.umask(previous);}
+}));
 for(const [name,mutate,error] of [
  ['wrong pin',a=>a.manifest.baseCommit='other',/pin/],
  ['patch drift',a=>fs.appendFileSync(path.join(a.patchRoot,'test.patch'),'x'),/digest/],

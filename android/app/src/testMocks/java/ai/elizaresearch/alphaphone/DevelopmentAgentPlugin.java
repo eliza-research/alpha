@@ -90,7 +90,7 @@ public final class DevelopmentAgentPlugin extends Plugin {
   HttpURLConnection connection=(HttpURLConnection)new URL(ORIGIN+"/transcribe").openConnection(Proxy.NO_PROXY);request.connection=connection;
   if(request.finished.get()){connection.disconnect();throw new IOException("cancelled");}
   try {
-   connection.setInstanceFollowRedirects(false);connection.setConnectTimeout(5000);connection.setReadTimeout(90000);
+   connection.setInstanceFollowRedirects(false);connection.setConnectTimeout(5000);connection.setReadTimeout(DevelopmentChatContract.TRANSCRIBE_READ_TIMEOUT_MS);
    connection.setRequestMethod("POST");connection.setDoOutput(true);connection.setFixedLengthStreamingMode(file.length());
    connection.setRequestProperty("Authorization","Bearer "+bearer);connection.setRequestProperty("Content-Type","audio/mp4");connection.setRequestProperty("X-Request-Id",id);
    try(InputStream input=new java.io.FileInputStream(file);java.io.OutputStream output=connection.getOutputStream()) {
@@ -112,6 +112,7 @@ public final class DevelopmentAgentPlugin extends Plugin {
   final AtomicBoolean finished = new AtomicBoolean(false);
   volatile HttpURLConnection connection;
   volatile Future<?> work;
+  volatile long hostDate;
   Request(PluginCall call) { this.call = call; }
  }
  private String token() throws IOException {
@@ -128,7 +129,7 @@ public final class DevelopmentAgentPlugin extends Plugin {
   }
   return value.matches("[A-Za-z0-9_-]{32,256}") ? value : null;
  }
- private JSONObject exchange(String path, String bearer, JSONObject body, Request request) throws Exception {
+ private JSONObject exchange(String path, String bearer, byte[] body, Request request) throws Exception {
   HttpURLConnection connection = (HttpURLConnection)new URL(ORIGIN + path).openConnection(Proxy.NO_PROXY);
   if (request != null) {
    request.connection = connection;
@@ -136,63 +137,26 @@ public final class DevelopmentAgentPlugin extends Plugin {
   }
   try {
    connection.setInstanceFollowRedirects(false);
-   connection.setConnectTimeout(5000); connection.setReadTimeout(body == null ? 5000 : 30000);
+   connection.setConnectTimeout(5000); connection.setReadTimeout(body == null ? 5000 : DevelopmentChatContract.CHAT_READ_TIMEOUT_MS);
    connection.setRequestProperty("Authorization", "Bearer " + bearer);
    connection.setRequestProperty("Accept", "application/json");
    if (body != null) {
-    byte[] bytes = body.toString().getBytes(StandardCharsets.UTF_8);
-    if (bytes.length > 32768) throw new IOException("request limit");
     connection.setRequestMethod("POST"); connection.setDoOutput(true);
-    connection.setRequestProperty("Content-Type", "application/json"); connection.setFixedLengthStreamingMode(bytes.length);
-    try (java.io.OutputStream output = connection.getOutputStream()) { output.write(bytes); }
+    connection.setRequestProperty("Content-Type", "application/json"); connection.setFixedLengthStreamingMode(body.length);
+    try (java.io.OutputStream output = connection.getOutputStream()) { output.write(body); }
    }
    if (connection.getResponseCode() != 200) throw new IOException("development service response");
-   long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(60);
+   if (request != null) request.hostDate = connection.getDate();
    try (InputStream input = connection.getInputStream(); ByteArrayOutputStream output = new ByteArrayOutputStream()) {
     byte[] buffer = new byte[4096]; int count;
     while ((count = input.read(buffer)) != -1) {
-     if (Thread.currentThread().isInterrupted() || (request != null && request.finished.get()) || System.nanoTime() > deadline) throw new IOException("request interrupted");
+     if (Thread.currentThread().isInterrupted() || (request != null && request.finished.get())) throw new IOException("request interrupted");
      if (output.size() + count > MAX_RESPONSE) throw new IOException("response limit");
      output.write(buffer, 0, count);
     }
     return new JSONObject(new String(output.toByteArray(), StandardCharsets.UTF_8));
    }
   } finally { connection.disconnect(); }
- }
- private org.json.JSONArray proposals(JSONObject response, JSONObject requestContext) throws Exception {
-  org.json.JSONArray input = response.optJSONArray("proposals"), output = new org.json.JSONArray();
-  if (input == null) return output;
-  if (input.length() > 4 || requestContext == null) throw new IOException("invalid proposals");
-  java.util.HashSet<String> ids = new java.util.HashSet<>();
-  for (int i = 0; i < input.length(); i++) {
-   JSONObject value = input.getJSONObject(i), operation = value.getJSONObject("operation");
-   String id = value.getString("id"), title = value.getString("title"), description = value.getString("description");
-   long expiry = value.getLong("expiresAt"), revision = value.getLong("contextRevision");
-   if (!id.matches("[A-Za-z0-9_-]{1,100}") || !ids.add(id) || title.trim().isEmpty() || title.length() > 300 || description.length() > 64000
-       || expiry <= System.currentTimeMillis() || expiry > System.currentTimeMillis() + 300000
-       || revision != requestContext.getLong("revision")) throw new IOException("invalid proposal context");
-   JSONObject safeOperation = new JSONObject();
-   String type = operation.getString("type");
-   if ("create_note".equals(type)) {
-    String noteTitle = operation.getString("title"), noteBody = operation.getString("body");
-    if (noteTitle.trim().isEmpty() || noteTitle.length() > 256 || noteBody.length() > 32000) throw new IOException("invalid note proposal");
-    safeOperation.put("type", type).put("title", noteTitle).put("body", noteBody);
-   } else if ("reminder_create".equals(type)) {
-    // Exact canonical fields are validated again by the shared renderer contract.
-    operation.getJSONObject("fields").getJSONObject("schedule");
-    safeOperation = operation;
-   } else if ("open_view".equals(type)) {
-    String view = operation.getString("view");
-    // Mirrors DEVELOPMENT_PROPOSAL_VIEWS; parity is checked by the owning development scope flow.
-    if (!java.util.Arrays.asList("home","maps","camera","photos","notes","calendar","notifications","reminders","workflows","files","inbox","browser","settings").contains(view)) throw new IOException("invalid view proposal");
-    safeOperation.put("type", type).put("view", view);
-   } else throw new IOException("unsupported proposal");
-   JSONObject safe = new JSONObject().put("id",id).put("title",title).put("description",description).put("expiresAt",expiry).put("contextRevision",revision).put("operation",safeOperation);
-   if (value.has("simulated")) safe.put("simulated",value.getBoolean("simulated"));
-   if ("open_view".equals(type) && value.has("navigation")) safe.put("navigation",value.getJSONObject("navigation"));
-   output.put(safe);
-  }
-  return output;
  }
  @PluginMethod public void status(PluginCall call) {
   try { workers.execute(() -> {
@@ -212,7 +176,11 @@ public final class DevelopmentAgentPlugin extends Plugin {
  }
  @PluginMethod public void chat(PluginCall call) {
   String id = call.getString("requestId", ""), text = call.getString("text", "");
-  if (!id.matches("[A-Za-z0-9_-]{1,100}") || text.trim().isEmpty() || text.length() > 16000) { call.reject("Invalid development request", "INVALID_REQUEST"); return; }
+  if (!id.matches("[A-Za-z0-9_-]{1,100}") || text.trim().isEmpty()) { call.reject("Invalid development request", "INVALID_REQUEST"); return; }
+  JSONObject body; byte[] encoded;
+  try { body = new JSONObject().put("requestId", id).put("text", text).put("context", call.getData().opt("context")); encoded = DevelopmentChatContract.chatBody(body); }
+  catch (Exception error) { call.reject("Invalid development request", "INVALID_REQUEST"); return; }
+  if (encoded == null) { call.reject("Message is too long for the development service. Shorten it and try again.", "INVALID_REQUEST"); return; }
   Request request = new Request(call);
   if (requests.putIfAbsent(id, request) != null) { call.reject("Request is already pending", "DUPLICATE_REQUEST"); return; }
   try { request.work = workers.submit(() -> {
@@ -221,11 +189,10 @@ public final class DevelopmentAgentPlugin extends Plugin {
     if (bearer == null) {
      if (request.finished.compareAndSet(false, true)) call.reject("Development connection is not configured", "NOT_CONFIGURED"); return;
     }
-    JSONObject body = new JSONObject().put("requestId", id).put("text", text).put("context", call.getData().opt("context"));
-    JSONObject response = exchange("/chat", bearer, body, request);
+    JSONObject response = exchange("/chat", bearer, encoded, request);
     String reply = response.optString("text", "");
     if (reply.isEmpty() || reply.length() > 100000) throw new IOException("invalid response");
-    JSObject value = new JSObject(); value.put("requestId", id); value.put("text", reply); value.put("proposals", proposals(response, body.optJSONObject("context")));
+    JSObject value = new JSObject(); value.put("requestId", id); value.put("text", reply); value.put("proposals", DevelopmentChatContract.proposals(response.optJSONArray("proposals"), body.optJSONObject("context"), request.hostDate, System.currentTimeMillis()));
     if (request.finished.compareAndSet(false, true)) call.resolve(value);
    } catch (Exception ignored) {
     if (request.finished.compareAndSet(false, true)) call.reject("Development request failed or timed out. No action was executed.", "DEVELOPMENT_REQUEST_FAILED");

@@ -18,6 +18,10 @@
 //
 // --self-test exercises classification, cleanup and the result format against an
 // in-process synthetic agent. Its output is harness evidence only, never a model result.
+//
+// The device header is the phone's own selection (selectDeviceCapabilities) for a standalone
+// Android APK. Case set revision 2 drops two notes controls that needed capabilities the phone
+// never negotiates; its scores are not comparable with revision 1 results.
 import assert from 'node:assert/strict';
 import { createHash, randomBytes, randomUUID } from 'node:crypto';
 import { execFileSync } from 'node:child_process';
@@ -26,12 +30,18 @@ import http from 'node:http';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { AGENT_MODEL } from './agent-model.mjs';
+import { selectDeviceCapabilities } from '../apps/app/src/runtime/phone-context.ts';
 
 const root = fileURLToPath(new URL('../', import.meta.url));
-const CAPABILITIES = [
+/** A standalone Android APK (not the Alpha system image), with the shell's foreground reviews. */
+export const DEVICE_PROFILE = Object.freeze({ android: true, native: true, camera: false, foregroundReview: true, clockRepeatDays: false, aospImage: false });
+/** Device-record capabilities an agent may offer, including two the phone never negotiates. */
+const OFFERED = [
   'calendar.local-event.v1', 'calendar.availability-read.v1', 'notes.local-record.v1', 'notes.query.v1', 'notes.search.v1',
   'device.named-target.v1', 'reminders.local-record.v1', 'reminders.local-record.v2', 'reminders.create.v1',
 ];
+const CAPABILITIES = selectDeviceCapabilities(OFFERED, DEVICE_PROFILE);
+const CASESET_REVISION = 2;
 /** Fixed, versioned case set. Changing it changes CASESET_SHA256 in every result. */
 export const CASES = Object.freeze([
   { id: 'free-no-time', expect: 'clarify', view: 'home', text: 'Am I free?' },
@@ -43,8 +53,6 @@ export const CASES = Object.freeze([
   { id: 'cancel-reminder-which', expect: 'clarify', view: 'home', text: 'Cancel my reminder.' },
   { id: 'note-about-unspecified', expect: 'clarify', view: 'home', text: 'Find that note I wrote.' },
   { id: 'control-free-exact', expect: 'propose', view: 'home', text: 'Am I free tomorrow from 3pm to 4pm?' },
-  { id: 'control-search-notes', expect: 'propose', view: 'home', text: 'Find my note about the passport renewal.' },
-  { id: 'control-delete-named', expect: 'propose', view: 'home', text: 'Delete my note called Groceries.' },
 ]);
 const CASESET_SHA256 = createHash('sha256').update(JSON.stringify(CASES)).digest('hex');
 
@@ -74,6 +82,8 @@ export function sourceBinding() {
     upstreamPin: JSON.parse(fs.readFileSync(path.join(root, 'upstream.lock.json'), 'utf8')).commit,
     script: sha256File(fileURLToPath(import.meta.url)),
     caseSet: CASESET_SHA256,
+    caseSetRevision: CASESET_REVISION,
+    comparability: `Scores compare only with case set revision ${CASESET_REVISION} on the same device profile.`,
   };
 }
 function loopback(origin) {
@@ -92,7 +102,8 @@ async function client(origin, token) {
   };
   const registered = await call('/api/client-devices/register', { label: 'Alpha clarification eval', workflowProtocol: 0 });
   if (registered.installationId !== installationId) throw Error('Device registration was not verified');
-  const negotiated = CAPABILITIES.filter(capability => registered.capabilities?.includes(capability));
+  // The phone's own selection over what the agent offered.
+  const negotiated = selectDeviceCapabilities(registered.capabilities, DEVICE_PROFILE);
   device['X-Eliza-Device-Capabilities'] = negotiated.join(',');
   return { call, negotiated, revoke: () => call('/api/client-devices/revoke', {}) };
 }
@@ -136,7 +147,7 @@ export async function evaluate({ origin, token, cases = CASES, now = () => new D
     strayProposals += await sweep();
     // The synthetic enrollment never outlives the run.
     await revoke(); revoked = true;
-    return { version: 1, kind: 'device-action-clarification', recordedAt: now().toISOString(), expectedModel: AGENT_MODEL, negotiatedCapabilities: negotiated, source: sourceBinding(), summary: { ...summarize(rows), strayProposals }, rows };
+    return { version: 1, kind: 'device-action-clarification', recordedAt: now().toISOString(), expectedModel: AGENT_MODEL, deviceProfile: { kind: 'android-apk', ...DEVICE_PROFILE }, negotiatedCapabilities: negotiated, source: sourceBinding(), summary: { ...summarize(rows), strayProposals }, rows };
   } finally {
     if (!revoked) await revoke().catch(() => {});
   }
@@ -172,11 +183,14 @@ async function selfTest() {
   await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
   try {
     const result = await evaluate({ origin: `http://127.0.0.1:${server.address().port}`, token });
-    assert.deepEqual(result.summary, { ambiguous: { cases: 8, clarifyingQuestionRate: 1, proposalRate: 0 }, controls: { cases: 3, proposalRate: 1, clarifyingQuestionRate: 0 }, errors: 0, strayProposals: 1 });
+    assert.deepEqual(result.summary, { ambiguous: { cases: 8, clarifyingQuestionRate: 1, proposalRate: 0 }, controls: { cases: 1, proposalRate: 1, clarifyingQuestionRate: 0 }, errors: 0, strayProposals: 1 });
     assert.ok(proposals.every(p => p.state === 'rejected'), 'every caused proposal is rejected');
     assert.equal(revokes, 1, 'the synthetic device is revoked once at the end');
     assert.equal(result.expectedModel, AGENT_MODEL); assert.ok(!('model' in result), 'the runtime model is not claimed as observed');
     assert.deepEqual(result.negotiatedCapabilities, CAPABILITIES.slice(0, 4));
+    assert.equal(result.deviceProfile.aospImage, false);
+    for (const capability of ['notes.search.v1', 'device.named-target.v1']) assert.ok(!CAPABILITIES.includes(capability), `the phone never negotiates ${capability}`);
+    assert.equal(result.source.caseSetRevision, CASESET_REVISION);
     assert.match(result.source.caseSet, /^[a-f0-9]{64}$/);
     assert.equal(classify({ proposals: 1, reply: 'Which one?' }), 'proposal');
     assert.equal(classify({ proposals: 0, reply: 'Done.' }), 'other');

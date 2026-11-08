@@ -153,3 +153,25 @@ test("clean pinned source is admitted and loader reauthenticates on each build",
 	await assert.rejects(loadPinnedRuntime(), /Unexpected runtime source change/);
 	assert.equal(builds, 1);
 });
+
+test("only the pinned voice builder's untracked tree is admitted under .cache", async (t) => {
+	const f = fixture(t);
+	f.write("vendor/eliza/.cache/elizavoice-android/tracked.txt", "pinned\n");
+	f.git("add", "-f", ".cache/elizavoice-android/tracked.txt");
+	f.git("-c", "user.name=Fixture", "-c", "user.email=fixture@example.invalid", "commit", "-m", "Tracked cache file");
+	f.write("upstream.lock.json", JSON.stringify({ commit: f.git("rev-parse", "HEAD") }));
+	const { verifyPinnedUpstream } = await import(
+		pathToFileURL(path.join(f.root, "scripts/pinned-upstream-source.mjs"))
+	);
+	f.write("vendor/eliza/.cache/elizavoice-android/espeak-ng/build/out.o", "object");
+	verifyPinnedUpstream(f.root);
+	f.write("vendor/eliza/.cache/elizavoice-android-extra/out.o", "object");
+	assert.throws(() => verifyPinnedUpstream(f.root), /Unexpected untracked runtime source/);
+	fs.rmSync(path.join(f.upstream, ".cache/elizavoice-android-extra"), { recursive: true });
+	f.write("vendor/eliza/.cache/other/out.o", "object");
+	assert.throws(() => verifyPinnedUpstream(f.root), /Unexpected untracked runtime source/);
+	fs.rmSync(path.join(f.upstream, ".cache/other"), { recursive: true });
+	verifyPinnedUpstream(f.root);
+	f.write("vendor/eliza/.cache/elizavoice-android/tracked.txt", "changed\n");
+	assert.throws(() => verifyPinnedUpstream(f.root), /Unexpected runtime source change/);
+});

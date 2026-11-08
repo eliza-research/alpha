@@ -51,13 +51,13 @@ test('plan state never stops or withholds the on-device agent', () => {
     assert.ok(!admission.includes(forbidden), `admission/refresh must not ${forbidden}`);
   assert.match(admission, /Promise<ResidentAdmission>/);
   // The binding rules (account fences, the 7-day offline rule) are the shared controller's
-  // (@elizaos/auth/auth/cloud-resident-binding, covered by its own tests); this file maps outcomes.
-  assert.match(admission, /const admission=await binding\.admit\(signal\);/);
-  for (const binding of ["return {binding:'unbound',notice:{open:true}};", "return {binding:admission.binding};", "return {binding:'unbound',account:admitted};", "return {binding:'cloud',credentialId:identity.credentialId,account:admitted};"])
-    assert.ok(admission.includes(binding), `admission returns ${binding}`);
-  // A plan that ends, or a rejected refresh, rebinds the running agent; it is never stopped.
+  // (@elizaos/auth/auth/cloud-resident-binding, covered by its own tests); the outcome mapping is
+  // residentAdmissionOutcome (test/resident-admission-outcome.test.mjs).
+  assert.match(admission, /const outcome=residentAdmissionOutcome\(admission,/);
+  // A plan that ends, or a rejected refresh, rebinds the running agent; it is never stopped. A
+  // revoked credential also retires the reply in flight.
   assert.match(between(ui, 'function residentPlanEnded(', 'function residentRefreshRefused('), /queueResidentRebind\(\);/);
-  assert.match(between(ui, 'function residentRefreshRefused(', 'async function applyResidentBinding('), /queueResidentRebind\(\);/);
+  assert.match(between(ui, 'function residentRefreshRefused(', 'async function recheckResidentPlan('), /queueResidentRebind\(true\);/);
   // connectResident always reaches the start; only the test-mocks staging QA lane stops at admission.
   const connect = between(ui, 'async function connectResident(', 'async function connectCloud(');
   const start = connect.indexOf('await client.connect(signal)');
@@ -72,6 +72,8 @@ test('plan state never stops or withholds the on-device agent', () => {
   for (const method of ['async removeProvider()', 'async disconnect()'])
     assert.match(between(ui, method, '\n  },'), /if\(residentCloudFlow\(\)\)\{update\(\{error:ALWAYS_LOCAL,message:''\}\);return;\}/, method);
   assert.doesNotMatch(ui, /async stopLocal\(\)/);
+  // There is no local-apps-only mode.
+  assert.doesNotMatch(ui, /localAppsSelected|localApps\?: ?true|Use local apps without AI/);
   assert.match(ui, /async restartLocal\(\)/);
   // Sign-in and sign-out keep the agent running and reconnect it afterwards (native attaches when
   // the process already matches the binding, otherwise it restarts once).
@@ -102,16 +104,6 @@ test('plan state never stops or withholds the on-device agent', () => {
   assert.ok(!signOut.includes('stopLocalAgent(') && signOut.includes('else{retire();try{await connectResident(signal);}'));
   // Cloud inference is unbound (native stops a process holding the key) before the key is revoked.
   assert.ok(signOut.indexOf('await clearLocalProvider()') > 0 && signOut.indexOf('await clearLocalProvider()') < signOut.indexOf('client.revokeSession(signal, expected)'));
-});
-
-test('the connection controller has no local-apps-only mode and migrates old selections to the resident', () => {
-  assert.doesNotMatch(ui, /localAppsSelected|localApps\?: ?true|Use local apps without AI/);
-  // A stored offline, local-apps or none selection reads as the resident where it is always present.
-  assert.match(ui, /value\?\.kind === 'offline' \|\| value\?\.kind === 'none'\) return residentAlwaysPresent \? \{ kind: 'resident' \}/);
-  // Saving a no-agent choice there stores the resident instead.
-  assert.match(ui, /residentAlwaysPresent && \(selection\.kind === 'none' \|\| selection\.kind === 'offline'\) \? \{ kind: 'resident' \}/);
-  assert.match(ui, /function residentCloudFlow\(\): boolean \{ return browserCloudResidentEnabled \|\| \(isAndroid && !testMocksEnabled\) \|\| residentQa\(\) !== null; \}/);
-  assert.doesNotMatch(ui, /if\(!await admitCloudResident\(signal\)\)return;/);
 });
 
 test('no startup path ends claiming "starting" with nothing starting', () => {
@@ -214,8 +206,8 @@ test('the plan surface is a notice beside the running agent, not a gate', () => 
   const chooser = ui.slice(ui.indexOf('export function ConnectionChooser'));
   assert.match(chooser, /if \(!visible\) \{\n\s+\/\/ Never a gate: the agent is running\./);
   assert.ok(chooser.includes('<aside className="alpha-plan-notice" role="region" aria-label={`${serviceName} plan notice`}>'));
-  // Admission without a plan opens nothing; only a required sign-in opens (and locks) the dialog.
-  assert.ok(between(ui, 'async function admitCloudResident(', 'function residentPlanEnded(').includes("update({residentSubscription:plan.view,residentPlanNotice:'needs-plan',planEndsAt:null});\n    return {binding:'unbound',account:admitted};"));
+  // Only a required sign-in opens (and locks) the dialog; admission without a plan opens nothing
+  // (residentAdmissionOutcome).
   assert.ok(chooser.includes("const residentMustSignIn=!ownProviderSelected()&&residentCloudFlow()&&!snapshot.cloudAccount&&snapshot.residentPlanNotice!=='offline'&&!snapshot.residentStarting;"));
   assert.ok(chooser.includes('{!residentMustSignIn&&<button aria-label="Close connection settings"'));
   // Auth owns Back even while busy; the required top-level chooser remains protected.

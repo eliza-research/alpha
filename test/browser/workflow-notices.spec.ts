@@ -2,10 +2,10 @@ import {test,expect} from '@playwright/test';
 test('cancellation between notification preparation and commit leaves no stored effect',async({page})=>{
  await page.goto('/?mode=dev&tools=1');
  const result=await page.evaluate(async()=>{
-  const {publishWorkflowNotice}=await import('/src/browser/workflow-notices.ts');const controller=new AbortController(),now=Date.now;let error='';
-  Date.now=()=>{queueMicrotask(()=>controller.abort());return now();};
-  try{await publishWorkflowNotice('cancel-at-commit','Do not save',controller.signal);}catch(e){error=(e as Error).name;}finally{Date.now=now;}
-  return {error,saved:await (await import('/src/browser/workflow-notices.ts')).workflowNoticesDocument.readRaw()};
+  const n=await import('/src/browser/workflow-notices.ts'),controller=new AbortController(),edit=n.workflowNoticesDocument.edit;let prepared=false,release!:()=>void;
+  n.workflowNoticesDocument.edit=(initial,prepare,signal)=>edit.call(n.workflowNoticesDocument,initial,async data=>{const result=await prepare(data);prepared=true;await new Promise<void>(resolve=>release=resolve);return result;},signal);
+  const pending=n.publishWorkflowNotice('cancel-at-commit','Do not save',controller.signal).then(()=>'',error=>(error as Error).name);
+  try{while(!prepared)await new Promise(resolve=>setTimeout(resolve,0));controller.abort();release();return {error:await pending,saved:await n.workflowNoticesDocument.readRaw()};}finally{n.workflowNoticesDocument.edit=edit;}
  });expect(result).toEqual({error:'AbortError',saved:null});
 });
 test('workflow notices persist exact content and deduplicate matching receipts across reload',async({page})=>{

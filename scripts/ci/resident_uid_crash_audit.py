@@ -1,4 +1,8 @@
-"""Fixed-schema crash evidence only. Raw logcat, argv and stack contents are never saved."""
+"""Fixed-schema crash evidence only. Raw logcat, argv and stack contents are never saved.
+
+Writes <variant>-<phase>-native-crash.json: seccomp crashes and audit denials owned by the
+app UID, after every lost-rpc failure. resident_crash_diagnostic.py writes the separate
+crash-projection record, bound to the recovery proof's pid and timestamps."""
 import os,re,selectors,subprocess,time
 
 def project_crashes(text, expected_uid):

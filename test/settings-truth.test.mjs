@@ -116,7 +116,7 @@ test('the grouped Privacy page retains permission review and action-review contr
 
 test('Cloud privacy hero includes speech while retaining native and offline/startup truth',async()=>{
  const nativeSource=readFileSync('apps/app/src/prototype/native-adapter.ts','utf8');
- const wording=nativeSource.slice(nativeSource.indexOf('export function egressPrivacy('),nativeSource.indexOf('/** Only a verified resident session'));
+ const wording=nativeSource.slice(nativeSource.indexOf('type EgressConnection ='),nativeSource.indexOf('/** Only a verified resident session'));
  const load=async cloud=>import('data:text/javascript;base64,'+Buffer.from(`const cloudRuntimeEnabled=${cloud};const testMocksEnabled=false;const Capacitor={isNativePlatform:()=>true};const cloudServiceName=environment=>environment==='staging'?'Nebula':'Cloud Test';`+stripTypeScriptTypes(wording,{mode:'strip'})).toString('base64'));
  const cloud=await load(true),native=await load(false);
  const connected={kind:'resident',session:{sessionId:'qa'},cloudAccount:{environment:'staging'}};
@@ -126,6 +126,20 @@ test('Cloud privacy hero includes speech while retaining native and offline/star
   for(const content of ['When used','messages','selected content','Voice recordings','text for playback'])assert.ok(fact.sub.includes(content),content);
  }
  assert.equal(native.egressPrivacy(connected,true).big,'Partly masked');
+ assert.ok(native.egressPrivacy(connected,true).sub.includes('No AI requests until AI is set up'));
+ assert.ok(!native.egressPrivacy({...connected,residentInference:'unknown'},true).sub.includes('No AI requests'),'an unconfirmed binding is not claimed unbound');
+ // A native resident names whoever its inference binding sends AI content to.
+ const viaCloud=native.egressPrivacy({...connected,residentInference:'cloud'},true);
+ assert.equal(viaCloud.big,'Uses Nebula');assert.ok(viaCloud.sub.includes('go to Nebula for AI'));assert.ok(!viaCloud.sub.includes('Cartesia'));
+ assert.equal(native.residentRecipients({...connected,residentInference:'cloud'},true).leaves,'To Nebula');
+ const own=voiceConfigured=>({...connected,residentInference:'direct',providerStatus:{provider:'cerebras',configured:true,voiceConfigured}});
+ const direct=native.egressPrivacy(own(false),true);
+ assert.equal(direct.big,'Uses your Cerebras key');assert.ok(direct.sub.includes('go to Cerebras with your key'));
+ for(const absent of ['Nebula','Cartesia'])assert.ok(!direct.sub.includes(absent),absent);
+ const voiced=native.egressPrivacy(own(true),true);
+ assert.ok(voiced.sub.includes('Voice recordings and reply text go to Cartesia with your key, without masking.'));
+ assert.equal(native.residentRecipients(own(true),true).leaves,'To Cerebras and Cartesia');
+ assert.equal(native.residentRecipients(own(true),false),null,'a browser development host is not described as the phone');
  for(const [kind,label]of [['starting','Agent starting'],['recovering','Agent not running'],['none','Offline']])assert.equal(cloud.egressPrivacy({kind,session:null,cloudAccount:null},true).big,label);
 });
 

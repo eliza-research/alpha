@@ -174,6 +174,7 @@ public class CalendarExternalEditorInstrumentedTest {
   String zone=TimeZone.getDefault().getID(),account="Alpha external editor "+UUID.randomUUID(),title="Alpha handoff "+UUID.randomUUID(),updated=title+" edited";
   Uri calendar=null,event=null;boolean completed=false;
   android.accessibilityservice.AccessibilityServiceInfo service=ui.getServiceInfo();int originalFlags=service.flags;service.flags|=android.accessibilityservice.AccessibilityServiceInfo.FLAG_REPORT_VIEW_IDS;ui.setServiceInfo(service);
+  Throwable primary=null;
   try{
    ContentValues c=new ContentValues();c.put(CalendarContract.Calendars.ACCOUNT_NAME,account);c.put(CalendarContract.Calendars.ACCOUNT_TYPE,CalendarContract.ACCOUNT_TYPE_LOCAL);c.put(CalendarContract.Calendars.NAME,account);c.put(CalendarContract.Calendars.CALENDAR_DISPLAY_NAME,account);c.put(CalendarContract.Calendars.OWNER_ACCOUNT,account);c.put(CalendarContract.Calendars.CALENDAR_ACCESS_LEVEL,CalendarContract.Calendars.CAL_ACCESS_OWNER);c.put(CalendarContract.Calendars.CALENDAR_TIME_ZONE,zone);c.put(CalendarContract.Calendars.VISIBLE,1);c.put(CalendarContract.Calendars.SYNC_EVENTS,1);
    Uri sync=CalendarContract.Calendars.CONTENT_URI.buildUpon().appendQueryParameter(CalendarContract.CALLER_IS_SYNCADAPTER,"true").appendQueryParameter(CalendarContract.Calendars.ACCOUNT_NAME,account).appendQueryParameter(CalendarContract.Calendars.ACCOUNT_TYPE,CalendarContract.ACCOUNT_TYPE_LOCAL).build();calendar=resolver.insert(sync,c);assertNotNull(calendar);
@@ -197,9 +198,12 @@ public class CalendarExternalEditorInstrumentedTest {
     returnToAlpha(context.getPackageName());eval(AppNavigation.request("Home"));until(AppNavigation.selected("Home"));eval(AppNavigation.request("Calendar"));until(AppNavigation.selected("Calendar"));AppNavigation.declineStartupAccess();until("[...document.querySelectorAll('button')].some(b=>b.getAttribute('aria-label')?.startsWith("+JSONObject.quote(updated+",")+"))");
     assertEquals("Test never changes timezone",zone,TimeZone.getDefault().getID());completed=true;
    }
-  }finally{
+  }catch(Exception|AssertionError failure){primary=failure;throw failure;}
+  finally{
+   try{
    if(calendar!=null){Uri cleanup=calendar.buildUpon().appendQueryParameter(CalendarContract.CALLER_IS_SYNCADAPTER,"true").appendQueryParameter(CalendarContract.Calendars.ACCOUNT_NAME,account).appendQueryParameter(CalendarContract.Calendars.ACCOUNT_TYPE,CalendarContract.ACCOUNT_TYPE_LOCAL).build();assertEquals("Delete only owned calendar",1,resolver.delete(cleanup,null,null));try(Cursor remaining=resolver.query(calendar,new String[]{CalendarContract.Calendars._ID},null,null,null)){assertNotNull(remaining);assertEquals("Owned calendar removed",0,remaining.getCount());}}
-   service.flags=originalFlags;ui.setServiceInfo(service);
+   }catch(Exception|AssertionError cleanup){if(primary!=null)primary.addSuppressed(cleanup);else throw cleanup;}
+   finally{service.flags=originalFlags;ui.setServiceInfo(service);}
   }
   assertTrue(completed);
   JSONObject receipt=new JSONObject().put("etarVersion",57).put("signerSha256",digest.toString()).put("implicitHandoff",true).put("cancelUnchanged",true).put("saveSameRowAndEpochs",true).put("returnedToAlpha",true).put("returnMethod",returnedViaLauncher?"home-then-alpha-launcher-after-etar-optional-access-loop":"android-back").put("fixtureCleaned",true).put("timezoneUnchanged",true);

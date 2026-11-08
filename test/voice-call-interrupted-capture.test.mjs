@@ -32,7 +32,7 @@ test('a call before capture acknowledgment retires only the matching recording',
  f.releaseStart({recordingId:recording,maxDurationMs:59000});
  await starting;await clock.flush();
  const shown=f.renderChat();
- assert.equal(shown.state,'error');assert.match(shown.lines[0].t,/Voice paused for a call/);
+ assert.equal(shown.state,'error');assert.match(shown.lines[0].t,/Voice paused for a phone call/);
  assert.equal(f.uploads,0);assert.equal(f.sends,0);assert.equal(f.activeRecording,null);
 });
 

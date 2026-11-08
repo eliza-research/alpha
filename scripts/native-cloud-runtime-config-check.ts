@@ -5,9 +5,11 @@ import path from 'node:path';
 import {pathToFileURL} from 'node:url';
 const [sdk,module]=process.argv.slice(2);
 if(!sdk||!module)throw Error('Prepared SDK and compiled host are required');
+// The compiled host declares its deployment; a custom Cloud API must pass too.
+const {nativeCloudRuntime}=await import(pathToFileURL(module).href);
 const state=fs.mkdtempSync(path.join(os.tmpdir(),'alpha-native-cloud-routing-'));
 const user='11111111-1111-4111-8111-111111111111',org='22222222-2222-4222-8222-222222222222';
-Object.assign(process.env,{ELIZA_STATE_DIR:state,ELIZA_CONFIG_PATH:path.join(state,'eliza.json'),ELIZA_PERSIST_CONFIG_PATH:path.join(state,'eliza.json'),ELIZA_PLATFORM:'android',ELIZA_RUNTIME_PROFILE:'cloud',ELIZAOS_CLOUD_USE_INFERENCE:'true',ELIZAOS_CLOUD_API_KEY:'synthetic-native-cloud-key',ELIZAOS_CLOUD_BASE_URL:'https://api.eliza.app/api/v1',ELIZAOS_CLOUD_SMALL_MODEL:'cerebras/qwen-3.8-27b',ELIZAOS_CLOUD_LARGE_MODEL:'cerebras/qwen-3.8-27b',ELIZA_API_TOKEN:'Z_-q'.repeat(16),ELIZA_SMTHRS_RUNTIME_DIR:path.dirname(module),ELIZA_NATIVE_GOOGLE_HOST_MODULE:module,ELIZA_NATIVE_GOOGLE_BINDING_JSON:JSON.stringify({credentialId:'44444444-4444-4444-8444-444444444444',userId:user,organizationId:org,accountRef:JSON.stringify(['cloud','production',user,org]),sessionGeneration:'synthetic-generation'})});
+Object.assign(process.env,{ELIZA_STATE_DIR:state,ELIZA_CONFIG_PATH:path.join(state,'eliza.json'),ELIZA_PERSIST_CONFIG_PATH:path.join(state,'eliza.json'),ELIZA_PLATFORM:'android',ELIZA_RUNTIME_PROFILE:'cloud',ELIZAOS_CLOUD_USE_INFERENCE:'true',ELIZAOS_CLOUD_API_KEY:'synthetic-native-cloud-key',ELIZAOS_CLOUD_BASE_URL:nativeCloudRuntime.apiBaseUrl,ELIZAOS_CLOUD_SMALL_MODEL:'cerebras/qwen-3.8-27b',ELIZAOS_CLOUD_LARGE_MODEL:'cerebras/qwen-3.8-27b',ELIZA_API_TOKEN:'Z_-q'.repeat(16),ELIZA_SMTHRS_RUNTIME_DIR:path.dirname(module),ELIZA_NATIVE_GOOGLE_HOST_MODULE:module,ELIZA_NATIVE_GOOGLE_BINDING_JSON:JSON.stringify({credentialId:'44444444-4444-4444-8444-444444444444',userId:user,organizationId:org,accountRef:JSON.stringify(['cloud','production',user,org]),sessionGeneration:'synthetic-generation'})});
 fs.writeFileSync(process.env.ELIZA_CONFIG_PATH!,JSON.stringify({cloud:{enabled:false,apiKey:'stale-synthetic-key'},serviceRouting:{llmText:{backend:'eliza-local-inference',transport:'local'}},features:{shellEnabled:false}}));
 fs.mkdirSync(path.join(state,'local-inference'));
 fs.writeFileSync(path.join(state,'local-inference/routing.json'),JSON.stringify({version:1,preferences:{policy:{TEXT_SMALL:'local-only',TEXT_LARGE:'prefer-local'},preferredProvider:{TEXT_SMALL:'capacitor-llama',TEXT_EMBEDDING:'local-embedding-fixture'}}}));
@@ -33,5 +35,12 @@ try{
  for(const slot of [ModelType.TEXT_SMALL,ModelType.TEXT_LARGE])assert.equal(await runtime.useModel(slot,{prompt:'Synthetic route check'}),'Cloud route selected');
  assert.equal(cloudCalls,2);assert.equal(localCalls,0);assert.equal(modelLogs.length,2);assert.equal(providerRequests,0);
  const saved=fs.readFileSync(process.env.ELIZA_CONFIG_PATH!,'utf8');assert.ok(!saved.includes('synthetic-native-cloud-key'));assert.ok(!saved.includes('stale-synthetic-key'));
- console.log(JSON.stringify({nativeAdmissionStartup:true,compiledHostStartup:true,realRuntimeCloudSelections:cloudCalls,localTextCalls:localCalls,providerRequests,credentialPersisted:false}));
+ // Default native profile through the real stores: an earlier Cloud QA embedding route is replaced by the local one.
+ delete process.env.ELIZA_RUNTIME_PROFILE;
+ fs.writeFileSync(process.env.ELIZA_CONFIG_PATH!,JSON.stringify({cloud:{enabled:false},serviceRouting:{embeddings:{backend:'elizacloud',transport:'cloud-proxy'}},features:{shellEnabled:false}}));
+ const {applyNativeCloudRuntimeProfile}=await import(pathToFileURL(path.join(sdk,'packages/app/src/runtime/native-runtime-profile.ts')).href);
+ await applyNativeCloudRuntimeProfile(process.env,nativeCloudRuntime);
+ const native=JSON.parse(fs.readFileSync(process.env.ELIZA_CONFIG_PATH!,'utf8'));
+ assert.deepEqual(native.serviceRouting.embeddings,{backend:'eliza-local-inference',transport:'direct'});assert.equal(native.serviceRouting.llmText.backend,'elizacloud');assert.equal(providerRequests,0);
+ console.log(JSON.stringify({nativeAdmissionStartup:true,compiledHostStartup:true,realRuntimeCloudSelections:cloudCalls,localTextCalls:localCalls,nativeEmbeddingsLocal:true,providerRequests,credentialPersisted:false}));
 }finally{await host?.close();globalThis.fetch=originalFetch;fs.rmSync(state,{recursive:true,force:true});}

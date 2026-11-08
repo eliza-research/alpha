@@ -616,19 +616,15 @@ export function installAgentAdapter(Component: Shell, views: Shell) {
     }
     if(view==='messages')providerSelection=shell.smsSelection?.();
     if(view==='calendar')providerSelection=shell.calendarSelection?.();
-    if (view === 'contacts' || view==='calendar'&&!providerSelection) {
+    // Contacts emit no selection: native rows stay in the contacts adapter and no operation takes a contact.
+    if (view==='calendar'&&!providerSelection) {
       const state = shell.vget(view);
-      const record = (view === 'calendar' ? state.events : state.list)?.find((row: Shell) => row.id === state.open);
+      const record = state.events?.find((row: Shell) => row.id === state.open);
       // Only native-backed rows have authority; fixture records never become
       // agent targets. Content stays local; only identity/revision is sent.
-      if (record && (view === 'contacts' || record.alphaReminderId)) {
-        const id = String(record.alphaCalendarId || record.alphaReminderId || record.id), key = `${view}:${id}`;
-        shell.entityRevisions ||= new Map();
-        const signature = JSON.stringify(record), previous = shell.entityRevisions.get(key);
-        const revision = previous?.signature === signature ? previous.revision : (previous?.revision || 0) + 1;
-        shell.entityRevisions.set(key, { signature, revision });
-        providerSelection = { kind: view === 'contacts' ? 'contact' : record.alphaCalendarId ? 'calendar-event' : 'reminder', id, revision: String(revision) };
-        if(record.alphaReminderId){const target=shell.reminderTargets?.get(id);providerSelection=target?{kind:'reminder',id:target.reminderId,revision:target.revision,accountId:target.sourceId,sourceRevision:target.sourceRevision,occurrenceId:target.occurrenceId,...(target.timingVersion===2?{timingVersion:2}: {})}:undefined;}
+      if (record?.alphaReminderId) {
+        const target=shell.reminderTargets?.get(String(record.alphaCalendarId || record.alphaReminderId));
+        providerSelection=target?{kind:'reminder',id:target.reminderId,revision:target.revision,accountId:target.sourceId,sourceRevision:target.sourceRevision,occurrenceId:target.occurrenceId,...(target.timingVersion===2?{timingVersion:2}: {})}:undefined;
       }
     }
     if(view==='calendar'&&shell.clockSelection?.())providerSelection=shell.clockSelection();
@@ -827,7 +823,9 @@ export function installAgentAdapter(Component: Shell, views: Shell) {
       return result.status==='succeeded'?{status:'succeeded',reminderResult:isReminderCreate(operation)?validateReminderCreateResult(operation,result.result,operationId):validateReminderResult(operation,result.result)}:{status:'unknown'};
     });
     connectionController.setViewInteractionExecutor(async(view,capability,params,signal,current)=>{
-      current();if(!this.live||view!=='browser'||capability!=='browser-command'||!params||typeof params!=='object'||!this.browserCommand)throw Error('Native view capability is unavailable');
+      current();
+      if(view==='browser'&&capability==='browser-command'&&(!this.live||!this.browserCommand))return {ok:false,code:'UNAVAILABLE',message:'Native view capability is unavailable'};
+      if(!this.live||view!=='browser'||capability!=='browser-command'||!params||typeof params!=='object'||!this.browserCommand)throw Error('Native view capability is unavailable');
       return this.browserCommand((params as Record<string,unknown>).command,signal,current);
     });
     connectionController.setNavigationContext(()=>this.live?alphaClient.getState().context:null);
@@ -1593,7 +1591,9 @@ export function installAgentAdapter(Component: Shell, views: Shell) {
     if(!this.messageEditTarget&&s.view==='camera'&&cameraFrameQuestionRequested(text)&&askAboutCameraFrame(text.trim())){if(fromComposer)this.setState({draft:''});return;}
     const editTarget:ConversationMessageTarget|undefined=this.messageEditTarget,replyTarget:ConversationMessageTarget|undefined=fromComposer?this.messageReplyTarget:undefined,editView=s.view;
     if(editTarget){
-      if(argument!==undefined||!connectionController.messageTargetCurrent(editTarget))return;
+      // An app action must not replace or abandon the user's open edit.
+      if(argument!==undefined){this.toast('Finish or cancel the message you are editing first.');return;}
+      if(!connectionController.messageTargetCurrent(editTarget))return;
       this.draftSendPending=true;
       try {
         if(!await messageReviews.confirm('edit-message-'+editTarget.messageId,'Edit and resend message','This replaces the selected message and all later messages in this conversation. It does not undo actions that already ran.\n\nOriginal: '+editTarget.text+'\n\nReplacement: '+text,'Edit and resend'))return;
@@ -1638,11 +1638,11 @@ export function installAgentAdapter(Component: Shell, views: Shell) {
       navigation=connectionController.captureViewNavigation(alphaClient.getState().context);
       // The request becomes pending after the render above; render again so Stop is offered before any streamed text.
       queueMicrotask(()=>{if(this.live&&alphaClient.getState().pending)this.setState({});});
+      if(!transcriptCurrent())throw new NotDispatched('The recording changed. Attach the transcript again.');
       // The planning label shows only until the first reply text; it is never kept as a message.
       const showStatus=(event:Event)=>{if(this.live&&!streamed&&this.sendAttempt===attempt)this.setState({turnStatus:(event as CustomEvent<string>).detail});};
       localTurnStatus.addEventListener('label',showStatus);
       let reply;
-      if(!transcriptCurrent())throw new NotDispatched('The recording changed. Attach the transcript again.');
       // The Notes view context carries the exact selected record and revision.
       const requestText=transcript?'Use the transcript of the selected voice note to answer this question.\n\n'+text:text;
       try{reply = await alphaClient.send(requestText,value=>{

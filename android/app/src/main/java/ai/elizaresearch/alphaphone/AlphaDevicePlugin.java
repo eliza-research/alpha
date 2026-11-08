@@ -504,14 +504,15 @@ public final class AlphaDevicePlugin extends Plugin {
   long asked=updateAsked;
   // Leave time for a queued accept, an activity not yet covering Alpha, or a status in flight.
   if(confirm!=null&&!pastConfirmation(pending,confirm)&&(asked==0||System.nanoTime()-asked>=java.util.concurrent.TimeUnit.SECONDS.toNanos(3))&&(!updateOpen||owner==null||owner.inFront())&&(!updateDue||owner==null||owner==this)){
-   updateOwner=this;updateOpen=false;updateDue=true;
    getActivity().runOnUiThread(()->{
-    // An accept, a new status, or a retired bridge can overtake this queued launch.
-    if(updateOwner!=this||updateSession!=id||updateConfirm!=confirm||!inFront())return;
+    // An accept, a new status, an earlier tap's open (updateAsked moved), another bridge taking the kept confirmation, or a
+    // retired bridge can overtake this queued launch. The writes happen here on main so two taps queued ahead of main open once.
+    if(updateSession!=id||updateConfirm!=confirm||updateAsked!=asked||updateDue&&updateOwner!=null&&updateOwner!=this||updateWorker.isShutdown()||!inFront())return;
     try{
      var current=getContext().getPackageManager().getPackageInstaller().getSessionInfo(id);
-     if(pastConfirmation(current,confirm)){updateDue=false;return;}
+     if(pastConfirmation(current,confirm))return;
     }catch(RuntimeException unavailable){return;}
+    updateOwner=this;updateOpen=false;updateDue=true;
     confirmUpdate();
    });
   }

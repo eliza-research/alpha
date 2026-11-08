@@ -41,7 +41,7 @@ public final class BrowserStorageFormatInstrumentedTest {
   return generator.generateKey();
  }
  @Test public void installedBrowserRecordsKeepTheirFormat()throws Exception{
-  assertEquals("Fresh disposable user required","1",InstrumentationRegistry.getArguments().getString("disposableBrowserStorageFixture"));
+  org.junit.Assume.assumeTrue("Explicit disposable browser storage fixture required","1".equals(InstrumentationRegistry.getArguments().getString("disposableBrowserStorageFixture")));
   Context context=InstrumentationRegistry.getInstrumentation().getTargetContext();
   SharedPreferences bookmarks=context.getSharedPreferences(BOOKMARKS,0),session=context.getSharedPreferences(SESSION,0);
   KeyStore keys=KeyStore.getInstance("AndroidKeyStore");keys.load(null);

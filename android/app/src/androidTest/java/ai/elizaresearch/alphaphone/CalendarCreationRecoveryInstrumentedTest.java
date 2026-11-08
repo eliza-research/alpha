@@ -36,6 +36,7 @@ public final class CalendarCreationRecoveryInstrumentedTest {
   ContentValues calendar=new ContentValues();calendar.put("account_name",name);calendar.put("account_type",CalendarContract.ACCOUNT_TYPE_LOCAL);calendar.put("name",name);calendar.put("calendar_displayName",name);calendar.put("calendar_access_level",CalendarContract.Calendars.CAL_ACCESS_OWNER);calendar.put("ownerAccount",name);calendar.put("calendar_timezone","UTC");calendar.put("visible",1);calendar.put("sync_events",1);
   Uri calendars=CalendarContract.Calendars.CONTENT_URI.buildUpon().appendQueryParameter(CalendarContract.CALLER_IS_SYNCADAPTER,"true").appendQueryParameter("account_name",name).appendQueryParameter("account_type",CalendarContract.ACCOUNT_TYPE_LOCAL).build();
   Uri created=context.getContentResolver().insert(calendars,calendar);assertNotNull(created);long calendarId=ContentUris.parseId(created);
+  Throwable primary=null;
   try {
    ContentValues values=new ContentValues();values.put("calendar_id",calendarId);values.put("title","Owned recovery event");values.put("description","");values.put("eventLocation","");values.put("dtstart",System.currentTimeMillis()+3600000);values.put("dtend",System.currentTimeMillis()+7200000);values.put("eventTimezone","UTC");
    JSObject first=CalendarCreationStore.create(context,id,values,false);assertEquals("saved",first.getString("status"));String eventId=first.getString("id");assertEquals(1,count(context,calendarId));
@@ -57,11 +58,14 @@ public final class CalendarCreationRecoveryInstrumentedTest {
    assertEquals("pending-creation",CalendarCreationStore.create(context,separate,values,false).getString("status"));assertEquals(1,count(context,calendarId));
    assertEquals("saved",CalendarCreationStore.create(context,separate,values,true).getString("status"));assertEquals(2,count(context,calendarId));
    assertEquals(2,CalendarCreationStore.pendingCreations(context).getJSONArray("creations").length());
-  } finally {
+  }catch(Exception|AssertionError failure){primary=failure;throw failure;}
+  finally{
+   try{
    Uri exact=ContentUris.withAppendedId(calendars,calendarId);
    try(Cursor row=context.getContentResolver().query(exact,new String[]{"account_name","name"},null,null,null)){assertNotNull(row);assertTrue(row.moveToFirst());assertEquals(name,row.getString(0));assertEquals(name,row.getString(1));}
    assertEquals("Delete only the exact fixture calendar",1,context.getContentResolver().delete(exact,null,null));
    JSONObject all=new JSONObject(journal.getString("operations","{}"));all.remove(id);all.remove(separate);assertTrue(journal.edit().putString("operations",all.toString()).commit());
+   }catch(Exception|AssertionError cleanup){if(primary!=null)primary.addSuppressed(cleanup);else throw cleanup;}
   }
  }
  private int count(Context context,long calendarId){try(Cursor rows=context.getContentResolver().query(CalendarContract.Events.CONTENT_URI,new String[]{"_id"},"calendar_id=? AND deleted=0",new String[]{Long.toString(calendarId)},null)){assertNotNull(rows);return rows.getCount();}}

@@ -14,6 +14,7 @@ import {webSourceOf} from './summary-source';
 import {browserCalendarScope} from './agent-calendar-adapter';
 import { connectionController, agentPendingText } from '../runtime/connection-ui';
 import { BrowserReviews } from '../browser/review';
+import { createExternalBrowserHandoff } from './browser-external-handoff';
 import { browserErrorMessage } from '../browser/browser-errors';
 const {tabs: MAX_TABS, history: MAX_HISTORY} = DEFAULT_BROWSING_LIMITS;
 type Bag = Record<string, any>;
@@ -275,26 +276,12 @@ export function installPrototypeBrowserAdapter(Component: any, views: Record<str
     shell.vset('browser',{menu:false,share:false});
     shell.api('browser').open('inbox',{compose:{subject:info.title||'Shared page',body:info.url}});
   }
-  async function openExternalBrowser() {
-    if (sharing || confirming || disposed || !shell) return;
-    const id = state()?.cur, page = tabs.pageBinding(id, {https: true});
-    if (!page) { report(new Error('Load an HTTPS page before opening another browser.')); return; }
-    sharing = true;
-    try {
-      const priv = isPrivate(id);
-      shell.vset('browser', {menu:false});
-      if (priv) {
-        confirming = true; lastGeometry = ''; await update();
-        const approved = await reviews.confirm('external-browser', 'Leave private browsing?', `Only this address will be sent to another browser:\n${page.url}\n\nThe other browser may save it in its history and use its own signed-in accounts. Alpha cookies and private tab data are not transferred.`, 'Choose browser');
-        confirming = false;
-        if (!approved) return;
-      }
-      if (disposed || document.hidden || shell.S().view!=='browser' || !tabs.current(page, state()?.cur)) throw new Error('The page changed. Review it again before leaving Alpha.');
-      lastGeometry=''; await update();
-      await Browser.openExternalBrowser({...tabs.guard(page),privateConfirmed:priv});
-    } catch (error) { report(error); }
-    finally { sharing=false; confirming=false; lastGeometry=''; await update(); }
-  }
+  const openExternalBrowser = createExternalBrowserHandoff({tabs, reviews, shell: () => shell, Browser, state, isPrivate, update: () => update(), report, flags: {
+    get sharing() { return sharing; }, set sharing(value) { sharing = value; },
+    get confirming() { return confirming; }, set confirming(value) { confirming = value; },
+    get lastGeometry() { return lastGeometry; }, set lastGeometry(value) { lastGeometry = value; },
+    get disposed() { return disposed; },
+  }});
   /** Remove renderer tabs whose native WebView is already gone. A closed pop-up returns to its opener. */
   function forgetTabs(ids: string[]) {
     tabs.forget(ids); for (const id of ids) restored.delete(id);
@@ -419,10 +406,14 @@ export function installPrototypeBrowserAdapter(Component: any, views: Record<str
     if (!sessionRead && this.vget('browser')?.tabs) void restoreSession();
     browserWasActive = browserActive;
     this.browserCommand = async (raw:unknown,signal:AbortSignal,current:()=>void) => {
-      const command=parseNativeHistoryCommand(raw),id=state()?.cur,info=tabInfo(id);
+      // Refusals before Browser.command are typed: nothing was dispatched, so the agent
+      // must not report that the command may have run.
+      let command:ReturnType<typeof parseNativeHistoryCommand>;
+      try{command=parseNativeHistoryCommand(raw);}catch(error){return {ok:false,code:'UNSUPPORTED',message:error instanceof Error?error.message:String(error)};}
+      const id=state()?.cur,info=tabInfo(id);
       const admittedNavigation=info?.navigation;
       const bound=()=>{signal.throwIfAborted();current();if(disposed||!Capacitor.isNativePlatform()||document.hidden||shell.S().view!=='browser'||state()?.menu||state()?.tabsOpen||state()?.lib||state()?.share||state()?.editing||shell.S().shade||state()?.cur!==id||!tabs.has(id)||!info?.committed||info.error||info.loading||tabInfo(id)?.navigation!==admittedNavigation)throw Error('Current native browser tab changed');};
-      bound();
+      try{bound();}catch(error){return {ok:false,code:'UNAVAILABLE',message:error instanceof Error?error.message:String(error)};}
       const receipt=await Browser.command({session,id,command:command.subaction,navigation:admittedNavigation});
       // A back/reload dispatch may change its own document. Keep exact tab/session
       // and lifetime fences; never call the command again to obtain an acknowledgment.

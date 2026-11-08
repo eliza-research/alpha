@@ -6,11 +6,19 @@ import { test, expect } from '@playwright/test';
 // Real renderer, pairing, connection controller, proposal parser and journal
 // orchestration and real browser reminder storage/review. Connection and journal
 // boundaries are controlled fixtures; no real agent or external service is used.
-for (const mode of ['read', 'update', 'complete', 'cancel', 'stale', 'recurring-complete', 'older-peer', 'create-none', 'create-lead', 'create-repeat', 'create-old-peer'] as const) {
-  test(`browser assistant v2 no-alert action: ${mode}`, async ({ page }) => {
-    await page.addInitScript((mode) => {
-      const w = window as any, store = new Map();
-      if(!localStorage.getItem('alpha.browser.reminders.v1'))localStorage.setItem('alpha.browser.reminders.v1',JSON.stringify({sourceRevision:'b'.repeat(64),reminders:[{id:'selected-reminder',title:'Selected private reminder',body:'Private reminder details',at:Date.parse('2026-10-02T13:00:00Z'),dueAt:Date.parse('2026-10-02T13:00:00Z'),alertMinutes:null,status:'pending',occurrenceId:'initial-occurrence',revision:'c'.repeat(64),mode:'none',createdAt:Date.now(),...(mode==='recurring-complete'?{recurrence:{rule:'daily',zone:'UTC',date:'2026-10-02',time:'13:00',leadMinutes:0}}:{})}]}));
+// v1: a legacy reminder (no alertMinutes, no timingVersion) and a v1-only peer.
+// v2: a no-alert reminder (timingVersion 2), except snooze-alert, which seeds a 0-minute alert.
+const cases = [
+  ...(['create', 'read', 'update', 'complete', 'snooze', 'cancel', 'stale', 'recurring-complete'] as const).map(mode => ({ target: 'v1' as const, mode })),
+  ...(['read', 'update', 'complete', 'snooze', 'snooze-alert', 'cancel', 'stale', 'recurring-complete', 'older-peer', 'create-none', 'create-lead', 'create-repeat', 'create-old-peer'] as const).map(mode => ({ target: 'v2' as const, mode })),
+];
+for (const { target: version, mode } of cases) {
+  const v2 = version === 'v2';
+  test(v2 ? (mode === 'snooze-alert' ? 'browser assistant v2 alert action: snooze' : `browser assistant v2 no-alert action: ${mode}`) : `browser assistant reminder action: ${mode}`, async ({ page }) => {
+    await page.addInitScript(({ v2, mode }) => {
+      const w = window as any, store = new Map(), alert = !v2 || mode === 'snooze-alert';
+      const timing = v2 ? { alertMinutes: alert ? 0 : null } : {};
+      if(!localStorage.getItem('alpha.browser.reminders.v1'))localStorage.setItem('alpha.browser.reminders.v1',JSON.stringify({sourceRevision:'b'.repeat(64),reminders:[{id:'selected-reminder',title:'Selected private reminder',body:'Private reminder details',at:Date.parse('2026-10-02T13:00:00Z'),dueAt:Date.parse('2026-10-02T13:00:00Z'),...timing,status:alert?'scheduled':'pending',occurrenceId:'initial-occurrence',revision:'c'.repeat(64),mode:alert?'inexact':'none',createdAt:Date.now(),...(mode==='recurring-complete'?{recurrence:{rule:'daily',zone:'UTC',date:'2026-10-02',time:'13:00',leadMinutes:0}}:{})}]}));
       const agentId = '12345678-1234-4234-8234-123456789abc';
       const fixture = w.recoveryFixture = { posts: 0, lists: 0, decisions: 0, claims: 0, receipts: 0, effects: 0, journal: [] as string[], proposal: null as any };
       const methods = (names: string[]) => names.map(name => ({ name, rtype: 'promise' }));
@@ -48,19 +56,20 @@ for (const mode of ['read', 'update', 'complete', 'cancel', 'stale', 'recurring-
           if (pathname === '/api/agents') return ok({ agents: [{ id: agentId, name: 'Recovery fixture', status: 'running' }] });
           if (pathname === '/api/client-devices/register') {
             w.calendarInstallation=input.headers['X-Eliza-Device-Id'];
-            return ok({ installationId: input.headers['X-Eliza-Device-Id'], enrollmentId: 'fixture-enrollment', capabilities: ['reminders.local-record.v1',...(mode==='older-peer'?[]:['reminders.local-record.v2']),'calendar.local-event.v1','notes.local-record.v1','maps.selected-read.v1','clock.handoff.v1',...(mode==='create-old-peer'?[]:['reminders.create.v1'])] });
+            return ok({ installationId: input.headers['X-Eliza-Device-Id'], enrollmentId: 'fixture-enrollment', capabilities: v2 ? ['reminders.local-record.v1',...(mode==='older-peer'?[]:['reminders.local-record.v2']),'calendar.local-event.v1','notes.local-record.v1','maps.selected-read.v1','clock.handoff.v1',...(mode==='create-old-peer'?[]:['reminders.create.v1'])] : ['reminders.local-record.v1','calendar.local-event.v1'] });
           }
           if (pathname === '/api/workflow/status') return ok({});
           if (pathname === '/api/conversations' && input.method === 'POST') return ok({ conversation: { id: 'fixture-chat', title: 'Fixture' } });
           if (pathname === '/api/conversations/fixture-chat/messages' && input.method === 'POST') {
-            if (mode!=='older-peer'&&!input.headers['X-Eliza-Device-Capabilities']?.split(',').includes('reminders.local-record.v2')) throw Error('Reminder capability was not negotiated');
-            if(mode!=='older-peer'&&input.headers['X-Eliza-Device-Capabilities'].split(',').includes('reminders.local-record.v1'))throw Error('Duplicate reminder version negotiated');
+            if (!v2&&!input.headers['X-Eliza-Device-Capabilities']?.split(',').includes('reminders.local-record.v1')) throw Error('Reminder capability was not negotiated');
+            if (v2&&mode!=='older-peer'&&!input.headers['X-Eliza-Device-Capabilities']?.split(',').includes('reminders.local-record.v2')) throw Error('Reminder capability was not negotiated');
+            if(v2&&mode!=='older-peer'&&input.headers['X-Eliza-Device-Capabilities'].split(',').includes('reminders.local-record.v1'))throw Error('Duplicate reminder version negotiated');
             fixture.posts++;
             const sent=JSON.parse(input.body);w.calendarSent=sent;
             w.calendarSentCapabilities=input.headers['X-Eliza-Device-Capabilities'].split(',');
             const target=sent.metadata.clientDevice.context.selectedObject;
-            const fields={title:'Assistant planned reminder',body:'Reviewed details',schedule:{at:Date.now()+7200000,recurrence:null,dueAt:Date.now()+7800000,alertMinutes:10}};
-            const operation=mode.startsWith('create-')?{type:'reminder_create',fields:{title:'Assistant created reminder',body:'Reviewed creation body',schedule:{at:Date.parse('2026-10-02T14:00:00Z')-(mode==='create-lead'?600000:0),dueAt:Date.parse('2026-10-02T14:00:00Z'),alertMinutes:mode==='create-lead'?10:null,recurrence:mode==='create-repeat'?{rule:'daily',zone:'UTC',date:'2026-10-02',time:'14:00',leadMinutes:0}:null}}}:mode==='create'?{type:'create_reminder',title:'Assistant created reminder',dueAt:new Date(Date.now()+7200000).toISOString()}:{type:mode==='read'?'reminder_read_selected':mode==='stale'||mode==='recurring-complete'||mode==='older-peer'?'reminder_complete':'reminder_'+mode,target:{sourceId:target.accountId,sourceRevision:target.sourceRevision,reminderId:target.id,occurrenceId:target.occurrenceId,revision:target.revision,timingVersion:target.timingVersion},...(mode==='update'?{fields}:{})};
+            const fields={title:'Assistant planned reminder',body:'Reviewed details',schedule:{at:Date.now()+7200000,recurrence:null,...(v2?{dueAt:Date.now()+7800000,alertMinutes:10}:{})}};
+            const operation=mode.startsWith('create-')?{type:'reminder_create',fields:{title:'Assistant created reminder',body:'Reviewed creation body',schedule:{at:Date.parse('2026-10-02T14:00:00Z')-(mode==='create-lead'?600000:0),dueAt:Date.parse('2026-10-02T14:00:00Z'),alertMinutes:mode==='create-lead'?10:null,recurrence:mode==='create-repeat'?{rule:'daily',zone:'UTC',date:'2026-10-02',time:'14:00',leadMinutes:0}:null}}}:mode==='create'?{type:'create_reminder',title:'Assistant created reminder',dueAt:new Date(Date.now()+7200000).toISOString()}:{type:mode==='read'?'reminder_read_selected':mode==='stale'||mode==='recurring-complete'||mode==='older-peer'?'reminder_complete':mode==='snooze-alert'?'reminder_snooze':'reminder_'+mode,target:{sourceId:target.accountId,sourceRevision:target.sourceRevision,reminderId:target.id,occurrenceId:target.occurrenceId,revision:target.revision,...(v2?{timingVersion:target.timingVersion}:{})},...(mode==='update'?{fields}:{})};
             fixture.proposal={id:'fixture-proposal',digest:'a'.repeat(64),state:'pending',expiresAt:new Date(Date.now()+60000).toISOString(),subjectUserId:'fixture-owner',requestedBy:agentId,action:'device_action',payload:{action:'device_action',version:1,installationId:w.calendarInstallation,enrollmentId:'fixture-enrollment',operation}};
             return ok({ text: 'The request remains incomplete because processing stopped unexpectedly. Recorded tool outcomes are preserved; remaining work has not been completed.', agentName: 'Recovery fixture', terminalFailure: { kind: 'handler_error', code: 'PLANNER_INTERRUPTED_AFTER_ACTION', transient: false } });
           }
@@ -75,10 +84,9 @@ for (const mode of ['read', 'update', 'complete', 'cancel', 'stale', 'recurring-
           throw Error('Unexpected fixture route ' + pathname);
         },
       };
-    }, mode);
+    }, { v2, mode });
     await page.clock.setFixedTime(new Date('2026-10-02T12:00:00Z'));
     await page.goto('/?mode=dev');
-    await page.getByRole('button', { name: 'Settings', exact: true }).click();
     await openConnectionDiagnostics(page);
     await page.getByText('Local development agent', { exact: true }).click();
     const local = page.locator('.alpha-connection details').filter({ has: page.getByText('Local development agent', { exact: true }) });
@@ -121,13 +129,13 @@ for (const mode of ['read', 'update', 'complete', 'cancel', 'stale', 'recurring-
       return;
     }
     await expect(page.getByText(/Review the action below\./)).toBeVisible();
-    expect(await page.evaluate(()=>(window as any).calendarSent.metadata.clientDevice.context.selectedObject)).toMatchObject({kind:'reminder',timingVersion:2});
+    expect(await page.evaluate(()=>(window as any).calendarSent.metadata.clientDevice.context.selectedObject)).toMatchObject({kind:'reminder',...(v2?{timingVersion:2}:{})});
     const before=await page.evaluate(async ()=>JSON.parse((await (await import('/src/browser/reminder-store.ts')).reminderDocument.readRaw())!).reminders);expect(before).toHaveLength(1);
     expect(JSON.stringify(await page.evaluate(()=>(window as any).calendarSent))).not.toContain('Private reminder details');
     if(mode==='stale')await page.evaluate(async ()=>{await (await import('/src/browser/reminder-store.ts')).reminderDocument.edit(()=>({reminders:[] as any[]}),data=>{data.reminders[0].revision='d'.repeat(64);data.reminders[0].title='Changed elsewhere';});});
     await page.getByRole('button',{name:'Expand chat',exact:true}).click();
     const operation=await page.evaluate(()=>(window as any).recoveryFixture.proposal.payload.operation);
-    const presentation=presentDeviceRecordOperation(operation,await page.evaluate(()=>(window as any).calendarSent.metadata.clientDevice.context.timeZone));
+    const presentation=presentDeviceRecordOperation(operation,v2?await page.evaluate(()=>(window as any).calendarSent.metadata.clientDevice.context.timeZone):'UTC');
     const approvalLabel=presentation.title;
     await page.getByText(approvalLabel,{exact:true}).click();
     if(mode==='cancel'){
@@ -138,8 +146,10 @@ for (const mode of ['read', 'update', 'complete', 'cancel', 'stale', 'recurring-
     }
     await expect.poll(()=>page.evaluate(()=>(window as any).recoveryFixture.receipts),{timeout:mode==='cancel'?20_000:5_000}).toBe(1);
     if(mode==='cancel')await expect.poll(()=>page.evaluate(async()=>JSON.parse((await(await import('/src/browser/reminder-store.ts')).reminderDocument.readRaw())!).reminders[0].status),{timeout:20_000}).toBe('cancelled');
+    // A no-alert reminder cannot be snoozed: the approved v2 snooze is refused and changes nothing.
+    const refused=v2&&mode==='snooze';
     const rows=await page.evaluate(async ()=>JSON.parse((await (await import('/src/browser/reminder-store.ts')).reminderDocument.readRaw())!).reminders);expect(rows).toHaveLength(mode==='create'||mode.startsWith('create-')?2:1);
-    const receipt=await page.evaluate(()=>(window as any).calendarRetained);expect(receipt.summary).not.toContain('Android');expect(receipt.status).toBe(mode==='stale'?'failed':mode==='cancel'?'unknown':'succeeded');
+    const receipt=await page.evaluate(()=>(window as any).calendarRetained);expect(receipt.summary).not.toContain('Android');expect(receipt.status).toBe(mode==='stale'||refused?'failed':mode==='cancel'?'unknown':'succeeded');
     if(mode==='cancel'){
       const recovered=await page.evaluate(async()=>{const {deletions}=await import('/src/runtime/deletions.ts');return deletions.receipt({entry:(window as any).calendarEntry});});
       expect(recovered.recovery).toMatchObject({status:'succeeded',result:{reminderResult:{kind:'reminder_cancel',status:'cancelled'}}});
@@ -150,13 +160,14 @@ for (const mode of ['read', 'update', 'complete', 'cancel', 'stale', 'recurring-
       expect(receipt.result.reminderResult.reminderId).toBe(rows[1].id);expect(receipt.result.reminderResult.fields.schedule).toEqual((await page.evaluate(()=>(window as any).recoveryFixture.proposal.payload.operation.fields.schedule)));
     }
     if(mode==='create')expect(rows[1]).toMatchObject({title:'Assistant created reminder',status:'scheduled',at:Date.parse('2026-10-02T14:00:00Z')});
-    if(mode==='read'){expect(rows).toEqual(before);expect(receipt.result.reminderResult).toMatchObject({alertMinutes:null,dueAt:before[0].dueAt,status:'pending'});expect(receipt.result.reminderResult.fields.body).toBe('Private reminder details');}
+    if(mode==='read'){expect(rows).toEqual(before);if(v2)expect(receipt.result.reminderResult).toMatchObject({alertMinutes:null,dueAt:before[0].dueAt,status:'pending'});expect(receipt.result.reminderResult.fields.body).toBe('Private reminder details');}
     if(mode==='update')expect(rows[0]).toMatchObject({title:'Assistant planned reminder',body:'Reviewed details',at:Date.parse('2026-10-02T14:00:00Z')});
-    if(mode==='recurring-complete'){expect(rows[0]).toMatchObject({status:'pending',at:Date.parse('2026-10-03T13:00:00Z'),recurrence:{date:'2026-10-03'}});expect(rows[0].occurrenceId).not.toBe(before[0].occurrenceId);expect(rows[0].history).toHaveLength(1);}
+    if(mode==='recurring-complete'){expect(rows[0]).toMatchObject({status:before[0].status,at:Date.parse('2026-10-03T13:00:00Z'),recurrence:{date:'2026-10-03'}});expect(rows[0].occurrenceId).not.toBe(before[0].occurrenceId);expect(rows[0].history).toHaveLength(1);}
     if(mode==='complete')expect(rows[0].status).toBe('completed');
     if(mode==='cancel')expect(rows[0].status).toBe('cancelled');
-    if(mode==='snooze')expect(rows[0]).toMatchObject({status:'scheduled',at:Date.parse('2026-10-02T12:10:00Z')});
-    if(mode==='stale')expect(rows[0]).toMatchObject({title:'Changed elsewhere',status:'pending'});
+    if(refused)expect(rows).toEqual(before);
+    else if(mode==='snooze'||mode==='snooze-alert')expect(rows[0]).toMatchObject({status:'scheduled',at:Date.parse('2026-10-02T12:10:00Z')});
+    if(mode==='stale')expect(rows[0]).toMatchObject({title:'Changed elsewhere',status:before[0].status});
     expect(await page.evaluate(()=>(window as any).recoveryFixture.journal)).toEqual(expect.arrayContaining(['reserve','markApplying','finish']));
     if(mode==='recurring-complete'){const replay=await page.evaluate(async()=>{const {registerPlugin}=await import('/src/platform-plugins.ts');const state=JSON.parse((await (await import('/src/browser/reminder-store.ts')).reminderDocument.readRaw())!),[id,receipt]=Object.entries(state.receipts)[0] as [string,any],[bindingHash,operation]=JSON.parse(receipt.binding);await registerPlugin<any>('DailyApps').operateReminder({operationId:id,bindingHash,operation});return JSON.parse((await (await import('/src/browser/reminder-store.ts')).reminderDocument.readRaw())!).reminders;});expect(replay).toEqual(rows);}
     await page.reload();expect(await page.evaluate(async ()=>JSON.parse((await (await import('/src/browser/reminder-store.ts')).reminderDocument.readRaw())!).reminders)).toEqual(rows);

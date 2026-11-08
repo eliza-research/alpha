@@ -50,7 +50,7 @@ export function upstreamNativeSource(root) {
    const filename=path.join(directory,name);
    for(let current=filename;current!==directory;current=path.dirname(current))if(fs.lstatSync(current).isSymbolicLink())throw Error('Symlink in upstream source path');
    const stat=fs.lstatSync(filename),bytes=blobs[index];
-   if(!stat.isFile()||(stat.mode&0o111)!==(mode==='100755'?0o111:0)||!fs.readFileSync(filename).equals(bytes))throw Error(`Upstream source drift: ${name}`);
+   if(!stat.isFile()||Boolean(stat.mode&0o100)!==(mode==='100755')||!fs.readFileSync(filename).equals(bytes))throw Error(`Upstream source drift: ${name}`);
    files.set(name,{bytes,mode,sha256:sha(bytes)});
   }
   return files;

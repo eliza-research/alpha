@@ -7,6 +7,10 @@ export interface HostedResultNative {
  pendingResult():Promise<Partial<HostedResultRoute>&{token?:string;retained?:boolean;question?:boolean}>;
  releaseResultQuestion?(input:{token:string}):Promise<void>;
  consumeResult(input:{token:string}):Promise<void>;
+ /** Android: these runs were shown in the app, so their notices are withdrawn. A captured tap stays pending. */
+ withdrawResult?(input:{scope:string;runIds:string[]}):Promise<{withdrawn:number}>;
+ /** Android: the scope whose results panel is on screen, or null. A result for it posts silently. */
+ setResultsShowing?(input:{scope:string|null}):Promise<void>;
  status():Promise<{enabled:boolean;backgroundEnabled?:boolean;backgroundStatus?:string;lastSuccess?:number}>;
  setBackgroundPolling(input:{enabled:boolean}):Promise<{enabled:boolean;backgroundEnabled?:boolean}>;
  enable():Promise<{enabled:boolean}>;

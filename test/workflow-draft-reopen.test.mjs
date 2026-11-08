@@ -3,15 +3,16 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import vm from 'node:vm';
 import {stripTypeScriptTypes} from 'node:module';
+const {checkWorkflowScope}=await import('../.eliza/client-features/packages/contracts/src/workflow-scope.ts');
 const source=stripTypeScriptTypes(fs.readFileSync('apps/app/src/prototype/workflow-authoring.ts','utf8').replace(/^import .*;\n/gm,'').replaceAll('export function','function'),{mode:'strip'});
 const deferred=()=>{let resolve;const promise=new Promise(done=>{resolve=done;});return {promise,resolve};};
-async function harness(){
+async function harness(options={}){
  const records=new Map(),gate=deferred(),entered=deferred();let held=false,fail=false;
- let session={origin:'owned-origin',ownerId:'owner-a',agentId:'agent-a'},binding={sessionId:'session-a',client:{async phoneCatalog(){return {palette:[],triggers:[]};}}};
+ let session={origin:'owned-origin',ownerId:'owner-a',agentId:'agent-a'},binding={sessionId:'session-a',client:{async phoneCatalog(){return {palette:[],triggers:[],...options.catalog};}}};
  const storage={async secureRead({slot}){return {value:records.get(slot)??null};},async secureCompareExchange(input){if(held){entered.resolve();await gate.promise;}if(fail)throw Error('Synthetic write unavailable');if((records.get(input.slot)??null)!==input.expectedValue)return {status:'conflict'};records.set(input.slot,input.value);return {status:'saved'};}};
- const ctx=vm.createContext({AbortController,TextEncoder,document:{hidden:false},browserLocalAgentEnabled:true,browserDevProfile:false,developmentWorkflowDraftStore:storage,registerPlugin:()=>({}),workflowSha:async values=>JSON.stringify(values),normalizePhoneSpec:spec=>JSON.parse(JSON.stringify(spec)),assertPhoneCapabilities:()=>{},connectionController:{getWorkflowClient:()=>binding,getSnapshot:()=>({session,open:false})},WORKFLOW_OPERATION_LABELS:{supplied_text:'Read supplied text'}});
+ const ctx=vm.createContext({AbortController,TextEncoder,document:{hidden:false},browserLocalAgentEnabled:true,browserDevProfile:false,developmentWorkflowDraftStore:storage,registerPlugin:()=>({}),workflowSha:async values=>JSON.stringify(values),normalizePhoneSpec:spec=>JSON.parse(JSON.stringify(spec)),assertPhoneCapabilities:()=>{},connectionController:{getWorkflowClient:()=>binding,getWorkflowDeviceTarget:()=>null,getSnapshot:()=>({session,open:false})},WORKFLOW_OPERATION_LABELS:{supplied_text:'Read supplied text'},checkWorkflowScope});
  vm.runInContext(source+';globalThis.create=createWorkflowAuthoring',ctx);
- const authoring=ctx.create(()=>({toast(){}}),()=>{},async()=>{}),api={ic:{},get:()=>({})};
+ const authoring=ctx.create(()=>({toast:options.toast??(()=>{})}),()=>{},async()=>{}),api={ic:{},get:()=>({})};
  await authoring.open();for(let i=0;i<5;i++)await Promise.resolve();
  return {authoring,render:()=>authoring.render(api),records,
   async editHeld(name){held=true;authoring.render(api).onName({target:{value:name}});await entered.promise;},
@@ -87,6 +88,14 @@ test('the save review names where the draft saves and keeps the full specificati
 });
 test('Describe stays available while the draft has steps',async()=>{
  const h=await harness();await h.reopen(flow('x','Workflow X'));assert.equal(h.render().empty,true);h.authoring.close();
+});
+test('a refused description toasts one short sentence and keeps the full refusal in the status line',async()=>{
+ const toasts=[],h=await harness({catalog:{generationProtocol:1},toast:text=>toasts.push(text)});
+ h.render().describe();h.render().onGenerationPrompt({target:{value:'Call Maya every morning with my agenda'}});await h.render().generateDraft();
+ const status=h.render().typedStatus;
+ assert.match(status,/Nothing was sent to the agent/);assert.equal(toasts.length,1);
+ assert.ok(toasts[0].length<60&&status.length>toasts[0].length,'the toast is short and the status carries the detail');
+ assert.equal(h.render().hasGenerated,false);h.authoring.close();
 });
 test('updater flush waits for queued draft bytes and refuses a failed write',async()=>{
  const h=await harness();await h.editHeld('Pending at update');let finished=false;

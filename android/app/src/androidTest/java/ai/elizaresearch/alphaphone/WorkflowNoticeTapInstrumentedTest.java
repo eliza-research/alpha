@@ -45,6 +45,22 @@ public final class WorkflowNoticeTapInstrumentedTest {
   }
   throw new AssertionError(observedReady?"Exact tap not retained":"Original notification launch never reached a resumed focused bridge");
  }
+ /** The resumed MainActivity's launch Intent; Capacitor installs each delivered tap with setIntent. */
+ private android.content.Intent resumedIntent()throws Exception{
+  java.util.concurrent.atomic.AtomicReference<android.content.Intent> found=new java.util.concurrent.atomic.AtomicReference<>();
+  BoundedActivityScenario.main(()->{for(android.app.Activity activity:androidx.test.runner.lifecycle.ActivityLifecycleMonitorRegistry.getInstance().getActivitiesInStage(androidx.test.runner.lifecycle.Stage.RESUMED))if(activity instanceof MainActivity)found.set(activity.getIntent());});
+  return found.get();
+ }
+ /** Waits until an Intent other than {@code before} is delivered and its data is {@code data}: null once its capture committed, the tap URI while it stays retained. */
+ private void awaitDelivered(android.content.Intent before,String data,String message)throws Exception{
+  long end=SystemClock.elapsedRealtime()+15000;
+  while(SystemClock.elapsedRealtime()<end){android.content.Intent now=resumedIntent();if(now!=null&&now!=before&&java.util.Objects.equals(data,now.getDataString()))return;SystemClock.sleep(50);}
+  fail(message);
+ }
+ private String state(AlphaCredentialStore store,String id)throws Exception{return new JSONObject(store.readCredentialSlot(WorkflowNoticeTaps.SLOT)).getJSONObject(id).getString("state");}
+ /** Fixture route of the restored synthetic owner. */
+ private static JSONObject route(JSONObject owner,String run)throws Exception{return new JSONObject(owner.toString()).put("scope","a".repeat(64)).put("workflowId","fixture-flow").put("runId",run).put("versionId","fixture-version");}
+ private static void forgetOwner(Context context,AlphaCredentialStore store,JSONObject owner)throws Exception{store.removeCredentialSlot("remote:"+owner.getString("origin"));store.removeCredentialSlot(WorkflowNoticeTaps.OWNER_SLOT);assertTrue(context.getSharedPreferences(WorkflowNoticeOwnerFixture.PREFS,0).edit().clear().commit());}
  private Notification notice(NotificationManager manager,String id){for(StatusBarNotification row:manager.getActiveNotifications())if(("alpha-workflow-"+id).equals(row.getTag()))return row.getNotification();throw new AssertionError("Notice absent");}
  @Test public void twoOpaqueNoticesRetainColdWarmAndFailedCaptureRoutes()throws Exception{
   org.junit.Assume.assumeTrue("Dedicated workflow tap campaign","1".equals(InstrumentationRegistry.getArguments().getString("workflowNoticeTap")));
@@ -52,11 +68,14 @@ public final class WorkflowNoticeTapInstrumentedTest {
   Context context=InstrumentationRegistry.getInstrumentation().getTargetContext();AlphaCredentialStore store=new AlphaCredentialStore(context);NotificationManager manager=context.getSystemService(NotificationManager.class);
   assertTrue("Fresh secondary fixture required",store.readCredentialSlot(WorkflowNoticeTaps.SLOT)==null);assertTrue("Fresh delivery fixture required",store.readCredentialSlot(WorkflowNoticeDelivery.SLOT)==null);
   String first="fixture_"+UUID.randomUUID(),second="fixture_"+UUID.randomUUID();PendingIntent cold,warm;String firstToken,secondToken;
-  try{
+  // Every MainActivity start re-runs the renderer's owner fence; a signed-out start withdraws other owners' notices.
+  // The notices belong to a restored synthetic session, so the cold relaunch keeps the same owner.
+  JSONObject owner=WorkflowNoticeOwnerFixture.seed(context);
+  try(WorkflowNoticeOwnerFixture fixture=new WorkflowNoticeOwnerFixture(context)){
    try(BoundedActivityScenario<MainActivity> activity=BoundedActivityScenario.launch(MainActivity.class)){
-    AppNavigation.liveMode();assertTrue(call("Capacitor.Plugins.AlphaNotifications.status()").getBoolean("appEnabled"));
+    fixture.signIn();assertTrue(call("Capacitor.Plugins.AlphaNotifications.status()").getBoolean("appEnabled"));
     for(String id:new String[]{first,second}){
-     JSONObject route=new JSONObject().put("scope","a".repeat(64)).put("origin","https://workflow-fixture.invalid").put("ownerId","fixture-owner").put("agentId","fixture-agent").put("workflowId","fixture-flow").put("runId",id).put("versionId","fixture-version");
+     JSONObject route=route(owner,id);
      JSONObject input=new JSONObject().put("operationId",id).put("bindingHash","b".repeat(64)).put("title","Fixture notification").put("body","Reviewed fixture output").put("route",route);
      // Android publication is asynchronous. Dispatch once, then reconcile only the receipt.
      String publication=call("Capacitor.Plugins.AlphaNotifications.postWorkflow("+input+")").getString("status");
@@ -106,19 +125,28 @@ public final class WorkflowNoticeTapInstrumentedTest {
     assertFalse("Fixture release thread stopped",release.isAlive());
     if(holdEntered.getCount()==0)assertTrue("Owned main-thread hold finished",holdFinished.await(2000,java.util.concurrent.TimeUnit.MILLISECONDS));
    }
+   // Settle the first tap back to an untapped route, so only the next send can change it.
+   JSONObject routes=new JSONObject(store.readCredentialSlot(WorkflowNoticeTaps.SLOT));routes.getJSONObject(first).put("state","new").put("order",0);store.writeCredentialSlot(WorkflowNoticeTaps.SLOT,routes.toString());
    String delivery=store.readCredentialSlot(WorkflowNoticeDelivery.SLOT);JSONObject uncertain=new JSONObject(delivery);uncertain.getJSONObject(first).put("status","unknown");store.writeCredentialSlot(WorkflowNoticeDelivery.SLOT,uncertain.toString());
-   cold.send();assertFalse(pending(firstToken).getBoolean("retained"));
+   android.content.Intent beforeUncertain=resumedIntent();cold.send();
+   awaitDelivered(beforeUncertain,WorkflowNoticeTaps.PREFIX+firstToken,"Uncertain-receipt tap reached the activity and stayed retained");
+   assertTrue("Capture is refused, so the retained tap reports unavailable",call("Capacitor.Plugins.AlphaNotifications.pendingWorkflowTap()").has("error"));
+   assertEquals("An unconfirmed receipt never queues the route","new",state(store,first));
    String saved=store.readCredentialSlot(WorkflowNoticeTaps.SLOT);store.writeCredentialSlot(WorkflowNoticeTaps.SLOT,"[]");
    warm.send();long warmEnd=SystemClock.elapsedRealtime()+15000;java.util.concurrent.atomic.AtomicBoolean captured=new java.util.concurrent.atomic.AtomicBoolean();
    while(SystemClock.elapsedRealtime()<warmEnd&&!captured.get()){BoundedActivityScenario.main(()->{for(android.app.Activity activity:androidx.test.runner.lifecycle.ActivityLifecycleMonitorRegistry.getInstance().getActivitiesInStage(androidx.test.runner.lifecycle.Stage.RESUMED))if(activity instanceof MainActivity&&activity.getIntent().getData()!=null)captured.set((WorkflowNoticeTaps.PREFIX+secondToken).equals(activity.getIntent().getData().toString()));});SystemClock.sleep(50);}
    assertTrue("Warm failed-capture intent retained",captured.get());assertNotNull(notice(manager,second));
    store.writeCredentialSlot(WorkflowNoticeTaps.SLOT,saved);assertEquals(second,pending(secondToken).getString("runId"));
-   assertFalse(call("Capacitor.Plugins.AlphaNotifications.consumeWorkflowTap({token:"+JSONObject.quote(secondToken)+"})").has("error"));assertEquals(first,pending(firstToken).getString("runId"));
+   assertFalse(call("Capacitor.Plugins.AlphaNotifications.consumeWorkflowTap({token:"+JSONObject.quote(secondToken)+"})").has("error"));
+   // The confirmed receipt lets the retained uncertain tap capture on its retry.
+   store.writeCredentialSlot(WorkflowNoticeDelivery.SLOT,delivery);JSONObject retried=pending(firstToken);assertEquals(first,retried.getString("runId"));assertTrue(retried.getBoolean("retained"));
    // Reconstruct from encrypted storage independently of the plugin instance.
-   assertEquals(firstToken,WorkflowNoticeTapsFactory.create(context).pending().getString("token"));store.writeCredentialSlot(WorkflowNoticeDelivery.SLOT,delivery);
+   assertEquals(firstToken,WorkflowNoticeTapsFactory.create(context).pending().getString("token"));
    assertFalse(call("Capacitor.Plugins.AlphaNotifications.consumeWorkflowTap({token:"+JSONObject.quote(firstToken)+"})").has("error"));
-   cold.send();SystemClock.sleep(100);assertFalse(call("Capacitor.Plugins.AlphaNotifications.pendingWorkflowTap()").has("token"));
-  }finally{manager.cancel("alpha-workflow-"+first,0);manager.cancel("alpha-workflow-"+second,0);store.writeCredentialSlot(WorkflowNoticeTaps.SLOT,"{}");store.writeCredentialSlot(WorkflowNoticeDelivery.SLOT,"{}");}
+   android.content.Intent beforeReplay=resumedIntent();cold.send();
+   awaitDelivered(beforeReplay,null,"Consumed-tap replay was handled");
+   assertFalse(call("Capacitor.Plugins.AlphaNotifications.pendingWorkflowTap()").has("token"));assertEquals("A replay never revives a consumed route","consumed",state(store,first));
+  }finally{manager.cancel("alpha-workflow-"+first,0);manager.cancel("alpha-workflow-"+second,0);store.writeCredentialSlot(WorkflowNoticeTaps.SLOT,"{}");store.writeCredentialSlot(WorkflowNoticeDelivery.SLOT,"{}");forgetOwner(context,store,owner);}
  }
  private boolean noticePresent(NotificationManager manager,String id){for(StatusBarNotification row:manager.getActiveNotifications())if(("alpha-workflow-"+id).equals(row.getTag()))return true;return false;}
  @Test public void askActionRetainsPurposeAndRequiresExactVisibleRevision()throws Exception{
@@ -126,10 +154,10 @@ public final class WorkflowNoticeTapInstrumentedTest {
   assertTrue("Runner must own an isolated secondary user",android.os.Process.myUid()/100000>0);
   Context context=InstrumentationRegistry.getInstrumentation().getTargetContext();AlphaCredentialStore store=new AlphaCredentialStore(context);NotificationManager manager=context.getSystemService(NotificationManager.class);
   assertTrue("Isolated ledger",store.readCredentialSlot(WorkflowNoticeTaps.SLOT)==null||"{}".equals(store.readCredentialSlot(WorkflowNoticeTaps.SLOT)));
-  String id="question_"+UUID.randomUUID();
-  try(BoundedActivityScenario<MainActivity> activity=BoundedActivityScenario.launch(MainActivity.class)){
-   AppNavigation.liveMode();
-   JSONObject route=new JSONObject().put("scope","a".repeat(64)).put("origin","https://workflow-fixture.invalid").put("ownerId","fixture-owner").put("agentId","fixture-agent").put("workflowId","fixture-flow").put("runId",id).put("versionId","fixture-version");
+  String id="question_"+UUID.randomUUID();JSONObject owner=WorkflowNoticeOwnerFixture.seed(context);
+  try(WorkflowNoticeOwnerFixture fixture=new WorkflowNoticeOwnerFixture(context);BoundedActivityScenario<MainActivity> activity=BoundedActivityScenario.launch(MainActivity.class)){
+   fixture.signIn();
+   JSONObject route=route(owner,id);
    JSONObject input=new JSONObject().put("operationId",id).put("bindingHash","b".repeat(64)).put("title","Question fixture").put("body","Reviewed local excerpt").put("route",route);
    String status=call("Capacitor.Plugins.AlphaNotifications.postWorkflow("+input+")").getString("status");
    long end=SystemClock.elapsedRealtime()+10000;
@@ -138,7 +166,7 @@ public final class WorkflowNoticeTapInstrumentedTest {
    assertNotEquals("Ask and open are distinct immutable intents",posted.contentIntent,posted.actions[0].actionIntent);
    if(android.os.Build.VERSION.SDK_INT>=31)assertTrue(posted.actions[0].isAuthenticationRequired());
    String token=WorkflowNoticeTapsFactory.create(context).token(id);posted.actions[0].actionIntent.send();JSONObject question=pending(token);
-   assertTrue(question.getBoolean("question"));assertEquals("fixture-owner",question.getString("ownerId"));assertEquals("Reviewed local excerpt",question.getJSONObject("notice").getString("text"));
+   assertTrue(question.getBoolean("question"));assertEquals(owner.getString("ownerId"),question.getString("ownerId"));assertEquals("Reviewed local excerpt",question.getJSONObject("notice").getString("text"));
    String revision=question.getJSONObject("notice").getString("revision");
    assertTrue("A normal open cannot consume an Ask review",call("Capacitor.Plugins.AlphaNotifications.consumeWorkflowTap({token:"+JSONObject.quote(token)+"})").has("error"));
    assertTrue("An old revision cannot consume it",call("Capacitor.Plugins.AlphaNotifications.consumeWorkflowTap({token:"+JSONObject.quote(token)+",noticeRevision:'wrong'})").has("error"));
@@ -153,7 +181,7 @@ public final class WorkflowNoticeTapInstrumentedTest {
    assertTrue("Its old revision no longer applies",call("Capacitor.Plugins.AlphaNotifications.consumeWorkflowTap({token:"+JSONObject.quote(token)+",noticeRevision:"+JSONObject.quote(revision)+"})").has("error"));
    assertFalse(call("Capacitor.Plugins.AlphaNotifications.consumeWorkflowTap({token:"+JSONObject.quote(token)+"})").has("error"));
    assertFalse(WorkflowNoticeTapsFactory.create(context).pending().has("token"));
-  }finally{manager.cancel("alpha-workflow-"+id,0);store.removeCredentialSlot(WorkflowNoticeTaps.SLOT);store.removeCredentialSlot(WorkflowNoticeDelivery.SLOT);}
+  }finally{manager.cancel("alpha-workflow-"+id,0);store.removeCredentialSlot(WorkflowNoticeTaps.SLOT);store.removeCredentialSlot(WorkflowNoticeDelivery.SLOT);forgetOwner(context,store,owner);}
  }
 
 }

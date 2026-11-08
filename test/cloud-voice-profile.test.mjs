@@ -46,7 +46,7 @@ test('Cloud signature classifier rejects actual Android mp42 header and accepts 
  await verifyCloudRecordingSignatures();
 });
 
-test('real native multipart method uploads decoded WAV and clears it on credential, setup, cancellation and write failures',()=>{
+test('real native multipart method uploads decoded WAV and clears it on credential, setup, cancellation and write failures, replaying a cache-warming 503 once',()=>{
  const source=fs.readFileSync('android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaVoiceCloudPlugin.java','utf8');
  const method=source.slice(source.indexOf('@PluginMethod public void transcribeRecording('),source.indexOf('@PluginMethod public void synthesize(')).replace('@PluginMethod ','');
  const authorityStart=source.indexOf(' private void requireCloudSpeechAuthority('),authorityEnd=source.indexOf(' // Test APK',authorityStart);
@@ -93,13 +93,16 @@ public class CloudWavUploadTest {
   public InputStream getInputStream(){return new ByteArrayInputStream("{}".getBytes(StandardCharsets.UTF_8));}
   public void connect(){}public void disconnect(){}public boolean usingProxy(){return false;}
  }
- HttpURLConnection connect(PluginCall call,String route,Pending request,long epoch)throws Exception{requireCloudSpeechAuthority(call,epoch);if(!route.equals("stt"))throw new AssertionError();if(failure.equals("connect"))throw new IOException();if(failure.equals("cancel"))request.cancelled=true;return connection=new Connection();}
+ HttpURLConnection connect(PluginCall call,String route,Pending request,long epoch)throws Exception{requireCloudSpeechAuthority(call,epoch);if(!route.equals("stt"))throw new AssertionError();if(failure.equals("connect"))throw new IOException();if(failure.equals("cancel"))request.cancelled=true;connects++;return connection=new Connection();}
+ // A warming mode refuses the first attempt (or every attempt) with Cloud's cache-warming 503.
+ int connects,replays;long warmingReplay(HttpURLConnection c){return failure.equals("warming-always")||(failure.equals("warming")&&connects==1)?1000:-1;}
+ void replayAfter(HttpURLConnection c,long wait,Pending request){if(wait!=1000)throw new AssertionError("Wrong replay wait");replays++;}
  void answered(HttpURLConnection c){} void answeredTimed(HttpURLConnection c,CloudSpeechTimings.Record timing){}
  byte[] read(InputStream in,int max,Pending request)throws Exception{if(failure.equals("response"))throw new IOException("PRIVATE_RESPONSE_SENTINEL");byte[] result=in.readAllBytes();if(failure.equals("authority-before-publication"))AlphaLocalAgentPlugin.authority++;if(failure.equals("protected-before-publication"))protectedSurface=true;return result;}
  ${authority}
  ${method}
  public static void main(String[] args)throws Exception{
-  for(String mode:new String[]{"","decode","connect","properties","output","write","cancel","response","missing-provider","wrong-provider","authority-before","authority-after-decode","authority-before-publication","own-mode","route-after-decode","protected-surface","protected-before-publication"}){
+  for(String mode:new String[]{"","decode","connect","properties","output","write","cancel","response","missing-provider","wrong-provider","warming","warming-always","authority-before","authority-after-decode","authority-before-publication","own-mode","route-after-decode","protected-surface","protected-before-publication"}){
    CloudWavUploadTest host=new CloudWavUploadTest();host.failure=mode;host.protectedSurface=mode.equals("protected-surface");
    AlphaLocalAgentPlugin.authority=1;AlphaCredentialStore.selected=new org.json.JSONObject().put("provider",mode.equals("own-mode")?"cerebras":"elizacloud").put("credentialId","fixture-cloud").toString();
    RecordingPcm.last=null;RecordingPcm.selected=null;RecordingPcm.failure=mode;JSONObject.reads=0;host.transcribeRecording(new PluginCall());
@@ -108,7 +111,10 @@ public class CloudWavUploadTest {
    if(!beforeDecode&&RecordingPcm.selected!=host.capture.file)throw new AssertionError("Selected recording changed");
    if(!beforeDecode&&!mode.equals("decode")&&RecordingPcm.last==null)throw new AssertionError("PCM fixture missing on "+mode);
    for(byte value:RecordingPcm.last==null?new byte[0]:RecordingPcm.last)if(value!=0)throw new AssertionError("Decoded PCM not cleared on "+mode);
-   if(mode.isEmpty()){
+   // Any other 503 is never replayed; a cache-warming 503 is replayed once with the same audio.
+   if(host.replays!=(mode.startsWith("warming")?1:0))throw new AssertionError("Wrong replay count on "+mode);
+   if(mode.isEmpty()||mode.startsWith("warming")){
+    if(host.connects!=(mode.isEmpty()?1:2))throw new AssertionError("Wrong attempt count on "+mode);
     if(host.error!=null||host.pending.result==null)throw new AssertionError("Upload failed");
     if(host.pending.failureCode!=null)throw new AssertionError("Successful transcription kept a failure code");
     if(host.connection.expectedLength!=host.connection.bytes.size())throw new AssertionError("Wrong multipart length");

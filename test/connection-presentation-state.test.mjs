@@ -577,7 +577,7 @@ for (const [continuation, changes, run] of [
 // no notice; a plan read that fails after it keeps the plan notice (Root, #743: that contract is
 // tracked separately). The shared controller and entitlement check decide it.
 const recheckCode = stripTypeScriptTypes([
-  section('function cloudUnreachable(', '/** Notice shown when Cloud inference'),
+  section('function signInRefused(', '/** Notice shown when Cloud inference'),
   section('function signInClient(', '/**\n * A new key was stored'),
   section('async function admitCloudResident(', '/**\n * Cloud reported'),
   section('async function recheckResidentPlan(', '/** Bind or unbind'),
@@ -597,6 +597,7 @@ test('a plan check that cannot reach Cloud admits nothing and reports no plan as
     const client = {environment: 'production', entitlementSource: () => ({issuer: 'https://cloud.invalid', entitlement: plan, entitlementKeys: async () => [], fallbackPlan: async () => ({status: 'none', planName: null, periodEnd: null})})};
     const box = {operation: null, planRecheck: null, networkLostUnder: null, lastPlanRecheck: 0, planCheckScope: () => 'scope', signInReadinessOwner: null, state: {session: {}, open: false, cloudAccount: account, residentPlanNotice: null}, active: {kind: 'resident'}, residentBinding: 'unbound', cloud: client, service: null, redeemedPlanEnd: null, AbortController, DOMException, Date, Error,
       CloudProtocolError: class extends Error {}, EntitlementError: entitlement.EntitlementError, checkEntitlement: entitlement.checkEntitlement, planAdmission: entitlement.planAdmission, isEntitlementSignInFailure: entitlement.isEntitlementSignInFailure,
+      residentAdmissionOutcome: entitlement.residentAdmissionOutcome, cloudUnreachable: entitlement.cloudUnreachable, CloudIdentityUnreachable: entitlement.CloudIdentityUnreachable, identityReadRefused: entitlement.identityReadRefused,
       CloudResidentBindingController: shared.CloudResidentBindingController, CloudResidentBindingError: shared.CloudResidentBindingError, recentResidentPlanAdmission: shared.recentResidentPlanAdmission,
       cloudCredentialStore: {read: async () => ({credentialId: 'credential-1'})}, cloudServiceName: () => 'Cloud',
       verifyService: async () => { marked.push(box.operation === null && box.planRecheck !== null); await identity(); box.service = {client, identity: identityRow}; },
@@ -718,7 +719,7 @@ test('service verification still enforces an explicitly expected opaque referenc
   assert.equal(valid.context.service.credentialReference, 'native-reference-1');
   for (const credentialReference of ['other-reference', '']) {
     const f = serviceVerificationFixture();
-    await assert.rejects(f.verify({...expectedServiceIdentity, credentialReference}), /Cloud account changed/);
+    await assert.rejects(f.verify({...expectedServiceIdentity, credentialReference}), error => error.code === 'account-changed');
     assert.equal(f.identityReads, 0);
     assert.equal(f.context.service, null);
     assert.equal(f.saved.length, 0);
@@ -730,7 +731,7 @@ for (const replaceCredential of [
 ]) {
   test(`service verification rejects ${Object.keys(replaceCredential)[0]} replacement during identity lookup`, async () => {
     const f = serviceVerificationFixture({replaceCredential});
-    await assert.rejects(f.verify(expectedServiceIdentity), /Cloud account changed/);
+    await assert.rejects(f.verify(expectedServiceIdentity), error => error.code === 'account-changed');
     assert.equal(f.reads, 2);
     assert.equal(f.context.service, null);
     assert.equal(f.updates.filter(patch => patch.cloudAccount).length, 0);
@@ -751,7 +752,7 @@ for (const identityPatch of [{userId: 'other-owner'}, {organizationId: 'other-or
 
 // Actual saved-credential admission + production projection, with synthetic identity failures only.
 const savedAdmissionCode=stripTypeScriptTypes([
- section('function cloudUnreachable(', '/** Notice shown when Cloud inference'),
+ section('function signInRefused(', '/** Notice shown when Cloud inference'),
  section('async function verifyService(', 'let pendingBillingReview:'),
  section('function signInClient(', '/**\n * A new key was stored'),
  section('async function admitCloudResident(', '/**\n * Cloud reported, on a background refresh'),
@@ -760,12 +761,13 @@ const savedAdmissionCode=stripTypeScriptTypes([
 ].join('\n'),{mode:'strip'});
 // The shared resident binding controller (projected from the pinned upstream source) decides the binding.
 const residentBinding=await import('../.eliza/client-features/packages/auth/src/auth/cloud-resident-binding.ts');
+const admissionRules=await import('../apps/app/src/runtime/subscription-entitlement.ts');
 const residentTail=source.slice(source.indexOf('  // Restore only the saved choice for this verified agent and owner;'),source.indexOf('async function connectCloud('));
 async function offlineRestoreFixture({kind='offline',recent=false,newer=null}={}){
  const f=fixture({account:null});let historyReads=0,credentialWrites=0,unbinds=0,identityReads=0;
  class CloudProtocolError extends Error {constructor(code,status){super(code);this.code=code;this.status=status;}}
- const client={environment:'production',async identity(){identityReads++;if(kind==='expired')throw new CloudProtocolError('expired');if(kind==='revoked')throw new CloudProtocolError('http',401);if(kind==='changed')throw new residentBinding.CloudResidentBindingError('account-changed');throw new Error('Connection request failed');}};
- Object.assign(f.context,{Error,DOMException,CloudProtocolError,EntitlementError:class extends Error{},cloud:client,service:null,RESIDENT_UNBIND_UNCONFIRMED:'Unbind not confirmed',residentCloudFlow:()=>true,residentBindable:()=>true,residentEnvironment:()=> 'production',stopEntitlementRefresh:()=>{},CloudResidentBindingController:residentBinding.CloudResidentBindingController,CloudResidentBindingError:residentBinding.CloudResidentBindingError,recentResidentPlanAdmission:residentBinding.recentResidentPlanAdmission,readPlanAdmission:()=>recent?{version:1,environment:'production',credentialId:'synthetic-retained-credential',userId:'synthetic-user',organizationId:null,status:'active',planName:'Synthetic plan',verifiedAt:Date.now()-1000,endsAt:null}:null,writePlanAdmission:()=>{},isEntitlementSignInFailure:()=>false,LocalCloudProviderStopUnconfirmed:class extends Error{},cloudCredentialStore:{read:async()=>kind==='missing'?null:{credentialId:'synthetic-retained-credential'},write:async()=>{credentialWrites++;}},detachService:()=>{f.context.service=null;f.update({cloudAccount:null});},clearLocalProvider:async()=>{unbinds++;},restoreSavedHistory:async()=>{historyReads++;f.update({history:{messages:Array.from({length:15},(_,id)=>({id:'synthetic-'+id,text:'Fixture'}))}});},refreshActionReview:async()=>{},browserLocalAgentEnabled:false,residentBinding:null});
+ const client={environment:'production',async identity(){identityReads++;if(kind==='expired')throw new CloudProtocolError('expired');if(kind==='revoked')throw new CloudProtocolError('http',401);if(kind==='changed')throw new residentBinding.CloudResidentBindingError('account-changed');if(kind==='forbidden')throw new CloudProtocolError('http',403);if(kind==='closed')throw new Error('Connection closed');throw new Error('Connection request failed');}};
+ Object.assign(f.context,{Error,DOMException,CloudProtocolError,EntitlementError:class extends Error{},residentAdmissionOutcome:admissionRules.residentAdmissionOutcome,cloudUnreachable:admissionRules.cloudUnreachable,CloudIdentityUnreachable:admissionRules.CloudIdentityUnreachable,identityReadRefused:admissionRules.identityReadRefused,cloud:client,service:null,RESIDENT_UNBIND_UNCONFIRMED:'Unbind not confirmed',residentCloudFlow:()=>true,residentBindable:()=>true,residentEnvironment:()=> 'production',stopEntitlementRefresh:()=>{},CloudResidentBindingController:residentBinding.CloudResidentBindingController,CloudResidentBindingError:residentBinding.CloudResidentBindingError,recentResidentPlanAdmission:residentBinding.recentResidentPlanAdmission,readPlanAdmission:()=>recent?{version:1,environment:'production',credentialId:'synthetic-retained-credential',userId:'synthetic-user',organizationId:null,status:'active',planName:'Synthetic plan',verifiedAt:Date.now()-1000,endsAt:null}:null,writePlanAdmission:()=>{},isEntitlementSignInFailure:()=>false,LocalCloudProviderStopUnconfirmed:class extends Error{},cloudCredentialStore:{read:async()=>kind==='missing'?null:{credentialId:'synthetic-retained-credential'},write:async()=>{credentialWrites++;}},detachService:()=>{f.context.service=null;f.update({cloudAccount:null});},clearLocalProvider:async()=>{unbinds++;},restoreSavedHistory:async()=>{historyReads++;f.update({history:{messages:Array.from({length:15},(_,id)=>({id:'synthetic-'+id,text:'Fixture'}))}});},refreshActionReview:async()=>{},browserLocalAgentEnabled:false,residentBinding:null});
  if(newer)f.context.service=newer;
  vm.runInContext(savedAdmissionCode+';globalThis.admit=admitCloudResident;globalThis.bind=applyResidentBinding;',f.context);
  f.update({startupResolved:false,automaticRestore:true});
@@ -775,8 +777,9 @@ async function offlineRestoreFixture({kind='offline',recent=false,newer=null}={}
  return {...f,historyReads,credentialWrites,unbinds,identityReads};
 }
 test('retained credential with unreachable identity restores history without forcing fresh Welcome',async()=>{
- for(const recent of [false,true]){
-  const f=await offlineRestoreFixture({recent});assert.equal(f.historyReads,1);assert.equal(f.snapshot().history.messages.length,15);assert.equal(f.snapshot().residentSavedCredential,true);assert.equal(f.snapshot().residentPlanNotice,'offline');assert.equal(f.snapshot().cloudAccount,null,'offline identity is never fabricated as authenticated');assert.equal(f.context.admission.notice,undefined,'Cloud being unreachable adds no notice or status text');assert.equal(f.context.service,null);assert.equal(f.context.admission.binding,recent?'kept':'unbound');assert.equal(f.credentialWrites,0);assert.equal(f.identityReads,1);assert.equal(f.context.residentSignInRequired(),false);assert.equal(f.context.productionCloudSignInRequired(f.snapshot()),false);assert.equal(f.snapshot().open,false);assert.equal(f.context.connectionChooserVisible(f.snapshot()),false);
+ // An edge 403 or a native rejection with other text is not Cloud refusing the credential.
+ for(const kind of ['offline','forbidden','closed'])for(const recent of [false,true]){
+  const f=await offlineRestoreFixture({kind,recent});assert.equal(f.historyReads,1);assert.equal(f.snapshot().history.messages.length,15);assert.equal(f.snapshot().residentSavedCredential,true);assert.equal(f.snapshot().residentPlanNotice,'offline');assert.equal(f.snapshot().cloudAccount,null,'offline identity is never fabricated as authenticated');assert.equal(f.context.admission.notice,undefined,'Cloud being unreachable adds no notice or status text');assert.equal(f.context.service,null);assert.equal(f.context.admission.binding,recent?'kept':'unbound');assert.equal(f.credentialWrites,0);assert.equal(f.identityReads,1);assert.equal(f.context.residentSignInRequired(),false);assert.equal(f.context.productionCloudSignInRequired(f.snapshot()),false);assert.equal(f.snapshot().open,false);assert.equal(f.context.connectionChooserVisible(f.snapshot()),false);
  }
 });
 test('retained offline exception cannot bypass missing, expired or revoked sign-in',async()=>{

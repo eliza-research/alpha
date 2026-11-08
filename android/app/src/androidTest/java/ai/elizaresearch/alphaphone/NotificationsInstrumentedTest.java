@@ -7,6 +7,7 @@ import android.os.SystemClock;
 import android.view.accessibility.AccessibilityNodeInfo;
 import androidx.test.ext.junit.runners.AndroidJUnit4;
 import androidx.test.platform.app.InstrumentationRegistry;
+import org.json.JSONObject;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import static org.junit.Assert.*;
@@ -92,5 +93,45 @@ public class NotificationsInstrumentedTest {
    if(AndroidShade.isOpen())AndroidShade.collapse();until(AndroidShade.ALPHA_SHADE_ABSENT);
   }finally{if(AndroidShade.isOpen())AndroidShade.collapse();manager.cancel(tag,1);manager.cancel(tag,2);goneTap.cancel();liveTap.cancel();context.unregisterReceiver(receiver);}
  }
-
+ private JSONObject call(String expression)throws Exception{
+  WebViewTestDriver.evaluate("window.__contextResult=null;Promise.resolve().then(()=>"+expression+").then(v=>window.__contextResult=JSON.stringify(v),()=>window.__contextResult=JSON.stringify({error:true}))");
+  for(int i=0;i<300;i++){String raw=WebViewTestDriver.evaluate("window.__contextResult");if(!"null".equals(raw))return new JSONObject((String)new org.json.JSONTokener(raw).nextValue());SystemClock.sleep(50);}
+  throw new AssertionError("Notification bridge did not complete");
+ }
+ /** Own-notification agent identities: the native list gives Alpha Phone's own rows the opaque,
+  * bounded id/revision that phone-context accepts, never derived from title, text, tag or package. */
+ @Test public void ownNotificationIdentitiesAreOpaqueAndBounded()throws Exception{
+  Context context=InstrumentationRegistry.getInstrumentation().getTargetContext();android.app.NotificationManager manager=context.getSystemService(android.app.NotificationManager.class);
+  InstrumentationRegistry.getInstrumentation().getUiAutomation().grantRuntimePermission(context.getPackageName(),android.Manifest.permission.POST_NOTIFICATIONS);
+  ai.eliza.plugins.reminders.ReminderTestAccess.channel(context);
+  String token=java.util.UUID.randomUUID().toString().replace("-",""),title="PRIVATE_NOTICE_TITLE_"+token,body="PRIVATE_NOTICE_BODY_"+token,tag="context-identity-"+token;
+  try(BoundedActivityScenario<MainActivity> scenario=BoundedActivityScenario.launch(MainActivity.class)){
+   AppNavigation.liveMode();WebViewTestDriver.evaluate(AppNavigation.request("Home"));until("document.querySelector('[data-screen]')");
+   for(int i=0;i<100&&!"true".equals(WebViewTestDriver.evaluate("Boolean(window.Capacitor?.Plugins?.AlphaNotifications)"));i++)SystemClock.sleep(100);
+   // Rows already listed (for example another test's secret notice) never stand in for this test's rows.
+   java.util.Set<String> earlier=new java.util.HashSet<>();JSONObject initial=call("Capacitor.Plugins.AlphaNotifications.list()");assertFalse("Own notifications are readable in the foreground",initial.has("error"));
+   for(int i=0;i<initial.getJSONArray("items").length();i++)earlier.add(initial.getJSONArray("items").getJSONObject(i).getString("id"));
+   manager.notify(tag,1,new android.app.Notification.Builder(context,ai.eliza.plugins.reminders.ReminderTestAccess.CHANNEL).setSmallIcon(android.R.drawable.ic_popup_reminder).setContentTitle(title).setContentText(body).build());
+   manager.notify(tag,2,new android.app.Notification.Builder(context,ai.eliza.plugins.reminders.ReminderTestAccess.CHANNEL).setSmallIcon(android.R.drawable.ic_popup_reminder).setContentTitle(title+"_SECRET").setContentText(body).setVisibility(android.app.Notification.VISIBILITY_SECRET).build());
+   JSONObject own=null,secret=null;org.json.JSONArray items=null;
+   for(int attempt=0;attempt<50&&(own==null||secret==null);attempt++){
+    JSONObject listed=call("Capacitor.Plugins.AlphaNotifications.list()");assertFalse("Own notifications are readable in the foreground",listed.has("error"));
+    items=listed.getJSONArray("items");own=null;secret=null;
+    for(int i=0;i<items.length();i++){JSONObject row=items.getJSONObject(i);if(title.equals(row.optString("title")))own=row;else if("own".equals(row.optString("source"))&&row.optString("title").equals("Alpha Phone notification")&&!earlier.contains(row.optString("id")))secret=row;}
+    if(own==null||secret==null)SystemClock.sleep(100);
+   }
+   assertNotNull("Posted own notification is listed",own);assertNotNull("Secret own notification is listed with hidden content",secret);
+   java.util.regex.Pattern opaque=java.util.regex.Pattern.compile("[A-Za-z0-9][A-Za-z0-9._:-]{0,127}");
+   for(JSONObject row:new JSONObject[]{own,secret}){
+    assertEquals("own",row.getString("source"));
+    for(String field:new String[]{"id","revision"}){String value=row.getString(field);assertTrue("Opaque bounded "+field+" accepted by phone-context",opaque.matcher(value).matches());for(String forbidden:new String[]{token,tag,context.getPackageName(),"PRIVATE"})assertFalse(field+" never carries content or provenance",value.contains(forbidden));}
+   }
+   assertFalse("Secret content stays on the phone",secret.toString().contains(body));assertNotEquals(own.getString("id"),secret.getString("id"));
+   // The identity is stable while the row is unchanged, so a selection made in the shade still resolves.
+   JSONObject again=call("Capacitor.Plugins.AlphaNotifications.list()");boolean stable=false;org.json.JSONArray rows=again.getJSONArray("items");for(int i=0;i<rows.length();i++)if(own.getString("id").equals(rows.getJSONObject(i).getString("id"))&&own.getString("revision").equals(rows.getJSONObject(i).getString("revision")))stable=true;
+   assertTrue("Unchanged own row keeps its opaque identity",stable);
+   // Other apps' rows are labelled external and are never offered as an own identity.
+   for(int i=0;i<items.length();i++){JSONObject row=items.getJSONObject(i);assertTrue("Every row declares its source",java.util.Arrays.asList("own","external").contains(row.getString("source")));if("external".equals(row.getString("source")))assertNotEquals("Alpha Phone",row.optString("appLabel"));}
+  }finally{manager.cancel(tag,1);manager.cancel(tag,2);}
+ }
 }

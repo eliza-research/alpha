@@ -332,6 +332,8 @@ export function installMapsChatAdapter(Component:Bag){
   const snapshot=connectionController.getSnapshot(),done=answers(shell);
   if(done.has(id)||!shell.live||document.hidden||snapshot.open||snapshot.busy||shell.S().typing||shell.S().recording||!current())return;
   if(String(shell.S().draft||'').trim()){shell.toast('Keep or send your chat draft before answering.');return;}
+  // send() refuses a prompt while a message edit is open; do not mark the answer as sent.
+  if(shell.messageEditTarget){shell.toast('Finish or cancel the message you are editing first.');return;}
   done.add(id);if(shell.live)shell.setState({});
   try{if(!current()){done.delete(id);return;}await shell.send(value);}catch(error){done.delete(id);if(shell.live){shell.setState({});shell.toast(error instanceof Error?error.message:'The answer was not sent.');}}
  }
