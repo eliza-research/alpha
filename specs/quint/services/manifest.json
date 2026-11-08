@@ -1495,26 +1495,36 @@
       "tests": [
         "sameWidthSwapRequiresAcknowledgementTest",
         "providerSwapPreservesKnownModelTest",
-        "cacheReadFailureCanLeaveResizedColumnTest",
+        "cacheReadFailureKeepsPriorColumnTest",
+        "ambiguousCommitFencesAndRetryDoesNotRewriteTest",
+        "falseWriteResponseCannotPublishPinTest",
+        "resizedColumnStaysFencedAfterAdapterFailureTest",
         "joinedProbeAndClearFailureTest"
       ],
       "invariants": [
         "persistedPin",
         "disabledWarning",
-        "noSuccessWithWrongColumn"
+        "enabledPinMatchesColumn",
+        "unconfirmedTransitionDisablesGeneration"
       ],
       "sources": [
-        "vendor/eliza/packages/core/src/runtime/embeddings.ts"
+        "vendor/eliza/packages/core/src/runtime/embeddings.ts",
+        "patches/eliza/embedding-store-identity.patch",
+        "vendor/eliza/packages/core/src/runtime.ts",
+        "vendor/eliza/packages/core/src/runtime/model-dispatch.ts",
+        "vendor/eliza/plugins/plugin-sql/src/base.ts"
       ],
       "stateMapping": {
         "stored/pin/column": "Observed cache identity, runtime provider pin and adapter width",
-        "disabled/warned": "Actual disabled latch and one-time warning",
+        "disabled/warned/fenced": "Actual generation status, one-time warning and unconfirmed store transition fence",
         "probe/calls/joined": "Actual single-flight promise and provider calls",
-        "writes/clearFailures/outcome": "Port commits, reconciliation errors and real probe settlement"
+        "writes/clearFailures/outcome": "Port commits, reconciliation errors and real probe settlement",
+        "selected": "Adapter width selected with the single-flight probe still awaiting a settled result",
+        "committed": "The cache write took effect while the runtime awaited its reply"
       },
       "abstractions": [
-        "Up to five probes with a single join per probe. Two provider identities, untagged vectors, two model labels plus absent metadata, and widths two and three.",
-        "Settings and provider answers are controlled. Named vector spaces, real cache durability, SQL and background re-embedding remain separate."
+        "Up to five probes with a single join per probe. Two provider identities, untagged vectors, two model labels plus absent metadata, and two width classes. The PGlite schedules use 384 and 768 dimensions.",
+        "Controlled provider answers and injected adapter failures use both component ports and temporary PGlite. A durable cache write with a lost reply is distinct from a refused write. Named vector spaces, concurrent runtimes and background re-embedding remain separate."
       ],
       "bounds": {
         "maxSamples": 1000,

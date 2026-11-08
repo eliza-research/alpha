@@ -1,7 +1,10 @@
 import assert from 'node:assert/strict';
 import {fileURLToPath} from 'node:url';
-import {bundleVendorCore, deferred} from '../../legacy/core/source-support.mjs';
+import {deferred} from './support.mjs';
+import {loadRuntimeEmbeddings} from './core-runtime/module.mjs';
+import {embeddingStoreDatabaseTraces, loadEmbeddingStoreDatabase} from './embedding-store-pglite.mjs';
 import {checkTraces} from '../check-traces.mjs';
+import {EMBEDDING_STATE_TARGET} from '../../../../scripts/core-state-patch.mjs';
 
 const model = 'EmbeddingStoreIdentity';
 const driver = fileURLToPath(import.meta.url);
@@ -42,9 +45,14 @@ function fixture(module, name) {
     async setCache(key, value) {
       assert.equal(key, EMBEDDING_STORE_IDENTITY_CACHE_KEY);
       if (active.fault === 'write') throw writeError;
+      if (active.fault === 'write-false') return false;
       assert.ok(Number.isFinite(Date.parse(value.recordedAt)));
       stored = structuredClone(value);
       writes++;
+      active.committed = true;
+      checkpoint('identity committed before the source published a pin', 'commitIdentity');
+      if (active.fault === 'write-committed') throw writeError;
+      return true;
     },
     async useModel(type, params, provider) {
       assert.equal(type, ModelType.TEXT_EMBEDDING);
@@ -63,7 +71,11 @@ function fixture(module, name) {
       clearFailures++;
     },
     adapter: {
-      async ensureEmbeddingDimension(width) { column = width; },
+      async ensureEmbeddingDimension(width) {
+        column = width;
+        active.selected = true;
+        checkpoint('identity read completed before the adapter selected the width', 'selectWidth');
+      },
       async clearEmbeddingsOutsideActiveDimension() {
         if (active.fault === 'clear') throw clearError;
         return [];
@@ -84,6 +96,9 @@ function fixture(module, name) {
       'state.column': column,
       'state.disabled': embeddings.isEmbeddingGenerationDisabled(),
       'state.warned': embeddings.embeddingSkipWarned,
+      'state.fenced': embeddings.embeddingStoreTransition,
+      'state.selected': active?.selected ?? false,
+      'state.committed': active?.committed ?? false,
       'state.writes': writes,
       'state.clearFailures': clearFailures,
       'state.probe': embeddings.embeddingInitialization ? active.id : 0,
@@ -119,7 +134,7 @@ function fixture(module, name) {
       const error = await active.result;
       if (!error) outcome = 'success';
       else if (error === storageError) outcome = 'read-failed';
-      else if (error === writeError) outcome = 'write-failed';
+      else if (error === writeError || error.code === 'EMBEDDING_STORE_IDENTITY_WRITE_UNCONFIRMED') outcome = 'write-failed';
       else if (error.code === 'EMBEDDING_STORE_MODEL_MISMATCH') outcome = 'model-mismatch';
       else if (error.name === 'EmbeddingDimensionProbeError') {
         assert.equal(error.attempts.length, 1);
@@ -127,6 +142,8 @@ function fixture(module, name) {
         outcome = 'probe-failed';
       } else throw error;
       joined = false;
+      active.selected = false;
+      active.committed = false;
       assert.equal(embeddings.embeddingInitialization, undefined);
       checkpoint('cache, dimension and pin reflect the settled probe', 'finish');
     },
@@ -141,14 +158,21 @@ function fixture(module, name) {
 }
 
 export async function runEmbeddingStoreIdentityRefinement(extraSources = []) {
-  const bundle = await bundleVendorCore(undefined, `
-    export { RuntimeEmbeddings, EMBEDDING_STORE_IDENTITY_CACHE_KEY, EMBEDDING_STORE_ACCEPT_MODEL_SETTING }
-      from './packages/core/src/runtime/embeddings.ts';
-    export { ModelType } from './packages/core/src/types/model.ts';
-  `, [driver, ...extraSources, 'upstream.lock.json', 'package-lock.json']);
-  const module = bundle.instantiate({}), traces = [];
+  const inputs = [driver, fileURLToPath(new URL('./support.mjs', import.meta.url)), ...extraSources];
+  const [bundle, database] = await Promise.all([loadRuntimeEmbeddings(inputs), loadEmbeddingStoreDatabase(inputs)]);
+  for (const compiled of [bundle, database]) {
+    assert.ok(compiled.coreState.transforms.some(entry => entry.path === EMBEDDING_STATE_TARGET),
+      'The authenticated embedding state patch reached the executed source');
+  }
+  const sources = [...new Set([...bundle.sources, ...database.sources])];
+  const driverHashes = {...bundle.driverHashes};
+  for (const [file, digest] of Object.entries(database.driverHashes)) {
+    if (Object.hasOwn(driverHashes, file)) assert.equal(driverHashes[file], digest, `Embedding inputs changed between compilers: ${file}`);
+    driverHashes[file] = digest;
+  }
+  const traces = [];
   async function scenario(name, drive) {
-    const f = fixture(module, name);
+    const f = fixture(bundle, name);
     await drive(f);
     traces.push(f.trace);
   }
@@ -166,7 +190,7 @@ export async function runEmbeddingStoreIdentityRefinement(extraSources = []) {
   await scenario('wider-probe-reclaims-column-after-clear-failure', async f => {
     await probe(f, 1); await f.start(6, 'none', 'clear'); f.join(); await f.finish();
   });
-  await scenario('cache-read-fails-after-adapter-resize', async f => {
+  await scenario('cache-read-fails-before-adapter-resize', async f => {
     await probe(f, 1); await probe(f, 6, 'none', 'read'); await probe(f, 6);
   });
   await scenario('cache-write-refusal-does-not-advance-pin', async f => {
@@ -175,16 +199,18 @@ export async function runEmbeddingStoreIdentityRefinement(extraSources = []) {
   await scenario('provider-failure-disables-generation-until-recovery', async f => {
     await probe(f, 2, 'none', 'provider'); await f.skip(); await probe(f, 7);
   });
-  const receipt = await checkTraces({model, traces, sources: bundle.sources, driverHashes: bundle.driverHashes,
+  traces.push(...await embeddingStoreDatabaseTraces(database));
+  const receipt = await checkTraces({model, traces, sources, driverHashes,
     scope: 'bounded-component', assumptions: [
-      `Actual RuntimeEmbeddings and provider-output validation from authenticated SDK ${bundle.revision}.`,
+      `Actual RuntimeEmbeddings and provider-output validation from the authenticated effective SDK.`,
       'A controlled model port returns untagged widths two and three. Controlled adapter and cache ports expose stored identity, committed width, write failures and reconciliation outcomes.',
+      'The real AgentRuntime uses a temporary PGlite database with actual cache commit and width selection. Synthetic providers and adapter exceptions isolate before-read, after-resize, rejected/false-write and committed-but-unacknowledged outcomes.',
       'The source compares known labels across providers and falls back to provider identity for unlabelled data. A single caller joins an in-flight probe. Named-space changes and concurrent SQL writers remain separate.',
     ]});
   return {receipts: [receipt], obligations: [
-    {model, obligation: 'Coordinate adapter resize and identity persistence after partial failure',
-      reason: 'A rejected identity-cache read can leave the new adapter width active while the previous healthy provider and pin remain. This bounded model records the observed mismatch.'},
-    {model, obligation: 'Named representation and concrete adapter recovery',
-      reason: 'This campaign covers the untagged identity ledger. PostgreSQL and SQLite write fencing, re-embedding and durable restart require separate source schedules.'},
+    {model, obligation: 'Named representation and concurrent storage owners',
+      reason: 'The untagged identity ledger does not establish named-vector provenance or atomicity across distinct runtimes sharing a store.'},
+    {model, obligation: 'Database process restart and in-flight provider output across a completed re-pin',
+      reason: 'The source schedules retry one live AgentRuntime and fence output delivered while the transition is unconfirmed. Durable process restart, SQLite/PostgreSQL-specific failures and outputs held until after a successful re-pin need separate schedules.'},
   ]};
 }
