@@ -203,7 +203,7 @@ export function installReminderAdapter(Component: Bag, views: Bag) {
     if(out.f) {
       const f=state.form;
       if(f.cal==='alpha-reminders'&&owner?.reminderSaving)out.f.saveOff=true;
-      out.f.cals.push({domain:'reminders',name:'Reminders',dot:'var(--acc)',css:f.cal==='alpha-reminders'?'background:var(--fg);color:var(--bg)':'background:var(--bg)',pick:()=>{const original=api.get('calendar').form;const {canonicalOwnerKey,canonicalEventKey,expectedProviderVersion,canonicalTiming,canonicalAllDay,...kept}=original;const next={...kept,cal:'alpha-reminders',repeat:'none',alert:0};api.set({form:owner?.calendarFormDestinationChanged?.(original,next)??next});}});
+      out.f.cals.push({domain:'reminders',name:'Reminders',dot:'var(--acc)',on:f.cal==='alpha-reminders',css:f.cal==='alpha-reminders'?'background:var(--fg);color:var(--bg)':'background:var(--bg)',pick:()=>{const original=api.get('calendar').form;const {canonicalOwnerKey,canonicalEventKey,expectedProviderVersion,canonicalTiming,canonicalAllDay,...kept}=original;const next={...kept,cal:'alpha-reminders',repeat:'none',alert:0};api.set({form:owner?.calendarFormDestinationChanged?.(original,next)??next});}});
       if(f.cal==='alpha-reminders') out.f.save=async()=>{
         if(owner?.reminderSaving)return;
         const current=api.get('calendar').form;

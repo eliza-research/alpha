@@ -26,7 +26,7 @@ for(const mode of ['', 'dev'])for(const tab of ['Privacy & data','About','Models
  if(tab==='Privacy & data'){await expect(page.getByText('No remote agent connected; no hosted inference requests',{exact:true})).toBeVisible();expect(text).not.toContain('Pre-egress redaction is not connected');expect(text).not.toMatch(/Secret and contact identifiers are swapped/);expect(text).not.toMatch(/\b\d+ apps\b|2,418 items|6 today/);await page.evaluate(async()=>{await Promise.all(document.getAnimations().filter(animation=>Number.isFinite(animation.effect?.getComputedTiming().endTime)).map(animation=>animation.finished.catch(()=>{})));});await page.screenshot({path:info.outputPath('privacy.png')});}
 });
 // Mock mode is a labeled design vision; it may show planned redaction features but never sealing or attestation.
-const mockForbidden = [/\bSealed\b/, /\bAttested\b/, /attestation passed/i, /stays? in the enclave/i, /keys? never left/i, /keys in hardware/i, /synced into the enclave/i, /enclave attest/i];
+const mockForbidden = [/\bSealed\b/, /\bAttested\b/, /attestation passed/i, /stays? in the enclave/i, /keys? never left/i, /keys in hardware/i, /synced into the enclave/i, /enclave attest/i, /nothing leaves this (phone|device)/i, /never leaves? the (chip|device|phone)/i];
 for (const start of targets) test(`mock mode shows no sealing or attestation claim: ${start}`, async ({ page }) => {
   await page.goto(`/?mode=mock&start=${start}`);
   await expect(page.locator('.mock-mode-banner')).toBeVisible();

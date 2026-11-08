@@ -1042,7 +1042,7 @@
         <sc-if value="{{calendar.f.nativeReviewDate}}"><div aria-label="Selected event date" aria-live="polite" style="padding: 8px 24px 0; font-size: 14px; color: var(--mut)">{{calendar.f.nativeReviewDate}}</div></sc-if>
         <div class="scr" style="display: flex; gap: 8px; overflow-x: auto; padding: 14px 20px 4px; touch-action: pan-x">
           <sc-for list="{{calendar.f.days}}" as="d">
-            <button onClick="{{d.pick}}" aria-label="{{d.label}}" style="flex-shrink: 0; min-width: 56px; min-height: 64px; padding: 0 6px; box-sizing: border-box; border-radius: 20px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; {{d.css}}">
+            <button onClick="{{d.pick}}" aria-label="{{d.label}}" aria-pressed="{{d.on}}" style="flex-shrink: 0; min-width: 56px; min-height: 64px; padding: 0 6px; box-sizing: border-box; border-radius: 20px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; {{d.css}}">
               <span style="font-size: 11px; opacity: .75; font-weight: 500">{{d.top}}</span>
               <span style="font-size: 18px; font-weight: 600">{{d.n}}</span>
             </button>
@@ -1128,7 +1128,7 @@
               <svg class="i" viewBox="0 0 24 24" style="color: var(--mut); flex-shrink: 0"><path d="{{ic.cal}}"></path></svg>
               <div style="display: flex; gap: 8px; flex-wrap: wrap; flex: 1 1 0; min-width: 0">
                 <sc-for list="{{calendar.f.cals}}" as="c">
-                  <button onClick="{{c.pick}}" style="max-width: 100%; padding: 6px 14px; box-sizing: border-box; border-radius: 24px; font-size: 13.5px; font-weight: 600; display: flex; align-items: center; gap: 8px; text-align: left; overflow-wrap: anywhere; {{c.css}}"><span style="width: 8px; height: 8px; border-radius: 4px; flex-shrink: 0; background: {{c.dot}}"></span><span style="min-width: 0">{{c.name}}</span></button>
+                  <button onClick="{{c.pick}}" aria-pressed="{{c.on}}" style="max-width: 100%; padding: 6px 14px; box-sizing: border-box; border-radius: 24px; font-size: 13.5px; font-weight: 600; display: flex; align-items: center; gap: 8px; text-align: left; overflow-wrap: anywhere; {{c.css}}"><span style="width: 8px; height: 8px; border-radius: 4px; flex-shrink: 0; background: {{c.dot}}"></span><span style="min-width: 0">{{c.name}}</span></button>
                 </sc-for>
               </div>
             </div>
@@ -1138,7 +1138,7 @@
               <svg class="i" viewBox="0 0 24 24" style="color: var(--mut); flex-shrink: 0"><path d="{{ic.calRepeat}}"></path></svg>
               <div style="display: flex; gap: 6px; flex-wrap: wrap; flex: 1 1 0; min-width: 0">
                 <sc-for list="{{calendar.f.repeats}}" as="c">
-                  <button onClick="{{c.pick}}" style="max-width: 100%; padding: 6px 12px; box-sizing: border-box; border-radius: 24px; font-size: 13.5px; font-weight: 600; overflow-wrap: anywhere; {{c.css}}">{{c.label}}</button>
+                  <button onClick="{{c.pick}}" aria-pressed="{{c.on}}" style="max-width: 100%; padding: 6px 12px; box-sizing: border-box; border-radius: 24px; font-size: 13.5px; font-weight: 600; overflow-wrap: anywhere; {{c.css}}">{{c.label}}</button>
                 </sc-for>
               </div>
             </div>
@@ -1148,7 +1148,7 @@
               <svg class="i" viewBox="0 0 24 24" style="color: var(--mut); flex-shrink: 0"><path d="{{ic.bell}}"></path></svg>
               <div style="display: flex; gap: 6px; flex-wrap: wrap; flex: 1 1 0; min-width: 0">
                 <sc-for list="{{calendar.f.alerts}}" as="c">
-                  <button onClick="{{c.pick}}" style="max-width: 100%; padding: 6px 12px; box-sizing: border-box; border-radius: 24px; font-size: 13.5px; font-weight: 600; overflow-wrap: anywhere; {{c.css}}">{{c.label}}</button>
+                  <button onClick="{{c.pick}}" aria-pressed="{{c.on}}" style="max-width: 100%; padding: 6px 12px; box-sizing: border-box; border-radius: 24px; font-size: 13.5px; font-weight: 600; overflow-wrap: anywhere; {{c.css}}">{{c.label}}</button>
                 </sc-for>
               </div>
             </div>
@@ -1234,7 +1234,7 @@
         <div style="position: absolute; left: 206px; top: 0; bottom: 0; width: 1px; background: rgba(255,255,255,.35)"></div>
       </div></div>
       <div style="padding: 24px 24px 140px">
-        <h2 class="serif" style="margin: 0; font-size: 36px; line-height: 1.05; font-weight: 300; letter-spacing: -.01em">Keys that never leave the chip</h2>
+        <h2 class="serif" style="margin: 0; font-size: 36px; line-height: 1.05; font-weight: 300; letter-spacing: -.01em">Keys in the chip</h2>
         <div style="color: var(--mut); margin-top: 12px; font-size: 13px">{{browser.pg.host}} · 4 min</div>
         <p data-bk="p1" style="font-size: 16px; line-height: 1.6; margin: 22px 0 0; border-radius: 6px; transition: background .4s, box-shadow .4s; {{browser.hl1}}">A secure enclave is a small, sealed part of the processor. Keys are created inside it and can be used there, but never read out.</p>
         <p data-bk="p2" style="font-size: 16px; line-height: 1.6; margin: 16px 0 0; border-radius: 6px; transition: background .4s, box-shadow .4s; {{browser.hl2}}">When an agent signs an action with one of those keys, anyone can check that it came from your device, and only your device.</p>
@@ -1596,7 +1596,7 @@
 
   <div data-alpha-camera="modes" style="position: absolute; left: 0; right: 0; top: 656px; height: 44px; display: flex; align-items: center; justify-content: center; gap: 8px">
     <sc-for list="{{camera.modes}}" as="m">
-      <button onClick="{{m.pick}}" aria-label="{{m.label}} mode" style="min-height: 44px; flex-shrink: 0; padding: 0 14px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 5px; font-size: 14.5px; font-weight: 600; transition: color .2s; {{m.css}}">
+      <button onClick="{{m.pick}}" aria-label="{{m.label}} mode" aria-pressed="{{m.on}}" style="min-height: 44px; flex-shrink: 0; padding: 0 14px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 5px; font-size: 14.5px; font-weight: 600; transition: color .2s; {{m.css}}">
         {{m.label}}
         <span style="width: 4px; height: 4px; border-radius: 2px; background: var(--alpha-white); opacity: {{m.dot}}"></span>
       </button>
@@ -3769,7 +3769,8 @@
               <div style="position: relative; width: 56px; height: 56px; flex-shrink: 0">
                 <span class="alpha-mark-fill" style="position: absolute; inset: 0; border-radius: 28px; background: var(--acc); color: var(--alpha-white); display: flex; align-items: center; justify-content: center; font-family: Denton, Fraunces, Georgia, serif; font-style: italic; font-size: 32px"><span class="alpha-compute-mark" aria-hidden="true"></span></span>
               </div>
-              <input aria-label="Agent name" placeholder="Alpha" value="{{settings.charVal}}" onChange="{{settings.onName}}" style="flex-grow: 1; min-width: 0; background: transparent; border: 0; border-bottom: 1px solid var(--line); color: var(--fg); font-family: Denton, Fraunces, Georgia, serif; font-weight: 300; font-size: 32px; padding: 2px 0 6px; outline: none">
+              <sc-if value="{{settings.nameEditable}}"><input aria-label="Agent name" placeholder="Alpha" value="{{settings.charVal}}" onChange="{{settings.onName}}" style="flex-grow: 1; min-width: 0; background: transparent; border: 0; border-bottom: 1px solid var(--line); color: var(--fg); font-family: Denton, Fraunces, Georgia, serif; font-weight: 300; font-size: 32px; padding: 2px 0 6px; outline: none"></sc-if>
+              <sc-if value="{{settings.nameFixed}}"><div style="flex-grow: 1; min-width: 0; color: var(--fg); font-family: Denton, Fraunces, Georgia, serif; font-weight: 300; font-size: 32px; padding: 2px 0 6px; overflow-wrap: anywhere">{{settings.charVal}}</div></sc-if>
             </div>
             <button class="tap" aria-label="Character" onClick="{{settings.openChar}}" style="margin-top: 14px; width: 100%; min-height: 48px; border-radius: 24px; background: var(--bg); display: flex; align-items: center; gap: 12px; padding: 0 14px 0 16px; box-sizing: border-box">
               <svg class="i" viewBox="0 0 24 24" style="width: 18px; height: 18px; color: var(--acct)"><path d="{{ic.wave}}"></path></svg>
@@ -3813,7 +3814,8 @@
               <span class="ring" style="position: absolute; inset: 0; border-radius: 48px; background: var(--acc)"></span>
               <span class="alpha-mark-fill" style="position: absolute; inset: 0; border-radius: 48px; background: var(--acc); color: var(--alpha-white); display: flex; align-items: center; justify-content: center; font-family: Denton, Fraunces, Georgia, serif; font-style: italic; font-size: 54px"><span class="alpha-compute-mark" aria-hidden="true"></span></span>
             </div>
-            <input aria-label="Agent name" placeholder="Alpha" value="{{settings.charVal}}" onChange="{{settings.onName}}" style="width: 100%; text-align: center; background: transparent; border: 0; border-bottom: 1px solid var(--line); color: var(--fg); font-family: Denton, Fraunces, Georgia, serif; font-weight: 300; font-size: 38px; padding: 2px 0 8px; outline: none">
+            <sc-if value="{{settings.nameEditable}}"><input aria-label="Agent name" placeholder="Alpha" value="{{settings.charVal}}" onChange="{{settings.onName}}" style="width: 100%; text-align: center; background: transparent; border: 0; border-bottom: 1px solid var(--line); color: var(--fg); font-family: Denton, Fraunces, Georgia, serif; font-weight: 300; font-size: 38px; padding: 2px 0 8px; outline: none"></sc-if>
+            <sc-if value="{{settings.nameFixed}}"><div style="width: 100%; text-align: center; color: var(--fg); font-family: Denton, Fraunces, Georgia, serif; font-weight: 300; font-size: 38px; padding: 2px 0 8px; overflow-wrap: anywhere">{{settings.charVal}}</div></sc-if>
           </div>
         </sc-if>
 
@@ -4341,7 +4343,7 @@
 
 <div data-alpha-toast aria-live="polite" aria-atomic="true">
 <sc-if value="{{toastOn}}">
-  <div class="drop" style="pointer-events: auto; min-height: 48px; max-width: 100%; box-sizing: border-box; padding: 0 {{toastPadR}}px 0 18px; border-radius: 24px; background: var(--fg); color: var(--bg); font-size: 14px; font-weight: 600; display: flex; gap: 14px; align-items: center; box-shadow: 0 8px 24px var(--shc)">
+  <div class="drop" onClick="{{toastTap}}" onPointerDown="{{toastHold}}" onPointerUp="{{toastResume}}" onPointerCancel="{{toastResume}}" onPointerLeave="{{toastResume}}" onFocusCapture="{{toastHold}}" onBlurCapture="{{toastBlur}}" style="pointer-events: auto; min-height: 48px; max-width: 100%; box-sizing: border-box; padding: 0 {{toastPadR}}px 0 18px; border-radius: 24px; background: var(--fg); color: var(--bg); font-size: 14px; font-weight: 600; display: flex; gap: 14px; align-items: center; box-shadow: 0 8px 24px var(--shc)">
     <span style="flex-grow: 1; min-width: 0; padding: 8px 0; overflow-wrap: anywhere">{{toast}}</span>
     <sc-if value="{{toastUndo}}"><button onClick="{{doUndo}}" style="flex-shrink: 0; min-height: 40px; padding: 0 14px; border-radius: 20px; color: var(--bg); background: rgba(127,127,127,.28); font-weight: 700; font-size: 14px">Undo</button></sc-if>
   </div>
