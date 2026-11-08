@@ -27,15 +27,36 @@ let providerStatus: ProviderStatus | null = null, providerReading: string | null
 let actionHistoryRead: string | null = null;
 
 export type EgressPrivacy = { big: string; sub: string };
+type EgressConnection = Pick<ConnectionSnapshot, 'kind' | 'session' | 'cloudAccount' | 'residentInference' | 'providerStatus'>;
+/** Who a native resident session sends AI content to, from the inference binding it already reports.
+ * Names a provider, never a key. Null when the agent is not a native resident session. */
+export function residentRecipients(connection: EgressConnection, native = Capacitor.isNativePlatform()): { big: string; sub: string; leaves: string } | null {
+  if (!connection.session || connection.kind !== 'resident' || !native) return null;
+  const swap = 'Keys and contact details are masked first. Names and message text are not.';
+  if (connection.residentInference === 'cloud') {
+    const service = cloudServiceName(connection.cloudAccount?.environment ?? 'production');
+    return { big: `Uses ${service}`, sub: `Messages and selected content go to ${service} for AI. ${swap}`, leaves: `To ${service}` };
+  }
+  if (connection.residentInference === 'direct') {
+    const provider = connection.providerStatus?.provider === 'cerebras' ? 'Cerebras' : 'your provider';
+    const voice = connection.providerStatus?.voiceConfigured === true;
+    return { big: provider === 'Cerebras' ? 'Uses your Cerebras key' : 'Uses your own key', sub: `Messages and selected content go to ${provider} with your key. ${swap}${voice ? ' Voice recordings and reply text go to Cartesia with your key, without masking.' : ''}`,
+      leaves: `To ${provider}${voice ? ' and Cartesia' : ''}` };
+  }
+  const swapOnly = 'Keys and contact details are masked before AI requests. Names and message text are not.';
+  // An unconfirmed binding may still reach a provider, so only a known-unbound agent says nothing leaves.
+  if (connection.residentInference === 'unknown') return { big: 'Partly masked', sub: swapOnly, leaves: 'Depends on active services' };
+  return { big: 'Partly masked', sub: `${swapOnly} No AI requests until AI is set up.`, leaves: 'Nothing until AI is set up' };
+}
 /** Per-connection wording. Only the packaged Android resident runtime is known to enable
  * the upstream secret and PII swaps; every other agent decides for itself and does not report it. */
-export function egressPrivacy(connection: Pick<ConnectionSnapshot, 'kind' | 'session' | 'cloudAccount'>, native = Capacitor.isNativePlatform()): EgressPrivacy {
+export function egressPrivacy(connection: EgressConnection, native = Capacitor.isNativePlatform()): EgressPrivacy {
   if (cloudRuntimeEnabled && (connection.session || connection.cloudAccount)) {
     const serviceName = cloudServiceName(connection.cloudAccount?.environment ?? 'production');
     return { big: `Uses ${serviceName}`, sub: `When used, messages and selected content go to ${serviceName} for AI. Voice recordings and text for playback also go to Cloud.` };
   }
-  if (connection.session && connection.kind === 'resident' && native)
-    return { big: 'Partly masked', sub: 'Keys and contact details are masked before AI requests. Names and message text are not.' };
+  const resident = residentRecipients(connection, native);
+  if (resident) return { big: resident.big, sub: resident.sub };
   if (connection.session || connection.cloudAccount) return { big: 'Not reported', sub: 'Depends on your agent' };
   // P-43: no session means the resident is starting or recovering, never "no agent".
   if (connection.kind === 'recovering') return { big: 'Agent not running', sub: 'No AI requests until your agent is running and AI is set up' };
@@ -288,7 +309,7 @@ export function installPrototypeNativeAdapters(
         const connection=connectionController.getSnapshot();
         result.val=connection.session&&connection.kind==='resident'&&!Capacitor.isNativePlatform()
           ? 'Prompts and selected context go to the development host and its configured inference provider'
-          : 'Depends on active services';
+          : !cloudRuntimeEnabled&&residentRecipients(connection)?.leaves||'Depends on active services';
       }
       // Nothing here reads on-device model or speech readiness; say so instead of guessing.
       if (result.label === 'On-device model') result.val = 'Not reported';

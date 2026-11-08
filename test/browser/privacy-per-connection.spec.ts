@@ -6,7 +6,8 @@ import { installResidentAgentPlugin } from './helpers/resident-agent-plugin';
 const SYNTHETIC_KEY = 'synthetic-provider-key-7f3a9c0e5b';
 const REMOTE = 'https://agent.example.test';
 const REDACTION = {
-  resident: 'Keys and contact details are masked before AI requests. Names and message text are not.',
+  // The fixture resident uses its own Cerebras key (residentInference 'direct').
+  resident: 'Messages and selected content go to Cerebras with your key. Keys and contact details are masked first. Names and message text are not.',
   agent: 'Depends on your agent',
   offline: 'No remote agent connected; no hosted inference requests',
 };
@@ -15,7 +16,7 @@ const fixtureActivity = [/Drafted a reply to Maya/, /Filed Jordan's term sheet/,
 const forbidden = [/Redaction on/, /Identifiers replaced/, /Pre-egress redaction is not connected/, /Identifier swap only/, /before hosted inference/];
 
 type Scenario = 'resident' | 'remote' | 'offline';
-async function nativeStub(page: Page, scenario: Scenario, options: { strayKeyInStatus?: boolean; proposals?: boolean; locationAccess?: 'approximate' | 'precise'; providerStatus?: { provider: string; model: string } } = {}) {
+async function nativeStub(page: Page, scenario: Scenario, options: { strayKeyInStatus?: boolean; proposals?: boolean; locationAccess?: 'approximate' | 'precise'; providerStatus?: { provider: string; model: string; voiceConfigured?: boolean } } = {}) {
   await installResidentAgentPlugin(page);
   await page.addInitScript(({ scenario, key, remote, strayKeyInStatus, proposals, locationAccess, providerStatus }) => {
     const w = window as any;
@@ -30,7 +31,7 @@ async function nativeStub(page: Page, scenario: Scenario, options: { strayKeyInS
       }
     } catch { /* storage-blocked runs are covered elsewhere */ }
     // The native credential slot holds the provider key; only providerStatus may describe it.
-    const provider = { key, name: providerStatus?.provider ?? 'cerebras', model: providerStatus?.model ?? 'qwen-3.8-27b' };
+    const provider = { key, name: providerStatus?.provider ?? 'cerebras', model: providerStatus?.model ?? 'qwen-3.8-27b', voiceConfigured: providerStatus?.voiceConfigured === true };
     w.privacyFixture = { calls: [] as unknown[], unexpected: [] as string[] };
     const agent = w.residentAgent = w.createResidentAgentPlugin({ owner: () => 'fixture-owner', agentId: 'fixture-agent' });
     const methods = (names: string[]) => names.map(name => ({ name, rtype: 'promise' }));
@@ -55,7 +56,7 @@ async function nativeStub(page: Page, scenario: Scenario, options: { strayKeyInS
           if (method === 'getStatus') return respond({ packaged: true, state: 'stopped', serviceActive: false, socketListening: false });
           if (method === 'start') return respond({ state: 'ready' });
           if (method === 'stop') return respond({ state: 'stopping' });
-          if (method === 'providerStatus') return respond({ provider: provider.name, configured: true, model: provider.model, ...(strayKeyInStatus ? { apiKey: provider.key, key: provider.key } : {}) });
+          if (method === 'providerStatus') return respond({ provider: provider.name, configured: true, model: provider.model, voiceConfigured: provider.voiceConfigured, ...(strayKeyInStatus ? { apiKey: provider.key, key: provider.key } : {}) });
           if (method === 'request') {
             let body: any;
             if (input.path === '/api/auth/me') body = { identity: { kind: 'owner', id: 'fixture-owner' }, access: { role: 'OWNER', mode: 'session' } };
@@ -157,6 +158,20 @@ test('the Eliza Cloud route names Qwen on Cerebras with one label in Models and 
   await expect(page.getByText(label, { exact: true }).first()).toBeVisible();
   // The raw provider path is never shown.
   expect(await page.locator('body').innerText()).not.toContain('cerebras/');
+});
+
+for (const voiceConfigured of [false, true]) test(`own keys name Cerebras${voiceConfigured ? ' and Cartesia for voice' : ' and no voice service'} on Privacy`, async ({ page }) => {
+  await nativeStub(page, 'resident', { providerStatus: { provider: 'cerebras', model: 'qwen-3.8-27b', voiceConfigured } });
+  await connect(page, 'resident');
+  await openSettings(page, 'Privacy & data');
+  await expect(page.getByText('Uses your Cerebras key', { exact: true })).toBeVisible();
+  await expect(page.getByText(/go to Cerebras with your key/)).toBeVisible();
+  await expect(page.getByText(voiceConfigured ? 'To Cerebras and Cartesia' : 'To Cerebras', { exact: true })).toBeVisible();
+  const text = await page.locator('body').innerText();
+  expect(text).not.toContain('Eliza Cloud');
+  expect(text.includes('Voice recordings and reply text go to Cartesia with your key, without masking.')).toBe(voiceConfigured);
+  if (!voiceConfigured) expect(text).not.toContain('Cartesia');
+  expect(await rendererDump(page)).not.toContain(SYNTHETIC_KEY);
 });
 
 test('provider key never reaches renderer state, bridge payloads or console output', async ({ page }) => {
