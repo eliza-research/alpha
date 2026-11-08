@@ -2288,6 +2288,7 @@
       <div data-alpha-app-header="detail" style="display: flex; align-items: center; height: 56px; margin-top: 0; padding: 0 8px; gap: 2px; flex-shrink: 0">
         <button class="ib" data-agent-id="notes-back" aria-label="Back to notes" onClick="{{notes.ed.close}}"><svg class="i" viewBox="0 0 24 24"><path d="{{ic.back}}"></path></svg></button>
         <div style="flex-grow: 1"></div>
+        <button class="ib" data-agent-id="notes-format" aria-label="{{notes.ed.listLabel}}" onClick="{{notes.ed.toggleList}}" style="{{notes.ed.listCss}}"><svg class="i" viewBox="0 0 24 24"><path d="{{ic.notesList}}"></path></svg></button>
         <button class="ib" data-agent-id="notes-more" aria-label="More" aria-haspopup="dialog" aria-expanded="{{notes.ed.menuShown}}" onClick="{{notes.ed.more}}"><svg class="i" viewBox="0 0 24 24"><path d="{{ic.more}}"></path></svg></button>
       </div>
       <sc-if value="{{notes.ed.saveStatus}}"><div role="status" aria-live="polite" style="padding:0 24px 4px;color:var(--mut);font-size:12px">{{notes.ed.saveStatus}}</div></sc-if>
