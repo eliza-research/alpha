@@ -7,15 +7,14 @@ const lib=await import('../../apps/app/src/runtime/photo-library.ts');
 const tick=async(n=6)=>{for(let i=0;i<n;i++)await new Promise(resolve=>setTimeout(resolve,0));};
 const item=row=>({id:`lib:i:${row}:${row*10}`,revision:`${1700000000+row}:${123456+row}:${row}`,kind:'image',mime:'image/jpeg',name:`IMG_${row}.jpg`,album:'Camera',width:400,height:300,takenAt:1700000000000+row,modifiedAt:1700000000000,size:123456+row,duration:0,favorite:false,owned:false,image:''});
 function fakePort(){
- const state={rows:[3,2,1],scope:'full',pages:[],changes:{reset:false,items:[],generation:0},watch:[],listeners:{}};
- const scope=()=>({scope:state.scope,images:state.scope==='full',videos:state.scope==='full',canSelectMore:state.scope==='selected',canEditOthers:true,locked:false,version:'v1'});
+ const state={rows:[3,2,1],scope:'full',version:'v1',pages:[],requested:0,watch:[],listeners:{}};
+ const scope=()=>({scope:state.scope,images:state.scope==='full',videos:state.scope==='full',canSelectMore:state.scope==='selected',canEditOthers:true,locked:false,version:state.version});
  const port={
   async scope(){return scope();},async requestAccess(){return scope();},
-  async page(options){state.pages.push(options);const rows=state.rows.filter(row=>!options.before||row<Number(options.before)).slice(0,options.limit);return {...scope(),items:rows.map(item),next:'',generation:40};},
+  async page(options){state.pages.push(options);const after=state.rows.filter(row=>!options.before||row<Number(options.before)),rows=after.slice(0,options.limit);return {...scope(),items:rows.map(item),next:after.length>rows.length?String(rows.at(-1)):'',generation:1};},
   async inspect({id}){const row=state.rows.find(r=>item(r).id===id);if(!row)throw Object.assign(Error('missing'),{code:'LIBRARY_MISSING'});return item(row);},
   async validate({items}){return {...scope(),items:items.map(entry=>({id:entry.id,status:state.rows.some(r=>item(r).id===entry.id)?'current':'missing'}))};},
-  async changes(){return {...scope(),...state.changes};},
-  async requestChange(options){state.changes.requested=(state.changes.requested||0)+1;if(!state.change)throw Error('not in this fixture');return state.change(options);},async share(){throw Error('not in this fixture');},
+  async requestChange(options){state.requested++;if(!state.change)throw Error('not in this fixture');return state.change(options);},async share(){throw Error('not in this fixture');},
   async watch({active}){state.watch.push(active);return {active};},
   async addListener(event,listener){state.listeners[event]=listener;return {remove:async()=>{}};},
  };
@@ -23,24 +22,23 @@ function fakePort(){
 }
 const fakeApi=()=>{const store={photos:{album:'device'}};return {store,api:{get:name=>store[name],set(){},isActive:()=>true}};};
 
-// 1. New rows reported by a change read reload a fresh first page instead of waiting for a restart.
+// 1. A library change reloads a fresh first page (native changes() always resets) instead of waiting for a restart.
 {
  const {state,port}=fakePort(),{api}=fakeApi(),library=createDeviceLibrary(port,()=>true);
  library.tile(api);library.album({},api);await tick();
  assert.deepEqual(library.album({},api).items.map(row=>row.nativeMediaId),['lib:i:3:30','lib:i:2:20','lib:i:1:10']);
  assert.deepEqual(state.watch,[true],'observer starts only with the album open');
- state.rows=[4,3,2,1];state.changes={reset:false,items:[item(4)],generation:41};
+ state.rows=[4,3,2,1];
  const before=state.pages.length;
  library.tile(api).open();await tick();
  assert.equal(state.pages.length,before+1,'a fresh page is read');
  assert.equal(state.pages.at(-1).before,'','from the first page');
  const view=library.album({},api);
  assert.equal(view.items[0].nativeMediaId,'lib:i:4:40','the new item appears without a restart');
- assert.match(view.status,/1 new item/);
  assert.equal(view.more,true);assert.equal(view.moreLabel,'Reload','an explicit reload is always available');
  // 2. Leaving Photos stops the observer and the next visit starts from a fresh first page.
  library.leave();assert.equal(state.watch.at(-1),false);
- state.rows=[5,4,3,2,1];state.changes={reset:false,items:[],generation:41};
+ state.rows=[5,4,3,2,1];
  const visits=state.pages.length;library.tile(api).open();await tick();
  assert.equal(state.pages.length,visits+1);assert.equal(library.album({},api).items[0].nativeMediaId,'lib:i:5:50');
  library.dispose();
@@ -114,17 +112,18 @@ const fakeApi=()=>{const store={photos:{album:'device'}};return {store,api:{get:
   library.tile(api);library.album({},api);await tick();
   const signal=new AbortController().signal,search=await library.agent.run({type:'photo_library_search',limit:1},signal);
   await library.agent.run(lib.validateLibraryOperation({type:'photo_library_review',action:'trash',items:[{id:'lib:i:3:30',revision:search.items[0].revision}]}),signal);
-  state.change=change;let validations=0;const validate=port.validate;port.validate=async options=>{validations++;return validate(options);};
+  state.change=change;const pages=state.pages.length;
   library.album({},api).dev.confirm();await tick(10);
-  assert.equal(state.changes.requested,1,name);assert.match(library.album({},api).status,expected,name);
-  assert.equal(validations>0,revalidates,name+' revalidation');
+  assert.equal(state.requested,1,name);assert.match(library.album({},api).status,expected,name);
+  assert.equal(state.pages.length>pages,revalidates,name+' revalidation');
   library.dispose();
  }
 }
 // Delayed reads from an earlier visit/grant must never mutate the new catalog.
-for (const operation of ['changes', 'validate']) {
+for (const operation of ['page', 'validate']) {
  const {state,port}=fakePort(),{api}=fakeApi(),library=createDeviceLibrary(port,()=>true);
  library.tile(api);library.album({},api);await tick();
+ library.album({},api).items[0].tap();
  let complete;
  const original=port[operation];
  port[operation]=()=>new Promise(resolve=>{complete=resolve;});
@@ -132,7 +131,7 @@ for (const operation of ['changes', 'validate']) {
  assert.equal(typeof complete,'function',operation+' read started');
  library.leave();port[operation]=original;
  state.rows=[4,3,2,1];library.tile(api).open();await tick();
- complete(operation==='changes'?{reset:false,items:[{...item(3),trashed:true}],generation:41}:{items:[{id:item(3).id,status:'missing'}]});
+ complete(operation==='page'?{scope:'full',images:true,videos:true,canSelectMore:false,canEditOthers:true,locked:false,version:'v1',items:[item(9)],next:'',generation:1}:{items:[{id:item(3).id,status:'missing'}]});
  await tick();
  assert.deepEqual(library.album({},api).items.map(row=>row.nativeMediaId),state.rows.map(row=>item(row).id),operation+' cannot remove a fresh item after reopen');
  library.dispose();
@@ -160,6 +159,48 @@ for (const operation of ['changes', 'validate']) {
  library.leave();port.page=page;state.rows=[4,3,2,1];library.tile(api).open();await tick();
  reject(Object.assign(Error('old grant denied'),{code:'LIBRARY_DENIED'}));await tick();
  assert.deepEqual(library.album({},api).items.map(row=>row.nativeMediaId),state.rows.map(row=>item(row).id),'an old denial must not clear a fresh catalog');
+ library.dispose();
+}
+// 6. Every resume posts scopeChanged with a new version. An unchanged grant keeps loaded selections
+//    that still validate, says nothing about access, and turns the paused observer on again.
+{
+ const {state,port}=fakePort(),{api}=fakeApi();state.rows=Array.from({length:30},(_,i)=>30-i);
+ const library=createDeviceLibrary(port,()=>true);
+ library.tile(api);library.album({},api);await tick();
+ library.album({},api).loadMore();await tick();
+ let view=library.album({},api);assert.equal(view.items.length,30,'two pages loaded');
+ view.items[0].tap();view.items[27].tap();
+ const watches=state.watch.length;
+ state.version='v2';state.listeners.scopeChanged(await port.scope());await tick(10);
+ view=library.album({},api);
+ assert.deepEqual(view.items.filter(row=>row.on).map(row=>row.nativeMediaId),[item(30).id,item(3).id],'selections on both pages survive');
+ assert.doesNotMatch(view.status,/access changed|unselected/);
+ assert.equal(state.watch.length,watches+1,'the next render turns the observer on again');assert.equal(state.watch.at(-1),true);
+ // A selected item that left the library is unselected; the rest stay.
+ state.rows=state.rows.filter(row=>row!==3);state.version='v3';state.listeners.scopeChanged(await port.scope());await tick(10);
+ view=library.album({},api);
+ assert.deepEqual(view.items.filter(row=>row.on).map(row=>row.nativeMediaId),[item(30).id]);
+ assert.match(view.status,/unselected/);
+ // The library-changed reset path keeps selections that are still current.
+ state.listeners.libraryChanged();await tick(10);
+ assert.deepEqual(library.album({},api).items.filter(row=>row.on).map(row=>row.nativeMediaId),[item(30).id]);
+ // A narrowed grant still clears the selection and says so.
+ state.scope='selected';state.listeners.scopeChanged(await port.scope());await tick(10);
+ view=library.album({},api);
+ assert.equal(view.items.filter(row=>row.on).length,0);assert.match(view.status,/Library access changed in Android\./);
+ library.dispose();
+}
+// 7. An approved agent read during a concurrent load or resume is not refused as "not allowed".
+{
+ const {state,port}=fakePort(),{api}=fakeApi(),library=createDeviceLibrary(port,()=>true);
+ library.tile(api);library.album({},api);await tick();
+ const scope=port.scope;let release;
+ port.scope=()=>new Promise(resolve=>{release=()=>resolve(scope());port.scope=scope;});
+ const run=library.agent.run({type:'photo_library_search',limit:2},new AbortController().signal);
+ await tick();assert.equal(typeof release,'function','agent scope read pending');
+ state.version='v2';state.listeners.scopeChanged(await scope());release();
+ const result=await run;
+ assert.equal(result.items.length,2);
  library.dispose();
 }
 console.log('PASS photo library adapter');

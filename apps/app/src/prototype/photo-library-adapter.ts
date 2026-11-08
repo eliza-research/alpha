@@ -18,7 +18,6 @@ export type PhotoLibraryPort = {
   page(options: { before?: string; limit?: number; thumbnails?: boolean; thumbnailSize?: number; kind?: string; from?: number; to?: number; favorites?: boolean }): Promise<unknown>;
   inspect(options: { id: string; size?: number; pixels?: boolean }): Promise<unknown>;
   validate(options: Items): Promise<unknown>;
-  changes(options: { version: string; generation: number }): Promise<Bag>;
   requestChange(options: Items & { operation: LibraryChange }): Promise<{ status: string; operation?: string; outcomes?: { id: string; status: string }[] }>;
   share(options: Items): Promise<{ status: string; count: number }>;
   /** Native MediaStore observer, registered only while the device library album is open. */
@@ -40,6 +39,9 @@ export const deviceLibraryAvailable = () => Capacitor.isNativePlatform() && Capa
 const PAGE = LIBRARY_LIMITS.thumbnailRows - 6;
 const background = (item: LibraryItem) => item.image ? `url("${item.image}") center / cover no-repeat` : 'var(--s2)';
 const duration = (seconds: number) => seconds ? `${Math.floor(seconds / 60)}:${String(Math.floor(seconds % 60)).padStart(2, '0')}` : '';
+/** Same grant and lock state. Android publishes a new version on every resume, so the version alone is not an access change. */
+const sameAccess = (a: LibraryScopeState | undefined, b: LibraryScopeState) => !!a && a.scope === b.scope && a.images === b.images && a.videos === b.videos
+  && a.imageAccess === b.imageAccess && a.videoAccess === b.videoAccess && a.locked === b.locked;
 const revisionSession = () => { try { return Array.from(crypto.getRandomValues(new Uint8Array(6)), byte => byte.toString(36).padStart(2, '0')).join('').slice(0, 12); } catch { return Date.now().toString(36).slice(-8); } };
 
 /** A refusal the agent executor reports as a failed action with this owner-facing text. */
@@ -53,8 +55,9 @@ export const deviceLibraryAgent = () => mountedAgent;
 export function createDeviceLibrary(port: PhotoLibraryPort = nativePort, available = deviceLibraryAvailable) {
   const catalog = new LibraryCatalog(), selection = new LibrarySelection(), revisions = createCaptureRevisions(), modelRevisions = new LibraryRevisions(revisionSession());
   let scope: LibraryScopeState | undefined, deniedAgain = false, scopeRequested = false, loadRequested = false, busy = false, error = '', status = '', review: LibraryReview | undefined, acting = false, epoch = 0, disposed = false;
-  /** Set when the next visit must start from a fresh first page: Photos was left, or Android access changed. */
-  let reloadOnOpen = false, watching = false;
+  /** reloadOnOpen: the next visit must start from a fresh first page (Photos was left, or Android resumed or
+   * changed access). watching is undefined after a resume: Android turned its observer off, so the next render asks again. */
+  let reloadOnOpen = false, watching: boolean | undefined = false;
   let api: Bag | undefined;
   const listeners: Promise<PluginListenerHandle>[] = [];
   const visible = () => !!api && api.isActive?.() !== false && api.get?.('photos')?.album === 'device';
@@ -69,23 +72,43 @@ export function createDeviceLibrary(port: PhotoLibraryPort = nativePort, availab
   async function readScope(): Promise<LibraryScopeState | undefined> {
     const token = epoch;
     if (!available()) { scope = undefined; return undefined; }
-    try { const fresh = parseScope(await port.scope()); if (token !== epoch || disposed) return undefined; scope = fresh; if (catalog.observeScope(scope)) selection.clear(); }
+    try {
+      const before = scope, fresh = parseScope(await port.scope());
+      if (token !== epoch || disposed) return undefined;
+      // A new version alone clears the catalog (its cursors are gone) but not the selection; load() checks it.
+      scope = fresh; if (catalog.observeScope(scope) && !sameAccess(before, scope)) selection.clear();
+    }
     catch { if (token !== epoch || disposed) return undefined; error = 'Library access could not be read.'; }
     return scope;
   }
 
   async function load(more = false) {
     if (busy || disposed || !available()) return;
-    const token = ++epoch; busy = true; error = ''; refresh();
+    const token = ++epoch, loaded = catalog.items.length; busy = true; error = ''; refresh();
     try {
       const current = await readScope();
       if (token !== epoch) return;
       if (!current || current.scope === 'denied' || current.locked) { catalog.reset(); selection.clear(); return; }
-      const page = parsePage(await port.page({ before: more ? catalog.next : '', limit: PAGE, thumbnails: true, thumbnailSize: 240 }));
+      // A fresh first page keeps the selected and reviewed items Android still reports as current.
+      const kept = new Set<string>(), wanted = more ? [] : [...new Map([...selection.items(), ...(review?.items ?? [])].map(row => [row.id, row])).values()];
+      if (wanted.length) {
+        for (const row of parseValidation(await port.validate({ items: wanted }))) if (row.status === 'current') kept.add(row.id);
+        if (token !== epoch) return;
+      }
+      const read = async (before: string) => parsePage(await port.page({ before, limit: PAGE, thumbnails: true, thumbnailSize: 240 }));
+      const page = await read(more ? catalog.next : '');
       if (token !== epoch) return;
       scope = page.scope; catalog.apply(page, !more); if (!more) reloadOnOpen = false;
+      // Native cursors do not survive a resume: read on, no further than before, until those items are loaded again.
+      const missing = () => [...kept].some(id => !catalog.items.some(row => row.id === id));
+      while (missing() && catalog.next && catalog.items.length < loaded) {
+        const next = await read(catalog.next);
+        if (token !== epoch) return;
+        scope = next.scope; catalog.apply(next, false);
+      }
       const dropped = selection.reconcile(catalog);
       if (dropped.dropped || dropped.changed) status = 'Some selected items changed or left the library and were unselected.';
+      if (review && !reviewCurrent(review, catalog)) { review = undefined; status = 'The reviewed items changed. Review them again.'; }
     } catch (failure) {
       if (token !== epoch) return;
       error = (failure as { code?: string })?.code === 'LIBRARY_DENIED' ? '' : 'The device library could not be loaded. Try again.';
@@ -93,39 +116,11 @@ export function createDeviceLibrary(port: PhotoLibraryPort = nativePort, availab
     } finally { if (token === epoch) { busy = false; refresh(); } }
   }
 
-  /** External edits, deletes, reboots and grant changes: revalidate what is loaded. */
+  /** External edits, deletes, reboots and grant changes. Native changes() always answers reset (one
+   * bounded page refresh, no incremental index), so this reloads and keeps what is still current. */
   async function revalidate() {
     if (busy || disposed || !available() || !catalog.loaded) return;
-    const token = epoch;
-    try {
-      const before = scope?.scope, current = await readScope();
-      if (token !== epoch) return;
-      if (!current || current.scope !== before || !catalog.loaded) { await load(); return; }
-      if (catalog.version && current.version !== catalog.version) { await load(); return; }
-      let changes: Bag | undefined;
-      if (catalog.generation) changes = await port.changes({ version: catalog.version, generation: catalog.generation });
-      if (token !== epoch) return;
-      if (changes && changes.reset !== true && Array.isArray(changes.items)) {
-        const rows = changes.items.map((row: unknown) => ({ ...parseItem(row), trashed: (row as Bag).trashed === true }));
-        const result = catalog.applyChanges(rows, Number(changes.generation) || 0);
-        // New items belong at the top of a newest-first catalog: start again from a fresh first page.
-        if (result.added) { status = `${result.added} new ${result.added === 1 ? 'item' : 'items'} in the library.`; await load(); return; }
-      }
-      if (changes?.reset === true) { await load(); return; }
-      // Deletions are not reported by generation; revalidate loaded identities directly.
-      for (let offset = 0; offset < catalog.items.length && token === epoch; offset += LIBRARY_LIMITS.validate) {
-        const batch = catalog.validationBatch(offset);
-        if (!batch.length) break;
-        const validation = parseValidation(await port.validate({ items: batch }));
-        if (token !== epoch) return;
-        const result = catalog.reconcile(validation);
-        if (result.removed.length) offset -= result.removed.length;
-      }
-      const dropped = selection.reconcile(catalog);
-      if (dropped.dropped || dropped.changed) status = 'Some selected items changed or left the library and were unselected.';
-      if (review && !reviewCurrent(review, catalog)) { review = undefined; status = 'The reviewed items changed. Review them again.'; }
-    } catch { if (token === epoch) error = 'Library changes could not be checked. Reload the library.'; }
-    finally { refresh(); }
+    await load();
   }
 
   /** Android answers a request denied again without a dialog; access then changes only in Android Settings. */
@@ -190,9 +185,14 @@ export function createDeviceLibrary(port: PhotoLibraryPort = nativePort, availab
     listeners.push(port.addListener('libraryChanged', () => { if (visible()) void revalidate(); }));
     listeners.push(port.addListener('scopeChanged', value => {
       // Retire reads begun under the previous grant before clearing or loading the catalog.
-      epoch++; busy = false;
-      try { scope = parseScope(value); if (catalog.observeScope(scope)) { selection.clear(); review = undefined; status = 'Library access changed in Android.'; } } catch { /* read again on next render */ }
-      // Any change, including a widened grant, needs a fresh first page; a narrowing already cleared the catalog.
+      epoch++; busy = false; watching = undefined;
+      try {
+        const fresh = parseScope(value);
+        if (!sameAccess(scope, fresh) && catalog.observeScope(fresh)) { selection.clear(); review = undefined; status = 'Library access changed in Android.'; }
+        scope = fresh;
+      } catch { /* read again on next render */ }
+      // Every resume and any change, including a widened grant, needs a fresh first page (native cursors are gone);
+      // a narrowing already cleared the catalog, and an unchanged grant keeps what still validates.
       reloadOnOpen = true;
       if (visible()) void load(); else refresh();
     }));
@@ -203,9 +203,12 @@ export function createDeviceLibrary(port: PhotoLibraryPort = nativePort, availab
   const agent: LibraryAgent = {
     async run(operation, signal) {
       if (!available() || disposed) throw new LibraryAgentRefusal('The device library is available only in the Android app.');
-      const current = await readScope();
+      // Its own read: a load or resume in progress must not turn into a false refusal.
+      let current: LibraryScopeState;
+      try { current = parseScope(await port.scope()); }
+      catch { throw new LibraryAgentRefusal('Library access could not be read. Nothing was shared.'); }
       signal.throwIfAborted();
-      if (!current || current.scope === 'denied') throw new LibraryAgentRefusal('Alpha is not allowed to read the photo library. Nothing was shared.');
+      if (current.scope === 'denied') throw new LibraryAgentRefusal('Alpha is not allowed to read the photo library. Nothing was shared.');
       if (current.locked) throw new LibraryAgentRefusal('Unlock the phone to use the device library. Nothing was shared.');
       if (operation.type === 'photo_library_search') {
         const limit = operation.limit ?? 20;
