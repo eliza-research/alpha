@@ -241,3 +241,21 @@ annotations stripped and controlled native/UUID ports.
 Deferred storage notices now recheck the captured connection epoch and exact
 sign-in view before appearing. Regressions show that a newer code-entry step and
 a replaced connection keep their state when an older notice settles.
+
+### Shared runtime retirement
+
+`CoreRuntimeRetirement` executes the pinned `RuntimeRetirement` class and its
+actual structured error implementation. Thirteen source schedules pass 75
+checkpoints covering publication before callbacks, synchronous failure,
+reentrant work, work created during a drain, concurrent callers and retained
+teardown failures. All five model fields have source observations. The eight
+registered scenarios and 1,000 samples of 80 steps pass. Exhaustive finite-state
+checking visits 3,622 distinct states and generates 17,050 states without a
+safety violation.
+
+The compiler records and checks every input hash before the compiled classes
+execute. Read-only observations inspect the emitted TypeScript-private pending
+set and failure list. Three work identities, two drain callers and three
+recorded failures bound the state space. A completed drain can be followed by
+new work. Runtime shutdown admission and the release of individual resources
+remain separate source obligations.

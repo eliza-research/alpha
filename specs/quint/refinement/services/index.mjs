@@ -8,6 +8,7 @@ import {workflowRefinement} from './workflow.mjs';
 import {runWorkflowEngineRefinement} from './workflow-engine/index.mjs';
 import {runWorkflowWakeupRefinement} from './workflow-scheduler/index.mjs';
 import {runWorkflowTaskRefinement} from './workflow-scheduler/registration.mjs';
+import {runCoreRetirementRefinement} from './core-runtime/retirement.mjs';
 import {policyRefinement} from './policies.mjs';
 import {readingRefinement} from './reading.mjs';
 import {scanRefinement} from './scan.mjs';
@@ -45,6 +46,7 @@ export async function runServicesRefinement() {
   receipts.push(...workflowWakeups.receipts);
   const workflowTasks = await runWorkflowTaskRefinement(driverSources);
   receipts.push(...workflowTasks.receipts);
+  receipts.push(await runCoreRetirementRefinement(driverSources));
   const obligations = [
     {model: 'IdentitySession', obligation: 'Native authorization, encrypted storage and wider concurrent activation', reason: 'Twenty-one full-plugin schedules cover callback retirement, cancellation races, receipt/key commits, overlapping acknowledgement and newer attempts, previous-key revocation and restart. Native authorization timing, actual Keystore behavior and arbitrary overlapping attempts remain further obligations.'},
     {model: 'ServiceAuthorization', obligation: 'Managed-service dispatch authorization', reason: 'Entitlement refresh and admission views execute; exact route validation and server authorization still need their own dispatch trace adapter.'},
@@ -68,5 +70,6 @@ export async function runServicesRefinement() {
   obligations.push(...workflowEngine.obligations);
   obligations.push(...workflowWakeups.obligations);
   obligations.push(...workflowTasks.obligations);
+  obligations.push({model: 'CoreRuntimeRetirement', obligation: 'Runtime admission and actual resource teardown', reason: 'The real retirement tracker executes pending-work publication, reentrant work, concurrent drains and retained failures. AgentRuntime shutdown admission and individual resource release require their own source relations.'});
   return {receipts, obligations};
 }

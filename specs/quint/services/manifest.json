@@ -1125,6 +1125,36 @@
         "maxSteps": 80,
         "seed": "123"
       }
+    },
+    {
+      "module": "CoreRuntimeRetirement",
+      "path": "specs/quint/services/CoreRuntimeRetirement.qnt",
+      "init": "init",
+      "step": "step",
+      "invariant": "safety",
+      "tests": [
+        "waitsForWorkTest",
+        "rejectedWorkIsNotRecordedFailureTest",
+        "recordedFailurePersistsTest",
+        "reentrantWorkTest",
+        "spawnedWhileDrainingTest",
+        "separateDrainCallersTest",
+        "laterWorkDoesNotReopenDrainTest",
+        "failureDuringDrainTest"
+      ],
+      "sources": [
+        "vendor/eliza/packages/core/src/runtime/retirement.ts",
+        "vendor/eliza/packages/core/src/errors.ts"
+      ],
+      "stateMapping": {
+        "pending/generation/failures": "Actual RuntimeRetirement pending Promise set, monotonically published generation and retained failure list",
+        "results/drains": "Settlement of returned run() and drain() promises, indexed by fixture identity"
+      },
+      "abstractions": [
+        "Three work promises, two drain callers and at most three recorded failures. Promise identity is represented by stable equality classes.",
+        "A rejected operation and an explicitly recorded retirement failure are separate source events. Draining does not reject merely because one run promise rejected.",
+        "The class tracks work that it receives. Admission of new work after runtime shutdown belongs to RuntimeServiceLifecycle and AgentRuntime."
+      ]
     }
   ]
 }
