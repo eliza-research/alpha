@@ -1,6 +1,7 @@
 import {fileURLToPath} from 'node:url';
 import {checkChatInputRefinement} from '../../legacy/chat-input/check-chat-input-refinement.mjs';
 import {checkFilesBrowserRefinement} from '../../legacy/files-browser/check-files-browser-refinement.mjs';
+import {checkGoogleConnectRefinement} from '../../legacy/google-connect/check-google-connect-refinement.mjs';
 import {checkHomeLayoutRefinement} from '../../legacy/home-layout/check-home-layout-refinement.mjs';
 import {checkNotesViewRefinement} from '../../legacy/notes-view/check-notes-view-refinement.mjs';
 import {checkPhotosLibraryRefinement} from '../../legacy/photos-library/check-photos-library-refinement.mjs';
@@ -155,6 +156,19 @@ export async function runLegacyRefinement() {
         obligation: 'Current sign-in opens the chooser directly after local readiness',
         reason: 'The historical current profile requires a separate gate and user probe step. The mounted source reaches the in-app choices after startup.',
         evidence: mismatch.receiptPath}]};
+    }],
+    ['GoogleConnect', async () => {
+      const {receipts, mismatches} = await checkGoogleConnectRefinement([driver]);
+      const differences = {
+        GoogleConnectProposedDirectConsent: ['The unlinked Inbox opens a Google accounts review',
+          'The original proposed profile goes from Inbox directly to consent. The mounted first tap opens the panel without dispatching authorization.'],
+        GoogleConnectCurrentReadOnlyRequest: ['The current Google accounts consent offers Gmail send and Calendar write',
+          'The historical current request includes only Gmail read and Calendar read.'],
+      };
+      return {receipts, obligations: mismatches.map(mismatch => {
+        const [obligation, reason] = differences[mismatch.id];
+        return {model: 'GoogleConnect', obligation, reason, evidence: mismatch.receiptPath};
+      })};
     }],
     ['CoreActionSettlement', checkActionSettlementRefinement],
     ['CoreApprovalService', () => checkApprovalServiceRefinement(undefined, [driver])],

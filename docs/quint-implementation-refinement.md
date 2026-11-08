@@ -689,3 +689,10 @@ checkpoints with actual browser media and IndexedDB. It preserves six
 comparisons for window order and width, selection cap, favorite and patch
 behavior, and Save copy. Android MediaStore and external share recipients
 remain separate evidence.
+
+The historical GoogleConnect replay checks three mounted schedules and
+eight checkpoints. It observes the Google accounts review, combined-grant
+Inbox and Calendar navigation, and mailbox retirement after a grant
+readback. The original direct-consent path and read-only combined request
+each have a separate mismatch receipt. The authorization handoff uses a
+closed synthetic port.

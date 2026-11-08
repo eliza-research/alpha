@@ -1,5 +1,5 @@
 import {expect,type Page} from '@playwright/test';
-import {preloadPageModules} from './page-modules';
+import {preloadPageModules} from './page-modules.ts';
 
 /** Closed fixture for the one merged Calendar: the agent's CalendarService feed (built-in Eliza Calendar plus
  * the Google calendars the owner shows in Google) and the Cloud Google connection behind Settings. Nothing
