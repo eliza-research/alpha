@@ -1656,6 +1656,47 @@
         "The JVM driver executes the complete bridge and service, including controlled platform faults and native lock contention. Android task attribution, Binder, installed foreground behavior and physical GPS remain external.",
         "Removed task roots are partitioned by the Activity component captured at admission. AOSP supplies the task base Intent, with no task ID to distinguish tasks that share the component."
       ]
+    },
+    {
+      "path": "specs/quint/native/RuntimeUpdatePause.qnt",
+      "module": "RuntimeUpdatePause",
+      "init": "init",
+      "step": "step",
+      "invariant": "safety",
+      "tests": [
+        "pauseBlocksStartsAndRejectsWrongCommitOwnerTest",
+        "exactOldBaselineAndEndedSessionReleaseTest",
+        "ambiguousOldReleaseRetainsItsServiceLeaseTest",
+        "aPendingSessionBlocksAnOldProcessButNotItsExactSuccessorTest",
+        "stagedFileDoesNotOwnAuthorityAndCorruptPrimaryFencesTest",
+        "oldApiZeroCannotProveCommittingSessionUncommittedTest"
+      ],
+      "invariants": [
+        "ValidRecordBindsExactUpdate",
+        "ActiveOrUnreadableRecordFencesStart",
+        "ReleasedLeasesHadOwnedStops"
+      ],
+      "sources": [
+        "vendor/eliza/plugins/plugin-native-agent/android/src/main/java/ai/eliza/plugins/agent/updater/RuntimeUpdatePause.java",
+        "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaDevicePlugin.java",
+        "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaApplication.java",
+        "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaLocalAgentPlugin.java"
+      ],
+      "stateMapping": {
+        "file/record/staged": "Actual binary journal read, tombstone, corruption and leftover legacy staging",
+        "generation/executingCode/executingDigest/liveOwner": "Actual JVM reopen, executing fixture APK and volatile owner",
+        "shutdown/stops/releases": "Exact wrapper-held request with controlled service confirmations and release calls",
+        "evidence/outcome": "Controlled PackageInstaller, signer, APK digest, boot/API inputs and source reconcile result"
+      },
+      "abstractions": [
+        "One shared POSIX journal, at most two JVM lifetimes, two owner symbols, one synthetic session, baseline and target digest classes.",
+        "A failed directory force may leave the new record visible. File admission and the retained native service shutdown lease are separate. No provider or PackageInstaller mutation is performed on a device."
+      ],
+      "bounds": {
+        "maxSamples": 1000,
+        "maxSteps": 60,
+        "maxVerifyDepth": 4
+      }
     }
   ]
 }
