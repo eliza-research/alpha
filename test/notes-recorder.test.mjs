@@ -434,7 +434,7 @@ test('agent notes (no audio kept): Done never deletes the audio while the transc
   assert.deepEqual(persisted, [], 'no transcript-only note is saved');
   assert.equal(none.state.discarded, 0, 'the only audio stays');
   assert.equal(quiet.phase, 'stopped');
-  assert.equal(quiet.error, 'Transcription stopped. The audio is kept.');
+  assert.equal(quiet.error, 'No transcription is available. The audio is kept.');
   quiet.close();
   // A segment fails: the transcript covers only part of the audio.
   const partial = fakeDriver();
