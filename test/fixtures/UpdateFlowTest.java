@@ -48,7 +48,7 @@ public final class UpdateFlowTest {
  private static final class RetiredCrash extends Error {
   RetiredCrash(){super("Fixture crash retired after its assertions",null,false,false);}
  }
- private static void retireFixtureWorkers()throws Exception{
+ static void retireFixtureWorkers()throws Exception{
   java.util.List<java.util.concurrent.ExecutorService> workers=new java.util.ArrayList<>();
   for(AlphaDevicePlugin bridge:fixtureBridges)for(String name:List.of("updateWorker","diagnosticsWorker")){
    java.lang.reflect.Field field=AlphaDevicePlugin.class.getDeclaredField(name);field.setAccessible(true);
@@ -122,7 +122,7 @@ public final class UpdateFlowTest {
    @Override public int read(byte[] buffer,int offset,int length)throws IOException{int value=read();if(value<0)return -1;buffer[offset]=(byte)value;return 1;}
   };
  }
- private static AlphaDevicePlugin bridge(Context context,Lifecycle.State state){
+ static AlphaDevicePlugin bridge(Context context,Lifecycle.State state){
   AlphaDevicePlugin plugin=new AlphaDevicePlugin();
   fixtureBridges.add(plugin);
   if(AlphaDevicePlugin.UpdatePause.context!=context){AlphaDevicePlugin.UpdatePause.journal=null;AlphaDevicePlugin.UpdatePause.configure(context);}
@@ -137,7 +137,7 @@ public final class UpdateFlowTest {
   return info;
  }
  private static PluginCall offered(long versionCode)throws Exception{return new PluginCall(new JSObject().put("apkUrl","https://updates.test/alpha-"+versionCode+".apk").put("sha256",sha256(APK)).put("sizeBytes",(long)APK.length).put("versionCode",versionCode));}
- private static PluginCall offered()throws Exception{return offered(8);}
+ static PluginCall offered()throws Exception{return offered(8);}
  /** A binding as Alpha writes one, for this boot unless a test moves the count. */
  private static String binding(Context context,long versionCode,String signer)throws Exception{return "alpha-update://"+context.getPackageName()+"/"+versionCode+"/"+sha256(APK)+"/"+signer+"/"+Settings.Global.bootCount+"/intent";}
  /** A sealed session Android lists with this referrer, which no attempt of this process staged. */
@@ -166,9 +166,9 @@ public final class UpdateFlowTest {
   check(!download(plugin.getContext()).exists(),"no tap leaves its download in the cache");
   return call;
  }
- private static int committed(Context context){List<Integer> all=context.packages.installer.committed;return all.get(all.size()-1);}
+ static int committed(Context context){List<Integer> all=context.packages.installer.committed;return all.get(all.size()-1);}
  /** Android's request for the owner's confirmation, heard by every bridge of the process. */
- private static Intent confirmation(Context context,Integer session){
+ static Intent confirmation(Context context,Integer session){
   Intent confirm=new Intent("android.content.pm.action.CONFIRM_INSTALL");
   Intent status=new Intent("ai.elizaresearch.alphaphone.UPDATE_STATUS").putExtra(PackageInstaller.EXTRA_STATUS,PackageInstaller.STATUS_PENDING_USER_ACTION).putExtra(Intent.EXTRA_INTENT,confirm);
   if(session!=null){status.putExtra(PackageInstaller.EXTRA_SESSION_ID,session);context.packages.installer.sendConfirmation(session);}
@@ -222,9 +222,9 @@ public final class UpdateFlowTest {
  private static void aged(long millis)throws Exception{plugin("updateAsked",System.nanoTime()-TimeUnit.MILLISECONDS.toNanos(millis));}
  private static void resume(AlphaDevicePlugin plugin){plugin.activity.state=Lifecycle.State.RESUMED;plugin.handleOnResume();}
  private static void stop(AlphaDevicePlugin plugin){plugin.activity.state=Lifecycle.State.CREATED;}
- private static Context installing(File cache)throws Exception{retireFixtureWorkers();forgetProcess();BuildConfig.VERSION_CODE=7;Build.VERSION.SDK_INT=37;Build.VERSION.CODENAME="REL";Context context=new Context(cache);context.packages.archive=archive(context.getPackageName(),8);return context;}
+ static Context installing(File cache)throws Exception{retireFixtureWorkers();forgetProcess();BuildConfig.VERSION_CODE=7;Build.VERSION.SDK_INT=37;Build.VERSION.CODENAME="REL";Context context=new Context(cache);context.packages.archive=archive(context.getPackageName(),8);return context;}
  /** The confirmation goes with no status, as Home or Alpha's own singleTask relaunch can do it. Alpha returns, and time passes. */
- private static void dismissed(AlphaDevicePlugin plugin)throws Exception{stop(plugin);resume(plugin);settled();}
+ static void dismissed(AlphaDevicePlugin plugin)throws Exception{stop(plugin);resume(plugin);settled();}
 
  private static void aStartSweepsTheDownloadOfAKilledProcess(File cache)throws Exception{
   Context context=new Context(cache);
@@ -1789,8 +1789,11 @@ public final class UpdateFlowTest {
    check(context.packages.installer.committed.isEmpty()&&context.packages.installer.sessions.isEmpty(),"refused activation abandons only its staged session");
   }finally{com.getcapacitor.Plugin.ready=original;}
  }
- public static void main(String[] args)throws Exception{
+ static void serveFixtureHttps(){
   URL.setURLStreamHandlerFactory(protocol->!"https".equals(protocol)?null:new URLStreamHandler(){@Override protected URLConnection openConnection(URL url){return new Served(url);}});
+ }
+ public static void main(String[] args)throws Exception{
+  serveFixtureHttps();
   File cache=Files.createTempDirectory("alpha-update-flow").toFile();
   int status=1;
   try{

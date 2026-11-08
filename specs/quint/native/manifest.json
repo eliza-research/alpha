@@ -1697,6 +1697,53 @@
         "maxSteps": 60,
         "maxVerifyDepth": 4
       }
+    },
+    {
+      "path": "specs/quint/native/NativeUpdateActivation.qnt",
+      "module": "NativeUpdateActivation",
+      "init": "init",
+      "step": "step",
+      "invariant": "safety",
+      "tests": [
+        "participantJoinsBeforeReadinessTest",
+        "readyThenJoinInvalidatesTest",
+        "invalidBarrierCannotSealTest",
+        "retiringBridgeCannotSatisfyBarrierTest",
+        "duplicateAcknowledgmentTest",
+        "foreignAcknowledgmentTest",
+        "postSealContinuationOwnsAsBuiltResumeTest",
+        "canceledAfterRetirementUsesSettlerTest",
+        "oldReceiptCannotAcknowledgeSuccessorTest"
+      ],
+      "invariants": [
+        "ExactReadyBeforeSeal",
+        "SeparateWaitingAndAcknowledged",
+        "StopAfterSeal",
+        "CommitHasStop",
+        "ResumeOnlyCanceled"
+      ],
+      "sources": [
+        "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaDevicePlugin.java",
+        "android/app/src/main/java/ai/elizaresearch/alphaphone/PluginWorkers.java",
+        "vendor/eliza/plugins/plugin-native-agent/android/src/main/java/ai/eliza/plugins/agent/updater/RuntimeUpdatePause.java"
+      ],
+      "stateMapping": {
+        "registered/installerOwner/waiting/acknowledged": "Actual bridge registry and exact UpdateActivation participants and owner",
+        "serial/active/terminal": "Finite classes for observed activation UUIDs, with their native active and settled slots",
+        "ready/invalid/sealed": "Actual UpdateActivation future and admission flags",
+        "stopRequested/stopCalls/commits/pendingSession": "Controlled resident shutdown and PackageInstaller observations across the native handoff",
+        "confirmationOwner/outcome/resumeBridge": "Actual volatile confirmation owner and terminal readback audience",
+        "seen": "Bridge instances observed at registration and never reused"
+      },
+      "abstractions": [
+        "Three bridge instances and two exact activation IDs. One active staged attempt and one current installer session. The state machine ends at process-local terminal readback. Durable journal reconciliation and installed PackageInstaller behavior are separate.",
+        "In-memory HTTPS and controlled platform effects permit exact lock ordering and callback scheduling. Source captures pending/readiness/refusal/retirement/seal/commit/cancellation; installed success and process restart use the separate durable boundary."
+      ],
+      "bounds": {
+        "maxSamples": 1000,
+        "maxSteps": 80,
+        "maxVerifyDepth": 4
+      }
     }
   ]
 }
