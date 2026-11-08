@@ -6,7 +6,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { execFileSync, spawnSync } from "node:child_process";
-import { archiveWebPayload, readBuildFlags, verifyOwnerRouteTable } from "../scripts/apk.mjs";
+import { archiveWebPayload, readBuildFlags, validateApk, verifyOwnerRouteTable } from "../scripts/apk.mjs";
 import { voiceBundleAdmission } from "../scripts/voice-host.mjs";
 const root = path.resolve(import.meta.dirname, "..");
 /** Copy the committed AOSP product files into `dir` with every unset value filled, so production staging passes its lock check. */
@@ -312,3 +312,18 @@ test("APK voice admission requires the complete recorded bundle and every record
   assert.equal(voiceBundleAdmission(apk(), pair).asr, true);
 });
 
+test('merged-manifest check keeps launcher-only permissions and components out of standalone', () => {
+  // Stand-ins for aapt's merged xmltree: the launcher carries every launcher-only entry, standalone none.
+  const identity = {appId: 'ai.elizaresearch.alphaphone'};
+  const launcherOnly = ['READ_CONTACTS', 'READ_SMS', 'SEND_SMS', 'CALL_PHONE', 'READ_PHONE_STATE', 'EXPAND_STATUS_BAR', 'RECEIVE_SMS', 'RECEIVE_MMS', 'RECEIVE_WAP_PUSH', 'READ_CALL_LOG']
+    .map(name => `android.permission.${name}`)
+    .concat(['AlphaInCallService', 'AlphaCallActivity', 'AlphaDialPadActivity', 'AlphaSmsDeliverReceiver', 'AlphaSmsSendReceiver', 'AlphaMmsWapPushReceiver', 'AlphaMmsResultReceiver', 'AlphaRespondViaMessageService', 'AlphaSmsComposeActivity'].map(name => `ai.elizaresearch.alphaphone.${name}`));
+  const apk = (home, entries) => () => ({packageName: identity.appId, home, launcher: true, webPayload: true, badging: '', xml: ['android.permission.CAMERA', ...entries].map(name => `A: android:name="${name}"`).join('\n')});
+  assert.doesNotThrow(() => validateApk('launcher.apk', identity, true, apk(true, launcherOnly)));
+  assert.doesNotThrow(() => validateApk('standalone.apk', identity, false, apk(false, [])));
+  for (const entry of ['android.permission.READ_PHONE_STATE', 'android.permission.EXPAND_STATUS_BAR', 'ai.elizaresearch.alphaphone.AlphaSmsSendReceiver']) {
+    const name = entry.split('.').at(-1);
+    assert.throws(() => validateApk('launcher.apk', identity, true, apk(true, launcherOnly.filter(other => other !== entry))), new RegExp(`Invalid.*${name}.*launcher\\.apk`));
+    assert.throws(() => validateApk('standalone.apk', identity, false, apk(false, [entry])), new RegExp(`Invalid.*${name}.*standalone\\.apk`));
+  }
+});

@@ -141,17 +141,21 @@ test("the bundle audit fails an assetlinks.json with a placeholder or debug fing
   assert.equal(auditWebBundle(dir, { debugFingerprints: [SIGNER] }).ok, false);
 });
 
-test("the https autoVerify filter defaults to the configured host and is read back from the APK manifest", () => {
+test("the https autoVerify filters are the two returns on the configured host and are read back from the APK manifest", () => {
   const gradle = fs.readFileSync("android/app/product.gradle", "utf8");
-  const manifest = fs.readFileSync("android/app/src/main/AndroidManifest.xml", "utf8");
-  // The generated overlay owns the HTTPS filter and defaults to the configured Cloud host.
-  assert.doesNotMatch(manifest.replace(/<!--[\s\S]*?-->/g, ""), /autoVerify/);
+  const manifest = fs.readFileSync("android/app/src/main/AndroidManifest.xml", "utf8").replace(/<!--[\s\S]*?-->/g, "");
+  // MainActivity declares the HTTPS filters for the ${appLinkHost} placeholder, which is the configured Cloud host.
+  const main = manifest.slice(manifest.indexOf('<activity android:name=".MainActivity"'), manifest.indexOf("</activity>", manifest.indexOf('<activity android:name=".MainActivity"')));
+  const https = [...manifest.matchAll(/<intent-filter android:autoVerify="true">.*?<data android:scheme="https" android:host="\$\{appLinkHost\}" android:(path|pathPrefix)="([^"]+)"\/><\/intent-filter>/g)];
+  assert.deepEqual(https.map(match => `${match[1]}=${match[2]}`), ["path=/alphaphone/auth/callback", "path=/alphaphone/gmail/callback"]);
+  for (const match of https) assert.ok(main.includes(match[0]), "the returns belong to MainActivity");
+  assert.equal(manifest.match(/autoVerify/g).length, 2);
+  assert.doesNotMatch(manifest, /scheme="https"[^>]*cloud-delegation/, "no https Cloud delegation filter: only the custom scheme has a handler");
   assert.match(gradle, /project\.findProperty\('ELIZAOS_APP_LINK_HOST'\) \?: envValue\('ELIZAOS_APP_LINK_HOST'\)/);
   assert.match(gradle, /\? cloudWebHost : appLinkHostRaw\.toString\(\)\.trim\(\)/);
-  assert.ok(gradle.includes('<activity android:name="${android.namespace}.MainActivity" android:exported="true">'), 'the generated App Link activity explicitly exports its external return intent');
+  assert.match(gradle, /if \(appLinkHost != cloudWebHost\)/);
   assert.match(gradle, /manifestPlaceholders\.put\('appLinkHost', appLinkHost\)/);
-  assert.match(gradle, /if \(appLinkHost\) androidComponents \{ onVariants\(selector\(\)\.all\(\)\) \{ variant -> variant\.sources\.manifests\.addStaticManifestFile\(appLinksManifest\) \} \}/);
-  assert.match(gradle, /<intent-filter android:autoVerify="true">[^\n]*android:scheme="https" android:host="\\\$\{appLinkHost\}" android:pathPrefix="\/alphaphone\/cloud-delegation"/);
+  assert.doesNotMatch(gradle, /app-links|addStaticManifestFile|autoVerify/, "no configuration-time manifest overlay");
   assert.doesNotMatch(gradle, /ALPHA_APP_LINK/);
   // verify-apks records the filter from `aapt dump xmltree` of the packaged manifest.
   const filter = scheme => [
@@ -167,7 +171,7 @@ test("the https autoVerify filter defaults to the configured host and is read ba
     "          A: http://schemas.android.com/apk/res/android:scheme(0x01010027)=\"alphaphone\" (Raw: \"alphaphone\")",
     "          A: http://schemas.android.com/apk/res/android:host(0x01010028)=\"cloud-delegation\" (Raw: \"cloud-delegation\")"];
   assert.deepEqual(appLinkFilters([...custom, ...filter("https"), "    E: activity (line=50)"].join("\n")), { present: true, hosts: ["links.example.com"] });
-  assert.deepEqual(appLinkFilters(custom.join("\n")), { present: false, hosts: [] }, "the default build: custom scheme only");
+  assert.deepEqual(appLinkFilters(custom.join("\n")), { present: false, hosts: [] }, "a custom scheme alone is no App Link");
   assert.deepEqual(appLinkFilters(filter("http").join("\n")), { present: false, hosts: [] });
   assert.match(fs.readFileSync("scripts/verify-apks.mjs", "utf8"), /appLinks: appLinkFilters\(xml\),/);
 });

@@ -60,7 +60,16 @@ export function verifyCloudResident(root,source=sourceDirectory(root),{localEmbe
  for(const [file,hash] of worker.files)if(digest(path.join(agent,'workflow-worker',file))!==hash)throw Error('Staged Cloud worker differs: '+file);
  return {runtimeProfile:'cloud',resident:true,localInference:localEmbeddings,...(localEmbeddings?{localEmbeddings:true}:{}),sourcePin:pin,verifiedRuntimeEntries:seen.size};
 }
+/** Native profile: the staged Google host is the built artifact, and that artifact matches current sources. */
+export function verifyNativeGoogleHost(root){
+ const artifact=workerArtifactDirectory(root),host=verifyNativeGoogleHostArtifact(root,artifact);
+ const staged=path.join(root,'android/app/src/main/assets/agent/workflow-worker',host.module);
+ if(!fs.existsSync(staged)||digest(staged)!==json(path.join(artifact,'manifest.json')).files[host.module])throw Error('Staged native Google host differs from the built host artifact; run npm run agent:stage-android');
+ return {runtimeProfile:'native',nativeGoogleHost:host.module,inputs:Object.keys(host.inputs).length};
+}
 if(process.argv[1]&&path.resolve(process.argv[1])===fileURLToPath(import.meta.url)){
- if(process.argv[2]!=='--verify-cloud'||process.argv.slice(3).some(arg=>arg!=='--local-embeddings'))throw Error('Usage: runtime-profile.mjs --verify-cloud');
- console.log(JSON.stringify(verifyCloudResident(path.resolve(import.meta.dirname,'..'),undefined,{localEmbeddings:process.argv.includes('--local-embeddings')})));
+ const root=path.resolve(import.meta.dirname,'..');
+ if(process.argv[2]==='--verify-native'&&process.argv.length===3)console.log(JSON.stringify(verifyNativeGoogleHost(root)));
+ else if(process.argv[2]!=='--verify-cloud'||process.argv.slice(3).some(arg=>arg!=='--local-embeddings'))throw Error('Usage: runtime-profile.mjs --verify-cloud | --verify-native');
+ else console.log(JSON.stringify(verifyCloudResident(root,undefined,{localEmbeddings:process.argv.includes('--local-embeddings')})));
 }

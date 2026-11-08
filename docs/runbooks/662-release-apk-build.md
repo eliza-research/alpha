@@ -92,8 +92,8 @@ changes: once H-32 records this release as `lastRelease`, every later build and 
 
 ### D3. App Links host
 
-H-10 builds with `ELIZAOS_APP_LINK_HOST=eliza.app`; without it, builds declare no verified App
-Links filters and H-13 cannot be verified on the device. Default: set it.
+Every build declares the verified App Links filters on `eliza.app`, the configured production web
+host; `ELIZAOS_APP_LINK_HOST`, if set, must equal it.
 
 ## Procedure (release owner, release build host)
 

@@ -142,9 +142,9 @@ privileged permission whitelist is fabricated for a thin launcher.
 
 ## App Links
 
-**Build configuration.** `android/app/product.gradle` defaults to the configured production web
-host and overlays verified filters on that host for
-`/alphaphone/cloud-delegation` (prefix), `/alphaphone/auth/callback` (exact path, the in-app
+**Build configuration.** `MainActivity` in `android/app/src/main/AndroidManifest.xml` declares
+verified filters on the `${appLinkHost}` placeholder, which `android/app/product.gradle` sets to the
+configured production web host, for `/alphaphone/auth/callback` (exact path, the in-app
 Eliza Cloud sign-in return) and `/alphaphone/gmail/callback` (exact path, the Google Workspace
 consent return). Steward returns sign-in only to `eliza.app`, so the sign-in return
 works with the default configuration. `ELIZAOS_APP_LINK_HOST`, if set, must match it. Test-mocks builds always add
@@ -182,9 +182,9 @@ separate evidence levels; none of them proves another.
   `ACTION_VIEW` browser.
 - Neither component needs GMS.
 
-**Cloud delegation return.** The `alphaphone://cloud-delegation` custom scheme remains the active
-delegation return path; the https delegation filter exists only in builds with
-`ELIZAOS_APP_LINK_HOST`, and moving the renderer to it is a separate reviewed change.
+**Cloud delegation return.** The `alphaphone://cloud-delegation` custom scheme is the only
+delegation return path. No build declares an https delegation filter, because the delegation
+handler accepts only the custom scheme; adding one is a separate reviewed change.
 
 ## Full AOSP product integration
 
