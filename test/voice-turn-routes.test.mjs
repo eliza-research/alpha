@@ -1,6 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
+import vm from 'node:vm';
+import {stripTypeScriptTypes} from 'node:module';
 
 // The resident's end-of-turn (elizaOS #36546) and heard (#36547) routes as the voice assistant
 // uses them (apps/app/src/runtime/voice-turn-routes.ts, #423). Fake request ports only: this is
@@ -90,8 +92,17 @@ test('heard reporting: a playback failure before any sentence finished never emp
   assert.deepEqual(r.calls, [], 'a speech failure is not a barge-in: nothing is sent');
   assert.deepEqual(r.outcomes, [['nothing-heard', {attempts: 0}]]);
   const adapter = fs.readFileSync(new URL('../apps/app/src/prototype/voice-adapter.ts', import.meta.url), 'utf8');
-  assert.match(adapter, /interrupted:true,\.\.\.\(failed\?\{playbackFailed:true\}:\{\}\)\}\)/);
-  assert.match(adapter, /if\(failed&&!heard\.heard\)return;/, 'the view keeps the reply text too');
+  const start=adapter.indexOf('          onHeard:heard=>{'),end=adapter.indexOf('          onTurn:',start);assert.ok(start>=0&&end>start);
+  // Execute the real adapter completion path: both a failure before audio and a later
+  // failure preserve the full reply and never send a truncation receipt.
+  for(const heard of ['', 'First sentence.']){
+    const reports=[],timings=[],toasts=[],chat={shell:{toast:text=>toasts.push(text),setState(){throw Error('Playback failure cannot truncate a reply');}}};
+    const context={token:1,generation:1,chatDestination:chat,chat,conversationLastReply:'First sentence. Second sentence.',timingTurns:new Map([['turn','timing']]),binding:{conversationId:'room-1'},heardReporter:{report:input=>{reports.push(input);return Promise.resolve('recorded');}},recordHeardVoiceTiming:(...args)=>timings.push(args)};
+    vm.runInNewContext(stripTypeScriptTypes('globalThis.ports={'+adapter.slice(start,end)+'};',{mode:'transform'}),context);
+    context.ports.onHeard({turnId:'turn',replyId,heard,unheard:'Second sentence.',interrupted:true,playbackFailed:true});
+    assert.deepEqual(reports,[]);assert.deepEqual(timings,[['timing','nothing-heard']]);assert.equal(context.conversationLastReply,'First sentence. Second sentence.');
+    assert.equal(toasts.length,heard?1:0);
+  }
 });
 
 test('heard reporting: only assistant replies of the current conversation, and nothing after the binding changed', async () => {
