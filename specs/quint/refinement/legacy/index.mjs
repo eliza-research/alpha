@@ -3,6 +3,7 @@ import {checkChatInputRefinement} from '../../legacy/chat-input/check-chat-input
 import {checkFilesBrowserRefinement} from '../../legacy/files-browser/check-files-browser-refinement.mjs';
 import {checkGoogleConnectRefinement} from '../../legacy/google-connect/check-google-connect-refinement.mjs';
 import {checkHomeLayoutRefinement} from '../../legacy/home-layout/check-home-layout-refinement.mjs';
+import {checkMapsRefinement} from '../../legacy/maps/check-maps-refinement.mjs';
 import {checkNotesViewRefinement} from '../../legacy/notes-view/check-notes-view-refinement.mjs';
 import {checkPhotosLibraryRefinement} from '../../legacy/photos-library/check-photos-library-refinement.mjs';
 import {checkSettingsNavRefinement} from '../../legacy/settings-nav/check-settings-nav-refinement.mjs';
@@ -97,6 +98,20 @@ const photosLibraryDifferences = {
   PhotosLibraryCurrentEditCopy: ['Save copy keeps the original and creates a new identity',
     'The historical edit operation updates the existing identity.'],
 };
+const mapsDifferences = {
+  MapsHistoricalPassiveOfflineNotice: ['Passive capability failure leaves the base Maps prompt visible',
+    'The source records the failure separately. The historical failure action changes the visible error.'],
+  MapsHistoricalOfflinePrompt: ['An explicit search waiting on a failed read displays a typed offline error',
+    'The historical current profile displays its generic provider prompt.'],
+  MapsHistoricalDirectionsBeforeOrigin: ['Directions asks for an explicit origin before the route request',
+    'The historical action already admits the route.'],
+  MapsHistoricalChatInterruption: ['Minimizing chat keeps the live guidance route',
+    'The historical current profile leaves navigation.'],
+  MapsHistoricalArrivalClearsRoute: ['Arrival releases the location watch and retains the accepted route',
+    'The historical arrival clears its route.'],
+  MapsHistoricalFailedRerouteKeepsRoute: ['A failed reroute clears guidance and the accepted route',
+    'The historical proposed fault and off-route sequence retains the route.'],
+};
 
 export async function runLegacyRefinement() {
   const receipts = [], obligations = [];
@@ -150,6 +165,16 @@ export async function runLegacyRefinement() {
       return {receipts, obligations};
     }],
     ['Calendar', () => checkHistoricalCalendarNavigation([driver])],
+    ['Maps', async () => {
+      const {receipts, mismatches} = await checkMapsRefinement([driver]);
+      const obligations = mismatches.map(mismatch => {
+        const [obligation, reason] = mapsDifferences[mismatch.id];
+        return {model: 'Maps', obligation, reason, evidence: mismatch.receiptPath};
+      });
+      obligations.push({model: 'Maps', obligation: 'Verify compact reroute pointer access',
+        reason: 'The launcher assistant pill overlapped the Reroute from here control at 412×915. The mounted comparison exercised its ordinary keyboard activation.'});
+      return {receipts, obligations};
+    }],
     ['SignIn', async () => {
       const {receipts, mismatch} = await checkSignInRefinement([driver]);
       return {receipts, obligations: [{model: 'SignIn',

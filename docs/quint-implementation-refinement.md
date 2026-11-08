@@ -696,3 +696,17 @@ Inbox and Calendar navigation, and mailbox retirement after a grant
 readback. The original direct-consent path and read-only combined request
 each have a separate mismatch receipt. The authorization handoff uses a
 closed synthetic port.
+
+`NativeMmsDispatch` checks 20 schedules and 137 checkpoints. The retained
+baseline shows two late approvals returning a different MMS binding or an
+SMS receipt for the same operation ID. The authenticated patch requires the
+exact reviewed tuple and MMS record kind, distinguishes expired from
+invalid, and keeps PDU cleanup and the single handoff. The combined staged
+source also passed all 26 SMS schedules again. Radio, Android role and
+provider effects use controlled ports.
+
+The historical Maps replay checks four mounted schedules and 29
+checkpoints. Six separate receipts cover offline status, origin entry,
+chat retention, arrival and failed reroute. The compact launcher pill
+overlaps the reroute pointer target in the test viewport. The driver uses
+keyboard activation for that control.
