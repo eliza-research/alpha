@@ -126,8 +126,9 @@ SHA-256 of each package file, in a reviewed change. Rerun the preflight.
 ### 2. H-21 Stage and build (image host operator)
 
 Inputs: the distributable launcher APK and `apk-manifest.json` from #662, its reviewed launcher
-descriptor, the qualified Sense listener APK and descriptor (H-20), the admitted stallion source
-and the factory archive `stallion-cp3a.261005.005-factory-d1d25502.zip`.
+descriptor, the admitted stallion source
+and the factory archive `stallion-cp3a.261005.005-factory-d1d25502.zip`. No listener: while P-78
+defers wake listening, production staging refuses `--listener-apk`.
 
 ```sh
 git -C "$AOSP_SOURCE/build/soong" apply --check "$PWD/vendor/eliza/packages/os/android/patches/soong-app-native/soong-app-native.patch"
@@ -136,7 +137,6 @@ npm run aosp:stage -- --target pixel10a --production \
   --applied-build-patch soong-app-native \
   --apk /absolute/launcher-release.apk --apk-manifest /absolute/apk-manifest.json \
   --descriptor /absolute/reviewed-launcher.json \
-  --listener-apk /absolute/sense-release.apk --listener-descriptor /absolute/reviewed-listener.json \
   --aosp-source /absolute/prepared/stallion-source \
   --factory-image /absolute/stallion-cp3a.261005.005-factory-d1d25502.zip \
   --output /absolute/new-alpha-overlay

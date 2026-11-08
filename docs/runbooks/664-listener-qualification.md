@@ -129,7 +129,8 @@ Abbreviations: `S` is the serial, `PKG` is `ai.elizaresearch.alphaphone.sense`.
    from `android/`), then preprocess and sign it with the launcher certificate as the ADR
    Consequences describe. Check it with `python3 scripts/verify-aosp-listener-apk.py <apk>`.
    Write the reviewed listener descriptor (`packageName`, `apkSha256`, `certificateSha256`).
-5. Stage:
+5. Stage. While P-78 defers wake listening, `--production` refuses `--listener-apk`, so this step
+   waits until P-78 is lifted:
    ```sh
    npm run aosp:stage -- --target pixel10a --factory-image /abs/stallion-….zip --aosp-source /abs/build-copy \
      --apk <launcher-release.apk> --descriptor <descriptor.json> --production \

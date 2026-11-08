@@ -101,7 +101,6 @@ npm run aosp:stage -- --target pixel10a --production \
   --applied-build-patch soong-app-native \
   --apk /absolute/launcher-release.apk --apk-manifest /absolute/apk-manifest.json \
   --descriptor /absolute/reviewed-launcher.json \
-  --listener-apk /absolute/sense-release.apk --listener-descriptor /absolute/reviewed-listener.json \
   --aosp-source /absolute/prepared/stallion-source \
   --factory-image /absolute/stallion-cp3a.261005.005-factory-d1d25502.zip \
   --output /absolute/new-alpha-overlay
@@ -109,7 +108,8 @@ npm run aosp:stage -- --target pixel10a --production \
 
 The launcher must be a release that `verify-apks` recorded as distributable, and it is
 re-judged against the committed release signer at staging time; the source verification,
-listener, camera and provisioning checks of production staging all apply. Staging sets no
+camera and provisioning checks of production staging all apply. While P-78 defers wake
+listening, production staging refuses `--listener-apk`: the image ships without AlphaSense. Staging sets no
 `BOARD_AVB_*` variable: board configuration belongs to the device's locked `BoardConfig.mk`,
 not to product makefiles. The image builds with the device's AVB configuration and test key,
 and release signing below re-signs vbmeta and every chained partition with the release `avb`
