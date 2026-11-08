@@ -14,7 +14,7 @@ test('Android free/busy reader: chosen calendars only, provider availability, ci
  const shared=name=>join(root,'vendor/eliza/plugins/plugin-native-calendar',name);
  try{
   execFileSync(javaBinary('javac'),['--release','11','-cp',jsonJar,'-d',temporary,
-   ...['CalendarZones.java','CalendarSyncFreshness.java','CalendarAvailabilityGate.java','CalendarAvailabilityJournalResult.java'].map(nativeSource),
+   ...['CalendarZones.java','CalendarSyncFreshness.java','CalendarAvailabilityJournalResult.java'].map(nativeSource),
    shared('android/src/main/java/ai/eliza/plugins/calendar/read/CalendarSourceIdentity.java'),shared('android/src/main/java/ai/eliza/plugins/calendar/read/SelectedCalendarReader.java'),
    ...['content/ContentResolver.java','content/ContentUris.java','content/ContentValues.java','database/Cursor.java','net/Uri.java'].map(name=>shared('test/jvm/android/'+name)),
    fixture('calendar-provider-jvm/android/provider/CalendarContract.java'),fixture('SqliteCalendarProvider.java'),fixture('CalendarAvailabilityReaderTest.java')],{timeout:180000,stdio:'pipe'});

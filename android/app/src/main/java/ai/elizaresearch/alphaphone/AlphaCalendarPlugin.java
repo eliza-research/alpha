@@ -140,7 +140,7 @@ public final class AlphaCalendarPlugin extends CalendarPlugin {
   try{
    JSArray chosen=c.getArray("calendars");
    org.json.JSONArray selected=chosen==null?null:new org.json.JSONArray(chosen.toString());
-   org.json.JSONArray events=CalendarAvailabilityGate.read(getContext().getContentResolver(),selected,c.getString("start"),c.getString("end"),zone);
+   org.json.JSONArray events=CalendarSyncFreshness.readAvailability(getContext().getContentResolver(),selected,c.getString("start"),c.getString("end"),zone);
    if(!readGranted()||!foreground()||!unlocked())throw new IllegalStateException();
    if(!java.time.ZoneId.systemDefault().equals(zone)){c.resolve(status("timezone-changed"));return;}
    JSObject out=status("ready");out.put("freshness","local");out.put("events",events);c.resolve(out);

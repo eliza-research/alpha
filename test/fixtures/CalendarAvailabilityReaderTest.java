@@ -25,7 +25,7 @@ import org.json.JSONObject;
 /**
  * Runs the pinned upstream SelectedCalendarReader availability read (availabilitySources and
  * readAvailability, elizaOS/eliza#35911), which Alpha calls, plus Alpha's own zone check and
- * journal policy and the plugin's gate (CalendarAvailabilityGate, CalendarSyncFreshness), on the JVM. The provider is a stand-in: the
+ * journal policy and the plugin's gate (CalendarSyncFreshness.readAvailability), on the JVM. The provider is a stand-in: the
  * reader's exact projection, selection, arguments and sort order are executed by the sqlite3
  * command-line shell over tables that use CalendarProvider's column names and hold titles,
  * descriptions, locations and calendars the owner never chose. This checks the reader's SQL
@@ -208,16 +208,16 @@ public final class CalendarAvailabilityReaderTest {
    Provider remote=new Provider(directory);remote.calendar(1,"LOCAL",700);remote.calendar(2,"REMOTE",100);
    remote.write("UPDATE calendars SET account_type='com.example' WHERE _id=2;");
    same(2,SelectedCalendarReader.availabilitySources(remote).length(),"Remote freebusy source is still offered");
-   rejects(CalendarSyncFreshness.FreshnessUnknown.class,()->CalendarAvailabilityGate.read(remote,chosen(remote,2),start,end,zone));
-   rejects(CalendarSyncFreshness.FreshnessUnknown.class,()->CalendarAvailabilityGate.read(remote,chosen(remote,1,2),start,end,zone));
+   rejects(CalendarSyncFreshness.FreshnessUnknown.class,()->CalendarSyncFreshness.readAvailability(remote,chosen(remote,2),start,end,zone));
+   rejects(CalendarSyncFreshness.FreshnessUnknown.class,()->CalendarSyncFreshness.readAvailability(remote,chosen(remote,1,2),start,end,zone));
    same(0,remote.instanceUris.size(),"Unknown remote freshness never reads partial local intervals");
-   rows(CalendarAvailabilityGate.read(remote,chosen(remote,1),start,end,zone));
+   rows(CalendarSyncFreshness.readAvailability(remote,chosen(remote,1),start,end,zone));
    remote.write("UPDATE calendars SET account_type=NULL WHERE _id=2;");
-   rejects(CalendarSyncFreshness.FreshnessUnknown.class,()->CalendarAvailabilityGate.read(remote,chosen(remote,2),start,end,zone));
+   rejects(CalendarSyncFreshness.FreshnessUnknown.class,()->CalendarSyncFreshness.readAvailability(remote,chosen(remote,2),start,end,zone));
    // The gate reports a changed source before judging freshness, and a missing selection reads nothing.
    JSONArray remoteReviewed=chosen(remote,2);int remoteReads=remote.instanceUris.size();remote.write("UPDATE calendars SET name='RENAMED' WHERE _id=2;");
-   rejects(SelectedCalendarReader.SourceChanged.class,()->CalendarAvailabilityGate.read(remote,remoteReviewed,start,end,zone));
-   rejects(IllegalArgumentException.class,()->CalendarAvailabilityGate.read(remote,null,start,end,zone));
+   rejects(SelectedCalendarReader.SourceChanged.class,()->CalendarSyncFreshness.readAvailability(remote,remoteReviewed,start,end,zone));
+   rejects(IllegalArgumentException.class,()->CalendarSyncFreshness.readAvailability(remote,null,start,end,zone));
    same(remoteReads,remote.instanceUris.size(),"Refused gate reads never query instances");
 
    // Malformed selections and windows are refused before any provider read.

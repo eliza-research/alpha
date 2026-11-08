@@ -61,7 +61,7 @@ the renderer rejects any provider row that has a field other than `start`, `end`
 | Executor and provider boundary | `apps/app/src/runtime/calendar-availability.ts` |
 | Review dialogs | `apps/app/src/prototype/calendar-availability-review.ts` |
 | Android provider read | Upstream `SelectedCalendarReader.availabilitySources` and `readAvailability` (`vendor/eliza/plugins/plugin-native-calendar/android/src/main/java/ai/eliza/plugins/calendar/read/SelectedCalendarReader.java`, elizaOS/eliza#35911, at the pin); the time-zone check is Alpha's `CalendarZones.java`, and Alpha's `CalendarSyncFreshness.java` refuses a selection with any non-`LOCAL` calendar before the upstream read |
-| Android bridge methods | `availabilitySources` and `readAvailability` in `AlphaCalendarPlugin.java`; the provider part of `readAvailability` (source identity, freshness, upstream read, in that order) is `CalendarAvailabilityGate.java` |
+| Android bridge methods | `availabilitySources` and `readAvailability` in `AlphaCalendarPlugin.java`; the provider part of `readAvailability` (source identity, freshness, upstream read, in that order) is `CalendarSyncFreshness.readAvailability` |
 | Android journal policy | `CalendarAvailabilityJournalResult.java`, called from `AlphaActionJournal.java` |
 | Browser provider read | `apps/app/src/browser/calendar.ts` |
 | Contract and result computation | `vendor/eliza/packages/contracts/src/device-reviews.ts` (pinned, unchanged) |
@@ -73,7 +73,7 @@ the renderer rejects any provider row that has a field other than `start`, `end`
 - `test/browser/calendar-availability.spec.ts`: the renderer, review dialogs, journal
   orchestration and the browser in-app calendar, with synthetic agent routes.
 - `test/calendar-availability-reader.test.mjs` compiles the pinned upstream reader
-  (`SelectedCalendarReader`), Alpha's `CalendarZones`, `CalendarSyncFreshness`, `CalendarAvailabilityGate` and the journal policy for the JVM and
+  (`SelectedCalendarReader`), Alpha's `CalendarZones`, `CalendarSyncFreshness` and the journal policy for the JVM and
   runs `test/fixtures/CalendarAvailabilityReaderTest.java`. The reader's exact projection,
   selection and sort order are executed by the `sqlite3` shell (`test/fixtures/SqliteCalendarProvider.java`) over tables that use
   CalendarProvider's column names, in five time zones from UTC-11 to UTC+14. The rows
