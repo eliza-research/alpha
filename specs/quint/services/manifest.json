@@ -1485,6 +1485,42 @@
         "maxSteps": 60,
         "seed": "123"
       }
+    },
+    {
+      "path": "specs/quint/services/EmbeddingStoreIdentity.qnt",
+      "module": "EmbeddingStoreIdentity",
+      "init": "init",
+      "step": "step",
+      "invariant": "safety",
+      "tests": [
+        "sameWidthSwapRequiresAcknowledgementTest",
+        "providerSwapPreservesKnownModelTest",
+        "cacheReadFailureCanLeaveResizedColumnTest",
+        "joinedProbeAndClearFailureTest"
+      ],
+      "invariants": [
+        "persistedPin",
+        "disabledWarning",
+        "noSuccessWithWrongColumn"
+      ],
+      "sources": [
+        "vendor/eliza/packages/core/src/runtime/embeddings.ts"
+      ],
+      "stateMapping": {
+        "stored/pin/column": "Observed cache identity, runtime provider pin and adapter width",
+        "disabled/warned": "Actual disabled latch and one-time warning",
+        "probe/calls/joined": "Actual single-flight promise and provider calls",
+        "writes/clearFailures/outcome": "Port commits, reconciliation errors and real probe settlement"
+      },
+      "abstractions": [
+        "Up to five probes with a single join per probe. Two provider identities, untagged vectors, two model labels plus absent metadata, and widths two and three.",
+        "Settings and provider answers are controlled. Named vector spaces, real cache durability, SQL and background re-embedding remain separate."
+      ],
+      "bounds": {
+        "maxSamples": 1000,
+        "maxSteps": 80,
+        "maxVerifyDepth": 4
+      }
     }
   ]
 }

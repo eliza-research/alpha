@@ -191,3 +191,11 @@ that competing polls preserve the first committed revision. The pilot APK
 update campaign uses scripted ADB and an actual temporary rotation journal to
 compare 12 schedules and 149 checkpoints, including uncertainty after an
 ambiguous install reply.
+
+The embedding identity campaign checks seven schedules and 51 checkpoints
+against the shared runtime. It covers same-width model replacement,
+acknowledgement, unlabelled provider identity, joined initialization, and
+degraded generation. A failed identity-cache read after width change leaves the
+new adapter column active while the previous provider and pin remain. This
+observed transition is an open source repair. Named vector spaces and concrete
+database recovery need separate source evidence.
