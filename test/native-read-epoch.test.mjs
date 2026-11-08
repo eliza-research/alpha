@@ -25,7 +25,7 @@ test('delayed provider results cannot cross a lifecycle or permission boundary',
   assert.match(execFileSync(java('java'),['-cp',dir,'ai.elizaresearch.alphaphone.NativeReadEpochTest'],{encoding:'utf8',timeout:15000}),/PASS native read publication fences/);
   const media=join(preparePatchedNative({root}).root,'plugins/plugin-native-media/android/src/main/java/ai/eliza/plugins/media');
   const photos=readFileSync(join(media,'PhotosPlugin.java'),'utf8');
-  for(const name of ['list','read','summary','albums','beginEdit','previewEdit']){
+  for(const name of ['list','read','summary','albums','beginEdit','previewEdit','thumbnails']){
    const method=declaration(photos,`public void ${name}(PluginCall call)`);
    assert.match(method,/submitRead\(call,/);
    assert.doesNotMatch(method,/call\.resolve\(/);
