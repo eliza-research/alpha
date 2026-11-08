@@ -6,13 +6,13 @@ import { installResidentAgentPlugin } from './helpers/resident-agent-plugin';
 const SYNTHETIC_KEY = 'synthetic-provider-key-7f3a9c0e5b';
 const REMOTE = 'https://agent.example.test';
 const REDACTION = {
-  resident: 'Secret and contact identifiers are swapped before hosted inference; names and free text are not covered',
+  resident: 'Keys and contact details are masked before AI requests. Names and message text are not.',
   agent: 'Depends on your agent',
   offline: 'No remote agent connected; no hosted inference requests',
 };
 // Former fixture activity rows and claims must never be presented as this phone's history.
 const fixtureActivity = [/Drafted a reply to Maya/, /Filed Jordan's term sheet/, /Moved Gym to 7:30 PM/, /Summarized 14 emails/, /Ran Morning brief/, /Redaction receipt saved/, /Booked Nopa/, /\b\d+ today\b/];
-const forbidden = [/Redaction on/, /Identifiers replaced/, /Pre-egress redaction is not connected/];
+const forbidden = [/Redaction on/, /Identifiers replaced/, /Pre-egress redaction is not connected/, /Identifier swap only/, /before hosted inference/];
 
 type Scenario = 'resident' | 'remote' | 'offline';
 async function nativeStub(page: Page, scenario: Scenario, options: { strayKeyInStatus?: boolean; proposals?: boolean; locationAccess?: 'approximate' | 'precise'; providerStatus?: { provider: string; model: string } } = {}) {
@@ -129,6 +129,9 @@ for (const { scenario, redaction, model } of cases) test(`Privacy, Models and Ab
   for (const claim of forbidden) expect(text).not.toMatch(claim);
   for (const other of Object.values(REDACTION)) if (other !== redaction) expect(text).not.toContain(other);
   for (const row of fixtureActivity) expect(text).not.toMatch(row);
+  // Nothing reads on-device model readiness, so the row neither claims Loaded nor Not loaded.
+  await expect(page.getByRole('button', { name: /On-device model/ })).toContainText('Not reported');
+  expect(text).not.toMatch(/\bLoaded\b|Not loaded/);
 
   await page.getByRole('button', { name: 'Back to Settings', exact: true }).click();
   await page.getByRole('button', { name: 'Models', exact: true }).click();

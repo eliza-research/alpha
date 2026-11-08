@@ -2779,9 +2779,9 @@
       <sc-if value="{{files.noResults}}">
         <div style="display: flex; flex-direction: column; align-items: center; gap: 10px; padding-top: 110px; color: var(--mut); padding-left: 24px; padding-right: 24px; text-align: center"><svg class="i" viewBox="0 0 24 24" style="width: 28px; height: 28px"><path d="{{ic.search}}"></path></svg><div style="font-size: 15px">No matches</div></div>
       </sc-if>
-      <div style="display: flex; justify-content: center; margin-top: 18px">
+      <sc-if value="{{files.askSearch}}"><div style="display: flex; justify-content: center; margin-top: 18px">
         <button onClick="{{files.askSearch}}" aria-label="{{files.askQ}}" style="display: flex; align-items: center; gap: 8px; height: 36px; padding: 0 16px; border-radius: 18px; background: var(--s2); font-size: 14px; font-weight: 600; max-width: 100%; overflow: hidden; white-space: nowrap"><span style="display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;flex-shrink:0;color:var(--acct)"><span class="alpha-compute-mark" aria-hidden="true" style="width:100%;height:100%"></span></span>{{files.askQ}}</button>
-      </div>
+      </div></sc-if>
     </sc-if>
   </div>
   </sc-if>

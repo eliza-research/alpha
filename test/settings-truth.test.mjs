@@ -121,7 +121,7 @@ test('Cloud privacy hero includes speech while retaining native and offline/star
   assert.equal(fact.big,'Uses Nebula');assert.ok(fact.sub.includes('go to Nebula for AI'));
   for(const content of ['When used','messages','selected content','Voice recordings','text for playback'])assert.ok(fact.sub.includes(content),content);
  }
- assert.equal(native.egressPrivacy(connected,true).big,'Identifier swap only');
+ assert.equal(native.egressPrivacy(connected,true).big,'Partly masked');
  for(const [kind,label]of [['starting','Agent starting'],['recovering','Agent not running'],['none','Offline']])assert.equal(cloud.egressPrivacy({kind,session:null,cloudAccount:null},true).big,label);
 });
 

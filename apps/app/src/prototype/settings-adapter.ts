@@ -708,7 +708,7 @@ export function installSettingsAdapter(Component: any, views: Bag) {
               if(item.detail)rows.push(info('Details',item.detail));
               if(!connection.busy){
                 if(item.state==='pending')rows.push(action('Decline',()=>void connectionController.rejectAction(item.id)));
-                if(['executing','reconciliation_required'].includes(item.state))rows.push(info('Review','After checking this phone, confirm whether this exact action happened.'),action('It happened',()=>void connectionController.reconcileAction(item.id,'applied')),action('It did not happen',()=>void connectionController.reconcileAction(item.id,'not_applied')));
+                if(['executing','reconciliation_required'].includes(item.state))rows.push(info('Review','Check your phone, then confirm whether this happened.'),action('It happened',()=>void connectionController.reconcileAction(item.id,'applied')),action('It did not happen',()=>void connectionController.reconcileAction(item.id,'not_applied')));
               }
               groups.push(group(rows));
             }
