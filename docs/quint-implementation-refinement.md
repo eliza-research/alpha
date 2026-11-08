@@ -648,3 +648,12 @@ fingerprint must agree at dispatch. An owner replacement or Back retires
 the admission and its publication. An already-dispatched owner-keyed CAS
 can settle while that review is retired. The fixture uses browser storage
 and a closed Calendar port with synthetic records.
+
+`NativeSmsDispatch` checks 26 schedules and 186 checkpoints across exact
+review, SIM revalidation, receipt retries, provider rows, callback custody
+and journal failure. The preserved as-built replay reproduces a foreign
+receipt when two bridge instances approve different bodies for the same ID.
+The authenticated product patch binds recovery to the original reviewed
+tuple, including pruned IDs, and preserves the one synthetic radio attempt.
+Both Android variants use the patched native module. Carrier behavior and
+installed Android role enforcement remain open.
