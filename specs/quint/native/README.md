@@ -666,3 +666,25 @@ availability, and the exact text/controls mask. The method owns no native
 observer. `AccessibleToastLifetime` covers the separate renderer refresh
 and timer ownership. Installed font metrics, preference durability, and
 accessibility service behavior remain platform obligations.
+
+### Native renderer problem journal
+
+`NativeCrashJournal` follows the native bridge's append, read and clear
+requests through separate diagnostics executors and the shared no-backup
+log. An executor drains already accepted work after destruction and
+rejects a later call. The source replays cover the 50-row cap, age
+boundaries, corrupt and oversized input, class-only writes, and controlled
+failure reports before and after atomic replacement.
+
+Clear retains the greatest exit timestamp already collected. A history
+read held before clear can still import an unseen exit from that snapshot.
+A later platform addition is outside the captured read. A valid seeded
+legacy row can carry an extra field through the raw native bridge, while
+the renderer applies its own allowlist before displaying the log.
+`RendererRecovery`, `CrashLoopBreaker` and `RendererFailureUI` cover
+separate recovery, listener and renderer boundaries.
+
+The JVM uses private synthetic records and a controlled Android history
+and atomic-file port. It exercises no device logs, sharing or external
+opening. Android process history and cross-process durability remain
+installed-platform obligations.

@@ -2282,6 +2282,48 @@
         "maxSteps": 80,
         "maxVerifyDepth": 4
       }
+    },
+    {
+      "path": "specs/quint/native/NativeCrashJournal.qnt",
+      "module": "NativeCrashJournal",
+      "init": "init",
+      "step": "step",
+      "invariant": "safety",
+      "tests": [
+        "retiredWorkerDrainsOnlyAcceptedWorkTest",
+        "capEvictsOldestBeforeAppendTest",
+        "readPrunesAgeWithoutRewritingDiskTest",
+        "clearPreservesImportedExitWatermarkTest",
+        "heldPreClearSnapshotImportsUnseenExitAsBuiltTest",
+        "rawBridgeRetainsSeededExtraFieldAsBuiltTest",
+        "writeMayReportFailureAfterReplacementTest"
+      ],
+      "invariants": [
+        "BoundedJournal",
+        "ExactHeldRead",
+        "KnownExitWatermark"
+      ],
+      "sources": [
+        "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaDevicePlugin.java",
+        "android/app/src/main/java/ai/elizaresearch/alphaphone/PluginWorkers.java",
+        "android/consumer-host.json",
+        "vendor/eliza/plugins/plugin-native-system/android/src/main/java/ai/eliza/plugins/system/crash/CrashLog.java"
+      ],
+      "stateMapping": {
+        "a/b/closedA/closedB/reply": "Exact product bridge diagnostics worker admission, pending action and response",
+        "disk/now/delegated": "Actual no-backup log envelope, retention clock and native handler delegation",
+        "history/historyMode/held/captured": "Controlled Android history source and exact in-flight snapshot ownership"
+      },
+      "abstractions": [
+        "Two Alpha bridge workers, one pending call each. Up to four synthetic exit identities and a finite partition of record kinds, timestamps and atomic storage outcomes.",
+        "The real 50-row bound is checked by counting identical seeded rows and preserving tagged row order. Source-only unknown and malformed document shapes outside the selected seeds are separate.",
+        "Host private files and controlled platform ports. Android cross-process log writes, actual OS exits, AtomicFile behavior and renderer diagnostics presentation remain separate."
+      ],
+      "bounds": {
+        "maxSamples": 1000,
+        "maxSteps": 80,
+        "maxVerifyDepth": 4
+      }
     }
   ]
 }
