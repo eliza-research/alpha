@@ -111,10 +111,10 @@ test('the host links its native-only secure store transitively and keeps fixture
  const {profile, staging} = generate(t);
  const linked = profile.modules.filter(module => module.appDependency).map(module => module.name);
  const separate = profile.modules.filter(module => !module.appDependency).map(module => module.name).sort();
- assert.deepEqual(separate, ['elizaos-capacitor-secure-store-nativeonly', 'notification-fixture', 'sense', 'sense-speech', 'video-fixture']);
+ assert.deepEqual(separate, ['elizaos-capacitor-secure-store-nativeonly', 'notification-fixture', 'private-peer-fixture', 'sense', 'sense-speech', 'video-fixture']);
  // Shared checkouts, node_modules and the authenticated patched staging never receive build outputs.
  assert.deepEqual(profile.modules.filter(module => !module.relocateBuild).map(module => module.name).sort(),
-  ['local-speech', 'notification-fixture', 'sense', 'sense-speech', 'video-fixture']);
+  ['local-speech', 'notification-fixture', 'private-peer-fixture', 'sense', 'sense-speech', 'video-fixture']);
  for (const name of ['capacitor-android', 'local-speech', 'eliza-system', 'eliza-contacts', 'elizaos-capacitor-secure-store']) assert.ok(linked.includes(name), name);
  assert.deepEqual(profile.sourceSets.main, {java: [
   fs.realpathSync(path.join(staging, 'plugins/plugin-native-filesystem/android/src/main/java')),
