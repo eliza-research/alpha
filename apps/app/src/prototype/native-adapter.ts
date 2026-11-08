@@ -35,13 +35,13 @@ export function residentRecipients(connection: EgressConnection, native = Capaci
   const swap = 'Secret and contact identifiers are swapped first; names and free text are not.';
   if (connection.residentInference === 'cloud') {
     const service = cloudServiceName(connection.cloudAccount?.environment ?? 'production');
-    return { big: `Uses ${service}`, sub: `Messages and selected content go to ${service} for AI. ${swap}`, leaves: `Messages and selected content, to ${service}` };
+    return { big: `Uses ${service}`, sub: `Messages and selected content go to ${service} for AI. ${swap}`, leaves: `To ${service}` };
   }
   if (connection.residentInference === 'direct') {
     const provider = connection.providerStatus?.provider === 'cerebras' ? 'Cerebras' : 'your provider';
     const voice = connection.providerStatus?.voiceConfigured === true;
     return { big: provider === 'Cerebras' ? 'Uses your Cerebras key' : 'Uses your own key', sub: `Messages and selected content go to ${provider} with your key. ${swap}${voice ? ' Voice recordings and reply text go to Cartesia with your key, without identifier swap.' : ''}`,
-      leaves: `Messages and selected content, to ${provider}${voice ? '; voice to Cartesia' : ''}` };
+      leaves: `To ${provider}${voice ? ' and Cartesia' : ''}` };
   }
   const swapOnly = 'Secret and contact identifiers are swapped before hosted inference; names and free text are not covered';
   // An unconfirmed binding may still reach a provider, so only a known-unbound agent says nothing leaves.

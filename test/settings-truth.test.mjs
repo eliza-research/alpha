@@ -127,14 +127,14 @@ test('Cloud privacy hero includes speech while retaining native and offline/star
  // A native resident names whoever its inference binding sends AI content to.
  const viaCloud=native.egressPrivacy({...connected,residentInference:'cloud'},true);
  assert.equal(viaCloud.big,'Uses Nebula');assert.ok(viaCloud.sub.includes('go to Nebula for AI'));assert.ok(!viaCloud.sub.includes('Cartesia'));
- assert.equal(native.residentRecipients({...connected,residentInference:'cloud'},true).leaves,'Messages and selected content, to Nebula');
+ assert.equal(native.residentRecipients({...connected,residentInference:'cloud'},true).leaves,'To Nebula');
  const own=voiceConfigured=>({...connected,residentInference:'direct',providerStatus:{provider:'cerebras',configured:true,voiceConfigured}});
  const direct=native.egressPrivacy(own(false),true);
  assert.equal(direct.big,'Uses your Cerebras key');assert.ok(direct.sub.includes('go to Cerebras with your key'));
  for(const absent of ['Nebula','Cartesia'])assert.ok(!direct.sub.includes(absent),absent);
  const voiced=native.egressPrivacy(own(true),true);
  assert.ok(voiced.sub.includes('Voice recordings and reply text go to Cartesia with your key, without identifier swap.'));
- assert.equal(native.residentRecipients(own(true),true).leaves,'Messages and selected content, to Cerebras; voice to Cartesia');
+ assert.equal(native.residentRecipients(own(true),true).leaves,'To Cerebras and Cartesia');
  assert.equal(native.residentRecipients(own(true),false),null,'a browser development host is not described as the phone');
  for(const [kind,label]of [['starting','Agent starting'],['recovering','Agent not running'],['none','Offline']])assert.equal(cloud.egressPrivacy({kind,session:null,cloudAccount:null},true).big,label);
 });

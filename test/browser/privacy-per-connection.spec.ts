@@ -164,7 +164,7 @@ for (const voiceConfigured of [false, true]) test(`own keys name Cerebras${voice
   await openSettings(page, 'Privacy & data');
   await expect(page.getByText('Uses your Cerebras key', { exact: true })).toBeVisible();
   await expect(page.getByText(/go to Cerebras with your key/)).toBeVisible();
-  await expect(page.getByText(voiceConfigured ? 'Messages and selected content, to Cerebras; voice to Cartesia' : 'Messages and selected content, to Cerebras', { exact: true })).toBeVisible();
+  await expect(page.getByText(voiceConfigured ? 'To Cerebras and Cartesia' : 'To Cerebras', { exact: true })).toBeVisible();
   const text = await page.locator('body').innerText();
   expect(text).not.toContain('Eliza Cloud');
   expect(text.includes('Voice recordings and reply text go to Cartesia with your key, without identifier swap.')).toBe(voiceConfigured);
