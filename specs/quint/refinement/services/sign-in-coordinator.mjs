@@ -3,7 +3,7 @@ import {readdirSync} from 'node:fs';
 import {join} from 'node:path';
 import {preparePatchedNative} from '../../../../scripts/prepare-patched-native.mjs';
 import {checkTraces, captureInputs} from '../check-traces.mjs';
-import {javaTraces} from '../native/java.mjs';
+import {javaTraceCampaign} from '../native/java.mjs';
 import {signInPlatform} from './sign-in-platform.mjs';
 
 const defaultScenarios = [
@@ -12,6 +12,7 @@ const defaultScenarios = [
   'cancel-replacement', 'unowned-cancel-replacement', 'cancel-during-callback-read', 'receipt-failure',
   'stale-read-replacement', 'cancel-then-email', 'cancel-then-phone', 'callback-cas-lost',
   'activation-overlap-pending', 'activation-overlap-receipt',
+  'email-code-cap', 'phone-code-cap', 'email-mfa',
 ];
 
 export async function runSignInCoordinatorRefinement(scenarios = defaultScenarios, extraSources = []) {
@@ -36,14 +37,13 @@ export async function runSignInCoordinatorRefinement(scenarios = defaultScenario
   const platform = signInPlatform();
   const traces = [];
   try {
-    for (const scenario of scenarios) {
-      traces.push(...javaTraces(
-        '../services/SignInCoordinatorTraces.java',
-        [...product, fixture[0], ...platform.paths],
-        [scenario],
-        'ai.elizaresearch.alphaphone.SignInCoordinatorTraces',
-      ));
-    }
+    const observations = javaTraceCampaign(
+      '../services/SignInCoordinatorTraces.java',
+      [...product, fixture[0], ...platform.paths],
+      scenarios.map(scenario => [scenario]),
+      'ai.elizaresearch.alphaphone.SignInCoordinatorTraces',
+    );
+    traces.push(...observations.flat());
     return await checkTraces({
       model: 'IdentitySession',
       id: scenarios.length === 1 ? 'IdentitySession-' + scenarios[0] : 'IdentitySession-coordinator',

@@ -26,7 +26,8 @@
         "activation": "captured committed owner, durable acknowledgement receipt, bounded ACK rounds and old-attempt revocation/Steward cleanup independent from a newer Attempt",
         "cleanupOwner": "previous uncommitted attempt whose cancelled worker must release its transient Steward session before queued replacement work",
         "browserOwner": "Only the live browser attempt that persisted the exact record may consume a matching callback; a restarted or ended browser step retains inert bytes.",
-        "pendingOwner": "Identity of the durable browser record independently of the current interactive attempt. A code attempt can coexist with an inert older record after failed retirement."
+        "pendingOwner": "Identity of the durable browser record independently of the current interactive attempt. A code attempt can coexist with an inert older record after failed retirement.",
+        "wrongCodes/cooldown": "Actual per-challenge failedVerifies and cross-address resend deadline. Entering MFA resets the failed-verification counter, while resend ownership stays with the attempt."
       },
       "abstractions": [
         "Two sign-in attempts and owners, five wrong-code attempts and three ack attempts.",
@@ -48,6 +49,7 @@
         "recoveredAckLosesPreviousRevocationTest",
         "googleReturnTest",
         "ackRecoveryTest",
+        "mfaRestartsWrongCodeBudgetTest",
         "exhaustedCodesTest",
         "lateReturnRequiresNewAttemptTest",
         "postCommitCancelStillActivatesTest",
@@ -662,7 +664,9 @@
         "requestedStop/acknowledgedStop/stopped": "exact strict resident shutdown before critical write",
         "ownerEpoch/capturedEpoch": "credential intent and lifecycle ownership recheck",
         "oldSize/newSize/admissionInvalidated": "retained slot-cap shrink versus rejected growth after admission invalidation",
-        "committed/phase": "source selected-slot commit observation, followed by public success or failure reply"
+        "committed/phase": "source selected-slot commit observation, followed by public success or failure reply",
+        "leaseSequence/leasePending/leaseConfirmed/leaseAbandoned": "Actual CredentialShutdownLease sequence, pending latch, matching acknowledgement and abandoned-owner state.",
+        "requestKnown/requestBegun/requestEpoch": "Actual CredentialRequestFence retained request map, begin-once admission and captured intent epoch."
       },
       "abstractions": [
         "Opaque credential contents and provider configurations are equality classes; providerRevision captures the full stored provider comparison.",

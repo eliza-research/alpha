@@ -227,6 +227,59 @@ public final class SignInCoordinatorTraces {
     }
     System.out.println(new JSONArray().put(trace.value));
   }
+  static PluginCall codeCall(Object attempt) throws Exception {
+    return new PluginCall(new JSObject().put("attemptId", Trace.read(attempt, "id")).put("code", "123456"));
+  }
+  static void codeVerification(boolean phone, boolean mfa) throws Exception {
+    Trace trace = new Trace(phone ? "phone code attempt cap" : mfa ? "email to MFA has a fresh code budget" : "email code attempt cap", observed(1));
+    AlphaCloudSignInPlugin plugin = new AlphaCloudSignInPlugin();
+    try {
+      PluginCall start = new PluginCall(new JSObject().put("environment", "production")
+          .put(phone ? "phone" : "email", phone ? "+12025550123" : "fixture@example.test"));
+      if (phone) plugin.startPhone(start); else plugin.startEmail(start);
+      drain(plugin);
+      if (start.result == null || start.rejection != null) throw new AssertionError("Code entry was not admitted");
+      Object attempt = Trace.read(plugin, "attempt");
+      trace.step("begin", Trace.fields("pending", false, "browserOwner", false, "wrongCodes", 0,
+          "cooldown", ((Number) Trace.read(attempt, "resendAt")).longValue() > System.currentTimeMillis()), phone ? "phone" : "email");
+      for (int i = 1; i <= (mfa ? 1 : 5); i++) {
+        PluginCall verify = codeCall(attempt);
+        if (phone) plugin.verifyPhone(verify); else plugin.verifyEmail(verify);
+        drain(plugin);
+        if (!(i == 5 ? "attempts-exhausted" : "invalid-code").equals(verify.rejection))
+          throw new AssertionError("Wrong verification result at " + i + ": " + verify.rejection);
+        trace.step("wrongCode", Trace.fields("wrongCodes", Trace.read(attempt, "failedVerifies")));
+      }
+      if (!mfa) {
+        if (Trace.read(plugin, "attempt") != null) throw new AssertionError("Exhausted attempt remains active");
+        PluginCall refused = codeCall(attempt);
+        if (phone) plugin.verifyPhone(refused); else plugin.verifyEmail(refused);
+        if (!"expired".equals(refused.rejection) || SignInTestPorts.codeVerifies != 5)
+          throw new AssertionError("Exhausted code dispatched again");
+        trace.macro("expired code cannot dispatch a sixth verification", observed(1),
+            Trace.action("wrongCode").put("reject", true));
+      } else {
+        PluginCall verify = codeCall(attempt);
+        plugin.verifyEmail(verify); drain(plugin);
+        if (verify.result == null || !"mfa".equals(verify.result.optString("status"))
+            || !"totp".equals(Trace.read(attempt, "mfaType"))) throw new AssertionError("MFA step was not retained");
+        trace.step("codeVerified", Trace.fields("wrongCodes", Trace.read(attempt, "failedVerifies")), true);
+        PluginCall resume = new PluginCall(new JSObject().put("attemptId", Trace.read(attempt, "id")).put("environment", "production"));
+        plugin.resumeMfa(resume);
+        if (resume.result == null || !resume.result.optBoolean("active")) throw new AssertionError("Current MFA not resumable");
+        trace.stutter("MFA readback confirms the live challenge", Trace.fields("wrongCodes", 0));
+        plugin.verifyMfa(codeCall(attempt));
+        SignInTestPorts.Event completed = SignInTestPorts.next("http:/steward/auth/mfa/totp/complete");
+        release(completed);
+        trace.step("mfaVerified", observed(1));
+        finishSuccessful(plugin, trace, 1, false);
+      }
+    } finally {
+      for (SignInTestPorts.Event event : SignInTestPorts.events) release(event);
+      plugin.handleOnDestroy();
+    }
+    System.out.println(new JSONArray().put(trace.value));
+  }
   static void cancellationReplacement() throws Exception {
     Trace trace = new Trace("cancel retires only its own pending record", observed(1));
     AlphaCloudSignInPlugin first = new AlphaCloudSignInPlugin();
@@ -647,6 +700,10 @@ public final class SignInCoordinatorTraces {
     }
     if (scenario.equals("failed-cancel-then-email")) {
       failedCancellationThenEmail();
+      return;
+    }
+    if (scenario.equals("email-code-cap") || scenario.equals("phone-code-cap") || scenario.equals("email-mfa")) {
+      codeVerification(scenario.equals("phone-code-cap"), scenario.equals("email-mfa"));
       return;
     }
     if (scenario.equals("cancel-replacement")) {

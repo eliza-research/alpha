@@ -71,15 +71,16 @@ module IdentitySession {
   /// An ended browser step retains bytes until a fresh explicit attempt replaces them.
   action browserClosed = all { s.phase == "browser", s' = { ...s, phase: "pending", browserOwner: false } }
   action wrongCode = all {
-    s.phase == "code", s.wrongCodes < 5,
+    s.phase.in(Set("code", "mfa")), s.wrongCodes < 5,
     s' = { ...s, wrongCodes: s.wrongCodes + 1,
-      phase: if (s.wrongCodes == 4) "exhausted" else "code" }
+      phase: if (s.wrongCodes == 4) "exhausted" else s.phase }
   }
   action codeVerified(needsMfa: bool): bool = all {
     s.phase == "code", s.wrongCodes < 5,
-    s' = { ...s, phase: if (needsMfa) "mfa" else "exchange" }
+    s' = { ...s, phase: if (needsMfa) "mfa" else "exchange",
+      wrongCodes: if (needsMfa) 0 else s.wrongCodes }
   }
-  action mfaVerified = all { s.phase == "mfa", s' = { ...s, phase: "exchange" } }
+  action mfaVerified = all { s.phase == "mfa", s.wrongCodes < 5, s' = { ...s, phase: "exchange" } }
   action exchanged = all {
     s.phase == "exchange", not(s.activation.running), s.cleanupOwner == 0,
     s' = { ...s, phase: "minted", steward: true }
@@ -228,6 +229,10 @@ module IdentitySession {
   run ackRecoveryTest = init.then(begin("email")).then(codeVerified(false))
     .then(exchanged).then(writeReceipt).then(writeKey).then(ack(false)).then(ack(false))
     .then(ack(false)).then(restart).then(ack(true)).expect(s.acknowledged and safety)
+  run mfaRestartsWrongCodeBudgetTest = init.then(begin("email")).then(wrongCode)
+    .then(codeVerified(true)).expect(s.phase == "mfa" and s.wrongCodes == 0 and safety)
+    .then(wrongCode).then(wrongCode).then(wrongCode).then(wrongCode).then(wrongCode)
+    .expect(s.phase == "exhausted" and s.wrongCodes == 5 and safety)
   run exhaustedCodesTest = init.then(begin("phone")).then(wrongCode).then(wrongCode)
     .then(wrongCode).then(wrongCode).then(wrongCode)
     .expect(s.phase == "exhausted" and safety)

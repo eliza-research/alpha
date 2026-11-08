@@ -155,7 +155,9 @@ password manager directly from the reviewed pin. The secure store and notificati
 reviewed patches in `patches/eliza/native-manifest.json`: admission authenticates the pin,
 patch digest, target before/after hashes and complete staged module inventory. Gradle
 compiles the generated copy under `.eliza/patched-native`, never a modified submodule.
-No source patch is applied during client, worker or resident-runtime builds. Photo edits, capture publication, the opt-in notification mirror and the delivery-receipt
+Client projections authenticate the explicit patches in `patches/eliza/service-state-client-manifest.json` and
+`patches/eliza/cloud-speech-client-manifest.json`, including exact input/output hashes and an allowlisted target inventory.
+The generated client cache records this provenance. Photo edits, capture publication, the opt-in notification mirror and the delivery-receipt
 ledger for Alpha's own workflow and approval notices (`NoticeDelivery`, configured by
 `WorkflowNoticeDelivery`) also use shared native modules. Alpha wrappers retain installed storage names, media paths and Android components.
 The workflow notice tap routes, tap capture, owner fence, approval coordination, journal recovery and poster are the

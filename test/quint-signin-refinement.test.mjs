@@ -11,12 +11,12 @@ test('native sign-in checks successful replacement, burn failures, owned cancell
   const result = spawnSync(process.execPath, ['--import=tsx', '--input-type=module', '-e', `
     import {runSignInCoordinatorRefinement} from './specs/quint/refinement/services/sign-in-coordinator.mjs';
     const result = await runSignInCoordinatorRefinement();
-    if (!result.passed || result.traces !== 18) throw Error('Incomplete coordinator refinement');
+    if (!result.passed || result.traces !== 21) throw Error('Incomplete coordinator refinement');
     console.log(JSON.stringify({traces: result.traces, checkpoints: result.checkpoints}));
   `], {cwd: new URL('..', import.meta.url), encoding: 'utf8', timeout: 350000, maxBuffer: 8 * 1024 * 1024});
   assert.ifError(result.error);
   assert.equal(result.status, 0, `${result.stdout}\n${result.stderr}`);
-  assert.match(result.stdout, /"traces":18/);
+  assert.match(result.stdout, /"traces":21/);
 });
 
 function incompleteNoticeFixture() {

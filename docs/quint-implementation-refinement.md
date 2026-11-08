@@ -211,3 +211,12 @@ model or its selected safety predicate between observation and checking rejects
 the receipt. The regression harness exercises changed definition and changed
 manifest fingerprints as separate failures. Existing receipts must be refreshed
 against this strengthened checker before final aggregate admission.
+
+The next sign-in campaign adds real email/phone code exhaustion and native email
+to MFA progression. Entering MFA resets the per-challenge failed-code counter.
+The model now preserves this reset and allows either supported challenge to
+exhaust its own five attempts. The campaign has 21 source schedules and 181
+checkpoints. Its model has 19 scenarios and passes 1,000-by-80 sampled safety and
+a depth-six symbolic safety check. Java sources compile once per campaign, with
+a fresh JVM for every schedule. The 21-schedule test completed in 54 seconds on
+the first run of that compilation arrangement.
