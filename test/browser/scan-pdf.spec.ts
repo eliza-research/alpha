@@ -1,6 +1,7 @@
 import {test,expect} from '@playwright/test';
 import {readFile} from 'node:fs/promises';
 import {PDFDocument,PDFName,PDFDict} from 'pdf-lib';
+import {stubOcr} from './helpers/ocr-stub';
 
 test('reviewed photo PDF downloads a real landscape page with an image and no hidden OCR text',async({page},info)=>{
  await page.goto('/');
@@ -25,11 +26,11 @@ test('PDF conversion respects cancellation and rejects invalid input before expo
 
 for(const [theme,width,height]of [['dark',360,740],['light',1440,500]] as const){
  test(`scan actions remain visible in ${theme} at ${width}x${height}`,async({page},info)=>{
-  await page.setViewportSize({width,height});await page.goto('/?theme='+theme);
+  await page.setViewportSize({width,height});await stubOcr(page,'Scan preview');await page.goto('/?theme='+theme);
   await page.evaluate(async()=>{
    const {openScanReview}=await import('/src/prototype/scan-review.ts');const canvas=document.createElement('canvas');canvas.width=500;canvas.height=700;const context=canvas.getContext('2d')!;context.fillStyle='white';context.fillRect(0,0,500,700);context.fillStyle='black';context.font='40px Arial';context.fillText('Scan preview',20,80);const blob=await new Promise<Blob>(resolve=>canvas.toBlob(value=>resolve(value!),'image/jpeg'));openScanReview(blob,async()=>true);
   });
-  const dialog=page.getByRole('dialog',{name:'Review scanned text'});await expect(dialog.getByRole('textbox')).toBeEnabled({timeout:60000});
+  const dialog=page.getByRole('dialog',{name:'Review scanned text'});await expect(dialog.getByRole('textbox')).toBeEnabled();
   const bounds=await dialog.boundingBox();expect(bounds).not.toBeNull();
   for(const name of ['Download photo PDF','Copy text','Save to Notes','Close scan']){const button=dialog.getByRole('button',{name,exact:true});await expect(button).toBeVisible();const box=await button.boundingBox();expect(box!.y).toBeGreaterThanOrEqual(bounds!.y);expect(box!.y+box!.height).toBeLessThanOrEqual(bounds!.y+bounds!.height);}
   await page.screenshot({path:info.outputPath('scan-layout.png'),animations:'disabled'});

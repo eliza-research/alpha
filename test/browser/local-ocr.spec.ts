@@ -1,6 +1,7 @@
 import {openLegacyNotes} from './helpers/legacy-notes';
 import {returnToApps} from './app-navigation';
 import {test,expect} from '@playwright/test';
+import {stubOcr} from './helpers/ocr-stub';
 
 test('real local OCR recognizes an image without remote model requests',async({page})=>{
   test.setTimeout(90000);
@@ -74,14 +75,14 @@ test('Camera Scan reviews real OCR and commits only corrected text to durable No
 });
 
 test('an unconfirmed Notes save retains reviewed text and cannot duplicate the write',async({page})=>{
- await page.goto('/');
+ await stubOcr(page,'Retain this text');await page.goto('/');
  await page.evaluate(async()=>{
   const {openScanReview}=await import('/src/prototype/scan-review.ts');
   const canvas=document.createElement('canvas');canvas.width=600;canvas.height=200;const context=canvas.getContext('2d')!;context.fillStyle='white';context.fillRect(0,0,600,200);context.fillStyle='black';context.font='48px Arial';context.fillText('Retain this text',30,100);
   const blob=await new Promise<Blob>(resolve=>canvas.toBlob(value=>resolve(value!)));(window as any).scanWrites=0;
   openScanReview(blob,async()=>{(window as any).scanWrites++;return false;});
  });
- const dialog=page.getByRole('dialog',{name:'Review scanned text'});const field=dialog.getByRole('textbox',{name:'Scanned text'});await expect(field).toBeEnabled({timeout:60000});await field.fill('Keep my corrected draft');await dialog.getByRole('button',{name:'Save to Notes',exact:true}).click();
+ const dialog=page.getByRole('dialog',{name:'Review scanned text'});const field=dialog.getByRole('textbox',{name:'Scanned text'});await expect(field).toHaveValue('Retain this text');await field.fill('Keep my corrected draft');await dialog.getByRole('button',{name:'Save to Notes',exact:true}).click();
  await expect(dialog.getByRole('status',{name:'Scan status'})).toContainText('Save unconfirmed');await expect(field).toHaveValue('Keep my corrected draft');await expect(dialog.getByRole('button',{name:'Save unconfirmed',exact:true})).toBeDisabled();expect(await page.evaluate(()=>(window as any).scanWrites)).toBe(1);
 });
 
