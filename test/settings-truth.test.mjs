@@ -119,7 +119,10 @@ test('production Settings refuses Developer and removed pages, and keeps its own
 test('Android Back pops one level, to the same parent as each page\'s own back control',()=>{
  assert.deepEqual({...m.SETTINGS_PARENT},{history:'agent-connection','agent-recovery-details':'agent-connection',problems:'about',licenses:'about','password-entry':'password-provider'});
  for(const [page,parent] of Object.entries(m.SETTINGS_PARENT)){assert.ok(m.SETTINGS_PAGES.includes(page),page);assert.ok(m.SETTINGS_PAGES.includes(parent),parent);}
- assert.match(source,/const parent = state\.sheet \? undefined : SETTINGS_PARENT\[state\.page\];\n    if \(parent\) \{ api\.set\(\{ page: parent \}\); return true; \}\n    return back \? back\(state, api\) : false;/);
+ assert.match(source,/const parent = state\.sheet \? undefined : SETTINGS_PARENT\[state\.page\];\n    if \(parent\) \{/);
+ // Leaving a password entry by Android Back forgets its draft, as the entry's own back control does.
+ assert.match(source,/if \(state\.page === 'password-entry'\) clearPasswordDraft\(\);\n      api\.set\(\{ page: parent \}\); return true;/);
+ assert.match(source,/return back \? back\(state, api\) : false;/);
  // Each child's own back control returns to the same parent.
  assert.match(source,/subpage\('Earlier conversations',\[group\(rows\)\],\{z:6,back:go\('agent-connection'\)/);
  assert.match(source,/const toAbout = \{ z: 6, back: go\('about'\), backLabel: 'Back to About' \};/);
