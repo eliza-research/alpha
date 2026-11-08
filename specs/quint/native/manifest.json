@@ -2243,6 +2243,45 @@
         "maxSteps": 80,
         "maxVerifyDepth": 4
       }
+    },
+    {
+      "path": "specs/quint/native/NativeTextScaleLifecycle.qnt",
+      "module": "NativeTextScaleLifecycle",
+      "init": "init",
+      "step": "step",
+      "invariant": "safety",
+      "tests": [
+        "queuedWriteUsesCurrentConfigurationTest",
+        "peerZoomRefreshesOnResumeTest",
+        "destroyedOwnerCannotPublishToSuccessorTest",
+        "unconfirmedVisiblePreferenceAndRestartTest",
+        "noBridgeConfigurationCannotApplyZoomTest"
+      ],
+      "invariants": [
+        "queuedOwnersExact",
+        "zoomOnlyOnWebView",
+        "savedReplyMatchesDurable"
+      ],
+      "sources": [
+        "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaDevicePlugin.java",
+        "android/app/src/main/java/ai/elizaresearch/alphaphone/MainActivity.java",
+        "android/app/src/main/AndroidManifest.xml"
+      ],
+      "stateMapping": {
+        "viewA/viewB": "Two exact Activity identities, lifecycle, current platform font class, and actual WebView zoom and setter writes",
+        "visible/durable/commits": "Controlled package preference slot and write reports",
+        "pending/reply": "Exact queued plugin calls and their native rejection or resolved appearance values"
+      },
+      "abstractions": [
+        "Two simultaneous Activity identities and finite numeric/float partitions. One queued write per owner; at most eight commits and ten applied zoom updates per view.",
+        "No observer is registered by recommendedTimeout. Its controlled Android readback is checked independently of persistent appearance state. The renderer timeout refresh and toast timers remain in AccessibleToastLifetime.",
+        "A JVM port supplies platform lifecycle events, resource values, preference write reports and WebView settings. Android resource scheduling, glyph metrics and durability require installed evidence."
+      ],
+      "bounds": {
+        "maxSamples": 1000,
+        "maxSteps": 80,
+        "maxVerifyDepth": 4
+      }
     }
   ]
 }

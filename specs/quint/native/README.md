@@ -649,3 +649,20 @@ tuple. The source replay rejects changed body, recipients, SIM or attachment
 bytes, including an ID retained by SMS. It also checks that a pruned exact
 review reports `expired` and a conflicting review reports `invalid`, with
 the newly staged PDU cleaned in both cases.
+
+### Android text scale and accessibility readback
+
+`NativeTextScaleLifecycle` follows the installed appearance preference and
+the zoom of two Activity-owned WebViews. The JVM executes `MainActivity`
+and the exact appearance members of `AlphaDevicePlugin` to observe creation,
+configuration changes, resume, queued writes and a retired Activity. A saved
+preference affects each peer view when that view next reapplies it. The
+source schedules also distinguish a reported commit failure before a visible
+change from one after a visible change that a process restart discards.
+
+`recommendedTimeout` performs a synchronous read of Android's current
+AccessibilityManager. The JVM checks argument bounds, API and service
+availability, and the exact text/controls mask. The method owns no native
+observer. `AccessibleToastLifetime` covers the separate renderer refresh
+and timer ownership. Installed font metrics, preference durability, and
+accessibility service behavior remain platform obligations.
