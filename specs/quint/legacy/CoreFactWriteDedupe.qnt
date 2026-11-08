@@ -52,6 +52,11 @@ module CoreFactWriteDedupe {
   val safety = M::TypeOK and M::NoDuplicateFact and M::NoLostEvidence
   temporal DeadlockFree = M::DeadlockFree
   temporal CheckedTemporal = M::Fairness implies M::WriteReturns
+  // Source observations only; both configured transition relations stay intact.
+  val observed = M::s
+  action checkWriter(w: str): bool = M::Check(w)
+  action insertFact(w: str): bool = M::Insert(w)
+  action mergeFact(w: str): bool = M::Update(w)
   run equivalentInsertTest = init.then(M::Check("w1")).then(M::Insert("w1")).then(M::Check("w2"))
     .then(M::Update("w2")).expect(safety and M::s.rows == [Set("w1", "w2")])
   run writerExclusionTest = init.then(M::Check("w1")).expect(safety).then(M::Check("w2").fail())
@@ -65,6 +70,10 @@ module CoreFactWriteDedupePrefilled {
   val safety = M::TypeOK and M::NoDuplicateFact and M::NoLostEvidence
   temporal DeadlockFree = M::DeadlockFree
   temporal CheckedTemporal = M::Fairness implies M::WriteReturns
+  val observed = M::s
+  action checkWriter(w: str): bool = M::Check(w)
+  action insertFact(w: str): bool = M::Insert(w)
+  action mergeFact(w: str): bool = M::Update(w)
   run retainedEvidenceTest = init.then(M::Check("w2")).then(M::Update("w2")).then(M::Check("w1"))
     .then(M::Update("w1")).expect(safety and M::s.rows == [Set("Seed", "w1", "w2")])
 }
