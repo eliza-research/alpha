@@ -108,6 +108,24 @@ component projections.
   operation from the cleared review. Only secret-presence Booleans enter these
   receipts. Save, remove, transfer and origin-bound fill remain separate work.
 
+## Checked coordinator source revision
+
+The complete repository command passed at source revision `796880e9ec`.
+All 183 Quint phases and 510 scenarios passed, followed by TypeScript,
+1,993 Node tests with 1,987 passes and six skips, and the flag-off production
+build and bundle audit. The application, services and native family tests include
+all integrated coordinator adapters at that revision. A preceding run recorded
+one `SIGTRAP` from a Quint subprocess without diagnostics. Its direct retry and
+the complete repeated command passed. No core dump or OOM journal entry was
+available to establish the signal's cause.
+
+GitHub subsequently targets this PR at current `main`. That branch has a newer
+upstream pin and shared-controller ownership, so the preceding results remain
+bound to the preserved source revision. A separate reconciliation branch keeps
+current main's product source and ports the models, tests and demonstrated fixes.
+The migration report records the four additional authored TLA+ designs and the
+revised parallel work packages. Current-main refinement is still in progress.
+
 ## Reproduction
 
 Use the pinned Node and npm dependencies, JDK 21 and the pinned host JSON jar.
@@ -165,3 +183,21 @@ permitted interleavings remains open. Provider responses, Android execution,
 physical audio, durable power-loss behavior and actual reset erasure require
 additional contract or integration evidence. The source ledger's file coverage
 does not discharge those obligations.
+
+### Current-main sign-in refinement
+
+The current shared native sign-in implementation retains the original live-owner
+browser policy. Callback consumption now compares the exact durable record and
+uses the secure store's atomic compare/exchange. Cancellation captures its record
+before work is queued. A cancelled or idle plugin cannot delete a later attempt's
+record. Failed storage retirement emits the retained storage failure after the
+renderer operation settles. Pending-record ownership is separate from the active
+email/phone attempt in the model.
+
+The current campaign passes 18 source schedules and 155 checkpoints. The model
+passes 18 registered scenarios, 1,000 samples of 80 steps with seed 123, and an
+Apalache depth-six safety check. The expanded UI fixture tests pass 123 cases after
+including the actual operation-settlement helper in their extracted source. The
+first focused run exposed this missing fixture dependency. Native App Link
+verification, real HTTPS services and Keystore durability remain platform
+obligations.

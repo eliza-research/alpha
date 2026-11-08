@@ -1,6 +1,7 @@
 package ai.elizaresearch.alphaphone;
 
 import android.content.Intent;
+import ai.eliza.auth.cloud.CloudSignInFlow;
 import android.net.Uri;
 import com.getcapacitor.*;
 import java.util.concurrent.*;
@@ -34,7 +35,7 @@ public final class SignInCoordinatorTraces {
     release(stored);
     drain(plugin);
     CloudSignInFlow.Pending pending =
-        CloudSignInFlow.Pending.parse(SignInTestPorts.values.get(SignInTestPorts.PENDING), false);
+        CloudSignInFlow.Pending.parse(SignInTestPorts.values.get(SignInTestPorts.PENDING), AlphaCloudSignInPlugin.REGISTRATION);
     plugin.handleOnNewIntent(new Intent(Intent.ACTION_VIEW,
         Uri.parse(pending.environment.callback() + "#code=fixture&state=" + CloudSignInFlow.newState())));
     drain(plugin);
@@ -72,11 +73,14 @@ public final class SignInCoordinatorTraces {
           "ack", observed(target).put("s.ackTries", SignInTestPorts.acknowledgements.get(target) - 1), false);
       release(ack);
     }
-    SignInTestPorts.Event removed = SignInTestPorts.next("remove:" + SignInTestPorts.ACK);
-    trace.step("ack", observed(target).put("s.ackTries", SignInTestPorts.acknowledgements.get(target)), true);
-    release(removed);
+    if (!cancelAfterCommit) {
+      SignInTestPorts.Event removed = SignInTestPorts.next("remove:" + SignInTestPorts.ACK);
+      trace.step("ack", observed(target).put("s.ackTries", SignInTestPorts.acknowledgements.get(target)), true);
+      release(removed);
+    }
     if (target > 1) {
       SignInTestPorts.Event revoked = SignInTestPorts.next("http:/api/v1/api-keys/current");
+      if (cancelAfterCommit) trace.step("ackRetained", observed(target).put("s.ackTries", SignInTestPorts.acknowledgements.get(target)));
       release(revoked);
     }
     SignInTestPorts.Event logout = SignInTestPorts.next("http:/steward/auth/logout");
@@ -103,24 +107,30 @@ public final class SignInCoordinatorTraces {
       release(stored);
       drain(plugin);
       CloudSignInFlow.Pending pending =
-          CloudSignInFlow.Pending.parse(SignInTestPorts.values.get(SignInTestPorts.PENDING), false);
+          CloudSignInFlow.Pending.parse(SignInTestPorts.values.get(SignInTestPorts.PENDING), AlphaCloudSignInPlugin.REGISTRATION);
       if (cold) {
         plugin.handleOnDestroy();
         plugin = new AlphaCloudSignInPlugin();
       }
       plugin.handleOnNewIntent(new Intent(Intent.ACTION_VIEW,
           Uri.parse(pending.environment.callback() + "#code=fixture&state=" + pending.state)));
-      SignInTestPorts.Event rejected = SignInTestPorts.next("failed-remove:" + SignInTestPorts.PENDING);
-      release(rejected);
-      drain(plugin);
-      trace.step("callbackBurnFailed",
-          Trace.fields("pending", SignInTestPorts.values.containsKey(SignInTestPorts.PENDING),
-              "callbackAccepted", SignInTestPorts.exchanges > 0));
+      if (cold) {
+        drain(plugin);
+        trace.step("restart", Trace.fields("pending", true, "browserOwner", false));
+        trace.step("orphanedCallback", Trace.fields("pending", true, "callbackAccepted", false));
+      } else {
+        SignInTestPorts.Event rejected = SignInTestPorts.next("failed-remove:" + SignInTestPorts.PENDING);
+        release(rejected);
+        drain(plugin);
+        trace.step("callbackBurnFailed",
+            Trace.fields("pending", SignInTestPorts.values.containsKey(SignInTestPorts.PENDING),
+                "callbackAccepted", SignInTestPorts.exchanges > 0));
+      }
       if (SignInTestPorts.exchanges != 0)
         throw new AssertionError("Exchange after failed durable removal");
       if (cold) {
-        if (SignInTestPorts.outcomes.stream().noneMatch(value -> "storage".equals(value.optString("code"))))
-          throw new AssertionError("Missing cold storage notice");
+        if (SignInTestPorts.outcomes.stream().noneMatch(value -> "app-link-unverified".equals(value.optString("code"))))
+          throw new AssertionError("Missing orphaned browser notice");
       } else if (!"storage".equals(starting.rejection))
         throw new AssertionError("Missing waiting storage failure");
     } finally {
@@ -141,7 +151,7 @@ public final class SignInCoordinatorTraces {
       release(stored);
       drain(plugin);
       CloudSignInFlow.Pending pending =
-          CloudSignInFlow.Pending.parse(SignInTestPorts.values.get(SignInTestPorts.PENDING), false);
+          CloudSignInFlow.Pending.parse(SignInTestPorts.values.get(SignInTestPorts.PENDING), AlphaCloudSignInPlugin.REGISTRATION);
       SignInTestPorts.failRemoveSlot = SignInTestPorts.PENDING;
       PluginCall cancelled = new PluginCall(new JSObject());
       plugin.cancel(cancelled);
@@ -167,13 +177,50 @@ public final class SignInCoordinatorTraces {
           Trace.fields("pending", SignInTestPorts.values.containsKey(SignInTestPorts.PENDING)));
       plugin.handleOnNewIntent(new Intent(Intent.ACTION_VIEW,
           Uri.parse(pending.environment.callback() + "#code=fixture&state=" + pending.state)));
-      SignInTestPorts.Event exchanged = SignInTestPorts.next("http:/steward/auth/oauth/exchange");
-      if (!pending.serialize().equals(Trace.read(Trace.read(plugin, "attempt"), "pendingRecord")))
-        throw new AssertionError("Cold attempt lost its original pending ownership");
-      trace.step("callback",
-          Trace.fields("pending", SignInTestPorts.values.containsKey(SignInTestPorts.PENDING)), 1);
-      release(exchanged);
-      finishSuccessful(plugin, trace, 1, false);
+      drain(plugin);
+      if (SignInTestPorts.exchanges != 0 || !SignInTestPorts.values.containsKey(SignInTestPorts.PENDING))
+        throw new AssertionError("An orphaned callback resumed without a new live attempt");
+      trace.step("orphanedCallback", Trace.fields("pending", true));
+
+    } finally {
+      for (SignInTestPorts.Event event : SignInTestPorts.events) release(event);
+      plugin.handleOnDestroy();
+    }
+    System.out.println(new JSONArray().put(trace.value));
+  }
+  static void failedCancellationThenEmail() throws Exception {
+    Trace trace = new Trace("failed browser retirement leaves a separately owned record during email", observed(1));
+    AlphaCloudSignInPlugin plugin = startPending(trace);
+    try {
+      String browserRecord = SignInTestPorts.values.get(SignInTestPorts.PENDING);
+      CloudSignInFlow.Pending pending = CloudSignInFlow.Pending.parse(browserRecord, AlphaCloudSignInPlugin.REGISTRATION);
+      SignInTestPorts.failRemoveSlot = SignInTestPorts.PENDING;
+      PluginCall cancelled = new PluginCall(new JSObject());
+      plugin.cancel(cancelled);
+      SignInTestPorts.Event failed = SignInTestPorts.next("failed-remove:" + SignInTestPorts.PENDING);
+      release(failed);
+      drain(plugin);
+      trace.step("cancelBurnFailed", Trace.fields("pending", true, "pendingOwner", 1));
+      if (!"storage".equals(cancelled.rejection)) throw new AssertionError("Missing cancellation storage failure");
+      SignInTestPorts.failRemoveSlot = null;
+      PluginCall email = new PluginCall(new JSObject().put("environment", "production").put("email", "fixture@example.test"));
+      plugin.startEmail(email);
+      drain(plugin);
+      if (email.result == null || email.rejection != null || !browserRecord.equals(SignInTestPorts.values.get(SignInTestPorts.PENDING)))
+        throw new AssertionError("Email replaced or falsely retired the old browser record");
+      trace.step("begin", Trace.fields("pending", true, "pendingOwner", 1, "browserOwner", false), "email");
+      plugin.handleOnNewIntent(new Intent(Intent.ACTION_VIEW,
+          Uri.parse(pending.environment.callback() + "#code=fixture&state=" + pending.state)));
+      drain(plugin);
+      if (SignInTestPorts.exchanges != 0 || !browserRecord.equals(SignInTestPorts.values.get(SignInTestPorts.PENDING)))
+        throw new AssertionError("Orphaned callback consumed the email attempt");
+      trace.step("orphanedCallback", Trace.fields("pending", true, "pendingOwner", 1));
+      PluginCall retire = new PluginCall(new JSObject());
+      plugin.cancel(retire);
+      drain(plugin);
+      if (retire.result == null || retire.rejection != null || SignInTestPorts.values.containsKey(SignInTestPorts.PENDING))
+        throw new AssertionError("Email cancellation did not retire the captured old record");
+      trace.step("cancel", Trace.fields("pending", false, "pendingOwner", 0));
     } finally {
       for (SignInTestPorts.Event event : SignInTestPorts.events) release(event);
       plugin.handleOnDestroy();
@@ -191,7 +238,7 @@ public final class SignInCoordinatorTraces {
       release(firstStored);
       drain(first);
       String firstRaw = SignInTestPorts.values.get(SignInTestPorts.PENDING);
-      CloudSignInFlow.Pending firstPending = CloudSignInFlow.Pending.parse(firstRaw, false);
+      CloudSignInFlow.Pending firstPending = CloudSignInFlow.Pending.parse(firstRaw, AlphaCloudSignInPlugin.REGISTRATION);
 
       PluginCall cancelled = new PluginCall(new JSObject());
       first.cancel(cancelled);
@@ -280,8 +327,9 @@ public final class SignInCoordinatorTraces {
       release(stored);
       drain(plugin);
       CloudSignInFlow.Pending pending =
-          CloudSignInFlow.Pending.parse(SignInTestPorts.values.get(SignInTestPorts.PENDING), false);
+          CloudSignInFlow.Pending.parse(SignInTestPorts.values.get(SignInTestPorts.PENDING), AlphaCloudSignInPlugin.REGISTRATION);
       SignInTestPorts.pauseReadSlot = SignInTestPorts.PENDING;
+      SignInTestPorts.pauseReadSkips = 1; // The Alpha recovery wrapper reads before the shared worker.
       plugin.handleOnNewIntent(new Intent(Intent.ACTION_VIEW,
           Uri.parse(pending.environment.callback() + "#code=fixture&state=" + pending.state)));
       SignInTestPorts.Event read = SignInTestPorts.next("read:" + SignInTestPorts.PENDING);
@@ -316,8 +364,9 @@ public final class SignInCoordinatorTraces {
     SignInTestPorts.Event exchange = null;
     try {
       String oldRaw = SignInTestPorts.values.get(SignInTestPorts.PENDING);
-      CloudSignInFlow.Pending oldPending = CloudSignInFlow.Pending.parse(oldRaw, false);
+      CloudSignInFlow.Pending oldPending = CloudSignInFlow.Pending.parse(oldRaw, AlphaCloudSignInPlugin.REGISTRATION);
       SignInTestPorts.pauseReadSlot = SignInTestPorts.PENDING;
+      SignInTestPorts.pauseReadSkips = 1; // The Alpha recovery wrapper reads before the shared worker.
       plugin.handleOnNewIntent(new Intent(Intent.ACTION_VIEW,
           Uri.parse(oldPending.environment.callback() + "#code=fixture&state=" + oldPending.state)));
       SignInTestPorts.Event read = SignInTestPorts.next("read:" + SignInTestPorts.PENDING);
@@ -341,7 +390,7 @@ public final class SignInCoordinatorTraces {
       trace.macro("cancelled old callback is fenced from the newly admitted attempt",
           Trace.fields("pending", true), Trace.action("cancel"), Trace.action("begin", "google"));
       trace.step("callback", Trace.fields("pending", true), 1);
-      CloudSignInFlow.Pending current = CloudSignInFlow.Pending.parse(newRaw, false);
+      CloudSignInFlow.Pending current = CloudSignInFlow.Pending.parse(newRaw, AlphaCloudSignInPlugin.REGISTRATION);
       plugin.handleOnNewIntent(new Intent(Intent.ACTION_VIEW,
           Uri.parse(current.environment.callback() + "#code=fixture&state=" + current.state)));
       exchange = SignInTestPorts.next("http:/steward/auth/oauth/exchange");
@@ -365,7 +414,7 @@ public final class SignInCoordinatorTraces {
     CountDownLatch resume = new CountDownLatch(1);
     try {
       String oldRaw = SignInTestPorts.values.get(SignInTestPorts.PENDING);
-      CloudSignInFlow.Pending oldPending = CloudSignInFlow.Pending.parse(oldRaw, false);
+      CloudSignInFlow.Pending oldPending = CloudSignInFlow.Pending.parse(oldRaw, AlphaCloudSignInPlugin.REGISTRATION);
       ((ExecutorService) Trace.read(plugin, "worker")).submit(() -> {
         entered.countDown();
         try {
@@ -421,7 +470,7 @@ public final class SignInCoordinatorTraces {
     AlphaCloudSignInPlugin replacement = new AlphaCloudSignInPlugin();
     try {
       CloudSignInFlow.Pending oldPending =
-          CloudSignInFlow.Pending.parse(SignInTestPorts.values.get(SignInTestPorts.PENDING), false);
+          CloudSignInFlow.Pending.parse(SignInTestPorts.values.get(SignInTestPorts.PENDING), AlphaCloudSignInPlugin.REGISTRATION);
       first.handleOnNewIntent(new Intent(Intent.ACTION_VIEW,
           Uri.parse(oldPending.environment.callback() + "#code=fixture&state=" + oldPending.state)));
       SignInTestPorts.Event compare = SignInTestPorts.next("cas:" + SignInTestPorts.PENDING);
@@ -433,13 +482,12 @@ public final class SignInCoordinatorTraces {
       release(compare);
       drain(first);
       // An old active Attempt must also reject the replacement's matching callback.
-      CloudSignInFlow.Pending newPending = CloudSignInFlow.Pending.parse(newRaw, false);
+      CloudSignInFlow.Pending newPending = CloudSignInFlow.Pending.parse(newRaw, AlphaCloudSignInPlugin.REGISTRATION);
       first.handleOnNewIntent(new Intent(Intent.ACTION_VIEW,
           Uri.parse(newPending.environment.callback() + "#code=fixture&state=" + newPending.state)));
       drain(first);
       if (!newRaw.equals(SignInTestPorts.values.get(SignInTestPorts.PENDING))
           || SignInTestPorts.exchanges != 0
-          || Boolean.TRUE.equals(Trace.read(first, "pendingRetirementUnconfirmed"))
           || SignInTestPorts.outcomes.stream().anyMatch(value -> "storage".equals(value.optString("code"))))
         throw new AssertionError(
             "Ownership loss was treated as storage failure or consumed the foreign record");
@@ -493,16 +541,14 @@ public final class SignInCoordinatorTraces {
               .put("s.activation.receipt", receiptFor(1)),
           "google");
       release(heldAck);
-      SignInTestPorts.Event removed = SignInTestPorts.next("remove:" + SignInTestPorts.ACK);
-      trace.step("ack", currentObservation(2).put("s.activation.receipt", receiptFor(1)), true);
-      release(removed);
       SignInTestPorts.Event logout = SignInTestPorts.next("http:/steward/auth/logout");
+      trace.step("ackRetained", currentObservation(2).put("s.activation.receipt", receiptFor(1)));
+      if (!SignInTestPorts.acceptedAcknowledgements.contains(1)) throw new AssertionError("Old activation was not acknowledged");
       if (Trace.read(plugin, "attempt") != replacement || nextCall.result != null)
         throw new AssertionError("Old activation overwrote the new interactive attempt");
       trace.stutter("old completion preserves the replacement",
           currentObservation(2).put("s.activation.acknowledged",
-              SignInTestPorts.outcomes.stream().anyMatch(
-                  value -> "authenticated".equals(value.optString("status")))));
+              SignInTestPorts.acceptedAcknowledgements.contains(1)));
       release(logout);
       SignInTestPorts.Event pending = SignInTestPorts.next("write:" + SignInTestPorts.PENDING);
       trace.macro("queued pending write starts after old worker cleanup",
@@ -514,7 +560,7 @@ public final class SignInCoordinatorTraces {
       drain(plugin);
       if (cancelAfterReceipt) {
         CloudSignInFlow.Pending saved =
-            CloudSignInFlow.Pending.parse(SignInTestPorts.values.get(SignInTestPorts.PENDING), false);
+            CloudSignInFlow.Pending.parse(SignInTestPorts.values.get(SignInTestPorts.PENDING), AlphaCloudSignInPlugin.REGISTRATION);
         plugin.handleOnNewIntent(new Intent(Intent.ACTION_VIEW,
             Uri.parse(saved.environment.callback() + "#code=fixture&state=" + saved.state)));
         SignInTestPorts.Event exchange = SignInTestPorts.next("http:/steward/auth/oauth/exchange");
@@ -539,9 +585,9 @@ public final class SignInCoordinatorTraces {
         plugin = new AlphaCloudSignInPlugin();
         plugin.load();
         drain(plugin);
-        trace.step("restart",
-            currentObservation(2).put(
-                "s.pending", SignInTestPorts.values.containsKey(SignInTestPorts.PENDING)));
+        trace.macro("restart resumes the durable acknowledgement without claiming the orphaned browser",
+            currentObservation(2).put("s.pending", SignInTestPorts.values.containsKey(SignInTestPorts.PENDING)),
+            Trace.action("restart"), Trace.action("ack", true));
         plugin.cancel(new PluginCall(new JSObject()));
         SignInTestPorts.Event cancelledPending = SignInTestPorts.next("remove:" + SignInTestPorts.PENDING);
         trace.step("cancel",
@@ -597,6 +643,10 @@ public final class SignInCoordinatorTraces {
     }
     if (scenario.equals("cancel-burn-failure")) {
       cancellationFailure();
+      return;
+    }
+    if (scenario.equals("failed-cancel-then-email")) {
+      failedCancellationThenEmail();
       return;
     }
     if (scenario.equals("cancel-replacement")) {

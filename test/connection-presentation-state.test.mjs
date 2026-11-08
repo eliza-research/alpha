@@ -87,6 +87,7 @@ test('expired and rejected restored sessions still require authentication; valid
 // Execute the actual controller preflights. Stop send immediately after its
 // normal conversation binding, before preferences, transport or model work.
 const preflightSource = [
+  section('let operationSettled:', 'let startup:'),
   section('function residentSignInRequired()', '\n'),
   section('function fundingNeeded()', '\n'),
   'const preflightController = {',
@@ -576,6 +577,7 @@ for (const [continuation, changes, run] of [
 // no notice; a plan read that fails after it keeps the plan notice (Root, #743: that contract is
 // tracked separately). The shared controller and entitlement check decide it.
 const recheckCode = stripTypeScriptTypes([
+  section('let operationSettled:', 'let startup:'),
   section('function cloudUnreachable(', '/** Notice shown when Cloud inference'),
   section('function signInClient(', '/**\n * A new key was stored'),
   section('async function admitCloudResident(', '/**\n * Cloud reported'),

@@ -59,6 +59,7 @@ public final class AlphaCloudSignInPlugin extends CloudSignInPlugin {
    @Override public String read(String slot) throws Exception { return store.readCredentialSlot(slot); }
    @Override public void write(String slot, String value) throws Exception { store.writeCredentialSlot(slot, value); }
    @Override public void remove(String slot) throws Exception { store.removeCredentialSlot(slot); }
+   @Override public boolean compareExchange(String slot, String expected, String value) throws Exception { return store.compareExchangeCredentialSlot(slot, expected, value); }
   };
  }
  @Override protected <T> T withCredentialRead(java.util.concurrent.Callable<T> read) throws Exception {

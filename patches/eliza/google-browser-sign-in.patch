@@ -1,8 +1,6 @@
-diff --git a/packages/auth/android/build.gradle b/packages/auth/android/build.gradle
-index dd0601db5f..7b80d66825 100644
 --- a/packages/auth/android/build.gradle
 +++ b/packages/auth/android/build.gradle
-@@ -13,6 +13,7 @@ dependencies {
+@@ -13,6 +13,7 @@
   implementation project(':capacitor-android')
   // Plugin.getActivity() returns an AppCompatActivity; Capacitor does not export AppCompat.
   implementation "androidx.appcompat:appcompat:${project.hasProperty('androidxAppCompatVersion') ? rootProject.ext.androidxAppCompatVersion : '1.7.1'}"
@@ -10,11 +8,9 @@ index dd0601db5f..7b80d66825 100644
   implementation 'androidx.credentials:credentials:1.6.0'
   implementation 'androidx.credentials:credentials-play-services-auth:1.6.0'
   implementation 'com.google.android.libraries.identity.googleid:googleid:1.1.1'
-diff --git a/packages/auth/android/src/main/java/ai/eliza/auth/cloud/CloudSignInConfig.java b/packages/auth/android/src/main/java/ai/eliza/auth/cloud/CloudSignInConfig.java
-index 2a74fbb6ba..afe28594f5 100644
 --- a/packages/auth/android/src/main/java/ai/eliza/auth/cloud/CloudSignInConfig.java
 +++ b/packages/auth/android/src/main/java/ai/eliza/auth/cloud/CloudSignInConfig.java
-@@ -19,6 +19,8 @@ public final class CloudSignInConfig {
+@@ -19,6 +19,8 @@
   public final String productName;
   /** Steward app client id for native Google sign-in. */
   public final String googleClientId;
@@ -23,7 +19,7 @@ index 2a74fbb6ba..afe28594f5 100644
   /** Tag of the one bounded Google diagnostic line. */
   public final String logTag;
   /** Plain preferences file that caches non-secret readiness. */
-@@ -36,6 +38,7 @@ public final class CloudSignInConfig {
+@@ -36,6 +38,7 @@
    deviceName = label(builder.deviceName, "device name");
    productName = label(builder.productName, "product name");
    googleClientId = required(builder.googleClientId, "[a-z0-9][a-z0-9_-]{2,63}", "Google client id");
@@ -31,7 +27,7 @@ index 2a74fbb6ba..afe28594f5 100644
    logTag = required(builder.logTag, "[A-Za-z][A-Za-z0-9_]{0,22}", "log tag");
    readinessPreferences = required(builder.readinessPreferences, "[A-Za-z0-9._:-]{1,200}", "readiness preferences");
    pendingSlot = required(builder.pendingSlot, "[A-Za-z0-9._:-]{1,128}", "pending slot");
-@@ -72,6 +75,7 @@ public final class CloudSignInConfig {
+@@ -72,6 +75,7 @@
   public static Builder builder() { return new Builder(); }
   public static final class Builder {
    private String clientId, deviceName, productName, googleClientId, logTag = "ElizaCloudSignIn";
@@ -39,7 +35,7 @@ index 2a74fbb6ba..afe28594f5 100644
    private String readinessPreferences = "eliza-cloud-signin-readiness", pendingSlot = "cloud-signin:v1:pending";
    private String receiptSlotPrefix = "cloud-signin:v1:ack:", credentialSlotPrefix = "cloud:";
    private final List<CloudSignInEnvironment> environments = new ArrayList<>();
-@@ -80,6 +84,7 @@ public final class CloudSignInConfig {
+@@ -80,6 +84,7 @@
    public Builder deviceName(String value) { deviceName = value; return this; }
    public Builder productName(String value) { productName = value; return this; }
    public Builder googleClientId(String value) { googleClientId = value; return this; }
@@ -47,14 +43,12 @@ index 2a74fbb6ba..afe28594f5 100644
    public Builder logTag(String value) { logTag = value; return this; }
    public Builder readinessPreferences(String value) { readinessPreferences = value; return this; }
    public Builder pendingSlot(String value) { pendingSlot = value; return this; }
-diff --git a/packages/auth/android/src/main/java/ai/eliza/auth/cloud/CloudSignInFlow.java b/packages/auth/android/src/main/java/ai/eliza/auth/cloud/CloudSignInFlow.java
-index 1d7091624f..272b839a87 100644
 --- a/packages/auth/android/src/main/java/ai/eliza/auth/cloud/CloudSignInFlow.java
 +++ b/packages/auth/android/src/main/java/ai/eliza/auth/cloud/CloudSignInFlow.java
-@@ -55,6 +55,23 @@ public final class CloudSignInFlow {
+@@ -55,6 +55,23 @@
   public static boolean validVerifier(String value) { return value != null && value.matches("[A-Za-z0-9._~-]{43,128}"); }
   public static boolean validState(String value) { return value != null && value.matches("[A-Za-z0-9_-]{43}"); }
- 
+
 + /** Exact browser authorization request; state and verifier remain owned by the native attempt. */
 + public static String authorizeUrl(CloudSignInEnvironment environment, String challenge, String state) {
 +  if (!validState(state) || !validState(challenge)) throw new IllegalArgumentException("Invalid browser proof");
@@ -75,12 +69,10 @@ index 1d7091624f..272b839a87 100644
   /** What a return to the callback URL carries (shared callback contract). */
   public enum ReturnKind { SUCCESS, ERROR, RETURN }
   /** A return to this environment's callback. SUCCESS sets code and state, ERROR sets error and state, RETURN sets neither. */
-diff --git a/packages/auth/android/src/main/java/ai/eliza/auth/cloud/CloudSignInPlugin.java b/packages/auth/android/src/main/java/ai/eliza/auth/cloud/CloudSignInPlugin.java
-index 4b5990b840..9a643af4bb 100644
 --- a/packages/auth/android/src/main/java/ai/eliza/auth/cloud/CloudSignInPlugin.java
 +++ b/packages/auth/android/src/main/java/ai/eliza/auth/cloud/CloudSignInPlugin.java
-@@ -2,9 +2,18 @@ package ai.eliza.auth.cloud;
- 
+@@ -2,9 +2,18 @@
+
  import android.app.AlertDialog;
  import android.content.Intent;
 +import android.content.pm.PackageInfo;
@@ -98,7 +90,7 @@ index 4b5990b840..9a643af4bb 100644
  import com.getcapacitor.JSObject;
  import com.getcapacitor.Plugin;
  import com.getcapacitor.PluginCall;
-@@ -17,8 +26,10 @@ import java.nio.charset.StandardCharsets;
+@@ -17,8 +26,10 @@
  import java.time.Instant;
  import java.util.ArrayList;
  import java.util.HashMap;
@@ -109,8 +101,8 @@ index 4b5990b840..9a643af4bb 100644
  import java.util.UUID;
  import java.util.concurrent.CountDownLatch;
  import java.util.concurrent.TimeUnit;
-@@ -30,8 +41,8 @@ import org.json.JSONTokener;
- 
+@@ -30,8 +41,8 @@
+
  /**
   * Native Eliza Cloud sign-in for a registered Android application. Native screens collect an email
 - * or phone code or use Android's Google account picker; no Eliza Cloud web page is part of a
@@ -120,25 +112,25 @@ index 4b5990b840..9a643af4bb 100644
   * verification, mobile App Auth connect, token and ack, Steward logout) is made here with fixed URLs
   * (CloudSignInRoutes). The Steward session, refresh token, authorization codes and PKCE verifiers
   * never cross the bridge; the Steward session is revoked after one sign-in and never stored.
-@@ -53,6 +64,7 @@ import org.json.JSONTokener;
+@@ -53,6 +64,7 @@
   */
  public abstract class CloudSignInPlugin extends Plugin {
   private static final int RESPONSE_LIMIT = 256 * 1024;
 + private static final long BROWSER_RETURN_GRACE_MS = 1500;
- 
+
   /** Thrown with a stable, non-secret code the renderer maps to copy. */
   public static final class SignInFailure extends Exception {
-@@ -68,7 +80,8 @@ public abstract class CloudSignInPlugin extends Plugin {
+@@ -68,7 +80,8 @@
    /** Renderer correlation only; never account or credential authority. */
    final String requestId;
    final Runnable credentialGuard;
 -  volatile boolean cancelled, callbackReceived;
 +  volatile boolean cancelled, callbackReceived, browserLaunched, browserPaused;
-+  String browserState;
++  String browserState, pendingRecord;
    volatile HttpURLConnection connection;
    volatile android.os.CancellationSignal googleCancellation;
    String googleVerifier, googleChallengeId;
-@@ -155,6 +168,22 @@ public abstract class CloudSignInPlugin extends Plugin {
+@@ -155,6 +168,22 @@
    probe(config().defaultEnvironment(), null, false);
   }
   @Override protected void handleOnNewIntent(Intent intent) { super.handleOnNewIntent(intent); captureCallback(intent); }
@@ -161,7 +153,7 @@ index 4b5990b840..9a643af4bb 100644
   @Override protected void handleOnDestroy() {
    destroyed = true;
    synchronized (lock) { if (attempt != null) attempt.cancel(); attempt = null; }
-@@ -230,14 +259,14 @@ public abstract class CloudSignInPlugin extends Plugin {
+@@ -230,14 +259,14 @@
   /** Cloud refused this app's native sign-in: invalidate the readiness cache. */
   private void forgetReadiness(CloudSignInEnvironment environment) {
    synchronized (lock) { readiness.remove(environment.name); }
@@ -179,7 +171,7 @@ index 4b5990b840..9a643af4bb 100644
    catch (Exception ignored) { /* Kept in memory. */ }
   }
   /** The readiness observations (CloudSignInReadiness). Every read is short, fixed and fail-safe. */
-@@ -261,12 +290,131 @@ public abstract class CloudSignInPlugin extends Plugin {
+@@ -261,11 +290,130 @@
    if (emailOffered) try { emailRoute = CloudSignInReadiness.emailRoutePresent(probePost(environment, CloudEmailCode.SEND_PATH)); } catch (Exception unavailable) { /* Other methods remain independent. */ }
    // Native Google verifies an ID token and does not require a browser return.
    boolean googleReady = Boolean.TRUE.equals(providers.data.opt("googleNative"));
@@ -197,7 +189,7 @@ index 4b5990b840..9a643af4bb 100644
     now + (emailReady || googleReady || phoneOffered ? CloudSignInReadiness.READY_TTL_MS : CloudSignInReadiness.NOT_READY_TTL_MS));
   }
   // ── Google: native Credential Manager with server-bound nonce and PKCE ────────────────────
- 
++
 + /** A real external Custom Tabs browser only. The host's WebView is never an OAuth user agent. */
 + private String browserPackage() {
 +  try {
@@ -280,7 +272,7 @@ index 4b5990b840..9a643af4bb 100644
 + /** Browser mode remains an explicit host selection, never a fallback from a failed account picker. */
 + private void startGoogleBrowser(Attempt next) {
 +  final CloudSignInFlow.Pending pending = CloudSignInFlow.Pending.create(next.environment, System.currentTimeMillis());
-+  next.browserState = pending.state; next.expiresAt = pending.expiresAt; next.busy = true;
++  next.browserState = pending.state; next.pendingRecord = pending.serialize(); next.expiresAt = pending.expiresAt; next.busy = true;
 +  run(() -> {
 +   try {
 +    String tabs = browserPackage(), browser = tabs != null ? tabs : defaultBrowserPackage();
@@ -289,7 +281,7 @@ index 4b5990b840..9a643af4bb 100644
 +    credentials(() -> {
 +     if (destroyed || next.cancelled) throw new IllegalStateException("Sign-in closed");
 +     next.credentialGuard.run();
-+    }).write(config().pendingSlot, pending.serialize());
++    }).write(config().pendingSlot, next.pendingRecord);
 +    String url = CloudSignInFlow.authorizeUrl(next.environment, CloudSignInFlow.s256(pending.verifier), pending.state);
 +    getActivity().runOnUiThread(() -> {
 +     synchronized (lock) {
@@ -307,11 +299,10 @@ index 4b5990b840..9a643af4bb 100644
 +   catch (Exception unavailable) { end(next, "unavailable", true); }
 +  });
 + }
-+
+
   /** Optional caller identity scopes retained events to the interactive request that began them. */
   private static String callerRequestId(PluginCall call) throws SignInFailure {
-   if (!call.getData().has("requestId")) return null;
-@@ -289,6 +437,7 @@ public abstract class CloudSignInPlugin extends Plugin {
+@@ -289,6 +437,7 @@
     next = new Attempt(environment, true, requestId, reserveCredentialCommit());
     attempt = next; next.waiting = call;
    }
@@ -319,16 +310,26 @@ index 4b5990b840..9a643af4bb 100644
    next.googleVerifier = CloudSignInFlow.newVerifier();
    next.googleCancellation = new android.os.CancellationSignal();
    next.busy = true;
-@@ -380,7 +529,7 @@ public abstract class CloudSignInPlugin extends Plugin {
+@@ -375,12 +524,16 @@
+   final CloudSignInFlow.Callback received = callback;
+   run(() -> {
+    CloudSignInFlow.Pending pending = null;
++   String pendingRecord = null;
+    CloudCredentialSlots store = null;
+-   try { store = store(); pending = CloudSignInFlow.Pending.parse(store.read(config().pendingSlot), config()); }
++   try { store = store(); pendingRecord = store.read(config().pendingSlot); pending = CloudSignInFlow.Pending.parse(pendingRecord, config()); }
     catch (Exception storage) { /* Treated as no pending record. */ }
     long now = System.currentTimeMillis();
     final Attempt waiting;
 -   synchronized (lock) { waiting = attempt != null && attempt.google && attempt.environment == returned && !attempt.callbackReceived ? attempt : null; }
-+   synchronized (lock) { waiting = attempt != null && attempt.google && attempt.browserLaunched && attempt.environment == returned && !attempt.callbackReceived ? attempt : null; }
++   synchronized (lock) {
++    waiting = attempt != null && attempt.google && attempt.browserLaunched && attempt.environment == returned && !attempt.callbackReceived ? attempt : null;
++    if (waiting != null && !java.util.Objects.equals(waiting.pendingRecord, pendingRecord)) return;
++   }
     if (received.kind == CloudSignInFlow.ReturnKind.RETURN) {
      if (pending == null || pending.environment != returned || pending.expired(now)) return;
      if (waiting != null) { synchronized (lock) { waiting.callbackReceived = true; } end(waiting, "app-link-unverified", false); }
-@@ -389,16 +538,21 @@ public abstract class CloudSignInPlugin extends Plugin {
+@@ -389,15 +542,23 @@
     }
     // Not this device's request (unknown, foreign or duplicate): ignored, nothing burned or ended.
     if (pending == null || pending.environment != returned || !pending.sameState(received)) return;
@@ -343,20 +344,22 @@ index 4b5990b840..9a643af4bb 100644
 +    // A return after process death has no live credential intent and cannot authorize a write.
      notifyListeners("signInIncomplete", new JSObject().put("code", "app-link-unverified"), true);
      return;
-    }
-+   if (!pending.state.equals(owner.browserState)) return;
++   }
++   if (!pending.state.equals(owner.browserState) || !java.util.Objects.equals(pendingRecord, owner.pendingRecord)) return;
 +   // State and the original live credential intent must both match before consuming the code.
 +   try {
-+    credentials(() -> {
++    if (!credentials(() -> {
 +     if (destroyed || owner.cancelled) throw new IllegalStateException("Sign-in closed");
 +     owner.credentialGuard.run();
-+    }).remove(config().pendingSlot);
-+   } catch (Exception storage) { end(owner, "state-mismatch", false); return; }
-+   synchronized (lock) { owner.callbackReceived = true; }
++    }).compareExchange(config().pendingSlot, pendingRecord, null)) return;
++   } catch (Exception storage) { end(owner, "storage", false); return; }
++   synchronized (lock) {
++    if (attempt != owner || owner.cancelled || destroyed) return;
++    owner.callbackReceived = true;
+    }
     if (pending.expired(now)) { end(owner, "expired", false); return; }
     owner.expiresAt = pending.expiresAt;
-    owner.callbackReceived = true;
-@@ -411,7 +565,8 @@ public abstract class CloudSignInPlugin extends Plugin {
+@@ -411,27 +572,18 @@
       .put("tenantId", returned.tenant).put("codeVerifier", pending.verifier);
      Response exchanged = post(owner, "/steward/auth/oauth/exchange", body, null);
      if (exchanged.status != 200) throw new SignInFailure(CloudSignInFlow.failureForStatus("exchange", exchanged.status));
@@ -366,7 +369,104 @@ index 4b5990b840..9a643af4bb 100644
     } catch (SignInFailure failure) { end(owner, failure.code, false); }
     catch (Exception unexpected) { end(owner, "unavailable", false); }
    });
-@@ -821,7 +976,7 @@ public abstract class CloudSignInPlugin extends Plugin {
+   return true;
+  }
+- /** Cancelled, ended or consumed: the pending record is never reused. */
+- private void burnUnclaimedPending() {
+-  run(() -> { try { store().remove(config().pendingSlot); } catch (Exception ignored) { /* Absent or unreadable. */ } });
+- }
+- /** A delayed scoped cancellation cannot erase a newer attempt's pending record. */
++ /** A failed start retires only its own serialized browser record. */
+  private void burnUnclaimedPending(Attempt owner) {
+-  run(() -> {
+-   try {
+-    synchronized (lock) { if (attempt != null && attempt != owner) return; }
+-    credentials(() -> {
+-     if (destroyed) throw new IllegalStateException("Sign-in closed");
+-     owner.credentialGuard.run();
+-    }).remove(config().pendingSlot);
+-   } catch (Exception ignored) { /* Closed, superseded, absent or unreadable. */ }
+-  });
++  if (owner.pendingRecord == null) return;
++  run(() -> { try { store().compareExchange(config().pendingSlot, owner.pendingRecord, null); }
++   catch (Exception ignored) { /* A later live attempt still needs its own record and intent. */ } });
+  }
+
+  // ── Email code and MFA: fully native ─────────────────────────────────────────────────────────
+@@ -587,15 +739,38 @@
+   try { requestId = callerRequestId(call); }
+   catch (SignInFailure invalid) { call.reject("Invalid sign-in request", "invalid-request"); return; }
+   Attempt current;
++  String observed = null;
++  boolean unreadable = false;
+   synchronized (lock) {
+    if (requestId != null && (attempt == null || !requestId.equals(attempt.requestId))) { call.resolve(); return; }
+    current = attempt; attempt = null;
+-  }
+-  if (current != null) { current.cancel(); PluginCall waiting; synchronized (lock) { waiting = current.waiting; current.waiting = null; } if (waiting != null) waiting.reject("cancelled", "cancelled"); }
+-  // The explicit cancel burns a pending Google record.
+-  if (requestId != null) burnUnclaimedPending(current);
+-  else burnUnclaimedPending();
+-  call.resolve();
++   if (current != null) current.cancel();
++   // Hold admission while reading an unowned record, before a new attempt can replace it.
++   if (current != null && current.google) observed = current.pendingRecord;
++   else try { observed = store().read(config().pendingSlot); } catch (Exception storage) { unreadable = true; }
++  }
++  if (current != null) {
++   PluginCall waiting;
++   synchronized (lock) { waiting = current.waiting; current.waiting = null; }
++   if (waiting != null) waiting.reject("cancelled", "cancelled");
++  }
++  if (unreadable) { cancellationFailure(current, call, "Pending sign-in cancellation was not saved"); return; }
++  final String expected = observed;
++  if (expected == null) { call.resolve(); return; }
++  try { worker.execute(() -> {
++   try {
++    // A mismatch means these bytes are already gone. It never authorizes removing their replacement.
++    store().compareExchange(config().pendingSlot, expected, null);
++    call.resolve();
++   } catch (Exception storage) { cancellationFailure(current, call, "Pending sign-in cancellation was not saved"); }
++  }); } catch (java.util.concurrent.RejectedExecutionException closed) { cancellationFailure(current, call, "Sign-in closed"); }
++ }
++
++ private void cancellationFailure(Attempt owner, PluginCall call, String message) {
++  synchronized (lock) {
++   if (attempt == null || attempt == owner) notifyListeners("signInIncomplete", new JSObject().put("code", "storage"), true);
++  }
++  call.reject(message, "storage");
+  }
+
+  /** Post-authentication consent is owned by Android, never a renderer-supplied boolean.
+@@ -718,7 +893,8 @@
+     if (destroyed || current.cancelled) throw new IllegalStateException("Sign-in closed");
+     current.credentialGuard.run();
+    });
+-   receipts.write(config().receiptSlot(environment), new JSONObject(proof.toString()).put("credentialId", credentialId).put("acknowledgeBy", acknowledgeBy).toString());
++   String receiptRecord = new JSONObject(proof.toString()).put("credentialId", credentialId).put("acknowledgeBy", acknowledgeBy).toString();
++   receipts.write(config().receiptSlot(environment), receiptRecord);
+    // The key this sign-in replaces, if any, is revoked after the new one is active (as CloudProtocol.login does).
+    String previous = previousToken(receipts, config().credentialSlot(environment), secret);
+    CloudCredentialSlots credentials = credentials(() -> { if (destroyed || current.cancelled) throw new IllegalStateException("Sign-in closed"); current.credentialGuard.run(); });
+@@ -726,7 +902,7 @@
+    credentials.write(config().credentialSlot(environment), saved.toString());
+    // Commit point: the key is stored. Cancelling now cannot unstore it; activation proceeds.
+    boolean acknowledged = acknowledge(current, proof, credentialId, secret);
+-   if (acknowledged) try { receipts.remove(config().receiptSlot(environment)); } catch (Exception kept) { /* Retried on next start. */ }
++   if (acknowledged) try { receipts.compareExchange(config().receiptSlot(environment), receiptRecord, null); } catch (Exception kept) { /* Retried on next start. */ }
+    if (!acknowledged) throw new SignInFailure("activation-pending");
+    JSObject outcome = new JSObject().put("status", "authenticated").put("environment", environment.name).put("expiresAt", expiresAt)
+     .put("attemptId", current.id).put("credentialId", saved.getString("credentialId"))
+@@ -777,7 +953,7 @@
+     boolean current = credential != null && credentialId.equals(credential.optString("serverCredentialId")) && environment.name.equals(proof.getString("environment"));
+     boolean done = !current || receipt.getLong("acknowledgeBy") <= System.currentTimeMillis()
+      || acknowledge(null, proof, credentialId, credential.getString("token"));
+-    if (done) store.remove(config().receiptSlot(environment));
++    if (done) store.compareExchange(config().receiptSlot(environment), raw, null);
+    } catch (Exception unavailable) { /* Kept for the next start; a stale receipt expires with acknowledgeBy. */ }
+   }
+  }
+@@ -821,7 +997,7 @@
   private void end(Attempt current, String code, boolean burn) {
    PluginCall waiting;
    synchronized (lock) { current.cancel(); waiting = current.waiting; current.waiting = null; if (attempt == current) attempt = null; }
@@ -375,24 +475,22 @@ index 4b5990b840..9a643af4bb 100644
    refused(current.environment, code);
    if (waiting != null) waiting.reject(code, code);
   }
-diff --git a/packages/auth/android/src/main/java/ai/eliza/auth/cloud/CloudSignInReadiness.java b/packages/auth/android/src/main/java/ai/eliza/auth/cloud/CloudSignInReadiness.java
-index 61af587b1b..9c479f0bc3 100644
 --- a/packages/auth/android/src/main/java/ai/eliza/auth/cloud/CloudSignInReadiness.java
 +++ b/packages/auth/android/src/main/java/ai/eliza/auth/cloud/CloudSignInReadiness.java
 @@ -1,6 +1,9 @@
  package ai.eliza.auth.cloud;
- 
+
  import java.util.List;
 +import java.util.Set;
 +import java.util.Locale;
 +import java.security.MessageDigest;
- 
+
  /**
   * Pure policy for the native sign-in readiness probe (no Android classes, so it runs on a plain JVM).
-@@ -31,6 +34,47 @@ public final class CloudSignInReadiness {
+@@ -31,6 +34,47 @@
   /** The email code route exists: a bodiless request is refused as invalid, not as unknown. */
   public static boolean emailRoutePresent(int status) { return status >= 400 && status < 500 && status != 404 && status != 405; }
- 
+
 + /** A probe must redirect directly to Google's HTTPS account origin; no redirect is followed. */
 + public static boolean redirectAllowed(int status, String location) {
 +  if ((status != 302 && status != 303 && status != 307) || location == null) return false;
@@ -437,11 +535,9 @@ index 61af587b1b..9c479f0bc3 100644
   /** The probe's answer. */
   public static final class Result {
    public final boolean inApp, email, google, phone, methodsKnown; public final long until;
-diff --git a/packages/auth/android/src/main/java/ai/eliza/auth/cloud/CloudSignInRoutes.java b/packages/auth/android/src/main/java/ai/eliza/auth/cloud/CloudSignInRoutes.java
-index 5bfe749d54..9bb1649f25 100644
 --- a/packages/auth/android/src/main/java/ai/eliza/auth/cloud/CloudSignInRoutes.java
 +++ b/packages/auth/android/src/main/java/ai/eliza/auth/cloud/CloudSignInRoutes.java
-@@ -10,7 +10,7 @@ import java.util.Set;
+@@ -10,7 +10,7 @@
  public final class CloudSignInRoutes {
   private CloudSignInRoutes() {}
   /** Readiness reads: service document, App Auth registration and Steward providers. */
@@ -450,3 +546,14 @@ index 5bfe749d54..9bb1649f25 100644
   public static final Set<String> WRITES = Set.of(CloudSmsCode.SEND_PATH, CloudSmsCode.VERIFY_PATH, CloudEmailCode.SEND_PATH, CloudEmailCode.VERIFY_PATH,
    "/steward/auth/oauth/exchange", "/steward/auth/oauth/google/native/challenge", "/steward/auth/oauth/google/native/verify",
    "/steward/auth/mfa/totp/complete", "/steward/auth/mfa/sms/complete", "/steward/auth/logout",
+--- a/packages/auth/android/src/main/java/ai/eliza/auth/cloud/CloudCredentialSlots.java
++++ b/packages/auth/android/src/main/java/ai/eliza/auth/cloud/CloudCredentialSlots.java
+@@ -11,4 +11,8 @@
+  String read(String slot) throws Exception;
+  void write(String slot, String value) throws Exception;
+  void remove(String slot) throws Exception;
++ /** Atomically replace exactly the observed bytes. Null denotes an absent slot. */
++ default boolean compareExchange(String slot, String expected, String value) throws Exception {
++  throw new UnsupportedOperationException("Atomic credential replacement unavailable");
++ }
+ }

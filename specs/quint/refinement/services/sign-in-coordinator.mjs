@@ -1,11 +1,14 @@
 import {fileURLToPath} from 'node:url';
+import {readdirSync} from 'node:fs';
+import {join} from 'node:path';
+import {preparePatchedNative} from '../../../../scripts/prepare-patched-native.mjs';
 import {checkTraces, captureInputs} from '../check-traces.mjs';
 import {javaTraces} from '../native/java.mjs';
 import {signInPlatform} from './sign-in-platform.mjs';
 
 const defaultScenarios = [
   'retry', 'precommit-cancel', 'postcommit-cancel', 'ack-restart',
-  'burn-failure', 'cold-burn-failure', 'cancel-burn-failure',
+  'burn-failure', 'cold-burn-failure', 'cancel-burn-failure', 'failed-cancel-then-email',
   'cancel-replacement', 'unowned-cancel-replacement', 'cancel-during-callback-read', 'receipt-failure',
   'stale-read-replacement', 'cancel-then-email', 'cancel-then-phone', 'callback-cas-lost',
   'activation-overlap-pending', 'activation-overlap-receipt',
@@ -13,17 +16,19 @@ const defaultScenarios = [
 
 export async function runSignInCoordinatorRefinement(scenarios = defaultScenarios, extraSources = []) {
   const base = 'android/app/src/main/java/ai/elizaresearch/alphaphone/';
-  const product = [
-    'AlphaCloudSignInPlugin.java', 'CloudSignInFlow.java', 'CloudSignInReadiness.java',
-    'CloudDeployment.java', 'CloudEmailCode.java', 'CloudSmsCode.java',
-    'CloudKeyRevocation.java', 'ConnectionRoutes.java',
-  ].map(name => base + name);
+  const prepared = preparePatchedNative();
+  const sharedDirectory = join(prepared.root, 'packages/auth/android/src/main/java/ai/eliza/auth/cloud');
+  const product = ['AlphaCloudSignInPlugin.java', 'CloudDeployment.java', 'PluginWorkers.java'].map(name => base + name)
+    .concat(readdirSync(sharedDirectory).filter(name => name.endsWith('.java') && name !== 'NativeGoogleCredential.java')
+      .map(name => join(sharedDirectory, name)));
   const fixture = [
     'specs/quint/refinement/services/SignInTestPorts.java',
     'specs/quint/refinement/services/SignInCoordinatorTraces.java',
   ];
   const sources = [
     ...product, base + 'AlphaCredentialStore.java', 'docs/architecture.md', ...fixture,
+    'patches/eliza/native-manifest.json', 'patches/eliza/google-browser-sign-in.patch', 'scripts/prepare-patched-native.mjs',
+    ...Object.keys(prepared.files).filter(name => name.startsWith('packages/auth/android/')).map(name => 'vendor/eliza/' + name),
     fileURLToPath(import.meta.url), 'specs/quint/refinement/services/sign-in-platform.mjs',
     'specs/quint/refinement/native/java.mjs', 'specs/quint/refinement/native/Trace.java', ...extraSources,
   ];
@@ -58,6 +63,6 @@ export async function runSignInCoordinatorRefinement(scenarios = defaultScenario
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
-  const receipt = await runSignInCoordinatorRefinement();
+  const receipt = await runSignInCoordinatorRefinement(process.argv.length > 2 ? process.argv.slice(2) : undefined);
   console.log(`Native sign-in coordinator passed ${receipt.traces} traces and ${receipt.checkpoints} checkpoints`);
 }

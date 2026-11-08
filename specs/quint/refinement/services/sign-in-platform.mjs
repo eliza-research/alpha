@@ -14,7 +14,7 @@ public class Context {public static final int MODE_PRIVATE=0;private final HashM
  public SharedPreferences getSharedPreferences(String name,int mode){return new SharedPreferences(){public String getString(String key,String fallback){return values.getOrDefault(key,fallback);}public Editor edit(){return new Editor(){public Editor remove(String key){values.remove(key);return this;}public Editor putString(String key,String value){values.put(key,value);return this;}public void apply(){}};}};}}`,
     'android/content/Intent.java': `package android.content;
 import android.net.Uri;
-public class Intent {public static final String ACTION_VIEW="view",CATEGORY_BROWSABLE="browse";private Uri uri;public Intent(){}public Intent(String action,Uri value){uri=value;}public Uri getData(){return uri;}public Intent setData(Uri value){uri=value;return this;}public Intent addCategory(String value){return this;}public Intent setPackage(String value){return this;}}`,
+public class Intent {public static final String ACTION_VIEW="view",CATEGORY_BROWSABLE="browse";private Uri uri;public Intent(){}public Intent(String action){}public Intent(String action,Uri value){uri=value;}public Uri getData(){return uri;}public Intent setData(Uri value){uri=value;return this;}public Intent addCategory(String value){return this;}public Intent setPackage(String value){return this;}}`,
     'android/content/DialogInterface.java': `package android.content;public interface DialogInterface {interface OnClickListener {void onClick(DialogInterface dialog,int which);}interface OnCancelListener {void onCancel(DialogInterface dialog);}}`,
     'android/app/Activity.java': `package android.app;
 import android.content.*;import ai.elizaresearch.alphaphone.SignInTestPorts;
@@ -30,9 +30,9 @@ public class Uri {private final String value;private Uri(String text){value=text
     'android/os/Build.java': 'package android.os;public class Build {public static class VERSION {public static final int SDK_INT=30;}public static class VERSION_CODES {public static final int S=31;}}',
     'android/content/pm/PackageManager.java': `package android.content.pm;
 import java.util.*;import android.content.Intent;
-public class PackageManager {public static final int GET_SIGNING_CERTIFICATES=1,MATCH_DEFAULT_ONLY=2;public PackageInfo getPackageInfo(String name,int flags){return new PackageInfo();}public List<Object> queryIntentActivities(Intent intent,int flags){return List.of(new Object());}}`,
-    'android/content/pm/PackageInfo.java': 'package android.content.pm;public class PackageInfo {public SigningInfo signingInfo;}',
-    'android/content/pm/SigningInfo.java': 'package android.content.pm;public class SigningInfo {public Signature[] getApkContentsSigners(){return new Signature[0];}}',
+public class PackageManager {public static final int GET_SIGNING_CERTIFICATES=1,GET_SIGNATURES=4,MATCH_DEFAULT_ONLY=2;public PackageInfo getPackageInfo(String name,int flags){return new PackageInfo();}public java.util.List<ResolveInfo> queryIntentActivities(Intent intent,int flags){return java.util.List.of(new ResolveInfo());}public java.util.List<ResolveInfo> queryIntentServices(Intent intent,int flags){return java.util.List.of();}public ResolveInfo resolveActivity(Intent intent,int flags){return new ResolveInfo();}}`,
+    'android/content/pm/PackageInfo.java': 'package android.content.pm;public class PackageInfo {public SigningInfo signingInfo=new SigningInfo();public Signature[] signatures=new Signature[0];}',
+    'android/content/pm/SigningInfo.java': 'package android.content.pm;public class SigningInfo {public Signature[] getApkContentsSigners(){return new Signature[]{new Signature()};}}',
     'android/content/pm/Signature.java': 'package android.content.pm;public class Signature {public byte[] toByteArray(){return new byte[0];}}',
     'android/content/pm/verify/domain/DomainVerificationManager.java': 'package android.content.pm.verify.domain;public class DomainVerificationManager {public DomainVerificationUserState getDomainVerificationUserState(String name){return null;}}',
     'android/content/pm/verify/domain/DomainVerificationUserState.java': 'package android.content.pm.verify.domain;import java.util.Map;public class DomainVerificationUserState {public static final int DOMAIN_STATE_VERIFIED=1,DOMAIN_STATE_SELECTED=2;public Map<String,Integer> getHostToStateMap(){return Map.of();}public boolean isLinkHandlingAllowed(){return false;}}',
@@ -45,7 +45,7 @@ import org.json.JSONObject;
 public class JSObject extends JSONObject {public JSObject put(String key,boolean value){super.put(key,value);return this;}public JSObject put(String key,long value){super.put(key,value);return this;}public JSObject put(String key,int value){super.put(key,value);return this;}public JSObject put(String key,Object value){super.put(key,value);return this;}public static JSObject fromJSONObject(JSONObject object){JSObject value=new JSObject();for(String key:object.keySet())value.put(key,object.get(key));return value;}}`,
     'com/getcapacitor/PluginCall.java': `package com.getcapacitor;
 import ai.elizaresearch.alphaphone.SignInTestPorts;
-public class PluginCall {private final JSObject input;public volatile JSObject result;public volatile String rejection;public PluginCall(JSObject data){input=data;}public String getString(String key){return input.optString(key,null);}public String getString(String key,String fallback){return input.optString(key,fallback);}public Boolean getBoolean(String key,boolean fallback){return input.optBoolean(key,fallback);}public void resolve(){result=new JSObject();}public void resolve(JSObject value){result=value;SignInTestPorts.outcomes.add(value);}public void reject(String message,String code){rejection=code;}}`,
+public class PluginCall {private final JSObject input;public volatile JSObject result;public volatile String rejection;public PluginCall(JSObject data){input=data;}public JSObject getData(){return input;}public String getString(String key){return input.optString(key,null);}public String getString(String key,String fallback){return input.optString(key,fallback);}public Boolean getBoolean(String key,boolean fallback){return input.optBoolean(key,fallback);}public void resolve(){result=new JSObject();}public void resolve(JSObject value){result=value;SignInTestPorts.outcomes.add(value);}public void reject(String message){rejection=message;}public void reject(String message,String code){rejection=code;}}`,
     'com/getcapacitor/Plugin.java': `package com.getcapacitor;
 import android.content.*;import android.app.Activity;import ai.elizaresearch.alphaphone.SignInTestPorts;
 public class Plugin {private final Activity activity=new Activity();public void load(){}protected void handleOnNewIntent(Intent intent){}protected void handleOnPause(){}protected void handleOnResume(){}protected void handleOnDestroy(){}public Context getContext(){return activity;}public Activity getActivity(){return activity;}public void notifyListeners(String name,JSObject value,boolean retain){SignInTestPorts.outcomes.add(value);}}`,
@@ -55,6 +55,8 @@ public class Plugin {private final Activity activity=new Activity();public void 
     'ai/elizaresearch/alphaphone/AlphaCredentialStore.java': `package ai.elizaresearch.alphaphone;
 import android.content.Context;
 public class AlphaCredentialStore {
+  public boolean legacyCloudRecoveryEligible(){return false;}
+  public boolean restoreLegacyCloudCredential(){throw new AssertionError("Unexpected legacy restore");}
   private final Runnable owner;
   public AlphaCredentialStore(Context context) {
     this(context, () -> {});
@@ -66,8 +68,11 @@ public class AlphaCredentialStore {
     owner.run();
     String value = SignInTestPorts.values.get(key);
     if (key.equals(SignInTestPorts.pauseReadSlot)) {
-      SignInTestPorts.pauseReadSlot = null;
-      SignInTestPorts.checkpoint("read:" + key);
+      if (SignInTestPorts.pauseReadSkips > 0) SignInTestPorts.pauseReadSkips--;
+      else {
+        SignInTestPorts.pauseReadSlot = null;
+        SignInTestPorts.checkpoint("read:" + key);
+      }
     }
     return value;
   }
@@ -107,8 +112,12 @@ public class AlphaCredentialStore {
     SignInTestPorts.checkpoint("remove:" + key);
   }
 }`,
-    'ai/elizaresearch/alphaphone/AlphaLocalAgentPlugin.java': 'package ai.elizaresearch.alphaphone;public class AlphaLocalAgentPlugin {private static long intent;public static long reserveCredentialIntent(){return ++intent;}public static void requireCredentialIntent(long value){if(value!=intent)throw new IllegalStateException("changed");}}',
+    'ai/elizaresearch/alphaphone/AlphaLocalAgentPlugin.java': 'package ai.elizaresearch.alphaphone;public class AlphaLocalAgentPlugin {private static long intent;public static long reserveCredentialIntent(){return ++intent;}public static <T>T withCredentialRead(java.util.concurrent.Callable<T> read)throws Exception{return read.call();}public static void requireCredentialIntent(long value){if(value!=intent)throw new IllegalStateException("changed");}}',
   };
+  files['android/content/pm/ResolveInfo.java']='package android.content.pm;public class ResolveInfo{public ServiceInfo serviceInfo=new ServiceInfo(),activityInfo=new ServiceInfo();public static class ServiceInfo{public boolean exported=true;public String packageName="fixture.browser";}}';
+  files['android/os/CancellationSignal.java']='package android.os;public class CancellationSignal{public void cancel(){}}';
+  files['android/util/Log.java']='package android.util;public class Log{public static int i(String tag,String value){return 0;}}';
+  files['ai/eliza/auth/cloud/NativeGoogleCredential.java']='package ai.eliza.auth.cloud;public class NativeGoogleCredential{public interface Callback{void token(String token);void failure(String code);}public static void request(android.app.Activity activity,String client,String nonce,android.os.CancellationSignal signal,Callback callback){throw new AssertionError("Unexpected native Google picker");}public static void clear(android.app.Activity activity,Runnable done){done.run();}}';
   const paths = [];
   for (const [name, source] of Object.entries(files)) { const path = join(root, name); mkdirSync(dirname(path), {recursive: true}); writeFileSync(path, source); paths.push(path); }
   return {paths, close: () => rmSync(root, {recursive: true, force: true})};

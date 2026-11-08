@@ -20,6 +20,7 @@ test('automatic readiness retains existing and newer errors without restarting t
   const cloudEnvironmentAllowed=()=>true,residentCloudFlow=()=>true,residentEnvironment=()=> 'production';
   const inAppSignInMethods=()=>new Promise(resolve=>{release=()=>resolve({google:false,email:true});});
   const runQueuedResidentRebind=()=>{},runQueuedSignInReturn=()=>{},ensureResident=async()=>{starts++;};
+  ${part('let operationSettled:', 'let startup:')}
   ${work}
   const controller={${begin}};
   return {controller,state,release:()=>release(),starts:()=>starts};

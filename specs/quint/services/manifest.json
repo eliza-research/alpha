@@ -5,11 +5,16 @@
       "sources": [
         "apps/app/src/runtime/cloud-sign-in.ts",
         "apps/app/src/runtime/cloud-sign-in-ui.tsx",
-        "android/app/src/main/java/ai/elizaresearch/alphaphone/CloudSignInFlow.java",
+        "apps/app/src/runtime/cloud-protocol.ts",
+        "apps/app/src/runtime/connection-ui.tsx",
         "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaCloudSignInPlugin.java",
-        "android/app/src/main/java/ai/elizaresearch/alphaphone/CloudEmailCode.java",
-        "android/app/src/main/java/ai/elizaresearch/alphaphone/CloudSmsCode.java",
-        "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaCredentialStore.java"
+        "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaCredentialStore.java",
+        "vendor/eliza/packages/auth/android/src/main/java/ai/eliza/auth/cloud/CloudSignInPlugin.java",
+        "vendor/eliza/packages/auth/android/src/main/java/ai/eliza/auth/cloud/CloudCredentialSlots.java",
+        "vendor/eliza/packages/auth/android/src/main/java/ai/eliza/auth/cloud/CloudSignInFlow.java",
+        "vendor/eliza/packages/auth/android/src/main/java/ai/eliza/auth/cloud/CloudSignInConfig.java",
+        "patches/eliza/google-browser-sign-in.patch",
+        "patches/eliza/native-manifest.json"
       ],
       "stateMapping": {
         "phase/method/pending/consumed": "native Attempt, encrypted pending record and callback burn",
@@ -19,14 +24,17 @@
         "ownerEpoch": "committed credential generation, preserved while a replacement attempt is pending",
         "phase/method/pending/pendingWrite/consumed": "current interactive Attempt, queued versus persisted Google pending record, and callback consumption",
         "activation": "captured committed owner, durable acknowledgement receipt, bounded ACK rounds and old-attempt revocation/Steward cleanup independent from a newer Attempt",
-        "cleanupOwner": "previous uncommitted attempt whose cancelled worker must release its transient Steward session before queued replacement work"
+        "cleanupOwner": "previous uncommitted attempt whose cancelled worker must release its transient Steward session before queued replacement work",
+        "browserOwner": "Only the live browser attempt that persisted the exact record may consume a matching callback; a restarted or ended browser step retains inert bytes.",
+        "pendingOwner": "Identity of the durable browser record independently of the current interactive attempt. A code attempt can coexist with an inert older record after failed retirement."
       },
       "abstractions": [
         "Two sign-in attempts and owners, five wrong-code attempts and three ack attempts.",
         "Opaque PKCE states, proofs and credentials are represented by identities. Cryptography, endpoint shapes and encrypted persistence are checked by existing implementation tests.",
         "Storage failure before the key commit ends the attempt. After key persistence, cancellation cannot stop acknowledgement. Authentication delivery precedes best-effort Steward logout and local-session cleanup.",
-        "Failed durable callback burn and cancellation retain pending bytes and block reuse within that process. A process restart may restore the unretired record and requires successful burn and fresh native authorization. A recovered key acknowledgement loses the transient previous-token revocation capability and never claims it was revoked.",
-        "Legacy top-level key/receipt/ack fields describe the current Attempt. The canonical activation record retains an older committed owner during replacement admission. CurrentActivationProjection requires matching representations when both refer to the same committed attempt. beginWork represents the queued worker reaching the replacement pending write after old cleanup. Restart preserves durable replacement pending bytes while restoring the stored activation owner."
+        "Failed durable callback burn and cancellation retain pending bytes. A process restart cannot resume browser authorization without a fresh live attempt. A recovered key acknowledgement loses the transient previous-token revocation capability. Acknowledged receipts may remain after refused cleanup and are retried through normal restart recovery.",
+        "Legacy top-level key/receipt/ack fields describe the current Attempt. The canonical activation record retains an older committed owner during replacement admission. CurrentActivationProjection requires matching representations when both refer to the same committed attempt. beginWork represents the queued worker reaching the replacement pending write after old cleanup. Restart preserves durable replacement pending bytes while restoring the stored activation owner.",
+        "Durable browser records retain their own identity across failed cancellation and later email/phone admission. Current-owner callback exclusion does not claim that unrelated older records were erased."
       ],
       "path": "specs/quint/services/IdentitySession.qnt",
       "module": "IdentitySession",
@@ -34,13 +42,14 @@
       "step": "step",
       "invariant": "safety",
       "tests": [
+        "codeAttemptPreservesOrphanedRecordTest",
         "failedCallbackBurnTest",
         "failedCancelBurnTest",
         "recoveredAckLosesPreviousRevocationTest",
         "googleReturnTest",
         "ackRecoveryTest",
         "exhaustedCodesTest",
-        "lateReturnTest",
+        "lateReturnRequiresNewAttemptTest",
         "postCommitCancelStillActivatesTest",
         "storageFailureBeforeCommitTest",
         "heldAckAllowsQueuedReplacementTest",
@@ -49,7 +58,8 @@
         "cancelledPrecommitWorkerRetainsCleanupTest",
         "restartDropsUncommittedWorkerTest",
         "resumedAckFencesPendingCallbackTest",
-        "resumedAckRestoresPendingCallbackTest"
+        "resumedAckPreservesOrphanedPendingTest",
+        "acknowledgedReceiptCleanupRetryTest"
       ],
       "invariants": [
         "KeyBeforeAck",
@@ -64,7 +74,8 @@
         "ActivationOwnsStoredKey",
         "ActivationReceiptBeforeAck",
         "CurrentActivationProjection",
-        "SerializedActivationWorker"
+        "SerializedActivationWorker",
+        "LiveBrowserOwnsRecord"
       ],
       "bounds": {
         "maxSamples": 1000,
@@ -699,7 +710,12 @@
         "android/app/src/main/java/ai/elizaresearch/alphaphone/LocalAgentProviderAdmission.java",
         "android/app/src/main/java/ai/elizaresearch/alphaphone/ResidentCredentialShutdownRetry.java",
         "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaConnectionPlugin.java",
-        "android/app/src/main/java/ai/elizaresearch/alphaphone/SerialStorageTasks.java"
+        "android/app/src/main/java/ai/elizaresearch/alphaphone/SerialStorageTasks.java",
+        "vendor/eliza/plugins/plugin-native-agent/android/src/main/java/ai/eliza/plugins/agent/runtime/CredentialRequestFence.java",
+        "vendor/eliza/plugins/plugin-native-agent/android/src/main/java/ai/eliza/plugins/agent/runtime/CredentialShutdownLease.java",
+        "vendor/eliza/plugins/plugin-native-agent/android/src/main/java/ai/eliza/plugins/agent/runtime/CredentialIntentFence.java",
+        "vendor/eliza/plugins/plugin-native-secure-store/android/src/main/java/ai/eliza/plugins/securestore/nativeonly/CredentialIntentFence.java",
+        "android/app/src/main/java/ai/elizaresearch/alphaphone/LegacyCloudRecovery.java"
       ],
       "stateMapping": {
         "operation/phase/before/capturedProvider": "mutateSlotOnce classification and slot/provider snapshot reread",
@@ -734,14 +750,24 @@
         "clearedProviderNeedsNoSecondStopTest",
         "compareConflictKeepsCredentialTest",
         "sameBindingDoesNotStopRuntimeTest",
-        "writeCheckpointCanPrecedeReportedFailureTest"
+        "writeCheckpointCanPrecedeReportedFailureTest",
+        "abandonedShutdownWaitsForAckTest",
+        "acknowledgementKeepsStartFencedTest",
+        "lateLeaseAckCannotReleaseSuccessorTest",
+        "providerCancellationRetiresIntentTest",
+        "unknownProviderCancellationPreservesLeaseTest"
       ],
       "invariants": [
+        "needsStop",
+        "invalidates",
         "ShutdownBeforeCriticalWrite",
         "AdmissionInvalidated",
         "CurrentMutation",
         "RejectedWriteRetainsBytes",
-        "Bounded"
+        "Bounded",
+        "LeaseBounds",
+        "BegunRequestIsKnown",
+        "safety"
       ],
       "bounds": {
         "maxSamples": 1000,

@@ -7,6 +7,8 @@ import java.nio.charset.StandardCharsets;
 import java.util.*;
 import java.util.concurrent.*;
 import org.json.JSONObject;
+import org.json.JSONArray;
+import ai.eliza.auth.cloud.CloudSignInReadiness;
 
 /** External ports only. The tested plugin owns protocol, cancellation and persistence sequencing. */
 public final class SignInTestPorts {
@@ -14,6 +16,7 @@ public final class SignInTestPorts {
   public static final List<JSObject> outcomes = new CopyOnWriteArrayList<>();
   static final BlockingQueue<Event> events = new LinkedBlockingQueue<>();
   public static volatile String failSlot, failRemoveSlot, pauseReadSlot;
+  public static int pauseReadSkips;
   static int exchanges;
   static int codeSends;
   public static volatile boolean browserOpened;
@@ -21,6 +24,7 @@ public final class SignInTestPorts {
   static int issued;
   static String scenario;
   static final Map<Integer, Integer> acknowledgements = new ConcurrentHashMap<>();
+  static final Set<Integer> acceptedAcknowledgements = ConcurrentHashMap.newKeySet();
   static int revocations;
   static final String PENDING = "cloud-signin:v1:pending", ACK = "cloud-signin:v1:ack:production",
                       CREDENTIAL = "cloud:production";
@@ -77,7 +81,7 @@ public final class SignInTestPorts {
         return null;
       return new URLStreamHandler() {
         protected URLConnection openConnection(URL url) throws IOException {
-          if (!url.getProtocol().equals("https") || !url.getHost().equals(CloudDeployment.PRODUCTION_API_HOST)
+          if (!url.getProtocol().equals("https") || !(url.getHost().equals(CloudDeployment.PRODUCTION_API_HOST) || url.getHost().equals(CloudDeployment.PRODUCTION_WEB_HOST) && url.getPath().equals("/.well-known/assetlinks.json"))
               || url.getPort() != -1)
             throw new IOException("Unmatched fixture authority");
           return new Connection(url);
@@ -109,12 +113,20 @@ public final class SignInTestPorts {
       JSONObject result = new JSONObject();
       code = 200;
       switch (path) {
+        case "/.well-known/assetlinks.json":
+          response = new JSONArray().put(new JSONObject()
+              .put("relation", new JSONArray().put("delegate_permission/common.handle_all_urls"))
+              .put("target", new JSONObject().put("namespace", "android_app")
+                  .put("package_name", "ai.elizaresearch.alphaphone")
+                  .put("sha256_cert_fingerprints", new JSONArray().put(CloudSignInReadiness.certificateFingerprint(new byte[0])))))
+              .toString().getBytes(StandardCharsets.UTF_8);
+          return;
         case "/api/v1/app-auth/mobile/config":
           if (scenario.equals("cancel-then-phone")) {
             result.put("success", true)
-                .put("clientId", CloudSignInFlow.CLIENT_ID)
+                .put("clientId", AlphaCloudSignInPlugin.REGISTRATION.clientId)
                 .put("environment", "production")
-                .put("redirectUri", CloudSignInFlow.Environment.PRODUCTION.callback())
+                .put("redirectUri", AlphaCloudSignInPlugin.REGISTRATION.defaultEnvironment().callback())
                 .put("codeChallengeMethod", "S256");
           } else
             code = 404;
@@ -163,6 +175,7 @@ public final class SignInTestPorts {
           else if (scenario.equals("retry") && index == 2 && round == 1)
             code = 503;
           result.put("status", "acknowledged").put("credentialId", body.getString("credentialId"));
+          if (code == 200) acceptedAcknowledgements.add(index);
           break;
         case "/api/v1/api-keys/current":
           if (!method.equals("DELETE"))

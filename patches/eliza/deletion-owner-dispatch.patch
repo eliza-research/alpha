@@ -7,5 +7,5 @@
 -  return DeferredDeletionJournal.same(owner, agent);
 +  return DeferredDeletionJournal.same(owner, agent) && stageOwnerCurrent(agent);
   }
- 
+
   private boolean undoAllowed(JSONObject owner, JSONObject agent) throws Exception {

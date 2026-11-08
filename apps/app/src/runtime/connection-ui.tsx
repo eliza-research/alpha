@@ -326,6 +326,13 @@ const listeners = new Set<() => void>();
 let developmentPageSuspended = false;
 let state: ConnectionSnapshot = { startupResolved:false, inferenceOffline: typeof navigator !== 'undefined' && navigator.onLine === false, phoneActionsAvailable:false, phoneCapabilityReason:'', actionHistory: [], conversations: [], history: null, cloudAccount: null, open: false, busy: false, message: '', error: '', kind: residentAlwaysPresent ? 'starting' : 'offline', name: residentAlwaysPresent ? RESIDENT_NAME : 'Offline', session: null, agents: [] };
 let active: Active | null = null, operation: AbortController | null = null;
+/** Settles when the owner of the current connection operation has finished. */
+let operationSettled: Promise<void> = Promise.resolve();
+function holdOperation(): () => void {
+  let settle = () => {};
+  operationSettled = new Promise<void>(resolve => { settle = resolve; });
+  return settle;
+}
 let startup: Promise<void> | null = null, epoch = 0;
 // Unsupported peers keep the ordinary context; optional fields require a current process handshake.
 let clientObservationSession:ClientObservationSupportSession|undefined;
@@ -825,7 +832,7 @@ let residentStartInBackground = false;
 /** `openOnError`: a background check (the quiet Cloud account restore) that opens the dialog only to report a failure. */
 async function work(message: string, action: (signal: AbortSignal) => Promise<void>, background = false, openOnError = false, preserveError = false) {
   if (operation) return;
-  const controller = new AbortController(); signInReadinessOwner = null; operation = controller; residentStartInBackground = background;
+  const controller = new AbortController(), settleOperation = holdOperation(); signInReadinessOwner = null; operation = controller; residentStartInBackground = background;
   update({ busy: true, ...(background ? {} : { open: true }), message, error: preserveError ? state.error : '' });
   try { await action(controller.signal); }
   catch (error) {
@@ -841,7 +848,7 @@ async function work(message: string, action: (signal: AbortSignal) => Promise<vo
   }
   // A resident start ends with its operation, in one update: setup shown behind the start never
   // sees a still-busy connection that is no longer starting.
-  finally { if (operation === controller) { operation = null; residentStartInBackground = false; } update({ busy: false, residentStarting: false, ...(background&&!state.open?{message:''}:{}) }); runQueuedResidentRebind(); runQueuedSignInReturn(); }
+  finally { if (operation === controller) { operation = null; residentStartInBackground = false; } update({ busy: false, residentStarting: false, ...(background&&!state.open?{message:''}:{}) }); runQueuedResidentRebind(); runQueuedSignInReturn(); settleOperation(); }
 }
 /** Start (or restart) the resident. A failure leaves the `recovering` state with a Retry, never "no agent". */
 async function startResident(message = RESIDENT_STARTING, background = true) {
@@ -1123,14 +1130,14 @@ async function recheckResidentPlan(){
   if(operation||state.residentRecoveryReason)return;
   if(ownProviderSelected()){void restoreOwnProviderCloudServices();return;}
   if(!state.session||active?.kind!=='resident'){queueResidentRebind();return;}
-  const controller=new AbortController();signInReadinessOwner=null;operation=controller;planRecheck=controller;
+  const controller=new AbortController(),settleOperation=holdOperation();signInReadinessOwner=null;operation=controller;planRecheck=controller;
   try{
     const admission=await admitCloudResident(controller.signal);
     const target=residentBindable()?admission.binding:residentBinding;
     if(target!=='kept'&&target!==residentBinding)residentRebinds().queue();
     else if(admission.notice?.open||admission.notice?.error)update({open:true,purpose:state.purpose==='plan'||state.purpose==='cloud-account'?state.purpose:'agent',message:'',error:admission.notice.error??''});
   }catch{/* The next return checks again; the agent keeps running as it is. */}
-  finally{if(operation===controller)operation=null;runQueuedResidentRebind();}
+  finally{if(operation===controller)operation=null;runQueuedResidentRebind();settleOperation();}
 }
 /** Bind or unbind Eliza Cloud inference before the agent starts. Returns the binding in effect. */
 async function applyResidentBinding(admission:ResidentAdmission,signal:AbortSignal):Promise<{binding:'cloud'|'unbound'|'kept'|'unknown';error?:string}> {
@@ -2718,8 +2725,12 @@ export const connectionController = {
    */
   signInIncomplete(value: unknown) {
     const code = value && typeof value === 'object' ? (value as { code?: unknown }).code : undefined;
-    if (operation || code !== 'app-link-unverified') return;
-    update({ open: true, signIn: state.signIn ? { step: 'choose', environment: state.signIn.environment } : state.signIn, message: '', error: signInFailureMessage('app-link-unverified') });
+    if (code !== 'app-link-unverified' && code !== 'storage') return;
+    if (operation) {
+      if (code === 'storage') void operationSettled.then(() => connectionController.signInIncomplete(value));
+      return;
+    }
+    update({ open: true, signIn: state.signIn ? { step: 'choose', environment: state.signIn.environment } : state.signIn, message: '', error: signInFailureMessage(code) });
   },
   /**
    * The Cloud sign-in hand-off in the browser (cli-session), used by the explicit browser
@@ -2962,7 +2973,7 @@ export const connectionController = {
   canEditMessages(){return !!active&&active.kind!=='cloud';},
   async truncateMessage(target:ConversationMessageTarget):Promise<void> {
     if(!this.messageTargetCurrent(target)||target.from!=='user'||!active||active.kind==='cloud'||document.hidden)throw Error('This message cannot be edited in the current connection.');
-    const selected=active,session=state.session!,generation=epoch,controller=new AbortController(),contextKey=JSON.stringify(navigationContext?.());signInReadinessOwner=null;operation=controller;update({busy:true});let dispatched=false;
+    const selected=active,session=state.session!,generation=epoch,controller=new AbortController(),contextKey=JSON.stringify(navigationContext?.()),settleOperation=holdOperation();signInReadinessOwner=null;operation=controller;update({busy:true});let dispatched=false;
     const current=()=>{controller.signal.throwIfAborted();if(document.hidden||state.open||generation!==epoch||selected!==active||JSON.stringify(state.session)!==JSON.stringify(session)||conversationMemory.get(conversationKey(session))!==target.conversationId)throw Error('The conversation changed.');};
     try {
       const history=await selected.remote.messages(target.conversationId,controller.signal);current();
@@ -2974,7 +2985,7 @@ export const connectionController = {
     } catch(error) {
       if(dispatched){if(generation===epoch)update({historyError:'Message replacement may have changed history. Reload the conversation before another edit.'});throw Object.assign(new Error('Message replacement needs a history check. Nothing was resent automatically.'),{historyChanged:true,cause:error});}
       throw error;
-    } finally {if(operation===controller){operation=null;update({busy:false});}}
+    } finally {if(operation===controller){operation=null;update({busy:false});}settleOperation();}
   },
   voiceConversationCurrent(binding:VoiceConversationBinding,foreground=true){
     return !!active&&(!foreground||!state.open&&!state.busy&&!document.hidden)&&binding.connectionEpoch===epoch&&JSON.stringify(state.session)===JSON.stringify(binding.session)&&conversationMemory.get(conversationKey(binding.session))===binding.conversationId;
@@ -2985,10 +2996,10 @@ export const connectionController = {
     const selected=active,session=state.session,generation=epoch;
     if(!selected||!session)throw noSessionError(NO_AGENT_VOICE);
     if((selected.kind==='remote'||selected.kind==='local')&&(!selected.remote.session||selected.remote.session.expiresAt<=Date.now()))throw Error('Your session expired. Pair again before starting voice.');
-    const controller=new AbortController(),cancel=()=>controller.abort(signal.reason);signal.addEventListener('abort',cancel,{once:true});if(signal.aborted)cancel();signInReadinessOwner=null;operation=controller;
+    const controller=new AbortController(),settleOperation=holdOperation(),cancel=()=>controller.abort(signal.reason);signal.addEventListener('abort',cancel,{once:true});if(signal.aborted)cancel();signInReadinessOwner=null;operation=controller;
     const current=()=>{controller.signal.throwIfAborted();if(document.hidden||state.open||generation!==epoch||selected!==active||JSON.stringify(state.session)!==JSON.stringify(session))throw Error('The voice conversation changed.');};
     try{current();const conversationId=await ensureSelectedConversation(selected,session,controller.signal,current);current();return {conversationId,session:{...session},connectionEpoch:generation};}
-    finally{signal.removeEventListener('abort',cancel);if(operation===controller)operation=null;}
+    finally{signal.removeEventListener('abort',cancel);if(operation===controller)operation=null;settleOperation();}
   },
   async send(text: string, context: ContextEnvelope, requestId: string, signal: AbortSignal, onText?:(text:string)=>void,replyTo?:ConversationMessageTarget,onReplyReady?:(results:readonly unknown[]|undefined)=>void,channelType:ChatChannel='DM',expectedConversationId?:string,voiceTurnSignal?:VoiceTurnSignal): Promise<{ messageId?:string;userMessageId?:string;messageBinding?:{conversationId:string;session:VerifiedSession};text: string; proposals?: ActionProposal[]; actionResults?:readonly unknown[]; planAction?: 'plan' | 'retry' | 'sign-in' }> {
     if(!ownProviderSelected()&&state.cloudAccount&&state.membershipBalance==='zero')throw fundingNeeded();
