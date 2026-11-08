@@ -16,6 +16,7 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicReference;
+import static ai.elizaresearch.alphaphone.PhotosTestFixture.*;
 import static org.junit.Assert.*;
 
 @RunWith(AndroidJUnit4.class)
@@ -37,23 +38,11 @@ public class PhotosMultiShareInstrumentedTest {
  }
  private List<AccessibilityNodeInfo> nodes(){List<AccessibilityNodeInfo> out=new ArrayList<>();AccessibilityNodeInfo root=InstrumentationRegistry.getInstrumentation().getUiAutomation().getRootInActiveWindow();if(root!=null)out.add(root);for(int i=0;i<out.size();i++){AccessibilityNodeInfo node=out.get(i);for(int j=0;j<node.getChildCount();j++){AccessibilityNodeInfo child=node.getChild(j);if(child!=null)out.add(child);}}return out;}
  private boolean press(AccessibilityNodeInfo node){for(int i=0;node!=null&&i<6;i++,node=node.getParent())if(node.isClickable()&&node.performAction(AccessibilityNodeInfo.ACTION_CLICK))return true;return false;}
- private void touch(Uri uri,long hold)throws Exception{
-  String node="document.querySelector('[data-owned-media-id=\"native-camera-"+ContentUris.parseId(uri)+"\"]')";until(node);js(node+".scrollIntoView({block:'center',behavior:'instant'})");
-  js("window.__photoTouchTrace=[];if(!window.__photoTouchTracing){window.__photoTouchTracing=true;for(const t of ['pointerdown','pointerup','pointercancel','pointerleave','click'])document.addEventListener(t,e=>{if(window.__photoTouchTrace.length<30)window.__photoTouchTrace.push({type:e.type,time:performance.now(),x:e.clientX,y:e.clientY,media:e.target.closest?.('[data-owned-media-id]')?.getAttribute('data-owned-media-id'),tag:e.target.tagName});},true)}");
-  System.out.println("ALPHA_PHOTO_TOUCH_BEFORE "+js("(()=>{const e="+node+",r=e.getBoundingClientRect(),hit=document.elementFromPoint(r.x+r.width/2,r.y+r.height/2);return JSON.stringify({rect:r.toJSON(),viewport:[innerWidth,innerHeight],hit:hit?.outerHTML.slice(0,600),scale:devicePixelRatio})})()"));
-  JSONObject point=new JSONObject(js("(()=>{const e="+node+",r=e.getBoundingClientRect();return {x:r.x+r.width/2,y:r.y+r.height/2,width:innerWidth}})()"));float[] xy=new float[2];
-  WebViewTestDriver.withActivity(MainActivity.class,activity->{android.webkit.WebView web=activity.getBridge().getWebView();int[] offset=new int[2];web.getLocationOnScreen(offset);float scale=(float)(web.getWidth()/point.optDouble("width"));xy[0]=offset[0]+(float)point.optDouble("x")*scale;xy[1]=offset[1]+(float)point.optDouble("y")*scale;});
-  long down=SystemClock.uptimeMillis();for(int action:new int[]{MotionEvent.ACTION_DOWN,MotionEvent.ACTION_UP}){if(action==MotionEvent.ACTION_UP&&hold>0)SystemClock.sleep(hold);MotionEvent event=MotionEvent.obtain(down,SystemClock.uptimeMillis(),action,xy[0],xy[1],0);event.setSource(InputDevice.SOURCE_TOUCHSCREEN);try{assertTrue(InstrumentationRegistry.getInstrumentation().getUiAutomation().injectInputEvent(event,true));}finally{event.recycle();}}
-  System.out.println("ALPHA_PHOTO_TOUCH_AFTER "+js("JSON.stringify(window.__photoTouchTrace)"));
- }
- private Uri fixture(ContentResolver resolver,int color)throws Exception{ContentValues values=new ContentValues();values.put("_display_name","alpha-multishare-"+UUID.randomUUID()+".jpg");values.put("mime_type","image/jpeg");values.put("relative_path","Pictures/AlphaPhone-tests");values.put("is_pending",1);Uri uri=resolver.insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI,values);assertNotNull(uri);Bitmap bitmap=Bitmap.createBitmap(40,30,Bitmap.Config.ARGB_8888);bitmap.eraseColor(color);try(java.io.OutputStream out=resolver.openOutputStream(uri)){assertNotNull(out);assertTrue(bitmap.compress(Bitmap.CompressFormat.JPEG,95,out));}finally{bitmap.recycle();}values.clear();values.put("is_pending",0);assertEquals(1,resolver.update(uri,values,null,null));return uri;}
- private byte[] bytes(ContentResolver resolver,Uri uri)throws Exception{try(java.io.InputStream input=resolver.openInputStream(uri)){assertNotNull(input);return input.readAllBytes();}}
- private String hash(byte[] bytes)throws Exception{StringBuilder out=new StringBuilder();for(byte b:java.security.MessageDigest.getInstance("SHA-256").digest(bytes))out.append(String.format(Locale.ROOT,"%02x",b&255));return out.toString();}
  @Test public void longPressSharesOnlyTwoExactOwnedItemsAndCancellationKeepsOriginals()throws Exception{
   Instrumentation instrumentation=InstrumentationRegistry.getInstrumentation();Context context=instrumentation.getTargetContext();ContentResolver resolver=context.getContentResolver();List<Uri> fixtures=new ArrayList<>();AtomicReference<Intent> chooser=new AtomicReference<>();
   Instrumentation.ActivityMonitor monitor=new Instrumentation.ActivityMonitor(){@Override public Instrumentation.ActivityResult onStartActivity(Intent intent){if(Intent.ACTION_CHOOSER.equals(intent.getAction()))chooser.set(new Intent(intent));return null;}};
-  boolean monitorAdded=false;
-  try{for(int color:new int[]{0xffdd3333,0xff33bb66,0xff2233cc})fixtures.add(fixture(resolver,color));byte[] first=bytes(resolver,fixtures.get(0)),second=bytes(resolver,fixtures.get(1)),neighbor=bytes(resolver,fixtures.get(2));
+  boolean monitorAdded=false;Throwable primary=null;
+  try{for(int color:new int[]{0xffdd3333,0xff33bb66,0xff2233cc})fixtures.add(fixture(resolver,"alpha-multishare-",color));byte[] first=bytes(resolver,fixtures.get(0)),second=bytes(resolver,fixtures.get(1)),neighbor=bytes(resolver,fixtures.get(2));
    try(BoundedActivityScenario<MainActivity> scenario=BoundedActivityScenario.launch(MainActivity.class)){
     AppNavigation.liveMode();js(AppNavigation.request("Photos"));until(AppNavigation.selected("Photos"));AppNavigation.declineStartupAccess();touch(fixtures.get(0),600);until("document.querySelector('button[aria-label=\"Cancel selection\"]')");touch(fixtures.get(1),0);
     instrumentation.addMonitor(monitor);monitorAdded=true;click("Share selected");for(int i=0;i<150&&chooser.get()==null;i++)SystemClock.sleep(100);assertNotNull("Real chooser opened",chooser.get());Intent send=chooser.get().getParcelableExtra(Intent.EXTRA_INTENT);assertEquals(Intent.ACTION_SEND_MULTIPLE,send.getAction());assertEquals("image/jpeg",send.getType());ArrayList<Uri> sent=send.getParcelableArrayListExtra(Intent.EXTRA_STREAM);assertEquals(new HashSet<>(fixtures.subList(0,2)),new HashSet<>(sent));assertEquals(2,sent.size());assertEquals(2,send.getClipData().getItemCount());assertTrue((send.getFlags()&Intent.FLAG_GRANT_READ_URI_PERMISSION)!=0);assertEquals(0,send.getFlags()&Intent.FLAG_GRANT_WRITE_URI_PERMISSION);for(int i=0;i<2;i++)assertEquals(sent.get(i),send.getClipData().getItemAt(i).getUri());
@@ -62,6 +51,10 @@ public class PhotosMultiShareInstrumentedTest {
     String h1=hash(first),h2=hash(second),h3=hash(neighbor);boolean received=false;for(int i=0;i<100&&!received;i++){for(AccessibilityNodeInfo node:nodes()){String text=String.valueOf(node.getText());if(text.contains("Read access verified")&&text.contains("Item count: 2")&&text.contains(h1)&&text.contains(h2)){assertFalse(text.contains(h3));assertFalse(text.contains("Receiver UID: "+android.os.Process.myUid()));received=true;break;}}if(!received)SystemClock.sleep(100);}assertTrue("Recipient reads exactly the selected originals, no neighbor",received);WebViewTestDriver.pressBack();mainForeground();
     until("document.querySelector('button[aria-label=\"Share selected\"]')");chooser.set(null);ContentValues changed=new ContentValues();changed.put("is_favorite",1);assertEquals(1,resolver.update(fixtures.get(1),changed,null,null));click("Share selected");until("document.body.innerText.includes('A selected item changed or is unavailable')");assertNull("Stale selection never opens a partial share",chooser.get());click("Cancel selection");assertArrayEquals(first,bytes(resolver,fixtures.get(0)));assertArrayEquals(second,bytes(resolver,fixtures.get(1)));assertArrayEquals(neighbor,bytes(resolver,fixtures.get(2)));
    }
-  }finally{if(monitorAdded)instrumentation.removeMonitor(monitor);for(Uri uri:fixtures)assertEquals(1,resolver.delete(uri,null,null));}
+  }catch(Exception|AssertionError failure){primary=failure;throw failure;}
+  finally{
+   if(monitorAdded)instrumentation.removeMonitor(monitor);
+   AssertionError cleanup=null;for(Uri uri:fixtures)try{assertEquals("Delete only this exact synthetic fixture",1,resolver.delete(uri,null,null));}catch(Exception|AssertionError failure){if(cleanup==null)cleanup=new AssertionError("Photo multi-share fixture cleanup failed");cleanup.addSuppressed(failure);}if(cleanup!=null){if(primary!=null)primary.addSuppressed(cleanup);else throw cleanup;}
+  }
  }
 }

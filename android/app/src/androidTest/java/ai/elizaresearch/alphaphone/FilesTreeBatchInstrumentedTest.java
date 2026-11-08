@@ -99,7 +99,9 @@ public class FilesTreeBatchInstrumentedTest {
    }
   }finally{
    instrumentation.removeMonitor(monitor);
-   if(treeUri!=null)try{Uri root=DocumentsContract.buildDocumentUriUsingTree(treeUri,DocumentsContract.getTreeDocumentId(treeUri));Uri destination=child(resolver,treeUri,root,"Destination");if(destination!=null)for(String name:names(resolver,treeUri,destination)){Uri item=child(resolver,treeUri,destination,name);if(item!=null)DocumentsContract.deleteDocument(resolver,item);}}catch(Exception ignored){}
+   // Remove the whole test-owned AlphaTree root while the grant is still held,
+   // only after verifying its random fixture name.
+   if(treeUri!=null)try{Uri root=DocumentsContract.buildDocumentUriUsingTree(treeUri,DocumentsContract.getTreeDocumentId(treeUri));if(folder.equals(picker.name(resolver,root)))picker.removeFixture(resolver,treeUri,root);}catch(Exception ignored){}
    for(Uri uri:seeded)try{resolver.delete(uri,null,null);}catch(Exception ignored){}
    if(treeUri!=null)for(android.content.UriPermission p:resolver.getPersistedUriPermissions())if(treeUri.equals(p.getUri()))try{resolver.releasePersistableUriPermission(treeUri,(p.isReadPermission()?1:0)|(p.isWritePermission()?2:0));}catch(Exception ignored){}
    context.getSharedPreferences("alpha-files-tree",0).edit().remove("root").commit();

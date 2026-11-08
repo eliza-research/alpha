@@ -62,6 +62,9 @@ public class FilesTreeInstrumentedTest {
   // Downloads shortcut used by the single-document picker is not this path.
   // Build47's actual AOSP hierarchy exposes android:id/title = Download.
   long deadline=SystemClock.elapsedRealtime()+30000;boolean resetScroll=false;int scrolls=0;boolean listMode=false,drawerTried=false,storageChosen=false;
+  // The drawer names primary storage by the volume description DocumentsUI shows, which differs per device.
+  Context context=InstrumentationRegistry.getInstrumentation().getTargetContext();
+  String storageRoot=context.getSystemService(android.os.storage.StorageManager.class).getPrimaryStorageVolume().getDescription(context);
   while(SystemClock.elapsedRealtime()<deadline){
    if(atFolder(folder)){
     AccessibilityNodeInfo grant=find(n->documentsNode(n)&&"android:id/button1".equals(n.getViewIdResourceName())&&"USE THIS FOLDER".equalsIgnoreCase(String.valueOf(n.getText())));
@@ -91,17 +94,17 @@ public class FilesTreeInstrumentedTest {
     if(drawer!=null&&press(drawer)){drawerTried=true;SystemClock.sleep(200);continue;}
    }
    if(drawerTried&&!storageChosen){
-    AccessibilityNodeInfo storage=find(n->documentsNode(n)&&"Android SDK built for arm64".equals(String.valueOf(n.getText())));
+    AccessibilityNodeInfo storage=find(n->documentsNode(n)&&storageRoot.equals(String.valueOf(n.getText())));
     if(storage!=null&&press(storage)){storageChosen=true;resetScroll=false;scrolls=0;SystemClock.sleep(250);continue;}
    }
    SystemClock.sleep(150);
   }
-  fail("Tree picker could not enter exact fixture "+folder+" through Download; DocumentsUI="+pickerState());
+  fail("Tree picker could not enter exact fixture "+folder+" through Download"+(drawerTried&&!storageChosen?"; drawer has no storage root named "+JSONObject.quote(storageRoot):"")+"; DocumentsUI="+pickerState());
  }
  void pickerText(String text)throws Exception{long deadline=SystemClock.elapsedRealtime()+15000;while(SystemClock.elapsedRealtime()<deadline){AccessibilityNodeInfo node=find(n->text.equalsIgnoreCase(String.valueOf(n.getText())));if(node!=null&&press(node))return;SystemClock.sleep(100);}fail("DocumentsUI did not expose "+text+"; "+pickerState());}
  private List<Uri> children(ContentResolver resolver,Uri tree,Uri folder)throws Exception{List<Uri> values=new ArrayList<>();Uri query=DocumentsContract.buildChildDocumentsUriUsingTree(tree,DocumentsContract.getDocumentId(folder));try(Cursor c=resolver.query(query,new String[]{DocumentsContract.Document.COLUMN_DOCUMENT_ID},null,null,null)){assertNotNull(c);while(c.moveToNext())values.add(DocumentsContract.buildDocumentUriUsingTree(tree,c.getString(0)));}return values;}
- private String name(ContentResolver resolver,Uri uri){try(Cursor c=resolver.query(uri,new String[]{DocumentsContract.Document.COLUMN_DISPLAY_NAME},null,null,null)){assertNotNull(c);assertTrue(c.moveToFirst());return c.getString(0);}}
- private void removeFixture(ContentResolver resolver,Uri tree,Uri item)throws Exception{String mime=resolver.getType(item);if(DocumentsContract.Document.MIME_TYPE_DIR.equals(mime))for(Uri child:children(resolver,tree,item))removeFixture(resolver,tree,child);DocumentsContract.deleteDocument(resolver,item);}
+ String name(ContentResolver resolver,Uri uri){try(Cursor c=resolver.query(uri,new String[]{DocumentsContract.Document.COLUMN_DISPLAY_NAME},null,null,null)){assertNotNull(c);assertTrue(c.moveToFirst());return c.getString(0);}}
+ void removeFixture(ContentResolver resolver,Uri tree,Uri item)throws Exception{String mime=resolver.getType(item);if(DocumentsContract.Document.MIME_TYPE_DIR.equals(mime))for(Uri child:children(resolver,tree,item))removeFixture(resolver,tree,child);DocumentsContract.deleteDocument(resolver,item);}
  @Test public void actualTreeCreateMoveDeleteCancelRestoreAndRevoke()throws Exception{
   Context context=InstrumentationRegistry.getInstrumentation().getTargetContext();ContentResolver resolver=context.getContentResolver();
   assertFalse("Use disposable app state: never replace an existing user-selected tree",context.getSharedPreferences("alpha-files-tree",0).contains("root"));
