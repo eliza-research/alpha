@@ -8055,7 +8055,7 @@
     },
     {
       "path": "android/app/src/main/java/ai/elizaresearch/alphaphone/CalendarSyncReceiptRecovery.java",
-      "sha256": "da362b41dd221f1f82c71412c7d0e335cd310e57747c8df9de7103191b40dde8",
+      "sha256": "1fc76d965fa4b878ac0bc07f3afc14eda202eb103f8a73a8435bc5ebfe5053e0",
       "models": [
         "CalendarSync"
       ],
@@ -8985,7 +8985,7 @@
     },
     {
       "path": "android/app/src/main/java/ai/elizaresearch/alphaphone/RendererRecoveryBudget.java",
-      "sha256": "7b0b7d61bf4a61e1d043c97c7ffce9b77d1ecb8d979ac11cfc0bd8a741bf3fc6",
+      "sha256": "1871e6957736a7d51439eb463f3ae65f32e59a612612e2a4f6aa182e1fe4aadd",
       "models": [
         "Application",
         "RendererRecovery"
@@ -8993,10 +8993,6 @@
       "scope": "application",
       "treatment": "state-and-transition-projection",
       "stateAnchors": [
-        {
-          "line": 20,
-          "text": "enum Action { RECREATE_NOW, RECREATE_AFTER_BACKOFF, SHOW_ESCAPE }"
-        },
         {
           "line": 21,
           "text": "private boolean started;"
@@ -23399,7 +23395,7 @@
     },
     {
       "path": "apps/app/src/prototype/dc-lite.js",
-      "sha256": "7a905bf1ff0a04ee55dac1ab478f7d9433178dabddccff77ebea6f140946a38a",
+      "sha256": "28b862f03652d907d02aca317650e95f3531db697b6c16e5ee0fbd506ba4986c",
       "models": [
         "Application"
       ],
@@ -23559,63 +23555,71 @@
           "text": "var as = n.getAttribute(\"as\") || \"item\";"
         },
         {
-          "line": 127,
+          "line": 126,
+          "text": "var km = (n.getAttribute(\"key\") || \"\").match(WHOLE);"
+        },
+        {
+          "line": 128,
           "text": "var s = Object.create(scope); s[as] = item; s.$index = i;"
         },
         {
-          "line": 133,
-          "text": "var asset = scope.iconAssets?.[props(n.children[0], scope, 0).d];"
+          "line": 129,
+          "text": "var itemKey = km ? lookup(km[1], s) : i;"
         },
         {
           "line": 135,
+          "text": "var asset = scope.iconAssets?.[props(n.children[0], scope, 0).d];"
+        },
+        {
+          "line": 137,
           "text": "var original = props(n, scope, key);"
         },
         {
-          "line": 136,
+          "line": 138,
           "text": "var icon = { key: key, \"data-alpha-icon\": asset };"
         },
         {
-          "line": 142,
+          "line": 144,
           "text": "var libraryStyle = iconStyle(asset, !!original.style?.fill && original.style.fill !== \"none\");"
         },
         {
-          "line": 151,
+          "line": 153,
           "text": "var outer = Object.assign({}, icon, { style: original.style });"
         },
         {
-          "line": 158,
+          "line": 160,
           "text": "var isSvg = n.namespaceURI === \"http://www.w3.org/2000/svg\";"
         },
         {
-          "line": 159,
+          "line": 161,
           "text": "var tname = isSvg ? n.localName : tag;"
         },
         {
-          "line": 160,
+          "line": 162,
           "text": "var c = kids(n.childNodes, scope);"
         },
         {
-          "line": 161,
+          "line": 163,
           "text": "var built = props(n, scope, key);"
         },
         {
-          "line": 168,
+          "line": 170,
           "text": "const templateElement = document.createElement(\"template\");"
         },
         {
-          "line": 170,
+          "line": 172,
           "text": "var tpl = templateElement.content;"
         },
         {
-          "line": 173,
+          "line": 175,
           "text": "const phoneTpl = document.createElement(\"template\").content;"
         },
         {
-          "line": 174,
+          "line": 176,
           "text": "const phoneRoot = phoneTpl.ownerDocument.importNode(tpl.querySelector('.os'), false);"
         },
         {
-          "line": 180,
+          "line": 182,
           "text": "render() { var vals = this.renderVals(); var out = kids((this.props.phoneSurface ? phoneTpl : tpl).childNodes, vals); return h(React.Fragment, null, out); }"
         }
       ]
@@ -36206,7 +36210,7 @@
     },
     {
       "path": "apps/app/src/prototype/settings-adapter.ts",
-      "sha256": "f42cccef0223a6cc5d8dabc8c9af53cce5a653687efa93a3c6945d9e7b17ce27",
+      "sha256": "cb79639db6fc77e0ced363db7b5ee8ec8ff2134b549edc455d702207c9a9b791",
       "models": [
         "PreferencesAndPresentation",
         "SettingsNav"
@@ -36620,402 +36624,414 @@
         },
         {
           "line": 488,
-          "text": "const info = (label: string, val: string): Bag => ({ kInfo: true, label, val, hasVal: !!val, noAB: true });"
+          "text": "const info = (label: string, val: string): Bag => ({ id: `info:${label}`, kInfo: true, label, val, hasVal: !!val, noAB: true });"
         },
         {
           "line": 489,
-          "text": "const row = (label: string, go: () => void, val = '', extra: Bag = {}): Bag => ({ kNav: true, label, lbl: label, val, hasVal: !!val, chev: true, noAB: true, go, ...extra });"
+          "text": "const row = (label: string, go: () => void, val = '', extra: Bag = {}): Bag => ({ id: `row:${label}`, kNav: true, label, lbl: label, val, hasVal: !!val, chev: true, noAB: true, go, ...extra });"
         },
         {
           "line": 490,
-          "text": "const toggle = (label: string, on: boolean, change: () => void): Bag => ({ kTog: true, label, aria: label, on, track: on ? 'background:var(--acc)' : 'background:var(--line)', kx: on ? 20 : 0, toggle: "
+          "text": "const toggle = (label: string, on: boolean, change: () => void, id = `toggle:${label}`): Bag => ({ id, kTog: true, label, aria: label, on, track: on ? 'background:var(--acc)' : 'background:var(--line)"
         },
         {
           "line": 491,
-          "text": "const log = (time: string, text: string): Bag => ({ kLog: true, time, text });"
+          "text": "const log = (time: string, text: string, id = `log:${time}:${text}`): Bag => ({ id, kLog: true, time, text });"
         },
         {
           "line": 492,
-          "text": "const group = (rows: Bag[], cap = ''): Bag => ({ css: 'background:var(--s2);padding:4px 0', rows, ...(cap ? { cap, hasCap: true } : {}) });"
+          "text": "const group = (rows: Bag[], cap = '', id = cap || String(rows[0]?.id ?? rows[0]?.label ?? 'empty')): Bag => {"
         },
         {
           "line": 493,
-          "text": "const back = () => api.set({ page: null });"
-        },
-        {
-          "line": 494,
-          "text": "const subpage = (title: string, groups: Bag[], options: Bag = {}): Bag => ({ isTop: false, notTop: true, cls: 'enter', z: options.z ?? 4, title, hasTitle: true, backLabel: options.backLabel ?? 'Back t"
-        },
-        {
-          "line": 495,
-          "text": "const day = (at: number) => new Date(at).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });"
-        },
-        {
-          "line": 496,
-          "text": "const go = (page: string) => () => api.set({ page });"
+          "text": "const occurrences = new Map<string, number>();"
         },
         {
           "line": 497,
-          "text": "const top = out.stack[0];"
+          "text": "const identity = value.id ?? `row:${value.aria ?? value.label ?? value.time ?? ''}:${value.text ?? ''}`;"
         },
         {
           "line": 498,
-          "text": "const stack: Bag[] = [top];"
-        },
-        {
-          "line": 501,
-          "text": "const plan = connectionController.residentPlanSettings();"
-        },
-        {
-          "line": 502,
-          "text": "const cloudPage = plan ? cloudAccountPage({ plan, busy: connection.busy, message: connection.message || '', serviceName, day, confirm: text => window.confirm(text),"
+          "text": "const occurrence = occurrences.get(identity) ?? 0;"
         },
         {
           "line": 505,
-          "text": "const cloudRow = cloudPage ? row(serviceName, go('account'), plan!.keyExpiring ? 'Sign-in expiring' : plan!.signedIn ? plan!.plan : 'Sign in')"
+          "text": "const back = () => api.set({ page: null });"
+        },
+        {
+          "line": 506,
+          "text": "const subpage = (title: string, groups: Bag[], options: Bag = {}): Bag => ({ isTop: false, notTop: true, cls: 'enter', z: options.z ?? 4, title, hasTitle: true, backLabel: options.backLabel ?? 'Back t"
         },
         {
           "line": 507,
-          "text": "const googleCount = gmailAccounts.filter(a => a.connected && a.connectionId).length;"
+          "text": "const day = (at: number) => new Date(at).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });"
         },
         {
           "line": 508,
-          "text": "const googleRow = row('Google', () => googleConnectionController.open(), googleCount ? `${googleCount} account${googleCount === 1 ? '' : 's'}` : connectionController.getCloudClient() ? 'Connect' : '')"
+          "text": "const go = (page: string) => () => api.set({ page });"
         },
         {
-          "line": 512,
-          "text": "const preferences = cachedDevicePreferences(), preferenceUnavailable = 'Preference unavailable. Reopen Settings to try again.';"
+          "line": 509,
+          "text": "const top = out.stack[0];"
+        },
+        {
+          "line": 510,
+          "text": "const stack: Bag[] = [top];"
         },
         {
           "line": 513,
-          "text": "const askRow = toggle('Ask before acting', preferences?.askBeforeAgentActions === true, async () => {"
+          "text": "const plan = connectionController.residentPlanSettings();"
         },
         {
           "line": 514,
-          "text": "const saved = cachedDevicePreferences(); if (!saved) { api.toast(preferenceUnavailable); return; }"
+          "text": "const cloudPage = plan ? cloudAccountPage({ plan, busy: connection.busy, message: connection.message || '', serviceName, day, confirm: text => window.confirm(text),"
         },
         {
           "line": 517,
-          "text": "const agentStatus = connection.session ? connection.kind === 'resident' ? 'Running' : testMocksEnabled ? 'Remote agent' : 'Unsupported connection' : connection.residentRecoveryReason ? 'Needs review' "
-        },
-        {
-          "line": 518,
-          "text": "const agentRow = row('Agent', native && !testMocksEnabled ? go('agent-connection') : () => connectionController.open(), native && !testMocksEnabled ? agentStatus : connection.session ? connection.name"
-        },
-        {
-          "line": 519,
-          "text": "const digestsRow = row('Scheduled digests', () => window.dispatchEvent(new Event('alpha:hosted-digests')));"
+          "text": "const cloudRow = cloudPage ? row(serviceName, go('account'), plan!.keyExpiring ? 'Sign-in expiring' : plan!.signedIn ? plan!.plan : 'Sign in')"
         },
         {
           "line": 520,
-          "text": "const listeningRow = listener.available ? row('Listening', go('listening'), listenerBusy ? 'Updating…' : listener.label) : null;"
+          "text": "const googleCount = gmailAccounts.filter(a => a.connected && a.connectionId).length;"
         },
         {
           "line": 521,
-          "text": "const listeningWarning = wakeListeningStopUnconfirmed()"
+          "text": "const googleRow = row('Google', () => googleConnectionController.open(), googleCount ? `${googleCount} account${googleCount === 1 ? '' : 's'}` : connectionController.getCloudClient() ? 'Connect' : '')"
         },
         {
           "line": 525,
-          "text": "const photoScope = photoAccess?.scope === 'full' ? 'All' : photoAccess?.scope === 'selected' || photoAccess?.scope === 'partial' ? 'Selected' : photoAccess?.scope === 'denied' ? 'Not allowed' : '';"
+          "text": "const preferences = cachedDevicePreferences(), preferenceUnavailable = 'Preference unavailable. Reopen Settings to try again.';"
         },
         {
           "line": 526,
-          "text": "const photosRow = native ? row('Photos access', async () => {"
+          "text": "const askRow = toggle('Ask before acting', preferences?.askBeforeAgentActions === true, async () => {"
         },
         {
           "line": 527,
-          "text": "if (photoAccessBusy) return; photoAccessBusy = true; changed(); const instance = owner;"
-        },
-        {
-          "line": 528,
-          "text": "try { const access = await photoLibrary.requestLibraryAccess(); if (owner === instance) photoAccess = access; }"
-        },
-        {
-          "line": 532,
-          "text": "const mailImagesRow = toggle('Load images in email', preferences?.autoLoadMailImages === true, async () => {"
-        },
-        {
-          "line": 533,
           "text": "const saved = cachedDevicePreferences(); if (!saved) { api.toast(preferenceUnavailable); return; }"
         },
         {
+          "line": 530,
+          "text": "const agentStatus = connection.session ? connection.kind === 'resident' ? 'Running' : testMocksEnabled ? 'Remote agent' : 'Unsupported connection' : connection.residentRecoveryReason ? 'Needs review' "
+        },
+        {
+          "line": 531,
+          "text": "const agentRow = row('Agent', native && !testMocksEnabled ? go('agent-connection') : () => connectionController.open(), native && !testMocksEnabled ? agentStatus : connection.session ? connection.name"
+        },
+        {
+          "line": 532,
+          "text": "const digestsRow = row('Scheduled digests', () => window.dispatchEvent(new Event('alpha:hosted-digests')));"
+        },
+        {
+          "line": 533,
+          "text": "const listeningRow = listener.available ? row('Listening', go('listening'), listenerBusy ? 'Updating…' : listener.label) : null;"
+        },
+        {
+          "line": 534,
+          "text": "const listeningWarning = wakeListeningStopUnconfirmed()"
+        },
+        {
+          "line": 538,
+          "text": "const photoScope = photoAccess?.scope === 'full' ? 'All' : photoAccess?.scope === 'selected' || photoAccess?.scope === 'partial' ? 'Selected' : photoAccess?.scope === 'denied' ? 'Not allowed' : '';"
+        },
+        {
+          "line": 539,
+          "text": "const photosRow = native ? row('Photos access', async () => {"
+        },
+        {
           "line": 540,
-          "text": "const home = roles?.home, canRequestHome = native && launcher === true && !!home && home.available && !home.held;"
+          "text": "if (photoAccessBusy) return; photoAccessBusy = true; changed(); const instance = owner;"
         },
         {
           "line": 541,
-          "text": "const homeRow = canRequestHome ? row('Make Alpha your Home app', () => void requestHome(api), roleBusy ? 'Waiting for Android…' : '') : null;"
-        },
-        {
-          "line": 544,
-          "text": "const stored = readAppearanceChoice(), choice: AppearanceChoice = resolveAppearance(stored) === api.theme ? stored : api.theme === 'dark' ? 'dark' : 'light';"
+          "text": "try { const access = await photoLibrary.requestLibraryAccess(); if (owner === instance) photoAccess = access; }"
         },
         {
           "line": 545,
-          "text": "const themeRow: Bag = { kSeg: true, label: 'Theme', noAB: true, opts: ([['system', 'System'], ['light', 'Light'], ['dark', 'Dark']] as Array<[AppearanceChoice, string]>).map(([value, label]) => {"
+          "text": "const mailImagesRow = toggle('Load images in email', preferences?.autoLoadMailImages === true, async () => {"
         },
         {
           "line": 546,
-          "text": "const on = value === choice;"
+          "text": "const saved = cachedDevicePreferences(); if (!saved) { api.toast(preferenceUnavailable); return; }"
         },
         {
-          "line": 548,
-          "text": "const theme = resolveAppearance(value);"
+          "line": 553,
+          "text": "const home = roles?.home, canRequestHome = native && launcher === true && !!home && home.available && !home.held;"
         },
         {
           "line": 554,
-          "text": "const scale = facts.textScalePercent;"
+          "text": "const homeRow = canRequestHome ? row('Make Alpha your Home app', () => void requestHome(api), roleBusy ? 'Waiting for Android…' : '') : null;"
         },
         {
-          "line": 555,
-          "text": "const textRow: Bag | null = (native || browserDevProfile) && Number.isInteger(scale) ? { kSlider: true, noAB: true, label: 'Text size', valueLabel: `${scale}%`, v: scale <= 100 ? (scale - 75) * 2 : sc"
+          "line": 557,
+          "text": "const stored = readAppearanceChoice(), choice: AppearanceChoice = resolveAppearance(stored) === api.theme ? stored : api.theme === 'dark' ? 'dark' : 'light';"
         },
         {
-          "line": 556,
-          "text": "const value = Number((event.target as HTMLInputElement).value), requested = Math.round(value <= 50 ? 75 + value / 2 : value + 50), token = ++scaleGeneration, instance = owner;"
+          "line": 558,
+          "text": "const themeRow: Bag = { kSeg: true, label: 'Theme', noAB: true, opts: ([['system', 'System'], ['light', 'Light'], ['dark', 'Dark']] as Array<[AppearanceChoice, string]>).map(([value, label]) => {"
+        },
+        {
+          "line": 559,
+          "text": "const on = value === choice;"
         },
         {
           "line": 561,
-          "text": "const browserNotifications = delivery.scope === 'browser';"
-        },
-        {
-          "line": 562,
-          "text": "const deliveryValue = typeof delivery.appEnabled !== 'boolean' ? '' : !delivery.appEnabled || !delivery.permissionGranted ? 'Off' : delivery.channels?.some((c: Bag) => c.blocked || c.groupBlocked) ? '"
-        },
-        {
-          "line": 563,
-          "text": "const notificationsRow = native ? row('Notifications', manage('notifications'), deliveryValue)"
-        },
-        {
-          "line": 565,
-          "text": "const crossAvailable = (native || devSurfacesEnabled) && !!cross.revision;"
-        },
-        {
-          "line": 566,
-          "text": "const crossValue = typeof cross.accessGranted !== 'boolean' ? '' : !cross.enabled ? 'Off' : cross.paused ? 'Paused' : !cross.accessGranted ? 'Needs access' : `${(cross.apps || []).length} app${(cross."
+          "text": "const theme = resolveAppearance(value);"
         },
         {
           "line": 567,
-          "text": "const crossRow = crossAvailable ? row('Notifications from other apps', go('cross'), crossValue) : null;"
+          "text": "const scale = facts.textScalePercent;"
         },
         {
-          "line": 570,
-          "text": "const permissionsValue = permissionSummary(facts.permissions);"
+          "line": 568,
+          "text": "const textRow: Bag | null = (native || browserDevProfile) && Number.isInteger(scale) ? { kSlider: true, noAB: true, label: 'Text size', valueLabel: `${scale}%`, v: scale <= 100 ? (scale - 75) * 2 : sc"
         },
         {
-          "line": 571,
-          "text": "const permissionsRow = native ? row('App permissions', manage('privacy'), permissionsValue) : null;"
-        },
-        {
-          "line": 572,
-          "text": "const missing = native ? Object.values(facts.permissions || {}).some(value => value === false) || delivery.permissionGranted === false"
+          "line": 569,
+          "text": "const value = Number((event.target as HTMLInputElement).value), requested = Math.round(value <= 50 ? 75 + value / 2 : value + 50), token = ++scaleGeneration, instance = owner;"
         },
         {
           "line": 574,
-          "text": "const setupRow = api.reopenStartupAccess && missing ? row('Finish setup', api.reopenStartupAccess) : null;"
+          "text": "const browserNotifications = delivery.scope === 'browser';"
         },
         {
           "line": 575,
-          "text": "const androidRow = native && launcher === true ? row('Android settings', manage('system')) : null;"
+          "text": "const deliveryValue = typeof delivery.appEnabled !== 'boolean' ? '' : !delivery.appEnabled || !delivery.permissionGranted ? 'Off' : delivery.channels?.some((c: Bag) => c.blocked || c.groupBlocked) ? '"
         },
         {
           "line": 576,
-          "text": "const aboutRow = row('About', () => { api.set({ page: 'about' }); void refresh(); }, versionLabel(facts.appVersion || buildVersion, facts.appVersionCode));"
-        },
-        {
-          "line": 577,
-          "text": "const developerRow = developerTools ? row('Developer', go('developer')) : null;"
+          "text": "const notificationsRow = native ? row('Notifications', manage('notifications'), deliveryValue)"
         },
         {
           "line": 578,
+          "text": "const crossAvailable = (native || devSurfacesEnabled) && !!cross.revision;"
+        },
+        {
+          "line": 579,
+          "text": "const crossValue = typeof cross.accessGranted !== 'boolean' ? '' : !cross.enabled ? 'Off' : cross.paused ? 'Paused' : !cross.accessGranted ? 'Needs access' : `${(cross.apps || []).length} app${(cross."
+        },
+        {
+          "line": 580,
+          "text": "const crossRow = crossAvailable ? row('Notifications from other apps', go('cross'), crossValue) : null;"
+        },
+        {
+          "line": 583,
+          "text": "const permissionsValue = permissionSummary(facts.permissions);"
+        },
+        {
+          "line": 584,
+          "text": "const permissionsRow = native ? row('App permissions', manage('privacy'), permissionsValue) : null;"
+        },
+        {
+          "line": 585,
+          "text": "const missing = native ? Object.values(facts.permissions || {}).some(value => value === false) || delivery.permissionGranted === false"
+        },
+        {
+          "line": 587,
+          "text": "const setupRow = api.reopenStartupAccess && missing ? row('Finish setup', api.reopenStartupAccess) : null;"
+        },
+        {
+          "line": 588,
+          "text": "const androidRow = native && launcher === true ? row('Android settings', manage('system')) : null;"
+        },
+        {
+          "line": 589,
+          "text": "const aboutRow = row('About', () => { api.set({ page: 'about' }); void refresh(); }, versionLabel(facts.appVersion || buildVersion, facts.appVersionCode));"
+        },
+        {
+          "line": 590,
+          "text": "const developerRow = developerTools ? row('Developer', go('developer')) : null;"
+        },
+        {
+          "line": 591,
           "text": "const resetRow = native ? row('Reset Alpha data', async () => {"
         },
         {
-          "line": 581,
+          "line": 594,
           "text": "const present = (rows: Array<Bag | null>) => rows.filter((value): value is Bag => !!value);"
         },
         {
-          "line": 597,
+          "line": 610,
           "text": "const rows = [info(cloudPage.status, cloudPage.detail)];"
         },
         {
-          "line": 603,
+          "line": 616,
           "text": "const rows: Bag[] = [info(connection.session ? connection.kind === 'resident' ? 'Running on this device' : testMocksEnabled ? 'Remote agent' : 'Unsupported connection' : agentStatus, connection.reside"
         },
         {
-          "line": 605,
+          "line": 618,
           "text": "const actions: Bag[] = [];"
         },
         {
-          "line": 608,
+          "line": 621,
           "text": "const recoveryState = connection.residentRecovery;"
         },
         {
-          "line": 619,
+          "line": 632,
           "text": "const review: Bag[] = [];"
         },
         {
-          "line": 621,
+          "line": 634,
           "text": "for (const item of connection.actionHistory) if (['pending', 'executing', 'reconciliation_required'].includes(item.state)) {"
         },
         {
-          "line": 632,
-          "text": "const history: Bag[] = connection.conversations.map((item: Bag) => row(item.title, () => void connectionController.restoreHistory(item.id)));"
-        },
-        {
-          "line": 639,
-          "text": "const status = listener;"
-        },
-        {
-          "line": 648,
-          "text": "const display=views.calendar.displaySources?.(),calendarView=owner?views.calendar.render(owner.vget('calendar'),owner.api('calendar')):null;"
-        },
-        {
-          "line": 649,
-          "text": "const model=owner?.agentCalendar?.state,authority=owner?.vget('calendar').calendarAuthority;"
-        },
-        {
-          "line": 650,
-          "text": "const googleCalendars=gmailAccounts.filter(account=>account.connected&&account.connectionId&&account.grantedCapabilities.includes('google.calendar.read'));"
-        },
-        {
-          "line": 651,
-          "text": "const hasGoogleWrites=googleCalendars.some(account=>account.grantedCapabilities.includes('google.calendar.write'));"
+          "line": 645,
+          "text": "const history: Bag[] = connection.conversations.map((item: Bag) => row(item.title, () => void connectionController.restoreHistory(item.id), '', { id: `conversation:${item.id}` }));"
         },
         {
           "line": 652,
-          "text": "const checking=gmail==='Checking authorization…',unavailable=gmail==='Authorization not verified';"
-        },
-        {
-          "line": 653,
-          "text": "const googleStatus=checking?'Checking connection…':unavailable?'Connection unavailable':googleCalendars.length?(hasGoogleWrites?'Connected':'Finish connecting'):'Not connected';"
-        },
-        {
-          "line": 654,
-          "text": "const groups:Bag[]=[group([{kNav:true,label:'Google Calendar',lbl:'Google Calendar',sub:googleStatus,hasSub:true,chev:true,noAB:true,go:()=>{const scope=owner?.calendarConnectionScope?.();if(scope)goo"
-        },
-        {
-          "line": 655,
-          "text": "const needsRecovery=['legacy','android-native','browser-local'].includes(authority)||model?.status==='transition-required'||model?.status==='legacy-recovery';"
-        },
-        {
-          "line": 657,
-          "text": "const recovery:Bag[]=[info('Saved events','Your earlier saved events are kept unchanged.')];"
+          "text": "const status = listener;"
         },
         {
           "line": 661,
-          "text": "const useCalendar=calendarView?.calendarAuthorityChoices?.find((choice:Bag)=>choice.label==='Agent Calendar');"
+          "text": "const display=views.calendar.displaySources?.(),calendarView=owner?views.calendar.render(owner.vget('calendar'),owner.api('calendar')):null;"
+        },
+        {
+          "line": 662,
+          "text": "const model=owner?.agentCalendar?.state,authority=owner?.vget('calendar').calendarAuthority;"
+        },
+        {
+          "line": 663,
+          "text": "const googleCalendars=gmailAccounts.filter(account=>account.connected&&account.connectionId&&account.grantedCapabilities.includes('google.calendar.read'));"
+        },
+        {
+          "line": 664,
+          "text": "const hasGoogleWrites=googleCalendars.some(account=>account.grantedCapabilities.includes('google.calendar.write'));"
+        },
+        {
+          "line": 665,
+          "text": "const checking=gmail==='Checking authorization…',unavailable=gmail==='Authorization not verified';"
         },
         {
           "line": 666,
-          "text": "const message=model?.status==='partial'||model?.status==='ready'?'Some events could not load. Try again.':'Calendar could not load. Try again.';"
+          "text": "const googleStatus=checking?'Checking connection…':unavailable?'Connection unavailable':googleCalendars.length?(hasGoogleWrites?'Connected':'Finish connecting'):'Not connected';"
         },
         {
-          "line": 676,
-          "text": "const helpers = { info, group, toast: (message: string) => api.toast(message), set: (patch: Bag) => api.set(patch), ic: api.ic || {} };"
+          "line": 667,
+          "text": "const groups:Bag[]=[group([{kNav:true,label:'Google Calendar',lbl:'Google Calendar',sub:googleStatus,hasSub:true,chev:true,noAB:true,go:()=>{const scope=owner?.calendarConnectionScope?.();if(scope)goo"
         },
         {
-          "line": 677,
-          "text": "const provider = facts.passwordProvider || {};"
+          "line": 668,
+          "text": "const needsRecovery=['legacy','android-native','browser-local'].includes(authority)||model?.status==='transition-required'||model?.status==='legacy-recovery';"
         },
         {
-          "line": 678,
-          "text": "const passwordAction = (label: string, kind: string, val = ''): Bag => row(label, async () => {"
+          "line": 670,
+          "text": "const recovery:Bag[]=[info('Saved events','Your earlier saved events are kept unchanged.')];"
+        },
+        {
+          "line": 674,
+          "text": "const useCalendar=calendarView?.calendarAuthorityChoices?.find((choice:Bag)=>choice.label==='Agent Calendar');"
         },
         {
           "line": 679,
-          "text": "if (passwordOpening) return; passwordOpening = true; const instance = owner; changed();"
+          "text": "const message=model?.status==='partial'||model?.status==='ready'?'Some events could not load. Try again.':'Calendar could not load. Try again.';"
         },
         {
-          "line": 680,
-          "text": "try { const result = await device.openPasswordProvider({ action: kind }); if (result?.status !== 'opened') throw Error('Unconfirmed provider handoff'); if (owner === instance && result.destination !=="
+          "line": 689,
+          "text": "const helpers = { info, group, toast: (message: string) => api.toast(message), set: (patch: Bag) => api.set(patch), ic: api.ic || {} };"
         },
         {
-          "line": 685,
-          "text": "const selection: Bag = { proton: provider.installation === 'installed' ? 'Proton Pass selected' : provider.installation === 'disabled' ? 'Proton Pass selected · app disabled' : 'Provider package selec"
-        },
-        {
-          "line": 686,
-          "text": "const providerValue = provider.support === 'unavailable' ? 'Autofill unavailable for this device or user' : selection[provider.selection] || 'Selection unavailable';"
-        },
-        {
-          "line": 687,
-          "text": "const others = browserDevProfile ? [passwordAction('Password provider', 'settings', provider.selection === 'proton' ? 'Development provider selected' : 'No provider selected'), provider.installation ="
+          "line": 690,
+          "text": "const provider = facts.passwordProvider || {};"
         },
         {
           "line": 691,
-          "text": "const entry = current === 'password-entry' ? passwordEntryPage(helpers, () => api.set({ page: 'password-provider' })) : null;"
+          "text": "const passwordAction = (label: string, kind: string, val = ''): Bag => row(label, async () => {"
         },
         {
-          "line": 695,
-          "text": "const busyRow = (label: string, act: () => void, val = ''): Bag => row(label, () => { if (!notificationBusy) act(); }, notificationBusy ? 'Working…' : val, { busy: notificationBusy });"
+          "line": 692,
+          "text": "if (passwordOpening) return; passwordOpening = true; const instance = owner; changed();"
         },
         {
-          "line": 696,
-          "text": "const run = async (task: () => Promise<void>) => { if (notificationBusy) return; notificationBusy = true; changed(); const instance = owner; try { await task(); if (owner === instance) await refresh()"
-        },
-        {
-          "line": 697,
-          "text": "const policy = (change: Bag) => void run(async () => { await notifications.setNotificationPolicy({ expectedRevision: cross.revision, ...change }); if (change.history === false) history = []; });"
+          "line": 693,
+          "text": "try { const result = await device.openPasswordProvider({ action: kind }); if (result?.status !== 'opened') throw Error('Unconfirmed provider handoff'); if (owner === instance && result.destination !=="
         },
         {
           "line": 698,
-          "text": "const selected: Bag[] = cross.apps || [];"
+          "text": "const selection: Bag = { proton: provider.installation === 'installed' ? 'Proton Pass selected' : provider.installation === 'disabled' ? 'Proton Pass selected · app disabled' : 'Provider package selec"
         },
         {
           "line": 699,
-          "text": "const keep = (apps: Bag[]) => apps.map(({ packageName, preview }) => ({ packageName, preview }));"
+          "text": "const providerValue = provider.support === 'unavailable' ? 'Autofill unavailable for this device or user' : selection[provider.selection] || 'Selection unavailable';"
         },
         {
           "line": 700,
-          "text": "const collect = toggle('Collect from selected apps', !!cross.enabled, () => {"
+          "text": "const others = browserDevProfile ? [passwordAction('Password provider', 'settings', provider.selection === 'proton' ? 'Development provider selected' : 'No provider selected'), provider.installation ="
         },
         {
           "line": 704,
-          "text": "const appRows: Bag[] = [];"
+          "text": "const entry = current === 'password-entry' ? passwordEntryPage(helpers, () => api.set({ page: 'password-provider' })) : null;"
         },
         {
-          "line": 705,
-          "text": "for (const app of selected) {"
+          "line": 708,
+          "text": "const busyRow = (label: string, act: () => void, val = ''): Bag => row(label, () => { if (!notificationBusy) act(); }, notificationBusy ? 'Working…' : val, { busy: notificationBusy });"
+        },
+        {
+          "line": 709,
+          "text": "const run = async (task: () => Promise<void>) => { if (notificationBusy) return; notificationBusy = true; changed(); const instance = owner; try { await task(); if (owner === instance) await refresh()"
+        },
+        {
+          "line": 710,
+          "text": "const policy = (change: Bag) => void run(async () => { await notifications.setNotificationPolicy({ expectedRevision: cross.revision, ...change }); if (change.history === false) history = []; });"
+        },
+        {
+          "line": 711,
+          "text": "const selected: Bag[] = cross.apps || [];"
         },
         {
           "line": 712,
+          "text": "const keep = (apps: Bag[]) => apps.map(({ packageName, preview }) => ({ packageName, preview }));"
+        },
+        {
+          "line": 713,
+          "text": "const collect = toggle('Collect from selected apps', !!cross.enabled, () => {"
+        },
+        {
+          "line": 717,
+          "text": "const appRows: Bag[] = [];"
+        },
+        {
+          "line": 718,
+          "text": "for (const app of selected) {"
+        },
+        {
+          "line": 725,
           "text": "for (const app of choices || []) if (!selected.some(a => a.packageName === app.packageName)) appRows.push(toggle(app.label, false, () => policy({ apps: [...keep(selected), { packageName: app.packageNa"
         },
         {
-          "line": 714,
+          "line": 727,
           "text": "const historyRows: Bag[] = [toggle('Keep history', !!cross.history, () => {"
         },
         {
-          "line": 719,
+          "line": 732,
           "text": "if (history === null) historyRows.push(busyRow('Show history', () => { notificationBusy = true; const instance = owner; void notifications.notificationHistory().then(result => { if (owner === instance"
         },
         {
-          "line": 720,
-          "text": "else for (const item of history) historyRows.push(log(new Date(item.at).toLocaleString(), `${item.appLabel} · ${item.state}`));"
+          "line": 733,
+          "text": "else for (const [index, item] of history.entries()) historyRows.push(log(new Date(item.at).toLocaleString(), `${item.appLabel} · ${item.state}`, `notice:${item.id ?? `${item.packageName}:${item.at}:${"
         },
         {
-          "line": 729,
+          "line": 742,
           "text": "const problemCount = crashLog ? crashLog.entries.length : null;"
         },
         {
-          "line": 731,
+          "line": 744,
           "text": "const update = native ? parseUpdateManifest(savedUpdate().manifest, {"
         },
         {
-          "line": 734,
+          "line": 747,
           "text": "const updateRows: Bag[] = native ? ["
         },
         {
-          "line": 752,
+          "line": 765,
           "text": "const toAbout = { z: 6, back: go('about'), backLabel: 'Back to About' };"
         },
         {
-          "line": 754,
-          "text": "const entries = crashLog ? [...crashLog.entries].reverse().map(entry => { const line = describeCrashEntry(entry); return log(new Date(entry.at).toLocaleString(), `${line.title} · ${line.detail}`); }) "
+          "line": 767,
+          "text": "const entries = crashLog ? [...crashLog.entries].reverse().map((entry, index) => { const line = describeCrashEntry(entry); return log(new Date(entry.at).toLocaleString(), `${line.title} · ${line.detai"
         },
         {
-          "line": 762,
+          "line": 775,
           "text": "const developer = out.stack.find((page: Bag) => page.title === 'Developer');"
         }
       ]
@@ -37629,7 +37645,7 @@
     },
     {
       "path": "apps/app/src/prototype/template.html",
-      "sha256": "15b4b0f140cd8552903af3be74656cfd36c95d546f748948d5ad71dfd4dbca8c",
+      "sha256": "4a6d478b9f6033db508172af46dd2a04c11d7823d3aff57a33d84919a92bb22e",
       "models": [
         "ShellNavigation",
         "PreferencesAndPresentation",
@@ -56857,6 +56873,27 @@
         "MediaLifecycle"
       ],
       "sha256": "62dfd9e4798d9ae0d5eb1ec653060c8330c100d53e9a1e4df5c3352c5ca97280"
+    },
+    {
+      "path": "patches/eliza/scan-document-client-manifest.json",
+      "models": [
+        "ScanDocument"
+      ],
+      "sha256": "4b0f6c0fbe9af5ef736e5a522fa66a20c7a1a714842f02f231058b0fd6459575"
+    },
+    {
+      "path": "patches/eliza/scan-document-client.patch",
+      "models": [
+        "ScanDocument"
+      ],
+      "sha256": "0acc077101d88a79271cc49aafcb88b6f607213e88aa97b9c2308d2f11267229"
+    },
+    {
+      "path": "scripts/prepare-client-features.mjs",
+      "models": [
+        "ScanDocument"
+      ],
+      "sha256": "da691f34cd1582f0cc97c5d0e0c23eae553505f38deca97696cb77c717f32afa"
     }
   ],
   "runtimeAssets": [
