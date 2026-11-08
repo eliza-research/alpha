@@ -66,6 +66,31 @@ final class AndroidShade {
   if (!waitClosed(5000)) throw new AssertionError("Android's notification shade did not close");
  }
 
+ /**
+  * Counts, from the page, the touches that reach it and Alpha's requests for Android's shade.
+  * Without them a pull can pass vacuously: on the API 35 emulator SystemUI's shade window kept
+  * taking touches for a moment after it collapsed, so a swipe right after a collapse reached
+  * Android, not Alpha, and Android itself reopened its shade (1 of 3 runs with Alpha as HOME).
+  */
+ static final String COUNT_PULLS = "(()=>{if(window.__alphaPull)return;const c=window.__alphaPull={touches:0,focusedAtTouch:0,calls:0};"
+  + "document.addEventListener('touchstart',e=>{if(e.target instanceof Element&&e.target.closest('[data-alpha-layer=\"home\"]')){c.touches++;if(document.activeElement?.matches?.('textarea[data-alpha-composer]'))c.focusedAtTouch++;}},true);"
+  + "const send=Capacitor.nativePromise;Capacitor.nativePromise=function(plugin,method){if(plugin==='AlphaDevice'&&method==='openNotificationShade')c.calls++;return send.apply(this,arguments);};})()";
+ static int pullCount(String field) throws Exception { return Integer.parseInt(WebViewTestDriver.evaluate("String(window.__alphaPull." + field + ")").replace("\"", "")); }
+
+ /** A downward swipe that reached Alpha's Home: retried (up to five times) while it did not. */
+ static void pullOnHome(androidx.test.uiautomator.UiDevice device, int x, int y, int distance) throws Exception {
+  int before = pullCount("touches");
+  for (int attempt = 0; attempt < 5; attempt++) {
+   SystemClock.sleep(500);
+   device.swipe(x, y, x, y + distance, 20);
+   SystemClock.sleep(1500);
+   if (pullCount("touches") > before) return;
+   // Android took the swipe (its collapsing shade window); put Alpha back in front and try again.
+   if (isOpen()) collapse();
+  }
+  throw new AssertionError("No pull reached Alpha's Home in five swipes");
+ }
+
  /** The first visible SystemUI node whose text is exactly this, or null. */
  static AccessibilityNodeInfo text(String value) {
   AccessibilityNodeInfo root = ui().getRootInActiveWindow();
