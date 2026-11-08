@@ -260,6 +260,9 @@ test('journey D: an occurrence missed while the app was closed leaves one explic
  await page.reload();
  await expect(page.getByRole('region',{name:'Home'})).toBeVisible();
  await tickFor(page,60_000);
+ // Once this app has received the missed record, it is still not a brief.
+ await expect.poll(async()=>(await digests(page)).acks).toEqual([1]);
+ expect(await retainedBrief(page)).toBeNull();
  // The card Home renders says so, and names neither a brief nor the missed occurrence.
  await expect(homeBrief(page)).toBeVisible();
  await expect(homeBrief(page)).toHaveAttribute('aria-label','Open workflows');
