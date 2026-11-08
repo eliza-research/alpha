@@ -415,3 +415,7 @@ P-42 allows only libelizainference. Any LiteRT or NNAPI model path needs an owne
   payloads, which `android/aosp/pixel10a-source.json` does not record. It needs review, then recording in
   the contract or removal. No overlay or image exists for this APK.
   `/product` is full at 1.0 GB with a 692 MB AlphaPhone; the fit of this APK is unproven.
+
+## Historical owner acceptance
+
+The owner accepted the historical `4787d51a14` requalification under P-83. The current SDK `99b49439` and its explicit speech bridge patches still require their own qualification and acceptance.

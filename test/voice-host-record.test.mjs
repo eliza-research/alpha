@@ -325,3 +325,10 @@ test('an unrecorded engine refused at a conflicting destination leaves the track
   assert.throws(() => stageVoiceModels(dir, {from: [from], unrecordedEngine: true}), /already exists with other bytes/);
   assert.deepEqual(fs.readFileSync(path.join(dir, VOICE_HOST)), before);
 });
+
+test('historical P-83 acceptance remains scoped to its recorded SDK', () => {
+  const record = JSON.parse(fs.readFileSync(path.join(ROOT, VOICE_HOST), 'utf8'));
+  assert.match(record.acceptance, /P-83/);
+  assert.equal(record.qualified, false);
+  assert.equal(record.evidence.userAccepted, false);
+});
