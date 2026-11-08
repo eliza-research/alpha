@@ -1,6 +1,9 @@
 import {NOTE_ID_REGEXP} from '../../../../.eliza/client-features/plugins/plugin-notes/src/note-id.ts';
 import {parseClientTurnObservation,parseClientCalendarDayObservation} from '../../../../.eliza/client-features/packages/contracts/src/client-turn-observation.ts';
-import {clockTimeZone} from './clock-contract.ts';
+import {clockHandoffCapabilities,clockTimeZone} from './clock-contract.ts';
+import {CAMERA_CAPTURE_CAPABILITY} from '../../../../.eliza/client-features/plugins/plugin-assistant/src/services/device-actions/camera-contract.ts';
+import {SMS_SEND_CAPABILITY} from './sms-agent-contract.ts';
+import {PHONE_DIAL_CAPABILITY,telephonyDeviceCapabilities} from './phone-dial-contract.ts';
 import {reminderTarget} from '../../../../.eliza/client-features/plugins/plugin-assistant/src/services/device-actions/reminder-contract.ts';
 import {notesTarget} from './notes-contract.ts';
 import { calendarSource, calendarTarget } from '../../../../.eliza/client-features/plugins/plugin-assistant/src/services/device-actions/calendar-contract.ts';
@@ -121,4 +124,33 @@ export function phoneContextMessage(text: string, input: ContextEnvelope): { tex
     '',
   ].join('\n');
   return { text: envelope + text, context };
+}
+
+/** The shared contract's free/busy capability name (kept equal by test-calendar-availability-flow). */
+export const CALENDAR_AVAILABILITY_CAPABILITY = 'calendar.availability-read.v1';
+/** What this phone can run, for the capability negotiation. `native`: a Capacitor app (Android or
+ * iOS); `camera`: a camera it can capture with; `foregroundReview`: the shell supplied the review
+ * executor; `clockRepeatDays`: native Clock carries repeat days; `aospImage`: the Alpha system image. */
+export type DeviceCapabilityProfile = {android: boolean; native: boolean; camera: boolean; foregroundReview: boolean; clockRepeatDays: boolean; aospImage: boolean};
+/** The X-Eliza-Device-Capabilities list for every runtime (remote, resident, Cloud): the base
+ * local-record contracts plus each capability the agent offers that this phone supports. Clock
+ * handoffs are Android-only; v2 (repeat days) also needs the native repeat-days support. */
+export function selectDeviceCapabilities(offered: unknown, profile: DeviceCapabilityProfile): string[] {
+  const agent:unknown[]=Array.isArray(offered)?offered:[],{android,native}=profile;
+  const capabilities=['calendar.local-event.v1','notes.local-record.v1'];
+  if(agent.includes(CAMERA_CAPTURE_CAPABILITY)&&profile.camera)capabilities.push(CAMERA_CAPTURE_CAPABILITY);
+  if(agent.includes('reminders.local-record.v2'))capabilities.push('reminders.local-record.v2');else if(agent.includes('reminders.local-record.v1'))capabilities.push('reminders.local-record.v1');
+  // Browser chat reminders use the runtime scheduler; do not offer a second device-creation lifecycle.
+  for(const capability of [...(!native?['calendar.agenda-read.v1']:[]),'notes.query.v1',...(native?['reminders.create.v1']:[]),'calendar.create.v1',...(android||!native?['calendar.next-read.v1']:[]),'maps.selected-read.v1'])if(agent.includes(capability))capabilities.push(capability);
+  // Free/busy is negotiated only when the agent offers it.
+  if(agent.includes(CALENDAR_AVAILABILITY_CAPABILITY))capabilities.push(CALENDAR_AVAILABILITY_CAPABILITY);
+  if((android||!native)&&profile.foregroundReview&&agent.includes('calendar.named-read.v1'))capabilities.push('calendar.named-read.v1');
+  // One shared external-handoff policy for every brand: never clock.alarms.v1 (P-17).
+  capabilities.push(...clockHandoffCapabilities({offered:agent,handler:android,repeatDays:android&&agent.includes('clock.handoff.v2')&&profile.clockRepeatDays}));
+  // SMS sending is negotiated only on the AOSP image, where Alpha holds the SMS role.
+  if(profile.aospImage&&agent.includes(SMS_SEND_CAPABILITY))capabilities.push(SMS_SEND_CAPABILITY);
+  // The reviewed dial handoff only with the native telephony profile (the verified image). The
+  // on-device contact lookup waits for an owner number picker in the review, so it is not offered.
+  capabilities.push(...telephonyDeviceCapabilities({present:profile.aospImage,dial:agent.includes(PHONE_DIAL_CAPABILITY),contactLookup:false}));
+  return capabilities;
 }

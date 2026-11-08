@@ -56,10 +56,11 @@ const refused=(outcome:Awaited<ReturnType<typeof run>>,pattern:RegExp)=>{assert.
 // The connection controller negotiates the contract's capability by name, in all three agent paths.
 {
  const controller=readFileSync(new URL('../apps/app/src/runtime/connection-ui.tsx',import.meta.url),'utf8');
- assert.ok(controller.includes(`export const CALENDAR_AVAILABILITY_CAPABILITY = '${CALENDAR_AVAILABILITY_CAPABILITY}';`));
+ const phoneContext=readFileSync(new URL('../apps/app/src/runtime/phone-context.ts',import.meta.url),'utf8');
+ assert.ok(phoneContext.includes(`export const CALENDAR_AVAILABILITY_CAPABILITY = '${CALENDAR_AVAILABILITY_CAPABILITY}';`));
  // All three paths build X-Eliza-Device-Capabilities through one function, which negotiates it.
  assert.equal(controller.split('=await deviceCapabilities(').length-1,3);
- assert.equal(controller.split('if(availabilityNegotiated(').length-1,1);
+ assert.equal(phoneContext.split('if(agent.includes(CALENDAR_AVAILABILITY_CAPABILITY))').length-1,1);
  assert.equal(controller.split(',runForegroundReview);').length-1,3);
 }
 // Authorized calendars only: free events excluded, tentative flagged, unrelated calendar unread.

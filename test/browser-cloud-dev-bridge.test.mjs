@@ -10,6 +10,7 @@ import {createServer} from 'node:http';
 if(!process.execArgv.some((arg,i)=>arg==='--import'&&process.execArgv[i+1]==='tsx')){const child=spawnSync(process.execPath,['--import','tsx',process.argv[1]],{stdio:'inherit',timeout:60000});if(child.error)throw child.error;process.exit(child.status??1);}
 const {createBrowserCloudDevHandler}=await import('../scripts/browser-cloud-dev-bridge.ts');
 const {CloudProtocol}=await import('../apps/app/src/runtime/cloud-protocol.ts');
+const {residentAdmissionOutcome}=await import('../apps/app/src/runtime/subscription-entitlement.ts');
 const {cloudStorageNamespace,productionCloud,stagingCloud}=await import('../apps/app/src/runtime/cloud-deployment.generated.ts');
 const profileFile=(profile,name)=>join(profile,cloudStorageNamespace.replaceAll(':','-'),name);
 const {BrowserCloudConnection,BrowserCloudSignIn}=await import('../apps/app/src/browser/cloud-connection.ts');
@@ -898,7 +899,7 @@ async function wholeGoogleStackFixture(options={}){
  // The real admission path; only the shared binding controller and the agent start are stubbed.
  const admission=part('async function readCloudCredential(','/** Notice shown when Cloud inference')+part('function signInClient(','/**\n * A new key was stored')+part('async function residentSignedIn(','/** The key is stored;')+part('async function admitCloudResident(','/**\n * Cloud reported, on a background refresh');
  const serviceSlot=source.match(/const CLOUD_SERVICE = ('[^']+');/);assert.ok(serviceSlot);
- const harness=new Function('client','methods','signed','verify','admission','residentOn','admissionEntered','releaseAdmission','store','crypto','CLOUD_SERVICE',`
+ const harness=new Function('client','methods','signed','verify','admission','residentOn','admissionEntered','releaseAdmission','store','crypto','CLOUD_SERVICE','residentAdmissionOutcome',`
  let operation=null,cloud=client,active=true,entitlementRefresher=null;
  let googleSignInGeneration=0,googleSignInPrior=null,signInReadinessOwner=null;
  const trace=[];
@@ -920,7 +921,7 @@ async function wholeGoogleStackFixture(options={}){
  const connectionController={cancel(){operation?.abort(new DOMException('Cancelled','AbortError'));client.cancelLogin();},close(){},subscribe(listener){listeners.add(listener);return()=>listeners.delete(listener);}};
  const actions=eval(methods);
  return {actions,state,trace,genericAbort(){operation.abort(new DOMException('Cancelled','AbortError'));},replaceClient(){cloud={environment:'production'};for(const listener of listeners)listener();},supersede(){googleSignInGeneration++;for(const listener of listeners)listener();},get adopted(){return !!state.cloudAccount;},get operation(){return operation;}};
- `)(client,methods,signed,verify,admission,options.residentEnvironment,admissionEntered,releaseAdmission,store,crypto,serviceSlot[1].slice(1,-1));
+ `)(client,methods,signed,verify,admission,options.residentEnvironment,admissionEntered,releaseAdmission,store,crypto,serviceSlot[1].slice(1,-1),residentAdmissionOutcome);
  return {commit,client,harness,readEntered,releaseRead,adoptionEntered,releaseAdoption,releaseCancel,admissionEntered,releaseAdmission,changeAccount(){currentCredential={...currentCredential,credentialId:'99999999-9999-4999-8999-999999999999'};},close(){globalThis.fetch=oldFetch;if(descriptor)Object.defineProperty(globalThis,'window',descriptor);else delete globalThis.window;}};
 }
 test('whole Google protocol and controller cancel after rename waits and adopts the committed account',async()=>{

@@ -7,7 +7,6 @@ import {normalizeEffectReceipts} from '../../../../.eliza/client-features/packag
 import {assertAppRecordRequestAllowed,type AppRecordMethod,type AppRecordPort} from './app-record-route-policy';
 import {AUTOMATIONS_COMMITTED_EVENT,automationsCommitted} from './automation-completion';
 import {OWNER_REMINDER_LIST,OWNER_REMINDER_READBACK,ownerReminderRoute,reminderReadPath,type ReminderNotificationBinding} from './owner-reminder-notification-protocol';
-import {CAMERA_CAPTURE_CAPABILITY} from '../../../../.eliza/client-features/plugins/plugin-assistant/src/services/device-actions/camera-contract.ts';
 import {sanitizeCloudInferenceFailure,type CloudInferenceFailure} from './crash-log';
 import {residentRecoveryReason,residentRecoveryMessage,residentRecoveryCopy,RESIDENT_RECOVERY_PENDING,type ResidentRecoveryReason,type ResidentRecoveryView} from './resident-recovery';
 import {anyAbortSignal} from './abort-signal';
@@ -16,8 +15,6 @@ import {readDevicePreferences} from '../browser/device-preferences';
 import {resolveCloudEnvironment} from './cloud-environment-selection';
 import { withResidentMapsNavigation } from '../maps/resident-relay.ts';
 import {aospImage} from './aosp-image';
-import {SMS_SEND_CAPABILITY} from './sms-agent-contract';
-import {PHONE_DIAL_CAPABILITY,telephonyDeviceCapabilities} from './phone-dial-contract';
 import {assertAutomationRequestAllowed, AutomationRequestNotDispatchedError, type AutomationsMethod} from './automations-route-policy.ts';
 import {iconStyle} from '../icon-style';
 import {validateUuid} from '../../../../vendor/eliza/packages/core/src/utils/uuid';
@@ -32,7 +29,6 @@ import {retireClockReviews} from './clock-agent-review';
 import { negotiateEnabledViews } from './device-view-profile';
 import { registerWorkflowDevice, workflowDeviceProtocol } from './workflow-presentation';
 import {ClientObservationSupportSession} from './client-observation-support';
-import {clockHandoffCapabilities} from './clock-contract';
 import {developmentIdentity,readDevelopmentIdentity,verifyDevelopmentIdentity,developmentOwnerRecovery,assertDevelopmentIdentity,developmentProfiles,type DevelopmentProfile} from '../browser/development-identity';
 import {developmentCloudKey} from '../browser/development-cloud';
 import {DevelopmentCloudSetup} from '../browser/development-cloud-ui';
@@ -65,9 +61,9 @@ import { CloudResidentBindingController, CloudResidentBindingError, ResidentRebi
 import { cloudServiceName, cloudSignInHandOffAvailable, CloudProtocol, CloudProtocolError, type CloudAgent, type CloudEnvironment } from './cloud-protocol';
 import { googleOutcome as signInOutcome, type CloudSignInGoogleOutcome, CloudSignInError, normalizeSignInCode, signInFailureMessage as formatSignInFailureMessage, signInReadiness, validSignInEmail, validSignInPhone, type CloudSignInAuthenticated } from './cloud-sign-in';
 import { DevelopmentCloudAgentProtocol, type CloudPhoneTarget } from './development-cloud-agents';
-import { checkEntitlement, clearEntitlementKeyCache, describeSubscription, EntitlementError, EntitlementRefresher, isEntitlementSignInFailure, CHOOSE_PLAN_LABEL, MANAGE_PLAN_LABEL, planAdmission, readServiceLimit, redeemFailureMessage, redeemSuccessMessage, serviceLimitMessage, subscriptionSummary, SubscriptionRedeemError, type ServiceLimit, type SubscriptionView } from './subscription-entitlement';
+import { checkEntitlement, clearEntitlementKeyCache, describeSubscription, EntitlementError, EntitlementRefresher, isEntitlementSignInFailure, residentAdmissionOutcome, cloudUnreachable, CloudIdentityUnreachable, identityReadRefused, CHOOSE_PLAN_LABEL, MANAGE_PLAN_LABEL, planAdmission, readServiceLimit, redeemFailureMessage, redeemSuccessMessage, serviceLimitMessage, subscriptionSummary, SubscriptionRedeemError, type ServiceLimit, type SubscriptionView } from './subscription-entitlement';
 import { RemoteProtocol, RemoteProtocolError } from './remote-protocol';
-import { phoneContextMessage } from './phone-context';
+import { phoneContextMessage, selectDeviceCapabilities } from './phone-context';
 import {calendarSource,calendarTarget} from '../../../../.eliza/client-features/plugins/plugin-assistant/src/services/device-actions/calendar-contract.ts';
 import { CloudSignInPanel } from './cloud-sign-in-ui';
 import { cloudCredentialStore, cloudSelfRevocationSupported, cloudSignIn, cloudSignInPhone, remoteCredentialStore, nativeCloudRequest, nativeRemoteRequest, openConnectionBrowser, removeStoredCloudCredential, secureConnectionStore } from './native-connection';
@@ -311,13 +307,6 @@ function readPlanAdmission(): PlanAdmissionRecord | null {
  * prefers it to the stored record until Cloud reports an end itself; sign-out and account changes clear it. */
 let redeemedPlanEnd: { environment: CloudEnvironment; credentialId: string; endsAt: number | null } | null = null;
 function writePlanAdmission(record: PlanAdmissionRecord | null) { try { if (record) localStorage.setItem(PLAN_ADMISSION, JSON.stringify(record)); else localStorage.removeItem(PLAN_ADMISSION); } catch { /* Offline grace is a convenience; the gate still checks Cloud. */ } }
-/** A Cloud outage or no network: not a refusal of the account or the plan. */
-function cloudUnreachable(error: unknown): boolean {
-  if (error instanceof DOMException && error.name === 'AbortError') return false;
-  if (error instanceof CloudProtocolError) return error.code === 'http' && (error.status === 408 || error.status === 429 || (error.status ?? 0) >= 500);
-  if (error instanceof EntitlementError) return false;
-  return error instanceof Error && /^(Connection request failed|Connection timed out|Request cancelled)$/.test(error.message);
-}
 /** Cloud refused this credential itself: a 401, an identity 403 or an expired key. Never a fence,
  * an outage or a response Alpha did not understand. */
 function signInRefused(error: unknown): boolean {
@@ -435,18 +424,11 @@ let deviceExecutor: DeviceExecutor = async () => ({ status: 'failed', summary: '
  * executor; a restored connection may negotiate first, so a missing executor fails closed. */
 let foregroundExecutor: ForegroundReviewExecutor | undefined;
 const runForegroundReview: ForegroundReviewExecutor = (op, id, context, signal, bindingHash, journalIdentity, capabilities) => foregroundExecutor ? foregroundExecutor(op, id, context, signal, bindingHash, journalIdentity, capabilities) : Promise.resolve({ status: 'failed', summary: 'This review is unavailable on this phone. Nothing was shared.' });
-/** The shared contract's free/busy capability name (kept equal by test-calendar-availability-flow). */
-export const CALENDAR_AVAILABILITY_CAPABILITY = 'calendar.availability-read.v1';
-/** Free/busy is negotiated only when the agent offers it. */
-const availabilityNegotiated = (offered: unknown) => Array.isArray(offered) && offered.includes(CALENDAR_AVAILABILITY_CAPABILITY);
 /** Native Clock can carry repeat days (EXTRA_DAYS) once surfaceInfo reports clockRepeatDaysVersion 1. */
 async function clockRepeatDaysSupported():Promise<boolean>{
   if(Capacitor.getPlatform()!=='android')return false;
   try{const info=await DailyApps.surfaceInfo() as {clockRepeatDaysVersion?:unknown};return typeof info.clockRepeatDaysVersion==='number'&&info.clockRepeatDaysVersion>=1;}catch{return false;}
 }
-/** The X-Eliza-Device-Capabilities value for every runtime (remote, resident, Cloud): the base
- * local-record contracts plus each capability the agent offers that this phone supports. Clock
- * handoffs are Android-only; v2 (repeat days) also needs the native repeat-days support. */
 type CalendarAgendaSourceObservation={sourceId:string;sourceRevision:string};
 const calendarAgendaObservations=new WeakMap<DeviceActions,SingleFlightMemo<CalendarAgendaSourceObservation>>();
 let calendarAgendaObservationEpoch=0;
@@ -480,23 +462,15 @@ async function calendarAgendaObservation(actions:DeviceActions,context:ContextEn
   return sourceEpoch===calendarAgendaObservationEpoch&&source.sourceId===requested.sourceId&&source.sourceRevision===requested.sourceRevision?source:undefined;
  }catch{return undefined;}
 }
+/** The X-Eliza-Device-Capabilities value for every runtime (remote, resident, Cloud), selected by
+ * selectDeviceCapabilities for this phone's platform. */
 async function deviceCapabilities(offered:unknown):Promise<string>{
-  const agent:unknown[]=Array.isArray(offered)?offered:[],android=Capacitor.getPlatform()==='android';
-  const capabilities=['calendar.local-event.v1','notes.local-record.v1'];
-  if(agent.includes(CAMERA_CAPTURE_CAPABILITY)&&(Capacitor.isPluginAvailable('ElizaCamera')||!android&&typeof navigator!=='undefined'&&typeof navigator.mediaDevices?.getUserMedia==='function'))capabilities.push(CAMERA_CAPTURE_CAPABILITY);
-  if(agent.includes('reminders.local-record.v2'))capabilities.push('reminders.local-record.v2');else if(agent.includes('reminders.local-record.v1'))capabilities.push('reminders.local-record.v1');
-  // Browser chat reminders use the runtime scheduler; do not offer a second device-creation lifecycle.
-  for(const capability of [...(!Capacitor.isNativePlatform()?['calendar.agenda-read.v1']:[]),'notes.query.v1',...(Capacitor.isNativePlatform()?['reminders.create.v1']:[]),'calendar.create.v1',...(android||!Capacitor.isNativePlatform()?['calendar.next-read.v1']:[]),'maps.selected-read.v1'])if(agent.includes(capability))capabilities.push(capability);
-  if(availabilityNegotiated(agent))capabilities.push(CALENDAR_AVAILABILITY_CAPABILITY);
-  if((android||!Capacitor.isNativePlatform())&&typeof foregroundExecutor==='function'&&agent.includes('calendar.named-read.v1'))capabilities.push('calendar.named-read.v1');
-  // One shared external-handoff policy for every brand: never clock.alarms.v1 (P-17).
-  capabilities.push(...clockHandoffCapabilities({offered:agent,handler:android,repeatDays:android&&agent.includes('clock.handoff.v2')&&await clockRepeatDaysSupported()}));
-  // SMS sending is negotiated only on the AOSP image, where Alpha holds the SMS role.
-  if(aospImage&&agent.includes(SMS_SEND_CAPABILITY))capabilities.push(SMS_SEND_CAPABILITY);
-  // The reviewed dial handoff only with the native telephony profile (the verified image). The
-  // on-device contact lookup waits for an owner number picker in the review, so it is not offered.
-  capabilities.push(...telephonyDeviceCapabilities({present:aospImage,dial:agent.includes(PHONE_DIAL_CAPABILITY),contactLookup:false}));
-  return capabilities.join(',');
+  const android=Capacitor.getPlatform()==='android';
+  return selectDeviceCapabilities(offered,{android,native:Capacitor.isNativePlatform(),
+    camera:Capacitor.isPluginAvailable('ElizaCamera')||!android&&typeof navigator!=='undefined'&&typeof navigator.mediaDevices?.getUserMedia==='function',
+    foregroundReview:typeof foregroundExecutor==='function',
+    clockRepeatDays:android&&Array.isArray(offered)&&offered.includes('clock.handoff.v2')&&await clockRepeatDaysSupported(),
+    aospImage}).join(',');
 }
 let deviceReadReview:((proposal:ActionProposal,context:ContextEnvelope,signal:AbortSignal)=>Promise<void>)|undefined;
 const actionJournal = registerPlugin<ActionJournal>('AlphaActionJournal');
@@ -529,13 +503,13 @@ function stopEntitlementRefresh(){entitlementRefresher?.stop();entitlementRefres
 function detachService() { stopEntitlementRefresh();redeemedPlanEnd=null; clearEntitlementKeyCache(); retireReadReplies();for(const request of appRequests)request.abort(new DOMException('Cloud account changed','AbortError')); clearPersonalSetup(); membershipRead?.abort();membershipRead=null;pendingBillingReview=null;service = null; update({ cloudAccount: null,membershipBalance:undefined,membershipCredits:null,membershipPlan:null,lastServiceLimit:null,planEndsAt:null,billingReviewEmail:undefined,membershipDismissed:false,fundingRefused:false }); }
 async function verifyService(client: CloudProtocol, signal: AbortSignal, expected?:{credentialId:string;credentialReference?:string;userId?:string;organizationId?:string}) {
   const credential = await cloudCredentialStore.read(client.environment); signal.throwIfAborted();
-  if(expected&&(credential?.credentialId!==expected.credentialId||(expected.credentialReference!==undefined&&credential?.credentialReference!==expected.credentialReference)))throw new Error('Cloud account changed. Try again.');
+  if(expected&&(credential?.credentialId!==expected.credentialId||(expected.credentialReference!==undefined&&credential?.credentialReference!==expected.credentialReference)))throw new CloudProtocolError('account-changed');
   if(residentCloudFlow())update({residentSavedCredential:!!credential?.credentialId});
-  if (!credential?.credentialId) throw new Error('Cloud credentials are unavailable. Sign in again.');
+  if (!credential?.credentialId) throw new CloudProtocolError('credentials-missing');
   const identity = await client.identity(signal); signal.throwIfAborted();
   if(expected?.userId&&(identity.userId!==expected.userId||identity.organizationId!==expected.organizationId))throw new CloudProtocolError('account-changed');
   const current=await cloudCredentialStore.read(client.environment);
-  if (current?.credentialId !== credential.credentialId || current?.credentialReference !== credential.credentialReference || expected?.credentialReference!==undefined&&current?.credentialReference!==expected.credentialReference) throw new Error('Cloud account changed. Try again.');
+  if (current?.credentialId !== credential.credentialId || current?.credentialReference !== credential.credentialReference || expected?.credentialReference!==undefined&&current?.credentialReference!==expected.credentialReference) throw new CloudProtocolError('account-changed');
   signal.throwIfAborted();
   const same = service?.identity.environment === client.environment && service.identity.userId === identity.userId && service.identity.organizationId === identity.organizationId && service.identity.credentialId === credential.credentialId && service.credentialReference === credential.credentialReference;
   const account = { ...identity, credentialId: credential.credentialId, environment: client.environment, sessionId: same ? service!.identity.sessionId : crypto.randomUUID(), ...(Number.isFinite(credential.expiresAt) ? { expiresAt: credential.expiresAt } : {}) };
@@ -1128,51 +1102,19 @@ async function admitCloudResident(signal:AbortSignal):Promise<ResidentAdmission>
   let account:NonNullable<typeof service>|null=null,checked:Awaited<ReturnType<typeof checkEntitlement>>|null=null;
   const binding=residentBindingController(environment,client,{verified:value=>{account=value;},checked:value=>{checked=value;}});
   const admission=await binding.admit(signal);
-  switch(admission.reason){
-    case 'signed-out':
-      // First run or signed out: sign-in is required (the dialog cannot be dismissed), and the agent
-      // runs meanwhile without Cloud inference.
-      if(service)detachService();
-      update({residentSavedCredential:false,residentSubscription:null,residentPlanNotice:null,planEndsAt:null});
-      return {binding:'unbound',notice:{open:true}};
-    case 'offline':
-      // Offline or a Cloud outage: a plan verified recently for this sign-in keeps its binding
-      // (Cloud still decides each AI request once reachable); otherwise inference is unbound.
-      // Nothing is said about it: the network's return checks again.
-      update({residentPlanNotice:'offline',residentSubscription:{kind:'unavailable',reason:'outage'},planEndsAt:admission.recent?.endsAt??null});
-      return {binding:admission.binding};
-    case 'sign-in-rejected':
-    case 'account-changed':
-      // A rejected or unreadable sign-in, an entitlement for another account or a changed account:
-      // no Cloud inference until the owner signs in again.
-      // A changed account before the identity was verified leaves the connection as it is: a newer
-      // sign-in may own it, and only a rejected read of this sign-in detaches it.
-      // The shared controller's own account-changed fence (a newer credential replaced this one
-      // during admission) carries code 'account-changed', which the entitlement classifier reads
-      // as an auth failure; it is not a refusal of this sign-in, so it never detaches. Detaching
-      // there would put the required sign-in page over the running resident (P-43).
-      if(!admission.identity){if(admission.reason==='sign-in-rejected'&&service)detachService();}
-      else if(!(admission.error instanceof CloudResidentBindingError)&&isEntitlementSignInFailure(admission.error)&&account&&service===account)detachService();
-      // A refused sign-in also ends the offline grace of its plan; a fence leaves it for the newer sign-in.
-      if(admission.reason==='sign-in-rejected'&&!(admission.error instanceof CloudResidentBindingError))writePlanAdmission(null);
-      update({residentPlanNotice:null,residentSubscription:null,planEndsAt:null});
-      return {binding:'unbound',notice:{error:errorMessage(admission.error),errorKind:admission.reason==='sign-in-rejected'?errorKindOf(admission.error)??'sign-in-rejected':'account-changed',open:true},authRefused:admission.reason==='sign-in-rejected'&&signInRefused(admission.error)};
-    case 'plan-unavailable':
-      update({residentPlanNotice:'needs-plan',residentSubscription:{kind:'unavailable',reason:'outage'},planEndsAt:null});
-      return {binding:'unbound'};
-    default:
-      break;
-  }
-  const admitted=account as NonNullable<typeof service>|null,plan=admission.plan,result=checked as Awaited<ReturnType<typeof checkEntitlement>>|null;
-  if(!admitted||!plan||!result)return {binding:'unbound',notice:{error:ACCOUNT_CHANGED,errorKind:'account-changed',open:true}};
-  if(admission.reason==='needs-plan'){
-    // No admissible plan: the agent runs without Cloud inference; the plan notice offers Redeem
-    // code / Choose a plan / Check plan again. Nothing is bound.
-    update({residentSubscription:plan.view,residentPlanNotice:'needs-plan',planEndsAt:null});
-    return {binding:'unbound',account:admitted};
-  }
-  const endsAt=admission.endsAt??null,identity=admission.identity!;
-  update({residentSubscription:plan.view,residentPlanNotice:null,planEndsAt:endsAt});
+  const admitted=account as NonNullable<typeof service>|null,result=checked as Awaited<ReturnType<typeof checkEntitlement>>|null;
+  if((admission.reason==='needs-plan'||admission.reason==='admitted')&&(!admitted||!admission.plan||!result))return {binding:'unbound',notice:{error:ACCOUNT_CHANGED,errorKind:'account-changed',open:true}};
+  // The binding and plan view by reason (residentAdmissionOutcome); a missing plan or no network
+  // shows a notice or nothing, and only a signed-out, rejected or changed sign-in asks to sign in.
+  const outcome=residentAdmissionOutcome(admission,{attached:!!service,verified:!!admitted&&service===admitted});
+  if(outcome.detach)detachService();
+  if(outcome.forgetPlan)writePlanAdmission(null);
+  update(outcome.view);
+  if(outcome.signIn==='required')return {binding:'unbound',notice:{open:true}};
+  if(outcome.signIn)return {binding:'unbound',notice:{error:errorMessage(admission.error),errorKind:outcome.signIn==='rejected'?errorKindOf(admission.error)??'sign-in-rejected':'account-changed',open:true},authRefused:outcome.signIn==='rejected'&&signInRefused(admission.error)};
+  if(admission.reason==='needs-plan')return {binding:'unbound',account:admitted!};
+  if(admission.reason!=='admitted'||!admitted||!result)return {binding:outcome.binding};
+  const identity=admission.identity!;
   // Background refresh: it updates what the owner sees, never interrupts a turn, and unbinds Cloud
   // inference (the agent keeps running) when Cloud reports the plan ended. Revocation is enforced
   // by Cloud immediately.
@@ -1292,7 +1234,9 @@ function residentBindingController(environment:CloudEnvironment,client:CloudProt
   return new CloudResidentBindingController<SubscriptionView,CloudEnvironment>(environment,{
     readCredential:async signal=>{const saved=await readCloudCredential(environment,signal);if(hooks.account&&service!==hooks.account)throw new CloudResidentBindingError('account-changed');return saved?.credentialId?{credentialId:saved.credentialId}:null;},
     verifyIdentity:async signal=>{
-      await verifyService(client,signal);
+      // Only Cloud refusing this credential is a rejected sign-in. Any other failed read is offline,
+      // so the 7-day offline rule applies instead of detaching and requiring sign-in.
+      try{await verifyService(client,signal);}catch(error){signal.throwIfAborted();throw identityReadRefused(error)?error:new CloudIdentityUnreachable(error);}
       const account=service;
       if(!account||account.client!==client)throw new CloudResidentBindingError('account-changed');
       hooks.verified?.(account);

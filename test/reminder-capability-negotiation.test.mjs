@@ -1,7 +1,5 @@
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
-import {stripTypeScriptTypes} from 'node:module';
-import {runInNewContext} from 'node:vm';
 import {spawnSync} from 'node:child_process';
 import test from 'node:test';
 
@@ -13,27 +11,15 @@ if(!process.execArgv.some((arg,i)=>arg==='--import'&&process.execArgv[i+1]==='ts
  process.exit(child.status??1);
 }
 const {DeviceActions}=await import('../apps/app/src/runtime/device-actions.ts');
-const {PHONE_DIAL_CAPABILITY,telephonyDeviceCapabilities}=await import('../apps/app/src/runtime/phone-dial-contract.ts');
+const {selectDeviceCapabilities}=await import('../apps/app/src/runtime/phone-context.ts');
 
 const connection=readFileSync(new URL('../apps/app/src/runtime/connection-ui.tsx',import.meta.url),'utf8');
-const start=connection.indexOf('async function deviceCapabilities(');
-const end=connection.indexOf("return capabilities.join(',');",start);
-assert.ok(start>=0&&end>start,'test the actual shared registration negotiator');
-const negotiateSource=connection.slice(start,end)+"return capabilities.join(',');\n}";
 const offered=['reminders.create.v1','reminders.local-record.v2','calendar.create.v1','calendar.next-read.v1','notes.query.v1','maps.selected-read.v1'];
 
-// Execute the production function, with platform/foreign-domain ports supplied.
-// This is capability and client-boundary proof, not Android or model acceptance.
+// The production selection with a platform profile; capability and client-boundary proof, not
+// Android or model acceptance.
 async function capabilities(platform,offers=offered){
- const negotiate=runInNewContext(stripTypeScriptTypes(negotiateSource,{mode:'strip'})+';deviceCapabilities',{
-  Capacitor:{getPlatform:()=>platform,isNativePlatform:()=>platform!=='web',isPluginAvailable:()=>false},
-  CAMERA_CAPTURE_CAPABILITY:'camera.capture-photo.v1',SMS_SEND_CAPABILITY:'sms.send.v1',
-  CALENDAR_AVAILABILITY_CAPABILITY:'calendar.availability-read.v1',
-  availabilityNegotiated:()=>false,foregroundExecutor:undefined,aospImage:false,
-  clockHandoffCapabilities:()=>[],clockRepeatDaysSupported:async()=>false,
-  PHONE_DIAL_CAPABILITY,telephonyDeviceCapabilities,
- });
- return (await negotiate(offers)).split(',');
+ return selectDeviceCapabilities(offers,{android:platform==='android',native:platform!=='web',camera:false,foregroundReview:false,clockRepeatDays:false,aospImage:false});
 }
 
 test('normal browser declines device reminder creation and retains existing record capabilities',async()=>{
