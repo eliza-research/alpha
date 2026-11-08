@@ -16,9 +16,9 @@ const binding={credentialId:'44444444-4444-4444-8444-444444444444',userId:user,o
 const apiToken='Z_-q'.repeat(16);
 const content={to:['self@example.invalid'],subject:'Native QA',bodyText:'Synthetic only'};
 const writes={
- mailbox:()=>({mailbox:{kind:'archive',messageId:'alpha-gmail:x',requestId:randomUUID()}}),
+ mailbox:()=>({mailbox:{kind:'archive',messageId:'alpha-gmail:'+'a'.repeat(64)+':mail1',requestId:randomUUID()}}),
  prepareSend:()=>({send:{operation:'prepare',requestId:randomUUID(),...content}}),
- dispatchSend:()=>({send:{operation:'dispatch',id:'alpha-gmail-send:x:'+randomUUID(),reviewDigest:'a'.repeat(64),...content}}),
+ dispatchSend:()=>({send:{operation:'dispatch',id:'alpha-gmail-send:'+'a'.repeat(64)+':'+randomUUID(),reviewDigest:'a'.repeat(64),...content}}),
  calendarWrite:()=>({calendar:{operation:'write-capabilities'}}),
 };
 const javaWrite=(dir,gmail,calendar)=>runJvm([nativeSource('GoogleAgentAccessFile.java'),fixture('GoogleAgentAccessFileTest.java')],'ai.elizaresearch.alphaphone.GoogleAgentAccessFileTest',{args:[dir,String(gmail),String(calendar)]});
