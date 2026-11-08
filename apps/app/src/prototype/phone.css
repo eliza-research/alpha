@@ -641,4 +641,4 @@ button[aria-label$=" on or off"][aria-pressed]::before { content:""; position:ab
 .maps-chat-card small { color:var(--mut);font-size:12px;line-height:1.4; }
 .maps-chat-choice { display:flex;flex-wrap:wrap;gap:8px; }
 .maps-chat-choice button { min-height:44px;padding:8px 16px;border-radius:22px;background:var(--s2);color:var(--fg);font:inherit;font-weight:600; }
-.maps-chat-choice button:first-child { background:var(--acc);color:var(--alpha-white,#fff); }
+.maps-chat-choice button:first-child { background:var(--acc);color:var(--alpha-white); }
