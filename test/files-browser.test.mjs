@@ -272,8 +272,9 @@ test('the Files agent contract carries opaque reviewed identities and refuses un
   const valid=contract.validateFilesOperation(op);assert.deepEqual(valid,op);assert.deepEqual(contract.validateFilesOperation(valid),valid);
  }
  for(const bad of [{type:'files_trash',paths:['a','b'],reviewed},{type:'files_trash',paths:['a'],reviewed:[{size:3,modified:1}]},{type:'files_trash',paths:['a'],reviewed:['a'.repeat(42)]},{type:'files_trash',paths:['a'],reviewed:['/'.repeat(43)]},{type:'files_share',paths:['a'],reviewed}])assert.throws(()=>contract.validateFilesOperation(bad));
- assert.equal(contract.filesNeedsIdentity({type:'files_move',paths:['a'],dest:''}),true);
  const adapter=readFileSync('.eliza/client-features/plugins/plugin-files/src/browser/files-browser-adapter.ts','utf8');
+ // The current runner owns the identity fence directly, before opening Files or refreshing storage.
+ assert.match(adapter,/if\s*\(\s*\(op\.type === "files_move" \|\| op\.type === "files_trash"\) &&\s*\(!op\.reviewed \|\| !reviewingPrimary\(\)\)\s*\)\s*return reviewRequired;\s*if \(!api\)/);
  assert.match(adapter,/if \(!reviewingPrimary\(\) \|\| !op\.reviewed\) return reviewRequired/);
  assert.match(adapter,/paths: op\.paths,[\s\S]*reviewed: op\.reviewed,[\s\S]*volume: "primary"/);
  assert.match(adapter,/storage\.storageTransfer\(\{[\s\S]*\.\.\.selection,[\s\S]*copy: false/);

@@ -85,7 +85,9 @@ the operator's index of build, provisioning, release and support material is the
 
 ## Product boundaries
 
-Current source composition pin `4dae580daa` includes shared Files/Photos, Calendar discovery, scan draft retention and workflow approvals. Focused source checks passed. The private Linux SDK build at its parent c998 stopped before Gradle because Apps-grid and Photos runtime exports were missing; that packaging repair, full qualification, signing and device acceptance remain open.
+Current source composition pin `db96bb0a03` is recorded in `upstream.lock.json`. Final combined verification, exact APK qualification, protected signing and disposable Settings retention remain separate gates before Pixel and human acceptance. Historical observations below retain their original source bindings.
+
+Earlier source composition pin `4dae580daa` includes shared Files/Photos, Calendar discovery, scan draft retention and workflow approvals. Focused source checks passed. The private Linux SDK build at its parent c998 stopped before Gradle because Apps-grid and Photos runtime exports were missing; that packaging repair, full qualification, signing and device acceptance remain open.
 
 Earlier local integration pin `9237023aee` carries reviewed Files identities and absolute-path rejection. The pinned SDK's Cloud embedding and plugin-selection checks passed locally. The hosted Android build and packaged dependency review remain open.
 
