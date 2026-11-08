@@ -23,17 +23,27 @@ export function navigationServicePlatform(){
   'android/net/Uri.java':`package android.net;public record Uri(String value) {
    public static Uri parse(String value){return new Uri(value);}
   }`,
-  'android/content/ComponentName.java':'package android.content;public record ComponentName(Context context,Class<?> type){}',
+  'android/content/ComponentName.java':`package android.content;
+   public record ComponentName(String packageName,String className) {
+    public ComponentName(Context context,Class<?> type){this(context.getPackageName(),type.getName());}
+   }`,
   'android/content/Intent.java':`package android.content;
    import java.util.HashMap;
    import android.net.Uri;
    public class Intent {
     public static final int FLAG_ACTIVITY_SINGLE_TOP=1,FLAG_ACTIVITY_CLEAR_TOP=2;
+    public static final String ACTION_MAIN="android.intent.action.MAIN",ACTION_ASSIST="android.intent.action.ASSIST";
+    public static final String CATEGORY_HOME="android.intent.category.HOME",CATEGORY_LAUNCHER="android.intent.category.LAUNCHER";
     public final Class<?> type;
+    private final ComponentName component;
+    public final java.util.Set<String> categories=new java.util.HashSet<>();
     private final HashMap<String,String> extras=new HashMap<>();
     private String action;
     private Uri data;
-    public Intent(Context context,Class<?> type){this.type=type;}
+    public Intent(){type=null;component=null;}
+    public Intent(Context context,Class<?> type){this.type=type;component=new ComponentName(context,type);}
+    public ComponentName getComponent(){return component;}
+    public Intent addCategory(String category){categories.add(category);return this;}
     public Intent setAction(String value){action=value;return this;}
     public String getAction(){return action;}
     public Intent setFlags(int flags){return this;}
@@ -47,6 +57,7 @@ export function navigationServicePlatform(){
    import android.content.pm.PackageManager;
    public class Context {
     public Context getApplicationContext(){return this;}
+    public String getPackageName(){return "ai.elizaresearch.alphaphone";}
     public PackageManager getPackageManager(){return new PackageManager();}
     public int checkSelfPermission(String permission){return NavigationServicePorts.permission?0:-1;}
     public ComponentName startForegroundService(Intent intent){NavigationServicePorts.start(intent);return null;}
@@ -68,6 +79,10 @@ export function navigationServicePlatform(){
    public static final int FOREGROUND_SERVICE_TYPE_LOCATION=8;
    public int getForegroundServiceType(){return FOREGROUND_SERVICE_TYPE_LOCATION;}
   }`,
+  'android/app/Activity.java':`package android.app;
+   public class Activity extends android.content.Context {
+    public android.content.ComponentName getComponentName(){return new android.content.ComponentName(this,getClass());}
+   }`,
   'android/app/PendingIntent.java':`package android.app;
    import android.content.*;
    import java.util.HashMap;
@@ -152,6 +167,8 @@ export function navigationServicePlatform(){
   'com/getcapacitor/Plugin.java':`package com.getcapacitor;
    public class Plugin {
     public int fixtureOwner;
+    public android.app.Activity fixtureActivity=new ai.elizaresearch.alphaphone.MainActivity();
+    public android.app.Activity getActivity(){return fixtureActivity;}
     public final org.json.JSONArray events=new org.json.JSONArray();
     public android.content.Context getContext(){return ai.elizaresearch.alphaphone.NavigationServicePorts.context;}
     public void load(){}
@@ -176,7 +193,9 @@ export function navigationServicePlatform(){
     public void reject(String message,String reason){code=reason;reject(message);}
    }`,
   'ai/elizaresearch/alphaphone/BuildConfig.java':'package ai.elizaresearch.alphaphone;public class BuildConfig {public static final boolean ELIZA_DEV_ALLOW_TEST_MOCKS=false;}',
-  'ai/elizaresearch/alphaphone/MainActivity.java':'package ai.elizaresearch.alphaphone;public class MainActivity {}'
+  'ai/elizaresearch/alphaphone/MainActivity.java':'package ai.elizaresearch.alphaphone;public class MainActivity extends android.app.Activity {}',
+  'ai/elizaresearch/alphaphone/AlphaAssistActivity.java':'package ai.elizaresearch.alphaphone;public class AlphaAssistActivity extends MainActivity {}',
+  'ai/elizaresearch/alphaphone/AlphaPowerVoiceActivity.java':'package ai.elizaresearch.alphaphone;public class AlphaPowerVoiceActivity extends AlphaAssistActivity {}'
  };
  for(const [name,body] of Object.entries(files)){
   const file=join(directory,name);mkdirSync(dirname(file),{recursive:true});writeFileSync(file,body);

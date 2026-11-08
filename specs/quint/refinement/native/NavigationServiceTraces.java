@@ -1,6 +1,7 @@
 package ai.elizaresearch.alphaphone;
 
 import android.app.PendingIntent;
+import android.content.ComponentName;
 import android.content.Intent;
 import com.getcapacitor.JSObject;
 import com.getcapacitor.PluginCall;
@@ -33,6 +34,13 @@ public final class NavigationServiceTraces {
  static Object active()throws Exception{
   Field field=AlphaNavigationService.class.getDeclaredField("active");field.setAccessible(true);return field.get(null);
  }
+ static String rootComponent(ComponentName component){
+  if(component==null)return "unattributed";
+  if(component.equals(new ComponentName(NavigationServicePorts.context,MainActivity.class)))return "main";
+  if(component.equals(new ComponentName(NavigationServicePorts.context,AlphaAssistActivity.class)))return "assistant";
+  if(component.equals(new ComponentName(NavigationServicePorts.context,AlphaPowerVoiceActivity.class)))return "power";
+  throw new AssertionError("Unexpected Activity root component");
+ }
  static int authority(Object session)throws Exception{
   return session==null?0:NavigationServicePorts.authority((String)Trace.read(session,"authority"));
  }
@@ -56,8 +64,9 @@ public final class NavigationServiceTraces {
   Object listener=active==null?null:Trace.read(active,"owner");
   int owner=listener==null?0:listener==Trace.read(a,"navigationStops")?1:listener==Trace.read(b,"navigationStops")?2:-1;
   int activeEpoch=authority(active),ownedEpoch=authority(Trace.read(service,"owned"));
+  String rootComponent=active==null?"none":rootComponent((ComponentName)Trace.read(active,"rootComponent"));
   return Trace.fields("destroyed",qset(destroyed),"permission",NavigationServicePorts.permission,"declared",NavigationServicePorts.declared,
-   "issued",NavigationServicePorts.authorities.size(),"active",activeEpoch,"activeId",id(snapshot[0]),"owner",owner,
+   "issued",NavigationServicePorts.authorities.size(),"active",activeEpoch,"activeId",id(snapshot[0]),"owner",owner,"rootComponent",rootComponent,
    "title",data(snapshot[3]),"text",data(snapshot[4]),"terminalStops",Integer.parseInt(snapshot[1]),
    "lastReason",snapshot[2].isEmpty()?"none":snapshot[2],"events",events,"commands",commands,
    "fallbackStops",NavigationServicePorts.fallbackStops,"lastCall",lastCall,"owned",ownedEpoch,"shown",service.foreground,
@@ -87,7 +96,8 @@ public final class NavigationServiceTraces {
  void start(int owner,int id,int title,int text,boolean dispatches)throws Exception{
   NavigationServicePorts.failStart=!dispatches;
   lastCall=outcome(invokeStart(owner,id,title,text),"start");
-  trace.step("start",observe(),owner,id,title,text,dispatches);
+  android.app.Activity activity=plugin(owner).getActivity();
+  trace.step("start",observe(),owner,id,title,text,dispatches,rootComponent(activity==null?null:activity.getComponentName()));
  }
  void capabilities(boolean declared,boolean permission)throws Exception{
   NavigationServicePorts.declared=declared;NavigationServicePorts.permission=permission;
@@ -131,7 +141,18 @@ public final class NavigationServiceTraces {
    .setAction(AlphaNavigationService.ACTION_STOP).putExtra(AlphaNavigationService.EXTRA_SESSION,id(1));
   service.onStartCommand(forged,0,++service.latestStartId);trace.step("malformedStop",observe());
  }
- void taskRemoved()throws Exception{service.onTaskRemoved(null);trace.step("taskRemoved",observe());}
+ void taskRemoved(String root)throws Exception{
+  Intent intent=switch(root){
+   case "home" -> new Intent(NavigationServicePorts.context,MainActivity.class).setAction(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_HOME);
+   case "launcher" -> new Intent(NavigationServicePorts.context,MainActivity.class).setAction(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER);
+   case "assistant" -> new Intent(NavigationServicePorts.context,AlphaAssistActivity.class).setAction(Intent.ACTION_ASSIST);
+   case "power" -> new Intent(NavigationServicePorts.context,AlphaPowerVoiceActivity.class).setAction(Intent.ACTION_ASSIST);
+   case "implicit" -> new Intent().setAction(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_HOME);
+   case "missing" -> null;
+   default -> throw new AssertionError(root);
+  };
+  service.onTaskRemoved(intent);trace.step("taskRemoved",observe(),root);
+ }
  void serviceDestroyed()throws Exception{service.onDestroy();trace.step("serviceDestroyed",observe());}
  void supersededStart()throws Exception{
   NavigationServicePorts.afterStartDispatch=()->{
@@ -164,7 +185,7 @@ public final class NavigationServiceTraces {
   if(late.isAlive()||problem.get()!=null)throw new AssertionError("Held start did not settle",problem.get());
   lastCall=outcome(attempt.get(),"start");
   trace.macro("old renderer reaches admission after destruction",observe(),
-   Trace.action("destroy",1),Trace.action("start",2,2,2,2,true),Trace.action("start",1,1,1,1,true));
+   Trace.action("destroy",1),Trace.action("start",2,2,2,2,true,"main"),Trace.action("start",1,1,1,1,true,"main"));
  }
  void scenario(String name)throws Exception{
   switch(name){
@@ -179,8 +200,18 @@ public final class NavigationServiceTraces {
    case "duplicate-app-stop" -> {start(1,1,1,1,true);deliver(0,true);stop(1,1);stop(1,1);deliver(0,true);}
    case "malformed-notification" -> {start(1,1,1,1,true);deliver(0,true);malformedStop();}
    case "stale-update" -> {start(1,1,1,1,true);deliver(0,true);update(1,1,3,4);update(1,1,4,3);deliver(1,true);deliver(0,true);}
-   case "old-task-removal" -> {start(1,1,1,1,true);deliver(0,true);start(2,2,2,2,true);taskRemoved();deliver(1,true);}
-   case "task-removal" -> {start(1,1,1,1,true);deliver(0,true);taskRemoved();}
+   case "old-task-removal" -> {start(1,1,1,1,true);deliver(0,true);start(2,2,2,2,true);taskRemoved("launcher");deliver(1,true);}
+   case "task-removal" -> {start(1,1,1,1,true);deliver(0,true);taskRemoved("launcher");}
+   case "home-task-removal" -> {start(1,1,1,1,true);deliver(0,true);taskRemoved("home");}
+   case "unrelated-assistant-task" -> {start(1,1,1,1,true);deliver(0,true);taskRemoved("assistant");}
+   case "unrelated-power-task-after-replacement" -> {start(1,1,1,1,true);start(2,2,2,2,true);deliver(2,true);taskRemoved("power");}
+   case "assistant-own-task" -> {
+    a.fixtureActivity=new AlphaAssistActivity();start(1,1,1,1,true);deliver(0,true);taskRemoved("launcher");taskRemoved("assistant");
+   }
+   case "unattributed-task-removal" -> {start(1,1,1,1,true);deliver(0,true);taskRemoved("missing");taskRemoved("implicit");}
+   case "unbound-root-uses-exact-owner" -> {
+    a.fixtureActivity=null;start(1,1,1,1,true);deliver(0,true);taskRemoved("home");destroy(1);
+   }
    case "old-service-destroy" -> {start(1,1,1,1,true);deliver(0,true);start(2,2,2,2,true);serviceDestroyed();}
    case "service-destroy" -> {start(1,1,1,1,true);deliver(0,true);serviceDestroyed();}
    case "foreground-refused" -> {start(1,1,1,1,true);deliver(0,false);}

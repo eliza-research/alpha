@@ -161,7 +161,10 @@ A renderer can retire only its session. Commands and notification Stop actions
 carry an internal authority that survives a reused public route ID. Delayed START
 commands meet the foreground-service boundary without replacing the current
 instruction or removing a successor. The JVM campaign controls Android delivery
-and rejection; installed task attribution and notification behavior remain separate.
+and rejection. A task-removal callback must name the Activity component that started
+the live lease, including a resolved HOME root. This check treats roots that
+share a component alike. Android supplies the root intent without a task ID.
+Installed notification and task-delivery behavior remain separate.
 
 `ListenerLeaseRecovery` models the actual lease and recovery mechanisms behind
 `AlwaysOnListener` policy inputs. Lease acquire, acknowledgement, monotonic expiry,

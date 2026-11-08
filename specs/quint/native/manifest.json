@@ -1638,7 +1638,10 @@
         "staleNotificationCannotStopSamePublicIdTest",
         "fallbackCannotStopNewOwnerTest",
         "currentNotificationStopsOnceTest",
-        "failedForegroundRetiresExactOwnerTest"
+        "failedForegroundRetiresExactOwnerTest",
+        "unrelatedAssistantTaskKeepsMainLeaseTest",
+        "matchingHomeRootRetiresLeaseTest",
+        "assistantOwnRootRetiresItsLeaseTest"
       ],
       "invariants": [
         "ActiveHasLiveOwner",
@@ -1650,7 +1653,8 @@
       ],
       "abstractions": [
         "Two renderer owners and two public session IDs, including reuse across owners. Internal UUIDs project to three ordered admission identities. Exact observed command order, stop callbacks and notification authority are retained.",
-        "The JVM driver executes the complete bridge and service, including controlled platform faults and native lock contention. Android task attribution, Binder, installed foreground behavior and physical GPS remain external."
+        "The JVM driver executes the complete bridge and service, including controlled platform faults and native lock contention. Android task attribution, Binder, installed foreground behavior and physical GPS remain external.",
+        "Removed task roots are partitioned by the Activity component captured at admission. AOSP supplies the task base Intent, with no task ID to distinguish tasks that share the component."
       ]
     }
   ]

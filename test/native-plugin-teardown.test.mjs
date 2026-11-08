@@ -337,7 +337,7 @@ test("background navigation cannot be started by a call that arrives after its r
   const start = maps.slice(maps.indexOf("@PluginMethod public void startNavigation(PluginCall call){"), maps.indexOf("@PluginMethod public void updateNavigation(PluginCall call){"));
   const refused = 'if(destroyed){call.reject("Background navigation is unavailable: Alpha closed","unavailable");return;}';
   assert.ok(start.indexOf(refused) > 0 && start.indexOf(refused) < start.indexOf("AlphaNavigationService.start("), "refused before the service is started");
-  assert.match(start, /AlphaNavigationService\.start\([^\n]*navigationStops,\(\)->!destroyed\)/,
+  assert.match(start, /AlphaNavigationService\.start\([^\n]*navigationStops,\s*activity==null\?null:activity\.getComponentName\(\),\(\)->!destroyed\)/,
     "the service checks the renderer fence inside atomic admission");
   const destroy = maps.slice(maps.indexOf("@Override protected void handleOnDestroy(){"));
   const retire = 'AlphaNavigationService.stop(getContext(),null,navigationStops,"renderer-closed")';

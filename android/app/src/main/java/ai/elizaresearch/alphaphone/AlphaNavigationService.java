@@ -41,11 +41,13 @@ public final class AlphaNavigationService extends Service {
  private static final class Session {
   final String id;
   final StopListener owner;
+  final ComponentName rootComponent;
   final String authority = UUID.randomUUID().toString();
   String title, text;
-  Session(String id, StopListener owner, String title, String text) {
+  Session(String id, StopListener owner, ComponentName rootComponent, String title, String text) {
    this.id = id;
    this.owner = owner;
+   this.rootComponent = rootComponent;
    this.title = bounded(title);
    this.text = bounded(text);
   }
@@ -80,13 +82,13 @@ public final class AlphaNavigationService extends Service {
    || context.checkSelfPermission(Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED;
  }
 
- static boolean start(Context context, String id, String title, String text, StopListener owner, BooleanSupplier admitted) {
+ static boolean start(Context context, String id, String title, String text, StopListener owner, ComponentName rootComponent, BooleanSupplier admitted) {
   final Session session;
   final Session replaced;
   synchronized (lock) {
    if (!admitted.getAsBoolean()) return false;
    replaced = retireLocked("replaced");
-   session = new Session(id, owner, title, text);
+   session = new Session(id, owner, rootComponent, title, text);
    active = session;
    lastTitle = session.title;
    lastText = session.text;
@@ -212,8 +214,11 @@ public final class AlphaNavigationService extends Service {
 
  @Override public void onTaskRemoved(Intent rootIntent) {
   final Session retired;
+  // Android reports a task from this package, which can belong to a different Activity.
+  ComponentName removedRoot = rootIntent == null ? null : rootIntent.getComponent();
   synchronized (lock) {
-   retired = owned != null && active == owned ? retireLocked("task-removed") : null;
+   retired = owned != null && active == owned && removedRoot != null && removedRoot.equals(owned.rootComponent)
+    ? retireLocked("task-removed") : null;
    endIfIdle(-1);
   }
   notifyStopped(retired, "task-removed");

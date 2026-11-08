@@ -2,6 +2,7 @@ package ai.elizaresearch.alphaphone;
 
 import com.getcapacitor.*;
 import com.getcapacitor.annotation.CapacitorPlugin;
+import android.app.Activity;
 import android.util.Base64;
 import java.net.*;
 import java.io.*;
@@ -74,7 +75,9 @@ public final class AlphaMapsTransportPlugin extends Plugin {
   // A Start delivered after this renderer closed has no guidance behind it and nothing left to stop it.
   if(destroyed){call.reject("Background navigation is unavailable: Alpha closed","unavailable");return;}
   try{
-   if(!AlphaNavigationService.start(getContext(),session,text(call,"title"),text(call,"text"),navigationStops,()->!destroyed)){
+   Activity activity=getActivity();
+   if(!AlphaNavigationService.start(getContext(),session,text(call,"title"),text(call,"text"),navigationStops,
+     activity==null?null:activity.getComponentName(),()->!destroyed)){
     call.reject(destroyed?"Background navigation is unavailable: Alpha closed":"Background navigation changed","unavailable");return;
    }
    call.resolve();

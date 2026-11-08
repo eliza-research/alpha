@@ -8,7 +8,9 @@ const modelPath='specs/quint/native/NativeNavigationOwnership.qnt';
 export const navigationServiceScenarios=[
  'old-plugin-destroy','notification-owner','stale-start-command','old-notification','same-public-id',
  'fallback-successor','fallback-idle','foreign-stop-update','duplicate-app-stop','malformed-notification',
- 'stale-update','old-task-removal','task-removal','old-service-destroy','service-destroy',
+ 'stale-update','old-task-removal','task-removal','home-task-removal','unrelated-assistant-task',
+ 'unrelated-power-task-after-replacement','assistant-own-task','unattributed-task-removal','unbound-root-uses-exact-owner',
+ 'old-service-destroy','service-destroy',
  'foreground-refused','old-foreground-refused','dispatch-refused','dispatch-failure-after-replacement',
  'retired-before-admission','refusals'
 ];
@@ -25,6 +27,7 @@ export async function checkNativeNavigationOwnership(extraSources=[]){
   return await checkTraces({model,modelPath,sources,driverHashes,traces,scope:'bounded-orchestration',assumptions:[
    'The entire Java bridge and service execute against controlled command delivery, notification, permission and foreground ports. Regional network transport is disabled.',
    'Two renderer instances, two public session IDs and three internal authorities bound the projection. Actual UUIDs map to ordered admission identities; title and text fixtures remain independent.',
+   'Task removal requires the component of the Activity captured at start. HOME and launcher roots of MainActivity share a component. The callback carries no task ID to distinguish two Android tasks with the same component.',
    'Android PendingIntent equivalence is projected as action, explicit service, data URI and request code. Service kill/restart, Binder, physical GPS, notification rendering and unbounded scheduling remain outside this JVM campaign.'
   ]});
  }finally{platform.close();}

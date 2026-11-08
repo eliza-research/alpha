@@ -263,5 +263,8 @@ loop together with the same external port boundary.
 `navigation-service.mjs` executes the complete Java Maps bridge and foreground
 service with controlled permission, command and notification ports. The scenarios
 cover renderer recreation, delayed and replayed commands, replacement during stop
-fallback, old notification authority and startup failures. The model records the
+fallback, old notification authority, startup failures, and owning versus unrelated
+root components. The fixture checks resolved HOME and launcher roots, assistant
+and power roots, and missing attribution. Android task IDs and task generations
+are outside this callback's data. The model records the
 logical session, exact queued commands and observed foreground and terminal effects.
