@@ -2,6 +2,7 @@ import {fileURLToPath} from 'node:url';
 import {checkChatInputRefinement} from '../../legacy/chat-input/check-chat-input-refinement.mjs';
 import {checkFilesBrowserRefinement} from '../../legacy/files-browser/check-files-browser-refinement.mjs';
 import {checkHomeLayoutRefinement} from '../../legacy/home-layout/check-home-layout-refinement.mjs';
+import {checkNotesViewRefinement} from '../../legacy/notes-view/check-notes-view-refinement.mjs';
 import {checkSettingsNavRefinement} from '../../legacy/settings-nav/check-settings-nav-refinement.mjs';
 import {checkActionSettlementRefinement} from '../../legacy/core/check-action-settlement-refinement.mjs';
 import {checkApprovalServiceRefinement} from '../../legacy/core/check-approval-service-refinement.mjs';
@@ -68,6 +69,16 @@ const filesBrowserDifferences = {
   FilesBrowserHistoricalStaleReview: ['A rewritten file invalidates the previously reviewed identity',
     'The mounted runner refuses the old identity and accepts a fresh one. The historical identity ablation admits the stale request.'],
 };
+const notesViewDifferences = {
+  NotesViewCanonicalCollectionRevision: ['Canonical Notes advances the selected object revision when a peer changes',
+    'The current owner-bound controller publishes the collection revision. The historical revision belongs to the individual note.'],
+  NotesViewHistoricalRestoreFolder: ['Restore after folder deletion returns a previous note to the root',
+    'The browser store clears the obsolete folder binding. The historical recovery returns the previous folder binding.'],
+  NotesViewHistoricalRecordingCap: ['The mounted browser recorder keeps recording at the historical cap',
+    'The historical transition stops at four abstract units. The source rolls to the next segment.'],
+  NotesViewHistoricalLiveDurability: ['Mounted browser audio is published durably on Stop',
+    'The historical recording step updates durable audio during capture. The observed Previous Notes record publishes audio at Stop.'],
+};
 
 export async function runLegacyRefinement() {
   const receipts = [], obligations = [];
@@ -101,6 +112,14 @@ export async function runLegacyRefinement() {
       const obligations = mismatches.map(mismatch => {
         const [obligation, reason] = filesBrowserDifferences[mismatch.id];
         return {model: 'FilesBrowser', obligation, reason, evidence: mismatch.receiptPath};
+      });
+      return {receipts, obligations};
+    }],
+    ['NotesView', async () => {
+      const {receipts, mismatches} = await checkNotesViewRefinement([driver]);
+      const obligations = mismatches.map(mismatch => {
+        const [obligation, reason] = notesViewDifferences[mismatch.id];
+        return {model: 'NotesView', obligation, reason, evidence: mismatch.receiptPath};
       });
       return {receipts, obligations};
     }],

@@ -624,3 +624,15 @@ global pause, and reservation, configuration and cancellation settlement.
 Native replies use controlled ports. The campaign holds begin and configure
 replies and coalesces the microtasks between cancellation attempts. The
 native journal and worker run remain separate evidence.
+
+The historical Notes replay checks five mounted schedules and 31 checkpoints
+against the current canonical controller, Previous Notes storage and a
+synthetic browser microphone. Four separate comparisons record collection
+revision admission, recovery after folder deletion, segment rollover and
+the durable Stop boundary. Native recovery and recognition liveness remain
+open.
+
+The strict aggregate at `218935d633e6` completed all five source campaign
+families and admitted current receipts for 157 of 168 registered models.
+It exited 2 with 346 refinement obligations and 1,711 unobserved fields.
+The later mounted historical campaigns address some missing model receipts.
