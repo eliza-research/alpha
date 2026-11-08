@@ -1245,5 +1245,43 @@
       "maxSteps": 35,
       "seed": "123"
     }
+  },
+  {
+    "path": "specs/quint/application/GoogleAccessPublication.qnt",
+    "module": "GoogleAccessPublication",
+    "init": "init",
+    "step": "step",
+    "invariant": "safety",
+    "tests": [
+      "lostPublicationCorrectsBeforeSuccessorTest",
+      "guardedStaleChoiceDoesNotReachHostTest",
+      "rollbackFailurePublishesCanonicalChoiceTest",
+      "twoFailedRepliesCanLeaveUncertaintyTest"
+    ],
+    "invariants": [
+      "exactOwner",
+      "pendingCustody"
+    ],
+    "sources": [
+      "apps/app/src/runtime/google-agent-access.ts",
+      "apps/app/src/browser/device-preferences.ts",
+      "apps/app/src/browser/preference-documents.ts",
+      "apps/app/src/browser/domain-document.ts"
+    ],
+    "stateMapping": {
+      "saved/previous/revision": "Actual canonical preferences and prior booleans under the lock",
+      "host/calls": "Observed native publication attempts and fixture host commits",
+      "queue/owner/phase": "Exclusive lock admission and actual native call phase",
+      "choices/results": "Canonical revision-bound user intent and actual operation outcome"
+    },
+    "abstractions": [
+      "Two one-use requests over two owner switches. A controlled Web Locks port grants FIFO ownership.",
+      "Controlled durable writes distinguish refusal before commit and lost reply after commit. A corrective failure can leave divergence."
+    ],
+    "bounds": {
+      "maxSamples": 1000,
+      "maxSteps": 80,
+      "maxVerifyDepth": 4
+    }
   }
 ]
