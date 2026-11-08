@@ -5,7 +5,8 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import {spawnSync,execFileSync} from 'node:child_process';
+import {spawnSync} from 'node:child_process';
+import {git} from './fixtures/git-fixture.mjs';
 import {AGENT_CHARACTER,AGENT_CHARACTER_ENVIRONMENT} from '../scripts/agent-identity.mjs';
 import {LOCAL_EMBEDDING_ROUTE} from '../scripts/agent-embeddings.mjs';
 
@@ -43,7 +44,7 @@ test('the pinned upstream applies the override in memory and renders the name in
 function launch({route}={}){
  const dir=fs.mkdtempSync(path.join(os.tmpdir(),'alpha-identity-')),profile=path.join(dir,'profile'),source=path.join(dir,'source'),receipt=path.join(dir,'child.json'),bun=path.join(dir,'fake-bun');
  fs.mkdirSync(profile);fs.mkdirSync(path.join(source,'packages/app/src/runtime'),{recursive:true});fs.writeFileSync(path.join(source,'packages/app/src/runtime/dev-server.ts'),'');
- execFileSync('git',['init','-q',source]);execFileSync('git',['-C',source,'-c','user.name=Fixture','-c','user.email=fixture@example.invalid','commit','--allow-empty','-qm','fixture']);
+ git(source,'init','-q');git(source,'commit','--allow-empty','-qm','fixture');
  fs.writeFileSync(bun,`#!/usr/bin/env node\nrequire('node:fs').writeFileSync(${JSON.stringify(receipt)},JSON.stringify({character:process.env.ELIZA_AGENT_CHARACTER_JSON??null,libDir:process.env.ELIZA_INFERENCE_LIB_DIR??null,config:JSON.parse(require('node:fs').readFileSync(process.env.ELIZA_CONFIG_PATH,'utf8'))}));`,{mode:0o700});
  const config=path.join(profile,'eliza.json');if(route)fs.writeFileSync(config,JSON.stringify({serviceRouting:{llmText:route},agents:{list:[{id:'retained',default:true,name:'Retained Eliza',identityName:'Retained Eliza'}]},fixtureKeep:'preserve'}),{mode:0o600});
  const before=route?fs.readFileSync(config,'utf8'):null;
@@ -80,7 +81,7 @@ test('the reviewed-workflow launcher makes loopback callers present the owner to
  try{
   fs.mkdirSync(path.join(home,'.config/alphaphone'),{recursive:true});fs.writeFileSync(path.join(home,'.config/alphaphone/cerebras-key'),'synthetic-fixture-key',{mode:0o600});
   fs.mkdirSync(path.join(source,'node_modules'),{recursive:true});fs.mkdirSync(path.join(source,'packages/app/src/runtime'),{recursive:true});fs.writeFileSync(path.join(source,'packages/app/src/runtime/dev-server.ts'),'');
-  execFileSync('git',['init','-q',source]);execFileSync('git',['-C',source,'-c','user.name=Fixture','-c','user.email=fixture@example.invalid','commit','--allow-empty','-qm','fixture']);
+  git(source,'init','-q');git(source,'commit','--allow-empty','-qm','fixture');
   fs.writeFileSync(bun,`#!/usr/bin/env node\nrequire('node:fs').writeFileSync(${JSON.stringify(receipt)},JSON.stringify({requireLocalAuth:process.env.ELIZA_REQUIRE_LOCAL_AUTH??null,token:process.env.ELIZA_API_TOKEN??null}));`,{mode:0o700});
   const env={...process.env,HOME:home};delete env.ELIZA_REQUIRE_LOCAL_AUTH;
   const result=spawnSync(process.execPath,[path.resolve('scripts/start-reviewed-workflow-agent.mjs'),'--source',source,'--profile',profile,'--port','47997','--bun',bun],{env,encoding:'utf8',timeout:15000});

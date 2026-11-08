@@ -4,7 +4,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import {createHash} from 'node:crypto';
-import {execFileSync} from 'node:child_process';
+import {git as fixtureGit} from './fixtures/git-fixture.mjs';
 import {reviewedSourceOverrides,stagingBuildPatches} from '../scripts/stage-aosp.mjs';
 import {verifySecureCameraSource} from '../scripts/aosp-secure-camera-contract.mjs';
 
@@ -13,8 +13,8 @@ test('secure camera staging accepts exact reviewed SystemUI changes without admi
   t.after(() => fs.rmSync(source, {recursive:true, force:true}));
   const directory = path.join(source, 'framework'); fs.mkdirSync(directory);
   const hash = text => createHash('sha256').update(text).digest('hex');
-  const git = (...args) => execFileSync('git', args, {cwd:directory, encoding:'utf8'}).trim();
-  git('init', '-q'); git('config', 'user.name', 'Fixture'); git('config', 'user.email', 'fixture@example.invalid');
+  const git = (...args) => fixtureGit(directory, ...args);
+  git('init', '-q');
   fs.writeFileSync(path.join(directory, 'camera.txt'), 'camera');
   fs.writeFileSync(path.join(directory, 'ui.txt'), 'before');
   git('add', '.'); git('commit', '-qm', 'fixture');

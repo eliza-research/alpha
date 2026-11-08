@@ -122,7 +122,7 @@ test("captures keep only the listener's lines: no other app's notification text,
   for (const secret of ["private message body", "Alice Example", "alice@example.com", "Shaw Owner", "Guest Person", "SERIAL123", "com.example.other"]) assert.ok(!text.includes(secret), secret);
 });
 
-test("the CLI dry-run contacts no device and the CLI refuses unsafe outputs", () => {
+test("the CLI dry-run contacts no device and the CLI refuses unsafe outputs", t => {
   const dry = spawnSync(process.execPath, [script, "--dry-run", "--gates", "G3,G6", "--samples", "49"], { encoding: "utf8" });
   assert.equal(dry.status, 0, dry.stderr);
   assert.match(dry.stdout, /nothing is sent in --dry-run/);
@@ -133,6 +133,7 @@ test("the CLI dry-run contacts no device and the CLI refuses unsafe outputs", ()
     assert.match(result.stderr, pattern);
   };
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), "listener-evidence-"));
+  t.after(() => fs.rmSync(dir, { recursive: true, force: true }));
   refuse(["--class", "device", "--out", path.join(dir, "a.json")], /Explicit --serial required/);
   refuse(["--serial", "S", "--class", "device", "--out", path.join(root, LISTENER_RECORD)], /exists|Never write the committed listener record/);
   refuse(["--serial", "S", "--class", "phone", "--out", path.join(dir, "b.json")], /--class image\|device/);
@@ -175,8 +176,9 @@ test("fixture captures are class fixture, earn no gate and have no candidate rec
   }
 });
 
-test("the CLI writes a new evidence file from fixtures and never overwrites one", () => {
+test("the CLI writes a new evidence file from fixtures and never overwrites one", t => {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), "listener-evidence-"));
+  t.after(() => fs.rmSync(dir, { recursive: true, force: true }));
   const out = path.join(dir, "evidence.json");
   const args = [script, "--fixtures", path.join(fixtures, "pixel10a.json"), "--class", "device", "--gates", "G3,G5", "--label", "fixture", "--attest", path.join(fixtures, "attest-all-pass.json"), "--out", out];
   const first = spawnSync(process.execPath, args, { encoding: "utf8" });

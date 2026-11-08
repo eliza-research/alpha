@@ -3,13 +3,14 @@ import assert from 'node:assert/strict';
 import {mkdtempSync,mkdirSync,writeFileSync,readFileSync,existsSync,rmSync} from 'node:fs';
 import {tmpdir} from 'node:os';
 import {join,resolve} from 'node:path';
-import {spawnSync,execFileSync} from 'node:child_process';
+import {spawnSync} from 'node:child_process';
+import {git} from './fixtures/git-fixture.mjs';
 import {AGENT_MODEL} from '../scripts/agent-model.mjs';
 
 function launch({route,override,swaps,existingToken=true,retainedIdentity=true,runtimeConfigUpdate=false,repeat=false,autoReset}={}) {
  const dir=mkdtempSync(join(tmpdir(),'alpha-model-')),profile=join(dir,'profile'),source=join(dir,'source'),receipt=join(dir,'models.json'),childReceipt=join(dir,'child.json'),bun=join(dir,'fake-bun');
  mkdirSync(profile);mkdirSync(join(source,'packages/app/src/runtime'),{recursive:true});writeFileSync(join(source,'packages/app/src/runtime/dev-server.ts'),'');
- execFileSync('git',['init','-q',source]);execFileSync('git',['-C',source,'-c','user.name=Fixture','-c','user.email=fixture@example.invalid','commit','--allow-empty','-qm','fixture']);
+ git(source,'init','-q');git(source,'commit','--allow-empty','-qm','fixture');
  writeFileSync(bun,`#!/usr/bin/env node\nconst fs=require('node:fs');fs.writeFileSync(${JSON.stringify(childReceipt)},JSON.stringify({pid:process.pid,hostRevision:process.env.ELIZA_HOST_CONTEXT_REVISION,autoReset:process.env.ELIZA_PGLITE_AUTO_RESET??null,unexpected:process.env.ALPHA_UNRELATED_ENV??null,token:process.env.ELIZA_API_TOKEN,nativeViews:JSON.parse(process.env.ELIZA_NATIVE_VIEW_DECLARATIONS),swaps:{secret:process.env.ELIZA_SECRET_SWAP_ENABLED??null,pii:process.env.ELIZA_PII_SWAP_ENABLED??null},config:JSON.parse(fs.readFileSync(process.env.ELIZA_CONFIG_PATH,'utf8'))}));fs.writeFileSync(${JSON.stringify(receipt)},JSON.stringify(Object.fromEntries(['CEREBRAS_MODEL','CEREBRAS_SMALL_MODEL','CEREBRAS_LARGE_MODEL'].map(k=>[k,process.env[k]]))));${runtimeConfigUpdate?"fs.writeFileSync(process.env.ELIZA_CONFIG_PATH,JSON.stringify({...JSON.parse(fs.readFileSync(process.env.ELIZA_CONFIG_PATH,'utf8')),runtimeSelection:'retained'}));":''}`,{mode:0o700});
  const tokenPath=join(profile,'owner-token'),retainedToken='a'.repeat(64);if(existingToken)writeFileSync(tokenPath,retainedToken,{mode:0o600});
  // An existing profile carries an explicitly retained agent identity; the launcher refuses ambiguous ones.

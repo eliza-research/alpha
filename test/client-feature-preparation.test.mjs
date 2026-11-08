@@ -4,12 +4,13 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import {execFileSync, spawnSync} from 'node:child_process';
+import {spawnSync} from 'node:child_process';
+import {git as fixtureGit} from './fixtures/git-fixture.mjs';
 import {prepareClientFeatures, CLIENT_FEATURE_PATHS} from '../scripts/prepare-client-features.mjs';
 function fixture(run) {
  const root=fs.mkdtempSync(path.join(os.tmpdir(),'alpha-client-source-'));
  const vendor=path.join(root,'vendor/eliza');fs.mkdirSync(vendor,{recursive:true});
- const git=args=>execFileSync('git',['-C',vendor,...args],{encoding:'utf8'}).trim();
+ const git=args=>fixtureGit(vendor,...args);
  try {
   git(['init','-q']);
   for(const prefix of CLIENT_FEATURE_PATHS) {
@@ -21,7 +22,7 @@ function fixture(run) {
    const relative=`packages/app/scripts/lib/${name}`,target=path.join(vendor,relative);
    fs.mkdirSync(path.dirname(target),{recursive:true});fs.copyFileSync(path.join('vendor/eliza',relative),target);
   }
-  git(['add','.']);git(['-c','user.name=Source fixture','-c','user.email=fixture@example.invalid','commit','-qm','Fixture']);
+  git(['add','.']);git(['commit','-qm','Fixture']);
   const commit=git(['rev-parse','HEAD']);fs.writeFileSync(path.join(root,'upstream.lock.json'),JSON.stringify({commit}));
   return run({root,vendor,commit,git});
  } finally {fs.rmSync(root,{recursive:true,force:true});}
@@ -47,9 +48,9 @@ test('client source cannot follow a linked staging parent',()=>fixture(({root})=
 }));
 test('client source rejects committed symlinks and missing source groups',()=>fixture(({root,vendor,git})=>{
  const file=path.join(vendor,CLIENT_FEATURE_PATHS[0]);fs.unlinkSync(file);fs.symlinkSync('../../outside',file);
- git(['add','.']);git(['-c','user.name=Source fixture','-c','user.email=fixture@example.invalid','commit','-qm','Symlink']);
+ git(['add','.']);git(['commit','-qm','Symlink']);
  fs.writeFileSync(path.join(root,'upstream.lock.json'),JSON.stringify({commit:git(['rev-parse','HEAD'])}));assert.throws(()=>prepareClientFeatures({root,projectVoice:false}),/Nonregular upstream/);
- fs.unlinkSync(file);git(['add','.']);git(['-c','user.name=Source fixture','-c','user.email=fixture@example.invalid','commit','-qm','Missing source']);
+ fs.unlinkSync(file);git(['add','.']);git(['commit','-qm','Missing source']);
  fs.writeFileSync(path.join(root,'upstream.lock.json'),JSON.stringify({commit:git(['rev-parse','HEAD'])}));assert.throws(()=>prepareClientFeatures({root,projectVoice:false}),/Missing upstream source/);
 }));
 test('direct local development launcher prepares a clean client tree before starting services',()=>fixture(({root,commit})=>{
