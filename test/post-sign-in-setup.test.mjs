@@ -25,6 +25,7 @@ function harness({admission={binding:'cloud'},admitted=true,refusedAccount=false
     retire:()=>{events.push('retire');state.kind='starting';},
     residentEnvironment:()=>'production',cloudServiceName:()=>'Eliza Cloud',
     cloudCredentialStore:{read:async()=>stored,clear:async()=>{events.push('clear key');stored=null;}},
+    readCloudCredential:async(_environment,signal)=>{signal.throwIfAborted();return stored;},
     CloudProtocolError:class extends Error {constructor(code){super(code);this.code=code;}},
     replaceStored:value=>{stored=value;},
     admitCloudResident:async signal=>{events.push({admit:{...state}});admit?.();signal.throwIfAborted();if(admitted===true)state.cloudAccount=refusedAccount?null:{userId:'owner'};if(admitted instanceof Error)throw admitted;return admission;},
