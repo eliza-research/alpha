@@ -326,7 +326,9 @@ html.alpha-text-xl:not(.standalone-app) [data-alpha-app-header="main"]:not([data
 html:not(.alpha-landscape) .alpha-phone [data-alpha-layer="home"] { bottom:0!important; scroll-padding-bottom:var(--alpha-dock-reserve)!important; }
 /* Grow scroll clearance, not the flex space containing the icons. The resting
  * pill and composer have different heights but share the same Home layout. */
-html:not(.alpha-landscape) .alpha-phone [data-alpha-home-layout] { padding-bottom:var(--alpha-dock-reserve)!important; min-height:calc(100% + var(--alpha-dock-reserve) - 108px)!important; }
+.alpha-phone { --alpha-home-clearance:max(28px,calc((max(var(--alpha-home-bottom-inset,var(--native-bottom-inset,0px)),env(safe-area-inset-bottom,0px)) + 12px) / var(--phone-scale,1))); }
+html:not(.alpha-landscape) .alpha-phone [data-alpha-home-layout] { padding-bottom:calc(var(--alpha-home-clearance) + 86px)!important; min-height:max(100%,calc(var(--alpha-home-height,100%) - 44px))!important; }
+html:not(.alpha-landscape) .alpha-phone [data-screen]:not([data-alpha-chat-half="true"]) [data-alpha-home-clearance] { height:max(0px,calc(var(--alpha-dock-clearance,102px) + 6px - var(--alpha-home-clearance) - 86px)); }
 /* The app library fills the screen behind the floating dock. Its final row can
    scroll above the dock because the clearance belongs inside the list. */
 html:not(.alpha-landscape) .alpha-phone [data-alpha-layer="drawer"] { padding-bottom:0!important; }

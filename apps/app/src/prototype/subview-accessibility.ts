@@ -153,6 +153,7 @@ const LIMIT = 600;
 let region: HTMLElement | null = null, frame = 0, regionOwner: ReplyShell | undefined;
 function say(text: string, owner: ReplyShell) {
   regionOwner=owner;
+  const session=owner.connectionSession,conversation=owner.restoredHistory?.conversationId;
   if (!region || !region.isConnected) {
     region = document.createElement('div');
     region.setAttribute('role', 'status');
@@ -165,7 +166,7 @@ function say(text: string, owner: ReplyShell) {
   // Cleared now and written on the next frame, so the same words said twice are announced twice.
   region.textContent = '';
   cancelAnimationFrame(frame);
-  frame = requestAnimationFrame(() => { frame = 0; if (region && regionOwner===owner && owner.replyAnnouncerLive && !document.hidden && !owner.voiceConversationActive?.()) region.textContent = text; });
+  frame = requestAnimationFrame(() => { frame = 0; if (region && regionOwner===owner && owner.replyAnnouncerLive && session===owner.connectionSession && conversation===owner.restoredHistory?.conversationId && !document.hidden && !owner.voiceConversationActive?.()) region.textContent = text; });
 }
 const bounded = (text: string) => text.length > LIMIT ? text.slice(0, LIMIT - 1).trimEnd() + '…' : text;
 const agentTail = (msgs: ReplyShell[]) => { const last = msgs.at(-1); return last?.from === 'agent' ? last : undefined; };

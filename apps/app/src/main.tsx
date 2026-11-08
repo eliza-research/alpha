@@ -192,6 +192,20 @@ function installBrowserCapabilityTiles(Component:any){
     return {...out,tiles,deviceSettingsPending:true,deviceSettingsMessage:'Network, radio and sensor settings are managed by your browser and operating system.',sbWifi:navigator.onLine,sbPlane:false};
   };
 }
+/** Use the last native bar geometry before Home's first paint; storage is only a layout cache. */
+const INSETS_KEY='alpha.surface-insets.v1';
+const validInset=(value:unknown):value is number=>typeof value==='number'&&Number.isFinite(value)&&value>=0&&value<=512;
+function rememberInsets(top:unknown,bottom:unknown){
+ if(!validInset(top)||!validInset(bottom))return;
+ try{localStorage.setItem(INSETS_KEY,JSON.stringify({top,bottom}));}catch{/* Native values still apply. */}
+}
+if(isAndroid)try{
+ const saved=JSON.parse(localStorage.getItem(INSETS_KEY)||'null');
+ if(validInset(saved?.top)&&validInset(saved?.bottom)){
+  document.documentElement.style.setProperty('--native-top-inset',`${saved.top}px`);
+  document.documentElement.style.setProperty('--native-bottom-inset',`${saved.bottom}px`);
+ }
+}catch{/* The native bridge supplies missing or invalid cached insets. */}
 let shell: any;
 /** A notice raised while the startup loading screen holds Home unmounted; shown once Home mounts. */
 let pendingNotice: string | undefined;
@@ -231,6 +245,7 @@ function Phone() {
     if (isAndroid) void DailyApps.surfaceInfo().then(info => {
       if (Number.isFinite(info.topInset)) document.documentElement.style.setProperty('--native-top-inset', `${info.topInset}px`);
       if (Number.isFinite(info.bottomInset)) document.documentElement.style.setProperty('--native-bottom-inset', `${info.bottomInset}px`);
+      rememberInsets(info.topInset,info.bottomInset);
       size();
     }).catch(() => {});
     const freeHeight = keyboardFreeHeight();
@@ -267,7 +282,15 @@ function Phone() {
       // Measured width and keyboard-free height decide the arrangement (runtime/canvas-geometry.ts).
       // Standalone touch windows keep their own density; the launcher keeps its fitted canvas.
       const input = { width, layoutHeight, available, desktop, fluid: isAndroid || coarse, launcher: launcherPresentation, screenShort: Math.min(window.screen.width, window.screen.height), editing: isEditing(document.activeElement) };
-      const geometry = canvasGeometry(input, freeHeight(width, layoutHeight, input.editing), banner);
+      const keyboardFree=freeHeight(width,layoutHeight,input.editing);
+      const geometry = canvasGeometry(input,keyboardFree,banner);
+      // Keep Home's grid in its full-height canvas while the keyboard covers its bottom.
+      // Recompute for width changes too, so rotating with a focused composer is not stuck in portrait.
+      const homeGeometry=input.editing?canvasGeometry({...input,layoutHeight:keyboardFree,available:Math.max(1,keyboardFree-banner-(desktop?48:0)-toolsInset),editing:false},keyboardFree,banner):geometry;
+      document.documentElement.style.setProperty('--alpha-home-height',`${homeGeometry.height}px`);
+      const homeBottomInset=document.documentElement.style.getPropertyValue('--native-bottom-inset');
+      if(homeBottomInset)document.documentElement.style.setProperty('--alpha-home-bottom-inset',homeBottomInset);
+      else document.documentElement.style.removeProperty('--alpha-home-bottom-inset');
       document.documentElement.style.setProperty('--phone-scale', String(geometry.scale));
       document.documentElement.style.setProperty('--phone-width', geometry.width);
       document.documentElement.style.setProperty('--phone-height', `${geometry.height}px`);
