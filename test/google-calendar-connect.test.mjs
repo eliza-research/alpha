@@ -4,11 +4,8 @@
 // the agent port and Cloud client are synthetic. No Google, OAuth, provider write, backfill or disconnect runs.
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {readFileSync} from 'node:fs';
-import {createRequire} from 'node:module';
-import vm from 'node:vm';
-import {JSDOM} from 'jsdom';
-import {buildSync,transformSync} from 'esbuild';
+import {buildSync} from 'esbuild';
+import {mountGoogleAccountPanel} from './fixtures/google-account-panel.mjs';
 import {tsImport} from 'tsx/esm/api';
 const load=path=>tsImport(new URL(path,import.meta.url).href,{parentURL:import.meta.url});
 const {AgentCalendar}=await load('../apps/app/src/runtime/agent-calendar.ts');
@@ -274,59 +271,7 @@ test('retention precedes a failed revoke; a stale pause request or no captured r
  f.calendar.retire();
 });
 
-/** The actual Google accounts panel. Only the Cloud account list, consent URL and browser open are synthetic. */
-async function panel(rows,{calendarEdits=true,gmailChanges=true,unreadable=false,saveFails=false,browser=false,host='current'}={}){
- const dom=new JSDOM('<div class="os" style="--bg:#121212;--fg:#fff;--acct:#95a0ff;--acc:#0000ff"></div><div id="root"></div>',{url:'https://alpha.invalid'});
- let hidden=false;Object.defineProperty(dom.window.document,'hidden',{configurable:true,get:()=>hidden});
- const saved={window:globalThis.window,document:globalThis.document,HTMLElement:globalThis.HTMLElement,IS_REACT_ACT_ENVIRONMENT:globalThis.IS_REACT_ACT_ENVIRONMENT};
- Object.assign(globalThis,{window:dom.window,document:dom.window.document,HTMLElement:dom.window.HTMLElement,IS_REACT_ACT_ENVIRONMENT:true});
- const require=createRequire(import.meta.url),React=require('react'),{createRoot}=require('react-dom/client');
- const access={gmailChanges,calendarEdits},p={rows,access,unreadable,revision:0,consents:[],opens:0,lists:0,accessChanges:[],policy:[],onPolicy:null,disconnects:[],onDisconnect:null};
- let cloud={client:{},sessionId:'cloud-session',credentialId:'cloud-credential'};
- const snapshot={cloudAccount:{environment:'production',userId:'22222222-2222-4222-8222-222222222222',organizationId:'33333333-3333-4333-8333-333333333333'}};
- const live=binding=>{if(binding.credentialId!==cloud.credentialId)throw new DOMException('The Cloud account changed.','AbortError');};
- const modules={
-  './cloud-protocol':{cloudServiceName},'./google-connection-return':connectionReturn,'./google-workspace-return':workspaceReturn,'./gmail-grants':gmailGrants,
-  '../daily':{DailyApps:{addListener:async()=>({remove(){}})}},'../native':{isAndroid:false},
-  // The browser Cloud stage's same-origin bridge: 'current' answers like Codex's proposed host, 'missing' like today's host.
-  './browser-cloud-resident':{browserCloudResidentEnabled:browser,browserResidentCall:async(...call)=>{p.policy.push(call);p.onPolicy?.();if(host==='missing')throw Error('Cloud resident binding unavailable');return host==='wrong'?{}:{calendarEdits:call[2]};}},
-  './gmail-background':{gmailBackgroundStatus:async()=>({}),gmailBackgroundMessage:()=>'',GMAIL_BACKGROUND_CHANGED:'alpha:test-gmail-background'},
-  './modal-inert':{holdPhoneInert:()=>()=>{}},
-  './connection-ui':{connectionController:{subscribe:()=>()=>{},getSnapshot:()=>snapshot,getCloudClient:()=>cloud,rejectCloudSession:()=>{},openCloudAccount:()=>{throw Error('Unexpected sign-in');}}},
-  // The actual Calendar link and disconnect lifecycle; only the Cloud account calls are synthetic.
-  './google-accounts':{GOOGLE_ACCOUNTS_CHANGED:'alpha:test-google-accounts',googleDisconnectConfirmation:()=>'',googleDisconnectMessage:outcome=>`Disconnect ${outcome}.`,linkGoogleCalendar:calendarLink.linkGoogleCalendar,googleCalendarDisconnectLifecycle:calendarLink.googleCalendarDisconnectLifecycle,createGoogleAccounts:(binding,current,changed,calendar)=>({
-   list:async()=>{live(binding);p.lists++;if(p.listFails)throw Error('Cloud is unavailable');return structuredClone(p.rows);},
-   connect:async(signal,calendarPermission,gmailPermission)=>{live(binding);p.consents.push([calendarPermission,gmailPermission]);return 'https://accounts.google.com/o/oauth2/v2/auth';},
-   // No Cloud disconnect runs: only what the panel hands the callsite is recorded.
-   disconnect:async connectionId=>{live(binding);p.disconnects.push({connectionId,calendar});return {...(p.disconnectResult??{outcome:'disconnected',accounts:[]}),calendarLifecycle:p.onDisconnect?.(calendar,connectionId)??{calendarPause:'unavailable',callbackRetirement:'confirmed',providerDrain:'unavailable',pauseRequest:null}};},
-  })},
-  './google-calendar-selection':{clearGoogleCalendarSelectionForConnection:()=>{}},
-  './native-connection':{openConnectionBrowser:async()=>{p.opens++;},googleWorkspaceReturnPort:undefined},
-  // Like 3800a178e's google-agent-access: a fresh capture with a revision receipt, and a guarded save that rechecks it.
-  './google-agent-access':{googleAgentAccess:()=>({...access}),publishGoogleAgentAccess:async()=>{},captureGoogleCalendarAccess:async()=>{await p.onCapture?.();return p.unreadable?undefined:{calendarEdits:access.calendarEdits,receipt:{revision:p.revision}};},setGoogleAgentAccess:async(change,guard)=>{if(saveFails)throw Error('Settings could not be saved');if(guard&&(!guard.current()||access.calendarEdits!==guard.expectedCalendarEdits||guard.receipt.revision!==p.revision))throw Error('Calendar choice changed. Review it again.');p.accessChanges.push({...change});Object.assign(access,change);p.revision++;p.unreadable=false;dom.window.dispatchEvent(new dom.window.Event('alpha:device-settings'));}},
- };
- const compiled=transformSync(readFileSync(new URL('../apps/app/src/runtime/google-connection-ui.tsx',import.meta.url),'utf8'),{loader:'tsx',jsx:'automatic',format:'cjs',target:'es2022'}).code;
- const module={exports:{}};
- vm.runInContext(compiled,vm.createContext({module,exports:module.exports,require:name=>name==='react'||name==='react/jsx-runtime'?require(name):modules[name]??(()=>{throw Error('Unexpected import '+name);})(),window:dom.window,document:dom.window.document,getComputedStyle:dom.window.getComputedStyle,HTMLElement:dom.window.HTMLElement,AbortController,DOMException,Event:dom.window.Event}));
- const {GoogleConnectionsPanel,googleConnectionController}=module.exports;
- const root=createRoot(dom.window.document.getElementById('root'));
- const tick=()=>new Promise(resolve=>setTimeout(resolve,5));
- const act=async(action)=>React.act(async()=>{await action?.();for(let i=0;i<4;i++)await tick();});
- Object.assign(p,{controller:googleConnectionController,act,
-  button:name=>[...dom.window.document.querySelectorAll('button')].find(button=>button.textContent===name||button.getAttribute('aria-label')===name),
-  toggle:name=>dom.window.document.querySelector(`input[role="switch"][aria-label="${name}"]`),
-  status:()=>dom.window.document.querySelector('[role="status"]')?.textContent??'',
-  text:()=>dom.window.document.querySelector('[role="dialog"]')?.textContent??'',
-  until:async(check,label)=>{for(let i=0;i<100&&!check();i++)await act();assert.ok(check(),label);},
-  changeCloud:()=>{cloud={...cloud,credentialId:'other-credential'};},
-  dispatch:name=>act(()=>dom.window.dispatchEvent(new dom.window.Event(name))),
-  /** Google's consent screen took the app to the background; coming back is the only return signal. */
-  returnFromGoogle:()=>act(()=>{for(const state of [true,false]){hidden=state;dom.window.document.dispatchEvent(new dom.window.Event('visibilitychange'));}}),
-  close:async()=>{await act(()=>googleConnectionController.close());await act(()=>root.unmount());dom.window.close();for(const [key,value] of Object.entries(saved)){if(value===undefined)delete globalThis[key];else globalThis[key]=value;}},
- });
- await act(()=>root.render(React.createElement(GoogleConnectionsPanel)));
- return p;
-}
+const panel=(rows,options)=>mountGoogleAccountPanel(rows,options,{cloudServiceName,connectionReturn,workspaceReturn,gmailGrants,calendarLink});
 
 test('the Calendar intent asks Google once for Gmail read plus Calendar read and write, then links after the readback',async()=>{
  const f=await agent(),p=await panel([]);

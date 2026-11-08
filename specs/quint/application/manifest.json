@@ -1032,5 +1032,32 @@
       "Installed agent filter operations from a mounted Browse view, with separate access and query generations, current filter ownership, cancellation and filtered result ordering.",
       "Three operation identities, two text classes and four unique row identities. Reload after mount, category/Trash list transactions, file mutations and provider query implementation remain separate obligations."
     ]
+  },
+  {
+    "path": "specs/quint/application/GoogleConsentAdmission.qnt",
+    "module": "GoogleConsentAdmission",
+    "init": "init",
+    "step": "step",
+    "invariant": "safety",
+    "tests": [
+      "unknownListBlocksConsentTest",
+      "modifyTierSurvivesAddAccountTest",
+      "failedReadbackRetiresAwaitedConsentTest",
+      "unknownRevokeReadbackBlocksConsentTest",
+      "staleOwnerCannotRestoreReadTest",
+      "explicitAllowOpensCurrentTierTest"
+    ],
+    "sources": [
+      "apps/app/src/runtime/google-connection-ui.tsx",
+      "apps/app/src/runtime/google-accounts.ts",
+      "apps/app/src/runtime/google-connection-return.ts",
+      "apps/app/src/runtime/google-agent-access.ts",
+      "apps/app/src/runtime/gmail-grants.ts",
+      ".eliza/client-features/plugins/plugin-inbox/src/mailbox/grants.ts"
+    ],
+    "abstractions": [
+      "Mounted Google panel with owner-bound account list generations, revoke readback, preserved Gmail tier, Calendar permission continuation and consent dispatch.",
+      "Two Cloud bindings, six reads, three grant classes and four consent attempts. One held permission continuation, controlled provider and browser ports. Linked Calendar writes and native callback durability remain separate."
+    ]
   }
 ]
