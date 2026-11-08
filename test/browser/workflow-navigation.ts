@@ -17,6 +17,7 @@ export async function installWorkflowListFixture(page:Page){await page.evaluate(
     result={automations:rows.filter(row=>!row.removed).map(row=>({id:'workflow:'+row.id,type:'workflow',workflowId:row.id,title:row.name,description:row.description,enabled:row.active,status:row.active?'active':'paused',schedules:[]}))};
    }else if(path==='/api/lifeops/scheduled-tasks?ownerVisibleOnly=1')result={tasks:[]};
    else if(path==='/api/lifeops/reminders')result={reminders:[]};
+   else if(path==='/api/lifeops/definitions')result={definitions:[]};
    else throw Error('Unexpected fixture metadata route: '+path);
    current();return result;
   }};
