@@ -1,3 +1,4 @@
+import {serviceInputs} from './source-inputs.mjs';
 import assert from 'node:assert/strict';
 import {webcrypto} from 'node:crypto';
 import {checkEntitlement, clearEntitlementKeyCache, EntitlementRefresher, ENTITLEMENT_AUDIENCE, ENTITLEMENT_TYPE, planAdmission} from '../../../../apps/app/src/runtime/subscription-entitlement.ts';
@@ -11,9 +12,10 @@ const plan = view => view.kind === 'active' ? (view.status === 'past_due' ? 'pas
   : view.kind === 'unavailable' ? (view.reason === 'invalid' ? 'invalid' : 'unavailable') : view.kind;
 const admitted = view => ['admit', 'admit-with-warning'].includes(planAdmission(view));
 
-export async function authorizationRefinement() {
+export async function authorizationRefinement(extraSources = []) {
   const sources = ['apps/app/src/runtime/subscription-entitlement.ts', 'specs/quint/refinement/services/authorization.mjs', 'specs/quint/refinement/services/support.mjs'];
-  const driverHashes = captureInputs(sources);
+  const inputs = serviceInputs([...sources, ...extraSources]);
+  const driverHashes = captureInputs(inputs);
   const pair = await webcrypto.subtle.generateKey({name: 'ECDSA', namedCurve: 'P-256'}, true, ['sign', 'verify']);
   const key = {...await webcrypto.subtle.exportKey('jwk', pair.publicKey), kid: 'refinement-key'};
   const sign = async status => {
@@ -67,5 +69,5 @@ export async function authorizationRefinement() {
     refresher.stop(); assert.equal(refresher.controller, null);
     traces.push(trace);
   }
-  return checkTraces({model: 'ServiceAuthorization', sources, driverHashes, traces, scope: 'bounded-component', assumptions: ['Actual WebCrypto validates synthetic signed entitlements. Real source and timer ports determine views.', 'Two abstract ticks represent the observed signed-expiry boundary.', 'Managed-service routing and backend authorization need a separate adapter; these traces cover entitlement admission and refresh.']});
+  return checkTraces({model: 'ServiceAuthorization', sources: inputs, driverHashes, traces, scope: 'bounded-component', assumptions: ['Actual WebCrypto validates synthetic signed entitlements. Real source and timer ports determine views.', 'Two abstract ticks represent the observed signed-expiry boundary.', 'Managed-service routing and backend authorization need a separate adapter; these traces cover entitlement admission and refresh.']});
 }

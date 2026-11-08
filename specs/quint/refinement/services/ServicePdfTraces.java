@@ -10,14 +10,15 @@ public final class ServicePdfTraces {
   Bundle data=new Bundle();data.putParcelable("descriptor",descriptor);data.putString("request","00000000-0000-0000-0000-000000000001");data.putInt("page",index);
   Message message=Message.obtain(null,1);message.replyTo=replies;message.setData(data);target.send(message);
  }
- static boolean busy(IsolatedPdfService service)throws Exception {return ((java.util.concurrent.atomic.AtomicBoolean)Trace.read(service,"busy")).get();}
+ static Object field(Object value,String name)throws Exception {java.lang.reflect.Field field=ai.eliza.plugins.media.IsolatedPdfRenderService.class.getDeclaredField(name);field.setAccessible(true);return field.get(value);}
+ static boolean busy(IsolatedPdfService service)throws Exception {return ((java.util.concurrent.atomic.AtomicBoolean)field(service,"busy")).get();}
  public static void main(String[] args)throws Exception {
   JSONArray traces=new JSONArray();
   for(boolean protection:new boolean[]{true,false}) {
    SharedMemory.last=null;Bitmap.last=null;SharedMemory.protectionWorks=protection;Handler.immediate.clear();
    IsolatedPdfService service=new IsolatedPdfService();List<Bundle> replies=new ArrayList<>();
    Messenger reply=new Messenger(new Handler(Looper.getMainLooper(),m->{replies.add(m.getData());return true;}));
-   Messenger target=(Messenger)Trace.read(service,"endpoint");
+   Messenger target=(Messenger)field(service,"endpoint");
    Trace trace=new Trace("actual-pdf-worker-protection-"+protection,Trace.fields("busy",busy(service),"descriptor",false));trace.value.put("init",Trace.action("initFor",true));
    try {
     ParcelFileDescriptor input=new ParcelFileDescriptor();send(target,reply,input,0);

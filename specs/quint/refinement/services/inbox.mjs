@@ -1,3 +1,4 @@
+import {serviceInputs} from './source-inputs.mjs';
 import assert from 'node:assert/strict';
 import {createHash} from 'node:crypto';
 import {InboxOperation} from '../../../../apps/app/src/runtime/inbox-operation.ts';
@@ -26,9 +27,10 @@ function fixture(resultState) {
   const make = () => new InboxOperation({owner: 'owner-A', grantId: 'grant-A', active: () => active, store, client});
   return {disk, make, prepareGate, dispatchGate, prepares: () => prepares, dispatches: () => dispatches, retire: () => { active = false; }};
 }
-export async function inboxRefinement() {
+export async function inboxRefinement(extraSources = []) {
   const sources = ['apps/app/src/runtime/inbox-operation.ts', 'apps/app/src/runtime/inbox-attachment.ts', 'specs/quint/refinement/services/inbox.mjs', 'specs/quint/refinement/services/support.mjs'];
-  const driverHashes = captureInputs(sources);
+  const inputs = serviceInputs([...sources, ...extraSources]);
+  const driverHashes = captureInputs(inputs);
   const traces = [];
   for (const outcome of ['succeeded', 'rejected', 'outcome-unknown', 'prepared']) {
     const f = fixture(outcome), op = f.make();
@@ -64,5 +66,5 @@ export async function inboxRefinement() {
     trace.steps.push({label: 'owner invalidation prevents late review commit', action: action('switchOwner'), expect: {'s.dispatches': f.dispatches(), 's.exactReview': f.disk.read().review !== null}});
     traces.push(trace);
   }
-  return checkTraces({model: 'InboxDelivery', sources, driverHashes, traces, scope: 'bounded-component', assumptions: ['Real InboxOperation performs its own hashing, review validation, CAS and outcome parsing.', 'The controlled provider returns synthetic receipt data. Provider delivery and UI grant revalidation are separate obligations.', 'Persisted review left by retired ownership is hidden by UI ownership; this adapter checks rejection of late work and no dispatch.']});
+  return checkTraces({model: 'InboxDelivery', sources: inputs, driverHashes, traces, scope: 'bounded-component', assumptions: ['Real InboxOperation performs its own hashing, review validation, CAS and outcome parsing.', 'The controlled provider returns synthetic receipt data. Provider delivery and UI grant revalidation are separate obligations.', 'Persisted review left by retired ownership is hidden by UI ownership; this adapter checks rejection of late work and no dispatch.']});
 }

@@ -1,6 +1,7 @@
+import {serviceInputs} from './source-inputs.mjs';
 import assert from 'node:assert/strict';
 import {createCloudMaps} from '../../../../apps/app/src/maps/cloud-provider.ts';
-import {AlphaMapsDeviceNavigation} from '../../../../apps/app/src/maps/device-navigation.ts';
+import {DeviceMapsNavigation} from '../../../../apps/app/src/maps/device-navigation.ts';
 import {MapsController} from '../../../../.eliza/client-features/plugins/plugin-maps/src/client/state.ts';
 import {SavedPlaces} from '../../../../.eliza/client-features/plugins/plugin-maps/src/client/saved-places.ts';
 import {checkTraces, captureInputs} from '../check-traces.mjs';
@@ -25,12 +26,13 @@ function fixture({granted = true, fresh = true, direct = false, hold = null} = {
     async planFrom(origin) { controller.setOrigin(origin); await controller.planRoute(); }, guidance: () => guidance,
     startGuidance() { const route = controller.snapshot().route; if (route.phase !== 'ready') return false; guidance = {routeId: route.value.id, placeName: 'Destination', travelMode: 'walk', fix, rerouting: false, arrived: false}; return true; },
     async reroute(origin) { await controller.reroute(origin); }, async stop() { guidance = null; }, onRelease(listener) { releases.add(listener); return () => releases.delete(listener); }};
-  const nav = new AlphaMapsDeviceNavigation(surface, {providerId, attribution, current: () => current, directStart: async () => direct}, {now: () => now});
+  const nav = new DeviceMapsNavigation(surface, {providerId, attribution, current: () => current, directStart: async () => direct}, {now: () => now});
   return {nav, controller, surface, calls, retire() { current = false; nav.retire(); }};
 }
-export async function mapsRefinement() {
+export async function mapsRefinement(extraSources = []) {
   const sources = ['apps/app/src/maps/device-navigation.ts', 'apps/app/src/maps/navigation-fix.ts', 'apps/app/src/maps/cloud-provider.ts', '.eliza/client-features/plugins/plugin-maps/src/client/state.ts', 'specs/quint/refinement/services/maps.mjs', 'specs/quint/refinement/services/support.mjs'];
-  const driverHashes = captureInputs(sources);
+  const inputs = serviceInputs([...sources, ...extraSources]);
+  const driverHashes = captureInputs(inputs);
   const traces = [];
   for (const options of [{granted: false}, {fresh: false}, {direct: false}, {direct: true}]) {
     const f = fixture(options);
@@ -83,5 +85,5 @@ export async function mapsRefinement() {
       expect: {'s.phase': route.phase, 's.route': route.phase === 'ready' ? 1 : 0},
     }]});
   }
-  return checkTraces({model: 'MapsNavigation', sources, driverHashes, traces, scope: 'bounded-component', assumptions: ['Actual AlphaMapsDeviceNavigation and MapsController run against scripted provider/location/surface ports.', 'The surface represents UI ownership. Native GPS, background navigation and the full Maps adapter require separate instrumentation.', 'Route identity is mapped to its allocation index within each trace.']});
+  return checkTraces({model: 'MapsNavigation', sources: inputs, driverHashes, traces, scope: 'bounded-component', assumptions: ['Actual DeviceMapsNavigation and MapsController run against scripted provider/location/surface ports.', 'The surface represents UI ownership. Native GPS, background navigation and the full Maps adapter require separate instrumentation.', 'Route identity is mapped to its allocation index within each trace.']});
 }

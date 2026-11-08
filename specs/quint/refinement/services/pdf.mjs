@@ -2,9 +2,9 @@ import {fileURLToPath} from 'node:url';
 import {checkTraces, captureInputs} from '../check-traces.mjs';
 import {javaTraces} from '../native/java.mjs';
 import {pdfPlatform} from './pdf-platform.mjs';
-export async function pdfRefinement() {
-  const product = ['android/app/src/main/java/ai/elizaresearch/alphaphone/IsolatedPdfService.java'];
-  const sources = [...product, fileURLToPath(import.meta.url), 'specs/quint/refinement/services/ServicePdfTraces.java', 'specs/quint/refinement/services/pdf-platform.mjs', 'specs/quint/refinement/native/java.mjs', 'specs/quint/refinement/native/Trace.java'];
+export async function pdfRefinement(extraSources = []) {
+  const product = ['android/app/src/main/java/ai/elizaresearch/alphaphone/IsolatedPdfService.java', 'vendor/eliza/plugins/plugin-native-media/android/src/main/java/ai/eliza/plugins/media/IsolatedPdfRenderService.java', 'vendor/eliza/plugins/plugin-native-media/android/src/main/java/ai/eliza/plugins/media/PdfPageLimits.java'];
+  const sources = [...product, ...extraSources, fileURLToPath(import.meta.url), 'specs/quint/refinement/services/ServicePdfTraces.java', 'specs/quint/refinement/services/pdf-platform.mjs', 'specs/quint/refinement/native/java.mjs', 'specs/quint/refinement/native/Trace.java'];
   const driverHashes = captureInputs(sources), platform = pdfPlatform();
   try {
     const traces = javaTraces('../services/ServicePdfTraces.java', [...product, ...platform.paths], [], 'ai.elizaresearch.alphaphone.ServicePdfTraces');

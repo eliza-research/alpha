@@ -78,7 +78,8 @@
         "apps/app/src/runtime/managed-service-routes.ts",
         "apps/app/src/runtime/cloud-environment-selection.ts",
         "backend/managed-google-route-policy.ts",
-        "backend/managed-google-agent-broker.ts"
+        "backend/managed-google-agent-broker.ts",
+        "vendor/eliza/packages/cloud/sdk/src/subscription-entitlement.ts"
       ],
       "stateMapping": {
         "plan/validFor/refresh/failures": "EntitlementRefresher cached signed entitlement, expiry and background retry",
@@ -121,28 +122,36 @@
         "maxSamples": 1000,
         "maxSteps": 60,
         "seed": "123"
-      }
+      },
+      "sharedSources": [
+        "packages/cloud/sdk/src/subscription-entitlement.ts"
+      ]
     },
     {
       "sources": [
         "apps/app/src/runtime/google-accounts.ts",
-        "apps/app/src/runtime/google-connect-flow.ts",
         "apps/app/src/runtime/google-authorization.ts",
         "apps/app/src/runtime/gmail-account-selection.ts",
         "apps/app/src/runtime/gmail-grants.ts",
         "apps/app/src/runtime/gmail-mailbox.ts",
-        "android/app/src/main/java/ai/elizaresearch/alphaphone/GoogleConnectReturn.java"
+        "apps/app/src/runtime/google-workspace-return.ts",
+        "apps/app/src/runtime/google-connection-return.ts"
       ],
       "stateMapping": {
         "attempt/pendingEpoch/phase/returnMatched": "googleConnect waiting, matching state and foreground return",
         "account/readGrant/modifyGrant/calendarGrant": "selected connection and granted capabilities",
         "cacheVisible/review": "gmailGrantChange withdrawal and read-cache invalidation",
-        "disconnectSent/revoked": "one disconnect request followed by readback"
+        "disconnectSent/revoked": "one disconnect request followed by readback",
+        "nativeReturn/drainBusy/drainQueued/drainEpoch/published": "prepareGoogleWorkspaceReturn and watchGoogleWorkspaceReturn captured credential binding, serialized consume and one queued drain",
+        "calendarMapped/calendarCurrent/calendarPause/callbackRetirement/revokeCalls": "disconnectGoogleWithCalendar matching canonical Calendar source and independent bounded cleanup observations",
+        "backgrounded/refreshNeeded": "watchGoogleConnectionReturn requires an independently observed background before its one foreground refresh; explicit list refresh remains separate"
       },
       "abstractions": [
         "Two Google connections and two connect attempts represent arbitrary opaque IDs.",
         "Partial Gmail write capabilities are grouped as modify for the reviewed-operation gate. Calendar read/write differences are further modeled by CalendarSync.",
-        "A return requests fresh account readback and does not itself grant capabilities."
+        "A return requests fresh account readback and does not itself grant capabilities.",
+        "Native Google AppReturn readiness and captured return consumption replace the removed google-connect-flow module. A return publishes a refresh signal without granting account capabilities.",
+        "At most two model return publications and two revoke calls. Canonical select/resume linking is a separate untraced orchestration obligation."
       ],
       "path": "specs/quint/services/GoogleAccounts.qnt",
       "module": "GoogleAccounts",
@@ -154,20 +163,30 @@
         "grantWithdrawalTest",
         "disconnectUncertainTest",
         "explicitDisconnectRetryTest",
-        "retiredAttemptTest"
+        "retiredAttemptTest",
+        "coldReturnReadbackTest",
+        "queuedReturnDrainTest",
+        "staleNativeReturnTest",
+        "replacementReviewRetiresOldCleanupTest",
+        "newOwnerNativeReturnReadbackTest",
+        "foregroundSignalNeedsBackgroundTest",
+        "optionalCleanupCannotBlockPrivacyTest"
       ],
       "invariants": [
         "ReviewNeedsCurrentModify",
         "CacheNeedsRead",
         "ModifyIncludesRead",
         "RevokedAccountEmpty",
-        "TypeOK"
+        "TypeOK",
+        "CleanupIsCurrent",
+        "BoundedCallbackPublication"
       ],
       "bounds": {
         "maxSamples": 1000,
         "maxSteps": 60,
         "seed": "123"
-      }
+      },
+      "sharedSources": []
     },
     {
       "sources": [
@@ -237,7 +256,10 @@
         "apps/app/src/runtime/inbox-attachment.ts",
         "apps/app/src/runtime/gmail-grants.ts",
         "apps/app/src/runtime/reviewed-mail-context.ts",
-        "apps/app/src/prototype/inbox-cloud-adapter.ts"
+        "apps/app/src/prototype/inbox-cloud-adapter.ts",
+        "vendor/eliza/plugins/plugin-inbox/src/mailbox/operation-journal.ts",
+        "vendor/eliza/plugins/plugin-inbox/src/mailbox/attachments.ts",
+        "vendor/eliza/plugins/plugin-inbox/src/mailbox/retained-draft.ts"
       ],
       "stateMapping": {
         "phase/durable/opOwner/opGrant": "InboxOperationRecord and compareExchange before dispatch",
@@ -280,7 +302,12 @@
         "maxSamples": 1000,
         "maxSteps": 60,
         "seed": "123"
-      }
+      },
+      "sharedSources": [
+        "plugins/plugin-inbox/src/mailbox/operation-journal.ts",
+        "plugins/plugin-inbox/src/mailbox/attachments.ts",
+        "plugins/plugin-inbox/src/mailbox/retained-draft.ts"
+      ]
     },
     {
       "sources": [
@@ -292,7 +319,10 @@
         "apps/app/src/maps/guidance.ts",
         "apps/app/src/prototype/maps-adapter.ts",
         "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaMapsTransportPlugin.java",
-        "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaNavigationService.java"
+        "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaNavigationService.java",
+        "vendor/eliza/plugins/plugin-maps/src/client/device-navigation.ts",
+        "vendor/eliza/plugins/plugin-maps/src/client/state.ts",
+        "vendor/eliza/plugins/plugin-maps/src/client/cloud-provider.ts"
       ],
       "stateMapping": {
         "generation/requestGeneration/requestEpoch": "AlphaMapsDeviceNavigation.begin and route callback identity",
@@ -327,7 +357,12 @@
         "maxSamples": 1000,
         "maxSteps": 60,
         "seed": "123"
-      }
+      },
+      "sharedSources": [
+        "plugins/plugin-maps/src/client/device-navigation.ts",
+        "plugins/plugin-maps/src/client/state.ts",
+        "plugins/plugin-maps/src/client/cloud-provider.ts"
+      ]
     },
     {
       "sources": [
@@ -339,7 +374,11 @@
         "apps/app/src/browser/workflow-triggers.ts",
         "apps/app/src/prototype/workflow-authoring.ts",
         "apps/app/src/prototype/workflow-adapter.ts",
-        "backend/proposal-action.ts"
+        "backend/proposal-action.ts",
+        "vendor/eliza/packages/contracts/src/workflow-client.ts",
+        "vendor/eliza/packages/contracts/src/phone-workflow.ts",
+        "vendor/eliza/packages/contracts/src/workflow-device.ts",
+        "vendor/eliza/packages/contracts/src/workflow-intents.ts"
       ],
       "stateMapping": {
         "version/reviewedVersion/phase": "normalized authoring, validation and exact-version save/run",
@@ -376,21 +415,25 @@
         "maxSamples": 1000,
         "maxSteps": 60,
         "seed": "123"
-      }
+      },
+      "sharedSources": [
+        "packages/contracts/src/workflow-client.ts",
+        "packages/contracts/src/phone-workflow.ts",
+        "packages/contracts/src/workflow-device.ts",
+        "packages/contracts/src/workflow-intents.ts"
+      ]
     },
     {
       "sources": [
-        "apps/app/src/runtime/notice-owner-coordinator.ts",
         "apps/app/src/runtime/service-read-cache.ts",
         "apps/app/src/runtime/service-read-cache-store.ts",
         "apps/app/src/runtime/gmail-background.ts",
         "apps/app/src/runtime/workflow-notice-taps.ts",
         "apps/app/src/runtime/hosted-result-notices.ts",
-        "android/app/src/main/java/ai/elizaresearch/alphaphone/WorkflowNoticeRecovery.java",
-        "android/app/src/main/java/ai/elizaresearch/alphaphone/WorkflowNoticeIntentDedup.java",
         "android/app/src/main/java/ai/elizaresearch/alphaphone/WorkflowNoticeDelivery.java",
-        "android/app/src/main/java/ai/elizaresearch/alphaphone/GmailDelivery.java",
-        "android/app/src/main/java/ai/elizaresearch/alphaphone/GmailReconciliation.java"
+        "vendor/eliza/packages/contracts/src/notice-routes.ts",
+        "vendor/eliza/plugins/plugin-native-notifications/android/src/main/java/ai/eliza/plugins/notifications/NoticeCoordinator.java",
+        "vendor/eliza/plugins/plugin-native-notifications/android/src/main/java/ai/eliza/plugins/notifications/NoticeDelivery.java"
       ],
       "stateMapping": {
         "epoch/phase/retry": "NoticeOwnerCoordinator generation, immediate privacy transition and retryNeeded",
@@ -425,26 +468,31 @@
         "maxSamples": 1000,
         "maxSteps": 60,
         "seed": "123"
-      }
+      },
+      "sharedSources": [
+        "packages/contracts/src/notice-routes.ts",
+        "plugins/plugin-native-notifications/android/src/main/java/ai/eliza/plugins/notifications/NoticeCoordinator.java",
+        "plugins/plugin-native-notifications/android/src/main/java/ai/eliza/plugins/notifications/NoticeDelivery.java"
+      ]
     },
     {
       "sources": [
         "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaBrowserPlugin.java",
-        "android/app/src/main/java/ai/elizaresearch/alphaphone/BrowserPermissionRecords.java",
-        "android/app/src/main/java/ai/elizaresearch/alphaphone/BrowserPasskeys.java",
-        "android/app/src/main/java/ai/elizaresearch/alphaphone/BrowserHttpAuthOrigin.java",
-        "android/app/src/main/java/ai/elizaresearch/alphaphone/BrowserHttpAuthAutofill.java",
-        "android/app/src/main/java/ai/elizaresearch/alphaphone/BrowserSessionStore.java"
+        "vendor/eliza/plugins/plugin-native-browser-surface/android/src/main/java/ai/eliza/plugins/browsersurface/BrowserHttpAuthOrigin.java",
+        "vendor/eliza/plugins/plugin-native-browser-surface/android/src/main/java/ai/eliza/plugins/browsersurface/BrowserHttpAuthAutofill.java",
+        "vendor/eliza/plugins/plugin-native-browser-surface/android/src/main/java/ai/eliza/plugins/browsersurface/BrowserSessionStore.java",
+        "vendor/eliza/plugins/plugin-native-browser-surface/android/src/main/java/ai/eliza/plugins/browsersurface/BrowserTabHostPlugin.java",
+        "vendor/eliza/plugins/plugin-native-browser-surface/android/src/main/java/ai/eliza/plugins/browsersurface/BrowserSitePermissionRecord.java"
       ],
       "stateMapping": {
-        "privateTab/thirdParty/passkeys/phase": "build profile admission with readback of cookie and WebAuthn policy",
+        "privateTab/thirdParty/passkeys/phase": "Shared tab-host profile/cookie readback and multiprocess engine admission; fresh WebView WebAuthn disabled default",
         "decisions/prompt/permissionChoice/androidAllowed": "native site review then OS runtime permission, selected top-origin gate",
         "authAttempts/passwordPresent/passwordSubmitted": "bounded manual HTTP authentication and clearing values",
         "autofillExposed/authSave": "current STANDARD_WEBVIEW cannot attest challenge origin and exposes neither"
       },
       "abstractions": [
         "One tab, two exact origin classes and one representative sensor kind; sealed 200-origin record bounds remain covered by source tests.",
-        "Cookie/profile and passkey-policy mismatches refuse tab creation. Private tabs do not persist site decisions.",
+        "Cookie/profile or unavailable multiprocess engine admission refuses tab creation. The shared host relies on the fresh WebView disabled WebAuthn default without a settings readback. Private tabs do not persist site decisions.",
         "The current STANDARD_WEBVIEW engine cannot authenticate a challenge origin, so HTTP autofill remains disabled while manual input works. Shared hypothetical attested-engine behavior is excluded.",
         "permissionResult records a completed permission callback rather than a claim that an active sensor keeps running."
       ],
@@ -473,15 +521,20 @@
         "maxSamples": 1000,
         "maxSteps": 60,
         "seed": "123"
-      }
+      },
+      "sharedSources": [
+        "plugins/plugin-native-browser-surface/android/src/main/java/ai/eliza/plugins/browsersurface/BrowserTabHostPlugin.java",
+        "plugins/plugin-native-browser-surface/android/src/main/java/ai/eliza/plugins/browsersurface/BrowserSitePermissionRecord.java"
+      ]
     },
     {
       "sources": [
-        "android/app/src/main/java/ai/elizaresearch/alphaphone/BrowserReading.java",
-        "android/app/src/main/java/ai/elizaresearch/alphaphone/BrowserReadingWorld.java",
+        "vendor/eliza/plugins/plugin-native-browser-surface/android/src/main/java/ai/eliza/plugins/browsersurface/BrowserReadingWorld.java",
         "apps/app/src/browser/reading-review.ts",
-        "apps/app/src/browser/reading-sensitive.ts",
-        "apps/app/src/browser/content-question.ts"
+        "apps/app/src/browser/content-question.ts",
+        "vendor/eliza/plugins/plugin-native-browser-surface/android/src/main/java/ai/eliza/plugins/browsersurface/BrowserPageReading.java",
+        "vendor/eliza/plugins/plugin-native-browser-surface/android/src/main/java/ai/eliza/plugins/browsersurface/BrowserReviewedReading.java",
+        "vendor/eliza/plugins/plugin-native-browser-surface/src/page-reading.ts"
       ],
       "stateMapping": {
         "phase/isolated/ready/sensitive": "isolated-world readiness handshake, native extraction and sensitive-page refusal",
@@ -519,11 +572,16 @@
         "maxSamples": 1000,
         "maxSteps": 60,
         "seed": "123"
-      }
+      },
+      "sharedSources": [
+        "plugins/plugin-native-browser-surface/android/src/main/java/ai/eliza/plugins/browsersurface/BrowserPageReading.java",
+        "plugins/plugin-native-browser-surface/android/src/main/java/ai/eliza/plugins/browsersurface/BrowserReviewedReading.java",
+        "plugins/plugin-native-browser-surface/src/page-reading.ts"
+      ]
     },
     {
       "sources": [
-        "android/app/src/main/java/ai/elizaresearch/alphaphone/BrowserDownloads.java",
+        "vendor/eliza/plugins/plugin-native-browser-surface/android/src/main/java/ai/eliza/plugins/browsersurface/BrowserDownloads.java",
         "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaBrowserPlugin.java"
       ],
       "stateMapping": {
@@ -564,7 +622,10 @@
         "maxSamples": 1000,
         "maxSteps": 60,
         "seed": "123"
-      }
+      },
+      "sharedSources": [
+        "plugins/plugin-native-browser-surface/android/src/main/java/ai/eliza/plugins/browsersurface/BrowserDownloads.java"
+      ]
     },
     {
       "path": "specs/quint/services/ScanDocument.qnt",
@@ -577,12 +638,16 @@
         "apps/app/src/browser/scan-draft.ts",
         "apps/app/src/prototype/scan-pdf.ts",
         "apps/app/src/prototype/scan-searchable-review.ts",
-        "apps/app/src/prototype/scan-text-layer.ts"
+        "apps/app/src/prototype/scan-text-layer.ts",
+        "vendor/eliza/plugins/plugin-native-camera/src/scan-document.ts",
+        "patches/eliza/service-state-client-manifest.json",
+        "patches/eliza/scan-draft-ownership-client.patch"
       ],
       "sharedSources": [
         "plugins/plugin-files/src/documents/scan-draft.ts",
         "plugins/plugin-files/src/documents/scan-text-layer.ts",
-        "plugins/plugin-files/src/documents/scan-pdf.ts"
+        "plugins/plugin-files/src/documents/scan-pdf.ts",
+        "plugins/plugin-native-camera/src/scan-document.ts"
       ],
       "stateMapping": {
         "pages/exportPages": "ordered image/text-layer pairs and immutable export snapshot",
@@ -686,7 +751,9 @@
     },
     {
       "sources": [
-        "android/app/src/main/java/ai/elizaresearch/alphaphone/IsolatedPdfService.java"
+        "android/app/src/main/java/ai/elizaresearch/alphaphone/IsolatedPdfService.java",
+        "vendor/eliza/plugins/plugin-native-media/android/src/main/java/ai/eliza/plugins/media/IsolatedPdfRenderService.java",
+        "vendor/eliza/plugins/plugin-native-media/android/src/main/java/ai/eliza/plugins/media/PdfPageLimits.java"
       ],
       "stateMapping": {
         "isolated/busy/request": "permissionless service admission and single CAS-owned worker request",
@@ -725,7 +792,11 @@
         "maxSamples": 1000,
         "maxSteps": 60,
         "seed": "123"
-      }
+      },
+      "sharedSources": [
+        "plugins/plugin-native-media/android/src/main/java/ai/eliza/plugins/media/IsolatedPdfRenderService.java",
+        "plugins/plugin-native-media/android/src/main/java/ai/eliza/plugins/media/PdfPageLimits.java"
+      ]
     },
     {
       "path": "specs/quint/services/InboxCoordinator.qnt",
@@ -743,7 +814,13 @@
         "apps/app/src/runtime/inbox-attachment.ts",
         "apps/app/src/runtime/inbox-unsaved-record.ts",
         "apps/app/src/runtime/gmail-grants.ts",
-        "apps/app/src/prototype/assistant-draft-controller.ts"
+        "apps/app/src/prototype/assistant-draft-controller.ts",
+        "vendor/eliza/plugins/plugin-inbox/src/mailbox/review-controller.ts",
+        "vendor/eliza/plugins/plugin-inbox/src/mailbox/drafts-controller.ts",
+        "vendor/eliza/plugins/plugin-inbox/src/mailbox/grants.ts",
+        "vendor/eliza/packages/ui/src/state/durable-draft-controller.ts",
+        "patches/eliza/service-state-client-manifest.json",
+        "patches/eliza/inbox-state-client.patch"
       ],
       "components": [
         "specs/quint/services/InboxDelivery.qnt"
@@ -797,7 +874,139 @@
         "Current capability readback gates confirmation. Capability callbacks retain account, binding epoch and read token. Grant withdrawal during an already admitted run is deferred, so an in-flight request can remain uncertain and its receipt is retained.",
         "Cleanup requires a provider-confirmed current send. Edited copies are preserved and an older saved version is marked. The compatibility cleanup action summarizes a complete pass; per-write actions expose retained, shelf and saved CAS completion, lost replies and stale-binding compensation.",
         "The staged cleanup projection admits one cleanup invocation at a time. Its shelf represents one exact source draft. Arbitrary shelf collections and simultaneous independent cleanup invocations require further schedules."
+      ],
+      "sharedSources": [
+        "plugins/plugin-inbox/src/mailbox/review-controller.ts",
+        "plugins/plugin-inbox/src/mailbox/drafts-controller.ts",
+        "plugins/plugin-inbox/src/mailbox/grants.ts",
+        "packages/ui/src/state/durable-draft-controller.ts"
       ]
+    },
+    {
+      "path": "specs/quint/services/InboxProviderDrafts.qnt",
+      "module": "InboxProviderDrafts",
+      "init": "init",
+      "step": "step",
+      "invariant": "safety",
+      "sources": [
+        "apps/app/src/prototype/inbox-cloud-adapter.ts",
+        "apps/app/src/prototype/inbox-provider-controls.ts",
+        "apps/app/src/prototype/inbox-drafts.ts",
+        "apps/app/src/prototype/inbox-unsaved.ts",
+        "apps/app/src/prototype/assistant-draft-controller.ts",
+        "apps/app/src/runtime/inbox-operation.ts",
+        "apps/app/src/runtime/inbox-unsaved-record.ts",
+        "apps/app/src/runtime/inbox-local-store.ts",
+        "apps/app/src/runtime/gmail-grants.ts",
+        "apps/app/src/runtime/cloud-protocol.ts",
+        "vendor/eliza/plugins/plugin-inbox/src/mailbox/review-controller.ts",
+        "vendor/eliza/plugins/plugin-inbox/src/mailbox/drafts-controller.ts",
+        "vendor/eliza/plugins/plugin-inbox/src/mailbox/operation-journal.ts",
+        "vendor/eliza/plugins/plugin-inbox/src/mailbox/retained-draft.ts",
+        "patches/eliza/service-state-client-manifest.json",
+        "patches/eliza/inbox-state-client.patch"
+      ],
+      "components": [
+        "specs/quint/services/InboxCoordinator.qnt",
+        "specs/quint/services/InboxDelivery.qnt"
+      ],
+      "tests": [
+        "createAndAdoptTest",
+        "changedRemoteRefusesAdoptionTest",
+        "permissionLossDisablesForwardReviewTest",
+        "unknownDoesNotRepeatTest",
+        "threeReviewedOperationsTest",
+        "retiredReadCannotAdoptTest",
+        "failedLocalSaveKeepsReceiptTest",
+        "unknownReceiptRetirementNeedsReloadTest",
+        "changedForwardPartsRefuseAdoptionTest",
+        "preparedForwardKeepsReviewedBytesTest",
+        "changedSourceRequiresFreshReviewTest",
+        "nonAtomicReplacementUsesReviewedSnapshotTest",
+        "retainedForwardHasNoOriginalPartsTest"
+      ],
+      "invariants": [
+        "EachRequestOnce",
+        "InFlightHasRequest",
+        "DurableRequests",
+        "VerifiedReferences",
+        "ProviderBytesReviewed",
+        "ReviewBeforeConfirm",
+        "TypeOK"
+      ],
+      "bounds": {
+        "maxSamples": 1000,
+        "maxSteps": 80,
+        "seed": "123"
+      },
+      "abstractions": [
+        "Three immutable one-shot operation histories represent create, replacement and provider deletion. Local copies remain independent of provider deletion.",
+        "Forwarded originals are source-part IDs and a history/byte equivalence class. Provider metadata is captured at review; non-atomic replacement may overwrite later provider changes.",
+        "One lifecycle owner and one replacement owner, finite content/ref identities. Controlled external provider ports do not establish installed Gmail behavior.",
+        "One local adoption transaction is pending at a time. Private fields and imported-map members not directly observed remain explicit bounded-refinement gaps."
+      ],
+      "stateMapping": {
+        "Create/Replace/Delete": "Separate retained operation histories; completing one never resets another",
+        "copies": "Selected owner current, saved and retained content/reference/forward identity classes",
+        "capturedOwner/capturedEpoch/readMatches": "Provider digest read and local-adoption fences",
+        "inFlight/effectDone/network": "Per-request provider attempt and completion, separate from current UI binding",
+        "sourceHistory/sourceBytes/proposals/lastEffect": "Metadata snapshot at provider review and bytes applied by its one-shot effect"
+      },
+      "sharedSources": [
+        "plugins/plugin-inbox/src/mailbox/review-controller.ts",
+        "plugins/plugin-inbox/src/mailbox/drafts-controller.ts",
+        "plugins/plugin-inbox/src/mailbox/operation-journal.ts",
+        "plugins/plugin-inbox/src/mailbox/retained-draft.ts"
+      ]
+    },
+    {
+      "path": "specs/quint/services/CalendarLinkedSync.qnt",
+      "module": "CalendarLinkedSync",
+      "init": "init",
+      "step": "step",
+      "invariant": "safety",
+      "sources": [
+        "vendor/eliza/packages/contracts/src/calendar-linked-sync.ts",
+        "vendor/eliza/plugins/plugin-calendar/src/linked-sync/sync-controller.ts",
+        "vendor/eliza/plugins/plugin-calendar/src/linked-sync/linked-store.ts",
+        "vendor/eliza/plugins/plugin-calendar/src/linked-sync/google-sync-port.ts"
+      ],
+      "tests": [
+        "createTest",
+        "unknownCreateRecoveryTest",
+        "absentUnknownStaysQuarantinedTest",
+        "conditionalUpdateConflictTest",
+        "concurrentEditsTest",
+        "providerPullTest",
+        "localCasRefusedTest",
+        "missingProviderDeletesLocalTest",
+        "notAcceptedKeepsPendingTest",
+        "unchangedEtagCannotRecoverTest",
+        "discoveredProviderBecomesLinkedTest",
+        "pausedInFlightPreservesPendingTest",
+        "freshReviewRequiredTest"
+      ],
+      "invariants": [
+        "DurableMutation",
+        "SettledCheckpoint",
+        "Bounded",
+        "TypeOK"
+      ],
+      "stateMapping": {
+        "state/pending/common/checkpointRevision/checkpointEtag": "Actual LinkedCalendarEventRecord persisted by CalendarLinkedStore",
+        "local/remote/phase/writes/localWrites": "Real reconciler local and provider observations with separate mutation and checkpoint outcomes",
+        "reviewed/enabled/epoch": "Exact controller consent revision and current-owner fence"
+      },
+      "abstractions": [
+        "One linked event, three semantic-body equality classes, two revisions and at most two mutations.",
+        "Primitive storage and provider outcomes are external inputs. Generic reconciliation can be retried after known rejection. Quarantined state requires readback recovery.",
+        "The former CalendarSync outbox does not correspond to current main source and remains historical pending composition migration."
+      ],
+      "bounds": {
+        "maxSamples": 1000,
+        "maxSteps": 80,
+        "seed": "123"
+      }
     }
   ]
 }
