@@ -1,12 +1,12 @@
 import {anyAbortSignal} from './abort-signal';
-import {readLocalAgentStream} from './local-agent-stream';
+import {readLocalAgentStream,type StreamTextListener} from './local-agent-stream';
 export interface NativeStreamPort {
  addListener(name:string,callback:(event:any)=>void):Promise<{remove():Promise<void>}>;
  requestStream(input:Record<string,unknown>):Promise<{streamId:string}>;
  cancelStream(input:{streamId:string}):Promise<unknown>;
 }
 /** Closing IPC does not cancel committed effects. Interrupted sends require history reconciliation. */
-export async function streamNativeAgent(port:NativeStreamPort,input:{path:string;ownerId:string;headers:Record<string,string>;body:string},signal:AbortSignal,onText:(text:string)=>void,onReplyReady?:(results:readonly unknown[]|undefined)=>void){
+export async function streamNativeAgent(port:NativeStreamPort,input:{path:string;ownerId:string;headers:Record<string,string>;body:string},signal:AbortSignal,onText:StreamTextListener,onReplyReady?:(results:readonly unknown[]|undefined)=>void){
  const bounded=anyAbortSignal([signal,AbortSignal.timeout(120000)]),streamId=crypto.randomUUID();
  bounded.throwIfAborted();
  let active=true,started=false,responded=false,terminal=false,bytes=0;

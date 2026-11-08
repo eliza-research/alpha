@@ -18,6 +18,7 @@ export {
   type AssistantPorts,
   type AssistantReply,
   type AssistantState,
+  type AssistantTextFrame,
   type AssistantTiming,
   type EndpointDecision,
   type EndpointOutcome,

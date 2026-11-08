@@ -12,7 +12,7 @@ import { registerPlugin } from '../platform-plugins';
 import { Capacitor } from '@capacitor/core';
 import type { VerifiedSession, ChatChannel } from './alpha-client';
 import { conversationViewHeaders, conversationRoomId, messagePageQuery, turnAbortOutcome, turnAbortPath, type MessagePage, type RemoteChatReply, type RemoteConversation, type TurnAbortOutcome } from './remote-protocol';
-import { readLocalAgentStream } from './local-agent-stream';
+import { readLocalAgentStream, type StreamTextListener } from './local-agent-stream';
 import { streamNativeAgent, type NativeStreamPort } from './local-agent-native-stream';
 import { subscribeNativeVoiceEvents, type NativeVoiceEventPort } from './local-agent-native-events';
 
@@ -36,7 +36,7 @@ export interface LocalAgentBridge {
   residentAttachment?(input:{credentialId?:string}):Promise<{attachable?:unknown;reason?:unknown;bindingGuard?:unknown}>;
   configureCloudProvider?(input:{credentialId:string;model:string}):Promise<unknown>;
   request(input: { path: string; audioBase64?:string;requestId?:string;ownerId?:string; method: LocalAgentMethod; headers: Record<string,string>; body?: string; timeoutMs: number }, signal?:AbortSignal): Promise<{status:number;body?:string}>;
-  stream?(input:{path:string;ownerId:string;headers:Record<string,string>;body:string},signal:AbortSignal,onText:(text:string)=>void,onReplyReady?:(results:readonly unknown[]|undefined)=>void):Promise<RemoteChatReply>;
+  stream?(input:{path:string;ownerId:string;headers:Record<string,string>;body:string},signal:AbortSignal,onText:StreamTextListener,onReplyReady?:(results:readonly unknown[]|undefined)=>void):Promise<RemoteChatReply>;
   /** Cloud read-aloud as it arrives: binary audio/mpeg, or the JSON envelope of a refusal. */
   speechAudio?(input:{path:'/api/tts/cloud';ownerId:string;requestId:string;body:string},signal:AbortSignal):Promise<Response>;
 }
@@ -398,7 +398,7 @@ export class LocalAgentProtocol {
    * repeated once without streaming under the same clientMessageId: the agent returns the durable
    * outcome recorded for that key (or waits for the in-flight turn) and never runs a second turn.
    * Stop and connection changes are never retried. */
-  async send(id:string,text:string,options:{metadata?:Record<string,unknown>;clientMessageId?:string;channelType?:ChatChannel;onReplyReady?:(results:readonly unknown[]|undefined)=>void;signal?:AbortSignal;onText?:(text:string)=>void}={}):Promise<RemoteChatReply> {
+  async send(id:string,text:string,options:{metadata?:Record<string,unknown>;clientMessageId?:string;channelType?:ChatChannel;onReplyReady?:(results:readonly unknown[]|undefined)=>void;signal?:AbortSignal;onText?:StreamTextListener}={}):Promise<RemoteChatReply> {
     const path=`/api/conversations/${encodeURIComponent(identifier(id))}/messages`;
     const headers=conversationViewHeaders(options.metadata);
     const body={text,channelType:options.channelType??'DM',metadata:options.metadata,clientMessageId:options.clientMessageId};
@@ -410,7 +410,7 @@ export class LocalAgentProtocol {
       try{
         valid();
         const result=await this.bridge.stream({path:`${path}/stream`,ownerId:session.ownerId,headers:{...this.deviceHeaders,...headers},
-          body:JSON.stringify({...body,streamProtocol:'delta-v2'})},signal,value=>{valid();options.onText!(value);},results=>{valid();options.onReplyReady?.(results);});
+          body:JSON.stringify({...body,streamProtocol:'delta-v2'})},signal,(value,frame)=>{valid();options.onText!(value,frame);},results=>{valid();options.onReplyReady?.(results);});
         valid();return result;
       }catch(error){
         valid();
