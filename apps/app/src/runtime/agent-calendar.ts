@@ -7,7 +7,7 @@ export interface CalendarPreservation {
  capture(signal:AbortSignal):Promise<LegacyCalendarCapture>;
  retainedReadOnly(ownerKey:string,fingerprint:string,signal:AbortSignal):Promise<boolean>;
  /** Only an explicit owner transition action may call this; never a refresh. */
- confirmReadOnly?(ownerKey:string,fingerprint:string,signal:AbortSignal):Promise<void>;
+ confirmReadOnly?(ownerKey:string,fingerprint:string,signal:AbortSignal,current:()=>void):Promise<void>;
 }
 export type AgentCalendarState={ownerKey:string|null;status:'disconnected'|'transition-required'|'legacy-recovery'|'loading'|'ready'|'partial'|'unavailable'|'error';feed:LifeOpsCalendarFeed|null;calendars:LifeOpsCalendarSummary[];next:LifeOpsNextCalendarEventContext|null;nextFresh:boolean;legacy:LegacyCalendarCapture|null;error:string|null;mutating:boolean};
 export const calendarOwnerKey=(p:AppRecordPort)=>JSON.stringify([new URL(p.identity.origin).origin,p.identity.ownerId,p.identity.agentId]);
@@ -87,11 +87,13 @@ export class AgentCalendar {
   }
   finally{if(this.reading===controller){this.reading=undefined;const pending=this.deferredRefresh;this.deferredRefresh=undefined;if(pending&&epoch===this.epoch)void this.refresh(pending);else this.publish({});}}
  }
- async confirmLegacyRetention(){
+ async confirmLegacyRetention(reviewCurrent=()=>true,signal=new AbortController().signal){
   const port=this.port(),previous=this.value.legacy;if(!port||!previous||!this.preservation.confirmReadOnly)throw Error('Calendar transition review is required');
-  if(!port.current())throw Error('Calendar owner or agent changed');const controller=new AbortController(),fresh=await this.preservation.capture(controller.signal);if(!port.current())throw Error('Calendar owner or agent changed');
-  if(!fresh.readable||fresh.pending||fresh.fingerprint!==previous.fingerprint||calendarOwnerKey(port)!==this.value.ownerKey)throw Error('Saved app calendar changed; review preservation again');
-  await this.preservation.confirmReadOnly(calendarOwnerKey(port),fresh.fingerprint,controller.signal);if(!port.current())throw Error('Calendar owner or agent changed');
+  const ownerKey=calendarOwnerKey(port);
+  const current=()=>{signal.throwIfAborted();if(!reviewCurrent()||!port.current()||ownerKey!==this.value.ownerKey)throw Error('Calendar owner or agent changed');};
+  current();const fresh=await this.preservation.capture(signal);current();
+  if(!fresh.readable||fresh.pending||fresh.fingerprint!==previous.fingerprint||this.value.legacy?.fingerprint!==previous.fingerprint)throw Error('Saved app calendar changed; review preservation again');
+  await this.preservation.confirmReadOnly(ownerKey,fresh.fingerprint,signal,current);current();
  }
  selection(eventKey:string){
   const e=this.value.feed?.events.find(e=>calendarEventKey(e)===eventKey);if(!e||typeof e.metadata.etag!=='string'||!e.metadata.etag.trim()||!e.grantId)return;

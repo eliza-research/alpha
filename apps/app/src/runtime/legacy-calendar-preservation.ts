@@ -3,7 +3,7 @@ import type {CalendarPreservation,LegacyCalendarCapture} from './agent-calendar'
 export interface LegacyCalendarApproval {
  has(ownerKey:string,fingerprint:string,signal:AbortSignal):Promise<boolean>;
  /** Existing reviewed preference/retention storage owns this marker, not calendar data. */
- retain(ownerKey:string,fingerprint:string,signal:AbortSignal):Promise<void>;
+ retain(ownerKey:string,fingerprint:string,signal:AbortSignal,current:()=>void):Promise<void>;
 }
 /** Capture only. BrowserDomainDocument.capture never imports/resets/writes old data. */
 export function legacyCalendarPreservation(approval:LegacyCalendarApproval):CalendarPreservation{
@@ -17,6 +17,6 @@ export function legacyCalendarPreservation(approval:LegacyCalendarApproval):Cale
    return{fingerprint,present,readable,pending,records:readable?structuredClone(records):[]} satisfies LegacyCalendarCapture;
   },
   retainedReadOnly:(owner,fingerprint,signal)=>approval.has(owner,fingerprint,signal),
-  confirmReadOnly:(owner,fingerprint,signal)=>approval.retain(owner,fingerprint,signal),
+  confirmReadOnly:(owner,fingerprint,signal,current)=>approval.retain(owner,fingerprint,signal,current),
  };
 }
