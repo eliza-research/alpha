@@ -2,13 +2,13 @@
   "schema": 1,
   "repository": "elizaOS/eliza",
   "base": "develop",
-  "baseCommit": "626c07dba08f2f8cebf0d4519159b885f5a78431",
-  "head": "3a6d22670eb38eb23827942657a6b1f886daa38d",
+  "baseCommit": "cf178c5bd3bad3c604bb1c430e6fd55f3eb74957",
+  "head": "4787d51a142c63c98371c832997184c53f7218d3",
   "recordedAt": "2026-11-08",
-  "command": "gh api repos/elizaOS/eliza/compare/develop...3a6d22670eb38eb23827942657a6b1f886daa38d",
+  "command": "gh api repos/elizaOS/eliza/compare/develop...4787d51a142c63c98371c832997184c53f7218d3",
   "status": "diverged",
-  "aheadBy": 16,
-  "behindBy": 4,
+  "aheadBy": 17,
+  "behindBy": 5,
   "mergeBase": "a744332dd2ad7437d0f0d38707c6e579d21a67f6",
   "pinOnlyCommits": [
     {
@@ -70,6 +70,10 @@
     {
       "sha": "3a6d22670eb38eb23827942657a6b1f886daa38d",
       "subject": "Restore the cancellable, fenced speech output warm-up"
+    },
+    {
+      "sha": "4787d51a142c63c98371c832997184c53f7218d3",
+      "subject": "Report what was heard when a streamed voice reply fails before confirmation"
     }
   ],
   "pullRequests": []

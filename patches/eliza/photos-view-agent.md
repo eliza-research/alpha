@@ -12,7 +12,7 @@ negotiated list (and to `config/alpha-product.json` `features.capabilities`) in 
 brings this patch.
 
 Base: elizaOS/eliza `475a8d59dc1811c2cde093613519906a5a3f6457`, where it was generated. The pin in
-`upstream.lock.json` is now `3a6d22670e`; `git apply --check` of this patch against that checkout
+`upstream.lock.json` is now `4787d51a14`; `git apply --check` of this patch against that checkout
 passes (2026-11-07), and no file it touches changed between the two commits. Apply from the eliza repo root with `git apply`. Written and tested at
 `0594fc72da` on 2026-11-06; every file it touches is byte-identical at `475a8d59dc`, so the
 regenerated patch is unchanged. Re-tested at `475a8d59dc` on 2026-11-07 (see below).

@@ -4,7 +4,7 @@ Two explicit native patches admitted by `native-manifest.json` (applied by
 `scripts/prepare-patched-native.mjs` into the staged Android sources; the vendor checkout is
 never edited). Generated at elizaOS/eliza `475a8d59dc1811c2cde093613519906a5a3f6457` (regenerated
 unchanged from `0594fc72da`: their targets are byte-identical at both commits). `native-manifest.json`
-now admits them at `baseCommit` `3a6d22670e`, where every target's recorded `beforeSha256` still
+now admits them at `baseCommit` `4787d51a14`, where every target's recorded `beforeSha256` still
 matches. Both are
 upstream proposals; once merged and the pin moves, drop them from the manifest.
 

@@ -1,14 +1,14 @@
 # On-device speech: measurements and decisions, 2026-11-05
 
 Device: Pixel 10a `stallion`, `ro.soc.model` Tensor G4, Alpha userdebug image. Engine
-`b3eb2bf63b`, measured at Eliza pin `36236fc059`. The pin is now `3a6d22670e` (develop with the
+`b3eb2bf63b`, measured at Eliza pin `36236fc059`. The pin is now `4787d51a14` (develop with the
 streaming changes, `b25d8aef29`, merged with the Maps admission branch, plus the shared speech changes)
 with engine `6337fd4c4b` (same model bytes); that engine's qualification is recorded separately in the
 voice record. Raw results are under
 [evidence](evidence/on-device-speech-2026-11-05). Everything here is development evidence from
 a dirty tree and a debug APK: not release, AOSP image or user acceptance. The defect 1 fix is on main.
 `SpeechLeadTrim`, `SpeechOutputWarmup`, `FirstWriteSpeechOutput` and per-sentence speech of a streamed
-reply now live in the shared speech bridge and voice session at the pin (`3a6d22670e`), which Alpha
+reply now live in the shared speech bridge and voice session at the pin (`4787d51a14`), which Alpha
 drives (`warmSpeechOutput`, `onText`). A streamed sentence is spoken before the reply is confirmed only
 from confirmed model text of a reply the stream has proven direct; see [streamed reply speech](#streamed-reply-speech).
 
@@ -165,7 +165,7 @@ and library hashes that ran. On November 7 the owner accepted on-device speech o
 the separate-day latency estimate below; there was no spoken turn on versionCode 40 and no same-day A/B.
 
 The qualify app ran the shared `ai.eliza.voice` Java at `b25d8aef29`. By the current pin
-(`3a6d22670e`) that Java changed: `ParadeeVoice` (a per-request cancel path around every
+(`4787d51a14`) that Java changed: `ParadeeVoice` (a per-request cancel path around every
 non-streaming synthesis call, which the round-trip test calls), `OnDeviceRecognizer`,
 `ElizaInferencePlugin`, `LocalSpeechBridgePlugin` and the new `SpeechLeadTrim`,
 `SpeechOutputWarmup` and `FirstWriteSpeechOutput`, plus `consumer.gradle` and the builder. The engine

@@ -11,7 +11,7 @@ yet offer `notes.organize.v1`; add it to the negotiated list (and to `config/alp
 `features.capabilities`) in the pin bump that brings this patch.
 
 Base: elizaOS/eliza `475a8d59dc1811c2cde093613519906a5a3f6457`, where it was generated. The pin in
-`upstream.lock.json` is now `3a6d22670e`; `git apply --check` of this patch against that checkout
+`upstream.lock.json` is now `4787d51a14`; `git apply --check` of this patch against that checkout
 passes (2026-11-07), and no file it touches changed between the two commits. Apply from the eliza repo root with `git apply`. The patch was first
 written at `912f972e58` and regenerated at `0594fc72da`; every file it touches is
 byte-identical at all three commits, so the hunks are unchanged. It was regenerated and
