@@ -23,12 +23,13 @@ const formats = [undefined, {kind: 'list', data: {}}, {kind: 'list', data: {item
 const textOf = value => {const index = textValues.indexOf(value); assert.notEqual(index, -1, 'All source text has an explicit equality class'); return index;};
 const idOf = id => id === 'note-one' ? 1 : id === 'note-two' ? 2 : 0;
 
-async function compile(extraSources) {
+export async function compileCanonicalNotesEditor(extraSources) {
   const source = '.eliza/client-features/plugins/plugin-notes/src/client/notes-editor.ts';
   const built = await build({absWorkingDir: root, stdin: {resolveDir: root, contents: `
     export {NotesEditor,__quintInspectSaved} from './${source}';
     export {CanonicalNotesController,CANONICAL_NOTES_INVALIDATED_EVENT} from './apps/app/src/prototype/canonical-notes-controller.ts';
-    export {projectNoteForModel} from './.eliza/client-features/plugins/plugin-notes/src/types.ts';
+    export {projectNoteForModel,reconstructNoteContent} from './.eliza/client-features/plugins/plugin-notes/src/types.ts';
+    export {authoredNoteText} from './.eliza/client-features/plugins/plugin-notes/src/note-authored.ts';
   `}, bundle: true, format: 'cjs', platform: 'node', write: false, metafile: true,
     plugins: [{name: 'observe-owned-save-snapshot', setup(builder) {
       builder.onLoad({filter: /\/notes-editor\.ts$/}, args => {
@@ -48,7 +49,7 @@ async function compile(extraSources) {
   return {exports: module.exports, sources};
 }
 
-async function fixture(module) {
+export async function createCanonicalNotesEditorFixture(module) {
   const f = await createCanonicalNotesFixture(module), tokens = new Map();
   let review = false, committed = {id: 0, token: 0, revision: 0};
   const tokenOf = token => {if (!token) return 0; if (!tokens.has(token)) tokens.set(token, tokens.size + 1); return tokens.get(token);};
@@ -101,10 +102,10 @@ async function fixture(module) {
 }
 
 export async function checkCanonicalNotesDraft(extraSources = []) {
-  const module = await compile(extraSources), traces = [];
+  const module = await compileCanonicalNotesEditor(extraSources), traces = [];
   for (const scenario of ['save', 'same-version-queue', 'late-edit', 'queued-edit', 'queued-clear', 'failed-newer-queue', 'close-held', 'replace-held', 'failed-save', 'owner-held',
     'empty-text', 'empty-list', 'empty-voice', 'empty-link', 'rich-list', 'rich-voice', 'rich-link', 'new-fields', 'new-edit-held', 'metadata-only', 'whitespace', 'color-save', 'verbatim-lf', 'empty-existing', 'external-clean', 'external-dirty', 'external-delete', 'invalid-patch', 'missing-note']) {
-    const f = await fixture(module), t = trace(scenario, f.observe());
+    const f = await createCanonicalNotesEditorFixture(module), t = trace(scenario, f.observe());
     const step = (label, action) => checkpoint(t, label, action, f.observe());
     try {
       const empty = scenario.startsWith('empty-') && scenario !== 'empty-existing' || ['rich-list', 'rich-voice', 'rich-link', 'new-fields', 'new-edit-held', 'metadata-only', 'whitespace'].includes(scenario);

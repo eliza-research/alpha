@@ -864,5 +864,148 @@
       "Two canonical records, five draft token identities, four versions and finite text/format classes. Current save snapshots and queued newer edits retain independent identity.",
       "Delete/restore and UI selection continuations remain separate obligations. Captured save locals are observed through a read-only build-time WeakMap."
     ]
+  },
+  {
+    "path": "specs/quint/application/CanonicalNotesFeedback.qnt",
+    "module": "CanonicalNotesFeedback",
+    "init": "init",
+    "step": "step",
+    "invariant": "safety",
+    "tests": [
+      "acceptedReadClearsReadFailureTest",
+      "dirtyReadFailureRetainedTest",
+      "uncertainReadbackKeepsReviewTest",
+      "explicitDiscardReclassifiesReadFailureTest",
+      "ownedCommitClearsUncertaintyTest"
+    ],
+    "sources": [
+      "apps/app/src/prototype/canonical-notes-ui.ts",
+      "apps/app/src/prototype/canonical-notes-controller.ts",
+      ".eliza/client-features/plugins/plugin-notes/src/client/notes-editor.ts",
+      ".eliza/client-features/plugins/plugin-notes/src/client/notes-controller.ts"
+    ],
+    "abstractions": [
+      "Finite UI feedback event machine for phase, review reason and failure origin, with an interaction-failure history monitor. Actual controller/editor callbacks drive source traces.",
+      "Collection rendering, navigation waits, dictation/recording and Calendar handoffs remain separate state machines."
+    ]
+  },
+  {
+    "path": "specs/quint/application/CanonicalNotesMutation.qnt",
+    "module": "CanonicalNotesMutation",
+    "init": "init",
+    "step": "step",
+    "invariant": "safety",
+    "tests": [
+      "dirtyDeleteSavesFirstTest",
+      "changedTokenCancelsDeleteTest",
+      "queuedSaveBlocksDeleteTest",
+      "restoreRevisionTest",
+      "emptyCanonicalRecordCanDeleteTest",
+      "lostOwnerCannotPublishTest"
+    ],
+    "sources": [
+      "apps/app/src/prototype/canonical-notes-editor.ts",
+      ".eliza/client-features/plugins/plugin-notes/src/client/notes-editor.ts",
+      ".eliza/client-features/plugins/plugin-notes/src/client/notes-controller.ts",
+      ".eliza/client-features/plugins/plugin-notes/src/client/notes-api.ts"
+    ],
+    "abstractions": [
+      "Two record identities, five editor tokens and four edit versions/revisions. One remove/restore continuation, rejected concurrent probes and independent save queue use settled promise macrosteps.",
+      "Server response membership is controlled input. Provider mutation, revision allocation, durability, arbitrary reentrant hooks and multiple simultaneous remove continuations remain separate obligations."
+    ]
+  },
+  {
+    "path": "specs/quint/application/CanonicalNotesView.qnt",
+    "module": "CanonicalNotesView",
+    "init": "init",
+    "step": "step",
+    "invariant": "safety",
+    "tests": [
+      "newDraftOverlaysFirstTest",
+      "canonicalDraftReplacesInPlaceTest",
+      "localHandlesNeverReachRowsTest",
+      "ownerLossMasksRetainedRowsTest",
+      "phaseDrainsNavigationWaitersTest",
+      "retirementClearsProjectionTest"
+    ],
+    "sources": [
+      "apps/app/src/prototype/canonical-notes-ui.ts",
+      "apps/app/src/prototype/canonical-notes-controller.ts",
+      ".eliza/client-features/plugins/plugin-notes/src/client/notes-editor.ts",
+      ".eliza/client-features/plugins/plugin-notes/src/client/notes-controller.ts"
+    ],
+    "abstractions": [
+      "Source-bound projection of base and draft rows, current-owner public visibility, synthetic draft identities, Trash collection and navigation waiter admission/drain.",
+      "Canonical snapshot and editor callback inputs have separate controller/draft models. Row payload uses bounded text, kind, pin, folder and local-handle classes. Recorder, dictation, Calendar handoff and full competing navigation policies remain obligations."
+    ]
+  },
+  {
+    "path": "specs/quint/application/FilesBrowserController.qnt",
+    "module": "FilesBrowserController",
+    "init": "init",
+    "step": "step",
+    "invariant": "safety",
+    "tests": [
+      "staleDenialKeepsCurrentListingTest",
+      "staleGrantCannotReviveAccessTest",
+      "retiredListingCannotPublishTest",
+      "staleAgentReadDoesNotShareTest"
+    ],
+    "sources": [
+      "apps/app/src/prototype/selection-adapter.ts",
+      ".eliza/client-features/plugins/plugin-files/src/browser/files-browser-adapter.ts",
+      ".eliza/client-features/plugins/plugin-files/src/browser/storage-model.ts",
+      ".eliza/client-features/plugins/plugin-files/src/browser/files-agent-contract.ts",
+      "patches/eliza/files-list-identity-client.patch",
+      "patches/eliza/files-list-identity-client-manifest.json"
+    ],
+    "abstractions": [
+      "Installed folder reader, current access/volume readback and registered agent share admission over deferred storage ports. Two folders, three entries, two volumes and six state-read identities.",
+      "Category/Trash aggregation, filters, selection, preview, mutation dialogs, native watch ownership and durable provider effects remain explicit extensions."
+    ]
+  },
+  {
+    "path": "specs/quint/application/PhotosWindow.qnt",
+    "module": "PhotosWindow",
+    "init": "init",
+    "step": "step",
+    "invariant": "safety",
+    "tests": [
+      "hiddenFirstAccessCannotReadTest",
+      "hiddenPageCannotPublishTest",
+      "coalescedRefreshStartsAgainTest",
+      "moreMergesExistingIdentityTest",
+      "disposedAccessSettlesTest"
+    ],
+    "sources": [
+      "apps/app/src/prototype/camera-adapter.ts",
+      ".eliza/client-features/packages/ui/src/mobile-shell/photos-view.ts"
+    ],
+    "abstractions": [
+      "Native Photos catalog access/window request epochs, serialized/coalesced reads, pagination/reload window and hidden/disposed completion fencing. Three media identities and bounded provider page classes.",
+      "Album, Trash, counts, selection/viewer, thumbnail, reviews and provider persistence remain explicit obligations. Browser media follows a separate lifecycle."
+    ]
+  },
+  {
+    "path": "specs/quint/application/PhotosTrash.qnt",
+    "module": "PhotosTrash",
+    "init": "init",
+    "step": "step",
+    "invariant": "safety",
+    "tests": [
+      "resumeReloadsClearedTrashTest",
+      "hiddenReplyCannotRepopulateTest",
+      "resumedPendingReadQueuesCurrentTest",
+      "oldHiddenFailureIsQuietTest",
+      "disposedReplyDoesNotPublishTest"
+    ],
+    "sources": [
+      "apps/app/src/prototype/camera-adapter.ts",
+      ".eliza/client-features/packages/ui/src/mobile-shell/photos-view.ts"
+    ],
+    "abstractions": [
+      "Native Photos Trash read lifecycle with coalesced requests, current epochs, hidden loaded-marker invalidation and resume. Three media identities and four request identities.",
+      "Deletion/restore effects, selection, native retention and browser Trash are separate obligations."
+    ]
   }
 ]

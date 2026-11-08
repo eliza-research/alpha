@@ -19,12 +19,19 @@ import {filesPreview} from './files-preview.mjs';
 import {runPermissionChoicesRefinement} from './permission-choices.mjs';
 import {checkCanonicalNotesController} from './canonical-notes-controller.mjs';
 import {checkCanonicalNotesDraft} from './canonical-notes-draft.mjs';
+import {checkCanonicalNotesFeedback} from './canonical-notes-feedback.mjs';
+import {checkCanonicalNotesMutation} from './canonical-notes-mutation.mjs';
+import {checkCanonicalNotesView} from './canonical-notes-view.mjs';
+import {checkFilesBrowserController} from './files-browser-coordinator.mjs';
+import {checkPhotosWindow} from './photos-window.mjs';
+import {checkPhotosTrash} from './photos-trash.mjs';
 
 const adapters = [application, shellNavigation, startupPermissions, assistantConversation, notesLifecycle,
   browserSession, credentialVault, developmentSurfaces, filesAndSharing, preferences, durableStore,
   permissionWalkthrough, developmentDevice, permanentVoiceDeletion, developmentHost, filesTree,
   calendarPresentation, draftDispatch, notificationCollection, callbackLanding,
-  runStartupPermissionsCoordinatorRefinement, checkVaultCoordinator, checkNotesCoordinator, listFocus, checkRecoveryUI, checkShellCoordinator, checkNativeViewSubscription, filesPreview, runPermissionChoicesRefinement, checkCanonicalNotesController, checkCanonicalNotesDraft];
+  runStartupPermissionsCoordinatorRefinement, checkVaultCoordinator, checkNotesCoordinator, listFocus, checkRecoveryUI, checkShellCoordinator, checkNativeViewSubscription, filesPreview, runPermissionChoicesRefinement, checkCanonicalNotesController, checkCanonicalNotesDraft,
+  checkCanonicalNotesFeedback, checkCanonicalNotesMutation, checkCanonicalNotesView, checkFilesBrowserController, checkPhotosWindow, checkPhotosTrash];
 
 /** Component traces, with remaining obligations kept explicit for the aggregate report. */
 export async function runApplicationRefinement() {
