@@ -1,13 +1,15 @@
 import assert from 'node:assert/strict';
 import {build} from 'esbuild';
+import {existsSync} from 'node:fs';
 import {chromium} from '@playwright/test';
-import {createReadingSupport} from '../../../../apps/app/src/browser/reading-capability.ts';
 import {checkTraces, captureInputs} from '../check-traces.mjs';
-import {action, deferred} from './support.mjs';
+import {action, deferred, sourceModule} from './support.mjs';
 
 export async function readingRefinement() {
-  const sources = ['apps/app/src/browser/reading-capability.ts', 'apps/app/src/browser/content-question.ts', 'specs/quint/refinement/services/reading.mjs', 'specs/quint/refinement/services/support.mjs'];
-  const driverHashes = captureInputs(sources);
+  const sources = ['.eliza/client-features/plugins/plugin-native-browser-surface/src/page-reading.ts', 'apps/app/src/browser/content-question.ts', 'specs/quint/refinement/services/reading.mjs', 'specs/quint/refinement/services/support.mjs'];
+  let driverHashes = captureInputs(sources);
+  const capture = inputs => { sources.push(...inputs.filter(input => !sources.includes(input))); const next = captureInputs(sources); for (const [path, hash] of Object.entries(driverHashes)) assert.equal(next[path], hash, `Source changed before import: ${path}`); driverHashes = next; };
+  const {createReadingSupport} = await sourceModule('.eliza/client-features/plugins/plugin-native-browser-surface/src/page-reading.ts', {}, capture);
   const traces = [];
   {
     const gate = deferred(); let queries = 0;
@@ -17,8 +19,9 @@ export async function readingRefinement() {
     traces.push({name: 'unsupported native capability deduplicates concurrent probes', expect: {'s.draft': false}, steps: [{label: 'real explicit unavailable capability refuses isolated reading', action: action('unsupported'), expect: {'s.isolated': probe.state === 'available'}}]});
     assert.equal(queries, 1);
   }
-  const compiled = await build({stdin: {contents: 'import {reviewContentQuestion} from "./apps/app/src/browser/content-question.ts";window.reviewContentQuestion=reviewContentQuestion;', resolveDir: process.cwd()}, bundle: true, write: false, platform: 'browser', format: 'iife', define: {'import.meta.env': '{}'},
+  const compiled = await build({stdin: {contents: 'import {reviewContentQuestion} from "./apps/app/src/browser/content-question.ts";window.reviewContentQuestion=reviewContentQuestion;', resolveDir: process.cwd()}, bundle: true, write: false, metafile: true, platform: 'browser', format: 'iife', define: {'import.meta.env': '{}'},
     plugins: [{name: 'unused-image-ocr', setup(builder) { builder.onResolve({filter: /local-ocr$/}, () => ({path: 'ocr', namespace: 'port'})); builder.onLoad({filter: /.*/, namespace: 'port'}, () => ({contents: 'export const recognizeLocalText=async()=>{throw Error("No image input");};', loader: 'js'})); }}]});
+  capture(Object.keys(compiled.metafile.inputs).filter(input => existsSync(input)));
   const browser = await chromium.launch({headless: true, ...(process.env.ALPHA_CHROMIUM_PATH ? {executablePath: process.env.ALPHA_CHROMIUM_PATH} : {}), args: ['--no-sandbox']});
   try {
     for (const retireDuringVerification of [false, true]) {

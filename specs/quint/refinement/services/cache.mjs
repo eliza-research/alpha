@@ -1,11 +1,11 @@
 import assert from 'node:assert/strict';
 import {ServiceReadCache} from '../../../../apps/app/src/runtime/service-read-cache.ts';
-import {NoticeOwnerCoordinator} from '../../../../apps/app/src/runtime/notice-owner-coordinator.ts';
+import {NoticeOwnerCoordinator} from '../../../../.eliza/client-features/packages/contracts/src/notice-routes.ts';
 import {checkTraces, captureInputs} from '../check-traces.mjs';
 import {action, casStore, deferred, until} from './support.mjs';
 
 export async function cacheRefinement() {
-  const sources = ['apps/app/src/runtime/service-read-cache.ts', 'apps/app/src/runtime/notice-owner-coordinator.ts', 'specs/quint/refinement/services/cache.mjs', 'specs/quint/refinement/services/support.mjs'];
+  const sources = ['apps/app/src/runtime/service-read-cache.ts', '.eliza/client-features/packages/contracts/src/notice-routes.ts', 'specs/quint/refinement/services/cache.mjs', 'specs/quint/refinement/services/support.mjs'];
   const driverHashes = captureInputs(sources);
   const traces = [];
   for (const advance of [0, 30 * 86400000 - 1, 30 * 86400000]) {

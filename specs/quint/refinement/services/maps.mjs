@@ -1,17 +1,13 @@
 import assert from 'node:assert/strict';
-import {createCloudMaps} from '../../../../apps/app/src/maps/cloud-provider.ts';
-import {AlphaMapsDeviceNavigation} from '../../../../apps/app/src/maps/device-navigation.ts';
-import {MapsController} from '../../../../.eliza/client-features/plugins/plugin-maps/src/client/state.ts';
-import {SavedPlaces} from '../../../../.eliza/client-features/plugins/plugin-maps/src/client/saved-places.ts';
 import {checkTraces, captureInputs} from '../check-traces.mjs';
-import {action, deferred, until} from './support.mjs';
+import {action, deferred, until, sourceModule} from './support.mjs';
 
 const now = Date.now();
 const providerId = 'eliza-cloud-osm', attribution = 'Fixture map attribution';
 const config = {status: 'configured', providerId, connectionId: 'conn_refinement_fixture_1234', revision: 'revision', capabilities: {map: false, search: true, placeDetails: true, modes: ['walk'], traffic: 'none', transit: 'none', offline: {map: false, search: false, routing: false}}};
 const from = {latitude: 1, longitude: 1}, to = {latitude: 1.01, longitude: 1.01};
 const destination = {provider: 'coordinates', providerPlaceId: 'pin', name: 'Destination', coordinates: to};
-function fixture({granted = true, fresh = true, direct = false, hold = null} = {}) {
+function fixture({DeviceMapsNavigation, MapsController, SavedPlaces}, {granted = true, fresh = true, direct = false, hold = null} = {}) {
   const calls = [], releases = new Set(); let guidance = null, current = true;
   const provider = {providerId, connectionId: 'conn_refinement_fixture_1234', async detail() { return null; }, async search() { return []; }, async route(origin, target, mode, signal) {
     calls.push({signal}); if (hold) await hold.promise;
@@ -25,15 +21,21 @@ function fixture({granted = true, fresh = true, direct = false, hold = null} = {
     async planFrom(origin) { controller.setOrigin(origin); await controller.planRoute(); }, guidance: () => guidance,
     startGuidance() { const route = controller.snapshot().route; if (route.phase !== 'ready') return false; guidance = {routeId: route.value.id, placeName: 'Destination', travelMode: 'walk', fix, rerouting: false, arrived: false}; return true; },
     async reroute(origin) { await controller.reroute(origin); }, async stop() { guidance = null; }, onRelease(listener) { releases.add(listener); return () => releases.delete(listener); }};
-  const nav = new AlphaMapsDeviceNavigation(surface, {providerId, attribution, current: () => current, directStart: async () => direct}, {now: () => now});
+  const nav = new DeviceMapsNavigation(surface, {providerId, attribution, current: () => current, directStart: async () => direct}, {now: () => now});
   return {nav, controller, surface, calls, retire() { current = false; nav.retire(); }};
 }
 export async function mapsRefinement() {
   const sources = ['apps/app/src/maps/device-navigation.ts', 'apps/app/src/maps/navigation-fix.ts', 'apps/app/src/maps/cloud-provider.ts', '.eliza/client-features/plugins/plugin-maps/src/client/state.ts', 'specs/quint/refinement/services/maps.mjs', 'specs/quint/refinement/services/support.mjs'];
-  const driverHashes = captureInputs(sources);
+  let driverHashes = captureInputs(sources);
+  const capture = inputs => { sources.push(...inputs.filter(input => !sources.includes(input))); const next = captureInputs(sources); for (const [path, hash] of Object.entries(driverHashes)) assert.equal(next[path], hash, `Source changed before import: ${path}`); driverHashes = next; };
+  const {DeviceMapsNavigation} = await sourceModule('apps/app/src/maps/device-navigation.ts', {}, capture);
+  const {createCloudMaps} = await sourceModule('apps/app/src/maps/cloud-provider.ts', {}, capture);
+  const {MapsController} = await sourceModule('.eliza/client-features/plugins/plugin-maps/src/client/state.ts', {}, capture);
+  const {SavedPlaces} = await sourceModule('.eliza/client-features/plugins/plugin-maps/src/client/saved-places.ts', {}, capture);
+  const classes = {DeviceMapsNavigation, MapsController, SavedPlaces};
   const traces = [];
   for (const options of [{granted: false}, {fresh: false}, {direct: false}, {direct: true}]) {
-    const f = fixture(options);
+    const f = fixture(classes, options);
     const result = await f.nav.start({destination, travelMode: 'walk'});
     const permitted = options.granted !== false, fresh = options.fresh !== false;
     const trace = {name: `navigation permission ${permitted} freshness ${fresh} direct ${!!options.direct}`, expect: {'s.guidance': false, 's.route': 0}, steps: []};
@@ -50,7 +52,7 @@ export async function mapsRefinement() {
     traces.push(trace);
   }
   {
-    const hold = deferred(), f = fixture({hold});
+    const hold = deferred(), f = fixture(classes, {hold});
     const trace = {name: 'retired account rejects a late route result', expect: {'s.route': 0}, steps: []};
     const run = f.nav.start({destination, travelMode: 'walk'}).then(() => null, error => error);
     await until(() => f.calls.length === 1, 'route request');
@@ -83,5 +85,5 @@ export async function mapsRefinement() {
       expect: {'s.phase': route.phase, 's.route': route.phase === 'ready' ? 1 : 0},
     }]});
   }
-  return checkTraces({model: 'MapsNavigation', sources, driverHashes, traces, scope: 'bounded-component', assumptions: ['Actual AlphaMapsDeviceNavigation and MapsController run against scripted provider/location/surface ports.', 'The surface represents UI ownership. Native GPS, background navigation and the full Maps adapter require separate instrumentation.', 'Route identity is mapped to its allocation index within each trace.']});
+  return checkTraces({model: 'MapsNavigation', sources, driverHashes, traces, scope: 'bounded-component', assumptions: ['Actual shared DeviceMapsNavigation and MapsController run against scripted provider/location/surface ports.', 'The surface represents UI ownership. Native GPS, background navigation and the full Maps adapter require separate instrumentation.', 'Route identity is mapped to its allocation index within each trace.']});
 }

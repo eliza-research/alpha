@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import {build} from 'esbuild';
+import {existsSync} from 'node:fs';
 import {chromium, expect} from '@playwright/test';
 import {checkTraces, captureInputs} from '../check-traces.mjs';
 import {action} from './support.mjs';
@@ -17,18 +18,23 @@ async function bundle() {
     '../../../../.eliza/client-features/plugins/plugin-files/src/documents/scan-pdf.ts': 'export const createScanPdf=async()=>new TextEncoder().encode("%PDF-1.7 fixture");',
   };
   const result = await build({stdin: {contents: 'import {openScanDocument} from "./apps/app/src/prototype/scan-document.ts"; import {readScanDraft} from "./apps/app/src/browser/scan-draft.ts"; import {systemPickerActive} from "./apps/app/src/prototype/scan-pdf.ts";window.scanApi={openScanDocument,readScanDraft,systemPickerActive};', resolveDir: process.cwd()},
-    bundle: true, write: false, platform: 'browser', format: 'iife', define: {'import.meta.env': '{}'}, loader: {'.css': 'empty'},
+    bundle: true, write: false, metafile: true, platform: 'browser', format: 'iife', define: {'import.meta.env': '{}'}, loader: {'.css': 'empty'},
     plugins: [{name: 'scan-external-ports', setup(builder) {
       builder.onResolve({filter: /.*/}, args => Object.hasOwn(stubs, args.path) ? {path: args.path, namespace: 'scan-port'} : undefined);
       builder.onLoad({filter: /.*/, namespace: 'scan-port'}, args => ({contents: stubs[args.path], loader: 'js'}));
     }}]});
-  return result.outputFiles[0].text;
+  return {code:result.outputFiles[0].text, inputs:Object.keys(result.metafile.inputs).filter(input=>existsSync(input))};
 }
 export async function scanRefinement() {
-  const sources = ['apps/app/src/prototype/scan-document.ts', 'apps/app/src/prototype/scan-pdf.ts', 'apps/app/src/browser/scan-draft.ts', 'apps/app/src/runtime/abort-signal.ts', '.eliza/client-features/plugins/plugin-files/src/documents/scan-draft.ts', '.eliza/client-features/plugins/plugin-files/src/documents/scan-text-layer.ts', 'specs/quint/refinement/services/scan.mjs', 'specs/quint/refinement/services/support.mjs'];
-  const driverHashes = captureInputs(sources);
+  const sources = ['apps/app/src/prototype/scan-document.ts', 'apps/app/src/prototype/scan-pdf.ts', 'apps/app/src/browser/scan-draft.ts', 'apps/app/src/runtime/abort-signal.ts', '.eliza/client-features/plugins/plugin-files/src/documents/scan-draft.ts', '.eliza/client-features/plugins/plugin-files/src/documents/scan-text-layer.ts', 'specs/quint/refinement/services/scan.mjs', 'specs/quint/refinement/services/support.mjs', '.eliza/client-features/plugins/plugin-native-camera/src/scan-document.ts', 'patches/eliza/scan-document-client-manifest.json', 'patches/eliza/scan-document-client.patch', 'scripts/prepare-client-features.mjs'];
+  let driverHashes = captureInputs(sources);
+  const compiled = await bundle();
+  sources.push(...compiled.inputs.filter(input=>!sources.includes(input)));
+  const next = captureInputs(sources);
+  for (const [path,hash] of Object.entries(driverHashes)) assert.equal(next[path],hash,`Source changed while bundling: ${path}`);
+  driverHashes=next;
   const browser = await chromium.launch({headless: true, ...(process.env.ALPHA_CHROMIUM_PATH ? {executablePath: process.env.ALPHA_CHROMIUM_PATH} : {}), args: ['--no-sandbox']});
-  const code = await bundle(), traces = [];
+  const code = compiled.code, traces = [];
   try {
     for (const mode of ['automatic', 'explicit', 'explicit-then-autosave', 'unverified']) {
       const context = await browser.newContext(), page = await context.newPage();
