@@ -604,3 +604,23 @@ and exact legacy terminal readback remains idempotent. The as-built traces
 retain the original fabricated-`opened` acceptance. The JVM executes the
 product bridge methods and pinned journal and handoff classes over
 controlled ports.
+
+### Native reviewed SMS dispatch and receipts
+
+`NativeSmsDispatch` models the Alpha plugin's reviewed tuple, SIM checks,
+journaled radio handoff and immutable callback boundary. The two bridge
+instances share the same native journal. The model tracks live and durable
+record evidence separately when a save reports failure. A boot or process
+restart can therefore change readback without another radio attempt.
+
+The controlled provider ports execute the actual outbox insert and exact-row
+settlement paths. A delivery report needs a uniquely attributed provider row
+and a successful sent callback. A multipart provider status cannot identify
+delivery for an individual part. Carrier delivery and Android role or
+PendingIntent enforcement remain installed-platform obligations.
+
+The as-built cross-dialog trace submits the first reviewed tuple once. The
+second dialog holds a different tuple with the same operation ID, and its
+positive recovery reads the first tuple by ID alone. The model preserves the
+conflicting receipt and separately verifies exact retry. The recovery branch
+is in the pinned shared TelephonyPlugin used by Alpha's product subclass.
