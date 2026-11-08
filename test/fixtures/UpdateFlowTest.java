@@ -1560,6 +1560,19 @@ public final class UpdateFlowTest {
   check(owner.activity.started.equals(List.of(shown)),"nor does the owner's next resume");
   check(tap(owner).resolved.get()==1&&installer.committed.size()==2&&committed(context)!=pending,"and the next tap installs");
  }
+ /** Two reopen taps both read what was kept before main takes up either. */
+ private static void twoReopenTapsAheadOfMainOpenOnce(File cache)throws Exception{
+  Context context=installing(cache);
+  AlphaDevicePlugin owner=bridge(context,Lifecycle.State.RESUMED);
+  tap(owner);
+  Intent shown=confirmation(context,committed(context));
+  dismissed(owner);
+  owner.activity.posted=new java.util.ArrayList<>();
+  tap(owner);tap(owner);
+  List<Runnable> posted=owner.activity.posted;owner.activity.posted=null;
+  posted.forEach(Runnable::run);
+  check(owner.activity.started.equals(List.of(shown,shown)),"the confirmation opens again once");
+ }
  /** A bridge left as owner after its destroy would hold every live bridge's tap for the rest of the process. */
  private static void aBridgeDestroyedDuringItsListReadTakesNothingOver(File cache)throws Exception{
   Context context=installing(cache);
@@ -1702,6 +1715,7 @@ public final class UpdateFlowTest {
    aStatusInsideCommitReachesItsOwner(cache);
    aTerminalStatusWithAnIntentDropsAKeptConfirmation(cache);
    aTerminalStatusDuringAReopenTapOpensNothing(cache);
+   twoReopenTapsAheadOfMainOpenOnce(cache);
    aBridgeDestroyedDuringItsListReadTakesNothingOver(cache);
    everyFailureSettlesQuietly(cache);
    withoutTheGrantOnlyAndroidsPageOpens(cache);
