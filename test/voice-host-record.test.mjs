@@ -109,7 +109,8 @@ function fixtureProduct(t) {
   record.forkPin = '2'.repeat(40);
   const write = (relative, content) => { fs.mkdirSync(path.dirname(path.join(from, relative)), {recursive: true}); fs.writeFileSync(path.join(from, relative), content); return {sha256: sha(content), bytes: Buffer.byteLength(content)}; };
   for (const model of record.models) Object.assign(model, write(model.sourceFile ? path.join(path.dirname(model.path), model.sourceFile) : model.path, `fixture ${model.path}`));
-  for (const abi of record.abis) Object.assign(abi.libraries[0], write(`jniLibs/${abi.abi}/libelizainference.so`, `engine ${abi.abi}`));
+  for (const abi of record.abis) for (const library of abi.libraries)
+    Object.assign(library, write(`jniLibs/${abi.abi}/${library.name}`, `${library.name} ${abi.abi}`));
   const inputs = JSON.parse(fs.readFileSync(path.join(ROOT, 'vendor/eliza/plugins/plugin-local-inference/native/android/inputs.json'), 'utf8'));
   for (const key of ['paradee', 'lexicon']) { const row = record.models.find(model => model.path === inputs[key].path); inputs[key] = {...inputs[key], sha256: row.sha256, bytes: row.bytes}; }
   fs.mkdirSync(path.join(dir, 'vendor/eliza/plugins/plugin-local-inference/native/android'), {recursive: true});
@@ -136,12 +137,60 @@ test('staging copies exactly the recorded bytes into the shared paradee-voice la
   const build = JSON.parse(fs.readFileSync(path.join(native, 'build-record.json'), 'utf8'));
   assert.deepEqual(build.abis, ['arm64-v8a', 'x86_64']);
   assert.ok(build.files.some(row => row.path === 'jniLibs/x86_64/libelizainference.so'));
+  for (const abi of record.abis) for (const library of abi.libraries) {
+    const installed = path.join(dir, 'android/app/src/main/jniLibs', abi.abi, library.name);
+    assert.equal(fs.statSync(installed).size, library.bytes);
+    assert.equal(sha(fs.readFileSync(installed)), library.sha256);
+  }
   // Record admission (the shared runtime check needs the real nested FFI checkout and is skipped here).
   assert.deepEqual(verifyVoiceHost(dir, {runtime: () => {}}), {status: 'packaged', qualified: false});
   // A second run with the same bytes is idempotent; changed staged bytes are refused, never repaired.
   stageVoiceModels(dir, {from: [from]});
   fs.writeFileSync(path.join(native, 'assets/paradee-voice/v1/vad/silero-vad-v5.gguf'), 'other');
   assert.throws(() => stageVoiceModels(dir, {from: [from]}), /already exists with other bytes/);
+});
+
+test('voice host conflicts and linked destinations are refused before staging outputs', t => {
+  const {dir, from, record} = fixtureProduct(t);
+  const target = path.join(dir, 'android/app/src/main/jniLibs/arm64-v8a/libelizainference.so');
+  fs.mkdirSync(path.dirname(target), {recursive: true});
+  fs.writeFileSync(target, 'other engine');
+  assert.throws(() => stageVoiceModels(dir, {from: [from]}), /already exists with other bytes/);
+  assert.equal(fs.existsSync(path.join(dir, '.eliza/paradee-voice/native')), false);
+  fs.unlinkSync(target);
+  fs.symlinkSync(path.join(dir, 'missing-library'), target);
+  assert.throws(() => stageVoiceModels(dir, {from: [from]}), /already exists with other bytes/);
+  fs.unlinkSync(target);
+  fs.writeFileSync(path.join(from, 'jniLibs/arm64-v8a/libc++_shared.so'), 'other STL');
+  assert.throws(() => stageVoiceModels(dir, {from: [from]}), /does not match the pinned libc\+\+_shared.so/);
+  assert.equal(fs.existsSync(target), false);
+  assert.deepEqual(JSON.parse(fs.readFileSync(path.join(dir, VOICE_HOST))), record);
+});
+
+test('failed host publication rolls back only new libraries and a retry completes', t => {
+  const {dir, from, record} = fixtureProduct(t);
+  const host = path.join(dir, 'android/app/src/main/jniLibs');
+  const existing = path.join(host, 'arm64-v8a/libelizainference.so');
+  fs.mkdirSync(path.dirname(existing), {recursive: true});
+  fs.copyFileSync(path.join(from, 'jniLibs/arm64-v8a/libelizainference.so'), existing);
+  const link = fs.linkSync;
+  let links = 0;
+  try {
+    fs.linkSync = (source, target) => {
+      if (target.startsWith(host) && ++links === 2) throw new Error('injected host publication failure');
+      return link(source, target);
+    };
+    assert.throws(() => stageVoiceModels(dir, {from: [from]}), /injected host publication failure/);
+  } finally {
+    fs.linkSync = link;
+  }
+  assert.equal(sha(fs.readFileSync(existing)), record.abis[0].libraries[0].sha256);
+  assert.equal(fs.existsSync(path.join(host, 'arm64-v8a/libc++_shared.so')), false);
+  assert.equal(fs.existsSync(path.join(host, 'x86_64/libelizainference.so')), false);
+  stageVoiceModels(dir, {from: [from]});
+  for (const abi of record.abis) for (const library of abi.libraries)
+    assert.equal(sha(fs.readFileSync(path.join(host, abi.abi, library.name))), library.sha256);
+  assert.equal(JSON.parse(fs.readFileSync(path.join(dir, VOICE_HOST))).qualified, false);
 });
 
 test('staging refuses source bytes that differ from the record and missing rows', t => {
