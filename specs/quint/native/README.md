@@ -428,3 +428,18 @@ same monitor that admits cancellation. An active missing-language error still
 demotes. The source campaign covers both old callback windows and the current
 error control. Installed recognition, real Binder ordering, and unrestricted
 audio histories remain platform and refinement obligations.
+
+`NativeListenerInput` exercises actual listener recording, mode and playback
+callbacks through the capture loop, SpeechGate, recognition executor, WakePhrase
+and main-thread wake action. Synthetic PCM batches cross the minimum speech
+length and playback guard exactly. The source driver holds a native read across
+epoch retirement. Its first frame stays owned by the previous epoch, and the
+next current utterance can be recognized. Playback, call and destroy retire
+pending recognition or wake actions. The lock screen blocks assistant
+invocation while allowing the capability-reducing spoken pause.
+
+The component projects one capture and recognition worker at a time, up to three
+recorder allocations, one queued wake action, and fixed speech/silence frame
+sequences. It observes cleared frame and transferred ASR sample buffers.
+General adaptive floor/pre-roll histories, unrestricted callback schedules and
+installed Android audio and assistant invocation remain separate obligations.

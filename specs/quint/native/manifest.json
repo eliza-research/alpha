@@ -1408,6 +1408,43 @@
         "One recognizer session with a cached installed language. Bounded byte counts, fixed-size input classes and exact 64-second backlog boundary.",
         "Platform cleanup is observed at settled macrosteps or a held cancellation callback. Transcript contents are represented by nonempty/empty classes."
       ]
+    },
+    {
+      "path": "specs/quint/native/NativeListenerInput.qnt",
+      "module": "NativeListenerInput",
+      "init": "init",
+      "step": "step",
+      "invariant": "safety",
+      "sources": [
+        "vendor/eliza/packages/app/platforms/android/sense/src/main/java/ai/eliza/sense/ListeningService.java",
+        "vendor/eliza/packages/app/platforms/android/sense/src/main/java/ai/eliza/sense/Listener.java",
+        "vendor/eliza/packages/app/platforms/android/sense/src/main/java/ai/eliza/sense/ListenerStore.java",
+        "vendor/eliza/packages/app/platforms/android/sense/src/main/java/ai/eliza/sense/ListeningEpoch.java",
+        "vendor/eliza/packages/app/platforms/android/sense/src/main/java/ai/eliza/sense/IndicatorLease.java",
+        "vendor/eliza/packages/app/platforms/android/sense/src/main/java/ai/eliza/sense/ListenerPolicy.java",
+        "vendor/eliza/packages/app/platforms/android/sense/src/main/java/ai/eliza/sense/SpeechGate.java",
+        "vendor/eliza/packages/app/platforms/android/sense/src/main/java/ai/eliza/sense/WakePhrase.java",
+        "patches/eliza/listener-service-cleanup.patch"
+      ],
+      "tests": [
+        "callInvalidatesHeldRecognitionTest",
+        "exactPlaybackGuardTest",
+        "revokedLeaseSuppressesFramesTest",
+        "pendingReadRetainsOldEpochTest",
+        "lateWakeCannotInvokeAfterDestroyTest",
+        "lockedPauseIsAllowedTest"
+      ],
+      "invariants": [
+        "ActiveEpochNeedsCapture",
+        "RetirementStopsCapture",
+        "RecognitionOwnsSamples",
+        "QueuedActionHasTicket"
+      ],
+      "abstractions": [
+        "One service with current consent and initial lease; up to three AudioRecord allocations, one ASR job and one queued wake action.",
+        "Fixed 14/15 speech frames and 35 silence frames per batch, full or half-frame reads, and monotonic playback-guard partitions.",
+        "The blocked read is observed with its epoch ticket. General noise-floor and pre-roll histories and real Android timing remain external obligations."
+      ]
     }
   ]
 }

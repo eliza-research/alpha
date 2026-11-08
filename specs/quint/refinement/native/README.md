@@ -224,3 +224,15 @@ These checks execute the patched shared class at its native plugin boundary.
 The platform ports carry synthetic PCM and transcript classes. The runner
 records settled cleanup rather than assuming that Android accepted real device
 or service resource release.
+
+### Listener input and wake callbacks
+
+`listener-input.mjs` drives actual callback registration and audio reads, with
+the current service, store, epoch, lease, SpeechGate and WakePhrase classes.
+`ListenerInputTraces` records the pending read's epoch at the PCM port boundary,
+actual received lengths, the ASR call boundary and retained PCM reference, and
+the queued wake closure and ticket. The controlled port delays a fresh capture's
+first read until start admission settles. On a retained capture, the pending
+read's original ticket stays visible across privacy and playback changes.
+Source traces include a held ASR reply and a queued wake callback across call,
+playback and destruction, plus visible notification and lease loss boundaries.
