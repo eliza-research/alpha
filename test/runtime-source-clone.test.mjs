@@ -78,6 +78,11 @@ for(const mutation of ['bytes','mode','symlink'])test(`cache ${mutation} tamperi
  else{fs.unlinkSync(path.join(f.cache,relative));fs.symlinkSync('tool.sh',path.join(f.cache,relative));}
  const before=f.snapshot(),result=f.run();assert.notEqual(result.status,0);assert.match(result.stderr,/Runtime cache source drift|Tracked runtime cache changes/);assert.equal(fs.existsSync(path.join(f.destination,'.alpha-runtime-source.json')),false);assert.deepEqual(f.snapshot(),before);
 });
+test('cache executable without group or other execute bits (umask 027) seeds as executable',t=>{
+ const f=fixture(t);fs.chmodSync(path.join(f.cache,'packages/example/tool.sh'),0o750);
+ const result=f.run();assert.equal(result.status,0,result.stderr);assert.match(result.stdout,/Seeded/);
+ assert.equal(fs.statSync(path.join(f.destination,'packages/example/tool.sh')).mode&0o777,0o755);
+});
 test('interrupted clone preserves its incomplete destination and cannot be silently reused',t=>{
  const f=fixture(t),before=f.snapshot(),preload=path.join(f.directory,'interrupt.mjs');
  f.write(preload,`import fs from 'node:fs';import child from 'node:child_process';import path from 'node:path';import {syncBuiltinESMExports} from 'node:module';const copy=fs.copyFileSync,run=child.execFileSync;const fail=target=>{fs.writeFileSync(target,'partial');throw Object.assign(Error('simulated disk full'),{code:'ENOSPC'});};fs.copyFileSync=(source,target,flags)=>source.endsWith('/data.bin')?fail(target):copy(source,target,flags);child.execFileSync=(command,args,options)=>command==='/bin/cp'&&args.some(arg=>arg.endsWith('/data.bin'))?fail(path.join(args.at(-1),'data.bin')):run(command,args,options);syncBuiltinESMExports();`);
