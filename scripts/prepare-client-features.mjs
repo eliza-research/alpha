@@ -390,8 +390,8 @@ export function prepareClientFeatures({ root = projectRoot, projectVoice = true,
     }
     if (!matches(inventory(temporary), files)) throw Error('Client feature source copy failed authentication.');
     fs.writeFileSync(path.join(temporary, '.source.json'), JSON.stringify(provenance, null, 2));
-    // Move the old tree aside rather than deleting it in place, so a reader that opened it keeps a
-    // whole tree. A concurrent preparer may install first; accept its tree when it is current.
+    // Move the old tree aside rather than deleting it in place, so no preparer deletes part of a
+    // tree another one just installed. A concurrent preparer may install first; accept it if current.
     for (let attempt = 0; ; attempt++) {
       const aside = path.join(parent, '.client-features-old-' + randomUUID());
       try {
