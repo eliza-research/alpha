@@ -6,6 +6,7 @@ import {DeviceActions} from '../apps/app/src/runtime/device-actions.ts';
 import {validateCameraCaptureResult} from '../.eliza/client-features/plugins/plugin-assistant/src/services/device-actions/camera-contract.ts';
 
 const source=readFileSync('apps/app/src/prototype/camera-adapter.ts','utf8');
+const lastTile=source.slice(source.indexOf('  let lastCapture:'),source.indexOf('  let accessPanel:'));
 const save=source.slice(source.indexOf('  async function saveCameraPhoto('),source.indexOf('  /** A busy preview retains one shutter press'));
 const request=source.slice(source.indexOf('  /** An agent capture asked for while Camera starts'),source.indexOf('  requestedPhoto=takeRequestedPhoto;'));
 // A request made while the preview starts waits for it (the adapter's queue), then captures.
@@ -19,7 +20,7 @@ function cameraFixture(browser=false){
  const api={S:{chat:'hidden'},isActive:()=>true,set(){},setView(){throw Error('An agent capture must not change views')}};
  const context=vm.createContext({camera,api,validateCameraCaptureResult,nativeId:id=>id.replace('native-camera-',''),browserMode:browser,disposed:false,captures:[],loaded:true,document:{hidden:false,querySelector:()=>({})},finder:'#camera',schedule(){},message(){},Date});
  const visibility=source.slice(source.indexOf('  let requestedCaptureHolds=0;'),source.indexOf('  /** The one photo being written natively'));
- vm.runInContext(shared+stripTypeScriptTypes(receiptPath+'const CHAT_GRACE_MS=10000;let lastCapture,photoWrite;const shutterFlash=()=>{};\n'+visibility+'\n'+queue+save+request+';globalThis.capture=takeRequestedPhoto;globalThis.captureHolds=()=>requestedCaptureHolds;',{mode:'transform'}),context);
+ vm.runInContext(shared+stripTypeScriptTypes(receiptPath+'const CHAT_GRACE_MS=10000;let photoWrite;const shutterFlash=()=>{};\n'+lastTile+visibility+'\n'+queue+save+request+';globalThis.capture=takeRequestedPhoto;globalThis.captureHolds=()=>requestedCaptureHolds;',{mode:'transform'}),context);
  vm.runInContext('globalThis.session=createCameraSession({camera,active:()=>true,preview:()=>({}),recording:()=>({}),hooks:{changed:()=>settle()}});var session=globalThis.session;',context);
  // The request starts the preview itself through the session, as on an agent request from another view.
  context.start=async retry=>{await context.session.start(retry);};

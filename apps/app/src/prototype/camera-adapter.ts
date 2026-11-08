@@ -181,7 +181,8 @@ export function installPrototypeCameraAdapter(_Component: unknown, views: Record
     const value=originalApi.call(this,key);
     if(key==='camera')value.reviewScannedCalendarDraft=(draft:Bag)=>this.reviewScannedCalendarDraft?.(draft)??false;
     if(key==='camera')value.saveScannedNote=async(text:string,id:string)=>{
-      if(this.notesStorageFailed||this.notesPending||!this.notesStore)return false;
+      if(this.notesSourceMode!=='legacy'&&this.canonicalNotesUi?.current)return await this.canonicalNotesUi.saveCard(text,this.api('notes'));
+      if(this.notesSourceMode!=='legacy'||this.notesStorageFailed||this.notesPending||!this.notesStore){value.toast('Notes is unavailable. Nothing was saved.');return false;}
       const list=this.vget('notes').list||[];
       if(list.some((note:Bag)=>note.id===id))return false;
       return await this.vset('notes',{list:[{id,kind:'text',title:text.split('\n')[0].slice(0,100)||'Scanned text',body:text,when:'Now',pinned:false},...list]})===true;
