@@ -299,3 +299,18 @@ registries. A completed strict-stop promise remains settled if a later direct
 post-delivery caller creates more work. The model preserves both observations.
 Completed initialization, dynamic plugins, provider cancellation and the product
 host's complete shutdown remain additional composition obligations.
+
+### Current-main integration checkpoint
+
+The 83-model integration at `1df91c41f6` passes 80 focused Node tests with
+Node 24.15.0, Bun 1.4.2 and JDK 21. This run includes the seven new model
+campaigns, repaired sign-in/playback/launcher/Inbox fixtures, background restore,
+source discovery and dependency-audit checks. The separate Cloud profile run
+passes all 14 cases using the authenticated prepared SDK input.
+
+All seven new models pass typechecking, registered scenarios and seeded sampled
+safety checks. The first CanonicalNotesController typecheck process was killed
+with SIGKILL and no diagnostic output. The model bytes match the independently
+checked source, and a fresh typecheck/scenario/simulation retry passes. The failed
+campaign and retry receipts are retained separately. The full repository run at
+`c890a570` continues and is distinct from this focused checkpoint.
