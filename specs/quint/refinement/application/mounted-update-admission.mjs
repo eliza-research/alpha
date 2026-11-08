@@ -5,6 +5,7 @@ import {fileURLToPath} from 'node:url';
 import {JSDOM} from 'jsdom';
 import {stripTypeScriptTypes} from '../../../../test/support/strip-types.mjs';
 import {checkTraces, qset} from '../check-traces.mjs';
+import {checkClientFeatures} from '../../../../scripts/prepare-client-features.mjs';
 import {boundInputs, captureSources, checkpoint, deferred, read, tick, trace, call} from './support.mjs';
 
 const model = 'MountedUpdateAdmission';
@@ -78,6 +79,8 @@ async function fixture(name, code) {
       assert.ok(id > 0);
       assert.equal(value.bridgeId, context.inspect().active.bridgeId);
       assert.equal(positive.has(id) || negative.has(id), false);
+      if (value.ready) assert.equal(value.resumeEligible, true);
+      else assert.equal(Object.hasOwn(value, 'resumeEligible'), false);
       (value.ready ? positive : negative).add(id);
     },
     continueUpdate(value) {
@@ -189,14 +192,19 @@ async function fixture(name, code) {
 
 export async function checkMountedUpdateAdmission() {
   const sources = [fileURLToPath(import.meta.url), main, 'vendor/eliza/' + shared, effective, projection,
-    'android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaDevicePlugin.java'];
+    'android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaDevicePlugin.java',
+    'upstream.lock.json', 'scripts/prepare-client-features.mjs', 'scripts/pinned-upstream-source.mjs',
+    'patches/eliza/app-update-resume-client.patch', 'patches/eliza/app-update-resume-client-manifest.json'];
   captureSources([...sources, modelPath]);
+  checkClientFeatures();
   const gate = read(effective);
   const stamp = JSON.parse(read(projection));
   const digest = createHash('sha256').update(gate).digest('hex');
   assert.equal(stamp.files[shared], digest);
-  assert.equal(stamp.sourceFiles[shared], digest);
-  assert.equal(read('vendor/eliza/' + shared), gate);
+  assert.equal(stamp.appUpdateResumePatch.afterSha256, digest);
+  const pinned = createHash('sha256').update(read('vendor/eliza/' + shared)).digest('hex');
+  assert.equal(stamp.sourceFiles[shared], pinned);
+  assert.equal(stamp.appUpdateResumePatch.beforeSha256, pinned);
   const text = read(main);
   const start = text.indexOf('async function prepareMountedUpdate(');
   const end = text.indexOf('\nlet nativeAppUpdateGate', start);

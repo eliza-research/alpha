@@ -18,8 +18,10 @@ const scenarioNames = [
   'new-bridge-after-ready-before-seal',
   'retirement-cannot-satisfy-draft-barrier',
   'stale-receipt-after-a-refused-attempt',
-  'post-seal-bridge-can-own-cancellation-readback-as-built',
-  'retired-confirmation-owner-falls-back-to-settler',
+  'post-seal-confirmation-preserves-initiating-reconnect',
+  'eligible-mounted-sibling-keeps-confirmation-reconnect',
+  'retired-confirmation-owner-cannot-nominate-arbitrary-settler',
+  'old-and-startup-ack-can-prepare-but-cannot-reconnect',
 ];
 
 function exactUpdateMembers(source) {
@@ -59,18 +61,18 @@ export async function runNativeUpdateActivationRefinement(extraSources = []) {
   assert.deepEqual(traces.map(trace => trace.name), scenarioNames);
   for (const trace of traces) {
     for (const observation of [trace.expect, ...trace.steps.map(step => step.expect)]) {
-      for (const key of ['s.registered', 's.seen', 's.waiting', 's.acknowledged']) observation[key] = qset(observation[key]);
+      for (const key of ['s.registered', 's.seen', 's.waiting', 's.acknowledged', 's.eligible', 's.preparedEligible']) observation[key] = qset(observation[key]);
     }
   }
   const receipt = await checkTraces({model, traces, sources, driverHashes, scope: 'bounded-orchestration', assumptions: [
     'The unmodified updater methods execute with synthetic Android/Capacitor ports and the real pinned RuntimeUpdatePause implementation. Network input comes from an in-memory fixture; no APK is installed.',
     'Three bridge instance classes, two exact activation UUID classes, one staged attempt and one pending synthetic installer session. Sealing and the observed stop request are two model actions in one source checkpoint.',
-    'Current resume readback follows Android confirmation ownership or the settling bridge. A post-seal continuation can be selected without an ACK; a previously nominated bridge can retire without a handoff.',
+    'The exact sealed reconnect receipt is independent of Android confirmation ownership. Old or startup ACKs can prepare without granting reconnect. The terminal audience is retired without a handoff.',
   ]});
   return {receipts: [receipt], obligations: [
     {model, obligation: 'Installed activity lifecycle and Android session delivery',
       reason: 'The source harness controls bridge notifications, stop confirmation and installer status. Actual PackageInstaller and WebView lifecycles require their own acceptance evidence.'},
     {model, obligation: 'Mounted resume eligibility and one-shot reconnect',
-      reason: 'This model observes native resume readback. The renderer’s captured callback and a post-seal startup bridge do not share the same reconnect authority.'},
+      reason: 'This model observes exact native resume readback. MountedUpdateAdmission and StartupUpdateAdmission check the patched renderer request shapes separately. Installed cross-bridge callback delivery remains external.'},
   ]};
 }

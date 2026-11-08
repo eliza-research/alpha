@@ -338,13 +338,24 @@ public final class AlphaDevicePlugin extends Plugin {
   final java.util.concurrent.CompletableFuture<Boolean> ready=new java.util.concurrent.CompletableFuture<>();
   final java.util.Set<AlphaDevicePlugin> waiting=new java.util.HashSet<>();
   final java.util.Set<AlphaDevicePlugin> acknowledged=new java.util.HashSet<>();
+  final java.util.Set<String> resumeEligible=new java.util.HashSet<>();
   boolean sealed,invalid;
   UpdateActivation(AlphaDevicePlugin owner){this.owner=owner;waiting.addAll(updateBridges);}
+ }
+ /** Captured reconnect authority is separate from Android confirmation and keeps no WebView alive. */
+ private static final class UpdateResume {
+  final String id,initiatingBridge;
+  final java.util.Set<String> eligible;
+  UpdateResume(UpdateActivation preparation){
+   id=preparation.id;initiatingBridge=preparation.owner.updateBridgeId;
+   eligible=java.util.Collections.unmodifiableSet(new java.util.HashSet<>(preparation.resumeEligible));
+  }
  }
  private static final Object updateBarrier=new Object();
  private static final java.util.Set<AlphaDevicePlugin> updateBridges=new java.util.HashSet<>();
  private final String updateBridgeId=java.util.UUID.randomUUID().toString();
  private static volatile UpdateActivation activation;
+ private static UpdateResume updateResume;
  private static String settledActivation,settledOutcome,settledResumeBridge;
  private JSObject preparation(UpdateActivation pending){return new JSObject().put("activationId",pending.id).put("bridgeId",updateBridgeId).put("phase",pending.sealed?"paused":"preparing");}
  private void registerUpdateBridge(){
@@ -363,18 +374,25 @@ public final class AlphaDevicePlugin extends Plugin {
  private void retireUpdateBridge(){
   synchronized(updateBarrier){
    updateBridges.remove(this);
+   if(updateBridgeId.equals(settledResumeBridge))settledResumeBridge=null;
    UpdateActivation pending=activation;
    if(pending!=null&&!pending.sealed){pending.invalid=true;pending.ready.complete(false);}
   }
  }
  /** Acknowledges only the current staged activation; false is a pre-commit refusal, not cancellation of an install. */
  @PluginMethod public void activateUpdate(PluginCall call){
-  Object ready=call.getData().opt("ready");
+  Object ready=call.getData().opt("ready"),resumeEligible=call.getData().opt("resumeEligible");
   synchronized(updateBarrier){
    UpdateActivation pending=activation;
-   if(pending==null||pending.invalid||pending.sealed||!pending.id.equals(call.getString("activationId"))||!updateBridgeId.equals(call.getString("bridgeId"))||!(ready instanceof Boolean)||!pending.waiting.remove(this)){call.reject("Update preparation changed");return;}
+   if(pending==null||pending.invalid||pending.sealed||!pending.id.equals(call.getString("activationId"))||!updateBridgeId.equals(call.getString("bridgeId"))||!(ready instanceof Boolean)||
+     resumeEligible!=null&&!(resumeEligible instanceof Boolean)||Boolean.TRUE.equals(resumeEligible)&&!Boolean.TRUE.equals(ready)||
+     !pending.waiting.remove(this)){call.reject("Update preparation changed");return;}
    if(!(Boolean)ready){pending.invalid=true;pending.ready.complete(false);}
-   else {pending.acknowledged.add(this);if(pending.waiting.isEmpty())pending.ready.complete(true);}
+   else {
+    pending.acknowledged.add(this);
+    if(Boolean.TRUE.equals(resumeEligible))pending.resumeEligible.add(updateBridgeId);
+    if(pending.waiting.isEmpty())pending.ready.complete(true);
+   }
   }
   call.resolve();
  }
@@ -383,8 +401,16 @@ public final class AlphaDevicePlugin extends Plugin {
   synchronized(updateBarrier){
    if(id.equals(settledActivation))return;
    settledActivation=id;settledOutcome=outcome;
-   AlphaDevicePlugin resumeOwner=updateBridges.contains(updateOwner)?updateOwner:this;
-   settledResumeBridge="canceled".equals(outcome)?resumeOwner.updateBridgeId:null;
+   settledResumeBridge=null;
+   UpdateResume resume=updateResume;
+   if(resume!=null&&id.equals(resume.id)){
+    updateResume=null;
+    if("canceled".equals(outcome)){
+     AlphaDevicePlugin confirming=updateOwner;
+     if(updateBridges.contains(confirming)&&resume.eligible.contains(confirming.updateBridgeId))settledResumeBridge=confirming.updateBridgeId;
+     else if(resume.eligible.contains(resume.initiatingBridge)&&updateBridges.stream().anyMatch(bridge->resume.initiatingBridge.equals(bridge.updateBridgeId)))settledResumeBridge=resume.initiatingBridge;
+    }
+   }
    if(activation!=null&&activation.id.equals(id))activation=null;
    bridges=new java.util.ArrayList<>(updateBridges);
   }
@@ -659,6 +685,7 @@ public final class AlphaDevicePlugin extends Plugin {
        synchronized(updateBarrier){
         if(activation!=preparation||preparation.invalid||!preparation.waiting.isEmpty()||!preparation.acknowledged.containsAll(updateBridges))throw new java.io.IOException("Update renderers changed");
         preparation.sealed=true;
+        updateResume=new UpdateResume(preparation);
        }
        throwIfDestroyed();
        pauseOwned=true;UpdatePause.acquire(preparation.id,id,versionCode,sha256,updateBoot());

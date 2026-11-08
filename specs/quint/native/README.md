@@ -480,3 +480,28 @@ and compares exact retained and returned sample classes.
 early callbacks keyed by native draft identity, start acknowledgment, sampling, explicit
 stop, cancellation and cleanup uncertainty. A call event prevents selection of that draft
 for transcription, even when it arrives before the native start acknowledgment.
+
+## Process-local update activation
+
+`NativeUpdateActivation` checks the exact `AlphaDevicePlugin` update barrier.
+Registration grows a pending barrier, and a new bridge after readiness
+invalidates it before seal. Exact activation and bridge receipts admit each
+ACK once. A refusal, retirement or malformed receipt cannot authorize the
+resident stop. A bridge that joins after seal sees the pause and can reach the
+existing Android confirmation.
+
+The baseline in `cb1deb29c4` records six source schedules. It reproduced a
+post-seal bridge receiving the sole cancellation resume flag after opening
+confirmation, even though that bridge did not capture a mounted reconnect
+callback. It also reproduced a terminal audience still naming a bridge that
+had retired. The corrected barrier captures eligible mounted ACKs at seal.
+On cancellation it selects the live eligible confirmation owner or the exact
+eligible initiating bridge. Startup and older ACKs can prepare without granting
+resume. Retirement clears the selected audience without transferring it, and
+repeat settlement of the current terminal identity does not nominate anyone.
+
+Eight JVM schedules execute the actual updater methods with a fixture download,
+resident-stop port and PackageInstaller port. The prepared renderer adapters
+separately check the mounted and startup request shapes. The durable journal,
+physical installation, installed WebView callback delivery and full
+cross-process recovery have separate evidence requirements.

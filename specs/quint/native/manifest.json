@@ -1711,8 +1711,11 @@
         "retiringBridgeCannotSatisfyBarrierTest",
         "duplicateAcknowledgmentTest",
         "foreignAcknowledgmentTest",
-        "postSealContinuationOwnsAsBuiltResumeTest",
-        "canceledAfterRetirementUsesSettlerTest",
+        "postSealContinuationKeepsInitiatingResumeTest",
+        "eligibleConfirmingSiblingRetainsResumeTest",
+        "retiredOwnerDoesNotGrantArbitraryResumeTest",
+        "startupAckDoesNotGrantResumeTest",
+        "refusalCannotClaimEligibilityTest",
         "oldReceiptCannotAcknowledgeSuccessorTest"
       ],
       "invariants": [
@@ -1720,7 +1723,9 @@
         "SeparateWaitingAndAcknowledged",
         "StopAfterSeal",
         "CommitHasStop",
-        "ResumeOnlyCanceled"
+        "ResumeOnlyCanceled",
+        "EligibilityRequiresAcknowledgment",
+        "ExactPreparedReceipt"
       ],
       "sources": [
         "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaDevicePlugin.java",
@@ -1733,7 +1738,8 @@
         "ready/invalid/sealed": "Actual UpdateActivation future and admission flags",
         "stopRequested/stopCalls/commits/pendingSession": "Controlled resident shutdown and PackageInstaller observations across the native handoff",
         "confirmationOwner/outcome/resumeBridge": "Actual volatile confirmation owner and terminal readback audience",
-        "seen": "Bridge instances observed at registration and never reused"
+        "seen": "Bridge instances observed at registration and never reused",
+        "eligible/prepared/preparedOwner/preparedEligible": "Mounted positive eligibility and exact sealed UUID receipt retained through the Android confirmation handoff"
       },
       "abstractions": [
         "Three bridge instances and two exact activation IDs. One active staged attempt and one current installer session. The state machine ends at process-local terminal readback. Durable journal reconciliation and installed PackageInstaller behavior are separate.",

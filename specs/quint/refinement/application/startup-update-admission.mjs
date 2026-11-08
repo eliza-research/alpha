@@ -5,6 +5,7 @@ import {fileURLToPath} from 'node:url';
 import {JSDOM} from 'jsdom';
 import {stripTypeScriptTypes} from '../../../../test/support/strip-types.mjs';
 import {checkTraces, qset} from '../check-traces.mjs';
+import {checkClientFeatures} from '../../../../scripts/prepare-client-features.mjs';
 import {boundInputs, captureSources, checkpoint, deferred, read, tick, trace, call} from './support.mjs';
 
 const model = 'StartupUpdateAdmission';
@@ -41,6 +42,7 @@ function fixture(name, code) {
       const id = activation(input.activationId);
       assert.ok(id > 0);
       assert.equal(input.ready, true);
+      assert.equal(Object.hasOwn(input, 'resumeEligible'), false);
       assert.equal(input.bridgeId, exactPending().bridgeId);
       assert.equal(ready.has(id), false);
       ready.add(id);
@@ -128,14 +130,19 @@ function fixture(name, code) {
 
 export async function checkStartupUpdateAdmission() {
   const sources = [fileURLToPath(import.meta.url), 'apps/app/src/main.tsx', 'vendor/eliza/' + shared, effective, projection,
-    'android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaDevicePlugin.java'];
+    'android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaDevicePlugin.java',
+    'upstream.lock.json', 'scripts/prepare-client-features.mjs', 'scripts/pinned-upstream-source.mjs',
+    'patches/eliza/app-update-resume-client.patch', 'patches/eliza/app-update-resume-client-manifest.json'];
   captureSources([...sources, modelPath]);
+  checkClientFeatures();
   const gate = read(effective);
   const stamp = JSON.parse(read(projection));
   const digest = createHash('sha256').update(gate).digest('hex');
   assert.equal(stamp.files[shared], digest);
-  assert.equal(stamp.sourceFiles[shared], digest);
-  assert.equal(read('vendor/eliza/' + shared), gate);
+  assert.equal(stamp.appUpdateResumePatch.afterSha256, digest);
+  const pinned = createHash('sha256').update(read('vendor/eliza/' + shared)).digest('hex');
+  assert.equal(stamp.sourceFiles[shared], pinned);
+  assert.equal(stamp.appUpdateResumePatch.beforeSha256, pinned);
   const marker = '  let pending: Activation | undefined;\n  let acknowledged: string | undefined;';
   assert.equal(gate.split(marker).length, 2);
   const inspect = '  globalThis.inspect = () => ({pending, acknowledged});';

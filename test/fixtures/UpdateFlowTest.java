@@ -200,7 +200,7 @@ public final class UpdateFlowTest {
  private static void forgetProcess()throws Exception{
   AlphaDevicePlugin.UpdatePause.liveOwner=null;AlphaDevicePlugin.UpdatePause.shutdownRequest=-1;
 
-  plugin("activation",null);plugin("settledActivation",null);plugin("settledOutcome",null);plugin("settledResumeBridge",null);
+  plugin("activation",null);plugin("updateResume",null);plugin("settledActivation",null);plugin("settledOutcome",null);plugin("settledResumeBridge",null);
   var registry=AlphaDevicePlugin.class.getDeclaredField("updateBridges");
   registry.setAccessible(true);((java.util.Set<?>)registry.get(null)).clear();
   plugin("updateOwner",null);plugin("updateConfirm",null);plugin("updateSession",0);plugin("updateDue",false);plugin("updateOpen",false);plugin("updateAsked",0L);
@@ -1710,11 +1710,11 @@ public final class UpdateFlowTest {
    check(foreign.rejected.get()==1,"another bridge cannot acknowledge with the owner's receipt");
    Thread.sleep(50);
    check(context.packages.installer.committed.isEmpty()&&AlphaLocalAgentPlugin.stops==0&&installing.resolved.get()==0&&installing.rejected.get()==0,"delayed valid acknowledgment keeps the staged install waiting after invalid calls");
-   PluginCall ack=new PluginCall(request.put("ready",true));owner.activateUpdate(ack);
+   PluginCall ack=new PluginCall(request.put("ready",true).put("resumeEligible",true));owner.activateUpdate(ack);
    check(ack.resolved.get()==1&&ack.rejected.get()==0,"the exact activation still accepts explicit true after invalid calls");
    check(AlphaLocalAgentPlugin.stops==0&&context.packages.installer.committed.isEmpty(),"owner acknowledgment alone keeps the runtime running");
    AlphaDevicePlugin joining=bridge(context,Lifecycle.State.CREATED);
-   PluginCall sibling=new PluginCall(siblingRequest.put("ready",true));other.activateUpdate(sibling);
+   PluginCall sibling=new PluginCall(siblingRequest.put("ready",true).put("resumeEligible",true));other.activateUpdate(sibling);
    check(sibling.resolved.get()==1&&AlphaLocalAgentPlugin.stops==0,"a joining renderer also must acknowledge its drafts");
    PluginCall joined=new PluginCall(preparations.get(joining).put("ready",true));joining.activateUpdate(joined);
    check(joined.resolved.get()==1,"the joining renderer acknowledged its own receipt");
@@ -1722,7 +1722,7 @@ public final class UpdateFlowTest {
    while(AlphaLocalAgentPlugin.stops==0&&System.nanoTime()<deadline)Thread.sleep(5);
    check(AlphaLocalAgentPlugin.stops==1&&context.packages.installer.committed.isEmpty(),"shutdown requested, unconfirmed stop prevents commit");
    check(AlphaDevicePlugin.UpdatePause.store().read()!=null,"pause survives before stop acknowledgment");
-   PluginCall repeated=new PluginCall(request.put("ready",false));owner.activateUpdate(repeated);
+   PluginCall repeated=new PluginCall(new JSObject().put("activationId",activationId).put("bridgeId",bridgeId).put("ready",false));owner.activateUpdate(repeated);
    check(repeated.rejected.get()==1&&repeated.resolved.get()==0,"an acknowledged activation cannot be changed to a refusal while shutdown waits");
    AlphaLocalAgentPlugin.confirmed=true;installing.awaitAnswer();
    check(installing.resolved.get()==1&&context.packages.installer.committed.size()==1,"matching shutdown allows exactly one commit");

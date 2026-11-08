@@ -312,6 +312,7 @@ export const CLIENT_FEATURE_PATHS = [
   'packages/auth/src/auth/cloud-resident-binding.ts',
 ];
 export const CLIENT_FEATURE_PATCHES = [
+  ['appUpdateResumePatch', 'app-update-resume-client', 'packages/ui/src/state/app-update-gate.ts'],
   ['filesListIdentityPatch', 'files-list-identity-client', 'plugins/plugin-files/src/browser/files-browser-adapter.ts'],
   ['filesStorageQueryPatch', 'files-storage-query-client', 'plugins/plugin-files/src/browser/storage-volume.ts'],
   ['photosWindowPatch', 'photos-window-client', 'packages/ui/src/mobile-shell/photos-view.ts'],

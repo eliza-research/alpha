@@ -70,11 +70,19 @@ public final class UpdateBarrierHarness {
   return new JSONArray(ids);
  }
 
+ private JSONArray receiptSet(Object raw) throws Exception {
+  var ids = new ArrayList<Integer>();
+  for (Object receipt : (Set<?>) raw) ids.add(bridgeIdNumber(receipt));
+  Collections.sort(ids);
+  return new JSONArray(ids);
+ }
+
  private JSONObject observe() throws Exception {
   synchronized (lock) {
    Object active = field("activation").get(null);
    int activeNumber = active == null ? 0 : activationNumber((String) Trace.read(active, "id"));
    Boolean ready = active == null ? null : (Boolean) ((CompletableFuture<?>) Trace.read(active, "ready")).getNow(null);
+   Object prepared = field("updateResume").get(null);
    var record = AlphaDevicePlugin.UpdatePause.store().read();
    int pendingSession = record != null && context.packages.installer.committed.contains(record.session)
      ? activationNumber(record.id) : 0;
@@ -85,11 +93,16 @@ public final class UpdateBarrierHarness {
      "active", activeNumber, "installerOwner", active == null ? 0 : bridgeNumber(Trace.read(active, "owner")),
      "waiting", active == null ? new JSONArray() : bridgeSet(Trace.read(active, "waiting")),
      "acknowledged", active == null ? new JSONArray() : bridgeSet(Trace.read(active, "acknowledged")),
+     "eligible", active == null ? new JSONArray() : receiptSet(Trace.read(active, "resumeEligible")),
      "ready", active == null ? "none" : ready == null ? "pending" : ready ? "yes" : "no",
      "invalid", active != null && (Boolean) Trace.read(active, "invalid"),
      "sealed", active != null && (Boolean) Trace.read(active, "sealed"),
      "stopRequested", active != null && AlphaDevicePlugin.UpdatePause.shutdownRequest >= 0,
-     "pendingSession", pendingSession, "confirmationOwner", bridgeNumber(field("updateOwner").get(null)),
+     "pendingSession", pendingSession,
+     "prepared", prepared == null ? 0 : activationNumber((String) Trace.read(prepared, "id")),
+     "preparedOwner", prepared == null ? 0 : bridgeIdNumber(Trace.read(prepared, "initiatingBridge")),
+     "preparedEligible", prepared == null ? new JSONArray() : receiptSet(Trace.read(prepared, "eligible")),
+     "confirmationOwner", bridgeNumber(field("updateOwner").get(null)),
      "terminal", activationNumber((String) field("settledActivation").get(null)),
      "outcome", outcome == null ? "none" : outcome, "resumeBridge", bridgeIdNumber(field("settledResumeBridge").get(null)),
      "stopCalls", AlphaLocalAgentPlugin.stops, "commits", context.packages.installer.committed.size());
@@ -117,22 +130,29 @@ public final class UpdateBarrierHarness {
   trace.step("begin", observe(), owner);
  }
  private void acknowledge(int bridge, String activation, int receipt, String vote, boolean valid) throws Exception {
+  acknowledge(bridge, activation, receipt, vote, "absent", valid);
+ }
+ private void acknowledge(int bridge, String activation, int receipt, String vote, String eligibility, boolean valid) throws Exception {
   var payload = new JSObject().put("activationId", activation)
     .put("bridgeId", Trace.read(bridges.get(receipt), "updateBridgeId"));
   if (vote.equals("yes") || vote.equals("no")) payload.put("ready", vote.equals("yes"));
   else if (vote.equals("string")) payload.put("ready", "true");
+  if (eligibility.equals("eligible") || eligibility.equals("ineligible"))
+   payload.put("resumeEligible", eligibility.equals("eligible"));
+  else if (eligibility.equals("string")) payload.put("resumeEligible", "true");
   var call = new PluginCall(payload);
   synchronized (lock) {
    bridges.get(bridge).activateUpdate(call);
    require(call.resolved.get() == (valid ? 1 : 0) && call.rejected.get() == (valid ? 0 : 1), "ACK outcome");
    int expectedActivation = activationIds.getOrDefault(activation, 0);
-   var action = Trace.action("acknowledge", bridge, expectedActivation, receipt, vote);
+   var action = Trace.action("acknowledge", bridge, expectedActivation, receipt, vote, eligibility);
    if (!valid) action.put("reject", true);
    trace.steps.put(new JSONObject().put("label", valid ? "exact participant ACK" : "native rejected ACK")
      .put("action", action).put("expect", observe()));
   }
  }
  private void ack(int bridge, String vote) throws Exception { acknowledge(bridge, activeId, bridge, vote, true); }
+ private void ackMounted(int bridge) throws Exception { acknowledge(bridge, activeId, bridge, "yes", "eligible", true); }
  private void sealed() throws Exception {
   await(() -> AlphaLocalAgentPlugin.stops > 0);
   trace.macro("seal admitted exact participant set before requesting shutdown", observe(),
@@ -203,7 +223,9 @@ public final class UpdateBarrierHarness {
     h.acknowledge(2, h.activeId, 1, "yes", false);
     h.acknowledge(1, h.activeId, 1, "absent", false);
     h.acknowledge(1, h.activeId, 1, "string", false);
-    h.ack(1, "yes");
+    h.acknowledge(1, h.activeId, 1, "yes", "string", false);
+    h.acknowledge(1, h.activeId, 1, "no", "eligible", false);
+    h.ackMounted(1);
     h.acknowledge(1, h.activeId, 1, "no", false);
     h.register(3); h.ack(2, "yes"); h.ack(3, "yes");
     h.sealed(); h.handOff(); h.canceled(2, 1); h.replayTerminal(2);
@@ -225,18 +247,28 @@ public final class UpdateBarrierHarness {
     h.acknowledge(1, previous, 1, "yes", false);
     h.ack(1, "no"); h.failed();
     break;
-   case "post-seal-bridge-can-own-cancellation-readback-as-built":
-    h.register(1); h.begin(1); h.ack(1, "yes"); h.sealed();
+   case "post-seal-confirmation-preserves-initiating-reconnect":
+    h.register(1); h.begin(1); h.ackMounted(1); h.sealed();
     h.register(2);
     require("paused".equals(h.requests.get(h.bridges.get(2)).optString("phase")), "post-seal bridge sees pause");
-    h.acknowledge(2, h.activeId, 2, "yes", false);
-    h.handOff(); h.continueConfirmation(1, 2); h.canceled(1, 2);
-    h.retire(2);
-    require(!h.readState(1).optBoolean("resume", false), "no resume handoff after settlement");
+    h.acknowledge(2, h.activeId, 2, "yes", "eligible", false);
+    h.handOff(); h.continueConfirmation(1, 2); h.canceled(2, 1);
+    h.replayTerminal(2);
+    h.retire(1);
+    require(!h.readState(2).optBoolean("resume", false), "no resume handoff after settlement");
     break;
-   case "retired-confirmation-owner-falls-back-to-settler":
-    h.register(1); h.register(2); h.begin(1); h.ack(1, "yes"); h.ack(2, "yes");
-    h.sealed(); h.handOff(); h.retire(1); h.canceled(2, 2);
+   case "eligible-mounted-sibling-keeps-confirmation-reconnect":
+    h.register(1); h.register(2); h.begin(1); h.ackMounted(1); h.ackMounted(2);
+    h.sealed(); h.handOff(); h.continueConfirmation(1, 2); h.canceled(1, 2);
+    break;
+   case "retired-confirmation-owner-cannot-nominate-arbitrary-settler":
+    h.register(1); h.register(2); h.begin(1); h.ackMounted(1); h.ackMounted(2);
+    h.sealed(); h.handOff(); h.retire(1); h.canceled(2, 0);
+    break;
+   case "old-and-startup-ack-can-prepare-but-cannot-reconnect":
+    h.register(1); h.register(2); h.begin(1); h.ack(1, "yes");
+    h.acknowledge(2, h.activeId, 2, "yes", "ineligible", true);
+    h.sealed(); h.handOff(); h.continueConfirmation(1, 2); h.canceled(1, 0);
     break;
    default: throw new IllegalArgumentException(name);
   }
