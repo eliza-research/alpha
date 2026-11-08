@@ -5084,7 +5084,7 @@ registerView("settings", {
       rootRef: function (el) { stNoScroll(); stPageAccess(el); },
       stack: stack,
       // The name is the product's character: only a mock build renames it here (docs/decisions.md).
-      charVal: agentName(S), nameEditable: testMocksEnabled, nameFixed: !testMocksEnabled,
+      charVal: testMocksEnabled ? S.charName : agentName(S), nameEditable: testMocksEnabled, nameFixed: !testMocksEnabled,
       onName: testMocksEnabled ? function (e) { api.shell({ charName: e.target.value }); } : null,
       persona: persona, openChar: go("character"),
       sheet: sh, hasSheet: !!sh,
@@ -5233,9 +5233,9 @@ class Component extends DCLogic {
   toast(msg, opts) {
     opts = opts || {};
     this.undoFn = opts.undo || null;
-    var base = opts.undo ? 5000 : 1900;
-    this.toastMs = Math.max(base, Math.min(10000, String(msg || "").length * 60)) * accessibilityTimeoutScale();
-    this.toastLong = this.toastMs > base; this.toastView = undefined; this.toastHeld = false;
+    var base = opts.undo ? 5000 : 1900, reading = Math.max(base, Math.min(10000, String(msg || "").length * 60));
+    this.toastMs = reading * accessibilityTimeoutScale();
+    this.toastLong = reading > base; this.toastView = undefined; this.toastHeld = false;
     var active = document.activeElement;
     if (!(active && active.closest && active.closest("[data-alpha-toast]"))) this.toastReturn = active;
     this.setState({ toast: msg, toastUndo: !!opts.undo });
@@ -5243,7 +5243,12 @@ class Component extends DCLogic {
   }
   armToast(ms) { var self = this; this.clear("t"); this.toastEnds = Date.now() + ms; this.later(function () { self.endToast(); }, ms, "t"); }
   holdToast() { if (!this.S().toast || this.toastHeld) return; this.toastHeld = true; this.toastLeft = Math.max(0, this.toastEnds - Date.now()); this.clear("t"); }
-  resumeToast() { if (!this.toastHeld) return; this.toastHeld = false; if (this.S().toast) this.armToast(Math.max(1000, this.toastLeft || 0)); }
+  /** Focus still inside the toast keeps it held; `leaving` is a blur, whose focus has not moved yet. */
+  resumeToast(leaving) {
+    var active = document.activeElement;
+    if (!this.toastHeld || !leaving && active && active.closest && active.closest("[data-alpha-toast]")) return;
+    this.toastHeld = false; if (this.S().toast) this.armToast(Math.max(1000, this.toastLeft || 0));
+  }
   endToast() {
     var active = document.activeElement, inside = !!(active && active.closest && active.closest("[data-alpha-toast]"));
     this.clear("t"); this.toastHeld = false; this.undoFn = null; this.toastView = undefined;
@@ -5734,7 +5739,7 @@ class Component extends DCLogic {
       // A plain pill dismisses on tap; one with Undo waits for Undo or its time.
       toastTap: function () { if (!self.S().toastUndo) self.endToast(); },
       toastHold: function () { self.holdToast(); }, toastResume: function () { self.resumeToast(); },
-      toastBlur: function (e) { if (!(e.relatedTarget && e.currentTarget.contains(e.relatedTarget))) self.resumeToast(); },
+      toastBlur: function (e) { if (!(e.relatedTarget && e.currentTarget.contains(e.relatedTarget))) self.resumeToast(true); },
       hasOngoing: !!ongoing && isOn, ongoing: ongoing || {}, sbWifi: S.q.wifi, sbPlane: S.q.plane,
       goCalendar: function () { self.openView("calendar", copy("shell").homeCalendar || null); },
       goTriage: function () { self.send("What needs me?"); },
