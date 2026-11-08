@@ -10957,7 +10957,8 @@
       "sha256": "54dd75b917c05994048553ae83843bae81f600e2fa2d7c51e99d046535b2fe5c",
       "models": [
         "BrowserReadingState",
-        "BrowserSession"
+        "BrowserSession",
+        "HostedNoticeQuestion"
       ],
       "scope": "application",
       "treatment": "state-and-transition-projection",
@@ -21722,7 +21723,8 @@
       "sha256": "3ef6fed4ad3fb1967cbc59deda8cfa61ee64d0c1fa8ae7480267187e4d79c31e",
       "models": [
         "FilesTree",
-        "ShellNavigation"
+        "ShellNavigation",
+        "HostedNoticeQuestion"
       ],
       "scope": "application",
       "treatment": "state-and-transition-projection",
@@ -42802,7 +42804,8 @@
       "path": "apps/app/src/runtime/hosted-digests.ts",
       "sha256": "be3f284715192645684773aa44dfca3364e4e40d5b3fa421fef2846cdc21db66",
       "models": [
-        "NoticesAndCaches"
+        "NoticesAndCaches",
+        "HostedNoticeQuestion"
       ],
       "scope": "application",
       "treatment": "state-and-transition-projection",
@@ -42860,7 +42863,8 @@
       "path": "apps/app/src/runtime/hosted-notice-question.ts",
       "sha256": "f4c9446427b08349ece36c40e684ff00ecdef3485f0d68fc93d61c18a3d5e2c0",
       "models": [
-        "NoticesAndCaches"
+        "NoticesAndCaches",
+        "HostedNoticeQuestion"
       ],
       "scope": "application",
       "treatment": "state-and-transition-projection",

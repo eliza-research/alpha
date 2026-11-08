@@ -1997,5 +1997,30 @@
       "Current Calendar-aware Google disconnect helper. Exact captured lease, source, pause revision and key, independent Cloud privacy revoke and separate callback retirement.",
       "One connection, bounded cleanup observers and controlled result order. The mounted callsite, native access publication, actual provider drain, remote effects and persistence remain separate."
     ]
+  },
+  {
+    "path": "specs/quint/application/HostedNoticeQuestion.qnt",
+    "module": "HostedNoticeQuestion",
+    "init": "init",
+    "step": "step",
+    "invariant": "safety",
+    "tests": [
+      "closedReviewLeavesNoticePendingTest",
+      "exactRecheckBeforeConsumptionTest",
+      "consumptionCanOutliveAnInterruptedReviewTest",
+      "resolverDropsOverlapAndCanRetryTest"
+    ],
+    "sources": [
+      "apps/app/src/runtime/hosted-notice-question.ts",
+      "apps/app/src/browser/content-question.ts",
+      "apps/app/src/prototype/context-selection.ts",
+      "apps/app/src/runtime/hosted-digests.ts",
+      ".eliza/client-features/plugins/plugin-native-browser-surface/src/page-reading.ts",
+      ".eliza/client-features/plugins/plugin-workflow/src/client/hosted-digests.ts"
+    ],
+    "abstractions": [
+      "Actual hosted question review and shared text/digest rules, exact retained token readback, draft publication after acknowledgement and overlap refusal.",
+      "One reviewed native question and bounded synthetic owner, composer and notice settlement. Physical DOM input and mounted panel/provider interactions are separate."
+    ]
   }
 ]
