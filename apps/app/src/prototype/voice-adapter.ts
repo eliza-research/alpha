@@ -468,7 +468,10 @@ export function installPrototypeVoiceAdapter(Component: any, views: Record<strin
       handle=await selected.addListener('recordingStopped',value=>{
         if(!active||input.signal.aborted||id&&value.recordingId!==id)return;
         if(!value.recordingId)return;
-        endId=value.recordingId;if(Number.isFinite(value.durationMs)){ended=value;if(id)batchRecordingEnded(id);}else problem=Error('Microphone capture was interrupted.');
+        endId=value.recordingId;
+        if ('interrupted' in value && value.interrupted === 'call-active') {
+          problem=Object.assign(Error('Voice paused for a phone call.'),{code:'call-active',reason:'call-active'});
+        } else if(Number.isFinite(value.durationMs)){ended=value;if(id)batchRecordingEnded(id);}else problem=Error('Microphone capture was interrupted.');
         if(id){recording=false;if(poll)clearTimeout(poll);input.onEnd(problem);}
       });check();
       const pending=selected.startRecording();startingCapture=pending;
@@ -605,8 +608,9 @@ export function installPrototypeVoiceAdapter(Component: any, views: Record<strin
         if(!sent){if(token===generation&&chatDestination===chat)cancelChat();throw new DOMException('Voice message discarded','AbortError');}
         const result=sent.result;input.signal.throwIfAborted();current();
         if(result.complete){markVoiceTiming('first-token');markVoiceTiming('final-reply');}
-        conversationLastTranscript=sent.text;conversationLastReply=result.text;conversationReviewRequired=result.reviewRequired===true&&!result.awaitingUserInput;if(result.awaitingUserInput!==undefined)liveCapture?.release(true);
-        const spoken=typeof result.text==='string'?workflowReplyText(result.text).text:result.text;return spoken===result.text?result:{...result,text:spoken};
+        const spoken=typeof result.text==='string'?workflowReplyText(result.text).text:result.text;
+        conversationLastTranscript=sent.text;conversationLastReply=spoken;conversationReviewRequired=result.reviewRequired===true&&!result.awaitingUserInput;if(result.awaitingUserInput!==undefined)liveCapture?.release(true);
+        return spoken===result.text?result:{...result,text:spoken};
         }finally{cueTurn.settled=true;liveCapture?.release();}
       };
       const voiceStopped=(value:BatchVoiceState)=>{
