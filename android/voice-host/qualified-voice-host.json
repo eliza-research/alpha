@@ -1599,7 +1599,9 @@
       ],
       "explicitSpeechPatchFiles": [
         "patches/eliza/cloud-speech-native.patch",
-        "patches/eliza/local-speech-streaming.patch"
+        "patches/eliza/local-speech-streaming.patch",
+        "patches/eliza/notes-recording-segments.patch",
+        "patches/eliza/speech-recording-admission.patch"
       ],
       "note": "Historical component measurements retain their original qualify APK and source identity. Current shared Java, producer and explicit bridge changes require current-source qualification and owner acceptance. Neither is claimed."
     }
