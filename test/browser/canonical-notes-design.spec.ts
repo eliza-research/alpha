@@ -92,10 +92,10 @@ test('live agent Notes in dark mode, the text editor and the checklist editor',a
   // The editor header: Back · Checklist · Share · ⋯ at 44px; the draft actions are full 48px rows.
   expect(box.height).toBeGreaterThanOrEqual(name.startsWith('Review')?47.5:43.5);
  }
- // Note actions stay focused on the note; folder and scheduling shortcuts are absent.
+ // Reviewed handoffs are inside More; the note header keeps its compact controls.
  await page.getByRole('button',{name:'More',exact:true}).click();
  const menu=page.getByRole('dialog',{name:'Note actions'});
- for(const name of ['Unpin','Delete'])await expect(menu.getByRole('button',{name,exact:true})).toBeVisible();
+ for(const name of ['Unpin','Delete','Review reminder draft','Review calendar event draft'])await expect(menu.getByRole('button',{name,exact:true})).toBeVisible();
  await page.keyboard.press('Escape');await expect(menu).toHaveCount(0);
  await shot(page,'live-editor-dark');
  await page.getByRole('button',{name:'Back to notes',exact:true}).click();

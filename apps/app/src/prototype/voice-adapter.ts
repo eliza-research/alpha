@@ -1208,9 +1208,9 @@ export function installPrototypeVoiceAdapter(Component: any, views: Record<strin
           current.toast('Choose one action, then Save.');
         }finally{noteHandoffBusy=false;}
       };
-      vo.toCal=()=>void draftFromNote('reminder');
+      vo.toCal=()=>{vo.closeMenu?.();void draftFromNote('reminder');};
       vo.calLabel='Review reminder draft';vo.calText='Review reminder';vo.calIcon=current.ic.cal;
-      vo.toEvent=()=>void draftFromNote('event');
+      vo.toEvent=()=>{vo.closeMenu?.();void draftFromNote('event');};
       vo.eventLabel='Review calendar event draft';vo.eventText='Review event';
 
       // A saved recording's reviewed transcript uses the same disclosed speech route as text notes.

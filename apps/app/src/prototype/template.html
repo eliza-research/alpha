@@ -2322,6 +2322,8 @@
       <sc-if value="{{notes.ed.menuShown}}"><div ref="{{notes.noteMenu}}" data-alpha-popup style="display: contents">
       <sc-if value="{{notes.ed.menuShown}}"><button aria-hidden="true" tabindex="-1" onClick="{{notes.ed.closeMenu}}" style="position: absolute; inset: 0; z-index: 11; background: transparent"></button></sc-if>
       <sc-if value="{{notes.ed.menuOpen}}"><div class="notes-menu" role="dialog" aria-label="Note actions">
+        <sc-if value="{{notes.ed.toCal}}"><button onClick="{{notes.ed.toCal}}"><svg class="i" viewBox="0 0 24 24" style="width:18px;height:18px"><path d="{{ic.cal}}"></path></svg>Review reminder draft</button></sc-if>
+        <sc-if value="{{notes.ed.toEvent}}"><button onClick="{{notes.ed.toEvent}}"><svg class="i" viewBox="0 0 24 24" style="width:18px;height:18px"><path d="{{ic.cal}}"></path></svg>Review calendar event draft</button></sc-if>
         <button onClick="{{notes.ed.pin}}"><svg class="i" viewBox="0 0 24 24" style="width: 18px; height: 18px"><path d="{{ic.notesPin}}"></path></svg>{{notes.ed.pinLabel}}</button>
         <hr>
         <button onClick="{{notes.ed.del}}"><svg class="i" viewBox="0 0 24 24" style="width: 18px; height: 18px"><path d="{{ic.trash}}"></path></svg>Delete</button>
@@ -2399,6 +2401,8 @@
       <sc-if value="{{notes.vo.menuShown}}"><div ref="{{notes.noteMenu}}" data-alpha-popup style="display: contents">
       <sc-if value="{{notes.vo.menuShown}}"><button aria-hidden="true" tabindex="-1" onClick="{{notes.vo.closeMenu}}" style="position: absolute; inset: 0; z-index: 11; background: transparent"></button></sc-if>
       <sc-if value="{{notes.vo.menuOpen}}"><div class="notes-menu" role="dialog" aria-label="Note actions">
+        <sc-if value="{{notes.vo.toCal}}"><button onClick="{{notes.vo.toCal}}"><svg class="i" viewBox="0 0 24 24" style="width:18px;height:18px"><path d="{{ic.cal}}"></path></svg>Review reminder draft</button></sc-if>
+        <sc-if value="{{notes.vo.toEvent}}"><button onClick="{{notes.vo.toEvent}}"><svg class="i" viewBox="0 0 24 24" style="width:18px;height:18px"><path d="{{ic.cal}}"></path></svg>Review calendar event draft</button></sc-if>
         <button onClick="{{notes.vo.pin}}"><svg class="i" viewBox="0 0 24 24" style="width: 18px; height: 18px"><path d="{{ic.notesPin}}"></path></svg>{{notes.vo.pinLabel}}</button>
         <hr>
         <button onClick="{{notes.vo.del}}"><svg class="i" viewBox="0 0 24 24" style="width: 18px; height: 18px"><path d="{{ic.trash}}"></path></svg>Delete</button>
