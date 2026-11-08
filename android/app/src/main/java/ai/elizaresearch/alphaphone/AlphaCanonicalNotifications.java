@@ -5,6 +5,7 @@ import android.app.NotificationManager;
 import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
+import android.os.SystemClock;
 import java.nio.charset.StandardCharsets;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -15,7 +16,9 @@ final class AlphaCanonicalNotifications {
  private static final ScheduledExecutorService SERIAL=Executors.newSingleThreadScheduledExecutor();
  private static final ExecutorService EVENTS=Executors.newSingleThreadExecutor();
  private static volatile AlphaCanonicalNotifications active;
+ private static final long TAP_WINDOW_MS=300000;
  private static Intent waitingTap;
+ private static long waitingTapAt;
  private static JSONObject pendingTap;
  private static final AtomicInteger restoration=new AtomicInteger();
  private static boolean restoring;
@@ -75,7 +78,7 @@ final class AlphaCanonicalNotifications {
   synchronized(AlphaCanonicalNotifications.class){restoration.incrementAndGet();restoring=false;}
   AlphaCanonicalNotifications previous=active;active=null;
   // Unverified taps survive cold startup; the eventual owner/token check decides them.
-  synchronized(AlphaCanonicalNotifications.class){if(retire)pendingTap=null;}
+  synchronized(AlphaCanonicalNotifications.class){if(retire){pendingTap=null;waitingTap=null;}}
   if(previous==null)return;previous.stopped=true;
   ElizaAgentService.LocalStreamHandle h=previous.stream;if(h!=null)h.cancel();
   SERIAL.execute(()->{if(retire&&previous.owner!=null)try{NativeNotificationProjector.retireOwner(previous.context,previous.owner);}catch(Exception ignored){}});
@@ -160,21 +163,23 @@ final class AlphaCanonicalNotifications {
  /** Capture only our private-token tap. Strip it before Capacitor can treat it as an external URL. */
  static void captureTap(Context context,Intent intent){
   if(intent==null||!intent.hasExtra("elizaNativeNotificationOwner"))return;
-  synchronized(AlphaCanonicalNotifications.class){waitingTap=new Intent(intent);}
+  synchronized(AlphaCanonicalNotifications.class){waitingTap=new Intent(intent);waitingTapAt=SystemClock.elapsedRealtime();}
   intent.setData(null).setAction(Intent.ACTION_MAIN);
   intent.removeExtra("deepLink");intent.removeExtra("conversationId");intent.removeExtra("messageId");
   AlphaCanonicalNotifications a=active;if(a!=null)SERIAL.execute(a::consumeWaitingTap);
  }
  private void consumeWaitingTap(){
-  Intent tap;synchronized(AlphaCanonicalNotifications.class){tap=waitingTap;}
+  Intent tap;long age;synchronized(AlphaCanonicalNotifications.class){tap=waitingTap;age=SystemClock.elapsedRealtime()-waitingTapAt;}
   if(tap==null)return;
+  // The tap window runs from the user's tap, not from whenever the first connection lands.
+  if(age>TAP_WINDOW_MS){synchronized(AlphaCanonicalNotifications.class){if(waitingTap==tap)waitingTap=null;}return;}
   try{
    check();boolean valid=NativeNotificationProjector.onOpened(context,tap,owner);
    synchronized(AlphaCanonicalNotifications.class){if(waitingTap==tap)waitingTap=null;}
    if(!valid)return;check();
    String view=NativeNotificationRoute.view(tap.getStringExtra("deepLink"));if(view==null)return;
    JSONObject pending=new JSONObject().put("token",java.util.UUID.randomUUID().toString()).put("notificationId",tap.getStringExtra("notificationId"))
-    .put("view",view).put("ownerId",identity.getString("subjectUserId")).put("agentId",identity.getString("agentId")).put("expiresAt",System.currentTimeMillis()+300000);
+    .put("view",view).put("ownerId",identity.getString("subjectUserId")).put("agentId",identity.getString("agentId")).put("expiresAt",System.currentTimeMillis()+TAP_WINDOW_MS-age);
    for(String field:new String[]{"conversationId","messageId"})if(tap.getStringExtra(field)!=null)pending.put(field,tap.getStringExtra(field));
    synchronized(AlphaCanonicalNotifications.class){pendingTap=pending;}
    AlphaNotificationsPlugin.canonicalTapReady();
