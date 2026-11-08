@@ -7,7 +7,7 @@ for(const mode of ['recover','stale','read-failure','draft-race','navigation-rac
  await page.addInitScript(mode=>{
   const w=window as any;w.androidBridge={};if(mode!=='chooser-close')localStorage.setItem('alpha.connection.selection.v1',JSON.stringify({kind:'offline'}));
   const target={sourceId:'local-source',sourceRevision:'a'.repeat(64),reminderId:'retained-reminder',occurrenceId:'one',revision:'b'.repeat(64),timingVersion:2};
-  const f=w.reminderTapFixture={mode,pending:{token:'original-token',target,retained:!['stale','dismiss-stale'].includes(mode)},consumed:[] as string[],reads:0,allow:mode==='chooser-close'||localStorage.getItem('tap-fixture-recover')==='1',release:null as any};
+  const f=w.reminderTapFixture={mode,pending:{token:'original-token',target,retained:!['stale','dismiss-stale'].includes(mode)},consumed:[] as string[],reads:0,failedLists:0,readsAtQueueChange:undefined as number|undefined,allow:mode==='chooser-close'||localStorage.getItem('tap-fixture-recover')==='1',release:null as any};
   const slots:Record<string,string>={};
   const methods=(names:string[])=>names.map(name=>({name,rtype:'promise'}));
   w.Capacitor={PluginHeaders:[
@@ -26,8 +26,8 @@ for(const mode of ['recover','stale','read-failure','draft-race','navigation-rac
     if(method==='consumeReminderTap'){if(f.mode==='consume-failure')throw Error('Storage unavailable');if(f.pending.token!==input.token)throw Error('Newer tap');f.consumed.push(input.token);f.pending={};return {};}
     if(method==='dismissReminderTap'){if(f.pending.token!==input.token)throw Error('Changed');f.pending={token:'older-valid-token',target,retained:true};return {};}
     if(method==='listReminders'){
-     if(f.allow&&(f.mode==='read-failure'||f.mode==='reload-recovery'&&localStorage.getItem('tap-fixture-recover')!=='1'))throw Error('Unavailable');
-     if(f.allow&&['draft-race','navigation-race','queue-change'].includes(f.mode)){if(f.mode==='queue-change')f.pending={...f.pending,token:'newer-token'};else await new Promise(r=>f.release=r);}
+     if(f.allow&&(f.mode==='read-failure'||f.mode==='reload-recovery'&&localStorage.getItem('tap-fixture-recover')!=='1')){f.failedLists++;throw Error('Unavailable');}
+     if(f.allow&&['draft-race','navigation-race','queue-change'].includes(f.mode)){if(f.mode==='queue-change'){f.pending={...f.pending,token:'newer-token'};f.readsAtQueueChange=f.reads;}else await new Promise(r=>f.release=r);}
      return {reminders:[{id:'retained-reminder',title:'Original notification reminder',body:'Exact saved body',at:Date.now(),dueAt:Date.now(),alertMinutes:0,status:'posted',occurrenceId:'one',target}]};
     }
     return {};
@@ -84,7 +84,15 @@ for(const mode of ['recover','stale','read-failure','draft-race','navigation-rac
  }else if(mode==='recover'||mode==='consume-failure'){
   await expect(page.getByRole('heading',{name:'Original notification reminder',exact:true})).toBeVisible();await expect(page.getByRole('button',{name:'Complete reminder occurrence',exact:true})).toBeVisible();await expect(page.locator('body')).toContainText('Exact saved body');
   if(mode==='recover')await expect.poll(()=>page.evaluate(()=>(window as any).reminderTapFixture.consumed)).toEqual(['original-token']);
- }else await expect.poll(()=>page.evaluate(()=>(window as any).reminderTapFixture.reads)).toBeGreaterThan(1);
+ }else{
+  // Wait for the point where each tap is decided, then check nothing opened and the tap is kept.
+  if(mode==='stale')await expect(page.getByRole('button',{name:'Dismiss saved reminder link',exact:true})).toBeVisible();
+  if(mode==='read-failure'){await expect.poll(()=>page.evaluate(()=>(window as any).reminderTapFixture.failedLists)).toBeGreaterThan(0);await expect(page.getByRole('button',{name:'Open saved reminder notification',exact:true})).toBeVisible();}
+  // The confirmation read after listReminders sees the newer token.
+  if(mode==='queue-change')await expect.poll(()=>page.evaluate(()=>{const f=(window as any).reminderTapFixture;return f.readsAtQueueChange!==undefined&&f.reads>f.readsAtQueueChange;})).toBe(true);
+  await expect(page.getByRole('heading',{name:'Original notification reminder',exact:true})).toHaveCount(0);
+  expect(await page.evaluate(()=>(window as any).reminderTapFixture.pending.token)).toBe(mode==='queue-change'?'newer-token':'original-token');
+ }
  if(mode!=='recover')expect(await page.evaluate(()=>(window as any).reminderTapFixture.consumed)).toEqual([]);
  expect(errors).toEqual([]);
 });
