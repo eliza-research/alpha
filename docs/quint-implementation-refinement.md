@@ -325,3 +325,24 @@ translated counterexample remains available against the pinned unpatched
 source, and existing named rows require separate evidence. The current
 Android mobile producer applies 11 reviewed transforms and passed its load
 and pre-provider checks across 4,338 first-party inputs.
+
+The Agent Calendar refresh campaign checks 25 schedules and 237 checkpoints
+against the actual read controller. It covers trailing same-query refresh,
+abort and stale replies, source readability, feed preservation on a
+same-window failure, and exact owner and date-window eligibility. Mutations,
+linked source selection and Maps return are separate.
+
+The renderer notification tap campaign checks eight schedules and 70
+checkpoints. Navigation retains its mount through the actual render
+callback. A competing connection operation or user navigation can prevent
+publication. A newer native token survives an old acknowledgement, and an
+old mount cannot publish into its successor. Native expiry and installed
+foreground delivery remain separate.
+
+The durable runtime update pause campaign checks 12 schedules and 106
+checkpoints using the pinned Java journal and actual Alpha wrapper against
+controlled system observations. It covers fresh JVM reopen, exact execution
+and successor evidence, and the difference between the journal's admission
+state and an in-process shutdown lease. A release failure after a rename can
+leave those states divergent. Installed PackageInstaller and power loss
+remain separate.

@@ -12,7 +12,7 @@
   "toolSha256": "403a33cab0dff7ace6219b29e7ffef373319677a7d8be6641466dd16a6750b5b",
   "dependencyLockSha256": "944123c801157a7ba3676a886d0b28a54bef32735ae96da5c6dd0f206c88c8bf",
   "sourcePin": "99b49439ce9d0cb5607e9831b9f7f58d89525029",
-  "ledgerSha256": "ec0fe474933b898bd0382820a8dd14c68b4bb81d761cf4a6846037179bb4bf19",
+  "ledgerSha256": "7c1ae003b26c2d54a133daffc4bacfb70d137d75def0645569f0ad3bc0ea342d",
   "method": "TypeScript syntax trees for JavaScript/TypeScript and JDK compiler trees for Java. Mutable fields, bindings, containers, state hooks, write sites and asynchronous registration calls are candidates for semantic review.",
   "limitations": [
     "Candidate extraction does not establish state-machine coverage or implementation refinement.",
@@ -28,11 +28,11 @@
     "parsedFiles": 5625,
     "languageReview": 55,
     "parseErrors": 0,
-    "candidates": 67081,
-    "writeSites": 66519,
-    "writeAssociations": 59692,
-    "asynchronous": 8299,
-    "unassignedWrites": 10194
+    "candidates": 67082,
+    "writeSites": 66521,
+    "writeAssociations": 59700,
+    "asynchronous": 8302,
+    "unassignedWrites": 10188
   },
   "files": [
     {
@@ -16960,7 +16960,8 @@
       "sha256": "a5471aa841627f82d80c8e9c4c833b5131a43496235f29d5b10454ee29c0b018",
       "allocatedModels": [
         "Application",
-        "ResetRecovery"
+        "ResetRecovery",
+        "RuntimeUpdatePause"
       ],
       "sourcePathClass": "other-source-path",
       "classification": "syntactic-candidates",
@@ -17260,7 +17261,8 @@
       "path": "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaCanonicalNotifications.java",
       "sha256": "262567aed2d17f0c6e6f0614a4167cfa5ded9d098ead6fd46cfa7c589deae5c0",
       "allocatedModels": [
-        "NoticesAndCaches"
+        "NoticesAndCaches",
+        "CanonicalNotificationTapAdmission"
       ],
       "sourcePathClass": "other-source-path",
       "classification": "syntactic-candidates",
@@ -18324,7 +18326,8 @@
         "Application",
         "AccessibleToastLifetime",
         "MountedUpdateAdmission",
-        "StartupUpdateAdmission"
+        "StartupUpdateAdmission",
+        "RuntimeUpdatePause"
       ],
       "sourcePathClass": "other-source-path",
       "classification": "syntactic-candidates",
@@ -19727,7 +19730,8 @@
         "NativeCredentialMutation",
         "ResidentRuntime",
         "ResidentScheduling",
-        "NativeGoogleAccessFile"
+        "NativeGoogleAccessFile",
+        "RuntimeUpdatePause"
       ],
       "sourcePathClass": "other-source-path",
       "classification": "syntactic-candidates",
@@ -22018,7 +22022,8 @@
       "sha256": "6cbcdc56fae1ba27b830120339be6fb2a6301e38f6381eff3c698a1afcf35bea",
       "allocatedModels": [
         "NoticesAndCaches",
-        "NotificationCollection"
+        "NotificationCollection",
+        "CanonicalNotificationTapAdmission"
       ],
       "sourcePathClass": "other-source-path",
       "classification": "syntactic-candidates",
@@ -32513,7 +32518,8 @@
         "ScreenFocusOwnership",
         "DockClearanceOwnership",
         "MountedUpdateAdmission",
-        "StartupUpdateAdmission"
+        "StartupUpdateAdmission",
+        "CanonicalNotificationTapAdmission"
       ],
       "sourcePathClass": "other-source-path",
       "classification": "syntactic-candidates",
@@ -33258,7 +33264,8 @@
       "path": "apps/app/src/prototype/agent-calendar-adapter.ts",
       "sha256": "fd33f4f66409a222560a5dfbdb2711bcda17cb4e261126531c23f10c2a3c7a57",
       "allocatedModels": [
-        "CalendarPresentation"
+        "CalendarPresentation",
+        "AgentCalendarRefresh"
       ],
       "sourcePathClass": "other-source-path",
       "classification": "syntactic-candidates",
@@ -38852,11 +38859,13 @@
     },
     {
       "path": "apps/app/src/prototype/notifications-adapter.ts",
-      "sha256": "90b82010bd75932d7e90f3d95ba7eb5333bf8196baa6af11fb66ff5e97e617cc",
+      "sha256": "90c26ad311249e7c3f2d5423bee5b70b9f803bdd88041322046ee0547abdd46d",
       "allocatedModels": [
         "NoticesAndCaches",
-        "NotificationCollection"
+        "NotificationCollection",
+        "CanonicalNotificationTapAdmission"
       ],
+      "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
       "classification": "syntactic-candidates",
       "owners": [
@@ -38873,21 +38882,27 @@
           "writes": 2
         },
         {
+          "owner": "installCanonicalNotificationTaps.FunctionExpression@22",
+          "line": 24,
+          "bindings": 1,
+          "writes": 8
+        },
+        {
           "owner": "installNotificationsAdapter",
-          "line": 69,
+          "line": 92,
           "bindings": 1,
           "writes": 6
         },
         {
-          "owner": "installNotificationsAdapter.FunctionExpression@90",
-          "line": 91,
+          "owner": "installNotificationsAdapter.FunctionExpression@113",
+          "line": 114,
           "bindings": 1,
           "writes": 2
         }
       ],
       "parseErrors": [],
-      "asynchronous": 15,
-      "unassignedWrites": 39
+      "asynchronous": 18,
+      "unassignedWrites": 33
     },
     {
       "path": "apps/app/src/prototype/own-notice-question.ts",
@@ -40359,7 +40374,8 @@
       "sha256": "a332ce973640c766e0e6c0546806d0d5d36744cb027520afc95250a5be0641b1",
       "allocatedModels": [
         "CalendarPresentation",
-        "CalendarSync"
+        "CalendarSync",
+        "AgentCalendarRefresh"
       ],
       "sourcePathClass": "other-source-path",
       "classification": "syntactic-candidates",
@@ -40372,7 +40388,8 @@
       "path": "apps/app/src/runtime/agent-calendar-view.ts",
       "sha256": "da902782806b13925a62936ce1ddab8436d6b4441990d89e08154040f7a97086",
       "allocatedModels": [
-        "CalendarPresentation"
+        "CalendarPresentation",
+        "AgentCalendarRefresh"
       ],
       "sourcePathClass": "other-source-path",
       "classification": "syntactic-candidates",
@@ -40386,7 +40403,8 @@
       "sha256": "755b3af7293f83a73f847043d2c56168d678ffb8e86741312c9f4af8559ea302",
       "allocatedModels": [
         "CalendarPresentation",
-        "CalendarSync"
+        "CalendarSync",
+        "AgentCalendarRefresh"
       ],
       "sourcePathClass": "other-source-path",
       "classification": "syntactic-candidates",
@@ -41494,7 +41512,8 @@
         "SignIn",
         "IdentitySession",
         "ControllerComposition",
-        "ResidentLiveness"
+        "ResidentLiveness",
+        "CanonicalNotificationTapAdmission"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -167458,7 +167477,8 @@
       "allocatedModels": [
         "ResidentRuntime",
         "ApplicationComposition",
-        "NativeCredentialMutation"
+        "NativeCredentialMutation",
+        "RuntimeUpdatePause"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -218290,6 +218310,6 @@
   ],
   "detail": {
     "path": "test-results/quint-state-audit/details.json",
-    "sha256": "4ddf4e9d2ea5573ba4ee49c2dc09804b435a5dd5dff1d5bd04fb11db20fbf354"
+    "sha256": "ae8e5d0b42ead5dbd27eca7d7bb8f51f56c880bd23d868f1a0603e1127195926"
   }
 }

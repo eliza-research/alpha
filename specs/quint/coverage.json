@@ -6211,7 +6211,8 @@
       "sha256": "a5471aa841627f82d80c8e9c4c833b5131a43496235f29d5b10454ee29c0b018",
       "models": [
         "Application",
-        "ResetRecovery"
+        "ResetRecovery",
+        "RuntimeUpdatePause"
       ],
       "scope": "application",
       "treatment": "state-and-transition-projection",
@@ -6288,7 +6289,8 @@
     {
       "path": "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaCanonicalNotifications.java",
       "models": [
-        "NoticesAndCaches"
+        "NoticesAndCaches",
+        "CanonicalNotificationTapAdmission"
       ],
       "scope": "application",
       "treatment": "domain-contract-or-support",
@@ -6520,7 +6522,8 @@
         "Application",
         "AccessibleToastLifetime",
         "MountedUpdateAdmission",
-        "StartupUpdateAdmission"
+        "StartupUpdateAdmission",
+        "RuntimeUpdatePause"
       ],
       "scope": "application",
       "treatment": "state-and-transition-projection",
@@ -6734,7 +6737,8 @@
         "NativeCredentialMutation",
         "ResidentRuntime",
         "ResidentScheduling",
-        "NativeGoogleAccessFile"
+        "NativeGoogleAccessFile",
+        "RuntimeUpdatePause"
       ],
       "scope": "application",
       "treatment": "state-and-transition-projection",
@@ -7236,7 +7240,8 @@
       "sha256": "6cbcdc56fae1ba27b830120339be6fb2a6301e38f6381eff3c698a1afcf35bea",
       "models": [
         "NoticesAndCaches",
-        "NotificationCollection"
+        "NotificationCollection",
+        "CanonicalNotificationTapAdmission"
       ],
       "scope": "application",
       "treatment": "state-and-transition-projection",
@@ -14711,7 +14716,8 @@
         "ScreenFocusOwnership",
         "DockClearanceOwnership",
         "MountedUpdateAdmission",
-        "StartupUpdateAdmission"
+        "StartupUpdateAdmission",
+        "CanonicalNotificationTapAdmission"
       ],
       "scope": "application",
       "treatment": "state-and-transition-projection",
@@ -17586,7 +17592,8 @@
     {
       "path": "apps/app/src/prototype/agent-calendar-adapter.ts",
       "models": [
-        "CalendarPresentation"
+        "CalendarPresentation",
+        "AgentCalendarRefresh"
       ],
       "scope": "application",
       "treatment": "domain-contract-or-support",
@@ -33071,13 +33078,15 @@
     },
     {
       "path": "apps/app/src/prototype/notifications-adapter.ts",
-      "sha256": "90b82010bd75932d7e90f3d95ba7eb5333bf8196baa6af11fb66ff5e97e617cc",
       "models": [
         "NoticesAndCaches",
-        "NotificationCollection"
+        "NotificationCollection",
+        "CanonicalNotificationTapAdmission"
       ],
       "scope": "application",
       "treatment": "state-and-transition-projection",
+      "reviewStatus": "state-audit-required",
+      "sha256": "90c26ad311249e7c3f2d5423bee5b70b9f803bdd88041322046ee0547abdd46d",
       "stateAnchors": [
         {
           "line": 10,
@@ -33092,119 +33101,111 @@
           "text": "const p=Component.prototype, mount=p.componentDidMount, unmount=p.componentWillUnmount;"
         },
         {
-          "line": 25,
+          "line": 27,
           "text": "const current=connectionController.getSnapshot(),session=current.session;if(!session||current.busy||current.open)return;"
         },
         {
-          "line": 26,
+          "line": 28,
           "text": "const origin={view:this.S().view,revision:alphaClient.getState().context.revision,conversation:connectionController.getSelectedConversationId(),history:current.history};"
         },
         {
-          "line": 29,
-          "text": "const tap=await native.canonicalPending();"
-        },
-        {
-          "line": 31,
-          "text": "const canCommit=()=>this.alphaCanonicalLive&&!document.hidden&&!this.S().typing&&!this.S().recording&&!String(this.S().draft||'').trim()&&connectionController.getSnapshot().session===session&&!connect"
-        },
-        {
-          "line": 32,
+          "line": 38,
           "text": "const originCurrent=()=>canCommit()&&this.S().view===origin.view&&alphaClient.getState().context.revision===origin.revision&&connectionController.getSelectedConversationId()===origin.conversation&&con"
         },
         {
-          "line": 36,
+          "line": 42,
           "text": "const exact=tap.view==='chat'&&!!tap.conversationId&&!!tap.messageId;"
         },
         {
-          "line": 39,
+          "line": 45,
           "text": "const after=connectionController.getSnapshot();"
         },
         {
-          "line": 43,
+          "line": 49,
           "text": "const restored=connectionController.getSnapshot().history;"
         },
         {
-          "line": 44,
+          "line": 50,
           "text": "const exactChat=()=>!!restored&&this.S().view===origin.view&&alphaClient.getState().context.revision===origin.revision&&connectionController.getSelectedConversationId()===tap.conversationId&&connectio"
         },
         {
-          "line": 47,
+          "line": 53,
           "text": "const views:Record<string,string>={calendar:'calendar',notes:'notes',automations:'workflows',clock:'calendar',reminders:'calendar','apps/tasks':'calendar'};"
         },
         {
-          "line": 48,
+          "line": 54,
           "text": "const mapped=tap.view&&tap.view!=='chat'?views[tap.view]:undefined;"
         },
         {
-          "line": 49,
+          "line": 55,
           "text": "const targetView=mapped&&isMvpView(mapped)?mapped:undefined;"
         },
         {
-          "line": 69,
+          "line": 92,
           "text": "const p=Component.prototype, render=p.renderVals, mount=p.componentDidMount, unmount=p.componentWillUnmount;"
         },
         {
-          "line": 79,
+          "line": 102,
           "text": "if(this.alphaNoticesBusy||!this.alphaNoticesLive||document.hidden)return;this.alphaNoticesBusy=true;const epoch=this.alphaNoticeEpoch;"
         },
         {
-          "line": 80,
+          "line": 103,
           "text": "try{const result=await native.list();if(!this.alphaNoticesLive||document.hidden||epoch!==this.alphaNoticeEpoch)return;if(result.calendarStatus==='unavailable'){if(!this.alphaCalendarAlertError)this.to"
         },
         {
-          "line": 89,
+          "line": 112,
           "text": "p.notificationSelection=function(){if(!this.S().shade||document.hidden){this.alphaNoticeSelection=undefined;return undefined;}const chosen=this.alphaNoticeSelection;return chosen?{...chosen}:undefined"
         },
         {
-          "line": 91,
+          "line": 114,
           "text": "const out=render.call(this),self=this;"
         },
         {
-          "line": 95,
+          "line": 118,
           "text": "const reviewEnded=()=>{const now=self.S();return !now.shade||now.screen==='lock'||now.screen==='off';};"
         },
         {
-          "line": 98,
+          "line": 121,
           "text": "const action=async(task:()=>Promise<void>)=>{try{await task();await self.refreshAlphaNotices();}catch{if(self.alphaNoticesLive&&!document.hidden){self.toast('The notification changed or could not be u"
         },
         {
-          "line": 99,
+          "line": 122,
           "text": "const shadeN=(this.alphaNotices||[]).map((n:Notice)=>{"
         },
         {
-          "line": 100,
+          "line": 123,
           "text": "const swipe=this.sw(()=>{if(n.clearable)void action(()=>native.dismiss({id:n.id,revision:n.revision,source:n.source}));else this.toast('This is an ongoing notification.');},{axis:'x'});"
         },
         {
-          "line": 101,
+          "line": 124,
           "text": "const select=()=>{this.alphaNoticeSelection=ownNotificationSelection(n);};"
         },
         {
-          "line": 106,
+          "line": 129,
           "text": "const ask=()=>{"
         },
         {
-          "line": 109,
+          "line": 132,
           "text": "const reviewed={id:n.id,revision:n.revision,source:n.source},excerpt=noticeExcerpt(n);"
         },
         {
-          "line": 110,
+          "line": 133,
           "text": "const live=()=>self.alphaNoticesLive&&!document.hidden&&!!self.S().shade&&noticeCurrent(reviewed,self.alphaNotices);"
         },
         {
-          "line": 111,
+          "line": 134,
           "text": "const refused=()=>{self.toast('This notification changed or is no longer shown. Nothing was added to your conversation.');void self.refreshAlphaNotices();};"
         },
         {
-          "line": 114,
+          "line": 137,
           "text": "const epoch=self.alphaNoticeEpoch;"
         },
         {
-          "line": 116,
+          "line": 139,
           "text": "const fresh=(await native.list()).items,same=fresh.find((row:Notice)=>row.id===reviewed.id&&row.source===reviewed.source);"
         },
         {
-          "line": 124,
+          "line": 147,
           "text": "return {...out,shadeN,clearAll:()=>{const items=(this.alphaNotices||[]).filter((n:Notice)=>n.clearable).map((n:Notice)=>({id:n.id,revision:n.revision,source:n.source}));void action(async()=>{const res"
         }
       ]
@@ -37190,7 +37191,8 @@
       "path": "apps/app/src/runtime/agent-calendar-client.ts",
       "models": [
         "CalendarPresentation",
-        "CalendarSync"
+        "CalendarSync",
+        "AgentCalendarRefresh"
       ],
       "scope": "application",
       "treatment": "domain-contract-or-support",
@@ -37213,7 +37215,8 @@
     {
       "path": "apps/app/src/runtime/agent-calendar-view.ts",
       "models": [
-        "CalendarPresentation"
+        "CalendarPresentation",
+        "AgentCalendarRefresh"
       ],
       "scope": "application",
       "treatment": "domain-contract-or-support",
@@ -37249,7 +37252,8 @@
       "path": "apps/app/src/runtime/agent-calendar.ts",
       "models": [
         "CalendarPresentation",
-        "CalendarSync"
+        "CalendarSync",
+        "AgentCalendarRefresh"
       ],
       "scope": "application",
       "treatment": "domain-contract-or-support",
@@ -39927,7 +39931,8 @@
         "SignIn",
         "IdentitySession",
         "ControllerComposition",
-        "ResidentLiveness"
+        "ResidentLiveness",
+        "CanonicalNotificationTapAdmission"
       ],
       "scope": "application",
       "treatment": "state-and-transition-projection",
@@ -487440,7 +487445,8 @@
       "models": [
         "ResidentRuntime",
         "ApplicationComposition",
-        "NativeCredentialMutation"
+        "NativeCredentialMutation",
+        "RuntimeUpdatePause"
       ],
       "scope": "shared-module-dependency",
       "treatment": "domain-contract-or-support",
