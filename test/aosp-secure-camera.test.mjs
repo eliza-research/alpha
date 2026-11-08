@@ -3,14 +3,14 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { execFileSync } from "node:child_process";
+import {git as fixtureGit} from './fixtures/git-fixture.mjs';
 import { createHash } from "node:crypto";
 import { verifySecureCameraSource, verifySecureCameraImage, writeSecureCameraOverlay, secureCameraComponent } from "../scripts/aosp-secure-camera-contract.mjs";
 
 test("source admission rejects missing path, unreviewed revisions, dirty sources and mismatched bytes", t => {
  const root=fs.mkdtempSync(path.join(os.tmpdir(),"alpha-camera-"));t.after(()=>fs.rmSync(root,{recursive:true,force:true}));
- const dir=path.join(root,"Camera2");fs.mkdirSync(dir);const git=(...args)=>execFileSync("git",["-C",dir,...args],{encoding:"utf8",stdio:["ignore","pipe","pipe"]}).trim();
- git("init");fs.writeFileSync(path.join(dir,"Android.bp"),'android_app { name: "Camera2" }\n');git("add",".");git("-c","user.name=Fixture","-c","user.email=fixture@example.invalid","commit","-m","fixture");
+ const dir=path.join(root,"Camera2");fs.mkdirSync(dir);const git=(...args)=>fixtureGit(dir,...args);
+ git("init");fs.writeFileSync(path.join(dir,"Android.bp"),'android_app { name: "Camera2" }\n');git("add",".");git("commit","-m","fixture");
  const contract={modules:[{path:"Camera2",commit:git("rev-parse","HEAD"),files:{"Android.bp":createHash("sha256").update(fs.readFileSync(path.join(dir,"Android.bp"))).digest("hex")}}]};
  assert.throws(()=>verifySecureCameraSource(null),/explicit --aosp-source/);assert.equal(verifySecureCameraSource(root,contract).sourceVerified,true);
  const wrong=structuredClone(contract);wrong.modules[0].commit="0".repeat(40);assert.throws(()=>verifySecureCameraSource(root,wrong),/Unreviewed/);

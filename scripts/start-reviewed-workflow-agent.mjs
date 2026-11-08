@@ -44,7 +44,7 @@ reportMissingEmbeddingRoute(savedConfig,config);
 const log = fs.openSync(path.join(profile,'server.log'), 'a', 0o600);
 fs.fchmodSync(log, 0o600);
 const baseEnv = Object.fromEntries(['PATH','TMPDIR','LANG','SHELL','USER','LOGNAME','HOME'].filter(key=>process.env[key]).map(key=>[key,process.env[key]]));
-const env = {...baseEnv, ...AGENT_CHARACTER_ENVIRONMENT, ...localEmbeddingEnvironment(), ELIZA_HEADLESS:'1', ELIZA_API_BIND:'127.0.0.1', ELIZA_ALLOWED_HOSTS:'10.0.2.2', ELIZA_API_PORT:String(port), ELIZA_API_EXPOSE_PORT:'1', ELIZA_STATE_DIR:profile, ELIZA_CONFIG_PATH:config, ELIZA_API_TOKEN:fs.readFileSync(tokenPath,'utf8').trim(), CEREBRAS_API_KEY:fs.readFileSync(keyPath,'utf8').trim(), ...modelEnvironment, ELIZAOS_CLOUD_USE_INFERENCE:'false'};
+const env = {...baseEnv, ...AGENT_CHARACTER_ENVIRONMENT, ...localEmbeddingEnvironment(), ELIZA_HEADLESS:'1', ELIZA_REQUIRE_LOCAL_AUTH:'1', ELIZA_API_BIND:'127.0.0.1', ELIZA_ALLOWED_HOSTS:'10.0.2.2', ELIZA_API_PORT:String(port), ELIZA_API_EXPOSE_PORT:'1', ELIZA_STATE_DIR:profile, ELIZA_CONFIG_PATH:config, ELIZA_API_TOKEN:fs.readFileSync(tokenPath,'utf8').trim(), CEREBRAS_API_KEY:fs.readFileSync(keyPath,'utf8').trim(), ...modelEnvironment, ELIZAOS_CLOUD_USE_INFERENCE:'false'};
 for (const key of ['ELIZAOS_CLOUD_API_KEY','OPENAI_API_KEY','ANTHROPIC_API_KEY']) delete env[key];
 const child = spawn(options.bun || 'bun', ['--conditions=eliza-source',entry], {cwd:profile, env, stdio:['ignore',log,log]});
 const metadata = {pid:child.pid, port, profile, source, revision:execFileSync('git',['rev-parse','HEAD'],{cwd:source,encoding:'utf8'}).trim(), startedAt:new Date().toISOString()};

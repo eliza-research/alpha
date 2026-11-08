@@ -4,6 +4,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import {execFileSync, spawnSync} from 'node:child_process';
+import {git as fixtureGit} from './fixtures/git-fixture.mjs';
 import {checkoutProblems, embeddingHostProblems, preparedRuntimeProblems, VOICE_ASSET_ROOT, VOICE_HOST_MANIFEST} from '../scripts/android-build-preflight.mjs';
 import {TURBO_AGENT_DETECTION_ENV, preparedSourceEnv} from '../scripts/local-agent-source.mjs';
 import {ensurePreparedWorkflowWorker} from '../scripts/prepared-workflow-worker.mjs';
@@ -30,11 +31,11 @@ function fixture(t) {
   t.after(() => fs.rmSync(root, {recursive: true, force: true}));
   const upstream = path.join(root, 'vendor/eliza');
   fs.mkdirSync(upstream, {recursive: true});
-  const git = (...args) => execFileSync('git', args, {cwd: upstream, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe']}).trim();
+  const git = (...args) => fixtureGit(upstream, ...args);
   git('init', '-q');
   fs.writeFileSync(path.join(upstream, 'README'), 'pinned\n');
   git('add', '.');
-  git('-c', 'user.name=Fixture', '-c', 'user.email=fixture@example.invalid', 'commit', '-q', '-m', 'pin');
+  git('commit', '-q', '-m', 'pin');
   const commit = git('rev-parse', 'HEAD');
   fs.writeFileSync(path.join(root, 'upstream.lock.json'), JSON.stringify({commit}));
   const write = (name, text) => {

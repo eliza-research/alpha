@@ -43,6 +43,7 @@ import { licenceFlagLines, licenceFlagRecords } from "./licence-policy.mjs";
 import { packagedGzipProblems } from "./android-gzip-assets.mjs";
 import { appLinkFilters, requiredAppLinkProblems } from "./render-assetlinks.mjs";
 import { readVoiceHost, voiceBundleAdmission } from "./voice-host.mjs";
+import { releaseDistributable } from "./release-distributable.mjs";
 import { apkPermissions, checkListenerPermissions, checkListenerSpeechBundle, listenerPackage } from "./aosp-listener.mjs";
 import { listenerApkRow, listenerManifestSection, readListenerRecord } from "./listener-qualification.mjs";
 
@@ -234,11 +235,8 @@ for (const row of release) {
   row.voiceHost = voiceHostAdmission(row.file);
   if (row.voiceHost.differences.length)
     throw new Error(`On-device voice in ${row.file} is not admitted:\n  - ${row.voiceHost.differences.join("\n  - ")}`);
-  row.distributable = !testMocks && row.signed === true && row.releaseAdmission.signerMatches === true &&
-    row.releaseAdmission.blockers.length === 0 && row.releaseAdmission.failures.length === 0 &&
-    runtime.distributable === true && row.runtimeNotices === true &&
-    row.voiceHost.packaged === true && row.voiceHost.asr === true && row.voiceHost.qualified === true &&
-    row.licenceBlockers.length === 0;
+  row.distributable = releaseDistributable({ testMocks, signed: row.signed, releaseAdmission: row.releaseAdmission, runtime,
+    runtimeNotices: row.runtimeNotices, voiceHost: row.voiceHost, licenceBlockers: row.licenceBlockers });
 }
 for (const row of results.filter(row => row.mode === "debug")) {
   row.runtime = runtimePackaging.find(entry => entry.apk === row.file).runtime;

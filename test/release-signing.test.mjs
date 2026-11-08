@@ -8,6 +8,7 @@ import { spawnSync } from "node:child_process";
 import { auditWebBundle } from "../scripts/audit-production-bundle.mjs";
 import { appLinkFilters, assetLinksProblems, fingerprint, PLACEHOLDER, renderAssetLinks, TEMPLATE } from "../scripts/render-assetlinks.mjs";
 import { buildEnv, partialSigningProblem, readReleaseSigner, releaseAdmission, SIGNING_ENV, signingRequested, validateReleaseSigner } from "../scripts/build-android.mjs";
+import { releaseDistributable } from "../scripts/release-distributable.mjs";
 
 const ALL = { ELIZAOS_KEYSTORE_PATH: "/k", ELIZAOS_KEYSTORE_PASSWORD: "p", ELIZAOS_KEY_ALIAS: "a", ELIZAOS_KEY_PASSWORD: "q" };
 const SIGNER = "a".repeat(64);
@@ -80,12 +81,39 @@ test("a test-mocks release signed with the release key fails admission; other te
   assert.deepEqual(releaseAdmission({ signed: false, signerSha256: null, versionCode: 3 }, descriptor(), { testMocks: true }).failures, []);
 });
 
-test("verify-apks requires signed:true and the descriptor match for distributable", () => {
+// Every fact a distributable release row carries; each test below breaks exactly one.
+const DISTRIBUTABLE = {
+  testMocks: false, signed: true, releaseAdmission: { signerMatches: true, blockers: [], failures: [] },
+  runtime: { distributable: true }, runtimeNotices: true, voiceHost: { packaged: true, asr: true, qualified: true }, licenceBlockers: [],
+};
+
+test("a release is distributable only when every term holds", () => {
+  assert.equal(releaseDistributable(DISTRIBUTABLE), true);
+  const broken = {
+    "test-mocks build": { testMocks: true },
+    "unsigned": { signed: false },
+    "signed is not exactly true": { signed: "true" },
+    "signer does not match the descriptor": { releaseAdmission: { ...DISTRIBUTABLE.releaseAdmission, signerMatches: false } },
+    "admission blocker": { releaseAdmission: { ...DISTRIBUTABLE.releaseAdmission, blockers: ["versionCode not greater"] } },
+    "admission failure": { releaseAdmission: { ...DISTRIBUTABLE.releaseAdmission, failures: ["test-mocks APK signed with the release key"] } },
+    "no packaged runtime": { runtime: { distributable: false } },
+    // A PACKAGED distribution must ship the regenerated runtime notices (Bun and bundled packages).
+    "notices lack the runtime": { runtimeNotices: false },
+    "no on-device voice": { voiceHost: { ...DISTRIBUTABLE.voiceHost, packaged: false } },
+    "no on-device ASR": { voiceHost: { ...DISTRIBUTABLE.voiceHost, asr: false } },
+    "voice host not qualified": { voiceHost: { ...DISTRIBUTABLE.voiceHost, qualified: false } },
+    "licence blocker": { licenceBlockers: ["unresolved-font-licence: x"] },
+  };
+  for (const [name, change] of Object.entries(broken))
+    assert.equal(releaseDistributable({ ...DISTRIBUTABLE, ...change }), false, name);
+});
+
+test("verify-apks sets distributable only through releaseDistributable and fails a signing admission failure", () => {
   const source = fs.readFileSync("scripts/verify-apks.mjs", "utf8");
-  assert.match(source, /row\.distributable = !testMocks && row\.signed === true && row\.releaseAdmission\.signerMatches === true/);
+  // One assignment, through the tested predicate, so a later overwrite of the row is caught here.
+  assert.deepEqual(source.match(/\.distributable\s*=[^=]/g), [".distributable = "]);
+  assert.match(source, /row\.distributable = releaseDistributable\(\{ testMocks, signed: row\.signed, releaseAdmission: row\.releaseAdmission, runtime,\n\s+runtimeNotices: row\.runtimeNotices, voiceHost: row\.voiceHost, licenceBlockers: row\.licenceBlockers \}\);/);
   assert.match(source, /Release signing admission failed/);
-  // A PACKAGED distribution must ship the regenerated runtime notices (Bun and bundled packages).
-  assert.match(source, /runtime\.distributable === true && row\.runtimeNotices === true/);
   assert.match(source, /entry\?\.name === BUN_ENTRY/);
 });
 

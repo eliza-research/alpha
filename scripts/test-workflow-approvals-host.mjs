@@ -5,7 +5,7 @@ const raw=input=>new Promise((resolve,reject)=>{const req=http.request(input.url
 let credential;const remote=new RemoteProtocol(origin,raw,{read:async()=>credential,write:async c=>{credential=c;},remove:async()=>credential=null},{developmentOrigins:[origin]});
 const result={scope:'Actual paired app host, canonical Smithers approval and synthetic own-file effect only',testedAt:new Date().toISOString(),passed:false};
 try{
- const pair=await(await fetch(origin+'/api/auth/pair-code')).json();await remote.pair(pair.code);fs.writeFileSync(profile+'/paired-session.json',JSON.stringify(credential),{mode:0o600});
+ const pair=await(await fetch(origin+'/api/auth/pair-code',{headers:{Authorization:'Bearer '+fs.readFileSync(profile+'/owner-token','utf8').trim()}})).json();await remote.pair(pair.code);fs.writeFileSync(profile+'/paired-session.json',JSON.stringify(credential),{mode:0o600});
  const call=(route,body)=>raw({url:origin+route,method:body===undefined?'GET':'POST',headers:{Authorization:`Bearer ${credential.token}`,'Content-Type':'application/json'},body:body===undefined?undefined:JSON.stringify(body),signal:AbortSignal.timeout(60000)});
  assert.equal((await raw({url:origin+'/api/workflow/status',method:'GET',headers:{}})).status,401);
  assert.equal((await call('/api/workflow/status')).body.approvalReceiptProtocol,1);

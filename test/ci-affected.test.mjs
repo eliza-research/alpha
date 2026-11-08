@@ -3,14 +3,15 @@ import {mkdtempSync, rmSync, writeFileSync, readFileSync, mkdirSync, readdirSync
 import {tmpdir} from 'node:os';
 import {join, resolve} from 'node:path';
 import {execFileSync} from 'node:child_process';
+import {git as fixtureGit} from './fixtures/git-fixture.mjs';
 import {test} from 'node:test';
 
 // Exercise the actual Actions entry point, complete Git history and output files.
 test('CI selection follows changed files, renames, missing history and manual dispatch', t => {
   const cwd = mkdtempSync(join(tmpdir(), 'alpha-ci-selection-'));
   t.after(() => rmSync(cwd, {recursive:true, force:true}));
-  const git = (...args) => execFileSync('git', args, {cwd, encoding:'utf8'}).trim();
-  git('init', '-q'); git('config', 'user.email', 'test@example.invalid'); git('config', 'user.name', 'CI fixture');
+  const git = (...args) => fixtureGit(cwd, ...args);
+  git('init', '-q');
   const put = (name, text='fixture\n') => {
     mkdirSync(join(cwd, name, '..'), {recursive:true}); writeFileSync(join(cwd, name), text);
   };

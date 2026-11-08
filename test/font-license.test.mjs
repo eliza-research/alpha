@@ -16,6 +16,7 @@ import {ALLOWLIST, COMMERCIAL_FONT, FONT_LICENSES, HELD_OUTSIDE_REPOSITORY, NO_F
 import {FONT_BLOCKER, FONT_BLOCKER_REFERENCE, FONT_FLAG, FONT_HELD_FLAG, RESOLVED_BY_OWNER_STATEMENT, fontLicenceCheck, fontLicenceFindings, fontLicenceLine, fontLicenseBlockers, readOwnerStatedFontHashes, readUnverifiedFontHashes} from '../scripts/font-license-blockers.mjs';
 import {UNRESOLVED_FONT_LICENCE_BLOCKS_DISTRIBUTION, classifyLicence} from '../scripts/licence-policy.mjs';
 import {releaseBlockers} from '../scripts/release-blockers.mjs';
+import {releaseDistributable} from '../scripts/release-distributable.mjs';
 
 const DENTON = 'apps/app/public/denton-300.woff2';
 const dentonBytes = fs.readFileSync(path.join(ROOT, DENTON));
@@ -30,6 +31,8 @@ const legacy = {name: denton.name, version: denton.version, license: UNVERIFIED,
 const otherFont = Buffer.from('a different font file');
 const RELEASE = {mode: 'release', distributable: true, testMocks: false, bundleAudit: 'passed', signed: true, runtime: 'PACKAGED', runtimeNotices: true,
   releaseAdmission: {failures: [], blockers: [], signerMatches: true}, voiceHost: {packaged: true, asr: true, differences: [], qualified: true}, licenceFlags: []};
+// The same release as verify-apks hands it to releaseDistributable (`runtime` is the packaged-runtime entry there).
+const distributableRelease = facts => releaseDistributable({...RELEASE, runtime: {distributable: true}, ...facts});
 
 function payload(t, {notices, files = {}}) {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'alpha-font-'));
@@ -114,8 +117,8 @@ test('the check follows the packaged bytes: recorded bytes are resolved, any oth
 
 test('the one constant decides whether an unresolved font withholds distribution: both settings', t => {
   assert.equal(UNRESOLVED_FONT_LICENCE_BLOCKS_DISTRIBUTION, false, 'owner decision 2026-10-10: flag only; making the check strict again is a deliberate change of this constant');
-  // What verify-apks computes for `distributable`, with the same inputs it uses.
-  const distributable = check => check.blockers.length === 0;
+  // What verify-apks computes for `distributable`: a release that meets every other term, with this check's blockers.
+  const distributable = check => distributableRelease({licenceBlockers: check.blockers});
   const recorded = payload(t, {notices: committedNotices, files: {'denton-300.woff2': dentonBytes}});
   const swapped = payload(t, {notices: committedNotices, files: {'denton-300.woff2': otherFont}});
   const message = fontLicenceFindings(swapped).unresolved[0].message;
@@ -176,12 +179,12 @@ test('verify-apks records licence flags and the font check, and only an unresolv
   assert.match(source, /fontCheck = fontLicenceCheck\(payload\.public\);/);
   assert.match(source, /const licenceBlockers = fontCheck\.blockers;/);
   assert.match(source, /fontLicenceCheck: \{ check: fontCheck\.check, status: fontCheck\.status, blocksDistribution: fontCheck\.blocksDistribution, items: fontCheck\.items, resolved: fontCheck\.resolved \},/);
-  assert.match(source, /row\.runtimeNotices === true &&\n\s+row\.voiceHost\.packaged === true && row\.voiceHost\.asr === true && row\.voiceHost\.qualified === true &&\n\s+row\.licenceBlockers\.length === 0;/);
+  assert.match(source, /row\.distributable = releaseDistributable\([^;]*licenceBlockers: row\.licenceBlockers \}\);/);
   // Flags are recorded per APK and printed; they are not part of the distributable expression or of any failure.
   assert.match(source, /licenceFlags = licenceFlagRecords\(entries\);/);
   assert.match(source, /for \(const line of flagLines\) console\.warn\(line\);/);
-  const distributable = /row\.distributable = ([\s\S]*?);\n/.exec(source)[1];
-  assert.doesNotMatch(distributable, /licenceFlags|fontLicenceCheck/);
+  const flagged = ['proprietary-licence-held-outside-repo'];
+  assert.equal(distributableRelease({licenceBlockers: [], licenceFlags: flagged, fontLicenceCheck: {status: 'unresolved'}}), true);
   assert.doesNotMatch(source, /problems\.push\([^)]*licence/i);
   assert.doesNotMatch(source, /failures\.push\([^)]*licence/i);
   assert.match(source, /console\.warn\(fontLicenceLine\(item, blocks\)\)/);

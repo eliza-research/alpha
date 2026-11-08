@@ -122,7 +122,7 @@ test("captures keep only the listener's lines: no other app's notification text,
   for (const secret of ["private message body", "Alice Example", "alice@example.com", "Shaw Owner", "Guest Person", "SERIAL123", "com.example.other"]) assert.ok(!text.includes(secret), secret);
 });
 
-test("the CLI dry-run contacts no device and the CLI refuses unsafe outputs", () => {
+test("the CLI dry-run contacts no device and the CLI refuses unsafe outputs", t => {
   const dry = spawnSync(process.execPath, [script, "--dry-run", "--gates", "G3,G6", "--samples", "49"], { encoding: "utf8" });
   assert.equal(dry.status, 0, dry.stderr);
   assert.match(dry.stdout, /nothing is sent in --dry-run/);
@@ -133,6 +133,7 @@ test("the CLI dry-run contacts no device and the CLI refuses unsafe outputs", ()
     assert.match(result.stderr, pattern);
   };
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), "listener-evidence-"));
+  t.after(() => fs.rmSync(dir, { recursive: true, force: true }));
   refuse(["--class", "device", "--out", path.join(dir, "a.json")], /Explicit --serial required/);
   refuse(["--serial", "S", "--class", "device", "--out", path.join(root, LISTENER_RECORD)], /exists|Never write the committed listener record/);
   refuse(["--serial", "S", "--class", "phone", "--out", path.join(dir, "b.json")], /--class image\|device/);
@@ -141,17 +142,55 @@ test("the CLI dry-run contacts no device and the CLI refuses unsafe outputs", ()
   refuse(["--serial", "S; reboot", "--class", "device", "--out", path.join(dir, "e.json")], /Explicit --serial required/);
 });
 
-test("the CLI writes a new evidence file from fixtures and never overwrites one", () => {
+test("failed adb captures fail every check that reads them instead of passing as text", () => {
+  const { captures, samples } = load("pixel10a.json");
+  const attest = load("attest-all-pass.json");
+  const lost = "__error__ Command failed: adb: device offline";
+  const broken = { ...captures, "dumpsys.audio": lost, "deviceConfig.micIcons": lost, "settings.lockScreenNotifications": lost, "settings.emergencyGesture": lost, "settings.cameraDoubleTapDisabled": lost };
+  const failedSample = { ...samples.at(-1), errors: ["dumpsys.battery"] };
+  const evidence = buildEvidence({ captures: broken, samples: [...samples.slice(0, -1), failedSample], appId, gates: CAPTURE_GATES, evidenceClass: "device", attest, verifyListener: okVerifier, record });
+  const byId = Object.fromEntries(CAPTURE_GATES.flatMap(gate => evidence.gates[gate].checks.map(entry => [entry.id, entry])));
+  for (const id of ["G2.micIconsNotDisabled", "G3.lockScreenNotificationsOn", "G4.emergencyGestureNotDisabled", "G4.cameraDoubleTapNotDisabled", "G5.snapshotCaptured", "G3.listenerRecordingObserved"]) {
+    assert.equal(byId[id].ok, false, id);
+    assert.match(byId[id].detail, /^capture failed: /, id);
+  }
+  assert.equal(byId["G6.unpluggedThroughout"].ok, false);
+  assert.match(byId["G6.unpluggedThroughout"].detail, /capture failed: dumpsys\.battery/);
+  for (const gate of ["G2", "G3", "G4", "G5", "G6"]) assert.equal(evidence.gates[gate].status, "open", gate);
+  assert.deepEqual(evidence.captureFailed.sort(), ["deviceConfig.micIcons", "dumpsys.audio", "settings.cameraDoubleTapDisabled", "settings.emergencyGesture", "settings.lockScreenNotifications"]);
+  assert.ok(!JSON.stringify(evidence).includes("device offline"));
+  const unparsed = buildEvidence({ captures: { ...captures, "dumpsys.audio": "Audio dump unavailable\n" }, appId, gates: ["G5"], evidenceClass: "device", attest, record });
+  assert.equal(unparsed.gates.G5.checks[0].ok, false, "G5 needs a parsed audio mode");
+});
+
+test("fixture captures are class fixture, earn no gate and have no candidate record", () => {
+  const { captures, samples } = load("pixel10a.json");
+  const evidence = buildEvidence({ captures, samples, appId, gates: CAPTURE_GATES, evidenceClass: "device", attest: load("attest-all-pass.json"), verifyListener: okVerifier, record, serial: "S", captureSource: "fixtures" });
+  assert.equal(evidence.captureSource, "fixtures");
+  assert.equal(evidence.evidenceClass, "fixture");
+  assert.equal(evidence.serialSha256, null);
+  assert.equal(evidence.candidateRecord, null);
+  for (const gate of CAPTURE_GATES) {
+    assert.equal(evidence.gates[gate].classAllowed, false, gate);
+    assert.equal(evidence.gates[gate].status, "open", gate);
+  }
+});
+
+test("the CLI writes a new evidence file from fixtures and never overwrites one", t => {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), "listener-evidence-"));
+  t.after(() => fs.rmSync(dir, { recursive: true, force: true }));
   const out = path.join(dir, "evidence.json");
   const args = [script, "--fixtures", path.join(fixtures, "pixel10a.json"), "--class", "device", "--gates", "G3,G5", "--label", "fixture", "--attest", path.join(fixtures, "attest-all-pass.json"), "--out", out];
   const first = spawnSync(process.execPath, args, { encoding: "utf8" });
   assert.equal(first.status, 0, first.stderr);
   const written = JSON.parse(fs.readFileSync(out, "utf8"));
   assert.equal(written.schema, "alpha-listener-evidence-v1");
-  assert.equal(written.gates.G3.status, "passed");
-  assert.deepEqual(written.candidateRecord.problems, []);
-  assert.equal(written.candidateRecord.record.qualified, false);
+  assert.equal(written.captureSource, "fixtures");
+  assert.equal(written.evidenceClass, "fixture");
+  assert.equal(written.gates.G3.status, "open");
+  assert.equal(written.gates.G3.classAllowed, false);
+  assert.equal(written.candidateRecord, null);
+  assert.match(first.stdout, /Fixture evidence never earns gates/);
   const second = spawnSync(process.execPath, args, { encoding: "utf8" });
   assert.equal(second.status, 2);
   assert.match(second.stderr, /never overwritten/);
