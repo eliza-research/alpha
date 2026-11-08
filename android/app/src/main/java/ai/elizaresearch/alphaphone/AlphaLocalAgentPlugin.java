@@ -60,6 +60,9 @@ private static final class ResidentAttachDiagnostic {
  private static final CredentialIntentFence credentialIntents=new CredentialIntentFence(lifecycleLock);
  private final CredentialRequestFence providerConfigurations=new CredentialRequestFence(lifecycleLock,credentialIntents);
  private static long powerAuthorizationMutationEpoch;
+ private volatile long providerSurfaceGeneration;
+ private volatile AutoCloseable providerReveal;
+ private volatile String providerRevealRequestId;
  static long credentialAuthorityEpoch(){synchronized(lifecycleLock){return powerAuthorizationMutationEpoch;}}
  /** Compound credential-slot operations must enter before acquiring the vault lock. */
  static Object credentialLifecycleLock(){return lifecycleLock;}
@@ -92,6 +95,8 @@ private static final class ResidentAttachDiagnostic {
  static void powerAuthorizationChanged(){
   if(!Thread.holdsLock(lifecycleLock)||!Thread.holdsLock(ai.eliza.plugins.securestore.nativeonly.JsonCredentialSlots.LOCK))throw new IllegalStateException("Credential lock order required");
   powerAuthorizationMutationEpoch++;
+  AlphaVoiceCloudPlugin.retireProviderAuthority();
+  for(AlphaLocalAgentPlugin instance:new java.util.ArrayList<>(instances))instance.closeProviderReveal();
  }
  /** A protected launch constraint, never authority minted by stored account correlation alone. */
  static final class PowerLaunchPin implements ai.eliza.plugins.system.SenseListenerClient.PowerLaunchValidator {
@@ -290,14 +295,28 @@ private static final class ResidentAttachDiagnostic {
  /** Alpha's encrypted provider slot, as the shared binding sees it. */
  static NativeProviderSlot.Store providerSlot(AlphaCredentialStore store){return new NativeProviderSlot.Store(){
   public String readProvider()throws Exception{return store.readCredentialSlot(LocalAgentProviderAdmission.PROVIDER_SLOT);}
+  public long authorityEpoch(){return credentialAuthorityEpoch();}
   public void assertCurrent(){store.assertCurrent();}
-  public String compareExchangeProvider(String previous,String selection)throws Exception{return store.compareExchangeProviderAdmission(previous,selection,null,null,null);}
+  public String compareExchangeProvider(String previous,String selection)throws Exception{
+   JSONObject next=new JSONObject(selection);
+   if(next.optBoolean("unbound")){
+    if(!store.compareExchangeCredentialSlot(LocalAgentProviderAdmission.PROVIDER_SLOT,previous,selection))return null;
+    return store.readCredentialSlot(LocalAgentProviderAdmission.PROVIDER_SLOT);
+   }
+   if(!"elizacloud".equals(next.optString("provider")))return store.compareExchangeProviderAdmission(previous,selection,null,null,null);
+   String cloud=store.readCredentialSlot("cloud:production");
+   if(previous!=null&&LocalAgentProviderAdmission.currentGeneration(previous,cloud)!=null
+      &&"elizacloud".equals(new JSONObject(previous).optString("provider")))
+    return store.compareExchangeProviderAdmission(previous,selection,"cloud:production",cloud,new JSONObject(previous).getJSONObject("verifiedCloudIdentity"));
+   if(!store.compareExchangeCredentialSlot(LocalAgentProviderAdmission.PROVIDER_SLOT,previous,selection))return null;
+   return store.readCredentialSlot(LocalAgentProviderAdmission.PROVIDER_SLOT);
+  }
   public void removeProvider(boolean onlyIfPresent)throws Exception{if(onlyIfPresent)store.removeProviderIfPresent();else store.removeCredentialSlot(LocalAgentProviderAdmission.PROVIDER_SLOT);}
  };}
  /** Verify before saving: a key is stored only after the check accepts it, then read back. */
  static String saveVerifiedProvider(AlphaCredentialStore store,String key,String model,NativeProviderSlot.KeyCheck check) throws Exception {return NativeProviderSlot.saveVerifiedProvider(providerSlot(store),key,model,check,PRODUCT_NAME);}
  static final String PRODUCT_NAME="Alpha Phone";
- /** Deletes the provider slot and confirms by reading it back. */
+ /** Retires the provider binding and confirms by reading it back. */
  static JSObject clearProviderSlot(AlphaCredentialStore store,boolean onlyIfPresent) throws Exception {
   try{return new JSObject(NativeProviderSlot.clearProviderSlot(providerSlot(store),onlyIfPresent).toString());}
   catch(org.json.JSONException impossible){throw new IllegalStateException(impossible);}
@@ -347,41 +366,43 @@ private static final class ResidentAttachDiagnostic {
  /** Owner-selected direct provider configuration; shared admission owns validation and secure CAS. */
  static boolean directProviderAllowed(boolean testMocks){return NativeProviderSlot.directProviderAllowed(testMocks);}
  @PluginMethod public void configureProvider(PluginCall call) {
+  try{requireProviderOwner(true);}catch(Exception unavailable){call.reject("Open unlocked Settings to manage provider keys.");return;}
+  final long surface=providerSurfaceGeneration;
   if(!directProviderAllowed(BuildConfig.ELIZA_DEV_ALLOW_TEST_MOCKS)){call.reject(PRODUCT_NAME+" uses your Cloud plan for AI.");return;}
   if(!runtimePackaged()){call.reject("On-device agent is unavailable in this version.");return;}
   String key=call.getString("apiKey",""),model=call.getString("model",CEREBRAS_PROVIDER_MODEL);
   String cartesia=call.getString("cartesiaKey",null);
-  if(cartesia!=null&&!validProviderToken(cartesia,1024)){call.reject("Enter a valid Cartesia key or leave voice off.");return;}
+  if(cartesia!=null&&!validProviderToken(cartesia,1024)){call.reject("Enter a valid Voice key or leave it unchanged.");return;}
   if(!validProviderToken(key,1024)||!model.matches("[A-Za-z0-9][A-Za-z0-9._/-]{0,127}")){call.reject("Enter a valid Cerebras key.");return;}
   if(!CEREBRAS_PROVIDER_MODEL.equals(model)){call.reject(PRODUCT_NAME+" uses "+CEREBRAS_PROVIDER_MODEL+" on Cerebras.");return;}
   final String requestId=call.getString("requestId","");final long configuration;
   try{configuration=providerConfigurations.begin(requestId);}catch(Exception unavailable){call.reject("Provider request was cancelled or is unavailable.");return;}
   PluginWorkers.submit(workers,()->{try{
-   AlphaCredentialStore store=new AlphaCredentialStore(getContext(),()->{if(disposed)throw new IllegalStateException("Local agent bridge closed");providerConfigurations.require(requestId,configuration);});
+   AlphaCredentialStore store=new AlphaCredentialStore(getContext(),()->{requireProviderOwner(false);if(surface!=providerSurfaceGeneration)throw new SecurityException("Settings closed");providerConfigurations.require(requestId,configuration);});
    store.assertCurrent();
    String failure=NativeProviderSlot.saveVerifiedProvider(providerSlot(store),key,model,cartesia,NativeProviderSlot::checkCerebrasKey,PRODUCT_NAME);
    if(failure!=null){call.reject(failure);return;}
-   store.assertCurrent();call.resolve(providerIdentity(store.readCredentialSlot("local-agent-provider:v1")));
+   store.assertCurrent();call.resolve(providerManagementStatus(store));
   }catch(Exception error){call.reject("Provider could not be saved securely.");}finally{providerConfigurations.finish(requestId,configuration);}},()->{providerConfigurations.finish(requestId,configuration);call.reject("Local agent bridge is closed.");});
  }
  /** Reserve a native-issued lease before receiving any provider keys or removal request. */
  @PluginMethod public void prepareProviderConfiguration(PluginCall call){
-  try{call.resolve(new JSObject().put("requestId",providerConfigurations.reserve()));}
+  try{requireProviderOwner(true);call.resolve(new JSObject().put("requestId",providerConfigurations.reserve()));}
   catch(Exception unavailable){call.reject("Provider setup is busy. Try again shortly.");}
  }
  /** Cancels only this request's still-current credential intent; no store write or runtime stop. */
  @PluginMethod public void cancelProviderConfiguration(PluginCall call){
-  try{providerConfigurations.cancel(call.getString("requestId",""));call.resolve();}
+  try{String requestId=call.getString("requestId","");providerConfigurations.cancel(requestId);if(requestId.equals(providerRevealRequestId))closeProviderReveal();call.resolve();}
   catch(Exception invalid){call.reject("Invalid provider cancellation request.");}
  }
- /** Deletes the provider slot and reads it back; resolves only when the slot is gone. */
+ /** Retires routing and reads it back; saved Own keys remain in encrypted custody. */
  @PluginMethod public void clearProvider(PluginCall call) {
   final boolean onlyIfPresent=Boolean.TRUE.equals(call.getBoolean("onlyIfPresent"));
   final String requestId=call.getString("requestId",null);final long configuration;
   try{configuration=requestId==null?reserveCredentialIntent():providerConfigurations.begin(requestId);}catch(Exception cancelled){call.reject("Provider change was cancelled or is unavailable.");return;}
   PluginWorkers.submit(workers,()->{try{
    call.resolve(clearProviderSlot(new AlphaCredentialStore(getContext(),()->{if(disposed)throw new IllegalStateException("Local agent bridge closed");if(requestId==null)requireCredentialIntent(configuration);else providerConfigurations.require(requestId,configuration);}),onlyIfPresent));
-  }catch(Exception error){call.reject("The provider key could not be removed.");}finally{if(requestId!=null)providerConfigurations.finish(requestId,configuration);}},()->{if(requestId!=null)providerConfigurations.finish(requestId,configuration);call.reject("Local agent bridge is closed.");});
+  }catch(Exception error){call.reject("The provider binding could not be cleared.");}finally{if(requestId!=null)providerConfigurations.finish(requestId,configuration);}},()->{if(requestId!=null)providerConfigurations.finish(requestId,configuration);call.reject("Local agent bridge is closed.");});
  }
  @PluginMethod public void clearProviderIfCurrent(PluginCall call){
   String guard=call.getString("bindingGuard","");
@@ -412,15 +433,23 @@ private static final class ResidentAttachDiagnostic {
  }
  /** Preserve the previous selection when admission loses its account, without replacing a newer selection. */
  static String bindCloudProvider(AlphaCredentialStore store,String credentialId,String model) throws Exception {
+  return bindCloudProvider(store,credentialId,model,false,null);
+ }
+ static String bindCloudProvider(AlphaCredentialStore store,String credentialId,String model,boolean selectCloud,String expectedPrevious) throws Exception {
   return LocalAgentProviderAdmission.bindCloudProvider(new LocalAgentProviderAdmission.CloudBindingStore(){
    public String readProvider()throws Exception{return store.readCredentialSlot("local-agent-provider:v1");}
    public String readCloud()throws Exception{return store.readCredentialSlot("cloud:production");}
    public void assertCurrent()throws Exception{store.assertCurrent();}
    public JSONObject identity(String token)throws Exception{return AlphaConnectionPlugin.readCloudIdentity(token);}
    public String admit(String previous,String selection,String cloud,JSONObject identity)throws Exception{
-    if(previous!=null&&"cerebras".equals(new JSONObject(previous).optString("provider"))){
+    if(selectCloud&&!java.util.Objects.equals(expectedPrevious,previous))throw new SecurityException("Provider changed");
+    if(!selectCloud&&previous!=null&&"cerebras".equals(new JSONObject(previous).optString("provider"))){
      String services=LocalAgentProviderAdmission.admit(null,selection,cloud,identity);
-     selection=new JSONObject(LocalAgentProviderAdmission.withoutAdmission(previous)).put("cloudServices",new JSONObject(services)).toString();
+     selection=new JSONObject(LocalAgentProviderAdmission.withoutAdmission(previous)).put("cloudServices",NativeProviderSlot.cloudServices(new JSONObject(services))).toString();
+    }
+    if(new JSONObject(selection).optBoolean("unbound")){
+     if(!store.compareExchangeCredentialSlot(LocalAgentProviderAdmission.PROVIDER_SLOT,previous,selection))return null;
+     return store.readCredentialSlot(LocalAgentProviderAdmission.PROVIDER_SLOT);
     }
     return store.compareExchangeProviderAdmission(previous,selection,"cloud:production",cloud,identity);
    }
@@ -448,19 +477,101 @@ private static final class ResidentAttachDiagnostic {
   try{return new JSObject(LocalAgentProviderAdmission.providerIdentity(saved).toString());}
   catch(org.json.JSONException impossible){throw new IllegalStateException(impossible);}
  }
+ private static JSObject providerManagementStatus(AlphaCredentialStore store)throws Exception{
+  return withCredentialRead(()->new JSObject(NativeProviderSlot.managementStatus(
+   store.readCredentialSlot(LocalAgentProviderAdmission.PROVIDER_SLOT),store.readCredentialSlot("cloud:production"),
+   System.currentTimeMillis(),credentialAuthorityEpoch()).toString()));
+ }
  @PluginMethod public void providerStatus(PluginCall call) {
   PluginWorkers.submit(workers,()->{
-   try{
-    AlphaCredentialStore store=new AlphaCredentialStore(getContext());
-    String saved=store.readCredentialSlot("local-agent-provider:v1");
-    JSONObject provider=LocalAgentProviderAdmission.providerIdentity(saved);
-    String cloud="elizacloud".equals(provider.optString("provider"))?store.readCredentialSlot("cloud:production"):null;
-    if(BuildConfig.DEBUG){try{android.util.Log.i("AlphaCloudAdmission","credential-schema="+LocalAgentProviderAdmission.cloudCredentialDiagnostics(store.readCredentialSlot("cloud:production"),null,System.currentTimeMillis()));}catch(Exception unavailable){android.util.Log.i("AlphaCloudAdmission","credential-schema-read-unavailable");}}
-    call.resolve(new JSObject(LocalAgentProviderAdmission.providerStatus(saved,cloud,System.currentTimeMillis()).toString()));
-   }
+   try{if(disposed)throw new IllegalStateException();call.resolve(providerManagementStatus(new AlphaCredentialStore(getContext())));}
    catch(Exception unavailable){call.reject("Provider status unavailable.");}
-  },()->{call.reject("Local agent bridge is closed.");});
+  },()->call.reject("Local agent bridge is closed."));
  }
+ /** Only the resumed owner app can manage secrets; the lock-screen assistant is not this surface. */
+ private void requireProviderOwner(boolean requireFocus){
+  android.app.Activity activity=getActivity();
+  android.app.KeyguardManager keyguard=getContext().getSystemService(android.app.KeyguardManager.class);
+  android.os.UserManager user=getContext().getSystemService(android.os.UserManager.class);
+  if(disposed||!(activity instanceof MainActivity)||((MainActivity)activity).isAssistantSurface()||activity.isFinishing()||activity.isDestroyed()
+    ||!getActivity().getLifecycle().getCurrentState().isAtLeast(androidx.lifecycle.Lifecycle.State.RESUMED)
+    ||requireFocus&&!activity.hasWindowFocus()||keyguard==null||keyguard.isKeyguardLocked()||keyguard.isDeviceLocked()
+    ||user==null||!user.isUserUnlocked())throw new SecurityException("Open unlocked Settings to manage provider keys");
+ }
+ private void closeProviderReveal(){
+  AutoCloseable held=providerReveal;providerReveal=null;providerRevealRequestId=null;
+  if(held!=null)try{held.close();}catch(Exception ignored){/* Native surface handle only. */}
+ }
+ private interface ProviderChange {void apply(AlphaCredentialStore store)throws Exception;}
+ private void changeProvider(PluginCall call,ProviderChange change){
+  final String requestId=call.getString("requestId","");final long intent,surface=providerSurfaceGeneration;
+  try{requireProviderOwner(true);intent=providerConfigurations.begin(requestId);}
+  catch(Exception refused){call.reject("Provider request expired. Reopen Settings and try again.");return;}
+  PluginWorkers.submit(workers,()->{try{
+   AlphaCredentialStore store=new AlphaCredentialStore(getContext(),()->{
+    requireProviderOwner(false);if(surface!=providerSurfaceGeneration)throw new SecurityException("Settings closed");
+    providerConfigurations.require(requestId,intent);
+   });
+   store.assertCurrent();change.apply(store);store.assertCurrent();call.resolve(providerManagementStatus(store));
+  }catch(Exception unavailable){call.reject("Provider change could not be confirmed. Reload Settings.");}
+  finally{providerConfigurations.finish(requestId,intent);}},()->{providerConfigurations.finish(requestId,intent);call.reject("Local agent bridge is closed.");});
+ }
+ @PluginMethod public void selectProvider(PluginCall call){
+  String mode=call.getString("mode","");
+  if(!"cloud".equals(mode)&&!"own".equals(mode)){call.reject("Choose Cloud or Own keys.");return;}
+  if(!runtimePackaged()){call.reject("On-device agent is unavailable in this version.");return;}
+  changeProvider(call,store->{
+   String previous=NativeProviderSlot.requireManagementRevision(providerSlot(store),call.getString("expectedRevision"));
+   if("own".equals(mode))NativeProviderSlot.selectOwn(providerSlot(store),call.getString("expectedRevision"));
+   else{
+    String cloud=store.readCredentialSlot("cloud:production");
+    String credentialId=new JSONObject(cloud).getString("credentialId");
+    bindCloudProvider(store,credentialId,CLOUD_PROVIDER_MODEL,true,previous);
+   }
+  });
+ }
+ @PluginMethod public void editProviderKeys(PluginCall call){
+  // JSON null, empty strings and other values never mean removal; Remove is a separate action.
+  for(String field:new String[]{"textKey","voiceKey"})if(call.getData().has(field)&&!(call.getData().opt(field) instanceof String)){
+   call.reject("Enter a key or leave the field unchanged.");return;
+  }
+  changeProvider(call,store->{
+   String failure=NativeProviderSlot.editKeys(providerSlot(store),call.getString("expectedRevision"),
+    call.getString("textKey"),call.getString("voiceKey"),NativeProviderSlot::checkCerebrasKey);
+   if(failure!=null)throw new IllegalArgumentException("Provider validation refused");
+  });
+ }
+ @PluginMethod public void removeProviderKey(PluginCall call){
+  changeProvider(call,store->NativeProviderSlot.removeKey(providerSlot(store),call.getString("expectedRevision"),call.getString("key")));
+ }
+ /** Reveal stays in the canonical FLAG_SECURE native surface, never in bridge/model output. */
+ @PluginMethod public void revealProviderKey(PluginCall call){
+  final String requestId=call.getString("requestId",""),expected=call.getString("expectedRevision"),key=call.getString("key");
+  final long intent,surface=providerSurfaceGeneration;
+  try{requireProviderOwner(true);intent=providerConfigurations.begin(requestId);}
+  catch(Exception refused){call.reject("Provider reveal expired. Reopen Settings and try again.");return;}
+  PluginWorkers.submit(workers,()->{try{
+   AlphaCredentialStore store=new AlphaCredentialStore(getContext(),()->{
+    requireProviderOwner(false);if(surface!=providerSurfaceGeneration)throw new SecurityException("Settings closed");providerConfigurations.require(requestId,intent);
+   });
+   String value=withCredentialRead(()->NativeProviderSlot.revealKey(providerSlot(store),expected,key));
+   getActivity().runOnUiThread(()->{try{
+    requireProviderOwner(true);store.assertCurrent();
+    withCredentialRead(()->{NativeProviderSlot.requireManagementRevision(providerSlot(store),expected);return null;});
+    closeProviderReveal();
+    final long revealAuthority=credentialAuthorityEpoch();
+    providerRevealRequestId=requestId;
+    providerReveal=ai.eliza.plugins.passwords.SecretSurfaces.revealOwned(getActivity(),"text".equals(key)?"Text key":"Voice key",value,()->{
+     try{requireProviderOwner(false);requireCredentialIntent(intent);return surface==providerSurfaceGeneration&&revealAuthority==credentialAuthorityEpoch();}
+     catch(Exception retired){return false;}
+    });
+    call.resolve(new JSObject().put("key",key).put("shown",true).put("hidesAfterMs",30000).put("revision",expected));
+   }catch(Exception retired){call.reject("Provider reveal is unavailable. Reopen Settings.");}
+   finally{providerConfigurations.finish(requestId,intent);}});
+  }catch(Exception unavailable){providerConfigurations.finish(requestId,intent);call.reject("Provider reveal is unavailable. Reopen Settings.");}
+  },()->{providerConfigurations.finish(requestId,intent);call.reject("Local agent bridge is closed.");});
+ }
+ @Override protected void handleOnPause(){providerSurfaceGeneration++;closeProviderReveal();super.handleOnPause();}
  static void configureNativeViews(java.io.InputStream policy,java.util.Map<String,String> env) throws java.io.IOException {
   try(policy){
    java.io.ByteArrayOutputStream output=new java.io.ByteArrayOutputStream();
@@ -1161,5 +1272,5 @@ private static final class ResidentAttachDiagnostic {
   * calls and streams. The shared runtime, its epoch and the owner enrollment stay valid for
   * other surfaces. When the last surface goes away (the app is closed or recreated) the epoch
   * advances and the enrollment is cleared, as before; the next surface enrolls again. */
- @Override protected void handleOnDestroy(){synchronized(lifecycleLock){disposed=true;invalidateOwnCalls();instances.remove(this);if(instances.isEmpty()&&!AlphaCanonicalNotifications.ownsSession()){++lifecycleEpoch;clearEnrollment();}}workers.shutdownNow();voiceWorkers.shutdownNow();rendererWorkers.shutdownNow();super.handleOnDestroy();}
+ @Override protected void handleOnDestroy(){providerSurfaceGeneration++;closeProviderReveal();synchronized(lifecycleLock){disposed=true;invalidateOwnCalls();instances.remove(this);if(instances.isEmpty()&&!AlphaCanonicalNotifications.ownsSession()){++lifecycleEpoch;clearEnrollment();}}workers.shutdownNow();voiceWorkers.shutdownNow();rendererWorkers.shutdownNow();super.handleOnDestroy();}
 }

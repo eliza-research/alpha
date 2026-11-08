@@ -1,6 +1,6 @@
 import {mapsTilePath} from '../apps/app/src/runtime/managed-service-routes.ts';
 import {productionCloud, stagingCloud, cloudStorageNamespace} from '../apps/app/src/runtime/cloud-deployment.generated.ts';
-import {createCloudResidentHost} from './cloud-resident-host.mjs';
+import {createCloudResidentHost,type ProviderSelection,type ProviderKeyEdit,type ProviderKeyRequest} from './cloud-resident-host.mjs';
 import {startManagedGoogleAgentHost} from '../backend/native-google-agent-host.ts';
 import {managedGoogleRequest,boundedServiceJson,object} from '../backend/managed-google-route-policy.ts';
 import {CLOUD_EMAIL_CODE,emailCodeExpiresAt,emailCodeResendAt,emailCodeSendBody,emailCodeVerifyBody} from './cloud-email-code.ts';
@@ -23,7 +23,7 @@ function environment(value:unknown):Environment{if(value!=='production'&&value!=
 function refusal(status:number,code:string){return Object.assign(Error(code),{status,code});}
 function requestId(value:unknown):string{if(typeof value!=='string'||!UUID.test(value))throw Error('Invalid request identity');return value;}
 /** DEV transport only. Canonical Cloud owns login, identity, plan entitlement and speech authorization. */
-export function createBrowserCloudDevHandler(options:{profile:string;request?:typeof fetch;environment?:Environment;diagnostic?:(event:{environment:Environment;operation:string;status:number;code?:string})=>void;resident?:{selectOwn?:(input:{apiKey:string;cartesiaKey?:string},signal?:AbortSignal)=>Promise<unknown>;selectCloud?:(signal?:AbortSignal)=>Promise<unknown>;bind:(credential:{token:string;credentialId:string;reference:string;expiresAt?:number})=>Promise<unknown>;clear:()=>Promise<unknown>;status:(id?:string)=>unknown;ready:(signal:AbortSignal)=>Promise<unknown>}}){
+export function createBrowserCloudDevHandler(options:{profile:string;request?:typeof fetch;environment?:Environment;diagnostic?:(event:{environment:Environment;operation:string;status:number;code?:string})=>void;resident?:{selectProvider?:(input:ProviderSelection,signal?:AbortSignal)=>Promise<unknown>;editProviderKeys?:(input:ProviderKeyEdit,signal?:AbortSignal)=>Promise<unknown>;removeProviderKey?:(input:ProviderKeyRequest,signal?:AbortSignal)=>Promise<unknown>;revealProviderKey?:(input:ProviderKeyRequest,signal?:AbortSignal)=>Promise<{key:string;value:string;revision:string}>;invalidateProviderRequests?:()=>void;selectOwn?:(input:{apiKey:string;cartesiaKey?:string},signal?:AbortSignal)=>Promise<unknown>;selectCloud?:(signal?:AbortSignal)=>Promise<unknown>;bind:(credential:{token:string;credentialId:string;reference:string;expiresAt?:number})=>Promise<unknown>;clear:()=>Promise<unknown>;status:(id?:string)=>unknown;ready:(signal:AbortSignal)=>Promise<unknown>}}){
  const agentEnvironment=options.environment??'production';
  const profile=path.resolve(options.profile,cloudStorageNamespace.replaceAll(':','-')),stateFile=path.join(profile,'credentials.json'),initialFile=path.join(profile,'initial-credential.json'),fetchCloud=options.request??fetch;
  let queue:Promise<unknown>=Promise.resolve();
@@ -238,6 +238,20 @@ export function createBrowserCloudDevHandler(options:{profile:string;request?:ty
     if(!options.resident||env!==(options.environment??'production')||audio)throw Error('Cloud resident host unavailable');
     if(data.operation==='residentStart'){send(res,200,await options.resident.ready(controller.signal));return;}
     const value=await serial(async()=>{
+     if(['residentProviderSelect','residentProviderEdit','residentProviderRemove','residentProviderReveal'].includes(data.operation)){
+      const operation=data.operation;
+      const fields=operation==='residentProviderSelect'?['mode']:operation==='residentProviderEdit'?['textKey','voiceKey']:['key'];
+      if(typeof data.expectedRevision!=='string'||!data.expectedRevision||data.expectedRevision.length>200||Object.keys(data).some(key=>!['operation','environment','expectedRevision',...fields].includes(key)))throw refusal(400,'provider-request-invalid');
+      controller.signal.throwIfAborted();
+      const input={expectedRevision:data.expectedRevision,...Object.fromEntries(fields.filter(key=>Object.hasOwn(data,key)).map(key=>[key,data[key]]))};
+      let result;
+      if(operation==='residentProviderSelect'&&options.resident?.selectProvider)result=await options.resident.selectProvider(input as ProviderSelection,controller.signal);
+      else if(operation==='residentProviderEdit'&&options.resident?.editProviderKeys)result=await options.resident.editProviderKeys(input as ProviderKeyEdit,controller.signal);
+      else if(operation==='residentProviderRemove'&&options.resident?.removeProviderKey)result=await options.resident.removeProviderKey(input as ProviderKeyRequest,controller.signal);
+      else if(operation==='residentProviderReveal'&&options.resident?.revealProviderKey)result=await options.resident.revealProviderKey(input as ProviderKeyRequest,controller.signal);
+      else throw refusal(409,'provider-management-unavailable');
+      controller.signal.throwIfAborted();return result;
+     }
      if(data.operation==='residentOwn'){if(!options.resident?.selectOwn||Object.keys(data).some(key=>!['operation','environment','apiKey','cartesiaKey'].includes(key)))throw Error('Own provider setup unavailable');controller.signal.throwIfAborted();return options.resident.selectOwn({apiKey:data.apiKey,...(data.cartesiaKey?{cartesiaKey:data.cartesiaKey}:{})},controller.signal);}
      if(data.operation==='residentCloud'){if(!options.resident?.selectCloud)throw Error('Provider selection unavailable');controller.signal.throwIfAborted();return options.resident.selectCloud(controller.signal);}
      if(data.operation==='residentClear'){resetCalendarAccess();return options.resident!.clear();}
@@ -256,7 +270,7 @@ export function createBrowserCloudDevHandler(options:{profile:string;request?:ty
      const result=await options.resident!.bind({token:await keyFor(c),credentialId:c.credentialId,reference:c.credentialReference,expiresAt:c.expiresAt});
      try{await current(env,c,controller.signal);}catch(error){await options.resident!.clear();throw error;}
      return result;
-    });send(res,200,value);return;
+    });controller.signal.throwIfAborted();if(data.operation==='residentProviderReveal'&&object(value).revision!==object(options.resident.status()).revision)throw refusal(409,'provider-changed');send(res,200,value);return;
    }
    if(data.operation==='secureRead'){if(slot!==`cloud:${env}`)throw Error('Unsupported credential slot');const c=(await load())[env];send(res,200,{value:c?JSON.stringify(publicCredential(c)):null});return;}
    if(data.operation==='secureWrite'||data.operation==='secureRemove'||data.operation==='secureCompareExchange'){
@@ -374,7 +388,7 @@ export function browserCloudDevBridge():Plugin {
   const selected=environment(process.env.VITE_ALPHA_CLOUD_ENVIRONMENT??'production');
   let resident:Awaited<ReturnType<typeof createCloudResidentHost>>|undefined;
   const currentResident=()=>{if(!resident)throw Error('Cloud resident host is unavailable');return resident;};
-  const residentPort=cloudResident?{selectOwn:(input:{apiKey:string;cartesiaKey?:string},signal?:AbortSignal)=>currentResident().selectOwn(input,signal),selectCloud:(signal?:AbortSignal)=>currentResident().selectCloud(signal),bind:(credential:Parameters<NonNullable<typeof resident>['bind']>[0])=>currentResident().bind(credential),clear:()=>currentResident().clear(),status:(id?:string)=>currentResident().status(id),ready:(signal:AbortSignal)=>currentResident().ready(signal)}:undefined;
+  const residentPort=cloudResident?{selectProvider:(input:ProviderSelection,signal?:AbortSignal)=>currentResident().selectProvider(input,signal),editProviderKeys:(input:ProviderKeyEdit,signal?:AbortSignal)=>currentResident().editProviderKeys(input,signal),removeProviderKey:(input:ProviderKeyRequest,signal?:AbortSignal)=>currentResident().removeProviderKey(input,signal),revealProviderKey:(input:ProviderKeyRequest,signal?:AbortSignal)=>currentResident().revealProviderKey(input,signal),invalidateProviderRequests:()=>currentResident().invalidateProviderRequests(),selectOwn:(input:{apiKey:string;cartesiaKey?:string},signal?:AbortSignal)=>currentResident().selectOwn(input,signal),selectCloud:(signal?:AbortSignal)=>currentResident().selectCloud(signal),bind:(credential:Parameters<NonNullable<typeof resident>['bind']>[0])=>currentResident().bind(credential),clear:()=>currentResident().clear(),status:(id?:string)=>currentResident().status(id),ready:(signal:AbortSignal)=>currentResident().ready(signal)}:undefined;
   const handler=createBrowserCloudDevHandler({profile,resident:residentPort,...(cloudResident?{environment:selected,diagnostic:(event:unknown)=>console.info('[alpha-cloud-auth]',JSON.stringify(event))}:{})});
   if(cloudResident){
    const profileMode=process.env.ALPHA_CLOUD_RESIDENT_PROFILE??'lean';

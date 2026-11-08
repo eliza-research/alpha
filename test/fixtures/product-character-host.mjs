@@ -1,4 +1,5 @@
 import fs from 'node:fs';
+import {createProviderKeySession} from '../../vendor/eliza/packages/host/native-host/provider-key-session.mjs';
 import os from 'node:os';
 import path from 'node:path';
 import vm from 'node:vm';
@@ -32,7 +33,7 @@ export function productCharacterHostFixture(mode,options={}){
  if(mode==='input-changed')fs.appendFileSync(path.join(root,input),'changed');
  if(mode==='manifest-changed'){const manifest=JSON.parse(fs.readFileSync(path.join(worker,'manifest.json')));manifest.sourceStampSha256='0'.repeat(64);fs.writeFileSync(path.join(worker,'manifest.json'),JSON.stringify(manifest));}
  if(mode==='symlink'){fs.renameSync(worker,worker+'-real');fs.symlinkSync(worker+'-real',worker);}
- const globals={fs,path,randomUUID,randomBytes,preparePrivateRuntimeProfile,writePrivateRuntimeJson,runtimeEnvironment,verifySource,preparedSourceEnv,workerArtifactDirectory,digest,verifyWorkerArtifact,verifyNativeGoogleHostArtifact,CLOUD_SDK_BASES,LOCAL_EMBEDDING_ROUTE,localEmbeddingEnvironment,nativeViewDeclarationsJson:'[]',scriptDirectory:path.join(root,'scripts'),process,fetch,AbortController,AbortSignal,setTimeout,clearTimeout};
+ const globals={createProviderKeySession,fs,path,randomUUID,randomBytes,preparePrivateRuntimeProfile,writePrivateRuntimeJson,runtimeEnvironment,verifySource,preparedSourceEnv,workerArtifactDirectory,digest,verifyWorkerArtifact,verifyNativeGoogleHostArtifact,CLOUD_SDK_BASES,LOCAL_EMBEDDING_ROUTE,localEmbeddingEnvironment,nativeViewDeclarationsJson:'[]',scriptDirectory:path.join(root,'scripts'),process,fetch,AbortController,AbortSignal,setTimeout,clearTimeout};
  vm.runInNewContext(source+';globalThis.make=createCloudResidentHost;',globals);
  const launches=[];const launch=async options=>{launches.push(options);let done;return {completion:new Promise(resolve=>done=resolve),async stop(){done({code:0});}};};
  return {root,sdk,worker,profile,launches,async make(){return globals.make({...options,source:sdk,profile:options.profile??profile,port:options.port??47869,launch:options.launch??launch,inherited:{...options.inherited,PATH:process.env.PATH,ALPHA_WORKFLOW_WORKER_OUTPUT:worker,ELIZA_NATIVE_GOOGLE_HOST_MODULE:'/untrusted/module',ELIZA_SMTHRS_RUNTIME_DIR:'/untrusted/root',ELIZA_AGENT_CHARACTER_JSON:'untrusted',CEREBRAS_API_KEY:'untrusted'}});},close(){fs.rmSync(root,{recursive:true,force:true});}};

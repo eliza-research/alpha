@@ -62,30 +62,81 @@ public final class VerifyApkRotation {
         ApkUtils.getLongVersionCodeFromBinaryAndroidManifest(manifest.duplicate()), result);
   }
 
-  public static void main(String[] args) throws Exception {
-    require(args.length == 10,
-        "Expected installed APK, replacement APK, lineage, their three digests, old signer, new signer, package and API");
-    for (int i = 3; i <= 7; i++) require(args[i].matches("[0-9a-f]{64}"), "Invalid SHA-256 pin");
-    require(!args[6].equals(args[7]), "Migration needs distinct signer pins");
-    int api = Integer.parseInt(args[9]);
-    require(api >= 29 && api <= 37, "Migration is outside the verified Android API range");
-    Path lineagePath = Path.of(args[2]);
+  private static SigningCertificateLineage reviewedLineage(
+      Path lineagePath, String lineageSha, String oldSigner, String newSigner) throws Exception {
     require(Files.isRegularFile(lineagePath, LinkOption.NOFOLLOW_LINKS), "Lineage must be a regular file");
     byte[] lineageBytes;
     try (var lineageFile = Files.newInputStream(lineagePath, LinkOption.NOFOLLOW_LINKS)) {
       lineageBytes = lineageFile.readNBytes(65_537);
     }
     require(lineageBytes.length <= 65_536, "Lineage exceeds the reviewed two-certificate input limit");
-    require(hex(sha256().digest(lineageBytes)).equals(args[5]), "Lineage differs from the reviewed digest");
+    require(hex(sha256().digest(lineageBytes)).equals(lineageSha), "Lineage differs from the reviewed digest");
     var approved = SigningCertificateLineage.readFromBytes(lineageBytes);
     var certs = approved.getCertificatesInLineage();
     require(certs.size() == 2, "Migration requires exactly two lineage certificates");
-    require(hex(sha256().digest(certs.get(0).getEncoded())).equals(args[6])
-        && hex(sha256().digest(certs.get(1).getEncoded())).equals(args[7]),
+    require(hex(sha256().digest(certs.get(0).getEncoded())).equals(oldSigner)
+        && hex(sha256().digest(certs.get(1).getEncoded())).equals(newSigner),
         "Lineage differs from the reviewed signer order");
-    var capabilities = approved.getSignerCapabilities(certs.getFirst());
-    require(capabilities.hasInstalledData() && !capabilities.hasRollback(),
-        "Migration requires installed-data capability and disables signer rollback");
+    for (var certificate : certs) {
+      var capabilities = approved.getSignerCapabilities(certificate);
+      require(capabilities.hasInstalledData() && !capabilities.hasRollback()
+          && !capabilities.hasSharedUid() && !capabilities.hasPermission() && !capabilities.hasAuth(),
+          "Migration requires installed-data-only capability without rollback or signature grants");
+    }
+    return approved;
+  }
+
+  private static void requireSignedRotation(VerifiedApk replacement, SigningCertificateLineage approved) {
+    var signature = replacement.signature();
+    require(signature.isVerifiedUsingV3Scheme() && !signature.isVerifiedUsingV31Scheme()
+        && !signature.isVerifiedUsingV1Scheme() && !signature.isVerifiedUsingV2Scheme()
+        && !signature.isVerifiedUsingV4Scheme(), "Migration replacement must verify using v3 only");
+    var embedded = signature.getSigningCertificateLineage();
+    require(embedded != null && Arrays.equals(approved.encodeSigningCertificateLineage(),
+        embedded.encodeSigningCertificateLineage()), "Replacement APK does not carry the reviewed lineage");
+  }
+
+  private static void verifySigningOutput(String[] args) throws Exception {
+    require(args.length == 10, "Expected output APK, lineage, their digests, old signer, new signer, package and API bounds");
+    for (int i = 3; i <= 6; i++) require(args[i].matches("[0-9a-f]{64}"), "Invalid SHA-256 pin");
+    require(!args[5].equals(args[6]), "Migration needs distinct signer pins");
+    int minApi = Integer.parseInt(args[8]), maxApi = Integer.parseInt(args[9]);
+    require(minApi == 29 && maxApi == 37, "Signing output must be verified for Android API 29 through 37");
+    var approved = reviewedLineage(Path.of(args[2]), args[4], args[5], args[6]);
+    Path signed = Path.of(args[1]);
+    require(Files.isRegularFile(signed, LinkOption.NOFOLLOW_LINKS), "APK must be a regular file");
+    long version = 0;
+    try (var file = FileChannel.open(signed, StandardOpenOption.READ, LinkOption.NOFOLLOW_LINKS)) {
+      for (int api = minApi; api <= maxApi; api++) {
+        var replacement = verify(file, args[3], args[7], api);
+        require(replacement.certificate().equals(args[6]), "Active signer differs from the reviewed successor");
+        requireSignedRotation(replacement, approved);
+        version = replacement.version();
+      }
+    }
+    System.out.printf("{\"verified\":true,\"minApi\":%d,\"maxApi\":%d,\"versionCode\":%d}%n",
+        minApi, maxApi, version);
+  }
+
+  public static void main(String[] args) throws Exception {
+    if (args.length > 0 && args[0].equals("--reviewed-lineage")) {
+      require(args.length == 5, "Expected lineage file, lineage digest and old/new signer digests");
+      for (int i = 2; i <= 4; i++) require(args[i].matches("[0-9a-f]{64}"), "Invalid SHA-256 pin");
+      require(!args[3].equals(args[4]), "Migration needs distinct signer pins");
+      reviewedLineage(Path.of(args[1]), args[2], args[3], args[4]);
+      return;
+    }
+    if (args.length > 0 && args[0].equals("--signed-output")) {
+      verifySigningOutput(args);
+      return;
+    }
+    require(args.length == 10,
+        "Expected installed APK, replacement APK, lineage, their three digests, old signer, new signer, package and API");
+    for (int i = 3; i <= 7; i++) require(args[i].matches("[0-9a-f]{64}"), "Invalid SHA-256 pin");
+    require(!args[6].equals(args[7]), "Migration needs distinct signer pins");
+    int api = Integer.parseInt(args[9]);
+    require(api >= 29 && api <= 37, "Migration is outside the verified Android API range");
+    var approved = reviewedLineage(Path.of(args[2]), args[5], args[6], args[7]);
     Path oldApk = Path.of(args[0]), newApk = Path.of(args[1]);
     require(Files.isRegularFile(oldApk, LinkOption.NOFOLLOW_LINKS)
         && Files.isRegularFile(newApk, LinkOption.NOFOLLOW_LINKS), "APKs must be regular files");
@@ -96,13 +147,7 @@ public final class VerifyApkRotation {
       require(installed.certificate().equals(args[6]) && replacement.certificate().equals(args[7]),
           "Active APK signers differ from the reviewed migration");
       require(replacement.version() > installed.version(), "Replacement versionCode must increase");
-      var signature = replacement.signature();
-      require(signature.isVerifiedUsingV3Scheme() && !signature.isVerifiedUsingV31Scheme()
-          && !signature.isVerifiedUsingV1Scheme() && !signature.isVerifiedUsingV2Scheme()
-          && !signature.isVerifiedUsingV4Scheme(), "Migration replacement must verify using v3 only");
-      var embedded = signature.getSigningCertificateLineage();
-      require(embedded != null && Arrays.equals(approved.encodeSigningCertificateLineage(),
-          embedded.encodeSigningCertificateLineage()), "Replacement APK does not carry the reviewed lineage");
+      requireSignedRotation(replacement, approved);
       System.out.printf("{\"verified\":true,\"api\":%d,\"installedVersionCode\":%d,\"replacementVersionCode\":%d}%n",
           api, installed.version(), replacement.version());
     }

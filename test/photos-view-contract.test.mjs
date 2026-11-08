@@ -54,10 +54,10 @@ test('review text is short and names Photos',()=>{
   const d=op=>m.describePhotosViewOperation(op,'Alpha');
   assert.deepEqual(d({type:'photos_filter'}),{title:'Filter Photos',description:'Everything'});
   assert.deepEqual(d({type:'photos_filter',kind:'video',favorite:true,album:'camera',text:'beach',from:1}),{title:'Filter Photos',description:'Videos · Favorites · In Camera · “beach” · In the requested dates'});
-  assert.deepEqual(d({type:'photos_open',id:id(1)}),{title:'Open photo',description:'In Photos. Nothing is changed or shared.'});
+  assert.deepEqual(d({type:'photos_open',id:id(1)}),{title:'Open photo',description:''});
   assert.equal(d({type:'photos_open',id:id(1,'v')}).title,'Open video');
-  assert.deepEqual(d({type:'photos_album_create',name:'Trip',ids:[id(1),id(2)]}),{title:'Create album “Trip”',description:'2 items. You confirm it in Photos.'});
-  assert.deepEqual(d({type:'photos_share',ids:[id(1)]}),{title:'Share 1 item',description:"You confirm it in Photos, then pick where it goes in Android's share sheet. Nothing leaves Alpha before that."});
+  assert.deepEqual(d({type:'photos_album_create',name:'Trip',ids:[id(1),id(2)]}),{title:'Create album “Trip”',description:'2 items'});
+  assert.deepEqual(d({type:'photos_share',ids:[id(1)]}),{title:'Share 1 item',description:"Android share sheet"});
 });
 
 test('results are validated exactly',()=>{

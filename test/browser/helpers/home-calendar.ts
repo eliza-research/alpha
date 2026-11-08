@@ -26,7 +26,7 @@ export async function installHomeCalendar(page:Page,event:HomeCalendarEvent|null
    throw Error('Unexpected Home Calendar request '+path);
   }};
   connectionController.getAppRecordClient=()=>port as any;
-  await connectionController.offline();
+  // The fixture owns this read-only port; changing connection modes would start unrelated runtime work.
   window.dispatchEvent(new CustomEvent('alpha:canonical-calendar-invalidated',{detail:{sessionId:identity.sessionId}}));
  },event);
  await expect.poll(()=>page.evaluate(()=>(window as any).homeCalendarFixture.reads)).toBeGreaterThan(0);

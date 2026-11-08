@@ -1,6 +1,6 @@
 --- /dev/null
 +++ b/plugins/plugin-local-inference/native/android/speech-bridge/src/main/java/ai/eliza/voice/SpeechStreamBridgePlugin.java
-@@ -0,0 +1,308 @@
+@@ -0,0 +1,316 @@
 +package ai.eliza.voice;
 +
 +import android.Manifest;
@@ -80,7 +80,7 @@
 + }
 + @Override @PluginMethod public void requestPermissions(PluginCall call){launch(call,()->super.requestPermissions(call));}
 + @PluginMethod public void startCloudSpeech(PluginCall call){
-+  if(destroyed||!foreground){call.reject("Voice is not in the foreground");return;}
++  if(destroyed||!foreground||sensitiveSurfaceActive()){call.reject("Voice is not in the foreground");return;}
 +  final boolean permission=getPermissionState("microphone")!=PermissionState.GRANTED;
 +  synchronized(this){if(session!=null||permissionCall!=null||destroyed||!foreground){call.reject("Voice is already active or unavailable");return;}if(permission)permissionCall=call;}
 +  if(permission){if(!launch(call,()->requestPermissionForAlias("microphone",call,"microphoneReady"))){synchronized(this){if(permissionCall==call)permissionCall=null;}}return;}
@@ -266,7 +266,7 @@
 +  final Runnable expiry=()->retire(this,"expired");
 +  final ExecutorService feeder=new ThreadPoolExecutor(1,1,0L,TimeUnit.MILLISECONDS,new ArrayBlockingQueue<>(FEED_TASKS),work->{Thread thread=new Thread(work,"eliza-cloud-speech-feeder");thread.setDaemon(true);return thread;},new ThreadPoolExecutor.AbortPolicy());final AtomicLong feeding=new AtomicLong();
 +  Session(String id,String environment,String credential,long epoch,PluginCall call){this.id=id;this.environment=environment;this.credential=credential;this.epoch=epoch;this.startCall=call;}
-+  void check()throws IOException{if(closed.get()||session!=this||destroyed||!foreground||epoch!=authorityEpoch())throw new IOException("Speech session changed");if(!startSettled.get()&&SystemClock.elapsedRealtime()>=startupEndsMs)throw new java.net.SocketTimeoutException("Speech startup window expired");}
++  void check()throws IOException{if(closed.get()||session!=this||destroyed||!foreground||epoch!=authorityEpoch()||sensitiveSurfaceActive())throw new IOException("Speech session changed");if(!startSettled.get()&&SystemClock.elapsedRealtime()>=startupEndsMs)throw new java.net.SocketTimeoutException("Speech startup window expired");}
 +  void send(JSONObject value)throws IOException{check();WebSocket peer=socket;if(peer==null||peer.queueSize()>64000||!peer.send(value.toString()))throw new IOException("Speech transport unavailable");}
 +  void startCapture()throws Exception{
 +   check();if(getContext().checkSelfPermission(Manifest.permission.RECORD_AUDIO)!=PackageManager.PERMISSION_GRANTED)throw new SecurityException("Microphone permission denied");
@@ -290,6 +290,14 @@
 +  try{own.check();WebSocket socket=own.socket;if(socket==null||socket.queueSize()>64000||!socket.send(ByteString.of(new byte[1024])))throw new IOException();own.sentFrames++;own.sentBytes+=1024;}catch(Exception ignored){return;}
 +  main.postDelayed(()->silence(own,generation,remaining-1),32);
 + }
++ /** Host-native retirement; does not gate the old session's captured-token cleanup. */
++ protected final void retireSpeechAuthority(){
++  final PluginCall waiting;final Session own;
++  synchronized(this){waiting=permissionCall;permissionCall=null;own=session;}
++  if(waiting!=null)waiting.reject("Cloud streaming speech stopped","cancelled");
++  if(own!=null)retire(own,"authority-changed");
++ }
++ protected boolean sensitiveSurfaceActive(){return false;}
 + private void stopCapture(Session own){
 +  AudioRecord recorder=own.recorder;own.recorder=null;
 +  if(recorder!=null)try{recorder.stop();}catch(RuntimeException ignored){}

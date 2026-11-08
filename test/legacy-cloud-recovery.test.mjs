@@ -46,7 +46,7 @@ test('explicit native legacy recovery uses real encrypted slots and current toke
   assert.ok(fastStart>0&&fastEnd>fastStart&&intentStart>0);
   // Use the actual lifecycle→vault fast path and the ACTUAL synchronized intent check.
   // Process shutdown is fixture-only; these tests do not launch or stop an Android service.
-  const lifecycle=join(dir,'AlphaLocalAgentPlugin.java');writeFileSync(lifecycle,`package ai.elizaresearch.alphaphone;import android.content.Context;import org.json.JSONObject;import com.getcapacitor.JSObject;import ai.eliza.plugins.agent.runtime.NativeProviderSlot;class AlphaLocalAgentPlugin {
+  const lifecycle=join(dir,'AlphaLocalAgentPlugin.java');writeFileSync(lifecycle,`package ai.elizaresearch.alphaphone;import android.content.Context;import org.json.JSONObject;import com.getcapacitor.JSObject;import ai.eliza.plugins.agent.runtime.NativeProviderSlot;class AlphaVoiceCloudPlugin {static void retireProviderAuthority(){}} class AlphaLocalAgentPlugin {
    static final Object lifecycleLock=new Object();static final ai.eliza.plugins.agent.runtime.CredentialIntentFence credentialIntents=new ai.eliza.plugins.agent.runtime.CredentialIntentFence(lifecycleLock);static{credentialIntents.reserve();}
    ${powerEpoch}
    ${mutationEpoch}
@@ -54,6 +54,8 @@ test('explicit native legacy recovery uses real encrypted slots and current toke
    static long currentCredentialIntent(){return credentialIntents.current();}
    static long reserveCredentialIntent(){return credentialIntents.reserve();}
    static Runnable beforeCommit=()->{};
+   private static final java.util.Set<AlphaLocalAgentPlugin> instances=new java.util.HashSet<>();
+   private void closeProviderReveal(){}
    ${nativeLifecycle.slice(powerStart,powerEnd)}
    ${nativeLifecycle.slice(intentStart,intentEnd)}
    interface CredentialMutation<T>{boolean requiresShutdown()throws Exception;T commit()throws Exception;}
@@ -72,7 +74,7 @@ test('explicit native legacy recovery uses real encrypted slots and current toke
   const result=runJvm(sources,'ai.elizaresearch.alphaphone.LegacyCloudRecoveryTest',{json:true,args:[join(dir,'slots')]});
   assert.match(result,/PASS actual AlphaCredentialStore/);
   assert.match(result,/PASS native provider cancellation:/);
-  assert.match(result,/PASS native own keys: Cloud sign-in, sign-out, reauthorization and local owner continuity/);
+  assert.match(result,/PASS native own keys: encrypted independent edit, mode switch, removal, cleanup, stale authority and local owner continuity/);
   assert.match(result,/PASS Workspace credential lifecycle and native-slot isolation/);
   assert.match(result,/PASS renderer logical and physical recovery slot isolation/);
   assert.match(result,/PASS \d+ real encrypted-slot recovery assertions/);

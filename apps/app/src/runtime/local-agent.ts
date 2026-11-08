@@ -1,6 +1,6 @@
 import { isPreparedViewNavigationRequest } from './prepared-view-navigation.ts';
 import {subscribeNativeViewEvents,type NativeViewEventPort} from "./native-view-events";
-import {browserCloudResidentEnabled,browserResidentCall} from './browser-cloud-resident';
+import {browserCloudResidentEnabled,browserResidentCall,browserProviderCall} from './browser-cloud-resident';
 import type {AppRecordMethod} from './app-record-route-policy';
 import {developmentCartesiaVoiceEnabled} from './development-cartesia-flag';
 import {parseRecoveryReview,parseRecoveryArchive} from './resident-recovery';
@@ -29,7 +29,11 @@ export interface LocalAgentBridge {
   prepareProviderConfiguration?():Promise<{requestId:string}>;
   configureProvider?(input:{apiKey:string;model:string;cartesiaKey?:string;requestId:string}):Promise<unknown>;
   cancelProviderConfiguration?(input:{requestId:string}):Promise<void>;
-  providerStatus?():Promise<{provider?:unknown;configured?:unknown;model?:unknown;voiceConfigured?:unknown}>;
+  providerStatus?():Promise<unknown>;
+  selectProvider?(input:{mode:LocalProviderMode;expectedRevision:string;requestId:string}):Promise<unknown>;
+  editProviderKeys?(input:{textKey?:string;voiceKey?:string;expectedRevision:string;requestId:string}):Promise<unknown>;
+  removeProviderKey?(input:{key:LocalProviderKey;expectedRevision:string;requestId:string}):Promise<unknown>;
+  revealProviderKey?(input:{key:LocalProviderKey;expectedRevision:string;requestId:string}):Promise<unknown>;
   clearProvider?(input?:{onlyIfPresent?:true;requestId?:string}):Promise<{configured?:unknown}>;
   clearProviderIfCurrent?(input:{bindingGuard:string}):Promise<{outcome?:unknown}>;
   /** Read-only native query; see residentAttachable. */
@@ -461,7 +465,13 @@ export class LocalAgentProtocol {
 
 /** Hosted inference stays on Qwen through Cerebras; the model is not user-selectable. */
 export const LOCAL_PROVIDER_MODEL='qwen-3.8-27b';
-export interface LocalProviderStatus { configured:boolean; provider:'cerebras'|'elizacloud'; model?:string;voiceConfigured?:boolean;revision?:string;selected?:boolean }
+export type LocalProviderMode='cloud'|'own';
+export type LocalProviderKey='text'|'voice';
+export interface LocalProviderKeysStatus {text:{configured:boolean};voice:{configured:boolean}}
+export type LocalProviderPersistence='native-secure-store'|'host-session';
+export interface LocalProviderStatus { configured:boolean; provider:'cerebras'|'elizacloud'; model?:string;voiceConfigured?:boolean;revision?:string;selected?:boolean;mode?:LocalProviderMode;keys?:LocalProviderKeysStatus;persistence?:LocalProviderPersistence }
+export interface ManagedLocalProviderStatus extends LocalProviderStatus {mode:LocalProviderMode;revision:string;keys:LocalProviderKeysStatus;persistence:LocalProviderPersistence}
+export type LocalProviderReveal={key:LocalProviderKey;revision:string;shown:true;hidesAfterMs:number}|{key:LocalProviderKey;revision:string;value:string};
 const modelVendors:Record<string,string>={cerebras:'Cerebras'};
 /** One label for a configured route and model, shared by the chooser and Settings: Eliza Cloud
  * reports `cerebras/qwen-3.8-27b`, shown as `Eliza Cloud · qwen-3.8-27b (Cerebras)`; a direct
@@ -485,7 +495,17 @@ function parseProviderStatus(value:unknown):LocalProviderStatus {
   if(!provider||typeof row.configured!=='boolean'||(row.model!==undefined&&typeof row.model!=='string'))throw Error('Invalid provider status.');
   // Native reports `cerebras/qwen-3.8-27b` for Cloud billing; modelLabel names the vendor.
   const model=typeof row.model==='string'?row.model:undefined;
-  return {configured:row.configured,provider,selected:row.selected===true||row.configured===true,voiceConfigured:row.voiceConfigured===true,...(typeof row.revision==='string'?{revision:row.revision}:{}),...(model?{model}:{})};
+  if(row.mode!==undefined&&row.mode!=='cloud'&&row.mode!=='own')throw Error('Invalid provider mode.');
+  if(row.persistence!==undefined&&row.persistence!=='native-secure-store'&&row.persistence!=='host-session')throw Error('Invalid provider storage status.');
+  let keys:LocalProviderKeysStatus|undefined;
+  if(row.keys!==undefined){
+    const saved=record(row.keys),text=record(saved.text),voice=record(saved.voice);
+    if(typeof text.configured!=='boolean'||typeof voice.configured!=='boolean')throw Error('Invalid saved-key status.');
+    keys={text:{configured:text.configured},voice:{configured:voice.configured}};
+  }
+  return {configured:row.configured,provider,selected:row.selected===true||row.configured===true,voiceConfigured:row.voiceConfigured===true,
+    ...(typeof row.revision==='string'?{revision:row.revision}:{}),...(model?{model}:{}),
+    ...(row.mode!==undefined?{mode:row.mode}:{}),...(row.persistence!==undefined?{persistence:row.persistence}:{}),...(keys?{keys}:{})};
 }
 /** The native bridge verifies the key against Cerebras before it reports success; the key itself
  * never returns to the renderer. */
@@ -505,7 +525,93 @@ export async function localProviderStatus():Promise<LocalProviderStatus> {
   if(!Capacitor.isNativePlatform()||!native.providerStatus)throw Error('Provider status is unavailable here.');
   return parseProviderStatus(await native.providerStatus());
 }
-/** Removes the stored key and reads native status back; success requires configured:false. */
+function managedProviderStatus(value:unknown):ManagedLocalProviderStatus {
+  const status=parseProviderStatus(value);
+  if(!status.mode||!status.keys||!status.persistence||!status.revision||status.revision.length>256)
+    throw Error('Saved-key management requires an updated app or browser host.');
+  return status as ManagedLocalProviderStatus;
+}
+async function currentProviderManager(expectedRevision:string,signal:AbortSignal):Promise<ManagedLocalProviderStatus>{
+  signal.throwIfAborted();
+  if(typeof expectedRevision!=='string'||!expectedRevision||expectedRevision.length>256)throw Error('Reload provider Settings before making changes.');
+  const status=managedProviderStatus(await localProviderStatus());signal.throwIfAborted();
+  if(status.revision!==expectedRevision)throw Error('Provider changed. Reload Settings before making changes.');
+  if(status.persistence!==(browserCloudResidentEnabled?'host-session':'native-secure-store'))throw Error('Provider storage could not be confirmed.');
+  return status;
+}
+function providerKeyName(key:LocalProviderKey):LocalProviderKey {
+  if(key!=='text'&&key!=='voice')throw Error('Choose Text or Voice.');
+  return key;
+}
+/** Selecting a route never removes either saved key. Older bridges cannot emulate this contract. */
+export async function selectLocalProvider(input:{mode:LocalProviderMode;expectedRevision:string},signal:AbortSignal=new AbortController().signal):Promise<ManagedLocalProviderStatus>{
+  const {mode,expectedRevision}=input;
+  if(mode!=='cloud'&&mode!=='own')throw Error('Choose Cloud or Own keys.');
+  const before=await currentProviderManager(expectedRevision,signal);
+  if(mode==='own'&&!before.keys.text.configured)throw Error('Save a Text key first.');
+  let response:unknown;
+  if(browserCloudResidentEnabled)response=await browserProviderCall('residentProviderSelect',{mode,expectedRevision},signal);
+  else{
+    if(!Capacitor.isNativePlatform()||!native.prepareProviderConfiguration||!native.selectProvider||!native.cancelProviderConfiguration)throw Error('Provider selection is unavailable in this version.');
+    response=await runProviderConfiguration(signal,{prepare:()=>native.prepareProviderConfiguration!(),configure:requestId=>native.selectProvider!({mode,expectedRevision,requestId}),cancel:requestId=>native.cancelProviderConfiguration!({requestId})});
+  }
+  signal.throwIfAborted();const status=managedProviderStatus(response);
+  if(status.mode!==mode||status.keys.text.configured!==before.keys.text.configured||status.keys.voice.configured!==before.keys.voice.configured)throw Error('Provider selection and retained keys could not be confirmed.');
+  return status;
+}
+/** Omitted fields remain untouched. Empty values never mean Remove. Edits do not select a route. */
+export async function editLocalProviderKeys(input:{textKey?:string;voiceKey?:string;expectedRevision:string},signal:AbortSignal=new AbortController().signal):Promise<ManagedLocalProviderStatus>{
+  const {textKey,voiceKey,expectedRevision}=input;
+  for(const value of [textKey,voiceKey])if(value!==undefined&&(typeof value!=='string'||value.length<8||value.length>1024||/[^\x21-\x7e]/.test(value)))throw Error('Enter a valid key or leave the field unchanged.');
+  if(textKey===undefined&&voiceKey===undefined)throw Error('Choose a key to edit.');
+  const before=await currentProviderManager(expectedRevision,signal);
+  const fields={expectedRevision,...(textKey!==undefined?{textKey}:{}),...(voiceKey!==undefined?{voiceKey}:{})};
+  let response:unknown;
+  if(browserCloudResidentEnabled)response=await browserProviderCall('residentProviderEdit',fields,signal);
+  else{
+    if(!Capacitor.isNativePlatform()||!native.prepareProviderConfiguration||!native.editProviderKeys||!native.cancelProviderConfiguration)throw Error('Provider editing is unavailable in this version.');
+    response=await runProviderConfiguration(signal,{prepare:()=>native.prepareProviderConfiguration!(),configure:requestId=>native.editProviderKeys!({...fields,requestId}),cancel:requestId=>native.cancelProviderConfiguration!({requestId})});
+  }
+  signal.throwIfAborted();const status=managedProviderStatus(response);
+  if(status.mode!==before.mode||textKey!==undefined&&!status.keys.text.configured||voiceKey!==undefined&&!status.keys.voice.configured
+    ||textKey===undefined&&status.keys.text.configured!==before.keys.text.configured||voiceKey===undefined&&status.keys.voice.configured!==before.keys.voice.configured)
+    throw Error('Saved keys could not be confirmed. Reload Settings.');
+  return status;
+}
+export async function removeLocalProviderKey(input:{key:LocalProviderKey;expectedRevision:string},signal:AbortSignal=new AbortController().signal):Promise<ManagedLocalProviderStatus>{
+  const key=providerKeyName(input.key),{expectedRevision}=input,other=key==='text'?'voice':'text';
+  const before=await currentProviderManager(expectedRevision,signal);let response:unknown;
+  if(browserCloudResidentEnabled)response=await browserProviderCall('residentProviderRemove',{key,expectedRevision},signal);
+  else{
+    if(!Capacitor.isNativePlatform()||!native.prepareProviderConfiguration||!native.removeProviderKey||!native.cancelProviderConfiguration)throw Error('Per-key removal is unavailable in this version.');
+    response=await runProviderConfiguration(signal,{prepare:()=>native.prepareProviderConfiguration!(),configure:requestId=>native.removeProviderKey!({key,expectedRevision,requestId}),cancel:requestId=>native.cancelProviderConfiguration!({requestId})});
+  }
+  signal.throwIfAborted();const status=managedProviderStatus(response);
+  if(status.mode!==before.mode||status.keys[key].configured||status.keys[other].configured!==before.keys[other].configured)
+    throw Error('Key removal could not be confirmed. Reload Settings.');
+  return status;
+}
+/** Native opens a secure dialog; only the browser host can return its explicit RAM-only reveal. */
+export async function revealLocalProviderKey(input:{key:LocalProviderKey;expectedRevision:string},signal:AbortSignal=new AbortController().signal):Promise<LocalProviderReveal>{
+  const key=providerKeyName(input.key),{expectedRevision}=input;
+  const before=await currentProviderManager(expectedRevision,signal);
+  if(!before.keys[key].configured)throw Error('This key is not saved.');
+  let response:unknown;
+  if(browserCloudResidentEnabled)response=await browserProviderCall('residentProviderReveal',{key,expectedRevision},signal);
+  else{
+    if(!Capacitor.isNativePlatform()||!native.prepareProviderConfiguration||!native.revealProviderKey||!native.cancelProviderConfiguration)throw Error('Provider reveal is unavailable in this version.');
+    response=await runProviderConfiguration(signal,{prepare:()=>native.prepareProviderConfiguration!(),configure:requestId=>native.revealProviderKey!({key,expectedRevision,requestId}),cancel:requestId=>native.cancelProviderConfiguration!({requestId})});
+  }
+  signal.throwIfAborted();const result=record(response);
+  if(result.key!==key||result.revision!==expectedRevision)throw Error('Provider changed before reveal.');
+  if(browserCloudResidentEnabled){
+    if(typeof result.value!=='string'||result.value.length<8||result.value.length>1024||/[^\x21-\x7e]/.test(result.value))throw Error('Provider reveal could not be confirmed.');
+    return {key,revision:expectedRevision,value:result.value};
+  }
+  if(result.shown!==true||typeof result.hidesAfterMs!=='number'||result.hidesAfterMs<=0||result.hidesAfterMs>30000||result.value!==undefined)throw Error('Secure provider reveal could not be confirmed.');
+  return {key,revision:expectedRevision,shown:true,hidesAfterMs:result.hidesAfterMs};
+}
+/** Retires the stored binding; saved keys are retained by capable native hosts. */
 export async function clearLocalProvider(onlyIfPresent=false,signal?:AbortSignal):Promise<LocalProviderStatus> {
   signal?.throwIfAborted();
   if(browserCloudResidentEnabled){const cleared=parseProviderStatus(await browserResidentCall('residentClear'));if(cleared.configured)throw Error('Cloud provider removal unconfirmed');return cleared;}
@@ -514,10 +620,10 @@ export async function clearLocalProvider(onlyIfPresent=false,signal?:AbortSignal
   const clear=(requestId?:string)=>native.clearProvider!({...(onlyIfPresent?{onlyIfPresent:true as const}:{}),...(requestId?{requestId}:{})});
   const cleared=signal?await runProviderConfiguration(signal,{prepare:()=>native.prepareProviderConfiguration!(),configure:requestId=>clear(requestId),cancel:requestId=>native.cancelProviderConfiguration!({requestId})}):await clear();
   signal?.throwIfAborted();
-  if(record(cleared).configured!==false)throw Error('The provider key could not be confirmed removed.');
+  if(record(cleared).configured!==false)throw Error('The provider binding could not be confirmed cleared.');
   const status=await localProviderStatus();
   signal?.throwIfAborted();
-  if(status.configured)throw Error('The provider key could not be confirmed removed.');
+  if(status.configured)throw Error('The provider binding could not be confirmed cleared.');
   return status;
 }
 

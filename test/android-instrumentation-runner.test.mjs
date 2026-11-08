@@ -173,6 +173,16 @@ test("every registered class exists in the app's instrumentation sources and dec
   for (const scenario of ["notice", "notice-denied"]) assert.equal(permissionCases[scenario].testClass, "HostedResultNoticeInstrumentedTest");
 });
 
+test("guarded app, recording and catalog cases require an owned secondary user", () => {
+  for (const name of ["AppInfo", "NoteRecorder", "NoteRecordingSave", "StorageCategories", "PhotosCatalogOrder"]) {
+    assert.equal(CLASS_REGISTRY[name].secondaryUser, true, name);
+    assert.throws(() => parseInstrumentationArgs(["--classes", name]), /requires --owned-emulator/);
+  }
+  assert.equal(CLASS_REGISTRY.NoteRecorder.grant, undefined, "preserve the effective guarded recorder policy");
+  const catalog = fs.readFileSync("android/app/src/androidTest/java/ai/elizaresearch/alphaphone/PhotosCatalogOrderInstrumentedTest.java", "utf8");
+  assert.match(catalog, /assertTrue\("Disposable secondary user required",android\.os\.Process\.myUid\(\)\/100000>0\)/);
+});
+
 test("every @Test class is run by a runner or listed with a reason, and neither list goes stale", () => {
   const classes = testClasses();
   assert.ok(classes.size > 100, "instrumentation sources were found");
@@ -194,10 +204,14 @@ test("every @Test class is run by a runner or listed with a reason, and neither 
     assert.ok(classes.has(name) || classes.has(`${name}InstrumentedTest`), `NOT_RUN_BY_A_RUNNER lists ${name}, which is not a @Test class`);
     assert.ok(typeof reason === "string" && reason.trim().length >= 40, `NOT_RUN_BY_A_RUNNER.${name} needs a specific reason`);
   }
-  // Registry entries must be classes too (the test above checks each file); nothing is registered twice.
-  assert.equal(new Set(Object.keys(CLASS_REGISTRY)).size, Object.keys(CLASS_REGISTRY).length);
-  // What this package registered stays registered.
-  for (const name of ["BrowserPageQuestion", "ConnectionChooser", "LauncherHome", "SettingsRoles", "NotesSecureStorage"]) assert.ok(Object.hasOwn(CLASS_REGISTRY, name), name);
+  // Check source keys: Object.keys alone has already discarded duplicate object properties.
+  const registrySource = fs.readFileSync("scripts/android-instrumentation.mjs", "utf8").split("export const CLASS_REGISTRY = {")[1].split("\n};")[0];
+  const keys = [...registrySource.matchAll(/^  ([A-Za-z]\w*):/gm)].map(match => match[1]);
+  assert.equal(new Set(keys).size, keys.length, "every instrumentation class has one policy entry");
+  assert.deepEqual(keys, Object.keys(CLASS_REGISTRY));
+  // Current shared-storage/catalog coverage remains registered; retired SAF-picker classes do not.
+  for (const name of ["BrowserPageQuestion", "ConnectionChooser", "LauncherHome", "SettingsRoles", "NotesSecureStorage", "StorageLegacyAccess", "PhotosCatalogOrder"]) assert.ok(Object.hasOwn(CLASS_REGISTRY, name), name);
+  for (const name of ["FilesTree", "FilesTreeBatch", "FilesFolderQuestion"]) assert.ok(!Object.hasOwn(CLASS_REGISTRY, name), `${name} is a retired SAF-picker class`);
   for (const cls of ["VoicePermissionDeniedInstrumentedTest", "VoicePermissionRevokeInstrumentedTest", "HostedResultNoticeInstrumentedTest", "LocalVoiceRecordingLimitInstrumentedTest"])
     assert.deepEqual(namedBy(cls), ["scripts/test-native-permissions.mjs"], cls);
 });
@@ -586,7 +600,9 @@ test("restart runner wires the migration, crash-log, theme and source-reference 
 });
 
 test("round-9 journeys and links: J01, J05, the note link and the Maps return are registered offline", () => {
-  for (const [name, gate] of [["PosterCalendarJourney", "posterJourney"], ["JourneyJ05", "journeyJ05"], ["Maps", "mapsEventReturn"]]) {
+  // J01 drives Camera UI the view refresh removed; it is listed as not run until it is rewritten.
+  assert.ok(Object.hasOwn(NOT_RUN_BY_A_RUNNER, "PosterCalendarJourney") && !Object.hasOwn(CLASS_REGISTRY, "PosterCalendarJourney"));
+  for (const [name, gate] of [["JourneyJ05", "journeyJ05"], ["Maps", "mapsEventReturn"]]) {
     assert.equal(CLASS_REGISTRY[name].args[gate], "1", `${name} passes ${gate}`);
     assert.ok(gateRead(sourceOf(name), gate, "1"), `${name} reads ${gate}`);
     assert.ok(!DEFAULT_CLASSES.includes(name), `${name} is not a default class`);
@@ -603,4 +619,16 @@ test("round-9 journeys and links: J01, J05, the note link and the Maps return ar
   // BrowserPageQuestion and the journey built on it name no public host.
   for (const name of ["BrowserPageQuestion", "JourneyJ05"]) assert.ok(!/example\.com|www\.google\.com/.test(sourceOf(name)), `${name} contacts no public host`);
   assert.doesNotMatch(CLASS_REGISTRY.BrowserPageQuestion.note, /needs network|example\.com/);
+});
+
+test("no registered instrumented class drives a control the view refresh removed", () => {
+  // The SAF folder chooser and Camera Scan mode are gone. The composed Camera tools retain image import.
+  const removed = ["Choose folder", "Scan mode"];
+  for (const name of Object.keys(CLASS_REGISTRY)) {
+    const java = sourceOf(name);
+    for (const label of removed) assert.ok(!java.includes(`"${label}"`), `${name} still clicks "${label}"`);
+  }
+  const template = fs.readFileSync("apps/app/src/prototype/template.html", "utf8");
+  for (const label of removed) assert.equal(template.includes(label), false, `the renderer has no "${label}"`);
+  assert.match(template, /data-alpha-camera="tools"[\s\S]*camera\.importAvailable[\s\S]*camera\.importImage[\s\S]*Choose image/, "image import remains an explicit Camera tool");
 });

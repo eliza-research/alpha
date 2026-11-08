@@ -148,3 +148,32 @@ test('explicit developer surfaces retain Developer navigation and route',()=>{
  assert.equal(m.settingsNavigationRows(rows,true),rows);
  assert.equal(m.settingsPage('developer',true),'developer');
 });
+
+
+test('one canonical update index selects the exact installed flavor and signing family without fallback',()=>{
+ const roots=['11'.repeat(32),'22'.repeat(32)];
+ const releases=roots.flatMap((signerSha256,rootIndex)=>['launcher','standalone'].map((variant,index)=>({...manifest,signerSha256,variant,versionCode:50,apkUrl:`https://example.test/${rootIndex}-${index}.apk`})));
+ const feed={schema:'alpha-update/index-v1',releases};
+ for(const signerSha256 of roots)for(const launcher of [true,false]){
+  const result=m.parseUpdateManifest(feed,{versionCode:49,launcher,signerSha256});
+  const selected=releases.find(row=>row.signerSha256===signerSha256&&row.variant===(launcher?'launcher':'standalone'));
+  assert.equal(result?.apkUrl,selected.apkUrl);assert.equal(result?.versionCode,50);
+ }
+ assert.equal(m.parseUpdateManifest(feed,{versionCode:49,launcher:true,signerSha256:'33'.repeat(32)}),null);
+ assert.equal(m.parseUpdateManifest(feed,{versionCode:50,launcher:true,signerSha256:roots[0]}),null);
+ assert.equal(m.parseUpdateManifest({schema:'alpha-update/index-v1',releases:releases.filter(row=>row.variant==='standalone')},{versionCode:49,launcher:true,signerSha256:roots[0]}),null);
+});
+test('update index refuses duplicate pairs, nested feeds, malformed families and unbounded lists',()=>{
+ const release={...manifest,signerSha256:installed.signerSha256};
+ const index=releases=>({schema:'alpha-update/index-v1',releases});
+ assert.ok(m.parseUpdateManifest(index([release]),installed));
+ for(const entries of [[],[release,{...release}],[index([release])],[{...release,variant:'unknown'}],[{...release,signerSha256:'bad'}],Array(17).fill(release),[null]])assert.equal(m.parseUpdateManifest(index(entries),installed),null);
+ assert.equal(m.parseUpdateManifest(index([{...release,apkUrl:'http://example.test/app.apk'}]),installed),null);
+ assert.equal(m.parseUpdateManifest(index([{...release,sha256:'bad'}]),installed),null);
+ assert.equal(m.parseUpdateManifest(index([release]),{...installed,launcher:'true'}),null);
+ for(const variant of [['standalone'],{toString:'standalone'}]){
+  const malformed=JSON.parse(JSON.stringify({...release,variant,signerSha256:'ff'.repeat(32)}));
+  assert.doesNotThrow(()=>m.parseUpdateManifest(index([release,malformed]),installed));
+  assert.equal(m.parseUpdateManifest(index([release,malformed]),installed),null);
+ }
+});

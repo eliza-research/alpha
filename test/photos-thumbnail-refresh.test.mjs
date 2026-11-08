@@ -58,3 +58,13 @@ test('last-capture reads refresh the Camera album and cannot overwrite a newer c
  const reload=context.loadLast(4);requests[1].resolve({items:[]});await reload;assert.equal(context.lastCapture,undefined,'deleting the last camera photo clears the tile');
  const hidden=context.loadLast(4);context.document.hidden=true;requests[2].resolve({items:[{id:'2',image:'hidden'}]});await hidden;assert.equal(context.lastCapture,undefined);
 });
+
+test('catalog replacement cannot receive pixels from the previous row',async()=>{
+ const old=photo(1),f=fixture([old]),pending=f.settle(0,1);
+ f.context.captures=[{...old,revision:'r2'}];f.context.libraryEpoch++;
+ f.requests[0].resolve({items:[{id:'1',image:'old pixels'}]});await pending;
+ assert.equal(f.context.captures[0].revision,'r2');assert.equal(f.context.captures[0].image,'');
+ assert.equal(f.context.thumbFetching.size,0);assert.equal(f.updates.length,1);
+ const retry=f.settle(0,1);f.requests[1].resolve({items:[{id:'1',image:'new pixels'}]});await retry;
+ assert.equal(f.context.captures[0].image,'new pixels');
+});

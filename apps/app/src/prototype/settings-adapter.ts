@@ -151,7 +151,26 @@ type AppUpdate = {versionCode: number; versionName: string; apkUrl: string; sha2
  */
 export function parseUpdateManifest(value: unknown, installed: {versionCode: unknown; launcher: unknown; signerSha256: unknown}): AppUpdate | null {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
-  const {schema, versionCode, versionName, variant, signerSha256, apkUrl, sha256, sizeBytes, notes} = value as Record<string, unknown>;
+  let offer = value as Record<string, unknown>;
+  // One canonical feed can serve distinct APK flavors and installed signing families.
+  // Select an exact pair only; never fall back to another signer or an ambiguous offer.
+  if (offer.schema === 'alpha-update/index-v1') {
+    if (!Array.isArray(offer.releases) || offer.releases.length < 1 || offer.releases.length > 16) return null;
+    const pairs = new Set<string>();
+    let selected: Record<string, unknown> | undefined;
+    for (const entry of offer.releases) {
+      if (!entry || typeof entry !== 'object' || Array.isArray(entry)) return null;
+      const row = entry as Record<string, unknown>;
+      if (row.schema !== UPDATE_SCHEMA || (row.variant !== 'launcher' && row.variant !== 'standalone') || typeof row.signerSha256 !== 'string' || !/^[0-9a-f]{64}$/.test(row.signerSha256)) return null;
+      const pair = row.variant + ':' + row.signerSha256;
+      if (pairs.has(pair)) return null;
+      pairs.add(pair);
+      if (typeof installed.launcher === 'boolean' && row.variant === (installed.launcher ? 'launcher' : 'standalone') && row.signerSha256 === installed.signerSha256) selected = row;
+    }
+    if (!selected) return null;
+    offer = selected;
+  }
+  const {schema, versionCode, versionName, variant, signerSha256, apkUrl, sha256, sizeBytes, notes} = offer;
   if (schema !== UPDATE_SCHEMA || !Number.isSafeInteger(installed.versionCode) || !Number.isSafeInteger(versionCode) || (versionCode as number) <= (installed.versionCode as number)) return null;
   if (typeof installed.launcher !== 'boolean' || variant !== (installed.launcher ? 'launcher' : 'standalone') || typeof signerSha256 !== 'string' || !/^[0-9a-f]{64}$/.test(signerSha256) || signerSha256 !== installed.signerSha256) return null;
   if (typeof sha256 !== 'string' || !/^[0-9a-f]{64}$/.test(sha256) || !Number.isSafeInteger(sizeBytes) || (sizeBytes as number) <= 0 || (sizeBytes as number) > UPDATE_MAX_BYTES || typeof apkUrl !== 'string' || apkUrl.length > 2048) return null;
@@ -494,7 +513,7 @@ export function installSettingsAdapter(Component: any, views: Bag) {
   };
   definition.render = (state: Bag, api: Bag) => {
     settingsApi = api;
-    const permissionsPage=state.page==='settings-permissions';
+    const permissionsPage=state.page==='settings-permissions'||state.page==='privacy';
     const appSettingsPage=typeof state.page==='string'&&state.page.startsWith('app-settings-')?state.page.slice(13):null;
     const categoryPage=typeof state.page==='string'&&Object.hasOwn(categoryNames,state.page)?state.page:!state.page?activeSettingsCategory:null;
     const out = render({ ...state, page: categoryPage||appSettingsPage||permissionsPage?null:settingsPage(state.page, developerTools), acct: null, adding: false, sheet: ['conn', 'voice', 'wipe', 'wifiPw', 'forget'].includes(state.sheet?.kind) ? null : state.sheet }, api);
@@ -884,7 +903,7 @@ export function installSettingsAdapter(Component: any, views: Bag) {
         });
         page.groups=page.groups.map((g:Bag)=>({...g,rows:g.rows.filter((row:Bag)=>row.label!=='Text size'&&(Capacitor.isNativePlatform()||row.label!=='Manage brightness in Android'))})).filter((g:Bag)=>g.rows.length);
         const percent=Number.isInteger(facts.textScalePercent)?facts.textScalePercent:100;
-        page.groups.push({...group(([['Small',75],['Default',100],['Large',115],['Larger',130],['Largest',150]] as const).map(([label,value])=>({kNav:true,label,lbl:`Text size: ${label}${percent===value?', selected':''}`,val:percent===value?'✓':'',hasVal:percent===value,noAB:true,go:async()=>{const token=++scaleGeneration,instance=owner;++generation;try{const result=await device.setTextScale({percent:value});if(owner===instance&&token===scaleGeneration){facts={...facts,...result};instance?.vset('settings',{nativeReadAt:Date.now()});}}catch{if(owner===instance&&token===scaleGeneration)api.toast('Text size could not be saved.');}}}))),cap:'Text size',hasCap:true});
+        page.groups.push({...group(([['Small',75],['Default',100],['Large',115],['Larger',130],['Largest',150]] as const).map(([label,value])=>({kNav:true,isTextSize:true,textSizePreviewCss:`font-size:${Math.round(value*.16)}px`,sizeSelected:percent===value,label,lbl:`Text size: ${label}${percent===value?', selected':''}`,val:'',hasVal:false,noAB:true,go:async()=>{const token=++scaleGeneration,instance=owner;++generation;try{const result=await device.setTextScale({percent:value});if(owner===instance&&token===scaleGeneration){facts={...facts,...result};instance?.vset('settings',{nativeReadAt:Date.now()});}}catch{if(owner===instance&&token===scaleGeneration)api.toast('Text size could not be saved.');}}}))),cap:'Text size',hasCap:true});
       }
     }
     const settingsTop = out.stack.find((page: Bag) => page.isTop);
@@ -905,12 +924,13 @@ export function installSettingsAdapter(Component: any, views: Bag) {
       const sections = [
         ['Account', ['Accounts', 'Connections', 'AI provider']],
         ['Preferences', ['Display', 'Notifications']],
-        ['Privacy', ['Privacy & data', 'Set up Alpha access', 'Review phone actions first']],
+        ['Privacy', ['Set up Alpha access', 'Review phone actions first']],
         ['Apps', ['Calendar', 'Scheduled digests', 'Password manager', 'Photos']],
         ['Help', ['About']],
       ] as const;
       rows.delete('Models');
       rows.delete('Agent connection');
+      rows.delete('Privacy & data');
       settingsTop.groups = sections.map(([caption, names]) => {
         const selected = names.flatMap(name => {
           const row = rows.get(name);
@@ -966,13 +986,13 @@ export function installSettingsAdapter(Component: any, views: Bag) {
       rows.push(native?{...action('Photos',()=>void photoLibrary.openLibrarySettings().catch(()=>api.toast('Photo settings could not open.'))),val:photos,hasVal:true}:info('Photos',photos));
       rows.push(info('Files','Files and folders you choose'));
       rows.push({...action('Notifications',()=>api.set({page:'notifications'})),val:typeof delivery.appEnabled==='boolean'?(delivery.appEnabled&&delivery.permissionGranted?'Allowed':'Off'):'Not checked',hasVal:true});
-      out.stack.push({isTop:false,notTop:true,cls:'enter',z:4,title:'App permissions',backLabel:'Back to Privacy',back:()=>api.set({page:'settings-privacy'}),hero:{},groups:[group(rows),group([note('Access stays as you chose it',native?'Select a permission to manage it in system settings.':'Camera, microphone and location access are managed in your browser’s site settings. Alpha asks for access when you use a feature.')])]});
+      out.stack.push({isTop:false,notTop:true,cls:'enter',z:4,title:'App permissions',backLabel:'Back to Privacy',back:()=>api.set({page:'settings-privacy'}),hero:{},groups:[group(rows)]});
     }
     if(activeSettingsCategory&&!categoryPage)for(const page of out.stack)if(!page.isTop&&page.backLabel==='Back to Settings')page.backLabel='Back to '+categoryNames[activeSettingsCategory];
     const nestedParents:Record<string,[string,string]>={licenses:['about','About'],problems:['about','About'],history:['agent-connection','Connection help'],'license-detail':['licenses','licenses']};
     if(nestedParents[state.page]){const [parent,label]=nestedParents[state.page];const page=out.stack[out.stack.length-1];if(page&&!page.isTop){page.backLabel='Back to '+label;page.back=()=>api.set({page:parent});}}
     const settingsIcons:Record<string,string>={General:'settings',Privacy:'shield',Apps:'layout-grid',Help:'info',About:'info',Browser:'globe',Calendar:'calendar-days',Camera:'camera',Files:'folder',Inbox:'mail',Maps:'map-pin',Notes:'notebook-text',Passwords:'lock-keyhole',Photos:'images',Workflows:'workflow','Account & plan':'user-round','Google & email':'link','AI connection':'cpu',Display:'sun',Notifications:'bell','Privacy & data':'shield','App permissions':'fingerprint-pattern','Scheduled summaries':'clock'};
-    for(const page of out.stack)for(const section of page.groups||[])for(const row of section.rows||[])if(row.kNav){row.lucideIcon='/icons/lucide/'+(row.licenseComponent?'file-text':settingsIcons[row.label]||'sliders-horizontal')+'.svg';row.hasLucideIcon=true;row.hasIcon=false;row.hasTile=false;}
+    for(const page of out.stack)for(const section of page.groups||[])for(const row of section.rows||[])if(row.kNav){row.lucideIcon='/icons/lucide/'+(row.licenseComponent?'file-text':settingsIcons[row.label]||'sliders-horizontal')+'.svg';row.hasLucideIcon=!row.isTextSize;row.hasIcon=false;row.hasTile=false;}
     // Stable identities keep focused controls attached while async groups change.
     for(const page of out.stack){
       const groups=new Map<string,number>();

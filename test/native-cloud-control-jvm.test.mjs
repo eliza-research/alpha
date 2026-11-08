@@ -102,3 +102,23 @@ test('Alpha streaming and batch 429 parsing preserves sanitized retry facts and 
   assert.match(runJvm(['android/app/src/main/java/ai/elizaresearch/alphaphone/CloudVoiceLimit.java',f],'ai.elizaresearch.alphaphone.LimitParityTest',{json:true}),/^PASS/);
  }finally{fs.rmSync(dir,{recursive:true,force:true});}
 });
+
+test('provider switch cancels pending Cloud permission and retires old sessions without gating cleanup',()=>{
+ const retirement=method(source,'protected final void retireSpeechAuthority('),stop=method(source,'public void stopCloudSpeech(');
+ assert.match(jvm('ProviderRetirementTest',`public class ProviderRetirementTest {
+  static class PluginCall {int rejects,resolves;String id;PluginCall(String id){this.id=id;}String getString(String key){return id;}void reject(String reason,String code){rejects++;}void resolve(){resolves++;}}
+  static class Session {final String token="captured-old-fixture-token";boolean closed;}
+  PluginCall permissionCall;Session session;int revoked;String revokedToken;
+  Session owned(PluginCall call){return session;}
+  void detach(Session s){s.closed=true;if(session==s)session=null;}
+  void queueCleanup(Session s,Runnable done){revoked++;revokedToken=s.token;done.run();}
+  void retire(Session s,String reason){detach(s);queueCleanup(s,()->{});}
+  ${retirement}${stop}
+  static void check(boolean b,String why){if(!b)throw new AssertionError(why);}
+  public static void main(String[]args){ProviderRetirementTest f=new ProviderRetirementTest();PluginCall pending=new PluginCall("pending");f.permissionCall=pending;f.retireSpeechAuthority();check(f.permissionCall==null&&pending.rejects==1,"old microphone continuation survived mode switch");Session active=new Session();f.session=active;f.retireSpeechAuthority();check(active.closed&&f.revoked==1&&"captured-old-fixture-token".equals(f.revokedToken),"mode switch stranded old session cleanup");f.session=new Session();PluginCall stop=new PluginCall("active");f.stopCloudSpeech(stop);check(stop.resolves==1&&f.revoked==2,"Stop was blocked after mode switch");System.out.println("PASS pending permission, active retirement and captured-authority Stop");}
+ }`),/^PASS/);
+ const cleanup=method(source,'private void cleanup(');
+ assert.match(cleanup,/final String token=own\.token,origin=own\.origin,id=own\.serverId/);
+ assert.match(cleanup,/header\("Authorization","Bearer "\+token\)/);
+ assert.doesNotMatch(cleanup,/readCredential|authorityEpoch|requireCloudVoiceSelection|own\.check/,'old captured authority remains usable only for cleanup');
+});

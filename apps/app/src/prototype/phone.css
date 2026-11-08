@@ -421,14 +421,6 @@ html.alpha-text-xl:not(.alpha-landscape) [data-alpha-camera="modes"] button{heig
 .alpha-landscape [data-alpha-camera="modes"] button{background:rgba(0,0,0,.62);border-radius:22px}
 .alpha-landscape [data-alpha-camera="zoom"]{top:auto!important;bottom:60px!important;right:var(--alpha-camera-rail)!important}
 .alpha-landscape [data-alpha-camera="status"]{top:auto!important;bottom:112px!important;right:var(--alpha-camera-rail)!important}
-.alpha-camera-tools { position:absolute; top:601px; right:16px; z-index:3; color:var(--alpha-white); }
-/* File import stays usable above the camera recovery card while the tools are open. */
-.alpha-camera-tools[open] { z-index:51; }
-.alpha-camera-tools summary { display:grid; place-items:center; width:44px; height:44px; border-radius:22px; list-style:none; background:rgba(0,0,0,.62); cursor:pointer; }
-.alpha-camera-tools summary::-webkit-details-marker { display:none; }
-.alpha-camera-tools > div { position:absolute; right:0; bottom:calc(100% + 8px); display:grid; width:max-content; padding:4px; border-radius:16px; background:var(--bg); color:var(--fg); }
-.alpha-camera-tools button { min-height:44px; padding:0 12px; text-align:start; font:inherit; }
-.alpha-landscape .alpha-camera-tools { top:auto; bottom:112px; right:calc(var(--alpha-camera-rail) + 16px); }
 /* The photo viewer header holds two lines of text; it grows with them instead of cutting the first. */
 .standalone-app [data-alpha-subview="photos-viewer"] [data-alpha-app-header]{height:auto!important}
 /* The note editor header can hold eight actions: at 52px each the last one (Delete) leaves the

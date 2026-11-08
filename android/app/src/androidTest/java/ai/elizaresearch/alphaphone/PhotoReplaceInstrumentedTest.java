@@ -59,6 +59,7 @@ public final class PhotoReplaceInstrumentedTest {
       resolver.delete(photo, null, null);
     if (token != null) {
       backup().delete();
+      editBackup().delete();
       context.getSharedPreferences("alpha-photo-edit-results", 0).edit().remove(token).commit();
     }
   }
@@ -105,6 +106,7 @@ public final class PhotoReplaceInstrumentedTest {
         context.getSharedPreferences("alpha-photo-edit-results", 0);
     JSONObject interrupted = new JSONObject(journal.getString(token, ""));
     interrupted.remove("damage");
+    interrupted.remove("editBackup");
     assertTrue(journal.edit().putString(token, interrupted.toString()).commit());
     byte[] interruptedBytes = readPhoto();
     Faulty observer = new Faulty(1000, 0);
@@ -112,6 +114,74 @@ public final class PhotoReplaceInstrumentedTest {
     assertEquals(0, observer.opens);
     assertArrayEquals(interruptedBytes, readPhoto());
     assertTrue(backup().exists());
+  }
+
+  @Test public void processDeathDuringEditRecoversDurablePrefix() throws Exception {
+    byte[] original = readPhoto();
+    crashWrite(1000);
+    assertTrue(editBackup().isFile());
+    assertEquals(1000, readPhoto().length);
+    assertEquals("failed", result());
+    assertArrayEquals(original, readPhoto());
+    assertFalse(backup().exists());
+    assertFalse(editBackup().exists());
+  }
+
+  @Test public void processDeathImmediatelyAfterTruncationRecoversOriginal() throws Exception {
+    byte[] original = readPhoto();
+    crashWrite(0);
+    assertEquals(0, readPhoto().length);
+    assertEquals("failed", result());
+    assertArrayEquals(original, readPhoto());
+  }
+
+  @Test public void processDeathDuringRestoreRecoversOriginalPrefix() throws Exception {
+    byte[] original = readPhoto();
+    crashWrite(1000);
+    try {
+      edits(new Faulty(500, 1, true)).result(token);
+      fail("Expected interrupted restore");
+    } catch (ProcessDeath expected) { }
+    assertEquals(500, readPhoto().length);
+    assertEquals("failed", result());
+    assertArrayEquals(original, readPhoto());
+    assertFalse(editBackup().exists());
+  }
+
+  @Test public void unrelatedOriginalPrefixWithoutRestorePhaseStaysUnresolved() throws Exception {
+    byte[] original = readPhoto();
+    crashWrite(1000);
+    try (OutputStream out = resolver.openOutputStream(photo, "wt")) {
+      out.write(original, 0, 500);
+    }
+    byte[] before = readPhoto();
+    assertEquals("unknown", result());
+    assertArrayEquals(before, readPhoto());
+    assertArrayEquals(original, java.nio.file.Files.readAllBytes(backup().toPath()));
+    assertTrue(editBackup().exists());
+  }
+
+  @Test public void changedDurableEditRetainsBothBackups() throws Exception {
+    byte[] original = readPhoto();
+    crashWrite(1000);
+    byte[] before = readPhoto();
+    java.nio.file.Files.write(editBackup().toPath(), new byte[] {3, 2, 1});
+    assertEquals("unknown", result());
+    assertArrayEquals(before, readPhoto());
+    assertArrayEquals(original, java.nio.file.Files.readAllBytes(backup().toPath()));
+    assertArrayEquals(new byte[] {3, 2, 1}, java.nio.file.Files.readAllBytes(editBackup().toPath()));
+  }
+
+  private void crashWrite(int limit) throws Exception {
+    OwnedPhotoEdits edit = edits(new Faulty(limit, 1, true));
+    begin(edit);
+    try {
+      edit.replace(token, 90, false, "none");
+      fail("Expected interrupted write");
+    } catch (ProcessDeath expected) { }
+    JSONObject journal = new JSONObject(context.getSharedPreferences("alpha-photo-edit-results", 0)
+        .getString(token, ""));
+    assertFalse(journal.has("damage"));
   }
 
   @Test public void completedWriteWithCloseErrorIsSaved() throws Exception {
@@ -169,6 +239,10 @@ public final class PhotoReplaceInstrumentedTest {
     return new File(new File(context.getFilesDir(), "photo-replace-backups"), token + ".original");
   }
 
+  private File editBackup() {
+    return new File(new File(context.getFilesDir(), "photo-replace-backups"), token + ".edited");
+  }
+
   private byte[] readPhoto() throws Exception {
     try (InputStream in = resolver.openInputStream(photo);
          ByteArrayOutputStream out = new ByteArrayOutputStream()) {
@@ -195,14 +269,22 @@ public final class PhotoReplaceInstrumentedTest {
     }
   }
 
+  private static final class ProcessDeath extends Error { }
+
   private static final class Faulty implements OwnedPhotoEdits.ReplaceOutput {
     private final int limit;
     private final int failures;
+    private final boolean crash;
     private int opens;
 
     Faulty(int limit, int failures) {
+      this(limit, failures, false);
+    }
+
+    Faulty(int limit, int failures, boolean crash) {
       this.limit = limit;
       this.failures = failures;
+      this.crash = crash;
     }
 
     @Override public OutputStream open(ContentResolver resolver, Uri target) throws IOException {
@@ -213,8 +295,10 @@ public final class PhotoReplaceInstrumentedTest {
         private int written;
 
         @Override public void write(int value) throws IOException {
-          if (limit >= 0 && written >= limit)
+          if (limit >= 0 && written >= limit) {
+            if (crash) throw new ProcessDeath();
             throw new IOException("No space left on device");
+          }
           out.write(value);
           written++;
         }

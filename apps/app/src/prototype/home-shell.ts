@@ -56,10 +56,12 @@ export function installHomeShell(Component: any, views: Record<string, Bag>, bri
     open: view => owner?.openView(alphaViews.hostKey(view)),
     changed: () => owner?.setState({launcherRevision: Date.now()}),
   });
-  const inventory = options.appInventory;
   const {launcher} = shell, prefix = ALPHA_PRODUCT.storage.launcherBuiltinPrefix;
   const icon = (id: string) => mobileShellIconUrl(ALPHA_PRODUCT, id);
   const grid = icon(ALPHA_PRODUCT.icons.allApps);
+  // Installed apps exist on Android, or through the explicitly enabled browser fixture; without
+  // either there is no Apps entry, no drawer and no Home editing (nothing is read to edit).
+  const inventory = options.appInventory;
   const glyphs = {app: grid, phone: icon('phone'), search: icon('search'), close: icon('x'), plus: icon('plus'), info: icon('info')};
   const rerender = () => owner?.setState({launcherRevision: Date.now()});
   // The Add to Home sheet owns focus while open; Escape and Back close it.

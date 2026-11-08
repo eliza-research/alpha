@@ -176,8 +176,9 @@ installSystemShade(Component,{native:isAndroid});
 installHomeCardVisibility(Component, () => googleConnectionController.open());
 installHomeOverviewCards(Component);
 installClockAdapter(Component, VIEWS, { simulated: testMocksEnabled && fixture, browser: !isAndroid });
-// Home uses the shared mobile shell. Apps reads ElizaSystem on Android. The browser device
-// inventory remains available in test-mocks builds.
+// Home and its app grid from the shared mobile shell, and Alpha's Apps drawer. Apps reads
+// ElizaSystem on Android; the browser device inventory remains available in test-mocks builds only.
+// Outermost so Home composes with every binding above. App info exists on Android only.
 const appInventory = isAndroid ? 'android' : testMocksEnabled ? 'simulated' : undefined;
 installHomeShell(Component, VIEWS, launcherBridge, { appInventory, icons: isAndroid, follow: launcherListens, appInfo: isAndroid ? openAppInfo : undefined,
   aliases: appInventory === 'simulated' ? Object.fromEntries(browserApps.flatMap(app => { const view = alphaViews.find(app.view); return view ? [[app.packageName, alphaViews.launcherKey(view)]] : []; })) : undefined,

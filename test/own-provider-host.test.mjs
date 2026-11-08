@@ -78,3 +78,77 @@ test('cancelled queued Cloud selection never clears own provider or retires its 
   await host.selectCloud(new AbortController().signal);assert.equal(host.status().provider,'elizacloud');assert.equal(retirements,before+1);
  }finally{await host.close();fixture.close();}
 });
+
+test('Cloud and Own selection retain RAM keys while independent edit/removal never choose a provider',async()=>{
+ const fixture=productCharacterHostFixture(undefined,{inherited:{CEREBRAS_API_KEY:'synthetic-inherited-text',CARTESIA_API_KEY:'synthetic-inherited-voice',OPENAI_API_KEY:'synthetic-inherited-openai'},cloudRealtimeVoice:true,request:async()=>Response.json({data:[{id:'qwen-3.8-27b'}]})});
+ const host=await fixture.make(),call=(name,input)=>host[name]({...input,expectedRevision:host.status().revision});
+ try{
+  await host.bind({token:'synthetic-cloud-secret',credentialId:'account-a',reference:'ref-a'});
+  await call('editProviderKeys',{textKey:'synthetic-text-first',voiceKey:'synthetic-voice-first'});
+  assert.equal(host.status().mode,'cloud');assert.equal(fixture.launches.length,1,'editing inactive Own keys leaves Cloud running');
+  await call('selectProvider',{mode:'own'});await call('selectProvider',{mode:'cloud'});
+  assert.deepEqual(JSON.parse(JSON.stringify(host.status().keys)),{text:{configured:true},voice:{configured:true}});
+  assert.equal(host.status().voiceConfigured,false,'retained Voice does not select Own speech');
+  assert.equal(fixture.launches.at(-1).env.CARTESIA_API_KEY,undefined);
+  assert.equal(fixture.launches.at(-1).env.CEREBRAS_API_KEY,undefined);
+  assert.equal(fixture.launches.at(-1).env.OPENAI_API_KEY,undefined);
+  assert.equal(fixture.launches.at(-1).env.ELIZA_SELF_HOSTED_VOICE_CLOUD_RELAY_ENABLED,'1');
+  assert.equal(fixture.launches.at(-1).env.ELIZAOS_CLOUD_USE_INFERENCE,'true');
+  await call('editProviderKeys',{textKey:'synthetic-text-second'});
+  assert.equal((await call('revealProviderKey',{key:'voice'})).value,'synthetic-voice-first');
+  await call('selectProvider',{mode:'own'});
+  assert.equal(fixture.launches.at(-1).env.CEREBRAS_API_KEY,'synthetic-text-second');
+  assert.equal(fixture.launches.at(-1).env.CARTESIA_API_KEY,'synthetic-voice-first');
+  await call('removeProviderKey',{key:'text'});
+  assert.equal(host.status().mode,'own');assert.equal(host.status().configured,false);assert.equal(host.status().voiceConfigured,true);
+  assert.equal(fixture.launches.at(-1).env.CEREBRAS_API_KEY,undefined);assert.equal(fixture.launches.at(-1).env.ELIZAOS_CLOUD_API_KEY,undefined);
+  assert.equal(fixture.launches.at(-1).env.ELIZAOS_CLOUD_USE_INFERENCE,'false');
+  await call('removeProviderKey',{key:'voice'});assert.equal(host.status().voiceConfigured,false);
+  for(const name of await fs.readdir(fixture.profile))assert.ok(!(await fs.readFile(fixture.profile+'/'+name,'utf8')).includes('synthetic-'),name);
+  assert.equal(JSON.stringify(host.status()).includes('synthetic-'),false);
+ }finally{await host.close();fixture.close();}
+});
+
+test('account retirement fences late key validation and old reveal without deleting saved keys',async()=>{
+ let entered,release,hold=false;
+ const paused=new Promise(resolve=>entered=resolve),resume=new Promise(resolve=>release=resolve);
+ const fixture=productCharacterHostFixture(undefined,{request:async()=>{if(hold){entered();await resume;}return Response.json({data:[{id:'qwen-3.8-27b'}]});}});
+ const host=await fixture.make();
+ try{
+  await host.selectOwn({apiKey:'synthetic-original-text',cartesiaKey:'synthetic-original-voice'});
+  const expectedRevision=host.status().revision;hold=true;
+  const editing=host.editProviderKeys({expectedRevision,textKey:'synthetic-late-text'});await paused;
+  const changing=host.bind({token:'synthetic-cloud-new',credentialId:'account-b',reference:'ref-b'});
+  release();await assert.rejects(editing,/changed/);await changing;
+  await assert.rejects(host.revealProviderKey({key:'text',expectedRevision}),/changed/);
+  await assert.rejects(host.removeProviderKey({key:'voice',expectedRevision}),/changed/);
+  assert.equal(host.status().mode,'own');assert.equal(fixture.launches.at(-1).env.CEREBRAS_API_KEY,'synthetic-original-text');
+  assert.equal(fixture.launches.at(-1).env.CARTESIA_API_KEY,'synthetic-original-voice');
+  const current=host.status().revision;await assert.rejects(host.editProviderKeys({expectedRevision:current,voiceKey:''}),/valid Voice/);
+  assert.equal(host.status().revision,current,'blank is rejected without altering key custody');
+  const before=fixture.launches.length;await host.editProviderKeys({expectedRevision:current,voiceKey:'synthetic-new-voice'});
+  assert.equal(fixture.launches.length,before+1);assert.equal(fixture.launches.at(-1).env.CEREBRAS_API_KEY,'synthetic-original-text');
+ }finally{await host.close();fixture.close();}
+});
+
+test('legacy Text-only edit preserves the already saved Voice key',async()=>{
+ const fixture=productCharacterHostFixture(undefined,{request:async()=>Response.json({data:[{id:'qwen-3.8-27b'}]})}),host=await fixture.make();
+ try{
+  await host.selectOwn({apiKey:'synthetic-original-text',cartesiaKey:'synthetic-original-voice'});
+  await host.selectOwn({apiKey:'synthetic-replacement-text'});
+  assert.equal(host.status().voiceConfigured,true);
+  assert.equal(fixture.launches.at(-1).env.CARTESIA_API_KEY,'synthetic-original-voice');
+ }finally{await host.close();fixture.close();}
+});
+
+test('Cloud credential expiry fences an in-flight key edit without selecting a fallback',async()=>{
+ let entered,release;const paused=new Promise(resolve=>entered=resolve),resume=new Promise(resolve=>release=resolve);
+ const fixture=productCharacterHostFixture(undefined,{request:async()=>{entered();await resume;return Response.json({data:[{id:'qwen-3.8-27b'}]});}}),host=await fixture.make();
+ try{
+  await host.bind({token:'synthetic-expiring-cloud',credentialId:'expiring',reference:'expiring-ref',expiresAt:Date.now()+150});
+  const expectedRevision=host.status().revision,pending=host.editProviderKeys({expectedRevision,textKey:'synthetic-expired-edit'});await paused;
+  await new Promise(resolve=>setTimeout(resolve,200));release();await assert.rejects(pending,/changed/);
+  await assert.rejects(host.revealProviderKey({key:'text',expectedRevision}),/changed/);
+  assert.equal(host.status().keys.text.configured,false);assert.equal(host.status().mode,'cloud');assert.equal(host.status().configured,false);
+ }finally{release();await host.close();fixture.close();}
+});

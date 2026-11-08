@@ -103,11 +103,8 @@ export const CLASS_REGISTRY = {
   // Added by the round-2 integration (PR 388); no recorded run.
   AssistantResidentReuse: { note: "synthetic runtime observation, enrollment and streams; not evidence that a live resident stream survives" },
   LauncherApps: { note: "upstream SystemLauncherApps through Alpha's identity; resolves against this image's package manager only; two methods skip when the image has no other launchable app" },
-  AppInfo: { note: "opens Android Settings for its installed package and checks invalid targets; returns with Back without changing settings" },
   NotesDocument: { note: "Production migration refusal and unchanged Notes; test-mocks builds exercise SAF migration. Restart phase requires the explicit notes development campaign." },
   NotesStorageDurability: { args: { notesStorage: "1" } },
-  NoteRecorder: { grant: ["RECORD_AUDIO"], note: "records microphone segments, checks recovery and joined-file playback readiness, then removes its recording; emulator results do not establish physical microphone quality" },
-  NoteRecordingSave: { note: "synthetic WAV and long transcript exercise local recording retention and retry without microphone or network use" },
   CloudDeploymentStorage: {},
   CloudSignInAuthorization: { note: "Actual native Authorize/Cancel gate with an isolated plugin and no session; not live authentication or remote key issuance" },
   DailyApps: {},
@@ -135,10 +132,7 @@ export const CLASS_REGISTRY = {
   SystemShade: { note: "homeAsksAndroidForItsShadeOnTheLauncherOnly needs --test-mocks (skipped otherwise). Launcher Home asks Android for its shade (EXPAND_STATUS_BAR); standalone never does (#416, #417). Not AOSP-image or device acceptance" },
   CameraScan: {},
   CameraLatency: { args: { cameraLatency: "1" }, note: "cold/warm first frame (PreviewView STREAMING, also traced as alpha.camera.firstFrame) and shutter-to-thumbnail, reported as cameraLatency.* status; -e cameraLatencyAssert 1 fails on a missed Pixel 10a target; emulator numbers are not device evidence" },
-  FilesTree: {},
   StorageLegacyAccess: { note: "API 29: legacy storage in effect, both storage permissions granted by the test, one uniquely named Download/ folder created and removed; API 30+: all-files access unchanged" },
-  StorageCategories: { note: "queries MediaStore category shapes and a temporary Downloads tree; temporary files remain inside the test package cache" },
-  FilesFolderQuestion: { note: "real DocumentsUI tree grant; the folder question reviews entry names only, and a delete or revoked grant during review adds nothing (MVP-13)" },
   // J05-2: native page excerpt -> reviewed question -> composer; a note's web source across recreation.
   BrowserPageQuestion: { args: { browserPageQuestion: "1" }, note: "offline: every page is served from memory to the tab's WebView (the first tab opens on https://reading.invalid/start, which never resolves); needs a WebView provider with isolated-world injection; the agent's answer and the summary-note save that follows it need a connected agent and are not covered" },
   // Mock mode and loopback fixtures exist only in a test-mocks app build.
@@ -159,7 +153,6 @@ export const CLASS_REGISTRY = {
   PasswordVaultSettings: { args: { passwordVault: "1" }, note: "sets and clears a fixture screen-lock PIN: an owned emulator with no screen lock of its own; the inactivity step waits out the 60 s unlock window" },
   PasswordVaultFill: { args: { passwordVaultFill: "1" }, note: "sets and clears a fixture screen-lock PIN and selects Alpha as the Autofill service, restoring the previous service; the other package is Alpha's own (the instrumentation APK holds one package)" },
   // Round-9 journeys and links (WP2, second pass). Compiled into both instrumentation APKs; no recorded run.
-  PosterCalendarJourney: { args: { posterJourney: "1" }, note: "J01: a picked poster PNG through DocumentsUI, on-device OCR, the event draft, the Calendar form and Save into the real CalendarProvider (Alpha's own local calendar), then the Home card; the cancel method leaves no row. Calendar access is granted by the class" },
   JourneyJ05: { args: { journeyJ05: "1" }, flagOffOnly: true, note: "J05 on the flag-off pair, offline: page -> Ask about page -> native review -> composer -> Send while inference is unavailable (resident present, P-43; nothing dispatched) -> a source note for that page across recreation; needs a WebView provider with isolated-world injection; no agent answer" },
   NoteOrigin: { note: "storage level: a reminder's note link in note-origins:v1:device, read back exactly and across recreation; needs the slot admitted for compare-and-exchange (WP1). The Calendar 'From note' line is not driven" },
   Maps: { args: { mapsEventReturn: "1" }, note: "calendarLocationReturnsToTheSameEventAndFailsClosed owns a local calendar and grants itself Calendar access; explicitRecenterUsesInjectedNativeLocationAndStopsWatch is skipped without host GPS injection (mapsLatitude/mapsLongitude)" },
@@ -190,11 +183,11 @@ export const CLASS_REGISTRY = {
   ActionJournal: {},
   ActivityInstanceSelection: {},
   Assistant: {},
-  FilesTreeBatch: {},
   Flow: {},
   HostedResultsLifecycle: {},
   LocalAgentProvider: {},
   PhotoEdit: {},
+  PhotosCatalogOrder: { secondaryUser: true, note: "two owned JPEGs with EXIF capture times 2010 and now, the old one inserted last: the permitted catalog pages newest capture first, one row per page, no repeats; grants READ_MEDIA_IMAGES itself" },
   PhotoReplace: { note: "owned synthetic PNGs only; injected write failures and newer-edit recovery" },
   PhotoFilter: {},
   PhotosMultiShare: {},
@@ -245,6 +238,7 @@ export const CAMPAIGN_RUNNERS = [
  * gained a registry entry or a campaign, and for any new class that has neither.
  */
 export const NOT_RUN_BY_A_RUNNER = {
+  PosterCalendarJourney: "J01 drives the removed Camera Scan mode (decision C1); Choose image remains in the composed Camera tools, but this old mode-based journey needs a rewrite to the agent scan path before any runner takes it again",
   LocalServerSocketRelease: "platform probe for an upstream resident defect (docs/on-device-speech-2026-11-05.md, defect 4): it measures Android, not Alpha, and is run by hand when that defect is revisited",
   ResetExternalFixture: "requires an external host controller, disposable non-owner user, synthetic device credential and separate companion/media sentinels; reset kills instrumentation, so phases cannot run as a single generic campaign (see docs/evidence/reset-native-2026-10-12.json)",
   AllViewAgentContext: "needs a real local agent with inference and a forwarding observer on the host (agentContext=true); its runner was removed with the smoke suites in 49b1bf4c",

@@ -40,6 +40,26 @@ or copy stays inside it, so the single-volume model covers each of them. The F1 
 in the startup walkthrough uses the request, settings, resume and refresh path that
 `specs/startup-permissions` already models over K abstract keys; it needs no change there.
 
+## files-browser, reviewed agent moves bind the file's identity (TLC 2026-11-06)
+
+A reviewed agent move or trash now binds what the owner reviewed, not only where: each file's
+identity (size and modified time) is read when the proposal card is built, carried in the
+operation (`reviewed`, patches/eliza/files-browser-agent.patch and files-agent-contract.ts),
+and native (`StorageBrowser.transfer/trash` with `expect`) leaves a file whose identity changed
+untouched ("changed"). The spec gains `ver` (a file's identity; an external rewrite or a new
+file at the same name is a new one), `External` can rewrite a file in place, the review records
+`ver`, `AgentApply` needs `Reviewed` (same place and, with the new constant `FixIdentity`, the
+same `ver`), the new `AgentRefused` settles a review whose file changed with no change, and
+`AgentMoveOnlyReviewed` also requires `ver[review.f] = review.ver`. Every cfg sets
+`FixIdentity = TRUE` except the new `AsBuilt_Identity.cfg` (the code before this change).
+
+| Spec | Config | Result | Distinct states |
+|---|---|---|---|
+| files-browser | Design (4 workers) | No error has been found | 1,763,736 |
+| files-browser | AsBuilt_Identity | Action property AgentMoveOnlyReviewed is violated | 1,369 |
+| files-browser | Ablate_Conflict | Invariant NoOverwriteWithoutConfirm is violated | 300 |
+| files-browser | AsBuilt_Categories | Invariant CategoryIsQuery is violated | initial state |
+
 ## notes-view, revised for review finding 6 (TLC 2026-11-06)
 
 The renderer transcribes Notes segments only while Notes is shown (note-recorder.ts `pump`),

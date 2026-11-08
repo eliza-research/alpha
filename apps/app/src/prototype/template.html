@@ -3825,6 +3825,7 @@
             <sc-for list="{{g.rows}}" as="r" key="{{r.id}}">
               <sc-if value="{{r.kNav}}">
                 <button class="tap" disabled="{{r.busy}}" onClick="{{r.go}}" aria-label="{{r.lbl}}" style="width: 100%; display: flex; align-items: center; gap: 14px; padding: 8px 16px 8px 18px; min-height: 58px; box-sizing: border-box; text-align: left">
+                  <sc-if value="{{r.isTextSize}}"><span aria-hidden="true" style="width:32px;min-height:32px;flex-shrink:0;display:flex;align-items:center;justify-content:center;line-height:1;{{r.textSizePreviewCss}}">Aa</span></sc-if>
                   <sc-if value="{{r.hasLucideIcon}}"><span aria-hidden="true" style="display:block;width:22px;height:22px;flex-shrink:0;background:currentColor;mask:url('{{r.lucideIcon}}') center/contain no-repeat;-webkit-mask:url('{{r.lucideIcon}}') center/contain no-repeat"></span></sc-if>
                   <sc-if value="{{r.hasIcon}}"><svg class="i" viewBox="0 0 24 24" style="{{r.labCss}}"><path d="{{r.d}}"></path></svg></sc-if>
                   <sc-if value="{{r.hasTile}}"><span style="width: 38px; height: 38px; border-radius: 13px; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 15px; flex-shrink: 0; {{r.tileCss}}">{{r.tile}}</span></sc-if>
@@ -3835,6 +3836,7 @@
                     </div>
                     <sc-if value="{{r.hasVal}}"><span style="font-size: 14px; color: var(--mut); max-width: 100%; margin-left: auto; overflow-wrap: anywhere; text-align: right; {{r.valCss}}">{{r.val}}</span></sc-if>
                   </div>
+                  <sc-if value="{{r.sizeSelected}}"><span aria-hidden="true" style="width:20px;height:20px;flex-shrink:0;background:var(--acc);mask:url('/icons/lucide/check.svg') center/contain no-repeat;-webkit-mask:url('/icons/lucide/check.svg') center/contain no-repeat"></span></sc-if>
                   <sc-if value="{{r.hasTrail}}"><svg class="i" viewBox="0 0 24 24" style="width: 18px; height: 18px; {{r.trailCss}}"><path d="{{r.trail}}"></path></svg></sc-if>
                   <sc-if value="{{r.chev}}"><svg class="i" viewBox="0 0 24 24" style="width: 16px; height: 16px; flex-shrink:0; color: var(--mut)"><path d="{{ic.right}}"></path></svg></sc-if>
                 </button>

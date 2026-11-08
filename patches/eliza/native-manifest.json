@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "baseCommit": "b23a23c2ef4f83d15591c6368c00f1e9547f7743",
+  "baseCommit": "db96bb0a0371dca92707867245bf0bb119b5b4f5",
   "patches": [
     {
       "file": "google-browser-sign-in.patch",
@@ -41,13 +41,13 @@
     },
     {
       "file": "cloud-speech-native.patch",
-      "sha256": "80297d63c10217b0b563ea93ce60401fee44effdc6fd93ba0f21e73e1320d619",
+      "sha256": "692b290a787c409f91673f708760b744b4a4e57de23824bf5915a8cc3daa7fb1",
       "module": "plugins/plugin-local-inference/native/android",
       "targets": [
         {
           "path": "plugins/plugin-local-inference/native/android/speech-bridge/src/main/java/ai/eliza/voice/SpeechStreamBridgePlugin.java",
           "beforeSha256": null,
-          "afterSha256": "32e25f6cced2cd967fe1921fac17f1c5ef157b29b9b8337aca9145a2002f8ac6"
+          "afterSha256": "e99581e3743771e07c776850ef7a6b1d7d9f9140ee811f487031529f9a4a5dcd"
         },
         {
           "path": "plugins/plugin-local-inference/native/android/speech-bridge/src/main/java/ai/eliza/voice/CloudSpeechTimings.java",
@@ -80,7 +80,7 @@
     },
     {
       "file": "photos-library.patch",
-      "sha256": "424fa63ffcc6889e1c923533aca878b41a66b11d4813c79732f5a428fa9429c6",
+      "sha256": "dcea7430f7ceca88ab0d35e80648d7bc65798956c91d6dce6009fe63cb7f5579",
       "module": "plugins/plugin-native-media/android",
       "targets": [
         {
@@ -94,29 +94,24 @@
           "afterSha256": "28d23cbf9229a5918840d5189653c171df6119f9ec5ff0eabbdcc76aa7699712"
         },
         {
-          "path": "plugins/plugin-native-media/android/src/main/java/ai/eliza/plugins/media/OwnedPhotoEdits.java",
-          "beforeSha256": "3f09d9455d95e8bec27699133ecb976466ca6af690f3563a466399bb282e4d48",
-          "afterSha256": "9a7ded812b6f0bd3a1f8a171b3de4f5d64620f4514fb036a16b9e731c23a3633"
-        },
-        {
           "path": "plugins/plugin-native-media/android/src/main/java/ai/eliza/plugins/media/PermittedMediaCatalog.java",
           "beforeSha256": "f03983b15814b42b321771e57d1b0d483135b853ea12bf52c6720df3578f79fc",
           "afterSha256": "383bc23a23f0e99b5d7c1ad67512359560b38478cc52896f1b76bf30bf8ad0b4"
         },
         {
           "path": "plugins/plugin-native-media/android/src/main/java/ai/eliza/plugins/media/PermittedMediaReview.java",
-          "beforeSha256": "67915467619a8f13b4856718a151d300ec2ef3b4c43191d6ee0a94ffc5a5cbb2",
-          "afterSha256": "c33dbbe429eba67821b92bbb4ba181cdb84359232e1dcf7ead2d51c22227e08b"
+          "beforeSha256": "652519c4ba23010d418fcab8517db249c50a3ed791f1cb236dda20b1f4ce9784",
+          "afterSha256": "d70afada699054d15285fbca0f03ad7bad1230bdda1a85b12ad1c97f0b1a08b5"
         },
         {
           "path": "plugins/plugin-native-media/android/src/main/java/ai/eliza/plugins/media/PhotoLibraryAccess.java",
-          "beforeSha256": "33d8da93b0d6f84952edcd3e5af0198bf4f6de6bc62219dc20ed684cf9ec5b34",
-          "afterSha256": "eb8c6207fcd136bc77e9ea89b6be78b296e97c97f827ddd3939599a8aa9872ca"
+          "beforeSha256": "ed1923d11273c9c18f297a2c241a17573512361f707d0bef4ca723c7b54bab93",
+          "afterSha256": "3cd79d945ab68f82c64d8da1fa357a39da67e86988315c4efc6da4ac0c67be57"
         },
         {
           "path": "plugins/plugin-native-media/android/src/main/java/ai/eliza/plugins/media/PhotosPlugin.java",
-          "beforeSha256": "b8de6359c6b7d99a11a053d0f1903383cb8d5814a5905ee734f6951608931a54",
-          "afterSha256": "2b9f90d540aa2e09689da256de048ffd4f6f0cc928c4d6b4eb0f8da355fff44b"
+          "beforeSha256": "c03c1bf28f3d4017b707b43103092d428e2b9a4c966b2c7aef85b44c6a62fab6",
+          "afterSha256": "619d734d76afa1563bbf23af605db6d26b9b625b4130304af8def509ea95064e"
         },
         {
           "path": "plugins/plugin-native-media/android/src/main/java/ai/eliza/plugins/media/PermittedPhotosPlugin.java",

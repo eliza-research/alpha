@@ -133,6 +133,11 @@ body:has([data-alpha-layer="app"]:not([inert]) [data-settings-page]) .alpha-plan
 .alpha-provider-confirm .alpha-form-actions{margin-top:12px}
 .alpha-provider .alpha-form-actions{margin-top:4px}
 .alpha-provider-own{display:flex;flex-direction:column;gap:12px}
+.alpha-own-keys>section{display:flex;flex-direction:column;gap:12px}
+.alpha-key-heading{display:flex;align-items:baseline;justify-content:space-between;gap:16px}
+.alpha-key-heading h4{font:inherit;font-weight:600;margin:0}
+.alpha-key-heading span{font-size:13px;color:var(--connection-muted,#666)}
+.alpha-own-keys>section+section{padding-top:16px;border-top:1px solid var(--connection-border,#e5e5e5)}
 .alpha-provider-status{display:flex;align-items:center;justify-content:space-between;gap:8px}
 .alpha-connection .alpha-provider-status .alpha-btn--text{width:auto}
 
