@@ -5,7 +5,8 @@ import {build} from 'esbuild';
 const load=async(entry,plugins=[])=>{const out=await build({entryPoints:[entry],bundle:true,platform:'node',format:'esm',write:false,plugins});return import('data:text/javascript;base64,'+Buffer.from(out.outputFiles[0].text).toString('base64'));};
 const {appendMapsCard,routeCard}=await load('vendor/eliza/plugins/plugin-maps/src/card.ts');
 const {appendInteractionBlock}=await load('vendor/eliza/packages/core/src/messaging/interaction-serialize.ts');
-const {mapsChatText}=await load('apps/app/src/runtime/maps-chat-markup.ts');
+// connection-ui is replaced by a port that reads the adapter fixture's snapshot.
+const {mapsChatText,installMapsChatAdapter}=await load('apps/app/src/prototype/maps-chat-adapter.ts',[{name:'connection-port',setup(b){b.onResolve({filter:/\/connection-ui$/},()=>({path:'connection-ui',namespace:'port'}));b.onLoad({filter:/.*/,namespace:'port'},()=>({loader:'js',contents:'export const connectionController={getSnapshot:()=>globalThis.mapsChatFixture.snapshot};'}));}}]);
 const place={name:'Ferry Building',latitude:37.7955,longitude:-122.3937,provider:'eliza-cloud',providerPlaceId:'osm:n1',formattedAddress:'1 Ferry Building, San Francisco',categories:[]};
 const ref={name:place.name,coordinates:{latitude:place.latitude,longitude:place.longitude},provider:place.provider,providerPlaceId:place.providerPlaceId,formattedAddress:place.formattedAddress,categories:[]};
 const attribution='© OpenStreetMap contributors';
@@ -56,7 +57,6 @@ test('ordinary, malformed, out-of-policy and foreign markup stays literal',()=>{
 });
 
 const tick=()=>new Promise(resolve=>setImmediate(resolve));
-const {installMapsChatAdapter}=await load('apps/app/src/prototype/maps-chat-adapter.ts',[{name:'connection-port',setup(b){b.onResolve({filter:/\/connection-ui$/},()=>({path:'connection-ui',namespace:'port'}));b.onLoad({filter:/.*/,namespace:'port'},()=>({loader:'js',contents:'export const connectionController={getSnapshot:()=>globalThis.mapsChatFixture.snapshot};'}));}}]);
 const shareText=appendInteractionBlock('Share the location of Ferry Building?',{kind:'choice',id:'maps-share-m1',scope:'maps-share',prompt:'',options:[{value:'Yes, share the location of Ferry Building (confirmed).',label:'Share location'},{value:'No, do not share my location.',label:"Don't share"}]});
 function fixture(msgs){const f={snapshot:{open:false,busy:false},sent:[],toasts:[]};globalThis.mapsChatFixture=f;
  class Shell{live=true;st={msgs,draft:'',typing:false};S(){return this.st;}renderVals(){return {msgs:this.st.msgs.map(m=>({...m,isAgent:m.from==='agent',isUser:m.from==='user',displayText:m.text,hasCalendarText:true,messageActionsLabel:'Message actions: '+m.text}))};}setState(p){Object.assign(this.st,p);}toast(t){f.toasts.push(t);}async send(t){f.sent.push(t);}}

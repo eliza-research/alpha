@@ -224,7 +224,7 @@ export const CLIENT_FEATURE_PATHS = [
   'packages/ui/src/components/shell/chat-panel-layout.ts',
   'packages/ui/src/components/shell/dock-clearance.ts',
   'packages/ui/src/components/shell/responsive-layout.ts',
-  // Agent Maps cards in chat (maps-chat-markup.ts); an import-free parser leaf.
+  // Agent Maps cards in chat (prototype/maps-chat-adapter.ts); an import-free parser leaf.
   'packages/ui/src/components/chat/message-maps-parser.ts',
   'packages/ui/src/utils/automation-feed-filter.ts',
   'packages/ui/src/overview/daily-overview.ts',
