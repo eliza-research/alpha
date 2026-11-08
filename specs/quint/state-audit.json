@@ -12,7 +12,7 @@
   "toolSha256": "403a33cab0dff7ace6219b29e7ffef373319677a7d8be6641466dd16a6750b5b",
   "dependencyLockSha256": "944123c801157a7ba3676a886d0b28a54bef32735ae96da5c6dd0f206c88c8bf",
   "sourcePin": "99b49439ce9d0cb5607e9831b9f7f58d89525029",
-  "ledgerSha256": "7594cdf499e09fa3d0106b88d03ebb444f69fe9862b4176ef1beabe22c3dcc44",
+  "ledgerSha256": "ec0fe474933b898bd0382820a8dd14c68b4bb81d761cf4a6846037179bb4bf19",
   "method": "TypeScript syntax trees for JavaScript/TypeScript and JDK compiler trees for Java. Mutable fields, bindings, containers, state hooks, write sites and asynchronous registration calls are candidates for semantic review.",
   "limitations": [
     "Candidate extraction does not establish state-machine coverage or implementation refinement.",
@@ -28,11 +28,11 @@
     "parsedFiles": 5625,
     "languageReview": 55,
     "parseErrors": 0,
-    "candidates": 67079,
-    "writeSites": 66508,
-    "writeAssociations": 59691,
+    "candidates": 67081,
+    "writeSites": 66519,
+    "writeAssociations": 59692,
     "asynchronous": 8299,
-    "unassignedWrites": 10184
+    "unassignedWrites": 10194
   },
   "files": [
     {
@@ -18322,7 +18322,9 @@
       "sha256": "4c8492f0c93ecc955b854d040a3c2a1dc4aaa0c69eea9979f148675790e758e4",
       "allocatedModels": [
         "Application",
-        "AccessibleToastLifetime"
+        "AccessibleToastLifetime",
+        "MountedUpdateAdmission",
+        "StartupUpdateAdmission"
       ],
       "sourcePathClass": "other-source-path",
       "classification": "syntactic-candidates",
@@ -29643,47 +29645,49 @@
     },
     {
       "path": "apps/app/src/browser/clock.ts",
-      "sha256": "5dd7b5f75c55f16acd34fa448774c073c934e18f6fa0c74078f9ded3c4e5680a",
+      "sha256": "818c4a1bbddbb4fd30a43cdd9ab0df599a4bdc1d35990cd86999c705a96f275f",
       "allocatedModels": [
-        "DeviceActions"
+        "DeviceActions",
+        "BrowserReminderOrphan"
       ],
+      "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
       "classification": "syntactic-candidates",
       "owners": [
         {
           "owner": "BrowserClock",
-          "line": 11,
+          "line": 12,
           "bindings": 17,
           "writes": 33
         },
         {
           "owner": "BrowserClock.render",
-          "line": 55,
+          "line": 56,
           "bindings": 3,
           "writes": 3
         },
         {
           "owner": "BrowserClock.render.action",
-          "line": 55,
-          "bindings": 1,
-          "writes": 2
-        },
-        {
-          "owner": "BrowserClock.button",
           "line": 56,
           "bindings": 1,
           "writes": 2
         },
         {
+          "owner": "BrowserClock.button",
+          "line": 57,
+          "bindings": 1,
+          "writes": 2
+        },
+        {
           "owner": "BrowserClock.open",
-          "line": 59,
+          "line": 60,
           "bindings": 15,
           "writes": 31
         }
       ],
       "parseErrors": [],
       "asynchronous": 13,
-      "unassignedWrites": 4
+      "unassignedWrites": 3
     },
     {
       "path": "apps/app/src/browser/cloud-connection.ts",
@@ -29774,7 +29778,8 @@
       "allocatedModels": [
         "BrowserSession",
         "BrowserDeletionPoll",
-        "BrowserJournalRetention"
+        "BrowserJournalRetention",
+        "BrowserReminderOrphan"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -29846,7 +29851,8 @@
       "sha256": "bc818dd428556792b046b071abbf9ce11475b9e7b313f5998ce1c7ed57cdbd72",
       "allocatedModels": [
         "DeletionJournal",
-        "DurableStore"
+        "DurableStore",
+        "BrowserReminderOrphan"
       ],
       "sourcePathClass": "other-source-path",
       "classification": "syntactic-candidates",
@@ -30502,7 +30508,8 @@
         "BrowserSession",
         "DurableStore",
         "NotesLifecycle",
-        "GoogleAccessPublication"
+        "GoogleAccessPublication",
+        "BrowserReminderOrphan"
       ],
       "sourcePathClass": "other-source-path",
       "classification": "syntactic-candidates",
@@ -30739,7 +30746,8 @@
         "DurableStore",
         "CalendarSync",
         "BrowserDeletionPoll",
-        "BrowserJournalRetention"
+        "BrowserJournalRetention",
+        "BrowserReminderOrphan"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -31254,7 +31262,8 @@
       "sha256": "cae0cb3978bcc9864ff21033f68a90cae962cc39b56bba0ffce7755008a6fdaf",
       "allocatedModels": [
         "DeletionJournal",
-        "BrowserJournalRetention"
+        "BrowserJournalRetention",
+        "BrowserReminderOrphan"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -31291,7 +31300,8 @@
       "allocatedModels": [
         "DeviceActions",
         "BrowserDeletionPoll",
-        "BrowserJournalRetention"
+        "BrowserJournalRetention",
+        "BrowserReminderOrphan"
       ],
       "sourcePathClass": "other-source-path",
       "classification": "syntactic-candidates",
@@ -32501,7 +32511,9 @@
         "AccessibleToastLifetime",
         "ModalToastForwarding",
         "ScreenFocusOwnership",
-        "DockClearanceOwnership"
+        "DockClearanceOwnership",
+        "MountedUpdateAdmission",
+        "StartupUpdateAdmission"
       ],
       "sourcePathClass": "other-source-path",
       "classification": "syntactic-candidates",
@@ -33305,7 +33317,8 @@
         "AssistantConversation",
         "DraftDispatch",
         "InboxCoordinator",
-        "InboxProviderDrafts"
+        "InboxProviderDrafts",
+        "CanonicalCalendarDraft"
       ],
       "sourcePathClass": "other-source-path",
       "classification": "syntactic-candidates",
@@ -34122,10 +34135,12 @@
     },
     {
       "path": "apps/app/src/prototype/canonical-calendar-drafts.ts",
-      "sha256": "210c537339cf28330f851b6774b5d04684501eee8837af94677613338a5d9bff",
+      "sha256": "b4a5ecb6027457270966a84aca1b0e4ef4e7cd34675af00d41d4a0cc0d615662",
       "allocatedModels": [
-        "CalendarPresentation"
+        "CalendarPresentation",
+        "CanonicalCalendarDraft"
       ],
+      "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
       "classification": "syntactic-candidates",
       "owners": [
@@ -34136,15 +34151,21 @@
           "writes": 13
         },
         {
-          "owner": "installCanonicalCalendarDrafts.FunctionExpression@61",
-          "line": 61,
+          "owner": "installCanonicalCalendarDrafts.FunctionExpression@31.ArrowFunction@33",
+          "line": 35,
+          "bindings": 1,
+          "writes": 1
+        },
+        {
+          "owner": "installCanonicalCalendarDrafts.FunctionExpression@112",
+          "line": 113,
           "bindings": 2,
           "writes": 20
         }
       ],
       "parseErrors": [],
       "asynchronous": 5,
-      "unassignedWrites": 16
+      "unassignedWrites": 27
     },
     {
       "path": "apps/app/src/prototype/canonical-notes-controller.ts",
@@ -40845,7 +40866,8 @@
       "sha256": "efe1605d927fb44aa7367cc0927ef3000799bf5260e9e1295ac5734bf17b8fd3",
       "allocatedModels": [
         "CalendarPresentation",
-        "CalendarSync"
+        "CalendarSync",
+        "CanonicalCalendarDraft"
       ],
       "sourcePathClass": "other-source-path",
       "classification": "syntactic-candidates",
@@ -40992,7 +41014,8 @@
       "sha256": "0486b7eb00a5d2a2ef0e19a5286fc1b51c5f8f31d2d6ae02b8d2df2685a1ec66",
       "allocatedModels": [
         "CalendarPresentation",
-        "CalendarSync"
+        "CalendarSync",
+        "CanonicalCalendarDraft"
       ],
       "sourcePathClass": "other-source-path",
       "classification": "syntactic-candidates",
@@ -45532,7 +45555,7 @@
     },
     {
       "path": "scripts/core-state-patch.mjs",
-      "sha256": "a728a657be5445e384ec00a91b91174da2f89de7c78aaba8e2690ca03db86265",
+      "sha256": "25b46e944ecd6a4d5569e8eace9e2f9b22eea2ebdd36075e90fd15d1b9fb6478",
       "allocatedModels": [
         "TaskServiceLifecycle",
         "TaskSchedulerRuntime"
@@ -45543,31 +45566,31 @@
       "owners": [
         {
           "owner": "<module>",
-          "line": 14,
-          "bindings": 3,
+          "line": 13,
+          "bindings": 4,
           "writes": 0
         },
         {
           "owner": "readRegular",
-          "line": 33,
+          "line": 39,
           "bindings": 1,
           "writes": 1
         },
         {
           "owner": "coreStateReceipt",
-          "line": 48,
+          "line": 54,
           "bindings": 2,
           "writes": 2
         },
         {
           "owner": "coreStatePatch",
-          "line": 95,
+          "line": 101,
           "bindings": 1,
           "writes": 1
         },
         {
           "owner": "coreStateBuildPlugin",
-          "line": 113,
+          "line": 119,
           "bindings": 2,
           "writes": 1
         }
@@ -48095,7 +48118,8 @@
       "allocatedModels": [
         "ApplicationComposition",
         "CoreRuntimeShutdown",
-        "CoreServiceLifecycle"
+        "CoreServiceLifecycle",
+        "NamedEmbeddingProvenance"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -76774,7 +76798,8 @@
       "sha256": "111259f0bfde1673931851e45f4ef5330674a1f98a73b5490258c888461e1224",
       "allocatedModels": [
         "AssistantConversation",
-        "ResidentRuntime"
+        "ResidentRuntime",
+        "NamedEmbeddingProvenance"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -79927,7 +79952,8 @@
         "CoreRuntimeRetirement",
         "CoreRuntimeShutdown",
         "CoreServiceLifecycle",
-        "FactWriteScope"
+        "FactWriteScope",
+        "NamedEmbeddingProvenance"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -80028,7 +80054,8 @@
         "CoreRuntimeShutdown",
         "CoreServiceLifecycle",
         "EmbeddingStoreIdentity",
-        "CoreEmbeddingDimension"
+        "CoreEmbeddingDimension",
+        "NamedEmbeddingProvenance"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -80472,7 +80499,8 @@
         "CoreRuntimeRetirement",
         "CoreRuntimeShutdown",
         "CoreServiceLifecycle",
-        "EmbeddingStoreIdentity"
+        "EmbeddingStoreIdentity",
+        "NamedEmbeddingProvenance"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -111547,7 +111575,9 @@
       "allocatedModels": [
         "Application",
         "ShellNavigation",
-        "PreferencesAndPresentation"
+        "PreferencesAndPresentation",
+        "MountedUpdateAdmission",
+        "StartupUpdateAdmission"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -121069,7 +121099,8 @@
       "path": "vendor/eliza/plugins/plugin-assistant/src/features/advanced-capabilities/experience/service.ts",
       "sha256": "92e23a48cdb670b2aa02f4c441bedd0abf26122268ee23cdd01f28d974ec2c17",
       "allocatedModels": [
-        "AssistantConversation"
+        "AssistantConversation",
+        "NamedEmbeddingProvenance"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -212272,7 +212303,8 @@
         "TaskServiceLifecycle",
         "CoreEmbeddingDimension",
         "EmbeddingStoreIdentity",
-        "FactWriteScope"
+        "FactWriteScope",
+        "NamedEmbeddingProvenance"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -212782,7 +212814,8 @@
       "allocatedModels": [
         "AssistantConversation",
         "ResidentRuntime",
-        "CoreEmbeddingDimension"
+        "CoreEmbeddingDimension",
+        "NamedEmbeddingProvenance"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -213009,7 +213042,8 @@
       "sha256": "cf2e58f0d7e4eb70514fcad151eb44af19970246a1904f0a4560eda60c786dfb",
       "allocatedModels": [
         "Application",
-        "CoreEmbeddingDimension"
+        "CoreEmbeddingDimension",
+        "NamedEmbeddingProvenance"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -218256,6 +218290,6 @@
   ],
   "detail": {
     "path": "test-results/quint-state-audit/details.json",
-    "sha256": "59d9e02ed98e1eaccb0111f4dd28cab3a8bea95f35c6b7f64b5b5f043e3711a4"
+    "sha256": "4ddf4e9d2ea5573ba4ee49c2dc09804b435a5dd5dff1d5bd04fb11db20fbf354"
   }
 }

@@ -6518,7 +6518,9 @@
       "sha256": "4c8492f0c93ecc955b854d040a3c2a1dc4aaa0c69eea9979f148675790e758e4",
       "models": [
         "Application",
-        "AccessibleToastLifetime"
+        "AccessibleToastLifetime",
+        "MountedUpdateAdmission",
+        "StartupUpdateAdmission"
       ],
       "scope": "application",
       "treatment": "state-and-transition-projection",
@@ -10666,111 +10668,105 @@
     },
     {
       "path": "apps/app/src/browser/clock.ts",
-      "sha256": "5dd7b5f75c55f16acd34fa448774c073c934e18f6fa0c74078f9ded3c4e5680a",
       "models": [
-        "DeviceActions"
+        "DeviceActions",
+        "BrowserReminderOrphan"
       ],
       "scope": "application",
       "treatment": "state-and-transition-projection",
+      "reviewStatus": "state-audit-required",
+      "sha256": "818c4a1bbddbb4fd30a43cdd9ab0df599a4bdc1d35990cd86999c705a96f275f",
       "stateAnchors": [
         {
-          "line": 41,
-          "text": "if(!this.allowed())return;this.loaded=true;this.render();const ringing=this.rows.filter(r=>r.status==='posted').map(r=>r.id+':'+r.revision).sort().join('|');"
-        },
-        {
-          "line": 44,
-          "text": "else if(navigator.locks){void navigator.locks.request('alpha.browser.alarm-owner',{ifAvailable:true},async lock=>{if(!lock||!this.allowed()||this.owns)return;const current=(await this.daily.listRemind"
-        },
-        {
-          "line": 45,
+          "line": 46,
           "text": "const notices=(await this.notifications.list()).items.filter(n=>!n.id.startsWith('alarm_'));"
         },
         {
-          "line": 47,
+          "line": 48,
           "text": "const active=notices.map(n=>n.source+':'+n.id+':'+n.revision.split(':')[0]),initial=()=>({seen:[] as string[]}),before=await alertSoundDocument.read(initial);"
         },
         {
-          "line": 50,
+          "line": 51,
           "text": "const fresh=await alertSoundDocument.edit(initial,data=>{const fresh=active.some(key=>!data.seen.includes(key));data.seen=[...data.seen.filter(key=>!active.includes(key)).slice(-(500-active.length)),."
         },
         {
-          "line": 53,
+          "line": 54,
           "text": "private ring(key:string){this.ringing=key;this.stopSound();this.open();this.audio.play('alarm');const started=performance.now();this.soundTimer=setInterval(()=>{if(!this.owns||!this.allowed()||perform"
         },
         {
-          "line": 54,
+          "line": 55,
           "text": "private async run(task:()=>Promise<string|void>){if(this.busy)return;this.busy=true;this.render();try{const message=await task();if(this.status)this.status.textContent=message||'';await this.poll();}c"
         },
         {
-          "line": 55,
+          "line": 56,
           "text": "private render(){if(this.save)this.save.disabled=this.busy;if(!this.list)return;const key=JSON.stringify([this.rows,this.busy,this.loaded]);if(key===this.rendered)return;this.rendered=key;this.list.re"
         },
         {
-          "line": 56,
+          "line": 57,
           "text": "private button(label:string){const b=document.createElement('button');b.textContent=label;b.style.cssText='min-height:44px;margin:4px;padding:10px 14px;border:1px solid #aaa;border-radius:12px;font:in"
         },
         {
-          "line": 59,
+          "line": 60,
           "text": "const dialog=this.dialog=document.createElement('dialog');dialog.setAttribute('aria-label','Clock alarms');dialog.style.cssText='box-sizing:border-box;width:min(380px,94vw);max-height:85dvh;overflow:a"
         },
         {
-          "line": 60,
+          "line": 61,
           "text": "const title=document.createElement('h2');title.textContent='Alarms';title.style.cssText='font-size:24px;margin:0 0 8px';"
         },
         {
-          "line": 62,
+          "line": 63,
           "text": "const caveat=document.createElement('p');caveat.textContent='Alarms ring only while this page is open in the foreground.';caveat.style.cssText='font-size:14px;margin:0 0 16px;color:var(--mut,currentCo"
         },
         {
-          "line": 63,
+          "line": 64,
           "text": "const close=this.button('Cancel');close.onclick=()=>{this.stopSound();dialog.close();};"
         },
         {
-          "line": 64,
+          "line": 65,
           "text": "const saved=document.createElement('section'),savedTitle=document.createElement('h3');savedTitle.textContent='Saved alarms';savedTitle.style.cssText='font-size:17px;margin:0 0 8px';"
         },
         {
-          "line": 66,
+          "line": 67,
           "text": "const form=document.createElement('section'),formTitle=document.createElement('h3');formTitle.textContent='New alarm';formTitle.style.cssText='font-size:17px;margin:20px 0 8px';form.append(formTitle);"
         },
         {
-          "line": 67,
+          "line": 68,
           "text": "const time=document.createElement('input');time.type='time';time.value='07:00';time.setAttribute('aria-label','Alarm time');"
         },
         {
-          "line": 68,
+          "line": 69,
           "text": "const label=document.createElement('input');label.maxLength=200;label.placeholder='Optional label';label.setAttribute('aria-label','Alarm label');"
         },
         {
-          "line": 69,
+          "line": 70,
           "text": "const snooze=document.createElement('input');snooze.type='number';snooze.min='1';snooze.max='60';snooze.value=this.snooze;snooze.setAttribute('aria-label','Snooze minutes');snooze.oninput=()=>{this.sn"
         },
         {
-          "line": 70,
+          "line": 71,
           "text": "for(const [name,field] of [['Time',time],['Label',label]] as const){const row=document.createElement('label');row.textContent=name;row.style.cssText='display:block;margin:10px 0';row.append(field);for"
         },
         {
-          "line": 71,
+          "line": 72,
           "text": "const snoozeLabel=document.createElement('label');snoozeLabel.textContent='Snooze (min)';snoozeLabel.style.cssText='display:block;margin:16px 0 0';snoozeLabel.append(snooze);"
         },
         {
-          "line": 72,
+          "line": 73,
           "text": "const hint=document.createElement('p');hint.textContent='Used when you snooze a ringing alarm.';hint.style.cssText='font-size:13px;margin:4px 0 0';"
         },
         {
-          "line": 73,
+          "line": 74,
           "text": "for(const field of [time,label,snooze])field.style.cssText='box-sizing:border-box;width:100%;min-height:44px;margin:4px 0 0;padding:8px 10px;border:1px solid var(--line,#aaa);border-radius:10px;font:i"
         },
         {
-          "line": 74,
+          "line": 75,
           "text": "const save=this.save=this.button('Save alarm');save.style.cssText+=';background:var(--acc,#0000ff);border-color:transparent;color:#fff';"
         },
         {
-          "line": 75,
+          "line": 76,
           "text": "save.onclick=()=>{if(!/^([01]\\d|2[0-3]):[0-5]\\d$/.test(time.value)){this.status!.textContent='Choose an alarm time.';return;}const [hour,minute]=time.value.split(':').map(Number);void this.run(async()"
         },
         {
-          "line": 76,
+          "line": 77,
           "text": "this.status=document.createElement('p');this.status.setAttribute('role','status');dialog.append(title,caveat,saved,form,snoozeLabel,hint,this.status);const previous=document.activeElement as HTMLEleme"
         }
       ]
@@ -11063,7 +11059,8 @@
       "models": [
         "BrowserSession",
         "BrowserDeletionPoll",
-        "BrowserJournalRetention"
+        "BrowserJournalRetention",
+        "BrowserReminderOrphan"
       ],
       "scope": "application",
       "treatment": "domain-contract-or-support",
@@ -11204,7 +11201,8 @@
       "sha256": "bc818dd428556792b046b071abbf9ce11475b9e7b313f5998ce1c7ed57cdbd72",
       "models": [
         "DeletionJournal",
-        "DurableStore"
+        "DurableStore",
+        "BrowserReminderOrphan"
       ],
       "scope": "application",
       "treatment": "domain-contract-or-support",
@@ -12256,7 +12254,8 @@
         "BrowserSession",
         "DurableStore",
         "NotesLifecycle",
-        "GoogleAccessPublication"
+        "GoogleAccessPublication",
+        "BrowserReminderOrphan"
       ],
       "scope": "application",
       "treatment": "state-and-transition-projection",
@@ -12491,7 +12490,8 @@
         "DurableStore",
         "CalendarSync",
         "BrowserDeletionPoll",
-        "BrowserJournalRetention"
+        "BrowserJournalRetention",
+        "BrowserReminderOrphan"
       ],
       "scope": "application",
       "treatment": "domain-contract-or-support",
@@ -13289,7 +13289,8 @@
       "path": "apps/app/src/browser/reminder-deletions.ts",
       "models": [
         "DeletionJournal",
-        "BrowserJournalRetention"
+        "BrowserJournalRetention",
+        "BrowserReminderOrphan"
       ],
       "scope": "application",
       "treatment": "domain-contract-or-support",
@@ -13343,7 +13344,8 @@
       "models": [
         "DeviceActions",
         "BrowserDeletionPoll",
-        "BrowserJournalRetention"
+        "BrowserJournalRetention",
+        "BrowserReminderOrphan"
       ],
       "scope": "application",
       "treatment": "state-and-transition-projection",
@@ -14707,7 +14709,9 @@
         "AccessibleToastLifetime",
         "ModalToastForwarding",
         "ScreenFocusOwnership",
-        "DockClearanceOwnership"
+        "DockClearanceOwnership",
+        "MountedUpdateAdmission",
+        "StartupUpdateAdmission"
       ],
       "scope": "application",
       "treatment": "state-and-transition-projection",
@@ -18009,7 +18013,8 @@
         "AssistantConversation",
         "DraftDispatch",
         "InboxCoordinator",
-        "InboxProviderDrafts"
+        "InboxProviderDrafts",
+        "CanonicalCalendarDraft"
       ],
       "scope": "application",
       "treatment": "state-and-transition-projection",
@@ -20602,11 +20607,13 @@
     {
       "path": "apps/app/src/prototype/canonical-calendar-drafts.ts",
       "models": [
-        "CalendarPresentation"
+        "CalendarPresentation",
+        "CanonicalCalendarDraft"
       ],
       "scope": "application",
       "treatment": "domain-contract-or-support",
-      "sha256": "210c537339cf28330f851b6774b5d04684501eee8837af94677613338a5d9bff",
+      "reviewStatus": "state-audit-required",
+      "sha256": "b4a5ecb6027457270966a84aca1b0e4ef4e7cd34675af00d41d4a0cc0d615662",
       "stateAnchors": [
         {
           "line": 8,
@@ -20621,10 +20628,6 @@
           "text": "const p=Component.prototype,mount=p.componentDidMount,update=p.componentDidUpdate,unmount=p.componentWillUnmount,render=views.calendar.render,committed=p.calendarFormCommitted,destinationChanged=p.cal"
         },
         {
-          "line": 13,
-          "text": "const origins=new WeakMap<object,{owner:Bag;ownerKey:string;identity:string;text:string}>();"
-        },
-        {
           "line": 14,
           "text": "const admissions=new WeakMap<object,{origin:object;signature:string}>();"
         },
@@ -20633,88 +20636,48 @@
           "text": "let owner:Bag|undefined;"
         },
         {
-          "line": 17,
+          "line": 19,
           "text": "const exact=()=>current()&&!this.calendarSaving&&!this.agentCalendar?.state.mutating&&"
         },
         {
-          "line": 20,
+          "line": 22,
           "text": "const form=this.vget('calendar').form;"
         },
         {
-          "line": 22,
+          "line": 24,
           "text": "const draft=form.canonicalOwnerKey?this.canonicalDraft:form.id?this.calendarEditDraft:this.calendarDraft;"
         },
         {
-          "line": 25,
+          "line": 27,
           "text": "const snapshot=JSON.stringify(form??null);"
         },
         {
-          "line": 26,
+          "line": 28,
           "text": "const unchanged=()=>exact()&&JSON.stringify(this.vget('calendar').form??null)===snapshot;"
         },
         {
-          "line": 29,
-          "text": "p.componentDidMount=function(){mount.call(this);owner=this;this.canonicalDraftText='';this.canonicalDraft=new AssistantDraftController(async binding=>{const store=await assistantDraftStore(binding);re"
-        },
-        {
-          "line": 30,
-          "text": "p.componentDidUpdate=function(...args:any[]){update?.apply(this,args);const key=this.agentCalendar?.state.ownerKey;if(key&&key!==this.canonicalDraftOwner){this.canonicalDraftOwner=key;void this.canoni"
-        },
-        {
-          "line": 32,
+          "line": 80,
           "text": "const replacement=destinationChanged?.call(this,form,next)??next;"
         },
         {
-          "line": 35,
+          "line": 83,
           "text": "const text=encodeCanonicalCalendarDraft(form,this.canonicalDraftAnchor??new Date());"
         },
         {
-          "line": 37,
-          "text": "const origin=Object.freeze({});origins.set(origin,{owner:this,ownerKey:form.canonicalOwnerKey,identity:form.creationId,text});"
-        },
-        {
-          "line": 42,
+          "line": 91,
           "text": "const origin=(form&&Reflect.get(form,reminderDraftOrigin)),retained=origin&&origins.get(origin);"
         },
         {
-          "line": 45,
+          "line": 94,
           "text": "const token=Object.freeze({});admissions.set(token,{origin,signature:submittedForm(form)});return token;"
         },
         {
-          "line": 50,
+          "line": 99,
           "text": "const submitted=admission&&admissions.get(admission);if(admission)admissions.delete(admission);"
         },
         {
-          "line": 51,
+          "line": 100,
           "text": "const retained=submitted&&origins.get(submitted.origin);"
-        },
-        {
-          "line": 53,
-          "text": "const exact=()=>{const visible=this.vget('calendar').form;return this.live&&this.agentCalendar?.state.ownerKey===retained.ownerKey&&this.canonicalDraftOwner===retained.ownerKey&&this.canonicalDraftTex"
-        },
-        {
-          "line": 58,
-          "text": "try{const text=encodeCanonicalCalendarDraft(form,this.canonicalDraftAnchor??new Date());this.canonicalDraftSuppressed=text;void this.canonicalDraft.consume(text,()=>this.live&&this.agentCalendar?.stat"
-        },
-        {
-          "line": 61,
-          "text": "views.calendar.render=function(state:Bag,api:Bag){const out=render(state,api),shell=owner,controller=shell?.canonicalDraft;if(!shell||!controller||state.form&&!state.form.canonicalOwnerKey||state.cale"
-        },
-        {
-          "line": 63,
-          "text": "const restore=(saved=false)=>{try{shell.canonicalDraftRestoring=true;if(saved)controller.restoreSaved();else{const restored=decodeCanonicalCalendarDraft(shell.canonicalDraftText);if(restored.form.cano"
-        },
-        {
-          "line": 65,
-          "text": "out.discardFormDraft=()=>{if(state.form||!window.confirm('Discard this draft? Saved events won’t change.'))return;const text=shell.canonicalDraftText;void controller.consume(text,()=>shell.live&&!shel"
-        },
-        {
-          "line": 66,
-          "text": "out.recoverFormDraft=()=>{const recovery=controller.recovery();if(!recovery)return;shell.canonicalDraftRecovery?.abort();const abort=shell.canonicalDraftRecovery=new AbortController();openDomainRecove"
-        },
-        {
-          "line": 67,
-          "text": "for(const name of ['newEvent','addAt'])if(typeof out[name]==='function'){const start=out[name];out[name]=(...args:any[])=>{if(!shell.vget('calendar').form&&(draft.opening||draft.consuming)){api.toast("
         }
       ]
     },
@@ -38438,7 +38401,8 @@
       "sha256": "efe1605d927fb44aa7367cc0927ef3000799bf5260e9e1295ac5734bf17b8fd3",
       "models": [
         "CalendarPresentation",
-        "CalendarSync"
+        "CalendarSync",
+        "CanonicalCalendarDraft"
       ],
       "scope": "application",
       "treatment": "domain-contract-or-support",
@@ -38918,7 +38882,8 @@
       "path": "apps/app/src/runtime/canonical-calendar-draft.ts",
       "models": [
         "CalendarPresentation",
-        "CalendarSync"
+        "CalendarSync",
+        "CanonicalCalendarDraft"
       ],
       "scope": "application",
       "treatment": "domain-contract-or-support",
@@ -49281,7 +49246,7 @@
       "scope": "development-runtime",
       "treatment": "domain-contract-or-support",
       "reviewStatus": "state-audit-required",
-      "sha256": "a728a657be5445e384ec00a91b91174da2f89de7c78aaba8e2690ca03db86265",
+      "sha256": "25b46e944ecd6a4d5569e8eace9e2f9b22eea2ebdd36075e90fd15d1b9fb6478",
       "stateAnchors": []
     },
     {
@@ -60663,7 +60628,8 @@
       "models": [
         "ApplicationComposition",
         "CoreRuntimeShutdown",
-        "CoreServiceLifecycle"
+        "CoreServiceLifecycle",
+        "NamedEmbeddingProvenance"
       ],
       "scope": "shared-module-dependency",
       "treatment": "domain-contract-or-support",
@@ -168564,7 +168530,8 @@
       "path": "vendor/eliza/packages/core/src/embedding-vector-space.ts",
       "models": [
         "AssistantConversation",
-        "ResidentRuntime"
+        "ResidentRuntime",
+        "NamedEmbeddingProvenance"
       ],
       "scope": "shared-module-dependency",
       "treatment": "domain-contract-or-support",
@@ -179578,7 +179545,8 @@
         "CoreRuntimeRetirement",
         "CoreRuntimeShutdown",
         "CoreServiceLifecycle",
-        "FactWriteScope"
+        "FactWriteScope",
+        "NamedEmbeddingProvenance"
       ],
       "scope": "shared-module-dependency",
       "treatment": "domain-contract-or-support",
@@ -179870,7 +179838,8 @@
         "CoreRuntimeShutdown",
         "CoreServiceLifecycle",
         "EmbeddingStoreIdentity",
-        "CoreEmbeddingDimension"
+        "CoreEmbeddingDimension",
+        "NamedEmbeddingProvenance"
       ],
       "scope": "shared-module-dependency",
       "treatment": "domain-contract-or-support",
@@ -181588,7 +181557,8 @@
         "CoreRuntimeRetirement",
         "CoreRuntimeShutdown",
         "CoreServiceLifecycle",
-        "EmbeddingStoreIdentity"
+        "EmbeddingStoreIdentity",
+        "NamedEmbeddingProvenance"
       ],
       "scope": "shared-module-dependency",
       "treatment": "domain-contract-or-support",
@@ -279634,7 +279604,9 @@
       "models": [
         "Application",
         "ShellNavigation",
-        "PreferencesAndPresentation"
+        "PreferencesAndPresentation",
+        "MountedUpdateAdmission",
+        "StartupUpdateAdmission"
       ],
       "scope": "shared-module-dependency",
       "treatment": "domain-contract-or-support",
@@ -315970,7 +315942,8 @@
     {
       "path": "vendor/eliza/plugins/plugin-assistant/src/features/advanced-capabilities/experience/service.ts",
       "models": [
-        "AssistantConversation"
+        "AssistantConversation",
+        "NamedEmbeddingProvenance"
       ],
       "scope": "shared-module-dependency",
       "treatment": "domain-contract-or-support",
@@ -593343,7 +593316,8 @@
         "TaskServiceLifecycle",
         "CoreEmbeddingDimension",
         "EmbeddingStoreIdentity",
-        "FactWriteScope"
+        "FactWriteScope",
+        "NamedEmbeddingProvenance"
       ],
       "scope": "shared-module-dependency",
       "treatment": "domain-contract-or-support",
@@ -596567,7 +596541,8 @@
       "models": [
         "AssistantConversation",
         "ResidentRuntime",
-        "CoreEmbeddingDimension"
+        "CoreEmbeddingDimension",
+        "NamedEmbeddingProvenance"
       ],
       "scope": "shared-module-dependency",
       "treatment": "domain-contract-or-support",
@@ -597192,7 +597167,8 @@
       "path": "vendor/eliza/plugins/plugin-sql/src/pglite/adapter.ts",
       "models": [
         "Application",
-        "CoreEmbeddingDimension"
+        "CoreEmbeddingDimension",
+        "NamedEmbeddingProvenance"
       ],
       "scope": "shared-module-dependency",
       "treatment": "domain-contract-or-support",
@@ -618718,7 +618694,7 @@
         "CoreServiceLifecycle",
         "ApplicationComposition"
       ],
-      "sha256": "9ecf248ddb3760f6d9882abee8ba60b51ca2b4b7bcb59c351fd52343009e3bc6"
+      "sha256": "19a37f5fce563acd4a424d35d118afdf66f7e94585f5e63b55cd39cb9b180ac3"
     },
     {
       "path": "specs/quint/refinement/services/runtime-bundle-audit.mjs",
@@ -618763,7 +618739,7 @@
         "CanonicalNotesStore",
         "CoreTurnControllers"
       ],
-      "sha256": "6c4b069155b550ec85ed5959f84f3f5657ae6a9e83c19138478d735d2da6609f"
+      "sha256": "ea9438c30c7a6bb446f6d5c5cffd379796c5b43cc4e1aa614c24b00a48c16678"
     },
     {
       "path": "scripts/mobile-bundle-smoke.mjs",
@@ -618791,7 +618767,7 @@
         "CoreTurnControllers",
         "TaskSchedulerRuntime"
       ],
-      "sha256": "a728a657be5445e384ec00a91b91174da2f89de7c78aaba8e2690ca03db86265"
+      "sha256": "25b46e944ecd6a4d5569e8eace9e2f9b22eea2ebdd36075e90fd15d1b9fb6478"
     },
     {
       "path": "scripts/core-state-preload.mjs",
@@ -618818,7 +618794,7 @@
         "CanonicalNotesStore",
         "CoreTurnControllers"
       ],
-      "sha256": "6ac23d97e3d889af83a545b54865a2e8b5e75db214a3ecec113a60e0511be633"
+      "sha256": "9baa7b3e4f6032b18c33a09bd641e13ce8a7cda9de3d120233c7149aa2033953"
     },
     {
       "path": "patches/eliza/task-service-stop.patch",
@@ -619017,6 +618993,16 @@
         "DrawerInteraction"
       ],
       "sha256": "304cadaca8d4ea77033ffeba4d687930ac39561beb5a2b0202d1e9efb5a0e97d"
+    },
+    {
+      "path": "patches/eliza/named-embedding-provenance.patch",
+      "models": [
+        "TaskServiceLifecycle",
+        "CanonicalNotesStore",
+        "CoreTurnControllers",
+        "NamedEmbeddingProvenance"
+      ],
+      "sha256": "8e874337cbcebe3e3fb69112db3b36c881ca0bc9737399818a06bb9fabf67f70"
     }
   ],
   "runtimeAssets": [

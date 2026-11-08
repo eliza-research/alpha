@@ -1,17 +1,17 @@
 # Quint implementation refinement
 
-This document preserves the historical source-trace campaign at `41d178701e`.
-The integrated application uses the current reviewed upstream pin and the
-reconciled source owners recorded in the family manifests. The archived receipt
-keeps its original source hashes and does not certify the integrated tree.
+The current implementation refinement continues in draft PR 835 on SDK
+`99b49439ce9d0cb5607e9831b9f7f58d89525029`. The migration and its approved
+product-source prerequisite are in merged PR 825. The family manifests bind
+the reviewed source owners, and the source inventory lists the remaining
+review work.
 
-## Published source baseline
+## Original source baseline
 
-The migration and its required product-source prerequisites are in draft PR 825.
-The base is `claude/finish-open-issues`, the published source lineage of the
-starting checkout. The prerequisite changes are a separate commit. The original
-working tree was preserved. The upstream pin remains
-`b25d8aef2916385c571f4367e099809254fde0bb`.
+The historical campaign at `41d178701e` used
+`b25d8aef2916385c571f4367e099809254fde0bb` from the original
+`claude/finish-open-issues` lineage. Its receipt preserves its original hashes.
+The later integrated source has separate evidence.
 
 ## Executable relation
 
@@ -297,3 +297,31 @@ read that overlaps atomic replacement returns one complete version. The
 request crossing revocation is held at synthetic credential verification.
 Android power-loss durability and effects after provider admission remain
 separate.
+
+The mounted and startup update campaigns check the actual shared gate on
+controlled Android readbacks. The mounted gate and Alpha's five draft-flush
+owners match six schedules and 41 checkpoints. The unmounted gate matches
+four schedules and 22 checkpoints around readiness, terminal readback, and
+Continue. Installed PackageInstaller delivery and each draft store's
+physical persistence remain separate.
+
+The canonical Calendar draft campaign checks 17 schedules and 121
+checkpoints against the real controller and durable draft adapter. Retained
+forms stay with their bound account, including when returning to an account
+through a new renderer binding. Existing misbound bytes stay in storage
+outside resume and raw recovery.
+
+The Reminder orphan campaign checks eight schedules and 70 checkpoints.
+The old marker remains in storage and ordinary explicit actions retain their
+observed policy. Clock rechecks for a pending deletion while it holds the
+ringing lock. Undo of a valid paired deletion can restore ordinary ringing.
+Recovery of older markers without a receipt remains an open policy.
+
+The named embedding provenance campaign checks eight real PGlite schedules
+and 67 checkpoints. The authenticated patch validates a named vector at the
+actual write or search boundary and rejects a delayed resize after named
+activation. A rejected text-and-vector edit rolls back together. The
+translated counterexample remains available against the pinned unpatched
+source, and existing named rows require separate evidence. The current
+Android mobile producer applies 11 reviewed transforms and passed its load
+and pre-provider checks across 4,338 first-party inputs.
