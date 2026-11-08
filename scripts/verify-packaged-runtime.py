@@ -90,32 +90,43 @@ def verify(apk, release=False, runtime_profile="native", local_embeddings=False)
                 if bun.get('architectures') != ['arm64-v8a']:
                     raise ValueError('Invalid Android Bun ABI admission')
                 runtime_abis = {'arm64-v8a'}
+        restage = 'npm run agent:stage-android' + (' -- --runtime-profile=cloud' if runtime_profile == 'cloud' else '')
+        if provenance is None:
+            raise ValueError('Runtime provenance missing. Run: ' + restage)
+        # The staged profile marker names the profile the payload was staged for;
+        # a native APK must not carry a Cloud projection, nor the reverse.
+        profile_entry = 'assets/agent/alpha-runtime-profile.json'
+        staged_profile = staged / 'alpha-runtime-profile.json'
+        if profile_entry not in names or not staged_profile.exists():
+            raise ValueError('Runtime profile marker missing. Run: ' + restage)
+        if hashlib.sha256(archive.read(profile_entry)).hexdigest() != file_hash(staged_profile):
+            raise ValueError('Packaged runtime profile differs from staged profile')
+        profile = json.loads(archive.read(profile_entry))
+        omitted = LOCAL_EMBEDDING_MODEL
         if runtime_profile == 'cloud':
-            if provenance is None:
-                raise ValueError('Runtime provenance missing')
-            profile_entry = 'assets/agent/alpha-runtime-profile.json'
-            if hashlib.sha256(archive.read(profile_entry)).hexdigest() != file_hash(staged / 'alpha-runtime-profile.json'):
-                raise ValueError('Cloud profile differs from staged profile')
-            profile = json.loads(archive.read(profile_entry))
-            omitted = LOCAL_EMBEDDING_MODEL
             expected_profile = {'version': 1, 'runtimeProfile': 'cloud', 'omittedLocalModels': [] if local_embeddings else [omitted]}
             if local_embeddings:
                 expected_profile['localEmbeddings'] = True
             if profile != expected_profile:
                 raise ValueError('Packaged Cloud profile mismatch')
-            for row in provenance['files']:
-                entry = row['path']
-                if entry == omitted['path'] and not local_embeddings:
-                    if row['sha256'] != omitted['sha256'] or entry in names:
-                        raise ValueError('Cloud local-model omission differs')
-                    continue
-                if release and entry.startswith(('lib/x86_64/', 'assets/agent/x86_64/')) and entry not in names:
-                    continue
-                if not entry.startswith(('assets/agent/', 'lib/')) or '..' in PurePosixPath(entry).parts:
-                    raise ValueError('Invalid runtime provenance path')
-                with archive.open(entry) as stream:
-                    if digest(stream) != row['sha256']:
-                        raise ValueError('Packaged Cloud runtime provenance mismatch: ' + entry)
+        elif profile != {'version': 1, 'runtimeProfile': 'native'}:
+            raise ValueError('Packaged native profile mismatch. Run: ' + restage)
+        for row in provenance['files']:
+            entry = row['path']
+            if runtime_profile == 'cloud' and entry == omitted['path'] and not local_embeddings:
+                if row['sha256'] != omitted['sha256'] or entry in names:
+                    raise ValueError('Cloud local-model omission differs')
+                continue
+            if release and entry.startswith(('lib/x86_64/', 'assets/agent/x86_64/')) and entry not in names:
+                continue
+            if not entry.startswith(('assets/agent/', 'lib/')) or '..' in PurePosixPath(entry).parts:
+                raise ValueError('Invalid runtime provenance path')
+            if entry not in names:
+                raise ValueError('Packaged runtime provenance entry missing: ' + entry)
+            with archive.open(entry) as stream:
+                if digest(stream) != row['sha256']:
+                    raise ValueError('Packaged runtime provenance mismatch: ' + entry)
+        if runtime_profile == 'cloud':
             allowed_embedding_entries = set()
             if local_embeddings:
                 verify_local_embedding_source(ROOT)

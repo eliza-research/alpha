@@ -17,7 +17,7 @@ import path from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {verifyEmbeddingHost} from './stage-embedding-host.mjs';
 import {VOICE_ASSET_ROOT, VOICE_HOST_MANIFEST, verifyVoiceHost} from './voice-host.mjs';
-import {BUILD_TOOLCHAIN, HUMAN_ACTION, QUALIFIED_HOST, stagedLibraries} from './build-embedding-host.mjs';
+import {BUILD_TOOLCHAIN, HUMAN_ACTION, QUALIFIED_HOST, embeddingHostState, stagedLibraries} from './build-embedding-host.mjs';
 import {verifyMobileBuildReceipt,MOBILE_UUID_POLICY} from './mobile-uuid-adapter.mjs';
 
 export {VOICE_ASSET_ROOT, VOICE_HOST_MANIFEST};
@@ -149,6 +149,12 @@ export function preparedRuntimeProblems(root, preparedSource, {allowUnpackagedRu
     return [`The resident runtime is not staged, so release APKs would not be distributable. Run: npm run agent:build-workflow-worker && npm run agent:stage-android (or ${FULL_CHAIN}), or pass -- --allow-unpackaged-runtime for non-distributable developer APKs.`, ...embedding];
   if (fs.readFileSync(staged, 'utf8') !== fs.readFileSync(stamp, 'utf8'))
     return [`The staged resident runtime was built from a different prepared source than ${path.relative(root, preparedSource)}. Run: npm run agent:build-workflow-worker && npm run agent:stage-android (or ${FULL_CHAIN}).`, ...embedding];
+  // agent:stage-android writes the profile marker; a Cloud projection omits the native model.
+  const marker = path.join(path.dirname(staged), 'alpha-runtime-profile.json');
+  let profile = null;
+  try { profile = JSON.parse(fs.readFileSync(marker, 'utf8')); } catch {}
+  if (JSON.stringify(profile) !== JSON.stringify({version: 1, runtimeProfile: 'native'}))
+    return [`The staged resident runtime is not the native profile (${path.relative(root, marker)} ${profile ? `names ${JSON.stringify(profile.runtimeProfile)}` : 'is missing or unreadable'}). Run: npm run agent:stage-android without --runtime-profile=cloud (or ${FULL_CHAIN}).`, ...embedding];
   if(fs.existsSync(path.join(root,MOBILE_UUID_POLICY))){
     try{verifyMobileBuildReceipt(root,preparedSource,path.dirname(staged));}
     catch(error){return [`The staged resident build producer is not admitted (${error.message}). Run: npm run agent:stage-android.`,...embedding];}
@@ -179,7 +185,7 @@ export function embeddingHostProblems(root, {allowUnpackagedRuntime = false, emb
     return [];
   } catch (error) {
     const partial = allowUnpackagedRuntime
-      ? ' An unpackaged developer build must have no resident payload at all: remove android/app/src/main/assets/agent and android/app/src/main/jniLibs, or stage the host.'
+      ? ' An unpackaged developer build must have no resident payload at all: remove android/app/src/main/assets/agent, android/app/src/main/jniLibs and .eliza/paradee-voice/native (its staged voice outputs keep :app:verifyParadeeAppLinkage checking jniLibs), or stage the host.'
       : '';
     return [`The qualified embedding host is not staged (${error.message}; Gradle :app:verifyEmbeddingHost rejects the build). npm run agent:build-embedding-host (a step of ${FULL_CHAIN}) stages the libraries only when it can reproduce the reviewed bytes, and says so when it cannot. ${HUMAN_ACTION}${partial}`];
   }
@@ -223,11 +229,11 @@ export function strictBuildInputs(root, preparedSource, {env = process.env, voic
 
   const host = readJson(root, QUALIFIED_HOST), toolchain = readJson(root, BUILD_TOOLCHAIN);
   const libraries = stagedLibraries(root, host);
-  const hostReady = libraries.every(row => row.state === 'staged');
-  const reproducible = toolchain.remapBuildPath === true;
-  add('embedding host libraries', hostReady, reproducible ? 'script' : 'person',
-    hostReady ? `reviewed bytes staged in android/app/src/main/jniLibs/${host.abi}` : libraries.filter(row => row.state !== 'staged').map(row => `${row.name} ${row.state === 'missing' ? 'missing' : 'is not the reviewed bytes'}`).join(', '),
-    reproducible ? 'npm run agent:build-embedding-host' : `${HUMAN_ACTION} (${toolchain.remapBuildPathEvidence})`);
+  const hostState = embeddingHostState(host, toolchain, libraries);
+  const requalify = host.requalification?.required === true;
+  add('embedding host libraries', hostState.ready, hostState.suppliedBy,
+    requalify ? hostState.reason : hostState.ready ? `reviewed bytes staged in android/app/src/main/jniLibs/${host.abi}` : libraries.filter(row => row.state !== 'staged').map(row => `${row.name} ${row.state === 'missing' ? 'missing' : 'is not the reviewed bytes'}`).join(', '),
+    hostState.suppliedBy === 'script' ? 'npm run agent:build-embedding-host' : requalify ? HUMAN_ACTION : `${HUMAN_ACTION} (${toolchain.remapBuildPathEvidence})`);
 
   const stamp = preparedSource ? path.join(preparedSource, '.alpha-runtime-source.json') : null;
   const prepared = stamp !== null && fs.existsSync(stamp);

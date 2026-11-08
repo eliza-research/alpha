@@ -85,6 +85,12 @@ test('preflight names the exact command for each missing build input', t => {
   f.write('android/app/src/main/assets/agent/alpha-source.json', '{"stamp":0}\n');
   assert.match(preparedRuntimeProblems(f.root, f.source, {embeddingHost})[0], /different prepared source/);
   f.write('android/app/src/main/assets/agent/alpha-source.json', '{"stamp":1}\n');
+  // agent:stage-android writes the profile marker; a native build refuses a missing or Cloud one.
+  const marker = 'android/app/src/main/assets/agent/alpha-runtime-profile.json';
+  assert.match(preparedRuntimeProblems(f.root, f.source, {embeddingHost, googleHost: () => {}})[0], /not the native profile .*is missing.*Run: npm run agent:stage-android without --runtime-profile=cloud/);
+  f.write(marker, JSON.stringify({version: 1, runtimeProfile: 'cloud', omittedLocalModels: []}));
+  assert.match(preparedRuntimeProblems(f.root, f.source, {embeddingHost, googleHost: () => {}})[0], /not the native profile .*names "cloud"/);
+  f.write(marker, JSON.stringify({version: 1, runtimeProfile: 'native'}, null, 2) + '\n');
   // The Google host check has its own test below; here it passes.
   assert.deepEqual(preparedRuntimeProblems(f.root, f.source, {embeddingHost, googleHost: () => {}}), []);
 });
@@ -93,6 +99,7 @@ test('preflight refuses a staged native Google host older than its product sourc
   const f = fixture(t);
   f.write(path.relative(f.root, path.join(f.source, '.alpha-runtime-source.json')), '{"stamp":1}\n');
   f.write('android/app/src/main/assets/agent/alpha-source.json', '{"stamp":1}\n');
+  f.write('android/app/src/main/assets/agent/alpha-runtime-profile.json', JSON.stringify({version: 1, runtimeProfile: 'native'}));
   // A built host artifact recording the hash of one product input, staged as agent:stage-android does.
   const hash = text => workerHash(Buffer.from(text));
   const artifact = `artifacts/mobile-workflow-worker-${f.commit}`, staged = 'android/app/src/main/assets/agent/workflow-worker';
@@ -198,6 +205,7 @@ test('preflight names the embedding host and who must supply it when the build s
   f.write(path.relative(f.root, path.join(f.source, '.alpha-runtime-source.json')), '{"stamp":1}\n');
   f.write('android/app/src/main/assets/agent/workflow-worker/manifest.json', '{}');
   f.write('android/app/src/main/assets/agent/alpha-source.json', '{"stamp":1}\n');
+  f.write('android/app/src/main/assets/agent/alpha-runtime-profile.json', JSON.stringify({version: 1, runtimeProfile: 'native'}));
   const missing = () => { throw new Error('Qualified embedding host library missing or changed: libelizainference.so'); };
   let problems = preparedRuntimeProblems(f.root, f.source, {embeddingHost: missing, googleHost: () => {}});
   assert.equal(problems.length, 1);
