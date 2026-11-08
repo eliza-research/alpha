@@ -6731,7 +6731,8 @@
       "models": [
         "NativeCredentialMutation",
         "ResidentRuntime",
-        "ResidentScheduling"
+        "ResidentScheduling",
+        "NativeGoogleAccessFile"
       ],
       "scope": "application",
       "treatment": "state-and-transition-projection",
@@ -7827,7 +7828,8 @@
       "models": [
         "ServiceAuthorization",
         "IdentitySession",
-        "DurableStore"
+        "DurableStore",
+        "NativeGoogleAccessFile"
       ],
       "scope": "application",
       "treatment": "domain-contract-or-support",
@@ -14704,7 +14706,8 @@
         "Application",
         "AccessibleToastLifetime",
         "ModalToastForwarding",
-        "ScreenFocusOwnership"
+        "ScreenFocusOwnership",
+        "DockClearanceOwnership"
       ],
       "scope": "application",
       "treatment": "state-and-transition-projection",
@@ -35610,7 +35613,8 @@
         "PreferencesAndPresentation",
         "HomeLayout",
         "ListFocus",
-        "ModalToastForwarding"
+        "ModalToastForwarding",
+        "DockClearanceOwnership"
       ],
       "treatment": "stateless-presentation-contract",
       "scope": "application",
@@ -41315,13 +41319,15 @@
     },
     {
       "path": "apps/app/src/runtime/dock-clearance.ts",
-      "sha256": "ee2302d6033ef9f122a2341eb3674eb45b7225106046244805fa4e3f2ac2cf9e",
       "models": [
         "HomeLayout",
-        "PreferencesAndPresentation"
+        "PreferencesAndPresentation",
+        "DockClearanceOwnership"
       ],
       "scope": "application",
       "treatment": "state-and-transition-projection",
+      "reviewStatus": "state-audit-required",
+      "sha256": "143b65b7fa2ca36cd056d620818b1ed53cf2ca4f89b5083a4ce0c86e88b509e1",
       "stateAnchors": [
         {
           "line": 25,
@@ -41356,59 +41362,59 @@
           "text": "const uninstallHeader = installHeaderClearance();"
         },
         {
-          "line": 55,
+          "line": 61,
           "text": "let frame = 0, published = '', watched: HTMLElement[] = [];"
         },
         {
-          "line": 56,
+          "line": 62,
           "text": "const sizes = new ResizeObserver(() => schedule());"
         },
         {
-          "line": 57,
+          "line": 63,
           "text": "const measure = () => {"
         },
         {
-          "line": 59,
+          "line": 65,
           "text": "const screen = document.querySelector<HTMLElement>('[data-screen]');"
         },
         {
-          "line": 61,
+          "line": 67,
           "text": "const box = screen.getBoundingClientRect(), scale = box.width / screen.offsetWidth || 1;"
         },
         {
-          "line": 62,
+          "line": 68,
           "text": "const conversation = screen.querySelector<HTMLElement>('[data-alpha-layer=\"conversation\"]:not([inert])');"
         },
         {
-          "line": 63,
+          "line": 69,
           "text": "const fullChat = conversation && screen.dataset.alphaChatHalf !== 'true';"
         },
         {
-          "line": 64,
+          "line": 70,
           "text": "const headers = Array.from((fullChat ? conversation : screen).querySelectorAll<HTMLElement>(fullChat ? '[data-alpha-chat-header]' : APP_HEADERS))"
         },
         {
-          "line": 66,
+          "line": 72,
           "text": "const measured = [screen, ...headers];"
         },
         {
-          "line": 68,
+          "line": 74,
           "text": "sizes.disconnect(); for (const header of measured) sizes.observe(header); watched = measured;"
         },
         {
-          "line": 70,
+          "line": 76,
           "text": "const next = `${Math.max(0, ...headers.map(header => Math.ceil((header.getBoundingClientRect().bottom - box.top) / scale)))}px`;"
         },
         {
-          "line": 76,
+          "line": 82,
           "text": "const schedule = () => { if (!frame) frame = requestAnimationFrame(measure); };"
         },
         {
-          "line": 77,
+          "line": 83,
           "text": "const changes = new MutationObserver(schedule);"
         },
         {
-          "line": 79,
+          "line": 85,
           "text": "const root = new MutationObserver(schedule);"
         }
       ]
@@ -47544,7 +47550,8 @@
       "path": "backend/managed-google-agent-broker.ts",
       "sha256": "7063562ae9f4305828afb1252ce3d9d9868b6a28ae7ff4d308adcc1741409965",
       "models": [
-        "ServiceAuthorization"
+        "ServiceAuthorization",
+        "NativeGoogleAccessFile"
       ],
       "scope": "application",
       "treatment": "state-and-transition-projection",
@@ -47639,7 +47646,8 @@
       "path": "backend/managed-google-agent-host.ts",
       "sha256": "6b4629eb2c8adeb4ffefaf4fcf14b6367483dbb917e5ecceeb59e5890e76f115",
       "models": [
-        "ServiceAuthorization"
+        "ServiceAuthorization",
+        "NativeGoogleAccessFile"
       ],
       "scope": "application",
       "treatment": "domain-contract-or-support",
@@ -48041,55 +48049,53 @@
     },
     {
       "path": "backend/native-google-agent-host.ts",
-      "sha256": "1e722ea51a5fd34ac478695365fd75b2fbb3e1cee280beb5dc5460f70249c6c1",
       "models": [
-        "ResidentRuntime"
+        "ResidentRuntime",
+        "NativeGoogleAccessFile"
       ],
       "scope": "application",
       "treatment": "state-and-transition-projection",
+      "reviewStatus": "state-audit-required",
+      "sha256": "f58b8a2be174148b5f7fe9c5f147a6615697a226c654e27fb57efa8139464d9e",
       "stateAnchors": [
         {
-          "line": 14,
+          "line": 15,
           "text": "const off={gmailChanges:false,calendarEdits:false};"
         },
         {
-          "line": 17,
-          "text": "const saved=JSON.parse(readFileSync(file,'utf8'));"
-        },
-        {
-          "line": 26,
+          "line": 34,
           "text": "const retired=new AbortController();"
         },
         {
-          "line": 27,
+          "line": 35,
           "text": "const port=createNativeGoogleCloudPort(options.binding,()=>{retired.signal.throwIfAborted();options.assertCurrent?.();},options.request);"
         },
         {
-          "line": 28,
+          "line": 36,
           "text": "const host=await startManagedGoogleAgentHost({port,apiToken:options.apiToken,access:()=>savedGoogleAgentAccess()});"
         },
         {
-          "line": 35,
+          "line": 43,
           "text": "const broker=createManagedGoogleAgentBroker({host:createManagedGoogleAgentHost(options.port,options.access,options.environment),async authorized(value){"
         },
         {
-          "line": 36,
+          "line": 44,
           "text": "const actual=Buffer.from(value??''),expected=Buffer.from('Bearer '+options.apiToken);"
         },
         {
-          "line": 39,
+          "line": 47,
           "text": "const server=createServer({maxHeaderSize:8192},(req,res)=>void broker(req,res));"
         },
         {
-          "line": 41,
+          "line": 49,
           "text": "let closing:Promise<void>|undefined;"
         },
         {
-          "line": 42,
+          "line": 50,
           "text": "const close=()=>closing??=(new Promise<void>((resolve,reject)=>{"
         },
         {
-          "line": 48,
+          "line": 56,
           "text": "const address=server.address();if(!address||typeof address==='string')throw Error('Private Google host did not bind');"
         }
       ]
@@ -255477,7 +255483,8 @@
       "models": [
         "Application",
         "PreferencesAndPresentation",
-        "ShellNavigation"
+        "ShellNavigation",
+        "DockClearanceOwnership"
       ],
       "scope": "shared-module-dependency",
       "treatment": "domain-contract-or-support",

@@ -283,3 +283,17 @@ the authenticated shared helper and Alpha installer. It checks view changes,
 resize priority, delayed titles, focus owners and the animation-frame retry
 budget. The closed-over resize element is checked through behavior. All six
 focused Chromium tests passed against the current source.
+
+The dock clearance campaign checks five schedules and 35 checkpoints against
+the actual Alpha wrapper and shared publisher. It checks split and full chat
+header selection, measured scale, retained dock clearance while a dock is
+inert, and cleanup that cannot erase a replacement publisher's values. A
+focused Chromium test checks the header transition with unchanged geometry.
+
+The native Google access file campaign checks seven schedules and 66
+checkpoints using the actual JVM writer and a private loopback host. Missing,
+malformed, linked, and nonregular policy files keep both switches off. A
+read that overlaps atomic replacement returns one complete version. The
+request crossing revocation is held at synthetic credential verification.
+Android power-loss durability and effects after provider admission remain
+separate.

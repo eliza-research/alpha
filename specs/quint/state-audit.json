@@ -12,7 +12,7 @@
   "toolSha256": "403a33cab0dff7ace6219b29e7ffef373319677a7d8be6641466dd16a6750b5b",
   "dependencyLockSha256": "944123c801157a7ba3676a886d0b28a54bef32735ae96da5c6dd0f206c88c8bf",
   "sourcePin": "99b49439ce9d0cb5607e9831b9f7f58d89525029",
-  "ledgerSha256": "d17a459e97c1ba4244a801fbca38d37904fefb30a1e30525da02b8b3cb74bab4",
+  "ledgerSha256": "7594cdf499e09fa3d0106b88d03ebb444f69fe9862b4176ef1beabe22c3dcc44",
   "method": "TypeScript syntax trees for JavaScript/TypeScript and JDK compiler trees for Java. Mutable fields, bindings, containers, state hooks, write sites and asynchronous registration calls are candidates for semantic review.",
   "limitations": [
     "Candidate extraction does not establish state-machine coverage or implementation refinement.",
@@ -19724,7 +19724,8 @@
       "allocatedModels": [
         "NativeCredentialMutation",
         "ResidentRuntime",
-        "ResidentScheduling"
+        "ResidentScheduling",
+        "NativeGoogleAccessFile"
       ],
       "sourcePathClass": "other-source-path",
       "classification": "syntactic-candidates",
@@ -24246,7 +24247,8 @@
       "allocatedModels": [
         "ServiceAuthorization",
         "IdentitySession",
-        "DurableStore"
+        "DurableStore",
+        "NativeGoogleAccessFile"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -32498,7 +32500,8 @@
         "Application",
         "AccessibleToastLifetime",
         "ModalToastForwarding",
-        "ScreenFocusOwnership"
+        "ScreenFocusOwnership",
+        "DockClearanceOwnership"
       ],
       "sourcePathClass": "other-source-path",
       "classification": "syntactic-candidates",
@@ -39685,7 +39688,8 @@
         "PreferencesAndPresentation",
         "HomeLayout",
         "ListFocus",
-        "ModalToastForwarding"
+        "ModalToastForwarding",
+        "DockClearanceOwnership"
       ],
       "sourcePathClass": "other-source-path",
       "classification": "language-review-required",
@@ -42284,11 +42288,13 @@
     },
     {
       "path": "apps/app/src/runtime/dock-clearance.ts",
-      "sha256": "ee2302d6033ef9f122a2341eb3674eb45b7225106046244805fa4e3f2ac2cf9e",
+      "sha256": "143b65b7fa2ca36cd056d620818b1ed53cf2ca4f89b5083a4ce0c86e88b509e1",
       "allocatedModels": [
         "HomeLayout",
-        "PreferencesAndPresentation"
+        "PreferencesAndPresentation",
+        "DockClearanceOwnership"
       ],
+      "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
       "classification": "syntactic-candidates",
       "owners": [
@@ -42300,7 +42306,7 @@
         },
         {
           "owner": "installHeaderClearance",
-          "line": 55,
+          "line": 61,
           "bindings": 3,
           "writes": 4
         }
@@ -45056,7 +45062,8 @@
       "path": "backend/managed-google-agent-broker.ts",
       "sha256": "7063562ae9f4305828afb1252ce3d9d9868b6a28ae7ff4d308adcc1741409965",
       "allocatedModels": [
-        "ServiceAuthorization"
+        "ServiceAuthorization",
+        "NativeGoogleAccessFile"
       ],
       "sourcePathClass": "other-source-path",
       "classification": "syntactic-candidates",
@@ -45076,7 +45083,8 @@
       "path": "backend/managed-google-agent-host.ts",
       "sha256": "6b4629eb2c8adeb4ffefaf4fcf14b6367483dbb917e5ecceeb59e5890e76f115",
       "allocatedModels": [
-        "ServiceAuthorization"
+        "ServiceAuthorization",
+        "NativeGoogleAccessFile"
       ],
       "sourcePathClass": "other-source-path",
       "classification": "syntactic-candidates",
@@ -45201,22 +45209,24 @@
     },
     {
       "path": "backend/native-google-agent-host.ts",
-      "sha256": "1e722ea51a5fd34ac478695365fd75b2fbb3e1cee280beb5dc5460f70249c6c1",
+      "sha256": "f58b8a2be174148b5f7fe9c5f147a6615697a226c654e27fb57efa8139464d9e",
       "allocatedModels": [
-        "ResidentRuntime"
+        "ResidentRuntime",
+        "NativeGoogleAccessFile"
       ],
+      "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
       "classification": "syntactic-candidates",
       "owners": [
         {
           "owner": "startNativeGoogleAgentHost",
-          "line": 26,
+          "line": 34,
           "bindings": 1,
           "writes": 1
         },
         {
           "owner": "startManagedGoogleAgentHost",
-          "line": 39,
+          "line": 47,
           "bindings": 2,
           "writes": 3
         }
@@ -103184,7 +103194,8 @@
       "allocatedModels": [
         "Application",
         "PreferencesAndPresentation",
-        "ShellNavigation"
+        "ShellNavigation",
+        "DockClearanceOwnership"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -218245,6 +218256,6 @@
   ],
   "detail": {
     "path": "test-results/quint-state-audit/details.json",
-    "sha256": "d78ed53d328b830bd9e45f4394d39bdd7e2b4c8211b002c3f0583b06741dd106"
+    "sha256": "59d9e02ed98e1eaccb0111f4dd28cab3a8bea95f35c6b7f64b5b5f043e3711a4"
   }
 }
