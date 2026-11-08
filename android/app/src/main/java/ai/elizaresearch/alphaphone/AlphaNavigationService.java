@@ -32,18 +32,17 @@ public final class AlphaNavigationService extends Service {
  static final String EXTRA_SESSION = "session", EXTRA_TITLE = "title", EXTRA_TEXT = "text", EXTRA_REASON = "reason";
  static final String SESSION_PATTERN = "[A-Za-z0-9_-]{8,80}";
 
- /** Receives the single terminal stop of each session; registered by the Maps bridge. */
+ /** Receives the single terminal stop of a session; the Maps bridge that started it owns it. */
  interface StopListener { void stopped(String session, String reason); }
 
  private static final Object lock = new Object();
  private static String activeSession;
- private static StopListener listener;
+ // Each Activity has its own bridge and plugin instance; only the one that started the session hears its stop.
+ private static StopListener owner;
  private static int stopCount;
  private static String lastStopReason = "";
  private static String lastTitle = "", lastText = "";
 
- static void setStopListener(StopListener value) { synchronized (lock) { listener = value; } }
- static void clearStopListener(StopListener value) { synchronized (lock) { if (listener == value) listener = null; } }
  static String activeSession() { synchronized (lock) { return activeSession; } }
 
  /** Instrumentation-visible state: active session, total terminal stops and last reason. */
@@ -64,8 +63,8 @@ public final class AlphaNavigationService extends Service {
    || context.checkSelfPermission(Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED;
  }
 
- static void start(Context context, String session, String title, String text) {
-  synchronized (lock) { activeSession = session; lastTitle = bounded(title); lastText = bounded(text); }
+ static void start(Context context, String session, String title, String text, StopListener startedBy) {
+  synchronized (lock) { activeSession = session; owner = startedBy; lastTitle = bounded(title); lastText = bounded(text); }
   context.startForegroundService(intent(context, ACTION_START, session).putExtra(EXTRA_TITLE, title).putExtra(EXTRA_TEXT, text));
  }
 
@@ -85,11 +84,18 @@ public final class AlphaNavigationService extends Service {
   return true;
  }
 
+ /** Ends the active session only if this owner started it; another bridge closing leaves it running. */
+ static boolean stopOwned(Context context, StopListener by, String reason) {
+  String session;
+  synchronized (lock) { if (activeSession == null || owner != by) return false; session = activeSession; }
+  return stop(context, session, reason);
+ }
+
  private static boolean finish(String session, String reason) {
   StopListener target;
   synchronized (lock) {
    if (activeSession == null || (session != null && !activeSession.equals(session))) return false;
-   session = activeSession; activeSession = null; stopCount++; lastStopReason = reason; target = listener;
+   session = activeSession; activeSession = null; stopCount++; lastStopReason = reason; target = owner; owner = null;
   }
   if (target != null) target.stopped(session, reason);
   return true;
@@ -114,7 +120,7 @@ public final class AlphaNavigationService extends Service {
   String action = intent == null ? null : intent.getAction();
   String session = intent == null ? null : intent.getStringExtra(EXTRA_SESSION);
   if (ACTION_STOP.equals(action)) {
-   // Notification Stop: the renderer hears it through the bridge listener once. An app stop
+   // Notification Stop: the owning renderer hears it through its bridge once. An app stop
    // already finished the session; a stop of a replaced session leaves its successor running.
    finish(session, intent.getStringExtra(EXTRA_REASON) == null ? "notification" : intent.getStringExtra(EXTRA_REASON));
    if (activeSession() == null) end(startId);
