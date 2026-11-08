@@ -496,7 +496,9 @@ export function installSettingsAdapter(Component: any, views: Bag) {
     const info = (label: string, val: string): Bag => ({ kInfo: true, label, val, hasVal: true, noAB: true });
     const note = (label: string, sub: string): Bag => ({ kInfo: true, label, val: '', hasVal: false, hasSub: true, sub, noAB: true });
     const nav = (label: string, page: string): Bag => ({ kNav: true, label, lbl: label, chev: true, noAB: true, go: manage(page) });
-    const group = (rows: Bag[]) => ({ css: 'background:var(--s2);padding:4px 0', rows });
+    const group = (rows: Bag[], id?: string) => ({ css: 'background:var(--s2);padding:4px 0',
+      rows: id ? rows.map(row => ({ ...row, id: row.id ?? row.label ?? row.aria })) : rows,
+      ...(id ? { id } : {}) });
     // Speech follows the explicit production runtime profile; developer routes stay separate.
     const speechRows = (): Bag[] => [
       info('Speech', connection.residentInference==='direct'?(connection.providerStatus?.voiceConfigured?'Cartesia · own API key':'Off · add a Cartesia key'):developmentCartesiaVoiceEnabled?'Cartesia · development':cloudRuntimeEnabled?`${serviceName} · Cartesia output (uses your plan)`:testMocksEnabled?`${serviceName} (counts toward your plan)`:'On this device'),
@@ -540,7 +542,9 @@ export function installSettingsAdapter(Component: any, views: Bag) {
     };
     for (const page of out.stack) {
       if (page.isTop) {
-        page.groups = page.groups.map((group: Bag) => ({ ...group, rows: settingsNavigationRows(group.rows, developerTools) }));
+        page.groups = page.groups.map((group: Bag) => ({ ...group,
+          id: `settings:${group.rows[0].label}`,
+          rows: settingsNavigationRows<Bag>(group.rows, developerTools).map(row => ({ ...row, id: row.id ?? row.label })) }));
         const native=Capacitor.isNativePlatform(), provider=facts.passwordProvider||{};
         const installation:Bag={installed:'Installed · publisher verified',disabled:'Installed but disabled',absent:'Not installed','unrecognized-publisher':'Installed · publisher not recognized',unknown:'Not checked'};
         const selection:Bag={proton:provider.installation==='installed'?'Proton Pass selected':provider.installation==='disabled'?'Proton Pass selected · app disabled':'Provider package selected · publisher not verified',other:'Another provider selected',none:'No provider selected',unknown:'Selection unavailable'};
@@ -628,7 +632,7 @@ export function installSettingsAdapter(Component: any, views: Bag) {
           const home=roles?.home,canRequestHome=launcher===true&&!!home&&home.available&&!home.held;
           page.groups.push(group([info('Home app',roles?roleValue(home):'Unavailable'),info('Assistant app',roles?roleValue(roles.assistant):'Unavailable'),
             ...(canRequestHome?[{kNav:true,label:'Make Alpha your Home app',lbl:roleBusy?'Waiting for Android…':'Make Alpha your Home app',chev:true,noAB:true,go:()=>void requestHome(api)}]:[]),
-            nav('Default apps in Android','default-apps')]));
+            nav('Default apps in Android','default-apps')], 'settings:roles'));
           // Install update only for the version the last manifest offers this install, and an explicit check. No error or "up to date" claim.
           const update=parseUpdateManifest(savedUpdate().manifest,{versionCode:facts.appVersionCode,launcher,signerSha256:facts.appSigner});
           page.groups.push(group([

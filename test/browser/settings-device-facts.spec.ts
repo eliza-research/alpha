@@ -1,13 +1,14 @@
 import {test,expect,type Page} from '@playwright/test';
 import {readFileSync} from 'node:fs';
+import {captureInputs, checkTraces} from '../../specs/quint/refinement/check-traces.mjs';
 const upstreamPin=JSON.parse(readFileSync(new URL('../../upstream.lock.json',import.meta.url),'utf8')).commit;
 
 // Real rendered Settings; only the Android IPC boundary is synthetic. These prove the renderer's
 // contract (what it reads, shows and sends). Emulator readback lives in SettingsRolesInstrumentedTest.
 // updates: AlphaDevice.checkForUpdate's answers in order: a manifest, null for a 404 (nothing published), or 'fail'.
-type Options={launcher?:boolean;decline?:number;updates?:Array<object|null|'fail'>};
+type Options={launcher?:boolean;decline?:number;updates?:Array<object|null|'fail'>;holdRoles?:boolean};
 async function nativeStub(page:Page,options:Options={}){
- await page.addInitScript(({launcher,decline,updates,upstreamPin})=>{
+ await page.addInitScript(({launcher,decline,updates,holdRoles,upstreamPin})=>{
   const w=window as any;w.androidBridge={};
   try{localStorage.setItem('alpha.connection.selection.v1',JSON.stringify({kind:'offline'}));}catch{/* covered elsewhere */}
   const now=Date.now(),store=new Map<string,string>();
@@ -15,8 +16,11 @@ async function nativeStub(page:Page,options:Options={}){
   let declines=decline;
   const answers=[...updates];
   const listeners:Array<{plugin:string;event:string;callback:(value:unknown)=>void}>=[];
+  let rolesHeld=holdRoles;
+  const pendingRoles:Array<()=>void>=[];
   // Native events (appResumed) arrive through Capacitor's callback channel.
-  w.settingsFixture={calls:[] as any[],shared:[] as string[],resume:()=>listeners.filter(l=>l.plugin==='DailyApps'&&l.event==='appResumed').forEach(l=>l.callback({}))};
+  w.settingsFixture={calls:[] as any[],shared:[] as string[],resume:()=>listeners.filter(l=>l.plugin==='DailyApps'&&l.event==='appResumed').forEach(l=>l.callback({})),
+   releaseRoles:()=>{rolesHeld=false;pendingRoles.splice(0).forEach(resolve=>resolve());}};
   const methods=(names:string[])=>names.map(name=>({name,rtype:'promise'}));
   w.Capacitor={
    PluginHeaders:[
@@ -42,7 +46,7 @@ async function nativeStub(page:Page,options:Options={}){
     }
     if(plugin==='ElizaSystem'&&method==='getBuildInfo')return {launcher,version:'0.1.0'};
     if(plugin==='ElizaSystem'){
-     if(method==='getStatus')return {packageName:'ai.elizaresearch.alphaphone',roles:Object.entries(roles).map(([role,r])=>({role,androidRole:'android.app.role.'+role.toUpperCase(),available:true,held:r.held,holders:r.held?['ai.elizaresearch.alphaphone']:r.holders}))};
+     if(method==='getStatus'){if(rolesHeld)await new Promise<void>(resolve=>pendingRoles.push(resolve));return {packageName:'ai.elizaresearch.alphaphone',roles:Object.entries(roles).map(([role,r])=>({role,androidRole:'android.app.role.'+role.toUpperCase(),available:true,held:r.held,holders:r.held?['ai.elizaresearch.alphaphone']:r.holders}))};}
      // Android's own dialog decides; the fixture declines first when asked to.
      if(method==='requestRole'){if(declines>0){declines--;return {role:input.role,held:false,resultCode:0};}roles[input.role]={held:true,holders:[]};return {role:input.role,held:true,resultCode:-1};}
      if(method==='getDeviceSettings')return {volumes:[]};
@@ -61,11 +65,55 @@ async function nativeStub(page:Page,options:Options={}){
     throw Error('Unexpected native operation '+plugin+'.'+method);
    },
   };
- },{launcher:options.launcher??true,decline:options.decline??0,updates:options.updates??[],upstreamPin});
+ },{launcher:options.launcher??true,decline:options.decline??0,updates:options.updates??[],holdRoles:options.holdRoles??false,upstreamPin});
 }
 const settings=async(page:Page,query='')=>{await page.goto(`/${query}`);await page.getByRole('button',{name:'Settings',exact:true}).click();await expect(page.locator('html')).toHaveAttribute('data-active-view','settings');};
 const app=(page:Page)=>page.locator('[data-alpha-layer="app"]');
 const calls=(page:Page,plugin:string,method:string)=>page.evaluate(([plugin,method])=>(window as any).settingsFixture.calls.filter((c:any)=>c.plugin===plugin&&c.method===method).length,[plugin,method]);
+
+test('a late HOME role row preserves the focused native settings action and refines its identity',async({page},info)=>{
+ test.setTimeout(120000);
+ const sources=['apps/app/src/prototype/dc-lite.js','apps/app/src/prototype/template.html',
+  'apps/app/src/prototype/model.js','apps/app/src/prototype/settings-adapter.ts','test/browser/settings-device-facts.spec.ts'];
+ const driverHashes=captureInputs(sources);
+ await nativeStub(page,{launcher:true,holdRoles:true});
+ const observe=()=>page.evaluate(()=>{
+  const identity=(element:Element|null)=>element?.getAttribute('aria-label')==='Default apps in Android'?'default-apps':
+   element?.getAttribute('aria-label')==='Make Alpha your Home app'?'request-home':'';
+  const top=document.querySelector('[data-settings-page="Settings"]');
+  const focused=identity(document.activeElement),fixture=(window as any).settingsFixture;
+  return {'s.settingsRows':[...(top?.querySelectorAll('button')||[])].map(identity).filter(Boolean),
+   's.focusedSetting':focused,'s.intendedSetting':focused?(window as any).settingsFocusIntent||'':'',
+   's.activatedSetting':fixture.calls.some((call:any)=>call.plugin==='AlphaDevice'&&call.method==='openSettings'&&call.input.page==='default-apps')?'default-apps':''};
+ });
+ await page.goto('/');
+ await expect(page.getByRole('button',{name:'Settings',exact:true})).toBeVisible();
+ const trace={name:'late-home-role-preserves-default-apps-action',init:{name:'init'},expect:await observe(),steps:[] as any[]};
+ await page.getByRole('button',{name:'Settings',exact:true}).click();
+ const target=app(page).getByRole('button',{name:'Default apps in Android',exact:true});
+ await expect(target).toBeVisible();
+ await expect(app(page).getByRole('button',{name:'Make Alpha your Home app',exact:true})).toHaveCount(0);
+ trace.steps.push({label:'open actual Settings before native roles resolve',action:[{name:'open',args:['settings']},
+  {name:'settingsRowsChanged',args:[['default-apps']]}],expect:await observe()});
+ await target.focus();
+ await page.evaluate(()=>{(window as any).settingsFocusIntent='default-apps';(window as any).settingsFocusedNode=document.activeElement;});
+ trace.steps.push({label:'focus actual default-apps action',action:{name:'focusSetting',args:['default-apps']},expect:await observe()});
+ await page.evaluate(()=>(window as any).settingsFixture.releaseRoles());
+ await expect(app(page).getByRole('button',{name:'Make Alpha your Home app',exact:true})).toBeVisible();
+ await expect(target).toBeFocused();
+ expect(await target.evaluate(element=>element===(window as any).settingsFocusedNode)).toBe(true);
+ trace.steps.push({label:'native role read inserts HOME request before focused action',action:{name:'settingsRowsChanged',args:[['request-home','default-apps']]},expect:await observe()});
+ await page.keyboard.press('Enter');
+ await expect.poll(()=>page.evaluate(()=>(window as any).settingsFixture.calls.some((call:any)=>call.plugin==='AlphaDevice'&&call.method==='openSettings'&&call.input.page==='default-apps'))).toBe(true);
+ expect(await calls(page,'ElizaSystem','requestRole')).toBe(0);
+ trace.steps.push({label:'Enter invokes the original native settings action',action:{name:'activateExternalSetting'},expect:await observe()});
+ const receipt=await checkTraces({model:'ShellNavigation',id:'ShellSettingsRoleFocus',sources,driverHashes,traces:[trace],scope:'bounded-orchestration',assumptions:[
+  'The mounted product renderer and Settings adapter execute. Native role readback and native settings handoff are controlled at the existing Capacitor port.',
+  'The projection retains the HOME request and default-apps rows. Other Settings rows and actual Android activity focus are outside this trace.',
+ ]});
+ expect(receipt.passed).toBe(true);
+ await info.attach('quint-refinement-receipt',{body:JSON.stringify(receipt),contentType:'application/json'});
+});
 
 test('Settings shows HOME and assistant role state and reads it back after a declined then accepted request',async({page})=>{
  await nativeStub(page,{launcher:true,decline:1});
