@@ -34,8 +34,8 @@ export class BrowserMailAttachments extends WebPlugin {
    const review=await check(input);if(!input.reviewed||review.sha256!==input.sha256||generation!==this.generation)throw Error('Review this attachment again.');controller.signal.throwIfAborted();
    const bytes=Uint8Array.from(atob(input.dataBase64),c=>c.charCodeAt(0));started=true;
    const selected=await this.files.importFile(new File([bytes],input.name,{type:input.mimeType}),'root',controller.signal);selectionId=selected.selectionId;
-   const retained=await this.files.attachment({selectionId}),checked=await check(retained);controller.signal.throwIfAborted();if(checked.sha256!==review.sha256||checked.size!==review.size)throw Error('Saved bytes did not match.');
-   return {status:'saved',message:'Saved in Files. Exact bytes verified.'};
+   const retained=await this.files.attachment({selectionId}),checked=await check(retained);controller.signal.throwIfAborted();if(checked.sha256!==review.sha256||checked.size!==review.size)throw Error("The saved copy didn't match.");
+   return {status:'saved',message:'Saved in Files.'};
   }catch(error){if(!started)throw error;return {status:'unverified',message:'Save not confirmed. Inspect Files before trying again; a copy may already exist.'};}
   finally{if(selectionId)await this.files.forgetSelected({selectionId}).catch(()=>{});if(this.saveController===controller)this.saveController=undefined;}
  }
