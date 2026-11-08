@@ -425,5 +425,6 @@ export async function openYourAgent(page: Page) {
   await page.getByRole('button', { name: 'Agent connection', exact: true }).click();
   const panel = page.getByRole('region', { name: 'Settings', exact: true });
   await expect(panel.getByRole('heading', {name:'Agent connection',exact:true})).toBeVisible();
-  return panel;
+  // The Agent connection page itself: the covered top level repeats its status beside the row.
+  return panel.locator('[data-settings-page="Agent connection"]:not([inert])');
 }

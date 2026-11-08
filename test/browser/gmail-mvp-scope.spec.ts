@@ -61,6 +61,8 @@ async function setup(page:Page,options:Options={}){
  },options);
 }
 const gm=(page:Page)=>page.evaluate(()=>(window as any).gm);
+// The Google accounts sheet binds to a Cloud organization; the Inbox fixture's account has none until a test needs the sheet.
+const withOrganization=(page:Page)=>page.evaluate(async()=>{const {connectionController:c}=await import('/src/runtime/connection-ui.tsx');const snapshot={...c.getSnapshot(),cloudAccount:{...c.getSnapshot().cloudAccount!,organizationId:'fixture-org'}};c.getSnapshot=()=>snapshot as any;});
 // The Home app grid is the shared mobile shell's (prototype/home-shell.ts); its tile marks unread with this badge.
 const inboxBadge=(page:Page)=>page.getByRole('button',{name:'Inbox',exact:true}).locator('[data-mobile-shell-tile-badge]');
 
@@ -193,7 +195,7 @@ for(const [kind,text] of [['offline',/offline/],[409,/revoked or needs authoriza
 test('Settings disconnect asks first and Inbox then shows the honest disconnected state',async({page})=>{
  await setup(page);await page.getByRole('button',{name:'Inbox',exact:true}).click();
  await expect(page.getByRole('region',{name:'Inbox',exact:true}).getByText('Subject in-0-a',{exact:true})).toBeVisible();
- await page.getByRole('button',{name:'Back to apps',exact:true}).click();await page.getByRole('button',{name:'Settings',exact:true}).click();await page.getByRole('button',{name:'Google',exact:true}).click();
+ await withOrganization(page);await page.getByRole('button',{name:'Back to apps',exact:true}).click();await page.getByRole('button',{name:'Settings',exact:true}).click();await page.getByRole('button',{name:'Google',exact:true}).click();
  const sheet=page.getByRole('dialog',{name:'Google accounts',exact:true});
  const disconnect=sheet.getByRole('button',{name:'Disconnect Google account owner@example.test',exact:true});await expect(disconnect).toBeVisible();
  await disconnect.click();await sheet.getByRole('button',{name:'Keep connected',exact:true}).click();expect((await gm(page)).disconnects).toEqual([]);
@@ -206,7 +208,7 @@ test('Settings disconnect asks first and Inbox then shows the honest disconnecte
 });
 
 test('Settings Google disconnects one confirmed account and reports the read-back',async({page})=>{
- await setup(page,{accounts:['first@example.test','second@example.test']});
+ await setup(page,{accounts:['first@example.test','second@example.test']});await withOrganization(page);
  await page.getByRole('button',{name:'Settings',exact:true}).click();
  await page.getByRole('button',{name:'Google',exact:true}).click();
  const sheet=page.getByRole('dialog',{name:'Google accounts',exact:true});

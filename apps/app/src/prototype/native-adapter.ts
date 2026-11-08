@@ -1,11 +1,5 @@
-import {cloudServiceName} from '../runtime/cloud-protocol';
 import {browserDevProfile} from '../browser/dev-profile';
-import { cloudRuntimeEnabled, testMocksEnabled } from '../build-flags';
-import { Capacitor } from '@capacitor/core';
 import { DailyApps, type Action, type NativeResult } from '../daily';
-import { registerPlugin } from '../platform-plugins';
-import { connectionController, agentAvailabilityNotice, type ConnectionSnapshot } from '../runtime/connection-ui';
-import { modelLabel } from '../runtime/local-agent';
 import { askAboutCapture } from './camera-adapter';
 import { broaderPageNotice, handoffGate, switchValue, SYSTEM_TILE_SETTINGS_PAGES, tileAccessibleName, tileFactsFromSystemFacts, tileStateText, type SystemTileFacts, type SystemTileKey } from '@elizaos/capacitor-system/settings';
 import { captureQuestion, locationMimeTypes } from './context-selection';
@@ -17,51 +11,6 @@ export type PrototypeNativeOptions = {
   onSelection?: (module: string, result: NativeResult, api: Bag) => void;
 };
 const installed = new WeakSet<object>();
-const systemPages = new Set(['wifi', 'bluetooth', 'mobile', 'sound', 'notifications', 'battery', 'models', 'developer', 'privacy']);
-/** Non-secret resident provider identity. The native method never returns the stored key. */
-const residentProvider = registerPlugin<{ providerStatus(): Promise<Record<string, unknown>> }>('Agent');
-const providerModelPattern = /^[A-Za-z0-9][A-Za-z0-9._/-]{0,127}$/;
-type ProviderStatus = { sessionId: string; label: string | null };
-let providerStatus: ProviderStatus | null = null, providerReading: string | null = null;
-/** Session whose phone action history this view read successfully; an unread history is never shown as empty. */
-let actionHistoryRead: string | null = null;
-
-export type EgressPrivacy = { big: string; sub: string };
-/** Per-connection wording. Only the packaged Android resident runtime is known to enable
- * the upstream secret and PII swaps; every other agent decides for itself and does not report it. */
-export function egressPrivacy(connection: Pick<ConnectionSnapshot, 'kind' | 'session' | 'cloudAccount'>, native = Capacitor.isNativePlatform()): EgressPrivacy {
-  if (cloudRuntimeEnabled && (connection.session || connection.cloudAccount)) {
-    const serviceName = cloudServiceName(connection.cloudAccount?.environment ?? 'production');
-    return { big: `Uses ${serviceName}`, sub: `When used, messages and selected content go to ${serviceName} for AI. Voice recordings and text for playback also go to Cloud.` };
-  }
-  if (connection.session && connection.kind === 'resident' && native)
-    return { big: 'Identifier swap only', sub: 'Secret and contact identifiers are swapped before hosted inference; names and free text are not covered' };
-  if (connection.session || connection.cloudAccount) return { big: 'Not reported', sub: 'Depends on the selected agent; not reported' };
-  // P-43: no session means the resident is starting or recovering, never "no agent".
-  if (connection.kind === 'recovering') return { big: 'Agent not running', sub: 'No hosted inference requests until your agent is running and AI is set up' };
-  if (connection.kind === 'starting') return { big: 'Agent starting', sub: 'No hosted inference requests until your agent is running and AI is set up' };
-  // Only a build without the resident (the production web preview, test mocks) gets here.
-  return { big: 'Offline', sub: testMocksEnabled ? 'No remote agent connected; no hosted inference requests' : 'Your agent runs on your phone; no hosted inference requests from here' };
-}
-/** Only a verified resident session on Android reports its configured hosted model.
- * Exported for the Settings rows that show it (About and Models). */
-export function residentModelLabel(connection: ConnectionSnapshot, refresh: () => void): string | null {
-  const sessionId = connection.session?.sessionId;
-  if (!sessionId || connection.kind !== 'resident' || !Capacitor.isNativePlatform()) return null;
-  if (providerStatus?.sessionId === sessionId) return providerStatus.label;
-  if (providerReading !== sessionId) {
-    providerReading = sessionId;
-    void residentProvider.providerStatus().then(status => {
-      const provider = status?.provider, model = status?.model;
-      // Copy only the two identity fields; ignore anything else a bridge might return.
-      const providerLabel = provider === 'elizacloud' ? cloudServiceName(connection.cloudAccount?.environment ?? 'production') : provider === 'cerebras' ? 'Cerebras' : null;
-      const label = status?.configured === true && providerLabel && typeof model === 'string' && providerModelPattern.test(model) ? modelLabel(providerLabel, model) : null;
-      if (providerReading === sessionId) providerStatus = { sessionId, label };
-    }).catch(() => { if (providerReading === sessionId) providerStatus = { sessionId, label: null }; })
-      .finally(() => { if (providerReading === sessionId) { providerReading = null; refresh(); } });
-  }
-  return null;
-}
 const externalModules = new Set(['phone', 'messages', 'inbox', 'browser', 'camera', 'photos', 'maps', 'calendar', 'contacts', 'files', 'settings', 'wallet', 'workflows']);
 const text = (value: unknown) => typeof value === 'string' ? value : '';
 
@@ -252,19 +201,6 @@ export function installPrototypeNativeAdapters(
       if (['onNum', 'onCvv', 'onExp', 'onCode', 'onName'].includes(key)) return unavailable(api, 'Payment credentials are not collected by this app.');
       if (['pay', 'auth', 'verify', 'next', 'scan', 'reload', 'remove', 'setDef', 'startPay'].includes(key)) return unavailable(api, 'Wallet payments and verification are not connected. Nothing has been charged or verified.');
     }
-    if (module === 'settings') {
-      // Opening Activity only shows what is already known; reading history is a separate explicit step.
-      if (st.page === 'privacy' && key === 'go' && row.label === 'Activity') return () => api.set({ log: true });
-      if (key === 'pick' && st.page !== 'display') return unavailable(api, 'This setting needs a connected provider. No change was applied.');
-      if (key === 'onPw' || (st.adding && ['change', 'onKey', 'go', 'ok'].includes(key))) return native('settings');
-      // Memory deletion is not offered; a stale wipe sheet only closes.
-      if (key === 'ok') return st.sheet?.kind === 'wipe' ? () => api.set({ sheet: null }) : native('settings');
-      if (['toggle', 'sw', 'change', 'set'].includes(key)) {
-        if (st.page === 'display' && row.label === 'Text size') return original;
-        return native(st.page === 'notifications' ? 'notifications' : 'settings');
-      }
-      if (key === 'go' && (systemPages.has(st.page) || (st.page === 'accounts' && (st.acct || row.label === 'Add account')))) return native(st.page === 'notifications' ? 'notifications' : 'settings');
-    }
     return undefined;
   }
   function walk(value: any, module: string, st: Bag, api: Bag, path = ''): any {
@@ -276,81 +212,12 @@ export function installPrototypeNativeAdapters(
         ? replacement(module, key, path + key, value, st, api, child as Callback) || child
         : walk(child, module, st, api, path + key + '.');
     }
-    if (module === 'settings') {
-      if (result.big === 'Redaction on') Object.assign(result, egressPrivacy(connectionController.getSnapshot()));
-      if (result.label === 'Privacy & data') result.val = 'Review';
-      if (result.label === 'Leaves this device') {
-        const connection=connectionController.getSnapshot();
-        result.val=connection.session&&connection.kind==='resident'&&!Capacitor.isNativePlatform()
-          ? 'Prompts and selected context go to the development host and its configured inference provider'
-          : 'Depends on active services';
-      }
-      if (result.label === 'On-device model') result.val = 'Not loaded';
-      if (st.page === 'privacy' && ['Microphone','Location','Camera','Contacts'].includes(result.label)) result.val = 'Review access';
-      if (st.page === 'privacy' && result.label === 'Activity') result.val = activityValue(connectionController.getSnapshot());
-    }
     return result;
   }
-  function activityState(state: string) {
-    const labels: Record<string, string> = { pending: 'Waiting for approval', reconciliation_required: 'Needs your review', executing: 'Outcome unknown', approved: 'Approved', rejected: 'Declined', succeeded: 'Completed', completed: 'Completed', failed: 'Failed', expired: 'Expired', not_applied: 'Did not happen', cancelled: 'Cancelled' };
-    return labels[state] ?? state;
-  }
-  function activityValue(connection: ConnectionSnapshot) {
-    if (!connection.session) return 'Not connected';
-    if (!connection.phoneActionsAvailable) return 'Not reported by agent';
-    return connection.actionHistory.length ? connection.actionHistory.length + ' recorded' : 'Review';
-  }
-  /** Runs after every later settings adapter so fixture or placeholder facts cannot reappear. */
-  function honestSettings(out: Bag, st: Bag, api: Bag): Bag {
+  /** Runs after every later settings adapter: a group left without rows is not drawn. */
+  function dropEmptyGroups(out: Bag): Bag {
     if (!out || !Array.isArray(out.stack)) return out;
-    const connection = connectionController.getSnapshot();
-    const info = (label: string, val: string): Bag => ({ kInfo: true, label, val, hasVal: !!val, noAB: true });
-    const nav = (label: string, go: () => void): Bag => ({ kNav: true, label, lbl: label, chev: true, noAB: true, go });
-    const model = residentModelLabel(connection, () => { try { api.set({ providerReadAt: Date.now() }); } catch { /* view closed */ } });
-    for (const page of out.stack) {
-      if (!page || !Array.isArray(page.groups)) continue;
-      if ((page.title === 'Models' || page.title === 'About') && model)
-        for (const group of page.groups) for (const row of group.rows || []) if (row.label === 'Inference model') { row.val = model; row.hasVal = true; }
-      if (st.page === 'privacy' && st.log && page.title === 'Activity') {
-        const sessionId = connection.session?.sessionId ?? null;
-        // Reading history is an explicit step. Progress and errors appear in the connection panel;
-        // decline and reconcile controls are rendered here, beside each entry.
-        const load = (label: string) => nav(label, () => {
-          const before = connectionController.getSnapshot().actionHistory;
-          void connectionController.actionHistory().then(() => {
-            const after = connectionController.getSnapshot();
-            if (sessionId && after.session?.sessionId === sessionId && !after.error && after.actionHistory !== before) actionHistoryRead = sessionId;
-            try { api.set({ actionHistoryReadAt: Date.now() }); } catch { /* view closed */ }
-          });
-        });
-        // A decision clears the read history; show it as unread rather than as empty.
-        const decide = (label: string, run: () => Promise<unknown>) => nav(label, () => {
-          void run().finally(() => { actionHistoryRead = null; try { api.set({ actionHistoryReadAt: Date.now() }); } catch { /* view closed */ } });
-        });
-        const entryRows = (entry: ConnectionSnapshot['actionHistory'][number]): Bag[] => [
-          info(entry.description, activityState(entry.state)),
-          ...(entry.state === 'pending' ? [decide('Decline', () => connectionController.rejectProposal(entry.id))]
-            : ['executing', 'reconciliation_required'].includes(entry.state) ? [
-              info('Check this phone, then confirm whether this exact action happened. Nothing is repeated.', ''),
-              decide('It happened', () => connectionController.reconcile(entry.id, true)),
-              decide('It did not happen', () => connectionController.reconcile(entry.id, false)),
-            ] : []),
-        ];
-        const groups: Bag[] = !connection.session
-          ? [{ rows: [...(connection.kind==='starting'?[]:[info(connection.kind === 'recovering' ? agentAvailabilityNotice(connection) : (testMocksEnabled ? 'Connect your remote agent to see activity' : 'Activity appears on the phone that runs your agent'), '')]), nav('Your agent', () => connectionController.open())] }]
-          : !connection.phoneActionsAvailable
-            ? [{ rows: [info('Phone action history', 'Not reported by agent')] }]
-            : connection.actionHistory.length
-              ? [...connection.actionHistory.map(entry => ({ rows: entryRows(entry) })), { rows: [load('Refresh phone action history')] }]
-              : actionHistoryRead === sessionId
-                ? [{ rows: [info('No phone actions recorded', ''), load('Refresh phone action history')] }]
-                : [{ rows: [info('Phone action history', 'Not loaded'), load('Load phone action history')] }];
-        page.groups = groups;
-      }
-      // Memory deletion is not connected; do not offer a control that only explains that.
-      for (const group of page.groups) if (Array.isArray(group?.rows)) group.rows = group.rows.filter((row: Bag) => row?.label !== 'Wipe memory' && (page.title !== 'Privacy & data' || row?.label !== 'Memory'));
-      page.groups = page.groups.filter((group: Bag) => !Array.isArray(group?.rows) || group.rows.length);
-    }
+    for (const page of out.stack) if (page && Array.isArray(page.groups)) page.groups = page.groups.filter((group: Bag) => !Array.isArray(group?.rows) || group.rows.length);
     return out;
   }
   for (const [module, definition] of Object.entries(views)) {
@@ -369,8 +236,8 @@ export function installPrototypeNativeAdapters(
   }
   const settings = views.settings;
   if (settings && typeof settings.render === 'function') {
-    // Later adapters replace settings.render; keep this honesty pass outermost.
-    const finalize = (next: any) => typeof next === 'function' ? (state: Bag, api: Bag) => honestSettings(next(state, api), state, api) : next;
+    // Later adapters replace settings.render; keep this pass outermost.
+    const finalize = (next: any) => typeof next === 'function' ? (state: Bag, api: Bag) => dropEmptyGroups(next(state, api)) : next;
     let exposed = finalize(settings.render);
     Object.defineProperty(settings, 'render', { configurable: true, enumerable: true, get: () => exposed, set: next => { exposed = finalize(next); } });
     restore.unshift(() => { delete settings.render; settings.render = exposed; });

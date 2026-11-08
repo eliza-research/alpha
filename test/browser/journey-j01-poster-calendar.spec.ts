@@ -68,7 +68,7 @@ test('J01 poster scan becomes exactly one reviewed Calendar event; suggestions a
  });
  await page.goto('/?mode=dev');await ready(page);await openBrowserCalendar(page);await returnToApps(page);
  // Home's agenda reads the calendar chosen in Calendar (docs/daily-overview.md): the empty browser
- // calendar, which has nothing to show, so Home draws no calendar card (docs/ui-refresh-2026-11).
+ // calendar, which has nothing to show, so Home draws no calendar card (docs/daily-overview.md).
  const homeAgenda=page.getByRole('region',{name:'Home',exact:true}).locator('[data-alpha-home-calendar]');
  await expect(page.getByRole('region',{name:'Home',exact:true}).locator('[data-alpha-home-apps]')).toBeVisible();
  await expect(homeAgenda).toHaveCount(0);await expect(page.getByRole('region',{name:'Home',exact:true})).not.toContainText('No upcoming events');

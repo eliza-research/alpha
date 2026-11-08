@@ -90,7 +90,7 @@ test.describe('launcher', () => {
     // A mostly sideways drag is a card row or Back, not the shade.
     await drag(page, { x: 120, y: 420 }, 120, 160);
     await closed(page, 'sideways');
-    // An upward drag on Home opens nothing: only the dock opens the chat (docs/ui-refresh-2026-11).
+    // An upward drag on Home opens nothing: only the dock opens the chat (docs/gesture-zones.md).
     await drag(page, { x: 206, y: 600 }, -260);
     await expect(page.locator('[data-alpha-layer="conversation"]')).toHaveAttribute('aria-hidden', 'true');
     // While the sheet is open a pull down closes it.

@@ -32,7 +32,7 @@ async function nativeFixture(page:any,installation='installed',selection='none')
  await page.getByRole('button',{name:'Passwords',exact:true}).click();
 }
 // Settings › Passwords › Password provider: one row whose value is the selection Android reports
-// (docs/ui-refresh-2026-11). Android's answer is read again when Alpha returns to the front.
+// (docs/settings.md). Android's answer is read again when Alpha returns to the front.
 const provider=(page:any)=>page.getByRole('button',{name:'Password provider',exact:true});
 const resume=(page:any)=>page.evaluate(()=>{for(const callback of (window as any).passwordFixture.listeners.appResumed||[])callback({});});
 test('setup handoff does not claim selected; return to Alpha observes the selection',async({page})=>{

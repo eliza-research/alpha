@@ -99,7 +99,9 @@ test('standalone Home scrolls to the screen edge without a simulated status-bar 
   await expect.poll(async()=>{const dock=await composer.boundingBox(),last=await lastApp.boundingBox();return dock!.y-(last!.y+last!.height);}).toBeGreaterThanOrEqual(6);
   await home.evaluate(node=>{node.scrollTop=0;});
   expect((await home.boundingBox())!.height).toBeGreaterThan(usable!.height-140);
-  const tile=await home.getByRole('button').first().boundingBox();
+  // The card row (the date line or the first card) starts at the top; the app grid is anchored to
+  // the bottom (docs/daily-overview.md), so the first app tile is not the top item.
+  const tile=await home.locator('.home-card-row > *').first().boundingBox();
   expect(tile!.y-bounds!.y).toBeLessThan(16);
 
   await home.evaluate(node=>{node.scrollTop=80;});

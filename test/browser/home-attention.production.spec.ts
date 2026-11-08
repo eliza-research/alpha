@@ -1,7 +1,7 @@
 import { test, expect } from '@playwright/test';
 // Production lane (flag-off build, mocks unset). A fresh browser profile has no provider connected,
 // no brief and no verified calendar read, so Home draws none of its cards and shows the date line
-// instead (docs/ui-refresh-2026-11). Nothing fabricates an unread count, a result or avatars. The
+// instead (docs/daily-overview.md). Nothing fabricates an unread count, a result or avatars. The
 // connected Inbox state of the mail card is exercised with development data in home-attention.spec.ts.
 test.beforeEach(({}, info) => { test.skip(info.project.name !== 'production', 'Runs against the flag-off production build only'); });
 const offline = () => localStorage.setItem('alpha.connection.selection.v1', JSON.stringify({ kind: 'offline' }));

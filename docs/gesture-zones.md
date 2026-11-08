@@ -1,4 +1,4 @@
-# Gesture zones and Android's notification shade
+# Gesture zones, the chat dock and Android's notification shade
 
 This page says which swipes belong to Android and which to Alpha, and how a person reaches
 notifications and quick settings. It records the behaviour in source after the owner's
@@ -35,12 +35,34 @@ SystemUI, because a browser has none; it is a developer surface (`simulatedShade
 | A swipe in from the left or right edge | Android (gesture navigation) | Android delivers Back. In the browser build the same swipe within 30px of an edge goes Back. |
 | A swipe up from the bottom edge | Android (gesture navigation) | Android delivers HOME; the launcher flavor shows Alpha Home. |
 | A swipe up on Alpha Home, away from the bottom edge and the dock | Nobody | Nothing opens. Home scrolls if it overflows. Alpha ignores the shared shell's `raise-assistant` swipe result. |
-| A tap on the Alpha mark, or a drag up that starts on the bar or pill | Alpha | Opens the conversation sheet. Only the dock opens the chat (`docs/ui-refresh-2026-11`). |
+| A tap on the Alpha mark, or a drag up that starts on the bar or pill | Alpha | Opens the conversation sheet. Only the dock opens the chat (see [The chat dock](#the-chat-dock)). |
 | The open chat sheet: the Resize chat grabber | Alpha | The sheet follows the finger and rests where it is released. A release within 120 canvas pixels of the collapsed form collapses it, within 120 of the top goes full screen, and a flick (at least 1 canvas pixel per millisecond at release) jumps to either end (`chatRelease` in `chat-overlay-motion-adapter.ts`). |
 | Outside a raised chat (portrait): the open sheet, the bar raised from the pill, or the bar with the keyboard up | Alpha | Any touch (tap, drag, long press) lowers it to the view's resting form (pill, or the unfocused bar on Home and Browser), closes the keyboard and reaches nothing underneath; the next touch is ordinary. A tap lowers on its click, a drag on release, a long press without a click right after release. The draft stays. Assistive technology activates controls directly. In landscape the chat docks beside the app, which stays live and unguarded. Alpha's own layers above the dock (toasts, the voice panel and the standalone app's back fallback) keep their touches. |
 | The keyboard closes by itself (Android's hide key or Back) | Android, then Alpha | The composer lets go of focus, so the bar is no longer raised on Home and Browser and the next touch reaches Home. Detected against the keyboard-free window height (`keyboardFreeHeight`), since `adjustResize` shrinks the WebView. Leaving the app also ends typing. |
-| Back with a raised chat | Alpha | Unwinds one level: keyboard (Android's IME takes Back first), full to sheet, sheet to rest, raised bar to pill, then the view's own Back (`tla/ChatInput.tla`). |
+| Back with a raised chat | Alpha | Unwinds one level: keyboard (Android's IME takes Back first), full to sheet, sheet to rest, raised bar to pill, then the view's own Back (see [The chat dock](#the-chat-dock)). |
 | Full-screen chat | Alpha | No grabber: nothing of Alpha's competes with Android's top-edge band. The header starts 16 screen pixels below Android's status bar on the launcher (`--alpha-chat-full-top`, at least 60px of canvas). Shrink chat returns to the last resting height, Minimize chat collapses. |
+
+## The chat dock
+
+The dock has four forms: the **pill** (`chat: "hidden"`), the **bar** (`input`), the **sheet** and
+**full** screen, plus whether the composer has focus (the keyboard is up). Each view has a resting
+form: the unfocused bar on Home and Browser, the pill everywhere else.
+
+1. **Raised** means above the resting form or with the keyboard up: the sheet or full chat, the bar
+   in a pill view, or the bar with the composer focused.
+2. While the dock is raised (portrait), the **first touch outside** the dock or sheet lowers it to
+   the resting form, closes the keyboard and reaches nothing underneath; the next touch is
+   ordinary. One guard (`data-alpha-dock-guard`, below the dock and above the views) does this for
+   every raised form (`chat-overlay-motion-adapter.ts`, `template.html`).
+3. **Only the dock opens the chat**: a tap on the Alpha mark, or a drag up that starts on the bar or
+   pill, through the dock's own drag handlers. A drag anywhere else scrolls or does nothing;
+   Android's bottom-edge swipe still goes Home. `model.js` `swipe()` has no swipe-up-to-chat rule.
+4. **Back unwinds one level** (`model.js` `back()`): the keyboard, then full to sheet, sheet to the
+   resting form, a raised bar to the pill, then the view's own Back.
+5. Lowering never discards a draft; raising the bar again shows it.
+
+`test/browser/full-chat-grabber.spec.ts` covers the guard on every raised form, the kept draft, the
+Back order and that nothing but the dock opens the chat.
 
 ## Empty Home
 

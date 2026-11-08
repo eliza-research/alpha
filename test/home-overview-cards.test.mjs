@@ -34,7 +34,7 @@ test('agenda card keeps the installed selectors for an event, an overdue reminde
   out.error=html(c.homeAgendaCard({...base,homeCalendarTitle:'Calendar unavailable',homeCalendarHasEvent:false,homeCalendarHasMeta:true,homeCalendarSource:'Open Calendar to retry',homeCalendarVideo:false}));
   assert.match(out.event,/^<button type="button" data-overview-part="card" class="home-calendar-card" data-overview-card="agenda"/);
   for(const attribute of ['data-alpha-home-calendar=""','data-alpha-home-calendar-event="true"','data-alpha-home-calendar-meta="true"','data-alpha-home-calendar-overdue="false"','data-alpha-home-calendar-next="false"','aria-label="Open calendar event: Design review"','aria-description="Work. Read 3:04 PM from calendars on this device"'])assert.ok(out.event.includes(attribute),attribute);
-  // Origin, source and read time are not drawn (docs/ui-refresh-2026-11); the description keeps them.
+  // Origin, source and read time are not drawn (docs/daily-overview.md); the description keeps them.
   assert.match(out.event,/class="home-calendar-time">Wed, Oct 7<\/span><span data-overview-part="origin" class="home-calendar-origin" data-alpha-home-calendar-origin=""><\/span>/);
   assert.doesNotMatch(out.event,/data-alpha-home-calendar-source/);
   assert.match(out.event,/class="serif home-calendar-title">Design review</);
@@ -119,7 +119,7 @@ test('mail card keeps the installed selectors, styles and order of the Home Inbo
   assert.match(out.ready,/<div data-overview-part="rowTitle" style="font-size:18px;font-weight:600;line-height:1.2;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">Invoice<\/div><div data-overview-part="rowDetail" style="font-size:12px;line-height:1.4;color:var\(--mut\);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">Billing<\/div>/);
   assert.match(out.ready,/rowTitle"[^>]*>\(no subject\)</);
   assert.doesNotMatch(out.ready,/Third|Private body|data-overview-part="title"/,'two rows, no body, no headline beside rows');
-  // The read line is not drawn (docs/ui-refresh-2026-11); the accessible description keeps it.
+  // The read line is not drawn (docs/daily-overview.md); the accessible description keeps it.
   assert.match(out.ready,/<span data-overview-part="status" style="display:none"><\/span><\/button>$/);
   assert.equal(c.homeAttentionCard({...values(h.presentHomeInboxCard(base)),homeShowInbox:false}),null,'hidden by Home\'s visibility pass');
   assert.match(out.idle,/data-overview-state="idle"/);

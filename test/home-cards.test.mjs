@@ -162,7 +162,7 @@ test('next item: an overdue reminder does not hide the next event, which keeps i
   assert.deepEqual(H.presentHomeNext({title: '  ', begin: at(17), allDay: false, now, provenance: reminder}),
     {text: 'Next: Untitled event 5:00 PM', source: 'Reminder', description: 'Next: Untitled event, 5:00 PM. Reminder saved on this browser, read 2:50 PM'});
   const cards = readFileSync(new URL('../apps/app/src/prototype/home-overview-cards.ts', import.meta.url), 'utf8');
-  // The next item's source is not drawn on Home (docs/ui-refresh-2026-11); its description keeps it.
+  // The next item's source is not drawn on Home (docs/daily-overview.md); its description keeps it.
   assert.match(cards, /out\.homeCalendarHasNext \? \{text: String\(out\.homeCalendarNext \|\| ''\), source: ''\}/);
   assert.match(cards, /next: \{'data-alpha-home-calendar-next-line': ''\}, nextSource: \{'data-alpha-home-calendar-next-source': ''\}/);
 });
@@ -289,7 +289,7 @@ test('Home template renders the cards Home shows, the date line and the brief ca
   assert.doesNotMatch(home, /\}\}\s+\{\{/, 'each card placeholder is alone in its text node');
   assert.doesNotMatch(home, /home-calendar-card|home-brief-card|data-alpha-home-inbox|\{\{homeCalendarTitle\}\}|\{\{homeBriefTitle\}\}|\{\{homeInboxTitle\}\}/, 'no second copy of the shared card markup');
   assert.match(home, /aria-description="\{\{homeWorkflowDescription\}\}"/);
-  // Freshness is in the accessible description only (docs/ui-refresh-2026-11).
+  // Freshness is in the accessible description only (docs/daily-overview.md).
   assert.doesNotMatch(home, /\{\{homeWorkflowFreshness\}\}|data-alpha-home-workflow-freshness/);
   // The workflows card is drawn only while Home's visibility pass shows it; with no card, the row
   // holds the date line first, with Connect Google only while Google is known disconnected.

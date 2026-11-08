@@ -1,5 +1,5 @@
 import {test,expect,type Page} from '@playwright/test';
-// Android Back pops one Settings level, matching each page's on-screen back (docs/ui-refresh-2026-11, tla/SettingsNav.tla).
+// Android Back pops one Settings level, matching each page's on-screen back (docs/settings.md).
 const back=(page:Page)=>page.evaluate(()=>window.dispatchEvent(new Event('alpha-back',{cancelable:true})));
 const current=(page:Page)=>page.locator('[data-settings-page]:not([inert])').last();
 async function settings(page:Page){

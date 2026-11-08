@@ -445,7 +445,7 @@ for (const shell of HOME_SHELLS) for (const scale of [1, 1.5, 2, 3]) {
     const tile = (await last.boundingBox())!, bar = (await page.locator('[data-alpha-input-bar]').boundingBox())!;
     expect(tile.y + tile.height).toBeLessThanOrEqual(bar.y);
     // Up to 150% Home fits the screen. The card row has one fixed height that follows the text scale
-    // (docs/ui-refresh-2026-11), sized so a calendar card's whole title fits at 200%: from 200% Home
+    // (docs/daily-overview.md), sized so a calendar card's whole title fits at 200%: from 200% Home
     // scrolls, the case the emulator caught, where the checks above hold the last row above the dock.
     expect(top.scrolls).toBe(scale >= 2);
     // The rule the sweep runs agrees.
@@ -455,7 +455,7 @@ for (const shell of HOME_SHELLS) for (const scale of [1, 1.5, 2, 3]) {
 }
 
 /** Home's reserve below the grid: the layout's padding, computed from the insets alone, plus the
- * clearance block a taller dock adds as scroll range (docs/ui-refresh-2026-11). */
+ * clearance block a taller dock adds as scroll range (docs/daily-overview.md). */
 const homeReserve=(page:Page)=>page.locator('[data-alpha-home-layout]').evaluate(el=>({padding:parseFloat(getComputedStyle(el).paddingBottom),extra:document.querySelector('[data-alpha-home-clearance]')!.getBoundingClientRect().height}));
 async function homeHasClearance(page:Page){return page.locator('[data-alpha-home-layout]').evaluate(el=>{const screen=document.querySelector('[data-screen]')!.getBoundingClientRect(),bar=document.querySelector('[data-alpha-layer="composer"]')!.getBoundingClientRect(),extra=document.querySelector('[data-alpha-home-clearance]')!.getBoundingClientRect().height;return parseFloat(getComputedStyle(el).paddingBottom)+extra>=screen.bottom-bar.top+4;});}
 test('Home keeps enough scroll clearance when Android raises the dock and when the draft grows',async({page})=>{
@@ -596,7 +596,7 @@ test.describe('screen titles with a large system font', () => {
 
   test('the Home calendar title is not cut by its own clamp at 200% text', async ({ page }) => {
     await openHome(page, '/', 2);
-    // Home draws the calendar card only with a next event (docs/ui-refresh-2026-11).
+    // Home draws the calendar card only with a next event (docs/daily-overview.md).
     await installHomeCalendar(page, { title: 'Weekly project meeting', startAt: new Date(Date.now() + 3600000).toISOString(), endAt: new Date(Date.now() + 7200000).toISOString() });
     const title = page.locator('.home-calendar-title');
     await expect(title).toBeVisible();

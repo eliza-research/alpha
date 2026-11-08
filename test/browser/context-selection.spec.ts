@@ -233,7 +233,7 @@ test.describe('mail',()=>{
    await page.getByRole('group',{name:'Assistant controls'}).getByRole('button',{name:'Type',exact:true}).click();
    await chatComposer().fill(typed);
    // The raised bar takes the first touch outside it and lowers to the pill; the draft stays
-   // (docs/ui-refresh-2026-11), so the next touch reaches Review.
+   // (docs/gesture-zones.md), so the next touch reaches Review.
    await page.mouse.click(206,300);
    await expect(page.getByRole('group',{name:'Assistant controls'}).getByRole('button',{name:'Type',exact:true})).toBeVisible();
   });

@@ -19,7 +19,7 @@ async function rows(page:Page,values:any[]){await page.evaluate(values=>{(window
 const flow=(id:string,name:string,active=true)=>({id,name,active,description:'',versionId:id+'-version',steps:[]});
 async function connect(page:Page){await page.evaluate(async()=>{const {connectionController:c}=await import('/src/runtime/connection-ui.tsx');await c.initialize();await c.startDevelopment('local');});}
 async function back(page:Page){await page.getByRole('button',{name:'Back to apps',exact:true}).click();}
-/** Home draws the workflows card only for enabled workflows (docs/ui-refresh-2026-11); without one,
+/** Home draws the workflows card only for enabled workflows (docs/daily-overview.md); without one,
  * Workflows opens from its app tile (on Home, or in All apps). */
 async function openWorkflows(page:Page){
  const direct=home(page).locator('[data-alpha-home-apps]').getByRole('button',{name:'Workflows',exact:true});

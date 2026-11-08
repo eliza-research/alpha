@@ -69,7 +69,7 @@ const calls=(page:Page,plugin:string,method:string)=>page.evaluate(([plugin,meth
 
 const current=(page:Page)=>page.locator('[data-settings-page]:not([inert])').last();
 
-// Settings offers the HOME request and reads Android's answer back; it shows no role facts (docs/ui-refresh-2026-11).
+// Settings offers the HOME request and reads Android's answer back; it shows no role facts (docs/settings.md).
 test('Settings offers the HOME request and reads it back after a declined then accepted request',async({page})=>{
  await nativeStub(page,{launcher:true,decline:1});
  await settings(page);
@@ -123,7 +123,9 @@ test('App permissions counts Android grants, Developer has no NPU or uptime, and
  await expect(app(page).getByText(/App crashed · java\.lang\.IllegalStateException · main thread/)).toBeVisible();
  await expect(app(page).getByText(/App process stopped: anr/)).toBeVisible();
  expect(await app(page).innerText()).not.toContain('Fixture note text');
- await app(page).getByRole('button',{name:'Export diagnostics',exact:true}).click();
+ // Export diagnostics sits on About beside the Problem log row.
+ await page.getByRole('button',{name:'Back to About',exact:true}).click();
+ await current(page).getByRole('button',{name:'Export diagnostics',exact:true}).click();
  await expect.poll(()=>page.evaluate(()=>(window as any).settingsFixture.shared.length)).toBe(1);
  const shared=await page.evaluate(()=>(window as any).settingsFixture.shared[0]);
  const report=JSON.parse(shared);

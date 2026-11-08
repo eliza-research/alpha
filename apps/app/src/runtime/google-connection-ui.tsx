@@ -53,6 +53,8 @@ export function GoogleConnectionsPanel(){
  useEffect(()=>{const sync=()=>{setAccess(googleAgentAccess());void publishGoogleAgentAccess();};sync();window.addEventListener('alpha:device-settings',sync);return()=>window.removeEventListener('alpha:device-settings',sync);},[]);
  const returnedWorkspaceOwner=useRef<GoogleWorkspaceBinding|null>(null);
  const returnedWorkspace=useRef<{result:'connected'|'denied'|'failed';connectionId?:string}|null>(null);
+ // A disconnect's result outlives the account reload its own change notice starts.
+ const disconnectNotice=useRef<string|null>(null);
  const returnWatch=useRef<ReturnType<typeof watchGoogleConnectionReturn>|null>(null);
  const active=useRef<AbortController|null>(null),panel=useRef<HTMLDivElement>(null);
  const cloud=connectionController.getCloudClient(),key=googleCalendarAccountKey();
@@ -74,7 +76,8 @@ export function GoogleConnectionsPanel(){
    const rows=await createGoogleAccounts(cloud,()=>connectionController.getCloudClient()).list(abort.signal);if(!current())return;setAccounts(rows);
    if(requiredConnectionId&&!rows.some(row=>row.connected&&row.connectionId===requiredConnectionId)){setNotice('Google returned, but that connection could not be verified. Existing connections are unchanged.');return;}
    // Calendar is one merged view: the agent's Calendar reads every calendar these accounts show in Google.
-   setNotice(returned?.result==='denied'?'Google authorization was cancelled. Existing connections are unchanged.':returned?.result==='failed'?'Google authorization did not complete. Existing connections are unchanged.':!rows.some(row=>row.connected)?'No Google account connected.':rows.some(row=>row.connected&&row.grantedCapabilities.includes('google.calendar.read'))?'Calendar includes the calendars you show in Google.':'');if(returnedWorkspace.current===returned)returnedWorkspace.current=null;
+   const kept=disconnectNotice.current;disconnectNotice.current=null;
+   setNotice(kept??(returned?.result==='denied'?'Google authorization was cancelled. Existing connections are unchanged.':returned?.result==='failed'?'Google authorization did not complete. Existing connections are unchanged.':!rows.some(row=>row.connected)?'No Google account connected.':rows.some(row=>row.connected&&row.grantedCapabilities.includes('google.calendar.read'))?'Calendar includes the calendars you show in Google.':''));if(returnedWorkspace.current===returned)returnedWorkspace.current=null;
    // The Calendar intent links only from this readback, and only the returned grant when Google named one.
    const calendar=googleConnectionController.calendar();
    if(calendar?.authorizing&&(!returned||returned.result==='connected'))await linkCalendar(calendar,requiredConnectionId?rows.filter(row=>row.connectionId===requiredConnectionId):rows);
@@ -82,6 +85,7 @@ export function GoogleConnectionsPanel(){
   finally{if(active.current===abort)setBusy(false);}
  }
  useEffect(()=>{if(!open)return;void load();return()=>{active.current?.abort();};},[open,identity,revision,cloud?.client]);
+ useEffect(()=>{if(!open)disconnectNotice.current=null;},[open]);
  useEffect(()=>{
   if(!open||!binding)return;
   const watcher=watchGoogleConnectionReturn({binding,current:currentGoogleConnectionReturnBinding,foreground:()=>!document.hidden,refresh:()=>setRevision(value=>value+1),
@@ -156,7 +160,8 @@ export function GoogleConnectionsPanel(){
    // Only an unknown pause stays retained for review.
    // An earlier attempt's unknown pause stays reviewable unless this one confirmed the pause.
    if(calendar&&pause!=='unknown')for(const [pauseKey,context] of calendar.retained)if(context.connectionId===account.connectionId&&(pause==='confirmed'||!before.has(pauseKey)))calendar.retained.delete(pauseKey);
-   setNotice(googleDisconnectMessage(result.outcome,account.label,serviceName)+(pause==='confirmed'?' Calendar sync is paused; saved events are kept.':pause==='unknown'?' Calendar sync pause was not confirmed. Review Calendar sync; saved events are unchanged.':''));setAccounts(result.accounts||[]);
+   const message=googleDisconnectMessage(result.outcome,account.label,serviceName)+(pause==='confirmed'?' Calendar sync is paused; saved events are kept.':pause==='unknown'?' Calendar sync pause was not confirmed. Review Calendar sync; saved events are unchanged.':'');
+   disconnectNotice.current=message;setNotice(message);setAccounts(result.accounts||[]);
   }catch(error){if(!abort.signal.aborted){connectionController.rejectCloudSession(cloud.sessionId,error);setNotice('Disconnect was not confirmed. Check Google connections before trying again.'+(calendar&&[...calendar.retained.values()].some(context=>context.connectionId===account.connectionId)?' Review Calendar sync too; saved events are unchanged.':''));}}
   finally{if(active.current===abort)setBusy(false);}
  }

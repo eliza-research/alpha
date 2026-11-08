@@ -1,6 +1,6 @@
 import {test,expect} from '@playwright/test';
 
-// The Privacy & data page and About's runtime facts were removed with the Settings refresh (docs/ui-refresh-2026-11).
+// Settings has no Privacy & data page and About has no runtime facts (docs/settings.md).
 test('connected browser host retains resident memory status',async({page},info)=>{
  test.skip(process.env.VITE_LOCAL_AGENT!=='1','Requires the browser local-agent development profile');
  await page.addInitScript(()=>localStorage.setItem('alpha.connection.selection.v1',JSON.stringify({kind:'offline'})));

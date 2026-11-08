@@ -98,6 +98,23 @@ test('development vault locks when leaving and reports autofill selection only a
   await expect(page.getByRole('button', { name: 'Open Example sign-in', exact: true })).toHaveCount(0);
 });
 
+test('Android Back from a password entry forgets the draft, as Back to Passwords does', async ({ page }) => {
+  await devVault(page);
+  await page.getByRole('button', { name: 'Unlock passwords', exact: true }).click();
+  const draftHeld = () => page.evaluate(async () => (await import('/src/passwords/password-manager.ts')).passwordDraftHeld());
+  for (const leave of ['button', 'android'] as const) {
+    await page.getByRole('button', { name: 'Add password', exact: true }).click();
+    await expect(page.getByText('New password', { exact: true }).first()).toBeVisible();
+    await page.locator('input[aria-label="Password"]').fill('typed-synthetic-Z9q');
+    expect(await draftHeld()).toBe(true);
+    if (leave === 'button') await page.getByRole('button', { name: 'Back to Passwords', exact: true }).click();
+    else await page.evaluate(() => window.dispatchEvent(new Event('alpha-back', { cancelable: true })));
+    await expect(page.getByRole('button', { name: 'Add password', exact: true })).toBeVisible();
+    expect(await draftHeld()).toBe(false);
+  }
+  await noSecretOutsideDialogs(page);
+});
+
 test('browser build without the development profile offers no simulated vault', async ({ page }) => {
   await page.goto('/');
   await page.getByRole('button', { name: 'Settings', exact: true }).click();

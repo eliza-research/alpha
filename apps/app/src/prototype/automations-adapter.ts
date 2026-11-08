@@ -71,7 +71,7 @@ export function installAutomationsAdapter(Component:any,views:Bag){
    if(local.status==='fulfilled')next.push(...local.value.reminders.map(deviceRow));else failures.push(automationIssue('device',local.reason));
    intentStore=store;if(pending.status==='rejected')failures.push({source:'automations',unavailable:false,message:'Pending requests could not be checked. Changes stay blocked until this agent’s request history is available.'});
    rows=mergeAutomationRows(next);issues=failures;state='ready';loadedSession=selected?.sessionId||'offline';
-   // Home shows only enabled automations (docs/ui-refresh-2026-11); with none its card is hidden.
+   // Home shows only enabled automations (docs/daily-overview.md); with none its card is hidden.
    const enabled=rows.filter(row=>row.enabled);
    homeCache={sessionId:loadedSession,rows:enabled.map(row=>({name:row.title,status:''})),total:enabled.length,partial:failures.some(issue=>!issue.unavailable||issue.source==='device'),stale:false,error:false,loadedAt:Date.now()};
    if(!selected)message=ownerContext?'Reminders on this phone stay available.':[agentAvailabilityNotice(),'Reminders on this phone stay available.'].filter(Boolean).join(' ');

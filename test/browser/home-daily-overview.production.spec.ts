@@ -2,7 +2,7 @@ import {test,expect} from '@playwright/test';
 // Production lane (flag-off build, mocks unset): the daily overview on a fresh profile with no
 // account. Nothing has something to show, so Home draws no card and shows the date line; offline,
 // Google is not known to be disconnected, so there is no Connect Google. No fixture content is
-// present, and loading Home makes no request beyond the app's own origin (docs/ui-refresh-2026-11).
+// present, and loading Home makes no request beyond the app's own origin (docs/daily-overview.md).
 test.beforeEach(({}, info) => { test.skip(info.project.name !== 'production', 'Runs against the flag-off production build only'); });
 
 test('fresh Home shows the date line, no cards, no fixture content and no outside request',async({page},info)=>{

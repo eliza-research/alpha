@@ -23,7 +23,7 @@
 <sc-if value="{{storageAccessWarning}}"><p role="alert" class="storage-access-warning">{{storageAccessWarning}}</p></sc-if>
 </sc-slot>
 <sc-slot name="cards">
-    <!-- With no card to show, the row holds the date line (docs/ui-refresh-2026-11); same fixed height. -->
+    <!-- With no card to show, the row holds the date line (docs/daily-overview.md); same fixed height. -->
     <sc-if value="{{homeShowDate}}"><div class="home-date-line" data-alpha-home-date><span class="serif home-date-text">{{homeDateLabel}}</span><sc-if value="{{homeShowSetup}}"><button class="tap home-date-setup" data-alpha-home-connect-google onClick="{{connectGoogle}}">Connect Google</button></sc-if></div></sc-if>
     {{homeAgendaCard}}
     <sc-if value="{{homeShowWorkflows}}"><button data-alpha-home-workflows onClick="{{goFlows}}" aria-label="{{homeWorkflowLabel}}" aria-description="{{homeWorkflowDescription}}" class="home-card" style="flex-shrink: 0; scroll-snap-align: start; width: max-content; min-width: 172px; max-width: calc(100% - 48px); border-radius: 30px; background: var(--s2); padding: 22px; box-sizing: border-box; display: flex; flex-direction: column; justify-content: space-between">

@@ -216,7 +216,7 @@ test('Android: the send review shows Cc and Bcc, an edit after review is reviewe
 
 test('Android: Home withholds the old count until a changed account is reverified', async ({ page }) => {
   test.setTimeout(120_000);
-  // Home draws the mail card only for unread mail (docs/ui-refresh-2026-11), so the listed message is unread.
+  // Home draws the mail card only for unread mail (docs/daily-overview.md), so the listed message is unread.
   await androidWithMailbox(page, true);
   await connected(page);
   await button(page, 'Inbox').click();
@@ -225,7 +225,7 @@ test('Android: Home withholds the old count until a changed account is reverifie
   await expect(row).toBeVisible({ timeout: 30_000 });
   await button(page, 'Back to apps').click();
   const card = page.locator('[data-alpha-layer="home"] [data-alpha-home-inbox]');
-  // The read time is in the card's accessible description, not drawn (docs/ui-refresh-2026-11).
+  // The read time is in the card's accessible description, not drawn (docs/daily-overview.md).
   await expect(card).toHaveAttribute('aria-description', /Updated \d{1,2}:\d{2}/);
   await expect(card).not.toHaveAttribute('aria-description', /Not updated since/);
   // Hold the new account lookup: the old read cannot become current merely because
@@ -244,12 +244,12 @@ test('Android: Home withholds the old count until a changed account is reverifie
   });
   // The current-account background reader clears the old identity while it is
   // unverified, rather than retaining another account's count or timestamp.
-  // With no verified unread mail Home has nothing to show, so the card is gone (docs/ui-refresh-2026-11).
+  // With no verified unread mail Home has nothing to show, so the card is gone (docs/daily-overview.md).
   await expect(card).toHaveCount(0);
   await expect(page.locator('[data-alpha-layer="home"]')).not.toContainText(/Updated|Read \d|unread/);
   expect((await fixture(page)).searches).toBe(searches);
   await page.evaluate(()=>(window as any).releaseHomeAccountRead());
-  // The read time is in the card's accessible description, not drawn (docs/ui-refresh-2026-11).
+  // The read time is in the card's accessible description, not drawn (docs/daily-overview.md).
   await expect(card).toHaveAttribute('aria-description', /Updated \d{1,2}:\d{2}/);
   await expect(card).not.toHaveAttribute('aria-description', /Not updated since/);
   await expect.poll(async()=>(await fixture(page)).searches).toBeGreaterThan(searches);

@@ -54,7 +54,7 @@ html:not(.standalone-app) [data-alpha-layer="home"][data-alpha-home-fits="true"]
  * to the width of the screen so an ordinary word of the title still fits on one line. */
 [data-alpha-home-layout] { --alpha-card-scale:clamp(1,var(--alpha-text-scale,1),1.3); }
 /* One fixed height for the card row, whether it holds cards or the date line that replaces them
- * (docs/ui-refresh-2026-11): a card arriving, leaving or changing its text never changes the row, so
+ * (docs/daily-overview.md): a card arriving, leaving or changing its text never changes the row, so
  * nothing below it moves. It follows the text scale, which changes only when the person changes it. */
 [data-alpha-home-layout] { --alpha-home-row:calc(212px * clamp(1,var(--alpha-text-scale,1),2)); }
 .home-card-row { height:var(--alpha-home-row); box-sizing:border-box; align-items:stretch; }
@@ -337,7 +337,7 @@ html:not(.alpha-landscape) .alpha-phone [data-alpha-layer="home"] { bottom:0!imp
 /* The grid is anchored to a reserve computed from Android's insets alone: the bar's resting place
  * (as --alpha-bottom-clearance, from the inset frozen while text is edited), its 62px height and a
  * 24px gap. Never a measurement of the dock, which moves with its entry animation, a status line or
- * the keyboard (docs/ui-refresh-2026-11, tla/HomeLayout.tla). Home keeps its keyboard-free height
+ * the keyboard (docs/daily-overview.md). Home keeps its keyboard-free height
  * (--alpha-home-height, main.tsx) while text is edited, so the keyboard covers its bottom. */
 .alpha-phone { --alpha-home-clearance:max(28px,calc((max(var(--alpha-home-bottom-inset,var(--native-bottom-inset,0px)),env(safe-area-inset-bottom,0px)) + 12px) / var(--phone-scale,1))); }
 /* --alpha-home-top is Home's offset below the status bar: 44px in the launcher, 0 in the standalone app. */

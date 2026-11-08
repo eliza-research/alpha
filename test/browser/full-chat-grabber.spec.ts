@@ -103,7 +103,7 @@ for(const inset of [0,52])test(`full chat header clears the status bar with no g
 // Outside the open sheet the first touch only collapses the chat; the next one is ordinary.
 const activeView=(page:Page)=>page.locator('html').getAttribute('data-active-view');
 const card=(page:Page)=>page.locator('[data-alpha-home-calendar]');
-// Home draws its calendar card only with an event (docs/ui-refresh-2026-11), so one is saved first;
+// Home draws its calendar card only with an event (docs/daily-overview.md), so one is saved first;
 // the card is the control above the sheet.
 async function eventSheet(page:Page){
  await page.setViewportSize({width:412,height:915});
@@ -177,7 +177,7 @@ test.describe('landscape',()=>{
  });
 });
 
-// One rule for every raised dock (docs/ui-refresh-2026-11, tla/ChatInput.tla): the bar raised from
+// One rule for every raised dock (docs/gesture-zones.md): the bar raised from
 // the pill, or the bar with the keyboard up, takes the first touch outside it, lowers to its
 // resting form and reaches nothing underneath.
 test.describe('raised dock',()=>{
@@ -286,6 +286,38 @@ test.describe('raised dock',()=>{
    await expect(page.locator('html')).toHaveAttribute('data-active-view','home');
    await page.touchscreen.tap(x,y);
    await expect(page.locator('html')).toHaveAttribute('data-active-view','calendar');
+  });
+  // Android sends a tap's click as a separate gesture-tap input after touchend, so other
+  // tasks can run between pointerup and click. The guard must still be the click's target.
+  test('a click that arrives well after pointerup still lands on the guard, not the app',async({page})=>{
+   await raiseInNotes(page);
+   const before=await appState(page);
+   const hit=await page.evaluate(async()=>{
+    const x=206,y=300,el=document.elementFromPoint(x,y) as HTMLElement;
+    const init={bubbles:true,cancelable:true,composed:true,clientX:x,clientY:y,pointerId:7,pointerType:'touch',isPrimary:true};
+    el.dispatchEvent(new PointerEvent('pointerdown',init));
+    el.dispatchEvent(new PointerEvent('pointerup',init));
+    await new Promise(r=>setTimeout(r,120));
+    const target=document.elementFromPoint(x,y) as HTMLElement;
+    const guarded=target.hasAttribute('data-alpha-dock-guard');
+    target.dispatchEvent(new MouseEvent('click',{bubbles:true,cancelable:true,clientX:x,clientY:y,detail:1}));
+    return {first:el.hasAttribute('data-alpha-dock-guard'),guarded};
+   });
+   expect(hit).toEqual({first:true,guarded:true});
+   await expect(pill(page)).toBeVisible();
+   await expect(page.locator('html')).toHaveAttribute('data-active-view','notes');
+   expect(await appState(page)).toBe(before);
+  });
+  test('a released press that sends no click still lowers the dock',async({page})=>{
+   await raiseInNotes(page);
+   await page.evaluate(()=>{
+    const el=document.elementFromPoint(206,300) as HTMLElement;
+    const init={bubbles:true,cancelable:true,composed:true,clientX:206,clientY:300,pointerId:8,pointerType:'touch',isPrimary:true};
+    el.dispatchEvent(new PointerEvent('pointerdown',init));
+    el.dispatchEvent(new PointerEvent('pointerup',init));
+   });
+   await expect(pill(page)).toBeVisible();
+   await expect(guard(page)).toHaveCSS('pointer-events','none');
   });
  });
  test.describe('landscape',()=>{

@@ -210,7 +210,7 @@ test('a verified empty Agent Calendar does not substitute device events', async 
   // The agent calendar was read; its result, not startup, decides the card.
   await expect.poll(() => page.evaluate(() => (window as any).canonicalHomeReads.includes('/api/lifeops/calendar/feed')), { timeout: 20_000 }).toBe(true);
   await page.waitForTimeout(500);
-  // Nothing planned is nothing to show: no card and only the date line (docs/ui-refresh-2026-11).
+  // Nothing planned is nothing to show: no card and only the date line (docs/daily-overview.md).
   const home = page.getByRole('region', {name: 'Home', exact: true});
   await expect(home.locator('[data-alpha-home-date]')).toBeVisible();
   await expect(calendarCard(page)).toHaveCount(0);
@@ -243,7 +243,7 @@ test('an event from another agent is not presented as this agent’s next event 
   await expect.poll(() => page.evaluate(() => (window as any).canonicalHomeReads.includes('/api/lifeops/calendar/feed')), { timeout: 20_000 }).toBe(true);
   await page.waitForTimeout(500);
   // A refused read is a failure, never a verified empty calendar or another agent's event: Home has
-  // nothing to show, and opening Calendar reads it again (docs/ui-refresh-2026-11).
+  // nothing to show, and opening Calendar reads it again (docs/daily-overview.md).
   const home = page.getByRole('region', {name: 'Home', exact: true});
   await expect(home.locator('[data-alpha-home-date]')).toBeVisible();
   await expect(calendarCard(page)).toHaveCount(0);

@@ -122,7 +122,7 @@ test('the chooser names the Eliza Cloud model as Settings does', async ({ page }
   await expect(chooser.getByText('Configured · Cloud · qwen-3.8-27b (Cerebras)', { exact: true })).toBeVisible();
 });
 
-// Settings has no Models page (docs/ui-refresh-2026-11): its one AI row names the provider choice.
+// Settings has no Models page (docs/settings.md): its one AI row names the provider choice.
 for(const cloud of [false,true])test(`native Settings names the AI provider choice and admits nothing: ${cloud?'configured':'unconfigured'}`,async({page})=>{
  const errors:string[]=[];page.on('pageerror',error=>errors.push(error.message));
  await stubAgent(page,cloud);await page.goto('/');

@@ -156,7 +156,7 @@ export function installWorkflowAdapter(Component:any,views:Bag){
  p.renderVals=function(){
   const out=values.call(this),binding=connectionController.getWorkflowClient(),current=binding?.sessionId===listSession&&listPhase==='ready',saved=current?flows.filter(flow=>!flow.removed&&flow.active):[],rows=saved.slice(0,2);
   const loaded=presentHomeWorkflowFreshness({loadedAt:current?listReadAt:null,now:Date.now(),unified:false});
-  // Home lists only enabled workflows (docs/ui-refresh-2026-11); with none its card is hidden.
+  // Home lists only enabled workflows (docs/daily-overview.md); with none its card is hidden.
   return {...out,homeWorkflowFreshness:loaded.visible,homeWorkflowDescription:loaded.description,homeWorkflowRows:rows.map(flow=>({name:flow.name,status:''})),homeWorkflowHasRows:rows.length>0,
    homeWorkflowTitle:rows.length?'':!binding?'Connect your agent':listPhase==='failed'?'Couldn’t load workflows':listPhase==='ready'?'No workflows yet':'Loading workflows…',
    homeWorkflowTime:!binding?'Tap to connect':listPhase==='failed'?'Tap to retry':listPhase!=='ready'?'':saved.length>2?`+${saved.length-2} more`:saved.length?'View '+(saved.length===1?'workflow':'workflows'):'',

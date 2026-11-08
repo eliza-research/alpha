@@ -17,6 +17,8 @@ const RESIZE_TRANSITION = `height .42s ${SHEET_EASE}, border-radius .42s, opacit
 /** How long a tap close keeps the sheet's composer, then fades it to show the bar in its place. */
 const CLOSE_MS = 400;
 const CLOSE_FADE_MS = 120;
+/** How long a released press on the dock guard waits for its click before lowering anyway. */
+const GUARD_CLICK_WAIT_MS = 350;
 type Shell = any;
 // chat-release:begin (dependency-free; exercised by test/chat-release.test.mjs)
 type Mode = "hidden" | "input" | "sheet" | "full";
@@ -787,7 +789,7 @@ export function installChatOverlayMotion(Component: Shell) {
 				shell.chatScrimPress = undefined;
 			},
 		};
-		// One rule for every raised dock (docs/ui-refresh-2026-11, tla/ChatInput.tla): the bar
+		// One rule for every raised dock (docs/gesture-zones.md): the bar
 		// above a pill view's resting form, or any composer bar with the keyboard up, takes the
 		// first touch outside it. That touch lowers the dock to its resting form, closes the
 		// keyboard and reaches nothing underneath; the next touch is ordinary. The draft stays.
@@ -861,12 +863,14 @@ export function installChatOverlayMotion(Component: Shell) {
 				if (press?.id !== event.pointerId) return;
 				// A drag has no click: it lowers on release.
 				if (press.moved) lowerDock();
-				// A tap lowers on its click; a press that sends no click (a long press) lowers
-				// here instead, so the press is never left stuck.
+				// A tap lowers on its click. On Android the click is a separate gesture-tap input
+				// that can arrive after this pointerup's tasks, so the guard stays raised and
+				// waits for it. A press that sends no click lowers once the tap-to-click window
+				// (350ms, as for a drag's compatibility click) has passed, so the press is never left stuck.
 				else
 					setTimeout(() => {
 						if (shell.dockGuardPress === press) lowerDock();
-					}, 0);
+					}, GUARD_CLICK_WAIT_MS);
 			},
 			cancel(event: PointerEvent) {
 				// A cancelled press (the system took the touch) still lowers: the dock is never

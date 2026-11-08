@@ -56,6 +56,10 @@ function transferClient(): PasswordTransferClient | null {
 }
 
 function clearSecrets() { if (draft) draft.password = ''; draft = null; }
+/** Leaving the entry page forgets its draft, typed password included; the vault stays as it is. */
+export function clearPasswordDraft() { clearSecrets(); }
+/** Whether an entry draft (which may hold a typed password) is held in memory. */
+export const passwordDraftHeld = () => draft !== null;
 function locked(message = '') {
   entries = null; clearSecrets(); if (status) status = { ...status, locked: true, unlockRemainingMs: 0 };
   if (expiry) clearTimeout(expiry); expiry = undefined; notice = message;

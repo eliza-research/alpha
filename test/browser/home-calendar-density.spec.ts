@@ -16,7 +16,7 @@ async function openHome(page:Page,theme:string,size:{width:number;height:number}
  },kind);
  await installHomeCalendar(page,expected&&{title:expected.title,startAt:expected.startAt,endAt:expected.endAt,isAllDay:expected.isAllDay});
  const card=page.locator('[data-alpha-home-calendar]');
- // Nothing planned is nothing to show: no card, and the row holds the date line (docs/ui-refresh-2026-11).
+ // Nothing planned is nothing to show: no card, and the row holds the date line (docs/daily-overview.md).
  if(!expected){await expect(page.locator('[data-alpha-home-date]')).toBeVisible();await expect.poll(()=>page.evaluate(()=>(window as any).homeCalendarFixture.requests.length)).toBeGreaterThan(0);await expect(card).toHaveCount(0);return {card,expected};}
  await expect(card).toBeVisible();await page.evaluate(()=>document.fonts.ready);
  await expect(card).toHaveAccessibleName(`Open calendar event: ${expected.title}, ${expected.day}, ${expected.footer}`);await expect(card.locator('.home-calendar-footer')).toHaveText(expected.footer);
@@ -36,7 +36,7 @@ for(const [theme,size,kind] of [
   const box=element.getBoundingClientRect(),title=element.querySelector<HTMLElement>('.home-calendar-title')!,r=title.getBoundingClientRect(),style=getComputedStyle(title),scale=box.width/(element as HTMLElement).offsetWidth,footerElement=element.querySelector('.home-calendar-footer'),footer=footerElement?.getBoundingClientRect();
   return {font:parseFloat(style.fontSize),line:parseFloat(style.lineHeight),height:r.height/scale,clamp:style.webkitLineClamp,titleTop:r.top,titleBottom:r.bottom,footerTop:footer?.top,footerBottom:footer?.bottom,footerText:footerElement?.textContent,footerOverflow:footerElement?footerElement.scrollWidth-footerElement.clientWidth:0,cardBottom:box.bottom,scale,overflow:element.scrollWidth-element.clientWidth,titleOverflow:title.scrollWidth-title.clientWidth,cardHeight:box.height/scale};
  });
- // The card row has one fixed height (docs/ui-refresh-2026-11).
+ // The card row has one fixed height (docs/daily-overview.md).
  expect(geometry.cardHeight).toBeCloseTo(212,1);expect(geometry.overflow).toBe(0);expect(geometry.titleOverflow).toBe(0);expect(geometry.clamp).toBe('3');
  expect(geometry.font).toBe(26);expect(geometry.height/geometry.line).toBeCloseTo(3,1);expect(geometry.footerText).toBe(expected.footer);expect(geometry.footerOverflow).toBe(0);expect(geometry.footerTop!-geometry.titleBottom).toBeGreaterThanOrEqual(11*geometry.scale);expect(geometry.cardBottom-geometry.footerBottom!).toBeGreaterThanOrEqual(21*geometry.scale);
  await writeFile(info.outputPath('geometry.json'),JSON.stringify(geometry,null,2));await page.screenshot({path:info.outputPath('home-calendar.png'),animations:'disabled'});

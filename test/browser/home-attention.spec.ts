@@ -35,7 +35,7 @@ test('a failed calendar read draws no card instead of neutral copy, then recover
     proto.list = () => Promise.reject(Error('Calendar storage unavailable'));
     window.dispatchEvent(new Event('alpha:calendar-preferences'));
   });
-  // A failed read has nothing to show (docs/ui-refresh-2026-11): no card, and no failure copy.
+  // A failed read has nothing to show (docs/daily-overview.md): no card, and no failure copy.
   await expect(card).toHaveCount(0);
   await expect(home.locator('[data-alpha-home-date]')).toBeVisible();
   await expect(home).not.toContainText(/Calendar unavailable|from this browser/);

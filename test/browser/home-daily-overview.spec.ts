@@ -13,7 +13,7 @@ const expect=baseExpect.configure({timeout:15_000});
 test.use({contextOptions:{reducedMotion:'reduce'}});
 import {returnToApps} from './app-navigation';
 import {openBrowserCalendar,selectCalendarSource} from './helpers/browser-calendar';
-// Daily overview contract on Home (development lane), docs/ui-refresh-2026-11: a card is drawn only
+// Daily overview contract on Home (development lane), docs/daily-overview.md: a card is drawn only
 // when it has something to show (the next event or an overdue reminder, enabled workflows, unread
 // mail, a retained brief); with none the row holds the date line. Each card's source and read time
 // are in its accessible description, not drawn. Overdue reminders stay visible, and a failed calendar
@@ -507,7 +507,7 @@ test('workflows card lists only enabled workflows, with their load time in the d
  expect(await page.evaluate(()=>(window as any).overviewFlows.writes)).toBe(0);
 });
 
-// docs/ui-refresh-2026-11 (tla/HomeLayout.tla): the grid is anchored to the bottom with a reserve from
+// docs/daily-overview.md: the grid is anchored to the bottom with a reserve from
 // the insets alone, and Home keeps its keyboard-free layout while text is edited, so a shorter window
 // while the composer has focus (the soft keyboard) does not move the grid.
 test('with the keyboard up Home keeps its keyboard-free layout and the grid does not move',async({page})=>{

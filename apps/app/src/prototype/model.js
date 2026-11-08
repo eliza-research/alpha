@@ -5328,7 +5328,7 @@ class Component extends DCLogic {
     // An open conversation lowers one detent (full, sheet, rest) before Back leaves the view.
     if (S.chat === "full" || S.chat === "sheet") return this.setState(this.shellNavigate({ type: "back" }));
     // A bar raised from the pill lowers before Back leaves the view: one level at a time
-    // (docs/ui-refresh-2026-11, tla/ChatInput.tla).
+    // (docs/gesture-zones.md).
     if (S.chat === "input" && this.rest() === "hidden") return this.setState({ chat: "hidden" });
     if (S.view) {
       var m = this.mod(S.view);
@@ -5396,7 +5396,7 @@ class Component extends DCLogic {
     if (action === "home") return this.goHome();
     if (action === "lower-assistant") return this.setState({ chat: this.rest() });
     // "raise-assistant" (an upward swipe on Home content) opens nothing: only the dock opens the
-    // chat, through its own drag handlers (chat-overlay-motion-adapter.ts, docs/ui-refresh-2026-11).
+    // chat, through its own drag handlers (chat-overlay-motion-adapter.ts, docs/gesture-zones.md).
   }
   pullContext() {
     var S = this.S();

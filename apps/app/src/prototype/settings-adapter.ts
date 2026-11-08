@@ -27,7 +27,7 @@ import { readNativeVoiceTiming } from '../runtime/native-voice-turn';
 import { listenerStatus, openListenerSettings, pauseListener, turnOffListener, wakeListeningStopUnconfirmed, type ListenerStatus } from '../runtime/always-on-listener';
 import { reviewDataReset, type DataResetPlugin } from '@elizaos/capacitor-system/reset';
 import { androidRoleLabel, parseRoleStatuses } from '@elizaos/capacitor-system/settings';
-import { leavePasswordManager, passwordEntryPage, passwordManagerGroups, passwordManagerLifecycle, refreshPasswordManager, PASSWORD_PAGES } from '../passwords/password-manager';
+import { clearPasswordDraft, leavePasswordManager, passwordEntryPage, passwordManagerGroups, passwordManagerLifecycle, refreshPasswordManager, PASSWORD_PAGES } from '../passwords/password-manager';
 
 type Bag = Record<string, any>;
 type PhotoAccess = {scope:'full'|'partial'|'selected'|'denied';images:string;videos:string};
@@ -159,9 +159,8 @@ export function updateCheckDue(checkedAt: number, now: number): boolean {
   return !(now >= checkedAt && now - checkedAt < UPDATE_CHECK_INTERVAL_MS);
 }
 /**
- * Settings pages (docs/ui-refresh-2026-11, tla/SettingsNav.tla). Pages that only repeated Android facts
- * or another flow are gone; a stale or direct route to one, and Developer outside the Developer gate,
- * opens the top level.
+ * Settings pages (docs/settings.md). Any other page, and Developer outside the Developer gate, opens
+ * the top level.
  */
 export const SETTINGS_PAGES: readonly string[] = ['cloud-plan', 'agent-connection', 'agent-recovery-details', 'history', 'listening', 'calendar', 'calendar-google', 'password-provider', 'password-entry', 'cross', 'about', 'problems', 'licenses'];
 export function settingsPage(page: string | null | undefined, developerSurfaces: boolean): string | null {
@@ -482,17 +481,21 @@ export function installSettingsAdapter(Component: any, views: Bag) {
     if (key === 'settings') { void refresh(); void refreshCapabilities(true); }
     return result;
   };
-  // Android Back pops one level, the same parent as each page's on-screen back (tla/SettingsNav.tla).
+  // Android Back pops one level, the same parent as each page's on-screen back (docs/settings.md).
   const back = definition.back;
   definition.back = (state: Bag, api: Bag) => {
     const parent = state.sheet ? undefined : SETTINGS_PARENT[state.page];
-    if (parent) { api.set({ page: parent }); return true; }
+    if (parent) {
+      // The entry page's on-screen back forgets the draft before it leaves; Android Back does too.
+      if (state.page === 'password-entry') clearPasswordDraft();
+      api.set({ page: parent }); return true;
+    }
     return back ? back(state, api) : false;
   };
   definition.render = (state: Bag, api: Bag) => {
     const current = settingsPage(state.page, developerTools);
     // The reference renderer supplies the page frame, the agent name and its sheets. Its prototype pages
-    // are not used: every page below is built from real device and agent state (docs/ui-refresh-2026-11).
+    // are not used: every page below is built from real device and agent state (docs/settings.md).
     const out = render({ ...state, page: current === 'developer' ? 'developer' : null, acct: null, adding: false, sheet: ['conn', 'voice', 'wipe', 'wifiPw', 'forget'].includes(state.sheet?.kind) ? null : state.sheet }, api);
     const native = Capacitor.isNativePlatform();
     const connection = connectionController.getSnapshot();
@@ -647,17 +650,20 @@ export function installSettingsAdapter(Component: any, views: Bag) {
       if(connection.session&&!connection.busy)groups.push(group([action('New conversation',()=>void connectionController.newConversation()),action('Earlier conversations',()=>{api.set({page:'history'});void connectionController.listHistory();})]));
       if(connection.session&&connection.phoneActionsAvailable){
         // Actions to confirm: a proposal to reject, or an action whose outcome only the owner can check.
-        const review:Bag[]=[];
-        for(const item of connection.actionHistory)if(['pending','executing','reconciliation_required'].includes(item.state)){
-          review.push(log(item.title,item.outcome+(item.timestamp?` · ${item.timestamp}`:'')));
-          if(!connection.busy){
+        // Phone action history: every other recorded receipt (completed, failed, rejected, expired).
+        const review:Bag[]=[],history:Bag[]=[];
+        for(const item of connection.actionHistory){
+          const reviewing=['pending','executing','reconciliation_required'].includes(item.state),rows=reviewing?review:history;
+          rows.push(log(item.title,item.outcome+(item.timestamp?` · ${item.timestamp}`:'')));
+          if(item.detail)rows.push(log('Details',item.detail));
+          if(reviewing&&!connection.busy){
             if(item.state==='pending')review.push(action('Reject proposal',()=>void connectionController.rejectAction(item.id)));
             else review.push(action('I verified it happened',()=>void connectionController.reconcileAction(item.id,'applied')),action('I verified it did not happen',()=>void connectionController.reconcileAction(item.id,'not_applied')));
           }
         }
-        const refresh=connection.busy?[info('Phone action history','Please wait…')]:[action('Refresh actions',()=>void connectionController.actionHistory()),action('Sync recorded receipts',()=>void connectionController.actionHistory(true))];
+        history.push(...(connection.busy?[info('Updating','Please wait…')]:[action('Refresh actions',()=>void connectionController.actionHistory()),action('Sync recorded receipts',()=>void connectionController.actionHistory(true))]));
         if(review.length)groups.push(group(review,'Actions to confirm'));
-        groups.push(group(refresh));
+        groups.push(group(history,'Phone action history'));
       }
       out.stack.push(subpage('Agent connection',groups));
       if(current==='history'){

@@ -4,7 +4,7 @@ import {returnToApps} from './app-navigation';
 import {preloadPageModules} from './helpers/page-modules';
 
 const tile=(page:Page)=>page.getByRole('region',{name:'Home',exact:true}).locator('[data-alpha-home-inbox]');
-/** Home draws the mail card only for unread mail (docs/ui-refresh-2026-11), so "not on Home" holds
+/** Home draws the mail card only for unread mail (docs/daily-overview.md), so "not on Home" holds
  * whether the card is gone or still drawn without the text. */
 const lacks=(page:Page,text:string|RegExp)=>expect.poll(async()=>{const card=tile(page);return await card.count()?await card.first().innerText():'';}).not.toMatch(typeof text==='string'?new RegExp(text.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')):text);
 async function fixture(page:Page,theme='light'){
@@ -38,7 +38,7 @@ for(const theme of ['light','dark'])test(`Home Inbox uses cached unread subjects
  await page.screenshot({path:info.outputPath('home-inbox-'+theme+'.png'),animations:'disabled'});
 });
 
-// Home draws the mail card only for unread mail (docs/ui-refresh-2026-11): a complete empty page and
+// Home draws the mail card only for unread mail (docs/daily-overview.md): a complete empty page and
 // a partial one both leave Home with the date line, never a claim about mail it did not load.
 test('Home Inbox draws no card for a complete or a partial page without unread mail',async({page})=>{
  const home=page.getByRole('region',{name:'Home',exact:true});

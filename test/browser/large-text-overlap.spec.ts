@@ -62,7 +62,7 @@ for (const scale of [1, 1.5, 2]) {
       await expect.poll(() => page.evaluate(() => Number(getComputedStyle(document.documentElement).getPropertyValue('--alpha-text-scale')))).toBeCloseTo(scale, 1);
 
       // Empty Home has nothing to show and holds the date line in the card row; the populated
-      // fixture draws its cards (docs/ui-refresh-2026-11).
+      // fixture draws its cards (docs/daily-overview.md).
       const date = page.locator('[data-alpha-layer="home"] [data-alpha-home-date]');
       const cardCount = await page.locator('[data-alpha-layer="home"] :is([data-alpha-home-calendar],[data-alpha-home-workflows],[data-alpha-home-inbox],[data-alpha-home-brief])').count();
       if (source.url === '/') { await expect(date).toBeVisible(); expect(cardCount).toBe(0); }
@@ -126,7 +126,7 @@ test('the Home calendar card shows its whole title at 200% and widens to the row
   const card = page.locator('[data-alpha-home-calendar]');
   const design = (await card.boundingBox())!;
   expect(Math.round(design.width)).toBe(280);
-  // The card row has one fixed height (docs/ui-refresh-2026-11).
+  // The card row has one fixed height (docs/daily-overview.md).
   expect(Math.round(design.height)).toBe(212);
   await setTextScale(page, 2);
   const title = card.locator('.home-calendar-title');

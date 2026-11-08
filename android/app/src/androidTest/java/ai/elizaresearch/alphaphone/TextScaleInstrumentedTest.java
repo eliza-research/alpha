@@ -18,7 +18,7 @@ public final class TextScaleInstrumentedTest {
  private void until(String code)throws Exception{for(int i=0;i<200;i++){if("true".equals(js("Boolean("+code+")")))return;SystemClock.sleep(100);}fail("Text size flow condition: "+code);}
  private void open(String name)throws Exception{js(AppNavigation.request(name));until(AppNavigation.selected(name));}
  private void setSlider(int value)throws Exception{
-  // Text size is a slider on the Settings top level (docs/ui-refresh-2026-11).
+  // Text size is a slider on the Settings top level (docs/settings.md).
   open("Settings");
   String slider="document.querySelector('input[aria-label=\"Text size\"]')";until(slider);
   js("(()=>{const e="+slider+";Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value').set.call(e,'"+value+"');e.dispatchEvent(new Event('input',{bubbles:true}));})()");

@@ -47,6 +47,8 @@ test('signing out of account A and into account B stops the resident before A is
 
   // Sign out of A: the resident stops before A's key is revoked and removed.
   dialog = await cloudPlan(page);
+  // Settings asks before signing out.
+  page.once('dialog', dialog => { expect(dialog.message()).toContain('Sign out of Eliza Cloud?'); void dialog.accept(); });
   await dialog.getByRole('button', { name: 'Sign out of Eliza Cloud', exact: true }).click();
   dialog=page.locator('[role="main"].alpha-cloud-sign-in');
   await expect(dialog.getByRole('button', { name: 'Email me a code', exact: true })).toBeEnabled({ timeout: 30_000 });

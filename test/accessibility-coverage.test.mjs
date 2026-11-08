@@ -202,7 +202,7 @@ test('the dock, title and toast fixes the sweep depends on stay in the source', 
   assert.match(css, /html:not\(\.alpha-landscape\) \.alpha-phone \[data-alpha-layer="home"\] \{ bottom:0!important; scroll-padding-bottom:var\(--alpha-dock-reserve\)!important;/);
   assert.match(css, /html:not\(\.alpha-landscape\) \.alpha-phone \[data-alpha-layer="drawer"\] \{ padding-bottom:0!important; \}/);
   // Home's grid is anchored to a reserve computed from the insets alone (bar rest + 62px bar + 24px
-  // gap), never the measured dock; a taller dock adds scroll range below the grid (docs/ui-refresh-2026-11).
+  // gap), never the measured dock; a taller dock adds scroll range below the grid (docs/daily-overview.md).
   assert.match(css, /\.alpha-phone \{ --alpha-home-clearance:max\(28px,calc\(\(max\(var\(--alpha-home-bottom-inset,var\(--native-bottom-inset,0px\)\),env\(safe-area-inset-bottom,0px\)\) \+ 12px\) \/ var\(--phone-scale,1\)\)\); \}/);
   assert.match(css, /\[data-alpha-home-layout\] \{ padding-bottom:calc\(var\(--alpha-home-clearance\) \+ 86px\)!important; min-height:max\(100%,calc\(var\(--alpha-home-height,100%\) - var\(--alpha-home-top\)\)\)!important; \}/);
   // Home sits 44px below the status bar in the launcher and at the top in the standalone app.

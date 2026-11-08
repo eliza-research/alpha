@@ -115,8 +115,8 @@ async function rendererDump(page: Page) {
 }
 
 const cases: Array<{ scenario: Scenario }> = [{ scenario: 'resident' }, { scenario: 'remote' }, { scenario: 'offline' }];
-// The Privacy & data, Models and Activity pages were removed with the Settings refresh
-// (docs/ui-refresh-2026-11): Settings now makes no privacy or model claim for any connection.
+// Settings has no Privacy & data, Models or Activity page (docs/settings.md): it makes no privacy
+// or model claim for any connection.
 for (const { scenario } of cases) test(`Settings makes no privacy or model claim for the ${scenario} connection`, async ({ page }) => {
   await nativeStub(page, scenario);
   await connect(page, scenario);

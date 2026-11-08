@@ -40,7 +40,7 @@ const digests=(page:Page)=>page.evaluate(async()=>{
 });
 /**
  * The workflows tile, which in this profile only ever carried the brief. Home draws a card only when
- * it has something to show (docs/ui-refresh-2026-11): with no enabled workflow it is absent, and the
+ * it has something to show (docs/daily-overview.md): with no enabled workflow it is absent, and the
  * brief is the dedicated card below.
  */
 const homeBrief=(page:Page)=>page.locator('button[aria-label^="Open workflows"]');

@@ -245,6 +245,8 @@ for (const mode of ['revoked', 'unsupported', 'failed', 'refused-in-body', 'not-
     await expect(page.getByRole('button', { name: 'Sign out of Eliza Cloud', exact: true })).toBeVisible();
     const before = (await nativeCalls(page)).length;
     if (mode === 'cancelled') await page.evaluate(() => { (window as any).holdStop = true; });
+    // Settings asks before signing out.
+    page.once('dialog', dialog => { expect(dialog.message()).toContain('Sign out of Eliza Cloud?'); void dialog.accept(); });
     await page.getByRole('button', { name: 'Sign out of Eliza Cloud', exact: true }).click();
     if (mode === 'cancelled') {
       // Cancel while Cloud AI is still being unbound: sign-out still removes the local key.
@@ -494,6 +496,7 @@ test('passive deletion failures stay quiet; known pending failures preserve sett
     const banner = document.querySelector<HTMLElement>('.alpha-deletion-undo')!, rect = button.getBoundingClientRect();
     Object.assign(banner.style, { top: `${rect.top}px`, left: `${rect.left}px`, right: 'auto', bottom: 'auto', width: `${rect.width}px` });
   });
+  page.once('dialog', dialog => { expect(dialog.message()).toContain('Sign out of Eliza Cloud?'); void dialog.accept(); });
   await signout.click();
   await expect(page.locator('.alpha-connection').getByRole('status')).toContainText('Signed out of Eliza Cloud. This sign-in was revoked.');
   await expect(notice).toHaveCount(0);

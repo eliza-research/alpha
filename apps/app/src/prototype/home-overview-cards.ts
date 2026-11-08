@@ -8,7 +8,7 @@ const maskIcon = (name: string, color: string) => createElement('span', {style: 
 
 /** The Home agenda card: the shared upstream card with Alpha's classes and installed selectors.
  * Absent while Home's visibility pass hides it (no next event or overdue reminder). Origin, source
- * and read time are not drawn (docs/ui-refresh-2026-11); the accessible description carries them. */
+ * and read time are not drawn (docs/daily-overview.md); the accessible description carries them. */
 export function homeAgendaCard(out: Bag): ReactElement | null {
   if (out.homeShowCalendar === false) return null;
   const next = out.homeCalendarHasNext ? {text: String(out.homeCalendarNext || ''), source: ''} : null;

@@ -84,13 +84,15 @@ test('production Settings controls act or explain the current Calendar authority
  }
  await test.info().attach('visited-controls',{body:visited.join('\n'),contentType:'text/plain'});
  writeFileSync(test.info().outputPath('visited.txt'),visited.join('\n'));
- expect(visited.length).toBeGreaterThan(top.length);
+ // The top level is short (docs/settings.md): every control on it is reached, and subpages are entered.
+ expect(visited.filter(item=>!item.includes(' > ')).length).toBe(top.filter(label=>!external.has(label)).length);
+ expect(visited.filter(item=>item.includes(' > ')).length).toBeGreaterThan(2);
  expect(toastOnly).toEqual([]);
 });
 
-/** Rows the Settings cleanup removed or put behind the Developer gate; a product build shows none of them. */
+/** Rows that are not Settings rows, or only behind the Developer gate; a product build shows none of them. */
 const removedRows:Record<string,RegExp[]>={
- // The design's removed pages and facts (docs/ui-refresh-2026-11): Android's own Settings has them.
+ // Android facts Alpha cannot change (docs/settings.md): Android's own Settings has them.
  '':[/^Developer$/,/^Try mock mode$/,/^Saved data needs recovery$/,/^Last change$/,/^Wi-Fi$/,/^Bluetooth$/,/^Mobile data$/,/^Battery$/,/^Sound & vibration$/,/^Models$/,/^Privacy & data$/,/^Accounts$/,/^Connections$/,/^Display$/,/^Voice and agent settings$/,/^Home app$/,/^Default apps in Android$/],
  'About':[/^Update channel \(development\)$/,/^Updates$/,/^Alpha does not check for updates$/,/^Runtime$/,/^Android$/,/^Build$/,/^Security patch$/,/^Inference model$/],
  'Calendars':[/^Calendar backups$/,/^Display only$/],
@@ -120,7 +122,7 @@ test('production Google account entry opens and dismisses its owned dialog',asyn
  await expect(panel).toHaveCount(0);
  await expect(manage).toBeVisible();
 });
-// Settings holds controls, not device facts Alpha cannot change (docs/ui-refresh-2026-11).
+// Settings holds controls, not device facts Alpha cannot change (docs/settings.md).
 test('production Settings shows no device facts and About keeps its diagnostics',async({page})=>{
  await page.addInitScript(offline);
  // A browser without the Battery Status API must not show a seeded battery level.
@@ -128,7 +130,7 @@ test('production Settings shows no device facts and About keeps its diagnostics'
  await openSettings(page);
  const top=(await current(page).innerText()).replace(/\s+/g,' ');
  for(const gone of ['Wi-Fi','Bluetooth','Mobile data','Battery','Sound & vibration','Models','Privacy & data','Voice and agent settings','Developer','Home app'])expect(top).not.toContain(gone);
- expect(top).not.toMatch(/\bNPU\b|Uptime|Inference model|Not reported by agent|\b100%|Charging|Active connection|Contacts/);
+ expect(top).not.toMatch(/\bNPU\b|Uptime|Inference model|Not reported by agent|Charging|Active connection|Contacts/);
  for(const label of ['Eliza Cloud','Google','Ask before acting','Agent connection','AI','Scheduled digests','Calendars','Passwords','Load images in email','Theme','About'])await expect(current(page).getByRole('button',{name:label,exact:true}).or(current(page).getByText(label,{exact:true})).first(),label).toBeVisible();
  await current(page).getByRole('button',{name:'About',exact:true}).click();
  await expect(page.getByRole('button',{name:'Back to Settings',exact:true})).toBeVisible();

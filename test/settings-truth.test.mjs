@@ -105,22 +105,7 @@ test('native system facts are read without new permissions and are omitted when 
  for(const permission of ['ACCESS_WIFI_STATE','CHANGE_WIFI_STATE','BLUETOOTH_CONNECT','READ_PHONE_STATE','WRITE_SECURE_SETTINGS','ACCESS_NOTIFICATION_POLICY'])assert.doesNotMatch(manifest,new RegExp(`<uses-permission[^>]*android\\.permission\\.${permission}"(?![^>]*tools:node="remove")`),permission);
 });
 
-test('Cloud privacy hero includes speech while retaining native and offline/startup truth',async()=>{
- const nativeSource=readFileSync('apps/app/src/prototype/native-adapter.ts','utf8');
- const wording=nativeSource.slice(nativeSource.indexOf('export function egressPrivacy('),nativeSource.indexOf('/** Only a verified resident session'));
- const load=async cloud=>import('data:text/javascript;base64,'+Buffer.from(`const cloudRuntimeEnabled=${cloud};const testMocksEnabled=false;const Capacitor={isNativePlatform:()=>true};const cloudServiceName=environment=>environment==='staging'?'Nebula':'Cloud Test';`+stripTypeScriptTypes(wording,{mode:'strip'})).toString('base64'));
- const cloud=await load(true),native=await load(false);
- const connected={kind:'resident',session:{sessionId:'qa'},cloudAccount:{environment:'staging'}};
- for(const isNative of [true,false]){
-  const fact=cloud.egressPrivacy(connected,isNative);
-  assert.equal(fact.big,'Uses Nebula');assert.ok(fact.sub.includes('go to Nebula for AI'));
-  for(const content of ['When used','messages','selected content','Voice recordings','text for playback'])assert.ok(fact.sub.includes(content),content);
- }
- assert.equal(native.egressPrivacy(connected,true).big,'Identifier swap only');
- for(const [kind,label]of [['starting','Agent starting'],['recovering','Agent not running'],['none','Offline']])assert.equal(cloud.egressPrivacy({kind,session:null,cloudAccount:null},true).big,label);
-});
-
-// Exercise the routing used by the real adapter for stale, removed and developer routes (docs/ui-refresh-2026-11).
+// Exercise the routing used by the real adapter for stale, removed and developer routes (docs/settings.md).
 test('production Settings refuses Developer and removed pages, and keeps its own pages',()=>{
  assert.equal(m.settingsPage('developer',false),null);
  for(const page of ['cloud-plan','agent-connection','history','listening','calendar','calendar-google','password-provider','password-entry','cross','about','problems','licenses'])assert.equal(m.settingsPage(page,false),page);

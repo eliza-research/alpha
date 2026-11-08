@@ -316,7 +316,8 @@ test('loop A on Android: the resident agent answers, the conversation follows ac
   await button(page, 'Settings').click();
   await expect(page.getByRole('button', { name: 'Agent connection', exact: true })).toContainText('Running');
   await page.getByRole('button', { name: 'Agent connection', exact: true }).click();
-  const account = page.getByRole('region', { name: 'Settings',exact:true });
+  // The Agent connection page (the covered top level also names Eliza Cloud).
+  const account = page.locator('[data-settings-page="Agent connection"]:not([inert])');
   await expect(account).toContainText('Running on this device');
   await expect(account.getByText('Eliza Cloud',{exact:true})).toBeVisible();
   await account.getByRole('button',{name:'Back to Settings',exact:true}).click();

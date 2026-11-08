@@ -16,7 +16,7 @@ export function installPrototypeDataAdapter(Component: any, views: Record<string
   installed.add(views);
   // Home draws no card for a failed calendar read, so opening Calendar by any route (the app tile,
   // the card, a link or Back) reads it again. Device calendars and Agent Calendar both report a
-  // failed read through displaySources() (docs/ui-refresh-2026-11).
+  // failed read through displaySources() (docs/daily-overview.md).
   const openView = Component.prototype.openView;
   Component.prototype.openView = function (key: string, ...args: any[]) {
     if (key === 'calendar') { try { const source = views.calendar?.displaySources?.(); if (source?.error) source.retry?.(); } catch { /* Calendar still opens */ } }
@@ -202,7 +202,7 @@ export function setHomeSources(next: Partial<typeof homeSources>) {
   window.dispatchEvent(new Event(HOME_SOURCES_CHANGED));
 }
 
-/** Which Home cards are drawn (docs/ui-refresh-2026-11, tla/HomeLayout.tla). A card is drawn only
+/** Which Home cards are drawn (docs/daily-overview.md). A card is drawn only
  * when it has something to show: the next event or an overdue reminder, an enabled workflow,
  * unread mail from a connected account, a retained brief. With none, Home shows the date, and a
  * Connect Google button while signed in to Eliza Cloud with Google known to be disconnected

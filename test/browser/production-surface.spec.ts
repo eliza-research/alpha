@@ -138,8 +138,9 @@ test('the chooser and Settings offer only production connections', async ({ page
   expect(settingsText).not.toMatch(/mock mode/i);
   expect(settingsText).not.toMatch(/staging/i);
   await page.getByText('About', { exact: true }).click();
-  // The About header names the web runtime; there is no separate Runtime row.
-  await expect(settings.getByText('Web browser', { exact: true }).first()).toBeVisible();
+  // About names the app and its version; runtime and device facts are gone (docs/settings.md).
+  await expect(settings.getByText('Alpha Phone', { exact: true }).first()).toBeVisible();
+  await expect(settings.getByText('Web browser', { exact: true })).toHaveCount(0);
   await expect(settings.getByText('Runtime', { exact: true })).toHaveCount(0);
   await expect(settings.getByText('Web app', { exact: true })).toHaveCount(0);
   await expect(settings.getByText('Development preview', { exact: true })).toHaveCount(0);

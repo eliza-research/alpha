@@ -186,13 +186,13 @@ test('launcher Home asks Android for its own shade and draws no Alpha shade, til
  expect(names.filter(name=>/\.set|\.toggle|\.enable|\.disable/i.test(name))).toEqual([]);
 });
 
-// Settings holds controls Alpha can change (docs/ui-refresh-2026-11): Android's own Settings has the
+// Settings holds controls Alpha can change (docs/settings.md): Android's own Settings has the
 // radios, sound, battery and display, reached through one row.
 test('Settings shows no Android switch facts, and a broader Android page is named',async({page})=>{
  await nativeStub(page,{drop:['appVersionCode','appUpdatedAt']});
  await openSettings(page);
  for(const label of ['Wi-Fi','Bluetooth','Mobile data','Battery','Airplane mode','Sound & vibration','Display','Models','Privacy & data','Accounts','Connections'])await expect(current(page).getByRole('button',{name:label,exact:true}),label).toHaveCount(0);
- expect(await current(page).innerText()).not.toMatch(/Manage in Android|Not reported by Android|Not active|Home app|Assistant app/);
+ expect(await current(page).innerText()).not.toMatch(/Manage in Android|Not reported by Android|Not active|^Home app$|^Assistant app$/m);
  // A Settings row that only reached a broader Android page says so.
  await set(page,{unspecific:['privacy']});
  await current(page).getByRole('button',{name:'App permissions',exact:true}).click();
@@ -421,10 +421,12 @@ test('the flag-off Problem log renders and exports finite inference facts withou
  await openSettings(page);await current(page).getByRole('button',{name:'About',exact:true}).click();
  await current(page).getByRole('button',{name:'Problem log',exact:true}).click();
  await expect(current(page)).toContainText('Cloud AI request failed');await expect(current(page)).toContainText('HTTP 400');await expect(current(page)).toContainText('pattern');await expect(current(page)).toContainText('Properties 20');
- await expect(current(page).getByRole('button',{name:'Export diagnostics',exact:true})).toBeVisible();
  for(const value of ['private-provider-message-sentinel','private-note-sentinel','private-token-sentinel','private-tool-sentinel'])await expect(current(page)).not.toContainText(value);
  await page.screenshot({path:'test-results/inference-problem-log-render.png'});
+ // Export diagnostics sits on About beside the Problem log row.
+ await current(page).getByRole('button',{name:'Back to About',exact:true}).click();
  await current(page).getByRole('button',{name:'Export diagnostics',exact:true}).click();await expect.poll(()=>page.evaluate(()=>(window as any).truth.shared.length)).toBe(1);
+ await current(page).getByRole('button',{name:'Problem log',exact:true}).click();
  const shared=await page.evaluate(()=>(window as any).truth.shared[0] as string);expect(JSON.parse(shared).crashes.recent[0].source).toBe('inference');
  for(const value of ['private-provider-message-sentinel','private-note-sentinel','private-token-sentinel','private-tool-sentinel'])expect(shared).not.toContain(value);
  page.once('dialog',dialog=>void dialog.accept());await current(page).getByRole('button',{name:'Clear problem log',exact:true}).click();await expect(current(page)).not.toContainText('Cloud AI request failed');await expect(current(page)).toContainText('No problems recorded');

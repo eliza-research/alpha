@@ -64,6 +64,7 @@ test('Agent connection presents recorded phone actions in plain language with re
   await page.getByRole('button', { name: 'Settings', exact: true }).click();
   await page.getByRole('button', { name: 'Agent connection', exact: true }).click();
   const panel = page.locator('.alpha-connection');
+  await panel.getByText('Phone action history', { exact: true }).first().click();
   await panel.getByRole('button', { name: 'Refresh actions', exact: true }).first().click();
   // The uncertain action opens with its reconcile controls in the connection panel.
   await expect(panel.getByText('Create note', { exact: true }).first()).toBeVisible();

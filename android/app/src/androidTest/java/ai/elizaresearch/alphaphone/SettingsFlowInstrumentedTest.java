@@ -48,7 +48,7 @@ public class SettingsFlowInstrumentedTest {
   }
   until("!document.querySelector('button[aria-label=\"Back to Settings\"]')");
  }
- /** About shows the installed version and no prototype hardware or model claim (docs/ui-refresh-2026-11). */
+ /** About shows the installed version and no prototype hardware or model claim (docs/settings.md). */
  private void aboutShowsTheInstalledVersion()throws Exception{
   click("About");
   until("document.querySelector('[data-screen]').textContent.includes("+JSONObject.quote(BuildConfig.VERSION_NAME)+")");

@@ -39,7 +39,7 @@ The overview domain and cards are upstream elizaOS code that Alpha consumes thro
 
 ## Cards
 
-Home draws a card only when it has something to show (docs/ui-refresh-2026-11): the calendar card
+Home draws a card only when it has something to show: the calendar card
 for a next event or an overdue reminder, the workflows card for at least one enabled workflow or
 automation (paused ones are not listed), the Inbox card for unread mail from a connected account,
 and the brief card for a retained brief. The other states in this table stay in each card's values
@@ -49,7 +49,7 @@ disconnected (`googleConnectionController.open()`). Source, origin and freshness
 drawn on a card; they stay in its accessible description. A failed calendar read is read again
 when Calendar is opened by any route (`openView('calendar')`).
 
-| Card | Source | Attribution and freshness shown | States |
+| Card | Source | Attribution and freshness (accessible description) | States |
 | --- | --- | --- | --- |
 | Calendar (`data-alpha-home-calendar`) | The calendar source chosen in Calendar: the agent's calendar feed (Agent Calendar) by default; the device calendars read by the Calendar adapter only after the owner chooses them there (Android calendars, or the browser calendar in test-mocks builds), and Agent Calendar again when chosen back (opening the card opens Calendar on the source it showed); reminders from the reminder store. Agent Calendar states: reading, not connected, under review, failed or unavailable (`Open Calendar to retry`, read again on open), fresh (`Agent Calendar`, `As of <time>` in the description), empty only after a complete read, and stale (a partial feed or a snapshot from an earlier day keeps the item with `Not updated since <time>` and `data-alpha-home-calendar-stale="true"`). An agent event shows its day and time range and is named `Open calendar event: <title>, <day>, <time>` as a device event is. A reminder saved on this phone that comes before the agent's next event leads the card with the reminder store's source, as it does with device calendars. Under an overdue reminder the agent's next event shows on the `Next:` line | Calendar name beside the date, `Read <time>` beside the event time; the full sentence is the card's accessible description. An upcoming reminder shows `Reminder` and the reminder store's read time instead of a calendar's | Loading, no upcoming events, results limited to the first 2,000 events, read failed with `Open Calendar to retry` (opening Calendar from the card reads it again), access off, not connected |
 | Overdue reminder (same card) | Reminders that are due and not done (`overdueReminders`) | Header `Overdue reminder` or `N overdue reminders`, `Due <time>`, `Read <time>` of the reminder store; description names the reminder store | Shown before any event, including one already in progress, until it is completed or cancelled or its due time moves to the future. A snoozed reminder that keeps its original due time stays listed. The next event or reminder still shows below it on a `Next: <title> <time>` line with its own source and read time |
@@ -63,6 +63,29 @@ when nothing else is due. Reminders are not affected.
 
 Times are when this app read the data on this device. They are not provider sync times.
 A read from an earlier day shows its date.
+
+## Home layout
+
+The app grid never moves on its own: only a change the person makes (text size, rotation) moves it.
+
+- The card row has one fixed height (`--alpha-home-row` in `phone.css`, scaled with the text
+  size), shared by the cards and the date line, so a card arriving, leaving or changing its text
+  never moves what is below it.
+- The grid is anchored to the bottom with a reserve computed in CSS from Android's insets alone
+  (`--alpha-home-clearance`: the bottom inset, the bar's height and a gap), never from a
+  measurement of the dock, which moves with its entry animation, a status line or the keyboard. A
+  taller dock (a status line, a long draft) only adds scroll range below the grid
+  (`[data-alpha-home-clearance]`).
+- Android's bar insets arrive from the bridge after the first paint, so `main.tsx` keeps the last
+  ones (`alpha.surface-insets.v1`) and applies them before it.
+- On Android the WebView shrinks with the keyboard (`adjustResize`). `main.tsx` publishes Home's
+  keyboard-free height and bottom inset (`--alpha-home-height`, `--alpha-home-bottom-inset`) only
+  while nothing is being edited, so the keyboard covers Home's bottom instead of Home laying
+  itself out again in the smaller canvas.
+
+`test/browser/home-daily-overview.spec.ts` checks the card rules, the date line, the bottom anchor
+and that the grid does not move with the keyboard up; `test/browser/home-calendar-density.spec.ts`
+and `test/browser/large-text-overlap.spec.ts` check the fixed row height.
 
 ## Boundaries
 

@@ -105,7 +105,7 @@ test('transcript keeps the older reading anchor and follows only bottom or a new
 });
 test('Home shows clean Calendar and Workflows tiles with Inbox last',async({page},info)=>{
  await page.addInitScript(()=>localStorage.setItem('alpha.connection.selection.v1',JSON.stringify({kind:'offline'})));await page.goto('/?mode=dev');await installHomeCalendar(page);
- // Only cards with something to show are drawn (docs/ui-refresh-2026-11): nothing planned and no
+ // Only cards with something to show are drawn (docs/daily-overview.md): nothing planned and no
  // enabled workflow draw no card; the development inbox's unread mail is the row's one card.
  const home=page.getByRole('region',{name:'Home',exact:true});await expect(home.getByRole('button',{name:/^Open Inbox: \d+ unread emails?$/})).toBeVisible();
  await expect(home.locator('[data-alpha-home-calendar]')).toHaveCount(0);await expect(home.locator('[data-alpha-home-workflows]')).toHaveCount(0);await expect(home).not.toContainText(/Nothing planned|No brief yet/);

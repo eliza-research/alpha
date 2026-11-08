@@ -165,7 +165,7 @@ installCalendarMonthFocus(Component, VIEWS);
 installChatOverlayMotion(Component);
 installSystemShade(Component,{native:isAndroid});
 // Which Home cards are drawn, from the final card values of every adapter above; the card builders
-// and the template read the result (docs/ui-refresh-2026-11).
+// and the template read the result (docs/daily-overview.md).
 installHomeCardVisibility(Component, () => googleConnectionController.open());
 // The shared agenda, mail and brief cards render the final Home values of every adapter above.
 installHomeOverviewCards(Component);
@@ -187,8 +187,7 @@ function installBrowserCapabilityTiles(Component:any){
   };
 }
 /** Android's bar insets arrive from the bridge after the first paint. The last ones are kept and
- * applied before it, so Home's grid and the dock start where they will stay (docs/ui-refresh-2026-11,
- * tla/HomeLayout.tla). */
+ * applied before it, so Home's grid and the dock start where they will stay (docs/daily-overview.md). */
 const INSETS_KEY = 'alpha.surface-insets.v1';
 function rememberInsets(top: unknown, bottom: unknown) {
   if (!Number.isFinite(top) || !Number.isFinite(bottom)) return;
@@ -280,7 +279,7 @@ function Phone() {
       document.documentElement.style.setProperty('--phone-width', geometry.width);
       document.documentElement.style.setProperty('--phone-height', `${geometry.height}px`);
       // Home keeps its keyboard-free layout while text is edited: the keyboard covers its bottom
-      // instead of Home laying itself out again in the smaller canvas (tla/HomeLayout.tla). Without a
+      // instead of Home laying itself out again in the smaller canvas (docs/daily-overview.md). Without a
       // native inset the CSS fallback stays live, so a later --native-bottom-inset still applies.
       if (!input.editing) {
         document.documentElement.style.setProperty('--alpha-home-height', `${geometry.height}px`);
