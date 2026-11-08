@@ -1203,5 +1203,47 @@
       "Actual launcher package listener registration, document notifications, 120ms debounce and idempotent retirement with late or failed native removal.",
       "One observer and one package subscription, up to four refreshes. Timer ordering and native replies are controlled ports. Inventory and actual Android removal remain separate."
     ]
+  },
+  {
+    "path": "specs/quint/application/BrowserJournalRetention.qnt",
+    "module": "BrowserJournalRetention",
+    "init": "init",
+    "step": "step",
+    "invariant": "safety",
+    "sources": [
+      "apps/app/src/browser/journal-retention.ts",
+      "apps/app/src/browser/calendar.ts",
+      "apps/app/src/browser/daily.ts",
+      "apps/app/src/browser/calendar-store.ts",
+      "apps/app/src/browser/reminder-store.ts",
+      "apps/app/src/browser/calendar-deletions.ts",
+      "apps/app/src/browser/reminder-deletions.ts"
+    ],
+    "tests": [
+      "receiptsAtCountKeepStableLegacyOrderTest",
+      "exactAgeKeepsOnlyThroughBoundaryTest",
+      "countAndAgeUseSameOriginalCohortTest",
+      "writeMayAppendAfterExactReceiptBoundTest",
+      "acknowledgedCreationKeepsTimestampUntilNextTrimTest",
+      "trimSettledAndDanglingClaimsTest",
+      "exactly127SettledAndPendingKeepOrderTest"
+    ],
+    "invariants": [
+      "UniqueIdentities",
+      "DefiniteBoundAfterTrim",
+      "AgeBoundAfterTrim",
+      "PendingSurvivesRetention",
+      "SettledBoundAndClaims"
+    ],
+    "abstractions": [
+      "Exact production bounds use up to 205 initial receipts, 136 deletion rows and 140 claims, finite wall/elapsed timestamps, one clock advance and ordered record identities.",
+      "Missing timestamp is age-exempt and sorts at zero. Pending rows and post-trim append are modeled separately from the bounded definite/settled cohort.",
+      "Valid current and legacy rows, including dangling claims, are modeled. Deleted row recovery, polling, malformed data and physical browser transaction scheduling are separate."
+    ],
+    "bounds": {
+      "maxSamples": 300,
+      "maxSteps": 35,
+      "seed": "123"
+    }
   }
 ]
