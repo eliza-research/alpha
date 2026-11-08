@@ -12,7 +12,7 @@
   "toolSha256": "403a33cab0dff7ace6219b29e7ffef373319677a7d8be6641466dd16a6750b5b",
   "dependencyLockSha256": "944123c801157a7ba3676a886d0b28a54bef32735ae96da5c6dd0f206c88c8bf",
   "sourcePin": "99b49439ce9d0cb5607e9831b9f7f58d89525029",
-  "ledgerSha256": "c816bba5e2404ab467481936cc0e06fcca5ebd1a69f613dc203a2ef774344d53",
+  "ledgerSha256": "96fc3f66eaa4bd66c4a95958ff74a465af9e1c2bfbdc06d2818b0fcd65cefa1c",
   "method": "TypeScript syntax trees for JavaScript/TypeScript and JDK compiler trees for Java. Mutable fields, bindings, containers, state hooks, write sites and asynchronous registration calls are candidates for semantic review.",
   "limitations": [
     "Candidate extraction does not establish state-machine coverage or implementation refinement.",
@@ -22215,7 +22215,8 @@
       "path": "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaReminders.java",
       "sha256": "c13c2911b9e5930b131d0f677b8bab2128803c359acac603df035f9418385909",
       "allocatedModels": [
-        "DeviceActions"
+        "DeviceActions",
+        "NativeReminderDelivery"
       ],
       "sourcePathClass": "other-source-path",
       "classification": "syntactic-candidates",
@@ -26517,7 +26518,8 @@
       "path": "android/app/src/main/java/ai/elizaresearch/alphaphone/ReminderReceiver.java",
       "sha256": "62d66ed26c5f47acadbedd5ac0c9213c384e4b25399702365d141215b884138b",
       "allocatedModels": [
-        "DeviceActions"
+        "DeviceActions",
+        "NativeReminderDelivery"
       ],
       "sourcePathClass": "other-source-path",
       "classification": "syntactic-candidates",
@@ -29804,7 +29806,8 @@
       "sha256": "54dd75b917c05994048553ae83843bae81f600e2fa2d7c51e99d046535b2fe5c",
       "allocatedModels": [
         "BrowserReadingState",
-        "BrowserSession"
+        "BrowserSession",
+        "HostedNoticeQuestion"
       ],
       "sourcePathClass": "other-source-path",
       "classification": "syntactic-candidates",
@@ -34506,7 +34509,8 @@
       "sha256": "3ef6fed4ad3fb1967cbc59deda8cfa61ee64d0c1fa8ae7480267187e4d79c31e",
       "allocatedModels": [
         "FilesTree",
-        "ShellNavigation"
+        "ShellNavigation",
+        "HostedNoticeQuestion"
       ],
       "sourcePathClass": "other-source-path",
       "classification": "syntactic-candidates",
@@ -42666,7 +42670,8 @@
       "allocatedModels": [
         "IdentitySession",
         "GoogleAccounts",
-        "GoogleConsentAdmission"
+        "GoogleConsentAdmission",
+        "GoogleCalendarLinkPublication"
       ],
       "sourcePathClass": "other-source-path",
       "classification": "syntactic-candidates",
@@ -42688,7 +42693,8 @@
       "allocatedModels": [
         "GoogleAccounts",
         "GoogleConnect",
-        "GoogleConsentAdmission"
+        "GoogleConsentAdmission",
+        "GoogleCalendarLinkPublication"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -42892,7 +42898,8 @@
       "path": "apps/app/src/runtime/hosted-digests.ts",
       "sha256": "be3f284715192645684773aa44dfca3364e4e40d5b3fa421fef2846cdc21db66",
       "allocatedModels": [
-        "NoticesAndCaches"
+        "NoticesAndCaches",
+        "HostedNoticeQuestion"
       ],
       "sourcePathClass": "other-source-path",
       "classification": "syntactic-candidates",
@@ -42932,7 +42939,8 @@
       "path": "apps/app/src/runtime/hosted-notice-question.ts",
       "sha256": "f4c9446427b08349ece36c40e684ff00ecdef3485f0d68fc93d61c18a3d5e2c0",
       "allocatedModels": [
-        "NoticesAndCaches"
+        "NoticesAndCaches",
+        "HostedNoticeQuestion"
       ],
       "sourcePathClass": "other-source-path",
       "classification": "syntactic-candidates",
@@ -43583,7 +43591,8 @@
       "path": "apps/app/src/runtime/modal-inert.ts",
       "sha256": "6fcdc9cd4bc581355f5d445af63723f062164748a262fc68f48822008b0b671a",
       "allocatedModels": [
-        "ShellNavigation"
+        "ShellNavigation",
+        "GoogleCalendarLinkPublication"
       ],
       "sourcePathClass": "other-source-path",
       "classification": "syntactic-candidates",
@@ -187394,7 +187403,8 @@
       "allocatedModels": [
         "DeviceActions",
         "NoticesAndCaches",
-        "NotificationCollection"
+        "NotificationCollection",
+        "NativeReminderDelivery"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -187453,7 +187463,8 @@
       "allocatedModels": [
         "DeviceActions",
         "NoticesAndCaches",
-        "NotificationCollection"
+        "NotificationCollection",
+        "NativeReminderDelivery"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -187590,7 +187601,8 @@
       "allocatedModels": [
         "DeviceActions",
         "NoticesAndCaches",
-        "NotificationCollection"
+        "NotificationCollection",
+        "NativeReminderDelivery"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -188049,7 +188061,8 @@
       "allocatedModels": [
         "DeviceActions",
         "NoticesAndCaches",
-        "NotificationCollection"
+        "NotificationCollection",
+        "NativeReminderDelivery"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -188079,7 +188092,8 @@
         "DeviceActions",
         "DurableStore",
         "NoticesAndCaches",
-        "NotificationCollection"
+        "NotificationCollection",
+        "NativeReminderDelivery"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -188426,7 +188440,8 @@
       "allocatedModels": [
         "DeviceActions",
         "NoticesAndCaches",
-        "NotificationCollection"
+        "NotificationCollection",
+        "NativeReminderDelivery"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -188558,7 +188573,8 @@
         "DeviceActions",
         "DurableStore",
         "NoticesAndCaches",
-        "NotificationCollection"
+        "NotificationCollection",
+        "NativeReminderDelivery"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -218446,6 +218462,6 @@
   ],
   "detail": {
     "path": "test-results/quint-state-audit/details.json",
-    "sha256": "fe4c2882ceff816c278abad428dc04392d405bd8aa9a7de64d6cb0ef28078475"
+    "sha256": "83df416d8d4561bb5d41469ac1bbfb5182e497b3021e5eee7c420973980226bb"
   }
 }

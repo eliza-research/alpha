@@ -7310,7 +7310,8 @@
       "path": "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaReminders.java",
       "sha256": "c13c2911b9e5930b131d0f677b8bab2128803c359acac603df035f9418385909",
       "models": [
-        "DeviceActions"
+        "DeviceActions",
+        "NativeReminderDelivery"
       ],
       "scope": "application",
       "treatment": "state-and-transition-projection",
@@ -8532,7 +8533,8 @@
       "path": "android/app/src/main/java/ai/elizaresearch/alphaphone/ReminderReceiver.java",
       "sha256": "62d66ed26c5f47acadbedd5ac0c9213c384e4b25399702365d141215b884138b",
       "models": [
-        "DeviceActions"
+        "DeviceActions",
+        "NativeReminderDelivery"
       ],
       "scope": "application",
       "treatment": "domain-contract-or-support",
@@ -42062,7 +42064,8 @@
       "models": [
         "IdentitySession",
         "GoogleAccounts",
-        "GoogleConsentAdmission"
+        "GoogleConsentAdmission",
+        "GoogleCalendarLinkPublication"
       ],
       "scope": "application",
       "treatment": "domain-contract-or-support",
@@ -42103,7 +42106,8 @@
       "models": [
         "GoogleAccounts",
         "GoogleConnect",
-        "GoogleConsentAdmission"
+        "GoogleConsentAdmission",
+        "GoogleCalendarLinkPublication"
       ],
       "scope": "application",
       "treatment": "state-and-transition-projection",
@@ -43829,7 +43833,8 @@
       "path": "apps/app/src/runtime/modal-inert.ts",
       "sha256": "6fcdc9cd4bc581355f5d445af63723f062164748a262fc68f48822008b0b671a",
       "models": [
-        "ShellNavigation"
+        "ShellNavigation",
+        "GoogleCalendarLinkPublication"
       ],
       "scope": "application",
       "treatment": "state-and-transition-projection",
@@ -506185,7 +506190,8 @@
       "models": [
         "DeviceActions",
         "NoticesAndCaches",
-        "NotificationCollection"
+        "NotificationCollection",
+        "NativeReminderDelivery"
       ],
       "scope": "shared-module-dependency",
       "treatment": "domain-contract-or-support",
@@ -506215,7 +506221,8 @@
       "models": [
         "DeviceActions",
         "NoticesAndCaches",
-        "NotificationCollection"
+        "NotificationCollection",
+        "NativeReminderDelivery"
       ],
       "scope": "shared-module-dependency",
       "treatment": "domain-contract-or-support",
@@ -506241,7 +506248,8 @@
       "models": [
         "DeviceActions",
         "NoticesAndCaches",
-        "NotificationCollection"
+        "NotificationCollection",
+        "NativeReminderDelivery"
       ],
       "scope": "shared-module-dependency",
       "treatment": "domain-contract-or-support",
@@ -506335,7 +506343,8 @@
       "models": [
         "DeviceActions",
         "NoticesAndCaches",
-        "NotificationCollection"
+        "NotificationCollection",
+        "NativeReminderDelivery"
       ],
       "scope": "shared-module-dependency",
       "treatment": "domain-contract-or-support",
@@ -506349,7 +506358,8 @@
         "DeviceActions",
         "DurableStore",
         "NoticesAndCaches",
-        "NotificationCollection"
+        "NotificationCollection",
+        "NativeReminderDelivery"
       ],
       "scope": "shared-module-dependency",
       "treatment": "domain-contract-or-support",
@@ -506391,7 +506401,8 @@
       "models": [
         "DeviceActions",
         "NoticesAndCaches",
-        "NotificationCollection"
+        "NotificationCollection",
+        "NativeReminderDelivery"
       ],
       "scope": "shared-module-dependency",
       "treatment": "domain-contract-or-support",
@@ -506422,7 +506433,8 @@
         "DeviceActions",
         "DurableStore",
         "NoticesAndCaches",
-        "NotificationCollection"
+        "NotificationCollection",
+        "NativeReminderDelivery"
       ],
       "scope": "shared-module-dependency",
       "treatment": "domain-contract-or-support",
@@ -618259,7 +618271,8 @@
       "path": "android/app/src/main/AndroidManifest.xml",
       "models": [
         "Application",
-        "StartupPermissions"
+        "StartupPermissions",
+        "NativeReminderDelivery"
       ],
       "sha256": "5988c10458b25bbda549955ea2c89161e19a262a50cf17eb313c420f38d0c058"
     },

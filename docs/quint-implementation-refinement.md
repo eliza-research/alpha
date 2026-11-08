@@ -533,3 +533,25 @@ and 40 checkpoints. Current source agrees with selected proposed
 interactions and the common full-chat sequence. Separate mismatch receipts
 cover outside taps, Back after the IME dismisses, upward content drags,
 and pointer ownership at the raised dock. The original design stays intact.
+
+The hosted-result question campaign checks 23 schedules and 95
+checkpoints against the actual content review dialog and shared text
+screening rules. An explicit Cancel or Back releases the review. Hiding
+or retiring it preserves the pending notice. The exact retained snapshot
+and token are rechecked before consume. A successful consume can settle
+after retirement while the retired draft remains fenced from chat.
+
+The mounted Google Calendar publication campaign checks 23 Chromium
+schedules and 181 checkpoints. It exercises exact Cloud, client and
+Calendar intent replacement, a held host permission reply, pending link
+readback, and actual focus and inert cleanup. The legacy Settings modal
+has test callers and no production callers. The mounted Google panel
+has its own model and source evidence.
+
+The Android Reminder campaign checks 17 schedules and 153 checkpoints
+against the pinned engine and store, exact receiver and reviewed operation
+receipt. It distinguishes stale and early alarm delivery, permission and
+channel refusal, repeated snooze and Done, reboot replay, and the
+notification that becomes visible before its posted marker is durable.
+Both host JSON libraries produced identical projected traces. Actual
+Android delivery remains a separate boundary.
