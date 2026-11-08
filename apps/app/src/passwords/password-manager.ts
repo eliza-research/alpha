@@ -13,13 +13,15 @@ import type { ElizaPasswordsPlugin, PasswordBinding, PasswordEntrySummary, Passw
  * Settings → Password manager over the shared plugin-native-passwords vault.
  *
  * Secrets boundary: the renderer only ever holds a password the user is typing for this form
- * (module memory, cleared on save, leave, lock and background). Native responses are metadata,
+ * (module memory, cleared once saved, and on leave, lock, unlock expiry and background). An edit
+ * draft's name, username and websites outlive an unlock expiry in module memory, hidden until a
+ * fresh unlock. Native responses are metadata,
  * revalidated by the shared client. Nothing here is written to view state, storage, the agent
  * context, logs or toasts. While any password page is open the agent observation is paused
  * (see passwordSurfaceOpen in agent-adapter.ts).
  */
 type Bag = Record<string, any>;
-type Draft = { id?: string; label: string; username: string; website: string; keep: PasswordBinding[]; password: string; generate: boolean; length: number; confirmDelete: boolean; error: string };
+type Draft = { id?: string; label: string; username: string; website: string; keep: PasswordBinding[]; password: string; passwordDropped?: boolean; generate: boolean; length: number; confirmDelete: boolean; error: string };
 export const PASSWORD_PAGES: readonly string[] = ['password-provider', 'password-entry'];
 export const passwordSurfaceOpen = (settings: Bag | undefined | null) => PASSWORD_PAGES.includes(String(settings?.page || ''));
 
@@ -56,9 +58,16 @@ function transferClient(): PasswordTransferClient | null {
 }
 
 function clearSecrets() { if (draft) draft.password = ''; draft = null; }
-function locked(message = '') {
-  entries = null; clearSecrets(); if (status) status = { ...status, locked: true, unlockRemainingMs: 0 };
+function lockState(message: string) {
+  entries = null; if (status) status = { ...status, locked: true, unlockRemainingMs: 0 };
   if (expiry) clearTimeout(expiry); expiry = undefined; notice = message;
+}
+/** Leave, background, explicit Lock and a damaged vault forget everything, the open draft included. */
+function locked(message = '') { clearSecrets(); lockState(message); }
+/** The unlock window ended: drop the typed password but keep the draft, hidden until a fresh unlock. */
+function expired(message: string) {
+  if (draft) { if (draft.password) draft.passwordDropped = true; draft.password = ''; draft.confirmDelete = false; }
+  lockState(message);
 }
 
 /** Native browser capability; no tab, page or credential data crosses this call. */
@@ -78,19 +87,19 @@ async function refresh() {
     const next = await vault.status();
     if (token !== generation) return;
     status = next;
-    if (next.locked) locked(notice);
+    if (next.locked) expired(notice);
     else {
       const list = await vault.list();
       if (token !== generation) return;
       entries = list;
       if (expiry) clearTimeout(expiry);
       // Reflect the native unlock window; native code enforces it independently.
-      expiry = setTimeout(() => { locked('Locked after inactivity.'); notify(); }, Math.max(1000, next.unlockRemainingMs));
+      expiry = setTimeout(() => { expired('Locked after the unlock time ended.'); notify(); }, Math.max(1000, next.unlockRemainingMs));
     }
   } catch (error) {
     if (token !== generation) return;
     const failure = passwordsError(error);
-    if (failure.code === 'locked') locked('Locked after inactivity.');
+    if (failure.code === 'locked') expired('Locked.');
     else { if (failure.code === 'key-invalidated') { damaged = true; locked(); } notice = failure.message; }
   }
   notify();
@@ -103,7 +112,7 @@ async function run(name: string, task: (vault: PasswordsClient) => Promise<void>
   try { await task(vault); }
   catch (error) {
     const failure = passwordsError(error);
-    if (failure.code === 'locked') locked('Locked after inactivity.');
+    if (failure.code === 'locked') expired('Locked.');
     else if (failure.code === 'key-invalidated') { damaged = true; locked(failure.message); }
     else if (draft && (name === 'save' || name === 'remove')) draft.error = failure.message;
     else notice = failure.message;
@@ -157,11 +166,14 @@ function save(helpers: Helpers) {
   catch (error) { current.error = (error as Error).message; notify(); return; }
   if (!current.label.trim()) { current.error = 'Enter a name.'; notify(); return; }
   if (!websites.length && !current.keep.length) { current.error = 'Add at least one website.'; notify(); return; }
+  // An empty field after expiry dropped a typed password must not quietly keep the old one.
+  if (current.passwordDropped && !current.generate && !current.password) { current.error = 'Type the new password again.'; notify(); return; }
   if (!current.id && !current.generate && !current.password) { current.error = 'Enter or generate a password.'; notify(); return; }
   const secret = current.generate ? undefined : current.password || undefined;
-  current.password = '';
+  // The typed password stays in the draft until the vault accepts it, so a retry sends it again.
   void run('save', async vault => {
     const result = await vault.save({ ...(current.id ? { id: current.id } : {}), label: current.label.trim(), username: current.username, websites, keepBindings: current.keep.map(binding => binding.facet), ...(current.generate ? { generate: { length: current.length } } : secret ? { password: secret } : {}) });
+    current.password = '';
     if (draft !== current) return;
     draft = null;
     notice = result.generated ? `Saved with a new ${result.length}-character password.` : 'Password saved.';
@@ -243,8 +255,14 @@ function browserFillText() {
 /** The add/edit page, or null when no entry is open. */
 export function passwordEntryPage(helpers: Helpers, back: () => void): Bag | null {
   const current = draft;
-  if (!current || !entries) return null;
-  const set = (patch: Partial<Draft>) => { Object.assign(current, patch, { error: '' }); notify(); };
+  if (!current) return null;
+  const title = current.id ? 'Edit password' : 'New password';
+  const leave = () => { clearSecrets(); back(); };
+  // Locked with a draft open: an edit draft holds vault metadata, so no field value is shown.
+  if (!entries) return { isTop: false, notTop: true, cls: 'enter', z: 5, title, hasTitle: true, backLabel: 'Back to Password manager', back: leave, hero: {}, groups: [helpers.group([
+    nav(busy === 'unlock' ? 'Unlocking…' : 'Unlock passwords', () => void run('unlock', async v => { await v.unlock(); await refresh(); }), { sub: 'Locked. Unlock to continue.' }),
+  ])] };
+  const set = (patch: Partial<Draft>) => { Object.assign(current, patch, { error: '' }, patch.password || patch.generate ? { passwordDropped: false } : {}); notify(); };
   const groups: Bag[] = [
     captioned(helpers, '', [
       input(helpers.ic, 'Name', 'Name', 'text', current.label, value => set({ label: value }), 'user'),
@@ -259,7 +277,7 @@ export function passwordEntryPage(helpers: Helpers, back: () => void): Bag | nul
       { kSeg: true, label: 'Length', noAB: true, opts: [16, 20, 32].map(length => ({ label: String(length), on: current.length === length, aria: `Length: ${length}`, css: current.length === length ? 'background:var(--acc);color:#fff' : 'color:var(--mut)', pick: () => set({ length }) })) },
       nav('Type a password instead', () => set({ generate: false })),
     ] : [
-      input(helpers.ic, 'Password', current.id ? 'Leave empty to keep the current password' : 'Password', 'password', current.password, value => set({ password: value })),
+      input(helpers.ic, 'Password', current.passwordDropped ? 'Type the new password again' : current.id ? 'Leave empty to keep the current password' : 'Password', 'password', current.password, value => set({ password: value })),
       nav('Generate a strong password', () => set({ generate: true, password: '' })),
     ]),
   ];
@@ -281,5 +299,5 @@ export function passwordEntryPage(helpers: Helpers, back: () => void): Bag | nul
     }));
   }
   groups.push(captioned(helpers, '', actions, true));
-  return { isTop: false, notTop: true, cls: 'enter', z: 5, title: current.id ? 'Edit password' : 'New password', hasTitle: true, backLabel: 'Back to Password manager', back: () => { clearSecrets(); back(); }, hero: {}, groups };
+  return { isTop: false, notTop: true, cls: 'enter', z: 5, title, hasTitle: true, backLabel: 'Back to Password manager', back: leave, hero: {}, groups };
 }
