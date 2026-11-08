@@ -133,9 +133,6 @@ const webDevelopmentHttp:boolean=import.meta.env!==undefined&&import.meta.env.VI
 /** Product builds send managed Cloud requests only. Device and phone-protocol headers declare this
  * phone to a hosted or paired agent runtime, which exists only in test-mocks builds (#406). */
 const allowedHeaders=new Set(['accept','content-type','authorization',...(testMocksEnabled?['x-eliza-device-id','x-eliza-device-key','x-eliza-device-capabilities','x-eliza-phone-protocol']:[])]);
-/** Maps data POSTs carry a request identity so Cloud can replay them. Same rule as Android's
- * CloudConnectionPolicy.mapsRequestIdentity: only these exact routes, never the global allow set. */
-const mapsRequestIdentity=(name:string,value:unknown,path:string,method:string):boolean=>name==='idempotency-key'&&typeof value==='string'&&/^[A-Za-z0-9_-]{1,128}$/.test(value)&&method==='POST'&&/^\/api\/v1\/maps\/(geocode|reverse|places\/search|places\/details|routes)$/.test(path);
 /** Browser AlphaConnection: managed-service HTTPS without redirects or cookies.
  * Remote connections are available only in explicitly enabled development builds. */
 export function createBrowserConnection(options:{fetch?:typeof fetch;secrets?:BrowserSecretBackend;open?:(url:string)=>boolean;allowHttp?:boolean}={}):ConnectionPort{
@@ -157,7 +154,7 @@ export function createBrowserConnection(options:{fetch?:typeof fetch;secrets?:Br
       if(input.credentialReference)throw new Error('This credential requires its native or development host.');
       if(input.method==='GET'&&input.body!==undefined)throw new Error('Connection request failed');
       const headers=new Headers();
-      for(const [name,value] of Object.entries(input.headers||{})){if(typeof value!=='string'||!allowedHeaders.has(name.toLowerCase())&&!mapsRequestIdentity(name.toLowerCase(),value,url.pathname,input.method)||value.length>16384||/[\r\n]/.test(value))throw new Error('Connection request failed');headers.set(name,value);}
+      for(const [name,value] of Object.entries(input.headers||{})){if(typeof value!=='string'||!allowedHeaders.has(name.toLowerCase())&&!mapsRequestIdentity(name,value,url.pathname,input.method)||value.length>16384||/[\r\n]/.test(value))throw new Error('Connection request failed');headers.set(name,value);}
       if(input.body!==undefined)JSON.parse(input.body);
       const controller=new AbortController();requests.set(input.requestId,controller);
       try{

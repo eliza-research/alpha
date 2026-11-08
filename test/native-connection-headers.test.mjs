@@ -3,14 +3,14 @@ import {stripTypeScriptTypes} from 'node:module';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import vm from 'node:vm';
-const {managedServiceRequest}=await import('../apps/app/src/runtime/managed-service-routes.ts');
+const {managedServiceRequest,mapsRequestIdentity}=await import('../apps/app/src/runtime/managed-service-routes.ts');
 
 const module=readFileSync(new URL('../apps/app/src/runtime/native-connection.ts',import.meta.url),'utf8');
-const source=module.slice(module.indexOf('const mapsRequestIdentity='),module.indexOf('let browserConnection:'));
+const source=module.slice(module.indexOf('/** Browser AlphaConnection:'),module.indexOf('let browserConnection:'));
 // Refusals run with route admission open (test mocks) so only the header rule can refuse them.
 const browserConnection=(testMocksEnabled=false)=>{
  const sent=[];
- const sandbox={testMocksEnabled,managedServiceRequest,ownerRouteAllowed:()=>false,URL,Headers,AbortController,webDevelopmentHttp:false,allowedHeaders:new Set(['accept','content-type','authorization'])};
+ const sandbox={testMocksEnabled,managedServiceRequest,mapsRequestIdentity,ownerRouteAllowed:()=>false,URL,Headers,AbortController,webDevelopmentHttp:false,allowedHeaders:new Set(['accept','content-type','authorization'])};
  vm.runInNewContext(stripTypeScriptTypes(source.replaceAll('export ',''))+';globalThis.factory=createBrowserConnection;',sandbox);
  let id=0;
  const connection=sandbox.factory({fetch:async(url,init)=>{sent.push({url,headers:init.headers});return new Response('{}',{status:200});}});
