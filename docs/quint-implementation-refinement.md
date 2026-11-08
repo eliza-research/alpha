@@ -68,10 +68,11 @@ component projections.
 - `AlphaCloudSignInPlugin` now retires the exact pending record by compare-and-
   exchange before exchange or successful cancellation. A stale callback cannot
   adopt a new attempt, and queued cancellation still retires its captured record
-  when a newer email or phone attempt exists. Fifteen full-plugin schedules check
-  122 checkpoints. The model drops the unavailable previous-token capability on
-  restart. A new interactive attempt overlapping an earlier saved-key
-  acknowledgement requires additional orthogonal activation state.
+  when a newer email or phone attempt exists. Seventeen full-plugin schedules
+  check 152 checkpoints. Separate activation state preserves an older saved-key
+  acknowledgement while a newer interactive attempt waits or persists. Restart
+  drops the unavailable previous-token capability and retains a newer durable
+  pending record. The composition model now includes that overlap explicitly.
 - Settings groups and rows now have stable semantic keys. The actual Chromium
   renderer preserves focused About identity when a delayed permission result
   inserts Finish setup. One source trace checks five checkpoints. Other mutable
