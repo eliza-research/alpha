@@ -37,17 +37,19 @@ test('the schema refuses unearned qualification and distribution',()=>{
  assert.match(claim({evidence:{...record.evidence,apkBuild:{...record.evidence.apkBuild,record:'docs/evidence/missing.json'}}}).join('\n'),/committed evidence file/);
 });
 
-test('the APK build record must be a regular file inside the given root',()=>{
+test('the APK build record must be a regular file inside the given root',t=>{
  const apkRecord=file=>listenerRecordProblems({...record,evidence:{...record.evidence,apkBuild:{...record.evidence.apkBuild,record:file}}},undefined,root).join('\n');
  for(const file of [undefined,'',' ','docs/evidence','../alphaphone/'+record.evidence.apkBuild.record,'docs/../'+record.evidence.apkBuild.record,path.join(root,record.evidence.apkBuild.record)])
   assert.match(apkRecord(file),/committed evidence file/,String(file));
  assert.equal(apkRecord(record.evidence.apkBuild.record),'');
  const other=fs.mkdtempSync(path.join(os.tmpdir(),'listener-root-'));
+ t.after(()=>fs.rmSync(other,{recursive:true,force:true}));
  assert.match(listenerRecordProblems(record,undefined,other).join('\n'),/committed evidence file/,'resolved under the root passed in, not the module root');
 });
 
-test('image or device evidence captured from fixtures is refused',()=>{
+test('image or device evidence captured from fixtures is refused',t=>{
  const dir=fs.mkdtempSync(path.join(os.tmpdir(),'listener-root-'));
+ t.after(()=>fs.rmSync(dir,{recursive:true,force:true}));
  const write=(file,value)=>{fs.mkdirSync(path.dirname(path.join(dir,file)),{recursive:true});fs.writeFileSync(path.join(dir,file),JSON.stringify(value));};
  write(record.evidence.apkBuild.record,{});
  write('docs/evidence/listener/fixture.json',{schema:'alpha-listener-evidence-v1',captureSource:'fixtures'});

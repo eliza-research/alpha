@@ -101,7 +101,8 @@ reviewed composer draft and cancelled old-account result. Native execution is
 pending: `PairedAsrInstrumentedTest` covers real AAC conversion plus synthetic
 native HTTP; `PairedAsrLiveInstrumentedTest` is gated `pairedAsrLive=1` and its
 runner `android-paired-asr-live.mjs` verifies archived matching APKs and real
-47846 transcription/review/edit/TTS playback. The live fixture injects only a
+47846 transcription/review/edit/TTS playback. It reads the host's owner token from
+`ALPHA_ASR_PROFILE/owner-token` to get a pairing code. The live fixture injects only a
 test-owned synthesized AAC recording at capture ingress; it never opens a
 microphone. There is still no physical microphone/user speech acceptance.
 
