@@ -107,19 +107,17 @@ test('an agent create keeps the open note selection, so its own run context does
 });
 
 const twoNotes=()=>[{id:'first-note',kind:'text',title:'First',body:'First body'},{id:'second-note',kind:'text',title:'Second',body:'Second body'}];
-test('an approved agent update queued behind an in-flight editor save is refused and the editor write lands',async()=>{
+// Main's agent write refuses outright while an editor save is pending; it never queues behind it.
+test('an approved agent update during an in-flight editor save is refused and the editor write lands',async()=>{
  const f=await fixture(),target=await f.shell.notesStore.target('fixture-note');
  f.hold();const save=f.edit({body:'Owner body'});await f.started;
- const agent=f.agent({type:'notes_update',target,fields:{title:'Initial',body:'Agent body'}});
- assert.equal(f.shell.notesAgentBusy,true);
- assert.equal(await f.edit({body:'Typed during the agent write'}),false);
+ assert.deepEqual(await f.agent({type:'notes_update',target,fields:{title:'Initial',body:'Agent body'}}),{status:'failed',summary:'Select Previous notes before reviewing a device-record change'});
+ assert.equal(f.shell.notesAgentBusy,false);
  f.release();
  assert.equal(await save,true);
- assert.deepEqual(await agent,{status:'failed',summary:'Selected note revision changed'});
  assert.equal(f.saved().records[0].body,'Owner body');assert.equal(f.shell.notesRaw,JSON.stringify(f.saved()));
- assert.equal(f.shell.notesAgentBusy,false);assert.equal(f.shell.notesAgentRaw,undefined);
+ assert.equal(f.shell.notesAgentRaw,undefined);
  assert.equal(f.shell.notesStorageFailed,false);assert.equal(f.store.needsRecovery,false);assert.equal(await f.draft(),null);
- assert.deepEqual(f.toasts,['Your agent is updating Notes. Try again in a moment.']);
 });
 test('an agent update approved against an in-flight editor save commits on top of it, and edits wait for the refresh',async()=>{
  const f=await fixture();f.hold();const save=f.edit({title:'Owner title'});await f.started;
@@ -140,8 +138,8 @@ test('a draft kept after a foreign write survives reopening and merges with the 
  assert.equal(await f.editNote('second-note',{body:'Kept second body'}),false);
  const kept=await f.draft();
  assert.deepEqual(kept.records.map(n=>[n.id,n.body]),[['second-note','Kept second body']]);assert.equal(kept.reason,'failed');
- assert.equal(f.state.storageStatus,'Not saved. Your changes are kept in an encrypted draft on this phone.');
- assert.deepEqual(f.toasts,['Can\'t save. Your text is still here.']);
+ assert.equal(f.state.storageStatus,'Save unconfirmed. Unsaved changes are kept in an encrypted draft on this device; reopen Alpha to resume.');
+ assert.deepEqual(f.toasts,['Notes could not be saved. Unsaved text remains on this screen.']);
  await f.reopen();
  assert.deepEqual(f.shell.notesDraftKept,kept);
  assert.deepEqual(f.saved().records.map(n=>n.body),['Foreign body','Second body'],'the draft is never applied on reopen');
@@ -165,6 +163,6 @@ test('an agent delete of a note with a kept draft edit moves it to Trash and the
  f.adopt();f.foreign('Second foreign body');
  assert.equal(await f.editNote('first-note',{body:'First edit refused'}),false);
  assert.deepEqual((await f.draft()).records.map(n=>[n.id,n.body]).sort(),[['first-note','First edit refused'],['second-note','Kept second body']]);
- assert.equal(f.state.storageStatus,'Not saved. Your changes are kept in an encrypted draft on this phone.');
+ assert.equal(f.state.storageStatus,'Save unconfirmed. Unsaved changes are kept in an encrypted draft on this device; reopen Alpha to resume.');
  assert.deepEqual(f.saved().records.map(n=>n.id),['first-note'],'the deleted note is not revived');
 });
