@@ -3,10 +3,13 @@ import {readdirSync, readFileSync} from 'node:fs';
 import {join} from 'node:path';
 import {checkTraces, captureInputs} from '../check-traces.mjs';
 import {app, sense, voice, directory, javaTraces, root} from './java.mjs';
+import {loadModels} from '../../../../scripts/quint-lib.mjs';
 import {captureRendererImplementation, voiceTraces, navigationTraces} from './renderer.mjs';
 import {residentLifecycleTraces} from './local-agent.mjs';
 import {checkResetOrchestration} from './reset-orchestration.mjs';
 import {checkDeletionCoordinator} from './deletion-coordinator.mjs';
+import {checkResidentCoordinator} from './resident-coordinator.mjs';
+import {checkCredentialCoordinator} from './credential-coordinator.mjs';
 
 export async function runNativeRefinement() {
   const models = ['VadSegmentation', 'RendererRecovery', 'ResidentScheduling'];
@@ -101,11 +104,14 @@ export async function runNativeRefinement() {
   if (reset.results.some(result => result.status !== 'passed')) throw new Error('Reset coordinator refinement failed');
   results.push(...reset.receipts);
   results.push(await checkDeletionCoordinator([fileURLToPath(import.meta.url)]));
+  results.push(await checkResidentCoordinator([fileURLToPath(import.meta.url)]));
+  const credential = await checkCredentialCoordinator([fileURLToPath(import.meta.url)]);
+  results.push(...credential.receipts);
   const obligations = [
     {model: 'RendererRecovery', obligation: 'Activity lifecycle and visible escape behavior', reason: 'Current adapter projects the pure budget only.', requires: ['Android Activity/WebView harness']},
     {model: 'ResidentScheduling', obligation: 'Plugin lifecycle and OS broadcasts', reason: 'Current adapter proves the pure admission table and same-lock callbacks.', requires: ['Android service integration']},
     {model: 'VadSegmentation', obligation: 'PCM model output and capture pre-roll', reason: 'The gate consumes probabilities; capture/model execution is external.', requires: ['native capture integration']},
-    {model: 'ResidentRuntime', obligation: 'Native plugin lifecycle and retained recovery records', reason: 'Provider helpers and actual renderer stop/connect-cancellation wrappers execute. AlphaLocalAgentPlugin lock/service behavior and the real resident remain outside this driver.'},
+    {model: 'ResidentRuntime', obligation: 'Installed native service and retained recovery records', reason: 'Actual AlphaLocalAgentPlugin lifecycle and credential retirement execute under controlled Android, storage and service ports. Kernel/Binder behavior and encrypted persistence remain external.'},
     {model: 'VoiceSession', obligation: 'Dictation, semantic endpoints, review resume and full barge-in interleavings', reason: 'One-turn/two-sentence actual controller traces cover mute, stop and account retirement with controlled ports.'},
     {model: 'SpeechResources', obligation: 'Combined native microphone/engine/focus lifecycle', reason: 'Capture reservation, PCM queue and focus helpers execute independently. Explicit-stop tail and native pipe ownership remain separate.'},
     {model: 'AlwaysOnListener', obligation: 'Consent store, ListeningEpoch and ListeningService integration', reason: 'Pairwise policy and indicator-loss cases execute without microphone, Android permissions or physical visibility.'},
@@ -120,11 +126,12 @@ export async function runNativeRefinement() {
     {model: 'VoiceIpcAssembly', obligation: 'Deadline scheduling races and actual owner/binding admission', reason: 'Eight actual exchanges check return/cleanup. Static deadline scheduling and local assembly state need a deterministic observer seam.'},
     {model: 'ListenerLeaseProducer', obligation: 'Controller measurement and real SystemUI/Binder identity', reason: 'Actual lease delivery consumes fixture snapshots. Controller/view geometry and real identity checks remain external.'},
   ];
+  const modelPaths = new Map(loadModels().map(model => [model.module, model.path]));
   for (const model of new Set(results.map(receipt => receipt.model))) {
     const related = results.filter(receipt => receipt.model === model);
     const coveredActions = new Set(related.flatMap(receipt => Object.keys(receipt.actions)));
     const coveredFields = new Set(related.flatMap(receipt => receipt.observedFields));
-    const text = readFileSync(join(root, 'specs/quint/native', `${model}.qnt`), 'utf8');
+    const text = readFileSync(join(root, modelPaths.get(model)), 'utf8');
     const missing = [...text.matchAll(/\baction\s+(\w+)/g)].map(match => match[1])
       .filter(name => !['init', 'check', 'step', 'initFor', 'counterInit', 'budgetInit'].includes(name) && !coveredActions.has(name));
     if (missing.length) obligations.push({model, obligation: 'Unexecuted model transitions', reason: missing.join(', ')});

@@ -32,7 +32,8 @@
         "attachedCancellationPreservesServiceTest",
         "nativeAdmissionAdvancesEpochTest",
         "unownedReenrollmentCancellationTest",
-        "lastSurfaceRetiresEnrollmentTest"
+        "lastSurfaceRetiresEnrollmentTest",
+        "lostEnrollmentReplyRetiresOwnershipTest"
       ],
       "invariants": [
         "TypeOK",
