@@ -272,7 +272,16 @@ test('the Files agent contract carries opaque reviewed identities and refuses un
   const valid=contract.validateFilesOperation(op);assert.deepEqual(valid,op);assert.deepEqual(contract.validateFilesOperation(valid),valid);
  }
  for(const bad of [{type:'files_trash',paths:['a','b'],reviewed},{type:'files_trash',paths:['a'],reviewed:[{size:3,modified:1}]},{type:'files_trash',paths:['a'],reviewed:['a'.repeat(42)]},{type:'files_trash',paths:['a'],reviewed:['/'.repeat(43)]},{type:'files_share',paths:['a'],reviewed}])assert.throws(()=>contract.validateFilesOperation(bad));
- assert.equal(contract.filesNeedsIdentity({type:'files_move',paths:['a'],dest:''}),true);
+ // A proposal may omit identities; validation must not invent owner approval.
+ // The mounted Files runner below refuses mutation until review supplies them.
+ for(const proposal of [{type:'files_move',paths:['a'],dest:''},{type:'files_trash',paths:['a']}]){
+  const validated=contract.validateFilesOperation(proposal);
+  assert.deepEqual(validated,proposal);
+  assert.equal(Object.hasOwn(validated,'reviewed'),false);
+  assert.equal(contract.filesContextAllowed(validated,{view:'home'}),false);
+  assert.equal(contract.filesContextAllowed(validated,{view:'files',sensitive:true}),false);
+  assert.equal(contract.filesContextAllowed(validated,{view:'files'}),true);
+ }
  const adapter=readFileSync('.eliza/client-features/plugins/plugin-files/src/browser/files-browser-adapter.ts','utf8');
  assert.match(adapter,/if \(!reviewingPrimary\(\) \|\| !op\.reviewed\) return reviewRequired/);
  assert.match(adapter,/paths: op\.paths,[\s\S]*reviewed: op\.reviewed,[\s\S]*volume: "primary"/);
