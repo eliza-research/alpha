@@ -31,6 +31,7 @@ import {runPilotApkUpdateRefinement} from './pilot-update.mjs';
 import {runEmbeddingStoreIdentityRefinement} from './embedding-store-identity.mjs';
 import {runFactWriteScopeRefinement} from './fact-write-scope.mjs';
 import {runNativeGoogleAccessFileRefinement} from './native-google-access-file.mjs';
+import {runNamedEmbeddingProvenanceRefinement} from './named-embedding-provenance.mjs';
 
 export async function runServicesRefinement() {
   const receipts = [];
@@ -57,7 +58,7 @@ export async function runServicesRefinement() {
     {model: 'NativeCredentialMutation', obligation: 'Real shutdown, encryption and lock interleavings', reason: 'Actual credential-store classification, recheck, admission invalidation and preflight run against primitive storage/lifecycle ports. Those ports do not establish native shutdown or encrypted persistence.'},
     {model: 'PdfWorker', obligation: 'Kernel isolation, descriptor transfer, watchdog and memory kill', reason: 'Actual service request/render/cleanup/reply code executes against Android primitives. Host stubs cannot establish kernel or real PDF renderer behavior.', requires: ['IsolatedPdfInstrumentedTest on a disposable admitted installation']},
   ];
-  for (const check of [runInboxCoordinatorRefinement, runInboxCleanupRefinement, runInboxProviderDraftsRefinement, runWorkflowEngineRefinement, runWorkflowWakeupRefinement, runWorkflowTaskRefinement, runCanonicalNotesRefinement, runTaskServiceRefinement, runTaskSchedulerRuntimeRefinement, runPilotApkUpdateRefinement, runEmbeddingStoreIdentityRefinement, () => runFactWriteScopeRefinement([fileURLToPath(import.meta.url)]), () => runNativeGoogleAccessFileRefinement([fileURLToPath(import.meta.url)])]) {
+  for (const check of [runInboxCoordinatorRefinement, runInboxCleanupRefinement, runInboxProviderDraftsRefinement, runWorkflowEngineRefinement, runWorkflowWakeupRefinement, runWorkflowTaskRefinement, runCanonicalNotesRefinement, runTaskServiceRefinement, runTaskSchedulerRuntimeRefinement, runPilotApkUpdateRefinement, runEmbeddingStoreIdentityRefinement, () => runFactWriteScopeRefinement([fileURLToPath(import.meta.url)]), () => runNativeGoogleAccessFileRefinement([fileURLToPath(import.meta.url)]), () => runNamedEmbeddingProvenanceRefinement([fileURLToPath(import.meta.url)])]) {
     const result = await check();
     receipts.push(...result.receipts);
     obligations.push(...result.obligations);
