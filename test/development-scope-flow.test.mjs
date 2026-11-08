@@ -34,8 +34,8 @@ test('real loopback development request advertises only supported routes and rej
    else {assert.equal(reply.proposals[0].operation.title.length,256);assert.equal(reply.proposals[0].operation.body.length,32000);assert.equal(reply.proposals[0].simulated,true);}
   }
   // Source parity only: this check does not execute Android native validation.
-  const native=await fs.readFile(new URL('../android/app/src/testMocks/java/ai/elizaresearch/alphaphone/DevelopmentAgentPlugin.java',import.meta.url),'utf8');
-  const values=native.match(/Arrays\.asList\(([^\n]+)\)\.contains\(view\)/)[1].match(/"[^"]+"/g).map(x=>JSON.parse(x));
+  const native=await fs.readFile(new URL('../android/app/src/testMocks/java/ai/elizaresearch/alphaphone/DevelopmentChatContract.java',import.meta.url),'utf8');
+  const values=native.match(/VIEWS = Arrays\.asList\(([^\n]+)\);/)[1].match(/"[^"]+"/g).map(x=>JSON.parse(x));
   assert.deepEqual(values,[...DEVELOPMENT_PROPOSAL_VIEWS]);
  }finally{
   const terminal=()=>child.exitCode!==null||child.signalCode!==null;
