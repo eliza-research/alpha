@@ -423,3 +423,27 @@ for(const scenario of ['unbound','recovering','connected'] as const)test(`Agent 
 });
 
 test.beforeEach(async({page})=>seedCompletedAccessSetup(page));
+
+test('a delayed browser permission read preserves the focused Settings action',async({page})=>{
+ await seedCompletedAccessSetup(page);
+ await page.addInitScript(()=>{
+  localStorage.setItem('alpha.connection.selection.v1',JSON.stringify({kind:'offline'}));
+  let release!:()=>void;
+  const pending=new Promise<void>(resolve=>{release=resolve;});
+  (window as any).releaseSettingsPermissions=release;
+  Object.defineProperty(navigator,'permissions',{configurable:true,value:{
+   query:async()=>{await pending;return {state:'prompt',onchange:null,addEventListener(){},removeEventListener(){}};},
+  }});
+ });
+ await page.goto('/');
+ await page.getByRole('button',{name:'Settings',exact:true}).click();
+ const about=current(page).getByRole('button',{name:'About',exact:true});
+ await expect(about).toBeVisible();
+ await expect(current(page).getByRole('button',{name:'Finish setup',exact:true})).toHaveCount(0);
+ await about.focus();
+ await page.evaluate(()=>(window as any).releaseSettingsPermissions());
+ await expect(current(page).getByRole('button',{name:'Finish setup',exact:true})).toBeVisible();
+ await expect(about).toBeFocused();
+ await about.press('Enter');
+ await expect(page.getByRole('heading',{name:'About',exact:true})).toBeVisible();
+});

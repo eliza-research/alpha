@@ -1,5 +1,5 @@
 import {createServer} from 'vite';
-import {sourcePaths} from '../../../../scripts/quint-lib.mjs';
+import {sourcePaths, filesWithin, relativePath} from '../../../../scripts/quint-lib.mjs';
 import {chromium} from '@playwright/test';
 import {fileURLToPath} from 'node:url';
 import {resolve} from 'node:path';
@@ -15,7 +15,9 @@ const accounts = [
 
 export async function runCompositionRefinement() {
   const sources = [...sourcePaths(), 'vite.config.ts', 'package.json', 'package-lock.json',
-    'scripts/quint-lib.mjs', 'test/browser/flag-off-android.ts', 'test/browser/resident-stub.ts',
+    'scripts/quint-lib.mjs', 'test/browser/flag-off-android.ts', 'test/browser/resident-stub.ts', 'test/browser/helpers/native-navigation-protocol.ts', 'upstream.lock.json',
+    ...filesWithin(resolve(root, '.eliza/client-features'), path => /\.(?:ts|tsx|js|json|css|html)$/.test(path)).map(relativePath),
+    ...filesWithin(resolve(root, 'patches/eliza')).map(relativePath), 'scripts/prepare-client-features.mjs',
     fileURLToPath(import.meta.url)];
   const driverHashes = captureInputs(sources);
   const prior = process.env.ELIZA_DEV_ALLOW_TEST_MOCKS;

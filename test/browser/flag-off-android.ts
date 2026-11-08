@@ -1,4 +1,4 @@
-import {installNativeNavigationFixture} from './helpers/native-navigation-protocol';
+import {installNativeNavigationFixture} from './helpers/native-navigation-protocol.ts';
 // Production Android as the FLAG-OFF renderer sees it, for the *.production.spec.ts files that
 // need mail, an agent conversation, scheduled-digest results or device calendars together.
 //
