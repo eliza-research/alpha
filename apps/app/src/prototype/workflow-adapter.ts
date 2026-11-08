@@ -109,7 +109,7 @@ export function installWorkflowAdapter(Component:any,views:Bag){
  p.openWorkflowRun=function(workflowId:string,runId:string){
   if(this!==owner)return;if(!connectionController.getWorkflowClient()){showAgentStatus(this);return;}
   this.openView('workflows');
-  void open(workflowId).then(()=>{if(detail?.id!==workflowId)return;const run=runs.find(r=>r.id===runId&&r.workflowId===workflowId);if(run)void read(run);else api?.toast('This run isn’t in the workflow’s history yet. Check again shortly.');});
+  void open(workflowId).then(()=>{if(this!==owner||this.S().view!=='workflows'||detail?.id!==workflowId)return;const run=runs.find(r=>r.id===runId&&r.workflowId===workflowId);if(run)void read(run);else api?.toast('This run isn’t in the workflow’s history yet. Check again shortly.');});
  };
  let tapBusy=false,tapRequested:{request:'event'|'user';current:()=>boolean}|null=null;
  // A tap this session cannot open: toasted once per token, and offered to the owner to dismiss so older taps can surface.

@@ -29,4 +29,6 @@ test('a workflow run reply is spoken without its [WORKFLOW] block, even a malfor
  assert.equal(f.sends,1);
  const spoken=(f.speechInputs||[]).map(input=>input.text).join('\n');
  assert.match(spoken,/Submitted workflow run run-1/);assert.match(spoken,/It takes a minute/);assert.doesNotMatch(spoken,/WORKFLOW|runId|steps/);
+ // The voice panel shows the reply the same way.
+ assert.doesNotMatch(String(f.renderChat().lastReply),/WORKFLOW|runId/);
 });

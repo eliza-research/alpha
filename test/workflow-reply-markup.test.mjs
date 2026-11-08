@@ -18,6 +18,8 @@ test('a well-formed workflow block becomes a run card and keeps the submitted li
 test('malformed and unterminated blocks are removed and give no card',()=>{
  for(const body of ['{not json','[]','"run-1"','{"workflowId":"wf-1"}','{"runId":"run-1","workflowId":7}','{"runId":"","workflowId":"wf-1"}',''])
   assert.deepEqual(workflowReplyText(`Submitted workflow run run-1.\n\n[WORKFLOW]\n${body}\n[/WORKFLOW]\n\nDone.`),{text:'Submitted workflow run run-1.\n\nDone.',runs:[]},body);
+ // An empty block ends at its own closing tag; the text after it stays.
+ assert.deepEqual(workflowReplyText('Submitted workflow run run-1.\n\n[WORKFLOW]\n[/WORKFLOW]\n\nDone.'),{text:'Submitted workflow run run-1.\n\nDone.',runs:[]});
  // A cut-off block (a stream still arriving, or a truncated reply) is hidden, even with complete JSON.
  assert.deepEqual(workflowReplyText(`Submitted workflow run run-1.\n\n[WORKFLOW]\n${marker}`),{text:'Submitted workflow run run-1.',runs:[]});
  assert.deepEqual(workflowReplyText(`Submitted workflow run run-1.\n\n[WORKFLOW]\n{"id":"run-1","workfl`),{text:'Submitted workflow run run-1.',runs:[]});

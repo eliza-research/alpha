@@ -601,9 +601,11 @@ export function installPrototypeVoiceAdapter(Component: any, views: Record<strin
         if(!sent){if(token===generation&&chatDestination===chat)cancelChat();throw new DOMException('Voice message discarded','AbortError');}
         const result=sent.result;input.signal.throwIfAborted();current();
         if(result.complete){markVoiceTiming('first-token');markVoiceTiming('final-reply');}
-        conversationLastTranscript=sent.text;conversationLastReply=result.text;conversationReviewRequired=result.reviewRequired===true&&!result.awaitingUserInput;if(result.awaitingUserInput!==undefined)liveCapture?.release(true);
-        // The clip loop speaks result.text through upstream's speakable filter, which keeps [WORKFLOW] blocks.
-        const spoken=typeof result.text==='string'?workflowReplyText(result.text).text:result.text;return spoken===result.text?result:{...result,text:spoken};
+        // The clip loop speaks result.text through upstream's speakable filter, which keeps [WORKFLOW] blocks;
+        // the voice panel shows the same text.
+        const spoken=typeof result.text==='string'?workflowReplyText(result.text).text:result.text;
+        conversationLastTranscript=sent.text;conversationLastReply=spoken;conversationReviewRequired=result.reviewRequired===true&&!result.awaitingUserInput;if(result.awaitingUserInput!==undefined)liveCapture?.release(true);
+        return spoken===result.text?result:{...result,text:spoken};
         }finally{cueTurn.settled=true;liveCapture?.release();}
       };
       const voiceStopped=(value:BatchVoiceState)=>{

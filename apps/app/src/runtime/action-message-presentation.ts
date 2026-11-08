@@ -160,8 +160,9 @@ export function collapseSystemNotices<T extends ChatRow>(messages: T[]): T[] {
  * JSON naming string runId and workflowId becomes a run card; a malformed or unterminated block
  * is removed and never shown or spoken raw. */
 export type WorkflowRunCard={workflowId:string;runId:string;title:string};
-// String.replace resets a global pattern's lastIndex, so one shared pattern is safe.
-const blockPattern=/(^|\n)[ \t]*\[WORKFLOW\][ \t]*(?:\r?\n([\s\S]*?))?(?:\r?\n[ \t]*(\[\/WORKFLOW\])[ \t]*(?=\r?\n|$)|$)/g;
+// String.replace resets a global pattern's lastIndex, so one shared pattern is safe. The body is
+// tried empty first, so an empty block ends at its own closing tag, not at the end of the reply.
+const blockPattern=/(^|\n)[ \t]*\[WORKFLOW\][ \t]*(?:\r?\n([\s\S]*?))??(?:\r?\n[ \t]*(\[\/WORKFLOW\])[ \t]*(?=\r?\n|$)|$)/g;
 const runCard=(body:string):WorkflowRunCard|null=>{
  let value:unknown;try{value=JSON.parse(body);}catch{return null;}
  if(!value||typeof value!=='object'||Array.isArray(value))return null;
