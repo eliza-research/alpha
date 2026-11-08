@@ -55,18 +55,28 @@ coordinator obligations continue below.
 ## Further coordinator findings
 
 The next source-driven tranche executes complete coordinators beyond the first
-component projections. Its failing traces remain explicit work items.
+component projections.
 
-- `AlphaDataReset` preserves an existing retry count for manual attempts. The
-  current model resets that count. Failure-budget write errors can also leave a
-  missing budget and admit another automatic reset on every process launch.
-  Durable admission and storage-failure transitions need implementation and model
-  refinement together.
+- `AlphaDataReset` now commits an initial budget before its pending marker and
+  reserves each attempt before listener or Android effects. A process mutex and
+  file lock serialize the main and recovery processes. Missing legacy budgets,
+  failed durable writes and contended locks defer automatic effects. The real
+  coordinator passed 20 traces with 368 checkpoints and 48 direct assertions,
+  including two JVM processes competing for the last automatic slot. These
+  receipts are included in the native aggregate. Android power-loss behavior,
+  device approval and externally observed erasure remain platform obligations.
 - `AlphaCloudSignInPlugin.resumeAcknowledgements` finishes the saved-key
   acknowledgement without the previous token held by an interrupted interactive
   call. The model currently retains that token across restart. The recovered
   state must preserve uncertainty about previous-session revocation.
-- Positional Settings row keys can retarget an already-focused button when delayed permission data inserts a group. Stable group/row identity is being added and checked through the real renderer.
+- Settings groups and rows now have stable semantic keys. The actual Chromium
+  renderer preserves focused About identity when a delayed permission result
+  inserts Finish setup. One source trace checks five checkpoints. Other mutable
+  lists remain under review in the
+  [focus identity audit](../specs/quint/refinement/application/focus-identity-audit.md).
+- The live permission walkthrough allows a held request from an earlier account
+  to advance after the account changes. Its owner-generation fence and completed
+  remount behavior are being refined against the real React coordinator.
 - Main chat integration uses `installAgentAdapter` and separate draft-recovery
   state. The first `AlphaClient` and `AssistantDraftController` projections leave
   that live coordinator work open.

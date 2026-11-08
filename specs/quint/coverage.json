@@ -21847,7 +21847,8 @@
       "sha256": "95b28704d1c8ea02a948036b2392b4b9780ed298a55595df6640978962e0fe58",
       "models": [
         "Application",
-        "AssistantConversation"
+        "AssistantConversation",
+        "ShellNavigation"
       ],
       "scope": "application",
       "treatment": "state-and-transition-projection",
@@ -23297,9 +23298,10 @@
     },
     {
       "path": "apps/app/src/prototype/dc-lite.js",
-      "sha256": "6c6e4689f89c7c42574c21bade9cbaf64437342333b6426ec363605f7e11598f",
+      "sha256": "3b106bf61f3c1b5982ffc254475e4c2efbeab077b1e2e69ead2400424e1c22c8",
       "models": [
-        "Application"
+        "Application",
+        "ShellNavigation"
       ],
       "scope": "application",
       "treatment": "state-and-transition-projection",
@@ -23405,47 +23407,55 @@
           "text": "var as = n.getAttribute(\"as\") || \"item\";"
         },
         {
-          "line": 114,
+          "line": 113,
+          "text": "var identity = (n.getAttribute(\"key\") || \"\").match(WHOLE);"
+        },
+        {
+          "line": 115,
           "text": "var s = Object.create(scope); s[as] = item; s.$index = i;"
         },
         {
-          "line": 120,
-          "text": "var asset = scope.iconAssets?.[props(n.children[0], scope, 0).d];"
+          "line": 116,
+          "text": "var itemKey = identity ? lookup(identity[1], s) : i;"
         },
         {
           "line": 122,
+          "text": "var asset = scope.iconAssets?.[props(n.children[0], scope, 0).d];"
+        },
+        {
+          "line": 124,
           "text": "var original = props(n, scope, key);"
         },
         {
-          "line": 123,
+          "line": 125,
           "text": "var icon = { key: key, \"data-alpha-icon\": asset };"
         },
         {
-          "line": 129,
+          "line": 131,
           "text": "var libraryStyle = iconStyle(asset, !!original.style?.fill && original.style.fill !== \"none\");"
         },
         {
-          "line": 138,
+          "line": 140,
           "text": "var outer = Object.assign({}, icon, { style: original.style });"
         },
         {
-          "line": 145,
+          "line": 147,
           "text": "var isSvg = n.namespaceURI === \"http://www.w3.org/2000/svg\";"
         },
         {
-          "line": 146,
+          "line": 148,
           "text": "var tname = isSvg ? n.localName : tag;"
         },
         {
-          "line": 147,
+          "line": 149,
           "text": "var c = kids(n.childNodes, scope);"
         },
         {
-          "line": 148,
+          "line": 150,
           "text": "var built = props(n, scope, key);"
         },
         {
-          "line": 157,
+          "line": 159,
           "text": "var tpl = templateElement.content;"
         }
       ]
@@ -30977,10 +30987,11 @@
     },
     {
       "path": "apps/app/src/prototype/settings-adapter.ts",
-      "sha256": "e0bf5bafd528b984a5f3522ffb12e32adb4ac87a53ea883bef771b6f7fd93e5a",
+      "sha256": "315a102e167912eaf3f0086d166d8299aec513abff1abc3b4cddf68fecbef4bd",
       "models": [
         "PreferencesAndPresentation",
-        "SettingsNav"
+        "SettingsNav",
+        "ShellNavigation"
       ],
       "scope": "application",
       "treatment": "state-and-transition-projection",
@@ -31062,11 +31073,11 @@
           "text": "if (owner === this) { capabilityAbort?.abort(); capabilityAbort = null; inferenceAbort?.abort();inferenceAbort=null; owner = null; ++generation; facts = {}; con"
         },
         {
-          "line": 462,
+          "line": 467,
           "text": "owner?.setState({ theme, appearanceStorageRead: { theme } });"
         },
         {
-          "line": 468,
+          "line": 473,
           "text": "++generation; void device.setTextScale({ percent: requested }).then(result => { if (owner === instance && token === scaleGeneration) { facts = { ...facts, ...re"
         }
       ]
@@ -31200,7 +31211,7 @@
     },
     {
       "path": "apps/app/src/prototype/template.html",
-      "sha256": "afd430488dafc987b0cffec7019d539835bdaf75ecf114dd4dea38017378fccc",
+      "sha256": "34ec1ea846ef84fcc532d799dc47e4b630d80e77b916616793b49ac532ae17d9",
       "models": [
         "ShellNavigation",
         "PreferencesAndPresentation",
@@ -32086,7 +32097,8 @@
       "sha256": "b5ef8599412fd221683c5a21d5ec918fbb0e7e0438aa540e0bb961dea3dc4152",
       "models": [
         "Application",
-        "AssistantConversation"
+        "AssistantConversation",
+        "ShellNavigation"
       ],
       "scope": "application",
       "treatment": "state-and-transition-projection",

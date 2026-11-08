@@ -5,6 +5,7 @@ import {checkTraces, captureInputs} from '../check-traces.mjs';
 import {app, sense, directory, javaTraces, root} from './java.mjs';
 import {voiceTraces, navigationTraces} from './renderer.mjs';
 import {residentLifecycleTraces} from './local-agent.mjs';
+import {checkResetOrchestration} from './reset-orchestration.mjs';
 
 export async function runNativeRefinement() {
   const models = ['VadSegmentation', 'RendererRecovery', 'ResidentScheduling'];
@@ -86,6 +87,9 @@ export async function runNativeRefinement() {
       'Stop resolution, rejection and timeout are actual wrapper outcomes. Connect cancellation observes actual cancelStart calls and absent publication.',
       'The port assumes native owned-start/attached-start cancellation semantics. Actual AlphaLocalAgentPlugin lock/service behavior remains external.',
     ]}));
+  const reset = await checkResetOrchestration([fileURLToPath(import.meta.url)]);
+  if (reset.results.some(result => result.status !== 'passed')) throw Error('Reset orchestration trace checking failed');
+  results.push(...reset.receipts);
   const obligations = [
     {model: 'RendererRecovery', obligation: 'Activity lifecycle and visible escape behavior', reason: 'Current adapter projects the pure budget only.', requires: ['Android Activity/WebView harness']},
     {model: 'ResidentScheduling', obligation: 'Plugin lifecycle and OS broadcasts', reason: 'Current adapter proves the pure admission table and same-lock callbacks.', requires: ['Android service integration']},
@@ -94,7 +98,7 @@ export async function runNativeRefinement() {
     {model: 'VoiceSession', obligation: 'Dictation, semantic endpoints, review resume and full barge-in interleavings', reason: 'One-turn/two-sentence actual controller traces cover mute, stop and account retirement with controlled ports.'},
     {model: 'SpeechResources', obligation: 'Combined native microphone/engine/focus lifecycle', reason: 'Capture reservation, PCM queue and focus helpers execute independently. Explicit-stop tail and native pipe ownership remain separate.'},
     {model: 'AlwaysOnListener', obligation: 'Consent store, ListeningEpoch and ListeningService integration', reason: 'Pairwise policy and indicator-loss cases execute without microphone, Android permissions or physical visibility.'},
-    {model: 'ResetRecovery', obligation: 'Durable reset marker, listener-first retries and externally observed erasure', reason: 'This adapter executes ResetAuthorization only. An accepted package-clear request cannot establish erasure.'},
+    {model: 'ResetRecovery', obligation: 'Android durability, installed credential approval and externally observed erasure', reason: 'Actual reset authorization, durable reservation, listener-first retry and process-exit paths execute against controlled ports, including cross-process contention. Device power-loss behavior, Binder identity and actual package erasure require platform observations.'},
     {model: 'DeletionJournal', obligation: 'Coordinator identity admission, multi-row scheduling and provider persistence', reason: 'One row and controlled atomic store/provider outcomes execute. Power-loss durability and actual provider effects are external.'},
     {model: 'MediaLifecycle', obligation: 'Catalog, edit review, temporary camera resources and video lifecycle', reason: 'NativeReadEpoch and exact attachment copy/publication guards execute. MediaStore, camera and Activity lifecycle remain external.'},
     {model: 'DeviceActions', obligation: 'AOSP image/role, Contacts, Reminders and Clock', reason: 'Only the real SMS journal executes in these traces. Carrier outcomes are fixture inputs.'},

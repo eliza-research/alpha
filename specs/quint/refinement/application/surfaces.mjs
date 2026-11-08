@@ -20,7 +20,7 @@ export async function shellNavigation() {
       ${methods}
     };globalThis.shell=new Shell();`, context);
     const shell = context.shell;
-    const observe = () => ({'s.view': shell.S().view || 'home', 's.chat': shell.S().chat === 'hidden' ? 'input' : shell.S().chat,
+    const observe = () => ({'s.view': shell.S().view || 'home', 's.chat': shell.S().chat,
       's.shade': shell.S().shade, 's.drawer': shell.S().drawer});
     const t = trace(`open-back-${view}`, observe());
     shell.openView(view); checkpoint(t, 'actual shell opens view', call('open', view), observe());

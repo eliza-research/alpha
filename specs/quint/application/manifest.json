@@ -34,7 +34,13 @@
       "deliveryTest",
       "settingsInsertionKeepsFocusTest",
       "settingsReorderKeepsFocusTest",
-      "settingsRemovalClearsFocusTest"
+      "settingsRemovalClearsFocusTest",
+      "sameViewKeepsSendTest",
+      "backKeepsSendTest",
+      "changedViewRetiresSendTest",
+      "hiddenRetiresSendTest",
+      "suspendedRetiresSendTest",
+      "suspendedClaimRefusedTest"
     ],
     "sources": [
       "apps/app/src/prototype/model.js",
@@ -44,7 +50,9 @@
       "apps/app/src/runtime/modal-inert.ts",
       "apps/app/src/prototype/dc-lite.js",
       "apps/app/src/prototype/settings-adapter.ts",
-      "apps/app/src/prototype/template.html"
+      "apps/app/src/prototype/template.html",
+      "apps/app/src/prototype/agent-adapter.ts",
+      "apps/app/src/runtime/alpha-client.ts"
     ],
     "abstractions": [
       "Finite representative identities and contents. Exact source symbols and modeling limits are documented in the family README.",

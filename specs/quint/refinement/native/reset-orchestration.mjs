@@ -72,12 +72,12 @@ public class AtomicFile {
   return ports;
 }
 
-export async function generateResetOrchestrationTraces() {
+export async function generateResetOrchestrationTraces(extraSources = []) {
   const temporary = mkdtempSync(join(tmpdir(), 'alpha-reset-refinement-'));
   const inputs = [...productSources, fixturePath, fileURLToPath(import.meta.url),
     join(directory, 'ResetOrchestrationTraces.java'), join(directory, 'ResetTraceHooks.java'),
     join(directory, 'ResetAdmissionRegression.java'),
-    join(directory, 'Trace.java'), join(directory, 'java.mjs')];
+    join(directory, 'Trace.java'), join(directory, 'java.mjs'), ...extraSources];
   try {
     const ports = portsWithObservers();
     const files = [];
@@ -96,12 +96,12 @@ export async function generateResetOrchestrationTraces() {
   } finally { rmSync(temporary, {recursive: true, force: true}); }
 }
 
-export async function checkResetOrchestration() {
-  const generated = await generateResetOrchestrationTraces();
+export async function checkResetOrchestration(extraSources = []) {
+  const generated = await generateResetOrchestrationTraces(extraSources);
   const output = join(root, 'test-results/quint-refinement/reset-orchestration-source-traces.json');
   mkdirSync(dirname(output), {recursive: true});
   writeFileSync(output, JSON.stringify(generated, null, 2) + '\n');
-  const results = [];
+  const results = [], receipts = [];
   for (const trace of generated.traces) {
     const id = `ResetRecovery-${trace.name.replace(/[^A-Za-z0-9_-]/g, '-')}`;
     try {
@@ -112,6 +112,7 @@ export async function checkResetOrchestration() {
           'Fixture AtomicFile commits through atomic rename. Physical power-loss durability, real device credentials and actual package erasure are not established.',
           'Authentication, budget, marker, reservation, callback, recovery and process-exit boundaries are checked separately.',
         ]});
+      receipts.push(receipt);
       results.push({name: trace.name, status: receipt.status, receiptPath: receipt.receiptPath});
     } catch (error) {
       const receiptFile = join(root, 'test-results/quint-refinement', `${id}.json`);
@@ -123,11 +124,12 @@ export async function checkResetOrchestration() {
   }
   const summary = {fixturePortSha256: generated.fixturePortSha256, sourceTraces: relative(root, output), regressions: generated.regressions, results};
   writeFileSync(join(root, 'test-results/quint-refinement/reset-orchestration-summary.json'), JSON.stringify(summary, null, 2) + '\n');
-  return summary;
+  return {...summary, receipts};
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
   const summary = await checkResetOrchestration();
-  console.log(JSON.stringify(summary, null, 2));
+  const {receipts, ...report} = summary;
+  console.log(JSON.stringify(report, null, 2));
   if (summary.results.some(result => result.status !== 'passed')) process.exitCode = 1;
 }
