@@ -3,12 +3,14 @@ import {aospImage} from '../runtime/aosp-image';
 import {createAospTelephony,normalizePhoneNumber,type AlphaTelephonyPlugin,type AospTelephony} from '../runtime/aosp-telephony';
 import type {TelephonyCallLogEntry} from '../../../../.eliza/client-features/packages/contracts/src/native-telephony.ts';
 import {watchReturnToApp} from './native-adapter';
+import {isMvpView} from './mvp-features';
+import {formatDateTime} from './locale-time';
 type Bag=Record<string,any>;
 const CALL_TYPE:Record<TelephonyCallLogEntry['type'],string>={incoming:'Incoming',outgoing:'Outgoing',missed:'Missed',voicemail:'Voicemail',rejected:'Declined',blocked:'Blocked',answered_externally:'Answered on another device',unknown:'Call'};
 /** Rows for the image Phone view: recent calls with a dial handoff, and nothing a prototype call could start. */
 export function phoneRows(calls:readonly TelephonyCallLogEntry[],dial:(number:string)=>void){
  return calls.map(call=>{const who=call.cachedName||call.number||'Unknown caller',minutes=Math.floor(call.durationSeconds/60),seconds=call.durationSeconds%60;
-  return {id:call.id,label:`${who}${call.isNew?' · new':''}`,detail:`${CALL_TYPE[call.type]} · ${new Date(call.date).toLocaleString()}${call.durationSeconds?` · ${minutes}:${String(seconds).padStart(2,'0')}`:''}`,noDial:!call.number,dialLabel:call.number?`Open ${who} in phone app`:`${who} cannot be dialed`,dial:()=>{if(call.number)dial(call.number);}};});
+  return {id:call.id,label:`${who}${call.isNew?' · new':''}`,detail:`${CALL_TYPE[call.type]} · ${formatDateTime(new Date(call.date))}${call.durationSeconds?` · ${minutes}:${String(seconds).padStart(2,'0')}`:''}`,noDial:!call.number,dialLabel:call.number?`Open ${who} in phone app`:`${who} cannot be dialed`,dial:()=>{if(call.number)dial(call.number);}};});
 }
 /**
  * Phone on the verified Alpha image only (P-36). The shared telephony profile is the only path:
@@ -31,7 +33,7 @@ export function installPhoneAdapter(Component:any,views:Bag,client:AospTelephony
   try{
    let state=await client!.status();
    if(token!==epoch||!available())return;
-   if(state.permissions.callLog===undefined){calls=[];needsAccess=false;status='Recent calls are not available on this phone. Dialing opens your phone app.';return;}
+   if(state.permissions.callLog===undefined){calls=[];needsAccess=false;status='Recent calls aren\'t available.';return;}
    if(state.permissions.callLog!=='granted'&&request){state=await client!.requestAccess('callLog');if(token!==epoch||!available())return;}
    if(state.permissions.callLog!=='granted'){calls=[];needsAccess=true;status='Allow call history to see recent calls. Dialing works without it.';return;}
    needsAccess=false;const rows=await client!.recentCalls(50);
@@ -42,20 +44,23 @@ export function installPhoneAdapter(Component:any,views:Bag,client:AospTelephony
  }
  async function dial(raw:string){
   if(busy||!available())return;const target=normalizePhoneNumber(raw);
-  if(!target){notice='Enter a phone number with digits and an optional leading +.';changed();return;}
+  if(!target){notice='Enter a valid phone number.';changed();return;}
   const token=epoch;busy=true;changed();
   try{const result=await client!.dial(target);if(token===epoch)notice=result.message;}
-  catch{if(token===epoch)notice='Your phone app could not be opened. Nothing was dialed.';}
+  catch{if(token===epoch)notice='Couldn\'t open the phone app.';}
   finally{if(token===epoch){busy=false;changed();}}
  }
  views.phone.reply=()=>null;
  views.phone.suggestions=()=>[];
  views.phone.status=()=>undefined;
- views.phone.render=(_st:Bag,api:Bag)=>({nativeManaged:true,nativePrototype:false,nativeStatus:status,nativeBusy:busy,nativeAccess:needsAccess,nativeNumber:number,nativeNotice:notice,
+ views.phone.render=(st:Bag,api:Bag)=>{
+ /* A number handed over from Contacts fills the field once; only the owner's Dial tap opens the dial screen. */
+ if(typeof st?.prefill==='string'&&st.prefill){if(!busy){number=st.prefill.slice(0,40);notice='';}queueMicrotask(()=>api.set?.({prefill:null}));}
+ return {nativeManaged:true,nativePrototype:false,nativeStatus:status,nativeBusy:busy,nativeAccess:needsAccess,nativeNumber:number,nativeNotice:notice,
   nativeRows:phoneRows(calls,value=>void dial(value)),
   nativeOnNumber:(event:Event)=>{if(busy)return;number=(event.target as HTMLInputElement).value;notice='';changed();},
   nativeDial:()=>void dial(number),nativeRefresh:()=>void refresh(),nativeRequest:()=>void refresh(true),
-  nativeContacts:()=>api.open?.('contacts')});
+  nativeContacts:()=>isMvpView('contacts')?api.open?.('contacts'):api.toast?.('Contacts isn\'t available on this phone.')};};
  p.componentDidMount=function(){mount?.call(this);owner=this;this.phoneReturn=watchReturnToApp(()=>{if(active)void refresh();});this.phoneHide=()=>sync();document.addEventListener('visibilitychange',this.phoneHide);sync();};
  p.componentDidUpdate=function(...args:any[]){update?.apply(this,args);sync();};
  p.componentWillUnmount=function(){this.phoneReturn?.();document.removeEventListener('visibilitychange',this.phoneHide);if(owner===this){owner=null;active=false;clear();}unmount?.call(this);};
