@@ -7,6 +7,7 @@ import {execFileSync} from 'node:child_process';
 import {fileURLToPath} from 'node:url';
 import {upstreamNativeSource} from './upstream-native-source.mjs';
 import {verifyParadeeFfi} from './paradee-runtime.mjs';
+import {verifyPinnedUpstream} from './pinned-upstream-source.mjs';
 
 const identity = root => {
   const source = upstreamNativeSource(root);
@@ -15,7 +16,7 @@ const identity = root => {
   const {forkPin} = verifyParadeeFfi(root);
   return {sourceCommit: pin, nativeCommit: forkPin};
 };
-export function buildPinnedVoice(root, args, {readIdentity = identity, run = (file, argv) => execFileSync(file, argv, {stdio: 'inherit'})} = {}) {
+export function buildPinnedVoice(root, args, {readIdentity = identity, verifyUpstream = verifyPinnedUpstream, run = (file, argv) => execFileSync(file, argv, {stdio: 'inherit'})} = {}) {
   const index = args.indexOf('--out');
   if (index < 0 || !args[index + 1] || args.filter(value => value === '--out').length !== 1 || args.some(value => value.startsWith('--out='))) throw Error('Provide exactly one --out <fresh directory>');
   const output = path.resolve(args[index + 1]);
@@ -30,6 +31,8 @@ export function buildPinnedVoice(root, args, {readIdentity = identity, run = (fi
   const after = readIdentity(root);
   const recordPath = path.join(output, 'build-record.json');
   if (JSON.stringify(before) !== JSON.stringify(after)) throw Error('Voice source changed during the build');
+  // The Android build authenticates the whole checkout, ignored files included; refuse here first.
+  verifyUpstream(root);
   if (!fs.lstatSync(recordPath).isFile()) throw Error('Voice build record must be a regular file');
   const record = JSON.parse(fs.readFileSync(recordPath, 'utf8'));
   for (const [key, value] of Object.entries(before)) if (record[key] !== undefined && record[key] !== value) throw Error('Voice builder reported a different source revision');

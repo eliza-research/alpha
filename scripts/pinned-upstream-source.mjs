@@ -18,7 +18,12 @@ export function verifyPinnedUpstream(root) {
 			"network-policy",
 			"calendar",
 			"reminders",
-		].map((name) => `plugins/plugin-native-${name}/android/build`),
+		]
+			.map((name) => `plugins/plugin-native-${name}/android/build`)
+			// The pinned voice builder (stage-elizavoice-lib.ts) always writes its untracked
+			// build tree here; the Android build never reads it. Temporary until upstream
+			// takes a build directory outside the checkout.
+			.concat(".cache/elizavoice-android"),
 	});
 	return { directory, commit };
 }
