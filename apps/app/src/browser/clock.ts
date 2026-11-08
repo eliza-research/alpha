@@ -5,7 +5,8 @@ import type {BrowserNotifications} from './notifications';
 import {BrowserAlertAudio} from './alert-audio';
 import {alertSoundDocument} from './preference-documents';
 import {testMocksEnabled} from '../build-flags';
-type Alarm={id:string;title:string;at:number;status:string;revision:string};
+type Alarm={id:string;title:string;at:number;status:string;revision:string;pendingDeletion?:string};
+const ringingAlarms=(rows:Alarm[])=>rows.filter(row=>row.id.startsWith('alarm_')&&row.status==='posted'&&!row.pendingDeletion).map(row=>row.id+':'+row.revision).sort().join('|');
 /** One foreground owner rings alarms; all tabs share the existing reminder records. */
 export class BrowserClock {
  private rows:Alarm[]=[];
@@ -38,10 +39,10 @@ export class BrowserClock {
   if(this.polling||!this.allowed())return;this.polling=true;
   try{
    this.rows=(await this.daily.listReminders()).reminders.filter(row=>row.id.startsWith('alarm_')&&['scheduled','posted','permission-denied'].includes(row.status)) as Alarm[];
-   if(!this.allowed())return;this.loaded=true;this.render();const ringing=this.rows.filter(r=>r.status==='posted').map(r=>r.id+':'+r.revision).sort().join('|');
+   if(!this.allowed())return;this.loaded=true;this.render();const ringing=ringingAlarms(this.rows);
    if(!ringing){this.stopSound();this.owns=false;this.ringing='';this.release?.();this.release=undefined;}
    else if(this.owns){if(ringing!==this.ringing)this.ring(ringing);}
-   else if(navigator.locks){void navigator.locks.request('alpha.browser.alarm-owner',{ifAvailable:true},async lock=>{if(!lock||!this.allowed()||this.owns)return;const current=(await this.daily.listReminders()).reminders.filter(row=>row.id.startsWith('alarm_')&&row.status==='posted').map(row=>row.id+':'+row.revision).sort().join('|');if(!current||!this.allowed())return;this.owns=true;await new Promise<void>(resolve=>{this.release=resolve;this.ring(current);});});}
+   else if(navigator.locks){void navigator.locks.request('alpha.browser.alarm-owner',{ifAvailable:true},async lock=>{if(!lock||!this.allowed()||this.owns)return;const current=ringingAlarms((await this.daily.listReminders()).reminders);if(!current||!this.allowed())return;this.owns=true;await new Promise<void>(resolve=>{this.release=resolve;this.ring(current);});});}
    const notices=(await this.notifications.list()).items.filter(n=>!n.id.startsWith('alarm_'));
    if(!this.allowed())return;
    const active=notices.map(n=>n.source+':'+n.id+':'+n.revision.split(':')[0]),initial=()=>({seen:[] as string[]}),before=await alertSoundDocument.read(initial);
