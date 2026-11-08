@@ -34,8 +34,7 @@ broad provenance set does not imply behavioral coverage for every hashed file.
 
 `CalendarSync` describes the removed Google outbox API. Its previous source
 traces are historical, and `calendarRefinement()` now checks `CalendarLinkedSync`.
-The old model is retained while the root composition migration replaces its
-interface. No compatibility transition is treated as current source evidence.
+The old model is retained as a historical-source model in the legacy family. No compatibility transition is treated as current source evidence.
 
 The BrowserSiteState port also distinguishes the current source policy. The
 shared host reads back cookie isolation and checks multiprocess availability.

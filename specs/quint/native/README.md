@@ -28,28 +28,25 @@ outcome, including provider dispatch, storage failure and native acknowledgement
 
 ## Composed application boundaries
 
-`ApplicationComposition` instantiates the actual `IdentitySession`, `VoiceSession`,
-`ResidentRuntime`, `CalendarSync`, `InboxDelivery` and `ResetRecovery` modules. It
-invokes their transitions and safety predicates with explicit frame assignments
-for the unaffected components. Small constant-instantiated wrappers give each
-module's internal `s` a distinct qualified identity in Quint's effect checker.
-The wrappers preserve the imported transitions and export only the symbols used
-by the composition.
+`ApplicationComposition` now imports the current `IdentitySession`,
+`CalendarLinkedSync` and `VoiceSession` modules. Native credential commit and
+renderer publication are separate transitions. The renderer can retain the old
+account while native activation completes. A published replacement invalidates
+captured consumer bindings. A Calendar request already dispatched may still
+apply remotely while its local checkpoint remains dirty.
 
-The host adds foreground state and the account/epoch captured at voice start.
-Coordinated sign-in replacement retires voice and provider work while switching
-Calendar/Inbox owners through their existing actions. Reset applies the real
-model's marker transition together with resident stop and Inbox permission
-withdrawal. Lifecycle pause invokes the imported voice stop transition. Late
-voice/provider callbacks therefore exercise their imported generation checks.
-Expected-rejection tests execute the imported Calendar/Inbox guards after account
-retirement and reset. An intentionally uncoordinated identity transition appears
-only in a canary scenario, where it must violate shared safety.
+The source campaign executes the actual renderer connection controller, Alpha
+Calendar sync host and its shared controller/store/reconciler, plus the shared
+voice session under the actual conversation-binding predicate. Nine controlled
+schedules check 44 checkpoints. Native authentication internals are explicit
+contract macros. The full voice UI listener wiring, Inbox multi-slot composition,
+Resident lifecycle and reset cross-domain coordination remain separate
+obligations. See the [composition refinement report](../refinement/composition/README.md).
 
-These boundary actions express the intended product integration contract.
-Per-component source mappings and the executable Java policy replay establish
-narrower correspondence evidence. Cross-domain implementation refinement remains
-an additional obligation.
+The former Calendar outbox model is a historical-source model in the legacy
+family. Its removed runtime API is not imported by the current composition.
+The intentionally unsafe identity initializer remains a synthetic checker
+canary and is excluded from ordinary transitions.
 
 ## Deliberate abstractions
 

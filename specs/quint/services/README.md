@@ -30,10 +30,9 @@ hashes are listed in `patches/eliza/service-state-client-manifest.json`.
 | [NativeCredentialMutation](NativeCredentialMutation.qnt) | Credential/provider CAS, shutdown admission and partial commit. Native-family migration maintains source correspondence. |
 | [PdfWorker](PdfWorker.qnt) | Busy admission, descriptor/bitmap/mapping cleanup and read-only output publication. |
 
-[CalendarSync](CalendarSync.qnt) is retained historical modeling of the removed
+[CalendarSync](../legacy/CalendarSync.qnt) is retained historical modeling of the removed
 GoogleCalendarOutbox API. Its undo-clock and explicit unknown-create-retry actions
-have no current main-source correspondence. The root composition migration owns
-its eventual relocation and replacement. New Calendar source traces check
+have no current main-source correspondence. It is classified as a historical-source model in the legacy manifest. New Calendar source traces check
 `CalendarLinkedSync`.
 
 ## Boundaries

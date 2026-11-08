@@ -1658,5 +1658,70 @@
       ]
     },
     "legacyConfigurations": "specs/quint/legacy/view-refresh-configurations.json"
+  },
+  {
+    "stateMapping": {
+      "phase/kind/holder/instance": "GoogleCalendarOutboxOp phase and durable holder recovery",
+      "undoOpen/clockKnown": "monotonic deletion deadline, paused restart and owner choice",
+      "baseRevision/remoteRevision/checked": "read-before-write and conditional event version",
+      "retryAuthorized/applied/sends": "uncertain create matching, explicit retry and write outcome",
+      "consent/localRevision/consentReview": "reviewed linked-sync preference and exact current context",
+      "writable/restorePermission": "Fresh current-account Calendar permission read updates admission without resetting durable operation ownership, unknown outcome or retry authorization"
+    },
+    "abstractions": [
+      "One outbox entry, two revisions, two holders and at most two sends expose interference without the full event collection.",
+      "checking splits the durable dispatching phase into preflight and actual network dispatch. Restarts map both back to source recovery states.",
+      "Recurring-event scope, timestamp parsing, merging multiple queued edits and upstream linked reconciler internals remain abstractions checked by runtime contracts.",
+      "Unknown creates allow an explicit retry after owner review. The model does not claim globally exactly-once Calendar creates.",
+      "Permission restoration is an authorized current-account readback. It preserves pending operation owner, request epoch, unknown-create state and linked-sync consent."
+    ],
+    "path": "specs/quint/legacy/CalendarSync.qnt",
+    "module": "CalendarSync",
+    "init": "init",
+    "step": "step",
+    "invariant": "safety",
+    "tests": [
+      "reviewedSyncConsentTest",
+      "undoDeleteTest",
+      "conflictTest",
+      "uncertainCreateTest",
+      "restartDeleteTest",
+      "retiredOwnerTest",
+      "permissionRestorationTest",
+      "restoredPermissionKeepsUnknownTest",
+      "restoredPermissionKeepsOwnerFenceTest"
+    ],
+    "invariants": [
+      "NoAutomaticUnknownCreate",
+      "UndoBeforeDispatch",
+      "PausedNeedsDecision",
+      "DurableClaim",
+      "VisibleOwnerBound",
+      "TypeOK"
+    ],
+    "bounds": {
+      "maxSamples": 1000,
+      "maxSteps": 60,
+      "seed": "123"
+    },
+    "historicalSources": {
+      "commit": "a6fce187c935d0cb4b5bb40aadcbe1263fb4011f",
+      "paths": [
+        "apps/app/src/runtime/google-calendar-outbox.ts",
+        "apps/app/src/runtime/google-calendar-writer.ts",
+        "apps/app/src/runtime/google-calendar.ts",
+        "apps/app/src/runtime/calendar-sync-controller.ts",
+        "apps/app/src/runtime/calendar-sync-settings.ts",
+        "apps/app/src/runtime/calendar-linked-provider.ts",
+        "apps/app/src/runtime/calendar-linked-store.ts",
+        "apps/app/src/runtime/calendar-sync-host.ts",
+        "android/app/src/main/java/ai/elizaresearch/alphaphone/CalendarSyncConsent.java",
+        "android/app/src/main/java/ai/elizaresearch/alphaphone/CalendarSyncFreshness.java",
+        "android/app/src/main/java/ai/elizaresearch/alphaphone/CalendarSyncMutation.java",
+        "android/app/src/main/java/ai/elizaresearch/alphaphone/CalendarSyncReceiptRecovery.java"
+      ]
+    },
+    "sources": [],
+    "classification": "historical-source-model"
   }
 ]
