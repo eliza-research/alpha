@@ -747,7 +747,9 @@ export function installAgentAdapter(Component: Shell, views: Shell) {
       return result.status==='succeeded'?{status:'succeeded',reminderResult:isReminderCreate(operation)?validateReminderCreateResult(operation,result.result,operationId):validateReminderResult(operation,result.result)}:{status:'unknown'};
     });
     connectionController.setViewInteractionExecutor(async(view,capability,params,signal,current)=>{
-      current();if(!this.live||view!=='browser'||capability!=='browser-command'||!params||typeof params!=='object'||!this.browserCommand)throw Error('Native view capability is unavailable');
+      current();
+      if(view==='browser'&&capability==='browser-command'&&(!this.live||!this.browserCommand))return {ok:false,code:'UNAVAILABLE',message:'Native view capability is unavailable'};
+      if(!this.live||view!=='browser'||capability!=='browser-command'||!params||typeof params!=='object'||!this.browserCommand)throw Error('Native view capability is unavailable');
       return this.browserCommand((params as Record<string,unknown>).command,signal,current);
     });
     connectionController.setNavigationContext(()=>this.live?alphaClient.getState().context:null);

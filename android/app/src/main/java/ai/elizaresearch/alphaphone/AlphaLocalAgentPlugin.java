@@ -454,6 +454,9 @@ public final class AlphaLocalAgentPlugin extends Plugin {
     output.write(buffer,0,count);
    }
    env.put("ELIZA_NATIVE_VIEW_DECLARATIONS",output.toString(java.nio.charset.StandardCharsets.UTF_8.name()));
+   // Alpha's mounted browser handles back, forward and reload only, and serves no Chromium target.
+   env.put("ELIZA_NATIVE_BROWSER_COMMANDS","back,forward,reload");
+   env.put("ELIZA_BROWSER_NATIVE_TARGET","off");
   }
  }
  static void configureEnvironment(Context context,java.util.Map<String,String> env) throws java.io.IOException {
