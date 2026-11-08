@@ -3,16 +3,20 @@
 import assert from 'node:assert/strict';
 import {cloudVoiceViewFixture} from '../test/fixtures/cloud-voice-view.mjs';
 import {voiceFakeClock} from '../test/fixtures/shared-batch-voice.mjs';
-async function owned(run){const clock=voiceFakeClock(),f=cloudVoiceViewFixture({clock,holdPlayback:true});f.box.testMocksEnabled=true;f.box.React={createElement:()=>null};f.box.VoiceActivity=()=>null;f.shell.openView('notes');try{await run(f,clock);}finally{f.holdPlaybackCleanup=false;f.releasePlaybackCleanup?.();f.close();await clock.flush();}}
+async function owned(run){const clock=voiceFakeClock(),f=cloudVoiceViewFixture({cloudProfile:true,clock,holdPlayback:true});f.box.testMocksEnabled=true;f.box.React={createElement:()=>null};f.box.VoiceActivity=()=>null;f.shell.openView('notes');try{await run(f,clock);}finally{f.holdPlaybackCleanup=false;f.releasePlaybackCleanup?.();f.close();await clock.flush();}}
 await owned(async(f,clock)=>{
- const render=f.render;
- render().record();assert.equal(render().rec.manualChoice,false);assert.equal(render().rec.routeChoice,false);
- render().rec.stop();await clock.flush();render().rec.stop();await clock.flush();render().rec.stop();await clock.flush();assert.equal(render().rec.review,true);
- render().rec.toggle();await clock.flush();assert.equal(f.cloudSpeech,1);assert.equal(render().rec.pauseLabel,'Stop audio');
- const request=f.speechInputs[0].requestId;f.holdPlaybackCleanup=true;render().rec.toggle();await clock.advance(650);
- assert.equal(render().rec.pauseLabel,'Stop audio','Unconfirmed media cleanup must remain visible beyond the old500ms timeout');assert.equal(f.stopPlaybackInputs.filter(input=>input.requestId===request).length,1,'Idempotent exact request cleanup');
- render().rec.discard();await clock.flush();const starting=f.shell.startVoice();await clock.flush();assert.equal(f.starts,1,'Prior Notes speaker retirement blocks new capture');assert.equal(f.renderChat().primaryLabel,'Stop voice conversation');
- f.holdPlaybackCleanup=false;f.releasePlaybackCleanup();await starting;assert.equal(f.starts,2,'New capture follows confirmed speaker retirement');f.renderChat().discard();await clock.flush();
+ f.box.pendingAudioDeletions=async()=>({});
+ f.shell.notes={open:'kept-note',list:[{id:'kept-note',title:'Kept note',body:'Reviewed note text.',updatedAt:1}]};
+ const view=()=>f.render().ed;
+ assert.equal(typeof view().readAloud,'function');
+ assert.match(view().cloudSpeechDisclosure,/uploads this note’s text to your selected Cloud account/);
+ view().readAloud();await clock.flush();assert.equal(f.cloudSpeech,1);assert.equal(typeof view().stopReading,'function');
+ assert.equal(f.localFactories,0);assert.equal(f.pairedFactories,0);
+ const request=f.speechInputs[0].requestId;f.holdPlaybackCleanup=true;view().stopReading();await clock.advance(650);
+ assert.equal(f.stopPlaybackInputs.filter(input=>input.requestId===request).length,1,'Idempotent exact request cleanup');
+ const starting=f.shell.startVoice();await clock.flush();assert.equal(f.starts,0,'Prior Notes speaker retirement blocks new capture beyond the old500ms timeout');
+ assert.equal(f.renderChat().primaryLabel,'Stop voice conversation');
+ f.holdPlaybackCleanup=false;f.releasePlaybackCleanup();await starting;assert.equal(f.starts,1,'New capture follows confirmed speaker retirement');f.renderChat().discard();await clock.flush();
 });
 await owned(async(f,clock)=>{
  const first= f.box.createCloudVoice(),oldAbort=new AbortController();const oldSpeech=first.speak('Old owner fixture',oldAbort.signal).catch(()=>{});await clock.flush();const oldCallbacks=[...(f.events.get('playbackEnded')||[])],oldId=f.activePlayback;
@@ -32,4 +36,4 @@ await owned(async(f,clock)=>{
  assert.equal(settled,false,'Cancelled speech waits for its synthesis to drain');release({playbackId:'late-old-audio'});await assert.rejects(speaking);await clock.flush();
  assert.equal(f.activePlayback,null,'Cancelled synthesis cannot admit late playback');assert.ok(f.stopPlaybackInputs.some(input=>input.playbackId==='late-old-audio'),'Late playback is stopped by identity');f.driver.synthesize=original;
 });
-console.log('PASS: actual Notes renderer/Cloud driver retain pending exact cleanup; new capture waits for confirmed retirement; stale-owner, held-listener and late-synthesis callbacks cannot admit playback. Closed fake ports only.');
+console.log('PASS: actual saved-Notes renderer/Cloud driver retain pending exact cleanup; new capture waits for confirmed retirement; stale-owner, held-listener and late-synthesis callbacks cannot admit playback. Closed fake ports only.');
