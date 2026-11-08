@@ -58,6 +58,7 @@ export function openScanDocument(first?:Blob):()=>void{
    tools.append(up,down,correct,replace,...(native?[]:[retake]),remove);section.append(label,image,tools);list.append(section);
   });
   capture.disabled=add.disabled=!controls.addPage;searchable.disabled=save.disabled=!controls.export;saveDraft.disabled=!controls.saveDraft;loadDraft.disabled=!controls.loadDraft;removeDraft.disabled=!controls.deleteDraft;removeDraft.hidden=!draftRevision;saveDraft.hidden=!pages.length;actions.hidden=!pages.length;empty.hidden=!!pages.length;capture.classList.toggle('primary',!pages.length);
+  if(stored&&stored===draftRevision)stored=undefined;notice.hidden=!stored;
   description.textContent=pages.length?`${pages.length} of ${SCAN_LIMITS.pages} pages · Review the order before saving.`:'Capture or add pages, then save a PDF.';
  };
  const failed=(error:unknown,fallback:string)=>{if(!closed)status.textContent=error instanceof Error?error.message:fallback;};
@@ -70,7 +71,7 @@ export function openScanDocument(first?:Blob):()=>void{
  const search=()=>{if(!doc.pages().length)return;void doc.run(async signal=>{
   const result=await reviewSearchableScan(doc.pages().map(p=>p.image),signal,doc.pages().map(p=>p.textLayer??null));if(closed||!result)return;
   if(result.textLayers)doc.setTextLayers(result.textLayers);
-  doc.exportFinished(result.status,value=>['cancelled','reviewed'].includes(value));status.textContent=result.message;
+  doc.exportFinished(result.status);status.textContent=result.message;
  });};
  const pick=(index?:number,camera=false)=>doc.run(async signal=>{
   try{const image=camera?await captureScanPage(signal):native?await pickNativeScanImage():(await runFilePicker(picker=>inputFiles(anyAbortSignal([picker,signal]),{photos:true}),[]))[0];signal.throwIfAborted();if(!image)return;
@@ -79,16 +80,32 @@ export function openScanDocument(first?:Blob):()=>void{
   }catch(error){failed(error,'Could not add page.');}
  });
  const draftAction=async(action:()=>Promise<unknown>)=>{try{await action();}catch(error){failed(error,'Draft action failed.');}};
- const saveDraft=button('Save document draft',()=>void draftAction(async()=>{if(await doc.saveDraft()&&!closed)status.textContent=native?'Document draft saved on this device. It is restored after Alpha restarts.':'Document draft saved in this app.';}));
- const loadDraft=button('Load saved draft',()=>void draftAction(async()=>{const outcome=await doc.loadDraft(()=>window.confirm('Replace the current review with the saved draft?'));if(closed)return;if(outcome==='none')status.textContent='No saved document draft.';else if(outcome==='loaded')status.textContent='Saved document draft loaded.';}));
+ const saveDraft=button('Save document draft',()=>void draftAction(async()=>{if(await doc.saveDraft()&&!closed)status.textContent=native?'Document draft saved on this device. Resume it from Draft options.':'Document draft saved in this app.';}));
+ const resumeDraft=()=>void draftAction(async()=>{const outcome=await doc.loadDraft(()=>window.confirm('Replace the current review with the saved draft?'));if(closed)return;if(outcome==='none')status.textContent='No saved document draft.';else if(outcome==='loaded')status.textContent='Saved document draft loaded.';});
+ const loadDraft=button('Load saved draft',resumeDraft);
  const removeDraft=button('Delete saved draft',()=>void draftAction(async()=>{if(await doc.deleteDraft(()=>window.confirm('Delete the saved draft? The current reviewed pages will remain open.'))&&!closed)status.textContent='Saved draft deleted. Reviewed pages remain open.';}));
+ /** A draft stored before this review opened blocks autosave and Save draft (compare-and-set), so it is offered here. */
+ let stored:string|undefined;
+ const notice=document.createElement('div'),noticeText=document.createElement('p');notice.hidden=true;notice.setAttribute('role','group');notice.setAttribute('aria-label','Saved draft');noticeText.textContent='A saved draft exists.';
+ const resumeStored=button('Resume the saved draft',resumeDraft),deleteStored=button('Delete the saved draft',()=>void draftAction(async()=>{const revision=stored;if(!revision||!window.confirm('Delete the saved draft? The pages open here stay.'))return;await doc.settled();await deleteScanDraft(revision,doc.signal);if(closed)return;stored=undefined;status.textContent='Saved draft deleted.';render();}));
+ resumeStored.setAttribute('aria-label','Resume the saved draft');resumeStored.textContent='Resume';deleteStored.setAttribute('aria-label','Delete the saved draft');deleteStored.textContent='Delete';const noticeTools=document.createElement('div');noticeTools.className='scan-dialog-tools';noticeTools.append(resumeStored,deleteStored);notice.append(noticeText,noticeTools);
  const dispose=()=>{if(closed)return;closed=true;doc.close();for(const value of urls.values())URL.revokeObjectURL(value);urls.clear();dialog.remove();window.removeEventListener('alpha-back',back,true);window.removeEventListener('pagehide',dispose);document.removeEventListener('visibilitychange',visibility);if(previous instanceof HTMLElement&&previous.isConnected)previous.focus();};
- const back=(event:Event)=>{if(document.querySelector('dialog[aria-label="Capture document page"],dialog[aria-label="Correct document page"],dialog[aria-label="Review searchable PDF"]'))return;event.preventDefault();event.stopImmediatePropagation();dispose();},visibility=()=>{if(document.hidden&&!systemPickerActive())dispose();};
+ /** Close and Back on native ask about the draft this review wrote by itself; pagehide and a
+  * hidden page keep it, since Android may be ending Alpha. */
+ const keepPrompt=document.createElement('div'),keepText=document.createElement('p');keepPrompt.hidden=true;keepPrompt.className='scan-dialog-actions';keepText.style.cssText='flex-basis:100%;margin:0';keepPrompt.setAttribute('role','group');keepPrompt.setAttribute('aria-label','Close document');keepText.textContent='Keep these pages as a draft?';
+ const keep=button('Keep draft',dispose),discard=button('Discard draft',()=>void draftAction(async()=>{if(await doc.deleteDraft(async()=>true))dispose();}));
+ keepPrompt.append(keepText,keep,discard);
+ const requestClose=async()=>{
+  if(closed)return;if(!keepPrompt.hidden){keepPrompt.hidden=true;close.focus();return;}
+  if(native){await doc.settled();if(closed)return;const {autoSaved,draftRevision,exported,pages}=doc.snapshot();if(autoSaved&&draftRevision&&!exported&&pages.length){keepPrompt.hidden=false;keep.focus();return;}}
+  dispose();
+ };
+ const back=(event:Event)=>{if(document.querySelector('dialog[aria-label="Capture document page"],dialog[aria-label="Correct document page"],dialog[aria-label="Review searchable PDF"]'))return;event.preventDefault();event.stopImmediatePropagation();void requestClose();},visibility=()=>{if(document.hidden&&!systemPickerActive())dispose();};
  const searchable=button(native?'Save searchable PDF':'Download searchable PDF',()=>search());
  const add=button('Add page',()=>void pick()),capture=button('Capture new page',()=>void pick(undefined,true)),save=button(native?'Save document PDF':'Download document PDF',()=>{
   if(!doc.snapshot().controls.export)return;status.textContent='Preparing document…';
   void doc.exportPages((pages,_layers,signal)=>exportScanPdf(pages,signal,'Alpha document '+new Date().toISOString().replace(/[:.]/g,'-')),error=>error instanceof ScanPdfExportError).then(result=>{if(!closed&&result)status.textContent=result.message;},error=>{if(closed)return;status.textContent=error instanceof ScanPdfExportError?(native?'Export unconfirmed. Inspect the chosen destination before exporting again.':'Export unconfirmed. Check Downloads before exporting again.'):error instanceof Error?error.message:'Could not prepare the PDF. Try again.';});
- }),close=button('Close document',dispose);
+ }),close=button('Close document',()=>void requestClose());
  capture.setAttribute('aria-label','Capture new page');capture.textContent='Capture page';add.setAttribute('aria-label','Add page');add.textContent='Add image';
  save.setAttribute('aria-label',native?'Save document PDF':'Download document PDF');save.textContent=native?'Save PDF':'Download PDF';save.className='primary';
  searchable.setAttribute('aria-label',native?'Save searchable PDF':'Download searchable PDF');searchable.textContent='Searchable PDF';
@@ -99,12 +116,13 @@ export function openScanDocument(first?:Blob):()=>void{
  const empty=document.createElement('div');empty.className='scan-empty';empty.textContent='No pages yet';
  const draftOptions=document.createElement('details');draftOptions.className='scan-draft-options';const draftSummary=document.createElement('summary');draftSummary.textContent='Draft options';const draftTools=document.createElement('div');draftTools.className='scan-dialog-tools';draftTools.append(saveDraft,loadDraft,removeDraft);draftOptions.append(draftSummary,draftTools);
  const actions=document.createElement('div');actions.className='scan-dialog-actions';actions.append(save,searchable);
- content.append(description,tools,empty,list,status,draftOptions);dialog.append(header,content,actions);
- dialog.oncancel=event=>{event.preventDefault();dispose();};
+ content.append(description,notice,tools,empty,list,status,draftOptions);dialog.append(header,content,keepPrompt,actions);
+ dialog.oncancel=event=>{event.preventDefault();void requestClose();};
  window.addEventListener('alpha-back',back,true);window.addEventListener('pagehide',dispose);document.addEventListener('visibilitychange',visibility);
  (document.querySelector('.os')||document.body).append(dialog);
  // The first page is admitted like any other; with autosave it is written to the device draft.
  if(first)try{doc.put(first);}catch(error){failed(error,'Could not add page.');}
  render();dialog.showModal();(native?add:capture).focus();
+ void(async()=>{try{await doc.settled();if(closed)return;const draft=await readScanDraft();if(closed||!draft)return;stored=draft.revision;render();}catch{/* An unreadable draft stays reachable through Draft options. */}})();
  return dispose;
 }
