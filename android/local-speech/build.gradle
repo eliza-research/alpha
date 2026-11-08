@@ -8,47 +8,42 @@ def preparedSpeech = new groovy.json.JsonSlurper().parseText(providers.exec {
  commandLine 'node', 'scripts/prepare-patched-native.mjs'
 }.standardOutput.asText.get())
 def paradee = new File(preparedSpeech.root.toString(), 'plugins/plugin-local-inference/native/android')
-if (!paradee.isDirectory()) paradee = file('../../vendor/eliza/plugins/plugin-local-inference/native/android')
-if (!paradee.isDirectory()) {
- ext.elizaSpeechSourceDir = file('../../vendor/eliza/packages/app/platforms/android/local-speech')
- apply from: new File(ext.elizaSpeechSourceDir, 'consumer.gradle')
-} else {
- // Alpha's AlphaVoiceCloud bridge subclasses the shared LocalSpeechBridgePlugin.
- ext.elizaSpeechBridgeCapacitor = 'true'
- def nativeOutput = file('../../.eliza/paradee-voice/native')
- def cloudProfile = project.findProperty('ELIZA_RUNTIME_PROFILE')?.toString() == 'cloud'
- def unpackaged = project.findProperty('ELIZA_ALLOW_UNPACKAGED_RUNTIME')?.toString() == '1'
- if (cloudProfile || (unpackaged && !nativeOutput.exists())) {
-  // Cloud keeps the Java API without admitting a local engine or model, even
-  // when a developer has staged native speech for a separate build.
-  // The unpackaged developer lane also keeps this API when outputs are absent.
-  apply plugin: 'com.android.library'
-  android {
-   namespace 'ai.eliza.voice'
-   compileSdk 36
-   defaultConfig { minSdk 26 }
-   sourceSets.main {
-    java.srcDirs = [new File(paradee, 'src/main/java'), new File(paradee, 'speech-bridge/src/main/java')]
-    manifest.srcFile new File(paradee, 'src/main/AndroidManifest.xml')
-    assets.srcDirs = []
-    jniLibs.srcDirs = []
-   }
-   compileOptions { sourceCompatibility JavaVersion.VERSION_21; targetCompatibility JavaVersion.VERSION_21 }
+if (!paradee.isDirectory()) throw new GradleException('plugins/plugin-local-inference/native/android is missing from the prepared upstream source; run git submodule update --init vendor/eliza')
+// Alpha's AlphaVoiceCloud bridge subclasses the shared LocalSpeechBridgePlugin.
+ext.elizaSpeechBridgeCapacitor = 'true'
+def nativeOutput = file('../../.eliza/paradee-voice/native')
+def cloudProfile = project.findProperty('ELIZA_RUNTIME_PROFILE')?.toString() == 'cloud'
+def unpackaged = project.findProperty('ELIZA_ALLOW_UNPACKAGED_RUNTIME')?.toString() == '1'
+if (cloudProfile || (unpackaged && !nativeOutput.exists())) {
+ // Cloud keeps the Java API without admitting a local engine or model, even
+ // when a developer has staged native speech for a separate build.
+ // The unpackaged developer lane also keeps this API when outputs are absent.
+ apply plugin: 'com.android.library'
+ android {
+  namespace 'ai.eliza.voice'
+  compileSdk 36
+  defaultConfig { minSdk 26 }
+  sourceSets.main {
+   java.srcDirs = [new File(paradee, 'src/main/java'), new File(paradee, 'speech-bridge/src/main/java')]
+   manifest.srcFile new File(paradee, 'src/main/AndroidManifest.xml')
+   assets.srcDirs = []
+   jniLibs.srcDirs = []
   }
-  dependencies { compileOnly project(':capacitor-android') }
- } else {
-  ext.elizaParadeeSourceDir = paradee
-  ext.elizaParadeeNativeDir = nativeOutput
-  ext.elizaParadeePackageInference = false
-  apply from: new File(paradee, 'consumer.gradle')
+  compileOptions { sourceCompatibility JavaVersion.VERSION_21; targetCompatibility JavaVersion.VERSION_21 }
  }
- def verifySpeechInputs = tasks.register('verifySpeechInputs', Exec) {
-  onlyIf { !cloudProfile }
-  workingDir rootProject.projectDir.parentFile
-  commandLine(['node', 'scripts/paradee-runtime.mjs'] + paradeeAbiArgs + ((unpackaged || cloudProfile) ? ['--allow-absent'] : []))
- }
- tasks.named('preBuild').configure { dependsOn verifySpeechInputs }
+ dependencies { compileOnly project(':capacitor-android') }
+} else {
+ ext.elizaParadeeSourceDir = paradee
+ ext.elizaParadeeNativeDir = nativeOutput
+ ext.elizaParadeePackageInference = false
+ apply from: new File(paradee, 'consumer.gradle')
 }
+def verifySpeechInputs = tasks.register('verifySpeechInputs', Exec) {
+ onlyIf { !cloudProfile }
+ workingDir rootProject.projectDir.parentFile
+ commandLine(['node', 'scripts/paradee-runtime.mjs'] + paradeeAbiArgs + ((unpackaged || cloudProfile) ? ['--allow-absent'] : []))
+}
+tasks.named('preBuild').configure { dependsOn verifySpeechInputs }
 
 // Shared relay compiles against the same pinned OkHttp API implemented by the app.
 dependencies { compileOnly 'com.squareup.okhttp3:okhttp:5.3.2' }

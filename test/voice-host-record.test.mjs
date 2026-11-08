@@ -193,3 +193,17 @@ test('unrecorded engines cannot be relabeled with the current source pins', t =>
   assert.equal(fs.existsSync(path.join(dir, '.eliza/paradee-voice/native')), false);
   assert.deepEqual(JSON.parse(fs.readFileSync(path.join(dir, VOICE_HOST))), record, 'refusal does not rewrite the checked-in record');
 });
+
+test('an unrecorded engine refused at a conflicting destination leaves the tracked record byte-identical', t => {
+  const {dir, from} = fixtureProduct(t);
+  stageVoiceModels(dir, {from: [from]});
+  const before = fs.readFileSync(path.join(dir, VOICE_HOST));
+  fs.writeFileSync(path.join(from, 'jniLibs/x86_64/libelizainference.so'), 'rebuilt engine');
+  const expected = readVoiceHost(dir);
+  fs.writeFileSync(path.join(from, 'build-record.json'), JSON.stringify({sourceCommit: expected.pin, nativeCommit: expected.forkPin, files: expected.abis.map(abi => {
+    const relative = `jniLibs/${abi.abi}/libelizainference.so`, bytes = fs.readFileSync(path.join(from, relative));
+    return {path: relative, sha256: sha(bytes), bytes: bytes.length};
+  })}));
+  assert.throws(() => stageVoiceModels(dir, {from: [from], unrecordedEngine: true}), /already exists with other bytes/);
+  assert.deepEqual(fs.readFileSync(path.join(dir, VOICE_HOST)), before);
+});

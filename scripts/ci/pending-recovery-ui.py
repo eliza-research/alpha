@@ -24,7 +24,7 @@ manifest=json.loads((archive/'apk-manifest.json').read_text());expected={v+'-'+k
 for n,digest in manifest.items():assert h((archive/n).read_bytes())==digest
 helper=json.loads((archive/'private-peer-manifest.json').read_text());assert helper['package']==HELPER and helper['schemaVersion']==1
 assert helper['apkSha256']==manifest['private-peer-debug.apk']
-expected_helper_sources={str(p) for p in Path('android/private-peer-fixture/src').rglob('*') if p.is_file()}|{'android/private-peer-fixture/build.gradle','android/private-peer-fixture/settings.gradle','scripts/ci/build-private-peer.py'}
+expected_helper_sources={str(p) for p in Path('android/private-peer-fixture/src').rglob('*') if p.is_file()}|{'android/private-peer-fixture/build.gradle','scripts/ci/build-private-peer.py'}
 assert set(helper['sources'])==expected_helper_sources
 for relative,digest in helper['sources'].items():
  assert relative.startswith('android/private-peer-fixture/') or relative=='scripts/ci/build-private-peer.py'

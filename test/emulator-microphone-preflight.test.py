@@ -106,7 +106,7 @@ class MicrophonePreflight(unittest.TestCase):
             self.assertEqual((stub.reads, stub.injections), (1, 0))
 
     def test_missing_bearer_never_constructs_client_or_reads_state(self):
-        for data in ({}, {'grpc.port': '8556', 'grpc.jwks': 'nonsecret-fixture-path'}):
+        for data in ({'grpc.port': '8556', 'grpc.jwks': 'nonsecret-fixture-path'},):
             with self.subTest(data=data), self.fixture(['--check-microphone'], discovery=data) as (stub, _, channel, *_):
                 with self.assertRaisesRegex(ValueError, 'Authenticated bearer discovery required'):
                     HELPER.main()
@@ -145,6 +145,29 @@ class MicrophonePreflight(unittest.TestCase):
                 channel.assert_not_called()
                 self.assertEqual((stub.reads, stub.injections), (0, 0))
         self.assertFalse(destination.exists())
+
+
+class Discovery(unittest.TestCase):
+    """Discovery file lookup; no gRPC, protocol compilation or emulator."""
+
+    def test_linux_runtime_directory_is_a_discovery_root(self):
+        with tempfile.TemporaryDirectory() as runtime:
+            running = Path(runtime) / 'avd/running'
+            running.mkdir(parents=True)
+            (running / 'pid_424242.ini').write_text('port.serial=5556\ngrpc.port=8556\n')
+            with patch.dict(HELPER.os.environ, {'XDG_RUNTIME_DIR': runtime}):
+                self.assertIn(running, HELPER.discovery_roots())
+                self.assertEqual(HELPER.discovery(424242, None, 5556), {'port.serial': '5556', 'grpc.port': '8556'})
+
+    def test_missing_discovery_file_is_named_before_any_client(self):
+        with patch.object(sys, 'argv', ['inject-emulator-audio.py', '--port', '5556', '--check-microphone']), \
+             patch.object(HELPER, 'phone_pid', return_value=424242), \
+             patch.object(HELPER, 'discovery', return_value={}), \
+             patch.object(grpc, 'insecure_channel') as channel, \
+             contextlib.redirect_stdout(io.StringIO()):
+            with self.assertRaisesRegex(ValueError, 'No emulator discovery file in .*avd/running'):
+                HELPER.main()
+            channel.assert_not_called()
 
 
 if __name__ == '__main__':
