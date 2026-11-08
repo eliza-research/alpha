@@ -168,10 +168,11 @@ test('a selected variant and phase run only those cases and never read as the wh
 test('an unknown or repeated selection is refused before the emulator is touched',()=>{
  for(const extra of [['--variant=tablet'],['--phase=notice'],['--phase=workflow','--phase=workflow'],['--all']]){const r=exercise('pass','workflow',extra);assert.notEqual(r.code,0,extra.join(' '));assert.equal(r.commands.length,0,extra.join(' '));assert.equal(r.record,null);}
 });
-test('cases that restore a synthetic owner refuse a missing or mislabelled test-mocks archive before the emulator is touched',()=>{
- for(const mode of ['no-mocks-archive','mislabelled-mocks-archive'])for(const extra of [[],['--phase=approval-notice-recovery']]){
+test('a missing or mislabelled archive is refused before the emulator is touched',()=>{
+ const expected={'no-mocks-archive':/ALPHA_TEST_MOCKS_ARCHIVE/,'mislabelled-mocks-archive':/is not a test-mocks archive/,'mislabelled-build-archive':/is not a flag-off archive/};
+ for(const mode of Object.keys(expected))for(const extra of [[],['--phase=approval-notice-recovery']]){
   const r=exercise(mode,'workflow',extra);assert.notEqual(r.code,0,mode);assert.equal(r.commands.length,0,mode);assert.equal(r.record,null,mode);
-  assert.match(r.stderr,mode==='no-mocks-archive'?/ALPHA_TEST_MOCKS_ARCHIVE/:/is not a test-mocks archive/,mode);
+  assert.match(r.stderr,expected[mode],mode);
  }
 });
 test('a selection without owner-fixture cases needs only the flag-off archive',()=>{

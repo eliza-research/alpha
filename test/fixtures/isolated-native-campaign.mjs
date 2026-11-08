@@ -27,7 +27,7 @@ export function exercise(mode,kind='calendar',extraArguments=[]){
   // The workflow campaign reads a flag-off archive and, for its owner-fixture cases, a separate test-mocks archive.
   const mocksArchive=path.join(root,'mocks-archive');
   if(kind==='workflow'){
-   fs.writeFileSync(path.join(root,'artifacts/archive-source.json'),JSON.stringify({kind:'developer-archive',testMocks:false}));
+   fs.writeFileSync(path.join(root,'artifacts/archive-source.json'),JSON.stringify({kind:'developer-archive',testMocks:mode==='mislabelled-build-archive'}));
    fs.mkdirSync(mocksArchive);const mocks={};
    for(const name of ['standalone-debug.apk','standalone-androidTest.apk','launcher-debug.apk','launcher-androidTest.apk']){fs.writeFileSync(path.join(mocksArchive,name),'test-mocks '+name);mocks[name]=hash(path.join(mocksArchive,name));}
    fs.writeFileSync(path.join(mocksArchive,'apk-manifest.json'),JSON.stringify(mocks));
