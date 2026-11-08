@@ -1,7 +1,8 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android" xmlns:tools="http://schemas.android.com/tools">
- <!-- Alpha AOSP image only (P-36). The image stages this launcher build; the permissions are requested
-      only by AlphaTelephonyPlugin, which MainActivity registers only after AlphaImageCapability verifies
-      the image. A sideloaded launcher APK declares them but never asks for them. -->
+ <!-- Alpha AOSP image only (P-36). The image stages this launcher build. AlphaTelephonyPlugin, which
+      MainActivity registers only after AlphaImageCapability verifies the image, requests both;
+      AlphaContactsPlugin requests READ_CONTACTS only under the image provisioning admission
+      (AlphaImageCapabilities.aospImage). A sideloaded launcher APK declares them but never asks for them. -->
  <uses-permission android:name="android.permission.READ_CONTACTS" />
  <uses-permission android:name="android.permission.READ_PHONE_STATE" />
  <!-- SMS/MMS provider reads and reviewed native sends (#421), on the verified image only. Both are
