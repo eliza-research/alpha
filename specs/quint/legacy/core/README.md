@@ -31,3 +31,25 @@ metadata against the inventory and hashes the model, dependencies, tooling
 and metadata before and after checking. Generated backend modules, logs,
 checkpoints and receipts are stored under `test-results/quint-core-configurations`.
 Type checking and simulations do not establish a complete temporal verdict.
+
+## Interactive task source conformance
+
+After a successful finite `InteractiveTask.reducer` run, the source check
+regenerates a single-worker state graph from the compiled Quint model and
+compares its initial state and all non-self successor edges with the pinned
+upstream graph. It then runs both original upstream reducer conformance test
+bodies against the vendor checkout. The check binds the actual reducer, test,
+parser, graph and generated model hashes. It uses a small Node assertion harness
+for the three Vitest registration and equality functions used by those tests.
+
+```sh
+node specs/quint/legacy/core/check-configurations.mjs --phase=temporal --profiles=InteractiveTask.reducer
+node specs/quint/legacy/core/check-interactive-task-refinement.mjs
+```
+
+At shared revision `99b49439ce9d0cb5607e9831b9f7f58d89525029`, the graph has
+1,015 states and 3,136 distinct non-self edges. The original source tests
+exercise 59 event classes and 6,603 accepted transitions, including multiple
+events with the same abstract successor. This evidence concerns the reducer's
+finite abstract state and event partition. It does not cover durable storage or
+the runtime actuator that executes authorized actions.
