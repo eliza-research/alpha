@@ -9877,7 +9877,7 @@
     },
     {
       "path": "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaDataReset.java",
-      "sha256": "cdf49fd6d0aa456239241e4a73109c8f38e46bbc3dcdfee32b5d484be2687905",
+      "sha256": "4bd5c81b2dd0b6c52f1b25a9439d6abbfed3e48ea266ccf9a86e9a994e9758c6",
       "models": [
         "ApplicationComposition",
         "ResetRecovery"

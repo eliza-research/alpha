@@ -62,7 +62,7 @@ final class AlphaDataReset {
   * automatic work until an explicit recovery attempt durably repairs the budget. */
  static long[] failureState(Context context){
   AtomicFile file=failures(context);if(!exists(file))return pending(context)?new long[]{AUTOMATIC_ATTEMPTS,-1}:new long[]{0,0};
-  try{String[] parts=new String(file.readFully(),StandardCharsets.US_ASCII).trim().split(":");
+  try{String[] parts=new String(file.readFully(),StandardCharsets.US_ASCII).trim().split(":",-1);
    long count=Long.parseLong(parts[0]),first=Long.parseLong(parts[1]);
    // A negative or overflowing count would otherwise grant unbounded automatic attempts.
    if(parts.length==2&&count>=0&&count<=Integer.MAX_VALUE&&first>=0)return new long[]{count,first};

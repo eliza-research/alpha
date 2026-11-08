@@ -41,7 +41,7 @@ and driver hashes. A separate regression executes two real JVM processes racing 
 one remaining durable attempt slot. It also covers legacy budgets, reservation
 failure, crash recovery, overflow saturation, window boundaries and marker removal.
 
-The final host campaign passed 20 source traces with 368 model checkpoints and 48
+The final host campaign passed 20 source traces with 368 model checkpoints and 54
 direct regression assertions. Every trace bound source and driver hashes before
 execution and retained unchanged inputs. The existing reset tests and native
 refinement/conformance suites passed. `ResetRecovery` has 15 scenario tests and

@@ -80,9 +80,9 @@ public final class ResetAdmissionRegression {
   Files.writeString(budget(), Integer.MAX_VALUE + ":1000"); AlphaDataReset.retry(app, 1005);
   check(count() == Integer.MAX_VALUE, "count saturates without overflow");
 
-  for (boolean corrupt : new boolean[]{false, true}) {
+  for (String corrupt : new String[]{null, "garbage", "0:0:", "0:0::", "0:0:0"}) {
    setup(root, "legacy-" + corrupt); Files.write(marker(), new byte[]{1});
-   if (corrupt) Files.writeString(budget(), "garbage");
+   if (corrupt != null) Files.writeString(budget(), corrupt);
    check(AlphaDataReset.automaticAttempt(app, 1000) == AlphaDataReset.Outcome.DEFERRED && AlphaListenerPlugin.calls == 0, "legacy invalid budget deferred");
    AlphaDataReset.retry(app, 1000); check(count() == 1 && AlphaListenerPlugin.calls == 1, "explicit legacy repair reserves first");
   }
