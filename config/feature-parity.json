@@ -3,7 +3,7 @@
   "reference": "ELIZA_MOBILE_PRODUCT",
   "ceiling": {
     "differences": 17,
-    "modules": 544
+    "modules": 542
   },
   "differences": {
     "view:clock:only-b": "Eliza offers Clock; Alpha hands alarms and timers to the Android clock (clock.handoff) without a Clock view.",
@@ -126,6 +126,7 @@
     "android/app/src/main/java/ai/elizaresearch/alphaphone/ReminderReceiver.java",
     "android/app/src/main/java/ai/elizaresearch/alphaphone/RendererCredentialSlots.java",
     "android/app/src/main/java/ai/elizaresearch/alphaphone/RendererRecoveryBudget.java",
+    "android/app/src/main/java/ai/elizaresearch/alphaphone/ResetBeforeDispatch.java",
     "android/app/src/main/java/ai/elizaresearch/alphaphone/ResetRecoveryActivity.java",
     "android/app/src/main/java/ai/elizaresearch/alphaphone/ResidentCredentialShutdownRetry.java",
     "android/app/src/main/java/ai/elizaresearch/alphaphone/ResidentRecoveryReview.java",
@@ -290,7 +291,6 @@
     "apps/app/src/maps/guidance.ts",
     "apps/app/src/maps/map-plane.ts",
     "apps/app/src/maps/native-location.ts",
-    "apps/app/src/maps/navigation-fix.ts",
     "apps/app/src/maps/navigation-voice.ts",
     "apps/app/src/maps/regional-provider.ts",
     "apps/app/src/maps/resident-relay.ts",
@@ -323,7 +323,6 @@
     "apps/app/src/prototype/camera-adapter.ts",
     "apps/app/src/prototype/canonical-calendar-drafts.ts",
     "apps/app/src/prototype/canonical-notes-controller.ts",
-    "apps/app/src/prototype/canonical-notes-editor.ts",
     "apps/app/src/prototype/canonical-notes-ui.ts",
     "apps/app/src/prototype/chat-overlay-motion-adapter.ts",
     "apps/app/src/prototype/clock-adapter.ts",
@@ -348,6 +347,7 @@
     "apps/app/src/prototype/local-speech-playback.ts",
     "apps/app/src/prototype/locale-time.ts",
     "apps/app/src/prototype/maps-adapter.ts",
+    "apps/app/src/prototype/maps-chat-adapter.ts",
     "apps/app/src/prototype/media-review-controls.ts",
     "apps/app/src/prototype/mock-attention.ts",
     "apps/app/src/prototype/model.js",
@@ -371,7 +371,6 @@
     "apps/app/src/prototype/scan-event-review.ts",
     "apps/app/src/prototype/scan-event.ts",
     "apps/app/src/prototype/scan-link-review.ts",
-    "apps/app/src/prototype/scan-links.ts",
     "apps/app/src/prototype/scan-page-camera.ts",
     "apps/app/src/prototype/scan-pdf.ts",
     "apps/app/src/prototype/scan-review.ts",
@@ -399,8 +398,8 @@
     "apps/app/src/runtime/agent-calendar-client.ts",
     "apps/app/src/runtime/agent-calendar-view.ts",
     "apps/app/src/runtime/agent-calendar.ts",
+    "apps/app/src/runtime/agent-status-route.ts",
     "apps/app/src/runtime/alpha-client.ts",
-    "apps/app/src/runtime/always-on-listener-status.ts",
     "apps/app/src/runtime/always-on-listener.ts",
     "apps/app/src/runtime/aosp-image.ts",
     "apps/app/src/runtime/aosp-telephony.ts",
