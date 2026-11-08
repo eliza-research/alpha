@@ -48,6 +48,8 @@ export function CloudDelegationPanel({
 		[calendar, setCalendar] = useState(false),
 		[grantId, setGrantId] = useState("");
 	const locked = useRef(false),
+		// A return that arrives while another step holds the lock is read once that step ends.
+		pendingCallback = useRef(false),
 		slot = "cloud-delegation:v1:" + scope;
 	const valid = () => current() && !signal.aborted;
 	async function clear(expected: Pending) {
@@ -74,8 +76,15 @@ export function CloudDelegationPanel({
 		} finally {
 			locked.current = false;
 			if (valid()) setBusy(false);
+			if (pendingCallback.current) {
+				pendingCallback.current = false;
+				void callback();
+			}
 		}
 	}
+	// The native slot keeps the return for this process; drop it once its record is finished.
+	const releaseCallback = (state: string) =>
+		delegationNative.clearDelegationCallback({ state }).catch(() => {});
 	async function recover(record: Pending, allowCompletion = true) {
 		const status = await client.delegation(
 			"status",
@@ -85,6 +94,7 @@ export function CloudDelegationPanel({
 		if (!valid()) return;
 		if (status.status === "complete" && typeof status.grantId === "string") {
 			await clear(record);
+			await releaseCallback(record.state);
 			if (!valid()) return;
 			setGrantId(status.grantId);
 			setMessage(
@@ -95,6 +105,7 @@ export function CloudDelegationPanel({
 		}
 		if (status.status === "failed") {
 			await clear(record);
+			await releaseCallback(record.state);
 			if (!valid()) return;
 			setMessage(
 				"This authorization expired or was cancelled. Start a new review.",
@@ -119,13 +130,19 @@ export function CloudDelegationPanel({
 		);
 	}
 	async function callback() {
+		if (locked.current) {
+			pendingCallback.current = true;
+			return;
+		}
 		await run(async () => {
 			const response = await delegationNative.readDelegationCallback();
 			if (!valid() || !response.callback) return;
-			setExpanded(true);
 			const record = await secureConnectionStore.read<Pending>(slot),
 				value = response.callback;
-			if (!record || record.state !== value.state) {
+			// With nothing pending here the return may be another scope's or account's, so it stays.
+			if (!record) return;
+			setExpanded(true);
+			if (record.state !== value.state) {
 				setMessage(
 					"This return link belongs to another account or an older connection. Select the account that started it.",
 				);
@@ -143,6 +160,7 @@ export function CloudDelegationPanel({
 				return;
 			}
 			if (!value.code || Date.parse(record.expiresAt) <= Date.now()) {
+				await releaseCallback(record.state);
 				setMessage(
 					"Authorization expired. Check status, then start a new review.",
 				);
