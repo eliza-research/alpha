@@ -15335,7 +15335,7 @@
     },
     {
       "path": "android/app/src/main/java/ai/elizaresearch/alphaphone/NativeDeletionCoordinator.java",
-      "sha256": "159037800e9113efeecca14e969171010be8e2f7cb505e12764a76908f9ded34",
+      "sha256": "5be651254bf2c84495f59d97e315f9642ad37cdb1b723dbcdbbfa09cce101250",
       "models": [
         "DeletionJournal"
       ],
@@ -15537,7 +15537,8 @@
       "path": "android/app/src/main/java/ai/elizaresearch/alphaphone/NativeOwnerReminderHost.java",
       "sha256": "d6f6eaa1a92009248029b5927d5122b2c06fbfb68c95692be1e04234b512e76c",
       "models": [
-        "DeviceActions"
+        "DeviceActions",
+        "DeletionJournal"
       ],
       "scope": "application",
       "treatment": "state-and-transition-projection",

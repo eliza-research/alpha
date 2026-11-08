@@ -270,3 +270,11 @@ The native whole-plugin campaign covers owned, attached and unowned starts, exac
 epoch retirement, disposed-surface calls and system-broadcast exclusion. Its
 source relation and remaining obligations are documented in
 [resident-coordinator-report.md](../refinement/native/resident-coordinator-report.md).
+
+## Executed deletion coordinator
+
+The whole coordinator campaign checks the authenticated owner again after waiting
+for its monitor, persists dispatch intent before provider calls and preserves
+uncertain receipts through restart. Selected-row projection and multi-row/provider
+boundaries are described in
+[deletion-coordinator-report.md](../refinement/native/deletion-coordinator-report.md).

@@ -248,7 +248,8 @@
         "apps/app/src/runtime/deletion-owner.ts",
         "apps/app/src/runtime/deletion-window.ts",
         "apps/app/src/runtime/deletions.ts",
-        "apps/app/src/runtime/note-audio-deletions.ts"
+        "apps/app/src/runtime/note-audio-deletions.ts",
+        "android/app/src/main/java/ai/elizaresearch/alphaphone/NativeOwnerReminderHost.java"
       ],
       "tests": [
         "undoBeforeExpiryTest",
@@ -266,8 +267,9 @@
       ],
       "abstractions": [
         "One operation, two owner identities, two source revisions and open/expired/clock-changed windows.",
-        "Atomic durable writes are represented by storage success; capacity and multi-row scheduling are omitted.",
-        "A stored dispatching row projects unknown on restart and is never automatically dispatched again."
+        "One selected row projects the actual journal. Coordinator source campaigns also exercise row isolation, scheduling and reminder-provider calls. Capacity and arbitrary many-row retention remain outside the finite model.",
+        "A stored dispatching row projects unknown on restart and is never automatically dispatched again.",
+        "dispatches counts durable dispatch admissions. Provider calls are recorded separately, including a committed intent followed by a failure before any provider call."
       ]
     },
     {

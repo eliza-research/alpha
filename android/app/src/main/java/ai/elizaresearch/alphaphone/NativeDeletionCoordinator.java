@@ -90,7 +90,7 @@ final class NativeDeletionCoordinator {
  /** Exact owner match against an owner resolved outside the lock. An unavailable agent owner throws (owner-unavailable). */
  private boolean admitted(JSONObject owner,JSONObject agent)throws Exception{
   if(!agentKind(owner))return DeferredDeletionJournal.same(owner,manualOwner());
-  if(agent==null)throw new SecurityException("Deletion owner unavailable");return DeferredDeletionJournal.same(owner,agent);
+  if(agent==null)throw new SecurityException("Deletion owner unavailable");return stageOwnerCurrent(owner)&&DeferredDeletionJournal.same(owner,agent);
  }
  private boolean undoAllowed(JSONObject owner,JSONObject agent)throws Exception{return agentKind(owner)?agent!=null&&stableOwner(owner,agent):stableOwner(owner,manualOwner());}
 
