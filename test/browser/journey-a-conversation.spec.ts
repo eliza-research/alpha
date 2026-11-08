@@ -73,7 +73,7 @@ test('journey A: boot, connect, converse across apps, stop a reply, reload and r
 
  // 2. Connection choice: Settings -> Agent connection, save a scripted reply and connect the development profile.
  await page.getByRole('button',{name:'Settings',exact:true}).click();
- await expect(page.getByRole('button',{name:'Agent',exact:true})).toContainText('Offline');
+ await expect(page.getByRole('button',{name:'Agent',exact:true})).toContainText('Not connected');
  await page.getByRole('button',{name:'Agent',exact:true}).click();
  const dialog=page.getByRole('dialog',{name:'Development connections'});
  await expect(dialog).toBeVisible();

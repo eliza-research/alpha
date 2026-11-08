@@ -107,7 +107,7 @@ for (const mode of ['read', 'update', 'delete', 'cancel', 'stale'] as const) {
     await review.getByRole('button',{name:mode==='cancel'?'Cancel':'Confirm',exact:true}).click();
     await expect.poll(()=>page.evaluate(()=>(window as any).recoveryFixture.receipts)).toBe(1);
     if(mode==='delete'){
-      const retained=await page.evaluate(()=>(window as any).calendarRetained);expect(retained.status).toBe('unknown');expect(retained.summary).toContain('Final outcome remains pending');
+      const retained=await page.evaluate(()=>(window as any).calendarRetained);expect(retained.status).toBe('unknown');expect(retained.summary).toBe('Deleting in 10 seconds. You can still Undo.');
       expect(await page.evaluate(async()=>JSON.parse((await(await import('/src/browser/calendar-store.ts')).calendarDocument.readRaw())!).events)).toEqual(before);
       await expect(page.getByRole('complementary',{name:'Pending deletions'}).getByRole('button',{name:'Undo',exact:true})).toBeVisible();await page.clock.fastForward(11000);
       await expect.poll(()=>page.evaluate(async()=>JSON.parse((await(await import('/src/browser/calendar-store.ts')).calendarDocument.readRaw())!).events[0].excluded)).toContain(before[0].begin);

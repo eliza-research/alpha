@@ -51,6 +51,7 @@ for (const mode of ['pending', 'wrong-owner', 'expired'] as const) {
           }
           if (pathname === '/api/automations') {fixture.automationLists++;return ok({automations:[]});}
           if (pathname === '/api/lifeops/reminders') return ok({reminders:[]});
+          if (pathname === '/api/lifeops/definitions' && input.method === 'GET') return ok({definitions:[]});
           if (pathname === '/api/lifeops/scheduled-tasks') return ok({tasks:[]});
           if (pathname === '/api/workflow/status') return ok({engine:'smthrs',status:'ready'});
           if (pathname === '/api/workflow/workflows') return ok({workflows:[]});
@@ -86,7 +87,7 @@ for (const mode of ['pending', 'wrong-owner', 'expired'] as const) {
     await page.getByRole('button', { name: 'Type', exact: true }).click();
     const input = page.locator('[data-alpha-layer="composer"][aria-hidden="false"], [data-alpha-layer="conversation"][aria-hidden="false"]').getByRole('textbox').first();
     await input.fill('Propose a synthetic action; await explicit approval.'); await input.press('Enter');
-    await expect(page.getByText('Review navigation request',{exact:true})).toBeVisible();
+    await expect(page.locator('[data-alpha-message-text]').filter({hasText:/^Review navigation request$/})).toBeVisible();
     const counts = () => page.evaluate(() => {
       const f = (window as any).navigationFixture;
       return { posts: f.posts, decisions: f.decisions, claims: f.claims, receipts: f.receipts, automationLists: f.automationLists, journal: f.journal };

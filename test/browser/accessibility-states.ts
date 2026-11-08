@@ -170,7 +170,8 @@ export const MOCK_STATES: State[] = [
   mock('workflows', ['New automation', 'Edit When step'], 'workflows-builder'),
   mock('workflows:new', ['Add Read step'], 'workflows-builder'),
   mock('settings', ['About']),
-  mock('settings', ['Calendars']),
+  // Calendars exists only in the live Settings adapter. Its accessibility audits
+  // remain in the live Settings calendars state above, rather than a nonexistent mock page.
 ]);
 
 /**

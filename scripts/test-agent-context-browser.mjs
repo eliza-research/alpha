@@ -170,7 +170,7 @@ try {
   }, mode);
   await limited.goto(url, { waitUntil: 'load', timeout: 180000 });
   await limited.getByRole('button', { name: 'Settings', exact: true }).click();
-  await limited.getByRole('button', { name: 'Agent connection', exact: true }).click();
+  await limited.getByRole('button', { name: 'Agent', exact: true }).click();
   await limited.getByText('Local development agent', { exact: true }).click();
   const local = limited.locator('.alpha-connection details').filter({ has: limited.getByText('Local development agent', { exact: true }) });
   await local.getByLabel('Local agent address').fill('http://127.0.0.1:47842');
@@ -185,7 +185,9 @@ try {
   // An HTTP failure may be uncertain; a typed failure is the agent's recorded outcome. Both show the
   // message as it is, with no Check saved conversation card.
   const message='The AI request rate limit was reached. Wait a moment before sending again. Alpha Phone did not retry your message.';
-  await limited.getByText(message, { exact: true }).waitFor();
+  const rateNotice = limited.locator('[data-alpha-message-text]').filter({hasText:message});
+  await rateNotice.waitFor();
+  assert.equal(await rateNotice.textContent(), message);
   assert.equal(await limited.getByRole('button',{name:/^Check saved conversation/}).count(),0);
   assert.equal(await limited.getByText('PRIVATE_PROVIDER_ERROR_CANARY', { exact: true }).count(), 0);
   await limited.waitForTimeout(1200);
@@ -193,13 +195,13 @@ try {
   await input.fill('Explicit user retry'); assert.equal(await input.inputValue(), 'Explicit user retry');
   assert.equal(await limited.evaluate(() => window.rateFixture.posts), 1, 'Editing draft is not a send');
   await input.press('Enter');
-  await limited.getByText('EXPLICIT_RETRY_ACCEPTED_' + mode, { exact: true }).waitFor();
+  await limited.locator('[data-alpha-message-text]').filter({hasText: new RegExp('^EXPLICIT_RETRY_ACCEPTED_' + mode + '$')}).waitFor();
   const facts = await limited.evaluate(async () => ({ ...window.rateFixture, session: (await import('/src/runtime/connection-ui.tsx')).connectionController.getSnapshot().session }));
   assert.equal(facts.posts, 2); assert.equal(facts.creates, 1); assert.equal(facts.successes, 1);
   assert.deepEqual(facts.session, identityBefore, 'Account and session retained across explicit retry');
   assert.deepEqual(facts.paths, ['/api/conversations/rate-conversation/messages', '/api/conversations/rate-conversation/messages']);
   assert.equal(await limited.getByText('First visible fixture message', { exact: true }).count(), 1);
-  assert.equal(await limited.getByText(message, { exact: true }).count(), 1);
+  assert.equal(await rateNotice.count(), 1);
   await limited.close();
  }
  console.log('PASS rendered video selection -> chat with opaque context; folder, own-notification and settings identities stay bounded with sensitive/external exclusions; chooser/visibility/pagehide cancel stale turns and proposals; session/history retained, fresh requests succeed. HTTP429 and typed200 rate_limited render safe error, never automatically repeat POST, retain usable input/history/account, and explicit retry succeeds in the same conversation. Synthetic native/agent boundaries only; no model or emulator acceptance.');
