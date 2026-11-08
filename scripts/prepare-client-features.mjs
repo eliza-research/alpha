@@ -232,6 +232,7 @@ export const CLIENT_FEATURE_PATHS = [
   'packages/ui/src/gestures/recognizers.ts',
   'packages/ui/src/gestures/useRafCoalescer.ts',
   'packages/ui/src/components/shell/chat-panel-layout.ts',
+  'packages/ui/src/components/chat/message-maps-parser.ts',
   'packages/ui/src/components/shell/dock-clearance.ts',
   'packages/ui/src/components/shell/responsive-layout.ts',
   'packages/ui/src/utils/automation-feed-filter.ts',

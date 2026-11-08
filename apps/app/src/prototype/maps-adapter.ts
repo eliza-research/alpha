@@ -1,3 +1,4 @@
+import {mapsChatText} from '../runtime/action-message-presentation';
 import {BackgroundNavigation,type NavigationBridge} from '../maps/background-navigation';
 import {registerPlugin} from '../platform-plugins';
 import {DailyApps} from '../daily';
@@ -265,4 +266,36 @@ export function installPrototypeMapsAdapter(Component: { prototype: Bag }, views
   const visibility = () => { if(document.hidden)screen.hidden();else screen.refresh(); };
   const pagehide=()=>screen.release();window.addEventListener('pagehide', pagehide); document.addEventListener('visibilitychange', visibility);
   return () => { disposed = true; agentNavigation.dispose(); shell=undefined; for(const event of shareEvents)window.removeEventListener(event,retireShare); screen.dispose(); window.removeEventListener('pagehide', pagehide); document.removeEventListener('visibilitychange', visibility); Object.assign(module, original); };
+}
+
+/** Presentation only: stored messages, model context and copied source text remain unchanged.
+ * A share answer is an ordinary chat message; the agent still owns the confirmation gate. */
+export function installMapsChatAdapter(Component:Bag){
+ const p=Component.prototype,render=p.renderVals;
+ const answered=new WeakMap<object,Set<string>>();
+ const answers=(shell:Bag)=>{let value=answered.get(shell);if(!value){value=new Set();answered.set(shell,value);}return value;};
+ async function answer(shell:Bag,id:string,value:string,current:()=>boolean){
+  const snapshot=connectionController.getSnapshot(),done=answers(shell);
+  if(done.has(id)||!shell.live||document.hidden||snapshot.open||snapshot.busy||shell.S().typing||shell.S().recording||!current())return;
+  if(String(shell.S().draft||'').trim()){shell.toast('Keep or send your chat draft before answering.');return;}
+  done.add(id);if(shell.live)shell.setState({});
+  try{if(!current()){done.delete(id);return;}await shell.send(value);}catch(error){done.delete(id);if(shell.live){shell.setState({});shell.toast(error instanceof Error?error.message:'The answer was not sent.');}}
+ }
+ p.renderVals=function(){
+  const out=render.call(this),msgs=out.msgs||[],done=answers(this);
+  out.msgs=msgs.map((message:Bag,index:number)=>{
+   if(!message.isAgent)return message;
+   const source=String(message.displayText??message.text??''),parsed=mapsChatText(source);
+   if(!parsed.cards.length&&!parsed.choice&&parsed.displayText===source)return message;
+   // Only the newest reply can still be answered; an old question is history.
+   const choice=parsed.choice,id=choice?String(message.id)+':'+choice.id:'',snapshot=connectionController.getSnapshot(),session=snapshot.session,conversation=connectionController.getSelectedConversationId();
+   const saved=this.S().msgs?.find((row:Bag)=>row.id===message.id),savedText=saved?String(saved.displayText??saved.text??''):undefined;
+   const current=()=>{const latest=this.S().msgs?.at(-1);return !!session&&connectionController.getSnapshot().session===session&&connectionController.getSelectedConversationId()===conversation&&latest?.id===message.id&&latest.from==='agent'&&String(latest.displayText??latest.text??'')===savedText;};
+   const open=!!choice&&index===msgs.length-1&&!done.has(id)&&current();
+   return {...message,displayText:parsed.displayText,hasCalendarText:message.hasCalendarText!==false&&!!parsed.displayText,
+    messageActionsLabel:message.messageActionsLabel?'Message actions: '+(parsed.displayText||parsed.cards[0]?.title||'Maps'):message.messageActionsLabel,
+    mapsCards:parsed.cards.map(card=>({...card,lines:card.lines.map(text=>({text})),hasAttribution:!!card.attribution})),
+    hasMapsChoice:open,mapsChoices:open?choice!.options.map(option=>({label:option.label,choose:()=>void answer(this,id,option.value,current)})):[]};
+  });return out;
+ };
 }

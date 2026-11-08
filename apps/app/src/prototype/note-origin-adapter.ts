@@ -63,7 +63,7 @@ export function installNoteOriginAdapter(Component:Bag,views:Bag){
  const olderNotes=(api:Bag)=>(shell&&olderNotesOpen()?shell.notesStore?.list:undefined)??api.get('notes')?.list;
  views.calendar.render=(state:Bag,api:Bag)=>{
   const out=render(state,api),selected=out.ev&&state.open?(state.events||[]).find((e:Bag)=>e.id===state.open):undefined;
-  const origin=selected?.alphaReminderId?savedNoteOrigin('reminder',selected.alphaReminderId):selected?.alphaCalendarId?savedNoteOrigin('event',eventNoteOriginId(selected.nativeEvent)||''):undefined;
+  const origin=selected?.alphaReminderId?savedNoteOrigin('reminder',selected.alphaReminderId):selected?.alphaCalendarId?savedNoteOrigin('event',eventNoteOriginId(selected.nativeEvent)||''):typeof selected?.canonicalEventKey==='string'?savedNoteOrigin('event',selected.canonicalEventKey):undefined;
   if(!origin||!out.ev)return out;
   const openId=state.open;
   if(origin.version===2)return canonicalOrigin(out,origin,api,openId);

@@ -1,6 +1,6 @@
 import {connectionController} from '../runtime/connection-ui';
 import {alphaClient} from '../runtime/alpha-client';
-import {calendarReviewText,calendarApprovalCommand,calendarApprovalStatus} from '../runtime/calendar-approval';
+import {calendarReviewText,inboxChoiceText,calendarApprovalCommand,calendarApprovalStatus} from '../runtime/calendar-approval';
 import {reviewCalendarApproval} from './calendar-approval-review';
 type Shell=Record<string,any>;
 /** Presentation only: stored messages, model context and copied source text remain unchanged. */
@@ -30,8 +30,9 @@ export function installCalendarApprovalAdapter(Component:Shell){
    // A verified device receipt may already replace the original review prose.
    // Keep that projection and never interpret its summary as Calendar commands.
    if(typeof message.displayText==='string'&&message.displayText!==source)return {...message,messageActionsLabel:message.messageActionsLabel?'Message actions: '+message.displayText:message.messageActionsLabel};
-   const parsed=calendarReviewText(source);
-   return {...message,displayText:parsed.displayText,hasCalendarText:message.hasCalendarText!==false&&!!parsed.displayText,messageActionsLabel:message.messageActionsLabel?'Message actions: '+(parsed.displayText||'Calendar request'):message.messageActionsLabel,calendarReviews:parsed.ids.map(id=>({id,status:value.statuses.get(key+id)||'Check current status',open:()=>void review(this,id)}))};
+   // Order: the Calendar projection, then inbox choices (prose only); maps-chat-adapter.ts runs after this.
+   const parsed=calendarReviewText(source),displayText=inboxChoiceText(parsed.displayText);
+   return {...message,displayText,hasCalendarText:message.hasCalendarText!==false&&!!displayText,messageActionsLabel:message.messageActionsLabel?'Message actions: '+(displayText||'Calendar request'):message.messageActionsLabel,calendarReviews:parsed.ids.map(id=>({id,status:value.statuses.get(key+id)||'Check current status',open:()=>void review(this,id)}))};
   });return out;
  };
  p.componentWillUnmount=function(){states.get(this)?.abort?.abort();states.delete(this);return unmount?.call(this);};
