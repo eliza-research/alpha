@@ -343,7 +343,8 @@ export function installPrototypeCameraAdapter(_Component: unknown, views: Record
         const undo=operation==='trash'?changed.map(row=>normalize(row.item!)):[];
         owner.toast(message+(failed?`; ${failed} not verified. Cancel selection and reselect to refresh.`:''),undo.length?{undo:()=>{void changeSelection(owner,'restore',undo);}}:undefined);
       }
-    }catch{if(owner.isActive())owner.toast('Reopen Photos to check.');}
+    // Cancelling Android's review dialog changed nothing, so the owner's own cancel gets no toast.
+    }catch(error){if(owner.isActive()&&(error as {code?:string})?.code!=='LIBRARY_DECLINED')owner.toast('Reopen Photos to check.');}
     finally{mutating=false;if(!disposed){void refresh();void loadTrash(owner);void loadCounts(owner);void loadCustomAlbums(owner);owner.set({nativeMultiSelection:Date.now()});}}
   }
   // Browser-owned album storage reports damaged saved data by failing to read.
@@ -745,6 +746,8 @@ export function installPrototypeCameraAdapter(_Component: unknown, views: Record
       return {status:'saved',id:row.id,message:'Photo kept in Photos in this browser.'};
     }
     const result=await library.keepCapture({dataBase64:photo.base64,operationId});
+    // An unknown native answer keeps the operation identity, so Try again resolves the same reservation.
+    if(result.status==='unknown')return {status:'unknown',message:result.message||'Keep photo unconfirmed.'};
     if(result.status!=='saved'||!result.id)return {status:'failed',message:result.message||'Photo was not kept.'};
     // Saved even if the review closed meanwhile: Photos shows the kept page.
     loaded=false;owner.setView('photos',{nativeCaptureRevision:'native-camera-'+result.id});return {status:'saved',id:result.id,message:'Photo kept in Android Photos.'};
