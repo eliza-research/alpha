@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import {runStartupPermissionsCoordinatorRefinement} from './startup-permissions-coordinator.mjs';
 import {checkTraces as check, qmap} from '../check-traces.mjs';
 import {bundledSource, sourceModule, sourceContext, memoryStore, trace, checkpoint, call, captureSources, boundInputs} from './support.mjs';
 captureSources(['specs/quint/refinement/application/contracts.mjs']);
@@ -90,21 +91,5 @@ export async function credentialVault() {
 }
 
 export async function permissionWalkthrough() {
-  const flow = await sourceModule('apps/app/src/startup-permission-flow.ts');
-  const source = 'apps/app/src/startup-permission-progress.ts';
-  const policy = sourceContext([source], ['readStartupPermissionProgress', 'writeStartupPermissionProgress'], flow);
-  const store = memoryStore(), current = () => policy.readStartupPermissionProgress(store, true);
-  const t = trace('six-permission-progress-persistence', {'s.savedProgress': current().step});
-  checkpoint(t, 'signed-in test fixture', call('signIn'), {'s.savedProgress': current().step});
-  for (let index = 0; index < 5; index++) {
-    policy.writeStartupPermissionProgress(store, {version: 3, status: 'pending', step: index + 1}, true);
-    checkpoint(t, 'write and read back next permission', [call('platformStatus', index, true), call('advance')], {'s.savedProgress': current().step});
-  }
-  policy.writeStartupPermissionProgress(store, {version: 3, status: 'completed', step: 6}, true);
-  checkpoint(t, 'completed record after six platform grants', [call('platformStatus', 5, true), call('advance'), call('finish')], {'s.savedProgress': current().step, 's.completed': current().status === 'completed'});
-  const replay = new Map(store.values); store.values.clear(); for (const [key, value] of replay) store.values.set(key, value);
-  checkpoint(t, 'new reader sees durable completion', call('restart'), {'s.savedProgress': current().step, 's.completed': current().status === 'completed'});
-  return checkTraces({model: 'PermissionWalkthrough', sources: [source, 'apps/app/src/startup-permission-flow.ts'], traces: [t], scope: 'bounded-component', assumptions: [
-    'Checks actual six-step marker read/write validation and persistence. Platform grants are controlled fixture inputs.',
-    'This is a progress-store projection; component allow/advance/finish gating, cancellation and pending prompt races need a React adapter.']});
+  return (await runStartupPermissionsCoordinatorRefinement()).receipt;
 }

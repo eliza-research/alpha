@@ -96,11 +96,16 @@ export function StartupPermissions({active:enabled = true}: {active?: boolean} =
     return true;
   };
   const changed = () => window.dispatchEvent(new Event('alpha:permissions-changed'));
+  const invalidatePending = () => {
+    ++sequence.current;
+    actionPending.current = false;
+    setBusy(false);
+  };
 
-  useEffect(() => { if (!enabled) ++sequence.current; }, [enabled, connection.cloudAccount?.credentialId]);
+  useEffect(() => { invalidatePending(); }, [enabled, connection.cloudAccount?.credentialId]);
   useEffect(() => {
     if (!connection.setupRevision) return;
-    ++sequence.current;setReopened(false);setTarget(null);targetRef.current=null;
+    invalidatePending();setReopened(false);setTarget(null);targetRef.current=null;
     const resume=savedProgress(native);completedReady.current=!resume;setReady(!resume);setActive(!!resume);if(resume)writeProgress(resume);
   }, [connection.setupRevision]);
   useEffect(() => {
@@ -124,7 +129,7 @@ export function StartupPermissions({active:enabled = true}: {active?: boolean} =
     const reopen = (event: Event) => {
       const selected = (event as CustomEvent<{permission?: unknown}>).detail?.permission;
       if (selected !== undefined && (typeof selected !== 'string' || !keys.includes(selected as PermissionKey))) return;
-      ++sequence.current;completedReady.current=false;
+      invalidatePending();completedReady.current=false;
       targetRef.current = typeof selected === 'string' && keys.includes(selected as PermissionKey) ? selected as PermissionKey : null;
       setTarget(targetRef.current);
       if (!selected) {const resume=savedProgress(native)??{version:3 as const,step:0,choices:[]};if(!writeProgress(resume))return;}
@@ -168,9 +173,9 @@ export function StartupPermissions({active:enabled = true}: {active?: boolean} =
       let value: StartupPermissionState | null;
       if (target && native && state === 'ready') {await device.openSettings({page: key === 'notifications' ? 'notifications' : 'privacy'}); value = await flows[key].refresh();}
       else value = state === 'unavailable' || (!native && state === 'settings') ? await flows[key].refresh() : await flows[key].enable();
-      if (alive.current && value !== null) {setStates(previous => ({...previous, [key]: value})); changed(); if (ticket === sequence.current && value === 'ready' && !target) advance(state === 'ready' ? 'continued' : 'allowed');}
-    } catch {if (alive.current) setStates(previous => ({...previous, [key]: 'unavailable'}));}
-    finally {actionPending.current = false; if (alive.current) setBusy(false);}
+      if (alive.current && ticket === sequence.current && value !== null) {setStates(previous => ({...previous, [key]: value})); changed(); if (value === 'ready' && !target) advance(state === 'ready' ? 'continued' : 'allowed');}
+    } catch {if (alive.current && ticket === sequence.current) setStates(previous => ({...previous, [key]: 'unavailable'}));}
+    finally {if (alive.current && ticket === sequence.current) {actionPending.current = false;setBusy(false);}}
   }
   async function finish() {
     if(actionPending.current)return;actionPending.current=true;setBusy(true);const ticket=sequence.current;
@@ -197,7 +202,7 @@ export function StartupPermissions({active:enabled = true}: {active?: boolean} =
       try{sessionStorage.setItem(dismissedKey,'1');}catch{}
       if(!reopened)window.dispatchEvent(new Event('launcher-home'));
     } catch {if(alive.current&&ticket===sequence.current)setProgressError(true);}
-    finally {actionPending.current=false;if(alive.current)setBusy(false);}
+    finally {if(alive.current&&ticket===sequence.current){actionPending.current=false;setBusy(false);}}
   }
   if (!visible) return null;
   if(ready)return <dialog ref={dialog} className="alpha-startup-permissions" aria-label="You’re all set" onCancel={event=>event.preventDefault()}><div className="alpha-permission-content">

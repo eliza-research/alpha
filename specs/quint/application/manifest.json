@@ -298,7 +298,10 @@
       "deniedPermissionCannotAdvanceTest",
       "revokedBeforeFinishTest",
       "failedProgressWriteTest",
-      "legacyCompletionTest"
+      "legacyCompletionTest",
+      "ownerChangeRetiresPendingTest",
+      "staleCompletionKeepsNewPendingTest",
+      "completedRemountTest"
     ],
     "sources": [
       "apps/app/src/startup-permissions.tsx",
@@ -307,7 +310,9 @@
     ],
     "abstractions": [
       "Six permission state machines share one serial UI action and a durable versioned walkthrough.",
-      "Platform readiness is external input. Completed installation records grant no platform access."
+      "Platform readiness is external input. Completed installation records grant no platform access.",
+      "Coordinator generations are bounded to six. Pending native calls retain their original generation after UI invalidation. Actual React traces cover all state fields across finite owner, callback, storage and remount schedules.",
+      "The no-repeat invariant assumes permission-attempt marker writes succeed. Best-effort attempt-storage failure is modeled separately by StartupPermissions."
     ]
   },
   {
