@@ -1,0 +1,2110 @@
+{
+  "revision": "4787d51a142c63c98371c832997184c53f7218d3",
+  "classification": "immutable-upstream-specifications",
+  "modelCount": 16,
+  "configurationCount": 31,
+  "models": [
+    {
+      "module": "ActionSettlement",
+      "quintModule": "CoreActionSettlement",
+      "source": "packages/core/tla/ActionSettlement.tla",
+      "sha256": "8a5aff37e3def1f0ea382471243a1dc504ca35e57203a13c59bbbf116da210e8",
+      "lines": 180,
+      "variables": [
+        "spc",
+        "hpc",
+        "phase",
+        "outcome",
+        "emitted",
+        "buffer",
+        "chain",
+        "busy",
+        "delivered",
+        "target"
+      ],
+      "definitions": [
+        "N",
+        "Ids",
+        "vars",
+        "Init",
+        "Receive",
+        "Admit",
+        "HandlerEmit",
+        "HandlerReturn",
+        "LateEmit",
+        "Settle",
+        "Deliver",
+        "TransportSettle",
+        "Drained",
+        "Finished",
+        "Next",
+        "Spec",
+        "TypeOK",
+        "DeliveredInEmissionOrder",
+        "DeliveredOnlyEmitted",
+        "NoneAfterFailure",
+        "NoneOnReplyFailure",
+        "NoneWhilePending",
+        "SettleReturns",
+        "AllDelivered"
+      ],
+      "features": [
+        "weak fairness",
+        "always/eventually",
+        "sequences"
+      ],
+      "sourceHints": [
+        "src/runtime/action-handler-settlement.ts: settleActionHandler and its   "
+      ],
+      "configs": [
+        {
+          "path": "packages/core/tla/ActionSettlement.late.cfg",
+          "name": "late",
+          "sha256": "4832dc89d549aa6c7d05b55286589ccf611ab1ebd471dd5b47b9933f6b26a77d",
+          "sections": {
+            "CONSTANTS": [
+              "InHandler = 3",
+              "Late = 3",
+              "Outcomes = {\"ok\"}",
+              "MayDeny = FALSE"
+            ],
+            "SPECIFICATION": [
+              "Spec"
+            ],
+            "INVARIANTS": [
+              "TypeOK",
+              "DeliveredInEmissionOrder",
+              "DeliveredOnlyEmitted",
+              "NoneAfterFailure",
+              "NoneOnReplyFailure",
+              "NoneWhilePending"
+            ],
+            "PROPERTIES": [
+              "SettleReturns",
+              "AllDelivered"
+            ],
+            "CHECK_DEADLOCK": [
+              "TRUE"
+            ]
+          }
+        },
+        {
+          "path": "packages/core/tla/ActionSettlement.outcomes.cfg",
+          "name": "outcomes",
+          "sha256": "64d826a5ab3d64e1a21b86afcc88ee646c43a235b53a49c1c47e8bc55957a26e",
+          "sections": {
+            "CONSTANTS": [
+              "InHandler = 2",
+              "Late = 1",
+              "Outcomes = {\"ok\", \"replyFailure\", \"invalid\", \"throw\"}",
+              "MayDeny = TRUE"
+            ],
+            "SPECIFICATION": [
+              "Spec"
+            ],
+            "INVARIANTS": [
+              "TypeOK",
+              "DeliveredInEmissionOrder",
+              "DeliveredOnlyEmitted",
+              "NoneAfterFailure",
+              "NoneOnReplyFailure",
+              "NoneWhilePending"
+            ],
+            "PROPERTIES": [
+              "SettleReturns",
+              "AllDelivered"
+            ],
+            "CHECK_DEADLOCK": [
+              "TRUE"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "module": "ApprovalService",
+      "quintModule": "CoreApprovalService",
+      "source": "packages/core/tla/ApprovalService.tla",
+      "sha256": "5b954c7878a07a32753ae2743e9e3057b007bcdc541f94646566fdd875b8bf26",
+      "lines": 254,
+      "variables": [
+        "inMap",
+        "timer",
+        "taskExists",
+        "result",
+        "selRuns",
+        "toRuns",
+        "tpc",
+        "tHas",
+        "spc",
+        "sHas",
+        "cpc",
+        "stopped"
+      ],
+      "definitions": [
+        "vars",
+        "TypeOK",
+        "Settle",
+        "Init",
+        "Fire",
+        "TGetTask",
+        "TCallbackDone",
+        "TCallbackFails",
+        "TResolve",
+        "TDelete",
+        "Deliver",
+        "SGetTask",
+        "SCallbackDone",
+        "SCallbackFails",
+        "SDelete",
+        "Cancel",
+        "CancelDelete",
+        "Stop",
+        "Finished",
+        "Next",
+        "Fairness",
+        "Spec",
+        "AtMostOneCallback",
+        "ResultAgrees",
+        "SingleOwner",
+        "SettlesOnce",
+        "CallerSettles"
+      ],
+      "features": [
+        "weak fairness",
+        "always/eventually",
+        "LET",
+        "EXCEPT",
+        "record/function sets"
+      ],
+      "sourceHints": [
+        "src/services/approval.ts: ApprovalService, one approval request.        "
+      ],
+      "configs": [
+        {
+          "path": "packages/core/tla/ApprovalService.failures.cfg",
+          "name": "failures",
+          "sha256": "47ba146b74f52f965d69f78abff3a0f73ef30fd034b08599427e97f168c80816",
+          "sections": {
+            "CONSTANTS": [
+              "Selectors = {s1, s2}",
+              "CanFail = TRUE"
+            ],
+            "SPECIFICATION": [
+              "Spec"
+            ],
+            "INVARIANTS": [
+              "TypeOK",
+              "AtMostOneCallback",
+              "ResultAgrees",
+              "SingleOwner"
+            ],
+            "PROPERTIES": [
+              "SettlesOnce",
+              "CallerSettles"
+            ],
+            "CHECK_DEADLOCK": [
+              "TRUE"
+            ]
+          }
+        },
+        {
+          "path": "packages/core/tla/ApprovalService.race.cfg",
+          "name": "race",
+          "sha256": "50f624fd8696639a73f36282e98e164619b0080858a2d3bb0f7e9afd0ec29d0f",
+          "sections": {
+            "CONSTANTS": [
+              "Selectors = {s1, s2}",
+              "CanFail = FALSE"
+            ],
+            "SPECIFICATION": [
+              "Spec"
+            ],
+            "INVARIANTS": [
+              "TypeOK",
+              "AtMostOneCallback",
+              "ResultAgrees",
+              "SingleOwner"
+            ],
+            "PROPERTIES": [
+              "SettlesOnce",
+              "CallerSettles"
+            ],
+            "CHECK_DEADLOCK": [
+              "TRUE"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "module": "EmbeddingDimension",
+      "quintModule": "CoreEmbeddingDimension",
+      "source": "packages/core/tla/EmbeddingDimension.tla",
+      "sha256": "c9862e75a86481390ad23d07d98237db2ee609c40fe99d524dce1874683e0b58",
+      "lines": 237,
+      "variables": [
+        "col",
+        "aspace",
+        "stored",
+        "pinProv",
+        "pinSpace",
+        "pinDim",
+        "ppc",
+        "pprov",
+        "probes",
+        "epc",
+        "eprov",
+        "dropped",
+        "clearFailed"
+      ],
+      "definitions": [
+        "Providers",
+        "None",
+        "Space",
+        "Dim",
+        "Vectors",
+        "vars",
+        "TypeOK",
+        "Init",
+        "ProbeVars",
+        "PinVars",
+        "EmbedVars",
+        "ProbeFails",
+        "ProbeStart",
+        "ProbeResize",
+        "ProbeSpace",
+        "ProbePin",
+        "ProbeClear",
+        "EmbedCall",
+        "EmbedValidate",
+        "EmbedWrite",
+        "Finished",
+        "Next",
+        "Spec",
+        "StoredOneSpace",
+        "PinSpaceStable",
+        "PinMatchesStore",
+        "StoredInColumn"
+      ],
+      "features": [
+        "always/eventually",
+        "LET",
+        "EXCEPT",
+        "record/function sets"
+      ],
+      "sourceHints": [
+        "src/runtime/embeddings.ts RuntimeEmbeddings: ensureEmbeddingDimension   ",
+        "packages/agent eliza.ts). A probe that throws leaves the pin as it was; "
+      ],
+      "configs": [
+        {
+          "path": "packages/core/tla/EmbeddingDimension.probes.cfg",
+          "name": "probes",
+          "sha256": "b8364857f2e793a51bf9647a346e729212391e41ec3d480660220cc555715ba3",
+          "sections": {
+            "CONSTANTS": [
+              "Embedders = {e1, e2}",
+              "MaxProbes = 3"
+            ],
+            "SPECIFICATION": [
+              "Spec"
+            ],
+            "INVARIANTS": [
+              "TypeOK",
+              "PinMatchesStore",
+              "StoredInColumn"
+            ],
+            "PROPERTIES": [
+              "PinSpaceStable"
+            ],
+            "CHECK_DEADLOCK": [
+              "TRUE"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "module": "FactWriteDedupe",
+      "quintModule": "CoreFactWriteDedupe",
+      "source": "packages/core/tla/FactWriteDedupe.tla",
+      "sha256": "b96af81bac91ac1c23f2e67be01a012962fb2c3587ebf1b82ade02c004ff3570",
+      "lines": 93,
+      "variables": [
+        "rows",
+        "pc",
+        "seen",
+        "owner"
+      ],
+      "definitions": [
+        "vars",
+        "TypeOK",
+        "Init",
+        "Check",
+        "Update",
+        "Insert",
+        "Finished",
+        "Next",
+        "Spec",
+        "NoDuplicateFact",
+        "NoLostEvidence",
+        "WriteReturns"
+      ],
+      "features": [
+        "weak fairness",
+        "always/eventually",
+        "EXCEPT",
+        "record/function sets",
+        "sequences"
+      ],
+      "sourceHints": [
+        "src/runtime/data-mutations.ts RuntimeDataMutations.createMemory, facts "
+      ],
+      "configs": [
+        {
+          "path": "packages/core/tla/FactWriteDedupe.empty.cfg",
+          "name": "empty",
+          "sha256": "f2b960f3575c34db2c041147004edd03ef3840f808ac4c037e1f83ea5357056a",
+          "sections": {
+            "CONSTANTS": [
+              "Writers = {w1, w2, w3}",
+              "Prefilled = FALSE",
+              "Serialised = TRUE",
+              "Seed = Seed"
+            ],
+            "SPECIFICATION": [
+              "Spec"
+            ],
+            "INVARIANTS": [
+              "TypeOK",
+              "NoDuplicateFact",
+              "NoLostEvidence"
+            ],
+            "PROPERTIES": [
+              "WriteReturns"
+            ],
+            "CHECK_DEADLOCK": [
+              "TRUE"
+            ]
+          }
+        },
+        {
+          "path": "packages/core/tla/FactWriteDedupe.prefilled.cfg",
+          "name": "prefilled",
+          "sha256": "65e5e2f5d3087807600cadc5bf699a124c4670acb0348e252f00da7847e72e99",
+          "sections": {
+            "CONSTANTS": [
+              "Writers = {w1, w2, w3}",
+              "Prefilled = TRUE",
+              "Serialised = TRUE",
+              "Seed = Seed"
+            ],
+            "SPECIFICATION": [
+              "Spec"
+            ],
+            "INVARIANTS": [
+              "TypeOK",
+              "NoDuplicateFact",
+              "NoLostEvidence"
+            ],
+            "PROPERTIES": [
+              "WriteReturns"
+            ],
+            "CHECK_DEADLOCK": [
+              "TRUE"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "module": "InteractionSession",
+      "quintModule": "CoreInteractionSession",
+      "source": "packages/core/tla/InteractionSession.tla",
+      "sha256": "a204e853f4e417a640fcfd0a6e72876da7986ddcc29a8b1ee9f067e9e97bbf56",
+      "lines": 292,
+      "variables": [
+        "exists",
+        "cstate",
+        "owner",
+        "digest",
+        "lease",
+        "committedAt",
+        "completedAt",
+        "auth",
+        "now",
+        "pc",
+        "run",
+        "mine",
+        "last",
+        "effects",
+        "reached",
+        "late"
+      ],
+      "definitions": [
+        "vars",
+        "Time",
+        "ClaimIds",
+        "Response",
+        "Outcomes",
+        "TypeOK",
+        "Init",
+        "Store",
+        "Return",
+        "Claim",
+        "CommitInTime",
+        "Commit",
+        "Execute",
+        "Complete",
+        "Crash",
+        "Reconcile",
+        "Revoke",
+        "Sweepable",
+        "DeleteExpired",
+        "Tick",
+        "Finished",
+        "Next",
+        "Fairness",
+        "Spec",
+        "ExactlyOnceAuthority",
+        "AtMostOnce",
+        "CompletedHasEffect",
+        "NoCommitWhileRevoked",
+        "NoLateCommit",
+        "AmbiguousRetained",
+        "ExecutorHasRecord",
+        "EffectOnlyByCommitter",
+        "EffectRecorded"
+      ],
+      "features": [
+        "weak fairness",
+        "leads-to",
+        "always/eventually",
+        "LET",
+        "EXCEPT",
+        "record/function sets"
+      ],
+      "sourceHints": [
+        "src/messaging/interaction-sessions.ts: one durable message-interaction  "
+      ],
+      "configs": [
+        {
+          "path": "packages/core/tla/InteractionSession.leases.cfg",
+          "name": "leases",
+          "sha256": "e9f17bd829d235c98077a62fdb51568afe15d02a8f6996b49b9fcfafed1c5583",
+          "sections": {
+            "CONSTANTS": [
+              "Clients = {c1, c2, c3}",
+              "Mismatched = {c3}",
+              "MaxRuns = 2",
+              "MaxTime = 4",
+              "Expiry = 3",
+              "Ttl = 1",
+              "None = None"
+            ],
+            "SPECIFICATION": [
+              "Spec"
+            ],
+            "INVARIANTS": [
+              "TypeOK",
+              "AtMostOnce",
+              "ExactlyOnceAuthority",
+              "CompletedHasEffect",
+              "NoCommitWhileRevoked",
+              "NoLateCommit",
+              "AmbiguousRetained",
+              "ExecutorHasRecord"
+            ],
+            "PROPERTIES": [
+              "EffectOnlyByCommitter",
+              "EffectRecorded"
+            ],
+            "CHECK_DEADLOCK": [
+              "TRUE"
+            ]
+          }
+        },
+        {
+          "path": "packages/core/tla/InteractionSession.retries.cfg",
+          "name": "retries",
+          "sha256": "3b8d5ffe93f9182fccc8c5501077d2553b2dce5055acaa6c67d27eda2d618691",
+          "sections": {
+            "CONSTANTS": [
+              "Clients = {c1, c2}",
+              "Mismatched = {}",
+              "MaxRuns = 3",
+              "MaxTime = 5",
+              "Expiry = 4",
+              "Ttl = 2",
+              "None = None"
+            ],
+            "SPECIFICATION": [
+              "Spec"
+            ],
+            "INVARIANTS": [
+              "TypeOK",
+              "AtMostOnce",
+              "ExactlyOnceAuthority",
+              "CompletedHasEffect",
+              "NoCommitWhileRevoked",
+              "NoLateCommit",
+              "AmbiguousRetained",
+              "ExecutorHasRecord"
+            ],
+            "PROPERTIES": [
+              "EffectOnlyByCommitter",
+              "EffectRecorded"
+            ],
+            "CHECK_DEADLOCK": [
+              "TRUE"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "module": "InteractiveTask",
+      "quintModule": "CoreInteractiveTask",
+      "source": "packages/core/tla/InteractiveTask.tla",
+      "sha256": "e6d161bddb5fbb06bfba9e02bb9ba9a8e77029ee0f9328387120866968edb60c",
+      "lines": 176,
+      "variables": [
+        "status",
+        "auth",
+        "obs",
+        "op",
+        "scopeB",
+        "extended"
+      ],
+      "definitions": [
+        "Ops",
+        "Origins",
+        "OpStates",
+        "Statuses",
+        "vars",
+        "Unresolved",
+        "U",
+        "Ended",
+        "CancelPrepared",
+        "TypeOK",
+        "Init",
+        "Observe",
+        "Extend",
+        "Retract",
+        "Interrupt",
+        "Prepare",
+        "Dispatch",
+        "Result",
+        "Reconcile",
+        "Complete",
+        "Next",
+        "Spec",
+        "AtMostOneUnresolved",
+        "WaitingIffDispatched",
+        "BlockedHasUnknown",
+        "RevokedIsNotRunning",
+        "PreparedIsFenced",
+        "ObservedOriginIsAllowed",
+        "ScopeComesFromGrant",
+        "EndedIsSettled",
+        "OutcomesAreFinal",
+        "RevocationIsFinal"
+      ],
+      "features": [
+        "always/eventually",
+        "EXCEPT",
+        "record/function sets"
+      ],
+      "sourceHints": [
+        "src/messaging/interactive-task.ts: transitionInteractiveTask.            "
+      ],
+      "configs": [
+        {
+          "path": "packages/core/tla/InteractiveTask.reducer.cfg",
+          "name": "reducer",
+          "sha256": "403e1c6643cc5b9333c0ea587f81386b760126ab0290e7388c56beaca47ada33",
+          "sections": {
+            "SPECIFICATION": [
+              "Spec"
+            ],
+            "INVARIANTS": [
+              "TypeOK",
+              "AtMostOneUnresolved",
+              "WaitingIffDispatched",
+              "BlockedHasUnknown",
+              "RevokedIsNotRunning",
+              "PreparedIsFenced",
+              "ObservedOriginIsAllowed",
+              "ScopeComesFromGrant",
+              "EndedIsSettled"
+            ],
+            "PROPERTIES": [
+              "OutcomesAreFinal",
+              "RevocationIsFinal"
+            ],
+            "CHECK_DEADLOCK": [
+              "FALSE"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "module": "PluginLifecycle",
+      "quintModule": "CorePluginLifecycle",
+      "source": "packages/core/tla/PluginLifecycle.tla",
+      "sha256": "a2b18a27d89fae7d9f5a213ce9983ba7fe2b9807e0111d1ea5cdf75a79509501",
+      "lines": 436,
+      "variables": [
+        "pc",
+        "running",
+        "cur",
+        "waitSet",
+        "queue",
+        "visited",
+        "joinOf",
+        "stopFailed",
+        "owned",
+        "pluginsA",
+        "tdActive",
+        "regActive",
+        "disposeCalls",
+        "types",
+        "byClass",
+        "starting",
+        "failedC",
+        "services",
+        "live",
+        "stopCalls",
+        "stopOps",
+        "nextInst",
+        "stopRequested",
+        "registry",
+        "ownsA",
+        "ownsB",
+        "lastReg"
+      ],
+      "definitions": [
+        "Classes",
+        "Actors",
+        "MaxInst",
+        "Insts",
+        "Owners",
+        "ctl",
+        "plug",
+        "svc",
+        "conn",
+        "vars",
+        "Free",
+        "Go",
+        "Rest",
+        "Init",
+        "UCall",
+        "UJoin",
+        "UDispose",
+        "UInflight",
+        "UStop",
+        "UStopWait",
+        "UFinish",
+        "LCall",
+        "LBegin",
+        "SDone",
+        "TReq",
+        "TDrain",
+        "TSvc",
+        "TSvcWait",
+        "BReg",
+        "RCall",
+        "RInit",
+        "RJoin",
+        "Quiescent",
+        "Finished",
+        "Unload",
+        "Load",
+        "Stop",
+        "Register",
+        "Next",
+        "Fairness",
+        "Spec",
+        "TypeOK",
+        "TeardownStates",
+        "TeardownExclusive",
+        "StopAtMostOnce",
+        "NoOrphanInstance",
+        "StopStopsAll",
+        "ConnectorOwnedByLast",
+        "NoOrphanConnector",
+        "RegisterHonest",
+        "Terminates"
+      ],
+      "features": [
+        "weak fairness",
+        "always/eventually",
+        "CHOOSE",
+        "LET",
+        "EXCEPT",
+        "record/function sets"
+      ],
+      "sourceHints": [
+        "src/plugin-lifecycle.ts: the registerPlugin, unloadPlugin, reloadPlugin "
+      ],
+      "configs": [
+        {
+          "path": "packages/core/tla/PluginLifecycle.inflight.cfg",
+          "name": "inflight",
+          "sha256": "968e0469275c044c220056e1142a03784d310bc45ece6741e003cb6e553de479",
+          "sections": {
+            "CONSTANTS": [
+              "NumClasses = 2",
+              "Unloaders = {u1, u2}",
+              "Loaders = {l1}",
+              "Registrars = {}",
+              "Stoppers = {t1}",
+              "Rivals = {b1}",
+              "StartsInFlight = TRUE",
+              "InitMayFail = TRUE",
+              "StopMayFail = TRUE",
+              "StartMayFail = TRUE",
+              "None = None"
+            ],
+            "SPECIFICATION": [
+              "Spec"
+            ],
+            "INVARIANTS": [
+              "TypeOK",
+              "TeardownExclusive",
+              "StopAtMostOnce",
+              "NoOrphanInstance",
+              "StopStopsAll",
+              "ConnectorOwnedByLast",
+              "NoOrphanConnector",
+              "RegisterHonest"
+            ],
+            "PROPERTIES": [
+              "Terminates"
+            ],
+            "CHECK_DEADLOCK": [
+              "TRUE"
+            ]
+          }
+        },
+        {
+          "path": "packages/core/tla/PluginLifecycle.register.cfg",
+          "name": "register",
+          "sha256": "278554e646c24066f571292129694ad57798771553531fc7f03ea88ce351acba",
+          "sections": {
+            "CONSTANTS": [
+              "NumClasses = 0",
+              "Unloaders = {}",
+              "Loaders = {}",
+              "Registrars = {r1, r2}",
+              "Stoppers = {}",
+              "Rivals = {}",
+              "StartsInFlight = FALSE",
+              "InitMayFail = TRUE",
+              "StopMayFail = FALSE",
+              "StartMayFail = FALSE",
+              "None = None"
+            ],
+            "SPECIFICATION": [
+              "Spec"
+            ],
+            "INVARIANTS": [
+              "TypeOK",
+              "TeardownExclusive",
+              "StopAtMostOnce",
+              "NoOrphanInstance",
+              "StopStopsAll",
+              "ConnectorOwnedByLast",
+              "NoOrphanConnector",
+              "RegisterHonest"
+            ],
+            "PROPERTIES": [
+              "Terminates"
+            ],
+            "CHECK_DEADLOCK": [
+              "TRUE"
+            ]
+          }
+        },
+        {
+          "path": "packages/core/tla/PluginLifecycle.services.cfg",
+          "name": "services",
+          "sha256": "e42ca833b35c87e2ab060cb20886333530419e8748e0fd3705e505cc2983735e",
+          "sections": {
+            "CONSTANTS": [
+              "NumClasses = 2",
+              "Unloaders = {u1, u2}",
+              "Loaders = {l1, l2}",
+              "Registrars = {}",
+              "Stoppers = {t1}",
+              "Rivals = {b1}",
+              "StartsInFlight = FALSE",
+              "InitMayFail = TRUE",
+              "StopMayFail = TRUE",
+              "StartMayFail = TRUE",
+              "None = None"
+            ],
+            "SPECIFICATION": [
+              "Spec"
+            ],
+            "INVARIANTS": [
+              "TypeOK",
+              "TeardownExclusive",
+              "StopAtMostOnce",
+              "NoOrphanInstance",
+              "StopStopsAll",
+              "ConnectorOwnedByLast",
+              "NoOrphanConnector",
+              "RegisterHonest"
+            ],
+            "PROPERTIES": [
+              "Terminates"
+            ],
+            "CHECK_DEADLOCK": [
+              "TRUE"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "module": "ProviderExecution",
+      "quintModule": "CoreProviderExecution",
+      "source": "packages/core/tla/ProviderExecution.tla",
+      "sha256": "d0637ff320d0d508252dd72e1cf388b2c0a3bde771b881420d84ed30dbd733a6",
+      "lines": 235,
+      "variables": [
+        "map",
+        "active",
+        "created",
+        "waiters",
+        "cause",
+        "settled",
+        "cleaned",
+        "exec",
+        "pc",
+        "sigAborted",
+        "stopping",
+        "stopped"
+      ],
+      "definitions": [
+        "Execs",
+        "Causes",
+        "vars",
+        "Attached",
+        "TypeOK",
+        "Init",
+        "Fresh",
+        "Attach",
+        "AbortSignal",
+        "SettleWork",
+        "SettleAborted",
+        "Cleanup",
+        "CallerSettle",
+        "RequestStop",
+        "StopComposer",
+        "Finished",
+        "Next",
+        "Fairness",
+        "Spec",
+        "WaiterCount",
+        "AbortOnlyWhenUnwanted",
+        "UnwantedWorkAborted",
+        "NoJoinAborting",
+        "StopReachesAll",
+        "MapActive",
+        "AbortedCallerLeaves",
+        "StopReleasesCallers"
+      ],
+      "features": [
+        "weak fairness",
+        "leads-to",
+        "always/eventually",
+        "CHOOSE",
+        "LET",
+        "EXCEPT",
+        "record/function sets"
+      ],
+      "sourceHints": [
+        "src/runtime/state-composition.ts ProviderStateComposer: composeState's  "
+      ],
+      "configs": [
+        {
+          "path": "packages/core/tla/ProviderExecution.coalesced.cfg",
+          "name": "coalesced",
+          "sha256": "73e55746c34c383e32b17d9cbbb30d1df04b9bbbdd3a5ba4aa1d56d9129e9c91",
+          "sections": {
+            "CONSTANTS": [
+              "Callers = {a, b, c}",
+              "Signalled = {a, b}",
+              "Keyed = {a, b, c}",
+              "MaxExec = 3"
+            ],
+            "SPECIFICATION": [
+              "Spec"
+            ],
+            "INVARIANTS": [
+              "TypeOK",
+              "WaiterCount",
+              "AbortOnlyWhenUnwanted",
+              "UnwantedWorkAborted",
+              "NoJoinAborting",
+              "StopReachesAll",
+              "MapActive"
+            ],
+            "PROPERTIES": [
+              "AbortedCallerLeaves",
+              "StopReleasesCallers"
+            ],
+            "CHECK_DEADLOCK": [
+              "TRUE"
+            ]
+          }
+        },
+        {
+          "path": "packages/core/tla/ProviderExecution.oneoff.cfg",
+          "name": "oneoff",
+          "sha256": "53dbc4165b03b0dcf1b232637e6b10701f2f11e51ebd2dcc46231f2611dc6e70",
+          "sections": {
+            "CONSTANTS": [
+              "Callers = {a, b, c}",
+              "Signalled = {a, c}",
+              "Keyed = {a, b}",
+              "MaxExec = 3"
+            ],
+            "SPECIFICATION": [
+              "Spec"
+            ],
+            "INVARIANTS": [
+              "TypeOK",
+              "WaiterCount",
+              "AbortOnlyWhenUnwanted",
+              "UnwantedWorkAborted",
+              "NoJoinAborting",
+              "StopReachesAll",
+              "MapActive"
+            ],
+            "PROPERTIES": [
+              "AbortedCallerLeaves",
+              "StopReleasesCallers"
+            ],
+            "CHECK_DEADLOCK": [
+              "TRUE"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "module": "RoomHandlerQueue",
+      "quintModule": "CoreRoomHandlerQueue",
+      "source": "packages/core/tla/RoomHandlerQueue.tla",
+      "sha256": "6d4ad75fe5f0eff561a65286d6df7ddde14294e8ef3c3d170eb216eb529c21c3",
+      "lines": 277,
+      "variables": [
+        "queue",
+        "active",
+        "want",
+        "held",
+        "pc",
+        "accepting",
+        "writes",
+        "closed"
+      ],
+      "definitions": [
+        "Rooms",
+        "vars",
+        "States",
+        "Pending",
+        "InUse",
+        "Total",
+        "Min",
+        "Max",
+        "Waits",
+        "Remove",
+        "TypeOK",
+        "Init",
+        "Start",
+        "Admit",
+        "Grant",
+        "Cancel",
+        "Nest",
+        "BeginWrite",
+        "EndWrite",
+        "StartRelease",
+        "StopWrites",
+        "Release",
+        "Close",
+        "Finished",
+        "Next",
+        "Fairness",
+        "Spec",
+        "MutualExclusion",
+        "WaitersQueued",
+        "OrderedAcquisition",
+        "Bounded",
+        "WritesUnderLease",
+        "NoLeakedOwnership",
+        "NoAdmissionAfterClose",
+        "FreedByOwner",
+        "WaiterServed",
+        "TurnFinishes"
+      ],
+      "features": [
+        "weak fairness",
+        "leads-to",
+        "always/eventually",
+        "CHOOSE",
+        "LET",
+        "EXCEPT",
+        "record/function sets",
+        "sequences"
+      ],
+      "sourceHints": [
+        "src/runtime/room-handler-queue.ts: RoomHandlerQueue.                    "
+      ],
+      "configs": [
+        {
+          "path": "packages/core/tla/RoomHandlerQueue.bounded.cfg",
+          "name": "bounded",
+          "sha256": "a1ccee7ef04f793fcc0747e8a200781212f680bca2478684023d21cc4356cb3a",
+          "sections": {
+            "CONSTANTS": [
+              "Turns = {t1, t2, t3}",
+              "NumRooms = 2",
+              "MaxPerRoom = 2",
+              "MaxTotal = 3",
+              "MaxRooms = 2",
+              "MaxWrites = 1",
+              "None = None"
+            ],
+            "SPECIFICATION": [
+              "Spec"
+            ],
+            "INVARIANTS": [
+              "TypeOK",
+              "MutualExclusion",
+              "WaitersQueued",
+              "OrderedAcquisition",
+              "Bounded",
+              "NoLeakedOwnership",
+              "WritesUnderLease"
+            ],
+            "PROPERTIES": [
+              "NoAdmissionAfterClose",
+              "FreedByOwner",
+              "WaiterServed",
+              "TurnFinishes"
+            ],
+            "CHECK_DEADLOCK": [
+              "TRUE"
+            ]
+          }
+        },
+        {
+          "path": "packages/core/tla/RoomHandlerQueue.cycle.cfg",
+          "name": "cycle",
+          "sha256": "c439c0202b0306177ffc301801f11eb18a7cf80ca4fba34b07428e78954e0de4",
+          "sections": {
+            "CONSTANTS": [
+              "Turns = {t1, t2, t3}",
+              "NumRooms = 2",
+              "MaxPerRoom = 2",
+              "MaxTotal = 4",
+              "MaxRooms = 2",
+              "MaxWrites = 1",
+              "None = None"
+            ],
+            "SPECIFICATION": [
+              "Spec"
+            ],
+            "INVARIANTS": [
+              "TypeOK",
+              "MutualExclusion",
+              "WaitersQueued",
+              "OrderedAcquisition",
+              "Bounded",
+              "NoLeakedOwnership",
+              "WritesUnderLease"
+            ],
+            "PROPERTIES": [
+              "NoAdmissionAfterClose",
+              "FreedByOwner",
+              "WaiterServed",
+              "TurnFinishes"
+            ],
+            "CHECK_DEADLOCK": [
+              "TRUE"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "module": "RuntimeLifecycle",
+      "quintModule": "CoreRuntimeLifecycle",
+      "source": "packages/core/tla/RuntimeLifecycle.tla",
+      "sha256": "869f97937724184d25b3edc179433564c4bf34b0a438cb88e915502b23e7463c",
+      "lines": 339,
+      "variables": [
+        "ipc",
+        "initResolved",
+        "initFailed",
+        "svc",
+        "svcLate",
+        "queue",
+        "owner",
+        "tpc",
+        "aborted",
+        "stopReq",
+        "stopped",
+        "stopPromise",
+        "prepareCalls",
+        "closed",
+        "turnsClosed",
+        "failures",
+        "apc",
+        "aid",
+        "afast",
+        "outcome",
+        "spc",
+        "sfast",
+        "sstrict",
+        "sjoined",
+        "strictP"
+      ],
+      "definitions": [
+        "Attempts",
+        "vars",
+        "initVars",
+        "svcVars",
+        "turnVars",
+        "stopVars",
+        "attVars",
+        "callVars",
+        "Pending",
+        "Init",
+        "IRegister",
+        "ICore",
+        "SvcResume",
+        "SvcStarted",
+        "SvcStopDone",
+        "TAdmit",
+        "TGrant",
+        "TRun",
+        "TFinish",
+        "BeginAttempt",
+        "EnterBestEffort",
+        "SCall",
+        "ADrained",
+        "ATimeout",
+        "AServices",
+        "ASvcDone",
+        "SBestEffortDone",
+        "SStrictDrain",
+        "SAwaitStrict",
+        "Finished",
+        "Next",
+        "Fairness",
+        "Spec",
+        "LifecycleState",
+        "TypeOK",
+        "PrepareStopOnce",
+        "SingleAttempt",
+        "TurnsAbortedAfterStop",
+        "NoStartOnFailedInit",
+        "NoLiveAfterStopped",
+        "StoppedIsQuiet",
+        "StrictMeansQuiescent",
+        "NoAdmissionAfterClose",
+        "StopperReturns",
+        "TurnsFinish",
+        "EagerStartSettles"
+      ],
+      "features": [
+        "weak fairness",
+        "leads-to",
+        "always/eventually",
+        "EXCEPT",
+        "record/function sets",
+        "sequences"
+      ],
+      "sourceHints": [
+        "src/runtime.ts: initialize, _initializeCore (initResolver), stop,         ",
+        "src/runtime/service-lifecycle.ts: _ensureServiceStarted after             ",
+        "src/runtime/room-handler-queue.ts: runWith admission and FIFO grant.      ",
+        "src/runtime/turn-controller.ts: runWith (fresh controller), abortAllTurns. "
+      ],
+      "configs": [
+        {
+          "path": "packages/core/tla/RuntimeLifecycle.stop.cfg",
+          "name": "stop",
+          "sha256": "138d9bec69cba8e4708573d4b8b0498e2b30b669cc746d5cbbe8595694640f22",
+          "sections": {
+            "CONSTANTS": [
+              "Turns = {t1, t2}",
+              "Stoppers = {s1, s2}",
+              "MaxAttempts = 2",
+              "None = None"
+            ],
+            "SPECIFICATION": [
+              "Spec"
+            ],
+            "INVARIANTS": [
+              "TypeOK",
+              "PrepareStopOnce",
+              "SingleAttempt",
+              "TurnsAbortedAfterStop",
+              "NoStartOnFailedInit",
+              "NoLiveAfterStopped",
+              "StoppedIsQuiet",
+              "StrictMeansQuiescent"
+            ],
+            "PROPERTIES": [
+              "NoAdmissionAfterClose",
+              "StopperReturns",
+              "TurnsFinish",
+              "EagerStartSettles"
+            ],
+            "CHECK_DEADLOCK": [
+              "TRUE"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "module": "Semaphore",
+      "quintModule": "CoreSemaphore",
+      "source": "packages/core/tla/Semaphore.tla",
+      "sha256": "06f2eec3864f634079b94954ec8916d83427b13d680d3a757c43506ab85e028c",
+      "lines": 161,
+      "variables": [
+        "permits",
+        "waiters",
+        "pc",
+        "aborted",
+        "listener",
+        "queuedAbort",
+        "ticket",
+        "next"
+      ],
+      "definitions": [
+        "vars",
+        "Queued",
+        "Remove",
+        "Holders",
+        "TypeOK",
+        "Init",
+        "Acquire",
+        "Abort",
+        "CancelListener",
+        "Skipped",
+        "Release",
+        "Finished",
+        "Next",
+        "Fairness",
+        "Spec",
+        "PermitConservation",
+        "NoIdlePermitWithWaiters",
+        "WaitersQueued",
+        "FIFOGrants",
+        "CancelledNeverHolds",
+        "WaiterServed"
+      ],
+      "features": [
+        "weak fairness",
+        "leads-to",
+        "always/eventually",
+        "LET",
+        "EXCEPT",
+        "record/function sets",
+        "sequences"
+      ],
+      "sourceHints": [
+        "src/utils/task-scheduling.ts: Semaphore (acquire, release).              "
+      ],
+      "configs": [
+        {
+          "path": "packages/core/tla/Semaphore.one.cfg",
+          "name": "one",
+          "sha256": "3f6689142f9f15ad9b575000f5b5928ec01be5fe25353bcef4455c796d11a5b0",
+          "sections": {
+            "CONSTANTS": [
+              "Callers = {c1, c2, c3, c4}",
+              "N = 1"
+            ],
+            "SPECIFICATION": [
+              "Spec"
+            ],
+            "INVARIANTS": [
+              "TypeOK",
+              "PermitConservation",
+              "NoIdlePermitWithWaiters",
+              "WaitersQueued",
+              "FIFOGrants",
+              "CancelledNeverHolds"
+            ],
+            "PROPERTIES": [
+              "WaiterServed"
+            ],
+            "CHECK_DEADLOCK": [
+              "TRUE"
+            ]
+          }
+        },
+        {
+          "path": "packages/core/tla/Semaphore.two.cfg",
+          "name": "two",
+          "sha256": "04eeedbff2e3ec31e193aaa41a451f6c89b5ca45c14020e345ed964114a3b1df",
+          "sections": {
+            "CONSTANTS": [
+              "Callers = {c1, c2, c3, c4}",
+              "N = 2"
+            ],
+            "SPECIFICATION": [
+              "Spec"
+            ],
+            "INVARIANTS": [
+              "TypeOK",
+              "PermitConservation",
+              "NoIdlePermitWithWaiters",
+              "WaitersQueued",
+              "FIFOGrants",
+              "CancelledNeverHolds"
+            ],
+            "PROPERTIES": [
+              "WaiterServed"
+            ],
+            "CHECK_DEADLOCK": [
+              "TRUE"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "module": "Serialise",
+      "quintModule": "CoreSerialise",
+      "source": "packages/core/tla/Serialise.tla",
+      "sha256": "701209da1f1f1d7e8ac81395b99f053c9545e7bbe8dcee0bd85a9a9455b09ac6",
+      "lines": 77,
+      "variables": [
+        "chain",
+        "pc",
+        "outcome"
+      ],
+      "definitions": [
+        "vars",
+        "Pos",
+        "TypeOK",
+        "Init",
+        "Invoke",
+        "Start",
+        "Finish",
+        "Finished",
+        "Next",
+        "Fairness",
+        "Spec",
+        "MutualExclusion",
+        "CallOrder",
+        "CallFinishes"
+      ],
+      "features": [
+        "weak fairness",
+        "leads-to",
+        "always/eventually",
+        "CHOOSE",
+        "EXCEPT",
+        "record/function sets",
+        "sequences"
+      ],
+      "sourceHints": [
+        "src/utils/task-scheduling.ts: createSerialise.                           "
+      ],
+      "configs": [
+        {
+          "path": "packages/core/tla/Serialise.calls.cfg",
+          "name": "calls",
+          "sha256": "6d14a313de69ecb77b5d72a5ee340a373d9eec41ce05abeca92fbc26f57ff93d",
+          "sections": {
+            "CONSTANTS": [
+              "Calls = {a, b, c, d}"
+            ],
+            "SPECIFICATION": [
+              "Spec"
+            ],
+            "INVARIANTS": [
+              "TypeOK",
+              "MutualExclusion",
+              "CallOrder"
+            ],
+            "PROPERTIES": [
+              "CallFinishes"
+            ],
+            "CHECK_DEADLOCK": [
+              "TRUE"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "module": "ServiceLifecycle",
+      "quintModule": "CoreServiceLifecycle",
+      "source": "packages/core/tla/ServiceLifecycle.tla",
+      "sha256": "78d2bfc7f37c7631de1e748b4400c34a2da4ad99f9b484c41b5dbd0e46b83ff3",
+      "lines": 489,
+      "variables": [
+        "types",
+        "byClass",
+        "starting",
+        "failed",
+        "sc",
+        "att",
+        "scInst",
+        "published",
+        "status",
+        "nextInst",
+        "cls",
+        "late",
+        "stopCalls",
+        "stopOp",
+        "epc",
+        "tries",
+        "ewait",
+        "stopReq",
+        "stopped",
+        "rpc",
+        "rcur",
+        "rvisited",
+        "lastEnsure",
+        "upc",
+        "ucur",
+        "uwait"
+      ],
+      "definitions": [
+        "Inst",
+        "OwnedClass",
+        "vars",
+        "startVars",
+        "callerVars",
+        "stopVars",
+        "unloadVars",
+        "Created",
+        "InFlight",
+        "TypeOK",
+        "Init",
+        "Rebuild",
+        "StopOnce",
+        "EBegin",
+        "EEnsure",
+        "Settled",
+        "ESettle",
+        "EDelay",
+        "StartFail",
+        "StartOk",
+        "StartEvent",
+        "StartLateStopped",
+        "StopOpDone",
+        "RegisterLate",
+        "RRequest",
+        "RServices",
+        "RStopNext",
+        "RStopWait",
+        "RClear",
+        "UStopTaken",
+        "UStatus",
+        "UStart",
+        "UAwaited",
+        "UDrain",
+        "UStopped",
+        "Finished",
+        "Next",
+        "Fairness",
+        "Spec",
+        "OneLivePerClass",
+        "StopAtMostOnce",
+        "NoLatePublish",
+        "NoOrphan",
+        "StatusConsistent",
+        "NoStatusWithoutClasses",
+        "StoppedNotReachable",
+        "StopReachesAll",
+        "CallersReturn"
+      ],
+      "features": [
+        "weak fairness",
+        "leads-to",
+        "always/eventually",
+        "CHOOSE",
+        "LET",
+        "EXCEPT",
+        "record/function sets"
+      ],
+      "sourceHints": [
+        "src/runtime/service-lifecycle.ts: startServiceEagerly (eager retry),     ",
+        "src/runtime.ts: registerPlugin's service part and registerService (a      ",
+        "src/plugin-lifecycle.ts: stopOwnedServices for one owned class beside a   "
+      ],
+      "configs": [
+        {
+          "path": "packages/core/tla/ServiceLifecycle.liveness.cfg",
+          "name": "liveness",
+          "sha256": "07f45b658d52bc640a8b15571c7d807d5315a3ee40997ec72abf0e0d0c50eb06",
+          "sections": {
+            "CONSTANTS": [
+              "Classes = {A, B}",
+              "LateClasses = {B}",
+              "Owned = {A}",
+              "Callers = {e1, e2}",
+              "MaxInst = 3",
+              "MaxRetries = 0",
+              "None = None"
+            ],
+            "SPECIFICATION": [
+              "Spec"
+            ],
+            "INVARIANTS": [
+              "TypeOK",
+              "OneLivePerClass",
+              "StopAtMostOnce",
+              "NoLatePublish",
+              "NoOrphan",
+              "StatusConsistent",
+              "NoStatusWithoutClasses",
+              "StoppedNotReachable"
+            ],
+            "PROPERTIES": [
+              "StopReachesAll",
+              "CallersReturn"
+            ],
+            "CHECK_DEADLOCK": [
+              "TRUE"
+            ]
+          }
+        },
+        {
+          "path": "packages/core/tla/ServiceLifecycle.siblings.cfg",
+          "name": "siblings",
+          "sha256": "b087a5426759f24bd26b6bbf430138d8a870b50d81341a56af02e91e662d58ca",
+          "sections": {
+            "CONSTANTS": [
+              "Classes = {A, B}",
+              "LateClasses = {B}",
+              "Owned = {A}",
+              "Callers = {e1, e2}",
+              "MaxInst = 4",
+              "MaxRetries = 1",
+              "None = None"
+            ],
+            "SPECIFICATION": [
+              "Spec"
+            ],
+            "INVARIANTS": [
+              "TypeOK",
+              "OneLivePerClass",
+              "StopAtMostOnce",
+              "NoLatePublish",
+              "NoOrphan",
+              "StatusConsistent",
+              "NoStatusWithoutClasses",
+              "StoppedNotReachable"
+            ],
+            "CHECK_DEADLOCK": [
+              "TRUE"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "module": "SingleFlightMemo",
+      "quintModule": "CoreSingleFlightMemo",
+      "source": "packages/core/tla/SingleFlightMemo.tla",
+      "sha256": "4777364ca796bf8dbe0549d775600e5aaac205d85a0d0ec64dd6cf1a30f69dfb",
+      "lines": 169,
+      "variables": [
+        "db",
+        "entry",
+        "nfetch",
+        "fval",
+        "fstate",
+        "rpc",
+        "rf",
+        "floor",
+        "wpc",
+        "wver",
+        "completed"
+      ],
+      "definitions": [
+        "Fetches",
+        "vars",
+        "Max",
+        "TypeOK",
+        "Init",
+        "Start",
+        "ReadShared",
+        "ReadFetch",
+        "FetchRead",
+        "FetchResolve",
+        "FetchReject",
+        "Serve",
+        "Expire",
+        "Commit",
+        "Invalidate",
+        "Finished",
+        "Next",
+        "Fairness",
+        "Spec",
+        "NoStaleAfterInvalidate",
+        "RejectedNotCached",
+        "Symmetry",
+        "ReaderFinishes"
+      ],
+      "features": [
+        "weak fairness",
+        "leads-to",
+        "always/eventually",
+        "LET",
+        "EXCEPT",
+        "record/function sets"
+      ],
+      "sourceHints": [
+        "src/runtime/single-flight-memo.ts: SingleFlightMemo (peek, put,          "
+      ],
+      "configs": [
+        {
+          "path": "packages/core/tla/SingleFlightMemo.liveness.cfg",
+          "name": "liveness",
+          "sha256": "b707fd4f3191fbe591eea7b5d191eb16af20bd8a0d6bcf3f084d075cf7c1b08f",
+          "sections": {
+            "CONSTANTS": [
+              "Readers = {r1, r2}",
+              "Writers = {w1, w2}"
+            ],
+            "SPECIFICATION": [
+              "Spec"
+            ],
+            "INVARIANTS": [
+              "TypeOK",
+              "NoStaleAfterInvalidate",
+              "RejectedNotCached"
+            ],
+            "PROPERTIES": [
+              "ReaderFinishes"
+            ],
+            "CHECK_DEADLOCK": [
+              "TRUE"
+            ]
+          }
+        },
+        {
+          "path": "packages/core/tla/SingleFlightMemo.safety.cfg",
+          "name": "safety",
+          "sha256": "02e92330112043587f698ffb082e932b31ecf9f942267705956728da2a96a3b9",
+          "sections": {
+            "CONSTANTS": [
+              "Readers = {r1, r2, r3}",
+              "Writers = {w1, w2}"
+            ],
+            "SPECIFICATION": [
+              "Spec"
+            ],
+            "SYMMETRY": [
+              "Symmetry"
+            ],
+            "INVARIANTS": [
+              "TypeOK",
+              "NoStaleAfterInvalidate",
+              "RejectedNotCached"
+            ],
+            "CHECK_DEADLOCK": [
+              "TRUE"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "module": "TaskScheduler",
+      "quintModule": "CoreTaskScheduler",
+      "source": "packages/core/tla/TaskScheduler.tla",
+      "sha256": "ea5d5a5e135bf03f9fa25c1aca423c6284e516b054cfeb73d7d2a9f81e59f4dd",
+      "lines": 267,
+      "variables": [
+        "registry",
+        "nextId",
+        "dirty",
+        "timer",
+        "adapter",
+        "activeTick",
+        "gen",
+        "tk",
+        "inRun",
+        "stopped",
+        "busy",
+        "stale",
+        "restarts",
+        "regs",
+        "taken"
+      ],
+      "definitions": [
+        "MaxGen",
+        "vars",
+        "TickPcs",
+        "Entries",
+        "TypeOK",
+        "FreeTick",
+        "Init",
+        "Marks",
+        "Current",
+        "Settle",
+        "Fire",
+        "Query",
+        "RunDone",
+        "Start",
+        "Stop",
+        "Register",
+        "StopService",
+        "MarkDirty",
+        "Finished",
+        "Next",
+        "Fairness",
+        "Spec",
+        "NoStaleDispatch",
+        "OneRunTickPerService",
+        "AttachedTickCurrent",
+        "TakenClearsDirty",
+        "DirtyServed",
+        "TickSettles"
+      ],
+      "features": [
+        "weak fairness",
+        "leads-to",
+        "always/eventually",
+        "LET",
+        "EXCEPT",
+        "record/function sets"
+      ],
+      "sourceHints": [
+        "src/services/task-scheduler.ts: the process-wide task scheduler daemon, "
+      ],
+      "configs": [
+        {
+          "path": "packages/core/tla/TaskScheduler.live.cfg",
+          "name": "live",
+          "sha256": "b937dc4ed8d2d8d525a508f536e4afb48062c5949bcb7c9485fb8ea9a9fb1d7c",
+          "sections": {
+            "CONSTANTS": [
+              "Services = {s1, s2}",
+              "Adapters = {a1, a2}",
+              "Ticks = {k1, k2, k3}",
+              "MaxRestarts = 2",
+              "MaxRegs = 2",
+              "QueryCanFail = FALSE",
+              "None = None"
+            ],
+            "SPECIFICATION": [
+              "Spec"
+            ],
+            "INVARIANTS": [
+              "TypeOK",
+              "NoStaleDispatch",
+              "OneRunTickPerService",
+              "AttachedTickCurrent",
+              "TakenClearsDirty"
+            ],
+            "PROPERTIES": [
+              "DirtyServed",
+              "TickSettles"
+            ],
+            "CHECK_DEADLOCK": [
+              "TRUE"
+            ]
+          }
+        },
+        {
+          "path": "packages/core/tla/TaskScheduler.restart.cfg",
+          "name": "restart",
+          "sha256": "3238aaf6c66de3f1b80458d43f5b0024d749905718171a36fc1db3322feb87ca",
+          "sections": {
+            "CONSTANTS": [
+              "Services = {s1, s2}",
+              "Adapters = {a1, a2}",
+              "Ticks = {k1, k2, k3}",
+              "MaxRestarts = 2",
+              "MaxRegs = 2",
+              "QueryCanFail = TRUE",
+              "None = None"
+            ],
+            "SPECIFICATION": [
+              "Spec"
+            ],
+            "INVARIANTS": [
+              "TypeOK",
+              "NoStaleDispatch",
+              "OneRunTickPerService",
+              "AttachedTickCurrent",
+              "TakenClearsDirty"
+            ],
+            "CHECK_DEADLOCK": [
+              "TRUE"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "module": "TaskService",
+      "quintModule": "CoreTaskService",
+      "source": "packages/core/tla/TaskService.tla",
+      "sha256": "344e588b49a77e8a44b6c7b8cabdc2c068e4b9e30a310b25d592eb3d2eabef34",
+      "lines": 349,
+      "variables": [
+        "row",
+        "snap",
+        "pc",
+        "outcome",
+        "activeTick",
+        "inSet",
+        "armed",
+        "deferred",
+        "unseen",
+        "starts",
+        "unserved",
+        "requests",
+        "pauses"
+      ],
+      "definitions": [
+        "Timers",
+        "Scheduled",
+        "Runners",
+        "Repeat",
+        "Guarded",
+        "MaxRev",
+        "Rows",
+        "Snaps",
+        "vars",
+        "States",
+        "Executing",
+        "DueRow",
+        "SnapOf",
+        "TypeOK",
+        "Init",
+        "End",
+        "MarkDirty",
+        "Begin",
+        "Read",
+        "StartWorker",
+        "Select",
+        "Recheck",
+        "Work",
+        "Write",
+        "Release",
+        "Elapse",
+        "WakeElapse",
+        "Request",
+        "TogglePause",
+        "Finished",
+        "RunnerStep",
+        "Next",
+        "Fairness",
+        "Spec",
+        "OneShotAtMostOnce",
+        "OneShotDeletedAfterRun",
+        "BlockingNoOverlap",
+        "ClaimHeld",
+        "NoLostWake",
+        "PausedNotSelected",
+        "DirtyArmed",
+        "RunnerFinishes",
+        "WriteSeen",
+        "WakeServed"
+      ],
+      "features": [
+        "weak fairness",
+        "strong fairness",
+        "leads-to",
+        "always/eventually",
+        "LET",
+        "EXCEPT",
+        "record/function sets"
+      ],
+      "sourceHints": [
+        "src/services/task.ts: TaskService, for one queue task row.             "
+      ],
+      "configs": [
+        {
+          "path": "packages/core/tla/TaskService.daemonOneshot.cfg",
+          "name": "daemonOneshot",
+          "sha256": "e7f0372a548551100137fe5a283bcc6ff6aae34acecb8a7c76d03db27693add7",
+          "sections": {
+            "CONSTANTS": [
+              "Mode = \"daemon\"",
+              "Kind = \"oneshot\"",
+              "Blocking = TRUE",
+              "Tm = Tm",
+              "DueRunners = {d1}",
+              "DaemonRunners = {k1}",
+              "ByIdRunners = {}",
+              "MaxRequests = 0",
+              "MaxPauses = 1",
+              "None = None"
+            ],
+            "SPECIFICATION": [
+              "Spec"
+            ],
+            "INVARIANTS": [
+              "TypeOK",
+              "OneShotAtMostOnce",
+              "OneShotDeletedAfterRun",
+              "BlockingNoOverlap",
+              "ClaimHeld",
+              "NoLostWake",
+              "PausedNotSelected",
+              "DirtyArmed"
+            ],
+            "PROPERTIES": [
+              "RunnerFinishes",
+              "WriteSeen",
+              "WakeServed"
+            ],
+            "CHECK_DEADLOCK": [
+              "TRUE"
+            ]
+          }
+        },
+        {
+          "path": "packages/core/tla/TaskService.daemonRepeat.cfg",
+          "name": "daemonRepeat",
+          "sha256": "fb0052c14cf01693c79ea815f82c3ec713a9f066554f632b9e123690e2e6762d",
+          "sections": {
+            "CONSTANTS": [
+              "Mode = \"daemon\"",
+              "Kind = \"repeat\"",
+              "Blocking = TRUE",
+              "Tm = Tm",
+              "DueRunners = {d1}",
+              "DaemonRunners = {k1}",
+              "ByIdRunners = {b1}",
+              "MaxRequests = 1",
+              "MaxPauses = 1",
+              "None = None"
+            ],
+            "SPECIFICATION": [
+              "Spec"
+            ],
+            "INVARIANTS": [
+              "TypeOK",
+              "OneShotAtMostOnce",
+              "OneShotDeletedAfterRun",
+              "BlockingNoOverlap",
+              "ClaimHeld",
+              "NoLostWake",
+              "PausedNotSelected",
+              "DirtyArmed"
+            ],
+            "PROPERTIES": [
+              "RunnerFinishes",
+              "WriteSeen",
+              "WakeServed"
+            ],
+            "CHECK_DEADLOCK": [
+              "TRUE"
+            ]
+          }
+        },
+        {
+          "path": "packages/core/tla/TaskService.localOneshot.cfg",
+          "name": "localOneshot",
+          "sha256": "2b9c030bf4b49275a0d91895a8fb5f58ef7520473636e516a41fbf93eaf1135d",
+          "sections": {
+            "CONSTANTS": [
+              "Mode = \"local\"",
+              "Kind = \"oneshot\"",
+              "Blocking = TRUE",
+              "Tm = Tm",
+              "DueRunners = {d1}",
+              "DaemonRunners = {}",
+              "ByIdRunners = {b1}",
+              "MaxRequests = 0",
+              "MaxPauses = 2",
+              "None = None"
+            ],
+            "SPECIFICATION": [
+              "Spec"
+            ],
+            "INVARIANTS": [
+              "TypeOK",
+              "OneShotAtMostOnce",
+              "OneShotDeletedAfterRun",
+              "BlockingNoOverlap",
+              "ClaimHeld",
+              "NoLostWake",
+              "PausedNotSelected",
+              "DirtyArmed"
+            ],
+            "PROPERTIES": [
+              "RunnerFinishes",
+              "WriteSeen",
+              "WakeServed"
+            ],
+            "CHECK_DEADLOCK": [
+              "TRUE"
+            ]
+          }
+        },
+        {
+          "path": "packages/core/tla/TaskService.localRepeat.cfg",
+          "name": "localRepeat",
+          "sha256": "13aba93d9c82d6725df219e47a3abe93c046dfcb8ad99c88ab0da228cb90b7b7",
+          "sections": {
+            "CONSTANTS": [
+              "Mode = \"local\"",
+              "Kind = \"repeat\"",
+              "Blocking = TRUE",
+              "Tm = Tm",
+              "DueRunners = {}",
+              "DaemonRunners = {}",
+              "ByIdRunners = {b1}",
+              "MaxRequests = 1",
+              "MaxPauses = 1",
+              "None = None"
+            ],
+            "SPECIFICATION": [
+              "Spec"
+            ],
+            "INVARIANTS": [
+              "TypeOK",
+              "OneShotAtMostOnce",
+              "OneShotDeletedAfterRun",
+              "BlockingNoOverlap",
+              "ClaimHeld",
+              "NoLostWake",
+              "PausedNotSelected",
+              "DirtyArmed"
+            ],
+            "PROPERTIES": [
+              "RunnerFinishes",
+              "WriteSeen",
+              "WakeServed"
+            ],
+            "CHECK_DEADLOCK": [
+              "TRUE"
+            ]
+          }
+        }
+      ]
+    }
+  ],
+  "historicalArtifacts": [
+    {
+      "path": "packages/core/tla/InteractiveTask.reducer.graph.json",
+      "sha256": "c4c54fa0230a7d5162a160ee90a128fa027baec35b7f4425d541cbd118022bb7",
+      "classification": "upstream-graph-evidence-not-executable"
+    }
+  ]
+}
