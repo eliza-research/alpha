@@ -72,9 +72,9 @@ test('copied client features fail on an unmet dependency range unless a reviewed
  // Once the installed version satisfies the range the exception is stale and must be removed.
  fs.writeFileSync(path.join(root,'node_modules/maplibre-gl/package.json'),JSON.stringify({version:'6.16.0'}));
  assert.throws(()=>prepareClientFeatures({root,projectVoice:false}),/Stale client feature dependency exceptions[^]*maplibre-gl/);
- fs.writeFileSync(path.join(root,'docs/client-feature-dependency-exceptions.json'),JSON.stringify({exceptions:[{...exception,installed:'6.16.0',reason:' '}]}));
+ fs.writeFileSync(path.join(root,'docs/client-feature-dependency-exceptions.json'),JSON.stringify({exceptions:[{...exception,reason:' '}]}));
  fs.writeFileSync(path.join(root,'node_modules/maplibre-gl/package.json'),JSON.stringify({version:'6.11.2'}));
- assert.throws(()=>prepareClientFeatures({root,projectVoice:false}),/maplibre-gl \^6\.16\.0, installed 6\.11\.2/);
+ assert.throws(()=>prepareClientFeatures({root,projectVoice:false}),/exception has no reason: plugins\/plugin-maps maplibre-gl/);
 }));
 test('direct local development launcher prepares a clean client tree before starting services',()=>fixture(({root,commit})=>{
  for(const file of ['scripts/dev-local.mjs','scripts/dev-speech-settings.mjs','scripts/speech-env.mjs','scripts/local-agent-source.mjs','scripts/copy-file-clone.mjs','scripts/prepare-client-features.mjs','scripts/client-speech-patch.mjs','scripts/upstream-native-source.mjs']){const target=path.join(root,file);fs.mkdirSync(path.dirname(target),{recursive:true});fs.copyFileSync(file,target);}
