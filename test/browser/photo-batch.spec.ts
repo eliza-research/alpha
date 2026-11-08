@@ -97,9 +97,10 @@ for(const destination of ['share','save'])for(const retirement of ['back','home-
  await page.evaluate(()=>{
   const w=window as any;w.mediaHandoffCalls=0;w.mediaReadStarted=false;const original=window.fetch;let release!:()=>void;const gate=new Promise<void>(resolve=>release=resolve);w.releaseMediaRead=release;const click=HTMLAnchorElement.prototype.click;w.restoreMediaFetch=()=>{window.fetch=original;HTMLAnchorElement.prototype.click=click;};
   Object.defineProperty(navigator,'canShare',{configurable:true,value:()=>true});Object.defineProperty(navigator,'share',{configurable:true,value:async()=>{w.mediaHandoffCalls++;}});
-  // A save starts its download with a link click in the same task as its final check.
+  // A save starts its download with a link click in the same task as its final check. The read counts as
+  // released once its bytes are read: the handoff opens its revision check in the same task.
   HTMLAnchorElement.prototype.click=function(){if(this.download)w.mediaHandoffCalls++;return click.call(this);};
-  window.fetch=async(...args)=>{if(typeof args[0]==='string'&&args[0].startsWith('data:image/')){w.mediaReadStarted=true;await gate;const response=await original(...args);w.mediaReadReleased=true;return response;}return original(...args);};
+  window.fetch=async(...args)=>{if(typeof args[0]==='string'&&args[0].startsWith('data:image/')){w.mediaReadStarted=true;await gate;const response=await original(...args),blob=response.blob.bind(response);response.blob=async()=>{const bytes=await blob();w.mediaReadReleased=true;return bytes;};return response;}return original(...args);};
  });
  await page.getByRole('button',{name:'Photos',exact:true}).click();await page.locator('button[data-owned-media-id^="native-camera-"]').first().click();
  const before=await page.evaluate(async()=>{const p=(await import('/src/prototype/browser-camera.ts')).browserPhotoLibrary;return (await p.list()).items.map(row=>[row.id,row.mutationRevision]);});
