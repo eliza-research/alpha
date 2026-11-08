@@ -34,9 +34,13 @@ module CoreRuntimeLifecycleTemplate {
 
   action IRegister = all {s.ipc == "idle", Move(if (s.stopReq)
     {...s, ipc: "failed", initResolved: true, initFailed: true} else {...s, ipc: "core", svc: "waitInit"})}
-  action ICore = all {
-    s.ipc == "core", nondet ok = Set(true, false).oneOf()
+  action ICoreWith(ok: bool): bool = all {
+    s.ipc == "core",
     Move({...s, ipc: if (ok) "ok" else "failed", initFailed: not(ok), initResolved: true})
+  }
+  action ICore = {
+    nondet ok = Set(true, false).oneOf()
+    ICoreWith(ok)
   }
   action SvcResume = all {s.svc == "waitInit", s.initResolved,
     Move({...s, svc: if (s.stopReq or s.initFailed) "skipped" else "starting"})}
@@ -143,6 +147,24 @@ module CoreRuntimeLifecycle {
   action init = Model::Init
   action step = Model::Step
   action rawStep = Model::Next
+  val sourceState = Model::s
+  val sourceLifecycle = Model::LifecycleState
+  action sourceRegister = Model::IRegister
+  action sourceCoreInit(ok: bool): bool = Model::ICoreWith(ok)
+  action sourceServiceResume = Model::SvcResume
+  action sourceServiceStarted = Model::SvcStarted
+  action sourceServiceStopDone = Model::SvcStopDone
+  action sourceAdmit(turnId: int): bool = Model::TAdmit(turnId)
+  action sourceGrant = Model::TGrant
+  action sourceRun(turnId: int): bool = Model::TRun(turnId)
+  action sourceFinish(turnId: int): bool = Model::TFinish(turnId)
+  action sourceStop(caller: int, fast: bool, strict: bool): bool = Model::SCallWith(caller, fast, strict)
+  action sourceDrained = Model::ADrained
+  action sourceServiceStop = Model::AServices
+  action sourceServiceSettled = Model::ASvcDone
+  action sourceBestDone(caller: int): bool = Model::SBestEffortDone(caller)
+  action sourceStrictDrained(caller: int): bool = Model::SStrictDrain(caller)
+  action sourceStrictJoinDone(caller: int): bool = Model::SAwaitStrict(caller)
   val safety = Model::TypeOK and Model::PrepareStopOnce and Model::SingleAttempt and Model::TurnsAbortedAfterStop
     and Model::NoStartOnFailedInit and Model::NoLiveAfterStopped and Model::StoppedIsQuiet and Model::StrictMeansQuiescent
   temporal CheckedTemporal = Model::Fairness implies Model::NoAdmissionAfterClose and Model::StopperReturns

@@ -6,6 +6,7 @@ import {checkFactWriteDedupeRefinement} from '../../legacy/core/check-fact-write
 import {checkInteractionSessionRefinement} from '../../legacy/core/check-interaction-session-refinement.mjs';
 import {runProviderExecutionRefinement} from '../../legacy/core/check-provider-execution-refinement.mjs';
 import {checkRoomHandlerQueueRefinement} from '../../legacy/core/check-room-handler-queue-refinement.mjs';
+import {checkRuntimeLifecycleRefinement} from '../../legacy/core/check-runtime-lifecycle-refinement.mjs';
 import {runSingleFlightRefinement} from '../../legacy/core/check-single-flight-refinement.mjs';
 import {checkTaskSchedulingRefinement} from '../../legacy/core/check-task-scheduling-refinement.mjs';
 import {runTaskSchedulerRefinement} from '../services/task-scheduler/index.mjs';
@@ -22,6 +23,7 @@ export async function runLegacyRefinement() {
     ['CoreInteractionSession', () => checkInteractionSessionRefinement(undefined, [driver])],
     ['CoreProviderExecution', runProviderExecutionRefinement],
     ['CoreRoomHandlerQueue', () => checkRoomHandlerQueueRefinement(undefined, [driver])],
+    ['CoreRuntimeLifecycle', () => checkRuntimeLifecycleRefinement([driver])],
     ['CoreSingleFlightMemo', runSingleFlightRefinement],
     [null, () => checkTaskSchedulingRefinement(undefined, [driver])],
     ['CoreTaskScheduler', () => runTaskSchedulerRefinement([driver])],
