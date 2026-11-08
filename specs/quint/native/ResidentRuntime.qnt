@@ -34,6 +34,13 @@ module ResidentRuntime {
       pending: false, bindingEpoch: -1, inferenceAccepted: false,
       ownedStart: ownsLaunch, attachedStart: false }
   }
+  // Startup can fail after the service launched. Retire that call's launch ownership
+  // without asserting shutdown or admitting an enrolled inference session.
+  action failedStart(running: bool): bool = all { s.phase == "starting",
+    s' = { ...s, phase: if (running) "ready" else "stopped", localProcess: running,
+      ownedStart: false, attachedStart: false, pending: false,
+      bindingEpoch: -1, inferenceAccepted: false }
+  }
   action observeResident = all {
     s.phase == "stopped", not(s.resetPending),
     s' = { ...s, phase: "ready", localProcess: true, ownedStart: false }
@@ -115,7 +122,7 @@ module ResidentRuntime {
     nondet flag = Set(false, true).oneOf()
     nondet profile = Set("native", "cloud").oneOf()
     any { chooseProfile(profile), invalidatePackage, start, admitStart(flag), observeResident,
-      cancelUnownedStart, retireLastSurface, attachStart, cancelAttachedStart,
+      failedStart(flag), cancelUnownedStart, retireLastSurface, attachStart, cancelAttachedStart,
       requestStop, cancelOwnedStart, shutdownConfirmed, shutdownUnconfirmed, started(ticket),
       beginBinding, bindingResult(ticket, flag), inference, clearBinding(flag),
       replaceCredential, revokeCredential, crash(flag), archiveReview(flag), requestReset, s' = s }
@@ -166,4 +173,6 @@ module ResidentRuntime {
     .then(cancelUnownedStart).then(started(1)).then(check(safety and s.phase == "ready" and s.localProcess and s.epoch == 2))
   run lastSurfaceRetiresEnrollmentTest = init.then(admitStart(true)).then(started(1)).then(beginBinding)
     .then(retireLastSurface).then(bindingResult(1, true)).then(check(safety and not(s.pending) and s.localProcess))
+  run lostEnrollmentReplyRetiresOwnershipTest = init.then(admitStart(true)).then(failedStart(true))
+    .expect(s.localProcess and not(s.ownedStart) and not(s.inferenceAccepted) and safety)
 }
