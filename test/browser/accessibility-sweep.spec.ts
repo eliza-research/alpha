@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { auditPage, auditReadingOrder, auditTabOrder, auditTree, exposedTabStopBudget, format } from './accessibility-audit';
+import { auditPage, auditReadingOrder, auditTabOrder, auditTree, exposedTabStopBudget, format, blocking } from './accessibility-audit';
 import { BROWSER_APP_STATES, CONNECTED_STATES, DEVELOPMENT_STATES, FAILURE_STATES, FIXTURE_STATES, LAUNCHER_STATES, LIVE_STATES, MOCK_STATES, setTextScale } from './accessibility-states';
 import { settled } from './helpers/settled';
 
@@ -11,11 +11,6 @@ import { settled } from './helpers/settled';
 test.describe.configure({ mode: 'parallel' });
 
 const STATES = [...LIVE_STATES, ...BROWSER_APP_STATES, ...DEVELOPMENT_STATES, ...MOCK_STATES, ...CONNECTED_STATES, ...FAILURE_STATES];
-// Deliberate single-line ellipsis and line clamps on previews of user content are allowed: the
-// full text is one tap away and is exposed whole to assistive technology. Hard clipping is not, and
-// neither is a cut app title: it names the screen and has room to wrap.
-const appTitle = (line: string) => /^text-truncated: .*<[^>]*\bdata-alpha-app-title\b/.test(line);
-const blocking = (lines: string[]) => lines.filter(line => !line.startsWith('text-truncated:') || appTitle(line));
 // A state at large text is opened, re-laid out and audited rule by rule. Under four workers on a
 // loaded machine that has run past the 30s default, so the large-text and landscape sweeps say
 // how long they may take instead of inheriting it.

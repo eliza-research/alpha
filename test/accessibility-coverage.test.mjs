@@ -153,9 +153,8 @@ test('the sweep applies every dimension and cannot be narrowed silently', () => 
 });
 
 test('TalkBack reading order is checked in every lane, as Android checks it, across views and the lifecycle', () => {
-  // Every lane of both sweeps reads the order (the light theme once; it does not depend on the theme,
-  // and neither do names or the tab order: the dark pass is the page audit, contrast included).
-  assert.match(sweep, /\.\.\.theme === 'light' \? \[\.\.\.await auditTabOrder\(page\), \.\.\.await auditReadingOrder\(page\)\] : \[\]/);
+  // Both theme passes audit focus. TalkBack order is read once because it is theme independent.
+  assert.match(sweep, /for \(const theme of \['light', 'dark'\] as const\)[\s\S]*?\.\.\.await auditTabOrder\(page, state\.name==='live Settings licenses'\?await exposedTabStopBudget\(page\):undefined\),\s*(?:\/\/[^\n]*\n\s*)?\.\.\.theme === 'light' \? await auditReadingOrder\(page\) : \[\]/);
   assert.match(sweep, /200% text is not clipped[\s\S]*?const order = format\(await auditReadingOrder\(page\)\);\s*expect\(order, order\.join\('\\n'\)\)\.toEqual\(\[\]\);/);
   assert.equal([...sweep.matchAll(/auditReadingOrder\(page\)/g)].length, 6, 'all six sweep lanes read the order');
   assert.equal([...production.matchAll(/auditReadingOrder\(page\)/g)].length, 2, 'both production lanes read the order');
