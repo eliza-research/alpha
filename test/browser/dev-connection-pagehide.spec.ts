@@ -1,11 +1,11 @@
+import {openConnectionDiagnostics} from './helpers/connection-diagnostics';
 import {test,expect} from '@playwright/test';
 
 test('departing development connection stops rendering until page restoration',async({page})=>{
  const errors:string[]=[];page.on('pageerror',error=>errors.push(error.message));
  await page.addInitScript(()=>localStorage.setItem('alpha.connection.selection.v1',JSON.stringify({kind:'offline'})));
  await page.goto('/?mode=dev');
- await page.getByRole('button',{name:'Settings',exact:true}).click();
- await page.getByRole('button',{name:'Agent connection',exact:true}).click();
+ await openConnectionDiagnostics(page);
  await expect(page.getByRole('button',{name:'Connect development profile'})).toBeVisible();
  await page.evaluate(async()=>{
   const read=Storage.prototype.getItem;
@@ -24,8 +24,9 @@ test('departing development connection stops rendering until page restoration',a
   }
  });
  await expect(page.getByRole('button',{name:'Connect development profile'})).toHaveCount(0);
- await expect(page.getByRole('button',{name:'Agent connection',exact:true})).toBeVisible();
+ await expect(page.getByRole('button',{name:'Settings',exact:true})).toBeVisible();
+ await expect(page.getByRole('button',{name:'Agent connection',exact:true})).toHaveCount(0);
  expect(errors).toEqual([]);
- await page.getByRole('button',{name:'Agent connection',exact:true}).click();
+ await openConnectionDiagnostics(page);
  await expect(page.getByRole('button',{name:'Connect development profile'})).toBeVisible();
 });
