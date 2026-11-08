@@ -13,8 +13,10 @@ import {checkCredentialLeasePolicies} from './credential-leases.mjs';
 import {checkProviderAdmission} from './provider-admission.mjs';
 import {checkNativeNoteRecording} from './note-recording.mjs';
 import {checkNoteRecordingService} from './note-recording-service.mjs';
+import {checkVoiceDraft} from './voice-draft.mjs';
 
 const boundaryObligations = [
+  {model:'NativeVoiceDraft',obligation:'Physical capture and shared bridge permission lifecycle',reason:'The real staged LocalVoiceRecording executes cache cleanup, start/stop/cancel, timer and media callbacks, failure cleanup and external selection. Permission epochs and lifecycle admission in LocalSpeechBridgePlugin remain a separate source scope.'},
   {model:'NativeNoteRecording',obligation:'Physical recording, free-space exhaustion and unrestricted journal histories',reason:'Actual segmented recorder, journal bytes and file recovery execute. MediaRecorder/codec behavior is a controlled port. Two segments and four capture instances bound the source campaign; free-space exhaustion remains an explicit unexecuted source branch.'},
   {model:'NativeNoteRecordingService',obligation:'Installed foreground eligibility and full plugin permission bridge',reason:'Actual service and recorder identities execute under serialized command/notification ports. AlphaVoiceCloudPlugin permission callbacks and Android service recreation/notification visibility remain separate integration obligations.'},
   {model:'RendererRecovery',obligation:'Installed Activity/WebView and task-manager behavior',reason:'The actual MainActivity, per-task HOME ownership and recovery callbacks execute against controlled Android ports. Real task assignment, Settings visibility and renderer process death require platform observations.'},
@@ -53,6 +55,7 @@ export async function runNativeRefinement(extraSources = []) {
   receipts.push(await checkCredentialLeasePolicies(sources));
   receipts.push(await checkNativeNoteRecording(sources));
   receipts.push(await checkNoteRecordingService(sources));
+  receipts.push(await checkVoiceDraft(sources));
   const obligations = [...boundaryObligations,...credential.obligations];
   for (const model of new Set(receipts.map(receipt => receipt.model))) {
     const related = receipts.filter(receipt => receipt.model === model);

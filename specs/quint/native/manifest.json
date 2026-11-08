@@ -871,6 +871,34 @@
         "Two finished segments, two recording and owner identities, two transcript value classes and four recorder instances. Exact virtual millisecond accounting within 108100 ms.",
         "MediaRecorder and remux codec behavior are controlled ports. Journal bytes and finished/current files are real temporary files. Low storage is a modeled external input with an unexecuted real free-space branch."
       ]
+    },
+    {
+      "path": "specs/quint/native/NativeVoiceDraft.qnt",
+      "module": "NativeVoiceDraft",
+      "init": "init",
+      "step": "step",
+      "invariant": "safety",
+      "sources": [
+        "vendor/eliza/plugins/plugin-local-inference/native/android/src/main/java/ai/eliza/voice/LocalVoiceRecording.java",
+        "patches/eliza/notes-recording-segments.patch"
+      ],
+      "tests": [
+        "stoppedDraftSelectableTest",
+        "staleCallbackAfterReplacementTest",
+        "oversizedDraftClearedTest",
+        "consumerFailureKeepsRecordedAudioTest",
+        "externalSegmentAvailableDuringDraftTest"
+      ],
+      "invariants": [
+        "CaptureOwnsDraft",
+        "EmptyHasNoCapture",
+        "TimerTracksCapture",
+        "Bounded"
+      ],
+      "abstractions": [
+        "Two draft identities, three capture instances and two callbacks bound the source campaign.",
+        "Physical media encoding, Android timer delivery and permission admission are external inputs."
+      ]
     }
   ]
 }

@@ -12,6 +12,7 @@ export function noteRecordingPlatform() {
 import java.io.File;
 public class Context {
   public File getNoBackupFilesDir(){return ai.elizaresearch.alphaphone.NoteRecordingPorts.root;}
+  public File getCacheDir(){File cache=new File(ai.elizaresearch.alphaphone.NoteRecordingPorts.root,"cache");cache.mkdirs();return cache;}
   public Context getApplicationContext(){return this;}
   public <T>T getSystemService(Class<T> type){return type.cast(ai.elizaresearch.alphaphone.NoteRecordingPorts.notifications);}
   public android.content.ComponentName startForegroundService(Intent intent){ai.elizaresearch.alphaphone.NoteRecordingPorts.commands.add(intent);return null;}
@@ -68,15 +69,16 @@ public class MediaRecorder {
   public static final class AudioSource {public static final int MIC=1;}
   public static final class OutputFormat {public static final int MPEG_4=1;}
   public static final class AudioEncoder {public static final int AAC=1;}
-  public static final int MEDIA_RECORDER_INFO_MAX_FILESIZE_APPROACHING=802,MEDIA_RECORDER_INFO_NEXT_OUTPUT_FILE_STARTED=803,MEDIA_RECORDER_INFO_MAX_FILESIZE_REACHED=801;
+  public static final int MEDIA_RECORDER_INFO_MAX_FILESIZE_APPROACHING=802,MEDIA_RECORDER_INFO_NEXT_OUTPUT_FILE_STARTED=803,MEDIA_RECORDER_INFO_MAX_FILESIZE_REACHED=801,MEDIA_RECORDER_INFO_MAX_DURATION_REACHED=800;
   public interface OnInfoListener {void onInfo(MediaRecorder source,int what,int extra);}
   public interface OnErrorListener {void onError(MediaRecorder source,int what,int extra);}
   public final int sequence;
   public boolean released,paused;
+  public int maxDuration;
   private File output,next;
   private OnInfoListener info;
   private OnErrorListener error;
-  public MediaRecorder(){sequence=ai.elizaresearch.alphaphone.NoteRecordingPorts.recorders.size()+1;ai.elizaresearch.alphaphone.NoteRecordingPorts.recorders.add(this);}
+  public MediaRecorder(){if(ai.elizaresearch.alphaphone.NoteRecordingPorts.failConstructor){ai.elizaresearch.alphaphone.NoteRecordingPorts.failConstructor=false;throw new IllegalStateException("constructor fixture");}sequence=ai.elizaresearch.alphaphone.NoteRecordingPorts.recorders.size()+1;ai.elizaresearch.alphaphone.NoteRecordingPorts.recorders.add(this);}
   public MediaRecorder(android.content.Context context){this();}
   public void setAudioSource(int value){}
   public void setOutputFormat(int value){}
@@ -86,6 +88,8 @@ public class MediaRecorder {
   public void setAudioEncodingBitRate(int value){}
   public void setMaxFileSize(long value){}
   public void setOutputFile(File value){output=value;}
+  public void setOutputFile(String value){output=new File(value);}
+  public void setMaxDuration(int value){maxDuration=value;}
   public void setNextOutputFile(File value){next=value;}
   public void setOnInfoListener(OnInfoListener value){info=value;}
   public void setOnErrorListener(OnErrorListener value){error=value;}

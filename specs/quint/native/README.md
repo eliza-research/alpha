@@ -346,3 +346,18 @@ the foreground as required by Android. Current-owner and closed-recorder cleanup
 pause/resume notification state and service recreation execute against controlled
 Android ports. Installed foreground eligibility and physical recording remain
 platform obligations. The renderer's recorder coordination is modeled separately.
+
+## Shared voice draft
+
+`NativeVoiceDraft` executes the current patched `LocalVoiceRecording`. It models
+private draft capture, bounded duration/size validation, automatic stop events,
+exact-ID discard and selection, stale callbacks, external Notes segment lookup
+and constructor cache cleanup. A callback consumer that throws after a successful
+recording can receive a subsequent failure event while the recorded file remains
+available. Constructor failure now passes through the existing cleanup region,
+so the failed start leaves no phantom draft admission.
+
+MediaRecorder and Handler are controlled primitive ports. Permission epochs,
+parent bridge cancellation barriers and physical Android media behavior remain
+separate obligations. The source, model, adapter and authenticated patch hashes
+are retained with each source trace.

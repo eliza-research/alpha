@@ -12,7 +12,7 @@ import java.util.Map;
 public final class NoteRecordingPorts {
  public static File root;
  public static long now=100;
- public static boolean failJournal,failOpen,failStop,failJoin,failForeground;
+ public static boolean failJournal,failOpen,failStop,failJoin,failForeground,failConstructor;
  public static int journalWrites;
  public static final ArrayList<MediaRecorder> recorders=new ArrayList<>();
  public static final ArrayList<Intent> commands=new ArrayList<>();
