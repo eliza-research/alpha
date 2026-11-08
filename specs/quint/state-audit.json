@@ -12,7 +12,7 @@
   "toolSha256": "403a33cab0dff7ace6219b29e7ffef373319677a7d8be6641466dd16a6750b5b",
   "dependencyLockSha256": "944123c801157a7ba3676a886d0b28a54bef32735ae96da5c6dd0f206c88c8bf",
   "sourcePin": "99b49439ce9d0cb5607e9831b9f7f58d89525029",
-  "ledgerSha256": "86504b6a3677e5f01615de8bb33fe5b23177b5dd736eedbac47aa937f20ecda0",
+  "ledgerSha256": "41a8f32c512e0e0091b851c4389f92704bfb2f119d85ca08800112c6b051184a",
   "method": "TypeScript syntax trees for JavaScript/TypeScript and JDK compiler trees for Java. Mutable fields, bindings, containers, state hooks, write sites and asynchronous registration calls are candidates for semantic review.",
   "limitations": [
     "Candidate extraction does not establish state-machine coverage or implementation refinement.",
@@ -33349,7 +33349,8 @@
         "CalendarPresentation",
         "AgentCalendarRefresh",
         "AgentCalendarMutation",
-        "CalendarPreservationConfirmation"
+        "CalendarPreservationConfirmation",
+        "CanonicalCalendarEditorClose"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -34242,7 +34243,8 @@
       "sha256": "5a2668bf545adb17841c0c68d09d7a998998f4cc45a0740ee792a120b891947a",
       "allocatedModels": [
         "CalendarPresentation",
-        "CanonicalCalendarDraft"
+        "CanonicalCalendarDraft",
+        "CanonicalCalendarEditorClose"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -35516,7 +35518,8 @@
         "SettingsNav",
         "ShellNavigation",
         "AccessibleToastLifetime",
-        "CalendarPreservationConfirmation"
+        "CalendarPreservationConfirmation",
+        "CanonicalCalendarEditorClose"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -39681,7 +39684,8 @@
       "sha256": "f1ce374b0455bba558449b5e48ff8911d82cadbea55422a39a0c02c41421db46",
       "allocatedModels": [
         "ShellNavigation",
-        "ListFocus"
+        "ListFocus",
+        "CanonicalCalendarEditorClose"
       ],
       "sourcePathClass": "other-source-path",
       "classification": "syntactic-candidates",
@@ -39835,7 +39839,8 @@
         "ListFocus",
         "ModalToastForwarding",
         "DockClearanceOwnership",
-        "CalendarPreservationConfirmation"
+        "CalendarPreservationConfirmation",
+        "CanonicalCalendarEditorClose"
       ],
       "sourcePathClass": "other-source-path",
       "classification": "language-review-required",
@@ -40748,7 +40753,8 @@
       "sha256": "124b4c6087346cea3c9b4c63f8e4273770716f761ab486b65a0e7aa91d0f3d04",
       "allocatedModels": [
         "AssistantConversation",
-        "DraftDispatch"
+        "DraftDispatch",
+        "CanonicalCalendarEditorClose"
       ],
       "sourcePathClass": "other-source-path",
       "classification": "syntactic-candidates",
@@ -41149,7 +41155,8 @@
       "allocatedModels": [
         "CalendarPresentation",
         "CalendarSync",
-        "CanonicalCalendarDraft"
+        "CanonicalCalendarDraft",
+        "CanonicalCalendarEditorClose"
       ],
       "sourcePathClass": "other-source-path",
       "classification": "syntactic-candidates",
@@ -218519,6 +218526,6 @@
   ],
   "detail": {
     "path": "test-results/quint-state-audit/details.json",
-    "sha256": "e0191026d94691cf6da7463ecacd96c603381a61160e62060f8fa07ff4a1acca"
+    "sha256": "ab0c7fbf3a3c19e6ac764884067612425f6e68e7dc1d9f65ee6607b28800cb2d"
   }
 }

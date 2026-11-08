@@ -3,6 +3,7 @@ import {checkChatInputRefinement} from '../../legacy/chat-input/check-chat-input
 import {checkFilesBrowserRefinement} from '../../legacy/files-browser/check-files-browser-refinement.mjs';
 import {checkHomeLayoutRefinement} from '../../legacy/home-layout/check-home-layout-refinement.mjs';
 import {checkNotesViewRefinement} from '../../legacy/notes-view/check-notes-view-refinement.mjs';
+import {checkPhotosLibraryRefinement} from '../../legacy/photos-library/check-photos-library-refinement.mjs';
 import {checkSettingsNavRefinement} from '../../legacy/settings-nav/check-settings-nav-refinement.mjs';
 import {checkSignInRefinement} from '../../legacy/sign-in/check-sign-in-refinement.mjs';
 import {checkActionSettlementRefinement} from '../../legacy/core/check-action-settlement-refinement.mjs';
@@ -20,6 +21,7 @@ import {runSingleFlightRefinement} from '../../legacy/core/check-single-flight-r
 import {checkTaskSchedulingRefinement} from '../../legacy/core/check-task-scheduling-refinement.mjs';
 import {checkTaskServiceRefinement} from '../../legacy/core/check-task-service-refinement.mjs';
 import {runTaskSchedulerRefinement} from '../services/task-scheduler/index.mjs';
+import {checkHistoricalCalendarNavigation} from './calendar-navigation.mjs';
 
 const driver = fileURLToPath(import.meta.url);
 const chatInputDifferences = {
@@ -80,6 +82,20 @@ const notesViewDifferences = {
   NotesViewHistoricalLiveDurability: ['Mounted browser audio is published durably on Stop',
     'The historical recording step updates durable audio during capture. The observed Previous Notes record publishes audio at Stop.'],
 };
+const photosLibraryDifferences = {
+  PhotosLibraryHistoricalOldestWindow: ['Mounted Photos uses the newest catalog prefix',
+    'The historical window ablation chooses the oldest rows.'],
+  PhotosLibraryMountedWindowWidth: ['Mounted Photos retains three rows in the fixture',
+    'The historical window is bounded to two rows. The positive comparison uses the newest-two prefix.'],
+  PhotosLibraryHistoricalSelectionCap: ['Mounted Photos permits the second selected identity',
+    'The historical selection ablation admits only one.'],
+  PhotosLibraryHistoricalFavoriteToggle: ['A second mounted favorite action clears the selected favorites',
+    'The historical favorite ablation always sets them.'],
+  PhotosLibraryHistoricalSelectionClear: ['An unrelated peer deletion keeps the still-present selection',
+    'The historical patch ablation clears the selection on the same change.'],
+  PhotosLibraryCurrentEditCopy: ['Save copy keeps the original and creates a new identity',
+    'The historical edit operation updates the existing identity.'],
+};
 
 export async function runLegacyRefinement() {
   const receipts = [], obligations = [];
@@ -124,6 +140,15 @@ export async function runLegacyRefinement() {
       });
       return {receipts, obligations};
     }],
+    ['PhotosLibrary', async () => {
+      const {receipts, mismatches} = await checkPhotosLibraryRefinement([driver]);
+      const obligations = mismatches.map(mismatch => {
+        const [obligation, reason] = photosLibraryDifferences[mismatch.id];
+        return {model: 'PhotosLibrary', obligation, reason, evidence: mismatch.receiptPath};
+      });
+      return {receipts, obligations};
+    }],
+    ['Calendar', () => checkHistoricalCalendarNavigation([driver])],
     ['SignIn', async () => {
       const {receipts, mismatch} = await checkSignInRefinement([driver]);
       return {receipts, obligations: [{model: 'SignIn',

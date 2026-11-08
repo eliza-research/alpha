@@ -676,3 +676,16 @@ verified synthetic account admission, Back from a text challenge and Back
 from a held Google request. The current historical profile has a separate
 pre-chooser gate. That mismatch has its own receipt. Native authentication
 and external browser behavior remain outside the Chromium campaign.
+
+`CanonicalCalendarEditorClose` checks eight mounted schedules and 80
+checkpoints through the header Back, host Back, picker, retained slot and
+explicit discard paths. It verifies all ten model fields and six derived
+controls. The historical Calendar replay separately checks four mounted
+navigation schedules and 16 checkpoints against the unchanged proposed
+model. Historical outbox, RSVP, undo and unmounted views remain open.
+
+The historical Photos replay checks four mounted schedules and 41
+checkpoints with actual browser media and IndexedDB. It preserves six
+comparisons for window order and width, selection cap, favorite and patch
+behavior, and Save copy. Android MediaStore and external share recipients
+remain separate evidence.
