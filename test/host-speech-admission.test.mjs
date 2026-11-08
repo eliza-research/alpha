@@ -28,22 +28,29 @@ test('host asset manifest matches the current shared worker pins: Paradee, optio
  // No package script names the retired Kokoro or Whisper speech paths.
  assert.doesNotMatch(readFileSync(new URL('../package.json',import.meta.url),'utf8'),/kokoro|whisper/i);
 });
-test('frozen combined source admits only the current reviewed native gitlink',()=>{
+test('reviewed engine source keeps current embedding and voice qualification separate',()=>{
  const source=readFileSync(new URL('../scripts/combined-agent-source.mjs',import.meta.url),'utf8');
+ const reviewed='6337fd4c4bd071c17235986344d552d4036e177b';
+ assert.ok(source.includes("'plugins/plugin-local-inference/native/llama.cpp':'"+reviewed+"'"));
  const actual=execFileSync('git',['-C','vendor/eliza','ls-tree','HEAD','plugins/plugin-local-inference/native/llama.cpp'],{encoding:'utf8'}).match(/^160000 commit ([a-f0-9]{40})\t/)[1];
- assert.ok(source.includes("'plugins/plugin-local-inference/native/llama.cpp':'"+actual+"'"));
+ assert.equal(actual,reviewed);
+ const qualification=JSON.parse(readFileSync(new URL('../android/embedding-host/qualified-host.json',import.meta.url),'utf8'));
+ const pin=JSON.parse(readFileSync(new URL('../upstream.lock.json',import.meta.url),'utf8')).commit;
+ assert.equal(qualification.requalification?.required,true);assert.equal(qualification.requalification.atPin,pin);
+ const voice=JSON.parse(readFileSync(new URL('../android/voice-host/qualified-voice-host.json',import.meta.url),'utf8'));
+ assert.equal(voice.qualified,false);assert.equal(voice.evidence.userAccepted,false);
 });
 
-// elizaOS/eliza dede2ef4e4 (#38761) returns the engine to the fork main tip b3eb2bf6.
-test('source snapshots accept only the reviewed b3e engine and reject old or foreign gitlinks',t=>{
+// The reviewed source uses the qualified fused-speech engine at 6337fd4c.
+test('source snapshots accept only the reviewed 6337 engine and reject old or foreign gitlinks',t=>{
  const root=mkdtempSync(join(tmpdir(),'alpha-engine-identity-'));t.after(()=>rmSync(root,{recursive:true,force:true}));
  const git=(...args)=>execFileSync('git',['-c','core.hooksPath=/dev/null','-c','user.name=Admission fixture','-c','user.email=fixture@example.invalid','-C',root,...args],{encoding:'utf8'}).trim();
  git('init');git('commit','--allow-empty','-m','Fixture');
  const engine='plugins/plugin-local-inference/native/llama.cpp';mkdirSync(join(root,engine),{recursive:true});
- for(const pin of ['cc8c979157e1f577448d8b8c6ff598b7cfc3d661','1'.repeat(40)]){
+ for(const pin of new Set(['cc8c979157e1f577448d8b8c6ff598b7cfc3d661','1'.repeat(40),'b3eb2bf63b3c02cd37ee09d442911ace99975b38'])){
   git('update-index','--add','--cacheinfo','160000,'+pin+','+engine);
   assert.throws(()=>sourceManifest(root),/Unqualified source gitlink identity/);
  }
- const pin='b3eb2bf63b3c02cd37ee09d442911ace99975b38';git('update-index','--cacheinfo','160000,'+pin+','+engine);
+ const pin='6337fd4c4bd071c17235986344d552d4036e177b';git('update-index','--cacheinfo','160000,'+pin+','+engine);
  assert.deepEqual(sourceManifest(root).entries[engine],{type:'gitlink',commit:pin,initialized:false});
 });

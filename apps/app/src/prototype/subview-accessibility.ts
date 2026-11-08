@@ -1,6 +1,6 @@
 import {createInlineModal} from '../runtime/inline-modal';
 import {currentSurfaceLayout} from '../runtime/canvas-geometry';
-import {workflowReplyText} from '../runtime/action-message-presentation';
+import {createKeyedListFocus} from './keyed-list-focus';
 /** On a split canvas the open message, note or file sits beside its list, which stays usable. */
 const split=()=>currentSurfaceLayout().split;
 type Bag=Record<string,any>;
@@ -13,7 +13,7 @@ type Popup=[key:string,open:(out:Bag)=>boolean,close:(out:Bag)=>void];
 const POPUPS:Record<string,Popup[]>={
  browser:[['menuModal',out=>!!out.menu,out=>out.closeMenu?.()],['shareModal',out=>!!out.share,out=>out.closeShare?.()]],
  photos:[['infoModal',out=>!!out.infoOpen,out=>out.closeSheet?.()],['shareModal',out=>!!out.shareOpen,out=>out.closeSheet?.()]],
- notes:[['shareModal',out=>!!out.shareSheet,out=>out.closeSheet?.()]],
+ notes:[['shareModal',out=>!!out.shareSheet,out=>out.closeSheet?.()],['askModal',out=>!!out.trashAskOpen,out=>out.trashAskClose?.()],['folderModal',out=>!!out.folderSheetOpen,out=>out.closeFolderSheet?.()],['noteMenu',out=>!!(out.ed?.menuShown||out.vo?.menuShown||out.lk?.menuShown),out=>(out.ed||out.vo||out.lk)?.closeMenu?.()]],
  files:[['menuModal',out=>!!out.menuOpen,out=>out.closeMenu?.()],['moveModal',out=>!!out.moveSheet,out=>out.closeSheet?.()],['shareModal',out=>!!out.shareSheet,out=>out.closeSheet?.()]],
  workflows:[['stepModal',out=>!!out.b?.sheetOn,out=>out.b?.closeSheet?.()]],
  settings:[['sheetModal',out=>!!out.hasSheet,out=>out.sheet?.close?.()]],
@@ -47,16 +47,22 @@ export function installSubviewAccessibility(views:Bag){
   ['calendar',['detail','form'],(out:Bag)=>({listCovered:!!(out.detail||out.form),detailCovered:!!out.form})],
   ['browser',['tabs','library'],(out:Bag)=>({listCovered:!!(out.tabsOpen||out.lib),tabsCovered:!!out.lib,pageCovered:!!out.editing})],
   ['photos',['album','viewer','edit','empty'],(out:Bag)=>({listCovered:!!(out.album||out.viewing||out.editing||out.viewEmpty),albumCovered:!!(out.viewing||out.editing||out.viewEmpty),viewerCovered:!!out.editing})],
-  ['notes',['editor','voice','link','recording','trash'],(out:Bag)=>({listCovered:!!(((out.isEdit||out.isVoice||out.isLink)&&!split())||out.recording||out.trashOpen),detailCovered:!!(out.recording||out.trashFullOpen),trashCovered:!!out.trashConfirmOpen})],
+  ['notes',['editor','voice','link','recorder','trash'],(out:Bag)=>({listCovered:!!(((out.isEdit||out.isVoice||out.isLink)&&!split())||out.noteRecorder||out.trashOpen),detailCovered:!!(out.noteRecorder||out.trashFullOpen),trashCovered:!!out.trashConfirmOpen})],
   ['files',['folder','preview'],(out:Bag)=>({listCovered:!!(out.inFolder||(out.isPreview&&!split())),detailCovered:!!out.isPreview&&!split()})],
  ] as Array<[string,string[],(out:Bag)=>Bag]>){
   const render=views[name].render,focus=focusHistory(),refs=Object.fromEntries(keys.map(key=>[key+'Focus',subviewFocus(focus.read)]));
   let output:Bag={};
+  const listFocus=name==='notes'?createKeyedListFocus('data-alpha-note-id'):name==='photos'?createKeyedListFocus('data-alpha-media-key'):null;
+  const albumListFocus=name==='photos'?createKeyedListFocus('data-alpha-media-key'):null;
   const deleteModal=name==='photos'?reviewFocus(()=>output.closeSheet?.()):name==='notes'?reviewFocus(()=>output.trashCancel?.()):null;
   const popups=popupFocus(name,()=>output);
   views[name].render=(state:Bag,api:Bag)=>{
+   const listSnapshot=listFocus?.capture()??null,albumSnapshot=albumListFocus?.capture()??null;
    const out=output=render(state,api);deleteModal?.render(!!(out.emptyOpen||out.trashConfirmOpen));
-   return {...out,...refs,...popups(out),emptyModal:deleteModal?.ref,captureSubviewFocus:focus.capture,...coverage(out)};
+   const restoreList=listFocus?.ref(listSnapshot),restoreAlbum=albumListFocus?.ref(albumSnapshot);
+   return {...out,...refs,...popups(out),listFocus:restoreList,albumListFocus:restoreAlbum,
+    gridRef:name==='photos'?(element:HTMLElement|null)=>{out.gridRef?.(element);(out.album?restoreAlbum:restoreList)?.(element);}:out.gridRef,
+    emptyModal:deleteModal?.ref,captureSubviewFocus:focus.capture,...coverage(out)};
   };
  }
  {
@@ -147,12 +153,14 @@ function focusHistory(){
  * arrives together with its text is not announced reliably. A voice conversation speaks its own
  * replies, so nothing is written while one is active. Focus never moves.
  */
-type Shell = any;
+type ReplyShell = Record<string, any>;
 const REPLYING = 'Alpha is replying';
 const LIMIT = 600;
 
-let region: HTMLElement | null = null, frame = 0;
-function say(text: string) {
+let region: HTMLElement | null = null, frame = 0, regionOwner: ReplyShell | undefined;
+function say(text: string, owner: ReplyShell) {
+  regionOwner=owner;
+  const session=owner.connectionSession,conversation=owner.restoredHistory?.conversationId;
   if (!region || !region.isConnected) {
     region = document.createElement('div');
     region.setAttribute('role', 'status');
@@ -165,26 +173,31 @@ function say(text: string) {
   // Cleared now and written on the next frame, so the same words said twice are announced twice.
   region.textContent = '';
   cancelAnimationFrame(frame);
-  frame = requestAnimationFrame(() => { frame = 0; if (region) region.textContent = text; });
+  frame = requestAnimationFrame(() => { frame = 0; if (region && regionOwner===owner && owner.replyAnnouncerLive && session===owner.connectionSession && conversation===owner.restoredHistory?.conversationId && !document.hidden && !owner.voiceConversationActive?.()) region.textContent = text; });
 }
 const bounded = (text: string) => text.length > LIMIT ? text.slice(0, LIMIT - 1).trimEnd() + '…' : text;
-const agentTail = (msgs: Shell[]) => { const last = msgs.at(-1); return last?.from === 'agent' ? last : undefined; };
+const agentTail = (msgs: ReplyShell[]) => { const last = msgs.at(-1); return last?.from === 'agent' ? last : undefined; };
 
 export function installReplyAnnouncer(Component: any) {
   const originalMount = Component.prototype.componentDidMount;
   Component.prototype.componentDidMount = function (...args: any[]) {
     originalMount?.apply(this, args);
-    if (!region) say('');
+    this.replyAnnouncerLive=true;
+    if (!region) say('',this);
   };
+  const originalUnmount=Component.prototype.componentWillUnmount;
+  Component.prototype.componentWillUnmount=function(...args:any[]){this.replyAnnouncerLive=false;if(regionOwner===this){cancelAnimationFrame(frame);frame=0;region?.remove();region=null;regionOwner=undefined;}originalUnmount?.apply(this,args);};
   const originalUpdate = Component.prototype.componentDidUpdate;
   Component.prototype.componentDidUpdate = function (...args: any[]) {
     originalUpdate?.apply(this, args);
-    const previous: Shell = args[1] || {}, state: Shell = this.S();
-    if (this.voiceConversationActive?.()) return;
-    const before: Shell[] = previous.msgs || [], after: Shell[] = state.msgs || [];
+    const previous: ReplyShell = args[1] || {}, state: ReplyShell = this.S();
+    const identity=JSON.stringify([this.connectionSession??'',this.restoredHistory?.conversationId??'']);
+    const changed=this.replyAnnouncerIdentity!==undefined&&this.replyAnnouncerIdentity!==identity;this.replyAnnouncerIdentity=identity;
+    if(changed||document.hidden||state.screen&&state.screen!=='home'||this.voiceConversationActive?.()){this.replyAnnounced=false;if(regionOwner===this)say('',this);return;}
+    const before: ReplyShell[] = previous.msgs || [], after: ReplyShell[] = state.msgs || [];
     const was = agentTail(before), last = agentTail(after);
     const started = (!!state.turnStatus && !previous.turnStatus) || (!!state.typing && !previous.typing) || (!!last?.streaming && !was?.streaming);
-    if (started && !this.replyAnnounced) { this.replyAnnounced = true; say(REPLYING); }
+    if (started && !this.replyAnnounced) { this.replyAnnounced = true; say(REPLYING,this); }
     if (!last || last.streaming || last.id === this.replyAnnouncedId) { if (!state.typing && !state.turnStatus && !last?.streaming) this.replyAnnounced = false; return; }
     // A streamed reply settling (its id may change on settlement), or one new agent row: a reply
     // delivered whole or a failed-turn notice. A history load replaces many rows and is not read.
@@ -192,8 +205,8 @@ export function installReplyAnnouncer(Component: any) {
     const settled = !!was?.streaming && !after.some(message => message.streaming);
     const arrived = before.length > 0 && added.length === 1 && added[0] === last;
     if (!settled && !arrived) { if (!state.typing && !state.turnStatus) this.replyAnnounced = false; return; }
-    const text = workflowReplyText(String(last.text || last.card?.title || '')).text.trim();
+    const text = String(last.text || last.card?.title || '').trim();
     this.replyAnnouncedId = last.id; this.replyAnnounced = false;
-    if (text) say(bounded(text));
+    if (text) say(bounded(text),this);
   };
 }

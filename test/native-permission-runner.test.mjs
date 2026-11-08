@@ -27,7 +27,7 @@ test('camera admits only the exact archived app and instrumentation bytes',()=>{
 });
 
 for(const [scenario,method,permissions]of [
- ['settings','accountsHandoffAndLocationAccuracyReadback',[['revoke','ACCESS_FINE_LOCATION'],['grant','ACCESS_COARSE_LOCATION']]],
+ ['settings','appPermissionsHandoffAndGrantReadback',[['revoke','CAMERA']]],
  ['channels','blockedChannelReadbackUserRecoveryAndRealNotification',[['grant','POST_NOTIFICATIONS']]],
 ]){
  routed.add(scenario);

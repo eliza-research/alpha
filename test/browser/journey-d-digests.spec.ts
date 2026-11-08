@@ -1,3 +1,4 @@
+import {openConnectionDiagnostics} from './helpers/connection-diagnostics';
 /*
  * Journey D (docs/mvp-completion-plan.md "D. Two hosted loops with the phone powered off"), browser build.
  *
@@ -39,14 +40,13 @@ const digests=(page:Page)=>page.evaluate(async()=>{
  return {loops:d.loops.map((l:any)=>({id:l.id,template:l.spec.template,localTime:l.spec.localTime,timeZone:l.spec.timeZone,active:l.active})),results:d.results.map((r:any)=>({cursor:r.cursor,runId:r.runId,workflowId:r.workflowId,scheduledAt:r.scheduledAt,status:r.status,output:r.output})),acks:Object.values(d.acks) as number[]};
 });
 /**
- * The brief card as Home renders it (the workflows tile). Located in the DOM because the digest panel
- * is a modal over Home at some of the points it is read; where Home is the visible screen the
- * assertions below also require the card to be visible.
+ * The workflows tile, which in this profile only ever carried the brief. Home draws a card only when
+ * it has something to show (docs/ui-refresh-2026-11): with no enabled workflow it is absent, and the
+ * brief is the dedicated card below.
  */
 const homeBrief=(page:Page)=>page.locator('button[aria-label^="Open workflows"]');
 /** The dedicated "Latest brief" card (MVP-19): present only while a real brief is retained. */
 const briefCard=(page:Page)=>page.locator('[data-alpha-home-brief]');
-const BRIEF=(when:string)=>`Open workflows. Latest brief from On-device agent · development, ran ${when}: ${OUTPUT}`;
 /** Move the page clock to an instant without running every intermediate timer. */
 /** Read-only: the retained brief Home presents (apps/app/src/runtime/hosted-digests.ts). */
 const retainedBrief=(page:Page)=>page.evaluate(async()=>(await import('/src/runtime/hosted-digests.ts')).latestRetainedDigest());
@@ -61,7 +61,7 @@ async function advanceTo(page:Page,iso:string){const delta=Date.parse(iso)-await
 async function connect(page:Page){
  await page.goto('/?mode=dev');
  await page.getByRole('button',{name:'Settings',exact:true}).click();
- await page.getByRole('button',{name:'Agent connection',exact:true}).click();
+ await openConnectionDiagnostics(page);
  const dialog=page.getByRole('dialog',{name:'Development connections'});
  await dialog.getByRole('textbox',{name:'Scripted reply'}).fill(OUTPUT);
  await dialog.getByRole('button',{name:'Save development reply'}).click();
@@ -113,9 +113,10 @@ test('journey D: morning and evening digests run once each, are retained and ack
  expect(state.results).toEqual([]);
  const [morning,evening]=state.loops.map(l=>l.id);
  // Schedules exist and nothing has run: Home says there is no brief.
- await expect(homeBrief(page)).toHaveAttribute('aria-label','Open workflows');
- await expect(homeBrief(page)).toContainText('No brief yet');
+ await expect(homeBrief(page)).toHaveCount(0);
  await expect(briefCard(page)).toHaveCount(0);
+ // The digest panel is a modal over Home here, so Home is read from the DOM.
+ await expect(page.locator('[data-alpha-layer="home"]')).not.toContainText('No brief yet');
 
  // 2. Morning occurrence: exactly one retained result, shown once, delivery acknowledged.
  // The development scheduler ticks every 15s; 16s past 07:00 always holds one tick at or after it,
@@ -140,11 +141,9 @@ test('journey D: morning and evening digests run once each, are retained and ack
  expect(new Date(await page.evaluate(()=>Date.now())).toISOString().slice(0,16)).toBe('2026-10-03T07:00');
  expect((await digests(page)).results).toEqual([first]);
  // Home, the visible screen after the restart, shows that morning brief: its text, its agent and when it ran.
- await expect(homeBrief(page)).toBeVisible();
- await expect(homeBrief(page)).toHaveAttribute('aria-label',BRIEF('7:00 AM'));
- await expect(homeBrief(page)).toContainText(OUTPUT);
- await expect(homeBrief(page)).toContainText('Ran 7:00 AM');
+ await expect(homeBrief(page)).toHaveCount(0);
  await expect(briefCard(page)).toBeVisible();await expect(briefCard(page)).toContainText(OUTPUT);
+ await expect(briefCard(page)).toContainText('Ran 7:00 AM');
  await expect(briefCard(page)).toHaveAttribute('data-alpha-home-brief-failed','false');
 
  // 4. Evening occurrence after that restart: one more result, for the evening schedule only.
@@ -193,21 +192,18 @@ test('journey D: morning and evening digests run once each, are retained and ack
  // The missed record does not replace the last real brief: the value Home reads (latestRetainedDigest,
  // filled by this sync) and the card Home renders both still carry the evening brief of the day before.
  expect(await retainedBrief(page)).toMatchObject({summary:OUTPUT,ranAt:expect.stringMatching(/^2026-10-03T19:0/),status:'completed'});
- await expect(homeBrief(page)).toHaveAttribute('aria-label',BRIEF('Sat, Oct 3 7:00 PM'));
- await expect(homeBrief(page)).not.toContainText(/missed|not run/i);
+ await expect(briefCard(page)).toContainText('Ran Sat, Oct 3 7:00 PM');
+ await expect(briefCard(page)).not.toContainText(/missed|not run/i);
  // A later tick and a restart settle nothing further for that occurrence.
  await tickFor(page,120_000);
  await page.reload();
  await expect(page.getByRole('region',{name:'Home'})).toBeVisible();
  await tickFor(page,60_000);
  // After the restart Home is the visible screen and shows the same last real brief, never the missed record.
- await expect(homeBrief(page)).toBeVisible();
- await expect(homeBrief(page)).toHaveAttribute('aria-label',BRIEF('Sat, Oct 3 7:00 PM'));
- await expect(homeBrief(page)).toContainText(OUTPUT);
- await expect(homeBrief(page)).toContainText('Ran Sat, Oct 3 7:00 PM');
+ await expect(homeBrief(page)).toHaveCount(0);
  await expect(briefCard(page)).toBeVisible();await expect(briefCard(page)).toContainText(OUTPUT);
+ await expect(briefCard(page)).toContainText('Ran Sat, Oct 3 7:00 PM');
  await expect(briefCard(page)).not.toContainText(/missed|not run/i);
- await expect(homeBrief(page)).not.toContainText(/missed|not run/i);
  expect((await digests(page)).results).toEqual(state.results);
  panel=await openDigests(page);
 
@@ -256,7 +252,7 @@ test('journey D: an occurrence missed while the app was closed leaves one explic
  expect(state.results.map(r=>[r.scheduledAt,r.status,r.output])).toEqual([['2026-10-03T07:00:00.000Z','missed',MISSED]]);
  // The missed record is not a brief: Home has nothing to show for this schedule.
  expect(await retainedBrief(page)).toBeNull();
- await expect(homeBrief(page)).toHaveAttribute('aria-label','Open workflows');
+ await expect(homeBrief(page)).toHaveCount(0);
  await page.reload();
  await expect(page.getByRole('region',{name:'Home'})).toBeVisible();
  await tickFor(page,60_000);
@@ -264,10 +260,8 @@ test('journey D: an occurrence missed while the app was closed leaves one explic
  await expect.poll(async()=>(await digests(page)).acks).toEqual([1]);
  expect(await retainedBrief(page)).toBeNull();
  // The card Home renders says so, and names neither a brief nor the missed occurrence.
- await expect(homeBrief(page)).toBeVisible();
- await expect(homeBrief(page)).toHaveAttribute('aria-label','Open workflows');
- await expect(homeBrief(page)).toContainText('No brief yet');
+ await expect(homeBrief(page)).toHaveCount(0);
  await expect(briefCard(page)).toHaveCount(0);
- await expect(homeBrief(page)).not.toContainText(/missed|not run|Journey D/i);
+ await expect(page.getByRole('region',{name:'Home'})).not.toContainText(/No brief yet|missed|not run|Journey D/i);
  expect((await digests(page)).results).toEqual(state.results);
 });

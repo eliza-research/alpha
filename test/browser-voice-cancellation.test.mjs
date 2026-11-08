@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
-import {stripTypeScriptTypes} from 'node:module';
+import {stripTypeScriptTypes} from './support/strip-types.mjs';
 import test from 'node:test';
 // The real BrowserVoice and speech errors, with only their imports replaced by synthetic ports.
 // Every agent or Cloud speech call is held until the test settles it and rejects on its own signal,

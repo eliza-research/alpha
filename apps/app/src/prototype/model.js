@@ -1,6 +1,4 @@
 import { externalVoiceInvocationEnabled } from '../runtime/voice-entry-policy';
-import { accessibilityTimeoutScale } from '../runtime/accessibility-timeout';
-import { testMocksEnabled } from '../build-flags';
 import iconCatalog from '../icon-catalog.json';
 /* Seeds, scripted replies and fixture images. Production builds resolve this
    specifier to ./fixtures.empty.js (same names, empty values). */
@@ -8,7 +6,7 @@ import {
   IMG, PEOPLE, PN_REC, PN_VM, PN_SCRIPT, PN_SCREEN, PN_REPLIES, MSG_PHOTOS, MSG_SEED, MSG_UNREAD,
   MSG_SMART, MSG_BOT, INBOX_ACCTS, INBOX_SEED, CAL_SEED, CAL_PREP, BR_START, BR_PAGES, BR_ME,
   PH_SEED, PH_DESC, PH_SHARE, MAPS_PLACES, MAPS_FAR, MAPS_MATCH, MAPS_SAVED, NOTES_SEED,
-  NOTES_LIVE, NOTES_DICT, CT_SEED, FILES_FOLDERS_EXTRA, FILES_SEED, WAL_CARDS, WAL_TRIPS,
+  CT_SEED, FILES_FOLDERS_EXTRA, FILES_SEED, WAL_CARDS, WAL_TRIPS,
   WAL_MERCH, WAL_PASSES, WF_SEED, ST_ACCOUNTS, ST_NETS, ST_BT, ST_PERM0, ST_MODELS, ST_LOG,
   ST_DEVLOG, ST_DEVICE, ST_ABOUT, NOTIF, LOCK_SUM, QUICK_SETTINGS, QUICK_TILES, HEADS, VOICE, COPY,
   ATTENTION_ROWS, HOME_DEFAULTS
@@ -20,6 +18,7 @@ import { emptyHomeShadePull, pullStart, shadeFallback } from "./system-shade";
 import React from "react";
 import { DCLogic } from "./dc-lite.js";
 import { calendarDayColumns, calendarDayCount, calendarReturnDay, markVisibleWeek, visibleCalendarDays } from "./calendar-days";
+import { filterNotes, sortNotes, notePreview, noteDateLabel, notesFilterLabel } from "../runtime/notes-view";
 import { WEEKDAYS, MONTHS, formatTime, formatClock, formatHours, formatHoursRange, formatHour, weekdayName, formatShortDate, formatLongDate, formatMonthDay, formatMonthTitle } from "./locale-time";
 
 
@@ -1407,11 +1406,11 @@ registerView("calendar", {
         var inM = gd.getMonth() === mBase.getMonth();
         var has = on(off).length > 0;
         var cs = off === 0 ? "background:var(--acc);color:var(--alpha-white)" : (off === sel ? "box-shadow:inset 0 0 0 1.5px var(--fg)" : "");
-        mdays.push({ inM: inM, n: gd.getDate(), cs: cs + (inM || off === 0 ? "" : ";color:var(--mut)"), dot: has ? (off === 0 ? "var(--acct)" : "var(--fg)") : "transparent", pick: function () { set({ day: off, month: null }); }, label: DAYS[gd.getDay()] + " " + MONS[gd.getMonth()] + " " + gd.getDate() });
+        mdays.push({ n: gd.getDate(), cs: cs + (inM || off === 0 ? "" : ";color:var(--mut)"), dot: has ? (off === 0 ? "var(--acct)" : "var(--fg)") : "transparent", pick: function () { set({ day: off, month: null }); }, label: DAYS[gd.getDay()] + " " + MONS[gd.getMonth()] + " " + gd.getDate() });
       })(gd);
     }
-    // A month that fits five rows drops the sixth (only the tail, so day indices stay valid).
-    if (mdays.slice(35).every(function (d) { return !d.inM; })) mdays = mdays.slice(0, 35);
+    var lastRow = mdays.slice(35).every(function (d) { return d.cs.indexOf("opacity") >= 0; });
+    if (lastRow) mdays = mdays.slice(0, 35);
     var calRows = cals.map(function (c) {
       var patch = function (p) { var pr = Object.assign({}, st.calPrefs || {}); pr[c.id] = Object.assign({}, pr[c.id] || {}, p); set({ calPrefs: pr }); };
       return { name: c.name, sub: c.sub, on: c.on, sw: CAL_COLORS[c.color], track: api.track(c.on), kx: api.kx(c.on), dim: c.on ? "" : "opacity:.5",
@@ -1438,7 +1437,7 @@ registerView("calendar", {
       var alertLabel = ev.alert == null ? "" : (ev.alert === 0 ? "Alert at start" : (ev.alert >= 60 ? ev.alert / 60 + " hour before" : ev.alert + " min before"));
       D = {
         title: ev.title, when: calRange(ev.t, ev.d), day: calDayName(api, evDay) + (repeatLabel ? " · " + repeatLabel : ""),
-        dot: CAL_COLORS[c.color], calName: c.name,
+        dot: CAL_COLORS[c.color], calName: c.name, canModify: true,
         recurringReminder: false, reminderPolicy: "", reminderHistory: [], reminderDone: function () {}, reminderSnooze: function () {},
         hasWhere: !!ev.where, where: isPhone ? ((ev.who || [])[0] ? "Call " + calPerson(api, ev.who[0]).name.split(" ")[0] : "Phone call") : ev.where, whereIcon: isPhone ? IC.phone : IC.pin,
         goWhere: function () { if (isPhone) { if ((ev.who || [])[0]) api.open("phone", { call: ev.who[0] }); } else api.open("maps", { query: ev.where }); },
@@ -1462,14 +1461,11 @@ registerView("calendar", {
     if (f) {
       var fp = function (p) { set({ form: Object.assign({}, f, p) }); };
       var dayChips = [];
-      // 21 days around the chosen one, so any later day is reachable chip by chip; Today stays one tap away.
-      var first = f.off <= 13 ? Math.min(0, f.off) : f.off - 7;
-      var dayChip = function (k) {
+      var first = Math.min(0, f.off);
+      for (var k = first; k < first + 21; k++) (function (k) {
         var dt = calDate(api, k); var act = k === f.off;
-        dayChips.push({ on: act, top: k === 0 ? "Today" : weekdayName(dt, "short"), n: dt.getDate(), css: act ? "background:var(--acc);color:var(--alpha-white)" : "background:var(--s2)", pick: function () { fp({ off: k }); }, label: calDayName(api, k) });
-      };
-      if (first > 0) dayChip(0);
-      for (var k = first; k < first + 21; k++) dayChip(k);
+        dayChips.push({ top: k === 0 ? "Today" : weekdayName(dt, "short"), n: dt.getDate(), css: act ? "background:var(--acc);color:var(--alpha-white)" : "background:var(--s2)", pick: function () { fp({ off: k }); }, label: calDayName(api, k) });
+      })(k);
       var chosen = f.who.map(function (id) { var p = calPerson(api, id); return { ini: p.ini, first: p.name.split(" ")[0], label: "Remove " + p.name, remove: function () { fp({ who: f.who.filter(function (x) { return x !== id; }) }); } }; });
       var q = (f.pq || "").toLowerCase().trim();
       var sugg = f.pq == null ? [] : calPeople(api).filter(function (p) { return f.who.indexOf(p.id) < 0 && (!q || p.name.toLowerCase().indexOf(q) >= 0 || (p.email || "").toLowerCase().indexOf(q) >= 0); }).slice(0, 4).map(function (p) {
@@ -1483,7 +1479,7 @@ registerView("calendar", {
         onNotes: function (e) { fp({ notes: e.target.value }); },
         days: dayChips,
         start: calAmpm(f.t), end: calAmpm(f.t + f.d), dur: calDur(f.d),
-        sMinus: function () { fp({ t: Math.max(0, f.t - 0.25) }); }, sPlus: function () { fp({ t: Math.max(f.t, Math.min(24 - f.d, f.t + 0.25)) }); },
+        sMinus: function () { fp({ t: Math.max(0, f.t - 0.25) }); }, sPlus: function () { fp({ t: Math.min(23.5 - f.d, f.t + 0.25) }); },
         eMinus: function () { fp({ d: Math.max(0.25, f.d - 0.25) }); }, ePlus: function () { fp({ d: Math.min(24 - f.t, f.d + 0.25) }); },
         video: f.video, vTrack: api.track(f.video), vKx: api.kx(f.video), toggleVideo: function () { fp({ video: !f.video }); },
         chosen: chosen, hasChosen: chosen.length > 0,
@@ -1492,9 +1488,9 @@ registerView("calendar", {
         onPq: function (e) { fp({ pq: e.target.value }); },
         pqKey: function (e) { if (e.key === "Enter" && sugg.length) { e.preventDefault(); sugg[0].pick(); } if (e.key === "Escape") fp({ pq: null }); },
         valid: !!(f.title || "").trim(), saveOff: !(f.title || "").trim(), saveCss: (f.title || "").trim() ? "background:var(--acc);color:var(--alpha-white)" : "background:var(--s2);color:var(--mut)",
-        cals: (Array.isArray(st.canonicalCalendars) ? st.canonicalCalendars : cals).map(function (c) { return { name: c.name, dot: CAL_COLORS[c.color], on: f.cal === c.id, css: chip(f.cal === c.id), pick: function () { fp({ cal: c.id }); } }; }),
-        repeats: CAL_REPEAT.map(function (r) { return { label: r[1], on: f.repeat === r[0], css: chip(f.repeat === r[0]), pick: function () { fp({ repeat: r[0] }); } }; }),
-        alerts: CAL_ALERT.map(function (a) { return { label: a[1], on: f.alert === a[0], css: chip(f.alert === a[0]), pick: function () { fp({ alert: a[0] }); } }; }),
+        cals: (Array.isArray(st.canonicalCalendars) ? st.canonicalCalendars : cals).map(function (c) { return { name: c.name, dot: CAL_COLORS[c.color], css: chip(f.cal === c.id), pick: function () { fp({ cal: c.id }); } }; }),
+        repeats: CAL_REPEAT.map(function (r) { return { label: r[1], css: chip(f.repeat === r[0]), pick: function () { fp({ repeat: r[0] }); } }; }),
+        alerts: CAL_ALERT.map(function (a) { return { label: a[1], css: chip(f.alert === a[0]), pick: function () { fp({ alert: a[0] }); } }; }),
         cancel: function () { set({ form: null }); },
         save: function () {
           var title = (f.title || "").trim();
@@ -1590,7 +1586,7 @@ function brPos(name) {
   try {
     var el = document.querySelector('[data-bk="' + name + '"]'); var sc = document.querySelector("[data-screen]"); var box = document.querySelector("[data-bscroll]");
     if (!el || !sc) return null;
-    var k = sc.getBoundingClientRect().width / (sc.offsetWidth || 412);
+    var k = sc.getBoundingClientRect().width / 412;
     if (box) { var br = box.getBoundingClientRect(), er = el.getBoundingClientRect(); var over = er.bottom - (br.bottom - 150 * k); if (over > 0) box.scrollTop += over / k; if (er.top < br.top + 60 * k) box.scrollTop -= (br.top + 60 * k - er.top) / k; }
     var r = el.getBoundingClientRect(), s = sc.getBoundingClientRect();
     return { cx: (r.left - s.left) / k + Math.min(r.width / k / 2, 70) - 11, cy: (r.top - s.top) / k + r.height / k / 2 - 11 };
@@ -1772,7 +1768,7 @@ registerView("browser", {
     /* tabs */
     var tabCards = st.tabs.map(function (x) {
       var p = brPage(x.hist[x.pos]); var on = x.id === st.cur;
-      return { title: p.title, host: p.host || "New tab", css: on ? "box-shadow:inset 0 0 0 2px var(--acc)" : "", prev: "background:" + imgBg({ news: "news", enclave: "enclave", book: "nopa" }[p.kind] || "-", p.tile), aria: "Switch to " + p.title, closeAria: "Close " + p.title,
+      return { id: x.id, title: p.title, host: p.host || "New tab", css: on ? "box-shadow:inset 0 0 0 2px var(--acc)" : "", prev: "background:" + imgBg({ news: "news", enclave: "enclave", book: "nopa" }[p.kind] || "-", p.tile), aria: "Switch to " + p.title, closeAria: "Close " + p.title,
         pick: function () { set({ cur: x.id, tabsOpen: false }); },
         close: function () {
           var s = api.get("browser"); var rest = s.tabs.filter(function (y) { return y.id !== x.id; });
@@ -1782,9 +1778,9 @@ registerView("browser", {
     });
 
     /* library */
-    var libRows = (st.lib === "history" ? st.visits : st.marks).map(function (u) {
+    var libRows = Array.from(new Set(st.lib === "history" ? st.visits : st.marks)).map(function (u) {
       var p = brPage(u);
-      return { title: p.title, host: p.host + p.path, ini: (p.host || "?").charAt(0).toUpperCase(), css: "background:" + (p.tile && p.tile.indexOf("var") < 0 ? p.tile + ";color:var(--alpha-white)" : "var(--s3)"), go: link(u),
+      return { id: u, title: p.title, host: p.host + p.path, ini: (p.host || "?").charAt(0).toUpperCase(), css: "background:" + (p.tile && p.tile.indexOf("var") < 0 ? p.tile + ";color:var(--alpha-white)" : "var(--s3)"), go: link(u),
         canRemove: st.lib !== "history", removeAria: "Remove bookmark " + p.title, remove: function () { var s = api.get("browser"); set({ marks: s.marks.filter(function (x) { return x !== u; }) }); } };
     });
 
@@ -1846,51 +1842,36 @@ registerView("browser", {
 });
 
 /* ===== module: camera ===== */
-/* Camera: photo / video / scan. Immersive. Captures are prepended to Photos' shared list.
+/* Camera: video / photo. Immersive. Captures are prepended to Photos' shared list.
+   Scanning is not a mode: asking Alpha to scan while Camera is open captures one frame into scan review.
    Scenes come from phScene()/phLook() in the Photos module (CSS compositions, no images). All holes are {{camera.*}}. */
 IC.camFlash = IC.camFlash || "M13 3L5 14h6l-1 7 8-11h-6l1-7z";
 IC.camFlashOff = IC.camFlashOff || "M13 3L9.5 8M8 10l-3 4h6l-1 7 3.2-4.4M15 13.6L18 10h-6l1-7M3 3l18 18";
 IC.camFlip = IC.camFlip || "M4 12a8 8 0 0 1 13.7-5.6L20 9M20 4v5h-5M20 12a8 8 0 0 1-13.7 5.6L4 15M4 20v-5h5";
 IC.camScan = IC.camScan || "M4 8V4h4M16 4h4v4M20 16v4h-4M8 20H4v-4M7 12h10";
 
-var CAM = { live: false, scan: false, lp: null, long: false, g: null };
+/* Zoom ratios of the simulated lenses: the back lens has an ultra-wide, the front lens only 1×. */
 var CAM_ZOOM = [[".5", 1], ["1×", 1.35], ["2", 2], ["5", 3.4]];
-var CAM_MODES = [["video", "Video"], ["photo", "Photo"], ["scan", "Scan"]];
-var CAM_DRIFT = [[0, 0], [-5, 3], [3, -4], [-2, -6], [4, 2]];
-function camScene(st) { return st.mode === "scan" ? "poster" : (st.front ? "selfie" : "park"); }
-function camFigs(st) { return st.mode !== "scan" && st.front ? [[50, 2.2]] : null; }
-function camPoster(now) {
-  var d = new Date(now); var add = (5 - d.getDay() + 7) % 7 || 7; d.setDate(d.getDate() + add);
-  return { day: formatShortDate(d), short: weekdayName(d, "short") + " " + formatHours(18) };
-}
+var CAM_MODES = [["video", "Video"], ["photo", "Photo"]];
+var CAM_SCAN_WORDS = /\bscan\b.*\b(document|doc|receipt|qr|code|poster|page|this|that|a|it|text)\b|\bscan (this|it|that)\b/;
+function camScene(st) { return st.front ? "selfie" : "park"; }
+function camFigs(st) { return st.front ? [[50, 2.2]] : null; }
 function camSave(api, item) {
   var ph = api.get("photos");
   api.setView("photos", { list: [item].concat(ph.list || []) });
   api.set({ session: [item.id].concat(api.get("camera").session || []) });   // this session's captures (all secure mode may show)
 }
 function camFlashFx(api) { api.set({ fl: 1 }); api.later(function () { api.set({ fl: 0 }); }, 90); }
+function camShot(s) { return { id: "c" + Date.now(), ts: Date.now(), kind: "photo", scene: camScene(s), figs: camFigs(s), place: copy("camera").place || "", people: [], tags: s.front ? ["selfie"] : [], fav: false, z: s.front ? 1 : CAM_ZOOM[s.zoom][1] }; }
 function camStopRec(api) {
   var s = api.get("camera"); if (!s.rec) return;
   var sec = Math.max(1, Math.floor((Date.now() - s.recAt) / 1000));
   camSave(api, { id: "c" + Date.now(), ts: Date.now(), kind: "video", dur: Math.floor(sec / 60) + ":" + pad2(sec % 60), scene: camScene(s), figs: camFigs(s), place: copy("camera").place || "", people: [], tags: s.front ? ["selfie"] : [], fav: false, z: s.front ? 1 : CAM_ZOOM[s.zoom][1] });
   api.set({ rec: false, recAt: 0 }); api.stopBg();
 }
-function camAsk(api) {
-  var s = api.get("camera");
-  if (api.secure) { var k = Date.now(); api.set({ said: camDescribe(s, Date.now()), saidK: k }); api.later(function () { if (api.get("camera").saidK === k) api.set({ said: "" }); }, 7000); return; }
-  api.send(s.mode === "scan" ? "What does it say?" : "What am I looking at?");
-}
 function camRecLabel(st) { var sec = Math.max(0, Math.floor((Date.now() - st.recAt) / 1000)); return Math.floor(sec / 60) + ":" + pad2(sec % 60); }
-function camSaveScan(api, quiet) {
-  var s = api.get("camera");
-  var scan = copy("camera").scan || {};
-  camSave(api, { id: "c" + Date.now(), ts: Date.now(), kind: "doc", scene: "poster", figs: null, place: scan.place || "", people: [], tags: (scan.tags || []).slice(), fav: false, z: 1 });
-  if (!quiet) camFlashFx(api);
-  return s;
-}
-function camDescribe(st, now) {
+function camDescribe(st) {
   var cc = copy("camera");
-  if (st.mode === "scan") { var scan = cc.scan || {}; return scan.describe ? scan.describe.replace("{day}", camPoster(now).day) : "Document reading is not connected."; }
   if (st.front) return cc.describeFront || "Scene description is not connected.";
   return cc.describeBack || "Scene description is not connected.";
 }
@@ -1898,113 +1879,79 @@ function camDescribe(st, now) {
 registerView("camera", {
   title: "Camera", icon: "camera", aliases: ["cam"],
   chat: "hidden",
-  state: { mode: "photo", front: false, flash: false, zoom: 1, rec: false, recAt: 0, tick: 0, fl: 0, focus: null, found: false, flip: false, session: [], said: "" },
+  state: { mode: "photo", front: false, flash: false, zoom: 1, rec: false, recAt: 0, tick: 0, fl: 0, session: [], said: "" },
   ongoing: function (st) { return st.rec ? { label: camRecLabel(st), icon: "video", color: "var(--alpha-record-red)" } : null; },
-  jumps: [[null, "Camera"], ["video", "Video"], ["scan", "Scan"]],
-  preset: function (sub) { if (sub) return { mode: sub }; },
-  immersive: function () { return { dark: true, noPill: true }; },
+  jumps: [[null, "Camera"], ["video", "Video"]],
+  preset: function (sub) { if (sub === "video" || sub === "photo") return { mode: sub }; },
+  // The assistant pill stays below the shutter row: asking Alpha (about the frame, or to scan it) replaces header buttons.
+  immersive: function (st) { return st.rec ? { dark: true, noPill: true } : { dark: true }; },
   back: function (st, api) { if (st.rec) { camStopRec(api); return true; } return false; },
-  onLeave: function (api) { if (api.secure && api.get("camera").rec) camStopRec(api); CAM.live = false; CAM.scan = false; clearTimeout(CAM.lp); },  // recording keeps going in the background (ongoing chip) except from the lock screen
-  suggestions: function (st) {
-    if (st.mode === "scan") return ["What does it say?", "Add it to my calendar", "Save it to Files"];
-    return ["What am I looking at?", "Take a selfie", "Scan a document"];
-  },
+  onLeave: function (api) { if (api.secure && api.get("camera").rec) camStopRec(api); },  // recording keeps going in the background (ongoing chip) except from the lock screen
+  suggestions: function () { return ["What am I looking at?", "Take a selfie", "Scan this"]; },
   voicePhrase: "What am I looking at?",
   actions: {
-    addEvent: function (card, api) { api.toast("Added to Calendar"); }
+    /* The camera adapter replaces this with one frame into scan review. */
+    scan: function (card, api) { camFlashFx(api); }
   },
   reply: function (t, raw, api) {
-    var st = api.st; var now = api.now.getTime();
+    var st = api.st;
     if (api.active) {
-      if (/what (am i|do you|is (this|that)|'s (this|that))|what.*(see|looking)|read (this|it)|what does it say|describe/.test(t)) {
-        if (st.mode === "scan" && (copy("camera").scan || {}).title) { var p = camPoster(now); return { text: camDescribe(st, now), card: { type: "event", time: p.day + " · 6:00 PM", title: copy("camera").scan.title, act: { mod: "camera", fn: "addEvent" } } }; }
-        return { text: camDescribe(st, now) };
-      }
-      if (st.mode === "scan" && (copy("camera").scan || {}).added && /calendar|add (it|the event|event)/.test(t)) return { text: copy("camera").scan.added, then: function () { api.toast("Added to Calendar"); } };
-      if (st.mode === "scan" && /files|save (it|this)/.test(t)) return { text: "Saved to Files, under Scans.", then: function () { camSaveScan(api, true); api.toast("Saved to Files"); } };
-      if (/\b(take|snap|shoot)\b.*\bselfie\b/.test(t)) return { text: "Smile.", then: function () { api.set({ mode: "photo", front: true }); api.later(function () { api.set({ fl: 1 }); var s = api.get("camera"); camSave(api, { id: "c" + Date.now(), ts: Date.now(), kind: "photo", scene: "selfie", figs: [[50, 2.2]], place: copy("camera").place || "", people: [], tags: ["selfie"], fav: false, z: 1 }); api.later(function () { api.set({ fl: 0 }); }, 90); }, 900); } };
-      if (/\b(take|snap|shoot)\b.*\b(photo|picture|pic|shot)\b/.test(t)) return { text: "Got it.", then: function () { var s = api.get("camera"); camFlashFx(api); camSave(api, { id: "c" + Date.now(), ts: Date.now(), kind: "photo", scene: camScene(s), figs: camFigs(s), place: copy("camera").place || "", people: [], tags: s.front ? ["selfie"] : [], fav: false, z: s.front ? 1 : CAM_ZOOM[s.zoom][1] }); } };
+      if (CAM_SCAN_WORDS.test(t)) return { text: "Scanning.", then: function () { VIEWS.camera.actions.scan(null, api); } };
+      if (/what (am i|do you|is (this|that)|'s (this|that))|what.*(see|looking)|read (this|it)|what does it say|describe/.test(t)) return { text: camDescribe(st) };
+      if (/\b(take|snap|shoot)\b.*\bselfie\b/.test(t)) return { text: "Smile.", then: function () { api.set({ mode: "photo", front: true, flash: false, zoom: 1 }); api.later(function () { camFlashFx(api); camSave(api, camShot(api.get("camera"))); }, 900); } };
+      if (/\b(take|snap|shoot)\b.*\b(photo|picture|pic|shot)\b/.test(t)) return { text: "Got it.", then: function () { camFlashFx(api); camSave(api, camShot(api.get("camera"))); } };
     }
-    if (/\b(take|snap)\b.*\bselfie\b/.test(t)) return { text: "Front camera's ready.", nav: { view: "camera", patch: { mode: "photo", front: true } } };
+    if (/\b(take|snap)\b.*\bselfie\b/.test(t)) return { text: "Front camera's ready.", nav: { view: "camera", patch: { mode: "photo", front: true, flash: false, zoom: 1 } } };
     if (/\b(take|snap|shoot)\b.*\b(photo|picture|pic)\b|\bopen (the )?camera\b/.test(t)) return { text: "Camera's ready.", nav: { view: "camera", patch: { mode: "photo" } } };
-    if (/\b(record|film|shoot)\b.*\bvideo\b/.test(t)) return { text: "Tap the red button to start.", nav: { view: "camera", patch: { mode: "video" } } };
-    if (/\bscan\b.*\b(document|doc|receipt|qr|code|poster|page|this|a|it)\b/.test(t)) return { text: "Point it at the page. I'll read it.", nav: { view: "camera", patch: { mode: "scan", found: false } } };
+    if (/\b(record|film|shoot)\b.*\bvideo\b/.test(t)) return { text: "Camera's ready.", nav: { view: "camera", patch: { mode: "video" } } };
+    if (CAM_SCAN_WORDS.test(t)) return { text: "Camera's ready. Point it at the page and ask again.", nav: { view: "camera", patch: { mode: "photo" } } };
     return null;
   },
   render: function (st, api) {
-    var now = api.now.getTime();
-    if (!CAM.live) { CAM.live = true; api.every(function () { var s = api.get("camera"); if (!s.rec) api.set({ tick: (s.tick || 0) + 1 }); }, 1000); }
-    if (st.mode === "scan" && !st.found && !CAM.scan) { CAM.scan = true; api.later(function () { CAM.scan = false; if (api.get("camera").mode === "scan") api.set({ found: true }); }, 1100); }
-    var isScan = st.mode === "scan", isVideo = st.mode === "video";
-    var front = st.front && !isScan;
-    var zs = isScan ? 0.8 : (front ? 1.05 : CAM_ZOOM[st.zoom][1]);
-    var dr = CAM_DRIFT[Math.floor((st.tick || 0) / 2) % CAM_DRIFT.length];
+    var isVideo = st.mode === "video";
+    var front = st.front;
+    var zs = front ? 1.05 : CAM_ZOOM[st.zoom][1];
     var bg = phScene(camScene(st), camFigs(st), 0, PH_SCENE_IMG[camScene(st)]);
-    var setMode = function (m) { var s = api.get("camera"); if (s.rec) camStopRec(api); if (s.mode !== m) api.set({ mode: m, found: false }); };
-    var modeIdx = CAM_MODES.map(function (m) { return m[0]; }).indexOf(st.mode);
+    var setMode = function (m) { var s = api.get("camera"); if (s.rec) camStopRec(api); if (s.mode !== m) api.set({ mode: m }); };
 
     var ph = api.get("photos"); var sess = st.session || [];
     var last = (ph.list || []).filter(function (it) { return !api.secure || sess.indexOf(it.id) >= 0; })[0] || null;
     var lastLook = last ? phLook(last, "thumb") : null;
-    var poster = camPoster(now);
-
-    function pt(e) { var sc = e.currentTarget.closest("[data-screen]"); var r = sc.getBoundingClientRect(); var w = sc.offsetWidth || 412, s = r.width / w || 1; return { x: (e.clientX - r.left) / s, y: (e.clientY - r.top) / s, w: w }; }
+    // The simulated front lens has no ultra-wide or telephoto: 1× only, so no chips.
+    var zooms = front ? [] : CAM_ZOOM.map(function (z, i) { return [z[0], i]; });
     return {
-      bg: bg, vfBg: isScan ? "linear-gradient(135deg, var(--alpha-scan-viewfinder-1), var(--alpha-scan-viewfinder-2))" : "var(--alpha-gray-11)",
-      drift: "transform: translate(" + dr[0] + "px, calc(-50% + " + dr[1] + "px))",
-      zoomCss: "transform: scale(" + zs + ")" + (front ? " scaleX(-1)" : "") + "; filter: " + (st.flip ? "blur(14px) brightness(.7)" : "none"),
+      bg: bg, vfBg: "var(--alpha-gray-11)", vfOp: 1,
+      zoomCss: "transform: scale(" + zs + ")" + (front ? " scaleX(-1)" : ""),
       flOp: st.fl ? (st.flash ? 1 : 0.85) : 0, flTr: st.fl ? "none" : "opacity .45s",
-      hasFocus: !!st.focus, focus: st.focus ? "left: " + (st.focus.x - 34) + "px; top: " + (st.focus.y - 34) + "px" : "",
-      flashIcon: st.flash ? IC.camFlash : IC.camFlashOff, flashAvailable: true, flashLabel: st.flash ? "Flash on" : "Flash off",
+      flashIcon: st.flash ? IC.camFlash : IC.camFlashOff, flashAvailable: !front, flashLabel: st.flash ? "Flash on" : "Flash off",
       toggleFlash: function () { api.set({ flash: !api.get("camera").flash }); },
       rec: st.rec, recTime: st.rec ? camRecLabel(st) : "",
       said: st.said || "", hasSaid: !!st.said, clearSaid: function () { api.set({ said: "" }); },
-      showZoom: !isScan && !front,
-      zooms: CAM_ZOOM.map(function (z, i) {
-        var on = st.zoom === i;
-        return { label: z[0], aria: "Zoom " + z[0].replace("×", "") + "x", css: on ? "background-color:var(--alpha-white);color:var(--alpha-black);width:40px;height:40px;padding:2px;box-sizing:content-box;background-clip:content-box;font-size:13px" : "background-color:rgba(0,0,0,.65);color:var(--alpha-white);width:34px;height:34px;padding:5px;box-sizing:content-box;background-clip:content-box;font-size:12px", pick: function () { api.set({ zoom: i }); } };
+      showZoom: !st.rec && zooms.length > 1,
+      zooms: zooms.map(function (z) {
+        var on = st.zoom === z[1];
+        return { label: z[0], aria: "Zoom " + z[0].replace("×", "") + "x", css: on ? "background-color:var(--alpha-white);color:var(--alpha-black);width:40px;height:40px;padding:2px;box-sizing:content-box;background-clip:content-box;font-size:13px" : "background-color:rgba(0,0,0,.65);color:var(--alpha-white);width:34px;height:34px;padding:5px;box-sizing:content-box;background-clip:content-box;font-size:12px", pick: function () { api.set({ zoom: z[1] }); } };
       }),
-      scanFound: isScan && st.found, scanning: isScan && !st.found,
-      posterDay: poster.short,
-      addEvent: function () { api.toast("Added to Calendar · " + poster.short); },
-      saveFiles: function () { camSaveScan(api); api.toast("Saved to Files"); },
-      openLink: function () { var link = (copy("camera").scan || {}).link; if (link) api.open("browser", { url: link }); else api.toast("No link was read from this scan"); },
+      showModes: !st.rec,
       modes: CAM_MODES.map(function (m) {
         var on = st.mode === m[0];
-        return { label: m[1], on: on, css: on ? "color:var(--alpha-white)" : "color:rgba(255,255,255,.55)", dot: on ? 1 : 0, pick: function () { setMode(m[0]); } };
+        return { label: m[1], css: on ? "color:var(--alpha-white)" : "color:rgba(255,255,255,.55)", dot: on ? 1 : 0, pick: function () { setMode(m[0]); } };
       }),
       innerCss: isVideo ? (st.rec ? "width:30px;height:30px;border-radius:8px;background:var(--alpha-record-red)" : "width:62px;height:62px;border-radius:31px;background:var(--alpha-record-red)") : "width:62px;height:62px;border-radius:31px;background:var(--alpha-white)",
-      scanGlyph: isScan,
-      shutterLabel: isVideo ? (st.rec ? "Stop recording" : "Start recording") : (isScan ? "Save scan" : "Take photo"),
+      shutterLabel: isVideo ? (st.rec ? "Stop recording" : "Start recording") : "Take photo",
       shutter: function () {
         var s = api.get("camera");
         if (s.mode === "video") { if (s.rec) camStopRec(api); else { api.set({ rec: true, recAt: Date.now() }); api.everyBg(function () { var c = api.get("camera"); api.set({ tick: (c.tick || 0) + 1 }); }, 1000); } return; }
-        if (s.mode === "scan") { camSaveScan(api); api.toast("Scan saved"); return; }
         camFlashFx(api);
-        camSave(api, { id: "c" + Date.now(), ts: Date.now(), kind: "photo", scene: camScene(s), figs: camFigs(s), place: copy("camera").place || "", people: [], tags: s.front ? ["selfie"] : [], fav: false, z: s.front ? 1 : CAM_ZOOM[s.zoom][1] });
+        camSave(api, camShot(s));
       },
       hasLast: !!last, lastBg: lastLook ? lastLook.bg : "", lastTf: lastLook ? lastLook.tf : "", lastFlt: lastLook ? lastLook.flt : "none",
       lastLabel: last && last.kind === "video" ? "Open last video" : "Open last photo",
       openLast: function () { if (last) api.open("photos", { open: last.id, from: "camera", seq: api.secure ? sess.slice() : null, chrome: true, sheet: null, edit: null, sel: null, searching: false }); },
-      showFlip: !isScan && !st.rec, noFlip: isScan || !!st.rec, noLast: !last,
-      flip: function () { api.set({ front: !api.get("camera").front, flip: true }); api.later(function () { api.set({ flip: false }); }, 260); },
-      ask: function () { camAsk(api); },
-      vfDown: function (e) {
-        CAM.g = pt(e); CAM.long = false; clearTimeout(CAM.lp); try { e.currentTarget.setPointerCapture(e.pointerId); } catch (err) {}
-        CAM.lp = setTimeout(function () { CAM.long = true; camAsk(api); }, 650);
-      },
-      vfUp: function (e) {
-        clearTimeout(CAM.lp); var g = CAM.g; CAM.g = null; if (!g || CAM.long) return;
-        var p = pt(e); var dx = p.x - g.x, dy = p.y - g.y;
-        if (Math.abs(dx) > 50 && Math.abs(dx) > Math.abs(dy) && g.x > 30 && g.x < g.w - 30) {
-          var ni = modeIdx + (dx < 0 ? 1 : -1); if (ni >= 0 && ni < CAM_MODES.length) setMode(CAM_MODES[ni][0]); return;
-        }
-        if (Math.abs(dx) < 10 && Math.abs(dy) < 10) {
-          var k = Date.now(); api.set({ focus: { x: g.x, y: g.y - 96, k: k } });
-          api.later(function () { var s = api.get("camera"); if (s.focus && s.focus.k === k) api.set({ focus: null }); }, 1100);
-        }
-      },
-      vfLeave: function () { clearTimeout(CAM.lp); CAM.g = null; }
+      showFlip: !st.rec, noFlip: !!st.rec, noLast: !last,
+      // Flash and zoom reset before the lens changes, so the new lens never inherits an unsupported setting.
+      flip: function () { var s = api.get("camera"); api.set({ flash: false, zoom: 1, front: !s.front }); },
+      vfUp: function () {}
     };
   }
 });
@@ -2282,7 +2229,7 @@ registerView("photos", {
       var on = selecting && sel.indexOf(it.id) >= 0;
       var v = phLook(it, "thumb", null, on);
       return {
-        bg: v.bg, tf: v.tf, flt: v.flt, vid: it.kind === "video" && !selecting, dur: it.dur, fav: !!it.fav && !trashMode && !selecting, selecting: selecting && !trashMode, on: on,
+        id: "fixture:" + it.id, bg: v.bg, tf: v.tf, flt: v.flt, vid: it.kind === "video" && !selecting, dur: it.dur, fav: !!it.fav && !trashMode && !selecting, selecting: selecting && !trashMode, on: on,
         dim: trashMode ? "opacity:.6" : "",
         selCss: on ? "background:var(--acc);box-shadow:0 0 0 2px var(--alpha-white)" : "background:rgba(0,0,0,.7);box-shadow:inset 0 0 0 2px var(--alpha-white)",
         alt: (trashMode ? "Restore " : "") + (it.kind === "video" ? "Video" : "Photo") + ", " + phDayLabel(it.ts, now) + (it.place ? ", " + it.place : ""),
@@ -2318,7 +2265,7 @@ registerView("photos", {
     var groups = []; var gi = {};
     shown.forEach(function (it) {
       var k = phDayKey(it.ts);
-      if (gi[k] == null) { gi[k] = groups.length; groups.push({ label: phDayLabel(it.ts, now), pc: {}, items: [] }); }
+      if (gi[k] == null) { gi[k] = groups.length; groups.push({ id: k, label: phDayLabel(it.ts, now), pc: {}, items: [] }); }
       var g = groups[gi[k]]; g.items.push(thumb(it, seqIds)); if (it.place) g.pc[it.place] = (g.pc[it.place] || 0) + 1;
     });
     groups.forEach(function (g) { g.place = Object.keys(g.pc).sort(function (a, b) { return g.pc[b] - g.pc[a]; }).slice(0, 2).join(", "); });
@@ -2346,7 +2293,7 @@ registerView("photos", {
     function tile(key) {
       var items = albumItems(key); if (!items.length) return null;
       var cov = items.filter(function (it) { return it.kind === "photo" && it.scene !== "portrait" && it.scene !== "selfie"; })[0] || items[0]; var c = phLook(cov, "thumb");
-      return { name: albumName(key), count: items.length, bg: c.bg, tf: c.tf, flt: c.flt, open: function () { api.set({ album: key }); } };
+      return { id: "album:" + key, name: albumName(key), count: items.length, bg: c.bg, tf: c.tf, flt: c.flt, open: function () { api.set({ album: key }); } };
     }
     var keys = (st.albums || []).map(function (a) { return "user:" + a.id; }).concat(["fav", "video"]);
     var pc = {}; list.forEach(function (it) { if (it.place) pc[it.place] = (pc[it.place] || 0) + 1; });
@@ -2357,7 +2304,7 @@ registerView("photos", {
       var mine = list.filter(function (it) { return (it.people || []).indexOf(p.id) >= 0; }); if (!mine.length) return null;
       var cover = mine.filter(function (it) { return it.scene === "portrait" || (it.people.length === 1 && it.figs); })[0] || mine[0];
       var c = phLook(cover, "thumb");
-      return { first: p.name.split(" ")[0], name: p.name, bg: c.bg, tf: c.tf, open: function () { api.set({ album: "person:" + p.id }); } };
+      return { id: p.id, first: p.name.split(" ")[0], name: p.name, bg: c.bg, tf: c.tf, open: function () { api.set({ album: "person:" + p.id }); } };
     }).filter(Boolean);
 
     var alb = null;
@@ -2391,7 +2338,7 @@ registerView("photos", {
         else return false;
       });
       var ed = st.edit || null;
-      var people = (cur.people || []).map(function (id) { var p = api.person(id); return p ? { ini: p.ini, first: p.name.split(" ")[0], label: "Open " + p.name, open: function () { api.open("contacts", { open: id }); } } : null; }).filter(Boolean);
+      var people = (cur.people || []).map(function (id) { var p = api.person(id); return p ? { id: id, ini: p.ini, first: p.name.split(" ")[0], label: "Open " + p.name, open: function () { api.open("contacts", { open: id }); } } : null; }).filter(Boolean);
       vw = {
         bg: look.bg, tf: look.tf, flt: look.flt,
         slide: "transform: translateX(" + (st.vx || 0) + "px); opacity: " + (st.vx ? 0.35 : 1) + "; transition: " + (st.vt ? "transform .32s cubic-bezier(.19,1,.22,1), opacity .25s" : "none"),
@@ -2399,7 +2346,7 @@ registerView("photos", {
         chromeOp: st.chrome ? 1 : 0, chromePE: st.chrome ? "auto" : "none",
         notDeleted: true,
         favIcon: cur.fav ? "fill: currentColor" : "", favLabel: cur.fav ? "Remove from favorites" : "Add to favorites",
-        viewerLabel: (cur.kind === "video" ? "Video" : "Photo") + ". Tap to show or hide controls",
+        viewerLabel: (cur.kind === "video" ? "Video" : "Photo") + ", " + phDayLabel(cur.ts, now) + " " + phTime(cur.ts),
         hasPrevItem: idx > 0, hasNextItem: idx >= 0 && idx < seq.length - 1,
         prevItem: function () { go(-1); }, nextItem: function () { go(1); },
         askLabel: "Ask Alpha about this " + (cur.kind === "video" ? "video" : "photo"),
@@ -2437,7 +2384,7 @@ registerView("photos", {
           filters: PH_FILTER_LIST.map(function (f) {
             var fl = phLook(cur, "thumb", { filter: f[0] });
             var on = (ed.filter || "none") === f[0];
-            return { label: f[1], bg: fl.bg, flt: fl.flt, on: on, ring: on ? "box-shadow: 0 0 0 2px var(--alpha-black), 0 0 0 4px var(--alpha-white)" : "", lc: on ? "var(--alpha-white)" : "rgba(255,255,255,.6)", pick: function () { var e2 = api.get("photos").edit; api.set({ edit: Object.assign({}, e2, { filter: f[0] }) }); } };
+            return { id: f[0], label: f[1], bg: fl.bg, flt: fl.flt, on: on, ring: on ? "box-shadow: 0 0 0 2px var(--alpha-black), 0 0 0 4px var(--alpha-white)" : "", lc: on ? "var(--alpha-white)" : "rgba(255,255,255,.6)", pick: function () { var e2 = api.get("photos").edit; api.set({ edit: Object.assign({}, e2, { filter: f[0] }) }); } };
           }),
           cancel: function () { api.set({ edit: null }); },
           save: function () { var s = api.get("photos"); var e2 = s.edit; var clean = (!e2.rot && !e2.crop && (e2.filter || "none") === "none") ? null : e2; api.set({ edit: null, list: s.list.map(function (it) { return it.id === cur.id ? Object.assign({}, it, { edit: clean }) : it; }) }); api.toast("Saved"); }
@@ -2451,21 +2398,21 @@ registerView("photos", {
     var share = {
       people: PH_SHARE.map(function (id) {
         var p = api.person(id); if (!p) return null;
-        return { ini: p.ini, first: p.name.split(" ")[0], label: "Send to " + p.name, send: function () { api.set({ sheet: null, sel: null }); api.toast(nShare > 1 ? "Sent " + nShare + " to " + p.name.split(" ")[0] : "Sent to " + p.name.split(" ")[0]); } };
+        return { id: id, ini: p.ini, first: p.name.split(" ")[0], label: "Send to " + p.name, send: function () { api.set({ sheet: null, sel: null }); api.toast(nShare > 1 ? "Sent " + nShare + " to " + p.name.split(" ")[0] : "Sent to " + p.name.split(" ")[0]); } };
       }).filter(Boolean),
       apps: [
         ["bubble", "Messages", function () { api.set({ sheet: null, sel: null }); api.open("messages", { compose: true }); }],
         ["mail", "Mail", function () { api.set({ sheet: null, sel: null }); api.open("inbox", { compose: { subject: nShare > 1 ? nShare + " photos" : "Photo", body: "", attach: shareIds } }); }],
         ["link", "Copy link", function () { api.set({ sheet: null, sel: null }); api.toast("Link copied"); }],
         ["folder", "Files", function () { api.set({ sheet: null, sel: null }); api.toast("Saved to Files"); }]
-      ].map(function (a) { return { d: IC[a[0]], label: a[1], go: a[2] }; })
+      ].map(function (a) { return { id: a[0], d: IC[a[0]], label: a[1], go: a[2] }; })
     };
 
     var nSel = sel ? sel.length : 0;
     return {
       hdr: !selecting && !st.searching, isLib: st.tab !== "alb" || !!st.searching, isAlb: st.tab === "alb" && !st.searching, libTab: st.tab !== "alb",
       title: st.tab === "alb" ? "Albums" : "Photos",
-      tabs: [["lib", "Library", IC.photo], ["alb", "Albums", IC.phAlbums]].map(function (t) { var on = (st.tab || "lib") === t[0]; return { label: t[1], d: t[2], on: on, css: on ? "background:var(--fg);color:var(--bg)" : "color:var(--fg)", pick: function () { api.set({ tab: t[0], sel: null }); } }; }),
+      tabs: [["lib", "Library", IC.photo], ["alb", "Albums", IC.phAlbums]].map(function (t) { var on = (st.tab || "lib") === t[0]; return { id: t[0], label: t[1], d: t[2], on: on, css: on ? "background:var(--fg);color:var(--bg)" : "color:var(--fg)", pick: function () { api.set({ tab: t[0], sel: null }); } }; }),
       searching: !!st.searching, q: st.q || "", hasQ: !!(st.q || "").trim(), askLabel: "Ask " + api.name + ": “" + (st.q || "").trim() + "”",
       search: function () { api.set({ searching: true, q: "", sel: null, album: null }); },
       onQ: function (e) { api.set({ q: e.target.value }); },
@@ -2764,7 +2711,7 @@ registerView("maps", {
     else pinList = [dst.id];
     var pins = pinList.map(function (id) {
       var p = mapsPlace(id); var o = scr(p.x, p.y); var big = mode !== "base" && mode !== "results";
-      return { l: o.l, t: o.t, d: IC[p.icon], name: p.name, sz: big ? 44 : 34, off: big ? -22 : -17, isz: big ? 20 : 16,
+      return { id: id, l: o.l, t: o.t, d: IC[p.icon], name: p.name, sz: big ? 44 : 34, off: big ? -22 : -17, isz: big ? 20 : 16,
         css: big ? "background: var(--acc); color: var(--alpha-white); box-shadow: 0 0 0 3px var(--alpha-white), 0 6px 18px rgba(0,0,0,.25)" : "background: var(--bg); color: var(--fg); box-shadow: 0 0 0 1.5px var(--line), 0 4px 12px var(--shc)",
         tap: function () { if (tapGuard() || mode === "nav" || mode === "dir") return; api.set({ place: id, pan: null }); } };
     });
@@ -2773,12 +2720,12 @@ registerView("maps", {
 
     /* map pan (release-based) */
     var mapDown = function (e) {
-      var sc = e.currentTarget.closest ? e.currentTarget.closest("[data-screen]") : null; var w = (sc && sc.offsetWidth) || 412; var r = (sc || e.currentTarget).getBoundingClientRect(); var k = r.width / w || 1;
-      MAPS_DRAG = { on: true, x: e.clientX, y: e.clientY, k: k, w: w, px: (e.clientX - r.left) / k, py: (e.clientY - r.top) / k, t: MAPS_DRAG.t };
+      var sc = e.currentTarget.closest ? e.currentTarget.closest("[data-screen]") : null; var r = (sc || e.currentTarget).getBoundingClientRect(); var k = r.width / 412 || 1;
+      MAPS_DRAG = { on: true, x: e.clientX, y: e.clientY, k: k, px: (e.clientX - r.left) / k, py: (e.clientY - r.top) / k, t: MAPS_DRAG.t };
     };
     var mapUp = function (e) {
       var d = MAPS_DRAG; if (!d.on) return; d.on = false;
-      if (d.px < 30 || d.px > d.w - 30 || d.py < 90 || d.py > 872) return;
+      if (d.px < 30 || d.px > 382 || d.py < 90 || d.py > 872) return;
       var dx = (e.clientX - d.x) / d.k, dy = (e.clientY - d.y) / d.k;
       if (Math.abs(dx) + Math.abs(dy) < 12) return;
       d.t = Date.now(); var p0 = api.get("maps").pan || { x: 0, y: 0 }; api.set({ pan: { x: p0.x + dx, y: p0.y + dy } });
@@ -2787,15 +2734,15 @@ registerView("maps", {
     /* saved chips */
     var chips = mapsSavedIds(st).map(function (id) {
       var p = mapsPlace(id);
-      return { label: id === MAPS_FIX.work ? MAPS_FIX.workLabel || p.name : p.name, d: IC[p.icon], go: function () { api.set({ place: id, pan: null }); } };
+      return { id: id, label: id === MAPS_FIX.work ? MAPS_FIX.workLabel || p.name : p.name, d: IC[p.icon], go: function () { api.set({ place: id, pan: null }); } };
     });
     var cats = [["Coffee", "mapsCup", "coffee"], ["Food", "mapsFood", "food"], ["Gym", "mapsGym", "gym"]].map(function (c) {
-      return { label: c[0], d: IC[c[1]], go: function () { api.set({ query: c[2], sheet: "half", place: null, pan: null }); } };
+      return { id: c[2], label: c[0], d: IC[c[1]], go: function () { api.set({ query: c[2], sheet: "half", place: null, pan: null }); } };
     });
 
     var row = function (p) {
       var h = mapsHours(p, api.now);
-      return { name: p.name, d: IC[p.icon], sub: p.cat + " · " + mapsMi(p.mi) + " mi" + (h ? " · " + (h.open ? "Open" : "Closed") : ""), go: function () { api.set({ place: p.id, pan: null }); } };
+      return { id: p.id, name: p.name, d: IC[p.icon], sub: p.cat + " · " + mapsMi(p.mi) + " mi" + (h ? " · " + (h.open ? "Open" : "Closed") : ""), go: function () { api.set({ place: p.id, pan: null }); } };
     };
     var savedRows = mapsSavedIds(st).map(function (id) { var r = row(mapsPlace(id)); if (id === MAPS_FIX.work && MAPS_FIX.workName) r.name = MAPS_FIX.workName; return r; });
     var q = st.query || "";
@@ -2909,7 +2856,7 @@ IC.notesWave = IC.notesWave || "M3 12h2M7 8v8M11 5v14M15 9v6M19 11v2M21 12h0";
 var NOTES_RED = "var(--alpha-notes-red)";
 
 var NOTES_WAVE = []; (function () { for (var i = 0; i < 56; i++) NOTES_WAVE.push(Math.round(8 + 26 * Math.abs(Math.sin(i * 0.9) * Math.cos(i * 0.37)) + (i % 3) * 3)); })();
-var NT = { pend: false, recI: null, playI: null, dicI: null, dIdx: 0, undoT: null };
+var NT = { pend: false, playI: null, undoT: null, holdT: null, held: null };
 
 function notesFmt(sec) { if (!Number.isFinite(sec)) return ""; sec = Math.max(0, Math.floor(sec)); return Math.floor(sec / 60) + ":" + pad2(sec % 60); }
 function notesNowLabel(d) { return formatTime(d); }
@@ -2918,7 +2865,13 @@ function notesFind(list, id) { for (var i = 0; i < list.length; i++) if (list[i]
 function notesUpd(api, id, patch) {
   if (api.canonicalNotes) return api.canonicalNotes.update(id, patch);
   var s = api.get("notes");
-  var list = s.list.map(function (n) { return n.id === id ? Object.assign({}, n, typeof patch === "function" ? patch(n) : patch) : n; });
+  var list = s.list.map(function (n) {
+    if (n.id !== id) return n;
+    var next = Object.assign({}, n, typeof patch === "function" ? patch(n) : patch);
+    // An edit to the content is a modification (the list is newest first); pinning or a folder move is not.
+    if (["title", "body", "items", "lines"].some(function (k) { return next[k] !== n[k]; })) next.modifiedAt = Date.now();
+    return next;
+  });
   var change = { list: list };
   if (s.blankCreationId === id && !notesEmpty(notesFind(list, id))) change.blankCreationId = null;
   return api.set(change);
@@ -2929,7 +2882,7 @@ function notesEmpty(n) {
   if (n.kind === "list") return !String(n.title || "").trim() && !(n.items || []).some(function (i) { return String(i.t).trim(); });
   return false;
 }
-function notesStopTimers() { clearInterval(NT.playI); clearInterval(NT.dicI); NT.playI = null; NT.dicI = null; }
+function notesStopTimers() { clearInterval(NT.playI); NT.playI = null; }
 function notesClose(api) {
   api.set(notesLeave(api, null));
 }
@@ -2939,7 +2892,7 @@ function notesLeave(api, next) {
   if (api.canonicalNotes) { void api.canonicalNotes.leave(next); return {}; }
   var s = api.get("notes"); notesStopTimers();
   var n = s.open !== next && s.open === s.blankCreationId ? notesFind(s.list, s.open) : null;
-  var patch = { open: next, sheet: null, playing: false, dict: false, newItem: "", blankCreationId: next === s.open ? s.blankCreationId : null };
+  var patch = { open: next, sheet: null, playing: false, newItem: "", blankCreationId: next === s.open ? s.blankCreationId : null };
   if (n && notesEmpty(n)) patch.list = s.list.filter(function (x) { return x.id !== n.id; });
   return patch;
 }
@@ -2954,52 +2907,78 @@ async function notesDelete(api, id) {
   var note = s.list[idx];
   // Live Notes move the note to the durable Trash (and offer Undo); fixtures keep the in-memory undo.
   if (api.moveNoteToTrash) { await api.moveNoteToTrash(note, idx); return; }
-  if(await api.set({ list: s.list.filter(function (n) { return n.id !== id; }), open: null, sheet: null, playing: false, dict: false })===false)return;
+  if(await api.set({ list: s.list.filter(function (n) { return n.id !== id; }), open: null, sheet: null, playing: false })===false)return;
   notesUndoable(api, note, idx, (note.title || "Note") + " deleted");
 }
+/** The folder a note shows in: its folderId while that folder exists, else none (specs/notes-view FolderRefsValid). */
+function notesFolderOf(n, folders) { return n && typeof n.folderId === "string" && (folders || []).some(function (f) { return f.id === n.folderId; }) ? n.folderId : null; }
+/** Moves a note by the owner's own tap: folderId set, or removed for "No folder". */
+async function notesMove(api, id, folderId, name) {
+  if (api.canonicalNotes) {
+    api.set({ menu: null });
+    if (!await api.canonicalNotes.update(id, { folderId: folderId || null })) return;
+    api.toast(folderId ? "Moved to " + name : "Removed from folder");
+    return;
+  }
+  var s = api.get("notes");
+  var list = s.list.map(function (n) { if (n.id !== id) return n; var x = Object.assign({}, n); if (folderId) x.folderId = folderId; else delete x.folderId; return x; });
+  api.set({ list: list, menu: null });
+  api.toast(folderId ? "Moved to " + name : "Removed from folder");
+}
+/** Live Notes keep folders in their own encrypted slot (api.notesFolders); fixtures keep them in view state. */
+async function notesCreateFolder(api) {
+  var sheet = api.get("notes").folderSheet, name = sheet && sheet.kind === "new" ? String(sheet.name || "").replace(/\s+/g, " ").trim() : "";
+  if (!name) return;
+  if (name.length > 40) { api.toast("Use a shorter name."); return; }
+  var folders = api.get("notes").folders || [];
+  var existing = folders.filter(function (f) { return f.name.toLowerCase() === name.toLowerCase(); })[0];
+  if (existing) { api.set({ folderSheet: null, folder: existing.id, filter: null }); return; }
+  var created = api.notesFolders ? await api.notesFolders.create(name) : { id: "f-" + Date.now(), name: name, createdAt: Date.now() };
+  if (!created) return;
+  var patch = { folderSheet: null, folder: created.id, filter: null };
+  if (!api.notesFolders) patch.folders = folders.concat([created]);
+  api.set(patch);
+}
+/** Renaming keeps the folder's id, so every note stays in it. A name another folder uses is refused. */
+async function notesRenameFolder(api, id) {
+  var st = api.get("notes"), sheet = st.folderSheet, name = sheet && sheet.kind === "rename" && sheet.id === id ? String(sheet.name || "").replace(/\s+/g, " ").trim() : "";
+  if (!name) return;
+  if (name.length > 40) { api.toast("Use a shorter name."); return; }
+  var folders = st.folders || [], folder = folders.filter(function (f) { return f.id === id; })[0];
+  if (!folder) { api.set({ folderSheet: null }); return; }
+  if (folder.name === name) { api.set({ folderSheet: null }); return; }
+  if (folders.some(function (f) { return f.id !== id && f.name.toLowerCase() === name.toLowerCase(); })) { api.toast("A folder with that name exists."); return; }
+  if (api.notesFolders) { if (!await api.notesFolders.rename(id, name)) return; }
+  else api.set({ folders: folders.map(function (f) { return f.id === id ? Object.assign({}, f, { name: name }) : f; }) });
+  api.set({ folderSheet: null });
+}
+/** Long-press (or a context-menu click) on a folder chip opens its options. */
+function notesChipHold(api, id) {
+  return {
+    down: function () { clearTimeout(NT.holdT); NT.held = null; NT.holdT = setTimeout(function () { NT.holdT = null; NT.held = id; api.set({ folderSheet: { kind: "options", id: id } }); }, 450); },
+    up: function () { clearTimeout(NT.holdT); NT.holdT = null; },
+    context: function (e) { if (e && e.preventDefault) e.preventDefault(); clearTimeout(NT.holdT); NT.holdT = null; NT.held = id; api.set({ folderSheet: { kind: "options", id: id } }); }
+  };
+}
+/** Deleting a folder moves its notes to no folder; it never deletes a note. */
+async function notesDeleteFolder(api, id) {
+  if (api.notesFolders) { if (!await api.notesFolders.remove(id)) return; }
+  else {
+    var s = api.get("notes");
+    api.set({ folders: (s.folders || []).filter(function (f) { return f.id !== id; }), list: s.list.map(function (n) { if (n.folderId !== id) return n; var x = Object.assign({}, n); delete x.folderId; return x; }) });
+  }
+  var cur = api.get("notes");
+  api.set({ folderSheet: null, folder: cur.folder === id ? null : cur.folder });
+}
 function notesNew(api, kind) {
-  if (api.canonicalNotes) { void api.canonicalNotes.create(kind); api.set({ compose: false, q: null }); return; }
-  var id = "n" + Date.now();
-  var n = kind === "list" ? { id: id, kind: "list", title: "", items: [], pinned: false, when: "Now" } : { id: id, kind: "text", title: "", body: "", pinned: false, when: "Now" };
+  var id = "n" + Date.now(), st0 = api.get("notes");
+  var inFolder = notesFolderOf({ folderId: st0.folder }, st0.folders);
+  if (api.canonicalNotes) { void api.canonicalNotes.create(kind, inFolder); api.set({ compose: false, q: null }); return; }
+  var now = Date.now();
+  var n = kind === "list" ? { id: id, kind: "list", title: "", items: [], pinned: false, when: "Now", createdAt: now, modifiedAt: now } : { id: id, kind: "text", title: "", body: "", pinned: false, when: "Now", createdAt: now, modifiedAt: now };
+  if (inFolder) n.folderId = inFolder;
   var leave = notesLeave(api, id);
   api.set(Object.assign(leave, { list: [n].concat(leave.list || api.get("notes").list), blankCreationId: id, compose: false, q: null }));
-}
-function notesStartRec(api) {
-  notesStopTimers();
-  api.set({ record: false, open: null, sheet: null, q: null, rec: { tick: 0, paused: false, levels: [] } });
-  api.stopBg();
-  NT.recI = api.everyBg(function () {
-    var s = api.get("notes"); var r = s.rec; if (!r || r.paused) return;
-    var t = r.tick + 1;
-    var speaking = t >= NOTES_T0 && ((t - NOTES_T0) % NOTES_STEP) < 9 && notesLiveCount(t) <= NOTES_LIVE.length && t < NOTES_T0 + NOTES_LIVE.length * NOTES_STEP;
-    var lv = speaking ? 0.3 + 0.7 * Math.abs(Math.sin(t * 1.7) * Math.cos(t * 0.53)) : 0.08 + 0.1 * Math.abs(Math.sin(t));
-    api.set({ rec: Object.assign({}, r, { tick: t, levels: r.levels.concat([lv]).slice(-44) }) });
-  }, 250);
-}
-var NOTES_T0 = 2, NOTES_STEP = 12;
-function notesLiveCount(tick) { return Math.max(0, Math.min(NOTES_LIVE.length, Math.floor((tick - NOTES_T0) / NOTES_STEP) + 1)); }
-function notesBuildRec(api, r) {
-  var n = notesLiveCount(r.tick); var got = NOTES_LIVE.slice(0, n);
-  var sum = [], acts = [];
-  got.forEach(function (l) { if (l.sum) sum.push(l.sum); if (l.act) acts.push({ t: l.act, done: false }); });
-  if (!sum.length && got.length) sum.push("Short check-in, nothing decided yet");
-  return { id: "r" + Date.now(), kind: "voice", title: got.length ? "Standup" : "Recording", when: "Today · " + notesNowLabel(api.now), dur: Math.round(r.tick / 4), pinned: false,
-    lines: got.map(function (l, i) { return { s: l.s, t: l.t, at: Math.round((NOTES_T0 + i * NOTES_STEP) / 4) }; }), summary: sum, actions: acts, fresh: true };
-}
-function notesStopRec(api, quiet) {
-  api.stopBg(); NT.recI = null;
-  var s = api.get("notes"); if (!s.rec) return;
-  var note = notesBuildRec(api, s.rec);
-  api.set({ rec: null, list: [note].concat(s.list), open: quiet ? null : note.id, proc: quiet ? null : note.id, pos: 0, playing: false });
-  if (quiet) api.toast("Recording saved to Notes");
-  else api.later(function () { api.set({ proc: null }); }, 1500);
-}
-function notesDiscardRec(api) {
-  api.stopBg(); NT.recI = null;
-  var s = api.get("notes"); if (!s.rec) return;
-  var note = notesBuildRec(api, s.rec);
-  api.set({ rec: null });
-  notesUndoable(api, note, 0, "Recording discarded");
 }
 function notesLast(list) { for (var i = 0; i < list.length; i++) if (list[i].kind === "voice") return list[i]; return null; }
 function notesShare(api, n, via) {
@@ -3019,25 +2998,26 @@ function notesShare(api, n, via) {
 registerView("notes", {
   title: "Notes", icon: "notes", aliases: ["note", "recorder", "memos"],
   chat: "hidden",
-  state: { list: NOTES_SEED, open: null, blankCreationId: null, q: null, rec: null, record: false, compose: false, proc: null, sheet: null, pos: 0, playing: false, dict: false, newItem: "" },
+  state: { list: NOTES_SEED, open: null, blankCreationId: null, folders: [], folder: null, filter: null, menu: null, folderSheet: null, record: false, compose: false, proc: null, sheet: null, pos: 0, playing: false, newItem: "" },
   persist: ["list"],
-  jumps: [[null, "Notes"], ["editor", "Note editor"], ["rec", "Recording"], ["voice", "Voice note"]],
+  jumps: [[null, "Notes"], ["editor", "Note editor"], ["voice", "Voice note"]],
   preset: function (sub) {
     var pr = copy("notes").presets || {};
     if (sub === "editor") return pr.editor ? { open: pr.editor } : { compose: true };
+    // notes:rec opens the Notes recorder (voice-adapter) where it is installed.
     if (sub === "rec") return { record: true };
     if (sub === "voice") return pr.voice ? { open: pr.voice } : null;
   },
-  immersive: function (st) { return st.rec || st.record || st.sheet ? { noPill: true } : null; },
+  immersive: function (st) { return st.sheet ? { noPill: true } : null; },
   back: function (st, api) {
-    if (st.rec) { notesStopRec(api); return true; }
     if (st.sheet) { api.set({ sheet: null }); return true; }
+    if (st.menu) { api.set({ menu: null }); return true; }
     if (st.open) { notesClose(api); return true; }
-    if (st.q !== null && st.q !== undefined) { api.set({ q: null }); return true; }
+    if (st.folderSheet) { api.set({ folderSheet: null }); return true; }
+    if (st.filter) { api.set({ filter: null }); return true; }
     return false;
   },
   onLeave: function (api) { var s = api.get("notes"); if (s.blankCreationId) api.set(notesLeave(api, null)); else notesStopTimers(); },
-  ongoing: function (st) { return st.rec ? { label: notesFmt(st.rec.tick / 4), icon: "notesRecDot", color: NOTES_RED } : null; },
   suggestions: function (st, api) {
     var n = st.open ? notesFind(st.list, st.open) : null;
     if (n && n.kind === "voice") {
@@ -3070,7 +3050,7 @@ registerView("notes", {
     if (m && m[1].trim()) {
       var text = m[1].trim().replace(/\.$/, ""); var id = "n" + Date.now();
       var title = text.length <= 44 ? cap(text) : cap(text.split(/\s+/).slice(0, 5).join(" ")) + "…";
-      var note = { id: id, kind: "text", title: title, body: text.length <= 44 ? "" : cap(text) + ".", pinned: false, when: "Now" };
+      var note = { id: id, kind: "text", title: title, body: text.length <= 44 ? "" : cap(text) + ".", pinned: false, when: "Now", createdAt: Date.now(), modifiedAt: Date.now() };
       return { text: /^\s*remember/i.test(raw) ? "I'll remember. It's in Notes." : "Saved to Notes.", card: { type: "note", body: cap(text), go: { view: "notes", patch: { open: id } } },
         then: function () { var s = api.get("notes"); api.set({ list: [note].concat(s.list) }); } };
     }
@@ -3079,10 +3059,10 @@ registerView("notes", {
       var term = fm[1].trim().replace(/[?.!]$/, ""); var tl = term.toLowerCase();
       var hits = st.list.filter(function (n) { return [n.title, n.body, (n.items || []).map(function (i) { return i.t; }).join(" "), (n.lines || []).map(function (l) { return l.t; }).join(" "), (n.summary || []).join(" ")].join(" ").toLowerCase().indexOf(tl) >= 0; });
       if (!hits.length) return { text: "No notes mention \u201c" + term + "\u201d." };
-      return { text: hits.length === 1 ? "One note: " + (hits[0].title || "Untitled") + "." : hits.length + " notes mention \u201c" + term + "\u201d.", nav: { view: "notes", patch: hits.length === 1 ? { open: hits[0].id, q: null } : { q: term, open: null } } };
+      return { text: hits.length === 1 ? "One note: " + (hits[0].title || "Untitled") + "." : hits.length + " notes mention \u201c" + term + "\u201d.", nav: { view: "notes", patch: hits.length === 1 ? { open: hits[0].id, filter: null } : { filter: { text: term }, folder: null, open: null } } };
     }
     if (/(start|begin)\s+(a\s+)?(recording|transcri)|record (this|the) (meeting|call)|^record$|^transcribe/.test(t)) {
-      return { text: "Recording. I'll transcribe as we go and summarize when you stop.", nav: { view: "notes", patch: { record: true } } };
+      return { text: "Recording.", nav: { view: "notes", patch: { record: true } } };
     }
     var digest = copy("notes").digest;
     if (digest && digest.re.test(t) && /decide|decision|agree|summar|what/.test(t)) {
@@ -3114,29 +3094,42 @@ registerView("notes", {
   render: function (st, api) {
     if (!NT.pend && (st.record || st.compose)) {
       NT.pend = true;
-      setTimeout(function () { NT.pend = false; var s = api.get("notes"); if (s.record) notesStartRec(api); else if (s.compose) notesNew(api, "text"); }, 0);
+      // The Notes recorder is installed by the voice adapter, which consumes `record` first; only a
+      // fixture preview without it gets here.
+      setTimeout(function () { NT.pend = false; var s = api.get("notes"); if (s.record) { api.set({ record: false }); api.toast("Recording isn’t available in this preview."); } else if (s.compose) notesNew(api, "text"); }, 0);
     }
     var list = st.list || [];
-    var q = st.q == null ? null : String(st.q).toLowerCase().trim();
-    var shown = list.filter(function (n) {
-      if (!q) return true;
-      var hay = [n.title, n.body, n.domain, (n.items || []).map(function (i) { return i.t; }).join(" "), (n.lines || []).map(function (l) { return l.t; }).join(" "), (n.summary || []).join(" ")].join(" ").toLowerCase();
-      return hay.indexOf(q) >= 0;
-    });
-    shown = shown.filter(function (n) { return n.pinned; }).concat(shown.filter(function (n) { return !n.pinned; }));
-    var cards = shown.map(function (n, order) {
-      var items = (n.items || []).slice(0, 5).map(function (i) { return { t: i.t, css: i.done ? "text-decoration: line-through; color: var(--mut)" : "", box: i.done ? "background: var(--fg); box-shadow: none" : "box-shadow: inset 0 0 0 1.5px var(--mut)", done: i.done }; });
-      var more = (n.items || []).length - items.length;
-      var bars = NOTES_WAVE.slice(0, 22);
+    /* One-column list (PLAN.md section 3, decision N3): the selected folder chip, then the agent's
+       read-only filter, pinned notes first. A note whose folder was deleted shows under All only. */
+    var folders = Array.isArray(st.folders) ? st.folders : [];
+    var folder = st.folder && st.folder !== "deleted" && folders.some(function (f) { return f.id === st.folder; }) ? st.folder : null;
+    var filter = st.filter && typeof st.filter === "object" ? st.filter : null;
+    var shown = sortNotes(filterNotes(filterNotes(list, folder ? { folder: folder } : null, folders), filter, folders));
+    var now = Date.now();
+    var rows = shown.map(function (n) {
+      var voiceDur = n.kind === "voice" ? (typeof n.dur === "number" ? n.dur : n.audio && typeof n.audio.durationMs === "number" ? n.audio.durationMs / 1000 : null) : null;
+      var preview = notePreview(n) || (n.audio && typeof n.audio.transcript === "string" ? n.audio.transcript.trim().slice(0, 240) : "");
       return {
-        id: n.id, title: n.title || "Untitled", hasTitle: true, body: n.kind === "text" ? String(n.body || "").slice(0, 180) : "", hasBody: n.kind === "text" && !!String(n.body || "").trim(),
-        isList: n.kind === "list", isVoice: n.kind === "voice", isLink: n.kind === "link", items: items, more: more > 0 ? "+" + more : "", hasMore: more > 0,
-        bars: bars, dur: n.kind === "voice" ? [notesFmt(n.dur), n.actions && n.actions.length ? n.actions.length + " to-dos" : ""].filter(Boolean).join(" · ") : "", domain: n.domain || "",
-        pinned: !!n.pinned, current: st.open === n.id ? "true" : "false", order: order, open: function () { api.set(Object.assign(notesLeave(api, n.id), { pos: 0 })); }
+        id: n.id, title: n.title || "Untitled", date: noteDateLabel(n, now) || (typeof n.when === "string" ? n.when : ""),
+        preview: (voiceDur != null ? notesFmt(voiceDur) + (preview ? " · " : "") : "") + preview,
+        isVoice: n.kind === "voice", isLink: n.kind === "link", pinned: !!n.pinned,
+        current: st.open === n.id ? "true" : "false", open: function () { api.set(Object.assign(notesLeave(api, n.id), { pos: 0, menu: null })); }
       };
     });
-    var colL = [], colR = [];
-    cards.forEach(function (c, i) { (i % 2 ? colR : colL).push(c); });
+    var pinnedRows = rows.filter(function (r) { return r.pinned; }), otherRows = rows.filter(function (r) { return !r.pinned; });
+    var folderChips = folders.map(function (f) {
+      var on = folder === f.id, hold = notesChipHold(api, f.id);
+      return { id: f.id, name: f.name, pressed: on ? "true" : "false", label: on ? f.name + ", folder options" : f.name,
+        down: hold.down, up: hold.up, context: hold.context,
+        select: function () {
+          // The click that ends a long-press only opened the options.
+          if (NT.held === f.id) { NT.held = null; return; }
+          if (api.get("notes").folder === f.id) api.set({ folderSheet: { kind: "options", id: f.id } }); else api.set({ folder: f.id, filter: null, folderSheet: null });
+        } };
+    });
+    var sheet = st.folderSheet && typeof st.folderSheet === "object" ? st.folderSheet : null;
+    var sheetFolder = sheet && (sheet.kind === "options" || sheet.kind === "rename") ? folders.filter(function (f) { return f.id === sheet.id; })[0] || null : null;
+    var renaming = !!sheetFolder && sheet.kind === "rename";
 
     /* open note */
     var n = st.open ? notesFind(list, st.open) : null;
@@ -3145,15 +3138,25 @@ registerView("notes", {
     var common = n ? {
       close: function () { notesClose(api); },
       pinIcon: IC.notesPin, pinCss: n.pinned ? "color: var(--acct)" : "", pinLabel: n.pinned ? "Unpin" : "Pin",
-      pin: async function () { await notesUpd(api, n.id, { pinned: !n.pinned }); },
-      share: function () { api.set({ sheet: "share" }); },
-      del: function () { notesDelete(api, n.id); },
+      pin: async function () { api.set({ menu: null }); await notesUpd(api, n.id, { pinned: !n.pinned }); },
+      share: function () { api.set({ sheet: "share", menu: null }); },
+      del: function () { api.set({ menu: null }); notesDelete(api, n.id); },
+      /* ⋯ menu: Pin, Move to…, Delete (PLAN.md section 3). */
+      menuOpen: st.menu === "main", moveOpen: st.menu === "move", menuShown: !!st.menu,
+      more: function () { api.set({ menu: api.get("notes").menu ? null : "main" }); },
+      closeMenu: function () { api.set({ menu: null }); },
+      moveTo: function () { api.set({ menu: "move" }); },
+      moveRows: [{ id: null, name: "No folder" }].concat(folders).map(function (f) {
+        var on = (notesFolderOf(n, folders) || null) === f.id;
+        return { name: f.name, checked: on ? "true" : "false", mark: on ? "✓" : "", pick: function () { notesMove(api, n.id, f.id, f.name); } };
+      }),
       title: n.title || "",
       onTitle: function (e) { notesUpd(api, n.id, { title: e.target.value }); }
     } : null;
     if (isEdit) {
       ed = Object.assign({}, common, {
         isText: n.kind === "text", isList: n.kind === "list",
+        done: common.close, doneDisabled: false, saveStatus: "",
         body: n.body || "",
         onBody: function (e) { notesUpd(api, n.id, { body: e.target.value }); },
         listCss: n.kind === "list" ? "color: var(--acct)" : "", listLabel: n.kind === "list" ? "Turn into text" : "Turn into checklist",
@@ -3175,30 +3178,6 @@ registerView("notes", {
         onNew: function (e) { api.set({ newItem: e.target.value }); },
         addItem: function () { var v = String(api.get("notes").newItem || "").trim(); if (!v) return; notesUpd(api, n.id, function (x) { return { items: (x.items || []).concat([{ t: v, done: false }]) }; }); api.set({ newItem: "" }); },
         newKey: function (e) { if (e.key === "Enter") { e.preventDefault(); var v = String(api.get("notes").newItem || "").trim(); if (!v) return; notesUpd(api, n.id, function (x) { return { items: (x.items || []).concat([{ t: v, done: false }]) }; }); api.set({ newItem: "" }); } },
-        dict: !!st.dict, notDict: !st.dict,
-        dictLabel: st.dict ? "Stop dictation" : "Dictate", dictCss: st.dict ? "background: var(--acc); color: var(--alpha-white)" : "",
-        dictate: function () {
-          if (api.get("notes").dict) { clearInterval(NT.dicI); NT.dicI = null; api.set({ dict: false }); return; }
-          if (!NOTES_DICT.length) { api.toast("Dictation is not connected"); return; }
-          var phrase = NOTES_DICT[NT.dIdx++ % NOTES_DICT.length]; var i = 0; var id = n.id;
-          api.set({ dict: true });
-          clearInterval(NT.dicI);
-          NT.dicI = api.every(function () {
-            var cur = notesFind(api.get("notes").list, id); if (!cur) { clearInterval(NT.dicI); return; }
-            i++;
-            var ch = phrase.charAt(i - 1);
-            if (cur.kind === "list") {
-              var its = (cur.items || []).slice();
-              if (i === 1) its.push({ t: ch, done: false }); else { var L = its.length - 1; its[L] = Object.assign({}, its[L], { t: its[L].t + ch }); }
-              notesUpd(api, id, { items: its });
-            } else {
-              var b = String(cur.body || "");
-              if (i === 1 && b && !/\s$/.test(b)) b += /[.!?]$/.test(b) ? " " : "\n";
-              notesUpd(api, id, { body: b + ch });
-            }
-            if (i >= phrase.length) { clearInterval(NT.dicI); NT.dicI = null; api.later(function () { api.set({ dict: false }); }, 400); }
-          }, 38);
-        }
       });
     }
     if (n && n.kind === "voice") {
@@ -3252,47 +3231,31 @@ registerView("notes", {
       });
     }
 
-    /* recorder */
-    var r = st.rec;
-    var rec = null;
-    if (r) {
-      var cnt = notesLiveCount(r.tick);
-      var within = r.tick - NOTES_T0 - (cnt - 1) * NOTES_STEP;
-      var lines = NOTES_LIVE.slice(0, cnt).map(function (l, i) {
-        var p = l.s === "me" ? null : api.person(l.s);
-        var tx = i === cnt - 1 && within < 9 ? l.t.slice(0, Math.max(1, Math.round(l.t.length * (within + 1) / 9))) : l.t;
-        return { ini: p ? p.ini : "You", t: tx, chip: l.s === "me" ? "background: var(--acc); color: var(--alpha-white)" : "background: var(--s3); color: var(--fg)", css: i === cnt - 1 ? "" : "color: var(--mut)" };
-      }).reverse();
-      var lv = r.levels.slice(); while (lv.length < 44) lv.unshift(0.06);
-      rec = {
-        clock: notesFmt(r.tick / 4), paused: r.paused, live: !r.paused,
-        primaryLabel: "Stop and save", primaryIcon: IC.stop,
-        clockCss: r.paused ? "opacity: .4" : "",
-        levels: lv.map(function (v) { return { h: Math.round(4 + v * 64) }; }),
-        lines: lines, dotCss: r.paused ? "background: var(--mut)" : "background: " + NOTES_RED,
-        pauseIcon: r.paused ? IC.mic : IC.pause, pauseLabel: r.paused ? "Resume" : "Pause",
-        toggle: function () { var s = api.get("notes"); if (s.rec) api.set({ rec: Object.assign({}, s.rec, { paused: !s.rec.paused }) }); },
-        stop: function () { notesStopRec(api); },
-        discard: function () { notesDiscardRec(api); }
-      };
-    }
-
     var shareSheet = st.sheet === "share" && !!n;
     return {
       notesTitle: "Notes", primaryNotes: true, canRecord: true, canCreate: true,
-      searching: st.q !== null && st.q !== undefined, notSearching: st.q === null || st.q === undefined,
-      q: st.q || "",
-      onQ: function (e) { api.set({ q: e.target.value }); },
-      search: function () { api.set({ q: "" }); },
-      endSearch: function () { api.set({ q: null }); },
       newNote: function () { notesNew(api, "text"); },
-      record: function () { notesStartRec(api); },
-      colL: colL, colR: colR, none: cards.length === 0,
-      emptyText: q ? "No matches" : "No notes yet. Create a note to get started.",
-      askQ: "Ask " + api.name + ": “" + String(st.q || "").trim() + "”", hasQ: !!q,
-      askSearch: function () { var qq = String(api.get("notes").q || "").trim(); api.set({ q: null }); api.send("Find my notes about " + qq); },
+      // The Notes recorder (voice-adapter, note-recorder.ts) handles Record; `record` is its deep-link flag.
+      record: function () { api.set({ record: true }); },
+      pinnedRows: pinnedRows, otherRows: otherRows, hasPinned: pinnedRows.length > 0, notesHead: pinnedRows.length > 0 && otherRows.length > 0,
+      allPressed: folder ? "false" : "true", selectAll: function () { api.set({ folder: null, filter: null, folderSheet: null }); },
+      folderChips: folderChips,
+      newFolder: function () { api.set({ folderSheet: { kind: "new", name: "" } }); },
+      filterOn: !!filter, filterLabel: filter ? notesFilterLabel(filter, folders) + " · " + shown.length : "",
+      clearFilter: function () { api.set({ filter: null }); },
+      folderSheetOpen: !!sheet && (sheet.kind === "new" || !!sheetFolder),
+      folderNew: !!sheet && sheet.kind === "new" || renaming, folderOptions: !!sheetFolder && !renaming,
+      folderName: sheet && (sheet.kind === "new" || renaming) ? String(sheet.name || "") : "", folderOptionsTitle: sheetFolder ? sheetFolder.name : "",
+      folderSheetTitle: sheet && sheet.kind === "new" ? "New folder" : renaming ? "Rename folder" : sheetFolder ? sheetFolder.name : "",
+      folderSubmitLabel: renaming ? "Save" : "Create",
+      onFolderName: function (e) { var cur = api.get("notes").folderSheet; if (cur && (cur.kind === "new" || cur.kind === "rename")) api.set({ folderSheet: Object.assign({}, cur, { name: e.target.value }) }); },
+      folderNameKey: function (e) { if (e.key === "Enter") { e.preventDefault(); var cur = api.get("notes").folderSheet; if (cur && cur.kind === "rename") notesRenameFolder(api, cur.id); else notesCreateFolder(api); } },
+      createFolder: function () { var cur = api.get("notes").folderSheet; if (cur && cur.kind === "rename") notesRenameFolder(api, cur.id); else notesCreateFolder(api); },
+      folderSaveDisabled: !(sheet && (sheet.kind === "new" || renaming) && String(sheet.name || "").trim()),
+      renameFolder: function () { if (sheetFolder) api.set({ folderSheet: { kind: "rename", id: sheetFolder.id, name: sheetFolder.name } }); },
+      deleteFolder: function () { if (sheetFolder) notesDeleteFolder(api, sheetFolder.id); },
+      closeFolderSheet: function () { api.set({ folderSheet: null }); },
       isEdit: isEdit, ed: ed, isVoice: !!vo, vo: vo, isLink: !!lk, lk: lk,
-      recording: !!rec, rec: rec,
       shareSheet: shareSheet,
       closeSheet: function () { api.set({ sheet: null }); },
       shareMsg: function () { notesShare(api, n, "msg"); },
@@ -3551,7 +3514,6 @@ IC.filesZip = IC.filesZip || "M6 3h12v18H6zM12 3v2M12 7v2M12 11v2M10.5 15h3v3h-3
 var FILES_FOLDERS = [
   { id: "Downloads", icon: "filesDown" },
   { id: "Documents", icon: "folder" },
-  { id: "Receipts", icon: "filesReceipt" },
   { id: "Recordings", icon: "wave" }
 ].concat(FILES_FOLDERS_EXTRA);
 var FILES_TYPES = {
@@ -3613,52 +3575,8 @@ registerView("files", {
     return false;
   },
   onLeave: function () { clearInterval(FL.playI); },
-  suggestions: function (st) {
-    var sg = copy("files").suggestions || {};
-    if (st.open) return sg.open || ["Summarize this file"];
-    if (st.folder === "Receipts") return sg.receipts || ["Show my receipts"];
-    return sg.root || ["Show my receipts"];
-  },
+  suggestions: function (st) { return st.open ? ["Summarize this file"] : []; },
   voicePhrase: copy("files").voicePhrase,
-  reply: function (t, raw, api) {
-    var st = api.get("files");
-    var cur = api.active && st.open ? filesFind(st.files, st.open) : null;
-    var fs = copy("files").findShortcut;
-    if (fs && fs.re.test(t) && /\b(find|where|open|show|pull up|get)\b/.test(t) && !/summar/.test(t)) {
-      var ts = filesFind(st.files, fs.id);
-      if (ts) return { text: "In " + ts.folder + fs.from, card: { type: "generic", icon: "filesDoc", title: ts.name, sub: ts.folder + " · " + ts.size, go: { view: "files", patch: { open: fs.id } } }, nav: { view: "files", patch: { open: fs.id } } };
-    }
-    var ff = raw.match(/^\s*(?:find|where(?:'s| is))\s+(?:the\s+|my\s+)?(?:file\s+)?(.+?)\s*(?:file)?\??$/i);
-    if (ff && !/\bnotes?\b/i.test(raw)) {
-      var nq = filesNorm(ff[1].replace(/^(named|called)\s+/i, ""));
-      var hit = nq.length > 2 ? st.files.filter(function (x) { return filesNorm(x.name).indexOf(nq) >= 0 || nq.indexOf(filesNorm(filesSplit(x.name)[0])) >= 0; })[0] : null;
-      if (hit) return { text: "In " + hit.folder + ".", card: { type: "generic", icon: "filesDoc", title: hit.name, sub: hit.folder + " · " + hit.size, go: { view: "files", patch: { open: hit.id } } }, nav: { view: "files", patch: { open: hit.id, q: null } } };
-    }
-    if (/receipts?/.test(t) && /\b(show|find|open|my|where|total)\b/.test(t)) {
-      var rs = st.files.filter(function (f) { return f.folder === "Receipts"; });
-      var rc = copy("files").receipts;
-      if (!rc) return { text: rs.length ? rs.length + (rs.length === 1 ? " receipt" : " receipts") + " in Files. Totals are not calculated." : "No receipts in Files.", nav: { view: "files", patch: { folder: "Receipts", open: null } } };
-      return { text: /total/.test(t) ? rc.total + " across " + rs.length + " receipts this month." : rs.length + " receipts: " + rc.list + ".", card: { type: "generic", icon: "filesReceipt", title: "Receipts", sub: rs.length + " files · " + rc.total, go: { view: "files", patch: { folder: "Receipts" } } }, nav: { view: "files", patch: { folder: "Receipts", open: null } } };
-    }
-    if (/summar|what'?s in|tl;?dr|key points/.test(t) && (cur || /\b(pdf|file|document|doc|term sheet|receipt)\b/.test(t))) {
-      var sd = copy("files").summaryDefaults || {};
-      var f = cur || (/receipt/.test(t) ? filesFind(st.files, sd.receipt) : /term sheet/.test(t) || /pdf/.test(t) ? filesFind(st.files, sd.pdf) : null);
-      if (f && f.sum) return { text: f.name, card: { type: "summary", title: filesSplit(f.name)[0] + " · summary", bullets: f.sum, act: VIEWS.notes ? { mod: "notes", fn: "save" } : null },
-        then: function () { var a = Object.assign({}, api.get("files").asked); a[f.id] = true; api.set({ asked: a }); } };
-    }
-    var storage = copy("files").storage;
-    if (storage && /taking up space|storage|free up/.test(t)) {
-      return { text: storage.text, card: { type: "generic", icon: "filesDisk", title: storage.title, sub: storage.sub, go: { view: "files", patch: { folder: "Downloads" } } } };
-    }
-    if (cur && /send (this|it)|share (this|it)/.test(t)) {
-      var shareTo = copy("files").shareTo || {};
-      var pid = (shareTo.match || []).filter(function (x) { return x[0].test(t); }).map(function (x) { return x[1]; })[0] || cur.from || shareTo.fallback;
-      var p = pid ? api.person(pid) : null;
-      if (!p) return { text: "Choose who to send " + cur.name + " to.", then: function () { api.set({ sheet: "share", sel: null }); } };
-      return { text: "Draft to " + p.name.split(" ")[0] + " with " + cur.name + " attached.", card: { type: "draft", to: p.name, pid: pid, body: "Here's " + filesSplit(cur.name)[0] + ". Let me know if anything's off.", act: VIEWS.messages && VIEWS.messages.actions && VIEWS.messages.actions.sendDraft ? { mod: "messages", fn: "sendDraft" } : null } };
-    }
-    return null;
-  },
 
   render: function (st, api) {
     var files = st.files || [];
@@ -3691,9 +3609,8 @@ registerView("files", {
     /* top level */
     var locs = FILES_FOLDERS.filter(function (d) { return !d.parent; }).map(function (d) {
       var n = filesCount(files, d.id);
-      return { name: d.id, d: IC[d.icon], sub: n === 1 ? "1 item" : n + " items", go: function () { api.set({ folder: d.id, q: null }); } };
+      return { id: "category:" + d.id, name: d.id, d: IC[d.icon], sub: n === 1 ? "1 item" : n + " items", go: function () { api.set({ folder: d.id, q: null }); } };
     });
-    locs.push({ name: "Photos", d: IC.photo, sub: copy("files").photosSub || "Photo library", go: function () { if (VIEWS.photos) api.open("photos"); else api.toast("Opening Photos"); } });
     var q = st.q == null ? null : String(st.q).toLowerCase().trim();
     var results = q ? files.filter(function (f) { return filesNorm(f.name + " " + f.folder + " " + (FILES_TYPES[f.type] || {}).label).indexOf(filesNorm(q)) >= 0; }).map(row) : [];
 
@@ -3707,9 +3624,9 @@ registerView("files", {
         close: function () { var d = null; FILES_FOLDERS.forEach(function (x) { if (x.id === st.folder) d = x; }); api.set({ folder: d && d.parent ? d.parent : null, sel: null }); },
         viewIcon: st.grid ? IC.filesRows : IC.grid, viewLabel: st.grid ? "Show as list" : "Show as grid",
         toggleView: function () { api.set({ grid: !st.grid }); },
-        openMenu: function () { api.set({ menu: true }); },
+        hasMenu: true, hasCrumbs: false, openMenu: function () { api.set({ menu: true }); },
         menuRows: [["list", IC.filesRows, "List", !st.grid, { grid: false }], ["grid", IC.grid, "Grid", !!st.grid, { grid: true }], ["recent", IC.clock, "Newest first", st.sort !== "name", { sort: "recent" }], ["name", IC.filesSort, "Name", st.sort === "name", { sort: "name" }]].map(function (m) {
-          return { label: m[2], d: m[1], on: m[3], go: function () { api.set(Object.assign({ menu: false }, m[4])); } };
+          return { id: m[0], label: m[2], d: m[1], on: m[3], go: function () { api.set(Object.assign({ menu: false }, m[4])); } };
         }),
         sortLabel: st.sort === "name" ? "Sort by date" : "Sort by name", sortCss: st.sort === "name" ? "color: var(--acct)" : "",
         toggleSort: function () { var nx = st.sort === "name" ? "recent" : "name"; api.set({ sort: nx }); },
@@ -3791,7 +3708,7 @@ registerView("files", {
     var curFolder = f ? f.folder : st.folder;
     var moveTo = FILES_FOLDERS.map(function (d) {
       var here = d.id === curFolder;
-      return { name: d.id, d: IC[d.icon] || IC.folder, here: here, notHere: !here, sub: d.parent ? d.parent : "",
+      return { id: d.id, name: d.id, d: IC[d.icon] || IC.folder, here: here, notHere: !here, sub: d.parent ? d.parent : "",
         go: function () {
           if (here) { api.set({ sheet: null }); return; }
           var ids = targetIds.slice();
@@ -3804,7 +3721,9 @@ registerView("files", {
       top: !st.folder, searching: st.q !== null && st.q !== undefined, notSearching: st.q === null || st.q === undefined,
       q: st.q || "", onQ: function (e) { api.set({ q: e.target.value }); }, search: function () { api.set({ q: "" }); }, endSearch: function () { api.set({ q: null }); },
       hasQuery: !!q, noQuery: !q, results: results, noResults: !!q && results.length === 0,
-      locs: locs, recent: files.slice(0, 5).map(row), noRecent: files.length === 0, recentEmptyText: "No recent files. Files you open here or save from scans appear here.",
+      locs: locs, recent: [],
+      // Fixture browse (mock mode only): the fixture folders stand in for categories; Trash is an empty folder.
+      browse: { ready: true, cats: locs.map(function (l) { return { name: l.name, d: l.d, count: l.sub.split(" ")[0], label: l.name, go: l.go }; }), vols: [], trashD: IC.trash, trashCount: "", openTrash: function () { api.set({ folder: "Trash", q: null }); } },
       storageText: copy("files").storageText || "Storage usage unavailable",
       storageW: copy("files").storageW || "0%",
       inFolder: !!fd, fd: fd,
@@ -4609,7 +4528,9 @@ function stPageAccess(root) {
   var previous = stPageFocus.get(root);
   var saved = previous ? previous.saved : new Map();
   var active = document.activeElement;
-  if (previous && previous.key !== key && previous.page.contains(active)) saved.set(previous.depth, active);
+  if (previous && previous.key !== key && previous.page.contains(active)) {
+    saved.set(previous.depth, { element: active, id: active.id, tag: active.tagName, label: active.getAttribute("aria-label") });
+  }
   // Release the destination before restoring focus. Hide the former page only
   // after focus moves so browsers do not reject aria-hidden on its active child.
   // An open sheet owns focus and has retired this page; it releases the page when it closes.
@@ -4618,7 +4539,16 @@ function stPageAccess(root) {
     current.removeAttribute("aria-hidden");
   }
   if (previous && previous.key !== key) {
-    var target = depth < previous.depth ? saved.get(depth) : null;
+    var record = depth < previous.depth ? saved.get(depth) : null;
+    var target = record ? record.element : null;
+    // Settings can refresh the covered page while a child is open. Restore its
+    // uniquely named control even when that refresh replaced the original node.
+    if (record && (!target || !target.isConnected || !current.contains(target))) {
+      var matches = Array.from(current.querySelectorAll("button, input, select, textarea, [tabindex='0']")).filter(function (element) {
+        return record.id ? element.id === record.id : record.label && element.tagName === record.tag && element.getAttribute("aria-label") === record.label;
+      });
+      target = matches.length === 1 ? matches[0] : null;
+    }
     if (!target || !target.isConnected || !current.contains(target)) target = current.querySelector("button, input, select, textarea, [tabindex='0']");
     if (target) target.focus({ preventScroll: true });
     Array.from(saved.keys()).forEach(function (i) { if (i > depth) saved.delete(i); });
@@ -4694,7 +4624,7 @@ registerView("settings", {
       var bl = accs.map(function (a) { var on = ST_TYPES.filter(function (x) { return a[x[0]]; }).map(function (x) { return x[1].toLowerCase(); }); return a.address + ": " + (on.length ? on.join(", ") : "nothing"); });
       var cs = ST_CONNS.filter(function (c) { return (st.conns || {})[c.id]; }).map(function (c) { return c.name; });
       bl.push(cs.length ? "Apps: " + cs.join(", ") : "No connected apps");
-      bl.push(st.cloud ? "Cloud fallback on, per request" : "Hosted requests go to your Cloud account");
+      bl.push(st.cloud ? "Cloud fallback on, per request" : "Nothing leaves this phone");
       return { text: "Here's everything I can reach. Hosted requests get only the context each task needs.", card: { type: "summary", bullets: bl, go: { view: "settings", patch: { page: "privacy" } } } };
     }
     if (/\b(remove|delete|disconnect) (my )?(work|personal) (email|account|mail)\b/.test(t)) {
@@ -4751,7 +4681,7 @@ registerView("settings", {
     if (/\bwipe (your |my |the )?memory\b|\bforget everything\b|\bclear (your |the )?memory\b/.test(t)) return { text: "That can't be undone, so confirm on screen.", nav: { view: "settings", patch: { page: "privacy", sheet: { kind: "wipe" } } } };
     if (/\bcloud fallback\b|\buse the cloud\b/.test(t)) {
       var cl = !/\b(off|disable|stop|don't|never)\b/.test(t);
-      return { text: cl ? "Cloud fallback on. I'll still ask before sending anything." : "Cloud fallback off.", then: function () { api.setView("settings", { cloud: cl }); } };
+      return { text: cl ? "Cloud fallback on. I'll still ask before sending anything." : "Cloud fallback off. Nothing leaves this phone.", then: function () { api.setView("settings", { cloud: cl }); } };
     }
     if ((m = t.match(/\b(connect|disconnect)\b.*\b(slack|github|notion|linear|figma|spotify)\b/))) {
       var cn = ST_CONNS.filter(function (x) { return x.id === m[2]; })[0];
@@ -4937,7 +4867,7 @@ registerView("settings", {
       ].filter(function (g) { return g.rows.length; }) });
     } else if (P === "models") {
       p1 = page("Models", { hero: { kBig: true, hasIcon: true, d: IC.chip, iconCss: "background:var(--acc);color:var(--alpha-white)", big: ST_DEVICE ? ST_DEVICE.model.name : "No model loaded", sub: ST_DEVICE ? ST_DEVICE.model.sub : "Model details are not reported" }, groups: [
-        { rows: [stTog({ label: "Cloud fallback", sub: st.cloud ? "Asks each time, sends only the question" : "Off" }, st.cloud, function () { set({ cloud: !api.get("settings").cloud }); })] },
+        { rows: [stTog({ label: "Cloud fallback", sub: st.cloud ? "Asks each time, sends only the question" : "Off · nothing leaves this phone" }, st.cloud, function () { set({ cloud: !api.get("settings").cloud }); })] },
         { rows: (st.models || []).map(function (md) {
           var done = md.pct >= 100; var going = md.pct >= 0 && md.pct < 100;
           return stNav({ label: md.name, sub: md.size, val: going ? md.pct + "%" : "", trail: done ? IC.check : (going ? "" : IC.stDownload), trailCss: done ? "color:var(--acct)" : "color:var(--fg)", noChev: true, aria: (done ? "" : "Download ") + md.name,
@@ -5083,18 +5013,13 @@ registerView("settings", {
     return {
       rootRef: function (el) { stNoScroll(); stPageAccess(el); },
       stack: stack,
-      // The name is the product's character: only a mock build renames it here (docs/decisions.md).
-      charVal: testMocksEnabled ? S.charName : agentName(S), nameEditable: testMocksEnabled, nameFixed: !testMocksEnabled,
-      onName: testMocksEnabled ? function (e) { api.shell({ charName: e.target.value }); } : null,
+      charVal: S.charName, onName: function (e) { api.shell({ charName: e.target.value }); },
       persona: persona, openChar: go("character"),
       sheet: sh, hasSheet: !!sh,
       scrollFix: !!sh
     };
   }
 });
-
-/** The assistant's name: the product character, or a mock build's renamed one. */
-function agentName(S) { return (testMocksEnabled && S.charName) || ALPHA_PRODUCT.identity.characterName; }
 
 var BASE = {
   screen: "boot", bootStep: 0, view: null, shade: false, chat: "input",
@@ -5119,15 +5044,7 @@ class Component extends DCLogic {
   componentDidMount() {
     this.G = {}; this.I = {};
     var self = this;
-    // The clock ticks on the minute and not while the page is hidden; showing it again reads the time.
-    this.tick = function () {
-      clearTimeout(self.clock);
-      if (!document.hidden) self.setState({ now: Date.now() });
-      self.clock = setTimeout(self.tick, 60000 - Date.now() % 60000 + 50);
-    };
-    this.tickVisible = function () { if (!document.hidden) self.tick(); };
-    document.addEventListener("visibilitychange", this.tickVisible);
-    this.clock = setTimeout(this.tick, 60000 - Date.now() % 60000 + 50);
+    this.clock = setInterval(function () { self.setState({ now: Date.now() }); }, 15000);
     this.chatWindowScroll = function (event) { self.growChatWindow(event.target); };
     document.addEventListener("scroll", this.chatWindowScroll, true);
     this.chatWindowCommitted = this.chatWindowRows;
@@ -5179,9 +5096,6 @@ class Component extends DCLogic {
   componentDidUpdate(prev) {
     if (prev && prev.initial !== this.props.initial) this.preset(this.props.initial || "boot");
     this.syncShadeFocus();
-    // A long toast belongs to the screen it was raised on: the next screen's top controls are not covered.
-    var shown = this.S();
-    if (shown.toast) { if (this.toastView === undefined) this.toastView = shown.view; else if (this.toastLong && !this.toastHeld && shown.view !== this.toastView) this.endToast(); }
     var list = document.querySelector("[data-alpha-transcript]"), saved = this.chatScrollSnapshot;
     this.chatWindowCommitted = this.chatWindowRows;
     if (list && saved && saved.list === list && saved.fromBottom !== undefined) list.scrollTop = list.scrollHeight - saved.fromBottom;
@@ -5209,7 +5123,7 @@ class Component extends DCLogic {
   componentWillUnmount() {
     this.chatScrollObserver?.disconnect();
     document.removeEventListener("scroll", this.chatWindowScroll, true);
-    clearTimeout(this.clock); document.removeEventListener("visibilitychange", this.tickVisible); clearInterval(this.vI);
+    clearInterval(this.clock); clearInterval(this.vI);
     var G = this.G || {}; Object.keys(G).forEach(function (k) { G[k].forEach(clearTimeout); });
     var I = this.I || {}; Object.keys(I).forEach(function (k) { I[k].forEach(clearInterval); });
   }
@@ -5225,36 +5139,11 @@ class Component extends DCLogic {
   clear(grp) { this.G = this.G || {}; (this.G[grp] || []).forEach(clearTimeout); this.G[grp] = []; }
   every(fn, ms, grp) { this.I = this.I || {}; var id = setInterval(fn, ms); (this.I[grp] = this.I[grp] || []).push(id); return id; }
   stopEvery(grp) { this.I = this.I || {}; (this.I[grp] || []).forEach(clearInterval); this.I[grp] = []; }
-  /**
-   * A toast stays long enough to read (60 ms a character, 1.9 s to 10 s; Undo at least 5 s), scaled
-   * by Android's "Time to take action" setting. Keyboard or switch focus inside it, or a press on it,
-   * holds it; it returns focus to where it was when it expires.
-   */
   toast(msg, opts) {
-    opts = opts || {};
+    opts = opts || {}; var self = this;
     this.undoFn = opts.undo || null;
-    var base = opts.undo ? 5000 : 1900, reading = Math.max(base, Math.min(10000, String(msg || "").length * 60));
-    this.toastMs = reading * accessibilityTimeoutScale();
-    this.toastLong = reading > base; this.toastView = undefined; this.toastHeld = false;
-    var active = document.activeElement;
-    if (!(active && active.closest && active.closest("[data-alpha-toast]"))) this.toastReturn = active;
-    this.setState({ toast: msg, toastUndo: !!opts.undo });
-    this.armToast(this.toastMs);
-  }
-  armToast(ms) { var self = this; this.clear("t"); this.toastEnds = Date.now() + ms; this.later(function () { self.endToast(); }, ms, "t"); }
-  holdToast() { if (!this.S().toast || this.toastHeld) return; this.toastHeld = true; this.toastLeft = Math.max(0, this.toastEnds - Date.now()); this.clear("t"); }
-  /** Focus still inside the toast keeps it held; `leaving` is a blur, whose focus has not moved yet. */
-  resumeToast(leaving) {
-    var active = document.activeElement;
-    if (!this.toastHeld || !leaving && active && active.closest && active.closest("[data-alpha-toast]")) return;
-    this.toastHeld = false; if (this.S().toast) this.armToast(Math.max(1000, this.toastLeft || 0));
-  }
-  endToast() {
-    var active = document.activeElement, inside = !!(active && active.closest && active.closest("[data-alpha-toast]"));
-    this.clear("t"); this.toastHeld = false; this.undoFn = null; this.toastView = undefined;
-    this.setState({ toast: "", toastUndo: false });
-    var back = this.toastReturn; this.toastReturn = null;
-    if (inside && back && back.isConnected && back.focus) back.focus({ preventScroll: true });
+    this.setState({ toast: msg, toastUndo: !!opts.undo }); this.clear("t");
+    this.later(function () { self.undoFn = null; self.setState({ toast: "", toastUndo: false }); }, opts.undo ? 5000 : 1900, "t");
   }
 
   /* ---- per-app state ---- */
@@ -5281,7 +5170,7 @@ class Component extends DCLogic {
     return {
       key: k, S: S, st: this.vget(k), ic: IC, people: PEOPLE, person: function (id) { var c = self.vget("contacts"); var l = (c && c.list) || []; for (var i = 0; i < l.length; i++) if (l[i].id === id) return l[i]; return person(id); },
       isActive: function () { return self.S().view === k; }, now: new Date(S.now), theme: theme,
-      name: agentName(S), active: S.view === k,
+      name: S.charName || ALPHA_PRODUCT.identity.characterName, active: S.view === k,
       set: function (p) { self.vset(k, p); },
       get: function (other) { return self.vget(other); },
       setView: function (other, p) { self.vset(other, p); },
@@ -5362,8 +5251,6 @@ class Component extends DCLogic {
     this.hintDone = true;
   }
   goHome(chat) {
-    // The assistant window has no Home of its own: Home from its conversation closes it.
-    if (this.props && this.props.assistantSurface && !this.S().view) return this.closeAssistant();
     this.clear("hint"); this.leave();
     if (this.S().secure) return this.setState(Object.assign(this.shellNavigate({ type: "home" }), { secure: false, screen: "lock", shade: false, hint: false, heads: false }));
     this.setState(Object.assign(this.shellNavigate({ type: "home", assistant: chat === "sheet" || chat === "full" ? chat : "input" }), { shade: false, hint: false, heads: false }));
@@ -5404,12 +5291,12 @@ class Component extends DCLogic {
     var S = this.S();
     if (S.shade) return this.setState({ shade: false });
     if (this.props && this.props.assistantSurface && !S.view && S.voice === "off") return this.closeAssistant();
-    // Back undoes the top layer first: voice, then an open conversation, then the drawer under it.
-    if (S.voice !== "off") return this.stopVoice();
-    // An open conversation lowers one detent (full, sheet, rest) before Back leaves the view. Over
-    // the drawer the shared reducer would close the drawer first, so the detent is lowered here.
-    if (S.chat === "full" || S.chat === "sheet") return this.setState(S.drawer ? { chat: S.chat === "full" ? "sheet" : this.rest() } : this.shellNavigate({ type: "back" }));
     if (S.drawer && !S.view) return this.setState(this.shellNavigate({ type: "back" }));
+    if (S.voice !== "off") return this.stopVoice();
+    // An open conversation lowers one detent (full, sheet, rest) before Back leaves the view.
+    if (S.chat === "full" || S.chat === "sheet") return this.setState(this.shellNavigate({ type: "back" }));
+    // A bar raised from the pill lowers before Back leaves the view.
+    if (S.chat === "input" && this.rest() === "hidden") return this.setState({ chat: "hidden" });
     if (S.view) {
       var m = this.mod(S.view);
       if (m.back && m.back(this.vget(S.view), this.api(S.view))) return;
@@ -5458,9 +5345,8 @@ class Component extends DCLogic {
   }
 
   /* ---- gestures ---- */
-  // Canvas pixels: the [data-screen] layout width (412 in portrait, wider in landscape) at its drawn size.
-  scale(el) { var sc = el && el.closest ? el.closest("[data-screen]") : null; var r = (sc || el).getBoundingClientRect(), w = (sc && sc.offsetWidth) || 412; return { r: r, s: r.width / w || 1, w: w }; }
-  gDown(e) { if (e.target.closest?.("[data-alpha-transcript]")) { this.g = null; return; } var o = this.scale(e.currentTarget); this.g = { x: (e.clientX - o.r.left) / o.s, y: (e.clientY - o.r.top) / o.s, cx: e.clientX, cy: e.clientY, s: o.s, w: o.w, pull: pullStart(e.target) }; }
+  scale(el) { var sc = el && el.closest ? el.closest("[data-screen]") : null; var r = (sc || el).getBoundingClientRect(); return { r: r, s: r.width / 412 || 1 }; }
+  gDown(e) { if (e.target.closest?.("[data-alpha-transcript]")) { this.g = null; return; } var o = this.scale(e.currentTarget); this.g = { x: (e.clientX - o.r.left) / o.s, y: (e.clientY - o.r.top) / o.s, cx: e.clientX, cy: e.clientY, s: o.s, pull: pullStart(e.target) }; }
   gUp(e) { var g = this.g; this.g = null; if (!g || window.getSelection()?.isCollapsed === false) return; this.swipe(g, (e.clientX - g.cx) / g.s, (e.clientY - g.cy) / g.s); }
   swipe(g, dx, dy) {
     // Gesture zones (docs/gesture-zones.md) are the shared shell's (resolveMobileShellSwipe). The top
@@ -5468,7 +5354,6 @@ class Component extends DCLogic {
     // on empty Home asks Android for its shade (#417, @elizaos/capacitor-system/shade).
     var self = this, S = this.S();
     var action = resolveMobileShellSwipe({ screen: S.screen, shade: !!S.shade, view: S.view, chat: S.chat, launcher: this.props.systemShell !== false }, { x: g.x, y: g.y, onShadeControl: false }, dx, dy, {
-      canvasWidth: g.w,
       pullOpensShade: function (px, py, threshold) { return emptyHomeShadePull(self.pullContext(), g.pull, g.y, px, py, threshold); },
     });
     if (action === "unlock") return this.unlock();
@@ -5477,7 +5362,6 @@ class Component extends DCLogic {
     if (action === "open-system-shade") return this.openSystemShade();
     if (action === "home") return this.goHome();
     if (action === "lower-assistant") return this.setState({ chat: this.rest() });
-    if (action === "raise-assistant") return this.setState({ chat: "sheet" });
   }
   pullContext() {
     var S = this.S();
@@ -5489,11 +5373,11 @@ class Component extends DCLogic {
       down: function (e) {
         var o = self.scale(e.currentTarget);
         var px = (e.clientX - o.r.left) / o.s, py = (e.clientY - o.r.top) / o.s;
-        if (!opts.capture && (px < 30 || px > o.w - 30 || py < 90 || py > 872)) { self.cg = null; return; }   // system gesture zones belong to the shell
+        if (!opts.capture && (px < 30 || px > 382 || py < 90 || py > 872)) { self.cg = null; return; }   // system gesture zones belong to the shell
         // A fresh pointer gesture is a deliberate action, not the previous swipe click.
         self.swallow = 0;
         if (opts.capture) e.currentTarget.setPointerCapture(e.pointerId);
-        e.stopPropagation(); self.cg = { x: e.clientX, y: e.clientY, s: o.s, g: { x: px, y: py, cx: e.clientX, cy: e.clientY, s: o.s, w: o.w } };
+        e.stopPropagation(); self.cg = { x: e.clientX, y: e.clientY, s: o.s, g: { x: px, y: py, cx: e.clientX, cy: e.clientY, s: o.s } };
       },
       up: function (e) {
         var c = self.cg; if (!c) return; e.stopPropagation(); self.cg = null;
@@ -5627,7 +5511,7 @@ class Component extends DCLogic {
     var d = new Date(S.now);
     var clock = formatClock(d);
     var dateStr = formatLongDate(d);
-    var name = agentName(S);
+    var name = S.charName || ALPHA_PRODUCT.identity.characterName;
     var isOn = S.screen === "home"; var v = S.view; var isView = isOn && !!v;
     var voiceOn = S.voice !== "off";
     var panelOpen = isOn && (S.chat === "sheet" || S.chat === "full");
@@ -5667,11 +5551,15 @@ class Component extends DCLogic {
       } };
     });
 
-    // A drag from the bar or pill is opening chat, so it gets the open window too.
     var msgs = this.transcriptWindow(S.msgs, panelOpen || (isOn && !!this.chatMotion)).map(function (m) {
       var c = m.card || {}; var t = c.type;
+      var shown = m.from === "agent" && typeof m.displayText === "string" ? m.displayText : m.text;
+      if (typeof shown === "string" && shown.length > 200000) {
+        var end = 200000 - (/[\uD800-\uDBFF]/.test(shown[199999]) ? 1 : 0);
+        shown = shown.slice(0, end) + " [Message shortened for display]";
+      }
       return {
-        id: m.id, text: m.text, displayText: m.text, hasCalendarText: true, calendarReviews: [], workflowRuns: [], mapsCards: [], hasMapsChoice: false, mapsChoices: [], isUser: m.from === "user", isAgent: m.from === "agent", c: c,
+        id: m.id, text: m.text, displayText: shown, hasCalendarText: true, calendarReviews: [], workflowRuns: [], mapsCards: [], hasMapsChoice: false, mapsChoices: [], isUser: m.from === "user", isAgent: m.from === "agent", c: c,
         cAgenda: t === "agenda", cEvent: t === "event", cDigest: t === "digest", cNote: t === "note", cFlow: t === "flow", cSummary: t === "summary", cDraft: t === "draft", cCall: t === "call", cGeneric: t === "generic",
         gIcon: IC[c.icon] || IC.spark, evIcon: c.act && !c.done ? IC.plus : IC.check, callIni: c.ini || ((c.who || "").split(" ").map(function (w) { return w.charAt(0); }).join("").slice(0, 2)),
         sumSave: t === "summary" && !c.done && !!c.act, sumOpen: t === "summary" && !c.act && !!c.go,
@@ -5707,7 +5595,7 @@ class Component extends DCLogic {
       [IC.up, "Swipe up from the bottom bar, or tap it · Home, from anywhere"],
       [IC.back, "Swipe in from either edge · back one step inside the app"],
       [IC.down, "Swipe down on launcher Home, or tap Notifications · Android notifications and quick settings"],
-      [IC.half, "Swipe up on Home · chat. Drag its grabber to resize"],
+      [IC.half, "Tap the chat dock to open chat. Drag its grabber to resize"],
       [IC.lock, "Side key: tap · lock or wake"]
     ].map(function (l) { return { d: l[0], t: l[1] }; });
 
@@ -5737,11 +5625,7 @@ class Component extends DCLogic {
       backToApps: function (event) { var fromChat = event && event.currentTarget && event.currentTarget.hasAttribute("data-alpha-chat-home"); if (fromChat && event.detail > 0 && self.swallowed()) return; self.goHome(fromChat ? self.S().chat : undefined); },
       showStatus: !P.nativeSystemChrome && S.screen !== "boot" && S.screen !== "off" && !imm.noStatus, micLive: S.voice === "listening",
       showIndicator: !P.nativeSystemChrome && (isOn || S.screen === "lock") && !(isOn && !S.view && !S.drawer && !S.shade && S.chat !== "sheet" && S.chat !== "full"),
-      toast: S.toast, toastOn: !!S.toast, toastUndo: !!S.toastUndo, toastPadR: S.toastUndo ? 5 : 18, doUndo: function () { var f = self.undoFn; self.endToast(); if (f) f(); },
-      // A plain pill dismisses on tap; one with Undo waits for Undo or its time.
-      toastTap: function () { if (!self.S().toastUndo) self.endToast(); },
-      toastHold: function () { self.holdToast(); }, toastResume: function () { self.resumeToast(); },
-      toastBlur: function (e) { if (!(e.relatedTarget && e.currentTarget.contains(e.relatedTarget))) self.resumeToast(true); },
+      toast: S.toast, toastOn: !!S.toast, toastUndo: !!S.toastUndo, toastPadR: S.toastUndo ? 5 : 18, doUndo: function () { var f = self.undoFn; self.undoFn = null; self.clear("t"); self.setState({ toast: "", toastUndo: false }); if (f) f(); },
       hasOngoing: !!ongoing && isOn, ongoing: ongoing || {}, sbWifi: S.q.wifi, sbPlane: S.q.plane,
       goCalendar: function () { self.openView("calendar", copy("shell").homeCalendar || null); },
       goTriage: function () { self.send("What needs me?"); },
@@ -5750,7 +5634,7 @@ class Component extends DCLogic {
       tiles: tiles, bright: S.bright, brightHandoff: true, brightSlider: false, onBright: function () { self.openView("settings", { page: "display" }); }, shadeN: shadeN, shadeY: isOn && S.shade && this.simulatedShade() ? "0" : "-100%",
       // Android owns the shade (#416): only the development build renders its stand-in.
       simulatedShade: this.simulatedShade(),
-      closeShade: function () { self.setState({ shade: false }); },
+      closeShade: function () { self.setState({ shade: false }); }, openSystemShade: function () { self.openSystemShade(); },
       shadeKey: function (event) { if (event.key === "Escape" && !event.defaultPrevented) { event.preventDefault(); self.setState({ shade: false }); } }, clearAll: function () { self.setState({ nGone: NOTIFS.map(function (n) { return n.id; }), shade: false }); },
       // Policy P-23: on Android the system Keyguard owns the secure camera; Alpha never
       // opens its own camera, gallery or agent from a locked state. Only the simulated
@@ -5761,7 +5645,7 @@ class Component extends DCLogic {
       panelComposer: panelOpen && !voiceOn,
       panelH: !isOn ? 0 : (S.chat === "full" ? 915 : (S.chat === "sheet" ? 560 : 0)), panelR: S.chat === "full" ? "0px" : "30px 30px 0 0",
       panelOp: panelOpen ? 1 : 0, panelPE: panelOpen ? "auto" : "none", panelTop: S.chat === "full" && this.props.systemShell !== false ? "var(--alpha-chat-full-top,60px)" : "4px",
-      scrimOp: 0, scrimPE: "none",
+      scrimOp: 0, scrimPE: "none", scrimZ: 45,
       showGrabber: S.chat !== "full", sizeIcon: S.chat === "full" ? IC.shrink : IC.expand, sizeLabel: S.chat === "full" ? "Shrink chat" : "Expand chat",
       showComposer: showComposer, showPill: showPill, cmpBottom: 28,
       cmpPlaceholder: (mod && mod.placeholder) ? mod.placeholder : "Ask " + name,

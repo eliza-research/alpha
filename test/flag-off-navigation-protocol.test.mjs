@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
-import {stripTypeScriptTypes} from 'node:module';
+import {stripTypeScriptTypes} from './support/strip-types.mjs';
 const source=readFileSync(new URL('./browser/helpers/native-navigation-protocol.ts',import.meta.url),'utf8');
 const code=stripTypeScriptTypes(source,{mode:'strip'}).replace(/^export /gm,'');
 function fixture(){const f={unexpected:[]},window={};new Function('window',code+';installNativeNavigationFixture();')(window);const protocol=window.createNativeNavigationFixture('owner','agent',f);return{f,request:async(method,path,body,headers,owner)=>{if(path==='/api/client-devices/register'){protocol.register(headers);return{status:200,data:{}};}const result=protocol.request(method,path,body,headers,owner);if(result)return result;f.unexpected.push(method+' '+path);return{status:404,data:{}};}};}

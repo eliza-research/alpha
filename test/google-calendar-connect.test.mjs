@@ -196,14 +196,13 @@ test('drafts, owner changes and cancellation stop before the next control write'
 });
 
 test('a foreground Calendar refresh is waited out, and cancelling the wait sends nothing',async()=>{
- // A changed window shows loading; a same-window re-read keeps the ready Calendar and does not hold the link.
- const f=await agent();f.heldFeed=deferred();void f.calendar.refresh({timeZone:'UTC'});assert.equal(f.calendar.state.status,'loading');
+ const f=await agent();f.heldFeed=deferred();void f.calendar.refresh({});assert.equal(f.calendar.state.status,'ready','same-window refresh preserves the displayed feed');
  const linking=f.link();await flush();assert.deepEqual(f.attempts,[],'no review while the Calendar is loading');
  f.heldFeed.resolve();assert.equal((await linking).outcome,'synced');
  // A refresh deferred behind the review starts before the write: the write waits for it too.
  const d=await agent(),held=deferred();
- d.onCalendars=()=>{d.onCalendars=null;d.heldFeed=held;void d.calendar.refresh({timeZone:'UTC'});};
- const deferredLink=d.link();await flush();assert.equal(d.calendar.state.status,'loading');assert.deepEqual(d.attempts,[]);
+ d.onCalendars=()=>{d.onCalendars=null;d.heldFeed=held;void d.calendar.refresh({});};
+ const deferredLink=d.link();await flush();assert.equal(d.calendar.state.status,'ready');assert.deepEqual(d.attempts,[]);
  held.resolve();assert.equal((await deferredLink).outcome,'synced');assert.deepEqual(operations(d),['select','resume']);d.calendar.retire();
  const g=await agent(),abort=new AbortController();g.heldFeed=deferred();void g.calendar.refresh({timeZone:'UTC'});
  const waiting=g.link(undefined,abort.signal);await flush();abort.abort();

@@ -1,17 +1,21 @@
+import {javaBinary} from './fixtures/jvm-tools.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync,mkdtempSync,writeFileSync,mkdirSync,rmSync} from 'node:fs';
 import {join} from 'node:path';
 import {tmpdir} from 'node:os';
 import {execFileSync} from 'node:child_process';
-import {javaBinary} from './fixtures/jvm-tools.mjs';
+import {preparePatchedNative} from '../scripts/prepare-patched-native.mjs';
 function declaration(source,signature){const start=source.indexOf(signature);assert.notEqual(start,-1);let end=source.indexOf('{',start),depth=1;for(end++;depth;end++){if(source[end]==='{')depth++;if(source[end]==='}')depth--;}return source.slice(start,end);}
 test('Photos QA emits only fixed debug enum markers; exception payloads and release builds stay silent',()=>{
  // The marker enum and its failure categories are the shared PhotosPlugin's; Alpha logs them in debug builds only.
  const source=readFileSync('android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaPhotosPlugin.java','utf8');
- const shared=readFileSync('vendor/eliza/plugins/plugin-native-media/android/src/main/java/ai/eliza/plugins/media/PhotosPlugin.java','utf8');
+ const media=join(preparePatchedNative().root,'plugins/plugin-native-media/android/src/main/java/ai/eliza/plugins/media');
+ const shared=readFileSync(join(media,'PhotosPlugin.java'),'utf8');
+ const base=readFileSync(join(media,'PermittedPhotosPlugin.java'),'utf8');
  assert.match(source,/@Override protected void diagnostic\(PhotosPlugin\.Diagnostic marker\)\{qaMarker\(marker\);\}/);
- assert.match(shared,/protected void diagnostic\(Diagnostic marker\) \{\}/,'hosts that do not log record nothing');
+ assert.match(base,/protected void diagnostic\(Diagnostic marker\) \{\}/,'hosts that do not log record nothing');
+ assert.match(shared,/\}, \(\) -> diagnostic\(Diagnostic\.READ_SUCCEEDED\)\);/,'a rejected publication does not record success');
  assert.match(shared,/diagnostic\(Diagnostic\.readFailure\(failure\)\);\n {8}call\.reject\("This saved media is no longer available"\);/,'a failed read reports its category only');
  const dir=mkdtempSync(join(tmpdir(),'photos-diagnostic-'));
  try{
@@ -19,9 +23,10 @@ test('Photos QA emits only fixed debug enum markers; exception payloads and rele
   writeFileSync(join(dir,'android/util/Log.java'),'package android.util;public class Log {public static final java.util.List<String> entries=new java.util.ArrayList<>();public static int i(String tag,String message){entries.add(tag+":"+message);return 0;}}');
   writeFileSync(join(dir,'PhotosDiagnosticHarness.java'),`class BuildConfig {static boolean DEBUG;}
  public class PhotosDiagnosticHarness {
- static class PhotosPlugin {
- ${declaration(shared,'public enum Diagnostic ')}
+ static class PermittedPhotosPlugin {
+ ${declaration(base,'public enum Diagnostic ')}
  }
+ static class PhotosPlugin extends PermittedPhotosPlugin {}
  ${declaration(source,'static void qaMarker(PhotosPlugin.Diagnostic marker)')}
  static void diagnostic(PhotosPlugin.Diagnostic marker){qaMarker(marker);}
  static void diagnosticReadFailure(Exception failure){qaMarker(PhotosPlugin.Diagnostic.readFailure(failure));}

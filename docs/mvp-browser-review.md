@@ -300,6 +300,11 @@ unrelated MVP acceptance.
 
 ## Assistant draft restart recovery
 
+Retired on 2026-11-02 (owner request): the assistant composer no longer saves unsent text, and its
+"Draft was not saved" conflict review and recovery buttons are removed. Unsent text that was not
+dispatched returns to the composer in memory only. Calendar and Mail form drafts keep their own
+stores. The record below is historical.
+
 State on 2026-10-10: implemented on main (`apps/app/src/prototype/assistant-draft-controller.ts`);
 the owning specs are `test/browser/assistant-draft-recovery.spec.ts`,
 `assistant-draft-storage.spec.ts`, `assistant-draft-review.spec.ts` and

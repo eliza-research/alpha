@@ -1,3 +1,4 @@
+import {openConnectionDiagnostics} from './helpers/connection-diagnostics';
 import {test,expect} from '@playwright/test';
 const key='alpha.connection.conversations.v1',owner=JSON.stringify(['http://local','owner','agent']);
 test.beforeEach(async({page})=>{await page.addInitScript(()=>{if(!localStorage.getItem('alpha.connection.selection.v1'))localStorage.setItem('alpha.connection.selection.v1',JSON.stringify({kind:'offline'}));});await page.goto('/?mode=dev');});
@@ -23,7 +24,7 @@ test('legacy choices remain exact and stale reset cannot erase a newer selection
  expect(await page.evaluate(async({key,owner})=>{const raw=JSON.stringify({[owner]:'legacy'});localStorage.setItem(key,raw);const m=await import('/src/runtime/conversation-selection.ts'),old=await m.captureConversationChoice(owner),domain=await m.conversationSelectionDocument(),snapshot=await domain.capture();await m.selectConversation(owner,old,'new',new AbortController().signal,()=>{});let refused=false;try{await domain.reset(snapshot);}catch{refused=true;}return {old,refused,id:(await m.captureConversationChoice(owner))?.id,legacy:localStorage.getItem(key)===raw};},{key,owner})).toEqual({old:{id:'legacy'},refused:true,id:'new',legacy:true});
 });
 test('malformed selection has exact backup and explicit cache-only recovery',async({page})=>{
- await page.evaluate(key=>localStorage.setItem(key,' broken choices '),key);await page.getByRole('button',{name:'Settings',exact:true}).click();await page.getByRole('button',{name:'Agent connection',exact:true}).click();await page.getByRole('button',{name:'Conversation selection recovery',exact:true}).click();const dialog=page.getByRole('dialog',{name:'Conversation selection recovery'});await expect(dialog).toContainText('conversations remain on their agents');const download=page.waitForEvent('download');await dialog.getByRole('button',{name:'Download conversation selections backup'}).click();const stream=await(await download).createReadStream(),chunks:Buffer[]=[];for await(const chunk of stream!)chunks.push(Buffer.from(chunk));expect(JSON.parse(Buffer.concat(chunks).toString())).toEqual({raw:' broken choices '});await dialog.getByRole('button',{name:'Reset app conversation selections'}).click();await dialog.getByRole('button',{name:'Confirm conversation selections reset'}).click();await expect(dialog).toHaveCount(0);expect(await page.evaluate(async owner=>(await import('/src/runtime/conversation-selection.ts')).captureConversationChoice(owner),owner)).toBeNull();
+ await page.evaluate(key=>localStorage.setItem(key,' broken choices '),key);await page.getByRole('button',{name:'Settings',exact:true}).click();await openConnectionDiagnostics(page);await page.getByRole('button',{name:'Conversation selection recovery',exact:true}).click();const dialog=page.getByRole('dialog',{name:'Conversation selection recovery'});await expect(dialog).toContainText('conversations remain on their agents');const download=page.waitForEvent('download');await dialog.getByRole('button',{name:'Download conversation selections backup'}).click();const stream=await(await download).createReadStream(),chunks:Buffer[]=[];for await(const chunk of stream!)chunks.push(Buffer.from(chunk));expect(JSON.parse(Buffer.concat(chunks).toString())).toEqual({raw:' broken choices '});await dialog.getByRole('button',{name:'Reset app conversation selections'}).click();await dialog.getByRole('button',{name:'Confirm conversation selections reset'}).click();await expect(dialog).toHaveCount(0);expect(await page.evaluate(async owner=>(await import('/src/runtime/conversation-selection.ts')).captureConversationChoice(owner),owner)).toBeNull();
 });
 test('delayed conversation creation preserves another owner selection',async({page})=>{
  await page.evaluate(async()=>{const {connectionController}=await import('/src/runtime/connection-ui.tsx');await connectionController.initialize();await connectionController.startDevelopment('local');const {LocalAgentProtocol}=await import('/src/runtime/local-agent.ts');const original=LocalAgentProtocol.prototype.createConversation;LocalAgentProtocol.prototype.createConversation=async function(...args){(window as any).createWaiting=true;await new Promise<void>(resolve=>(window as any).releaseCreate=resolve);return original.apply(this,args);};});
@@ -31,6 +32,26 @@ test('delayed conversation creation preserves another owner selection',async({pa
  await page.evaluate(async owner=>{const m=await import('/src/runtime/conversation-selection.ts');await m.selectConversation(owner,null,'other-owner-chat',new AbortController().signal,()=>{});(window as any).releaseCreate();},owner);
  await expect(page.getByText('Development reply. Edit this response in Agent connection.',{exact:true}).first()).toBeVisible();
  expect(await page.evaluate(async owner=>{const m=await import('/src/runtime/conversation-selection.ts'),{connectionController}=await import('/src/runtime/connection-ui.tsx'),session=connectionController.getSnapshot().session!;return {other:(await m.captureConversationChoice(owner))?.id,current:!!await m.captureConversationChoice(JSON.stringify([session.origin,session.ownerId,session.agentId]))};},owner)).toEqual({other:'other-owner-chat',current:true});
+});
+test('warm voice uses the active conversation without reopening its saved selection',async({page})=>{
+ const result=await page.evaluate(async()=>{
+  const {connectionController:connection}=await import('/src/runtime/connection-ui.tsx');
+  const {conversationSelectionDocument}=await import('/src/runtime/conversation-selection.ts');
+  await connection.initialize();
+  await connection.startDevelopment('local');
+  connection.close();
+  const signal=new AbortController().signal;
+  const initial=await connection.prepareVoiceConversation(signal);
+  const selections=await conversationSelectionDocument();
+  const read=selections.readJson;
+  let reads=0;
+  selections.readJson=async()=>{reads++;throw Error('Saved selection unavailable');};
+  try {
+   const warm=await connection.prepareVoiceConversation(signal);
+   return {sameConversation:warm.conversationId===initial.conversationId,sameOwner:warm.session.ownerId===initial.session.ownerId,reads};
+  } finally {selections.readJson=read;}
+ });
+ expect(result).toEqual({sameConversation:true,sameOwner:true,reads:0});
 });
 for(const mode of ['disconnect','recovery'])test(`${mode} during conversation creation prevents late cache writes and sending`,async({page})=>{
  await page.evaluate(async()=>{const {connectionController}=await import('/src/runtime/connection-ui.tsx');await connectionController.initialize();await connectionController.startDevelopment('local');const {LocalAgentProtocol}=await import('/src/runtime/local-agent.ts');(window as any).lateSends=0;LocalAgentProtocol.prototype.createConversation=async()=>{(window as any).createWaiting=true;await new Promise<void>(resolve=>(window as any).releaseCreate=resolve);(window as any).createFinished=true;return {id:'late-conversation',title:'Late'};};LocalAgentProtocol.prototype.send=async()=>{(window as any).lateSends++;return {text:'Unexpected send'};};});

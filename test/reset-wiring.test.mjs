@@ -5,10 +5,11 @@ import {tmpdir,homedir} from 'node:os';
 import {join,dirname,resolve} from 'node:path';
 import {execFileSync} from 'node:child_process';
 import {javaBinary} from './fixtures/jvm-tools.mjs';
+import {preparePatchedNative} from '../scripts/prepare-patched-native.mjs';
 // Alpha registers the shared reset (plugin-native-system reset.*) under its installed names; the
 // authorization, disclosure, recording, dispatch and recovery behavior are tested upstream.
 const root=resolve(import.meta.dirname,'..');
-const upstream=resolve(root,'vendor/eliza/plugins/plugin-native-system/android/src/main/java/ai/eliza/plugins/system');
+const upstream=resolve(preparePatchedNative({root}).root,'plugins/plugin-native-system/android/src/main/java/ai/eliza/plugins/system');
 const alpha=name=>resolve(root,`android/app/src/main/java/ai/elizaresearch/alphaphone/${name}.java`);
 test('Alpha reset is the shared native review, coordinator and recovery under Alpha names and copy',()=>{
  const dir=mkdtempSync(join(tmpdir(),'alpha-reset-wiring-')),files=[];

@@ -1,6 +1,6 @@
 import { workflowRendererFixture } from './workflow-renderer-fixture.mjs';
 /** Actual workflow renderer + protocol against bounded synthetic HTTP; not native/live host acceptance. */
-import assert from 'node:assert/strict';import http from 'node:http';import vm from 'node:vm';import {readFile} from 'node:fs/promises';import {stripTypeScriptTypes} from 'node:module';import {WorkflowProtocol,WorkflowHttpError,WorkflowAdmissionRejected,WorkflowMetadataRejected,WorkflowLifecycleRejected} from '../apps/app/src/runtime/workflow-protocol.ts';
+import assert from 'node:assert/strict';import http from 'node:http';import vm from 'node:vm';import {readFile} from 'node:fs/promises';import {stripTypeScriptTypes} from '../test/support/strip-types.mjs';import {WorkflowProtocol,WorkflowHttpError,WorkflowAdmissionRejected,WorkflowMetadataRejected,WorkflowLifecycleRejected} from '../apps/app/src/runtime/workflow-protocol.ts';
 let decisions=0,drop=true,state='pending',missingDisclosure=false,hold=false,release,conflict=false,stopped=false;
 const flow=()=>({id:'fixture',name:'Held arithmetic fixture',active:false,versionId:'v1',steps:[]});
 const receipt=()=>({id:'run-1',workflowId:'fixture',workflowVersionId:'v1',status:'waiting-approval',finished:false,startedAt:new Date().toISOString(),events:[]});

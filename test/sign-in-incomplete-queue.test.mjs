@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
-import {stripTypeScriptTypes} from 'node:module';
+import {stripTypeScriptTypes} from './support/strip-types.mjs';
 import vm from 'node:vm';
 
 // spec-cloud-sign-in-F02: native retains one signInIncomplete across a process restart and delivers
@@ -16,7 +16,7 @@ const code=stripTypeScriptTypes([
 const RESTARTED='Alpha restarted before your sign-in finished. Sign in again.';
 
 function harness(state){
-  const box={operation:null,returned:[],state:{open:false,signIn:null,message:'',error:'',...state},
+  const box={operation:null,epoch:1,returned:[],state:{open:false,signIn:null,message:'',error:'',...state},
     update:patch=>Object.assign(box.state,patch),signInFailureMessage:code=>`failure:${code}`};
   vm.createContext(box);vm.runInContext(code,box);
   return box;
@@ -61,4 +61,38 @@ test('other codes are ignored',()=>{
   box.connectionController.signInIncomplete({code:'other'});box.connectionController.signInIncomplete(null);
   box.runQueuedSignInReturn();
   assert.equal(box.state.error,'');
+});
+
+test('native storage refusal survives pending startup and keeps its specific recovery message',()=>{
+ const box=harness({startupResolved:false,signIn:{step:'google',environment:'production'}});
+ box.operation={};box.connectionController.signInIncomplete({code:'storage'});
+ assert.equal(box.state.error,'');
+ box.operation=null;box.update({startupResolved:true});box.runQueuedSignInReturn();
+ assert.equal(box.state.error,'failure:storage');
+ assert.equal(box.state.signIn.step,'choose');
+ box.update({error:''});box.runQueuedSignInReturn();assert.equal(box.state.error,'');
+});
+test('an idle native storage refusal is shown without starting a credential write',()=>{
+ const box=harness({startupResolved:true});box.connectionController.signInIncomplete({code:'storage'});
+ assert.equal(box.state.error,'failure:storage');assert.deepEqual(box.returned,[]);
+});
+
+
+test('a queued storage refusal cannot replace a newer sign-in step',()=>{
+ const box=harness({startupResolved:true,signIn:{step:'google',environment:'production'}});
+ box.operation={};box.connectionController.signInIncomplete({code:'storage'});
+ const next={step:'code',environment:'production',attemptId:'new-attempt'};box.state.signIn=next;
+ box.operation=null;box.runQueuedSignInReturn();
+ assert.equal(box.state.signIn,next);assert.equal(box.state.open,false);assert.equal(box.state.error,'');
+});
+test('a queued storage refusal cannot reopen a replaced connection',()=>{
+ const box=harness({startupResolved:true,signIn:{step:'google',environment:'production'}});
+ box.operation={};box.connectionController.signInIncomplete({code:'storage'});box.epoch++;
+ box.operation=null;box.runQueuedSignInReturn();assert.equal(box.state.open,false);assert.equal(box.state.error,'');
+});
+test('a same-owner storage refusal is shown once after its operation releases',()=>{
+ const box=harness({startupResolved:true,signIn:{step:'google',environment:'production'}});
+ box.operation={};box.connectionController.signInIncomplete({code:'storage'});
+ box.operation=null;box.runQueuedSignInReturn();assert.equal(box.state.error,'failure:storage');
+ box.update({error:''});box.runQueuedSignInReturn();assert.equal(box.state.error,'');
 });

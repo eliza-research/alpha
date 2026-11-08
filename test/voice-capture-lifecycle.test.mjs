@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
-import {stripTypeScriptTypes} from './fixtures/ts-source.mjs';
+import {stripTypeScriptTypes} from './support/strip-types.mjs';
 import vm from 'node:vm';
 
 const source=stripTypeScriptTypes(readFileSync(new URL('../.eliza/client-features/packages/ui/src/voice/voice-session-mic-capture.ts',import.meta.url),'utf8'),{mode:'strip'}).replace(/^import[\s\S]*?;\n/gm,'').replace(/^export /gm,'');

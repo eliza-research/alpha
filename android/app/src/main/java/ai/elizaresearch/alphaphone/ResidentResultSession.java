@@ -22,8 +22,9 @@ final class ResidentResultSession {
   // Copy the binding so later caller mutation cannot change authority mid-request.
   JSONObject binding=new JSONObject(requested.toString());
   String owner=HostedInbox.id(binding.getString("ownerId")),agent=HostedInbox.id(binding.getString("agentId"));
+  final String initialDigest=binding.getString("credentialDigest");
   class BoundChannel implements ResidentResultTransport.Channel {
-   private String digest=binding.getString("credentialDigest");
+   private String digest=initialDigest;
    private JSONObject credential()throws Exception {
     guard.check();String raw=store.read(binding.getString("credentialSlot"));
     // Another transport of this binding may already have adopted a restarted runtime.

@@ -1,0 +1,76 @@
+{
+  "schema": 1,
+  "recordedOn": "2026-11-08",
+  "purpose": "Binds the four qualify records in this directory to the app and engine bytes that produced them, for the requalification of the shared ai.eliza.voice Java at eliza 4787d51a14.",
+  "qualifyApp": {
+    "source": "elizaOS/eliza packages/app/scripts/paradee-voice/qualify (ai.eliza.voicequalify: AsrWerTest, ParadeeRoundTripTest)",
+    "sourcePin": "4787d51a142c63c98371c832997184c53f7218d3",
+    "sourceState": "Reflink copy of the prepared resident source artifacts/local-agent-resident-4787d51a14 (npm run agent:prepare -- --source-only): HEAD 4787d51a14 with no tracked change (git status lists only the untracked .alpha-runtime-source.json marker). The ignored plugins/plugin-local-inference/native/android/native directory holds the engine and voice bundle used for the b25d8aef29 run (libelizainference hashes below, the same bytes as the voice record). The FFI header directory was passed as -PelizaParadeeFfiIncludeDir from vendor/eliza's llama.cpp checkout, clean at 6337fd4c4b, because the prepared source does not carry the nested fork.",
+    "javaAtPin": "The APK's dex contains SpeechLeadTrim, SpeechOutputWarmup and FirstWriteSpeechOutput, which exist only in the 4787d51a14 Java; ParadeeVoice and OnDeviceRecognizer differ from the b25d8aef29 copy that the earlier run used.",
+    "build": "android/gradlew -p packages/app/scripts/paradee-voice/qualify --no-daemon -PasrFixturesDir=<36236fc fixtures: 101 LibriSpeech test-clean WAVs and asr-fixtures.json> -PelizaParadeeFfiIncludeDir=<llama.cpp 6337fd4c4b tools/omnivoice/include> :app:assembleDebug :app:assembleDebugAndroidTest, 2026-11-07, NDK 28.2.13676358",
+    "apks": [
+      {
+        "file": "app/build/outputs/apk/debug/app-debug.apk",
+        "sha256": "46e2042ce86fb75768123b42ec9dda4a223e528ece8c6623bb8ebd7778601a20",
+        "bytes": 327012252
+      },
+      {
+        "file": "app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk",
+        "sha256": "ae2b5d3090a5812ad859e1e114bd3e6bf6965582999f7c69f1474ced33ce93e6",
+        "bytes": 26004933,
+        "note": "Byte-identical to the b25d8aef29 test APK: the qualify tests did not change."
+      }
+    ]
+  },
+  "engine": {
+    "forkPin": "6337fd4c4bd071c17235986344d552d4036e177b",
+    "librariesReadFromApk": [
+      {
+        "path": "lib/arm64-v8a/libelizainference.so",
+        "sha256": "49b01a184f8ace69c42b3f1ad8c1816faeeb8dd004b8c7990796592932818c17",
+        "bytes": 10018448
+      },
+      {
+        "path": "lib/x86_64/libelizainference.so",
+        "sha256": "128b61f3e76f46144d08dfb2e1329e01a99b02705ce17c3b37b86d630cb247ba",
+        "bytes": 10832176
+      },
+      {
+        "path": "lib/arm64-v8a/libparadeevoicejni.so",
+        "sha256": "6a4a00ed65542252522c40d30f4caacb115cb62cfd9d6448620c46f00ab61a39",
+        "bytes": 1252456
+      },
+      {
+        "path": "lib/x86_64/libparadeevoicejni.so",
+        "sha256": "1c6a36dfba52f1fe7b00f17edbeb6cd3ee55de72e3881ad65def4676761a9cae",
+        "bytes": 1131408
+      }
+    ],
+    "matchesVoiceRecord": "Both libelizainference.so hashes equal abis[].libraries in android/voice-host/qualified-voice-host.json.",
+    "jniNote": "libparadeevoicejni.so is compiled by this Gradle build from the shared JNI source and is not a recorded artifact; its bytes differ from the b25d8aef29 qualify APK (ece8daf5..., 78d33e59...). This receipt does not attribute the difference."
+  },
+  "runs": [
+    {
+      "records": [
+        "docs/evidence/voice-engine-6337fd4c-4787d51a14/qualify/asr-wer.json",
+        "docs/evidence/voice-engine-6337fd4c-4787d51a14/qualify/paradee-roundtrip.json"
+      ],
+      "target": "Pixel 10a (67091JEA313850), arm64-v8a, API 37, Alpha userdebug image built Nov 6",
+      "started": "2026-11-07T17:58:53-08:00",
+      "installedReadBack": "adb install -r, then sha256sum of the installed base.apk on the device: app 46e2042c..., test ae2b5d30... (equal to the hashes above). Stale asr-wer.json and paradee-roundtrip.json were deleted from the app's files directory before the run.",
+      "instrumentation": "asr-wer WER=0.0194 (40/2064), silence empty, asrRTF 0.042; paradee-roundtrip WER=0.0477 (179/3753), ttsRTF 0.055, asrRTF 0.156"
+    },
+    {
+      "records": [
+        "docs/evidence/voice-engine-6337fd4c-4787d51a14/qualify-x86_64/asr-wer.json",
+        "docs/evidence/voice-engine-6337fd4c-4787d51a14/qualify-x86_64/paradee-roundtrip.json"
+      ],
+      "target": "x86_64 emulator sdk_gphone64_x86_64, API 35 (AVD alpha-pr618-review, -gpu swiftshader_indirect -memory 4096); stopped after the run",
+      "started": "2026-11-08T07:56:11-08:00",
+      "installedReadBack": "adb install -r, installed base.apk sha256 46e2042c... read back on the emulator. Stale result JSONs deleted before the run.",
+      "instrumentation": "asr-wer WER=0.0213 (44/2064), silence empty, asrRTF 0.775; paradee-roundtrip WER=0.0490 (184/3753), ttsRTF 0.117, asrRTF 0.744"
+    }
+  ],
+  "comparison": "Against the b25d8aef29 runs (docs/evidence/voice-engine-6337fd4c): every 'heard' transcript is identical on both ABIs (101 of 101 ASR utterances and 230 of 230 round-trip sentences each), so WER and edit counts are unchanged. Pixel RTFs match (ASR 0.042, TTS 0.055). The emulator's ASR RTF rose from 0.488 to 0.775 while the host was running other heavy jobs; TTS RTF is unchanged (0.117 against 0.118).",
+  "limits": "Component qualification only: the qualify tests call the shared ai.eliza.voice VoiceAssets, NativeAsr, ParadeeVoice (synthesize, now through the per-request cancel path) and Wer at 4787d51a14. They do not run the Alpha app, LocalSpeechBridgePlugin, ElizaInferencePlugin, OnDeviceRecognizer's live session, SpeechLeadTrim, SpeechOutputWarmup or FirstWriteSpeechOutput (compiled in, not called), a live microphone, hardware playback or the voice session's streamed-reply rules."
+}

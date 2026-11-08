@@ -30,7 +30,9 @@ test('loop D on Android: a reviewed snapshot, morning and evening schedules, a l
   await flagOffAndroid(page, { digests: 'native', schedules: { dropFirstAck: 'loops' } });
   await residentHome(page);
   await button(page, 'Settings').click();
-  await button(page, 'Scheduled digests').click();
+  await button(page, 'Apps').click();
+  await button(page, 'Workflows').click();
+  await button(page, 'Scheduled summaries').click();
   const digests = panel(page);
   await expect(digests.getByRole('status')).toHaveText('Synced with this agent.');
   const zone = await page.evaluate(() => Intl.DateTimeFormat().resolvedOptions().timeZone);
@@ -112,7 +114,9 @@ test('loop D on Android: a schedule edit made against an older version is refuse
   await flagOffAndroid(page, { digests: 'native', schedules: {} });
   await residentHome(page);
   await button(page, 'Settings').click();
-  await button(page, 'Scheduled digests').click();
+  await button(page, 'Apps').click();
+  await button(page, 'Workflows').click();
+  await button(page, 'Scheduled summaries').click();
   const digests = panel(page);
   await digests.getByText('Share a snapshot', { exact: true }).click();
   await digests.getByRole('textbox', { name: 'Snapshot text', exact: true }).fill(SNAPSHOT);

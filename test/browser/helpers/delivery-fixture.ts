@@ -1,3 +1,4 @@
+import {openConnectionDiagnostics} from './connection-diagnostics';
 import {expect,type Page} from '@playwright/test';
 import {installResidentAgentPlugin} from './resident-agent-plugin';
 
@@ -13,7 +14,7 @@ export async function installDeliveryFixture(page:Page,options:{gmail?:boolean}=
 
 /** Starts the resident agent from Settings and waits for the connection chooser to close. */
 export async function startResidentAgent(page:Page){
- await page.goto('/');await page.getByRole('button',{name:'Settings',exact:true}).click();await page.getByRole('button',{name:/Agent connection/}).click();await page.getByRole('button',{name:'Start local agent',exact:true}).click();await expect(page.locator('.alpha-connection-scrim')).toHaveCount(0);
+ await page.goto('/');await page.getByRole('button',{name:'Settings',exact:true}).click();await openConnectionDiagnostics(page);await page.getByRole('button',{name:'Start local agent',exact:true}).click();await expect(page.locator('.alpha-connection-scrim')).toHaveCount(0);
 }
 
 function defineDeliveryFixture(gmail:boolean){

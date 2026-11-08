@@ -40,9 +40,16 @@ test('Cloud selection uses the same cancellation boundary on both backends',()=>
  const local=readFileSync(new URL('../apps/app/src/runtime/local-agent.ts',import.meta.url),'utf8');
  const host=readFileSync(new URL('../scripts/browser-cloud-dev-bridge.ts',import.meta.url),'utf8');
  const ui=readFileSync(new URL('../apps/app/src/runtime/connection-ui.tsx',import.meta.url),'utf8');
- assert.match(ui,/browserResidentCall\('residentCloud',undefined,undefined,undefined,signal\)/);assert.match(ui,/clearLocalProvider\(false,signal\)/);
- const clear=local.slice(local.indexOf('export async function clearLocalProvider('),local.indexOf('/** True only when native'));
- assert.match(clear,/runProviderConfiguration\(signal/);assert.match(host,/selectCloud\(controller\.signal\)/);
+ const select=local.slice(local.indexOf('export async function selectLocalProvider('),local.indexOf('/** Omitted fields remain untouched.'));
+ const uiSelect=ui.slice(ui.indexOf("async selectSavedProvider(mode:"),ui.indexOf('// A failed read keeps the last known choice:'));
+ assert.match(uiSelect,/await selectLocalProvider\(\{mode,expectedRevision\},signal\);signal\.throwIfAborted\(\)/);
+ assert.doesNotMatch(uiSelect,/clearLocalProvider|clearProvider/,'route selection must not delete saved keys');
+ assert.match(select,/browserProviderCall\('residentProviderSelect',\{mode,expectedRevision\},signal\)/);
+ assert.match(select,/runProviderConfiguration\(signal/);
+ assert.match(select,/cancel:requestId=>native\.cancelProviderConfiguration!\(\{requestId\}\)/);
+ assert.match(select,/signal\.throwIfAborted\(\);const status=managedProviderStatus/);
+ assert.match(host,/selectProvider\(input as ProviderSelection,controller\.signal\)/);
+
 });
 
 test('failed native dispatch releases its reserved lease',async()=>{

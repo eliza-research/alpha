@@ -27,21 +27,59 @@ def envValue = { String name -> def value = System.getenv(name); value == null |
 def cloudDeployment = new groovy.json.JsonSlurper().parse(file('../../config/cloud-deployment.json'))
 def cloudWebHost = new URI(cloudDeployment.production.web).host
 def stagingCloudWebHost = new URI(cloudDeployment.staging.web).host
-// Verified App Links return for the in-app Cloud sign-in and the Google Workspace consent return
-// (GoogleWorkspaceReturn) at the production web host. Browser Google sign-in requires this return
-// in every build. AndroidManifest.xml declares both filters for the ${appLinkHost} placeholder;
-// publish the assetlinks.json rendered by scripts/render-assetlinks.mjs there.
-// ELIZAOS_APP_LINK_HOST may only restate config/cloud-deployment.json production.web.
+// Verified App Links return for Cloud delegation, the in-app Cloud sign-in and the Google
+// Workspace consent return (GoogleWorkspaceReturn) at the configured production web host.
+// AndroidManifest.xml declares the exact sign-in and Google callback paths. Publish the
+// assetlinks.json rendered by scripts/render-assetlinks.mjs on that configured host.
 def appLinkHostRaw = project.findProperty('ELIZAOS_APP_LINK_HOST') ?: envValue('ELIZAOS_APP_LINK_HOST')
 def appLinkHost = appLinkHostRaw == null || appLinkHostRaw.toString().trim().isEmpty() ? cloudWebHost : appLinkHostRaw.toString().trim()
-if (!(appLinkHost ==~ /(?=.{1,253}$)([a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z][a-z0-9-]{0,61}[a-z0-9]/))
+if (appLinkHost && !(appLinkHost ==~ /(?=.{1,253}$)([a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z][a-z0-9-]{0,61}[a-z0-9]/))
  throw new GradleException('ELIZAOS_APP_LINK_HOST must be a lower-case DNS host name without scheme, port or path')
-if (appLinkHost != cloudWebHost)
+if (appLinkHost && appLinkHost != cloudWebHost)
  throw new GradleException('ELIZAOS_APP_LINK_HOST must match config/cloud-deployment.json production.web')
 // One-tap app update (AlphaDevicePlugin checkForUpdate): the one HTTPS update manifest, app.config.json updateManifestUrl.
 def updateManifestUrl = new groovy.json.JsonSlurper().parse(file('../../app.config.json')).updateManifestUrl
 if (!(updateManifestUrl instanceof String) || new URI(updateManifestUrl).scheme != 'https' || !new URI(updateManifestUrl).host)
  throw new GradleException('app.config.json updateManifestUrl must be an HTTPS URL')
+// An explicitly declared, private test artifact can use an expiring capability.
+// Never put that capability in source, Gradle arguments, diagnostics or build records.
+def updateChannel = System.getenv('ALPHA_UPDATE_CHANNEL') ?: 'public'
+def privateUpdateFile = System.getenv('ALPHA_PRIVATE_UPDATE_MANIFEST_FILE')
+def privateUpdateDigest = System.getenv('ALPHA_PRIVATE_UPDATE_MANIFEST_SHA256')
+if (!(updateChannel in ['public','private-qa']) || updateChannel == 'public' && (privateUpdateFile || privateUpdateDigest))
+ throw new GradleException('Update channel input refused')
+if (updateChannel == 'private-qa') {
+ try {
+  if (runtimeProfile != 'cloud' || unpackagedRuntime || testMocksRaw?.toString() == '1' || !privateUpdateFile || !(privateUpdateDigest ==~ /[a-f0-9]{64}/)) throw new Exception()
+  def input = java.nio.file.Paths.get(privateUpdateFile)
+  def noFollow = java.nio.file.LinkOption.NOFOLLOW_LINKS
+  if (!input.isAbsolute() || java.nio.file.Files.isSymbolicLink(input)) throw new Exception()
+  if (input.toRealPath().startsWith(file('../..').toPath().toRealPath())) throw new Exception()
+  def before = java.nio.file.Files.readAttributes(input, java.nio.file.attribute.BasicFileAttributes, noFollow)
+  def mode = java.nio.file.Files.getAttribute(input, 'unix:mode', noFollow) as int
+  def uid = java.nio.file.Files.getAttribute(input, 'unix:uid', noFollow) as long
+  if (!before.isRegularFile() || before.size() < 1 || before.size() > 2048 || (mode & 07777) != 0600 || uid != new com.sun.security.auth.module.UnixSystem().getUid()) throw new Exception()
+  byte[] bytes
+  java.nio.channels.FileChannel.open(input, java.nio.file.StandardOpenOption.READ, noFollow).withCloseable { channel ->
+   def buffer = java.nio.ByteBuffer.allocate(2049)
+   while (buffer.hasRemaining() && channel.read(buffer) > 0) {}
+   bytes = java.util.Arrays.copyOf(buffer.array(), buffer.position())
+  }
+  def after = java.nio.file.Files.readAttributes(input, java.nio.file.attribute.BasicFileAttributes, noFollow)
+  if (!after.isRegularFile() || before.fileKey() != after.fileKey() || before.size() != after.size() || before.lastModifiedTime() != after.lastModifiedTime() || bytes.length > 2048 || bytes.any { (it & 255) < 33 || (it & 255) > 126 }) throw new Exception()
+  if (java.security.MessageDigest.getInstance('SHA-256').digest(bytes).encodeHex().toString() != privateUpdateDigest) throw new Exception()
+  def candidate = new String(bytes, java.nio.charset.StandardCharsets.US_ASCII)
+  def uri = new URI(candidate)
+  if (uri.scheme != 'https' || uri.rawAuthority != 'storage.googleapis.com' || uri.fragment != null || !(uri.rawPath ==~ /\/alpha-aosp-lab-20261024-private-apks\/update-qa\/[a-f0-9]{32}\/alpha-update\.json/) || !uri.rawQuery) throw new Exception()
+  def pairs = uri.rawQuery.split('&').collect { it.split('=',2) }
+  def query = pairs.collectEntries { [(java.net.URLDecoder.decode(it[0],'UTF-8')):it.length == 2 ? java.net.URLDecoder.decode(it[1],'UTF-8') : ''] }
+  if (query.size() != pairs.size()) throw new Exception()
+  if (query['X-Goog-Algorithm'] != 'GOOG4-RSA-SHA256' || !(query['X-Goog-Expires'] ==~ /[0-9]+/) || new BigInteger(query['X-Goog-Expires']) < 300 || new BigInteger(query['X-Goog-Expires']) > 86400) throw new Exception()
+  updateManifestUrl = candidate
+ } catch (Exception ignored) { throw new GradleException('Update channel input refused') }
+}
+def updateManifestSha256 = java.security.MessageDigest.getInstance('SHA-256').digest(updateManifestUrl.getBytes('UTF-8')).encodeHex().toString()
+
 android {
  buildTypes {
   debug {
@@ -52,8 +90,10 @@ android {
  defaultConfig {
   manifestPlaceholders.put('appLinkHost', appLinkHost)
   manifestPlaceholders.put('stagingCloudWebHost', stagingCloudWebHost)
+  manifestPlaceholders.put('alphaUpdateChannel', updateChannel)
+  manifestPlaceholders.put('alphaUpdateManifestSha256', 'sha256:' + updateManifestSha256)
   buildConfigField 'String', 'ELIZA_RUNTIME_PROFILE', "\"${runtimeProfile}\""
-  // The verified App Link host this build declares: config/cloud-deployment.json production.web.
+  // The verified App Link host this build declares (ELIZAOS_APP_LINK_HOST), or "" when none.
   buildConfigField 'String', 'ELIZAOS_APP_LINK_HOST', "\"${appLinkHost}\""
   buildConfigField 'String', 'ALPHA_UPDATE_MANIFEST_URL', "\"${updateManifestUrl}\""
   // The shared voice loader configures Phonon-2's in-tree ggml backend.
@@ -61,7 +101,7 @@ android {
   def elizaAsrThreads = (System.getenv('ELIZA_ASR_THREADS') ?: '').trim()
   buildConfigField 'String', 'ELIZA_ASR_THREADS', "\"${elizaAsrThreads ==~ /[0-9]{1,2}/ ? elizaAsrThreads : ''}\""
   // The source commit each voice latency trial records (issue #395, shared VoiceLatencyProbe via AlphaApplication).
-  // A tree with tracked changes, or one git cannot read, is recorded as dirty; the aggregator never accepts dirty trials.
+  // A tree with tracked changes is recorded as dirty; the aggregator never accepts dirty trials.
   def sourceGit = { List<String> command ->
    try { providers.exec { commandLine(['git', '-C', rootProject.projectDir.parentFile.absolutePath] + command) }.standardOutput.asText.get().trim() }
    catch (Exception unavailable) { null }
@@ -83,8 +123,7 @@ def verifyEmbeddingHost = tasks.register('verifyEmbeddingHost', Exec) {
 }
 tasks.named('preBuild').configure { dependsOn verifyEmbeddingHost }
 
-// The staged in-process Google host must be the built artifact, and that artifact must match
-// current product sources. Unpackaged and test-mocks builds skip it, as the preflight does.
+// The staged Google host must match the current product sources before it is packaged.
 def verifyNativeGoogleHost = tasks.register('verifyNativeGoogleHost', Exec) {
  onlyIf { runtimeProfile == 'native' && !unpackagedRuntime && testMocksRaw?.toString() != '1' }
  workingDir rootProject.projectDir.parentFile
@@ -104,12 +143,12 @@ def verifyParadeeAppLinkage = tasks.register('verifyParadeeAppLinkage', Exec) {
  // Cloud has no local engine; verifyEmbeddingHost checks its packaged exclusions.
  onlyIf { runtimeProfile != 'cloud' }
  workingDir rootProject.projectDir.parentFile
- commandLine(['node', 'scripts/paradee-runtime.mjs', '--app-linkage'] + paradeeAbiArgs + (unpackagedRuntime ? ['--allow-absent'] : []))
+ commandLine(['node', 'scripts/paradee-runtime.mjs', '--app-linkage'] + paradeeAbiArgs + ((unpackagedRuntime || runtimeProfile == 'cloud') ? ['--allow-absent'] : []))
 }
 def verifyVoiceHost = tasks.register('verifyVoiceHost', Exec) {
  onlyIf { runtimeProfile != 'cloud' }
  workingDir rootProject.projectDir.parentFile
- commandLine(['node', 'scripts/voice-host.mjs', '--verify'] + paradeeAbiArgs + (unpackagedRuntime ? ['--allow-absent'] : []))
+ commandLine(['node', 'scripts/voice-host.mjs', '--verify'] + paradeeAbiArgs + ((unpackagedRuntime || runtimeProfile == 'cloud') ? ['--allow-absent'] : []))
 }
 tasks.named('preBuild').configure { dependsOn verifyParadeeAppLinkage, verifyVoiceHost }
 

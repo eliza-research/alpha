@@ -1,7 +1,8 @@
+import {openConnectionDiagnostics} from './helpers/connection-diagnostics';
 import { returnToApps } from './app-navigation';
 import {agentBrowserVoice} from './voice-fixture';
 import {test,expect,type Page} from '@playwright/test';
-async function chooser(page:Page){await returnToApps(page);await page.getByRole('button',{name:'Settings',exact:true}).click();await page.getByRole('button',{name:'Agent connection',exact:true}).click();}
+async function chooser(page:Page){await returnToApps(page);await openConnectionDiagnostics(page);}
 async function account(page:Page,name:string){await page.getByRole('combobox',{name:'Sample account'}).selectOption(name);await page.getByRole('button',{name:'Use development account',exact:true}).click();await expect(page.getByText(`Connected development account: ${name}`,{exact:true})).toBeVisible();await page.getByRole('combobox',{name:'Development profile'}).selectOption('cloud');await page.getByRole('button',{name:'Connect development profile',exact:true}).click();await expect(page.getByRole('dialog',{name:'Development connections'})).toHaveCount(0);}
 // P-43: development local speech runs through the stubbed agent speech (agentBrowserVoice), never Web Speech.
 test('switching sample accounts stops current speech and retires prepared playback',async({page})=>{

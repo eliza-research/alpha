@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import vm from 'node:vm';
 import {readFile} from 'node:fs/promises';
-import {stripTypeScriptTypes} from 'node:module';
+import {stripTypeScriptTypes} from '../test/support/strip-types.mjs';
 const read=path=>readFile(new URL('../'+path,import.meta.url),'utf8');
 const source=(await read('apps/app/src/prototype/notifications-adapter.ts')).replace(/^import .*;\n/gm,'').replaceAll('export function','function')+'\nglobalThis.install=installCanonicalNotificationTaps;';
 // main.tsx's own install statements, run with the real shade policy for each build shape.
@@ -24,8 +24,8 @@ function fixture({admitted=new Set(['calendar','notes','workflows'])}={}){
  const native={addListener:async()=>({remove:async()=>{}}),canonicalPending:async()=>({...pending}),acknowledgeCanonical:async({token})=>{if(token!==pending.token)throw Error('Changed tap');acknowledgments.push(token);pending={};return {ok:true};}};
  const controller={getSnapshot:()=>connection,getSelectedConversationId:()=>selectedConversation,subscribe:()=>()=>{},restoreHistory:async(id,canCommit)=>{restores.push(id);if(restoreHook)await restoreHook();if(canCommit()){selectedConversation=id;connection.history={conversationId:id,messages:[{id:'message'}]};}}};
  const sandbox={alphaClient:{getState:()=>({context:navigation})},connectionController:controller,registerPlugin:()=>native,Capacitor:{isNativePlatform:()=>true},queueMicrotask,window:{addEventListener(){},removeEventListener(){},setInterval:()=>1,clearInterval(){}},document:{hidden:false,addEventListener(){},removeEventListener(){}},reviewContentQuestion(){},sensitiveReadingText:()=>false,noticeCurrent:()=>true,noticeExcerpt:()=>'',noticeReviewable:()=>true,isMvpView:view=>admitted.has(view)};
- vm.createContext(sandbox);vm.runInContext(stripTypeScriptTypes(source,{mode:'strip'}),sandbox);
- class Component{};sandbox.install(Component);
+ vm.createContext(sandbox);vm.runInContext(stripTypeScriptTypes(source,{mode:'transform'}),sandbox);
+ class Component{};Component.prototype.renderVals=()=>({});sandbox.install(Component);
  const shell=new Component();shell.S=()=>state;shell.setState=(patch,done)=>{Object.assign(state,patch);commitHook?.();done?.();};shell.openView=view=>{views.push(view);state.view=view;};shell.componentDidMount();
  return {shell,state,connection,navigation,acknowledgments,restores,views,select:id=>{selectedConversation=id;},commit:fn=>{commitHook=fn;},setTap:(extra={})=>{pending={token:'tap-a',ownerId:'owner',agentId:'agent',view:'chat',conversationId:'conversation',messageId:'message',...extra};},hook:fn=>{restoreHook=fn;}};
 }

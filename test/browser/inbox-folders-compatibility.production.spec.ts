@@ -7,7 +7,11 @@ for(const legacy of [false,true])for(const width of [360,412])test(`Inbox folder
  await page.setViewportSize({width,height:740});await fenceNetwork(page);
  if(legacy)await page.addInitScript(()=>{delete (HTMLElement.prototype as Partial<HTMLElement>).showPopover;delete (HTMLElement.prototype as Partial<HTMLElement>).hidePopover;});
  await flagOffAndroid(page,{accounts:[{connectionId:'qa-mailbox',email:'qa@example.invalid',connected:true,messages:[]}]});
- await residentHome(page);await page.getByRole('button',{name:'Inbox',exact:true}).click();
+ await residentHome(page);
+ // The short-lived fixture sign-in raises its own banner; dismiss it through the public control before using the mailbox.
+ const notice=page.getByRole('region',{name:'Eliza Cloud sign-in notice',exact:true});
+ await notice.getByRole('button',{name:'Dismiss sign-in notice',exact:true}).click();await expect(notice).toBeHidden();
+ await page.getByRole('button',{name:'Inbox',exact:true}).click();
  const trigger=page.getByRole('button',{name:'Other mail folders',exact:true}),menu=page.getByRole('menu',{name:'Mail folders',exact:true});
  await expect(trigger).toBeVisible();await expect(trigger).toHaveAttribute('aria-expanded','false');await expect(menu).toBeHidden();
  await trigger.click();await expect(menu).toBeVisible();await expect(trigger).toHaveAttribute('aria-expanded','true');

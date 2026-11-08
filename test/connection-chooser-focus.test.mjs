@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import React, {act} from 'react';
 import {JSDOM} from 'jsdom';
-import {stripTypeScriptTypes} from 'node:module';
+import {stripTypeScriptTypes} from './support/strip-types.mjs';
 import {execFileSync} from 'node:child_process';
 const baseline=process.env.ALPHA_FOCUS_BASELINE==='1';
 const source=baseline?execFileSync('git',['show','51bcc46d4338ed4363739a751302a6cd6778e41c:apps/app/src/runtime/connection-ui.tsx'],{cwd:new URL('..',import.meta.url),encoding:'utf8'}):readFileSync(new URL('../apps/app/src/runtime/connection-ui.tsx',import.meta.url),'utf8');

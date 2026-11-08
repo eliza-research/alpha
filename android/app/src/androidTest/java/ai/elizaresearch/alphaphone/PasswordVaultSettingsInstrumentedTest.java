@@ -16,7 +16,7 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 import static org.junit.Assert.*;
 
-/** Settings > Password manager on a real emulator (MVP-29, LOOP-E): a fixture screen-lock PIN,
+/** Settings > Passwords on a real emulator (MVP-29, LOOP-E): a fixture screen-lock PIN,
  * unlock through Android's device-credential prompt, a typed and a generated synthetic entry,
  * list and search, Show (Android's own surface) and Copy, Lock, the inactivity lock and the lock
  * on leaving. No secret may appear in the page DOM (markup, input values, local and session
@@ -53,8 +53,8 @@ public class PasswordVaultSettingsInstrumentedTest {
  private static void openPasswordManager() throws Exception {
   eval(AppNavigation.request("Settings"));
   until(AppNavigation.selected("Settings"), "Settings opens");
-  press("Password manager");
-  until(control("Unlock passwords") + "||" + control("Lock passwords"), "The Password manager page opens");
+  press("Passwords");
+  until(control("Unlock passwords") + "||" + control("Lock passwords"), "The Passwords page opens");
  }
  private static void unlock() throws Exception {
   press("Unlock passwords");
@@ -120,7 +120,7 @@ public class PasswordVaultSettingsInstrumentedTest {
    assertEquals("Copy places exactly the saved password on the clipboard", typedSecret, clip.get());
    assertNotInDom(typedSecret, "after Copy");
    WebViewTestDriver.withActivity(MainActivity.class, activity -> activity.getSystemService(ClipboardManager.class).clearPrimaryClip());
-   eval("[...document.querySelectorAll('[data-screen] button')].find(b=>b.getAttribute('aria-label')==='Back to Password manager')?.click()");
+   eval("[...document.querySelectorAll('[data-screen] button')].find(b=>b.getAttribute('aria-label')==='Back to Passwords')?.click()");
 
    // Lock.
    press("Lock passwords");
@@ -130,11 +130,11 @@ public class PasswordVaultSettingsInstrumentedTest {
    unlock();
    until(control("Unlock passwords") + "&&document.body.innerText.includes('Locked after the unlock time ended.')", "The vault locks when the unlock window ends", 900);
 
-   // Leaving the Password manager locks it.
+   // Leaving Passwords locks it.
    unlock();
    eval("[...document.querySelectorAll('[data-screen] button')].find(b=>b.getAttribute('aria-label')==='Back to Settings')?.click()");
    until("!(" + control("Lock passwords") + ")", "Settings is shown again");
-   press("Password manager");
+   press("Passwords");
    until(control("Unlock passwords"), "Returning finds the vault locked");
 
    // What the agent may observe is built from this page's state, which never held the secret;

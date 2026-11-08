@@ -27,6 +27,7 @@ import { execFileSync, spawnSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import {readUpdateChannel} from './update-channel.mjs';
 
 const FLAG = "ELIZA_DEV_ALLOW_TEST_MOCKS";
 const FLAG_ENV_NAMES = [FLAG, `VITE_${FLAG}`, `ORG_GRADLE_PROJECT_${FLAG}`];
@@ -183,6 +184,8 @@ export function sbomArgs(outDir, root = process.cwd()) {
 
 async function main() {
   const options = parseBuildArgs(process.argv.slice(2));
+  const channel=readUpdateChannel(process.env,JSON.parse(fs.readFileSync(new URL('../app.config.json',import.meta.url),'utf8')).updateManifestUrl);
+  if(channel.kind==='private-qa'&&(options.runtimeProfile!=='cloud'||options.testMocks||options.allowUnpackagedRuntime))throw Error('Private update QA requires the complete Cloud profile');
   // A partial signing set would silently produce unsigned releases; refuse it up front.
   const partial = partialSigningProblem(process.env);
   if (partial) throw new Error(partial);
@@ -208,7 +211,8 @@ async function main() {
  * low-disk mode (ALPHA_ANDROID_LOW_DISK=1). Alpha supplies the flags, output directory,
  * signing variable names, build record and its own APK verification.
  */
-export function consumerBuildOptions(options, env, root) {
+export function consumerBuildOptions(options, env, root, updateChannel = readUpdateChannel(env, JSON.parse(fs.readFileSync(new URL('../app.config.json',import.meta.url),'utf8')).updateManifestUrl)) {
+  if(updateChannel.kind==='private-qa'&&(options.runtimeProfile!=='cloud'||options.testMocks||options.allowUnpackagedRuntime))throw Error('Private update QA requires the complete Cloud profile');
   return {
     root,
     environment: env,
@@ -233,6 +237,7 @@ export function consumerBuildOptions(options, env, root) {
         createdAt: new Date().toISOString(),
         testMocks: options.testMocks,
         runtimeProfile: options.runtimeProfile || "native",
+        updateChannel,
         ...(options.localEmbeddings ? {localEmbeddings:true} : {}),
         // The renderer reads VITE_MAPS_BASE_URL only in test-mocks builds; every other build uses Cloud Maps.
         mapsProvider: options.testMocks && env.VITE_MAPS_BASE_URL ? "regional-gateway" : "cloud",
@@ -251,6 +256,7 @@ export function consumerBuildOptions(options, env, root) {
 
 function build(options, baseEnv, run, buildAndroidConsumer) {
   const env = buildEnv(baseEnv, options);
+  const updateChannel = readUpdateChannel(env, JSON.parse(fs.readFileSync('app.config.json','utf8')).updateManifestUrl);
   const outDir = outputDirectory(options);
   console.log(`Android build: ${options.testMocks ? "TEST-MOCKS (never distributable) -> " : "distribution, test mocks off -> "}${outDir}/`);
 
@@ -268,7 +274,7 @@ function build(options, baseEnv, run, buildAndroidConsumer) {
   }
 
   const root = fs.realpathSync(path.resolve(import.meta.dirname, ".."));
-  buildAndroidConsumer(consumerBuildOptions(options, env, root));
+  buildAndroidConsumer(consumerBuildOptions(options, env, root, updateChannel));
   if (options.testMocks)
     console.log("Test-mocks APKs are for mock-isolation instrumentation only and are never distributable.");
   else run("node", ["scripts/generate-sbom.mjs", ...sbomArgs(outDir, root)]);

@@ -72,3 +72,13 @@ test('model.js has no hard-coded weekday, month or 12-hour clock code paths', ()
   assert.doesNotMatch(model, /(?:DAYS|MONS)\[[^\]]+\]\.slice\(0, 3\)/);
   assert.doesNotMatch(model, /\.slice\(-2\) === [a-z]+\.slice\(-2\)/, 'no AM/PM suffix slicing');
 });
+
+test('full message dates retain seconds and follow the device hour cycle', () => {
+  assert.equal(L.formatFullDateTime(new Date('')), 'Date unavailable');
+  L.setLocalePreferences({locale: 'en-US', hourCycle: 'h23'});
+  assert.match(L.formatFullDateTime(afternoon), /Wednesday, October 7, 2026/);
+  assert.match(L.formatFullDateTime(afternoon), /15:04:00/);
+  L.setLocalePreferences({locale: 'en-US', hourCycle: 'h12'});
+  assert.match(L.formatFullDateTime(afternoon), /3:04:00 PM/);
+  L.setLocalePreferences({});
+});

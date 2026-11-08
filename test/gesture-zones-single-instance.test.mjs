@@ -21,6 +21,7 @@ test('Android\'s shade is the only shade: the swipe handler asks Android, never 
   assert.doesNotMatch(swipe, /shade: true/, 'no swipe sets a panel open directly');
   assert.doesNotMatch(swipe, /this\.openShade\(\)/, 'no swipe opens the development stand-in directly');
   assert.doesNotMatch(swipe, /g\.y < 90/, 'the top-edge band is not a gesture zone of Alpha');
+  assert.doesNotMatch(swipe, /raise-assistant[^;]*chat: "sheet"/, 'only the dock opens the chat: a swipe up on Home content opens nothing');
   assert.match(model, /pull: pullStart\(e\.target\)/);
   // The development stand-in opens only in a build that has it.
   assert.match(model, /openShade\(\) \{\s*var S = this\.S\(\);\s*if \(!this\.simulatedShade\(\) \|\| S\.screen !== "home" \|\| S\.shade\) return;/);
@@ -44,7 +45,12 @@ test('the launcher keeps one MainActivity and its kind belongs to the task', () 
   assert.match(activity, /MainActivity live = BuildConfig\.IS_LAUNCHER && !isAssistantSurface\(\) \? liveInstance\(\) : null;/);
   // The kind is read from the start intent once per task. A relaunch is handed the last intent given
   // to setIntent (AlphaConnectionPlugin keeps the sign-in return there), so it must not be read again.
-  assert.match(activity, /if \(task == -1 \|\| task != liveTaskId\) \{ liveTaskId = task; liveTaskHome = isHomeTypeStart\(getIntent\(\)\); \}\s*startedAsHome = liveTaskHome;/);
+  assert.match(activity, /java\.util\.Map<Integer,TaskKind> taskKinds = new java\.util\.HashMap<>\(\)/);
+  assert.match(activity, /if \(task == -1\) startedAsHome = isHomeTypeStart\(getIntent\(\)\);/);
+  assert.match(activity, /TaskKind kind = taskKinds\.get\(task\);\s*if \(kind == null\) \{ kind = new TaskKind\(isHomeTypeStart\(getIntent\(\)\),this\); taskKinds\.put\(task,kind\); \}/);
+  assert.match(activity, /kind\.owner = new java\.lang\.ref\.WeakReference<>\(this\);\s*startedAsHome = kind\.home;/);
+  // A replaced or merely stopped activity cannot erase a surviving task's classification.
+  assert.match(activity, /if \(isFinishing\(\) && kind != null && kind\.owner\.get\(\) == this\) taskKinds\.remove\(getTaskId\(\)\);/);
   assert.match(read('android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaConnectionPlugin.java'), /getActivity\(\)\.setIntent\(intent\);delegationCallback=uri;/, 'the sign-in return is still kept with setIntent, which is why the kind is per task');
   // An exported activity reads its own marker extra without trusting the sender's parcel.
   // Only this process's own token counts: another app setting the key is an ordinary start.

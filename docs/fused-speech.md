@@ -76,6 +76,11 @@ and no source rewrite (`scripts/embedding-native-contract.mjs`). The paradee-voi
 the app's engine instead of packaging a second copy, so the two must be byte-identical
 (`node scripts/paradee-runtime.mjs --app-linkage`, Gradle `:app:verifyParadeeAppLinkage`).
 
+## November 5 device measurements
+
+The November 5 measurements used pin `36236fc059` (engine `b3eb2bf63b`, `eliza-paradee-voice-v2`, Paradee v1.2).
+Device latency, TPU and GPU findings are in [on-device speech](on-device-speech-2026-11-05.md); bundle sizes below are historical.
+
 ## Cloud speech diagnosis — November 1
 
 The Pixel's selected `cloud` profile runs the resident agent and history on the
@@ -227,13 +232,13 @@ recording a clip on the device:
    retracted. Cancel drops queued audio and late output; IPC closure does not roll back
    inference already running. A segment whose transcription fails (`502 ASR_FAILED`) yields
    no text and capture continues; an unavailable route or transport failure stops it.
-5. **Endpointing (assistant).** After the last segment's final, a short gap (300 ms) asks the
-   resident's semantic end-of-turn route and a long gap (1,200 ms) submits; both follow the VAD
+5. **Endpointing (assistant).** After the last segment's final, a short gap (250 ms) asks the
+   resident's semantic end-of-turn route and a long gap (800 ms) submits; both follow the VAD
    speech-end, which itself trails speech by the gate's ~512 ms hangover. The route is
    `POST /api/asr/local-inference/end-of-turn` (elizaOS #36546, in the pin `08703642627c`): one
    causal pass of the fused Eliza-1 end-of-turn scorer over the utterance text, through the same
    owner-bound resident request port as the live ASR route (`voice-turn-routes.ts`). It is asked once
-   per utterance with a 600 ms deadline (short gap plus deadline stays under the long gap), aborted
+   per utterance with a 500 ms deadline (short gap plus deadline stays under the long gap), aborted
    by resumed speech, and its answer is dropped when the utterance changed. `available` and
    `complete` submit at once; `available` and not complete waits for the long gap or more speech;
    `available: false` (`voice-not-started`, `ffi-context-unloaded`, `scorer-unsupported`,

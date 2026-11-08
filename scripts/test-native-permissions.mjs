@@ -33,13 +33,10 @@ export const cases = {
 	},
 	settings: {
 		testClass: "SettingsNativeInstrumentedTest",
-		method: "accountsHandoffAndLocationAccuracyReadback",
+		method: "appPermissionsHandoffAndGrantReadback",
 		gate: "settingsNative",
 		value: "1",
-		permissions: [
-			["revoke", "ACCESS_FINE_LOCATION"],
-			["grant", "ACCESS_COARSE_LOCATION"],
-		],
+		permissions: [["revoke", "CAMERA"]],
 	},
 	channels: {
 		testClass: "NotificationChannelsInstrumentedTest",

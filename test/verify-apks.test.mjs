@@ -8,8 +8,15 @@ import path from "node:path";
 import { execFileSync, spawnSync } from "node:child_process";
 import { archiveWebPayload, parseXmlTree, readBuildFlags, validateApk, verifyOwnerRouteTable } from "../scripts/apk.mjs";
 import { webViewFilterProblems, webViewFilters } from "../scripts/render-assetlinks.mjs";
-import { voiceBundleAdmission } from "../scripts/voice-host.mjs";
+import { voiceBundleAdmission, VOICE_BUNDLE_FORMAT } from "../scripts/voice-host.mjs";
 const root = path.resolve(import.meta.dirname, "..");
+test("Cloud QA evidence requires one explicit Cloud profile before any APK work", () => {
+  for (const args of [["--cloud-voice-evidence=missing.json"], ["--runtime-profile=cloud", "--cloud-voice-evidence=a.json", "--cloud-voice-evidence=b.json"]]) {
+    const result=spawnSync(process.execPath,["scripts/verify-apks.mjs",...args],{cwd:root,encoding:"utf8"});
+    assert.notEqual(result.status,0);
+    assert.match(result.stderr,/Cloud voice evidence requires one explicit Cloud profile/);
+  }
+});
 /** Copy the committed AOSP product files into `dir` with every unset value filled, so production staging passes its lock check. */
 function completeAospLock(dir) {
   const read = rel => JSON.parse(fs.readFileSync(path.join(root, rel), "utf8"));
@@ -193,10 +200,11 @@ for (const testMocks of [false, true]) test(`archive retains actual APK web byte
 
 // Exercise the archive CLI, its child environments and real ZIP retention without
 // running Gradle. Only the Android builder and source snapshot are fixture commands.
-for (const mode of ['native', 'test-mocks', 'cloud', 'wrong-cloud-profile']) test(`build archive preserves its selected runtime profile: ${mode}`, t => {
+for (const mode of ['native', 'test-mocks', 'cloud', 'wrong-cloud-profile', 'private-cloud', 'wrong-cloud-channel']) test(`build archive preserves its selected runtime profile: ${mode}`, t => {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'alpha-build-archive-'));
   t.after(() => fs.rmSync(dir, {recursive:true, force:true}));
   for (const name of ['scripts', 'bin']) fs.mkdirSync(path.join(dir, name));
+  fs.writeFileSync(path.join(dir,'app.config.json'),JSON.stringify({updateManifestUrl:'https://example.test/public-update.json'}));
   fs.symlinkSync(path.join(root, 'scripts/audit-production-bundle.mjs'), path.join(dir, 'scripts/audit-production-bundle.mjs'));
   fs.writeFileSync(path.join(dir, 'scripts/stage-local-agent-sources.mjs'), '');
   // The generated Gradle host is written before the source snapshot; the stub stands in for it.
@@ -209,7 +217,7 @@ import {createHash} from 'node:crypto';
 import {execFileSync} from 'node:child_process';
 const args=process.argv.slice(2), profile=process.env.VITE_ELIZA_RUNTIME_PROFILE||'native';
 const mocks=process.env.ELIZA_DEV_ALLOW_TEST_MOCKS==='1';
-fs.appendFileSync('calls.jsonl',JSON.stringify({args,profile,mocks})+'\\n');
+fs.appendFileSync('calls.jsonl',JSON.stringify({args,profile,mocks,privateInputPresent:!!process.env.ALPHA_PRIVATE_UPDATE_MANIFEST_FILE})+'\\n');
 if(args[1]==='android:build'){
  const output=mocks?'artifacts/test-mocks':'artifacts';
  fs.mkdirSync(output,{recursive:true});
@@ -226,20 +234,28 @@ if(args[1]==='android:build'){
   const file=mocks?path.join(output,variant+'-androidTest.apk'):'android/app/build/outputs/apk/androidTest/'+variant+'/debug/app-'+variant+'-debug-androidTest.apk';
   fs.mkdirSync(path.dirname(file),{recursive:true});fs.writeFileSync(file,'synthetic instrumentation');
  }
- fs.writeFileSync(path.join(output,'apk-manifest.json'),JSON.stringify({testMocks:mocks,runtimeProfile:process.env.FIXTURE_WRONG_PROFILE?'native':profile,results}));
+ const updateChannel={kind:process.env.ALPHA_UPDATE_CHANNEL||'public',manifestUrlSha256:process.env.ALPHA_PRIVATE_UPDATE_MANIFEST_SHA256||createHash('sha256').update(JSON.parse(fs.readFileSync('app.config.json','utf8')).updateManifestUrl).digest('hex')};
+ if(process.env.FIXTURE_WRONG_CHANNEL)updateChannel.manifestUrlSha256='e'.repeat(64);
+ fs.writeFileSync(path.join(output,'apk-manifest.json'),JSON.stringify({testMocks:mocks,runtimeProfile:process.env.FIXTURE_WRONG_PROFILE?'native':profile,updateChannel,results}));
 }
 `, {mode:0o755});
   const cloud = mode.includes('cloud'), testMocks = mode === 'test-mocks';
   const args = cloud ? ['--runtime-profile=cloud'] : testMocks ? ['--test-mocks'] : [];
   const env = {...process.env, PATH:path.join(dir, 'bin')+path.delimiter+process.env.PATH};
-  for (const name of ['ELIZA_DEV_ALLOW_TEST_MOCKS', 'VITE_ELIZA_DEV_ALLOW_TEST_MOCKS', 'ORG_GRADLE_PROJECT_ELIZA_DEV_ALLOW_TEST_MOCKS', 'FIXTURE_WRONG_PROFILE']) delete env[name];
+  for (const name of ['ELIZA_DEV_ALLOW_TEST_MOCKS', 'VITE_ELIZA_DEV_ALLOW_TEST_MOCKS', 'ORG_GRADLE_PROJECT_ELIZA_DEV_ALLOW_TEST_MOCKS', 'FIXTURE_WRONG_PROFILE','FIXTURE_WRONG_CHANNEL','ALPHA_UPDATE_CHANNEL','ALPHA_PRIVATE_UPDATE_MANIFEST_FILE','ALPHA_PRIVATE_UPDATE_MANIFEST_SHA256']) delete env[name];
   if (cloud) Object.assign(env, {ELIZA_DEV_ALLOW_TEST_MOCKS:'1', VITE_ELIZA_DEV_ALLOW_TEST_MOCKS:'1', ORG_GRADLE_PROJECT_ELIZA_DEV_ALLOW_TEST_MOCKS:'1'});
   if (mode === 'wrong-cloud-profile') env.FIXTURE_WRONG_PROFILE='1';
+  if(mode==='wrong-cloud-channel')env.FIXTURE_WRONG_CHANNEL='1';
+  if(mode==='private-cloud'){
+    const url='https://storage.googleapis.com/alpha-aosp-lab-20261024-private-apks/update-qa/'+ 'a'.repeat(32)+'/alpha-update.json?X-Goog-Algorithm=GOOG4-RSA-SHA256&X-Goog-Expires=21600&X-Goog-Signature=synthetic';
+    const file=dir+'-private-url';fs.writeFileSync(file,url,{mode:0o600});t.after(()=>fs.unlinkSync(file));
+    Object.assign(env,{ALPHA_UPDATE_CHANNEL:'private-qa',ALPHA_PRIVATE_UPDATE_MANIFEST_FILE:file,ALPHA_PRIVATE_UPDATE_MANIFEST_SHA256:createHash('sha256').update(url).digest('hex')});
+  }
   const run = spawnSync(process.execPath, [path.join(root, 'scripts/build-archive.mjs'), ...args, 'test-results/archive'], {cwd:dir, env, encoding:'utf8'});
   const archive = path.join(dir, 'test-results/archive');
-  if (mode === 'wrong-cloud-profile') {
+  if (mode === 'wrong-cloud-profile'||mode==='wrong-cloud-channel') {
     assert.notEqual(run.status, 0);
-    assert.match(run.stderr, /Verified APK runtime profile differs from archive/);
+    assert.match(run.stderr, mode==='wrong-cloud-profile'?/Verified APK runtime profile differs from archive/:/Verified APK update channel differs from archive/);
     assert.ok(!fs.existsSync(path.join(archive, 'apk-manifest.json')));
     return;
   }
@@ -248,6 +264,8 @@ if(args[1]==='android:build'){
   assert.deepEqual(calls.map(row => row.args[1]), ['android:sync', 'verify', 'android:build']);
   assert.ok(calls.every(row => row.profile === (cloud ? 'cloud' : 'native')));
   assert.equal(calls[1].mocks, false, 'verification stays flag-off even for a fixture archive');
+  assert.equal(calls[1].privateInputPresent,false,'source verification never inherits the real private capability');
+  assert.equal(calls[2].privateInputPresent,mode==='private-cloud');
   assert.equal(calls[0].mocks, testMocks);
   assert.equal(calls[2].mocks, testMocks);
   assert.deepEqual(calls[2].args, ['run', 'android:build', ...(args.length ? ['--', ...args] : [])]);
@@ -285,7 +303,7 @@ test("APK voice admission requires the complete recorded bundle and every record
   };
   const apk = (change = () => {}, listed = Object.keys(bytes)) => {
     const files = { "lib/x86_64/libparadeevoicejni.so": "jni", "lib/x86_64/libelizainference.so": "engine", "lib/x86_64/libc++_shared.so": "stl",
-      "assets/paradee-voice/v1/manifest.json": JSON.stringify({ format: "eliza-paradee-voice-v1", files: listed.map(file => ({ path: file })) }) };
+      "assets/paradee-voice/v1/manifest.json": JSON.stringify({ format: VOICE_BUNDLE_FORMAT, files: listed.map(file => ({ path: file })) }) };
     for (const file of listed) files[`assets/paradee-voice/v1/${file}`] = bytes[file];
     change(files);
     return { names: Object.keys(files), read: entry => Buffer.from(files[entry]) };
@@ -298,7 +316,7 @@ test("APK voice admission requires the complete recorded bundle and every record
   assert.equal(noAsr.asr, false);
   // A manifest that lists a subset of the non-ASR files, or none, is a difference.
   assert.match(voiceBundleAdmission(apk(undefined, ["tts/paradee/paradee.gguf", "asr/phonon.gguf"]), host).differences.join(), /misaki\.lex: recorded voice file is not packaged.*silero\.gguf: recorded voice file is not packaged/);
-  const empty = voiceBundleAdmission(apk(files => { files["assets/paradee-voice/v1/manifest.json"] = JSON.stringify({ format: "eliza-paradee-voice-v1", files: [] }); }, []), host);
+  const empty = voiceBundleAdmission(apk(files => { files["assets/paradee-voice/v1/manifest.json"] = JSON.stringify({ format: VOICE_BUNDLE_FORMAT, files: [] }); }, []), host);
   assert.equal(empty.differences.length, 3);
   // A differing libc++_shared.so beside the pinned engine is reported, not only the engine.
   assert.deepEqual(voiceBundleAdmission(apk(files => { files["lib/x86_64/libc++_shared.so"] = "other"; }), host).differences,

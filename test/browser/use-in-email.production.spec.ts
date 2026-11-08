@@ -234,3 +234,27 @@ test('outside Inbox the same agent reply offers no email action', async ({ page 
   await expect(menu.getByRole('menuitem', { name: 'Use in email', exact: true })).toHaveCount(0);
   expect(await mail(page)).toEqual({ prepares: [], dispatches: [], sent: [] });
 });
+
+test('reopening the conversation in another view retires the earlier close animation', async ({ page }) => {
+  await openEmail(page);
+  await ask(page, 'Draft a short reply accepting Tuesday', first);
+  await page.clock.install();
+  await page.clock.pauseAt(await page.evaluate(() => Date.now() + 500));
+  // Keep the closing animation pending while the owner navigates and opens the
+  // conversation from the other view's pill. Keyboard activation needs no settled animation.
+  await page.evaluate(() => window.dispatchEvent(new Event('launcher-home')));
+  await expect(page.locator('html')).toHaveAttribute('data-active-view', 'home');
+  await button(page, 'Notes').press('Enter');
+  await expect(page.locator('html')).toHaveAttribute('data-active-view', 'notes');
+  await button(page, 'Open conversation').press('Enter');
+  await page.clock.runFor(1_000);
+  const panel = page.locator('[data-alpha-layer="conversation"]');
+  await expect(panel).toHaveAttribute('aria-hidden', 'false');
+  await expect(panel).toHaveCSS('opacity', '1');
+  await expect.poll(() => panel.evaluate(element => element.getBoundingClientRect().height)).toBeGreaterThan(200);
+  await bubble(page, first).click();
+  const menu = page.getByRole('menu', { name: 'Message actions' });
+  await expect(menu.getByRole('menuitem', { name: 'Copy', exact: true })).toBeVisible();
+  await expect(menu.getByRole('menuitem', { name: 'Use in email', exact: true })).toHaveCount(0);
+  expect(await mail(page)).toEqual({ prepares: [], dispatches: [], sent: [] });
+});

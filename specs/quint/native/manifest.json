@@ -1,0 +1,1143 @@
+{
+  "models": [
+    {
+      "path": "specs/quint/native/ResidentRuntime.qnt",
+      "module": "ResidentRuntime",
+      "init": "init",
+      "step": "step",
+      "invariant": "safety",
+      "sources": [
+        "apps/app/src/runtime/local-agent.ts",
+        "apps/app/src/runtime/local-agent-native-events.ts",
+        "apps/app/src/runtime/local-agent-native-stream.ts",
+        "apps/app/src/runtime/local-agent-storage.ts",
+        "apps/app/src/runtime/resident-recovery.ts",
+        "backend/native-cloud-runtime.ts",
+        "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaLocalAgentPlugin.java",
+        "android/app/src/main/java/ai/elizaresearch/alphaphone/LocalAgentProviderAdmission.java",
+        "android/app/src/main/java/ai/elizaresearch/alphaphone/ResidentCredentialShutdownRetry.java",
+        "android/app/src/main/java/ai/elizaresearch/alphaphone/ResidentRecoveryReview.java",
+        "android/app/src/main/java/ai/elizaresearch/alphaphone/ResidentScheduleRearm.java"
+      ],
+      "tests": [
+        "startAndBindTest",
+        "staleBindingTest",
+        "failedUnbindKeepsAgentTest",
+        "recoveryAndRestartTest",
+        "replacementRetiresPendingBindingTest",
+        "resetFencesCallbackTest",
+        "stopRetainsProviderConfigurationTest",
+        "unconfirmedStopKeepsProcessUnknownTest",
+        "ownedCancellationRetiresLateStartupTest",
+        "attachedCancellationPreservesServiceTest",
+        "nativeAdmissionAdvancesEpochTest",
+        "unownedReenrollmentCancellationTest",
+        "lastSurfaceRetiresEnrollmentTest",
+        "lostEnrollmentReplyRetiresOwnershipTest"
+      ],
+      "invariants": [
+        "TypeOK",
+        "LocalOnly",
+        "ResetStopsRuntime",
+        "RecoveryPreservesRecords",
+        "CurrentCredentialAtUse",
+        "StoppingRetiresEnrollment"
+      ],
+      "abstractions": [
+        "One resident process, three epoch advances and two runtime profiles.",
+        "Payload provenance, credential parsing, identity validation and IPC acknowledgement are environment results.",
+        "One retained record represents durable history.",
+        "Ordinary stop retires enrollment and voice admission before process shutdown is confirmed. Provider configuration persists. Owned and attached startup requests have distinct cancellation effects.",
+        "The native coordinator advances an epoch at full start admission, including unowned reenrollment of an existing service. Attached starts preserve the epoch. Last-surface destruction retires enrollment while the service can remain alive."
+      ],
+      "sharedSources": [
+        "plugins/plugin-native-agent/android/src/main/java/ai/eliza/plugins/agent/runtime/NativeProviderSlot.java",
+        "plugins/plugin-native-agent/android/src/main/java/ai/eliza/plugins/agent/runtime/NativeProviderAdmission.java",
+        "plugins/plugin-native-agent/android/src/main/java/ai/eliza/plugins/agent/runtime/ResidentAttachment.java",
+        "plugins/plugin-native-agent/android/src/main/java/ai/eliza/plugins/agent/runtime/CredentialRequestFence.java",
+        "plugins/plugin-native-agent/android/src/main/java/ai/eliza/plugins/agent/runtime/CredentialIntentFence.java",
+        "plugins/plugin-native-secure-store/android-nativeonly/src/main/java/ai/eliza/plugins/securestore/nativeonly/CredentialIntentFence.java"
+      ]
+    },
+    {
+      "path": "specs/quint/native/VoiceSession.qnt",
+      "module": "VoiceSession",
+      "init": "init",
+      "step": "step",
+      "invariant": "safety",
+      "sources": [
+        "apps/app/src/runtime/voice-assistant.ts",
+        "apps/app/src/runtime/native-live-voice.ts",
+        "apps/app/src/runtime/voice-states.ts",
+        "apps/app/src/runtime/cloud-voice.ts",
+        "apps/app/src/runtime/live-segment-stream.ts",
+        "apps/app/src/runtime/voice-turn-routes.ts",
+        "apps/app/src/runtime/app-speech.ts",
+        "android/app/src/main/java/ai/elizaresearch/alphaphone/NativeVoiceBinding.java",
+        "android/app/src/main/java/ai/elizaresearch/alphaphone/VoiceEventAdmission.java",
+        "patches/eliza/voice-assistant-streaming.patch",
+        "patches/eliza/cloud-speech-client-manifest.json",
+        "scripts/client-speech-patch.mjs"
+      ],
+      "tests": [
+        "longGapAndPlaybackTest",
+        "busySpeechDoesNotInterruptTest",
+        "partialSentenceNotHeardTest",
+        "dictationIsDraftTest",
+        "proposalStopsAutomaticVoiceTest",
+        "staleEndpointAfterNewSpeechTest",
+        "reviewedReadResumesSameTurnTest",
+        "muteKeepsReplyAndStopsMicrophoneTest",
+        "stopRejectsLateCaptureTest",
+        "inputCloseBarrierTest",
+        "stoppingPendingCloseNeverSendsTest",
+        "failedInputCloseKeepsRequestUnsentTest"
+      ],
+      "invariants": [
+        "TypeOK",
+        "CloudConsent",
+        "StopReleasesCapture",
+        "PlaybackCurrent",
+        "HeardIsCompleted",
+        "VoiceNeverApproves",
+        "DictationNeverSubmits",
+        "MutedMicrophoneOff",
+        "BusyCaptureHeld",
+        "SendWaitsForClose"
+      ],
+      "abstractions": [
+        "At most three session identities, five turn identities and five utterance identities.",
+        "Two complete sentences represent streamed playback and heard-content accounting.",
+        "Errors retire the session; disclosure and exact owner binding are represented as admission predicates.",
+        "The current controller closes capture for a submitted turn through response playback. An explicit speech interruption and its completed playback drain are separate transitions; stale audio callbacks cannot interrupt the busy turn."
+      ],
+      "sharedSources": [
+        "packages/voice/src/native-live-voice.ts",
+        "packages/voice/src/voice-assistant-session.ts"
+      ]
+    },
+    {
+      "path": "specs/quint/native/SpeechResources.qnt",
+      "module": "SpeechResources",
+      "init": "init",
+      "step": "step",
+      "invariant": "safety",
+      "sources": [
+        "apps/app/src/local-speech-playback.ts",
+        "patches/eliza/cloud-speech-native.patch",
+        "patches/eliza/local-speech-streaming.patch",
+        "patches/eliza/native-manifest.json"
+      ],
+      "tests": [
+        "queueBackpressureTest",
+        "stopZeroesPendingTest",
+        "callCancelsSpeechAndMicTest",
+        "duckPreservesQueueTest",
+        "cancelledOpeningIsDiscardedTest",
+        "staleStreamRejectedTest"
+      ],
+      "invariants": [
+        "QueueBound",
+        "ExclusiveCapture",
+        "PermissionRequired",
+        "PlaybackHasFocus",
+        "ClosedQueueEmpty",
+        "CaptureCallbackCurrent"
+      ],
+      "abstractions": [
+        "A two-chunk queue represents bounded PCM sample storage and backpressure.",
+        "Three capture and synthesis generations, one native capture reservation, one playback writer.",
+        "Native cleanup calls are atomic completion steps; PCM buffer contents and wall-clock latency are omitted.",
+        "Silent output warmup is an independent, bounded output holder supplied by the authenticated local-speech-streaming patch. Its close/play serialization, timeout and first-audio retirement have separate JVM coverage in test/speech-output-warmup.test.mjs; this model represents capture and audible reply playback only."
+      ],
+      "sharedSources": [
+        "plugins/plugin-local-inference/native/android/src/main/java/ai/eliza/voice/SpeechAudioFocusPolicy.java",
+        "plugins/plugin-local-inference/native/android/src/main/java/ai/eliza/voice/SpeechPcmQueue.java",
+        "plugins/plugin-local-inference/native/android/src/main/java/ai/eliza/voice/LiveCaptureAdmission.java",
+        "plugins/plugin-local-inference/native/android/src/main/java/ai/eliza/voice/LiveVoiceCapture.java",
+        "plugins/plugin-local-inference/native/android/src/main/java/ai/eliza/voice/LiveSegmentPipe.java",
+        "plugins/plugin-local-inference/native/android/src/main/java/ai/eliza/voice/SpeechStreamValidation.java",
+        "plugins/plugin-local-inference/native/android/src/main/java/ai/eliza/voice/StreamingSpeechPlayback.java",
+        "plugins/plugin-local-inference/native/android/src/main/java/ai/eliza/voice/AudioTrackSpeechOutput.java",
+        "plugins/plugin-local-inference/native/android/src/main/java/ai/eliza/voice/LocalSpeechEngine.java",
+        "plugins/plugin-local-inference/native/android/src/main/java/ai/eliza/voice/SessionSpeech.java",
+        "plugins/plugin-local-inference/native/android/speech-bridge/src/main/java/ai/eliza/voice/LocalSpeechBridgePlugin.java"
+      ]
+    },
+    {
+      "path": "specs/quint/native/AlwaysOnListener.qnt",
+      "module": "AlwaysOnListener",
+      "init": "init",
+      "step": "step",
+      "invariant": "safety",
+      "sources": [
+        "apps/app/src/runtime/always-on-listener.ts",
+        "android/sense/src/main/java/ai/elizaresearch/alphaphone/sense/ListeningService.java",
+        "android/sense/src/main/java/ai/elizaresearch/alphaphone/sense/ConsentActivity.java",
+        "android/sense/src/main/java/ai/elizaresearch/alphaphone/sense/ListenerControlProvider.java",
+        "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaListenerPlugin.java"
+      ],
+      "tests": [
+        "consentAndLeaseTest",
+        "lostLeaseNeedsResumeTest",
+        "resetInvalidatesQueuedRecognitionTest",
+        "silencedCaptureDropsFramesTest",
+        "explainedPauseCanResumeTest"
+      ],
+      "invariants": [
+        "CaptureRequiresAuthority",
+        "SilencedFramesDiscarded",
+        "LostIndicatorLatches",
+        "InvocationCurrent",
+        "DecisionProjection"
+      ],
+      "abstractions": [
+        "Nine generation identities and three reset generations; epoch counters stop advancing at the bound.",
+        "Display-off, fullscreen, shade and transition explanations share the paused-indicator abstraction.",
+        "Lease freshness summarizes monotonic TTL, process-death and SystemUI attribution checks."
+      ],
+      "sharedSources": [
+        "packages/app/platforms/android/sense/src/main/java/ai/eliza/sense/ListenerPolicy.java",
+        "packages/app/platforms/android/sense/src/main/java/ai/eliza/sense/ListeningEpoch.java",
+        "packages/app/platforms/android/sense/src/main/java/ai/eliza/sense/IndicatorLease.java",
+        "packages/app/platforms/android/sense/src/main/java/ai/eliza/sense/ListenerStore.java",
+        "plugins/plugin-native-system/src/sense.ts"
+      ]
+    },
+    {
+      "path": "specs/quint/native/ResetRecovery.qnt",
+      "module": "ResetRecovery",
+      "init": "init",
+      "step": "step",
+      "invariant": "safety",
+      "sources": [
+        "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaDataReset.java",
+        "android/app/src/main/java/ai/elizaresearch/alphaphone/ResetRecoveryActivity.java",
+        "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaApplication.java",
+        "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaResetPlugin.java",
+        "android/sense/src/main/java/ai/elizaresearch/alphaphone/sense/ListenerControlProvider.java",
+        "patches/eliza/reset-admission.patch",
+        "patches/eliza/native-manifest.json"
+      ],
+      "tests": [
+        "prepared",
+        "successfulResetTest",
+        "failedListenerRetainsDataTest",
+        "staleDeviceCredentialRejectedTest",
+        "boundedLaunchRecoveryTest",
+        "failedPersistenceDoesNotAuthorizeTest",
+        "authorizationPrecedesMarkerTest",
+        "failedReservationDispatchesNothingTest",
+        "writeAheadReservationSurvivesCrashTest",
+        "missingLegacyBudgetDefersTest",
+        "explicitRetryPreservesExhaustedBudgetTest",
+        "oneReservationOwnerTest",
+        "windowResetOccursAtCommitTest",
+        "erasedRequestCannotRestoreTest",
+        "acceptedClearMayNeedRetryTest",
+        "committedReservationFailureConsumesSlotTest"
+      ],
+      "invariants": [
+        "FreshAuthentication",
+        "PendingBlocksInitialization",
+        "ListenerBeforeAndroid",
+        "DispatchIsNotCompletion",
+        "BoundedAutomaticAttempts",
+        "DurableReservationBeforeEffects",
+        "AutomaticReservationAdmitted"
+      ],
+      "abstractions": [
+        "Three-or-more admitted attempts share the exhausted class. Raw source counters are retained in source-trace evidence; explicit retries preserve a readable same-window count.",
+        "Five authentication generation identities. Authorization, budget initialization, marker commit, attempt reservation, listener result, Android result and process exit are separate transitions.",
+        "Legacy pending markers remain recognized. Missing or corrupt budgets block automatic effects until a durable explicit retry reservation.",
+        "One lock owner is represented by attemptStage; contention refuses another admission until the active attempt finishes or the process exits. Actual two-process FileChannel locking is regression-tested.",
+        "Android dispatch acceptance and externally observed package erasure remain separate. AtomicFile/fsync and real Binder/package deletion require platform evidence."
+      ],
+      "sharedSources": [
+        "plugins/plugin-native-system/android/src/main/java/ai/eliza/plugins/system/reset/ResetAuthorization.java",
+        "packages/auth/android/src/main/java/ai/eliza/auth/cloud/CloudKeyRevocation.java",
+        "packages/app/platforms/android/sense/src/main/java/ai/eliza/sense/ListenerStore.java",
+        "plugins/plugin-native-system/android/src/main/java/ai/eliza/plugins/system/reset/DataReset.java",
+        "plugins/plugin-native-system/android/src/main/java/ai/eliza/plugins/system/reset/DataResetCopy.java",
+        "plugins/plugin-native-system/android/src/main/java/ai/eliza/plugins/system/reset/DataResetRecoveryActivity.java"
+      ],
+      "stateMapping": {
+        "review/confirmed/authGeneration/authReady": "ResetAuthorization begin, confirm, authenticate and retire; authorization is consumed before persistence",
+        "marker/budgetPresent/failures/budgetReadable": "Shared DataReset record, failureState and patched durable write-ahead attempt reservation; failures is the saturated admitted-attempt count",
+        "attemptStage/reserved/explicitRetry": "Cross-process file lock and automaticAttempt/retry admission before listener/Android callbacks",
+        "processInitialized/startupAdmitted/recoveryVisible": "Current process differs from new-process startup admission; AlphaApplication attachBaseContext and recovery/exit callbacks",
+        "dispatched/clearAccepted/erased": "Current attempt acceptance is separate from historical accepted-clear evidence and external erasure; a surviving marker may be retried after restart."
+      }
+    },
+    {
+      "path": "specs/quint/native/DeletionJournal.qnt",
+      "module": "DeletionJournal",
+      "init": "init",
+      "step": "step",
+      "invariant": "safety",
+      "sources": [
+        "android/app/src/main/java/ai/elizaresearch/alphaphone/NativeDeletionCoordinator.java",
+        "android/app/src/main/java/ai/elizaresearch/alphaphone/DeletionWorker.java",
+        "android/app/src/main/java/ai/elizaresearch/alphaphone/NotesDeletionLease.java",
+        "apps/app/src/runtime/deletion-owner.ts",
+        "apps/app/src/runtime/deletions.ts",
+        "apps/app/src/runtime/note-audio-deletions.ts",
+        "android/app/src/main/java/ai/elizaresearch/alphaphone/NativeOwnerReminderHost.java",
+        "patches/eliza/native-manifest.json",
+        "patches/eliza/deletion-owner-admission.patch"
+      ],
+      "tests": [
+        "undoBeforeExpiryTest",
+        "lostOutcomeNeverReplaysTest",
+        "staleOwnerPausesTest",
+        "changedClockKeepsUndoTest",
+        "permissionFailureKeepsUndoTest"
+      ],
+      "invariants": [
+        "SingleDispatch",
+        "UndoKeepsSource",
+        "DurableIntentBeforeEffect",
+        "ReceiptNeedsDispatch",
+        "UnknownNeverRequeued"
+      ],
+      "abstractions": [
+        "One operation, two owner identities, two source revisions and open/expired/clock-changed windows.",
+        "Atomic durable writes are represented by storage success; capacity and multi-row scheduling are omitted.",
+        "A stored dispatching row projects unknown on restart and is never automatically dispatched again."
+      ],
+      "sharedSources": [
+        "plugins/plugin-native-action-journal/android/src/main/java/ai/eliza/plugins/actionjournal/deletion/DeferredDeletionJournal.java",
+        "plugins/plugin-native-action-journal/android/src/main/java/ai/eliza/plugins/actionjournal/deletion/DeletionDispatchClaim.java",
+        "plugins/plugin-native-action-journal/android/src/main/java/ai/eliza/plugins/actionjournal/deletion/DeletionReceiptRecovery.java",
+        "plugins/plugin-native-action-journal/android/src/main/java/ai/eliza/plugins/actionjournal/deletion/DeletionDeadline.java",
+        "packages/contracts/src/deletion-window.ts",
+        "plugins/plugin-native-action-journal/android/src/main/java/ai/eliza/plugins/actionjournal/deletion/DeferredDeletionCoordinator.java"
+      ]
+    },
+    {
+      "path": "specs/quint/native/MediaLifecycle.qnt",
+      "module": "MediaLifecycle",
+      "init": "init",
+      "step": "step",
+      "invariant": "safety",
+      "sources": [
+        "apps/app/src/runtime/photo-library.ts",
+        "apps/app/src/prototype/browser-camera.ts",
+        "apps/app/src/prototype/photo-library-adapter.ts",
+        "apps/app/src/prototype/video-edit-review.ts",
+        "android/app/src/main/java/ai/elizaresearch/alphaphone/NativeReadEpoch.java",
+        "android/app/src/main/java/ai/elizaresearch/alphaphone/SelectedDocumentAccess.java",
+        "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaPhotoLibraryPlugin.java"
+      ],
+      "tests": [
+        "reviewedPublicationTest",
+        "revokeWhileReadingTest",
+        "changedSourceInvalidatesReviewTest",
+        "cancelledCaptureDeletesTemporaryTest",
+        "replacingSelectionStopsPlaybackTest",
+        "pauseRejectsLateReadTest"
+      ],
+      "invariants": [
+        "ActiveReadAdmitted",
+        "ReviewBindsRevision",
+        "PlaybackAdmitted",
+        "PublishedBytesReviewed",
+        "IdleHasNoTemporaryCapture",
+        "DeniedCatalogEmpty"
+      ],
+      "abstractions": [
+        "One selected media item, two source revisions and four native read generations.",
+        "Full/selected summarize permitted access; mixed/partial policies are represented by current per-item permission.",
+        "Exact content/hash equality is represented by matching revision identities; codecs and pixel transforms are omitted."
+      ],
+      "sharedSources": [
+        "plugins/plugin-native-media/android/src/main/java/ai/eliza/plugins/media/PhotoLibraryAccess.java",
+        "plugins/plugin-native-media/android/src/main/java/ai/eliza/plugins/media/PermittedMediaCatalog.java",
+        "plugins/plugin-native-media/android/src/main/java/ai/eliza/plugins/media/PermittedMediaReview.java",
+        "plugins/plugin-native-media/android/src/main/java/ai/eliza/plugins/media/SelectedPhotoCopy.java",
+        "plugins/plugin-native-media/android/src/main/java/ai/eliza/plugins/media/OwnedVideoPlayback.java",
+        "plugins/plugin-native-media/android/src/main/java/ai/eliza/plugins/media/VideoCopyEdits.java"
+      ]
+    },
+    {
+      "path": "specs/quint/native/DeviceActions.qnt",
+      "module": "DeviceActions",
+      "init": "init",
+      "step": "step",
+      "invariant": "safety",
+      "sources": [
+        "apps/app/src/runtime/aosp-telephony.ts",
+        "apps/app/src/runtime/aosp-image.ts",
+        "apps/app/src/runtime/sms-agent-contract.ts",
+        "apps/app/src/runtime/sms-subscription-revision.ts",
+        "apps/app/src/runtime/reminder-creations.ts",
+        "apps/app/src/runtime/reminder-deletions.ts",
+        "apps/app/src/runtime/clock-contract.ts",
+        "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaImageCapabilities.java",
+        "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaTelephonyPlugin.java",
+        "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaReminders.java",
+        "android/app/src/main/java/ai/elizaresearch/alphaphone/ResidentScheduleRearm.java"
+      ],
+      "tests": [
+        "smsDeliveryEvidenceTest",
+        "interruptedDispatchNeverResendsTest",
+        "multipartRemainsSentTest",
+        "failedJournalDoesNotSendTest",
+        "staleReminderTicketTest",
+        "staleContactsReplyAfterPauseTest",
+        "unknownReminderCreationDoesNotRepeatTest",
+        "silentTodoCompletesWithoutAlertTest",
+        "clockHandoffDoesNotClaimRingTest"
+      ],
+      "invariants": [
+        "SingleSmsDispatch",
+        "SmsNeedsReviewAndJournal",
+        "SentRequiresAllCallbacks",
+        "DeliveryNeedsProviderEvidence",
+        "RetiredIdNeverForgotten",
+        "HandoffIsHonest",
+        "ReminderCurrent",
+        "ContactReadCurrent",
+        "ReminderCreationDoesNotReplay"
+      ],
+      "abstractions": [
+        "One SMS id, one or two message parts, two SIM/text identities and permanent retired-id membership.",
+        "Carrier and provider evidence are distinct inputs; multipart never claims delivered.",
+        "One reminder creation and three reminder revisions; notification delivery is posted rather than evidence of Clock execution."
+      ],
+      "sharedSources": [
+        "packages/contracts/src/native-telephony.ts",
+        "plugins/plugin-native-contacts/android/src/main/java/ai/eliza/plugins/contacts/ContactsCatalog.java",
+        "plugins/plugin-native-messages/android/src/main/java/ai/eliza/plugins/messages/SmsSendJournal.java",
+        "plugins/plugin-native-messages/android/src/main/java/ai/eliza/plugins/messages/SmsRecords.java",
+        "plugins/plugin-native-messages/android/src/main/java/ai/eliza/plugins/messages/SmsPageCursor.java",
+        "plugins/plugin-native-system/android/src/main/java/ai/eliza/plugins/system/clock/ClockDays.java",
+        "plugins/plugin-native-system/android/src/main/java/ai/eliza/plugins/system/clock/ClockHandoff.java"
+      ]
+    },
+    {
+      "path": "specs/quint/native/ApplicationComposition.qnt",
+      "module": "ApplicationComposition",
+      "init": "init",
+      "step": "step",
+      "invariant": "safety",
+      "sources": [
+        "apps/app/src/runtime/connection-ui.tsx",
+        "apps/app/src/runtime/cloud-protocol.ts",
+        "apps/app/src/runtime/voice-assistant.ts",
+        "apps/app/src/runtime/local-agent.ts",
+        "apps/app/src/runtime/calendar-sync-host.ts",
+        "apps/app/src/runtime/inbox-operation.ts",
+        "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaDataReset.java",
+        "android/app/src/main/java/ai/elizaresearch/alphaphone/LocalAgentProviderAdmission.java"
+      ],
+      "components": [
+        "specs/quint/services/IdentitySession.qnt",
+        "specs/quint/native/VoiceSession.qnt",
+        "specs/quint/native/ResidentRuntime.qnt",
+        "specs/quint/services/CalendarSync.qnt",
+        "specs/quint/services/InboxDelivery.qnt",
+        "specs/quint/native/ResetRecovery.qnt"
+      ],
+      "invariants": [
+        "OwnerAgreement",
+        "VoiceAccountBound",
+        "ResetStopsConsumers",
+        "InferenceAccountBound",
+        "Identity::safety",
+        "Voice::safety",
+        "Resident::safety",
+        "Calendar::safety",
+        "Inbox::safety",
+        "Reset::safety"
+      ],
+      "tests": [
+        "signInAndVoiceTest",
+        "replacementSetup",
+        "accountReplacementRetiresPendingWorkTest",
+        "retiredCalendarDispatchRejectedTest",
+        "retiredInboxConfirmRejectedTest",
+        "resetSetup",
+        "resetCalendarCompletionRejectedTest",
+        "resetInboxReplyRejectedTest",
+        "resetDuringDispatchedEffectsTest",
+        "backgroundRetiresVoiceGenerationTest",
+        "uncoordinatedIdentityChangeDetectedTest",
+        "signedInSetup",
+        "readySetup",
+        "mfaAndAcknowledgementRecoveryTest",
+        "cancelledAttemptCanRetryTest",
+        "precommitStorageFailureTest",
+        "signedOutResidentStillRunsTest",
+        "residentRecoveryAndRebindingTest",
+        "deleteTimerAndUndoTest",
+        "calendarConflictRecoveryTest",
+        "uncertainCalendarCreateRecoveryTest",
+        "changedInboxDraftCanCancelAndRetryTest",
+        "restartedConsumersRecoverDurableOperationsTest",
+        "voiceReviewAndDictationRecoveryTest",
+        "resetBudgetAndListenerRecoveryTest",
+        "resetReviewRestartRejectsOldAuthTest",
+        "precommitRestartRequiresNewAttemptTest",
+        "restoredCalendarGrantAllowsCurrentWorkTest",
+        "restoredInboxGrantRequiresFreshReviewTest",
+        "restoredGrantCannotReviveRetiredCalendarTest",
+        "restoredGrantCannotReviveRetiredInboxTest",
+        "ordinaryStopRetiresVoiceBeforeRestartTest",
+        "attachedStartCancellationPreservesVoiceTest",
+        "ownedStartupCancellationFencesReplyTest",
+        "pendingReplacementPreservesAccountTest",
+        "heldAcknowledgementPreservesNewAttemptTest"
+      ],
+      "abstractions": [
+        "Actual imported domain transitions run together with explicit frames for every unaffected component.",
+        "Host state contains foreground status and the identity/epoch captured when voice starts; it does not duplicate component state.",
+        "Two account identities and the existing finite component bounds. Expected-rejection scenarios execute imported guards, and a test-only uncoordinated transition must violate cross-domain safety.",
+        "Coordinated account/reset/lifecycle boundary actions specify the product integration contract. Full implementation refinement and every possible component interleaving remain separate evidence.",
+        "MFA, acknowledgement recovery, grant restoration, cancellation and process restart use imported transitions. Each Calendar and Inbox projection retains one durable operation through account retirement.",
+        "A pending replacement attempt preserves the active old account. Voice ownership follows committed ownerEpoch, separately from the pending attempt epoch.",
+        "A committed activation and a new interactive sign-in can overlap. Account readiness follows the acknowledged activation owning the stored key. Queued replacement work has a separate beginIdentityWork boundary, and readySetup explicitly includes prior transient-session cleanup."
+      ]
+    },
+    {
+      "path": "specs/quint/native/NavigationProgress.qnt",
+      "module": "NavigationProgress",
+      "init": "init",
+      "step": "step",
+      "invariant": "safety",
+      "sources": [
+        "apps/app/src/prototype/maps-adapter.ts",
+        "apps/app/src/maps/guidance.ts",
+        "apps/app/src/maps/native-location.ts",
+        "apps/app/src/maps/background-navigation.ts",
+        "apps/app/src/maps/route-distance.ts",
+        "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaNavigationService.java",
+        "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaMapsTransportPlugin.java",
+        "apps/app/src/maps/device-navigation.ts",
+        "apps/app/src/maps/agent-navigation.ts"
+      ],
+      "stateMapping": {
+        "navStep/lastStep/nearSteps/displayedStep": "maps-adapter onNavFix while-loop and guidance.atStep",
+        "navSession/backgroundPending/nativeSession/nativeStops": "startGuidance, BackgroundNavigation, AlphaNavigationService.finish",
+        "rerouting/rerouteCleared/requestGeneration/retryTimer/retryAttempts/retryDelay": "rerouteFrom, controller subscription, scheduleRerouteRetry",
+        "bridgeRegistered/backgroundPending/backgroundRunning": "BackgroundNavigation.active during start and native completion, distinct from confirmed background continuation"
+      },
+      "abstractions": [
+        "Three maneuvers and two route identities, exact 39/40 meter maneuver, 24/25 meter arrival and 30/31 meter accuracy boundary classes.",
+        "Precise position freshness uses exact 30000ms age and 5000ms future limits; GPS geometry is represented by distance classes.",
+        "Four session values and three reroute request generations. Retry attempts saturate at four, preserving the 10/20/40/60-second delay policy.",
+        "The source currently only sets follow=true at Start/recenter. The model preserves this behavior."
+      ],
+      "tests": [
+        "inaccurateArrivalRejectedTest",
+        "sparseProjectionDoesNotSkipManeuverTest",
+        "exactFortyMeterBoundaryTest",
+        "oldReadyCannotCompleteRerouteTest",
+        "failureBackoffAndRecoveryTest",
+        "arrivalCancelsRetryAndBackgroundTest",
+        "oldSessionCannotStopSuccessorTest",
+        "staleLocationCannotMoveCursorTest",
+        "pendingNativeStartKeepsBridgeSessionTest",
+        "foregroundOnlyHiddenStopsTest",
+        "unusableFixDoesNotAdvanceTest"
+      ],
+      "invariants": [
+        "CursorRange",
+        "ManeuverRequiresProximity",
+        "ArrivalRequiresAccurateFix",
+        "ArrivalStopsResources",
+        "RerouteKeepsRoute",
+        "FailedRerouteKeepsRoute",
+        "BoundedBackoff",
+        "NativeSessionOwned",
+        "NativeStopOnce"
+      ],
+      "sharedSources": [
+        "plugins/plugin-maps/src/client/navigation-fix.ts",
+        "plugins/plugin-maps/src/client/guidance.ts",
+        "plugins/plugin-maps/src/client/native-location.ts",
+        "plugins/plugin-maps/src/client/background-navigation.ts",
+        "plugins/plugin-maps/src/client/route-distance.ts",
+        "plugins/plugin-maps/src/client/device-navigation.ts",
+        "plugins/plugin-maps/src/client/agent-navigation.ts"
+      ]
+    },
+    {
+      "path": "specs/quint/native/ListenerLeaseRecovery.qnt",
+      "module": "ListenerLeaseRecovery",
+      "init": "init",
+      "step": "step",
+      "invariant": "safety",
+      "sources": [
+        "android/sense/src/main/java/ai/elizaresearch/alphaphone/sense/SenseApplication.java",
+        "android/sense/src/main/java/ai/elizaresearch/alphaphone/sense/ListeningService.java"
+      ],
+      "stateMapping": {
+        "generation/live/acknowledged/expiresAt/boot/leaseBoot": "IndicatorLease.acquire, renew, verdict, revoke, binderDied",
+        "surface/chip/recording/display/reason/interactive/captureSince": "visible surface, attributed recording, explained pauses and 2500ms attribution grace",
+        "sessionOpen/markerBoot/markerInstall/wall/exits/tripped/processConsent": "ListenerStore.setSessionOpen, recordProcessStart, grantConsent and CrashLoopBreaker"
+      },
+      "abstractions": [
+        "Exact 3000ms expiry, 2500ms attribution grace and 600000ms crash-window boundary classes.",
+        "Three lease generations, two known boots plus unknown boot, two installation identities.",
+        "Startup restores zero to three historical crashes, sufficient to cross the actual three-exit threshold; the actual store cap remains eight.",
+        "Stored consent does not authorize a newly started process; explicit process consent is modeled separately."
+      ],
+      "tests": [
+        "leaseNeedsAcknowledgementTest",
+        "expiredLeaseCannotBeRenewedTest",
+        "attributionRequiredAfterGraceTest",
+        "explainedPauseRequiresVisibleReturnTest",
+        "unknownDisplayUsesListenerScreenTest",
+        "otherBootInvalidatesLeaseTest",
+        "storedHistoryTripsAtThirdUncleanStartTest",
+        "exactCrashWindowBoundaryTest",
+        "crashTripStaysLatchedAfterWindowTest",
+        "rebootDoesNotCountCrashTest",
+        "updateDoesNotCountCrashTest",
+        "permissionRevocationDoesNotCountCrashTest"
+      ],
+      "invariants": [
+        "updated",
+        "needsAttribution",
+        "answer",
+        "kept",
+        "appended",
+        "bounded",
+        "FrameNeedsFreshLease",
+        "FrameNeedsConsent",
+        "AttributionAfterGrace",
+        "CrashHistoryBounded",
+        "NoRenewExpiredLease"
+      ],
+      "sharedSources": [
+        "packages/app/platforms/android/sense/src/main/java/ai/eliza/sense/IndicatorLease.java",
+        "packages/app/platforms/android/sense/src/main/java/ai/eliza/sense/CrashLoopBreaker.java",
+        "packages/app/platforms/android/sense/src/main/java/ai/eliza/sense/ListenerStore.java"
+      ]
+    },
+    {
+      "path": "specs/quint/native/StreamingPlayback.qnt",
+      "module": "StreamingPlayback",
+      "init": "init",
+      "step": "step",
+      "invariant": "safety",
+      "sources": [
+        "patches/eliza/cloud-speech-native.patch",
+        "patches/eliza/local-speech-streaming.patch",
+        "patches/eliza/native-manifest.json"
+      ],
+      "stateMapping": {
+        "started/terminal/stopped/writer/outputOpen": "StreamingSpeechPlayback.start, settle, stop, run/finally",
+        "queue/chunkRemaining/produced/written/played/firstFrame": "bounded queue, partial AudioTrack writes and drain loop",
+        "callback/callbacks/audibleFrame/audibleReported/timestampAvailable/headFallback": "single terminal notification and first audible timestamp or labeled head fallback"
+      },
+      "abstractions": [
+        "Two chunks, two frames per chunk and one writer preserve partial/zero writes and output-drain ordering.",
+        "Elapsed timeout boundaries are represented by explicit synthesis-stall and drain-timeout events.",
+        "PCM values, platform timestamps and audio quality stay external numeric inputs, while writer and callback lifecycle is explicit.",
+        "Silent output warmup is an independent, bounded output holder supplied by the authenticated local-speech-streaming patch. Its close/play serialization, timeout and first-audio retirement have separate JVM coverage in test/speech-output-warmup.test.mjs; this model represents capture and audible reply playback only."
+      ],
+      "tests": [
+        "partialWriteThenDrainTest",
+        "noSuccessBeforePlayedHeadTest",
+        "stopDuringOpenTest",
+        "stopDuringPartialWriteTest",
+        "failureWinsTerminalRaceTest",
+        "timestampReportedOnceTest",
+        "outputCreationFailureTest"
+      ],
+      "invariants": [
+        "OneTerminalCallback",
+        "EndedOnlyAfterDrain",
+        "QueueAndFramesBounded",
+        "TerminalStopsNewFrames",
+        "WriterNeedsOutput",
+        "AudibleHasEvidence"
+      ],
+      "sharedSources": [
+        "plugins/plugin-local-inference/native/android/src/main/java/ai/eliza/voice/StreamingSpeechPlayback.java",
+        "plugins/plugin-local-inference/native/android/src/main/java/ai/eliza/voice/SpeechPcmQueue.java",
+        "plugins/plugin-local-inference/native/android/src/main/java/ai/eliza/voice/AudioTrackSpeechOutput.java",
+        "plugins/plugin-local-inference/native/android/src/main/java/ai/eliza/voice/SpeechAudioFocusPolicy.java",
+        "plugins/plugin-local-inference/native/android/src/main/java/ai/eliza/voice/VoiceLatencyTrials.java",
+        "plugins/plugin-local-inference/native/android/speech-bridge/src/main/java/ai/eliza/voice/LocalSpeechBridgePlugin.java"
+      ]
+    },
+    {
+      "path": "specs/quint/native/ResidentScheduling.qnt",
+      "module": "ResidentScheduling",
+      "init": "init",
+      "step": "step",
+      "invariant": "safety",
+      "sources": [
+        "android/app/src/main/java/ai/elizaresearch/alphaphone/ResidentScheduleRearm.java",
+        "android/app/src/main/java/ai/elizaresearch/alphaphone/ResidentScheduleReceiver.java",
+        "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaLocalAgentPlugin.java"
+      ],
+      "stateMapping": {
+        "unlocked/packaged/enabled/lifecycle/lastDecision": "ResidentScheduleRearm.decide full ordered decision table",
+        "running/epoch/starts": "admitAndStart synchronized decision/start and surrounding lifecycle ownership",
+        "replayedOccurrences": "rearm starts the resident only; upstream schedules own occurrence recovery"
+      },
+      "abstractions": [
+        "Five broadcast classes, three lifecycle generations and three actual process starts.",
+        "Decision and start are atomic under the same lock, matching admitAndStart. A canary shows the forbidden split-admission interleaving.",
+        "First-unlock state differs from screen lock. Occurrence execution remains in the shared runtime rather than the rearm policy."
+      ],
+      "tests": [
+        "allRearmBroadcastsTest",
+        "lockedBootWaitsForUnlockTest",
+        "providerMutationWinsBeforeBroadcastTest",
+        "broadcastBeforeStopIsRetiredTest",
+        "processDeathCanRearmTest",
+        "unavailableBuildAndOwnerTest",
+        "unrelatedBroadcastDoesNotStartTest",
+        "splitAdmissionCanaryTest"
+      ],
+      "invariants": [
+        "NoStartDuringLifecycle",
+        "ActiveResidentAdmitted",
+        "NoOccurrenceReplay",
+        "BoundedStarts"
+      ]
+    },
+    {
+      "path": "specs/quint/native/RendererRecovery.qnt",
+      "module": "RendererRecovery",
+      "init": "init",
+      "step": "step",
+      "invariant": "safety",
+      "sources": [
+        "android/app/src/main/java/ai/elizaresearch/alphaphone/RendererRecoveryBudget.java",
+        "android/app/src/main/java/ai/elizaresearch/alphaphone/MainActivity.java"
+      ],
+      "stateMapping": {
+        "started/windowStart/losses": "RendererRecoveryBudget private started,windowStart,lossesInWindow; count4 denotes4or more",
+        "decision/delay/home": "RendererRecoveryBudget.onLoss, delay; MainActivity.showsHome",
+        "recovering/rendererAlive/pending/activity/finishing/destroyed/escape": "MainActivity.onRenderProcessGone, postDelayed callback, showRendererEscape and explicit Reload",
+        "availableSettings/externalTarget": "settingsAction,homeChoiceAction stock handler preference and failed launch"
+      },
+      "abstractions": [
+        "Loss count saturates at four because every further loss has the same within-window policy.",
+        "The exact 60,000 ms boundary and backwards-time cases use finite timestamps. Six activity generations cover queued callback and manual reload races.",
+        "Additional budgetInit check admits all finite counter states to exercise every budget decision without requiring long reset/recreate prefixes."
+      ],
+      "invariants": [
+        "TypeOK",
+        "BudgetDecision",
+        "DelayMatchesDecision",
+        "EscapeRequiresBudget",
+        "PendingOwnedByActivity",
+        "StockSettingsOnly",
+        "HandoffBounded",
+        "NoLiveViewWithoutBridge",
+        "TaskKindsBounded"
+      ],
+      "tests": [
+        "threeImmediateThenBackoffTest",
+        "homeEscapeAndExplicitReloadTest",
+        "exactWindowBoundaryTest",
+        "backwardsClockStartsNewWindowTest",
+        "duplicateAndForeignCallbacksDoNotSpendBudgetTest",
+        "delayedCallbackCannotReviveClosedActivityTest",
+        "oldCallbackCannotRecreateSuccessorTest",
+        "settingsFallbacksTest",
+        "asynchronousRecreationTest",
+        "noWebViewFallbackTest",
+        "configurationRecreationRetainsBudgetTest",
+        "unansweredFrontingStopsHandoffTest",
+        "failedFrontStartStopsHandoffTest",
+        "resumedOwnerAcknowledgesHandoffTest",
+        "homeTaskSurvivesIndependentPageTest",
+        "finishedTaskIdReuseStartsFreshTest"
+      ],
+      "additionalProofInit": "budgetInit"
+    },
+    {
+      "path": "specs/quint/native/VadSegmentation.qnt",
+      "module": "VadSegmentation",
+      "init": "init",
+      "step": "step",
+      "invariant": "safety",
+      "sources": [],
+      "stateMapping": {
+        "speaking/above/below": "LiveVadGate.speaking,above,below with exact2-window start and16-window end counts",
+        "probability/edge": "accept probability classes, nonfinite-to-zero normalization and edge return",
+        "closeReturned/priorSpeaking": "close reports the former speaking state and resets both counters"
+      },
+      "abstractions": [
+        "Finite probability classes cover below 0.35, exactly 0.35, between thresholds, exactly 0.5, higher values and NaN/positive infinity/negative infinity.",
+        "Every real gate counter value is represented. PCM and model probability generation stay external inputs.",
+        "The additional counterInit check starts from every reachable counter shape, including fifteen low windows, to check closing transitions. Downstream PCM pre-roll is a distinct capture-buffer concern."
+      ],
+      "invariants": [
+        "CounterBounds",
+        "InactiveCounterCleared",
+        "OpeningNeedsTwoWindows",
+        "ClosingNeedsSixteenWindows",
+        "CloseReportsPriorState",
+        "MidProbabilityResetsSilence"
+      ],
+      "tests": [
+        "exactOpeningThresholdTest",
+        "interruptedOpeningRunTest",
+        "sixteenLowWindowsCloseTest",
+        "exactClosingThresholdResetsRunTest",
+        "nonFiniteProbabilityIsSilenceTest",
+        "closeEndsOpenSegmentOnceTest",
+        "closeResetsPartialOpeningTest"
+      ],
+      "additionalProofInit": "counterInit",
+      "sharedSources": [
+        "plugins/plugin-local-inference/native/android/src/main/java/ai/eliza/voice/LiveVadGate.java",
+        "plugins/plugin-local-inference/native/android/src/main/java/ai/eliza/voice/LiveVoiceCapture.java"
+      ]
+    },
+    {
+      "path": "specs/quint/native/VoiceIpcAssembly.qnt",
+      "module": "VoiceIpcAssembly",
+      "init": "init",
+      "step": "step",
+      "invariant": "safety",
+      "sources": [
+        "android/app/src/main/java/ai/elizaresearch/alphaphone/NativeVoiceBinding.java",
+        "android/app/src/main/java/ai/elizaresearch/alphaphone/VoiceEventAdmission.java"
+      ],
+      "stateMapping": {
+        "phase/active/opened/claimed/cancelled": "BufferedStreamExchange.exchange Port.open, active compareAndSet and finally cancellation",
+        "guardCurrent/deadline/failure": "Binding guard checks, scheduled deadline and first-writer failed.compareAndSet",
+        "status/bytes/complete": "response status, cumulative bounded chunk buffer and completion requirement",
+        "validatedCurrent/validatedFailure/resultStatus/resultBytes": "Return-decision snapshot before finally cleanup"
+      },
+      "abstractions": [
+        "One invocation and two handle identities represent the caller-owned handle and a concurrent successor. An invocation is not automatically retried.",
+        "The 128 KiB body bound is scaled to two units, with cumulative overflow and arbitrary response/chunk ordering. JSON, base64, raw event length and UTF-8 correctness are represented by malformed/error transitions and covered by native fixture tests.",
+        "The guard abstracts credential root, token, voice epoch and active owner equality. The deadline can race after return selection and before cancellation; returned response validation is recorded at its actual decision point.",
+        "The Port contract serializes event callbacks and request completion. Cleanup and resource ownership are modeled, not Android thread scheduling or a proof of callback serialization."
+      ],
+      "tests": [
+        "assemblyTest",
+        "missingCompletionTest",
+        "deadlineBeforeDispatchTest",
+        "firstFailureTest",
+        "concurrentHandleTest",
+        "replacedHandleTest",
+        "schedulingFailureTest",
+        "replacementBeforeScheduleFailureTest",
+        "deadlineAfterReturnDecisionTest"
+      ],
+      "invariants": [
+        "TypeOK",
+        "BoundedBody",
+        "OneRequest",
+        "ValidatedReturn",
+        "ReleasedResources",
+        "ForeignHandlePreserved"
+      ],
+      "bounds": {
+        "maxSamples": 1000,
+        "maxSteps": 80,
+        "seed": "123"
+      },
+      "sharedSources": [
+        "plugins/plugin-local-inference/native/android/src/main/java/ai/eliza/voice/BufferedStreamExchange.java"
+      ]
+    },
+    {
+      "path": "specs/quint/native/ListenerLeaseProducer.qnt",
+      "module": "ListenerLeaseProducer",
+      "init": "init",
+      "step": "step",
+      "invariant": "safety",
+      "sources": [],
+      "stateMapping": {
+        "view": "Controller identity/AudioManager observations, user-switch state, display/keyguard/shade state and measured chip/host visibility",
+        "queue/pending/phase": "Main-thread acknowledgement snapshots delivered on the serial background executor",
+        "providerPackage/providerUid/targetValidated": "SenseListeningLease.target trusted provider package and admitted UID equality",
+        "generation/serverGeneration/result": "Acquire/renew/revoke generation and no same-generation retry after refusal/error",
+        "pauseRequested": "Validated pause request retains recording until observed AudioManager stop"
+      },
+      "abstractions": [
+        "Two queued immutable acknowledgements and two receiver generations expose stale measurement delivery and lease replacement. Queue capacity is a finite exploration bound, not a product drop policy.",
+        "UID 1 denotes the single admitted primary-user signed privileged package; UID 2 denotes a mismatch. Signature, package, notification PendingIntent and geometry checks are Boolean environment results.",
+        "Effective visibility abstracts attached/window/ancestor/alpha/90 percent area checks. Shade eligibility separately models blocked/known, keyguard/doze/user, attachment/focus/insets/topmost and host/chip facts.",
+        "A delayed valid snapshot can be sent after the current view changes. Safety checks the measured snapshot and recording gate, not instantaneous global screen visibility.",
+        "Binder death ends this modeled producer process. A restarted process starts from init; receiver expiry and death handling are modeled separately in ListenerLeaseRecovery."
+      ],
+      "tests": [
+        "measuredShadeTest",
+        "delayedAckUsesSnapshotTest",
+        "providerValidationTest",
+        "refusedGenerationTest",
+        "immersiveTransientTest",
+        "pauseNeedsAudioObservationTest",
+        "userSwitchRevokesTest",
+        "returnToPrimaryTest",
+        "unreadableMeasurementTest",
+        "binderDeathTest"
+      ],
+      "invariants": [
+        "TypeOK",
+        "QueuedMeasurement",
+        "ChipRequiresRecording",
+        "ValidatedTarget",
+        "RefusedGenerationRetired",
+        "SerializedDelivery"
+      ],
+      "bounds": {
+        "maxSamples": 1000,
+        "maxSteps": 80,
+        "seed": "123"
+      },
+      "sharedSources": [
+        "packages/os/android/sense/systemui/chip/source/SenseListeningController.java",
+        "packages/os/android/sense/systemui/chip/source/SenseListeningLease.java",
+        "packages/os/android/sense/systemui/chip/source/SenseListeningPolicy.java",
+        "packages/os/android/sense/systemui/chip/source/SenseListeningChipView.java"
+      ]
+    },
+    {
+      "path": "specs/quint/native/NativeNoteRecordingService.qnt",
+      "module": "NativeNoteRecordingService",
+      "init": "init",
+      "step": "step",
+      "invariant": "safety",
+      "sources": [
+        "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaNoteRecordingService.java",
+        "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaNoteRecorder.java"
+      ],
+      "tests": [
+        "replacedRecordingRejectsOldStopTest",
+        "blankStopCannotHideLiveRecordingTest",
+        "discardedRecordingAcceptsLegacyStopTest",
+        "pausedNotificationCanResumeTest",
+        "staleToggleCannotChangeNewRecordingTest",
+        "staleStartPreservesCurrentOwnerTest",
+        "pendingStartRejectsFallbackStopTest",
+        "resumedRecordingRejectsLateCloseTest"
+      ],
+      "invariants": [
+        "ForegroundHasOwner",
+        "StaleStopPreservesOwner",
+        "Bounded"
+      ],
+      "abstractions": [
+        "Two recording identities. Android callbacks execute serially on the main thread.",
+        "MediaRecorder output, Android foreground admission and notification presentation are external inputs."
+      ]
+    },
+    {
+      "path": "specs/quint/native/NativeNoteRecording.qnt",
+      "module": "NativeNoteRecording",
+      "init": "init",
+      "step": "step",
+      "invariant": "safety",
+      "sources": [
+        "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaNoteRecorder.java"
+      ],
+      "tests": [
+        "pauseAccountingTest",
+        "durableSegmentsSurviveRestartTest",
+        "failedJournalLosesOnlyUncommittedSuffixTest",
+        "lateRecorderCallbackCannotStopReplacementTest",
+        "failedTranscriptWriteRetainsVolatileTextTest",
+        "failedJoinKeepsSegmentsTest",
+        "corruptJournalCannotRecoverTest",
+        "missingAudioCannotRecoverTest",
+        "legacyAudioRetainsNoOwnerTest"
+      ],
+      "invariants": [
+        "Bounded",
+        "ResourceOwnership",
+        "RecordingHasCapture",
+        "IdleHasNoRecording",
+        "TimerHasActiveCapture",
+        "DurablePrefix",
+        "TranscriptBounds",
+        "RecoveryBlocksCapture"
+      ],
+      "abstractions": [
+        "Two finished segments, two recording and owner identities, two transcript value classes and four recorder instances. Exact virtual millisecond accounting within 108100 ms.",
+        "MediaRecorder and remux codec behavior are controlled ports. Journal bytes and finished/current files are real temporary files. Low storage is a modeled external input with an unexecuted real free-space branch."
+      ]
+    },
+    {
+      "path": "specs/quint/native/NativeVoiceDraft.qnt",
+      "module": "NativeVoiceDraft",
+      "init": "init",
+      "step": "step",
+      "invariant": "safety",
+      "sources": [
+        "vendor/eliza/plugins/plugin-local-inference/native/android/src/main/java/ai/eliza/voice/LocalVoiceRecording.java",
+        "patches/eliza/notes-recording-segments.patch"
+      ],
+      "tests": [
+        "stoppedDraftSelectableTest",
+        "staleCallbackAfterReplacementTest",
+        "oversizedDraftClearedTest",
+        "consumerFailureKeepsRecordedAudioTest",
+        "externalSegmentAvailableDuringDraftTest"
+      ],
+      "invariants": [
+        "CaptureOwnsDraft",
+        "EmptyHasNoCapture",
+        "TimerTracksCapture",
+        "Bounded"
+      ],
+      "abstractions": [
+        "Two draft identities, three capture instances and two callbacks bound the source campaign.",
+        "Physical media encoding, Android timer delivery and permission admission are external inputs."
+      ]
+    },
+    {
+      "path": "specs/quint/native/NativeNotePermission.qnt",
+      "module": "NativeNotePermission",
+      "init": "init",
+      "step": "step",
+      "invariant": "safety",
+      "sources": [
+        "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaVoiceCloudPlugin.java",
+        "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaNoteRecorder.java",
+        "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaNoteRecordingService.java"
+      ],
+      "tests": [
+        "permissionReturningDuringCallTest",
+        "retiredResumeCannotOpenMicrophoneTest",
+        "queuedStartRetiredTest",
+        "explicitResumeWhileLiveTest",
+        "deniedPermissionKeepsCaptureClosedTest"
+      ],
+      "invariants": [
+        "AcceptedOnlyWhileLive",
+        "RefusalDoesNotStartCapture",
+        "OnePendingRequest",
+        "Bounded"
+      ],
+      "abstractions": [
+        "One pending request, two successful capture starts and serialized main queue delivery. Pause/resume/stop/discard operate on the current recording identity.",
+        "The complete product bridge note methods execute against controlled parent lifecycle/permission ports and the real segmented recorder. Shared parent bridge lifecycle and physical microphone permission enforcement remain separate obligations."
+      ]
+    },
+    {
+      "path": "specs/quint/native/ControllerComposition.qnt",
+      "module": "ControllerComposition",
+      "init": "init",
+      "step": "step",
+      "invariant": "safety",
+      "sources": [
+        "apps/app/src/runtime/connection-ui.tsx",
+        "apps/app/src/runtime/cloud-protocol.ts",
+        "apps/app/src/runtime/calendar-sync-host.ts",
+        "apps/app/src/runtime/native-calendar-sync.ts",
+        "apps/app/src/runtime/calendar-linked-storage.ts",
+        "apps/app/src/runtime/google-calendar-selection.ts",
+        "apps/app/src/runtime/voice-assistant.ts",
+        "apps/app/src/prototype/voice-adapter.ts"
+      ],
+      "components": [
+        "specs/quint/services/IdentitySession.qnt",
+        "specs/quint/services/CalendarLinkedSync.qnt",
+        "specs/quint/native/VoiceSession.qnt"
+      ],
+      "invariants": [
+        "RendererHasActivatedCredential",
+        "VoiceBindingCurrent",
+        "CalendarBindingCurrent",
+        "LiveCalendarBinding",
+        "Identity::safety",
+        "Calendar::safety",
+        "Voice::safety"
+      ],
+      "tests": [
+        "signInAndVoiceTest",
+        "nativeCommitPrecedesRendererPublicationTest",
+        "accountReplacementRetiresCalendarReviewTest",
+        "alreadyDispatchedEffectCanFinishAfterReplacementTest",
+        "signOutKeepsUnknownCalendarIntentTest",
+        "foregroundLossRejectsNewCalendarDispatchTest",
+        "cancelledReplacementKeepsOldBindingTest",
+        "lateVoiceReplyCannotUseReplacementTest",
+        "uncoordinatedIdentityChangeDetectedTest"
+      ],
+      "abstractions": [
+        "Two native credential attempts and two renderer owners. Native commit, acknowledgement and renderer publication are separate transitions.",
+        "One durable Calendar link retains the old owner binding across account changes. New-account link collections require a separate instance and are not represented by resetting the old link.",
+        "Initial restored authentication and native authentication completion are explicit contract macros in renderer traces. Intermediate native storage/ack state is checked by the separate native sign-in campaign.",
+        "This bounded renderer composition imports IdentitySession, CalendarLinkedSync and VoiceSession. ApplicationComposition retains the separate Inbox, Resident and Reset coordination contracts."
+      ]
+    },
+    {
+      "path": "specs/quint/native/SharedRecordingAdmission.qnt",
+      "module": "SharedRecordingAdmission",
+      "init": "init",
+      "step": "step",
+      "invariant": "safety",
+      "sources": [
+        "vendor/eliza/plugins/plugin-local-inference/native/android/speech-bridge/src/main/java/ai/eliza/voice/LocalSpeechBridgePlugin.java",
+        "vendor/eliza/plugins/plugin-local-inference/native/android/src/main/java/ai/eliza/voice/LocalVoiceRecording.java",
+        "vendor/eliza/plugins/plugin-local-inference/native/android/src/main/java/ai/eliza/voice/SpeechRequestGate.java",
+        "patches/eliza/speech-recording-admission.patch",
+        "patches/eliza/native-manifest.json",
+        "patches/eliza/local-speech-streaming.patch",
+        "patches/eliza/notes-recording-segments.patch"
+      ],
+      "tests": [
+        "lateCallRejectsPermissionStartTest",
+        "pauseForPromptCanResumeTest",
+        "pauseRetiresQueuedStartTest",
+        "cancelRetiresPromptTest",
+        "timeoutKeepsAdmissionClosedTest",
+        "joinedCancelWaitsForOneBarrierTest",
+        "refusedBarrierStaysClosedTest"
+      ],
+      "invariants": [
+        "AcceptedInCurrentLiveEpoch",
+        "CaptureHasOwner",
+        "PendingNotQueued",
+        "DrainOwnsWaiters",
+        "Bounded"
+      ],
+      "abstractions": [
+        "Two recording requests, two cancellation waiters and two capture openings, with exact permission epochs through four.",
+        "The complete shared bridge, draft recorder and request gate execute. Platform audio mode/permission, unrelated live capture, inference and playback are controlled ports."
+      ]
+    },
+    {
+      "path": "specs/quint/native/NativeLiveCapture.qnt",
+      "module": "NativeLiveCapture",
+      "init": "init",
+      "step": "step",
+      "invariant": "safety",
+      "sources": [
+        "vendor/eliza/plugins/plugin-local-inference/native/android/speech-bridge/src/main/java/ai/eliza/voice/LocalSpeechBridgePlugin.java",
+        "vendor/eliza/plugins/plugin-local-inference/native/android/src/main/java/ai/eliza/voice/LiveCaptureController.java",
+        "vendor/eliza/plugins/plugin-local-inference/native/android/src/main/java/ai/eliza/voice/LiveVoiceCapture.java",
+        "vendor/eliza/plugins/plugin-local-inference/native/android/src/main/java/ai/eliza/voice/LiveCaptureAdmission.java",
+        "vendor/eliza/plugins/plugin-local-inference/native/android/src/main/java/ai/eliza/voice/LiveCaptureResource.java",
+        "patches/eliza/speech-recording-admission.patch",
+        "patches/eliza/native-manifest.json",
+        "patches/eliza/local-speech-streaming.patch"
+      ],
+      "tests": [
+        "permissionDuringCallTest",
+        "callDuringNativeOpenTest",
+        "cancelledOpenReleasedTest",
+        "replacementRejectsOldPermissionTest",
+        "explicitStopKeepsTailTest",
+        "lifecycleDiscardsTailTest"
+      ],
+      "invariants": [
+        "CurrentStartupGate",
+        "ReleasedIsStopped",
+        "PointerOwnership",
+        "DiscardIsCancelled",
+        "Bounded"
+      ],
+      "abstractions": [
+        "Two capture identities/reservations and source instances, with three host epochs. Native open and release are controlled ports.",
+        "Provider-piped capture remains a separate source schedule obligation."
+      ]
+    }
+  ]
+}

@@ -158,9 +158,13 @@ public class MainActivity extends BridgeActivity {
  /** Bring-to-front starts the live instance has not yet received. It answers each within a frame or two. */
  private static int unackedFrontStarts = 0;
  private static final int MAX_UNACKED_FRONT_STARTS = 3;
- /** The task of the instance that owns the page, and whether that task has the home activity type. */
- private static int liveTaskId = -1;
- private static boolean liveTaskHome = false;
+ /** Each surviving task retains its kind when handoff permits multiple page owners. */
+ private static final class TaskKind {
+  final boolean home;
+  java.lang.ref.WeakReference<MainActivity> owner;
+  TaskKind(boolean home,MainActivity owner){this.home=home;this.owner=new java.lang.ref.WeakReference<>(owner);}
+ }
+ private static final java.util.Map<Integer,TaskKind> taskKinds = new java.util.HashMap<>();
  private boolean handedOff = false;
  private boolean startedAsHome = false;
  static boolean isHomeIntent(Intent intent) {
@@ -275,8 +279,13 @@ public class MainActivity extends BridgeActivity {
    // First instance in this task: its start intent says which kind of task Android made. A relaunch
    // in the same task keeps that answer whatever intent it was handed (see "One live MainActivity").
    int task = getTaskId();
-   if (task == -1 || task != liveTaskId) { liveTaskId = task; liveTaskHome = isHomeTypeStart(getIntent()); }
-   startedAsHome = liveTaskHome;
+   if (task == -1) startedAsHome = isHomeTypeStart(getIntent());
+   else {
+    TaskKind kind = taskKinds.get(task);
+    if (kind == null) { kind = new TaskKind(isHomeTypeStart(getIntent()),this); taskKinds.put(task,kind); }
+    kind.owner = new java.lang.ref.WeakReference<>(this);
+    startedAsHome = kind.home;
+   }
   }
   registerPlugin(AlphaSystemPlugin.class);
   registerPlugin(AlphaResetPlugin.class);
@@ -308,7 +317,11 @@ public class MainActivity extends BridgeActivity {
   registerPlugin(AlphaListenerPlugin.class);
   registerPlugin(ai.eliza.plugins.system.SensePlugin.class);
   registerPlugin(ai.eliza.plugins.passwords.PasswordsPlugin.class);
-  if(BuildConfig.ELIZA_DEV_ALLOW_TEST_MOCKS)registerPlugin(ai.eliza.plugins.passwords.PasswordTransferPlugin.class);
+  if (BuildConfig.ELIZA_DEV_ALLOW_TEST_MOCKS) {
+   // The optional transfer module is absent from production builds.
+   try { registerPlugin(Class.forName("ai.eliza.plugins.passwords.PasswordTransferPlugin").asSubclass(com.getcapacitor.Plugin.class)); }
+   catch (ClassNotFoundException ignored) { /* Optional development transfer module is not attached. */ }
+  }
   // The native image gate is checked again by every telephony operation.
   // Dialer-role components follow the verified image; Android's role dialog stays the owner's choice.
   AlphaTelephonyRoles.sync(this);
@@ -395,6 +408,8 @@ public class MainActivity extends BridgeActivity {
  }
  @Override public void onDestroy() {
   if (liveInstance.get() == this) liveInstance = new java.lang.ref.WeakReference<>(null);
+  TaskKind kind = taskKinds.get(getTaskId());
+  if (isFinishing() && kind != null && kind.owner.get() == this) taskKinds.remove(getTaskId());
   super.onDestroy();
  }
  /**

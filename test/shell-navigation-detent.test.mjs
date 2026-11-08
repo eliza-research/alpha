@@ -44,6 +44,16 @@ test('Back lowers an open conversation one detent before it leaves the view', ()
   s.back();assert.deepEqual(at(s),{view:null,chat:'input',stack:[]},'and then Home, resting in the composer');
 });
 
+test('a bar raised over a pill view lowers to the pill before Back leaves the view', () => {
+  const s=shell({});
+  s.openView('notes');
+  s.state.chat='input';
+  s.back();assert.deepEqual(at(s),{view:'notes',chat:'hidden',stack:[]},'the raised bar lowers to the pill');
+  s.back();assert.deepEqual(at(s),{view:null,chat:'input',stack:[]},'only then Back leaves Notes');
+  // Home and Browser rest in the bar: it is not a level there.
+  s.openView('browser');s.back();assert.equal(s.state.view,null);
+});
+
 test('Home and view changes set the detent the destination rests in, unless one is asked for', () => {
   const s=shell({view:'notes',chat:'sheet'});
   s.openView('files');assert.equal(s.state.chat,'hidden');

@@ -1,5 +1,5 @@
 import type {DomainRecovery} from '../browser/domain-document';
-import {captureDevicePreferences,cachedDevicePreferences,editDevicePreferences,initializeDevicePreferences} from '../browser/device-preferences';
+import {captureDevicePreferences,cachedDevicePreferences,editDevicePreferences,initializeDevicePreferences,readDevicePreferences} from '../browser/device-preferences';
 import {Capacitor} from '@capacitor/core';
 import {browserLocalAgentEnabled,saveNativeGoogleAgentAccess} from './local-agent';
 
@@ -15,29 +15,41 @@ export function googleAgentAccess():GoogleAgentAccess{
 export async function captureGoogleCalendarAccess(){
  try{const {state,receipt}=await captureDevicePreferences();return{calendarEdits:state.agentCalendarEdits,receipt};}catch{return undefined;}
 }
+/** Keep a save, its host publication and any rollback together across same-origin views. */
+function withGoogleAccessLock<T>(operation:()=>Promise<T>):Promise<T>{
+ if(!navigator.locks?.request)throw Error('Safe Google access changes require Web Locks.');
+ return navigator.locks.request('alpha.google-agent-access.v1',{mode:'exclusive'},operation);
+}
 /** Hands the saved switches to the agent's Google host. On the phone a failed save throws, so Settings never shows a state the host does not enforce. */
-export async function publishGoogleAgentAccess(){
+async function publishSavedGoogleAgentAccess(){
  const native=Capacitor.isNativePlatform();
  if(!native&&!browserLocalAgentEnabled)return;
  // Before the saved settings load, the default (on) must not overwrite a saved off on the host.
  // Loading them fires alpha:device-settings, which publishes again.
  initializeDevicePreferences();if(!cachedDevicePreferences())return;
- if(native){await saveNativeGoogleAgentAccess(googleAgentAccess());return;}
- await fetch(GOOGLE_AGENT_ACCESS_PATH,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(googleAgentAccess())}).catch(()=>{});
+ const saved=await readDevicePreferences();
+ const access={gmailChanges:saved.agentGmailChanges,calendarEdits:saved.agentCalendarEdits};
+ if(native){await saveNativeGoogleAgentAccess(access);return;}
+ await fetch(GOOGLE_AGENT_ACCESS_PATH,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(access)}).catch(()=>{});
+}
+export function publishGoogleAgentAccess(){
+ return withGoogleAccessLock(publishSavedGoogleAgentAccess);
 }
 export async function setGoogleAgentAccess(change:Partial<GoogleAgentAccess>,guard?:{current():boolean;expectedCalendarEdits:boolean;receipt:DomainRecovery}){
- let before:GoogleAgentAccess|undefined;
- await editDevicePreferences(state=>{
-  // Rechecked inside the canonical edit, including every document conflict retry.
-  if(guard&&(!guard.current()||state.agentCalendarEdits!==guard.expectedCalendarEdits))throw Error('Calendar choice changed. Review it again.');
-  before={gmailChanges:state.agentGmailChanges,calendarEdits:state.agentCalendarEdits};
-  if(change.gmailChanges!==undefined)state.agentGmailChanges=change.gmailChanges;
-  if(change.calendarEdits!==undefined)state.agentCalendarEdits=change.calendarEdits;
- },undefined,guard?.receipt);
- try{await publishGoogleAgentAccess();}
- catch(error){
-  // The host kept its previous switches: put Settings back so a switch never shows what the host does not enforce.
-  const previous=before;if(previous)await editDevicePreferences(state=>{state.agentGmailChanges=previous.gmailChanges;state.agentCalendarEdits=previous.calendarEdits;}).catch(()=>{});
-  throw error;
- }
+ return withGoogleAccessLock(async()=>{
+  let before:GoogleAgentAccess|undefined;
+  await editDevicePreferences(state=>{
+   // Rechecked inside the canonical edit, including every document conflict retry.
+   if(guard&&(!guard.current()||state.agentCalendarEdits!==guard.expectedCalendarEdits))throw Error('Calendar choice changed. Review it again.');
+   before={gmailChanges:state.agentGmailChanges,calendarEdits:state.agentCalendarEdits};
+   if(change.gmailChanges!==undefined)state.agentGmailChanges=change.gmailChanges;
+   if(change.calendarEdits!==undefined)state.agentCalendarEdits=change.calendarEdits;
+  },undefined,guard?.receipt);
+  try{await publishSavedGoogleAgentAccess();}
+  catch(error){
+   // No later Google choice can interleave before the failed publication is rolled back.
+   const previous=before;if(previous)await editDevicePreferences(state=>{state.agentGmailChanges=previous.gmailChanges;state.agentCalendarEdits=previous.calendarEdits;}).catch(()=>{});
+   throw error;
+  }
+ });
 }

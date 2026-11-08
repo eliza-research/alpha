@@ -17,7 +17,7 @@ import {returnToApps} from './app-navigation';
 // runtime, a model answer, Eliza Cloud or a device, and no document, account or note is real.
 import { test, expect, type Page } from '@playwright/test';
 import { createHash } from 'node:crypto';
-import { flagOffAndroid, harness, button, fenceNetwork, expectNoDevelopmentSurface, residentHome, type FlagOffDocument } from './flag-off-android';
+import { flagOffAndroid, harness, button, fenceNetwork, expectNoDevelopmentSurface, residentHome, openYourAgent, type FlagOffDocument } from './flag-off-android';
 
 const contents = 'Public fact: twelve raised beds.\nPRIVATE OMIT: do not send this line.';
 const excerpt = 'Public fact: twelve raised beds.';
@@ -31,15 +31,15 @@ const savedNotes = (page: Page) => harness(page, f => { const slot = f.slots['no
 /** What the user sent: each turn's text after the current-screen context the renderer adds. */
 const sent = (page: Page) => harness(page, f => f.posts.map((post: string) => post.split('[USER MESSAGE]\n').pop())) as Promise<string[]>;
 
-/** Files > Documents > the picked document > Ask Alpha, trimmed to the public line, and sent. */
+/** Files > Documents > the document > Ask Alpha, trimmed to the public line, and sent. */
 async function askAboutDocument(page: Page) {
   await page.evaluate(text => { (window as any).flagOff.replies.push(text); }, answer);
   await button(page, 'Files').click();
   await button(page, 'Documents').click();
+  await button(page, 'Open garden-report.txt').click();
   await expect(page.getByText('PRIVATE OMIT: do not send this line.', { exact: true })).toBeVisible();
-  // The picker was narrowed to documents; reading showed the text, and nothing was sent.
-  expect(await harness(page, f => f.documents.picks.map((pick: any) => pick.action))).toEqual(['files']);
-  expect(await harness(page, f => f.documents.picks[0].mime)).toContain('text/plain');
+  // Documents lists the file from storage; opening it selected that one path, and nothing was sent.
+  expect(await harness(page, f => f.documents.picks)).toEqual([{ action: 'files', path: 'Documents/garden-report.txt' }]);
   await button(page, 'Ask Alpha').click();
   const question = page.getByRole('dialog', { name: 'Ask about selected content' });
   await expect(question.getByRole('textbox', { name: 'Content excerpt' })).toHaveValue(contents);
@@ -121,9 +121,8 @@ test('J03 on Android: a resident session that changes before Save withdraws the 
   await expect(page.getByRole('button', { name: /^Review summary note/ })).toHaveCount(1);
   // The resident agent is reconnected from Settings: a new verified session.
   await page.evaluate(() => window.dispatchEvent(new Event('launcher-home')));
-  await button(page, 'Settings').click();
-  await button(page, 'Agent connection').click();
-  await page.getByRole('region', { name: 'Settings',exact:true }).getByRole('button', { name: 'Reconnect agent', exact: true }).click();
+  const connection = await openYourAgent(page);
+  await connection.getByRole('button', { name: 'Reconnect agent', exact: true }).click();
   await expect.poll(() => harness(page, f => f.calls.filter((call: string) => call === 'Agent.start').length), { timeout: 30_000 }).toBe(2);
   await expect(page.locator('.alpha-connection-scrim')).toHaveCount(0, { timeout: 30_000 });
   await button(page, 'Open conversation').click();

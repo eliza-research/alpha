@@ -112,3 +112,17 @@ test("each refusal carries its own reject code, so the renderer never parses mes
   // A sensitive page is never reported as merely unavailable.
   assert.ok(review.indexOf("SENSITIVE_PAGE") < review.indexOf("ISOLATED_WORLD_UNAVAILABLE"));
 });
+
+
+test('Cloud native Browser hides local-only reading without disabling page questions',()=>{
+ const match=/readAloudAvailable:([^,]+),/.exec(adapter);assert.ok(match);
+ for(const native of [true,false])for(const cloud of [true,false]){
+  const available=new Function('Capacitor','cloudRuntimeEnabled','return '+match[1])({isNativePlatform:()=>native},cloud);
+  assert.equal(available,!(native&&cloud));
+ }
+ assert.match(template,/browser\.readAloudAvailable && browser\.pageContentAvailable/);
+ const read=adapter.slice(adapter.indexOf('async function readPage()'),adapter.indexOf('async function askPage()'));
+ assert.ok(read.indexOf('if(Capacitor.isNativePlatform()&&cloudRuntimeEnabled)return;')<read.indexOf('createNativeReadingVoice()'));
+ const runtime=fs.readFileSync('apps/app/src/runtime/native-reading-voice.ts','utf8');
+ assert.match(runtime,/createNativeReadingVoice\(\)\{\s*if\(cloudRuntimeEnabled\)return null;/);
+});

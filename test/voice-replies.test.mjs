@@ -1,14 +1,14 @@
+import {cloudVoiceViewFixture} from './fixtures/cloud-voice-view.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import vm from 'node:vm';
-import {stripTypeScriptTypes} from 'node:module';
-import {cloudVoiceViewFixture} from './fixtures/cloud-voice-view.mjs';
+import {stripTypeScriptTypes} from './support/strip-types.mjs';
 
 // Real playback, selection and timing sources; the speech engine boundary is a fixture.
 function load(file, name, box) {
   const source = fs.readFileSync('apps/app/src/' + file, 'utf8').replace(/^import .*;\n/gm, '').replaceAll('export async function', 'async function').replaceAll('export function', 'function').replaceAll('export const', 'const').replaceAll('export type', 'type');
-  vm.runInNewContext('{' + stripTypeScriptTypes(source, {mode: 'strip'}) + '\nglobalThis.' + name + '=' + name + ';}', box);
+  vm.runInNewContext('{' + stripTypeScriptTypes(source, {mode: 'transform'}) + '\nglobalThis.' + name + '=' + name + ';}', box);
 }
 const tick = () => new Promise(resolve => setTimeout(resolve, 0));
 function fixture({native = true} = {}) {

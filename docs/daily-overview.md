@@ -39,13 +39,24 @@ The overview domain and cards are upstream elizaOS code that Alpha consumes thro
 
 ## Cards
 
-| Card | Source | Attribution and freshness shown | States |
+Home keeps four widgets available in one row, in the order Calendar, Workflows, Inbox and Your
+brief. Each widget shows the loading, setup, empty, failure or retained-result state supplied by
+its owner. An empty widget does not make a provider request. The current layout does not replace
+these widgets with a date-only row or a second Google setup shortcut.
+
+The shared card receives the source metadata available from its adapter. Calendar keeps an
+accessible description for the source and read state, and renders a metadata line only when the
+adapter supplies one. An unverified calendar has no invented successful-read time. Inbox describes
+the account and the completed read of its loaded page. Opening Calendar retries a failed read
+through the existing Calendar owner.
+
+| Card | Source | Attribution and freshness | States |
 | --- | --- | --- | --- |
-| Calendar (`data-alpha-home-calendar`) | The calendar source chosen in Calendar: the agent's calendar feed (Agent Calendar) by default; the device calendars read by the Calendar adapter only after the owner chooses them there (Android calendars, or the browser calendar in test-mocks builds), and Agent Calendar again when chosen back (opening the card opens Calendar on the source it showed); reminders from the reminder store. Agent Calendar states: reading, not connected, under review, failed or unavailable (`Open Calendar to retry`, read again on open), fresh (`Agent Calendar`, `As of <time>` in the description), empty only after a complete read, and stale (a partial feed or a snapshot from an earlier day keeps the item with `Not updated since <time>` and `data-alpha-home-calendar-stale="true"`). An agent event shows its day and time range and is named `Open calendar event: <title>, <day>, <time>` as a device event is. A reminder saved on this phone that comes before the agent's next event leads the card with the reminder store's source, as it does with device calendars. Under an overdue reminder the agent's next event shows on the `Next:` line | Calendar name beside the date, `Read <time>` beside the event time; the full sentence is the card's accessible description. An upcoming reminder shows `Reminder` and the reminder store's read time instead of a calendar's | Loading, no upcoming events, results limited to the first 2,000 events, read failed with `Open Calendar to retry` (opening Calendar from the card reads it again), access off, not connected |
+| Calendar (`data-alpha-home-calendar`) | The calendar source chosen in Calendar: the agent's calendar feed (Agent Calendar) by default; the device calendars read by the Calendar adapter only after the owner chooses them there (Android calendars, or the browser calendar in test-mocks builds), and Agent Calendar again when chosen back (opening the card opens Calendar on the source it showed); reminders from the reminder store. Agent Calendar states: reading, not connected, under review, failed or unavailable (`Open Calendar to retry`, read again on open), fresh (`Agent Calendar`, `As of <time>` in the description), empty only after a complete read, and stale (a partial feed or a snapshot from an earlier day keeps the item with `Not updated since <time>` and `data-alpha-home-calendar-stale="true"`). An agent event shows its day and time range and is named `Open calendar event: <title>, <day>, <time>` as a device event is. A reminder saved on this phone that comes before the agent's next event leads the card with the reminder store's source, as it does with device calendars. Under an overdue reminder the agent's next event shows on the `Next:` line | The adapter supplies the source, read status and accessible description. Missing or unverified metadata stays empty. A reminder uses the reminder store's source | Loading, no upcoming events, results limited to the first 2,000 events, read failed with `Open Calendar to retry` (opening Calendar from the card reads it again), access off, not connected |
 | Overdue reminder (same card) | Reminders that are due and not done (`overdueReminders`) | Header `Overdue reminder` or `N overdue reminders`, `Due <time>`, `Read <time>` of the reminder store; description names the reminder store | Shown before any event, including one already in progress, until it is completed or cancelled or its due time moves to the future. A snoozed reminder that keeps its original due time stays listed. The next event or reminder still shows below it on a `Next: <title> <time>` line with its own source and read time |
 | Workflows (`data-alpha-home-workflows`) | Workflow list from the connected agent; the unified automations list after the user opens Workflows | `Loaded <time>` under the status line once a list was loaded for the current connection; the source is named in the accessible description only | Connect agent, loading, empty, failed with retry, partial, last loaded |
 | Inbox (`data-alpha-home-inbox`) | Metadata of the Inbox page the user loaded in Inbox | Account label and `Read <time>`; `From loaded messages` when the page was partial. The time is the completed first-page read; loading more pages or changing read state in Inbox does not move it | Connect email, open to check or load, updating, no unread email, failed with `Open to retry · last read <time>`, reconnect |
-| Latest brief (`data-alpha-home-brief`) | Newest scheduled-digest result retained in this app for the current connection (`latestRetainedDigest`) | Agent name and `Ran <time>` or `Failed <time>`. An occurrence the agent recorded without running it (missed time, overlapping run, unavailable source) is a record, not a brief: `rememberRetainedDigests` never retains it, so it does not replace the last brief that ran and produces no card on its own. The presenter still labels such a status `Did not run <time>` if one ever reaches it | Absent when no result is retained; a failed run shows its error text. Opens the scheduled digests list |
+| Latest brief (`data-alpha-home-brief`) | Newest scheduled-digest result retained in this app for the current connection (`latestRetainedDigest`) | Agent name and `Ran <time>` or `Failed <time>`. An occurrence the agent recorded without running it (missed time, overlapping run, unavailable source) is a record, not a brief: `rememberRetainedDigests` never retains it, so it does not replace the last brief that ran or populate an empty widget. The presenter still labels such a status `Did not run <time>` if one ever reaches it | The empty widget says `Your brief` and `No brief yet`. A retained failed run shows its error text. Opening the widget opens the scheduled digests list |
 
 While the app calendar is hidden in Calendar's display settings (browser only; device calendars
 have no in-app toggle), Home leaves its events out as Calendar does and shows `No visible events`
@@ -53,6 +64,13 @@ when nothing else is due. Reminders are not affected.
 
 Times are when this app read the data on this device. They are not provider sync times.
 A read from an earlier day shows its date.
+
+## Home layout
+
+The card row keeps a fixed height across empty, loading and populated states. The app grid uses
+Android insets and a reserved dock area. A taller dock adds scroll space and preserves the grid position. `main.tsx` retains the keyboard-free Home geometry while text is being edited, so a reduced
+WebView height does not make the grid jump above the keyboard. Home layout tests cover card
+arrival, text size, the dock and the keyboard independently.
 
 ## Boundaries
 
@@ -94,8 +112,7 @@ A read from an earlier day shows its date.
     the bridge, commits each result to the secure store and acknowledges it. In both, the digest
     panel publishes the newest result that ran and Home renders it with the connected agent's name
     and the run's completion time. Later missed, overlapping and unavailable records reach the
-    digests list and leave the card unchanged; with only missed and unavailable records there is no
-    card; a newer run and a failed run replace the card; the card returns after the renderer
+    digests list and leave the card unchanged; with only missed and unavailable records the widget stays empty; a newer run and a failed run replace the card; the card returns after the renderer
     restarts. No request that would start or change a schedule, a source or a delegation is made,
     before or after that restart: the stub records and refuses every such request, and answers only
     the digests list's read of pending Google access revocations.

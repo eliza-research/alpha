@@ -1,0 +1,173 @@
+--- a/plugins/plugin-local-inference/native/android/speech-bridge/src/main/java/ai/eliza/voice/LocalSpeechBridgePlugin.java
++++ b/plugins/plugin-local-inference/native/android/speech-bridge/src/main/java/ai/eliza/voice/LocalSpeechBridgePlugin.java
+@@ -63 +63 @@
+- * events, {@code localSpeechStatus}/{@code releaseLocalSpeech}, {@code nativeVoiceTiming},
++ * events, {@code warmSpeechOutput}, {@code localSpeechStatus}/{@code releaseLocalSpeech}, {@code nativeVoiceTiming},
+@@ -91,0 +92,2 @@
++ /** Silence that keeps the speech output awake between a sent voice turn and its first reply samples (main thread). */
++ private SpeechOutputWarmup outputWarmup;
+@@ -159 +161 @@
+-  destroyed=true;gate.destroy();main.post(()->{if(focus!=null)focus.close();});live.shutdown();livePermissionEpochs.clear();finishDrain(false,"Voice unavailable");epoch.incrementAndGet();permissionEpochs.clear();
++  destroyed=true;gate.destroy();main.post(()->{closeOutputWarmup();if(focus!=null)focus.close();});live.shutdown();livePermissionEpochs.clear();finishDrain(false,"Voice unavailable");epoch.incrementAndGet();permissionEpochs.clear();
+@@ -225 +227 @@
+- @PluginMethod public void cancel(PluginCall call){SpeechRequestGate.Request request=gate.get(call.getString("requestId",""));if(request!=null)request.cancel();call.resolve();}
++ @PluginMethod public void cancel(PluginCall call){main.post(this::closeOutputWarmup);SpeechRequestGate.Request request=gate.get(call.getString("requestId",""));if(request!=null)request.cancel();call.resolve();}
+@@ -238 +240 @@
+- private void startRecording(PluginCall call,long admitted){main.post(()->{if(destroyed||!speechForeground||sensitiveSurfaceActive()||gate.draining()||admitted!=epoch.get()){call.reject("Recording cancelled");return;}try{int limit=call.getInt("maxDurationMs",LocalVoiceRecording.LONG_LIMIT_MS);if(limit!=LocalVoiceRecording.SHORT_LIMIT_MS&&limit!=LocalVoiceRecording.LONG_LIMIT_MS)throw new IllegalArgumentException("Unsupported capture duration");call.resolve(js(capture.start(limit)));}catch(Exception error){call.reject("Microphone could not start");}});}
++ private void startRecording(PluginCall call,long admitted){main.post(()->{if(destroyed||!speechForeground||sensitiveSurfaceActive()||gate.draining()||admitted!=epoch.get()){call.reject("Recording cancelled");return;}if(focus!=null&&focus.callActive()){call.reject(CALL_MESSAGE,SpeechAudioFocusPolicy.CALL_ACTIVE);return;}try{int limit=call.getInt("maxDurationMs",LocalVoiceRecording.LONG_LIMIT_MS);if(limit!=LocalVoiceRecording.SHORT_LIMIT_MS&&limit!=LocalVoiceRecording.LONG_LIMIT_MS)throw new IllegalArgumentException("Unsupported capture duration");call.resolve(js(capture.start(limit)));}catch(Exception error){call.reject("Microphone could not start");}});}
+@@ -258 +260 @@
+-   try{capture.cancel();}catch(RuntimeException error){finishDrain(false,"Recording cancellation failed");return;}
++   try{closeOutputWarmup();capture.cancel();}catch(RuntimeException error){finishDrain(false,"Recording cancellation failed");return;}
+@@ -276,0 +279,12 @@
++ /**
++  * A foreground voice turn was sent: wake the speech output while the reply is produced. Advisory;
++  * skipped during a call, in the background or while the speaker is in use. The warm-up is bounded
++  * (SpeechOutputWarmup.LIMIT_NS) and closed by the first reply samples, any playback start or
++  * clear (stop, pause, a published clip), cancel, recording cancellation, a call and destroy.
++  */
++ @PluginMethod public void warmSpeechOutput(PluginCall call){main.post(()->{
++  if(!destroyed&&speechForeground&&!sensitiveSurfaceActive()&&(focus==null||!focus.callActive())&&!speakerBusy()){closeOutputWarmup();outputWarmup=new SpeechOutputWarmup(LocalSpeechEngine.STREAM_RATE);}
++  call.resolve();
++ });}
++ /** Main thread. */
++ private void closeOutputWarmup(){if(outputWarmup!=null){outputWarmup.close();outputWarmup=null;}}
+@@ -325 +339,3 @@
+-  final StreamingSpeechPlayback playback=new StreamingSpeechPlayback(STREAM_CAPACITY,LocalSpeechEngine.STREAM_RATE,VoiceLatencyProbe.AUDIBLE_LEVEL,()->AudioTrackSpeechOutput.open(LocalSpeechEngine.STREAM_RATE),streamListener(id,reply?trial:null,self),System::nanoTime);
++  final StreamingSpeechPlayback.Listener listener=streamListener(id,reply?trial:null,self);
++  // The first PCM mark is the first write to the track, not the end of that (blocking) write.
++  final StreamingSpeechPlayback playback=new StreamingSpeechPlayback(STREAM_CAPACITY,LocalSpeechEngine.STREAM_RATE,VoiceLatencyProbe.AUDIBLE_LEVEL,()->new FirstWriteSpeechOutput(AudioTrackSpeechOutput.open(LocalSpeechEngine.STREAM_RATE),()->listener.firstFrame(System.nanoTime())),listener,System::nanoTime);
+@@ -330,0 +347,2 @@
++  // The synthesized lead-in silence (about 300 ms) is dropped before playback; a short pre-roll stays.
++  final SpeechLeadTrim trim=new SpeechLeadTrim(VoiceLatencyProbe.AUDIBLE_LEVEL,LocalSpeechEngine.STREAM_RATE/33);
+@@ -332 +350 @@
+-   engine.synthesizeStream(text,()->request.cancelled||destroyed||playback.stopped(),(samples,complete)->{
++   engine.synthesizeStream(text,()->request.cancelled||destroyed||playback.stopped(),(raw,complete)->{
+@@ -333,0 +352,2 @@
++    final float[] samples=trim.next(raw);
++    if(samples.length==0&&!complete)return !playback.stopped();
+@@ -334,0 +355 @@
++     main.post(this::closeOutputWarmup);
+@@ -415 +436 @@
+- private void stopSpeechFor(String reason){String previous=playbackId;if(previous==null)return;clearPlayback(false);JSObject event=new JSObject();event.put("playbackId",previous);event.put("reason",reason);notifyListeners("playbackStopped",event);}
++ private void stopSpeechFor(String reason){closeOutputWarmup();String previous=playbackId;if(previous==null)return;clearPlayback(false);JSObject event=new JSObject();event.put("playbackId",previous);event.put("reason",reason);notifyListeners("playbackStopped",event);}
+@@ -423 +444 @@
+- private void clearPlayback(boolean stopped){String previous=playbackId;if(preparingPlayback!=null){preparingPlayback.reject("Playback cancelled");preparingPlayback=null;}if(player!=null){player.release();player=null;}if(streamPlayback!=null){streamPlayback.stop();streamPlayback=null;VoiceLatencyProbe.TRIALS.stopped(playbackTrial);}if(focus!=null)focus.release();if(playbackFile!=null)playbackFile.delete();playbackFile=null;playbackId=null;playbackRequestId=null;playbackLocalReply=false;playbackTrial=null;playbackLeadIn=-1;if(stopped&&previous!=null){JSObject event=new JSObject();event.put("playbackId",previous);notifyListeners("playbackStopped",event);}}
++ private void clearPlayback(boolean stopped){closeOutputWarmup();String previous=playbackId;if(preparingPlayback!=null){preparingPlayback.reject("Playback cancelled");preparingPlayback=null;}if(player!=null){player.release();player=null;}if(streamPlayback!=null){streamPlayback.stop();streamPlayback=null;VoiceLatencyProbe.TRIALS.stopped(playbackTrial);}if(focus!=null)focus.release();if(playbackFile!=null)playbackFile.delete();playbackFile=null;playbackId=null;playbackRequestId=null;playbackLocalReply=false;playbackTrial=null;playbackLeadIn=-1;if(stopped&&previous!=null){JSObject event=new JSObject();event.put("playbackId",previous);notifyListeners("playbackStopped",event);}}
+@@ -459,0 +481 @@
++  public boolean canStart(long admitted){return open(admitted)&&(focus==null||!focus.callActive());}
+--- /dev/null
++++ b/plugins/plugin-local-inference/native/android/speech-bridge/src/main/java/ai/eliza/voice/SpeechOutputWarmup.java
+@@ -0,0 +1,47 @@
++package ai.eliza.voice;
++
++import java.util.function.LongSupplier;
++
++/**
++ * Keeps the speech output path out of standby with silence until the reply's first samples are
++ * ready. Bounded by {@link #LIMIT_NS}; {@link #close} is idempotent, aborts a blocked write and
++ * fences a late open, so a closed warm-up never starts or keeps playing.
++ */
++public final class SpeechOutputWarmup implements AutoCloseable {
++ public static final long LIMIT_NS=15_000_000_000L;
++ private volatile boolean closed;
++ private final Object lifecycle=new Object();
++ private StreamingSpeechPlayback.Output output; // Guarded by lifecycle.
++ private final Thread writer;
++
++ public SpeechOutputWarmup(int rate){this(rate,()->AudioTrackSpeechOutput.open(rate),System::nanoTime);}
++ SpeechOutputWarmup(int rate,StreamingSpeechPlayback.OutputFactory factory,LongSupplier now){
++  writer=new Thread(()->{
++   StreamingSpeechPlayback.Output opened=null;
++   try{
++    opened=factory.open();
++    synchronized(lifecycle){
++     if(closed)return;
++     output=opened;
++     opened.play();
++    }
++    float[] silence=new float[rate/50];long end=now.getAsLong()+LIMIT_NS;
++    while(!closed&&now.getAsLong()<end)if(opened.write(silence,0,silence.length)<=0)break;
++   }catch(Exception unavailable){/* Only the warm start is lost. */}
++   finally{
++    synchronized(lifecycle){if(output==opened)output=null;}
++    if(opened!=null){try{opened.abort();}catch(RuntimeException ignored){/* Released below. */}try{opened.release();}catch(RuntimeException ignored){/* Released. */}}
++   }
++  },"eliza-speech-warmup");
++  writer.setDaemon(true);writer.start();
++ }
++ @Override public void close(){
++  StreamingSpeechPlayback.Output active;
++  synchronized(lifecycle){
++   closed=true;
++   active=output;
++  }
++  if(active!=null)try{active.abort();}catch(RuntimeException ignored){/* The writer releases it. */}
++  writer.interrupt();
++ }
++}
+--- /dev/null
++++ b/plugins/plugin-local-inference/native/android/speech-bridge/src/main/java/ai/eliza/voice/SpeechLeadTrim.java
+@@ -0,0 +1,36 @@
++package ai.eliza.voice;
++
++import java.util.Arrays;
++
++/**
++ * Drops the near-silence that opens a synthesized utterance (about 300 ms for Paradee), keeping a short
++ * pre-roll so a soft onset is not clipped. Later samples pass through untouched.
++ */
++public final class SpeechLeadTrim {
++ private final float level;
++ private final int preRoll;
++ private float[] held=new float[0];
++ private boolean open;
++ public SpeechLeadTrim(float level,int preRollSamples){this.level=level;preRoll=preRollSamples;}
++ /** The samples to play from this chunk; empty while the utterance is still silent. Takes ownership. */
++ public float[] next(float[] samples){
++  if(open)return samples;
++  int first=-1;
++  for(int i=0;i<samples.length;i++)if(Math.abs(samples[i])>=level){first=i;break;}
++  if(first<0){
++   int keep=Math.min(preRoll,held.length+samples.length),fromHeld=Math.max(0,keep-samples.length);
++   float[] tail=new float[keep];
++   System.arraycopy(held,held.length-fromHeld,tail,0,fromHeld);
++   System.arraycopy(samples,samples.length-(keep-fromHeld),tail,fromHeld,keep-fromHeld);
++   Arrays.fill(samples,0f);held=tail;
++   return new float[0];
++  }
++  open=true;
++  int from=Math.max(0,first-preRoll),lead=Math.min(held.length,preRoll-(first-from));
++  float[] out=new float[lead+samples.length-from];
++  System.arraycopy(held,held.length-lead,out,0,lead);
++  System.arraycopy(samples,from,out,lead,samples.length-from);
++  Arrays.fill(samples,0f);held=new float[0];
++  return out;
++ }
++}
+--- /dev/null
++++ b/plugins/plugin-local-inference/native/android/speech-bridge/src/main/java/ai/eliza/voice/FirstWriteSpeechOutput.java
+@@ -0,0 +1,24 @@
++package ai.eliza.voice;
++
++/**
++ * Reports the first sample handed to the track. StreamingSpeechPlayback reports its first frame after
++ * the blocking write of a whole chunk returns, by which time a chunk longer than the track buffer is
++ * already audible; the collector then refuses the earlier audible time.
++ */
++public final class FirstWriteSpeechOutput implements StreamingSpeechPlayback.Output {
++ private final StreamingSpeechPlayback.Output output;
++ private Runnable first;
++ public FirstWriteSpeechOutput(StreamingSpeechPlayback.Output output,Runnable first){this.output=output;this.first=first;}
++ @Override public void play(){output.play();}
++ @Override public int write(float[] samples,int offset,int length){
++  Runnable report=first;first=null;
++  if(report!=null)report.run();
++  return output.write(samples,offset,length);
++ }
++ @Override public long playedFrames(){return output.playedFrames();}
++ @Override public long presentationNs(long frame){return output.presentationNs(frame);}
++ @Override public void setVolume(float volume){output.setVolume(volume);}
++ @Override public void abort(){output.abort();}
++ @Override public void stop(){output.stop();}
++ @Override public void release(){output.release();}
++}

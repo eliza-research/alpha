@@ -24,11 +24,19 @@ test('migrated mixed media pages use capture date and stable identity ties witho
  const expected=Array.from({length:120},(_,i)=>({id:(i%2?'v:':'')+String(i).padStart(4,'0'),date:Math.floor(i/3)})).sort((a,b)=>b.date-a.date||(a.id<b.id?1:-1)).map(i=>i.id);
  expect(result.ids).toEqual(expected);expect(result.sizes).toEqual([40,40,40]);expect(new Set(result.ids).size).toBe(120);expect(result.summary).toMatchObject({favorites:60,videos:60,trash:5});
  await page.getByRole('button',{name:'Photos',exact:true}).click();
- const tiles=page.locator('button[data-owned-media-id^="native-camera-"]');await expect(tiles).toHaveCount(40);
- await page.getByRole('button',{name:'Load more photos',exact:true}).click();await expect(tiles).toHaveCount(80);
- await page.getByRole('button',{name:'Load more photos',exact:true}).click();await expect(tiles).toHaveCount(120);
- expect(await tiles.evaluateAll(nodes=>nodes.map(node=>node.getAttribute('data-owned-media-id')!.replace('native-camera-','')))).toEqual(expected);
- await expect(page.getByRole('button',{name:'Load more photos',exact:true})).toHaveCount(0);
+ const tiles=page.locator('button[data-owned-media-id^="native-camera-"]');
+ const shown=()=>tiles.evaluateAll(nodes=>nodes.map(node=>node.getAttribute('data-owned-media-id')!.replace('native-camera-','')));
+ // One day section; its header counts what is loaded. The grid is virtualised: only on-screen rows are in the DOM.
+ const count=page.locator('.photo-day-header span');await expect(count).toHaveText('40');
+ const first=await shown();expect(first).toEqual(expected.slice(0,first.length));
+ // Newest-first paging continues as the end of the grid scrolls into view; there is no Load more button.
+ const grid=page.locator('[data-alpha-app-scroll="photos"]');
+ await grid.evaluate(el=>el.scrollTo(0,el.scrollHeight));await expect(count).toHaveText('80');
+ await grid.evaluate(el=>el.scrollTo(0,el.scrollHeight));await expect(count).toHaveText('120');
+ await grid.evaluate(el=>el.scrollTo(0,el.scrollHeight));
+ await expect.poll(async()=>(await shown()).at(-1)).toBe(expected.at(-1));
+ const last=await shown();expect(last.length).toBeLessThan(60);expect(last).toEqual(expected.slice(expected.length-last.length));
+ await expect(page.getByRole('button',{name:/Load more/})).toHaveCount(0);
  await page.reload();expect(await page.evaluate(async()=>{const {browserPhotoLibrary:p}=await import('/src/prototype/browser-camera.ts');return (await p.list()).items[0].id;})).toBe(expected[0]);
 });
 

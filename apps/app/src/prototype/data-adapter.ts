@@ -3,6 +3,7 @@ import {mockAttentionRows} from './mock-attention';
 import {HOME_DEFAULTS} from './model.js';
 import {browserStorageUsage} from '../browser/storage-usage';
 import {browserDevProfile} from '../browser/dev-profile';
+import {formatFullDate} from './locale-time';
 import {homeCalendarEmptyTitle, homeCalendarName, homeCalendarValues, homeReadIsStale, presentHomeAgendaCard, presentHomeAttention, presentHomeBrief, presentHomeBriefCard, presentHomeCalendarSource, selectHomeAgenda, type HomeAgendaCardInput, type HomeAttentionSummary, type HomeBriefSummary} from './home-cards';
 type Bag = Record<string, any>;
 const installed = new WeakSet<object>();
@@ -13,6 +14,12 @@ const installed = new WeakSet<object>();
 export function installPrototypeDataAdapter(Component: any, views: Record<string, Bag>) {
   if (installed.has(views)) return;
   installed.add(views);
+  // Home draws no card for a failed calendar read, so opening Calendar by any route reads it again.
+  const openView = Component.prototype.openView;
+  Component.prototype.openView = function (key: string, ...args: any[]) {
+    if (key === 'calendar') { try { const source = views.calendar?.displaySources?.(); if (source?.error) source.retry?.(); } catch { /* Calendar still opens */ } }
+    return openView.call(this, key, ...args);
+  };
   const empty: Record<string, Bag> = {
     photos: { list: [], trash: [], albums: [], open: null, album: null, edit: null, sheet: null, filter: null, seq: null, sel: null },
     files: { files: [], folder: null, open: null, asked: {}, asking: null, sel: null, sheet: null },
@@ -141,14 +148,18 @@ export function installPrototypeDataAdapter(Component: any, views: Record<string
       ...out, shadeN: [],
       sugg: suggestions.map(label => ({ label, go: () => this.send(label) })),
       ...homeCalendarValues(presentHomeAgendaCard(agendaInput)),
+      homeCalendarConfirmedEmpty: cardState === 'ready' && readAt != null && readAt > 0 && readAt <= now
+        && !stale && !calendarHidden && !calendarSource?.truncated && !agenda && !following,
       // The agent calendar adapter presents the card again with the agent's next event under an overdue
       // reminder, and lets an upcoming reminder lead when it comes first.
       homeAgendaInput: agentAgendaInput, homeAgendaReminder: !!agenda?.event.alphaReminderId && !overdue,
       homeAgendaNextReminder: !!following?.event.alphaReminderId,
       homeAttentionLabel: attention.label, homeAttentionAction: attention.action,
       homeAttentionPeople: [], homeAttentionPeopleVisibility: 'hidden',
-      ...(browserDevProfile?{homeInboxCount:attention.count,homeInboxRows:unreadRows.slice(0,2).map(mail=>({subject:mail.subj||'(no subject)',from:mail.name||mail.email||''})),homeInboxHasRows:unread>0,homeInboxTitle:unread?'':'No unread email',homeInboxStatus:'Development inbox'}:{}),
+      ...(browserDevProfile?{homeInboxCount:attention.count,homeInboxRows:unreadRows.slice(0,2).map(mail=>({subject:mail.subj||'(no subject)',from:mail.name||mail.email||''})),homeInboxHasRows:unread>0,homeInboxConfirmedEmpty:unread===0,homeInboxTitle:unread?'':'No unread email',homeInboxStatus:'Development inbox'}:{}),
       homeWorkflowLabel: brief.label, homeWorkflowTitle: brief.title, homeWorkflowTime: brief.time, homeWorkflowSource: brief.source,
+      // Only the later workflow owners publish enabled rows outside the explicit fixture.
+      homeWorkflowRows: [], homeWorkflowHasRows: false,
       // After a failed read, opening Calendar from the card reads it again; Calendar itself does not retry on entry.
       // A stale read is read again when the card is opened (the same forced read Calendar's retry uses).
       // Opening a view resets its state, so the card names the calendar source it showed: Calendar
@@ -190,13 +201,26 @@ export function setHomeSources(next: Partial<typeof homeSources>) {
   window.dispatchEvent(new Event(HOME_SOURCES_CHANGED));
 }
 
+/** Keep Home widgets available with their real loading, setup and empty states.
+ * Provider adapters retain authority over their content; visibility performs no reads. */
+export function installHomeCardVisibility(Component: any, openGoogle: () => void) {
+  const p = Component.prototype, render = p.renderVals;
+  p.renderVals = function () {
+    const out = render.call(this);
+    return {...out, homeShowCalendar: true, homeShowWorkflows: true, homeShowInbox: true, homeShowDate: false,
+      homeShowSetup: false,
+      homeDateLabel: '',
+      connectGoogle: openGoogle};
+  };
+}
+
 /** Neutral Home card values used when no fixture defaults are bundled. */
 const NEUTRAL_HOME = {
   homeCalendarLabel: 'Open your calendar', homeCalendarTime: 'Calendar', homeCalendarTitle: 'Loading events…',homeCalendarHasEvent:false,homeCalendarHasMeta:false,homeCalendarFooter:'',
   homeCalendarSource: '', homeCalendarOrigin: '', homeCalendarDescription: '', homeCalendarOverdue: false, homeCalendarStale: false, homeCalendarNext: '', homeCalendarNextSource: '', homeCalendarHasNext: false, homeCalendarVideo: false, homeCalendarPeople: [] as Bag[],
   homeWorkflowFreshness: '', homeWorkflowDescription: '',
   homeBriefHas: false, homeBriefTitle: '', homeBriefStatus: '', homeBriefLabel: '', homeBriefFailed: false, homeInboxDescription: '',
-  homeWorkflowLabel: 'Open workflows', homeWorkflowTitle: 'No brief yet', homeWorkflowTime: 'Workflows', homeWorkflowSource: '',
+  homeWorkflowLabel: 'Open workflows', homeWorkflowTitle: 'Open to view', homeWorkflowTime: 'Workflows', homeWorkflowSource: '',
 };
 
 /** Call in both fixture and production before mounting. Fixture builds keep the

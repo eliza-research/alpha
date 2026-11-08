@@ -163,7 +163,8 @@ test('a saved capture identity is its id and a local counter, never the library 
  for(const bad of [undefined,{},{id:'native-camera-1'},{id:'native-camera-1',revision:''},{id:'/storage/DCIM/1.jpg',revision:'1'},{id:'has space',revision:'1'},{id:'native-camera-1',revision:7}])assert.equal(captures(bad),null);
  const adapter=readFileSync('apps/app/src/prototype/camera-adapter.ts','utf8');
  assert.match(adapter,/const captureSelection=createCaptureRevisions\(\);/);
- assert.equal((adapter.match(/nativePhotoSelection: ?captureSelection\(/g)||[]).length,2);
+ // Opening, favoriting, and patching an open item after an external change publish its identity.
+ assert.equal((adapter.match(/nativePhotoSelection: ?captureSelection\(/g)||[]).length,3);
  assert.doesNotMatch(adapter,/nativePhotoSelection: ?\{/,'every published photo identity goes through the local mapping');
 });
 test('location tiles ask the picker for a list of valid document types',()=>{
@@ -249,7 +250,7 @@ test('a mail context switched, deleted or changed during its review cannot send 
 
 
 test('calendar source discovery coalesces per owner, retries failures and fences old sources',async()=>{
- const {stripTypeScriptTypes}=await import('./fixtures/ts-source.mjs');const vm=await import('node:vm');
+ const {stripTypeScriptTypes}=await import('./support/strip-types.mjs');const vm=await import('node:vm');
  const core=readFileSync(new URL('../vendor/eliza/packages/core/src/runtime/single-flight-memo.ts',import.meta.url),'utf8').replace(/^export /gm,'');
  const SingleFlightMemo=vm.runInNewContext(stripTypeScriptTypes(core,{mode:'strip'})+';SingleFlightMemo');
  const ui=readFileSync(new URL('../apps/app/src/runtime/connection-ui.tsx',import.meta.url),'utf8');

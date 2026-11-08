@@ -61,11 +61,14 @@ the required evidence rather than treating a successful APK build as acceptance.
 - [Cloud deployment and authentication findings](docs/cloud-production-validation.md)
 - [Browser autofill and Proton integration](docs/browser-autofill-integration.md)
 - [Calendar and reminder contracts](docs/calendar-reminder-contract.md)
-- [Gesture zones and the notifications panel](docs/gesture-zones.md)
+- [Gesture zones, the chat dock and the notifications panel](docs/gesture-zones.md)
+- [Home cards and layout](docs/daily-overview.md)
+- [Settings structure](docs/settings.md)
 
 - [Working PRD](docs/prd.md)
 - [Flow implementation plan (historical)](docs/flow-implementation-plan.md)
 - [Architecture and upstream ownership](docs/architecture.md)
+- [Quint application-state models](specs/quint/README.md) and [migration report](docs/quint-migration-report.md)
 - [Requirements and open decisions](docs/decisions.md)
 - [Verification gates and evidence](docs/verification.md)
 - [Source/design provenance](docs/sources.md)
@@ -86,7 +89,46 @@ current source already implements them. Speech is on-device by default; Cloud sp
 used only in the `cloud` runtime profile or with an owner Cartesia key.
 See [speech research](docs/local-speech-research-2026-10-12.md) for native candidates.
 
+## Cloud release qualification — November 6
+
+The release scope is Cloud voice with Cartesia. Keep Android microphone capture,
+playback and the resident agent; local speech-model qualification remains a
+separate native-profile task. The existing explicit `cloud` build profile verifies
+its packaged resident, worker and source provenance and excludes local speech
+models. Direct mode and embedding routing are not changed by release admission.
+
+A Cloud release needs passing voice evidence for each exact signed APK, supplied
+after testing with `node scripts/verify-apks.mjs --runtime-profile=cloud
+--cloud-voice-evidence=/absolute/path/cloud-voice.json`. The receipt format is
+`alpha-cloud-voice-qualification-v1`, with a `results` array. Each result names
+`apkSha256`, `provider: "cartesia"`, `outcome: "passed"`, and a `checks` object
+whose `consent`, `session`, `acousticInput`, `blueBar`, `transcript`,
+`audibleSpeakerReply`, `mute`, `unmute`, and `stopReleased` fields are all true
+only after the corresponding check passed. Do not put transcripts, credentials,
+account identifiers or recorded audio in this receipt.
+
+Missing, failed, incomplete, duplicate or different-APK evidence keeps the release
+non-distributable. The verifier records only the receipt digest and allowed
+fields. Signing, version, flag-off bundle, resident provenance and notice gates
+still apply. Native-profile releases still require their qualified on-device voice
+bundle. This qualification does not publish a release or replace owner acceptance.
+
 ## Explicit Cloud QA profile — October 18
+
+For a private Settings updater baseline, declare `ALPHA_UPDATE_CHANNEL=private-qa`,
+`ALPHA_PRIVATE_UPDATE_MANIFEST_FILE` and `ALPHA_PRIVATE_UPDATE_MANIFEST_SHA256`.
+The file must be an absolute path outside the checkout, owned by the build user
+with mode 0600, containing only the exact URL bytes without a newline. The digest
+is SHA-256 of those bytes. Only the reviewed Google Storage `update-qa` manifest
+path and a five-minute to one-day signed URL are accepted. Never commit or log
+that URL. The normal build uses the unchanged public URL in `app.config.json`.
+
+Private QA requires the complete Cloud profile. Android metadata, build and
+producer evidence, and the reviewed signing plan bind the channel and URL digest;
+the plan also names `purpose: private-update-qa-baseline`. These artifacts are
+never public-distribution candidates. TLS, package, signer, APK hash and version
+checks remain unchanged. Input admission is not an update, retention or device
+acceptance result.
 
 The owner-approved `cloud` runtime profile supersedes the local-speech-only wording
 above for this explicit QA configuration. It keeps the genuine Bun/PGlite resident
@@ -99,6 +141,8 @@ Select it explicitly with `--runtime-profile=cloud` for runtime staging and Andr
 builds (`agent:stage-android` and `android:build`). Renderer, native and packaged
 runtime admission must agree on the profile; test mocks and unpackaged runtimes
 are rejected. The default remains `native` with its existing qualification gates.
+Use the default `native` profile for on-device speech with Cloud text inference
+([measurements](docs/on-device-speech-2026-11-05.md)).
 The Talk button is the explicit voice start; it opens the voice surface and starts
 the microphone without a second Start Cloud voice button. The active surface keeps
 the Cloud upload and plan-usage disclosure visible. Account and conversation binding,
@@ -251,11 +295,17 @@ file flows, dialog accessibility, disclosed adapter fixtures and reference desig
 states. Reports/screenshots are in `test-results/browser-report` and
 `test-results/browser`. Browser CI runs independently of Android qualification.
 
-Use Node 24.15.0, the prepared source's pinned Bun version (currently 1.4.2), and JDK 21.
-`agent:prepare` checks Bun against the upstream `packageManager` before installing dependencies.
+Use Node 26.13.0 (`.nvmrc`), the prepared source's pinned Bun version (currently 1.4.2), and JDK 21.
+Node and Bun have separate jobs. Node and npm drive this repository's own tooling: Vite, Playwright,
+the `node --test` suite, Capacitor and the build scripts. Bun is the runtime of the Eliza agent that
+ships on the phone (`libeliza_bun.so`) and the tool upstream Eliza uses to build that agent bundle,
+so it is needed only to prepare or run the agent (`agent:prepare`, the local agent scripts).
+`agent:prepare` checks Bun against the upstream `packageManager` before installing dependencies,
+and `agent:stage-android` refuses to bundle with any other Bun (Bun 1.3.14 dropped modules from
+the mobile bundle, so every chat turn failed).
 Put that Bun version first on `PATH` for the build scripts; `ALPHA_BUN` may also select
-its absolute executable for preparation and nested tools. An older Bun can emit incompatible
-plugin imports during the runtime build. Native builds require Android SDK platform 36 and
+its absolute executable for preparation and nested tools.
+Native builds require Android SDK platform 36 and
 build-tools 36.0.0. Set `JAVA_HOME` and `ANDROID_HOME` on Linux; the scripts also
 recognize the usual macOS Homebrew JDK/Android SDK locations. The Gradle 8.13
 wrapper is hash-pinned. No Eliza root dependency installation or package

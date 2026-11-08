@@ -19,7 +19,7 @@ test('the plugin delegates provider rules to the admission class and admits expl
  assert.match(source,/static void applyProviderEnvironment\([^)]*\) throws Exception \{LocalAgentProviderAdmission\.applyProviderEnvironment\(provider,cloudSaved,env,now\);\}/);
  assert.match(source,/static String cloudProviderToken\([^)]*\) throws Exception \{return LocalAgentProviderAdmission\.cloudProviderToken\(saved,credentialId,now\);\}/);
  assert.match(source,/LocalAgentProviderAdmission\.bindCloudProvider\(new LocalAgentProviderAdmission\.CloudBindingStore\(\)\{/);
- assert.match(source,/LocalAgentProviderAdmission\.providerStatus\(saved,cloud,System\.currentTimeMillis\(\)\)/);
+ assert.match(source,/NativeProviderSlot\.managementStatus\(/);
  assert.doesNotMatch(source,/env\.put\("ELIZAOS_CLOUD_API_KEY"|env\.put\("CEREBRAS_API_KEY"/,'no provider environment is built in the plugin');
  assert.match(source,/static final String CLOUD_PROVIDER_MODEL=LocalAgentProviderAdmission\.CLOUD_PROVIDER_MODEL;/);
  const wrapper=readFileSync(nativeSource('LocalAgentProviderAdmission.java'),'utf8');

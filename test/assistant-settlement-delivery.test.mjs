@@ -3,7 +3,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import vm from 'node:vm';
-import {stripTypeScriptTypes} from 'node:module';
+import {stripTypeScriptTypes} from './support/strip-types.mjs';
 import {randomUUID} from 'node:crypto';
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';
@@ -23,7 +23,7 @@ const say=between(adapter,'  p.agentSay = function','  p.reply = function');
 const plan=between(adapter,'function planActionCard(','/** Context notices');
 const notices=between(adapter,'function replyNotices(','/** Decline one pending proposal');
 const merge=between(connection,'export function mergeConversationDelivery','const actionReceipts =').replace('export ','');
-const history=between(connection,'/** A display bound, not a protocol limit','/** Eliza Cloud\'s API');
+const history=between(connection,'function restoredMessages(','/** Eliza Cloud\'s API');
 const failureKind=between(connection,'function failureKindOf(','/** The error a failed reply');
 const delivery=between(adapter,'      const delivery=connectionController.getSnapshot().conversationDelivery;','      syncStoppedReplyNotice');
 const compiled=ts(`${plan}\n${notices}\n${merge}\n${history}\n${failureKind}\nfunction methods(){const p={};\n${voice}\n${send}\n${say}\np.receiveCanonicalDelivery=function(){const session=connectionController.getSnapshot().session?.sessionId;\n${delivery}\n};return p;}globalThis.methods=methods();globalThis.projectHistory=restoredMessages;`);
@@ -159,6 +159,21 @@ test('the ordinary controller reply contract exposes planAction while stored-his
   assert.match(contract,/planAction:\s*notice === 'offline' \? 'retry' : signedIn \? 'plan' : 'sign-in'/);
   const h=fixture(),rows=h.box.projectHistory([{id:REPLY,role:'assistant',text:'Saved reply',planAction:'plan'}]);
   assert.equal(rows.length,1);assert.equal(rows[0].text,'Saved reply');assert.equal(rows[0].planAction,undefined);
+});
+
+// The single Calendar design removes source plumbing while retaining conditional recovery.
+test('Calendar Settings keeps one Google entry and conditional recovery without source-picker plumbing',()=>{
+  const template=read('apps/app/src/prototype/template.html');
+  const settings=read('apps/app/src/prototype/settings-adapter.ts');
+  const start=settings.indexOf('// calendar-settings:begin'),end=settings.indexOf('// calendar-settings:end',start);
+  assert(start>=0&&end>start,'current Settings Calendar block is present');
+  const calendar=settings.slice(start,end);
+  assert.doesNotMatch(template,/calendar\.calendarAuthorityChoices|calendar\.canConfirmCalendarTransition/);
+  assert.match(calendar,/label:'Google Calendar'/);assert.match(calendar,/googleConnectionController\.openCalendar\(scope\)/);
+  assert.match(calendar,/go:calendarView\.confirmCalendarTransition/);assert.match(calendar,/cap:'Recovery',hasCap:true/);
+  assert.match(calendar,/label:'Recover saved events'/);assert.match(calendar,/label:'Return to Calendar'/);
+  assert.match(calendar,/label:'Retry calendar'/);assert.match(calendar,/back:\(\)=>api\.set\(\{page:null\}\)/);assert.match(calendar,/out\.stack\.push\(\{[^\n]*title:'Calendar'/);
+  assert.doesNotMatch(calendar,/sourceRows|cap:'Calendar sources'|label:'Current source'|cap:'Sync'/);
 });
 
 for(const kind of ['text','voice'])test(`${kind}: focused existing non-null card metadata stays authoritative`,async()=>{

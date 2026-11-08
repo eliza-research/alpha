@@ -18,6 +18,8 @@ final class AlphaCredentialStore {
  static final String NOTES_DRAFT="notes-draft:v1:device";
  /** Reminder-to-note back-references: identity only, at most 200 links (runtime/note-origin.ts). */
  static final String NOTE_ORIGINS="note-origins:v1:device";
+ /** Notes folder list: at most 100 names of 40 characters (runtime/notes-folders.ts). */
+ static final String NOTES_FOLDERS="notes-folders:v1:device";
  interface CloudChangeObserver {void changed()throws Exception;}
  private static CloudChangeObserver cloudChange=()->{};
  static void observeCloudChanges(CloudChangeObserver observer){synchronized(JsonCredentialSlots.LOCK){cloudChange=observer;}}
@@ -36,13 +38,14 @@ final class AlphaCredentialStore {
   if("notes-audio-deletions:v1:device".equals(name))return 1024*1024;
   if(name!=null&&name.matches("note-audio-metadata:v1:[A-Za-z0-9_-]{1,100}"))return 512*1024;
   if(NOTES_RECORDS.equals(name))return 32*1024*1024;
-  // Restorable copies of deleted notes, purged three days after deletion. The cap is the Trash
+  // Restorable copies of deleted notes, purged thirty days after deletion. The cap is the Trash
   // policy's byte limit (runtime/notes-trash-policy.ts NOTES_TRASH_MAX_BYTES); a document written
   // under the earlier 32 MiB cap stays readable and shrinkable through retainedLimit.
   if(NOTES_TRASH.equals(name))return NOTES_TRASH_BYTES;
   if(NOTES_DRAFT.equals(name))return 32*1024*1024;
   // 200 links of bounded ids and a hash stay well under this; a larger value is not a valid index.
   if(NOTE_ORIGINS.equals(name))return 512*1024;
+  if(NOTES_FOLDERS.equals(name))return 64*1024;
   if(name!=null&&(name.startsWith("inbox-drafts:v1:")||name.matches("inbox-operation:v1:[a-f0-9]{64}")))return 8*1024*1024;
   if(name!=null&&name.matches("calendar-linked-sync:v1:[a-f0-9]{64}"))return 4*1024*1024;
   if(name!=null&&name.matches("connected-read-cache:v1:[a-f0-9]{64}"))return 4*1024*1024;
@@ -115,7 +118,7 @@ final class AlphaCredentialStore {
     // Only a replaced or removed Cloud key retires Cloud-bound background state; changing the agent's
     // inference provider does not (background Gmail binds the Cloud credential, not the provider).
     if("cloud:production".equals(name)&&!LocalAgentProviderAdmission.sameCloudCredential(before,value))cloudChange.changed();
-    String committed=LocalAgentProviderAdmission.PROVIDER_SLOT.equals(name)&&value!=null?LocalAgentProviderAdmission.withoutAdmission(value):value;
+    String committed=LocalAgentProviderAdmission.PROVIDER_SLOT.equals(name)?value==null?LocalAgentProviderAdmission.unbindProvider(before):LocalAgentProviderAdmission.withoutAdmission(value):value;
     // Metadata/valid expiry refresh is not replacement; use the same canonical credential
     // comparison that retains provider admission. Provider writes still strip admission.
     boolean authorityChanged=LocalAgentProviderAdmission.PROVIDER_SLOT.equals(name)
@@ -123,7 +126,7 @@ final class AlphaCredentialStore {
     if(authorityChanged)AlphaLocalAgentPlugin.powerAuthorizationChanged();
     invalidateProviderAdmission(name,value);
     if("cloud:production".equals(name)&&authorityChanged)slots.remove(CloudDeployment.storageSlot(GoogleWorkspaceReturn.SLOT));
-    if(value==null)slots.remove(CloudDeployment.storageSlot(name));
+    if(committed==null)slots.remove(CloudDeployment.storageSlot(name));
     else slots.write(CloudDeployment.storageSlot(name),committed);
     return true;
    }
@@ -141,7 +144,7 @@ final class AlphaCredentialStore {
   * Explicit clear still uses removeCredentialSlot and durably blocks legacy recovery. */
  void removeProviderIfPresent()throws Exception{
   String before=recoveryStep(()->slots.read(CloudDeployment.storageSlot(LocalAgentProviderAdmission.PROVIDER_SLOT)));
-  if(before==null)return;
+  if(before==null||new org.json.JSONObject(before).optBoolean("unbound"))return;
   if(!compareExchangeCredentialSlot(LocalAgentProviderAdmission.PROVIDER_SLOT,before,null))throw new IllegalStateException("Provider changed");
  }
  /** Opaque cleanup authority for the exact binding and existing intent, never a credential. */
@@ -181,8 +184,9 @@ final class AlphaCredentialStore {
        ||!java.util.Objects.equals(provider,slots.read(CloudDeployment.storageSlot(LocalAgentProviderAdmission.PROVIDER_SLOT)))
        ||!java.util.Objects.equals(cloud,slots.read(CloudDeployment.storageSlot("cloud:production"))))throw new ProviderChanged();
      AlphaLocalAgentPlugin.powerAuthorizationChanged();
-     slots.remove(CloudDeployment.storageSlot(LocalAgentProviderAdmission.PROVIDER_SLOT));
-     if(slots.read(CloudDeployment.storageSlot(LocalAgentProviderAdmission.PROVIDER_SLOT))!=null)throw new IllegalStateException("Provider removal unconfirmed");
+     String retained=LocalAgentProviderAdmission.unbindProvider(provider);
+     if(retained==null)slots.remove(CloudDeployment.storageSlot(LocalAgentProviderAdmission.PROVIDER_SLOT));else slots.write(CloudDeployment.storageSlot(LocalAgentProviderAdmission.PROVIDER_SLOT),retained);
+     if(!java.util.Objects.equals(retained,slots.read(CloudDeployment.storageSlot(LocalAgentProviderAdmission.PROVIDER_SLOT))))throw new IllegalStateException("Provider removal unconfirmed");
      return true;
     }
    });

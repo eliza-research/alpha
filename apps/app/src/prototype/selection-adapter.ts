@@ -5,10 +5,11 @@ import type {Source} from './note-source-adapter';
 const sourceFiles=registerPlugin<{readSelected(input:{selectionId:string}):Promise<MailAttachment & {sha256:string;size:number;sourceReferenceVersion?:1}>;retainSourceReference(input:{selectionId:string;sha256:string}):Promise<{reference?:string}>}>('AlphaMailAttachments');
 import {reviewContentQuestion,SourceUnavailableError} from '../browser/content-question';
 import {sensitiveReadingText} from '../../../../.eliza/client-features/plugins/plugin-native-browser-surface/src/page-reading.ts';
-import { installFilesTreeAdapter } from './files-tree-adapter';
+import { installFilesBrowserAdapter, type FilesStoragePort } from '../../../../.eliza/client-features/plugins/plugin-files/src/browser/files-browser-adapter.ts';
 import { Capacitor } from '@capacitor/core';
 import { DailyApps, type NativeResult } from '../daily';
 import { filesIndex } from './files-index';
+import { createInlineModal } from '../runtime/inline-modal';
 
 type Bag = Record<string, any>;
 type Selection = { result: NativeResult; status: string; text?: string; pdf?: {page:number;count:number;image:string}; epoch: number; renames?: number };
@@ -17,7 +18,7 @@ type Selection = { result: NativeResult; status: string; text?: string; pdf?: {p
  * action guards. Forward its returned callback through the onSelection option. Selections are restored only from native picker grants, never renderer-supplied URIs.
  * Uses the existing Files document page and Photos immersive viewer geometry.
  */
-export function installSelectedDocumentAdapter(_Component: unknown, views: Record<string, Bag>) {
+export function installSelectedDocumentAdapter(Component: {prototype: Bag}, views: Record<string, Bag>) {
   let epoch = 0;
   let current: Selection | undefined;
   let selectedApi: Bag | undefined;
@@ -189,6 +190,11 @@ export function installSelectedDocumentAdapter(_Component: unknown, views: Recor
       current = { ...current, text: undefined, status: 'Could not read this document. Select it again or open in Android.' }; refresh();
     }
   }
-  installFilesTreeAdapter(views,accept,clear);
+  Component.prototype.filesAgent=installFilesBrowserAdapter(views.files as Parameters<typeof installFilesBrowserAdapter>[0],accept,clear,{
+    storage:registerPlugin<FilesStoragePort<NativeResult>>('AlphaFiles'),
+    createInlineModal,
+    menuFocus:()=>document.querySelector<HTMLElement>('[data-alpha-subview="files-folder"] button[aria-label="New folder"], [data-alpha-subview="files-folder"] button[aria-label="Sort files"]'),
+    forgetSelected:selectionId=>DailyApps.forgetSelected({selectionId}),
+  });
   return accept;
 }

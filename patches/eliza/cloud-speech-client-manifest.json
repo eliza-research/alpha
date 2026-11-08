@@ -1,20 +1,31 @@
 {
   "schema": 1,
-  "baseCommit": "0594fc72da4450a84a986ad12e730e3faa902018",
+  "baseCommit": "99b49439ce9d0cb5607e9831b9f7f58d89525029",
   "patches": [
     {
       "file": "cloud-speech-client.patch",
-      "sha256": "756b64568b67ad38abd65f4bef01998e0942fdbdfc59cc6904fdf5fc88fbd9fa",
+      "sha256": "b2f6aaff65bda36723865284e413e22fd46736a7cd9bf72b809ab73df8c45bcb",
       "targets": [
         {
           "path": "packages/voice/src/native-cloud-speech.ts",
           "beforeSha256": null,
-          "afterSha256": "215e8a254d5ee31833fc728a85fc5322dad4a4dd42e7d18e84b54d6082d9f528"
+          "afterSha256": "5c1e2b891cf64711c7a8ee1e24e217c765e91672ad26ae62c0a8a9d600b8b9ad"
         },
         {
           "path": "packages/voice/src/cloud-speech-chunks.ts",
           "beforeSha256": null,
           "afterSha256": "e2aef37281aed7e93b42950ba00729fddfd97cd8ac9af240feb00f12546989a5"
+        }
+      ]
+    },
+    {
+      "file": "voice-assistant-streaming.patch",
+      "sha256": "1ee08f6b12ccb7477961d82ed8afaf536c618fdb63383a8216e3715875aea0b9",
+      "targets": [
+        {
+          "path": "packages/voice/src/voice-assistant-session.ts",
+          "beforeSha256": "7f7d0f37f7ce7b64a2020dc0c9940b76507ff14fb4a0b6fda17557c8d56fa618",
+          "afterSha256": "e844904d9c1858584960fd83f7196fea19b9f39adaa25c20b924a9d0fc13618a"
         }
       ]
     }

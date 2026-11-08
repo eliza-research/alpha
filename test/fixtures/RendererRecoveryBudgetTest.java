@@ -54,6 +54,8 @@ public final class RendererRecoveryBudgetTest {
   check(!RendererRecoveryBudget.currentHome(false,"alpha","alpha",true),"role not held: not HOME although the task began as HOME");
   check(RendererRecoveryBudget.currentHome(null,"alpha","alpha",false)&&!RendererRecoveryBudget.currentHome(null,"android","alpha",true),"no role: the HOME resolver decides");
   check(RendererRecoveryBudget.currentHome(null,null,"alpha",true)&&!RendererRecoveryBudget.currentHome(null,null,"alpha",false),"neither: how the task started");
+  // Saturation is retained from the reviewed release: a long crash loop cannot wrap.
+  try{RendererRecoveryBudget saturated=new RendererRecoveryBudget();saturated.onLoss(1,true,true,true);java.lang.reflect.Field losses=RendererRecoveryBudget.class.getDeclaredField("lossesInWindow");losses.setAccessible(true);losses.setInt(saturated,Integer.MAX_VALUE);check(saturated.onLoss(2,true,true,true)==ESCAPE,"count overflow reopened crash loop");}catch(Exception failure){throw new AssertionError(failure);}
   // Buttons resolve to stock Settings activities, with the documented fallbacks.
   Set<String> all=Set.of("android.settings.SETTINGS","android.settings.HOME_SETTINGS","android.settings.MANAGE_DEFAULT_APPS_SETTINGS");
   check("android.settings.SETTINGS".equals(RendererRecoveryBudget.settingsAction(all::contains)),"Open Android Settings uses ACTION_SETTINGS");

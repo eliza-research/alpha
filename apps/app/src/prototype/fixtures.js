@@ -342,17 +342,6 @@ export const NOTES_SEED = [
   { id: "landlord", kind: "text", title: "Radiator", body: "Call the landlord Friday. Bedroom radiator clanks all night.", pinned: false, when: "Sep 22" }
 ];
 
-/* scripted live transcript for a new recording; each line may add a summary bullet or an action item */
-export const NOTES_LIVE = [
-  { s: "me", t: "Quick standup. Maya, where is the prototype?" },
-  { s: "maya", t: "Home and chat are done. Notes and Files land today.", sum: "Home and chat are done; Notes and Files land today" },
-  { s: "sam", t: "The on-device model is twice as fast after the quantization pass.", sum: "On-device model is 2x faster after quantization" },
-  { s: "me", t: "Great. Let's demo that at the design review at three.", act: "Demo the faster model at the 3:00 design review" },
-  { s: "maya", t: "I need the final lock screen copy by noon.", act: "Sam · final lock screen copy to Maya by noon" },
-  { s: "sam", t: "I'll send it. Jordan also wants term sheet notes before four thirty.", sum: "Jordan needs term sheet notes before 4:30" },
-  { s: "me", t: "I'll review the term sheet over lunch.", act: "Review the term sheet over lunch" }
-];
-export const NOTES_DICT = ["Ask Jordan about the board seat before signing.", "Pick up the dry cleaning on Thursday.", "Idea: let Alpha draft the weekly review from calendar and notes."];
 
 const CT_EXTRA = {
   maya: { address: "1450 Valencia St, San Francisco", birthday: "Mar 14" },
@@ -579,7 +568,11 @@ export const ATTENTION_ROWS = [
 /* Home card values of the reference layout. */
 export const HOME_DEFAULTS = {
   homeCalendarLabel: "Next: Design review at 3:00 PM", homeCalendarTime: "3:00 PM", homeCalendarTitle: "Design review",
-  homeWorkflowLabel: "Morning brief delivered at 7:02 AM", homeWorkflowTitle: "Morning brief", homeWorkflowTime: "7:02 AM"
+  homeWorkflowLabel: "Morning brief delivered at 7:02 AM", homeWorkflowTime: "7:02 AM",
+  // Home draws a card only when it has something to show (docs/ui-refresh-2026-11), so the fixture
+  // Home says it has the next event, an enabled workflow and unread mail.
+  homeCalendarHasEvent: true, homeWorkflowHasRows: true, homeWorkflowRows: [{ name: "Morning brief", status: "" }], homeWorkflowTitle: "",
+  homeInboxCount: "2 unread", homeInboxRows: [{ subject: "Design review notes", from: "Maya Chen" }, { subject: "Offsite agenda", from: "Priya Nair" }], homeInboxHasRows: true, homeInboxState: "ready"
 };
 
 /* Per-view scripted copy: suggestions, voice phrases, presets for the dev jump

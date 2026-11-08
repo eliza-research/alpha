@@ -25,7 +25,8 @@ function fixture(t){
  fs.writeFileSync(path.join(sdk,'README.md'),'after\n');git(['commit','--quiet','-am','after']);const after=git(['rev-parse','HEAD']);
  for(const file of sourceFiles){const target=path.join(product,file);fs.mkdirSync(path.dirname(target),{recursive:true});fs.copyFileSync(path.join(root,file),target);}
  const lock=path.join(product,'upstream.lock.json');fs.writeFileSync(lock,JSON.stringify({url:sdk,commit:before}));
- const runtime=path.join(product,'artifacts','runtime');const childEnv={...env,ALPHA_LOCAL_AGENT_SOURCE_DIR:runtime};
+ // Fixture source/cache must remain local even inside a real preparation environment.
+ const runtime=path.join(product,'artifacts','runtime');const childEnv={...env,ALPHA_LOCAL_AGENT_SOURCE_DIR:runtime,ALPHA_RUNTIME_GIT_CACHE:sdk};
  const prepare=(args=[],override={})=>spawnSync(process.execPath,[path.join(product,'scripts/prepare-local-agent.mjs'),'--source-only',...args],{cwd:product,env:{...childEnv,...override},encoding:'utf8'});
  const initial=prepare();assert.equal(initial.status,0,initial.stderr);
  const stamp=path.join(runtime,'.alpha-runtime-source.json'),old=fs.readFileSync(stamp),backup=path.join(temp,'prior-stamp.json');

@@ -20,6 +20,24 @@ async function setup(page:any,owner='owner-a'){
  },owner);await page.getByRole('button',{name:'Inbox',exact:true}).click();await expect(page.getByRole('button',{name:'Compose',exact:true})).toBeEnabled();
 }
 async function begin(page:any){await setup(page);await page.getByRole('button',{name:'Compose',exact:true}).click();await page.getByRole('textbox',{name:'Subject',exact:true}).fill('Retained subject');await page.getByRole('textbox',{name:'Message',exact:true}).fill('Unsent local body');await retained(page,{body:'Unsent local body'});}
+test('update readback drains a retired Inbox editor without dispatching mail',async({page})=>{
+ await page.goto('/');
+ const body=await page.evaluate(async()=>{
+  const {inboxUnsaved}=await import('/src/prototype/inbox-unsaved.ts');
+  const owner=JSON.stringify(['production','fixture-owner','','fixture-grant']);
+  const retired=inboxUnsaved(owner,()=>{},()=>{});
+  await retired.ready;
+  retired.edit({version:1,owner,baseRevision:null,toQ:'',draft:{
+   version:1,id:'draft-fixture',revision:'revision-fixture',owner,to:[],subject:'Draft',body:'Keep after the update',
+  }});
+  retired.retire();
+  await retired.flushForAppUpdate(()=>true);
+  const reopened=inboxUnsaved(owner,()=>{},()=>{});
+  await reopened.ready;
+  return reopened.peek()?.draft.body;
+ });
+ expect(body).toBe('Keep after the update');
+});
 test('unsaved body and incomplete address survive reload without provider writes',async({page})=>{
  await begin(page);await page.getByRole('textbox',{name:'To',exact:true}).fill('still-typing@');await page.getByRole('button', {name: 'Cc and Bcc', exact: true}).click();
   await page.getByRole('textbox', {name: 'Cc', exact: true}).fill('unfinished');await retained(page,{body:'Unsent local body',toQ:'still-typing@',cc:['unfinished']});await setup(page);await (await localDraftRow(page)).click();await expect(page.getByRole('textbox',{name:'Message',exact:true})).toHaveValue('Unsent local body');await expect(page.getByRole('textbox',{name:'To',exact:true})).toHaveValue('still-typing@');await expect(page.getByRole('textbox',{name:'Cc',exact:true})).toHaveValue('unfinished');expect(await page.evaluate(()=>(window as any).emailRecoveryFixture.mutations)).toBe(0);

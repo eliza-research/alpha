@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
-import {stripTypeScriptTypes} from 'node:module';
+import {stripTypeScriptTypes} from './support/strip-types.mjs';
 import vm from 'node:vm';
 const read=p=>readFileSync(new URL('../apps/app/src/'+p,import.meta.url),'utf8');
 const js=source=>stripTypeScriptTypes(source.replace(/^import .*;\n/gm,''),{mode:'strip'}).replace(/\bexport /g,'');

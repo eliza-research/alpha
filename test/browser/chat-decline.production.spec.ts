@@ -1,5 +1,5 @@
 import {seedCompletedAccessSetup} from './flag-off-android';
-import { completeAccessSetup } from './flag-off-android';
+import { completeAccessSetup, openYourAgent } from './flag-off-android';
 import { test, expect, type Page } from '@playwright/test';
 import { installResidentAgentPlugin } from './helpers/resident-agent-plugin';
 
@@ -150,18 +150,15 @@ test('Activity reconciles a reconciliation-required entry as not applied', async
   test.setTimeout(90_000);
   await residentAgent(page, 'reconcile');
   await connected(page, { review: true });
-  await page.getByRole('button', { name: 'Settings', exact: true }).click();
-  await page.getByText('Privacy & data', { exact: true }).click();
-  await page.getByRole('button', { name: 'Activity', exact: true }).click();
+  await openYourAgent(page);
   const app = page.locator('[data-alpha-layer="app"]');
   // Background proposal recovery stays passive. Activity loads its history only
   // when the owner asks, before any reconciliation decision is available.
-  await app.getByRole('button', { name: 'Load phone action history', exact: true }).click();
-  await expect(app.getByRole('button', { name: 'Refresh phone action history', exact: true })).toBeVisible();
-  await expect(app.getByRole('button', { name: 'Load phone action history', exact: true })).toHaveCount(0);
-  await expect(app.getByText('Needs your review', { exact: true })).toBeVisible();
-  await expect(app.getByRole('button', { name: 'It happened', exact: true })).toBeVisible();
-  await app.getByRole('button', { name: 'It did not happen', exact: true }).click();
+  await app.getByRole('button', { name: 'Refresh actions', exact: true }).click();
+  await expect(app.getByRole('button', { name: 'Refresh actions', exact: true })).toBeVisible();
+  await expect(app.getByText('Needs your review · not dispatched by this phone', { exact: true })).toBeVisible();
+  await expect(app.getByRole('button', { name: 'I verified it happened', exact: true })).toBeVisible();
+  await app.getByRole('button', { name: 'I verified it did not happen', exact: true }).click();
   await expect.poll(async () => (await fixture(page)).states).toEqual([['fixture-reconcile', 'not_applied']]);
   const state = await fixture(page);
   expect(state.reconciliations).toEqual([{ attemptId: 'fixture-attempt', resolution: { confirmed: true, outcome: 'not_applied' } }]);

@@ -86,14 +86,14 @@ test('an unreachable saved sign-in stays available in agent settings and can be 
   await boot(page,'offline');
   await expect(page.locator('[role="main"].alpha-cloud-sign-in')).toHaveCount(0);
   const gate=await openYourAgent(page);
-  await expect(gate.getByRole('button',{name:'Reconnect agent',exact:true})).toBeEnabled();
+  await expect(gate.getByRole('button',{name:'Restart agent',exact:true})).toBeEnabled();
   await expect(gate).not.toContainText(/Signed in|Credits available/);
   // Cloud being unreachable shows no banner or status text, and no sign-in is asked for (owner, 2026-11-03).
   await expect(page.getByRole('region',{name:'Eliza Cloud plan notice',exact:true})).toHaveCount(0);
   await expect(page.getByText(/Cloud cannot be reached/)).toHaveCount(0);
   await expect(gate).not.toContainText('Sign in required');
   const starts=(await agentCalls(page)).filter(call=>call==='start').length;
-  await gate.getByRole('button',{name:'Reconnect agent',exact:true}).click();
+  await gate.getByRole('button',{name:'Restart agent',exact:true}).click();
   await expect.poll(async()=>(await agentCalls(page)).filter(call=>call==='start').length).toBeGreaterThan(starts);
   await expect(gate).toBeVisible();expect(await agentCalls(page)).not.toContain('configureCloudProvider');
   expect((await calls(page)).filter(call=>call.plugin==='AlphaConnection'&&call.method==='secureWrite'&&call.slot==='cloud:production')).toEqual([]);
@@ -122,10 +122,10 @@ test('a kept sign-in Cloud admits binds inference at start and runs the on-devic
   expect(paths).toEqual(expect.arrayContaining(['/api/v1/user', '/api/v1/billing/limits']));
   expect(paths.filter(path => !['/api/v1/user', '/api/v1/subscription/entitlement', '/api/v1/billing/limits', '/api/v1/eliza/google/accounts'].includes(path))).toEqual([]);
   await page.getByRole('button', { name: 'Settings', exact: true }).click();
-  await page.getByRole('button', { name: /Agent connection/ }).click();
+  await page.getByRole('button', { name: 'Agent', exact: true }).click();
   const dialog = page.getByRole('region', { name: 'Settings',exact:true });
   await expect(dialog.getByText('Running on this device', { exact: true })).toBeVisible();
-  await expect(dialog.getByText('Eliza Cloud',{exact:true})).toBeVisible();
+  await expect(dialog.getByText('AI: Eliza Cloud',{exact:true})).toBeVisible();
   expect((await selection(page))?.kind).toBe('resident');
 });
 

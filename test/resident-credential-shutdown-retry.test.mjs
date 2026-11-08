@@ -9,7 +9,7 @@ const directory=join(root,'android/app/src/main/java/ai/elizaresearch/alphaphone
 const source=readFileSync(join(directory,'AlphaLocalAgentPlugin.java'),'utf8');
 import {javaBinary,upstreamAgentRuntime} from './fixtures/jvm-tools.mjs';
 // The agent-runtime intent fence delegates to the shared secure-store fence since elizaOS/eliza#38281.
-const intentFence=[upstreamAgentRuntime('CredentialIntentFence.java'),join(root,'vendor/eliza/plugins/plugin-native-secure-store/android/src/main/java/ai/eliza/plugins/securestore/nativeonly/CredentialIntentFence.java')];
+const intentFence=[upstreamAgentRuntime('CredentialIntentFence.java'),join(root,'vendor/eliza/plugins/plugin-native-secure-store/android-nativeonly/src/main/java/ai/eliza/plugins/securestore/nativeonly/CredentialIntentFence.java')];
 test('strict shutdown retry requires exact current acknowledgment plus absence and current owner',()=>{
  const temporary=mkdtempSync(join(tmpdir(),'credential-shutdown-retry-'));
  try{
@@ -152,7 +152,7 @@ public class StopReissueHarness {
  }
  static final Object lifecycleLock=new Object();
  static long lifecycleEpoch,credentialMutationEpoch=-1,credentialShutdownRequest=-1;
- static boolean accepting=true,stopping;static String startRequestId;static boolean startOwnsLaunch;
+ static boolean accepting=true,stopping;boolean disposed;static String startRequestId;static boolean startOwnsLaunch;
  Context getContext(){return new Context();}void invalidateCalls(){}void clearEnrollment(){}boolean runtimePackaged(){return true;}
  static boolean shutdownConfirmed(JSObject status){return !ElizaAgentService.siblingAlive;}
  ${reissue}

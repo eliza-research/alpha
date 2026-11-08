@@ -1,3 +1,4 @@
+import fs from 'node:fs';
 import test,{after} from 'node:test';
 import assert from 'node:assert/strict';
 import {buildSync} from 'esbuild';
@@ -87,3 +88,6 @@ for(const [name,mount]of [['startup recovery',startupScreen],['render recovery',
   }
  });
 }
+
+
+test("native Home chooser honors the existing foreground launch fence",()=>{const native=fs.readFileSync("android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaDeviceAppsPlugin.java","utf8");assert.match(native,/LateLaunch\.ask\(call,\(\)->/);});

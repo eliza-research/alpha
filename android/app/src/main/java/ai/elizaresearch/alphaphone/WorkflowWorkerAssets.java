@@ -4,6 +4,10 @@ import java.io.*;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.LinkOption;
+import java.nio.file.Path;
+import java.nio.file.FileVisitResult;
+import java.nio.file.SimpleFileVisitor;
+import java.nio.file.attribute.BasicFileAttributes;
 import java.security.MessageDigest;
 import java.util.*;
 
@@ -44,10 +48,11 @@ final class WorkflowWorkerAssets {
   // Staging and backup names are random, so a process death mid-install leaves them behind.
   File[] leftovers=canonical.listFiles();if(leftovers==null)throw new IOException("Cannot list agent resource directory");
   for(File leftover:leftovers)if(leftover.getName().startsWith(".workflow-worker-"))remove(leftover);
-  // The same APK install already extracted and verified this exact index.
+  // Reuse the same APK payload only while its installed bytes still match the index.
   if(packageStamp!=null&&Files.isDirectory(target.toPath(),LinkOption.NOFOLLOW_LINKS)
    &&Arrays.equals(index,readInstalled(new File(target,"files.sha256")))
-   &&Arrays.equals(packageStamp.getBytes(StandardCharsets.UTF_8),readInstalled(new File(target,PACKAGE_STAMP))))return target;
+   &&Arrays.equals(packageStamp.getBytes(StandardCharsets.UTF_8),readInstalled(new File(target,PACKAGE_STAMP)))
+   &&validInstalled(target,entries))return target;
   if(!staging.mkdir())throw new IOException("Could not create worker staging directory");
   boolean moved=false;
   try {
@@ -72,6 +77,33 @@ final class WorkflowWorkerAssets {
    if(moved)remove(backup);
    return target;
   }finally{remove(staging);}
+ }
+ private static boolean validInstalled(File target, Map<String,String> entries) {
+  Set<String> directories=new HashSet<>();directories.add("");
+  for(String name:entries.keySet())for(int slash=name.indexOf('/');slash>=0;slash=name.indexOf('/',slash+1))directories.add(name.substring(0,slash));
+  Path root=target.toPath();long[] total={0};int[] verified={0};
+  try {
+   Files.walkFileTree(root,new SimpleFileVisitor<Path>() {
+    private String relative(Path file){return root.relativize(file).toString().replace(File.separatorChar,'/');}
+    @Override public FileVisitResult preVisitDirectory(Path directory,BasicFileAttributes attributes) throws IOException {
+     if(!directories.contains(relative(directory)))throw new IOException("Unexpected worker directory");
+     return FileVisitResult.CONTINUE;
+    }
+    @Override public FileVisitResult visitFile(Path file,BasicFileAttributes attributes) throws IOException {
+     String name=relative(file),expected=entries.get(name);
+     if(!attributes.isRegularFile())throw new IOException("Invalid installed worker file");
+     if(name.equals("files.sha256")||name.equals(PACKAGE_STAMP))return FileVisitResult.CONTINUE;
+     if(expected==null)throw new IOException("Unexpected installed worker file");
+     MessageDigest hash=digest();byte[] buffer=new byte[8192];
+     try(InputStream input=Files.newInputStream(file)) {
+      int count;while((count=input.read(buffer))!=-1){total[0]+=count;if(total[0]>MAX_BYTES)throw new IOException("Worker payload too large");hash.update(buffer,0,count);}
+     }
+     if(!hex(hash.digest()).equals(expected))throw new IOException("Installed worker hash mismatch");
+     verified[0]++;return FileVisitResult.CONTINUE;
+    }
+   });
+   return verified[0]==entries.size();
+  }catch(IOException invalid){return false;}
  }
  private static byte[] readInstalled(File file) throws IOException {
   if(!Files.isRegularFile(file.toPath(),LinkOption.NOFOLLOW_LINKS))return null;

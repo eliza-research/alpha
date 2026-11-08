@@ -27,6 +27,7 @@ export function releaseBlockers(row, { fontLicenceBlocks = UNRESOLVED_FONT_LICEN
     ...options,
     admitSigner: releaseAdmission,
     signerFile: "android/release-signer.json",
+    cloudVoiceProvider: "cartesia",
     licenceBlocks: item => fontLicenceBlocks && FONT_CHECK.test(item),
   });
 }

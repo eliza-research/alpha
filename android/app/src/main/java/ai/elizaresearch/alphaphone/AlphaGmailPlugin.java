@@ -16,10 +16,8 @@ public final class AlphaGmailPlugin extends Plugin {
  private MailBackgroundDelivery delivery(){return GmailBackground.get(getContext());}
  private interface Work {JSObject run()throws Exception;}
  private void submit(PluginCall call,Work work){try{io.execute(()->{try{call.resolve(work.run());}catch(Exception unavailable){call.reject("Gmail background state could not be verified. Open Inbox and check the account.");}});}catch(RejectedExecutionException closed){call.reject("Gmail bridge closed");}}
- // A tap whose capture failed; Capacitor forwards warm intents without Activity.setIntent.
- private volatile Intent retained;
  private boolean foreground(){android.app.Activity activity=getActivity();return activity!=null&&!activity.isFinishing()&&!activity.isDestroyed()&&activity.hasWindowFocus()&&!getContext().getSystemService(KeyguardManager.class).isDeviceLocked();}
- /** Checked on the calling thread: delivery calls this under the credential lifecycle lock, which the main thread also takes. */
+ /** Delivery calls this under the credential lifecycle lock, which the main thread also takes. */
  private void requireForeground(long epoch){if(epoch!=lifecycle||!foreground())throw new SecurityException("Unlock Gmail to continue");}
  @PluginMethod public void configure(PluginCall call){if(!foreground()){call.reject("Select Gmail on the unlocked phone");return;}long attempt=delivery().begin();String credential=call.getString("credentialId"),grant=call.getString("grantId"),user=call.getString("userId"),organization=call.getString("organizationId");submit(call,()->new JSObject(delivery().configure(attempt,credential,grant,user,organization).toString()));}
  @PluginMethod public void withdraw(PluginCall call){submit(call,()->{delivery().withdraw(call.getString("grantId"));return new JSObject();});}
@@ -28,10 +26,12 @@ public final class AlphaGmailPlugin extends Plugin {
  @PluginMethod public void consume(PluginCall call){if(!foreground()){call.reject("Unlock Gmail to continue");return;}long epoch=lifecycle;submit(call,()->{delivery().consume(call.getString("token"),()->requireForeground(epoch));return new JSObject();});}
  @PluginMethod public void releaseQuestion(PluginCall call){if(!foreground()){call.reject("Unlock Gmail to continue");return;}long epoch=lifecycle;submit(call,()->{delivery().releaseQuestion(call.getString("token"),()->requireForeground(epoch));return new JSObject();});}
  @PluginMethod public void notificationSettings(PluginCall call){if(!foreground()){call.reject("Open settings on the unlocked phone");return;}try{getActivity().startActivity(new Intent(Settings.ACTION_CHANNEL_NOTIFICATION_SETTINGS).putExtra(Settings.EXTRA_APP_PACKAGE,getContext().getPackageName()).putExtra(Settings.EXTRA_CHANNEL_ID,GmailBackground.NOTICES.channel));call.resolve();}catch(RuntimeException unavailable){call.reject("Android notification settings unavailable");}}
- private void capture(Intent intent){MailNoticePoster.Tap tap=GmailBackground.poster(getContext()).tap(intent);if(tap==null)return;try{io.execute(()->{try{delivery().capture(tap.key,tap.question);intent.setData(null);notifyListeners("pendingMail",new JSObject(),true);}catch(Exception failed){/* Owner mismatch exposes no route; a later resume retries. */retained=intent;}});}catch(RejectedExecutionException ignored){}}
- @Override public void load(){delivery();capture(getActivity().getIntent());delivery().resume();}
+ private volatile Intent retained,latest;
+ private void capture(Intent intent){latest=intent;retained=null;try{io.execute(()->{if(latest!=intent)return;try{MailNoticePoster.Tap tap=GmailBackground.poster(getContext()).tap(intent);if(tap==null)return;delivery().capture(tap.key,tap.question);intent.setData(null);if(latest==intent){retained=null;notifyListeners("pendingMail",new JSObject(),true);}}catch(Exception ignored){/* A newer intent keeps custody; an owner mismatch exposes no route. */if(latest==intent)retained=intent;}});}catch(RejectedExecutionException ignored){}}
+ private void resumeDelivery(boolean notify){try{io.execute(()->{delivery().resume();if(notify)notifyListeners("pendingMail",new JSObject(),true);});}catch(RejectedExecutionException ignored){/* The bridge was destroyed. */}}
+ @Override public void load(){capture(getActivity().getIntent());resumeDelivery(false);}
  @Override protected void handleOnNewIntent(Intent intent){capture(intent);}
- @Override protected void handleOnResume(){Intent again=retained;retained=null;if(again!=null)capture(again);delivery().resume();notifyListeners("pendingMail",new JSObject(),true);}
+ @Override protected void handleOnResume(){Intent again=retained;retained=null;if(again!=null)capture(again);resumeDelivery(true);}
  @Override protected void handleOnPause(){lifecycle++;super.handleOnPause();}
- @Override protected void handleOnDestroy(){lifecycle++;io.shutdown();super.handleOnDestroy();}
+ @Override protected void handleOnDestroy(){lifecycle++;latest=null;retained=null;io.shutdown();super.handleOnDestroy();}
 }

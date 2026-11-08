@@ -1,36 +1,60 @@
 import { NavigationVoice as SharedNavigationVoice } from '../../../../.eliza/client-features/plugins/plugin-maps/src/client/navigation-voice.ts';
 import { createOnDeviceVoice } from '../runtime/local-voice';
 import { speakAppText } from '../runtime/app-speech';
+import { connectionController } from '../runtime/connection-ui';
 import { cloudRuntimeEnabled } from '../build-flags';
-/**
- * Speech is foreground-only, so a step skipped or cut off while the screen is off is owed, not a
- * failure: voice stays on and only the current step is spoken once the screen is on again.
- * Speaking with the screen off needs a native playback lease the pinned speech bridge lacks.
- * The Cloud QA profile speaks through the app's Cloud route, which carries its disclosure.
- */
+
+type Instruction = {key:string;text:string;current:()=>boolean};
+/** Screen-off guidance waits for foreground playback; only the current instruction may resume. */
 export class NavigationVoice extends SharedNavigationVoice {
- private latest?:{key:string;text:string};
- private owed?:string;
+ private latest?:Instruction;
+ private owed?:Instruction;
  private readonly resume=()=>{
   if(document.hidden)return;
   document.removeEventListener('visibilitychange',this.resume);
   const owed=this.owed,latest=this.latest;this.owed=undefined;
-  if(!latest||owed!==latest.key||!this.enabled)return;
+  if(!latest||owed!==latest||!this.enabled||!latest.current())return;
   this.pause();this.update(latest.key,latest.text);
  };
  constructor(failed:(error?:unknown)=>void) {
   let failure:unknown,self:NavigationVoice|undefined;
   super(()=>failed(failure),async(text,signal)=>{
-   const key=self?.latest?.key;
-   if(document.hidden){self?.owe(key);return;}
+   const instruction=self?.latest;
+   if(document.hidden){self?.owe(instruction);return;}
+   let hiddenDuringSpeech=false;
+   const hidden=()=>{if(document.hidden)hiddenDuringSpeech=true;};
+   document.addEventListener('visibilitychange',hidden);
    try{
     if(cloudRuntimeEnabled){await speakAppText(text,signal);return;}
-    const voice=createOnDeviceVoice();if(!voice||!await voice.playbackReady(signal))throw Error('On-device navigation speech is unavailable.');await voice.speak(text,signal);
-   }catch(error){if(document.hidden&&!signal.aborted){self?.owe(key);return;}failure=error;throw error;}
+    const voice=createOnDeviceVoice();
+    if(!voice||!await voice.playbackReady(signal))throw Error('On-device navigation speech is unavailable.');
+    await voice.speak(text,signal);
+   }catch(error){
+    // Visibility interruption is resumable, but account changes, explicit Stop and provider failures are not.
+    if(hiddenDuringSpeech&&(error as {name?:string})?.name==='AbortError'&&(error as {code?:unknown})?.code!=='speech-cleanup-unconfirmed'&&!signal.aborted&&instruction?.current()){
+     self?.owe(instruction);return;
+    }
+    failure=error;throw error;
+   }finally{document.removeEventListener('visibilitychange',hidden);}
   });
   self=this;
  }
- override update(key:string,text:string) { this.latest={key,text};super.update(key,text); }
+ override update(key:string,text:string) {
+  if(this.latest?.key!==key||this.latest.text!==text){
+   const selected=connectionController.getSnapshot(),binding=connectionController.getCloudClient(),environment=connectionController.getCloudEnvironment(),mode=document.documentElement.dataset.connectionMode;
+   const session=selected.session,inference=selected.residentInference,providerRevision=selected.providerStatus?.revision,sessionId=binding?.sessionId,credentialId=binding?.credentialId;
+   this.latest={key,text,current:()=>{
+    const now=connectionController.getSnapshot(),cloud=connectionController.getCloudClient();
+    return !now.open&&session===now.session&&inference===now.residentInference&&providerRevision===now.providerStatus?.revision&&environment===connectionController.getCloudEnvironment()&&sessionId===cloud?.sessionId&&credentialId===cloud?.credentialId&&mode===document.documentElement.dataset.connectionMode;
+   }};
+  }
+  super.update(key,text);
+ }
  override pause() { super.pause();this.latest=undefined;this.owed=undefined;document.removeEventListener('visibilitychange',this.resume); }
- private owe(key?:string) { if(!key)return;this.owed=key;document.addEventListener('visibilitychange',this.resume); }
+ override toggle() { super.toggle();if(!this.enabled){this.owed=undefined;document.removeEventListener('visibilitychange',this.resume);} }
+ private owe(instruction?:Instruction) {
+  if(!instruction||instruction!==this.latest||!instruction.current()||!this.enabled)return;
+  this.owed=instruction;document.addEventListener('visibilitychange',this.resume);
+  if(!document.hidden)queueMicrotask(this.resume);
+ }
 }

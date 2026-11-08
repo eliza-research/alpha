@@ -2,6 +2,7 @@ import {NOTE_ID_REGEXP} from '../../../../.eliza/client-features/plugins/plugin-
 import {parseClientTurnObservation,parseClientCalendarDayObservation} from '../../../../.eliza/client-features/packages/contracts/src/client-turn-observation.ts';
 import {clockHandoffCapabilities,clockTimeZone} from './clock-contract.ts';
 import {CAMERA_CAPTURE_CAPABILITY} from '../../../../.eliza/client-features/plugins/plugin-assistant/src/services/device-actions/camera-contract.ts';
+import {FILES_CAPABILITY} from '../../../../.eliza/client-features/plugins/plugin-assistant/src/services/device-actions/files-browser-contract.ts';
 import {SMS_SEND_CAPABILITY} from './sms-agent-contract.ts';
 import {PHONE_DIAL_CAPABILITY,telephonyDeviceCapabilities} from './phone-dial-contract.ts';
 import {reminderTarget} from '../../../../.eliza/client-features/plugins/plugin-assistant/src/services/device-actions/reminder-contract.ts';
@@ -130,8 +131,8 @@ export function phoneContextMessage(text: string, input: ContextEnvelope): { tex
 export const CALENDAR_AVAILABILITY_CAPABILITY = 'calendar.availability-read.v1';
 /** What this phone can run, for the capability negotiation. `native`: a Capacitor app (Android or
  * iOS); `camera`: a camera it can capture with; `foregroundReview`: the shell supplied the review
- * executor; `clockRepeatDays`: native Clock carries repeat days; `aospImage`: the Alpha system image. */
-export type DeviceCapabilityProfile = {android: boolean; native: boolean; camera: boolean; foregroundReview: boolean; photoLibrary?: boolean; clockRepeatDays: boolean; aospImage: boolean};
+ * executor; `files`: the native Files plugin is present; `clockRepeatDays`: native Clock carries repeat days; `aospImage`: the Alpha system image. */
+export type DeviceCapabilityProfile = {android: boolean; native: boolean; camera: boolean; foregroundReview: boolean; photoLibrary?: boolean; files?: boolean; clockRepeatDays: boolean; aospImage: boolean};
 /** The X-Eliza-Device-Capabilities list for every runtime (remote, resident, Cloud): the base
  * local-record contracts plus each capability the agent offers that this phone supports. Clock
  * handoffs are Android-only; v2 (repeat days) also needs the native repeat-days support. */
@@ -141,7 +142,10 @@ export function selectDeviceCapabilities(offered: unknown, profile: DeviceCapabi
   if(agent.includes(CAMERA_CAPTURE_CAPABILITY)&&profile.camera)capabilities.push(CAMERA_CAPTURE_CAPABILITY);
   if(agent.includes('reminders.local-record.v2'))capabilities.push('reminders.local-record.v2');else if(agent.includes('reminders.local-record.v1'))capabilities.push('reminders.local-record.v1');
   // Browser chat reminders use the runtime scheduler; do not offer a second device-creation lifecycle.
+  // notes.organize.v1 (Notes folders, filter, restore, record) waits for the pin to carry
+  // patches/eliza/notes-organize-agent.patch: the shared coordinator cannot parse those operations yet.
   for(const capability of [...(!native?['calendar.agenda-read.v1']:[]),'notes.query.v1',...(native?['reminders.create.v1']:[]),'calendar.create.v1',...(android||!native?['calendar.next-read.v1']:[]),'maps.selected-read.v1'])if(agent.includes(capability))capabilities.push(capability);
+  if(agent.includes(FILES_CAPABILITY)&&profile.files)capabilities.push(FILES_CAPABILITY);
   // Free/busy is negotiated only when the agent offers it.
   if(agent.includes(CALENDAR_AVAILABILITY_CAPABILITY))capabilities.push(CALENDAR_AVAILABILITY_CAPABILITY);
   // The device photo library is offered only where the native Photos plugin exists and the agent offers it.

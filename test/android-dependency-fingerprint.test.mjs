@@ -5,7 +5,7 @@ import os from 'node:os';
 import path from 'node:path';
 import {git as fixtureGit} from './fixtures/git-fixture.mjs';
 import {createHash} from 'node:crypto';
-import {androidDependencyFingerprint} from '../scripts/generate-licenses.mjs';
+import {androidDependencyFingerprint,parseGradleTree} from '../scripts/generate-licenses.mjs';
 import {preparePatchedNative} from '../scripts/prepare-patched-native.mjs';
 
 const descriptor = 'packages/auth/android/build.gradle';
@@ -62,4 +62,27 @@ test('Android dependency fingerprint rejects unauthenticated auth descriptor cha
  patchAuth(source,original+"dependencies {\n implementation 'androidx.browser:browser:1.9.0'\n}\n");
  fs.appendFileSync(path.join(source.root,'patches/eliza/auth.patch'),'unreviewed\n');
  assert.throws(()=>androidDependencyFingerprint(source.root),/Native patch digest mismatch/);
+});
+
+test('Android dependency fingerprint includes transitive credential custody but excludes fixture modules',t=>{
+ const {root}=fixture(t);
+ const host=JSON.parse(fs.readFileSync(path.join(root,'android/consumer-host.json'),'utf8'));
+ const nativeOnly='plugins/plugin-native-secure-store/android-nativeonly';
+ host.profile.modules.push(
+  {name:'elizaos-capacitor-secure-store-nativeonly',source:{root:'patchedNative',path:nativeOnly},appDependency:false},
+  {name:'test-fixture',source:{root:'consumer',path:'android/test-fixture'},appDependency:false},
+ );
+ write(root,'android/consumer-host.json',JSON.stringify(host));
+ write(root,`vendor/eliza/${nativeOnly}/build.gradle`,"implementation 'androidx.core:core:1.16.0'\n");
+ const before=androidDependencyFingerprint(root);
+ write(root,'android/test-fixture/build.gradle',"implementation 'example:fixture:1.0.0'\n");
+ assert.equal(androidDependencyFingerprint(root),before);
+ write(root,`vendor/eliza/${nativeOnly}/build.gradle`,"implementation 'androidx.core:core:1.17.0'\n");
+ assert.notEqual(androidDependencyFingerprint(root),before);
+});
+
+test('Android classpath capture rejects an unresolved Gradle row alongside resolved dependencies',()=>{
+ const resolved='+--- androidx.core:core:1.16.0 -> 1.17.0\n';
+ assert.deepEqual(parseGradleTree(resolved),['androidx.core:core:1.17.0']);
+ assert.throws(()=>parseGradleTree(resolved+'\\--- example:missing:1.0 FAILED\n'),/Unresolved Android runtime dependency/);
 });

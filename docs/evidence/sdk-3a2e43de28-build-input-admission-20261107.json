@@ -1,0 +1,17 @@
+{
+  "date": "2026-11-07",
+  "previousPin": "3c76d07819b253b3c8f071f84ec7e6a5374a9a66",
+  "currentPin": "3a2e43de288a5ec8a77212084772fede22577665",
+  "unchangedBunLockGitBlob": "1cc61ff8862fd52607467743370879b575050d4d",
+  "dependencyManifestChanges": [],
+  "nativeInferenceInputChanges": [],
+  "restoredScopes": [
+    "managed Google credential separation",
+    "managed Calendar feed bound",
+    "Calendar availability",
+    "confirmed Notes reply recovery",
+    "Cloud tool serialization"
+  ],
+  "nativeQualificationRequired": true,
+  "productionReleaseAcceptance": false
+}

@@ -8,6 +8,11 @@ import ai.eliza.voice.LiveVadGate;
 import ai.eliza.voice.NativeAsr;
 import ai.eliza.voice.ParadeeVoice;
 import ai.eliza.voice.VoiceAssets;
+import ai.eliza.voice.AudioTrackSpeechOutput;
+import ai.eliza.voice.FirstWriteSpeechOutput;
+import ai.eliza.voice.SpeechLeadTrim;
+import ai.eliza.voice.SpeechOutputWarmup;
+import ai.eliza.voice.StreamingSpeechPlayback;
 import android.Manifest;
 import android.app.Instrumentation;
 import android.content.Context;
@@ -58,6 +63,10 @@ import static org.junit.Assert.*;
  * {@code -e feed 1 [-e gapSeconds 8]} replaces the microphone with a paced feed of the WAVs pushed to
  * {@code <files>/latency-feed/} (debug build: {@code adb exec-in run-as}; for emulators whose virtual microphone delivers silence); those
  * trials carry the {@code synthetic-feed} capture clock and measure from the fed last speech sample.
+ * {@code -e streamed 1} plays each reply as the speech bridge's streamLocal does (streamed synthesis with the
+ * lead-in trim, StreamingSpeechPlayback, AudioTrack) instead of a whole-file MediaPlayer; audible time then
+ * comes from the AudioTrack timestamp. {@code -e warmOutput 1} also holds the output awake from the end of
+ * speech until the first reply samples, as {@code warmSpeechOutput} does.
  * Every trial is recorded with pipeline {@code harness-no-inference}. Writes the
  * alpha-native-voice-timing-v3 export plus harness details (transcripts on an emulator only) to
  * {@code <external files>/native-voice-latency/}. Emulator results are not device latency.
@@ -94,6 +103,8 @@ public final class NativeVoiceLatencyInstrumentedTest {
   int target=Integer.parseInt(args.getString("trials","60")),coldEvery=Integer.parseInt(args.getString("coldEvery","6"));
   long timeoutMs=Long.parseLong(args.getString("timeoutMs","1800000"));
   boolean feed="1".equals(args.getString("feed"));
+  streamed="1".equals(args.getString("streamed"));
+  warmOutput="1".equals(args.getString("warmOutput"));
   double gapSeconds=Double.parseDouble(args.getString("gapSeconds","8"));
   assertTrue(target>0&&coldEvery>1&&timeoutMs>0);
   Instrumentation instrumentation=InstrumentationRegistry.getInstrumentation();
@@ -133,7 +144,7 @@ public final class NativeVoiceLatencyInstrumentedTest {
    while(finished.get()<target&&captureError.get()==null&&System.currentTimeMillis()-started<timeoutMs)Thread.sleep(500);
   }finally{
    capture.stop();
-   worker.submit(this::closeEngines);worker.shutdown();worker.awaitTermination(60,TimeUnit.SECONDS);
+   worker.submit(()->{closeWarmup();closeEngines();});worker.shutdown();worker.awaitTermination(60,TimeUnit.SECONDS);
    playbackThread.quitSafely();
   }
   JSONObject export=writeExport();
@@ -146,7 +157,8 @@ public final class NativeVoiceLatencyInstrumentedTest {
  private File out;
  private long started;
  private int target,coldEvery;
- private boolean feed;
+ private boolean feed,streamed,warmOutput;
+ private SpeechOutputWarmup warmup;
  private synchronized JSONObject writeExport()throws Exception{
   JSONObject export=VoiceLatencyProbe.export(app);
   JSONArray turns;synchronized(turnsLog){turns=new JSONArray(turnsLog.toString());}
@@ -173,6 +185,8 @@ public final class NativeVoiceLatencyInstrumentedTest {
    for(float[] chunk:pcm)stream.feed(chunk);
    if(!closing){if(++batches%PARTIAL_EVERY==0)stream.partial();return;}
    VoiceLatencyTrials.Trial trial=VoiceLatencyProbe.TRIALS.pending();
+   // One warm-up per trial: a previous one never stays open into this turn.
+   if(warmOutput&&trial!=null)openWarmup();else closeWarmup();
    String text=stream.finish();stream.close();stream=null;
    VoiceLatencyProbe.TRIALS.mark(trial,"asr-final",System.nanoTime());
    if(trial==null){busy.set(false);return;}
@@ -180,10 +194,12 @@ public final class NativeVoiceLatencyInstrumentedTest {
    // Transcripts of injected synthetic speech help check the harness; real speech is never written.
    JSONObject log=new JSONObject().put("sequence",trial.sequence).put("transcribed",text!=null&&!text.trim().isEmpty());
    if(VoiceLatencyProbe.emulator())log.put("transcript",text==null?"":text.trim());
-   if(text==null||text.trim().isEmpty()){VoiceLatencyProbe.TRIALS.failed(trial,"no-transcript");endTurn(log,trial,coldEvery);return;}
+   if(text==null||text.trim().isEmpty()){closeWarmup();VoiceLatencyProbe.TRIALS.failed(trial,"no-transcript");endTurn(log,trial,coldEvery);return;}
    String reply=REPLIES[turns%REPLIES.length];log.put("reply",reply);
    VoiceLatencyProbe.TRIALS.mark(trial,"tts-start",System.nanoTime());
    if(voice==null){VoiceLatencyProbe.TRIALS.engineLoaded(trial,"tts-load");voice=bundle.openVoice();}
+   if(streamed){try{stream(trial,reply);}finally{closeWarmup();}endTurn(log,trial,coldEvery);return;}
+   closeWarmup();
    ParadeeVoice.Audio audio=voice.synthesize(reply,1f);
    VoiceLatencyProbe.TRIALS.mark(trial,"tts-ready",System.nanoTime());
    int lead=VoiceLatencyProbe.leadInFrames(audio.samples),total=audio.samples.length,rate=audio.sampleRate;
@@ -194,6 +210,8 @@ public final class NativeVoiceLatencyInstrumentedTest {
    }finally{wav.delete();}
    endTurn(log,trial,coldEvery);
   }catch(Exception|Error failure){
+   // A failed turn never leaves its silent output track writing into the next trial.
+   closeWarmup();
    VoiceLatencyTrials.Trial trial=VoiceLatencyProbe.TRIALS.pending();
    if(trial!=null&&closing){VoiceLatencyProbe.TRIALS.failed(trial,"harness-"+failure.getClass().getSimpleName());try{endTurn(new JSONObject().put("sequence",trial.sequence).put("error",failure.getClass().getSimpleName()),trial,coldEvery);}catch(Exception ignored){busy.set(false);}}
    else if(closing)busy.set(false);
@@ -212,6 +230,32 @@ public final class NativeVoiceLatencyInstrumentedTest {
   busy.set(false);
  }
 
+ /** Opens this trial's speech-output warm-up, closing any earlier one first. */
+ private synchronized void openWarmup(){closeWarmup();warmup=new SpeechOutputWarmup(LocalSpeechEngine.STREAM_RATE);}
+ /** Closes this trial's speech-output warm-up, if one is open. Idempotent; called from the turn
+  * worker and from the streamed output's first samples. */
+ private synchronized void closeWarmup(){if(warmup!=null){warmup.close();warmup=null;}}
+ /** Streamed playback as the speech bridge's streamLocal, with the same collector calls; waits for the end of the utterance. */
+ private void stream(VoiceLatencyTrials.Trial trial,String reply)throws Exception{
+  CountDownLatch done=new CountDownLatch(1);
+  StreamingSpeechPlayback.Listener listener=new StreamingSpeechPlayback.Listener(){
+   public void firstFrame(long nanos){VoiceLatencyTrials.Trial owned=VoiceLatencyProbe.TRIALS.firstPcm(trial,nanos);if(owned!=null)VoiceLatencyProbe.stampEnvironment(app,owned);}
+   public void audible(long nanos,String clock){VoiceLatencyProbe.TRIALS.audible(trial,nanos,clock);}
+   public void ended(boolean silent){VoiceLatencyProbe.TRIALS.failed(trial,silent?"silent-response":"no-audible-time");done.countDown();}
+   public void failed(String reason){VoiceLatencyProbe.TRIALS.failed(trial,reason);done.countDown();}
+  };
+  int rate=LocalSpeechEngine.STREAM_RATE;
+  StreamingSpeechPlayback output=new StreamingSpeechPlayback(30*rate,rate,VoiceLatencyProbe.AUDIBLE_LEVEL,()->new FirstWriteSpeechOutput(AudioTrackSpeechOutput.open(rate),()->listener.firstFrame(System.nanoTime())),listener,System::nanoTime);
+  AtomicBoolean started=new AtomicBoolean();
+  SpeechLeadTrim trim=new SpeechLeadTrim(VoiceLatencyProbe.AUDIBLE_LEVEL,rate/33);
+  voice.synthesizeStream(reply,1f,(raw,complete)->{
+   float[] samples=trim.next(raw);
+   if(samples.length==0&&!complete)return true;
+   if(started.compareAndSet(false,true)){VoiceLatencyProbe.TRIALS.mark(trial,"tts-ready",System.nanoTime());output.start();closeWarmup();}
+   try{return output.offer(samples,complete);}catch(InterruptedException stopped){Thread.currentThread().interrupt();return false;}
+  });
+  if(!done.await(60,TimeUnit.SECONDS)){output.stop();throw new IllegalStateException("Playback did not complete");}
+ }
  /** MediaPlayer exactly as AlphaVoiceCloudPlugin.play, with the same collector call; waits for completion. */
  private void play(VoiceLatencyTrials.Trial trial,File wav,int lead,int total,int rate)throws Exception{
   CountDownLatch done=new CountDownLatch(1);

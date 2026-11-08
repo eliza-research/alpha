@@ -1,5 +1,5 @@
 // Flag-off Android renderer (the APK path) after a brand-new account verifies its email code (owner
-// report 2026-10-30): the six access steps open at once while the resident agent restarts with the new
+// report 2026-10-30): the seven access steps open at once while the resident agent restarts with the new
 // key behind them, and nothing says AI is off or shows billing while it starts. Synthetic native
 // outcomes only; no device, Steward, Eliza Cloud, runtime or account is real.
 import { test, expect, type Page, type TestInfo } from '@playwright/test';
@@ -8,7 +8,7 @@ import { residentStub, stub, setStub } from './resident-stub';
 import { recordStartupFrames, expectNoHomeBeforePrompt, startupLoading } from './helpers/startup-frames';
 
 const account = { token: 'post-sign-in-key', userId: '9f1dc45a-4011-4e44-947a-30d999d24fa5', email: 'new-owner@example.invalid', balance: 5 };
-const STEPS = ['Notifications', 'Microphone', 'Camera', 'Location', 'Calendar', 'Photos'];
+const STEPS = ['Notifications', 'Microphone', 'Camera', 'Location', 'Calendar', 'Photos', 'Files'];
 /** Starting-state copy the owner reported: none of it may show while the agent merely starts. */
 const STARTING_SLOP = ['AI is off', 'Checking your code', 'Checking code', 'Eliza Cloud credits', 'Manage billing', 'AI connection isn’t confirmed yet'];
 const starts = (page: Page) => stub(page, s => s.order.filter((entry: string) => entry === 'Agent.start').length) as Promise<number>;
@@ -22,8 +22,8 @@ async function freshPhone(page: Page) {
   await residentStub(page, { nativeSignIn: true, emptyKeystore: true, accounts: [account] });
   await page.addInitScript(() => {
     const w = window as any, previous = w.Capacitor.nativePromise;
-    const granted: Record<string, boolean> = { notifications: false, microphone: false, camera: false, location: false, calendar: false, photos: false };
-    const ports: Record<string, string[]> = { DailyApps: ['checkPermissions', 'requestPermissions'], AlphaVoiceCloud: ['checkPermissions', 'requestPermissions'], ElizaLocation: ['checkPermissions', 'requestPermissions'], AlphaCalendar: ['checkPermissions', 'requestAccess'], AlphaPhotoLibrary: ['scope', 'requestAccess'] };
+    const granted: Record<string, boolean> = { notifications: false, microphone: false, camera: false, location: false, calendar: false, photos: false, files: false };
+    const ports: Record<string, string[]> = { DailyApps: ['checkPermissions', 'requestPermissions'], AlphaVoiceCloud: ['checkPermissions', 'requestPermissions'], ElizaLocation: ['checkPermissions', 'requestPermissions'], AlphaCalendar: ['checkPermissions', 'requestAccess'], AlphaPhotoLibrary: ['scope', 'requestAccess'], AlphaFiles: ['storageState', 'storageRequestAccess'] };
     for (const [name, methods] of Object.entries(ports)) {
       let header = w.Capacitor.PluginHeaders.find((row: any) => row.name === name);
       if (!header) w.Capacitor.PluginHeaders.push(header = { name, methods: [] });
@@ -39,10 +39,13 @@ async function freshPhone(page: Page) {
       if (path === '/api/v1/billing/limits')
         return { status: 200, data: { success: true, data: { schemaVersion: 2, v2: { subscription: { status: 'not_applicable', reason: 'no_organization_subscription' },
           balance: { status: 'available', source: 'organizations', observedAt: new Date().toISOString(), value: { balance: { value: '5.00', unit: 'usd', currency: 'USD' }, revision: '1' } } } } } };
-      const key = plugin === 'AlphaNotifications' ? 'notifications' : plugin === 'AlphaVoiceCloud' ? 'microphone' : plugin === 'DailyApps' ? 'camera' : plugin === 'ElizaLocation' ? 'location' : plugin === 'AlphaCalendar' ? 'calendar' : plugin === 'AlphaPhotoLibrary' ? 'photos' : null;
-      if (key && (method === 'requestPermissions' || method === 'requestAccess')) { granted[plugin === 'DailyApps' ? input.permissions[0] : key] = true; return {}; }
+      const key = plugin === 'AlphaNotifications' ? 'notifications' : plugin === 'AlphaVoiceCloud' ? 'microphone' : plugin === 'DailyApps' ? 'camera' : plugin === 'ElizaLocation' ? 'location' : plugin === 'AlphaCalendar' ? 'calendar' : plugin === 'AlphaPhotoLibrary' ? 'photos' : plugin === 'AlphaFiles' ? 'files' : null;
+      if (key && (method === 'requestPermissions' || method === 'requestAccess' || method === 'storageRequestAccess')) { granted[plugin === 'DailyApps' ? input.permissions[0] : key] = true; return {}; }
       if (plugin === 'AlphaNotifications' && method === 'status') return { permissionGranted: granted.notifications, appEnabled: granted.notifications };
+      if (plugin === 'AlphaFiles' && method === 'storageState') return {status: 'ready', access: granted.files ? 'granted' : 'denied', volumes: []};
       if (plugin === 'AlphaPhotoLibrary' && method === 'scope') return { scope: granted.photos ? 'selected' : 'denied', locked: false };
+      if (plugin === 'AlphaFiles' && method === 'storageState') return {status: 'ready', access: granted.files ? 'granted' : 'denied'};
+      if (plugin === 'AlphaFiles' && method === 'storageRequestAccess') { granted.files = true; return {status: 'ready', access: 'granted'}; }
       if (key && method === 'checkPermissions') return key === 'location' ? { location: granted.location ? 'granted' : 'prompt', accuracy: granted.location ? 'approximate' : 'none' } : { [key]: granted[key] ? 'granted' : 'prompt' };
       return previous(plugin, method, input);
     };
@@ -76,7 +79,7 @@ async function verifyHeld(page: Page, welcome: ReturnType<Page['locator']>, info
   await expect.poll(() => page.evaluate(() => (window as any).postSignIn.held), { timeout: 15_000 }).toBe(true);
 }
 
-test('APK path: a verified email code goes straight to the six access steps while the agent restarts', async ({ page }, info) => {
+test('APK path: a verified email code goes straight to the seven access steps while the agent restarts', async ({ page }, info) => {
   test.setTimeout(150_000);
   const { foreign, welcome } = await freshPhone(page);
   await verifyHeld(page, welcome, info);

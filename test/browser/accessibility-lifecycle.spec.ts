@@ -13,9 +13,9 @@ const offline = () => localStorage.setItem('alpha.connection.selection.v1', JSON
 const VIEWS = ['Inbox', 'Calendar', 'Browser', 'Camera', 'Photos', 'Maps', 'Notes', 'Files', 'Workflows', 'Settings'] as const;
 const DRAFT = 'Lifecycle draft kept across every screen';
 
-async function start(page: Page) {
+async function start(page: Page, url = '/') {
   await page.addInitScript(offline);
-  await page.goto('/');
+  await page.goto(url);
   await expect(page.getByRole('button', { name: 'Settings', exact: true })).toBeVisible();
   await page.evaluate(() => document.fonts.ready);
 }
@@ -92,24 +92,24 @@ test.describe('repeated HOME across views', () => {
     });
   }
 
-  test('HOME on Home with All apps open closes it and keeps focus on Home', async ({ page }) => {
+  test('HOME on Home with Apps open closes it and keeps focus on Home', async ({ page }) => {
     test.setTimeout(60_000);
     await start(page);
-    await page.getByRole('button', { name: 'All apps', exact: true }).focus();
+    await page.getByRole('button', { name: 'Apps', exact: true }).focus();
     await page.keyboard.press('Enter');
     await expect(page.locator('[data-alpha-layer="drawer"]')).toBeVisible();
     await expect.poll(async () => (await focusState(page)).dropped).toBe(false);
     await pressHome(page, 2);
     await expect(page.locator('[data-alpha-layer="drawer"]')).toHaveCount(0);
     await expect.poll(async () => (await focusState(page)).onHome).toBe(true);
-    await screenIsSound(page, 'Home after HOME from All apps');
+    await screenIsSound(page, 'Home after HOME from Apps');
   });
 });
 
 test.describe('HOME while a popup, subview or field is open', () => {
   // Menus and sheets over a scrim own focus (subview-accessibility.ts); HOME must retire them, not
   // leave the page inert or focus behind them. Live screens: HOME is the product's own handler.
-  for (const steps of [['Browser', 'Menu'], ['Browser', 'Edit address'], ['Calendar', 'Clock alarms'], ['Workflows', 'New automation'], ['Settings', 'Display']] as const) {
+  for (const steps of [['Browser', 'Menu'], ['Browser', 'Edit address'], ['Calendar', 'Clock alarms'], ['Workflows', 'New automation'], ['Settings', 'About']] as const) {
     test(`${steps.join(' > ')}: HOME retires it and Home is announced`, async ({ page }) => {
       // Two app openings, a popup and two audits: explicit, as the 200% sweeps run beside it.
       test.setTimeout(60_000);
@@ -161,13 +161,13 @@ test.describe('a reload (the renderer restarted)', () => {
   test('the chosen text size survives, and Home comes back announced and in reading order', async ({ page }) => {
     // A reload plus three audited views: 5 s alone, past the 30 s default when run beside the 200% sweeps.
     test.setTimeout(90_000);
-    await start(page);
+    await start(page, '/?mode=dev');
     await page.getByRole('button', { name: 'Settings', exact: true }).click();
+    await page.getByRole('button', { name: 'General', exact: true }).click();
     await page.getByRole('button', { name: 'Display', exact: true }).click();
-    const slider = page.getByRole('slider', { name: 'Text size', exact: true });
-    await expect(slider).toBeVisible();
-    // The largest in-app size (150%), set as a person drags the slider: the input event the page listens for.
-    await slider.evaluate(input => { Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')!.set!.call(input, '100'); input.dispatchEvent(new Event('input', { bubbles: true })); });
+    const largest = page.getByRole('button', { name: 'Text size: Largest', exact: true });
+    await largest.click();
+    await expect(page.getByRole('button', { name: 'Text size: Largest, selected', exact: true })).toBeVisible();
     await expect.poll(() => page.evaluate(() => Number(getComputedStyle(document.documentElement).getPropertyValue('--alpha-text-scale')))).toBeGreaterThanOrEqual(1.4);
     const scale = await page.evaluate(() => Number(getComputedStyle(document.documentElement).getPropertyValue('--alpha-text-scale')));
     await page.reload();

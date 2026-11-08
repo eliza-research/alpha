@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
-import {stripTypeScriptTypes} from './fixtures/ts-source.mjs';
+import {stripTypeScriptTypes} from './support/strip-types.mjs';
 import test from 'node:test';
 // Entire real controller, with only its external client/editor imports replaced.
 // Reads and accepted writes use injected synthetic ports; zero provider/native I/O.

@@ -61,6 +61,13 @@ test('Android foundation runs on main and develop pushes and both workflows end 
   assert.match(browser, /- run: npm run verify\n        env:\n(?:.*\n)*?          ALPHA_REQUIRE_PREPARED_SDK: '1'\n/);
   assert.match(android, /name: Android foundation result\n    needs: \[changes, build\]\n    if: always\(\)/);
   assert.match(android, /artifacts\/mapping\/\*\.txt/);
+  const manualVerify = android.split('- name: Verify standalone manual qualification\n')[1]?.split('\n      - ')[0];
+  assert.match(manualVerify, /if: github\.event_name == 'workflow_dispatch'/);
+  assert.match(manualVerify, /ALPHA_REQUIRE_PREPARED_SDK: '1'/);
+  assert.match(manualVerify, /run: npm run verify/);
+  assert.match(android, /name: Prepare pinned SDK for manual verification[\s\S]*node scripts\/prepare-local-agent\.mjs/);
+  assert.match(android, /name: Prepare pinned native lifecycle sources\n\s+if: github\.event_name != 'workflow_dispatch'/);
+
   assert.match(browser, /name: Browser MVP result\n    needs: \[changes, verify, browser, production\]\n    if: always\(\)/);
   assert.match(browser, /name: Repository verification\n/);
   assert.match(browser, /node scripts\/verify-upstream\.mjs/);

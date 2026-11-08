@@ -98,8 +98,8 @@ test('startup stops a previously active image listener and Settings exposes no d
  const foreign=await setup(page,{listener:{available:true,state:'LISTENING',label:'Listening',consented:true,listening:true,microphoneOpen:true}});
  await residentHome(page);await expect.poll(()=>live(page,f=>f.listenerCalls)).toContain('turnOff');
  expect(await live(page,f=>f.listener)).toMatchObject({state:'OFF',listening:false,microphoneOpen:false});
- await button(page,'Settings').click();await button(page,'Character').click();
- for(const name of ['Always-on listening','Wake word','Wake assistant'])await expect(page.getByText(name,{exact:true})).toHaveCount(0);
+ await button(page,'Settings').click();
+ for(const name of ['Listening','Always-on listening','Wake word','Wake assistant'])await expect(page.getByText(name,{exact:true})).toHaveCount(0);
  for(const name of ['Pause listening','Turn off listening','Listening settings'])await expect(button(page,name)).toHaveCount(0);
  // Startup only stops the listener; an earlier status read is the one other call allowed.
  const calls=await live(page,f=>f.listenerCalls as string[]);expect(calls[0]==='status'?calls.slice(1):calls).toEqual(['turnOff']);
@@ -109,7 +109,7 @@ test('startup stops a previously active image listener and Settings exposes no d
 test('an unavailable companion keeps the unconfirmed stop notice visible',async({page})=>{
  const foreign=await setup(page);await residentHome(page);
  await expect.poll(()=>live(page,f=>f.listenerCalls)).toContain('turnOff');
- await button(page,'Settings').click();await button(page,'Character').click();
+ await button(page,'Settings').click();
  await expect(page.getByText('Could not confirm listening is off. Turn it off in Android settings.',{exact:true})).toBeVisible();
  await expect(page.getByText('Always-on listening',{exact:true})).toHaveCount(0);
  expect(await live(page,f=>f.captures)).toEqual([]);expect(foreign).toEqual([]);

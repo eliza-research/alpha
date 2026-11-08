@@ -5,7 +5,7 @@
 // or device run. The browser specs in test/browser/native-cloud-subscription.spec.ts exercise the
 // composed flow with synthetic ports.
 import test from 'node:test';
-import {stripTypeScriptTypes} from 'node:module';
+import {stripTypeScriptTypes} from './support/strip-types.mjs';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {DENYLIST, RETIRED_NO_AGENT_TEXT, RETIRED_REMOTE_AGENT_TEXT} from '../scripts/audit-production-bundle.mjs';

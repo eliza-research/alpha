@@ -95,12 +95,12 @@ test('standalone Home scrolls to the screen edge without a simulated status-bar 
   const composer=page.locator('[data-alpha-layer="composer"] [data-alpha-input-bar]');
   expect(bounds!.y+bounds!.height).toBeCloseTo(usable!.y+usable!.height,1);
   await home.evaluate(node=>{node.scrollTop=node.scrollHeight;});
-  const lastApp=home.getByRole('button',{name:'All apps',exact:true});
+  const lastApp=home.getByRole('button',{name:'Apps',exact:true});
   await expect.poll(async()=>{const dock=await composer.boundingBox(),last=await lastApp.boundingBox();return dock!.y-(last!.y+last!.height);}).toBeGreaterThanOrEqual(6);
   await home.evaluate(node=>{node.scrollTop=0;});
   expect((await home.boundingBox())!.height).toBeGreaterThan(usable!.height-140);
-  const tile=await home.getByRole('button').first().boundingBox();
-  expect(tile!.y-bounds!.y).toBeLessThan(16);
+  const topPadding=await home.locator('[data-alpha-home-layout]').evaluate(element=>parseFloat(getComputedStyle(element).paddingTop));
+  expect(topPadding).toBeLessThan(16);
 
   await home.evaluate(node=>{node.scrollTop=80;});
   expect((await home.boundingBox())!.y).toBeCloseTo(usable!.y,1);
@@ -113,7 +113,8 @@ for(const view of ['Files','Notes','Calendar','Workflows','Inbox','Browser','Pho
 });
 
 for(const theme of ['light','dark'])for(const view of ['Files','Notes'])test(`${view} content edges fade without duplicating or fading its header: ${theme}`,async({page},info)=>{
- await page.setViewportSize({width:360,height:600});await page.goto('/?theme='+theme);
+ // The Files browse list is short (five categories, storage, Trash): a shorter screen makes it scroll.
+ await page.setViewportSize({width:360,height:view==='Files'?440:600});await page.goto('/?theme='+theme);
  if(view==='Notes')await page.evaluate(async()=>{const {openBrowserNotes}=await import('/src/runtime/browser-notes-document.ts');const store=await openBrowserNotes();await store.replace(Array.from({length:12},(_,n)=>({id:`scroll-${n}`,kind:'text',title:`Scroll note ${n}`,body:`Scroll note ${n}\n`+'Readable body\n'.repeat(8)})));});
  if(view==='Notes'){await page.reload();}
  if(view==='Notes')await openLegacyNotes(page);else await page.getByRole('button',{name:view,exact:true}).click();const scroll=page.locator(`[data-alpha-app-scroll="${view.toLowerCase()}"]`),back=page.getByRole('button',{name:view==='Notes'?'Return to Notes':'Back to apps',exact:true}),header=back.locator('xpath=ancestor::*[@data-alpha-app-header][1]');await expect(scroll).toBeVisible();await scroll.evaluate(el=>el.scrollTop=0);await expect.poll(()=>scroll.evaluate(el=>parseFloat(getComputedStyle(el).getPropertyValue('--calendar-scroll-fade-top')))).toBe(0);await page.screenshot({path:info.outputPath('content-start.png'),animations:'disabled'});
@@ -125,7 +126,7 @@ test('standalone Calendar draft keeps its own Back and Save row; launcher header
 });
 
 for(const viewport of [{width:412,height:915},{width:1440,height:500}])test(`Files compact row remains aligned at ${viewport.width}x${viewport.height}`,async({page},info)=>{
- await page.setViewportSize(viewport);await page.goto('/');await page.getByRole('button',{name:'Files',exact:true}).click();const back=page.getByRole('button',{name:'Back to apps',exact:true}),title=page.getByRole('heading',{name:'Files',exact:true}),search=page.getByRole('button',{name:'Search files',exact:true});await back.click({trial:true});const a=(await back.boundingBox())!,b=(await title.boundingBox())!,c=(await search.boundingBox())!;expect(Math.abs(a.y+a.height/2-b.y-b.height/2)).toBeLessThanOrEqual(1);expect(Math.abs(a.y+a.height/2-c.y-c.height/2)).toBeLessThanOrEqual(1);if(viewport.width<=600)expect(c.height).toBeGreaterThanOrEqual(44);else expect(await search.evaluate(el=>getComputedStyle(el).height)).toBe('52px');expect(await title.evaluate(el=>getComputedStyle(el).fontSize)).toBe('20px');await page.screenshot({path:info.outputPath('files-compact-row.png'),animations:'disabled'});
+ await page.setViewportSize(viewport);await page.goto('/');await page.getByRole('button',{name:'Files',exact:true}).click();const back=page.getByRole('button',{name:'Back to apps',exact:true}),title=page.getByRole('heading',{name:'Files',exact:true});await back.click({trial:true});const a=(await back.boundingBox())!,b=(await title.boundingBox())!;expect(Math.abs(a.y+a.height/2-b.y-b.height/2)).toBeLessThanOrEqual(1);if(viewport.width<=600)expect(a.height).toBeGreaterThanOrEqual(44);await expect(page.getByRole('button',{name:'Search files',exact:true})).toHaveCount(0);expect(await title.evaluate(el=>getComputedStyle(el).fontSize)).toBe('20px');await page.screenshot({path:info.outputPath('files-compact-row.png'),animations:'disabled'});
 });
 
 test('a non-overflowing Files list has no edge fade',async({page})=>{
@@ -223,9 +224,9 @@ for(const view of ['Settings','Notes','Files'])test(`${view} Back beside the hal
  await page.getByRole('button',{name:'Shrink chat',exact:true}).click();await expect(app).not.toHaveAttribute('inert','');await back.press('Enter');await expect(page.locator('html')).toHaveAttribute('data-active-view','home');
 });
 test('half chat keeps keyboard-focused Settings controls above the sheet',async({page})=>{
- await page.setViewportSize({width:412,height:640});await page.goto('/');await page.getByRole('button',{name:'Settings',exact:true}).click();await page.getByRole('button',{name:'Open conversation',exact:true}).click();
+ await page.setViewportSize({width:412,height:640});await page.goto('/');await page.getByRole('button',{name:'Settings',exact:true}).click();await page.getByRole('button',{name:'Apps',exact:true}).click();await page.getByRole('button',{name:'Open conversation',exact:true}).click();
  const panel=page.locator('[data-alpha-layer="conversation"]'),app=page.locator('[data-alpha-layer="app"]');await panel.evaluate(el=>Promise.all(el.getAnimations().map(animation=>animation.finished.catch(()=>{}))));
- const scroll=app.locator('[data-alpha-app-scroll="settings"]'),target=app.getByRole('button',{name:'Agent connection',exact:true});await scroll.evaluate(el=>el.scrollTop=0);await target.focus();await expect(target).toBeFocused();
+ const scroll=app.locator('[data-alpha-app-scroll="settings"]'),target=app.getByRole('button',{name:'Workflows',exact:true});await scroll.evaluate(el=>el.scrollTop=0);await target.focus();await expect(target).toBeFocused();
  expect((await target.boundingBox())!.y+(await target.boundingBox())!.height).toBeLessThanOrEqual((await panel.boundingBox())!.y-8);await expect(page.getByRole('button',{name:'Expand chat',exact:true})).toBeVisible();
  await app.getByRole('button',{name:'Back to apps',exact:true}).press('Enter');await page.getByRole('button',{name:'Open conversation',exact:true}).click();const home=page.locator('[data-alpha-layer="home"]');await expect(home).not.toHaveAttribute('inert','');await expect(page.getByRole('button',{name:'Expand chat',exact:true})).toBeVisible();
 });
@@ -261,4 +262,29 @@ test('an open sheet dragged down keeps its composer above the screen edge and ha
  const bar=page.locator('[data-alpha-input-bar]');await expect(bar).toBeAttached();const handed=await bar.evaluate(el=>Number(getComputedStyle(el).opacity));expect(handed).toBeGreaterThan(0.5);expect(Math.abs((await bar.boundingBox())!.y-rest.y)).toBeLessThan(1);
  await page.waitForTimeout(200);await page.mouse.up();
  await expect(grab).toHaveCount(0);await expect(bar).toHaveCSS('opacity','1');expect(Math.abs((await bar.boundingBox())!.y-rest.y)).toBeLessThan(1);
+});
+// Samples the bar, the sheet and its header every frame for `ms` after `act`. Each sample is read after that
+// frame's callbacks, including the app's own per-frame updates, so it sees what was painted.
+async function frames(page:import('@playwright/test').Page,act:()=>Promise<void>,ms=650){
+ await act();await page.evaluate(ms=>{(window as any).chatFrames=[];const t0=performance.now();const tick=()=>{const p=document.querySelector<HTMLElement>('[data-alpha-layer="conversation"]')!,r=p.getBoundingClientRect(),h=document.querySelector('[data-alpha-chat-header]')!,c=p.querySelector('.alpha-chat-composer'),b=document.querySelector('[data-alpha-input-bar]');const bs=b&&getComputedStyle(b);(window as any).chatFrames.push({panel:r.height,panelOpacity:Number(getComputedStyle(p).opacity),headerClipped:h.getBoundingClientRect().top<r.top-0.5&&Number(getComputedStyle(h).opacity)>0.01,composerBottom:c?c.getBoundingClientRect().bottom:null,bar:b?{opacity:Number(bs!.opacity),transform:bs!.transform,bottom:b.getBoundingClientRect().bottom}:null});if(performance.now()-t0<ms)requestAnimationFrame(()=>setTimeout(tick));};requestAnimationFrame(()=>setTimeout(tick));},ms);
+ await page.waitForTimeout(ms+150);return page.evaluate(()=>(window as any).chatFrames as {panel:number,panelOpacity:number,headerClipped:boolean,composerBottom:number|null,bar:{opacity:number,transform:string,bottom:number}|null}[]);
+}
+test('tapping between the bar and the sheet keeps the composer in the bar\'s place and never shows a clipped header',async({page})=>{
+ await page.goto('/');await expect(page.getByRole('textbox',{name:'Ask Alpha',exact:true})).toBeVisible();await expect(page.locator('[data-alpha-input-bar]')).toHaveCSS('transform',/^(none|matrix\(1, 0, 0, 1, 0, 0\))$/);
+ const rest=(await page.locator('[data-alpha-input-bar]').boundingBox())!,bottom=rest.y+rest.height;
+ const opening=await frames(page,()=>page.locator('[data-alpha-input-bar]').getByRole('button',{name:'Open conversation',exact:true}).click());
+ const sheet=opening.filter(f=>!f.bar);expect(sheet.length).toBeGreaterThan(0);
+ for(const f of sheet){expect(f.panelOpacity).toBe(1);expect(f.headerClipped).toBe(false);expect(Math.abs(f.composerBottom!-bottom)).toBeLessThan(4);}
+ const closing=await frames(page,()=>page.getByRole('button',{name:'Minimize chat',exact:true}).click());
+ for(const f of closing){expect(f.headerClipped).toBe(false);if(f.composerBottom!==null&&f.panelOpacity>0.01)expect(Math.abs(f.composerBottom-bottom)).toBeLessThan(4);if(f.bar){expect(f.bar.transform).toMatch(/^(none|matrix\(1, 0, 0, 1, 0, 0\))$/);expect(Math.abs(f.bar.bottom-bottom)).toBeLessThan(1);}}
+ expect(closing.at(-1)!.bar!.opacity).toBe(1);await expect(page.getByRole('button',{name:'Resize chat',exact:true})).toHaveCount(0);
+});
+test('releasing a drag that collapses the sheet leaves the bar in place without replaying its entrance',async({page})=>{
+ await page.goto('/');await expect(page.getByRole('textbox',{name:'Ask Alpha',exact:true})).toBeVisible();await expect(page.locator('[data-alpha-input-bar]')).toHaveCSS('transform',/^(none|matrix\(1, 0, 0, 1, 0, 0\))$/);
+ const rest=(await page.locator('[data-alpha-input-bar]').boundingBox())!;
+ await page.locator('[data-alpha-input-bar]').getByRole('button',{name:'Open conversation',exact:true}).click();const grab=page.getByRole('button',{name:'Resize chat',exact:true});await expect(grab).toBeVisible();
+ await expect.poll(async()=>{const a=(await grab.boundingBox())!.y;await page.waitForTimeout(120);return Math.abs((await grab.boundingBox())!.y-a);}).toBeLessThan(0.5);
+ const g=(await grab.boundingBox())!;await page.mouse.move(g.x+g.width/2,g.y+10);await page.mouse.down();await page.mouse.move(g.x+g.width/2,page.viewportSize()!.height-30,{steps:16});await page.waitForTimeout(200);
+ const released=await frames(page,()=>page.mouse.up());await expect(grab).toHaveCount(0);
+ for(const f of released){expect(f.headerClipped).toBe(false);expect(f.bar!.opacity).toBe(1);expect(f.bar!.transform).toMatch(/^(none|matrix\(1, 0, 0, 1, 0, 0\))$/);expect(Math.abs(f.bar!.bottom-(rest.y+rest.height))).toBeLessThan(1);}
 });

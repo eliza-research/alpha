@@ -1,4 +1,4 @@
-import {sharedSpeechSource} from './fixtures/jvm-tools.mjs';
+import {sharedSpeechSource,jsonJar,upstreamAgentRuntime,nativeSource} from './fixtures/jvm-tools.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
@@ -9,14 +9,13 @@ import {resolveCloudSignatureClassifier,verifyCloudRecordingSignatures} from '..
 import {voiceFakeClock} from './fixtures/shared-batch-voice.mjs';
 import {cloudVoiceViewFixture} from './fixtures/cloud-voice-view.mjs';
 
-test('one explicit Talk action starts Cloud voice, keeps its disclosure, and stops on account change',async()=>{
+test('one explicit Talk action starts Cloud voice and stops on account change',async()=>{
  const f=cloudVoiceViewFixture({cloudProfile:true});
  try {
   f.box.React={createElement:()=>null};f.box.VoiceActivity=()=>null;f.shell.state.chat='hidden';
   await f.shell.startVoice();
   assert.equal(f.shell.state.chat,'sheet','hidden Home entry reveals the active voice sheet');
-  const view=f.renderChat();assert.equal(view.state,'listening');assert.equal(view.cloudDisclosure,true);
-  assert.match(view.cloudDisclosureText,/uploads recordings.*plan allowance/);
+  const view=f.renderChat();assert.equal(view.state,'listening');assert.equal(view.cloudDisclosureText,undefined);
   assert.notEqual(view.recoveryLabel,'Start Cloud voice');assert.equal(f.localFactories,0);assert.equal(f.box.testMocksEnabled,false);
   assert.equal(f.starts,1);assert.equal(f.localFactories,0);assert.equal(f.pairedFactories,0);
   f.credential='different-credential';f.changed();for(let i=0;i<20;i++)await f.tick();
@@ -50,22 +49,41 @@ test('Cloud signature classifier rejects actual Android mp42 header and accepts 
 test('real native multipart method uploads decoded WAV and clears it on credential, setup, cancellation and write failures, replaying a cache-warming 503 once',()=>{
  const source=fs.readFileSync('android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaVoiceCloudPlugin.java','utf8');
  const method=source.slice(source.indexOf('@PluginMethod public void transcribeRecording('),source.indexOf('@PluginMethod public void synthesize(')).replace('@PluginMethod ','');
+ const authorityStart=source.indexOf(' private void requireCloudSpeechAuthority('),authorityEnd=source.indexOf(' // Test APK',authorityStart);
+ assert.ok(authorityStart>=0&&authorityEnd>authorityStart,'the actual native route/authority gate is included');
+ const authority=source.slice(authorityStart,authorityEnd);
+ assert.ok(jsonJar,'Cached org.json is required for the real provider-mode admission');
  const out=fs.mkdtempSync(path.join(os.tmpdir(),'alpha-cloud-wav-upload-'));
  try{
  const file=path.join(out,'CloudWavUploadTest.java');
  fs.writeFileSync(file,`package ai.elizaresearch.alphaphone;import ai.eliza.voice.CloudSpeechTimings;import java.io.*;import java.net.*;import java.util.*;import java.nio.charset.StandardCharsets;import java.util.function.BooleanSupplier;
 public class CloudWavUploadTest {
  static class BuildConfig{static final String ELIZA_RUNTIME_PROFILE="cloud";}
- CloudSpeechTimings cloudTimings=new CloudSpeechTimings();boolean destroyed;String failure="";Exception error;Pending pending;Connection connection;Capture capture=new Capture();Capture recording(){return capture;}boolean destroyed(){return destroyed;}
- static class PluginCall{String getString(String key){return "selected-recording";}}
+ CloudSpeechTimings cloudTimings=new CloudSpeechTimings();boolean destroyed,protectedSurface;Object getContext(){return this;}boolean sensitiveSurfaceActive(){return protectedSurface;}String failure="";Exception error;Pending pending;Connection connection;Capture capture=new Capture();Capture recording(){return capture;}boolean destroyed(){return destroyed;}
+ static class PluginCall{String getString(String key){return "credentialId".equals(key)?"fixture-cloud":"selected-recording";}String getString(String key,String fallback){return getString(key);}}
+ static class AlphaLocalAgentPlugin{
+  static long authority=1;
+  static long credentialAuthorityEpoch(){return authority;}
+  static <T>T withCredentialAuthority(long epoch,java.util.concurrent.Callable<T> action)throws Exception{
+   if(epoch!=authority)throw new SecurityException("Fixture authority retired");return action.call();
+  }
+ }
+ static class AlphaCredentialStore{
+  static String selected;
+  AlphaCredentialStore(Object context){}
+  String readCredentialSlot(String slot){if(!"local-agent-provider:v1".equals(slot))throw new AssertionError("Unexpected credential slot");return selected;}
+ }
  static class Pending{boolean cancelled;JSObject result;String failureCode;}
  static class JSObject{void put(String key,Object value){}}
  static class JSONObject{static int reads;JSONObject(String value){reads++;}Object get(String key){return "transcript";}}
  static class Capture{File file=new File("opaque-selected-recording");File selected(String id){return file;}}
+ // This multipart test exercises an unsaved draft; saved-note selection is covered separately.
+ static class RecordingWindow implements AutoCloseable{File file;boolean empty;void check(){}public void close(){}}
+ RecordingWindow savedRecording(PluginCall call,Pending request){return null;}
  interface Work{void run(Pending request)throws Exception;}
- void submit(PluginCall call,Work work){pending=new Pending();try{work.run(pending);}catch(Exception e){error=e;}}
+ void submit(PluginCall call,Work work){pending=new Pending();try{if(failure.equals("authority-before"))AlphaLocalAgentPlugin.authority++;work.run(pending);}catch(Exception e){error=e;}}
  String required(String value,int limit){return value;}
- static class RecordingPcm{static byte[] last;static File selected;static String failure;static byte[] decode(File file,BooleanSupplier cancelled)throws Exception{selected=file;if("decode".equals(failure)||cancelled.getAsBoolean())throw new IOException("PRIVATE_DECODE_SENTINEL");last=new byte[]{82,73,70,70,0,0,0,0,87,65,86,69};return last;}}
+ static class RecordingPcm{static byte[] last;static File selected;static String failure;static byte[] decode(File file,BooleanSupplier cancelled)throws Exception{selected=file;if("decode".equals(failure)||cancelled.getAsBoolean())throw new IOException("PRIVATE_DECODE_SENTINEL");last=new byte[]{82,73,70,70,0,0,0,0,87,65,86,69};if("authority-after-decode".equals(failure))AlphaLocalAgentPlugin.authority++;if("route-after-decode".equals(failure))AlphaCredentialStore.selected=new org.json.JSONObject().put("provider","cerebras").toString();return last;}}
  class Connection extends HttpURLConnection {
   int expectedLength;public void setFixedLengthStreamingMode(int length){expectedLength=length;}
   ByteArrayOutputStream bytes=new ByteArrayOutputStream();Connection()throws Exception{super(new URL("http://fixture.invalid"));}
@@ -75,18 +93,23 @@ public class CloudWavUploadTest {
   public InputStream getInputStream(){return new ByteArrayInputStream("{}".getBytes(StandardCharsets.UTF_8));}
   public void connect(){}public void disconnect(){}public boolean usingProxy(){return false;}
  }
- HttpURLConnection connect(PluginCall call,String route,Pending request)throws Exception{if(!route.equals("stt"))throw new AssertionError();if(failure.equals("connect"))throw new IOException();if(failure.equals("cancel"))request.cancelled=true;connects++;return connection=new Connection();}
+ HttpURLConnection connect(PluginCall call,String route,Pending request,long epoch)throws Exception{requireCloudSpeechAuthority(call,epoch);if(!route.equals("stt"))throw new AssertionError();if(failure.equals("connect"))throw new IOException();if(failure.equals("cancel"))request.cancelled=true;connects++;return connection=new Connection();}
  // A warming mode refuses the first attempt (or every attempt) with Cloud's cache-warming 503.
  int connects,replays;long warmingReplay(HttpURLConnection c){return failure.equals("warming-always")||(failure.equals("warming")&&connects==1)?1000:-1;}
  void replayAfter(HttpURLConnection c,long wait,Pending request){if(wait!=1000)throw new AssertionError("Wrong replay wait");replays++;}
  void answered(HttpURLConnection c){} void answeredTimed(HttpURLConnection c,CloudSpeechTimings.Record timing){}
- byte[] read(InputStream in,int max,Pending request)throws Exception{if(failure.equals("response"))throw new IOException("PRIVATE_RESPONSE_SENTINEL");return in.readAllBytes();}
+ byte[] read(InputStream in,int max,Pending request)throws Exception{if(failure.equals("response"))throw new IOException("PRIVATE_RESPONSE_SENTINEL");byte[] result=in.readAllBytes();if(failure.equals("authority-before-publication"))AlphaLocalAgentPlugin.authority++;if(failure.equals("protected-before-publication"))protectedSurface=true;return result;}
+ ${authority}
  ${method}
  public static void main(String[] args)throws Exception{
-  for(String mode:new String[]{"","warming","warming-always","decode","connect","properties","output","write","cancel","response","missing-provider","wrong-provider"}){
-   CloudWavUploadTest host=new CloudWavUploadTest();host.failure=mode;RecordingPcm.last=null;RecordingPcm.failure=mode;JSONObject.reads=0;host.transcribeRecording(new PluginCall());
-   if(RecordingPcm.selected!=host.capture.file)throw new AssertionError("Selected recording changed");
-   if(!mode.equals("decode")&&RecordingPcm.last==null)throw new AssertionError("PCM fixture missing on "+mode);
+  for(String mode:new String[]{"","decode","connect","properties","output","write","cancel","response","missing-provider","wrong-provider","warming","warming-always","authority-before","authority-after-decode","authority-before-publication","own-mode","route-after-decode","protected-surface","protected-before-publication"}){
+   CloudWavUploadTest host=new CloudWavUploadTest();host.failure=mode;host.protectedSurface=mode.equals("protected-surface");
+   AlphaLocalAgentPlugin.authority=1;AlphaCredentialStore.selected=new org.json.JSONObject().put("provider",mode.equals("own-mode")?"cerebras":"elizacloud").put("credentialId","fixture-cloud").toString();
+   RecordingPcm.last=null;RecordingPcm.selected=null;RecordingPcm.failure=mode;JSONObject.reads=0;host.transcribeRecording(new PluginCall());
+   boolean beforeDecode=mode.equals("authority-before")||mode.equals("own-mode")||mode.equals("protected-surface");
+   if(beforeDecode&&(RecordingPcm.selected!=null||RecordingPcm.last!=null||host.connection!=null||JSONObject.reads!=0))throw new AssertionError("Refused authority reached audio or provider");
+   if(!beforeDecode&&RecordingPcm.selected!=host.capture.file)throw new AssertionError("Selected recording changed");
+   if(!beforeDecode&&!mode.equals("decode")&&RecordingPcm.last==null)throw new AssertionError("PCM fixture missing on "+mode);
    for(byte value:RecordingPcm.last==null?new byte[0]:RecordingPcm.last)if(value!=0)throw new AssertionError("Decoded PCM not cleared on "+mode);
    // Any other 503 is never replayed; a cache-warming 503 is replayed once with the same audio.
    if(host.replays!=(mode.startsWith("warming")?1:0))throw new AssertionError("Wrong replay count on "+mode);
@@ -99,16 +122,16 @@ public class CloudWavUploadTest {
    }else {
     if(host.error==null||host.pending.result!=null)throw new AssertionError("Failure was swallowed");
     if(mode.endsWith("provider")&&JSONObject.reads!=0)throw new AssertionError("Unverified transcript parsed");
-    String expected=mode.equals("decode")?"voice-stt-decode":mode.equals("connect")?"voice-stt-connect":(mode.equals("response")||mode.endsWith("provider"))?"voice-stt-response":"voice-stt-upload";
-    if(!expected.equals(host.pending.failureCode))throw new AssertionError("Expected "+expected+" on "+mode+", got "+host.pending.failureCode);
+    String expected=beforeDecode?null:mode.equals("decode")?"voice-stt-decode":(mode.equals("connect")||mode.endsWith("after-decode"))?"voice-stt-connect":(mode.equals("response")||mode.endsWith("provider")||mode.endsWith("before-publication"))?"voice-stt-response":"voice-stt-upload";
+    if(!Objects.equals(expected,host.pending.failureCode))throw new AssertionError("Expected "+expected+" on "+mode+", got "+host.pending.failureCode);
    }
   }
   System.out.println("PASS real native multipart WAV upload and cleanup");
  }
 }`);
  const binary=name=>process.env.JAVA_HOME?path.join(process.env.JAVA_HOME,'bin',name):name;
- execFileSync(binary('javac'),['--release','11','-d',out,file,sharedSpeechSource('CloudSpeechTimings.java'),'android/app/src/main/java/ai/elizaresearch/alphaphone/CloudDeployment.java','android/app/src/main/java/ai/elizaresearch/alphaphone/CloudSpeechPolicy.java']);
- assert.match(execFileSync(binary('java'),['-cp',out,'ai.elizaresearch.alphaphone.CloudWavUploadTest'],{encoding:'utf8'}),/PASS real native multipart WAV upload and cleanup/);
+ execFileSync(binary('javac'),['--release','11','-cp',jsonJar,'-d',out,file,sharedSpeechSource('CloudSpeechTimings.java'),upstreamAgentRuntime('NativeProviderAdmission.java'),nativeSource('LocalAgentProviderAdmission.java'),'android/app/src/main/java/ai/elizaresearch/alphaphone/CloudDeployment.java','android/app/src/main/java/ai/elizaresearch/alphaphone/CloudSpeechPolicy.java']);
+ assert.match(execFileSync(binary('java'),['-cp',out+path.delimiter+jsonJar,'ai.elizaresearch.alphaphone.CloudWavUploadTest'],{encoding:'utf8'}),/PASS real native multipart WAV upload and cleanup/);
  }finally{fs.rmSync(out,{recursive:true,force:true});}
 });
 
@@ -178,7 +201,7 @@ test('configured service name follows explicit Talk and signed-out recovery',asy
    f.box.React={createElement:()=>null};f.box.VoiceActivity=()=>null;
    await f.shell.startVoice();const view=f.renderChat();
    assert.doesNotMatch(JSON.stringify(view),/Eliza Cloud/);
-   if(account){assert.match(view.cloudDisclosureText,/recordings and reply text to your Nebula account/);assert.match(view.cloudDisclosureText,/plan allowance/);assert.equal(view.state,'listening');}
+   if(account){assert.equal(view.state,'listening');}
    else {assert.equal(view.state,'error');assert.equal(view.recoveryLabel,'');assert.equal(view.statusLines.length,0);assert.ok(!view.voiceDetails);assert.equal(f.accountOpens,0,'no automatic sign-in from a failed Talk');assert.equal(typeof view.recover,'function');}
    assert.equal(f.starts,account?1:0);assert.equal(f.uploads,0);assert.equal(f.localFactories,0);
   }finally{f.close();await f.tick();}

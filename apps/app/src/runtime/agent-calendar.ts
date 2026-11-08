@@ -22,6 +22,8 @@ export class AgentCalendar {
  private value=empty();private epoch=0;private abort:AbortController|undefined;private reading:AbortController|undefined;private listeners=new Set<()=>void>();private binding='';private nextQuery='';private deferredRefresh:GetLifeOpsCalendarFeedRequest|undefined;private sourceRevisions=new Map<string,string>();
  constructor(private port:()=>AppRecordPort|null,private preservation:CalendarPreservation,private client:ClientFactory=agentCalendarClient){}
  get state():Readonly<AgentCalendarState>{return this.value;}
+ /** A retained ready feed can still have an outstanding read. */
+ get refreshing(){return this.reading!==undefined;}
  subscribe(fn:()=>void){this.listeners.add(fn);return()=>{this.listeners.delete(fn);};}
  private publish(patch:Partial<AgentCalendarState>){this.value={...this.value,...patch};for(const fn of this.listeners)fn();}
  retire(){++this.epoch;this.abort?.abort();this.abort=this.reading=undefined;this.binding='';this.nextQuery='';this.deferredRefresh=undefined;this.sourceRevisions.clear();this.publish(empty());}
@@ -40,8 +42,8 @@ export class AgentCalendar {
   // serving an aborted read, so abort-and-restart only stacks Cloud work. A changed query aborts all three.
   if(this.reading&&port?.current()&&this.binding===JSON.stringify([calendarOwnerKey(port),port.sessionId,port.scope])&&this.nextQuery===JSON.stringify(window)){this.deferredRefresh={...window};this.invalidateNext();return;}
   this.abort?.abort();this.deferredRefresh=undefined;const controller=this.abort=this.reading=new AbortController(),signal=controller.signal,epoch=++this.epoch;
-  if(!port){this.binding='';this.publish(empty());return;}
-  if(!port.current()){this.binding='';this.publish(empty());return;}const ownerKey=calendarOwnerKey(port),binding=JSON.stringify([ownerKey,port.sessionId,port.scope]),query=JSON.stringify(window);
+  if(!port){this.reading=undefined;this.binding='';this.publish(empty());return;}
+  if(!port.current()){this.reading=undefined;this.binding='';this.publish(empty());return;}const ownerKey=calendarOwnerKey(port),binding=JSON.stringify([ownerKey,port.sessionId,port.scope]),query=JSON.stringify(window);
   // A re-read of the same owner and window keeps the shown feed until it is replaced, so the
   // visible day and selection (and with them a live turn and its proposals) stay stable.
   const revalidating=this.binding===binding&&this.nextQuery===query&&(this.value.status==='ready'||this.value.status==='partial');
@@ -78,13 +80,12 @@ export class AgentCalendar {
    this.publish({feed,calendars:sources.calendars,next,nextFresh:!!nextFresh,status:!feed?'error':feed.state==='complete'?'ready':feed.state==='partial'?'partial':'unavailable',error:feedRead.status==='rejected'?'Calendar could not be refreshed. Saved next event is unverified.':nextRead.status==='rejected'?'Next event could not be refreshed. Saved event is unverified.':null});
   }catch(error){
    if(epoch===this.epoch&&!signal.aborted){
-    console.warn('Agent Calendar refresh failed',error);
     // A failed re-read keeps the shown feed; a response that fails an ownership or window check never does.
     if(revalidating&&!(error instanceof CalendarIntegrityError))this.publish({error:'Calendar could not load. Try again.',next:null,nextFresh:false});
     else this.publish({status:'error',error:'Calendar could not load. Try again.',feed:null,calendars:[],next:null,nextFresh:false});
    }
   }
-  finally{if(this.reading===controller){this.reading=undefined;const pending=this.deferredRefresh;this.deferredRefresh=undefined;if(pending&&epoch===this.epoch)void this.refresh(pending);}}
+  finally{if(this.reading===controller){this.reading=undefined;const pending=this.deferredRefresh;this.deferredRefresh=undefined;if(pending&&epoch===this.epoch)void this.refresh(pending);else this.publish({});}}
  }
  async confirmLegacyRetention(){
   const port=this.port(),previous=this.value.legacy;if(!port||!previous||!this.preservation.confirmReadOnly)throw Error('Calendar transition review is required');
@@ -121,7 +122,7 @@ export class AgentCalendar {
  sourceHandle(key:string){const revision=this.sourceRevisions.get(key);return revision?'agent:'+revision:undefined;}
  sourceKeyForHandle(handle:string){return this.value.calendars.map(calendarSourceKey).find(key=>this.sourceHandle(key)===handle);}
  private async mutate<T>(operation:(api:ReturnType<ClientFactory>,port:AppRecordPort)=>Promise<T>,creation=false):Promise<T>{
-  if(this.value.mutating||!(creation?['ready','partial','unavailable']:['ready','partial']).includes(this.value.status))throw Error('Wait for the current Calendar source');
+  if(this.reading||this.value.mutating||!(creation?['ready','partial','unavailable']:['ready','partial']).includes(this.value.status))throw Error('Wait for the current Calendar source');
   const port=this.port();if(!port||calendarOwnerKey(port)!==this.value.ownerKey)throw Error('Calendar owner changed');if(!port.current())throw Error('Calendar owner or agent changed');
   const epoch=this.epoch,signal=this.abort?.signal;if(!signal)throw Error('Calendar is not ready');
   this.publish({mutating:true});

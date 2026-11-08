@@ -17,7 +17,7 @@ import {seedCompletedAccessSetup} from './flag-off-android';
 // says the shipped renderer takes the real path or shows an honest unavailable state; it never
 // says the native side of that path works. See docs/core-loop-audit.md.
 import { test, expect, type Page } from '@playwright/test';
-import {completeAccessSetup,expectNoDevelopmentSurface,fenceNetwork} from './flag-off-android';
+import {completeAccessSetup,expectNoDevelopmentSurface,fenceNetwork,openYourAgent} from './flag-off-android';
 
 const SELECTION = 'alpha.connection.selection.v1';
 const offline = () => localStorage.setItem('alpha.connection.selection.v1', JSON.stringify({ kind: 'offline' }));
@@ -87,7 +87,7 @@ async function android(page: Page, options: { clock?: 'opened' | 'unavailable' |
         { name: 'AlphaConnection', methods: promise(['secureRead', 'secureWrite', 'secureRemove', 'secureCompareExchange', 'request', 'cancel', 'openExternal']) },
         { name: 'AlphaActionJournal', methods: promise(['list', 'get']) },
         { name: 'AlphaNotifications', methods: promise(['status', 'crossAppStatus']) },
-        { name: 'AlphaVoiceCloud', methods: options.voice || options.signedOut ? withListeners(['checkPermissions', 'startRecording', 'stopRecording', 'getRecordingMetrics', 'cancelRecording', 'transcribeRecording', 'localSpeechStatus', 'transcribeLocalRecording', 'saveRecording', 'cancel', 'synthesize', 'play', 'stopPlayback']) : promise(['checkPermissions']) },
+        { name: 'AlphaVoiceCloud', methods: options.voice || options.signedOut ? withListeners(['checkPermissions', 'startRecording', 'stopRecording', 'getRecordingMetrics', 'cancelRecording', 'transcribeRecording', 'localSpeechStatus', 'transcribeLocalRecording', 'saveRecording', 'cancel', 'synthesize', 'play', 'stopPlayback', 'startNoteRecording', 'noteRecordingStatus', 'pauseNoteRecording', 'resumeNoteRecording', 'stopNoteRecording', 'discardNoteRecording', 'setNoteSegmentText', 'saveNoteRecording']) : promise(['checkPermissions']) },
         ...(options.voice ? [{ name: 'AlphaNoteAudio', methods: promise(['play', 'stop', 'state', 'describe']) },
           { name: 'AlphaCalendar', methods: withListeners(['list', 'requestAccess', 'pendingCreations', 'listAlerts', 'save', 'acknowledgeCreation']) }] : []),
         { name: 'AlphaBrowser', methods: withListeners(['create', 'navigate', 'present', 'close', 'command', 'bookmarks', 'setBookmark', 'browsingState', 'saveBrowsingState', 'cancelReading', 'reviewQuestion']) },
@@ -110,6 +110,16 @@ async function android(page: Page, options: { clock?: 'opened' | 'unavailable' |
           if (method === 'transcribeLocalRecording') { v.transcriptions.push(structuredClone(input)); return { text: options.voice, local: true, execution: 'device', provider: 'fused-paradee-asr' }; }
           if (method === 'saveRecording') { const audio = { audioId: input.recordingId, noteId: input.noteId, durationMs: 3000, transcript: input.transcript }; v.saved.push(audio); return audio; }
           if (['cancelRecording', 'cancel', 'stopPlayback'].includes(method)) return {};
+          // The native Notes recorder (AlphaNoteRecorder): one finished segment, then stopped.
+          const rid = '00000000-0000-4000-8000-000000000001';
+          if (method === 'noteRecordingStatus') return structuredClone(v.note ?? { state: 'idle' });
+          if (method === 'startNoteRecording') { v.starts++; v.note = { state: 'recording', recordingId: rid, binding: {ownerDigest:input.ownerDigest,folderId:input.folderId}, durationMs: 3000, peak: 0.4, segments: [{ segmentId: rid + '-s0', durationMs: 3000 }] }; return structuredClone(v.note); }
+          if (method === 'pauseNoteRecording') { v.note.state = 'paused'; return structuredClone(v.note); }
+          if (method === 'resumeNoteRecording') { v.note.state = 'recording'; return structuredClone(v.note); }
+          if (method === 'stopNoteRecording') { v.stops++; v.note.state = 'stopped'; v.note.stopReason = 'user'; return structuredClone(v.note); }
+          if (method === 'setNoteSegmentText') { v.note.segments[0].text = input.text; return {}; }
+          if (method === 'discardNoteRecording') { v.note = undefined; return { state: 'idle' }; }
+          if (method === 'saveNoteRecording') { const audio = { audioId: input.recordingId, noteId: input.noteId, durationMs: 3000, transcript: input.transcript }; v.saved.push(audio); return audio; }
         }
         if (plugin === 'AlphaNoteAudio') {
           if (method === 'describe') return f.voice.saved.find((audio: any) => audio.audioId === input.audioId) ?? { audioId: input.audioId, noteId: '', durationMs: 3000, transcript: '' };
@@ -291,15 +301,14 @@ test('loop A on Android: the resident agent answers, the conversation follows ac
   expect(await native(page, f => f.streams)).toBe(0);
   // The connection names the agent and where it runs, and no credential is rendered anywhere.
   await page.evaluate(() => window.dispatchEvent(new Event('launcher-home')));
-  await button(page, 'Settings').click();
-  await expect(page.getByRole('button', { name: 'Agent connection', exact: true })).toContainText('Alpha');
-  await page.getByRole('button', { name: 'Agent connection', exact: true }).click();
-  const account = page.getByRole('region', { name: 'Settings',exact:true });
+  const account = await openYourAgent(page);
   await expect(account).toContainText('Running on this device');
   await expect(account.getByText('Eliza Cloud',{exact:true})).toBeVisible();
-  await account.getByRole('button',{name:'Back to Settings',exact:true}).click();
+  await account.getByRole('button',{name:'Back to About',exact:true}).click();
+  await page.evaluate(() => window.dispatchEvent(new Event('launcher-home')));
+  await button(page, 'Settings').click();
   await openCloudPlanFromSettings(page);
-  await expect(page.getByRole('button',{name:'Sign out of Eliza Cloud',exact:true})).toBeVisible();
+  await expect(page.getByRole('button',{name:'Sign out',exact:true})).toBeVisible();
   expect(await page.locator('body').innerText()).not.toContain('synthetic-cloud-key');
   await expectNoDevelopmentSurface(page);
   expect(await native(page, f => f.unexpected)).toEqual([]);
@@ -432,7 +441,7 @@ test('loops B, C and J04 in the web build: Agent Calendar requires a connection,
   await page.goto('/');
   await button(page, 'Maps').click();
   await expect(page.getByRole('region', {name: 'Map', exact: true})).toBeVisible();
-  await expect(page.getByRole('status')).toContainText('Add a location');
+  await expect(page.getByRole('region', {name: 'Maps', exact: true}).getByRole('status')).toContainText('Add a location');
   await expect(button(page, 'Directions')).toHaveCount(0);
   await expect(page.getByRole('region', {name: 'Maps'})).not.toContainText(/\d+ min|\d km/);
   // The independent browser alarm list remains a durable local feature.
@@ -460,7 +469,9 @@ test('loops D and F in the web build: digests and mail name the missing account 
   await page.addInitScript(offline);
   await page.goto('/');
   await button(page, 'Settings').click();
-  await button(page, 'Scheduled digests').click();
+  await button(page, 'Apps').click();
+  await button(page, 'Workflows').click();
+  await button(page, 'Scheduled summaries').click();
   const digests = page.getByRole('dialog', { name: 'Scheduled digests', exact: true });
   await expect(digests).not.toContainText('Choose where your agent runs');
   await expect(digests).toContainText('Your agent runs on your phone, not here. Open Alpha on your Android phone to use it.');
@@ -509,10 +520,8 @@ test('loops E and J05 in the web build: page content requires review and no deve
   await expect(review).toHaveCount(0);
   await page.goto('/');
   await button(page, 'Settings').click();
-  await button(page, 'Password manager').click();
+  await expect(button(page, 'Passwords')).toHaveCount(0);
   const settings = page.locator('[data-settings-page]:not([inert])').last();
-  await expect(settings).toContainText(/Saved passwords\s*Available in the Android app/);
-  await expect(settings).toContainText('Native provider status is unavailable here');
   for (const name of ['Add development provider', 'Open development vault', 'Unlock passwords', 'Choose password provider']) await expect(button(page, name)).toHaveCount(0);
   await expect(page.getByText(/demo-only-password|Example sign-in/)).toHaveCount(0);
   await expectNoDevelopmentSurface(page);
@@ -533,8 +542,8 @@ test('loop J01 in the web build: a scanned event remains in review without an au
   await button(page, 'Camera').click();
   const video = page.locator('[data-alpha-camera="viewfinder"] video');
   await expect.poll(() => video.evaluate((v: HTMLVideoElement) => v.readyState), { timeout: 60_000 }).toBeGreaterThanOrEqual(2);
-  await button(page, 'Scan mode').click();
-  await button(page, 'Scan text').click();
+  // Scanning is not a camera mode: asking Alpha to scan opens review on one frame.
+  await page.getByRole('button',{name:'Type',exact:true}).click();{const input=page.locator('[data-alpha-layer="composer"][aria-hidden="false"], [data-alpha-layer="conversation"][aria-hidden="false"]').getByRole('textbox').first();await input.fill('Scan this');await input.press('Enter');}
   const dialog = page.getByRole('dialog', { name: 'Review scanned text' }), text = dialog.getByRole('textbox', { name: 'Scanned text' });
   await expect(text).toBeEnabled({ timeout: 120_000 });
   await expect(text).toHaveValue(/October 10, 2026/);
@@ -564,11 +573,16 @@ test('loop J03 in the web build: a chosen document can be reviewed for a questio
   test.setTimeout(120_000);
   const foreign = await fenceNetwork(page);
   await page.addInitScript(offline);
+  // A document already saved in the browser's file library (as a saved attachment would be).
+  await page.addInitScript(() => {
+    const open = indexedDB.open('alpha.browser.files.v1', 2);
+    open.onupgradeneeded = () => { if (!open.result.objectStoreNames.contains('entries')) open.result.createObjectStore('entries', { keyPath: 'id' }); if (!open.result.objectStoreNames.contains('workflowReceipts')) open.result.createObjectStore('workflowReceipts', { keyPath: 'id' }); };
+    open.onsuccess = () => { const bytes = new TextEncoder().encode('Public fact: twelve raised beds.').buffer; open.result.transaction('entries', 'readwrite').objectStore('entries').put({ id: '0b6f8f2e-4a8e-4c11-9d1e-5f4b1d2a7c30', parentId: 'root', name: 'garden-report.txt', mimeType: 'text/plain', directory: false, size: bytes.byteLength, revision: 'a'.repeat(64), bytes }); open.result.close(); };
+  });
   await page.goto('/');
   await button(page, 'Files').click();
-  const chooser = page.waitForEvent('filechooser');
   await button(page, 'Documents').click();
-  await (await chooser).setFiles({ name: 'garden-report.txt', mimeType: 'text/plain', buffer: Buffer.from('Public fact: twelve raised beds.') });
+  await button(page, 'Open garden-report.txt').click();
   await button(page, 'Ask Alpha').click();
   const question = page.getByRole('dialog', { name: 'Ask about selected content' });
   await expect(question.getByRole('textbox', { name: 'Content excerpt' })).toHaveValue('Public fact: twelve raised beds.');
@@ -757,9 +771,7 @@ test('loop J05 on Android: a page navigation closes the open review, and an agen
   await expect(page.getByRole('button', { name: /^Review summary note/ })).toHaveCount(1);
   // The resident agent is reconnected (a new verified session) before the answer is saved.
   await page.evaluate(() => window.dispatchEvent(new Event('launcher-home')));
-  await button(page, 'Settings').click();
-  await button(page, 'Agent connection').click();
-  const account = page.getByRole('region', { name: 'Settings',exact:true });
+  const account = await openYourAgent(page);
   await account.getByRole('button', { name: 'Reconnect agent', exact: true }).click();
   await expect(page.locator('.alpha-connection-scrim')).toHaveCount(0, { timeout: 30_000 });
   expect(await native(page, f => f.calls.filter((call: string) => call === 'Agent.start').length)).toBe(2);
@@ -794,21 +806,16 @@ test('loop B / J02 on Android: a recorded note, a resident summary and reviewed 
   await residentHome(page);
   const writes = () => native(page, f => ({ reminders: f.writes.reminders.length, events: f.writes.events.length }));
 
-  // 1. Record with the native recorder, transcribe on the phone (on-device voice host), review and save the note.
+  // 1. Record with the native recorder, transcribed on the phone (on-device voice host); Done saves the note.
   await openAndroidCalendar(page);
   await page.evaluate(() => window.dispatchEvent(new Event('launcher-home')));
   await openRetainedNativeNotes(page);
-  await button(page, 'Record and transcribe').click();
-  await button(page, 'Start recording').click();
-  await expect(button(page, 'Stop recording')).toBeVisible();
-  await button(page, 'Stop recording').click();
-  await button(page, 'Transcribe on this phone').click();
-  await expect(page.getByRole('textbox', { name: 'Review transcript', exact: true })).toHaveValue(TRANSCRIPT);
-  // One on-device transcription of this recording, no Cloud upload; nothing is saved before Save note.
-  expect(await native(page, f => f.voice.transcriptions.map((row: any) => row.recordingId))).toEqual(['recording-1']);
+  await button(page, 'Record voice note').click();
+  // The recorder starts at once; its finished segment is transcribed on the phone while it records.
+  await expect.poll(() => native(page, f => f.voice.transcriptions.map((row: any) => row.recordingId))).toEqual(['00000000-0000-4000-8000-000000000001-s0']);
   expect(await native(page, f => f.calls.filter((call: string) => call === 'AlphaVoiceCloud.transcribeRecording'))).toEqual([]);
   expect(await savedNotes(page)).toEqual([]);
-  await button(page, 'Save note').click();
+  await button(page, 'Done').click();
   await expect(button(page, 'Play recording')).toBeVisible();
   await page.getByRole('textbox', { name: 'Title', exact: true }).fill('Venue meeting');
   await expect.poll(async () => (await savedNotes(page)).filter(n => n.kind === 'voice' && n.title === 'Venue meeting' && n.body === TRANSCRIPT && !!n.audio?.audioId).length).toBe(1);
@@ -926,7 +933,9 @@ test('loops D and F on Android: schedules are stated as phone-bound, and mail wi
   await android(page);
   await residentHome(page);
   await button(page, 'Settings').click();
-  await button(page, 'Scheduled digests').click();
+  await button(page, 'Apps').click();
+  await button(page, 'Workflows').click();
+  await button(page, 'Scheduled summaries').click();
   const digests = page.getByRole('dialog', { name: 'Scheduled digests', exact: true });
   // The resident agent schedules on the phone and the panel says what that cannot do (decision A-09 is open).
   await expect(digests).toContainText('Your agent runs schedules on this phone. It cannot run while the phone is off.');

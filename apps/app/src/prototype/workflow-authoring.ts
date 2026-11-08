@@ -1,10 +1,11 @@
+import {Capacitor} from '@capacitor/core';
+import {testMocksEnabled} from '../build-flags';
 import {browserWorkflowDraftStore} from '../browser/workflow-drafts';
 import {browserDevProfile} from '../browser/dev-profile';
 import { registerPlugin } from '../platform-plugins';
 import { browserLocalAgentEnabled } from '../runtime/local-agent';
 import { developmentWorkflowDraftStore } from '../runtime/local-agent-storage';
 import { connectionController } from '../runtime/connection-ui';
-import { showAgentStatus } from '../runtime/agent-status-route';
 import { normalizePhoneSpec, assertPhoneCapabilities, describePhoneTrigger, phoneTriggerClockChangeNote, type PhoneSpec, type PhoneStep, type PhoneCatalog, type PhoneTimeTrigger } from '../runtime/phone-workflow-authoring';
 import { workflowSha, workflowBytes } from '../runtime/workflow-device-contract';
 import { checkWorkflowScope, WORKFLOW_OPERATION_LABELS } from '../../../../.eliza/client-features/packages/contracts/src/workflow-scope.ts';
@@ -26,7 +27,7 @@ const TRIGGER_LABELS:Record<string,string>={manual:'Manual',time:'Time'};
 const deviceTimeZone=()=>{try{return Intl.DateTimeFormat().resolvedOptions().timeZone||'UTC';}catch{return 'UTC';}};
 const shiftLocalTime=(value:string,minutes:number)=>{const [h,m]=value.split(':').map(Number);const total=Math.min(23*60+59,Math.max(0,h*60+m+minutes));return String(Math.floor(total/60)).padStart(2,'0')+':'+String(total%60).padStart(2,'0');};
 /** Owner-facing policy for a scheduled typed workflow; the agent enforces each part. */
-const SCHEDULE_POLICY='Runs only while this phone is on and the agent is running. Missed times don\'t run later. Each phone step still needs your approval.';
+const SCHEDULE_POLICY='Runs only while this phone is on and the agent is running. A time that passes without a run (the phone or agent was off, or Android delayed it) is recorded as missed and never run later. Each phone step still waits for your approval.';
 /** Typed local authoring. No prototype natural-language parser or arbitrary source is executed. */
 export function createWorkflowAuthoring(owner:()=>any,publish:()=>void,onSaved:(id:string)=>Promise<unknown>){
  let active=false,draft:Draft|null=null,catalog:PhoneCatalog|null=null,sheet:string|null=null,busy=false,status='',review:string|null=null,discard=false,generation=0,controller:AbortController|null=null;
@@ -39,6 +40,8 @@ export function createWorkflowAuthoring(owner:()=>any,publish:()=>void,onSaved:(
  type DraftStorage={slot:string;raw:string|null;failed:boolean;queue:Promise<void>;secure:typeof secure};
  let calendars:Bag[]=[],storage:DraftStorage|null=null;
  let retainedDraftState:{storage:DraftStorage;draft:Draft|null}|null=null;
+ const pendingWrites=new Set<Promise<void>>();
+ const failedWrites=new Set<DraftStorage>();
  const toast=(value:string)=>owner()?.toast?.(value);
  const selected=()=>draft?.spec.steps.find(s=>s.id===sheet);
  const locked=()=>busy||!!draft?.pending||!!storage?.failed;
@@ -46,7 +49,37 @@ export function createWorkflowAuthoring(owner:()=>any,publish:()=>void,onSaved:(
  const offered=(id:string)=>supported(id)&&!(id==='save_note'&&owner()?.notesSourceMode==='canonical');
  /** Notes a Notes step may select: the agent's Notes when that is the current source, otherwise Previous notes. */
  const noteRows=():Array<{id:string;title:string;body:string}>=>{const host=owner();if(host?.notesSourceMode!=='canonical')return host?.vget('notes').list??[];return ((host.canonicalNotesUi?.notes()??[]) as StickyNote[]).map(note=>({id:note.id,...projectNoteForModel(note)}));};
- function persist(){if(!draft||!storage)return;const target=storage,snapshot=JSON.stringify(draft);target.queue=target.queue.then(async()=>{if(target.failed)throw new Error('Local draft needs recovery');if(new TextEncoder().encode(snapshot).length>100000)throw new Error('Local draft is too large');const result=await target.secure.secureCompareExchange({slot:target.slot,expectedValue:target.raw,value:snapshot});if(result.status!=='saved')throw new Error('Draft changed in another window. Close and reopen it before editing.');target.raw=snapshot;}).catch(error=>{target.failed=true;status=error instanceof Error?error.message:'Local draft could not be saved';if(storage===target)publish();});}
+ function persist(recovered?:DraftStorage){
+  if(!draft||!storage)return;
+  const target=storage,snapshot=JSON.stringify(draft);
+  const write=target.queue=target.queue.then(async()=>{
+   if(target.failed)throw new Error('Local draft needs recovery');
+   if(new TextEncoder().encode(snapshot).length>100000)throw new Error('Local draft is too large');
+   const result=await target.secure.secureCompareExchange({slot:target.slot,expectedValue:target.raw,value:snapshot});
+   if(result.status!=='saved')throw new Error('Draft changed in another window. Close and reopen it before editing.');
+   target.raw=snapshot;
+   if(recovered)failedWrites.delete(recovered);
+  }).catch(error=>{
+   target.failed=true;failedWrites.add(target);
+   status=error instanceof Error?error.message:'Local draft could not be saved';
+   if(storage===target)publish();
+  });
+  pendingWrites.add(write);
+  void write.then(()=>pendingWrites.delete(write));
+ }
+ async function flushForAppUpdate(current:()=>boolean){
+  const token=generation,target=storage,writes=new Set(pendingWrites);
+  const exact=()=>current()&&generation===token&&storage===target&&!busy&&
+   !(describeOn&&descriptionPrompt)&&!failedWrites.size&&
+   [...pendingWrites].every(write=>writes.has(write));
+  await Promise.all(writes);
+  if(!exact())throw Error('Workflow draft changed');
+  if(!target)return;
+  const queue=target.queue,raw=target.raw;
+  const saved=await target.secure.secureRead({slot:target.slot});
+  if(!exact()||target.queue!==queue||target.raw!==raw||saved.value!==raw)
+   throw Error('Workflow draft could not be verified');
+ }
  function change(run:()=>void){if(locked()||!draft)return;run();review=null;generated=null;discard=false;status=`Draft stays ${draftStorageDescription} until you confirm Save.`;persist();publish();}
  async function localSaved(){await storage?.queue;if(!storage||storage.failed)throw new Error('Resolve local draft storage before saving');}
  function close(){requested=null;unreceipted=false;resendReview=false;describeOn=false;descriptionPrompt='';generated=null;generating=false;active=false;generation++;controller?.abort();controller=null;busy=false;sheet=null;review=null;discard=false;calendars=[];publish();}
@@ -60,8 +93,9 @@ export function createWorkflowAuthoring(owner:()=>any,publish:()=>void,onSaved:(
    // Consume the retained state once: every later reopen reads the slot again, so a failed save can always be recovered by close and reopen.
    if(retainedDraftState?.storage===previousStorage)retainedDraftState=null;if(previousStorage.failed&&previousDraft){unsaved=previousDraft;unsavedBase=previousStorage.raw;}}
    const draftSecure=browserDevProfile&&JSON.parse(localStorage.getItem('alpha.connection.selection.v1')||'null')?.kind==='development'?await browserWorkflowDraftStore(session):secure,saved=await draftSecure.secureRead({slot});if(!valid())return;storage={slot,raw:saved.value,failed:false,queue:Promise.resolve(),secure:draftSecure};
+   if(previousStorage?.slot===slot&&previousStorage.failed&&previousDraft&&saved.value===JSON.stringify(previousDraft))failedWrites.delete(previousStorage);
    // A failed write leaves the slot at the last confirmed bytes: retry the retained edits there. If another window changed the slot, load its newer draft instead.
-   if(unsaved&&saved.value===unsavedBase&&JSON.stringify(unsaved)!==saved.value){draft=unsaved;status='The latest local draft save failed. Your retained edits are being saved again.';persist();}
+   if(unsaved&&saved.value===unsavedBase&&JSON.stringify(unsaved)!==saved.value){draft=unsaved;status='The latest local draft save failed. Your retained edits are being saved again.';persist(previousStorage);}
    else if(saved.value!==null){if(new TextEncoder().encode(saved.value).length>100000)throw new Error('Saved draft exceeds the recovery limit');const retained=JSON.parse(saved.value);if(retained.format!==1||retained.identity!==identity||!retained.spec||retained.spec.version!==1||!Array.isArray(retained.spec.steps)||retained.spec.steps.length>32)throw new Error('Saved draft requires recovery');draft=retained;const name=retained.spec.name||'New workflow';if(retained.workflowId!==workflow?.id)targetName=retained.workflowId?name:'';
     // One draft slot serves every workflow. A draft for another workflow (or for New) is named, never silently saved
     // over the one the owner opened; Discard opens that one instead.
@@ -70,7 +104,7 @@ export function createWorkflowAuthoring(owner:()=>any,publish:()=>void,onSaved:(
    // Nothing is stored until the first change: opening and leaving without an edit keeps the slot empty.
   }catch(error){if(valid()){status=error instanceof Error?error.message:'Workflows aren\'t available on your agent.';draft=null;toast(status);}}finally{if(token===generation){busy=false;controller=null;publish();}}
  }
- function ensureDevice(){const target=connectionController.getWorkflowDeviceTarget();if(!target)throw new Error('Reconnect your agent, then try again.');if(draft)draft.spec.device=target;}
+ function ensureDevice(){const target=connectionController.getWorkflowDeviceTarget();if(!target)throw new Error('Reconnect this agent to verify phone enrollment');if(draft)draft.spec.device=target;}
  function operation(kind:string,id:string,stepId:string,index:number):PhoneStep{
   const source=draft?.spec.steps[index-1]?.id;if(kind!=='Read'&&!source)throw new Error('Add a Read step first');
   const common={id:stepId,kind:kind as PhoneStep['kind'],operation:id};
@@ -84,7 +118,7 @@ export function createWorkflowAuthoring(owner:()=>any,publish:()=>void,onSaved:(
   if(id==='app_notification'){ensureDevice();return {...common,source,title:'Workflow result'};}
   if(id==='read_aloud'){ensureDevice();return {...common,source};}
   if(id==='save_note'){ensureDevice();return {...common,source,title:'Workflow note'};}
-  throw new Error('This step needs a newer version of Alpha.');
+  throw new Error('This operation needs a newer qualified phone capability');
  }
  function add(kind:string){if(locked()||!draft||!catalog)return;const available=catalog.palette.find(k=>k.kind===kind)?.operations.find(o=>o.available&&offered(o.id));if(!available){toast(catalog.palette.find(k=>k.kind===kind)?.operations[0]?.reason||'Not available on your agent.');return;}if(draft.spec.steps.length>=32){toast('A workflow supports at most 32 steps');return;}try{const step=operation(kind,available.id,'s'+crypto.randomUUID().replaceAll('-',''),draft.spec.steps.length);change(()=>{draft!.spec.steps.push(step);sheet=step.id;});}catch(error){toast((error as Error).message);}}
  function chooseOperation(id:string){const step=selected();if(!step||!draft||!catalog||locked())return;const option=catalog.palette.find(p=>p.kind===step.kind)?.operations.find(o=>o.id===id);if(!option?.available||!offered(id)){toast(option?.reason||(id==='save_note'?'Saving a note from a workflow isn\'t available yet.':'This operation is unavailable'));return;}try{const replacement=operation(step.kind,id,step.id,draft.spec.steps.indexOf(step));change(()=>{draft!.spec.steps[draft!.spec.steps.indexOf(step)]=replacement;});}catch(error){toast((error as Error).message);}}
@@ -98,24 +132,39 @@ export function createWorkflowAuthoring(owner:()=>any,publish:()=>void,onSaved:(
  async function save(){if(describeOn||!draft||!catalog||locked())return;const binding=connectionController.getWorkflowClient(),session=connectionController.getSnapshot().session;if(!binding||!session)return;let spec:PhoneSpec;const draftAtStart=draft,revisionAtStart=JSON.stringify(draft.spec),generationAtStart=generation;try{spec=normalizePhoneSpec(draft.spec);assertPhoneCapabilities(spec,catalog);await localSaved();if(draft!==draftAtStart||generation!==generationAtStart||JSON.stringify(draft.spec)!==revisionAtStart)return;}catch(error){status=(error as Error).message;publish();return;}const encoded=JSON.stringify(spec);if(review!==encoded){review=encoded;sheet=null;status='Review the steps, then tap Save again. It saves paused, and each phone step still needs your approval.'+(spec.trigger.kind==='time'?' Its schedule stays off until you turn it on.':'');publish();return;}
   const token=generation,expectedCatalog=catalog;controller=new AbortController();const signal=controller.signal;busy=true;publish();const valid=()=>token===generation&&!signal.aborted&&connectionController.getWorkflowClient()?.sessionId===binding.sessionId&&!document.hidden;
   try{const validation=await binding.client.validatePhone(spec,expectedCatalog,signal);if(!valid())return;const pending:Pending={mutationId:crypto.randomUUID(),specDigest:validation.specDigest,compilerRevision:expectedCatalog.compilerRevision,...(draft.workflowId?{workflowId:draft.workflowId,versionId:draft.versionId}:{})};draft.spec=validation.spec;draft.pending=pending;persist();await localSaved();if(!valid())return;const receipt=await binding.client.savePhone(validation.spec,expectedCatalog,pending,signal);if(!valid())return;await committed(receipt.workflowId,token);}
-  catch(error){if(valid()){if(error instanceof WorkflowTypedRejected&&draft?.pending){await refused();}else status=draft?.pending?'Save outcome unknown. Refresh to check it. A second workflow won\'t be created.':(error as Error).message;toast(status);}}finally{if(token===generation){busy=false;controller=null;publish();}}
+  catch(error){if(valid()){if(error instanceof WorkflowTypedRejected&&draft?.pending){await refused();}else status=draft?.pending?'Save outcome unknown. Refresh the exact save receipt. The app will not submit a second workflow.':(error as Error).message;toast(status);}}finally{if(token===generation){busy=false;controller=null;publish();}}
  }
  // The agent answered this exact edit with a refusal: it is a known non-save, so the draft unlocks instead of waiting for a receipt that cannot exist.
- async function refused(){if(!draft?.pending)return;delete draft.pending;unreceipted=false;resendReview=false;review=null;persist();try{await localSaved();}catch{/* persist() already reported the storage failure. */}status='This workflow changed before your edit saved. Nothing was saved. Discard your draft and choose Change again.';}
+ async function refused(){if(!draft?.pending)return;delete draft.pending;unreceipted=false;resendReview=false;review=null;persist();try{await localSaved();}catch{/* persist() already reported the storage failure. */}status='This workflow changed on the agent before your edit was saved. Nothing was saved. Your draft stays on this phone: discard it and choose Change again to edit the current version.';}
  async function committed(id:string,token:number){await localSaved();const target=storage!;const result=await target.secure.secureCompareExchange({slot:target.slot,expectedValue:target.raw,value:null});if(result.status!=='saved')throw new Error('Saved on agent; local draft cleanup needs recovery');target.raw=null;if(token!==generation)return;draft=null;close();await onSaved(id);toast('Workflow saved paused');}
- async function recover(){if(!draft?.pending||busy)return;const binding=connectionController.getWorkflowClient();if(!binding)return;const token=generation,pending=draft.pending;controller=new AbortController();busy=true;publish();try{const receipt=await binding.client.phoneSaveReceipt(pending,controller.signal);if(token!==generation||binding.sessionId!==connectionController.getWorkflowClient()?.sessionId||document.hidden)return;if(receipt)await committed(receipt.workflowId,token);else{unreceipted=true;resendReview=false;status='This save may not have arrived. Send again to resend it; it can\'t create a second workflow.';publish();}}catch{if(token===generation){unreceipted=false;resendReview=false;status='Couldn\'t check the save. Your draft is kept on this phone.';publish();}}finally{if(token===generation){busy=false;controller=null;publish();}}}
+ async function recover(){if(!draft?.pending||busy)return;const binding=connectionController.getWorkflowClient();if(!binding)return;const token=generation,pending=draft.pending;controller=new AbortController();busy=true;publish();try{const receipt=await binding.client.phoneSaveReceipt(pending,controller.signal);if(token!==generation||binding.sessionId!==connectionController.getWorkflowClient()?.sessionId||document.hidden)return;if(receipt)await committed(receipt.workflowId,token);else{unreceipted=true;resendReview=false;status='The agent has no record of this save, so it may never have arrived. No new request was sent. Send exact save again repeats the same request; the agent applies one save identity at most once.';publish();}}catch{if(token===generation){unreceipted=false;resendReview=false;status='Save receipt unavailable. The draft and original mutation identity remain on this phone.';publish();}}finally{if(token===generation){busy=false;controller=null;publish();}}}
  /** Explicit, confirmed repeat of the one pending save under its original mutation identity and reviewed specification. Offered only after the agent reported no record of it. */
  async function resend(){
   if(!draft?.pending||busy||!unreceipted||!catalog)return;const binding=connectionController.getWorkflowClient();if(!binding)return;
-  if(catalog.compilerRevision!==draft.pending.compilerRevision){unreceipted=false;resendReview=false;status='Your agent updated after this save, so it can\'t be resent. Refresh later.';publish();return;}
-  if(!resendReview){resendReview=true;status='Tap Confirm to send it again. This can\'t create a second workflow.';publish();return;}
+  if(catalog.compilerRevision!==draft.pending.compilerRevision){unreceipted=false;resendReview=false;status='This agent’s workflow compiler changed after the save was sent, so the same request cannot be repeated. The draft stays locked; refresh its receipt later.';publish();return;}
+  if(!resendReview){resendReview=true;status='Tap Confirm exact resend to send the same save request once more. It carries the original save identity, so it cannot create a second workflow.';publish();return;}
   resendReview=false;const token=generation,pending=draft.pending,capabilities=catalog;let spec:PhoneSpec;try{spec=normalizePhoneSpec(draft.spec);}catch(error){status=(error as Error).message;publish();return;}
   controller=new AbortController();const signal=controller.signal;busy=true;publish();const valid=()=>token===generation&&!signal.aborted&&connectionController.getWorkflowClient()?.sessionId===binding.sessionId&&!document.hidden;
   try{const known=await binding.client.phoneSaveReceipt(pending,signal);if(!valid())return;const receipt=known??await binding.client.savePhone(spec,capabilities,pending,signal);if(!valid())return;await committed(receipt.workflowId,token);}
-  catch(error){if(valid()){unreceipted=false;if(error instanceof WorkflowTypedRejected)await refused();else status='Save outcome unknown. Refresh to check it. A second workflow won\'t be created.';toast(status);}}
+  catch(error){if(valid()){unreceipted=false;if(error instanceof WorkflowTypedRejected)await refused();else status='Save outcome unknown. Refresh the exact save receipt. The app will not submit a second workflow.';toast(status);}}
   finally{if(token===generation){busy=false;controller=null;publish();}}
  }
- async function discardDraft(){if(!draft||busy||draft.pending)return;if(!discard){discard=true;status='Tap Discard local draft again to remove only this local draft.';publish();return;}try{if(!storage)throw new Error('Resolve local draft storage before discarding');await storage.queue;const result=await storage!.secure.secureCompareExchange({slot:storage!.slot,expectedValue:storage!.raw,value:null});if(result.status!=='saved')throw new Error('Draft changed elsewhere');const next=requested;draft=null;close();if(next)await open(next.workflow);}catch(error){toast((error as Error).message);}}
+ async function discardDraft(){
+  if(!draft||busy||draft.pending)return;
+  if(!discard){discard=true;status='Tap Discard local draft again to remove only this local draft.';publish();return;}
+  const target=storage,token=generation;
+  if(!target){toast('Resolve local draft storage before discarding');return;}
+  busy=true;publish();
+  try{
+   await target.queue;
+   if(token!==generation||storage!==target)return;
+   const result=await target.secure.secureCompareExchange({slot:target.slot,expectedValue:target.raw,value:null});
+   if(result.status!=='saved')throw Error('Draft changed elsewhere');
+   target.raw=null;target.failed=false;failedWrites.delete(target);
+   if(token===generation&&storage===target){const next=requested;draft=null;close();if(next)await open(next.workflow);}
+  }catch(error){if(token===generation)toast((error as Error).message);}
+  finally{if(token===generation){busy=false;publish();}}
+ }
  function cancelGeneration(){if(generating){generation++;controller?.abort();controller=null;busy=false;generating=false;}describeOn=false;generated=null;status='Current draft retained. Nothing was saved on the agent.';publish();}
  async function generateDraft(){
   if(!describeOn||!draft||!catalog||locked())return;
@@ -133,7 +182,7 @@ export function createWorkflowAuthoring(owner:()=>any,publish:()=>void,onSaved:(
  }
  function useGenerated(){if(!generated||locked()||!draft)return;if(generatedSession!==connectionController.getWorkflowClient()?.sessionId||generatedBaseline!==JSON.stringify(draft.spec)||JSON.stringify(generated.device)!==JSON.stringify(connectionController.getWorkflowDeviceTarget()??undefined)){generated=null;status='Connection or draft changed. Generate and review again.';publish();return;}const spec=generated;change(()=>{draft!.spec={...spec,trigger:draft!.spec.trigger};generated=null;describeOn=false;sheet=null;});}
  /** The owner sets when the workflow runs; generation never does. Only triggers this agent offers are selectable. */
- function chooseTrigger(kind:string){if(!draft||!catalog||locked())return;const offered=catalog.triggers.find(t=>t.kind===kind);if(!offered?.available||!['manual','time'].includes(kind)){toast(offered?.reason||'Not available on your agent.');return;}if(draft.spec.trigger.kind===kind)return;change(()=>{draft!.spec.trigger=kind==='time'?{kind:'time',localTime:'08:00',timeZone:deviceTimeZone(),days:[1,2,3,4,5]}:{kind:'manual'};});}
+ function chooseTrigger(kind:string){if(!draft||!catalog||locked())return;const offered=catalog.triggers.find(t=>t.kind===kind);if(!offered?.available||!['manual','time'].includes(kind)){toast(offered?.reason||'This trigger is unavailable on the selected agent');return;}if(draft.spec.trigger.kind===kind)return;change(()=>{draft!.spec.trigger=kind==='time'?{kind:'time',localTime:'08:00',timeZone:deviceTimeZone(),days:[1,2,3,4,5]}:{kind:'manual'};});}
  function editTime(edit:(trigger:PhoneTimeTrigger)=>PhoneTimeTrigger|null){const trigger=draft?.spec.trigger;if(!trigger||trigger.kind!=='time'||locked())return;const next=edit(trigger);if(next)change(()=>{draft!.spec.trigger=next;});}
  function toggleDay(day:number){editTime(trigger=>{const days=trigger.days.includes(day)?trigger.days.filter(d=>d!==day):[...trigger.days,day].sort((a,b)=>a-b);if(!days.length){toast('Choose at least one day');return null;}return {...trigger,days};});}
  function triggerSheet(api:Bag){const trigger=draft?.spec.trigger??{kind:'manual' as const};const time=trigger.kind==='time'?trigger:null;
@@ -182,5 +231,14 @@ export function createWorkflowAuthoring(owner:()=>any,publish:()=>void,onSaved:(
   tr:triggerSheet(api),
   sp:step?{typed:true,freeTextStyle:"display:none",k:step.kind,d:api.ic[icons[step.kind]],up:()=>move(-1),down:()=>move(1),upCss:index===0?'opacity:.3':'',downCss:index===draft!.spec.steps.length-1?'opacity:.3':'',presets:enabledOptions.map(o=>({label:o.label||o.id.replaceAll('_',' '),css:o.id===step.operation?'background:var(--acc);color:#fff':o.available&&offered(o.id)?'background:var(--s2)':'background:var(--s2);opacity:.5',pick:()=>chooseOperation(o.id)})),text:'',onText:()=>{},fields,hasSource:!!step.source,sources:draft!.spec.steps.slice(0,index).map(s=>({label:s.kind+': '+s.operation.replaceAll('_',' '),selected:step.source===s.id,pick:()=>change(()=>{step.source=s.id;})})),caseMatch:step.operation==='contains',caseLabel:step.caseSensitive?'Case-sensitive match':'Ignore letter case',toggleCase:()=>change(()=>{step.caseSensitive=!step.caseSensitive;}),isNotes:step.operation==='selected_notes',notes:step.operation==='selected_notes'?noteRows().map((n:Bag)=>({label:n.title||'Untitled note',selected:step.notes.some((chosen:Bag)=>chosen.id===n.id),pick:()=>void chooseNote(n.id)})):[],isCalendar:step.operation==='calendar_range',connectCalendars:()=>void loadCalendars(true),calendars:step.operation==='calendar_range'?calendars.map(c=>({label:c.name+' · '+c.account,selected:step.range.calendarIds.includes(c.id),pick:()=>change(()=>{const chosen=step.range.calendarIds;step.range.calendarIds=chosen.includes(c.id)?chosen.filter((id:string)=>id!==c.id):chosen.length<16?[...chosen,c.id]:chosen;})})):[],del:remove}:null};
  }
- return {get active(){return active;},open,close,render};
+ return {get active(){return active;},open,close,render,flushForAppUpdate};
+}
+
+type AgentStatusShell = {S():{view?:string|null};openView(view:string,patch?:Record<string,unknown>|null,chat?:unknown,opts?:{push?:boolean}):unknown};
+/** Where a tap on an unavailable agent goes. Product Android hides the connection chooser, so it opens
+ * Settings > Agent connection (Back returns to the calling view); development and browser builds keep the chooser. */
+export function showAgentStatus(shell:AgentStatusShell|null|undefined){
+ if(!shell||!Capacitor.isNativePlatform()||testMocksEnabled){connectionController.open();return;}
+ const from=shell.S().view;
+ shell.openView('settings',{page:'agent-connection'},undefined,{push:!!from&&from!=='settings'});
 }

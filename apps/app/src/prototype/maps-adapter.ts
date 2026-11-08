@@ -1,3 +1,4 @@
+import {mapsChatText} from '../runtime/action-message-presentation';
 import {BackgroundNavigation,type NavigationBridge} from '../maps/background-navigation';
 import {registerPlugin} from '../platform-plugins';
 import {DailyApps} from '../daily';
@@ -6,11 +7,11 @@ import {Capacitor} from '@capacitor/core';
 import {isAndroid} from '../native';
 import {NavigationVoice} from '../maps/navigation-voice';
 import {shareMap} from '../maps/share';
-import type { MapPlane } from '../maps/map-plane';
+import { MapPlane } from '../maps/map-plane';
 import type {MapBasemap} from '../../../../.eliza/client-features/plugins/plugin-maps/src/client/map-plane.ts';
 import { globalBasemap } from '../maps/basemap';
 import { initializeRegionalMaps, regionalMap, regionalDiagnostics, regionalMapsConfigured } from '../maps/regional-provider';
-import { initializeCloudMaps, cloudMapsCoverage, cloudMapsDiagnostics } from '../maps/cloud-maps';
+import { initializeCloudMaps, cloudMapsCoverage, cloudMapsDiagnostics, cloudMapsBasemap } from '../maps/cloud-maps';
 import { describeMapsDisclosure, insideCloudCoverage } from '../maps/cloud-provider';
 import { NativeMapsLocation, locationPermissionGranted } from '../maps/native-location';
 import { bindAgentNavigation, keepCloudMapsCoverage, residentMapsNavigationPort } from '../maps/agent-navigation';
@@ -40,10 +41,11 @@ export function installPrototypeMapsAdapter(Component: { prototype: Bag }, views
   const original = { render: module.render, back: module.back, onLeave: module.onLeave, reply: module.reply, suggestions: module.suggestions, ongoing: module.ongoing };
   let api: Bag | undefined, disposed=false, renders=0;
   let planeBasemap:MapBasemap|undefined, plane: MapPlane | undefined, planeElement: HTMLElement | undefined;
-  let mapGeneration=0,mapFailed=false,mapObserver:MutationObserver|undefined,planeView:MapsScreenView['map']|undefined;
-  let pendingHandoff: {query:string}|undefined, mapsController: MapsController|undefined;
+  let mapGeneration=0,mapFailed=false,mapObserver:MutationObserver|undefined;
+  let mapCopyright='';
+  let pendingHandoff: {query:string}|undefined, mapsController:MapsController|undefined;
   const active=()=>!disposed&&!document.hidden&&!!api?.isActive();
-  const dropPlane=()=>{++mapGeneration;mapObserver?.disconnect();mapObserver=undefined;mapFailed=false;plane?.destroy();plane=undefined;planeElement=undefined;planeBasemap=undefined;};
+  const dropPlane=()=>{++mapGeneration;mapObserver?.disconnect();mapObserver=undefined;mapFailed=false;mapCopyright='';plane?.destroy();plane=undefined;planeElement=undefined;planeBasemap=undefined;};
   const navigationVoice=new NavigationVoice(error=>screen.notify((error instanceof Error?error.message+' ':'')+'Voice guidance paused. Tap Enable voice guidance to retry.'));
   const background=new BackgroundNavigation(registerPlugin<NavigationBridge>('AlphaMapsTransport'),()=>Capacitor.isNativePlatform());
   // A Cloud read already made or under way for this account is not repeated: a second read would
@@ -112,9 +114,7 @@ export function installPrototypeMapsAdapter(Component: { prototype: Bag }, views
   }
   module.back = () => screen.back(); module.onLeave = () => screen.release(); module.ongoing = () => null;
   module.reply = () => null;
-  // Maps comes from the Cloud service, so signing in is the only thing to offer; a failed read offers nothing more.
-  const signIn = () => ({ label: `Sign in to ${cloudServiceName(connectionController.getCloudEnvironment() ?? connectionController.getSnapshot().signIn?.environment ?? 'production')} to use Maps`, go: () => connectionController.openCloudAccount() });
-  module.suggestions = () => mapsConnected() ? ['Help me with this place', 'Explain Maps coverage'] : !regionalMapsConfigured && !connectionController.getCloudClient() ? [signIn(), 'Explain location permissions'] : ['Explain location permissions'];
+  module.suggestions = () => mapsConnected() ? ['Help me with this place', 'Explain Maps coverage'] : ['Help me with Maps', 'Explain location permissions'];
   module.render = (st: Bag, currentApi: Bag) => {
     api = currentApi;
     // Cross-app navigation carries a one-use search, not a selected destination.
@@ -141,37 +141,35 @@ export function installPrototypeMapsAdapter(Component: { prototype: Bag }, views
     return text.length > 200 ? `${text.slice(0, 199)}…` : text;
   }
   function bind(data: Bag, view: MapsScreenView, st: Bag, currentApi: Bag) {
-    const status = view.status, region = regionalMap(), basemap = region || globalBasemap, globalMap = !region;
+    const status = view.status, region = regionalMap(), raster=cloudMapsBasemap(), basemap = region || raster || globalBasemap, globalMap = !region&&!raster;
+    // Alpha's Cloud provider is operator-owned. Translate only the generic setup
+    // prompt after a service-configuration refusal; preserve other recovery messages.
+    const cloudFailure = cloudMapsDiagnostics();
+    const statusText = !regionalMapsConfigured && cloudFailure.error === 'unconfigured' &&
+      (status.text.startsWith('Connect a Maps provider') || status.text === cloudFailure.message)
+      ? 'Maps is unavailable right now. Try again later.' : status.text;
     const directionsOpen = view.mode === 'directions' || view.mode === 'origin' || view.mode === 'navigation';
     const isPlace = view.mode === 'place', isResults = view.mode === 'results' || view.mode === 'origin', isNav = view.mode === 'navigation';
+    const sheetHeight = directionsOpen ? 300+(view.directions?.routes.length??0)*50 : isPlace ? 400 : 520;
     Object.assign(data, {
       rootRef:(element:HTMLElement)=>{if(element)element.dataset.mapDiagnostics=JSON.stringify({...view.diagnostics,agentNavigation:{offered:agentNavigation.registered(),relay:residentMapsNavigationPort.relay}});},
       // Who receives search text and route points, from the connected Cloud provider.
       searchDisclosure:region?'':describeMapsDisclosure(cloudMapsCoverage()?.disclosure),
-      // The Cloud provider's required credit while its results, a place or a route are on screen.
-      cloudCredit:region||!(isResults||isPlace||directionsOpen)?'':cloudCredit(directionsOpen),
-      notNative:false, hasNativeMap:true,globalBasemap:globalMap,regionalBasemap:!globalMap,mapLabel:globalMap?'World map':'Regional map',mapAttribution:globalMap?globalBasemap.attribution:(region?.attribution||''),attributionBottom:directionsOpen?310:isPlace?410:130,
+      notNative:false, hasNativeMap:true,globalBasemap:globalMap,regionalBasemap:!!region,cloudBasemap:!region&&!!raster,mapLabel:raster?'Google Maps':globalMap?'World map':'Regional map',mapAttribution:region?.attribution||(raster?(mapCopyright||raster.attribution):globalBasemap.attribution),attributionBottom:directionsOpen||isPlace||isResults?sheetHeight+10:130,
       mapRef:(element:HTMLElement)=>{
         if(!element||!basemap)return;
-        planeView=view.map;
-        if((element!==planeElement||planeBasemap!==basemap)&&!mapFailed){
-          mapObserver?.disconnect();plane?.destroy();plane=undefined;planeElement=element;planeBasemap=basemap;const generation=++mapGeneration;delete element.dataset.mapReady;delete element.dataset.mapError;
+        if(element!==planeElement||planeBasemap!==basemap){
+          mapObserver?.disconnect();plane?.destroy();mapFailed=false;mapCopyright='';planeElement=element;planeBasemap=basemap;const generation=++mapGeneration;delete element.dataset.mapReady;delete element.dataset.mapError;
           const current=()=>generation===mapGeneration&&planeElement===element&&!disposed&&!!api?.isActive();
-          const failed=()=>{mapFailed=true;element.replaceChildren();queueMicrotask(()=>{if(current())screen.setMapState('error');});};
-          // MapLibre loads with the first map, not with the launcher; the placeholder shows until then.
-          void import('../maps/map-plane').then(({MapPlane})=>{
-            if(!current())return;
-            try{
-              plane=new MapPlane(element,basemap,()=>{if(!current())return;mapFailed=true;screen.setMapState('error');},data.C,id=>screen.pin(id));
-              mapObserver=new MutationObserver(()=>{if(current())screen.setMapState(element.dataset.mapReady==='true'?'ready':'loading');});
-              mapObserver.observe(element,{attributes:true,attributeFilter:['data-map-ready']});
-              plane.update(planeView!.selected,planeView!.route,planeView!.overlay);
-            }catch{failed();}
-          },()=>{if(current())failed();});
+          try{
+            plane=new MapPlane(element,basemap,()=>{if(!current())return;mapFailed=true;screen.setMapState('error');},data.C,id=>screen.pin(id),text=>{if(current()&&text!==mapCopyright){mapCopyright=text;screen.refresh();}});
+            mapObserver=new MutationObserver(()=>{if(current())screen.setMapState(element.dataset.mapReady==='true'?'ready':'loading');});
+            mapObserver.observe(element,{attributes:true,attributeFilter:['data-map-ready']});
+          }catch{mapFailed=true;element.replaceChildren();queueMicrotask(()=>{if(current())screen.setMapState('error');});}
         }
         plane?.update(view.map.selected,view.map.route,view.map.overlay);
       },
-      native: true, nativeStatusVisible:status.visible, nativeStatus: status.text, nativeStatusTop: directionsOpen?232:isPlace ? 128 : view.mode==='results' ? 130 : 174,
+      native: true, nativeStatusVisible:status.visible, nativeStatus: statusText, nativeStatusTop: directionsOpen?232:isPlace ? 128 : view.mode==='results' ? 130 : 174,
       nativeSavedEmpty: !view.saved.length, nativeLocationBusy: status.locationBusy, nativeLocation: () => screen.locate(),
       nativeLocationState:status.location,nativeMapState:status.map,nativeMapStatus:status.mapText,
       nativeLocationLabel:status.locationLabel,nativeLocationDenied:status.locationDenied,nativeStatusControls:status.controls,
@@ -188,13 +186,13 @@ export function installPrototypeMapsAdapter(Component: { prototype: Bag }, views
       focusQ: () => screen.focusQuery(),
       qKey: (event: KeyboardEvent) => { if (event.key === 'Enter') { event.preventDefault(); screen.submit(); (event.target as HTMLInputElement).blur(); } },
       clearQ: () => screen.clearQuery(),
-      chips: view.saved.map(item => ({ label: item.label, d: PIN, go: () => screen.chooseSaved(item.id) })),
+      chips: view.saved.map(item => ({ id: 'saved:' + item.id, label: item.label, d: PIN, go: () => screen.chooseSaved(item.id) })),
       cats: data.cats.map((category: Bag) => ({ ...category, go: () => screen.searchFor(category.label) })),
-      savedRows: view.saved.map(item => ({ name: item.label, sub: coordLabel(item.coordinate), d: PIN, go: () => screen.chooseSaved(item.id) })),
-      results: view.results.map(row => ({ name: row.name, sub: row.detail, d: PIN, go: () => screen.choose(row.key) })),
+      savedRows: view.saved.map(item => ({ id: 'saved:' + item.id, name: item.label, sub: coordLabel(item.coordinate), d: PIN, go: () => screen.chooseSaved(item.id) })),
+      results: view.results.map(row => ({ id: row.key, name: row.name, sub: row.detail, d: PIN, go: () => screen.choose(row.key) })),
       hasResults: view.hasResults, noResults: view.noResults, emptyQ: view.emptyQuery,
       recenter: () => screen.recenter(), recBottom: isPlace ? 414 : view.mode === 'results' ? 534 : 124, recCss: '',
-      sheetH: directionsOpen ? 300+(view.directions?.routes.length??0)*50 : isPlace ? 400 : 520, sheetSw: { down: () => {}, up: () => {} }, sheetTap: () => {},
+      sheetH: sheetHeight, sheetSw: { down: () => {}, up: () => {} }, sheetTap: () => {},
       askAlpha: () => currentApi.send(view.query || 'Help me with Maps.'), noResTxt: `Ask ${currentApi.name} about this search`,
     });
     const place = view.place;
@@ -286,4 +284,36 @@ export function installPrototypeMapsAdapter(Component: { prototype: Bag }, views
   const visibility = () => { if(document.hidden)screen.hidden();else screen.refresh(); };
   const pagehide=()=>screen.release();window.addEventListener('pagehide', pagehide); document.addEventListener('visibilitychange', visibility);
   return () => { disposed = true; stopCoverage(); agentNavigation.dispose(); shell=undefined; for(const event of shareEvents)window.removeEventListener(event,retireShare); screen.dispose(); window.removeEventListener('pagehide', pagehide); document.removeEventListener('visibilitychange', visibility); Object.assign(module, original); };
+}
+
+/** Presentation only: stored messages, model context and copied source text remain unchanged.
+ * A share answer is an ordinary chat message; the agent still owns the confirmation gate. */
+export function installMapsChatAdapter(Component:Bag){
+ const p=Component.prototype,render=p.renderVals;
+ const answered=new WeakMap<object,Set<string>>();
+ const answers=(shell:Bag)=>{let value=answered.get(shell);if(!value){value=new Set();answered.set(shell,value);}return value;};
+ async function answer(shell:Bag,id:string,value:string,current:()=>boolean){
+  const snapshot=connectionController.getSnapshot(),done=answers(shell);
+  if(done.has(id)||!shell.live||document.hidden||snapshot.open||snapshot.busy||shell.S().typing||shell.S().recording||!current())return;
+  if(String(shell.S().draft||'').trim()){shell.toast('Keep or send your chat draft before answering.');return;}
+  done.add(id);if(shell.live)shell.setState({});
+  try{if(!current()){done.delete(id);return;}await shell.send(value);}catch(error){done.delete(id);if(shell.live){shell.setState({});shell.toast(error instanceof Error?error.message:'The answer was not sent.');}}
+ }
+ p.renderVals=function(){
+  const out=render.call(this),msgs=out.msgs||[],done=answers(this);
+  out.msgs=msgs.map((message:Bag,index:number)=>{
+   if(!message.isAgent)return message;
+   const source=String(message.displayText??message.text??''),parsed=mapsChatText(source);
+   if(!parsed.cards.length&&!parsed.choice&&parsed.displayText===source)return message;
+   // Only the newest reply can still be answered; an old question is history.
+   const choice=parsed.choice,id=choice?String(message.id)+':'+choice.id:'',snapshot=connectionController.getSnapshot(),session=snapshot.session,conversation=connectionController.getSelectedConversationId();
+   const saved=this.S().msgs?.find((row:Bag)=>row.id===message.id),savedText=saved?String(saved.displayText??saved.text??''):undefined;
+   const current=()=>{const latest=this.S().msgs?.at(-1);return !!session&&connectionController.getSnapshot().session===session&&connectionController.getSelectedConversationId()===conversation&&latest?.id===message.id&&latest.from==='agent'&&String(latest.displayText??latest.text??'')===savedText;};
+   const open=!!choice&&index===msgs.length-1&&!done.has(id)&&current();
+   return {...message,displayText:parsed.displayText,hasCalendarText:message.hasCalendarText!==false&&!!parsed.displayText,
+    messageActionsLabel:message.messageActionsLabel?'Message actions: '+(parsed.displayText||parsed.cards[0]?.title||'Maps'):message.messageActionsLabel,
+    mapsCards:parsed.cards.map(card=>({...card,lines:card.lines.map(text=>({text})),hasAttribution:!!card.attribution})),
+    hasMapsChoice:open,mapsChoices:open?choice!.options.map(option=>({label:option.label,choose:()=>void answer(this,id,option.value,current)})):[]};
+  });return out;
+ };
 }

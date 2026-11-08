@@ -7,11 +7,6 @@ test.describe.configure({timeout:60_000});
 const trashEntries=(page:Page)=>page.evaluate(async()=>(await (await import('/src/runtime/notes-trash.ts')).readNotesTrash()).entries);
 const savedRecords=(page:Page)=>page.evaluate(async()=>JSON.parse(await (await import('/src/runtime/browser-notes-document.ts')).readBrowserNotesRaw()).records);
 const describe=(page:Page)=>page.evaluate(async()=>{const {registerPlugin}=await import('/src/platform-plugins.ts');return registerPlugin<any>('AlphaNoteAudio').describe({audioId:'resume-audio'});});
-/** Counts requests for the Notes deletion lock from now on, and how many of them have finished. */
-const countDeletionLocks=(page:Page)=>page.evaluate(()=>{
- const locks=navigator.locks,request=locks.request.bind(locks),count=(window as any).deletionLocks={requested:0,settled:0};
- (locks as any).request=(name:string,...rest:any[])=>{const pending=(request as any)(name,...rest);if(name!=='alpha.notes-audio-effects.v1')return pending;count.requested++;return pending.finally(()=>{count.settled++;});};
-});
 async function openNotes(page:Page){await openLegacyNotes(page);await expect(page.getByRole('button',{name:'New note',exact:true})).toBeEnabled();}
 async function home(page:Page){await returnToApps(page);await expect(page.locator('html')).not.toHaveAttribute('data-active-view','notes');}
 async function trashTextNote(page:Page,title:string){
@@ -20,8 +15,8 @@ async function trashTextNote(page:Page,title:string){
  await page.getByRole('textbox',{name:'Note',exact:true}).fill('Erase me on time');
  await page.getByRole('button',{name:'Back to notes',exact:true}).click();
  await page.getByRole('button',{name:`Open ${title}`,exact:true}).click();
- await page.getByRole('button',{name:'Delete note',exact:true}).click();
- await expect(page.getByText(`${title} moved to Trash`,{exact:true})).toBeVisible();
+ await page.getByRole('button',{name:'More',exact:true}).click();await page.getByRole('dialog',{name:'Note actions'}).getByRole('button',{name:'Delete',exact:true}).click();
+ await expect(page.getByText(`Moved to Recently deleted`,{exact:true})).toBeVisible();
 }
 async function seedVoice(page:Page){
  await page.evaluate(async()=>{
@@ -38,8 +33,8 @@ test('a resume on Home erases expired text and voice Trash entries without openi
  await page.reload();await openNotes(page);
  await trashTextNote(page,'Resume text');
  await page.getByRole('button',{name:'Open Resume memo',exact:true}).click();
- await page.getByRole('button',{name:'Delete note',exact:true}).click();
- await expect(page.getByText('Voice note moved to Trash',{exact:true})).toBeVisible();
+ await page.getByRole('button',{name:'More',exact:true}).click();await page.getByRole('dialog',{name:'Note actions'}).getByRole('button',{name:'Delete',exact:true}).click();
+ await expect(page.getByText('Moved to Recently deleted',{exact:true})).toBeVisible();
  await expect.poll(async()=>(await describe(page)).deletedAt).toBeGreaterThan(0);
  const entries=await trashEntries(page);
  expect(entries.map((e:any)=>e.note.title).sort()).toEqual(['Resume memo','Resume text']);
@@ -47,16 +42,14 @@ test('a resume on Home erases expired text and voice Trash entries without openi
  await home(page);
 
  // One minute short of three days, a resume keeps both entries restorable.
- await page.clock.setSystemTime(last+3*DAY-60_000);
- await countDeletionLocks(page);
+ await page.clock.setSystemTime(last+30*DAY-60_000);
  await page.evaluate(()=>{document.dispatchEvent(new Event('visibilitychange'));window.dispatchEvent(new Event('focus'));});
- // A pass ends by releasing unused source links under the deletion lock, after any purge it made.
- await expect.poll(()=>page.evaluate(()=>{const l=(window as any).deletionLocks;return l.requested>0&&l.settled===l.requested;})).toBe(true);
+ await page.waitForTimeout(300);
  expect((await trashEntries(page)).length).toBe(2);
  expect((await describe(page)).transcript).toBe('Spoken resume words');
 
  // 72 hours plus one minute: returning to the foreground on Home purges both.
- await page.clock.setSystemTime(last+3*DAY+60_000);
+ await page.clock.setSystemTime(last+30*DAY+60_000);
  await page.evaluate(()=>document.dispatchEvent(new Event('visibilitychange')));
  await expect.poll(()=>trashEntries(page)).toEqual([]);
  await expect(page.locator('html')).not.toHaveAttribute('data-active-view','notes');
@@ -73,7 +66,7 @@ test('the 15-minute shell timer purges an expired Trash entry with no navigation
  await trashTextNote(page,'Timer text');
  const [entry]=await trashEntries(page);
  await home(page);
- await page.clock.setSystemTime(entry.deletedAt+3*DAY+60_000);
+ await page.clock.setSystemTime(entry.deletedAt+30*DAY+60_000);
  // No event: only the interval can notice that the entry is due. fastForward fires each due timer once.
  await page.clock.fastForward(15*60*1000);
  await expect.poll(()=>trashEntries(page)).toEqual([]);

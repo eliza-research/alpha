@@ -72,6 +72,12 @@ export class BrowserDevice extends WebPlugin {
  async openSettings(input:{page:string}={page:'device'}) {
   const epoch=++settingsEpoch,opening=beginNoticeAction();let state:ReturnType<typeof browserDeviceState>;
   try{let saved:Awaited<ReturnType<typeof readDevicePreferences>>;try{saved=await readDevicePreferences(opening.signal);}catch(error){if(!devSurfacesEnabled&&epoch===settingsEpoch&&!opening.signal.aborted&&devicePreferencesStatus()==='unavailable')openSettingsRecovery();throw error;}if(epoch!==settingsEpoch||opening.signal.aborted||noticeActionBlocked())throw Error('Settings opening cancelled.');state={...saved,doNotDisturb:saved.doNotDisturb||focusActive(),deviceSettingsStatus:'ready'};}finally{opening.dispose();}
+  if(!testMocksEnabled){
+   const pages:Record<string,string>={display:'display',sound:'sound',notifications:'notifications',privacy:'privacy',accounts:'settings-account',apps:'settings-apps',device:'settings-general',calendar:'calendar',reminders:'app-settings-workflows'};
+   if(!Object.hasOwn(pages,input.page))throw Error('That system setting is managed outside this app.');
+   const event=new CustomEvent('alpha:settings-page',{detail:{page:pages[input.page]},cancelable:true});window.dispatchEvent(event);
+   if(!event.defaultPrevented)throw Error('App settings are unavailable.');return {status:'opened'};
+  }
   document.querySelector<HTMLDialogElement>('[data-browser-settings]')?.close();
   const dialog=document.createElement('dialog');dialog.dataset.browserSettings='true';dialog.setAttribute('aria-label',`${input.page} settings`);dialog.style.cssText='border:0;border-radius:18px;padding:24px;width:min(320px,85vw);background:var(--bg,#fff);color:var(--fg,#111);font:16px system-ui';
   const title=document.createElement('h2');title.textContent=input.page[0].toUpperCase()+input.page.slice(1);dialog.append(title);

@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
-import {stripTypeScriptTypes} from 'node:module';
+import {stripTypeScriptTypes} from './support/strip-types.mjs';
 import {build} from 'esbuild';
 // Upstream's escalation service posts "Eliza needs attention" into client chat for any repeated
 // error (a Notes state the resident could not read at start produced one per boot), and history

@@ -1,18 +1,19 @@
+import {formatDateTime} from './locale-time';
+import {createWorkflowApprovalPoster,definiteNoticeFailure} from '../../../../.eliza/client-features/packages/contracts/src/workflow-approval-poster.ts';
 import {reviewWorkflowNoticeQuestion} from './workflow-notice-question';
 import {NoticeOwnerCoordinator,revalidateWorkflowApprovalNotice} from '../../../../.eliza/client-features/packages/contracts/src/notice-routes.ts';
 import {WorkflowIntentStore,workflowIntentKey} from '../runtime/workflow-intents';
 import {Capacitor} from '@capacitor/core';
 import {registerPlugin} from '../platform-plugins';
-import {resolveWorkflowTap,createWorkflowApprovalPoster,definiteNoticeFailure,type WorkflowTapNative} from '../runtime/workflow-notice-taps';
+import {resolveWorkflowTap,type WorkflowTapNative} from '../runtime/workflow-device-contract';
 import { createWorkflowAuthoring } from './workflow-authoring';
-import { presentHomeWorkflowFreshness } from './home-cards';
+import { homeReadIsStale, presentHomeWorkflowFreshness } from './home-cards';
 import { alphaClient, type ActionProposal } from '../runtime/alpha-client';
 import { workflowApprovalNotice, type WorkflowPhoneReview } from '../runtime/workflow-device-contract';
 import type { WorkflowNoticeRoute } from '../runtime/device-actions';
 import { connectionController, agentAvailabilityNotice, residentAlwaysPresent } from '../runtime/connection-ui';
 import { testMocksEnabled } from '../build-flags';
-import { showAgentStatus } from '../runtime/agent-status-route';
-import { formatDateTime } from './locale-time';
+import { showAgentStatus } from './workflow-authoring';
 import { WorkflowAdmissionRejected, WorkflowMetadataRejected, WorkflowLifecycleRejected, WorkflowActivationRejected, type RemoteWorkflow, type WorkflowRun, type WorkflowApproval, type WorkflowApprovalReceipt } from '../runtime/workflow-protocol';
 import { describePhoneTrigger, normalizePhoneSpec, phoneTriggerClockChangeNote, type PhoneTimeTrigger } from '../runtime/phone-workflow-authoring';
 type Bag=Record<string,any>;
@@ -46,7 +47,7 @@ function workflowRunLabel(run:WorkflowRun):string{
  if(run.occurrence?.status==='missed')return 'Missed — did not run';
  if(run.occurrence?.status==='overlap')return 'Skipped — an earlier run was still active';
  if(runOutcomeUnknown(run))return 'Interrupted — outcome unknown';
- if(runWorkerRunning(run))return 'Still running';
+ if(runWorkerRunning(run))return 'Worker still running — agent reconciling';
  if(run.finished&&run.reconciliation?.state==='outcome-unknown')return run.status+' · after an interrupted, unknown outcome';
  return run.status;
 }
@@ -86,6 +87,11 @@ export function installWorkflowAdapter(Component:any,views:Bag){
  // Retirement still cancels work, but must not render after document storage is revoked.
  const publish=()=>{if(!suspended&&!document.hidden)owner?.vset('workflows',{remoteWorkflowTick:Date.now()});};
  const authoring=createWorkflowAuthoring(()=>owner,publish,async(id)=>{await open(id);});
+ p.flushWorkflowsForAppUpdate=async function(current:()=>boolean){
+  const exact=()=>current()&&(!owner||owner===this)&&!operation&&!editor;
+  if(!exact())throw Error('Workflow changes are still pending');
+  await authoring.flushForAppUpdate(exact);
+ };
  let noticeQuestion:(()=>void)|undefined;
  const clear=(keepList=false)=>{noticeQuestion?.();noticeQuestion=undefined;unadmitted=null;reviewResend=false;intentStore=null;recovery?.abort();recovery=null;authoring.close();phoneReview=null;phoneSteps=[];phoneConfirm=null;phoneStatus='';generation++;operation?.abort();operation=null;editor=null;removedList=false;lifecycleAvailable=false;lifecycleReview=false;unknownReview=false;reviewRerun=false;noSchedule=false;if(!keepList){flows=[];listPhase='idle';listSession=null;}homeVisit=null;detail=null;detailSession=null;runs=[];receipt=null;approvalReceipt=null;approvalReview=null;reviewRun=false;reviewActivation=false;reviewCancel=false;phase='idle';publish();};
  async function work(task:(client:NonNullable<ReturnType<typeof connectionController.getWorkflowClient>>['client'],signal:AbortSignal,valid:()=>boolean,sessionId:string,intents:WorkflowIntentStore)=>Promise<void>){
@@ -175,7 +181,7 @@ export function installWorkflowAdapter(Component:any,views:Bag){
  const refresh=async()=>{
   if(operation)return;
   listPhase='loading';publish();
-  const pending=work(async(client,signal,valid,sessionId)=>{const homeRequest=!owner?.S().view;let available=homeRequest?lifecycleAvailable:await client.lifecycleSupported(signal);const list=removedList?await client.removedWorkflows(signal):await client.list(signal);if(homeRequest&&owner?.S().view==='workflows')available=await client.lifecycleSupported(signal);if(valid()){lifecycleAvailable=available;flows=list;listPhase='ready';listSession=sessionId;listReadAt=Date.now();status=removedList?'Removed workflows':list.length?'Workflows on this agent':'No workflows on this agent';}}),token=generation;
+  const pending=work(async(client,signal,valid,sessionId)=>{const homeRequest=!owner?.S().view;let available=homeRequest?lifecycleAvailable:await client.lifecycleSupported(signal);const list=removedList?await client.removedWorkflows(signal):await client.list(signal);if(homeRequest&&owner?.S().view==='workflows')available=await client.lifecycleSupported(signal);if(valid()){lifecycleAvailable=available;flows=list;listPhase='ready';listSession=sessionId;listReadAt=Date.now();status=removedList?'Removed workflows — history retained':list.length?'Workflows on this agent':'No workflows on this agent';}}),token=generation;
   await pending;
   if(token===generation&&listPhase==='loading'){listPhase='failed';publish();}
  };
@@ -190,6 +196,7 @@ export function installWorkflowAdapter(Component:any,views:Bag){
   const out=values.call(this),binding=connectionController.getWorkflowClient(),current=binding?.sessionId===listSession&&listPhase==='ready',saved=current?flows.filter(flow=>!flow.removed):[],rows=saved.slice(0,2);
   const loaded=presentHomeWorkflowFreshness({loadedAt:current?listReadAt:null,now:Date.now(),unified:false});
   return {...out,homeWorkflowFreshness:loaded.visible,homeWorkflowDescription:loaded.description,homeWorkflowRows:rows.map(flow=>({name:flow.name,status:flow.active?'Enabled':'Paused'})),homeWorkflowHasRows:rows.length>0,
+   homeWorkflowConfirmedEmpty:current&&!removedList&&saved.length===0&&listReadAt!=null&&listReadAt>0&&listReadAt<=Date.now()&&!homeReadIsStale(listReadAt,Date.now()),
    homeWorkflowTitle:rows.length?'':!binding?'Connect your agent':listPhase==='failed'?'Couldn’t load workflows':listPhase==='ready'?'No workflows yet':'Loading workflows…',
    homeWorkflowTime:!binding?'Tap to connect':listPhase==='failed'?'Tap to retry':listPhase!=='ready'?'':saved.length>2?`+${saved.length-2} more`:saved.length?'View '+(saved.length===1?'workflow':'workflows'):'',
    homeWorkflowLabel:!binding?'Connect agent for workflows':listPhase==='failed'?'Retry workflows':'Open workflows',
@@ -248,12 +255,12 @@ export function installWorkflowAdapter(Component:any,views:Bag){
  // be posted for that owner and survive the withdrawal below.
  let approvalNotices:Promise<void>=Promise.resolve();
  const queueApprovalNotices=(route:WorkflowNoticeRoute|null,pending:ActionProposal[],resolved:string[])=>{const identity=connectionController.getSnapshot().session?.sessionId;if(!route||!identity)return;approvalNotices=approvalNotices.then(()=>syncApprovalNotices(route,identity,pending,resolved)).catch(()=>{});};
- const poster=createWorkflowApprovalPoster({
+ const poster=createWorkflowApprovalPoster<WorkflowRun,WorkflowPhoneReview>({
   session:()=>{
    const snapshot=connectionController.getSnapshot(),selected=connectionController.getWorkflowClient(),session=snapshot.session;
-   if(!Capacitor.isNativePlatform()||suspended||document.hidden||!session||!selected?.scope||snapshot.open||snapshot.busy||!connectionController.getWorkflowDeviceTarget())return null;
+   if(!owner||!Capacitor.isNativePlatform()||suspended||document.hidden||!session||!selected?.scope||snapshot.open||snapshot.busy||!connectionController.getWorkflowDeviceTarget())return null;
    const reads=selected.client,scope=selected.scope;
-   return {identity:session.sessionId,current:()=>connectionController.getSnapshot().session?.sessionId===session.sessionId&&connectionController.getWorkflowClient()?.sessionId===selected.sessionId&&!connectionController.getSnapshot().open&&!document.hidden,
+   return {identity:session.sessionId,current:()=>!!owner&&!suspended&&connectionController.getSnapshot().session?.sessionId===session.sessionId&&connectionController.getWorkflowClient()?.sessionId===selected.sessionId&&!connectionController.getSnapshot().open&&!document.hidden,
     route:run=>({scope,origin:session.origin,ownerId:session.ownerId,agentId:session.agentId,workflowId:run.workflowId,runId:run.id,versionId:run.versionId}),
     list:signal=>reads.list(signal),executions:(id,signal)=>reads.executions(id,signal),phoneReview:(run,signal)=>reads.phoneReview(run,signal),pending:(review,signal)=>connectionController.workflowNoticeActions(review,signal)};
   },
@@ -304,7 +311,7 @@ export function installWorkflowAdapter(Component:any,views:Bag){
    if(valid()){phoneSteps=[];phoneReview=null;phoneConfirm=null;}
   });
  };
- const syncPhone=()=>{if(!receipt||operation)return;const selected=receipt;void work(async(client,signal,valid)=>{phoneContext(selected);const review=await client.phoneReview(selected,signal);if(!valid())return;phoneContext(selected);await connectionController.syncWorkflowPhoneReceipts(review,signal);if(valid()){phoneStatus='Phone step results sent. Nothing was read again.';phoneSteps=[];phoneReview=null;}});};
+ const syncPhone=()=>{if(!receipt||operation)return;const selected=receipt;void work(async(client,signal,valid)=>{phoneContext(selected);const review=await client.phoneReview(selected,signal);if(!valid())return;phoneContext(selected);await connectionController.syncWorkflowPhoneReceipts(review,signal);if(valid()){phoneStatus='Saved phone receipts sent for reconciliation. No Notes or Calendar source was read again.';phoneSteps=[];phoneReview=null;}});};
  const pause=()=>{if(!detail)return;const id=detail.id;void work(async(client,signal,valid)=>{const current=await client.pause(id,signal);if(valid()){detail=current;flows=flows.map(f=>f.id===id?current:f);api?.toast('Workflow paused. An already-running execution may continue.');}});};
  const activate=()=>{if(!detail||operation||detail.removed)return;
   // The agent refuses to enable a manual typed workflow: it has no schedule. Nothing is sent.
@@ -318,7 +325,7 @@ export function installWorkflowAdapter(Component:any,views:Bag){
    try{started=await client.run(selected.id,selected.versionId,signal,async submissionId=>{intent=await intents.admit(key,{workflowId:selected.id,versionId:selected.versionId,submittedAt:Date.now(),...(submissionId?{submissionId}:{})},signal);await beforeDispatch(intents,key,intent,signal,valid);});}
    catch(error){if(error instanceof WorkflowAdmissionRejected&&intent){await intents.acknowledge(key,intent);if(valid()){const refreshed=await client.detail(selected.id,signal);if(valid()){detail=refreshed;reviewRun=false;}}}throw error;}
    if(intent)await intents.acknowledge(key,intent);
-   if(valid()){receipt=started;approvalReceipt=null;approvalReview=null;reviewCancel=false;reviewRerun=false;runs=[started,...runs.filter(r=>r.id!==started.id)];api?.toast('Run started.');}
+   if(valid()){receipt=started;approvalReceipt=null;approvalReview=null;reviewCancel=false;reviewRerun=false;runs=[started,...runs.filter(r=>r.id!==started.id)];api?.toast('Run accepted. Refresh its receipt to check completion.');}
   });
  };
  /** Explicit, confirmed repeat of the one retained request under its original submission ID. It first asks for the receipt again, so a request that did arrive is shown rather than re-sent. */
@@ -330,7 +337,7 @@ export function installWorkflowAdapter(Component:any,views:Bag){
    let started=await client.reconcile(selected.id,request.versionId,request.submissionId,signal);
    if(!started){try{started=await client.resubmit(selected.id,request.versionId,request.submissionId,signal);}catch(error){if(error instanceof WorkflowAdmissionRejected){await intents.acknowledge(key,request.raw);if(valid()){const refreshed=await client.detail(selected.id,signal);if(valid()){detail=refreshed;reviewRun=false;}}}throw error;}}
    await intents.acknowledge(key,request.raw);
-   if(valid()){receipt=started;approvalReceipt=null;approvalReview=null;reviewCancel=false;reviewRerun=false;runs=[started,...runs.filter(r=>r.id!==started!.id)];api?.toast('Run started.');}
+   if(valid()){receipt=started;approvalReceipt=null;approvalReview=null;reviewCancel=false;reviewRerun=false;runs=[started,...runs.filter(r=>r.id!==started!.id)];api?.toast('Run accepted under your original request. Refresh its receipt to check completion.');}
   });
  };
  const run=()=>{
@@ -340,14 +347,14 @@ export function installWorkflowAdapter(Component:any,views:Bag){
   const request=unadmitted?.workflowId===detail.id&&unadmitted.versionId===detail.versionId?unadmitted:null;
   if(locked(detail.id)&&!request){api?.toast('Run outcome unknown. Refresh history; automatic retry is blocked.');return;}
   // Side-effecting workflows never start beside an interrupted run whose effects are unknown.
-  if(!readOnlyDigestWorkflow(detail)&&unresolvedRuns(detail.id).length){api?.toast('An earlier run may not have finished. Open it below and cancel it first.');return;}
-  if(request){if(!reviewResend){reviewResend=true;api?.toast('Your earlier run may not have arrived. Tap Run now again to resend it. It can only start once.');publish();return;}reviewResend=false;resubmitRun(detail,request);return;}
-  if(!reviewRun){reviewRun=true;api?.toast('Tap Run now again to start it.');publish();return;}
+  if(!readOnlyDigestWorkflow(detail)&&unresolvedRuns(detail.id).length){api?.toast('An interrupted run of this workflow has an unknown outcome or is still being reconciled. Open it below and cancel it explicitly before starting another run. Nothing is replayed automatically.');return;}
+  if(request){if(!reviewResend){reviewResend=true;api?.toast('The agent has no run for your earlier request, so it may never have arrived. Tap Run now again to send that same request once more. It keeps its original identity and can start at most one run.');publish();return;}reviewResend=false;resubmitRun(detail,request);return;}
+  if(!reviewRun){reviewRun=true;api?.toast('Review the steps, then tap Run now again to start this workflow once.');publish();return;}
   if(locked(detail.id)){api?.toast('A prior run submission has an unknown outcome. Inspect history on this agent; this phone will not submit another run.');return;}
   const selected=detail;reviewRun=false;submitRun(selected);
  };
  /** Explicit, separately confirmed new run (new run ID) for a read-only digest whose earlier run was interrupted. The interrupted run is never replayed or modified. */
- const runAgain=()=>{if(!receipt||!detail||operation||!runOutcomeUnknown(receipt)||!readOnlyDigestWorkflow(detail)||detail.id!==receipt.workflowId)return;if(detail.versionId!==receipt.versionId){api?.toast('This workflow changed after the interrupted run. Close the receipt and review the current steps before using Run now.');return;}if(locked(detail.id)){api?.toast('A prior run submission has an unknown outcome. Inspect history on this agent; this phone will not submit another run.');return;}if(!reviewRerun){reviewRerun=true;api?.toast('This starts a new, separate run. Tap Confirm new run.');publish();return;}reviewRerun=false;submitRun(detail);};
+ const runAgain=()=>{if(!receipt||!detail||operation||!runOutcomeUnknown(receipt)||!readOnlyDigestWorkflow(detail)||detail.id!==receipt.workflowId)return;if(detail.versionId!==receipt.versionId){api?.toast('This workflow changed after the interrupted run. Close the receipt and review the current steps before using Run now.');return;}if(locked(detail.id)){api?.toast('A prior run submission has an unknown outcome. Inspect history on this agent; this phone will not submit another run.');return;}if(!reviewRerun){reviewRerun=true;api?.toast('Run again starts a new, separate run of these read-only steps. The interrupted run is not replayed or changed. Tap Confirm new run to start it.');publish();return;}reviewRerun=false;submitRun(detail);};
  const read=(run:WorkflowRun)=>{
   phoneSteps=[];phoneReview=null;phoneConfirm=null;phoneStatus='';const key=approvalKey(run);
   return work(async(client,signal,valid,_session,intents)=>{
@@ -366,11 +373,11 @@ export function installWorkflowAdapter(Component:any,views:Bag){
   if(!receipt||operation||approvalLocked(receipt)||approvalReceipt?.finished||approvalReceipt?.cancellationRequested||(approved&&!a.supported))return;
   if(approvalReview?.digest!==a.requestDigest||approvalReview.approved!==approved){approvalReview={digest:a.requestDigest,approved};publish();return;}
   const selected=receipt,key=approvalKey(selected);approvalReview=null;
-  void work(async(client,signal,valid,_session,intents)=>{const intent=await intents.admit(key,{nodeId:a.nodeId,iteration:a.iteration,requestDigest:a.requestDigest,approved,versionId:selected.versionId},signal);await beforeDispatch(intents,key,intent,signal,valid);signal.throwIfAborted();const resolved=await client.decideApproval(selected,a,approved,signal);await intents.acknowledge(key,intent);if(valid()){approvalReceipt=resolved;api?.toast('Decision sent. Refresh to see the result.');}});
+  void work(async(client,signal,valid,_session,intents)=>{const intent=await intents.admit(key,{nodeId:a.nodeId,iteration:a.iteration,requestDigest:a.requestDigest,approved,versionId:selected.versionId},signal);await beforeDispatch(intents,key,intent,signal,valid);signal.throwIfAborted();const resolved=await client.decideApproval(selected,a,approved,signal);await intents.acknowledge(key,intent);if(valid()){approvalReceipt=resolved;api?.toast('Decision recorded by the workflow engine. Refresh the execution receipt for its outcome.');}});
  };
- const cancel=()=>{if(!receipt||receipt.finished||operation)return;if(!reviewCancel){reviewCancel=true;api?.toast('Cancelling won\'t undo steps that already ran. Tap Confirm cancellation.');publish();return;}const selected=receipt;reviewCancel=false;void work(async(client,signal,valid)=>{const result=await client.cancel(selected.id,selected.workflowId,signal);if(valid()){receipt=result;approvalReceipt=null;approvalReview=null;runs=runs.map(r=>r.id===result.id?result:r);if(!result.finished)api?.toast('Cancelling. Steps that already ran aren\'t undone.');}});};
+ const cancel=()=>{if(!receipt||receipt.finished||operation)return;if(!reviewCancel){reviewCancel=true;if(runOutcomeUnknown(receipt))api?.toast('Cancelling records that this interrupted run must not continue. It does not reveal or undo anything it already did, and nothing is replayed. Tap Confirm cancellation to send it.');publish();return;}const selected=receipt;reviewCancel=false;void work(async(client,signal,valid)=>{const result=await client.cancel(selected.id,selected.workflowId,signal);if(valid()){receipt=result;approvalReceipt=null;approvalReview=null;runs=runs.map(r=>r.id===result.id?result:r);api?.toast(result.finished?'Terminal execution receipt received.':'Cancellation requested. Refresh receipt to verify terminal status; completed effects are not undone.');}});};
  const cancelEdit=()=>{generation++;operation?.abort();operation=null;editor=null;phase='ready';publish();};
- const edit=()=>{if(!detail||operation)return;if(detail.removed){api?.toast('Restore this workflow first.');return;}if(detail.phoneSpec){const id=detail.id;if(runs.some(r=>r.workflowId===id&&!r.finished))api?.toast('An execution of this workflow is still in progress. Changes apply to new runs only; that execution keeps the steps it started with.');void authoring.open(detail);return;}if(metadataLocked(detail.id)){api?.toast('Save outcome unknown. Refreshing the exact change receipt; another edit is blocked.');void open(detail.id);return;}const selected=detail;void work(async(client,signal,valid)=>{if(!await client.metadataSupported(signal)){if(valid())api?.toast('Not available on your agent.');return;}if(valid())editor={id:selected.id,versionId:selected.versionId,name:selected.name,description:selected.description};});};
+ const edit=()=>{if(!detail||operation||detail.removed)return;if(detail.phoneSpec){const id=detail.id;if(runs.some(r=>r.workflowId===id&&!r.finished))api?.toast('An execution of this workflow is still in progress. Changes apply to new runs only; that execution keeps the steps it started with.');void authoring.open(detail);return;}if(metadataLocked(detail.id)){api?.toast('Save outcome unknown. Refreshing the exact change receipt; another edit is blocked.');void open(detail.id);return;}const selected=detail;void work(async(client,signal,valid)=>{if(!await client.metadataSupported(signal)){if(valid())api?.toast('This agent does not support safe name and description changes.');return;}if(valid())editor={id:selected.id,versionId:selected.versionId,name:selected.name,description:selected.description};});};
  const saveMetadata=()=>{
   if(!editor||operation||metadataLocked(editor.id)||!editor.name.trim()||editor.name.length>200||editor.description.length>4000)return;
   const selected={...editor},key=metadataKey(selected.id);
@@ -380,11 +387,11 @@ export function installWorkflowAdapter(Component:any,views:Bag){
    catch(error){if(error instanceof WorkflowMetadataRejected&&intent){await intents.acknowledge(key,intent);if(valid()){const current=await client.detail(selected.id,signal);if(valid()){detail=current;editor=null;}}}throw error;}
   });
  };
- const lifecycle=()=>{if(!detail||operation)return;if(lifecycleLocked(detail.id)){void open(detail.id);return;}if(!lifecycleAvailable){api?.toast('Not available on your agent.');return;}const interrupted=runs.filter(runOutcomeUnknown);if(runs.some(r=>!r.finished&&!runOutcomeUnknown(r))){api?.toast('Open each ongoing execution below and cancel it explicitly before removing this workflow.');return;}
+ const lifecycle=()=>{if(!detail||operation)return;if(lifecycleLocked(detail.id)){void open(detail.id);return;}if(!lifecycleAvailable){api?.toast('This agent does not support reviewed removal and restore.');return;}const interrupted=runs.filter(runOutcomeUnknown);if(runs.some(r=>!r.finished&&!runOutcomeUnknown(r))){api?.toast('Open each ongoing execution below and cancel it explicitly before removing this workflow.');return;}
   // Upstream plugin-workflow refuses removal while any execution is unfinished and has no
   // acknowledgement-only API. The supported path is an explicit, confirmed cancellation of each
   // interrupted run; removing past an unknown outcome without cancelling would need a tested patch in patches/eliza.
-  if(interrupted.length){if(!unknownReview){unknownReview=true;lifecycleReview=true;publish();return;}const selected=detail;unknownReview=false;lifecycleReview=false;void work(async(client,signal,valid)=>{let failed=0;for(const r of interrupted){try{await client.cancel(r.id,r.workflowId,signal);}catch(error){if(signal.aborted)throw error;failed++;}}const history=await client.executions(selected.id,signal),current=await client.detail(selected.id,signal);if(valid()){runs=history;detail=current;api?.toast(failed?'Some interrupted runs could not be cancelled. Removal stays blocked; refresh and review them.':history.some(r=>!r.finished)?'Cancellation requested. Removal stays blocked until the agent confirms every run has stopped.':'Interrupted runs cancelled; their earlier outcome remains unknown. Tap Remove again to review removal.');}});return;}if(detail.removed&&detail.triggerCleanup==='pending'){api?.toast('Still removing the schedule. Try Restore again shortly.');return;}if(!lifecycleReview){lifecycleReview=true;publish();return;}const selected=detail,operationName=selected.removed?'restore':'remove',key=lifecycleKey(selected.id);lifecycleReview=false;void work(async(client,signal,valid,_session,intents)=>{let intent:string|undefined;try{await client.lifecycle(selected.id,selected.versionId,operationName,signal,async mutationId=>{intent=await intents.admit(key,{mutationId,versionId:selected.versionId,operation:operationName},signal);await beforeDispatch(intents,key,intent,signal,valid);});if(intent)await intents.acknowledge(key,intent);if(valid()){const current=await client.detail(selected.id,signal);if(valid()){detail=current;flows=flows.filter(f=>f.id!==selected.id);api?.toast(current.removed?'Workflow removed; execution history retained.':manualPhoneWorkflow(current)?'Workflow restored. It has no schedule; use Run now.':'Workflow restored paused. Review its schedule before enabling.');}}}catch(error){if(error instanceof WorkflowLifecycleRejected){if(intent)await intents.acknowledge(key,intent);if(valid()){const current=await client.detail(selected.id,signal),history=await client.executions(selected.id,signal);if(valid()){detail=current;runs=history;}}}throw error;}});};
+  if(interrupted.length){if(!unknownReview){unknownReview=true;lifecycleReview=true;publish();return;}const selected=detail;unknownReview=false;lifecycleReview=false;void work(async(client,signal,valid)=>{let failed=0;for(const r of interrupted){try{await client.cancel(r.id,r.workflowId,signal);}catch(error){if(signal.aborted)throw error;failed++;}}const history=await client.executions(selected.id,signal),current=await client.detail(selected.id,signal);if(valid()){runs=history;detail=current;api?.toast(failed?'Some interrupted runs could not be cancelled. Removal stays blocked; refresh and review them.':history.some(r=>!r.finished)?'Cancellation requested. Removal stays blocked until the agent confirms every run has stopped.':'Interrupted runs cancelled; their earlier outcome remains unknown. Tap Remove again to review removal.');}});return;}if(detail.removed&&detail.triggerCleanup==='pending'){api?.toast('Scheduled trigger cleanup is pending on the agent. Restore is blocked until cleanup is confirmed.');return;}if(!lifecycleReview){lifecycleReview=true;publish();return;}const selected=detail,operationName=selected.removed?'restore':'remove',key=lifecycleKey(selected.id);lifecycleReview=false;void work(async(client,signal,valid,_session,intents)=>{let intent:string|undefined;try{await client.lifecycle(selected.id,selected.versionId,operationName,signal,async mutationId=>{intent=await intents.admit(key,{mutationId,versionId:selected.versionId,operation:operationName},signal);await beforeDispatch(intents,key,intent,signal,valid);});if(intent)await intents.acknowledge(key,intent);if(valid()){const current=await client.detail(selected.id,signal);if(valid()){detail=current;flows=flows.filter(f=>f.id!==selected.id);api?.toast(current.removed?'Workflow removed; execution history retained.':manualPhoneWorkflow(current)?'Workflow restored paused. It has no schedule and runs only when you tap Run now.':'Workflow restored paused. Review its schedule before enabling.');}}}catch(error){if(error instanceof WorkflowLifecycleRejected){if(intent)await intents.acknowledge(key,intent);if(valid()){const current=await client.detail(selected.id,signal),history=await client.executions(selected.id,signal);if(valid()){detail=current;runs=history;}}}throw error;}});};
  view.back=()=>{if(authoring.active){authoring.close();return true;}if(lifecycleReview){lifecycleReview=false;unknownReview=false;publish();return true;}if(editor){cancelEdit();return true;}if(receipt){receipt=null;approvalReceipt=null;approvalReview=null;reviewCancel=false;reviewRerun=false;publish();return true;}if(detail){detail=null;reviewRun=false;reviewResend=false;publish();return true;}return false;};view.onLeave=()=>clear(true);
  view.render=(_state:Bag,current:Bag)=>{api=current;const binding=connectionController.getWorkflowClient();if(!view.automationsManaged&&phase==='idle'&&binding&&current.isActive()){phase='scheduled';queueMicrotask(()=>{if(api?.isActive())void refresh();});}
  const track=(on:boolean)=>current.track(on),kx=(on:boolean)=>current.kx(on);
@@ -393,7 +400,7 @@ export function installWorkflowAdapter(Component:any,views:Bag){
  cards.unshift({name:phase==='busy'?'Loading workflows…':binding?status:(agentAvailabilityNotice(connectionController.getSnapshot(),'Agent connection required')||'Workflows'),short:binding?'Tap to refresh from this agent':residentAlwaysPresent||!testMocksEnabled?'Workflows appear when your agent is running':'Connect your remote agent to manage workflows',on:false,track:track(false),kx:kx(false),dim:'',failed:false,open:()=>binding?void refresh():connectionController.open(),toggle:()=>binding?void refresh():connectionController.open()});
  if(intentStore&&!Capacitor.isNativePlatform())cards.push({name:'Workflow request recovery',short:'Back up or reset this agent’s pending requests',on:false,track:track(false),kx:kx(false),dim:'',failed:false,open:()=>void recoverIntents(),toggle:()=>{}});
  if(lifecycleAvailable)cards.push({name:removedList?'Active workflows':'Removed workflows',short:removedList?'Return to current workflows':'Review removed workflows and retained execution history',on:false,track:track(false),kx:kx(false),dim:'',failed:false,open:()=>{if(operation)return;removedList=!removedList;detail=null;void refresh();},toggle:()=>{}});
- for(const id of operation||phase==='scheduled'?[]:pendingLifecycle())if(!flows.some(f=>f.id===id))cards.push({name:'Pending workflow change',short:'Tap to check this change',on:false,track:track(false),kx:kx(false),dim:'',failed:false,open:()=>void open(id),toggle:()=>{}});
+ for(const id of operation||phase==='scheduled'?[]:pendingLifecycle())if(!flows.some(f=>f.id===id))cards.push({name:'Pending workflow change',short:'Tap to reconcile this exact removal or restore',on:false,track:track(false),kx:kx(false),dim:'',failed:false,open:()=>void open(id),toggle:()=>{}});
  if(Capacitor.isNativePlatform())cards.push({name:'Saved workflow notification',short:'Open the exact execution from a notification tap',on:false,track:track(false),kx:kx(false),dim:'',failed:false,open:()=>void checkNotice('user'),toggle:()=>{}});
  if(Capacitor.isNativePlatform()&&heldTap)cards.push({name:'Dismiss',short:'Clear the saved notification this connection can’t open',on:false,track:track(false),kx:kx(false),dim:'',failed:false,open:dismissTap,toggle:()=>{}});
  const hasDeviceSteps=!!receipt&&runHasDeviceSteps(receipt,detail,phoneReview);

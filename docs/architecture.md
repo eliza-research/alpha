@@ -18,8 +18,12 @@ records the migration order and the gaps that prevent a completion claim.
 
 ### Shell host pieces and their upstream targets
 
-The shared mobile shell (`@elizaos/ui/mobile-shell`) renders Home, All apps, the view
-registry and navigation from `config/alpha-product.json`. A view whose registration carries a
+The shared mobile shell (`@elizaos/ui/mobile-shell`) renders Home, its app grid, the view
+registry and navigation from `config/alpha-product.json`. Alpha uses the shared installed-app
+grid drawer and supplies its classes, icons, menu state and Home edit mode in `prototype/home-shell.ts`.
+The grid lists installed Android apps only (view refresh 2026-11, PLAN section 5).
+Shared Home edit hooks remain a migration target. App info is
+`AlphaSystemPlugin.openAppInfo` (ElizaSystem under Alpha's plugin class). A view whose registration carries a
 lazy loader renders through `MobileViewHost`; Alpha contributes none today. Notes, live and mock
 alike, is Alpha's own Notes template (`prototype/template.html`, `model.js`): live agent notes are
 bound to it by `prototype/canonical-notes-ui.ts` over the shared Notes client, controller and
@@ -63,8 +67,9 @@ canonical HTTPS origins on the default port, without base paths or credentials.
 Alpha retains its own package/client ID and `/alphaphone/auth/callback` return
 path. The configured deployment must register that client, approve its callback
 and publish the app's signing certificate in its web host's assetlinks document.
-`ELIZAOS_APP_LINK_HOST`, if set, must equal the configured production web
-host. The staging return uses the configured staging web host in test-mocks
+Android builds declare the configured production web host by default.
+`ELIZAOS_APP_LINK_HOST`, when supplied, must equal that host. APK verification
+requires the exact sign-in return filter. The staging return uses the configured staging web host in test-mocks
 builds only. Changing the backend does not import another product's identity.
 
 Cloud credentials, pending sign-in state, acknowledgments and the local agent's
@@ -93,10 +98,7 @@ engine/JNI work goes upstream; product policy remains in Alpha.
 
 Subscription authorization is asynchronously refreshed and cached, with server-side
 bounded quotas on existing service requests. Local speech has no billing dependency.
-The Photos Device library is owner-operated in the renderer. Agent library access (P-24,
-A-18) waits for the upstream `photos.library.v1` schema, server allowlist and actions; Alpha then
-advertises it only when `AlphaPhotoLibrary` is available, and does not advertise it before then
-(header validation would reject it and drop every device action). Resets erase Alpha
+Photos offers full permitted library access to the local agent; resets erase Alpha
 private state without implying remote/provider or device-wide media deletion.
 No app-data backup/import/export/transfer feature is planned.
 
@@ -143,7 +145,7 @@ Gmail attachments and PDF file creation remain available.
 | `android` | Product identity, Activity, permissions, resources and standalone/HOME packaging. `android/consumer-host.json` is the descriptor the pinned upstream consumer-host generator turns into the git-ignored Gradle host; `android/app/product.gradle` holds Gradle-time product admission |
 | `android/sense` | Product identity wrappers for the upstream Sense listener; shared implementation and SystemUI policy live in `vendor/eliza/packages/app/platforms/android/sense` and `vendor/eliza/packages/os/android/sense` ([ADR 0001](adr/0001-privileged-listener.md)); never in the standalone or launcher APK |
 | `app.config.json` | Package ID, display name, version and orientation |
-| `config/alpha-product.json` | Versioned product record of the shared mobile shell (`@elizaos/ui/mobile-shell`, schema `elizaos.mobile-product` v1): identity, theme and stylesheet aliases, icons, view order and labels, older view ids migrated once, and installed storage names (the launcher favorites record with its `alpha:` prefix and `alpha-apps` default policy, and the other names the app keeps reading). Home, the app grid, All apps, the view registry and navigation state (open view, Back stack, drawer and the assistant's pill, composer, sheet or full detent) render from the upstream shell with this record; runtime code such as agent navigation reads the React-free `@elizaos/ui/mobile-shell/core` entry |
+| `config/alpha-product.json` | Versioned product record of the shared mobile shell (`@elizaos/ui/mobile-shell`, schema `elizaos.mobile-product` v1): identity, theme and stylesheet aliases, icons, view order and labels, older view ids migrated once, and installed storage names (the launcher favorites record with its `alpha:` prefix and `alpha-apps` default policy, and the other names the app keeps reading). Home, the app grid, the view registry and navigation state (open view, Back stack, drawer and the assistant's pill, composer, sheet or full detent) render from the upstream shell with this record; runtime code such as agent navigation reads the React-free `@elizaos/ui/mobile-shell/core` entry |
 | `backend` | Development runtime composition, character and permitted model/actions; `native-google-agent-host.ts` and its imports (`managed-google-*`, `native-cloud-runtime`, `native-google-cloud-port`) are the production native Google host, bundled as `google-host.mjs` |
 | `vendor/eliza` | Pinned shared platform source; never modified by consumer builds (temporary exception: the pinned voice builder's untracked `.cache/elizavoice-android`, see [fused speech](fused-speech.md)) |
 | `scripts` | Consumer build orchestration and product acceptance scenarios |
@@ -396,13 +398,19 @@ There is no automatic Eliza Cloud website sign-in fallback.
   - For in-app sign-in, Cloud must register `ai.elizaresearch.alphaphone` in
     `ELIZA_MOBILE_APP_AUTH_CLIENTS_JSON`, allowlist the return URL for tenant `elizacloud`, serve
     `/.well-known/assetlinks.json` on `eliza.app` with the release certificate
-    (`scripts/render-assetlinks.mjs`), and deploy the email code routes. The APK must be built with
-    `ELIZAOS_APP_LINK_HOST=eliza.app` so it declares the return App Link. `staging.eliza.app`
+    (`scripts/render-assetlinks.mjs`), and deploy the email code routes. The APK automatically
+    declares the configured return App Link (`eliza.app` by default). `staging.eliza.app`
     serves the same with the debug certificate added.
   - The callback fallback page (`/alphaphone/auth/callback` when Android did not hand the link to
     Alpha) forwards no code: it only brings Alpha forward without parameters.
 - **Test-mocks only:** the staging return host (`src/testMocks/AndroidManifest.xml`), the
   development Cloud bridge's email sign-in, and the diagnostic button.
+
+The production signed-out page opens the method choices directly. Setup keeps form labels,
+verification destinations and actionable errors; it has no explanatory or collapsible sections.
+The shared native transport maps DNS and connection failures to offline, timeout and TLS
+failures to unavailable, and preserves cancellation without exposing exception text or credentials. See [the October 31 diagnosis](login-setup-troubleshooting.md)
+for the installed-build mismatch and the remaining real-service checks.
 
 Third-party web content runs in an isolated native browser surface; it must not
 receive the application's Capacitor bridge. Origin, context revision, consent,
@@ -545,10 +553,17 @@ Both Notes sources render through Alpha's own Notes view. Agent notes use the sh
 `plugin-notes/src/client` controller and editor (canonical records, `expectedRevision`, restore-only
 Trash, review and reload) bound by `canonical-notes-ui.ts`; the device-local Older notes collection
 keeps its own store, Trash and recorder. The shared `NotesWorkspace` component is not rendered.
-Agent Notes keep the template's header, waveform and + (owner decision, 2026-10-30): the waveform
-(`notes-dictate-new`) opens a new note and runs the editor's dictation into it, speech to text through
-the platform's recognizer with no audio kept, saved like typing after +. Their Trash (`notes-trash`) and
-Previous notes (`notes-source-legacy`) are quiet text actions under the list, not filled pills.
+Both sources share the view refresh layout (design/view-refresh-2026-11/PLAN.md section 3): a header
+with Record (`notes-record`) and New note only, a folder chip row (All, folders, +, and Recently deleted
+while it has items), a one-column list with a Pinned section, and Back · Checklist · Share · ⋯ on a note.
+Folders are one device slot (`notes-folders:v1:device`, `runtime/notes-folders.ts`); a note names its
+folder by `folderId` (agent notes in their format data), and a reference to a deleted folder reads as no
+folder. Record opens the unlimited Notes recorder (`prototype/note-recorder.ts` over
+`AlphaNoteRecorder`, segments transcribed while recording). In Older notes Done saves the audio and
+transcript; in agent notes it saves the transcript and length only, since agent notes keep no audio
+(owner decision, 2026-10-30). Record replaces agent notes' earlier dictate-new waveform. Agent notes'
+restore-only Trash is their Recently deleted folder; Older notes keep 30 days (decision N2) with Delete
+now and Empty. Previous notes (`notes-source-legacy`) stays a quiet text action under the list.
 Notes ports are shared too: `plugin-notes/src/client` owns the document port and its browser
 implementation (`note-documents.ts`; Alpha's `runtime/browser-note-documents.ts` only registers
 it as `AlphaNoteDocuments` with the `Alpha scan` PDF file name), the deletion-receipt rule that

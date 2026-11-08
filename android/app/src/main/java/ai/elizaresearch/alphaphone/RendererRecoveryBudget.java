@@ -32,7 +32,7 @@ final class RendererRecoveryBudget {
  synchronized Action onLoss(long now,boolean home,boolean crashed,boolean visible){
   if(!crashed&&!visible)return Action.REBUILD_ON_START;
   if(!started||now-windowStart>WINDOW_MS||now<windowStart){started=true;windowStart=now;lossesInWindow=0;}
-  lossesInWindow++;
+  if(lossesInWindow<BUDGET+1)lossesInWindow++;
   if(lossesInWindow>BUDGET&&home)return Action.SHOW_ESCAPE;
   if(!visible)return Action.REBUILD_ON_START;
   return lossesInWindow<=BUDGET?Action.RECREATE_NOW:Action.RECREATE_AFTER_BACKOFF;

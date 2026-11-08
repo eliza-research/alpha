@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
 import {deferred} from './fixtures/wait-for.mjs';
 test('direct read-aloud uses owner-bound native playback without renderer Cloud login, and rejects changed owner',async()=>{
- const {stripTypeScriptTypes}=await import('node:module'),vm=await import('node:vm');
+ const {stripTypeScriptTypes}=await import('./support/strip-types.mjs'),vm=await import('node:vm');
  const source=(await readFile(new URL('../apps/app/src/runtime/cloud-voice.ts',import.meta.url),'utf8')).replace(/^import .*;\n/gm,'').replaceAll('export async function','async function').replaceAll('export function','function').replaceAll('export type','type');
  let agent={session:{ownerId:'fixture-owner',sessionId:'fixture-session'}},uploads=0,synthesis=0,legacy=0,sends=0,release,reached;
  const native={transcribeDevelopmentCloudRecording:async()=>{uploads++;if(reached){const gate=new Promise(r=>release=r);reached.resolve();await gate;}return {text:'hello',local:false};},synthesizeDevelopmentCloud:async input=>{synthesis++;if(reached){const gate=new Promise(r=>release=r);reached.resolve();await gate;}assert.deepEqual(Object.keys(input).sort(),['requestId','route','text']);assert.equal(input.route,'direct');return {playbackId:'owned'};},transcribeRecording:async()=>{legacy++;},synthesize:async()=>{legacy++;}};

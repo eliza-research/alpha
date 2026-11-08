@@ -2,7 +2,7 @@
 // before any Cloud request; reads keep working and nothing is disconnected. Synthetic transports only.
 import test from 'node:test';import assert from 'node:assert/strict';
 import {spawnSync} from 'node:child_process';
-if(!process.versions.bun&&!process.execArgv.includes('tsx')){const child=spawnSync(process.execPath,['--conditions=eliza-source','--import','tsx',process.argv[1]],{stdio:'inherit',timeout:60000});if(child.error)throw child.error;process.exit(child.status??1);}
+if(!process.versions.bun&&!process.execArgv.some(arg=>arg==='--import=tsx'||arg==='tsx')){const child=spawnSync(process.execPath,['--conditions=eliza-source','--import','tsx',process.argv[1]],{stdio:'inherit',timeout:60000});if(child.error)throw child.error;process.exit(child.status??1);}
 const {createManagedGoogleAgentHost}=await import('../backend/managed-google-agent-host.ts');
 const credential={credentialReference:'private-reference',credentialId:'11111111-1111-4111-8111-111111111111',userId:'22222222-2222-4222-8222-222222222222',organizationId:'33333333-3333-4333-8333-333333333333'};
 const send={to:['owner@example.invalid'],subject:'Synthetic',bodyText:'Synthetic body'};
@@ -30,10 +30,12 @@ test('switches are independent',async()=>{
 });
 async function renderer({native=false,browserLocalAgentEnabled=!native}={}){
  const {transformSync}=await import('esbuild');const {readFileSync}=await import('node:fs');const vm=await import('node:vm');
- const state={cached:undefined,initialized:0,posts:[],saves:[],saveFails:false};
- const modules={'../browser/device-preferences':{cachedDevicePreferences:()=>state.cached,initializeDevicePreferences:()=>{state.initialized++;},editDevicePreferences:async edit=>{edit(state.cached);}},'@capacitor/core':{Capacitor:{isNativePlatform:()=>native}},'./local-agent':{browserLocalAgentEnabled,saveNativeGoogleAgentAccess:async access=>{if(state.saveFails)throw Error('Google access could not be saved.');state.saves.push(JSON.parse(JSON.stringify(access)));}}};
+ const state={cached:undefined,initialized:0,posts:[],saves:[],saveFails:false,saveHook:undefined};
+ let queue=Promise.resolve();
+ const navigator={locks:{request:(_name,_options,operation)=>{const result=queue.then(operation);queue=result.catch(()=>{});return result;}}};
+ const modules={'../browser/device-preferences':{cachedDevicePreferences:()=>state.cached,initializeDevicePreferences:()=>{state.initialized++;},readDevicePreferences:async()=>({...state.cached}),editDevicePreferences:async edit=>{edit(state.cached);}},'@capacitor/core':{Capacitor:{isNativePlatform:()=>native}},'./local-agent':{browserLocalAgentEnabled,saveNativeGoogleAgentAccess:async access=>{await state.saveHook?.(access);if(state.saveFails)throw Error('Google access could not be saved.');state.saves.push(JSON.parse(JSON.stringify(access)));}}};
  const module={exports:{}};
- vm.runInContext(transformSync(readFileSync('apps/app/src/runtime/google-agent-access.ts','utf8'),{loader:'ts',format:'cjs',target:'es2022'}).code,vm.createContext({module,exports:module.exports,require:name=>modules[name]??(()=>{throw Error('Unexpected import '+name);})(),fetch:async(path,init)=>{state.posts.push([path,JSON.parse(init.body)]);return {};}}));
+ vm.runInContext(transformSync(readFileSync('apps/app/src/runtime/google-agent-access.ts','utf8'),{loader:'ts',format:'cjs',target:'es2022'}).code,vm.createContext({module,exports:module.exports,navigator,require:name=>modules[name]??(()=>{throw Error('Unexpected import '+name);})(),fetch:async(path,init)=>{state.posts.push([path,JSON.parse(init.body)]);return {};}}));
  return {access:module.exports,state};
 }
 test('the renderer never publishes the default over a saved off before settings load',async()=>{
@@ -60,4 +62,28 @@ test('on the phone the saved switches reach the native Google host, and a failed
  await assert.rejects(access.setGoogleAgentAccess({gmailChanges:false}),/could not be saved/,'Settings reports the switch as not saved');
  assert.deepEqual({gmailChanges:state.cached.agentGmailChanges,calendarEdits:state.cached.agentCalendarEdits},state.saves.at(-1),'Settings goes back to what the host still enforces');
  assert.deepEqual(state.posts,[],'The phone never uses the development host route');
+});
+
+
+test('a failed native publication finishes rollback before a later independent choice',async()=>{
+ const {access,state}=await renderer({native:true});
+ state.cached={agentGmailChanges:true,agentCalendarEdits:true};
+ let rejectFirst,entered;
+ const started=new Promise(resolve=>{entered=resolve;});
+ state.saveHook=async()=>{
+  state.saveHook=undefined;
+  entered();
+  await new Promise((_resolve,reject)=>{rejectFirst=reject;});
+ };
+ const first=access.setGoogleAgentAccess({gmailChanges:false});
+ const refused=assert.rejects(first,/Synthetic publication failure/);
+ await started;
+ const second=access.setGoogleAgentAccess({calendarEdits:false});
+ await new Promise(resolve=>setImmediate(resolve));
+ assert.deepEqual(state.cached,{agentGmailChanges:false,agentCalendarEdits:true},'The later edit waits until the first save settles');
+ rejectFirst(Error('Synthetic publication failure'));
+ await refused;
+ await second;
+ assert.deepEqual(state.cached,{agentGmailChanges:true,agentCalendarEdits:false});
+ assert.deepEqual(state.saves,[{gmailChanges:true,calendarEdits:false}],'The later denial remains the host policy');
 });

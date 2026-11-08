@@ -34,6 +34,18 @@ function fullFixture(result){
 test('actual recovery methods only start after matching complete native archive',async()=>{
  const f=fullFixture({status:'archived',archivedCount:8,retainedCount:0});await f.context.connectionController.restartRecovery();assert.deepEqual(f.calls,['review','archive','start']);assert.equal(f.context.state.residentRecoveryReason,undefined);
 });
+test('separate Settings review and confirmation refuse a backgrounded renderer',async()=>{
+ const f=fullFixture({status:'archived',archivedCount:8,retainedCount:0});
+ f.context.document.hidden=true;
+ await f.context.connectionController.reviewRecovery();
+ assert.deepEqual(f.calls,[]);
+ f.context.document.hidden=false;
+ await f.context.connectionController.reviewRecovery();
+ f.context.document.hidden=true;
+ await f.context.connectionController.confirmRecovery();
+ assert.deepEqual(f.calls,['review']);
+ assert.equal(f.context.state.residentRecovery.step,'review');
+});
 test('actual incomplete and mismatched native outcomes never start or clear the refusal',async()=>{
  for(const result of [{status:'partial',archivedCount:3,retainedCount:5},{status:'unavailable',archivedCount:0,retainedCount:8},{status:'archived',archivedCount:7,retainedCount:0},{status:'archived',archivedCount:8,retainedCount:1}]){
   const f=fullFixture(result);await f.context.connectionController.restartRecovery();assert.deepEqual(f.calls,['review','archive']);assert.equal(f.context.state.residentRecoveryReason,'ipc-recovery-retention-limit');assert.ok(['unavailable','partial'].includes(f.context.state.residentRecovery.step));

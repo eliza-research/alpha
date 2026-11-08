@@ -1,4 +1,4 @@
-import { createCloudMaps } from './cloud-provider';
+import { createCloudMaps, type CloudMapsBasemap, type CloudMapsCoverage } from './cloud-provider';
 import { captureMapsSession } from './cloud-session';
 import { configureMapsProvider } from './runtime';
 import { connectionController } from '../runtime/connection-ui';
@@ -9,8 +9,21 @@ import { readServiceLimit } from '../runtime/subscription-entitlement.ts';
  * Limits are read with the app's shared subscription reader, which also honours the
  * Retry-After header and nested terminal-failure rate limits.
  */
-const maps = createCloudMaps(() => captureMapsSession(() => connectionController.getCloudClient()), configureMapsProvider, { serviceLimit: readServiceLimit });
+const maps = createCloudMaps(() => captureMapsSession(() => connectionController.getCloudClient()), configureMapsProvider, { serviceLimit: readServiceLimit,
+ tileRequest:()=>{
+  const owner=connectionController.getCloudClient();
+  const current=()=>{const now=connectionController.getCloudClient();if(!owner||!now||owner.sessionId!==now.sessionId||owner.credentialId!==now.credentialId||owner.client!==now.client)throw Error('The Maps account changed.');};
+  return async(z,x,y,signal)=>{current();const bytes=await owner!.client.mapsTile(z,x,y,signal);current();signal.throwIfAborted();return bytes;};
+ },
+});
 export const { initializeCloudMaps, cloudMapsCoverage, cloudMapsDiagnostics } = maps;
+let basemapCoverage:CloudMapsCoverage|undefined,basemap:CloudMapsBasemap|undefined;
+/** Keep one plane identity for the current coverage/account, retiring it when coverage changes. */
+export function cloudMapsBasemap():CloudMapsBasemap|undefined {
+ const coverage=cloudMapsCoverage();
+ if(coverage!==basemapCoverage){basemapCoverage=coverage;basemap=maps.cloudMapsBasemap();}
+ return basemap;
+}
 let previous = connectionController.getCloudClient();
 connectionController.subscribe(() => {
  const next = connectionController.getCloudClient();

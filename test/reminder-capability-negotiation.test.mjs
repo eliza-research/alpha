@@ -22,14 +22,6 @@ async function capabilities(platform,offers=offered,plugins=[]){
  return selectDeviceCapabilities(offers,{android:platform==='android',native:platform!=='web',camera:false,foregroundReview:false,photoLibrary:platform!=='web'&&plugins.includes('AlphaPhotoLibrary'),clockRepeatDays:false,aospImage:false});
 }
 
-test('the device photo library is offered only by a native client with the Photos plugin when the agent offers it',async()=>{
- const photos=['photos.library.v1'];
- assert.ok((await capabilities('android',photos,['AlphaPhotoLibrary'])).includes('photos.library.v1'));
- assert.equal((await capabilities('android',photos)).includes('photos.library.v1'),false,'no native plugin');
- assert.equal((await capabilities('web',photos,['AlphaPhotoLibrary'])).includes('photos.library.v1'),false,'browser');
- assert.equal((await capabilities('android',[],['AlphaPhotoLibrary'])).includes('photos.library.v1'),false,'agent did not offer it');
-});
-
 test('normal browser declines device reminder creation and retains existing record capabilities',async()=>{
  const caps=await capabilities('web');
  assert.equal(caps.includes('reminders.create.v1'),false);

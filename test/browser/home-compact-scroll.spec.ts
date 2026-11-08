@@ -4,7 +4,7 @@ import {setTextScale} from './accessibility-states';
 for(const theme of ['light','dark'])test(`compact Home reaches lower apps and horizontal widgets in ${theme}`,async({page},info)=>{
  await page.setViewportSize({width:360,height:640});await page.goto('/?mode=dev&theme='+theme);
  const settings=page.getByRole('button',{name:'Settings',exact:true});await settings.scrollIntoViewIfNeeded();expect(await settings.evaluate(el=>{const r=el.getBoundingClientRect();return el.contains(document.elementFromPoint(r.left+r.width/2,r.top+r.height/2));})).toBe(true);expect(await page.locator('[data-alpha-layer=home]').evaluate(el=>{const r=el.getBoundingClientRect();return Math.abs(r.top-document.querySelector('[data-screen]')!.getBoundingClientRect().top)<1&&!el.contains(document.elementFromPoint(r.left+r.width/2,r.top-2));})).toBe(true);await page.screenshot({path:info.outputPath('home-bottom.png')});await settings.click();await expect(page.locator('html')).toHaveAttribute('data-active-view','settings');
- await returnToApps(page);await page.getByRole('button',{name:'Open workflows',exact:true}).click();await expect(page.locator('html')).toHaveAttribute('data-active-view','workflows');await returnToApps(page);await expect(page.getByRole('textbox',{name:'Ask Alpha',exact:true})).toBeVisible();
+ await returnToApps(page);await page.getByRole('button',{name:/^Open Inbox: \d+ unread emails?$/}).click();await expect(page.locator('html')).toHaveAttribute('data-active-view','inbox');await returnToApps(page);await expect(page.getByRole('textbox',{name:'Ask Alpha',exact:true})).toBeVisible();
 });
 
 // Home may flow beneath the floating assistant, but its final row must scroll clear.
@@ -47,7 +47,7 @@ test('Home at 200% text fills the screen and its last app row stays above the co
   if(at==='bottom')expect(order.under,at+': under the composer').toEqual([]);
   expect(order.backwards,at+': reading order goes back up').toEqual([]);
   if(at==='bottom')expect(order.composerBelow,at+': the composer is below every visible Home control').toBe(true);
-  if(at==='bottom')expect(order.names).toContain('All apps');
+  if(at==='bottom')expect(order.names).toContain('Apps');
  }
  await clearance.evaluate(element=>{(element as HTMLElement).style.removeProperty('height');});
  // The Home scroller fills the phone instead of clipping labels above the assistant.

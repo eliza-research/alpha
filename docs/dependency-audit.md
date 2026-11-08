@@ -1,5 +1,21 @@
 # Dependency and artifact supply chain
 
+## Staged Cloud runtime review — November 7
+
+The Android Cloud payload at Alpha `6f9e00c2` and SDK `9237023aee38`
+passed source, bundle, native Bun and staging verification. A live npm audit of
+its 457 packaged versions reported one moderate UUID advisory and no high or
+critical findings. The emitted legacy UUID namespaces have no callers of the
+affected v3/v5 buffer functions. The existing exception retains its original
+terms and review deadline.
+
+The source review now names this SDK. Five exceptions and 24 pending rows
+that the current full-lock snapshot no longer reports were removed. All 84
+retained exception objects are unchanged. The exact files, UUID references and
+removed records are in the [staged runtime review](security/resident-staged-review-a2b3f601e26f-2026-11-07.json).
+Final APK, native-library and device verification remain open.
+
+
 ## Reviewed native Android APK npm closure (2026-10-25)
 
 The exact signed ARM64 APK `d3f1fd7792071e0ac76484e437e9a15cd1aa082e75f236ea8c4e4b8e5bdd5e10`
@@ -698,3 +714,20 @@ The shared installed-app launcher receives Alpha's existing Denton/Fraunces/Geor
 font stack from the product theme in `config/alpha-product.json`. This adds no font file
 or download: `prototype.css` remains the sole Denton loading rule. The owner-stated
 commercial license record and the open/system fallback stack are unchanged.
+
+### November 6 Node 26 tooling refresh
+
+Moving the repository tooling to Node 26.13.0 changes the npm lockfile (`@types/node` 26.6.6
+with `undici-types` 8.9.0, and `esbuild` 0.28.2 as a direct devDependency where it was already a
+transitive one), so the audit was regenerated. The fresh audit reported two advisories published
+the same day under the development-only `@capacitor/cli > rimraf` chain:
+[GHSA-3g3m-2fjr-6pw4](https://github.com/advisories/GHSA-3g3m-2fjr-6pw4) in `glob` 13.0.6
+(patched in 14.0.2) and [GHSA-g3hv-75wg-m249](https://github.com/advisories/GHSA-g3hv-75wg-m249)
+in `minimatch` 10.2.6 (patched in 11.0.1). The lockfile now resolves `rimraf` 6.1.4, `glob`
+14.0.4, `minimatch` 11.0.5 and `path-scurry` 3.0.0 (plus `@isaacs/nonrecursive-glob-match`
+1.1.0, BlueOak-1.0.0), all inside `@capacitor/cli`'s declared `rimraf ^6.0.1` range; no
+`package.json` range changed for them and none ships in the web bundle or an APK. The remaining
+findings are the three moderate `uuid`/`xcode`/`@capacitor/cli` paths already covered by the
+existing exception. The registry now offers `@capacitor/cli` 8.6.0 as a fix for that advisory;
+taking it means moving `@capacitor/core` and `@capacitor/android` with it, which this change does
+not do.

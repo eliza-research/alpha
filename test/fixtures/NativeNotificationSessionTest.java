@@ -34,6 +34,15 @@ public final class NativeNotificationSessionTest {
   }
  }
  public static void main(String[] args)throws Exception{
+  check(NativeNotificationSession.pagePath(new JSONObject().put("afterSequence",0)).equals("/api/notifications?nativeTransport=true&afterSequence=0&limit=128"));
+  JSONObject cursor=new JSONObject().put("afterSequence",7).put("nativeEpoch",INSTALL).put("throughSequence",9007199254740991L);
+  check(NativeNotificationSession.pagePath(cursor).equals("/api/notifications?nativeTransport=true&afterSequence=7&nativeEpoch="+INSTALL+"&throughSequence=9007199254740991&limit=128"));
+  for(Object bad:new Object[]{-1,0.5,"1",true,9007199254740992L})reject(()->NativeNotificationSession.pagePath(new JSONObject().put("afterSequence",bad)));
+  reject(()->NativeNotificationSession.pagePath(new JSONObject().put("afterSequence",1)));
+  reject(()->NativeNotificationSession.pagePath(new JSONObject().put("afterSequence",0).put("throughSequence",0)));
+  reject(()->NativeNotificationSession.pagePath(new JSONObject(cursor.toString()).put("throughSequence",6)));
+  reject(()->NativeNotificationSession.pagePath(new JSONObject(cursor.toString()).put("nativeEpoch",INSTALL+"&limit=1000")));
+  reject(()->NativeNotificationSession.pagePath(new JSONObject(cursor.toString()).put("token","synthetic")));
   Fixture valid=new Fixture();JSONObject restored=NativeNotificationSession.restore(valid,NOW);
   check(restored.getJSONObject("session").getString("runtimeDigest").equals(HostedResultNotices.hash("new-service-root")));
   check(restored.getJSONObject("session").getString("token").equals("synthetic-existing-machine"));

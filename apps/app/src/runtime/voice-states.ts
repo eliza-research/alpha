@@ -45,9 +45,9 @@ export function deniedSettingsChoice(input: { failure: string; stage: string; bu
 
 const field = (value: unknown) => typeof value === 'string' && value.length > 0 && value.length <= 128 ? value : undefined;
 /** Where a transcript came from. Only fields reported by the engine are recorded, never guessed. */
-export function transcriptProvenance(result: Record<string, unknown>, route: { onDevice: boolean; native: boolean; cloud: boolean }): TranscriptProvenance {
+export function transcriptProvenance(result: Record<string, unknown>, route: { onDevice: boolean; native: boolean; paired: boolean; cloud: boolean }): TranscriptProvenance {
   const reported = field(result.route);
-  const name = route.cloud ? 'eliza-cloud' : route.onDevice ? (route.native ? 'on-device' : reported || 'browser') : 'development-agent';
+  const name = route.cloud ? 'eliza-cloud' : route.paired ? 'paired-agent' : route.onDevice ? (route.native ? 'on-device' : reported || 'browser') : 'development-agent';
   const provenance: TranscriptProvenance = { route: name };
   for (const key of ['engine', 'model', 'modelRevision', 'runtime', 'language'] as const) { const value = field(result[key]); if (value) provenance[key] = value; }
   return provenance;

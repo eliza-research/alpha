@@ -296,7 +296,7 @@ test('speech candidate check refuses an APK whose voice bundle or x86_64 engine 
  const apk=(change=()=>{},withAsr=false)=>{
   const listed=host.models.filter(entry=>withAsr||!entry.path.startsWith('asr/'));
   const files={'lib/x86_64/libelizainference.so':engine,'lib/x86_64/libc++_shared.so':stl,'lib/x86_64/libparadeevoicejni.so':Buffer.from('jni'),
-   'assets/paradee-voice/v1/manifest.json':Buffer.from(JSON.stringify({format:'eliza-paradee-voice-v1',files:listed.map(({path:file,sha256,bytes})=>({path:file,sha256,bytes}))}))};
+   'assets/paradee-voice/v1/manifest.json':Buffer.from(JSON.stringify({format:'eliza-paradee-voice-v2',files:listed.map(({path:file,sha256,bytes})=>({path:file,sha256,bytes}))}))};
   for(const entry of listed)files[`assets/paradee-voice/v1/${entry.path}`]={'tts/paradee/paradee-8m-v1_0.gguf':model,'tts/paradee/misaki-en-us.lex':lexicon,'vad/silero-vad-v5.gguf':vad,'asr/phonon-2-fv5.gguf':asr}[entry.path];
   change(files);return {names:Object.keys(files),read:entry=>files[entry]??null};
  };
@@ -311,7 +311,7 @@ test('speech candidate check refuses an APK whose voice bundle or x86_64 engine 
   [files=>{files['lib/x86_64/libc++_shared.so']=Buffer.from('other');},/lib\/x86_64\/libc\+\+_shared\.so differs from the recorded library/],
   // A manifest listing a subset (here without the VAD model) or nothing at all is refused; only the ASR slot may be absent.
   [files=>{const manifest=JSON.parse(files['assets/paradee-voice/v1/manifest.json']);manifest.files=manifest.files.filter(row=>!row.path.startsWith('vad/'));delete files['assets/paradee-voice/v1/vad/silero-vad-v5.gguf'];files['assets/paradee-voice/v1/manifest.json']=Buffer.from(JSON.stringify(manifest));},/vad\/silero-vad-v5\.gguf is recorded but not packaged/],
-  [files=>{files['assets/paradee-voice/v1/manifest.json']=Buffer.from(JSON.stringify({format:'eliza-paradee-voice-v1',files:[]}));},/tts\/paradee\/paradee-8m-v1_0\.gguf is recorded but not packaged/]];
+  [files=>{files['assets/paradee-voice/v1/manifest.json']=Buffer.from(JSON.stringify({format:'eliza-paradee-voice-v2',files:[]}));},/tts\/paradee\/paradee-8m-v1_0\.gguf is recorded but not packaged/]];
  for(const [change,expected] of cases)assert.match(candidateProblems(apk(change),host).join('; '),expected);
  assert.match(candidateProblems(apk(),{...host,abis:[]}).join('; '),/x86_64 has no recorded engine/);
  // The committed record is not qualified, so a passing emulator run never qualifies it by itself.

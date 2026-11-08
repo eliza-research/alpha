@@ -1,10 +1,24 @@
 {
   "schema": 1,
-  "description": "Committed release-signer descriptor. scripts/verify-apks.mjs marks a release distributable only when it is signed by this certificate (apksigner SHA-256 digest) and its versionCode is greater than lastRelease.versionCode. 'unset' until the release keys exist; no key material or password belongs here.",
-  "signerSha256": "unset",
+  "description": "Committed release-signer descriptor. scripts/verify-apks.mjs marks a release distributable only when it is signed by this certificate (apksigner SHA-256 digest) and its versionCode is greater than lastRelease.versionCode. 'unset' until the release keys exist; no key material or password belongs here. The version 45 rotation is pending independent review of its producer artifacts. Its retained hashes do not authorize rotation signing.",
+  "signerSha256": "edbfcacb1da689008bf4e7d675176c302decf83161a877eb8b1de4ffae0445ed",
   "lastRelease": {
     "versionCode": null,
     "versionName": null,
     "recordedAt": null
+  },
+  "apkSigningRotation": {
+    "schema": 1,
+    "approval": "pending",
+    "fromVersionCode": 44,
+    "versionCode": 45,
+    "previousSignerSha256": "0438dccb2d5e83fc2ad1ab11cbb882f837d97c4aee7cba72af9229c39b149b80",
+    "lineageSha256": "08dd573a8ca1f02e5f714a2d30ed6285be36e8a4af83d973f7dd75b939891146",
+    "apksignerSha256": "b47549e373b895ce6ca620d0c7887e674d9615ffa837a86ac601dcfd04adb0f0",
+    "verifierJarSha256": "3716d9311e55d2b0918a2fd9d54ba9e406c5f6abeea700b287f11259bc163dec",
+    "unsignedApkSHA256": {
+      "standalone": "918664b0a08c6b7fd5cd54067c5cb1de60d79718fd6029dda25844101b980692",
+      "launcher": "a2a7baaa2a8bf535dc1f3d62d48077ee077dd2f7aa86497072839bc723d6fd99"
+    }
   }
 }

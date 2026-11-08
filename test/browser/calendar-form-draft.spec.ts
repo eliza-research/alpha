@@ -47,7 +47,7 @@ test('New event reopens the retained form without a replacement dialog or overwr
 });
 test('Calendar stays clean and discarding inside the editor requires confirmation before a fresh draft',async({page})=>{
  await open(page);await begin(page,'Discard only this form');await page.getByRole('button',{name:'Back to calendar',exact:true}).click();
- await expect(page.getByRole('button',{name:'Resume unsaved calendar form',exact:true})).toHaveCount(0);await expect(page.getByRole('button',{name:'Discard retained calendar form',exact:true})).toHaveCount(0);await expect(page.getByRole('button',{name:'Calendar backups',exact:true})).toHaveCount(0);
+ await expect(page.getByRole('button',{name:/^Resume .*draft$|^Discard .*draft$/i})).toHaveCount(0);await expect(page.getByRole('group',{name:'Unsaved event draft',exact:true})).toHaveCount(0);await expect(page.getByRole('button',{name:'Calendar backups',exact:true})).toHaveCount(0);
  await page.screenshot({animations:'disabled',path:test.info().outputPath('calendar-clean-main.png')});
  await page.getByRole('button',{name:'New event',exact:true}).click();await expect(page.getByRole('textbox',{name:'Title',exact:true})).toHaveValue('Discard only this form');await page.screenshot({animations:'disabled',path:test.info().outputPath('calendar-editor-discard.png')});
  page.once('dialog',dialog=>{expect(dialog.message()).toBe('Discard this draft? Saved events and reminders won’t change.');void dialog.dismiss();});await page.getByRole('button',{name:'Discard calendar draft',exact:true}).click();await expect(page.getByRole('textbox',{name:'Title',exact:true})).toHaveValue('Discard only this form');

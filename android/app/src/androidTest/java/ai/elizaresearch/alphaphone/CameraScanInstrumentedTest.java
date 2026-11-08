@@ -25,8 +25,8 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import static org.junit.Assert.*;
 
-/** Real CameraX scan capture, real DocumentsUI image picker and real SAF PDF export.
- * Scan captures and picked images never publish to Photos unless Keep photo is chosen. */
+/** Real CameraX scan capture (asked for through Alpha in Camera), real DocumentsUI image picker and real
+ * SAF PDF export. Scan captures and picked pages never publish to Photos unless Keep photo is chosen. */
 @RunWith(AndroidJUnit4.class)
 public class CameraScanInstrumentedTest {
  private Context context(){return InstrumentationRegistry.getInstrumentation().getTargetContext();}
@@ -64,33 +64,26 @@ public class CameraScanInstrumentedTest {
  private String shell(String command)throws Exception{try(java.io.InputStream input=new android.os.ParcelFileDescriptor.AutoCloseInputStream(InstrumentationRegistry.getInstrumentation().getUiAutomation().executeShellCommand(command))){return new String(input.readAllBytes(),StandardCharsets.ISO_8859_1);}}
  /** Reviewed PDF exports in Downloads, one path per line. `?` stands for the spaces in the product's file name. */
  private String exports()throws Exception{return shell("find /sdcard/Download -maxdepth 1 -type f -name Alpha?searchable?document?*.pdf");}
- private void enterScanMode()throws Exception{
+ /** Scanning is not a camera mode: asking Alpha to scan in Camera captures one frame into scan review. */
+ private void scan()throws Exception{
   eval(AppNavigation.request("Camera"));until(AppNavigation.selected("Camera"));until("document.querySelector('[data-alpha-camera-screen]')");
-  click("Scan mode");until("document.querySelector('button[aria-label=\"Scan text\"]')");
+  eval(AppNavigation.type());until(AppNavigation.composer());
+  eval("(()=>{const e=("+AppNavigation.composer()+");Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype,'value').set.call(e,'Scan this');e.dispatchEvent(new Event('input',{bubbles:true}));})()");
+  click("Send");until(dialog("Review scanned text"));
  }
 
- @Test public void scanCaptureAndPickedImageNeverPublishToPhotosUnlessKept()throws Exception{
+ @Test public void scanCaptureNeverPublishesToPhotosUnlessKept()throws Exception{
   InstrumentationRegistry.getInstrumentation().getUiAutomation().grantRuntimePermission(context().getPackageName(),Manifest.permission.CAMERA);
-  ContentResolver resolver=context().getContentResolver();String name="alpha-scan-"+UUID.randomUUID()+".png";Uri fixture=null;Set<Long> before=ownedImages(),created=new HashSet<>();
+  ContentResolver resolver=context().getContentResolver();Set<Long> before=ownedImages(),created=new HashSet<>();
   try(BoundedActivityScenario<MainActivity> scenario=BoundedActivityScenario.launch(MainActivity.class)){
-   AppNavigation.liveMode();until("document.documentElement.dataset.activeView");enterScanMode();
-   click("Scan text");until(dialog("Review scanned text"));
+   AppNavigation.liveMode();until("document.documentElement.dataset.activeView");scan();
    until(dialog("Review scanned text")+".textContent.includes('not saved to Photos unless you choose Keep photo')");
    SystemClock.sleep(1500);assertEquals("Scan capture is held in memory only",before,ownedImages());
-   clickText("Keep photo");until(dialog("Review scanned text")+".textContent.includes('Photo kept in Android Photos.')");
+   clickText("Keep photo");until(dialog("Review scanned text")+".textContent.includes('Kept in Photos.')");
    created.addAll(ownedImages());created.removeAll(before);assertEquals("Keep photo publishes exactly one image",1,created.size());
    closeScan();until("!"+dialog("Review scanned text"));
-   // The fixture is a PNG this process writes to Downloads, so MediaStore lists it as an image owned
-   // by this package. Take the baseline after it exists; only a copy made by the product may be new.
-   fixture=new SelectedDocumentInstrumentedTest().fixtureBytes(resolver,name,"image/png",page("IMPORT"));
-   Set<Long> afterKeep=ownedImages();
-   click("Choose image");new SelectedDocumentInstrumentedTest().selectDocument(name);
-   until(dialog("Review scanned text")+"?.textContent.includes('not copied to Photos')",30000);
-   assertEquals("A picked image is reviewed without a Photos copy",afterKeep,ownedImages());
-   closeScan();
   }finally{
    created.addAll(ownedImages());created.removeAll(before);for(long id:created)resolver.delete(ContentUris.withAppendedId(MediaStore.Images.Media.EXTERNAL_CONTENT_URI,id),null,null);
-   if(fixture!=null)resolver.delete(fixture,null,null);
   }
  }
 
@@ -105,13 +98,14 @@ public class CameraScanInstrumentedTest {
    // The fixture pages are PNGs this process wrote to Downloads; MediaStore lists them as images owned
    // by this package, so the baseline is taken once they exist.
    before=ownedImages();
-   AppNavigation.liveMode();until("document.documentElement.dataset.activeView");enterScanMode();
-   click("Scan text");until(dialog("Review scanned text"));clickText("Build multi-page PDF");until(dialog("Review scan document")+"?.querySelectorAll('img').length===1");
+   AppNavigation.liveMode();until("document.documentElement.dataset.activeView");scan();
+   clickText("Build multi-page PDF");until(dialog("Review scan document")+"?.querySelectorAll('img').length===1");
    for(int i=0;i<2;i++){clickText("Add page");new SelectedDocumentInstrumentedTest().selectDocument("alpha-page-"+run+"-"+(i==0?"PAGE-TWO":"PAGE-THREE")+".png");until(dialog("Review scan document")+"?.querySelectorAll('img').length==="+(i+2),30000);}
-   clickText("Save document draft");until(dialog("Review scan document")+".textContent.includes('restored after Alpha restarts')");
+   clickText("Save draft");until(dialog("Review scan document")+".textContent.includes('restored after Alpha restarts')");
    // Process death: the reviewed draft is restored from device storage.
-   scenario.recreate();AppNavigation.liveMode();until("document.documentElement.dataset.activeView");enterScanMode();
-   click("Scan document");until(dialog("Review scan document"));clickText("Load saved draft");until(dialog("Review scan document")+"?.querySelectorAll('img').length===3",30000);
+   // The document review opens from a new scan; resuming the draft replaces that one page after a confirmation.
+   scenario.recreate();AppNavigation.liveMode();until("document.documentElement.dataset.activeView");scan();
+   clickText("Build multi-page PDF");until(dialog("Review scan document"));eval("window.confirm=()=>true");clickText("Resume draft");until(dialog("Review scan document")+"?.querySelectorAll('img').length===3",30000);
    clickText("Save searchable PDF");until(dialog("Review searchable PDF"));
    clickText("Save reviewed searchable PDF");nativeSave();
    // The loaded-draft status also says "saved"; wait for the provider's verified export receipt.

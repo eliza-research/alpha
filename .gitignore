@@ -46,6 +46,5 @@ __pycache__/
 # Android externalNativeBuild caches (CMake/ninja state with absolute build paths)
 .cxx/
 
-# Bundles that tests build under the repository root (removed when the test ends)
-.personal-setup-test-*/
-.requalify-test-*/
+# Quint model-checker intermediate output
+/_apalache-out/

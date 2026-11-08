@@ -111,15 +111,18 @@ test('the listening panel stays compact beside the page in landscape and keeps t
   expect(await page.evaluate(()=>(window as any).cloudNotesVoice.starts)).toBe(1);
 });
 
-test('the Photos grid reflows into more columns and the album grid keeps square covers', async ({ page }) => {
+test('Photos keeps its selected grid density through resizing and albums reflow', async ({ page }) => {
   await openMock(page, 'Photos');
   const grid = page.locator('.photo-grid').first();
   const columns = () => grid.evaluate(el => getComputedStyle(el).gridTemplateColumns.split(' ').length);
-  await expect.poll(columns).toBe(3);
-  await resize(page, { width: 915, height: 412 });
-  await expect.poll(columns).toBeGreaterThanOrEqual(7);
-  await resize(page, { width: 1280, height: 800 });
-  await expect.poll(columns).toBeGreaterThanOrEqual(10);
+  for (const viewport of [{ width: 412, height: 915 }, { width: 915, height: 412 }, { width: 1280, height: 800 }]) {
+    await resize(page, viewport);
+    await expect.poll(columns).toBe(4);
+    await expect(grid).toHaveCSS('margin-left', '12px');
+    await expect(grid).toHaveCSS('margin-right', '12px');
+    const tile = await box(grid.getByRole('button').first());
+    expect(Math.abs(tile.width - tile.height)).toBeLessThan(1);
+  }
   await page.getByRole('button', { name: 'Albums', exact: true }).click();
   const albums = page.locator('.photo-album-grid');
   await expect.poll(() => albums.evaluate(el => getComputedStyle(el).gridTemplateColumns.split(' ').length)).toBeGreaterThanOrEqual(6);
@@ -172,11 +175,12 @@ test('Inbox shows the open message beside its list on a wide canvas and keeps th
   }
 });
 
-test('Files previews beside its list on a tablet-width canvas and full screen on a phone', async ({ page }) => {
+test('Files previews beside its folder on a tablet-width canvas and full screen on a phone', async ({ page }) => {
   await openMock(page, 'Files');
   await resize(page, { width: 1280, height: 800 });
+  await page.getByRole('button', { name: 'Documents', exact: true }).click();
   await page.getByRole('button', { name: /Design review notes/ }).first().click();
-  const list = page.locator('[data-alpha-subview="files-list"]'), preview = page.locator('[data-alpha-subview="files-preview"]');
+  const list = page.locator('[data-alpha-subview="files-folder"]'), preview = page.locator('[data-alpha-subview="files-preview"]');
   await expect(preview).toContainText('Design review notes.pdf');
   await expect.poll(() => inert(list)).toBe(false);
   expect((await box(preview)).x).toBeGreaterThanOrEqual((await box(list)).x + (await box(list)).width - 1);
@@ -246,7 +250,7 @@ test('Files keeps folder entries beside the same selected preview and moves focu
   await page.evaluate(async () => { const { registerPlugin } = await import('/src/platform-plugins.ts'); await registerPlugin<any>('AlphaFiles').importFile(new File(['A retained selected document.'], 'panes.txt', { type: 'text/plain' })); });
   await resize(page, { width: 1280, height: 800 });
   await page.getByRole('button', { name: 'Files', exact: true }).click();
-  await page.getByRole('button', { name: 'App files', exact: true }).last().click();
+  await page.getByRole('button', { name: 'Internal storage', exact: true }).click();
   const root = page.locator('[data-alpha-subview="files-list"]'), folder = page.locator('[data-alpha-subview="files-folder"]');
   await page.getByRole('button', { name: 'Open panes.txt', exact: true }).click();
   const preview = page.locator('[data-alpha-subview="files-preview"]');

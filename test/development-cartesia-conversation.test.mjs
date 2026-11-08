@@ -1,7 +1,7 @@
 import {build} from "esbuild";
 import {createRealtimeVoiceTiming} from '../vendor/eliza/packages/voice/src/realtime-voice-timing.ts';
 import {validateUuid} from '../vendor/eliza/packages/core/src/utils/uuid.ts';
-import test from 'node:test';import assert from 'node:assert/strict';import {readFileSync} from 'node:fs';import {stripTypeScriptTypes} from 'node:module';import vm from 'node:vm';
+import test from 'node:test';import assert from 'node:assert/strict';import {readFileSync} from 'node:fs';import {stripTypeScriptTypes} from './support/strip-types.mjs';import vm from 'node:vm';
 import {applyServerEvent,loopToListening,INITIAL_VOICE_SESSION_STATE} from '../vendor/eliza/packages/ui/src/voice/voice-session-state.ts';
 // Match the SDK reducer ordering plus pending/audio eligibility and terminal tombstones.
 // The real SDK accepts global interruption only for pending work, owned audio, or a local ACK.
@@ -205,7 +205,17 @@ test('actual SDK and Alpha preserve A queued playback while B failure settles on
  const observed=[];let readAutomaticMute;
  const observe=row=>{if(observed.length<32&&Buffer.byteLength(JSON.stringify([...observed,row]))<=7168)observed.push(row);};
  // Compile the paired SDK client without replacing its reducer, frame parser or drain.
- const bundled=await build({entryPoints:['vendor/eliza/packages/ui/src/voice/voice-session-client-core.ts'],nodePaths:process.env.ALPHA_CLOUD_COLLECTOR_SOURCE?[process.env.ALPHA_CLOUD_COLLECTOR_SOURCE+'/packages/ui/node_modules',process.env.ALPHA_CLOUD_COLLECTOR_SOURCE+'/node_modules']:[],bundle:true,platform:'browser',conditions:['eliza-source','browser'],format:'esm',write:false});
+ const bundled=await build({
+  entryPoints:['vendor/eliza/packages/ui/src/voice/voice-session-client-core.ts'],
+  alias:{
+   '@elizaos/core/logging':'./.eliza/client-features/packages/core/src/logging.ts',
+   '@elizaos/core/speech':'./.eliza/client-features/packages/core/src/speech.ts',
+   '@elizaos/core/view-interaction':'./.eliza/client-features/packages/core/src/view-interaction.ts',
+   '@elizaos/host/voice/ui-context':'./.eliza/client-features/packages/host/src/voice/ui-context.ts',
+  },
+  nodePaths:process.env.ALPHA_CLOUD_COLLECTOR_SOURCE?[process.env.ALPHA_CLOUD_COLLECTOR_SOURCE+'/node_modules']:[],
+  bundle:true,platform:'browser',conditions:['eliza-source','browser'],format:'esm',write:false,
+ });
  const {createVoiceSessionClient}=await import('data:text/javascript;base64,'+Buffer.from(bundled.outputFiles[0].text).toString('base64'));
  const sockets=[],playbackProcessors=[],tracks=[];
  const node=()=>({connect(){return this;},disconnect(){}});

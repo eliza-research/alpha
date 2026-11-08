@@ -303,7 +303,20 @@ requires HTTPS and emits it as `BuildConfig.ALPHA_UPDATE_MANIFEST_URL`. The defa
 `https://github.com/eliza-research/alphaphone/releases/download/app-stable/alpha-update-stable.json`,
 is an asset of one rolling release, tag `app-stable`, so no other release of the repository moves or
 withdraws it (`releases/latest` would follow the repository's newest release and answer 404 for any
-release without the manifest). The app checks on start and resume at most once a day after the
+release without the manifest). A reader that supports `alpha-update/index-v1` also accepts a bounded object
+`{"schema":"alpha-update/index-v1","releases":[...]}`. Each entry is the complete
+`alpha-update/v1` offer below, with one unique `(variant, signerSha256)` pair. The
+reader selects only its installed flavor and original signing-family certificate;
+it never falls back to another family. Duplicate pairs, nested indexes, malformed
+family headers and lists outside 1–16 entries are refused. The selected offer still
+passes all ordinary HTTPS, version, size, digest and signer checks.
+
+New readers continue accepting a single v1 offer. Older readers do **not** support
+the index format: keep a compatible v1 feed until the managed pilot transition is
+verified, and qualify production-root and retained lab-root update paths separately
+before publishing an index. This is delivery selection, not a signature override.
+
+The app checks on start and resume at most once a day after the
 last answered check, one check at a time, and on Check for updates
 (`apps/app/src/prototype/settings-adapter.ts`, `AlphaDevicePlugin.checkForUpdate`). A failed check
 records nothing, so the next start or resume checks again. A 404 is an answer: nothing
@@ -327,11 +340,10 @@ A manifest is offered only to an install with a lower `versionCode`, of its `var
 or `standalone`, as `ElizaSystem.getBuildInfo` reports) and of the signing lineage it names
 (`appSigner` in `AlphaDevice.snapshot`). `versionName` is only shown, as 1 to 64 characters with no
 control characters; a manifest whose name cannot be shown is still offered, under its `versionCode`.
-The flavors share the package and signer, so Android would install either over the other, and a
-standalone APK over the launcher image loses the HOME, Phone, Contacts and SMS admission; a device
-signed otherwise (a debug build, a lab-key build
-reading a release-key manifest, or the reverse) is offered nothing rather than downloading an APK
-Android refuses. One manifest URL therefore serves one flavor and one signer; the default serves
+The flavors share the package and signer. A standalone APK installed over the launcher image loses
+HOME, Phone, Contacts and SMS admission. Before preparing an install, Alpha reads the APK’s
+launcher permission marker and checks its original signing certificate against the installed app.
+One manifest URL serves one flavor and one signer. The default serves
 the launcher image. `signerSha256` is always the original certificate, index 0 of Android's
 `getSigningCertificateHistory`: the APK's own until a key rotates. APK Signature Scheme v3 key rotation
 never changes it, so a phone that missed the rotating release is still offered later ones, and Android

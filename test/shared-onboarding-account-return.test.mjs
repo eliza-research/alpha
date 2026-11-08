@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
-import {stripTypeScriptTypes} from 'node:module';
+import {stripTypeScriptTypes} from './support/strip-types.mjs';
 import vm from 'node:vm';
 const text=readFileSync(process.env.CONTROLLER_SOURCE||'apps/app/src/runtime/connection-ui.tsx','utf8');
 const source=stripTypeScriptTypes(text.slice(text.indexOf('function update(patch:'),text.indexOf('// P-43:')),{mode:'strip'});

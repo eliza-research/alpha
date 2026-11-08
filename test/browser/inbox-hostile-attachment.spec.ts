@@ -90,7 +90,7 @@ async function expectRefused(page:Page){
 const openFile=async(page:Page,name:string)=>{
  await page.reload();
  await page.getByRole('button',{name:'Files',exact:true}).click();
- await page.getByText('App files',{exact:true}).first().click();
+ await page.getByRole('button',{name:'Internal storage',exact:true}).click();
  await page.getByRole('button',{name:`Open ${name}`,exact:true}).click();
 };
 const storedBytes=(page:Page,name:string)=>page.evaluate(async name=>{const {registerPlugin}=await import('/src/platform-plugins.ts');const f=registerPlugin<any>('AlphaFiles'),row=(await f.list({})).entries.find((entry:any)=>entry.name===name),selected=await f.select({id:row.id});try{return (await f.attachment(selected)).dataBase64 as string;}finally{await f.forgetSelected(selected);}},name);

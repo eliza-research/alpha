@@ -8,7 +8,8 @@ const TYPED = 'typed-synthetic-Back7';
 async function unlockedVault(page: Page) {
   await page.goto('/?mode=dev');
   await page.getByRole('button', { name: 'Settings', exact: true }).click();
-  await page.getByRole('button', { name: 'Password manager', exact: true }).click();
+  await page.getByRole('button', { name: 'Apps', exact: true }).click();
+  await page.getByRole('button', { name: 'Passwords', exact: true }).click();
   await page.getByRole('button', { name: 'Unlock passwords', exact: true }).click();
   await expect(page.getByRole('button', { name: 'Open Example sign-in', exact: true })).toBeVisible();
 }
@@ -26,7 +27,7 @@ for (const form of ['New password', 'Edit password'] as const) {
     // Still on Password manager, still unlocked: the entries are listed without a new unlock.
     await expect(page.getByRole('button', { name: 'Open Example sign-in', exact: true })).toBeVisible();
     await expect(page.getByRole('button', { name: 'Unlock passwords', exact: true })).toHaveCount(0);
-    await expect(page.getByRole('button', { name: 'Back to Settings', exact: true })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Back to Apps', exact: true })).toBeVisible();
     // Reopening the form starts empty: the typed password was forgotten.
     await page.getByRole('button', { name: 'Add password', exact: true }).click();
     await expect(page.locator('input[aria-label="Password"]')).toHaveValue('');

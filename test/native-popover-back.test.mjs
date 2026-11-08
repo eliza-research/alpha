@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
-import {stripTypeScriptTypes} from 'node:module';
+import {stripTypeScriptTypes} from './support/strip-types.mjs';
 import vm from 'node:vm';
 const source=readFileSync('apps/app/src/prototype/agent-adapter.ts','utf8');
 const begin=source.indexOf('this.backHandler = (event: Event) => {'),end=source.indexOf("window.addEventListener('alpha-back', this.backHandler)",begin);
@@ -48,7 +48,7 @@ test('legacy folder Back closes only its visible menu before shell navigation',(
 // MainActivity forwards Back to the renderer only when alphaCanGoBack is true; when Alpha is not HOME it
 // returns false to Android's task handling (the branch evaluated here).
 const activity=readFileSync('android/app/src/main/java/ai/elizaresearch/alphaphone/MainActivity.java','utf8');
-const script=(()=>{const m=activity.match(/String script = "([^"]+)"\s*\+ \(home \? "[^"]+" : "([^"]+)"\) \+ "([^"]+)";/);assert.ok(m,'MainActivity Back script');return m[1]+m[2]+m[3];})();
+const script=(()=>{const m=activity.match(/String script = "([^"]+)"\s*\+ \((?:BuildConfig\.IS_LAUNCHER[^?]+|home )\? "[^"]+" : "([^"]+)"\) \+ "([^"]+)";/);assert.ok(m,'MainActivity Back script');return m[1]+m[2]+m[3];})();
 function phone({drawer=false,digest=false}={}){
  const calls={navigate:0,cancel:0,back:0};
  const panel={closest:()=>null,getAttribute:()=>null,getClientRects:()=>[{}],dispatchEvent:event=>{if(event.type==='cancel')calls.cancel++;return true;}};

@@ -57,7 +57,8 @@ export const DISTRIBUTION_POLICY = Object.freeze({
   developmentManifestText: ["peerfixture"],
   developmentEntries: [/^res\/xml\/development_network_security_config\.xml$/],
   exportedComponents: EXPORTED_COMPONENTS,
-  forbiddenPermissions: ["android.permission.WRITE_EXTERNAL_STORAGE"],
+  // WRITE_EXTERNAL_STORAGE is admitted only up to API 29 (Files' legacy storage); distributionProblems checks it.
+  forbiddenPermissions: [],
   forbiddenEntries: REMOVED_SPEECH_ENTRY,
   forbiddenEntriesLabel: "Removed speech runtime entries are packaged",
   forbiddenDexPrefixes: REMOVED_SPEECH_CLASSES,
@@ -77,6 +78,7 @@ export function distributionProblems(apk, { mode, testMocks = false } = {}) {
     DISTRIBUTION_POLICY,
     { mode, testMocks },
   );
+  problems.push(...legacyStorageProblems(apk.xml));
   const powerName = "ai.elizaresearch.alphaphone.AlphaPowerVoiceActivity";
   if (facts.exported.some(component => component.name === powerName && component.tag !== "activity"))
     problems.push("AlphaPowerVoiceActivity must be an activity");
@@ -104,6 +106,24 @@ export function distributionProblems(apk, { mode, testMocks = false } = {}) {
       problems.push("Alpha Quick Settings tile must be disabled while AlphaAssistActivity is disabled");
   }
   return { facts, problems };
+}
+
+/**
+ * Files' Android 10 legacy storage: WRITE_EXTERNAL_STORAGE may be requested only with
+ * maxSdkVersion 29 or lower (never on API 30+, where all-files access is used), and READ_ only up
+ * to 32 (Photos). Legacy storage itself is requested by the application.
+ */
+export function legacyStorageProblems(xml) {
+  const manifest = parseXmlTree(xml).children.find(node => node.name === "manifest");
+  const problems = [];
+  const limits = { "android.permission.WRITE_EXTERNAL_STORAGE": 29, "android.permission.READ_EXTERNAL_STORAGE": 32 };
+  for (const node of manifest?.children ?? []) {
+    if (!/^uses-permission(?:-sdk-23)?$/.test(node.name) || !(node.attrs.name in limits)) continue;
+    const max = node.attrs.maxSdkVersion === undefined ? Infinity : Number(node.attrs.maxSdkVersion);
+    if (!(max <= limits[node.attrs.name]))
+      problems.push(`${node.attrs.name.split(".").pop()} is requested above API ${limits[node.attrs.name]}`);
+  }
+  return problems;
 }
 
 export function inspectApk(file) {

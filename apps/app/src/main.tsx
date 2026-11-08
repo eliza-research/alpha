@@ -4,8 +4,11 @@ import './browser/register';
 import {installCanonicalNotesView} from './prototype/canonical-notes-ui';
 import {installCanonicalCalendarDrafts} from './prototype/canonical-calendar-drafts';
 import {installAgentCalendarAdapter,deviceCalendarScope} from './prototype/agent-calendar-adapter';
+import {Capacitor} from '@capacitor/core';
+import {registerPlugin} from './platform-plugins';
+import {holdAppUpdateStartup,supportsAppUpdateStartup,watchMountedAppUpdates} from '../../../.eliza/client-features/packages/ui/src/state/app-update-gate';
+import {ownerReminderNotifications} from './runtime/owner-reminder-notification-port';
 import {installCalendarApprovalAdapter} from './prototype/calendar-approval-adapter';
-import {installMapsChatAdapter} from './prototype/maps-chat-adapter';
 import {bindBrowserDeletionOwner} from './runtime/deletion-owner';
 import {DEFAULT_PULL_VELOCITY} from "../../../.eliza/client-features/packages/ui/src/gestures/constants";
 import {usePullGesture} from "../../../.eliza/client-features/packages/ui/src/components/shell/use-pull-gesture";
@@ -36,7 +39,7 @@ import {installNoteSourceAdapter} from './prototype/note-source-adapter';
 import {installSharePanelAdapter} from './prototype/share-panel-adapter';
 import {installNotesShareAdapter} from './prototype/notes-share-adapter';
 import { installNotesDocumentAdapter } from './prototype/notes-document-adapter';
-import { installPrototypeMapsAdapter } from './prototype/maps-adapter';
+import { installPrototypeMapsAdapter, installMapsChatAdapter } from './prototype/maps-adapter';
 import { installCanonicalNotificationTaps, installNotificationsAdapter } from './prototype/notifications-adapter';
 import { installSystemShade, shadeSurface } from './prototype/system-shade';
 import { installContextSelection } from './prototype/context-selection';
@@ -53,8 +56,8 @@ import { installAgentAdapter } from './prototype/agent-adapter';
 import { installPrototypeNativeAdapters } from './prototype/native-adapter';
 import { installSelectedDocumentAdapter } from './prototype/selection-adapter';
 import { installPrototypeCameraAdapter } from './prototype/camera-adapter';
-import { installPrototypeHomeBindings, installPrototypeDataAdapter, setHomeSources, HOME_SOURCES_CHANGED } from './prototype/data-adapter';
-import { isAndroid, DeviceApps, System, launcherBridge, launcherListens } from './native';
+import { installPrototypeHomeBindings, installPrototypeDataAdapter, installHomeCardVisibility, setHomeSources, HOME_SOURCES_CHANGED } from './prototype/data-adapter';
+import { isAndroid, DeviceApps, System, launcherBridge, launcherListens, openAppInfo } from './native';
 import { DailyApps } from './daily';
 import { installPrototypeVoiceAdapter } from './prototype/voice-adapter';
 import { installPrototypeBrowserAdapter } from './prototype/browser-adapter';
@@ -63,8 +66,9 @@ import { installSettingsAdapter, readAppearanceChoice, resolveAppearance } from 
 import { ConnectionChooser, connectionController, connectionChooserVisible, residentAlwaysPresent } from './runtime/connection-ui';
 import { protectedPowerLaunchState } from './runtime/power-launch-state';
 import { installListenerInvocation, stopWakeListenerForChatOnly } from './runtime/always-on-listener';
-import {GoogleConnectionsPanel} from './runtime/google-connection-ui';
+import {GoogleConnectionsPanel,googleConnectionController} from './runtime/google-connection-ui';
 import { installNotesTrashAdapter } from './prototype/notes-trash-adapter';
+import { installNotesFoldersAdapter } from './prototype/notes-folders-adapter';
 import { installInboxCloudAdapter, inboxAttention, subscribeInboxAttention } from './prototype/inbox-cloud-adapter';
 import { installHomeOverviewCards } from './prototype/home-overview-cards';
 import { installUseInEmailReview } from './prototype/use-in-email-review';
@@ -82,6 +86,8 @@ import { installViewFocus } from './runtime/view-focus';
 import './prototype/prototype.css';
 import './prototype/phone.css';
 installGlobalErrorRecovery();
+// Registration has completed; this injected source cannot form a register→connection cycle.
+if(!Capacitor.isNativePlatform())ownerReminderNotifications.bind({binding:()=>connectionController.getOwnerReminderNotificationBinding(),subscribeBinding:listener=>connectionController.subscribe(listener)});
 // Developer surfaces are only reachable in an explicitly flagged development server.
 const browserDevProfile=devSurfacesEnabled&&devProfileQuery;
 const developmentAgentWorkflows=devSurfacesEnabled&&devAgentWorkflowsQuery;
@@ -125,7 +131,7 @@ if (!fixture) {
   installPrototypeDataAdapter(Component, VIEWS);
   installAgentCalendarAdapter(Component,VIEWS);
   installCanonicalCalendarDrafts(Component,VIEWS);
-  // Taps on Alpha's own Android notifications open their view whichever shade the build shows.
+  // Android notification taps are independent of the development stand-in shade.
   if(isAndroid)installCanonicalNotificationTaps(Component);
   // Notice rows feed only the development stand-in shade; product builds read no notice list (#416).
   if(systemShade==='simulated')installNotificationsAdapter(Component);
@@ -136,6 +142,7 @@ if (!fixture) {
   installNotesDocumentAdapter(Component, VIEWS);
   installNotesShareAdapter(VIEWS);
   installNotesTrashAdapter(Component, VIEWS);
+  installNotesFoldersAdapter(Component, VIEWS);
   installCanonicalNotesView(Component,VIEWS);
   installNoteSourceAdapter(VIEWS);
   installNoteWebSourceAdapter(VIEWS);
@@ -164,17 +171,18 @@ if(developmentAgentWorkflows){installWorkflowAdapter(Component,VIEWS);installAut
 installSubviewAccessibility(VIEWS);
 installCalendarMonthFocus(Component, VIEWS);
 installChatOverlayMotion(Component);
-// Replies, failures and the replying state are announced without moving focus (installReplyAnnouncer in prototype/subview-accessibility.ts).
 installReplyAnnouncer(Component);
 installSystemShade(Component,{native:isAndroid});
 // The shared agenda, mail and brief cards render the final Home values of every adapter above.
+installHomeCardVisibility(Component, () => googleConnectionController.open());
 installHomeOverviewCards(Component);
 installClockAdapter(Component, VIEWS, { simulated: testMocksEnabled && fixture, browser: !isAndroid });
-// Home, app grid and All apps from the shared mobile shell. Installed apps come from ElizaSystem
-// (Android, or the browser device's app list) through the shared launcher bridge; outermost so Home
-// composes with every binding above.
-installHomeShell(Component, VIEWS, launcherBridge, { icons: isAndroid, follow: launcherListens,
-  aliases: isAndroid ? undefined : Object.fromEntries(browserApps.flatMap(app => { const view = alphaViews.find(app.view); return view ? [[app.packageName, alphaViews.launcherKey(view)]] : []; })),
+// Home and its app grid from the shared mobile shell, and Alpha's Apps drawer. Apps reads
+// ElizaSystem on Android; the browser device inventory remains available in test-mocks builds only.
+// Outermost so Home composes with every binding above. App info exists on Android only.
+const appInventory = isAndroid ? 'android' : testMocksEnabled ? 'simulated' : undefined;
+installHomeShell(Component, VIEWS, launcherBridge, { appInventory, icons: isAndroid, follow: launcherListens, appInfo: isAndroid ? openAppInfo : undefined,
+  aliases: appInventory === 'simulated' ? Object.fromEntries(browserApps.flatMap(app => { const view = alphaViews.find(app.view); return view ? [[app.packageName, alphaViews.launcherKey(view)]] : []; })) : undefined,
 });
 /** A browser cannot read or change radios and sensors; show that instead of fixture toggles. */
 function installBrowserCapabilityTiles(Component:any){
@@ -186,6 +194,20 @@ function installBrowserCapabilityTiles(Component:any){
     return {...out,tiles,deviceSettingsPending:true,deviceSettingsMessage:'Network, radio and sensor settings are managed by your browser and operating system.',sbWifi:navigator.onLine,sbPlane:false};
   };
 }
+/** Use the last native bar geometry before Home's first paint; storage is only a layout cache. */
+const INSETS_KEY='alpha.surface-insets.v1';
+const validInset=(value:unknown):value is number=>typeof value==='number'&&Number.isFinite(value)&&value>=0&&value<=512;
+function rememberInsets(top:unknown,bottom:unknown){
+ if(!validInset(top)||!validInset(bottom))return;
+ try{localStorage.setItem(INSETS_KEY,JSON.stringify({top,bottom}));}catch{/* Native values still apply. */}
+}
+if(isAndroid)try{
+ const saved=JSON.parse(localStorage.getItem(INSETS_KEY)||'null');
+ if(validInset(saved?.top)&&validInset(saved?.bottom)){
+  document.documentElement.style.setProperty('--native-top-inset',`${saved.top}px`);
+  document.documentElement.style.setProperty('--native-bottom-inset',`${saved.bottom}px`);
+ }
+}catch{/* The native bridge supplies missing or invalid cached insets. */}
 let shell: any;
 /** A notice raised while the startup loading screen holds Home unmounted; shown once Home mounts. */
 let pendingNotice: string | undefined;
@@ -225,6 +247,7 @@ function Phone() {
     if (isAndroid) void DailyApps.surfaceInfo().then(info => {
       if (Number.isFinite(info.topInset)) document.documentElement.style.setProperty('--native-top-inset', `${info.topInset}px`);
       if (Number.isFinite(info.bottomInset)) document.documentElement.style.setProperty('--native-bottom-inset', `${info.bottomInset}px`);
+      rememberInsets(info.topInset,info.bottomInset);
       size();
     }).catch(() => {});
     const freeHeight = keyboardFreeHeight();
@@ -261,7 +284,15 @@ function Phone() {
       // Measured width and keyboard-free height decide the arrangement (runtime/canvas-geometry.ts).
       // Standalone touch windows keep their own density; the launcher keeps its fitted canvas.
       const input = { width, layoutHeight, available, desktop, fluid: isAndroid || coarse, launcher: launcherPresentation, screenShort: Math.min(window.screen.width, window.screen.height), editing: isEditing(document.activeElement) };
-      const geometry = canvasGeometry(input, freeHeight(width, layoutHeight, input.editing), banner);
+      const keyboardFree=freeHeight(width,layoutHeight,input.editing);
+      const geometry = canvasGeometry(input,keyboardFree,banner);
+      // Keep Home's grid in its full-height canvas while the keyboard covers its bottom.
+      // Recompute for width changes too, so rotating with a focused composer is not stuck in portrait.
+      const homeGeometry=input.editing?canvasGeometry({...input,layoutHeight:keyboardFree,available:Math.max(1,keyboardFree-banner-(desktop?48:0)-toolsInset),editing:false},keyboardFree,banner):geometry;
+      document.documentElement.style.setProperty('--alpha-home-height',`${homeGeometry.height}px`);
+      const homeBottomInset=document.documentElement.style.getPropertyValue('--native-bottom-inset');
+      if(homeBottomInset)document.documentElement.style.setProperty('--alpha-home-bottom-inset',homeBottomInset);
+      else document.documentElement.style.removeProperty('--alpha-home-bottom-inset');
       document.documentElement.style.setProperty('--phone-scale', String(geometry.scale));
       document.documentElement.style.setProperty('--phone-width', geometry.width);
       document.documentElement.style.setProperty('--phone-height', `${geometry.height}px`);
@@ -301,7 +332,39 @@ async function applyDeviceLocale() {
   try { const info = await System.getLocaleInfo(); setLocalePreferences({ locale: info.locale, hourCycle: info.hour24 === true ? 'h23' : info.hour24 === false ? 'h12' : undefined }); }
   catch { /* Keep the WebView's default locale formatting. */ }
 }
+async function prepareMountedUpdate(activationCurrent: () => boolean) {
+  const owner = shell;
+  const current = () => activationCurrent() && shell === owner && owner?.live === true;
+  if (!current()) throw Error('App is still opening');
+  if (connectionController.getSnapshot().busy || document.querySelector('[data-alpha-chat-recorder],[data-alpha-subview="notes-recorder"]'))
+    throw Error('Finish the current activity before updating');
+  const reconnect = connectionController.captureAppUpdateReconnect();
+  const flush = [
+    owner.flushComposerForAppUpdate, owner.flushCalendarForAppUpdate,
+    owner.flushNotesForAppUpdate, owner.flushInboxForAppUpdate, owner.flushWorkflowsForAppUpdate,
+  ];
+  if (flush.some(draft => typeof draft !== 'function')) throw Error('A draft owner is unavailable');
+  await Promise.all(flush.map(draft => draft.call(owner, current)));
+  if (!current()) throw Error('App update changed');
+  return reconnect;
+}
+let nativeAppUpdateGate: Promise<void> | undefined;
+const appUpdatePresentation = {
+  dialogClass: 'alpha-update-startup', dialogLabel: 'App update',
+  pendingLabel: 'Updating Alpha…', continueLabel: 'Continue update',
+  navigationEvents: ['alpha-back', 'launcher-home'],
+};
 async function mountPhone() {
+  const capacitor = Capacitor as typeof Capacitor & {PluginHeaders?:unknown};
+  if (isAndroid && supportsAppUpdateStartup(capacitor.PluginHeaders, 'AlphaDevice')) {
+    nativeAppUpdateGate ??= (async () => {
+      const device = registerPlugin<Parameters<typeof watchMountedAppUpdates>[0]>('AlphaDevice');
+      await holdAppUpdateStartup(device, appUpdatePresentation);
+      // If subscription fails, Android still requires this WebView's receipt and refuses to commit.
+      await watchMountedAppUpdates(device, appUpdatePresentation, prepareMountedUpdate, () => shell?.toast('Finish your changes, then try updating again.')).catch(() => {});
+    })();
+    await nativeAppUpdateGate;
+  }
   if (isAndroid) {
     const refreshImage=async()=>{const image=await DeviceApps.platformCapabilities().catch(()=>({aospImage:false,contacts:false}));const admitted=image.aospImage===true&&image.contacts===true;admitImageContacts(admitted);const index=ORDER.indexOf('contacts');if(admitted&&index<0)ORDER.push('contacts');else if(!admitted&&index>=0)ORDER.splice(index,1);if(!admitted&&shell?.S().view==='contacts')shell.goHome();};
     // One round of independent host reads before the first render. The assistant surface is

@@ -58,7 +58,8 @@ test("the committed records: every UNSET field is listed once with the step that
   assert.equal(result.ready, false);
   assert.deepEqual(result.unreadable, []);
   const byFile = Object.groupBy(result.open, item => item.file);
-  assert.deepEqual(byFile[RELEASE_SIGNER].map(item => item.field), ["signerSha256"]);
+  assert.match(read(root, RELEASE_SIGNER).signerSha256, /^[0-9a-f]{64}$/);
+  assert.equal(byFile[RELEASE_SIGNER], undefined, "the enrolled app signer is no longer an open field");
   assert.deepEqual(byFile[CHANNEL].map(item => item.field).sort(), ["avbPublicKeySha256", "otaCertificateSha256", "recovery.knownGoodRelease.buildFingerprint", "recovery.knownGoodRelease.otaSha256", "recovery.knownGoodRelease.recordFile"]);
   assert.ok(byFile[PIXEL10A_PRODUCT].some(item => item.field === "avb.publicKeySha256"));
   assert.ok(byFile[CUTTLEFISH_PRODUCT].some(item => item.field === "hostPackages[0].sha256" && item.step === "A-01 / H-23"));
@@ -105,6 +106,13 @@ test("a finished release's records leave nothing open; each reintroduced gap is 
   assert.equal(stagingPreflight(repo.dir).checks.find(item => item.name.endsWith("releaseQualified stays false before release evidence")).ok, false);
 });
 
+test("an unenrolled app signer remains a separate open input", { skip: !vendorPresent && "pinned checkout absent" }, t => {
+  const repo = fixture(t);
+  repo.write(RELEASE_SIGNER, { ...read(repo.dir, RELEASE_SIGNER), signerSha256: "unset" });
+  const open = stagingPreflight(repo.dir).open.filter(item => item.file === RELEASE_SIGNER);
+  assert.deepEqual(open.map(item => [item.field, item.step]), [["signerSha256", "H-09"]]);
+});
+
 test("a missing record is reported, not skipped", { skip: !vendorPresent && "pinned checkout absent" }, t => {
   const repo = fixture(t);
   fs.rmSync(path.join(repo.dir, CHANNEL));
@@ -123,7 +131,8 @@ test("the CLI reports, exits 1 only under --strict, refuses unknown flags and ne
   const run = args => spawnSync(process.execPath, [script, ...args], { cwd: root, encoding: "utf8" });
   const text = run([]);
   assert.equal(text.status, 0, text.stderr);
-  assert.match(text.stdout, /UNSET signerSha256/);
+  assert.doesNotMatch(text.stdout, /UNSET signerSha256/);
+  assert.match(text.stdout, /UNSET signer\.platformCertificateSha256/);
   assert.match(text.stdout, /Shared staging checks \(authoritative/);
   const json = JSON.parse(run(["--json"]).stdout);
   assert.equal(json.ready, false);

@@ -29,8 +29,12 @@
  <uses-permission android:name="android.permission.WRITE_CONTACTS" tools:node="remove" />
  <uses-permission android:name="android.permission.WRITE_SETTINGS" tools:node="remove" />
  <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" tools:node="remove" />
- <!-- minSdk 29 uses scoped storage; the camera plugin requests this only below API 29. -->
- <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" tools:node="remove" />
+ <!-- Files on Android 10 (API 29, minSdk) uses legacy storage (requestLegacyExternalStorage below), asked for in
+      the startup walkthrough's Files step on API 29 only. The camera plugin's own declaration (maxSdkVersion 28,
+      requested only below API 29) is widened to 29 here; API 30+ never sees this permission. -->
+ <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" android:maxSdkVersion="29" tools:replace="android:maxSdkVersion" />
+ <!-- Files browses shared storage (decision F1): preinstalled on the Alpha AOSP image, granted once in the standalone APK through Android's "All files access" page. -->
+ <uses-permission android:name="android.permission.MANAGE_EXTERNAL_STORAGE" tools:ignore="ScopedStorage" />
  <queries>
   <intent><action android:name="android.intent.action.INSERT"/><data android:mimeType="vnd.android.cursor.dir/contact"/></intent>
   <intent><action android:name="android.intent.action.EDIT"/><data android:mimeType="vnd.android.cursor.item/contact"/></intent>
@@ -68,10 +72,14 @@
  <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
  <!-- Turn-by-turn guidance keeps running with the screen off only while the user navigates. -->
  <uses-permission android:name="android.permission.FOREGROUND_SERVICE_LOCATION" />
+ <!-- A Notes recording keeps running with the screen off only while it is open. -->
+ <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MICROPHONE" />
  <!-- Already merged from the location plugin; declared here so the location service type is checked against them. -->
  <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
  <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
- <application android:name=".AlphaApplication" android:label="@string/app_name" android:icon="@drawable/app_icon" android:allowBackup="false" android:dataExtractionRules="@xml/data_extraction_rules" android:supportsRtl="true" android:usesCleartextTraffic="false" android:networkSecurityConfig="@xml/network_security_config" android:theme="@style/AppTheme">
+ <application android:name=".AlphaApplication" android:label="@string/app_name" android:icon="@drawable/app_icon" android:allowBackup="false" android:dataExtractionRules="@xml/data_extraction_rules" android:supportsRtl="true" android:usesCleartextTraffic="false" android:networkSecurityConfig="@xml/network_security_config" android:requestLegacyExternalStorage="true" android:theme="@style/AppTheme">
+  <meta-data android:name="ai.elizaresearch.alphaphone.UPDATE_CHANNEL" android:value="${alphaUpdateChannel}" />
+  <meta-data android:name="ai.elizaresearch.alphaphone.UPDATE_MANIFEST_SHA256" android:value="${alphaUpdateManifestSha256}" />
   <service android:name=".ElizaAgentService" android:exported="false" android:foregroundServiceType="specialUse">
    <property android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE" android:value="User-started local personal agent runtime" />
   </service>
@@ -83,11 +91,13 @@
    <intent-filter><action android:name="android.service.quicksettings.action.QS_TILE"/></intent-filter>
    <meta-data android:name="android.service.quicksettings.TOGGLEABLE_TILE" android:value="false"/>
   </service>
+  <service android:name=".AlphaNoteRecordingService" android:exported="false" android:foregroundServiceType="microphone" />
   <activity android:name=".AlphaMailPdfActivity" android:exported="false" android:theme="@android:style/Theme.Material.Light.NoActionBar" android:label="PDF attachment" />
   <service android:name=".IsolatedPdfService" android:exported="false" android:isolatedProcess="true" android:process=":isolated_pdf" android:stopWithTask="true" />
   <!-- Release-build data integrity export for pilot updates: per-file HMAC digests only, read-only,
        in its own process, readable only with the platform DUMP permission (adb shell). -->
   <provider android:name=".release.DataIntegrityProvider" android:authorities="${applicationId}.integrity" android:exported="true" android:permission="android.permission.DUMP" android:process=":integrity" android:grantUriPermissions="false" />
+  <provider android:name="ai.eliza.plugins.filesystem.browser.ReadOnlyStorageFileProvider" android:authorities="${applicationId}.storage" android:exported="false" android:grantUriPermissions="true"><meta-data android:name="android.support.FILE_PROVIDER_PATHS" android:resource="@xml/storage_paths"/></provider>
   <provider android:name=".AlphaMailFileProvider" android:authorities="${applicationId}.mailattachments" android:exported="false" android:grantUriPermissions="true"><meta-data android:name="android.support.FILE_PROVIDER_PATHS" android:resource="@xml/mail_attachment_paths"/></provider>
   <service android:name=".AlphaNotificationListener" android:label="Alpha Phone selected notifications" android:exported="true" android:permission="android.permission.BIND_NOTIFICATION_LISTENER_SERVICE">
    <intent-filter><action android:name="android.service.notification.NotificationListenerService"/></intent-filter>

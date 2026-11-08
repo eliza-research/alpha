@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
-import {stripTypeScriptTypes} from 'node:module';
+import {stripTypeScriptTypes} from './support/strip-types.mjs';
 const source=readFileSync(new URL('../apps/app/src/runtime/connection-ui.tsx',import.meta.url),'utf8');
 const start=source.indexOf('    credential.enrollmentId=registered.enrollmentId;await store.write(slot,credential);'),end=source.indexOf('    client.deviceHeaders=headers;',start);
 assert.ok(start>=0&&end>start);

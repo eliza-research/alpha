@@ -59,21 +59,39 @@ export function cloudVoiceFailure(error: unknown, context: { recording?: boolean
 }
 
 /** Product registration only; shared transport owns speech lifecycle and cancellation. */
-const streamingNative = registerPlugin<CloudStreamPort>('AlphaCloudSpeechStream');
+const streamingNative = registerPlugin<CloudStreamPort & {cloudStreamTiming(): Promise<unknown>}>('AlphaCloudSpeechStream');
 export function nativeCloudStreamingAvailable() { return Capacitor.isNativePlatform() && Capacitor.isPluginAvailable('AlphaCloudSpeechStream'); }
+
+/** Read the content-free Cloud startup stages already held by the native bridge. */
+export async function readNativeCloudStreamTiming(timeoutMs = 2_000): Promise<unknown> {
+  if (!nativeCloudStreamingAvailable()) return null;
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  try {
+    return await Promise.race([
+      streamingNative.cloudStreamTiming(),
+      new Promise<null>(resolve => { timer = setTimeout(() => resolve(null), timeoutMs); }),
+    ]);
+  } catch {
+    // Older bridge builds may register the plugin without this method.
+    return null;
+  } finally {
+    if (timer !== undefined) clearTimeout(timer);
+  }
+}
 export function createCloudStreamingSpeech(input: Parameters<typeof createSharedCloudStreamingSpeech>[0]) { return createSharedCloudStreamingSpeech(input, streamingNative); }
 
 export type VoiceClip = { recordingId: string; durationMs: number };
+export type SpeechRecordingInput = {recordingId:string;requestId:string;savedNoteId?:string;savedDurationMs?:number;offsetMs?:number};
 const native = registerPlugin<{
-  transcribeOwnRecording(input:{recordingId:string;requestId:string;providerRevision:string}):Promise<{text:string;local:false}>;
+  transcribeOwnRecording(input:SpeechRecordingInput & {providerRevision:string}):Promise<{text:string;local:false}>;
   synthesizeOwn(input:{text:string;requestId:string;providerRevision:string;replace?:boolean}):Promise<{playbackId:string}>;
-  transcribeDevelopmentCloudRecording(input:{recordingId:string;requestId:string;route?:'cloud'|'direct'}):Promise<{text:string;local:false}>;
+  transcribeDevelopmentCloudRecording(input:SpeechRecordingInput & {route?:'cloud'|'direct'}):Promise<{text:string;local:false}>;
   synthesizeDevelopmentCloud(input:{text:string;requestId:string;replace?:boolean;route?:'cloud'|'direct'}):Promise<{playbackId:string}>;
   startRecording(): Promise<{ recordingId: string; maxDurationMs: number }>;
   stopRecording(): Promise<VoiceClip>;
   getRecordingMetrics(input:{recordingId:string}):Promise<{recordingId:string;peak:number;rms?:number}>;
   cancelRecording(): Promise<void>;
-  transcribeRecording(input: { recordingId: string; requestId: string; environment: string; credentialId: string }): Promise<{ text: string; local: false }>;
+  transcribeRecording(input: SpeechRecordingInput & {environment:string;credentialId:string}): Promise<{ text: string; local: false }>;
   synthesize(input: { text: string; requestId: string; environment: string; credentialId: string; replace?:boolean }): Promise<{ playbackId: string }>;
   play(input: { playbackId: string;replace?:boolean }): Promise<void>;
   stopPlayback(input?: { requestId: string }): Promise<void>;
@@ -111,11 +129,11 @@ export function createCloudVoice(readAloudRoute:'cloud'|'direct'='cloud') {
     async startRecording() { check(); const result = await native.startRecording(); check(); return result; },
     async getRecordingMetrics(recordingId:string){check();const value=await native.getRecordingMetrics({recordingId});check();if(value.recordingId!==recordingId||!Number.isFinite(value.peak)||value.peak<0||value.peak>1||(value.rms!==undefined&&(!Number.isFinite(value.rms)||value.rms<0||value.rms>1)))throw Error('Recording metrics were not verified.');return value;},
     async stopRecording() { check(); const result = await native.stopRecording(); check(); return result; },
-    async transcribeRecording(input: { recordingId: string; requestId: string }) {
+    async transcribeRecording(input: SpeechRecordingInput) {
       check(); const result = await (nativeOwn?native.transcribeOwnRecording({...input,providerRevision:revision!}):developerSpeech?native.transcribeDevelopmentCloudRecording({...input,...(own?{route:'direct' as const}:{})}):native.transcribeRecording({ ...input, environment:environment!, credentialId:credentialId! })).catch(noteLimit); check();
       if (typeof result.text !== 'string' || result.local !== false) throw new Error(`${own?'Cartesia':'Cloud'} returned no usable transcript.`);
       // An empty transcript is silence, not a microphone, account or connection failure.
-      if (!result.text.trim()) throw Object.assign(new Error(`${own?'Cartesia':'Cloud'} heard no speech in this recording.`), { code: 'no-speech' });
+      if (!result.text.trim() && input.savedNoteId === undefined) throw Object.assign(new Error(`${own?'Cartesia':'Cloud'} heard no speech in this recording.`), { code: 'no-speech' });
       return result;
     },
     cancel: (input: { requestId: string }) => native.cancel(input),

@@ -6,7 +6,7 @@
  * and 409 downgrade run on top of it.
  */
 import {readFileSync} from 'node:fs';
-import {stripTypeScriptTypes} from 'node:module';
+import {stripTypeScriptTypes} from '../support/strip-types.mjs';
 import vm from 'node:vm';
 const file=new URL('../../apps/app/src/runtime/workflow-presentation.ts',import.meta.url);
 const probeMarker='/** Probe installed bridge code';

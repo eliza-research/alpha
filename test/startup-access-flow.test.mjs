@@ -27,3 +27,25 @@ test('location metadata labels approximate and precise grants without accepting 
  assert.equal(flow.startupLocationAccess({location:'denied',accuracy:'none'}).granted,false);
  for(const value of [null,{location:'granted',accuracy:'none'},{location:'granted',accuracy:['precise']},{location:'denied',accuracy:'precise'},{location:'prompt'}])assert.throws(()=>flow.startupLocationAccess(value));
 });
+
+
+test('failed attempt persistence retains one prompt per live flow and permits a prompt after cold restart', async () => {
+  const store = { getItem: () => null, setItem: () => { throw new Error('Storage unavailable'); } };
+  let requests = 0;
+  let settings = 0;
+  const bridge = {
+    status: async () => ({ granted: false, enabled: false }),
+    request: async () => { requests++; },
+    openSettings: async () => { settings++; },
+  };
+  const first = flow.createStartupPermissionFlow(bridge, { key: 'camera', store });
+  assert.equal(await first.enable(), 'settings');
+  assert.equal(await first.enable(), 'settings');
+  assert.equal(requests, 1);
+  assert.equal(settings, 1);
+  assert.equal(flow.readStartupPermissionMemory(store).attempted.camera, undefined);
+  const restarted = flow.createStartupPermissionFlow(bridge, { key: 'camera', store });
+  assert.equal(await restarted.refresh(), 'request');
+  assert.equal(await restarted.enable(), 'settings');
+  assert.equal(requests, 2);
+});

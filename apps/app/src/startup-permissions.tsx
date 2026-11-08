@@ -3,7 +3,7 @@ import React, {useEffect, useLayoutEffect, useRef, useState, useSyncExternalStor
 import {registerPlugin} from './platform-plugins';
 import {connectionController} from './runtime/connection-ui';
 import {googleConnectionController} from './runtime/google-connection-ui';
-import {startupPhotoAccess,startupLocationAccess,lateReadyNotice,STARTUP_PERMISSIONS_REOPEN} from './startup-permission-flow';
+import {startupPhotoAccess,startupLocationAccess,startupFilesAccess,lateReadyNotice,STARTUP_PERMISSIONS_REOPEN} from './startup-permission-flow';
 import {iconStyle} from './icon-style';
 import {browserStartupPermission} from './startup-browser-permissions';
 import {createStartupPermissionFlow, startupPermissionKeys, nativeStartupPermissionKeys, type NativeStartupPermissionKey as PermissionKey, type StartupPermissionState} from './startup-permission-flow';
@@ -22,6 +22,7 @@ const location = registerPlugin<{checkPermissions(): Promise<{location: string}>
 const photos = registerPlugin<{scope():Promise<unknown>;requestAccess():Promise<unknown>}>('AlphaPhotoLibrary');
 const calendar = registerPlugin<{checkPermissions(): Promise<{calendar: string}>; requestAccess(): Promise<{status: string}>}>('AlphaCalendar');
 const device = registerPlugin<{openSettings(options: {page: 'notifications' | 'privacy'}): Promise<unknown>}>('AlphaDevice');
+const files = registerPlugin<{storageState(): Promise<{access?: string}>; storageRequestAccess(options?: {settings?: boolean}): Promise<{access?: string}>}>('AlphaFiles');
 const details = {
   notifications: {title: 'Notifications', icon: 'bell'},
   microphone: {title: 'Microphone', icon: 'mic'},
@@ -29,6 +30,7 @@ const details = {
   photos: {title: 'Photos', icon: 'images'},
   calendar: {title: 'Calendar', icon: 'calendar'},
   location: {title: 'Location', icon: 'map-pin'},
+  files: {title: 'Files', icon: 'folder'},
 };
 const progressKey = 'alpha:startup-permission-progress:v1';
 type Progress = {version: 3; step: number; choices: ('allowed' | 'continued' | 'skipped')[]};
@@ -68,6 +70,9 @@ export function StartupPermissions({active:enabled = true}: {active?: boolean} =
       camera: {status: async () => permissionAccess((await permissions.checkPermissions()).camera), request: () => permissions.requestPermissions({permissions: ['camera']}), openSettings: () => device.openSettings({page: 'privacy'})},
       photos: {status: async () => {const access=startupPhotoAccess(await photos.scope());photoDescription.current=access.description;return access;},request: () => photos.requestAccess(),openSettings: () => device.openSettings({page:'privacy'})},
       calendar: {status: async () => permissionAccess((await calendar.checkPermissions()).calendar), request: () => calendar.requestAccess(), openSettings: () => device.openSettings({page: 'privacy'})},
+      // Android's "All files access" page (API 29: the storage permission request, or the app's
+      // settings page) returns to Alpha; the flow reads access back then.
+      files: {status: async () => startupFilesAccess(await files.storageState()), request: () => files.storageRequestAccess(), openSettings: () => files.storageRequestAccess({settings: true})},
       location: {status: async () => {const raw=await location.checkPermissions();const access=startupLocationAccess(raw);locationDescription.current=access.description;return {...access,requestable:raw.location!=='denied'};}, request: () => location.requestPermissions(), openSettings: () => device.openSettings({page: 'privacy'})},
     } as const;
     return Object.fromEntries(keys.map(key => [key, createStartupPermissionFlow(native ? nativeBridges[key] : browserStartupPermission(key as typeof startupPermissionKeys[number], {permissions: navigator.permissions, media: navigator.mediaDevices, geolocation: navigator.geolocation, notifications: typeof Notification === 'undefined' ? undefined : Notification}), {key: native ? key : 'browser'+key})])) as Record<PermissionKey, ReturnType<typeof createStartupPermissionFlow>>;
@@ -78,7 +83,7 @@ export function StartupPermissions({active:enabled = true}: {active?: boolean} =
   // A Settings reopen of completed setup is a review: it can be left at once and never rewrites the durable marker.
   const [review, setReview] = useState(false);
   const progressRef = useRef(progress), targetRef = useRef<PermissionKey | null>(null), reviewRef = useRef(false);
-  const [states, setStates] = useState<Record<PermissionKey, StartupPermissionState>>({notifications: 'checking', microphone: 'checking', camera: 'checking', location: 'checking', calendar: 'checking', photos: 'checking'});
+  const [states, setStates] = useState<Record<PermissionKey, StartupPermissionState>>({notifications: 'checking', microphone: 'checking', camera: 'checking', location: 'checking', calendar: 'checking', photos: 'checking', files: 'checking'});
   const [busy, setBusy] = useState(false);
   const [progressError, setProgressError] = useState(false);
   const [canSkip, setCanSkip] = useState(false);
@@ -87,12 +92,13 @@ export function StartupPermissions({active:enabled = true}: {active?: boolean} =
   const alive = useRef(false), actionPending = useRef(false), sequence = useRef(0), action = useRef(0);
   const finalChoices = useRef<Progress['choices']>([]);
   const dialog = useRef<HTMLDialogElement>(null);
+  const previousEnabled = useRef(enabled);
   const key = target ?? keys[progress?.step ?? 0];
   const state = states[key];
   const visible = (active || ready) && (enabled || reopened) && !connection.open && !googleOpen;
   const writeProgress = (value: Progress | null, choices = value?.choices ?? []) => {
     if (!reviewRef.current) try {
-      writeStartupPermissionProgress(localStorage, {version: native ? 3 : 1, status: value ? 'pending' : 'completed', step: value?.step ?? keys.length, ...(choices.includes('skipped') ? {choices} : {})}, native);
+      writeStartupPermissionProgress(localStorage, {version: native ? 4 : 1, status: value ? 'pending' : 'completed', step: value?.step ?? keys.length, ...(choices.includes('skipped') ? {choices} : {})}, native);
       setProgressError(false);
     } catch { setProgressError(true); }
     // Browser storage may be blocked. Keep the current session usable without
@@ -100,7 +106,36 @@ export function StartupPermissions({active:enabled = true}: {active?: boolean} =
     progressRef.current = value; setProgress(value);
   };
 
-  useEffect(() => { if (!enabled) ++sequence.current; }, [enabled, connection.cloudAccount?.credentialId]);
+  const invalidatePending = () => {
+    ++sequence.current;
+    ++action.current;
+    actionPending.current = false;
+    setBusy(false);
+  };
+  const contextCurrent = (ticket: number, credentialId: string | undefined) => {
+    const current = connectionController.getSnapshot();
+    return alive.current && ticket === sequence.current &&
+      current.cloudAccount?.credentialId === credentialId &&
+      current.cloudAccount?.environment === connection.cloudAccount?.environment &&
+      current.setupRevision === connection.setupRevision;
+  };
+  const currentInteraction = () => contextCurrent(sequence.current, connection.cloudAccount?.credentialId);
+  useLayoutEffect(() => { invalidatePending(); }, [enabled, connection.cloudAccount?.credentialId, connection.cloudAccount?.environment, connection.setupRevision]);
+  useEffect(() => {
+    const reactivated = enabled && !previousEnabled.current;
+    previousEnabled.current = enabled;
+    if (!reactivated) return;
+    const ticket = sequence.current, credentialId = connection.cloudAccount?.credentialId;
+    let disposed = false;
+    // An OS prompt can finish behind another screen. Read access again on return
+    // without allowing its retired callback to publish or request another prompt.
+    void Promise.all(keys.map(async key => {
+      const value = await flows[key].refresh();
+      if (!disposed && contextCurrent(ticket, credentialId) && value !== null)
+        setStates(previous => ({...previous, [key]: value}));
+    }));
+    return () => { disposed = true; };
+  }, [enabled, flows]);
   useEffect(() => {
     if (!connection.setupRevision) return;
     // Sign-in retires any in-flight request; its late answer advances nothing and cannot hold Checking.
@@ -170,13 +205,14 @@ export function StartupPermissions({active:enabled = true}: {active?: boolean} =
   useEffect(() => {if (visible) dialog.current?.querySelector<HTMLHeadingElement>('h2')?.focus({preventScroll: true});}, [key, visible, ready]);
 
   function advance(choice: Progress['choices'][number]) {
+    if (!currentInteraction()) return;
     if (target) {setActive(false); return;}
     const current = progress ?? {version: 3 as const, step: 0, choices: []};
     if (current.step + 1 < keys.length) writeProgress({version: 3, step: current.step + 1, choices: [...current.choices, choice]});
     else {finalChoices.current=[...current.choices, choice];writeProgress(null, finalChoices.current);setActive(false);setReady(true);}
   }
   function skip() {
-    if (!canSkip) return;
+    if (!canSkip || !currentInteraction()) return;
     ++sequence.current;flows[key].cancel();actionPending.current=false;setBusy(false);
     advance('skipped');
   }
@@ -188,23 +224,25 @@ export function StartupPermissions({active:enabled = true}: {active?: boolean} =
   }
   async function allow() {
     if (actionPending.current) return;
+    const ticket = sequence.current, credentialId = connection.cloudAccount?.credentialId;
+    if (!contextCurrent(ticket, credentialId)) return;
     if (target && !native && state === 'ready') {advance('continued'); return;}
     actionPending.current = true; setBusy(true);setCheckNotice('');
-    const ticket = sequence.current, id = ++action.current;
+    const id = ++action.current;
     try {
       let value: StartupPermissionState | null;
-      if (target && native && state === 'ready') {await device.openSettings({page: key === 'notifications' ? 'notifications' : 'privacy'}); value = await flows[key].refresh();}
+      if (target && native && state === 'ready') {await (key === 'files' ? files.storageRequestAccess({settings: true}) : device.openSettings({page: key === 'notifications' ? 'notifications' : 'privacy'})); value = await flows[key].refresh();}
       else value = state === 'unavailable' || (!native && state === 'settings') ? await flows[key].refresh() : await flows[key].enable();
-      if (alive.current && ticket === sequence.current && value !== null) {
+      if (contextCurrent(ticket, credentialId) && value !== null) {
         setStates(previous => ({...previous, [key]: value}));
         if (value === 'ready' && !target) advance(state === 'ready' ? 'continued' : 'allowed');
         else if (!native && value !== 'ready') setCheckNotice(value === 'settings' ? 'Access is still off. Change it using the site controls.' : 'This browser could not confirm access.');
-      } else if (alive.current && value !== null) setStates(previous => ({...previous, [key]: value})); // Retired: show current access, never advance.
-    } catch {if (alive.current && ticket === sequence.current) setStates(previous => ({...previous, [key]: 'unavailable'}));}
+      }
+    } catch {if (contextCurrent(ticket, credentialId)) setStates(previous => ({...previous, [key]: 'unavailable'}));}
     finally {if (id === action.current) {actionPending.current = false; if (alive.current) setBusy(false);}}
   }
   function finish() {
-    if(actionPending.current)return;
+    if(actionPending.current || !currentInteraction())return;
     // Completing the walkthrough records choices, never permission authority.
     // Each feature still checks current OS/browser access when it is used.
     // A failed completion write is retried here; the session continues either way.

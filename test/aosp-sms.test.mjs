@@ -263,7 +263,7 @@ test("standalone SMS stays unavailable at the UI and agent boundaries", async ()
   assert.equal(selectDeviceCapabilities([],{...profile,aospImage:true}).includes("sms.send.v1"),false);
   assert.equal((connection.match(/await deviceCapabilities\(/g)||[]).length,3);
   assert.match(read(".eliza/client-features/plugins/plugin-assistant/src/services/device-actions/client-coordinator.ts"),/claimed\.providerIdempotencyKey\s*!==\s*operationId/);
-  assert.match(read("apps/app/src/prototype/agent-adapter.ts"),/if\(!aospImage\)throw Error\('Texts can be sent only on an Alpha Phone\.'\);/);
+  assert.match(read("apps/app/src/prototype/agent-adapter.ts"),/if\(!aospImage\|\|expectedContext\.sensitive\|\|document\.hidden\|\|expectedContext\.view!=='messages'/);
   const telephony = read("apps/app/src/runtime/aosp-telephony.ts");
   assert.doesNotMatch(telephony.replace(/\/\*[\s\S]*?\*\//g, ""), /location\.|localStorage|testMocksEnabled/, "nothing outside the native image capability turns messages on");
 });

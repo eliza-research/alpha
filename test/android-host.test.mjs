@@ -44,8 +44,13 @@ function consumer(t) {
 
 function generate(t) {
  const {root, staging} = consumer(t);
+ // Stage the pinned installed module so linked node_modules in an isolated
+ // checkout do not weaken the generator's input-root check.
+ const dependencyRoot = path.join(root, 'dependencies');
+ const capacitor = '@capacitor/android/capacitor';
+ fs.cpSync(fs.realpathSync(path.join(ROOT, 'node_modules', capacitor)), path.join(dependencyRoot, capacitor), {recursive: true});
  const result = generateAndroidConsumerHost({
-  consumerRoot: root, upstreamRoot: path.join(ROOT, 'vendor/eliza'), dependencyRoot: path.join(ROOT, 'node_modules'),
+  consumerRoot: root, upstreamRoot: path.join(ROOT, 'vendor/eliza'), dependencyRoot,
   output: path.join(root, 'android'), inPlace: true, identity: hostIdentity(root), profile: hostProfile(root, {patchedNativeRoot: staging}),
  });
  const profile = JSON.parse(fs.readFileSync(path.join(root, 'android/.eliza-consumer-profile.json'), 'utf8'));
@@ -102,16 +107,18 @@ test('test mocks reach debug variants only and product admission runs before eve
  assert.doesNotMatch(product, /\b(signingConfigs|productFlavors|applicationId|minSdk|targetSdk|compileSdk|keystore)\b/i, 'the product script holds no generator-owned policy');
 });
 
-test('the listener, fixtures and test sources never link into either distribution APK', t => {
- const {profile} = generate(t);
+test('the host links its native-only secure store transitively and keeps fixture modules separate', t => {
+ const {profile, staging} = generate(t);
  const linked = profile.modules.filter(module => module.appDependency).map(module => module.name);
  const separate = profile.modules.filter(module => !module.appDependency).map(module => module.name).sort();
- assert.deepEqual(separate, ['notification-fixture', 'private-peer-fixture', 'sense', 'sense-speech', 'video-fixture']);
+ assert.deepEqual(separate, ['elizaos-capacitor-secure-store-nativeonly', 'notification-fixture', 'sense', 'sense-speech', 'video-fixture']);
  // Shared checkouts, node_modules and the authenticated patched staging never receive build outputs.
  assert.deepEqual(profile.modules.filter(module => !module.relocateBuild).map(module => module.name).sort(),
-  ['local-speech', 'notification-fixture', 'private-peer-fixture', 'sense', 'sense-speech', 'video-fixture']);
+  ['local-speech', 'notification-fixture', 'sense', 'sense-speech', 'video-fixture']);
  for (const name of ['capacitor-android', 'local-speech', 'eliza-system', 'eliza-contacts', 'elizaos-capacitor-secure-store']) assert.ok(linked.includes(name), name);
- assert.ok(!profile.sourceSets.main, 'main sources stay in the standard android/app/src layout');
+ assert.deepEqual(profile.sourceSets.main, {java: [
+  fs.realpathSync(path.join(staging, 'plugins/plugin-native-filesystem/android/src/main/java')),
+ ]}, 'the generated host compiles the authenticated shared Files storage patch');
  assert.deepEqual(profile.dependencies.find(dependency => dependency.coordinate.startsWith('androidx.webkit:webkit:')).coordinate, `androidx.webkit:webkit:${profile.toolchain.versions.androidxWebkitVersion}`);
 });
 

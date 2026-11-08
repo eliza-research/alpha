@@ -1,4 +1,5 @@
 import fs from 'node:fs';
+import {createProviderKeySession} from '../../vendor/eliza/packages/host/native-host/provider-key-session.mjs';
 import os from 'node:os';
 import path from 'node:path';
 import vm from 'node:vm';
@@ -17,7 +18,7 @@ const verification=nativeSource.slice(nativeSource.indexOf('const hash='),native
 const {verifyNativeGoogleHostArtifact}=vm.runInNewContext(verification.replace('export function','function')+';({verifyNativeGoogleHostArtifact});',{fs,path,createHash});
 const source=fs.readFileSync('scripts/cloud-resident-host.mjs','utf8').replace(/^import .*;\n/gm,'').replaceAll('import.meta.dirname','scriptDirectory').replace(/^export /gm,'');
 export function productCharacterHostFixture(mode,options={}){
- const root=fs.mkdtempSync(path.join(os.tmpdir(),'product-character-host-')),sdk=path.join(root,'sdk'),profile=path.join(root,'profile'),worker=path.join(root,'artifacts','fixture-worker');
+ const root=fs.mkdtempSync(path.join(fs.realpathSync(os.tmpdir()),'product-character-host-')),sdk=path.join(root,'sdk'),profile=path.join(root,'profile'),worker=path.join(root,'artifacts','fixture-worker');
  fs.mkdirSync(sdk,{recursive:true});fs.writeFileSync(path.join(sdk,'bun.lock'),'{}');fs.writeFileSync(path.join(sdk,'package.json'),JSON.stringify({name:'fixture',workspaces:[]}));fs.writeFileSync(path.join(sdk,'turbo.json'),JSON.stringify({tasks:{}}));
  const env={...process.env,GIT_CONFIG_NOSYSTEM:'1',GIT_CONFIG_GLOBAL:'/dev/null'};
  execFileSync('git',['-c','core.hooksPath=/dev/null','init','-q',sdk],{env});execFileSync('git',['-C',sdk,'-c','core.hooksPath=/dev/null','add','bun.lock','package.json','turbo.json'],{env});execFileSync('git',['-C',sdk,'-c','core.hooksPath=/dev/null','-c','user.name=Fixture','-c','user.email=fixture@example.invalid','-c','commit.gpgsign=false','commit','-qm','fixture'],{env});
@@ -32,7 +33,7 @@ export function productCharacterHostFixture(mode,options={}){
  if(mode==='input-changed')fs.appendFileSync(path.join(root,input),'changed');
  if(mode==='manifest-changed'){const manifest=JSON.parse(fs.readFileSync(path.join(worker,'manifest.json')));manifest.sourceStampSha256='0'.repeat(64);fs.writeFileSync(path.join(worker,'manifest.json'),JSON.stringify(manifest));}
  if(mode==='symlink'){fs.renameSync(worker,worker+'-real');fs.symlinkSync(worker+'-real',worker);}
- const globals={fs,path,randomUUID,randomBytes,preparePrivateRuntimeProfile,writePrivateRuntimeJson,runtimeEnvironment,verifySource,preparedSourceEnv,workerArtifactDirectory,digest,verifyWorkerArtifact,verifyNativeGoogleHostArtifact,CLOUD_SDK_BASES,LOCAL_EMBEDDING_ROUTE,localEmbeddingEnvironment,nativeViewDeclarationsJson:'[]',scriptDirectory:path.join(root,'scripts'),process,fetch,AbortController,AbortSignal,setTimeout,clearTimeout};
+ const globals={createProviderKeySession,fs,path,randomUUID,randomBytes,preparePrivateRuntimeProfile,writePrivateRuntimeJson,runtimeEnvironment,verifySource,preparedSourceEnv,workerArtifactDirectory,digest,verifyWorkerArtifact,verifyNativeGoogleHostArtifact,CLOUD_SDK_BASES,LOCAL_EMBEDDING_ROUTE,localEmbeddingEnvironment,nativeViewDeclarationsJson:'[]',scriptDirectory:path.join(root,'scripts'),process,fetch,AbortController,AbortSignal,setTimeout,clearTimeout};
  vm.runInNewContext(source+';globalThis.make=createCloudResidentHost;',globals);
  const launches=[];const launch=async options=>{launches.push(options);let done;return {completion:new Promise(resolve=>done=resolve),async stop(){done({code:0});}};};
  return {root,sdk,worker,profile,launches,async make(){return globals.make({...options,source:sdk,profile:options.profile??profile,port:options.port??47869,launch:options.launch??launch,inherited:{...options.inherited,PATH:process.env.PATH,ALPHA_WORKFLOW_WORKER_OUTPUT:worker,ELIZA_NATIVE_GOOGLE_HOST_MODULE:'/untrusted/module',ELIZA_SMTHRS_RUNTIME_DIR:'/untrusted/root',ELIZA_AGENT_CHARACTER_JSON:'untrusted',CEREBRAS_API_KEY:'untrusted'}});},close(){fs.rmSync(root,{recursive:true,force:true});}};

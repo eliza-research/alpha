@@ -8,6 +8,7 @@ import android.content.Intent;
 import android.database.Cursor;
 import android.net.Uri;
 import android.provider.CalendarContract;
+import android.provider.DocumentsContract;
 // MVP-DEFERRED: import android.provider.ContactsContract;
 import android.provider.MediaStore;
 import android.provider.OpenableColumns;
@@ -140,6 +141,10 @@ public class DailyAppsPlugin extends ai.eliza.plugins.reminders.ReminderPlugin {
     Intent result = new Intent(Intent.ACTION_OPEN_DOCUMENT).setType("*/*").addCategory(Intent.CATEGORY_OPENABLE).addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_GRANT_WRITE_URI_PERMISSION | Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION);
     String[] types = mimeTypes(call);
     if (types.length == 1) result.setType(types[0]); else if (types.length > 1) result.putExtra(Intent.EXTRA_MIME_TYPES, types);
+    if ("downloads".equals(string(call, "initialLocation", ""))) {
+     result.putExtra(DocumentsContract.EXTRA_INITIAL_URI,
+       DocumentsContract.buildDocumentUri("com.android.externalstorage.documents", "primary:Download"));
+    }
     return result;
    }
    case "maps": return new Intent(Intent.ACTION_VIEW, Uri.parse("geo:0,0?q=" + Uri.encode(string(call, "query", ""))));

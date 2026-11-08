@@ -11,11 +11,7 @@ test('upstream plugin-maps navigation tests pass on the pinned source', () => {
   const directory = path.join(root, 'plugins/plugin-maps/test');
   const tests = ['navigation-client.test.mjs'].map(name => path.join(directory, name));
   for (const file of tests) assert.ok(fs.existsSync(file), file);
-  // An independent child suite: inheriting NODE_TEST_CONTEXT would make it report to this
-  // runner over IPC and exit 0 even when its own tests fail.
-  const env = { ...process.env }; delete env.NODE_TEST_CONTEXT;
-  try { execFileSync(process.execPath, ['--import=tsx', '--test', ...tests], { stdio: 'pipe', timeout: 60_000, env, encoding: 'utf8' }); }
-  catch (error) { throw new Error(`plugin-maps navigation suite failed (status ${error.status}):\n${error.stdout || ''}\n${error.stderr || ''}`, { cause: error }); }
+  execFileSync(process.execPath, ['--import=tsx', '--test', ...tests], { stdio: 'pipe', timeout: 60_000 });
 });
 
 test('guidance presents the next maneuver, the following step and the remaining trip', async () => {

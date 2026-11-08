@@ -17,7 +17,7 @@ test.afterAll(async()=>{await server?.close();});
 async function accessFixture(page:import('@playwright/test').Page){
  await page.addInitScript(()=>{
   const w=window as any;w.access={calls:[],accounts:[],googleOpens:0};
-  const names={AlphaNotifications:['status'],AlphaVoiceCloud:['checkPermissions','requestPermissions'],ElizaLocation:['checkPermissions','requestPermissions'],AlphaCalendar:['checkPermissions','requestAccess'],AlphaPhotoLibrary:['scope','requestAccess'],DailyApps:['checkPermissions','requestPermissions','addListener','removeListener'],AlphaDevice:['openSettings']};
+  const names={AlphaNotifications:['status'],AlphaVoiceCloud:['checkPermissions','requestPermissions'],ElizaLocation:['checkPermissions','requestPermissions'],AlphaCalendar:['checkPermissions','requestAccess'],AlphaPhotoLibrary:['scope','requestAccess'],DailyApps:['checkPermissions','requestPermissions','addListener','removeListener'],AlphaFiles:['storageState'],AlphaDevice:['openSettings']};
   w.Capacitor={PluginHeaders:Object.entries(names).map(([name,methods])=>({name,methods:methods.map(name=>({name,rtype:'promise'}))})),nativePromise:async(plugin:string,method:string,input:any)=>{
    w.access.calls.push({plugin,method,input});
    if(plugin==='AlphaNotifications')return {permissionGranted:true,appEnabled:true};
@@ -26,6 +26,7 @@ async function accessFixture(page:import('@playwright/test').Page){
    if(plugin==='ElizaLocation')return {location:'granted',accuracy:'approximate'};
    if(plugin==='AlphaCalendar')return {calendar:'granted'};
    if(plugin==='AlphaPhotoLibrary')return {scope:'selected',locked:false};
+   if(plugin==='AlphaFiles')return {status:'ready',access:'granted',volumes:[]};
    return {};
   }};
  });
@@ -43,7 +44,7 @@ test('required native access keeps focused, reachable controls at narrow widths 
  }
  await page.setViewportSize({width:360,height:740});await setTextScale(page,1);
  await heading.focus();await page.keyboard.press('Tab');await expect(action).toBeFocused();
- for(const name of ['Notifications','Microphone','Camera','Location','Calendar','Photos']){
+ for(const name of ['Notifications','Microphone','Camera','Location','Calendar','Photos','Files']){
   await expect(panel.getByRole('heading',{name,exact:true})).toBeVisible();
   if(name==='Location')await expect(panel.getByText('Approximate location allowed',{exact:true})).toBeVisible();
   if(name==='Photos')await expect(panel.getByText('Selected photos and videos only',{exact:true})).toBeVisible();
@@ -55,9 +56,9 @@ test('required native access keeps focused, reachable controls at narrow widths 
 });
 test('explicit Settings review starts at the original heading and targeted Done preserves completion',async({page})=>{
  const panel=await accessFixture(page);
- for(let i=0;i<6;i++)await panel.getByRole('button',{name:'Continue',exact:true}).click();await panel.getByRole('button',{name:'Go to Alpha',exact:true}).click();
+ for(let i=0;i<7;i++)await panel.getByRole('button',{name:'Continue',exact:true}).click();await panel.getByRole('button',{name:'Go to Alpha',exact:true}).click();
  await page.evaluate(()=>(window as any).access.reopen());await expect(panel.getByRole('heading',{name:'Notifications',exact:true})).toBeFocused();expect(await panel.evaluate(el=>el.scrollTop)).toBe(0);
- for(let i=0;i<6;i++)await panel.getByRole('button',{name:'Continue',exact:true}).click();await panel.getByRole('button',{name:'Go to Alpha',exact:true}).click();
+ for(let i=0;i<7;i++)await panel.getByRole('button',{name:'Continue',exact:true}).click();await panel.getByRole('button',{name:'Go to Alpha',exact:true}).click();
  const before=await page.evaluate(()=>localStorage.getItem('alpha:startup-permission-walkthrough:v1'));
  await page.evaluate(()=>window.dispatchEvent(new CustomEvent('alpha:startup-permissions-reopen',{detail:{permission:'camera'}})));
  await expect(panel.getByRole('heading',{name:'Camera',exact:true})).toBeVisible();await panel.getByRole('button',{name:'Done',exact:true}).click();await expect(panel).toHaveCount(0);

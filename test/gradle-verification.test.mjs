@@ -175,7 +175,7 @@ test('a host-specific archive is inserted in order and only once', () => {
 });
 
 test('staged Java-only native patches retain their authenticated dependency descriptors', () => {
- assert.ok(buildScripts(ROOT).includes('vendor/eliza/plugins/plugin-native-secure-store/android/build.gradle'));
+ assert.ok(buildScripts(ROOT).includes('vendor/eliza/plugins/plugin-native-secure-store/android-nativeonly/build.gradle'));
  assert.ok(!buildScripts(ROOT).some(name=>name.includes('android/elizaos-capacitor-secure-store/')));
 });
 

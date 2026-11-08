@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import vm from 'node:vm';
-import { stripTypeScriptTypes } from '../test/fixtures/ts-source.mjs';
+import { stripTypeScriptTypes } from '../test/support/strip-types.mjs';
 import { usableNavigationFix } from '../.eliza/client-features/plugins/plugin-maps/src/client/navigation-fix.ts';
 import { MapsController } from '../.eliza/client-features/plugins/plugin-maps/src/client/state.ts';
 import { SavedPlaces } from '../.eliza/client-features/plugins/plugin-maps/src/client/saved-places.ts';
@@ -14,7 +14,7 @@ import { MapsScreenController } from '../apps/app/src/maps/screen.ts';
 const ORIGIN = {latitude: 43.73, longitude: 7.42};
 const END = {latitude: 43.74, longitude: 7.42};
 const OFF_ROUTE = {latitude: 43.735, longitude: 7.43};
-const source = stripTypeScriptTypes(fs.readFileSync(new URL('../apps/app/src/prototype/maps-adapter.ts', import.meta.url), 'utf8').replace(/^import .*;\n/gm, '').replace('export function installPrototypeMapsAdapter', 'function installPrototypeMapsAdapter'), {mode: 'strip'});
+const source = stripTypeScriptTypes(fs.readFileSync(new URL('../apps/app/src/prototype/maps-adapter.ts', import.meta.url), 'utf8').replace(/^import .*;\n/gm, '').replace(/^export /gm, ''), {mode: 'strip'});
 
 // Execute the actual adapter/render callbacks with the real shared screen and domain controllers.
 // Only device, DOM and provider boundaries are fixtures: this does not establish physical GPS acceptance.
@@ -39,7 +39,7 @@ async function fixture() {
   initializeRegionalMaps:async()=>{}, regionalDiagnostics:()=>({}),
   MapsController:class extends MapsController { constructor(c,p){super(c,p,new SavedPlaces('freshness',storage),new Location());} },
   locationPermissionGranted:async()=>true,NativeMapsLocation:Location,BackgroundNavigation:Background,NavigationVoice:Voice,registerPlugin:()=>({}),Capacitor:{isNativePlatform:()=>false},isAndroid:false,
-  regionalMapsConfigured:false,initializeCloudMaps:async()=>{},regionalMap:()=>undefined,cloudMapsCoverage:()=>undefined,cloudMapsDiagnostics:()=>({}),globalBasemap:{attribution:'Fixture'},
+  regionalMapsConfigured:false,initializeCloudMaps:async()=>{},regionalMap:()=>undefined,cloudMapsCoverage:()=>undefined,cloudMapsBasemap:()=>undefined,cloudMapsDiagnostics:()=>({}),globalBasemap:{attribution:'Fixture'},
   mapsConnection:()=>({config,provider}),onMapsConnectionChange:()=>noop,
   bindAgentNavigation:options=>{surface=options.surface;return {dispose:noop,registered:()=>true};},residentMapsNavigationPort:{relay:false},keepCloudMapsCoverage:()=>noop,
   publishMapsSelection:noop,clearMapsSelection:noop,mapsEventReturnOffered:()=>undefined,

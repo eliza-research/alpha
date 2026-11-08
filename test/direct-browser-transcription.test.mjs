@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import vm from 'node:vm';
-import {stripTypeScriptTypes} from 'node:module';
+import {stripTypeScriptTypes} from './support/strip-types.mjs';
 import {randomUUID} from 'node:crypto';
 function browser(run){
  let snapshot={session:{sessionId:'session-a'},residentInference:'direct',providerStatus:{voiceConfigured:true,revision:'revision-a'}},calls=0;

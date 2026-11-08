@@ -94,7 +94,7 @@ final class CalendarSyncSnapshot {
  private static final java.util.regex.Pattern DURATION=java.util.regex.Pattern.compile("([+-])?P(?:(\\d+)W|(?:(\\d+)D)?(?:T?(?:(\\d+)H)?(?:(\\d+)M)?(?:(\\d+)S)?)?)");
  /** RFC 2445 DURATION in milliseconds: sign, weeks or days, and H/M/S (CalendarProvider also writes them without T, as in P3600S). */
  static long duration(String value){
-  java.util.regex.Matcher match=value==null?null:DURATION.matcher(value);
+  java.util.regex.Matcher match=value==null||value.length()>128?null:DURATION.matcher(value);
   if(match==null||!match.matches()||value.endsWith("P")||value.endsWith("T"))throw new UnsupportedOperationException("Review this Calendar event's length before syncing");
   long seconds=0;long[] scale={604800,86400,3600,60,1};
   try{for(int i=0;i<scale.length;i++)if(match.group(i+2)!=null)seconds=Math.addExact(seconds,Math.multiplyExact(Long.parseLong(match.group(i+2)),scale[i]));return Math.multiplyExact("-".equals(match.group(1))?-seconds:seconds,1000L);}

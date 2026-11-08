@@ -2,6 +2,7 @@ import {installHomeCalendar} from './helpers/home-calendar';
 import { test, expect, type Page } from '@playwright/test';
 import { auditPage, format } from './accessibility-audit';
 import { setTextScale } from './accessibility-states';
+import { deviceAppsStub } from './device-apps-stub';
 
 // PRD AP-15 (large font). The round-7 emulator run at 200% font showed the Home card title printed
 // over the lines around it and the Home app labels split mid-word; the instrumentation's bounds
@@ -45,7 +46,6 @@ async function home(page: Page, url = '/') {
 async function eachHomeCard(page: Page, check: (name: string) => Promise<void>) {
   const cards = page.locator('[data-alpha-layer="home"] :is([data-alpha-home-calendar],[data-alpha-home-workflows],[data-alpha-home-inbox],[data-alpha-home-brief])');
   const count = await cards.count();
-  expect(count).toBeGreaterThanOrEqual(3);
   for (let index = 0; index < count; index++) {
     const card = cards.nth(index);
     await card.evaluate(element => element.scrollIntoView({ block: 'nearest', inline: 'start' }));
@@ -62,6 +62,12 @@ for (const scale of [1, 1.5, 2]) {
       // The measured scale is what the layout rules read.
       await expect.poll(() => page.evaluate(() => Number(getComputedStyle(document.documentElement).getPropertyValue('--alpha-text-scale')))).toBeCloseTo(scale, 1);
 
+      // Empty Home has nothing to show and holds the date line in the card row; the populated
+      // fixture draws its cards (docs/ui-refresh-2026-11).
+      const date = page.locator('[data-alpha-layer="home"] [data-alpha-home-date]');
+      const cardCount = await page.locator('[data-alpha-layer="home"] :is([data-alpha-home-calendar],[data-alpha-home-workflows],[data-alpha-home-inbox],[data-alpha-home-brief])').count();
+      if (source.url === '/') { await expect(date).toBeVisible(); expect(cardCount).toBe(0); }
+      else { await expect(date).toHaveCount(0); expect(cardCount).toBeGreaterThanOrEqual(3); }
       await eachHomeCard(page, async name => {
         const found = blocking(format(await auditPage(page, { clipping: true, overlap: true })));
         expect(found, `${name}\n${found.join('\n')}`).toEqual([]);
@@ -73,10 +79,12 @@ for (const scale of [1, 1.5, 2]) {
           expect(line.top, `"${card.text.slice(0, 40)}" above its card`).toBeGreaterThanOrEqual(card.own.top - 1);
           expect(line.bottom, `"${card.text.slice(0, 40)}" below its card`).toBeLessThanOrEqual(card.own.bottom + 1);
         }
-      // Cards in the row share one height and none is shorter than the design card.
+      // Cards in the row share one height and none is shorter than the design card; the date line's
+      // text lies inside the row it holds.
       const heights = await page.locator('[data-alpha-layer="home"] :is([data-alpha-home-calendar],[data-alpha-home-workflows],[data-alpha-home-inbox],[data-alpha-home-brief])').evaluateAll(list => list.map(element => Math.round(element.getBoundingClientRect().height)));
-      expect(new Set(heights).size, `card heights ${heights}`).toBe(1);
-      expect(heights[0]).toBeGreaterThanOrEqual(196);
+      if (cardCount) { expect(new Set(heights).size, `card heights ${heights}`).toBe(1); expect(heights[0]).toBeGreaterThanOrEqual(196); }
+      else for (const line of (await textBoxes(page, '[data-alpha-layer="home"] [data-alpha-home-date]')).flatMap(box => box.lines.map(line => ({ line, own: box.own }))))
+        expect(line.line.top >= line.own.top - 1 && line.line.bottom <= line.own.bottom + 1, 'date line inside the row').toBe(true);
 
       // App labels: each stays inside its own tile, no two labels touch, none is split mid-word.
       await page.locator('[data-alpha-home-apps]').evaluate(element => element.scrollIntoView({ block: 'center' }));
@@ -119,7 +127,8 @@ test('the Home calendar card shows its whole title at 200% and widens to the row
   const card = page.locator('[data-alpha-home-calendar]');
   const design = (await card.boundingBox())!;
   expect(Math.round(design.width)).toBe(280);
-  expect(Math.round(design.height)).toBe(196);
+  // The card row has one fixed height (docs/ui-refresh-2026-11).
+  expect(Math.round(design.height)).toBe(212);
   await setTextScale(page, 2);
   const title = card.locator('.home-calendar-title');
   await expect.poll(async () => Math.round((await card.boundingBox())!.width)).toBeGreaterThan(280);
@@ -144,34 +153,35 @@ test('the Home calendar card shows its whole title at 200% and widens to the row
 });
 
 for (const scale of [1, 2]) {
-  test(`the app library at ${scale * 100}% text: rows, favorites and the header do not overlap`, async ({ page }) => {
-    await home(page);
-    await page.getByRole('button', { name: 'All apps', exact: true }).click();
-    const drawer = page.getByRole('dialog', { name: 'All apps' });
+  test(`Apps at ${scale * 100}% text: tiles and the header do not overlap`, async ({ page }) => {
+    await deviceAppsStub(page, 24);
+    await page.goto('/');
+    await page.evaluate(() => document.fonts.ready);
+    await page.getByRole('button', { name: 'Apps', exact: true }).click();
+    const drawer = page.getByRole('dialog', { name: 'Apps' });
     await expect(drawer).toBeVisible();
-    await drawer.getByRole('button', { name: 'Remove Files from favorites', exact: true }).click();
-    await expect(drawer.locator('[data-launcher-app]')).not.toHaveCount(0);
+    await expect(drawer.locator('[data-launcher-app]')).toHaveCount(24);
     await setTextScale(page, scale);
     const found = blocking(format(await auditPage(page, { clipping: true, overlap: true })));
     expect(found, found.join('\n')).toEqual([]);
-    // The library covers Home: nothing of Home is left showing around it.
+    // Apps covers Home below the launcher's status bar: nothing of Home is left showing around it.
     const cover = await drawer.evaluate(element => { const box = element.getBoundingClientRect(), screen = element.closest('[data-screen]')!.getBoundingClientRect(); return { top: box.top - screen.top, left: box.left - screen.left, right: screen.right - box.right }; });
-    expect(cover).toEqual({ top: 0, left: 0, right: 0 });
-    // Each row: the name sits between the icon and the favorite control and inside the row.
-    const rows = await drawer.locator('[data-launcher-app], [data-launcher-favorite]').evaluateAll(list => list.map(row => {
-      const open = row.querySelector('button')!, name = open.querySelector('span > span')!, favorite = row.querySelector('button[aria-pressed]')!;
-      const range = document.createRange(); range.selectNodeContents(name);
-      const text = Array.from(range.getClientRects()).filter(rect => rect.width > 1);
-      const box = row.getBoundingClientRect(), star = favorite.getBoundingClientRect(), frame = name.getBoundingClientRect();
-      return { label: name.textContent, top: box.top, bottom: box.bottom, textTop: Math.min(...text.map(rect => rect.top)), textBottom: Math.max(...text.map(rect => rect.bottom)), frameRight: frame.right, starLeft: star.left };
+    expect({ left: cover.left, right: cover.right }).toEqual({ left: 0, right: 0 });
+    expect(cover.top).toBeLessThanOrEqual(44);
+    // Each tile's name stays inside its tile, and no two tiles overlap.
+    const tiles = await drawer.locator('[data-launcher-app]').evaluateAll(list => list.map(tile => {
+      const name = tile.querySelector('button > span:last-of-type')!, range = document.createRange(); range.selectNodeContents(name);
+      const text = Array.from(range.getClientRects()).filter(rect => rect.width > 1), box = tile.getBoundingClientRect();
+      return { label: name.textContent, left: box.left, right: box.right, top: box.top, bottom: box.bottom,
+        textLeft: Math.min(...text.map(rect => rect.left)), textRight: Math.max(...text.map(rect => rect.right)), textBottom: Math.max(...text.map(rect => rect.bottom)) };
     }));
-    expect(rows.length).toBeGreaterThanOrEqual(10);
-    for (const row of rows) {
-      expect(row.frameRight, `${row.label} under its favorite control`).toBeLessThanOrEqual(row.starLeft + 1);
-      expect(row.textTop, `${row.label} above its row`).toBeGreaterThanOrEqual(row.top - 1);
-      expect(row.textBottom, `${row.label} below its row`).toBeLessThanOrEqual(row.bottom + 1);
+    for (const tile of tiles) {
+      expect(tile.textLeft, `${tile.label} left of its tile`).toBeGreaterThanOrEqual(tile.left - 1);
+      expect(tile.textRight, `${tile.label} right of its tile`).toBeLessThanOrEqual(tile.right + 1);
+      expect(tile.textBottom, `${tile.label} below its tile`).toBeLessThanOrEqual(tile.bottom + 1);
     }
-    for (let index = 1; index < rows.length; index++) expect(rows[index].top, `${rows[index].label} over ${rows[index - 1].label}`).toBeGreaterThanOrEqual(rows[index - 1].bottom - 1);
+    for (let i = 0; i < tiles.length; i++) for (let j = i + 1; j < tiles.length; j++)
+      expect(overlaps(tiles[i], tiles[j]), `${tiles[j].label} over ${tiles[i].label}`).toBe(false);
   });
 }
 
@@ -181,11 +191,17 @@ test('Files locations, share targets and avatar initials keep whole words at 200
   await setTextScale(page, 2);
   let found = blocking(format(await auditPage(page, { clipping: true, overlap: true })));
   expect(found, found.join('\n')).toEqual([]);
-  // At 200% a location tile takes the whole row; at the default size two share it.
-  const tiles = () => page.getByRole('button', { name: /^(Downloads|Documents)$/ }).evaluateAll(list => list.map(element => Math.round(element.getBoundingClientRect().top)));
-  await expect.poll(async () => new Set(await tiles()).size).toBe(2);
-  await setTextScale(page, 1);
-  await expect.poll(async () => new Set(await tiles()).size).toBe(1);
+  // Browse keeps one category per row at either scale, with each label inside its row.
+  for (const scale of [2, 1]) {
+    await setTextScale(page, scale);
+    const labels = await textBoxes(page, '[data-alpha-app-scroll="files"] button[aria-label="Downloads"], [data-alpha-app-scroll="files"] button[aria-label="Documents"]');
+    expect(labels).toHaveLength(2);
+    expect(new Set(labels.map(label => Math.round(label.own.top))).size).toBe(2);
+    for (const label of labels) for (const line of label.lines) {
+      expect(line.left).toBeGreaterThanOrEqual(label.own.left - 1);
+      expect(line.right).toBeLessThanOrEqual(label.own.right + 1);
+    }
+  }
 
   for (const start of ['calendar:event', 'photos:viewer']) {
     await page.goto(`/?mode=mock&start=${start}`);

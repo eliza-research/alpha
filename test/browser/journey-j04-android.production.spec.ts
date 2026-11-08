@@ -57,9 +57,9 @@ test('an event location opens unconfigured Maps, hands off to an installed map a
   await expect(page.locator('html')).toHaveAttribute('data-active-view', 'maps');
   await expect(page.getByRole('textbox', { name: 'Search places', exact: true })).toHaveValue(LOCATION);
 
-  // No provider: the notice says so, and no route, ETA or Directions is invented.
+  // Managed Maps is unavailable: offer recovery without asking the user to configure its provider.
   const maps = page.getByRole('region', { name: 'Maps' });
-  await expect(maps.locator('[data-alpha-maps-status]')).toContainText(/Maps provider/);
+  await expect(maps.locator('[data-alpha-maps-status]')).toContainText('Maps is unavailable right now. Try again later.');
   await expect(button(page, 'Directions')).toHaveCount(0);
   await expect(maps).not.toContainText(/\b\d+\s*min\b|\bETA\b|Arrive|route to/i);
   await expect(button(page, 'Back to event')).toBeVisible();

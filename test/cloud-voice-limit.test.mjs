@@ -10,7 +10,7 @@ import os from 'node:os';
 import path from 'node:path';
 import vm from 'node:vm';
 import {execFileSync} from 'node:child_process';
-import {stripTypeScriptTypes} from 'node:module';
+import {stripTypeScriptTypes} from './support/strip-types.mjs';
 import {tsImport} from 'tsx/esm/api';
 
 const limitModule=await tsImport(new URL('../apps/app/src/runtime/cloud-voice-limit.ts',import.meta.url).href,{parentURL:import.meta.url});
@@ -125,7 +125,7 @@ test('only the explicit Cloud profile and development browser-resident builds re
  const selection=fs.readFileSync('apps/app/src/runtime/voice-selection.ts','utf8').replace(/^import .*;\n/gm,'').replaceAll('export function','function').replaceAll('export type','type');
  for(const [cloud,mocks,expected] of [[false,false,'device'],[true,false,'cloud']]){
   const box={cloudRuntimeEnabled:cloud,testMocksEnabled:mocks,browserDevProfile:false,localStorage:{getItem:()=>JSON.stringify({version:1,route:'cloud',disclosed:'cloud-speech-uses-plan',chosenAt:1}),setItem(){}},JSON,Number,Date,connectionController:{getSnapshot:()=>({residentInference:'cloud'}),getCloudEnvironment:()=>'production',getCloudClient:()=>({})}};
-  vm.runInNewContext('{'+stripTypeScriptTypes(selection,{mode:'strip'})+'\nglobalThis.api={selectVoiceRoute};}',box);
+  vm.runInNewContext('{'+stripTypeScriptTypes(selection,{mode:'strip'})+'\nglobalThis.api={selectVoiceRoute,voiceRoutePreference};}',box);
   // A native flag-off build routes speech to the device even with a stored Cloud choice.
   for(const requested of ['default','device','manual','agent'])assert.equal(box.api.selectVoiceRoute(requested),expected);
  }

@@ -1,3 +1,4 @@
+import {openConnectionDiagnostics} from './helpers/connection-diagnostics';
 import { expect, type Page } from '@playwright/test';
 import {openCanonicalCalendarForm} from './helpers/canonical-calendar';
 import {openLegacyNotes,openLegacyAttachment} from './helpers/legacy-notes';
@@ -45,6 +46,15 @@ const live = (name: string, steps: string[] = [], shows?: string): State => ({
     await showing(page, shows);
   },
 });
+/** The shared Files browser is exercised over the development browser's own storage port. */
+export async function openFilesStorage(page:Page,theme='light') {
+  await page.addInitScript(offline);
+  await page.goto(`/?theme=${theme}`);
+  await page.getByRole('button',{name:'Files',exact:true}).click();
+  await page.getByRole('button',{name:'Internal storage',exact:true}).click();
+  await expect(page.getByRole('button',{name:'Sort files',exact:true})).toBeVisible();
+}
+
 /** Legacy-only controls remain covered through the explicit Older notes source. */
 const legacyNotes = (name: string, steps: string[], shows?: string): State => ({
   name: `live ${name}`, shows,
@@ -58,10 +68,7 @@ const legacyNotes = (name: string, steps: string[], shows?: string): State => ({
   },
 });
 /** Fixture screens that finish arriving on a timer: the control that marks them complete. */
-const ARRIVES: Record<string, string> = {
-  // The scan fixture finds its page after about a second; the result actions are the state.
-  'camera:scan': 'Add event',
-};
+const ARRIVES: Record<string, string> = {};
 const mock = (start: string, steps: string[] = [], shows?: string): State => ({
   name: `mock ${[start, ...steps].join(' > ')}`, shows,
   open: async (page, theme) => {
@@ -78,7 +85,6 @@ const mock = (start: string, steps: string[] = [], shows?: string): State => ({
 /** Primary views and the subviews, dialogs and failure states reachable without a provider. */
 export const LIVE_STATES: State[] = [
   live('Home'),
-  live('All apps', ['All apps']),
   live('Conversation', ['Open conversation']),
   live('Inbox (not connected)', ['Inbox']),
   live('Calendar', ['Calendar']),
@@ -92,33 +98,43 @@ export const LIVE_STATES: State[] = [
   live('Maps (no location)', ['Maps']),
   live('Notes (empty)', ['Notes']),
   legacyNotes('Notes new note', ['New note']),
-  legacyNotes('Notes trash', ['Open Trash'], 'notes-trash'),
+  // The current Previous notes surface recovers retained records; folder creation belongs to the earlier layout.
+  {name:'live Notes retained records',open:async(page,theme)=>{
+    await page.addInitScript(offline);await page.goto(theme?`/?theme=${theme}`:'/');
+    await openLegacyNotes(page,[{id:'retained-accessibility-note',kind:'text',title:'Retained note',body:'Existing text remains available.'}]);
+    await expect(page.getByRole('button',{name:'Open Retained note',exact:true})).toBeVisible();await settle(page);
+  }},
+  legacyNotes('Notes recently deleted', ['New note', 'More', 'Delete', 'Recently deleted'], 'notes-trash'),
   live('Files', ['Files']),
   live('Workflows', ['Workflows']),
   live('Settings', ['Settings']),
-  live('Settings models', ['Settings', 'Models']),
-  live('Settings display', ['Settings', 'Display']),
-  live('Settings privacy', ['Settings', 'Privacy & data']),
+  live('Settings general', ['Settings', 'General']),
+  live('Settings display', ['Settings', 'General', 'Display']),
+  live('Settings privacy', ['Settings', 'Privacy']),
   live('Settings about', ['Settings', 'About']),
-  live('Settings scheduled digests', ['Settings', 'Scheduled digests']),
-  live('Settings agent connection', ['Settings', 'Agent connection']),
+  // About exposes the existing connection recovery controls in the grouped layout.
+  live('Settings connection help', ['Settings', 'About', 'Connection help']),
+  live('Settings licenses', ['Settings', 'About', 'Open source licenses']),
+  live('Settings scheduled summaries', ['Settings', 'Apps', 'Workflows', 'Scheduled summaries']),
+  live('Settings app permissions', ['Settings', 'Privacy', 'App permissions']),
   // The remaining Settings pages, and each app's open menu, search field and editor.
-  live('Settings character', ['Settings', 'Character']),
-  live('Settings accounts', ['Settings', 'Accounts']),
-  live('Settings connections', ['Settings', 'Connections']),
-  live('Settings notifications', ['Settings', 'Notifications']),
-  live('Settings calendar', ['Settings', 'Calendar']),
-  live('Settings password manager', ['Settings', 'Password manager']),
+  live('Settings apps', ['Settings', 'Apps']),
+  live('Settings accounts', ['Settings', 'Account', 'Account & plan']),
+  live('Settings connections', ['Settings', 'Account', 'Google & email']),
+  live('Settings notifications', ['Settings', 'General', 'Notifications']),
+  live('Settings calendar', ['Settings', 'Apps', 'Calendar']),
+  live('Settings password manager', ['Settings', 'Apps', 'Passwords']),
   live('Browser menu', ['Browser', 'Menu']),
   live('Browser address', ['Browser', 'Edit address']),
   live('Calendar alarms', ['Calendar', 'Clock alarms']),
-  live('Photos search', ['Photos', 'Search photos']),
-  legacyNotes('Notes search', ['Search notes']),
+  legacyNotes('Notes note menu', ['New note', 'More']),
   {name:'live Notes source document',open:async(page,theme)=>{await page.addInitScript(offline);await page.goto(theme ? `/?theme=${theme}` : '/');await openLegacyAttachment(page);await settle(page);}},
-  legacyNotes('Notes recording', ['Record and transcribe'], 'notes-recording'),
-  live('Files search', ['Files', 'Search files']),
+  legacyNotes('Notes recorder', ['Record voice note'], 'notes-recorder'),
   live('Workflows new automation', ['Workflows', 'New automation'], 'automations-detail'),
 ];
+
+/** The simulated browser inventory exists only in test-mocks builds. */
+export const BROWSER_APP_STATES: State[] = [live('Apps', ['Apps'])];
 
 /** The subview each fixture deep link must put on screen. */
 const SUBVIEW: Record<string, string> = {
@@ -126,7 +142,7 @@ const SUBVIEW: Record<string, string> = {
   'calendar:event': 'calendar-detail', 'calendar:invite': 'calendar-detail', 'calendar:add': 'calendar-detail', 'calendar:new': 'calendar-form',
   'browser:tabs': 'browser-tabs',
   'photos:viewer': 'photos-viewer',
-  'notes:editor': 'notes-editor', 'notes:rec': 'notes-recording', 'notes:voice': 'notes-voice',
+  'notes:editor': 'notes-editor', 'notes:voice': 'notes-voice',
   'files:folder': 'files-folder', 'files:preview': 'files-preview',
   'workflows:flow': 'workflows-detail', 'workflows:run': 'workflows-runOpen', 'workflows:failed': 'workflows-runOpen', 'workflows:new': 'workflows-builder',
 };
@@ -137,13 +153,13 @@ export const MOCK_STATES: State[] = [
   'inbox', 'inbox:mail', 'inbox:compose',
   'calendar', 'calendar:event', 'calendar:invite', 'calendar:month', 'calendar:add', 'calendar:new',
   'browser', 'browser:book', 'browser:tabs',
-  'camera', 'camera:video', 'camera:scan',
+  'camera', 'camera:video',
   'photos', 'photos:viewer', 'photos:albums', 'photos:search',
   'maps', 'maps:search', 'maps:place', 'maps:route', 'maps:nav',
-  'notes', 'notes:editor', 'notes:rec', 'notes:voice',
+  'notes', 'notes:editor', 'notes:voice',
   'files', 'files:folder', 'files:preview',
   'workflows', 'workflows:flow', 'workflows:run', 'workflows:failed', 'workflows:new',
-  'settings', 'settings:accounts', 'settings:adding', 'settings:privacy',
+  'settings',
 ].map(start => mock(start, [], SUBVIEW[start])).concat([
   // Subviews, menus, sheets and search fields one or two taps inside a view.
   mock('inbox', ['Search email']),
@@ -159,26 +175,23 @@ export const MOCK_STATES: State[] = [
   mock('photos:viewer', ['Photo info']),
   mock('photos:viewer', ['Share photo']),
   mock('photos', ['Select photos']),
-  mock('notes', ['Search notes']),
+  // Earlier folder-creation controls were retired; the live retained-record state above covers recovery.
   mock('notes', ['Open The case for on-device agents'], 'notes-link'),
   mock('notes:editor', ['Share note']),
-  mock('files', ['Search files']),
-  mock('files:folder', ['View and sort']),
-  mock('files:folder', ['Select files']),
+  {name:'live Files sort',open:async(page,theme)=>{await openFilesStorage(page,theme);await press(page,['Sort files']);await settle(page);}},
   mock('files:preview', ['Rename']),
   mock('files:preview', ['Move file']),
   mock('files:preview', ['Share file']),
   // Deleting a fixture file shows the toast with Undo over the folder.
   mock('files:preview', ['Delete file']),
   mock('workflows:flow', ['Change'], 'workflows-builder'),
-  // The builder's trigger and step sheets, and the Settings connection sheet.
+  // The builder's trigger and step sheets. (Settings' Connections page and its per-service sheets
+  // were removed; the Google accounts panel is swept live as 'Settings Google'.)
   mock('workflows', ['New automation', 'Edit When step'], 'workflows-builder'),
   mock('workflows:new', ['Add Read step'], 'workflows-builder'),
-  mock('settings', ['Connections', 'Slack']),
-  mock('settings', ['Character']),
-  mock('settings', ['Connections']),
-  mock('settings', ['Notifications']),
-  mock('settings:accounts', ['you@gmail.example']),
+  mock('settings', ['About']),
+  // Calendars exists only in the live Settings adapter. Its accessibility audits
+  // remain in the live Settings calendars state above, rather than a nonexistent mock page.
 ]);
 
 /**
@@ -249,8 +262,7 @@ export const CONNECTED_STATES: State[] = [
   connected('Inbox long subject', [/^Unread, Synthetic Sender C/], { shows: 'inbox-detail' }),
   connected('Inbox compose', ['Compose'], { shows: 'inbox-composing' }),
   connected('Settings', ['Settings'], { home: true }),
-  connected('Settings accounts', ['Settings', 'Accounts'], { home: true }),
-  connected('Settings connections', ['Settings', 'Connections'], { home: true }),
+  connected('Settings Google', ['Settings', 'Account', 'Google & email'], { home: true }),
 ];
 
 /** Live states that exist only behind the one Developer gate: the development server opened with ?tools=1. */
@@ -261,7 +273,7 @@ export const DEVELOPMENT_STATES: State[] = [
       await page.addInitScript(offline);
       await page.goto(theme ? `/?theme=${theme}&tools=1` : '/?tools=1');
       await expect(page.getByRole('button', { name: 'Settings', exact: true })).toBeVisible();
-      await press(page, ['Settings', 'Developer']);
+      await press(page, ['Settings', 'General', 'Developer']);
       await settle(page);
     },
   },
@@ -375,9 +387,19 @@ const launcher = (name: string, steps: string[] = [], shows?: string): State => 
     await showing(page, shows);
   },
 });
+export const INSTALLED_APPS_STATE: State = {
+  ...launcher('Apps', ['Apps']),
+  open: async (page, theme) => {
+    await launcher('Apps', ['Apps']).open(page, theme);
+    const drawer = page.getByRole('dialog', {name: 'Apps', exact: true});
+    await expect(drawer).toBeVisible();
+    await expect(drawer.getByRole('button', {name: 'Open Synthetic clock', exact: true})).toBeVisible();
+    await expect(drawer.getByRole('button', {name: 'Open Calendar', exact: true})).toHaveCount(0);
+  },
+};
 export const LAUNCHER_STATES: State[] = [
   launcher('Home'),
-  launcher('All apps', ['All apps']),
+  INSTALLED_APPS_STATE,
   launcher('Conversation', ['Open conversation']),
   // Every retained app view in the launcher presentation (its headers and system bars differ).
   launcher('Inbox', ['Inbox']),
@@ -391,7 +413,7 @@ export const LAUNCHER_STATES: State[] = [
   launcher('Files', ['Files']),
   launcher('Workflows', ['Workflows']),
   launcher('Settings', ['Settings']),
-  launcher('Settings display', ['Settings', 'Display']),
+  launcher('Settings about', ['Settings', 'About']),
 ];
 
 /** A seeded local calendar (browser store), so the Calendar view has events to audit. */
@@ -457,7 +479,7 @@ const developmentAgent = (name: string, conversation: boolean): State => ({
   open: async (page, theme) => {
     await page.goto(`/?mode=dev&theme=${theme || 'light'}`);
     await page.getByRole('button', { name: 'Settings', exact: true }).click();
-    await page.getByRole('button', { name: 'Agent connection', exact: true }).click();
+    await openConnectionDiagnostics(page);
     await page.getByRole('button', { name: 'Connect development profile', exact: true }).click();
     await expect(page.getByRole('dialog', { name: 'Development connections', exact: true })).toHaveCount(0);
     await expect.poll(() => page.evaluate(async () => !!(await import('/src/runtime/connection-ui.tsx' as string)).connectionController.getSnapshot().session), { timeout: 15_000 }).toBe(true);

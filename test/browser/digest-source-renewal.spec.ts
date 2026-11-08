@@ -1,8 +1,9 @@
+import {openConnectionDiagnostics} from './helpers/connection-diagnostics';
 import {test,expect,type Page} from '@playwright/test';
 const digests=(page:Page)=>page.evaluate(async()=>(await (await import('/src/browser/development-digest-document.ts')).readDevelopmentDigests((await import('/src/browser/development-identity.ts')).developmentIdentity('local'))));
 test('a bound source shows its renewal window, pauses at expiry and renews with its schedule in one confirmed step',async({page})=>{
  await page.clock.install({time:new Date('2026-10-03T12:00:10Z')});
- await page.goto('/?mode=dev');await page.getByRole('button',{name:'Settings',exact:true}).click();await page.getByRole('button',{name:'Agent connection',exact:true}).click();await page.getByRole('button',{name:'Connect development profile'}).click();
+ await page.goto('/?mode=dev');await page.getByRole('button',{name:'Settings',exact:true}).click();await openConnectionDiagnostics(page);await page.getByRole('button',{name:'Connect development profile'}).click();
  await page.evaluate(()=>window.dispatchEvent(new Event('alpha:hosted-digests')));const panel=page.getByRole('dialog',{name:'Scheduled digests',exact:true});
  await panel.getByText('Share a snapshot',{exact:true}).click();
  // Default and maximum reviewed lifetime is 7 days.
@@ -39,7 +40,7 @@ test('a bound source shows its renewal window, pauses at expiry and renews with 
 });
 test('morning and evening schedules can share one reviewed source',async({page})=>{
  await page.clock.install({time:new Date('2026-10-03T12:00:10Z')});
- await page.goto('/?mode=dev');await page.getByRole('button',{name:'Settings',exact:true}).click();await page.getByRole('button',{name:'Agent connection',exact:true}).click();await page.getByRole('button',{name:'Connect development profile'}).click();
+ await page.goto('/?mode=dev');await page.getByRole('button',{name:'Settings',exact:true}).click();await openConnectionDiagnostics(page);await page.getByRole('button',{name:'Connect development profile'}).click();
  await page.evaluate(()=>window.dispatchEvent(new Event('alpha:hosted-digests')));const panel=page.getByRole('dialog',{name:'Scheduled digests',exact:true});
  await panel.getByText('Share a snapshot',{exact:true}).click();await panel.getByLabel('Label',{exact:true}).fill('Shared source');await panel.getByLabel('Snapshot text',{exact:true}).fill('Shared content');
  await panel.getByRole('button',{name:'Review snapshot',exact:true}).click();await panel.getByRole('button',{name:'Confirm',exact:true}).click();
@@ -50,7 +51,7 @@ test('morning and evening schedules can share one reviewed source',async({page})
 });
 test('a default 7-day snapshot expires exactly at the agent bound of observedAt plus 7 days',async({page})=>{
  // Real clock: observedAt and expiresAt must come from one reading, or a 168-hour source drifts past the agent's bound.
- await page.goto('/?mode=dev');await page.getByRole('button',{name:'Settings',exact:true}).click();await page.getByRole('button',{name:'Agent connection',exact:true}).click();await page.getByRole('button',{name:'Connect development profile'}).click();
+ await page.goto('/?mode=dev');await page.getByRole('button',{name:'Settings',exact:true}).click();await openConnectionDiagnostics(page);await page.getByRole('button',{name:'Connect development profile'}).click();
  await page.evaluate(()=>window.dispatchEvent(new Event('alpha:hosted-digests')));const panel=page.getByRole('dialog',{name:'Scheduled digests',exact:true});
  await panel.getByText('Share a snapshot',{exact:true}).click();await expect(panel.getByLabel('Expires after hours',{exact:true})).toHaveValue('168');
  await panel.getByLabel('Label',{exact:true}).fill('Week source');await panel.getByLabel('Snapshot text',{exact:true}).fill('Week content');

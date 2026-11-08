@@ -1,4 +1,4 @@
-import test from 'node:test';import assert from 'node:assert/strict';import fs from 'node:fs';import vm from 'node:vm';import {registerHooks,stripTypeScriptTypes} from 'node:module';import {webcrypto} from 'node:crypto';
+import test from 'node:test';import assert from 'node:assert/strict';import fs from 'node:fs';import vm from 'node:vm';import {registerHooks} from 'node:module';import {stripTypeScriptTypes} from './support/strip-types.mjs';import {webcrypto} from 'node:crypto';
 import {jvmSkip} from './fixtures/jvm-tools.mjs';import {calendarSyncSnapshotJvm} from './fixtures/calendar-sync-snapshot-jvm.mjs';
 const binding={environment:'production',userId:'owner',organizationId:'org',connectionId:'11111111-1111-4111-8111-111111111111',providerAccountId:'google',calendarId:'primary',agentId:'agent',localSourceId:'native:7',localSourceRevision:'22222222-2222-4222-8222-222222222222'};
 const event={title:'Synthetic Calendar event',description:'',location:'',startAt:'2026-10-16',endAt:'2026-10-17',timeZone:null,isAllDay:true,attendees:[],recurrence:[]};
@@ -64,7 +64,7 @@ test('a recovered native receipt is acknowledged through a read-only get, withou
 // One timed event as the device reports it (CalendarSyncSnapshot through the JVM harness) and as
 // Cloud returns it (Google's dateTime with the event's offset). The shared digest hashes startAt and
 // endAt as raw strings, so the same instant spelled two ways reads as a change after a pull.
-test('a timed event hashes the same from the device and from Cloud, and two passes push nothing',{skip:jvmSkip(['json','javac','sqlite3']),todo:'Upstream: linkedCalendarSemanticText (packages/contracts/src/calendar-linked-sync.ts) must normalize timed startAt/endAt to one instant form'},async()=>{
+test('a timed event hashes the same from the device and from Cloud, and two passes push nothing',{skip:jvmSkip(['json','javac','sqlite3'])},async()=>{
  const device=JSON.parse(calendarSyncSnapshotJvm().trim().split('\n')[1]);
  registerHooks({load:(url,context,next)=>url.includes('/.eliza/client-features/')&&url.endsWith('.ts')?{format:'module',shortCircuit:true,source:stripTypeScriptTypes(fs.readFileSync(new URL(url),'utf8'),{mode:'strip'})}:next(url,context)});
  const {googleCalendarSyncPort}=await import('../apps/app/src/runtime/calendar-linked-provider.ts');
@@ -88,4 +88,25 @@ test('a timed event hashes the same from the device and from Cloud, and two pass
  assert.deepEqual([await reconciler.reconcile(record),await reconciler.reconcile(record)],['clean','clean']);
  assert.deepEqual(writes,[]);
  assert.equal(f.calls.some(c=>['apply','delete'].includes(c.kind)),false);
+});
+
+test('canonical timed digests preserve all-day dates and read legacy checkpoints before either side changes',async()=>{
+ const load=async file=>import('data:text/javascript;base64,'+Buffer.from(stripTypeScriptTypes(fs.readFileSync(file,'utf8'),{mode:'strip'})).toString('base64'));
+ const current=await load('.eliza/client-features/packages/contracts/src/calendar-linked-sync.ts');
+ const legacy=await load('vendor/eliza/packages/contracts/src/calendar-linked-sync.ts');
+ const original={...event,startAt:'2026-10-15T15:00:00-04:00',endAt:'2026-10-15T16:00:00-04:00',timeZone:'America/New_York',isAllDay:false};
+ const equivalent={...original,startAt:'2026-10-15T19:00:00.000Z',endAt:'2026-10-15T20:00:00Z'};
+ assert.equal(await current.linkedCalendarSemanticDigest(original),await current.linkedCalendarSemanticDigest(equivalent));
+ for(const changed of [{startAt:'2026-10-15T19:01:00Z'},{endAt:'2026-10-15T20:01:00Z'},{timeZone:'America/Chicago'},{title:'Changed title'},{description:'Changed details'},{attendees:[{email:'other@example.invalid'}]}])assert.notEqual(await current.linkedCalendarSemanticDigest(original),await current.linkedCalendarSemanticDigest({...original,...changed}));
+ assert.notEqual(await current.linkedCalendarSemanticDigest(event),await current.linkedCalendarSemanticDigest({...event,startAt:'2026-10-17',endAt:'2026-10-18'}));
+ for(const changed of ['neither','mixed-local','mixed-provider','local','interval','zone','provider']){
+  const localEvent={...original,...(changed==='mixed-local'?equivalent:changed==='local'?{title:'Edited locally'}:changed==='interval'?{startAt:'2026-10-15T19:01:00Z'}:changed==='zone'?{timeZone:'America/Chicago'}:{})};
+  const providerEvent={...original,...(changed==='mixed-provider'?equivalent:changed==='provider'?{title:'Edited in Cloud'}:{})};
+  const effects=[];let row={id:'legacy-link',agentId:'agent',localEventId:'42',connectorAccountId:'connection',providerCalendarId:'primary',providerEventId:'remote',providerEtag:'old-etag',localRevision:'old-revision',lastCommonSemanticHash:await legacy.linkedCalendarSemanticDigest(original),state:'clean',pendingOperation:null,idempotencyKey:'legacy-link',lastErrorCode:null,lastErrorMessage:null,createdAt:'2026-10-15',updatedAt:'2026-10-15'};
+  const local={get:async()=>({eventId:'42',revision:'new-revision',event:localEvent}),applyProviderEvent:async(id,value)=>{effects.push('pull');return {eventId:id,revision:'pulled',event:value};},delete:async()=>{throw Error('Unexpected deletion');}};
+  const provider={get:async()=>({eventId:'remote',etag:'new-etag',event:providerEvent}),update:async(record,value)=>{effects.push('push');return {eventId:'remote',etag:'updated',event:value};},create:async()=>{throw Error('Unexpected create');},delete:async()=>{throw Error('Unexpected deletion');}};
+  const reconciler=new current.LinkedCalendarReconciler({save:async(record,patch)=>(row={...record,...patch})},local,provider);
+  assert.equal(await reconciler.reconcile(row),['neither','mixed-local','mixed-provider'].includes(changed)?'clean':changed==='provider'?'pulled':'pushed');
+  assert.deepEqual(effects,['neither','mixed-local','mixed-provider'].includes(changed)?[]:[changed==='provider'?'pull':'push']);
+ }
 });

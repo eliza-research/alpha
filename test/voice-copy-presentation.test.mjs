@@ -30,11 +30,10 @@ test('actual voice activity sits below the chat notices, and an unconfirmed clea
    const doc=new JSDOM(html).window.document,notices=doc.querySelector('.alpha-chat-notices'),controls=doc.querySelector('.alpha-voice-composer');
    assert.ok(notices&&controls);
    assert.ok(notices.compareDocumentPosition(controls)&doc.defaultView.Node.DOCUMENT_POSITION_FOLLOWING,'chat notices precede the voice controls');
-   // The active Cloud disclosure stays above the composer.
-   assert.equal(notices.querySelectorAll('[role="note"]').length,1);
-   assert.match(notices.querySelector('[role="note"]').textContent,/uploads recordings.*plan allowance.*Cartesia/);
+   // The composer shows activity and controls. Routing disclosures live in Settings.
+   assert.equal(notices.querySelectorAll('[role="note"]').length,0);
    assert.equal(doc.querySelector('[role="alert"]'),null,'no voice error banner');
-   assert.equal(notices.querySelector('.alpha-voice-error:not([role="note"])'),null,'no error or support-code content');
+   assert.equal(notices.querySelector('.alpha-voice-error'),null,'no error or support-code content');
    assert.equal(notices.querySelector('[data-alpha-voice-recovery]'),null);
    assert.ok(doc.querySelector('[aria-label="Stop voice conversation"]'));
    assert.equal(doc.querySelectorAll('[data-alpha-voice-animation]').length,1);

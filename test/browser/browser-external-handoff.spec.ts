@@ -28,7 +28,7 @@ async function fixture(page:any,priv=true){
 test('private cancellation restores the native surface without handing off',async({page})=>{
  await fixture(page);await page.evaluate(()=>{void (window as any).handoff.open();});
  const dialog=page.getByRole('dialog',{name:'Leave private browsing?'});await expect(dialog).toBeVisible();
- await expect(dialog).toContainText('may save this address');await expect(page.locator('#handoff-native-standin')).toBeHidden();
+ await expect(dialog).toContainText('may save this address and use its own sign-ins');await expect(page.locator('#handoff-native-standin')).toBeHidden();
  await dialog.getByRole('button',{name:'Cancel',exact:true}).click();await expect(dialog).toHaveCount(0);await expect(page.locator('#handoff-native-standin')).toBeVisible();
  expect(await page.evaluate(()=>(window as any).handoff.calls)).toEqual([]);
 });

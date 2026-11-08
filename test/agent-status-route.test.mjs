@@ -2,10 +2,13 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {build} from 'esbuild';
+import {readFileSync} from 'node:fs';
 
 async function load(native,mocks){
  const stubs={'@capacitor/core':`export const Capacitor={isNativePlatform:()=>${native}};`,'../build-flags':`export const testMocksEnabled=${mocks};`,'./connection-ui':'export const connectionController={open:()=>globalThis.chooserOpened++};'};
- const bundle=await build({entryPoints:['apps/app/src/runtime/agent-status-route.ts'],bundle:true,write:false,format:'esm',platform:'neutral',logLevel:'silent',plugins:[{name:'stubs',setup(builder){builder.onResolve({filter:/^(@capacitor\/core|\.\.\/build-flags|\.\/connection-ui)$/},args=>({path:args.path,namespace:'stub'}));builder.onLoad({filter:/.*/,namespace:'stub'},args=>({contents:stubs[args.path],loader:'js'}));}}]});
+ const source=readFileSync('apps/app/src/prototype/workflow-authoring.ts','utf8');
+ const contents="import {Capacitor} from '@capacitor/core';import {testMocksEnabled} from '../build-flags';import {connectionController} from './connection-ui';\n"+source.slice(source.indexOf('type AgentStatusShell ='));
+ const bundle=await build({stdin:{contents,loader:'ts',resolveDir:process.cwd()},bundle:true,write:false,format:'esm',platform:'neutral',logLevel:'silent',plugins:[{name:'stubs',setup(builder){builder.onResolve({filter:/^(@capacitor\/core|\.\.\/build-flags|\.\/connection-ui)$/},args=>({path:args.path,namespace:'stub'}));builder.onLoad({filter:/.*/,namespace:'stub'},args=>({contents:stubs[args.path],loader:'js'}));}}]});
  return import('data:text/javascript;base64,'+Buffer.from(bundle.outputFiles[0].text).toString('base64'));
 }
 function shell(view){const opened=[];return {opened,S:()=>({view}),openView:(...args)=>opened.push(args)};}

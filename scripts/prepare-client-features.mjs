@@ -1,4 +1,6 @@
 import { createHash, randomUUID } from 'node:crypto';
+import { execFileSync } from 'node:child_process';
+import os from 'node:os';
 import { upstreamNativeSource } from './upstream-native-source.mjs';
 import { clientSpeechPatch } from './client-speech-patch.mjs';
 import fs from 'node:fs';
@@ -33,6 +35,9 @@ function matches(actual, expected) {
     Object.entries(expected).every(([file, digest]) => actual[file] === digest);
 }
 export const CLIENT_FEATURE_PATHS = [
+  'packages/core/src/utils/type-guards.ts',
+  'packages/cloud/sdk/native-host/subscription-grant.mjs',
+  'packages/cloud/sdk/native-host/subscription-grant.d.mts',
   'packages/contracts/src/browser-address-input.ts',
   'packages/contracts/src/browser-request-grounding.ts',
   // Generated IANA TLD data imported by browser-request-grounding; this leaf has no imports.
@@ -47,6 +52,7 @@ export const CLIENT_FEATURE_PATHS = [
   'packages/contracts/src/phone-workflow.ts',
   'packages/contracts/src/workflow-client.ts',
   'packages/contracts/src/workflow-device.ts',
+  'packages/contracts/src/workflow-approval-poster.ts',
   'packages/contracts/src/workflow-intents.ts',
   'packages/contracts/src/workflow-scope.ts',
   'packages/ui/src/agent-surface/AgentSurfaceContext.hooks.ts',
@@ -100,6 +106,12 @@ export const CLIENT_FEATURE_PATHS = [
   'packages/ui/src/app-shell-pages.ts',
   'packages/ui/src/registry-host.ts',
   'packages/ui/src/mobile-shell/index.ts',
+  'packages/ui/src/mobile-shell/InstalledAppsGridDrawer.tsx',
+  'packages/ui/src/mobile-shell/photos-view.ts',
+  'plugins/plugin-files/src/browser/storage-model.ts',
+  'plugins/plugin-files/src/browser/storage-volume.ts',
+  'plugins/plugin-files/src/browser/files-agent-contract.ts',
+  'plugins/plugin-files/src/browser/files-browser-adapter.ts',
   'packages/ui/src/mobile-shell/application-catalog.ts',
   'packages/ui/src/mobile-shell/core.ts',
   'packages/ui/src/mobile-shell/eliza-product.ts',
@@ -210,6 +222,7 @@ export const CLIENT_FEATURE_PATHS = [
   'packages/voice/src/random-id.ts',
   'packages/core/src/speech.ts',
   'packages/core/src/utils/string-boundaries.ts',
+  'packages/core/src/utils/type-guards.ts',
   'packages/core/src/spoken-text.ts',
   'packages/core/src/utils/reasoning-tags.ts',
   'packages/core/src/utils/stage-directions.ts',
@@ -222,6 +235,7 @@ export const CLIENT_FEATURE_PATHS = [
   'packages/ui/src/gestures/recognizers.ts',
   'packages/ui/src/gestures/useRafCoalescer.ts',
   'packages/ui/src/components/shell/chat-panel-layout.ts',
+  'packages/ui/src/components/chat/message-maps-parser.ts',
   'packages/ui/src/components/shell/dock-clearance.ts',
   'packages/ui/src/components/shell/responsive-layout.ts',
   // Agent Maps cards in chat (prototype/maps-chat-adapter.ts); an import-free parser leaf.
@@ -240,15 +254,18 @@ export const CLIENT_FEATURE_PATHS = [
   'packages/ui/src/platform/browser-document-store.ts',
   'packages/ui/src/state/durable-draft.ts',
   'packages/ui/src/state/durable-draft-controller.ts',
+  'packages/ui/src/state/app-update-gate.ts',
   'packages/contracts/src/native-notes-query.ts',
   'packages/contracts/src/device-reviews.ts',
   'plugins/plugin-assistant/src/services/device-actions/contract.ts',
   'plugins/plugin-assistant/src/services/device-actions/phone-dial-contract.ts',
   'plugins/plugin-assistant/src/services/device-actions/client-coordinator.ts',
+  'plugins/plugin-assistant/src/services/device-actions/files-browser-contract.ts',
   'plugins/plugin-assistant/src/services/device-actions/maps-contract.ts',
   'plugins/plugin-assistant/src/services/device-actions/workflow-contract.ts',
   'plugins/plugin-assistant/src/services/device-actions/camera-contract.ts',
   'plugins/plugin-assistant/src/services/device-actions/photo-library-contract.ts',
+  'plugins/plugin-assistant/src/services/device-actions/photos-view-contract.ts',
   'plugins/plugin-native-camera/src/definitions.ts',
   'plugins/plugin-native-camera/src/host-ports.ts',
   'plugins/plugin-native-camera/src/session.ts',
@@ -279,6 +296,8 @@ export const CLIENT_FEATURE_PATHS = [
   'plugins/plugin-maps/test/navigation-client.test.mjs',
   'plugins/plugin-notes/src/client',
   'packages/cloud/sdk/src/subscription-entitlement.ts',
+  'packages/cloud/sdk/native-host/subscription-grant.mjs',
+  'packages/cloud/sdk/native-host/subscription-grant.d.mts',
   'packages/ui/src/components/settings/cloud-subscription-summary.tsx',
   'packages/auth/src/auth/native-cloud-sign-in.ts',
   // Credential-bound account billing reader and its snapshot types (AP-03/#410).
@@ -364,6 +383,42 @@ export function prepareClientFeatures({ root = projectRoot, projectVoice = true,
   const sourceFiles = Object.fromEntries([...source].map(([name, file]) => [name, file.sha256]));
   const speechPatch=clientSpeechPatch(root,upstream);
   for(const [name,file] of speechPatch.files)source.set(name,file);
+  const clientPatches = {};
+  for (const [key, prefix, name] of [
+    ['filesListIdentityPatch', 'files-list-identity-client', 'plugins/plugin-files/src/browser/files-browser-adapter.ts'],
+    ['filesStorageQueryPatch', 'files-storage-query-client', 'plugins/plugin-files/src/browser/storage-volume.ts'],
+    ['photosWindowPatch', 'photos-window-client', 'packages/ui/src/mobile-shell/photos-view.ts'],
+    ['photosLibraryPresentationPatch', 'photos-library-presentation-client', 'plugins/plugin-assistant/src/services/device-actions/photo-library-contract.ts'],
+    ['calendarSemanticPatch', 'calendar-semantic-client', 'packages/contracts/src/calendar-linked-sync.ts'],
+    ['inboxConfirmationPatch', 'inbox-confirmation-client', 'plugins/plugin-inbox/src/mailbox/review-controller.ts'],
+    ['inboxCleanupPatch', 'inbox-cleanup-client', 'plugins/plugin-inbox/src/mailbox/drafts-controller.ts'],
+    ['crashErrorClassPatch', 'crash-error-class-client', 'plugins/plugin-native-system/src/crash-log.ts'],
+  ]) {
+    const manifestFile = path.join(root, 'patches/eliza', prefix + '-manifest.json');
+    if (!regularPath(manifestFile)) continue;
+    const manifestBytes = fs.readFileSync(manifestFile), manifest = JSON.parse(manifestBytes);
+    const patchFile = path.join(root, 'patches/eliza', prefix + '.patch');
+    if (manifest.schema !== 1 || manifest.baseCommit !== upstream.pin || manifest.path !== name ||
+        !source.has(name) || manifest.beforeSha256 !== source.get(name).sha256 ||
+        !/^[a-f0-9]{64}$/.test(manifest.afterSha256) || !regularPath(patchFile))
+      throw Error(prefix + ' patch source mismatch');
+    const patchBytes = fs.readFileSync(patchFile);
+    const headers = patchBytes.toString().split('\n').filter(line => line.startsWith('--- ') || line.startsWith('+++ '));
+    if (hash(patchBytes) !== manifest.patchSha256 ||
+        JSON.stringify(headers) !== JSON.stringify(['--- a/' + name, '+++ b/' + name]))
+      throw Error(prefix + ' patch digest or target mismatch');
+    const temporary = fs.mkdtempSync(path.join(os.tmpdir(), 'alpha-client-patch-'));
+    try {
+      const target = path.join(temporary, name);
+      fs.mkdirSync(path.dirname(target), {recursive:true});
+      fs.writeFileSync(target, source.get(name).bytes);
+      execFileSync('patch', ['--batch', '--fuzz=0', '--forward', '-p1', '--input', patchFile], {cwd:temporary, stdio:'pipe', timeout:30000});
+      const bytes = fs.readFileSync(target);
+      if (hash(bytes) !== manifest.afterSha256) throw Error(prefix + ' patch output mismatch');
+      source.set(name, {bytes, mode:source.get(name).mode, sha256:manifest.afterSha256});
+      clientPatches[key] = {...manifest, manifestSha256:hash(manifestBytes)};
+    } finally { fs.rmSync(temporary, {recursive:true, force:true}); }
+  }
 
 
   if(projectVoice){
@@ -427,7 +482,7 @@ export function prepareClientFeatures({ root = projectRoot, projectVoice = true,
   project('alpha-voice-core-protocol.ts','export {ElizaError} from "./packages/core/src/errors";\nexport {redactTrailingArgs} from "./packages/core/src/security/log-redaction";\nexport {parseViewInteractionClientId, AGENT_SURFACE_CAPABILITY_IDS} from "./packages/core/src/views/view-interact-protocol";\nexport {findViewActionHandoff, type ViewActionHandoff} from "./packages/core/src/views/view-action-handoff";\nexport type {PermissionState} from "./packages/core/src/types/permissions";\n');
   }
   const files = Object.fromEntries([...source].map(([name, file]) => [name, file.sha256]));
-  const provenance = { baseCommit: upstream.pin, sourceFiles, projectionVersion:projectVoice?12:0, ...(speechPatch.receipt?{speechPatch:speechPatch.receipt}:{}), files };
+  const provenance = { baseCommit: upstream.pin, sourceFiles, projectionVersion:projectVoice?12:0, ...(speechPatch.receipt?{speechPatch:speechPatch.receipt}:{}), ...clientPatches, files };
   const parent = path.join(root, '.eliza'), destination = path.join(parent, 'client-features');
   regularPath(parent, true);
   const stamp = path.join(destination, '.source.json');
@@ -443,7 +498,7 @@ export function prepareClientFeatures({ root = projectRoot, projectVoice = true,
         }
         const previous = JSON.parse(fs.readFileSync(stamp));
         const actual = inventory(destination); delete actual['.source.json'];
-        return previous.baseCommit === upstream.pin && previous.projectionVersion === provenance.projectionVersion && JSON.stringify(previous.speechPatch ?? null) === JSON.stringify(provenance.speechPatch ?? null) && matches(previous.files || {}, files) && matches(actual, files);
+        return previous.baseCommit === upstream.pin && previous.projectionVersion === provenance.projectionVersion && JSON.stringify(previous.speechPatch ?? null) === JSON.stringify(provenance.speechPatch ?? null) && Object.entries(clientPatches).every(([key, value]) => JSON.stringify(previous[key] ?? null) === JSON.stringify(value)) && matches(previous.files || {}, files) && matches(actual, files);
       } catch (error) { if (error.code !== 'ENOENT' || attempt >= 4) throw error; }
     }
   };

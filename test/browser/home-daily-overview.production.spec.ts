@@ -5,31 +5,24 @@ import {fenceNetwork} from './flag-off-android';
 // present, the Workflows card opens Workflows without inventing results, and loading Home makes no
 // request beyond the app's own origin.
 
-test('fresh Home shows unverified Agent Calendar state, no brief card or fixture content, an unloaded Workflows card and no outside request',async({page},info)=>{
+test('fresh Home shows honest widget shells without fixture content or outside requests',async({page},info)=>{
  const errors:string[]=[],outside=await fenceNetwork(page);
  page.on('pageerror',error=>errors.push(error.message));
  await page.addInitScript(()=>localStorage.setItem('alpha.connection.selection.v1',JSON.stringify({kind:'offline'})));
  await page.goto('/');
  await expect(page.locator('html')).toHaveAttribute('data-connection-mode','live');
- const home=page.getByRole('region',{name:'Home',exact:true}),calendar=page.locator('[data-alpha-home-calendar]');
- await expect(calendar.locator('[data-overview-part="title"]')).toHaveText('Calendar');
- await expect(calendar).not.toContainText('Nothing planned');
- await expect(calendar).not.toContainText('No upcoming events');
+ const home=page.getByRole('region',{name:'Home',exact:true}),calendar=home.locator('[data-alpha-home-calendar]');
+ await expect(home.locator('[data-alpha-home-date]')).toHaveCount(0);
+ for(const selector of ['[data-alpha-home-calendar]','[data-alpha-home-workflows]','[data-alpha-home-inbox]','[data-alpha-home-brief]'])await expect(home.locator(selector)).toBeVisible();
+ await expect(calendar).not.toContainText(/Nothing planned|No upcoming events|Updated|Read at/);
  await expect(calendar.locator('[data-alpha-home-calendar-source]')).toHaveCount(0);
  await expect(calendar.locator('[data-alpha-home-calendar-origin]')).toHaveText('');
- // Neutral startup does not claim a successful Calendar read or show a freshness timestamp.
- await expect(calendar).not.toContainText(/Updated|Read at/);
- await expect(calendar).toHaveAttribute('data-overview-state','empty');
- await expect(calendar).toHaveAccessibleName('Open Agent Calendar');
  await expect(calendar).toHaveAttribute('data-alpha-home-calendar-overdue','false');
  await expect(calendar).toHaveAttribute('data-alpha-home-calendar-event','false');
  await expect(page.getByRole('img',{name:'Has a meeting link'})).toHaveCount(0);
- await expect(home.locator('[data-alpha-home-brief]')).toHaveCount(0);
- const inbox=home.locator('[data-alpha-home-inbox]');
- await expect(inbox).toHaveAccessibleName('Connect email');
- await expect(inbox).toContainText('Connect email');
- await expect(inbox).not.toContainText(/unread|Read \d/);
- await expect(home).not.toContainText(/Morning brief|Design review|7:02 AM|No brief yet/);
+ await expect(home.locator('[data-alpha-home-brief]')).toContainText('No brief yet');
+ await expect(home.locator('[data-alpha-home-inbox]')).not.toContainText(/unread|Read \d/);
+ await expect(home).not.toContainText(/Morning brief|Design review|7:02 AM/);
  await expect(home.getByText(/^(MC|JP|PN|\+2)$/)).toHaveCount(0);
  await page.waitForTimeout(1500);
  expect(outside).toEqual([]);

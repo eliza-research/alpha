@@ -4,7 +4,7 @@ import fs from 'node:fs';
 import vm from 'node:vm';
 import {stripTypeScriptTypes} from 'node:module';
 const {checkWorkflowScope}=await import('../.eliza/client-features/packages/contracts/src/workflow-scope.ts');
-const source=stripTypeScriptTypes(fs.readFileSync('apps/app/src/prototype/workflow-authoring.ts','utf8').replace(/^import .*;\n/gm,'').replace('export function','function'),{mode:'strip'});
+const source=stripTypeScriptTypes(fs.readFileSync('apps/app/src/prototype/workflow-authoring.ts','utf8').replace(/^import .*;\n/gm,'').replaceAll('export function','function'),{mode:'strip'});
 const deferred=()=>{let resolve;const promise=new Promise(done=>{resolve=done;});return {promise,resolve};};
 async function harness(options={}){
  const records=new Map(),gate=deferred(),entered=deferred();let held=false,fail=false;
@@ -96,4 +96,12 @@ test('a refused description toasts one short sentence and keeps the full refusal
  assert.match(status,/Nothing was sent to the agent/);assert.equal(toasts.length,1);
  assert.ok(toasts[0].length<60&&status.length>toasts[0].length,'the toast is short and the status carries the detail');
  assert.equal(h.render().hasGenerated,false);h.authoring.close();
+});
+test('updater flush waits for queued draft bytes and refuses a failed write',async()=>{
+ const h=await harness();await h.editHeld('Pending at update');let finished=false;
+ const flushing=h.authoring.flushForAppUpdate(()=>true).then(()=>{finished=true;});await Promise.resolve();assert.equal(finished,false);h.release();await flushing;assert.equal(h.stored(),'Pending at update');
+ h.failWrite();await h.edit('Failed at update');await assert.rejects(h.authoring.flushForAppUpdate(()=>true),/Workflow draft changed/);h.authoring.close();
+});
+test('updater flush refuses a generation change while a draft write is pending',async()=>{
+ const h=await harness();await h.editHeld('Keep me');const flushing=h.authoring.flushForAppUpdate(()=>true);h.authoring.close();h.release();await assert.rejects(flushing,/Workflow draft changed/);assert.equal(h.stored(),'Keep me');
 });

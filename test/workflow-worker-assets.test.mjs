@@ -65,6 +65,16 @@ public class WorkerAssetTest {
   for(String leftover:new String[]{".workflow-worker-x",".workflow-worker-old-y"}){File stale=new File(root,leftover+"/lib");stale.mkdirs();Files.write(new File(stale,"worker.js").toPath(),new byte[]{1});}
   if(!WorkflowWorkerAssets.install(root,new ByteArrayInputStream(index),unread,"1/100").equals(installed))throw new AssertionError("unchanged install moved");
   for(File file:root.listFiles())if(file.getName().startsWith(".workflow-worker-"))throw new AssertionError("kept leftover staging "+file.getName());
+  for(String damage:new String[]{"modified","missing","extra","symlink"}){
+   Path payload=new File(installed,"lib/worker.js").toPath(),extra=new File(installed,"unindexed.js").toPath();
+   if(damage.equals("modified"))Files.write(payload,new byte[]{1});
+   if(damage.equals("missing"))Files.delete(payload);
+   if(damage.equals("extra"))Files.write(extra,new byte[]{1});
+   if(damage.equals("symlink")){Files.delete(payload);Files.createSymbolicLink(payload,new File(assets,"lib/worker.js").toPath());}
+   int[] repaired={0};WorkflowWorkerAssets.Source repair=p->{repaired[0]++;return source.open(p);};
+   WorkflowWorkerAssets.install(root,new ByteArrayInputStream(index),repair,"1/100");
+   if(repaired[0]==0||Files.isSymbolicLink(payload)||!java.util.Arrays.equals(Files.readAllBytes(payload),Files.readAllBytes(new File(assets,"lib/worker.js").toPath()))||Files.exists(extra))throw new AssertionError("kept "+damage+" cached payload");
+  }
   int[] opened={0};WorkflowWorkerAssets.Source counted=p->{opened[0]++;return source.open(p);};
   WorkflowWorkerAssets.install(root,new ByteArrayInputStream(index),counted,"2/200");
   if(opened[0]==0)throw new AssertionError("package update did not re-extract");

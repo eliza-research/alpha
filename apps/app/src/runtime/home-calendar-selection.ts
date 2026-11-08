@@ -15,6 +15,7 @@ export function homeCalendarSelection(
 	if (
 		!state?.ownerKey ||
 		state.status !== "ready" ||
+		!!state.error ||
 		state.mutating ||
 		state.feed?.state !== "complete"
 	)

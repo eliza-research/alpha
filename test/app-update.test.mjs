@@ -48,12 +48,12 @@ final class AlphaDevicePlugin extends Plugin {
 ${handOff}
 ${plugin.slice(start,end).replace(deadline,'static long UPDATE_DEADLINE_NANOS=java.util.concurrent.TimeUnit.SECONDS.toNanos(3)')}}
 `);
-  assert.match(runJvm([members,nativeSource('PluginWorkers.java'),...javaFiles(fixture('app-update-jvm')),fixture('UpdateFlowTest.java')],'ai.elizaresearch.alphaphone.UpdateFlowTest'),/^PASS update flow/);
+  assert.match(runJvm([members,join(root,'vendor/eliza/plugins/plugin-native-agent/android/src/main/java/ai/eliza/plugins/agent/updater/RuntimeUpdatePause.java'),nativeSource('PluginWorkers.java'),...javaFiles(fixture('app-update-jvm')),fixture('UpdateFlowTest.java')],'ai.elizaresearch.alphaphone.UpdateFlowTest'),/^PASS update flow/);
  }finally{rmSync(dir,{recursive:true,force:true});}
 });
 
 test('Android installs only the offered newer build of this package, and only when no session of Alpha\'s fences the tap',()=>{
- const order=['updatesCommitted.get();','updating.compareAndSet(false,true)','updatesCommitted.get()!=seen','installer.getMySessions()','copyVerified(in,out,size,sha256,deadline);','getPackageArchiveInfo(apk.getPath(),0)','params.setReferrerUri(','installer.createSession(params)','session.fsync(out)','session.setStagingProgress(1f);','updateOwner=this;updateSession=id;','if(Thread.currentThread().isInterrupted())updateOwner=null;','commitAttempted=true;','session.commit(','updatesCommitted.incrementAndGet();','updating.set(false);}\n'].map(step=>install.indexOf(step));
+ const order=['updatesCommitted.get();','updating.compareAndSet(false,true)','updatesCommitted.get()!=seen','installer.getMySessions()','copyVerified(in,out,size,sha256,deadline);','apk.getPath(),PackageManager.GET_PERMISSIONS|PackageManager.GET_SIGNING_CERTIFICATES)','params.setReferrerUri(','installer.createSession(params)','session.fsync(out)','session.setStagingProgress(1f);','updateOwner=this;updateSession=id;','if(Thread.currentThread().isInterrupted())updateOwner=null;','commitAttempted=true;','session.commit(','updatesCommitted.incrementAndGet();','apk.delete();updating.set(false);'].map(step=>install.indexOf(step));
  assert.ok(order.every((at,index)=>at>0&&(index===0||at>order[index-1])),'a tap fences at entry, Android\'s sessions fence it before any download, size, SHA-256 and the archive are admitted before any session changes, a session is bound before Android has it, its commit intent is Android\'s before anything else of the commit, its status can only arrive once it has its owner, the commit boundary is crossed in that order, and a commit is counted before its attempt lets go');
  // One path abandons, a failure of the attempt's own session before its commit, asserted below. Nothing abandons a session Android lists as sealed.
  assert.equal(plugin.match(/abandonSession\(/g).length,1);
@@ -63,7 +63,7 @@ test('Android installs only the offered newer build of this package, and only wh
  // mark, in its boot, on a release build of a level whose AOSP orders that read after the intent (29, 30, 33 to 37). Another
  // boot clears a bound unsealed session; no binding, or a corrupt one, fences sealed or not.
  assert.equal(plugin.match(/setStagingProgress\(/g).length,1);
- assert.equal(plugin.match(/getProgress\(\)==0f/g).length,1);
+ assert.equal(install.match(/getProgress\(\)==0f/g).length,1);
  assert.ok(install.includes('if(binding!=null&&!listed.isSealed()&&(!binding.group(4).equals(String.valueOf(updateBoot()))||binding.group(5)!=null&&"REL".equals(Build.VERSION.CODENAME)&&(Build.VERSION.SDK_INT<=30||Build.VERSION.SDK_INT>=33&&Build.VERSION.SDK_INT<=37)&&listed.getProgress()==0f))continue;'),'the unsealed fence clears only what is proven');
  assert.ok(plugin.includes('/([0-9a-f]{64})/([0-9]+)(/intent)?");'),'a binding reads with or without the mark');
  assert.ok(install.includes('+"/"+updateBoot()+"/intent";'),'this build binds with the mark');
@@ -75,7 +75,7 @@ test('Android installs only the offered newer build of this package, and only wh
  assert.match(plugin,/registerReceiver\(getContext\(\),updateStatus,new android\.content\.IntentFilter\(UPDATE_STATUS\),androidx\.core\.content\.ContextCompat\.RECEIVER_NOT_EXPORTED\)/);
  assert.match(install,/catch\(Exception failed\)\{\s*if\(!commitAttempted\)try\{installer\.abandonSession\(id\);\}catch\(RuntimeException cleanup\)\{failed\.addSuppressed\(cleanup\);\}\s*throw failed;\s*\}/);
  // The file goes while the flag is held: a delete after it would hit the next attempt's download.
- assert.match(install,/finally\{apk\.delete\(\);updating\.set\(false\);\}/);
+ assert.match(install,/apk\.delete\(\);updating\.set\(false\);\s*\}/);
  // A check of 404 is an answer, not a failure.
  assert.match(plugin,/if\(status==404\)\{call\.resolve\(new JSObject\(\)\);return;\}\s*if\(status!=200\)throw/);
  assert.match(plugin,/updateConnection\(BuildConfig\.ALPHA_UPDATE_MANIFEST_URL\)/);

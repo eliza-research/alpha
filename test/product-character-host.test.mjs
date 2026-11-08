@@ -6,7 +6,7 @@ import path from 'node:path';
 import vm from 'node:vm';
 import {createHash,randomUUID,randomBytes} from 'node:crypto';
 import {execFileSync} from 'node:child_process';
-import {stripTypeScriptTypes} from 'node:module';
+import {stripTypeScriptTypes} from './support/strip-types.mjs';
 import {verifySource,preparedSourceEnv,workerArtifactDirectory,digest} from '../scripts/local-agent-source.mjs';
 import {verifyWorkerArtifact} from '../scripts/workflow-worker-artifact.mjs';
 import {preparePrivateRuntimeProfile,runtimeEnvironment} from '../vendor/eliza/packages/agent/native-host/private-runtime-launch.mjs';
@@ -40,9 +40,8 @@ test('native configuration keeps only the verified module path through unbound p
  assert.ok(captured>=0&&cleaned>captured&&restored>cleaned);assert.equal(unbound.match(/env\.put\(/g).length,1);
  const configure=java.slice(java.indexOf(' static void configureEnvironment('),java.indexOf(' /** Explicit Retry'));
  const put='env.put("ELIZA_NATIVE_GOOGLE_HOST_MODULE"',installed=configure.indexOf('WorkflowWorkerAssets.install('),module=configure.indexOf(put),credentials=configure.indexOf('String saved=null'),launch=configure.indexOf('NativeProviderSlot.applyLaunchEnvironment('),reapplied=configure.indexOf(put,module+1),cloud=configure.indexOf('LocalAgentProviderAdmission.applyManagedGoogleEnvironment(');
- // The Cloud Google binding is decided before the shared launch, so a binding that fails launches unbound.
  assert.ok(installed>=0&&module>installed&&credentials>module&&cloud>credentials&&launch>cloud&&reapplied>launch);
- assert.ok(configure.indexOf('if(googleBinding!=null)env.putAll(googleBinding);')>reapplied,'binding keys follow the shared provider cleanup');
+ assert.ok(configure.indexOf('if(googleBinding!=null)env.putAll(googleBinding);')>reapplied,'binding keys follow provider cleanup');
  assert.ok(configure.includes('else if("cloud".equals(BuildConfig.ELIZA_RUNTIME_PROFILE))throw'));
  // Both writes are the same verified packaged path, before and after shared provider cleanup.
  assert.equal(configure.split(put).length-1,2);assert.equal(configure.split('if(google!=null&&google.isFile())env.put("ELIZA_NATIVE_GOOGLE_HOST_MODULE",google.getCanonicalPath());').length-1,2);

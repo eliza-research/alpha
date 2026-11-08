@@ -1,0 +1,19 @@
+{
+  "atUTC": "2026-11-08T01:49:57.243Z",
+  "sdk": "4dae580daa50fa6f0f9a220c6ac1fa0942879b02",
+  "rawSha256": "4dca8fb865897100f14c9b7874e6b6d5ed461cbeca4cb8b515c35fa28f4b0fbd",
+  "normalizedSha256": "66899daa16072f859a97cca75f550e4b6fdca41798a4766f300349046e316656",
+  "inputSha256": "df24d894bd6f044c2678168b14e6fcfcbaeb2101586d510e3a724746d1f19226",
+  "packages": 3675,
+  "counts": {
+    "info": 0,
+    "low": 12,
+    "moderate": 44,
+    "high": 46,
+    "critical": 1
+  },
+  "findingsIdenticalToRetainedSnapshot": true,
+  "method": "Fresh npm full-lock response collected on private runner; independently verified file hashes and normalization against exact vendor lock. Primary full-lock scope retained; packaged audit remains separate.",
+  "priorEquivalenceEvidence": "docs/evidence/full-lock-input-equivalence-4dae-20261108.json",
+  "exceptionsAndPending": "Unchanged"
+}

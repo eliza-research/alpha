@@ -1,0 +1,9 @@
+--- a/plugins/plugin-assistant/src/services/device-actions/photo-library-contract.ts
++++ b/plugins/plugin-assistant/src/services/device-actions/photo-library-contract.ts
+@@ -783,2 +783 @@
+-      description:
+-        "Mark these items as selected in Photos > Device library on this phone. Nothing is changed or shared.",
++      description: "",
+@@ -789 +788 @@
+-    description: `Open this review in Photos > Device library. You confirm it there and then in Android's own dialog or share sheet before anything changes or leaves the phone. ${text.detail}`,
++    description: text.detail,

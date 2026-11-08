@@ -1,3 +1,4 @@
+import {openConnectionDiagnostics} from './helpers/connection-diagnostics';
 import {test,expect} from '@playwright/test';
 import {returnToApps} from './app-navigation';
 
@@ -50,7 +51,7 @@ for(const mode of ['capture','lost-ack','old-message','ask-first'] as const)test
  },mode);
  await page.goto('/');
  await page.getByRole('button',{name:'Settings',exact:true}).click();
- await page.getByRole('button',{name:'Agent connection',exact:true}).click();
+ await openConnectionDiagnostics(page);
  await page.getByText('Local development agent',{exact:true}).click();
  const local=page.locator('.alpha-connection details').filter({has:page.getByText('Local development agent',{exact:true})});
  await local.getByLabel('Local agent address').fill('http://127.0.0.1:47842');
@@ -71,7 +72,7 @@ for(const mode of ['capture','lost-ack','old-message','ask-first'] as const)test
  if(mode==='capture'){
   await expect.poll(()=>page.evaluate(()=>(window as any).cameraRequestFixture.receipts.length)).toBe(1);
   const f=await page.evaluate(()=>(window as any).cameraRequestFixture);expect(f.captures).toBe(1);expect(f.receipts[0].outcome).toBe('applied');expect(f.receipts[0].result.mediaId).toBe('1792274767123123456789012');expect(JSON.stringify(f.receipts)).not.toContain('base64');
-  await expect(page.getByText('Photo saved in Photos.',{exact:true})).toHaveCount(1);
+  await expect(page.locator('[data-alpha-message-text]').filter({hasText:/^Photo saved in Photos\.$/})).toHaveCount(1);
   await expect(page.getByText('Take photo: Open Camera to take the requested photo.',{exact:true})).toHaveCount(0);
  }else{
   await expect(page.getByText('Opening Camera.',{exact:true}).first()).toBeVisible();

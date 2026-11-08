@@ -16,7 +16,6 @@ import {ALLOWLIST, COMMERCIAL_FONT, FONT_LICENSES, HELD_OUTSIDE_REPOSITORY, NO_F
 import {FONT_BLOCKER, FONT_BLOCKER_REFERENCE, FONT_FLAG, FONT_HELD_FLAG, RESOLVED_BY_OWNER_STATEMENT, fontLicenceCheck, fontLicenceFindings, fontLicenceLine, fontLicenseBlockers, readOwnerStatedFontHashes, readUnverifiedFontHashes} from '../scripts/font-license-blockers.mjs';
 import {UNRESOLVED_FONT_LICENCE_BLOCKS_DISTRIBUTION, classifyLicence} from '../scripts/licence-policy.mjs';
 import {releaseBlockers} from '../scripts/release-blockers.mjs';
-import {releaseDistributable} from '../scripts/release-distributable.mjs';
 
 const DENTON = 'apps/app/public/denton-300.woff2';
 const dentonBytes = fs.readFileSync(path.join(ROOT, DENTON));
@@ -31,8 +30,6 @@ const legacy = {name: denton.name, version: denton.version, license: UNVERIFIED,
 const otherFont = Buffer.from('a different font file');
 const RELEASE = {mode: 'release', distributable: true, testMocks: false, bundleAudit: 'passed', signed: true, runtime: 'PACKAGED', runtimeNotices: true,
   releaseAdmission: {failures: [], blockers: [], signerMatches: true}, voiceHost: {packaged: true, asr: true, differences: [], qualified: true}, licenceFlags: []};
-// The same release as verify-apks hands it to releaseDistributable (`runtime` is the packaged-runtime entry there).
-const distributableRelease = facts => releaseDistributable({...RELEASE, runtime: {distributable: true}, ...facts});
 
 function payload(t, {notices, files = {}}) {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'alpha-font-'));
@@ -117,8 +114,8 @@ test('the check follows the packaged bytes: recorded bytes are resolved, any oth
 
 test('the one constant decides whether an unresolved font withholds distribution: both settings', t => {
   assert.equal(UNRESOLVED_FONT_LICENCE_BLOCKS_DISTRIBUTION, false, 'owner decision 2026-10-10: flag only; making the check strict again is a deliberate change of this constant');
-  // What verify-apks computes for `distributable`: a release that meets every other term, with this check's blockers.
-  const distributable = check => distributableRelease({licenceBlockers: check.blockers});
+  // What verify-apks computes for `distributable`, with the same inputs it uses.
+  const distributable = check => check.blockers.length === 0;
   const recorded = payload(t, {notices: committedNotices, files: {'denton-300.woff2': dentonBytes}});
   const swapped = payload(t, {notices: committedNotices, files: {'denton-300.woff2': otherFont}});
   const message = fontLicenceFindings(swapped).unresolved[0].message;
@@ -173,18 +170,23 @@ test('the bundle audit prints licence flags and the font check as flag lines, ne
   assert.match(swapped.stderr, new RegExp(`^${UNRESOLVED_FONT_LICENCE_BLOCKS_DISTRIBUTION ? 'RELEASE BLOCKER' : 'LICENCE FLAG \\(reported, not blocking\\)'} unresolved-font-licence: Denton typeface \\(denton-300\\.woff2\\) has no recorded licence`, 'm'));
 });
 
-test('verify-apks records licence flags and the font check, and only an unresolved font can withhold distributable', () => {
+test('verify-apks records licence flags and keeps font blockers and private QA out of distribution', () => {
   const source = fs.readFileSync(path.join(ROOT, 'scripts/verify-apks.mjs'), 'utf8');
   // The font check is recorded in full; only its `blockers` (empty while the constant is false) reach `distributable`.
   assert.match(source, /fontCheck = fontLicenceCheck\(payload\.public\);/);
   assert.match(source, /const licenceBlockers = fontCheck\.blockers;/);
   assert.match(source, /fontLicenceCheck: \{ check: fontCheck\.check, status: fontCheck\.status, blocksDistribution: fontCheck\.blocksDistribution, items: fontCheck\.items, resolved: fontCheck\.resolved \},/);
-  assert.match(source, /row\.distributable = releaseDistributable\([^;]*licenceBlockers: row\.licenceBlockers \}\);/);
+  assert.match(source, /row\.runtimeNotices === true &&\n\s+speechQualified &&\n\s+row\.licenceBlockers\.length === 0 && updateChannel\.kind==='public';/);
   // Flags are recorded per APK and printed; they are not part of the distributable expression or of any failure.
   assert.match(source, /licenceFlags = licenceFlagRecords\(entries\);/);
   assert.match(source, /for \(const line of flagLines\) console\.warn\(line\);/);
-  const flagged = ['proprietary-licence-held-outside-repo'];
-  assert.equal(distributableRelease({licenceBlockers: [], licenceFlags: flagged, fontLicenceCheck: {status: 'unresolved'}}), true);
+  const distributable = /row\.distributable = ([\s\S]*?);\n/.exec(source)[1];
+  const admits = new Function('testMocks', 'row', 'runtime', 'speechQualified', 'updateChannel', `return ${distributable};`);
+  const row = {signed:true,releaseAdmission:{signerMatches:true,blockers:[],failures:[]},runtimeNotices:true,licenceBlockers:[]};
+  assert.equal(admits(false,row,{distributable:true},true,{kind:'public'}),true);
+  assert.equal(admits(false,row,{distributable:true},true,{kind:'private-qa'}),false,'private QA is never distributable');
+  assert.equal(admits(false,{...row,licenceBlockers:['unresolved-font-licence']},{distributable:true},true,{kind:'public'}),false);
+  assert.doesNotMatch(distributable, /licenceFlags|fontLicenceCheck/);
   assert.doesNotMatch(source, /problems\.push\([^)]*licence/i);
   assert.doesNotMatch(source, /failures\.push\([^)]*licence/i);
   assert.match(source, /console\.warn\(fontLicenceLine\(item, blocks\)\)/);

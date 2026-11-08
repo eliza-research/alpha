@@ -13,7 +13,20 @@ export function installCanonicalCalendarDrafts(Component:any,views:Bag){
  const origins=new WeakMap<object,{owner:Bag;ownerKey:string;identity:string;text:string}>();
  const admissions=new WeakMap<object,{origin:object;signature:string}>();
  let owner:Bag|undefined;
- p.componentDidMount=function(){mount.call(this);owner=this;this.canonicalDraftText='';this.canonicalDraft=new AssistantDraftController(async binding=>{const store=await assistantDraftStore(binding);return{...store,read:async()=>{const row=await store.read();if(row?.text)decodeCanonicalCalendarDraft(row.text);return row;},save:async(expected,text)=>{if(text)decodeCanonicalCalendarDraft(text);return store.save(expected,text);}};},()=>this.canonicalDraftText,text=>{this.canonicalDraftText=text;if(this.canonicalDraftRestoring&&text){const restored=decodeCanonicalCalendarDraft(text);if(restored.form.canonicalOwnerKey!==this.agentCalendar?.state.ownerKey)throw Error('This draft belongs to another account');this.canonicalDraftAnchor=new Date();this.vset('calendar',{form:restored.form});}},()=>{if(this.live)this.setState({});});};
+ p.flushCalendarForAppUpdate=async function(current:()=>boolean){
+  const exact=()=>current()&&!this.calendarSaving&&!this.agentCalendar?.state.mutating&&
+   !this.calendarFormValidationError&&!this.calendarEditFormValidationError&&!this.canonicalDraftInvalid;
+  if(!exact())throw Error('Calendar changes are still pending');
+  const form=this.vget('calendar').form;
+  if(form){
+   const draft=form.canonicalOwnerKey?this.canonicalDraft:form.id?this.calendarEditDraft:this.calendarDraft;
+   if(!draft?.binding)throw Error('Calendar draft has no storage owner');
+  }
+  const snapshot=JSON.stringify(form??null);
+  const unchanged=()=>exact()&&JSON.stringify(this.vget('calendar').form??null)===snapshot;
+  await Promise.all([this.canonicalDraft,this.calendarEditDraft,this.calendarDraft].map(draft=>draft.flush(unchanged)));
+ };
+ p.componentDidMount=function(){mount.call(this);owner=this;this.canonicalDraftText='';this.canonicalDraft=new AssistantDraftController(async binding=>{const store=await assistantDraftStore(binding);return{...store,read:async()=>{const row=await store.read();if(row?.text)decodeCanonicalCalendarDraft(row.text);return row;},save:async(expected,text)=>{if(text)decodeCanonicalCalendarDraft(text);return store.save(expected,text);}};},()=>this.canonicalDraftText,text=>{this.canonicalDraftText=text;if(this.canonicalDraftRestoring&&text){const restored=decodeCanonicalCalendarDraft(text);if(restored.form.canonicalOwnerKey!==this.agentCalendar?.state.ownerKey)throw Error('Retained form belongs to another agent');this.canonicalDraftAnchor=new Date();this.vset('calendar',{form:restored.form});}},()=>{if(this.live)this.setState({});});};
  p.componentDidUpdate=function(...args:any[]){update?.apply(this,args);const key=this.agentCalendar?.state.ownerKey;if(key&&key!==this.canonicalDraftOwner){this.canonicalDraftOwner=key;void this.canonicalDraft.open(JSON.stringify(['canonical-calendar-editor',key]));}const form=this.vget('calendar').form;if(!key||form?.canonicalOwnerKey!==key)return;const identity=form.creationId;if(this.canonicalDraftIdentity!==identity){this.canonicalDraftIdentity=identity;this.canonicalDraftAnchor=new Date();}const today=new Date(),anchor=this.canonicalDraftAnchor as Date,civil=(date:Date)=>Date.UTC(date.getFullYear(),date.getMonth(),date.getDate()),shift=(civil(anchor)-civil(today))/86400000;if(shift){this.canonicalDraftAnchor=today;this.vset('calendar',{form:{...form,off:form.off+shift,...(form.canonicalTiming?{canonicalTiming:[form.canonicalTiming[0]+shift,...form.canonicalTiming.slice(1)]}:{})}});return;}try{const raw=encodeCanonicalCalendarDraft(form,this.canonicalDraftAnchor);this.canonicalDraftInvalid=false;if(raw!==this.canonicalDraftSuppressed){this.canonicalDraftText=raw;this.canonicalDraft.edit(raw);}}catch{this.canonicalDraftInvalid=true;}};
  p.calendarFormDestinationChanged=function(form:Bag,next:Bag){
   const replacement=destinationChanged?.call(this,form,next)??next;

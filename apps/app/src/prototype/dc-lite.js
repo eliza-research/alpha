@@ -4,7 +4,7 @@ import templateHtml from "./template.html?raw";
 /* Minimal renderer for the prototype's .dc.html template: {{holes}}, sc-if, sc-for, events, refs. */
 
   var h = React.createElement;
-  var EVENTS = { onsubmit:"onSubmit", onerror:"onError", onload:"onLoad", onfocuscapture: "onFocusCapture", onblurcapture: "onBlurCapture", onclick: "onClick", oncontextmenu: "onContextMenu", onpointermove: "onPointerMove", onpointerdown: "onPointerDown", onpointerup: "onPointerUp", onpointerleave: "onPointerLeave", onpointercancel: "onPointerCancel", onlostpointercapture: "onLostPointerCapture", onchange: "onChange", onkeydown: "onKeyDown", oninput: "onInput" };
+  var EVENTS = { onsubmit:"onSubmit", onerror:"onError", onload:"onLoad", onfocuscapture: "onFocusCapture", onfocus: "onFocus", onblur: "onBlur", onclick: "onClick", oncontextmenu: "onContextMenu", onpointermove: "onPointerMove", onpointerdown: "onPointerDown", onpointerup: "onPointerUp", onpointerleave: "onPointerLeave", onpointercancel: "onPointerCancel", onlostpointercapture: "onLostPointerCapture", onchange: "onChange", onkeydown: "onKeyDown", oninput: "onInput" };
   var HOLE = /\{\{\s*([^}]+?)\s*\}\}/g;
   var WHOLE = /^\{\{\s*([^}]+?)\s*\}\}$/;
 
@@ -123,9 +123,11 @@ import templateHtml from "./template.html?raw";
       var lm = (n.getAttribute("list") || "").match(WHOLE);
       var list = (lm ? lookup(lm[1], scope) : []) || [];
       var as = n.getAttribute("as") || "item";
+      var km = (n.getAttribute("key") || "").match(WHOLE);
       return h(React.Fragment, { key: key }, list.map(function (item, i) {
         var s = Object.create(scope); s[as] = item; s.$index = i;
-        return h(React.Fragment, { key: i }, kids(n.childNodes, s));
+        var itemKey = km ? lookup(km[1], s) : i;
+        return h(React.Fragment, { key: itemKey == null ? i : itemKey }, kids(n.childNodes, s));
       }));
     }
     // Resolve both static IC references and dynamic row paths through one display map.

@@ -44,7 +44,8 @@ public final class ProviderCancellationTest {
   check(!queued.isAlive()&&failure.get() instanceof IllegalStateException,"queued clear cancelled");check(retirements[0]==0&&direct.equals(initial.readCredentialSlot("local-agent-provider:v1")),"cancelled Cloud switch must not clear or retire direct provider");
   String clearAccepted=requests.reserve();long clearAcceptedIntent=requests.begin(clearAccepted);
   AlphaLocalAgentPlugin.clearProviderSlot(new AlphaCredentialStore(context,()->requests.require(clearAccepted,clearAcceptedIntent)),false);requests.finish(clearAccepted,clearAcceptedIntent);
-  check(initial.readCredentialSlot("local-agent-provider:v1")==null&&retirements[0]>0,"positive explicit Cloud switch clears provider normally");
+  String retained=initial.readCredentialSlot("local-agent-provider:v1");
+  check(new org.json.JSONObject(retained).optBoolean("unbound")&&retained.contains("synthetic-positive-key")&&retirements[0]>0,"legacy clear retires routing but preserves saved Own key");
   AlphaLocalAgentPlugin.beforeCommit=()->{};
   System.out.println("PASS native provider cancellation: paused validation, cancel-before-dispatch, no save/switch/retirement, positive commit");
  }

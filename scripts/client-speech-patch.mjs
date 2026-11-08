@@ -14,7 +14,7 @@ function regular(file,root){
  for(let current=file;current!==root;current=path.dirname(current))if(fs.lstatSync(current).isSymbolicLink())throw Error('Linked client speech patch');
  if(!fs.lstatSync(file).isFile())throw Error('Nonregular client speech patch');
 }
-/** Explicit additions to the reviewed shared voice package; the vendor and resident stay immutable. */
+/** Explicit additions and a hash-bound assistant-controller patch; the vendor and resident stay immutable. */
 export function clientSpeechPatch(root,upstream){
  root=path.resolve(root);
  const patchRoot=path.join(root,'patches/eliza'),file=path.join(patchRoot,'cloud-speech-client-manifest.json');
@@ -32,11 +32,19 @@ export function clientSpeechPatch(root,upstream){
    const bytes=fs.readFileSync(filename);
    if(bytes.length>2*1024*1024||sha(bytes)!==patch.sha256)throw Error('Client speech patch digest mismatch');
    for(const target of patch.targets){
-    if(!safe(target.path)||!/^packages\/voice\/src\/[a-z0-9-]+\.ts$/.test(target.path)||target.beforeSha256!==null||!HEX.test(target.afterSha256)||original.has(target.path)||expected.has(target.path))throw Error('Client speech addition target mismatch');
+    if(!safe(target.path)||!/^packages\/voice\/src\/[a-z0-9-]+\.ts$/.test(target.path)||!HEX.test(target.afterSha256)||expected.has(target.path))throw Error('Client speech target mismatch');
+    const before=original.get(target.path);
+    if(target.beforeSha256===null){
+     if(before)throw Error('Client speech addition target mismatch');
+    }else{
+     if(target.path!=='packages/voice/src/voice-assistant-session.ts'||!HEX.test(target.beforeSha256)||!before||before.mode!=='100644'||sha(before.bytes)!==target.beforeSha256)throw Error('Client speech source mismatch');
+     const destination=path.join(temporary,target.path);
+     fs.mkdirSync(path.dirname(destination),{recursive:true});fs.writeFileSync(destination,before.bytes);
+    }
     expected.set(target.path,target.afterSha256);
    }
    const headers=bytes.toString('utf8').split('\n').filter(line=>line.startsWith('--- ')||line.startsWith('+++ '));
-   const wanted=patch.targets.flatMap(target=>['--- /dev/null','+++ b/'+target.path]);
+   const wanted=patch.targets.flatMap(target=>[target.beforeSha256===null?'--- /dev/null':'--- a/'+target.path,'+++ b/'+target.path]);
    if(JSON.stringify(headers)!==JSON.stringify(wanted))throw Error('Client speech patch headers mismatch');
    execFileSync('patch',['--batch','--fuzz=0','--forward','-p1','--input',filename],{cwd:temporary,stdio:'pipe',timeout:30000});
    patches.push({file:patch.file,sha256:patch.sha256});

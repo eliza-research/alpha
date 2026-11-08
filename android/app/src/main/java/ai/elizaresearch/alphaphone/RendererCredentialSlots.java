@@ -18,7 +18,7 @@ final class RendererCredentialSlots {
   "cloud-signin", "google-workspace-return",
   // Physical deployment slots are native-owned. Renderer calls must use logical names.
   "cloud-deployment",
-  // SMS send ledger and per-operation records: AlphaTelephony owns them.
+  // SMS send ledger and per-operation records are native-owned.
   "sms-send-ledger", "alpha-sms-operation"
  };
  /** Full-match patterns of the draft and pending-action slots that admit compare-and-exchange. */
@@ -26,7 +26,7 @@ final class RendererCredentialSlots {
   "inbox-drafts:v1:[\\s\\S]*", "inbox-operation:v1:[a-f0-9]{64}", "calendar-linked-sync:v1:[a-f0-9]{64}",
   "connected-read-cache:v1:[a-f0-9]{64}", "workflow-draft:v1:[a-f0-9]{64}", "assistant-draft:v1:[a-f0-9]{64}",
   "notes-records:v1:device", "reminder-deletions:v1:device", "reminder-creations:v1:device", "clock-handoff:v1:device",
-  "notes-audio-deletions:v1:device", "notes-trash:v1:device", "notes-draft:v1:device", "note-origins:v1:device",
+  "notes-audio-deletions:v1:device", "notes-trash:v1:device", "notes-draft:v1:device", "note-origins:v1:device", "notes-folders:v1:device",
   "cloud-delegation:v1:[a-f0-9]{64}"
  };
  /** Cloud sign-in credentials: renderer writes and removals reserve a credential intent (AlphaLocalAgentPlugin). */

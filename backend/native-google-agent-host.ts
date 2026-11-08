@@ -1,3 +1,4 @@
+import type {CloudEnvironment} from '../apps/app/src/runtime/cloud-protocol.ts';
 /** The native boot path applies the shared runtime profile with this declaration. */
 export {nativeCloudRuntime} from './native-cloud-runtime.ts';
 import {createServer} from 'node:http';
@@ -29,9 +30,9 @@ export async function startNativeGoogleAgentHost(options:{binding:NativeGoogleBi
 }
 
 /** Same private broker lifecycle for an existing host-owned Cloud port. */
-export async function startManagedGoogleAgentHost(options:{port:ManagedGoogleAgentPort;apiToken:string;access?:()=>GoogleAgentAccess}) {
+export async function startManagedGoogleAgentHost(options:{port:ManagedGoogleAgentPort;apiToken:string;access?:()=>GoogleAgentAccess;environment?:CloudEnvironment}) {
  if(!/^[A-Za-z0-9_-]{64}$/.test(options.apiToken))throw Error('Private agent authentication is unavailable');
- const broker=createManagedGoogleAgentBroker({host:createManagedGoogleAgentHost(options.port,options.access),async authorized(value){
+ const broker=createManagedGoogleAgentBroker({host:createManagedGoogleAgentHost(options.port,options.access,options.environment),async authorized(value){
   const actual=Buffer.from(value??''),expected=Buffer.from('Bearer '+options.apiToken);
   return actual.length===expected.length&&timingSafeEqual(actual,expected);
  }});

@@ -1,3 +1,4 @@
+import {openConnectionDiagnostics} from './helpers/connection-diagnostics';
 import { returnToApps } from './app-navigation';
 import { test, expect } from '@playwright/test';
 
@@ -51,6 +52,7 @@ for (const mode of ['pending', 'wrong-owner', 'expired'] as const) {
           }
           if (pathname === '/api/automations') {fixture.automationLists++;return ok({automations:[]});}
           if (pathname === '/api/lifeops/reminders') return ok({reminders:[]});
+          if (pathname === '/api/lifeops/definitions' && input.method === 'GET') return ok({definitions:[]});
           if (pathname === '/api/lifeops/scheduled-tasks') return ok({tasks:[]});
           if (pathname === '/api/workflow/status') return ok({engine:'smthrs',status:'ready'});
           if (pathname === '/api/workflow/workflows') return ok({workflows:[]});
@@ -76,7 +78,7 @@ for (const mode of ['pending', 'wrong-owner', 'expired'] as const) {
     }, mode);
     await page.goto('/');
     await page.getByRole('button', { name: 'Settings', exact: true }).click();
-    await page.getByRole('button', { name: 'Agent connection', exact: true }).click();
+    await openConnectionDiagnostics(page);
     await page.getByText('Local development agent', { exact: true }).click();
     const local = page.locator('.alpha-connection details').filter({ has: page.getByText('Local development agent', { exact: true }) });
     await local.getByLabel('Local agent address').fill('http://127.0.0.1:47842');
@@ -86,7 +88,7 @@ for (const mode of ['pending', 'wrong-owner', 'expired'] as const) {
     await page.getByRole('button', { name: 'Type', exact: true }).click();
     const input = page.locator('[data-alpha-layer="composer"][aria-hidden="false"], [data-alpha-layer="conversation"][aria-hidden="false"]').getByRole('textbox').first();
     await input.fill('Propose a synthetic action; await explicit approval.'); await input.press('Enter');
-    await expect(page.getByText('Review navigation request',{exact:true})).toBeVisible();
+    await expect(page.locator('[data-alpha-message-text]').filter({hasText:/^Review navigation request$/})).toBeVisible();
     const counts = () => page.evaluate(() => {
       const f = (window as any).navigationFixture;
       return { posts: f.posts, decisions: f.decisions, claims: f.claims, receipts: f.receipts, automationLists: f.automationLists, journal: f.journal };
@@ -103,7 +105,7 @@ for (const mode of ['pending', 'wrong-owner', 'expired'] as const) {
       expect({...afterNavigation,receipts:0}).toEqual({ posts: 1, decisions: 1, claims: 1, receipts: 0, automationLists: 1, journal: ['reserve', 'markApplying', 'finish'] });
       await returnToApps(page);
       await page.getByRole('button',{name:'Settings',exact:true}).click();
-      await page.getByRole('button',{name:'Agent connection',exact:true}).click();
+      await openConnectionDiagnostics(page);
       await page.getByText('Phone action history',{exact:true}).click();
       await page.getByRole('button',{name:'Check with agent',exact:true}).click();
       await expect(page.getByRole('button',{name:'Check with agent',exact:true})).toBeEnabled();

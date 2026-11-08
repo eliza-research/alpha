@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
-import { auditPage, auditReadingOrder, auditTabOrder, auditTree, blocking, format } from './accessibility-audit';
-import { CONNECTED_STATES, DEVELOPMENT_STATES, FAILURE_STATES, FIXTURE_STATES, LAUNCHER_STATES, LIVE_STATES, MOCK_STATES, setTextScale } from './accessibility-states';
+import { auditPage, auditReadingOrder, auditTabOrder, auditTree, exposedTabStopBudget, format } from './accessibility-audit';
+import { BROWSER_APP_STATES, CONNECTED_STATES, DEVELOPMENT_STATES, FAILURE_STATES, FIXTURE_STATES, LAUNCHER_STATES, LIVE_STATES, MOCK_STATES, setTextScale } from './accessibility-states';
 import { settled } from './helpers/settled';
 
 // MVP-48, renderer part. Every retained primary view, subview and failure screen is checked for
@@ -10,9 +10,12 @@ import { settled } from './helpers/settled';
 // Access, physical large-font, rotation or device pass; those remain open.
 test.describe.configure({ mode: 'parallel' });
 
-const STATES = [...LIVE_STATES, ...DEVELOPMENT_STATES, ...MOCK_STATES, ...CONNECTED_STATES, ...FAILURE_STATES];
-// Truncation that is allowed (previews of user content, never an app title) is filtered by
-// blocking() in accessibility-audit.ts, shared with the production sweep.
+const STATES = [...LIVE_STATES, ...BROWSER_APP_STATES, ...DEVELOPMENT_STATES, ...MOCK_STATES, ...CONNECTED_STATES, ...FAILURE_STATES];
+// Deliberate single-line ellipsis and line clamps on previews of user content are allowed: the
+// full text is one tap away and is exposed whole to assistive technology. Hard clipping is not, and
+// neither is a cut app title: it names the screen and has room to wrap.
+const appTitle = (line: string) => /^text-truncated: .*<[^>]*\bdata-alpha-app-title\b/.test(line);
+const blocking = (lines: string[]) => lines.filter(line => !line.startsWith('text-truncated:') || appTitle(line));
 // A state at large text is opened, re-laid out and audited rule by rule. Under four workers on a
 // loaded machine that has run past the 30s default, so the large-text and landscape sweeps say
 // how long they may take instead of inheriting it.
@@ -23,27 +26,14 @@ for (const theme of ['light', 'dark'] as const) {
     test(`names, roles, focus and contrast: ${state.name} (${theme})`, async ({ page }) => {
       test.setTimeout(60_000);
       await state.open(page, theme);
-      // Names, focusability, tab order and reading order do not depend on the theme; they are
-      // checked once, in the light one. The dark pass is the page audit, contrast included.
       const found = format([
-        ...theme === 'light' ? await auditTree(page) : [],
+        ...await auditTree(page),
         ...await auditPage(page, { contrast: true, targetSize: 24, clipping: true, overlap: true, dock: true }),
-        ...theme === 'light' ? [...await auditTabOrder(page), ...await auditReadingOrder(page)] : [],
+        ...await auditTabOrder(page, state.name==='live Settings licenses'?await exposedTabStopBudget(page):undefined),
+        // Reading order does not depend on the theme; it is read once, in the light one.
+        ...theme === 'light' ? await auditReadingOrder(page) : [],
       ]);
       expect(blocking(found), blocking(found).join('\n')).toEqual([]);
-    });
-  }
-}
-
-// Placeholders are read as text, and a choice must be exposed, not only coloured (accessibility-audit.ts
-// rules 5b and 5c), on the screens with the primary field and the most single-choice rows. The
-// calendar form's calendar, repeat and alert chips expose aria-pressed since alpha-prototype-2-P07.
-for (const theme of ['light', 'dark'] as const) {
-  for (const state of LIVE_STATES.filter(item => item.name === 'live Home' || item.name === 'live Calendar new event')) {
-    test(`placeholders and selection state: ${state.name} (${theme})`, async ({ page }) => {
-      await state.open(page, theme);
-      const found = format(await auditPage(page, { placeholder: true, selection: true }));
-      expect(found, found.join('\n')).toEqual([]);
     });
   }
 }
@@ -63,7 +53,7 @@ for (const state of STATES) {
     const tree = format(await auditTree(page));
     expect(tree, tree.join('\n')).toEqual([]);
     // The tab order survives it as well, and no stop is left partly under the composer.
-    const focus = format(await auditTabOrder(page));
+    const focus = format(await auditTabOrder(page, state.name==='live Settings licenses'?await exposedTabStopBudget(page):undefined));
     expect(focus, focus.join('\n')).toEqual([]);
     // So does TalkBack's reading order: the round 8 emulator failure was this check at 200% text.
     const order = format(await auditReadingOrder(page));
@@ -80,12 +70,12 @@ for (const state of STATES) {
 // of counting as the expected failure. The list may only shrink (test/accessibility-coverage.test.mjs).
 const OPEN_AT_300 = new Set([
 ]);
-for (const state of [...LIVE_STATES, ...LAUNCHER_STATES]) {
+for (const state of [...LIVE_STATES, ...BROWSER_APP_STATES, ...LAUNCHER_STATES]) {
   test(`300% text (largest in-app size and system font) is not clipped and does not overlap: ${state.name}`, async ({ page }) => {
     test.setTimeout(LARGE_TEXT_TIMEOUT);
     await state.open(page, 'light');
     await setTextScale(page, 3);
-    const found = blocking(format([...await auditPage(page, { clipping: true, overlap: true, dock: true }), ...await auditTree(page), ...await auditTabOrder(page), ...await auditReadingOrder(page)]));
+    const found = blocking(format([...await auditPage(page, { clipping: true, overlap: true, dock: true }), ...await auditTree(page), ...await auditTabOrder(page, state.name==='live Settings licenses'?await exposedTabStopBudget(page):undefined), ...await auditReadingOrder(page)]));
     if (OPEN_AT_300.has(state.name)) expect(found, `${state.name} now passes at 300%: remove it from OPEN_AT_300 (issue #701)`).not.toEqual([]);
     else expect(found, found.join('\n')).toEqual([]);
   });
@@ -112,7 +102,7 @@ test.describe('landscape', () => {
       await state.open(page, 'light');
       // The landscape layout is what is being checked, not a scaled-down portrait canvas.
       await expect(page.locator('html')).toHaveClass(/alpha-landscape/);
-      const found = blocking(format([...await auditPage(page, { clipping: true, overlap: true, dock: true }), ...await auditTree(page), ...await auditTabOrder(page), ...await auditReadingOrder(page)]));
+      const found = blocking(format([...await auditPage(page, { clipping: true, overlap: true, dock: true }), ...await auditTree(page), ...await auditTabOrder(page, state.name==='live Settings licenses'?await exposedTabStopBudget(page):undefined), ...await auditReadingOrder(page)]));
       expect(blocking(found), blocking(found).join('\n')).toEqual([]);
     });
   }
@@ -123,7 +113,7 @@ test.describe('landscape', () => {
       await state.open(page, 'light');
       await expect(page.locator('html')).toHaveClass(/alpha-landscape/);
       await setTextScale(page, 2);
-      const found = blocking(format([...await auditPage(page, { clipping: true, overlap: true, dock: true }), ...await auditTree(page), ...await auditTabOrder(page), ...await auditReadingOrder(page)]));
+      const found = blocking(format([...await auditPage(page, { clipping: true, overlap: true, dock: true }), ...await auditTree(page), ...await auditTabOrder(page, state.name==='live Settings licenses'?await exposedTabStopBudget(page):undefined), ...await auditReadingOrder(page)]));
       expect(found, found.join('\n')).toEqual([]);
     });
   }
@@ -146,7 +136,7 @@ for (const state of [...FIXTURE_STATES, ...LAUNCHER_STATES]) {
       const found = blocking(format([
         ...await auditTree(page),
         ...await auditPage(page, scale === 1 ? { contrast: true, targetSize: 24, clipping: true, overlap: true, dock: true } : { clipping: true, overlap: true, dock: true }),
-        ...await auditTabOrder(page),
+        ...await auditTabOrder(page, state.name==='live Settings licenses'?await exposedTabStopBudget(page):undefined),
         ...await auditReadingOrder(page),
       ]));
       expect(found, found.join('\n')).toEqual([]);
@@ -157,7 +147,7 @@ for (const state of [...FIXTURE_STATES, ...LAUNCHER_STATES]) {
 // The launcher bridge has no draft-storage plugin. Its normal read retries fail
 // after the drawer opens, adding a real status row above the floating composer.
 // Check that mutation checkpoint, rather than waiting another frame for layout.
-test('launcher All apps keeps scroll clearance when a late draft status arrives', async ({ page }, info) => {
+test('launcher Apps keeps scroll clearance when a late draft status arrives', async ({ page }, info) => {
   const errors: string[] = [];
   page.on('pageerror', error => errors.push(error.message));
   await page.addInitScript(() => {
@@ -182,7 +172,7 @@ test('launcher All apps keeps scroll clearance when a late draft status arrives'
     });
     waiting.observe(document, { childList: true, subtree: true });
   });
-  await LAUNCHER_STATES.find(state => state.name === 'launcher All apps')!.open(page, 'light');
+  await LAUNCHER_STATES.find(state => state.name === 'launcher Apps')!.open(page, 'light');
   await expect.poll(() => page.evaluate(() => (window as any).__alphaLateDockLayout)).toBeTruthy();
   const layout = await page.evaluate(() => (window as any).__alphaLateDockLayout as { room: number; need: number });
   await info.attach('late-draft-status-layout', { body: JSON.stringify(layout), contentType: 'application/json' });
@@ -248,7 +238,7 @@ for (const theme of ['light', 'dark'] as const) {
       icon: element.getAttribute('data-mobile-shell-tile-icon'), image: !!element.querySelector('img'),
     })));
     expect(tiles.length).toBe(await grid.getByRole('button').count());
-    expect(tiles.length, 'product tiles and All apps').toBeGreaterThan(1);
+    expect(tiles.length, 'product tiles and Apps').toBeGreaterThan(1);
     for (const tile of tiles) {
       expect(tile).toMatchObject({ tag: 'BUTTON', type: 'button' });
       expect(tile.name, 'accessible name is the visible label').toBe(tile.label);

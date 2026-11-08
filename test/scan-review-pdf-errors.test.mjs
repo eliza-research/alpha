@@ -1,4 +1,4 @@
-import test from 'node:test';import assert from 'node:assert/strict';import {readFileSync} from 'node:fs';import {stripTypeScriptTypes} from 'node:module';
+import test from 'node:test';import assert from 'node:assert/strict';import {readFileSync} from 'node:fs';import {stripTypeScriptTypes} from './support/strip-types.mjs';
 const url=code=>'data:text/javascript;base64,'+Buffer.from(code).toString('base64');
 const index=url(stripTypeScriptTypes(readFileSync('apps/app/src/prototype/files-index.ts','utf8')));
 const source=stripTypeScriptTypes(readFileSync('apps/app/src/prototype/scan-pdf.ts','utf8'))

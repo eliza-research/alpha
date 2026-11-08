@@ -1,5 +1,5 @@
 import test from 'node:test';import assert from 'node:assert/strict';import {Readable} from 'node:stream';import {EventEmitter} from 'node:events';import {spawnSync} from 'node:child_process';
-if(!process.versions.bun&&!process.execArgv.includes('tsx')){const c=spawnSync(process.execPath,['--conditions=eliza-source','--import','tsx',process.argv[1]],{stdio:'inherit',timeout:60000});if(c.error)throw c.error;process.exit(c.status??1);}
+if(!process.versions.bun&&!process.execArgv.some(arg=>arg==='--import=tsx'||arg==='tsx')){const c=spawnSync(process.execPath,['--conditions=eliza-source','--import','tsx',process.argv[1]],{stdio:'inherit',timeout:60000});if(c.error)throw c.error;process.exit(c.status??1);}
 const {createManagedGoogleAgentBroker}=await import('../backend/managed-google-agent-broker.ts');const {createManagedGoogleAgentHost}=await import('../backend/managed-google-agent-host.ts');const {createNativeGoogleCloudPort}=await import('../backend/native-google-cloud-port.ts');
 const secret='NO_LOG_CREDENTIAL_QUERY_ACCOUNT';const user='11111111-1111-4111-8111-111111111111',org='22222222-2222-4222-8222-222222222222';
 const binding={credentialId:'33333333-3333-4333-8333-333333333333',userId:user,organizationId:org,sessionGeneration:'test-generation',accountRef:JSON.stringify(['cloud','production',user,org]),token:secret};

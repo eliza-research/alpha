@@ -8,7 +8,7 @@ Mac development uses direct Cerebras (`qwen-3.8-27b`) with an existing host cred
 
 ## Browser development
 
-Use Node 24.15.0 and Bun 1.4.2, then:
+Use Node 26.13.0 and Bun 1.4.2, then:
 
 ```sh
 npm ci

@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import vm from 'node:vm';
 import {readFile} from 'node:fs/promises';
-import {stripTypeScriptTypes} from 'node:module';
+import {stripTypeScriptTypes} from '../test/support/strip-types.mjs';
 import {noticeExcerpt,noticeReviewable} from '../apps/app/src/prototype/context-selection.ts';
 import {sensitiveReadingText} from '../.eliza/client-features/plugins/plugin-native-browser-surface/src/page-reading.ts';
 let source=await readFile(new URL('../apps/app/src/prototype/own-notice-question.ts',import.meta.url),'utf8');source=source.replace(/^import .*;\n/gm,'').replace('export function','function')+'\nglobalThis.review=reviewOwnNoticeQuestion;';

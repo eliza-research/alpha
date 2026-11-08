@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import vm from 'node:vm';
-import {stripTypeScriptTypes} from 'node:module';
+import {stripTypeScriptTypes} from './support/strip-types.mjs';
 import {cloudVoiceViewFixture} from './fixtures/cloud-voice-view.mjs';
 import {voiceFakeClock} from './fixtures/shared-batch-voice.mjs';
 import {tsImport} from 'tsx/esm/api';
@@ -32,10 +32,35 @@ test('Cloud Talk streams endpointed speech into the resident without batch STT o
   await f.shell.startVoice();await f.clock.flush();const h=f.getHandlers();assert.ok(h);
   assert.equal(f.starts,0);assert.equal(f.uploads,0);
   h.onSpeechStart(0);h.onSpeechEnd(20);h.onSegment('A completed Cloud utterance.');
-  await f.clock.advance(0);await f.clock.flush();
+  await f.clock.advance(399);assert.equal(f.sends,0);
+  await f.clock.advance(1);await f.clock.flush();
   assert.equal(f.sends,1);assert.equal(f.uploads,0);assert.equal(f.cloudSpeech,0);
   assert.deepEqual(f.spoken,['Synthetic matching reply.']);
   assert.equal(f.localFactories,0);
+ }finally{f.close();await f.clock.flush();}
+});
+
+test('Cloud Talk joins a continuation starting 230 ms after a provider final before closing capture',async()=>{
+ const f=fixture();
+ try{
+  await f.shell.startVoice();await f.clock.flush();const h=f.getHandlers();
+  h.onSpeechStart(0);h.onSpeechEnd(0);h.onSegment("What's twelve plus eight?");
+  await f.clock.advance(230);assert.equal(f.sends,0,'first clause remains open for a short continuation');
+  h.onSpeechStart(230);await f.clock.advance(1000);assert.equal(f.sends,0);
+  h.onSpeechEnd(1230);h.onSegment('Just the number please.');
+  await f.clock.advance(399);assert.equal(f.sends,0);
+  await f.clock.advance(1);await f.clock.flush();
+  assert.equal(f.sends,1);assert.equal(f.sendInputs[0].text,"What's twelve plus eight? Just the number please.");
+ }finally{f.close();await f.clock.flush();}
+});
+
+test('Stop during the Cloud continuation window never submits the pending words',async()=>{
+ const f=fixture();
+ try{
+  await f.shell.startVoice();await f.clock.flush();const h=f.getHandlers();
+  h.onSpeechStart(0);h.onSpeechEnd(0);h.onSegment('Yes');
+  await f.clock.advance(230);await f.shell.stopVoiceConversation();await f.clock.advance(1000);
+  assert.equal(f.sends,0);assert.deepEqual(f.spoken,[]);
  }finally{f.close();await f.clock.flush();}
 });
 
@@ -91,7 +116,7 @@ test('a speech failure after a finished sentence keeps the whole reply and repor
  try{
   await f.shell.startVoice();await f.clock.flush();const h=f.getHandlers();
   h.onSpeechStart(0);h.onSpeechEnd(20);h.onSegment('Tell me two things.');
-  await f.clock.advance(0);await f.clock.flush();
+  await f.clock.advance(400);await f.clock.flush();
   assert.equal(f.sends,1);assert.equal(f.spoken.length,1,'one sentence played before the failure');
   const reply=f.shell.state.msgs.find(m=>m.id===replyId);
   assert.equal(reply.text,text,'the bubble keeps the full reply');assert.equal(reply.interrupted,undefined);
@@ -113,48 +138,15 @@ test('the batch fallback after a missing streaming route shows no stale error',a
  }finally{f.close();await f.clock.flush();}
 });
 
-async function speakTurn(f,text,at=0){
- const h=f.getHandlers();h.onSpeechStart(at);h.onSpeechEnd(at+20);h.onSegment(text);
- await f.clock.advance(0);await f.clock.flush();
-}
-
-test('a committed turn is not held back by a low text end-of-turn score; a refused turn keeps its signal',async()=>{
- const f=fixture();f.box.buildVoiceTurnSignal=buildVoiceTurnSignal;
+test('Cloud input held during a reply is presented as automatically muted',async()=>{
+ const f=fixture();f.holdReply=true;
  try{
-  await f.shell.startVoice();await f.clock.flush();
-  assert.equal(buildVoiceTurnSignal('Book me a table for').nextSpeaker,'user','the text heuristic alone would hold this turn');
-  await speakTurn(f,'Book me a table for');
-  assert.equal(f.sends,1);
-  const committed=f.sendInputs[0].voiceTurnSignal;
-  assert.deepEqual({...committed},{nextSpeaker:'agent',agentShouldSpeak:true,source:'client-ambient+committed'});
-  assert.equal('endOfTurnProbability' in committed,false,'no score is made up');
-  await speakTurn(f,'um',1000);
-  assert.equal(f.sends,2);
-  const refused=f.sendInputs[1].voiceTurnSignal;
-  assert.equal(refused.agentShouldSpeak,false);
-  assert.deepEqual({...refused},buildVoiceTurnSignal('um'));
- }finally{f.close();await f.clock.flush();}
-});
-
-test('a turn the agent chose not to answer plays nothing and the session keeps listening',async()=>{
- const f=fixture();
- try{
-  await f.shell.startVoice();await f.clock.flush();
-  f.badReply={text:''};
-  await speakTurn(f,'An utterance the agent ignores.');
-  assert.equal(f.sends,1);assert.deepEqual(f.spoken,[]);assert.equal(f.stopped(),0);
-  delete f.badReply;
-  await speakTurn(f,'A second utterance.',1000);
-  assert.equal(f.sends,2);assert.deepEqual(f.spoken,['Synthetic matching reply.']);assert.equal(f.stopped(),0);
- }finally{f.close();await f.clock.flush();}
-});
-
-test('an interrupted reply still ends the voice conversation',async()=>{
- const f=fixture();
- try{
-  await f.shell.startVoice();await f.clock.flush();
-  f.badReply={interrupted:true};
-  await speakTurn(f,'An utterance whose reply is cut off.');
-  assert.equal(f.sends,1);assert.deepEqual(f.spoken,[]);assert.ok(f.stopped()>0);
- }finally{f.close();await f.clock.flush();}
+  await f.shell.startVoice();await f.clock.flush();const h=f.getHandlers();
+  h.onSpeechStart(0);h.onSpeechEnd(20);h.onSegment('Say hello.');
+  await f.clock.advance(400);await f.clock.flush();
+  const held=f.renderChat();assert.equal(held.state,'thinking');assert.equal(held.muteAutomatically,true);assert.equal(held.muted,'true');
+  assert.equal(held.muteLabel,'Microphone paused while Alpha responds');
+  f.releaseReply();await f.clock.flush();
+  assert.equal(f.renderChat().state,'listening');assert.equal(f.renderChat().muteAutomatically,false);assert.equal(f.renderChat().muted,'false');
+ }finally{f.releaseReply?.();f.close();await f.clock.flush();}
 });

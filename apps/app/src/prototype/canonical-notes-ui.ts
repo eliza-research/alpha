@@ -1,11 +1,12 @@
 import {parseNoteFormat} from '../../../../.eliza/client-features/plugins/plugin-notes/src/note-format.ts';
-import {projectNoteForModel,type StickyNote} from '../../../../.eliza/client-features/plugins/plugin-notes/src/types.ts';
+import {projectNoteForModel,reconstructNoteContent,type NoteJson,type StickyNote} from '../../../../.eliza/client-features/plugins/plugin-notes/src/types.ts';
 import {noteScheduleDraft,type NoteScheduleKind} from '../../../../.eliza/client-features/plugins/plugin-notes/src/client/note-schedule-draft.ts';
 import type {AppRecordPort} from '../runtime/app-record-route-policy';
 import {agentPendingText,agentAvailabilityNotice} from '../runtime/connection-ui';
 import {DailyApps} from '../daily';
 import {CanonicalNotesController,type NotesPhase} from './canonical-notes-controller';
-import {NotesEditor as CanonicalNotesEditor} from '../../../../.eliza/client-features/plugins/plugin-notes/src/client/notes-editor.ts';
+import {CanonicalNotesEditor} from './canonical-notes-editor';
+import type {CanonicalNoteSaveIntent} from './note-recorder';
 type Bag=Record<string,any>;
 const UNAVAILABLE='Notes is unavailable for this agent connection. Check Settings › Agent connection.';
 /** Device-local handles (a recording, a picked document, a web source) belong to Older notes adapters, never to an agent record's view. */
@@ -18,9 +19,17 @@ const filled=(value:unknown)=>Array.isArray(value)&&value.length>0;
 /** Alpha's card for a record: voice, link and checklist only when the record carries that data, otherwise text. */
 function shownKind(kind:string,data:Bag):string{
  if(kind==='list')return 'list';
- if(kind==='voice'&&(filled(data.lines)||filled(data.summary)||filled(data.actions)))return 'voice';
+ if(kind==='voice'&&(filled(data.lines)||filled(data.summary)||filled(data.actions)||voiceAudio(data)))return 'voice';
  if(kind==='link'&&typeof data.url==='string'&&data.url)return 'link';
  return 'text';
+}
+/** Only an opaque recording handle is persisted. Paths and arbitrary audio metadata
+ * never become view handles; playback additionally checks native ownership by canonical note id. */
+function voiceAudio(data:Bag):{audioId:string;durationMs:number}|undefined{
+ const audio=data.audio;
+ if(!audio||typeof audio!=='object'||Array.isArray(audio)||Object.keys(audio).some(key=>!['audioId','durationMs'].includes(key)))return;
+ if(typeof data.recordingId!=='string'||audio.audioId!==data.recordingId||!/^[A-Za-z0-9_-]{1,128}$/.test(audio.audioId)||!Number.isFinite(audio.durationMs)||audio.durationMs<0)return;
+ return {audioId:audio.audioId,durationMs:audio.durationMs};
 }
 function domainOf(url:string):string{try{return new URL(url).hostname;}catch{return url;}}
 
@@ -64,11 +73,12 @@ export class CanonicalNotesUi {
  private needsReview():void{this.reviewPending='change';this.phase='review';this.hooks.paint();this.hooks.review();}
  /** The record as Alpha's Notes view reads it: authored rich fields at the top level, local handles left out. */
  private row(note:StickyNote,revision:number):Bag{
-  const data:Bag=structuredClone(note.format?.data??{});for(const key of LOCAL_HANDLES)delete data[key];
+  const data:Bag=structuredClone(note.format?.data??{}),audio=note.format?.kind==='voice'?voiceAudio(data):undefined;for(const key of LOCAL_HANDLES)delete data[key];
+  if(audio)data.audio=audio;
   const parts=projectNoteForModel(note),kind=shownKind(note.format?.kind??'text',data);
   const row:Bag={...data,id:note.id,kind,title:parts.title,body:parts.body,canonicalRevision:revision};
   if(typeof row.when!=='string'){const at=Date.parse(note.updatedAt);row.when=Number.isFinite(at)?new Date(at).toLocaleDateString(undefined,{month:'short',day:'numeric'}):'';}
-  if(kind==='voice'){for(const key of ['lines','summary','actions'])if(!Array.isArray(row[key]))row[key]=[];row.lines=row.lines.map((line:Bag)=>({...line,at:Number.isFinite(line?.at)?line.at:0}));}
+  if(kind==='voice'){if(audio)row.audio={...audio,noteId:note.id,transcript:parts.body};for(const key of ['lines','summary','actions'])if(!Array.isArray(row[key]))row[key]=[];row.lines=row.lines.map((line:Bag)=>({...line,at:Number.isFinite(line?.at)?line.at:0}));}
   if(kind==='link'&&typeof row.domain!=='string')row.domain=domainOf(row.url);
   return row;
  }
@@ -76,8 +86,9 @@ export class CanonicalNotesUi {
   const rows=this.baseRows.slice(),draft=this.editor?.draft;
   this.openValue=draft?draft.id??'draft-'+draft.token:null;this.blankCreationValue=draft&&!draft.id?this.openValue:null;
   if(draft){
-   const base=rows.find(row=>row.id===draft.id),data:Bag=structuredClone(draft.format?.data??{});for(const key of LOCAL_HANDLES)delete data[key];
-   const record={...base,...data,id:this.openValue,kind:base?.kind??shownKind(draft.format?.kind??'text',data),title:draft.title,body:draft.body,canonicalRevision:draft.baseRevision};
+   const base=rows.find(row=>row.id===draft.id),data:Bag=structuredClone(draft.format?.data??{}),audio=draft.format?.kind==='voice'?voiceAudio(data):undefined,kind=shownKind(draft.format?.kind??'text',data);for(const key of LOCAL_HANDLES)delete data[key];
+   if(audio&&draft.id)data.audio={...audio,noteId:draft.id,transcript:draft.body};
+   const record={...base,...data,id:this.openValue,kind:base?.kind??kind,title:draft.title,body:draft.body,canonicalRevision:draft.baseRevision};
    if(draft.format?.kind==='list'||draft.format?.kind==='text')record.kind=draft.format.kind;
    const index=rows.findIndex(row=>row.id===draft.id);if(index<0)rows.unshift(record);else rows[index]=record;
   }
@@ -119,11 +130,16 @@ export class CanonicalNotesUi {
  private resolve(id:string):string{const draft=this.editor.draft;return draft&&id==='draft-'+draft.token?draft.id??id:id;}
  /** Opens one record (or closes the editor) after the current draft is saved. */
  select(id:string|null):void{void this.leave(id).catch(()=>this.needsReview());}
- async create(kind:'text'|'list'='text'):Promise<boolean>{
+ /** A new note; one created while a folder is selected starts in that folder (format data folderId). */
+ async create(kind:'text'|'list'='text',folderId:string|null=null):Promise<boolean>{
   try{
    if(!await this.leave(null))return false;
    if(this.controller.revision===null)await this.controller.refresh();
-   this.editor.begin(kind);if(kind==='list')this.editor.edit({format:{kind:'list',data:{items:[],pinned:false}}});return true;}
+   this.editor.begin(kind);
+   const folder:Record<string,string>=folderId?{folderId}:{};
+   if(kind==='list')this.editor.edit({format:{kind:'list',data:{items:[],pinned:false,...folder}}});
+   else if(folderId)this.editor.edit({format:{kind:'text',data:folder}});
+   return true;}
   catch{if(this.controller.current)this.needsReview();return false;}
  }
  async update(id:string,patch:Bag|((record:Bag)=>Bag)):Promise<boolean>{
@@ -146,7 +162,7 @@ export class CanonicalNotesUi {
   if(this.editor.draft&&!this.editor.draft.id&&id===this.open){this.editor.close();return true;}
   const title=this.list.find(row=>row.id===id)?.title||'Note';
   const removed=await this.editor.remove(id);
-  if(removed&&this.controller.current)api.toast(`${title} moved to Trash`,{undo:()=>void this.undoRemove(id,api)});
+  if(removed&&this.controller.current)api.toast('Moved to Recently deleted',{undo:()=>void this.undoRemove(id,api)});
   return removed;
  }
  /** Undo waits out an in-flight save; restoring over one would only fail into review. */
@@ -155,6 +171,46 @@ export class CanonicalNotesUi {
   if(!this.controller.current)return;
   if(this.controller.pending){api.toast('Wait for the current save, then restore it from Trash.');return;}
   await this.editor.restore(id);
+ }
+ /**
+  * A separate canonical voice note. Audio is retained by the existing device store,
+  * bound to the confirmed canonical id; only its opaque attachment handle is metadata.
+  */
+ async saveVoice(recordingId:string,transcript:string,durationMs:number,folderId:string|null,current:()=>boolean,intent:CanonicalNoteSaveIntent):Promise<boolean>{
+  let canonicalRecordConfirmed=false;
+  try{
+   if(!current()||this.pending)return false;
+   if(typeof recordingId!=='string'||!/^[A-Za-z0-9_-]{1,128}$/.test(recordingId)||!Number.isFinite(durationMs)||durationMs<0)return false;
+   await this.controller.refresh();
+   if(!current()||this.pending)return false;
+   const duration=Math.round(durationMs)/1000,audioOnly=typeof intent.retainAudio==='function';
+   const content=transcript?`Voice note\n${transcript}`:'Voice note';
+   const belongs=(note:StickyNote)=>note.format?.kind==='voice'&&note.format.data.recordingId===recordingId;
+   const matches=(note:StickyNote)=>belongs(note)&&reconstructNoteContent(note)===content&&
+    note.format?.data.dur===duration&&(note.format?.data.folderId??null)===folderId&&
+    (!audioOnly||voiceAudio(note.format?.data??{})?.audioId===recordingId);
+   const complete=async(note:StickyNote)=>{
+    if(!matches(note)||!current()||this.pending)return false;
+    canonicalRecordConfirmed=true;
+    if(audioOnly){const saved=await intent.retainAudio!(note.id);if(!current()||saved.audioId!==recordingId||saved.noteId!==note.id||saved.durationMs!==durationMs)return false;}
+    // Recording from an open text note creates a new voice note without replacing its draft.
+    if(!this.dirty){this.editor.open(note.id);this.hooks.committed?.(note.id);}
+    return true;
+   };
+   const snapshot=this.controller.snapshot;
+   // A recording already moved to Trash is not resurrected by a delayed Stop.
+   if((snapshot?.trash??[]).some(entry=>belongs(entry.note)))return false;
+   const prior=(snapshot?.notes??[]).filter(belongs);
+   if(prior.length)return prior.length===1&&await complete(prior[0]);
+   if(intent.pending||!await intent.claim()||!current()||this.pending)return false;
+   const data:Record<string,NoteJson>={recordingId,lines:transcript?[{s:'me',at:0,t:transcript}]:[],summary:[],actions:[],dur:duration,...(audioOnly?{audio:{audioId:recordingId,durationMs}}:{}),...(folderId?{folderId}:{})};
+   const result=await this.controller.interact('create-note',{
+    content,
+    forceNew:true,format:parseNoteFormat({kind:'voice',data}),
+   });
+   if(!current()||!result.note||!result.target||!matches(result.note))return false;
+   return await complete(result.note);
+  }catch{if(this.controller.current&&!canonicalRecordConfirmed)this.needsReview();return false;}
  }
  async saveCard(content:string,api:Bag):Promise<boolean>{
   try{const result=await this.controller.interact('create-note',{content});if(!this.controller.current||!result.target)return false;this.hooks.committed?.(result.target.id);return true;}
@@ -193,32 +249,39 @@ export class CanonicalNotesUi {
    await this.update(id,{body});
   }catch{api.toast('Speech recognition is unavailable.');}
  }
- /** The header waveform: a new note, then the editor's dictation into its body. It saves like typing after +
-  * (create, then expectedRevision updates), so it is an ordinary agent note; no audio is kept. */
- private async dictateNew(api:Bag):Promise<void>{
-  if(!await this.create('text'))return;
-  const id=this.open;if(id)await this.dictate(id,api);
- }
- /** Canonical behaviour on top of Alpha's Notes view: restore-only Trash under the list, review and reload, dictation instead of device recording. */
+ /** Canonical behaviour on top of Alpha's Notes view: the restore-only Trash as the Recently deleted
+  * folder, review and reload, and the Notes recorder saving one voice record with an owned opaque audio attachment. */
  decorate(view:Bag,api:Bag,state:Bag):Bag{
   const rows=this.controller.current?this.trashValue:[],ready=this.controller.revision!==null,busy=this.controller.pending,open=this.open,saved=!!open&&this.controller.hasViewNote(open);
-  const out:Bag={...view,none:ready&&this.phase!=='review'&&view.none,canRecord:false,canDictateNew:true,dictateNew:()=>void this.dictateNew(api),canImportText:false,browserRecovery:false,audioDeletionUnknown:false,createDisabled:!ready,
+  const trashOpen=state.folder==='deleted'&&rows.length>0;
+  if(state.folder==='deleted'&&!rows.length&&ready)queueMicrotask(()=>{if(api.get('notes').folder==='deleted')api.set({folder:null,trashAsk:null});});
+  const ask=state.trashAsk as Bag|null,asked=ask&&trashOpen?rows.find(row=>row.id===ask.id):undefined;
+  const restore=(id:string)=>{api.set({trashAsk:null});void this.editor.restore(id);};
+  const out:Bag={...view,none:ready&&this.phase!=='review'&&view.none,canRecord:true,canImportText:false,browserRecovery:false,audioDeletionUnknown:false,createDisabled:!ready,
    canonicalReview:this.phase==='review',canonicalReviewLabel:this.editor.draft?.version?'Discard draft and reload':'Reload Notes',canonicalReviewAction:()=>void this.discardDraftAndReload(),
-   trashAvailable:false,trashInList:true,trashOpen:!!state.trashOpen,trashCanErase:false,trashRetentionText:'Deleted notes are kept here for recovery.',trashLabel:rows.length?`Trash, ${rows.length} item${rows.length===1?'':'s'}`:'Trash',trashNone:ready&&this.phase!=='review'&&rows.length===0,trashError:'',trashBusy:busy,trashEmptyDisabled:true,trashConfirmOpen:false,trashFullOpen:false,
-   trashRows:rows.map(row=>({id:row.id,title:row.title||'Untitled',kind:row.kind==='list'?'Checklist':row.kind==='voice'?'Voice note':row.kind==='link'?'Link':'Note',left:'Recoverable',restoreLabel:`Restore ${row.title||'note'}`,disabled:busy,restore:()=>void this.editor.restore(row.id)})),
-   openTrash:()=>{void this.leave(null).then(left=>{if(left&&this.controller.current){api.set({trashOpen:true,sheet:null,q:null});void this.controller.refresh().catch(()=>{});}});},
-   closeTrash:()=>api.set({trashOpen:false}),emptyTrash:()=>{},trashConfirmGo:()=>{},trashCancel:()=>api.set({trashConfirm:null,trashFull:null})};
-  if(out.ed&&open){out.ed={...out.ed,dictate:()=>void this.dictate(open,api),...(saved?{draftReminder:()=>void this.scheduleDraft(open,'reminder',api),draftEvent:()=>void this.scheduleDraft(open,'event',api)}:{})};}
-  if(out.vo&&open){out.vo={...out.vo,hasPlayback:false,play:()=>api.toast('No audio is available for this note.'),
-   toCal:()=>void this.scheduleDraft(open,'reminder',api),calLabel:'Review reminder draft',calText:'Review reminder',calIcon:api.ic?.cal??out.vo.calIcon,
-   toEvent:()=>void this.scheduleDraft(open,'event',api),eventLabel:'Review calendar event draft',eventText:'Review event'};}
+   trashAvailable:false,hasDeleted:rows.length>0,trashOpen,trashCanErase:false,trashError:'',trashBusy:busy,trashEmptyDisabled:true,trashConfirmOpen:false,trashFullOpen:false,
+   trashRows:rows.map(row=>{const title=row.title||'Untitled';return {id:row.id,title,label:title,preview:'',left:'',disabled:busy,restore:()=>restore(row.id),ask:()=>api.set({trashAsk:{id:row.id,title}})};}),
+   trashAskOpen:!!asked,trashAskTitle:asked?ask!.title:'',trashAskClose:()=>api.set({trashAsk:null}),trashAskRecover:()=>{if(asked)restore(asked.id);},trashAskDelete:()=>{},
+   openTrash:()=>{void this.leave(null).then(left=>{if(left&&this.controller.current){api.set({folder:'deleted',filter:null,folderSheet:null,sheet:null,q:null});void this.controller.refresh().catch(()=>{});}});},
+   closeTrash:()=>api.set({folder:null,trashAsk:null}),emptyTrash:()=>{},trashConfirmGo:()=>{},trashCancel:()=>api.set({trashConfirm:null,trashFull:null})};
+  if(out.ed&&open){out.ed={...out.ed,dictate:()=>void this.dictate(open,api),
+   toCal:saved?()=>{out.ed.closeMenu?.();void this.scheduleDraft(open,'reminder',api);}:undefined,
+   toEvent:saved?()=>{out.ed.closeMenu?.();void this.scheduleDraft(open,'event',api);}:undefined,
+   saveStatus:busy?'Saving…':this.phase==='review'?'Not saved':this.dirty?'Unsaved changes':saved?'Saved':'',
+   doneDisabled:busy,done:()=>{void this.leave(null).then(left=>{if(!left&&this.controller.current)api.toast('Your draft is kept. Finish saving before closing.');}).catch(()=>this.needsReview());}};}
+  if(out.vo&&open){const note=this.controller.viewNote(open),audio=note?.format?.kind==='voice'?voiceAudio(note.format.data):undefined;
+   const owned=!!audio&&out.vo.playbackAudioId===audio.audioId&&out.vo.hasPlayback===true;
+   out.vo={...out.vo,...(owned?{}:{hasPlayback:false,play:()=>api.toast('No audio is available for this note.')}),
+   toCal:()=>{out.vo.closeMenu?.();void this.scheduleDraft(open,'reminder',api);},calLabel:'Review reminder draft',calText:'Review reminder',calIcon:api.ic?.cal??out.vo.calIcon,
+   toEvent:()=>{out.vo.closeMenu?.();void this.scheduleDraft(open,'event',api);},eventLabel:'Review calendar event draft',eventText:'Review event'};}
   return out;
  }
  /** Decorate this view's API only. No global client or shared NotesStore swap. */
  api(original:Bag):Bag{
   return {...original,canonicalNotes:this,notesSourceMode:'canonical',notesTrash:undefined,moveNoteToTrash:undefined,storageReady:()=>this.controller.current&&this.controller.revision!==null&&!this.controller.pending,
    set:(patch:Bag)=>{
-    if(patch.record===true||patch.rec){original.toast('Recording is not available in agent Notes. Nothing was recorded.');return false;}
+    // `record` opens the Notes recorder (voice-adapter.ts); the old simulated recorder state is refused.
+    if(patch.rec){original.toast('Recording is not available in agent Notes. Nothing was recorded.');return false;}
     const rest={...patch};
     if(Object.hasOwn(rest,'open')){this.select(rest.open??null);delete rest.open;}
     if(rest.compose){void this.create('text');rest.compose=false;}
@@ -234,14 +297,14 @@ export function installCanonicalNotesView(Component:any,views:Record<string,Bag>
  prototype.api=function(key:string){
   const value=api.call(this,key);if(key!=='notes')return value;
   if(this.canonicalNotesUi)return this.canonicalNotesUi.api({...value,reviewCalendarDraft:(draft:Bag)=>this.reviewScannedCalendarDraft?.(draft)??false});
-  // Agent Notes are the default source (agent-adapter.ts); Previous notes is an explicit choice.
+  // Agent Notes are the default source (agent-adapter.ts); Older notes is an explicit choice.
   if(this.notesSourceMode==='legacy')return value;
   // Waiting for a connection: an attempted action explains why, nothing is drafted.
   return {...value,notesSourceMode:'canonical',notesTrash:undefined,moveNoteToTrash:()=>false,set:(patch:Bag)=>{if(patch.compose||patch.record===true){value.toast(this.vget('notes').storageStatus||agentPendingText(undefined,UNAVAILABLE));return false;}return value.set(patch);}};
  };
  const notes=views.notes,render=notes.render;
  notes.render=(state:Bag,value:Bag)=>{
-  const ui:CanonicalNotesUi|undefined=value.canonicalNotes,sources=value.notesSourceOptions??[],older=sources.find((source:Bag)=>source.id==='legacy'),main=sources.find((source:Bag)=>source.id==='canonical');
+  const ui:CanonicalNotesUi|undefined=value.canonicalNotes,sources=value.notesSourceOptions??[],older=sources.find((source:Bag)=>source.id==='legacy'&&source.available!==false),main=sources.find((source:Bag)=>source.id==='canonical');
   if(value.notesSourceMode!=='canonical')return {...render(state,value),notesTitle:'Previous notes',primaryNotes:false,returnToNotesAction:main?.choose};
   const olderNotesAction=older&&!older.selected?older.choose:null;
   if(ui)return {...ui.decorate(render(state,value),value,state),olderNotesAction,listActions:true};

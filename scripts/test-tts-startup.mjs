@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import vm from 'node:vm';
-import {stripTypeScriptTypes} from 'node:module';
+import {stripTypeScriptTypes} from '../test/support/strip-types.mjs';
 
 // Exercise upstream host ownership without native assets or provider credentials.
 const source=fs.readFileSync(process.argv[2] || new URL('../vendor/eliza/packages/app/src/api/standalone-speech-routes.ts',import.meta.url),'utf8');

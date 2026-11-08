@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
-import {stripTypeScriptTypes} from './fixtures/ts-source.mjs';
+import {stripTypeScriptTypes} from './support/strip-types.mjs';
 import {fileURLToPath} from 'node:url';
 const sdk=process.env.ALPHA_NOTES_TEST_SDK??fileURLToPath(new URL('../.eliza/client-features/plugins/plugin-notes/src/client',import.meta.url));
 // Use Node's normal test entry without a TS loader; transform the exact prepared modules.
@@ -14,8 +14,8 @@ const {NotesCommitUncertain}=await import(store);
 const source=readFileSync(new URL('../apps/app/src/prototype/agent-adapter.ts',import.meta.url),'utf8');
 const start=source.indexOf('  p.vset = function (key: string'),end=source.indexOf('  p.api = function',start);
 assert.ok(start>=0&&end>start);
-const assignment=stripTypeScriptTypes(source.slice(start,end),{mode:'strip'});
-const makeEditor=new Function('originalSet','stampNoteChanges','context','failedNotesStatus','keepNotesDraft','NotesCommitUncertain','NotesStorageFull','isStorageFull',`const p={};${assignment};return p.vset;`);
+const assignment=stripTypeScriptTypes(source.slice(start,end),{mode:'transform'});
+const makeEditor=new Function('originalSet','stampNoteChanges','context','failedNotesStatus','keepNotesDraft','releaseNoteAudio','NotesCommitUncertain','NotesStorageFull','isStorageFull',`const p={};${assignment};return p.vset;`);
 const {createNotesDraftSlot}=await import(moduleUrl(stripTypeScriptTypes(readFileSync(sdk+'/notes-draft.ts','utf8'),{mode:'strip'})));
 const slice=(from,to,wrap=code=>code)=>{const a=source.indexOf(from),b=source.indexOf(to,a);assert.ok(a>=0&&b>a,from);return stripTypeScriptTypes(wrap(source.slice(a,b)),{mode:'strip'});};
 // The real draft keeper, failure status and agent-write fallback, and the real approved agent Notes write.
@@ -43,7 +43,7 @@ async function fixture(initial=[{id:'fixture-note',kind:'text',title:'Initial',b
  const shell={notesSourceMode:'legacy',notesStore:store,notesRaw:store.raw,notesPending:0,notesStorageFailed:false,live:true,vget:()=>state,toast:text=>toasts.push(text),api:()=>({})};
  const originalSet=function(_key,patch){Object.assign(state,patch);};
  const helper=makeHelpers(true,SecureNotesStore,vault,()=>{},originalSet,fn=>timers.push(fn),()=>{});
- const editor=makeEditor(originalSet,(_old,next)=>next,()=>{},helper.failedNotesStatus,helper.keepNotesDraft,NotesCommitUncertain,class NotesStorageFull extends Error{},()=>false);
+ const editor=makeEditor(originalSet,(_old,next)=>next,()=>{},helper.failedNotesStatus,helper.keepNotesDraft,()=>{},NotesCommitUncertain,class NotesStorageFull extends Error{},()=>false);
  const context={view:'notes',sensitive:false};
  const agent=makeAgent(()=>true,()=>{},{getState:()=>({context})},{hidden:false},{dispatchEvent(){}},fn=>fn(),edit=>{trash=edit(trash);},(doc,entry)=>[...doc,entry],()=>false,()=>({appliedSummary:'Done'}),helper.armNotesAgentFallback,NotesCommitUncertain,class NotesStorageFull extends Error{},helper.failedNotesStatus,originalSet);
  const editNote=(id,patch)=>editor.call(shell,'notes',{list:shell.notesStore.list.map(n=>n.id===id?{...n,...patch}:n)});
@@ -101,7 +101,7 @@ test('overlapping commits with only the second refused keep the first commit as 
 });
 test('an agent create keeps the open note selection, so its own run context does not change',async()=>{
  const f=await fixture(),selection={kind:'note',id:'fixture-note',revision:'r1'};
- const create=keepSelection=>{f.shell.notesSelection=selection;f.shell.notesSelectionKey='key';return makeEditor(function(_key,patch){Object.assign(f.state,patch);},(_old,next)=>next,()=>{},()=>'',()=>{},NotesCommitUncertain,class extends Error{},()=>false).call(f.shell,'notes',{list:[{id:'created-'+keepSelection,kind:'text',title:'Milk',body:''},...f.store.list]},{keepSelection});};
+ const create=keepSelection=>{f.shell.notesSelection=selection;f.shell.notesSelectionKey='key';return makeEditor(function(_key,patch){Object.assign(f.state,patch);},(_old,next)=>next,()=>{},()=>'',()=>{},()=>{},NotesCommitUncertain,class extends Error{},()=>false).call(f.shell,'notes',{list:[{id:'created-'+keepSelection,kind:'text',title:'Milk',body:''},...f.store.list]},{keepSelection});};
  assert.equal(await create(true),true);assert.equal(f.shell.notesSelection,selection);assert.equal(f.shell.notesSelectionKey,'key');
  assert.equal(await create(false),true);assert.equal(f.shell.notesSelection,null,'an owner edit still republishes the selection');
 });

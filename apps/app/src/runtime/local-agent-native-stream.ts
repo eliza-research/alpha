@@ -1,5 +1,5 @@
 import {anyAbortSignal} from './abort-signal';
-import {readLocalAgentStream} from './local-agent-stream';
+import {readLocalAgentStream,type StreamTextListener} from './local-agent-stream';
 export interface NativeStreamPort {
  addListener(name:string,callback:(event:any)=>void):Promise<{remove():Promise<void>}>;
  requestStream(input:Record<string,unknown>):Promise<{streamId:string}>;
@@ -10,7 +10,7 @@ const STREAM_IDLE_MS=60000;
 /** Native gives one turn on this route up to 600 s. */
 const STREAM_TURN_MS=600000;
 /** Closing IPC does not cancel committed effects. Interrupted sends require history reconciliation. */
-export async function streamNativeAgent(port:NativeStreamPort,input:{path:string;ownerId:string;headers:Record<string,string>;body:string},signal:AbortSignal,onText:(text:string)=>void,onReplyReady?:(results:readonly unknown[]|undefined)=>void){
+export async function streamNativeAgent(port:NativeStreamPort,input:{path:string;ownerId:string;headers:Record<string,string>;body:string},signal:AbortSignal,onText:StreamTextListener,onReplyReady?:(results:readonly unknown[]|undefined)=>void){
  const deadline=new AbortController(),streamId=crypto.randomUUID();
  const expire=()=>deadline.abort(new DOMException('Native stream timed out','TimeoutError'));
  let idle=setTimeout(expire,STREAM_IDLE_MS);const turn=setTimeout(expire,STREAM_TURN_MS);

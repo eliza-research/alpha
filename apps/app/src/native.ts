@@ -18,4 +18,7 @@ export const launcherListens = (() => {
   const header = (Capacitor as typeof Capacitor & { PluginHeaders?: { name: string; methods?: { name: string }[] }[] }).PluginHeaders?.find(entry => entry.name === "ElizaSystem");
   return isAndroid ? !!header?.methods?.some(method => method.name === "addListener") : !header || !!header.methods?.some(method => method.name === "addListener");
 })();
+/** Android's App info for exactly one listed entry and profile (AlphaSystemPlugin.openAppInfo). */
+export const openAppInfo = (target: { packageName: string; activityName?: string; user?: string }): Promise<void> =>
+  (System as unknown as { openAppInfo(options: typeof target): Promise<void> }).openAppInfo(target);
 export { System };

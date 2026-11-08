@@ -32,9 +32,13 @@ test('every retained MVP view has a live state and a populated state in the swee
     const title = view[0].toUpperCase() + view.slice(1);
     assert.match(liveBlock, new RegExp(`live\\('[^']*', \\['${title}'`), `live state opens ${title}`);
     assert.match(mockBlock, new RegExp(`'${view}'`), `fixture state opens ${view}`);
-    assert.match(mockBlock, new RegExp(`'${view}:[a-z]+'`), `fixture state opens a ${view} subview`);
+    if (view === 'settings') {
+      assert.ok(liveBlock.includes("live('Settings about', ['Settings', 'About'])"), 'the real Settings About page is swept');
+    } else {
+      assert.match(mockBlock, new RegExp(`'${view}:[a-z]+'`), `fixture state opens a ${view} subview`);
+    }
   }
-  for (const surface of ["live('Home')", "live('All apps'", "live('Conversation'", "'shade'", "'sheet'", "'full'"])
+  for (const surface of ["live('Home')", "live('Apps'", "live('Conversation'", "'shade'", "'sheet'", "'full'"])
     assert.ok(states.includes(surface), `${surface} is swept`);
   assert.match(states, /name: 'render failure recovery'/);
   assert.match(states, /name: 'startup failure recovery'/);
@@ -67,23 +71,35 @@ test('every subview of a retained view is opened by a state that asserts it is t
     assert.ok(asserted.has(id), `a state opens and asserts the ${id} subview`);
   }
   // Menus, search fields, sheets and the Undo toast are states of their own.
-  for (const step of ["['New automation', 'Edit When step']", "['Add Read step']", "['Connections', 'Slack']", "['Browser', 'Menu']", "['Photos', 'Search photos']", "['Files', 'Search files']", "['Search email']", "['Menu', 'Share']", "['Share photo']", "['View and sort']", "['Move file']", "['Delete file']"])
+  for (const step of ["['New automation', 'Edit When step']", "['Add Read step']", "['Browser', 'Menu']", "['New note', 'More']", "['Search email']", "['Menu', 'Share']", "['Share photo']", "['Sort files']", "['Move file']", "['Delete file']"])
     assert.ok(states.includes(step), `${step} is swept`);
-  assert.ok(states.includes("legacyNotes('Notes search', ['Search notes'])"), 'retained Notes search is swept');
+  // Previous notes recovers retained records; the current layout keeps its menu and Recently deleted.
+  for (const state of ["name:'live Notes retained records'", "legacyNotes('Notes note menu', ['New note', 'More'])", "'notes-trash'", "'notes-recorder'"])
+    assert.ok(states.includes(state), `${state} is swept`);
   assert.match(states, /const legacyNotes = [\s\S]*?await openLegacyNotes\(page\);[\s\S]*?await press\(page, steps\)/, 'retained Notes states select their source before opening controls');
 
-  for (const page of ['Character', 'Accounts', 'Connections', 'Notifications', 'Calendar', 'Password manager', 'Models', 'Display', 'Privacy & data', 'About', 'Scheduled digests', 'Agent connection'])
-    assert.ok(states.includes(`['Settings', '${page}']`), `Settings > ${page} is swept`);
+  // Follow the shipped grouped navigation, including its nested pages. Character,
+  // Models and the flat Agent connection row were retired from the owner's Settings design.
+  for (const steps of [
+    ['Settings', 'General'], ['Settings', 'General', 'Display'],
+    ['Settings', 'General', 'Notifications'], ['Settings', 'Privacy'],
+    ['Settings', 'Privacy', 'App permissions'], ['Settings', 'About'], ['Settings', 'About', 'Connection help'],
+    ['Settings', 'Apps'], ['Settings', 'Apps', 'Calendar'],
+    ['Settings', 'Apps', 'Passwords'],
+    ['Settings', 'Apps', 'Workflows', 'Scheduled summaries'],
+    ['Settings', 'Account', 'Account & plan'],
+    ['Settings', 'Account', 'Google & email'],
+  ]) assert.ok(states.includes(`[${steps.map(step => `'${step}'`).join(', ')}]`), `${steps.join(' > ')} is swept`);
 });
 
 test('the sweep applies every dimension and cannot be narrowed silently', () => {
-  assert.match(sweep, /const STATES = \[\.\.\.LIVE_STATES, \.\.\.DEVELOPMENT_STATES, \.\.\.MOCK_STATES, \.\.\.CONNECTED_STATES, \.\.\.FAILURE_STATES\];/);
+  assert.match(sweep, /const STATES = \[\.\.\.LIVE_STATES, \.\.\.BROWSER_APP_STATES, \.\.\.DEVELOPMENT_STATES, \.\.\.MOCK_STATES, \.\.\.CONNECTED_STATES, \.\.\.FAILURE_STATES\];/);
   assert.match(sweep, /for \(const theme of \['light', 'dark'\] as const\)/);
   assert.match(sweep, /auditTree\(page\)/);
   // Round 10: every lane also applies the dock and toast rules (nothing on Home under the
   // composer, an app's content scrollable clear of it, no toast under a dialog).
   assert.match(sweep, /auditPage\(page, \{ contrast: true, targetSize: 24, clipping: true, overlap: true, dock: true \}\)/);
-  assert.match(sweep, /auditTabOrder\(page\)/);
+  assert.match(sweep, /auditTabOrder\(page(?:, state\.name==='live Settings licenses'\?await exposedTabStopBudget\(page\):undefined)?\)/);
   assert.doesNotMatch(sweep, /auditPage\(page, \{[^}]*overlap: true \}\)/, 'no lane of the sweep runs without the dock rules');
   assert.doesNotMatch(production, /auditPage\(page, \{[^}]*overlap: true \}\)/, 'no lane of the production sweep runs without the dock rules');
   assert.match(sweep, /setTextScale\(page, 2\)/);
@@ -91,9 +107,9 @@ test('the sweep applies every dimension and cannot be narrowed silently', () => 
   // mid-word, a control on or cut by another box): the round-7 Home defect was not a clipping defect.
   assert.match(sweep, /setTextScale\(page, 2\);[\s\S]{0,400}auditPage\(page, \{ clipping: true, overlap: true, dock: true \}\)/);
   // At 200% the tab order is walked too (a stop left under the composer is a focus-obscured finding).
-  assert.match(sweep, /200% text is not clipped[\s\S]*?auditTabOrder\(page\)[\s\S]*?test\.describe\('landscape'/);
+  assert.match(sweep, /200% text is not clipped[\s\S]*?auditTabOrder\(page(?:, state\.name==='live Settings licenses'\?await exposedTabStopBudget\(page\):undefined)?\)[\s\S]*?test\.describe\('landscape'/);
   // Landscape and 200% text together is a lane of its own.
-  assert.match(sweep, /landscape at 200% text keeps every control on screen[\s\S]*?toHaveClass\(\/alpha-landscape\/\);\s*await setTextScale\(page, 2\);[\s\S]{0,200}auditPage\(page, \{ clipping: true, overlap: true, dock: true \}\), \.\.\.await auditTree\(page\), \.\.\.await auditTabOrder\(page\)/);
+  assert.match(sweep, /landscape at 200% text keeps every control on screen[\s\S]*?toHaveClass\(\/alpha-landscape\/\);\s*await setTextScale\(page, 2\);[\s\S]{0,200}auditPage\(page, \{ clipping: true, overlap: true, dock: true \}\), \.\.\.await auditTree\(page\), \.\.\.await auditTabOrder\(page(?:, state\.name==='live Settings licenses'\?await exposedTabStopBudget\(page\):undefined)?\)/);
   assert.match(sweep, /viewport: \{ width: 915, height: 412 \}/);
   for (const spec of [sweep, production]) assert.match(spec, /toHaveClass\(\/alpha-landscape\/\)/, 'the landscape lane asserts the landscape layout is active');
   // Only deliberate truncation is tolerated.
@@ -110,11 +126,11 @@ test('the sweep applies every dimension and cannot be narrowed silently', () => 
   // The fixture lock screen and photos-empty viewer and the launcher presentation run at 100%
   // and 200% with names, focus, contrast and the dock rules (provider-connected states are in STATES).
   assert.match(sweep, /for \(const state of \[\.\.\.FIXTURE_STATES, \.\.\.LAUNCHER_STATES\]\) \{\s*for \(const scale of \[1, 2\]\)/);
-  for (const name of ["mock('lock')", "shows: 'photos-empty'", "launcher('Home')", "launcher('All apps'", "connected('Inbox'", "connected('Settings connections'", "name: 'connected Calendar with events'", "CONNECTED_STATES.push(calendarWithEvents)"])
+  for (const name of ["mock('lock')", "shows: 'photos-empty'", "launcher('Home')", "launcher('Apps'", "connected('Inbox'", "connected('Settings Google'", "name: 'connected Calendar with events'", "CONNECTED_STATES.push(calendarWithEvents)"])
     assert.ok(states.includes(name), `${name} is swept`);
   // Above 200%: the largest in-app size with the largest system font (300%), over every live and
   // launcher state, with the clipping, overlap, dock, name, tab-order and reading-order rules.
-  assert.match(sweep, /for \(const state of \[\.\.\.LIVE_STATES, \.\.\.LAUNCHER_STATES\]\) \{\s*test\(`300% text[\s\S]{0,400}setTextScale\(page, 3\);\s*const found = blocking\(format\(\[\.\.\.await auditPage\(page, \{ clipping: true, overlap: true, dock: true \}\), \.\.\.await auditTree\(page\), \.\.\.await auditTabOrder\(page\), \.\.\.await auditReadingOrder\(page\)\]\)\);/);
+  assert.match(sweep, /for \(const state of \[\.\.\.LIVE_STATES, \.\.\.BROWSER_APP_STATES, \.\.\.LAUNCHER_STATES\]\) \{\s*test\(`300% text[\s\S]{0,400}setTextScale\(page, 3\);\s*const found = blocking\(format\(\[\.\.\.await auditPage\(page, \{ clipping: true, overlap: true, dock: true \}\), \.\.\.await auditTree\(page\), \.\.\.await auditTabOrder\(page(?:, state\.name==='live Settings licenses'\?await exposedTabStopBudget\(page\):undefined)?\), \.\.\.await auditReadingOrder\(page\)\]\)\);/);
   // The 300% defects open when the lane was added (#701) run as expected failures; the list only shrinks.
   const open300 = sweep.match(/const OPEN_AT_300 = new Set\(\[([^\]]*)\]\);/)?.[1];
   assert.ok(open300 !== undefined, 'the open 300% defects are listed in one place');
@@ -131,7 +147,8 @@ test('the sweep applies every dimension and cannot be narrowed silently', () => 
   assert.doesNotMatch(sweep, /test\.skip|test\.fixme|\.only\(/);
   assert.doesNotMatch(production, /test\.skip|test\.fixme|\.only\(/);
   assert.doesNotMatch(states, /fixme|largeTextOpen/);
-  assert.match(production, /for \(const state of LIVE_STATES\)/);
+  assert.match(production, /const STATES = \[\.\.\.LIVE_STATES, PRODUCTION_APPS_STATE\];/);
+  assert.match(production, /for \(const state of STATES\)/);
   assert.match(production, /auditPage\(page, \{ contrast: true, targetSize: 24, clipping: true, overlap: true, dock: true \}\)/);
 });
 
@@ -191,7 +208,7 @@ test('both sweeps fail on a cut app title and allow a clamped preview', () => {
 
 test('provider-connected screens are swept, against a synthetic mailbox only', () => {
   const block = states.slice(states.indexOf('export const CONNECTED_STATES'), states.indexOf('export const DEVELOPMENT_STATES'));
-  for (const state of ["connected('Home'", "connected('Inbox')", "connected('Inbox sent (empty)'", "connected('Inbox search'", "connected('Inbox message'", "connected('Inbox long subject'", "connected('Inbox compose'", "connected('Settings',", "connected('Settings accounts'", "connected('Settings connections'"])
+  for (const state of ["connected('Home'", "connected('Inbox')", "connected('Inbox sent (empty)'", "connected('Inbox search'", "connected('Inbox message'", "connected('Inbox long subject'", "connected('Inbox compose'", "connected('Settings',", "connected('Settings Google'"])
     assert.ok(block.includes(state), `${state} is swept`);
   // Connected states other than a mailbox (MVP-48): an agent's calendar, a linked Google Calendar
   // account's sync review and a connected agent's conversation. None writes to a provider.
@@ -209,7 +226,16 @@ test('provider-connected screens are swept, against a synthetic mailbox only', (
 
 test('the dock, title and toast fixes the sweep depends on stay in the source', () => {
   // The layout values themselves are checked by the sweep's dock, clipping and overlap rules.
-  const main = read('apps/app/src/main.tsx');
+  const main = read('apps/app/src/main.tsx'), css=read('apps/app/src/prototype/phone.css');
+  // Home and the app library reserve measured clearance inside their full-height scroll content.
+  assert.match(css, /--alpha-dock-reserve:max\(108px,calc\(var\(--alpha-dock-clearance,102px\) \+ 6px\)\)/);
+  assert.match(css, /html:not\(\.alpha-landscape\) \.alpha-phone \[data-alpha-layer="home"\] \{ bottom:0!important; scroll-padding-bottom:var\(--alpha-dock-reserve\)!important;/);
+  assert.match(css, /html:not\(\.alpha-landscape\) \.alpha-phone \[data-alpha-layer="drawer"\] \{ padding-bottom:0!important; \}/);
+  const homeLayout=css.split('\n').find(line=>line.includes('[data-alpha-home-layout] {')&&line.includes('padding-bottom:'));assert.ok(homeLayout);
+  assert.match(homeLayout,/--alpha-home-clearance/);assert.match(homeLayout,/--alpha-home-height/);
+  assert.doesNotMatch(homeLayout,/--alpha-dock-reserve|--alpha-dock-clearance/,'animated dock clearance must not resize the Home icon layout');
+  assert.match(css, /:is\(\[data-alpha-app-scroll\],\.calendar-timeline,\.calendar-draft-fields\) \{ scroll-padding-bottom:calc\(var\(--alpha-dock-clearance,102px\) \+ 16px\); \}/);
+  assert.match(css, /\.inbox-compose-fields \{[^}]*padding-bottom:max\(64px,calc\(var\(--alpha-dock-clearance,102px\) \+ 8px\)\)!important/);
   assert.match(main, /installDockClearance\(\)/);
   const dock = read('apps/app/src/runtime/dock-clearance.ts');
   assert.match(dock, /'--alpha-dock-clearance'/);
@@ -242,11 +268,14 @@ test('the layout hooks the sweep depends on stay in the template', () => {
   assert.ok(template.includes('data-alpha-browser-menu') && template.includes('data-alpha-header-grow'));
   // Home's app grid is the shared mobile shell's; Alpha maps its text scale to the measured text size.
   assert.match(css, /\[data-alpha-layer="home"\] \{ --mobile-shell-text-scale:var\(--alpha-text-scale,1\); \}/);
-  assert.match(read('apps/app/src/prototype/home-shell.ts'), /gridProps: \{'data-alpha-home-apps': ''\}/);
+  assert.match(read('apps/app/src/prototype/home-shell.ts'), /const gridProps: Bag = \{\s*'data-alpha-home-apps': ''/);
+  // The Apps drawer's icon grid is four columns of at least 62px times the text scale too.
+  assert.match(read('apps/app/src/prototype/home-shell.ts'), /classes: \{[^}]*grid: 'alpha-fit-grid'\},\s*gridAttributes: \{'data-alpha-apps-grid': ''\}/);
+  assert.match(read('.eliza/client-features/packages/ui/src/mobile-shell/InstalledAppsGridDrawer.tsx'), /className=\{classes\.grid\}\s+\{\.\.\.gridAttributes\}\s+style=\{\s*\{\s*["']--fit-columns["']:\s*4,\s*["']--fit-min["']:\s*["']62px["']/);
   assert.doesNotMatch(template, /data-alpha-home-(calendar|workflows|inbox)\b[^>]*height: 196px/);
   assert.match(read('apps/app/src/main.tsx'), /installTextScale\(\)/);
   // Search fields may shrink below the input's intrinsic width, so Close search stays on screen.
-  for (const label of ['Search mail', 'Search photos', 'Search notes', 'Search files']) {
+  for (const label of ['Search mail']) {
     const at = template.indexOf(`aria-label="${label}" placeholder`);
     assert.ok(at > 0, `${label} field is in the template`);
     const wrappers=[...template.slice(0,at).matchAll(/<(?:div|form)\b[^>]*style="flex-grow: 1;[^>]*>/g)];

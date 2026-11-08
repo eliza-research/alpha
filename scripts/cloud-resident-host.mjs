@@ -1,4 +1,5 @@
 import fs from 'node:fs';
+import {createProviderKeySession} from '../vendor/eliza/packages/host/native-host/provider-key-session.mjs';
 import path from 'node:path';
 import {randomUUID,randomBytes} from 'node:crypto';
 import {preparePrivateRuntimeProfile,writePrivateRuntimeJson,runtimeEnvironment,startPrivateRuntimeProcess} from '../vendor/eliza/packages/agent/native-host/private-runtime-launch.mjs';
@@ -36,6 +37,7 @@ export async function createCloudResidentHost({source,profile,port,environment='
  try{const fd=fs.openSync(vaultPath,'wx',0o600);try{fs.writeFileSync(fd,randomBytes(32).toString('hex'));}finally{fs.closeSync(fd);}}catch(error){if(error.code!=='EEXIST')throw error;}
  const vaultFd=fs.openSync(vaultPath,fs.constants.O_RDONLY|fs.constants.O_NOFOLLOW|fs.constants.O_NONBLOCK);let vaultPassphrase;
  try{const stat=fs.fstatSync(vaultFd);if(!stat.isFile()||stat.nlink!==1||(stat.mode&0o077)||stat.uid!==process.getuid?.()||stat.size!==64)throw Error('Private vault passphrase required');vaultPassphrase=fs.readFileSync(vaultFd,'utf8');if(!/^[a-f0-9]{64}$/.test(vaultPassphrase))throw Error('Invalid vault passphrase');}finally{fs.closeSync(vaultFd);}
+ const providerKeys=createProviderKeySession();
  let direct=null,cloudCredential=null,runningDirectRevision=null;
  let googleHost=null,running=null,bound=null,queue=Promise.resolve(),expiry,closed=false,retiring=false;
  const serial=run=>{const next=queue.then(run,run);queue=next.catch(()=>{});return next;};
@@ -55,7 +57,7 @@ export async function createCloudResidentHost({source,profile,port,environment='
   await stop();
   const settings={...(environment==='staging'?{ELIZA_DEV_SOURCE:'1',ELIZA_DEV_CLOUD_ENV_AUTHORITY:'staging-explicit'}:{}),ELIZA_PGLITE_AUTO_RESET:'0',ELIZA_VAULT_PASSPHRASE:vaultPassphrase,ELIZAOS_CLOUD_USE_INFERENCE:credential?'true':'false',ELIZAOS_CLOUD_USE_EMBEDDINGS:credential?'true':'false',ELIZA_DISABLE_LOCAL_EMBEDDINGS:'true',ELIZA_LOCAL_EMBEDDING_ENABLED:'0',ELIZA_ASR_ENABLED:'0',ELIZA_PARADEE_ENABLED:'0',...(credential?{ELIZAOS_CLOUD_API_KEY:credential.token,ELIZAOS_CLOUD_BASE_URL:CLOUD_SDK_BASES[environment],ELIZAOS_CLOUD_SMALL_MODEL:CLOUD_MODEL,ELIZAOS_CLOUD_LARGE_MODEL:CLOUD_MODEL,ELIZAOS_CLOUD_EMBEDDING_MODEL:'bge-small-en-v1.5',ELIZAOS_CLOUD_EMBEDDING_DIMENSIONS:'384'}:{})};
   if(credential&&!direct&&cloudRealtimeVoice)Object.assign(settings,{ELIZA_SELF_HOSTED_VOICE_ENABLED:'1',ELIZA_SELF_HOSTED_VOICE_CLOUD_RELAY_ENABLED:'1'});
-  if(direct){Object.assign(settings,localEmbeddingEnvironment(inherited),{ELIZA_DISABLE_LOCAL_EMBEDDINGS:'false',ELIZA_LOCAL_EMBEDDING_ENABLED:'1',CEREBRAS_API_KEY:direct.apiKey,CEREBRAS_BASE_URL:'https://api.cerebras.ai/v1',CEREBRAS_MODEL:'qwen-3.8-27b',CEREBRAS_SMALL_MODEL:'qwen-3.8-27b',CEREBRAS_LARGE_MODEL:'qwen-3.8-27b',ELIZA_PROVIDER:'cerebras',ELIZAOS_CLOUD_USE_INFERENCE:'false',ELIZAOS_CLOUD_USE_EMBEDDINGS:'false',...(direct.cartesiaKey?{CARTESIA_API_KEY:direct.cartesiaKey,ELIZA_SELF_HOSTED_VOICE_ENABLED:'1'}:{})});for(const key of ['ELIZAOS_CLOUD_API_KEY','ELIZAOS_CLOUD_BASE_URL','ELIZAOS_CLOUD_SMALL_MODEL','ELIZAOS_CLOUD_LARGE_MODEL'])delete settings[key];}
+  if(direct){Object.assign(settings,localEmbeddingEnvironment(inherited),{ELIZA_DISABLE_LOCAL_EMBEDDINGS:'false',ELIZA_LOCAL_EMBEDDING_ENABLED:'1',...(direct.apiKey?{CEREBRAS_API_KEY:direct.apiKey}:{}),CEREBRAS_BASE_URL:'https://api.cerebras.ai/v1',CEREBRAS_MODEL:'qwen-3.8-27b',CEREBRAS_SMALL_MODEL:'qwen-3.8-27b',CEREBRAS_LARGE_MODEL:'qwen-3.8-27b',ELIZA_PROVIDER:'cerebras',ELIZAOS_CLOUD_USE_INFERENCE:'false',ELIZAOS_CLOUD_USE_EMBEDDINGS:'false',...(direct.cartesiaKey?{CARTESIA_API_KEY:direct.cartesiaKey,ELIZA_SELF_HOSTED_VOICE_ENABLED:'1'}:{})});for(const key of ['ELIZAOS_CLOUD_API_KEY','ELIZAOS_CLOUD_BASE_URL','ELIZAOS_CLOUD_SMALL_MODEL','ELIZAOS_CLOUD_LARGE_MODEL'])delete settings[key];}
   // Derive only the nonsecret route for this launch; account, history and base config are retained.
   const launchConfigPath=path.join(profile,'provider-launch.json');
   await writePrivateRuntimeJson(launchConfigPath,{...privateProfile.config,cloud:{...privateProfile.config.cloud,enabled:!direct},serviceRouting:{...privateProfile.config.serviceRouting,...(direct?{embeddings:LOCAL_EMBEDDING_ROUTE}:{}),llmText:direct?{backend:'cerebras',transport:'direct',smallModel:'qwen-3.8-27b',largeModel:'qwen-3.8-27b'}:privateProfile.config.serviceRouting.llmText}});
@@ -71,10 +73,10 @@ export async function createCloudResidentHost({source,profile,port,environment='
   const current=running;runningDirectRevision=direct?.revision??null;bound=credential?{credentialId:credential.credentialId,reference:credential.reference,expiresAt:credential.expiresAt}:null;
   const finished=()=>serial(async()=>{if(running!==current)return;retiring=true;running=null;bound=null;clearTimeout(expiry);const endedGoogle=googleHost;if(endedGoogle)await endedGoogle.close();if(googleHost===endedGoogle)googleHost=null;retiring=false;});
   void current.completion.then(finished,finished).catch(()=>{retiring=true;});
-  if(credential?.expiresAt){const expire=()=>{const remaining=credential.expiresAt-Date.now();if(remaining<=0){void serial(()=>{cloudCredential=null;return replace(null);});return;}expiry=setTimeout(expire,Math.min(remaining,2147483647));};expire();}
+  if(credential?.expiresAt){const expire=()=>{const remaining=credential.expiresAt-Date.now();if(remaining<=0){if(bound?.credentialId!==credential.credentialId||bound?.reference!==credential.reference)return;invalidateProviderRequests();void serial(()=>{if(bound?.credentialId!==credential.credentialId||bound?.reference!==credential.reference)return;cloudCredential=null;return replace(null);});return;}expiry=setTimeout(expire,Math.min(remaining,2147483647));};expire();}
   return status(credential?.credentialId);
  }
- function status(id){return {provider:direct?'cerebras':'elizacloud',selected:!!direct||!!bound,...(direct?{revision:direct.revision}:{}),configured:!!running&&!!(direct||bound),model:direct?'qwen-3.8-27b':CLOUD_MODEL,voiceConfigured:!!direct?.cartesiaKey,persistence:direct?'host-session':'host',attachable:!retiring&&!!running&&!!bound&&bound.credentialId===id};}
+ function status(id){return {...providerKeys.status(),provider:direct?'cerebras':'elizacloud',selected:!!direct||!!bound,configured:!!running&&!retiring&&!!(direct?direct.apiKey:bound),model:direct?'qwen-3.8-27b':CLOUD_MODEL,voiceConfigured:!!direct?.cartesiaKey,attachable:!retiring&&!!running&&!!bound&&bound.credentialId===id};}
  async function ready(signal){
   if(retiring)throw Error('Resident retirement unconfirmed');
   if(!running)await serial(()=>{if(!running)return replace(cloudCredential);});
@@ -84,10 +86,44 @@ export async function createCloudResidentHost({source,profile,port,environment='
    await new Promise(resolve=>setTimeout(resolve,300));
   }throw Error('Cloud resident startup timed out');
  }
- return {bind:credential=>serial(async()=>{const result=await replace(credential);cloudCredential=credential;return result;}),clear:()=>serial(()=>{cloudCredential=null;return replace(null);}),
- selectOwn:(input,signal=new AbortController().signal)=>serial(async()=>{signal.throwIfAborted();if(!input||typeof input.apiKey!=='string'||!/^[!-~]{8,1024}$/.test(input.apiKey)||input.cartesiaKey!==undefined&&(typeof input.cartesiaKey!=='string'||!/^[!-~]{8,1024}$/.test(input.cartesiaKey)))throw Error('Enter valid provider keys.');
- const response=await request('https://api.cerebras.ai/v1/models',{headers:{Authorization:'Bearer '+input.apiKey,Accept:'application/json'},redirect:'error',signal:AbortSignal.any([signal,AbortSignal.timeout(10000)])});
- signal.throwIfAborted();const body=await response.text();signal.throwIfAborted();if(!response.ok||body.length>262144)throw Error('Cerebras did not confirm the key. Nothing was saved.');let data;try{data=JSON.parse(body);}catch{throw Error('Cerebras did not confirm the key. Nothing was saved.');}if(!Array.isArray(data.data)||!data.data.some(row=>row.id==='qwen-3.8-27b'))throw Error('The required Cerebras model is unavailable. Nothing was saved.');
- signal.throwIfAborted();await stop();signal.throwIfAborted();direct={revision:randomUUID(),apiKey:input.apiKey,...(input.cartesiaKey?{cartesiaKey:input.cartesiaKey}:{})};return replace(cloudCredential);}),
- selectCloud:(signal=new AbortController().signal)=>serial(async()=>{signal.throwIfAborted();await stop();signal.throwIfAborted();direct=null;return replace(cloudCredential);}),status,ready,close:()=>serial(async()=>{closed=true;await stop();direct=null;cloudCredential=null;})};
+ async function validateTextKey(apiKey,signal){
+  if(typeof apiKey!=='string'||!/^[!-~]{8,1024}$/.test(apiKey))throw Error('Enter a valid Text key.');
+  const response=await request('https://api.cerebras.ai/v1/models',{headers:{Authorization:'Bearer '+apiKey,Accept:'application/json'},redirect:'error',signal:AbortSignal.any([signal,AbortSignal.timeout(10000)])});
+  signal.throwIfAborted();const body=await response.text();signal.throwIfAborted();if(!response.ok||body.length>262144)throw Error('Cerebras did not confirm the key. Nothing was saved.');let data;try{data=JSON.parse(body);}catch{throw Error('Cerebras did not confirm the key. Nothing was saved.');}if(!Array.isArray(data.data)||!data.data.some(row=>row.id==='qwen-3.8-27b'))throw Error('The required Cerebras model is unavailable. Nothing was saved.');
+ }
+ function check(input,signal){signal.throwIfAborted();providerKeys.check(input?.expectedRevision);}
+ async function applyProvider(operation,input,signal){
+  check(input,signal);
+  const allowed=operation==='edit'?['expectedRevision','textKey','voiceKey']:operation==='select'?['expectedRevision','mode']:['expectedRevision','key'];
+  if(Object.keys(input).some(key=>!allowed.includes(key)))throw Error('Invalid provider request.');
+  if(operation==='select'&&(!['cloud','own'].includes(input.mode)||input.mode==='own'&&!providerKeys.status().keys.text.configured))throw Error('Add a Text key before selecting Own.');
+  if(operation==='remove'&&!['text','voice'].includes(input.key))throw Error('Invalid provider key.');
+  if(operation==='edit'){
+   if(!['textKey','voiceKey'].some(key=>Object.hasOwn(input,key)))throw Error('Choose a provider key to edit.');
+   if(Object.hasOwn(input,'textKey'))await validateTextKey(input.textKey,signal);
+   if(Object.hasOwn(input,'voiceKey')&&(typeof input.voiceKey!=='string'||!/^[!-~]{8,1024}$/.test(input.voiceKey)))throw Error('Enter a valid Voice key.');
+  }
+  check(input,signal);
+  // An inactive key edit cannot restart or alter the selected Cloud route.
+  const restart=operation==='select'||providerKeys.status().mode==='own';
+  if(restart){await stop();check(input,signal);}
+  providerKeys[operation](input);direct=providerKeys.launchKeys();
+  return restart?replace(cloudCredential):status();
+ }
+ const editProviderKeys=(input,signal=new AbortController().signal)=>serial(()=>applyProvider('edit',input,signal));
+ const selectProvider=(input,signal=new AbortController().signal)=>serial(()=>applyProvider('select',input,signal));
+ const removeProviderKey=(input,signal=new AbortController().signal)=>serial(()=>applyProvider('remove',input,signal));
+ const invalidateProviderRequests=()=>{if(closed)return;providerKeys.invalidate();direct=providerKeys.launchKeys();};
+ return {bind:credential=>{if(cloudCredential?.credentialId!==credential?.credentialId||cloudCredential?.reference!==credential?.reference)invalidateProviderRequests();return serial(async()=>{const result=await replace(credential);cloudCredential=credential;return result;});},clear:()=>{invalidateProviderRequests();return serial(()=>{cloudCredential=null;return replace(null);});},
+ editProviderKeys,selectProvider,removeProviderKey,invalidateProviderRequests,
+ revealProviderKey:(input,signal=new AbortController().signal)=>serial(()=>{check(input,signal);return providerKeys.reveal(input);}),
+ // Compatibility for existing owner setup callers. Omitted Voice preserves its key.
+ selectOwn:(input,signal=new AbortController().signal)=>{const expectedRevision=providerKeys.status().revision;return serial(async()=>{
+  signal.throwIfAborted();await validateTextKey(input?.apiKey,signal);
+  const edit={expectedRevision,textKey:input.apiKey,...(Object.hasOwn(input,'cartesiaKey')?{voiceKey:input.cartesiaKey}:{})};
+  if(Object.hasOwn(edit,'voiceKey')&&(typeof edit.voiceKey!=='string'||!/^[!-~]{8,1024}$/.test(edit.voiceKey)))throw Error('Enter a valid Voice key.');
+  check(edit,signal);await stop();check(edit,signal);providerKeys.edit(edit);providerKeys.select({mode:'own',expectedRevision:providerKeys.status().revision});direct=providerKeys.launchKeys();return replace(cloudCredential);
+ });},
+ selectCloud:(signal=new AbortController().signal)=>{const expectedRevision=providerKeys.status().revision;return selectProvider({mode:'cloud',expectedRevision},signal);},
+ status,ready,close:()=>{invalidateProviderRequests();return serial(async()=>{closed=true;await stop();direct=null;cloudCredential=null;providerKeys.close();});}};
 }

@@ -42,7 +42,9 @@ class Bridge {
 class Plugin {final String id;final Bridge bridge;final Activity activity=new Activity();Plugin(String id,Bridge bridge){this.id=id;this.bridge=bridge;}Activity getActivity(){return activity;}void requestPermissionForAliases(String[] aliases,PluginCall call,String callback){bridge.requested=aliases;bridge.savePermissionCall(call);}public void requestPermissions(PluginCall call){throw new AssertionError("Do not request all API-level aliases");}}
 class PhotoLibraryAccess {
  ${constants}
+ ${method(access,'public enum Profile')}
  ${method(access,'public static String[] permissionAliases(int sdk)')}
+ ${method(access,'public static String[] permissionAliases(int sdk, Profile profile)')}
 }
 class PhotosPlugin extends Plugin {
  PhotosPlugin(Bridge bridge){super("AlphaPhotos",bridge);}

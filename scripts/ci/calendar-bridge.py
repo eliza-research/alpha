@@ -1,15 +1,8 @@
 #!/usr/bin/env python3
-"""Calendar bridge qualification, run by the build job in .github/workflows/android.yml.
-
-`--source-frame` records the tracked source before the normal Android build; the plain run then
-compiles the real AlphaCalendarPlugin.java with that build's JavaCompile outputs and drives it
-against a controlled JVM calendar bridge on the hosted runner. Both steps feed the required
-"Android foundation result" check. A PASS proves that JVM bridge contract only, not an
-on-device calendar or device acceptance.
-"""
+"""Proposed owning CI check. Source-only draft; not executed or installed."""
 import time
 SCRIPT_ENTRY = time.monotonic()
-CURRENT_DEADLINE = SCRIPT_ENTRY + 20  # Preflight limit; the work and entry deadlines replace it later.
+CURRENT_DEADLINE = SCRIPT_ENTRY + 20
 import hashlib
 import json
 import os
@@ -19,18 +12,13 @@ import shutil
 import signal
 import stat
 import subprocess
-import re
 import sys
 
-# The SDK pin comes from upstream.lock.json (already a fixed input below) so a pin bump
-# needs no edit here. HOST stays literal: it binds the reviewed AlphaCalendarPlugin.java,
-# and test/ci-pin-bound-scripts.test.mjs fails npm run verify when that file changes.
-SDK = json.loads((Path(__file__).resolve().parents[2] / 'upstream.lock.json').read_text())['commit']
-if not re.fullmatch(r'[0-9a-f]{40}', SDK):
-    raise RuntimeError('upstream.lock.json commit is not a full lowercase SHA')
+SDK = '99b49439ce9d0cb5607e9831b9f7f58d89525029'
+NODE = '26.13.0'
 HOST = '4ba9ec0cbbb773855838b3ba45a59b97476a15f1d07983a3b5a039fcb00c7845'
 JSON_SHA = '3ea61b2a06e31edf1c91134fe9106b0ebb16628be169f3db75bc7a2b06b45796'
-ENTRY_SECONDS = 180  # Enforced whole-entry limit; the workflow step times out at 240s.
+ENTRY_SECONDS = 180  # <240s GHA timeout, leaving >=60s platform margin.
 PREFLIGHT_SECONDS = 20
 WORK_END_SECONDS = 150  # Absolute from entry, including preflight.
 CLEANUP_END_SECONDS = 170  # 20s cleanup +10s receipt reserve within180s.
@@ -205,8 +193,7 @@ def record_source_frame():
     require(head == os.environ['ALPHA_CALENDAR_BRIDGE_EXPECTED_HEAD'], 'Unexpected source frame head')
     value = {'head': head, 'tree': safe_git(root, ['rev-parse', 'HEAD^{tree}']),
              'sdk': safe_git(root, ['rev-parse', 'HEAD:vendor/eliza']), 'beforeNormalBuild': tracked_frame(root)}
-    require(value['sdk'] == SDK, 'Source-frame SDK pin mismatch')
-    require(time.monotonic() - entered < 20, 'Source-frame deadline exceeded')
+    require(value['sdk'] == SDK and time.monotonic() - entered < 20, 'Source-frame deadline/pin failure')
     bounded_json(source_frame_path(), value, 32768)
 
 
@@ -230,7 +217,7 @@ def main():
     require(safe_git(root / 'vendor/eliza', ['rev-parse', 'HEAD']) == SDK, 'Unexpected SDK checkout')
     host = root / 'android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaCalendarPlugin.java'
     require(digest(host) == HOST, 'Unexpected Alpha calendar host')
-    require((root / '.nvmrc').read_text().strip() == '24.15.0', 'Unexpected Node declaration')
+    require((root / '.nvmrc').read_text().strip() == NODE, 'Unexpected Node declaration')
     node = Path(shutil.which('node')).resolve(strict=True)
     java_home = Path(os.environ['JAVA_HOME']).resolve(strict=True)
     jar = Path(os.environ['ALPHA_JSON_JAR']).resolve(strict=True)
@@ -283,7 +270,7 @@ def main():
     require(time.monotonic() - entry <= PREFLIGHT_SECONDS, 'Preflight budget exhausted')
     CURRENT_DEADLINE = entry + WORK_END_SECONDS
     free = shutil.disk_usage(root).free
-    require(free >= 24268435456, 'Entry disk floor (24268435456 bytes free) not met')
+    require(free >= 24268435456, 'Proposed entry disk floor not met')
     log = namespace / 'gradle.log'
     child, failure, peak = None, None, 0
     known, first, last = {}, None, None

@@ -145,3 +145,26 @@ test('one on-device readiness check per Talk: the conversation owns it, and the 
   assert.equal(statuses, 1);
   assert.equal(f.renderChat().state, 'listening');
 });
+
+test('Transcribe retains its recording readiness check before opening capture', async t => {
+  const {cloudVoiceViewFixture} = await import('./fixtures/cloud-voice-view.mjs');
+  const f = cloudVoiceViewFixture();
+  t.after(() => f.close());
+  f.box.React = {createElement: () => null}; f.box.VoiceActivity = () => null;
+  f.box.HTMLElement = class {};
+  f.box.nativeLiveVoiceReady = async () => false;
+  let statuses = 0, release;
+  f.box.createOnDeviceVoice = () => ({
+    ready: () => { statuses++; return new Promise(resolve => { release = resolve; }); },
+    speak: async () => {}, transcribe: async () => ({text: 'hello', local: true}),
+  });
+  f.shell.startTranscription();
+  for (let i = 0; i < 20; i++) await f.tick();
+  assert.equal(statuses, 1);
+  assert.equal(f.starts, 0, 'capture waits for the recording readiness result');
+  release(true);
+  for (let i = 0; i < 20; i++) await f.tick();
+  assert.equal(statuses, 1);
+  assert.equal(f.starts, 1, 'the ready recording path opens its capture');
+  assert.equal(f.sends, 0);
+});

@@ -1,0 +1,1017 @@
+diff --git a/packages/agent/src/api/device-action-routes.ts b/packages/agent/src/api/device-action-routes.ts
+index 4b66eca..e9eeebd 100644
+--- a/packages/agent/src/api/device-action-routes.ts
++++ b/packages/agent/src/api/device-action-routes.ts
+@@ -95,6 +95,7 @@ export function deviceRequestCredential(
+     "calendar.agenda-read.v1",
+     "notes.local-record.v1",
+     "notes.query.v1",
++    "notes.organize.v1",
+     CALENDAR_NAMED_READ_CAPABILITY,
+     CALENDAR_AVAILABILITY_CAPABILITY,
+     NAMED_TARGET_CAPABILITY,
+@@ -182,6 +183,7 @@ export async function handleDeviceActionRoutes(
+             "calendar.agenda-read.v1",
+             "notes.local-record.v1",
+             "notes.query.v1",
++            "notes.organize.v1",
+             CALENDAR_AVAILABILITY_CAPABILITY,
+             NAMED_TARGET_CAPABILITY,
+             NOTES_SEARCH_CAPABILITY,
+diff --git a/plugins/plugin-assistant/src/services/device-actions/action.ts b/plugins/plugin-assistant/src/services/device-actions/action.ts
+index 522bfb9..3db4ad1 100644
+--- a/plugins/plugin-assistant/src/services/device-actions/action.ts
++++ b/plugins/plugin-assistant/src/services/device-actions/action.ts
+@@ -47,6 +47,10 @@ import {
+ } from "./foreground-review-contract.ts";
+ import { isMapsOperation, validateMapsResult } from "./maps-contract.ts";
+ import { isNotesOperation, validateNotesResult } from "./notes-contract.ts";
++import {
++  isNotesOrganizeType,
++  NOTES_KINDS,
++} from "./notes-organize-contract.ts";
+ import { validateNotesQueryResult } from "./notes-query-result.ts";
+ import {
+   isPhoneDial,
+@@ -253,6 +257,60 @@ const notesSchemas: ActionParameterSchema[] = [
+       : {}),
+   },
+ }));
++const notesFolderSchema = {
++  type: "string",
++  description: "Folder name as shown in Notes, at most 40 characters",
++};
++const notesOrganizeSchemas: ActionParameterSchema[] = [
++  {
++    type: "object",
++    additionalProperties: false,
++    required: ["type"],
++    properties: {
++      type: { type: "string", enum: ["notes_filter"] },
++      text: { type: "string", description: "At most 200 characters" },
++      folder: notesFolderSchema,
++      kind: { type: "string", enum: [...NOTES_KINDS] },
++    },
++  },
++  {
++    type: "object",
++    additionalProperties: false,
++    required: ["type", "target", "folder"],
++    properties: {
++      type: { type: "string", enum: ["notes_move"] },
++      target: notesTargetSchema,
++      folder: { anyOf: [notesFolderSchema, { type: "null" }] },
++    },
++  },
++  {
++    type: "object",
++    additionalProperties: false,
++    required: ["type", "name"],
++    properties: {
++      type: { type: "string", enum: ["notes_folder_create"] },
++      name: notesFolderSchema,
++    },
++  },
++  {
++    type: "object",
++    additionalProperties: false,
++    required: ["type", "noteId"],
++    properties: {
++      type: { type: "string", enum: ["notes_restore"] },
++      noteId: { type: "string" },
++    },
++  },
++  {
++    type: "object",
++    additionalProperties: false,
++    required: ["type", "action"],
++    properties: {
++      type: { type: "string", enum: ["notes_record"] },
++      action: { type: "string", enum: ["start", "stop"] },
++    },
++  },
++];
+ const calendarString = { type: "string" };
+ const calendarSource = {
+   type: "object",
+@@ -591,6 +649,7 @@ export const proposeDeviceAction: Action = {
+     "Reviewed SIM SMS requires sms.send.v1, exact canonical recipients, body and the active subscriptionId shown by the phone. Never invent a SIM ID or substitute an external compose intent. The owner reviews the exact content on the unlocked phone. submitted proves submission only; sent proves all sent callbacks; delivered requires all matching delivery reports. Unknown or partial failure must never be automatically retried. " +
+     "A reviewed dial uses phone_dial with target {kind: number, number: digits with optional leading +} (requires phone.dial.v1) or {kind: contact, query: the contact name} (also requires contacts.lookup.v1; the phone looks the contact up locally and the owner picks the number, which is never returned). After the owner's approval the phone opens its dial screen with the number; the owner places the call there. handed-off proves only that the dial screen opened, never a placed, connected or completed call. Never retry automatically. " +
+     "Native Notes discovery from Home uses notes_query with query {kind: title, text: requested title} or {kind: latest, by: created|updated}, only with notes.query.v1. Candidates remain on the phone; the owner confirms exactly one note to share. Unknown chronology or ties require local owner choice; a returned owner-choice-uncertain basis does not prove latest. Never substitute backend Notes. " +
++    "With notes.organize.v1: notes_filter {text, folder name and/or kind text|list|voice|link} filters the phone Notes list and returns no note content; notes_record {action: start|stop} starts or stops a voice note in the open Notes view; both run directly only when the owner's current message asked for them. notes_move {target: exact selected note identity/revision, folder: folder name or null for no folder}, notes_folder_create {name} and notes_restore {noteId of a note in Recently deleted} are reviewed by the owner. Folder names are at most 40 characters. Never guess note IDs, revisions or folder names. " +
+     "For a one-shot relative reminder use reminder_create_after with fields title, body and schedule {after: elapsed duration with units such as 2m, alertMinutes: 0 for one alert or null for no alert}. The server resolves exact instants from the authenticated turn start; do not calculate epoch timestamps. Requires reminders.create.v1. Use returned reminderTiming dueAtDisplay and alertAtDisplay verbatim when available; they already use the phone timezone. Otherwise keep the returned UTC instants explicit, without inventing a local timezone. Create reviewed no-alert, lead or recurring reminders only with reminder_create and reminders.create.v1. The legacy create_reminder supports only title and dueAt and always requests an alert; never discard requested timing. reminder_create.fields requires title, body and schedule; schedule requires at, dueAt, alertMinutes (null means no alert), recurrence (null or exact repeat). at=dueAt-(alertMinutes??0)*60000; recurrence leadMinutes matches. No-alert creates pending, not delivered. Propose an approved selected Maps snapshot, note, reminder, view change, or HTTPS browser navigation on the phone enrolled for this authenticated turn. Browser navigation is only for a web address the user typed in this message and asks to open now; never for a deferred, hypothetical, question-about, past or reported mention. Notes read-selected/update/delete requires notes.local-record.v1 and exact selected sourceId/sourceRevision/noteId/revision. Existing create_note creates a text note. Selected reminder read/update/complete/snooze/cancel requires reminders.local-record.v1 and exact sourceId/sourceRevision/reminderId/occurrenceId/revision. Preserve target.timingVersion=2 when supplied by the phone. TimingVersion 2 targets and schedules with dueAt plus alertMinutes require reminders.local-record.v2. Supply both timing fields together; alertMinutes null means no notification, at equals dueAt, and any recurrence leadMinutes is zero. Numeric alerts require at=dueAt-alertMinutes*60000 and matching recurrence leadMinutes. No-alert tasks cannot be snoozed; only an explicitly reviewed schedule edit enables an alert. Cancel stops all future repeats; snooze is ten minutes. For creation from Home use calendar_create_local and calendar.create.v1; the host derives original readable event details through Calendar and code converts the timezone; the phone resolves its default On this phone calendar and requires native confirmation. For next-event discovery use calendar_read_next with no guessed timestamps and calendar.next-read.v1; the native clock fixes a window from now through the next 30 owner-local days; the foreground native review discovers readable Calendar sources and shares only the approved next event, or an explicit no-events-in-window result. Never infer a source from arbitrary UI selection; no background access is granted. Calendar create/read-selected/update/delete additionally requires calendar.local-event.v1 and the exact current native source/target revisions; never invent IDs or revisions. Maps read-selected requires maps.selected-read.v1 and exact current clientDevice.context kind/id/revision; never infer coordinates from the opaque identifier. The phone owner must explicitly review and approve, except that a typed address the user asks to open now may open without a review." +
+     " " +
+     FOREGROUND_REVIEW_GUIDANCE +
+@@ -668,6 +727,7 @@ export const proposeDeviceAction: Action = {
+           ...calendarSchemas,
+           calendarAvailabilitySchema,
+           ...notesSchemas,
++          ...notesOrganizeSchemas,
+           notesQuerySchema,
+           notesSearchSchema,
+           ...namedTargetSchemas,
+@@ -1278,6 +1338,7 @@ export function deviceActionForCapabilities(
+                 type !== "phone_dial" &&
+                 type !== "clock_alarm" &&
+                 type !== "notes_query" &&
++                !isNotesOrganizeType(type) &&
+                 !isForegroundReviewType(type)
+               : deviceOperationSupportedByCapabilities(
+                   type === "reminder_create_after" ? "reminder_create" : type,
+diff --git a/plugins/plugin-assistant/src/services/device-actions/client-coordinator.test.ts b/plugins/plugin-assistant/src/services/device-actions/client-coordinator.test.ts
+index 7f4e14f..a55e4f0 100644
+--- a/plugins/plugin-assistant/src/services/device-actions/client-coordinator.test.ts
++++ b/plugins/plugin-assistant/src/services/device-actions/client-coordinator.test.ts
+@@ -1329,3 +1329,121 @@ describe("shared phone and reminder-read parity", () => {
+     expect(reads).toBe(1);
+   });
+ });
++
++describe("notes organize operations", () => {
++  const target = {
++    sourceId: "local",
++    sourceRevision: "a".repeat(64),
++    noteId: "n-1",
++    revision: "b".repeat(64),
++  };
++  function organizeFixture(
++    operation: Record<string, unknown>,
++    capabilities = ["notes.local-record.v1", "notes.organize.v1"],
++  ) {
++    const fixture = fixtureServer(operation);
++    const request = async (path: string, body: unknown, s: AbortSignal) => {
++      const response = await fixture.request(path, body, s);
++      for (const item of response.proposals ?? [response.proposal])
++        if (item) Object.assign(item.payload, { requestMessageId: "message" });
++      return response;
++    };
++    const { journal } = memoryJournal();
++    let effects = 0;
++    const actions = new DeviceActionCoordinator({
++      session,
++      credential: { ...credential, capabilities },
++      scope,
++      request,
++      journal,
++      execute: async () => {
++        effects++;
++        return { status: "succeeded", summary: "Done" };
++      },
++      profile,
++    });
++    return { ...fixture, actions, effects: () => effects };
++  }
++
++  it("refuses organize proposals the phone did not negotiate", async () => {
++    const f = organizeFixture({ type: "notes_filter", kind: "voice" }, [
++      "notes.local-record.v1",
++    ]);
++    const review = await f.actions.pendingReview(notesContext, signal());
++    expect(review[0].proposal).toBeNull();
++    expect(review[0].notice).toMatch(/Notes folders were not negotiated/);
++  });
++
++  it("reviews a move and reports a committed Notes change", async () => {
++    const f = organizeFixture({ type: "notes_move", target, folder: "Work" });
++    const [card] = await f.actions.pending(notesContext, signal());
++    expect(card).toMatchObject({ title: "Move note", description: "To Work" });
++    // A reviewed move never runs as a direct request.
++    expect(
++      await f.actions.performRequested(
++        "message",
++        notesContext,
++        signal(),
++        async () => true,
++      ),
++    ).toEqual([]);
++    expect(f.effects()).toBe(0);
++    expect(
++      await f.actions.approve("proposal", notesContext, signal()),
++    ).toMatchObject({ status: "succeeded", committedChanges: ["notes"] });
++    expect(f.effects()).toBe(1);
++  });
++
++  it("runs a filter and recording directly only for the requesting message", async () => {
++    for (const operation of [
++      { type: "notes_filter", text: "milk" },
++      { type: "notes_record", action: "start" },
++    ]) {
++      const f = organizeFixture(operation);
++      await f.actions.pending(notesContext, signal());
++      expect(
++        await f.actions.performRequested(
++          "other-message",
++          notesContext,
++          signal(),
++          async () => true,
++        ),
++      ).toEqual([]);
++      expect(
++        await f.actions.performRequested(
++          "message",
++          notesContext,
++          signal(),
++          async () => true,
++        ),
++      ).toMatchObject([{ status: "succeeded", committedChanges: [] }]);
++      expect(f.effects()).toBe(1);
++    }
++  });
++
++  it("records only while Notes is open and reviews elsewhere only from Home or Notes", () => {
++    const home = { view: "home", revision: 1, sensitive: false };
++    const calendar = { view: "calendar", revision: 1, sensitive: false };
++    expect(
++      proposalContextNotice(
++        { type: "notes_record", action: "start" },
++        home,
++        profile,
++      ),
++    ).toBe("Open Notes to record a voice note.");
++    expect(
++      proposalContextNotice(
++        { type: "notes_folder_create", name: "Work" },
++        home,
++        profile,
++      ),
++    ).toBeUndefined();
++    expect(
++      proposalContextNotice(
++        { type: "notes_restore", noteId: "n-1" },
++        calendar,
++        profile,
++      ),
++    ).toBe("Open Home or Notes to review this Notes action.");
++  });
++});
+diff --git a/plugins/plugin-assistant/src/services/device-actions/client-coordinator.ts b/plugins/plugin-assistant/src/services/device-actions/client-coordinator.ts
+index 6a6f778..09bc778 100644
+--- a/plugins/plugin-assistant/src/services/device-actions/client-coordinator.ts
++++ b/plugins/plugin-assistant/src/services/device-actions/client-coordinator.ts
+@@ -113,6 +113,15 @@ import {
+   validateNotesOperation,
+   validateNotesResult,
+ } from "./notes-contract.ts";
++import {
++  describeNotesOrganizeOperation,
++  isNotesOrganizeOperation,
++  NOTES_ORGANIZE_CAPABILITY,
++  NOTES_ORGANIZE_DIRECT_TYPES,
++  type NotesOrganizeOperation,
++  notesOrganizeContextAllowed,
++  validateNotesOrganizeOperation,
++} from "./notes-organize-contract.ts";
+ import {
+   type NotesQueryResult,
+   validateNotesQueryResult,
+@@ -223,6 +232,7 @@ export type DeviceOperation =
+   | ClockHandoffOperation
+   | MapsOperation
+   | LibraryAgentOperation
++  | NotesOrganizeOperation
+   | ReminderOperation
+   | NotesOperation
+   | NativeNotesQueryOperation
+@@ -494,6 +504,7 @@ export function validateDeviceOperation(
+   if (isClockHandoffOperation(p)) return validateClockHandoffDispatch(p);
+   if (isMapsOperation(p)) return validateMapsOperation(p);
+   if (isLibraryOperation(p)) return validateLibraryOperation(p);
++  if (isNotesOrganizeOperation(p)) return validateNotesOrganizeOperation(p);
+   if (isReminderOperation(p)) return validateReminderOperation(p);
+   if (isNotesOperation(p)) return validateNotesOperation(p);
+   if (isCalendarOperation(p)) return validateCalendarOperation(p);
+@@ -774,6 +785,15 @@ export function assertProposalContext<C extends DeviceContextEnvelope>(
+     assertClockHandoffTimeZone(operation, context.timeZone);
+   if (isMapsOperation(operation)) assertMapsContext(operation, context, ports);
+   if (isLibraryOperation(operation)) assertLibraryContext(context);
++  if (
++    isNotesOrganizeOperation(operation) &&
++    !notesOrganizeContextAllowed(context, operation)
++  )
++    throw new ContextNotice(
++      operation.type === "notes_record"
++        ? "Open Notes to record a voice note."
++        : "Open Home or Notes to review this Notes action.",
++    );
+   if (isReminderOperation(operation)) assertReminderContext(operation, context);
+   if (isNativeNotesQuery(operation)) assertNotesQueryContext(context);
+   if (isNotesOperation(operation)) assertNotesContext(operation, context);
+@@ -1232,6 +1252,11 @@ export class DeviceActionCoordinator<
+       throw Error("Notes discovery was not negotiated with this agent");
+     if (isLibraryOperation(op) && !this.capability(PHOTO_LIBRARY_CAPABILITY))
+       throw Error("Device library access was not negotiated with this agent");
++    if (
++      isNotesOrganizeOperation(op) &&
++      !this.capability(NOTES_ORGANIZE_CAPABILITY)
++    )
++      throw Error("Notes folders were not negotiated with this agent");
+     if (
+       isForegroundReviewOperation(op) &&
+       (!foregroundReviewOperationAvailable(op, this.credential.capabilities) ||
+@@ -1407,6 +1432,8 @@ export class DeviceActionCoordinator<
+       };
+     if (isLibraryOperation(op))
+       return { ...base, ...describeLibraryOperation(op, this.profile.appName) };
++    if (isNotesOrganizeOperation(op))
++      return { ...base, ...describeNotesOrganizeOperation(op) };
+     const notesDestination =
+       (op.type === "notes_delete" || op.type === "notes_update") &&
+       !context.sensitive &&
+@@ -1576,6 +1603,7 @@ export class DeviceActionCoordinator<
+       "browser_navigate",
+       "camera_capture_photo",
+       "photo_library_select",
++      ...NOTES_ORGANIZE_DIRECT_TYPES,
+     ];
+     const results: DeviceOperationReceipt[] = [];
+     for (const [proposalId, entry] of [...this.proposals]) {
+@@ -2060,7 +2088,12 @@ export class DeviceActionCoordinator<
+           op.type !== "calendar_read_next"
+         )
+           committedChanges.push("calendar");
+-        if (isNotesOperation(op)) committedChanges.push("notes");
++        if (
++          isNotesOperation(op) ||
++          (isNotesOrganizeOperation(op) &&
++            !NOTES_ORGANIZE_DIRECT_TYPES.includes(op.type))
++        )
++          committedChanges.push("notes");
+         if (
+           isReminderOperation(op) ||
+           isReminderCreate(op) ||
+diff --git a/plugins/plugin-assistant/src/services/device-actions/contract.ts b/plugins/plugin-assistant/src/services/device-actions/contract.ts
+index 7f26cf0..1eff4dc 100644
+--- a/plugins/plugin-assistant/src/services/device-actions/contract.ts
++++ b/plugins/plugin-assistant/src/services/device-actions/contract.ts
+@@ -35,6 +35,12 @@ import {
+   type NotesOperation,
+   validateNotesOperation,
+ } from "./notes-contract.ts";
++import {
++  isNotesOrganizeType,
++  NOTES_ORGANIZE_CAPABILITY,
++  type NotesOrganizeOperation,
++  validateNotesOrganizeOperation,
++} from "./notes-organize-contract.ts";
+ import {
+   PHONE_DIAL_CAPABILITY,
+   type PhoneDialOperation,
+@@ -95,6 +101,7 @@ export type DeviceOperation =
+   | MapsOperation
+   | ReminderOperation
+   | NotesOperation
++  | NotesOrganizeOperation
+   | NativeNotesQueryOperation
+   | CalendarOperation
+   | ForegroundReviewOperation
+@@ -128,6 +135,11 @@ export function deviceOperationSupportedByCapabilities(
+       capabilities?.includes(NOTES_QUERY_CAPABILITY) === true &&
+       capabilities.includes("notes.local-record.v1")
+     );
++  if (isNotesOrganizeType(type))
++    return (
++      capabilities?.includes(NOTES_ORGANIZE_CAPABILITY) === true &&
++      capabilities.includes("notes.local-record.v1")
++    );
+   if (type === "clock_alarm")
+     return capabilities?.includes(CLOCK_ALARMS_CAPABILITY) === true;
+   if (type === "clock_handoff")
+@@ -242,6 +254,18 @@ export function validateDeviceOperation(value: unknown): DeviceOperation {
+       } catch {
+         throw new DeviceActionError("Invalid Notes operation");
+       }
++    case "notes_filter":
++    case "notes_move":
++    case "notes_folder_create":
++    case "notes_restore":
++    case "notes_record":
++      try {
++        return validateNotesOrganizeOperation(p);
++      } catch (error) {
++        throw new DeviceActionError(
++          `Invalid Notes operation: ${(error as Error).message}`,
++        );
++      }
+     case "calendar_create_local":
+     case "calendar_read_next":
+     case "calendar_create":
+diff --git a/plugins/plugin-assistant/src/services/device-actions/effect-receipts.ts b/plugins/plugin-assistant/src/services/device-actions/effect-receipts.ts
+index c8a2870..da555c7 100644
+--- a/plugins/plugin-assistant/src/services/device-actions/effect-receipts.ts
++++ b/plugins/plugin-assistant/src/services/device-actions/effect-receipts.ts
+@@ -259,6 +259,11 @@ function deviceOperationIsRead(operation: DeviceOperation): boolean {
+     case "reminder_create":
+     case "open_view":
+     case "browser_navigate":
++    case "notes_filter":
++    case "notes_move":
++    case "notes_folder_create":
++    case "notes_restore":
++    case "notes_record":
+     case "post_notification":
+     case "speak_text":
+       return false;
+diff --git a/plugins/plugin-assistant/src/services/device-actions/notes-organize-contract.test.ts b/plugins/plugin-assistant/src/services/device-actions/notes-organize-contract.test.ts
+new file mode 100644
+index 0000000..dda5d46
+--- /dev/null
++++ b/plugins/plugin-assistant/src/services/device-actions/notes-organize-contract.test.ts
+@@ -0,0 +1,279 @@
++import { readFileSync } from "node:fs";
++import { describe, expect, it } from "vitest";
++import {
++  deviceOperationSupportedByCapabilities,
++  validateDeviceOperation,
++} from "./contract";
++import {
++  describeNotesOrganizeOperation,
++  isNotesOrganizeOperation,
++  NOTES_ORGANIZE_CAPABILITY,
++  NOTES_ORGANIZE_DIRECT_TYPES,
++  NOTES_ORGANIZE_TYPES,
++  notesFolderName,
++  notesOrganizeContextAllowed,
++  validateNotesOrganizeOperation,
++} from "./notes-organize-contract";
++
++const target = {
++  sourceId: "local",
++  sourceRevision: "a".repeat(64),
++  noteId: "n-1",
++  revision: "b".repeat(64),
++};
++const valid = validateNotesOrganizeOperation;
++const invalid = (value: unknown) => () => validateNotesOrganizeOperation(value);
++
++describe("notes organize contract", () => {
++  it("carries no product name", () => {
++    const source = readFileSync(
++      new URL("./notes-organize-contract.ts", import.meta.url),
++      "utf8",
++    );
++    expect(source).not.toMatch(/Alpha/);
++  });
++
++  it("recognises exactly the organise operation types", () => {
++    expect([...NOTES_ORGANIZE_TYPES]).toEqual([
++      "notes_filter",
++      "notes_move",
++      "notes_folder_create",
++      "notes_restore",
++      "notes_record",
++    ]);
++    expect([...NOTES_ORGANIZE_DIRECT_TYPES]).toEqual([
++      "notes_filter",
++      "notes_record",
++    ]);
++    for (const type of NOTES_ORGANIZE_TYPES)
++      expect(isNotesOrganizeOperation({ type })).toBe(true);
++    for (const type of ["notes_update", "notes_delete", "notes_query", "x"])
++      expect(isNotesOrganizeOperation({ type })).toBe(false);
++    expect(isNotesOrganizeOperation(null)).toBe(false);
++    expect(() => valid({ type: "notes_rename" })).toThrow(
++      "Unsupported Notes operation",
++    );
++    expect(invalid([])).toThrow("Invalid Notes operation");
++  });
++
++  it("validates notes_filter", () => {
++    expect(valid({ type: "notes_filter", text: "  milk  " })).toEqual({
++      type: "notes_filter",
++      text: "milk",
++    });
++    expect(
++      valid({ type: "notes_filter", folder: " Work   trips ", kind: "list" }),
++    ).toEqual({ type: "notes_filter", folder: "Work trips", kind: "list" });
++    for (const kind of ["text", "list", "voice", "link"])
++      expect(valid({ type: "notes_filter", kind })).toEqual({
++        type: "notes_filter",
++        kind,
++      });
++    expect(valid({ type: "notes_filter", text: "x".repeat(200) })).toEqual({
++      type: "notes_filter",
++      text: "x".repeat(200),
++    });
++    expect(invalid({ type: "notes_filter" })).toThrow("Empty Notes filter");
++    expect(invalid({ type: "notes_filter", text: "x".repeat(201) })).toThrow(
++      "Invalid Notes text",
++    );
++    expect(invalid({ type: "notes_filter", text: "   " })).toThrow(
++      "Invalid Notes text",
++    );
++    expect(invalid({ type: "notes_filter", text: "a\0b" })).toThrow(
++      "Invalid Notes text",
++    );
++    expect(invalid({ type: "notes_filter", text: 3 })).toThrow(
++      "Invalid Notes text",
++    );
++    expect(invalid({ type: "notes_filter", kind: "image" })).toThrow(
++      "Invalid note kind",
++    );
++    expect(invalid({ type: "notes_filter", folder: "" })).toThrow(
++      "Invalid folder name",
++    );
++    expect(invalid({ type: "notes_filter", text: "a", limit: 5 })).toThrow(
++      "Unexpected Notes field",
++    );
++  });
++
++  it("validates folder names without truncating", () => {
++    expect(notesFolderName("a".repeat(40))).toBe("a".repeat(40));
++    expect(notesFolderName(" a \n\t b ")).toBe("a b");
++    for (const value of ["a".repeat(41), " \n ", "a\0", 7, null])
++      expect(() => notesFolderName(value)).toThrow("Invalid folder name");
++  });
++
++  it("validates notes_move", () => {
++    expect(valid({ type: "notes_move", target, folder: " Work " })).toEqual({
++      type: "notes_move",
++      target,
++      folder: "Work",
++    });
++    expect(valid({ type: "notes_move", target, folder: null })).toEqual({
++      type: "notes_move",
++      target,
++      folder: null,
++    });
++    expect(invalid({ type: "notes_move", target })).toThrow("Missing folder");
++    expect(
++      invalid({ type: "notes_move", target, folder: undefined }),
++    ).toThrow("Invalid folder name");
++    expect(
++      invalid({ type: "notes_move", target, folder: "x".repeat(41) }),
++    ).toThrow("Invalid folder name");
++    expect(
++      invalid({ type: "notes_move", target, folder: "Work", note: "n-1" }),
++    ).toThrow("Unexpected Notes field");
++    expect(
++      invalid({
++        type: "notes_move",
++        target: { ...target, revision: "guess" },
++        folder: "Work",
++      }),
++    ).toThrow("Invalid Notes revision");
++    expect(
++      invalid({
++        type: "notes_move",
++        target: { ...target, extra: 1 },
++        folder: "Work",
++      }),
++    ).toThrow("Unexpected Notes fields");
++    expect(
++      invalid({ type: "notes_move", target: "n-1", folder: "Work" }),
++    ).toThrow("Invalid Notes object");
++  });
++
++  it("validates notes_folder_create", () => {
++    expect(valid({ type: "notes_folder_create", name: "  Recipes " })).toEqual(
++      { type: "notes_folder_create", name: "Recipes" },
++    );
++    expect(invalid({ type: "notes_folder_create" })).toThrow(
++      "Invalid folder name",
++    );
++    expect(
++      invalid({ type: "notes_folder_create", name: "x".repeat(41) }),
++    ).toThrow("Invalid folder name");
++    expect(
++      invalid({ type: "notes_folder_create", name: "A", id: "f-1" }),
++    ).toThrow("Unexpected Notes field");
++  });
++
++  it("validates notes_restore", () => {
++    expect(valid({ type: "notes_restore", noteId: "n-1.a:b_c" })).toEqual({
++      type: "notes_restore",
++      noteId: "n-1.a:b_c",
++    });
++    for (const noteId of ["", "-n", "a b", "x".repeat(129), "../n", 1])
++      expect(invalid({ type: "notes_restore", noteId })).toThrow();
++    expect(
++      invalid({ type: "notes_restore", noteId: "n-1", entryId: "e" }),
++    ).toThrow("Unexpected Notes field");
++  });
++
++  it("validates notes_record", () => {
++    expect(valid({ type: "notes_record", action: "start" })).toEqual({
++      type: "notes_record",
++      action: "start",
++    });
++    expect(valid({ type: "notes_record", action: "stop" })).toEqual({
++      type: "notes_record",
++      action: "stop",
++    });
++    for (const action of [undefined, "pause", "START", true])
++      expect(invalid({ type: "notes_record", action })).toThrow(
++        "Invalid recording action",
++      );
++    expect(
++      invalid({ type: "notes_record", action: "start", title: "Memo" }),
++    ).toThrow("Unexpected Notes field");
++  });
++
++  it("is admitted by the device contract and wraps its errors", () => {
++    expect(
++      validateDeviceOperation({ type: "notes_move", target, folder: null }),
++    ).toEqual({ type: "notes_move", target, folder: null });
++    expect(
++      validateDeviceOperation({ type: "notes_record", action: "stop" }),
++    ).toEqual({ type: "notes_record", action: "stop" });
++    expect(() =>
++      validateDeviceOperation({ type: "notes_filter", text: "" }),
++    ).toThrow("Invalid Notes operation: Invalid Notes text");
++  });
++
++  it("is offered only when the phone negotiated notes.organize.v1", () => {
++    expect(NOTES_ORGANIZE_CAPABILITY).toBe("notes.organize.v1");
++    const full = ["notes.local-record.v1", NOTES_ORGANIZE_CAPABILITY];
++    for (const type of NOTES_ORGANIZE_TYPES) {
++      expect(deviceOperationSupportedByCapabilities(type, full)).toBe(true);
++      expect(
++        deviceOperationSupportedByCapabilities(type, ["notes.local-record.v1"]),
++      ).toBe(false);
++      expect(
++        deviceOperationSupportedByCapabilities(type, [
++          NOTES_ORGANIZE_CAPABILITY,
++        ]),
++      ).toBe(false);
++      expect(deviceOperationSupportedByCapabilities(type, [])).toBe(false);
++      expect(deviceOperationSupportedByCapabilities(type, undefined)).toBe(
++        false,
++      );
++    }
++    // The capability does not widen unrelated operations.
++    expect(
++      deviceOperationSupportedByCapabilities("notes_query", full),
++    ).toBe(false);
++  });
++
++  it("describes each change for the review card", () => {
++    const d = describeNotesOrganizeOperation;
++    expect(d({ type: "notes_filter", text: "milk" })).toEqual({
++      title: "Show notes",
++      description: "“milk”",
++    });
++    expect(
++      d({ type: "notes_filter", text: "milk", kind: "voice", folder: "Home" }),
++    ).toEqual({
++      title: "Show notes",
++      description: "“milk” · Voice notes · In Home",
++    });
++    expect(d({ type: "notes_filter", kind: "list" }).description).toBe(
++      "Checklists",
++    );
++    expect(d({ type: "notes_move", target, folder: "Work" })).toEqual({
++      title: "Move note",
++      description: "To Work",
++    });
++    expect(d({ type: "notes_move", target, folder: null })).toEqual({
++      title: "Move note",
++      description: "To no folder",
++    });
++    expect(d({ type: "notes_folder_create", name: "Recipes" })).toEqual({
++      title: "New folder",
++      description: "Recipes",
++    });
++    expect(d({ type: "notes_restore", noteId: "n-1" })).toEqual({
++      title: "Restore note",
++      description: "From Recently deleted",
++    });
++    expect(d({ type: "notes_record", action: "start" }).title).toBe(
++      "Record voice note",
++    );
++    expect(d({ type: "notes_record", action: "stop" }).title).toBe(
++      "Stop recording",
++    );
++  });
++
++  it("allows review only on the unlocked phone in Home or Notes, recording only in Notes", () => {
++    const move = { type: "notes_move" } as const;
++    const record = { type: "notes_record" } as const;
++    expect(notesOrganizeContextAllowed({ view: "home" }, move)).toBe(true);
++    expect(notesOrganizeContextAllowed({ view: "notes" }, move)).toBe(true);
++    expect(notesOrganizeContextAllowed({ view: "calendar" }, move)).toBe(false);
++    expect(
++      notesOrganizeContextAllowed({ view: "notes", sensitive: true }, move),
++    ).toBe(false);
++    expect(notesOrganizeContextAllowed({ view: "notes" }, record)).toBe(true);
++    expect(notesOrganizeContextAllowed({ view: "home" }, record)).toBe(false);
++  });
++});
+diff --git a/plugins/plugin-assistant/src/services/device-actions/notes-organize-contract.ts b/plugins/plugin-assistant/src/services/device-actions/notes-organize-contract.ts
+new file mode 100644
+index 0000000..d9c5159
+--- /dev/null
++++ b/plugins/plugin-assistant/src/services/device-actions/notes-organize-contract.ts
+@@ -0,0 +1,188 @@
++/** Phone Notes organisation operations: list filter, folders, move, restore and voice recording.
++ * Dependency-free apart from the selected Notes target contract, so hosts and tests can use the
++ * rules anywhere. The bounds mirror the phone's own validation; validation rejects rather than
++ * truncates.
++ *
++ * `notes_filter` only changes what the phone's Notes list shows and returns no note content.
++ * `notes_record` starts or stops a voice note in the open Notes view. Both may run directly when
++ * the owner's own current message asked for them; otherwise they are reviewed. Moving a note,
++ * creating a folder and restoring from Recently deleted change saved data, so the owner reviews
++ * each first. A move is bound to the reviewed note revision. Folders are addressed by name, never
++ * by internal id. */
++import { type NotesTarget, notesTarget } from "./notes-contract.ts";
++
++export const NOTES_ORGANIZE_CAPABILITY = "notes.organize.v1";
++export const NOTES_KINDS = ["text", "list", "voice", "link"] as const;
++export type NotesKind = (typeof NOTES_KINDS)[number];
++export const NOTES_FOLDER_NAME_MAX = 40;
++export const NOTES_FILTER_TEXT_MAX = 200;
++
++export type NotesOrganizeOperation =
++  | { type: "notes_filter"; text?: string; folder?: string; kind?: NotesKind }
++  | { type: "notes_move"; target: NotesTarget; folder: string | null }
++  | { type: "notes_folder_create"; name: string }
++  | { type: "notes_restore"; noteId: string }
++  | { type: "notes_record"; action: "start" | "stop" };
++export type NotesOrganizeType = NotesOrganizeOperation["type"];
++
++export const NOTES_ORGANIZE_TYPES: readonly NotesOrganizeType[] = [
++  "notes_filter",
++  "notes_move",
++  "notes_folder_create",
++  "notes_restore",
++  "notes_record",
++];
++/** May run without a review only when bound to the owner's own current message. */
++export const NOTES_ORGANIZE_DIRECT_TYPES: readonly NotesOrganizeType[] = [
++  "notes_filter",
++  "notes_record",
++];
++
++export function isNotesOrganizeType(type: unknown): type is NotesOrganizeType {
++  return (NOTES_ORGANIZE_TYPES as readonly unknown[]).includes(type);
++}
++export function isNotesOrganizeOperation(
++  value: unknown,
++): value is NotesOrganizeOperation {
++  return (
++    !!value &&
++    typeof value === "object" &&
++    isNotesOrganizeType((value as { type?: unknown }).type)
++  );
++}
++
++function only(op: Record<string, unknown>, keys: readonly string[]): void {
++  for (const key of Object.keys(op))
++    if (!keys.includes(key)) throw Error("Unexpected Notes field");
++}
++function text(value: unknown, max: number): string {
++  if (
++    typeof value !== "string" ||
++    !value.trim() ||
++    value.length > max ||
++    value.includes("\0")
++  )
++    throw Error("Invalid Notes text");
++  return value.trim();
++}
++/** A folder name: whitespace runs collapse to one space; empty or over 40 characters is refused. */
++export function notesFolderName(value: unknown): string {
++  if (typeof value !== "string" || value.includes("\0"))
++    throw Error("Invalid folder name");
++  const name = value.replace(/\s+/g, " ").trim();
++  if (!name || name.length > NOTES_FOLDER_NAME_MAX)
++    throw Error("Invalid folder name");
++  return name;
++}
++
++export function validateNotesOrganizeOperation(
++  value: unknown,
++): NotesOrganizeOperation {
++  if (!value || typeof value !== "object" || Array.isArray(value))
++    throw Error("Invalid Notes operation");
++  const op = value as Record<string, unknown>;
++  if (op.type === "notes_filter") {
++    only(op, ["type", "text", "folder", "kind"]);
++    if (
++      op.kind !== undefined &&
++      !(NOTES_KINDS as readonly unknown[]).includes(op.kind)
++    )
++      throw Error("Invalid note kind");
++    const out: NotesOrganizeOperation = {
++      type: "notes_filter",
++      ...(op.text !== undefined
++        ? { text: text(op.text, NOTES_FILTER_TEXT_MAX) }
++        : {}),
++      ...(op.folder !== undefined
++        ? { folder: notesFolderName(op.folder) }
++        : {}),
++      ...(op.kind !== undefined ? { kind: op.kind as NotesKind } : {}),
++    };
++    if (
++      out.text === undefined &&
++      out.folder === undefined &&
++      out.kind === undefined
++    )
++      throw Error("Empty Notes filter");
++    return out;
++  }
++  if (op.type === "notes_move") {
++    only(op, ["type", "target", "folder"]);
++    if (!Object.hasOwn(op, "folder")) throw Error("Missing folder");
++    return {
++      type: "notes_move",
++      target: notesTarget(op.target),
++      folder: op.folder === null ? null : notesFolderName(op.folder),
++    };
++  }
++  if (op.type === "notes_folder_create") {
++    only(op, ["type", "name"]);
++    return { type: "notes_folder_create", name: notesFolderName(op.name) };
++  }
++  if (op.type === "notes_restore") {
++    only(op, ["type", "noteId"]);
++    const id = text(op.noteId, 128);
++    if (!/^[A-Za-z0-9][A-Za-z0-9._:-]*$/.test(id))
++      throw Error("Invalid note identity");
++    return { type: "notes_restore", noteId: id };
++  }
++  if (op.type === "notes_record") {
++    only(op, ["type", "action"]);
++    if (op.action !== "start" && op.action !== "stop")
++      throw Error("Invalid recording action");
++    return { type: "notes_record", action: op.action };
++  }
++  throw Error("Unsupported Notes operation");
++}
++
++const quoted = (value: string) => `“${value}”`;
++const KIND_LABELS: Record<NotesKind, string> = {
++  text: "Notes",
++  list: "Checklists",
++  voice: "Voice notes",
++  link: "Links",
++};
++/** The review card: the change itself, nothing else. */
++export function describeNotesOrganizeOperation(op: NotesOrganizeOperation): {
++  title: string;
++  description: string;
++} {
++  if (op.type === "notes_filter")
++    return {
++      title: "Show notes",
++      description: [
++        op.text ? quoted(op.text) : "",
++        op.kind ? KIND_LABELS[op.kind] : "",
++        op.folder ? `In ${op.folder}` : "",
++      ]
++        .filter(Boolean)
++        .join(" · "),
++    };
++  if (op.type === "notes_move")
++    return {
++      title: "Move note",
++      description: op.folder === null ? "To no folder" : `To ${op.folder}`,
++    };
++  if (op.type === "notes_folder_create")
++    return { title: "New folder", description: op.name };
++  if (op.type === "notes_record")
++    return op.action === "start"
++      ? { title: "Record voice note", description: "In Notes" }
++      : {
++          title: "Stop recording",
++          description: "Save as a voice note",
++        };
++  return { title: "Restore note", description: "From Recently deleted" };
++}
++
++/** Where a proposal may be reviewed or run: the unlocked phone on Home or in Notes; recording
++ * only while the Notes view is open. */
++export function notesOrganizeContextAllowed(
++  context: { view: string; sensitive?: boolean },
++  operation?: Pick<NotesOrganizeOperation, "type">,
++): boolean {
++  if (context.sensitive) return false;
++  return operation?.type === "notes_record"
++    ? context.view === "notes"
++    : context.view === "home" || context.view === "notes";
++}
+diff --git a/plugins/plugin-assistant/src/services/device-actions/service.ts b/plugins/plugin-assistant/src/services/device-actions/service.ts
+index 599af5d..7b79344 100644
+--- a/plugins/plugin-assistant/src/services/device-actions/service.ts
++++ b/plugins/plugin-assistant/src/services/device-actions/service.ts
+@@ -120,6 +120,11 @@ import {
+   validateNotesOperation,
+   validateNotesResult,
+ } from "./notes-contract.ts";
++import {
++  isNotesOrganizeOperation,
++  NOTES_ORGANIZE_CAPABILITY,
++  NOTES_ORGANIZE_TYPES,
++} from "./notes-organize-contract.ts";
+ import { notesDeleteAfterReadPlan } from "./notes-delete-continuation.ts";
+ import { originalRequestsNotesDeletion } from "./notes-delete-intent.ts";
+ import { validateNotesQueryResult } from "./notes-query-result.ts";
+@@ -606,6 +611,7 @@ export function deviceAppRecordOperationAvailable(
+   if (typeof type !== "string") return false;
+   const domain =
+     isNotesOperation(operation) ||
++    isNotesOrganizeOperation(operation) ||
+     isNativeNotesQuery({ type }) ||
+     [
+       "create_note",
+@@ -1758,6 +1764,7 @@ export class DeviceActionService {
+           CALENDAR_AGENDA_CAPABILITY,
+           "notes.local-record.v1",
+           NOTES_QUERY_CAPABILITY,
++          NOTES_ORGANIZE_CAPABILITY,
+           NOTES_SEARCH_CAPABILITY,
+           CALENDAR_AVAILABILITY_CAPABILITY,
+           NAMED_TARGET_CAPABILITY,
+@@ -2057,6 +2064,7 @@ export class DeviceActionService {
+         "notes_query",
+         "notes_update",
+         "notes_delete",
++        ...NOTES_ORGANIZE_TYPES,
+         "create_reminder",
+         "reminder_create",
+         "reminder_read_selected",
+@@ -2503,6 +2511,7 @@ export class DeviceActionService {
+         if (
+           (isCameraCapture(operation) ||
+             isNativeNotesQuery(operation) ||
++            isNotesOrganizeOperation(operation) ||
+             isForegroundReviewOperation(operation) ||
+             operation.type === "calendar_create_local" ||
+             operation.type === "calendar_read_next") &&
+diff --git a/plugins/plugin-assistant/src/services/device-actions/tools.ts b/plugins/plugin-assistant/src/services/device-actions/tools.ts
+index cdc80b4..30c09ca 100644
+--- a/plugins/plugin-assistant/src/services/device-actions/tools.ts
++++ b/plugins/plugin-assistant/src/services/device-actions/tools.ts
+@@ -15,6 +15,7 @@ import {
+ import { deviceOperationSupportedByCapabilities } from "./contract.ts";
+ import { MAPS_CAPABILITY } from "./maps-contract.ts";
+ import { NOTES_CAPABILITY, notesSelectionTarget } from "./notes-contract.ts";
++import { isNotesOrganizeType } from "./notes-organize-contract.ts";
+ import { deviceReadHostContextRevision } from "./read-completion.ts";
+ import {
+   REMINDER_CAPABILITY,
+@@ -53,6 +54,8 @@ function capabilityAvailable(
+       caps?.includes(CALENDAR_CAPABILITY) === true &&
+       deviceReadHostContextRevision(runtime) !== null
+     );
++  if (isNotesOrganizeType(type))
++    return deviceOperationSupportedByCapabilities(type, caps);
+   if (
+     type === "reminder_create_after" &&
+     runtime.actions.some((action) => action.name === "OWNER_REMINDERS") &&
+@@ -82,6 +85,11 @@ const capabilityBoundTypes = new Set([
+   "calendar_update",
+   "maps_read_selected",
+   "reminder_create_after",
++  "notes_filter",
++  "notes_move",
++  "notes_folder_create",
++  "notes_restore",
++  "notes_record",
+ ]);
+ const reminderTypes = new Set([
+   "reminder_create",
+@@ -136,6 +144,31 @@ const declarations = [
+     "notes_read_selected",
+     "Read one selected connected device note using the exact source and record identity/revision returned by the current phone selection or DEVICE_NOTES_QUERY. If the user names a title and those opaque fields are missing, first discover and run DEVICE_NOTES_QUERY; do not derive noteId from title text, guess a revision, or substitute unknown. Never treat a title string as a selected record ID.",
+   ],
++  [
++    "DEVICE_NOTES_FILTER",
++    "notes_filter",
++    "Filter the Notes list on this phone by text, folder name and/or kind (text, list, voice, link). Read-only: the phone shows the matching notes with a clearable filter and returns no note content to the agent.",
++  ],
++  [
++    "DEVICE_NOTE_MOVE",
++    "notes_move",
++    "Move one note to a folder by folder name, or to no folder with folder null. Use the exact selected note source and record identity/revision; never guess them. The owner reviews the move; it is refused if the note changed since review or the folder does not exist.",
++  ],
++  [
++    "DEVICE_NOTES_FOLDER_CREATE",
++    "notes_folder_create",
++    "Create a Notes folder with the given name (at most 40 characters). The owner reviews it first. An existing folder with the same name is kept.",
++  ],
++  [
++    "DEVICE_NOTE_RESTORE",
++    "notes_restore",
++    "Restore a note from Notes Recently deleted by its noteId. Never guess the noteId. The owner reviews it first; notes deleted more than 30 days ago cannot be restored.",
++  ],
++  [
++    "DEVICE_NOTES_RECORD",
++    "notes_record",
++    "Start or stop a voice note recording in the Notes app on this phone. Only works while Notes is open. Runs directly when the owner's current message asked for it, otherwise the owner reviews it. A proposal does not prove recording started or stopped.",
++  ],
+   [
+     "DEVICE_CALENDAR_CREATE",
+     "calendar_create_local",
+diff --git a/plugins/plugin-assistant/test/device-actions.e2e.test.ts b/plugins/plugin-assistant/test/device-actions.e2e.test.ts
+index 2c8d8fb..77b5604 100644
+--- a/plugins/plugin-assistant/test/device-actions.e2e.test.ts
++++ b/plugins/plugin-assistant/test/device-actions.e2e.test.ts
+@@ -1449,6 +1449,7 @@ test("device approval REST lifecycle survives restart and never duplicates claim
+           "calendar.agenda-read.v1",
+           "calendar.named-read.v1",
+           "notes.query.v1",
++          "notes.organize.v1",
+           "reminders.local-record.v2",
+           "reminders.create.v1",
+           "clock.handoff.v2",

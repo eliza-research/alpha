@@ -5,7 +5,7 @@ import os from 'node:os';
 import path from 'node:path';
 import {spawnSync} from 'node:child_process';
 import {
-  ROOT, JSON_OUTPUT, TEXT_OUTPUT, ALLOWLIST, NO_FONT_LICENCE, UNKNOWN, UNVERIFIED, generate, collectNotices, detectLicenceFromText, loadTemplates, packageNotice,
+  ROOT, JSON_OUTPUT, TEXT_OUTPUT, ALLOWLIST, NO_FONT_LICENCE, UNKNOWN, UNVERIFIED, generate, verifyCommittedNotices, collectNotices, detectLicenceFromText, loadTemplates, packageNotice,
 } from '../scripts/generate-licenses.mjs';
 import {FLAGS, classifyLicence, licenceFlagLines, licenceFlagRecords, obligationNote} from '../scripts/licence-policy.mjs';
 import {releaseBlockers} from '../scripts/release-blockers.mjs';
@@ -140,7 +140,7 @@ test('a package without a licence file gets the canonical text and a flag; an un
 });
 
 test('checked-in notices are byte-identical to a fresh generation', () => {
-  const shipped = generate(ROOT);
+  const shipped = verifyCommittedNotices(ROOT);
   assert.deepEqual(shipped.errors, []);
   assert.equal(fs.readFileSync(path.join(ROOT, JSON_OUTPUT), 'utf8'), shipped.json, `${JSON_OUTPUT} is stale; run node scripts/generate-licenses.mjs`);
   assert.equal(fs.readFileSync(path.join(ROOT, TEXT_OUTPUT), 'utf8'), shipped.text, `${TEXT_OUTPUT} is stale; run node scripts/generate-licenses.mjs`);

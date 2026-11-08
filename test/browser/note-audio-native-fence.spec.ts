@@ -5,7 +5,7 @@ test('retired renderer delayed delete cannot undo explicit restored note',async(
  await page.evaluate(async()=>{const {openBrowserNotes,DocumentNotesStore:NotesStore}=await import('/src/runtime/browser-notes-document.ts');const {retainAudio}=await import('/src/browser/note-audio-store.ts');const audio=await retainAudio('late-audio','late-note','Text',{blob:new Blob(['synthetic']),durationMs:1000});await (await openBrowserNotes()).replace([{id:'late-note',kind:'voice',title:'Late recording',body:'Text',audio,dur:1,lines:[],summary:[],actions:[]}]);});
  await page.reload();await selectLegacyNotes(page);await page.getByRole('button',{name:'Open Late recording',exact:true}).click();
  await page.evaluate(async()=>{const {BrowserVoice}=await import('/src/browser/voice.ts');BrowserVoice.prototype.remove=async function(input:any){(window as any).delayed=input;return new Promise(()=>{});};});
- await page.getByRole('button',{name:'Delete note',exact:true}).click();await expect.poll(()=>page.evaluate(()=>(window as any).delayed?.operationId)).toBeTruthy();const delayed=await page.evaluate(()=>(window as any).delayed);
+ await page.getByRole('button',{name:'More',exact:true}).click();await page.getByRole('dialog',{name:'Note actions'}).getByRole('button',{name:'Delete',exact:true}).click();await expect.poll(()=>page.evaluate(()=>(window as any).delayed?.operationId)).toBeTruthy();const delayed=await page.evaluate(()=>(window as any).delayed);
  const next=await context.newPage();await page.close();await next.goto('/');await selectLegacyNotes(next);await next.getByRole('button',{name:'Restore note and recording',exact:true}).click();await expect(next.getByRole('button',{name:'Open Late recording',exact:true})).toBeVisible();
  const result=await next.evaluate(async(input)=>{const {BrowserVoice}=await import('/src/browser/voice.ts');const audio=new BrowserVoice();return {receipt:await audio.remove(input),metadata:await audio.describe({audioId:input.audioId}),status:await audio.deletionStatus(input)};},delayed);
  expect(result.receipt).toEqual({...delayed,status:'restored'});expect(result.status).toEqual(result.receipt);expect(result.metadata.deletedAt).toBeUndefined();await expect(next.getByRole('button',{name:'Open Late recording',exact:true})).toBeVisible();await next.close();
@@ -16,10 +16,10 @@ test('bounded receipts reject new admission and old restoration cannot undo newe
 
 test('expired recording clears bytes but preserves replay fence',async({page})=>{
  // The shared audio store reads its clock through the Date.now it captured when created, so the
- // page clock is faked before load and moved past the 30-day retention after the deletion.
+ // page clock is faked before load and moved past the 60-day orphan-recording backstop (twice the 30-day Recently deleted retention) after the deletion.
  const start=Date.now();await page.clock.setFixedTime(start);
  await page.goto('/');const operation=await page.evaluate(async()=>{const api=await import('/src/browser/note-audio-store.ts');const operation=crypto.randomUUID();await api.retainAudio('expired-fenced','owner','Private transcript',{blob:new Blob(['audio']),durationMs:1000});await api.changeAudioDeleted('expired-fenced','owner',true,operation);return operation;});
- await page.clock.setFixedTime(start+31*24*60*60*1000);
+ await page.clock.setFixedTime(start+61*24*60*60*1000);
  const result=await page.evaluate(async operation=>{const api=await import('/src/browser/note-audio-store.ts');await api.migrateAudio();const row=await api.audioRecord('expired-fenced',true);let restored=false;try{await api.changeAudioDeleted('expired-fenced','owner',false,operation);restored=true;}catch{}return {bytes:row.blob.size,transcript:row.transcript,restored,receipt:await api.audioDeletionStatus('expired-fenced','owner',operation)};},operation);
  expect(result).toMatchObject({bytes:0,transcript:'',restored:false,receipt:{status:'removed'}});
 });

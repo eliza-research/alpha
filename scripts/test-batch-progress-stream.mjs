@@ -40,3 +40,21 @@ test('provisional tool token remains display-only and does not preempt pending a
  push({type:'reply_ready',fullText:'Actual final answer'});push(done);await running;assert.ok(observed.length>=1);assert.equal(observed[0].turnId,turn);}
  finally{replies.removeEventListener('reply',listener);}
 });
+
+test('voice stream metadata distinguishes provisional tokens from settled direct text', async () => {
+ const frames=[];
+ await readLocalAgentStream(response([
+  {type:'token',fullText:'Draft text',provisional:true},
+  {type:'token',fullText:'Confirmed text',provisional:false},
+  {type:'reply_ready',fullText:'A settled direct answer.',actionResults:[]},
+  {...done,fullText:'A settled direct answer.'},
+ ]),new AbortController().signal,(text,frame)=>frames.push({text,frame}),undefined,request);
+ assert.deepEqual(frames,[
+  {text:'Draft text',frame:{provisional:true}},
+  {text:'Confirmed text',frame:{provisional:false}},
+  {text:'A settled direct answer.',frame:{provisional:false,direct:true}},
+ ]);
+ const guarded=[];
+ await readLocalAgentStream(response([{type:'reply_ready',fullText:'Review this action.',actionResults:[{}]},done]),new AbortController().signal,(text,frame)=>guarded.push({text,frame}),undefined,request);
+ assert.deepEqual(guarded,[],'a reply carrying action results never enables early direct speech');
+});

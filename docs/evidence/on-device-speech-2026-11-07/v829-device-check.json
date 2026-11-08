@@ -1,0 +1,94 @@
+{
+  "description": "Device check of the speech-capable #829 app (eliza 4787d51a14, tree identical to main 0bb9d5f904 plus the embedding host requalification) on the Pixel 10a, 2026-11-08. Replaces the earlier 'not run' entry. Development evidence from a debug APK: not a release, AOSP image or user acceptance.",
+  "recordedAt": "2026-11-08",
+  "upstreamPin": "4787d51a142c63c98371c832997184c53f7218d3",
+  "sourceTree": "origin/main 0bb9d5f904 (byte-identical tree to claude/on-device-speech-v2 377bfd6984) with the embedding host record from docs/evidence/embedding-host-4787d51a14/QUALIFICATION.json and the mobile UUID policy builder/lock hashes of 4787d51a14. Main has since moved to eliza 99b49439ce; this APK was not rebuilt at that pin.",
+  "built": {
+    "command": "ELIZAOS_VERSION_CODE=44 npm run android:build:local (after agent:prepare, agent:build-workflow-worker, agent:stage-android and stage-embedding-host.mjs --receipt; the x86_64 voice engine 128b61f3... copied into android/app/src/main/jniLibs/x86_64 for :app:verifyParadeeAppLinkage)",
+    "versionCode": 44,
+    "gradle": ":app:verifyEmbeddingHost 'Qualified ARM64 embedding host and BGE384 bytes verified'; BUILD SUCCESSFUL",
+    "apks": [
+      {
+        "file": "artifacts/launcher-debug.apk",
+        "sha256": "3ae595e9377ad350af24b619b64d6530bad73a976c798ec1070d47fe794958ab",
+        "bytes": 591026522,
+        "runtime": "PACKAGED"
+      },
+      {
+        "file": "artifacts/standalone-debug.apk",
+        "sha256": "12468ae9c76d08b582ca713ae64dea96af7add54d11e1e750bd4d753b049c613",
+        "bytes": 591020446,
+        "runtime": "PACKAGED"
+      },
+      {
+        "file": "artifacts/launcher-release-unsigned.apk",
+        "sha256": "22925df63cd8fcd254b8f41f22e7242404bd5d8f451c23672d6bd05ec9fd1ee2",
+        "bytes": 519389734,
+        "runtime": "PACKAGED",
+        "distributable": false
+      },
+      {
+        "file": "artifacts/standalone-release-unsigned.apk",
+        "sha256": "82159a08830cbdca92f5b629c3862a673eae9cb24b4525bcc9d4e2e4a7f7d445",
+        "bytes": 519385518,
+        "runtime": "PACKAGED",
+        "distributable": false
+      }
+    ],
+    "releasesNotDistributable": "verify-apks: on-device voice not qualified (no recorded device acceptance) and unsigned release; ELIZAOS_KEYSTORE_* were not set.",
+    "contents": "lib/arm64-v8a/libelizainference.so (10,018,448 bytes, voice engine 6337fd4c4b), libelizavoicejni.so (1,234,768), assets/agent/agent-bundle.js, assets/paradee-voice/v1",
+    "bundleAudit": "scripts/audit-production-bundle.mjs PASS on assets/public of all four APKs (testMocks=false)"
+  },
+  "install": {
+    "command": "adb install -r artifacts/launcher-debug.apk",
+    "at": "2026-11-08T18:58:05Z",
+    "from": "versionCode 40",
+    "to": "versionCode 44",
+    "installedSha256ReadBack": "3ae595e9377ad350af24b619b64d6530bad73a976c798ec1070d47fe794958ab",
+    "uninstalledOrWiped": false
+  },
+  "image": "Alpha/alpha_stallion_phone/stallion:17/CP2A.260605.016/eng.shaw:userdebug/test-keys",
+  "ipcRecoverySlots": {
+    "afterInstall": 8,
+    "agentRefused": false,
+    "cleared": false,
+    "note": "The resident started and answered at 8 slots, so the recovery review was not used."
+  },
+  "network": "USB reverse tether: adb reverse localabstract:gnirehtet tcp:31416 restored after the host's adb restart and the gnirehtet client restarted; TCP to elizacloud.ai:443 from the phone succeeded. Android still reports 'Active default network: none' with the validated gnirehtet VPN.",
+  "agentHealth": {
+    "route": "GET /api/status through the app's own Agent bridge (owner session, in page)",
+    "status": 200,
+    "state": "running",
+    "canRespond": true,
+    "model": "cerebras/qwen-3.8-27b",
+    "uptimeMs": 517703
+  },
+  "liveAsrStatus": {
+    "route": "GET /api/asr/local-inference/live/status",
+    "status": 200,
+    "body": {
+      "ready": true,
+      "streaming": true,
+      "sessions": 0,
+      "maxSessions": 4
+    }
+  },
+  "embeddingHostInApp": "logcat shows ElizaBionicInferenceServer.embed calls from the resident about every 23 s after start (local BGE embedding through the packaged host).",
+  "typedTurns": {
+    "requested": 6,
+    "completed": 0,
+    "result": "Not possible. The signed-in Eliza Cloud account shows 'Plan: No active subscription' with 'Choose a monthly plan or enter a membership code to ask Alpha', and one attempted send ('What is the capital of Portugal? Two sentences.') was answered in the app with 'Your agent cannot reply yet. Choose an AI provider in Settings, then send your message again.' No alphaAgentStream frame arrived and no speech plugin call was observed. Choosing a plan or entering a membership code is a purchase/credential step for the owner, so nothing was entered. The composer was cleared afterwards.",
+    "tokenFrames": null,
+    "provisionalFrames": null,
+    "replyReadyMs": null,
+    "doneMs": null,
+    "unconfirmedTextReachedVoice": "not observable without replies; none observed in the one blocked attempt"
+  },
+  "notRun": [
+    "6 typed direct-answer turns (no active Cloud subscription)",
+    "microphone or acoustic tests (out of scope)"
+  ],
+  "sideEffects": [
+    "Phone screen-off timeout set to 30 minutes (settings put system screen_off_timeout 1800000) to keep the WebView visible; the prior value was not read before it was changed."
+  ]
+}

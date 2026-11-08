@@ -5,7 +5,7 @@ import {calendarAgentWrite} from '../vendor/eliza/plugins/plugin-calendar/src/se
 /** Owner-only Google tools. Provider credentials remain in the private Cloud
  * store; Gmail sends use the canonical prepared-review/dispatch/receipt flow. */
 import {createHash} from 'node:crypto';
-import {CloudProtocol,type CloudCredential,type CloudNativeRequest} from '../apps/app/src/runtime/cloud-protocol.ts';
+import {CloudProtocol,type CloudEnvironment,type CloudCredential,type CloudNativeRequest} from '../apps/app/src/runtime/cloud-protocol.ts';
 export type ManagedGoogleAgentPort={agentCredential():Promise<CloudCredential|null>;agentRead:CloudNativeRequest;agentGmailOperation:CloudNativeRequest;agentCalendarOperation:CloudNativeRequest};
 import {decodeBasicHtmlEntities} from '../vendor/eliza/plugins/plugin-assistant/src/utils/html-entities.ts';
 import {GMAIL_QUERY_MAX} from './managed-google-route-policy.ts';
@@ -26,7 +26,7 @@ function sendProposal(input:AgentSendContent){
 export type GoogleAgentAccess={gmailChanges:boolean;calendarEdits:boolean};
 /** How long one source lookup can serve one read's feed step, from the lookup's start. */
 const CALENDAR_READ_STEP_MS=5_000;
-export function createManagedGoogleAgentHost(host:ManagedGoogleAgentPort,access:()=>GoogleAgentAccess=()=>({gmailChanges:true,calendarEdits:true})){
+export function createManagedGoogleAgentHost(host:ManagedGoogleAgentPort,access:()=>GoogleAgentAccess=()=>({gmailChanges:true,calendarEdits:true}),environment:CloudEnvironment='production'){
  const timing=createCalendarReadTiming(process.env.ALPHA_CALENDAR_READ_TIMING==='1');
  const allowed=(kind:keyof GoogleAgentAccess)=>{if(access()[kind]!==true)throw new GoogleAgentRefusal('changes-off',kind==='gmailChanges'?'Gmail changes are turned off in Settings › Google accounts. Google stays connected; nothing was changed.':'Calendar edits are turned off in Settings › Google accounts. Google stays connected; nothing was changed.');};
  const refuseWrite=()=>{throw Error('Gmail agent reads cannot change credentials or mail.');};
@@ -60,7 +60,7 @@ export function createManagedGoogleAgentHost(host:ManagedGoogleAgentPort,access:
   stage='client';
   const calendarRead=capability==='google.calendar.read';
   const transport=operation==='calendar'?host.agentCalendarOperation:operation?host.agentGmailOperation:host.agentRead;
-  const client=new CloudProtocol('production',calendarRead?timing.request(transport):transport,{acceptsReferences:true,read:async()=>{await current();return credential;},write:async()=>refuseWrite(),clear:async()=>refuseWrite()},async()=>refuseWrite());
+  const client=new CloudProtocol(environment,calendarRead?timing.request(transport):transport,{acceptsReferences:true,read:async()=>{await current();return credential;},write:async()=>refuseWrite(),clear:async()=>refuseWrite()},async()=>refuseWrite());
   const ownerKey=createHash('sha256').update(identity).digest('hex');
   const listOwned=async()=>{
    stage='identity';

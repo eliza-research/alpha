@@ -51,6 +51,8 @@ export interface ResidentStubOptions {
   nativeSignIn?: boolean;
   /** First run: no Cloud key is saved on this phone. */
   emptyKeystore?: boolean;
+  /** Reject resident starts independently of account sign-in. */
+  rejectStart?: boolean;
   /** Eliza Cloud accounts, answered by bearer token. The first is the harness's saved key unless emptyKeystore. */
   accounts?: StubAccount[];
   /** Device capabilities the resident agent offers at registration (the harness offers none). */
@@ -77,7 +79,7 @@ export async function residentStub(page: Page, options: ResidentStubOptions = {}
     const s = w.residentStub = {
       order: [] as string[], cloud: [] as Array<{ method: string; path: string; auth?: string }>, bodies: [] as any[], opened: [] as string[],
       accounts: structuredClone(options.accounts ?? []) as any[], login: 'authenticated' as 'authenticated' | 'expired' | 'hold', nextToken: '', polls: 0,
-      start: 'ok' as 'ok' | 'reject' | 'reject-once' | 'starting', held: null as null | { conversation: string; reply: string },
+      start: (options.rejectStart ? 'reject' : 'ok') as 'ok' | 'reject' | 'reject-once' | 'starting', held: null as null | { conversation: string; reply: string },
       ...kept,
       // Per page load: the stream mode and a held reply do not survive a restart.
       stream: null as any, release: null as null | (() => void), recoveries: [] as string[], capabilities: '',

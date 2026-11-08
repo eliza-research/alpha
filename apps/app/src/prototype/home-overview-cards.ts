@@ -7,7 +7,8 @@ const maskIcon = (name: string, color: string) => createElement('span', {style: 
   mask: `url('/icons/lucide/${name}.svg') center/contain no-repeat`, WebkitMask: `url('/icons/lucide/${name}.svg') center/contain no-repeat`}});
 
 /** The Home agenda card: the shared upstream card with Alpha's classes and installed selectors. */
-export function homeAgendaCard(out: Bag): ReactElement {
+export function homeAgendaCard(out: Bag): ReactElement | null {
+  if (out.homeShowCalendar === false) return null;
   const next = out.homeCalendarHasNext ? {text: String(out.homeCalendarNext || ''), source: String(out.homeCalendarNextSource || '')} : null;
   return createElement(OverviewAgendaCard, {
     heading: String(out.homeCalendarTime ?? ''), origin: String(out.homeCalendarOrigin ?? ''), title: String(out.homeCalendarTitle ?? ''),
@@ -38,12 +39,13 @@ const INBOX_STATES = new Set(['not-connected', 'idle', 'loading', 'ready', 'stal
  * computed from the page the user loaded (presentHomeInboxCard), Alpha's styles and its installed
  * selectors. It shows no message body and reads no mail.
  */
-export function homeAttentionCard(out: Bag): ReactElement {
+export function homeAttentionCard(out: Bag): ReactElement | null {
+  if (out.homeShowInbox === false) return null;
   const rows = Array.isArray(out.homeInboxRows) && out.homeInboxHasRows !== false
     ? out.homeInboxRows.map((row: Bag) => ({title: String(row?.subject ?? ''), detail: String(row?.from ?? '')})) : [];
   const people = Array.isArray(out.homeAttentionPeople) ? out.homeAttentionPeople.map((person: Bag) => String(person?.ini ?? '')) : [];
   return createElement(OverviewAttentionCard, {
-    count: String(out.homeInboxCount ?? ''), rows, title: String(out.homeInboxTitle ?? ''), status: String(out.homeInboxStatus ?? ''), people,
+    count: String(out.homeInboxCount ?? ''), rows, title: String(out.homeInboxTitle || (rows.length ? '' : 'Inbox')), status: String(out.homeInboxStatus || (rows.length ? '' : out.homeInboxState === 'not-connected' ? 'Connect email' : out.homeInboxState === 'pending' || out.homeInboxState === 'loading' ? 'Loading…' : out.homeInboxState === 'ready' ? 'No unread email' : 'Open to view')), people,
     ...(INBOX_STATES.has(out.homeInboxState) ? {state: out.homeInboxState} : {}),
     label: String(out.homeAttentionLabel ?? 'Open Inbox'), description: String(out.homeInboxDescription ?? ''),
     onActivate: typeof out.goTriage === 'function' ? out.goTriage : undefined,
@@ -69,15 +71,15 @@ export function homeAttentionCard(out: Bag): ReactElement {
   });
 }
 
-/** The Home brief card, present only while a retained brief exists for this connection. */
+/** Keep the brief widget available; show an honest empty state until a retained brief exists. */
 export function homeBriefCard(out: Bag): ReactElement | null {
-  if (out.homeBriefHas !== true) return null;
+  const retained=out.homeBriefHas===true,failed=retained&&out.homeBriefFailed===true;
   return createElement(OverviewBriefCard, {
-    title: String(out.homeBriefTitle ?? ''), status: String(out.homeBriefStatus ?? ''), failed: out.homeBriefFailed === true,
-    label: String(out.homeBriefLabel ?? ''), onActivate: typeof out.goBrief === 'function' ? out.goBrief : undefined,
+    title: retained?String(out.homeBriefTitle || 'Your brief'):'Your brief', status: retained?String(out.homeBriefStatus || 'No brief yet'):'No brief yet', failed,
+    label: retained?String(out.homeBriefLabel || 'Open your brief'):'Open your brief', onActivate: typeof out.goBrief === 'function' ? out.goBrief : undefined,
     icon: maskIcon('file-text', 'var(--acct)'),
     classNames: {card: 'home-brief-card', head: 'home-brief-head', title: 'home-brief-title', status: 'home-brief-status'},
-    dataAttributes: {'data-alpha-home-brief': '', 'data-alpha-home-brief-failed': flag(out.homeBriefFailed)},
+    dataAttributes: {'data-alpha-home-brief': '', 'data-alpha-home-brief-failed': flag(failed)},
   });
 }
 
@@ -90,6 +92,9 @@ export function installHomeOverviewCards(Component: any) {
   const p = Component.prototype, render = p.renderVals;
   p.renderVals = function () {
     const out = render.call(this);
-    return {...out, homeAgendaCard: homeAgendaCard(out), homeAttentionCard: homeAttentionCard(out), homeBriefCard: homeBriefCard(out)};
+    const agenda = homeAgendaCard(out), attention = homeAttentionCard(out), brief = homeBriefCard(out);
+    const showWorkflow = out.homeShowWorkflows !== false;
+    return {...out, homeAgendaCard: agenda, homeAttentionCard: attention, homeBriefCard: brief, homeShowWorkflow: showWorkflow,
+      homeHasOverviewCards: !!(agenda || attention || brief || showWorkflow)};
   };
 }

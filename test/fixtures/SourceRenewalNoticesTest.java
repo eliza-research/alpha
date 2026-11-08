@@ -5,8 +5,8 @@ final class SourceRenewalNoticesTest {
  interface Run{void run()throws Exception;}
  static void rejected(String pattern,Run run)throws Exception{try{run.run();}catch(SecurityException expected){if(expected.getMessage()!=null&&java.util.regex.Pattern.compile(pattern).matcher(expected.getMessage()).find())return;throw new AssertionError("Expected /"+pattern+"/ but got "+expected,expected);}throw new AssertionError("Expected rejection /"+pattern+"/");}
  static final class Fixture implements SourceRenewalNotices.Store,SourceRenewalNotices.Guard,SourceRenewalNotices.Poster{
-  String stored;boolean revoked,failWrite,offline,paused,failPost;int posted,cancelled;String revision="r1",owner="owner";long expiry=200000;
-  public String read(){return stored;}public void write(String value)throws Exception{if(failWrite)throw new IllegalStateException("disk unavailable");stored=value;}
+  String stored;boolean revoked,failWrite,offline,paused,failPost,revokeAfterWrite,offlineAfterWrite;int posted,cancelled;String revision="r1",owner="owner";long expiry=200000;
+  public String read(){return stored;}public void write(String value)throws Exception{if(failWrite)throw new IllegalStateException("disk unavailable");stored=value;if(revokeAfterWrite){revokeAfterWrite=false;revoked=true;}if(offlineAfterWrite){offlineAfterWrite=false;offline=true;}}
   public JSONObject describe(JSONObject selection)throws Exception{if(offline)throw new java.io.IOException("resident starting");if(paused)throw new SecurityException("Native source connection unavailable");if(!owner.equals(selection.optString("ownerId"))||!"enrollment".equals(selection.optString("enrollmentId")))throw new SourceRenewalNotices.RenewalStale("Native source binding changed");return new JSONObject().put("revision",revision).put("expiresAt",java.time.Instant.ofEpochMilli(expiry).toString()).put("revoked",revoked);}
   public void post(String key,long expiry,long now){if(failPost)throw new IllegalStateException("notifications disabled");posted++;}public void cancel(String key){cancelled++;}
   SourceRenewalNotices core(){return new SourceRenewalNotices(this,this,this);}
@@ -32,6 +32,11 @@ final class SourceRenewalNoticesTest {
   down.offline=false;down.paused=true;try{r.post(downKey,1002);throw new AssertionError();}catch(SourceRenewalNotices.RenewalUnverifiable expected){}
   check(down.posted==0&&down.cancelled==0&&new JSONObject(down.stored).has(downKey),"unverifiable source keeps its row");down.paused=false;r.post(downKey,1003);check(down.posted==1,"kept row posts once the resident answers");
   Fixture gone=new Fixture();SourceRenewalNotices g=gone.core();String goneKey=g.arm(gone.selection(),gone.expiry,1000);gone.revoked=true;g.post(goneKey,1001);check(gone.posted==0&&gone.cancelled==1&&!new JSONObject(gone.stored).has(goneKey),"revoked grant removes its row");
+  Fixture changed=new Fixture();SourceRenewalNotices changedCore=changed.core();String changedKey=changedCore.arm(changed.selection(),changed.expiry,1000);
+  changed.revokeAfterWrite=true;changedCore.post(changedKey,1001);check(changed.posted==0&&changed.cancelled==1&&!new JSONObject(changed.stored).has(changedKey),"revocation after reservation prevents posting");
+  Fixture unavailable=new Fixture();SourceRenewalNotices unavailableCore=unavailable.core();String unavailableKey=unavailableCore.arm(unavailable.selection(),unavailable.expiry,1000);
+  unavailable.offlineAfterWrite=true;try{unavailableCore.post(unavailableKey,1001);throw new AssertionError("posted after source went offline");}catch(SourceRenewalNotices.RenewalUnverifiable expected){}
+  check(unavailable.posted==0&&unavailable.cancelled==0&&new JSONObject(unavailable.stored).has(unavailableKey),"unverifiable reservation keeps a retryable row");unavailable.offline=false;unavailableCore.post(unavailableKey,1002);check(unavailable.posted==1,"reserved notice retries after source returns");
   Fixture crashed=new Fixture();SourceRenewalNotices c=crashed.core();String crashedKey=c.arm(crashed.selection(),crashed.expiry,1000);
   JSONObject rows=new JSONObject(crashed.stored);rows.getJSONObject(crashedKey).put("phase","dispatching");crashed.stored=rows.toString();
   crashed.core().arm(crashed.selection(),crashed.expiry,1001);check("armed".equals(new JSONObject(crashed.stored).getJSONObject(crashedKey).getString("phase")),"re-arm resets an interrupted post");

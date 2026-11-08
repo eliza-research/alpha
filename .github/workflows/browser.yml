@@ -41,8 +41,9 @@ jobs:
         with:
           bun-version: "1.4.2"
       - run: npm ci
-      # The development-host loopback test (development-scope-flow) fails on CI without it.
       - run: npm ci --prefix backend
+      - name: Install browser for source-refinement checks
+        run: npx playwright install --with-deps chromium
       - uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6.0.1
         with:
           distribution: temurin
@@ -61,9 +62,17 @@ jobs:
           echo "ALPHA_CLOUD_COLLECTOR_SOURCE=$prepared_source" >> "$GITHUB_ENV"
       - run: npm run verify
         env:
-          # The prepared-SDK tests fail instead of skipping, and cloud-sdk-routing uses the prepared tree.
           ALPHA_REQUIRE_PREPARED_SDK: '1'
           ALPHA_ELIZA_SOURCE: ${{ env.ALPHA_CLOUD_COLLECTOR_SOURCE }}
+      - name: Retain Quint model and implementation evidence
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: quint-verification
+          path: |
+            test-results/quint/
+            test-results/quint-refinement/
+          retention-days: 7
       # Reuses the product dependencies and client projection prepared by npm run verify.
       - name: Build the connected browser proof renderer
         env:
@@ -154,6 +163,17 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npx playwright install --with-deps chromium
+      - name: Check composed source transitions against Quint
+        run: |
+          npm run upstream:prepare-client
+          npm run quint:refinement -- --families=composition --out=test-results/quint-refinement/composition-summary.json
+      - name: Retain composed Quint evidence
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: quint-composition
+          path: test-results/quint-refinement/
+          retention-days: 7
       - name: Test-mocks bundle records its flag
         run: |
           npm run build:test-mocks -- --outDir ../../test-results/test-mocks-web

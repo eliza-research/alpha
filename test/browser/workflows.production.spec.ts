@@ -46,6 +46,7 @@ async function workflowAgent(page: Page) {
       if (method === 'GET' && ['/api/lifeops/calendar/feed', '/api/lifeops/calendar/calendars', '/api/lifeops/calendar/next-context'].includes(path.split('?')[0])) return { status: 503, data: { error: 'Calendar unavailable in this workflow fixture' } };
       if (path === '/api/lifeops/reminders') return ok({ reminders: [] });
       if (path === '/api/lifeops/scheduled-tasks?ownerVisibleOnly=1') return ok({ tasks: [] });
+      if (method === 'GET' && path === '/api/lifeops/definitions') return ok({ definitions: [] });
       if (path === '/api/workflow/removed-workflows') return ok({ workflows: [] });
       if (path === '/api/workflow/workflows') return ok({ workflows: state.flows });
       if (path === '/api/workflow/phone/catalog') return ok({ specVersion: 1, generationProtocol: 1, catalogRevision: 'fixture-v1', compilerRevision: 'fixture-v1', maximumSteps: 32, maximumSpecBytes: 65536, triggers: [{ kind: 'manual', available: true }], palette: [{ kind: 'Read', operations: ['supplied_text', 'selected_notes', 'calendar_range'].map(id => ({ id, available: true })) }, { kind: 'Write', operations: ['compose_draft', 'model_draft', 'save_note'].map(id => ({ id, available: true })) }] });
@@ -78,6 +79,8 @@ async function workflowAgent(page: Page) {
         if (rest === '') return ok({ execution: r });
         if (rest === '/cancel') { Object.assign(r, { status: 'cancelled', finished: true, stoppedAt: at(5) }); return ok({ execution: r }); }
         if (rest === '/approvals') return ok(receipt(r.finished));
+        // These legacy approval fixtures have no typed phone specification to review.
+        if (method === 'GET' && rest === '/phone-review') return { status: 404, data: {} };
         const decision = /^\/approvals\/([^/]+)\/(\d+)$/.exec(rest);
         if (decision) {
           const a = state.approvals.find((row: any) => row.nodeId === decodeURIComponent(decision[1]) && row.iteration === Number(decision[2]));

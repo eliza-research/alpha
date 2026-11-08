@@ -133,5 +133,6 @@ export const DailyApps = registerPlugin<{
     startTime?: number;
     endTime?: number;
     mime?: string[];
+    initialLocation?: "downloads";
   }): Promise<NativeResult>;
 }>("DailyApps");

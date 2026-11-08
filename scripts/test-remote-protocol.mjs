@@ -3,8 +3,8 @@
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import http from 'node:http';
-if (!process.execArgv.some((arg,i)=>arg==='--import'&&process.execArgv[i+1]==='tsx')) {
-  const child = spawnSync(process.execPath, ['--import','tsx',process.argv[1]], { stdio: 'inherit' });
+if (!process.execArgv.some(arg => arg === '--import=tsx' || arg === 'tsx')) {
+  const child = spawnSync(process.execPath, ['--import=tsx', process.argv[1]], { stdio: 'inherit' });
   process.exit(child.status ?? 1);
 }
 const { RemoteProtocol, normalizeRemoteOrigin } = await import('../apps/app/src/runtime/remote-protocol.ts');

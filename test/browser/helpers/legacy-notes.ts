@@ -1,12 +1,13 @@
 import {expect,test,type Page} from '@playwright/test';
 /** Seed only the isolated test's retained legacy document before explicitly opening Older notes.
  * Production source selection never initializes or migrates a missing legacy document. */
-export async function openLegacyNotes(page:Page){
- if(test.info().project.name==='production')await seedRetainedNotes(page);
- else await page.evaluate(async()=>{
+export async function openLegacyNotes(page:Page,records:Record<string,unknown>[]=[]){
+ if(test.info().project.name==='production')await seedRetainedNotes(page,records);
+ else await page.evaluate(async records=>{
   const m=await import('/src/runtime/browser-notes-document.ts');
-  if(!await m.browserNotesPort.read())await m.openBrowserNotes();
- });
+  const store=await m.openBrowserNotes();
+  if(records.length)await store.replace(records);
+ },records);
  await selectLegacyNotes(page);
  await expect(page.getByRole('heading',{name:'Previous notes',exact:true})).toBeVisible();
  await expect(page.getByRole('button',{name:'New note',exact:true})).toBeEnabled();
@@ -19,7 +20,8 @@ export async function selectLegacyNotes(page:Page){
  // The source choice is only counted once the Notes view is active, not on the home screen.
  await expect(page.locator('html')).toHaveAttribute('data-active-view','notes');
  const older=page.getByRole('button',{name:/^(Older|Previous) notes$/});
- if(await older.count())await older.click();
+ await expect(older).toBeVisible();
+ await older.click();
 }
 
 /** Retained attachment metadata only; no file picker, file contents, or real user store. */

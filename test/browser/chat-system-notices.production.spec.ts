@@ -13,7 +13,7 @@ const owner = { token: 'synthetic-cloud-key', userId: '9f1dc45a-4011-4e44-947a-3
 const composer = (page: Page) => page.locator('[data-alpha-layer="composer"][aria-hidden="false"], [data-alpha-layer="conversation"][aria-hidden="false"]').getByRole('textbox').first();
 const conversation = (page: Page) => page.locator('[data-alpha-layer="conversation"]');
 const UPSTREAM_RUNTIME = 'Eliza needs attention. Check the connected host\'s diagnostics before trying again.';
-const ALPHA_RUNTIME = 'Part of your agent stopped working, so this reply may not arrive. Nothing was resent. Send your message again in a moment.';
+const ALPHA_RUNTIME = 'Part of your agent stopped working. Send your message again in a moment.';
 
 test('notices after an unanswered message collapse to one owner-facing notice, which a later reply retires', async ({ page }) => {
   test.setTimeout(120_000);

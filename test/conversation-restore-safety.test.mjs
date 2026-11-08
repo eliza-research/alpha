@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
-import {stripTypeScriptTypes} from './fixtures/ts-source.mjs';
+import {stripTypeScriptTypes} from './support/strip-types.mjs';
 import vm from 'node:vm';
 import {deferred} from './fixtures/wait-for.mjs';
 const source=readFileSync(process.env.ALPHA_RESTORE_SOURCE||'apps/app/src/runtime/connection-ui.tsx','utf8');
@@ -69,7 +69,7 @@ test('a restored failure row shows Alpha copy instead of the agent\'s saved fail
  const {systemNoticeKind,systemNoticeDisplayText}=await import('../apps/app/src/runtime/action-message-presentation.ts');
  const {isCalendarReadFailureCode}=await import('../.eliza/client-features/packages/contracts/src/calendar.ts');
  const box={systemNoticeKind,systemNoticeDisplayText,isCalendarReadFailureCode,restoredText:text=>text,Error};
- vm.runInNewContext(stripTypeScriptTypes([part('export const RESTORED_FAILURES','/** A completed Calendar read').replace(/^export /,''),part('/** A display bound','function restoredMessages('),part('function restoredMessages(','/** Eliza Cloud'),part('function calendarRefusalKept(','/** The error a failed reply')].join('\n'),{mode:'strip'})+';globalThis.restoredMessages=restoredMessages;',box);
+ vm.runInNewContext(stripTypeScriptTypes([part('export const RESTORED_FAILURES','/** A completed Calendar read').replace(/^export /,''),part('function restoredMessages(','/** Eliza Cloud'),part('function calendarRefusalKept(','/** The error a failed reply')].join('\n'),{mode:'strip'})+';globalThis.restoredMessages=restoredMessages;',box);
  const prose='Connect an LLM provider to start chatting. Open Settings → Providers, or choose Eliza Cloud during first-run setup.';
  const rows=box.restoredMessages([
   {id:'u1',role:'user',text:'Hello'},

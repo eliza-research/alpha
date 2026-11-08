@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
-import {stripTypeScriptTypes} from 'node:module';
+import {stripTypeScriptTypes} from './support/strip-types.mjs';
 import {Readable} from 'node:stream';
 import {EventEmitter} from 'node:events';
 // Actual broker + exact shared codec, with only external error-class identities

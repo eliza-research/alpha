@@ -23,7 +23,7 @@ public final class AlphaDeviceAppsPlugin extends Plugin {
   java.util.function.Predicate<String> resolves=candidate->new Intent(candidate).resolveActivity(getContext().getPackageManager())!=null;
   String action=RendererRecoveryBudget.homeChoiceAction(resolves);
   if(action==null){call.reject("No Home or Settings screen");return;}
-  try{getContext().startActivity(new Intent(action).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));call.resolve();}
-  catch(RuntimeException unavailable){call.reject("Home chooser unavailable: "+unavailable.getClass().getSimpleName());}
+  LateLaunch.ask(call,()->{try{getContext().startActivity(new Intent(action).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));call.resolve();}
+  catch(RuntimeException unavailable){call.reject("Home chooser unavailable: "+unavailable.getClass().getSimpleName());}});
  }
 }

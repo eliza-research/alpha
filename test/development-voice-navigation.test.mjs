@@ -3,7 +3,7 @@ import {createRealtimeVoiceTiming} from '../.eliza/client-features/packages/voic
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
-import {stripTypeScriptTypes} from 'node:module';
+import {stripTypeScriptTypes} from './support/strip-types.mjs';
 import {tsImport} from 'tsx/esm/api';
 import {applyServerEvent,INITIAL_VOICE_SESSION_STATE} from '../vendor/eliza/packages/ui/src/voice/voice-session-state.ts';
 

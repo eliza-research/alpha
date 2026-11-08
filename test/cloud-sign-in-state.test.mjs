@@ -70,12 +70,31 @@ test('actual OTP form clears only when the attempt or verification stage changes
   assert.equal(document.querySelector('[name="one-time-code"]'),null,'cancel leaves no code input');
 }));
 
+test('own-key alternate stays mounted through pending checks and rejection when Cloud is not ready',async()=>panel(async({document,render})=>{
+  const alternate=React.createElement('form',{'aria-label':'Own API keys'},React.createElement('input',{type:'password','aria-label':'Fixture key'}));
+  await render({view:choose,ready:false,unavailable:true,alternate,busy:false});
+  const input=document.querySelector('input');input.value='synthetic-form-value';
+  for(const next of [{busy:true,unavailable:false,probing:false},{busy:true,probing:true},{busy:false,probing:false,unavailable:true,error:'Key rejected'}]){
+    await render(next);
+    assert.equal(document.querySelector('input')===input,true,'readiness must not remount the explicit own-key form');
+    assert.equal(input.value==='synthetic-form-value',true,'entered values remain in their original fields');
+    assert.equal(document.querySelector('.alpha-auth-loading'),null);
+  }
+  await render({alternate:undefined,busy:true,probing:true,unavailable:false});
+  assert.equal(document.querySelector('input'),null,'leaving own keys removes its inputs');
+  assert.ok(document.querySelector('.alpha-auth-loading'),'ordinary Cloud readiness still uses its blank loading state');
+}));
+
 test('mandatory chooser omits inert Back and distinguishes readiness from an email request',async()=>panel(async({document,window,render})=>{
   const buttons=()=>[...document.querySelectorAll('button')].map(button=>button.textContent);
   // The automatic readiness check is not an attempt the owner started: nothing to go Back from.
   await render({view:choose,dismissible:false,ready:false,busy:true,probing:true,message:'Checking Eliza Cloud sign-in…'});
   assert.equal(buttons().includes('Back'),false);
-  assert.equal(document.querySelector('[name="email"]').disabled,true);
+  assert.equal(document.querySelector('[name="email"]'),null);
+  assert.deepEqual(buttons(),[]);
+  assert.equal(document.querySelector('[role="status"]').getAttribute('aria-label'),'Loading Alpha');
+  assert.equal(document.querySelector('.alpha-auth-mark'),null);
+  assert.equal(document.body.textContent,'');
   // A failed or cancelled check shows its reason and one retry, never a column of dead controls.
   await render({busy:false,probing:false,message:'',unavailable:true,error:'Alpha could not reach Eliza Cloud.',actions:{verify(){},google(){},email(){},resend(){},cancel(){},retry(){}}});
   assert.equal(document.querySelector('[name="email"]'),null);assert.deepEqual(buttons(),['Try again']);
@@ -107,13 +126,13 @@ test('resend starts at thirty seconds and cannot be clicked during the countdown
 
 function controllerFixture({isAndroid=false,browserCloudResidentEnabled=false}={}){
   const source=`
-    const ownProviderSelected=()=>false;let operation=null,residentStartInBackground=false,active=null,signInReadinessOwner=null,googleSignInGeneration=0,googleSignInPrior=null;
+    const ownProviderSelected=()=>false;let planRecheck=null;let operation=null,residentStartInBackground=false,active=null,signInReadinessOwner=null,googleSignInGeneration=0,googleSignInPrior=null,providerStatusGeneration=0;
     const state={signIn:{step:'code',environment:'production',attemptId:'old',email:'person@example.invalid'},open:true,busy:false,message:'',error:''};
     const events=[],update=values=>{Object.assign(state,values);events.push({...values});};
     const cloud={cancelLogin(){events.push({cancel:true});}};
     const client={};
     const signInClient=()=>client,ensureResident=async()=>{},residentRecoveryReason=()=>null,cloudCredentialStore={read:async()=>null};
-    const errorMessage=e=>e.message,errorKindOf=()=>null,runQueuedResidentRebind=()=>{},runQueuedSignInReturn=()=>{};let planRecheck=null;
+    const errorKindOf=()=>null;const errorMessage=e=>e.message,runQueuedResidentRebind=()=>{},runQueuedSignInReturn=()=>{},scheduleResidentAutoRetry=()=>{};
     const testMocksEnabled=false,isAndroid=${isAndroid},browserCloudResidentEnabled=${browserCloudResidentEnabled},expired=()=>false,residentCloudFlow=()=>true;
     let required=false;const productionCloudSignInRequired=()=>required,residentSignInRequired=()=>required;let pendingBillingReview=null;const clearPersonalSetup=()=>{};
     ${ui.includes('export function explicitSignedOutCloudEntry(')?part('export function explicitSignedOutCloudEntry(', 'export function connectionChooserVisible(').replace('export ',''):'function explicitSignedOutCloudEntry(){return false;}'}
@@ -122,9 +141,7 @@ function controllerFixture({isAndroid=false,browserCloudResidentEnabled=false}={
     class CodeExpiredError extends Error {constructor(){super('code-expired');}}
     const signInFailureMessage=code=>code,signInFailed=(environment,keep=false)=>{if(!keep)update({signIn:{step:'choose',environment}});};
     const signedIn=async()=>events.push({authenticated:true});
-    const queueResidentRebind=()=>events.push({rebind:true});
-    ${part('function signInStoredUnconfirmed(', '/** The provider authenticated only')}
-    ${part('async function work(', '/** Start (or restart) the resident.')}
+    ${part('async function work(', '\n/** ')}
     const connectionController={
     ${part('  close() {', '  cancel() {')}
     cancel(){operation?.abort(new DOMException('Cancelled','AbortError'));cloud.cancelLogin();},
@@ -197,22 +214,6 @@ test('an expired or exhausted code keeps the address with a new code ready; othe
   await f.connectionController.verifySignInCode('123456');assert.equal(f.state.signIn.step,'choose');
 });
 
-test('a sign-in that stored its key but ends activation-pending rebinds on that key instead of resetting sign-in',async()=>{
-  for(const method of ['code','mfa','google']){
-    const f=controllerFixture();
-    if(method==='mfa')f.state.signIn={step:'mfa',environment:'production',attemptId:'old',email:'person@example.invalid',method:'totp',expiresAt:Date.now()+600000};
-    if(method==='google'){f.state.signIn={...choose};f.client.signInWithGoogle=async()=>{throw new f.CloudSignInError('activation-pending');};await f.connectionController.signInGoogle();}
-    else{f.client.verifyEmailSignIn=f.client.verifyMfaSignIn=async()=>{throw new f.CloudSignInError('activation-pending');};await f.connectionController.verifySignInCode('123456');}
-    assert.equal(f.state.signIn,null,`${method}: the stored key leaves sign-in rather than returning to the chooser`);
-    assert.equal(f.state.error,'activation-pending',method);
-    assert.equal(f.events.filter(e=>e.rebind).length,1,`${method}: one rebind reads the stored key`);
-    assert.ok(!f.events.some(e=>e.signIn?.step==='choose'),`${method}: never reset to the chooser`);
-  }
-  const f=controllerFixture();f.client.verifyEmailSignIn=async()=>{throw new f.CloudSignInError('rejected');};
-  await f.connectionController.verifySignInCode('123456');
-  assert.ok(!f.events.some(e=>e.rebind),'a refusal before any key was stored rebinds nothing');
-});
-
 test('wrong code is reported at the code field and selected for replacement; resend reports on its own control',async()=>panel(async({document,render})=>{
   document.querySelector('input').value='111111';
   await render({error:'That code did not work.'});
@@ -254,8 +255,8 @@ test('own API keys sit below the Cloud methods and replace them when chosen',asy
   assert.equal(buttons.at(-1),own,'the own-keys entry is last, after the Cloud methods');
   assert.ok(document.querySelector('h1').compareDocumentPosition(own)&4);own.click();assert.equal(opened,1);
   await render({busy:true,probing:true,ready:false,message:'Checking Eliza Cloud sign-in…'});
-  assert.equal([...document.querySelectorAll('button')].find(button=>button.textContent==='Use my own API keys').disabled,false,'readiness never blocks the own-keys path');
-  await render({alternate:React.createElement('form',{'aria-label':'Own API keys'})});
+  assert.equal([...document.querySelectorAll('button')].some(button=>button.textContent==='Use my own API keys'),false,'Direct is hidden during readiness');
+  await render({busy:false,probing:false,ready:true,message:'',alternate:React.createElement('form',{'aria-label':'Own API keys'})});
   assert.equal(document.querySelector('form[aria-label="Sign in with email"]'),null,'the Cloud methods give way to the key form');
   assert.ok(document.querySelector('form[aria-label="Own API keys"]'));assert.equal(document.querySelector('h1').textContent,'Welcome to Alpha.');
   assert.equal(document.querySelector('[role="status"]'),null);
@@ -292,15 +293,15 @@ test('Back on the required chooser keeps sign-in enabled instead of creating a r
 const entryStart=ui.indexOf('  const requiredSignInView:'),entryEnd=ui.indexOf('  const accountCreatedNotice=',entryStart);assert.ok(entryStart>=0&&entryEnd>entryStart);
 const selectorSource=ui.slice(entryStart,entryEnd);
 const explicitEntrySource=ui.includes('export function explicitSignedOutCloudEntry(')?part('export function explicitSignedOutCloudEntry(', 'export function connectionChooserVisible(').replace('export ',''):'function explicitSignedOutCloudEntry(){return false;}';
-const entryFunction=transformSync(`const isAndroid=false,browserCloudResidentEnabled=false,ownProviderSelected=()=>false,productionCloudSignInRequired=()=>false;${explicitEntrySource}function selectEntry(snapshot){const productionSignInRequired=false,explicitSignInEntry=explicitSignedOutCloudEntry(snapshot),signInEntryRequired=productionSignInRequired||explicitSignInEntry,signInPage=signInEntryPage(snapshot),sending=null;const providerChoice=null,panel=null,ownKeyEntry=false,setOwnKeyEntry=()=>{},ownKeyAttempted=false,setOwnKeyAttempted=()=>{},signInPageShown=!!snapshot.signIn||signInEntryRequired,OwnKeyForm=()=>null,ownKeySaving=false,LOCAL_PROVIDER_MODEL='qwen',automaticSignInProbe={current:false},signInProbeMessage=()=>'Checking Eliza Cloud sign-in…',residentEnvironment=()=> 'production',inAppGoogle=false,inAppPhone=false,inAppEmail=true,cloudSignInPhone=false,loadSignInService=()=>null,RESIDENT_UNPACKAGED='unpackaged',browserCloudResidentEnabled=false,testMocksEnabled=false;${selectorSource}return null;}`,{loader:'tsx',format:'cjs',jsx:'automatic'}).code;
+const entryFunction=transformSync(`const isAndroid=false,browserCloudResidentEnabled=false,ownProviderSelected=()=>false,productionCloudSignInRequired=()=>false;${explicitEntrySource}function selectEntry(snapshot){const productionSignInRequired=false,explicitSignInEntry=explicitSignedOutCloudEntry(snapshot),signInEntryRequired=productionSignInRequired||explicitSignInEntry,signInPage=signInEntryPage(snapshot),sending=null;const providerChoice=null,panel=null,ownKeyEntry=false,setOwnKeyEntry=()=>{},ownKeyAttempted=false,setOwnKeyAttempted=()=>{},signInPageShown=!!snapshot.signIn||signInEntryRequired,OwnKeyForm=()=>null,ownKeySaving=false,LOCAL_PROVIDER_MODEL='qwen',automaticSignInProbe={current:false},signInProbeMessage=()=>'Checking Eliza Cloud sign-in…',residentEnvironment=()=> 'production',inAppGoogle=false,inAppPhone=false,inAppEmail=true,cloudSignInPhone=false,loadSignInService=()=>null,RESIDENT_UNPACKAGED='unpackaged',residentStartFailure='',browserCloudResidentEnabled=false,testMocksEnabled=false;${selectorSource}return null;}`,{loader:'tsx',format:'cjs',jsx:'automatic'}).code;
 const noAuthCalls=[];const entryController=new Proxy({},{get:(_,name)=>()=>noAuthCalls.push(name)});
 const selectEntry=new Function('require','CloudSignInPanel','connectionController','ResidentRecoveryPanel','useState',entryFunction+';return selectEntry;')(createRequire(import.meta.url),CloudSignInPanel,entryController,()=>null,React.useState);
-test('explicit signed-out account and plan entry render approved email/Google chooser directly, with no legacy CTA or auth action',async()=>{const {renderToStaticMarkup}=await import('react-dom/server');for(const purpose of['cloud-account','plan']){const element=selectEntry({open:true,purpose,cloudAccount:null,busy:false,message:'',error:'',signIn:null});assert.ok(element,'the actual root-page branch must select the existing sign-in component');const html=renderToStaticMarkup(element);assert.match(html,/Welcome to Alpha/);assert.match(html,/Continue with Google/);assert.match(html,/Sign in with email/);assert.match(html,/role="dialog"/,'an opened sign-in stays a dialog');assert.match(html,/>Back</,'an opened sign-in keeps Back');assert.doesNotMatch(html,/Sign in to use connected services such as Gmail/);assert.deepEqual(noAuthCalls,[]);}});
+test('explicit signed-out account and plan entry stay blank before the chooser is ready',async()=>{const {renderToStaticMarkup}=await import('react-dom/server');for(const purpose of['cloud-account','plan']){const element=selectEntry({open:true,purpose,cloudAccount:null,busy:false,message:'',error:'',signIn:null});assert.ok(element,'the actual root-page branch must select the existing sign-in component');const html=renderToStaticMarkup(element);assert.match(html,/aria-label="Loading Alpha"/);assert.doesNotMatch(html,/alpha-auth-mark|Welcome to Alpha|Checking|Continue with Google|Sign in with email|>Back</);assert.match(html,/role="dialog"/,'an opened sign-in stays a dialog');assert.deepEqual(noAuthCalls,[]);}});
 test('verified account is not redirected from membership into first-run sign-in',()=>{assert.equal(selectEntry({open:true,purpose:'cloud-account',cloudAccount:{userId:'synthetic-owner'},busy:false,signIn:null}),null);});
 
 test('explicit account chooser preserves newer in-app email/phone readiness and never starts hosted auth',async()=>{
  const begin=part('  async beginSignIn(', '  /** Leaves the sign-in screen');
- const body=`${explicitEntrySource}function make(purpose,methods){let operation=null,epoch=0,signInReadinessOwner=null,googleSignInGeneration=0,googleSignInPrior=null,inAppGoogle=false,inAppPhone=false,inAppEmail=false;const cloudSignIn={},cloudServiceName=()=> 'Eliza Cloud',state={open:true,purpose,cloudAccount:null},updates=[],calls=[];const residentCloudFlow=()=>false,residentEnvironment=()=> 'production',cloudEnvironmentAllowed=()=>true,isAndroid=false;let cloud={environment:'production',cancelLogin(){calls.push('cancel');}};const inAppSignInMethods=async()=>{calls.push('status');return methods;},update=patch=>{updates.push(patch);Object.assign(state,patch);},work=async(_,fn)=>fn(new AbortController().signal),ensureResident=async()=>{},browserCloudLoginAction=async()=>calls.push('web-auth'),residentBrowserLoginAction=async()=>calls.push('resident-auth');const connectionController={${begin}};return {controller:connectionController,state,updates,calls,methods:()=>({google:inAppGoogle,phone:inAppPhone,email:inAppEmail})};}`;
+ const body=`${explicitEntrySource}function make(purpose,methods){let planRecheck=null;let operation=null,epoch=0,signInReadinessOwner=null,googleSignInGeneration=0,providerStatusGeneration=0,inAppGoogle=false,inAppPhone=false,inAppEmail=false;const cloudSignIn={},cloudServiceName=()=> 'Eliza Cloud',state={open:true,purpose,cloudAccount:null},updates=[],calls=[];const residentCloudFlow=()=>false,residentEnvironment=()=> 'production',cloudEnvironmentAllowed=()=>true,isAndroid=false;let cloud={environment:'production',cancelLogin(){calls.push('cancel');}};const inAppSignInMethods=async()=>{calls.push('status');return methods;},update=patch=>{updates.push(patch);Object.assign(state,patch);},work=async(_,fn)=>fn(new AbortController().signal),ensureResident=async()=>{},browserCloudLoginAction=async()=>calls.push('web-auth'),residentBrowserLoginAction=async()=>calls.push('resident-auth');const connectionController={${begin}};return {controller:connectionController,state,updates,calls,methods:()=>({google:inAppGoogle,phone:inAppPhone,email:inAppEmail})};}`;
  const compiled=transformSync(body,{loader:'ts',format:'cjs'}).code,make=new Function(compiled+';return make;')();
  for(const purpose of ['cloud-account','plan','agent'])for(const methods of [null,{google:false,phone:true,email:false}]){const f=make(purpose,methods);await f.controller.beginSignIn('production');assert.equal(f.state.signIn.step,'choose');assert.deepEqual(f.calls,['status','cancel']);assert.deepEqual(f.methods(),{google:false,phone:methods?.phone===true,email:methods===null||methods.email!==false});}
 });

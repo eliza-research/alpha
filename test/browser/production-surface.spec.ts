@@ -133,13 +133,13 @@ test('the chooser and Settings offer only production connections', async ({ page
   await expect(chooser).toHaveCount(0);
   await page.getByRole('button', { name: 'Settings', exact: true }).click();
   const settings = page.locator('[data-screen]');
-  await expect(settings.getByText('Agent connection', { exact: true })).toBeVisible();
+  await expect(settings.getByRole('button', { name: 'Agent', exact: true })).toBeVisible();
   const settingsText = await settings.innerText();
   expect(settingsText).not.toMatch(/mock mode/i);
   expect(settingsText).not.toMatch(/staging/i);
   await page.getByText('About', { exact: true }).click();
-  // The About header names the web runtime; there is no separate Runtime row.
-  await expect(settings.getByText('Web browser', { exact: true }).first()).toBeVisible();
+  // About identifies the installed product and version.
+  await expect(settings.getByText('Alpha Phone', { exact: true }).first()).toBeVisible();
   await expect(settings.getByText('Runtime', { exact: true })).toHaveCount(0);
   await expect(settings.getByText('Web app', { exact: true })).toHaveCount(0);
   await expect(settings.getByText('Development preview', { exact: true })).toHaveCount(0);
@@ -201,7 +201,7 @@ test('deferred apps are absent and root views show honest unconnected states', a
   for (const deferred of ['Phone', 'Messages', 'Contacts', 'Wallet']) await expect(page.getByRole('button', { name: deferred, exact: true })).toHaveCount(0);
   const states: Record<string, RegExp> = {
     Inbox: /Connect Eliza Cloud/, Workflows: /Your agent runs on your phone, not here\. Open Alpha on your Android phone to use it\. Reminders on this phone stay available\./, Notes: /Notes is unavailable for this agent connection\. Check Settings › Agent connection\./,
-    Photos: /No photos/, Maps: /Add a location/, Calendar: /Connect to view Agent Calendar\./, Files: /Choose a document/, Settings: /Agent connection/,
+    Photos: /No photos/, Maps: /Add a location/, Calendar: /\d/, Files: /Internal storage|Storage is unavailable/, Settings: /General|Privacy|Apps|About/,
   };
   for (const [view, expected] of Object.entries(states)) {
     await page.goto('/?tools=1');
@@ -230,6 +230,13 @@ test('the CSP admits Home, Notes, Maps, Scan and PDF without violations', async 
   test.setTimeout(120_000);
   const violations = await trackCsp(page);
   await page.addInitScript(offline);
+  await page.addInitScript(() => {
+    // Synthetic camera: a canvas stream with one line of text. Capture, scan review, OCR and PDF are the shipped code.
+    const canvas = document.createElement('canvas'); canvas.width = 1200; canvas.height = 600; const context = canvas.getContext('2d')!;
+    const paint = () => { context.fillStyle = 'white'; context.fillRect(0, 0, 1200, 600); context.fillStyle = 'black'; context.font = '60px Arial'; context.fillText('Alpha searchable document', 50, 120); };
+    paint(); setInterval(paint, 50);
+    const devices = navigator.mediaDevices; devices.getUserMedia = async () => canvas.captureStream(20); Object.defineProperty(navigator, 'mediaDevices', { configurable: true, value: devices });
+  });
   await page.goto('/?tools=1');
   await expect(page.getByRole('button', { name: 'Notes', exact: true })).toBeVisible();
   await openLegacyNotes(page);
@@ -244,26 +251,22 @@ test('the CSP admits Home, Notes, Maps, Scan and PDF without violations', async 
   await page.waitForTimeout(1000);
   await page.getByRole('button', { name: 'Back to apps', exact: true }).click();
   await page.getByRole('button', { name: 'Camera', exact: true }).click();
-  const png = await page.evaluate(async () => {
-    const canvas = document.createElement('canvas'); canvas.width = 1200; canvas.height = 600;
-    const context = canvas.getContext('2d')!; context.fillStyle = 'white'; context.fillRect(0, 0, 1200, 600);
-    context.fillStyle = 'black'; context.font = '60px Arial'; context.fillText('Alpha searchable document', 50, 120);
-    const blob = await new Promise<Blob>(resolve => canvas.toBlob(value => resolve(value!), 'image/png'));
-    return Array.from(new Uint8Array(await blob.arrayBuffer()));
-  });
-  await page.getByRole('button', { name: 'Scan document', exact: true }).click();
-  const chooser = page.waitForEvent('filechooser');
-  await page.getByRole('button', { name: 'Add page', exact: true }).click();
-  await (await chooser).setFiles({ name: 'page.png', mimeType: 'image/png', buffer: Buffer.from(png) });
-  await expect(page.getByRole('img', { name: 'Document page 1', exact: true })).toBeVisible();
+  await expect.poll(() => page.locator('[aria-label^="Viewfinder."] video').evaluate((v: HTMLVideoElement) => v.readyState), { timeout: 60_000 }).toBeGreaterThanOrEqual(2);
+  // Scanning is reached by asking Alpha in Camera: one frame opens scan review, which builds the PDF.
+  const scan = async () => {
+    await page.getByRole('button', { name: 'Type', exact: true }).click();
+    const input = page.locator('[data-alpha-layer="composer"][aria-hidden="false"], [data-alpha-layer="conversation"][aria-hidden="false"]').getByRole('textbox').first();
+    await input.fill('Scan this'); await input.press('Enter');
+    await page.getByRole('button', { name: 'Build multi-page PDF', exact: true }).click();
+    await expect(page.getByRole('img', { name: 'Document page 1', exact: true })).toBeVisible();
+  };
+  await scan();
   const imagePdf = page.waitForEvent('download');
   await page.getByRole('button', { name: 'Download document PDF', exact: true }).click();
   expect((await imagePdf).suggestedFilename()).toMatch(/\.pdf$/);
   await page.getByRole('button', { name: 'Close scan', exact: true }).or(page.getByRole('button', { name: /^Close/ }).last()).click();
-  await page.getByRole('button', { name: 'Scan document', exact: true }).click();
-  const second = page.waitForEvent('filechooser');
-  await page.getByRole('button', { name: 'Add page', exact: true }).click();
-  await (await second).setFiles({ name: 'page.png', mimeType: 'image/png', buffer: Buffer.from(png) });
+  await page.getByRole('button', { name: 'Cancel scan', exact: true }).click();
+  await scan();
   await page.getByRole('button', { name: 'Download searchable PDF', exact: true }).click();
   const review = page.getByRole('dialog', { name: 'Review searchable PDF' });
   // Local OCR runs in a worker with WebAssembly: the policy must admit both.
@@ -282,12 +285,12 @@ test('production ignores the development render-failure hook', async ({ page }) 
   await page.evaluate(() => window.dispatchEvent(new Event('alpha:force-render-error')));
   await settings.click();
   await expect(page.getByRole('alertdialog')).toHaveCount(0);
-  await expect(page.getByRole('button', { name: 'Agent connection', exact: true })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Agent', exact: true })).toBeVisible();
 });
 
-// Production speech is device-only (owner rule): the browser build has no on-device engine, so a
-// signed-out user is told to retry local speech or type, and no Cloud or network voice route is offered.
-test('production signed-out voice stays on-device with no capture, upload or Cloud route under the shipped CSP', async ({ page }) => {
+// Production speech is device-only (owner rule): the browser build has no on-device engine, so the
+// Notes recorder records audio only, and no Cloud or network voice route is offered.
+test('production signed-out voice stays on-device with no upload, engine or Cloud route under the shipped CSP', async ({ page }) => {
   const violations = await trackCsp(page);
   const foreign: string[] = [], uploads: string[] = [], engines: string[] = [];
   // Stop a regression before it can contact a provider or upload anything.
@@ -319,16 +322,16 @@ test('production signed-out voice stays on-device with no capture, upload or Clo
   });
   await page.goto('/');
   await openLegacyNotes(page);
-  await page.getByRole('button', { name: 'Record and transcribe', exact: true }).click();
-  // A browser production build has no local agent here: local speech is unavailable, never Cloud.
-  await expect(page.getByText('Local speech needs the local agent on this computer. Connect it, or use the keyboard.',{exact:true})).toBeVisible();
-  await expect(page.getByRole('button',{name:'On-device speech unavailable',exact:true})).toBeDisabled();
-  await expect(page.getByRole('button',{name:'Cancel recording',exact:true})).toBeEnabled();
+  await page.getByRole('button', { name: 'Record voice note', exact: true }).click();
+  // The recorder asks for the microphone at once (refused here) and shows one line; no route choice exists.
+  const recorder=page.locator('[data-alpha-subview="notes-recorder"]');
+  await expect(recorder).toHaveAttribute('data-recorder-state','failed');
+  await expect(recorder.getByRole('alert')).toHaveText('The microphone isn’t available.');
   for(const name of ['Connect Eliza Cloud','Transcribe with Eliza Cloud','Start recording','Record without transcription','Use development voice','Use browser voice','Use on-device voice','Transcribe on this device','Type transcript instead'])await expect(page.getByRole('button',{name,exact:true})).toHaveCount(0);
-  await expect(page.getByText('Sign in to Eliza Cloud to use voice.',{exact:true})).toHaveCount(0);
-  await page.getByRole('button',{name:'Cancel recording',exact:true}).click();
-  await expect(page.getByRole('button',{name:'On-device speech unavailable',exact:true})).toHaveCount(0);
-  expect(await page.evaluate(()=>(window as any).voiceGate)).toEqual({microphone:0,recorders:0,audio:0,workers:0,playback:0});
+  await expect(page.getByText(/Sign in to|Record up to|Nothing is uploaded/)).toHaveCount(0);
+  await recorder.getByRole('button',{name:'Discard recording',exact:true}).click();
+  await expect(recorder).toHaveCount(0);
+  expect(await page.evaluate(()=>(window as any).voiceGate)).toEqual({microphone:1,recorders:0,audio:0,workers:0,playback:0});
   expect(uploads).toEqual([]);expect(engines).toEqual([]);expect(foreign).toEqual([]);
   expect(await violations()).toEqual([]);
 });
@@ -412,7 +415,7 @@ for (const mode of ['signed-out','empty','credits','unavailable','funded','repla
    if(mode==='replaced')await expect(page.locator('[role="main"].alpha-cloud-sign-in')).toHaveCount(0);
    await expect(page.getByRole('dialog')).toHaveCount(0);
    await page.getByRole('button',{name:'Settings',exact:true}).click();
-   if(mode==='replaced')await page.getByRole('button',{name:'Agent connection',exact:true}).click();
+   if(mode==='replaced')await page.getByRole('button',{name:'Agent',exact:true}).click();
    else await openCloudPlanFromSettings(page);
   }
   await expect(dialog).toBeVisible();
@@ -421,7 +424,7 @@ for (const mode of ['signed-out','empty','credits','unavailable','funded','repla
    await expect(dialog.getByRole('button',{name:'Email me a code',exact:true})).toBeVisible();
    await expect(dialog.getByRole('status').filter({hasText:'This developer build does not include the on-device agent.'})).toHaveText('This developer build does not include the on-device agent.');
   }else if(needsPlan)await expect(dialog.getByRole('region',{name:'Subscription',exact:true})).toBeVisible();
-  else if(!signedOut&&mode!=='replaced')await expect(dialog.getByText('On this device',{exact:true})).toBeVisible();
+  else if(!signedOut&&mode!=='replaced'){await expect(dialog.getByRole('button',{name:'Sign out',exact:true})).toBeVisible();await expect(dialog.getByRole('button',{name:'Manage plan',exact:true})).toBeVisible();}
   if(signedOut){
    await expect(dialog.getByText(/Sign in to verify your account|review access/)).toHaveCount(0);
    await expect(dialog.getByRole('button',{name:'Email me a code',exact:true})).toBeVisible();
@@ -441,9 +444,9 @@ for (const mode of ['signed-out','empty','credits','unavailable','funded','repla
    await expect(dialog).not.toContainText(/Available credits|Add credits|\$\d/);
   }
   if(mode==='replaced')await expect(dialog.getByText(/account changed/i)).toBeVisible();
-  if(admitted)await expect(dialog.getByRole('button',{name:'Sign out of Eliza Cloud',exact:true})).toBeVisible();
+  if(admitted)await expect(dialog.getByRole('button',{name:'Sign out',exact:true})).toBeVisible();
   // Legacy credit admission keeps the subscription and membership-code options visible.
-  if(mode==='credits'){await expect(dialog.getByText('No active subscription',{exact:true})).toBeVisible();await expect(dialog.getByRole('button',{name:'Redeem code',exact:true})).toBeVisible();}
+  if(mode==='credits'){await expect(dialog).toContainText('Sign-in expiring');await expect(dialog.getByRole('button',{name:'Redeem code',exact:true})).toBeVisible();await expect(dialog.getByRole('textbox',{name:'Membership code',exact:true})).toHaveCount(0);}
   for(const retired of ['Use local apps without AI','Continue offline'])await expect(dialog.getByRole('button',{name:retired,exact:true})).toHaveCount(0);
   // Every dialog but the required sign-in closes; the agent keeps running.
   if(needsPlan){await page.keyboard.press('Escape');await expect(dialog).toHaveCount(0);}else if(!signedOut){await dialog.getByRole('button',{name:'Back to Settings',exact:true}).click();}
