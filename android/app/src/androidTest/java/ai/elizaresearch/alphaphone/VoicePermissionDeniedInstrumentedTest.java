@@ -70,7 +70,7 @@ public final class VoicePermissionDeniedInstrumentedTest {
     for(String absent:new String[]{"Start recording","Record without transcription"})assertEquals("Signed-out recorder offers no "+absent,"false",eval("Boolean("+button(absent)+")"));
     assertTrue("No permission prompt while signed out",appFocused());
     // A signed-out production build shows the required sign-in page itself; fill it in place.
-    until("document.querySelector('.alpha-cloud-sign-in input[name=email]')",20000);eval(InboxFixtureSignIn.DRIVE_EMAIL);
+    until(AppNavigation.SIGN_IN_PAGE_READY,20000);eval(InboxFixtureSignIn.DRIVE_EMAIL);
     until("document.querySelector('.alpha-cloud-sign-in input[name=one-time-code]')",20000);eval(InboxFixtureSignIn.DRIVE_CODE);
     until("!document.querySelector('.alpha-cloud-sign-in')",30000);
     eval(AppNavigation.request("Notes"));until(AppNavigation.selected("Notes"),30000);until("window.__alphaTestNavigation?.status==='complete'",30000);

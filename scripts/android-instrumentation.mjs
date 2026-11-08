@@ -97,7 +97,7 @@ export const CLASS_REGISTRY = {
   // Core-loop classes (docs/core-loop-audit.md). Registered so their opt-in gates are passed; none
   // has a recorded run through this runner yet. An unmet device assumption reports "skipped".
   // Decision P-43 replaced LocalAgentOfflineApps (the retired "without AI" path); written, no recorded run.
-  ResidentAlwaysPresent: { flagOffOnly: true, note: "signed out with the network off and a legacy local-apps selection: the resident starts, the required Eliza Cloud sign-in dialog opens over Home with the agent state and cannot be dismissed; not a device or full-image run" },
+  ResidentAlwaysPresent: { flagOffOnly: true, note: "signed out with the network off and a legacy local-apps selection: the resident starts, the required Eliza Cloud sign-in page opens over Home and cannot be dismissed; not a device or full-image run" },
   LauncherHome: { homeRole: "held", note: "launcher variant with Alpha selected as HOME by --home-role; not boot-time HOME or device acceptance" },
   SettingsRoles: { homeRole: "requests", note: "removes, declines and accepts the HOME role in Android's dialog and restores the previous holder; --home-role proves the restoration" },
   NotesTrashBackstop: {},
