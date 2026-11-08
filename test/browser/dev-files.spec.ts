@@ -13,7 +13,7 @@ test('PDF selection renders actual pages and releases previews',async({page})=>{
 });
 test('Files renderer confirms folder creation and closes its mutation dialog',async({page})=>{
  await page.getByRole('button',{name:'Files',exact:true}).click();await page.getByRole('button',{name:'Internal storage',exact:true}).click();
- await page.getByRole('button',{name:'Sort and more',exact:true}).click();await page.getByText('New folder',{exact:true}).click();
+ await page.getByRole('button',{name:'New folder',exact:true}).click();
  await page.getByRole('textbox',{name:'Name'}).fill('UI folder');await page.getByRole('button',{name:'Create',exact:true}).click();await expect(page.getByRole('button',{name:'Open UI folder',exact:true})).toBeVisible();
 });
 test('mail attachment bridge preserves exact bytes and validates reviewed hashes',async({page})=>{
@@ -26,7 +26,7 @@ test('opening imported HTML cannot execute against the app origin',async({page})
 });
 const importAndOpen=async(page:import('@playwright/test').Page,name:string,content:string)=>{
  await page.evaluate(async([name,content])=>{const {registerPlugin}=await import('/src/platform-plugins.ts');await registerPlugin<any>('AlphaFiles').importFile(new File([content],name,{type:'text/plain'}));},[name,content]);
- await page.getByRole('button',{name:'Files',exact:true}).click();await page.getByText('App files',{exact:true}).first().click();await page.getByRole('button',{name:'Open '+name,exact:true}).click();
+ await page.getByRole('button',{name:'Files',exact:true}).click();await page.getByRole('button',{name:'Internal storage',exact:true}).click();await page.getByRole('button',{name:'Open '+name,exact:true}).click();
 };
 const recentNames=(page:import('@playwright/test').Page)=>page.evaluate(()=>(JSON.parse(localStorage.getItem('alpha.files.recent.v1')||'[]') as {name:string}[]).map(row=>row.name));
 for(const [label,name,content,excerpt] of [['a UTF-8 BOM text file','bom.txt','\uFEFFByte order mark',undefined],['a text file without preview text','long.txt','x'.repeat(2_500_000),'The long log']] as const)

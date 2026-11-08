@@ -154,6 +154,8 @@ test.describe('a reload (the renderer restarted)', () => {
     test.setTimeout(90_000);
     await start(page, '/?mode=dev');
     await page.getByRole('button', { name: 'Settings', exact: true }).click();
+    await page.getByRole('button', { name: 'General', exact: true }).click();
+    await page.getByRole('button', { name: 'Display', exact: true }).click();
     const slider = page.getByRole('slider', { name: 'Text size', exact: true });
     await expect(slider).toBeVisible();
     // The largest in-app size (150%), set as a person drags the slider: the input event the page listens for.
