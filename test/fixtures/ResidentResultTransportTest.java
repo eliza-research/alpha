@@ -65,6 +65,8 @@ public final class ResidentResultTransportTest {
   JSONObject cancelled=result().put("status","cancelled").put("output","").put("error","Cancelled"),failed=result().put("cursor",2).put("status","failed").put("output","").put("error","Native step failed");
   Object[] reconciled=replace(cancelled,failed);require(reconciled!=null&&((JSONObject)reconciled[0]).getString("status").equals("failed")&&((JSONObject)reconciled[0]).getLong("cursor")==2&&(int)reconciled[1]==2&&(int)reconciled[2]==0);
   for(JSONObject next:new JSONObject[]{new JSONObject(failed.toString()).put("cursor",1),new JSONObject(cancelled.toString()).put("cursor",2).put("error","Cancelled again"),new JSONObject(failed.toString()).put("workflowId","other"),new JSONObject(failed.toString()).put("workflowVersionId","other"),new JSONObject(failed.toString()).put("templateVersion","other"),new JSONObject(failed.toString()).put("scheduledAt","2026-10-03T00:00:00Z"),new JSONObject(failed.toString()).put("source",new JSONObject().put("kind","inbox"))})require(replace(cancelled,next)==null);
+  // A lost ack redelivers the superseded cancellation; the saved terminal stays and no notice repeats.
+  Object[] redelivered=replace(failed,cancelled);require(redelivered!=null&&((JSONObject)redelivered[0]).getString("status").equals("failed")&&(int)redelivered[1]==1&&(int)redelivered[2]==0);
   require(replace(result(),new JSONObject(failed.toString()))==null);require(replace(result(),result().put("cursor",2).put("output","Changed"))==null);
   Store credentials=new Store();String root="native-runtime-root";
   JSONObject snapshot=ResidentResultSession.snapshot("owner","session",EXPIRES,root);
