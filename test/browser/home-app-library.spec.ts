@@ -28,6 +28,7 @@ async function nativeStub(page: Page, apps: App[], refusals: Record<string, Refu
     const plugins: Record<string, string[]> = {
       ElizaSystem: ['listLauncherApps', 'launchApp', 'resolveDefaultApp', 'openDefaultApp', 'openAppInfo', 'getBuildInfo', 'getLocaleInfo', 'getLaunchInfo'],
       DeviceApps: ['platformCapabilities'],
+      Agent: ['setGoogleAgentAccess'],
       DailyApps: ['surfaceInfo', 'requestPermissions', 'closeAssistant'],
       AlphaNotifications: ['status', 'list'],
       AlphaVoiceCloud: ['checkPermissions', 'requestPermissions'],
@@ -264,6 +265,32 @@ test('Home edit mode removes and rearranges icons, "+" restores hidden views, an
   await expect.poll(() => homeOrder(page)).toEqual(arranged);
   await page.getByRole('button', { name: 'Calendar', exact: true }).click();
   await expect(page.locator('html')).toHaveAttribute('data-active-view', 'calendar');
+});
+
+test('a Home hold belongs to its pointer and is retired when Apps opens', async ({ page }) => {
+  await nativeStub(page, ALL, {}, false);
+  await page.clock.install();
+  await page.goto('/');
+  const notes = page.getByRole('button', { name: 'Notes', exact: true });
+  const done = page.getByRole('button', { name: 'Done', exact: true });
+  await expect(notes).toBeVisible();
+  const owner = { pointerId: 101, pointerType: 'touch', button: 0, clientX: 10, clientY: 10 };
+  const other = { ...owner, pointerId: 102, clientX: 80 };
+  await notes.dispatchEvent('pointerdown', owner);
+  await notes.dispatchEvent('pointermove', other);
+  await notes.dispatchEvent('pointerup', other);
+  await page.clock.runFor(600);
+  await expect(done).toBeVisible();
+  await done.click();
+
+  await notes.dispatchEvent('pointerdown', owner);
+  await page.getByRole('button', { name: 'Apps', exact: true }).press('Enter');
+  const drawer = page.getByRole('dialog', { name: 'Apps', exact: true });
+  await expect(drawer).toBeVisible();
+  await page.clock.runFor(600);
+  await drawer.getByRole('button', { name: 'Close apps', exact: true }).click();
+  await expect(notes).toBeVisible();
+  await expect(done).toHaveCount(0);
 });
 
 test('an open drawer follows installs and removals, and a removed Home app is not shown', async ({ page }) => {

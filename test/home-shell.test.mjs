@@ -193,6 +193,82 @@ test('Home edit mode: long press enters it, − removes, drag and arrows rearran
   } finally { home.componentWillUnmount(); globalThis.requestAnimationFrame=previousFrame; if(previous===undefined)delete globalThis.document;else globalThis.document=previous; }
 });
 
+test('Home gestures keep their pointer and retire when another layer covers Home', async () => {
+  const previous = {document:globalThis.document, setTimeout:globalThis.setTimeout, clearTimeout:globalThis.clearTimeout};
+  const holds = new Map(), captures = [];
+  let covered = false, hovered, saved = ['alpha:notes','alpha:inbox'];
+  const homeLayer = {hasAttribute: name => name === 'inert' && covered};
+  globalThis.document = Object.assign(new EventTarget(), {hidden:false, querySelector:()=>null, elementsFromPoint:()=>hovered ? [hovered] : []});
+  globalThis.setTimeout = (callback, delay, ...args) => {
+    if (delay !== 450) return previous.setTimeout(callback, delay, ...args);
+    const handle = {};
+    holds.set(handle, callback);
+    return handle;
+  };
+  globalThis.clearTimeout = handle => {if (!holds.delete(handle)) previous.clearTimeout(handle);};
+  const Shell = shellClass([]);
+  const shell = installHomeShell(Shell,{},{list:async()=>({apps}),launch:async()=>{}},
+    {appInventory:'simulated',follow:false,favorites:{read:()=>saved,write:keys=>{saved=[...keys];}}});
+  let home = new Shell();
+  const tile = key => {
+    const element = {isConnected:true, querySelector:()=>({getAttribute:()=>key}), getBoundingClientRect:()=>({width:64}),
+      offsetWidth:64, style:{}, setAttribute(){}, removeAttribute(){}};
+    element.closest = selector => selector==='[data-mobile-shell-tile]' ? element : selector==='[data-mobile-shell-home]' ? homeLayer : null;
+    return element;
+  };
+  const notes = tile('alpha:notes'), inbox = tile('alpha:inbox');
+  const event = (target, pointerId, clientX=0) => ({target,pointerId,clientX,clientY:0,button:0,
+    currentTarget:{setPointerCapture:id=>captures.push(id)}, preventDefault(){}, stopPropagation(){}});
+  const grid = () => home.renderVals().homeShell.props.gridProps;
+  const fireHold = () => {
+    assert.equal(holds.size,1);
+    const [handle, callback] = holds.entries().next().value;
+    holds.delete(handle);
+    callback();
+  };
+  home.renderVals(); home.componentDidMount();
+  try {
+    await shell.launcher.load();
+    grid().onPointerDown(event(notes,1));
+    grid().onPointerDown(event(inbox,2));
+    grid().onPointerMove(event(inbox,2,40));
+    grid().onPointerUp(event(inbox,2,40));
+    grid().onPointerCancel(event(inbox,2));
+    fireHold();
+    assert.equal(home.state.homeEdit,true,'only the owning pointer can cancel its hold');
+    home.renderVals().homeEdit.done();
+    grid().onPointerDown(event(notes,1));
+    const staleHold = holds.values().next().value;
+    home.openAllApps();
+    assert.equal(holds.size,0,'opening Apps retires the hold');
+    staleHold();
+    assert.equal(home.state.drawer,true);
+    assert.equal(home.state.homeEdit,false);
+    home.back();
+    grid().onPointerDown(event(notes,1));
+    covered = true;
+    fireHold();
+    assert.equal(home.state.homeEdit,false,'the committed covered Home cannot enter edit mode');
+    covered = false;
+    grid().onContextMenu(event(notes,1));
+    hovered = inbox;
+    grid().onPointerDown(event(notes,1));
+    grid().onPointerMove(event(notes,2,40));
+    grid().onPointerUp(event(notes,2,40));
+    assert.deepEqual(captures,[]);
+    assert.deepEqual(saved,['alpha:notes','alpha:inbox']);
+    grid().onPointerMove(event(notes,1,40));
+    grid().onPointerUp(event(notes,1,40));
+    assert.deepEqual(captures,[1]);
+    assert.deepEqual(saved,['alpha:inbox','alpha:notes']);
+    home.componentWillUnmount();
+    home = new Shell(); home.renderVals(); home.componentDidMount();
+    let swallowed = false;
+    grid().onClickCapture({...event(notes,1),detail:0,preventDefault(){swallowed=true;}});
+    assert.equal(swallowed,false,'an earlier owner cannot swallow keyboard activation after remount');
+  } finally {home.componentWillUnmount(); Object.assign(globalThis,previous);}
+});
+
 test('default Alpha Home performs no installed-app scan until the drawer opens', async () => {
   const previous=globalThis.document;
   globalThis.document=Object.assign(new EventTarget(),{hidden:false});

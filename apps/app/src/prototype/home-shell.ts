@@ -86,13 +86,18 @@ export function installHomeShell(Component: any, views: Record<string, Bag>, bri
   const installedApp = (key: string) => launcher.snapshot().apps.find(app => appKey(app) === key);
 
   // Home long press and edit-mode drag. The tap that ends a long press or a drag is swallowed.
-  let press: {key: string; x: number; y: number; timer: ReturnType<typeof setTimeout>} | null = null;
-  let drag: {key: string; x: number; y: number; scale: number; tile: HTMLElement; moved: boolean} | null = null;
+  let press: {key: string; pointer: number; x: number; y: number; timer: ReturnType<typeof setTimeout>} | null = null;
+  let drag: {key: string; pointer: number; x: number; y: number; scale: number; tile: HTMLElement; moved: boolean} | null = null;
   let swallow = '';
   const endPress = () => { if (press) clearTimeout(press.timer); press = null; };
   const endDrag = () => { if (drag) { drag.tile.style.transform = ''; drag.tile.style.zIndex = ''; drag.tile.removeAttribute('data-alpha-home-dragging'); } drag = null; };
   const tileOf = (target: EventTarget | null) => (target as Element | null)?.closest?.('[data-mobile-shell-tile]') as HTMLElement | null;
   const keyOf = (tile: Element | null) => tile?.querySelector('[data-alpha-home-key]')?.getAttribute('data-alpha-home-key') || '';
+  const ownsHomeGesture = (self: any, tile: HTMLElement) => {
+    const state = self.S(), home = tile.closest('[data-mobile-shell-home]');
+    return owner === self && !state.view && !state.drawer && !self.props?.assistantSurface
+      && tile.isConnected !== false && !home?.hasAttribute('inert');
+  };
   const focusTile = (key: string) => requestAnimationFrame(() => (document.querySelector(`[data-alpha-home-key="${CSS.escape(key)}"]`)?.closest('[data-mobile-shell-tile]') as HTMLElement | null)?.focus());
   const closeEdit = (self: any) => {
     endPress(); endDrag();
@@ -118,7 +123,9 @@ export function installHomeShell(Component: any, views: Record<string, Bag>, bri
     return result;
   };
   p.componentWillUnmount = function (...args: any[]) {
-    stop?.(); launcher.cancelPending(); stop = undefined; endPress(); endDrag(); if (owner === this) owner = null;
+    if (owner === this) {
+      stop?.(); launcher.cancelPending(); stop = undefined; endPress(); endDrag(); swallow = ''; owner = null;
+    }
     return unmount?.apply(this, args);
   };
   /** The drawer entry whose menu is open, while that entry is still listed (an app removed behind
@@ -142,7 +149,7 @@ export function installHomeShell(Component: any, views: Record<string, Bag>, bri
   p.openView = function (...args: any[]) { closeEdit(this); return openView?.apply(this, args); };
   p.openAllApps = function () {
     if (!inventory || this.props?.assistantSurface || this.S().homeEdit) return;
-    this.setState({...this.shellNavigate({type: 'drawer', open: true}), drawerMenu: null}); void launcher.load();
+    endPress(); this.setState({...this.shellNavigate({type: 'drawer', open: true}), drawerMenu: null}); void launcher.load();
   };
   p.renderVals = function () {
     const out = render.call(this), S = this.S(), self = this;
@@ -172,19 +179,31 @@ export function installHomeShell(Component: any, views: Record<string, Bag>, bri
     const gridProps: Bag = {
       'data-alpha-home-apps': '', 'data-alpha-home-editing': editing ? 'true' : undefined,
       onPointerDown: (event: PointerEvent) => {
+        const pointer = event.pointerId;
+        if (owner !== self || (press && press.pointer !== pointer) || (drag && drag.pointer !== pointer)) return;
         swallow = ''; endPress();
         const target = tileOf(event.target), key = keyOf(target);
-        if (!target || !key || event.button > 0 || !inventory) return;
-        if (!editing) { press = {key, x: event.clientX, y: event.clientY, timer: setTimeout(() => { press = null; swallow = key; self.setState({homeEdit: true, homeAdd: false}); }, HOLD_MS)}; return; }
+        if (!target || !key || event.button > 0 || !inventory || !ownsHomeGesture(self, target)) return;
+        if (!editing) {
+          const started = {key, pointer, x: event.clientX, y: event.clientY, timer: setTimeout(() => {
+            if (press !== started) return;
+            press = null;
+            if (!ownsHomeGesture(self, target)) return;
+            swallow = key; self.setState({homeEdit: true, homeAdd: false});
+          }, HOLD_MS)};
+          press = started; return;
+        }
         // A press on the remove control never starts a drag.
         if ((event.target as Element).closest('[data-alpha-home-remove]')) return;
         endDrag();
         const box = target.getBoundingClientRect();
-        drag = {key, x: event.clientX, y: event.clientY, scale: target.offsetWidth ? box.width / target.offsetWidth : 1, tile: target, moved: false};
+        drag = {key, pointer, x: event.clientX, y: event.clientY, scale: target.offsetWidth ? box.width / target.offsetWidth : 1, tile: target, moved: false};
       },
       onPointerMove: (event: PointerEvent) => {
-        if (press && Math.hypot(event.clientX - press.x, event.clientY - press.y) > SLOP) endPress();
-        if (!drag) return;
+        if (owner !== self) return;
+        if (press?.pointer === event.pointerId && Math.hypot(event.clientX - press.x, event.clientY - press.y) > SLOP) endPress();
+        if (drag?.pointer !== event.pointerId) return;
+        if (!ownsHomeGesture(self, drag.tile)) { endDrag(); return; }
         const dx = (event.clientX - drag.x) / drag.scale, dy = (event.clientY - drag.y) / drag.scale;
         if (!drag.moved && Math.hypot(dx, dy) <= SLOP) return;
         if (!drag.moved) {
@@ -195,16 +214,21 @@ export function installHomeShell(Component: any, views: Record<string, Bag>, bri
         drag.tile.style.transform = `translate(${dx}px, ${dy}px)`; drag.tile.style.zIndex = '2';
       },
       onPointerUp: (event: PointerEvent) => {
-        endPress();
-        if (!drag) return;
+        if (owner !== self) return;
+        if (press?.pointer === event.pointerId) endPress();
+        if (drag?.pointer !== event.pointerId) return;
         const done = drag; endDrag();
-        if (!done.moved) return;
+        if (!done.moved || !ownsHomeGesture(self, done.tile)) return;
         swallow = done.key;
         const over = document.elementsFromPoint(event.clientX, event.clientY).map(node => keyOf(tileOf(node))).find(key => key && key !== done.key);
         if (over) place(done.key, over);
         rerender();
       },
-      onPointerCancel: () => { endPress(); if (drag) { endDrag(); rerender(); } },
+      onPointerCancel: (event: PointerEvent) => {
+        if (owner !== self) return;
+        if (press?.pointer === event.pointerId) endPress();
+        if (drag?.pointer === event.pointerId) { endDrag(); rerender(); }
+      },
       onContextMenu: (event: MouseEvent) => {
         const key = keyOf(tileOf(event.target));
         if (!key || !inventory) return;
