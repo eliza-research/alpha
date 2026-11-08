@@ -551,13 +551,20 @@ goes against the standing rule that no tap abandons a sealed session, so it stay
    a fresh session waits for a read that no longer lists it. 17 also posts the destroy.
 
 Publish an update by building the manifest's flavor with `ELIZAOS_VERSION_CODE` above the
-installed versionCode and signing it with the installed app's key, then upload the APK before the
-manifest that names it:
+installed versionCode and signing it with the installed app's key. Never write the manifest by hand:
+`scripts/publish-update-manifest.mjs` writes it only for a release row of `artifacts/apk-manifest.json`
+that verify-apks recorded as distributable and signed by `android/release-signer.json`, and that
+provisioning would still admit, so run it before `lastRelease` records that versionCode. It copies
+the APK to `artifacts/app-stable/alpha-phone-<versionCode>.apk` and writes
+`artifacts/app-stable/alpha-update-stable.json` beside it. It uploads nothing. Upload the APK before
+the manifest that names it:
 
 ```sh
 # Once: the rolling release, never marked Latest.
 gh release create app-stable --repo eliza-research/alphaphone --latest=false --title "Alpha app update" --notes "One-tap app update manifest"
-# Each update.
+# Each update (here versionCode 2, the launcher flavor the default URL serves).
+node scripts/publish-update-manifest.mjs --variant launcher
+cd artifacts/app-stable
 gh release upload app-stable alpha-phone-2.apk --repo eliza-research/alphaphone
 gh release upload app-stable alpha-update-stable.json --repo eliza-research/alphaphone --clobber
 # Withdraw: each phone drops the offer at its next check.
