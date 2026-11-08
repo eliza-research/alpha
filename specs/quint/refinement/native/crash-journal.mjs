@@ -15,7 +15,7 @@ const model='NativeCrashJournal';
 const harness='CrashJournalTraces.java';
 const modulePath='plugins/plugin-native-system/android';
 const scenarios=['workers','capacity','retention','legacy-bridge','corrupt','oversize','write-faults',
-  'history-and-watermark','history-refused','held-read-and-clear','native-handler'];
+  'history-and-watermark','history-refused','held-read-and-clear','native-handler','unsafe-time'];
 
 export async function checkNativeCrashJournal(extraSources=[]) {
   const temporary=mkdtempSync(join(tmpdir(),'quint-native-crash-journal-'));
@@ -56,8 +56,6 @@ export async function checkNativeCrashJournal(extraSources=[]) {
     return {receipt,obligations:[
       {model,obligation:'Installed process exit history and AtomicFile behavior',
         reason:'The JVM supplies controlled Android snapshots and atomic write outcomes. Cross-process storage, actual OS exit collection and filesystem guarantees remain outside this campaign.'},
-      {model,obligation:'Native bridge redaction for preexisting rows',
-        reason:'A valid seeded legacy envelope with a synthetic extra field reaches the raw native read. The renderer sanitizes native entries separately.'},
     ]};
   } finally {rmSync(temporary,{recursive:true,force:true});}
 }

@@ -2295,13 +2295,15 @@
         "readPrunesAgeWithoutRewritingDiskTest",
         "clearPreservesImportedExitWatermarkTest",
         "heldPreClearSnapshotImportsUnseenExitAsBuiltTest",
-        "rawBridgeRetainsSeededExtraFieldAsBuiltTest",
+        "bridgeRedactsSeededFieldsAndMalformedTimesTest",
+        "bridgeKeepsLastSafeIntegerAndDropsLargerTimestampTest",
         "writeMayReportFailureAfterReplacementTest"
       ],
       "invariants": [
         "BoundedJournal",
         "ExactHeldRead",
-        "KnownExitWatermark"
+        "KnownExitWatermark",
+        "BridgeRowsAllowlisted"
       ],
       "sources": [
         "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaDevicePlugin.java",
@@ -2316,7 +2318,7 @@
       },
       "abstractions": [
         "Two Alpha bridge workers, one pending call each. Up to four synthetic exit identities and a finite partition of record kinds, timestamps and atomic storage outcomes.",
-        "The real 50-row bound is checked by counting identical seeded rows and preserving tagged row order. Source-only unknown and malformed document shapes outside the selected seeds are separate.",
+        "The real 50-row bound is checked by counting identical seeded rows and preserving tagged row order. Stored and published rows are distinct. Timestamp classes include numeric strings, fractions and integers beyond the JavaScript safe range.",
         "Host private files and controlled platform ports. Android cross-process log writes, actual OS exits, AtomicFile behavior and renderer diagnostics presentation remain separate."
       ],
       "bounds": {

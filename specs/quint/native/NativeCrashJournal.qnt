@@ -1,6 +1,6 @@
 // Alpha's problem-log worker, installed journal, and Android exit-history watermark.
 module NativeCrashJournal {
-  type Row = {at: int, source: str, kind: str, detail: str, process: str, extra: bool}
+  type Row = {at: int, stamp: str, source: str, kind: str, detail: str, process: str, extra: bool}
   type Disk = {format: str, watermark: int, fillers: int, rows: List[Row]}
   type Request = {op: str, kind: str, cls: str}
   type Reply = {owner: int, outcome: str, fillers: int, rows: List[Row], exitHistory: bool}
@@ -13,7 +13,8 @@ module NativeCrashJournal {
   val retention=2592000000
   val cap=50
   val epochs=Set(1,2,3,4)
-  val seeds=Set("empty","capacity","ages","legacy","corrupt","oversize")
+  val seeds=Set("empty","capacity","ages","legacy","unsafe","corrupt","oversize")
+  val lastSafeOffset=9005439254740991
   val modes=Set("available","old","absent","refused")
   val faults=Set("none","before","staged","after")
   val kinds=Set("startup","render","uncaught")
@@ -23,22 +24,26 @@ module NativeCrashJournal {
   val noReply={owner:0,outcome:"none",fillers:0,rows:List(),exitHistory:false}
 
   pure def renderer(at: int, kind: str, cls: str): Row =
-    {at:at,source:"renderer",kind:kind,detail:if (cls=="dirty") "Error" else cls,process:"main",extra:false}
+    {at:at,stamp:"safe",source:"renderer",kind:kind,detail:if (cls=="dirty") "Error" else cls,process:"main",extra:false}
   pure def exitRow(id: int): Row = {
-    at:id,source:"exit",kind:"",detail:if (id==3) "anr" else "crash",
+    at:id,stamp:"safe",source:"exit",kind:"",detail:if (id==3) "anr" else "crash",
     process:if (id==3) ":isolated_pdf" else if (id==4) "other" else "main",extra:false
   }
   pure def seeded(seed: str): Disk = if (seed=="empty") noDisk
     else if (seed=="capacity") { ...noDisk,format:"valid",fillers:cap }
     else if (seed=="corrupt" or seed=="oversize") { ...noDisk,format:seed }
-    else if (seed=="legacy") { ...noDisk,format:"valid",rows:List({ ...renderer(1,"startup","TypeError"),extra:true }) }
+    else if (seed=="legacy") { ...noDisk,format:"valid",rows:List(
+      { ...renderer(1,"startup","TypeError"),extra:true },renderer(2,"render","RangeError"),
+      { ...renderer(3,"startup","StringTime"),stamp:"text" },{ ...renderer(4,"startup","FractionTime"),stamp:"fraction" }) }
+    else if (seed=="unsafe") { ...noDisk,format:"valid",rows:List(
+      renderer(lastSafeOffset,"startup","LastSafeTime"),{ ...renderer(lastSafeOffset+1,"startup","UnsafeTime"),stamp:"unsafe" }) }
     else { ...noDisk,format:"valid",rows:List(
       renderer(10-retention,"startup","ExpiredBoundary"),renderer(11-retention,"startup","RetainedBoundary"),
       renderer(10+retention,"startup","FutureBoundary"),renderer(11+retention,"startup","TooFarFuture")) }
 
   action initWith(seed: str): bool = all {
     seeds.contains(seed),
-    s'={now:10,a:noRequest,b:noRequest,closedA:false,closedB:false,disk:seeded(seed),
+    s'={now:if (seed=="unsafe") lastSafeOffset else 10,a:noRequest,b:noRequest,closedA:false,closedB:false,disk:seeded(seed),
       history:Set(),historyMode:"available",held:0,captured:Set(),reply:noReply,delegated:0}
   }
   action init = {
@@ -96,7 +101,8 @@ module NativeCrashJournal {
       val collected=harvested(doc,history)
       val read=if (collected==doc) base else replaced(base,collected,fault)
       val visible=pruned(decoded(read.disk),state.now)
-      { ...read,reply:{owner:actor,outcome:"read",fillers:visible.fillers,rows:visible.rows,exitHistory:state.historyMode!="old"} }
+      val rows=visible.rows.foldl(List(),(acc,row)=>if (row.stamp=="safe") acc.append({ ...row,extra:false }) else acc)
+      { ...read,reply:{owner:actor,outcome:"read",fillers:visible.fillers,rows:rows,exitHistory:state.historyMode!="old"} }
     }
   }
   action settle(actor: int, fault: str): bool = all {
@@ -126,7 +132,7 @@ module NativeCrashJournal {
   action uncaught = all {
     s.delegated<2, s.disk.rows.length()<12,
     val doc=decoded(s.disk)
-    val row={at:s.now,source:"uncaught",kind:"",detail:"java.lang.IllegalStateException",process:"main",extra:false}
+    val row={at:s.now,stamp:"safe",source:"uncaught",kind:"",detail:"java.lang.IllegalStateException",process:"main",extra:false}
     s'=replaced({ ...s,delegated:s.delegated+1 },{ ...doc,rows:doc.rows.append(row) },"none")
   }
 
@@ -135,7 +141,11 @@ module NativeCrashJournal {
   val ExactHeldRead = if (s.held==0) s.captured==Set() else
     lanes.contains(s.held) and pending(s,s.held).op=="read" and s.captured.subseteq(s.history)
   val KnownExitWatermark = s.disk.watermark==0 or s.history.contains(s.disk.watermark)
-  val safety = BoundedJournal and ExactHeldRead and KnownExitWatermark
+  val BridgeRowsAllowlisted = s.reply.rows.indices().forall(index=> {
+    val row=s.reply.rows.nth(index)
+    not(row.extra) and row.stamp=="safe"
+  })
+  val safety = BoundedJournal and ExactHeldRead and KnownExitWatermark and BridgeRowsAllowlisted
 
   action step = any {
     nondet actor=lanes.oneOf()
@@ -177,8 +187,10 @@ module NativeCrashJournal {
   run heldPreClearSnapshotImportsUnseenExitAsBuiltTest = initWith("empty").then(exit(3)).then(enqueue(1,"read","",""))
     .then(beginHeld(1)).then(enqueue(2,"clear","","")).then(settle(2,"none"))
     .then(finishHeld("none")).expect(s.disk.rows.length()==1 and s.disk.watermark==3)
-  run rawBridgeRetainsSeededExtraFieldAsBuiltTest = initWith("legacy").then(enqueue(1,"read","","")).then(settle(1,"none"))
-    .expect(s.reply.rows.head().extra and s.disk.rows.head().extra)
+  run bridgeRedactsSeededFieldsAndMalformedTimesTest = initWith("legacy").then(enqueue(1,"read","","")).then(settle(1,"none"))
+    .expect(s.reply.rows.length()==2 and not(s.reply.rows.head().extra) and s.disk.rows.head().extra and s.disk.rows.length()==4)
+  run bridgeKeepsLastSafeIntegerAndDropsLargerTimestampTest = initWith("unsafe").then(enqueue(1,"read","","")).then(settle(1,"none"))
+    .expect(s.reply.rows.length()==1 and s.reply.rows.head().at==lastSafeOffset and s.disk.rows.length()==2)
   run writeMayReportFailureAfterReplacementTest = initWith("empty").then(enqueue(1,"record","render","TypeError"))
     .then(settle(1,"after")).expect(s.reply.outcome=="rejected" and s.disk.rows.length()==1)
 }

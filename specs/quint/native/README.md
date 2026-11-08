@@ -678,9 +678,12 @@ failure reports before and after atomic replacement.
 
 Clear retains the greatest exit timestamp already collected. A history
 read held before clear can still import an unseen exit from that snapshot.
-A later platform addition is outside the captured read. A valid seeded
-legacy row can carry an extra field through the raw native bridge, while
-the renderer applies its own allowlist before displaying the log.
+A later platform addition is outside the captured read. The as-built
+replay in commit `600c3730a6` recorded a synthetic extra field in a raw
+native reply. The bridge now applies the existing row allowlist and checks
+that each original timestamp is a numeric JavaScript-safe integer. The
+source replay verifies that the extra remains on disk and that valid
+neighboring rows still appear in the reply.
 `RendererRecovery`, `CrashLoopBreaker` and `RendererFailureUI` cover
 separate recovery, listener and renderer boundaries.
 

@@ -18,7 +18,7 @@ import org.json.JSONArray;
 import org.json.JSONObject;
 
 public final class CrashJournalTraces implements AutoCloseable {
- static final long BASE=1_760_000_000_000L;
+ static final long BASE=1_760_000_000_000L, MAX_SAFE=9_007_199_254_740_991L;
  static final String MARKER="synthetic extra field, never a real crash message";
  public static volatile long clock=BASE+10;
  final Path directory=Files.createTempDirectory("quint-crash-journal-");
@@ -51,6 +51,7 @@ public final class CrashJournalTraces implements AutoCloseable {
  CrashJournalTraces(String name,String seed)throws Exception{
   lanes[1]=new Lane(directory);lanes[2]=new Lane(directory);
   Looper.getMainLooper();
+  if(seed.equals("unsafe"))clock=MAX_SAFE;
   initialize(seed);
   trace=new Trace(name,observe());trace.value.put("init",Trace.action("initWith",seed));
  }
@@ -76,7 +77,16 @@ public final class CrashJournalTraces implements AutoCloseable {
   if(seed.equals("oversize")){Files.write(path(),new byte[CrashLog.MAX_FILE_BYTES+1]);return;}
   JSONArray entries=new JSONArray();
   if(seed.equals("capacity"))for(int i=0;i<CrashLog.MAX_ENTRIES;i++)entries.put(row(1,"render","CapacityFiller"));
-  if(seed.equals("legacy"))entries.put(row(1,"startup","TypeError").put("message",MARKER));
+  if(seed.equals("legacy")){
+   entries.put(row(1,"startup","TypeError").put("message",MARKER));
+   entries.put(row(2,"render","RangeError"));
+   entries.put(row(3,"startup","StringTime").put("at",Long.toString(BASE+3)));
+   entries.put(row(4,"startup","FractionTime").put("at",BASE+4.5));
+  }
+  if(seed.equals("unsafe")){
+   entries.put(row(MAX_SAFE-BASE,"startup","LastSafeTime"));
+   entries.put(row(MAX_SAFE+1-BASE,"startup","UnsafeTime"));
+  }
   if(seed.equals("ages")){
    entries.put(row(10-CrashLog.RETENTION_MS,"startup","ExpiredBoundary"));
    entries.put(row(11-CrashLog.RETENTION_MS,"startup","RetainedBoundary"));
@@ -105,7 +115,10 @@ public final class CrashJournalTraces implements AutoCloseable {
    if(row.has("message"))check(MARKER.equals(row.getString("message")),"Only seeded fixture marker may appear");
    if(source.equals("uncaught"))check(row.getString("rootClass").equals(IOException.class.getName())&&row.getString("thread").equals("main"),
     "Exact synthetic root cause class and thread class");
-   rows.put(new JSONObject().put("at",row.getLong("at")-BASE).put("source",source).put("kind",row.optString("kind",""))
+   Object timestamp=row.get("at");
+   String stamp=timestamp instanceof String?"text":timestamp.toString().equals(Long.toString(MAX_SAFE+1))?"unsafe":
+    timestamp.toString().equals(Double.toString(BASE+4.5))||timestamp.toString().equals("1760000000004.5")?"fraction":"safe";
+   rows.put(new JSONObject().put("at",row.getLong("at")-BASE).put("stamp",stamp).put("source",source).put("kind",row.optString("kind",""))
     .put("detail",detail).put("process",row.getString("process")).put("extra",row.has("message")));
   }
   return new JSONObject().put("fillers",fillers).put("rows",rows);
@@ -237,7 +250,7 @@ public final class CrashJournalTraces implements AutoCloseable {
  public static void main(String[] args)throws Exception{
   String name=args[0],seed=switch(name){
    case "capacity" -> "capacity";case "retention" -> "ages";case "legacy-bridge" -> "legacy";
-   case "corrupt" -> "corrupt";case "oversize" -> "oversize";default -> "empty";
+   case "corrupt" -> "corrupt";case "oversize" -> "oversize";case "unsafe-time" -> "unsafe";default -> "empty";
   };
   try(var f=new CrashJournalTraces(name,seed)){
    switch(name){
@@ -250,8 +263,18 @@ public final class CrashJournalTraces implements AutoCloseable {
     case "retention" -> {f.read(1);f.time(20);f.read(2);f.record(1,"startup","TypeError");f.read(2);}
     case "legacy-bridge" -> {
      f.read(1);
-     check(f.reply.getJSONArray("rows").getJSONObject(0).getBoolean("extra"),"Valid legacy-shaped row reaches the native bridge with its extra field");
+     JSONArray rows=f.reply.getJSONArray("rows");
+     check(Files.readString(f.path()).contains(MARKER),"Synthetic legacy marker remains on disk after a bridge read");
+     check(!rows.getJSONObject(0).getBoolean("extra"),"Raw native bridge exposed the synthetic extra field");
+     check(rows.length()==2&&rows.getJSONObject(0).getString("detail").equals("TypeError")&&
+      rows.getJSONObject(1).getString("detail").equals("RangeError"),"Numeric string and fractional timestamps are refused; valid rows remain");
      f.clear(2);f.read(1);
+    }
+    case "unsafe-time" -> {
+     f.read(1);
+     JSONArray rows=f.reply.getJSONArray("rows");
+     check(rows.length()==1&&rows.getJSONObject(0).getString("detail").equals("LastSafeTime"),"Only the last JavaScript-safe integer timestamp is published");
+     check(f.disk().getJSONArray("rows").length()==2,"Read leaves both raw disk rows unchanged");
     }
     case "corrupt", "oversize" -> {f.read(1);f.record(2,"startup","TypeError");f.read(1);}
     case "write-faults" -> {

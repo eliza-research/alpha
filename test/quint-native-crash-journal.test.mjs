@@ -6,7 +6,7 @@ import {checkNativeCrashJournal} from '../specs/quint/refinement/native/crash-jo
 test('native problem-log workers and durable retention refine authenticated app source', async () => {
   const {receipt}=await checkNativeCrashJournal();
   assert.equal(receipt.passed,true);
-  assert.equal(receipt.traces,11);
+  assert.equal(receipt.traces,12);
   assert.equal(receipt.observedFields.length,12);
   assert.equal(verifyRefinementReceiptInputs(receipt),true);
 });
