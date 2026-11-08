@@ -489,11 +489,19 @@ export function installSettingsAdapter(Component: any, views: Bag) {
     const row = (label: string, go: () => void, val = '', extra: Bag = {}): Bag => ({ id: `row:${label}`, kNav: true, label, lbl: label, val, hasVal: !!val, chev: true, noAB: true, go, ...extra });
     const toggle = (label: string, on: boolean, change: () => void, id = `toggle:${label}`): Bag => ({ id, kTog: true, label, aria: label, on, track: on ? 'background:var(--acc)' : 'background:var(--line)', kx: on ? 20 : 0, toggle: change });
     const log = (time: string, text: string, id = `log:${time}:${text}`): Bag => ({ id, kLog: true, time, text });
-    const group = (rows: Bag[], cap = '', id = cap || String(rows[0]?.id ?? rows[0]?.label ?? 'empty')): Bag => ({
-      id: `group:${id}`, css: 'background:var(--s2);padding:4px 0',
-      rows: rows.map(value => ({ ...value, id: value.id ?? `row:${value.aria ?? value.label ?? value.time ?? ''}` })),
-      ...(cap ? { cap, hasCap: true } : {}),
-    });
+    const group = (rows: Bag[], cap = '', id = cap || String(rows[0]?.id ?? rows[0]?.label ?? 'empty')): Bag => {
+      const occurrences = new Map<string, number>();
+      return {
+        id: `group:${id}`, css: 'background:var(--s2);padding:4px 0',
+        rows: rows.map(value => {
+          const identity = value.id ?? `row:${value.aria ?? value.label ?? value.time ?? ''}:${value.text ?? ''}`;
+          const occurrence = occurrences.get(identity) ?? 0;
+          occurrences.set(identity, occurrence + 1);
+          return { ...value, id: occurrence ? `${identity}:${occurrence}` : identity };
+        }),
+        ...(cap ? { cap, hasCap: true } : {}),
+      };
+    };
     const back = () => api.set({ page: null });
     const subpage = (title: string, groups: Bag[], options: Bag = {}): Bag => ({ isTop: false, notTop: true, cls: 'enter', z: options.z ?? 4, title, hasTitle: true, backLabel: options.backLabel ?? 'Back to Settings', back: options.back ?? back, hero: {}, groups: groups.filter(g => g.rows.length) });
     const day = (at: number) => new Date(at).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
@@ -760,7 +768,7 @@ export function installSettingsAdapter(Component: any, views: Bag) {
         stack.push(subpage('Problem log', [group(crashLog ? entries.length ? entries : [info('No problems recorded', '')] : [info('Problem log unavailable', '')]),
           group(crashLog?.entries.length ? [row('Clear problem log', () => void clearProblems(api), crashBusy ? 'Clearing…' : '', { labCss: 'color:var(--fg);font-weight:600' })] : [])], toAbout));
       }
-      if (current === 'licenses') stack.push(subpage('Open source licenses', licenses.status === 'ready' ? licenses.items.map(item => group([info(item.name, `${item.version} · ${item.license}`), ...licenseFlagRows(item), ...(typeof item.source === 'string' && item.source ? [log('Source', item.source)] : []), ...(typeof item.text === 'string' && item.text ? [log('License', item.text)] : [])], '', `license:${item.name}:${item.version}:${item.source ?? ''}`))
+      if (current === 'licenses') stack.push(subpage('Open source licenses', licenses.status === 'ready' ? licenses.items.map(item => group([info(item.name, `${item.version} · ${item.license}`), ...licenseFlagRows(item), ...(typeof item.source === 'string' && item.source ? [log('Source', item.source, 'source')] : []), ...(typeof item.text === 'string' && item.text ? [log('License', item.text, 'license')] : [])], '', `license:${item.name}:${item.version}:${item.source ?? ''}`))
         : [group([info(licenses.status === 'unavailable' ? 'License notices unavailable' : 'Loading…', '')])], toAbout));
     }
     if (current === 'developer') {
