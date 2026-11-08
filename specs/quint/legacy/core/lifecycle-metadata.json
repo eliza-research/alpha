@@ -212,8 +212,8 @@
     ]
   },
   {
-    "path": "specs/quint/legacy/CoreServiceLifecycle.qnt",
-    "module": "CoreServiceLifecycle",
+    "path": "specs/quint/legacy/CoreServiceLifecycleDesign.qnt",
+    "module": "CoreServiceLifecycleDesign",
     "init": "init",
     "step": "step",
     "invariant": "safety",
@@ -227,7 +227,7 @@
     "configurations": [
       {
         "name": "liveness",
-        "module": "CoreServiceLifecycle",
+        "module": "CoreServiceLifecycleDesign",
         "init": "init",
         "step": "step",
         "rawStep": "rawStep",
@@ -264,7 +264,7 @@
       },
       {
         "name": "siblings",
-        "module": "CoreServiceLifecycleSiblings",
+        "module": "CoreServiceLifecycleDesignSiblings",
         "init": "init",
         "step": "step",
         "rawStep": "rawStep",

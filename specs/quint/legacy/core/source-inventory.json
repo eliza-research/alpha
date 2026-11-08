@@ -1453,7 +1453,7 @@
     },
     {
       "module": "ServiceLifecycle",
-      "quintModule": "CoreServiceLifecycle",
+      "quintModule": "CoreServiceLifecycleDesign",
       "source": "packages/core/tla/ServiceLifecycle.tla",
       "sha256": "78d2bfc7f37c7631de1e748b4400c34a2da4ad99f9b484c41b5dbd0e46b83ff3",
       "lines": 489,

@@ -271,7 +271,7 @@ Translate `packages/core/tla/Serialise.tla` to `CoreSerialise.qnt`. Source SHA-2
 
 ### ServiceLifecycle
 
-Translate `packages/core/tla/ServiceLifecycle.tla` to `CoreServiceLifecycle.qnt`. Source SHA-256 is `78d2bfc7f37c7631de1e748b4400c34a2da4ad99f9b484c41b5dbd0e46b83ff3`.
+Translate `packages/core/tla/ServiceLifecycle.tla` to `CoreServiceLifecycleDesign.qnt`. Source SHA-256 is `78d2bfc7f37c7631de1e748b4400c34a2da4ad99f9b484c41b5dbd0e46b83ff3`.
 
 **Declared state**. `types`, `byClass`, `starting`, `failed`, `sc`, `att`, `scInst`, `published`, `status`, `nextInst`, `cls`, `late`, `stopCalls`, `stopOp`, `epc`, `tries`, `ewait`, `stopReq`, `stopped`, `rpc`, `rcur`, `rvisited`, `lastEnsure`, `upc`, `ucur`, `uwait`.
 

@@ -1,6 +1,6 @@
 // Literal upstream ServiceLifecycle at 4787d51a142c. Class and caller model
 // values use disjoint integers. Instance numbers retain their original order.
-module CoreServiceLifecycleTemplate {
+module CoreServiceLifecycleDesignTemplate {
   const Classes: Set[int]
   const LateClasses: Set[int]
   const Owned: Set[int]
@@ -172,8 +172,8 @@ module CoreServiceLifecycleTemplate {
   temporal CallersReturn = Callers.forall(e => (s.epc.get(e) == "ensure").leadsTo(s.epc.get(e) == "done"))
 }
 
-module CoreServiceLifecycle {
-  import CoreServiceLifecycleTemplate(Classes = Set(11, 12), LateClasses = Set(12), Owned = Set(11),
+module CoreServiceLifecycleDesign {
+  import CoreServiceLifecycleDesignTemplate(Classes = Set(11, 12), LateClasses = Set(12), Owned = Set(11),
     Callers = Set(21, 22), MaxInst = 3, MaxRetries = 0, None = 0) as Model
   action init = Model::Init
   action step = Model::Step
@@ -188,8 +188,8 @@ module CoreServiceLifecycle {
     .expect(Model::s.types == Set() and Model::s.status == "unknown" and Model::s.upc == "done" and safety)
 }
 
-module CoreServiceLifecycleSiblings {
-  import CoreServiceLifecycleTemplate(Classes = Set(11, 12), LateClasses = Set(12), Owned = Set(11),
+module CoreServiceLifecycleDesignSiblings {
+  import CoreServiceLifecycleDesignTemplate(Classes = Set(11, 12), LateClasses = Set(12), Owned = Set(11),
     Callers = Set(21, 22), MaxInst = 4, MaxRetries = 1, None = 0) as Model
   action init = Model::Init
   action step = Model::Step
