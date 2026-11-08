@@ -39,6 +39,7 @@ import {checkNativeNavigationOwnership} from './navigation-service.mjs';
 import {checkGoogleBrowserReturnClaim} from './google-browser-return-claim.mjs';
 import {checkRuntimeUpdatePause} from './runtime-update-pause.mjs';
 import {checkNativeUpdateComposition} from './update-composition.mjs';
+import {checkNativeUpdateStaging} from './update-staging.mjs';
 import {runNativeUpdateActivationRefinement} from './update-barrier.mjs';
 import {checkCanonicalNotificationTap} from './canonical-notification-tap.mjs';
 import {checkWorkflowNoticeDelivery} from './workflow-notice-delivery.mjs';
@@ -155,6 +156,8 @@ export async function runNativeRefinement() {
   results.push(...updateActivation.receipts);
   const updateComposition = await checkNativeUpdateComposition(nativeInputs);
   results.push(updateComposition.receipt);
+  const updateStaging = await checkNativeUpdateStaging(nativeInputs);
+  results.push(updateStaging.receipt);
   const notificationTap = await checkCanonicalNotificationTap(nativeInputs);
   results.push(notificationTap.receipt);
   const noticeDelivery = await checkWorkflowNoticeDelivery(nativeInputs);
@@ -163,6 +166,7 @@ export async function runNativeRefinement() {
     ...updatePause.obligations,
     ...updateActivation.obligations,
     ...updateComposition.obligations,
+    ...updateStaging.obligations,
     ...notificationTap.obligations,
     ...noticeDelivery.obligations,
     {model: 'GoogleBrowserReturnClaim', obligation: 'Installed callback delivery and durable credential custody',

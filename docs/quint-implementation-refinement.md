@@ -415,3 +415,19 @@ A separate mismatch receipt observes a send-handler setup failure after
 publication. The runtime returns the published service and retains the
 class's failure flag, while the original model clears the flag. The
 passing projection and the mismatch use the original model transitions.
+
+The APK offer and staging campaign checks 14 schedules and 109 checkpoints
+using the pinned bounded transport, the actual Settings cache and the JVM
+installer controller. A failed refresh can retain a compatible offer. A late
+EOF can finish verification after the exact bytes have arrived. Failed cache
+deletion can leave a file for a later bridge to sweep. Each campaign run stops
+at the preparation barrier before commit. Symbolic safety passed through eight
+steps.
+
+The browser owner-reminder passive campaign checks eight schedules and 156
+checkpoints. The actual port aborts a read when its owner or privacy gate
+retires. Its shared flight remains until the transport settles. The successor
+can join the old flight and receive an empty result before its next read can
+dispatch. The source currently binds the port during browser startup without
+a mounted shade consumer. The campaign leaves explicit opens, mark-read and
+readback reconciliation to a separate projection.

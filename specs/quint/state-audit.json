@@ -12,7 +12,7 @@
   "toolSha256": "403a33cab0dff7ace6219b29e7ffef373319677a7d8be6641466dd16a6750b5b",
   "dependencyLockSha256": "944123c801157a7ba3676a886d0b28a54bef32735ae96da5c6dd0f206c88c8bf",
   "sourcePin": "99b49439ce9d0cb5607e9831b9f7f58d89525029",
-  "ledgerSha256": "56a1cd6324d4b4c5afcd19fa6720ba41a0ac87edd35018e26e3cf41ff7dd4067",
+  "ledgerSha256": "df2204465da6ab3d4031646cf09fc405476d7aabf1ce32dd3fdc34ee32c7d105",
   "method": "TypeScript syntax trees for JavaScript/TypeScript and JDK compiler trees for Java. Mutable fields, bindings, containers, state hooks, write sites and asynchronous registration calls are candidates for semantic review.",
   "limitations": [
     "Candidate extraction does not establish state-machine coverage or implementation refinement.",
@@ -18330,7 +18330,8 @@
         "StartupUpdateAdmission",
         "RuntimeUpdatePause",
         "NativeUpdateActivation",
-        "NativeUpdateComposition"
+        "NativeUpdateComposition",
+        "NativeUpdateStaging"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -26443,7 +26444,8 @@
       "sha256": "1348add936da232412999b23cfb48fbbc08a5243f2b4a8075626e7a855ac3007",
       "allocatedModels": [
         "Application",
-        "NativeUpdateActivation"
+        "NativeUpdateActivation",
+        "NativeUpdateStaging"
       ],
       "sourcePathClass": "other-source-path",
       "classification": "syntactic-candidates",
@@ -39452,7 +39454,8 @@
       "sha256": "06f4eedc5fd1d70fb76dbc1fd955170f131a4b7941cc5abc816a23a30d7390d2",
       "allocatedModels": [
         "PreferencesAndPresentation",
-        "SettingsNav"
+        "SettingsNav",
+        "NativeUpdateStaging"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -40315,7 +40318,8 @@
       "sha256": "41fb14face24a817c183099ea4882ecf7d3beef2788ec879ff86f6286328d8f7",
       "allocatedModels": [
         "Application",
-        "AgentCalendarEventReturn"
+        "AgentCalendarEventReturn",
+        "BrowserOwnerReminderRead"
       ],
       "sourcePathClass": "other-source-path",
       "classification": "syntactic-candidates",
@@ -44073,7 +44077,8 @@
       "allocatedModels": [
         "NoticesAndCaches",
         "NotificationCollection",
-        "ApplicationComposition"
+        "ApplicationComposition",
+        "BrowserOwnerReminderRead"
       ],
       "sourcePathClass": "other-source-path",
       "classification": "syntactic-candidates",
@@ -44117,7 +44122,8 @@
       "path": "apps/app/src/runtime/owner-reminder-notification-protocol.ts",
       "sha256": "eeaecc508732b1a1ff40861f7ba0f5dbb63b62d5def19f08a66eba524c437ce7",
       "allocatedModels": [
-        "DeviceActions"
+        "DeviceActions",
+        "BrowserOwnerReminderRead"
       ],
       "sourcePathClass": "other-source-path",
       "classification": "syntactic-candidates",
@@ -166194,7 +166200,8 @@
       "sha256": "ea346f7293b84db9935ac0f7130e48fa086cfbf78ff71ceb18f2b0ea82c47db4",
       "allocatedModels": [
         "AssistantConversation",
-        "ResidentRuntime"
+        "ResidentRuntime",
+        "NativeUpdateStaging"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -218401,6 +218408,6 @@
   ],
   "detail": {
     "path": "test-results/quint-state-audit/details.json",
-    "sha256": "e5402a5d48ca4d997921e99dca8f9306f77d66a6783b990ddfe528bae27b5c5a"
+    "sha256": "66271e9dbd59c450715c6594cb679d94045a9ae86cbd87b7067fbc3002c389dd"
   }
 }

@@ -6525,7 +6525,8 @@
         "StartupUpdateAdmission",
         "RuntimeUpdatePause",
         "NativeUpdateActivation",
-        "NativeUpdateComposition"
+        "NativeUpdateComposition",
+        "NativeUpdateStaging"
       ],
       "scope": "application",
       "treatment": "state-and-transition-projection",
@@ -8497,7 +8498,8 @@
       "sha256": "1348add936da232412999b23cfb48fbbc08a5243f2b4a8075626e7a855ac3007",
       "models": [
         "Application",
-        "NativeUpdateActivation"
+        "NativeUpdateActivation",
+        "NativeUpdateStaging"
       ],
       "scope": "application",
       "treatment": "state-and-transition-projection",
@@ -34885,7 +34887,8 @@
       "path": "apps/app/src/prototype/settings-adapter.ts",
       "models": [
         "PreferencesAndPresentation",
-        "SettingsNav"
+        "SettingsNav",
+        "NativeUpdateStaging"
       ],
       "scope": "application",
       "treatment": "state-and-transition-projection",
@@ -36852,7 +36855,8 @@
       "sha256": "41fb14face24a817c183099ea4882ecf7d3beef2788ec879ff86f6286328d8f7",
       "models": [
         "Application",
-        "AgentCalendarEventReturn"
+        "AgentCalendarEventReturn",
+        "BrowserOwnerReminderRead"
       ],
       "scope": "application",
       "treatment": "state-and-transition-projection",
@@ -45013,7 +45017,8 @@
       "models": [
         "NoticesAndCaches",
         "NotificationCollection",
-        "ApplicationComposition"
+        "ApplicationComposition",
+        "BrowserOwnerReminderRead"
       ],
       "scope": "product-state-and-contract",
       "treatment": "domain-contract-or-support",
@@ -45120,7 +45125,8 @@
     {
       "path": "apps/app/src/runtime/owner-reminder-notification-protocol.ts",
       "models": [
-        "DeviceActions"
+        "DeviceActions",
+        "BrowserOwnerReminderRead"
       ],
       "scope": "application",
       "treatment": "domain-contract-or-support",
@@ -486943,7 +486949,8 @@
       "path": "vendor/eliza/plugins/plugin-native-agent/android/src/main/java/ai/eliza/plugins/agent/connection/ConnectionTransport.java",
       "models": [
         "AssistantConversation",
-        "ResidentRuntime"
+        "ResidentRuntime",
+        "NativeUpdateStaging"
       ],
       "scope": "shared-module-dependency",
       "treatment": "domain-contract-or-support",

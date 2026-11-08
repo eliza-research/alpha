@@ -1843,5 +1843,27 @@
       "Current Maps render binding for a canonical or native Calendar origin, visit-scoped dispatch ownership, visibility/leave retirement and exact Calendar return effects.",
       "Two event identities, six captured origin objects and five return attempts. Screen, native and provider effects arrive through controlled ports. Browser regressions separately mount the real shell."
     ]
+  },
+  {
+    "path": "specs/quint/application/BrowserOwnerReminderRead.qnt",
+    "module": "BrowserOwnerReminderRead",
+    "init": "init",
+    "step": "step",
+    "invariant": "safety",
+    "tests": [
+      "ownerReplacementWaitsForRetiredTransportTest",
+      "cacheBoundaryAndRefreshTest",
+      "closeAndReopenShadeDiscardsLateReplyTest",
+      "busyAndPrivacyRetirePublicationTest"
+    ],
+    "sources": [
+      "apps/app/src/runtime/owner-reminder-notification-port.ts",
+      "apps/app/src/runtime/owner-reminder-notification-protocol.ts",
+      "apps/app/src/runtime/abort-signal.ts"
+    ],
+    "abstractions": [
+      "Actual browser owner-reminder passive list admission, exact owner binding, abort, five-second cache and 24-read budget.",
+      "One held transport, two synthetic owners and one canonical reminder row per reply. Explicit mark-read, reconciliation and mounted browser consumption are separate."
+    ]
   }
 ]
