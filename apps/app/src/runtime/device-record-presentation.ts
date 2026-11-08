@@ -65,10 +65,10 @@ export function presentDeviceRecordOperation(
       details = "Send this note’s exact title and text to the connected agent.";
       break;
     case "notes_delete":
-      title = "Delete selected note";
-      applied = "Deleted selected note";
-      details =
-        "Delete this note from this phone. Attached audio files are retained.";
+      // An approved agent deletion moves the note, and a voice note's recording, to Trash.
+      title = "Move selected note to Trash";
+      applied = "Moved selected note to Trash";
+      details = "Move this note to Trash. A voice note’s recording moves with it.";
       break;
     case "calendar_create_local":
     case "calendar_create":
@@ -110,7 +110,10 @@ export function presentDeviceRecordOperation(
     case "calendar_delete":
       title = "Delete selected event";
       applied = "Deleted selected event";
-      details = "Delete this event from this phone. This cannot be undone.";
+      // The phone queues an agent deletion behind a 10-second Undo; an account calendar's
+      // provider then syncs the delete to that account.
+      details =
+        "Delete this event. You can Undo for 10 seconds. If its calendar syncs with an account, the account is updated after that.";
       break;
     case "reminder_create":
     case "reminder_update": {
