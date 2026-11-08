@@ -99,9 +99,11 @@ public class FilesTreeBatchInstrumentedTest {
    }
   }finally{
    instrumentation.removeMonitor(monitor);
+   // A grant saved before the test read it back is still this test's (the start asserted none existed).
+   if(treeUri==null){String saved=context.getSharedPreferences("alpha-files-tree",0).getString("root",null);if(saved!=null)treeUri=Uri.parse(saved);}
    // Remove the whole test-owned AlphaTree root while the grant is still held,
    // only after verifying its random fixture name.
-   if(treeUri!=null)try{Uri root=DocumentsContract.buildDocumentUriUsingTree(treeUri,DocumentsContract.getTreeDocumentId(treeUri));if(folder.equals(picker.name(resolver,root)))picker.removeFixture(resolver,treeUri,root);}catch(Exception ignored){}
+   if(treeUri!=null)try{Uri root=DocumentsContract.buildDocumentUriUsingTree(treeUri,DocumentsContract.getTreeDocumentId(treeUri));if(folder.equals(picker.name(resolver,root)))picker.removeFixture(resolver,treeUri,root);}catch(Exception|AssertionError ignored){}
    for(Uri uri:seeded)try{resolver.delete(uri,null,null);}catch(Exception ignored){}
    if(treeUri!=null)for(android.content.UriPermission p:resolver.getPersistedUriPermissions())if(treeUri.equals(p.getUri()))try{resolver.releasePersistableUriPermission(treeUri,(p.isReadPermission()?1:0)|(p.isWritePermission()?2:0));}catch(Exception ignored){}
    context.getSharedPreferences("alpha-files-tree",0).edit().remove("root").commit();

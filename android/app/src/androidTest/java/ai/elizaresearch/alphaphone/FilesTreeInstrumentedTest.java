@@ -62,9 +62,11 @@ public class FilesTreeInstrumentedTest {
   // Downloads shortcut used by the single-document picker is not this path.
   // Build47's actual AOSP hierarchy exposes android:id/title = Download.
   long deadline=SystemClock.elapsedRealtime()+30000;boolean resetScroll=false;int scrolls=0;boolean listMode=false,drawerTried=false,storageChosen=false;
-  // The drawer names primary storage by the volume description DocumentsUI shows, which differs per device.
+  // ExternalStorageProvider titles the primary root with the device name (the emulator's is its model),
+  // falling back to the volume description only when no device name is set.
   Context context=InstrumentationRegistry.getInstrumentation().getTargetContext();
-  String storageRoot=context.getSystemService(android.os.storage.StorageManager.class).getPrimaryStorageVolume().getDescription(context);
+  String deviceName=Settings.Global.getString(context.getContentResolver(),Settings.Global.DEVICE_NAME);
+  String storageRoot=deviceName!=null&&!deviceName.isEmpty()?deviceName:context.getSystemService(android.os.storage.StorageManager.class).getPrimaryStorageVolume().getDescription(context);
   while(SystemClock.elapsedRealtime()<deadline){
    if(atFolder(folder)){
     AccessibilityNodeInfo grant=find(n->documentsNode(n)&&"android:id/button1".equals(n.getViewIdResourceName())&&"USE THIS FOLDER".equalsIgnoreCase(String.valueOf(n.getText())));
