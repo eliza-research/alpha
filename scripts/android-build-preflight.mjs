@@ -173,7 +173,7 @@ export function embeddingHostProblems(root, {allowUnpackagedRuntime = false, emb
     return [];
   } catch (error) {
     const partial = allowUnpackagedRuntime
-      ? ' An unpackaged developer build must have no resident payload at all: remove android/app/src/main/assets/agent and android/app/src/main/jniLibs, or stage the host.'
+      ? ' An unpackaged developer build must have no resident payload at all: remove android/app/src/main/assets/agent, android/app/src/main/jniLibs and .eliza/paradee-voice/native (its staged voice outputs keep :app:verifyParadeeAppLinkage checking jniLibs), or stage the host.'
       : '';
     return [`The qualified embedding host is not staged (${error.message}; Gradle :app:verifyEmbeddingHost rejects the build). npm run agent:build-embedding-host (a step of ${FULL_CHAIN}) stages the libraries only when it can reproduce the reviewed bytes, and says so when it cannot. ${HUMAN_ACTION}${partial}`];
   }

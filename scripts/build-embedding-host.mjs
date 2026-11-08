@@ -10,9 +10,10 @@
  * Nothing here qualifies anything. The reviewed bytes are named by SHA-256 in the committed
  * android/embedding-host/qualified-host.json; this step can only reproduce them, and stages a
  * rebuild only when it is byte-identical. android/embedding-host/build-toolchain.json records
- * whether the reviewed bytes are reproducible at all: while `remapBuildPath` is false they embed
- * the absolute directory they were built in, which this repository does not record, so the step
- * stops without compiling and names the person who is needed (HUMAN_ACTION).
+ * the NDK, CMake and whether the reviewed bytes were built with a remapped build path
+ * (`remapBuildPath`); only then can a rebuild reproduce them. Without it, or while
+ * qualified-host.json carries `requalification.required`, the step stops without compiling and
+ * names the person who is needed (HUMAN_ACTION).
  *
  * Exit codes: 0 staged (already, or reproduced), or a candidate was built; 2 a prerequisite is
  * missing or a staged file conflicts; 3 the reviewed bytes are not staged and cannot be produced.

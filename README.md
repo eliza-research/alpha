@@ -55,16 +55,16 @@ the required evidence rather than treating a successful APK build as acceptance.
 
 - [Current flow research](docs/research-report.md)
 - [Detailed flow PRD](docs/flow-audit-and-prd.md)
-- [Current implementation plan](docs/flow-implementation-plan.md)
+- [Current implementation plan](docs/implementation-plan.md)
 - [current product status](docs/mvp-current-status.md)
-- [Production readiness record, 2026-10-04](https://github.com/AlphaCompute/alphaphone/blob/51c8157533353a805afd2811f4e3f41b66b7b9fa/docs/production-readiness-2026-10-04.md)
+- [Production readiness record, 2026-10-04](https://github.com/eliza-research/alphaphone/blob/51c8157533353a805afd2811f4e3f41b66b7b9fa/docs/production-readiness-2026-10-04.md)
 - [Cloud deployment and authentication findings](docs/cloud-production-validation.md)
 - [Browser autofill and Proton integration](docs/browser-autofill-integration.md)
 - [Calendar and reminder contracts](docs/calendar-reminder-contract.md)
 - [Gesture zones and the notifications panel](docs/gesture-zones.md)
 
 - [Working PRD](docs/prd.md)
-- [Detailed implementation plan](docs/implementation-plan.md)
+- [Flow implementation plan (historical)](docs/flow-implementation-plan.md)
 - [Architecture and upstream ownership](docs/architecture.md)
 - [Requirements and open decisions](docs/decisions.md)
 - [Verification gates and evidence](docs/verification.md)
@@ -82,7 +82,8 @@ the retained chat-dictation API is not a second user-facing chat control.
 Always-on listening is required in the Pixel 10a / Android 17 AOSP MVP. Phone,
 Contacts and SMS are AOSP-only; Wallet is removed. Full permitted Photos access and
 reset-only data management are planned. These are requirements, not claims that the
-current Cloud voice/credit UI or other source already implements them.
+current source already implements them. Speech is on-device by default; Cloud speech is
+used only in the `cloud` runtime profile or with an owner Cartesia key.
 See [speech research](docs/local-speech-research-2026-10-12.md) for native candidates.
 
 ## Explicit Cloud QA profile — October 18
@@ -117,7 +118,7 @@ The default manual profile and automatic resident qualification remain `native`.
 ## Setup
 
 ```sh
-git clone --recurse-submodules https://github.com/AlphaCompute/alphaphone.git
+git clone --recurse-submodules https://github.com/eliza-research/alphaphone.git
 cd alphaphone
 npm ci
 npm run verify
@@ -344,32 +345,32 @@ Three inputs of a distributable build cannot come from a script, and
 `npm run android:build:inputs` names each with who supplies it:
 
 - **The reviewed ARM64 embedding host** (`android/embedding-host/qualified-host.json`). Its
-  three native libraries are ignored by Git. `npm run agent:build-embedding-host` passes
-  when they are staged and otherwise stops (exit 3) before any long step. The reviewed
-  bytes were built without a build-path remap, so they contain the absolute directory of
-  that build, which only the qualification receipt records; a rebuild elsewhere has the
-  same source and toolchain and different bytes
-  (`android/embedding-host/build-toolchain.json` records the measurement). A person
-  therefore has to either stage the reviewed libraries
-  (`node scripts/stage-embedding-host.mjs --receipt <QUALIFICATION.json>`) or qualify a
-  rebuilt candidate: `node scripts/build-embedding-host.mjs --candidate` fetches the pinned
-  engine, builds with NDK `29.0.13113456` and CMake `4.0.3` using
-  `prepare-embedding-host.mjs --remap-build-path`, and never stages the result. The staging
+  three native libraries are ignored by Git. `android/embedding-host/build-toolchain.json`
+  records NDK `28.2.13676358`, CMake `4.0.3` and `remapBuildPath: true`, so
+  `npm run agent:build-embedding-host` passes when the reviewed libraries are staged and
+  otherwise rebuilds them (about ten minutes, 6 GiB free) and stages them only when they are
+  byte-identical to the reviewed ones; it stops (exit 3) when they are not. The current
+  record carries `requalification.required: true` at pin `0594fc72da`: the engine gitlink
+  moved from `cc8c9791` to `b3eb2bf6` and no rebuild has compared the bytes, so the step
+  stops (exit 3) before any build and a distribution build needs a new reviewed receipt.
+  `npm run android:build:inputs` names who supplies it: whoever holds the reviewed libraries
+  and their receipt stages them (`node scripts/stage-embedding-host.mjs --receipt
+  <QUALIFICATION.json>`), or a reviewer qualifies a rebuilt candidate
+  (`node scripts/build-embedding-host.mjs --candidate`, which never stages it). The staging
   command checks the staged embedding model, so run `agent:prepare`,
   `agent:build-workflow-worker` and `agent:stage-android` before it; and it refuses to
   replace a differing `qualified-host.json`, so a new qualification removes the old one in
-  the same reviewed change. Three remapped builds in three directories on one macOS arm64
-  host were byte-identical; no other host has been tried. Once a candidate is qualified and
-  `remapBuildPath` is set to `true` in the same commit, the step rebuilds the libraries and
-  stages them only when they are byte-identical to the reviewed ones, and stops (exit 3)
-  when they are not. Gradle's `:app:verifyEmbeddingHost` requires them for every
-  distribution and test-mocks build. The unpackaged developer build
+  the same reviewed change. Gradle's `:app:verifyEmbeddingHost` requires the libraries for
+  every distribution and test-mocks build. The unpackaged developer build
   (`--allow-unpackaged-runtime`, which `--test-mocks` may be combined with) passes only
   while no resident payload is staged at all: once `agent:stage-android` has run, remove
   `android/app/src/main/assets/agent` and `android/app/src/main/jniLibs` or stage the host.
-- **A qualified speech runtime** (decision A-24). A local rebuild installs only with
-  `--allow-unqualified-runtime`. The chain still completes with it; `verify-apks` records
-  the releases `distributable:false` and names the speech reasons.
+  Staged voice outputs in `.eliza/paradee-voice/native` keep `:app:verifyParadeeAppLinkage`
+  checking the app libraries, so remove that directory too or stage the host.
+- **The on-device voice outputs** ([fused speech](docs/fused-speech.md)). A person stages
+  them with `node scripts/android-stage-voice-models.mjs --from <directory>`;
+  `npm run android:build:inputs` lists them. The voice host record is not qualified, so
+  `verify-apks` records the releases `distributable:false` and names the reason.
 - **The release signer** (decision P-16; [human actions](docs/human-actions.md) H-08 to H-10).
   `node scripts/enroll-release-keys.mjs` records the key ceremony's certificate digest in
   `android/release-signer.json`; releases are then signed by Gradle with the `ELIZAOS_KEYSTORE_*`
