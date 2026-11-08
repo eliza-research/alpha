@@ -2,13 +2,13 @@ import {fileURLToPath} from 'node:url';
 import {readdirSync, readFileSync} from 'node:fs';
 import {join} from 'node:path';
 import {checkTraces, captureInputs} from '../check-traces.mjs';
-import {app, sense, directory, javaTraces, root} from './java.mjs';
-import {voiceTraces, navigationTraces} from './renderer.mjs';
+import {app, sense, voice, directory, javaTraces, root} from './java.mjs';
+import {captureRendererImplementation, voiceTraces, navigationTraces} from './renderer.mjs';
 import {residentLifecycleTraces} from './local-agent.mjs';
 
 export async function runNativeRefinement() {
   const models = ['VadSegmentation', 'RendererRecovery', 'ResidentScheduling'];
-  const sources = ['LiveVadGate.java', 'RendererRecoveryBudget.java', 'ResidentScheduleRearm.java'].map(name => app + name);
+  const sources = [voice + 'LiveVadGate.java', app + 'RendererRecoveryBudget.java', app + 'ResidentScheduleRearm.java'];
   const finiteSources = [...sources, `${directory}/Trace.java`, `${directory}/FinitePolicyTraces.java`, fileURLToPath(import.meta.url), `${directory}/java.mjs`];
   const finiteHashes = captureInputs(finiteSources);
   const traces = javaTraces('FinitePolicyTraces.java', sources);
@@ -22,9 +22,13 @@ export async function runNativeRefinement() {
     results.push(await checkTraces({model, id: `${model}-native`, sources: finiteSources, driverHashes: finiteHashes,
       scope: 'complete-finite-helper', assumptions, traces: traces[model]}));
   }
-  const componentSources = ['ResetAuthorization.java', 'LiveCaptureAdmission.java', 'SpeechPcmQueue.java',
-    'SpeechAudioFocusPolicy.java', 'NativeReadEpoch.java', 'PhotoAttachmentSource.java'].map(name => app + name)
-    .concat(['IndicatorLease.java', 'ListenerPolicy.java', 'CrashLoopBreaker.java'].map(name => sense + name));
+  const componentSources = [
+    'vendor/eliza/plugins/plugin-native-system/android/src/main/java/ai/eliza/plugins/system/reset/ResetAuthorization.java',
+    ...['LiveCaptureAdmission.java', 'SpeechPcmQueue.java', 'SpeechAudioFocusPolicy.java'].map(name => voice + name),
+    app + 'NativeReadEpoch.java',
+    'vendor/eliza/plugins/plugin-native-media/android/src/main/java/ai/eliza/plugins/media/SelectedPhotoCopy.java',
+    ...['IndicatorLease.java', 'ListenerPolicy.java', 'CrashLoopBreaker.java'].map(name => sense + name),
+  ];
   const componentInputs = [...componentSources, `${directory}/Trace.java`, `${directory}/ComponentTraces.java`, fileURLToPath(import.meta.url), `${directory}/java.mjs`];
   const componentHashes = captureInputs(componentInputs);
   const components = javaTraces('ComponentTraces.java', componentSources);
@@ -36,10 +40,14 @@ export async function runNativeRefinement() {
         'Android services, permission observers, UI lifecycle and physical devices remain integration obligations.',
       ]}));
   }
-  const journalSources = ['DeferredDeletionJournal.java', 'DeletionDeadline.java', 'SmsSendJournal.java', 'NativeVoiceIpc.java'].map(name => app + name);
+  const journalSources = [
+    ...['DeferredDeletionJournal.java', 'DeletionDeadline.java'].map(name => 'vendor/eliza/plugins/plugin-native-action-journal/android/src/main/java/ai/eliza/plugins/actionjournal/deletion/' + name),
+    'vendor/eliza/plugins/plugin-native-messages/android/src/main/java/ai/eliza/plugins/messages/SmsSendJournal.java',
+    voice + 'BufferedStreamExchange.java',
+  ];
   const journalInputs = [...journalSources, `${directory}/Trace.java`, `${directory}/JournalTraces.java`, fileURLToPath(import.meta.url), `${directory}/java.mjs`];
   const journalHashes = captureInputs(journalInputs);
-  const journals = javaTraces('JournalTraces.java', journalSources);
+  const journals = javaTraces('JournalTraces.java', journalSources, [], 'ai.eliza.plugins.messages.JournalTraces');
   for (const [model, modelTraces] of Object.entries(journals)) {
     results.push(await checkTraces({model, id: `${model}-native`, scope: 'bounded-component', traces: modelTraces,
       sources: journalInputs, driverHashes: journalHashes,
@@ -48,12 +56,15 @@ export async function runNativeRefinement() {
         'No actual provider effect, telephony role, Binder transport, credential root or power-loss durability is exercised.']}));
   }
   const extraGroups = [
-    ['PlaybackTraces.java', ['StreamingSpeechPlayback.java', 'SpeechPcmQueue.java', 'SpeechAudioFocusPolicy.java', 'VoiceLatencyTrials.java'].map(name => app + name)],
-    ['ResidentTraces.java', ['CloudDeployment.java', 'LocalAgentProviderAdmission.java'].map(name => app + name).concat('test/fixtures/LocalAgentProviderAdmissionTest.java')],
+    ['PlaybackTraces.java', ['StreamingSpeechPlayback.java', 'SpeechPcmQueue.java', 'SpeechAudioFocusPolicy.java', 'VoiceLatencyTrials.java'].map(name => voice + name)],
+    ['ResidentTraces.java', [
+      'vendor/eliza/plugins/plugin-native-agent/android/src/main/java/ai/eliza/plugins/agent/runtime/NativeProviderAdmission.java',
+      'vendor/eliza/plugins/plugin-native-agent/test/provider-admission/NativeProviderAdmissionTest.java',
+    ], 'ai.eliza.plugins.agent.runtime.ResidentTraces'],
   ];
-  const stubs = 'test/fixtures/systemui-chip-jvm';
+  const stubs = 'vendor/eliza/packages/app/test/android/sense-fixtures/systemui-chip-jvm';
   const producerSources = readdirSync(join(root, stubs), {recursive: true}).filter(name => name.endsWith('.java')).map(name => join(stubs, name))
-    .concat(['AlphaListeningPolicy.java', 'AlphaListeningLease.java'].map(name => `android/aosp/listener/systemui/chip/source/${name}`));
+    .concat(['SenseListeningPolicy.java', 'SenseListeningLease.java'].map(name => `vendor/eliza/packages/os/android/sense/systemui/chip/source/${name}`));
   extraGroups.push(['ProducerTraces.java', producerSources, 'com.android.systemui.privacy.ProducerTraces']);
   for (const [harness, groupSources, main] of extraGroups) {
     const inputs = [...groupSources, `${directory}/${harness}`, `${directory}/Trace.java`, `${directory}/java.mjs`, fileURLToPath(import.meta.url)];
@@ -67,17 +78,15 @@ export async function runNativeRefinement() {
         'External startup, Android observations, provider authenticity and unrestricted scheduler interleavings remain explicit obligations.',
       ]}));
   }
-  for (const [model, generate, sourceNames] of [
-    ['VoiceSession', voiceTraces, ['apps/app/src/runtime/voice-assistant.ts']],
-    ['NavigationProgress', navigationTraces, ['apps/app/src/maps/navigation-fix.ts', 'apps/app/src/maps/guidance.ts']],
+  const renderer = await captureRendererImplementation([fileURLToPath(import.meta.url)]);
+  for (const [model, generate] of [
+    ['VoiceSession', voiceTraces], ['NavigationProgress', navigationTraces],
   ]) {
-    const inputs = [...sourceNames, `${directory}/renderer.mjs`, fileURLToPath(import.meta.url)];
-    const hashes = captureInputs(inputs);
-    const modelTraces = await generate();
+    const modelTraces = await generate(renderer.implementation);
     results.push(await checkTraces({model, id: `${model}-native`, scope: 'bounded-component', traces: modelTraces,
-    sources: inputs, driverHashes: hashes,
-    assumptions: ['Actual TypeScript executes with controlled capture/reply/playback/timer inputs.',
-      'Voice traces bound two sentences and one submitted turn. Navigation projects fix admission and guidance helpers, not the adapter closure or native service.']}));
+      sources: renderer.sources, driverHashes: renderer.driverHashes,
+      assumptions: ['Actual TypeScript and its transitive shared implementation execute with controlled capture/reply/playback/timer inputs.',
+        'Voice traces bound two sentences and one submitted turn. Navigation projects fix admission and guidance helpers; the adapter closure and native service remain external.']}));
   }
   const lifecycle = await residentLifecycleTraces([fileURLToPath(import.meta.url)]);
   results.push(await checkTraces({model: 'ResidentRuntime', id: 'ResidentRuntime-lifecycle-native', scope: 'bounded-component',

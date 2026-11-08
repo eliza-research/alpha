@@ -25,14 +25,19 @@
         "failedUnbindKeepsAgentTest",
         "recoveryAndRestartTest",
         "replacementRetiresPendingBindingTest",
-        "resetFencesCallbackTest"
+        "resetFencesCallbackTest",
+        "stopRetainsProviderConfigurationTest",
+        "unconfirmedStopKeepsProcessUnknownTest",
+        "ownedCancellationRetiresLateStartupTest",
+        "attachedCancellationPreservesServiceTest"
       ],
       "invariants": [
         "TypeOK",
         "LocalOnly",
         "ResetStopsRuntime",
         "RecoveryPreservesRecords",
-        "CurrentCredentialAtUse"
+        "CurrentCredentialAtUse",
+        "StoppingRetiresEnrollment"
       ],
       "abstractions": [
         "One resident process, three epoch advances and two runtime profiles.",
@@ -59,7 +64,7 @@
       ],
       "tests": [
         "longGapAndPlaybackTest",
-        "staleReplyAfterBargeInTest",
+        "busySpeechDoesNotInterruptTest",
         "partialSentenceNotHeardTest",
         "dictationIsDraftTest",
         "proposalStopsAutomaticVoiceTest",
@@ -76,12 +81,14 @@
         "HeardIsCompleted",
         "VoiceNeverApproves",
         "DictationNeverSubmits",
-        "MutedMicrophoneOff"
+        "MutedMicrophoneOff",
+        "BusyCaptureHeld"
       ],
       "abstractions": [
         "At most three session identities, five turn identities and five utterance identities.",
         "Two complete sentences represent streamed playback and heard-content accounting.",
-        "Errors retire the session; disclosure and exact owner binding are represented as admission predicates."
+        "Errors retire the session; disclosure and exact owner binding are represented as admission predicates.",
+        "The current controller closes capture for a submitted turn through response playback. An explicit speech interruption and its completed playback drain are separate transitions; stale audio callbacks cannot interrupt the busy turn."
       ],
       "sharedSources": [
         "packages/voice/src/native-live-voice.ts",
@@ -416,7 +423,11 @@
         "restoredCalendarGrantAllowsCurrentWorkTest",
         "restoredInboxGrantRequiresFreshReviewTest",
         "restoredGrantCannotReviveRetiredCalendarTest",
-        "restoredGrantCannotReviveRetiredInboxTest"
+        "restoredGrantCannotReviveRetiredInboxTest",
+        "ordinaryStopRetiresVoiceBeforeRestartTest",
+        "attachedStartCancellationPreservesVoiceTest",
+        "ownedStartupCancellationFencesReplyTest",
+        "pendingReplacementPreservesAccountTest"
       ],
       "abstractions": [
         "Actual imported domain transitions run together with explicit frames for every unaffected component.",

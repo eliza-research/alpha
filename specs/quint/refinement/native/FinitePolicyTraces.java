@@ -1,5 +1,7 @@
 package ai.elizaresearch.alphaphone;
 
+import ai.eliza.voice.LiveVadGate;
+
 import org.json.JSONArray;
 import org.json.JSONObject;
 

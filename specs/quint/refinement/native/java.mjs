@@ -7,7 +7,8 @@ import {fileURLToPath} from 'node:url';
 export const root = resolve(dirname(fileURLToPath(import.meta.url)), '../../../..');
 export const directory = dirname(fileURLToPath(import.meta.url));
 export const app = 'android/app/src/main/java/ai/elizaresearch/alphaphone/';
-export const sense = 'android/sense/src/main/java/ai/elizaresearch/alphaphone/sense/';
+export const sense = 'vendor/eliza/packages/app/platforms/android/sense/src/main/java/ai/eliza/sense/';
+export const voice = 'vendor/eliza/plugins/plugin-local-inference/native/android/src/main/java/ai/eliza/voice/';
 
 function executable(name) {
   for (const candidate of [process.env.JAVA_HOME && join(process.env.JAVA_HOME, 'bin', name),

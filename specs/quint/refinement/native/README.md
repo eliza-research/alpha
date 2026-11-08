@@ -36,13 +36,13 @@ contains them. Remaining campaigns are bounded component correspondence.
 
 | Model | Executed entry points | Observed projection and remaining scope |
 | --- | --- | --- |
-| `ResidentRuntime` | `LocalAgentProviderAdmission.bindCloudProvider`, `providerStatus`, renderer `stopLocalAgent`, `LocalAgentProtocol.connect` | Provider admission and actual renderer stop/cancel wrappers. Missing/incomplete shutdown status cannot resolve Stop. Late canceled startup does not publish a session. Native plugin/process lifecycle remains external. |
+| `ResidentRuntime` | `NativeProviderAdmission.bindCloudProvider`, `providerStatus`, renderer `stopLocalAgent`, `LocalAgentProtocol.connect` | Provider admission and actual renderer stop/cancel wrappers. Missing/incomplete shutdown status cannot resolve Stop. Late canceled startup does not publish a session. Native plugin/process lifecycle remains external. |
 | `VoiceSession` | `VoiceAssistantSession.start`, listening callbacks, `setMuted`, `stop`, `recheck`, reply/playback callbacks | Phase, capture, mute, sent turn identity and completed sentence accounting. Dictation, semantic endpointing, reviewed resume and all barge-in schedules remain open. |
 | `SpeechResources` | `LiveCaptureAdmission`, `SpeechPcmQueue`, `SpeechAudioFocusPolicy` | Late attachment cancellation, sample-count capacity/backpressure, buffer zeroing and focus transitions. The helpers run separately. |
 | `AlwaysOnListener` | `ListenerPolicy.decide`, `holdsMicrophone`, `processesAudio`, `latchesIndicatorLoss` | Pairwise environment precedence and loss latching. Consent persistence, recognition epochs and service-owned capture remain open. |
 | `ResetRecovery` | `ResetAuthorization.begin`, `confirm`, `authenticate`, `retire` | Activity-owned generation, confirmation and authorization result. Durable reset storage, retry orchestration and package erasure remain open. |
 | `DeletionJournal` | `DeferredDeletionJournal.stage`, `expire`, `undo`, `list`, `acknowledge` | One persisted row, dispatch count, lost outcome, reload and acknowledgement. Coordinator identity, many-row scheduling and real providers remain open. |
-| `MediaLifecycle` | `NativeReadEpoch`, `PhotoAttachmentSource.read`, `publish` | Epoch, readable scope/revision fence, exact copied bytes and publication guard. Catalog, editing, camera and video ownership remain open. |
+| `MediaLifecycle` | `NativeReadEpoch`, `SelectedPhotoCopy.read`, `publish` | Epoch, readable scope/revision fence, exact copied bytes and publication guard. Catalog, editing, camera and video ownership remain open. |
 | `DeviceActions` | `SmsSendJournal.beginDispatch`, `endDispatch`, callbacks, reload, `existing` | SMS durable intent, multipart result, delivery evidence, failed writes and no automatic repeat. Other device-action domains remain open. |
 | `ApplicationComposition` | Owned by the root integration runner | Native component checks do not establish cross-domain implementation ordering. |
 | `NavigationProgress` | `usableNavigationFix`, `atStep` | Fix validity classes and sparse-projection cursor preservation. Actual navigation closure, reroute timers and native service remain open. |
@@ -51,8 +51,8 @@ contains them. Remaining campaigns are bounded component correspondence.
 | `ResidentScheduling` | `ResidentScheduleRearm.decide`, `admitAndStart` | Complete finite decision table and monitor ownership. Actual service/receiver integration remains open. |
 | `RendererRecovery` | `RendererRecoveryBudget.onLoss`, `delay` | Complete finite budget projection. Activity callbacks, escape rendering and Settings launches remain open. |
 | `VadSegmentation` | `LiveVadGate.accept`, `close` | Complete finite gate projection. PCM generation/pre-roll and ASR transport remain external. |
-| `VoiceIpcAssembly` | `NativeVoiceIpc.exchange` | Eight call/return schedules, response completion, malformed/oversized input, guard changes and successor preservation. Per-callback observations and deterministic deadline scheduling remain open. |
-| `ListenerLeaseProducer` | `AlphaListeningLease.start`, queued tick/delivery | Actual serial delivery, immutable supplied snapshots, target refusal and generation retirement. Actual controller/view measurements remain open. |
+| `VoiceIpcAssembly` | `BufferedStreamExchange.exchange` | Eight call/return schedules, response completion, malformed/oversized input, guard changes and successor preservation. Per-callback observations and deterministic deadline scheduling remain open. |
+| `ListenerLeaseProducer` | `SenseListeningLease.start`, queued tick/delivery | Actual serial delivery, immutable supplied snapshots, target refusal and generation retirement. Actual controller/view measurements remain open. |
 
 The Java trace utility performs serialization and read-only field observation.
 Expected results come from source execution. It does not evaluate a copied

@@ -1,4 +1,10 @@
-package ai.elizaresearch.alphaphone;
+package ai.eliza.plugins.messages;
+import ai.elizaresearch.alphaphone.Trace;
+
+import ai.eliza.plugins.actionjournal.deletion.DeferredDeletionJournal;
+import ai.eliza.plugins.actionjournal.deletion.DeletionDeadline;
+import ai.eliza.plugins.messages.SmsSendJournal;
+import ai.eliza.voice.BufferedStreamExchange;
 
 import java.io.IOException;
 import java.util.concurrent.atomic.AtomicReference;
@@ -108,13 +114,13 @@ public final class JournalTraces {
   JSONArray result = new JSONArray();
   for (String mode : new String[]{"success", "no-complete", "transport", "malformed", "bounds", "occupied", "guard", "replacement"}) {
    int[] dispatches = {0}; boolean[] current = {true}, cancelled = {false};
-   NativeVoiceIpc.Handle mine = () -> cancelled[0] = true, foreign = () -> {};
-   AtomicReference<NativeVoiceIpc.Handle> active = new AtomicReference<>(mode.equals("occupied") ? foreign : null);
+   BufferedStreamExchange.Handle mine = () -> cancelled[0] = true, foreign = () -> {};
+   AtomicReference<BufferedStreamExchange.Handle> active = new AtomicReference<>(mode.equals("occupied") ? foreign : null);
    Trace trace = new Trace("ipc-" + mode, Trace.fields("active", mode.equals("occupied") ? 2 : 0, "dispatches", 0));
    trace.value.put("init", Trace.action("initFor", mode.equals("occupied")));
-   NativeVoiceIpc.Port port = new NativeVoiceIpc.Port() {
-    public NativeVoiceIpc.Handle open() { return mine; }
-    public void request(JSONObject input, java.util.function.Consumer<String> event, NativeVoiceIpc.Handle handle) {
+   BufferedStreamExchange.Port port = new BufferedStreamExchange.Port() {
+    public BufferedStreamExchange.Handle open() { return mine; }
+    public void request(JSONObject input, java.util.function.Consumer<String> event, BufferedStreamExchange.Handle handle) {
      dispatches[0]++;
      if (mode.equals("replacement")) { active.set(foreign); current[0] = false; }
      event.accept(new JSONObject().put("type", "response").put("status", 200).toString());
@@ -130,7 +136,7 @@ public final class JournalTraces {
     }
    };
    JSONObject reply = null;
-   try { reply = NativeVoiceIpc.exchange(port, new JSONObject(), active, () -> { if (!current[0]) throw new SecurityException("retired"); }, 60000); }
+   try { reply = BufferedStreamExchange.exchange(port, new JSONObject(), active, () -> { if (!current[0]) throw new SecurityException("retired"); }, 60000); }
    catch (Exception expected) { if (mode.equals("success")) throw expected; }
    java.util.ArrayList<JSONObject> actions = new java.util.ArrayList<>();
    actions.add(Trace.action("open")); actions.add(Trace.action("claim"));

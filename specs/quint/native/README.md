@@ -21,7 +21,7 @@ refinement remains an additional obligation.
 | Model | Source symbols inspected | State represented |
 | --- | --- | --- |
 | `ResidentRuntime` | `LocalAgentProviderAdmission.bindCloudProvider`, `applyProviderEnvironment`, `providerStatus`, `ResidentCredentialShutdownRetry.await`, `ResidentScheduleRearm.decide`, renderer `residentRecoveryReason` | Local resident lifecycle, source admission, exact credential generation, uncertain unbind, retained recovery records, reset fence |
-| `VoiceSession` | `VoiceAssistantSession.start`, `stop`, `setMuted`, `speechStarted`, `schedule`, `submit`, `respond`, `resume`, `playSentence`, `createNativeLiveDictation`, `createCloudVoice` | Session/turn/utterance generations, semantic and long-gap endpointing, capture, mute, barge-in, completed-sentence accounting, separately reviewed read response and local dictation |
+| `VoiceSession` | `VoiceAssistantSession.start`, `stop`, `setMuted`, `speechStarted`, `schedule`, `submit`, `respond`, `resume`, `playSentence`, `createNativeLiveDictation`, `createCloudVoice` | Session/turn/utterance generations, semantic and long-gap endpointing, busy capture hold, mute, explicit speech interruption, completed-sentence accounting, separately reviewed read response and local dictation |
 | `SpeechResources` | `LiveCaptureAdmission.begin`, `attach`, `stop`, `cancelAll`, `SpeechAudioFocusPolicy.changed`, `stopsCapture`, `SpeechPcmQueue.offer`, `take`, `close` | Capture reservation and late startup, one capture owner, transient focus/duck/loss, bounded PCM queue and canceled stream |
 | `AlwaysOnListener` | `ListenerPolicy.decide`, `holdsMicrophone`, `processesAudio`, `latchesIndicatorLoss`, `IndicatorLease.renew`, `verdict`, `ListeningEpoch.current`, `ListenerStore` consent generation | Consent, visibility, unlock, call/privacy, SystemUI lease, explained pause, sticky indicator loss and queued recognition invalidation |
 | `ResetRecovery` | `ResetAuthorization.begin`, `confirm`, `authenticate`, `retire`, shared `DataReset.record`, `attempt`, `automaticAttemptAllowed`, `recordFailure`, `admitAndExit` | Activity-bound approval, durable pending marker, listener-first reset, bounded automatic retry, recovery surface, accepted dispatch and externally observed erasure |
@@ -49,7 +49,7 @@ The wrappers preserve the imported transitions and export only the symbols used
 by the composition.
 
 The host adds foreground state and the account/epoch captured at voice start.
-Coordinated sign-in replacement retires voice and provider work while switching
+Committing a sign-in replacement retires voice and provider work while switching
 Calendar/Inbox owners through their existing actions. Reset applies the real
 model's marker transition together with resident stop and Inbox permission
 withdrawal. Lifecycle pause invokes the imported voice stop transition. Late
@@ -77,7 +77,9 @@ uses up to two spoken sentences, four submitted turn generations and a separate
 utterance generation. The successful start action summarizes the awaited capture
 opening. `SpeechResources` models the pending native reservation separately and
 checks that a late opening cannot resurrect canceled capture. Voice errors retire
-the session through Stop. Dictation produces an editable draft.
+the session through Stop. Submitted turns keep capture closed until playback
+settles. Explicit speech interruption and its playback drain are separate model
+transitions. Dictation produces an editable draft.
 
 `AlwaysOnListener` merges explained display-off, fullscreen, shade and transition
 pauses into one state. Lease freshness summarizes the monotonic deadline,

@@ -1,5 +1,8 @@
 package ai.elizaresearch.alphaphone;
 
+import ai.eliza.voice.StreamingSpeechPlayback;
+import ai.eliza.voice.VoiceLatencyTrials;
+
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import org.json.JSONArray;

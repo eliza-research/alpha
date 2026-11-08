@@ -1,8 +1,14 @@
 package ai.elizaresearch.alphaphone;
 
-import ai.elizaresearch.alphaphone.sense.IndicatorLease;
-import ai.elizaresearch.alphaphone.sense.ListenerPolicy;
-import ai.elizaresearch.alphaphone.sense.CrashLoopBreaker;
+import ai.eliza.plugins.system.reset.ResetAuthorization;
+import ai.eliza.voice.LiveCaptureAdmission;
+import ai.eliza.voice.SpeechPcmQueue;
+import ai.eliza.voice.SpeechAudioFocusPolicy;
+import ai.eliza.plugins.media.SelectedPhotoCopy;
+
+import ai.eliza.sense.IndicatorLease;
+import ai.eliza.sense.ListenerPolicy;
+import ai.eliza.sense.CrashLoopBreaker;
 import java.io.ByteArrayInputStream;
 import java.util.concurrent.TimeUnit;
 import org.json.JSONArray;
@@ -98,17 +104,17 @@ public final class ComponentTraces {
     trace.step("invalidate", Trace.fields("epoch", epoch.get()), invalidation);
    }
    boolean[] loaded = {false};
-   PhotoAttachmentSource.Source source = new PhotoAttachmentSource.Source() {
-    public PhotoAttachmentSource.Metadata inspect() { return new PhotoAttachmentSource.Metadata("image.png", "image/png", 3, revision[0], "selected:1"); }
+   SelectedPhotoCopy.Source source = new SelectedPhotoCopy.Source() {
+    public SelectedPhotoCopy.Metadata inspect() { return new SelectedPhotoCopy.Metadata("image.png", "image/png", 3, revision[0], "selected:1"); }
     public java.io.InputStream open() { return new ByteArrayInputStream(new byte[]{1, 2, 3}); }
    };
-   PhotoAttachmentSource.Guard guard = () -> { if (!epoch.current(captured, "r0", revision[0], allowed[0])) throw new SecurityException("retired read"); };
-   try { loaded[0] = PhotoAttachmentSource.read(source, guard).bytes.length == 3; } catch (SecurityException expected) { }
+   SelectedPhotoCopy.Guard guard = () -> { if (!epoch.current(captured, "r0", revision[0], allowed[0])) throw new SecurityException("retired read"); };
+   try { loaded[0] = SelectedPhotoCopy.read(source, guard).bytes.length == 3; } catch (SecurityException expected) { }
    trace.step("readComplete", Trace.fields("loaded", loaded[0]), captured, 0);
    if (loaded[0]) {
     trace.step("review", Trace.fields("loaded", true));
     boolean[] published = {false};
-    PhotoAttachmentSource.publish(guard, () -> published[0] = true, () -> {});
+    SelectedPhotoCopy.publish(guard, () -> published[0] = true, () -> {});
     trace.step("publish", Trace.fields("published", published[0]));
    }
    result.put(trace.value);

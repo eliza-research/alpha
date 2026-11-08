@@ -34,7 +34,7 @@ module RendererRecovery {
   }
   action setHome(home: bool): bool = s' = {home: home, operation: "context", ...s}
   action rendererGone(time: int, matchingWebView: bool): bool = all {
-    time.in(Set(0, 1, 59999, 60000, 60001, 120002)),
+    time >= 0,
     if (not(matchingWebView)) s' = {handled: false, operation: "ignored", ...s}
     else if (s.recovering) s' = {handled: true, operation: "duplicate", ...s}
     else {
