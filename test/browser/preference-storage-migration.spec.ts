@@ -1,7 +1,11 @@
 import {test,expect,type Page} from '@playwright/test';
 async function boot(page:Page){await page.addInitScript(()=>localStorage.setItem('alpha.connection.selection.v1',JSON.stringify({kind:'offline'})));await page.goto('/?mode=dev&tools=1');}
 test('empty bookmark reads and sound polling do not invent stored data',async({page})=>{
- await boot(page);await page.waitForTimeout(1200);
+ await boot(page);
+ // The clock polls every second and reads the sound history each time. A second read means a whole
+ // poll after this point has finished, including any write it would make.
+ await page.evaluate(async()=>{const {alertSoundDocument:d}=await import('/src/browser/preference-documents.ts'),read=d.read,w=window as any;w.soundReads=0;(d as any).read=(...args:any[])=>(read as any)(...args).finally(()=>{w.soundReads++;});});
+ await expect.poll(()=>page.evaluate(()=>(window as any).soundReads)).toBeGreaterThanOrEqual(2);
  expect(await page.evaluate(async()=>{const {BrowserSurface}=await import('/src/browser/browser-surface.ts'),{bookmarkDocument,alertSoundDocument}=await import('/src/browser/preference-documents.ts');await new BrowserSurface().bookmarks();return {bookmarks:(await bookmarkDocument.capture()).snapshot??null,sounds:(await alertSoundDocument.capture()).snapshot??null};})).toEqual({bookmarks:null,sounds:null});
 });
 test('concurrent bookmark writers in two tabs retain every saved address across reload',async({page,context})=>{

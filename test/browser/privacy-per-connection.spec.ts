@@ -1,5 +1,4 @@
 import { test, expect, type Page } from '@playwright/test';
-import { readFileSync, writeFileSync } from 'node:fs';
 import { installResidentAgentPlugin } from './helpers/resident-agent-plugin';
 
 // Real rendered Settings over the real connection controller; only the Android IPC boundary is
@@ -157,12 +156,13 @@ test('the Eliza Cloud route names Qwen on Cerebras with one label in Models and 
   expect(await page.locator('body').innerText()).not.toContain('cerebras/');
 });
 
-test('provider key never reaches renderer state, bridge payloads or test output', async ({ page }, info) => {
+test('provider key never reaches renderer state, bridge payloads or console output', async ({ page }) => {
   // Defence in depth: even a bridge that returned extra fields must not surface the key.
   await nativeStub(page, 'resident', { strayKeyInStatus: true });
-  await connect(page, 'resident');
+  // Listen before the first load so output from boot and connection is captured too.
   const console: string[] = [];
   page.on('console', message => console.push(message.text()));
+  await connect(page, 'resident');
   await openSettings(page, 'Models');
   await expect(page.getByText('Cerebras · qwen-3.8-27b', { exact: true }).first()).toBeVisible();
   for (const tab of ['About', 'Privacy & data']) {
@@ -173,10 +173,6 @@ test('provider key never reaches renderer state, bridge payloads or test output'
   const statusCalls = await page.evaluate(() => (window as any).privacyFixture.calls.filter((call: any) => call.plugin === 'Agent' && call.method === 'providerStatus').length);
   expect(statusCalls).toBeGreaterThan(0);
   const dump = await rendererDump(page) + '\n' + console.join('\n');
-  const output = info.outputPath('renderer-dump.txt');
-  writeFileSync(output, dump);
-  // "grep" the written test output, not just the in-memory string.
-  expect(readFileSync(output, 'utf8').includes(SYNTHETIC_KEY)).toBe(false);
   expect(dump).not.toContain('synthetic-provider-key');
 });
 
@@ -184,18 +180,13 @@ test('Activity shows an empty connect state and no Workflow runs row', async ({ 
   await page.goto('/');
   await openSettings(page, 'Privacy & data');
   await expect(page.getByText(REDACTION.offline, { exact: true })).toBeVisible();
+  // Runs live in the Workflows app, not in Privacy & data.
+  await expect(page.getByRole('button', { name: 'Workflow runs', exact: true })).toHaveCount(0);
   await page.getByRole('button', { name: 'Activity', exact: true }).click();
   await expect(page.getByText('Connect your remote agent to see activity', { exact: true })).toBeVisible();
   const text = await page.locator('body').innerText();
   for (const row of fixtureActivity) expect(text).not.toMatch(row);
   await expect(page.locator('html')).toHaveAttribute('data-active-view', 'settings');
-  await expect(page.getByRole('button', { name: 'Workflow runs', exact: true })).toHaveCount(0);
-});
-
-test('Privacy & data has no Workflow runs row: runs live in the Workflows app', async ({ page }) => {
-  await page.goto('/');
-  await openSettings(page, 'Privacy & data');
-  await expect(page.getByRole('button', { name: 'Activity', exact: true })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Workflow runs', exact: true })).toHaveCount(0);
 });
 

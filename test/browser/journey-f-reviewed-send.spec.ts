@@ -382,9 +382,16 @@ test('F-10: a reload between an edit and the discard of its review never lets th
     s.compareExchange = () => new Promise(() => {});
   });
   await page.getByRole('textbox', {name: 'Message', exact: true}).fill('Second body');
-  // Time for the retained copy of the edit to be written. If it were not, the resumed email below
-  // would not hold the second text and this test would fail there.
-  await page.waitForTimeout(1500);
+  // Wait until the retained copy of the edit holds the second text before reloading.
+  await expect.poll(() => page.evaluate(() => new Promise<boolean>((resolve, reject) => {
+    const open = indexedDB.open('alpha.browser.documents.v1');
+    open.onerror = () => reject(open.error);
+    open.onsuccess = () => {
+      const db = open.result, store = db.transaction('documents').objectStore('documents'), keys = store.getAllKeys(), values = store.getAll();
+      values.onsuccess = () => { db.close(); resolve(keys.result.some((key, index) => String(key).includes('inbox-drafts:v1:unsaved:') && JSON.stringify(values.result[index]).includes('Second body'))); };
+      values.onerror = () => { db.close(); reject(values.error); };
+    };
+  }))).toBe(true);
   expect(Object.values((await page.evaluate(KEY => JSON.parse(localStorage.getItem(KEY)!).slots, KEY)) as Record<string, {phase?: string}>).map(slot => slot.phase)).toEqual(['review']);
 
   await openInbox(page, {}, true);

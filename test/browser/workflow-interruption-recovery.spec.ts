@@ -59,7 +59,8 @@ test('repeated and rapid Run taps admit exactly one run',async({page})=>{
  // A double-tap is the review tap plus the confirm tap. Everything after it lands while the one request is in flight.
  await runNow(page).dblclick();await expect.poll(async()=>(await posts(page,'/run')).length).toBe(1);
  await page.evaluate(()=>{for(const button of document.querySelectorAll<HTMLElement>('button[aria-label="Run now"]'))for(let i=0;i<6;i++)button.click();});
- await page.waitForTimeout(500);expect(await posts(page,'/run')).toHaveLength(1);expect((await stored(page)).runs).toHaveLength(0);
+ // Taps act synchronously; any extra request they made is counted after the run finishes below.
+ expect(await posts(page,'/run')).toHaveLength(1);expect((await stored(page)).runs).toHaveLength(0);
  await page.evaluate(()=>(window as any).faults.release());await expect(page.getByText('Before alpha input after',{exact:true})).toBeVisible();
  expect(await posts(page,'/run')).toHaveLength(1);expect((await stored(page)).runs).toHaveLength(1);
 });
@@ -133,7 +134,7 @@ test('an agent without submission identities never offers a resend: the request 
  await expect(status(page)).toHaveText('Prior run outcome unknown — inspect history; repeat submission blocked');
  const sent=await posts(page,'/run');expect(sent).toHaveLength(1);expect(sent[0]).not.toHaveProperty('submissionId');
  await reopenFixture(page);await expect(status(page)).toHaveText('Prior run outcome unknown — inspect history; repeat submission blocked');
- await runNow(page).click();await runNow(page).click();await page.waitForTimeout(400);
+ await runNow(page).click();await runNow(page).click();await expect(page.getByText('Run outcome unknown. Refresh history; automatic retry is blocked.',{exact:true}).first()).toBeVisible();
  expect(await posts(page,'/run')).toHaveLength(1);expect((await page.evaluate(()=>(window as any).faults.calls.filter((call:any)=>call.path.includes('/submissions/')).length))).toBe(0);expect((await stored(page)).runs).toHaveLength(0);
 });
 
@@ -143,7 +144,7 @@ test('a run request held in one tab blocks a second tab from submitting another'
  await rule(page,{method:'POST',suffix:'/run',kind:'hold',times:1});await runNow(page).dblclick();await expect.poll(async()=>(await posts(page,'/run')).length).toBe(1);
  // The second tab sees the retained request and refuses to add its own.
  await expect(status(other)).toHaveText('Prior run outcome unknown — inspect history; repeat submission blocked');
- await runNow(other).click();await runNow(other).click();await other.waitForTimeout(400);expect(await posts(other,'/run')).toHaveLength(0);
+ await runNow(other).click();await runNow(other).click();await expect(other.getByText('Run outcome unknown. Refresh history; automatic retry is blocked.',{exact:true}).first()).toBeVisible();expect(await posts(other,'/run')).toHaveLength(0);
  await page.evaluate(()=>(window as any).faults.release());await expect(page.getByText('Before alpha input after',{exact:true})).toBeVisible();
  await expect(status(other)).toHaveText('Paused on this agent');expect((await stored(page)).runs).toHaveLength(1);await other.close();
 });

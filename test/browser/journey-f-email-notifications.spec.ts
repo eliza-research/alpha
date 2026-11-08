@@ -6,7 +6,7 @@ import {localDraftRow} from './inbox-draft-navigation';
 // APK, emulator, AOSP image, physical-device or real-integration evidence. No real account,
 // OAuth grant, Gmail request or mail delivery is involved anywhere in this file.
 //
-// The loop is a small serial group because the product has two distinct mail paths:
+// The tests are independent (each has a fresh context) and cover the product's two distinct mail paths:
 //  1. Development profile (/?mode=dev): the built-in local development mailbox. Inbox load,
 //     open a message, local draft that survives reload, local send, exactly one Sent record.
 //     This path has no provider review and no receipt by design ("Sent locally").
@@ -35,7 +35,6 @@ import {test, expect, type Page} from '@playwright/test';
 import {guardCalendarFixture} from './calendar-draft-readiness';
 import {returnToApps} from './app-navigation';
 
-test.describe.configure({mode: 'serial'});
 const button = (page: Page, name: string) => page.getByRole('button', {name, exact: true});
 const PROVIDER = 'journey-f-provider';
 

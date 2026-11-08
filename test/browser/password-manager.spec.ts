@@ -235,12 +235,13 @@ test('outbound capture: vault work sends no request containing typed or stored v
   await page.locator('input[aria-label="Password"]').fill('typed-synthetic-Z9q');
   await page.getByRole('button', { name: 'Save', exact: true }).click();
   await expect(page.getByText('Password saved.', { exact: true })).toBeVisible();
-  // Agent turns are refused while the vault is open, so nothing can be observed or sent.
-  const refused = await page.evaluate(async () => {
+  // The open vault marks the agent context sensitive. That AlphaClient then refuses every turn is
+  // tested in test/alpha-client-sensitive.test.mjs.
+  const sensitive = await page.evaluate(async () => {
     const { alphaClient } = await import('/src/runtime/alpha-client.ts');
     return alphaClient.getState().context.sensitive;
   });
-  expect(refused).toBe(true);
+  expect(sensitive, 'context is marked sensitive').toBe(true);
   await page.getByRole('button', { name: 'Back to Settings', exact: true }).click();
   const leaked = await page.evaluate(markers => {
     const w = window as any; const text = (w.consoleText || '') + (w.capturedBeacons || []).join('\n');
