@@ -254,7 +254,7 @@ test('the dock, title and toast fixes the sweep depends on stay in the source', 
   assert.match(toast, /region\.setAttribute\('aria-live', 'polite'\)/);
   assert.match(toast, /dialog\.prepend\(region\)/);
   assert.doesNotMatch(toast, /showPopover|position:fixed/);
-  assert.match(toast, /dialog\.matches\(':modal'\)/);
+  assert.match(toast, /dialog\.matches\('dialog\[open\]:modal'\)/);
 });
 
 test('the layout hooks the sweep depends on stay in the template', () => {
