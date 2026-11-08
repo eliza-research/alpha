@@ -1638,5 +1638,50 @@
       "Canonical Calendar editor owner transition, opaque lifetime, durable slot reads/writes, consumed records, stale controls and recovery.",
       "Two owner identities, six lifetimes, synthetic title classes, one held read and write per owner. Pending operations bind to actual lifetime observations. Provider dispatch, reminder destination conversion, arbitrary invalid fields and native storage durability remain external."
     ]
+  },
+  {
+    "path": "specs/quint/application/BrowserReminderOrphan.qnt",
+    "module": "BrowserReminderOrphan",
+    "init": "init",
+    "step": "step",
+    "invariant": "safety",
+    "tests": [
+      "orphanImportsWithoutCreatingDeletionAuthorityTest",
+      "orphanCannotBeRestagedTest",
+      "orphanCannotBeUndoneTest",
+      "ordinaryChangesKeepOrphanUntilExplicitReplacementTest",
+      "aGenuinePairBlocksReplacementTest",
+      "explicitClockCancelLeavesOrphanWithoutReceiptTest",
+      "aPendingAlarmCannotAcquireSoundOnLockGrantTest"
+    ],
+    "invariants": [
+      "PairedAuthorityOwnsMarker",
+      "AClaimRequiresAnOwnJournalEntry",
+      "ClockLockAndAudioOwnershipAreSeparate"
+    ],
+    "sources": [
+      "apps/app/src/browser/daily.ts",
+      "apps/app/src/browser/clock.ts",
+      "apps/app/src/browser/reminder-store.ts",
+      "apps/app/src/browser/reminder-deletions.ts",
+      "apps/app/src/browser/domain-document.ts",
+      "apps/app/src/browser/deletion-recovery.ts",
+      "apps/app/src/browser/journal-retention.ts"
+    ],
+    "stateMapping": {
+      "row/peer": "Actual Reminder domain rows, bounded wall time and exact revision/occurrence equality classes",
+      "legacy/canonical": "Exact legacy bytes retained and canonical migration snapshot",
+      "journal/claim/receipts": "Own deletion authority and ordinary mutation receipts",
+      "clock": "Actual Clock row projection, held lock callback and synthetic audio state"
+    },
+    "abstractions": [
+      "One v1 one-off reminder or alarm, one unrelated row, one own deletion and three ordinary mutation IDs. Review expiry and destructive recovery are outside this component.",
+      "Legacy orphan and genuine own-key deletion share the same opaque identity. Wall time advances independently of the held deletion clock. Host fixture uses controlled CAS, notification and audio ports."
+    ],
+    "bounds": {
+      "maxSamples": 1000,
+      "maxSteps": 60,
+      "maxVerifyDepth": 4
+    }
   }
 ]
