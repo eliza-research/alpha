@@ -251,7 +251,7 @@ export function installPrototypeVoiceAdapter(Component: any, views: Record<strin
     if (route === 'manual') { cloudMode = false; deviceOnly = true; driver = deviceVoice; }
     if (route === 'device') { cloudMode = false; deviceOnly = true; driver = deviceVoice; if (!onDeviceVoice) error = 'On-device speech is unavailable. Retry local speech or use the keyboard.'; }
     if (preparedLocal) { onDeviceReady = true; cloudMode = false; deviceOnly = true; driver = deviceVoice; }
-    else if (onDeviceVoice) {
+    else if (onDeviceVoice && (!chat || chat.mode === 'dictation')) {
       preparingLocal = true;
       const local = onDeviceVoice, token = generation, controller = new AbortController(); readiness = controller;
       void stopping.then(() => {
