@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {spawnSync} from 'node:child_process';
-import {closeSync, fstatSync, mkdtempSync, openSync, readSync, rmSync} from 'node:fs';
+import {closeSync, fstatSync, mkdtempSync, openSync, readFileSync, readSync, rmSync} from 'node:fs';
 import {tmpdir} from 'node:os';
 import {join} from 'node:path';
 
@@ -15,7 +15,7 @@ test('service components and coordinators check real-source traces and preserve 
       const result = await runServicesRefinement();
       if (result.receipts.some(receipt => !receipt.passed)) throw Error('Incomplete service model checks');
       writeSync(3, JSON.stringify({
-        receipts: result.receipts.length,
+        models: result.receipts.map(receipt => receipt.model),
         traces: result.receipts.reduce((sum, receipt) => sum + receipt.traces, 0),
         obligations: result.obligations.length,
       }));
@@ -26,9 +26,13 @@ test('service components and coordinators check real-source traces and preserve 
       const read = readSync(log, tail, 0, tail.length, size - tail.length);
       assert.fail(`Service refinement exited with ${result.error ?? result.signal ?? result.status}\n${tail.toString('utf8', 0, read)}`);
     }
-    const {receipts, traces, obligations} = JSON.parse(result.output[3]);
-    assert.equal(receipts, 35);
-    assert.ok(traces >= receipts);
+    const {models, traces, obligations} = JSON.parse(result.output[3]);
+    const manifest = JSON.parse(readFileSync(new URL('../specs/quint/services/manifest.json', import.meta.url)));
+    const expected = new Set(manifest.map(model => model.module));
+    assert.deepEqual(new Set(models), expected);
+    assert.deepEqual(models.filter((model, index) => models.indexOf(model) !== index).sort(),
+      ['GoogleAccounts', 'IdentitySession', 'InboxCoordinator']);
+    assert.ok(traces >= models.length);
     assert.ok(obligations >= 37, 'remaining obligations accompany the bounded evidence');
   } finally {
     closeSync(log);

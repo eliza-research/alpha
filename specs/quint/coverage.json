@@ -47574,7 +47574,8 @@
     {
       "path": "backend/loader.ts",
       "models": [
-        "ResidentRuntime"
+        "ResidentRuntime",
+        "DevelopmentRuntimeLoader"
       ],
       "scope": "application",
       "treatment": "domain-contract-or-support",
@@ -49312,7 +49313,8 @@
       "path": "scripts/core-state-patch.mjs",
       "models": [
         "TaskServiceLifecycle",
-        "TaskSchedulerRuntime"
+        "TaskSchedulerRuntime",
+        "DevelopmentRuntimeLoader"
       ],
       "scope": "development-runtime",
       "treatment": "domain-contract-or-support",
@@ -133183,6 +133185,28 @@
           "text": "export const remoteTargetVaultInternals = {"
         }
       ]
+    },
+    {
+      "path": "vendor/eliza/packages/app/scripts/lib/consumer-source-resolver.mjs",
+      "models": [
+        "DevelopmentRuntimeLoader"
+      ],
+      "scope": "shared-upstream",
+      "treatment": "domain-contract-or-support",
+      "reviewStatus": "state-audit-required",
+      "sha256": "79743fd6f2ed6a8b20e50d4bc2dfcc9d9d0975be512863bebc7622ca1ebb92fd",
+      "stateAnchors": []
+    },
+    {
+      "path": "vendor/eliza/packages/app/scripts/lib/immutable-workspace-source.mjs",
+      "models": [
+        "DevelopmentRuntimeLoader"
+      ],
+      "scope": "shared-upstream",
+      "treatment": "domain-contract-or-support",
+      "reviewStatus": "state-audit-required",
+      "sha256": "10b43806d93aa4e7bba53cc33df975afa69f39aa760507b7aeff9cfeb026fc2b",
+      "stateAnchors": []
     },
     {
       "path": "vendor/eliza/packages/app/src/api/auth-pairing-routes.ts",
@@ -618894,7 +618918,8 @@
         "TaskServiceLifecycle",
         "CanonicalNotesStore",
         "CoreTurnControllers",
-        "TaskSchedulerRuntime"
+        "TaskSchedulerRuntime",
+        "DevelopmentRuntimeLoader"
       ],
       "sha256": "25b46e944ecd6a4d5569e8eace9e2f9b22eea2ebdd36075e90fd15d1b9fb6478"
     },
@@ -619146,7 +619171,7 @@
     "apps/app/index.html"
   ],
   "sharedSourceDiscovery": {
-    "sharedSourceCount": 4841,
+    "sharedSourceCount": 4843,
     "producer": "specs/quint/refinement/services/runtime-bundle-inputs.json",
     "sourcePin": "99b49439ce9d0cb5607e9831b9f7f58d89525029",
     "meaning": "Authenticated source identities and domain allocations. Runtime activation and implementation refinement require separate evidence."

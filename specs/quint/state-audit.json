@@ -12,7 +12,7 @@
   "toolSha256": "403a33cab0dff7ace6219b29e7ffef373319677a7d8be6641466dd16a6750b5b",
   "dependencyLockSha256": "944123c801157a7ba3676a886d0b28a54bef32735ae96da5c6dd0f206c88c8bf",
   "sourcePin": "99b49439ce9d0cb5607e9831b9f7f58d89525029",
-  "ledgerSha256": "b91d6441a8dab7b9d15c93bcdbdcae9e702ca320d5dd8f066581a84dc832f071",
+  "ledgerSha256": "9a1d856d01db2591098453e7ada7d3203458d2090e2b19b2dd1589f9a5b46244",
   "method": "TypeScript syntax trees for JavaScript/TypeScript and JDK compiler trees for Java. Mutable fields, bindings, containers, state hooks, write sites and asynchronous registration calls are candidates for semantic review.",
   "limitations": [
     "Candidate extraction does not establish state-machine coverage or implementation refinement.",
@@ -22,17 +22,17 @@
     "The ledger supplies pinned source bytes. Effective client/native/runtime patch outputs require their separately authenticated source mappings."
   ],
   "counts": {
-    "files": 5681,
+    "files": 5683,
     "testSupportFiles": 287,
     "testSupportCandidates": 11480,
-    "parsedFiles": 5626,
+    "parsedFiles": 5628,
     "languageReview": 55,
     "parseErrors": 0,
-    "candidates": 67112,
-    "writeSites": 66546,
-    "writeAssociations": 59725,
+    "candidates": 67118,
+    "writeSites": 66555,
+    "writeAssociations": 59732,
     "asynchronous": 8300,
-    "unassignedWrites": 10189
+    "unassignedWrites": 10191
   },
   "files": [
     {
@@ -45258,7 +45258,8 @@
       "path": "backend/loader.ts",
       "sha256": "183bf250d4f6b6db5a4e672bb60993ebaebef62dfa0eee21bc0d5e1dc76f2150",
       "allocatedModels": [
-        "ResidentRuntime"
+        "ResidentRuntime",
+        "DevelopmentRuntimeLoader"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -45745,7 +45746,8 @@
       "sha256": "25b46e944ecd6a4d5569e8eace9e2f9b22eea2ebdd36075e90fd15d1b9fb6478",
       "allocatedModels": [
         "TaskServiceLifecycle",
-        "TaskSchedulerRuntime"
+        "TaskSchedulerRuntime",
+        "DevelopmentRuntimeLoader"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -65718,6 +65720,54 @@
       "parseErrors": [],
       "asynchronous": 3,
       "unassignedWrites": 1
+    },
+    {
+      "path": "vendor/eliza/packages/app/scripts/lib/consumer-source-resolver.mjs",
+      "sha256": "79743fd6f2ed6a8b20e50d4bc2dfcc9d9d0975be512863bebc7622ca1ebb92fd",
+      "allocatedModels": [
+        "DevelopmentRuntimeLoader"
+      ],
+      "sourceReview": "state-audit-required",
+      "sourcePathClass": "other-source-path",
+      "classification": "syntactic-candidates",
+      "owners": [
+        {
+          "owner": "createConsumerSourceResolver",
+          "line": 29,
+          "bindings": 2,
+          "writes": 2
+        },
+        {
+          "owner": "createConsumerSourceResolver.setup.ArrowFunction@49",
+          "line": 57,
+          "bindings": 1,
+          "writes": 2
+        }
+      ],
+      "parseErrors": [],
+      "asynchronous": 0,
+      "unassignedWrites": 2
+    },
+    {
+      "path": "vendor/eliza/packages/app/scripts/lib/immutable-workspace-source.mjs",
+      "sha256": "10b43806d93aa4e7bba53cc33df975afa69f39aa760507b7aeff9cfeb026fc2b",
+      "allocatedModels": [
+        "DevelopmentRuntimeLoader"
+      ],
+      "sourceReview": "state-audit-required",
+      "sourcePathClass": "other-source-path",
+      "classification": "syntactic-candidates",
+      "owners": [
+        {
+          "owner": "verifyCommittedWorkspace",
+          "line": 89,
+          "bindings": 3,
+          "writes": 3
+        }
+      ],
+      "parseErrors": [],
+      "asynchronous": 0,
+      "unassignedWrites": 0
     },
     {
       "path": "vendor/eliza/packages/app/src/api/auth-pairing-routes.ts",
@@ -218549,6 +218599,6 @@
   ],
   "detail": {
     "path": "test-results/quint-state-audit/details.json",
-    "sha256": "d3a5abcc4b7d609c0e000d209e34067ae04b4823beee24fefcf3a2f31600c88b"
+    "sha256": "61e7b01ccb6e1689a535129b0d3ac7f8fcc9e81a90113fa79b773e8dead01335"
   }
 }
