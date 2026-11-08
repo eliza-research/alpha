@@ -98,7 +98,7 @@ export function seedCommittedCache(cache, destination, commit) {
    if(!stat.isSymbolicLink())throw Error(`Runtime cache source drift: ${name}`);
    link=fs.readlinkSync(source);const value=Buffer.from(link);hash.update(Buffer.from(`blob ${value.length}\0`));hash.update(value);
   }else{
-   if(!stat.isFile()||stat.isSymbolicLink()||(stat.mode&0o111)!==(mode==='100755'?0o111:0))throw Error(`Runtime cache source drift: ${name}`);
+   if(!stat.isFile()||stat.isSymbolicLink()||Boolean(stat.mode&0o100)!==(mode==='100755'))throw Error(`Runtime cache source drift: ${name}`);
    hash.update(Buffer.from(`blob ${stat.size}\0`));
    const file=fs.openSync(source,'r');
    try{let length;while((length=fs.readSync(file,buffer,0,buffer.length,null))>0)hash.update(buffer.subarray(0,length));}finally{fs.closeSync(file);}
