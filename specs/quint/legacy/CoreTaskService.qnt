@@ -161,6 +161,17 @@ module CoreTaskService {
   action init = Model::Init
   action step = Model::Step
   action rawStep = Model::Next
+  // Source replays observe the published row and existing transition outcomes.
+  val sourceState = Model::s
+  val sourceTickActive = Model::s.activeTick != 0
+  action sourceBegin(r: int): bool = Model::Begin(r)
+  action sourceRead(r: int): bool = Model::Read(r)
+  action sourceSelect(r: int): bool = Model::Select(r)
+  action sourceWork(r: int, outcome: str): bool = Model::WorkWith(r, outcome)
+  action sourceWrite(r: int): bool = Model::Write(r)
+  action sourceRelease(r: int): bool = Model::Release(r)
+  action sourceRecheck(r: int): bool = Model::RecheckFound(r)
+  action sourceRecheckRefused(r: int): bool = Model::RecheckMissingOrFailed(r)
   val safety = Model::TypeOK and Model::OneShotAtMostOnce and Model::OneShotDeletedAfterRun and Model::BlockingNoOverlap
     and Model::ClaimHeld and Model::NoLostWake and Model::PausedNotSelected and Model::DirtyArmed
   temporal CheckedTemporal = Model::Fairness implies Model::RunnerFinishes and Model::WriteSeen and Model::WakeServed
@@ -179,6 +190,17 @@ module CoreTaskServiceDaemonRepeat {
   action init = Model::Init
   action step = Model::Step
   action rawStep = Model::Next
+  // Source replays observe the published row and existing transition outcomes.
+  val sourceState = Model::s
+  val sourceTickActive = Model::s.activeTick != 0
+  action sourceBegin(r: int): bool = Model::Begin(r)
+  action sourceRead(r: int): bool = Model::Read(r)
+  action sourceSelect(r: int): bool = Model::Select(r)
+  action sourceWork(r: int, outcome: str): bool = Model::WorkWith(r, outcome)
+  action sourceWrite(r: int): bool = Model::Write(r)
+  action sourceRelease(r: int): bool = Model::Release(r)
+  action sourceRequest = Model::Request
+  action sourceWakeElapse = Model::WakeElapse
   val safety = Model::TypeOK and Model::OneShotAtMostOnce and Model::OneShotDeletedAfterRun and Model::BlockingNoOverlap
     and Model::ClaimHeld and Model::NoLostWake and Model::PausedNotSelected and Model::DirtyArmed
   temporal CheckedTemporal = Model::Fairness implies Model::RunnerFinishes and Model::WriteSeen and Model::WakeServed
@@ -193,6 +215,18 @@ module CoreTaskServiceLocalOneshot {
   action init = Model::Init
   action step = Model::Step
   action rawStep = Model::Next
+  // Source replays observe the published row and existing transition outcomes.
+  val sourceState = Model::s
+  val sourceTickActive = Model::s.activeTick != 0
+  action sourceBegin(r: int): bool = Model::Begin(r)
+  action sourceRead(r: int): bool = Model::Read(r)
+  action sourceSelect(r: int): bool = Model::Select(r)
+  action sourceWork(r: int, outcome: str): bool = Model::WorkWith(r, outcome)
+  action sourceWrite(r: int): bool = Model::Write(r)
+  action sourceRelease(r: int): bool = Model::Release(r)
+  action sourceRecheck(r: int): bool = Model::RecheckFound(r)
+  action sourceRecheckRefused(r: int): bool = Model::RecheckMissingOrFailed(r)
+  action sourcePause = Model::TogglePause
   val safety = Model::TypeOK and Model::OneShotAtMostOnce and Model::OneShotDeletedAfterRun and Model::BlockingNoOverlap
     and Model::ClaimHeld and Model::NoLostWake and Model::PausedNotSelected and Model::DirtyArmed
   temporal CheckedTemporal = Model::Fairness implies Model::RunnerFinishes and Model::WriteSeen and Model::WakeServed
@@ -205,6 +239,17 @@ module CoreTaskServiceLocalRepeat {
   action init = Model::Init
   action step = Model::Step
   action rawStep = Model::Next
+  // Source replays observe the published row and existing transition outcomes.
+  val sourceState = Model::s
+  val sourceTickActive = Model::s.activeTick != 0
+  action sourceBegin(r: int): bool = Model::Begin(r)
+  action sourceRead(r: int): bool = Model::Read(r)
+  action sourceSelect(r: int): bool = Model::Select(r)
+  action sourceWork(r: int, outcome: str): bool = Model::WorkWith(r, outcome)
+  action sourceWrite(r: int): bool = Model::Write(r)
+  action sourceRelease(r: int): bool = Model::Release(r)
+  action sourceRequest = Model::Request
+  action sourceWakeElapse = Model::WakeElapse
   val safety = Model::TypeOK and Model::OneShotAtMostOnce and Model::OneShotDeletedAfterRun and Model::BlockingNoOverlap
     and Model::ClaimHeld and Model::NoLostWake and Model::PausedNotSelected and Model::DirtyArmed
   temporal CheckedTemporal = Model::Fairness implies Model::RunnerFinishes and Model::WriteSeen and Model::WakeServed
