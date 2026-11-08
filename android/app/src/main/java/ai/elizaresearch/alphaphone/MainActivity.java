@@ -308,7 +308,11 @@ public class MainActivity extends BridgeActivity {
   registerPlugin(AlphaListenerPlugin.class);
   registerPlugin(ai.eliza.plugins.system.SensePlugin.class);
   registerPlugin(ai.eliza.plugins.passwords.PasswordsPlugin.class);
-  if(BuildConfig.ELIZA_DEV_ALLOW_TEST_MOCKS)registerPlugin(ai.eliza.plugins.passwords.PasswordTransferPlugin.class);
+  if (BuildConfig.ELIZA_DEV_ALLOW_TEST_MOCKS) {
+   // The optional transfer module is absent from production builds.
+   try { registerPlugin(Class.forName("ai.eliza.plugins.passwords.PasswordTransferPlugin").asSubclass(com.getcapacitor.Plugin.class)); }
+   catch (ClassNotFoundException ignored) { /* Optional development transfer module is not attached. */ }
+  }
   // The native image gate is checked again by every telephony operation.
   // Dialer-role components follow the verified image; Android's role dialog stays the owner's choice.
   AlphaTelephonyRoles.sync(this);
