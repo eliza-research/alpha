@@ -1459,5 +1459,37 @@
       "maxSteps": 80,
       "maxVerifyDepth": 4
     }
+  },
+  {
+    "path": "specs/quint/application/DrawerInteraction.qnt",
+    "module": "DrawerInteraction",
+    "init": "init",
+    "step": "step",
+    "invariant": "safety",
+    "tests": [
+      "unrelatedPointerKeepsHoldTest",
+      "removedMenuCannotReopenTest",
+      "oldHoldCannotRetargetReplacementTest",
+      "appInfoClosesMenuAndRestoresExactTileTest",
+      "lateInfoRejectionReportsAfterDrawerClosesTest"
+    ],
+    "invariants": [
+      "OwnsVisibleMenu",
+      "OwnsVisiblePress",
+      "CurrentSuppression",
+      "ExactAppInfo"
+    ],
+    "sources": [
+      "apps/app/src/prototype/home-shell.ts",
+      ".eliza/client-features/packages/ui/src/mobile-shell/InstalledAppsGridDrawer.tsx",
+      ".eliza/client-features/packages/ui/src/mobile-shell/navigation.ts",
+      ".eliza/client-features/plugins/plugin-native-system/src/client/launcher.ts",
+      "patches/eliza/launcher-drawer-ownership-client.patch",
+      "patches/eliza/launcher-drawer-ownership-client-manifest.json"
+    ],
+    "abstractions": [
+      "Mounted installed drawer long press, search, current menu, keyboard focus, home pin, and exact synthetic App Info handoff with late replies.",
+      "Two package/activity/profile identities and pointer IDs, four query classes, one mounted host, one timer and one outstanding App Info. Current committed DOM is observed. Physical input, Android screens and concurrent handoffs remain external."
+    ]
   }
 ]
