@@ -26,6 +26,8 @@ final class ReviewedCopies {
  /** The caller has validated the name and exact bytes. Create and register under the same lock as
   * sweep, then write off-lock so a cancel can unlink an in-progress copy without waiting for sync. */
  File write(File folder,String name,byte[] data)throws IOException{
+  if(name==null||name.isEmpty()||name.length()>255||name.contains("/")||name.contains("\\")||name.contains("\0"))
+   throw new IllegalArgumentException("Invalid handoff name");
   File file=new File(folder,UUID.randomUUID()+"-"+name);
   Copy copy=new Copy(this);
   FileOutputStream opened;

@@ -43,6 +43,11 @@ public final class ReviewedCopiesTest {
    List<File> mainRevoked=new ArrayList<>(),assistantRevoked=new ArrayList<>();
    ReviewedCopies main=new ReviewedCopies(file->{mainRevoked.add(file);file.delete();});
    ReviewedCopies assistant=new ReviewedCopies(file->{assistantRevoked.add(file);file.delete();});
+   for(String name:List.of("", "nested/name.txt", "nested\\name.txt", "bad\0name.txt")){
+    try{main.write(folder,name,new byte[]{1});throw new AssertionError("unsafe handoff name accepted");}
+    catch(IllegalArgumentException expected){/* reject before touching the cache */}
+   }
+   check(folder.listFiles().length==1,"name rejection leaves the cache untouched");
    main.sweep(new File(folder,"unavailable"),now);
    File assistantCopy=firstLoadAndPeerWrite(folder,main,assistant,now);
    check(!leftover.exists(),"the first successful load removes an earlier process's copy");
