@@ -13,7 +13,7 @@
       "scripts/build-mobile-agent.mjs": "a806e8eada974f400afe18e00e5cf275d3519ab00462615076e3d4124639a288",
       "scripts/mobile-uuid-adapter.mjs": "ea9438c30c7a6bb446f6d5c5cffd379796c5b43cc4e1aa614c24b00a48c16678",
       "scripts/mobile-bundle-smoke.mjs": "2e4f7ef05ae6f09285c2a6141876c14b5f30539c926a46864bf8862ae8d3b7bd",
-      "scripts/local-agent-source.mjs": "321abaf05f9e8cbf6e4ba642ec7ebf45a6c693331a637210610a1f7723662daa",
+      "scripts/local-agent-source.mjs": "bd5c0ae286c2802fed48f8e51150d4f2de75fb4c8563cfdcdd4d1347fb888c5f",
       "scripts/core-state-patch.mjs": "25b46e944ecd6a4d5569e8eace9e2f9b22eea2ebdd36075e90fd15d1b9fb6478",
       "scripts/core-state-preload.mjs": "c5368c9075aa8c7660bee01338185fbe673c9b8dd6889dd1ab01d195efa17c10",
       "scripts/combined-agent-source.mjs": "a2f4d279f3f98ff078f3aedd6b9dc2dc5c3396ecdc7fb7f09b0da7e0c085062e",
@@ -175,11 +175,11 @@
       "version": "1.4.2",
       "revision": "744846f844374847c902b5e7fd59b4342a51ef99"
     },
-    "bundleSha256": "301cedeb7aa86543100d13f9fbfeed386cd0599e16c669b709e4d62c07b0156c",
+    "bundleSha256": "930bc33a7eb7b8d5e8e24617b99327ee290772c3fb15fe2e516a127c6afed9f1",
     "sourceTreeVerifiedBeforeAndAfter": true,
     "inputHashesUnchanged": true,
-    "rawMetafileSha256": "ecd2e0cbe2753f2ea4e488d63779318fad696125f3d14ae7eb1cf09254d7e695",
-    "producerObservationSha256": "ff75e0463bd32c55b339fbee4af35682c23a88989cea9f333b2f69808cc3023e"
+    "rawMetafileSha256": "fa306b455a71776bc8c180f951ee0ac6e5ed5eb6d0a7234b593c4e7d8e786db1",
+    "producerObservationSha256": "9de6f9d7d72c1a2381db42ef66976082206394aa53b68e66f0215d11765a0f47"
   },
   "counts": {
     "parsed": 9988,
@@ -62687,7 +62687,7 @@
           "scope": "first-party"
         },
         {
-          "target": "node_modules/.bun/viem@2.56.9+2b78734613504846/node_modules/viem/_cjs/index.js",
+          "target": "node_modules/.bun/viem@2.56.9+c486653617c72b4e/node_modules/viem/_cjs/index.js",
           "kind": "dynamic-import",
           "scope": "virtual-or-unresolved"
         }
@@ -85091,7 +85091,7 @@
           "scope": "first-party"
         },
         {
-          "target": "node_modules/.bun/viem@2.56.9+2b78734613504846/node_modules/viem/_cjs/accounts/index.js",
+          "target": "node_modules/.bun/viem@2.56.9+c486653617c72b4e/node_modules/viem/_cjs/accounts/index.js",
           "kind": "import-statement",
           "scope": "bundled-dependency"
         },
@@ -96583,7 +96583,7 @@
     },
     "plugins/plugin-local-inference/src/services/voice/wake-word.ts": {
       "sha256": "d29607d0602c1712a59e3060da29d39554987e8c35a30003c5ddd035c2a36a24",
-      "bytesInOutput": 6694,
+      "bytesInOutput": 6738,
       "tracked": true,
       "gitObject": "1a0c32165c499612ac599f2b1778b52bcff83ab8",
       "imports": [
@@ -120122,7 +120122,7 @@
     },
     "plugins/plugin-vision/src/vision-worker-manager.ts": {
       "sha256": "227585cb5446d878cc936fb22ccae10c222f76637e389a30b57c5a2d1863b971",
-      "bytesInOutput": 8822,
+      "bytesInOutput": 8866,
       "tracked": true,
       "gitObject": "963484a67214e88aff052f9cd81f4d0d6fa806d1",
       "imports": [
