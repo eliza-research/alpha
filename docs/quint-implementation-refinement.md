@@ -555,3 +555,11 @@ channel refusal, repeated snooze and Done, reboot replay, and the
 notification that becomes visible before its posted marker is durable.
 Both host JSON libraries produced identical projected traces. Actual
 Android delivery remains a separate boundary.
+
+The historical Settings navigation campaign checks six mounted traces and
+38 checkpoints across both profiles. It observes license search and
+detail navigation, return to Apps after Back, and sign-out confirmation
+dismissal with the synthetic owner intact. Five independent mismatch
+receipts record current navigation and information that the historical
+profiles describe differently. Installed system Settings and accepted
+sign-out remain separate.

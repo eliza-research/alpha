@@ -10,7 +10,7 @@ import {flagOffAndroid, fenceNetwork} from '../../../../test/browser/flag-off-an
 import {residentStub} from '../../../../test/browser/resident-stub.ts';
 import {captureInputs, checkTraces} from '../../refinement/check-traces.mjs';
 
-const comparison = 'specs/quint/legacy/settings-nav/SettingsNavComparison.qnt';
+const comparison = 'test/fixtures/quint/SettingsNavComparison.qnt';
 const main = resolve(root, 'apps/app/src/main.tsx');
 const settings = resolve(root, 'apps/app/src/prototype/settings-adapter.ts');
 const adapter = resolve(root, 'apps/app/src/prototype/agent-adapter.ts');

@@ -1,5 +1,6 @@
 import {fileURLToPath} from 'node:url';
 import {checkChatInputRefinement} from '../../legacy/chat-input/check-chat-input-refinement.mjs';
+import {checkSettingsNavRefinement} from '../../legacy/settings-nav/check-settings-nav-refinement.mjs';
 import {checkActionSettlementRefinement} from '../../legacy/core/check-action-settlement-refinement.mjs';
 import {checkApprovalServiceRefinement} from '../../legacy/core/check-approval-service-refinement.mjs';
 import {checkEmbeddingSqlRefinement} from '../../legacy/core/check-embedding-sql-refinement.mjs';
@@ -35,6 +36,18 @@ const pluginDifferences = {
   PluginRuntimeStopLookup: ['Runtime shutdown clears the public service lookup',
     'The source clears both service indexes. The original final shutdown step leaves the public lookup unchanged.'],
 };
+const settingsNavDifferences = {
+  SettingsNavCurrentDirectSignOut: ['Browser sign-out requires explicit confirmation',
+    'The mounted source opens a confirmation dialog and preserves the synthetic owner when it is dismissed. The original current profile signs out directly.'],
+  SettingsNavCurrentRootWifi: ['Settings groups connectivity controls',
+    'The original current profile exposes the Wi-Fi row at the root. The mounted root uses categories.'],
+  SettingsNavCurrentLicenseDetails: ['The current-profile license list can open a selected detail',
+    'The mounted source can navigate to a packaged notice from the filtered list. The historical current profile ends at the list.'],
+  SettingsNavProposedLicenseDetails: ['The proposed-profile license list can open a selected detail',
+    'The mounted source can navigate to a packaged notice from the filtered list. The historical proposed profile ends at the list.'],
+  SettingsNavProposedInfoRows: ['The mounted Settings information includes an AI connection entry',
+    'The original proposed profile restricts the information rows to its historical set.'],
+};
 
 export async function runLegacyRefinement() {
   const receipts = [], obligations = [];
@@ -44,6 +57,14 @@ export async function runLegacyRefinement() {
       const obligations = mismatches.map(mismatch => {
         const [obligation, reason] = chatInputDifferences[mismatch.id];
         return {model: 'ChatInput', obligation, reason, evidence: mismatch.receiptPath};
+      });
+      return {receipts, obligations};
+    }],
+    ['SettingsNav', async () => {
+      const {receipts, mismatches} = await checkSettingsNavRefinement([driver]);
+      const obligations = mismatches.map(mismatch => {
+        const [obligation, reason] = settingsNavDifferences[mismatch.id];
+        return {model: 'SettingsNav', obligation, reason, evidence: mismatch.receiptPath};
       });
       return {receipts, obligations};
     }],

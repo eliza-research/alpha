@@ -1,7 +1,7 @@
 // Replay aliases for scalar trace arguments. The historical designs and their
 // transition relation remain in SettingsNav.
 module SettingsNavProposedReplay {
-  import SettingsNav as Design from "../SettingsNav"
+  import SettingsNav as Design from "../../../specs/quint/legacy/SettingsNav"
   val s = Design::s
   val ProfileSafety = Design::safety
   val NoInfoRows = Design::NoInfoRows
@@ -13,7 +13,7 @@ module SettingsNavProposedReplay {
 }
 
 module SettingsNavCurrentReplay {
-  import SettingsNav as Design from "../SettingsNav"
+  import SettingsNav as Design from "../../../specs/quint/legacy/SettingsNav"
   val s = Design::s
   val ProfileSafety = Design::TypeOK and Design::AtMostOneStatus and Design::NoEmptyPages and Design::Shallow
   pure val HasTopWifi = Design::CurTop.contains(("Wi-Fi", "nav", "wifi"))
