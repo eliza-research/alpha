@@ -485,11 +485,15 @@ export function installSettingsAdapter(Component: any, views: Bag) {
     const account = connection.cloudAccount;
     const serviceName = cloudServiceName(connectionController.getCloudClient()?.client.environment ?? account?.environment ?? connection.signIn?.environment ?? 'production');
     const manage = (page: string) => () => void device.openSettings({ page }).then(opened => { const notice = broaderPageNotice(page, opened); if (notice) api.toast(notice); }, () => api.toast('This Android settings page is unavailable.'));
-    const info = (label: string, val: string): Bag => ({ kInfo: true, label, val, hasVal: !!val, noAB: true });
-    const row = (label: string, go: () => void, val = '', extra: Bag = {}): Bag => ({ kNav: true, label, lbl: label, val, hasVal: !!val, chev: true, noAB: true, go, ...extra });
-    const toggle = (label: string, on: boolean, change: () => void): Bag => ({ kTog: true, label, aria: label, on, track: on ? 'background:var(--acc)' : 'background:var(--line)', kx: on ? 20 : 0, toggle: change });
-    const log = (time: string, text: string): Bag => ({ kLog: true, time, text });
-    const group = (rows: Bag[], cap = ''): Bag => ({ css: 'background:var(--s2);padding:4px 0', rows, ...(cap ? { cap, hasCap: true } : {}) });
+    const info = (label: string, val: string): Bag => ({ id: `info:${label}`, kInfo: true, label, val, hasVal: !!val, noAB: true });
+    const row = (label: string, go: () => void, val = '', extra: Bag = {}): Bag => ({ id: `row:${label}`, kNav: true, label, lbl: label, val, hasVal: !!val, chev: true, noAB: true, go, ...extra });
+    const toggle = (label: string, on: boolean, change: () => void): Bag => ({ id: `toggle:${label}`, kTog: true, label, aria: label, on, track: on ? 'background:var(--acc)' : 'background:var(--line)', kx: on ? 20 : 0, toggle: change });
+    const log = (time: string, text: string): Bag => ({ id: `log:${time}:${text}`, kLog: true, time, text });
+    const group = (rows: Bag[], cap = '', id = cap || String(rows[0]?.id ?? rows[0]?.label ?? 'empty')): Bag => ({
+      id: `group:${id}`, css: 'background:var(--s2);padding:4px 0',
+      rows: rows.map(value => ({ ...value, id: value.id ?? `row:${value.aria ?? value.label ?? value.time ?? ''}` })),
+      ...(cap ? { cap, hasCap: true } : {}),
+    });
     const back = () => api.set({ page: null });
     const subpage = (title: string, groups: Bag[], options: Bag = {}): Bag => ({ isTop: false, notTop: true, cls: 'enter', z: options.z ?? 4, title, hasTitle: true, backLabel: options.backLabel ?? 'Back to Settings', back: options.back ?? back, hero: {}, groups: groups.filter(g => g.rows.length) });
     const day = (at: number) => new Date(at).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
@@ -586,9 +590,9 @@ export function installSettingsAdapter(Component: any, views: Bag) {
       group(present([themeRow, textRow]), 'Appearance'),
       group(present([notificationsRow, crossRow]), 'Notifications'),
       group(present([permissionsRow, setupRow]), 'Privacy'),
-      group(present([androidRow, aboutRow, developerRow])),
-      group(present([resetRow])),
-      ...(developerTools ? [group([row('Try mock mode', () => connectionController.mock())])] : []),
+      group(present([androidRow, aboutRow, developerRow]), '', 'system'),
+      group(present([resetRow]), '', 'reset'),
+      ...(developerTools ? [group([row('Try mock mode', () => connectionController.mock())], '', 'development')] : []),
       ...(developerTools && !native && recovery.length ? [group(recovery.map(name => row(recoveryActions[name].label, () => recoveryActions[name].open())), 'Saved data needs recovery')] : []),
     ].filter(g => g.rows.length);
 
@@ -597,7 +601,7 @@ export function installSettingsAdapter(Component: any, views: Bag) {
       const rows = [info(cloudPage.status, cloudPage.detail)];
       if(plan.allowance)rows.push(info('Plan allowance',plan.allowance));
       if(plan.limit)rows.push(info('AI requests',plan.limit));
-      stack.push(subpage(serviceName, [group(rows), group(cloudPage.actions.map(action => row(action.label, action.go, '', action.danger ? { labCss: 'color:var(--fg);font-weight:600' } : {})))]));
+      stack.push(subpage(serviceName, [group(rows, '', 'account-status'), group(cloudPage.actions.map(action => row(action.label, action.go, '', action.danger ? { labCss: 'color:var(--fg);font-weight:600' } : {})), '', 'account-actions')]));
     }
     if ((current === 'agent-connection' || current === 'history') && native && !testMocksEnabled) {
       const rows: Bag[] = [info(connection.session ? connection.kind === 'resident' ? 'Running on this device' : testMocksEnabled ? 'Remote agent' : 'Unsupported connection' : agentStatus, connection.residentInference === 'direct' ? 'AI: Cerebras · own API keys' : connection.residentInference === 'cloud' ? `AI: ${serviceName}` : connection.residentInference === 'unknown' ? 'AI status unconfirmed' : connection.cloudAccount && !connection.session && connection.kind === 'starting' && !connection.residentRecoveryReason ? 'AI starting…' : connection.cloudAccount ? 'AI unavailable' : 'Sign in for AI')];
@@ -627,7 +631,7 @@ export function installSettingsAdapter(Component: any, views: Bag) {
         }
         if (!connection.busy) review.push(row('Check recorded actions', () => void connectionController.actionHistory(true)));
       }
-      stack.push(subpage('Agent', [group(rows), group(actions), group(review, review.length > 1 ? 'Actions to confirm' : '')]));
+      stack.push(subpage('Agent', [group(rows, '', 'agent-status'), group(actions, '', 'agent-actions'), group(review, review.length > 1 ? 'Actions to confirm' : '')]));
       if (current === 'history') {
         const history: Bag[] = connection.conversations.map((item: Bag) => row(item.title, () => void connectionController.restoreHistory(item.id)));
         if (connection.historyError) history.push(log('Problem', connection.historyError), row('Try again', () => void connectionController.retrySavedHistory()));
