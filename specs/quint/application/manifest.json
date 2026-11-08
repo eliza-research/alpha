@@ -122,7 +122,11 @@
       "failedSaveKeepsDraftTest",
       "deletionRestartRestoreTest",
       "expiryTest",
-      "concurrentEditTest"
+      "concurrentEditTest",
+      "queuedUnknownCommitKeepsDraftTest",
+      "restartKeepsConflictingDraftTest",
+      "restartAppliesUncommittedDraftTest",
+      "deletedNoteDraftDoesNotResurrectTest"
     ],
     "sources": [
       "apps/app/src/runtime/notes-store.ts",
@@ -130,7 +134,8 @@
       "apps/app/src/runtime/notes-trash-policy.ts",
       "apps/app/src/runtime/notes-secure-store.ts",
       "apps/app/src/prototype/notes-document-adapter.ts",
-      "apps/app/src/browser/domain-document.ts"
+      "apps/app/src/browser/domain-document.ts",
+      "apps/app/src/prototype/agent-adapter.ts"
     ],
     "abstractions": [
       "Finite representative identities and contents. Exact source symbols and modeling limits are documented in the family README.",
