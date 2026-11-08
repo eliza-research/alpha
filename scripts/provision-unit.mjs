@@ -201,6 +201,8 @@ async function main() {
     throw new Error("Alpha Phone is already installed on this unit; use scripts/pilot-update.mjs for an update");
   const output = path.resolve(options.output, `${options.alias}.json`);
   if (fs.existsSync(output)) throw new Error(`${output} already exists; a unit is provisioned once`);
+  // Read before install so an unreadable bundle fails with nothing on the unit.
+  const runtimeIdentity = apkRuntimeIdentity(apk.file);
 
   adb(["install", apk.file], { timeout: 600_000 });
   const installedSha256 = installedApkSha256(adb);
@@ -228,7 +230,7 @@ async function main() {
     apk: { variant: apk.variant, build: apk.build, sha256: apk.sha256, versionCode: apk.versionCode, versionName: apk.versionName,
       signed: apk.signed, signerSha256: apk.signerSha256, signerApiLevel: device.sdk, distributable: apk.distributable, rehearsal: apk.rehearsal },
     installed: { sha256: installedSha256, versionCode: installed.versionCode, versionName: installed.versionName, firstInstallTime: installed.firstInstallTime },
-    runtimeIdentity: apkRuntimeIdentity(apk.file),
+    runtimeIdentity,
     homeRole: home,
   };
   fs.mkdirSync(path.dirname(output), { recursive: true });
