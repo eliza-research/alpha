@@ -78,6 +78,10 @@ export function formatFullDate(date: Date) { return clean(format({weekday: 'long
 export function formatMonthDay(date: Date, withYear = false) { return clean(format(withYear ? {month: 'short', day: 'numeric', year: 'numeric'} : {month: 'short', day: 'numeric'}).format(date)); }
 /** A dated time without weekday or seconds: "Oct 7, 2026, 3:04 PM" / "7 Oct 2026, 15:04". */
 export function formatDateTime(date: Date) { return clean(format({year: 'numeric', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit'}).format(date)); }
+/** Full message date, seconds and time zone, using the device hour cycle. */
+export function formatFullDateTime(date: Date) {
+  return clean(format({weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', hour: 'numeric', minute: '2-digit', second: '2-digit', timeZoneName: 'short'}).format(date));
+}
 /** "October" or "October 2027". */
 export function formatMonthTitle(date: Date, withYear = false) { return clean(format(withYear ? {month: 'long', year: 'numeric'} : {month: 'long'}).format(date)); }
 /** Weekday names Sunday-first, as Date#getDay indexes them (2000-01-02 was a Sunday). */

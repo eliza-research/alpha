@@ -33,9 +33,9 @@ test('actual history projection preserves source text and only attaches a truste
  const source=readFileSync('apps/app/src/runtime/connection-ui.tsx','utf8');
  const a=source.indexOf('function restoredMessages('),b=source.indexOf('/** Eliza Cloud\'s API',a);
  assert.ok(a>=0&&b>a);
- const project=new Function('checkinDisplayText','systemNoticeKind','systemNoticeDisplayText','restoredText',
+ const project=new Function('checkinDisplayText','systemNoticeKind','systemNoticeDisplayText','restoredText','failureKindOf','calendarRefusalKept',
   stripTypeScriptTypes(source.slice(a,b),{mode:'transform'})+';return restoredMessages;'
- )(checkinDisplayText,systemNoticeKind,systemNoticeDisplayText,value=>value);
+ )(checkinDisplayText,systemNoticeKind,systemNoticeDisplayText,value=>value,()=>undefined,()=>false);
  const [checkin,user,quoted]=project([row,{...row,id:'user',role:'user'},{...row,id:'quoted',source:'client_chat'}]);
  assert.equal(checkin.displayText,'Take twenty quiet minutes before bed.');
  assert.equal(checkin.text,text);

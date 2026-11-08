@@ -341,9 +341,9 @@ test('cancelling an in-flight email verification keeps the existing account and 
  }finally{release?.();await f.close();}
 });
 
-test('cancelling email sign-in after its commit began reports the new account as signed in',async()=>{
+test('cancelling email sign-in during resident cleanup preserves the prior account',async()=>{
  let entered,release;const waiting=new Promise(resolve=>{entered=resolve;});
- // The resident is cleared inside save(): holding it parks the commit past its cancellation check.
+ // Resident cleanup precedes the credential rename and remains cancellable.
  const f=await fixture({clear:async()=>{entered();await new Promise(resolve=>{release=resolve;});}});
  const steward='synthetic-steward-session-token-0002',minted='eliza_mobile_synthetic-minted-key-0002',serverId='77777777-7777-4777-8777-777777777777',newOwner='88888888-8888-4888-8888-888888888888';
  f.setSignIn(async(path,input)=>{
@@ -364,9 +364,9 @@ test('cancelling email sign-in after its commit began reports the new account as
   const cancellation=new BrowserCloudSignIn().cancel();
   release();
   const outcome=await cancellation;
-  assert.equal(outcome.status,'authenticated');assert.equal(outcome.environment,'production');assert.equal(outcome.accountCreated,false);
-  assert.equal((await pending).data.status,'authenticated');
-  const privateState=JSON.parse(await readFile(profileFile(f.profile,'credentials.json'),'utf8'));assert.equal(privateState.production.userId,newOwner);
+  assert.equal(outcome.status,'cancelled');
+  assert.equal((await pending).data.code,'cancelled');
+  const preserved=await f.rpc({operation:'secureRead',slot:'cloud:production'});assert.equal(JSON.parse(preserved.data.value).userId,owner);
   assert.equal(JSON.stringify(outcome).includes(minted),false,'no secret reaches the page');
  }finally{globalThis.fetch=original;release?.();await f.close();}
 });
@@ -906,7 +906,7 @@ async function googleCommitBoundaryFixture(){
  let queue=Promise.resolve();function serial(run){const result=queue.then(run,run);queue=result.catch(()=>{});return result;}
  ${code}
  const current=()=>{attempt.controller.signal.throwIfAborted();if(googleAttempt!==attempt)throw Error('cancelled');};
- return {cancel:()=>cancelGoogleAttempt('attempt'),commit:()=>serial(async()=>{await saveGoogleCredential({production:{value:'new'}},attempt,current);attempt.outcome={status:'authenticated',environment:'production',expiresAt:Date.now()+60000,accountCreated:null,attemptId:'77777777-7777-4777-8777-777777777777',credentialId:'33333333-3333-4333-8333-333333333333'};return attempt.outcome;})};
+ return {cancel:()=>cancelGoogleAttempt('attempt'),commit:()=>serial(async()=>{await saveSignInCredential({production:{value:'new'}},attempt,current);attempt.outcome={status:'authenticated',environment:'production',expiresAt:Date.now()+60000,accountCreated:null,attemptId:'77777777-7777-4777-8777-777777777777',credentialId:'33333333-3333-4333-8333-333333333333'};return attempt.outcome;})};
  `)(state,disk,attempt,renameEntered,releaseRename,writeEntered,releaseWrite,AbortController);
  return {...harness,disk,attempt,renameEntered,releaseRename,writeEntered,releaseWrite};
 }

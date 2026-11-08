@@ -131,7 +131,7 @@ export function createBrowserCloudDevHandler(options:{profile:string;request?:ty
   }
   googleAttempt=null;attempt.controller.abort();return {status:'cancelled'};
  }
- async function saveGoogleCredential(value:Partial<Record<Environment,Credential>>,attempt:GoogleAttempt,current:()=>void){
+ async function saveSignInCredential(value:Partial<Record<Environment,Credential>>,attempt:GoogleAttempt|SignInAttempt,current:()=>void){
   current();resetCalendarAccess();if(options.resident)await options.resident.clear();current();
   await directory();current();const tmp=stateFile+'.'+randomUUID();
   try{
@@ -150,7 +150,7 @@ export function createBrowserCloudDevHandler(options:{profile:string;request?:ty
   await serial(async()=>{
    current();const state=await load();
    current();if(expiresAt<=Date.now()||(state[env]?.credentialReference??null)!==attempt.previousReference)throw signInFailure('account-changed');
-   state[env]=credential;await saveGoogleCredential(state,attempt,current);
+   state[env]=credential;await saveSignInCredential(state,attempt,current);
    attempt.outcome={status:'authenticated',environment:env,expiresAt,accountCreated,attemptId:attempt.id,credentialId:credential.credentialId};
    retire(env);
   });
@@ -181,7 +181,7 @@ export function createBrowserCloudDevHandler(options:{profile:string;request?:ty
   }
   if(data.operation==='signInCancel'){const google=await cancelGoogleAttempt();if('status'in google&&google.status==='authenticated')return google;const attempt=signIn;
    // A commit already past its cancellation check cannot be withdrawn: wait and report it.
-   if(attempt?.phase){await serial(async()=>{});return attempt.outcome??{status:'unavailable'};}
+   if(attempt?.phase==='committing'||attempt?.phase==='committed'){await serial(async()=>{});return attempt.outcome??{status:'unavailable'};}
    attempt?.controller.abort();signIn=null;await serial(async()=>{});return {status:'cancelled'};}
   if(data.operation==='signInStatus')return {active:!!signIn||!!googleAttempt,inApp:true,google:await browserGoogleAvailable(environment(data.environment??options.environment??'production'),AbortSignal.any([signal,AbortSignal.timeout(10000)])).catch(()=>false),email:true};
   if(data.operation==='signInCancelGoogle'){return cancelGoogleAttempt(data.attemptId);}
@@ -291,9 +291,15 @@ export function createBrowserCloudDevHandler(options:{profile:string;request?:ty
      return {status:'mfa',method:challenge.type,expiresAt:attempt.expiresAt};
     }
     const {credential,expiresAt,accountCreated}=await scopedSignInCredential(attempt.environment,verified.data,signal);
-    await serial(async()=>{const stored=await load();signal.throwIfAborted();if(signIn!==attempt)throw signInFailure('cancelled');stored[attempt.environment]=credential;retire(attempt.environment);await save(stored);});
+    const current=()=>{if(signal.aborted||signIn!==attempt)throw signInFailure('cancelled');};
+    await serial(async()=>{
+     current();const stored=await load();current();stored[attempt.environment]=credential;
+     await saveSignInCredential(stored,attempt,current);
+     attempt.outcome={status:'authenticated',environment:attempt.environment,expiresAt,accountCreated};
+     retire(attempt.environment);
+    });
     if(signIn===attempt)signIn=null;
-    return {status:'authenticated',environment:attempt.environment,expiresAt,accountCreated};
+    return attempt.outcome!;
    }catch(error:any){if(error.code!=='invalid-code'&&signIn===attempt)signIn=null;throw error;}finally{attempt.busy=false;}
   }
   throw Error('Unsupported development operation');

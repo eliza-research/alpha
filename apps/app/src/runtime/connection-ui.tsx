@@ -1686,14 +1686,6 @@ function restoredText(text: string, userTextFormat?:unknown): string {
   } catch { /* Unrecognized text remains authored text. */ }
   return text;
 }
-/** A display bound, not a protocol limit: the agent keeps the full text of a longer message. */
-const DISPLAY_TEXT_LIMIT=200000;
-const SHORTENED_FOR_DISPLAY=' [Message shortened for display]';
-function displayText(text:string):string{
-  if(text.length<=DISPLAY_TEXT_LIMIT)return text;
-  const end=DISPLAY_TEXT_LIMIT-(/[\uD800-\uDBFF]/.test(text[DISPLAY_TEXT_LIMIT-1])?1:0);
-  return text.slice(0,end)+SHORTENED_FOR_DISPLAY;
-}
 function restoredMessages(items:Record<string,unknown>[]):RestoredMessage[] {
   return items.filter(item=>item.role==='user'||item.role==='assistant').map(item=>{
     if(typeof item.id!=='string'||!item.id||typeof item.text!=='string')throw Error('The agent returned invalid history.');
