@@ -118,7 +118,6 @@ html:not(.standalone-app) [data-alpha-layer="home"][data-alpha-home-fits="true"]
 .inbox-attachment-content { min-height:0; flex:1; overflow:auto; overflow-wrap:anywhere; overscroll-behavior:contain; }
 .inbox-attachment-content:focus-visible { outline:2px solid var(--acct); outline-offset:-2px; }
 
-.note-editor:not(:has(input:focus, textarea:focus, .note-edit-done:focus)) .note-edit-done { display:none; }
 .note-editor { box-sizing:border-box; padding-bottom:calc(100px + var(--native-bottom-inset,0px)); }
 .note-source-actions { display:flex; flex-wrap:wrap; gap:8px; margin:4px 24px; flex-shrink:0; }
 .note-source-actions:empty { display:none; }

@@ -89,7 +89,8 @@ test('live agent Notes in dark mode, the text editor and the checklist editor',a
  await expect(page.getByRole('button',{name:'Done editing note'})).toBeHidden();
  await expect(page.getByText('Saved',{exact:true})).toBeHidden();
  await page.getByRole('textbox',{name:'Note',exact:true}).focus();
- for(const name of ['Back to notes','More','Done editing note']){
+ await expect(page.getByRole('button',{name:'Done editing note'})).toHaveCount(0);
+ for(const name of ['Back to notes','More']){
   const control=page.getByRole('button',{name,exact:true});await expect(control).toBeVisible();
   const box=(await control.boundingBox())!;expect(box.x).toBeGreaterThanOrEqual(0);expect(box.x+box.width).toBeLessThanOrEqual(412);
   // The editor header: Back · Checklist · Share · ⋯ at 44px; the draft actions are full 48px rows.

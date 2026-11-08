@@ -261,7 +261,8 @@ test('the single Notes list hides Previous notes without importing or changing r
  await page.getByRole('button',{name:'New note',exact:true}).click();
  await page.getByRole('textbox',{name:'Title',exact:true}).fill('Canonical only');
  await page.getByRole('textbox',{name:'Note',exact:true}).fill('New text stays in the canonical store.');
- await page.getByRole('button',{name:'Done editing note',exact:true}).click();
+ await expect(page.getByRole('button',{name:'Done editing note',exact:true})).toHaveCount(0);
+ await page.getByRole('button',{name:'Back to notes',exact:true}).click();
  await expect(page.getByRole('button',{name:'Open Canonical only',exact:true})).toBeVisible();
  expect(await page.evaluate(async()=>(await import('/src/runtime/browser-notes-document.ts')).readBrowserNotesRaw())).toBe(before);
  expect((await snapshot(page)).notes.map((note:any)=>note.title)).toEqual(['Canonical only']);
