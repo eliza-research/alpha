@@ -31,7 +31,17 @@
     "tests": [
       "backOrderTest",
       "staleNavigationTest",
-      "deliveryTest"
+      "deliveryTest",
+      "settingsInsertionKeepsFocusTest",
+      "settingsReorderKeepsFocusTest",
+      "settingsRemovalClearsFocusTest",
+      "sameViewKeepsSendTest",
+      "backKeepsSendTest",
+      "changedViewRetiresSendTest",
+      "hiddenRetiresSendTest",
+      "suspendedRetiresSendTest",
+      "suspendedClaimRefusedTest",
+      "resumedClaimTest"
     ],
     "sources": [
       "apps/app/src/prototype/model.js",
@@ -42,7 +52,8 @@
     ],
     "abstractions": [
       "Finite representative identities and contents. Exact source symbols and modeling limits are documented in the family README.",
-      "Model safety checks do not establish implementation refinement or device acceptance."
+      "Model safety checks do not establish implementation refinement or device acceptance.",
+      "Settings list identity projects About and Finish setup. A Chromium source trace checks one delayed group insertion and keyboard activation. Other mutable lists and native accessibility remain separate obligations."
     ]
   },
   {
@@ -123,7 +134,11 @@
       "canonicalNewFolderNeverAdoptsOldReferenceTest",
       "canonicalFolderCasRejectsStaleWriteTest",
       "canonicalMissingCleanSelectionClosesTest",
-      "canonicalDiscardIsExplicitTest"
+      "canonicalDiscardIsExplicitTest",
+      "queuedUnknownCommitKeepsDraftTest",
+      "restartKeepsConflictingDraftTest",
+      "restartAppliesUncommittedDraftTest",
+      "deletedNoteDraftDoesNotResurrectTest"
     ],
     "sources": [
       "apps/app/src/runtime/notes-store.ts",
@@ -137,18 +152,24 @@
       "apps/app/src/prototype/canonical-notes-ui.ts",
       "apps/app/src/prototype/notes-folders-adapter.ts",
       "apps/app/src/runtime/notes-folders.ts",
-      "apps/app/src/runtime/notes-folders-model.ts"
+      "apps/app/src/runtime/notes-folders-model.ts",
+      "apps/app/src/prototype/agent-adapter.ts",
+      "apps/app/src/prototype/legacy-notes-access.ts"
     ],
     "abstractions": [
       "Legacy mode preserves the existing one-note local Trash/CAS compatibility contract. Canonical mode represents one existing record, one editor draft, one initial folder and one newly allocated folder identity.",
       "Canonical source identities, revisions and edit generations are bounded. Content values stand for authored text and rich metadata. Folder-document revisions represent exact compare-and-exchange document identity, not a stored revision field.",
       "Canonical refresh, owner retirement, dirty-draft preservation, queued edits and uncertain mutation outcomes are explicit. An uncertain response forbids automatic follow-up; explicit user retries retain the current public API behavior.",
-      "Native/provider/transport correctness and complete implementation refinement require separate evidence."
+      "Native/provider/transport correctness and complete implementation refinement require separate evidence.",
+      "The legacy variant separates queued writes, confirmed content, durable content and retained drafts. Reopening retains the draft. Model recovery transitions require an explicit recovery boundary; they do not assert automatic replay in the current renderer."
     ],
     "sharedSources": [
       "plugins/plugin-notes/src/client/notes-controller.ts",
       "plugins/plugin-notes/src/client/notes-editor.ts",
-      "plugins/plugin-notes/src/client/notes-snapshot-state.ts"
+      "plugins/plugin-notes/src/client/notes-snapshot-state.ts",
+      "plugins/plugin-notes/src/client/notes-document-store.ts",
+      "plugins/plugin-notes/src/client/notes-secure-store.ts",
+      "plugins/plugin-notes/src/client/notes-draft.ts"
     ]
   },
   {
@@ -160,7 +181,11 @@
     "tests": [
       "privateRestartTest",
       "lateRestoreTest",
-      "normalHistoryTest"
+      "normalHistoryTest",
+      "closeEarlierTabKeepsFocusTest",
+      "closeFocusedTabClearsFocusTest",
+      "normalSelectionRestoredTest",
+      "closureFallbackUsesOrderTest"
     ],
     "sources": [
       "apps/app/src/browser/browser-surface.ts",
@@ -170,7 +195,8 @@
     "abstractions": [
       "Finite representative identities and contents. Exact source symbols and modeling limits are documented in the family README.",
       "Model safety checks do not establish implementation refinement or device acceptance.",
-      "Normal/private persistence normalization is owned by the shared browser-surface package. Alpha browser-surface and browser-adapter enforce navigation and current-page presentation. The finite model abstracts exact URL validation and storage serialization."
+      "Three normal representative tabs and one private tab. Browser focus trace checks closing an earlier tab preserves the focused tab identity and subsequent activation.",
+      "Tab order and saved selected normal tab are retained. The abstract snapshot action assumes persistence-eligible normal tabs; blank or invalid URL filtering is a separate source boundary."
     ],
     "sharedSources": [
       "plugins/plugin-native-browser-surface/src/browsing-session.ts",
@@ -190,7 +216,9 @@
       "invalidKeyTest",
       "confirmedDamageResetTest",
       "backgroundPreventsResetTest",
-      "explicitTestBuildTransferTest"
+      "explicitTestBuildTransferTest",
+      "leaveRetiresResetReviewTest",
+      "nativeLockRefusesPendingResetTest"
     ],
     "sources": [
       "apps/app/src/passwords/password-manager.ts",
@@ -201,6 +229,11 @@
     "abstractions": [
       "Finite representative identities and contents. Exact source symbols and modeling limits are documented in the family README.",
       "Model safety checks do not establish implementation refinement or device acceptance."
+    ],
+    "sharedSources": [
+      "plugins/plugin-native-passwords/src/client.ts",
+      "plugins/plugin-native-passwords/src/bindings.ts",
+      "plugins/plugin-native-passwords/src/definitions.ts"
     ]
   },
   {
@@ -313,10 +346,14 @@
     "tests": [
       "orderedProgressTest",
       "deniedPermissionCannotAdvanceTest",
-      "revokedBeforeFinishTest",
+      "revokedAfterReviewPreservesCompletionTest",
       "failedProgressWriteTest",
       "legacyCompletionTest",
-      "failedAttemptWriteRestartTest"
+      "failedAttemptWriteRestartTest",
+      "failedChoiceWriteStillAdvancesTest",
+      "ownerChangeRetiresPendingTest",
+      "staleCompletionKeepsNewPendingTest",
+      "completedRemountTest"
     ],
     "sources": [
       "apps/app/src/startup-permissions.tsx",
@@ -326,6 +363,9 @@
     "abstractions": [
       "Seven permission state machines share one serial UI action and a durable versioned walkthrough. Attempts are retained in memory for the current flow and across restart only when the best-effort write succeeds.",
       "Platform readiness is external input. Completed installation records grant no platform access."
+    ],
+    "sharedSources": [
+      "packages/ui/src/components/permissions/permission-walkthrough.ts"
     ]
   },
   {
@@ -424,13 +464,8 @@
       "selectionRefreshTest"
     ],
     "sources": [
-      "apps/app/src/prototype/files-browser-adapter.ts",
-      "apps/app/src/runtime/files-storage.ts",
-      "apps/app/src/runtime/files-agent-contract.ts",
-      "apps/app/src/browser/storage-volume.ts",
       "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaFilesPlugin.java",
-      "android/app/src/main/java/ai/elizaresearch/alphaphone/StorageBrowser.java",
-      "android/app/src/main/java/ai/elizaresearch/alphaphone/StorageCatalog.java"
+      "apps/app/src/prototype/selection-adapter.ts"
     ],
     "stateMapping": {
       "locations/origins/names": "Volume-relative paths and recorded Trash origins; name clashes keep both entries",
@@ -443,6 +478,14 @@
       "The transition structure follows design/view-refresh-2026-11/tla/files-browser with category, name-conflict and reviewed-identity fixes enabled. Grant withdrawal is additionally modeled.",
       "Multi-volume traversal, recursive byte copying, per-item batch failures, MIME parsing and the 30-day Trash timer remain covered by their implementation tests. This model does not represent document-picker or persistent SAF-tree access.",
       "Opaque identity revisions represent the native size/modified pair. Matching that pair is the current implementation guard, not a cryptographic assertion about file contents."
+    ],
+    "sharedSources": [
+      "plugins/plugin-files/src/browser/files-browser-adapter.ts",
+      "plugins/plugin-files/src/browser/files.ts",
+      "plugins/plugin-files/src/browser/files-agent-contract.ts",
+      "plugins/plugin-files/src/browser/storage-volume.ts",
+      "plugins/plugin-native-filesystem/android/src/main/java/ai/eliza/plugins/filesystem/browser/StorageBrowser.java",
+      "plugins/plugin-native-filesystem/android/src/main/java/ai/eliza/plugins/filesystem/browser/StorageCatalog.java"
     ]
   },
   {
@@ -589,6 +632,76 @@
     "abstractions": [
       "Query strings are finite validity classes for exact state shape, duplicates, size limits, result exclusivity and recognized keys.",
       "Parsing, URL scrubbing and validation are ordered internal stages. The model records only link exposure and explicit handoff, without invoking an external handler."
+    ]
+  },
+  {
+    "path": "specs/quint/application/ListFocus.qnt",
+    "module": "ListFocus",
+    "init": "init",
+    "step": "step",
+    "invariant": "safety",
+    "tests": [
+      "unmountedCaptureTest",
+      "keylessCaptureTest",
+      "otherOwnerCaptureTest",
+      "setup",
+      "replacement",
+      "crossParentRestoreTest",
+      "removedItemTest",
+      "duplicateCandidateTest",
+      "movedFocusTest",
+      "hiddenRootTest",
+      "hiddenNodeTest",
+      "disabledCandidateTest",
+      "dialogTest",
+      "hiddenDocumentTest",
+      "disconnectedRootTest",
+      "newerCommitTest",
+      "navigationTest",
+      "discardedRenderTest",
+      "restoringCancelsUncommittedCaptureTest",
+      "twoCapturesLatestCommitTest"
+    ],
+    "sources": [
+      "apps/app/src/prototype/keyed-list-focus.ts",
+      "apps/app/src/prototype/subview-accessibility.ts",
+      "apps/app/src/prototype/template.html"
+    ],
+    "abstractions": [
+      "Two capture slots, two list-root identities and five DOM-node identities preserve capture versus commit, root-ref generations, FIFO microtasks, focusin cancellation, and all source restoration guards. Generations stop at eight instead of wrapping.",
+      "A source-executing JSDOM adapter observes the actual helper closure through a read-only getter and controls its queue/listener/geometry environment. Real Notes and Photos browser traces are separate bounded renderer evidence.",
+      "No unbounded event-loop liveness, native accessibility or universal implementation refinement is claimed.",
+      "Current Alpha binds this helper to Notes pinned/other rows and virtual Photos sections. The shared Files volume view and InstalledAppsGridDrawer use their own semantic React keys; the historical local Files/launcher hosts are not modeled as shipping owners."
+    ]
+  },
+  {
+    "path": "specs/quint/application/RendererFailureUI.qnt",
+    "module": "RendererFailureUI",
+    "init": "init",
+    "step": "step",
+    "invariant": "safety",
+    "tests": [
+      "ignoredResourceErrorTest",
+      "startupClosesDialogsTest",
+      "mountedErrorIgnoredTest",
+      "renderFailureTest",
+      "startupThenRenderTest",
+      "renderThenStartupTest",
+      "stickyBoundaryTest",
+      "pendingForcedFailureTest",
+      "forceAfterFailureTest",
+      "repeatedRecoveryTest"
+    ],
+    "sources": [
+      "apps/app/src/runtime/error-boundary.tsx",
+      "apps/app/src/runtime/crash-log.ts"
+    ],
+    "abstractions": [
+      "Actual React and global listener coordination is projected with four error-class representatives, two dialogs and two reload requests. The existing native RendererRecovery model owns Android renderer-process recovery.",
+      "Reload dispatch, JSDOM geometry, native logging and the test-only forced-error hook are explicit environment boundaries."
+    ],
+    "sharedSources": [
+      "plugins/plugin-native-system/src/crash-log.ts"
     ]
   }
 ]

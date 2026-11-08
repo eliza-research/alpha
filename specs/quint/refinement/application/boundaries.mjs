@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import {buildSync} from 'esbuild';
 import {mkdtemp, rm} from 'node:fs/promises';
 import {tmpdir} from 'node:os';
 import {join, resolve} from 'node:path';
@@ -94,6 +95,8 @@ export async function developmentHost() {
   captureSources([source, 'scripts/local-agent-source.mjs', 'scripts/native-view-policy.mjs',
     'scripts/cloud-sdk-authority.mjs', 'vendor/eliza/packages/agent/native-host/private-runtime-launch.mjs',
     'test/fixtures/product-character-host.mjs', 'scripts/native-google-host-artifact.mjs', 'scripts/workflow-worker-artifact.mjs']);
+  const fixtureGraph=buildSync({absWorkingDir:root,entryPoints:['test/fixtures/product-character-host.mjs'],bundle:true,write:false,platform:'node',format:'esm',metafile:true});
+  captureSources(Object.keys(fixtureGraph.metafile.inputs).filter(path=>!path.startsWith('node_modules/')));
   const {createCloudResidentHost} = await import(new URL('../../../../test/fixtures/product-character-host.mjs', import.meta.url));
   const directory = await mkdtemp(join(tmpdir(), 'alpha-refinement-host-'));
   const launches = [];
@@ -109,7 +112,9 @@ export async function developmentHost() {
     assert.equal(launches.length, 1); checkpoint(t, 'same binding reuses source process', null, observe());
     await host.clear(); checkpoint(t, 'real host retires binding', [call('retireResident'), call('stopped'), call('signOut')], observe());
     assert.equal(launches.at(-1).options.env.ELIZAOS_CLOUD_API_KEY, undefined);
-    await host.close(); checkpoint(t, 'close source host', call('close'), observe());
+    await host.close();
+    assert.throws(()=>host.status('one'),{code:'provider-changed'},'closed hosts retire provider-status authority');
+    checkpoint(t, 'close source host', call('close'), {'s.bound':0});
     return checkTraces({model: 'DevelopmentHost', sources: [source, 'scripts/local-agent-source.mjs', 'scripts/native-view-policy.mjs',
       'scripts/cloud-sdk-authority.mjs', 'vendor/eliza/packages/agent/native-host/private-runtime-launch.mjs'], traces: [t], scope: 'bounded-component', assumptions: [
       'Actual private-profile and resident-host logic execute through the existing product-character fixture with a relocated synthetic SDK/worker root and a process-launch port. All source and worker admission checks run; no network or real child starts.',

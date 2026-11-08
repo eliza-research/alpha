@@ -22,7 +22,7 @@ export async function shellNavigation() {
       ${methods}
     };globalThis.shell=new Shell();`, context);
     const shell = context.shell;
-    const observe = () => ({'s.view': shell.S().view || 'home', 's.chat': shell.S().chat === 'hidden' ? 'input' : shell.S().chat,
+    const observe = () => ({'s.view': shell.S().view || 'home', 's.chat': shell.S().chat,
       's.shade': shell.S().shade, 's.drawer': shell.S().drawer});
     const t = trace(`open-back-${view}`, observe());
     shell.openView(view); checkpoint(t, 'actual shell opens view', call('open', view), observe());
@@ -30,7 +30,7 @@ export async function shellNavigation() {
   }
   return checkTraces({model: 'ShellNavigation', sources: [path], traces, scope: 'bounded-component', assumptions: [
     'Actual goHome/openView/back method bodies execute with synchronous React state commits and empty view-specific handlers.',
-    'Hidden and input are the model collapsed-chat class. Modal interception, focus, drawer gestures and asynchronous navigation claims remain untested here.']});
+    'Collapsed input on Home and hidden chat inside app views remain distinct. Modal interception, focus, drawer gestures and asynchronous navigation claims remain untested here.']});
 }
 
 export async function developmentSurfaces() {
@@ -79,7 +79,7 @@ export async function developmentDevice() {
 }
 
 export async function filesTree() {
-  const source = 'apps/app/src/browser/storage-volume.ts';
+  const source = '.eliza/client-features/plugins/plugin-files/src/browser/storage-volume.ts';
   const {BrowserStorageVolume} = await sourceModule(source);
   const traces = [];
   for (const change of ['none', 'changed', 'missing']) {
@@ -105,16 +105,18 @@ export async function filesTree() {
       },
       async usage() { return {bytes: 2, files: 2}; },
     };
-    const volume = new BrowserStorageVolume(library);
+    const volume = new BrowserStorageVolume(library,{trashFolder:'.Trash-alpha',trashKey:'alpha.files.trash.v1'});
     const locations = () => qmap([1, 2, 3].map(id => [id, rows.has(String(id)) ? Number(rows.get(String(id)).parentId) : 0]));
     const t = trace(`volume-reviewed-move-${change}`, {'s.locations': locations()});
     const access = await volume.run('storageState', {});
     checkpoint(t, 'actual browser volume reports its access', call('grantAccess'), {'s.access': access.access === 'granted'});
     assert.deepEqual((await volume.category('downloads')).entries.map(row => row.path), ['Download/fixture.dat']);
     assert.deepEqual((await volume.category('images')).entries.map(row => row.path), ['Pictures/fixture.dat']);
-    const reviewed = (await volume.identity(['Pictures/fixture.dat'])).identities;
-    assert.deepEqual(reviewed, [{size: 1, modified: 0}]);
-    checkpoint(t, 'actual volume captures the reviewed identity', call('proposeMove', 1, 30), {'s.review': {file: 1, from: 20, to: 30, revision: reviewed[0].modified}});
+    const reviewed = await volume.reviewedIdentities(['Pictures/fixture.dat']);
+    assert.equal(reviewed.length,1);
+    assert.match(reviewed[0],/^[A-Za-z0-9_-]{43}$/);
+    const reviewedRevision=Number(rows.get('1').revision);
+    checkpoint(t, 'actual volume captures the reviewed identity', call('proposeMove', 1, 30), {'s.review': {file: 1, from: 20, to: 30, revision: reviewedRevision}});
     if (change === 'changed') {
       rows.set('1', {...rows.get('1'), modifiedAt: 1, revision: '1'});
       checkpoint(t, 'external library write changes the identity', call('externalEdit', 1), {'s.revisions': qmap([[1, 1], [2, 0], [3, 0]])});

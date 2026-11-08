@@ -49,6 +49,14 @@
         "One retained record represents durable history.",
         "Ordinary stop retires enrollment and voice admission before process shutdown is confirmed. Provider configuration persists. Owned and attached startup requests have distinct cancellation effects.",
         "The native coordinator advances an epoch at full start admission, including unowned reenrollment of an existing service. Attached starts preserve the epoch. Last-surface destruction retires enrollment while the service can remain alive."
+      ],
+      "sharedSources": [
+        "plugins/plugin-native-agent/android/src/main/java/ai/eliza/plugins/agent/runtime/NativeProviderSlot.java",
+        "plugins/plugin-native-agent/android/src/main/java/ai/eliza/plugins/agent/runtime/NativeProviderAdmission.java",
+        "plugins/plugin-native-agent/android/src/main/java/ai/eliza/plugins/agent/runtime/ResidentAttachment.java",
+        "plugins/plugin-native-agent/android/src/main/java/ai/eliza/plugins/agent/runtime/CredentialRequestFence.java",
+        "plugins/plugin-native-agent/android/src/main/java/ai/eliza/plugins/agent/runtime/CredentialIntentFence.java",
+        "plugins/plugin-native-secure-store/android-nativeonly/src/main/java/ai/eliza/plugins/securestore/nativeonly/CredentialIntentFence.java"
       ]
     },
     {
@@ -66,7 +74,10 @@
         "apps/app/src/runtime/voice-turn-routes.ts",
         "apps/app/src/runtime/app-speech.ts",
         "android/app/src/main/java/ai/elizaresearch/alphaphone/NativeVoiceBinding.java",
-        "android/app/src/main/java/ai/elizaresearch/alphaphone/VoiceEventAdmission.java"
+        "android/app/src/main/java/ai/elizaresearch/alphaphone/VoiceEventAdmission.java",
+        "patches/eliza/voice-assistant-streaming.patch",
+        "patches/eliza/cloud-speech-client-manifest.json",
+        "scripts/client-speech-patch.mjs"
       ],
       "tests": [
         "longGapAndPlaybackTest",
@@ -109,7 +120,9 @@
       "invariant": "safety",
       "sources": [
         "apps/app/src/local-speech-playback.ts",
-        "patches/eliza/cloud-speech-native.patch"
+        "patches/eliza/cloud-speech-native.patch",
+        "patches/eliza/local-speech-streaming.patch",
+        "patches/eliza/native-manifest.json"
       ],
       "tests": [
         "queueBackpressureTest",
@@ -131,7 +144,7 @@
         "A two-chunk queue represents bounded PCM sample storage and backpressure.",
         "Three capture and synthesis generations, one native capture reservation, one playback writer.",
         "Native cleanup calls are atomic completion steps; PCM buffer contents and wall-clock latency are omitted.",
-        "Silent output warmup is an independent, bounded output holder supplied by the authenticated cloud-speech-native patch. Its close/play serialization, timeout and first-audio retirement have separate JVM coverage in test/speech-output-warmup.test.mjs; this model represents capture and audible reply playback only."
+        "Silent output warmup is an independent, bounded output holder supplied by the authenticated local-speech-streaming patch. Its close/play serialization, timeout and first-audio retirement have separate JVM coverage in test/speech-output-warmup.test.mjs; this model represents capture and audible reply playback only."
       ],
       "sharedSources": [
         "plugins/plugin-local-inference/native/android/src/main/java/ai/eliza/voice/SpeechAudioFocusPolicy.java",
@@ -143,7 +156,8 @@
         "plugins/plugin-local-inference/native/android/src/main/java/ai/eliza/voice/StreamingSpeechPlayback.java",
         "plugins/plugin-local-inference/native/android/src/main/java/ai/eliza/voice/AudioTrackSpeechOutput.java",
         "plugins/plugin-local-inference/native/android/src/main/java/ai/eliza/voice/LocalSpeechEngine.java",
-        "plugins/plugin-local-inference/native/android/src/main/java/ai/eliza/voice/SessionSpeech.java"
+        "plugins/plugin-local-inference/native/android/src/main/java/ai/eliza/voice/SessionSpeech.java",
+        "plugins/plugin-local-inference/native/android/speech-bridge/src/main/java/ai/eliza/voice/LocalSpeechBridgePlugin.java"
       ]
     },
     {
@@ -535,7 +549,13 @@
         "NativeStopOnce"
       ],
       "sharedSources": [
-        "plugins/plugin-maps/src/client/navigation-fix.ts"
+        "plugins/plugin-maps/src/client/navigation-fix.ts",
+        "plugins/plugin-maps/src/client/guidance.ts",
+        "plugins/plugin-maps/src/client/native-location.ts",
+        "plugins/plugin-maps/src/client/background-navigation.ts",
+        "plugins/plugin-maps/src/client/route-distance.ts",
+        "plugins/plugin-maps/src/client/device-navigation.ts",
+        "plugins/plugin-maps/src/client/agent-navigation.ts"
       ]
     },
     {
@@ -599,7 +619,9 @@
       "step": "step",
       "invariant": "safety",
       "sources": [
-        "patches/eliza/cloud-speech-native.patch"
+        "patches/eliza/cloud-speech-native.patch",
+        "patches/eliza/local-speech-streaming.patch",
+        "patches/eliza/native-manifest.json"
       ],
       "stateMapping": {
         "started/terminal/stopped/writer/outputOpen": "StreamingSpeechPlayback.start, settle, stop, run/finally",
@@ -610,7 +632,7 @@
         "Two chunks, two frames per chunk and one writer preserve partial/zero writes and output-drain ordering.",
         "Elapsed timeout boundaries are represented by explicit synthesis-stall and drain-timeout events.",
         "PCM values, platform timestamps and audio quality stay external numeric inputs, while writer and callback lifecycle is explicit.",
-        "Silent output warmup is an independent, bounded output holder supplied by the authenticated cloud-speech-native patch. Its close/play serialization, timeout and first-audio retirement have separate JVM coverage in test/speech-output-warmup.test.mjs; this model represents capture and audible reply playback only."
+        "Silent output warmup is an independent, bounded output holder supplied by the authenticated local-speech-streaming patch. Its close/play serialization, timeout and first-audio retirement have separate JVM coverage in test/speech-output-warmup.test.mjs; this model represents capture and audible reply playback only."
       ],
       "tests": [
         "partialWriteThenDrainTest",
@@ -634,7 +656,8 @@
         "plugins/plugin-local-inference/native/android/src/main/java/ai/eliza/voice/SpeechPcmQueue.java",
         "plugins/plugin-local-inference/native/android/src/main/java/ai/eliza/voice/AudioTrackSpeechOutput.java",
         "plugins/plugin-local-inference/native/android/src/main/java/ai/eliza/voice/SpeechAudioFocusPolicy.java",
-        "plugins/plugin-local-inference/native/android/src/main/java/ai/eliza/voice/VoiceLatencyTrials.java"
+        "plugins/plugin-local-inference/native/android/src/main/java/ai/eliza/voice/VoiceLatencyTrials.java",
+        "plugins/plugin-local-inference/native/android/speech-bridge/src/main/java/ai/eliza/voice/LocalSpeechBridgePlugin.java"
       ]
     },
     {
@@ -767,7 +790,7 @@
         "android/app/src/main/java/ai/elizaresearch/alphaphone/VoiceEventAdmission.java"
       ],
       "stateMapping": {
-        "phase/active/opened/claimed/cancelled": "NativeVoiceIpc.exchange Port.open, active compareAndSet and finally cancellation",
+        "phase/active/opened/claimed/cancelled": "BufferedStreamExchange.exchange Port.open, active compareAndSet and finally cancellation",
         "guardCurrent/deadline/failure": "Binding guard checks, scheduled deadline and first-writer failed.compareAndSet",
         "status/bytes/complete": "response status, cumulative bounded chunk buffer and completion requirement",
         "validatedCurrent/validatedFailure/resultStatus/resultBytes": "Return-decision snapshot before finally cleanup"
@@ -816,7 +839,7 @@
       "stateMapping": {
         "view": "Controller identity/AudioManager observations, user-switch state, display/keyguard/shade state and measured chip/host visibility",
         "queue/pending/phase": "Main-thread acknowledgement snapshots delivered on the serial background executor",
-        "providerPackage/providerUid/targetValidated": "AlphaListeningLease.target trusted provider package and admitted UID equality",
+        "providerPackage/providerUid/targetValidated": "SenseListeningLease.target trusted provider package and admitted UID equality",
         "generation/serverGeneration/result": "Acquire/renew/revoke generation and no same-generation retry after refusal/error",
         "pauseRequested": "Validated pause request retains recording until observed AudioManager stop"
       },

@@ -1,6 +1,4 @@
 import assert from 'node:assert/strict';
-import {normalizePhoneSpec} from '../../../../apps/app/src/runtime/phone-workflow-authoring.ts';
-import {workflowSha} from '../../../../apps/app/src/runtime/workflow-device-contract.ts';
 import {checkTraces, captureInputs} from '../check-traces.mjs';
 import {action, sourceModule} from './support.mjs';
 
@@ -8,6 +6,8 @@ export async function workflowRefinement() {
   const sources = ['apps/app/src/runtime/phone-workflow-authoring.ts', 'apps/app/src/runtime/workflow-device-contract.ts', 'apps/app/src/runtime/workflow-intents.ts', 'specs/quint/refinement/services/workflow.mjs', 'specs/quint/refinement/services/support.mjs'];
   let driverHashes = captureInputs(sources);
   const capture = inputs => { sources.push(...inputs.filter(input => !sources.includes(input))); const next = captureInputs(sources); for (const [path, hash] of Object.entries(driverHashes)) assert.equal(next[path], hash, `Source changed before import: ${path}`); driverHashes = next; };
+  const {normalizePhoneSpec} = await sourceModule('apps/app/src/runtime/phone-workflow-authoring.ts', {}, capture);
+  const {workflowSha} = await sourceModule('apps/app/src/runtime/workflow-device-contract.ts', {}, capture);
   const {WorkflowProtocol} = await sourceModule('apps/app/src/runtime/workflow-protocol.ts', {}, capture);
   const original = {window: globalThis.window, localStorage: globalThis.localStorage};
   const storage = Object.create(null);

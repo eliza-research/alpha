@@ -7,18 +7,26 @@ import {durableStore} from './storage.mjs';
 import {notesLifecycle, calendarPresentation, credentialVault, permissionWalkthrough} from './contracts.mjs';
 import {shellNavigation, developmentSurfaces, developmentDevice, filesTree} from './surfaces.mjs';
 import {filesAndSharing, notificationCollection, developmentHost} from './boundaries.mjs';
+import {runStartupPermissionsCoordinatorRefinement} from './startup-permissions-coordinator.mjs';
+import {checkVaultCoordinator} from './vault-coordinator.mjs';
+import {checkNotesCoordinator} from './notes-coordinator.mjs';
+import {listFocus} from './list-focus.mjs';
+import {checkRecoveryUI} from './recovery-ui.mjs';
 
 const adapters = [application, shellNavigation, startupPermissions, assistantConversation, notesLifecycle,
   browserSession, credentialVault, developmentSurfaces, filesAndSharing, preferences, durableStore,
   permissionWalkthrough, developmentDevice, permanentVoiceDeletion, developmentHost, filesTree,
-  calendarPresentation, draftDispatch, notificationCollection, callbackLanding];
+  calendarPresentation, draftDispatch, notificationCollection, callbackLanding,
+  runStartupPermissionsCoordinatorRefinement, checkVaultCoordinator, checkNotesCoordinator, listFocus, checkRecoveryUI];
 
 /** Component traces, with remaining obligations kept explicit for the aggregate report. */
 export async function runApplicationRefinement() {
   const receipts = [], obligations = [];
   const manifest = JSON.parse(readFileSync(resolve(root, 'specs/quint/application/manifest.json'), 'utf8'));
   for (const adapter of adapters) {
-    const receipt = await adapter();
+    const result = await adapter();
+    const receipt = result.receipt ?? result;
+    if(result.obligations)obligations.push(...result.obligations);
     const model = receipt.model === 'PermanentVoiceDeletionContract' ? 'PermanentVoiceDeletion' : receipt.model;
     receipts.push({...receipt, coverageModel: model});
     const entry = (Array.isArray(manifest) ? manifest : manifest.models).find(entry => entry.module === model);

@@ -250,3 +250,11 @@ safety evidence, and the seven migrated designs retain exhaustive finite checks.
 See `specs/quint/verification.md` for the completed check results, command bounds,
 Android build blockers and the distinction between model coverage and full
 implementation refinement.
+
+## November 8 source reconciliation
+
+The integration uses SDK99 and 61 registered models. It preserves the older evidence above as historical. Current application and native models use the shared owners for Files, navigation, notifications, speech and credential control. `ListFocus`, `RendererFailureUI` and `InboxCoordinator` add bounded contracts without replacing the canonical Notes variant.
+
+The review ports callback ownership, retained acknowledgment receipts, current capability checks, failed cleanup, list identity and renderer-recovery behavior. It keeps the current single-list Notes layout, virtual Photos grid, Files volumes and package-keyed app drawer. Superseded local Files/launcher code and its original requirements remain in Git history.
+
+The current source inventory and patch inputs are authenticated separately from the historical receipts. A successful bounded run does not establish universal refinement, physical storage durability, Android platform behavior or device acceptance.

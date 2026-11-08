@@ -1,6 +1,6 @@
 # Application source refinement
 
-`index.mjs` executes source adapters for the 20 application models and returns
+`index.mjs` executes source adapters for the 22 application models and returns
 their checker receipts together with unobserved fields, unexercised actions and
 remaining environmental obligations. Run the source checks with
 `node --test test/quint-application-refinement.test.mjs` from the repository root.
@@ -65,3 +65,9 @@ The aggregate report lists every model field absent from source observations
 and every model action absent from these traces. It also retains adapter-specific
 limits. These lists are part of the result, including when every executed trace
 passes.
+
+## Current coordinator evidence
+
+The aggregate keeps the component adapters and adds permission, vault, legacy Notes, list-focus and renderer-recovery receipts. The permission result retains its explicit limitations. `notes-coordinator-notes.md`, `permission-coordinator-notes.md`, `vault-coordinator-notes.md` and `list-focus-notes.md` describe the current source boundaries. The Chromium shell coordinator has a separate receipt.
+
+Shared source is prepared from SDK99. Executed transitive modules, the upstream pin and applicable patch inputs are captured before evaluation. The source ledger records domain allocation and drift, while individual receipts state their bounded correspondence claims.

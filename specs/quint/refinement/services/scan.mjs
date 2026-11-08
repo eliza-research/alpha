@@ -26,7 +26,7 @@ async function bundle() {
   return {code:result.outputFiles[0].text, inputs:Object.keys(result.metafile.inputs).filter(input=>existsSync(input))};
 }
 export async function scanRefinement() {
-  const sources = ['apps/app/src/prototype/scan-document.ts', 'apps/app/src/prototype/scan-pdf.ts', 'apps/app/src/browser/scan-draft.ts', 'apps/app/src/runtime/abort-signal.ts', '.eliza/client-features/plugins/plugin-files/src/documents/scan-draft.ts', '.eliza/client-features/plugins/plugin-files/src/documents/scan-text-layer.ts', 'specs/quint/refinement/services/scan.mjs', 'specs/quint/refinement/services/support.mjs', '.eliza/client-features/plugins/plugin-native-camera/src/scan-document.ts', 'patches/eliza/scan-document-client-manifest.json', 'patches/eliza/scan-document-client.patch', 'scripts/prepare-client-features.mjs'];
+  const sources = ['apps/app/src/prototype/scan-document.ts', 'apps/app/src/prototype/scan-pdf.ts', 'apps/app/src/browser/scan-draft.ts', 'apps/app/src/runtime/abort-signal.ts', '.eliza/client-features/plugins/plugin-files/src/documents/scan-draft.ts', '.eliza/client-features/plugins/plugin-files/src/documents/scan-text-layer.ts', 'specs/quint/refinement/services/scan.mjs', 'specs/quint/refinement/services/support.mjs', '.eliza/client-features/plugins/plugin-native-camera/src/scan-document.ts', 'upstream.lock.json', '.eliza/client-features/.source.json', 'scripts/prepare-client-features.mjs'];
   let driverHashes = captureInputs(sources);
   const compiled = await bundle();
   sources.push(...compiled.inputs.filter(input=>!sources.includes(input)));

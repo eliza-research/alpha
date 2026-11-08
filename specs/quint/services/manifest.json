@@ -6,7 +6,8 @@
         "apps/app/src/runtime/cloud-sign-in.ts",
         "apps/app/src/runtime/cloud-sign-in-ui.tsx",
         "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaCloudSignInPlugin.java",
-        "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaCredentialStore.java"
+        "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaCredentialStore.java",
+        "apps/app/src/runtime/connection-ui.tsx"
       ],
       "stateMapping": {
         "phase/method/pending/consumed": "native Attempt, encrypted pending record and callback burn",
@@ -16,14 +17,16 @@
         "ownerEpoch": "committed credential generation, preserved while a replacement attempt is pending",
         "phase/method/pending/pendingWrite/consumed": "current interactive Attempt, queued versus persisted Google pending record, and callback consumption",
         "activation": "captured committed owner, durable acknowledgement receipt, bounded ACK rounds and old-attempt revocation/Steward cleanup independent from a newer Attempt",
-        "cleanupOwner": "previous uncommitted attempt whose cancelled worker must release its transient Steward session before queued replacement work"
+        "cleanupOwner": "previous uncommitted attempt whose cancelled worker must release its transient Steward session before queued replacement work",
+        "liveIntent": "in-memory credential intent owned by the current interactive Attempt; encrypted pending bytes cannot recreate it after process restart"
       },
       "abstractions": [
         "Two sign-in attempts and owners, five wrong-code attempts and three ack attempts.",
         "Opaque PKCE states, proofs and credentials are represented by identities. Cryptography, endpoint shapes and encrypted persistence are checked by existing implementation tests.",
         "Storage failure before the key commit ends the attempt. After key persistence, cancellation cannot stop acknowledgement. Authentication delivery precedes best-effort Steward logout and local-session cleanup.",
-        "Failed durable callback burn and cancellation retain pending bytes and block reuse within that process. A process restart may restore the unretired record and requires successful burn and fresh native authorization. A recovered key acknowledgement loses the transient previous-token revocation capability and never claims it was revoked.",
-        "Legacy top-level key/receipt/ack fields describe the current Attempt. The canonical activation record retains an older committed owner during replacement admission. CurrentActivationProjection requires matching representations when both refer to the same committed attempt. beginWork represents the queued worker reaching the replacement pending write after old cleanup. Restart preserves durable replacement pending bytes while restoring the stored activation owner."
+        "Failed durable callback burn and cancellation retain pending bytes and block reuse within that process. A process restart may retain the unretired record but cannot acquire a new live credential intent or exchange it. A recovered key acknowledgement loses the transient previous-token revocation capability and never claims it was revoked.",
+        "Legacy top-level key/receipt/ack fields describe the current Attempt. The canonical activation record retains an older committed owner during replacement admission. CurrentActivationProjection requires matching representations when both refer to the same committed attempt. beginWork represents the queued worker reaching the replacement pending write after old cleanup. Restart preserves durable replacement pending bytes while restoring the stored activation owner.",
+        "A successful server acknowledgment may leave its durable receipt if cancellation retired the interaction. Startup can retry acknowledgment before removing that receipt; the stored credential remains committed."
       ],
       "path": "specs/quint/services/IdentitySession.qnt",
       "module": "IdentitySession",
@@ -46,7 +49,9 @@
         "cancelledPrecommitWorkerRetainsCleanupTest",
         "restartDropsUncommittedWorkerTest",
         "resumedAckFencesPendingCallbackTest",
-        "resumedAckRestoresPendingCallbackTest"
+        "resumedAckKeepsColdCallbackRefusedTest",
+        "coldReturnCannotAcquireCredentialIntentTest",
+        "cancelledAcknowledgmentRetainsRecoveryReceiptTest"
       ],
       "invariants": [
         "KeyBeforeAck",
@@ -71,7 +76,14 @@
       "sharedSources": [
         "packages/auth/android/src/main/java/ai/eliza/auth/cloud/CloudSignInFlow.java",
         "packages/auth/android/src/main/java/ai/eliza/auth/cloud/CloudEmailCode.java",
-        "packages/auth/android/src/main/java/ai/eliza/auth/cloud/CloudSmsCode.java"
+        "packages/auth/android/src/main/java/ai/eliza/auth/cloud/CloudSmsCode.java",
+        "packages/auth/android/src/main/java/ai/eliza/auth/cloud/CloudSignInPlugin.java",
+        "packages/auth/android/src/main/java/ai/eliza/auth/cloud/CloudSignInConfig.java",
+        "packages/auth/android/src/main/java/ai/eliza/auth/cloud/CloudSignInEnvironment.java",
+        "packages/auth/android/src/main/java/ai/eliza/auth/cloud/CloudSignInRoutes.java",
+        "packages/auth/android/src/main/java/ai/eliza/auth/cloud/CloudSignInReadiness.java",
+        "packages/auth/android/src/main/java/ai/eliza/auth/cloud/CloudCredentialSlots.java",
+        "packages/auth/android/src/main/java/ai/eliza/auth/cloud/CloudKeyRevocation.java"
       ]
     },
     {
@@ -272,7 +284,8 @@
         "One durable operation, one draft and two attachment revisions represent arbitrary mail content and attachment hashes.",
         "Recipient and byte equality are opaque identity comparisons. Parsing, SHA-256 and exact-byte copy remain runtime test responsibilities.",
         "Account changes hide and retire pending review while retaining durable unresolved receipts. Unknown delivery is never automatically resent.",
-        "The grant identity denotes the Google connection. As gmailReadCacheKey does, this model keeps a same-session/connection identity through revoke and regrant. Regrant cannot restore a discarded review or cache and cannot redispatch an unresolved operation."
+        "The grant identity denotes the Google connection. As gmailReadCacheKey does, this model keeps a same-session/connection identity through revoke and regrant. Regrant cannot restore a discarded review or cache and cannot redispatch an unresolved operation.",
+        "The optional reserve/persistDispatch/reserveFailed transitions split confirmation admission from its awaited local CAS. confirm remains the existing post-commit macro. committing retains the prior saved review and has not issued a provider request."
       ],
       "path": "specs/quint/services/InboxDelivery.qnt",
       "module": "InboxDelivery",
@@ -283,10 +296,11 @@
         "exactReviewTest",
         "changedDraftTest",
         "uncertainRecoveryTest",
-        "grantRevocationTest",
         "restoredGrantNeedsFreshReviewTest",
         "restoredGrantKeepsUnknownTest",
-        "restoredGrantKeepsOwnerFenceTest"
+        "restoredGrantKeepsOwnerFenceTest",
+        "grantRevocationTest",
+        "reservationBeforeDispatchTest"
       ],
       "invariants": [
         "AtMostOneDispatch",
@@ -308,7 +322,6 @@
         "apps/app/src/maps/agent-navigation.ts",
         "apps/app/src/maps/cloud-provider.ts",
         "apps/app/src/maps/cloud-maps.ts",
-        "apps/app/src/maps/navigation-fix.ts",
         "apps/app/src/maps/guidance.ts",
         "apps/app/src/prototype/maps-adapter.ts",
         "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaMapsTransportPlugin.java",
@@ -347,7 +360,10 @@
         "maxSamples": 1000,
         "maxSteps": 60,
         "seed": "123"
-      }
+      },
+      "sharedSources": [
+        "plugins/plugin-maps/src/client/navigation-fix.ts"
+      ]
     },
     {
       "sources": [
@@ -668,19 +684,23 @@
         "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaCredentialStore.java",
         "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaLocalAgentPlugin.java",
         "android/app/src/main/java/ai/elizaresearch/alphaphone/LocalAgentProviderAdmission.java",
-        "android/app/src/main/java/ai/elizaresearch/alphaphone/ResidentCredentialShutdownRetry.java"
+        "android/app/src/main/java/ai/elizaresearch/alphaphone/ResidentCredentialShutdownRetry.java",
+        "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaConnectionPlugin.java",
+        "android/app/src/main/java/ai/elizaresearch/alphaphone/SerialStorageTasks.java"
       ],
       "stateMapping": {
         "operation/phase/before/capturedProvider": "mutateSlotOnce classification and slot/provider snapshot reread",
         "requestedStop/acknowledgedStop/stopped": "exact strict resident shutdown before critical write",
         "ownerEpoch/capturedEpoch": "credential intent and lifecycle ownership recheck",
-        "oldSize/newSize/admissionInvalidated": "retained slot-cap shrink versus rejected growth after admission invalidation"
+        "oldSize/newSize/admissionInvalidated": "retained slot-cap shrink versus rejected growth after admission invalidation",
+        "committed/phase": "source selected-slot commit observation, followed by public success or failure reply"
       },
       "abstractions": [
         "Opaque credential contents and provider configurations are equality classes; providerRevision captures the full stored provider comparison.",
         "Current versus retained byte caps are scaled to two and three units, with four representing preflight overflow.",
         "The running resident is stopped only for matching bound critical changes. No-provider Cloud sign-in and ordinary slots may commit without stopping it.",
-        "Rollback restores only its captured provider revision. A newer provider revision makes it fail without overwriting it."
+        "Rollback restores only its captured provider revision. A newer provider revision makes it fail without overwriting it.",
+        "A same-generation rebind preserves runtime admission and avoids shutdown. Committed writes and later reported outcomes are separate transitions; provider removal updates presence for subsequent operations."
       ],
       "path": "specs/quint/services/NativeCredentialMutation.qnt",
       "module": "NativeCredentialMutation",
@@ -695,7 +715,13 @@
         "oversizedPreflightTest",
         "unchangedCredentialAdmissionTest",
         "unrelatedEnvironmentTest",
-        "unboundSignInTest"
+        "unboundSignInTest",
+        "failedWriteKeepsCredentialTest",
+        "committedWriteCanReportFailureTest",
+        "clearedProviderNeedsNoSecondStopTest",
+        "compareConflictKeepsCredentialTest",
+        "sameBindingDoesNotStopRuntimeTest",
+        "writeCheckpointCanPrecedeReportedFailureTest"
       ],
       "invariants": [
         "ShutdownBeforeCriticalWrite",
@@ -708,7 +734,14 @@
         "maxSamples": 1000,
         "maxSteps": 60,
         "seed": "123"
-      }
+      },
+      "sharedSources": [
+        "plugins/plugin-native-agent/android/src/main/java/ai/eliza/plugins/agent/runtime/NativeProviderAdmission.java",
+        "plugins/plugin-native-agent/android/src/main/java/ai/eliza/plugins/agent/runtime/NativeProviderSlot.java",
+        "plugins/plugin-native-agent/android/src/main/java/ai/eliza/plugins/agent/runtime/CredentialRequestFence.java",
+        "plugins/plugin-native-agent/android/src/main/java/ai/eliza/plugins/agent/runtime/CredentialIntentFence.java",
+        "plugins/plugin-native-secure-store/android-nativeonly/src/main/java/ai/eliza/plugins/securestore/nativeonly/CredentialIntentFence.java"
+      ]
     },
     {
       "sources": [
@@ -752,6 +785,84 @@
         "maxSteps": 60,
         "seed": "123"
       }
+    },
+    {
+      "path": "specs/quint/services/InboxCoordinator.qnt",
+      "module": "InboxCoordinator",
+      "init": "init",
+      "step": "step",
+      "invariant": "safety",
+      "sources": [
+        "apps/app/src/prototype/inbox-cloud-adapter.ts",
+        "apps/app/src/prototype/inbox-provider-controls.ts",
+        "apps/app/src/prototype/inbox-drafts.ts",
+        "apps/app/src/prototype/inbox-unsaved.ts",
+        "apps/app/src/runtime/inbox-operation.ts",
+        "apps/app/src/runtime/inbox-local-store.ts",
+        "apps/app/src/runtime/inbox-attachment.ts",
+        "apps/app/src/runtime/inbox-unsaved-record.ts",
+        "apps/app/src/runtime/gmail-grants.ts",
+        "apps/app/src/prototype/assistant-draft-controller.ts"
+      ],
+      "components": [
+        "specs/quint/services/InboxDelivery.qnt"
+      ],
+      "tests": [
+        "unavailableCapabilitiesRefuseConfirmationTest",
+        "oldCapabilityReplyIgnoredTest",
+        "changedComposerRefusesReviewTest",
+        "lostOutcomeRetainsEveryCopyTest",
+        "renewedGrantNeedsFreshReviewTest",
+        "oldAccountCannotDispatchTest",
+        "knownSuccessCleansExactCopiesTest",
+        "editDuringSendPreservesAllCopiesTest",
+        "olderSavedVersionIsKeptTest",
+        "lateAttachmentCannotCrossOwnerTest",
+        "withdrawalDuringCommitKeepsUnknownTest",
+        "attachmentChangesInvalidateReviewTest",
+        "newDraftShelvesLatestCopyTest",
+        "oldAccountCapabilityIgnoredTest",
+        "oldInstanceCapabilityIgnoredTest",
+        "oldAccountCasRefusalRetainsReviewTest",
+        "cleanupFailureKeepsLaterCopiesTest",
+        "lostCleanupReplyRecoversTest",
+        "staleCleanupCannotTouchReplacementTest"
+      ],
+      "invariants": [
+        "AtMostOneNetworkRequest",
+        "EffectHasDurableIntent",
+        "UnavailableCannotConfirm",
+        "CurrentComposerRequired",
+        "EditedCopiesPreserved",
+        "CleanupRequiresFreshSuccess",
+        "TypeOK",
+        "CleanupAfterKnownSend"
+      ],
+      "bounds": {
+        "maxSamples": 1000,
+        "maxSteps": 80,
+        "seed": "123"
+      },
+      "stateMapping": {
+        "First/Second": "Independent retained operation slots for two account/grant identities, preserving old unknown operations across selection changes",
+        "owner/epoch/known/capabilityToken": "current provider binding and capability callbacks fenced by captured account, binding epoch and latest read token",
+        "copies/sourceContent/sourceAttachment": "finite identities and content-equivalence classes for open, saved, retained and shelved drafts and their reviewed source",
+        "network/busy": "actual provider dispatch, separate from a pending local CAS",
+        "withdrawOwner": "deferred removal of undispatched reviews for a withdrawn grant",
+        "cleanupStage/cleanupEpoch/retainedWritable": "Ordered per-write cleanup, captured binding, local retained-controller failure and compensation after a known stale clear"
+      },
+      "abstractions": [
+        "Two logical account/grant identities, two draft identities and content/attachment equivalence classes. Each retained operation instance issues at most one provider request in a trace.",
+        "Current capability readback gates confirmation. Capability callbacks retain account, binding epoch and read token. Grant withdrawal during an already admitted run is deferred, so an in-flight request can remain uncertain and its receipt is retained.",
+        "Cleanup requires a provider-confirmed current send. Edited copies are preserved and an older saved version is marked. The compatibility cleanup action summarizes a complete pass; per-write actions expose retained, shelf and saved CAS completion, lost replies and stale-binding compensation.",
+        "The staged cleanup projection admits one cleanup invocation at a time. Its shelf represents one exact source draft. Arbitrary shelf collections and simultaneous independent cleanup invocations require further schedules."
+      ],
+      "sharedSources": [
+        "plugins/plugin-inbox/src/mailbox/review-controller.ts",
+        "plugins/plugin-inbox/src/mailbox/drafts-controller.ts",
+        "plugins/plugin-inbox/src/mailbox/operation-journal.ts",
+        "plugins/plugin-inbox/src/mailbox/retained-draft.ts"
+      ]
     }
   ]
 }

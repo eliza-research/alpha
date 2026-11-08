@@ -225,3 +225,9 @@ all scenarios, 1,000 traces of up to 80 transitions and four-transition symbolic
 safety checking. Their current receipts are in
 `test-results/quint-native/producer-validation.json`. The earlier Calendar/Inbox
 receipts remain historical evidence for their previous revisions.
+
+## November 8 coordinator integration
+
+`InboxCoordinator` composes two retained `InboxDelivery` slots with current shared review and draft controllers. Eighteen coordination schedules and nine cleanup schedules preserve grant changes, current capability checks, queued cleanup, lost persistence replies and the original dispatch identity. The source bundles bind the SDK99 pin and explicit confirmation/cleanup patch inputs.
+
+`IdentitySession` separates the live interactive intent from an encrypted pending record. A cold browser return cannot recreate that intent. A cancelled post-commit interaction can leave a successful acknowledgment receipt for startup cleanup. `NativeCredentialMutation` also distinguishes a durable commit from its reported result. The corresponding native drivers execute current shared Java owners under controlled storage and transport ports.

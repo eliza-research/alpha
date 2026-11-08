@@ -8,8 +8,8 @@ repository-wide allocation and source hashes are recorded in `../coverage.json`.
 | --- | --- | --- |
 | `Application` | `AlphaClient.attachVerifiedTransport`, `disconnect`, `setViewContext`, native startup/reset gates | Two owners, three non-reused epochs, lifecycle, sensitive observation, pending work, reviewed dispatch, voice and owner-scoped visible cache |
 | `ShellNavigation` | `ViewNavigationClient.capture`, `deliver`, `cancel`, shell `back`, `goHome`, `openView` | All 19 `AlphaView` values, modal/shade/composer ordering, focus, draft and one completed-action claim. View-specific record bodies use their domain models |
-| `StartupPermissions` | `createStartupPermissionFlow`, `readStartupPermissionMemory`, `readStartupPermissionProgress`, `writeStartupPermissionProgress` | One representative permission transaction, six ordered native setup steps, durable prompt attempt and progress, legacy completed installation |
-| `PermissionWalkthrough` | `StartupPermissions.allow`, `advance`, `finish`, `savedProgress` | Six independent permission maps, signed-in prerequisite, sequential requests, targeted Settings review, final platform recheck and historical completed records |
+| `StartupPermissions` | `createStartupPermissionFlow`, `readStartupPermissionMemory`, `readStartupPermissionProgress`, `writeStartupPermissionProgress` | One representative permission transaction, seven ordered native setup steps, durable prompt attempt and progress, legacy completed installation |
+| `PermissionWalkthrough` | `StartupPermissions.allow`, `advance`, `finish`, `savedProgress` | Seven independent permission maps, owner/sequence fences, read-only reactivation, targeted Settings review, durable choices and historical completed records |
 | `AssistantConversation` | `AlphaClient.run`, `send`, `approve`, `cancel`, `replaceAssistantDraft` | One foreground request and one proposal identity, consumption before dispatch, automatic-workflow survival across ordinary navigation, sensitive-view cancellation, compare-and-exchange composer draft |
 | `NotesLifecycle` | Legacy `editNotesTrash`/`planNotesTrash`, canonical `NotesController`, `NotesEditor`, `NotesSnapshotState`, `CanonicalNotesUi` and the Notes folder document | Separate legacy Trash/CAS and canonical owner/read/write generations, dirty-draft preservation, queued edits, uncertain writes, current selection, stable folder identity and deleted-folder projection |
 | `DurableStore` | `BrowserDomainDocument.load`, `edit`, `capture`, `restore`, `reset` | One document transaction, two distinct revisions, preserved legacy bytes, corrupt metadata, explicit recovery and persistence failure |
@@ -26,6 +26,8 @@ repository-wide allocation and source hashes are recorded in `../coverage.json`.
 | `FilesAndSharing` | `reviewFileEmail`, `reviewMailAttachment`, `mediaCopyIntent`, share adapters | One exact source, owner and draft identity, initially unchecked selection, reread before local insertion, cancellation and revoked grant. Send has its own Inbox model |
 | `PreferencesAndPresentation` | `keyboardFreeHeight`, `canvasGeometry`, `surfaceLayout`, `publishSurfaceLayout`, shell preferences | Representative portrait/wide geometry, keyboard exclusion, large-text fallback, preference readback, draft/selection continuity and one system shade |
 | `CallbackLanding` | Static delegation-return page | Query multiplicity, state shape, result exclusivity, size/description limits, early URL scrubbing and exact app-link exposure |
+| `ListFocus` | `createKeyedListFocus`, current Notes/Photos bindings | Two captures and roots, semantic identity, focus movement, discarded renders and current visibility |
+| `RendererFailureUI` | `RootErrorBoundary`, global startup recovery and shared crash classification | One recovery surface, fixed diagnostic classes, modal retirement and explicit reload |
 
 ## Notes lifecycle modes
 
@@ -33,7 +35,7 @@ repository-wide allocation and source hashes are recorded in `../coverage.json`.
 resident Notes contract. The canonical mode has one existing note, one editor
 draft, one current owner, a distinct foreign callback identity and two successive
 folder identities. Three read generations and two writes bound the exploration.
-The legacy mode retains its four storage, deletion and restore scenarios.
+The legacy mode retains eight storage, queued-write, retained-draft, deletion and restore scenarios.
 
 Canonical scenarios exercise owner retirement, superseded reads, clean and dirty
 refreshes, selection validity and edits typed during a pending save. A queued save
