@@ -60,6 +60,17 @@
           "afterSha256": "cd8f23f09c191aa9ebe3048e688a46a4a81b730405351a1cf809f4c8e214fce1"
         }
       ]
+    },
+    {
+      "file": "embedding-store-identity.patch",
+      "sha256": "358327f35c37bd5862ec6dcaa7657c4db545a548e4d5de63cf8efd8120f01d1e",
+      "targets": [
+        {
+          "path": "packages/core/src/runtime/embeddings.ts",
+          "beforeSha256": "36605cc23b7e423f5dd0edd8cef4e7a7f91cb85860c864af9781b5fbd0f71176",
+          "afterSha256": "e3acd82d9bc623f12253356fd63172d29c895a714c4345a809d5e9b8f807e7a9"
+        }
+      ]
     }
   ]
 }

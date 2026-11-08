@@ -6,7 +6,7 @@ import os from 'node:os';
 import childProcess, {execFileSync, spawnSync} from 'node:child_process';
 import {syncBuiltinESMExports} from 'node:module';
 import {createHash} from 'node:crypto';
-import {CORE_STATE_TARGET, NOTES_STATE_TARGET, ROOM_QUEUE_TARGET, CORE_STATE_MANIFEST, coreStatePatch, coreStateReceipt,
+import {CORE_STATE_TARGET, NOTES_STATE_TARGET, ROOM_QUEUE_TARGET, EMBEDDING_STATE_TARGET, CORE_STATE_MANIFEST, coreStatePatch, coreStateReceipt,
   coreStateBuildPlugin, coreStateBuildRecord, verifyCoreStateBuildRecord, coreRuntimeArguments, combinedCoreRuntime, coreStateRequiredTargets} from '../scripts/core-state-patch.mjs';
 import {sourceManifest} from '../scripts/combined-agent-source.mjs';
 import {writeCoreStateFixture} from './fixtures/core-state-root.mjs';
@@ -30,6 +30,7 @@ test('reviewed TaskService patch materializes exact bytes while preserving origi
   assert.match(entry.bytes.toString(), /startTimer\(\) \{\s+if \(this.stopped\) return/);
   assert.deepEqual([...prepared.files.keys()], f.manifest().patches.flatMap(patch => patch.targets.map(target => target.path)));
   assert.ok(prepared.files.has(ROOM_QUEUE_TARGET));
+  assert.ok(prepared.files.has(EMBEDDING_STATE_TARGET));
 });
 test('missing, modified and wrong-pin patch inputs fail closed', t => {
   for (const mode of ['missing', 'digest', 'pin', 'target', 'output', 'input', 'linked']) {
@@ -156,5 +157,11 @@ test('each producer must transform exactly its selected reviewed targets', t => 
   const record = coreStateBuildRecord(f.root, prepared.transforms, both);
   verifyCoreStateBuildRecord(f.root, record, both);
   assert.throws(() => coreStateBuildRecord(f.root, [...prepared.transforms, prepared.transforms[0]], both), /transformation/);
+  const embeddingFile = path.join(f.source, EMBEDDING_STATE_TARGET);
+  const all = [...both, ...coreStateRequiredTargets([embeddingFile])];
+  assert.deepEqual(all, [...both, EMBEDDING_STATE_TARGET]);
+  assert.throws(() => coreStateBuildRecord(f.root, prepared.transforms, all), /selected core/);
+  load({path: embeddingFile});
+  verifyCoreStateBuildRecord(f.root, coreStateBuildRecord(f.root, prepared.transforms, all), all);
   assert.deepEqual(coreStateRequiredTargets(['/host/transport.ts']), []);
 });
