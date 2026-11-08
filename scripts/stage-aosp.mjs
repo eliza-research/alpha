@@ -139,8 +139,8 @@ for (let i = 0; i < args.length; i++) {
   i++;
 }
 const development = args.includes("--development");
-// --production adds the provisioning overlay (default HOME, Autofill offer, and the assistant
-// role when the APK has an enabled one). It needs a reviewed descriptor and a distributable release, so it is
+// --production adds the provisioning overlay (default HOME, assistant role, Autofill
+// offer). It needs a reviewed descriptor and a distributable release, so it is
 // refused until a signed, PACKAGED, qualified release APK exists.
 const production = args.includes("--production");
 const cuttlefish = cuttlefishOptions({target:get('--target'), source:get('--aosp-source'), factory:get('--factory-image')});
