@@ -785,7 +785,7 @@ export function installPrototypeVoiceAdapter(Component: any, views: Record<strin
     if(this.live===false||document.hidden||connectionController.getSnapshot().open||composerBinding()!==binding)throw Error('The Notes review changed.');
   };
   Component.prototype.retireReadReplyVoice=function(proposalId:string){if(chatDestination?.shell===this&&conversationState.awaitingUserInput?.proposalId===proposalId)cleanup();};
-  // A voice conversation speaks its replies itself (prototype/reply-announcer.ts stays quiet meanwhile).
+  // A voice conversation speaks its replies itself (the reply announcer in subview-accessibility.ts stays quiet meanwhile).
   Component.prototype.voiceConversationActive=function(){return retirement?.shell===this||chatDestination?.shell===this&&chatDestination?.mode!=='dictation'&&stage!=='closed';};
   function maybeStartDictation(){if(chatDestination?.mode==='dictation'&&chatCurrent()&&stage==='ready'&&onDeviceReady&&!busy)void primary();}
   Component.prototype.startTranscription = function(){

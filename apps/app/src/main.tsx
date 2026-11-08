@@ -10,7 +10,7 @@ import {bindBrowserDeletionOwner} from './runtime/deletion-owner';
 import {DEFAULT_PULL_VELOCITY} from "../../../.eliza/client-features/packages/ui/src/gestures/constants";
 import {usePullGesture} from "../../../.eliza/client-features/packages/ui/src/components/shell/use-pull-gesture";
 import {installChatOverlayMotion} from './prototype/chat-overlay-motion-adapter';
-import {installSubviewAccessibility,keepFocusOnScreen} from './prototype/subview-accessibility';
+import {installSubviewAccessibility,installReplyAnnouncer,keepFocusOnScreen} from './prototype/subview-accessibility';
 import {installCalendarMonthFocus} from './prototype/calendar-month-focus';
 import {installCalendarEditDraftAdapter} from './prototype/calendar-edit-draft-adapter';
 import {installCalendarFormDraftAdapter} from './prototype/calendar-form-draft-adapter';
@@ -50,7 +50,6 @@ import { Component, VIEWS, ORDER } from './prototype/model.js';
 import { installReminderAdapter } from './prototype/reminder-adapter';
 import { installNoteOriginAdapter } from './prototype/note-origin-adapter';
 import { installAgentAdapter } from './prototype/agent-adapter';
-import { installReplyAnnouncer } from './prototype/reply-announcer';
 import { installPrototypeNativeAdapters } from './prototype/native-adapter';
 import { installSelectedDocumentAdapter } from './prototype/selection-adapter';
 import { installPrototypeCameraAdapter } from './prototype/camera-adapter';
@@ -164,7 +163,7 @@ if(developmentAgentWorkflows){installWorkflowAdapter(Component,VIEWS);installAut
 installSubviewAccessibility(VIEWS);
 installCalendarMonthFocus(Component, VIEWS);
 installChatOverlayMotion(Component);
-// Replies, failures and the replying state are announced without moving focus (prototype/reply-announcer.ts).
+// Replies, failures and the replying state are announced without moving focus (installReplyAnnouncer in prototype/subview-accessibility.ts).
 installReplyAnnouncer(Component);
 installSystemShade(Component,{native:isAndroid});
 // The shared agenda, mail and brief cards render the final Home values of every adapter above.
