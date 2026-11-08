@@ -6,7 +6,7 @@
   "reviewed_pr_head": "44c9d57ce38b3b29f5b104a2f6efc103fdd914c3",
   "integrated_main": "06ca5d62e09e8898fc9242db5e6a70f5be374510",
   "reviewed_upstream_pin": "0d40aa6e6e1b5192311ca916515003c8a4473c0c",
-  "upstream_pin": "9237023aee3856b7375f21a6dfde0f9b957929a5",
+  "upstream_pin": "4dae580daa50fa6f0f9a220c6ac1fa0942879b02",
   "ledger_refresh": {
     "date": "2026-10-10",
     "branch": "claude/r6-ledger",
