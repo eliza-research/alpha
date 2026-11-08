@@ -5,6 +5,8 @@ import path from "node:path";
 import { execFileSync, spawnSync } from "node:child_process";
 import { pathToFileURL } from "node:url";
 import test from "node:test";
+import { CORE_STATE_MANIFEST } from "../scripts/core-state-patch.mjs";
+import { writeCoreStateFixture } from "./fixtures/core-state-root.mjs";
 
 function fixture(t) {
 	const priorFlag=process.env.ELIZA_DEV_ALLOW_TEST_MOCKS;
@@ -47,6 +49,7 @@ function fixture(t) {
 			encoding: "utf8",
 			stdio: ["ignore", "pipe", "pipe"],
 		}).trim();
+	writeCoreStateFixture(root, upstream, "0".repeat(40), true);
 	git("init");
 	git("add", ".");
 	git(
@@ -60,6 +63,8 @@ function fixture(t) {
 	);
 	const commit = git("rev-parse", "HEAD");
 	write("upstream.lock.json", JSON.stringify({ commit }));
+	const patchManifest = JSON.parse(fs.readFileSync(path.join(root, CORE_STATE_MANIFEST), "utf8"));
+	write(CORE_STATE_MANIFEST, JSON.stringify({ ...patchManifest, baseCommit: commit }));
 	return { root, upstream, write, git };
 }
 
@@ -126,7 +131,9 @@ test("clean pinned source is admitted and loader reauthenticates on each build",
 	Object.defineProperty(globalThis, "Bun", {
 		configurable: true,
 		value: {
-			build: async () => {
+			build: async ({ plugins, metafile }) => {
+				assert.equal(plugins[0].name, "authenticated-core-state");
+				assert.equal(metafile, true);
 				builds++;
 				throw new Error("Reached build boundary");
 			},
