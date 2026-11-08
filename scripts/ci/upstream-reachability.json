@@ -2,13 +2,13 @@
   "schema": 1,
   "repository": "elizaOS/eliza",
   "base": "develop",
-  "baseCommit": "f05b903938187c151d1f6c94b58490ddb5ea9c45",
-  "head": "4e91de4cc7d747a36c0e2e1fb01f125b3932450d",
-  "recordedAt": "2026-11-07",
-  "command": "gh api repos/elizaOS/eliza/compare/develop...4e91de4cc7d747a36c0e2e1fb01f125b3932450d",
+  "baseCommit": "626c07dba08f2f8cebf0d4519159b885f5a78431",
+  "head": "3a6d22670eb38eb23827942657a6b1f886daa38d",
+  "recordedAt": "2026-11-08",
+  "command": "gh api repos/elizaOS/eliza/compare/develop...3a6d22670eb38eb23827942657a6b1f886daa38d",
   "status": "diverged",
-  "aheadBy": 14,
-  "behindBy": 3,
+  "aheadBy": 16,
+  "behindBy": 4,
   "mergeBase": "a744332dd2ad7437d0f0d38707c6e579d21a67f6",
   "pinOnlyCommits": [
     {
@@ -62,6 +62,14 @@
     {
       "sha": "4e91de4cc7d747a36c0e2e1fb01f125b3932450d",
       "subject": "Speak streamed reply sentences as they complete and start local speech output sooner"
+    },
+    {
+      "sha": "909c1b72f7f8e3d9cb191c0bbad6139fdfee430b",
+      "subject": "Speak streamed reply text early only from confirmed frames of a direct reply"
+    },
+    {
+      "sha": "3a6d22670eb38eb23827942657a6b1f886daa38d",
+      "subject": "Restore the cancellable, fenced speech output warm-up"
     }
   ],
   "pullRequests": []

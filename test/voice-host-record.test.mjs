@@ -18,10 +18,14 @@ const committed = JSON.parse(fs.readFileSync(path.join(ROOT, VOICE_HOST), 'utf8'
 test('the committed record satisfies the schema, model inventory and ASR slot', () => {
   assert.deepEqual(voiceHostProblems(committed), []);
   const record = committed;
-  // P-82: the owner accepted engine 6337fd4c on device-executed component evidence.
-  assert.equal(record.qualified, true, 'qualified only with device execution and user acceptance');
+  // P-82 accepted engine 6337fd4c with the speech Java at b25d8aef29. That Java changed by this pin
+  // and has been neither requalified nor re-accepted, so the record is not qualified.
+  assert.equal(record.qualified, false, 'the changed speech bridge is not requalified or re-accepted');
   assert.equal(record.evidence.deviceExecuted, true);
-  assert.equal(record.evidence.userAccepted, true);
+  assert.equal(record.evidence.userAccepted, false);
+  assert.equal(record.sourceAdmission.developComparison.qualifiedAt, 'b25d8aef2916385c571f4367e099809254fde0bb');
+  assert.ok(record.sourceAdmission.developComparison.changedPaths.some(file => file.endsWith('/ai/eliza/voice/ParadeeVoice.java')), 'the qualify path\'s changed Java is named');
+  assert.ok(record.evidence.records.includes('docs/evidence/voice-engine-6337fd4c/qualify-receipt.json'));
   assert.equal(record.provider, 'libelizainference-paradee');
   assert.deepEqual(record.abis.map(row => row.abi), ['arm64-v8a', 'x86_64']);
   const slot = JSON.parse(fs.readFileSync(path.join(ROOT, VOICE_ASR_SLOT), 'utf8'));
@@ -111,7 +115,10 @@ function fixtureProduct(t) {
   // separate committed-record test above still enforces the actual product pin.
   record.pin = '1'.repeat(40);
   record.forkPin = '2'.repeat(40);
-  const write = (relative, content) => { fs.mkdirSync(path.dirname(path.join(from, relative)), {recursive: true}); fs.writeFileSync(path.join(from, relative), content); return {sha256: sha(content), bytes: Buffer.byteLength(content)}; };
+  // A qualified fixture, so qualified admission and the paths that must unqualify it are both exercised.
+  record.qualified = true;
+  record.evidence = {...record.evidence, userAccepted: true};
+  const write =(relative, content) => { fs.mkdirSync(path.dirname(path.join(from, relative)), {recursive: true}); fs.writeFileSync(path.join(from, relative), content); return {sha256: sha(content), bytes: Buffer.byteLength(content)}; };
   for (const model of record.models) Object.assign(model, write(model.sourceFile ? path.join(path.dirname(model.path), model.sourceFile) : model.path, `fixture ${model.path}`));
   for (const abi of record.abis) Object.assign(abi.libraries[0], write(`jniLibs/${abi.abi}/libelizainference.so`, `engine ${abi.abi}`));
   const inputs = JSON.parse(fs.readFileSync(path.join(ROOT, 'vendor/eliza/plugins/plugin-local-inference/native/android/inputs.json'), 'utf8'));

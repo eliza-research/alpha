@@ -1,14 +1,16 @@
 # On-device speech: measurements and decisions, 2026-11-05
 
 Device: Pixel 10a `stallion`, `ro.soc.model` Tensor G4, Alpha userdebug image. Engine
-`b3eb2bf63b`, measured at Eliza pin `36236fc059`. The pin is now `4e91de4cc7` (develop with the
-streaming changes, `b25d8aef29`, merged with the Maps admission branch) with engine `6337fd4c4b` (same
-model bytes); that engine's qualification is recorded separately in the voice record. Raw results are under
+`b3eb2bf63b`, measured at Eliza pin `36236fc059`. The pin is now `3a6d22670e` (develop with the
+streaming changes, `b25d8aef29`, merged with the Maps admission branch, plus the shared speech changes)
+with engine `6337fd4c4b` (same model bytes); that engine's qualification is recorded separately in the
+voice record. Raw results are under
 [evidence](evidence/on-device-speech-2026-11-05). Everything here is development evidence from
 a dirty tree and a debug APK: not release, AOSP image or user acceptance. The defect 1 fix is on main.
 `SpeechLeadTrim`, `SpeechOutputWarmup`, `FirstWriteSpeechOutput` and per-sentence speech of a streamed
-reply now live in the shared speech bridge and voice session at the pin (`4e91de4cc7`), which Alpha
-drives (`warmSpeechOutput`, `onText`).
+reply now live in the shared speech bridge and voice session at the pin (`3a6d22670e`), which Alpha
+drives (`warmSpeechOutput`, `onText`). A streamed sentence is spoken before the reply is confirmed only
+from confirmed model text of a reply the stream has proven direct; see [streamed reply speech](#streamed-reply-speech).
 
 ## Status
 
@@ -29,7 +31,9 @@ drives (`warmSpeechOutput`, `onText`).
 - **Those turns used the recorded-clip fallback, not the live route.** The latency table below
   describes the live pipeline, which real turns do not yet take (see Live route).
 - Not done: the live route in a distributable build and an AOSP image with this APK. The voice record
-  is qualified on the owner's acceptance of component evidence (P-82), not on a spoken turn.
+  is not qualified at this pin: the owner accepted component evidence on November 7 (P-82), but the
+  shared speech Java changed after the qualified source (`b25d8aef29`) and has been neither requalified
+  nor re-accepted.
 
 ## Live route
 
@@ -154,11 +158,35 @@ word; only speed moved, and only on the emulator.
 | Pixel 10a arm64, API 37 | 1.94% | 4.77% | 0.042 / 0.055 |
 | x86_64 emulator, API 35 | 2.13% | 4.90% | 0.488 / 0.118 |
 
-The voice record has `deviceExecuted` and `emulatorDeviceExecuted` true for this engine. On
-November 7 the owner accepted on-device speech on this evidence (P-82): the record is now
-`userAccepted` and `qualified`. That acceptance rests on the component runs above, the typed-turn
-streaming confirmation and the separate-day latency estimate below; there was no spoken turn on
-versionCode 40 and no same-day A/B.
+The voice record has `deviceExecuted` and `emulatorDeviceExecuted` true for this engine, and
+[`qualify-receipt.json`](evidence/voice-engine-6337fd4c/qualify-receipt.json) records the qualify APK
+and library hashes that ran. On November 7 the owner accepted on-device speech on this evidence
+(P-82). That acceptance rests on the component runs above, the typed-turn streaming confirmation and
+the separate-day latency estimate below; there was no spoken turn on versionCode 40 and no same-day A/B.
+
+The qualify app ran the shared `ai.eliza.voice` Java at `b25d8aef29`. By the current pin
+(`3a6d22670e`) that Java changed: `ParadeeVoice` (a per-request cancel path around every
+non-streaming synthesis call, which the round-trip test calls), `OnDeviceRecognizer`,
+`ElizaInferencePlugin`, `LocalSpeechBridgePlugin` and the new `SpeechLeadTrim`,
+`SpeechOutputWarmup` and `FirstWriteSpeechOutput`, plus `consumer.gradle` and the builder. The engine
+and JNI inputs did not change, so the library bytes and their component results stand, but the
+changed bridge has not been requalified. The voice record is therefore `qualified: false` and
+`userAccepted: false` at this pin until the owner re-accepts the changed bridge, or the qualify app is
+rerun at the pin on both ABIs and accepted.
+
+### Streamed reply speech
+
+The agent streams the Stage-1 reply as provisional drafts (`model_draft`) and action status
+(`action_callback`) before the final reply confirms them. Voice never speaks provisional text. Alpha
+passes each frame's metadata to the voice session, and the session speaks a sentence before the reply
+is confirmed only when the frame is confirmed model text and the stream has proven the reply direct:
+the agent's `reply_ready` snapshot settled with no action results, so no proposal, owner-input pause
+or action outcome can come from this turn. After a provisional frame, early speech ends for that turn
+and the confirmed reply is spoken in full. The confirmed reply skips streamed sentences only while
+they match it sentence for sentence. A barge-in or Stop during a streamed sentence reports what was
+heard: the reply is found by the turn's request id once the agent has recorded it. With the Cloud
+provider in use, drafts lead the confirmed text by only about 100 ms, so correctness is preferred over
+that residual gain.
 
 ### Where a voice turn's time goes now
 
