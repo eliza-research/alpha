@@ -28,7 +28,8 @@ public class AlphaHostedResultsPlugin extends Plugin {
  // latest tap stays here until its capture commits; a newer tap replaces it. It is retried on resume and
  // when the page asks for the tap.
  private volatile Intent uncommittedTap,uncommittedRenewal;
- private volatile boolean showing;
+ /** The scope the page last reported on screen. A pause stops silencing it; resume restores it. */
+ private volatile String showing;
  private void channel(){new HostedNoticePoster(getContext());}
  private boolean enabled(){return new HostedNoticePoster(getContext()).allowed();}
  private void sourceForeground()throws Exception {
@@ -86,13 +87,13 @@ public class AlphaHostedResultsPlugin extends Plugin {
  private void retryCaptures(){Intent result=uncommittedTap,renewal=uncommittedRenewal;if(result!=null)captureNow(result);if(renewal!=null)captureRenewalNow(renewal);}
  @Override public void load(){channel();capture(getActivity().getIntent());captureRenewal(getActivity().getIntent());}
  @Override protected void handleOnNewIntent(Intent intent){capture(intent);captureRenewal(intent);}
- @Override protected void handleOnResume(){if(uncommittedTap!=null||uncommittedRenewal!=null)submit(null,this::retryCaptures);notifyListeners("pendingResult",new JSObject(),true);}
- // A backgrounded app alerts as usual; the page reports the panel again when it is shown.
- @Override protected void handleOnPause(){if(showing){showing=false;notices().showing(null);}}
+ @Override protected void handleOnResume(){if(uncommittedTap!=null||uncommittedRenewal!=null)submit(null,this::retryCaptures);if(showing!=null)notices().showing(showing);notifyListeners("pendingResult",new JSObject(),true);}
+ // A backgrounded app alerts as usual. A pause that leaves the page visible sends no visibility event, so resume restores the report.
+ @Override protected void handleOnPause(){if(showing!=null)notices().showing(null);}
  private void capture(Intent intent){if(intent==null||(!ACTION.equals(intent.getAction())&&!ASK_ACTION.equals(intent.getAction()))||intent.getData()==null)return;String data=intent.getData().toString();if(!data.startsWith(PREFIX))return;uncommittedTap=intent;submit(null,()->captureNow(intent));}
  private void captureNow(Intent intent){if(intent.getData()==null)return;String key=intent.getData().toString().substring(PREFIX.length());boolean question=ASK_ACTION.equals(intent.getAction());try{notices().capture(key,question);intent.setData(null);if(uncommittedTap==intent)uncommittedTap=null;notifyListeners("pendingResult",new JSObject(),true);}catch(Exception ignored){/* Kept for a retry; never expose a result from an uncommitted tap. */}}
  /** The page reports which account's results panel is on screen (scope), or none. */
- @PluginMethod public void setResultsShowing(PluginCall call){try{String scope=call.getData().isNull("scope")?null:call.getString("scope");notices().showing(scope);showing=scope!=null;call.resolve();}catch(Exception error){call.reject("Results panel state unavailable");}}
+ @PluginMethod public void setResultsShowing(PluginCall call){try{String scope=call.getData().isNull("scope")?null:call.getString("scope");notices().showing(scope);showing=scope;call.resolve();}catch(Exception error){call.reject("Results panel state unavailable");}}
  /** The page showed these runs: their notices are withdrawn. A captured tap is left for the page to open. */
  @PluginMethod public void withdrawResult(PluginCall call){submit(call,()->{try{JSObject out=new JSObject();JSArray runs=call.getArray("runIds");if(runs==null)throw new IllegalArgumentException();out.put("withdrawn",notices().withdraw(call.getString("scope"),runs.<String>toList()));call.resolve(out);}catch(Exception error){call.reject("Result notice could not be withdrawn; it clears after a day");}});}
  @PluginMethod public void publishResult(PluginCall call){submit(call,()->{try{String phase=notices().publish(call.getData());JSObject out=new JSObject();out.put("phase",phase);call.resolve(out);}catch(Exception error){call.reject("Result notice unavailable; saved history is unchanged");}});}
