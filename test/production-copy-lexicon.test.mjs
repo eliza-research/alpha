@@ -32,6 +32,10 @@ test('copy sinks, DOM text, Error messages and *Message() returns are read; test
     el.setAttribute('data-provider','The provider key');
     throw new Error('The local runtime must expose exactly one agent.');
     function failureMessage(code){ return code==='x'?'The provider refused this.':'Try again.'; }
+    const offMessage=()=>ok?'Saved.':'Sign in to turn the provider back on.';
+    const label=()=>'The provider key';
+    throw speechError('local-runtime','Connect the local runtime to transcribe.');
+    setSubmissionError('That receipt could not be confirmed.');
     function payload(){ return 'provider receipt runtime'; }
     setNotice(testMocksEnabled?'Development provider selected':'Saved.');
     if(testMocksEnabled) toast('Mock provider ready.');
@@ -45,13 +49,16 @@ test('copy sinks, DOM text, Error messages and *Message() returns are read; test
     {term:'adapter',text:'Workflow adapter'},
     {term:'runtime',text:'The local runtime must expose exactly one agent.'},
     {term:'provider',text:'The provider refused this.'},
+    {term:'provider',text:'Sign in to turn the provider back on.'},
+    {term:'runtime',text:'Connect the local runtime to transcribe.'},
+    {term:'receipt',text:'That receipt could not be confirmed.'},
   ]);
 });
 
 test('Java Toast and notification text is read; other Java strings are not',()=>{
   const source=`class A{void f(){
     Toast.makeText(context,"Inference adapter failed",Toast.LENGTH_SHORT).show();
-    builder.setContentTitle(title.isEmpty()?"Navigation":title).setContentText("Open Alpha Phone to review.");
+    builder.setContentTitle(title.isEmpty()?"Navigation":title).setContentText("Open Alpha Phone\\nto review.");
     Log.w(TAG,"provider runtime receipt missing");
     String key="provider";
   }}`;

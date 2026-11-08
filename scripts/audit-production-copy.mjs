@@ -135,8 +135,8 @@ export function scanScriptSource(file, source) {
         break;
       case 'CallExpression': {
         const callee = calleeName(node.callee);
-        if (SINK_CALL.test(callee)) for (const argument of node.arguments) addAll(argument, `${callee}()`);
-        if (ERROR_CLASS.test(callee) && node.callee.type === 'Identifier') addAll(node.arguments[0], `${callee}()`);
+        // Error() and error factories such as speechError(code, message): codes are single words.
+        if (SINK_CALL.test(callee) || (ERROR_CLASS.test(callee) && node.callee.type === 'Identifier')) for (const argument of node.arguments) addAll(argument, `${callee}()`);
         const [attribute, value] = node.arguments;
         if (callee === 'setAttribute' && attribute?.type === 'Literal' && VISIBLE_ATTRIBUTE.test(String(attribute.value))) addAll(value, `setAttribute(${attribute.value})`);
         break;
@@ -144,6 +144,11 @@ export function scanScriptSource(file, source) {
       case 'AssignmentExpression':
         if (node.operator === '=' && node.left.type === 'MemberExpression' && DOM_TEXT.test(name(node.left.property))) addAll(node.right, `.${name(node.left.property)}`);
         break;
+      case 'ArrowFunctionExpression': {
+        const owner = node.expression && enclosingFunctionName(node.body);
+        if (owner && MESSAGE_FUNCTION.test(owner)) addAll(node.body, `${owner}()`);
+        break;
+      }
       case 'ReturnStatement': {
         const owner = enclosingFunctionName(node);
         if (node.argument && owner && MESSAGE_FUNCTION.test(owner)) addAll(node.argument, `${owner}()`);
@@ -171,7 +176,7 @@ export function scanJavaSource(file, source) {
       if (char === '"') {
         let end = at + 1;
         while (end < source.length && source[end] !== '"') end += source[end] === '\\' ? 2 : 1;
-        const text = source.slice(at + 1, end).replace(/\\(.)/g, '$1');
+        const text = source.slice(at + 1, end).replace(/\\(.)/g, (_, char) => 'ntr'.includes(char) ? ' ' : char);
         if (prose(text) || /^[A-Z]/.test(text)) copy.push({file, line: source.slice(0, at).split('\n').length, sink: match[0].replace(/\s*\($/, '()'), text});
         at = end + 1;
         continue;
