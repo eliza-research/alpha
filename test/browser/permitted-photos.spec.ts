@@ -27,8 +27,10 @@ test('denied Photos keeps an explicit permission request and loads the library a
  expect(await page.evaluate(()=>(window as any).mediaFixture.calls.filter((c:any)=>c.method==='requestLibraryAccess').length)).toBe(1);
 });
 test('revocation clears already rendered Favorites and returns to the owned-only scope',async({page})=>{
- await photosBridge(page);await page.getByRole('button',{name:'Albums',exact:true}).click();await page.getByRole('button',{name:'Favorites',exact:true}).click();
- await expect(page.getByRole('button',{name:/^Captured photo /})).toHaveCount(1);
+ await photosBridge(page,'full',true,false,true);await page.getByRole('button',{name:'Albums',exact:true}).click();await page.getByRole('button',{name:'Favorites',exact:true}).click();
+ await expect(page.getByRole('button',{name:/^Captured photo /})).toHaveCount(2);
+ const owned=await page.evaluate(()=>'Captured photo '+new Date((window as any).mediaFixture.ownedRow.date).toLocaleTimeString());
  await page.evaluate(()=>{const f=(window as any).mediaFixture;f.scope='denied';f.emit();});
- await expect(page.getByRole('button',{name:/^Captured photo /})).toHaveCount(0);
+ await expect(page.getByRole('button',{name:/^Captured photo /})).toHaveCount(1);
+ await expect(page.getByRole('button',{name:owned,exact:true})).toBeVisible();
 });
