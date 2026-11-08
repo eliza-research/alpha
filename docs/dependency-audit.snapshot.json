@@ -1,7 +1,7 @@
 {
   "description": "Normalised `npm audit --json` for the package-lock.json with this SHA-256. Regenerate with: node scripts/dependency-audit.mjs --write. Dispositions live in docs/dependency-audit.dispositions.json.",
-  "auditedOn": "2026-10-27",
-  "lockSha256": "84029a1d65017782877b3cc3e71b81f48f7f7441be2eb892d2df91e83a4ac3ff",
+  "auditedOn": "2026-11-08",
+  "lockSha256": "9347385673af2f739a7d9fc264f279b47578e22b64a660ffa8c7370dcaa068e0",
   "counts": {
     "info": 0,
     "low": 0,
@@ -14,7 +14,7 @@
       "package": "@capacitor/cli",
       "severity": "moderate",
       "direct": true,
-      "affectedRange": "8.5.0 - 9.0.0-alpha.8",
+      "affectedRange": "8.5.0 - 8.5.3 || 8.6.1-nightly-20261029T150938.0 - 9.0.0-alpha.8",
       "via": [
         "xcode"
       ],
@@ -38,7 +38,7 @@
           ]
         }
       ],
-      "fixAvailable": "@capacitor/cli@8.4.3 (outside the declared range)"
+      "fixAvailable": "@capacitor/cli@8.6.0"
     },
     {
       "package": "uuid",
@@ -60,7 +60,7 @@
       ],
       "installed": [
         {
-          "location": "node_modules/uuid",
+          "location": "node_modules/xcode/node_modules/uuid",
           "version": "7.0.3",
           "scope": "dev",
           "paths": [
@@ -68,7 +68,7 @@
           ]
         }
       ],
-      "fixAvailable": "@capacitor/cli@8.4.3 (outside the declared range)"
+      "fixAvailable": "@capacitor/cli@8.6.0"
     },
     {
       "package": "xcode",
@@ -98,7 +98,7 @@
           ]
         }
       ],
-      "fixAvailable": "@capacitor/cli@8.4.3 (outside the declared range)"
+      "fixAvailable": "@capacitor/cli@8.6.0"
     }
   ],
   "resident": {
@@ -448,7 +448,7 @@
           "id": "GHSA-mghh-pgcx-3jjj",
           "severity": "high",
           "vulnerableRange": ">=1.15.0 <1.20.0",
-          "title": "Axios: ReDoS (O(N\u00b2)) in shouldBypassProxy host normalization, reachable via untrusted redirect Location",
+          "title": "Axios: ReDoS (O(N²)) in shouldBypassProxy host normalization, reachable via untrusted redirect Location",
           "url": "https://github.com/advisories/GHSA-mghh-pgcx-3jjj"
         }
       },
@@ -729,7 +729,7 @@
           "id": "GHSA-5p4m-2wfm-xmqj",
           "severity": "high",
           "vulnerableRange": ">=4.0.0 <4.3.1",
-          "title": "JS-YAML: Quadratic CPU consumption in !!omap resolution (3.x and 4.x) \u2014 CVE-2026-59870 fix not backported",
+          "title": "JS-YAML: Quadratic CPU consumption in !!omap resolution (3.x and 4.x) — CVE-2026-59870 fix not backported",
           "url": "https://github.com/advisories/GHSA-5p4m-2wfm-xmqj"
         }
       },
@@ -887,7 +887,7 @@
           "id": "GHSA-528h-pc64-c93x",
           "severity": "moderate",
           "vulnerableRange": "<=3.4.0",
-          "title": "stream-json: pick/ignore/filter/replace filters are O(depth\u00b2) on nested input \u2014 small crafted JSON blocks the event loop for seconds\u2192minutes (DoS)",
+          "title": "stream-json: pick/ignore/filter/replace filters are O(depth²) on nested input — small crafted JSON blocks the event loop for seconds→minutes (DoS)",
           "url": "https://github.com/advisories/GHSA-528h-pc64-c93x"
         }
       },
