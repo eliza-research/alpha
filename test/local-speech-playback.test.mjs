@@ -27,14 +27,14 @@ test('a Cloud failure before audio names its cause; one after audio says reading
   try {
     f.error = Object.assign(Error('PRIVATE_HTTP_SENTINEL'), {code: 'voice-http-401'});
     const refused = await f.box.readNoteAloud('Groceries. Milk and eggs.', {noteId: 'a'});
-    assert.deepEqual({...refused}, {outcome: 'failed', message: 'Couldn’t start reading. Sign in to Cloud again in Settings, then retry voice.'});
+    assert.deepEqual({...refused}, {outcome: 'failed', message: 'Couldn’t start reading. Eliza Cloud sign-in expired. Sign in again in Settings, then retry voice.'});
     f.error = null;
     const synthesize = f.driver.synthesize;
     let calls = 0;
     f.driver.synthesize = async input => { if (++calls > 1) f.error = Object.assign(Error('PRIVATE_HTTP_SENTINEL'), {code: 'voice-http-402'}); return synthesize(input); };
     const partial = await f.box.readNoteAloud(note, {noteId: 'b'});
     assert.equal(partial.outcome, 'failed');
-    assert.match(partial.message, /^Reading stopped before the end\. Cloud declined cloud voice for your account's billing\./);
+    assert.match(partial.message, /^Reading stopped before the end\. Eliza Cloud declined voice for billing\./);
     assert.doesNotMatch(refused.message + partial.message, /PRIVATE_HTTP_SENTINEL/);
   } finally { f.close(); await f.tick(); }
 });

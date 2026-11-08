@@ -22,6 +22,7 @@ import {
   type SubscriptionView,
 } from '../../../../.eliza/client-features/packages/cloud/sdk/src/subscription-entitlement.ts';
 
+import { formatMonthDay, formatTime } from '../prototype/locale-time.ts';
 export * from '../../../../.eliza/client-features/packages/cloud/sdk/src/subscription-entitlement.ts';
 
 /** Alpha's names in shared copy; the service name is the configured deployment's. */
@@ -42,8 +43,10 @@ export function allowanceText(allowance: PlanAllowance | null, now: number = Dat
 }
 /** The shared reset time format (month, day, hour, minute). */
 function clock(at: number): string {
+  // Device locale and 12/24-hour choice, as every displayed time in Alpha.
   try {
-    return new Date(at).toLocaleString(undefined, { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
+    const date = new Date(at);
+    return `${formatMonthDay(date)}, ${formatTime(date)}`;
   } catch {
     return new Date(at).toISOString();
   }
