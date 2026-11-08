@@ -554,3 +554,47 @@ test('the browser recorder finishes bounded segments as it records, as the nativ
   assert.match(voice, /if\(!note\.segments\.length\)note\.segments=\[\{segmentId:clip\.recordingId/, 'the whole clip is one segment only when no segment was written');
   assert.match(read('apps/app/src/browser/audio-capture.ts'), /if\(part\)await Promise\.race\(\[part\.flushed,/, 'the last segment arrives before stop resolves');
 });
+
+test('finishAudio stops and saves a playable recording without remote transcription', async () => {
+ const driver=fakeDriver();let transcriptionCalls=0;const saved=[];
+ const s=new NoteRecorderSession(driver,async()=>{transcriptionCalls++;throw Error('No upload on audio save');},()=>{},{pollMs:60000,remoteTranscription:()=>true});
+ await s.begin();driver.segment();driver.segment();
+ assert.equal(await s.finishAudio(async(audio,text)=>{saved.push(audio);assert.equal(text,'');assert.equal(driver.state.discarded,0);return true;}),true);
+ assert.equal(transcriptionCalls,0);assert.equal(saved.length,1);assert.equal(saved[0].audioId,driver.id);assert.equal(driver.state.saves.length,1);assert.equal(driver.state.discarded,1);assert.equal(s.phase,'closed');
+});
+
+test('canonical finishAudio retains audio for the confirmed canonical id before discarding segments', async () => {
+ const driver=fakeDriver();let transcriptions=0;
+ const s=new NoteRecorderSession(driver,async()=>{transcriptions++;return null;},()=>{},{pollMs:60000,remoteTranscription:()=>true});
+ await s.begin();driver.segment();
+ assert.equal(await s.finishAudio(async(stub,text,intent)=>{
+  assert.equal(driver.state.saves.length,0,'canonical record is resolved before audio gets an owner');
+  assert.equal(stub.audioId,driver.id);assert.equal(text,'');assert.equal(await intent.claim(),true);
+  const audio=await intent.retainAudio('canonical-note-1');assert.equal(audio.noteId,'canonical-note-1');assert.equal(driver.state.discarded,0);return true;
+ },true),true);
+ assert.equal(driver.state.saves[0].noteId,'canonical-note-1');assert.equal(transcriptions,0);assert.equal(driver.state.discarded,1);
+});
+
+test('failed canonical audio retention keeps segments and retries the saved target without a second claim', async () => {
+ const driver=fakeDriver(),save=driver.save;let failing=true,claims=0;
+ driver.save=async input=>{if(failing)throw Error('Storage unavailable');return save(input);};
+ const s=new NoteRecorderSession(driver,async()=>assert.fail('Audio-only save must not transcribe'),()=>{},{pollMs:60000,remoteTranscription:()=>true});
+ await s.begin();driver.segment();
+ const persist=async(_stub,_text,intent)=>{if(!intent.pending){assert.equal(await intent.claim(),true);claims++;}await intent.retainAudio('canonical-saved-target');return true;};
+ assert.equal(await s.finishAudio(persist,true),false);assert.equal(s.phase,'stopped');assert.equal(driver.state.discarded,0);
+ failing=false;assert.equal(await s.finishAudio(persist,true),true);assert.equal(claims,1);assert.equal(driver.state.saves[0].noteId,'canonical-saved-target');assert.equal(driver.state.discarded,1);
+});
+
+test('a stale Discard cannot erase segments during canonical audio save', async () => {
+ const driver=fakeDriver(),s=new NoteRecorderSession(driver,async()=>null,()=>{},{pollMs:60000,remoteTranscription:()=>true});
+ await s.begin();driver.segment();let entered,release;const arrived=new Promise(resolve=>entered=resolve),gate=new Promise(resolve=>release=resolve);
+ const saving=s.finishAudio(async(_saved,_text,intent)=>{assert.equal(await intent.claim(),true);entered();await gate;await intent.retainAudio('canonical-one');return true;},true);
+ await arrived;await s.discard(true);assert.equal(driver.state.discarded,0);assert.equal(s.phase,'finishing');release();assert.equal(await saving,true);assert.equal(driver.state.discarded,1);
+});
+
+test('audio-first recording never starts automatic transcription even with a local transcriber',async()=>{
+ const driver=fakeDriver();let calls=0;
+ const recorder=new NoteRecorderSession(driver,async()=>{calls++;return async()=> 'unexpected';},()=>{},{pollMs:60000,automaticTranscription:false});
+ await recorder.begin();driver.segment();await new Promise(resolve=>setImmediate(resolve));assert.equal(calls,0);
+ assert.equal(await recorder.finishAudio(async()=>true),true);assert.equal(calls,0);assert.equal(driver.state.saves.length,1);
+});

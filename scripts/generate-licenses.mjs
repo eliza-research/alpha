@@ -928,6 +928,56 @@ export function generate(root = ROOT, options = {}) {
   return {entries, errors, warnings, flagLines: licenceFlagLines(entries), json: renderJson(entries), text: renderText(entries)};
 }
 
+/** Read-only source-CI input. Explicit packaged generation still requires staged bytes.
+ * The reviewed complete JSON/TXT hashes authenticate the retained runtime rows;
+ * ordinary source rows are regenerated independently, so source changes remain detectable. */
+export function reviewedPackagedEntries(root = ROOT) {
+  const fail = message => { throw new Error(`Reviewed packaged notices: ${message}`); };
+  const readInput = (relative, limit) => {
+    const segments = relative.split('/');
+    if (path.isAbsolute(relative) || segments.some(part => !part || part === '.' || part === '..')) fail('unsafe input path');
+    let current = root;
+    for (const part of segments) { current = path.join(current, part); if (fs.lstatSync(current).isSymbolicLink()) fail('symlink input'); }
+    const fd = fs.openSync(current, fs.constants.O_RDONLY | fs.constants.O_NOFOLLOW);
+    try {
+      const stat = fs.fstatSync(fd);
+      if (!stat.isFile() || stat.size > limit) fail('input exceeds regular-file bound');
+      const data = fs.readFileSync(fd);
+      if (data.length !== stat.size || data.length > limit) fail('input changed while reading');
+      return data;
+    } finally { fs.closeSync(fd); }
+  };
+  const jsonInput = (relative, limit) => { try { return JSON.parse(readInput(relative, limit).toString('utf8')); } catch { fail('invalid or unavailable review input'); } };
+  const disposition = jsonInput('docs/dependency-audit.dispositions.json', 8 * 1024 * 1024).resident;
+  const evidence = disposition?.shippedSetEvidence;
+  if (typeof evidence !== 'string' || !/^docs\/security\/resident-staged-review-[A-Za-z0-9-]+\.json$/.test(evidence)) fail('missing fixed review path');
+  const review = jsonInput(evidence, 1024 * 1024), pin = jsonInput('upstream.lock.json', 131072).commit;
+  if (review.schema !== 1 || typeof pin !== 'string' || typeof review.sdk !== 'string' || review.sdk !== pin || typeof review.bundleSha256 !== 'string' || !/^[a-f0-9]{64}$/.test(review.bundleSha256) || review.audit?.input !== 'packaged-runtime notices') fail('review does not bind this SDK and packaged inventory');
+  let jsonBytes;
+  for (const [file, name] of [[JSON_OUTPUT, 'third-party-notices.json'], [TEXT_OUTPUT, 'THIRD_PARTY_NOTICES.txt']]) {
+    const expected = review.evidenceFiles?.[name];
+    const bytes = readInput(file, 16 * 1024 * 1024);
+    if (!/^[a-f0-9]{64}$/.test(expected || '') || createHash('sha256').update(bytes).digest('hex') !== expected) fail(`${name} differs from the reviewed bytes`);
+    if (file === JSON_OUTPUT) jsonBytes = bytes;
+  }
+  const rows = JSON.parse(jsonBytes.toString('utf8'));
+  if (!Array.isArray(rows) || !rows.every(entry => entry && typeof entry.name === 'string' && typeof entry.text === 'string') || !rows.some(entry => entry.name === BUN_ENTRY)) fail('reviewed inventory has no Bun entry');
+  return rows.filter(entry => entry.name === BUN_ENTRY || entry.name === 'On-device elizaOS agent runtime payload' || /^Bundled in the on-device /.test(entry.text));
+}
+
+/** Verify a checked-in packaged notice set in a source checkout. This path never
+ * writes assets and cannot substitute for --packaged-runtime generation. */
+export function verifyCommittedNotices(root = ROOT) {
+  if (!shippedPackagedRuntime(root) || packagedRuntimePresent(root)) return generate(root);
+  let runtime;
+  try { runtime = reviewedPackagedEntries(root); }
+  catch (error) { return {entries: [], errors: [error.message], warnings: [], flagLines: [], json: renderJson([]), text: renderText([])}; }
+  const source = collectNotices(root, {packagedRuntime: false});
+  const entries = [...source.entries.filter(entry => entry.name !== 'On-device elizaOS agent runtime payload'), ...runtime]
+    .sort((a, b) => a.name.localeCompare(b.name, 'en') || a.version.localeCompare(b.version, 'en'));
+  return {...source, entries, flagLines: licenceFlagLines(entries), json: renderJson(entries), text: renderText(entries)};
+}
+
 async function main(argv) {
   const check = argv.includes('--check');
   if (argv.includes('--refresh-android')) {
@@ -937,7 +987,8 @@ async function main(argv) {
   }
   // Writing defaults to the committed (no runtime) form; --check follows the shipped form.
   const packagedRuntime = argv.includes('--packaged-runtime') || (check && shippedPackagedRuntime(ROOT));
-  const {entries, errors, warnings, flagLines, json, text} = generate(ROOT, {packagedRuntime});
+  const {entries, errors, warnings, flagLines, json, text} = check && !argv.includes('--packaged-runtime')
+    ? verifyCommittedNotices(ROOT) : generate(ROOT, {packagedRuntime});
   const summarize = (rows, label) => {
     const bundled = rows.filter(entry => /^Bundled in the on-device /.test(entry.text));
     const bun = rows.find(entry => entry.name === BUN_ENTRY);

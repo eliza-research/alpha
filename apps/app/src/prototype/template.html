@@ -2236,7 +2236,7 @@
   <sc-if value="{{notes.primaryNotes}}"><sc-if value="{{showAppBack}}"><button class="app-header-back" aria-label="Back to apps" onClick="{{backToApps}}"><svg class="i" viewBox="0 0 24 24"><path d="{{ic.back}}"></path></svg></button></sc-if></sc-if>
       <sc-if value="{{notes.returnToNotesAction}}"><button class="ib" aria-label="Return to Notes" onClick="{{notes.returnToNotesAction}}"><svg class="i" viewBox="0 0 24 24"><path d="{{ic.back}}"></path></svg></button></sc-if>
     <h1 data-alpha-app-title class="serif" style="margin: 0; font-size: 32px; flex-grow: 1; letter-spacing: -.01em">{{notes.notesTitle}}</h1>
-    <sc-if value="{{notes.canRecord}}"><button class="ib" data-agent-id="notes-record" aria-label="Record and transcribe" onClick="{{notes.record}}"><svg class="i" viewBox="0 0 24 24" style="width: 20px; height: 20px"><path d="{{ic.mic}}"></path></svg></button></sc-if>
+    <sc-if value="{{notes.canRecord}}"><button class="ib" data-agent-id="notes-record" aria-label="Record voice note" onClick="{{notes.record}}"><svg class="i" viewBox="0 0 24 24" style="width: 20px; height: 20px"><path d="{{ic.mic}}"></path></svg></button></sc-if>
       <sc-if value="{{notes.canCreate}}"><button class="ib" data-agent-id="notes-new" aria-label="New note" disabled="{{notes.createDisabled}}" onClick="{{notes.newNote}}"><svg class="i" viewBox="0 0 24 24" style="width: 20px; height: 20px"><path d="{{ic.plus}}"></path></svg></button></sc-if>
   </div>
   <div class="scr notes-folders" role="group" aria-label="Folders" style="display: flex; gap: 8px; overflow-x: auto; padding: 4px 16px 10px; flex-shrink: 0; touch-action: pan-x">
@@ -2525,29 +2525,28 @@
 
   <sc-if value="{{notes.noteRecorder}}">
     <div ref="{{notes.recorderFocus}}" data-alpha-subview="notes-recorder" data-recorder-state="{{notes.noteRecorder.phase}}" class="enter" style="position: absolute; inset: 0; z-index: 10; container-type: inline-size; background: var(--bg); display: flex; flex-direction: column; padding: 0 24px; box-sizing: border-box">
-      <div style="display: flex; align-items: center; height: 56px; margin: 0 -16px 8px">
-        <button class="ib" aria-label="Discard recording" onClick="{{notes.noteRecorder.discard}}"><svg class="i" viewBox="0 0 24 24"><path d="{{ic.x}}"></path></svg></button>
+      <div style="display: flex; align-items: center; min-height: 56px; gap: 16px; flex-shrink: 0">
+        <h2 class="serif" style="flex: 1; margin: 0; font-size: 28px">Voice note</h2>
+        <button class="tap" aria-label="Discard recording" disabled="{{notes.noteRecorder.discardDisabled}}" onClick="{{notes.noteRecorder.discard}}" style="min-height: 44px; padding: 0 4px; font-size: 15px; color: var(--mut)">Discard</button>
       </div>
-      <span class="serif" role="timer" style="font-size: min(calc(72px * var(--browser-text-scale, 1)), 20cqw); line-height: 1; white-space: nowrap; letter-spacing: -.02em; font-variant-numeric: tabular-nums">{{notes.noteRecorder.clock}}</span>
-      <div role="img" aria-label="Microphone levels" style="display: flex; align-items: center; gap: 3px; height: 96px; margin-top: 26px">
-        <sc-for list="{{notes.noteRecorder.levels}}" as="b"><span style="flex: 1 1 0; height: {{b.h}}px; opacity: {{b.o}}; border-radius: 2px; background: var(--acct); transition: height .12s"></span></sc-for>
+      <div class="scr" style="flex: 1; min-height: 0; display: flex; flex-direction: column; justify-content: center; overflow-y: auto; padding: 24px 0">
+        <span class="serif" role="timer" style="font-size: min(calc(72px * var(--browser-text-scale, 1)), 20cqw); line-height: 1; white-space: nowrap; letter-spacing: -.02em; font-variant-numeric: tabular-nums">{{notes.noteRecorder.clock}}</span>
+        <div role="img" aria-label="Microphone levels" style="display: flex; align-items: center; gap: 3px; height: 96px; margin-top: 26px">
+          <sc-for list="{{notes.noteRecorder.levels}}" as="b"><span style="flex: 1 1 0; height: {{b.h}}px; opacity: {{b.o}}; border-radius: 2px; background: var(--acct); transition: height .12s"></span></sc-for>
+        </div>
+        <p role="status" style="min-height: 22px; margin: 12px 0 0; font-size: 14px; color: var(--mut)">{{notes.noteRecorder.status}}</p>
+        <sc-if value="{{notes.noteRecorder.error}}"><p role="alert" style="margin: 8px 0 0; font-size: 14px; color: var(--mut)">{{notes.noteRecorder.error}}</p></sc-if>
       </div>
-      <div class="scr" aria-label="Transcript" aria-live="polite" style="flex-grow: 1; overflow-y: auto; margin-top: 26px; font-size: 18px; line-height: 1.45; white-space: pre-wrap">{{notes.noteRecorder.transcript}}</div>
-      <sc-if value="{{notes.noteRecorder.error}}"><p role="alert" style="margin: 8px 0 0; font-size: 14px; color: var(--mut)">{{notes.noteRecorder.error}}</p></sc-if>
       <sc-if value="{{notes.noteRecorder.confirming}}">
-        <div role="group" aria-label="Discard this recording?" style="display: flex; align-items: center; gap: 12px; margin-top: 12px">
-          <span style="flex-grow: 1; font-size: 15px">Discard this recording?</span>
-          <button class="tap" onClick="{{notes.noteRecorder.keep}}" style="padding: 10px 16px; border-radius: 20px; background: var(--s2); color: var(--fg)">Keep</button>
-          <button class="tap" onClick="{{notes.noteRecorder.confirmDiscard}}" style="padding: 10px 16px; border-radius: 20px; background: var(--fg); color: var(--bg)">Discard</button>
+        <div role="group" aria-label="Discard this recording?" style="display: flex; align-items: center; gap: 12px; margin: 12px 0; flex-wrap: wrap">
+          <span style="flex: 1; font-size: 15px">Discard this recording?</span>
+          <button class="tap" onClick="{{notes.noteRecorder.keep}}" style="min-height: 44px; padding: 10px 16px; border-radius: 20px; background: var(--s2); color: var(--fg)">Keep</button>
+          <button class="tap" disabled="{{notes.noteRecorder.discardDisabled}}" onClick="{{notes.noteRecorder.confirmDiscard}}" style="min-height: 44px; padding: 10px 16px; border-radius: 20px; background: var(--fg); color: var(--bg)">Discard</button>
         </div>
       </sc-if>
-      <sc-if value="{{notes.noteRecorder.transcribeLabel}}">
-        <button class="tap" onClick="{{notes.noteRecorder.transcribe}}" style="min-height: 44px; margin-top: 12px; padding: 10px 16px; border-radius: 24px; background: var(--acc); color: var(--alpha-white)">{{notes.noteRecorder.transcribeLabel}}</button>
-      </sc-if>
-      <div style="display: flex; align-items: center; justify-content: center; gap: 40px; padding: 20px 0 56px; flex-shrink: 0">
-        <button class="ib" aria-label="Discard" onClick="{{notes.noteRecorder.discard}}" style="width: 60px; height: 60px; border-radius: 30px; background: var(--s2)"><svg class="i" viewBox="0 0 24 24"><path d="{{ic.trash}}"></path></svg></button>
-        <button aria-label="{{notes.noteRecorder.pauseLabel}}" disabled="{{notes.noteRecorder.pauseDisabled}}" onClick="{{notes.noteRecorder.toggle}}" style="width: 84px; height: 84px; border-radius: 42px; background: var(--acc); color: var(--alpha-white); display: flex; align-items: center; justify-content: center"><svg class="i" viewBox="0 0 24 24" style="width: 28px; height: 28px"><path d="{{notes.noteRecorder.pauseIcon}}"></path></svg></button>
-        <sc-if value="{{notes.noteRecorder.showDone}}"><button class="ib" aria-label="{{notes.noteRecorder.doneLabel}}" disabled="{{notes.noteRecorder.doneDisabled}}" onClick="{{notes.noteRecorder.done}}" style="width: 60px; height: 60px; border-radius: 30px; background: var(--fg); color: var(--bg)"><svg class="i" viewBox="0 0 24 24"><path d="{{notes.noteRecorder.doneIcon}}"></path></svg></button></sc-if>
+      <div style="display: flex; align-items: center; gap: 12px; padding: 20px 0 max(24px, env(safe-area-inset-bottom)); flex-shrink: 0">
+        <sc-if value="{{notes.noteRecorder.showPause}}"><button disabled="{{notes.noteRecorder.pauseDisabled}}" onClick="{{notes.noteRecorder.toggle}}" style="flex: 1; min-height: 56px; padding: 12px 16px; border-radius: 16px; background: var(--s2); color: var(--fg); display: flex; align-items: center; justify-content: center; gap: 8px; font-size: 16px; font-weight: 600"><svg class="i" viewBox="0 0 24 24" style="width: 20px; height: 20px"><path d="{{notes.noteRecorder.pauseIcon}}"></path></svg>{{notes.noteRecorder.pauseLabel}}</button></sc-if>
+        <button disabled="{{notes.noteRecorder.doneDisabled}}" onClick="{{notes.noteRecorder.done}}" style="flex: 1; min-height: 56px; padding: 12px 16px; border-radius: 16px; background: var(--acc); color: var(--alpha-white); display: flex; align-items: center; justify-content: center; gap: 8px; font-size: 16px; font-weight: 600"><svg class="i" viewBox="0 0 24 24" style="width: 20px; height: 20px"><path d="{{notes.noteRecorder.doneIcon}}"></path></svg>{{notes.noteRecorder.doneLabel}}</button>
       </div>
     </div>
   </sc-if>

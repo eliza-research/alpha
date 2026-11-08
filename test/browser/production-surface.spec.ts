@@ -317,7 +317,7 @@ test('production signed-out voice stays on-device with no upload, engine or Clou
   });
   await page.goto('/');
   await openLegacyNotes(page);
-  await page.getByRole('button', { name: 'Record and transcribe', exact: true }).click();
+  await page.getByRole('button', { name: 'Record voice note', exact: true }).click();
   // The recorder asks for the microphone at once (refused here) and shows one line; no route choice exists.
   const recorder=page.locator('[data-alpha-subview="notes-recorder"]');
   await expect(recorder).toHaveAttribute('data-recorder-state','failed');

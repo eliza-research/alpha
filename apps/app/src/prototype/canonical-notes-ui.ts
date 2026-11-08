@@ -19,9 +19,17 @@ const filled=(value:unknown)=>Array.isArray(value)&&value.length>0;
 /** Alpha's card for a record: voice, link and checklist only when the record carries that data, otherwise text. */
 function shownKind(kind:string,data:Bag):string{
  if(kind==='list')return 'list';
- if(kind==='voice'&&(filled(data.lines)||filled(data.summary)||filled(data.actions)))return 'voice';
+ if(kind==='voice'&&(filled(data.lines)||filled(data.summary)||filled(data.actions)||voiceAudio(data)))return 'voice';
  if(kind==='link'&&typeof data.url==='string'&&data.url)return 'link';
  return 'text';
+}
+/** Only an opaque recording handle is persisted. Paths and arbitrary audio metadata
+ * never become view handles; playback additionally checks native ownership by canonical note id. */
+function voiceAudio(data:Bag):{audioId:string;durationMs:number}|undefined{
+ const audio=data.audio;
+ if(!audio||typeof audio!=='object'||Array.isArray(audio)||Object.keys(audio).some(key=>!['audioId','durationMs'].includes(key)))return;
+ if(typeof data.recordingId!=='string'||audio.audioId!==data.recordingId||!/^[A-Za-z0-9_-]{1,128}$/.test(audio.audioId)||!Number.isFinite(audio.durationMs)||audio.durationMs<0)return;
+ return {audioId:audio.audioId,durationMs:audio.durationMs};
 }
 function domainOf(url:string):string{try{return new URL(url).hostname;}catch{return url;}}
 
@@ -65,11 +73,12 @@ export class CanonicalNotesUi {
  private needsReview():void{this.reviewPending='change';this.phase='review';this.hooks.paint();this.hooks.review();}
  /** The record as Alpha's Notes view reads it: authored rich fields at the top level, local handles left out. */
  private row(note:StickyNote,revision:number):Bag{
-  const data:Bag=structuredClone(note.format?.data??{});for(const key of LOCAL_HANDLES)delete data[key];
+  const data:Bag=structuredClone(note.format?.data??{}),audio=note.format?.kind==='voice'?voiceAudio(data):undefined;for(const key of LOCAL_HANDLES)delete data[key];
+  if(audio)data.audio=audio;
   const parts=projectNoteForModel(note),kind=shownKind(note.format?.kind??'text',data);
   const row:Bag={...data,id:note.id,kind,title:parts.title,body:parts.body,canonicalRevision:revision};
   if(typeof row.when!=='string'){const at=Date.parse(note.updatedAt);row.when=Number.isFinite(at)?new Date(at).toLocaleDateString(undefined,{month:'short',day:'numeric'}):'';}
-  if(kind==='voice'){for(const key of ['lines','summary','actions'])if(!Array.isArray(row[key]))row[key]=[];row.lines=row.lines.map((line:Bag)=>({...line,at:Number.isFinite(line?.at)?line.at:0}));}
+  if(kind==='voice'){if(audio)row.audio={...audio,noteId:note.id,transcript:parts.body};for(const key of ['lines','summary','actions'])if(!Array.isArray(row[key]))row[key]=[];row.lines=row.lines.map((line:Bag)=>({...line,at:Number.isFinite(line?.at)?line.at:0}));}
   if(kind==='link'&&typeof row.domain!=='string')row.domain=domainOf(row.url);
   return row;
  }
@@ -77,8 +86,9 @@ export class CanonicalNotesUi {
   const rows=this.baseRows.slice(),draft=this.editor?.draft;
   this.openValue=draft?draft.id??'draft-'+draft.token:null;this.blankCreationValue=draft&&!draft.id?this.openValue:null;
   if(draft){
-   const base=rows.find(row=>row.id===draft.id),data:Bag=structuredClone(draft.format?.data??{});for(const key of LOCAL_HANDLES)delete data[key];
-   const record={...base,...data,id:this.openValue,kind:base?.kind??shownKind(draft.format?.kind??'text',data),title:draft.title,body:draft.body,canonicalRevision:draft.baseRevision};
+   const base=rows.find(row=>row.id===draft.id),data:Bag=structuredClone(draft.format?.data??{}),audio=draft.format?.kind==='voice'?voiceAudio(data):undefined,kind=shownKind(draft.format?.kind??'text',data);for(const key of LOCAL_HANDLES)delete data[key];
+   if(audio&&draft.id)data.audio={...audio,noteId:draft.id,transcript:draft.body};
+   const record={...base,...data,id:this.openValue,kind:base?.kind??kind,title:draft.title,body:draft.body,canonicalRevision:draft.baseRevision};
    if(draft.format?.kind==='list'||draft.format?.kind==='text')record.kind=draft.format.kind;
    const index=rows.findIndex(row=>row.id===draft.id);if(index<0)rows.unshift(record);else rows[index]=record;
   }
@@ -155,33 +165,44 @@ export class CanonicalNotesUi {
   return removed;
  }
  /**
-  * A finished Notes recording as an agent voice note: its transcript and length, in the selected
-  * folder. Agent notes keep no audio (as dictation), so the recording itself is not stored.
+  * A separate canonical voice note. Audio is retained by the existing device store,
+  * bound to the confirmed canonical id; only its opaque attachment handle is metadata.
   */
  async saveVoice(recordingId:string,transcript:string,durationMs:number,folderId:string|null,current:()=>boolean,intent:CanonicalNoteSaveIntent):Promise<boolean>{
+  let canonicalRecordConfirmed=false;
   try{
    if(!current()||this.pending)return false;
+   if(typeof recordingId!=='string'||!/^[A-Za-z0-9_-]{1,128}$/.test(recordingId)||!Number.isFinite(durationMs)||durationMs<0)return false;
    await this.controller.refresh();
    if(!current()||this.pending)return false;
-   const duration=Math.round(durationMs)/1000;
+   const duration=Math.round(durationMs)/1000,audioOnly=typeof intent.retainAudio==='function';
    const content=transcript?`Voice note\n${transcript}`:'Voice note';
    const belongs=(note:StickyNote)=>note.format?.kind==='voice'&&note.format.data.recordingId===recordingId;
    const matches=(note:StickyNote)=>belongs(note)&&reconstructNoteContent(note)===content&&
-    note.format?.data.dur===duration&&(note.format?.data.folderId??null)===folderId;
+    note.format?.data.dur===duration&&(note.format?.data.folderId??null)===folderId&&
+    (!audioOnly||voiceAudio(note.format?.data??{})?.audioId===recordingId);
+   const complete=async(note:StickyNote)=>{
+    if(!matches(note)||!current()||this.pending)return false;
+    canonicalRecordConfirmed=true;
+    if(audioOnly){const saved=await intent.retainAudio!(note.id);if(!current()||saved.audioId!==recordingId||saved.noteId!==note.id||saved.durationMs!==durationMs)return false;}
+    // Recording from an open text note creates a new voice note without replacing its draft.
+    if(!this.dirty){this.editor.open(note.id);this.hooks.committed?.(note.id);}
+    return true;
+   };
    const snapshot=this.controller.snapshot;
-   const prior=[...(snapshot?.notes??[]),...(snapshot?.trash??[]).map(entry=>entry.note)].filter(belongs);
-   if(prior.length)return prior.length===1&&matches(prior[0]);
-   if(intent.pending||this.dirty||!await intent.claim()||!current()||this.pending||this.dirty)return false;
-   const data:Record<string,NoteJson>={recordingId,lines:transcript?[{s:'me',at:0,t:transcript}]:[],summary:[],actions:[],dur:duration,...(folderId?{folderId}:{})};
+   // A recording already moved to Trash is not resurrected by a delayed Stop.
+   if((snapshot?.trash??[]).some(entry=>belongs(entry.note)))return false;
+   const prior=(snapshot?.notes??[]).filter(belongs);
+   if(prior.length)return prior.length===1&&await complete(prior[0]);
+   if(intent.pending||!await intent.claim()||!current()||this.pending)return false;
+   const data:Record<string,NoteJson>={recordingId,lines:transcript?[{s:'me',at:0,t:transcript}]:[],summary:[],actions:[],dur:duration,...(audioOnly?{audio:{audioId:recordingId,durationMs}}:{}),...(folderId?{folderId}:{})};
    const result=await this.controller.interact('create-note',{
     content,
     forceNew:true,format:parseNoteFormat({kind:'voice',data}),
    });
    if(!current()||!result.note||!result.target||!matches(result.note))return false;
-   this.editor.open(result.target.id);
-   this.hooks.committed?.(result.target.id);
-   return true;
-  }catch{if(this.controller.current)this.needsReview();return false;}
+   return await complete(result.note);
+  }catch{if(this.controller.current&&!canonicalRecordConfirmed)this.needsReview();return false;}
  }
  async saveCard(content:string,api:Bag):Promise<boolean>{
   try{const result=await this.controller.interact('create-note',{content});if(!this.controller.current||!result.target)return false;this.hooks.committed?.(result.target.id);return true;}
@@ -220,7 +241,7 @@ export class CanonicalNotesUi {
   }catch{api.toast('Speech recognition is unavailable.');}
  }
  /** Canonical behaviour on top of Alpha's Notes view: the restore-only Trash as the Recently deleted
-  * folder, review and reload, and the Notes recorder saving the transcript (agent notes keep no audio). */
+  * folder, review and reload, and the Notes recorder saving one voice record with an owned opaque audio attachment. */
  decorate(view:Bag,api:Bag,state:Bag):Bag{
   const rows=this.controller.current?this.trashValue:[],ready=this.controller.revision!==null,busy=this.controller.pending,open=this.open,saved=!!open&&this.controller.hasViewNote(open);
   const trashOpen=state.folder==='deleted'&&rows.length>0;

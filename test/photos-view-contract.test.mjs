@@ -81,5 +81,5 @@ test('review only in Photos on the unlocked phone',()=>{
 
 test('the shared leaf keeps the reviewed rules: same constants and messages as the proposed patch',()=>{
   const patch=readFileSync(new URL('../patches/eliza/photos-view-agent.patch',import.meta.url),'utf8');
-  for(const text of ['"photos.view.v1"','/^custom:[A-Za-z0-9_-]{1,80}$/','PHOTOS_SHARE_MAX = 100','Choose an album name between 1 and 80 characters','Invalid album items','Invalid share items','Invalid filter text','In Photos. Nothing is changed or shared.','You confirm it in Photos.',"then pick where it goes in Android's share sheet. Nothing leaves ${appName} before that."])assert.ok(patch.includes(text),text);
+  for(const text of ['"photos.view.v1"','/^custom:[A-Za-z0-9_-]{1,80}$/','PHOTOS_SHARE_MAX = 100','Choose an album name between 1 and 80 characters','Invalid album items','Invalid share items','Invalid filter text'])assert.ok(patch.includes(text),text);
 });

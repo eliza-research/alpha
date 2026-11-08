@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {stripTypeScriptTypes} from 'node:module';
 import vm from 'node:vm';
+import {changeBatches,runBatches} from '../.eliza/client-features/packages/ui/src/mobile-shell/photos-view.ts';
 const source=readFileSync('apps/app/src/prototype/camera-adapter.ts','utf8');
 const begin=source.indexOf('  async function changeSelection(');
 const end=source.indexOf('  // Browser-owned album storage',begin);
@@ -14,7 +15,7 @@ async function run(cancelAt){
  const calls=[],toasts=[];
  const context=vm.createContext({
   mutating:false,sharing:false,disposed:false,selection:rows,selectionTab:undefined,preview:null,
-  BATCH:20,photoReadEpoch:0,libraryEpoch:0,trashEpoch:0,albumEpoch:0,albumKey:'',
+  BATCH:20,PERMITTED_BATCH:500,libraryAccess:undefined,changeBatches,runBatches,photoReadEpoch:0,libraryEpoch:0,trashEpoch:0,albumEpoch:0,albumKey:'',
   captures:rows,trash:[],albumRows:[],closeVideo(){},retirePhotoRead(){},
   lastEpoch:0,lastCapture:rows[0],session:{phase:'idle'},document:{hidden:false},loadLast(){throw Error('Inactive camera cannot reload');},
   favoriteTarget:()=>true,batches:(items,size)=>Array.from({length:Math.ceil(items.length/size)},(_,i)=>items.slice(i*size,(i+1)*size)),
@@ -37,6 +38,6 @@ test('declining the first Photos batch does not open another confirmation or cla
 test('declining a later Photos batch retains the earlier confirmed result and ends the run',async()=>{
  const result=await run(2);
  assert.equal(result.calls.length,2);
- assert.deepEqual(result.toasts,['20 moved to Recently deleted']);assert.equal(result.lastEpoch,1);assert.equal(result.lastCapture,undefined);
+ assert.deepEqual(result.toasts,['20 moved to Recently deleted · 25 not changed']);assert.equal(result.lastEpoch,1);assert.equal(result.lastCapture,undefined);
  assert.equal(result.mutating,false);
 });

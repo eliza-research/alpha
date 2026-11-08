@@ -835,7 +835,7 @@ test('loop B / J02 on Android: a recorded note, a resident summary and reviewed 
   await openAndroidCalendar(page);
   await page.evaluate(() => window.dispatchEvent(new Event('launcher-home')));
   await openRetainedNativeNotes(page);
-  await button(page, 'Record and transcribe').click();
+  await button(page, 'Record voice note').click();
   // The recorder starts at once; its finished segment is transcribed on the phone while it records.
   await expect.poll(() => native(page, f => f.voice.transcriptions.map((row: any) => row.recordingId))).toEqual(['00000000-0000-4000-8000-000000000001-s0']);
   expect(await native(page, f => f.calls.filter((call: string) => call === 'AlphaVoiceCloud.transcribeRecording'))).toEqual([]);

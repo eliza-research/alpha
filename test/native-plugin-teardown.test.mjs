@@ -306,7 +306,7 @@ test("Capacitor's own permission request, and the shared plugins' requests an ap
       assert.match(base,/protected boolean launch\(PluginCall call,Runnable request\)\{\n  try\{request\.run\(\);return true;\}catch\(IllegalStateException closed\)\{call\.reject\(LAUNCH_CLOSED\);return false;\}/);
       const prompts=[...base.matchAll(/requestPermissionForAlias\(/g)].map(match=>base.slice(Math.max(0,match.index-24),match.index));
       assert.equal(prompts.length,2);for(const before of prompts)assert.match(before,/launch\(call,\(\)->$/);
-      assert.match(read(name),/@Override protected boolean launch\(PluginCall call,Runnable request\)\{return LateLaunch\.ask\(call,request\);\}/);
+      assert.match(read(name),/@Override protected boolean launch\(PluginCall call,Runnable request\)\{if\(sensitiveSurfaceActive\(\)\)\{call\.reject\("Close the protected credential surface before using speech\."\);return false;\}return LateLaunch\.ask\(call,request\);\}/);
     } else assert.ok(guardedOverride(read(name), "requestPermissions"), `${name}: requestPermissions is overridden with the guard`);
   }
 

@@ -36,8 +36,8 @@ import { VoiceAssistantSession, type AssistantState } from '../runtime/voice-ass
 import { shouldRespondToVoiceTurn, buildVoiceTurnSignal } from '@elizaos/voice/turn';
 import { toSpeakableText } from '@elizaos/ui/voice/voice-chat-playback';
 import { connectionController } from '../runtime/connection-ui';
-import { NoteRecorderSession, formatRecordingClock, type CanonicalNoteSaveIntent, type NoteLivePort, type SavedNoteAudio } from './note-recorder';
-import { createNoteRecorderDriver, noteSegmentTranscriber } from '../runtime/note-recorder-driver';
+import { NoteRecorderSession, formatRecordingClock, type CanonicalNoteSaveIntent, type SavedNoteAudio } from './note-recorder';
+import { createNoteRecorderDriver } from '../runtime/note-recorder-driver';
 import { setNotesRecorderControl } from './notes-recorder-control';
 const voiceServiceName = () => connectionController.getSnapshot().residentInference==='direct'?'Cartesia':cloudServiceName(connectionController.getCloudEnvironment() ?? connectionController.getSnapshot().cloudAccount?.environment ?? connectionController.getSnapshot().signIn?.environment ?? 'production');
 // Reading a note aloud sends only that note's text, never recordings or replies, so Notes names it.
@@ -135,10 +135,10 @@ export function installPrototypeVoiceAdapter(Component: any, views: Record<strin
     if (savedPlaying === note.audio.audioId) { stopSaved(); refresh(); return; }
     stopSaved(); const epoch = savedEpoch; savedPlaying = note.audio.audioId; refresh();
     try {
-      await stopping;if(epoch!==savedEpoch)return;const pending=savedStarting=noteAudio.play({ audioId: note.audio.audioId });try{await pending;}finally{if(savedStarting===pending)savedStarting=undefined;}
+      await stopping;if(epoch!==savedEpoch)return;const retained=await noteAudio.describe({audioId:note.audio.audioId});if(epoch!==savedEpoch)return;if(retained.audioId!==note.audio.audioId||retained.noteId!==note.id||retained.deletedAt!==undefined)throw Error('Recording is not available for this note');const pending=savedStarting=noteAudio.play({ audioId: note.audio.audioId });try{await pending;}finally{if(savedStarting===pending)savedStarting=undefined;}
       if (epoch !== savedEpoch) return;
       savedTick = setInterval(() => { void noteAudio.state().then(value => { if (epoch !== savedEpoch) return; if (!value.playing || value.audioId !== savedPlaying) { stopSaved(); refresh(); return; } savedPosition = value.positionMs; refresh(); }).catch(() => { if (epoch === savedEpoch) { stopSaved(); refresh(); } }); }, 250);
-    } catch { if (epoch === savedEpoch) { stopSaved(); refresh(); } }
+    } catch { if (epoch === savedEpoch) { stopSaved(); api?.toast('This recording is unavailable. The note is kept.'); refresh(); } }
   }
   let listener: PluginListenerHandle | undefined, tick: ReturnType<typeof setInterval> | undefined;
   let stopping = Promise.resolve();
@@ -1027,38 +1027,18 @@ export function installPrototypeVoiceAdapter(Component: any, views: Record<strin
     noteDestination = {api:targetApi,canonical,route,current};
     return {identity,folderId,current};
   }
-  // Words as they are spoken: the on-device streaming ASR (as live dictation uses) runs beside the
-  // segment recorder while Notes shows the recording. Display only; the transcript that is saved
-  // comes from the finished segments. Android lets one app capture the microphone twice (API 29+).
-  const noteLivePartials: NoteLivePort = async handlers => {
-    const destination = noteDestination;
-    if (!destination?.current()) return null;
-    const controller = new AbortController();
-    if (!await nativeLiveVoiceReady(controller.signal).catch(() => false)) return null;
-    if (!destination.current()) return null;
-    const stream = await openNativeLiveStream({
-      signal: controller.signal, echoCancel: false,
-      onSpeechStart: () => handlers.speechStart(),
-      onInterim: text => handlers.interim(text),
-      onSegment: text => handlers.final(text ?? ''),
-      onLost: () => handlers.lost(),
-    });
-    return { close: async () => { try { await stream.cancel(); } finally { controller.abort(); } } };
-  };
+  // A voice note records audio only. Transcription is a separate explicit action;
+  // opening or saving this recorder never starts a speech provider or local model.
   const noteRemoteTranscription = () => noteDestination?.route === 'cloud' || noteDestination?.route === 'agent' && !browserDevProfile;
-  const noteRecorder = new NoteRecorderSession(createNoteRecorderDriver(), async () => {
-    const destination = noteDestination;
-    if (!destination?.current()) return null;
-    const route = await noteSegmentTranscriber(new AbortController().signal, destination.route);
-    if (destination!==noteDestination || !destination.current()) return null;
-    noteProvenance = route?.provenance; return route?.transcribe ?? null;
-  }, () => { api?.setView('notes', { noteRecorderRevision: Date.now() }); }, { visible: () => !document.hidden, live: noteLivePartials, owner:captureNoteOwner, remoteTranscription: noteRemoteTranscription });
+  const noteRecorder = new NoteRecorderSession(createNoteRecorderDriver(), async () => null,
+    () => { api?.setView('notes', { noteRecorderRevision: Date.now() }); },
+    { visible: () => !document.hidden, owner:captureNoteOwner, remoteTranscription: noteRemoteTranscription, automaticTranscription:false });
   const persistNoteRecording = async (saved: SavedNoteAudio, transcript: string, intent?: CanonicalNoteSaveIntent) => {
     const destination = noteDestination;
     if (!destination?.current() || destination.api.storageReady?.() === false) return false;
     const owner = destination.api, folderId = noteRecorder.folderId;
     if (folderId && !(owner.get('notes').folders || []).some((f: Bag) => f.id===folderId)) return false;
-    // Agent notes: a voice note with the transcript; no audio is kept.
+    // Canonical Notes owns the record; its save intent binds retained audio to that exact note.
     if (destination.canonical) return !!intent && await destination.canonical.saveVoice(saved.noteId, transcript, saved.durationMs, folderId, destination.current, intent);
     const latest = owner.get('notes').list || [];
     // A retried Done after a lost save response: the note is already there with this audio.
@@ -1067,7 +1047,8 @@ export function installPrototypeVoiceAdapter(Component: any, views: Record<strin
     const note = { id: saved.noteId, kind: 'voice', title: 'Voice note', body: transcript, audio: saved, transcription: transcript ? noteProvenance ?? { route: 'manual' } : { route: 'manual' }, dur: saved.durationMs / 1000, summary: [], actions: [], lines: [{ s: 'me', at: 0, t: transcript }], pinned: false, when: 'Now', createdAt: Date.now(), modifiedAt: Date.now(), ...(folderId ? { folderId } : {}) };
     return await owner.saveVoiceNote({ list: [note, ...latest], open: saved.noteId }) === true;
   };
-  // The agent's notes_record (notes-organize-executor) starts and saves through the same recorder.
+  const finishNoteRecording = () => noteRecorder.finishAudio(persistNoteRecording, !!noteDestination?.canonical);
+  // Agent and direct controls use the same Stop-and-save operation.
   setNotesRecorderControl({
     start: async () => {
       if (noteRecorder.open && noteRecorder.phase !== 'failed') return 'already';
@@ -1077,40 +1058,37 @@ export function installPrototypeVoiceAdapter(Component: any, views: Record<strin
     },
     stop: async () => {
       if (!noteRecorder.recordingId || !['recording', 'paused', 'stopped'].includes(noteRecorder.phase)) return 'none';
-      if (noteRemoteTranscription()) return await noteRecorder.stop() ? 'retained' : 'failed';
-      return await noteRecorder.finish(persistNoteRecording, !noteDestination?.canonical) ? 'saved' : 'failed';
+      return await finishNoteRecording() ? 'saved' : 'failed';
     },
   });
   const noteRecorderVisibility = () => { if (noteRecorder.open) noteRecorder.visibilityChanged(); };
   document.addEventListener('visibilitychange', noteRecorderVisibility);
   function noteRecorderView(icons: Bag) {
     const r = noteRecorder, finishing = r.phase === 'finishing' || r.phase === 'starting', recording = r.phase === 'recording';
-    const stopFirst = noteRemoteTranscription() && (recording || r.phase === 'paused');
-    const transcribe = r.needsTranscriptionConsent;
-    const finish = (consent = false) => { void r.finish(persistNoteRecording, !noteDestination?.canonical, consent).then(saved => { if (saved) { markVoiceTiming('send'); finishVoiceTurn(); } }); };
+    const save = () => { if (r.phase !== 'finishing' && r.phase !== 'starting') void finishNoteRecording(); };
+    const canDiscard = () => r.phase !== 'finishing' && !r.canonicalSavePending;
     const peaks = r.levels.length ? r.levels : [];
     const levels = Array.from({ length: 44 }, (_, i) => { const peak = peaks[peaks.length - 44 + i]; return { h: peak === undefined ? 4 : Math.max(4, Math.round(Math.sqrt(peak) * 92)), o: recording ? 1 : 0.35 }; });
     return {
       phase: r.phase,
       clock: formatRecordingClock(r.durationMs),
       levels,
-      transcript: r.displayTranscript(),
+      status: r.phase === 'starting' ? 'Starting…' : r.phase === 'finishing' ? 'Saving…' : r.phase === 'recording' ? 'Recording' : r.phase === 'paused' ? 'Paused' : '',
       error: r.error,
       confirming: r.confirmingDiscard,
       keep: () => r.keep(),
-      confirmDiscard: () => { void r.discard(true); },
-      discard: () => { void r.discard(); },
+      confirmDiscard: () => { if (canDiscard()) void r.discard(true); },
+      discard: () => { if (canDiscard()) void r.discard(); },
+      discardDisabled: !canDiscard(),
+      showPause: r.phase !== 'stopped',
       pauseLabel: recording ? 'Pause' : r.phase === 'failed' ? 'Record' : 'Resume',
       pauseIcon: recording ? icons.pause : icons.mic,
-      pauseDisabled: finishing || r.canonicalSavePending || r.phase === 'stopped',
+      pauseDisabled: finishing || r.canonicalSavePending,
       toggle: () => { void r.togglePause(); },
-      transcribeLabel: transcribe ? `Transcribe with ${noteDestination?.route === 'agent' ? 'connected agent' : voiceServiceName()}` : '',
-      transcribe: () => finish(true),
-      showDone: !transcribe,
-      doneLabel: stopFirst ? 'Stop recording' : 'Done',
-      doneIcon: stopFirst ? icons.stop : icons.check,
-      doneDisabled: finishing || !r.recordingId,
-      done: () => { if (stopFirst) void r.stop(); else finish(); },
+      doneLabel: r.phase === 'finishing' ? 'Saving…' : r.phase === 'stopped' ? 'Save recording' : 'Stop recording',
+      doneIcon: r.phase === 'stopped' ? icons.check : icons.stop,
+      doneDisabled: finishing || !r.recordingId || !['recording', 'paused', 'stopped'].includes(r.phase),
+      done: save,
     };
   }
   const startNoteRecorder = () => { if (stage !== 'closed') cleanup(); stopLocalSpeechPlayback(); stopSaved(); void noteRecorder.begin().catch(() => { /* The recorder shows the error line. */ }); };
@@ -1180,6 +1158,7 @@ export function installPrototypeVoiceAdapter(Component: any, views: Record<strin
           else if (outcome === 'failed') current.toast('Reading stopped before the end. The note is unchanged.');
         });
       } : undefined;
+      vo.hasPlayback = true;
       vo.playLabel = savedPlaying ? 'Stop recording playback' : 'Play recording';
       vo.playIcon = savedPlaying ? current.ic.stop : current.ic.play;
       vo.play = () => { if (currentNoteReading()?.noteId === selected.id) stopSpeaking(); void playSaved(selected); };
@@ -1187,7 +1166,7 @@ export function installPrototypeVoiceAdapter(Component: any, views: Record<strin
       vo.bars = vo.bars.map((bar: Bag) => ({ ...bar, h: 4 })); // No invented amplitude analysis.
       vo.share = () => current.toast('Audio stays in this app. Sharing recordings is not available yet.');
       const reviewed=structuredClone(selected);
-      vo.del = () => { void deleteVoiceNote(current,reviewed,false); };
+      if(!current.canonicalNotes)vo.del = () => { void deleteVoiceNote(current,reviewed,false); };
 
     }
     result.record = startNoteRecorder;
@@ -1308,7 +1287,7 @@ export function installPrototypeVoiceAdapter(Component: any, views: Record<strin
   };
   const immersive = notes.immersive;
   notes.immersive = (state: Bag, current: Bag) => noteRecorder.open ? { noPill: true } : immersive?.(state, current);
-  notes.back = (state: Bag, current: Bag) => { if (noteRecorder.open) { if (noteRecorder.confirmingDiscard) noteRecorder.keep(); else void noteRecorder.discard(); return true; } return back?.(state, current); };
+  notes.back = (state: Bag, current: Bag) => { if (noteRecorder.open) { if (noteRecorder.confirmingDiscard) noteRecorder.keep(); else if (noteRecorder.phase === 'failed' && !noteRecorder.recordingId) void noteRecorder.discard(); else void finishNoteRecording(); return true; } return back?.(state, current); };
   const noteReadingChanged=()=>{if(api)api.setView('notes',{noteReadingRevision:Date.now()});};
   window.addEventListener('alpha:note-reading',noteReadingChanged);
   notes.onLeave = (current: Bag) => { if(!ownedNavigation?.applying)noteRealtimeCancellation(conversationVoice,'notes-left-unowned');closeTranscriptQuestion?.();stopSpeaking();noteRecorder.leave(!Capacitor.isNativePlatform());noteRecorderAdopted=false;if(!ownedNavigation?.applying)cleanup(); leave?.(current); };

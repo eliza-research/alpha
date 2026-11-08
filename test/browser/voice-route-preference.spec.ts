@@ -16,7 +16,7 @@ async function signedInCloud(page:Page){
 }
 async function openRecorder(page:Page){
  await openLegacyNotes(page);
- await page.getByRole('button',{name:'Record and transcribe',exact:true}).click();
+ await page.getByRole('button',{name:'Record voice note',exact:true}).click();
  await expect(recorder(page)).toBeVisible();
 }
 test('Cloud remains the Notes transcription route across reload and legacy local preferences cannot silently switch routes',async({page})=>{

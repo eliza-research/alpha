@@ -54,8 +54,8 @@ test('live agent Notes use the mock-mode Notes design with typed cards',async({p
  expect(await layout(page)).toEqual(mock);
  await expect(page.getByRole('heading',{name:'Notes',exact:true})).toBeVisible();
  const header=page.locator('[data-alpha-subview="notes-list"] [data-alpha-app-header="main"]');
- expect(await header.getByRole('button').evaluateAll(list=>list.map(el=>el.getAttribute('aria-label')))).toEqual(['Back to apps','Record and transcribe','New note']);
- for(const name of ['Back to apps','Record and transcribe','New note','All','New folder'])await expect(page.getByRole('button',{name,exact:true})).toBeVisible();
+ expect(await header.getByRole('button').evaluateAll(list=>list.map(el=>el.getAttribute('aria-label')))).toEqual(['Back to apps','Record voice note','New note']);
+ for(const name of ['Back to apps','Record voice note','New note','All','New folder'])await expect(page.getByRole('button',{name,exact:true})).toBeVisible();
  // No search pill and no Trash in the header (decisions P2, N2).
  await expect(page.getByRole('button',{name:'Search notes',exact:true})).toHaveCount(0);
  await expect(header.getByRole('button',{name:'Open Trash',exact:true})).toHaveCount(0);
@@ -154,7 +154,7 @@ test('live agent Notes at 300% text keep cards and controls on screen',async({pa
   return out;
  });
  expect(overflow).toEqual([]);
- for(const name of ['Back to apps','Record and transcribe','New note','New folder']){const box=(await page.getByRole('button',{name,exact:true}).boundingBox())!;expect(box.width).toBeGreaterThanOrEqual(44);expect(box.x+box.width).toBeLessThanOrEqual(413);}
+ for(const name of ['Back to apps','Record voice note','New note','New folder']){const box=(await page.getByRole('button',{name,exact:true}).boundingBox())!;expect(box.width).toBeGreaterThanOrEqual(44);expect(box.x+box.width).toBeLessThanOrEqual(413);}
  await shot(page,'live-list-300pct');
  await card(page,'Launch checklist').click();
  await expect(page.getByRole('textbox',{name:'Note',exact:true})).toBeVisible();

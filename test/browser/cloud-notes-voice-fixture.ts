@@ -15,7 +15,7 @@ export async function cloudNotesVoiceFixture(page:Page,signed=true,development=f
  await page.route(/^https?:\/\/(?!127\.0\.0\.1:|localhost:)/,async route=>{foreign.push(route.request().url());await route.abort();});
  await page.addInitScript(()=>{
   localStorage.setItem('alpha.connection.selection.v1',JSON.stringify({kind:'offline'}));
-  const f=(window as any).cloudNotesVoice={owner:'a',mic:0,plays:0,starts:0,stops:0,uploads:0,local:0,paired:0,syntheses:0,cancels:0,active:null,clip:null,hold:false,billing:false,failureCode:null,denied:false,empty:false,transcript:'Closed Cloud transcript',requests:[]};
+  const f=(window as any).cloudNotesVoice={owner:'a',mic:0,plays:0,starts:0,stops:0,uploads:0,local:0,paired:0,syntheses:0,cancels:0,active:null,clip:null,hold:false,holdSave:false,saveAttempts:0,releaseSave:null as null|(()=>void),billing:false,failureCode:null,denied:false,empty:false,transcript:'Closed Cloud transcript',requests:[]};
   Object.defineProperty(window,'AudioContext',{configurable:true,value:class{state='suspended';resume=async()=>{};close=async()=>{};}});
   Object.defineProperty(navigator,'mediaDevices',{configurable:true,value:{getUserMedia:async()=>{f.mic++;throw Error('Physical media forbidden');}}});
   HTMLMediaElement.prototype.play=async()=>{f.plays++;throw Error('Physical playback forbidden');};if(window.speechSynthesis)window.speechSynthesis.speak=()=>{f.plays++;throw Error('Local speech forbidden');};
@@ -30,6 +30,8 @@ export async function cloudNotesVoiceFixture(page:Page,signed=true,development=f
   BrowserVoice.prototype.stopRecording=async()=>{f.stops++;f.active=null;return {recordingId:f.clip,durationMs:1000};};
   BrowserVoice.prototype.cancelRecording=async()=>{f.active=null;f.cancels++;};
   BrowserVoice.prototype.transcribeRecording=async(input:any)=>{f.uploads++;f.requests.push(input);if(f.hold)await new Promise<void>(resolve=>{f.release=resolve;});if(f.billing)throw Object.assign(Error('Synthetic billing refusal'),{code:'voice-http-402'});if(f.failureCode)throw Object.assign(Error('PRIVATE_TRANSCRIPTION_SENTINEL'),{code:f.failureCode,...(f.failureData?{data:f.failureData}:{})});return {text:f.empty?'':f.transcript,local:false};};
+  const saveNote=BrowserVoice.prototype.saveNoteRecording;
+  BrowserVoice.prototype.saveNoteRecording=async function(input:any){f.saveAttempts++;if(f.holdSave)await new Promise<void>(resolve=>f.releaseSave=resolve);return saveNote.call(this,input);};
   BrowserVoice.prototype.transcribePairedRecording=async()=>{f.paired++;throw Error('Paired transcription forbidden');};
   BrowserVoice.prototype.synthesize=async()=>{f.syntheses++;return {playbackId:crypto.randomUUID()};};
   BrowserVoice.prototype.play=async function(input:any){queueMicrotask(()=>void (this as any).notifyListeners('playbackEnded',{playbackId:input.playbackId}));};
@@ -46,8 +48,8 @@ export async function cloudNotesVoiceFixture(page:Page,signed=true,development=f
  return {foreign};
 }
 export const notesRecorder=(page:Page)=>page.locator('[data-alpha-subview="notes-recorder"]');
-export async function openNotesRecorder(page:Page){await openLegacyNotes(page);await page.getByRole('button',{name:'Record and transcribe',exact:true}).click();}
-/** The recorder starts at once; Done stops it, transcribes its segment and saves the voice note. */
-export async function recordAndFinish(page:Page){const panel=notesRecorder(page);await expect(panel).toHaveAttribute('data-recorder-state','recording');await panel.getByRole('button',{name:'Done',exact:true}).click();}
+export async function openNotesRecorder(page:Page){await openLegacyNotes(page);await page.getByRole('button',{name:'Record voice note',exact:true}).click();}
+/** The recorder starts at once; Stop saves the recording locally without requesting transcription. */
+export async function recordAndFinish(page:Page){const panel=notesRecorder(page);await expect(panel).toHaveAttribute('data-recorder-state','recording');await panel.getByRole('button',{name:'Stop recording',exact:true}).click();}
 export const savedVoiceNotes=(page:Page)=>page.evaluate(async()=>JSON.parse((await(await import('/src/runtime/browser-notes-document.ts')).readBrowserNotesRaw())||'{"records":[]}').records.filter((n:any)=>n.kind==='voice'));
 export async function noPhysicalOrLocalVoice(page:Page){expect(await page.evaluate(()=>{const f=(window as any).cloudNotesVoice;return {mic:f.mic,plays:f.plays,local:f.local,paired:f.paired};})).toEqual({mic:0,plays:0,local:0,paired:0});}

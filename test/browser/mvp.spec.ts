@@ -155,11 +155,11 @@ test('Scheduled digests traps focus, closes on native Back, and restores the tri
 test('Unsigned recorder opens without a sign-in step and a refused microphone shows one line',async({page})=>{
   await page.addInitScript(()=>{localStorage.setItem('alpha.connection.selection.v1',JSON.stringify({kind:'offline'}));(window as any).microphoneRequests=0;Object.defineProperty(navigator,'mediaDevices',{configurable:true,value:{getUserMedia:async()=>{(window as any).microphoneRequests++;throw Error('Unexpected microphone request');}}});});
   await page.goto('/');await openLegacyNotes(page);
-  await page.getByRole('button',{name:'Record and transcribe',exact:true}).click();
+  await page.getByRole('button',{name:'Record voice note',exact:true}).click();
   const recorder=page.locator('[data-alpha-subview="notes-recorder"]');
   await expect(recorder).toHaveAttribute('data-recorder-state','failed');
   await expect(recorder.getByRole('alert')).toHaveText('The microphone isn’t available.');
-  await expect(recorder.getByRole('button',{name:'Done',exact:true})).toBeDisabled();
+  await expect(recorder.getByRole('button',{name:'Stop recording',exact:true})).toBeDisabled();
   await expect(page.getByRole('button',{name:/Connect Eliza Cloud|Record without transcription|Start recording/})).toHaveCount(0);
   expect(await page.evaluate(()=>(window as any).microphoneRequests)).toBe(1);
   await recorder.getByRole('button',{name:'Discard recording',exact:true}).click();

@@ -19,8 +19,8 @@ test('Notes records, reviews, saves, reloads, plays and restores the same retain
  });
  await openLegacyNotes(page);
  await expect.poll(()=>page.evaluate(()=>(window as any).fixture.ctx.state)).toBe('running');
- await page.getByRole('button',{name:'Record and transcribe',exact:true}).click();
- // The recorder starts at once, counts up with no limit and offers Discard, Pause and Done.
+ await page.getByRole('button',{name:'Record voice note',exact:true}).click();
+ // The recorder starts at once; Stop saves the audio without a transcription or upload step.
  const recorder=page.locator('[data-alpha-subview="notes-recorder"]');
  await expect(recorder).toHaveAttribute('data-recorder-state','recording');
  await expect.poll(()=>page.evaluate(()=>(window as any).recordedBytes)).toBeGreaterThan(0);
@@ -29,16 +29,16 @@ test('Notes records, reviews, saves, reloads, plays and restores the same retain
  await expect(recorder).toHaveAttribute('data-recorder-state','paused');
  await recorder.getByRole('button',{name:'Resume',exact:true}).click();
  await expect(recorder).toHaveAttribute('data-recorder-state','recording');
- await recorder.getByRole('button',{name:'Done',exact:true}).click();
- await expect.poll(()=>page.evaluate(()=>(window as any).cloudVoiceFixture.transcriptions.length)).toBe(1);
- expect(await page.evaluate(()=>(window as any).cloudVoiceFixture.transcriptions[0].credentialId)).toBe('synthetic-cloud-credential');
+ await recorder.getByRole('button',{name:'Stop recording',exact:true}).click();
+ await expect(recorder).toHaveCount(0);
+ expect(await page.evaluate(()=>(window as any).cloudVoiceFixture.transcriptions.length)).toBe(0);
  await expect(page.getByRole('button',{name:'Play recording',exact:true})).toBeVisible();
  await page.getByRole('textbox',{name:'Title',exact:true}).fill('Browser audio journey');
  // Reload only after asynchronous title autosave reaches the durable document.
- await expect.poll(()=>page.evaluate(async()=>{const raw=await(await import('/src/runtime/browser-notes-document.ts')).readBrowserNotesRaw();return raw?JSON.parse(raw).records.some((note:any)=>note.title==='Browser audio journey'&&note.body==='A recorded note saved through the real Notes interface.'&&!!note.audio?.audioId):false;})).toBe(true);
+ await expect.poll(()=>page.evaluate(async()=>{const raw=await(await import('/src/runtime/browser-notes-document.ts')).readBrowserNotesRaw();return raw?JSON.parse(raw).records.some((note:any)=>note.title==='Browser audio journey'&&note.body===''&&!!note.audio?.audioId):false;})).toBe(true);
  await page.evaluate(async()=>{const {ctx,osc}=(window as any).fixture;osc.stop();await ctx.close();});
  await page.reload();await openLegacyNotes(page);await page.getByRole('button',{name:'Open Browser audio journey',exact:true}).click();
- await expect(page.getByText('A recorded note saved through the real Notes interface.',{exact:true}).first()).toBeVisible();
+ await expect(page.getByRole('button',{name:'Play recording',exact:true})).toBeVisible();
  const note=await page.evaluate(async ()=>JSON.parse((await (await import('/src/runtime/browser-notes-document.ts')).readBrowserNotesRaw())!).records.find((n:any)=>n.title==='Browser audio journey'));
  const replay=await page.evaluate(async(note)=>{
   const {registerPlugin}=await import('/src/platform-plugins.ts');const voice=registerPlugin<any>('AlphaVoiceCloud');

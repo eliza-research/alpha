@@ -17,7 +17,7 @@ test('permission startup and Stop atomically transfer pending ownership across a
   static class PluginCall{final String id;volatile int rejects,resolves;PluginCall(String id){this.id=id;}String getString(String key){return key.equals("sessionId")?id:key.equals("environment")?"production":"credential";}void reject(String...message){rejects++;}void resolve(){resolves++;}}
   enum PermissionState{GRANTED,DENIED}
   static class Handler{final Queue<Runnable> queue=new ConcurrentLinkedQueue<>();void post(Runnable r){queue.add(r);}void run(){for(Runnable r;(r=queue.poll())!=null;)r.run();}}
-  final Handler main=new Handler();volatile PluginCall permissionCall;volatile Session session;volatile boolean destroyed,foreground=true;PermissionState permission=PermissionState.DENIED;
+  final Handler main=new Handler();volatile PluginCall permissionCall;volatile Session session;volatile boolean destroyed,foreground=true,secretSurface;boolean sensitiveSurfaceActive(){return secretSurface;}PermissionState permission=PermissionState.DENIED;
   final CountDownLatch authorityEntered=new CountDownLatch(1),authorityRelease=new CountDownLatch(1);volatile int published;volatile boolean authorityUnderMonitor,failAuthority;
   long authorityEpoch(){authorityUnderMonitor=Thread.holdsLock(this);authorityEntered.countDown();try{if(!authorityRelease.await(2,TimeUnit.SECONDS))throw new AssertionError("authority barrier timed out");}catch(InterruptedException e){throw new AssertionError(e);}if(failAuthority)throw new SecurityException("authority unavailable");return 1;}
   PermissionState getPermissionState(String s){return permission;}boolean launch(PluginCall c,Runnable r){r.run();return true;}void requestPermissionForAlias(String a,PluginCall c,String callback){}
@@ -43,6 +43,7 @@ test('permission startup and Stop atomically transfer pending ownership across a
     if(action.equals("replacement")){check(f.permissionCall==replacement&&replacement.rejects==0,"old start retired replacement");f.permission=PermissionState.GRANTED;f.microphoneReady(replacement);f.main.run();check(f.session!=null&&f.session.id.equals(NEXT)&&f.published==1,"replacement cannot start");}
    }
    PermissionHandoff direct=new PermissionHandoff();direct.permission=PermissionState.GRANTED;direct.authorityRelease.countDown();direct.startCloudSpeech(new PluginCall(FIRST));check(direct.session!=null&&direct.published==1,"granted direct start regressed");
+   PermissionHandoff protectedSurface=new PermissionHandoff();protectedSurface.permission=PermissionState.GRANTED;protectedSurface.secretSurface=true;protectedSurface.authorityRelease.countDown();PluginCall secretCall=new PluginCall(FIRST);protectedSurface.startCloudSpeech(secretCall);check(secretCall.rejects==1&&protectedSurface.session==null&&protectedSurface.published==0,"protected secret surface admitted microphone startup");
    System.out.println("PASS atomic permission handoff: Stop, unrelated Stop, replacement, Destroy, foreground, authority failure and granted start");
   }
  }`);

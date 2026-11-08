@@ -5,7 +5,7 @@ import {openBrowserCalendar} from './helpers/browser-calendar';
  * rendered controls in the browser build with the development agent profile.
  *
  * Loop covered in one test:
- *  1. Notes "Record and transcribe" -> Done -> Cloud transcript saved as a voice note.
+ *  1. Notes "Record voice note" -> Done -> Cloud transcript saved as a voice note.
  *  2. Reload, reopen the saved recording and "Read aloud" / "Stop reading".
  *  3. "Review transcript with Alpha" -> Send -> "Review summary note" -> "Save recording summary".
  *  4. Hand-offs from the note: "Review reminder draft" -> Calendar form -> Save (a reminder), and
@@ -118,7 +118,7 @@ test('Journey B: recorded note is read aloud, summarized, and becomes an event a
   Object.defineProperty(navigator,'mediaDevices',{value:{getUserMedia:async()=>sink.stream},configurable:true});(window as any).fixture={ctx,osc};
  });
  await openLegacyNotes(page);
- await page.getByRole('button',{name:'Record and transcribe',exact:true}).click();
+ await page.getByRole('button',{name:'Record voice note',exact:true}).click();
  // The recorder starts at once; Done transcribes and saves one voice note (corrections happen in the note).
  const recorder=page.locator('[data-alpha-subview="notes-recorder"]');
  await expect(recorder).toHaveAttribute('data-recorder-state','recording');

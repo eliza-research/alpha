@@ -243,42 +243,46 @@ test('each mounted volume is its own Storage row and tree; Trash spans volumes a
  assert.match(catalog,/if\(!primary&&\(uuid==null\|\|!uuid\.matches\("\[A-Za-z0-9-\]\{1,64\}"\)\)\)continue;/);
 });
 
-test('a reviewed agent move or trash acts only on the files the owner reviewed (FixIdentity)',async()=>{
- const v=await fresh();
- await v.add('Download','lease.pdf','lease');await v.add('Download','notes.txt','notes');
- const ids=await v.run('storageIdentity',{paths:['Download/lease.pdf','Download/notes.txt','Download/none.pdf']});
- assert.equal(ids.status,'ready');assert.deepEqual(ids.identities.map(i=>!!i.missing),[false,false,true]);
- const reviewed=ids.identities.slice(0,2).map(({size,modified})=>({size,modified}));
- assert.equal(reviewed[0].size,5);
- // The lease is rewritten after the card was built.
- const row=[...v.lib.rows.values()].find(r=>r.name==='lease.pdf');row.size=9;row.modifiedAt=2_000_000;
- const moved=await v.run('storageTransfer',{paths:['Download/lease.pdf','Download/notes.txt'],dest:'Documents',copy:false,expect:reviewed});
+test('a reviewed agent move or trash acts only on the opaque identities the owner reviewed (FixIdentity)',async()=>{
+ const v=await fresh();await v.add('Download','lease.pdf','lease');await v.add('Download','notes.txt','notes');
+ const missing=await v.run('storageReviewedIdentities',{paths:['Download/lease.pdf','Download/missing.pdf']});
+ assert.notEqual(missing.status,'ready','missing items cannot be reviewed');
+ const ids=await v.run('storageReviewedIdentities',{paths:['Download/lease.pdf','Download/notes.txt']});
+ assert.equal(ids.status,'ready');const reviewed=ids.reviewed;
+ assert.equal(reviewed.length,2);for(const token of reviewed)assert.match(token,/^[A-Za-z0-9_-]{43}$/);
+ const row=[...v.lib.rows.values()].find(r=>r.name==='lease.pdf'),size=row.size,modified=row.modifiedAt;
+ // The external provider can replace bytes without changing size or timestamps.
+ // Its revision is authority; neither visible metadata pair is a reviewed token.
+ row.bytes=new TextEncoder().encode('other');row.revision='external-replacement';
+ assert.equal(row.size,size);assert.equal(row.modifiedAt,modified);
+ const moved=await v.run('storageTransfer',{paths:['Download/lease.pdf','Download/notes.txt'],dest:'Documents',copy:false,reviewed});
  assert.deepEqual(moved.outcomes.map(o=>o.status),['changed','moved']);
- assert.deepEqual(await names(v,'Download'),['lease.pdf'],'the changed file stays');
- const trashed=await v.run('storageTrash',{paths:['Download/lease.pdf'],expect:[reviewed[0]]});
- assert.deepEqual(trashed.outcomes.map(o=>o.status),['changed']);
+ assert.deepEqual(await names(v,'Download'),['lease.pdf'],'the replaced file stays');
+ assert.deepEqual((await v.run('storageTrash',{paths:['Download/lease.pdf'],reviewed:[reviewed[0]]})).outcomes.map(o=>o.status),['changed']);
  assert.deepEqual(await names(v,'Download'),['lease.pdf']);
- const now=(await v.run('storageIdentity',{paths:['Download/lease.pdf']})).identities.map(({size,modified})=>({size,modified}));
- assert.deepEqual((await v.run('storageTrash',{paths:['Download/lease.pdf'],expect:now})).outcomes.map(o=>o.status),['trashed']);
- assert.equal((await v.run('storageTrash',{paths:['Documents/notes.txt'],expect:[]})).status!=='ready',true,'an identity per path');
+ const now=(await v.run('storageReviewedIdentities',{paths:['Download/lease.pdf']})).reviewed;
+ assert.notEqual(now[0],reviewed[0]);
+ assert.deepEqual((await v.run('storageTrash',{paths:['Download/lease.pdf'],reviewed:now})).outcomes.map(o=>o.status),['trashed']);
+ assert.notEqual((await v.run('storageTrash',{paths:['Documents/notes.txt'],reviewed:[]})).status,'ready','one opaque identity per path');
 });
 
-test('the Files agent contract carries the reviewed identity and the runner refuses a move or trash without it',()=>{
- const reviewed=[{size:3,modified:1_800_000_000_000}];
+test('the Files agent contract carries opaque reviewed identities and refuses unreviewed mutation',()=>{
+ const reviewed=['a'.repeat(43)];
  for(const op of [{type:'files_move',paths:['Download/a.pdf'],dest:'Documents',reviewed},{type:'files_trash',paths:['Download/a.pdf'],reviewed}]){
   const valid=contract.validateFilesOperation(op);assert.deepEqual(valid,op);assert.deepEqual(contract.validateFilesOperation(valid),valid);
  }
- for(const bad of [{type:'files_trash',paths:['a','b'],reviewed},{type:'files_trash',paths:['a'],reviewed:[{size:-1,modified:1}]},{type:'files_trash',paths:['a'],reviewed:[{size:1,modified:1,path:'a'}]},{type:'files_share',paths:['a'],reviewed}])
-  assert.throws(()=>contract.validateFilesOperation(bad));
+ for(const bad of [{type:'files_trash',paths:['a','b'],reviewed},{type:'files_trash',paths:['a'],reviewed:[{size:3,modified:1}]},{type:'files_trash',paths:['a'],reviewed:['a'.repeat(42)]},{type:'files_trash',paths:['a'],reviewed:['/'.repeat(43)]},{type:'files_share',paths:['a'],reviewed}])assert.throws(()=>contract.validateFilesOperation(bad));
  assert.equal(contract.filesNeedsIdentity({type:'files_move',paths:['a'],dest:''}),true);
- const adapter=readFileSync('apps/app/src/prototype/files-browser-adapter.ts','utf8');
- assert.match(adapter,/if \(!op\.reviewed \|\| op\.reviewed\.length !== op\.paths\.length\) return \{status: 'failed'/);
- assert.match(adapter,/storageTransfer\(\{paths: op\.paths, dest: op\.dest, copy: false, expect: op\.reviewed\}\)/);
- assert.match(adapter,/storageTrash\(\{paths: op\.paths, expect: op\.reviewed\}\)/);
- // The agent's result is the outcome only, no navigation instruction (PLAN principle 1).
- assert.match(adapter,/`Moved \$\{done\} of \$\{op\.paths\.length\} to Trash\.`\}/);assert.doesNotMatch(adapter,/Restore from Files/);
+ const adapter=readFileSync('.eliza/client-features/plugins/plugin-files/src/browser/files-browser-adapter.ts','utf8');
+ assert.match(adapter,/if \(!reviewingPrimary\(\) \|\| !op\.reviewed\) return reviewRequired/);
+ assert.match(adapter,/paths: op\.paths,[\s\S]*reviewed: op\.reviewed,[\s\S]*volume: "primary"/);
+ assert.match(adapter,/storage\.storageTransfer\(\{[\s\S]*\.\.\.selection,[\s\S]*copy: false/);
+ assert.match(adapter,/storage\.storageTrash\(selection\)/);
+ assert.match(adapter,/async reviewedIdentities\(paths, signal\)/);
+ assert.doesNotMatch(adapter,/Restore from Files/);
  const plugin=readFileSync('android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaFilesPlugin.java','utf8');
- assert.match(plugin,/b\.transfer\(paths,call\.getString\("dest",""\),copy,expected\(call,paths\.size\(\)\)\)/);
- assert.match(plugin,/b\.trash\(paths,System\.currentTimeMillis\(\),expected\(call,paths\.size\(\)\)\)/);
- assert.match(plugin,/public void storageIdentity\(PluginCall call\)/);
+ assert.match(plugin,/b\.transfer\(paths,call\.getString\("dest",""\),copy,reviewed\)/);
+ assert.match(plugin,/b\.trash\(paths,System\.currentTimeMillis\(\),reviewed\)/);
+ assert.match(plugin,/public void storageReviewedIdentities\(PluginCall call\)/);
+ assert.match(plugin,/reviewed!=null&&!filesReviewVisible\(\)/);
 });

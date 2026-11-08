@@ -28,7 +28,12 @@ export type NoteRecordingStatus = {
   durationMs?: number; segments?: NoteSegment[]; peak?: number;
 };
 export type SavedNoteAudio = { audioId: string; noteId: string; durationMs: number; transcript: string };
-export type CanonicalNoteSaveIntent = { pending: boolean; claim(): Promise<boolean> };
+export type CanonicalNoteSaveIntent = {
+  pending: boolean;
+  claim(): Promise<boolean>;
+  /** Retain audio for the confirmed canonical record, never for an unrelated draft. */
+  retainAudio?(noteId: string): Promise<SavedNoteAudio>;
+};
 export interface NoteRecorderDriver {
   start(binding?: NoteRecordingBinding): Promise<NoteRecordingStatus>;
   status(): Promise<NoteRecordingStatus>;
@@ -46,7 +51,7 @@ export interface NoteLiveHandlers { speechStart(): void; interim(text: string): 
 /** Opens a live transcription stream for display, or null when none is available. */
 export type NoteLivePort = (handlers: NoteLiveHandlers) => Promise<{ close(): Promise<void> | void } | null>;
 type NoteRecorderOwner = { identity: string; folderId: string | null; current(): boolean };
-type NoteRecorderOptions = { pollMs?: number; visible?: () => boolean; live?: NoteLivePort; owner?: () => NoteRecorderOwner | undefined; remoteTranscription?: () => boolean };
+type NoteRecorderOptions = { pollMs?: number; visible?: () => boolean; live?: NoteLivePort; owner?: () => NoteRecorderOwner | undefined; remoteTranscription?: () => boolean; automaticTranscription?: boolean };
 /** Text of one finished segment; '' for silence. Throws when the route fails. */
 export type SegmentTranscriber = (segmentId: string, signal: AbortSignal) => Promise<string>;
 /** `failed`: the microphone did not start; the recorder stays open with one error line. */
@@ -63,7 +68,7 @@ export function noteRecorderError(reason: string | undefined): string {
   if (reason === 'call') return 'Paused for a call.';
   if (reason === 'transcription') return 'Transcription stopped. The audio is kept.';
   if (reason === 'sign-in') return 'Sign in to transcribe. The audio is kept.';
-  if (reason === 'save') return 'Couldn’t save. Try Done again.';
+  if (reason === 'save') return 'Couldn’t save. Try again.';
   if (reason === 'owner') return 'Return to the original Notes account. Your recording is kept.';
   if (reason === 'capture') return 'The microphone isn’t available.';
   return 'The microphone stopped.';
@@ -328,6 +333,7 @@ export class NoteRecorderSession {
   }
   /** Transcribes finished segments in order, one at a time, while the recording goes on. */
   private pump(force = false, remoteApproved = false): Promise<void> {
+    if (!force && this.options.automaticTranscription === false) return Promise.resolve();
     if (this.canonicalSavePending || this.options.remoteTranscription?.() && !remoteApproved) return Promise.resolve();
     if (force) this.transcriptionFailed = false;
     if (this.pumping) return this.pumping;
@@ -415,10 +421,13 @@ export class NoteRecorderSession {
    * closes only after `persist` confirms the note; saving the same recording again returns the
    * audio already saved into the same note, so Done can be retried.
    */
-  async finish(persist: (saved: SavedNoteAudio, transcript: string, intent?: CanonicalNoteSaveIntent) => Promise<boolean>, keepAudio = true, remoteApproved = false): Promise<boolean> {
+  async finishAudio(persist: (saved: SavedNoteAudio, transcript: string, intent?: CanonicalNoteSaveIntent) => Promise<boolean>, canonicalDestination = false): Promise<boolean> {
+    return this.finish(persist, !canonicalDestination, false, true);
+  }
+  async finish(persist: (saved: SavedNoteAudio, transcript: string, intent?: CanonicalNoteSaveIntent) => Promise<boolean>, keepAudio = true, remoteApproved = false, audioOnly = false): Promise<boolean> {
     const id = this.recordingId;
     if (!this.owned(this.epoch) || !id || !['recording', 'paused', 'stopped'].includes(this.phase)) return false;
-    if (this.options.remoteTranscription?.() && (this.phase !== 'stopped' || this.needsTranscriptionConsent && !remoteApproved)) return false;
+    if (!audioOnly && this.options.remoteTranscription?.() && (this.phase !== 'stopped' || this.needsTranscriptionConsent && !remoteApproved)) return false;
     const epoch = this.epoch;
     const alreadyStopped = this.phase === 'stopped';
     let savePending = false;
@@ -429,12 +438,15 @@ export class NoteRecorderSession {
       if (stopped.recordingId !== id || stopped.state !== 'stopped' || !this.matches(stopped)) throw Error('Recording changed');
       this.absorb(stopped);
       savePending = stopped.canonicalSavePending === true;
-      await this.pump(true, remoteApproved);
+      if (audioOnly) {
+        this.transcribing?.abort();
+        await this.pumping?.catch(() => {});
+      } else await this.pump(true, remoteApproved);
       if (!this.owned(epoch)) return false;
       if (!this.segments.length) throw Error('No audio');
       // A destination that keeps no audio saves only a transcript of every segment; until then
       // the recording stays, so Done never leaves a note without the words or the audio.
-      if ((!keepAudio || this.options.remoteTranscription?.()) && (this.transcriptionFailed || this.segments.some(s => !this.texts.has(s.segmentId)))) {
+      if (!audioOnly && (!keepAudio || this.options.remoteTranscription?.()) && (this.transcriptionFailed || this.segments.some(s => !this.texts.has(s.segmentId)))) {
         this.phase = 'stopped'; if (!this.transcriptionFailed || !this.error) this.error = noteRecorderError('transcription'); this.changed(); return false;
       }
       const transcript = this.transcript();
@@ -455,6 +467,12 @@ export class NoteRecorderSession {
           if (claimed && this.owned(epoch)) this.canonicalSavePending = true;
           return claimed && this.owned(epoch);
         },
+        ...(audioOnly ? {retainAudio: async (canonicalNoteId: string) => {
+          if (!this.owned(epoch) || typeof canonicalNoteId !== 'string' || !canonicalNoteId || canonicalNoteId.length > 128) throw Error('Recording destination changed');
+          const audio = await this.driver.save({recordingId: id, noteId: canonicalNoteId, transcript});
+          if (!this.owned(epoch) || audio.audioId !== id || audio.noteId !== canonicalNoteId || !Number.isFinite(audio.durationMs)) throw Error('Saved recording changed');
+          return audio;
+        }} : {}),
       };
       if (!await persist(saved, transcript, intent)) throw Error('Note not saved');
       if (!this.owned(epoch)) return false;
@@ -472,6 +490,7 @@ export class NoteRecorderSession {
   /** Discard asks once; the second call deletes every segment. */
   async discard(confirmed = false) {
     if (!this.open || this.owner && !this.owned(this.epoch)) return;
+    if (this.phase === 'finishing' || this.canonicalSavePending) return;
     if (!confirmed && this.durationMs >= 1000 && this.phase !== 'starting') { this.confirmingDiscard = true; this.changed(); return; }
     const id = this.recordingId;
     if (this.phase === 'starting') this.abandoned = this.epoch;

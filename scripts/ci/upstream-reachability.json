@@ -3,11 +3,11 @@
   "repository": "elizaOS/eliza",
   "base": "develop",
   "baseCommit": "cf178c5bd3bad3c604bb1c430e6fd55f3eb74957",
-  "head": "b23a23c2ef4f83d15591c6368c00f1e9547f7743",
+  "head": "db96bb0a0371dca92707867245bf0bb119b5b4f5",
   "recordedAt": "2026-11-08",
-  "command": "gh api repos/elizaOS/eliza/compare/develop...b23a23c2ef4f83d15591c6368c00f1e9547f7743",
+  "command": "gh api repos/elizaOS/eliza/compare/develop...db96bb0a0371dca92707867245bf0bb119b5b4f5",
   "status": "diverged",
-  "aheadBy": 35,
+  "aheadBy": 45,
   "behindBy": 7,
   "mergeBase": "13fc7b637406372f68f05814e76267d690f144fd",
   "pinOnlyCommits": [
@@ -138,6 +138,46 @@
     {
       "sha": "b23a23c2ef4f83d15591c6368c00f1e9547f7743",
       "subject": "Share native account checks without carrying messages across reset"
+    },
+    {
+      "sha": "77e3d490ac7c79a947617e2afa5acf2b8f6b184e",
+      "subject": "Restore keyboard navigation and focus in installed app menus"
+    },
+    {
+      "sha": "89e17ebdf439190d3ef9531ba61b403264fb37c3",
+      "subject": "Recover reviewed photo replacements from durable edit bytes"
+    },
+    {
+      "sha": "eb92e44e9315a1ce4ba0a1dbbfc1c64e27351e89",
+      "subject": "Preserve Shaw reviewed Photos batches in shared native owner"
+    },
+    {
+      "sha": "32b8cebf60e3994fa8b62a15759a99ffdbdcc943",
+      "subject": "Keep host-session provider keys independent of selected mode"
+    },
+    {
+      "sha": "50a1554d28506159708c3c6bccd404ec0ec1cc3a",
+      "subject": "Format provider key session with repository rules"
+    },
+    {
+      "sha": "d1cb3be9b3db23d02118bf49b47edef9e6a9049b",
+      "subject": "Retain independent Own keys across native provider selections"
+    },
+    {
+      "sha": "b7e02240ed3b4368acaeaf97c1cafe1c6cedc257",
+      "subject": "Fence native speech by explicit provider mode and credential retirement"
+    },
+    {
+      "sha": "cf5033e1a9e97fcb646916d9ae74914dd0376181",
+      "subject": "Document native key custody and confirm saved selection readback"
+    },
+    {
+      "sha": "fa7a5cd45c4b62b8d4ac7890b475a4b92c30588f",
+      "subject": "Keep saved native keys through legacy unbind adapters"
+    },
+    {
+      "sha": "db96bb0a0371dca92707867245bf0bb119b5b4f5",
+      "subject": "Refuse fresh microphone capture while a protected secret is shown"
     }
   ],
   "pullRequests": []

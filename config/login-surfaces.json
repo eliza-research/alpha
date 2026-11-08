@@ -184,16 +184,32 @@
       "kind": "service-token",
       "eligible": false,
       "file": "apps/app/src/runtime/connection-ui.tsx",
-      "pattern": "<label>Cerebras API key<input ref=\\{ai\\} type=\"password\" autoComplete=\"off\"",
-      "reason": "An explicitly supplied provider API token, not a website or app login password. The privileged Alpha renderer stays excluded from Android Autofill; this field is never a vault or password-provider fill target. Submission clears the form, then uses the Android secure store or the private browser host session without putting tokens in observations or transcripts."
+      "pattern": "<label>Text API key<input ref=\\{ai\\} type=\"password\" autoComplete=\"off\"",
+      "reason": "An explicitly supplied provider API token, not a login password or vault fill target. Input stays only in the transient form until a successful save or Cancel. Native storage is encrypted; the browser host retains session-only keys. Tokens are excluded from observations, transcripts and logs."
     },
     {
       "id": "own-cartesia-provider-key",
       "kind": "service-token",
       "eligible": false,
       "file": "apps/app/src/runtime/connection-ui.tsx",
-      "pattern": "<label>Cartesia API key \\(optional\\)<input ref=\\{speech\\} type=\"password\" autoComplete=\"off\"",
-      "reason": "An explicitly supplied provider API token, not a website or app login password. The privileged Alpha renderer stays excluded from Android Autofill; this field is never a vault or password-provider fill target. Submission clears the form, then uses the Android secure store or the private browser host session without putting tokens in observations or transcripts."
+      "pattern": "<label>Voice API key \\(optional\\)<input ref=\\{speech\\} type=\"password\" autoComplete=\"off\"",
+      "reason": "An explicitly supplied provider API token, not a login password or vault fill target. Input stays only in the transient form until a successful save or Cancel. Native storage is encrypted; the browser host retains session-only keys. Tokens are excluded from observations, transcripts and logs."
+    },
+    {
+      "id": "own-provider-key-manager-edit",
+      "kind": "service-token",
+      "eligible": false,
+      "file": "apps/app/src/runtime/connection-ui.tsx",
+      "pattern": "<label>\\{title\\} API key<input ref=\\{field\\} type=\"password\" autoComplete=\"off\"",
+      "reason": "Independent Text or Voice API token edit. This privileged renderer field is excluded from password-provider fill, observations, transcripts and logs; only explicit guarded native storage or session-only browser storage receives it."
+    },
+    {
+      "id": "own-provider-key-manager-explicit-reveal",
+      "kind": "service-token",
+      "eligible": false,
+      "file": "apps/app/src/runtime/connection-ui.tsx",
+      "pattern": "type=\"text\" value=\\{revealed\\.value\\} readOnly autoComplete=\"off\"",
+      "reason": "Read-only browser-host key display after explicit View; it is never a password-provider fill target. Hidden page, revision, connection retirement and close clear it. Native key reveal uses its separate protected native surface and returns no key to JavaScript."
     }
   ]
 }

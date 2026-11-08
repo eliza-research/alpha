@@ -111,7 +111,7 @@ export const LIVE_STATES: State[] = [
   live('Calendar alarms', ['Calendar', 'Clock alarms']),
   legacyNotes('Notes note menu', ['New note', 'More']),
   {name:'live Notes source document',open:async(page,theme)=>{await page.addInitScript(offline);await page.goto(theme ? `/?theme=${theme}` : '/');await openLegacyAttachment(page);await settle(page);}},
-  legacyNotes('Notes recorder', ['Record and transcribe'], 'notes-recorder'),
+  legacyNotes('Notes recorder', ['Record voice note'], 'notes-recorder'),
   live('Workflows new automation', ['Workflows', 'New automation'], 'automations-detail'),
 ];
 

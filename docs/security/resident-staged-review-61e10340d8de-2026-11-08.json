@@ -1,0 +1,168 @@
+{
+  "schema": 1,
+  "recordedAtUTC": "2026-11-08T06:18:14.894678+00:00",
+  "scope": "Exact staged Android Cloud runtime static dependency/advisory re-review; not final APK, runtime readiness or device acceptance",
+  "stagedProductSource": "91a61084be5356129fe022c81f897dcf7ac96292",
+  "sdk": "db96bb0a0371dca92707867245bf0bb119b5b4f5",
+  "bundleSha256": "61e10340d8dee150475c7d67cda5706073475fd01dce2b456fe767d02557e18d",
+  "bundleBytes": 65295620,
+  "packagedNpmVersions": 457,
+  "audit": {
+    "upstreamCommit": "db96bb0a0371dca92707867245bf0bb119b5b4f5",
+    "input": "packaged-runtime notices",
+    "auditedOn": "2026-11-08",
+    "inputSha256": "01d29fdcbba3b72917ba1e386f24dbade53de400bcd429a113ac86c07f6d764f",
+    "packages": 457,
+    "counts": {
+      "info": 0,
+      "low": 0,
+      "moderate": 1,
+      "high": 0,
+      "critical": 0
+    },
+    "findings": [
+      {
+        "package": "uuid",
+        "versions": [
+          "8.3.2",
+          "9.0.1"
+        ],
+        "severity": "moderate",
+        "advisory": {
+          "id": "GHSA-w5hq-g745-h8pq",
+          "severity": "moderate",
+          "vulnerableRange": "<11.1.1",
+          "title": "uuid: Missing buffer bounds check in v3/v5/v6 when buf is provided",
+          "url": "https://github.com/advisories/GHSA-w5hq-g745-h8pq"
+        }
+      }
+    ]
+  },
+  "uuidReview": {
+    "method": "Fresh Acorn parsing of export wrappers and tokenization of entire current emitted bundle; aliases derived dynamically. Reference sets independently compared with prior approved exact-byte evidence.",
+    "moduleReferences": [
+      {
+        "name": "require_dist15",
+        "references": [
+          {
+            "offset": 32608401,
+            "text": "eturn parseInt(uuid.substr(14,1),16)}var _default=version;exports2.default=_default});var require_dist15=__commonJS(function(exports2){Object.defineProperty(exports2,\"__esModule\",{value:!0});Object.defineProperty(exports2,\"v"
+          },
+          {
+            "offset": 32609918,
+            "text": "efault:obj}}});var require_generateRequest=__commonJS(function(exports2,module2){var uuid=require_dist15().v4,generateRequest=function(method,params,id,options){if(typeof method!==\"string\")throw TypeError(method+\" must be a "
+          },
+          {
+            "offset": 32610789,
+            "text": "rts=generateRequest});var require_browser2=__commonJS(function(exports2,module2){var uuid=require_dist15().v4,generateRequest=require_generateRequest(),ClientBrowser=function(callServer,options){if(!(this instanceof ClientBr"
+          }
+        ]
+      },
+      {
+        "name": "require_dist16",
+        "references": [
+          {
+            "offset": 33149782,
+            "text": "eturn parseInt(uuid.slice(14,15),16)}var _default=version;exports2.default=_default});var require_dist16=__commonJS(function(exports2){Object.defineProperty(exports2,\"__esModule\",{value:!0});Object.defineProperty(exports2,\"N"
+          },
+          {
+            "offset": 33151350,
+            "text": ",NIL,version5,validate5,stringify3,parse7;var init_wrapper=__esm(()=>{import_dist=__toESM(require_dist16(),1),v12=import_dist.default.v1,v33=import_dist.default.v3,v412=import_dist.default.v4,v52=import_dist.default.v5,NIL=i"
+          }
+        ]
+      }
+    ],
+    "aliases": {
+      "import_dist": [
+        {
+          "offset": 33151232,
+          "text": ";function _interopRequireDefault(obj){return obj&&obj.__esModule?obj:{default:obj}}});var import_dist,v12,v33,v412,v52,NIL,version5,validate5,stringify3,parse7;var init_wrapper=__esm(()=>{import_dist=__toESM(require_dist1"
+        },
+        {
+          "offset": 33151330,
+          "text": "ist,v12,v33,v412,v52,NIL,version5,validate5,stringify3,parse7;var init_wrapper=__esm(()=>{import_dist=__toESM(require_dist16(),1),v12=import_dist.default.v1,v33=import_dist.default.v3,v412=import_dist.default.v4,v52=impor"
+        },
+        {
+          "offset": 33151374,
+          "text": "stringify3,parse7;var init_wrapper=__esm(()=>{import_dist=__toESM(require_dist16(),1),v12=import_dist.default.v1,v33=import_dist.default.v3,v412=import_dist.default.v4,v52=import_dist.default.v5,NIL=import_dist.default.NI"
+        },
+        {
+          "offset": 33151401,
+          "text": "wrapper=__esm(()=>{import_dist=__toESM(require_dist16(),1),v12=import_dist.default.v1,v33=import_dist.default.v3,v412=import_dist.default.v4,v52=import_dist.default.v5,NIL=import_dist.default.NIL,version5=import_dist.defa"
+        },
+        {
+          "offset": 33151429,
+          "text": "st=__toESM(require_dist16(),1),v12=import_dist.default.v1,v33=import_dist.default.v3,v412=import_dist.default.v4,v52=import_dist.default.v5,NIL=import_dist.default.NIL,version5=import_dist.default.version,validate5=import"
+        },
+        {
+          "offset": 33151456,
+          "text": ",1),v12=import_dist.default.v1,v33=import_dist.default.v3,v412=import_dist.default.v4,v52=import_dist.default.v5,NIL=import_dist.default.NIL,version5=import_dist.default.version,validate5=import_dist.default.validate,stri"
+        },
+        {
+          "offset": 33151483,
+          "text": ".v1,v33=import_dist.default.v3,v412=import_dist.default.v4,v52=import_dist.default.v5,NIL=import_dist.default.NIL,version5=import_dist.default.version,validate5=import_dist.default.validate,stringify3=import_dist.default."
+        },
+        {
+          "offset": 33151516,
+          "text": "12=import_dist.default.v4,v52=import_dist.default.v5,NIL=import_dist.default.NIL,version5=import_dist.default.version,validate5=import_dist.default.validate,stringify3=import_dist.default.stringify,parse7=import_dist.defa"
+        },
+        {
+          "offset": 33151554,
+          "text": "ist.default.v5,NIL=import_dist.default.NIL,version5=import_dist.default.version,validate5=import_dist.default.validate,stringify3=import_dist.default.stringify,parse7=import_dist.default.parse});var import_bs587,__extends"
+        },
+        {
+          "offset": 33151594,
+          "text": "IL,version5=import_dist.default.version,validate5=import_dist.default.validate,stringify3=import_dist.default.stringify,parse7=import_dist.default.parse});var import_bs587,__extends5,__assign3=function(){return __assign3="
+        },
+        {
+          "offset": 33151631,
+          "text": "on,validate5=import_dist.default.validate,stringify3=import_dist.default.stringify,parse7=import_dist.default.parse});var import_bs587,__extends5,__assign3=function(){return __assign3=Object.assign||function(t){for(var s,"
+        }
+      ],
+      "v33": [
+        {
+          "offset": 33151248,
+          "text": "opRequireDefault(obj){return obj&&obj.__esModule?obj:{default:obj}}});var import_dist,v12,v33,v412,v52,NIL,version5,validate5,stringify3,parse7;var init_wrapper=__esm(()=>{import_dist=__toESM(require_dist16(),1),v"
+        },
+        {
+          "offset": 33151397,
+          "text": "nit_wrapper=__esm(()=>{import_dist=__toESM(require_dist16(),1),v12=import_dist.default.v1,v33=import_dist.default.v3,v412=import_dist.default.v4,v52=import_dist.default.v5,NIL=import_dist.default.NIL,version5=impo"
+        }
+      ],
+      "v52": [
+        {
+          "offset": 33151257,
+          "text": "Default(obj){return obj&&obj.__esModule?obj:{default:obj}}});var import_dist,v12,v33,v412,v52,NIL,version5,validate5,stringify3,parse7;var init_wrapper=__esm(()=>{import_dist=__toESM(require_dist16(),1),v12=import"
+        },
+        {
+          "offset": 33151452,
+          "text": "16(),1),v12=import_dist.default.v1,v33=import_dist.default.v3,v412=import_dist.default.v4,v52=import_dist.default.v5,NIL=import_dist.default.NIL,version5=import_dist.default.version,validate5=import_dist.default.v"
+        }
+      ]
+    },
+    "affectedFunctionAliases": [
+      "v33",
+      "v52"
+    ],
+    "conclusion": "Legacy UUID consumers use v4; affected v3/v5 aliases have only declaration and assignment references, no calls or escapes. This exact emitted graph does not reach the affected caller-supplied-buffer APIs.",
+    "limits": "The advisory remains. No general dependency safety, full-lock resolution, final APK or physical-device claim."
+  },
+  "independentByteDifference": {
+    "priorBundleSha256": "ed4ae8992ce76affc2b1a0e4ae4de5578c3ba053a36fc3b8eb4f11f33fffb68a",
+    "differentBytes": 54,
+    "spanCount": 9,
+    "scope": "Owner byte comparison identifies nine absolute SDK build-path substitutions; separate fresh-parser evidence covers the current bundle regardless of that comparison."
+  },
+  "evidenceFiles": {
+    "packaged-normalized.json": "d21f0ebb0b4520b9bf674d133b651f4e72a6f17a3bd3e716ecba3048d34211f2",
+    "packaged-raw.json": "f2e7c0d4d2d2c75438dfa9d99969cf604bbbef8200da028d1ecae1acf6a9d31d",
+    "packaged-packages.json": "e8d44e78e7e5554ae9221c6a0655f724bdffff488b13b27ebe23821948137199",
+    "uuid-references.json": "484528a5df7248f48430dcf5ceb6ca2abd91b4cf0109492955c9b297e2abccd0",
+    "runtime-sbom.json": "82bcfa6684bf2acaf4dbe81069eef6f9aa6bb931ea8613a13f2dfaa375966b64",
+    "third-party-notices.json": "153c2030296e30f0c6c80aa273caf3db452975240d6760040d1a57fcc135cc73",
+    "THIRD_PARTY_NOTICES.txt": "c6faac0895ed327ed50e253d1665142fafe62aad8b09bbbcc7f483930fcd0a15",
+    "bundle-byte-diff.json": "4751aca1e9b6a5f333ef9b1a40c831b9eb83399e3fddd0f4906f395b3a54e5d8"
+  },
+  "priorExceptionFieldsPreserved": true,
+  "exceptionObjectsSHA256": "5610800e67d661cc4281a2d13919c22015eeeba903e3cfee56d10dfa7d243686"
+}
