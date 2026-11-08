@@ -1844,7 +1844,7 @@ registerView("browser", {
     });
 
     /* library */
-    var libRows = (st.lib === "history" ? st.visits : st.marks).map(function (u) {
+    var libRows = Array.from(new Set(st.lib === "history" ? st.visits : st.marks)).map(function (u) {
       var p = brPage(u);
       return { id: u, title: p.title, host: p.host + p.path, ini: (p.host || "?").charAt(0).toUpperCase(), css: "background:" + (p.tile && p.tile.indexOf("var") < 0 ? p.tile + ";color:#fff" : "var(--s3)"), go: link(u),
         canRemove: st.lib !== "history", removeAria: "Remove bookmark " + p.title, remove: function () { var s = api.get("browser"); set({ marks: s.marks.filter(function (x) { return x !== u; }) }); } };

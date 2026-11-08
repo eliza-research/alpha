@@ -143,7 +143,11 @@ export function installFilesTreeAdapter(views:Bag,accept:(module:string,result:N
   // the data adapter's generic 'Choose a document' copy from replacing the category hint.
   if(Array.isArray(out.locs))out.locs=out.locs.map((loc:Bag)=>{const category=CATEGORIES[loc?.name];return category&&!loc.nativeTree?{...loc,nativeTree:true,sub:category.hint,go:()=>void pick(currentApi,category.mime)}:loc;});
   // Recent: documents opened here (selected or from a chosen folder) and saved scan PDFs.
-  const recentRows=filesIndex.list();
+  const recentKeys=new Set<string>();
+  const recentRows=filesIndex.list().filter(row=>{
+   if(recentKeys.has(row.key))return false;
+   recentKeys.add(row.key);return true;
+  });
   const recentRow=(row:RecentFile)=>({id:'recent:'+row.key,name:row.name,chip:'',d:FILE,isFile:true,isFolder:false,selOn:false,selOff:false,rowCss:row.status==='revoked'?'opacity:.6':'',
    sub:row.status==='revoked'?'Access ended · Select again':row.kind==='scan-pdf'?'Saved scan PDF · '+relative(row.openedAt):typeLabel(row.mimeType)+' · '+(row.kind==='tree'?'from your folder':'selected on this device')+' · '+relative(row.openedAt),
    label:(row.status==='revoked'?'Select again ':row.kind==='scan-pdf'?'Find saved PDF ':'Open ')+row.name,tap:()=>void openRecent(row,currentApi)});

@@ -55,3 +55,7 @@ Eight Files template loops now use source identities for locations, Recent/searc
 Both source-to-Quint traces passed five checkpoints each, with unchanged source and driver hashes. The added `FilesTree` fields model presentation identity only. Rendering or activating a row grants no native tree capability. Native provider validation and mutation outcomes retain their existing independent guards.
 
 Validation passed both focused Chromium tests, three existing browser file tests, eleven index/picker unit tests, all eight model scenarios, 1,000 seeded 80-step simulations, and bounded symbolic safety checking through depth 4.
+
+## Legacy duplicate records
+
+Bookmark and Recent readers accept repeated stored identities. The renderer now deduplicates bookmark URLs and displays the newest Recent record for each key. Stored values remain available to their existing readers. Two legacy-data browser tests verify both unique rendered rows and retained stored values. The six Browser/Files/legacy focus cases passed together after this adjustment.
