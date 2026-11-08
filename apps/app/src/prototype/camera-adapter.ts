@@ -1157,7 +1157,11 @@ export function installPrototypeCameraAdapter(_Component: unknown, views: Record
   const cameraActions = module.actions;
   module.actions = { ...(cameraActions || {}), scan: () => { if (api) void scanFrame(api); } };
   module.back = () => { if (session.recording || session.recordingStarting || session.finalizing) { void stop(); return true; } return false; };
-  module.onLeave = () => { void stop(); };
+  module.onLeave = () => {
+    // Stop can schedule before the shell commits the next view.
+    previewReleased = true;
+    void stop();
+  };
   /** Pinch on the grid: 4 columns by default, 3 or 5 when pinched. Wheel-free; two touches only. */
   /** The Library grid's scroll position and size: only the rows on screen are rendered. */
   let gridEl:HTMLElement|undefined,gridView={scrollTop:0,viewport:0,width:0,header:40,key:''};

@@ -12,9 +12,9 @@ OCR. Those actions stutter in the historical state, which has no scan
 review transition. The source projection observes the current view,
 phase, capture mode, lens, flash, selected zoom class, conversation
 cover and actual preview readiness. It drains already-issued synthetic
-requests on retirement before reopening. The current renderer can issue
-an extra preview request during the leave transition, which is outside
-the committed-state projection.
+requests on retirement before reopening. The pre-fix renderer could issue
+an extra preview request during the leave transition. That ordering
+is covered by the separate rapid-leave regression.
 
 The current source campaign excludes physical capture, photo and video
 save, installed permission or resume behavior, and agent queue
