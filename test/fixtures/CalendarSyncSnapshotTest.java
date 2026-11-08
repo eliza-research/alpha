@@ -43,6 +43,10 @@ public final class CalendarSyncSnapshotTest {
   Provider foreign=new Provider();foreign.source.put("account_type","com.google");refuses(()->read(foreign));Provider regenerated=new Provider();regenerated.source.put("cal_sync1","00000000-0000-4000-8000-000000000002");refuses(()->read(regenerated));
   Provider orphan=new Provider();orphan.events.clear();refuses(()->read(orphan));
   Provider oversized=new Provider();oversized.properties.get(0).put("value","x".repeat(1024*1024+1));refuses(()->read(oversized));
+  Provider weekly=new Provider();weekly.attendees.clear();weekly.events.get(0).putAll(row("dtstart",1793955600000L,"duration","P3600S","allDay",0L,"rrule","FREQ=WEEKLY","exdate",null));check(read(weekly).semantic().getString("endAt").equals("2026-11-06T10:00:00Z"));
+  check(CalendarSyncSnapshot.duration("P3600S")==3600000L&&CalendarSyncSnapshot.duration("PT1H")==3600000L&&CalendarSyncSnapshot.duration("P1D")==86400000L&&CalendarSyncSnapshot.duration("P1W")==604800000L&&CalendarSyncSnapshot.duration("P1DT2H30M")==95400000L&&CalendarSyncSnapshot.duration("-PT15M")==-900000L);
+  for(String garbage:new String[]{null,"","P","PT","P1DT","1H","P1H2D","PT1.5H","P1W2D","P99999999999999999999D","P"+"9".repeat(129)+"S","one hour"}){try{CalendarSyncSnapshot.duration(garbage);throw new AssertionError("Accepted "+garbage);}catch(UnsupportedOperationException expected){}}
+  weekly.events.get(0).put("duration","an hour");try{read(weekly).semantic();throw new AssertionError("Accepted an unparsable duration");}catch(UnsupportedOperationException expected){}check(read(weekly).revision!=null);
   System.out.println("PASS exact owned Calendar sync snapshots, tombstones and atomic assertions");
  }
 }
