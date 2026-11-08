@@ -103,8 +103,11 @@ export const CLASS_REGISTRY = {
   // Added by the round-2 integration (PR 388); no recorded run.
   AssistantResidentReuse: { note: "synthetic runtime observation, enrollment and streams; not evidence that a live resident stream survives" },
   LauncherApps: { note: "upstream SystemLauncherApps through Alpha's identity; resolves against this image's package manager only; two methods skip when the image has no other launchable app" },
+  AppInfo: { note: "opens Android Settings for its installed package and checks invalid targets; returns with Back without changing settings" },
   NotesDocument: { note: "Production migration refusal and unchanged Notes; test-mocks builds exercise SAF migration. Restart phase requires the explicit notes development campaign." },
   NotesStorageDurability: { args: { notesStorage: "1" } },
+  NoteRecorder: { grant: ["RECORD_AUDIO"], note: "records microphone segments, checks recovery and joined-file playback readiness, then removes its recording; emulator results do not establish physical microphone quality" },
+  NoteRecordingSave: { note: "synthetic WAV and long transcript exercise local recording retention and retry without microphone or network use" },
   CloudDeploymentStorage: {},
   CloudSignInAuthorization: { note: "Actual native Authorize/Cancel gate with an isolated plugin and no session; not live authentication or remote key issuance" },
   DailyApps: {},

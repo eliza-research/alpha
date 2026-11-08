@@ -5,6 +5,7 @@ import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {tsImport} from 'tsx/esm/api';
 import {renderToStaticMarkup} from 'react-dom/server';
+import {cloneElement,createElement} from 'react';
 const {installHomeShell}=await tsImport('../apps/app/src/prototype/home-shell.ts',import.meta.url);
 const {navigateMobileShell}=await tsImport('../.eliza/client-features/packages/ui/src/mobile-shell/navigation.ts',import.meta.url);
 const icon='data:image/png;base64,iVBORw0KGgo=';
@@ -36,7 +37,7 @@ test('Home lists the favorites with an Apps tile; Apps lists installed apps only
   let saved=null;const opened=[],nativeCalls=[];
   const Shell=shellClass(opened);
   const shell=installHomeShell(Shell,{inbox:{badge:()=>true}},{list:async()=>({apps}),launch:async target=>{nativeCalls.push(target);}},
-    {favorites:{read:()=>saved,write:keys=>{saved=[...keys];}}});
+    {appInventory:'simulated',favorites:{read:()=>saved,write:keys=>{saved=[...keys];}}});
   const home=new Shell();
   let rendered=home.renderVals();
   home.componentDidMount();
@@ -84,19 +85,19 @@ test('Home lists the favorites with an Apps tile; Apps lists installed apps only
   } finally { home.componentWillUnmount(); if(previous===undefined)delete globalThis.document;else globalThis.document=previous; }
 });
 
-test('the drawer menu offers Add to Home (or On Home) and App info for exactly the listed entry; the dialer is one Phone tile', async () => {
+test('the drawer menu offers Add to Home (or On Home) and App info for exactly the listed entry; the dialer keeps its installed component', async () => {
   const previous=globalThis.document;
   globalThis.document=Object.assign(new EventTarget(),{hidden:false});
   const listed=[...apps,{packageName:'com.android.dialer',activityName:'com.android.dialer.Main',label:'Dialer'},{packageName:'org.example.mail',activityName:'org.example.Mail',label:'Mail',user:'10',profile:'work'}];
   let saved=null;const info=[];
   const Shell=shellClass([]);
   const shell=installHomeShell(Shell,{},{list:async()=>({apps:listed}),launch:async()=>{},resolveDefault:async()=>({available:true,packageName:'com.android.dialer',label:'Dialer'}),openDefault:async()=>{}},
-    {favorites:{read:()=>saved,write:keys=>{saved=[...keys];}},appInfo:async target=>{info.push(target);}});
+    {appInventory:'android',favorites:{read:()=>saved,write:keys=>{saved=[...keys];}},appInfo:async target=>{info.push(target);}});
   const home=new Shell();home.renderVals();home.componentDidMount();
   try {
     home.openAllApps();await shell.launcher.load();
     let rendered=home.renderVals(),drawer=renderToStaticMarkup(rendered.allAppsDrawer);
-    assert.deepEqual([...drawer.matchAll(/aria-label="Open ([^"]+)"/g)].map(m=>m[1]),['Caméra','Mail (Work)','Phone (Dialer)','Settings'],'the dialer appears once, as Phone');
+    assert.deepEqual([...drawer.matchAll(/aria-label="Open ([^"]+)"/g)].map(m=>m[1]),['Caméra','Dialer','Mail (Work)','Settings'],'the dialer appears once with its installed identity');
     assert.doesNotMatch(drawer,/role="menu"/);
     // Activating a tile launches its app, so the button announces no popup; the menu is the long-press action.
     assert.doesNotMatch(drawer,/aria-haspopup="menu"|aria-expanded=/);
@@ -113,12 +114,12 @@ test('the drawer menu offers Add to Home (or On Home) and App info for exactly t
     shell.launcher.toggleFavorite(work);
     home.setState({drawerMenu:key});
     drawer=renderToStaticMarkup(home.renderVals().allAppsDrawer);
-    assert.match(drawer,/role="menuitem" disabled=""[^>]*>.*?On Home<\/button>/,'an app already on Home cannot be added again');
-    // The dialer's own entry keeps its menu on the Phone tile.
-    home.setState({drawerMenu:'dial'});
-    assert.match(renderToStaticMarkup(home.renderVals().allAppsDrawer),/role="menu" aria-label="Phone"/);
+    assert.match(drawer,/role="menuitem"[^>]* disabled=""[^>]*>.*?On Home<\/button>/,'an app already on Home cannot be added again');
+    // The dialer's own entry keeps its menu on the installed tile.
+    home.setState({drawerMenu:'com.android.dialer/com.android.dialer.Main'});
+    assert.match(renderToStaticMarkup(home.renderVals().allAppsDrawer),/role="menu" aria-label="Dialer"/);
     // Without an App info opener (the browser) the menu has Add to Home only.
-    const plain=installHomeShell(shellClass([]),{},{list:async()=>({apps}),launch:async()=>{}},{favorites:{read:()=>[],write:()=>{}}});
+    const plain=installHomeShell(shellClass([]),{},{list:async()=>({apps}),launch:async()=>{}},{appInventory:'simulated',favorites:{read:()=>[],write:()=>{}}});
     await plain.launcher.load();
     const other=new (shellClass([]))();other.setState({drawer:true,drawerMenu:'com.android.settings'});
     assert.doesNotMatch(renderToStaticMarkup(other.renderVals().allAppsDrawer),/App info/);
@@ -133,7 +134,7 @@ test('Home edit mode: long press enters it, − removes, drag and arrows rearran
   let saved=['alpha:inbox','alpha:calendar','alpha:notes','com.android.settings'];
   const opened=[];
   const Shell=shellClass(opened);
-  const shell=installHomeShell(Shell,{},{list:async()=>({apps}),launch:async()=>{}},{favorites:{read:()=>saved,write:keys=>{saved=[...keys];}}});
+  const shell=installHomeShell(Shell,{},{list:async()=>({apps}),launch:async()=>{}},{appInventory:'simulated',favorites:{read:()=>saved,write:keys=>{saved=[...keys];}}});
   const home=new Shell();home.renderVals();home.componentDidMount();
   // A tile as the grid's handlers see it: the face carries the Home key; the "−" is inside it.
   const tile=key=>{const face={getAttribute:()=>key};const el={querySelector:()=>face,getBoundingClientRect:()=>({width:64}),offsetWidth:64,style:{},setAttribute(){},removeAttribute(){}};el.closest=s=>s==='[data-mobile-shell-tile]'?el:null;return el;};
@@ -198,7 +199,7 @@ test('default Alpha Home performs no installed-app scan until the drawer opens',
   let reads=0,saved=null;
   const Shell=shellClass([]);
   try {
-    const shell=installHomeShell(Shell,{},{list:async()=>{reads++;return {apps};},launch:async()=>{}},{favorites:{read:()=>saved,write:keys=>{saved=[...keys];}}});
+    const shell=installHomeShell(Shell,{},{list:async()=>{reads++;return {apps};},launch:async()=>{}},{appInventory:'simulated',favorites:{read:()=>saved,write:keys=>{saved=[...keys];}}});
     const home=new Shell();home.renderVals();home.componentDidMount();
     await new Promise(setImmediate);assert.equal(reads,0);
     home.openAllApps();await new Promise(setImmediate);assert.equal(reads,1);
@@ -220,12 +221,42 @@ test('installed favorites with older Alpha view ids are migrated to canonical id
   assert.deepEqual(JSON.parse(store.get('alpha.launcher.favorites.v1')),{version:2,keys:['com.android.settings','alpha:automations'],defaultPolicy:'alpha-apps'});
 });
 
+test('Home has its built-in tiles without an installed app inventory', () => {
+  const Shell = shellClass([]);
+  let reads = 0;
+  installHomeShell(Shell, {}, {list: async () => {reads++;return {apps};}, launch: async () => {}},
+    {favorites: {read: () => null, write: () => {}}});
+  const home = new Shell();
+  const {homeShell, allAppsDrawer, drawerOpen} = home.renderVals();
+  assert.ok(tiles(renderToStaticMarkup(homeShell)).includes('Calendar'));
+  assert.ok(!tiles(renderToStaticMarkup(homeShell)).some(label => /^(All )?[Aa]pps$/.test(label)));
+  assert.equal(allAppsDrawer, null);
+  assert.equal(drawerOpen, false);
+  home.openAllApps();
+  assert.equal(reads, 0);
+  assert.equal(home.state.drawer, false);
+});
+
+test('the empty Home card row is hidden without hiding app tiles', () => {
+  const Shell = shellClass([]);
+  const render = Shell.prototype.renderVals;
+  Shell.prototype.renderVals = function () {
+    return {...render.call(this), homeHasOverviewCards: false};
+  };
+  installHomeShell(Shell, {}, {list: async () => ({apps: []}), launch: async () => {}},
+    {favorites: {read: () => null, write: () => {}}});
+  const {homeShell} = new Shell().renderVals();
+  const markup = renderToStaticMarkup(cloneElement(homeShell, {cards: createElement('div')}));
+  assert.match(markup, /<div class="scr" hidden="" style="display:none" data-mobile-shell-cards=""/);
+  assert.ok(tiles(markup).includes('Calendar'));
+});
+
 test('Back leaves edit mode under voice or an open conversation, and a menu whose app is gone costs no extra Back', async () => {
   const previous=globalThis.document;
   globalThis.document=Object.assign(new EventTarget(),{hidden:false});
   const based=[];
   class Shell extends shellClass([]) { back(){based.push({...this.state});super.back();} }
-  const shell=installHomeShell(Shell,{},{list:async()=>({apps}),launch:async()=>{}},{favorites:{read:()=>[],write:()=>{}}});
+  const shell=installHomeShell(Shell,{},{list:async()=>({apps}),launch:async()=>{}},{appInventory:'simulated',favorites:{read:()=>[],write:()=>{}}});
   const home=new Shell();home.renderVals();home.componentDidMount();
   try {
     await shell.launcher.load();
@@ -256,7 +287,7 @@ test('a favorites save that fails in Home edit mode shows its error in the edit 
   globalThis.requestAnimationFrame=()=>0;
   let saved=['alpha:inbox','alpha:notes'],fail=false;
   const Shell=shellClass([]);
-  const shell=installHomeShell(Shell,{},{list:async()=>({apps}),launch:async()=>{}},{favorites:{read:()=>saved,write:keys=>{if(fail)throw Error('full');saved=[...keys];}}});
+  const shell=installHomeShell(Shell,{},{list:async()=>({apps}),launch:async()=>{}},{appInventory:'simulated',favorites:{read:()=>saved,write:keys=>{if(fail)throw Error('full');saved=[...keys];}}});
   const home=new Shell();home.renderVals();home.componentDidMount();
   const tile=key=>{const face={getAttribute:()=>key};const el={querySelector:()=>face,style:{},setAttribute(){},removeAttribute(){}};el.closest=s=>s==='[data-mobile-shell-tile]'?el:null;return el;};
   const event=(target,extra={})=>{const e={target,button:0,clientX:0,clientY:0,detail:0,preventDefault(){},stopPropagation(){},...extra};return e;};

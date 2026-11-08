@@ -196,7 +196,7 @@ test('deferred apps are absent and root views show honest unconnected states', a
   for (const deferred of ['Phone', 'Messages', 'Contacts', 'Wallet']) await expect(page.getByRole('button', { name: deferred, exact: true })).toHaveCount(0);
   const states: Record<string, RegExp> = {
     Inbox: /Connect Eliza Cloud/, Workflows: /Your agent runs on your phone, not here\. Open Alpha on your Android phone to use it\. Reminders on this phone stay available\./, Notes: /Notes is unavailable for this agent connection\. Check Settings › Agent connection\./,
-    Photos: /No photos/, Maps: /Add a location/, Calendar: /\d/, Files: /Choose a document/, Settings: /Agent connection/,
+    Photos: /No photos/, Maps: /Add a location/, Calendar: /\d/, Files: /Internal storage|Storage is unavailable/, Settings: /Agent connection/,
   };
   for (const [view, expected] of Object.entries(states)) {
     await page.goto('/?tools=1');

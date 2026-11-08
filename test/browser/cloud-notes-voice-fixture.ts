@@ -3,6 +3,15 @@ import {expect,type Page} from '@playwright/test';
 // Closed media/Cloud ports. No microphone, speech model, audio playback or provider HTTP.
 export async function cloudNotesVoiceFixture(page:Page,signed=true,development=false){
  const foreign:string[]=[];
+ // Keep the voice fixture's account entry independent of the dev host's optional
+ // provider-readiness probe, which may take the full six-second email fallback.
+ await page.route('**/__alpha-browser-cloud', async route => {
+  if (route.request().method() === 'POST' && route.request().postDataJSON()?.operation === 'signInStatus') {
+   await route.fulfill({json:{active:false,inApp:true,google:false,email:true}});
+   return;
+  }
+  await route.fallback();
+ });
  await page.route(/^https?:\/\/(?!127\.0\.0\.1:|localhost:)/,async route=>{foreign.push(route.request().url());await route.abort();});
  await page.addInitScript(()=>{
   localStorage.setItem('alpha.connection.selection.v1',JSON.stringify({kind:'offline'}));

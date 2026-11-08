@@ -18,7 +18,7 @@ function fakeDriver() {
   const segments = () => state.status.segments || [];
   const driver = {
     state,
-    async start() { state.status = {state: 'recording', recordingId: id, durationMs: 0, segments: [], peak: 0.5}; return structuredClone(state.status); },
+    async start(binding) { state.status = {state: 'recording', recordingId: id, binding, durationMs: 0, segments: [], peak: 0.5}; return structuredClone(state.status); },
     async status() { return structuredClone(state.status); },
     async pause(rid) { assert.equal(rid, id); state.status = {...state.status, state: 'paused', peak: 0}; return structuredClone(state.status); },
     async resume(rid) { assert.equal(rid, id); state.status = {...state.status, state: 'recording', stopReason: undefined}; return structuredClone(state.status); },
@@ -94,6 +94,100 @@ test('pause and resume keep the same recording; the waveform follows native peak
   assert.equal(s.phase, 'recording');
   assert.equal(s.recordingId, driver.id);
   s.close();
+});
+
+test('a late pause cannot change the recorder after the view reopens', async t => {
+  const driver = fakeDriver(), s = session(driver);
+  t.after(() => s.close());
+  await s.begin();
+  let release;
+  driver.pause = () => new Promise(resolve => { release = resolve; });
+  const pending = s.pause();
+  s.leave();
+  assert.equal(await s.adopt(), true);
+  release({state: 'paused', recordingId: driver.id, durationMs: 1});
+  await pending;
+  assert.equal(s.phase, 'recording');
+});
+
+test('a late stop cannot replace the reopened recorder or save its audio', async t => {
+  const driver = fakeDriver(), s = session(driver);
+  t.after(() => s.close());
+  await s.begin();
+  driver.segment();
+  let release;
+  driver.stop = () => new Promise(resolve => { release = resolve; });
+  const pending = s.finish(async () => assert.fail('Retired save ran'));
+  s.leave();
+  assert.equal(await s.adopt(), true);
+  release({state: 'stopped', recordingId: driver.id, durationMs: 30_000, segments: []});
+  assert.equal(await pending, false);
+  assert.equal(s.durationMs, 25_000);
+  assert.equal(s.segments.length, 1);
+  assert.equal(driver.state.discarded, 0);
+});
+
+test('recovery keeps the original folder and refuses a different Notes authority', async t => {
+  const driver = fakeDriver();
+  let identity = 'account-a:device-notes', folderId = 'f-original';
+  const owner = () => {
+    const captured = identity;
+    return {identity:captured, folderId, current:() => identity===captured};
+  };
+  const recorded = new NoteRecorderSession(driver, async () => null, () => {}, {owner});
+  await recorded.begin();
+  driver.segment();
+  const binding = driver.state.status.binding;
+  assert.match(binding.ownerDigest, /^[a-f0-9]{64}$/);
+  recorded.leave();
+  identity = 'account-a:agent-notes';
+  let transcriptions = 0;
+  const reopened = new NoteRecorderSession(driver, async () => async () => { transcriptions++; return 'hello'; }, () => {}, {owner});
+  t.after(() => reopened.close());
+  assert.equal(await reopened.adopt(), false);
+  assert.equal(await reopened.finish(async () => assert.fail('Wrong Notes destination')), false);
+  assert.equal(transcriptions, 0);
+  identity = 'account-a:device-notes';
+  folderId = 'f-another';
+  assert.equal(await reopened.adopt(), true);
+  assert.equal(reopened.folderId, 'f-original');
+  assert.equal(await reopened.finish(async () => {
+    assert.equal(reopened.folderId, 'f-original');
+    return true;
+  }), true);
+  assert.equal(driver.state.discarded, 1);
+});
+
+test('account change stops capture and drops late transcription without deleting audio', async t => {
+  const driver = fakeDriver();
+  let identity = 'account-a', release, dispatched = false;
+  const s = new NoteRecorderSession(driver, async () => async (_segment, signal) => {
+    dispatched = true;
+    return new Promise(resolve => {
+      release = () => {
+        assert.equal(signal.aborted, true);
+        resolve('old transcript');
+      };
+    });
+  }, () => {}, {owner:() => {
+    const captured = identity;
+    return {identity:captured, folderId:null, current:() => identity===captured};
+  }});
+  t.after(() => s.close());
+  await s.begin();
+  driver.segment();
+  await settle();
+  assert.equal(dispatched, true);
+  identity = 'account-b';
+  s.recheckOwner();
+  release();
+  await settle();
+  assert.equal(driver.state.status.state, 'stopped');
+  assert.equal(driver.state.status.segments.length, 1);
+  assert.deepEqual(driver.state.texts, {});
+  assert.equal(s.displayTranscript(), '');
+  assert.equal(await s.finish(async () => assert.fail('Old recording saved')), false);
+  assert.equal(driver.state.discarded, 0);
 });
 
 test('Done stops, catches the transcript up, saves one voice note and only then discards the segments', async () => {
@@ -375,6 +469,9 @@ test('the native recorder has a device test for segments, pause accounting, cras
   assert.match(device, /the partial segment is dropped/);
   assert.match(device, /next\.joined\(crashedId\)/);
   assert.match(device, /player\.prepare\(\)/, 'the joined file plays');
+  assert.match(device, /recorder\.start\(owner,folder\)/, 'the device recording starts with an explicit owner and folder');
+  assert.match(device, /back\.getJSONObject\("binding"\)\.getString\("ownerDigest"\)/, 'recovery checks its recorded owner');
+  assert.doesNotMatch(native('AlphaNoteRecorder.java'), /\.readAllBytes\(/, 'journal recovery supports the API 29 minimum');
 });
 
 test('the recording notification follows pause: "Paused" with Resume, and its chronometer is the recording length', () => {

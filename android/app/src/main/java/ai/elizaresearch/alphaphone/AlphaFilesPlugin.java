@@ -25,6 +25,9 @@ public class AlphaFilesPlugin extends Plugin {
  private final ExecutorService worker=Executors.newSingleThreadExecutor();
  private final AtomicBoolean picking=new AtomicBoolean();
  private DocumentFolderTree tree;
+ /** Plugin.requestPermissions launches for a plugin that declares permissions (legacyStorage);
+  * a late call is answered like every other Alpha plugin (LateLaunch). */
+ @Override @PluginMethod public void requestPermissions(PluginCall call){LateLaunch.ask(call,()->super.requestPermissions(call));}
  @Override public void load(){tree=new DocumentFolderTree(getContext(),PREF,uri->SelectedDocumentAccess.authorize(getContext(),uri,0));}
  private void run(PluginCall call,DocumentFolderTree.Work task){PluginWorkers.submit(worker,()->call.resolve(tree.guarded(task)),()->call.resolve(DocumentFolderTree.result("unavailable","Files closed. Reopen Files to continue.")));}
  @PluginMethod public void choose(PluginCall call){
@@ -119,7 +122,9 @@ public class AlphaFilesPlugin extends Plugin {
   for(StorageBrowser.Row r:rows){if(n++>=StorageBrowser.LIST_MAX)break;entries.put(row(r));}
   JSObject out=new JSObject();out.put("entries",entries);out.put("truncated",rows.size()>StorageBrowser.LIST_MAX);return out;
  });}
- @PluginMethod public void storageCategory(PluginCall call){storage(call,b->StorageCatalog.category(resolver(),primaryBrowser(),call.getString("category","")));}
+ @PluginMethod public void storageCategory(PluginCall call){storage(call,b->Boolean.TRUE.equals(call.getBoolean("countOnly",false))
+  ?StorageCatalog.count(resolver(),primaryBrowser(),call.getString("category",""))
+  :StorageCatalog.category(resolver(),primaryBrowser(),call.getString("category","")));}
  /** Categories are on the primary volume whichever volume the call named. */
  private StorageBrowser primaryBrowser(){StorageCatalog.Volume v=StorageCatalog.volume(getContext(),"primary");return new StorageBrowser(v==null?android.os.Environment.getExternalStorageDirectory():v.directory);}
  /** Candidates for the agent's read-only filter; the renderer applies the exact rules. */

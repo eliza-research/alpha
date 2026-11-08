@@ -48,7 +48,7 @@ export function CloudSignInPanel({ view, busy, google, phone, emailEnabled = tru
   const [method, setMethod] = useState<'email' | 'phone' | null>(null);
   const choose = view.step === 'choose' ? view : null;
   const showPhone = !!phone && (!emailEnabled || (method ?? (choose?.phone && !choose.email ? 'phone' : 'email')) === 'phone');
-  const showGoogle = google || !ready;
+  const checking = view.step === 'choose' && !alternate && (probing || (!ready && !unavailable));
   // Resend becomes available when the host's cooldown ends; the countdown is the only timer.
   useEffect(() => {
     if (view.step !== 'code') return;
@@ -66,11 +66,11 @@ export function CloudSignInPanel({ view, busy, google, phone, emailEnabled = tru
   useEffect(() => {
     // Disabled inputs lose focus during verification. Restore it for a wrong-code retry too, with
     // the rejected code selected so the next digits replace it.
-    if (busy || alternate) return;
+    if (busy || checking || alternate) return;
     const target = view.step === 'code' || view.step === 'mfa' ? code : view.step === 'choose' ? google ? googleButton : showPhone ? phoneInput : email : null;
     target?.current?.focus();
     if (error && target === code) code.current?.select();
-  }, [view.step, busy, google, emailEnabled, phone, error, !!alternate]);
+  }, [view.step, busy, checking, google, emailEnabled, phone, error, !!alternate]);
   const wait = view.step === 'code' ? Math.max(0, Math.ceil((view.resendAt - now) / 1000)) : 0;
   const sending = busy && message === SIGN_IN_SENDING;
   const signingIn = busy && message === SIGN_IN_SIGNING_IN;
@@ -86,19 +86,20 @@ export function CloudSignInPanel({ view, busy, google, phone, emailEnabled = tru
   const errorLine = error && !codeError ? <p role={errorIsNotice ? 'status' : 'alert'} className={errorIsNotice ? 'alpha-auth-notice' : 'alpha-connection-error'}>{error}</p> : null;
   // Back always returns to the chooser (or closes an explicit entry). The required page's own
   // readiness check is not something the owner started, so it offers nothing to go back from.
-  const back = !alternate && (view.step !== 'choose' || dismissible || (busy && !probing));
+  const back = !alternate && (view.step !== 'choose' || dismissible || busy);
   const sendLabel = (method: 'email' | 'phone', idle: string) => sending && pending === method ? 'Sending code…' : idle;
+  if (checking) return <div id="cloud-sign-in-title" className="alpha-auth-loading" role="status" aria-label="Loading Alpha"/>;
   return <>
     <AlphaAuthBrand/>
-    <header><h1 id="cloud-sign-in-title" className="serif">{title}</h1></header>
+    <header className={choose ? 'alpha-auth-chooser' : undefined}><h1 id="cloud-sign-in-title" className="serif">{title}</h1></header>
     {view.step === 'choose' && alternate}
     {view.step === 'choose' && !alternate && (unavailable || noMethods) && <div className="alpha-auth-methods">
       {errorLine ?? <p role="status">Sign-in is unavailable.</p>}
       {actions.retry && <button type="button" className="alpha-btn alpha-btn--primary" onClick={actions.retry}>Try again</button>}
     </div>}
     {view.step === 'choose' && !alternate && !unavailable && !noMethods && <div className="alpha-auth-methods">
-      {showGoogle && <button ref={googleButton} type="button" className="alpha-btn alpha-btn--secondary alpha-auth-google" disabled={busy || !ready || !google} onClick={actions.google}><span aria-hidden="true" className="alpha-google-icon"/>Continue with Google</button>}
-      {showGoogle && (emailEnabled || phone) && <div className="alpha-auth-divider" aria-hidden="true">or</div>}
+      {google && <button ref={googleButton} type="button" className="alpha-btn alpha-btn--secondary alpha-auth-google" disabled={busy} onClick={actions.google}><span aria-hidden="true" className="alpha-google-icon"/>Continue with Google</button>}
+      {google && (emailEnabled || phone) && <div className="alpha-auth-divider" aria-hidden="true">or</div>}
       {emailEnabled && !showPhone && <form className="alpha-cloud-sign-in-email" aria-label="Sign in with email" onSubmit={event => { event.preventDefault(); setPending('email'); actions.email(email.current?.value || ''); }}>
         <label>Email<input ref={email} type="email" name="email" autoComplete="email" autoCapitalize="none" autoCorrect="off" spellCheck={false} inputMode="email" maxLength={320} required defaultValue={choose?.email || undefined} disabled={busy || !ready} /></label>
         <button className="alpha-btn alpha-btn--primary" aria-busy={(sending && pending === 'email') || undefined} disabled={busy || !ready}>{sendLabel('email', 'Email me a code')}</button>
@@ -108,7 +109,7 @@ export function CloudSignInPanel({ view, busy, google, phone, emailEnabled = tru
         <button className="alpha-btn alpha-btn--primary" aria-busy={(sending && pending === 'phone') || undefined} disabled={busy || !ready}>{sendLabel('phone', 'Text me a code')}</button>
       </form>}
       {emailEnabled && phone && <button type="button" className="alpha-btn alpha-btn--text" disabled={busy || !ready} onClick={() => setMethod(showPhone ? 'email' : 'phone')}>{showPhone ? 'Use email instead' : 'Use phone number instead'}</button>}
-      {!showGoogle && actions.retry && <button type="button" className="alpha-btn alpha-btn--text" disabled={busy} onClick={actions.retry}>Retry Google sign-in</button>}
+      {!google && actions.retry && <button type="button" className="alpha-btn alpha-btn--text" disabled={busy} onClick={actions.retry}>Retry Google sign-in</button>}
       {errorLine}
     </div>}
     {(view.step === 'code' || view.step === 'mfa') && <form key={`${view.step}:${view.attemptId}`} className="alpha-cloud-sign-in-code" aria-busy={busy || undefined} aria-label={view.step === 'code' ? view.phone ? 'Enter your phone code' : 'Enter your email code' : 'Enter your verification code'} onSubmit={submitCode}>
@@ -129,7 +130,7 @@ export function CloudSignInPanel({ view, busy, google, phone, emailEnabled = tru
     {view.step !== 'choose' && errorLine}
     {!alternate && message && !inlineStatus && <p role="status">{message}</p>}
     {view.step === 'choose' && !alternate && (ownKeys || extra) && <div className="alpha-auth-alt">
-      {ownKeys && <button type="button" className="alpha-btn alpha-btn--text" disabled={busy && !probing} onClick={ownKeys}>Use my own API keys</button>}
+      {ownKeys && <button type="button" className="alpha-btn alpha-btn--text" disabled={busy} onClick={ownKeys}>Use my own API keys</button>}
       {extra}
     </div>}
     {back && <div className="alpha-connection-actions alpha-auth-footer">

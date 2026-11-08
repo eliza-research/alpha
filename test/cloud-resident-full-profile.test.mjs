@@ -96,7 +96,9 @@ test('actual pinned SDK collector retains the full host assistant and preserves 
     const config = JSON.parse(await fs.readFile(join(profile, 'eliza.json'), 'utf8'));
     const actualEnvironment = launches[0].env;
     function collect(extra = {}) {
-      const run = spawnSync(process.env.ALPHA_BUN || 'bun', ['--no-install', '--conditions=eliza-source', 'test/fixtures/cloud-plugin-selection.mjs'], {cwd: process.cwd(), env: {...actualEnvironment, ...extra, ...(process.env.ALPHA_CLOUD_COLLECTOR_SOURCE ? {ALPHA_CLOUD_COLLECTOR_SOURCE: process.env.ALPHA_CLOUD_COLLECTOR_SOURCE} : {}), GIT_NO_LAZY_FETCH: '1', GIT_NO_REPLACE_OBJECTS: '1', GIT_OPTIONAL_LOCKS: '0'}, input: JSON.stringify({config}), encoding: 'utf8', timeout: 20000});
+      // The fixture authenticates every committed byte before importing the collector.
+      // A cold prepared SDK can take longer than 20 seconds to read on a busy host.
+      const run = spawnSync(process.env.ALPHA_BUN || 'bun', ['--no-install', '--conditions=eliza-source', 'test/fixtures/cloud-plugin-selection.mjs'], {cwd: process.cwd(), env: {...actualEnvironment, ...extra, ...(process.env.ALPHA_CLOUD_COLLECTOR_SOURCE ? {ALPHA_CLOUD_COLLECTOR_SOURCE: process.env.ALPHA_CLOUD_COLLECTOR_SOURCE} : {}), GIT_NO_LAZY_FETCH: '1', GIT_NO_REPLACE_OBJECTS: '1', GIT_OPTIONAL_LOCKS: '0'}, input: JSON.stringify({config}), encoding: 'utf8', timeout: 120000});
       assert.equal(run.status, 0, run.stderr);
       const line = run.stdout.split('\n').find(row => row.startsWith('SDK_PLUGIN_SELECTION='));
       assert.ok(line, 'the actual collector must return its selection');

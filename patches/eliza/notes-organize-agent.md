@@ -10,10 +10,11 @@ coordinator rejects an operation type it does not know, so `runtime/connection-u
 yet offer `notes.organize.v1`; add it to the negotiated list (and to `config/alpha-product.json`
 `features.capabilities`) in the pin bump that brings this patch.
 
-Base: elizaOS/eliza `0594fc72da4450a84a986ad12e730e3faa902018` (the pin in
+Base: elizaOS/eliza `475a8d59dc1811c2cde093613519906a5a3f6457` (the pin in
 `upstream.lock.json`). Apply from the eliza repo root with `git apply`. The patch was first
-written at `912f972e58`; every file it touches is byte-identical at both commits, so the
-hunks are unchanged. It was regenerated and re-tested at `0594fc72da` on 2026-11-06.
+written at `912f972e58` and regenerated at `0594fc72da`; every file it touches is
+byte-identical at all three commits, so the hunks are unchanged. It was regenerated and
+re-tested at `475a8d59dc` on 2026-11-07 (see below).
 
 ## What it adds
 
@@ -57,6 +58,13 @@ and review cards for the same operations.
   `notes.organize.v1`. Without this change the route rejects a capability header that
   contains it.
 - `test/device-actions.e2e.test.ts`: adds the capability to the expected enrollment list.
+
+## Re-tested at `475a8d59dc` (2026-11-07)
+
+`git apply --check` passes on the new pin. In a scratch `git archive` export of the new pin
+(same layout and third-party packages as below), Bun 1.3.14: `notes-organize-contract.test.ts`
+and `client-coordinator.test.ts` 50 pass, 0 fail; the whole `device-actions/` folder 97 pass,
+2 fail (the same two missing-module failures as below).
 
 ## How it was tested (2026-11-06, at `0594fc72da`)
 

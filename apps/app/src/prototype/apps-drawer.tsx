@@ -10,21 +10,12 @@ import {useEffect, useRef, type CSSProperties, type KeyboardEvent as ReactKeyboa
 export const HOLD_MS = 450;
 /** Movement (CSS px) that turns a press into a scroll or a drag. */
 export const SLOP = 10;
-/** Key of the default dialer's tile; it opens Android's dial hand-off. */
-export const DIAL_KEY = 'dial';
-
-/** The drawer's entries: installed apps only, alphabetical (search ranks matches first). The
- * default dialer appears once, as Phone; its own same-profile entry is folded into that tile. */
+/** The drawer is a projection of the installed inventory. A resolved default handler does
+ * not establish a listed launcher component and must not create a synthetic shortcut. */
 export function appsDrawerEntries(snapshot: ReturnType<Launcher['snapshot']>, builtinPrefix: string, query: string) {
   const installed = snapshot.apps.filter(app => !app.packageName.startsWith(builtinPrefix));
-  const dialOwn = snapshot.dial?.packageName ? installed.filter(app => app.packageName === snapshot.dial!.packageName && !app.user) : [];
-  const dialEntry = dialOwn.length === 1 ? dialOwn[0] : undefined;
-  const listed = dialEntry ? installed.filter(app => app !== dialEntry) : installed;
-  const dial: InstalledApp | null = snapshot.dial ? {packageName: snapshot.dial.packageName || '', label: 'Phone', ...(snapshot.dial.icon ? {icon: snapshot.dial.icon} : {})} : null;
-  const details = describeLauncherApps(listed);
-  return filterLauncherApps(dial ? [...listed, dial] : listed, query).map(app => app === dial
-    ? {key: DIAL_KEY, app: dial, target: dialEntry, dial: true, detail: [] as string[]}
-    : {key: appKey(app), app, target: app as InstalledApp | undefined, dial: false, detail: details.get(appKey(app)) || []});
+  const details = describeLauncherApps(installed);
+  return filterLauncherApps(installed, query).map(app => ({key: appKey(app), app, target: app, detail: details.get(appKey(app)) || []}));
 }
 
 export interface AppsDrawerProps extends HTMLAttributes<HTMLDivElement> {
@@ -131,19 +122,19 @@ export function AppsDrawer({launcher, builtinPrefix, query, onQuery, onClose, me
       {menu ? <button type="button" aria-label="Close menu" tabIndex={-1} onClick={() => onMenu(null)} style={{position: 'absolute', inset: 0, zIndex: 1, border: 0, background: 'transparent'}} /> : null}
       <div className="scr" data-installed-apps-scroll="" aria-busy={loading || undefined} style={{flexGrow: 1, minHeight: 0, overflowY: 'auto', padding: '4px 8px', touchAction: 'pan-y'}}>
         <div className="alpha-fit-grid" data-alpha-apps-grid="" style={{'--fit-columns': 4, '--fit-min': '62px', rowGap: 20, padding: '6px 2px'} as CSSProperties}>
-          {entries.map(({key, app, target, dial, detail}) => {
+          {entries.map(({key, app, target, detail}) => {
             const name = detail.length ? `${app.label} (${detail.join(', ')})` : app.label;
-            const aria = dial ? (snapshot.dial?.label ? `Open Phone (${snapshot.dial.label})` : 'Open Phone') : `Open ${name}`;
+            const aria = `Open ${name}`;
             const open = menu === key, onHome = !!target && launcher.isFavorite(target);
             return (
               <div key={key} data-launcher-app={key} {...(target ? hold(key) : {})} style={{position: 'relative', display: 'flex', justifyContent: 'center', minWidth: 0}}>
                 <button type="button" aria-label={aria} aria-busy={snapshot.launching === key || undefined}
                   disabled={!!snapshot.launching}
-                  onClick={() => { if (!tapped(key)) return; if (dial) void launcher.openDial(); else void launcher.launch(app); }}
+                  onClick={() => { if (!tapped(key)) return; void launcher.launch(app); }}
                   style={{display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, minWidth: 0, width: '100%', border: 0, padding: 0, background: 'none', color: 'inherit', font: 'inherit', cursor: 'pointer'}}>
                   {app.icon
                     ? <img alt="" src={app.icon} style={{width: 56, height: 56, borderRadius: 18}} />
-                    : <span style={{width: 56, height: 56, borderRadius: 18, background: 'var(--s2, var(--surface))', display: 'flex', alignItems: 'center', justifyContent: 'center'}}><span aria-hidden="true" style={mask(dial ? glyphs.phone : glyphs.app, 26)} /></span>}
+                    : <span style={{width: 56, height: 56, borderRadius: 18, background: 'var(--s2, var(--surface))', display: 'flex', alignItems: 'center', justifyContent: 'center'}}><span aria-hidden="true" style={mask(glyphs.app, 26)} /></span>}
                   <span style={{fontSize: 12, maxWidth: '100%', textAlign: 'center', overflowWrap: 'anywhere'}}>{app.label}</span>
                   {detail.length ? <span style={{fontSize: 11, color: 'var(--mut, var(--muted))', maxWidth: '100%', textAlign: 'center', overflowWrap: 'anywhere'}}>{detail.join(' · ')}</span> : null}
                 </button>

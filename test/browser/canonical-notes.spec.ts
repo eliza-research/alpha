@@ -45,19 +45,37 @@ test('canonical Notes UI creates, edits, trashes and restores the same committed
 
 // Agent Notes have the redesign's header: Record and New note (PLAN.md section 3). Record opens the
 // Notes recorder; Done saves an agent voice note with the transcript and length, and no audio.
-test('Record in agent Notes saves a voice note without audio',async({page})=>{
+test('Record in agent Notes retains missing transcription, then saves a voice note without audio',async({page})=>{
  const {foreign,errors}=await canonicalNotesFixture(page);await openCanonicalNotes(page);
  const header=page.locator('[data-alpha-subview="notes-list"] [data-alpha-app-header="main"]');
  expect(await header.getByRole('button').evaluateAll(list=>list.map(el=>el.getAttribute('aria-label')))).toEqual(['Back to apps','Record and transcribe','New note']);
- await page.evaluate(()=>{const ctx=new AudioContext(),osc=ctx.createOscillator(),sink=ctx.createMediaStreamDestination();osc.connect(sink);osc.start();Object.defineProperty(navigator.mediaDevices,'getUserMedia',{configurable:true,value:async()=>sink.stream});(window as any).micContext=ctx;});
+ await page.evaluate(async()=>{
+  const {BrowserVoice}=await import('/src/browser/voice.ts');
+  const {connectionController}=await import('/src/runtime/connection-ui.tsx');
+  connectionController.getCloudEnvironment=()=> 'production';
+  connectionController.getCloudClient=()=>({sessionId:'notes-speech-fixture',credentialId:'notes-speech-fixture'}) as any;
+  BrowserVoice.prototype.transcribeRecording=async()=>{
+   if(!(window as any).noteTranscriptReady)throw Error('Synthetic transcription unavailable');
+   return {text:'Synthetic recorded note',local:false};
+  };
+  const ctx=new AudioContext(),osc=ctx.createOscillator(),sink=ctx.createMediaStreamDestination();
+  osc.connect(sink);osc.start();
+  Object.defineProperty(navigator.mediaDevices,'getUserMedia',{configurable:true,value:async()=>sink.stream});
+  (window as any).micContext=ctx;
+ });
  await page.getByRole('button',{name:'Record and transcribe',exact:true}).click();
  const recorder=page.locator('[data-alpha-subview="notes-recorder"]');
  await expect(recorder).toHaveAttribute('data-recorder-state','recording');
  await page.waitForTimeout(1200);
  await recorder.getByRole('button',{name:'Done',exact:true}).click();
+ await expect(recorder).toHaveAttribute('data-recorder-state','stopped');
+ expect((await snapshot(page)).notes).toEqual([]);
+ await page.evaluate(()=>(window as any).noteTranscriptReady=true);
+ await recorder.getByRole('button',{name:'Done',exact:true}).click();
  await expect(recorder).toHaveCount(0);
  await expect.poll(()=>snapshot(page).then((s:any)=>s.notes.map((n:any)=>[n.title,n.format?.kind]))).toEqual([['Voice note','voice']]);
  const saved=(await snapshot(page)).notes[0];
+ expect(saved.body).toContain('Synthetic recorded note');
  expect(saved.format.data.dur).toBeGreaterThan(0);expect(JSON.stringify(saved)).not.toMatch(/audio/i);
  const requests=await page.evaluate(()=>(window as any).canonicalNotesFixture.requests.filter((r:any)=>r.path==='/api/views/notes/interact'));
  expect(JSON.stringify(requests)).not.toMatch(/audioId/);

@@ -239,6 +239,9 @@ export function installChatOverlayMotion(Component: Shell) {
 	 * and no blank frame or ghosted header shows between the two.
 	 */
 	function resizeForTap(shell: Shell, change: { from: Mode; to: Mode; tap: boolean }) {
+		// Navigation can pass through the pill before reopening. Every mode change
+		// retires the previous resize, including changes that do not animate the bar.
+		const token = (shell.chatResizeToken = (shell.chatResizeToken || 0) + 1);
 		const panel = document.querySelector<HTMLElement>(
 			'[data-alpha-layer="conversation"]',
 		);
@@ -252,7 +255,6 @@ export function installChatOverlayMotion(Component: Shell) {
 			panel.getBoundingClientRect();
 			panel.style.transition = RESIZE_TRANSITION;
 			panel.style.height = target;
-			const token = (shell.chatResizeToken = (shell.chatResizeToken || 0) + 1);
 			setTimeout(() => {
 				if (shell.chatResizeToken === token)
 					panel.style.transition = PANEL_TRANSITION;
@@ -262,7 +264,6 @@ export function installChatOverlayMotion(Component: Shell) {
 			panel.style.transition = RESIZE_TRANSITION;
 			panel.style.opacity = "1";
 			panel.style.height = `${composerBlock(panel, scale)}px`;
-			const token = (shell.chatResizeToken = (shell.chatResizeToken || 0) + 1);
 			setTimeout(() => {
 				if (shell.chatResizeToken === token) panel.style.opacity = "0";
 			}, CLOSE_MS - CLOSE_FADE_MS);

@@ -1,4 +1,5 @@
 import {test,expect,type Page} from '@playwright/test';
+// The closing sheet keeps an inert composer briefly; interact with the one exposed to users.
 import {button} from './flag-off-android';
 import {setupNativeSpeech} from './native-speech-fixture';
 import {setupLiveAssistant} from './voice-assistant-fixture';
@@ -35,24 +36,24 @@ const posts=(page:Page)=>page.evaluate(()=>(window as any).flagOff.posts.map((te
 async function clean(page:Page,foreign:string[]){expect(await live(page,f=>f.forbidden)).toEqual([]);expect(foreign).toEqual([]);}
 const transcription=(page:Page)=>page.getByRole('region',{name:'Voice transcription',exact:true});
 test('API dictation: Transcribe stops into editable local text and appends only to the unsent draft',async({page},info)=>{
- const foreign=await setupNative(page);const composer=page.locator('textarea[data-alpha-composer]');await composer.fill('Existing unsent text');await invokeDictation(page);await expect(transcription(page)).toHaveAttribute('data-voice-state','recording');await button(page,'Stop recording').click();await expect(transcription(page)).toHaveAttribute('data-voice-state','review');await page.getByRole('textbox',{name:'Review transcript',exact:true}).fill('Edited local transcript');await page.screenshot({path:info.outputPath('transcription-review.png')});await button(page,'Use in draft').click();await expect(transcription(page)).toHaveCount(0);await expect(page.locator('textarea[data-alpha-composer]')).toHaveValue('Existing unsent text\nEdited local transcript');expect(await page.evaluate(()=>(window as any).flagOff.posts)).toEqual([]);expect(await page.evaluate(()=>(window as any).nativeSpeech.transcripts)).toBe(1);await noCloud(page,foreign);
+ const foreign=await setupNative(page);const composer=page.getByRole('textbox',{name:/^(Ask|Message) Alpha$/});await composer.fill('Existing unsent text');await invokeDictation(page);await expect(transcription(page)).toHaveAttribute('data-voice-state','recording');await button(page,'Stop recording').click();await expect(transcription(page)).toHaveAttribute('data-voice-state','review');await page.getByRole('textbox',{name:'Review transcript',exact:true}).fill('Edited local transcript');await page.screenshot({path:info.outputPath('transcription-review.png')});await button(page,'Use in draft').click();await expect(transcription(page)).toHaveCount(0);await expect(page.getByRole('textbox',{name:/^(Ask|Message) Alpha$/})).toHaveValue('Existing unsent text\nEdited local transcript');expect(await page.evaluate(()=>(window as any).flagOff.posts)).toEqual([]);expect(await page.evaluate(()=>(window as any).nativeSpeech.transcripts)).toBe(1);await noCloud(page,foreign);
 });
 test('API dictation: Transcribe cancellation discards late ASR and preserves the original draft',async({page})=>{
- const foreign=await setupNative(page);await page.locator('textarea[data-alpha-composer]').fill('Keep this draft');await page.evaluate(()=>(window as any).nativeSpeech.holdTranscript=true);await invokeDictation(page);await expect(transcription(page)).toHaveAttribute('data-voice-state','recording');await button(page,'Stop recording').click();await expect(transcription(page)).toHaveAttribute('data-voice-state','transcribing');await button(page,'Cancel transcription').click();await expect(transcription(page)).toHaveCount(0);await page.evaluate(()=>(window as any).nativeSpeech.releaseTranscript());await expect(page.locator('textarea[data-alpha-composer]')).toHaveValue('Keep this draft');expect(await page.evaluate(()=>(window as any).flagOff.posts)).toEqual([]);expect(await page.evaluate(()=>(window as any).nativeSpeech.starts)).toBe(1);await noCloud(page,foreign);
+ const foreign=await setupNative(page);await page.getByRole('textbox',{name:/^(Ask|Message) Alpha$/}).fill('Keep this draft');await page.evaluate(()=>(window as any).nativeSpeech.holdTranscript=true);await invokeDictation(page);await expect(transcription(page)).toHaveAttribute('data-voice-state','recording');await button(page,'Stop recording').click();await expect(transcription(page)).toHaveAttribute('data-voice-state','transcribing');await button(page,'Cancel transcription').click();await expect(transcription(page)).toHaveCount(0);await page.evaluate(()=>(window as any).nativeSpeech.releaseTranscript());await expect(page.getByRole('textbox',{name:/^(Ask|Message) Alpha$/})).toHaveValue('Keep this draft');expect(await page.evaluate(()=>(window as any).flagOff.posts)).toEqual([]);expect(await page.evaluate(()=>(window as any).nativeSpeech.starts)).toBe(1);await noCloud(page,foreign);
 });
 test('API dictation: unavailable Transcribe retains keyboard and never starts a capture',async({page})=>{
  const foreign=await setupNative(page);await page.evaluate(()=>(window as any).nativeSpeech.ready=false);await invokeDictation(page);// #780 (2e6254afbe) keeps voice failure text quiet: the disabled primary control names the state.
- await expect(transcription(page).getByRole('button',{name:'On-device speech unavailable',exact:true})).toBeDisabled();await expect(transcription(page)).not.toContainText('On-device speech is unavailable');await expect(transcription(page)).not.toContainText('Retry local speech');await button(page,'Switch to keyboard').click();await expect(transcription(page)).toHaveCount(0);await expect(page.locator('textarea[data-alpha-composer]')).toBeVisible();expect(await page.evaluate(()=>(window as any).nativeSpeech.starts)).toBe(0);await noCloud(page,foreign);
+ await expect(transcription(page).getByRole('button',{name:'On-device speech unavailable',exact:true})).toBeDisabled();await expect(transcription(page)).not.toContainText('On-device speech is unavailable');await expect(transcription(page)).not.toContainText('Retry local speech');await button(page,'Switch to keyboard').click();await expect(transcription(page)).toHaveCount(0);await expect(page.getByRole('textbox',{name:/^(Ask|Message) Alpha$/})).toBeVisible();expect(await page.evaluate(()=>(window as any).nativeSpeech.starts)).toBe(0);await noCloud(page,foreign);
 });
 test('API dictation: leaving foreground during Transcribe discards late output without changing the draft',async({page})=>{
- const foreign=await setupNative(page);await page.locator('textarea[data-alpha-composer]').fill('Original draft');await page.evaluate(()=>(window as any).nativeSpeech.holdTranscript=true);await invokeDictation(page);await expect(transcription(page)).toHaveAttribute('data-voice-state','recording');await button(page,'Stop recording').click();await expect(transcription(page)).toHaveAttribute('data-voice-state','transcribing');await page.evaluate(()=>window.dispatchEvent(new Event('pagehide')));await expect(transcription(page)).toHaveCount(0);await page.evaluate(()=>(window as any).nativeSpeech.releaseTranscript());await expect(page.locator('textarea[data-alpha-composer]')).toHaveValue('Original draft');expect(await page.evaluate(()=>(window as any).flagOff.posts)).toEqual([]);await noCloud(page,foreign);
+ const foreign=await setupNative(page);await page.getByRole('textbox',{name:/^(Ask|Message) Alpha$/}).fill('Original draft');await page.evaluate(()=>(window as any).nativeSpeech.holdTranscript=true);await invokeDictation(page);await expect(transcription(page)).toHaveAttribute('data-voice-state','recording');await button(page,'Stop recording').click();await expect(transcription(page)).toHaveAttribute('data-voice-state','transcribing');await page.evaluate(()=>window.dispatchEvent(new Event('pagehide')));await expect(transcription(page)).toHaveCount(0);await page.evaluate(()=>(window as any).nativeSpeech.releaseTranscript());await expect(page.getByRole('textbox',{name:/^(Ask|Message) Alpha$/})).toHaveValue('Original draft');expect(await page.evaluate(()=>(window as any).flagOff.posts)).toEqual([]);await noCloud(page,foreign);
 });
 
 test('API dictation and assistant stay distinct: draft editing never sends, voice conversation submits',async({page})=>{
  const foreign=await setupLive(page);
  await expect(button(page,'Transcribe')).toHaveCount(0);
  await expect(button(page,'Talk')).toHaveAttribute('title','Voice assistant');
- await page.locator('textarea[data-alpha-composer]').fill('Existing text');
+ await page.getByRole('textbox',{name:/^(Ask|Message) Alpha$/}).fill('Existing text');
  await invokeDictation(page);
  await expect(transcription(page)).toHaveAttribute('data-voice-state','recording');
  expect(await live(page,f=>f.captures.map((c:any)=>c.echoCancel))).toEqual([false]);
@@ -69,10 +70,10 @@ test('API dictation and assistant stay distinct: draft editing never sends, voic
  expect(routes.at(-1).close).toBe(true);
  await page.getByRole('textbox',{name:'Review transcript',exact:true}).fill('Pick up the dry cleaning and the mail today');
  await button(page,'Use in draft').click();
- await expect(page.locator('textarea[data-alpha-composer]')).toHaveValue('Existing text\nPick up the dry cleaning and the mail today');
+ await expect(page.getByRole('textbox',{name:/^(Ask|Message) Alpha$/})).toHaveValue('Existing text\nPick up the dry cleaning and the mail today');
  expect(await posts(page)).toEqual([]);
 
- await page.locator('textarea[data-alpha-composer]').fill('');
+ await page.getByRole('textbox',{name:/^(Ask|Message) Alpha$/}).fill('');
  await expect(button(page,'Talk')).toBeVisible();
  await button(page,'Talk').click();
  await expect(voice(page)).toHaveAttribute('data-voice-state','listening');

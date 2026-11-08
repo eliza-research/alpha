@@ -1,15 +1,15 @@
 {
   "schema": 1,
-  "baseCommit": "0594fc72da4450a84a986ad12e730e3faa902018",
+  "baseCommit": "475a8d59dc1811c2cde093613519906a5a3f6457",
   "patches": [
     {
       "file": "cloud-speech-client.patch",
-      "sha256": "36ebc9fd0076d07ed7dde7e607c48b2c38ae21dc2087ba069e927d521a4074bb",
+      "sha256": "95f845a2f5528dd44c365fa3eb50c2b6caaff63ab93b97776128c6cd99d113b0",
       "targets": [
         {
           "path": "packages/voice/src/native-cloud-speech.ts",
           "beforeSha256": null,
-          "afterSha256": "b3c9a787c7f93954f79ed8e14e928049b2b0f536e60ea01ef88453cf3f6aeefd"
+          "afterSha256": "313d36f11313a58a1104187c154345e7ca941b8df3ad5a389b58642b5ff4cef3"
         },
         {
           "path": "packages/voice/src/cloud-speech-chunks.ts",

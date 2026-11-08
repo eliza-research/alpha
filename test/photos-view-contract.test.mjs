@@ -84,4 +84,7 @@ test('review only in Photos on the unlocked phone',()=>{
 test('the mirror keeps the upstream rules: same constants and messages as the proposed patch',()=>{
   const patch=readFileSync(new URL('../patches/eliza/photos-view-agent.patch',import.meta.url),'utf8');
   for(const text of ['"photos.view.v1"','/^custom:[A-Za-z0-9_-]{1,80}$/','PHOTOS_SHARE_MAX = 100','Choose an album name between 1 and 80 characters','Invalid album items','Invalid share items','Invalid filter text','description: "Android share sheet"','description: items(op.ids.length),'])assert.ok(patch.includes(text),text);
+  // Library cards show the effect only (the select title; the review's action detail).
+  assert.ok(patch.includes('+      description: "",')&&patch.includes('+    description: text.detail,'));
+  for(const text of ['description: "Nothing is changed or shared."','You confirm it in Photos'])assert.ok(!patch.split('\n').some(line=>line.startsWith('+')&&line.includes(text)),text);
 });

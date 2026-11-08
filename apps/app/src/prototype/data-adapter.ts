@@ -141,13 +141,15 @@ export function installPrototypeDataAdapter(Component: any, views: Record<string
       ...out, shadeN: [],
       sugg: suggestions.map(label => ({ label, go: () => this.send(label) })),
       ...homeCalendarValues(presentHomeAgendaCard(agendaInput)),
+      homeCalendarConfirmedEmpty: cardState === 'ready' && readAt != null && readAt > 0 && readAt <= now
+        && !stale && !calendarHidden && !calendarSource?.truncated && !agenda && !following,
       // The agent calendar adapter presents the card again with the agent's next event under an overdue
       // reminder, and lets an upcoming reminder lead when it comes first.
       homeAgendaInput: agentAgendaInput, homeAgendaReminder: !!agenda?.event.alphaReminderId && !overdue,
       homeAgendaNextReminder: !!following?.event.alphaReminderId,
       homeAttentionLabel: attention.label, homeAttentionAction: attention.action,
       homeAttentionPeople: [], homeAttentionPeopleVisibility: 'hidden',
-      ...(browserDevProfile?{homeInboxCount:attention.count,homeInboxRows:unreadRows.slice(0,2).map(mail=>({subject:mail.subj||'(no subject)',from:mail.name||mail.email||''})),homeInboxHasRows:unread>0,homeInboxTitle:unread?'':'No unread email',homeInboxStatus:'Development inbox'}:{}),
+      ...(browserDevProfile?{homeInboxCount:attention.count,homeInboxRows:unreadRows.slice(0,2).map(mail=>({subject:mail.subj||'(no subject)',from:mail.name||mail.email||''})),homeInboxHasRows:unread>0,homeInboxConfirmedEmpty:unread===0,homeInboxTitle:unread?'':'No unread email',homeInboxStatus:'Development inbox'}:{}),
       homeWorkflowLabel: brief.label, homeWorkflowTitle: brief.title, homeWorkflowTime: brief.time, homeWorkflowSource: brief.source,
       // After a failed read, opening Calendar from the card reads it again; Calendar itself does not retry on entry.
       // A stale read is read again when the card is opened (the same forced read Calendar's retry uses).

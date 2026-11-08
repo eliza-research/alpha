@@ -75,7 +75,6 @@ const mock = (start: string, steps: string[] = [], shows?: string): State => ({
 /** Primary views and the subviews, dialogs and failure states reachable without a provider. */
 export const LIVE_STATES: State[] = [
   live('Home'),
-  live('Apps', ['Apps']),
   live('Conversation', ['Open conversation']),
   live('Inbox (not connected)', ['Inbox']),
   live('Calendar', ['Calendar']),
@@ -115,6 +114,9 @@ export const LIVE_STATES: State[] = [
   legacyNotes('Notes recorder', ['Record and transcribe'], 'notes-recorder'),
   live('Workflows new automation', ['Workflows', 'New automation'], 'automations-detail'),
 ];
+
+/** The simulated browser inventory exists only in test-mocks builds. */
+export const BROWSER_APP_STATES: State[] = [live('Apps', ['Apps'])];
 
 /** The subview each fixture deep link must put on screen. */
 const SUBVIEW: Record<string, string> = {
@@ -369,9 +371,19 @@ const launcher = (name: string, steps: string[] = [], shows?: string): State => 
     await showing(page, shows);
   },
 });
+export const INSTALLED_APPS_STATE: State = {
+  ...launcher('Apps', ['Apps']),
+  open: async (page, theme) => {
+    await launcher('Apps', ['Apps']).open(page, theme);
+    const drawer = page.getByRole('dialog', {name: 'Apps', exact: true});
+    await expect(drawer).toBeVisible();
+    await expect(drawer.getByRole('button', {name: 'Open Synthetic clock', exact: true})).toBeVisible();
+    await expect(drawer.getByRole('button', {name: 'Open Calendar', exact: true})).toHaveCount(0);
+  },
+};
 export const LAUNCHER_STATES: State[] = [
   launcher('Home'),
-  launcher('Apps', ['Apps']),
+  INSTALLED_APPS_STATE,
   launcher('Conversation', ['Open conversation']),
   // Every retained app view in the launcher presentation (its headers and system bars differ).
   launcher('Inbox', ['Inbox']),

@@ -8,6 +8,13 @@ import path from "node:path";
 import { execFileSync, spawnSync } from "node:child_process";
 import { archiveWebPayload, readBuildFlags, verifyOwnerRouteTable } from "../scripts/apk.mjs";
 const root = path.resolve(import.meta.dirname, "..");
+test("Cloud QA evidence requires one explicit Cloud profile before any APK work", () => {
+  for (const args of [["--cloud-voice-evidence=missing.json"], ["--runtime-profile=cloud", "--cloud-voice-evidence=a.json", "--cloud-voice-evidence=b.json"]]) {
+    const result=spawnSync(process.execPath,["scripts/verify-apks.mjs",...args],{cwd:root,encoding:"utf8"});
+    assert.notEqual(result.status,0);
+    assert.match(result.stderr,/Cloud voice evidence requires one explicit Cloud profile/);
+  }
+});
 /** Copy the committed AOSP product files into `dir` with every unset value filled, so production staging passes its lock check. */
 function completeAospLock(dir) {
   const read = rel => JSON.parse(fs.readFileSync(path.join(root, rel), "utf8"));

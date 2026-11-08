@@ -11,9 +11,10 @@ or `photos.view.v1`, so `runtime/connection-ui.tsx` does not yet offer them. Add
 negotiated list (and to `config/alpha-product.json` `features.capabilities`) in the pin bump that
 brings this patch.
 
-Base: elizaOS/eliza `0594fc72da4450a84a986ad12e730e3faa902018` (the pin in
+Base: elizaOS/eliza `475a8d59dc1811c2cde093613519906a5a3f6457` (the pin in
 `upstream.lock.json`). Apply from the eliza repo root with `git apply`. Written and tested at
-`0594fc72da` on 2026-11-06.
+`0594fc72da` on 2026-11-06; every file it touches is byte-identical at `475a8d59dc`, so the
+regenerated patch is unchanged. Re-tested at `475a8d59dc` on 2026-11-07 (see below).
 
 ## What it adds
 
@@ -70,9 +71,9 @@ only when both `photos.library.v1` and `photos.view.v1` were negotiated.
   an opened review, not a saved change.
 - Wording: the redesign removes the "Device library" album, so the shared copy no longer says
   "Photos > Device library". `proposalContextNotice` for a library operation now says "Open
-  Photos to review this action."; `describeLibraryOperation` for `photo_library_select` says
-  "Nothing is changed or shared." and for `photo_library_review` says "You confirm it in Photos,
-  then in Android." followed by the action detail.
+  Photos to review this action."; `describeLibraryOperation` for `photo_library_select` has no
+  description (the title is the effect), and for `photo_library_review` it is the action detail
+  alone.
 - `packages/agent/src/api/device-action-routes.ts`: accepts and advertises
   `photos.library.v1` and `photos.view.v1`. At the pin the route accepts neither, so without
   this change a phone could not negotiate them at all.
@@ -82,6 +83,14 @@ At the pin the `photo_library_*` operations exist only in the phone-side coordin
 no agent tool, `contract.ts` branch or route capability for them. This patch does not add
 those. The agent therefore has library ids only when the phone has supplied them; the tool
 descriptions say to use only ids the phone returned and never guess them.
+
+## Re-tested at `475a8d59dc` (2026-11-07)
+
+`git apply --check` passes on the new pin. In a scratch `git archive` export of the new pin
+(same layout and third-party packages as below), Bun 1.3.14: `photos-view-contract.test.ts`,
+`client-coordinator.test.ts` and `photo-library-contract.test.ts` 59 pass, 0 fail; the whole
+`device-actions/` folder 97 pass, 2 fail (the same two missing-module failures as below).
+`tsc` and Biome were not re-run at this pin.
 
 ## How it was tested (2026-11-06, at `0594fc72da`)
 

@@ -86,6 +86,7 @@ function fixture(t) {
   edit("android/release-signer.json", value => { value.signerSha256 = "unset"; value.lastRelease = { versionCode: null, versionName: null, recordedAt: null }; });
   edit("android/aosp/pixel10a-product.json", value => {
     value.signer.platformCertificateSha256 = "UNSET";
+    delete value.signer.apexPayloadAvbPublicKeySha256;
     for (const name of Object.keys(value.signer.releaseCertificates)) value.signer.releaseCertificates[name] = "UNSET";
     value.avb.publicKeySha256 = "UNSET";
   });
@@ -107,7 +108,7 @@ test("recorded states follow the records: unset digests, missing releases, gates
   const state = (env = {}) => Object.fromEntries(humanActionStates(dir, env).map(row => [row.id, row]));
   const before = state();
   assert.equal(before["H-09"].state, "open");
-  assert.match(before["H-09"].detail, /12 of 12 release digests unset/);
+  assert.match(before["H-09"].detail, /13 of 13 release digests unset/);
   assert.equal(before["H-10"].state, "open");
   assert.equal(before["H-01"].state, "external");
   assert.match(before["H-01"].detail, /^verify: /);
@@ -130,6 +131,9 @@ test("recorded states follow the records: unset digests, missing releases, gates
     value.recovery.knownGoodRelease = { buildFingerprint: "Alpha/alpha_stallion_phone/stallion:17/X/1:user/release-keys", otaSha256: digest, recordFile: "release-record.json" };
     for (const name of Object.keys(value.drills)) value.drills[name] = "passed";
   });
+  assert.equal(state()["H-09"].state, "open");
+  assert.match(state()["H-09"].detail, /1 of 13 release digests unset .*apexPayloadAvbPublicKeySha256/);
+  edit("android/aosp/pixel10a-product.json", value => { value.signer.apexPayloadAvbPublicKeySha256 = digest; });
   // A passed drill record alone does not pass H-25: the gate must say so too.
   assert.equal(state()["H-25"].state, "open");
   edit("android/aosp/pixel10a-qualification-gates.json", value => { for (const name of ["cuttlefishBoot", "physicalDevice", "signedUpdateRecovery", "userAcceptance"]) value.gates[name].status = "passed"; });

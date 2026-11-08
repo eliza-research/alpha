@@ -31,10 +31,11 @@ public final class AlphaGmailPlugin extends Plugin {
  @PluginMethod public void consume(PluginCall call){if(!foreground()){call.reject("Unlock Gmail to continue");return;}long epoch=lifecycle;submit(call,()->{delivery().consume(call.getString("token"),()->requireForeground(epoch));return new JSObject();});}
  @PluginMethod public void releaseQuestion(PluginCall call){if(!foreground()){call.reject("Unlock Gmail to continue");return;}long epoch=lifecycle;submit(call,()->{delivery().releaseQuestion(call.getString("token"),()->requireForeground(epoch));return new JSObject();});}
  @PluginMethod public void notificationSettings(PluginCall call){if(!foreground()){call.reject("Open settings on the unlocked phone");return;}try{getActivity().startActivity(new Intent(Settings.ACTION_CHANNEL_NOTIFICATION_SETTINGS).putExtra(Settings.EXTRA_APP_PACKAGE,getContext().getPackageName()).putExtra(Settings.EXTRA_CHANNEL_ID,GmailBackground.NOTICES.channel));call.resolve();}catch(RuntimeException unavailable){call.reject("Android notification settings unavailable");}}
- private void capture(Intent intent){MailNoticePoster.Tap tap=GmailBackground.poster(getContext()).tap(intent);if(tap==null)return;try{io.execute(()->{try{delivery().capture(tap.key,tap.question);intent.setData(null);notifyListeners("pendingMail",new JSObject(),true);}catch(Exception ignored){/* Owner mismatch exposes no route. */}});}catch(RejectedExecutionException ignored){}}
- @Override public void load(){delivery();capture(getActivity().getIntent());delivery().resume();}
+ private void capture(Intent intent){try{io.execute(()->{try{MailNoticePoster.Tap tap=GmailBackground.poster(getContext()).tap(intent);if(tap==null)return;delivery().capture(tap.key,tap.question);intent.setData(null);notifyListeners("pendingMail",new JSObject(),true);}catch(Exception ignored){/* Owner mismatch exposes no route. */}});}catch(RejectedExecutionException ignored){}}
+ private void resumeDelivery(boolean notify){try{io.execute(()->{delivery().resume();if(notify)notifyListeners("pendingMail",new JSObject(),true);});}catch(RejectedExecutionException ignored){/* The bridge was destroyed. */}}
+ @Override public void load(){capture(getActivity().getIntent());resumeDelivery(false);}
  @Override protected void handleOnNewIntent(Intent intent){capture(intent);}
- @Override protected void handleOnResume(){delivery().resume();notifyListeners("pendingMail",new JSObject(),true);}
+ @Override protected void handleOnResume(){resumeDelivery(true);}
  @Override protected void handleOnPause(){lifecycle++;super.handleOnPause();}
  @Override protected void handleOnDestroy(){lifecycle++;io.shutdown();super.handleOnDestroy();}
 }

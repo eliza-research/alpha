@@ -78,7 +78,11 @@ public final class AlphaVoiceCloudPlugin extends LocalSpeechBridgePlugin {
  @PermissionCallback private void noteMicrophonePermission(PluginCall call){if(getPermissionState("microphone")!=PermissionState.GRANTED){call.reject("Microphone permission denied","permission-denied");return;}startNote(call);}
  private void startNote(PluginCall call){mainHandler().post(()->{
   if(destroyed()||!noteForeground){call.reject("Recording cancelled");return;}
-  try{JSObject status=noteRecorder().start();AlphaNoteRecordingService.start(getContext(),status.getString("recordingId"));call.resolve(status);}
+  try{
+   String folder=call.getData().isNull("folderId")?null:call.getString("folderId");
+   JSObject status=noteRecorder().start(call.getString("ownerDigest"),folder);
+   AlphaNoteRecordingService.start(getContext(),status.getString("recordingId"));call.resolve(status);
+  }
   catch(IOException error){call.reject("storage".equals(error.getMessage())?"Storage is full":"Microphone could not start","storage".equals(error.getMessage())?"storage":"capture");}
   catch(RuntimeException error){call.reject("Microphone could not start","capture");}
  });}

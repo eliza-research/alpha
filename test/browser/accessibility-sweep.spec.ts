@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
 import { auditPage, auditReadingOrder, auditTabOrder, auditTree, format } from './accessibility-audit';
-import { CONNECTED_STATES, DEVELOPMENT_STATES, FAILURE_STATES, FIXTURE_STATES, LAUNCHER_STATES, LIVE_STATES, MOCK_STATES, setTextScale } from './accessibility-states';
+import { BROWSER_APP_STATES, CONNECTED_STATES, DEVELOPMENT_STATES, FAILURE_STATES, FIXTURE_STATES, LAUNCHER_STATES, LIVE_STATES, MOCK_STATES, setTextScale } from './accessibility-states';
 import { settled } from './helpers/settled';
 
 // MVP-48, renderer part. Every retained primary view, subview and failure screen is checked for
@@ -10,7 +10,7 @@ import { settled } from './helpers/settled';
 // Access, physical large-font, rotation or device pass; those remain open.
 test.describe.configure({ mode: 'parallel' });
 
-const STATES = [...LIVE_STATES, ...DEVELOPMENT_STATES, ...MOCK_STATES, ...CONNECTED_STATES, ...FAILURE_STATES];
+const STATES = [...LIVE_STATES, ...BROWSER_APP_STATES, ...DEVELOPMENT_STATES, ...MOCK_STATES, ...CONNECTED_STATES, ...FAILURE_STATES];
 // Deliberate single-line ellipsis and line clamps on previews of user content are allowed: the
 // full text is one tap away and is exposed whole to assistive technology. Hard clipping is not, and
 // neither is a cut app title: it names the screen and has room to wrap.
@@ -70,7 +70,7 @@ for (const state of STATES) {
 // of counting as the expected failure. The list may only shrink (test/accessibility-coverage.test.mjs).
 const OPEN_AT_300 = new Set([
 ]);
-for (const state of [...LIVE_STATES, ...LAUNCHER_STATES]) {
+for (const state of [...LIVE_STATES, ...BROWSER_APP_STATES, ...LAUNCHER_STATES]) {
   test(`300% text (largest in-app size and system font) is not clipped and does not overlap: ${state.name}`, async ({ page }) => {
     test.setTimeout(LARGE_TEXT_TIMEOUT);
     await state.open(page, 'light');

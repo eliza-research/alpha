@@ -166,7 +166,7 @@ test('with only occurrences that did not run, Home shows no brief card', async (
 // ---- Canonical Agent Calendar owns the Home card; native provider rows cannot replace its authority. ----
 const calendarCard = (page: Page) => page.locator('[data-alpha-home-calendar]');
 const soon = () => { const begin = Date.now() + 3_600_000; return { begin, end: begin + 1_800_000 }; };
-async function canonicalHome(page: Page, mode: 'event' | 'empty' | 'wrong-owner') {
+async function canonicalHome(page: Page, mode: 'event' | 'empty' | 'stale-empty' | 'future-empty' | 'wrong-owner') {
   await flagOffAndroid(page, { calendar: { access: 'granted', calendars: [{ id: '7', name: 'Private device calendar' }], events: [{ id: '42', calendarId: '7', title: 'Device-only event', ...soon() }] } });
   await page.addInitScript(mode => {
     const w = window as any, base = w.Capacitor.nativePromise;
@@ -177,9 +177,10 @@ async function canonicalHome(page: Page, mode: 'event' | 'empty' | 'wrong-owner'
       if (plugin !== 'Agent' || method !== 'request' || !input.path.startsWith('/api/lifeops/calendar/')) return base(plugin, method, input);
       if (input.method !== 'GET') throw Error('Home calendar fixture forbids writes');
       const url = new URL(input.path, location.origin); w.canonicalHomeReads.push(url.pathname);
-      const chosen = mode === 'empty' ? null : event;
+      const chosen = mode.endsWith('empty') ? null : event;
+      const syncedAt = mode === 'empty' ? new Date(now).toISOString() : mode === 'stale-empty' ? new Date(now - 172800000).toISOString() : mode === 'future-empty' ? new Date(now + 3600000).toISOString() : event.syncedAt;
       let data;
-      if (url.pathname === '/api/lifeops/calendar/feed') data = { calendarId: 'agent-calendar', events: chosen ? [chosen] : [], source: 'cache', state: 'complete', sources: [], timeMin: url.searchParams.get('timeMin'), timeMax: url.searchParams.get('timeMax'), syncedAt: event.syncedAt };
+      if (url.pathname === '/api/lifeops/calendar/feed') data = { calendarId: 'agent-calendar', events: chosen ? [chosen] : [], source: 'cache', state: 'complete', sources: [], timeMin: url.searchParams.get('timeMin'), timeMax: url.searchParams.get('timeMax'), syncedAt };
       else if (url.pathname === '/api/lifeops/calendar/calendars') data = { calendars: [{provider: 'eliza', side: 'owner', grantId: 'fixture-grant', connectorAccountId: 'fixture-account', accountEmail: null, calendarId: 'agent-calendar', summary: 'Agent Calendar', description: null, primary: true, accessRole: 'owner', backgroundColor: null, foregroundColor: null, timeZone: 'UTC', selected: true, includeInFeed: true, selectionVersion: 0}] };
       else if (url.pathname === '/api/lifeops/calendar/next-context') data = { event: chosen, readScope: { selection: 'next_event', timeMin: new Date(now).toISOString(), timeMax: new Date(now + 86_400_000).toISOString(), exhaustive: false }, calendarFeedState: 'complete', calendarSources: [], startsAt: chosen?.startAt ?? null, startsInMinutes: chosen ? 60 : null, attendeeCount: 0, attendeeNames: [], location: null, conferenceLink: null, preparationChecklist: [], linkedMailState: 'unavailable', linkedMailError: null, linkedMail: [] };
       else throw Error('Unexpected canonical Home route');
@@ -207,7 +208,14 @@ test('Home renders the canonical agent event without borrowing device names or i
 
 test('a verified empty Agent Calendar does not substitute device events', async ({ page }) => {
   await canonicalHome(page, 'empty');
-  await expect(calendarCard(page)).toContainText('Nothing planned');
+  await expect(calendarCard(page)).toHaveCount(0);
+  expect(await harness(page, f => f.calendar.requests)).toBe(0);
+  expect(await harness(page, f => f.unexpected)).toEqual([]);
+});
+
+for (const mode of ['stale-empty', 'future-empty'] as const) test(`an ${mode} Calendar read keeps the Home entry visible`, async ({page}) => {
+  await canonicalHome(page, mode);
+  await expect(calendarCard(page)).toBeVisible();
   await expect(calendarCard(page)).not.toContainText(/Device-only event|Private device calendar/);
   expect(await harness(page, f => f.calendar.requests)).toBe(0);
   expect(await harness(page, f => f.unexpected)).toEqual([]);
