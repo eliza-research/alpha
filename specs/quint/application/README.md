@@ -33,6 +33,7 @@ repository-wide allocation and source hashes are recorded in `../coverage.json`.
 | `AgentCalendarRefresh` | Current Agent Calendar read controller | Range and session fencing, coalesced readback, legacy gate and next-event freshness |
 | `AgentCalendarMutation` | Current Agent Calendar write controller | Edit admission, preservation and owner checks, exact dispatch and deferred refresh |
 | `AgentCalendarEventReturn` | Canonical Calendar selection, origin and exact readback | Captured event and source revisions, independent reads, same-epoch re-selection and owner fencing |
+| `MapsEventReturn` | Maps renderer and Calendar origin helpers | Visit-owned attempts, visible pagehide and leave retirement, exact Calendar navigation and notices |
 | `GoogleConsentAdmission` | Mounted Google connections panel and shared Gmail grant rules | Verified account readback, preserved Gmail tier, stale permission continuation and revoke readback |
 | `NotificationCollection` | `notification-store`, `notifications-adapter`, `AlphaNotificationListener` | Opt-in external collection, package/signature/preview consent, lock privacy, history expiry, policy epoch and independent app/channel delivery settings |
 | `FilesAndSharing` | `reviewFileEmail`, `reviewMailAttachment`, `mediaCopyIntent`, share adapters | One exact source, owner and draft identity, initially unchecked selection, reread before local insertion, cancellation and revoked grant. Send has its own Inbox model |

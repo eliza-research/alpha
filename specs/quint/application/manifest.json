@@ -1815,5 +1815,33 @@
       "Canonical event selection and Maps origin capture, exact Calendar feed and source requests through the actual API, current binding and same-epoch selection checks.",
       "Two owner/session/scope classes, eight epochs, four attempts and finite provider response classes. Mounted Maps navigation and native Calendar returns, remote effects and linked provider control have separate scope."
     ]
+  },
+  {
+    "path": "specs/quint/application/MapsEventReturn.qnt",
+    "module": "MapsEventReturn",
+    "init": "init",
+    "step": "step",
+    "invariant": "safety",
+    "tests": [
+      "newVisitKeepsOwnershipAfterLatePriorReplyTest",
+      "visiblePagehideRetiresBeforePageshowTest",
+      "nativeLatePermissionDoesNotReplaceLatestNoticeTest",
+      "staleHandlerCannotIssueNativeReadTest",
+      "navigationRejectsReadbackWithoutDroppingOriginTest"
+    ],
+    "invariants": [
+      "CurrentAttemptOwns",
+      "ExactReturn",
+      "UnwindsOnce",
+      "Bounded"
+    ],
+    "sources": [
+      "apps/app/src/prototype/maps-adapter.ts",
+      "apps/app/src/runtime/maps-event-return.ts"
+    ],
+    "abstractions": [
+      "Current Maps render binding for a canonical or native Calendar origin, visit-scoped dispatch ownership, visibility/leave retirement and exact Calendar return effects.",
+      "Two event identities, six captured origin objects and five return attempts. Screen, native and provider effects arrive through controlled ports. Browser regressions separately mount the real shell."
+    ]
   }
 ]
