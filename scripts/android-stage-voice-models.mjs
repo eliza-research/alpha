@@ -83,37 +83,27 @@ function verifyHostDestination(productRoot, row) {
 
 /** Publish complete verified files without replacing an existing host library. */
 function stageHostLibraries(productRoot, rows) {
-  const created = [];
-  try {
-    for (const row of rows) {
-      if (verifyHostDestination(productRoot, row)) continue;
-      fs.mkdirSync(path.dirname(row.destination), {recursive: true});
-      const temporary = fs.mkdtempSync(path.join(path.dirname(row.destination), '.voice-stage-'));
+  for (const row of rows) {
+    if (verifyHostDestination(productRoot, row)) continue;
+    fs.mkdirSync(path.dirname(row.destination), {recursive: true});
+    const temporary = fs.mkdtempSync(path.join(path.dirname(row.destination), '.voice-stage-'));
+    try {
+      const staged = path.join(temporary, 'library');
+      fs.copyFileSync(row.source, staged, fs.constants.COPYFILE_EXCL);
+      if (fs.statSync(staged).size !== row.bytes || digest(staged) !== row.sha256)
+        throw Error('Voice library source changed during staging');
       try {
-        const staged = path.join(temporary, 'library');
-        fs.copyFileSync(row.source, staged, fs.constants.COPYFILE_EXCL);
-        if (fs.statSync(staged).size !== row.bytes || digest(staged) !== row.sha256)
-          throw Error('Voice library source changed during staging');
-        try {
-          fs.linkSync(staged, row.destination);
-          const stat = fs.statSync(staged);
-          created.push({destination: row.destination, dev: stat.dev, ino: stat.ino});
-        } catch (error) {
-          if (error.code !== 'EEXIST') throw error;
-          verifyHostDestination(productRoot, row);
-        }
-      } finally {
-        fs.rmSync(temporary, {recursive: true, force: true});
+        fs.linkSync(staged, row.destination);
+      } catch (error) {
+        if (error.code !== 'EEXIST') throw error;
+        if (!verifyHostDestination(productRoot, row)) throw Error('Voice host destination disappeared during staging');
       }
+    } finally {
+      fs.rmSync(temporary, {recursive: true, force: true});
     }
-  } catch (error) {
-    // Remove only files published by this invocation, never a concurrent replacement.
-    for (const row of created.reverse()) {
-      const stat = fs.lstatSync(row.destination, {throwIfNoEntry: false});
-      if (stat?.dev === row.dev && stat.ino === row.ino) fs.unlinkSync(row.destination);
-    }
-    throw error;
   }
+  // Published files stay immutable on failure. A concurrent stager may already use them,
+  // and a retry validates and reuses them before completing the remaining library set.
 }
 
 export function stageVoiceModels(productRoot, {from, unrecordedEngine = false, abis}) {

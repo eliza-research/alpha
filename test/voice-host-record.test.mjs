@@ -167,7 +167,7 @@ test('voice host conflicts and linked destinations are refused before staging ou
   assert.deepEqual(JSON.parse(fs.readFileSync(path.join(dir, VOICE_HOST))), record);
 });
 
-test('failed host publication rolls back only new libraries and a retry completes', t => {
+test('failed host publication retains verified libraries and a retry completes', t => {
   const {dir, from, record} = fixtureProduct(t);
   const host = path.join(dir, 'android/app/src/main/jniLibs');
   const existing = path.join(host, 'arm64-v8a/libelizainference.so');
@@ -185,12 +185,48 @@ test('failed host publication rolls back only new libraries and a retry complete
     fs.linkSync = link;
   }
   assert.equal(sha(fs.readFileSync(existing)), record.abis[0].libraries[0].sha256);
-  assert.equal(fs.existsSync(path.join(host, 'arm64-v8a/libc++_shared.so')), false);
+  assert.equal(fs.existsSync(path.join(host, 'arm64-v8a/libc++_shared.so')), true);
   assert.equal(fs.existsSync(path.join(host, 'x86_64/libelizainference.so')), false);
   stageVoiceModels(dir, {from: [from]});
   for (const abi of record.abis) for (const library of abi.libraries)
     assert.equal(sha(fs.readFileSync(path.join(host, abi.abi, library.name))), library.sha256);
   assert.equal(JSON.parse(fs.readFileSync(path.join(dir, VOICE_HOST))).qualified, false);
+});
+
+test('a failing stager preserves libraries adopted by a completed concurrent stager', t => {
+  const {dir, from, record} = fixtureProduct(t);
+  const link = fs.linkSync;
+  let publications = 0;
+  let concurrentCompleted = false;
+  try {
+    fs.linkSync = (source, target) => {
+      if (++publications === 2) {
+        fs.linkSync = link;
+        stageVoiceModels(dir, {from: [from]});
+        concurrentCompleted = true;
+        throw new Error('first stager failed after concurrent completion');
+      }
+      return link(source, target);
+    };
+    assert.throws(() => stageVoiceModels(dir, {from: [from]}), /first stager failed/);
+  } finally {
+    fs.linkSync = link;
+  }
+  assert.equal(concurrentCompleted, true);
+  for (const abi of record.abis) for (const library of abi.libraries)
+    assert.equal(sha(fs.readFileSync(path.join(dir, 'android/app/src/main/jniLibs', abi.abi, library.name))), library.sha256);
+  stageVoiceModels(dir, {from: [from]});
+});
+
+test('a vanished concurrent host publication cannot report successful staging', t => {
+  const {dir, from} = fixtureProduct(t);
+  const link = fs.linkSync;
+  try {
+    fs.linkSync = () => { throw Object.assign(new Error('concurrent publication'), {code: 'EEXIST'}); };
+    assert.throws(() => stageVoiceModels(dir, {from: [from]}), /destination disappeared/);
+  } finally {
+    fs.linkSync = link;
+  }
 });
 
 test('staging refuses source bytes that differ from the record and missing rows', t => {
