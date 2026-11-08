@@ -11,7 +11,7 @@ module FilesTree {
     permanent: bool, pending: Set[int], attempted: Set[int], succeeded: Set[int],
     failed: Set[int], phase: str, folderHasChildren: bool,
     lastAppliedRevision: int, lastExpectedRevision: int, lastDeleteConfirmed: bool,
-    effects: int
+    effects: int, visibleRows: Set[int], focusedRow: int, intendedRow: int, activatedRow: int
   }
   var s: State
   pure val Ids = Set(1, 2, 3)
@@ -26,8 +26,19 @@ module FilesTree {
       review: "none", expected: Ids.mapBy(_ => 0), reviewed: Set(), destination: 20,
       permanent: false, pending: Set(), attempted: Set(), succeeded: Set(), failed: Set(),
       phase: "idle", folderHasChildren: false, lastAppliedRevision: 0,
-      lastExpectedRevision: 0, lastDeleteConfirmed: true, effects: 0 }
+      lastExpectedRevision: 0, lastDeleteConfirmed: true, effects: 0,
+      visibleRows: Set(), focusedRow: 0, intendedRow: 0, activatedRow: 0 }
   }
+  // Presentation rows include Recent metadata. Rendering a row grants no file capability.
+  action renderRows(rows: Set[int]): bool = all { s.active, rows.subseteq(Ids),
+    s' = { ...s, visibleRows: rows,
+      focusedRow: if (rows.contains(s.focusedRow)) s.focusedRow else 0,
+      intendedRow: if (rows.contains(s.intendedRow)) s.intendedRow else 0 } }
+  action focusRow(id: int): bool = all { s.active, not(s.hidden), s.visibleRows.contains(id),
+    s' = { ...s, focusedRow: id, intendedRow: id, activatedRow: 0 } }
+  action activateRow = all { s.active, not(s.hidden), s.focusedRow != 0,
+    not(s.listingPending), s.phase != "dispatching",
+    s' = { ...s, activatedRow: s.focusedRow, focusedRow: 0, intendedRow: 0 } }
   action chooseTree = all { s.active, s.phase != "dispatching", s.session < 2,
     s' = { ...s, granted: true, session: s.session + 1, shown: Set(), capabilities: Set(),
       selection: Set(), preview: 0, previewKind: "none", phase: "idle", review: "none" } }
@@ -47,7 +58,7 @@ module FilesTree {
         listingPending: false, morePending: false, cursor: not(allRows.subseteq(rows)), selection: Set() }
     } else s' = { ...s, listingPending: false, morePending: false } }
   action pickFile = all { s.active, not(s.picker), not(s.listingPending), s.phase != "dispatching",
-    s' = { ...s, picker: true, pickerEpoch: s.epoch, hidden: true } }
+    s' = { ...s, picker: true, pickerEpoch: s.epoch, hidden: true, focusedRow: 0, intendedRow: 0 } }
   // System pickers hide the document. Epoch and active-view checks admit the return.
   action pickerReply(id: int): bool = all { s.picker, s.existing.contains(id),
     s' = { ...s, picker: false, hidden: false,
@@ -105,13 +116,14 @@ module FilesTree {
   action revoke = s' = { ...s, granted: false, capabilities: Set(), shown: Set(),
     selection: Set(), preview: 0, previewKind: "none", cursor: false }
   action leave = all { s.epoch < 2, s' = { ...s, active: false, epoch: s.epoch + 1,
-    selection: Set(), preview: 0, previewKind: "none", review: if (s.phase == "dispatching") s.review else "none" } }
+    selection: Set(), preview: 0, previewKind: "none", focusedRow: 0, intendedRow: 0,
+    review: if (s.phase == "dispatching") s.review else "none" } }
   action enter = s' = { ...s, active: true, hidden: false }
   action restart = all { s.epoch < 2, s' = { ...s, epoch: s.epoch + 1, active: true,
     picker: false, hidden: false, listingPending: false, morePending: false,
     capabilities: if (s.native) Set() else s.capabilities,
     shown: if (s.native) Set() else s.shown, selection: Set(), preview: 0, previewKind: "none",
-    phase: "idle", review: "none", pending: Set() } }
+    phase: "idle", review: "none", pending: Set(), visibleRows: Set(), focusedRow: 0, intendedRow: 0 } }
   action step = any {
     { nondet folder = Folders.oneOf(); load(folder) },
     { nondet id = Ids.oneOf(); pickerReply(id) },
@@ -120,8 +132,10 @@ module FilesTree {
     { nondet kind = Set("create", "rename", "move", "delete").oneOf(); review(kind) },
     { nondet id = Ids.oneOf(); nondet success = Bool.oneOf(); applyItem(id, success) },
     { nondet id = Ids.oneOf(); sourceChanges(id) },
+    { nondet rows = Set(Set(), Set(1), Set(2), Set(3), Set(1, 2), Set(1, 3), Set(2, 3), Ids).oneOf(); renderRows(rows) },
+    { nondet id = Ids.oneOf(); focusRow(id) },
     chooseTree, loadMore, listReply, pickFile, confirmPermanent, confirm, stopRevokedBatch, finish,
-    childrenAppear, revoke, leave, enter, restart, s' = s
+    childrenAppear, revoke, leave, enter, restart, activateRow, s' = s
   }
   val ExactReviewedRevision = s.lastAppliedRevision == s.lastExpectedRevision
   val DestructionConfirmed = s.lastDeleteConfirmed
@@ -129,10 +143,12 @@ module FilesTree {
   val EachItemAttemptedOnce = s.pending.intersect(s.attempted) == Set()
   val RevokedCapabilitiesEmpty = not(s.granted) implies s.capabilities == Set() and s.previewKind != "tree"
   val SelectionFromListing = s.selection.subseteq(s.shown)
+  val FocusedRowIdentity = s.focusedRow == s.intendedRow and
+    (s.focusedRow == 0 or s.visibleRows.contains(s.focusedRow))
   val TypeOK = Folders.contains(s.folder) and s.existing.subseteq(Ids) and s.pending.subseteq(Ids)
     and s.revisions.keys() == Ids and s.epoch.in(0.to(2)) and s.effects.in(0.to(4))
   val safety = ExactReviewedRevision and DestructionConfirmed and PartialOutcomesDisjoint
-    and EachItemAttemptedOnce and RevokedCapabilitiesEmpty and SelectionFromListing and TypeOK
+    and EachItemAttemptedOnce and RevokedCapabilitiesEmpty and SelectionFromListing and TypeOK and FocusedRowIdentity
   run partialBatchTest = init.then(chooseTree).then(load(10)).then(listReply).then(loadMore).then(listReply)
     .then(selectRow(1)).then(selectRow(2)).then(review("delete")).then(confirmPermanent)
     .then(confirm).then(applyItem(1, true)).then(applyItem(2, false)).then(finish)
@@ -149,4 +165,9 @@ module FilesTree {
     .expect(s.preview == 0 and safety)
   run folderCreationTest = init.then(chooseTree).then(review("create")).then(confirm)
     .then(applyItem(3, true)).then(finish).expect(s.existing.contains(3) and safety)
+  run recentInsertionKeepsFocusTest = init.then(renderRows(Set(1, 2))).then(focusRow(1))
+    .then(renderRows(Set(1, 2, 3))).then(activateRow)
+    .expect(s.activatedRow == 1 and s.capabilities == Set() and safety)
+  run removedRowClearsFocusTest = init.then(renderRows(Set(1, 2))).then(focusRow(1))
+    .then(renderRows(Set(2))).expect(s.focusedRow == 0 and safety)
 }

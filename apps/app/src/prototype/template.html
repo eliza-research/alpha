@@ -2842,7 +2842,7 @@
   <div class="scr" data-alpha-app-scroll="files" style="flex-grow: 1; overflow-y: auto; touch-action: pan-y; padding: 8px 16px 150px; box-sizing: border-box">
     <sc-if value="{{files.noQuery}}">
       <div class="alpha-fit-grid" style="--fit-columns: 2; --fit-gap: 10px; --fit-min: 100px; gap: 10px">
-        <sc-for list="{{files.locs}}" as="l">
+        <sc-for list="{{files.locs}}" as="l" key="{{l.id}}">
           <button onClick="{{l.go}}" class="tap" aria-label="{{l.name}}" style="min-height: 104px; min-width: 0; gap: 12px; overflow-wrap: anywhere; border-radius: 24px; background: var(--s2); padding: 16px; box-sizing: border-box; display: flex; flex-direction: column; justify-content: flex-start; text-align: left">
             <svg class="i" viewBox="0 0 24 24" style="color: var(--acct)"><path d="{{l.d}}"></path></svg>
             <div><div style="font-size: 16px; font-weight: 600">{{l.name}}</div><div style="font-size: 13px; color: var(--mut); margin-top: 2px">{{l.sub}}</div></div>
@@ -2857,7 +2857,7 @@
         </div>
       </div>
       <div style="display: flex; flex-direction: column; margin-top: 18px">
-        <sc-for list="{{files.recent}}" as="r">
+        <sc-for list="{{files.recent}}" as="r" key="{{r.id}}">
           <button onClick="{{r.tap}}" aria-label="{{r.label}}" class="tap" style="display: flex; align-items: center; gap: 14px; padding: 10px 8px; border-radius: 18px; text-align: left">
             <span style="width: 44px; height: 44px; border-radius: 14px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; background: var(--s2); color: var(--fg)"><svg class="i" viewBox="0 0 24 24" style="width: 20px; height: 20px"><path d="{{r.d}}"></path></svg></span>
             <div style="min-width: 0; flex-grow: 1"><div style="font-size: 15px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">{{r.name}}</div><div style="font-size: 13px; color: var(--mut); margin-top: 2px">{{r.sub}}</div></div>
@@ -2869,7 +2869,7 @@
       </div>
     </sc-if>
     <sc-if value="{{files.hasQuery}}">
-      <sc-for list="{{files.results}}" as="r">
+      <sc-for list="{{files.results}}" as="r" key="{{r.id}}">
         <button onClick="{{r.tap}}" aria-label="{{r.label}}" class="tap" style="display: flex; align-items: center; gap: 14px; padding: 10px 8px; border-radius: 18px; text-align: left; width: 100%">
           <span style="width: 44px; height: 44px; border-radius: 14px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; background: var(--s2); color: var(--fg)"><svg class="i" viewBox="0 0 24 24" style="width: 20px; height: 20px"><path d="{{r.d}}"></path></svg></span>
           <div style="min-width: 0; flex-grow: 1"><div style="font-size: 15px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">{{r.name}}</div><div style="font-size: 13px; color: var(--mut); margin-top: 2px">{{r.sub}}</div></div>
@@ -2912,7 +2912,7 @@
           <div style="display: flex; flex-direction: column; align-items: center; gap: 16px; padding: 64px 16px; color: var(--mut); text-align: center"><svg class="i" viewBox="0 0 24 24" aria-hidden="true" style="width: 44px; height: 44px"><path d="{{ic.folder}}"></path></svg><p style="margin: 0; font-size: 15px">{{files.fd.emptyText}}</p></div>
         </sc-if>
         <sc-if value="{{files.isList}}">
-          <sc-for list="{{files.fd.items}}" as="r">
+          <sc-for list="{{files.fd.items}}" as="r" key="{{r.id}}">
             <button onClick="{{r.tap}}" aria-label="{{r.label}}" class="tap" style="display: flex; align-items: center; gap: 14px; padding: 10px 8px; border-radius: 18px; text-align: left; width: 100%; {{r.rowCss}}">
               <span style="width: 44px; height: 44px; border-radius: 14px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; background: var(--s2); color: var(--fg)"><svg class="i" viewBox="0 0 24 24" style="width: 20px; height: 20px"><path d="{{r.d}}"></path></svg></span>
               <div style="min-width: 0; flex-grow: 1"><div style="font-size: 15px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">{{r.name}}</div><div style="font-size: 13px; color: var(--mut); margin-top: 2px">{{r.sub}}</div></div>
@@ -2924,7 +2924,7 @@
         </sc-if>
         <sc-if value="{{files.isGrid}}">
           <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px">
-            <sc-for list="{{files.fd.items}}" as="r">
+            <sc-for list="{{files.fd.items}}" as="r" key="{{r.id}}">
               <button onClick="{{r.tap}}" aria-label="{{r.label}}" class="tap" style="display: flex; flex-direction: column; justify-content: flex-start; border-radius: 22px; background: var(--s2); padding: 8px 8px 14px; text-align: left; position: relative; {{r.rowCss}}">
                 <span style="height: 96px; border-radius: 16px; display: flex; align-items: center; justify-content: center; background: var(--bg); color: var(--fg)"><svg class="i" viewBox="0 0 24 24" style="width: 32px; height: 32px"><path d="{{r.d}}"></path></svg></span>
                 <div style="font-size: 14px; font-weight: 500; margin: 10px 6px 0; line-height: 1.3; overflow: hidden; word-break: break-word; overflow-wrap: anywhere; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical">{{r.name}}</div>
@@ -2942,7 +2942,7 @@
     <div ref="{{files.menuModal}}" data-alpha-popup style="display: contents">
     <button tabindex="-1" aria-label="Close menu" onClick="{{files.closeMenu}}" style="position: absolute; inset: 0; z-index: 7"></button>
     <div class="drop" role="dialog" aria-label="View and sort" style="position: absolute; top: 96px; right: 12px; width: 220px; z-index: 8; background: var(--bg); border-radius: 22px; padding: 6px; box-shadow: 0 0 0 1px var(--line), 0 16px 40px var(--shc)">
-      <sc-for list="{{files.fd.menuRows}}" as="m">
+      <sc-for list="{{files.fd.menuRows}}" as="m" key="{{m.id}}">
         <button onClick="{{m.go}}" aria-label="{{m.label}}" aria-pressed="{{m.on}}" class="tap" style="display: flex; align-items: center; gap: 12px; width: 100%; min-height: 48px; padding: 0 12px; border-radius: 16px; font-size: 15px; text-align: left">
           <svg class="i" viewBox="0 0 24 24" style="width: 20px; height: 20px"><path d="{{m.d}}"></path></svg><span style="flex-grow: 1; min-width: 0">{{m.label}}</span>
           <sc-if value="{{m.on}}"><svg class="i" viewBox="0 0 24 24" style="width: 18px; height: 18px; color: var(--acct)"><path d="{{ic.check}}"></path></svg></sc-if>
@@ -3066,7 +3066,7 @@
     <div class="enter" role="dialog" aria-label="Move to" style="position: absolute; left: 0; right: 0; bottom: 0; z-index: 9; max-height: 100%; overflow-y: auto; box-sizing: border-box; background: var(--bg); border-radius: 28px 28px 0 0; padding: 8px 12px 40px; box-shadow: 0 -10px 40px var(--shc)">
       <div style="width: 36px; height: 4px; border-radius: 2px; background: var(--s3); margin: 0 auto 6px"></div>
       <div style="display: flex; align-items: center; padding-left: 12px; margin-bottom: 6px"><h2 class="serif" style="margin: 0; flex-grow: 1; font-size: 26px; font-weight: 300">Move to</h2><button class="ib" aria-label="Close" onClick="{{files.closeSheet}}"><svg class="i" viewBox="0 0 24 24"><path d="{{ic.x}}"></path></svg></button></div>
-      <sc-for list="{{files.moveTo}}" as="m">
+      <sc-for list="{{files.moveTo}}" as="m" key="{{m.id}}">
         <button onClick="{{m.go}}" aria-label="Move to {{m.name}}" class="tap" style="display: flex; align-items: center; gap: 14px; width: 100%; padding: 10px 12px; border-radius: 18px; text-align: left">
           <span style="width: 44px; height: 44px; border-radius: 14px; background: var(--s2); display: flex; align-items: center; justify-content: center; flex-shrink: 0"><svg class="i" viewBox="0 0 24 24" style="width: 20px; height: 20px"><path d="{{m.d}}"></path></svg></span>
           <div style="flex-grow: 1; min-width: 0"><div style="font-size: 16px">{{m.name}}</div><sc-if value="{{m.sub}}"><div style="font-size: 13px; color: var(--mut)">{{m.sub}}</div></sc-if></div>
@@ -3104,7 +3104,7 @@
         <sc-if value="{{files.nativeTreeDialog.moving}}">
           <button disabled="{{files.nativeTreeDialog.busy}}" aria-label="Move destination root" onClick="{{files.nativeTreeDialog.root}}" style="height: 44px; font-size: 14px">Selected folder root</button>
           <sc-if value="{{files.nativeTreeDialog.canUp}}"><button disabled="{{files.nativeTreeDialog.busy}}" aria-label="Move destination parent" onClick="{{files.nativeTreeDialog.up}}" style="height: 44px; padding: 0 14px; font-size: 14px">Parent folder</button></sc-if>
-          <sc-for list="{{files.nativeTreeDialog.destinations}}" as="d"><button disabled="{{files.nativeTreeDialog.busy}}" aria-label="Move into {{d.name}}" onClick="{{d.go}}" style="display: block; width: 100%; text-align: left; min-height: 48px; border-top: 1px solid var(--line); font-size: 15px">{{d.name}}</button></sc-for>
+          <sc-for list="{{files.nativeTreeDialog.destinations}}" as="d" key="{{d.id}}"><button disabled="{{files.nativeTreeDialog.busy}}" aria-label="Move into {{d.name}}" onClick="{{d.go}}" style="display: block; width: 100%; text-align: left; min-height: 48px; border-top: 1px solid var(--line); font-size: 15px">{{d.name}}</button></sc-for>
         </sc-if>
         <div style="display: flex; flex-wrap: wrap; gap: 10px; margin-top: 20px"><button disabled="{{files.nativeTreeDialog.busy}}" aria-label="Cancel file operation" onClick="{{files.nativeTreeDialog.cancel}}" style="flex: 1 1 9em; min-width: 0; min-height: 48px; padding: 12px; text-align: center; line-height: 1.25; border-radius: 24px; background: var(--s2); font-weight: 600">Cancel</button><button disabled="{{files.nativeTreeDialog.confirmDisabled}}" aria-label="{{files.nativeTreeDialog.confirmLabel}}" onClick="{{files.nativeTreeDialog.confirm}}" style="flex: 1 1 9em; min-width: 0; min-height: 48px; padding: 12px; text-align: center; line-height: 1.25; border-radius: 24px; background: var(--acc); color: #fff; font-weight: 600">{{files.nativeTreeDialog.confirmLabel}}</button></div>
       </div>

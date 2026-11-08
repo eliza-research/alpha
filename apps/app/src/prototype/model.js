@@ -3736,9 +3736,9 @@ registerView("files", {
     /* top level */
     var locs = FILES_FOLDERS.filter(function (d) { return !d.parent; }).map(function (d) {
       var n = filesCount(files, d.id);
-      return { name: d.id, d: IC[d.icon], sub: n === 1 ? "1 item" : n + " items", go: function () { api.set({ folder: d.id, q: null }); } };
+      return { id: "category:" + d.id, name: d.id, d: IC[d.icon], sub: n === 1 ? "1 item" : n + " items", go: function () { api.set({ folder: d.id, q: null }); } };
     });
-    locs.push({ name: "Photos", d: IC.photo, sub: copy("files").photosSub || "Photo library", go: function () { if (VIEWS.photos) api.open("photos"); else api.toast("Opening Photos"); } });
+    locs.push({ id: "photos", name: "Photos", d: IC.photo, sub: copy("files").photosSub || "Photo library", go: function () { if (VIEWS.photos) api.open("photos"); else api.toast("Opening Photos"); } });
     var q = st.q == null ? null : String(st.q).toLowerCase().trim();
     var results = q ? files.filter(function (f) { return filesNorm(f.name + " " + f.folder + " " + (FILES_TYPES[f.type] || {}).label).indexOf(filesNorm(q)) >= 0; }).map(row) : [];
 
@@ -3754,7 +3754,7 @@ registerView("files", {
         toggleView: function () { api.set({ grid: !st.grid }); },
         openMenu: function () { api.set({ menu: true }); },
         menuRows: [["list", IC.filesRows, "List", !st.grid, { grid: false }], ["grid", IC.grid, "Grid", !!st.grid, { grid: true }], ["recent", IC.clock, "Newest first", st.sort !== "name", { sort: "recent" }], ["name", IC.filesSort, "Name", st.sort === "name", { sort: "name" }]].map(function (m) {
-          return { label: m[2], d: m[1], on: m[3], go: function () { api.set(Object.assign({ menu: false }, m[4])); } };
+          return { id: m[0], label: m[2], d: m[1], on: m[3], go: function () { api.set(Object.assign({ menu: false }, m[4])); } };
         }),
         sortLabel: st.sort === "name" ? "Sort by date" : "Sort by name", sortCss: st.sort === "name" ? "color: var(--acct)" : "",
         toggleSort: function () { var nx = st.sort === "name" ? "recent" : "name"; api.set({ sort: nx }); },
@@ -3836,7 +3836,7 @@ registerView("files", {
     var curFolder = f ? f.folder : st.folder;
     var moveTo = FILES_FOLDERS.map(function (d) {
       var here = d.id === curFolder;
-      return { name: d.id, d: IC[d.icon] || IC.folder, here: here, notHere: !here, sub: d.parent ? d.parent : "",
+      return { id: d.id, name: d.id, d: IC[d.icon] || IC.folder, here: here, notHere: !here, sub: d.parent ? d.parent : "",
         go: function () {
           if (here) { api.set({ sheet: null }); return; }
           var ids = targetIds.slice();

@@ -416,14 +416,18 @@
       "permissionLossMidBatchTest",
       "hiddenPickerReturnTest",
       "stalePickerReturnTest",
-      "folderCreationTest"
+      "folderCreationTest",
+      "recentInsertionKeepsFocusTest",
+      "removedRowClearsFocusTest"
     ],
     "sources": [
       "apps/app/src/prototype/files-tree-adapter.ts",
       "apps/app/src/prototype/files-index.ts",
       "apps/app/src/prototype/context-selection.ts",
       "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaFilesPlugin.java",
-      "android/app/src/main/java/ai/elizaresearch/alphaphone/SelectedDocumentAccess.java"
+      "android/app/src/main/java/ai/elizaresearch/alphaphone/SelectedDocumentAccess.java",
+      "apps/app/src/prototype/template.html",
+      "apps/app/src/prototype/dc-lite.js"
     ],
     "stateMapping": {
       "granted/session/capabilities": "native persisted tree grant and bounded per-process entry map",
@@ -435,7 +439,8 @@
       "Three representative entries (two files and one created folder), two folder identities, two sessions, revisions 0..2 and up to four applied effects.",
       "Opaque entry and selection capabilities retain their role without provider paths or credentials. Tree access and separately selected document access remain distinct.",
       "Provider failures and stale revisions are per-item; a committed item is not rolled back when a later item fails. Review is required before mutation, with an extra permanent-delete confirmation.",
-      "The model covers Alpha tree orchestration and native request admission. Document provider filesystem implementation and exact payload bytes remain implementation test boundaries."
+      "The model covers Alpha tree orchestration and native request admission. Document provider filesystem implementation and exact payload bytes remain implementation test boundaries.",
+      "Recent/tree presentation uses three representative row identities. Focus and activation target are independent of native file capabilities. Browser trace checks a Recent insertion without granting native tree authority."
     ]
   },
   {

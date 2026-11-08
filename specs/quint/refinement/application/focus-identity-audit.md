@@ -17,7 +17,7 @@ The following source-backed mutable families still use positional rendering. The
 | Inbox | `inbox.rows`, `inbox.d.threadRows`, attachment and recipient suggestions | Message IDs survive mailbox refresh, deletion and sorting. A focused row must keep its message when another message arrives or leaves. |
 | Calendar | search, day-column events, agenda, schedule and month rows | Provider event and occurrence IDs survive refresh. Nested day and event loops need identities at both levels. |
 | Notes | `notes.colL`, `notes.colR`, trash and pending audio-deletion rows | Note IDs survive save, sort, deletion, undo and restoration. Column rebalancing can move the selected item between parents. |
-| Files | Recent, results, folder items and destination rows | `files-tree-adapter` already exposes Recent IDs. Folder and selection identities must survive listing replacement and revocation. |
+| Files | Recent, results, folder items and destination rows | File, Recent, location, menu and destination rows now carry stable identities. Legacy duplicate metadata and broader listing replacement/revocation schedules remain follow-up coverage. |
 | Browser | `browser.tabCards`, saved-library and suggestion rows | Tab cards now retain source `tab.id`, and saved-library rows retain their canonical URL identity. Search and suggestion rows remain in the broader review. |
 | Photos | groups, group items, albums and album items | Library asset and album identities must survive provider refresh, deletion and changed permissions. Nested group keys alone do not preserve items moved between groups. |
 | Maps | saved rows, search results and pins | Provider place identity must survive asynchronous result replacement and sorting. |
@@ -47,3 +47,11 @@ The tab regression creates three real renderer tabs, focuses the middle one, run
 The model represents three normal tabs and one private tab. It also models closing a selected or preceding tab and clearing focus when its row is removed. Remaining search and suggestion collections are outside these two tests.
 
 Browser validation passed both focused Chromium cases and seven existing navigation cases. The source-helper receipt contains two traces and eight checkpoints, including retained order and saved active-tab selection. The rendered tab-focus receipt contains one trace and nine checkpoints. Seven model scenarios, 1,000 seeded 80-step simulations, and bounded symbolic safety checking through depth 4 passed. Blank/invalid URL filtering remains outside the persistence-eligible snapshot abstraction.
+
+## Files follow-up
+
+Eight Files template loops now use source identities for locations, Recent/search rows, folder entries, menu choices and move destinations. The Recent insertion test imports real browser files, records their actual selection handles, prepends another record, and opens the originally focused selection. The folder test executes the real sort callback and then opens the retained entry.
+
+Both source-to-Quint traces passed five checkpoints each, with unchanged source and driver hashes. The added `FilesTree` fields model presentation identity only. Rendering or activating a row grants no native tree capability. Native provider validation and mutation outcomes retain their existing independent guards.
+
+Validation passed both focused Chromium tests, three existing browser file tests, eleven index/picker unit tests, all eight model scenarios, 1,000 seeded 80-step simulations, and bounded symbolic safety checking through depth 4.
