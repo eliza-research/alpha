@@ -85,5 +85,8 @@ test('a failed native publication finishes rollback before a later independent c
  await refused;
  await second;
  assert.deepEqual(state.cached,{agentGmailChanges:true,agentCalendarEdits:false});
- assert.deepEqual(state.saves,[{gmailChanges:true,calendarEdits:false}],'The later denial remains the host policy');
+ assert.deepEqual(state.saves,[
+  {gmailChanges:true,calendarEdits:true},
+  {gmailChanges:true,calendarEdits:false},
+ ],'Rollback republishes the restored policy before the later denial');
 });
