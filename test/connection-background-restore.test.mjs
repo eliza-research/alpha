@@ -6,12 +6,12 @@ import {stripTypeScriptTypes} from 'node:module';
 import vm from 'node:vm';
 // Execute the real operation boundary; infrastructure state is injected, no network/storage/media.
 const source=await readFile(new URL('../apps/app/src/runtime/connection-ui.tsx',import.meta.url),'utf8');
-const begin=source.indexOf('async function work('),end=source.indexOf('\nfunction activate(',begin);
+const begin=source.indexOf('async function work('),end=source.indexOf('\n/** ',begin);
 assert.ok(begin>=0&&end>begin);
 const code=stripTypeScriptTypes(source.slice(begin,end),{mode:'transform'});
 function fixture(){
  const state={open:false,busy:false,purpose:'agent',message:'',error:''},updates=[];
- const context=vm.createContext({residentRecoveryReason,testMocksEnabled:false,AbortController,state,signInReadinessOwner:null,operation:null,active:null,cloud:{},expired:()=>false,errorMessage:e=>e.message,residentCloudFlow:()=>false,runQueuedResidentRebind:()=>{},runQueuedSignInReturn:()=>{},update:next=>{Object.assign(state,next);updates.push({...state});}});
+ const context=vm.createContext({residentRecoveryReason,scheduleResidentAutoRetry:()=>{},residentStartInBackground:false,testMocksEnabled:false,AbortController,DOMException,state,signInReadinessOwner:null,operation:null,active:null,cloud:{},expired:()=>false,errorMessage:e=>e.message,residentCloudFlow:()=>false,runQueuedResidentRebind:()=>{},runQueuedSignInReturn:()=>{},update:next=>{Object.assign(state,next);updates.push({...state});}});
  vm.runInContext(code,context);return {state,updates,context,run:(...args)=>context.work(...args)};
 }
 test('background account restore never opens the chooser and clears its loading status',async()=>{

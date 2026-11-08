@@ -132,7 +132,7 @@ function controllerFixture({isAndroid=false,browserCloudResidentEnabled=false}={
     const cloud={cancelLogin(){events.push({cancel:true});}};
     const client={};
     const signInClient=()=>client,ensureResident=async()=>{},residentRecoveryReason=()=>null;
-    const errorMessage=e=>e.message,runQueuedResidentRebind=()=>{},runQueuedSignInReturn=()=>{};
+    const errorMessage=e=>e.message,runQueuedResidentRebind=()=>{},runQueuedSignInReturn=()=>{},scheduleResidentAutoRetry=()=>{};
     const testMocksEnabled=false,isAndroid=${isAndroid},browserCloudResidentEnabled=${browserCloudResidentEnabled},expired=()=>false,residentCloudFlow=()=>true;
     let required=false;const productionCloudSignInRequired=()=>required,residentSignInRequired=()=>required;let pendingBillingReview=null;const clearPersonalSetup=()=>{};
     ${ui.includes('export function explicitSignedOutCloudEntry(')?part('export function explicitSignedOutCloudEntry(', 'export function connectionChooserVisible(').replace('export ',''):'function explicitSignedOutCloudEntry(){return false;}'}
@@ -141,7 +141,7 @@ function controllerFixture({isAndroid=false,browserCloudResidentEnabled=false}={
     class CodeExpiredError extends Error {constructor(){super('code-expired');}}
     const signInFailureMessage=code=>code,signInFailed=(environment,keep=false)=>{if(!keep)update({signIn:{step:'choose',environment}});};
     const signedIn=async()=>events.push({authenticated:true});
-    ${part('async function work(', '/** Start (or restart) the resident.')}
+    ${part('async function work(', '\n/** ')}
     const connectionController={
     ${part('  close() {', '  cancel() {')}
     cancel(){operation?.abort(new DOMException('Cancelled','AbortError'));cloud.cancelLogin();},
