@@ -10,7 +10,7 @@
     "hostTests": {
       "recorded": true,
       "class": "S",
-      "scope": "Plain-JVM policy, crash-loop, indicator-lease and SystemUI lease-client tests, and a javac type check of every listener source against the Android 36 platform jar (test/always-on-listener.test.mjs, test/listener-store-failure.test.mjs, test/aosp-listening-chip.test.mjs). Not an APK, Android, SystemUI or device run."
+      "scope": "The policy, crash-loop, persistence, indicator-lease and SystemUI chip logic is upstream-owned at the vendor/eliza pin and covered by the upstream sense suites: vendor/eliza/packages/app/test/android/sense.test.mjs (plain-JVM policy and persistence-failure tests, SystemUI chip compile with lease and acknowledgement fixtures, a javac check of every shared listener source against the Android 36 platform jar) and vendor/eliza/packages/os/scripts/android/sense.test.mjs (staging, the exact SystemUI patches, production admission). test/always-on-listener.test.mjs and test/aosp-listener.test.mjs run those suites and compile Alpha's own listener components against the shared sources. Not an APK, Android, SystemUI or device run."
     },
     "apkBuild": {
       "recorded": true,

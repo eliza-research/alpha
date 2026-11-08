@@ -212,27 +212,22 @@ public class DailyAppsInstrumentedTest {
    assertTrue("Durable notification tap signals pending delivery", opened);
    // A fresh install still shows the first-run sign-in panel. The product keeps the tap while that
    // panel is open and opens the reminder when the owner answers it; it must not open underneath.
+   // A signed-out production build (no ELIZA_DEV_ALLOW_TEST_MOCKS) instead opens P-43's required
+   // sign-in page by itself; it has no close control and this test never signs in.
    String detail = "document.documentElement.dataset.activeView==='calendar' && [...document.querySelectorAll('[data-screen] h1')].some(h=>h.textContent==="+JSONObject.quote("Device flow test " + id)+") && !!document.querySelector('button[aria-label=\"Edit event\"]')";
    String closable = "[...document.querySelectorAll('.alpha-connection-scrim button')].find(e=>e.getAttribute('aria-label')==="+JSONObject.quote(AppNavigation.CLOSE_CONNECTION)+"&&!e.disabled)";
-   boolean mandatorySignIn = false;
-   if ("true".equals(evaluate(scenario, "!!document.querySelector('.alpha-connection-scrim')"))) {
+   boolean mandatorySignIn = !BuildConfig.ELIZA_DEV_ALLOW_TEST_MOCKS && new AlphaCredentialStore(context).readCredentialSlot("cloud:production") == null;
+   if (mandatorySignIn) uiWait(scenario, AppNavigation.SIGN_IN_PAGE_READY);
+   else if ("true".equals(evaluate(scenario, "!!document.querySelector('.alpha-connection-scrim')"))) {
     SystemClock.sleep(1500);
     assertEquals("The reminder does not open under the sign-in panel", "false", evaluate(scenario, "Boolean("+detail+")"));
     begin(scenario, "Capacitor.Plugins.DailyApps.pendingReminderTap()");
     JSONObject retainedTap = result(scenario);
     assertTrue("The tap is retained while the sign-in panel is open: " + retainedTap, retainedTap.optBoolean("retained") && retainedTap.has("token"));
     for (int i = 0; i < 100 && !"true".equals(evaluate(scenario, "Boolean("+closable+")")); i++) SystemClock.sleep(100);
-    if ("true".equals(evaluate(scenario, "Boolean("+closable+")"))) {
-     evaluate(scenario, "("+closable+").click()");
-     uiWait(scenario, "!document.querySelector('.alpha-connection-scrim')");
-    } else {
-     // A production build (no ELIZA_DEV_ALLOW_TEST_MOCKS) on first run requires Eliza Cloud
-     // sign-in and the dialog has no close control (connection-ui residentMustSignIn). This test
-     // never signs in, so the tap must stay retained, unopened, until the owner does.
-     assertFalse("Only a production build's first-run sign-in is undismissable", BuildConfig.ELIZA_DEV_ALLOW_TEST_MOCKS);
-     uiWait(scenario, "[...document.querySelectorAll('.alpha-connection-scrim button')].some(b=>b.textContent.trim()==='Sign in with Eliza Cloud')");
-     mandatorySignIn = true;
-    }
+    assertEquals("The sign-in panel has a close control", "true", evaluate(scenario, "Boolean("+closable+")"));
+    evaluate(scenario, "("+closable+").click()");
+    uiWait(scenario, "!document.querySelector('.alpha-connection-scrim')");
    }
    if (mandatorySignIn) {
     SystemClock.sleep(1500);

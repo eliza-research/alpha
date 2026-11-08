@@ -124,9 +124,9 @@ public final class AccessibilityInstrumentedTest {
   androidx.test.uiautomator.Configurator configurator=androidx.test.uiautomator.Configurator.getInstance();
   int previousFlags=configurator.getUiAutomationFlags();
   configurator.setUiAutomationFlags(AUTOMATION_FLAGS);
-  // AndroidShade shares the same connection: with its default flags each shade check reconnects
-  // UiAutomation with accessibility services suppressed, which would unbind a running screen reader
-  // such as TalkBack in the middle of the journey.
+  // AndroidShade shares the same connection: with its default flags each shade check reconnected
+  // UiAutomation with accessibility services suppressed, which unbinds any enabled screen reader such
+  // as TalkBack in the middle of the journey and changes what WebView exposes to TalkBackOrder.
   AndroidShade.useAutomationFlags(AUTOMATION_FLAGS);
   String previous=shell("settings get system font_scale");
   UiDevice device=UiDevice.getInstance(InstrumentationRegistry.getInstrumentation());
@@ -162,9 +162,17 @@ public final class AccessibilityInstrumentedTest {
     assertEquals("Home offers no Notifications button","0",js("document.querySelectorAll('[aria-label=\"Open notifications\"]').length"));
     if(BuildConfig.IS_LAUNCHER){
      // 2. On launcher Home a pull down that starts on empty Home asks for the same shade. It starts
-     // mid-screen, outside the system's top-edge zone.
-     device.swipe(web.centerX(),web.top+web.height()/2,web.centerX(),web.top+web.height()*5/6,20);
-     assertTrue("A pull on empty Home opens Android's shade",AndroidShade.waitOpen(5000));
+     // mid-screen, outside the system's top-edge zone. At this size Home usually overflows, so the
+     // pull depends on Alpha taking the drag from the WebView; which case ran is in the messages.
+     // The pull must reach Alpha's Home (a swipe on SystemUI's collapsing window is retried) and the
+     // shade counts only when Alpha asked for it.
+     js("document.querySelector('[data-alpha-layer=\"home\"]').scrollTop=0");
+     js(AndroidShade.COUNT_PULLS);
+     String fits=js("document.querySelector('[data-alpha-layer=\"home\"]')?.dataset.alphaHomeFits??'unknown'");
+     assertTrue("Home reports whether it fits the screen (got "+fits+")","\"true\"".equals(fits)||"\"false\"".equals(fits));
+     AndroidShade.pullOnHome(device,web.centerX(),web.top+web.height()/2,web.height()/3);
+     assertTrue("A pull on empty Home opens Android's shade (Home fits: "+fits+")",AndroidShade.waitOpen(5000));
+     assertEquals("Alpha asked Android once for that pull (Home fits: "+fits+")",1,AndroidShade.pullCount("calls"));
      assertEquals("true",js(AndroidShade.ALPHA_SHADE_ABSENT));
      AndroidShade.collapse();
     }

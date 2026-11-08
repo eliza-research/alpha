@@ -56,8 +56,10 @@ public final class BrowserPageQuestionInstrumentedTest {
  private static final String OMITTED = "omitted-synthetic-marker";
  private final BrowserFlowInstrumentedTest child = new BrowserFlowInstrumentedTest();
 
- private static void gate() {
+ /** Every method here drives the views; on a signed-out flag-off build P-43's sign-in page covers them. */
+ private static void gate() throws Exception {
   org.junit.Assume.assumeTrue("Explicit native page question campaign", "1".equals(InstrumentationRegistry.getArguments().getString("browserPageQuestion")));
+  AppNavigation.assumeNoRequiredSignIn("Browser page question");
  }
  /** The native page review extracts text only in the WebView's isolated world (BrowserReading.review
   * refuses first without it). A provider without JS_INJECTION_IN_FRAME_AND_WORLD (the emulator's

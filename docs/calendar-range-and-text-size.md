@@ -38,7 +38,8 @@ will produce enough rows to exercise the limit.
 
 Run `node scripts/test-calendar-regression.mjs --case=CalendarRangeInstrumentedTest`
 and `node scripts/test-calendar-regression.mjs --case=CalendarTruncationInstrumentedTest`
-after building the app and instrumentation APKs. Set `ALPHA_CALENDAR_TEST_SERIAL`,
+after `npm run android:build -- --test-mocks` (the runner installs the verified
+`artifacts/test-mocks/` pair). Set `ALPHA_CALENDAR_TEST_SERIAL`,
 `ALPHA_CALENDAR_TEST_AVD` and `ALPHA_CALENDAR_TEST_ABI` (`x86_64` or `arm64-v8a`).
 Each command checks both distributions unless `--variant=standalone` or
 `--variant=launcher` is supplied. The upstream harness leases the emulator,

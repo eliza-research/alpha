@@ -56,7 +56,9 @@ public class LiveAgentInstrumentedTest {
     eval(scenario,"(()=>{const e=("+AppNavigation.composer()+");Object.getOwnPropertyDescriptor(e.tagName==='TEXTAREA'?HTMLTextAreaElement.prototype:HTMLInputElement.prototype,'value').set.call(e,"+JSONObject.quote(prompt)+");e.dispatchEvent(new Event('input',{bubbles:true}));})()");
     waitFor(scenario,"("+AppNavigation.composer()+").value==="+JSONObject.quote(prompt),10000);
     eval(scenario,"document.querySelector('button[aria-label=Send]').click()");
-    String proposal="[...document.querySelectorAll('[data-screen] button')].find(p=>p.textContent.includes("+JSONObject.quote("Approve: Create note: "+title)+"))";
+    // The pending proposal is a review card whose first row approves it: "Create note" over the
+    // quoted title and the body (device-record-presentation.ts). The prompt never quotes the title.
+    String proposal="[...document.querySelectorAll('.alpha-action-review button')].find(b=>b.textContent.includes('Create note')&&b.textContent.includes("+JSONObject.quote("\u201c"+title+"\u201d")+"))";
     waitFor(scenario,proposal,60000);
     assertEquals("A model proposal must not create a note before approval","false",eval(scenario,"Boolean("+savedNote(title)+")"));
     assertEquals("The proposal must show the exact body being approved","true",eval(scenario,"document.querySelector('[data-screen]').textContent.includes("+JSONObject.quote(body)+")"));

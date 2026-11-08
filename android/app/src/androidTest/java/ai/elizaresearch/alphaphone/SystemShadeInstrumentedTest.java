@@ -36,31 +36,6 @@ public class SystemShadeInstrumentedTest {
  }
  private static Context context() { return InstrumentationRegistry.getInstrumentation().getTargetContext(); }
 
- /**
-  * Counts, from the page, the touches that reach it and Alpha's requests for Android's shade.
-  * Without them a pull can pass vacuously: on the API 35 emulator SystemUI's shade window kept
-  * taking touches for a moment after it collapsed, so a swipe right after a collapse reached
-  * Android, not Alpha, and Android itself reopened its shade (1 of 3 runs with Alpha as HOME).
-  */
- private static final String COUNT_PULLS = "(()=>{if(window.__alphaPull)return;const c=window.__alphaPull={touches:0,focusedAtTouch:0,calls:0};"
-  + "document.addEventListener('touchstart',e=>{if(e.target instanceof Element&&e.target.closest('[data-alpha-layer=\"home\"]')){c.touches++;if(document.activeElement?.matches?.('textarea[data-alpha-composer]'))c.focusedAtTouch++;}},true);"
-  + "const send=Capacitor.nativePromise;Capacitor.nativePromise=function(plugin,method){if(plugin==='AlphaDevice'&&method==='openNotificationShade')c.calls++;return send.apply(this,arguments);};})()";
- private static int pullCount(String field) throws Exception { return Integer.parseInt(js("String(window.__alphaPull." + field + ")").replace("\"", "")); }
-
- /** A downward swipe that reached Alpha's Home: retried (up to five times) while it did not. */
- private static void pullOnHome(UiDevice device, int x, int y, int distance) throws Exception {
-  int before = pullCount("touches");
-  for (int attempt = 0; attempt < 5; attempt++) {
-   SystemClock.sleep(500);
-   device.swipe(x, y, x, y + distance, 20);
-   SystemClock.sleep(1500);
-   if (pullCount("touches") > before) return;
-   // Android took the swipe (its collapsing shade window); put Alpha back in front and try again.
-   if (AndroidShade.isOpen()) AndroidShade.collapse();
-  }
-  fail("No pull reached Alpha's Home in five swipes");
- }
-
  /** A status bar stand-in with Android's method name, for the outcome mapping only. */
  public static final class FakeStatusBar { public int calls; public void expandNotificationsPanel() { calls++; } }
  public static final class RefusingStatusBar { public void expandNotificationsPanel() { throw new SecurityException("refused"); } }
@@ -125,26 +100,26 @@ public class SystemShadeInstrumentedTest {
    // which case ran is in the assertion message. Every pull must reach Alpha's Home, and the
    // shade is attributed to Alpha only when Alpha asked for it.
    js("document.querySelector('[data-alpha-layer=\"home\"]').scrollTop=0");
-   js(COUNT_PULLS);
+   js(AndroidShade.COUNT_PULLS);
    String fits = js("document.querySelector('[data-alpha-layer=\"home\"]')?.dataset.alphaHomeFits??'unknown'");
    Rect web = device.findObject(By.clazz("android.webkit.WebView")).getVisibleBounds();
    int x = web.centerX(), y = web.top + Math.round(web.height() * 0.45f);
-   pullOnHome(device, x, y, web.height() / 3);
+   AndroidShade.pullOnHome(device, x, y, web.height() / 3);
    if (BuildConfig.IS_LAUNCHER) {
     assertTrue("A pull down on empty launcher Home opens Android's shade (Home fits: " + fits + ")", AndroidShade.waitOpen(5000));
-    assertEquals("Alpha asked Android once for that pull", 1, pullCount("calls"));
+    assertEquals("Alpha asked Android once for that pull", 1, AndroidShade.pullCount("calls"));
     assertEquals("No Alpha panel behind it", "true", js(AndroidShade.ALPHA_SHADE_ABSENT));
     AndroidShade.collapse();
     until(AppNavigation.selected("Home"));
     // With the composer focused (the keyboard may be up) the same pull belongs to the text field.
     js("document.querySelector('textarea[data-alpha-composer]')?.focus()");
     until("document.activeElement?.matches?.('textarea[data-alpha-composer]')");
-    pullOnHome(device, x, web.top + Math.round(web.height() * 0.3f), web.height() / 4);
-    assertTrue("The composer still had focus when the pull reached Home", pullCount("focusedAtTouch") > 0);
-    assertEquals("A pull with the composer focused does not ask for Android's shade", 1, pullCount("calls"));
+    AndroidShade.pullOnHome(device, x, web.top + Math.round(web.height() * 0.3f), web.height() / 4);
+    assertTrue("The composer still had focus when the pull reached Home", AndroidShade.pullCount("focusedAtTouch") > 0);
+    assertEquals("A pull with the composer focused does not ask for Android's shade", 1, AndroidShade.pullCount("calls"));
     assertFalse("A pull with the composer focused does not open Android's shade", AndroidShade.isOpen());
    } else {
-    assertEquals("The standalone app never asks for Android's shade", 0, pullCount("calls"));
+    assertEquals("The standalone app never asks for Android's shade", 0, AndroidShade.pullCount("calls"));
     assertFalse("The standalone app answers no pull on Home with Android's shade", AndroidShade.isOpen());
    }
   } finally {

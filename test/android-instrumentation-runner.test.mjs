@@ -535,7 +535,7 @@ test("round-9 registrations: new classes, campaigns and removed reasons", () => 
   // --classes SelectedDocument runs its ungated methods; only the restart phase stays with its campaign.
   assert.equal(parseInstrumentationArgs(["--classes", "SelectedDocument"]).classes[0], C("SelectedDocument"));
   assert.equal(CLASS_REGISTRY.SelectedDocument.args, undefined);
-  assert.equal(CLASS_REGISTRY.WorkflowLegacyReminderUpgrade.campaign.split(" ").slice(0, 2).join(" "), "node scripts/test-installed-upgrade.mjs");
+  assert.equal(CLASS_REGISTRY.WorkflowLegacyReminderUpgrade.campaign.split(" ").slice(0, 3).join(" "), "node scripts/test-installed-upgrade.mjs reminder");
   assert.throws(() => parseInstrumentationArgs(["--classes", "WorkflowLegacyReminderUpgrade"]), /test-installed-upgrade/);
   // SettingsCrashLog has its two-process runner now.
   assert.ok(!Object.hasOwn(NOT_RUN_BY_A_RUNNER, "SettingsCrashLog"));
@@ -565,6 +565,23 @@ test("round-9 registrations: new classes, campaigns and removed reasons", () => 
   assert.doesNotMatch(fill, /By\.pkg\(Pattern\.compile\("com\\\\\.android/);
   assert.equal((fill.match(/^\s+PasswordVaultFixture\.confirmDeviceCredential\(\);$/gm) ?? []).length, 3);
   assert.match(fill, /asks for the device credential before listing sign-ins", PasswordVaultFixture\.credentialPromptShown\(10_000\)/);
+});
+
+test("PrototypeFlow and CalendarFlow are registered; the retired resident Activity test is gone", () => {
+  // PrototypeFlow's four methods need no host: the class runs by name, and its live-agent journey is LiveAgent's.
+  assert.ok(Object.hasOwn(CLASS_REGISTRY, "PrototypeFlow") && !Object.hasOwn(NOT_RUN_BY_A_RUNNER, "PrototypeFlow"));
+  assert.equal(parseInstrumentationArgs(["--classes", "PrototypeFlow"]).classes[0], C("PrototypeFlow"));
+  // CalendarFlow changes the device time zone: gated, in a disposable user, with Calendar access granted.
+  assert.deepEqual(CLASS_REGISTRY.CalendarFlow.args, { calendarFlow: "1" });
+  assert.equal(CLASS_REGISTRY.CalendarFlow.secondaryUser, true);
+  assert.deepEqual(CLASS_REGISTRY.CalendarFlow.grant, ["READ_CALENDAR", "WRITE_CALENDAR"]);
+  assert.throws(() => parseInstrumentationArgs(["--classes", "CalendarFlow"]), /requires --owned-emulator/);
+  assert.deepEqual(instrumentArgs(C("CalendarFlow")).slice(-6, -1), ["calendarFlow", "1", "-e", "class", C("CalendarFlow")]);
+  assert.ok(!Object.hasOwn(CLASS_REGISTRY, "ResidentAgent") && !Object.hasOwn(NOT_RUN_BY_A_RUNNER, "ResidentAgent"));
+  assert.ok(!testClasses().has("ResidentAgentInstrumentedTest"));
+  // Each BrowserContinuity method drives the views, so a signed-out flag-off default run could only skip it.
+  assert.ok(!DEFAULT_CLASSES.includes("BrowserContinuity"));
+  assert.throws(() => parseInstrumentationArgs(["--classes", "BrowserContinuity"]), /test-mocks app build/);
 });
 
 test("restart runner wires the migration, crash-log, theme and source-reference phases to real methods and gates", () => {

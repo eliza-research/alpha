@@ -14,6 +14,8 @@ public final class SyntheticAutofillService extends AutofillService {
  public static volatile boolean armed;
  public static final AtomicInteger accepted = new AtomicInteger();
  public static final AtomicInteger rejected = new AtomicInteger();
+ /** Every fill request that reaches this provider while armed, before any filtering. */
+ public static final AtomicInteger requests = new AtomicInteger();
  public static final String LABEL="Alpha synthetic login";
  public static final String USER="alpha-synthetic-user";
  public static final String PASSWORD="synthetic-password-not-an-account";
@@ -37,6 +39,7 @@ public final class SyntheticAutofillService extends AutofillService {
   for(int i=0;i<node.getChildCount();i++)fields(node.getChildAt(i),validDomain,result);
  }
  @Override public void onFillRequest(FillRequest request,CancellationSignal cancellation,FillCallback callback) {
+  if(armed)requests.incrementAndGet();
   if(!armed || cancellation.isCanceled()){callback.onSuccess(null);return;}
   AssistStructure structure=request.getFillContexts().get(request.getFillContexts().size()-1).getStructure();
   if(!getPackageName().equals(structure.getActivityComponent().getPackageName())){rejected.incrementAndGet();callback.onSuccess(null);return;}

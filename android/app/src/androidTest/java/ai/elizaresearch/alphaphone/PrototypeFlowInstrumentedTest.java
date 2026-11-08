@@ -14,7 +14,8 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 import static org.junit.Assert.*;
 
-/** Full WebView journeys through the reference UI; no mocked native bridge/model. */
+/** Full WebView journeys through the reference UI; no mocked native bridge/model. The live-agent
+ * proposal journey is LiveAgentInstrumentedTest.realProviderProposesAndUserApprovesPersistedLocalNote. */
 @RunWith(AndroidJUnit4.class)
 public class PrototypeFlowInstrumentedTest {
  private String eval(BoundedActivityScenario<MainActivity> s,String js) throws Exception {
@@ -49,6 +50,7 @@ public class PrototypeFlowInstrumentedTest {
  }
  private String note(String title){return "__notesEnvelope.records.find(n=>n.title==="+JSONObject.quote(title)+")";}
  @Test public void allMvpAppsOpenAndPhysicalBackReturnsHome() throws Exception {
+  AppNavigation.assumeNoRequiredSignIn("MVP app navigation");
   try(BoundedActivityScenario<MainActivity>s=BoundedActivityScenario.launch(MainActivity.class)){
    ready(s);
    assertEquals("Deferred native Contacts plugin is not registered","true",eval(s,"!Capacitor.isPluginAvailable('ElizaContacts')"));
@@ -114,6 +116,7 @@ public class PrototypeFlowInstrumentedTest {
   assertEquals("Native accessibility label: "+label,expected,accessibleLabel(label));
  }
  @Test public void hiddenShellLayersCannotReceiveFocusOrAccessibilityNavigation() throws Exception {
+  AppNavigation.assumeNoRequiredSignIn("Hidden shell layers");
   try(BoundedActivityScenario<MainActivity>s=BoundedActivityScenario.launch(MainActivity.class)){
    ready(s);accessible("Inbox",true);accessible("Resize chat",false);
    assertEquals("Collapsed chat cannot take keyboard focus","true",eval(s,"(()=>{const b=document.querySelector('[aria-label=\"Resize chat\"]');b.focus();return document.activeElement!==b;})()"));
@@ -126,6 +129,7 @@ public class PrototypeFlowInstrumentedTest {
   }
  }
  @Test public void referenceNoteEditorPersistsAndDeletesWithUndo() throws Exception {
+  AppNavigation.assumeNoRequiredSignIn("Reference note editor");
   String title="Reference note "+UUID.randomUUID(),body="Written through the exact prototype editor.";
   try(BoundedActivityScenario<MainActivity>s=BoundedActivityScenario.launch(MainActivity.class)){
    ready(s);open(s,"Notes");click(s,"New note");fill(s,"Title",title);fill(s,"Note",body);click(s,"Back to notes");
@@ -138,19 +142,6 @@ public class PrototypeFlowInstrumentedTest {
    String undo="[...document.querySelectorAll('button')].find(b=>b.textContent==='Undo'&&b.getClientRects().length&&b.closest('.drop')?.textContent.includes("+JSONObject.quote(title)+"))";
    waitFor(s,undo,10000);eval(s,"("+undo+").click()");waitFor(s,note(title),10000);
    click(s,"Open "+title);click(s,"Delete note");waitFor(s,"!("+note(title)+")",10000);
-  }
- }
- @Test public void realAgentProposalRequiresApprovalInReferenceConversation() throws Exception {
-  Assume.assumeTrue("Explicit live-agent test flag", "true".equals(InstrumentationRegistry.getArguments().getString("liveAgent")));
-  String title="Reference agent "+UUID.randomUUID(),body="Saved only after approval through the reference conversation.";
-  try(BoundedActivityScenario<MainActivity>s=BoundedActivityScenario.launch(MainActivity.class)){
-   ready(s);open(s,"Notes");click(s,"Type");fill(s,"Ask Alpha","Create a local note with exactly this title: "+title+" And exactly this body: "+body+" Propose it with create_note for my approval.");click(s,"Send");
-   String proposal="[...document.querySelectorAll('[data-screen] button')].find(b=>b.textContent.includes("+JSONObject.quote("Approve: Create note: "+title)+"))";
-   waitFor(s,proposal,90000);assertEquals("No execution before approval","false",eval(s,"Boolean("+note(title)+")"));
-   assertEquals("Exact body visible for review","true",eval(s,"document.body.innerText.includes("+JSONObject.quote(body)+")"));
-   eval(s,"("+proposal+").click()");waitFor(s,"("+note(title)+")?.body==="+JSONObject.quote(body),10000);
-   s.recreate();ready(s);open(s,"Notes");click(s,"Open "+title);waitFor(s,"document.querySelector('textarea[aria-label=\"Note\"]').value==="+JSONObject.quote(body),10000);
-   click(s,"Delete note");waitFor(s,"!("+note(title)+")",10000);
   }
  }
 }

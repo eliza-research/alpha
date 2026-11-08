@@ -218,8 +218,7 @@ failure and cleanup, and never weaken seccomp or SELinux to obtain a pass.
   host JVM contract asserts it (merged with `0fd9c5b8`). It is class S only.
 - Owner-provided keys: production builds admit `configureProvider` with a direct Cerebras key
   and an optional Cartesia key, offered at sign-in (`offerOwnKeys` and `OwnKeyForm` in
-  `connection-ui.tsx`, e15f0b7359), and `ResidentAgentInstrumentedTest` configures the resident
-  agent through the same call. The Cloud branch is limited to `cerebras` and `qwen-3.8-27b` and its
+  `connection-ui.tsx`, e15f0b7359). The Cloud branch is limited to `cerebras` and `qwen-3.8-27b` and its
   environment drops every direct-provider variable (`LocalAgentProviderAdmissionTest`, host JVM).
   A-20 was decided as [P-26](decisions.md#october-12-owner-decisions) (subscription billing); no
   owner decision records the owner-provided key path, which P-43 and P-68 describe as absent.
