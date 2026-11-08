@@ -1376,6 +1376,36 @@
         "Two language tags, four real probe tickets, sampled monotonic deadline classes.",
         "Installed and permanent demotion deadlines normalize Long.MAX_VALUE to -1."
       ]
+    },
+    {
+      "path": "specs/quint/native/NativeOnDeviceRecognizer.qnt",
+      "module": "NativeOnDeviceRecognizer",
+      "init": "init",
+      "step": "step",
+      "invariant": "safety",
+      "sources": [
+        "vendor/eliza/plugins/plugin-local-inference/native/android/src/main/java/ai/eliza/voice/OnDeviceRecognizer.java",
+        "vendor/eliza/plugins/plugin-local-inference/native/android/src/main/java/ai/eliza/voice/RecognizerAvailability.java",
+        "patches/eliza/recognizer-retired-callback.patch"
+      ],
+      "tests": [
+        "retiredResultCannotDemoteTest",
+        "retiredCancelCannotDemoteTest",
+        "cancellationRequestFencesLanguageErrorBeforeAckTest",
+        "currentMissingLanguageDemotesTest",
+        "queuedBacklogClearsWithoutPretendingWrittenTest",
+        "finishTimeoutKeepsFirstAnswerTest"
+      ],
+      "invariants": [
+        "AnswerReleasesSession",
+        "ReleasedPipeClosed",
+        "LateErrorCannotDemote",
+        "BacklogBound"
+      ],
+      "abstractions": [
+        "One recognizer session with a cached installed language. Bounded byte counts, fixed-size input classes and exact 64-second backlog boundary.",
+        "Platform cleanup is observed at settled macrosteps or a held cancellation callback. Transcript contents are represented by nonempty/empty classes."
+      ]
     }
   ]
 }

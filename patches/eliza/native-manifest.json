@@ -311,6 +311,18 @@
           "afterSha256": "902bf007189720645823065d6d016dda648c8f3f01b8fbf347ff85132262e3f7"
         }
       ]
+    },
+    {
+      "file": "recognizer-retired-callback.patch",
+      "sha256": "4e2ed9bade0ad8c426f243cf74af7d671aaaef3958af4fdaec408cf7506ed612",
+      "module": "plugins/plugin-local-inference/native/android",
+      "targets": [
+        {
+          "path": "plugins/plugin-local-inference/native/android/src/main/java/ai/eliza/voice/OnDeviceRecognizer.java",
+          "beforeSha256": "00dd3c480904e57d577591b19ccdfafca132077eaa0a77b31528745dd36ea27e",
+          "afterSha256": "5e30a5d8bb04ad83b1369c0fc6ac8c95e00ecacde199d92f80eec1f487fc1894"
+        }
+      ]
     }
   ],
   "modules": [

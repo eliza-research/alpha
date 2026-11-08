@@ -206,3 +206,19 @@ callbacks directly. A held provider reply exposes actual ticket ordering,
 including an old installed answer after a newer authoritative or unanswered
 result. Source `known` and `available` calls check exact expiry and demotion.
 Neither campaign uses a real microphone, installed speech service or output.
+
+### On-device recognition session
+
+`on-device-recognizer.mjs` runs the staged recognizer, real cache and worker
+with the pinned upstream scripted Android recognizer and audio pipe. Each JVM
+holds one active session. It observes exact byte counts, stalled writes,
+backlog, first-result publication, cancellation and resource release. A held
+main queue delivers a missing-language callback after cancellation was requested
+and before the cancellation response executes. The callback preserves the
+installed-language cache. `recognizer-retirement.mjs` also compares retirement
+after an answer, retirement after cancellation and an active language failure.
+
+These checks execute the patched shared class at its native plugin boundary.
+The platform ports carry synthetic PCM and transcript classes. The runner
+records settled cleanup rather than assuming that Android accepted real device
+or service resource release.

@@ -410,3 +410,18 @@ cache lookups and demotion deadlines. Authoritative and unanswered results have
 different replacement rules. Timed demotion and global/per-language retirement
 are kept distinct. Android's recognizer support service and installed speech
 models remain external inputs to this campaign.
+
+`NativeOnDeviceRecognizer` covers one actual `OnDeviceRecognizer` session
+with a controlled Android recognizer and PCM pipe. It observes input backlog,
+queue ownership, EOF, early results, timeouts, stop-before-open, finished-state
+refusals, and released recognizer/pipe handles. The exact 64 second backlog
+boundary distinguishes accepted audio from refused input. A held main callback
+separates a cancellation request from cleanup acknowledgement.
+
+The unpatched source let a retired language-error callback demote the installed
+language even when the terminal answer rejected that callback. The authenticated
+repair makes language demotion part of the first accepted answer, under the
+same monitor that admits cancellation. An active missing-language error still
+demotes. The source campaign covers both old callback windows and the current
+error control. Installed recognition, real Binder ordering, and unrestricted
+audio histories remain platform and refinement obligations.
