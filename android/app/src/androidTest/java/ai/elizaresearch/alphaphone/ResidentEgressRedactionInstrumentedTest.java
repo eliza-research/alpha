@@ -45,12 +45,25 @@ public class ResidentEgressRedactionInstrumentedTest {
   JSONObject result=new JSONObject(ElizaAgentService.requestLocalAgent(args.toString()));
   assertEquals("HTTP "+path+" "+result.optString("body"),200,result.getInt("status"));return new JSONObject(result.getString("body"));
  }
- /** The provider requests recorded for one room's finished trajectories (the request after the swap). */
+ /**
+  * The provider requests recorded for every trajectory of one room, task trajectories included (the request after
+  * the swap). Polls until the room's trajectories and their end times stay unchanged for a settle window, so a
+  * model call that finishes after the reply is still inspected; fails if any is unfinished at the deadline.
+  */
  private JSONArray recordedCalls(String room)throws Exception{
-  JSONArray llm=new JSONArray();long end=SystemClock.elapsedRealtime()+30000;
-  while(llm.length()==0&&SystemClock.elapsedRealtime()<end){JSONArray list=call("/api/trajectories?limit=100&roomId="+room,"GET",null).getJSONArray("trajectories");
-   for(int i=0;i<list.length();i++){JSONObject d=call("/api/trajectories/"+list.getJSONObject(i).getString("id")+"?includePayloads=1","GET",null);if(d.has("llmCalls")&&!d.getJSONObject("trajectory").isNull("endTime"))for(int j=0;j<d.getJSONArray("llmCalls").length();j++)llm.put(d.getJSONArray("llmCalls").getJSONObject(j));}
-   if(llm.length()==0)SystemClock.sleep(500);}
+  long end=SystemClock.elapsedRealtime()+60000,stableSince=0;String seen=null;boolean finished=false;JSONArray llm=new JSONArray();
+  while(SystemClock.elapsedRealtime()<end){
+   JSONArray list=call("/api/trajectories?limit=100&roomId="+room,"GET",null).getJSONArray("trajectories");
+   java.util.TreeMap<String,String> state=new java.util.TreeMap<>();JSONArray calls=new JSONArray();finished=true;
+   for(int i=0;i<list.length();i++){String trajectory=list.getJSONObject(i).getString("id");JSONObject d=call("/api/trajectories/"+trajectory+"?includePayloads=1","GET",null);
+    boolean done=!d.getJSONObject("trajectory").isNull("endTime");finished&=done;state.put(trajectory,done?d.getJSONObject("trajectory").get("endTime").toString():"");
+    if(d.has("llmCalls"))for(int j=0;j<d.getJSONArray("llmCalls").length();j++)calls.put(d.getJSONArray("llmCalls").getJSONObject(j));}
+   String now=state.toString();long at=SystemClock.elapsedRealtime();
+   if(!now.equals(seen)){seen=now;stableSince=at;}
+   llm=calls;
+   if(finished&&!state.isEmpty()&&at-stableSince>=5000)return llm;
+   SystemClock.sleep(500);}
+  assertTrue("Room "+room+" has a trajectory still unfinished at the deadline: "+seen,finished);
   return llm;
  }
  @Test public void swappedTurnCompletesWithoutRawIdentifiers()throws Exception{
