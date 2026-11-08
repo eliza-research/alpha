@@ -1440,6 +1440,51 @@
         "maxSteps": 40,
         "seed": "123"
       }
+    },
+    {
+      "path": "specs/quint/services/PilotApkUpdate.qnt",
+      "module": "PilotApkUpdate",
+      "init": "init",
+      "step": "step",
+      "invariant": "safety",
+      "sources": [
+        "scripts/pilot-update.mjs",
+        "scripts/android-instrumentation.mjs",
+        "scripts/provision-unit.mjs",
+        "scripts/owner/pilot-rotation-journal.mjs",
+        "scripts/owner/pilot-rotation.mjs",
+        "scripts/owner/VerifyApkRotation.java",
+        "vendor/eliza/packages/os/scripts/android/apk-release-record.mjs"
+      ],
+      "tests": [
+        "normalUpdateRestoresHomeBeforeStartTest",
+        "partialHandoffNeverDispatchesTest",
+        "homeTakeoverBlocksDispatchTest",
+        "ambiguousRotationRetainsIntentTest",
+        "verifiedRotationSurvivesRestartRefusalTest",
+        "runningIntegrityOrUnprovenHomePreventsStartTest",
+        "packageOnlyReadbackCanVerifyOrdinaryUpdateTest"
+      ],
+      "invariants": [
+        "LockOwnsUpdate",
+        "DispatchHasReadback",
+        "RotationHasDurableInventory",
+        "VerificationHasReturnedInstall",
+        "CompletedJournalHasEvidence",
+        "RestoreOnlyOwnedHome",
+        "RestartHasCleanBoundary",
+        "PassedHasStartupEvidence"
+      ],
+      "abstractions": [
+        "One admitted APK replacement on one selected Android user, with ordinary and reviewed-rotation modes.",
+        "HOME is Alpha, selected stock or an unproven holder/activity pair. The installer reply, verification evidence, HOME cleanup, agent probe and rotation journal are distinct.",
+        "Model witnesses package-only or inventory readback, a lock and a one-shot journal. Actual Android effects, signing admission and host crashes remain separate boundaries."
+      ],
+      "bounds": {
+        "maxSamples": 1000,
+        "maxSteps": 60,
+        "seed": "123"
+      }
     }
   ]
 }
