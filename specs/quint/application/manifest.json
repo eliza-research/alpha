@@ -1530,5 +1530,43 @@
       "maxSteps": 80,
       "maxVerifyDepth": 4
     }
+  },
+  {
+    "path": "specs/quint/application/MountedUpdateAdmission.qnt",
+    "module": "MountedUpdateAdmission",
+    "init": "init",
+    "step": "step",
+    "invariant": "safety",
+    "tests": [
+      "staleReadAndPreparationCannotRetireSuccessorTest",
+      "onlyExactCancelCanReconnectTest",
+      "pauseCoalescesContinueTest",
+      "refusalExplainedOnlyAtExactFailureTest"
+    ],
+    "invariants": [
+      "owner",
+      "continuation",
+      "exactAcknowledgement"
+    ],
+    "sources": [
+      "apps/app/src/main.tsx",
+      "vendor/eliza/packages/ui/src/state/app-update-gate.ts",
+      "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaDevicePlugin.java"
+    ],
+    "stateMapping": {
+      "active/bridge/phase/acknowledged": "Actual private renderer activation and bridge ownership",
+      "panel/canContinue/continuing/navigationBlocked": "Mounted dialog, navigation and synthetic native continuation",
+      "pending/positive/negative": "All five shell flush owners and exact native readiness attempts",
+      "reconnect/localRefusal/restarts/notices/continues": "Actual retained callbacks and external method invocations"
+    },
+    "abstractions": [
+      "Two unique Android activation IDs; callback ports and modal behavior are controlled.",
+      "The exact draft flush orchestration executes. Installed PackageInstaller and individual stores are separate."
+    ],
+    "bounds": {
+      "maxSamples": 1000,
+      "maxSteps": 80,
+      "maxVerifyDepth": 4
+    }
   }
 ]
