@@ -72,6 +72,16 @@ module CoreActionSettlement {
   action init = Model::Init
   action step = Model::Step
   action rawStep = Model::Next
+  val state = Model::s
+  action admitAccepted = Model::AdmitAccepted
+  action admitDenied = Model::AdmitDenied
+  action handlerEmit = Model::HandlerEmit
+  action handlerReturn(outcome: str): bool = Model::HandlerReturnAs(outcome)
+  action lateEmit = Model::LateEmit
+  action settle = Model::Settle
+  action deliver = Model::Deliver
+  action transportSettle = Model::TransportSettle
+  action drained = Model::Drained
   val safety = Model::TypeOK and Model::DeliveredInEmissionOrder and Model::DeliveredOnlyEmitted
     and Model::NoneAfterFailure and Model::NoneOnReplyFailure and Model::NoneWhilePending
   temporal CheckedTemporal = Model::Fairness implies Model::SettleReturns and Model::AllDelivered
@@ -80,6 +90,10 @@ module CoreActionSettlement {
     .then(Model::Deliver).then(Model::TransportSettle).then(Model::Deliver).then(Model::TransportSettle).then(Model::Deliver).then(Model::TransportSettle)
     .then(Model::Deliver).then(Model::TransportSettle).then(Model::Deliver).then(Model::TransportSettle).then(Model::Deliver).then(Model::TransportSettle)
     .then(Model::Drained).expect(Model::s.delivered == List(1, 2, 3, 4, 5, 6) and Model::Finished and safety)
+  run lateBeforeSettlementBuffersTest = init.then(admitAccepted).then(handlerEmit).then(handlerEmit).then(handlerEmit)
+    .then(handlerReturn("ok")).then(lateEmit).then(lateEmit).then(lateEmit)
+    .expect(state.buffer == List(1, 2, 3, 4, 5, 6) and state.delivered == List() and safety)
+    .then(settle).then(deliver).expect(state.target == 6 and state.delivered == List(1) and state.busy and safety)
 }
 module CoreActionSettlementOutcomes {
   import CoreActionSettlementTemplate(InHandler = 2, Late = 1,
@@ -87,6 +101,16 @@ module CoreActionSettlementOutcomes {
   action init = Model::Init
   action step = Model::Step
   action rawStep = Model::Next
+  val state = Model::s
+  action admitAccepted = Model::AdmitAccepted
+  action admitDenied = Model::AdmitDenied
+  action handlerEmit = Model::HandlerEmit
+  action handlerReturn(outcome: str): bool = Model::HandlerReturnAs(outcome)
+  action lateEmit = Model::LateEmit
+  action settle = Model::Settle
+  action deliver = Model::Deliver
+  action transportSettle = Model::TransportSettle
+  action drained = Model::Drained
   val safety = Model::TypeOK and Model::DeliveredInEmissionOrder and Model::DeliveredOnlyEmitted
     and Model::NoneAfterFailure and Model::NoneOnReplyFailure and Model::NoneWhilePending
   temporal CheckedTemporal = Model::Fairness implies Model::SettleReturns and Model::AllDelivered

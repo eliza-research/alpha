@@ -53,3 +53,18 @@ exercise 59 event classes and 6,603 accepted transitions, including multiple
 events with the same abstract successor. This evidence concerns the reducer's
 finite abstract state and event partition. It does not cover durable storage or
 the runtime actuator that executes authorized actions.
+
+## Action settlement source traces
+
+The action-settlement adapter executes the pinned `settleActionHandler` and
+processing-policy entry points with controlled handler and transport promises.
+Eight schedules compare 74 checkpoints against both original Quint profiles.
+Read-only build-time observers expose the actual buffered callbacks and eligible
+delivery queue. The traces cover admission denial, handler outcomes,
+late delivery during and after draining, and a rejected transport delivery.
+Reentrant executor hooks, arbitrary callback counts and effect-receipt binding
+remain outside this bounded trace campaign.
+
+```sh
+node specs/quint/legacy/core/check-action-settlement-refinement.mjs
+```

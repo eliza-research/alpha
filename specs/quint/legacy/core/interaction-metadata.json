@@ -6,7 +6,8 @@
     "step": "step",
     "invariant": "safety",
     "tests": [
-      "orderedLateDeliveryTest"
+      "orderedLateDeliveryTest",
+      "lateBeforeSettlementBuffersTest"
     ],
     "temporal": [
       "CheckedTemporal"
@@ -21,7 +22,8 @@
         "invariant": "safety",
         "temporal": "CheckedTemporal",
         "tests": [
-          "orderedLateDeliveryTest"
+          "orderedLateDeliveryTest",
+          "lateBeforeSettlementBuffersTest"
         ],
         "invariants": [
           "TypeOK",
