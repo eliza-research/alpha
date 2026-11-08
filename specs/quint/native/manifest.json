@@ -1445,6 +1445,33 @@
         "Fixed 14/15 speech frames and 35 silence frames per batch, full or half-frame reads, and monotonic playback-guard partitions.",
         "The blocked read is observed with its epoch ticket. General noise-floor and pre-roll histories and real Android timing remain external obligations."
       ]
+    },
+    {
+      "path": "specs/quint/native/NativeSpeechGate.qnt",
+      "module": "NativeSpeechGate",
+      "init": "init",
+      "step": "step",
+      "invariant": "safety",
+      "sources": [
+        "vendor/eliza/packages/app/platforms/android/sense/src/main/java/ai/eliza/sense/SpeechGate.java"
+      ],
+      "tests": [
+        "threeFramesOpenTest",
+        "resetKeepsNoiseFloorTest",
+        "silenceBreaksOpeningTest",
+        "invalidDoesNotRetirePendingFramesTest"
+      ],
+      "invariants": [
+        "RingBounded",
+        "ActiveOwnsUtterance",
+        "OutputBounded",
+        "InactiveBuffersCleared",
+        "FloorBounded"
+      ],
+      "abstractions": [
+        "Eight constant PCM amplitudes and millidecibel RMS/floor projection with a two-millidecibel numerical tolerance.",
+        "Exact ring and utterance ownership/counts through the 400-frame limit. Source output windows retain individual consumed frame actions."
+      ]
     }
   ]
 }

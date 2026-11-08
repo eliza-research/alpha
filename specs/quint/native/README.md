@@ -443,3 +443,17 @@ recorder allocations, one queued wake action, and fixed speech/silence frame
 sequences. It observes cleared frame and transferred ASR sample buffers.
 General adaptive floor/pre-roll histories, unrestricted callback schedules and
 installed Android audio and assistant invocation remain separate obligations.
+
+`NativeSpeechGate` models the listener's separate adaptive noise floor and
+PCM buffering. Its source projection reads the real circular pre-roll slots,
+opening and closing counters, exact utterance sample order, and zeroed unused
+storage. It covers the 15-frame minimum, 35-frame silence hangover and 400-frame
+maximum, including truncation of a trailing silence run at that maximum. Reset
+clears PCM while retaining the learned noise floor. Synthetic frame classes
+straddle the absolute speech threshold and exercise steady-noise adaptation.
+
+The model bounds PCM to eight constant-amplitude inputs and compares rounded
+millidecibels with a two-millidecibel tolerance. The source passes the actual
+classifier result and measured floor at each frame. The model checks their
+threshold and update relation, then derives the expected buffer state. Complete
+floating-point coverage and installed microphone behavior remain separate.

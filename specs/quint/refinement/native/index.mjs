@@ -30,6 +30,7 @@ import {checkSpeechWarmup} from './speech-warmup.mjs';
 import {checkRecognizerAvailability} from './recognizer-availability.mjs';
 import {checkOnDeviceRecognizer} from './on-device-recognizer.mjs';
 import {checkListenerInput} from './listener-input.mjs';
+import {checkSpeechGate} from './speech-gate.mjs';
 
 export async function runNativeRefinement() {
   const models = ['VadSegmentation', 'RendererRecovery', 'ResidentScheduling'];
@@ -135,7 +136,7 @@ export async function runNativeRefinement() {
   results.push(await checkSharedRecording([fileURLToPath(import.meta.url)]));
   results.push(await checkLiveCapture([fileURLToPath(import.meta.url)]));
   const nativeInputs = [fileURLToPath(import.meta.url), join(root, 'specs/quint/refinement/model-state.mjs')];
-  for (const check of [checkAsrPipe, checkPipedCapture, checkCaptureFrames, checkIndicatorProvider, checkListenerStore, checkListenerService, checkSpeechWarmup, checkRecognizerAvailability, checkOnDeviceRecognizer, checkListenerInput]) {
+  for (const check of [checkAsrPipe, checkPipedCapture, checkCaptureFrames, checkIndicatorProvider, checkListenerStore, checkListenerService, checkSpeechWarmup, checkRecognizerAvailability, checkOnDeviceRecognizer, checkListenerInput, checkSpeechGate]) {
     results.push(await check(nativeInputs));
   }
   const obligations = [
@@ -161,6 +162,7 @@ export async function runNativeRefinement() {
     {model: 'NativeListenerStore', obligation: 'Android durability, arbitrary preference writers and service acceptance', reason: 'Actual store executes with separate in-memory and persistent fixture state, including fresh-JVM restart.'},
     {model: 'NativeListenerService', obligation: 'Installed resource release and arbitrary audio/recognition callbacks', reason: 'Actual service lifecycle, store and lease execute. Unconfirmed physical release remains a distinct observed outcome.'},
     {model: 'NativeListenerInput', obligation: 'Unrestricted PCM, scheduling and real assistant invocation', reason: 'Actual capture loop, speech gate and recognition/wake callbacks execute fixed synthetic PCM batches and controlled provider replies. General noise-floor/pre-roll histories and installed behavior remain separate.'},
+    {model: 'NativeSpeechGate', obligation: 'Arbitrary PCM and full floating-point refinement', reason: 'Actual adaptive floor, ring and utterance buffers are observed using fixed representative PCM frames and a millidecibel tolerance.'},
     {model: 'NativeSpeechWarmup', obligation: 'Bridge admission and installed AudioTrack behavior', reason: 'The actual silent output writer runs with controlled factory, clock and output primitives. Shared bridge publication and physical audibility are separate.'},
     {model: 'NativeOnDeviceRecognizer', obligation: 'Android Binder recognizer, device speech and arbitrary session schedules', reason: 'Actual session, pipe/worker ownership and stale callback fencing run with controlled Android provider/pipe primitives.'},
     {model: 'NativeRecognizerAvailability', obligation: 'Android recognizer support and installed model delivery', reason: 'Actual per-language cache and concurrent probes execute with controlled answer/clock inputs. Full Android speech sessions remain separate.'},

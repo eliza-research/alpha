@@ -236,3 +236,13 @@ first read until start admission settles. On a retained capture, the pending
 read's original ticket stays visible across privacy and playback changes.
 Source traces include a held ASR reply and a queued wake callback across call,
 playback and destruction, plus visible notification and lease loss boundaries.
+
+### Listener adaptive speech gate
+
+`speech-gate.mjs` runs the actual shared `SpeechGate` with fixed PCM classes.
+The observer reads its RMS and adaptive floor, classifier result, physical ring
+slots, utterance buffer and sink arrays. Source-side input reuse after each call
+checks that retained audio owns its frame copy. Multi-frame checkpoints retain
+every actual input and rounded floor observation. They cover ring wrap,
+interrupted opening, short-turn discard, silence trimming, the exact 400-frame
+cap, reset, invalid inputs and steady-noise adaptation.
