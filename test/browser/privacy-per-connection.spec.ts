@@ -13,7 +13,7 @@ const REDACTION = {
 };
 // Former fixture activity rows and claims must never be presented as this phone's history.
 const fixtureActivity = [/Drafted a reply to Maya/, /Filed Jordan's term sheet/, /Moved Gym to 7:30 PM/, /Summarized 14 emails/, /Ran Morning brief/, /Redaction receipt saved/, /Booked Nopa/, /\b\d+ today\b/];
-const forbidden = [/Redaction on/, /Identifiers replaced/, /Pre-egress redaction is not connected/, /hosted inference/];
+const forbidden = [/Redaction on/, /Identifiers replaced/, /Pre-egress redaction is not connected/, /Identifier swap only/, /before hosted inference/];
 
 type Scenario = 'resident' | 'remote' | 'offline';
 async function nativeStub(page: Page, scenario: Scenario, options: { strayKeyInStatus?: boolean; proposals?: boolean; locationAccess?: 'approximate' | 'precise'; providerStatus?: { provider: string; model: string } } = {}) {
