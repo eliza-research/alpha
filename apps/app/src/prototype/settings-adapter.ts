@@ -487,8 +487,8 @@ export function installSettingsAdapter(Component: any, views: Bag) {
     const manage = (page: string) => () => void device.openSettings({ page }).then(opened => { const notice = broaderPageNotice(page, opened); if (notice) api.toast(notice); }, () => api.toast('This Android settings page is unavailable.'));
     const info = (label: string, val: string): Bag => ({ id: `info:${label}`, kInfo: true, label, val, hasVal: !!val, noAB: true });
     const row = (label: string, go: () => void, val = '', extra: Bag = {}): Bag => ({ id: `row:${label}`, kNav: true, label, lbl: label, val, hasVal: !!val, chev: true, noAB: true, go, ...extra });
-    const toggle = (label: string, on: boolean, change: () => void): Bag => ({ id: `toggle:${label}`, kTog: true, label, aria: label, on, track: on ? 'background:var(--acc)' : 'background:var(--line)', kx: on ? 20 : 0, toggle: change });
-    const log = (time: string, text: string): Bag => ({ id: `log:${time}:${text}`, kLog: true, time, text });
+    const toggle = (label: string, on: boolean, change: () => void, id = `toggle:${label}`): Bag => ({ id, kTog: true, label, aria: label, on, track: on ? 'background:var(--acc)' : 'background:var(--line)', kx: on ? 20 : 0, toggle: change });
+    const log = (time: string, text: string, id = `log:${time}:${text}`): Bag => ({ id, kLog: true, time, text });
     const group = (rows: Bag[], cap = '', id = cap || String(rows[0]?.id ?? rows[0]?.label ?? 'empty')): Bag => ({
       id: `group:${id}`, css: 'background:var(--s2);padding:4px 0',
       rows: rows.map(value => ({ ...value, id: value.id ?? `row:${value.aria ?? value.label ?? value.time ?? ''}` })),
@@ -508,6 +508,7 @@ export function installSettingsAdapter(Component: any, views: Bag) {
         signOut: () => void connectionController.cloudSignOut(), recheck: () => connectionController.recheckPlanOnReturn(), signIn: () => void connectionController.residentCloudLogin() } }) : null;
     const cloudRow = cloudPage ? row(serviceName, go('account'), plan!.keyExpiring ? 'Sign-in expiring' : plan!.signedIn ? plan!.plan : 'Sign in')
       : row(serviceName, () => connectionController.openCloudAccount(), account ? 'Signed in' : 'Sign in');
+    cloudRow.id = 'cloud-account';
     const googleCount = gmailAccounts.filter(a => a.connected && a.connectionId).length;
     const googleRow = row('Google', () => googleConnectionController.open(), googleCount ? `${googleCount} account${googleCount === 1 ? '' : 's'}` : connectionController.getCloudClient() ? 'Connect' : '');
 
@@ -593,7 +594,7 @@ export function installSettingsAdapter(Component: any, views: Bag) {
       group(present([androidRow, aboutRow, developerRow]), '', 'system'),
       group(present([resetRow]), '', 'reset'),
       ...(developerTools ? [group([row('Try mock mode', () => connectionController.mock())], '', 'development')] : []),
-      ...(developerTools && !native && recovery.length ? [group(recovery.map(name => row(recoveryActions[name].label, () => recoveryActions[name].open())), 'Saved data needs recovery')] : []),
+      ...(developerTools && !native && recovery.length ? [group(recovery.map(name => row(recoveryActions[name].label, () => recoveryActions[name].open(), '', { id: `recovery:${name}` })), 'Saved data needs recovery')] : []),
     ].filter(g => g.rows.length);
 
     // ---- Pages
@@ -623,20 +624,20 @@ export function installSettingsAdapter(Component: any, views: Bag) {
       const review: Bag[] = [];
       if (connection.session && connection.phoneActionsAvailable) {
         for (const item of connection.actionHistory) if (['pending', 'executing', 'reconciliation_required'].includes(item.state)) {
-          review.push(log(item.title, item.outcome + (item.timestamp ? ` · ${item.timestamp}` : '')));
+          review.push(log(item.title, item.outcome + (item.timestamp ? ` · ${item.timestamp}` : ''), `action:${item.id}:status`));
           if (!connection.busy) {
-            if (item.state === 'pending') review.push(row('Reject', () => void connectionController.rejectAction(item.id)));
-            else review.push(row('It happened', () => void connectionController.reconcileAction(item.id, 'applied')), row('It did not happen', () => void connectionController.reconcileAction(item.id, 'not_applied')));
+            if (item.state === 'pending') review.push(row('Reject', () => void connectionController.rejectAction(item.id), '', { id: `action:${item.id}:reject` }));
+            else review.push(row('It happened', () => void connectionController.reconcileAction(item.id, 'applied'), '', { id: `action:${item.id}:applied` }), row('It did not happen', () => void connectionController.reconcileAction(item.id, 'not_applied'), '', { id: `action:${item.id}:not-applied` }));
           }
         }
         if (!connection.busy) review.push(row('Check recorded actions', () => void connectionController.actionHistory(true)));
       }
-      stack.push(subpage('Agent', [group(rows, '', 'agent-status'), group(actions, '', 'agent-actions'), group(review, review.length > 1 ? 'Actions to confirm' : '')]));
+      stack.push(subpage('Agent', [group(rows, '', 'agent-status'), group(actions, '', 'agent-actions'), group(review, review.length > 1 ? 'Actions to confirm' : '', 'agent-review')]));
       if (current === 'history') {
-        const history: Bag[] = connection.conversations.map((item: Bag) => row(item.title, () => void connectionController.restoreHistory(item.id)));
+        const history: Bag[] = connection.conversations.map((item: Bag) => row(item.title, () => void connectionController.restoreHistory(item.id), '', { id: `conversation:${item.id}` }));
         if (connection.historyError) history.push(log('Problem', connection.historyError), row('Try again', () => void connectionController.retrySavedHistory()));
         if (!history.length) history.push(info(connection.busy ? 'Loading…' : 'No earlier conversations', ''));
-        stack.push(subpage('Earlier conversations', [group(history)], { z: 6, back: go('agent-connection'), backLabel: 'Back to Agent' }));
+        stack.push(subpage('Earlier conversations', [group(history, '', 'conversations')], { z: 6, back: go('agent-connection'), backLabel: 'Back to Agent' }));
       }
     }
     if (current === 'listening' && listener.available) {
@@ -707,13 +708,13 @@ export function installSettingsAdapter(Component: any, views: Bag) {
       });
       const appRows: Bag[] = [];
       for (const app of selected) {
-        appRows.push(toggle(app.available === false ? `${app.label} (changed)` : app.label, true, () => policy({ apps: keep(selected.filter(a => a.packageName !== app.packageName)) })));
+        appRows.push(toggle(app.available === false ? `${app.label} (changed)` : app.label, true, () => policy({ apps: keep(selected.filter(a => a.packageName !== app.packageName)) }), `notification-app:${app.packageName}:collect`));
         appRows.push(toggle(`Show previews: ${app.label}`, !!app.preview, () => {
           if (native && !app.preview && !window.confirm(`Show notification text from ${app.label} while unlocked? It is not stored or sent to your agent.`)) return;
           policy({ apps: selected.map(a => ({ packageName: a.packageName, preview: a.packageName === app.packageName ? !app.preview : a.preview })) });
-        }));
+        }, `notification-app:${app.packageName}:preview`));
       }
-      for (const app of choices || []) if (!selected.some(a => a.packageName === app.packageName)) appRows.push(toggle(app.label, false, () => policy({ apps: [...keep(selected), { packageName: app.packageName, preview: false }] })));
+      for (const app of choices || []) if (!selected.some(a => a.packageName === app.packageName)) appRows.push(toggle(app.label, false, () => policy({ apps: [...keep(selected), { packageName: app.packageName, preview: false }] }), `notification-app:${app.packageName}:collect`));
       appRows.push(busyRow(choices ? 'Done adding apps' : 'Add apps', () => { if (choices) { choices = null; changed(); return; } void run(async () => { choices = (await notifications.notificationApps()).apps; }); }));
       const historyRows: Bag[] = [toggle('Keep history', !!cross.history, () => {
         if (native && !cross.history && !window.confirm('Keep up to 100 notification events for 24 hours on this phone? Only the app and time are saved, never the text.')) return;
@@ -721,7 +722,7 @@ export function installSettingsAdapter(Component: any, views: Bag) {
       })];
       if (cross.history || history?.length) {
         if (history === null) historyRows.push(busyRow('Show history', () => { notificationBusy = true; const instance = owner; void notifications.notificationHistory().then(result => { if (owner === instance) history = result.items; }).catch(() => api.toast('History is unavailable.')).finally(() => { notificationBusy = false; changed(); }); }));
-        else for (const item of history) historyRows.push(log(new Date(item.at).toLocaleString(), `${item.appLabel} · ${item.state}`));
+        else for (const [index, item] of history.entries()) historyRows.push(log(new Date(item.at).toLocaleString(), `${item.appLabel} · ${item.state}`, `notice:${item.id ?? `${item.packageName}:${item.at}:${item.state}:${index}`}`));
         historyRows.push(busyRow('Clear history', () => { if (window.confirm('Clear notification history?')) void run(async () => { await notifications.clearNotificationHistory(); history = []; }); }));
       }
       stack.push(subpage('Other apps', [
@@ -742,24 +743,24 @@ export function installSettingsAdapter(Component: any, views: Bag) {
               apkUrl: update.apkUrl, sha256: update.sha256,
               sizeBytes: update.sizeBytes, versionCode: update.versionCode,
             }).catch(() => { /* Keep the offer available for an explicit retry. */ })),
-            update.versionName ? versionLabel(update.versionName, update.versionCode) : String(update.versionCode)),
+            update.versionName ? versionLabel(update.versionName, update.versionCode) : String(update.versionCode), { id: 'update-install' }),
           sub: update.notes, hasSub: !!update.notes, busy: !!updateBusy,
         }] : []),
         row(updateBusy === 'check' ? 'Checking for updates…' : 'Check for updates',
-          () => void updateAction('check', () => checkForUpdate(true)), '', { busy: !!updateBusy }),
+          () => void updateAction('check', () => checkForUpdate(true)), '', { id: 'update-check', busy: !!updateBusy }),
       ] : [];
-      stack.push(subpage('About', [group([info('Alpha Phone', versionLabel(facts.appVersion || buildVersion, facts.appVersionCode))]), group(updateRows), group([
+      stack.push(subpage('About', [group([info('Alpha Phone', versionLabel(facts.appVersion || buildVersion, facts.appVersionCode))]), group(updateRows, '', 'about-updates'), group([
         row('Problem log', () => { api.set({ page: 'problems' }); void refresh(); void refreshResidentDiagnostics(); }, problemCount === null ? '' : problemCount ? String(problemCount) : 'None'),
         row('Export diagnostics', () => void exportDiagnostics(api), diagnosticsBusy ? 'Preparing…' : ''),
         row('Open source licenses', () => { api.set({ page: 'licenses' }); void loadLicenses(changed); }),
       ])]));
       const toAbout = { z: 6, back: go('about'), backLabel: 'Back to About' };
       if (current === 'problems') {
-        const entries = crashLog ? [...crashLog.entries].reverse().map(entry => { const line = describeCrashEntry(entry); return log(new Date(entry.at).toLocaleString(), `${line.title} · ${line.detail}`); }) : [];
+        const entries = crashLog ? [...crashLog.entries].reverse().map((entry, index) => { const line = describeCrashEntry(entry); return log(new Date(entry.at).toLocaleString(), `${line.title} · ${line.detail}`, `problem:${entry.at}:${entry.source}:${index}`); }) : [];
         stack.push(subpage('Problem log', [group(crashLog ? entries.length ? entries : [info('No problems recorded', '')] : [info('Problem log unavailable', '')]),
           group(crashLog?.entries.length ? [row('Clear problem log', () => void clearProblems(api), crashBusy ? 'Clearing…' : '', { labCss: 'color:var(--fg);font-weight:600' })] : [])], toAbout));
       }
-      if (current === 'licenses') stack.push(subpage('Open source licenses', licenses.status === 'ready' ? licenses.items.map(item => group([info(item.name, `${item.version} · ${item.license}`), ...licenseFlagRows(item), ...(typeof item.source === 'string' && item.source ? [log('Source', item.source)] : []), ...(typeof item.text === 'string' && item.text ? [log('License', item.text)] : [])]))
+      if (current === 'licenses') stack.push(subpage('Open source licenses', licenses.status === 'ready' ? licenses.items.map(item => group([info(item.name, `${item.version} · ${item.license}`), ...licenseFlagRows(item), ...(typeof item.source === 'string' && item.source ? [log('Source', item.source)] : []), ...(typeof item.text === 'string' && item.text ? [log('License', item.text)] : [])], '', `license:${item.name}:${item.version}:${item.source ?? ''}`))
         : [group([info(licenses.status === 'unavailable' ? 'License notices unavailable' : 'Loading…', '')])], toAbout));
     }
     if (current === 'developer') {

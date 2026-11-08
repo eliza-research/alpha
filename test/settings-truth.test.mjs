@@ -186,3 +186,17 @@ test('Settings groups and actions keep identities when async rows are inserted',
  assert.equal(before.rows[0].id,after.rows[1].id);
  assert.notEqual(after.rows[0].id,after.rows[1].id);
 });
+
+
+test('identically labelled Settings actions preserve their source identity',()=>{
+ const start=source.indexOf('    const info ='),end=source.indexOf('    const back =',start);
+ const helpers=new Function(stripTypeScriptTypes(source.slice(start,end),{mode:'strip'})+';return {row,group};')();
+ const calls=[];
+ const a=helpers.row('Same title',()=>calls.push('a'),'',{id:'conversation:a'});
+ const b=helpers.row('Same title',()=>calls.push('b'),'',{id:'conversation:b'});
+ const before=helpers.group([a,b],'','conversations'),after=helpers.group([b,a],'','conversations');
+ assert.equal(before.id,after.id);
+ assert.notEqual(a.id,b.id);
+ after.rows.find(row=>row.id==='conversation:a').go();
+ assert.deepEqual(calls,['a']);
+});
