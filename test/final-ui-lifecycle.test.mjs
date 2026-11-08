@@ -37,7 +37,7 @@ test('Settings row identity survives asynchronous insertion and nested Back reta
  const first=normalize({stack:[{title:'Settings',groups:[{cap:'Account',rows:[{label:'Google'},{label:'About'}]}]}]});
  const second=normalize({stack:[{title:'Settings',groups:[{cap:'Account',rows:[{label:'Finish setup'},{label:'Google'},{label:'About'}]}]}]});
  assert.equal(first.stack[0].groups[0].id,second.stack[0].groups[0].id);assert.equal(first.stack[0].groups[0].rows[1].id,second.stack[0].groups[0].rows[2].id);
- const back=between(s,'  const settingsBack = definition.back;','  definition.render =');const calls=[],definition={back:()=>false};vm.runInNewContext(ts(back),{definition,PASSWORD_PAGES:['password-provider','password-entry'],leavePasswordManager:()=>calls.push('leave')});
+ const back=between(s,'  const categoryNames:','  definition.render =');const calls=[],definition={back:()=>false};vm.runInNewContext(ts(back),{definition,PASSWORD_PAGES:['password-provider','password-entry'],leavePasswordManager:()=>calls.push('leave')});
  assert.equal(definition.back({page:'password-entry'},{set:p=>calls.push(p.page)}),true);assert.deepEqual(calls,['password-provider']);
 });
 test('keyboard hide and background retire composer focus without changing the draft',()=>{
