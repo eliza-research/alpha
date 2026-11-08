@@ -15,8 +15,12 @@ import {checkNativeNoteRecording} from './note-recording.mjs';
 import {checkNoteRecordingService} from './note-recording-service.mjs';
 import {checkVoiceDraft} from './voice-draft.mjs';
 import {checkNotePermission} from './note-bridge.mjs';
+import {checkSharedRecording} from './shared-recording.mjs';
+import {checkLiveCapture} from './live-capture.mjs';
 
 const boundaryObligations = [
+  {model:'SharedRecordingAdmission',obligation:'Installed permission delivery and complete voice composition',reason:'The actual shared bridge executes permission, cancellation and worker settlement. Android prompt/call delivery and physical microphone release remain platform obligations.'},
+  {model:'NativeLiveCapture',obligation:'ASR pipe and frame processing',reason:'The real bridge, live controller, admission and capture resource execute non-piped lifecycle and late-open cleanup. Provider warmup, piped ASR and frame buffering remain separate source campaigns.'},
   {model:'NativeNotePermission',obligation:'Shared parent lifecycle, overlapping prompts and installed consent',reason:'Complete product Notes methods execute across permission return, call changes, host retirement and failed capture. One pending request and two successful opens bound this campaign. The parent lifecycle/permission interface is supplied by a controlled port; shared LocalSpeechBridgePlugin and Android admission remain separate.'},
   {model:'NativeVoiceDraft',obligation:'Physical capture and shared bridge permission lifecycle',reason:'The real staged LocalVoiceRecording executes cache cleanup, start/stop/cancel, timer and media callbacks, failure cleanup and external selection. Permission epochs and lifecycle admission in LocalSpeechBridgePlugin remain a separate source scope.'},
   {model:'NativeNoteRecording',obligation:'Physical recording, free-space exhaustion and unrestricted journal histories',reason:'Actual segmented recorder, journal bytes and file recovery execute. MediaRecorder/codec behavior is a controlled port. Two segments and four capture instances bound the source campaign; free-space exhaustion remains an explicit unexecuted source branch.'},
@@ -59,6 +63,8 @@ export async function runNativeRefinement(extraSources = []) {
   receipts.push(await checkNoteRecordingService(sources));
   receipts.push(await checkVoiceDraft(sources));
   receipts.push(await checkNotePermission(sources));
+  receipts.push(await checkSharedRecording(sources));
+  receipts.push(await checkLiveCapture(sources));
   const obligations = [...boundaryObligations,...credential.obligations];
   for (const model of new Set(receipts.map(receipt => receipt.model))) {
     const related = receipts.filter(receipt => receipt.model === model);

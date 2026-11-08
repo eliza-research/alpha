@@ -109,6 +109,21 @@ test('source discovery follows consumed shared modules and rejects a stale clien
       write(`specs/quint/${family}/manifest.json`, family === 'services'
         ? [{sources: ['vendor/eliza/plugins/worker/src/state.ts']}] : []);
     }
+    const bundledSource = 'export let bundled = false;';
+    const generatedOrigin = 'export let generatedOrigin = false;';
+    write('vendor/eliza/packages/core/src/bundled.ts', bundledSource);
+    write('vendor/eliza/packages/core/src/generated.ts', generatedOrigin);
+    const graph = {
+      schema: 1, classification: 'observed-product-android-bundle-inputs', sourcePin: 'fixture',
+      producer: {sourceTreeVerifiedBeforeAndAfter: true, inputHashesUnchanged: true},
+      files: {
+        'packages/core/src/bundled.ts': {tracked: true, sha256: sha256(bundledSource)},
+        'packages/core/dist/generated.js': {tracked: false, generatedSource: {
+          source: 'packages/core/src/generated.ts', sourceSha256: sha256(generatedOrigin),
+        }},
+      },
+    };
+    write('specs/quint/refinement/services/runtime-bundle-inputs.json', graph);
     write('vendor/eliza/plugins/worker/src/state.ts', 'export let queued = false;');
     write('vendor/eliza/packages/ui/src/state.ts', 'export let active = false;');
     write('vendor/eliza/plugins/fixture/android/src/main/java/Fixture.java', 'class Fixture {}');
@@ -119,6 +134,8 @@ test('source discovery follows consumed shared modules and rejects a stale clien
     const result = run();
     assert.equal(result.status, 0, result.stderr);
     assert.deepEqual(JSON.parse(result.stdout), [
+      'vendor/eliza/packages/core/src/bundled.ts',
+      'vendor/eliza/packages/core/src/generated.ts',
       'vendor/eliza/packages/runtime/Owner.java',
       'vendor/eliza/packages/ui/src/state.ts',
       'vendor/eliza/plugins/fixture/android/src/main/java/Fixture.java',
@@ -126,6 +143,12 @@ test('source discovery follows consumed shared modules and rejects a stale clien
     ]);
     write('vendor/eliza/plugins/fixture/android/src/main/java/Added.java', 'class Added {}');
     assert.ok(JSON.parse(run().stdout).includes('vendor/eliza/plugins/fixture/android/src/main/java/Added.java'));
+    write('specs/quint/refinement/services/runtime-bundle-inputs.json', {...graph, sourcePin: 'obsolete'});
+    assert.match(run().stderr, /Refresh the authenticated runtime bundle inventory/);
+    write('specs/quint/refinement/services/runtime-bundle-inputs.json', graph);
+    write('vendor/eliza/packages/core/src/bundled.ts', 'export let bundled = true;');
+    assert.match(run().stderr, /Runtime bundle input changed/);
+    write('vendor/eliza/packages/core/src/bundled.ts', bundledSource);
     write('.eliza/client-features/.source.json', {baseCommit: 'obsolete', sourceFiles: {}});
     const stale = run();
     assert.notEqual(stale.status, 0);

@@ -26,6 +26,44 @@ export function filesWithin(directory, accept = () => true) {
 
 export const relativePath = path => relative(repositoryRoot, path).split('\\').join('/');
 export const sha256 = bytes => createHash('sha256').update(bytes).digest('hex');
+
+/** Admit the tracked inputs and declared origins of the audited Android bundle. */
+function runtimeBundleSourcePaths(pin) {
+  const graph = readJson(join(quintRoot, 'refinement/services/runtime-bundle-inputs.json'));
+  if (graph.schema !== 1 || graph.sourcePin !== pin.commit
+      || graph.classification !== 'observed-product-android-bundle-inputs'
+      || !graph.producer?.sourceTreeVerifiedBeforeAndAfter || !graph.producer?.inputHashesUnchanged) {
+    throw Error('Refresh the authenticated runtime bundle inventory for the current upstream pin');
+  }
+  const inputs = new Map();
+  const include = (path, digest) => {
+    if (typeof path !== 'string' || path.startsWith('/') || path.split('/').some(part => !part || part === '..' || part === '.')) {
+      throw Error(`Invalid runtime bundle source path ${path}`);
+    }
+    if (!/^[a-f0-9]{64}$/.test(digest) || (inputs.has(path) && inputs.get(path) !== digest)) {
+      throw Error(`Inconsistent runtime bundle source hash ${path}`);
+    }
+    inputs.set(path, digest);
+  };
+  for (const [path, input] of Object.entries(graph.files)) {
+    if (input.tracked) include(path, input.sha256);
+    else {
+      const origin = input.generatedSource;
+      if (!origin?.source && !origin?.sourceMaps?.length) throw Error(`Unmapped generated runtime input ${path}`);
+      if (origin.source) include(origin.source, origin.sourceSha256);
+      if (origin.config) include(origin.config, origin.configSha256);
+      for (const source of origin.sourceMaps || []) include(source.path, source.sha256);
+    }
+  }
+  return [...inputs].map(([path, digest]) => {
+    const source = `vendor/eliza/${path}`;
+    if (sha256(readFileSync(join(repositoryRoot, source))) !== digest) {
+      throw Error(`Runtime bundle input changed and needs a new producer inventory ${source}`);
+    }
+    return source;
+  });
+}
+
 /** Discover the shared source consumed by this product from its authenticated inputs. */
 export function sharedSourcePaths() {
   const pin = readJson(join(repositoryRoot, 'upstream.lock.json'));
@@ -55,7 +93,7 @@ export function sharedSourcePaths() {
       }
     }
   }
-  const sources = new Set();
+  const sources = new Set(runtimeBundleSourcePaths(pin));
   for (const prefix of prefixes) {
     const target = join(repositoryRoot, 'vendor/eliza', prefix);
     const paths = statSync(target).isDirectory() ? filesWithin(target) : [target];

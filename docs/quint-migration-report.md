@@ -323,16 +323,20 @@ starts at `f2a0eb035da9c8ede24efe735d981a27dd403283`, with shared upstream
 verification remains evidence for that earlier source. Its product source is
 being ported selectively so current-main ownership and behavior are preserved.
 
-The inventory now discovers 1,523 product and selected shared source files,
-including 683 upstream files selected by the client projection, Android host
-modules, resident helper list and native patch modules. Registered worker source dependencies also join the
-drift ledger. Independent prepared-worker and AgentRuntime import-graph review
-remains open. Verification-support
-sources have a separate scope. Domain allocation is recorded independently from
-state-field and transition refinement. Changed and newly discovered sources
-remain explicitly marked `state-audit-required` until their concrete state has
-been reviewed. Broad source hashing cannot discharge this work.
+The current inventory discovers 5,653 product and shared-source inputs. This
+includes 4,813 upstream inputs selected by the client/native projections, direct
+model dependencies and an authenticated Android bundle graph. The successful
+producer parsed 4,338 first-party inputs, including 248 generated inputs with
+origin mappings. The graph and its generator are bound as configuration inputs.
+All tracked inputs and generated-source origins are checked against current
+source bytes before coverage admission.
 
+There are 83 registered models. The source ledger retains 5,288
+`state-audit-required` rows and 1,533 rows with only the general application
+domain allocation. These rows identify unfinished review. They do not establish
+state-machine coverage or an implementation relation. The worker bundle,
+runtime-computed imports, enabled feature paths and external providers remain
+separate discovery and contract obligations.
 The four newly discovered view-refresh TLA+ designs and their 22 configurations
 now have Quint translations. There are no tracked `.tla` or `.cfg` files in the
 product tree or its pinned upstream checkout. Historical design comparisons
@@ -341,14 +345,28 @@ to deleted implementations are excluded from current runtime conformance.
 
 Current-main work includes shared sign-in ownership, linked Calendar sync,
 Inbox review/provider-draft flows, native task/recovery/credential coordinators,
-renderer recovery and delayed Settings role updates. Remaining source work
-includes the seven-step permission coordinator, canonical Notes recording and
-folders, current Files browser and Photos state, current launcher coordination,
-native media/recorder lifecycles, broader device actions, listener integration,
-and cross-controller refinement. The aggregate report lists unobserved declared
-fields and unexecuted transitions using Quint's parsed state declarations,
-including nested records and imported instances.
+renderer recovery, seven-step native and four-step browser permissions, canonical
+Notes controller/draft state, segmented recording and live capture admission.
+The actual core runtime now has separate retirement, service lifecycle and
+shutdown models. Their bounded source campaigns record their remaining actions,
+fields and composition obligations.
 
+Further work includes Notes deletion/restore and UI joining, folders and recorder
+UI, current Files and Photos controllers, launcher coordination, piped ASR and
+frame buffering, media/device/listener owners, TaskService and trigger dispatch,
+room leases and turn ownership, model/provider state, deferred boot and plugin
+registration, and workflow process/worker lifecycles. The source graph provides
+a file-level backlog for the remaining unclassified modules. The aggregate
+report uses parsed Quint declarations to list unobserved fields and unexecuted
+transitions, including nested records and imported instances.
+
+PR 825 is mergeable against main after the reconciliation merge at `2f14ad0302`.
+The frozen 76-model formal phases passed. Its full application test run remains
+in progress and has exposed fixture/environment failures. Follow-up fixes are
+being checked in the 83-model integration tree. Fourteen Cloud profile tests pass
+when supplied the exact verified SDK tree and pinned Bun used by CI. Eight
+background-restore tests pass after their fixture includes the actual operation
+settlement helper. Full repository and distribution acceptance remain open.
 The current-main Android build preflight rejects the voice qualification pin
 `47982b8f49d16d520990e14e07cdeb5c6931df81` against the application's `475a8d5`
 pin. APK verification then reports missing distribution artifacts. No Android
