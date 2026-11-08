@@ -11,14 +11,14 @@ public final class ResidentResultTransportTest {
  static void rejects(Task task)throws Exception {try{task.run();}catch(Exception expected){return;}throw new AssertionError("accepted forbidden request");}
  static final class Channel implements ResidentResultTransport.Channel {
   final List<String> paths=new ArrayList<>();boolean cancelled,acknowledged,loseAck;String owner="owner",agent="agent",token="session",agentStatus="running";int status=200;AtomicLong clock=new AtomicLong();
-  Runnable beforeAck=()->{};boolean cancelResult,oversized,expire;
+  Runnable beforeAck=()->{};boolean cancelResult,oversized,expire;JSONObject entry;
   public void check(){if(cancelled)throw new SecurityException("cancelled");}
   public JSONObject exchange(String path,String method,JSONObject body,int timeout)throws Exception {
    require(timeout>0&&timeout<=15000);paths.add(method+" "+path);JSONObject value;
    if(path.equals("/api/auth/me"))value=new JSONObject().put("identity",new JSONObject().put("id",owner).put("kind","owner")).put("access",new JSONObject().put("role","OWNER").put("mode","session")).put("session",new JSONObject().put("kind","machine").put("id",token).put("expiresAt",expire?1:EXPIRES));
    else if(path.equals("/api/agents"))value=new JSONObject().put("agents",new JSONArray().put(new JSONObject().put("id",agent).put("status",agentStatus)));
    else if(path.equals("/api/workflow/status"))value=new JSONObject().put("hostedDigestProtocol",1);
-   else if(path.startsWith("/api/workflow/hosted/results?")){value=new JSONObject().put("entries",acknowledged?new JSONArray():new JSONArray().put(result()));if(cancelResult)cancelled=true;}
+   else if(path.startsWith("/api/workflow/hosted/results?")){value=new JSONObject().put("entries",acknowledged?new JSONArray():new JSONArray().put(entry!=null?entry:result()));if(cancelResult)cancelled=true;}
    else if(path.equals("/api/workflow/hosted/results/ack")){require(method.equals("POST"));beforeAck.run();if(loseAck){loseAck=false;throw new java.io.IOException("lost ack");}acknowledged=true;value=new JSONObject();}
    else throw new AssertionError("Unexpected route "+path);
    return new JSONObject().put("status",status).put("body",oversized?"x".repeat(1100001):value.toString());
@@ -27,6 +27,17 @@ public final class ResidentResultTransportTest {
  }
  static JSONObject result(){String now="2026-10-02T00:00:00Z";return new JSONObject().put("cursor",1).put("runId","run-one").put("workflowId","workflow").put("workflowVersionId","version").put("templateVersion","template").put("scheduledAt",now).put("startedAt",now).put("completedAt",now).put("source",new JSONObject().put("kind","tasks")).put("status","completed").put("output","Synthetic result").put("error",JSONObject.NULL);}
  static final class Store implements HostedInbox.Store,HostedResultNotices.Storage {final Map<String,String> values=new HashMap<>();public String read(String key){return values.get(key);}public void write(String key,String value){values.put(key,value);}public void remove(String key){values.remove(key);}}
+ /** Syncs saved then next into a fresh inbox; returns the saved slot and the number of posted notices, or null when next was refused. */
+ static Object[] replace(JSONObject saved,JSONObject next)throws Exception {
+  Store store=new Store();int[] posts={0};HostedResultNotices notices=new HostedResultNotices(store,new HostedResultNotices.Poster(){public boolean allowed(){return true;}public boolean active(String key){return true;}public void post(String key){posts[0]++;}public void cancel(String key){}});
+  HostedInbox inbox=new HostedInbox(store,new Object(),notices);String origin="https://device.alpha.invalid",scope=HostedResultNotices.hash(new JSONArray().put(origin).put("owner").put("agent").toString());JSONObject binding=new JSONObject().put("scope",scope).put("origin",origin).put("ownerId","owner").put("agentId","agent");String key="hosted-digests:v1:"+scope+":run-one";
+  Channel channel=new Channel();channel.entry=saved;inbox.sync(binding,channel.transport(),()->{});require(channel.acknowledged&&posts[0]==1);
+  channel.acknowledged=false;channel.entry=next;String before=store.read(key);
+  try{inbox.sync(binding,channel.transport(),()->{});}catch(IllegalStateException error){require("Saved result changed".equals(error.getMessage())&&!channel.acknowledged&&before.equals(store.read(key)));return null;}
+  require(channel.acknowledged);JSONArray history=inbox.history("hosted-digests:v1:"+scope);require(history.length()==1);
+  require(inbox.sync(binding,channel.transport(),()->{}).length()==1);
+  return new Object[]{HostedInbox.parse(store.read(key)),posts[0],new JSONObject(store.read("hosted-digests:v1:"+scope)).optJSONArray("pendingNotices").length()};
+ }
  public static void main(String[] args)throws Exception {
   for(String slot:new String[]{"reminder-taps:v1","reminder-taps:v2","workflow-notice-taps:v1","workflow-notice-delivery:v1","workflow-notice-owner:v1","workflow-approval-notices:v1","action-journal:v1:scope:entry:id","hosted-background:v1:active","hosted-background:v1:preference","hosted-digests:v1:scope:run","hosted-notices:pending:v1","note-audio-metadata:v1:record","resident-results:v1:credential","resident-results:future","local-agent-provider:v1",null,""})rejects(()->RendererCredentialSlots.requireAllowed(slot));
   require(RendererCredentialSlots.requireAllowed("device:fixture").equals("device:fixture"));
@@ -50,6 +61,11 @@ public final class ResidentResultTransportTest {
   Channel recovery=new Channel();recovery.loseAck=true;recovery.beforeAck=()->{try{require(inbox.history(slot).length()==1);}catch(Exception error){throw new AssertionError(error);}};
   rejects(()->inbox.sync(binding,recovery.transport(),()->{}));String original=store.read(slot+":run-one");require(original!=null&&!recovery.acknowledged);
   require(inbox.sync(binding,recovery.transport(),()->{}).length()==1);require(recovery.acknowledged&&original.equals(store.read(slot+":run-one")));
+  // The agent replaces a provisional cancellation with the native terminal under the same run; anything else is still refused.
+  JSONObject cancelled=result().put("status","cancelled").put("output","").put("error","Cancelled"),failed=result().put("cursor",2).put("status","failed").put("output","").put("error","Native step failed");
+  Object[] reconciled=replace(cancelled,failed);require(reconciled!=null&&((JSONObject)reconciled[0]).getString("status").equals("failed")&&((JSONObject)reconciled[0]).getLong("cursor")==2&&(int)reconciled[1]==2&&(int)reconciled[2]==0);
+  for(JSONObject next:new JSONObject[]{new JSONObject(failed.toString()).put("cursor",1),new JSONObject(cancelled.toString()).put("cursor",2).put("error","Cancelled again"),new JSONObject(failed.toString()).put("workflowId","other"),new JSONObject(failed.toString()).put("workflowVersionId","other"),new JSONObject(failed.toString()).put("templateVersion","other"),new JSONObject(failed.toString()).put("scheduledAt","2026-10-03T00:00:00Z"),new JSONObject(failed.toString()).put("source",new JSONObject().put("kind","inbox"))})require(replace(cancelled,next)==null);
+  require(replace(result(),new JSONObject(failed.toString()))==null);require(replace(result(),result().put("cursor",2).put("output","Changed"))==null);
   Store credentials=new Store();String root="native-runtime-root";
   JSONObject snapshot=ResidentResultSession.snapshot("owner","session",EXPIRES,root);
   credentials.write("resident",snapshot.toString());JSONObject device=new JSONObject().put("installationId","11111111-1111-1111-1111-111111111111").put("key","a".repeat(64)).put("enrollmentId","enrollment");credentials.write("device",device.toString());
