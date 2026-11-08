@@ -1,4 +1,4 @@
-import {testMocksEnabled} from '../build-flags';
+import {cloudRuntimeEnabled,testMocksEnabled} from '../build-flags';
 import {registerPlugin} from '../platform-plugins';
 import {playOwnedSpeech} from '../local-speech-playback';
 import {createOnDeviceVoice} from './local-voice';
@@ -8,6 +8,7 @@ const native=registerPlugin<any>('AlphaVoiceCloud');
 /** Approved page text stays native; the renderer passes only its one-use token.
  * Resident reading needs Paradee-8M playback only, not recognition, so it gates on playbackReady. */
 export function createNativeReadingVoice(){
+ if(cloudRuntimeEnabled)return null;
  const resident=connectionController.getResidentReadingBinding();
  if(resident){
   const voice=createOnDeviceVoice();if(!voice)return null;

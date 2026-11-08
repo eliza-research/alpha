@@ -112,3 +112,17 @@ test("BrowserReadingNavigation runs exactly one method per provider and records 
   for (const kept of ['assertFalse("Old document must not bind after invalidation",world.ready());', 'extracted.get().contains("Current synthetic page /second")', 'world.pageStarted("https://reading.invalid/other");assertFalse(world.ready());'])
     assert.ok(source.includes(kept), kept);
 });
+
+
+test('Cloud native Browser hides local-only reading without disabling page questions',()=>{
+ const match=/readAloudAvailable:([^,]+),/.exec(adapter);assert.ok(match);
+ for(const native of [true,false])for(const cloud of [true,false]){
+  const available=new Function('Capacitor','cloudRuntimeEnabled','return '+match[1])({isNativePlatform:()=>native},cloud);
+  assert.equal(available,!(native&&cloud));
+ }
+ assert.match(template,/browser\.readAloudAvailable && browser\.pageContentAvailable/);
+ const read=adapter.slice(adapter.indexOf('async function readPage()'),adapter.indexOf('async function askPage()'));
+ assert.ok(read.indexOf('if(Capacitor.isNativePlatform()&&cloudRuntimeEnabled)return;')<read.indexOf('createNativeReadingVoice()'));
+ const runtime=fs.readFileSync('apps/app/src/runtime/native-reading-voice.ts','utf8');
+ assert.match(runtime,/createNativeReadingVoice\(\)\{\s*if\(cloudRuntimeEnabled\)return null;/);
+});
