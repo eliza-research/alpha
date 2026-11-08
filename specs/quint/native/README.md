@@ -280,3 +280,12 @@ selection and cleanup when constructing a MediaRecorder fails. `NativeNotePermis
 the product Notes bridge through queued admission, permission return, foreground retirement
 and active-call refusal. The source campaigns use controlled Android inputs and synthetic audio.
 Microphone, codec, foreground-service eligibility and device acceptance remain separate gates.
+
+## Shared recording and live capture
+
+`SharedRecordingAdmission` follows the complete shared bridge's draft capture entry points,
+permission epochs, late call checks and cancellation barriers. `NativeLiveCapture` follows
+reservations, physical-source startup, publication, interrupted final events and teardown.
+Both run current patched shared Java with controlled Android audio and permission inputs.
+Protected-screen state is fixed inactive in these projections. Provider piping, physical
+audio and installed Android scheduling require their separate acceptance checks.

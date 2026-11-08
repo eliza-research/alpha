@@ -16,6 +16,8 @@ import {checkVoiceDraft} from './voice-draft.mjs';
 import {checkNotePermission} from './note-bridge.mjs';
 import {checkCredentialLeasePolicies} from './credential-leases.mjs';
 import {checkRendererCoordinator} from './renderer-coordinator.mjs';
+import {checkSharedRecording} from './shared-recording.mjs';
+import {checkLiveCapture} from './live-capture.mjs';
 
 export async function runNativeRefinement() {
   const models = ['VadSegmentation', 'RendererRecovery', 'ResidentScheduling'];
@@ -118,6 +120,8 @@ export async function runNativeRefinement() {
   }
   results.push(await checkCredentialLeasePolicies([fileURLToPath(import.meta.url)]));
   results.push(await checkRendererCoordinator([fileURLToPath(import.meta.url)]));
+  results.push(await checkSharedRecording([fileURLToPath(import.meta.url)]));
+  results.push(await checkLiveCapture([fileURLToPath(import.meta.url)]));
   const obligations = [
     {model: 'RendererRecovery', obligation: 'Android lifecycle, task selection and HOME-role delivery', reason: 'Actual MainActivity recovery and handoff execute under controlled Android ports. Physical renderer death, background lifecycle and OS task delivery require platform checks.', requires: ['Android Activity/WebView harness']},
     {model: 'ResidentScheduling', obligation: 'Plugin lifecycle and OS broadcasts', reason: 'Current adapter proves the pure admission table and same-lock callbacks.', requires: ['Android service integration']},

@@ -84,3 +84,14 @@ Bridge-parent lifecycle and permission behavior, service scheduling, media encod
 protected-surface observation are controlled external inputs in these campaigns. Their receipts
 claim the observed Notes transitions. The shared parent bridge and physical audio remain covered
 by their corresponding integration and device gates.
+
+## Shared recording source campaigns
+
+The shared recording campaign executes the full `LocalSpeechBridgePlugin` and
+`LocalVoiceRecording` through permission return, queued startup, call interruption and
+cancellation completion. The live capture campaign also executes `LiveCaptureController`,
+`LiveVoiceCapture`, `LiveCaptureAdmission` and `LiveCaptureResource`, separating capture
+construction from publication to exercise late call, stop, replacement and lifecycle races.
+The current native patch manifest binds every compiled patched source. These bounded
+non-piped campaigns use controlled media primitives and fix protected-screen state inactive.
+Provider enrollment, device audio and Android permission delivery remain external obligations.

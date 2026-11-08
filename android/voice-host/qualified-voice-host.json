@@ -1491,13 +1491,13 @@
         },
         {
           "file": "local-speech-streaming.patch",
-          "sha256": "b8a1def64c501210dd95356edc60ef9abb3dd1b7140064df233afe867335fa19",
+          "sha256": "52ccde026068ea0ced6da8e842e138e0edd83c7ce7e9955c51a7bceb405ae68d",
           "module": "plugins/plugin-local-inference/native/android",
           "targets": [
             {
               "path": "plugins/plugin-local-inference/native/android/speech-bridge/src/main/java/ai/eliza/voice/LocalSpeechBridgePlugin.java",
               "beforeSha256": "8422e7d80cec830aba661d648372ae11bae817be7ff92e8e3b6d7bf02b889b1e",
-              "afterSha256": "81e255b0d2ff5b1dbd2fe225f63e9d6f5269fdf747c78e1f90e4e9321451fd6f"
+              "afterSha256": "e8651689bde94fdb66f69ab865c28bc23ee2ca48e3d1cc27da2246879558705b"
             },
             {
               "path": "plugins/plugin-local-inference/native/android/speech-bridge/src/main/java/ai/eliza/voice/SpeechOutputWarmup.java",
@@ -1527,11 +1527,33 @@
               "afterSha256": "313f5e69f006fb658eb57ab3393898cbea32f273d3a9b6c509e3e2bab76971b2"
             }
           ]
+        },
+        {
+          "file": "speech-recording-admission.patch",
+          "sha256": "92f193e7e940c0fefc350e20935d239ec15f8849d437823a22dfc53a001a7ebc",
+          "module": "plugins/plugin-local-inference/native/android",
+          "targets": [
+            {
+              "path": "plugins/plugin-local-inference/native/android/src/main/java/ai/eliza/voice/LiveCaptureController.java",
+              "beforeSha256": "9e7bfa13ed97bbbd23675cead24574c45f77c681064dda777a0b8e605846cd00",
+              "afterSha256": "3cbda440e3bd836addf286e390e0238da596c0f22b7cc0dff994324c81e90323"
+            },
+            {
+              "path": "plugins/plugin-local-inference/native/android/src/main/java/ai/eliza/voice/LiveCaptureAdmission.java",
+              "beforeSha256": "87dacb57f679e55fc69b9add4077dd02f999b000d3cfa7bd21e49a740f1d877c",
+              "afterSha256": "1c775ed6bd50e4633d49fa3cad7d02818346483834cce6c4fd8238c96be5f5dc"
+            },
+            {
+              "path": "plugins/plugin-local-inference/native/android/src/main/java/ai/eliza/voice/LiveVoiceCapture.java",
+              "beforeSha256": "02079eedce39bc837879f9554611f14e1c1c5e2878c5c9ccfbf540977e46dd81",
+              "afterSha256": "a06d439e7682c35b5744c83ac31c474e128473b16655c864a8a003e6bc2a8e1d"
+            }
+          ]
         }
       ],
       "nativeInputsUnchanged": false,
       "nativeQualificationTransferred": false,
-      "note": "The SDK pin retains the recorded engine and JNI source. The selected speech bridge includes the hash-bound cloud bridge and additive local warm-up, lead-in trim and first-write marker. SDK99 protected-surface admission and retirement remain in place. JVM/source checks do not transfer historical device or user qualification to this changed bridge. The segmented recording lookup and failed MediaRecorder construction cleanup are bound by notes-recording-segments.patch. Their source checks retain the pending native qualification and acceptance requirements."
+      "note": "The SDK pin retains the recorded engine and JNI source. The selected speech bridge includes the hash-bound cloud bridge and additive local warm-up, lead-in trim and first-write marker. SDK99 protected-surface admission and retirement remain in place. The current recording admission patch rechecks call state during queued startup, separates startup authority from interrupted final-event delivery, and preserves cancellation and cleanup outcomes. JVM/source checks do not transfer historical device or user qualification to this changed bridge. The segmented recording lookup and failed MediaRecorder construction cleanup are bound by notes-recording-segments.patch. Their source checks retain the pending native qualification and acceptance requirements."
     },
     "sourceIntegrationHistory": [
       {

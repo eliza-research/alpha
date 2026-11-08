@@ -12,6 +12,9 @@
 @@ -225 +227 @@
 - @PluginMethod public void cancel(PluginCall call){SpeechRequestGate.Request request=gate.get(call.getString("requestId",""));if(request!=null)request.cancel();call.resolve();}
 + @PluginMethod public void cancel(PluginCall call){main.post(this::closeOutputWarmup);SpeechRequestGate.Request request=gate.get(call.getString("requestId",""));if(request!=null)request.cancel();call.resolve();}
+@@ -238 +240 @@
+- private void startRecording(PluginCall call,long admitted){main.post(()->{if(destroyed||!speechForeground||sensitiveSurfaceActive()||gate.draining()||admitted!=epoch.get()){call.reject("Recording cancelled");return;}try{int limit=call.getInt("maxDurationMs",LocalVoiceRecording.LONG_LIMIT_MS);if(limit!=LocalVoiceRecording.SHORT_LIMIT_MS&&limit!=LocalVoiceRecording.LONG_LIMIT_MS)throw new IllegalArgumentException("Unsupported capture duration");call.resolve(js(capture.start(limit)));}catch(Exception error){call.reject("Microphone could not start");}});}
++ private void startRecording(PluginCall call,long admitted){main.post(()->{if(destroyed||!speechForeground||sensitiveSurfaceActive()||gate.draining()||admitted!=epoch.get()){call.reject("Recording cancelled");return;}if(focus!=null&&focus.callActive()){call.reject(CALL_MESSAGE,SpeechAudioFocusPolicy.CALL_ACTIVE);return;}try{int limit=call.getInt("maxDurationMs",LocalVoiceRecording.LONG_LIMIT_MS);if(limit!=LocalVoiceRecording.SHORT_LIMIT_MS&&limit!=LocalVoiceRecording.LONG_LIMIT_MS)throw new IllegalArgumentException("Unsupported capture duration");call.resolve(js(capture.start(limit)));}catch(Exception error){call.reject("Microphone could not start");}});}
 @@ -258 +260 @@
 -   try{capture.cancel();}catch(RuntimeException error){finishDrain(false,"Recording cancellation failed");return;}
 +   try{closeOutputWarmup();capture.cancel();}catch(RuntimeException error){finishDrain(false,"Recording cancellation failed");return;}
@@ -50,6 +53,8 @@
 @@ -423 +444 @@
 - private void clearPlayback(boolean stopped){String previous=playbackId;if(preparingPlayback!=null){preparingPlayback.reject("Playback cancelled");preparingPlayback=null;}if(player!=null){player.release();player=null;}if(streamPlayback!=null){streamPlayback.stop();streamPlayback=null;VoiceLatencyProbe.TRIALS.stopped(playbackTrial);}if(focus!=null)focus.release();if(playbackFile!=null)playbackFile.delete();playbackFile=null;playbackId=null;playbackRequestId=null;playbackLocalReply=false;playbackTrial=null;playbackLeadIn=-1;if(stopped&&previous!=null){JSObject event=new JSObject();event.put("playbackId",previous);notifyListeners("playbackStopped",event);}}
 + private void clearPlayback(boolean stopped){closeOutputWarmup();String previous=playbackId;if(preparingPlayback!=null){preparingPlayback.reject("Playback cancelled");preparingPlayback=null;}if(player!=null){player.release();player=null;}if(streamPlayback!=null){streamPlayback.stop();streamPlayback=null;VoiceLatencyProbe.TRIALS.stopped(playbackTrial);}if(focus!=null)focus.release();if(playbackFile!=null)playbackFile.delete();playbackFile=null;playbackId=null;playbackRequestId=null;playbackLocalReply=false;playbackTrial=null;playbackLeadIn=-1;if(stopped&&previous!=null){JSObject event=new JSObject();event.put("playbackId",previous);notifyListeners("playbackStopped",event);}}
+@@ -459,0 +481 @@
++  public boolean canStart(long admitted){return open(admitted)&&(focus==null||!focus.callActive());}
 --- /dev/null
 +++ b/plugins/plugin-local-inference/native/android/speech-bridge/src/main/java/ai/eliza/voice/SpeechOutputWarmup.java
 @@ -0,0 +1,47 @@
