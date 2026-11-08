@@ -20,7 +20,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
  * URI. The earlier user-selected SAF tree stays available through the shared folder-tree engine
  * (elizaOS plugin-native-media DocumentFolderTree) with Alpha's installed preference name and its
  * selected-document capabilities. */
-@CapacitorPlugin(name="AlphaFiles")
+@CapacitorPlugin(name="AlphaFiles", permissions={@Permission(alias="legacyStorage",strings={android.Manifest.permission.READ_EXTERNAL_STORAGE,android.Manifest.permission.WRITE_EXTERNAL_STORAGE})})
 public class AlphaFilesPlugin extends Plugin {
  /** Installed name of the preference that records the chosen tree. */
  static final String PREF="alpha-files-tree";
@@ -28,6 +28,9 @@ public class AlphaFilesPlugin extends Plugin {
  private final ExecutorService worker=Executors.newSingleThreadExecutor();
  private final AtomicBoolean picking=new AtomicBoolean();
  private DocumentFolderTree tree;
+ /** Plugin.requestPermissions launches for a plugin that declares permissions (legacyStorage);
+  * a late call is answered like every other Alpha plugin (LateLaunch). */
+ @Override @PluginMethod public void requestPermissions(PluginCall call){LateLaunch.ask(call,()->super.requestPermissions(call));}
  @Override public void load(){tree=new DocumentFolderTree(getContext(),PREF,uri->SelectedDocumentAccess.authorize(getContext(),uri,0));}
  private void run(PluginCall call,DocumentFolderTree.Work task){PluginWorkers.submit(worker,()->call.resolve(tree.guarded(task)),()->call.resolve(DocumentFolderTree.result("unavailable","Files closed. Reopen Files to continue.")));}
  @PluginMethod public void choose(PluginCall call){
@@ -62,10 +65,10 @@ public class AlphaFilesPlugin extends Plugin {
  private final android.os.Handler main=new android.os.Handler(android.os.Looper.getMainLooper());
  private final Runnable changed=()->notifyListeners("storageChanged",new JSObject());
  private interface StorageWork {JSObject run(StorageBrowser browser)throws Exception;}
- private JSObject denied(){JSObject out=result("denied","Allow all-files access to browse storage.");out.put("access",StorageCatalog.access());return out;}
+ private JSObject denied(){JSObject out=result("denied","Allow all-files access to browse storage.");out.put("access",StorageCatalog.access(getContext()));return out;}
  private void storage(PluginCall call,StorageWork task){PluginWorkers.submit(storageWorker,()->{
   try{
-   if(!"granted".equals(StorageCatalog.access())){call.resolve(denied());return;}
+   if(!"granted".equals(StorageCatalog.access(getContext()))){call.resolve(denied());return;}
    StorageCatalog.Volume volume=StorageCatalog.volume(getContext(),call.getString("volume","primary"));
    if(volume==null){call.resolve(result("unavailable","This storage is not mounted."));return;}
    JSObject out=task.run(new StorageBrowser(volume.directory,STORAGE_TRASH_FOLDER));if(!out.has("status"))out.put("status","ready");call.resolve(out);
@@ -100,13 +103,21 @@ public class AlphaFilesPlugin extends Plugin {
   if(!files.isEmpty())android.media.MediaScannerConnection.scanFile(getContext(),files.toArray(new String[0]),null,null);
  }
  @PluginMethod public void storageState(PluginCall call){PluginWorkers.submit(storageWorker,()->{
-  JSObject out=new JSObject();out.put("status","ready");String access=StorageCatalog.access();out.put("access",access);JSArray volumes=new JSArray();
+  JSObject out=new JSObject();out.put("status","ready");String access=StorageCatalog.access(getContext());out.put("access",access);JSArray volumes=new JSArray();
   if("granted".equals(access))for(StorageCatalog.Volume v:StorageCatalog.volumes(getContext()))volumes.put(StorageCatalog.describe(v));
   out.put("volumes",volumes);call.resolve(out);
  },()->call.resolve(result("unavailable","Files closed.")));}
- /** Opens Android's "All files access" page for this app and reads access back on return. */
+ /** Opens Android's "All files access" page for this app and reads access back on return. On API 29
+  * it asks for the legacy storage permissions instead, or with {@code settings} (and once they are
+  * granted) opens this app's details page, where they can be changed. */
  @PluginMethod public void storageRequestAccess(PluginCall call){
-  if("unsupported".equals(StorageCatalog.access())){JSObject out=new JSObject();out.put("status","ready");out.put("access","unsupported");call.resolve(out);return;}
+  if("unsupported".equals(StorageCatalog.access(getContext()))){JSObject out=new JSObject();out.put("status","ready");out.put("access","unsupported");call.resolve(out);return;}
+  if(StorageCatalog.legacy()){
+   if(!Boolean.TRUE.equals(call.getBoolean("settings"))&&!"granted".equals(StorageCatalog.access(getContext()))){LateLaunch.ask(call,()->requestPermissionForAlias("legacyStorage",call,"legacyStorageReturned"));return;}
+   try{startActivityForResult(call,new Intent(android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS,Uri.parse("package:"+getContext().getPackageName())),"storageAccessReturned");}
+   catch(RuntimeException e){call.resolve(result("unavailable","Android's app settings are unavailable."));}
+   return;
+  }
   Intent intent=new Intent(android.provider.Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION,Uri.parse("package:"+getContext().getPackageName()));
   try{startActivityForResult(call,intent,"storageAccessReturned");}
   catch(RuntimeException e){
@@ -114,8 +125,11 @@ public class AlphaFilesPlugin extends Plugin {
    catch(RuntimeException again){call.resolve(result("unavailable","Android's file access settings are unavailable."));}
   }
  }
+ @PermissionCallback private void legacyStorageReturned(PluginCall call){
+  JSObject out=new JSObject();out.put("status","ready");out.put("access",StorageCatalog.access(getContext()));call.resolve(out);
+ }
  @ActivityCallback private void storageAccessReturned(PluginCall call,ActivityResult response){
-  if(call==null)return;JSObject out=new JSObject();out.put("status","ready");out.put("access",StorageCatalog.access());call.resolve(out);
+  if(call==null)return;JSObject out=new JSObject();out.put("status","ready");out.put("access",StorageCatalog.access(getContext()));call.resolve(out);
  }
  @PluginMethod public void storageList(PluginCall call){storage(call,b->{
   List<StorageBrowser.Row> rows=b.list(call.getString("path",""));JSArray entries=new JSArray();int n=0;
