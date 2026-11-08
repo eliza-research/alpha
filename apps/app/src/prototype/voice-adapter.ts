@@ -1027,7 +1027,7 @@ export function installPrototypeVoiceAdapter(Component: any, views: Record<strin
     const owner = destination.api, folderId = noteRecorder.folderId;
     if (folderId && !(owner.get('notes').folders || []).some((f: Bag) => f.id===folderId)) return false;
     // Agent notes: a voice note with the transcript; no audio is kept.
-    if (destination.canonical) return await destination.canonical.saveVoice(transcript, saved.durationMs, folderId, destination.current);
+    if (destination.canonical) return await destination.canonical.saveVoice(transcript, saved.durationMs, folderId, destination.current, saved.noteId);
     const latest = owner.get('notes').list || [];
     // A retried Done after a lost save response: the note is already there with this audio.
     const existing = latest.find((n: Bag) => n.id === saved.noteId);

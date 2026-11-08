@@ -156,14 +156,17 @@ export class CanonicalNotesUi {
  /**
   * A finished Notes recording as an agent voice note: its transcript and length, in the selected
   * folder. Agent notes keep no audio (as dictation), so the recording itself is not stored.
+  * The note carries its recordingId: a Done retried after a lost save response or a process
+  * death finds the saved note on a fresh read and does not save a second one.
   */
- async saveVoice(transcript:string,durationMs:number,folderId:string|null,current:()=>boolean):Promise<boolean>{
+ async saveVoice(transcript:string,durationMs:number,folderId:string|null,current:()=>boolean,recordingId:string):Promise<boolean>{
   try{
    if(!current()||!await this.leave(null))return false;
-   if(this.controller.revision===null)await this.controller.refresh();
+   await this.controller.refresh();
    if(!current())return false;
+   if(this.baseRows.some(row=>row.recordingId===recordingId))return true;
    this.editor.begin('voice');
-   const data:Record<string,NoteJson>={lines:transcript?[{s:'me',at:0,t:transcript}]:[],summary:[],actions:[],dur:Math.round(durationMs)/1000,...(folderId?{folderId}:{})};
+   const data:Record<string,NoteJson>={lines:transcript?[{s:'me',at:0,t:transcript}]:[],summary:[],actions:[],dur:Math.round(durationMs)/1000,recordingId,...(folderId?{folderId}:{})};
    this.editor.edit({title:'Voice note',body:transcript,format:parseNoteFormat({kind:'voice',data})});
    return await this.editor.save();
   }catch{if(this.controller.current)this.needsReview();return false;}
