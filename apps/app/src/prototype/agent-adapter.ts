@@ -1,3 +1,4 @@
+import {projectNoteForModel,type StickyNote} from '../../../../.eliza/client-features/plugins/plugin-notes/src/types.ts';
 import type {VoiceStartupStage} from '../runtime/diagnostics-export';
 import {cloudServiceName} from '../runtime/cloud-protocol';
 import {browserNavigationSummary,collapseSystemNotices,projectActionMessages} from '../runtime/action-message-presentation';
@@ -939,6 +940,16 @@ export function installAgentAdapter(Component: Shell, views: Shell) {
       }
       if(operation.type==='read_selected_notes'||operation.type==='read_calendar_range'){
         const current=()=>{signal.throwIfAborted();context(this);if(!this.live||document.hidden||JSON.stringify(alphaClient.getState().context)!==JSON.stringify(expectedContext)||expectedContext.sensitive||expectedContext.view!=='workflows'||expectedContext.selectedObject?.kind!=='workflow-run')throw new Error('Workflow read context changed');};current();
+        if(operation.type==='read_selected_notes'&&this.notesSourceMode==='canonical'){
+          // The agent's Notes: each selected record must still hold the text the owner reviewed.
+          const notes=this.canonicalNotesUi;if(!notes?.current)return {status:'failed',summary:'Notes is unavailable. Review the selected notes again.'};
+          const rows=(notes.notes() as StickyNote[]).slice(),snapshot=[];
+          const selectedText=()=>JSON.stringify(operation.notes.map(selected=>{const matches=(notes.notes() as StickyNote[]).filter(note=>note.id===selected.id);return matches.length===1?{id:selected.id,...projectNoteForModel(matches[0])}:null;}));
+          const before=selectedText();
+          for(const selected of operation.notes){const matches=rows.filter(n=>n.id===selected.id);if(matches.length!==1)throw new Error('A selected note is missing');const {title,body}=projectNoteForModel(matches[0]);if(await workflowSha([title,body])!==selected.revision)return {status:'failed',summary:'A selected note changed. Review the workflow again.'};snapshot.push({id:selected.id,revision:selected.revision,title,text:body});}
+          const result=await validateWorkflowResult(operation,{kind:'notes',notes:snapshot});current();if(this.canonicalNotesUi!==notes||!notes.current||selectedText()!==before)throw new Error('Notes changed while preparing the approved read');
+          return {status:'succeeded',summary:`Read ${snapshot.length} selected notes.`,readResult:result};
+        }
         if(operation.type==='read_selected_notes'){
           await this.notesStore?.assertCurrent();const raw=this.notesStore?.raw;if(this.notesStorageFailed||this.notesPending||raw!==this.notesRaw)return {status:'failed',summary:'Notes changed or storage is unavailable. Review the selected notes again.'};
           const source=this.vget('notes').list;const snapshot=operation.notes.map(selected=>{const matches=source.filter((n:Shell)=>n.id===selected.id);if(matches.length!==1||typeof matches[0].title!=='string'||typeof matches[0].body!=='string')throw new Error('A selected note is missing');return {id:selected.id,revision:selected.revision,title:matches[0].title,text:matches[0].body};});
@@ -969,11 +980,12 @@ export function installAgentAdapter(Component: Shell, views: Shell) {
         try{signal.throwIfAborted();await speakAppText(operation.text,speechAbort.signal,undefined,true,currentSpeech);currentSpeech();return {status:'succeeded',summary:'Finished reading the reviewed text aloud.'};}finally{unsubscribe();signal.removeEventListener('abort',stop);window.removeEventListener('alpha:stop-workflow-speech',stop);}
       }
       if (operation.type === 'create_note') {
+        if(this.notesSourceMode==='canonical'&&expectedContext.selectedObject?.kind==='workflow-run')return {status:'failed',summary:'Saving a note from a workflow isn’t available yet.'};
         if (this.notesSourceMode!=='legacy'||this.notesStorageFailed) return { status: 'failed', summary: 'Select Previous notes to review this device-record creation. Nothing saved.' };
         const existing = this.vget('notes').list.find((note: Shell) => note.id === operationId);
         if (existing) return { status: 'unknown', summary: 'A note already has this action identifier; review it before resolving.' };
         const note = { id: operationId, kind: 'text', title: operation.title, body: operation.body, pinned: false, when: 'Now', createdAt:Date.now(), modifiedAt:Date.now() };
-        const saved = await this.vset('notes', { list: [note, ...this.vget('notes').list] });
+        const saved = await this.vset('notes', { list: [note, ...this.vget('notes').list] }, {keepSelection:true});
         return { status: saved ? 'succeeded' : this.notesCommitUncertain?'unknown':'failed', summary: saved ? presentDeviceRecordOperation(operation,expectedContext.timeZone).appliedSummary : 'The note save is unconfirmed. Inspect saved notes before repeating.' };
       }
       if(isReminderCreate(operation)){

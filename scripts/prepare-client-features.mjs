@@ -50,6 +50,7 @@ export const CLIENT_FEATURE_PATHS = [
   'packages/contracts/src/phone-workflow.ts',
   'packages/contracts/src/workflow-client.ts',
   'packages/contracts/src/workflow-device.ts',
+  'packages/contracts/src/workflow-approval-poster.ts',
   'packages/contracts/src/workflow-intents.ts',
   'packages/contracts/src/workflow-scope.ts',
   'packages/ui/src/agent-surface/AgentSurfaceContext.hooks.ts',
