@@ -329,4 +329,3 @@ test("APK voice admission requires the complete recorded bundle and every record
   assert.match(voiceBundleAdmission(apk(undefined, ["tts/paradee/paradee.gguf", "tts/paradee/misaki.lex", "vad/silero.gguf", "asr/phonon.gguf"]), pair).differences.join(), /ASR slot is incomplete \(asr\/mmproj\.gguf missing\)/);
   assert.equal(voiceBundleAdmission(apk(), pair).asr, true);
 });
-

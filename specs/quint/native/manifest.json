@@ -196,7 +196,9 @@
         "android/app/src/main/java/ai/elizaresearch/alphaphone/ResetRecoveryActivity.java",
         "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaApplication.java",
         "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaResetPlugin.java",
-        "android/sense/src/main/java/ai/elizaresearch/alphaphone/sense/ListenerControlProvider.java"
+        "android/sense/src/main/java/ai/elizaresearch/alphaphone/sense/ListenerControlProvider.java",
+        "patches/eliza/reset-admission.patch",
+        "patches/eliza/native-manifest.json"
       ],
       "tests": [
         "prepared",
@@ -235,11 +237,14 @@
       "sharedSources": [
         "plugins/plugin-native-system/android/src/main/java/ai/eliza/plugins/system/reset/ResetAuthorization.java",
         "packages/auth/android/src/main/java/ai/eliza/auth/cloud/CloudKeyRevocation.java",
-        "packages/app/platforms/android/sense/src/main/java/ai/eliza/sense/ListenerStore.java"
+        "packages/app/platforms/android/sense/src/main/java/ai/eliza/sense/ListenerStore.java",
+        "plugins/plugin-native-system/android/src/main/java/ai/eliza/plugins/system/reset/DataReset.java",
+        "plugins/plugin-native-system/android/src/main/java/ai/eliza/plugins/system/reset/DataResetCopy.java",
+        "plugins/plugin-native-system/android/src/main/java/ai/eliza/plugins/system/reset/DataResetRecoveryActivity.java"
       ],
       "stateMapping": {
         "review/confirmed/authGeneration/authReady": "ResetAuthorization begin, confirm, authenticate and retire; authorization is consumed before persistence",
-        "marker/budgetPresent/failures/budgetReadable": "AlphaDataReset record, failureState and durable write-ahead attempt reservation; failures is the saturated admitted-attempt count",
+        "marker/budgetPresent/failures/budgetReadable": "Shared DataReset record, failureState and patched durable write-ahead attempt reservation; failures is the saturated admitted-attempt count",
         "attemptStage/reserved/explicitRetry": "Cross-process file lock and automaticAttempt/retry admission before listener/Android callbacks",
         "processInitialized/startupAdmitted/recoveryVisible": "Current process differs from new-process startup admission; AlphaApplication attachBaseContext and recovery/exit callbacks",
         "dispatched/clearAccepted/erased": "Current attempt acceptance is separate from historical accepted-clear evidence and external erasure; a surviving marker may be retried after restart."
@@ -257,7 +262,10 @@
         "android/app/src/main/java/ai/elizaresearch/alphaphone/NotesDeletionLease.java",
         "apps/app/src/runtime/deletion-owner.ts",
         "apps/app/src/runtime/deletions.ts",
-        "apps/app/src/runtime/note-audio-deletions.ts"
+        "apps/app/src/runtime/note-audio-deletions.ts",
+        "android/app/src/main/java/ai/elizaresearch/alphaphone/NativeOwnerReminderHost.java",
+        "patches/eliza/native-manifest.json",
+        "patches/eliza/deletion-owner-admission.patch"
       ],
       "tests": [
         "undoBeforeExpiryTest",
@@ -283,7 +291,8 @@
         "plugins/plugin-native-action-journal/android/src/main/java/ai/eliza/plugins/actionjournal/deletion/DeletionDispatchClaim.java",
         "plugins/plugin-native-action-journal/android/src/main/java/ai/eliza/plugins/actionjournal/deletion/DeletionReceiptRecovery.java",
         "plugins/plugin-native-action-journal/android/src/main/java/ai/eliza/plugins/actionjournal/deletion/DeletionDeadline.java",
-        "packages/contracts/src/deletion-window.ts"
+        "packages/contracts/src/deletion-window.ts",
+        "plugins/plugin-native-action-journal/android/src/main/java/ai/eliza/plugins/actionjournal/deletion/DeferredDeletionCoordinator.java"
       ]
     },
     {

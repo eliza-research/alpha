@@ -1,0 +1,5 @@
+--- a/plugins/plugin-native-action-journal/android/src/main/java/ai/eliza/plugins/actionjournal/deletion/DeferredDeletionCoordinator.java
++++ b/plugins/plugin-native-action-journal/android/src/main/java/ai/eliza/plugins/actionjournal/deletion/DeferredDeletionCoordinator.java
+@@ -253 +253 @@
+-  return DeferredDeletionJournal.same(owner, agent);
++  return stageOwnerCurrent(owner) && DeferredDeletionJournal.same(owner, agent);

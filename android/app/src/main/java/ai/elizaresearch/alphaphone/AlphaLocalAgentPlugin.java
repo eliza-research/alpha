@@ -209,6 +209,10 @@ private static final class ResidentAttachDiagnostic {
  private static void clearEnrollment(){AlphaCanonicalNotifications.suspendForRestart();rootToken=null;ownerToken=null;ownerIdentity=null;notificationAgent=null;expiresAt=0;}
  static long currentCredentialIntent(){return credentialIntents.current();}
  static long reserveCredentialIntent(){return credentialIntents.reserve();}
+ /** Check bridge ownership under lifecycle admission before superseding another credential intent. */
+ static long reserveCredentialIntent(Object ownerLock,Runnable assertOwner){
+  synchronized(lifecycleLock){synchronized(ownerLock){assertOwner.run();return credentialIntents.reserve();}}
+ }
  static void requireCredentialIntent(long intent){credentialIntents.require(intent);}
  interface CredentialMutation<T> {
   boolean requiresShutdown()throws Exception;
@@ -376,7 +380,7 @@ private static final class ResidentAttachDiagnostic {
   if(!validProviderToken(key,1024)||!model.matches("[A-Za-z0-9][A-Za-z0-9._/-]{0,127}")){call.reject("Enter a valid Cerebras key.");return;}
   if(!CEREBRAS_PROVIDER_MODEL.equals(model)){call.reject(PRODUCT_NAME+" uses "+CEREBRAS_PROVIDER_MODEL+" on Cerebras.");return;}
   final String requestId=call.getString("requestId","");final long configuration;
-  try{configuration=providerConfigurations.begin(requestId);}catch(Exception unavailable){call.reject("Provider request was cancelled or is unavailable.");return;}
+  try{synchronized(lifecycleLock){if(disposed)throw new IllegalStateException("Local agent bridge closed");configuration=providerConfigurations.begin(requestId);}}catch(Exception unavailable){call.reject("Provider request was cancelled or is unavailable.");return;}
   PluginWorkers.submit(workers,()->{try{
    AlphaCredentialStore store=new AlphaCredentialStore(getContext(),()->{requireProviderOwner(false);if(surface!=providerSurfaceGeneration)throw new SecurityException("Settings closed");providerConfigurations.require(requestId,configuration);});
    store.assertCurrent();
@@ -387,19 +391,19 @@ private static final class ResidentAttachDiagnostic {
  }
  /** Reserve a native-issued lease before receiving any provider keys or removal request. */
  @PluginMethod public void prepareProviderConfiguration(PluginCall call){
-  try{requireProviderOwner(true);call.resolve(new JSObject().put("requestId",providerConfigurations.reserve()));}
+  try{synchronized(lifecycleLock){requireProviderOwner(true);call.resolve(new JSObject().put("requestId",providerConfigurations.reserve()));}}
   catch(Exception unavailable){call.reject("Provider setup is busy. Try again shortly.");}
  }
  /** Cancels only this request's still-current credential intent; no store write or runtime stop. */
  @PluginMethod public void cancelProviderConfiguration(PluginCall call){
-  try{String requestId=call.getString("requestId","");providerConfigurations.cancel(requestId);if(requestId.equals(providerRevealRequestId))closeProviderReveal();call.resolve();}
+  try{String requestId=call.getString("requestId","");synchronized(lifecycleLock){if(disposed)throw new IllegalStateException("Local agent bridge closed");providerConfigurations.cancel(requestId);if(requestId.equals(providerRevealRequestId))closeProviderReveal();}call.resolve();}
   catch(Exception invalid){call.reject("Invalid provider cancellation request.");}
  }
  /** Retires routing and reads it back; saved Own keys remain in encrypted custody. */
  @PluginMethod public void clearProvider(PluginCall call) {
   final boolean onlyIfPresent=Boolean.TRUE.equals(call.getBoolean("onlyIfPresent"));
   final String requestId=call.getString("requestId",null);final long configuration;
-  try{configuration=requestId==null?reserveCredentialIntent():providerConfigurations.begin(requestId);}catch(Exception cancelled){call.reject("Provider change was cancelled or is unavailable.");return;}
+  try{synchronized(lifecycleLock){if(disposed)throw new IllegalStateException("Local agent bridge closed");configuration=requestId==null?reserveCredentialIntent():providerConfigurations.begin(requestId);}}catch(Exception cancelled){call.reject("Provider change was cancelled or is unavailable.");return;}
   PluginWorkers.submit(workers,()->{try{
    call.resolve(clearProviderSlot(new AlphaCredentialStore(getContext(),()->{if(disposed)throw new IllegalStateException("Local agent bridge closed");if(requestId==null)requireCredentialIntent(configuration);else providerConfigurations.require(requestId,configuration);}),onlyIfPresent));
   }catch(Exception error){call.reject("The provider binding could not be cleared.");}finally{if(requestId!=null)providerConfigurations.finish(requestId,configuration);}},()->{if(requestId!=null)providerConfigurations.finish(requestId,configuration);call.reject("Local agent bridge is closed.");});
@@ -420,7 +424,8 @@ private static final class ResidentAttachDiagnostic {
   if(!runtimePackaged()){call.reject("On-device agent is unavailable in this version.");return;}
   String credentialId=call.getString("credentialId",""),model=call.getString("model","");
   if(!CLOUD_PROVIDER_MODEL.equals(model)){call.reject("Choose a supported Cloud model.");return;}
-  final long configuration=reserveCredentialIntent();
+  final long configuration;
+  synchronized(lifecycleLock){if(disposed){call.reject("Local agent bridge is closed.");return;}configuration=reserveCredentialIntent();}
   PluginWorkers.submit(workers,()->{try{
    AlphaCredentialStore store=new AlphaCredentialStore(getContext(),()->{if(disposed)throw new IllegalStateException("Local agent bridge closed");requireCredentialIntent(configuration);});
    String applied=bindCloudProvider(store,credentialId,model);store.assertCurrent();
@@ -1097,7 +1102,7 @@ private static final class ResidentAttachDiagnostic {
   synchronized(lifecycleLock){synchronized(ai.eliza.plugins.securestore.nativeonly.JsonCredentialSlots.LOCK){checkNotificationSession(expected);T result=work.call();checkNotificationSession(expected);return result;}}
  }
  static JSONObject readNotificationPage(JSONObject expected,JSONObject cursor)throws Exception{
-  String path=NativeNotificationWire.pagePath(cursor);checkNotificationSession(expected);
+  String path=NativeNotificationSession.pagePath(cursor);checkNotificationSession(expected);
   JSONObject result=raw(path,"GET",null,expected.getString("token"),null,10000);checkNotificationSession(expected);return result;
  }
  static JSONObject markNotificationRead(JSONObject expected,String id)throws Exception{

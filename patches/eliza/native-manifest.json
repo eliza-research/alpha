@@ -214,6 +214,18 @@
           "afterSha256": "a01868c6e43d1b484879330ccc54725abd0c2119b3158c97a2dddcc9577bf67b"
         }
       ]
+    },
+    {
+      "file": "deletion-owner-admission.patch",
+      "sha256": "5e7e3861ec6de996e9f5e7af341b5e90378630892aaca95df84949f0b4a267c5",
+      "module": "plugins/plugin-native-action-journal/android",
+      "targets": [
+        {
+          "path": "plugins/plugin-native-action-journal/android/src/main/java/ai/eliza/plugins/actionjournal/deletion/DeferredDeletionCoordinator.java",
+          "beforeSha256": "875a275d95e47318bfa3fec6e98dc9bce1569e26a2902cd817a86f37185d18e8",
+          "afterSha256": "7d888b5b449c1cf18daaf43fadbc3647902ed302285759482f432dc25f5d2c2d"
+        }
+      ]
     }
   ],
   "modules": [
