@@ -75,12 +75,14 @@ module CorePluginLifecycleTemplate {
         stopOps: s.stopOps.union(Set(i)), cur: s.cur.set(u, i), running: None}, u, "stopwait")
     }
   }
-  action UStopWait(u: int): bool = all {
+  action UStopWaitWith(u: int, rejected: bool): bool = all {
     s.pc.get(u) == "stopwait", Free(u),
+    not(rejected) or StopMayFail,
     val i = s.cur.get(u)
     val base = Go({...s, live: s.live.exclude(Set(i)), queue: s.queue.set(u, s.queue.get(u).exclude(Set(i))), running: u}, u, "stop")
-    any {s' = base, all {StopMayFail, s' = {...base, stopFailed: true}}}
+    s' = if (rejected) {...base, stopFailed: true} else base
   }
+  action UStopWait(u: int): bool = any {UStopWaitWith(u, false), UStopWaitWith(u, true)}
   action UFinish(u: int): bool = all {s.pc.get(u) == "finish", s.running == u,
     s' = Go({...s, owned: false, pluginsA: false, tdActive: None, running: None}, u, if (s.stopFailed) "err" else "done")}
 
@@ -95,22 +97,22 @@ module CorePluginLifecycleTemplate {
       starting: Classes.mapBy(c => if (eligible.contains(c)) s.nextInst + c - 1 else s.starting.get(c)),
       nextInst: s.nextInst + NumClasses}
   }
-  action SDone(c: int): bool = all {
+  action SDoneWith(c: int, rejected: bool): bool = all {
     s.starting.get(c) != 0, Free(c),
+    not(rejected) or StartMayFail,
     val i = s.starting.get(c)
     val base = {...s, starting: s.starting.set(c, 0), running: None}
-    any {
-      all {StartMayFail, s' = {...base, failedC: s.failedC.union(Set(c))}},
-      if (s.stopRequested or not(s.types.contains(c))) s' = {...base, failedC: s.failedC.union(Set(c)),
-        stopCalls: s.stopCalls.set(i, s.stopCalls.get(i) + 1), stopOps: s.stopOps.union(Set(i))}
-      else {
-        val byClass = s.byClass.set(c, i)
-        s' = {...base, failedC: s.failedC.exclude(Set(c)), byClass: byClass,
-          services: s.types.map(x => byClass.get(x)).exclude(Set(0)), live: s.live.union(Set(i)),
-          registry: "A", lastReg: "A", ownsA: s.owned, ownsB: false}
-      }
+    if (rejected) s' = {...base, failedC: s.failedC.union(Set(c))}
+    else if (s.stopRequested or not(s.types.contains(c))) s' = {...base, failedC: s.failedC.union(Set(c)),
+      stopCalls: s.stopCalls.set(i, s.stopCalls.get(i) + 1), stopOps: s.stopOps.union(Set(i))}
+    else {
+      val byClass = s.byClass.set(c, i)
+      s' = {...base, failedC: s.failedC.exclude(Set(c)), byClass: byClass,
+        services: s.types.map(x => byClass.get(x)).exclude(Set(0)), live: s.live.union(Set(i)),
+        registry: "A", lastReg: "A", ownsA: s.owned, ownsB: false}
     }
   }
+  action SDone(c: int): bool = any {SDoneWith(c, true), SDoneWith(c, false)}
 
   action TReq(t: int): bool = all {s.pc.get(t) == "idle", Free(t),
     s' = Go({...s, stopRequested: true, running: None}, t, "drain")}
@@ -139,11 +141,13 @@ module CorePluginLifecycleTemplate {
       else if (s.pluginsA) Go(base, r, "ok")
       else Go({...base, pluginsA: true, regActive: r}, r, "init")
   }
-  action RInit(r: int): bool = all {
+  action RInitWith(r: int, rejected: bool): bool = all {
     s.pc.get(r) == "init", Free(r),
+    not(rejected) or InitMayFail,
     val base = {...s, regActive: None, running: None}
-    any {all {InitMayFail, s' = Go({...base, pluginsA: false}, r, "err")}, s' = Go({...base, owned: true}, r, "ok")}
+    s' = if (rejected) Go({...base, pluginsA: false}, r, "err") else Go({...base, owned: true}, r, "ok")
   }
+  action RInit(r: int): bool = any {RInitWith(r, true), RInitWith(r, false)}
   action RJoin(r: int): bool = all {s.pc.get(r) == "join", Free(r),
     val result = s.pc.get(s.joinOf.get(r))
     all {Set("ok", "err").contains(result), s' = Go(s, r, result)}}
@@ -193,6 +197,20 @@ module CorePluginLifecycle {
   action init = Model::Init
   action step = Model::Step
   action rawStep = Model::Next
+  val sourceState = Model::s
+  val sourceStartingClasses = Set(1, 2).filter(c => Model::s.starting.get(c) != 0)
+  val sourceUnloadOutcomes = Set(11, 12).mapBy(u => if (Set("done", "err").contains(Model::s.pc.get(u)))
+    Model::s.pc.get(u) else if (Model::s.pc.get(u) == "idle") "idle" else "pending")
+  action sourceUnload(u: int): bool = Model::UCall(u)
+  action sourceDispose(u: int): bool = Model::UDispose(u)
+  action sourceAwaitStarts(u: int): bool = Model::UInflight(u)
+  action sourceUnloadStop(u: int): bool = Model::UStop(u)
+  action sourceUnloadWait(u: int, rejected: bool): bool = Model::UStopWaitWith(u, rejected)
+  action sourceUnloadFinish(u: int): bool = Model::UFinish(u)
+  action sourceUnloadJoin(u: int): bool = Model::UJoin(u)
+  action sourceLoad(l: int): bool = Model::LCall(l)
+  action sourceLoadBegin(l: int): bool = Model::LBegin(l)
+  action sourceStartDone(c: int, rejected: bool): bool = Model::SDoneWith(c, rejected)
   val safety = Model::TypeOK and Model::TeardownExclusive and Model::StopAtMostOnce and Model::NoOrphanInstance
     and Model::StopStopsAll and Model::ConnectorOwnedByLast and Model::NoOrphanConnector and Model::RegisterHonest
   temporal CheckedTemporal = Model::Fairness implies Model::Terminates
@@ -209,6 +227,12 @@ module CorePluginLifecycleRegister {
   action init = Model::Init
   action step = Model::Step
   action rawStep = Model::Next
+  val sourceState = Model::s
+  val sourceRegistrationOutcomes = Set(51, 52).mapBy(r => if (Set("ok", "err").contains(Model::s.pc.get(r)))
+    Model::s.pc.get(r) else if (Model::s.pc.get(r) == "idle") "idle" else "pending")
+  action sourceRegister(r: int): bool = Model::RCall(r)
+  action sourceRegisterInit(r: int, rejected: bool): bool = Model::RInitWith(r, rejected)
+  action sourceRegisterJoin(r: int): bool = Model::RJoin(r)
   val safety = Model::TypeOK and Model::TeardownExclusive and Model::StopAtMostOnce and Model::NoOrphanInstance
     and Model::StopStopsAll and Model::ConnectorOwnedByLast and Model::NoOrphanConnector and Model::RegisterHonest
   // Other actor and class domains are empty in this profile. Expanding its
@@ -226,6 +250,24 @@ module CorePluginLifecycleServices {
   action init = Model::Init
   action step = Model::Step
   action rawStep = Model::Next
+  val sourceState = Model::s
+  val sourceStartingClasses = Set(1, 2).filter(c => Model::s.starting.get(c) != 0)
+  val sourceUnloadOutcomes = Set(11, 12).mapBy(u => if (Set("done", "err").contains(Model::s.pc.get(u)))
+    Model::s.pc.get(u) else if (Model::s.pc.get(u) == "idle") "idle" else "pending")
+  action sourceUnload(u: int): bool = Model::UCall(u)
+  action sourceDispose(u: int): bool = Model::UDispose(u)
+  action sourceAwaitStarts(u: int): bool = Model::UInflight(u)
+  action sourceUnloadStop(u: int): bool = Model::UStop(u)
+  action sourceUnloadWait(u: int, rejected: bool): bool = Model::UStopWaitWith(u, rejected)
+  action sourceUnloadFinish(u: int): bool = Model::UFinish(u)
+  action sourceUnloadJoin(u: int): bool = Model::UJoin(u)
+  action sourceLoad(l: int): bool = Model::LCall(l)
+  action sourceLoadBegin(l: int): bool = Model::LBegin(l)
+  action sourceStop(t: int): bool = Model::TReq(t)
+  action sourceDrain(t: int): bool = Model::TDrain(t)
+  action sourceStopService(t: int): bool = Model::TSvc(t)
+  action sourceStopWait(t: int): bool = Model::TSvcWait(t)
+  action sourceRegisterRival(b: int): bool = Model::BReg(b)
   val safety = Model::TypeOK and Model::TeardownExclusive and Model::StopAtMostOnce and Model::NoOrphanInstance
     and Model::StopStopsAll and Model::ConnectorOwnedByLast and Model::NoOrphanConnector and Model::RegisterHonest
   temporal CheckedTemporal = Model::Fairness implies Model::Terminates
