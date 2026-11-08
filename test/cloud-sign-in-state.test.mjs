@@ -122,6 +122,8 @@ function controllerFixture({isAndroid=false,browserCloudResidentEnabled=false}={
     class CodeExpiredError extends Error {constructor(){super('code-expired');}}
     const signInFailureMessage=code=>code,signInFailed=(environment,keep=false)=>{if(!keep)update({signIn:{step:'choose',environment}});};
     const signedIn=async()=>events.push({authenticated:true});
+    const queueResidentRebind=()=>events.push({rebind:true});
+    ${part('function signInStoredUnconfirmed(', '/** The provider authenticated only')}
     ${part('async function work(', '/** Start (or restart) the resident.')}
     const connectionController={
     ${part('  close() {', '  cancel() {')}
@@ -193,6 +195,22 @@ test('an expired or exhausted code keeps the address with a new code ready; othe
   }
   const f=controllerFixture();f.client.verifyEmailSignIn=async()=>{throw new f.CloudSignInError('rejected');};
   await f.connectionController.verifySignInCode('123456');assert.equal(f.state.signIn.step,'choose');
+});
+
+test('a sign-in that stored its key but ends activation-pending rebinds on that key instead of resetting sign-in',async()=>{
+  for(const method of ['code','mfa','google']){
+    const f=controllerFixture();
+    if(method==='mfa')f.state.signIn={step:'mfa',environment:'production',attemptId:'old',email:'person@example.invalid',method:'totp',expiresAt:Date.now()+600000};
+    if(method==='google'){f.state.signIn={...choose};f.client.signInWithGoogle=async()=>{throw new f.CloudSignInError('activation-pending');};await f.connectionController.signInGoogle();}
+    else{f.client.verifyEmailSignIn=f.client.verifyMfaSignIn=async()=>{throw new f.CloudSignInError('activation-pending');};await f.connectionController.verifySignInCode('123456');}
+    assert.equal(f.state.signIn,null,`${method}: the stored key leaves sign-in rather than returning to the chooser`);
+    assert.equal(f.state.error,'activation-pending',method);
+    assert.equal(f.events.filter(e=>e.rebind).length,1,`${method}: one rebind reads the stored key`);
+    assert.ok(!f.events.some(e=>e.signIn?.step==='choose'),`${method}: never reset to the chooser`);
+  }
+  const f=controllerFixture();f.client.verifyEmailSignIn=async()=>{throw new f.CloudSignInError('rejected');};
+  await f.connectionController.verifySignInCode('123456');
+  assert.ok(!f.events.some(e=>e.rebind),'a refusal before any key was stored rebinds nothing');
 });
 
 test('wrong code is reported at the code field and selected for replacement; resend reports on its own control',async()=>panel(async({document,render})=>{

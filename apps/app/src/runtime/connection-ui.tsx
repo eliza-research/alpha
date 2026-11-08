@@ -716,6 +716,14 @@ async function inAppSignInMethods(environment: CloudEnvironment, signal: AbortSi
 function signInFailed(environment: CloudEnvironment, keepStep = false, prefill: {email?: string; phone?: string} = {}) {
   if (!keepStep) update({ signIn: { step: 'choose', environment, ...(prefill.phone ? {phone: prefill.phone} : prefill.email ? {email: prefill.email} : {}) } });
 }
+/**
+ * Native stored the new key, then Cloud did not confirm this phone (activation-pending). The write
+ * may already have stopped the agent: leave sign-in for the stored key and let admission rebind on it.
+ */
+function signInStoredUnconfirmed() {
+  update({ signIn: null });
+  queueResidentRebind();
+}
 /** The provider authenticated only the first factor; keep the credential and agent unchanged. */
 function showGoogleMfa(outcome: Extract<CloudSignInGoogleOutcome, { status: 'mfa' }>) {
   update({ open: true, signIn: { step: 'mfa', environment: outcome.environment, attemptId: outcome.attemptId, method: outcome.method, expiresAt: outcome.expiresAt },
@@ -2804,7 +2812,7 @@ export const connectionController = {
       if(!client.googleCancellationSupported)void cloudCredentialStore.read(view.environment).catch(()=>null).then(prior=>{if(generation===googleSignInGeneration)googleSignInPrior={generation,environment:view.environment,credentialId:prior?.credentialId??null};});
       let outcome:Awaited<ReturnType<CloudProtocol['signInWithGoogle']>>;
       try{outcome=await client.signInWithGoogle(signal);}
-      catch(error){signal.throwIfAborted();signInFailed(view.environment);throw error;}
+      catch(error){signal.throwIfAborted();if(error instanceof CloudSignInError&&error.code==='activation-pending')signInStoredUnconfirmed();else signInFailed(view.environment);throw error;}
       if(outcome.status==='mfa'){signal.throwIfAborted();showGoogleMfa(outcome);return;}
       if(!outcome.committedCredential){signal.throwIfAborted();await signedIn(client,outcome,signal);return;}
       // Postcommit reconciliation ignores only the old cancellation signal.
@@ -2877,6 +2885,7 @@ export const connectionController = {
         // startup failures must not reopen sign-in over the stored key and permission setup.
         const code = error instanceof CloudSignInError ? error.code : null;
         if (code === 'invalid-code') signInFailed(view.environment, true);
+        else if (code === 'activation-pending') signInStoredUnconfirmed();
         // An expired or exhausted code keeps the address on screen with a new code ready to send.
         else if (view.step === 'code' && (code === 'expired' || code === 'attempts-exhausted')) {
           update({ signIn: { ...view, resendAt: 0, stale: true } });
