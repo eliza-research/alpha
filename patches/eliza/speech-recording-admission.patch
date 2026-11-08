@@ -9,3 +9,90 @@
   @PluginMethod public void getRecordingMetrics(PluginCall call){main.post(()->{try{call.resolve(js(capture.metrics(call.getString("recordingId"))));}catch(RuntimeException error){call.reject("Recording metrics are no longer available");}});}
   @PluginMethod public void stopRecording(PluginCall call){main.post(()->{try{call.resolve(js(capture.stop()));}catch(Exception error){call.reject("Recording could not be saved");}});}
   private void finishDrain(boolean complete,String error){
+@@ -449,6 +449,7 @@
+  // started the capture (residentRoute), never through the renderer.
+  private final LiveCaptureController live=new LiveCaptureController(new LiveCaptureController.Host(){
+   public boolean open(long admitted){return !destroyed&&speechForeground&&admitted==epoch.get();}
++  public boolean canStart(long admitted){return open(admitted)&&(focus==null||!focus.callActive());}
+   public LiveVoiceCapture capture(String id,LiveVoiceCapture.Sink sink,boolean echoCancel)throws Exception{return new LiveVoiceCapture(getContext(),VoiceAssets.sharedInference(getContext()),id,sink,echoCancel);}
+   public void frames(String id,JSONArray frames,JSONArray vad,float peak){notifyListeners("liveCaptureFrames",new JSObject().put("captureId",id).put("frames",frames).put("vad",vad).put("peak",peak));}
+   public void ended(String id,String error){JSObject event=new JSObject().put("captureId",id);if(error!=null)event.put("error",error);notifyListeners("liveCaptureEnded",event);}
+--- a/plugins/plugin-local-inference/native/android/src/main/java/ai/eliza/voice/LiveCaptureController.java
++++ b/plugins/plugin-local-inference/native/android/src/main/java/ai/eliza/voice/LiveCaptureController.java
+@@ -40,6 +40,8 @@
+  public interface Host {
+   /** True while the host may deliver events for a capture admitted at {@code epoch}. */
+   boolean open(long epoch);
++  /** Startup may be stricter than delivery of an interrupted capture's final events. */
++  default boolean canStart(long epoch){return open(epoch);}
+   /** The capture for {@code id} (normally {@code new LiveVoiceCapture(context,inference,id,sink,echoCancel)}). */
+   LiveVoiceCapture capture(String id,LiveVoiceCapture.Sink sink,boolean echoCancel)throws Exception;
+   void frames(String id,JSONArray frames,JSONArray vad,float peak);
+@@ -90,7 +92,7 @@
+    String since=interrupted;
+    if(reopen&&since!=null){result.refused(CANCELLED.equals(since)?CANCELLED:"Voice was interrupted",CANCELLED.equals(since)?null:since);return;}
+    if(!reopen)interrupted=null;
+-   if(!host.open(epoch)||!admission.current(ticket)){result.refused(CANCELLED,null);return;}
++   if(!host.canStart(epoch)||!admission.current(ticket)){result.refused(CANCELLED,null);return;}
+    if(live!=null){String old=live.captureId();live.stop();live=null;current=null;closePipe(old,true,now());}
+    final LiveSegmentPipe pipe;
+    try{
+@@ -106,7 +108,7 @@
+    }catch(Exception unavailable){
+     closePipe(id,true,now());
+     // A Stop, pause or replacement while the agent session warmed is a cancellation, not an enrollment failure.
+-    result.refused(host.open(epoch)&&admission.current(ticket)?"Native voice enrollment unavailable":CANCELLED,null);return;
++    result.refused(host.canStart(epoch)&&admission.current(ticket)?"Native voice enrollment unavailable":CANCELLED,null);return;
+    }
+    final LiveVoiceCapture next;
+    try{
+@@ -120,9 +122,13 @@
+    if(!admission.attach(ticket,()->{next.cancelPending();if(pipe!=null&&!admission.events(ticket))pipe.close(true,now());submit(stopWorker,next::requestStop,()->{/* The capture worker's cleanup still stops this source. */});})){closePipe(id,true,now());result.refused(CANCELLED,null);return;}
+    try{
+     next.start();
+-    if(!host.open(epoch)||!admission.current(ticket)){next.stop();closePipe(id,true,now());result.refused(CANCELLED,null);return;}
++    if(!host.canStart(epoch)||!admission.current(ticket)){next.stop();closePipe(id,true,now());result.refused(CANCELLED,null);return;}
+     live=next;current=next;result.started(id,LiveVoiceCapture.SAMPLE_RATE,next.echoCancelled(),pipe!=null);
+-   }catch(Exception|Error failure){next.stop();closePipe(id,true,now());result.refused("Live capture could not start",CAPTURE);}
++   }catch(Exception|Error failure){
++    next.stop();closePipe(id,true,now());
++    boolean current=host.canStart(epoch)&&admission.current(ticket);
++    result.refused(current?"Live capture could not start":CANCELLED,current?CAPTURE:null);
++   }
+   },()->result.refused("Voice unavailable",null));
+  }
+
+@@ -134,7 +140,7 @@
+   final double cutoff=Double.isFinite(cutoffMs)?cutoffMs:now();
+   LiveSegmentPipe pipe=pipes.get(id);
+   if(pipe!=null){pipe.cutoff(cutoff);if(discard||!pipe.ready().isDone())pipe.close(true,cutoff);}
+-  admission.stop(id);
++  admission.stop(id,discard);
+   submit(worker,()->{
+    long duration=0;
+    if(live!=null&&live.captureId().equals(id)){duration=live.stop();live=null;current=null;}
+--- a/plugins/plugin-local-inference/native/android/src/main/java/ai/eliza/voice/LiveCaptureAdmission.java
++++ b/plugins/plugin-local-inference/native/android/src/main/java/ai/eliza/voice/LiveCaptureAdmission.java
+@@ -19,7 +19,9 @@
+   if(!current(ticket)){cancel.run();return false;}
+   ticket.cancel=cancel;return true;
+  }
+- public synchronized void stop(String id){if(active!=null&&active.id.equals(id))cancel(active,false);}
++ public synchronized void stop(String id){stop(id,false);}
++ /** A discarded stop suppresses its captured tail as well as future startup. */
++ public synchronized void stop(String id,boolean discard){if(active!=null&&active.id.equals(id))cancel(active,discard);}
+  public synchronized void cancelAll(){if(active!=null)cancel(active,true);}
+  private void cancel(Ticket ticket,boolean discard){
+   ticket.cancelled=true;ticket.discard|=discard;
+--- a/plugins/plugin-local-inference/native/android/src/main/java/ai/eliza/voice/LiveVoiceCapture.java
++++ b/plugins/plugin-local-inference/native/android/src/main/java/ai/eliza/voice/LiveVoiceCapture.java
+@@ -226,7 +226,8 @@
+    if(frames.length()>0||edges.length()>0)sink.frames(captureId,frames,edges,Math.min(1f,peak));
+   }catch(Exception|Error failure){if(running)error="capture";}
+   finally{
+-   try{resource.release(recorder);}finally{vad.close();}
++   try{resource.release(recorder);}catch(Exception|Error cleanupFailure){error="capture";}
++   try{vad.close();}catch(Exception|Error cleanupFailure){error="capture";}
+    java.util.Arrays.fill(bytes,(byte)0);java.util.Arrays.fill(window,(short)0);java.util.Arrays.fill(pcm,0f);
+    preroll.clear();
+    sink.ended(captureId,error!=null?error:interruption);

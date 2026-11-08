@@ -105,3 +105,25 @@ call-mode delivery, installed lifecycle and the physical microphone remain
 external. Live-capture, inference, prepared playback and latency dependencies are
 unexercised explicit ports. The host `org.json` float overload is accommodated by
 widening only the fixture listener sink to `JSONObject`.
+
+## Shared live capture lifecycle
+
+`live-capture.mjs` executes the complete current shared bridge, controller,
+`LiveVoiceCapture` loop and `LiveCaptureResource`. It controls AudioRecord startup,
+blocking read and release, plus VAD outputs. Captured callback and reservation
+identities come from actual source objects. Reflection into the JDK's delegated
+single-thread executor is read-only and requires an isolated child JVM with
+`--add-opens=java.base/java.util.concurrent=ALL-UNNAMED`.
+
+The source campaign separates the native constructor's suspended interval from
+its completion. Exact pre-fix traces retain three regressions. Call arrival
+could publish a newly opened source. Stop or replacement during opening was
+reported as a microphone error. Explicit discard left local tail delivery
+admitted. The authenticated patch adds startup-only call admission, preserves
+cancellation classification, and passes discard into the existing reservation.
+
+A cleanup exception previously skipped the terminal sink and subsequent buffer
+zeroing. Cleanup now retains the capture error while continuing detector cleanup,
+zeroing and terminal notification. The observer still reports failed physical
+release independently. Piped ASR and real Android resource guarantees remain
+outside the non-piped campaign.

@@ -394,3 +394,23 @@ uses two recording requests, two cancellation waiters and two successful starts.
 `captureOpen` observes the retained MediaRecorder reference, with physical capture
 state left to Android acceptance. Live capture, inference and playback paths are
 separate source scopes and fail fast if reached by this recording fixture.
+
+`NativeLiveCapture` models the shared bridge/controller's non-piped capture
+lifecycle with two reservation identities. Permission waiters and queued starts
+retain their own tickets. Native opening is a separate step so Stop, replacement,
+call arrival and lifecycle retirement can interleave before its result. The
+actual `LiveVoiceCapture` and `LiveCaptureResource` execute through controlled
+AudioRecord/VAD primitives. The source observer distinguishes physical recording,
+release confirmation, retained controller pointers and caller settlement.
+
+The shared host's `canStart` gate applies current call state to startup and its
+post-open check. `open` retains the event-delivery contract for an interrupted
+capture's tail. A native open already entered may complete after cancellation;
+its late result is stopped and refused publication. A release failure remains
+unconfirmed. Cleanup still zeros buffers, closes the detector and emits a
+terminal capture error. Discard now reaches the admission's tail fence.
+
+The present source campaign covers non-piped capture. Provider warmup, pipe
+queues, transcript callbacks and close acknowledgment require separate source
+schedules. Physical Android microphone enforcement and operating-system resource
+release remain explicit acceptance boundaries.
