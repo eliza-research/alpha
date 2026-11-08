@@ -203,8 +203,10 @@ receipt that anything was sent.
 
 The Alpha action path supports `photo_library_search`, `photo_library_inspect`,
 `photo_library_select` and `photo_library_review` behind `photos.library.v1` and a
-Photos context check. Upstream Eliza still must emit those operations and negotiate
-that capability, so source registration does not establish live agent acceptance.
+Photos context check. The native client offers `photos.library.v1` only when the agent
+offers it and the `AlphaPhotoLibrary` plugin is present. Upstream Eliza still must emit
+those operations and offer that capability, so source registration does not establish
+live agent acceptance.
 
 The host tests exercise the renderer contract, opaque outbound revisions, selection,
 review expiry and shared catalog delegation. The instrumentation fixture is updated
