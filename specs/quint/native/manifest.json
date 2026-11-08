@@ -80,7 +80,8 @@
         "muteKeepsReplyAndStopsMicrophoneTest",
         "stopRejectsLateCaptureTest",
         "inputCloseBarrierTest",
-        "stoppingPendingCloseNeverSendsTest"
+        "stoppingPendingCloseNeverSendsTest",
+        "explicitSpeechInterruptionTest"
       ],
       "invariants": [
         "TypeOK",

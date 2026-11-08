@@ -54,7 +54,7 @@ module StreamingPlayback {
   action advanceHead(frames: int): bool = all {
     s.outputOpen, not(s.stopped), frames >= s.played, frames <= s.written,
     s' = {played: frames, headFallback: s.headFallback or
-      (s.audibleFrame >= 0 and frames > s.audibleFrame), ...s}
+      (not(s.audibleReported) and s.audibleFrame >= 0 and frames > s.audibleFrame), ...s}
   }
   action reportTimestamp = all {
     s.outputOpen, not(s.stopped), not(s.audibleReported), s.audibleFrame >= 0,
@@ -121,7 +121,7 @@ module StreamingPlayback {
   run timestampReportedOnceTest = init.then(offer(true)).then(complete).then(start)
     .then(outputOpened(true)).then(take).then(write(2)).then(reportTimestamp)
     .then(beginDrain).then(advanceHead(2)).then(finish)
-    .then(check(safety and s.timestampAvailable and s.callbacks == 1))
+    .then(check(safety and s.timestampAvailable and not(s.headFallback) and s.callbacks == 1))
   run outputCreationFailureTest = init.then(offer(false)).then(start).then(outputOpened(false))
     .then(check(safety and s.callback == "failed" and s.zeroed == 2))
 }

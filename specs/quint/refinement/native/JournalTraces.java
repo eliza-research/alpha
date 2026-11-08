@@ -66,9 +66,10 @@ public final class JournalTraces {
  }
  static JSONArray ipc() throws Exception {
   JSONArray result = new JSONArray();
-  for (String mode : new String[]{"success", "no-complete", "transport", "malformed", "bounds", "occupied", "guard", "replacement"}) {
-   int[] dispatches = {0}; boolean[] current = {true}, cancelled = {false};
-   BufferedStreamExchange.Handle mine = () -> cancelled[0] = true, foreign = () -> {};
+  for (String mode : new String[]{"success", "no-complete", "transport", "malformed", "bounds", "occupied", "guard", "replacement", "deadline", "schedule-rejected"}) {
+   int[] dispatches = {0}, guardChecks = {0}; boolean[] current = {true}, cancelled = {false};
+   java.util.concurrent.CountDownLatch deadlineCancelled = new java.util.concurrent.CountDownLatch(1);
+   BufferedStreamExchange.Handle mine = () -> { cancelled[0] = true; deadlineCancelled.countDown(); }, foreign = () -> {};
    AtomicReference<BufferedStreamExchange.Handle> active = new AtomicReference<>(mode.equals("occupied") ? foreign : null);
    Trace trace = new Trace("ipc-" + mode, Trace.fields("active", mode.equals("occupied") ? 2 : 0, "dispatches", 0));
    trace.value.put("init", Trace.action("initFor", mode.equals("occupied")));
@@ -89,12 +90,37 @@ public final class JournalTraces {
      }
     }
    };
-   JSONObject reply = null;
-   try { reply = BufferedStreamExchange.exchange(port, new JSONObject(), active, () -> { if (!current[0]) throw new SecurityException("retired"); }, 60000); }
-   catch (Exception expected) { if (mode.equals("success")) throw expected; }
+   if (mode.equals("schedule-rejected")) {
+    java.lang.reflect.Field field = BufferedStreamExchange.class.getDeclaredField("DEADLINES");
+    field.setAccessible(true);
+    java.util.concurrent.ScheduledThreadPoolExecutor scheduler = (java.util.concurrent.ScheduledThreadPoolExecutor)field.get(null);
+    scheduler.shutdownNow();
+   }
+   JSONObject reply = null; String failure = "none";
+   try { reply = BufferedStreamExchange.exchange(port, new JSONObject(), active, () -> {
+    if (++guardChecks[0] == 2 && mode.equals("deadline") && !deadlineCancelled.await(5, java.util.concurrent.TimeUnit.SECONDS))
+      throw new AssertionError("Deadline did not cancel");
+    if (!current[0]) throw new SecurityException("retired");
+   }, mode.equals("deadline") ? 0 : 60000); }
+   catch (Exception expected) {
+    if (mode.equals("success")) throw expected;
+    String message = expected.getMessage();
+    if (expected instanceof java.util.concurrent.RejectedExecutionException) failure = "schedule";
+    else if (expected instanceof org.json.JSONException) failure = "event";
+    else if ("Concurrent voice IPC".equals(message)) failure = "concurrent";
+    else if ("Voice IPC deadline".equals(message)) failure = "deadline";
+    else if ("Voice response incomplete".equals(message)) failure = "incomplete";
+    else if ("Voice transport interrupted".equals(message)) failure = "transport";
+    else if ("Voice response too large".equals(message)) failure = "bounds";
+    else if ("retired".equals(message)) failure = "guard";
+    else throw new AssertionError("Unexpected failure class", expected);
+   }
    java.util.ArrayList<JSONObject> actions = new java.util.ArrayList<>();
    actions.add(Trace.action("open")); actions.add(Trace.action("claim"));
-   if (!mode.equals("occupied")) {
+   if (mode.equals("schedule-rejected")) actions.add(Trace.action("schedule", false));
+   else if (mode.equals("deadline")) {
+    actions.add(Trace.action("schedule", true)); actions.add(Trace.action("deadlineFires")); actions.add(Trace.action("refuseDispatch"));
+   } else if (!mode.equals("occupied")) {
     actions.add(Trace.action("schedule", true)); actions.add(Trace.action("dispatch"));
     if (mode.equals("replacement")) { actions.add(Trace.action("replaceHandle")); actions.add(Trace.action("staleEvent")); }
     else {
@@ -110,7 +136,7 @@ public final class JournalTraces {
    actions.add(Trace.action("cleanup"));
    JSONObject observed = Trace.fields("active", active.get() == null ? 0 : active.get() == mine ? 1 : 2,
      "cancelled", cancelled[0], "dispatches", dispatches[0], "returned", reply != null,
-     "resultStatus", reply == null ? 0 : reply.getInt("status"));
+     "resultStatus", reply == null ? 0 : reply.getInt("status"), "failure", failure, "foreignActive", active.get() == foreign, "guardCurrent", current[0]);
    trace.macro("actual exchange return and finally", observed, actions.toArray(new JSONObject[0]));
    result.put(trace.value);
   }

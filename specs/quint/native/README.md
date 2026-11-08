@@ -1,7 +1,7 @@
 # Native application models
 
-These finite models describe Alpha-owned protocol boundaries in the current
-working source. The source lists, named invariants, scenarios and bounds are in
+These finite models describe product and shared-native protocol boundaries in
+the current working source. The source lists, named invariants, scenarios and bounds are in
 [manifest.json](manifest.json). Each exposes `init`, `step` and `safety`.
 
 ## Source correspondence
@@ -14,7 +14,7 @@ working source. The source lists, named invariants, scenarios and bounds are in
 | `AlwaysOnListener` | `ListenerPolicy.decide`, `holdsMicrophone`, `processesAudio`, `latchesIndicatorLoss`, `IndicatorLease.renew`, `verdict`, `ListeningEpoch.current`, `ListenerStore` consent generation | Consent, visibility, unlock, call/privacy, SystemUI lease, explained pause, sticky indicator loss and queued recognition invalidation |
 | `ResetRecovery` | `ResetAuthorization.begin`, `confirm`, `authenticate`, `retire`, `DataReset.record`, `automaticAttempt`, `retry`, `admittedAttempt`, `automaticAttemptAllowed`, `admitAndExit` | Activity-bound approval, durable pending marker, listener-first reset, bounded automatic retry, recovery surface, accepted dispatch and externally observed erasure |
 | `DeletionJournal` | `DeferredDeletionJournal.stage`, `undo`, `expire`, `list`, `acknowledge`, `NativeDeletionCoordinator.reconcile`, `stageOwnerCurrent` | Durable intent, monotonic Undo window, changed boot, exact owner/source admission, dispatch uncertainty and retained no-replay receipt |
-| `MediaLifecycle` | `NativeReadEpoch.current`, `LibraryCatalog.observeScope`, `SelectedPhotoCopy.read`, `publish`, browser `beginPhotoEdit`, `savePhotoEdit`, `cancelPhotoEdit`, `resultPhotoEdit` | Per-item permission, lifecycle/source revision, selected read, reviewed output, canceled temporary capture and active playback |
+| `MediaLifecycle` | `NativeReadEpoch.current`, `PermittedMediaCatalog.observeScope`, `SelectedPhotoCopy.read`, `publish`, browser `beginPhotoEdit`, `savePhotoEdit`, `cancelPhotoEdit`, `resultPhotoEdit` | Per-item permission, lifecycle/source revision, selected read, reviewed output, canceled temporary capture and active playback |
 | `DeviceActions` | `SmsSendJournal.beginDispatch`, `endDispatch`, `sentResult`, `status`, `existing`, telephony read epoch checks, `retainReminderCreation`, `checkReminderCreation`, `reconcileReminderCreations`, `ClockHandoff.receiver` | Image/permission/SIM gates, exact reviewed SMS binding, durable dispatch, multipart evidence, retired operation id, stale contacts, reminder creation recovery and revision-bound notification |
 | `RendererRecovery` | `RendererRecoveryBudget.onLoss`, `MainActivity.onRenderProcessGone`, delayed recreation and stock Settings actions | Three immediate losses, exact 60-second window, five-second backoff, HOME escape, duplicate callbacks and activity ownership |
 | `VadSegmentation` | `LiveVadGate.accept`, `close` | Two high windows to open, sixteen low windows to close, hysteresis thresholds, nonfinite values and counter reset |
@@ -306,3 +306,25 @@ The detailed current-pin source report is
 `specs/quint/refinement/native/current-port-report.md`. Earlier counts above are
 historical checks of their stated revisions. Current implementation receipts
 retain source/model/driver hashes and explicit Android/provider obligations.
+
+## Current aggregate integration
+
+The native aggregate uses the current shared Java paths and product wrappers.
+It includes the full MainActivity, reset, resident and deletion coordinators,
+provider admission and native credential mutation/lease adapters. Each driver
+hash includes the aggregate entry point and the shared Quint syntax-tree state
+inventory helper. Missing actions and fields are derived from declarations and
+imported state rather than a type-name or text-pattern heuristic.
+
+Additional source schedules exercise semantic endpoint completion/continuation,
+exact owner-reviewed voice resume, explicit speech interruption, timestamp and
+head-position playback evidence, zero writes, ducking, expired IPC deadlines and
+rejected deadline scheduling. The playback model only records fresh head-position
+evidence while an audible timestamp has not already been reported. Native and
+service ownership remain separate in the source manifest, and the aggregate
+retains both credential and resident observations from their shared coordinator.
+
+The aggregate emits explicit remaining obligations for complete native service,
+media, navigation and SystemUI controller orchestration, alongside the Android,
+provider and physical acceptance boundaries. A field absent from concrete source
+observations is reported as unobserved even if its model invariant passes.

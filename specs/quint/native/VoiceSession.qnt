@@ -87,6 +87,13 @@ module VoiceSession {
       {phase: "listening", turn: s.turn + 1, text: true,
         endpoint: "none", playbackTurn: -1, requestTurn: -1, ...s} else s
   }
+  // Explicit user interruption retains no dictated segment. Input reopens after the aborted playback drains.
+  action interruptSpeech = all {
+    s.phase == "speaking", s.turn < 4,
+    s' = { ...s, phase: "listening", turn: s.turn + 1, text: false,
+      endpoint: "none", playbackTurn: -1, requestTurn: -1, capture: not(s.muted),
+      inputHeld: false, closingInput: false }
+  }
   action mute = all {
     s.phase.in(Set("listening", "thinking", "speaking", "awaiting-review")),
     s' = {muted: not(s.muted), capture: s.muted and s.phase == "listening" and not(s.inputHeld or s.closingInput), ...s}
@@ -114,7 +121,7 @@ module VoiceSession {
     any { discloseCloud, start(flag, duplex), segment(ticketSession, flag), speechStarts, shortGap,
       endpointResult(ticketTurn, flag), submit(flag), beginSubmission(flag), inputClosed, inputCloseFailed, reply(ticketSession, ticketTurn, flag),
       sentenceFinished(ticketSession, ticketTurn), playbackFinished,
-      bargeIn(flag), mute, resumeReview(ticketSession, ticketTurn, flag), finishDictation, stop, s' = s }
+      bargeIn(flag), interruptSpeech, mute, resumeReview(ticketSession, ticketTurn, flag), finishDictation, stop, s' = s }
   }
   val TypeOK = s.session.in(0.to(2)) and s.turn.in(0.to(4)) and
     s.phase.in(Set("idle", "dictating", "listening", "thinking", "speaking", "awaiting-review", "error"))
@@ -164,4 +171,8 @@ module VoiceSession {
     .expect(safety and s.sent == Set(1) and s.inputHeld)
   run stoppingPendingCloseNeverSendsTest = init.then(start(false, true)).then(segment(0, true)).then(beginSubmission(true))
     .then(stop).expect(safety and s.sent.size() == 0 and not(s.closingInput))
+  run explicitSpeechInterruptionTest = init.then(start(false, true)).then(segment(0, true)).then(submit(true))
+    .then(reply(0, 1, false)).then(interruptSpeech)
+    .expect(safety and s.phase == "listening" and s.capture and not(s.text or s.inputHeld))
+
 }
