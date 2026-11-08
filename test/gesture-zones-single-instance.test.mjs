@@ -55,10 +55,21 @@ test('the launcher keeps one MainActivity and its kind belongs to the task', () 
   // A second instance never loads a page.
   assert.match(activity, /@Override protected void load\(\) \{ if \(!handedOff\) super\.load\(\); \}/);
   assert.match(activity, /MainActivity live = BuildConfig\.IS_LAUNCHER && !isAssistantSurface\(\) \? liveInstance\(\) : null;/);
-  // The kind is read from the start intent once per task. A relaunch is handed the last intent given
-  // to setIntent (AlphaConnectionPlugin keeps the sign-in return there), so it must not be read again.
-  assert.match(activity, /if \(task == -1 \|\| task != liveTaskId\) \{ liveTaskId = task; liveTaskHome = isHomeTypeStart\(getIntent\(\)\); \}\s*startedAsHome = liveTaskHome;/);
-  assert.doesNotMatch(activity, /startedAsHome = isHome(Intent|TypeStart)\(getIntent\(\)\)/);
+  // Every surviving task retains its first kind. Recreating one task must not
+  // replace another task's classification when fallback handoff leaves both alive.
+  assert.match(activity, /Map<Integer,TaskKind> taskKinds = new java\.util\.HashMap<>\(\);/);
+  const taskStart = activity.indexOf('int task = getTaskId();');
+  const taskEnd = activity.indexOf('registerPlugin(AlphaSystemPlugin.class);', taskStart);
+  assert.ok(taskStart >= 0 && taskEnd > taskStart, 'task classification located');
+  const taskKind = activity.slice(taskStart, taskEnd);
+  assert.match(taskKind, /if \(task == -1\) startedAsHome = isHomeTypeStart\(getIntent\(\)\);/);
+  const knownTask = taskKind.slice(taskKind.indexOf('else {'));
+  assert.match(knownTask, /TaskKind kind = taskKinds\.get\(task\);/);
+  assert.match(knownTask, /if \(kind == null\) \{ kind = new TaskKind\(isHomeTypeStart\(getIntent\(\)\),this\); taskKinds\.put\(task,kind\); \}/);
+  assert.match(knownTask, /kind\.owner = new java\.lang\.ref\.WeakReference<>\(this\);\s*startedAsHome = kind\.home;/);
+  assert.doesNotMatch(knownTask, /startedAsHome = isHome(Intent|TypeStart)\(getIntent\(\)\)/);
+  assert.match(activity, /if \(isFinishing\(\) && kind != null && kind\.owner\.get\(\) == this\) taskKinds\.remove\(getTaskId\(\)\);/,
+    'only the current finishing task owner removes the retained kind');
   assert.match(read('android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaConnectionPlugin.java'), /getActivity\(\)\.setIntent\(intent\);delegationCallback=uri;/, 'the sign-in return is still kept with setIntent, which is why the kind is per task');
   // An exported activity reads its own marker extra without trusting the sender's parcel.
   assert.match(activity, /try \{ return intent\.getBooleanExtra\(EXTRA_FRONT_START, false\); \}\s*catch \(RuntimeException foreign\) \{ return false; \}/);

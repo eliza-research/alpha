@@ -67,7 +67,14 @@ test("Inbox keeps one combined consent and discards unsent reviews when change a
   const binding = fs.readFileSync("apps/app/src/prototype/inbox-provider-controls.ts", "utf8");
   assert.match(binding, /createMailReviewController\(\{publish,toast,store:inboxLocalStore,/);
   const provider = fs.readFileSync(".eliza/client-features/plugins/plugin-inbox/src/mailbox/review-controller.ts", "utf8");
-  assert.match(provider, /if \(!gmailInboxAllows\(caps, kind as GmailMailboxAction\)\)/);
+  assert.match(provider, /const allowed = \(proposal: Bag\) =>\s*gmailInboxAllows\(caps, proposal\.kind as GmailMailboxAction\) &&\s*\(!proposal\.forwardAttachments \|\| caps\?\.forwardAttachments === true\);/,
+    'the shared predicate combines the action grant and attachment capability');
+  assert.match(provider, /async function prepare\(proposal: Bag[\s\S]*?if \(!allowed\(proposal\)\) \{[\s\S]*?return;/,
+    'preparation refuses actions outside current capabilities');
+  assert.match(provider, /if \(!record \|\| !allowed\(record\.proposal\)\) \{[\s\S]*?return;/,
+    'confirmation rechecks the current action capabilities');
+  assert.match(provider, /canConfirm:[\s\S]*?receiptState === "prepared" &&\s*allowed\(record\.proposal\)/,
+    'confirmation availability uses the same grant predicate');
   assert.match(provider, /InboxOperation\.discardUnsent\(\s*options\.store,\s*pending\.owner,\s*pending\.grant,?\s*\)/, "the discard is bound to the grant, not the live operation");
 });
 
