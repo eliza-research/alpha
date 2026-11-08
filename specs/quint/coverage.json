@@ -6724,7 +6724,8 @@
       "sha256": "19f7e496c590d1cefc0da7846fa8e9cb28786dbf820ade1d0af879060d463fc9",
       "models": [
         "DeviceActions",
-        "NativeSmsDispatch"
+        "NativeSmsDispatch",
+        "NativeMmsDispatch"
       ],
       "scope": "application",
       "treatment": "state-and-transition-projection",
@@ -7345,7 +7346,8 @@
       "sha256": "f3e08393001c257c46a448ea8a4c1e65d39ef6df672b42545a5928bace38f670",
       "models": [
         "DeviceActions",
-        "NativeSmsDispatch"
+        "NativeSmsDispatch",
+        "NativeMmsDispatch"
       ],
       "scope": "application",
       "treatment": "domain-contract-or-support",
@@ -7365,7 +7367,8 @@
       "path": "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaTelephony.java",
       "models": [
         "DeviceActions",
-        "NativeSmsDispatch"
+        "NativeSmsDispatch",
+        "NativeMmsDispatch"
       ],
       "scope": "application",
       "treatment": "domain-contract-or-support",
@@ -7382,7 +7385,8 @@
       "sha256": "6b6b2f2d5137cda6987d8bd0e07f70f9f219abbfa74df0ebe9fbf55db505f424",
       "models": [
         "DeviceActions",
-        "NativeSmsDispatch"
+        "NativeSmsDispatch",
+        "NativeMmsDispatch"
       ],
       "scope": "application",
       "treatment": "state-and-transition-projection",
@@ -503741,7 +503745,8 @@
     {
       "path": "vendor/eliza/plugins/plugin-native-messages/android/src/main/java/ai/eliza/plugins/messages/MmsPdu.java",
       "models": [
-        "DeviceActions"
+        "DeviceActions",
+        "NativeMmsDispatch"
       ],
       "scope": "shared-module-dependency",
       "treatment": "domain-contract-or-support",
@@ -503814,7 +503819,8 @@
       "models": [
         "DeviceActions",
         "DurableStore",
-        "NativeSmsDispatch"
+        "NativeSmsDispatch",
+        "NativeMmsDispatch"
       ],
       "scope": "shared-module-dependency",
       "treatment": "domain-contract-or-support",
@@ -503951,7 +503957,8 @@
       "path": "vendor/eliza/plugins/plugin-native-messages/android/src/main/java/ai/eliza/plugins/messages/SmsProviderReader.java",
       "models": [
         "DeviceActions",
-        "NativeSmsDispatch"
+        "NativeSmsDispatch",
+        "NativeMmsDispatch"
       ],
       "scope": "shared-module-dependency",
       "treatment": "domain-contract-or-support",
@@ -504029,7 +504036,8 @@
       "models": [
         "DeviceActions",
         "DurableStore",
-        "NativeSmsDispatch"
+        "NativeSmsDispatch",
+        "NativeMmsDispatch"
       ],
       "scope": "shared-module-dependency",
       "treatment": "domain-contract-or-support",
@@ -504194,7 +504202,8 @@
       "path": "vendor/eliza/plugins/plugin-native-messages/android/src/main/java/ai/eliza/plugins/messages/SmsTelephony.java",
       "models": [
         "DeviceActions",
-        "NativeSmsDispatch"
+        "NativeSmsDispatch",
+        "NativeMmsDispatch"
       ],
       "scope": "shared-module-dependency",
       "treatment": "domain-contract-or-support",
@@ -504223,7 +504232,8 @@
       "path": "vendor/eliza/plugins/plugin-native-messages/android/src/main/java/ai/eliza/plugins/messages/SmsTelephonyConfiguration.java",
       "models": [
         "DeviceActions",
-        "NativeSmsDispatch"
+        "NativeSmsDispatch",
+        "NativeMmsDispatch"
       ],
       "scope": "shared-module-dependency",
       "treatment": "domain-contract-or-support",
@@ -504256,7 +504266,8 @@
       "path": "vendor/eliza/plugins/plugin-native-messages/android/src/main/java/ai/eliza/plugins/messages/TelephonyPlugin.java",
       "models": [
         "DeviceActions",
-        "NativeSmsDispatch"
+        "NativeSmsDispatch",
+        "NativeMmsDispatch"
       ],
       "scope": "shared-module-dependency",
       "treatment": "domain-contract-or-support",
@@ -618315,7 +618326,8 @@
       "models": [
         "Application",
         "DeviceActions",
-        "NativeSmsDispatch"
+        "NativeSmsDispatch",
+        "NativeMmsDispatch"
       ],
       "sha256": "a549ffbd77739527e6d2819fe80135558752090f20cd1a8718662be15e925e96"
     },
@@ -618366,9 +618378,10 @@
         "NativeLiveCapture",
         "NativeSpeechOutputPreparation",
         "GoogleBrowserReturnClaim",
-        "NativeSmsDispatch"
+        "NativeSmsDispatch",
+        "NativeMmsDispatch"
       ],
-      "sha256": "ad92c91314e318e146783ba676612838ce4c16d05c6a567d472e6c6dbc6cf760"
+      "sha256": "df0c167ef389466f9e9e83384d2da3af4072b999e06a8518f81728843aecac1c"
     },
     {
       "path": "android/consumer-host.json",
@@ -618376,7 +618389,8 @@
         "Application",
         "ResidentRuntime",
         "AlwaysOnListener",
-        "NativeSmsDispatch"
+        "NativeSmsDispatch",
+        "NativeMmsDispatch"
       ],
       "sha256": "0bce8e83df6cf39ec58ebda94cdd0976c2558f346e8c0988e4fa904f6578d7cd"
     },
@@ -619117,9 +619131,10 @@
     {
       "path": "patches/eliza/sms-reviewed-binding.patch",
       "models": [
-        "NativeSmsDispatch"
+        "NativeSmsDispatch",
+        "NativeMmsDispatch"
       ],
-      "sha256": "58ef065e979388b71a03198d7963be2ee61b8f149c1750f2b91ee26ddc73f20f"
+      "sha256": "1a0f97e4ff2a5e7c5c4a0c9410939e51fb1305c3ae68de6ed703856bb3c603c8"
     }
   ],
   "runtimeAssets": [

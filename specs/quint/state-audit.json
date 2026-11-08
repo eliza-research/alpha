@@ -12,7 +12,7 @@
   "toolSha256": "403a33cab0dff7ace6219b29e7ffef373319677a7d8be6641466dd16a6750b5b",
   "dependencyLockSha256": "944123c801157a7ba3676a886d0b28a54bef32735ae96da5c6dd0f206c88c8bf",
   "sourcePin": "99b49439ce9d0cb5607e9831b9f7f58d89525029",
-  "ledgerSha256": "41a8f32c512e0e0091b851c4389f92704bfb2f119d85ca08800112c6b051184a",
+  "ledgerSha256": "3ec7881f467a130d25511b57379fbad6b77e30b07856cd27ab78dba4bfd2c67f",
   "method": "TypeScript syntax trees for JavaScript/TypeScript and JDK compiler trees for Java. Mutable fields, bindings, containers, state hooks, write sites and asynchronous registration calls are candidates for semantic review.",
   "limitations": [
     "Candidate extraction does not establish state-machine coverage or implementation refinement.",
@@ -19716,7 +19716,8 @@
       "sha256": "19f7e496c590d1cefc0da7846fa8e9cb28786dbf820ade1d0af879060d463fc9",
       "allocatedModels": [
         "DeviceActions",
-        "NativeSmsDispatch"
+        "NativeSmsDispatch",
+        "NativeMmsDispatch"
       ],
       "sourcePathClass": "other-source-path",
       "classification": "syntactic-candidates",
@@ -22278,7 +22279,8 @@
       "sha256": "f3e08393001c257c46a448ea8a4c1e65d39ef6df672b42545a5928bace38f670",
       "allocatedModels": [
         "DeviceActions",
-        "NativeSmsDispatch"
+        "NativeSmsDispatch",
+        "NativeMmsDispatch"
       ],
       "sourcePathClass": "other-source-path",
       "classification": "syntactic-candidates",
@@ -22355,7 +22357,8 @@
       "sha256": "88f13e8e1fa657183566c5589b71508073889a3a853219ab8ae454760ab3fbb4",
       "allocatedModels": [
         "DeviceActions",
-        "NativeSmsDispatch"
+        "NativeSmsDispatch",
+        "NativeMmsDispatch"
       ],
       "sourcePathClass": "other-source-path",
       "classification": "syntactic-candidates",
@@ -22388,7 +22391,8 @@
       "sha256": "6b6b2f2d5137cda6987d8bd0e07f70f9f219abbfa74df0ebe9fbf55db505f424",
       "allocatedModels": [
         "DeviceActions",
-        "NativeSmsDispatch"
+        "NativeSmsDispatch",
+        "NativeMmsDispatch"
       ],
       "sourcePathClass": "other-source-path",
       "classification": "syntactic-candidates",
@@ -180654,7 +180658,8 @@
       "path": "vendor/eliza/plugins/plugin-native-messages/android/src/main/java/ai/eliza/plugins/messages/MmsPdu.java",
       "sha256": "34360f0c64b36a518037fd5d0403826b7d059d24673898da9d9748c2dbfaf0cf",
       "allocatedModels": [
-        "DeviceActions"
+        "DeviceActions",
+        "NativeMmsDispatch"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -180950,7 +180955,8 @@
       "allocatedModels": [
         "DeviceActions",
         "DurableStore",
-        "NativeSmsDispatch"
+        "NativeSmsDispatch",
+        "NativeMmsDispatch"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -181504,7 +181510,8 @@
       "sha256": "b784ac35ca65bf8e64c81c1e8832d093f79c3f37214ed4d3e8f34a94801275d1",
       "allocatedModels": [
         "DeviceActions",
-        "NativeSmsDispatch"
+        "NativeSmsDispatch",
+        "NativeMmsDispatch"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -181689,7 +181696,8 @@
       "allocatedModels": [
         "DeviceActions",
         "DurableStore",
-        "NativeSmsDispatch"
+        "NativeSmsDispatch",
+        "NativeMmsDispatch"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -182061,7 +182069,8 @@
       "sha256": "0f18bc3a8db09ada6746b0c4dbe49f294528ae406dd69e4a1d7618b1203c8f89",
       "allocatedModels": [
         "DeviceActions",
-        "NativeSmsDispatch"
+        "NativeSmsDispatch",
+        "NativeMmsDispatch"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -182251,7 +182260,8 @@
       "sha256": "aef3c4a4fd10be7120c7e6a1f1b39e3e66cd4c7debf7fed08613fbf2c16b15ce",
       "allocatedModels": [
         "DeviceActions",
-        "NativeSmsDispatch"
+        "NativeSmsDispatch",
+        "NativeMmsDispatch"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -182321,7 +182331,8 @@
       "sha256": "f317d127515d4676ce262f7d94118057206acc6d7ee0ee0e0f5e4309d12e8a56",
       "allocatedModels": [
         "DeviceActions",
-        "NativeSmsDispatch"
+        "NativeSmsDispatch",
+        "NativeMmsDispatch"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -218526,6 +218537,6 @@
   ],
   "detail": {
     "path": "test-results/quint-state-audit/details.json",
-    "sha256": "ab0c7fbf3a3c19e6ac764884067612425f6e68e7dc1d9f65ee6607b28800cb2d"
+    "sha256": "d7b70f066996491ebe6442913c57e3d92ddca47e82bfafbff9528c54237d47c1"
   }
 }

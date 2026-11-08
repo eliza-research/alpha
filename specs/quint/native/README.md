@@ -627,3 +627,25 @@ An exact retry returns the original receipt and a conflicting retry is
 rejected. After capacity pruning, a late exact review reports `expired`,
 while a conflicting review reports `invalid`. The source replay drives
 both outcomes through the retained dialog, then reloads the tombstone.
+
+### Native reviewed MMS dispatch
+
+`NativeMmsDispatch` follows the inherited Alpha wrapper through MMS review,
+PDU encoding, durable dispatch admission, outbox storage, and callback
+settlement. The source driver compares the exact decoded attachment bytes
+at review and at radio handoff. It observes temporary PDU cleanup, provider
+rollback after partial storage, and uncertain radio or durable callback
+outcomes. The Android role, bitmap decoder, provider and carrier are controlled
+ports in this campaign.
+
+The as-built replay in commit `96addfb521` records the MMS positive recovery
+returning a row by operation ID after dispatch rejects a reused ID. That
+could return a receipt for another attachment or an SMS wire receipt. Each
+schedule still makes only the original radio handoff.
+
+The authenticated shared patch requires the exact MMS binding and record
+kind for recovery. It returns the prior receipt for the exact reviewed
+tuple. The source replay rejects changed body, recipients, SIM or attachment
+bytes, including an ID retained by SMS. It also checks that a pruned exact
+review reports `expired` and a conflicting review reports `invalid`, with
+the newly staged PDU cleaned in both cases.
