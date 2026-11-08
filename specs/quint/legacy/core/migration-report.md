@@ -6,7 +6,7 @@ The incoming shared pin `4787d51a142c63c98371c832997184c53f7218d3` adds 16 TLA+ 
 
 - Translate every declared variable, helper, action, initial condition, invariant, specification and temporal property. Retain original operator names where Quint permits them. Use the `Core` module prefix to distinguish these designs from existing runtime models.
 - Preserve every configuration’s constants, selected specification, invariant list, temporal-property list and deadlock setting. Each profile needs a named executable entry point and its own validation result.
-- Store implementations and comparison metadata under `specs/quint/legacy/core`. Register every default model in the legacy manifest with upstream source revision and hashes. The core configuration runner must enumerate all 31 profiles independently of the default manifest entry.
+- Store Quint modules directly under `specs/quint/legacy` and comparison metadata under `specs/quint/legacy/core`. Register every default model in the legacy manifest with upstream source revision and hashes. The core configuration runner must enumerate all 31 profiles independently of the default manifest entry.
 - Preserve weak and strong fairness and temporal quantification. Check safety separately from liveness. A fairness-conditioned temporal property must use the source action-enablement semantics and the complete source state tuple for stuttering.
 - Add executable scenarios for success, rejection/failure, competing calls, cancellation/retirement and retries where the source defines them. Run type checking, scenarios and bounded simulation for each configuration, followed by bounded symbolic and feasible TLC temporal checks with recorded limits.
 - Preserve the reducer graph as historical upstream evidence. A generated graph does not replace a checked Quint model or source-executing refinement.
@@ -377,3 +377,19 @@ Translate `packages/core/tla/TaskService.tla` to `CoreTaskService.qnt`. Source S
 The first validation pass can use the existing pinned Quint CLI without changing the product or vendor sources. Existing long TLC checkpoint recovery remains separate work. New heavyweight exhaustive runs wait for host capacity. A passing bounded run will be recorded with its exact depth or simulation counts and never described as a universal proof.
 
 No conversion has been claimed complete by this inventory report. The report and exact source/configuration hashes precede parallel implementation dispatch.
+
+## Current-main checkpoint
+
+The current product pin is `99b49439ce9d0cb5607e9831b9f7f58d89525029`.
+All 16 authored modules and 31 configurations have identical bytes at this pin
+and at `4787d51a142c63c98371c832997184c53f7218d3`.
+
+The initial follow-up registers `CoreSerialise`, `CoreFactWriteDedupe`,
+`CoreSemaphore` and `CoreProviderExecution`, preserving seven configuration
+profiles. The default profiles pass the repository checker with 1,000 samples
+of 80 steps. Alternate profiles use their own module instances and checks.
+The raw transition relation is available for TLC deadlock checking. The
+simulation and bounded safety relation also allows explicit stuttering.
+
+Runtime source conformance, the remaining 12 translations and complete
+repository and Android validation are tracked separately from this checkpoint.

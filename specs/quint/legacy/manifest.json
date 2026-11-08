@@ -1703,5 +1703,283 @@
         "apps/app/src/runtime/files-agent-contract.ts"
       ]
     }
+  },
+  {
+    "path": "specs/quint/legacy/CoreFactWriteDedupe.qnt",
+    "module": "CoreFactWriteDedupe",
+    "init": "init",
+    "step": "step",
+    "invariant": "safety",
+    "tests": [
+      "equivalentInsertTest",
+      "writerExclusionTest"
+    ],
+    "temporal": [
+      "CheckedTemporal"
+    ],
+    "configurations": [
+      {
+        "name": "empty",
+        "module": "CoreFactWriteDedupe",
+        "init": "init",
+        "step": "step",
+        "rawStep": "rawStep",
+        "invariant": "safety",
+        "temporal": "CheckedTemporal",
+        "invariants": [
+          "TypeOK",
+          "NoDuplicateFact",
+          "NoLostEvidence"
+        ],
+        "properties": [
+          "WriteReturns"
+        ],
+        "checkDeadlock": true,
+        "constantAssignments": [
+          "Writers = {w1, w2, w3}",
+          "Prefilled = FALSE",
+          "Serialised = TRUE",
+          "Seed = Seed"
+        ]
+      },
+      {
+        "name": "prefilled",
+        "module": "CoreFactWriteDedupePrefilled",
+        "init": "init",
+        "step": "step",
+        "rawStep": "rawStep",
+        "invariant": "safety",
+        "temporal": "CheckedTemporal",
+        "invariants": [
+          "TypeOK",
+          "NoDuplicateFact",
+          "NoLostEvidence"
+        ],
+        "properties": [
+          "WriteReturns"
+        ],
+        "checkDeadlock": true,
+        "constantAssignments": [
+          "Writers = {w1, w2, w3}",
+          "Prefilled = TRUE",
+          "Serialised = TRUE",
+          "Seed = Seed"
+        ]
+      }
+    ],
+    "sources": [],
+    "upstreamSources": [
+      {
+        "path": "packages/core/tla/FactWriteDedupe.tla",
+        "revision": "4787d51a142c63c98371c832997184c53f7218d3",
+        "sha256": "b96af81bac91ac1c23f2e67be01a012962fb2c3587ebf1b82ade02c004ff3570"
+      }
+    ],
+    "classification": "upstream-design-conversion"
+  },
+  {
+    "path": "specs/quint/legacy/CoreSemaphore.qnt",
+    "module": "CoreSemaphore",
+    "init": "init",
+    "step": "step",
+    "invariant": "safety",
+    "tests": [
+      "cancelledHeadSkippedTest",
+      "cancellationListenerTest",
+      "preAbortedCallerTest"
+    ],
+    "temporal": [
+      "CheckedTemporal"
+    ],
+    "configurations": [
+      {
+        "name": "one",
+        "module": "CoreSemaphore",
+        "init": "init",
+        "step": "step",
+        "rawStep": "rawStep",
+        "invariant": "safety",
+        "temporal": "CheckedTemporal",
+        "invariants": [
+          "TypeOK",
+          "PermitConservation",
+          "NoIdlePermitWithWaiters",
+          "WaitersQueued",
+          "FIFOGrants",
+          "CancelledNeverHolds"
+        ],
+        "properties": [
+          "WaiterServed"
+        ],
+        "checkDeadlock": true,
+        "constantAssignments": [
+          "Callers = {c1, c2, c3, c4}",
+          "N = 1"
+        ]
+      },
+      {
+        "name": "two",
+        "module": "CoreSemaphoreTwo",
+        "init": "init",
+        "step": "step",
+        "rawStep": "rawStep",
+        "invariant": "safety",
+        "temporal": "CheckedTemporal",
+        "invariants": [
+          "TypeOK",
+          "PermitConservation",
+          "NoIdlePermitWithWaiters",
+          "WaitersQueued",
+          "FIFOGrants",
+          "CancelledNeverHolds"
+        ],
+        "properties": [
+          "WaiterServed"
+        ],
+        "checkDeadlock": true,
+        "constantAssignments": [
+          "Callers = {c1, c2, c3, c4}",
+          "N = 2"
+        ]
+      }
+    ],
+    "sources": [],
+    "upstreamSources": [
+      {
+        "path": "packages/core/tla/Semaphore.tla",
+        "revision": "4787d51a142c63c98371c832997184c53f7218d3",
+        "sha256": "06f2eec3864f634079b94954ec8916d83427b13d680d3a757c43506ab85e028c"
+      }
+    ],
+    "classification": "upstream-design-conversion"
+  },
+  {
+    "path": "specs/quint/legacy/CoreSerialise.qnt",
+    "module": "CoreSerialise",
+    "init": "init",
+    "step": "step",
+    "invariant": "safety",
+    "tests": [
+      "rejectionReleasesNextTest",
+      "arrivalOrderTest"
+    ],
+    "temporal": [
+      "CheckedTemporal"
+    ],
+    "configurations": [
+      {
+        "name": "calls",
+        "module": "CoreSerialise",
+        "init": "init",
+        "step": "step",
+        "rawStep": "rawStep",
+        "invariant": "safety",
+        "temporal": "CheckedTemporal",
+        "invariants": [
+          "TypeOK",
+          "MutualExclusion",
+          "CallOrder"
+        ],
+        "properties": [
+          "CallFinishes"
+        ],
+        "checkDeadlock": true,
+        "constantAssignments": [
+          "Calls = {a, b, c, d}"
+        ]
+      }
+    ],
+    "sources": [],
+    "upstreamSources": [
+      {
+        "path": "packages/core/tla/Serialise.tla",
+        "revision": "4787d51a142c63c98371c832997184c53f7218d3",
+        "sha256": "701209da1f1f1d7e8ac81395b99f053c9545e7bbe8dcee0bd85a9a9455b09ac6"
+      }
+    ],
+    "classification": "upstream-design-conversion"
+  },
+  {
+    "path": "specs/quint/legacy/CoreProviderExecution.qnt",
+    "module": "CoreProviderExecution",
+    "init": "init",
+    "step": "step",
+    "invariant": "safety",
+    "tests": [
+      "lastCallerRetiresExecutionTest",
+      "stopSettlesSignallessCallerTest"
+    ],
+    "temporal": [
+      "CheckedTemporal"
+    ],
+    "configurations": [
+      {
+        "name": "coalesced",
+        "module": "CoreProviderExecution",
+        "init": "init",
+        "step": "step",
+        "rawStep": "rawStep",
+        "invariant": "safety",
+        "temporal": "CheckedTemporal",
+        "invariants": [
+          "TypeOK",
+          "WaiterCount",
+          "AbortOnlyWhenUnwanted",
+          "UnwantedWorkAborted",
+          "NoJoinAborting",
+          "StopReachesAll",
+          "MapActive"
+        ],
+        "properties": [
+          "AbortedCallerLeaves",
+          "StopReleasesCallers"
+        ],
+        "checkDeadlock": true,
+        "constantAssignments": [
+          "Callers = {a, b, c}",
+          "Signalled = {a, b}",
+          "Keyed = {a, b, c}",
+          "MaxExec = 3"
+        ]
+      },
+      {
+        "name": "oneoff",
+        "module": "CoreProviderExecutionOneoff",
+        "init": "init",
+        "step": "step",
+        "rawStep": "rawStep",
+        "invariant": "safety",
+        "temporal": "CheckedTemporal",
+        "invariants": [
+          "TypeOK",
+          "WaiterCount",
+          "AbortOnlyWhenUnwanted",
+          "UnwantedWorkAborted",
+          "NoJoinAborting",
+          "StopReachesAll",
+          "MapActive"
+        ],
+        "properties": [
+          "AbortedCallerLeaves",
+          "StopReleasesCallers"
+        ],
+        "checkDeadlock": true,
+        "constantAssignments": [
+          "Callers = {a, b, c}",
+          "Signalled = {a, c}",
+          "Keyed = {a, b}",
+          "MaxExec = 3"
+        ]
+      }
+    ],
+    "sources": [],
+    "upstreamSources": [
+      {
+        "path": "packages/core/tla/ProviderExecution.tla",
+        "revision": "4787d51a142c63c98371c832997184c53f7218d3",
+        "sha256": "d0637ff320d0d508252dd72e1cf388b2c0a3bde771b881420d84ed30dbd733a6"
+      }
+    ],
+    "classification": "upstream-design-conversion"
   }
 ]
