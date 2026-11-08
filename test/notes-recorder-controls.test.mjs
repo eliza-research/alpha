@@ -82,3 +82,17 @@ test('the saved-note synth shows pending start, confirmed playback and idle for 
   vm.runInContext(stripTypeScriptTypes(source.slice(begin,end),{mode:'transform'}),context);assert.equal(vo.activity.props.phase,phase);
  }
 });
+
+test('the outer canonical decorator preserves only the owned recording playback installed by the voice adapter',()=>{
+ const canonical=fs.readFileSync('apps/app/src/prototype/canonical-notes-ui.ts','utf8');
+ const helper=canonical.slice(canonical.indexOf('function voiceAudio('),canonical.indexOf('function domainOf('));
+ const begin=canonical.indexOf(' decorate(view:Bag'),end=canonical.indexOf(' /** Decorate this view',begin);assert(begin>=0&&end>begin);
+ const decorate=vm.runInNewContext(stripTypeScriptTypes(helper+';({'+canonical.slice(begin,end)+'}).decorate',{mode:'transform'}),{});
+ const record={format:{kind:'voice',data:{recordingId:'recording',audio:{audioId:'recording',durationMs:1000}}}};
+ const ui={controller:{current:true,revision:1,pending:false,hasViewNote:()=>true,viewNote:()=>record},trashValue:[],phase:'ready',editor:{draft:null},open:'note',dirty:false};
+ for(const id of ['recording','foreign',undefined]){
+  const play=()=>{},view={vo:{hasPlayback:true,playbackAudioId:id,play}};
+  const result=decorate.call(ui,view,{ic:{},toast(){}},{});
+  assert.equal(result.vo.hasPlayback,id==='recording');assert.equal(result.vo.play===play,id==='recording');
+ }
+});

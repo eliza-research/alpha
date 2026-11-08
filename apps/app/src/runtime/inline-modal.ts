@@ -50,9 +50,21 @@ export function createInlineModal(close:()=>void,returnFocus?:()=>HTMLElement|nu
    // Renderer-owned inert flags are removed later in the same DOM commit.
    // Restore only after that commit, and never steal focus from a replacement.
    queueMicrotask(()=>{
-    if(mounted||document.activeElement!==document.body&&!dialog.contains(document.activeElement))return;
-    const target=previous?.isConnected?previous:returnFocus?.();
-    if(target?.isConnected&&!target.closest('[inert]'))target.focus({preventScroll:true});
+    const displaced=()=>!!mounted||document.activeElement!==document.body&&!dialog.contains(document.activeElement);
+    const restore=()=>{
+     if(displaced())return true;
+     const target=previous?.isConnected?previous:returnFocus?.();
+     if(!target?.isConnected||target.closest('[inert],[hidden]')||target.matches(':disabled')||!target.getClientRects().length)return false;
+     target.focus({preventScroll:true});return true;
+    };
+    if(restore())return;
+    // A successful asynchronous mutation may briefly remove its toolbar while reloading.
+    // Wait for its replacement, but never take focus from another control or modal.
+    const watcher=new MutationObserver(()=>{if(restore())stop();});
+    const timer=setTimeout(()=>stop(),1000);
+    const stop=()=>{watcher.disconnect();clearTimeout(timer);document.removeEventListener('focusin',changed);};
+    const changed=()=>{if(displaced())stop();};
+    document.addEventListener('focusin',changed);watcher.observe(phone||document.body,{childList:true,subtree:true,attributes:true,attributeFilter:['inert','hidden','aria-hidden','disabled']});
    });
   };
  };

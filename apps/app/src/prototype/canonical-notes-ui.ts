@@ -258,7 +258,9 @@ export class CanonicalNotesUi {
   if(out.ed&&open){out.ed={...out.ed,dictate:()=>void this.dictate(open,api),
    saveStatus:busy?'Saving…':this.phase==='review'?'Not saved':this.dirty?'Unsaved changes':saved?'Saved':'',
    doneDisabled:busy,done:()=>{void this.leave(null).then(left=>{if(!left&&this.controller.current)api.toast('Your draft is kept. Finish saving before closing.');}).catch(()=>this.needsReview());}};}
-  if(out.vo&&open){out.vo={...out.vo,hasPlayback:false,play:()=>api.toast('No audio is available for this note.'),
+  if(out.vo&&open){const note=this.controller.viewNote(open),audio=note?.format?.kind==='voice'?voiceAudio(note.format.data):undefined;
+   const owned=!!audio&&out.vo.playbackAudioId===audio.audioId&&out.vo.hasPlayback===true;
+   out.vo={...out.vo,...(owned?{}:{hasPlayback:false,play:()=>api.toast('No audio is available for this note.')}),
    toCal:()=>void this.scheduleDraft(open,'reminder',api),calLabel:'Review reminder draft',calText:'Review reminder',calIcon:api.ic?.cal??out.vo.calIcon,
    toEvent:()=>void this.scheduleDraft(open,'event',api),eventLabel:'Review calendar event draft',eventText:'Review event'};}
   return out;

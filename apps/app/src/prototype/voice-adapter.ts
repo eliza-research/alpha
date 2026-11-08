@@ -1203,6 +1203,7 @@ export function installPrototypeVoiceAdapter(Component: any, views: Record<strin
         });
       } : undefined;
       vo.hasPlayback = true;
+      vo.playbackAudioId = selected.audio.audioId;
       vo.activity=React.createElement(VoiceActivity,{phase:savedPlaying===selected.audio.audioId?(savedPlaybackReady?'speaking':'connecting'):'idle',theme:current.theme==='dark'?'dark':'light'});
       vo.playLabel = savedPlaying ? 'Stop recording playback' : 'Play recording';
       vo.playIcon = savedPlaying ? current.ic.stop : current.ic.play;
