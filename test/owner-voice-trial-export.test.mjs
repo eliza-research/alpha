@@ -31,6 +31,7 @@ test("check reports what each cohort still needs and a build that does not match
     const file = layoutPath(root, { unit: "unit-a", variant: "launcher", session: "20261105T1430Z" });
     fs.mkdirSync(path.dirname(file), { recursive: true });
     const rows = Array.from({ length: 30 }, (_, index) => syntheticTrial(index));
+    delete rows[3].marks.request;
     rows.push(syntheticTrial(40, { build: "standalone-release" }));
     fs.writeFileSync(file, JSON.stringify({ format: "alpha-native-voice-timing-v3", records: rows }));
     const result = checkLayout(root);
@@ -39,5 +40,6 @@ test("check reports what each cohort still needs and a build that does not match
     const launcher = result.cohorts.find(row => row.build === "launcher-release");
     assert.deepEqual(launcher.needs, { passed: 20, warm: 0, cold: 0 });
     assert.equal(launcher.class, "acceptance-candidate");
+    assert.equal(launcher.ineligibleRows, 1, "an unlinked passed trial is reported, not hidden by the class");
   } finally { fs.rmSync(root, { recursive: true, force: true }); }
 });
