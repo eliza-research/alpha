@@ -668,5 +668,36 @@
       "Actual React and global listener coordination is projected with four error-class representatives, two dialogs and two reload requests. The existing native RendererRecovery model owns Android renderer-process recovery.",
       "Reload dispatch, JSDOM geometry, native logging and the test-only forced-error hook are explicit environment boundaries."
     ]
+  },
+  {
+    "module": "NativeViewSubscription",
+    "path": "specs/quint/application/NativeViewSubscription.qnt",
+    "init": "init",
+    "step": "step",
+    "invariant": "safety",
+    "tests": [
+      "happyLifecycleTest",
+      "closeBeforeRegistrationTest",
+      "lateSubscriptionReplyTest",
+      "mismatchedReplyTest",
+      "listenerFailureTest",
+      "subscriptionFailureTest",
+      "synchronousTerminalTest",
+      "wrongIdentityTest"
+    ],
+    "sources": [
+      "apps/app/src/runtime/native-view-events.ts"
+    ],
+    "stateMapping": {
+      "phase": "Listener/subscribe promises and public ready settlement",
+      "registered/dispatched": "Native listener handle resolution and subscribeViewEvents dispatch",
+      "ended/removals/unsubscribes": "Actual terminal callback and cleanup call attempts, including throwing/rejected ports",
+      "delivered": "Accepted matching native view-interact frames"
+    },
+    "abstractions": [
+      "One generated subscription and one owner/client equality class per lifecycle. Two delivered frames bound callback behavior.",
+      "Cleanup counts represent attempted native calls, including failures. The native unsubscribe protocol is idempotent and may be requested twice after a late or mismatched reply.",
+      "Native transport delivery and Binder identity remain platform obligations."
+    ]
   }
 ]

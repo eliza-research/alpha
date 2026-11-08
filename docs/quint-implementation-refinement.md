@@ -220,3 +220,20 @@ checkpoints. Its model has 19 scenarios and passes 1,000-by-80 sampled safety an
 a depth-six symbolic safety check. Java sources compile once per campaign, with
 a fresh JVM for every schedule. The 21-schedule test completed in 54 seconds on
 the first run of that compilation arrangement.
+
+### Native view-event subscriptions
+
+`NativeViewSubscription` covers listener registration, native subscribe replies,
+identity-filtered frames and teardown in `runtime/native-view-events.ts`.
+Synchronous listener removal previously prevented the terminal callback. Cleanup
+now handles synchronous errors and rejected promises before publishing that
+callback. Twenty source schedules and 96 checkpoints pass, including late replies,
+foreign frames, native terminal frames and both cleanup failure forms. The full
+seven-field observable state is checked at each checkpoint. Eight model scenarios,
+1,000 samples of 80 steps and depth-eight symbolic safety also pass.
+
+Cleanup counters record attempted calls. Actual native resource release, IPC
+owner enforcement and Binder delivery remain platform obligations. A late or
+mismatched subscribe reply can request unsubscribe twice, matching the existing
+idempotent protocol. Source execution uses the actual function with TypeScript
+annotations stripped and controlled native/UUID ports.

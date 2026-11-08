@@ -15632,15 +15632,17 @@
     },
     {
       "path": "apps/app/src/runtime/native-view-events.ts",
-      "sha256": "1e1218253ff9e1e196bd299f4d1e26fa10e12db2f06612610483cda1ca79200d",
+      "sha256": "88789c1fc171796ccf07802d8e79894d8620ff6ef24e170138d054ba2c14ab87",
       "models": [
         "AssistantConversation",
+        "NativeViewSubscription",
         "ResidentRuntime"
       ],
       "scope": "application",
       "treatment": "domain-allocation",
-      "reviewStatus": "state-audit-required",
-      "stateAnchors": []
+      "reviewStatus": "component-state-reviewed",
+      "stateAnchors": [],
+      "stateReview": "NativeViewSubscription observes seven lifecycle fields through public promise settlement, native call attempts and callbacks. Native IPC ownership and transport remain separate."
     },
     {
       "path": "apps/app/src/runtime/native-voice-turn.ts",
