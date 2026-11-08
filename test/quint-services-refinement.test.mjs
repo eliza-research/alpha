@@ -6,7 +6,7 @@ test('service components and coordinators check real-source traces and preserve 
   const result = spawnSync(process.execPath, ['--import=tsx', '--input-type=module', '-e', `
     import {runServicesRefinement} from './specs/quint/refinement/services/index.mjs';
     const result = await runServicesRefinement();
-    if (result.receipts.length !== 32 || result.receipts.some(receipt => !receipt.passed)) throw Error('Incomplete service model checks');
+    if (result.receipts.length !== 33 || result.receipts.some(receipt => !receipt.passed)) throw Error('Incomplete service model checks');
     console.log(JSON.stringify({models: result.receipts.length, traces: result.receipts.reduce((sum, receipt) => sum + receipt.traces, 0), obligations: result.obligations.length}));
   `], {cwd: new URL('..', import.meta.url), encoding: 'utf8', timeout: 880000, maxBuffer: 8 * 1024 * 1024});
   assert.ifError(result.error);
