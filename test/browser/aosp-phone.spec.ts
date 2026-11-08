@@ -8,8 +8,13 @@ async function setup(page:any,image:boolean){
   const names=['AlphaContacts','DailyApps','AlphaBrowser','AlphaConnection','AlphaDevice','AlphaLocalAgent','AlphaHostedResults','AlphaVoiceCloud','AlphaNotifications','ElizaSystem','AlphaCalendar','AlphaNoteDocuments','AlphaNoteAudio','AlphaFiles','AlphaPhotos','DeviceApps','ElizaLocation','AlphaActionJournal',...(image?['AlphaTelephony']:[])];
   const methods=['addListener','removeListener','surfaceInfo','readPending','readPendingResult','readDelegationCallback','readSecret','secureRead','secureWrite','secureRemove','get','status','getStatus','getState','state','permissionState','permissions','list','listCalendars','listEvents','listReminders','listBookmarks','getBookmarks','bookmarks','settings','getSettings','buildInfo','platformCapabilities','capabilities','query','read','readJournal','getPending','readSelection','requestPermissions','create','edit','imageCapability','requestAccess','listRecentCalls','dial','listThreads','observeMessages','smsSendHistory'];
   const status=()=>({version:2,voiceCapable:true,smsCapable:true,permissions:{contacts:'prompt',phoneState:'prompt',sms:'prompt',sendSms:'prompt',callLog:w.callLogAccess},sendMode:'handoff',mmsSend:false,roles:{dialer:{available:true,held:false,eligible:true},sms:{available:true,held:false,eligible:true}},defaultDialer:'com.android.dialer',defaultSms:null,subscriptions:null,defaultSmsSubscriptionId:null});
-  w.Capacitor={Plugins:{},PluginHeaders:names.map(name=>({name,methods:methods.map(name=>({name,rtype:name==='addListener'?'callback':'promise'}))})),nativeCallback:()=> 'fixture-callback',nativePromise:async(plugin:string,method:string,input:any)=>{
+  /* Telephony attempts are recorded at the Capacitor boundary: a call through the bridge and a direct
+   * plugin lookup both count, so the standalone shape cannot reach AlphaTelephony unnoticed. */
+  const record=(method:string)=>{w.telephonyCalls.push(method);return Promise.reject(Object.assign(Error('AlphaTelephony is not available'),{code:'UNIMPLEMENTED'}));};
+  const plugins=image?{}:{AlphaTelephony:new Proxy({},{get:(_target,method)=>typeof method==='string'&&method!=='then'?()=>record(method):undefined})};
+  w.Capacitor={Plugins:plugins,PluginHeaders:names.map(name=>({name,methods:methods.map(name=>({name,rtype:name==='addListener'?'callback':'promise'}))})),nativeCallback:()=> 'fixture-callback',nativePromise:async(plugin:string,method:string,input:any)=>{
    if(plugin==='AlphaTelephony'){
+    if(!image)return record(method);
     w.telephonyCalls.push(method);
     if(method==='imageCapability')return {version:1,image:true,feature:'fixture.image'};
     if(method==='status')return status();
