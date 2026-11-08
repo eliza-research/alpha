@@ -22,10 +22,23 @@ export async function registerWorkflowDevice<T>(protocol: 1 | 2 | 3, register: (
     return { registered: await register(2), workflowProtocol: 2 };
   }
 }
-/** Probe installed bridge code, not permissions or model readiness. Older APKs remain protocol 1. */
+/** Probe installed bridge code, not permissions or model readiness. Older APKs, whose bridge lacks
+ * the method, remain protocol 1. A stalled bridge is probed once more; if it still stalls this call answers 1
+ * without remembering it, so the next connect probes again. A protocol 2 answer is kept for the process.
+ */
 export async function workflowPresentationProtocol(signal: AbortSignal): Promise<1 | 2> {
   signal.throwIfAborted();
-  if (!Capacitor.isNativePlatform()) return 2;
+  if (!Capacitor.isNativePlatform() || presentationReady) return 2;
+  for (let attempt = 0; attempt < 2; attempt++) {
+    const result = await probePresentation(signal);
+    if (result === 'stalled') continue;
+    if (result === 2) presentationReady = true;
+    return result;
+  }
+  return 1;
+}
+let presentationReady = false;
+async function probePresentation(signal: AbortSignal): Promise<1 | 2 | 'stalled'> {
   let timer: ReturnType<typeof setTimeout> | undefined;
   let cancel: (() => void) | undefined;
   try {
@@ -37,7 +50,8 @@ export async function workflowPresentationProtocol(signal: AbortSignal): Promise
       new Promise<never>((_, reject) => { cancel = () => reject(signal.reason); signal.addEventListener('abort', cancel, {once:true}); if(signal.aborted)cancel(); }),
     ]);
     signal.throwIfAborted();
-    return result?.every(value => value?.protocol === 2) ? 2 : 1;
+    if (result === null) return 'stalled';
+    return result.every(value => value?.protocol === 2) ? 2 : 1;
   } catch { signal.throwIfAborted(); return 1; }
   finally { clearTimeout(timer); if(cancel)signal.removeEventListener('abort',cancel); }
 }
