@@ -16,7 +16,8 @@ import static org.junit.Assert.*;
  * Screen-off navigation through AlphaNavigationService, driven by scripts/maps/test-native-navigation.mjs
  * (simulator GPS through the actual Android location provider, explicit argument mapsBackground=1).
  * Proves guidance keeps updating with the screen off and that the notification's Stop ends the
- * session exactly once. It is emulator evidence, not physical-device or road-safety acceptance.
+ * session exactly once, delivered to the bridge that started it even after a second Maps bridge
+ * opened and closed. It is emulator evidence, not physical-device or road-safety acceptance.
  */
 @RunWith(AndroidJUnit4.class)
 public final class MapsBackgroundNavigationInstrumentedTest {
@@ -93,6 +94,16 @@ public final class MapsBackgroundNavigationInstrumentedTest {
    assertNotNull("Ongoing navigation notification is posted", posted);
    assertTrue("Navigation notification is ongoing", (posted.getNotification().flags & Notification.FLAG_ONGOING_EVENT) != 0);
    String titleBefore = AlphaNavigationService.snapshot()[3];
+
+   // A second bridge (the launcher's hand-off fallback, or an assistant surface) loads its own Maps
+   // plugin. Closing it leaves this page's session, notification and stop event alone.
+   WebViewTestDriver.withActivity(MainActivity.class, activity -> {
+    AlphaMapsTransportPlugin second = new AlphaMapsTransportPlugin();
+    second.setBridge(activity.getBridge()); second.load(); second.handleOnDestroy();
+   });
+   assertEquals("A second bridge closing leaves the session running", session, AlphaNavigationService.snapshot()[0]);
+   assertEquals("No stop from the second bridge", stopsBefore, Integer.parseInt(AlphaNavigationService.snapshot()[1]));
+   assertNotNull("Notification survives the second bridge", navigationNotification());
 
    // Screen off: the location watch, guidance and the native session continue.
    shell("input keyevent KEYCODE_SLEEP");
