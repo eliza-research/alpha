@@ -96,7 +96,7 @@ test('the combined launcher refuses the pinned vendor tree whatever directory it
  const dir=fs.mkdtempSync(path.join(os.tmpdir(),'alpha-combined-guard-'));
  try{
   const node=path.join(dir,'node'),bun=path.join(dir,'bun');
-  fs.writeFileSync(node,'#!/bin/sh\necho v24.15.0\n',{mode:0o700});fs.writeFileSync(bun,'#!/bin/sh\necho 1.4.2\n',{mode:0o700});
+  fs.writeFileSync(node,'#!/bin/sh\necho v26.13.0\n',{mode:0o700});fs.writeFileSync(bun,'#!/bin/sh\necho 1.4.2\n',{mode:0o700});
   for(const source of ['vendor/eliza','vendor/eliza/packages','base/eliza-app']){
    const env={...process.env,ALPHA_NODE_BIN:node,ALPHA_BUN:bun,ALPHA_COMBINED_SOURCE:path.resolve(source),ALPHA_COMBINED_SOURCE_MANIFEST:path.join(dir,'manifest.json')};
    if(!fs.existsSync(source))continue;

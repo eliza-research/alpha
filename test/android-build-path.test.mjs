@@ -10,6 +10,8 @@ import {TURBO_AGENT_DETECTION_ENV, preparedSourceEnv} from '../scripts/local-age
 import {ensurePreparedWorkflowWorker} from '../scripts/prepared-workflow-worker.mjs';
 import {workerHash} from '../scripts/workflow-worker-artifact.mjs';
 import {verifyNativeGoogleHost} from '../scripts/runtime-profile.mjs';
+import {coreStateBuildRecord} from '../scripts/core-state-patch.mjs';
+import {writeCoreStateFixture} from './fixtures/core-state-root.mjs';
 
 const read = file => fs.readFileSync(file, 'utf8');
 
@@ -105,7 +107,8 @@ test('preflight refuses a staged native Google host older than its product sourc
   const hash = text => workerHash(Buffer.from(text));
   const artifact = `artifacts/mobile-workflow-worker-${f.commit}`, staged = 'android/app/src/main/assets/agent/workflow-worker';
   f.write('backend/managed-google-route-policy.ts', 'export const policy = 1;\n');
-  const manifest = JSON.stringify({version: 1, files: {'google-host.mjs': hash('host-1')}, nativeGoogleHost: {version: 1, module: 'google-host.mjs', bunVersion: '1.4.2', inputs: {'backend/managed-google-route-policy.ts': hash('export const policy = 1;\n')}}});
+  writeCoreStateFixture(f.root, f.source, f.commit);
+  const manifest = JSON.stringify({version: 1, files: {'google-host.mjs': hash('host-1')}, nativeGoogleHost: {version: 1, module: 'google-host.mjs', bunVersion: '1.4.2', inputs: {'backend/managed-google-route-policy.ts': hash('export const policy = 1;\n')}, coreState: coreStateBuildRecord(f.root, [], [])}});
   for (const directory of [artifact, staged]) {
     f.write(`${directory}/manifest.json`, manifest);
     f.write(`${directory}/google-host.mjs`, 'host-1');
@@ -132,7 +135,7 @@ test('preflight rejects an unpinned checkout and android:build stops before sync
   f.write('upstream.lock.json', JSON.stringify({commit: 'f'.repeat(40)}));
   assert.match(checkoutProblems(f.root)[0], /vendor\/eliza is at .*pins f{40}\. Run: git submodule update --init vendor\/eliza/);
   // The real entry point exits with status 2 and the guidance, without starting the build.
-  for (const file of ['android-abis.mjs', 'embedding-native-contract.mjs', 'paradee-runtime.mjs', 'voice-host.mjs', 'build-android.mjs', 'update-channel.mjs', 'android-build-preflight.mjs', 'mobile-uuid-adapter.mjs', 'stage-embedding-host.mjs', 'build-embedding-host.mjs', 'toolchain.mjs', 'copy-file-clone.mjs'])
+  for (const file of ['android-abis.mjs', 'embedding-native-contract.mjs', 'paradee-runtime.mjs', 'voice-host.mjs', 'build-android.mjs', 'update-channel.mjs', 'android-build-preflight.mjs', 'mobile-uuid-adapter.mjs', 'core-state-patch.mjs', 'stage-embedding-host.mjs', 'build-embedding-host.mjs', 'toolchain.mjs', 'copy-file-clone.mjs'])
     f.write('scripts/' + file, read('scripts/' + file));
   // build-android.mjs reads the release-signing environment names from the host descriptor.
   f.write('android/consumer-host.json', read('android/consumer-host.json'));
