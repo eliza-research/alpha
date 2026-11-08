@@ -284,7 +284,9 @@ Microphone, codec, foreground-service eligibility and device acceptance remain s
 ## Shared recording and live capture
 
 `SharedRecordingAdmission` follows the complete shared bridge's draft capture entry points,
-permission epochs, late call checks and cancellation barriers. `NativeLiveCapture` follows
+permission epochs, late call checks and cancellation barriers. A call retires the draft before
+release. If release throws, its recorder stays unavailable until cancellation retries cleanup.
+`NativeLiveCapture` follows
 reservations, physical-source startup, publication, interrupted final events and teardown.
 Both run current patched shared Java with controlled Android audio and permission inputs.
 Protected-screen state is fixed inactive in these projections. Provider piping, physical

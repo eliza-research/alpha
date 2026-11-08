@@ -1,45 +1,51 @@
 --- a/plugins/plugin-local-inference/native/android/src/main/java/ai/eliza/voice/LocalVoiceRecording.java
 +++ b/plugins/plugin-local-inference/native/android/src/main/java/ai/eliza/voice/LocalVoiceRecording.java
-@@ -9,6 +9,7 @@
- import java.io.IOException;
- import java.util.UUID;
- import java.util.function.Consumer;
+@@ -11,0 +12 @@
 +import java.util.function.Function;
- import org.json.JSONException;
- import org.json.JSONObject;
-
-@@ -35,6 +36,7 @@
-  private long startedAt;
-  private long durationMs;
-  private Runnable deadline;
+@@ -37,0 +39,2 @@
++ private boolean interrupted;
 + private volatile Function<String,File> also;
-
-  /** Deletes drafts a previous process left behind under {@code prefix}. */
-  public LocalVoiceRecording(Context context,String prefix,Consumer<JSONObject> events){
-@@ -48,8 +50,8 @@
-   if(maxDurationMs!=SHORT_LIMIT_MS&&maxDurationMs!=LONG_LIMIT_MS)throw new IllegalArgumentException("Unsupported capture duration");
-   if(file!=null)throw new IllegalStateException("Finish or discard the current recording first");
-   id=UUID.randomUUID().toString();file=new File(context.getCacheDir(),prefix+id+".m4a");
+@@ -51 +53,0 @@
 -  recorder=new MediaRecorder();
-   try{
+@@ -52,0 +55 @@
 +   recorder=new MediaRecorder();
-    recorder.setAudioSource(MediaRecorder.AudioSource.MIC);
-    recorder.setOutputFormat(MediaRecorder.OutputFormat.MPEG_4);
-    recorder.setAudioEncoder(MediaRecorder.AudioEncoder.AAC);
-@@ -85,9 +87,15 @@
-   try{events.accept(stop());}
-   catch(RuntimeException error){JSONObject result=new JSONObject();put(result,"recordingId",ownedId);put(result,"status","failed");put(result,"message","Recording could not be saved");events.accept(result);}
-  }
+@@ -61 +64 @@
+-   recorder.setOnErrorListener((source,what,extra)->{JSONObject result=new JSONObject();synchronized(this){if(recorder!=source)return;put(result,"recordingId",id);cancel();}put(result,"status","failed");put(result,"message","Recording stopped because Android reported a microphone error");events.accept(result);});
++   recorder.setOnErrorListener((source,what,extra)->{JSONObject result=new JSONObject();synchronized(this){if(recorder!=source||interrupted)return;put(result,"recordingId",id);cancel();}put(result,"status","failed");put(result,"message","Recording stopped because Android reported a microphone error");events.accept(result);});
+@@ -69 +72 @@
+-  if(recorder==null||id==null||!id.equals(recordingId))throw new IllegalStateException("Recording changed");
++  if(recorder==null||interrupted||id==null||!id.equals(recordingId))throw new IllegalStateException("Recording changed");
+@@ -73 +76 @@
+-  if(recorder==null)throw new IllegalStateException("No recording is active");
++  if(recorder==null||interrupted)throw new IllegalStateException("No recording is active");
+@@ -81 +84,12 @@
+- /** Stops at a limit, an interruption (call, pause) or an error and reports the outcome as an event. */
++ /** Discards an active draft and reports why it must never be transcribed. */
++ public synchronized void interrupt(String reason){
++  if(recorder==null||interrupted)return;
++  final String ownedId=id;
++  interrupted=true;
++  try{cancel();}
++  catch(RuntimeException failure){/* Keep the retired recorder for a later cleanup attempt. */}
++  JSONObject result=new JSONObject();
++  put(result,"recordingId",ownedId);put(result,"status","failed");put(result,"interrupted",reason);
++  events.accept(result);
++ }
++ /** Finishes a draft at a limit or host pause and reports the outcome as an event. */
+@@ -83 +97 @@
+-  if(recorder==null)return;
++  if(recorder==null||interrupted)return;
+@@ -87,0 +102,6 @@
 + /**
 +  * The host's own finished recordings that transcription may also select by id, for example the
 +  * finished segments of a longer recording the host keeps itself. The source returns null for an
 +  * id it does not own; a draft with the same id is always chosen first.
 +  */
 + public void selectAlso(Function<String,File> source){also=source;}
-  /** The finished draft for {@code recordingId}, or null while recording or after it changed. */
-  public synchronized File selected(String recordingId){
+@@ -90 +110,2 @@
 -  if(recorder!=null||file==null||!id.equals(recordingId))return null;
++  if(interrupted&&id.equals(recordingId))return null;
 +  if(recorder!=null||file==null||!id.equals(recordingId)){Function<String,File> other=also;return other==null||recordingId==null?null:other.apply(recordingId);}
-   return file;
-  }
-  /** Duration of the finished draft, in milliseconds. */
+@@ -99 +120 @@
+-  if(file!=null)file.delete();file=null;id=null;durationMs=0;
++  if(file!=null)file.delete();file=null;id=null;durationMs=0;interrupted=false;

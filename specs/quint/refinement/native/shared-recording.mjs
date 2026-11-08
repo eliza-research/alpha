@@ -16,7 +16,7 @@ const voice='vendor/eliza/plugins/plugin-local-inference/native/android/';
 export function sharedRecordingSources(platform,source=currentNativeSource('LocalSpeechBridgePlugin.java')){
  return [source,
   ...['SpeechRequestGate','SpeechAudioFocusPolicy','LiveCaptureAdmission','LocalSpeechEngine','StreamingSpeechPlayback','SpeechPcmQueue','VoiceLatencyTrials'].map(name=>name==='LiveCaptureAdmission'?currentNativeSource(name+'.java'):voice+'src/main/java/ai/eliza/voice/'+name+'.java'),
-  currentNativeSource('LocalVoiceRecording.java'),...['SpeechOutputWarmup','SpeechLeadTrim','FirstWriteSpeechOutput'].map(name=>join(native.root,'plugins/plugin-local-inference/native/android/speech-bridge/src/main/java/ai/eliza/voice/',name+'.java')),directory+'/NoteBridgePorts.java',directory+'/NoteRecordingPorts.java',directory+'/SharedRecordingPorts.java',
+  currentNativeSource('LocalVoiceRecording.java'),...['SpeechOutputWarmup','SpeechLeadTrim','FirstWriteSpeechOutput'].map(name=>join(native.root,'plugins/plugin-local-inference/native/android/speech-bridge/src/main/java/ai/eliza/voice/',name+'.java')),directory+'/NoteBridgePorts.java',directory+'/NoteRecordingPorts.java',
   'node_modules/@capacitor/android/capacitor/src/main/java/com/getcapacitor/JSObject.java',...platform.paths];
 }
 export function probeSharedRecording(source){
@@ -25,7 +25,7 @@ export function probeSharedRecording(source){
  finally{platform.close();rmSync(state,{recursive:true,force:true});}
 }
 export const sharedRecordingScenarios=['direct','call-direct','queued-call','queued-pause','queued-resume','queued-destroy',
- 'open-failure','pause-active','call-active','destroy-active','stop','second-start','permission-granted','permission-denied',
+ 'open-failure','pause-active','call-active','call-release-failure','destroy-active','stop','second-start','permission-granted','permission-denied',
  'permission-call','permission-pause','permission-resume','permission-destroy','permission-cancel','two-prompts',
  'cancel-empty','cancel-live','cancel-queued','cancel-joined','cancel-timeout','cancel-start-during','cancel-retry',
  'cancel-release-failure','cancel-worker-refused','cancel-destroy'];
@@ -43,7 +43,7 @@ export async function checkSharedRecording(extraSources=[]){
    'Two recording requests, two cancellation waiters and two successful starts bound the campaign. Exact permission epochs and waiter ownership are observed. Record and cancel main-queue tasks execute through their actual captured closures.',
    'Audio mode and permission state are primitive platform inputs. Live capture, physical audio output, inference and latency environment are explicitly unexercised ports.',
    'Protected-screen state is fixed inactive in this projection; production protected-surface guards remain present.',
-   'A held real worker, rejected full queue and MediaRecorder release failure control interruption and cleanup schedules. Installed Android permission/call delivery and physical microphone state remain platform obligations.'
+   'A held real worker, rejected full queue and MediaRecorder release failure control interruption and cleanup schedules. An interrupted draft is unavailable while release is unresolved; the cancellation barrier can retry that release. Installed Android permission/call delivery and physical microphone state remain platform obligations.'
   ]});
  }finally{platform.close();rmSync(state,{recursive:true,force:true});}
 }

@@ -12,7 +12,7 @@ const nativePatchInputs = ['patches/eliza/native-manifest.json', 'scripts/prepar
  join(native.root, '.source.json'), ...JSON.parse(readFileSync('patches/eliza/native-manifest.json', 'utf8')).patches.map(row => 'patches/eliza/' + row.file)];
 
 export const voiceDraftScenarios=['manual','long','cancel','discard-wrong','mic-error','deadline','limit-info','consumer-failure',
- 'stale-callback','metrics','external','recreate','empty','oversized','max-bytes','stop-failure','auto-stop-failure','open-failure','invalid-limit','constructor-failure'];
+ 'stale-callback','metrics','external','recreate','empty','oversized','max-bytes','stop-failure','auto-stop-failure','open-failure','invalid-limit','constructor-failure','interrupt-release','interrupt-release-failure'];
 export async function checkVoiceDraft(extraSources=[]) {
  const platform=noteRecordingPlatform(),state=mkdtempSync(join(tmpdir(),'quint-voice-draft-'));
  const compiled=[join(native.root, 'plugins/plugin-local-inference/native/android/src/main/java/ai/eliza/voice/LocalVoiceRecording.java'),directory+'/NoteRecordingPorts.java'];
@@ -24,6 +24,7 @@ export async function checkVoiceDraft(extraSources=[]) {
    'The current staged LocalVoiceRecording executes through its public methods and real registered timer/media callbacks. Cache files are real temporary files.',
    'Two draft IDs and three recorder instances bound identity. The exact 29/59-second limits and zero/valid/oversized files use controlled Android media and clock ports.',
    'The callback consumer can throw after receiving a recorded event. The source then emits a failed event while retaining the finished audio. The model preserves both effects.',
+   'Call interruption immediately retires the exact draft. The release failure leaves its unusable recorder for a later cleanup attempt, and stale timers and media callbacks remain ineffective.',
    'Physical AAC encoding and permission/foreground admission in LocalSpeechBridgePlugin remain separate obligations.'
   ]});
  } finally {platform.close();rmSync(state,{recursive:true,force:true});}

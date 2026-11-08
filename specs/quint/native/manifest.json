@@ -977,17 +977,21 @@
         "staleCallbackAfterReplacementTest",
         "oversizedDraftClearedTest",
         "consumerFailureKeepsRecordedAudioTest",
-        "externalSegmentAvailableDuringDraftTest"
+        "externalSegmentAvailableDuringDraftTest",
+        "callDiscardsOwnedDraftTest",
+        "failedCallReleaseFencesMetricsTest"
       ],
       "invariants": [
         "CaptureOwnsDraft",
         "EmptyHasNoCapture",
         "TimerTracksCapture",
+        "InterruptedDraftIsRetired",
         "Bounded"
       ],
       "abstractions": [
         "Two draft identities, three capture instances and two callbacks bound the source campaign.",
-        "Physical media encoding, Android timer delivery and permission admission are external inputs."
+        "Physical media encoding, Android timer delivery and permission admission are external inputs.",
+        "A call event retires the draft before release. A failed release can leave the recorder reference until a cleanup retry."
       ]
     },
     {
@@ -1089,18 +1093,22 @@
         "cancelRetiresPromptTest",
         "timeoutKeepsAdmissionClosedTest",
         "joinedCancelWaitsForOneBarrierTest",
-        "refusedBarrierStaysClosedTest"
+        "refusedBarrierStaysClosedTest",
+        "callDiscardsDraftTest",
+        "failedCallReleaseFencesStopTest"
       ],
       "invariants": [
         "AcceptedInCurrentLiveEpoch",
         "CaptureHasOwner",
+        "InterruptedCaptureIsRetired",
         "PendingNotQueued",
         "DrainOwnsWaiters",
         "Bounded"
       ],
       "abstractions": [
         "Two recording requests, two cancellation waiters and two capture openings, with exact permission epochs through four.",
-        "The complete shared bridge, draft recorder and request gate execute. Platform audio mode/permission, unrelated live capture, inference and playback are controlled ports."
+        "The complete shared bridge, draft recorder and request gate execute. Platform audio mode/permission, unrelated live capture, inference and playback are controlled ports.",
+        "Call interruption retires the exact draft immediately. Release failure keeps an unusable recorder reference for a later cancellation attempt."
       ]
     },
     {

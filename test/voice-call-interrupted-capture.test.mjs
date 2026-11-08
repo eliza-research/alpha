@@ -6,10 +6,11 @@ import {voiceFakeClock} from './fixtures/shared-batch-voice.mjs';
 // The actual voice adapter and shared clip loop with in-memory ports: a capture the phone ends
 // because a call took the microphone is dropped, never transcribed or sent, and voice says why.
 test('a conversation capture interrupted by a call is discarded and shows the call message',async t=>{
- const clock=voiceFakeClock(),f=cloudVoiceViewFixture({cloudProfile:true,clock});t.after(()=>f.close());
+ const clock=voiceFakeClock(),f=cloudVoiceViewFixture({cloudProfile:true,clock,peak:.5});t.after(()=>f.close());
  f.box.React={createElement:()=>'activity'};f.box.VoiceActivity=()=>null;
  await f.shell.startVoice();await clock.flush();
  assert.equal(f.renderChat().state,'listening');
+ await clock.advance(700);
  const recording=f.activeRecording;assert.ok(recording);
  for(const callback of f.events.get('recordingStopped')||[])callback({recordingId:recording,durationMs:1800,interrupted:'call-active'});
  await clock.flush();await clock.advance(100);
@@ -19,7 +20,23 @@ test('a conversation capture interrupted by a call is discarded and shows the ca
  assert.ok(f.recordingCancels.includes(recording),'the interrupted capture is cancelled');
 });
 
-// Upstream's speech filter drops a well-formed block's JSON but reads a malformed one aloud.
+test('a call before capture acknowledgment retires only the matching recording',async t=>{
+ const clock=voiceFakeClock(),f=cloudVoiceViewFixture({cloudProfile:true,clock,holdStart:true});t.after(()=>f.close());
+ f.box.React={createElement:()=>null};f.box.VoiceActivity=()=>null;
+ const starting=f.shell.startVoice();await clock.flush();
+ assert.ok(f.releaseStart);
+ const recording='synthetic-clip-'+f.starts;
+ const notify=value=>{for(const callback of f.events.get('recordingStopped')||[])callback(value);};
+ notify({recordingId:recording,status:'failed',interrupted:'call-active'});
+ notify({recordingId:'retired-clip',status:'recorded',durationMs:1800});
+ f.releaseStart({recordingId:recording,maxDurationMs:59000});
+ await starting;await clock.flush();
+ const shown=f.renderChat();
+ assert.equal(shown.state,'error');assert.match(shown.lines[0].t,/Voice paused for a call/);
+ assert.equal(f.uploads,0);assert.equal(f.sends,0);assert.equal(f.activeRecording,null);
+});
+
+// Alpha keeps internal workflow markup out of both speech and the voice panel.
 test('a workflow run reply is spoken without its [WORKFLOW] block, even a malformed one',async t=>{
  const clock=voiceFakeClock(),f=cloudVoiceViewFixture({cloudProfile:true,clock,peak:.5});t.after(async()=>{f.close();await clock.flush();});
  f.box.React={createElement:()=>null};f.box.VoiceActivity=()=>null;

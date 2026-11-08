@@ -81,6 +81,7 @@ export async function readNativeCloudStreamTiming(timeoutMs = 2_000): Promise<un
 export function createCloudStreamingSpeech(input: Parameters<typeof createSharedCloudStreamingSpeech>[0]) { return createSharedCloudStreamingSpeech(input, streamingNative); }
 
 export type VoiceClip = { recordingId: string; durationMs: number };
+export type VoiceRecordingStopped = { recordingId: string; durationMs?: number; interrupted?: 'call-active' };
 export type SpeechRecordingInput = {recordingId:string;requestId:string;savedNoteId?:string;savedDurationMs?:number;offsetMs?:number};
 const native = registerPlugin<{
   transcribeOwnRecording(input:SpeechRecordingInput & {providerRevision:string}):Promise<{text:string;local:false}>;
@@ -96,7 +97,7 @@ const native = registerPlugin<{
   play(input: { playbackId: string;replace?:boolean }): Promise<void>;
   stopPlayback(input?: { requestId: string }): Promise<void>;
   cancel(input: { requestId: string }): Promise<void>;
-  addListener(event: 'recordingStopped', callback: (clip: VoiceClip) => void): Promise<PluginListenerHandle>;
+  addListener(event: 'recordingStopped', callback: (clip: VoiceRecordingStopped) => void): Promise<PluginListenerHandle>;
   addListener(event: 'playbackEnded' | 'playbackFailed' | 'playbackStopped', callback: (event: { playbackId?: string }) => void): Promise<PluginListenerHandle>;
 }>('AlphaVoiceCloud');
 
@@ -138,7 +139,7 @@ export function createCloudVoice(readAloudRoute:'cloud'|'direct'='cloud') {
     },
     cancel: (input: { requestId: string }) => native.cancel(input),
     async cancelRecording() { await native.cancelRecording(); },
-    addListener: (event: 'recordingStopped', callback: (clip: VoiceClip) => void) => native.addListener(event, value => {
+    addListener: (event: 'recordingStopped', callback: (clip: VoiceRecordingStopped) => void) => native.addListener(event, value => {
       try { check(); callback(value); } catch { /* Stale account events never update the new account. */ }
     }),
     async speak(text: string, signal: AbortSignal,onStarted?:()=>void,queue=false,assertCurrent?:()=>void) {

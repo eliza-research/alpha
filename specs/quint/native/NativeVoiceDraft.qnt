@@ -2,14 +2,14 @@
 module NativeVoiceDraft {
   type State = {
     id: int, capture: int, issued: int, file: bool, size: int,
-    now: int, startedAt: int, duration: int, timer: bool, limit: int,
+    now: int, startedAt: int, duration: int, timer: bool, limit: int, interrupted: bool,
     event: str, eventId: int, events: int, selected: str,
     externalConfigured: bool, externalReady: bool
   }
   var s: State
   action init = s' = {
     id: 0, capture: 0, issued: 0, file: false, size: 0,
-    now: 100, startedAt: 0, duration: 0, timer: false, limit: 0,
+    now: 100, startedAt: 0, duration: 0, timer: false, limit: 0, interrupted: false,
     event: "none", eventId: 0, events: 0, selected: "none",
     externalConfigured: false, externalReady: false
   }
@@ -29,14 +29,14 @@ module NativeVoiceDraft {
     s.file, category.in(Set(0, 1, 2)), s' = { ...s, size: category }
   }
   action stop(stopOk: bool): bool = all {
-    s.capture != 0,
+    s.capture != 0, not(s.interrupted),
     val kept = stopOk and s.size == 1
     s' = { ...s, capture: 0, timer: false, duration: if (kept) s.now - s.startedAt else 0,
       id: if (kept) s.id else 0, file: kept, size: if (kept) s.size else 0 }
   }
   action automatic(ticket: int, stopOk: bool, consumerOk: bool): bool = {
     val kept = stopOk and s.size == 1
-    if (ticket == s.capture and ticket != 0) all {
+    if (ticket == s.capture and ticket != 0 and not(s.interrupted)) all {
       s.events < 2, kept and not(consumerOk) implies s.events == 0,
       s' = { ...s, capture: 0, timer: false, duration: if (kept) s.now - s.startedAt else 0,
         id: if (kept) s.id else 0, file: kept, size: if (kept) s.size else 0,
@@ -47,35 +47,43 @@ module NativeVoiceDraft {
   action deadline(ticketId: int): bool =
     if (ticketId == s.id and s.capture != 0) automatic(s.capture, true, true) else s' = s
   action microphoneError(ticket: int): bool =
-    if (ticket == s.capture and ticket != 0) all {
+    if (ticket == s.capture and ticket != 0 and not(s.interrupted)) all {
       s.events < 2,
       s' = { ...s, id: 0, capture: 0, file: false, size: 0, duration: 0, timer: false,
         event: "failed", eventId: s.id, events: s.events + 1 }
     } else s' = s
-  action cancel = s' = { ...s, id: 0, capture: 0, file: false, size: 0, duration: 0, timer: false }
+  action interrupt(released: bool): bool =
+    if (s.capture != 0 and not(s.interrupted)) all {
+      s.events < 2,
+      s' = { ...s, id: if (released) 0 else s.id, capture: if (released) 0 else s.capture,
+        file: not(released), size: if (released) 0 else s.size, duration: 0,
+        timer: false, interrupted: not(released), event: "call-active", eventId: s.id, events: s.events + 1 }
+    } else s' = s
+  action cancel = s' = { ...s, id: 0, capture: 0, file: false, size: 0, duration: 0, timer: false, interrupted: false }
   action discard(ticketId: int): bool = if (ticketId == s.id and s.id != 0) cancel else s' = s
   action configureExternal(ready: bool): bool = s' = { ...s, externalConfigured: true, externalReady: ready }
   action selectDraft(ticketId: int): bool = s' = { ...s,
     selected: if (s.capture == 0 and s.file and ticketId == s.id) "draft"
       else if (s.externalConfigured and s.externalReady and ticketId == 3) "external" else "none" }
-  action metrics(ticketId: int): bool = all { s.capture != 0, ticketId == s.id, s' = s }
+  action metrics(ticketId: int): bool = all { s.capture != 0, not(s.interrupted), ticketId == s.id, s' = s }
   action recreate = s' = { ...s, id: 0, capture: 0, file: false, size: 0, duration: 0,
-    startedAt: 0, timer: false, selected: "none", externalConfigured: false, externalReady: false }
+    startedAt: 0, timer: false, interrupted: false, selected: "none", externalConfigured: false, externalReady: false }
   action step = any {
     constructorFailed, start(1, 29000, true), start(2, 59000, true), start(1, 29000, false),
     advance(1000), advance(29000), advance(59000), fileSize(0), fileSize(1), fileSize(2),
     stop(true), stop(false), automatic(1, true, true), automatic(2, true, true),
     automatic(1, false, true), automatic(1, true, false), automatic(3, true, true), deadline(1), deadline(2),
-    microphoneError(1), microphoneError(2), microphoneError(3), cancel, discard(1), discard(2),
+    microphoneError(1), microphoneError(2), microphoneError(3), interrupt(true), interrupt(false), cancel, discard(1), discard(2),
     configureExternal(true), configureExternal(false), selectDraft(0), selectDraft(1), selectDraft(2), selectDraft(3),
     metrics(1), metrics(2), recreate, s' = s
   }
-  val CaptureOwnsDraft = s.capture != 0 implies s.id != 0 and s.file and s.timer
+  val CaptureOwnsDraft = s.capture != 0 implies s.id != 0 and s.file
   val EmptyHasNoCapture = not(s.file) implies s.id == 0 and s.capture == 0 and s.duration == 0
-  val TimerTracksCapture = s.timer iff s.capture != 0
+  val TimerTracksCapture = s.timer iff (s.capture != 0 and not(s.interrupted))
+  val InterruptedDraftIsRetired = s.interrupted implies s.capture != 0 and s.duration == 0 and s.event == "call-active"
   val Bounded = s.id.in(0.to(2)) and s.capture.in(0.to(3)) and s.issued.in(0.to(3)) and
     s.size.in(0.to(2)) and s.now.in(100.to(120100)) and s.events.in(0.to(2))
-  val safety = CaptureOwnsDraft and EmptyHasNoCapture and TimerTracksCapture and Bounded
+  val safety = CaptureOwnsDraft and EmptyHasNoCapture and TimerTracksCapture and InterruptedDraftIsRetired and Bounded
   run stoppedDraftSelectableTest = init.then(start(1, 29000, true)).then(advance(1000)).then(stop(true)).then(selectDraft(1))
     .expect(safety and s.selected == "draft" and s.duration == 1000)
   run staleCallbackAfterReplacementTest = init.then(start(1, 29000, true)).then(cancel).then(start(2, 59000, true))
@@ -86,4 +94,8 @@ module NativeVoiceDraft {
     .expect(safety and s.file and s.event == "failed" and s.events == 2)
   run externalSegmentAvailableDuringDraftTest = init.then(start(1, 29000, true)).then(configureExternal(true)).then(selectDraft(3))
     .expect(safety and s.selected == "external" and s.capture == 1)
+  run callDiscardsOwnedDraftTest = init.then(start(1, 29000, true)).then(interrupt(true))
+    .then(interrupt(true)).then(selectDraft(1))
+    .expect(safety and not(s.file) and s.selected == "none" and s.event == "call-active" and s.events == 1)
+  run failedCallReleaseFencesMetricsTest = init.then(start(1, 29000, true)).then(interrupt(false)).then(metrics(1).fail())
 }

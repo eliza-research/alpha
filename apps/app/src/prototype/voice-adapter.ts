@@ -26,7 +26,7 @@ import { createOnDeviceVoice } from '../runtime/local-voice';
 import { screenConversationSpeech } from '../runtime/local-speech-text';
 import { voiceFailure, transcriptProvenance, deniedSettingsChoice, DENIED_SETTINGS_LABEL, type VoiceFailure, type TranscriptProvenance } from '../runtime/voice-states';
 import { createPairedVoice } from '../runtime/paired-voice';
-import { createCloudVoice, cloudVoiceFailure, cloudVoiceServiceLimit, createCloudStreamingSpeech, nativeCloudStreamingAvailable } from '../runtime/cloud-voice';
+import { createCloudVoice, cloudVoiceFailure, cloudVoiceServiceLimit, createCloudStreamingSpeech, nativeCloudStreamingAvailable, type VoiceRecordingStopped } from '../runtime/cloud-voice';
 import { speakCloudSpeechChunks } from '../../../../.eliza/client-features/packages/voice/src/cloud-speech-chunks.ts';
 import { clefEndpointStage, selectVoiceRoute, voicePreferenceKeys, voiceSendPolicy, type VoicePreference } from '../runtime/voice-selection';
 import { beginVoiceTurn, markVoiceTiming, abandonVoiceTurn, finishVoiceTurn, sendVoiceEntry, recordLiveVoiceTiming, recordEndpointVoiceTiming, recordHeardVoiceTiming, activeVoiceTurn, observeVoiceStartup, runVoiceStartupPreparation } from '../runtime/voice-timing';
@@ -46,13 +46,16 @@ const voiceServiceName = () => connectionController.getSnapshot().residentInfere
 const noteSpeechDisclosure = () => connectionController.getSnapshot().residentInference==='direct' ? 'Cartesia speech sends this note’s text using your own API key and provider allowance.' : cloudRuntimeEnabled ? `Read with ${voiceServiceName()} uploads this note’s text to your selected Cloud account for Cartesia speech and uses your plan allowance.` : '';
 type Bag = Record<string, any>;
 type Clip = { recordingId: string; durationMs: number };
+const CALL_PAUSED = 'Voice paused for a call. Start again after the call.';
+const completeClip = (value: VoiceRecordingStopped): value is Clip =>
+  !value.interrupted && Number.isFinite(value.durationMs);
 const voice = registerPlugin<{
   startRecording(input?: { maxDurationMs: 29000 | 59000 }): Promise<{ recordingId: string; maxDurationMs: number }>;
   stopRecording(): Promise<Clip>;
   transcribeRecording(options: { recordingId: string; requestId: string }): Promise<{ text: string; local: boolean }>;
   cancelRecording(): Promise<unknown>;
   cancel(options: { requestId: string }): Promise<unknown>;
-  addListener(event: 'recordingStopped', callback: (clip: Clip) => void): Promise<PluginListenerHandle>;
+  addListener(event: 'recordingStopped', callback: (clip: VoiceRecordingStopped) => void): Promise<PluginListenerHandle>;
 }>('DevelopmentAgent');
 const deviceVoice = registerPlugin<typeof voice & {warmSpeechOutput():Promise<void>;getRecordingMetrics(input:{recordingId:string}):Promise<{recordingId:string;peak:number;rms?:number}>}>('AlphaVoiceCloud');
 const appSettings = registerPlugin<{ openSettings(input: { page: 'privacy' }): Promise<unknown> }>('AlphaDevice');
@@ -317,13 +320,18 @@ export function installPrototypeVoiceAdapter(Component: any, views: Record<strin
     stage = 'starting'; refresh(); await stopping;
     if (token !== generation) return;
     if (listener) await listener.remove(); listener = undefined;
-    const handle = await driver.addListener('recordingStopped', value => {
-      if (token !== generation || !['starting','recording'].includes(stage) || (recordingId && value.recordingId !== recordingId)) return;
+    const earlyStops = new Map<string, VoiceRecordingStopped>();
+    let ownedId: string | undefined;
+    const recordingStopped = (value: VoiceRecordingStopped) => {
+      if (token !== generation || !['starting','recording'].includes(stage) || !value.recordingId) return;
+      if (!ownedId) { earlyStops.set(value.recordingId, value); return; }
+      if (value.recordingId !== ownedId) return;
       stopClock();
-      if (!value.recordingId || !Number.isFinite(value.durationMs)) { clip = undefined; stage = 'ready'; error = 'Recording ended without usable audio.'; }
+      if (!completeClip(value)) { clip = undefined; stage = 'ready'; error = value.interrupted === 'call-active' ? CALL_PAUSED : 'Recording ended without usable audio.'; }
       else { clip = value; stage = 'recorded'; recordingEnded(value.recordingId, 'notes'); }
       refresh();if(chatDestination?.mode==='dictation'&&stage==='recorded'&&!busy)void primary();
-    });
+    };
+    const handle = await driver.addListener('recordingStopped', recordingStopped);
     if (token !== generation) { await handle.remove(); return; }
     listener = handle;
     const capture=liveDictation?liveDictation.startRecording():onDeviceReady?deviceVoice.startRecording({maxDurationMs:29000}):(driver as typeof voice).startRecording();
@@ -331,8 +339,9 @@ export function installPrototypeVoiceAdapter(Component: any, views: Record<strin
     let result:Awaited<typeof capture>;
     try{result=await capture;}finally{if(startingCapture===capture)startingCapture=undefined;}
     if (token !== generation) return;
-    recordingId = result.recordingId;
-    if (stage === 'recorded') {if(chatDestination?.mode==='dictation')await transcribeClip(token);return;} // Automatic stop can race acquisition.
+    recordingId = ownedId = result.recordingId;
+    const earlyStop = earlyStops.get(ownedId);earlyStops.clear();
+    if (earlyStop) {recordingStopped(earlyStop);if(chatDestination?.mode==='dictation'&&clip)await transcribeClip(token);return;}
     started = Date.now(); stage = 'recording'; tick = setInterval(refresh, 250); refresh();
   }
   async function primary() {
@@ -457,7 +466,7 @@ export function installPrototypeVoiceAdapter(Component: any, views: Record<strin
     };
   }
   async function captureConversationAudio(selected:Pick<ReturnType<typeof createCloudVoice>,'startRecording'|'stopRecording'|'getRecordingMetrics'|'cancelRecording'|'addListener'>,current:()=>void,input:{signal:AbortSignal;onActivity:(value:{peak:number;rms?:number})=>void;onEnd:(error?:unknown)=>void}){
-    let active=true,recording=false,id:string|undefined,ended:Clip|undefined,problem:unknown,endId:string|undefined,handle:PluginListenerHandle|undefined,poll:ReturnType<typeof setTimeout>|undefined,cancelling:Promise<void>|undefined;
+    let active=true,recording=false,id:string|undefined,ended:Clip|undefined,problem:unknown,stopSeen=false,handle:PluginListenerHandle|undefined,poll:ReturnType<typeof setTimeout>|undefined,cancelling:Promise<void>|undefined;
     const check=()=>{input.signal.throwIfAborted();current();};
     const detach=async()=>{if(poll)clearTimeout(poll);poll=undefined;if(handle){const previous=handle;handle=undefined;await previous.remove();}};
     const cancel=()=>{if(cancelling)return cancelling;active=false;recording=false;input.signal.removeEventListener('abort',aborted);cancelling=(async()=>{try{await detach();}finally{try{await selected.cancelRecording();}catch(failure){mediaUnconfirmed=failure;stopping=Promise.reject(failure);void stopping.catch(()=>{});throw failure;}}})();return cancelling;};
@@ -465,22 +474,28 @@ export function installPrototypeVoiceAdapter(Component: any, views: Record<strin
     input.signal.addEventListener('abort',aborted,{once:true});if(input.signal.aborted)aborted();
     try{
       await stopping;check();
-      handle=await selected.addListener('recordingStopped',value=>{
-        if(!active||input.signal.aborted||id&&value.recordingId!==id)return;
-        if(!value.recordingId)return;
-        endId=value.recordingId;if(Number.isFinite(value.durationMs)){ended=value;if(id)batchRecordingEnded(id);}else problem=Error('Microphone capture was interrupted.');
-        if(id){recording=false;if(poll)clearTimeout(poll);input.onEnd(problem);}
-      });check();
+      const earlyStops=new Map<string,VoiceRecordingStopped>();
+      const recordingStopped=(value:VoiceRecordingStopped)=>{
+        if(!active||input.signal.aborted||stopSeen||!value.recordingId)return;
+        if(!id){earlyStops.set(value.recordingId,value);return;}
+        if(value.recordingId!==id)return;
+        stopSeen=true;recording=false;if(poll)clearTimeout(poll);
+        if(value.interrupted==='call-active')problem=Object.assign(new Error(CALL_PAUSED),{code:'call-active'});
+        else if(completeClip(value)){ended=value;batchRecordingEnded(id);}
+        else problem=Error('Microphone capture was interrupted.');
+        input.onEnd(problem);
+      };
+      handle=await selected.addListener('recordingStopped',recordingStopped);check();
       const pending=selected.startRecording();startingCapture=pending;
       let result:Awaited<typeof pending>;try{result=await pending;}finally{if(startingCapture===pending)startingCapture=undefined;}
       check();id=result.recordingId;recordingId=id;started=Date.now();recording=true;conversationLevels=[];
-      if(endId&&endId!==id){ended=undefined;problem=undefined;}
+      const earlyStop=earlyStops.get(id);earlyStops.clear();
       const sample=async()=>{
         if(!active||!recording||input.signal.aborted)return;
         try{check();const value=await selected.getRecordingMetrics(id!);check();if(!active||!recording)return;conversationLevels=[...conversationLevels.slice(-43),value.peak];input.onActivity(value);refresh();if(active&&recording&&!input.signal.aborted)poll=setTimeout(()=>{void sample();},50);}
-        catch(error){if(!active||!recording||ended||endId===id||input.signal.aborted)return;recording=false;problem=error;input.onEnd(error);}
+        catch(error){if(!active||!recording||input.signal.aborted)return;recording=false;problem=error;input.onEnd(error);}
       };
-      if(ended||problem){recording=false;input.onEnd(problem);}else void sample();
+      if(earlyStop)recordingStopped(earlyStop);else void sample();
       return {
         stop:async()=>{check();recording=false;batchRecordingEnded(id);await detach();check();if(problem)throw problem;const value=ended??await selected.stopRecording();check();if(value.recordingId!==id||!Number.isFinite(value.durationMs))throw Error('Recording identity changed.');clip=value;return value;},
         cancel,
@@ -567,7 +582,7 @@ export function installPrototypeVoiceAdapter(Component: any, views: Record<strin
         stopRecording:()=>deviceVoice.stopRecording(),
         getRecordingMetrics:(recordingId:string)=>deviceVoice.getRecordingMetrics({recordingId}),
         cancelRecording:async()=>{await deviceVoice.cancelRecording();},
-        addListener:(event:'recordingStopped',callback:(clip:Clip)=>void)=>deviceVoice.addListener(event,callback),
+        addListener:(event:'recordingStopped',callback:(clip:VoiceRecordingStopped)=>void)=>deviceVoice.addListener(event,callback),
       };
       driver=cloudDriver??deviceVoice;cloudMode=!!cloudDriver;
       let batchCaptureRetired=false;
@@ -605,15 +620,16 @@ export function installPrototypeVoiceAdapter(Component: any, views: Record<strin
         if(!sent){if(token===generation&&chatDestination===chat)cancelChat();throw new DOMException('Voice message discarded','AbortError');}
         const result=sent.result;input.signal.throwIfAborted();current();
         if(result.complete){markVoiceTiming('first-token');markVoiceTiming('final-reply');}
-        conversationLastTranscript=sent.text;conversationLastReply=result.text;conversationReviewRequired=result.reviewRequired===true&&!result.awaitingUserInput;if(result.awaitingUserInput!==undefined)liveCapture?.release(true);
-        const spoken=typeof result.text==='string'?workflowReplyText(result.text).text:result.text;return spoken===result.text?result:{...result,text:spoken};
+        const spoken=typeof result.text==='string'?workflowReplyText(result.text).text:result.text;
+        conversationLastTranscript=sent.text;conversationLastReply=spoken;conversationReviewRequired=result.reviewRequired===true&&!result.awaitingUserInput;if(result.awaitingUserInput!==undefined)liveCapture?.release(true);
+        return spoken===result.text?result:{...result,text:spoken};
         }finally{cueTurn.settled=true;liveCapture?.release();}
       };
       const voiceStopped=(value:BatchVoiceState)=>{
         const failure=value.error as {code?:unknown;reason?:unknown}|undefined,code=failure?.code;
         const denied=voiceFailure(value.error,{transcribing:false,browser:!Capacitor.isNativePlatform()});
         return cloudVoiceFailure(value.error,{conversation:true})
-          ||(failure?.reason==='call-active'||code==='call-active'?'Voice paused for a phone call.'
+          ||(failure?.reason==='call-active'||code==='call-active'?CALL_PAUSED
           :code==='audio-focus-lost'?'Voice stopped because another app took the audio.'
           :code==='expired'?'Voice session ended. Start again.'
           :denied?.kind==='denied'?(conversationDenied=true,denied.message)
