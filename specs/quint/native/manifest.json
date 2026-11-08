@@ -1539,6 +1539,45 @@
         "One held start and two distinguishable native draft identities. The exact renderer capture closure executes against controlled plugin, timer and cancellation inputs.",
         "The model starts after listener installation. Checkpoints settle native promises for each scheduled effect; concurrent detach/cleanup, installed transport and physical audio remain external."
       ]
+    },
+    {
+      "path": "specs/quint/native/ReviewedCopies.qnt",
+      "module": "ReviewedCopies",
+      "init": "init",
+      "step": "step",
+      "invariant": "safety",
+      "sources": [
+        "android/app/src/main/java/ai/elizaresearch/alphaphone/ReviewedCopies.java",
+        "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaMailAttachmentsPlugin.java",
+        "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaMailFileProvider.java",
+        "android/app/src/main/res/xml/mail_attachment_paths.xml",
+        "vendor/eliza/plugins/plugin-native-media/android/src/main/java/ai/eliza/plugins/media/ReviewedFileHandoff.java"
+      ],
+      "tests": [
+        "firstSweepCompletesBeforePeerCopyTest",
+        "heldSweepBlocksPeerWriteTest",
+        "unavailableListingKeepsStartupPendingTest",
+        "clearAndWrongTimerPreservePeerTest",
+        "expirySkipsOwnCopyAndPendingPeerTest",
+        "cancelledWriterCannotRepublishTest",
+        "providerRefusesWriteAndExpiresReadTest"
+      ],
+      "invariants": [
+        "AllocatedOwnEveryFile",
+        "InFlightKeepsItsOwner",
+        "RevokedPathsNeverResurrect",
+        "FirstSweepProtectsLiveCopies",
+        "ProviderOpensReadOnly"
+      ],
+      "abstractions": [
+        "One process with two bridge identities, five unique paths and four file-age classes. Successful physical unlink is modeled separately from retained registry ownership after a denied provider read.",
+        "Real host files, directory listings and registry locking are observed. URI and permission APIs are controlled ports. Mid-write cancellation, deletion failure and interleaved Binder opens remain separate source obligations."
+      ],
+      "bounds": {
+        "maxSamples": 1000,
+        "maxSteps": 60,
+        "seed": "123"
+      }
     }
   ]
 }
