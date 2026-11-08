@@ -16,6 +16,8 @@ export const delegationNative = registerPlugin<{
 	}>;
 	clearDelegationCallback(input: { state: string }): Promise<void>;
 }>("AlphaConnection");
+/** The secure slot shape AlphaConnectionPlugin admits for this panel (RendererCredentialSlots). */
+export const cloudDelegationSlot = /^cloud-delegation:v1:[a-f0-9]{64}$/;
 type Pending = {
 	state: string;
 	authUrl: string;
