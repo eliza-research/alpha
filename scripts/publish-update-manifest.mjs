@@ -20,6 +20,8 @@ import { RELEASE_SIGNER_FILE, validateReleaseSigner } from "./build-android.mjs"
 import { admitUnitApk } from "./provision-unit.mjs";
 
 export const MANIFEST_NAME = "alpha-update-stable.json";
+// parseUpdateManifest's UPDATE_MAX_BYTES: phones silently drop a manifest naming a larger APK.
+const UPDATE_MAX_BYTES = 1024 * 1024 * 1024;
 const USAGE = "Usage: node scripts/publish-update-manifest.mjs --variant launcher|standalone [--apk-manifest FILE] [--out-dir DIR] [--notes TEXT]";
 
 function parseArgs(argv) {
@@ -68,6 +70,7 @@ export function main(argv, { root = process.cwd(), log = console.log, error = co
   const bytes = fs.readFileSync(apk);
   const sha256 = createHash("sha256").update(bytes).digest("hex");
   if (sha256 !== row.sha256) { fs.rmSync(apk, { force: true }); error(`${apk} does not match its verified manifest row`); return 1; }
+  if (bytes.length > UPDATE_MAX_BYTES) { fs.rmSync(apk, { force: true }); error(`${apk} is over 1 GiB; phones do not offer it.`); return 1; }
 
   const update = {
     schema: "alpha-update/v1",

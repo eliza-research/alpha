@@ -554,9 +554,10 @@ Publish an update by building the manifest's flavor with `ELIZAOS_VERSION_CODE` 
 installed versionCode and signing it with the installed app's key. Never write the manifest by hand:
 `scripts/publish-update-manifest.mjs` writes it only for a release row of `artifacts/apk-manifest.json`
 that verify-apks recorded as distributable and signed by `android/release-signer.json`, and that
-provisioning would still admit. It copies that APK to `artifacts/app-stable/alpha-phone-<versionCode>.apk`
-and writes `artifacts/app-stable/alpha-update-stable.json` with the copy's SHA-256 and size. It uploads
-nothing. Upload the APK before the manifest that names it:
+provisioning would still admit, so run it before `lastRelease` records that versionCode. It copies
+the APK to `artifacts/app-stable/alpha-phone-<versionCode>.apk` and writes
+`artifacts/app-stable/alpha-update-stable.json` beside it. It uploads nothing. Upload the APK before
+the manifest that names it:
 
 ```sh
 # Once: the rolling release, never marked Latest.
