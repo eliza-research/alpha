@@ -51,7 +51,11 @@
         "resumedAckFencesPendingCallbackTest",
         "resumedAckKeepsColdCallbackRefusedTest",
         "coldReturnCannotAcquireCredentialIntentTest",
-        "cancelledAcknowledgmentRetainsRecoveryReceiptTest"
+        "cancelledAcknowledgmentRetainsRecoveryReceiptTest",
+        "mfaHasFreshWrongCodeBudgetTest",
+        "browserGraceBurnsPendingTest",
+        "browserGraceStorageFailureKeepsBytesTest",
+        "priorGoogleRecordSurvivesEmailCancellationTest"
       ],
       "invariants": [
         "KeyBeforeAck",
@@ -170,7 +174,14 @@
         "grantWithdrawalTest",
         "disconnectUncertainTest",
         "explicitDisconnectRetryTest",
-        "retiredAttemptTest"
+        "retiredAttemptTest",
+        "coldReturnReadbackTest",
+        "queuedReturnDrainTest",
+        "staleNativeReturnTest",
+        "replacementReviewRetiresOldCleanupTest",
+        "newOwnerNativeReturnReadbackTest",
+        "foregroundSignalNeedsBackgroundTest",
+        "optionalCleanupCannotBlockPrivacyTest"
       ],
       "invariants": [
         "ReviewNeedsCurrentModify",
@@ -233,10 +244,10 @@
         "restartDeleteTest",
         "unknownUpdateTest",
         "knownFailureRetryTest",
-        "retiredOwnerTest",
         "permissionRestorationTest",
         "restoredPermissionKeepsUnknownTest",
-        "restoredPermissionKeepsOwnerFenceTest"
+        "restoredPermissionKeepsOwnerFenceTest",
+        "retiredOwnerTest"
       ],
       "invariants": [
         "NoAutomaticUnknownWrite",
@@ -496,7 +507,8 @@
         "storedDecisionStillNeedsAndroidTest",
         "providerAdmissionTest",
         "manualAuthTest",
-        "switchedTabCancelsPromptTest"
+        "switchedTabCancelsPromptTest",
+        "unavailableEngineRefusesTabTest"
       ],
       "invariants": [
         "PrivateCookiePolicy",
@@ -721,14 +733,21 @@
         "clearedProviderNeedsNoSecondStopTest",
         "compareConflictKeepsCredentialTest",
         "sameBindingDoesNotStopRuntimeTest",
-        "writeCheckpointCanPrecedeReportedFailureTest"
+        "writeCheckpointCanPrecedeReportedFailureTest",
+        "abandonedShutdownWaitsForAckTest",
+        "acknowledgementKeepsStartFencedTest",
+        "lateLeaseAckCannotReleaseSuccessorTest",
+        "providerCancellationRetiresIntentTest",
+        "unknownProviderCancellationPreservesLeaseTest"
       ],
       "invariants": [
         "ShutdownBeforeCriticalWrite",
         "AdmissionInvalidated",
         "CurrentMutation",
         "RejectedWriteRetainsBytes",
-        "Bounded"
+        "Bounded",
+        "LeaseBounds",
+        "BegunRequestIsKnown"
       ],
       "bounds": {
         "maxSamples": 1000,
@@ -740,6 +759,8 @@
         "plugins/plugin-native-agent/android/src/main/java/ai/eliza/plugins/agent/runtime/NativeProviderSlot.java",
         "plugins/plugin-native-agent/android/src/main/java/ai/eliza/plugins/agent/runtime/CredentialRequestFence.java",
         "plugins/plugin-native-agent/android/src/main/java/ai/eliza/plugins/agent/runtime/CredentialIntentFence.java",
+        "plugins/plugin-native-secure-store/android-nativeonly/src/main/java/ai/eliza/plugins/securestore/nativeonly/CredentialIntentFence.java",
+        "plugins/plugin-native-agent/android/src/main/java/ai/eliza/plugins/agent/runtime/CredentialShutdownLease.java",
         "plugins/plugin-native-secure-store/android-nativeonly/src/main/java/ai/eliza/plugins/securestore/nativeonly/CredentialIntentFence.java"
       ]
     },
@@ -862,6 +883,377 @@
         "plugins/plugin-inbox/src/mailbox/drafts-controller.ts",
         "plugins/plugin-inbox/src/mailbox/operation-journal.ts",
         "plugins/plugin-inbox/src/mailbox/retained-draft.ts"
+      ]
+    },
+    {
+      "path": "specs/quint/services/InboxProviderDrafts.qnt",
+      "module": "InboxProviderDrafts",
+      "init": "init",
+      "step": "step",
+      "invariant": "safety",
+      "sources": [
+        "apps/app/src/prototype/inbox-cloud-adapter.ts",
+        "apps/app/src/prototype/inbox-provider-controls.ts",
+        "apps/app/src/prototype/inbox-drafts.ts",
+        "apps/app/src/prototype/inbox-unsaved.ts",
+        "apps/app/src/prototype/assistant-draft-controller.ts",
+        "apps/app/src/runtime/inbox-operation.ts",
+        "apps/app/src/runtime/inbox-unsaved-record.ts",
+        "apps/app/src/runtime/inbox-local-store.ts",
+        "apps/app/src/runtime/gmail-grants.ts",
+        "apps/app/src/runtime/cloud-protocol.ts",
+        "vendor/eliza/plugins/plugin-inbox/src/mailbox/review-controller.ts",
+        "vendor/eliza/plugins/plugin-inbox/src/mailbox/drafts-controller.ts",
+        "vendor/eliza/plugins/plugin-inbox/src/mailbox/operation-journal.ts",
+        "vendor/eliza/plugins/plugin-inbox/src/mailbox/retained-draft.ts",
+        "patches/eliza/inbox-confirmation-client-manifest.json",
+        "patches/eliza/inbox-confirmation-client.patch",
+        "patches/eliza/inbox-cleanup-client-manifest.json",
+        "patches/eliza/inbox-cleanup-client.patch",
+        "scripts/prepare-client-features.mjs"
+      ],
+      "components": [
+        "specs/quint/services/InboxCoordinator.qnt",
+        "specs/quint/services/InboxDelivery.qnt"
+      ],
+      "tests": [
+        "createAndAdoptTest",
+        "changedRemoteRefusesAdoptionTest",
+        "permissionLossDisablesForwardReviewTest",
+        "unknownDoesNotRepeatTest",
+        "threeReviewedOperationsTest",
+        "retiredReadCannotAdoptTest",
+        "failedLocalSaveKeepsReceiptTest",
+        "unknownReceiptRetirementNeedsReloadTest",
+        "changedForwardPartsRefuseAdoptionTest",
+        "preparedForwardKeepsReviewedBytesTest",
+        "changedSourceRequiresFreshReviewTest",
+        "nonAtomicReplacementUsesReviewedSnapshotTest",
+        "retainedForwardHasNoOriginalPartsTest"
+      ],
+      "invariants": [
+        "EachRequestOnce",
+        "InFlightHasRequest",
+        "DurableRequests",
+        "VerifiedReferences",
+        "ProviderBytesReviewed",
+        "ReviewBeforeConfirm",
+        "TypeOK"
+      ],
+      "bounds": {
+        "maxSamples": 1000,
+        "maxSteps": 80,
+        "seed": "123"
+      },
+      "abstractions": [
+        "Three immutable one-shot operation histories represent create, replacement and provider deletion. Local copies remain independent of provider deletion.",
+        "Forwarded originals are source-part IDs and a history/byte equivalence class. Provider metadata is captured at review; non-atomic replacement may overwrite later provider changes.",
+        "One lifecycle owner and one replacement owner, finite content/ref identities. Controlled external provider ports do not establish installed Gmail behavior.",
+        "One local adoption transaction is pending at a time. Private fields and imported-map members not directly observed remain explicit bounded-refinement gaps."
+      ],
+      "stateMapping": {
+        "Create/Replace/Delete": "Separate retained operation histories; completing one never resets another",
+        "copies": "Selected owner current, saved and retained content/reference/forward identity classes",
+        "capturedOwner/capturedEpoch/readMatches": "Provider digest read and local-adoption fences",
+        "inFlight/effectDone/network": "Per-request provider attempt and completion, separate from current UI binding",
+        "sourceHistory/sourceBytes/proposals/lastEffect": "Metadata snapshot at provider review and bytes applied by its one-shot effect"
+      },
+      "sharedSources": [
+        "plugins/plugin-inbox/src/mailbox/review-controller.ts",
+        "plugins/plugin-inbox/src/mailbox/drafts-controller.ts",
+        "plugins/plugin-inbox/src/mailbox/operation-journal.ts",
+        "plugins/plugin-inbox/src/mailbox/retained-draft.ts"
+      ]
+    },
+    {
+      "path": "specs/quint/services/CalendarLinkedSync.qnt",
+      "module": "CalendarLinkedSync",
+      "init": "init",
+      "step": "step",
+      "invariant": "safety",
+      "sources": [
+        "vendor/eliza/packages/contracts/src/calendar-linked-sync.ts",
+        "vendor/eliza/plugins/plugin-calendar/src/linked-sync/sync-controller.ts",
+        "vendor/eliza/plugins/plugin-calendar/src/linked-sync/linked-store.ts",
+        "vendor/eliza/plugins/plugin-calendar/src/linked-sync/google-sync-port.ts"
+      ],
+      "tests": [
+        "createTest",
+        "unknownCreateRecoveryTest",
+        "absentUnknownStaysQuarantinedTest",
+        "conditionalUpdateConflictTest",
+        "concurrentEditsTest",
+        "providerPullTest",
+        "localCasRefusedTest",
+        "missingProviderDeletesLocalTest",
+        "notAcceptedKeepsPendingTest",
+        "unchangedEtagCannotRecoverTest",
+        "discoveredProviderBecomesLinkedTest",
+        "pausedInFlightPreservesPendingTest",
+        "freshReviewRequiredTest"
+      ],
+      "invariants": [
+        "DurableMutation",
+        "SettledCheckpoint",
+        "Bounded",
+        "TypeOK"
+      ],
+      "stateMapping": {
+        "state/pending/common/checkpointRevision/checkpointEtag": "Actual LinkedCalendarEventRecord persisted by CalendarLinkedStore",
+        "local/remote/phase/writes/localWrites": "Real reconciler local and provider observations with separate mutation and checkpoint outcomes",
+        "reviewed/enabled/epoch": "Exact controller consent revision and current-owner fence"
+      },
+      "abstractions": [
+        "One linked event, three semantic-body equality classes, two revisions and at most two mutations.",
+        "Primitive storage and provider outcomes are external inputs. Generic reconciliation can be retried after known rejection. Quarantined state requires readback recovery.",
+        "The former CalendarSync outbox does not correspond to current main source and remains historical pending composition migration."
+      ],
+      "bounds": {
+        "maxSamples": 1000,
+        "maxSteps": 80,
+        "seed": "123"
+      }
+    },
+    {
+      "path": "specs/quint/services/WorkflowEngineAdmission.qnt",
+      "module": "WorkflowEngineAdmission",
+      "init": "init",
+      "step": "step",
+      "invariant": "safety",
+      "sources": [
+        "vendor/eliza/plugins/plugin-workflow/src/services/embedded-workflow-service.ts",
+        "vendor/eliza/plugins/plugin-workflow/src/services/workflow-dispatch.ts",
+        "vendor/eliza/plugins/plugin-workflow/src/services/phone-workflow-spec.ts",
+        "vendor/eliza/plugins/plugin-workflow/src/db/schema.ts",
+        "vendor/eliza/packages/core/src/services/trigger-scheduling.ts"
+      ],
+      "tests": [
+        "durableAdmissionTest",
+        "mismatchedSubmissionTest",
+        "staleVersionRejectedTest",
+        "oldReceiptSurvivesVersionTest",
+        "pausedTriggerRejectedTest",
+        "missedOccurrenceNoWorkerTest",
+        "overlapNoWorkerTest",
+        "cancellationTerminalWinnerTest",
+        "cancellationBeforeProcessTest",
+        "unknownOutcomeRestartTest",
+        "unsupportedApprovalRejectedTest",
+        "unsupportedApprovalCanBeDeniedTest",
+        "approvalDigestRejectedTest",
+        "committedUnknownApprovalReplayTest",
+        "otherOwnerDecisionRejectedTest",
+        "conflictingNativeTerminalFailsClosedTest"
+      ],
+      "invariants": [
+        "DurableBeforeProcess",
+        "ManualReceiptMatchesRun",
+        "NoProcessForUnadmittedRun",
+        "TerminalNotRunning",
+        "RecordedDecisionHasCanonicalReceipt",
+        "TypeOK"
+      ],
+      "stateMapping": {
+        "runs/receipt/owner/payload/runVersion": "Actual tenant-scoped execution and manual-submission rows for one bound identity, with finite input/owner/version equality classes",
+        "status/finished/cancelRequested/reconciliation": "Persisted WorkflowExecution snapshot read by actual service",
+        "workerActive/workerStarts/workerApproval": "Controlled process port liveness and invocation-local event snapshot. Private workerApproval remains an explicit unobserved field",
+        "approval/supported/digest/decisionOwner/recordedApproval": "Actual approvalReceipts canonical readback versus SQL execution.approvals projection",
+        "version/active/removed/otherActive": "Actual stored definition and optional competing unfinished run at schedule admission",
+        "controls": "Actual cancel/approval process command invocations"
+      },
+      "abstractions": [
+        "One workflow, one bound target submission/occurrence, one optional pre-existing run, two owner/version/input equivalence classes and at most two process invocations.",
+        "Actual PostgreSQL-compatible SQL and Drizzle queries run in single-process PGlite. Multi-host locking, deployment migrations and installed process supervision remain separate obligations.",
+        "Worker result/control and canonical Smithers approval-store ports are controlled. No real external workflow effect, hosted grant, provider or device action is performed.",
+        "Actual compiler and cron admission classify selected ready/missed/overlap schedules. Finite disposition inputs do not prove all time zones or clock instants.",
+        "Canonical approval is authoritative. A committed decision may survive a failed host transaction while the execution projection stays pending."
+      ],
+      "bounds": {
+        "maxSamples": 1000,
+        "maxSteps": 80,
+        "seed": "123"
+      }
+    },
+    {
+      "path": "specs/quint/services/WorkflowWakeups.qnt",
+      "module": "WorkflowWakeups",
+      "init": "init",
+      "step": "step",
+      "invariant": "safety",
+      "sources": [
+        "vendor/eliza/plugins/plugin-workflow/src/services/embedded-workflow-service.ts"
+      ],
+      "tests": [
+        "timerWakeupTest",
+        "earlierTimerReplacesEventTimeoutTest",
+        "laterTimeoutKeepsEarlierTest",
+        "reopenedTimerIdentityTest",
+        "terminalWakeupDoesNotRestartTest",
+        "unknownClearsReservationTest",
+        "liveWorkerPollTest",
+        "stoppedCallbackIsInertTest",
+        "cancelledTimerCannotResumeTest",
+        "unarmedEventRequiresSignalTest",
+        "emptyTimerHistoryFallbackTest",
+        "farTimerIsBoundedTest",
+        "lateQueuedTypedNeverStartsTest",
+        "previouslyStartedTypedReconcilesTest"
+      ],
+      "invariants": [
+        "ProcessRequiresAdmission",
+        "TerminalCannotRun",
+        "StoppedCannotWake",
+        "WakeupHasPersistedRun",
+        "TypeOK"
+      ],
+      "abstractions": [
+        "One execution, two timer identities, three process invocations and bounded clock instants.",
+        "Actual per-execution host wake-up state is observed from its service reservation. Ordered timer history is an unobserved model map driven by source events.",
+        "Controlled platform clock and external process results. Installed process effects and task registration remain separate obligations."
+      ],
+      "bounds": {
+        "maxSamples": 1000,
+        "maxSteps": 80,
+        "seed": "123"
+      }
+    },
+    {
+      "path": "specs/quint/services/WorkflowScheduleTasks.qnt",
+      "module": "WorkflowScheduleTasks",
+      "init": "init",
+      "step": "step",
+      "invariant": "safety",
+      "sources": [
+        "vendor/eliza/plugins/plugin-workflow/src/services/embedded-workflow-service.ts",
+        "vendor/eliza/packages/core/src/utils/string-to-uuid.ts",
+        "vendor/eliza/packages/core/src/utils/uuid.ts",
+        "vendor/eliza/packages/core/src/types/trigger.ts"
+      ],
+      "tests": [
+        "activationTaskTest",
+        "beforeWriteFailureTest",
+        "lostCreateReceiptTest",
+        "staleCreateRemovedTest",
+        "staleCreatePreservesSuccessorTest",
+        "lateTaskAfterCompletedCleanupTest",
+        "pausePreservesUnrelatedTriggerTest",
+        "removalCleansAllTriggersTest",
+        "restoreWaitsForCleanupTest",
+        "cleanupThenRestoreTest",
+        "staleActivationRejectedTest",
+        "malformedScheduleRejectedTest"
+      ],
+      "invariants": [
+        "RemovedInactive",
+        "MarkerBelongsToRemovedWorkflow",
+        "RecordedTaskVersion",
+        "RetiredTaskCannotReappear",
+        "TypeOK"
+      ],
+      "abstractions": [
+        "One workflow, four version identities, three unique task slots, one pending creation and selected second-host source operations.",
+        "Definition commits and external task writes are independent. Failed writes can leave either missing or already-persisted tasks.",
+        "Task-store operations are controlled. Current-row readback retires only the task created by that invocation. Installed dispatch and task-store guarantees are separate obligations.",
+        "A completed cleanup marker does not prove cross-store quiescence: an older in-flight create whose retirement fails can leave a stale task until startup cleanup."
+      ],
+      "bounds": {
+        "maxSamples": 1000,
+        "maxSteps": 80,
+        "seed": "123"
+      }
+    },
+    {
+      "module": "CoreRuntimeRetirement",
+      "path": "specs/quint/services/CoreRuntimeRetirement.qnt",
+      "init": "init",
+      "step": "step",
+      "invariant": "safety",
+      "tests": [
+        "waitsForWorkTest",
+        "rejectedWorkIsNotRecordedFailureTest",
+        "recordedFailurePersistsTest",
+        "reentrantWorkTest",
+        "spawnedWhileDrainingTest",
+        "separateDrainCallersTest",
+        "laterWorkDoesNotReopenDrainTest",
+        "failureDuringDrainTest"
+      ],
+      "sources": [
+        "vendor/eliza/packages/core/src/runtime/retirement.ts",
+        "vendor/eliza/packages/core/src/errors.ts"
+      ],
+      "stateMapping": {
+        "pending/generation/failures": "Actual RuntimeRetirement pending Promise set, monotonically published generation and retained failure list",
+        "results/drains": "Settlement of returned run() and drain() promises, indexed by fixture identity"
+      },
+      "abstractions": [
+        "Three work promises, two drain callers and at most three recorded failures. Promise identity is represented by stable equality classes.",
+        "A rejected operation and an explicitly recorded retirement failure are separate source events. Draining does not reject merely because one run promise rejected.",
+        "The class tracks work that it receives. Admission of new work after runtime shutdown belongs to RuntimeServiceLifecycle and AgentRuntime."
+      ]
+    },
+    {
+      "module": "CoreServiceLifecycle",
+      "path": "specs/quint/services/CoreServiceLifecycle.qnt",
+      "init": "init",
+      "step": "step",
+      "invariant": "safety",
+      "tests": [
+        "concurrentStartTest",
+        "partialFailureTest",
+        "lateStartTest",
+        "stopSingleFlightTest",
+        "observerFailureTest",
+        "initializationFastPathTest",
+        "failedInitializationTest"
+      ],
+      "sources": [
+        "vendor/eliza/packages/core/src/runtime/service-lifecycle.ts",
+        "vendor/eliza/packages/core/src/runtime/retirement.ts",
+        "vendor/eliza/packages/core/src/errors.ts",
+        "vendor/eliza/packages/core/src/types/events.ts"
+      ],
+      "stateMapping": {
+        "registries": "Actual class and service maps, failed class set, registration status and WeakMap stop identities",
+        "hookResults/results": "Controlled service hook promises and actual lifecycle returned promise settlements",
+        "generation/retirementFailures": "Real RuntimeRetirement tracker"
+      },
+      "abstractions": [
+        "Two implementations and three callers with fixed registration during each schedule.",
+        "Settlements include the microtask sequence through class-map cleanup. Eager timers, dynamic registration and reentrant observers remain separate obligations.",
+        "Current SDK99 keeps the canonical load handler pending across sibling failure and resolves it after another implementation succeeds. An explicit initialization-failure input refuses deferred startup."
+      ]
+    },
+    {
+      "module": "CoreRuntimeShutdown",
+      "path": "specs/quint/services/CoreRuntimeShutdown.qnt",
+      "init": "init",
+      "step": "step",
+      "invariant": "safety",
+      "tests": [
+        "ordinaryWaitsForPostTest",
+        "strictWaitsAfterFastTest",
+        "stopHookFailureTest",
+        "preparationFailureTest",
+        "roomTimeoutRetryTest",
+        "stickyStrictFailureTest"
+      ],
+      "sources": [
+        "vendor/eliza/packages/core/src/runtime.ts",
+        "vendor/eliza/packages/core/src/runtime/retirement.ts",
+        "vendor/eliza/packages/core/src/runtime/service-lifecycle.ts",
+        "vendor/eliza/packages/core/src/runtime/room-handler-queue.ts",
+        "vendor/eliza/packages/core/src/runtime/turn-controller.ts",
+        "vendor/eliza/packages/core/src/services/post-delivery-task-tracker.ts"
+      ],
+      "stateMapping": {
+        "stop ownership": "Actual stopPromise, strictStopPromise, stopController and stopped flag",
+        "retirement": "Original service stop promise, generation and recorded failures",
+        "queues and handlers": "Actual room queue, turn controller, post-delivery tracker and host registries"
+      },
+      "abstractions": [
+        "One running service during initialization, one room owner, one diagnostic task and three ordinary callers.",
+        "Full host shutdown, provider cancellation and dynamic plugin registration remain open."
       ]
     }
   ]

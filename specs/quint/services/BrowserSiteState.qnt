@@ -23,11 +23,12 @@ module BrowserSiteState {
     initFor(privateTab)
   }
   /// Cookie policy is read back. WebAuthn stays at the fresh WebView default NONE.
-  action build(cookiePolicyAccepted: bool): bool = all {
+  action buildWithEngine(cookiePolicyAccepted: bool, engineAvailable: bool): bool = all {
     s.phase == "new",
-    s' = { ...s, phase: if (cookiePolicyAccepted) "ready" else "failed",
-      thirdParty: cookiePolicyAccepted and not(s.privateTab) }
+    s' = { ...s, phase: if (cookiePolicyAccepted and engineAvailable) "ready" else "failed",
+      thirdParty: cookiePolicyAccepted and engineAvailable and not(s.privateTab) }
   }
+  action build(cookiePolicyAccepted: bool): bool = buildWithEngine(cookiePolicyAccepted, true)
   action navigate(origin: int): bool = all {
     s.phase.in(Set("ready", "committed")), s.navigation < 2, origin.in(Set(1, 2)),
     s' = { ...s, phase: "loading", origin: origin, navigation: s.navigation + 1,
@@ -88,7 +89,7 @@ module BrowserSiteState {
   action close = s' = { ...s, phase: "closed", privateCookie: false,
     prompt: "none", passwordPresent: false, autofillExposed: false, permissionResult: false }
   action step = any {
-    build(true), build(false), navigate(1), navigate(2), commit,
+    build(true), build(false), buildWithEngine(true, false), navigate(1), navigate(2), commit,
     cookie, permissionRequest(1), permissionRequest(2), permissionDecision(true),
     permissionDecision(false), androidResult(true), androidResult(false),
     authChallenge(true), authChallenge(false), typePassword, submitPassword,
@@ -118,4 +119,6 @@ module BrowserSiteState {
     .expect(s.passwordSubmitted and not(s.passwordPresent or s.authSave) and safety)
   run switchedTabCancelsPromptTest = initFor(false).then(build(true)).then(navigate(1))
     .then(commit).then(permissionRequest(1)).then(deselect).expect(s.prompt == "none" and safety)
+  run unavailableEngineRefusesTabTest = initFor(false).then(buildWithEngine(true, false)).expect(s.phase == "failed" and safety)
+
 }

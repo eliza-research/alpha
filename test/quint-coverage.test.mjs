@@ -89,3 +89,57 @@ test('coverage admission detects changed, removed and unassigned source records'
   inventory.files.pop();
   assert.ok(checkCoverage(models, inventory).some(message => message.startsWith('New source')));
 });
+
+test('source discovery follows consumed shared modules and rejects a stale client projection', () => {
+  const root = mkdtempSync(join(tmpdir(), 'alpha-quint-shared-scope-'));
+  const write = (path, contents) => {
+    const file = join(root, path);
+    mkdirSync(dirname(file), {recursive: true});
+    writeFileSync(file, typeof contents === 'string' ? contents : JSON.stringify(contents));
+  };
+  try {
+    for (const path of sourceRoots) mkdirSync(join(root, path), {recursive: true});
+    mkdirSync(join(root, 'scripts'), {recursive: true});
+    copyFileSync(join(repositoryRoot, 'scripts/quint-lib.mjs'), join(root, 'scripts/quint-lib.mjs'));
+    write('upstream.lock.json', {commit: 'fixture', appSource: 'packages/app'});
+    write('.eliza/client-features/.source.json', {baseCommit: 'fixture', sourceFiles: {'packages/ui/src/state.ts': 'fixture'}});
+    write('android/consumer-host.json', {profile: {modules: [{source: {root: 'upstream', path: 'plugins/fixture/android'}}]}, residentHost: {helpers: ['packages/runtime/Owner.java']}});
+    write('patches/eliza/native-manifest.json', {modules: [], patches: []});
+    for (const family of ['application', 'services', 'native', 'legacy']) {
+      write(`specs/quint/${family}/manifest.json`, family === 'services'
+        ? [{sources: ['vendor/eliza/plugins/worker/src/state.ts']}] : []);
+    }
+    write('backend/.generated/runtime.js', '/* emitted runtime bundle */');
+    write('vendor/eliza/plugins/worker/src/state.ts', 'export let queued = false;');
+    const graph = {schema:1,sourcePin:'fixture',classification:'observed-product-android-bundle-inputs',producer:{sourceTreeVerifiedBeforeAndAfter:true,inputHashesUnchanged:true},files:{'plugins/worker/src/state.ts':{tracked:true,sha256:sha256('export let queued = false;')}}};
+    write('specs/quint/refinement/services/runtime-bundle-inputs.json', graph);
+    write('vendor/eliza/packages/ui/src/state.ts', 'export let active = false;');
+    write('vendor/eliza/plugins/fixture/android/src/main/java/Fixture.java', 'class Fixture {}');
+    write('vendor/eliza/packages/runtime/Owner.java', 'class Owner {}');
+    mkdirSync(join(root, 'vendor/eliza/packages/app/platforms/android/sense/src/main'), {recursive: true});
+    mkdirSync(join(root, 'vendor/eliza/packages/os/android/sense/systemui/chip/source'), {recursive: true});
+    const run = () => spawnSync(process.execPath, ['--input-type=module', '-e', "import {sharedSourcePaths} from './scripts/quint-lib.mjs'; console.log(JSON.stringify(sharedSourcePaths()));"], {cwd: root, encoding: 'utf8'});
+    const result = run();
+    assert.equal(result.status, 0, result.stderr);
+    assert.deepEqual(JSON.parse(result.stdout), [
+      'vendor/eliza/packages/runtime/Owner.java',
+      'vendor/eliza/packages/ui/src/state.ts',
+      'vendor/eliza/plugins/fixture/android/src/main/java/Fixture.java',
+      'vendor/eliza/plugins/worker/src/state.ts',
+    ]);
+    const authored = spawnSync(process.execPath, ['--input-type=module', '-e', "import {sourcePaths} from './scripts/quint-lib.mjs'; console.log(JSON.stringify(sourcePaths()));"], {cwd: root, encoding: 'utf8'});
+    assert.equal(authored.status, 0, authored.stderr);
+    assert.ok(!JSON.parse(authored.stdout).includes('backend/.generated/runtime.js'));
+    write('vendor/eliza/plugins/fixture/android/src/main/java/Added.java', 'class Added {}');
+    assert.ok(JSON.parse(run().stdout).includes('vendor/eliza/plugins/fixture/android/src/main/java/Added.java'));
+    write('specs/quint/refinement/services/runtime-bundle-inputs.json', {...graph,sourcePin:'obsolete'});
+    assert.match(run().stderr,/Refresh the authenticated runtime bundle inventory/);
+    write('specs/quint/refinement/services/runtime-bundle-inputs.json', graph);
+    write('.eliza/client-features/.source.json', {baseCommit: 'obsolete', sourceFiles: {}});
+    const stale = run();
+    assert.notEqual(stale.status, 0);
+    assert.match(stale.stderr, /Prepare client sources for the current upstream pin/);
+  } finally {
+    rmSync(root, {recursive: true, force: true});
+  }
+});

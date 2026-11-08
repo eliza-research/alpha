@@ -1,6 +1,7 @@
 import {readFileSync} from 'node:fs';
 import {resolve} from 'node:path';
 import {root} from './support.mjs';
+import {modelStateInventory, unobservedStateFields} from '../model-state.mjs';
 import {startupPermissions, callbackLanding, preferences, browserSession, permanentVoiceDeletion, draftDispatch} from './portable.mjs';
 import {application, assistantConversation} from './clients.mjs';
 import {durableStore} from './storage.mjs';
@@ -13,12 +14,17 @@ import {checkNotesCoordinator} from './notes-coordinator.mjs';
 import {listFocus} from './list-focus.mjs';
 import {checkRecoveryUI} from './recovery-ui.mjs';
 import {checkShellCoordinator} from './shell-coordinator.mjs';
+import {checkNativeViewSubscription} from './native-view-subscription.mjs';
+import {filesPreview} from './files-preview.mjs';
+import {runPermissionChoicesRefinement} from './permission-choices.mjs';
+import {checkCanonicalNotesController} from './canonical-notes-controller.mjs';
+import {checkCanonicalNotesDraft} from './canonical-notes-draft.mjs';
 
 const adapters = [application, shellNavigation, startupPermissions, assistantConversation, notesLifecycle,
   browserSession, credentialVault, developmentSurfaces, filesAndSharing, preferences, durableStore,
   permissionWalkthrough, developmentDevice, permanentVoiceDeletion, developmentHost, filesTree,
   calendarPresentation, draftDispatch, notificationCollection, callbackLanding,
-  runStartupPermissionsCoordinatorRefinement, checkVaultCoordinator, checkNotesCoordinator, listFocus, checkRecoveryUI, checkShellCoordinator];
+  runStartupPermissionsCoordinatorRefinement, checkVaultCoordinator, checkNotesCoordinator, listFocus, checkRecoveryUI, checkShellCoordinator, checkNativeViewSubscription, filesPreview, runPermissionChoicesRefinement, checkCanonicalNotesController, checkCanonicalNotesDraft];
 
 /** Component traces, with remaining obligations kept explicit for the aggregate report. */
 export async function runApplicationRefinement() {
@@ -31,12 +37,9 @@ export async function runApplicationRefinement() {
     const model = receipt.model === 'PermanentVoiceDeletionContract' ? 'PermanentVoiceDeletion' : receipt.model;
     receipts.push({...receipt, coverageModel: model});
     const entry = (Array.isArray(manifest) ? manifest : manifest.models).find(entry => entry.module === model);
-    const source = readFileSync(resolve(root, entry.path), 'utf8');
-    const main = source.slice(source.indexOf(`module ${model} {`)).split('\n}')[0];
-    const fields = [...(main.match(/type State\s*=\s*\{([^}]+)\}/s)?.[1] || '').matchAll(/\b(\w+)\s*:/g)].map(match => match[1]);
-    const checked = new Set(receipt.observedFields);
-    const missingFields = fields.filter(field => !checked.has(`s.${field}`));
-    const actions = [...main.matchAll(/^\s*action (\w+)/gm)].map(match => match[1]).filter(name => !['init', 'step', 'check'].includes(name));
+    const inventory = modelStateInventory(resolve(root, entry.path), model);
+    const missingFields = unobservedStateFields(inventory, receipt.observedFields);
+    const actions = inventory.actions.filter(name => !['init', 'step', 'check'].includes(name));
     const executed = new Set([...Object.keys(receipt.actions), ...receipt.traceInputs.map(trace => trace.init?.name || 'init')]);
     const missingActions = actions.filter(action => !executed.has(action));
     if (missingFields.length) obligations.push({model, obligation: `Observe state fields ${missingFields.join(', ')}`,

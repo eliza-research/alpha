@@ -31,9 +31,9 @@ module PermissionWalkthrough {
     s' = { ...s, enabled: false, pending: -1, generation: s.generation + 1 } }
   action resume = all { s.generation < MaxGeneration,
     s' = { ...s, enabled: true, pending: -1, generation: s.generation + 1 } }
-  action authSetup(accountCreated: bool): bool = all { s.signedIn, s.generation < MaxGeneration,
+  action authSetup(accountCreated: bool): bool = all { s.signedIn, s.generation + 2 <= MaxGeneration,
     val resume = if (s.progressError) s.progress else if (s.completed) -1 else s.savedProgress
-    s' = { ...s, generation: s.generation + 1, pending: -1, target: -1,
+    s' = { ...s, generation: s.generation + 2, pending: -1, target: -1,
       reopened: false, review: false, progress: resume,
       phase: if (resume >= 0) "permissions" else if (accountCreated) "ready" else "home",
       surface: if (resume >= 0) "permissions" else if (accountCreated) "ready" else "home" } }

@@ -7,6 +7,8 @@ module ShellNavigation {
     sendRevision: int, replyVisible: bool }
   var s: State
   pure def containsSetting(rows: List[str], value: str): bool = rows.foldl(false, (found, row) => found or row == value)
+  pure val SettingRows = Set(List(), List("about"), List("setup", "about"), List("about", "setup"),
+    List("default-apps"), List("request-home", "default-apps"), List("default-apps", "request-home"))
   pure val Views = Set("home", "assistant", "apps", "maps", "camera", "photos", "notes",
     "calendar", "notifications", "reminders", "workflows", "files", "inbox", "browser",
     "phone", "messages", "contacts", "passwords", "settings")
@@ -25,7 +27,7 @@ module ShellNavigation {
   /// A finite projection of the dynamic Settings groups. Row identity survives
   /// insertion and reordering. Removing the focused row clears its focus.
   action settingsRowsChanged(rows: List[str]): bool = all {
-    s.view == "settings", rows.in(Set(List(), List("about"), List("setup", "about"), List("about", "setup"))),
+    s.view == "settings", rows.in(SettingRows),
     s' = { ...s, settingsRows: rows,
       focusedSetting: if (containsSetting(rows, s.focusedSetting)) s.focusedSetting else "",
       intendedSetting: if (containsSetting(rows, s.intendedSetting)) s.intendedSetting else "" }
@@ -35,6 +37,9 @@ module ShellNavigation {
     s' = { ...s, focusedSetting: row, intendedSetting: row, activatedSetting: "" } }
   action activateSetting = all { s.focusedSetting != "", not(s.contextSensitive or s.modal or s.shade),
     s' = { ...s, activatedSetting: s.focusedSetting, focusedSetting: "", intendedSetting: "" } }
+  /// A native settings handoff leaves this renderer mounted with its focused row.
+  action activateExternalSetting = all { s.focusedSetting != "", not(s.contextSensitive or s.modal or s.shade),
+    s' = { ...s, activatedSetting: s.focusedSetting } }
   action expand = all { not(s.modal or s.contextSensitive), s' = { ...s, chat: "full", focus: true, shade: false,
     focusedSetting: "", intendedSetting: "" } }
   action edit = all { not(s.modal or s.contextSensitive or s.shade), s' = { ...s, draft: "draft", focus: true, chat: "input",
@@ -80,11 +85,11 @@ module ShellNavigation {
   action pageShow = suspend(s.hidden, false)
   action step = {
     nondet view = Views.oneOf()
-    nondet rows = Set(List(), List("about"), List("setup", "about"), List("about", "setup")).oneOf()
-    nondet row = Set("about", "setup").oneOf()
+    nondet rows = SettingRows.oneOf()
+    nondet row = Set("about", "setup", "default-apps", "request-home").oneOf()
     any { open(view), expand, edit, showShade, showModal, back, capture, claim, acknowledge,
       hide, resume, pageHide, pageShow, send, reply(1), reply(2),
-      settingsRowsChanged(rows), focusSetting(row), activateSetting, s' = s }
+      settingsRowsChanged(rows), focusSetting(row), activateSetting, activateExternalSetting, s' = s }
   }
   val CurrentClaim = s.claim.in(Set("none", "captured")) or (s.captured == s.revision and not(s.contextSensitive))
   val VisibleFocus = s.focus implies not(s.shade or s.modal or s.contextSensitive)
@@ -111,6 +116,10 @@ module ShellNavigation {
     .then(settingsRowsChanged(List("setup", "about"))).then(focusSetting("setup"))
     .then(settingsRowsChanged(List("about")))
     .expect(s.focusedSetting == "" and s.intendedSetting == "" and safety)
+  run settingsRoleInsertionKeepsFocusTest = init.then(open("settings"))
+    .then(settingsRowsChanged(List("default-apps"))).then(focusSetting("default-apps"))
+    .then(settingsRowsChanged(List("request-home", "default-apps"))).then(activateExternalSetting)
+    .expect(s.activatedSetting == "default-apps" and s.focusedSetting == "default-apps" and safety)
   run sameViewKeepsSendTest = init.then(open("notes")).then(send).then(open("notes"))
     .then(reply(1)).expect(s.replyVisible and safety)
   run backKeepsSendTest = init.then(send).then(back).then(reply(1))

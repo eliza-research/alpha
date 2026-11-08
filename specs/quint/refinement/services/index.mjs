@@ -13,12 +13,21 @@ import {pdfRefinement} from './pdf.mjs';
 import {runSignInCoordinatorRefinement} from './sign-in-coordinator.mjs';
 import {runInboxCoordinatorRefinement} from './inbox-coordinator.mjs';
 import {runInboxCleanupRefinement} from './inbox-cleanup.mjs';
+import {calendarLinkedRefinement} from './calendar-linked.mjs';
+import {runInboxProviderDraftsRefinement} from './inbox-provider-drafts.mjs';
+import {runWorkflowEngineRefinement} from './workflow-engine/index.mjs';
+import {runWorkflowWakeupRefinement} from './workflow-scheduler/index.mjs';
+import {runWorkflowTaskRefinement} from './workflow-scheduler/registration.mjs';
+import {googleAccountsLifecycleRefinement} from './google-accounts-lifecycle.mjs';
+import {runCoreRetirementRefinement} from './core-runtime/retirement.mjs';
+import {runCoreServiceLifecycleRefinement} from './core-runtime/lifecycle.mjs';
+import {runCoreRuntimeShutdownRefinement} from './core-runtime/shutdown.mjs';
 
 export async function runServicesRefinement() {
   const receipts = [];
-  for (const check of [authorizationRefinement, googleAccountsRefinement, calendarRefinement,
+  for (const check of [authorizationRefinement, googleAccountsRefinement, googleAccountsLifecycleRefinement, calendarRefinement, calendarLinkedRefinement,
     inboxRefinement, mapsRefinement, cacheRefinement, workflowRefinement, policyRefinement,
-    readingRefinement, scanRefinement, credentialRefinement, pdfRefinement, runSignInCoordinatorRefinement]) {
+    readingRefinement, scanRefinement, credentialRefinement, pdfRefinement, runSignInCoordinatorRefinement, runCoreRetirementRefinement, runCoreServiceLifecycleRefinement, runCoreRuntimeShutdownRefinement]) {
     const result = await check();
     receipts.push(...(Array.isArray(result) ? result : [result]));
   }
@@ -38,7 +47,7 @@ export async function runServicesRefinement() {
     {model: 'NativeCredentialMutation', obligation: 'Real shutdown, encryption and lock interleavings', reason: 'Actual credential-store classification, recheck, admission invalidation and preflight run against primitive storage/lifecycle ports. Those ports do not establish native shutdown or encrypted persistence.'},
     {model: 'PdfWorker', obligation: 'Kernel isolation, descriptor transfer, watchdog and memory kill', reason: 'Actual service request/render/cleanup/reply code executes against Android primitives. Host stubs cannot establish kernel or real PDF renderer behavior.', requires: ['IsolatedPdfInstrumentedTest on a disposable admitted installation']},
   ];
-  for (const check of [runInboxCoordinatorRefinement, runInboxCleanupRefinement]) {
+  for (const check of [runInboxCoordinatorRefinement, runInboxCleanupRefinement, runInboxProviderDraftsRefinement, runWorkflowEngineRefinement, runWorkflowWakeupRefinement, runWorkflowTaskRefinement]) {
     const result = await check();
     receipts.push(...result.receipts);
     obligations.push(...result.obligations);

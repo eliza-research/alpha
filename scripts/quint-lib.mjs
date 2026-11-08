@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto';
 import { execFileSync } from 'node:child_process';
-import { readFileSync, readdirSync } from 'node:fs';
+import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { extname, join, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -11,8 +11,8 @@ export const runtimeScriptPaths = ['scripts/browser-cloud-dev-bridge.ts', 'scrip
   'scripts/cloud-email-code.ts', 'scripts/dev-agent.mjs', 'scripts/dev-cloud.mjs', 'scripts/dev-local.mjs',
   'scripts/start-local-agent.mjs', 'scripts/start-local-voice-agent.mjs', 'scripts/start-local-remote.mjs'];
 export const runtimeAssetPaths = ['apps/app/index.html'];
-const omittedDirectories = new Set(['node_modules', 'build', '.gradle', '.cxx', '.kotlin', 'assets', 'jniLibs', 'capacitor-cordova-android-plugins']);
-const sourceExtensions = new Set(['.ts', '.tsx', '.js', '.java', '.kt', '.cpp', '.h', '.c', '.html']);
+const omittedDirectories = new Set(['node_modules', 'build', '.generated', '.gradle', '.cxx', '.kotlin', 'assets', 'jniLibs', 'capacitor-cordova-android-plugins']);
+const sourceExtensions = new Set(['.ts', '.tsx', '.js', '.java', '.kt', '.cpp', '.h', '.c', '.html', '.mjs', '.jsx', '.cc', '.hpp', '.rs', '.swift']);
 
 export function filesWithin(directory, accept = () => true) {
   const result = [];
@@ -27,7 +27,87 @@ export function filesWithin(directory, accept = () => true) {
 
 export const relativePath = path => relative(repositoryRoot, path).split('\\').join('/');
 export const sha256 = bytes => createHash('sha256').update(bytes).digest('hex');
-export const sourcePaths = () => [...sourceRoots.flatMap(root => filesWithin(join(repositoryRoot, root), path => sourceExtensions.has(extname(path)))).map(relativePath), ...runtimeScriptPaths, ...runtimeAssetPaths].sort();
+/** Admit the tracked inputs and declared origins of the audited Android bundle. */
+function runtimeBundleSourcePaths(pin) {
+  const graph = readJson(join(quintRoot, 'refinement/services/runtime-bundle-inputs.json'));
+  if (graph.schema !== 1 || graph.sourcePin !== pin.commit
+      || graph.classification !== 'observed-product-android-bundle-inputs'
+      || !graph.files || Array.isArray(graph.files) || Object.keys(graph.files).length === 0
+      || !graph.producer?.sourceTreeVerifiedBeforeAndAfter || !graph.producer?.inputHashesUnchanged) {
+    throw Error('Refresh the authenticated runtime bundle inventory for the current upstream pin');
+  }
+  const inputs = new Map();
+  const include = (path, digest) => {
+    if (typeof path !== 'string' || path.startsWith('/') || path.includes('\\') || path.split('/').some(part => !part || part === '..' || part === '.')) {
+      throw Error(`Invalid runtime bundle source path ${path}`);
+    }
+    if (!/^[a-f0-9]{64}$/.test(digest) || (inputs.has(path) && inputs.get(path) !== digest)) {
+      throw Error(`Inconsistent runtime bundle source hash ${path}`);
+    }
+    inputs.set(path, digest);
+  };
+  for (const [path, input] of Object.entries(graph.files)) {
+    if (input.tracked) include(path, input.sha256);
+    else {
+      const origin = input.generatedSource;
+      if (!origin?.source && !origin?.sourceMaps?.length) throw Error(`Unmapped generated runtime input ${path}`);
+      if (origin.source) include(origin.source, origin.sourceSha256);
+      if (origin.config) include(origin.config, origin.configSha256);
+      for (const source of origin.sourceMaps || []) include(source.path, source.sha256);
+    }
+  }
+  return [...inputs].map(([path, digest]) => {
+    const source = `vendor/eliza/${path}`;
+    if (sha256(readFileSync(join(repositoryRoot, source))) !== digest) {
+      throw Error(`Runtime bundle input changed and needs a new producer inventory ${source}`);
+    }
+    return source;
+  });
+}
+
+/** Discover the shared source consumed by this product from its authenticated inputs. */
+export function sharedSourcePaths() {
+  const pin = readJson(join(repositoryRoot, 'upstream.lock.json'));
+  // Minimal checker fixtures have no product source descriptor.
+  if (!pin.appSource) return [];
+  const client = readJson(join(repositoryRoot, '.eliza/client-features/.source.json'));
+  if (client.baseCommit !== pin.commit) throw Error('Prepare client sources for the current upstream pin before checking Quint coverage');
+  const host = readJson(join(repositoryRoot, 'android/consumer-host.json'));
+  const patches = readJson(join(repositoryRoot, 'patches/eliza/native-manifest.json'));
+  const prefixes = new Set([
+    ...Object.keys(client.sourceFiles),
+    ...host.profile.modules.filter(module => ['upstream', 'patchedNative'].includes(module.source.root)).map(module => module.source.path),
+    ...host.residentHost.helpers,
+    ...(patches.modules || []), ...patches.patches.map(patch => patch.module),
+    'packages/app/platforms/android/sense/src/main',
+    'packages/os/android/sense/systemui/chip/source',
+  ]);
+  // A finer model may expose a worker source outside the client/native projection.
+  // Keep those registered source dependencies in drift admission as well.
+  for (const family of ['application', 'services', 'native', 'legacy']) {
+    const document = readJson(join(quintRoot, family, 'manifest.json'));
+    for (const model of Array.isArray(document) ? document : document.models) {
+      for (const source of [...(model.sources || []), ...(model.sharedSources || []).map(path => `vendor/eliza/${path}`)]) {
+        if (!source.startsWith('vendor/eliza/')) continue;
+        if (source.split('/').includes('..')) throw Error(`Invalid shared model source ${source}`);
+        prefixes.add(source.slice('vendor/eliza/'.length));
+      }
+    }
+  }
+  const sources = new Set(runtimeBundleSourcePaths(pin));
+  for (const prefix of prefixes) {
+    if (typeof prefix !== 'string' || prefix.startsWith('/') || prefix.split(/[\\/]/).includes('..')) throw Error(`Invalid shared source prefix ${prefix}`);
+    const target = join(repositoryRoot, 'vendor/eliza', prefix);
+    const paths = statSync(target).isDirectory() ? filesWithin(target) : [target];
+    for (const path of paths) if (sourceExtensions.has(extname(path))) sources.add(relativePath(path));
+  }
+  return [...sources].sort();
+}
+
+export const sourcePaths = () => [...new Set([
+  ...sourceRoots.flatMap(root => filesWithin(join(repositoryRoot, root), path => sourceExtensions.has(extname(path)))).map(relativePath),
+  ...runtimeScriptPaths, ...runtimeAssetPaths, ...sharedSourcePaths(),
+])].sort();
 export const readJson = path => JSON.parse(readFileSync(path, 'utf8'));
 
 export function detectedCounterexample(output) {
