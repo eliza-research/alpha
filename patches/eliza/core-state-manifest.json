@@ -71,6 +71,27 @@
           "afterSha256": "e3acd82d9bc623f12253356fd63172d29c895a714c4345a809d5e9b8f807e7a9"
         }
       ]
+    },
+    {
+      "file": "named-embedding-provenance.patch",
+      "sha256": "8e874337cbcebe3e3fb69112db3b36c881ca0bc9737399818a06bb9fabf67f70",
+      "targets": [
+        {
+          "path": "plugins/plugin-sql/src/base.ts",
+          "beforeSha256": "7330514fd585fcb0389fbae0e3eaf802d4f2620dc74829ca522945ea836297ac",
+          "afterSha256": "ea949cb8deb34d8548e46e96a2c038a9e97a88c6bb0ff84eead4ddf9a6ba6a4c"
+        },
+        {
+          "path": "packages/agent/src/api/conversation-routes.ts",
+          "beforeSha256": "80dfd6c361678650f5ed94542d0e8db66a0418c0b630e3f4775b684ba06c2cf6",
+          "afterSha256": "d0b6102bde8d6c0ab0fa559cf8667f50b3ab5b75b0833554376b30142a1451ac"
+        },
+        {
+          "path": "plugins/plugin-assistant/src/features/advanced-capabilities/experience/service.ts",
+          "beforeSha256": "92e23a48cdb670b2aa02f4c441bedd0abf26122268ee23cdd01f28d974ec2c17",
+          "afterSha256": "183053f31c514ab444823e2d3966619f920af3fed212e884d0f23802585e9f47"
+        }
+      ]
     }
   ]
 }

@@ -204,7 +204,10 @@ def verify(apk, release=False, runtime_profile="native", local_embeddings=False)
                              'plugins/plugin-notes/src/validation.ts']),
                             ('turn-controller-isolation.patch', ['packages/core/src/runtime/turn-controller.ts']),
                             ('room-queue-admission.patch', ['packages/core/src/runtime/room-handler-queue.ts']),
-                            ('embedding-store-identity.patch', ['packages/core/src/runtime/embeddings.ts'])]
+                            ('embedding-store-identity.patch', ['packages/core/src/runtime/embeddings.ts']),
+                            ('named-embedding-provenance.patch', ['plugins/plugin-sql/src/base.ts',
+                             'packages/agent/src/api/conversation-routes.ts',
+                             'plugins/plugin-assistant/src/features/advanced-capabilities/experience/service.ts'])]
             if (set(core_manifest) != {'schema', 'baseCommit', 'patches'} or
                     core_manifest.get('schema') != 1 or core_manifest.get('baseCommit') != pin or
                     len(core_manifest.get('patches', [])) != len(core_targets)):
