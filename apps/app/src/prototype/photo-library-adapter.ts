@@ -250,7 +250,7 @@ export function createDeviceLibrary(port: PhotoLibraryPort = nativePort, availab
       if (!scope && !scopeRequested) { scopeRequested = true; queueMicrotask(() => { void readScope().then(refresh); }); }
       attach();
       return {
-        name: 'Device library', count: scope ? scopePresentation(scope).label : '…', bg: catalog.items[0]?.image ? background(catalog.items[0]) : 'var(--s2)', tf: '', flt: '',
+        id: 'device-library', name: 'Device library', count: scope ? scopePresentation(scope).label : '…', bg: catalog.items[0]?.image ? background(catalog.items[0]) : 'var(--s2)', tf: '', flt: '',
         open: () => { currentApi.set({ album: 'device', open: null, nativePhotoSelection: null }); void (catalog.loaded && !reloadOnOpen ? revalidate() : load()); },
       };
     },
@@ -276,7 +276,7 @@ export function createDeviceLibrary(port: PhotoLibraryPort = nativePort, availab
           confirm: () => { void confirmReview(); }, cancel: () => { review = undefined; status = 'Review cancelled. Nothing changed.'; refresh(); },
         },
         items: catalog.items.map(item => ({
-          nativeMediaId: item.id, bg: background(item), tf: '', flt: '', vid: item.kind === 'video', dur: duration(item.duration), dim: acting ? 'opacity:.35;pointer-events:none' : '',
+          id: 'device:' + item.id, nativeMediaId: item.id, bg: background(item), tf: '', flt: '', vid: item.kind === 'video', dur: duration(item.duration), dim: acting ? 'opacity:.35;pointer-events:none' : '',
           selecting: true, on: selection.has(item.id), selCss: selection.has(item.id) ? 'background:var(--acc);box-shadow:0 0 0 2px #ffffff' : 'background:rgba(0,0,0,.7);box-shadow:inset 0 0 0 2px #ffffff',
           alt: `${selection.has(item.id) ? 'Unselect' : 'Select'} ${item.kind === 'video' ? 'video' : 'photo'} from ${new Date(item.takenAt).toLocaleDateString()}`,
           tap: () => { if (acting || review) return; try { selection.toggle(item); status = ''; } catch (failure) { status = (failure as Error).message; } refresh(); },

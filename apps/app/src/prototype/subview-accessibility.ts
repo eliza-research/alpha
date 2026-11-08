@@ -1,5 +1,6 @@
 import {createInlineModal} from '../runtime/inline-modal';
 import {currentSurfaceLayout} from '../runtime/canvas-geometry';
+import {createKeyedListFocus} from './keyed-list-focus';
 /** On a split canvas the open message, note or file sits beside its list, which stays usable. */
 const split=()=>currentSurfaceLayout().split;
 type Bag=Record<string,any>;
@@ -51,11 +52,14 @@ export function installSubviewAccessibility(views:Bag){
  ] as Array<[string,string[],(out:Bag)=>Bag]>){
   const render=views[name].render,focus=focusHistory(),refs=Object.fromEntries(keys.map(key=>[key+'Focus',subviewFocus(focus.read)]));
   let output:Bag={};
+  const listFocus=name==='notes'?createKeyedListFocus('data-alpha-note-id'):name==='photos'?createKeyedListFocus('data-alpha-media-key'):null;
+  const albumListFocus=name==='photos'?createKeyedListFocus('data-alpha-media-key'):null;
   const deleteModal=name==='photos'?reviewFocus(()=>output.closeSheet?.()):name==='notes'?reviewFocus(()=>output.trashCancel?.()):null;
   const popups=popupFocus(name,()=>output);
   views[name].render=(state:Bag,api:Bag)=>{
+   const listSnapshot=listFocus?.capture()??null,albumSnapshot=albumListFocus?.capture()??null;
    const out=output=render(state,api);deleteModal?.render(!!(out.emptyOpen||out.trashConfirmOpen));
-   return {...out,...refs,...popups(out),emptyModal:deleteModal?.ref,captureSubviewFocus:focus.capture,...coverage(out)};
+   return {...out,...refs,...popups(out),listFocus:listFocus?.ref(listSnapshot),albumListFocus:albumListFocus?.ref(albumSnapshot),emptyModal:deleteModal?.ref,captureSubviewFocus:focus.capture,...coverage(out)};
   };
  }
  {

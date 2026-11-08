@@ -948,7 +948,7 @@ export function installPrototypeVoiceAdapter(Component: any, views: Record<strin
     const selected = (current.get('notes').list || []).find((n: Bag) => n.id === state.open);
     if (savedPlaying && selected?.audio?.audioId !== savedPlaying) stopSaved();
     const result = render({ ...state, record: false, rec: null, ...(selected?.audio ? { playing: false, pos: savedPosition / 1000 } : {}) }, current);
-    result.audioDeletionPending=(state.audioDeletionPending||[]).map((row:AudioDeletion)=>({title:row.note.title||'Voice note',restore:()=>void restoreDeletion(row,current)}));
+    result.audioDeletionPending=(state.audioDeletionPending||[]).map((row:AudioDeletion)=>({id:row.id,title:row.note.title||'Voice note',restore:()=>void restoreDeletion(row,current)}));
     result.audioDeletionUnknown=!!state.audioDeletionRecoveryFailed||result.audioDeletionPending.length>0;
     result.checkAudioDeletion=()=>void refreshDeletionStatus(current);
     for (const card of [...(result.colL || []), ...(result.colR || [])]) if ((current.get('notes').list || []).some((n: Bag) => n.id === card.id && n.audio)) card.bars = card.bars.map(() => 4);

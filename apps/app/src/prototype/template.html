@@ -1770,7 +1770,7 @@
     <sc-if value="{{showAppBack}}"><button class="app-header-back" aria-label="Back to apps" onClick="{{backToApps}}"><svg class="i" viewBox="0 0 24 24"><path d="{{ic.back}}"></path></svg></button></sc-if>
       <h1 data-alpha-app-title class="serif" style="margin: 0; font-size: 32px; flex-grow: 1; letter-spacing: -.01em">{{photos.title}}</h1>
       <div style="display: flex; gap: 2px; padding: 3px; border-radius: 25px; background: var(--s2); margin-right: 6px">
-        <sc-for list="{{photos.tabs}}" as="t">
+        <sc-for list="{{photos.tabs}}" key="{{t.id}}" as="t">
           <button aria-label="{{t.label}}" aria-pressed="{{t.on}}" onClick="{{t.pick}}" style="width: 48px; height: 44px; border-radius: 22px; display: flex; align-items: center; justify-content: center; transition: background .2s; {{t.css}}"><svg class="i" viewBox="0 0 24 24" style="width: 20px; height: 20px"><path d="{{t.d}}"></path></svg></button>
         </sc-for>
       </div>
@@ -1806,15 +1806,15 @@
         </button>
       </div>
     </sc-if>
-    <div class="scr" data-alpha-app-scroll="photos" style="flex-grow: 1; overflow-y: auto; touch-action: pan-y; padding-bottom: 180px">
-      <sc-for list="{{photos.groups}}" as="g">
+    <div class="scr" ref="{{photos.listFocus}}" data-alpha-app-scroll="photos" style="flex-grow: 1; overflow-y: auto; touch-action: pan-y; padding-bottom: 180px">
+      <sc-for list="{{photos.groups}}" key="{{g.id}}" as="g">
         <div style="display: flex; align-items: baseline; gap: 8px; padding: 14px 20px 8px">
           <span style="font-size: 14px; font-weight: 600">{{g.label}}</span>
           <span style="font-size: 13px; color: var(--mut); overflow: hidden; text-overflow: ellipsis; white-space: nowrap">{{g.place}}</span>
         </div>
         <div class="photo-grid" style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 2px">
-          <sc-for list="{{g.items}}" as="p">
-            <button data-owned-media-id="{{p.nativeMediaId}}" aria-label="{{p.alt}}" onClick="{{p.tap}}" onPointerDown="{{p.pd}}" onPointerUp="{{p.pu}}" onPointerLeave="{{p.pu}}" onPointerCancel="{{p.pu}}" style="position: relative; display: block; aspect-ratio: 1; overflow: hidden; background: var(--s2)">
+          <sc-for list="{{g.items}}" key="{{p.id}}" as="p">
+            <button data-alpha-media-key="{{p.id}}" data-owned-media-id="{{p.nativeMediaId}}" aria-label="{{p.alt}}" onClick="{{p.tap}}" onPointerDown="{{p.pd}}" onPointerUp="{{p.pu}}" onPointerLeave="{{p.pu}}" onPointerCancel="{{p.pu}}" style="position: relative; display: block; aspect-ratio: 1; overflow: hidden; background: var(--s2)">
               <span style="position: absolute; left: 0; width: 100%; top: 50%; aspect-ratio: 3 / 4; background: {{p.bg}}; transform: translateY(-50%) {{p.tf}}; filter: {{p.flt}}; transition: transform .2s"></span>
               <sc-if value="{{p.vid}}">
                 <span class="photo-media-badge" style="position: absolute; right: 7px; bottom: 6px; color: #ffffff; font-size: 11.5px; font-weight: 600; display: flex; align-items: center; gap: 3px; text-shadow: 0 1px 3px rgba(0,0,0,.5)"><svg class="i" viewBox="0 0 24 24" style="width: 11px; height: 11px; fill: currentColor"><path d="{{ic.play}}"></path></svg>{{p.dur}}</span>
@@ -1859,7 +1859,7 @@
     <div class="scr" data-alpha-app-scroll="photos" style="flex-grow: 1; overflow-y: auto; touch-action: pan-y; padding-bottom: 180px">
       <sc-if value="{{photos.hasPeople}}">
         <div class="scr" style="display: flex; gap: 16px; overflow-x: auto; padding: 8px 20px 22px; touch-action: pan-x">
-          <sc-for list="{{photos.people}}" as="pp">
+          <sc-for list="{{photos.people}}" key="{{pp.id}}" as="pp">
             <button aria-label="{{pp.name}}" onClick="{{pp.open}}" style="display: flex; flex-direction: column; align-items: center; gap: 8px; flex-shrink: 0">
               <span style="position: relative; display: block; width: 68px; height: 68px; border-radius: 34px; overflow: hidden; background: var(--s2)">
                 <span style="position: absolute; left: 0; width: 100%; top: 50%; aspect-ratio: 3 / 4; background: {{pp.bg}}; transform: translateY(-50%) {{pp.tf}}"></span>
@@ -1870,7 +1870,7 @@
         </div>
       </sc-if>
       <div class="photo-album-grid" style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px 12px; padding: 0 20px">
-        <sc-for list="{{photos.tiles}}" as="a">
+        <sc-for list="{{photos.tiles}}" key="{{a.id}}" as="a">
           <button aria-label="{{a.name}}" onClick="{{a.open}}" style="display: flex; flex-direction: column; gap: 3px; min-width: 0">
             <span style="position: relative; display: block; width: 100%; aspect-ratio: 1; border-radius: 22px; overflow: hidden; background: var(--s2); margin-bottom: 7px">
               <span style="position: absolute; left: 0; width: 100%; top: 50%; aspect-ratio: 3 / 4; background: {{a.bg}}; transform: translateY(-50%) {{a.tf}}; filter: {{a.flt}}"></span>
@@ -1926,10 +1926,10 @@
           </div>
         </sc-if>
       </sc-if>
-      <div class="scr" data-alpha-app-scroll="photos" style="flex-grow: 1; overflow-y: auto; touch-action: pan-y; padding: 8px 0 180px">
+      <div class="scr" ref="{{photos.albumListFocus}}" data-alpha-app-scroll="photos" style="flex-grow: 1; overflow-y: auto; touch-action: pan-y; padding: 8px 0 180px">
         <div class="photo-grid" style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 2px">
-          <sc-for list="{{photos.alb.items}}" as="p">
-            <button data-owned-media-id="{{p.nativeMediaId}}" aria-label="{{p.alt}}" onClick="{{p.tap}}" onPointerDown="{{p.pd}}" onPointerUp="{{p.pu}}" onPointerLeave="{{p.pu}}" onPointerCancel="{{p.pu}}" style="position: relative; display: block; aspect-ratio: 1; overflow: hidden; background: var(--s2); {{p.dim}}">
+          <sc-for list="{{photos.alb.items}}" key="{{p.id}}" as="p">
+            <button data-alpha-media-key="{{p.id}}" data-owned-media-id="{{p.nativeMediaId}}" aria-label="{{p.alt}}" onClick="{{p.tap}}" onPointerDown="{{p.pd}}" onPointerUp="{{p.pu}}" onPointerLeave="{{p.pu}}" onPointerCancel="{{p.pu}}" style="position: relative; display: block; aspect-ratio: 1; overflow: hidden; background: var(--s2); {{p.dim}}">
               <span style="position: absolute; left: 0; width: 100%; top: 50%; aspect-ratio: 3 / 4; background: {{p.bg}}; transform: translateY(-50%) {{p.tf}}; filter: {{p.flt}}; transition: transform .2s"></span>
               <sc-if value="{{p.vid}}">
                 <span class="photo-media-badge" style="position: absolute; right: 7px; bottom: 6px; color: #ffffff; font-size: 11.5px; font-weight: 600; display: flex; align-items: center; gap: 3px; text-shadow: 0 1px 3px rgba(0,0,0,.5)"><svg class="i" viewBox="0 0 24 24" style="width: 11px; height: 11px; fill: currentColor"><path d="{{ic.play}}"></path></svg>{{p.dur}}</span>
@@ -2014,7 +2014,7 @@
       <div role="status" style="color:var(--mut);font-size:14px;margin-top:12px">{{photos.am.error}}</div>
       <sc-if value="{{photos.am.info}}"><p style="font-size:15px;color:var(--mut)">{{photos.am.description}}</p><button aria-label="Add to album" onClick="{{photos.am.choose}}" style="width:100%;padding:16px;border-radius:24px;background:var(--s2);color:var(--fg)">Add to album</button></sc-if>
       <sc-if value="{{photos.am.choosing}}">
-        <sc-for list="{{photos.am.items}}" as="a"><button disabled="{{photos.am.busy}}" aria-label="{{a.label}}" onClick="{{a.go}}" style="display:block;width:100%;padding:16px;margin-top:8px;border-radius:18px;background:var(--s2);text-align:left;color:var(--fg)">{{a.label}}</button></sc-for>
+        <sc-for list="{{photos.am.items}}" key="{{a.id}}" as="a"><button disabled="{{photos.am.busy}}" aria-label="{{a.label}}" onClick="{{a.go}}" style="display:block;width:100%;padding:16px;margin-top:8px;border-radius:18px;background:var(--s2);text-align:left;color:var(--fg)">{{a.label}}</button></sc-for>
         <button disabled="{{photos.am.busy}}" aria-label="New album" onClick="{{photos.am.create}}" style="display:block;width:100%;padding:16px;margin-top:12px;border-radius:24px;background:var(--fg);color:var(--bg)">New album</button>
       </sc-if>
       <sc-if value="{{photos.am.naming}}">
@@ -2044,7 +2044,7 @@
       </sc-if>
       <sc-if value="{{photos.v.info2.hasPeople}}">
         <div style="display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px">
-          <sc-for list="{{photos.v.info2.people}}" as="pp">
+          <sc-for list="{{photos.v.info2.people}}" key="{{pp.id}}" as="pp">
             <button class="tap" aria-label="{{pp.label}}" onClick="{{pp.open}}" style="display: flex; align-items: center; gap: 10px; height: 44px; padding: 0 16px 0 6px; border-radius: 22px; background: var(--s2)">
               <span style="width: 32px; height: 32px; border-radius: 16px; background: var(--s3); display: flex; align-items: center; justify-content: center; font-size: 11.5px; font-weight: 700; white-space: nowrap">{{pp.ini}}</span>
               <span style="font-size: 14.5px; font-weight: 500">{{pp.first}}</span>
@@ -2071,7 +2071,7 @@
         <button class="ib" aria-label="Crop" aria-pressed="{{photos.v.ed.cropOn}}" onClick="{{photos.v.ed.crop}}" style="{{photos.v.ed.cropCss}}"><svg class="i" viewBox="0 0 24 24"><path d="{{ic.phCrop}}"></path></svg></button>
       </div>
       <div class="scr" style="display: flex; gap: 12px; overflow-x: auto; padding: 22px 20px 0; touch-action: pan-x; flex-shrink: 0">
-        <sc-for list="{{photos.v.ed.filters}}" as="f">
+        <sc-for list="{{photos.v.ed.filters}}" key="{{f.id}}" as="f">
           <button aria-label="{{f.label}} filter" aria-pressed="{{f.on}}" onClick="{{f.pick}}" style="display: flex; flex-direction: column; align-items: center; gap: 8px; flex-shrink: 0">
             <span style="position: relative; display: block; width: 58px; height: 58px; border-radius: 16px; overflow: hidden; {{f.ring}}">
               <span style="position: absolute; left: 0; width: 100%; top: 50%; aspect-ratio: 3 / 4; transform: translateY(-50%); background: {{f.bg}}; filter: {{f.flt}}"></span>
@@ -2092,7 +2092,7 @@
         <div style="font-size: 14px; color: var(--mut); padding: 0 24px 6px">{{photos.shareTitle}}</div>
       </sc-if>
       <div class="scr" style="display: flex; gap: 14px; overflow-x: auto; padding: 8px 24px 18px; touch-action: pan-x">
-        <sc-for list="{{photos.share.people}}" as="sp">
+        <sc-for list="{{photos.share.people}}" key="{{sp.id}}" as="sp">
           <button aria-label="{{sp.label}}" onClick="{{sp.send}}" style="display: flex; flex-direction: column; align-items: center; gap: 8px; flex-shrink: 0; min-width: 60px">
             <span style="width: 56px; height: 56px; border-radius: 28px; background: var(--s3); display: flex; align-items: center; justify-content: center; font-size: 15px; font-weight: 700; white-space: nowrap">{{sp.ini}}</span>
             <span style="font-size: 12.5px; color: var(--mut)">{{sp.first}}</span>
@@ -2101,7 +2101,7 @@
       </div>
       <div style="height: 1px; background: var(--line); margin: 0 24px"></div>
       <div class="alpha-fit-grid" style="--fit-columns: 4; --fit-min: 62px; row-gap: 12px; padding: 18px 12px 0">
-        <sc-for list="{{photos.share.apps}}" as="sa">
+        <sc-for list="{{photos.share.apps}}" key="{{sa.id}}" as="sa">
           <button aria-label="{{sa.label}}" onClick="{{sa.go}}" style="display: flex; flex-direction: column; align-items: center; gap: 8px; min-width: 0">
             <span style="width: 56px; height: 56px; border-radius: 20px; background: var(--s2); display: flex; align-items: center; justify-content: center"><svg class="i" viewBox="0 0 24 24"><path d="{{sa.d}}"></path></svg></span>
             <span style="font-size: 12.5px; color: var(--mut); max-width: 100%; text-align: center; overflow-wrap: anywhere">{{sa.label}}</span>
@@ -2355,7 +2355,7 @@
 
 <sc-if value="{{is.notes}}">
 <div onFocusCapture="{{notes.captureSubviewFocus}}" class="notes-layout" style="display: flex; flex-direction: column; height: 100%; position: relative; padding-top: 44px; box-sizing: border-box">
-  <sc-if value="{{notes.audioDeletionUnknown}}"><div role="status" style="padding:8px 24px;font-size:13px">Voice note deletion needs review. No deletion will be repeated.<button class="tap" onClick="{{notes.checkAudioDeletion}}" style="display:block;min-height:44px;padding:0 4px;color:var(--acct);font-weight:600;text-align:left">Check deletion status</button><sc-for list="{{notes.audioDeletionPending}}" as="pending"><div>{{pending.title}} <button class="tap" onClick="{{pending.restore}}" style="min-height:44px;padding:0 4px;color:var(--acct);font-weight:600;text-align:left">Restore note and recording</button></div></sc-for></div></sc-if>
+  <sc-if value="{{notes.audioDeletionUnknown}}"><div role="status" style="padding:8px 24px;font-size:13px">Voice note deletion needs review. No deletion will be repeated.<button class="tap" onClick="{{notes.checkAudioDeletion}}" style="display:block;min-height:44px;padding:0 4px;color:var(--acct);font-weight:600;text-align:left">Check deletion status</button><sc-for list="{{notes.audioDeletionPending}}" key="{{pending.id}}" as="pending"><div>{{pending.title}} <button class="tap" onClick="{{pending.restore}}" style="min-height:44px;padding:0 4px;color:var(--acct);font-weight:600;text-align:left">Restore note and recording</button></div></sc-for></div></sc-if>
   <sc-if value="{{notes.browserRecovery}}"><div style="display:flex;gap:8px;padding:0 24px 6px;flex-wrap:wrap"><button aria-label="Recover browser Notes" onClick="{{notes.openBrowserRecovery}}" style="min-height:44px;padding:10px;border-radius:12px;background:var(--s2);color:var(--fg)">Notes recovery</button><button aria-label="Recover note audio deletion history" onClick="{{notes.openAudioRecovery}}" style="min-height:44px;padding:10px;border-radius:12px;background:var(--s2);color:var(--fg)">Audio deletion recovery</button></div></sc-if>
   <sc-if value="{{notes.storageStatus}}"><div class="notes-storage-status" role="status" aria-live="polite" style="flex-shrink:0;padding:0 24px 6px;font-size:12px;line-height:1.34;color:var(--mut);overflow-wrap:anywhere">{{notes.storageStatus}}</div></sc-if>
   <div class="notes-workspace" style="position:relative;display:flex;flex-direction:column;flex:1;min-height:0">
@@ -2381,7 +2381,7 @@
     </div>
   </sc-if>
 
-  <div class="scr" data-alpha-app-scroll="notes" style="flex-grow: 1; overflow-y: auto; touch-action: pan-y; padding: 8px 16px 190px; box-sizing: border-box">
+  <div class="scr" ref="{{notes.listFocus}}" data-alpha-app-scroll="notes" style="flex-grow: 1; overflow-y: auto; touch-action: pan-y; padding: 8px 16px 190px; box-sizing: border-box">
     <sc-if value="{{notes.notSearching}}">
       <button onClick="{{notes.search}}" aria-label="Search notes" style="display: flex; align-items: center; gap: 10px; width: 100%; height: 48px; padding: 0 16px; margin-bottom: 12px; border-radius: 24px; background: var(--s2); color: var(--mut); font-size: 16px; box-sizing: border-box"><svg class="i" viewBox="0 0 24 24" style="width: 18px; height: 18px"><path d="{{ic.search}}"></path></svg>Search</button>
     </sc-if>
@@ -2393,8 +2393,8 @@
     </sc-if>
     <div style="display: flex; gap: 10px; align-items: flex-start">
       <div style="flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; gap: 10px">
-        <sc-for list="{{notes.colL}}" as="n">
-          <button onClick="{{n.open}}" class="tap" aria-label="Open {{n.title}}" aria-current="{{n.current}}" style="display: block; width: 100%; padding: 16px; border-radius: 22px; background: var(--s2); box-sizing: border-box; text-align: left; position: relative">
+        <sc-for list="{{notes.colL}}" key="{{n.id}}" as="n">
+          <button data-alpha-note-id="{{n.id}}" onClick="{{n.open}}" class="tap" aria-label="Open {{n.title}}" aria-current="{{n.current}}" style="display: block; width: 100%; padding: 16px; border-radius: 22px; background: var(--s2); box-sizing: border-box; text-align: left; position: relative">
             <sc-if value="{{n.pinned}}"><svg class="i" viewBox="0 0 24 24" style="position: absolute; top: 14px; right: 12px; width: 16px; height: 16px; color: var(--acct)"><path d="{{ic.notesPin}}"></path></svg></sc-if>
             <sc-if value="{{n.isVoice}}">
               <div style="display: flex; align-items: center; gap: 2px; height: 30px; margin-bottom: 12px">
@@ -2420,8 +2420,8 @@
         </sc-for>
       </div>
       <div style="flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; gap: 10px">
-        <sc-for list="{{notes.colR}}" as="n">
-          <button onClick="{{n.open}}" class="tap" aria-label="Open {{n.title}}" aria-current="{{n.current}}" style="display: block; width: 100%; padding: 16px; border-radius: 22px; background: var(--s2); box-sizing: border-box; text-align: left; position: relative">
+        <sc-for list="{{notes.colR}}" key="{{n.id}}" as="n">
+          <button data-alpha-note-id="{{n.id}}" onClick="{{n.open}}" class="tap" aria-label="Open {{n.title}}" aria-current="{{n.current}}" style="display: block; width: 100%; padding: 16px; border-radius: 22px; background: var(--s2); box-sizing: border-box; text-align: left; position: relative">
             <sc-if value="{{n.pinned}}"><svg class="i" viewBox="0 0 24 24" style="position: absolute; top: 14px; right: 12px; width: 16px; height: 16px; color: var(--acct)"><path d="{{ic.notesPin}}"></path></svg></sc-if>
             <sc-if value="{{n.isVoice}}">
               <div style="display: flex; align-items: center; gap: 2px; height: 30px; margin-bottom: 12px">
@@ -2610,7 +2610,7 @@
           </div>
         </sc-if>
         <ul aria-label="Notes in Trash" style="list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px">
-          <sc-for list="{{notes.trashRows}}" as="t">
+          <sc-for list="{{notes.trashRows}}" key="{{t.id}}" as="t">
             <li style="padding: 14px 16px; border-radius: 20px; background: var(--s1)">
               <div style="font-size: 16px; font-weight: 600; overflow-wrap: anywhere">{{t.title}}</div>
               <div style="font-size: 13px; color: var(--mut); margin-top: 2px">{{t.kind}} · {{t.left}}</div>

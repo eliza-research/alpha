@@ -10,16 +10,16 @@ The Chromium regression executes the real renderer and Settings adapter. A sourc
 
 A structural scan of the shared template found 144 `sc-for` loops enclosing interactive controls, including nested enclosing loops. The initial Settings fix added semantic keys to two of those loops. This count includes static option lists. It does not establish that every remaining loop can reorder or that every loop has a demonstrated defect.
 
-The following source-backed mutable families still use positional rendering. They need stable source identities and focused-node schedules before they can receive the same guarantee.
+The following table tracks source-backed mutable families and their remaining obligations.
 
 | Family | Mutable bindings | Source identity and transition to review |
 | --- | --- | --- |
 | Inbox | `inbox.rows`, `inbox.d.threadRows`, attachment and recipient suggestions | Message IDs survive mailbox refresh, deletion and sorting. A focused row must keep its message when another message arrives or leaves. |
 | Calendar | search, day-column events, agenda, schedule and month rows | Provider event and occurrence IDs survive refresh. Nested day and event loops need identities at both levels. |
-| Notes | `notes.colL`, `notes.colR`, trash and pending audio-deletion rows | Note IDs survive save, sort, deletion, undo and restoration. Column rebalancing can move the selected item between parents. |
+| Notes | Cards, Trash and pending audio-deletion rows are keyed; checklist and voice-action rows remain open | The cross-parent helper preserves card focus during column rebalancing. Checklist and voice-action rows still need durable per-item identities. |
 | Files | Recent, results, folder items and destination rows | File, Recent, location, menu and destination rows now carry stable identities. Legacy duplicate metadata and broader listing replacement/revocation schedules remain follow-up coverage. |
 | Browser | `browser.tabCards`, saved-library and suggestion rows | Tab cards now retain source `tab.id`, and saved-library rows retain their canonical URL identity. Search and suggestion rows remain in the broader review. |
-| Photos | groups, group items, albums and album items | Library asset and album identities must survive provider refresh, deletion and changed permissions. Nested group keys alone do not preserve items moved between groups. |
+| Photos | Groups, assets, albums and related choices are keyed | The cross-parent helper covers a retained asset moving between groups. Broader provider-revocation and replacement schedules remain open. |
 | Maps | saved rows, search results and pins | Provider place identity must survive asynchronous result replacement and sorting. |
 | Workflows | cards, management cards, approvals and builder steps | Workflow, run, approval and step identities must survive asynchronous refresh, insertion and deletion. |
 | AOSP communication | native message threads, Contacts groups and rows, Phone recents | Provider record identity must survive refresh. These need separate AOSP admission and device evidence. |
@@ -28,7 +28,7 @@ The following source-backed mutable families still use positional rendering. The
 
 Camera zoom and mode options, fixed day/repeat choices, and other immutable option lists do not require a new identity solely because they use `sc-for`. The review above leaves the mutable families open. No application-wide focus guarantee is claimed.
 
-The renderer and all listed bindings are in the shared template. The most immediate follow-up is Browser tab cards because the source already retains the required tab identity. [Renderer](../../../../apps/app/src/prototype/dc-lite.js), [template](../../../../apps/app/src/prototype/template.html), [Browser adapter](../../../../apps/app/src/prototype/browser-adapter.ts), [Files adapter](../../../../apps/app/src/prototype/files-tree-adapter.ts)
+The renderer and all listed bindings are in the shared template. The Browser and Files follow-ups are recorded below. Search/suggestion and additional domain lists remain open. [Renderer](../../../../apps/app/src/prototype/dc-lite.js), [template](../../../../apps/app/src/prototype/template.html), [Browser adapter](../../../../apps/app/src/prototype/browser-adapter.ts), [Files adapter](../../../../apps/app/src/prototype/files-tree-adapter.ts)
 
 ## Validation on 2026-11-07
 
@@ -59,3 +59,17 @@ Validation passed both focused Chromium tests, three existing browser file tests
 ## Legacy duplicate records
 
 Bookmark and Recent readers accept repeated stored identities. The renderer now deduplicates bookmark URLs and displays the newest Recent record for each key. Stored values remain available to their existing readers. Two legacy-data browser tests verify both unique rendered rows and retained stored values. The six Browser/Files/legacy focus cases passed together after this adjustment.
+
+## Notes and Photos follow-up
+
+Fifteen more template loops now have semantic keys. Notes cards, Trash rows and audio-deletion recovery rows use their existing record identities. Photos groups, assets, albums, people, filters and share choices use their source identities. Captured assets, device-library assets and fixture assets use separate identity namespaces. Existing native media IDs and operation revisions still govern media actions.
+
+Notes splits its cards between two parent columns by index parity. Inserting one record can therefore move every retained card to another React parent. A key within each column cannot preserve the focused DOM node across that move. The shared list-focus helper captures the focused logical item before rendering and restores it after that commit only within the same surviving visible list root. It abandons yielded renders and cancels restoration for intentional focus changes, removal, duplicate matches, another commit, navigation, hidden or inert content, disabled targets and open dialogs. Existing subview and modal focus managers retain their own focus transitions.
+
+The real Notes test saves a collection through the mounted shell's existing `vset`, focuses a record, saves a new preceding record, verifies movement to the other column, then opens the original note. A helper-disabled negative control fails at the focus assertion. A second test covers removal, an intentionally focused search control and a collection update after leaving Notes. Photos tests cover a real browser-media import/readback and a fixture-only movement between date-group parents. The fixture movement is explicitly separate from provider behavior.
+
+Raw browser observations retain source hashes captured before execution, current and remembered intended row IDs, list owner, active view, visible unique restoration candidate, removal and other-control focus state, plus the actual opened record identity. These are bounded source observations prepared for shared focus-model integration. They do not claim an application-wide refinement result.
+
+Checklist items and voice action rows still lack durable per-row identities. Assigning array positions or editable text as keys would leave their reordering and replacement ambiguity unresolved. Their durable-ID migration remains open. Broader provider-revocation and cross-process list-replacement schedules also remain open. The existing Notes collection, media selection and provider authority models remain separate from this presentation change.
+
+The Notes/Photos validation passed all 44 cases in the selected Chromium accessibility suite, all 40 focused Node tests and TypeScript checking. The helper-disabled negative control failed at the intended cross-column focus assertion. No Android build or native accessibility acceptance was performed for this isolated UI change.
