@@ -353,13 +353,13 @@ export function installPrototypeNativeAdapters(
         // A decision clears the read history; show it as unread rather than as empty.
         // One decision per entry at a time; a failed one says so instead of leaving the row unchanged.
         const decide = (id: string, label: string, run: () => Promise<unknown>) => nav(label, () => {
-          const key = 'activity:' + id;
-          if (busy.has(key)) return;
-          busy.add(key);
+          const busyKey = 'activity:' + id;
+          if (busy.has(busyKey)) return;
+          busy.add(busyKey);
           void run().catch(error => {
             const reason = error instanceof Error ? error.message.trim() : '';
             notify(api, reason ? 'Not recorded. ' + reason + (/[.!?]$/.test(reason) ? '' : '.') : 'Not recorded. Nothing was repeated.');
-          }).finally(() => { busy.delete(key); actionHistoryRead = null; try { api.set({ actionHistoryReadAt: Date.now() }); } catch { /* view closed */ } });
+          }).finally(() => { busy.delete(busyKey); actionHistoryRead = null; try { api.set({ actionHistoryReadAt: Date.now() }); } catch { /* view closed */ } });
         });
         const entryRows = (entry: ConnectionSnapshot['actionHistory'][number]): Bag[] => [
           info(entry.description, activityState(entry.state)),
