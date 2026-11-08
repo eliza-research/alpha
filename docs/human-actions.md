@@ -52,7 +52,7 @@ Rules for every step:
 | [H-15](#h-15-subscription-operations) | Subscription operations | Cloud operator | Signing keys published; limits unset |
 | [H-16](#h-16-provision-the-maps-service) | Provision the Maps service | Cloud operator | Not checkable without an account; production strong revocation is off at the pin |
 | [H-17](#h-17-google-connector-for-gmail-and-calendar) | Google connector for Gmail and Calendar | Cloud operator | Owner account worked in development; production verification open |
-| [H-18](#h-18-admit-the-on-device-voice-host) | Admit the on-device voice host | Named reviewer | Open: `qualified: false` |
+| [H-18](#h-18-admit-the-on-device-voice-host) | Admit the on-device voice host | Named reviewer | Open: `qualified: false`; P-82 accepted engine `6337fd4c` with the bridge at `b25d8aef29`, and the changed bridge needs re-acceptance |
 | [H-19](#h-19-embedding-host-libraries-only-when-reported) | Embedding host libraries, only when reported | Reviewer | Script-supplied at this pin |
 | [H-20](#h-20-qualify-the-always-on-listener) | Qualify the always-on listener | Reviewer and device operator | Open: G1 to G6 |
 | [H-21](#h-21-stage-and-build-the-production-image) | Stage and build the production image | Image host operator | Open (source admitted) |
@@ -378,6 +378,15 @@ staging values.
   execution and user acceptance in `android/voice-host/qualified-voice-host.json` and only then set
   `qualified: true` (the schema refuses it otherwise). Clef is not in the pin, so voice turns end on
   the long-gap fallback; admitting a Clef model is a separate reviewed step under #423.
+- Status: on 2026-11-07 the owner accepted on-device speech on the component qualification of engine
+  `6337fd4c` (qualify app built from `b25d8aef29`), the typed-turn streaming confirmation and a
+  separate-day latency estimate ([P-82](decisions.md)), in place of the installed-app streaming and
+  cancellation checks and the physical capture and playback checks above. Those checks were not run and
+  stay open under AP-06. The shared speech Java then changed (`3a6d22670e`: `ParadeeVoice`,
+  `OnDeviceRecognizer`, `LocalSpeechBridgePlugin`, the speech-output warm-up and others; the voice
+  record's `sourceAdmission.developComparison` lists them), so the record is `qualified: false` again.
+  To close H-18 now: the owner re-accepts the changed bridge, or the qualification is rerun at the pin
+  on both ABIs and accepted; then record it and set `userAccepted` and `qualified`.
 - Seam: [fused speech](fused-speech.md); `npm run android:build:inputs` lists both voice inputs.
 - Verify: `npm run human:status` shows H-18 done.
 - Unblocks: a distributable release (H-10), AP-06, #397, #413.

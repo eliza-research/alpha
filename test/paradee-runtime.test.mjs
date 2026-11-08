@@ -22,7 +22,7 @@ function complete(root){
  const pins=[['tts/model.gguf','model'],['tts/lexicon.lex','lexicon'],['asr/model.gguf','asr'],['asr/mmproj.gguf','projector']].map(([name,data])=>({...write(native,bundle+name,data),path:name}));
  const inputs={paradee:pins[0],lexicon:pins[1]};write(root,PARADEE_SOURCE+'/inputs.json',JSON.stringify(inputs));
  write(root,'android/paradee-voice/asr-inputs.json',JSON.stringify({backend:'qwen3',files:pins.slice(2).map((pin,i)=>({...pin,role:i?'asr-mmproj':'asr-model'}))}));
- const manifest={format:'eliza-paradee-voice-v1',model:pins[0].path,lexicon:pins[1].path,files:pins};
+ const manifest={format:'eliza-paradee-voice-v2',model:pins[0].path,lexicon:pins[1].path,files:pins};
  const files=pins.map(row=>({...row,path:bundle+row.path}));files.push(write(native,bundle+'manifest.json',JSON.stringify(manifest)));
  for(const abi of ['arm64-v8a','x86_64'])files.push(write(native,`jniLibs/${abi}/libelizainference.so`,abi));
  const sourceCommit=JSON.parse(fs.readFileSync(path.join(root,'upstream.lock.json'))).commit;

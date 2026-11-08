@@ -261,3 +261,27 @@ test('sources: the adapter wires the endpoint and heard routes through the resid
   assert.match(line, /path\.endsWith\("\/heard"\)\)&&\(!method\.equals\("POST"\)\|\|expectedOwner==null/);
   assert.match(line, /path\.equals\("\/api\/asr\/local-inference\/end-of-turn"\)&&!method\.equals\("POST"\)/);
 });
+
+// Barge-in or Stop during a streamed sentence before the reply was confirmed: the session reports
+// replyId '' (upstream AssistantHeard), and Alpha finds the reply the agent recorded by the turn's
+// request id, then reports what was heard through the same heard route.
+test('heard reporting: an unconfirmed streamed reply is found by its turn request id', async () => {
+  const connection = fs.readFileSync(new URL('../apps/app/src/runtime/connection-ui.tsx', import.meta.url), 'utf8');
+  const start = connection.indexOf('export function turnReplyRow('), end = connection.indexOf('async function readConversation(', start);
+  assert.ok(start >= 0 && end > start);
+  const {stripTypeScriptTypes} = await import('node:module');
+  const turnReplyRow = new Function(`${stripTypeScriptTypes(connection.slice(start, end).replace('export ', ''), {mode: 'transform'})}\nreturn turnReplyRow;`)();
+  const user = {id: 'u-1', role: 'user', text: 'News?', clientMessageId: 'turn-1'};
+  const reply = {id: 'a-1', role: 'assistant', text: 'First headline. Second.', replyToMessageId: 'u-1'};
+  const other = {id: 'a-2', role: 'assistant', text: 'Unrelated.', replyToMessageId: 'u-0'};
+  assert.deepEqual(turnReplyRow([other, user, reply], 'turn-1'), {id: 'a-1', text: 'First headline. Second.'});
+  assert.equal(turnReplyRow([user], 'turn-1'), undefined, 'not recorded yet');
+  assert.equal(turnReplyRow([other, user, reply], 'turn-2'), undefined, 'another turn');
+  assert.equal(turnReplyRow([user, {...user, id: 'u-2'}, reply], 'turn-1'), undefined, 'an ambiguous turn is not guessed');
+  assert.equal(turnReplyRow([user, reply, {...reply, id: 'a-3'}], 'turn-1'), undefined, 'an ambiguous reply is not guessed');
+  assert.equal(turnReplyRow([{...user, clientMessageId: undefined}, reply], ''), undefined);
+  const adapter = fs.readFileSync(new URL('../apps/app/src/prototype/voice-adapter.ts', import.meta.url), 'utf8');
+  assert.match(adapter, /const replyId=heard\.replyId\?Promise\.resolve\(heard\.replyId\):recordedReply\(heard\.turnId\);/);
+  assert.match(adapter, /heardReporter\.report\(\{conversationId:binding\.conversationId,replyId:id,heard:heard\.heard,unheard:heard\.unheard,interrupted:true/);
+  assert.match(adapter, /recordedReplies\.has\(messageId\)/, 'the found reply is admitted as this conversation\'s assistant reply');
+});

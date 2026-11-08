@@ -1,0 +1,192 @@
+{
+  "description": "Typed chat turns on the Pixel 10a against the resident agent at elizaOS/eliza b25d8aef29 (elizaOS/eliza#38979), stock agent bundle, no instrumentation. Measured over WebView CDP by a passive listener on the app's own alphaAgentStream events; each message was typed into the chat composer and sent with the Send button. Times are milliseconds from the Send click. firstCompleteSentenceMs is the first token frame whose accumulated text holds a complete sentence. No microphone or audio was used.",
+  "recordedAt": "2026-11-07",
+  "device": "Pixel 10a stallion, Alpha userdebug image, Wi-Fi",
+  "app": {
+    "apk": "artifacts/launcher-debug.apk",
+    "versionCode": 40,
+    "profile": "native",
+    "distributable": false
+  },
+  "upstreamPin": "b25d8aef2916385c571f4367e099809254fde0bb",
+  "model": "Eliza Cloud cerebras/qwen-3.8-27b",
+  "result": "A provisional draft reached the app on all 8 turns: 2 or 3 token frames per turn, 1 or 2 of them provisional, followed by the confirming final frame. The final text equals the last draft in every turn. Each draft arrived 76-162 ms before reply_ready, because Cerebras sends the tool-call arguments in one chunk (stream-hold-diagnosis.json), so the draft cannot start speech meaningfully earlier.",
+  "caveats": [
+    "The per-turn recorder counts provisional frames but does not store each frame's flag in order; that the first frame is the provisional draft follows from the upstream draft-then-confirm design and the counts, and is not separately recorded.",
+    "Before these turns the phone was offline; once Wi-Fi returned, the first send was refused by the app ('Not sent') and the next probe ('What is the capital of Spain?') streamed one provisional and one final frame (first token 15,184 ms, cold). That probe is not one of the 8 turns."
+  ],
+  "turns": [
+    {
+      "prompt": "What is the capital of Portugal? Two sentences.",
+      "tokenFrames": 2,
+      "provisionalFrames": 1,
+      "nonProvisionalFrames": 1,
+      "firstTokenFrameMs": 6267,
+      "firstCompleteSentenceMs": 6267,
+      "replyReadyMs": 6392,
+      "doneMs": 6435,
+      "finalDiffersFromLastDraft": false,
+      "tokenTimesMs": [
+        6267,
+        6356
+      ],
+      "tokenLengths": [
+        83,
+        83
+      ],
+      "finalChars": 83,
+      "finalText": "Lisbon is the capital of Portugal. It sits on the Tagus River on the western coast."
+    },
+    {
+      "prompt": "What is the largest planet in our solar system? Two sentences.",
+      "tokenFrames": 2,
+      "provisionalFrames": 1,
+      "nonProvisionalFrames": 1,
+      "firstTokenFrameMs": 2897,
+      "firstCompleteSentenceMs": 2897,
+      "replyReadyMs": 3019,
+      "doneMs": 3052,
+      "finalDiffersFromLastDraft": false,
+      "tokenTimesMs": [
+        2897,
+        2976
+      ],
+      "tokenLengths": [
+        115,
+        115
+      ],
+      "finalChars": 115,
+      "finalText": "Jupiter is the largest planet in our solar system. It's more than twice the mass of all the other planets combined."
+    },
+    {
+      "prompt": "Who wrote Pride and Prejudice? Two sentences.",
+      "tokenFrames": 2,
+      "provisionalFrames": 1,
+      "nonProvisionalFrames": 1,
+      "firstTokenFrameMs": 4455,
+      "firstCompleteSentenceMs": 4455,
+      "replyReadyMs": 4593,
+      "doneMs": 4630,
+      "finalDiffersFromLastDraft": false,
+      "tokenTimesMs": [
+        4455,
+        4553
+      ],
+      "tokenLengths": [
+        64,
+        64
+      ],
+      "finalChars": 64,
+      "finalText": "Jane Austen wrote Pride and Prejudice. It was published in 1813."
+    },
+    {
+      "prompt": "Why is the sky blue? Two sentences.",
+      "tokenFrames": 2,
+      "provisionalFrames": 1,
+      "nonProvisionalFrames": 1,
+      "firstTokenFrameMs": 7292,
+      "firstCompleteSentenceMs": 7292,
+      "replyReadyMs": 7403,
+      "doneMs": 7449,
+      "finalDiffersFromLastDraft": false,
+      "tokenTimesMs": [
+        7292,
+        7368
+      ],
+      "tokenLengths": [
+        256,
+        256
+      ],
+      "finalChars": 256,
+      "finalText": "Sunlight is white, but blue light has a shorter wavelength so it scatters far more than other colors as it passes through the atmosphere. That scattered blue reaches your eyes from every direction, which is why the sky looks blue instead of white or black."
+    },
+    {
+      "prompt": "What is the boiling point of water at sea level? Two sentences.",
+      "tokenFrames": 2,
+      "provisionalFrames": 1,
+      "nonProvisionalFrames": 1,
+      "firstTokenFrameMs": 6956,
+      "firstCompleteSentenceMs": 6956,
+      "replyReadyMs": 7081,
+      "doneMs": 7117,
+      "finalDiffersFromLastDraft": false,
+      "tokenTimesMs": [
+        6956,
+        7039
+      ],
+      "tokenLengths": [
+        207,
+        207
+      ],
+      "finalChars": 207,
+      "finalText": "Water boils at 100 degrees Celsius, or 212 degrees Fahrenheit, at sea level. That's because standard atmospheric pressure at the coast is 1 atm, which is exactly the pressure that defines that boiling point."
+    },
+    {
+      "prompt": "How many continents are there? Two sentences.",
+      "tokenFrames": 3,
+      "provisionalFrames": 2,
+      "nonProvisionalFrames": 1,
+      "firstTokenFrameMs": 7791,
+      "firstCompleteSentenceMs": 7791,
+      "replyReadyMs": 7895,
+      "doneMs": 7959,
+      "finalDiffersFromLastDraft": false,
+      "tokenTimesMs": [
+        7791,
+        7852,
+        7894
+      ],
+      "tokenLengths": [
+        180,
+        192,
+        192
+      ],
+      "finalChars": 192,
+      "finalText": "There are seven continents: Africa, Antarctica, Asia, Australia, Europe, North America, and South America. Seven is the most widely used convention, though some regions group them differently."
+    },
+    {
+      "prompt": "Who painted the Mona Lisa? Two sentences.",
+      "tokenFrames": 3,
+      "provisionalFrames": 2,
+      "nonProvisionalFrames": 1,
+      "firstTokenFrameMs": 8729,
+      "firstCompleteSentenceMs": 8729,
+      "replyReadyMs": 8891,
+      "doneMs": 8940,
+      "finalDiffersFromLastDraft": false,
+      "tokenTimesMs": [
+        8729,
+        8784,
+        8850
+      ],
+      "tokenLengths": [
+        135,
+        141,
+        141
+      ],
+      "finalChars": 141,
+      "finalText": "Leonardo da Vinci painted the Mona Lisa. He started it around 1503 and kept working on it for years, and it now hangs in the Louvre in Paris."
+    },
+    {
+      "prompt": "How many legs does a spider have? Two sentences.",
+      "tokenFrames": 2,
+      "provisionalFrames": 1,
+      "nonProvisionalFrames": 1,
+      "firstTokenFrameMs": 5871,
+      "firstCompleteSentenceMs": 5871,
+      "replyReadyMs": 5995,
+      "doneMs": 6041,
+      "finalDiffersFromLastDraft": false,
+      "tokenTimesMs": [
+        5871,
+        5957
+      ],
+      "tokenLengths": [
+        89,
+        89
+      ],
+      "finalChars": 89,
+      "finalText": "A spider has eight legs. That's what separates spiders from insects, which only have six."
+    }
+  ]
+}

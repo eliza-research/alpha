@@ -32,7 +32,7 @@ import { beginVoiceTurn, markVoiceTiming, abandonVoiceTurn, finishVoiceTurn, sen
 import { residentEndpoint, createHeardReporter, createEndpointChain } from '../runtime/voice-turn-routes';
 import { createNativeLiveDictation, nativeAssistantListener, nativeLiveVoiceReady, openNativeLiveStream, type NativeLiveDictation } from '../runtime/native-live-voice';
 import { installNativeVoiceTurnMarks } from '../runtime/native-voice-turn';
-import { VoiceAssistantSession, type AssistantState } from '../runtime/voice-assistant';
+import { VoiceAssistantSession, type AssistantState, type AssistantTextFrame } from '../runtime/voice-assistant';
 import { shouldRespondToVoiceTurn, buildVoiceTurnSignal } from '@elizaos/voice/turn';
 import { toSpeakableText } from '@elizaos/ui/voice/voice-chat-playback';
 import { connectionController } from '../runtime/connection-ui';
@@ -52,7 +52,7 @@ const voice = registerPlugin<{
   cancel(options: { requestId: string }): Promise<unknown>;
   addListener(event: 'recordingStopped', callback: (clip: Clip) => void): Promise<PluginListenerHandle>;
 }>('DevelopmentAgent');
-const deviceVoice = registerPlugin<typeof voice & {getRecordingMetrics(input:{recordingId:string}):Promise<{recordingId:string;peak:number;rms?:number}>}>('AlphaVoiceCloud');
+const deviceVoice = registerPlugin<typeof voice & {warmSpeechOutput():Promise<void>;getRecordingMetrics(input:{recordingId:string}):Promise<{recordingId:string;peak:number;rms?:number}>}>('AlphaVoiceCloud');
 const appSettings = registerPlugin<{ openSettings(input: { page: 'privacy' }): Promise<unknown> }>('AlphaDevice');
 
 type SavedAudio = { audioId: string; noteId: string; durationMs: number; transcript: string };
@@ -560,18 +560,24 @@ export function installPrototypeVoiceAdapter(Component: any, views: Record<strin
       // what it heard, and the held start with it.
       type CueTurn={signal:AbortSignal;settled?:boolean};
       let cueSpeech:{captureRetired:(()=>boolean)|null;speak(text:string,signal:AbortSignal,turn:CueTurn):Promise<void>}|undefined;
-      const sendTurn=async(input:{turnId:string;text:string;voiceTurnSignal:any;signal:AbortSignal})=>{
+      const sendTurn=async(input:{turnId:string;text:string;voiceTurnSignal:any;signal:AbortSignal;onText?:(text:string,frame?:AssistantTextFrame)=>void})=>{
         const cueTurn:CueTurn={signal:input.signal};try{
         input.signal.throwIfAborted();current();
         // VOICE_SEND_POLICY: 'auto-send' sends this transcript now; 'review' waits for Send or Discard.
         const sent=await sendVoiceEntry({policy:voiceSendPolicy(),transcript:input.text,review:text=>reviewConversationTurn(text,input.signal,current),send:async text=>{
-          current();const turn={...conversationPrepared!};conversationReplyWatch=new Set((chat.shell.S().msgs||[]).map((m:Bag)=>String(m.id)));
+          current();
+          // On-device speech: wake the speech output while the reply is produced (advisory; a call skips it).
+          if(local&&!streamingCloud)try{void Promise.resolve(deviceVoice.warmSpeechOutput()).catch(()=>{});}catch{/* Advisory: a host without the warm-up keeps working. */}
+          const turn={...conversationPrepared!};conversationReplyWatch=new Set((chat.shell.S().msgs||[]).map((m:Bag)=>String(m.id)));
           const cue=cueSpeech;const ack=cue?createBatchProgressAcknowledgment({turnId:input.turnId,conversationId:turn.binding.conversationId,ownerId:turn.binding.session.ownerId,signal:input.signal,assertCurrent:current,captureRetired:cue.captureRetired,speak:async(label,signal)=>{const pending=Promise.resolve().then(()=>cue.speak(label,signal,cueTurn));const owned=pending.catch(failure=>{if((failure as {code?:string})?.code!=='speech-cleanup-unconfirmed')return;mediaUnconfirmed=failure;stopping=Promise.reject(failure);void stopping.catch(()=>{});throw failure;});conversationSpeech=owned;try{await owned;}finally{if(conversationSpeech===owned)conversationSpeech=undefined;}}}):undefined;
           const retireAck=()=>{try{current();}catch{void ack?.stop().catch(()=>{});}};
           const unsubscribeAck=ack?connectionController.subscribe(retireAck):()=>{};
           if(ack)document.addEventListener('visibilitychange',retireAck);
+          // Early reply speech starts only after this turn's cue has stopped, in stream order.
+          const early=input.onText;let earlyChain:Promise<void>=Promise.resolve();
+          const onText=early&&((value:string,frame:AssistantTextFrame)=>{if(!ack){early(value,frame);return;}earlyChain=earlyChain.then(()=>ack.idle()).then(()=>{if(!input.signal.aborted)early(value,frame);}).catch(()=>{/* Early speech is advisory; the confirmed reply still plays. */});});
           try{
-            const reply=await chat.shell.sendVoiceTurn({...input,text,...turn,assertCurrent:current,onProgress:ack?.progress,onReplyStarted:ack?.replyStarted,navigation:navigationContinuation(chat,token,input.turnId)});
+            const reply=await chat.shell.sendVoiceTurn({...input,text,...turn,onText,assertCurrent:current,onProgress:ack?.progress,onReplyStarted:ack?.replyStarted,navigation:navigationContinuation(chat,token,input.turnId)});
             await ack?.finish();return reply;
           }finally{unsubscribeAck();document.removeEventListener('visibilitychange',retireAck);try{await ack?.stop();}finally{conversationReplyWatch=undefined;}}
         }});
@@ -595,11 +601,23 @@ export function installPrototypeVoiceAdapter(Component: any, views: Record<strin
         // The end-of-turn chain: the resident's fused scorer, then Clef only when it is admitted
         // (clefEndpointStage, off: #663), then the session's long gap. Each answer names its path.
         const semanticEndpoint=streamingCloud?undefined:createEndpointChain({local:residentEndpoint(residentRequest),clef:clefEndpointStage()})!;
+        // Replies found by their turn's request id after the user interrupted speech that started from
+        // the stream, before the reply was confirmed (AssistantHeard.replyId ''): the agent's own rows.
+        const recordedReplies=new Set<string>();
         const heardReporter=createHeardReporter({
           request:residentRequest,
           current:conversationId=>conversationId===binding.conversationId&&connectionController.voiceConversationCurrent(binding,false),
-          isAssistantReply:(conversationId,messageId)=>conversationId===binding.conversationId&&(chat.shell.S().msgs||[]).some((m:Bag)=>m.id===messageId&&m.from==='agent'),
+          isAssistantReply:(conversationId,messageId)=>conversationId===binding.conversationId&&((chat.shell.S().msgs||[]).some((m:Bag)=>m.id===messageId&&m.from==='agent')||recordedReplies.has(messageId)),
         });
+        const STREAMED_REPLY_CHECKS_MS=[500,1000,2000,4000,8000];
+        const recordedReply=async(turnId:string)=>{
+          for(const wait of STREAMED_REPLY_CHECKS_MS){
+            await new Promise(resolve=>setTimeout(resolve,wait));
+            if(token!==generation||!connectionController.voiceConversationCurrent(binding,false))return;
+            const found=await connectionController.voiceReplyForTurn(binding,turnId,AbortSignal.timeout(10000)).catch(()=>undefined);
+            if(found){recordedReplies.add(found.id);if(recordedReplies.size>32)recordedReplies.delete(recordedReplies.values().next().value!);return found.id;}
+          }
+        };
         // Voice timing record of each submitted turn, for its later heard outcome (ids only).
         const timingTurns=new Map<string,string>();
         // The turn's cue plays on the open capture, which the session hears as its own playback.
@@ -678,7 +696,10 @@ export function installPrototypeVoiceAdapter(Component: any, views: Record<strin
             // A playback failure is not a barge-in: before any sentence finished the agent keeps the
             // whole reply (the reporter sends nothing), and so does this view.
             const failed=heard.playbackFailed===true;
-            void heardReporter.report({conversationId:binding.conversationId,replyId:heard.replyId,heard:heard.heard,unheard:heard.unheard,interrupted:true,...(failed?{playbackFailed:true}:{})}).then(outcome=>{recordHeardVoiceTiming(timing,outcome);});
+            // Interrupted before the reply was confirmed (only streamed speech had started): the reply
+            // is found by the turn's request id once the agent has recorded it, then reported the same way.
+            const replyId=heard.replyId?Promise.resolve(heard.replyId):recordedReply(heard.turnId);
+            void replyId.then(id=>id?heardReporter.report({conversationId:binding.conversationId,replyId:id,heard:heard.heard,unheard:heard.unheard,interrupted:true,...(failed?{playbackFailed:true}:{})}):'not-found' as const).then(outcome=>{recordHeardVoiceTiming(timing,outcome);},()=>{});
             if(failed&&!heard.heard)return;
             conversationLastReply=heard.heard;
             const note=heard.heard?'(Interrupted. The rest of this reply was not played.)':'(Interrupted before this reply was played.)';

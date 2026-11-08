@@ -1,0 +1,31 @@
+{
+  "description": "Device check of the #829 app (claude/on-device-speech-v2, eliza 4787d51a14) on the Pixel 10a. Not run: the only APK this branch can build is a developer APK with no resident runtime and no on-device speech, so installing it could not show agent health, local speech readiness or typed turns at this pin, and it would replace the working versionCode 40 app on the owner's phone.",
+  "recordedAt": "2026-11-08",
+  "branchHead": "0c9c2a002e plus this commit",
+  "upstreamPin": "4787d51a142c63c98371c832997184c53f7218d3",
+  "built": {
+    "command": "ELIZAOS_VERSION_CODE=43 npm run android:build -- --allow-unpackaged-runtime",
+    "versionCode": 43,
+    "apks": [
+      {"file": "artifacts/launcher-debug.apk", "sha256": "f85fe7154dfe2925206a78a3a6623e1331ea41f0ac927b9d34dd271cedbc24cb", "bytes": 42491038},
+      {"file": "artifacts/standalone-debug.apk", "sha256": "d0cc34a7c2dd4ca305da8a332508aa3eef89e43a9f3ec02c215bc3ecc19e28a1", "bytes": 42480114},
+      {"file": "artifacts/launcher-release-unsigned.apk", "sha256": "e93833e37ccd297a9789495840293488ced350d4a9d42d703adc3aa238272544", "bytes": 25757006},
+      {"file": "artifacts/standalone-release-unsigned.apk", "sha256": "eee44ce206f9caf3bb0f5b27d95b742cb30522b334c9dd38c7ca1dbbbe9c5fd6", "bytes": 25752786}
+    ],
+    "runtime": "NOT_PACKAGED on all four (artifacts/apk-manifest.json); releases distributable:false; bundle audit passed",
+    "contents": "No lib/*/libeliza_bun.so, musl loader, libelizainference.so or assets/agent; native libraries are only CameraX's image and surface helpers. No voice bundle."
+  },
+  "whyNoSpeechOrResident": [
+    "npm run android:build:local stops at agent:build-embedding-host: 'Embedding host source admission changed: Embedding producer input qualification missing or changed'. android/embedding-host/qualified-host.json has requalification.required true at 4787d51a14 (engine gitlink 6337fd4c), and the reviewed embedding libraries are not on this host, so no runtime payload can be staged.",
+    "With the voice outputs staged, the developer lane fails :app:verifyParadeeAppLinkage ('App inference library must match the Paradee build record for arm64-v8a': android/app/src/main/jniLibs/<abi>/libelizainference.so is required). Staging that library makes stage-embedding-host.mjs --verify --allow-unpackaged-runtime treat the payload as present and refuse on the pending embedding requalification. The two gates exclude each other, so a developer APK of this branch cannot carry local speech.",
+    "Without packaged libeliza_bun.so the generated ElizaAgentService falls back to an extracted bun under the app's files directory; the existing extraction would be the earlier bundle, not 4787d51a14, so typed turns would not test this pin either."
+  ],
+  "phoneStateObserved": {
+    "installed": "ai.elizaresearch.alphaphone versionCode 40, last updated 2026-11-07 18:56:46 (unchanged; nothing installed, uninstalled or wiped)",
+    "ipcRecoverySlots": 7,
+    "network": "Active default network: none; alpha-gnirehtet-relay unit active on the host and the gnirehtet client process running on the phone",
+    "image": "Alpha userdebug, build date Fri Nov 6 08:21:15 PST 2026"
+  },
+  "notRun": ["APK install", "agent health", "live ASR status (ready, streaming)", "6 typed direct-answer turns", "microphone or acoustic tests (out of scope)"],
+  "toRun": "A person qualifies a rebuilt ARM64 embedding host at this pin (node scripts/build-embedding-host.mjs --candidate, then node scripts/stage-embedding-host.mjs --receipt <QUALIFICATION.json>; README, inputs of a distributable build), then npm run android:build:local with the voice outputs staged, install with adb install -r and repeat this check."
+}

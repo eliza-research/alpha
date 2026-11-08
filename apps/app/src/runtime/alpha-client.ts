@@ -124,7 +124,7 @@ export interface VerifiedSessionTransport {
     voiceTurnSignal?: VoiceTurnSignal;
     context: ContextEnvelope;
     signal: AbortSignal;
-    onText?:(text:string)=>void;
+    onText?:import('./local-agent-stream').StreamTextListener;
     onReplyReady?:(results:readonly unknown[]|undefined)=>void;
     replyTo?: ConversationMessageTarget;
   }): Promise<AgentReply>;
@@ -367,7 +367,7 @@ export class AlphaClient {
       return reply.text;
     },signal,automatic);
   }
-  async send(text: string, onText?:(text:string)=>void, replyTo?:ConversationMessageTarget,onReplyReady?:(results:readonly unknown[]|undefined)=>void,options?:{channelType:ChatChannel;requestId?:string;signal?:AbortSignal;expectedConversationId?:string;voiceTurnSignal?:VoiceTurnSignal}): Promise<AgentReply> {
+  async send(text: string, onText?:import('./local-agent-stream').StreamTextListener, replyTo?:ConversationMessageTarget,onReplyReady?:(results:readonly unknown[]|undefined)=>void,options?:{channelType:ChatChannel;requestId?:string;signal?:AbortSignal;expectedConversationId?:string;voiceTurnSignal?:VoiceTurnSignal}): Promise<AgentReply> {
     if (!text.trim()) throw new Error("Enter a message.");
     if(options?.channelType==='VOICE_DM'&&replyTo)throw Error("A voice turn cannot resend or edit a selected message.");
     return this.run(async (transport, context, signal) => {
@@ -380,7 +380,7 @@ export class AlphaClient {
         context,
         signal,
         onReplyReady:results=>{if(!accepting||signal.aborted||this.transport!==transport||this.context.revision!==context.revision)return;onReplyReady?.(results);},
-        onText:value=>{if(!accepting||signal.aborted)return;if(typeof value!=='string'||value.length>200000)throw new AlphaClientError('invalid-response','Invalid streamed reply.');onText?.(value);},
+        onText:(value,frame)=>{if(!accepting||signal.aborted)return;if(typeof value!=='string'||value.length>200000)throw new AlphaClientError('invalid-response','Invalid streamed reply.');onText?.(value,frame);},
       }); } finally {accepting=false;}
       if (signal.aborted)
         throw new AlphaClientError("cancelled", "Request cancelled.");

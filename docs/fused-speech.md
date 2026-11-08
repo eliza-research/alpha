@@ -124,6 +124,15 @@ content-safety check. The exact-input positive safety cache is not an audio cach
 A production streaming or latency acceptance claim requires the deployed backend
 and a completed physical-device turn, separately from APK checks.
 
+## November 7 engine and pin
+
+The pin `4787d51a14` carries engine `6337fd4c4b` (same model bytes as `b3eb2bf63b`) and the
+`eliza-paradee-voice-v2` bundle manifest (the v1 keys plus the Delibes Spanish voice under
+`voices`). The engine's component qualification on Pixel 10a arm64 and the x86_64 emulator, the
+owner's acceptance (P-82, which does not cover the speech Java changed after `b25d8aef29`, so the
+record is unqualified at this pin) and the November device latency, TPU and GPU findings are in
+[on-device speech](on-device-speech-2026-11-05.md). Bundle sizes below are historical.
+
 ## October 24 source update
 
 Current consumer pin `c95a37be8d56` uses native engine `0d9fd4b9db23`.
@@ -181,7 +190,7 @@ paradee-voice `VoiceNative` (loaded by the `SessionSpeech` backend) export
 
 **Licence.** Phonon-2 by Fermion Research is CC-BY-4.0, derived from NVIDIA
 parakeet-tdt-0.6b-v3 (CC-BY-4.0). The attribution, Fermion's NOTICE
-(`licenses/Phonon-2-NOTICE.txt`, also in the bundle as `notices/Phonon-2-NOTICE.txt` and in the
+(`licenses/Phonon-2-NOTICE.txt`, also in the bundle as `notices/phonon-2/NOTICE` and in the
 GGUF as `parakeet.notice`) and the licence text (`licenses/Phonon-2-LICENSE-WEIGHTS-CC-BY-4.0.txt`)
 are in the generated third-party notices that Settings shows under Open source licenses. The NOTICE lists
 CHiME-6 (CC-BY-SA-4.0) and SPGISpeech (Kensho terms) training audio; the entry is flagged

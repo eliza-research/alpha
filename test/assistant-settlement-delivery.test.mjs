@@ -204,3 +204,28 @@ test('aborted selected voice request removes progress listener without another s
  const f=fixture(),abort=new AbortController(),cues=[];const {task}=await f.start('voice',{signal:abort.signal,onProgress:value=>cues.push(value)});abort.abort();f.resolve();await assert.rejects(task);
  f.box.batchVoiceProgressEvents.dispatchEvent(new CustomEvent('progress',{detail:{turnId:'turn-1',conversationId:f.binding.conversationId,ownerId:f.binding.session.ownerId,kind:'thinking',label:'Checking'}}));assert.equal(cues.length,0);assert.equal(f.sent.length,1);
 });
+
+// Voice early speech (agent protocol): only confirmed stream text reaches the voice session, with its
+// direct proof; provisional text (a Stage-1 draft or action status) never does, and after it nothing
+// streamed in that turn does. The chat still shows every streamed frame.
+test('voice: only confirmed stream text reaches early speech, and none after provisional text',async()=>{
+  const h=fixture(),early=[];const {task}=await h.start('voice',{onText:(text,frame)=>early.push([text,frame])});
+  const stream=h.sent[0][1];
+  stream('Hello there. And',{provisional:false});
+  stream('Hello there. And more.',{provisional:false,direct:true});
+  stream('Checking the calendar.',{provisional:true});
+  stream('Hello there. And more. Later.',{provisional:false,direct:true});
+  h.resolve();await task;
+  assert.deepEqual(clone(early),[['Hello there. And',{origin:'model',provisional:false}],['Hello there. And more.',{origin:'model',provisional:false,direct:true}]]);
+  assert.ok(h.patches.some(patch=>patch?.msgs?.some(row=>row.text==='Checking the calendar.')),'provisional text is still shown');
+});
+test('voice: a provisional or unlabelled first frame keeps early speech off for the turn',async()=>{
+  for(const first of [{provisional:true},undefined]){
+    const h=fixture(),early=[];const {task}=await h.start('voice',{onText:(text,frame)=>early.push([text,frame])});
+    const stream=h.sent[0][1];
+    stream('Draft reply.',first);
+    stream('Final reply. Done.',{provisional:false,direct:true});
+    h.resolve();await task;
+    assert.deepEqual(early,[],JSON.stringify(first));
+  }
+});

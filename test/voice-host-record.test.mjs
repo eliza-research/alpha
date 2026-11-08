@@ -18,7 +18,21 @@ const committed = JSON.parse(fs.readFileSync(path.join(ROOT, VOICE_HOST), 'utf8'
 test('the committed record satisfies the schema, model inventory and ASR slot', () => {
   assert.deepEqual(voiceHostProblems(committed), []);
   const record = committed;
-  assert.equal(record.qualified, false, 'not qualified until device acceptance');
+  // P-82 accepted engine 6337fd4c with the speech Java at b25d8aef29. That Java changed by this pin
+  // and has been neither requalified nor re-accepted, so the record is not qualified.
+  assert.equal(record.qualified, false, 'the changed speech bridge is not requalified or re-accepted');
+  assert.equal(record.evidence.deviceExecuted, true);
+  assert.equal(record.evidence.userAccepted, false);
+  assert.equal(record.sourceAdmission.developComparison.qualifiedAt, 'b25d8aef2916385c571f4367e099809254fde0bb');
+  assert.ok(record.sourceAdmission.developComparison.changedPaths.some(file => file.endsWith('/ai/eliza/voice/ParadeeVoice.java')), 'the qualify path\'s changed Java is named');
+  assert.ok(record.evidence.records.includes('docs/evidence/voice-engine-6337fd4c/qualify-receipt.json'));
+  // Requalified at this pin on both ABIs; the owner has not re-accepted, so qualified stays false.
+  assert.equal(record.evidence.emulatorDeviceExecuted, true);
+  for (const file of ['qualify/asr-wer.json', 'qualify/paradee-roundtrip.json', 'qualify-x86_64/asr-wer.json', 'qualify-x86_64/paradee-roundtrip.json', 'qualify-receipt.json']) {
+    const record_ = `docs/evidence/voice-engine-6337fd4c-4787d51a14/${file}`;
+    assert.ok(record.evidence.records.includes(record_), record_);
+    assert.ok(fs.existsSync(path.join(ROOT, record_)), record_);
+  }
   assert.equal(record.provider, 'libelizainference-paradee');
   assert.deepEqual(record.abis.map(row => row.abi), ['arm64-v8a', 'x86_64']);
   const slot = JSON.parse(fs.readFileSync(path.join(ROOT, VOICE_ASR_SLOT), 'utf8'));
@@ -29,12 +43,12 @@ test('the committed record satisfies the schema, model inventory and ASR slot', 
   assert.equal(phonon.license, 'CC-BY-4.0');
   assert.match(phonon.attribution, /Fermion Research/);
   for (const file of phonon.noticeFiles) assert.ok(fs.existsSync(path.join(ROOT, file)), file);
-  assert.ok(record.models.some(row => row.path === 'notices/Phonon-2-NOTICE.txt' && row.sha256 === '00624a5043e7ce74029317b024132ca5286116d6fbf3191d226374bc8273789f'), 'Fermion NOTICE ships in the bundle');
+  assert.ok(record.models.some(row => row.path === 'notices/phonon-2/NOTICE' && row.sha256 === '00624a5043e7ce74029317b024132ca5286116d6fbf3191d226374bc8273789f'), 'Fermion NOTICE ships in the bundle');
   assert.equal(record.models.some(row => row.role === 'asr-mmproj'), false);
   const paradee = record.models.find(row => row.role === 'tts-model');
   assert.equal(paradee.path, 'tts/paradee/paradee-8m-v1_2.gguf');
   assert.ok(paradee.bytes < 40 * 1024 * 1024, 'Paradee ships in the APK assets');
-  assert.equal(record.models.some(row => /kokoro|\.on{2}x|\.bin$/i.test(row.path)), false, 'no Kokoro, other-runtime model or voice preset');
+  assert.equal(record.models.some(row => row.role !== 'notice' && /kokoro|\.on{2}x|\.bin$/i.test(row.path)), false, 'no Kokoro, other-runtime model or voice preset');
 });
 
 test('only a voice record for the current SDK can admit the native profile', () => {
@@ -53,6 +67,7 @@ test('the schema rejects bad hashes, missing ABIs, non-GGUF models, an incomplet
   bad.models.find(row => row.role === 'tts-model').path = 'tts/paradee/paradee.pt';
   bad.models = bad.models.filter(row => row.role !== 'asr-model');
   bad.qualified = true;
+  bad.evidence = {...bad.evidence, userAccepted: false};
   const problems = voiceHostProblems(bad, 'fixture');
   for (const expected of ['abis[0].libraries[0] needs a lowercase SHA-256', 'must be a GGUF file', 'has no asr-model', 'ASR rows must be exactly asr-model for the parakeet backend', 'qualified cannot be true without device execution'])
     assert.ok(problems.some(problem => problem.includes(expected)), expected);
@@ -107,7 +122,10 @@ function fixtureProduct(t) {
   // separate committed-record test above still enforces the actual product pin.
   record.pin = '1'.repeat(40);
   record.forkPin = '2'.repeat(40);
-  const write = (relative, content) => { fs.mkdirSync(path.dirname(path.join(from, relative)), {recursive: true}); fs.writeFileSync(path.join(from, relative), content); return {sha256: sha(content), bytes: Buffer.byteLength(content)}; };
+  // A qualified fixture, so qualified admission and the paths that must unqualify it are both exercised.
+  record.qualified = true;
+  record.evidence = {...record.evidence, userAccepted: true};
+  const write =(relative, content) => { fs.mkdirSync(path.dirname(path.join(from, relative)), {recursive: true}); fs.writeFileSync(path.join(from, relative), content); return {sha256: sha(content), bytes: Buffer.byteLength(content)}; };
   for (const model of record.models) Object.assign(model, write(model.sourceFile ? path.join(path.dirname(model.path), model.sourceFile) : model.path, `fixture ${model.path}`));
   for (const abi of record.abis) Object.assign(abi.libraries[0], write(`jniLibs/${abi.abi}/libelizainference.so`, `engine ${abi.abi}`));
   const inputs = JSON.parse(fs.readFileSync(path.join(ROOT, 'vendor/eliza/plugins/plugin-local-inference/native/android/inputs.json'), 'utf8'));
@@ -131,13 +149,13 @@ test('staging copies exactly the recorded bytes into the shared paradee-voice la
   assert.equal(result.asr, true);
   const native = path.join(dir, '.eliza/paradee-voice/native');
   const manifest = JSON.parse(fs.readFileSync(path.join(native, 'assets/paradee-voice/v1/manifest.json'), 'utf8'));
-  assert.equal(manifest.format, 'eliza-paradee-voice-v1');
+  assert.equal(manifest.format, 'eliza-paradee-voice-v2');
   assert.deepEqual(manifest.files.map(row => row.path).sort(), record.models.map(row => row.path).sort());
   const build = JSON.parse(fs.readFileSync(path.join(native, 'build-record.json'), 'utf8'));
   assert.deepEqual(build.abis, ['arm64-v8a', 'x86_64']);
   assert.ok(build.files.some(row => row.path === 'jniLibs/x86_64/libelizainference.so'));
   // Record admission (the shared runtime check needs the real nested FFI checkout and is skipped here).
-  assert.deepEqual(verifyVoiceHost(dir, {runtime: () => {}}), {status: 'packaged', qualified: false});
+  assert.deepEqual(verifyVoiceHost(dir, {runtime: () => {}}), {status: 'packaged', qualified: true});
   // A second run with the same bytes is idempotent; changed staged bytes are refused, never repaired.
   stageVoiceModels(dir, {from: [from]});
   fs.writeFileSync(path.join(native, 'assets/paradee-voice/v1/vad/silero-vad-v5.gguf'), 'other');

@@ -4,7 +4,7 @@ import {tmpdir} from 'node:os';
 import {join} from 'node:path';
 import http from 'node:http';
 import {loadBrowserModule} from '../test/fixtures/browser-source.mjs';
-const [{createLocalAgentDevHandler},{readLocalAgentStream,localTurnStatus},{AlphaClient},{LocalAgentProtocol},{RemoteProtocol},{streamNativeAgent}]=await loadBrowserModule(['scripts/local-agent-dev-bridge.ts', 'apps/app/src/runtime/local-agent-stream.ts', 'apps/app/src/runtime/alpha-client.ts', 'apps/app/src/runtime/local-agent.ts', 'apps/app/src/runtime/remote-protocol.ts', 'apps/app/src/runtime/local-agent-native-stream.ts'],{testMocks:true});
+const [{createLocalAgentDevHandler},{readLocalAgentStream,localTurnStatus,batchVoiceReplyEvents},{AlphaClient},{LocalAgentProtocol},{RemoteProtocol},{streamNativeAgent}]=await loadBrowserModule(['scripts/local-agent-dev-bridge.ts', 'apps/app/src/runtime/local-agent-stream.ts', 'apps/app/src/runtime/alpha-client.ts', 'apps/app/src/runtime/local-agent.ts', 'apps/app/src/runtime/remote-protocol.ts', 'apps/app/src/runtime/local-agent-native-stream.ts'],{testMocks:true});
 const encoder=new TextEncoder(),signal=new AbortController().signal;
 const event=value=>`data: ${JSON.stringify(value)}\n\n`;
 function response(text,size=1){const bytes=encoder.encode(text);return new Response(new ReadableStream({start(c){for(let i=0;i<bytes.length;i+=size)c.enqueue(bytes.slice(i,i+size));c.close();}}),{headers:{'content-type':'text/event-stream'}});}
@@ -177,6 +177,31 @@ for(const ending of [event({type:'done',fullText:'Correction',agentName:'Fixture
 const readyClient=new AlphaClient();let lateReady,clientReady;readyClient.attachVerifiedTransport({session:{ownerId:'owner',agentId:'agent',sessionId:'ready-session',origin:'https://agent.example'},send:async({onReplyReady})=>{lateReady=onReplyReady;onReplyReady([prepared]);assert.equal(readyClient.getState().pending,true);throw Error('PRIVATE_PERSISTENCE_FAILURE');},execute:async()=>{throw Error('No device effects');}});
 await assert.rejects(readyClient.send('Open Notes',undefined,undefined,value=>{clientReady=value;}),error=>error.code==='transport-failed'&&!error.message.includes('PRIVATE_'));assert.equal(readyClient.getState().pending,false);assert.deepEqual(clientReady,[prepared]);lateReady(undefined);assert.deepEqual(clientReady,[prepared],'Late callbacks cannot erase a settled ready receipt');
 console.log('PASS reply-ready navigation retention, privacy, disagreement revocation and settled client fences.');
+
+// Voice early speech (agent protocol: draft and action-callback text is provisional and is never
+// spoken). Every token frame says whether it is provisional; a provisional frame never preempts the
+// voice cue. Only a voice turn's reply_ready that settled with no action results is offered as a
+// direct reply; typed turns and replies with action results are not.
+{
+ const voiceRequest={path:'/api/conversations/11111111-1111-4111-8111-111111111111/messages/stream',ownerId:'owner',body:JSON.stringify({channelType:'VOICE_DM',clientMessageId:'22222222-2222-4222-8222-222222222222'})};
+ const replies=[];const onReply=event=>replies.push(event.detail.turnId);batchVoiceReplyEvents.addEventListener('reply',onReply);
+ try{
+  const frames=[];
+  await assert.rejects(readLocalAgentStream(response(event({type:'token',text:'Checking the calendar.',provisional:true})+event({type:'error',message:'x'})),signal,(text,frame)=>frames.push([text,frame]),undefined,voiceRequest),/interrupted/);
+  assert.deepEqual(frames,[['Checking the calendar.',{provisional:true}]]);
+  assert.deepEqual(replies,[],'provisional text never preempts the cue');
+  frames.length=0;
+  const direct=await readLocalAgentStream(response(event({type:'token',text:'Draft one. ',provisional:true})+event({type:'token',fullText:'Final one. Final two.',provisional:false})+event({type:'reply_ready',fullText:'Final one. Final two.'})+event({type:'done',fullText:'Final one. Final two.',agentName:'Fixture'})),signal,(text,frame)=>frames.push([text,frame]),undefined,voiceRequest);
+  assert.equal(direct.text,'Final one. Final two.');
+  assert.deepEqual(frames,[['Draft one. ',{provisional:true}],['Final one. Final two.',{provisional:false}],['Final one. Final two.',{provisional:false,direct:true}]]);
+  for(const [ready,request] of [[event({type:'reply_ready',fullText:'Saved.',actionResults:[{actionName:'NOTES_CREATE',success:true}]}),voiceRequest],[event({type:'reply_ready',fullText:'Saved.'}),undefined],[event({type:'reply_ready',fullText:''}),voiceRequest]]){
+   frames.length=0;
+   await readLocalAgentStream(response(event({type:'token',text:'Saved.',provisional:false})+ready+event({type:'done',fullText:'Saved.',agentName:'Fixture',actionResults:[]})),signal,(text,frame)=>frames.push([text,frame]),undefined,request);
+   assert.deepEqual(frames,[['Saved.',{provisional:false}]],'no direct frame without the proof');
+  }
+ }finally{batchVoiceReplyEvents.removeEventListener('reply',onReply);}
+}
+console.log('PASS provisional stream text is marked and only a settled voice reply with no action results is offered as direct.');
 
 for(const missingAny of [false,true]){
  const originalAny=Object.getOwnPropertyDescriptor(AbortSignal,'any');

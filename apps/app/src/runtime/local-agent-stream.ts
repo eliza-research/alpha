@@ -105,6 +105,9 @@ export function createBatchProgressAcknowledgment(input: {
       void pending.catch(() => {});
     },
     replyStarted(): void { preempt(); },
+    /** Preempts the cue and settles once its playback has stopped (or never began), so reply speech
+     * never starts over it. Never rejects; failures still reach finish(). */
+    async idle(): Promise<void> { preempt(); await pending.catch(() => {}); },
     async finish(): Promise<void> {
       preempt();
       try { await pending; check(); }
@@ -117,7 +120,16 @@ export function createBatchProgressAcknowledgment(input: {
     },
   };
 }
-export async function readLocalAgentStream(response:Response, signal:AbortSignal, onText:(text:string)=>void,onReplyReady?:(results:readonly unknown[]|undefined)=>void,request?:{path:string;ownerId:string;body:string}):Promise<RemoteChatReply> {
+/** Wire metadata of streamed reply text (the voice session's AssistantTextFrame, from the stream).
+ * `provisional`: a Stage-1 draft (`model_draft`) or action status (`action_callback`) the final
+ * reply may replace; never spoken. `direct`: the `reply_ready` snapshot settled with no action
+ * results, so this turn produces no proposal, owner-input pause or action outcome. */
+export interface StreamTextFrame {
+  provisional: boolean;
+  direct?: true;
+}
+export type StreamTextListener = (text:string, frame?:StreamTextFrame)=>void;
+export async function readLocalAgentStream(response:Response, signal:AbortSignal, onText:StreamTextListener,onReplyReady?:(results:readonly unknown[]|undefined)=>void,request?:{path:string;ownerId:string;body:string}):Promise<RemoteChatReply> {
  if(!response.ok)throw Object.assign(Error(`Local agent request failed (HTTP ${response.status}).`),{status:response.status});
  if(!response.headers.get('content-type')?.startsWith('text/event-stream')||!response.body)throw Error('Invalid local stream response');
  const progressBinding=batchProgressBinding(request);
@@ -149,14 +161,22 @@ export async function readLocalAgentStream(response:Response, signal:AbortSignal
    if(typeof value.fullText!=='string'||value.fullText.length>200000||(value.actionResults!==undefined&&!Array.isArray(value.actionResults)))return invalid('Invalid reply-ready snapshot');
    const navigation=preparedNavigation(value.actionResults),key=navigation?JSON.stringify(navigation):undefined;
    if(readySeen&&key!==readyKey)return invalid('Reply-ready navigation changed');
-   if(!readySeen){readySeen=true;readyKey=key;signal.throwIfAborted();emitBatchReply(progressBinding);if(navigation)onReplyReady?.(navigation);}
+   if(!readySeen){
+    readySeen=true;readyKey=key;signal.throwIfAborted();emitBatchReply(progressBinding);if(navigation)onReplyReady?.(navigation);
+    // A voice turn's settled generation with no action results proves a plain direct reply: its
+    // text may be spoken before the terminal frame. Anything with action results waits for the
+    // confirmed reply. Typed turns keep rendering from tokens and the terminal frame only.
+    if(progressBinding&&value.fullText.trim()&&(value.actionResults===undefined||value.actionResults.length===0))onText(value.fullText,{provisional:false,direct:true});
+   }
   }
   if(value.type==='token'){
    if(typeof value.fullText==='string')text=value.fullText;
    else if(typeof value.text==='string')text+=value.text;
    else return invalid('Invalid stream text');
    if(text.length>200000)return invalid('Local reply exceeds display limit');
-   signal.throwIfAborted();if(value.provisional===undefined||value.provisional===false)emitBatchReply(progressBinding);onText(text);
+   // Draft and action-callback text is provisional: shown, never spoken, and it never preempts the cue.
+   const provisional=value.provisional!==undefined&&value.provisional!==false;
+   signal.throwIfAborted();if(!provisional)emitBatchReply(progressBinding);onText(text,{provisional});
   }
   if(value.type==='done'){
    if(typeof value.fullText!=='string'||value.fullText.length>200000||typeof value.agentName!=='string')return invalid('Invalid terminal reply');

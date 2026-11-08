@@ -1,0 +1,431 @@
+{
+  "description": "Typed chat turns on the Pixel 10a against the resident agent at elizaOS/eliza c35106fb14 (elizaOS/eliza#38972). Measured over WebView CDP by a passive listener on the app own alphaAgentStream events; each message was typed into the chat composer and sent with the Send button. Times are milliseconds from the Send click. firstCompleteSentenceMs is the first token frame whose accumulated text holds a complete sentence. No microphone or audio was used.",
+  "recordedAt": "2026-11-06",
+  "device": "Pixel 10a stallion, Alpha userdebug image",
+  "app": {
+    "apk": "artifacts/launcher-debug.apk",
+    "versionCode": 39,
+    "profile": "native",
+    "sha256Prefix": "99f5bc84a1a5acff",
+    "distributable": false
+  },
+  "upstreamPin": "c35106fb14003a5a85e9793dabcf047118cc09e0",
+  "model": "Eliza Cloud cerebras/qwen-3.8-27b (RESPONSE_HANDLER over chat/completions:stream; response body 0.8 to 2.1 s)",
+  "result": "Not streamed: all 10 turns delivered one non-provisional token frame holding the whole reply, 35 to 80 ms before reply_ready.",
+  "gateFinding": "The fields preceding replyText now pass the Stage-1 gate. Replaying each turn recorded envelope offline through the pinned ResponseSkeletonStreamExtractor and createStage1DirectReplyStreamGate (skeleton built from the turn tool schema, directReplyValue functions as compiled into the shipped agent bundle, 7-byte chunks) opened the gate and streamed replyText in 9 of 10 turns; the tallest-mountain envelope did not reach a gate decision in the replay. The hold is therefore downstream of the gate (provider stream delivery, model dispatch, or the chat/conversation stream route), not in the preceding values. Not determined on the device: that needs runtime instrumentation of the resident.",
+  "replayCaveat": "The replay uses the trajectory final recorded response text, which may not be byte-identical to the streamed tool-call argument deltas.",
+  "turns": [
+    {
+      "prompt": "What is the capital of Portugal? Two sentences.",
+      "tokenFrames": 1,
+      "provisionalFrames": 0,
+      "nonProvisionalFrames": 1,
+      "firstTokenMs": 2105,
+      "firstCompleteSentenceMs": 2105,
+      "replyReadyMs": 2141,
+      "doneMs": 2217,
+      "finalDiffersFromLastDraft": null,
+      "finalChars": 83,
+      "lastDraftChars": null,
+      "tokenTimesMs": [
+        2105
+      ],
+      "tokenLengths": [
+        83
+      ],
+      "finalText": "Lisbon is the capital of Portugal. It sits on the Tagus River on the western coast.",
+      "precedingFields": {
+        "shouldRespond": "RESPOND",
+        "contexts": [
+          "simple"
+        ],
+        "intents": [],
+        "replyEffectStatus": "none",
+        "calendarReadBindings": [],
+        "notesRequestEffect": {
+          "classification": "read_only",
+          "operations": []
+        },
+        "visualContinuation": {
+          "disposition": "none",
+          "viewId": "",
+          "reason": ""
+        }
+      },
+      "offlineGateReplay": {
+        "gateResult": true,
+        "chunks": 13
+      }
+    },
+    {
+      "prompt": "What is the largest planet in our solar system? Two sentences.",
+      "tokenFrames": 1,
+      "provisionalFrames": 0,
+      "nonProvisionalFrames": 1,
+      "firstTokenMs": 1789,
+      "firstCompleteSentenceMs": 1789,
+      "replyReadyMs": 1848,
+      "doneMs": 1908,
+      "finalDiffersFromLastDraft": null,
+      "finalChars": 110,
+      "lastDraftChars": null,
+      "tokenTimesMs": [
+        1789
+      ],
+      "tokenLengths": [
+        110
+      ],
+      "finalText": "Jupiter is the largest planet in our solar system. It's so big that all the other planets could fit inside it.",
+      "precedingFields": {
+        "shouldRespond": "RESPOND",
+        "contexts": [
+          "simple"
+        ],
+        "intents": [],
+        "replyEffectStatus": "none",
+        "calendarReadBindings": [],
+        "notesRequestEffect": {
+          "classification": "read_only",
+          "operations": []
+        },
+        "visualContinuation": {
+          "disposition": "none",
+          "viewId": "chat",
+          "reason": "Factual question, no navigation requested"
+        }
+      },
+      "offlineGateReplay": {
+        "gateResult": true,
+        "chunks": 16
+      }
+    },
+    {
+      "prompt": "Who wrote Pride and Prejudice? Two sentences.",
+      "tokenFrames": 1,
+      "provisionalFrames": 0,
+      "nonProvisionalFrames": 1,
+      "firstTokenMs": 6823,
+      "firstCompleteSentenceMs": 6823,
+      "replyReadyMs": 6893,
+      "doneMs": 6911,
+      "finalDiffersFromLastDraft": null,
+      "finalChars": 64,
+      "lastDraftChars": null,
+      "tokenTimesMs": [
+        6823
+      ],
+      "tokenLengths": [
+        64
+      ],
+      "finalText": "Jane Austen wrote Pride and Prejudice. It was published in 1813.",
+      "precedingFields": {
+        "shouldRespond": "RESPOND",
+        "contexts": [
+          "simple"
+        ],
+        "intents": [],
+        "replyEffectStatus": "none",
+        "calendarReadBindings": [],
+        "notesRequestEffect": {
+          "classification": "read_only",
+          "operations": []
+        },
+        "visualContinuation": {
+          "disposition": "none",
+          "viewId": "chat",
+          "reason": "Factual question, no navigation requested."
+        }
+      },
+      "offlineGateReplay": {
+        "gateResult": true,
+        "chunks": 10
+      }
+    },
+    {
+      "prompt": "Why is the sky blue? Two sentences.",
+      "tokenFrames": 1,
+      "provisionalFrames": 0,
+      "nonProvisionalFrames": 1,
+      "firstTokenMs": 1874,
+      "firstCompleteSentenceMs": 1874,
+      "replyReadyMs": 1953,
+      "doneMs": 1976,
+      "finalDiffersFromLastDraft": null,
+      "finalChars": 251,
+      "lastDraftChars": null,
+      "tokenTimesMs": [
+        1874
+      ],
+      "tokenLengths": [
+        251
+      ],
+      "finalText": "Sunlight enters the atmosphere, and because blue light has a shorter wavelength, it scatters in all directions more than other colors. That scattered blue light is what reaches your eyes from every angle, making the whole sky look blue on a clear day.",
+      "precedingFields": {
+        "shouldRespond": "RESPOND",
+        "contexts": [
+          "simple"
+        ],
+        "intents": [],
+        "replyEffectStatus": "none",
+        "calendarReadBindings": [],
+        "notesRequestEffect": {
+          "classification": "read_only",
+          "operations": []
+        },
+        "visualContinuation": {
+          "disposition": "none",
+          "viewId": "",
+          "reason": "fact question, no navigation requested"
+        }
+      },
+      "offlineGateReplay": {
+        "gateResult": true,
+        "chunks": 37
+      }
+    },
+    {
+      "prompt": "What is the boiling point of water at sea level? Two sentences.",
+      "tokenFrames": 1,
+      "provisionalFrames": 0,
+      "nonProvisionalFrames": 1,
+      "firstTokenMs": 1975,
+      "firstCompleteSentenceMs": 1975,
+      "replyReadyMs": 2028,
+      "doneMs": 2062,
+      "finalDiffersFromLastDraft": null,
+      "finalChars": 202,
+      "lastDraftChars": null,
+      "tokenTimesMs": [
+        1975
+      ],
+      "tokenLengths": [
+        202
+      ],
+      "finalText": "Water boils at 100 degrees Celsius, which is 212 degrees Fahrenheit, at sea level. That temperature drops as the air pressure changes, like at higher elevations, so it stays 100 only right at sea level.",
+      "precedingFields": {
+        "shouldRespond": "RESPOND",
+        "contexts": [
+          "simple"
+        ],
+        "intents": [],
+        "replyEffectStatus": "none",
+        "calendarReadBindings": [],
+        "notesRequestEffect": {
+          "classification": "unresolved",
+          "operations": []
+        },
+        "visualContinuation": {
+          "disposition": "none",
+          "viewId": "chat",
+          "reason": "Simple factual question, no navigation requested."
+        }
+      },
+      "offlineGateReplay": {
+        "gateResult": true,
+        "chunks": 30
+      }
+    },
+    {
+      "prompt": "How many continents are there? Two sentences.",
+      "tokenFrames": 1,
+      "provisionalFrames": 0,
+      "nonProvisionalFrames": 1,
+      "firstTokenMs": 1861,
+      "firstCompleteSentenceMs": 1861,
+      "replyReadyMs": 1922,
+      "doneMs": 1946,
+      "finalDiffersFromLastDraft": null,
+      "finalChars": 191,
+      "lastDraftChars": null,
+      "tokenTimesMs": [
+        1861
+      ],
+      "tokenLengths": [
+        191
+      ],
+      "finalText": "There are seven continents: Africa, Antarctica, Asia, Australia, Europe, North America, and South America. The count varies by school of thought, but seven is the most widely used convention.",
+      "precedingFields": {
+        "shouldRespond": "RESPOND",
+        "contexts": [
+          "simple"
+        ],
+        "intents": [],
+        "replyEffectStatus": "none",
+        "calendarReadBindings": [],
+        "notesRequestEffect": {
+          "classification": "read_only",
+          "operations": []
+        },
+        "visualContinuation": {
+          "disposition": "none",
+          "viewId": "chat",
+          "reason": "Simple factual question with no navigation requested."
+        }
+      },
+      "offlineGateReplay": {
+        "gateResult": true,
+        "chunks": 28
+      }
+    },
+    {
+      "prompt": "What language is spoken in Brazil? Two sentences.",
+      "tokenFrames": 1,
+      "provisionalFrames": 0,
+      "nonProvisionalFrames": 1,
+      "firstTokenMs": 1716,
+      "firstCompleteSentenceMs": 1716,
+      "replyReadyMs": 1764,
+      "doneMs": 1822,
+      "finalDiffersFromLastDraft": null,
+      "finalChars": 155,
+      "lastDraftChars": null,
+      "tokenTimesMs": [
+        1716
+      ],
+      "tokenLengths": [
+        155
+      ],
+      "finalText": "Portuguese is the language spoken in Brazil, specifically Brazilian Portuguese with its own distinct pronunciation and vocabulary from European Portuguese.",
+      "precedingFields": {
+        "shouldRespond": "RESPOND",
+        "contexts": [
+          "simple"
+        ],
+        "intents": [],
+        "replyEffectStatus": "none",
+        "calendarReadBindings": [],
+        "notesRequestEffect": {
+          "classification": "read_only",
+          "operations": []
+        },
+        "visualContinuation": "{\"disposition\": \"none\", \"viewId\": \"chat\", \"reason\": \"No navigation requested; general knowledge question."
+      },
+      "offlineGateReplay": {
+        "gateResult": true,
+        "chunks": 23
+      }
+    },
+    {
+      "prompt": "What is the tallest mountain on Earth? Two sentences.",
+      "tokenFrames": 1,
+      "provisionalFrames": 0,
+      "nonProvisionalFrames": 1,
+      "firstTokenMs": 4050,
+      "firstCompleteSentenceMs": 4050,
+      "replyReadyMs": 4105,
+      "doneMs": 4171,
+      "finalDiffersFromLastDraft": null,
+      "finalChars": 125,
+      "lastDraftChars": null,
+      "tokenTimesMs": [
+        4050
+      ],
+      "tokenLengths": [
+        125
+      ],
+      "finalText": "Mount Everest is the tallest mountain on Earth. It stands about 29,032 feet above sea level on the border of Nepal and Tibet.",
+      "precedingFields": {
+        "shouldRespond": "RESPOND",
+        "contexts": [
+          "simple"
+        ],
+        "intents": [],
+        "replyEffectStatus": "none",
+        "calendarReadBindings": [],
+        "notesRequestEffect": {
+          "classification": "read_only",
+          "operations": []
+        },
+        "visualContinuation": {
+          "disposition": "none",
+          "viewId": "chat",
+          "reason": "Simple factual question with no navigation requested."
+        }
+      },
+      "offlineGateReplay": {
+        "gateResult": null,
+        "chunks": 0
+      }
+    },
+    {
+      "prompt": "Who painted the Mona Lisa? Two sentences.",
+      "tokenFrames": 1,
+      "provisionalFrames": 0,
+      "nonProvisionalFrames": 1,
+      "firstTokenMs": 2010,
+      "firstCompleteSentenceMs": 2010,
+      "replyReadyMs": 2062,
+      "doneMs": 2096,
+      "finalDiffersFromLastDraft": null,
+      "finalChars": 123,
+      "lastDraftChars": null,
+      "tokenTimesMs": [
+        2010
+      ],
+      "tokenLengths": [
+        123
+      ],
+      "finalText": "Leonardo da Vinci painted the Mona Lisa. He worked on it from around 1503 to 1519, and it now hangs in the Louvre in Paris.",
+      "precedingFields": {
+        "shouldRespond": "RESPOND",
+        "contexts": [
+          "simple"
+        ],
+        "intents": [],
+        "replyEffectStatus": "none",
+        "calendarReadBindings": [],
+        "notesRequestEffect": {
+          "classification": "read_only",
+          "operations": []
+        },
+        "visualContinuation": {
+          "disposition": "none",
+          "viewId": "chat",
+          "reason": "No navigation requested, just a factual question."
+        }
+      },
+      "offlineGateReplay": {
+        "gateResult": true,
+        "chunks": 18
+      }
+    },
+    {
+      "prompt": "How many legs does a spider have? Two sentences.",
+      "tokenFrames": 1,
+      "provisionalFrames": 0,
+      "nonProvisionalFrames": 1,
+      "firstTokenMs": 1867,
+      "firstCompleteSentenceMs": 1867,
+      "replyReadyMs": 1922,
+      "doneMs": 1947,
+      "finalDiffersFromLastDraft": null,
+      "finalChars": 163,
+      "lastDraftChars": null,
+      "tokenTimesMs": [
+        1867
+      ],
+      "tokenLengths": [
+        163
+      ],
+      "finalText": "A spider has eight legs. The eight legs are one reason spiders are sometimes confused with other arachnids, but it's what makes them arachnids rather than insects.",
+      "precedingFields": {
+        "shouldRespond": "RESPOND",
+        "contexts": [
+          "simple"
+        ],
+        "intents": [],
+        "replyEffectStatus": "none",
+        "calendarReadBindings": [],
+        "notesRequestEffect": {
+          "classification": "read_only",
+          "operations": []
+        },
+        "visualContinuation": "{\"disposition\": \"none\", \"viewId\": \"chat\", \"reason\": \"Simple factual question, no navigation requested."
+      },
+      "offlineGateReplay": {
+        "gateResult": true,
+        "chunks": 24
+      }
+    }
+  ]
+}

@@ -1330,7 +1330,7 @@ export function installAgentAdapter(Component: Shell, views: Shell) {
       }
       delivered=await input.navigation.apply(target,current,(chat,onCommitted)=>new Promise<boolean>((resolve,reject)=>{try{current();if(!openInternalView(this,target,chat)){resolve(false);return;}this.setState({},()=>{try{current();context(this);const switched=(this.S().view||'home')===target&&!alphaClient.getState().context.sensitive;if(switched)onCommitted(alphaClient.getState().context);resolve(switched);}catch(error){reject(error);}});}catch(error){reject(error);}}));return delivered;}finally{input.navigation.finish(delivered);}
   };
-  p.sendVoiceTurn = async function(input:{text:string;turnId:string;voiceTurnSignal:import('../runtime/alpha-client').VoiceTurnSignal;signal:AbortSignal;binding:import('../runtime/alpha-client').VoiceConversationBinding;context:import('../runtime/alpha-client').ContextEnvelope;assertCurrent:()=>void;onProgress?:(value:BatchProgressCue)=>void;onReplyStarted?:()=>void;navigation?:import('../runtime/alpha-client').VoiceNavigationContinuation}){
+  p.sendVoiceTurn = async function(input:{text:string;turnId:string;voiceTurnSignal:import('../runtime/alpha-client').VoiceTurnSignal;signal:AbortSignal;binding:import('../runtime/alpha-client').VoiceConversationBinding;context:import('../runtime/alpha-client').ContextEnvelope;assertCurrent:()=>void;onProgress?:(value:BatchProgressCue)=>void;onReplyStarted?:()=>void;onText?:(text:string,frame:import('../runtime/voice-assistant').AssistantTextFrame)=>void;navigation?:import('../runtime/alpha-client').VoiceNavigationContinuation}){
     const {text,turnId,signal,binding}=input;let acceptedContext=input.context;
     const belongs=()=>{try{signal.throwIfAborted();input.assertCurrent();return this.live&&!document.hidden&&connectionController.voiceConversationCurrent(binding)&&JSON.stringify(alphaClient.getState().context)===JSON.stringify(acceptedContext);}catch{return false;}};
     const current=()=>{signal.throwIfAborted();input.assertCurrent();context(this);if(!belongs())throw Error('The voice conversation changed.');};
@@ -1345,7 +1345,14 @@ export function installAgentAdapter(Component: Shell, views: Shell) {
       batchVoiceProgressEvents.addEventListener('progress',progress);
       batchVoiceReplyEvents.addEventListener('reply',replyStarted);
       let reply;
-      try{reply=await alphaClient.send(text,value=>{current();streamed=true;this.setState((previous:Shell)=>belongs()?{msgs:previous.msgs.some((m:Shell)=>m.id===streamId)?previous.msgs.map((m:Shell)=>m.id===streamId?{...m,text:value}:m):[...previous.msgs,{id:streamId,from:'agent',text:value,streaming:true}]}:null);},undefined,undefined,{channelType:'VOICE_DM',requestId:turnId,signal,expectedConversationId:binding.conversationId,voiceTurnSignal:input.voiceTurnSignal});}
+      // Only confirmed text reaches the voice session's early speech. Provisional text (a Stage-1
+      // draft or action status) is shown but never spoken, and after it this turn's confirmed reply
+      // decides what is spoken.
+      let provisionalSeen=false;
+      try{reply=await alphaClient.send(text,(value,frame)=>{current();streamed=true;
+        if(frame?.provisional!==false)provisionalSeen=true;
+        else if(input.onText&&!provisionalSeen)try{input.onText(value,{origin:'model',provisional:false,...(frame.direct?{direct:true}:{})});}catch{/* Early speech is advisory; the confirmed reply still plays. */}
+        this.setState((previous:Shell)=>belongs()?{msgs:previous.msgs.some((m:Shell)=>m.id===streamId)?previous.msgs.map((m:Shell)=>m.id===streamId?{...m,text:value}:m):[...previous.msgs,{id:streamId,from:'agent',text:value,streaming:true}]}:null);},undefined,undefined,{channelType:'VOICE_DM',requestId:turnId,signal,expectedConversationId:binding.conversationId,voiceTurnSignal:input.voiceTurnSignal});}
       finally{batchVoiceProgressEvents.removeEventListener('progress',progress);batchVoiceReplyEvents.removeEventListener('reply',replyStarted);}
       input.onReplyStarted?.();
       current();const identity=reply.messageBinding;

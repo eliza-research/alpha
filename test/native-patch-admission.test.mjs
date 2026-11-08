@@ -99,3 +99,32 @@ for(const scenario of ['existing','namespace','module','output'])test(`shared sp
  if(scenario==='output')patch.targets[0].afterSha256='0'.repeat(64);
  assert.throws(()=>materializeNativePatches(args),/mismatch|output differs/);
 }));
+
+// consumer.gradle compiles the shared speech JNI from the prepared root, so that source is staged
+// from the pin byte for byte and can never be patched.
+const speechJniSource='packages/app/platforms/android/app/src/main/elizavoice-jni';
+test('shared speech JNI companion inputs are copied byte-exact with source hashes',()=>fixture(args=>{
+ const entries=new Map(['CMakeLists.txt','elizavoice-jni.cpp'].map(name=>{
+  const bytes=Buffer.from('reviewed '+name+'\n');
+  return [speechJniSource+'/'+name,{bytes,mode:'100644',sha256:sha(bytes)}];
+ }));
+ args.manifest.modules=[speechJniSource];args.manifest.patches=[];
+ args.source.read=prefix=>{assert.equal(prefix,speechJniSource);return entries;};
+ const result=materializeNativePatches(args);
+ for(const [name,file] of entries){
+  assert.equal(result.files[name],file.sha256);
+  assert.deepEqual(fs.readFileSync(path.join(args.temporary,name)),file.bytes);
+ }
+}));
+test('shared speech JNI companion admission does not authorize source patches',()=>fixture(args=>{
+ assert.throws(()=>materializeNativePatches(args),/companion source is read-only/);
+},speechJniSource));
+test('the committed manifest stages the speech JNI source and the speech module points CMake at authenticated inputs',()=>{
+ const manifest=JSON.parse(fs.readFileSync('patches/eliza/native-manifest.json','utf8'));
+ assert.ok(manifest.modules.includes(speechJniSource));
+ assert.equal(manifest.patches.some(patch=>patch.module===speechJniSource),false);
+ const gradle=fs.readFileSync('android/local-speech/build.gradle','utf8');
+ assert.match(gradle,/ext\.elizaParadeeFfiIncludeDir = file\('\.\.\/\.\.\/vendor\/eliza\/plugins\/plugin-local-inference\/native\/llama\.cpp\/tools\/omnivoice\/include'\)/);
+ const consumer=fs.readFileSync('vendor/eliza/plugins/plugin-local-inference/native/android/consumer.gradle','utf8');
+ assert.match(consumer,/def jniSource = new File\(paradeeSource, '\.\.\/\.\.\/\.\.\/\.\.\/packages\/app\/platforms\/android\/app\/src\/main\/elizavoice-jni'\)/,'the prepared root holds the JNI source at this relative path');
+});

@@ -781,7 +781,7 @@
      if (s != null && (token == null || s.token.equals(token)))
 --- a/plugins/plugin-native-media/android/src/main/java/ai/eliza/plugins/media/PermittedMediaCatalog.java
 +++ b/plugins/plugin-native-media/android/src/main/java/ai/eliza/plugins/media/PermittedMediaCatalog.java
-@@ -71,17 +71,51 @@
+@@ -73,17 +73,51 @@
    };
    private static final class Page {
      final String snapshot, query, kind;
@@ -836,27 +836,26 @@
 +    return " AND (" + SHOT + "<? OR (" + SHOT + "=? AND _id<?))";
 +  }
    private boolean observing;
+   private final PhotoLibraryAccess.Profile profile;
    public PermittedMediaCatalog(Context context, Runnable changed) {
-     this(context, true, changed);
-@@ -246,6 +280,9 @@
-         Build.VERSION.SDK_INT >= 30 ? FIELDS : java.util.Arrays.copyOf(FIELDS, 8)));
+@@ -250,6 +284,8 @@
      if (video)
        result.add(MediaStore.Video.VideoColumns.DURATION);
+     result.add(MediaStore.MediaColumns.BUCKET_DISPLAY_NAME);
 +    // Folder and capture time, read by name: Camera/Screenshots albums, day headers and Info.
 +    result.add(MediaStore.MediaColumns.RELATIVE_PATH);
-+    result.add(MediaStore.MediaColumns.DATE_TAKEN);
+     result.add(MediaStore.MediaColumns.DATE_TAKEN);
      return result.toArray(new String[0]);
    }
-   private String revision(Cursor row, String volume) {
-@@ -277,6 +314,7 @@
-     result.put("identity",
-         version(volume) + ":" + row.getLong(3)
-             + (Build.VERSION.SDK_INT >= 30 ? ":" + row.getLong(8) : ""));
+@@ -288,6 +324,7 @@
+     result.put("bucket", folder.substring(0, Math.min(256, folder.length())));
+     int taken = row.getColumnIndex(MediaStore.MediaColumns.DATE_TAKEN);
+     result.put("dateTaken", taken < 0 || row.isNull(taken) ? 0 : row.getLong(taken));
 +    OwnedMediaLibrary.putPlace(result, row);
      return result;
    }
    public Uri uri(MediaLibraryKey key) {
-@@ -303,6 +341,15 @@
+@@ -314,6 +351,15 @@
        main.removeCallbacks(timeout);
      }
    }
@@ -872,7 +871,7 @@
    private boolean readable(boolean video) {
      return !"denied".equals(access().getString(video ? "videos" : "images"));
    }
-@@ -351,8 +398,8 @@
+@@ -380,8 +426,8 @@
        long from, long to, int limit) throws Exception {
      if (from < 0 || to < from || limit < 1 || limit > PAGE_SIZE)
        throw new IllegalArgumentException("Invalid bounded media query");
@@ -883,7 +882,7 @@
        throw new IllegalArgumentException("Unsupported media filter");
      String pageKind = kind + ":" + filter + ":" + from + ":" + to + ":" + limit;
      if (search == null || search.length() > 128 || search.indexOf('\0') >= 0 || kind == null
-@@ -360,89 +407,93 @@
+@@ -389,89 +435,93 @@
        throw new IllegalArgumentException("Invalid photo query");
      List<String> volumes = volumes();
      String snapshot = snapshot(volumes);
@@ -1048,7 +1047,7 @@
      }
      current(snapshot, volumes);
      JSObject result = new JSObject();
-@@ -564,7 +615,7 @@
+@@ -600,7 +650,7 @@
      List<String> volumes = volumes();
      String snapshot = snapshot(volumes);
      long until = SystemClock.elapsedRealtime() + 3000;
@@ -1057,7 +1056,7 @@
      for (String volume : volumes)
        for (boolean video : new boolean[] {false, true}) {
          if (!readable(video))
-@@ -574,8 +625,8 @@
+@@ -610,8 +660,8 @@
          if (Build.VERSION.SDK_INT >= 30)
            args.putInt(MediaStore.QUERY_ARG_MATCH_TRASHED, MediaStore.MATCH_INCLUDE);
          String[] projection = Build.VERSION.SDK_INT >= 30
@@ -1068,7 +1067,7 @@
          try (Cursor rows = query(volume, video, args, projection)) {
            if (rows == null)
              throw new IllegalStateException("Media provider unavailable");
-@@ -590,6 +641,11 @@
+@@ -626,6 +676,11 @@
                videos++;
              if (Build.VERSION.SDK_INT >= 30 && rows.getInt(0) == 1)
                favorites++;
@@ -1080,7 +1079,7 @@
            }
          }
        }
-@@ -597,6 +653,8 @@
+@@ -633,6 +688,8 @@
      JSObject result = new JSObject();
      result.put("favorites", favorites);
      result.put("videos", videos);
@@ -1228,7 +1227,7 @@
  
    private PhotoLibraryAccess() {}
  
-@@ -80,17 +87,17 @@
+@@ -134,17 +141,17 @@
  
    /**
     * Which permitted listing the Photos grid's {@code album} parameter reads, as
@@ -1251,7 +1250,7 @@
      };
    }
  
-@@ -153,14 +160,16 @@
+@@ -207,14 +214,16 @@
    }
  
    /**
@@ -1273,7 +1272,7 @@
        case "restore":
 --- a/plugins/plugin-native-media/android/src/main/java/ai/eliza/plugins/media/PhotosPlugin.java
 +++ b/plugins/plugin-native-media/android/src/main/java/ai/eliza/plugins/media/PhotosPlugin.java
-@@ -313,18 +313,51 @@
+@@ -121,18 +121,51 @@
      });
    }
  
@@ -1327,7 +1326,7 @@
    @PluginMethod
    public void editResult(PluginCall call) {
      if (VideoCopyEdits.isVideoOperation(call.getString("operationId"))) {
-@@ -451,22 +484,59 @@
+@@ -259,22 +292,59 @@
            call.resolve(albums.list(album.substring(7), call.getString("before", "")));
            return;
          }
@@ -1389,7 +1388,7 @@
    @PluginMethod
    public void read(PluginCall call) {
      diagnostic(Diagnostic.READ_INVOKED);
-@@ -545,7 +615,7 @@
+@@ -352,7 +422,7 @@
      submit(call, () -> {
        try {
          JSArray items = call.getArray("items");
@@ -1398,7 +1397,7 @@
            throw new IllegalArgumentException();
          ArrayList<Uri> uris = new ArrayList<>();
          Set<String> unique = new HashSet<>();
-@@ -635,7 +705,9 @@
+@@ -442,7 +512,9 @@
          String operation = call.getString("operation", "");
          boolean[] change = PhotoLibraryAccess.batchChange(operation);
          JSArray items = call.getArray("items");

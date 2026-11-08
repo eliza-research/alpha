@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "baseCommit": "475a8d59dc1811c2cde093613519906a5a3f6457",
+  "baseCommit": "4787d51a142c63c98371c832997184c53f7218d3",
   "patches": [
     {
       "file": "google-browser-sign-in.patch",
@@ -80,7 +80,7 @@
     },
     {
       "file": "photos-library.patch",
-      "sha256": "5f531b35a2288f8d24cbc1710d0b4558f199291ef7a1338a490982e54ab005c0",
+      "sha256": "f7a117624b3aa2f93c909b8d1e919a3439b424c367a9f26baf2cac891fefe274",
       "module": "plugins/plugin-native-media/android",
       "targets": [
         {
@@ -100,8 +100,8 @@
         },
         {
           "path": "plugins/plugin-native-media/android/src/main/java/ai/eliza/plugins/media/PermittedMediaCatalog.java",
-          "beforeSha256": "e1ab1a24393b45b05025415e8809b3dd61b3e7f0d9bb757395123791bec1814a",
-          "afterSha256": "92dbdd426903bb24978d558c184219fc1f70e1ae2e511fab6c3d22a12437bbb4"
+          "beforeSha256": "f03983b15814b42b321771e57d1b0d483135b853ea12bf52c6720df3578f79fc",
+          "afterSha256": "4b4a1c29887d3dc0e131f2f6f17a53e55f810367858244c6ad91b15775d1d3e9"
         },
         {
           "path": "plugins/plugin-native-media/android/src/main/java/ai/eliza/plugins/media/PermittedMediaReview.java",
@@ -110,13 +110,13 @@
         },
         {
           "path": "plugins/plugin-native-media/android/src/main/java/ai/eliza/plugins/media/PhotoLibraryAccess.java",
-          "beforeSha256": "f56c327aaed4f2e30770201bf9e4c5976764c00a31c7e279f3eb3051fd843e4b",
-          "afterSha256": "4ee226a2eaf5ee21cdc77669a301b29152a5d3b72ffda46b1d4cb9ac251646b7"
+          "beforeSha256": "33d8da93b0d6f84952edcd3e5af0198bf4f6de6bc62219dc20ed684cf9ec5b34",
+          "afterSha256": "2b8426d67030dc4902b3ae9ef9ec850ba87b6a0bbfb521563ab2b9fae9012be2"
         },
         {
           "path": "plugins/plugin-native-media/android/src/main/java/ai/eliza/plugins/media/PhotosPlugin.java",
-          "beforeSha256": "62e8269a02b73c580824c0c946f6a12123d88db3fc9e525b5439cb7af969d92b",
-          "afterSha256": "8afabf1acaee115cf79eed141c1e7f966027c5cc89262c84ee1eb7b2d5163ec3"
+          "beforeSha256": "b8de6359c6b7d99a11a053d0f1903383cb8d5814a5905ee734f6951608931a54",
+          "afterSha256": "3a425a23ed05635c2b3feba3f368dafb3aff6af095460de4abe11c3a607d7b5e"
         }
       ]
     },
@@ -163,6 +163,7 @@
     }
   ],
   "modules": [
+    "packages/app/platforms/android/app/src/main/elizavoice-jni",
     "packages/auth/android",
     "plugins/plugin-local-inference/native/android",
     "plugins/plugin-native-action-journal/android",
@@ -172,6 +173,7 @@
     "plugins/plugin-native-notifications/android",
     "plugins/plugin-native-reminders/android",
     "plugins/plugin-native-secure-store/android",
+    "plugins/plugin-native-secure-store/android-nativeonly",
     "plugins/plugin-native-system/android"
   ]
 }

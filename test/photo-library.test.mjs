@@ -9,7 +9,8 @@ const media='vendor/eliza/plugins/plugin-native-media/android/src/main/java/ai/e
 const registration=readFileSync('android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaPhotoLibraryPlugin.java','utf8');
 const java=compact(readFileSync(media+'DeviceLibraryPlugin.java','utf8'));
 const access=compact(readFileSync(media+'PhotoLibraryAccess.java','utf8'));
-const sharedPhotos=compact(readFileSync(media+'PhotosPlugin.java','utf8'));
+// PhotosPlugin extends the shared read-only PermittedPhotosPlugin (elizaOS/eliza#38937); read both.
+const sharedPhotos=compact(readFileSync(media+'PhotosPlugin.java','utf8')+readFileSync(media+'PermittedPhotosPlugin.java','utf8'));
 const manifest=readFileSync('android/app/src/main/AndroidManifest.xml','utf8');
 const adapter=readFileSync('apps/app/src/prototype/photo-library-adapter.ts','utf8');
 
@@ -213,7 +214,7 @@ test('agent album observes only while open and falls back to a bounded fresh cat
  assert.doesNotMatch(java,/new PermittedMediaCatalog\(|new PermittedMediaReview\(/,'the device library constructs no second catalog or review');
  assert.match(java,/catalog\.watch\("library",watching\)/);
  const photos=sharedPhotos;
- assert.match(photos,/permitted=new PermittedMediaCatalog\(getContext\(\),false,\(\)->\{if\(!destroyed\)\{diagnostic\(Diagnostic\.LIBRARY_CHANGED_CATALOG\);notifyListeners\("libraryChanged",new JSObject\(\)\);\}\}\);/,'Photos observes only while its grid is open; catalog diagnostics and notification share the destroyed guard');
+ assert.match(photos,/permitted=new PermittedMediaCatalog\(getContext\(\),false,\(\)->\{if\(!destroyed\)\{diagnostic\(Diagnostic\.LIBRARY_CHANGED_CATALOG\);notifyListeners\("libraryChanged",new JSObject\(\)\);\}\},profile\);/,'Photos observes only while its grid is open; catalog diagnostics and notification share the destroyed guard');
  assert.match(photos,/permitted\.watch\("photos",active\)/);
  const camera=readFileSync('apps/app/src/prototype/camera-adapter.ts','utf8');
  assert.match(camera,/watchLibrary\(!disposed&&!document\.hidden&&!!photosApi\?\.isActive\(\)&&permittedLibrary\(\)\)/);
