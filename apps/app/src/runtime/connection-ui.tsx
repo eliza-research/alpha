@@ -12,7 +12,7 @@ import {CAMERA_CAPTURE_CAPABILITY} from '../../../../.eliza/client-features/plug
 import {sanitizeCloudInferenceFailure,type CloudInferenceFailure} from './crash-log';
 import {sanitizeNativeInferenceTiming,type NativeInferenceTiming,type NativeInferenceVoiceJoin} from './diagnostics-export';
 import {activeVoiceTurn} from './voice-timing';
-import {residentRecoveryReason,residentRecoveryMessage,residentRecoveryCopy,RESIDENT_RECOVERY_PENDING,type ResidentRecoveryReason,type ResidentRecoveryView} from './resident-recovery';
+import {residentRecoveryReason,residentRecoveryMessage,residentRecoveryCopy,residentBootMessage,residentLivenessCheck,RESIDENT_RECOVERY_PENDING,type ResidentRecoveryReason,type ResidentRecoveryView} from './resident-recovery';
 import {anyAbortSignal} from './abort-signal';
 import {CALENDAR_APPROVAL_READ_PATH,calendarApprovalFromList,calendarApprovalId} from './calendar-approval';
 import {readDevicePreferences} from '../browser/device-preferences';
@@ -50,7 +50,7 @@ import { PersonalProtocolError, type CloudPersonalProtocol, type PersonalView, t
 import { holdPhoneInert } from './modal-inert';
 import { pauseHostedBackground } from './hosted-background';
 import {developmentDeviceStore,developmentActionJournal} from './local-agent-storage';
-import { reviewLocalRecovery,archiveLocalRecovery,stopLocalAgent, configureLocalProvider, bindResidentCloudProvider, LocalCloudProviderStopUnconfirmed, LocalAgentProtocol, nativeVoiceTraceId, localAgentPackaged, localAgentStopped, browserLocalAgentEnabled, localProviderStatus, clearLocalProvider, clearLocalProviderIfCurrent, providerStatusLabel, LOCAL_PROVIDER_MODEL, selectLocalProvider,editLocalProviderKeys,removeLocalProviderKey,revealLocalProviderKey,type LocalProviderKey,type LocalProviderReveal,type ManagedLocalProviderStatus,type LocalProviderStatus } from './local-agent';
+import { reviewLocalRecovery,archiveLocalRecovery,stopLocalAgent,localAgentBootStatus, configureLocalProvider, bindResidentCloudProvider, LocalCloudProviderStopUnconfirmed, LocalAgentProtocol, nativeVoiceTraceId, localAgentPackaged, localAgentStopped, browserLocalAgentEnabled, localProviderStatus, clearLocalProvider, clearLocalProviderIfCurrent, providerStatusLabel, LOCAL_PROVIDER_MODEL, selectLocalProvider,editLocalProviderKeys,removeLocalProviderKey,revealLocalProviderKey,type LocalProviderKey,type LocalProviderReveal,type ManagedLocalProviderStatus,type LocalProviderStatus } from './local-agent';
 import { presentDeviceRecordOperation } from './device-record-presentation';
 import {checkinDisplayText, succeededBrowserDestination, systemNoticeDisplayText, systemNoticeKind, type SystemNoticeKind } from './action-message-presentation';
 import type { MessagePage } from './remote-protocol';
@@ -400,7 +400,7 @@ async function flushConversationEvents(){
   const generation=epoch,controller=new AbortController();conversationEventRead=controller;conversationResync=false;
   const current=()=>{controller.signal.throwIfAborted();if(epoch!==generation||active!==selected||state.session!==session||conversationMemory.get(conversationKey(session))!==id)throw Error('Conversation event binding changed');};
   try{const result=await readConversation(selected,id,controller.signal,current);current();if(sending||operation){conversationResync=true;return;}deliverConversationMessages(selected,session,id,result.messages);}
-  catch{if(!controller.signal.aborted&&active===selected&&state.session===session)update({conversationEvents:'unavailable'});}
+  catch{if(!controller.signal.aborted&&active===selected&&state.session===session){update({conversationEvents:'unavailable'});checkResidentAlive(generation);}}
   finally{if(conversationEventRead===controller)conversationEventRead=undefined;}
 }
 function startConversationEvents(selected:Active,session:VerifiedSession){
@@ -414,7 +414,7 @@ function startConversationEvents(selected:Active,session:VerifiedSession){
     const row=message as Record<string,unknown>;
     if(row.role!=='assistant'||typeof row.id!=='string'||!row.id||row.id.length>128||typeof row.text!=='string')return;
     deliverConversationMessages(selected,session,event.conversationId,[row]);
-  },(status,resync)=>{if(!current())return;if(resync)conversationResync=true;update({conversationEvents:status});});
+  },(status,resync)=>{if(!current())return;if(resync)conversationResync=true;update({conversationEvents:status});if(status==='unavailable')checkResidentAlive(generation);});
 }
 /** Insert canonical delivery IDs around known history anchors without cancelling or replacing drafts/streams. */
 export function mergeConversationDelivery<T extends{id:string}>(current:T[],delivered:T[]):T[]{
@@ -848,12 +848,26 @@ function retire(name?: string) {
 let residentRestartEpoch = -1;
 /** The resident this connection used is gone (a new native process, or it refused its own session):
  * retire it as recovering and start it again once for that epoch. Nothing is resent. */
-function residentLost(generation: number) {
-  if (generation !== epoch) return;
-  retire(); update({ kind: 'recovering' });
-  if (residentRestartEpoch === generation) return;
+function residentLost(generation: number, bootReason?: string) {
+  if (generation !== epoch || residentRestartEpoch === generation) return;
   residentRestartEpoch = generation;
-  if (operation) queueResidentRebind(); else void Promise.resolve().then(ensureResident);
+  retire(); update({ kind: 'recovering' });
+  if (operation) { queueResidentRebind(); return; }
+  const recoveryEpoch = epoch;
+  void Promise.resolve().then(async () => {
+    if (epoch !== recoveryEpoch) return;
+    await ensureResident();
+    if (epoch === recoveryEpoch && bootReason !== undefined && !active && !state.residentRecoveryReason)
+      update({ error: residentBootMessage(bootReason), errorKind: null });
+  });
+}
+let residentAlive: ReturnType<typeof residentLivenessCheck> | undefined;
+function checkResidentAlive(generation: number) {
+  if (generation !== epoch || active?.kind !== 'resident') return;
+  residentAlive ??= residentLivenessCheck(localAgentBootStatus);
+  void residentAlive().then(status => {
+    if (status && generation === epoch && active?.kind === 'resident') residentLost(generation, status.reason ?? '');
+  });
 }
 /** Test mocks only (the mock-mode exit and fixtures): where no resident runs, remember "offline". */
 function persistOffline(): string {
@@ -2802,6 +2816,11 @@ export const connectionController = {
     });
     if(archived)await connectionController.startLocal();
   },
+  async retryStartup() {
+    if(operation||document.hidden||state.residentRecoveryReason!=='runtime-identity-unavailable'||state.session)return;
+    update({residentRecoveryReason:undefined,error:''});
+    await connectionController.startLocal();
+  },
   async restoreSavedSignIn() {
     if(!isAndroid||!residentCloudFlow()||residentEnvironment()!=='production'||(state.signIn&&state.signIn.environment!=='production')||operation||state.cloudAccount||!cloudSignIn?.restoreSavedSignIn)return;
     await work('Restoring saved sign-in…',async signal=>{
@@ -3565,6 +3584,7 @@ export const connectionController = {
       }
       // The native process this send used was replaced: the outcome stays unknown, the agent restarts.
       if (selected.kind === 'resident' && generation === epoch && selected === active && (error as { code?: unknown } | null)?.code === 'LOCAL_AGENT_EPOCH_CHANGED') residentLost(generation);
+      else if (selected.kind === 'resident' && !signal.aborted) checkResidentAlive(generation);
       throw error;
     } finally { signal.removeEventListener('abort', cancel); if (sending === controller) { sending = null; /* Let the caller commit this reply before a deferred plan rebind. */ setTimeout(()=>{update({});runQueuedResidentRebind();},0); } }
   },
@@ -4019,6 +4039,7 @@ function ResidentRecoveryPanel({snapshot}:{snapshot:ConnectionSnapshot}) {
   return reason&&!snapshot.session&&<section aria-label="Restart Alpha">
     <p role="status">{residentRecoveryCopy(reason,recovery)}</p>
     {reason==='ipc-recovery-retention-limit'&&<button disabled={snapshot.busy} onClick={()=>void connectionController.restartRecovery()}>Restart Alpha</button>}
+    {reason==='runtime-identity-unavailable'&&<button disabled={snapshot.busy} onClick={()=>void connectionController.retryStartup()}>Try again</button>}
   </section>;
 }
 
