@@ -10104,7 +10104,8 @@
       "models": [
         "CalendarSync",
         "BrowserDeletionPoll",
-        "BrowserJournalRetention"
+        "BrowserJournalRetention",
+        "CalendarPreservationConfirmation"
       ],
       "scope": "application",
       "treatment": "state-and-transition-projection",
@@ -12280,7 +12281,8 @@
       "sha256": "12162d3a28aba51d7fa1bf498e6a86622dc3db01796d37a98e95bb1d7e412a0b",
       "models": [
         "BrowserSession",
-        "DurableStore"
+        "DurableStore",
+        "CalendarPreservationConfirmation"
       ],
       "scope": "application",
       "treatment": "domain-contract-or-support",
@@ -17634,11 +17636,13 @@
       "models": [
         "CalendarPresentation",
         "AgentCalendarRefresh",
-        "AgentCalendarMutation"
+        "AgentCalendarMutation",
+        "CalendarPreservationConfirmation"
       ],
       "scope": "application",
       "treatment": "domain-contract-or-support",
-      "sha256": "fd33f4f66409a222560a5dfbdb2711bcda17cb4e261126531c23f10c2a3c7a57",
+      "reviewStatus": "state-audit-required",
+      "sha256": "289aa4172f0c36251db10928ef60aefbd2fd87f36a0d4c5c50097e177f2bc707",
       "stateAnchors": [
         {
           "line": 24,
@@ -17685,371 +17689,355 @@
           "text": "const mapBinding=(target:AppRecordPort)=>JSON.stringify([calendarOwnerKey(target),target.sessionId,target.scope]);"
         },
         {
-          "line": 52,
+          "line": 55,
           "text": "const originalApi=p.api;"
         },
         {
-          "line": 53,
+          "line": 56,
           "text": "p.api=function(key:string){const api=originalApi.call(this,key);if(key!=='maps')return api;return {...api,checkCanonicalCalendarReturn:async(origin:CanonicalMapsEventOrigin,signal:AbortSignal)=>{const"
         },
         {
-          "line": 56,
+          "line": 59,
           "text": "const markerKey=async(ownerKey:string)=>'alpha.calendar.retention.v1.'+Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(ownerKey)))).map(n=>n.toString(16).padSta"
         },
         {
-          "line": 57,
+          "line": 60,
           "text": "const retention=preservation??legacyCalendarPreservation({"
         },
         {
-          "line": 59,
+          "line": 62,
           "text": "const key=await markerKey(ownerKey);signal.throwIfAborted();"
         },
         {
-          "line": 60,
+          "line": 63,
           "text": "const saved=await browserDocuments.read(key,signal);signal.throwIfAborted();"
         },
         {
-          "line": 61,
+          "line": 64,
           "text": "const value=saved?.raw==null?null:JSON.parse(saved.raw);"
         },
         {
-          "line": 65,
-          "text": "const shell=owner;"
-        },
-        {
-          "line": 66,
-          "text": "const current=()=>{signal.throwIfAborted();if(!shell?.live||owner!==shell||controller?.state.ownerKey!==ownerKey)throw Error('Calendar owner changed');};"
-        },
-        {
-          "line": 67,
+          "line": 68,
           "text": "current();const key=await markerKey(ownerKey);current();"
         },
         {
-          "line": 68,
+          "line": 69,
           "text": "const before=await browserDocuments.read(key,signal);current();"
         },
         {
-          "line": 69,
+          "line": 70,
           "text": "const raw=JSON.stringify({version:1,disposition:'retained-read-only',fingerprint});"
         },
         {
-          "line": 71,
+          "line": 74,
           "text": "const confirmed=await browserDocuments.read(key,signal);current();"
         },
         {
-          "line": 76,
+          "line": 79,
           "text": "const port=()=>typeof (connectionController as any).getAppRecordClient==='function'?(connectionController as unknown as {getAppRecordClient():AppRecordPort|null}).getAppRecordClient():null;"
         },
         {
-          "line": 77,
+          "line": 80,
           "text": "const zone=()=>Intl.DateTimeFormat().resolvedOptions().timeZone||'UTC';"
         },
         {
-          "line": 78,
+          "line": 81,
           "text": "const range=(state:Bag)=>{const today=new Date(),day=new Date(today.getFullYear(),today.getMonth(),today.getDate()+Number(state.day||0));day.setMonth(day.getMonth()+Number(state.month||0));return{side"
         },
         {
-          "line": 79,
+          "line": 82,
           "text": "const invalidate=(sessionId:string)=>{const target=port();if(!target?.current()||target.sessionId!==sessionId||invalidating)return;invalidating=true;queueMicrotask(()=>{invalidating=false;const curren"
         },
         {
-          "line": 80,
+          "line": 83,
           "text": "const refresh=(force=false)=>{if(!owner?.live||!controller)return;const target=port(),window=range(owner.S?.()?.view==='calendar'?owner.vget('calendar'):{}),key=JSON.stringify([target?.identity,target"
         },
         {
-          "line": 82,
+          "line": 85,
           "text": "const readNext=()=>{if(!owner?.live||!controller)return;controller.invalidateNext();if(document.hidden)return;refresh(true);};"
         },
         {
-          "line": 83,
+          "line": 86,
           "text": "const watchNextEnd=()=>{clearTimeout(nextEnded);const end=Date.parse(controller?.state.next?.event?.endAt??'');if(end>Date.now())nextEnded=setTimeout(readNext,Math.min(end-Date.now()+1000,2147483647))"
         },
         {
-          "line": 84,
-          "text": "const resumed=()=>{if(!document.hidden&&owner?.live){readNext();}};"
-        },
-        {
-          "line": 88,
-          "text": "controller=new AgentCalendar(port,retention);this.agentCalendar=controller;this.canonicalCalendarDispose=controller.subscribe(()=>{if(owner!==this)return;watchNextEnd();if(this.live)this.setState({});"
-        },
-        {
-          "line": 93,
+          "line": 96,
           "text": "const shell=this,calendar=controller,target=port(),ownerKey=calendar?.state.ownerKey;"
         },
         {
-          "line": 94,
+          "line": 97,
           "text": "const binding=target?JSON.stringify([calendarOwnerKey(target),target.sessionId,target.scope]):'';"
         },
         {
-          "line": 95,
+          "line": 98,
           "text": "const current=()=>{const now=port();if(!now)return false;return owner===shell&&shell.live&&shell.agentCalendar===calendar&&controller===calendar&&!!now?.current()&&JSON.stringify([calendarOwnerKey(now"
         },
         {
-          "line": 96,
+          "line": 99,
           "text": "const canChange=()=>!shell.vget('calendar').form&&!shell.canonicalDraftText&&!shell.canonicalDraftInvalid&&!shell.canonicalDraft?.state.opening&&!shell.canonicalDraft?.state.consuming;"
         },
         {
-          "line": 103,
+          "line": 106,
           "text": "const state=this.vget('calendar'),model=this.agentCalendar as AgentCalendar|undefined;"
         },
         {
-          "line": 106,
+          "line": 109,
           "text": "const key=model?.sourceKeyForHandle(state.form?.cal);return key?model?.sourceSelection(key):undefined;"
         },
         {
-          "line": 110,
+          "line": 113,
           "text": "const sourceRows=()=>controller?.state.calendars.filter(c=>c.includeInFeed===true).map(c=>({id:controller!.sourceHandle(calendarSourceKey(c)),name:c.summary,sub:c.accountEmail??c.provider,account:c.ac"
         },
         {
-          "line": 111,
+          "line": 114,
           "text": "const writableRows=()=>sourceRows().filter(c=>c.writable);"
         },
         {
-          "line": 113,
+          "line": 116,
           "text": "const newEventSource=()=>{const sources=controller?.state.calendars.filter(source=>source.provider==='eliza'&&source.side==='owner'&&source.grantId==='eliza-calendar'&&source.calendarId==='primary'&&s"
         },
         {
-          "line": 115,
+          "line": 118,
           "text": "const shell=this.S(),connection=connectionController.getSnapshot(),target=port(),model=controller?.state;"
         },
         {
-          "line": 120,
+          "line": 123,
           "text": "const shell=owner,prefs=shell?.vget('calendar').calPrefs??{},colors=['acc','fg','mut'];"
         },
         {
-          "line": 121,
+          "line": 124,
           "text": "const sources=sourceRows().map(source=>{const id=source.id,preference=id?prefs[id]??{}:{},on=preference.on!==false,color=preference.color??source.color;"
         },
         {
-          "line": 122,
+          "line": 125,
           "text": "return{...source,on:true,color,change:(action:'visibility'|'color')=>{if(!id||owner!==shell||!shell?.live)return;const latest=shell.vget('calendar').calPrefs??{};shell.vset('calendar',{calPrefs:{...la"
         },
         {
-          "line": 126,
+          "line": 129,
           "text": "const state=api.get('calendar');if(state.form){api.toast('Keep or finish the current form before creating another event.');return;}"
         },
         {
-          "line": 127,
+          "line": 130,
           "text": "const target=port();if(!target?.current()){api.toast(agentPendingText(undefined,'Calendar is unavailable for this agent connection. Check Settings › Agent connection.'));return;}"
         },
         {
-          "line": 128,
+          "line": 131,
           "text": "const model=controller?.state,source=newEventSource();if(!model?.ownerKey||model.ownerKey!==calendarOwnerKey(target)||!['ready','partial','unavailable'].includes(model.status)){api.toast('Calendar is "
         },
         {
-          "line": 136,
+          "line": 139,
           "text": "const state=this.vget('calendar');if(state.form)return false;"
         },
         {
-          "line": 140,
+          "line": 143,
           "text": "const model=controller?.state,source=newEventSource();"
         },
         {
-          "line": 145,
+          "line": 148,
           "text": "const model=controller!.state;if(f.canonicalOwnerKey!==model.ownerKey)throw Error('This draft is from another account.');"
         },
         {
-          "line": 146,
+          "line": 149,
           "text": "const sourceKey=controller!.sourceKeyForHandle(f.cal);if(!sourceKey)throw Error('Choose a calendar.');"
         },
         {
-          "line": 147,
+          "line": 150,
           "text": "const selectedSource=controller!.state.calendars.find(c=>calendarSourceKey(c)===sourceKey);"
         },
         {
-          "line": 148,
+          "line": 151,
           "text": "if(!f.id){const source=newEventSource();if(!source)throw Error('Calendar is not ready to create an event. Your draft is kept.');if(calendarSourceKey(source)!==sourceKey)throw Error('Choose Calendar fo"
         },
         {
-          "line": 151,
+          "line": 154,
           "text": "const day=addDaysToLocalDate(getZonedDateParts(new Date(),zone()),Number(f.off));"
         },
         {
-          "line": 152,
+          "line": 155,
           "text": "const rules:Record<string,string[]>={none:[],daily:['RRULE:FREQ=DAILY'],weekdays:['RRULE:FREQ=WEEKLY;BYDAY=MO,TU,WE,TH,FR'],weekly:['RRULE:FREQ=WEEKLY']};if(f.repeat==='preserve'&&!f.id||f.repeat!=='p"
         },
         {
-          "line": 153,
+          "line": 156,
           "text": "let allDayRange=f.canonicalAllDay;"
         },
         {
-          "line": 154,
+          "line": 157,
           "text": "if(f.allDay&&(!allDayRange||f.off!==f.canonicalTiming?.[0])){const days=allDayRange?Math.max(1,Math.round((Date.parse(allDayRange.endDateExclusive)-Date.parse(allDayRange.startDate))/86400000)):1,end="
         },
         {
-          "line": 155,
+          "line": 158,
           "text": "const attendees=(f.who??[]).map((id:string)=>{const contact=owner!.api('calendar').person(id);if(!contact?.email)throw Error('Add an email address for each guest.');return{email:contact.email};});"
         },
         {
-          "line": 158,
+          "line": 161,
           "text": "const choices=(state:Bag,api:Bag)=>{const model=controller?.state;"
         },
         {
-          "line": 159,
+          "line": 162,
           "text": "const chooseAuthority=(authority:string)=>{if(state.form){api.toast('The current draft is kept. Finish it or return to its source before switching.');return;}api.set({calendarAuthority:authority,open:"
         },
         {
-          "line": 163,
+          "line": 166,
           "text": "if(deviceCalendarScope(owner)){const out=render(state,api);out.calendarAuthorityChoices=choices(state,api);out.calendarSourceLabel=testMocksEnabled&&browserCalendarScope(owner)?'Browser calendar (deve"
         },
         {
-          "line": 164,
+          "line": 167,
           "text": "const model=controller?.state,legacy=state.calendarAuthority==='legacy'||model&&['transition-required','legacy-recovery'].includes(model.status);"
         },
         {
-          "line": 165,
+          "line": 168,
           "text": "let unresolvedCalendarSources=0;"
         },
         {
-          "line": 166,
+          "line": 169,
           "text": "const rows:Bag[]=legacy?(model?.legacy?.readable?calendarRange(model.legacy.records as any[],{begin:Date.parse(range(state).timeMin),end:Date.parse(range(state).timeMax)}).events:[]).map((e:any)=>({id"
         },
         {
-          "line": 167,
+          "line": 170,
           "text": "const reminderRows=(state.events??[]).filter((row:Bag)=>!!row.alphaReminderId).map((row:Bag)=>({...row,cal:'alpha-reminders'}));"
         },
         {
-          "line": 169,
+          "line": 172,
           "text": "const cals=legacy?[{id:'legacy',name:'Saved app calendar · Read only',sub:'Kept on this device',color:'mut',on:true}]:sourceRows();"
         },
         {
-          "line": 172,
+          "line": 175,
           "text": "const presentationSources=[...cals,...(reminderRows.length?[{id:'alpha-reminders',name:'Reminders',sub:'On this device',color:'acc',on:true}]:[])].map(source=>{const preference=source.id?state.calPref"
         },
         {
-          "line": 173,
+          "line": 176,
           "text": "const visibleRows=rows.filter(row=>presentationSources.some(source=>source.id===row.cal&&source.on));"
         },
         {
-          "line": 174,
+          "line": 177,
           "text": "const presentation={...state,add:null,events:visibleRows,canonicalCalendars:cals,calendarPresentationSources:presentationSources};"
         },
         {
-          "line": 175,
+          "line": 178,
           "text": "const out=render(presentation,api);"
         },
         {
-          "line": 181,
+          "line": 204,
           "text": "const chosen=rows.find((e:any)=>e.id===state.open);"
         },
         {
-          "line": 184,
+          "line": 207,
           "text": "else{const target=port(),selected=controller?.selection(chosen.canonicalEventKey),origin=target?.current()?canonicalMapsEventOriginFor(chosen,state.openDay??state.day??chosen.off,mapBinding(target),se"
         },
         {
-          "line": 185,
+          "line": 208,
           "text": "if(chosen.where&&origin)out.ev.goWhere=()=>{const now=port(),current=controller?.selection(chosen.canonicalEventKey);if(!now?.current()||mapBinding(now)!==origin.binding||current?.revision!==origin.re"
         },
         {
-          "line": 186,
+          "line": 209,
           "text": "const e=chosen.canonicalEvent,policy=eventEditorMutability(e),managed=managedGoogleSource(e),recurringEvent=!!(e.recurringEventId||e.recurrence?.length),sourceReadOnly=(cals as Bag[]).find(c=>c.id===c"
         },
         {
-          "line": 190,
+          "line": 213,
           "text": "if(state.form&&state.form.cal!=='alpha-reminders'&&out.f){const f=state.form;"
         },
         {
-          "line": 191,
+          "line": 214,
           "text": "const reminderSource=out.f.cals?.filter((c:Bag)=>c.domain==='reminders')??[];out.f.cals=[...cals.filter((c:Bag)=>c.writable).map(c=>({...c,on:f.cal===c.id,pick:()=>api.set({form:{...f,cal:c.id}})})),."
         },
         {
-          "line": 192,
+          "line": 215,
           "text": "const original=model?.feed?.events.find(e=>calendarEventKey(e)===f.canonicalEventKey),recurring=!!(original?.recurringEventId||original?.recurrence?.length),managedSeries=recurring&&managedGoogleSourc"
         },
         {
-          "line": 198,
+          "line": 221,
           "text": "const selectedSourceKey=controller?.sourceKeyForHandle(f.cal),selectedSource=controller?.state.calendars.find(c=>calendarSourceKey(c)===selectedSourceKey);"
         },
         {
-          "line": 199,
+          "line": 222,
           "text": "if(!f.id){const source=newEventSource(),key=source?calendarSourceKey(source):null,eventHandle=key===null?undefined:controller?.sourceHandle(key),reminders=out.f.cals.filter((choice:Bag)=>choice.domain"
         },
         {
-          "line": 203,
+          "line": 226,
           "text": "const saveOffReason=!model||!['ready','partial','unavailable'].includes(model.status)?'Calendar is still loading. Try again in a moment.':model.mutating?'Calendar is saving. Try again in a moment.':f."
         },
         {
-          "line": 205,
+          "line": 228,
           "text": "const draft=typedForm(f);if(f.id&&recurring&&draft.recurrence!==undefined&&f.recurrenceScope!=='series')throw Error('Choose Entire series to change how it repeats.');let saved:any;"
         },
         {
-          "line": 206,
+          "line": 229,
           "text": "if(f.id){const event=model?.feed?.events.find(e=>calendarEventKey(e)===f.canonicalEventKey);if(!event)throw Error('Refresh this event before saving');const timing=JSON.stringify(f.canonicalTiming)!==J"
         },
         {
-          "line": 209,
+          "line": 232,
           "text": "const shell=owner;if(f.origin&&saved.event)void rememberNoteOrigin('event',calendarEventKey(saved.event),f.origin).then(linked=>{if(!linked&&owner===shell&&shell?.live)api.toast('Event saved. The link"
         },
         {
-          "line": 210,
+          "line": 233,
           "text": "owner?.calendarFormCommitted?.(f);const latest=api.get('calendar').form;"
         },
         {
-          "line": 213,
+          "line": 236,
           "text": "if(saved.event){const policy=eventEditorMutability(saved.event),row=canonicalCalendarRow(saved.event,zone());api.set({form:{...latest,id:row.id,canonicalEventKey:calendarEventKey(saved.event),expected"
         },
         {
-          "line": 228,
+          "line": 251,
           "text": "{const inner=views.calendar.render;views.calendar.render=function(this:unknown,state:Bag,api:Bag){const out=inner.call(this,state,api);out.deepOpening=!!state.deepOpening&&!state.open||!!state.open&&s"
         },
         {
-          "line": 229,
+          "line": 252,
           "text": "p.renderVals=function(){const out=renderVals.call(this);"
         },
         {
-          "line": 234,
+          "line": 257,
           "text": "const now=Date.now(),hidden=new Set<string>();"
         },
         {
-          "line": 235,
+          "line": 258,
           "text": "const target=port(),model=target?.current()&&controller?.state.ownerKey===calendarOwnerKey(target)?controller.state:undefined;"
         },
         {
-          "line": 236,
+          "line": 259,
           "text": "const home=homeCalendarSelection(model,zone(),hidden,new Date(now)),event=home.event;"
         },
         {
-          "line": 237,
+          "line": 260,
           "text": "const syncedAt=Date.parse(model?.feed?.syncedAt??'');"
         },
         {
-          "line": 238,
+          "line": 261,
           "text": "const confirmedEmpty=home.verified&&!event&&Number.isFinite(syncedAt)&&syncedAt>0&&syncedAt<=now&&!homeReadIsStale(syncedAt,now);"
         },
         {
-          "line": 241,
+          "line": 264,
           "text": "const failed=!!model?.error||model?.status==='error'||model?.status==='unavailable',unverified=model?.status==='partial';"
         },
         {
-          "line": 244,
+          "line": 267,
           "text": "const source=event&&home.verified?'Agent Calendar':'';"
         },
         {
-          "line": 245,
+          "line": 268,
           "text": "let feed=failed||unverified?presentHomeAgendaFeed({status:model?.error?'error':model!.status,hasItem:!!event,feedState:model?.feed?.state??null,asOf:Date.parse(model?.feed?.syncedAt??'')||null,error:m"
         },
         {
-          "line": 250,
+          "line": 273,
           "text": "const provenance={origin:'',read:feed.read,description:feed.description};"
         },
         {
-          "line": 252,
+          "line": 275,
           "text": "const day=(at:string)=>{const d=new Date(at);return new Date(d.getUTCFullYear(),d.getUTCMonth(),d.getUTCDate()).getTime();};"
         },
         {
-          "line": 253,
+          "line": 276,
           "text": "const item=event?{title:String(event.title||''),begin:event.isAllDay?day(event.startAt):Date.parse(event.startAt),end:event.isAllDay?day(event.endAt):Date.parse(event.endAt),allDay:!!event.isAllDay,vi"
         },
         {
-          "line": 256,
+          "line": 279,
           "text": "if(out.homeCalendarOverdue===true&&out.homeAgendaInput){const input=out.homeAgendaInput as HomeAgendaCardInput;return{...out,...homeCalendarValues(presentHomeAgendaCard(overdueAgendaNext(input,out.hom"
         },
         {
-          "line": 259,
+          "line": 282,
           "text": "const local=out.homeAgendaInput as HomeAgendaCardInput|undefined;"
         },
         {
-          "line": 261,
+          "line": 284,
           "text": "if(out.homeAgendaReminder===true&&local?.item&&(!item||local.item.begin<item.begin)){const retry=feed.state==='error'||feed.state==='stale';"
         }
       ]
@@ -25303,7 +25291,8 @@
         "DevelopmentDevice",
         "SettingsNav",
         "ShellNavigation",
-        "AccessibleToastLifetime"
+        "AccessibleToastLifetime",
+        "CalendarPreservationConfirmation"
       ],
       "scope": "application",
       "treatment": "state-and-transition-projection",
@@ -34914,7 +34903,8 @@
       "models": [
         "PreferencesAndPresentation",
         "SettingsNav",
-        "NativeUpdateStaging"
+        "NativeUpdateStaging",
+        "CalendarPreservationConfirmation"
       ],
       "scope": "application",
       "treatment": "state-and-transition-projection",
@@ -35603,7 +35593,8 @@
         "HomeLayout",
         "ListFocus",
         "ModalToastForwarding",
-        "DockClearanceOwnership"
+        "DockClearanceOwnership",
+        "CalendarPreservationConfirmation"
       ],
       "treatment": "stateless-presentation-contract",
       "scope": "application",
@@ -37288,11 +37279,13 @@
         "AgentCalendarMutation",
         "AgentCalendarEventReturn",
         "AgentCalendarSyncControl",
-        "GoogleCalendarLinkFlow"
+        "GoogleCalendarLinkFlow",
+        "CalendarPreservationConfirmation"
       ],
       "scope": "application",
       "treatment": "domain-contract-or-support",
-      "sha256": "755b3af7293f83a73f847043d2c56168d678ffb8e86741312c9f4af8559ea302",
+      "reviewStatus": "state-audit-required",
+      "sha256": "149a986b4e3f2a714cd6c1f41a85e5522807e5b35faba1564ba32c7b8e5c0d0e",
       "stateAnchors": [
         {
           "line": 13,
@@ -37387,135 +37380,131 @@
           "text": "const port=this.port(),previous=this.value.legacy;if(!port||!previous||!this.preservation.confirmReadOnly)throw Error('Calendar transition review is required');"
         },
         {
-          "line": 92,
-          "text": "if(!port.current())throw Error('Calendar owner or agent changed');const controller=new AbortController(),fresh=await this.preservation.capture(controller.signal);if(!port.current())throw Error('Calend"
-        },
-        {
-          "line": 97,
+          "line": 99,
           "text": "const e=this.value.feed?.events.find(e=>calendarEventKey(e)===eventKey);if(!e||typeof e.metadata.etag!=='string'||!e.metadata.etag.trim()||!e.grantId)return;"
         },
         {
-          "line": 98,
+          "line": 100,
           "text": "const matches=this.value.calendars.filter(c=>c.provider===e.provider&&c.side===e.side&&c.grantId===e.grantId&&c.calendarId===e.calendarId&&(!e.connectorAccountId||c.connectorAccountId===e.connectorAcc"
         },
         {
-          "line": 103,
+          "line": 105,
           "text": "const selected=()=>{const value=this.selection(input.eventKey);return value?.revision===input.revision&&value.sourceRevision===input.sourceRevision;};"
         },
         {
-          "line": 104,
+          "line": 106,
           "text": "const port=this.port(),epoch=this.epoch;"
         },
         {
-          "line": 107,
+          "line": 109,
           "text": "const window={timeMin:new Date(input.begin-1).toISOString(),timeMax:new Date(input.begin+1).toISOString(),timeZone:'UTC'};"
         },
         {
-          "line": 108,
+          "line": 110,
           "text": "const api=this.client(port,signal);"
         },
         {
-          "line": 109,
+          "line": 111,
           "text": "const [feed,sources]=await Promise.all([api.getLifeOpsCalendarFeed(window,{signal}),api.getLifeOpsCalendars({}, {signal})]);"
         },
         {
-          "line": 113,
+          "line": 115,
           "text": "const matches=feed.events.filter(event=>calendarEventKey(event)===input.eventKey);"
         },
         {
-          "line": 116,
+          "line": 118,
           "text": "const event=matches[0];"
         },
         {
-          "line": 118,
+          "line": 120,
           "text": "const readable=sources.calendars.filter(source=>source.includeInFeed===true&&['owner','writer','reader'].includes(source.accessRole)&&source.provider===event.provider&&source.side===event.side&&source"
         },
         {
-          "line": 121,
+          "line": 123,
           "text": "sourceSelection(sourceKey:string){const c=this.value.calendars.find(c=>calendarSourceKey(c)===sourceKey);if(!c||(!Number.isSafeInteger(c.selectionVersion)||c.selectionVersion<0))return;return{kind:'ca"
         },
         {
-          "line": 122,
+          "line": 124,
           "text": "sourceHandle(key:string){const revision=this.sourceRevisions.get(key);return revision?'agent:'+revision:undefined;}"
         },
         {
-          "line": 126,
+          "line": 128,
           "text": "const port=this.port();if(!port||calendarOwnerKey(port)!==this.value.ownerKey)throw Error('Calendar owner changed');if(!port.current())throw Error('Calendar owner or agent changed');"
         },
         {
-          "line": 127,
+          "line": 129,
           "text": "const epoch=this.epoch,signal=this.abort?.signal;if(!signal)throw Error('Calendar is not ready');"
-        },
-        {
-          "line": 130,
-          "text": "const fresh=await this.preservation.capture(signal);this.current(port,epoch,signal);"
         },
         {
           "line": 132,
-          "text": "const result=await operation(this.client(port,signal),port);this.current(port,epoch,signal);return result;"
+          "text": "const fresh=await this.preservation.capture(signal);this.current(port,epoch,signal);"
         },
         {
           "line": 134,
+          "text": "const result=await operation(this.client(port,signal),port);this.current(port,epoch,signal);return result;"
+        },
+        {
+          "line": 136,
           "text": "finally{if(epoch===this.epoch){const pending=this.deferredRefresh;this.deferredRefresh=undefined;this.publish({mutating:false});if(pending&&epoch===this.epoch)void this.refresh(pending);}}"
         },
         {
-          "line": 137,
+          "line": 139,
           "text": "const source=this.value.calendars.find(s=>calendarSourceKey(s)===sourceKey);if(!source)throw Error('Choose an authorized Calendar source');"
         },
         {
-          "line": 139,
+          "line": 141,
           "text": "return this.mutate(async(api,port)=>{const result=await api.createLifeOpsCalendarEvent({...request,side:source.side,grantId:source.grantId,calendarId:source.calendarId});if(result.outcome==='event'&&r"
         },
         {
-          "line": 142,
+          "line": 144,
           "text": "const event=this.eventForMutation(eventKey,version,patch.recurrenceScope);"
         },
         {
-          "line": 144,
+          "line": 146,
           "text": "return this.mutate(async(api,port)=>{const result=await api.updateLifeOpsCalendarEvent(event.externalId,{...patch,side:event.side,grantId:event.grantId,calendarId:event.calendarId,expectedProviderVers"
         },
         {
-          "line": 147,
+          "line": 149,
           "text": "const event=this.eventForMutation(eventKey,version,scope),mode=cancellationModeForEditorEvent(event);if(!mode)throw Error('Organizer disposition is unavailable; no cancellation was sent');if(!key.trim"
         },
         {
-          "line": 153,
+          "line": 155,
           "text": "const binding=JSON.stringify([calendarOwnerKey(port),port.sessionId,port.scope]);"
         },
         {
-          "line": 154,
+          "line": 156,
           "text": "const [control,result]=await Promise.all([api.getLinkedCalendarControl(),api.getLifeOpsCalendars({side:'owner'})]);"
         },
         {
-          "line": 160,
+          "line": 162,
           "text": "const port=this.port(),check=()=>{signal.throwIfAborted();const now=this.port();if(!port?.current()||!now||this.binding!==JSON.stringify([calendarOwnerKey(port),port.sessionId,port.scope])||this.bindi"
         },
         {
-          "line": 161,
+          "line": 163,
           "text": "check();const result=await port!.request('/api/lifeops/calendar/links?view=events','GET',undefined,signal) as {links?:unknown};check();"
         },
         {
-          "line": 168,
+          "line": 170,
           "text": "const port=this.port();"
         },
         {
-          "line": 171,
+          "line": 173,
           "text": "const epoch=this.epoch,signal=this.abort?.signal;if(!signal)throw Error('Calendar is not ready');"
         },
         {
-          "line": 173,
+          "line": 175,
           "text": "let request:UpdateLifeOpsLinkedCalendarControlRequest={operation:operation as 'pause'|'resume'|'recover',expectedRevision:review.control.revision,idempotencyKey:key};"
         },
         {
-          "line": 175,
+          "line": 177,
           "text": "const selected=operation==='select'?review.sources.find(source=>calendarSourceKey(source)===sourceKey):review.sources.find(source=>source.connectorAccountId===review.control.destination?.connectorAcco"
         },
         {
-          "line": 177,
+          "line": 179,
           "text": "const fresh=await api.getLifeOpsCalendars({side:'owner'});"
         },
         {
-          "line": 187,
+          "line": 189,
           "text": "const event=this.value.feed?.events.find(e=>calendarEventKey(e)===key);if(!event)throw Error('Refresh this event before editing');const policy=eventEditorMutability(event);"
         }
       ]
@@ -43131,11 +43120,13 @@
     {
       "path": "apps/app/src/runtime/legacy-calendar-preservation.ts",
       "models": [
-        "CalendarPresentation"
+        "CalendarPresentation",
+        "CalendarPreservationConfirmation"
       ],
       "scope": "application",
       "treatment": "domain-contract-or-support",
-      "sha256": "aca41fc3bd5772e4df762f8c9d6f82b2940765622254d3c31dc128132eb963f4",
+      "reviewStatus": "state-audit-required",
+      "sha256": "ae15dba476ea7866aeec03552a28bc79d4efa9323b617d0ac7b93244a8e4ad86",
       "stateAnchors": [
         {
           "line": 12,

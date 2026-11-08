@@ -636,3 +636,15 @@ The strict aggregate at `218935d633e6` completed all five source campaign
 families and admitted current receipts for 157 of 168 registered models.
 It exited 2 with 346 refinement obligations and 1,711 unobserved fields.
 The later mounted historical campaigns address some missing model receipts.
+
+The application and native aggregate tests allow 20 minutes per family.
+The earlier application campaign took more than 10 minutes in an isolated
+suite run, and the strict native campaign took more than 15 minutes under
+concurrent verification. Focused source tests keep separate deadlines.
+
+`CalendarPreservationConfirmation` checks ten mounted schedules and 69
+checkpoints. The current Settings view, controller port and reviewed marker
+fingerprint must agree at dispatch. An owner replacement or Back retires
+the admission and its publication. An already-dispatched owner-keyed CAS
+can settle while that review is retired. The fixture uses browser storage
+and a closed Calendar port with synthetic records.

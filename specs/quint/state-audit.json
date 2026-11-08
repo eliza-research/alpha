@@ -12,7 +12,7 @@
   "toolSha256": "403a33cab0dff7ace6219b29e7ffef373319677a7d8be6641466dd16a6750b5b",
   "dependencyLockSha256": "944123c801157a7ba3676a886d0b28a54bef32735ae96da5c6dd0f206c88c8bf",
   "sourcePin": "99b49439ce9d0cb5607e9831b9f7f58d89525029",
-  "ledgerSha256": "341472d873344245964112877cc485f811bf09302f21bc410be3db483eabebad",
+  "ledgerSha256": "42195eb164e20c754098b69587061d169fb62cb106494b8c99106ca69af6c933",
   "method": "TypeScript syntax trees for JavaScript/TypeScript and JDK compiler trees for Java. Mutable fields, bindings, containers, state hooks, write sites and asynchronous registration calls are candidates for semantic review.",
   "limitations": [
     "Candidate extraction does not establish state-machine coverage or implementation refinement.",
@@ -28,10 +28,10 @@
     "parsedFiles": 5626,
     "languageReview": 55,
     "parseErrors": 0,
-    "candidates": 67110,
-    "writeSites": 66537,
-    "writeAssociations": 59716,
-    "asynchronous": 8298,
+    "candidates": 67112,
+    "writeSites": 66542,
+    "writeAssociations": 59721,
+    "asynchronous": 8300,
     "unassignedWrites": 10188
   },
   "files": [
@@ -29503,7 +29503,8 @@
       "allocatedModels": [
         "CalendarSync",
         "BrowserDeletionPoll",
-        "BrowserJournalRetention"
+        "BrowserJournalRetention",
+        "CalendarPreservationConfirmation"
       ],
       "sourcePathClass": "other-source-path",
       "classification": "syntactic-candidates",
@@ -30560,7 +30561,8 @@
       "sha256": "12162d3a28aba51d7fa1bf498e6a86622dc3db01796d37a98e95bb1d7e412a0b",
       "allocatedModels": [
         "BrowserSession",
-        "DurableStore"
+        "DurableStore",
+        "CalendarPreservationConfirmation"
       ],
       "sourcePathClass": "other-source-path",
       "classification": "syntactic-candidates",
@@ -33338,12 +33340,14 @@
     },
     {
       "path": "apps/app/src/prototype/agent-calendar-adapter.ts",
-      "sha256": "fd33f4f66409a222560a5dfbdb2711bcda17cb4e261126531c23f10c2a3c7a57",
+      "sha256": "289aa4172f0c36251db10928ef60aefbd2fd87f36a0d4c5c50097e177f2bc707",
       "allocatedModels": [
         "CalendarPresentation",
         "AgentCalendarRefresh",
-        "AgentCalendarMutation"
+        "AgentCalendarMutation",
+        "CalendarPreservationConfirmation"
       ],
+      "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
       "classification": "syntactic-candidates",
       "owners": [
@@ -33356,42 +33360,54 @@
         {
           "owner": "installAgentCalendarAdapter",
           "line": 49,
-          "bindings": 7,
-          "writes": 19
+          "bindings": 8,
+          "writes": 23
         },
         {
-          "owner": "installAgentCalendarAdapter.typedForm",
-          "line": 153,
+          "owner": "installAgentCalendarAdapter.cancelRetention",
+          "line": 53,
           "bindings": 1,
           "writes": 1
         },
         {
-          "owner": "installAgentCalendarAdapter.FunctionExpression@162",
-          "line": 163,
+          "owner": "installAgentCalendarAdapter.typedForm",
+          "line": 156,
+          "bindings": 1,
+          "writes": 1
+        },
+        {
+          "owner": "installAgentCalendarAdapter.FunctionExpression@165",
+          "line": 166,
           "bindings": 4,
           "writes": 100
         },
         {
-          "owner": "installAgentCalendarAdapter.FunctionExpression@162.ArrowFunction@204",
-          "line": 205,
+          "owner": "installAgentCalendarAdapter.FunctionExpression@165.ArrowFunction@193",
+          "line": 196,
+          "bindings": 1,
+          "writes": 0
+        },
+        {
+          "owner": "installAgentCalendarAdapter.FunctionExpression@165.ArrowFunction@227",
+          "line": 228,
           "bindings": 1,
           "writes": 2
         },
         {
-          "owner": "installAgentCalendarAdapter.FunctionExpression@228",
-          "line": 228,
+          "owner": "installAgentCalendarAdapter.FunctionExpression@251",
+          "line": 251,
           "bindings": 1,
           "writes": 1
         },
         {
-          "owner": "installAgentCalendarAdapter.FunctionExpression@229",
-          "line": 234,
+          "owner": "installAgentCalendarAdapter.FunctionExpression@252",
+          "line": 257,
           "bindings": 2,
           "writes": 3
         }
       ],
       "parseErrors": [],
-      "asynchronous": 11,
+      "asynchronous": 13,
       "unassignedWrites": 22
     },
     {
@@ -35495,7 +35511,8 @@
         "DevelopmentDevice",
         "SettingsNav",
         "ShellNavigation",
-        "AccessibleToastLifetime"
+        "AccessibleToastLifetime",
+        "CalendarPreservationConfirmation"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -39499,7 +39516,8 @@
       "allocatedModels": [
         "PreferencesAndPresentation",
         "SettingsNav",
-        "NativeUpdateStaging"
+        "NativeUpdateStaging",
+        "CalendarPreservationConfirmation"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -39812,7 +39830,8 @@
         "HomeLayout",
         "ListFocus",
         "ModalToastForwarding",
-        "DockClearanceOwnership"
+        "DockClearanceOwnership",
+        "CalendarPreservationConfirmation"
       ],
       "sourcePathClass": "other-source-path",
       "classification": "language-review-required",
@@ -40493,7 +40512,7 @@
     },
     {
       "path": "apps/app/src/runtime/agent-calendar.ts",
-      "sha256": "755b3af7293f83a73f847043d2c56168d678ffb8e86741312c9f4af8559ea302",
+      "sha256": "149a986b4e3f2a714cd6c1f41a85e5522807e5b35faba1564ba32c7b8e5c0d0e",
       "allocatedModels": [
         "CalendarPresentation",
         "CalendarSync",
@@ -40501,8 +40520,10 @@
         "AgentCalendarMutation",
         "AgentCalendarEventReturn",
         "AgentCalendarSyncControl",
-        "GoogleCalendarLinkFlow"
+        "GoogleCalendarLinkFlow",
+        "CalendarPreservationConfirmation"
       ],
+      "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
       "classification": "syntactic-candidates",
       "owners": [
@@ -40519,14 +40540,8 @@
           "writes": 2
         },
         {
-          "owner": "AgentCalendar.confirmLegacyRetention",
-          "line": 92,
-          "bindings": 1,
-          "writes": 0
-        },
-        {
-          "owner": "AgentCalendar.changeSync.ArrowFunction@172",
-          "line": 173,
+          "owner": "AgentCalendar.changeSync.ArrowFunction@174",
+          "line": 175,
           "bindings": 1,
           "writes": 1
         }
@@ -43116,10 +43131,12 @@
     },
     {
       "path": "apps/app/src/runtime/legacy-calendar-preservation.ts",
-      "sha256": "aca41fc3bd5772e4df762f8c9d6f82b2940765622254d3c31dc128132eb963f4",
+      "sha256": "ae15dba476ea7866aeec03552a28bc79d4efa9323b617d0ac7b93244a8e4ad86",
       "allocatedModels": [
-        "CalendarPresentation"
+        "CalendarPresentation",
+        "CalendarPreservationConfirmation"
       ],
+      "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
       "classification": "syntactic-candidates",
       "owners": [
@@ -218492,6 +218509,6 @@
   ],
   "detail": {
     "path": "test-results/quint-state-audit/details.json",
-    "sha256": "27c17b05d750b573abe64baa1c45a5fbac966ca50930c3d46c20d9c96cbe0c96"
+    "sha256": "3db8a63bad6a9d2015460b150110f6bcd4a97c27a81dd6d08c0d9679d3a01cd1"
   }
 }

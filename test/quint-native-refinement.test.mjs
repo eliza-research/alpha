@@ -3,7 +3,7 @@ import test from 'node:test';
 import {readFileSync} from 'node:fs';
 import {runNativeRefinement} from '../specs/quint/refinement/native/index.mjs';
 
-test('native source transitions refine their finite Quint projections', {timeout: 600000}, async () => {
+test('native source transitions refine their finite Quint projections', {timeout: 1200000}, async () => {
   const results = await runNativeRefinement();
   const manifest = JSON.parse(readFileSync(new URL('../specs/quint/native/manifest.json', import.meta.url)));
   const expected = [...manifest.models.map(model => model.module).filter(model => !['ApplicationComposition', 'ControllerComposition'].includes(model)),
