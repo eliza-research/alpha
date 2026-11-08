@@ -88,23 +88,32 @@ export class BrowserCloudSignIn extends WebPlugin {
   if(typeof window==='undefined')throw Object.assign(Error('Browser sign-in window unavailable'),{code:'browser-unavailable'});
   const popup=window.open('about:blank','_blank');if(!popup)throw Object.assign(Error('Allow the sign-in window and try again.'),{code:'browser-unavailable'});
   popup.opener=null;this.googlePopup=popup;const attemptId=this.googleAttemptId=crypto.randomUUID();const controller=this.googleController=new AbortController();
-  let committed=false;
+  let handedOff=false;
   try{
    const started=await this.signIn({operation:'signInStartGoogle',environment:input.environment,attemptId},controller.signal);
    const url=new URL(String(started.browserUrl)),origin=input.environment==='production'?productionCloud.web:stagingCloud.web;
-   if(url.origin!==origin||url.pathname!=='/auth/cli-login'||url.username||url.password||url.hash||url.searchParams.getAll('app').length!==1||url.searchParams.get('app')!=='alpha'||url.searchParams.getAll('provider').length!==1||url.searchParams.get('provider')!=='google'||url.searchParams.getAll('session').length!==1||!/^[0-9a-f-]{36}$/i.test(url.searchParams.get('session')||'')||[...url.searchParams.keys()].some(key=>!['session','app','provider'].includes(key))||started.attemptId!==attemptId||!Number.isFinite(started.expiresAt)||Number(started.expiresAt)<=Date.now())throw Object.assign(Error('Invalid sign-in response'),{code:'unavailable'});
-   controller.signal.throwIfAborted();popup.location.replace(url.href);
+   const proof=/^[A-Za-z0-9_-]{43}$/;
+   if(url.href!==origin+'/alphaphone/auth/browser-start'||started.attemptId!==attemptId||!Number.isFinite(started.expiresAt)||Number(started.expiresAt)<=Date.now()||
+      typeof started.state!=='string'||!proof.test(started.state)||typeof started.challenge!=='string'||!proof.test(started.challenge))throw Object.assign(Error('Invalid Alpha sign-in response'),{code:'unavailable'});
+   controller.signal.throwIfAborted();
+   // A form navigation gives Pages the browser-owned loopback Origin. The
+   // destination is fixed and the verifier stays in the local host.
+   const form=popup.document.createElement('form');form.method='POST';form.action=url.href;
+   for(const [name,value] of Object.entries({state:started.state,challenge:started.challenge})){
+    const field=popup.document.createElement('input');field.type='hidden';field.name=name;field.value=value;form.append(field);
+   }
+   popup.document.body.append(form);form.submit();
    while(Date.now()<Number(started.expiresAt)){
     // OAuth COOP or a successful auto-close may detach the handle. Only the
     // host outcome, explicit Cancel or expiry can retire this login.
     const result=await this.signIn({operation:'signInPollGoogle',attemptId:started.attemptId},controller.signal);
-    if(result.status==='authenticated'){committed=true;return result;}
+    if(result.status==='authenticated'||result.status==='mfa'){handedOff=true;return result;}
     await new Promise<void>((resolve,reject)=>{const done=()=>{clearTimeout(timer);controller.signal.removeEventListener('abort',abort);resolve();},abort=()=>{clearTimeout(timer);controller.signal.removeEventListener('abort',abort);reject(controller.signal.reason);},timer=setTimeout(done,1000);controller.signal.addEventListener('abort',abort,{once:true});if(controller.signal.aborted)abort();});
    }
    throw Object.assign(Error('Sign-in expired'),{code:'expired'});
   }finally{controller.abort();popup.close();if(this.googleController===controller){this.googleController=undefined;this.googlePopup=undefined;this.googleAttemptId=undefined;
-   // The authenticated poll already cleared the host attempt; a further round trip would let a Cancel land between the commit and its report.
-   if(!committed)await this.signIn({operation:'signInCancelGoogle',attemptId}).catch(()=>{});}}
+   // The completed attempt was cleared or handed to the in-app MFA screen.
+   if(!handedOff)await this.signIn({operation:'signInCancelGoogle',attemptId}).catch(()=>{});}}
  }
  async startEmail(input:{environment:string;email:string}){return this.signIn({operation:'signInStartEmail',environment:input.environment,email:input.email});}
  async verifyEmail(input:{attemptId:string;code:string}){return this.signIn({operation:'signInVerifyEmail',attemptId:input.attemptId,code:input.code});}

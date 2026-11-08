@@ -45,6 +45,7 @@ async function fixture(resident,environment){
  const request=async(url,input={})=>{
   const path=new URL(url).pathname;calls.push({url,input});
   if(signIn){const handled=await signIn(path,input);if(handled)return handled;}
+  if(path==='/alphaphone/auth/browser-start')return new Response(null,{status:404});
   if(path==='/steward/auth/providers')return Response.json({google:false,oauth:[]});
   if(path==='/api/auth/cli-session')return Response.json({sessionId:session,expiresAt:new Date(Date.now()+60000).toISOString()});
   if(path==='/api/auth/cli-session/'+session)return pollResponse();
@@ -627,11 +628,11 @@ test('browser sign-in exposes the native-compatible public service-info method',
 test('service-info bridge reads only the selected canonical public endpoint without account or login changes',async()=>{
  const f=await fixture(undefined,'production');try{
   const before=await readFile(profileFile(f.profile,'initial-credential.json'),'utf8');
-  f.setSignIn(async(path,input)=>{if(path==='/steward/auth/providers')return null;assert.equal(path,'/api/public/service');assert.equal(input.method,'GET');assert.equal(input.redirect,'error');assert.equal(new Headers(input.headers).get('Authorization'),null);assert.equal(input.body,undefined);assert.ok(input.signal instanceof AbortSignal);return Response.json(publicService);});
+  f.setSignIn(async(path,input)=>{if(path==='/alphaphone/auth/browser-start')return null;assert.equal(path,'/api/public/service');assert.equal(input.method,'GET');assert.equal(input.redirect,'error');assert.equal(new Headers(input.headers).get('Authorization'),null);assert.equal(input.body,undefined);assert.ok(input.signal instanceof AbortSignal);return Response.json(publicService);});
   assert.deepEqual(await f.rpc({operation:'signInServiceInfo',environment:'production'}),{status:200,data:publicService});
   assert.equal(f.calls[0].url,productionCloud.api+'/api/public/service');assert.equal(f.calls.length,1);assert.deepEqual((await f.rpc({operation:'signInStatus'})).data,{active:false,inApp:true,google:false,email:true});
-  // Status answers Google availability from the public provider list only: no credential, no login.
-  assert.equal(f.calls.length,2);assert.equal(f.calls[1].url,productionCloud.api+'/steward/auth/providers?tenantId='+encodeURIComponent(productionCloud.tenant));assert.equal(f.calls[1].input.method,'GET');assert.equal(new Headers(f.calls[1].input.headers).get('Authorization'),null);
+  // An unavailable scoped launch page keeps Google out of the chooser without starting any login.
+  assert.equal(f.calls.length,2);assert.equal(f.calls[1].url,productionCloud.web+'/alphaphone/auth/browser-start');assert.equal(f.calls[1].input.method??'GET','GET');assert.equal(new Headers(f.calls[1].input.headers).get('Authorization'),null);
   assert.equal(await readFile(profileFile(f.profile,'initial-credential.json'),'utf8'),before);await assert.rejects(readFile(profileFile(f.profile,'credentials.json')),{code:'ENOENT'});
   for(const input of [{environment:'staging'},{environment:'other'},{environment:'production',url:'https://attacker.invalid'},{environment:'production',credentialReference:reference},{environment:'production',headers:{Authorization:'Bearer '+secret}}])assert.notEqual((await f.rpc({operation:'signInServiceInfo',...input})).status,200);
   for(const headers of [{Origin:'http://attacker.invalid'},{'X-Alpha-Browser-Cloud':'0'}])assert.equal((await f.send({operation:'signInServiceInfo',environment:'production'},{headers})).status,403);
@@ -732,62 +733,115 @@ test('full browser resident Calendar writes require exact owner intent and prese
 });
 
 
-async function googleReady(f) {
- f.setSignIn(async path=>path==='/steward/auth/providers'?Response.json({google:true,oauth:['google']}):null);
- f.setPollResponse(async()=>Response.json({status:'authenticated',apiKey:secret,expiresAt:new Date(Date.now()+60000).toISOString()}));
- const id=randomUUID(),started=await f.rpc({operation:'signInStartGoogle',environment:'production',attemptId:id});
- assert.equal(started.status,200);assert.equal(started.data.attemptId,id);return started.data;
+const googleProof = {state:'a'.repeat(43),challenge:'b'.repeat(43)};
+const alphaBrowserStart = 'https://eliza.app/alphaphone/auth/browser-start';
+function googleSessionRoutes(onExchange) {
+ return async (path,input)=>{
+  if(path==='/alphaphone/auth/browser-start')return Response.json({version:1});
+  if(path==='/steward/auth/providers')return Response.json({google:true});
+  if(path==='/steward/auth/oauth/exchange'){
+   const body=JSON.parse(input.body);
+   assert.equal(body.redirectUri,'https://eliza.app/alphaphone/auth/callback');
+   assert.equal(body.tenantId,'elizacloud');
+   assert.equal(body.code,'one-time-test-code');
+   assert.match(body.codeVerifier,/^[A-Za-z0-9_-]{64}$/);
+   const result=await onExchange?.(body);
+   if(result)return result;
+   return Response.json({token:'synthetic-steward-session-token'});
+  }
+  if(path==='/api/v1/app-auth/connect'){
+   assert.equal(JSON.parse(input.body).flow,'mobile_pkce');
+   return Response.json({codeType:'mobile_app_auth_code',code:'emac_'+'a'.repeat(64),accountCreated:true});
+  }
+  if(path==='/api/v1/app-auth/mobile/token')return Response.json({secret:'eliza_mobile_synthetic_test',credentialId,expiresAt:new Date(Date.now()+60000).toISOString(),acknowledgementRequired:true});
+  if(path==='/api/v1/app-auth/mobile/ack')return Response.json({status:'acknowledged',credentialId});
+  if(path==='/api/v1/user')return Response.json({data:{id:owner,organization_id:org}});
+  if(path==='/steward/auth/logout')return Response.json({success:true});
+  return null;
+ };
 }
-test('browser Google host checks capability and saves only after canonical one-consumption identity verification',async()=>{
+async function googleReady(f,{returnCode=true,onExchange}={}) {
+ f.setSignIn(googleSessionRoutes(onExchange));
+ const id=randomUUID(),started=await f.rpc({operation:'signInStartGoogle',environment:'production',attemptId:id});
+ assert.equal(started.status,200);assert.equal(started.data.attemptId,id);
+ if(returnCode)assert.equal((await f.rpc({operation:'signInGoogleReturn',state:started.data.state,code:'one-time-test-code'})).status,200);
+ return started.data;
+}
+test('browser Google accepts one matching return and exchanges only for a scoped mobile credential',async()=>{
  const f=await fixture();try{
-  const started=await googleReady(f);assert.equal(new URL(started.browserUrl).searchParams.get('provider'),'google');
+  const started=await googleReady(f,{returnCode:false});assert.equal(started.browserUrl,alphaBrowserStart);
   assert.equal(JSON.stringify(started).includes(secret),false);
-  const done=await f.rpc({operation:'signInPollGoogle',attemptId:started.attemptId});assert.equal(done.status,200);assert.equal(done.data.status,'authenticated');assert.equal(JSON.stringify(done).includes(secret),false);
+  assert.equal((await f.rpc({operation:'signInPollGoogle',attemptId:started.attemptId})).data.status,'pending');
+  assert.notEqual((await f.rpc({operation:'signInGoogleReturn',state:'z'.repeat(43),code:'foreign'})).status,200);
+  assert.equal((await f.rpc({operation:'signInGoogleReturn',state:started.state,code:'one-time-test-code'})).status,200);
+  assert.notEqual((await f.rpc({operation:'signInGoogleReturn',state:started.state,code:'replay'})).status,200);
+  const done=await f.rpc({operation:'signInPollGoogle',attemptId:started.attemptId});assert.equal(done.status,200);assert.equal(done.data.status,'authenticated');assert.equal(done.data.accountCreated,true);assert.equal(JSON.stringify(done).includes('eliza_mobile_'),false);
+  const exchange=f.calls.find(call=>new URL(call.url).pathname==='/steward/auth/oauth/exchange');
+  assert.equal(createHash('sha256').update(JSON.parse(exchange.input.body).codeVerifier).digest('base64url'),started.challenge);
   const stored=JSON.parse((await f.rpc({operation:'secureRead',slot:'cloud:production'})).data.value);assert.equal(stored.token,undefined);assert.notEqual(stored.credentialReference,reference);
+  assert.equal(f.calls.some(call=>new URL(call.url).pathname.includes('/auth/cli-session')),false);
   assert.notEqual((await f.rpc({operation:'signInPollGoogle',attemptId:started.attemptId})).status,200);
  }finally{await f.close();}
 });
 test('unavailable browser Google leaves the old account and email path usable',async()=>{
  const f=await fixture();try{assert.equal((await f.rpc({operation:'signInStatus'})).data.google,false);assert.notEqual((await f.rpc({operation:'signInStartGoogle',environment:'production',attemptId:randomUUID()})).status,200);assert.equal(JSON.parse((await f.rpc({operation:'secureRead',slot:'cloud:production'})).data.value).credentialReference,reference);assert.equal((await f.rpc({operation:'signInStatus'})).data.email,true);}finally{await f.close();}
 });
-test('browser Google rejects expired server session before opening an authorization flow',async()=>{
- const f=await fixture();try{f.setSignIn(async path=>path==='/steward/auth/providers'?Response.json({google:true}):path==='/api/auth/cli-session'?Response.json({sessionId:randomUUID(),expiresAt:new Date(Date.now()-1).toISOString()}):null);assert.notEqual((await f.rpc({operation:'signInStartGoogle',environment:'production',attemptId:randomUUID()})).status,200);assert.equal((await f.rpc({operation:'signInStatus'})).data.active,false);}finally{await f.close();}
-});
 test('browser Google completion cannot replace an account changed since launch',async()=>{
  const f=await fixture();try{const started=await googleReady(f);await f.rpc({operation:'secureRemove',slot:'cloud:production',previousReference:reference});assert.notEqual((await f.rpc({operation:'signInPollGoogle',attemptId:started.attemptId})).status,200);assert.equal((await f.rpc({operation:'secureRead',slot:'cloud:production'})).data.value,null);}finally{await f.close();}
 });
-test('cancelled browser Google poll ignores an already in-flight authenticated response',async()=>{
- const f=await fixture();let release;try{const started=await googleReady(f);let entered;const waiting=new Promise(r=>entered=r);f.setPollResponse(async()=>{entered();await new Promise(r=>release=r);return Response.json({status:'authenticated',apiKey:secret,expiresAt:new Date(Date.now()+60000).toISOString()});});const poll=f.rpc({operation:'signInPollGoogle',attemptId:started.attemptId});await waiting;await f.rpc({operation:'signInCancelGoogle',attemptId:started.attemptId});release();assert.notEqual((await poll).status,200);assert.equal(JSON.parse((await f.rpc({operation:'secureRead',slot:'cloud:production'})).data.value).credentialReference,reference);}finally{release?.();await f.close();}
+test('browser Google completes required MFA before requesting a scoped credential',async()=>{
+ const f=await fixture();try{
+  const started=await googleReady(f,{onExchange:()=>Response.json({mfaRequired:true,mfa:{type:'totp',challengeId:'mfa-fixture'}})});
+  const challenge=await f.rpc({operation:'signInPollGoogle',attemptId:started.attemptId});
+  assert.equal(challenge.data.status,'mfa');
+  assert.equal(challenge.data.method,'totp');
+  assert.equal(f.calls.some(call=>new URL(call.url).pathname==='/api/v1/app-auth/mobile/token'),false);
+  const routes=googleSessionRoutes();
+  f.setSignIn(async(path,input)=>{
+   if(path!=='/steward/auth/mfa/totp/complete')return routes(path,input);
+   assert.deepEqual(JSON.parse(input.body),{challengeId:'mfa-fixture',code:'123456'});
+   return Response.json({token:'synthetic-steward-session-token'});
+  });
+  const finished=await f.rpc({operation:'signInVerifyMfa',attemptId:started.attemptId,code:'123456'});
+  assert.equal(finished.data.status,'authenticated');
+  assert.equal(f.calls.filter(call=>new URL(call.url).pathname==='/steward/auth/oauth/exchange').length,1);
+ }finally{await f.close();}
+});
+test('cancelled browser Google poll ignores an already in-flight OAuth exchange',async()=>{
+ const f=await fixture();let release;try{let entered;const waiting=new Promise(r=>entered=r);const started=await googleReady(f,{onExchange:async()=>{entered();await new Promise(r=>release=r);}});const poll=f.rpc({operation:'signInPollGoogle',attemptId:started.attemptId});await waiting;await f.rpc({operation:'signInCancelGoogle',attemptId:started.attemptId});release();assert.notEqual((await poll).status,200);assert.equal(JSON.parse((await f.rpc({operation:'secureRead',slot:'cloud:production'})).data.value).credentialReference,reference);}finally{release?.();await f.close();}
 });
 test('wrong attempt cancellation cannot retire the current browser Google login',async()=>{
  const f=await fixture();try{const started=await googleReady(f);await f.rpc({operation:'signInCancelGoogle',attemptId:randomUUID()});assert.equal((await f.rpc({operation:'signInPollGoogle',attemptId:started.attemptId})).data.status,'authenticated');}finally{await f.close();}
 });
+function fakeGooglePopup(submit=()=>{}) {
+ return {opener:{},closed:false,close(){this.closed=true;},document:{body:{append(){}},createElement(tag){return tag==='form'?{append(){},submit(){submit(this);}}:{};}}};
+}
 test('Google popup blocking refuses before starting any host request',async()=>{
  const wd=Object.getOwnPropertyDescriptor(globalThis,'window'),fetch=globalThis.fetch;let calls=0;
  Object.defineProperty(globalThis,'window',{configurable:true,value:{open:()=>null}});globalThis.fetch=async()=>{calls++;throw Error('must not start');};
  try{await assert.rejects(new BrowserCloudSignIn().startGoogle({environment:'production'}),e=>e.code==='browser-unavailable');assert.equal(calls,0);}finally{globalThis.fetch=fetch;if(wd)Object.defineProperty(globalThis,'window',wd);else delete globalThis.window;}
 });
 test('Google popup is reserved before the first host request and exposes no credential',async()=>{
- const wd=Object.getOwnPropertyDescriptor(globalThis,'window'),fetch=globalThis.fetch;let opened=false,id,assigned;const popup={opener:{},closed:false,location:{replace:url=>assigned=url},close(){this.closed=true;}};
+ const wd=Object.getOwnPropertyDescriptor(globalThis,'window'),fetch=globalThis.fetch;let opened=false,id,assigned;const popup=fakeGooglePopup(form=>{assert.equal(form.method,'POST');assigned=form.action;});
  Object.defineProperty(globalThis,'window',{configurable:true,value:{open:url=>{assert.equal(url,'about:blank');opened=true;return popup;}}});
- globalThis.fetch=async(_url,input)=>{assert.equal(opened,true);const body=JSON.parse(input.body);if(body.operation==='signInStartGoogle'){id=body.attemptId;return Response.json({attemptId:id,expiresAt:Date.now()+60000,browserUrl:'https://eliza.app/auth/cli-login?session='+randomUUID()+'&app=alpha&provider=google'});}if(body.operation==='signInPollGoogle')return Response.json({status:'authenticated',environment:'production',expiresAt:Date.now()+60000,accountCreated:null});return Response.json({});};
+ globalThis.fetch=async(_url,input)=>{assert.equal(opened,true);const body=JSON.parse(input.body);if(body.operation==='signInStartGoogle'){id=body.attemptId;return Response.json({attemptId:id,expiresAt:Date.now()+60000,browserUrl:alphaBrowserStart,...googleProof});}if(body.operation==='signInPollGoogle')return Response.json({status:'authenticated',environment:'production',expiresAt:Date.now()+60000,accountCreated:null});return Response.json({});};
  try{const result=await new BrowserCloudSignIn().startGoogle({environment:'production'});assert.equal(result.status,'authenticated');assert.equal(popup.opener,null);assert.equal(new URL(assigned).origin,'https://eliza.app');assert.equal(popup.closed,true);}finally{globalThis.fetch=fetch;if(wd)Object.defineProperty(globalThis,'window',wd);else delete globalThis.window;}
 });
 
 
 test('detached or auto-closed Google popup still accepts the host completion',async()=>{
  const wd=Object.getOwnPropertyDescriptor(globalThis,'window'),fetch=globalThis.fetch,calls=[];let attempt;
- const popup={opener:null,closed:false,location:{replace(){popup.closed=true;}},close(){this.closed=true;}};
+ const popup=fakeGooglePopup(()=>{popup.closed=true;});
  Object.defineProperty(globalThis,'window',{configurable:true,value:{open:()=>popup}});
- globalThis.fetch=async(_url,input)=>{const body=JSON.parse(input.body);calls.push(body);if(body.operation==='signInStartGoogle'){attempt=body.attemptId;return Response.json({attemptId:attempt,expiresAt:Date.now()+60000,browserUrl:'https://eliza.app/auth/cli-login?session='+randomUUID()+'&app=alpha&provider=google'});}if(body.operation==='signInPollGoogle')return Response.json({status:'authenticated',environment:'production',expiresAt:Date.now()+60000,accountCreated:null});return Response.json({});};
+ globalThis.fetch=async(_url,input)=>{const body=JSON.parse(input.body);calls.push(body);if(body.operation==='signInStartGoogle'){attempt=body.attemptId;return Response.json({attemptId:attempt,expiresAt:Date.now()+60000,browserUrl:alphaBrowserStart,...googleProof});}if(body.operation==='signInPollGoogle')return Response.json({status:'authenticated',environment:'production',expiresAt:Date.now()+60000,accountCreated:null});return Response.json({});};
  try{const result=await new BrowserCloudSignIn().startGoogle({environment:'production'});assert.equal(result.status,'authenticated');assert.equal(calls.some(x=>x.operation==='signInPollGoogle'),true);}finally{globalThis.fetch=fetch;if(wd)Object.defineProperty(globalThis,'window',wd);else delete globalThis.window;}
 });
 
 test('detached WindowProxy with inaccessible closed property is not a cancellation',async()=>{
  const wd=Object.getOwnPropertyDescriptor(globalThis,'window'),fetch=globalThis.fetch,calls=[];let attempt;
- const popup={opener:null,get closed(){throw Error('detached WindowProxy');},location:{replace(){}},close(){}};
+ const popup=fakeGooglePopup();Object.defineProperty(popup,'closed',{get(){throw Error('detached WindowProxy');},set(){}});
  Object.defineProperty(globalThis,'window',{configurable:true,value:{open:()=>popup}});
- globalThis.fetch=async(_url,input)=>{const body=JSON.parse(input.body);calls.push(body);if(body.operation==='signInStartGoogle'){attempt=body.attemptId;return Response.json({attemptId:attempt,expiresAt:Date.now()+60000,browserUrl:'https://eliza.app/auth/cli-login?session='+randomUUID()+'&app=alpha&provider=google'});}if(body.operation==='signInPollGoogle')return Response.json({status:'authenticated',environment:'production',expiresAt:Date.now()+60000,accountCreated:null});return Response.json({});};
+ globalThis.fetch=async(_url,input)=>{const body=JSON.parse(input.body);calls.push(body);if(body.operation==='signInStartGoogle'){attempt=body.attemptId;return Response.json({attemptId:attempt,expiresAt:Date.now()+60000,browserUrl:alphaBrowserStart,...googleProof});}if(body.operation==='signInPollGoogle')return Response.json({status:'authenticated',environment:'production',expiresAt:Date.now()+60000,accountCreated:null});return Response.json({});};
  try{const result=await new BrowserCloudSignIn().startGoogle({environment:'production'});assert.equal(result.status,'authenticated');assert.equal(calls.some(x=>x.operation==='signInPollGoogle'),true);}finally{globalThis.fetch=fetch;if(wd)Object.defineProperty(globalThis,'window',wd);else delete globalThis.window;}
 });
 
@@ -844,12 +898,12 @@ async function wholeGoogleStackFixture(options={}){
  const readEntered=deferred(),releaseRead=deferred(),adoptionEntered=deferred(),releaseAdoption=deferred(),releaseCancel=deferred(),admissionEntered=deferred(),releaseAdmission=deferred();
  if(!options.holdAdmission)releaseAdmission.resolve();
  const descriptor=Object.getOwnPropertyDescriptor(globalThis,'window'),oldFetch=globalThis.fetch;
- const popup={opener:null,location:{replace(){}},close(){}};
+ const popup=fakeGooglePopup();
  Object.defineProperty(globalThis,'window',{configurable:true,value:{open:()=>popup}});
  let id,reads=0,heldCancel=options.deferCancel,currentCredential={credentialId,credentialReference:reference,userId:owner,organizationId:org,expiresAt:Date.now()+60000};
  globalThis.fetch=async(_url,input)=>{
   const body=JSON.parse(input.body);
-  if(body.operation==='signInStartGoogle'){id=body.attemptId;return Response.json({attemptId:id,expiresAt:Date.now()+60000,browserUrl:'https://eliza.app/auth/cli-login?session='+randomUUID()+'&app=alpha&provider=google'});}
+  if(body.operation==='signInStartGoogle'){id=body.attemptId;return Response.json({attemptId:id,expiresAt:Date.now()+60000,browserUrl:alphaBrowserStart,...googleProof});}
   if(body.operation==='signInPollGoogle')return Response.json(await commit.commit());
   if(body.operation==='signInCancelGoogle'){if(heldCancel){heldCancel=false;await releaseCancel.promise;}return options.cancelFails?Response.json({code:'unavailable'},{status:503}):Response.json(await commit.cancel());}
   throw Error('Unexpected fake host operation');

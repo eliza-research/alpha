@@ -6,7 +6,7 @@ import {managedGoogleRequest,boundedServiceJson,object} from '../backend/managed
 import {CLOUD_EMAIL_CODE,emailCodeExpiresAt,emailCodeResendAt,emailCodeSendBody,emailCodeVerifyBody} from './cloud-email-code.ts';
 import {parseCloudServiceInfo} from '../apps/app/src/runtime/cloud-service-info.ts';
 import {readCloudVoiceLimit,type CloudVoiceLimitFacts} from '../apps/app/src/runtime/cloud-voice-limit.ts';
-import {randomUUID,createHash,randomBytes} from 'node:crypto';
+import {randomUUID,createHash,randomBytes,timingSafeEqual} from 'node:crypto';
 import {mkdir,readFile,writeFile,rename,lstat,unlink} from 'node:fs/promises';
 import path from 'node:path';
 import {homedir} from 'node:os';
@@ -14,6 +14,22 @@ import type {IncomingMessage,ServerResponse} from 'node:http';
 import type {Plugin} from 'vite';
 
 export const BROWSER_CLOUD_BRIDGE_PATH='/__alpha-browser-cloud';
+const GOOGLE_BROWSER_START='/alphaphone/auth/browser-start';
+const GOOGLE_BROWSER_RETURN='/signin-return';
+const GOOGLE_STATE=/^[A-Za-z0-9_-]{43}$/;
+const GOOGLE_CODE=/^[A-Za-z0-9._~-]{1,4096}$/;
+const GOOGLE_ERROR=/^[a-z_]{1,64}$/;
+const googleReturnScript=`(async()=>{
+  const fields=new URLSearchParams(location.hash.slice(1));
+  history.replaceState(null,"",location.pathname);
+  const state=fields.get("state"),code=fields.get("code"),error=fields.get("error");
+  if(fields.size!==2||!state||(!code&&!error))return;
+  try{
+    const result=await fetch(${JSON.stringify(BROWSER_CLOUD_BRIDGE_PATH)},{method:"POST",headers:{"Content-Type":"application/json","X-Alpha-Browser-Cloud":"1"},body:JSON.stringify({operation:"signInGoogleReturn",state,...(code?{code}:{error})}),redirect:"error"});
+    if(result.ok)window.close();
+  }catch{}
+})();`;
+const googleReturnHash=createHash('sha256').update(googleReturnScript).digest('base64');
 const UUID=/^[0-9a-f-]{36}$/i,REFERENCE=/^browser-cloud-reference:[0-9a-f-]{36}$/i;
 const authorities={production:productionCloud.api,staging:stagingCloud.api};
 type Environment=keyof typeof authorities;
@@ -69,8 +85,8 @@ export function createBrowserCloudDevHandler(options:{profile:string;request?:ty
   return {status:response.status,data,retryAfter:response.headers.get('Retry-After')};
  }
  const pkce=()=>{const verifier=randomBytes(48).toString('base64url');return {verifier,challenge:createHash('sha256').update(verifier).digest('base64url'),state:randomBytes(32).toString('base64url')};};
- async function signInComplete(attempt:SignInAttempt,session:Record<string,any>,signal:AbortSignal){
-  const token=session.token,refresh=session.refreshToken,env=attempt.environment;
+ async function scopedSignInCredential(env:Environment,session:Record<string,any>,signal:AbortSignal){
+  const token=session.token,refresh=session.refreshToken;
   if(typeof token!=='string'||token.length<20||token.length>16384)throw signInFailure('unavailable');
   try{
    const {verifier,challenge,state}=pkce(),binding={clientId:SIGN_IN_CLIENT,environment:env,redirectUri:SIGN_IN_CALLBACK[env]};
@@ -92,8 +108,8 @@ export function createBrowserCloudDevHandler(options:{profile:string;request?:ty
    if(!acknowledged)throw signInFailure('activation-pending');
    const identityResponse=await canonical(env,'/api/v1/user',signal,{},{token:secret}as Credential),identity=object(await identityResponse.json()),who=object(identity.data??identity);
    if(!identityResponse.ok||!UUID.test(who.id)||!UUID.test(who.organization_id))throw signInFailure('unavailable');
-   await serial(async()=>{const stored=await load();signal.throwIfAborted();if(signIn!==attempt)throw signInFailure('cancelled');stored[env]={token:secret,credentialReference:'browser-cloud-reference:'+randomUUID(),credentialId:randomUUID(),userId:who.id,organizationId:who.organization_id,expiresAt};retire(env);await save(stored);});
-   return {status:'authenticated',environment:env,expiresAt,accountCreated:typeof connected.data.accountCreated==='boolean'?connected.data.accountCreated:null};
+   const credential:Credential={token:secret,credentialReference:'browser-cloud-reference:'+randomUUID(),credentialId,userId:who.id,organizationId:who.organization_id,expiresAt};
+   return {credential,expiresAt,accountCreated:typeof connected.data.accountCreated==='boolean'?connected.data.accountCreated:null};
   }finally{void signInCall(env,'/steward/auth/logout',typeof refresh==='string'?{refreshToken:refresh}:{},AbortSignal.timeout(10000),token).catch(()=>{});}
  }
 
@@ -104,7 +120,7 @@ export function createBrowserCloudDevHandler(options:{profile:string;request?:ty
       if(result.expiresAt&&(!Number.isFinite(Date.parse(result.expiresAt))||Date.parse(result.expiresAt)<=Date.now()))throw Error('Cloud credential expired');
       const reference='browser-cloud-reference:'+randomUUID(),claimed:Credential={token,credentialReference:reference,credentialId:randomUUID(),userId:who.id,organizationId:who.organization_id,...(result.expiresAt?{expiresAt:Date.parse(result.expiresAt)}:{})};signal.throwIfAborted();if(login.expiresAt<=Date.now())throw refusal(410,'expired');if(pending.get(id)!==login||((await load())[env]?.credentialReference??null)!==login.previousReference)throw refusal(409,'account-changed');signal.throwIfAborted();claims.set(reference,{environment:env,previousReference:login.previousReference,expiresAt:login.expiresAt,credential:claimed});pending.delete(id);return {status:response.status,data:{status:'authenticated',credentialReference:reference,userId:who.id,organizationId:who.organization_id,...(result.expiresAt?{expiresAt:result.expiresAt}:{})}};
      }return {status:response.status,data:result};}
- type GoogleAttempt={id:string;environment:Environment;controller:AbortController;sessionId?:string;expiresAt:number;busy:boolean;phase:'preparing'|'committing'|'committed'|'failed';outcome?:{status:'authenticated';environment:Environment;expiresAt:number;accountCreated:null;attemptId:string;credentialId:string}};
+ type GoogleAttempt={id:string;environment:Environment;controller:AbortController;state:string;verifier:string;previousReference:string|null;expiresAt:number;busy:boolean;phase:'preparing'|'committing'|'committed'|'failed';returned?:{code:string}|{error:string};mfa?:{type:string;challengeId:string;failed:number};outcome?:{status:'authenticated';environment:Environment;expiresAt:number;accountCreated:boolean|null;attemptId:string;credentialId:string}};
  let googleAttempt:GoogleAttempt|null=null;
  async function cancelGoogleAttempt(expectedId?:string){
   const attempt=googleAttempt;if(!attempt||expectedId!==undefined&&attempt.id!==expectedId)return {};
@@ -113,7 +129,7 @@ export function createBrowserCloudDevHandler(options:{profile:string;request?:ty
   if(attempt.phase==='committing'||attempt.phase==='committed'){
    await serial(async()=>{});return attempt.outcome??{status:'unavailable'};
   }
-  googleAttempt=null;attempt.controller.abort();if(attempt.sessionId)pending.delete(attempt.sessionId);return {status:'cancelled'};
+  googleAttempt=null;attempt.controller.abort();return {status:'cancelled'};
  }
  async function saveGoogleCredential(value:Partial<Record<Environment,Credential>>,attempt:GoogleAttempt,current:()=>void){
   current();resetCalendarAccess();if(options.resident)await options.resident.clear();current();
@@ -125,11 +141,34 @@ export function createBrowserCloudDevHandler(options:{profile:string;request?:ty
   }catch(error){attempt.phase='failed';throw error;}
   finally{await unlink(tmp).catch(()=>{});}
  }
+ function checkGoogleAttempt(attempt:GoogleAttempt,signal:AbortSignal){
+  signal.throwIfAborted();if(googleAttempt!==attempt||attempt.expiresAt<=Date.now())throw signInFailure('cancelled');
+ }
+ async function completeGoogleAttempt(attempt:GoogleAttempt,session:Record<string,any>,signal:AbortSignal){
+  const env=attempt.environment,current=()=>checkGoogleAttempt(attempt,signal);current();
+  const {credential,expiresAt,accountCreated}=await scopedSignInCredential(env,session,signal);
+  await serial(async()=>{
+   current();const state=await load();
+   current();if(expiresAt<=Date.now()||(state[env]?.credentialReference??null)!==attempt.previousReference)throw signInFailure('account-changed');
+   state[env]=credential;await saveGoogleCredential(state,attempt,current);
+   attempt.outcome={status:'authenticated',environment:env,expiresAt,accountCreated,attemptId:attempt.id,credentialId:credential.credentialId};
+   retire(env);
+  });
+  // Do not recheck an aborted request after the durable commit: report what committed.
+  if(googleAttempt===attempt)googleAttempt=null;
+  return attempt.outcome!;
+ }
 
  async function browserGoogleAvailable(env:Environment,signal:AbortSignal){
-  const response=await canonical(env,'/steward/auth/providers?tenantId='+encodeURIComponent((env==='production'?productionCloud:stagingCloud).tenant),signal,{method:'GET'});
-  if(!response.ok){await response.body?.cancel();return false;}
-  const data=await boundedServiceJson(response);return data.google===true||Array.isArray(data.oauth)&&data.oauth.includes('google');
+  const cloud=env==='production'?productionCloud:stagingCloud;
+  try{
+   const capability=await fetchCloud(cloud.web+GOOGLE_BROWSER_START,{headers:{Accept:'application/json'},redirect:'error',signal});
+   if(!capability.ok||!capability.headers.get('Content-Type')?.startsWith('application/json')){await capability.body?.cancel();return false;}
+   if((await boundedServiceJson(capability)).version!==1)return false;
+   const response=await canonical(env,'/steward/auth/providers?tenantId='+encodeURIComponent(cloud.tenant),signal,{method:'GET'});
+   if(!response.ok){await response.body?.cancel();return false;}
+   const data=await boundedServiceJson(response);return data.google===true||Array.isArray(data.oauth)&&data.oauth.includes('google');
+  }catch{signal.throwIfAborted();return false;}
  }
  async function signInOperation(data:Record<string,any>,signal:AbortSignal){
   if(data.operation==='signInServiceInfo'){
@@ -143,42 +182,76 @@ export function createBrowserCloudDevHandler(options:{profile:string;request?:ty
   if(data.operation==='signInCancel'){const google=await cancelGoogleAttempt();if('status'in google&&google.status==='authenticated')return google;signIn?.controller.abort();signIn=null;await serial(async()=>{});return {};}
   if(data.operation==='signInStatus')return {active:!!signIn||!!googleAttempt,inApp:true,google:await browserGoogleAvailable(environment(data.environment??options.environment??'production'),AbortSignal.any([signal,AbortSignal.timeout(10000)])).catch(()=>false),email:true};
   if(data.operation==='signInCancelGoogle'){return cancelGoogleAttempt(data.attemptId);}
+  if(data.operation==='signInGoogleReturn'){
+   const attempt=googleAttempt;
+   if(!attempt||attempt.returned||attempt.phase!=='preparing'||attempt.expiresAt<=Date.now()||
+    typeof data.state!=='string'||!GOOGLE_STATE.test(data.state)||!timingSafeEqual(Buffer.from(data.state),Buffer.from(attempt.state)))throw signInFailure('expired');
+   if(Object.keys(data).length!==3)throw signInFailure('invalid-request');
+   if(typeof data.code==='string'&&GOOGLE_CODE.test(data.code))attempt.returned={code:data.code};
+   else if(typeof data.error==='string'&&GOOGLE_ERROR.test(data.error))attempt.returned={error:data.error};
+   else throw signInFailure('invalid-request');
+   return {status:'received'};
+  }
   if(data.operation==='signInStartGoogle'){
    if(Object.keys(data).some(key=>!['operation','environment','attemptId'].includes(key)))throw signInFailure('invalid-request');
    const env=environment(data.environment);if(options.environment&&env!==options.environment)throw signInFailure('invalid-request');
    if(signIn||googleAttempt)throw signInFailure('login-active');
    if(!UUID.test(data.attemptId))throw signInFailure('invalid-request');
-   const attempt:GoogleAttempt={id:data.attemptId,environment:env,controller:new AbortController(),expiresAt:Date.now()+120000,busy:false,phase:'preparing'};googleAttempt=attempt;
+   const {state,verifier,challenge}=pkce();
+   const previousReference=(await load())[env]?.credentialReference??null;
+   signal.throwIfAborted();if(signIn||googleAttempt)throw signInFailure('login-active');
+   const attempt:GoogleAttempt={id:data.attemptId,environment:env,controller:new AbortController(),state,verifier,previousReference,expiresAt:Date.now()+600000,busy:false,phase:'preparing'};googleAttempt=attempt;
    const current=()=>{signal.throwIfAborted();attempt.controller.signal.throwIfAborted();if(googleAttempt!==attempt)throw signInFailure('cancelled');};
    try{
     if(!await browserGoogleAvailable(env,AbortSignal.any([signal,attempt.controller.signal,AbortSignal.timeout(10000)])))throw signInFailure('unavailable');current();
-    const result=await createCliSession(env,AbortSignal.any([signal,attempt.controller.signal]));
-    if(result.status<200||result.status>=300)throw signInFailure(signInStatus('google',result.status));
-    attempt.sessionId=String(result.data.sessionId);attempt.expiresAt=Math.min(Date.parse(String(result.data.expiresAt)),Date.now()+600000);current();if(!(attempt.expiresAt>Date.now()))throw signInFailure('expired');
-    return {attemptId:attempt.id,expiresAt:attempt.expiresAt,browserUrl:(env==='production'?productionCloud.web:stagingCloud.web)+'/auth/cli-login?session='+encodeURIComponent(attempt.sessionId)+'&app=alpha&provider=google'};
+    return {attemptId:attempt.id,expiresAt:attempt.expiresAt,browserUrl:(env==='production'?productionCloud.web:stagingCloud.web)+GOOGLE_BROWSER_START,state,challenge};
    }catch(error){if(googleAttempt===attempt)await cancelGoogleAttempt(attempt.id);throw error;}
   }
   if(data.operation==='signInPollGoogle'){
    const attempt=googleAttempt;
-   if(!attempt||attempt.id!==data.attemptId||!attempt.sessionId||Date.now()>=attempt.expiresAt){if(attempt&&attempt.id===data.attemptId)await cancelGoogleAttempt(attempt.id);throw signInFailure('expired');}
+   if(!attempt||attempt.id!==data.attemptId||Date.now()>=attempt.expiresAt){if(attempt&&attempt.id===data.attemptId)await cancelGoogleAttempt(attempt.id);throw signInFailure('expired');}
+   if(!attempt.returned)return {status:'pending'};
    if(attempt.busy)throw signInFailure('login-active');attempt.busy=true;
-   const current=()=>{signal.throwIfAborted();attempt.controller.signal.throwIfAborted();if(googleAttempt!==attempt)throw signInFailure('cancelled');};
+   const exchangeSignal=AbortSignal.any([signal,attempt.controller.signal]);
+   const current=()=>checkGoogleAttempt(attempt,exchangeSignal);
    try{
-    const result:{status:number;data:Record<string,any>}=await pollCliSession(attempt.environment,attempt.sessionId,AbortSignal.any([signal,attempt.controller.signal]));current();
-    if(result.status<200||result.status>=300)throw signInFailure(signInStatus('google',result.status));
-    if(result.data.status!=='authenticated')return {status:'pending'};
-    const reference=result.data.credentialReference;
-    await serial(async()=>{
-     current();const state=await load(),claim=typeof reference==='string'?claims.get(reference):undefined;
-     current();if(!claim||claim.environment!==attempt.environment||claim.expiresAt<=Date.now()||!claim.credential.expiresAt||claim.credential.expiresAt<=Date.now()||(state[attempt.environment]?.credentialReference??null)!==claim.previousReference)throw signInFailure('account-changed');
-     state[attempt.environment]=claim.credential;
-     await saveGoogleCredential(state,attempt,current);
-     attempt.outcome={status:'authenticated',environment:attempt.environment,expiresAt:claim.credential.expiresAt,accountCreated:null,attemptId:attempt.id,credentialId:claim.credential.credentialId};
-     retire(attempt.environment);claims.delete(reference as string);
-    });
-    // Do not recheck an aborted request after the durable commit: report what committed.
-    if(googleAttempt===attempt)googleAttempt=null;return attempt.outcome!;
+    current();
+    if(attempt.mfa)return {status:'mfa',environment:attempt.environment,method:attempt.mfa.type,expiresAt:attempt.expiresAt,attemptId:attempt.id};
+    if('error' in attempt.returned)throw signInFailure(attempt.returned.error==='mfa_required'?'mfa-browser':'provider-refused');
+    if(((await load())[attempt.environment]?.credentialReference??null)!==attempt.previousReference)throw signInFailure('account-changed');
+    current();
+    const env=attempt.environment,tenantId=(env==='production'?productionCloud:stagingCloud).tenant;
+    const result=await signInCall(env,'/steward/auth/oauth/exchange',{code:attempt.returned.code,codeVerifier:attempt.verifier,redirectUri:SIGN_IN_CALLBACK[env],tenantId},exchangeSignal);
+    if(result.status!==200)throw signInFailure(signInStatus('google',result.status));
+    const session=object(result.data.token?result.data:result.data.data??result.data);
+    if(session.mfaRequired===true){
+     const challenge=session.mfa;
+     current();
+     if(!challenge||!['totp','sms','passkey'].includes(challenge.type)||typeof challenge.challengeId!=='string')throw signInFailure('unavailable');
+     attempt.mfa={type:challenge.type,challengeId:challenge.challengeId,failed:0};
+     attempt.expiresAt=Math.min(attempt.expiresAt,Date.parse(challenge.expiresAt)||attempt.expiresAt);
+     return {status:'mfa',environment:env,method:challenge.type,expiresAt:attempt.expiresAt,attemptId:attempt.id};
+    }
+    return await completeGoogleAttempt(attempt,session,exchangeSignal);
    }catch(error){if(googleAttempt===attempt)await cancelGoogleAttempt(attempt.id);throw error;}finally{attempt.busy=false;}
+  }
+  if(data.operation==='signInVerifyMfa'&&googleAttempt&&googleAttempt.id===data.attemptId){
+   const attempt=googleAttempt,mfa=attempt.mfa,exchangeSignal=AbortSignal.any([signal,attempt.controller.signal]);
+   checkGoogleAttempt(attempt,exchangeSignal);
+   if(!mfa||!['totp','sms'].includes(mfa.type))throw signInFailure('mfa-unsupported');
+   if(attempt.busy)throw signInFailure('login-active');
+   if(typeof data.code!=='string'||!/^\d{6}$/.test(data.code))throw signInFailure('invalid-code');
+   attempt.busy=true;
+   try{
+    if(((await load())[attempt.environment]?.credentialReference??null)!==attempt.previousReference)throw signInFailure('account-changed');
+    checkGoogleAttempt(attempt,exchangeSignal);
+    const result=await signInCall(attempt.environment,`/steward/auth/mfa/${mfa.type}/complete`,{challengeId:mfa.challengeId,code:data.code},exchangeSignal);
+    if(result.status!==200){
+     const code=signInStatus('mfa',result.status);
+     throw signInFailure(code==='invalid-code'&&++mfa.failed>=MAX_VERIFY_ATTEMPTS?'attempts-exhausted':code);
+    }
+    return await completeGoogleAttempt(attempt,result.data,exchangeSignal);
+   }catch(error:any){if(error.code!=='invalid-code'&&googleAttempt===attempt)await cancelGoogleAttempt(attempt.id);throw error;}finally{attempt.busy=false;}
   }
   if(data.operation==='signInStartEmail'){
    if(googleAttempt)throw signInFailure('login-active');
@@ -214,7 +287,10 @@ export function createBrowserCloudDevHandler(options:{profile:string;request?:ty
      attempt.mfa={type:challenge.type,challengeId:challenge.challengeId};attempt.failed=0;attempt.expiresAt=Math.min(attempt.expiresAt,Date.parse(challenge.expiresAt)||attempt.expiresAt);
      return {status:'mfa',method:challenge.type,expiresAt:attempt.expiresAt};
     }
-    const outcome=await signInComplete(attempt,verified.data,signal);if(signIn===attempt)signIn=null;return outcome;
+    const {credential,expiresAt,accountCreated}=await scopedSignInCredential(attempt.environment,verified.data,signal);
+    await serial(async()=>{const stored=await load();signal.throwIfAborted();if(signIn!==attempt)throw signInFailure('cancelled');stored[attempt.environment]=credential;retire(attempt.environment);await save(stored);});
+    if(signIn===attempt)signIn=null;
+    return {status:'authenticated',environment:attempt.environment,expiresAt,accountCreated};
    }catch(error:any){if(error.code!=='invalid-code'&&signIn===attempt)signIn=null;throw error;}finally{attempt.busy=false;}
   }
   throw Error('Unsupported development operation');
@@ -222,6 +298,11 @@ export function createBrowserCloudDevHandler(options:{profile:string;request?:ty
  const send=(res:ServerResponse,status:number,data:unknown)=>{res.writeHead(status,{'Content-Type':'application/json','Cache-Control':'no-store'});res.end(JSON.stringify(data));};
  const handler=async(req:IncomingMessage,res:ServerResponse)=>{
   const host=req.headers.host,origin=req.headers.origin;
+  if(req.url===GOOGLE_BROWSER_RETURN&&req.method==='GET'&&host&&/^(127\.0\.0\.1|localhost):\d+$/.test(host)){
+   res.writeHead(200,{'Content-Type':'text/html; charset=utf-8','Cache-Control':'no-store','Referrer-Policy':'no-referrer','Content-Security-Policy':`default-src 'none'; script-src 'sha256-${googleReturnHash}'; connect-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'`});
+   res.end(`<!doctype html><html lang="en"><head><meta charset="utf-8"><title>Return to Alpha</title></head><body><p>Return to Alpha.</p><script>${googleReturnScript}</script></body></html>`);
+   return;
+  }
   if(req.url!=='/'&&req.url!==''&&req.url!==BROWSER_CLOUD_BRIDGE_PATH){send(res,404,{error:'Unknown development route'});return;}
   if(!host||! /^(127\.0\.0\.1|localhost):\d+$/.test(host)||origin!==`http://${host}`||req.method!=='POST'||req.headers['x-alpha-browser-cloud']!=='1'){send(res,403,{error:'Same-origin development request required'});return;}
   let ownedId:string|undefined;const controller=new AbortController(),closed=()=>{if(!res.writableEnded)controller.abort();};res.on('close',closed);
