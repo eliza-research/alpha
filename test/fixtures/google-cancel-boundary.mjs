@@ -22,7 +22,7 @@ export function googleCancelBoundary(root) {
  const browserCloudCall=async(data,signal)=>{
   if(data.operation==='signInStartGoogle') {
    const wait=Promise.withResolvers();polls.set(data.attemptId,wait);started.push(data.attemptId);
-   return response({attemptId:data.attemptId,expiresAt:Date.now()+60000,browserUrl:`https://cloud.example.invalid/auth/cli-login?session=${randomUUID()}&app=alpha&provider=google`});
+   return response({attemptId:data.attemptId,expiresAt:Date.now()+60000,browserUrl:'https://cloud.example.invalid/alphaphone/auth/browser-start',state:'s'.repeat(43),challenge:'c'.repeat(43)});
   }
   if(data.operation==='signInPollGoogle') {
    const pending=polls.get(data.attemptId);assert.ok(pending);
@@ -38,7 +38,18 @@ export function googleCancelBoundary(root) {
  };
  const sandbox={URL,Date,AbortController,DOMException,crypto:{randomUUID},setTimeout,clearTimeout,
   WebPlugin:class {},browserCloudCall,productionCloud:{web:'https://cloud.example.invalid'},stagingCloud:{web:'https://staging.example.invalid'},
-  window:{open(){const popup={closed:false,close(){this.closed=true;},location:{replace(){}}};popups.push(popup);return popup;}},
+  window:{open(){
+   const popup={closed:false,close(){this.closed=true;},document:{
+    createElement(tag){
+     if(tag==='input')return {};
+     assert.equal(tag,'form');const fields=[];
+     return {append(field){fields.push(field);},submit(){
+      assert.equal(this.method,'POST');assert.equal(this.action,'https://cloud.example.invalid/alphaphone/auth/browser-start');
+      assert.deepEqual(fields.map(({name,value})=>[name,value]),[['state','s'.repeat(43)],['challenge','c'.repeat(43)]]);
+     }};
+    },body:{append(){}}}};
+   popups.push(popup);return popup;
+  }},
   CloudProtocolError:class extends Error {},
   CloudSignInError:class extends Error {constructor(code){super(code);this.code=code;}static from(error){return error;}}
  };

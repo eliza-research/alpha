@@ -76,8 +76,18 @@ test('every subview of a retained view is opened by a state that asserts it is t
     assert.ok(states.includes(state), `${state} is swept`);
   assert.match(states, /const legacyNotes = [\s\S]*?await openLegacyNotes\(page\);[\s\S]*?await press\(page, steps\)/, 'retained Notes states select their source before opening controls');
 
-  for (const page of ['Character', 'Accounts', 'Connections', 'Notifications', 'Calendar', 'Password manager', 'Models', 'Display', 'Privacy & data', 'About', 'Scheduled digests', 'Agent connection'])
-    assert.ok(states.includes(`['Settings', '${page}']`), `Settings > ${page} is swept`);
+  // Follow the shipped grouped navigation, including its nested pages. Character,
+  // Models and Agent connection were retired from the owner's Settings design.
+  for (const steps of [
+    ['Settings', 'General'], ['Settings', 'General', 'Display'],
+    ['Settings', 'General', 'Notifications'], ['Settings', 'Privacy'],
+    ['Settings', 'Privacy', 'App permissions'], ['Settings', 'About'],
+    ['Settings', 'Apps'], ['Settings', 'Apps', 'Calendar'],
+    ['Settings', 'Apps', 'Passwords'],
+    ['Settings', 'Apps', 'Workflows', 'Scheduled summaries'],
+    ['Settings', 'Account', 'Account & plan'],
+    ['Settings', 'Account', 'Google & email'],
+  ]) assert.ok(states.includes(`[${steps.map(step => `'${step}'`).join(', ')}]`), `${steps.join(' > ')} is swept`);
 });
 
 test('the sweep applies every dimension and cannot be narrowed silently', () => {

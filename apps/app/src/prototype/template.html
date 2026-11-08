@@ -2336,7 +2336,7 @@
         <div style="display: flex; align-items: center; gap: 14px; margin-top: 22px">
           <button aria-label="{{notes.vo.playLabel}}" onClick="{{notes.vo.play}}" style="width: 52px; height: 52px; border-radius: 26px; background: var(--acc); color: var(--alpha-white); display: flex; align-items: center; justify-content: center; flex-shrink: 0"><svg class="i" viewBox="0 0 24 24" style="width: 20px; height: 20px; {{notes.vo.playCss}}"><path d="{{notes.vo.playIcon}}"></path></svg></button>
           <div style="flex-grow: 1; min-width: 0">
-            <div role="img" aria-label="Recording playback activity" style="display:flex;align-items:center;height:36px;width:100%;color:var(--acct)">{{notes.vo.activity}}</div>
+            <div class="alpha-voice-waveform" role="img" aria-label="Recording playback activity" style="height:36px;width:100%">{{notes.vo.activity}}</div>
             <div style="font-size: 12px; color: var(--mut); margin-top: 4px; text-align: right">{{notes.vo.time}}</div>
           </div>
         </div>

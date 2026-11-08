@@ -43,6 +43,11 @@ test('canonical Notes saves audio before transcription, keeps it across client r
  await canonicalNotesFixture(page,{notes:kept});await openCanonicalNotes(page);await page.getByRole('button',{name:'Open Browser audio journey',exact:true}).click();
  await expect(page.getByRole('button',{name:'Play recording',exact:true})).toBeVisible();
  await expect(page.getByRole('button',{name:'Generate transcript',exact:true})).toBeVisible();
+ const activity=page.getByRole('img',{name:'Recording playback activity',exact:true});
+ await expect(activity.locator('[data-alpha-voice-bar]')).toHaveCount(35);
+ await expect.poll(()=>activity.locator('[data-alpha-voice-bar]').first().evaluate(bar=>{
+  const bounds=bar.getBoundingClientRect();return bounds.width>0&&bounds.height>0;
+ })).toBe(true);
  const note=await page.evaluate(()=>{const row=(window as any).canonicalNotesFixture.state.notes.find((n:any)=>n.title==='Browser audio journey');return {...row,audio:{...row.format.data.audio,noteId:row.id}};});
  const replay=await page.evaluate(async(note)=>{
   const {registerPlugin}=await import('/src/platform-plugins.ts');const voice=registerPlugin<any>('AlphaVoiceCloud');

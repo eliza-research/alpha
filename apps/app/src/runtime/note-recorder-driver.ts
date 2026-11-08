@@ -28,9 +28,15 @@ const native = registerPlugin<{
 
 export function createNoteRecorderDriver(): NoteRecorderDriver {
   return {
-    start: binding => {
+    start: async binding => {
       if (!binding) throw Error('Notes recording owner is unavailable');
-      return native.startNoteRecording(binding);
+      try { return await native.startNoteRecording(binding); }
+      catch (error) {
+        const failure = error as {name?: string; code?: string};
+        if (failure?.name === 'NotAllowedError' || failure?.code === 'permission-denied')
+          window.dispatchEvent(new CustomEvent('alpha:setup-permissions', {detail: {permission: 'microphone'}}));
+        throw error;
+      }
     },
     status: () => native.noteRecordingStatus(),
     pause: recordingId => native.pauseNoteRecording({ recordingId }),
