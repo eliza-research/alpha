@@ -232,3 +232,9 @@ campaign checks 21 schedules and 107 checkpoints around exact command
 authority, replacement, foreground startup and teardown. Browser retention
 also checks prototype-shaped operation IDs with actual Calendar and Reminder
 stores. Recovery for older orphaned Reminder markers remains open.
+
+The fact-write deduplication campaign checks both original profiles against
+the pinned runtime and real PGlite. All 12 writer schedules match across 144
+checkpoints. Equivalent writes can duplicate across separate runtime owners
+or when the previous row falls outside the newest 120 candidates. The original
+profiles describe the serialized, in-window case.
