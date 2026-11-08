@@ -1587,6 +1587,40 @@
         "maxSteps": 60,
         "seed": "123"
       }
+    },
+    {
+      "path": "specs/quint/native/GoogleBrowserReturnClaim.qnt",
+      "module": "GoogleBrowserReturnClaim",
+      "init": "init",
+      "step": "step",
+      "invariant": "safety",
+      "sources": [
+        "vendor/eliza/packages/auth/android/src/main/java/ai/eliza/auth/cloud/CloudSignInPlugin.java",
+        "vendor/eliza/packages/auth/android/src/main/java/ai/eliza/auth/cloud/CloudSignInFlow.java",
+        "vendor/eliza/packages/auth/android/src/main/java/ai/eliza/auth/cloud/CloudCredentialSlots.java",
+        "patches/eliza/google-browser-sign-in.patch",
+        "patches/eliza/native-manifest.json"
+      ],
+      "tests": [
+        "ownResultSurvivesResumeGraceTest",
+        "foreignResultLeavesResumeGraceTest",
+        "matchingResultSurvivesHintGraceTest",
+        "unconsumableResultReleasesElapsedHintTest",
+        "cancelFencesQueuedResultTest",
+        "coldReturnHasNoCredentialAuthorityTest",
+        "staleCredentialCannotConsumeTest"
+      ],
+      "invariants": [
+        "TypeOK",
+        "ClaimHasWorker",
+        "ExchangeUsesConsumedRecord",
+        "ClaimedResultSurvivesGrace",
+        "GraceAndRetirement"
+      ],
+      "abstractions": [
+        "One prepared Google browser attempt or a pending record after process loss, a fixed production environment, four FIFO worker entries and four main grace timers.",
+        "Pending data and parser outcomes use bounded classes. Worker dispatches are macrosteps. The checked success path uses a controlled credential store and HTTPS replies; Android delivery, credential durability and unrestricted interleavings remain external."
+      ]
     }
   ]
 }

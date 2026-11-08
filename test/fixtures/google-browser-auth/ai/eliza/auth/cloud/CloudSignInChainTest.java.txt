@@ -27,7 +27,11 @@ public class CloudSignInChainTest extends ChainPluginBase {
  static final List<String> revoked=new ArrayList<>();
  static final String REQUEST="00000000-0000-4000-8000-000000000002";
  static class SignInFailure extends Exception { final String code;SignInFailure(String c){code=c;} }
- static class JSObject extends JSONObject { @Override public JSObject put(String k,Object v){super.put(k,v);return this;} }
+ static class JSObject extends JSONObject {
+  @Override public JSObject put(String key,Object value){super.put(key,value);return this;}
+  public JSObject put(String key,long value){return put(key,(Object)value);}
+  public JSObject put(String key,boolean value){return put(key,(Object)value);}
+ }
  static class PluginCall {
   final Map<String,Object> input=new HashMap<>();JSObject result;String error;
   String getString(String key){Object value=input.get(key);return value instanceof String?(String)value:null;}
