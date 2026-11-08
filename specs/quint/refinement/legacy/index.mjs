@@ -4,6 +4,7 @@ import {checkFilesBrowserRefinement} from '../../legacy/files-browser/check-file
 import {checkHomeLayoutRefinement} from '../../legacy/home-layout/check-home-layout-refinement.mjs';
 import {checkNotesViewRefinement} from '../../legacy/notes-view/check-notes-view-refinement.mjs';
 import {checkSettingsNavRefinement} from '../../legacy/settings-nav/check-settings-nav-refinement.mjs';
+import {checkSignInRefinement} from '../../legacy/sign-in/check-sign-in-refinement.mjs';
 import {checkActionSettlementRefinement} from '../../legacy/core/check-action-settlement-refinement.mjs';
 import {checkApprovalServiceRefinement} from '../../legacy/core/check-approval-service-refinement.mjs';
 import {checkEmbeddingSqlRefinement} from '../../legacy/core/check-embedding-sql-refinement.mjs';
@@ -122,6 +123,13 @@ export async function runLegacyRefinement() {
         return {model: 'NotesView', obligation, reason, evidence: mismatch.receiptPath};
       });
       return {receipts, obligations};
+    }],
+    ['SignIn', async () => {
+      const {receipts, mismatch} = await checkSignInRefinement([driver]);
+      return {receipts, obligations: [{model: 'SignIn',
+        obligation: 'Current sign-in opens the chooser directly after local readiness',
+        reason: 'The historical current profile requires a separate gate and user probe step. The mounted source reaches the in-app choices after startup.',
+        evidence: mismatch.receiptPath}]};
     }],
     ['CoreActionSettlement', checkActionSettlementRefinement],
     ['CoreApprovalService', () => checkApprovalServiceRefinement(undefined, [driver])],
