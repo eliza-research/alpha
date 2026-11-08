@@ -11,6 +11,7 @@ import {scanRefinement} from './scan.mjs';
 import {credentialRefinement} from './credentials.mjs';
 import {pdfRefinement} from './pdf.mjs';
 import {runSignInCoordinatorRefinement} from './sign-in-coordinator.mjs';
+import {runInboxCoordinatorRefinement} from './inbox-coordinator.mjs';
 import {fileURLToPath} from 'node:url';
 
 export async function runServicesRefinement() {
@@ -22,12 +23,14 @@ export async function runServicesRefinement() {
     receipts.push(...(Array.isArray(result) ? result : [result]));
   }
   receipts.push(await runSignInCoordinatorRefinement(undefined, [fileURLToPath(import.meta.url)]));
+  const inboxCoordinator = await runInboxCoordinatorRefinement([fileURLToPath(import.meta.url)]);
+  receipts.push(...inboxCoordinator.receipts);
   const obligations = [
-    {model: 'IdentitySession', obligation: 'Native authorization, encrypted storage and wider concurrent activation', reason: 'Fifteen full-plugin schedules now cover callback retirement, cancellation races, receipt/key commits, acknowledgement, previous-key revocation and restart. Native authorization timing, actual Keystore behavior and a new interactive attempt overlapping an earlier post-key acknowledgement remain further obligations.'},
+    {model: 'IdentitySession', obligation: 'Native authorization, encrypted storage and wider concurrent activation', reason: 'Seventeen full-plugin schedules cover callback retirement, cancellation races, receipt/key commits, overlapping acknowledgement and newer attempts, previous-key revocation and restart. Native authorization timing, actual Keystore behavior and arbitrary overlapping attempts remain further obligations.'},
     {model: 'ServiceAuthorization', obligation: 'Managed-service dispatch authorization', reason: 'Entitlement refresh and admission views execute; exact route validation and server authorization still need their own dispatch trace adapter.'},
     {model: 'GoogleAccounts', obligation: 'Account-list consumers and native return delivery', reason: 'Connect/disconnect orchestration executes with controlled browser return and retirement ports; Inbox/Calendar cache consumers and installed App Link delivery remain separate.'},
     {model: 'CalendarSync', obligation: 'Linked native Calendar consent and mutation', reason: 'Outbox claim/revision/undo/restart/unknown-outcome paths execute. Linked-store reconciliation and installed Calendar provider mutation remain outside this adapter.'},
-    {model: 'InboxDelivery', obligation: 'Full UI grant restoration and source-draft cleanup', reason: 'Actual operation CAS/review/dispatch/restart is traced. Composer attachment editing, account-list withdrawal/regrant and cleanup across all local copies remain further orchestration obligations.'},
+    {model: 'InboxDelivery', obligation: 'Wider source-draft cleanup and provider orchestration', reason: 'Actual operation CAS/review/dispatch/restart and the full coordinator execute, including composer attachment edits, capability withdrawal, account replacement and restoration. Interrupted individual cleanup writes and provider-draft/forward schedules remain further obligations.'},
     {model: 'MapsNavigation', obligation: 'Native GPS, full renderer and background navigation', reason: 'DeviceNavigation and MapsController execute against controlled surface/provider/location ports. Full adapter and native service lifecycle still require installed traces.'},
     {model: 'WorkflowExecution', obligation: 'Execution admission, effects and development triggers', reason: 'Real canonicalization, receipt verification and durable intent-store paths execute. No worker execution or provider idempotency is established by those source observations.'},
     {model: 'NoticesAndCaches', obligation: 'Native delivery claims, posting, tap consumption and acknowledgements', reason: 'Real cache CAS/expiry/restart and owner retry execute. Delivery-ledger actions need native source traces.'},
@@ -38,5 +41,6 @@ export async function runServicesRefinement() {
     {model: 'NativeCredentialMutation', obligation: 'Real shutdown, encryption and lock interleavings', reason: 'Actual credential-store classification, recheck, admission invalidation and preflight run against primitive storage/lifecycle ports. Those ports do not establish native shutdown or encrypted persistence.'},
     {model: 'PdfWorker', obligation: 'Kernel isolation, descriptor transfer, watchdog and memory kill', reason: 'Actual service request/render/cleanup/reply code executes against Android primitives. Host stubs cannot establish kernel or real PDF renderer behavior.', requires: ['IsolatedPdfInstrumentedTest on a disposable admitted installation']},
   ];
+  obligations.push(...inboxCoordinator.obligations);
   return {receipts, obligations};
 }

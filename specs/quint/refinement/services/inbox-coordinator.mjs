@@ -80,9 +80,9 @@ async function startSend(fixture, coordinator, trace) {
   step(trace, "durable confirmation precedes one provider request", [action("reserve"), action("persisted", 1), action("dispatched")], observe(fixture, coordinator));
   return gate;
 }
-export async function runInboxCoordinatorRefinement() {
+export async function runInboxCoordinatorRefinement(extraSources = []) {
   const discovered = await inboxDriverSources();
-  const sources = [...discovered, fileURLToPath(import.meta.url), "specs/quint/refinement/services/inbox-coordinator-ports.mjs", "package-lock.json"];
+  const sources = [...discovered, fileURLToPath(import.meta.url), "specs/quint/refinement/services/inbox-coordinator-ports.mjs", "package-lock.json", ...extraSources];
   const driverHashes = captureInputs(sources);
   rebuildInboxDriver(discovered);
   const traces = [];

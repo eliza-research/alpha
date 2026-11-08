@@ -7,10 +7,10 @@ export const deletionSources=['NativeDeletionCoordinator.java','DeferredDeletion
   'NativeOwnerReminderHost.java','HostedInbox.java','HostedResultNotices.java','NoticeOwner.java','HostedStorageFault.java'].map(name=>app+name);
 export const deletionScenarios=['deleted','conflict','permission','unknown','undo','reboot','open','claim-refused',
   'claim-committed-error','outcome-refused','outcome-committed-error','restart','stale-owner','stale-stage','multiple-rows','reminder-open','reminder-undo','reminder-retired','reminder-effects','stage-refused','stage-committed-error','stage-schedule-error'];
-export function generateDeletionCoordinatorTraces(scenario){
+export function generateDeletionCoordinatorTraces(scenario,extraSources=[]){
  const platform=deletionPlatform();
  const sources=[...deletionSources,`${directory}/DeletionTestPorts.java`,`${directory}/DeletionCoordinatorTraces.java`,
-  `${directory}/Trace.java`,`${directory}/java.mjs`,`${directory}/deletion-platform.mjs`,fileURLToPath(import.meta.url)];
+  `${directory}/Trace.java`,`${directory}/java.mjs`,`${directory}/deletion-platform.mjs`,fileURLToPath(import.meta.url),...extraSources];
  try{
   const driverHashes=captureInputs(sources);
   const traces=(scenario?[scenario]:deletionScenarios).flatMap(name=>javaTraces('DeletionCoordinatorTraces.java',
@@ -18,8 +18,8 @@ export function generateDeletionCoordinatorTraces(scenario){
   return {traces,sources,driverHashes,fixtureSha256:createHash('sha256').update(JSON.stringify(platform.sources)).digest('hex')};
  }finally{platform.close();}
 }
-export async function checkDeletionCoordinator(){
- const data=generateDeletionCoordinatorTraces();
+export async function checkDeletionCoordinator(extraSources=[]){
+ const data=generateDeletionCoordinatorTraces(undefined,extraSources);
  return checkTraces({model:'DeletionJournal',id:'DeletionJournal-coordinator',scope:'bounded-orchestration',
   traces:data.traces,sources:data.sources,driverHashes:data.driverHashes,assumptions:[
    `Actual NativeDeletionCoordinator, DeferredDeletionJournal and NativeOwnerReminderHost execute with external ports ${data.fixtureSha256}.`,

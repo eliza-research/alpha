@@ -7,6 +7,7 @@ import {voiceTraces, navigationTraces} from './renderer.mjs';
 import {residentLifecycleTraces} from './local-agent.mjs';
 import {checkResetOrchestration} from './reset-orchestration.mjs';
 import {checkResidentCoordinator} from './resident-coordinator.mjs';
+import {checkDeletionCoordinator} from './deletion-coordinator.mjs';
 
 export async function runNativeRefinement() {
   const models = ['VadSegmentation', 'RendererRecovery', 'ResidentScheduling'];
@@ -92,6 +93,7 @@ export async function runNativeRefinement() {
   if (reset.results.some(result => result.status !== 'passed')) throw Error('Reset orchestration trace checking failed');
   results.push(...reset.receipts);
   results.push(await checkResidentCoordinator([fileURLToPath(import.meta.url)]));
+  results.push(await checkDeletionCoordinator([fileURLToPath(import.meta.url)]));
   const obligations = [
     {model: 'RendererRecovery', obligation: 'Activity lifecycle and visible escape behavior', reason: 'Current adapter projects the pure budget only.', requires: ['Android Activity/WebView harness']},
     {model: 'ResidentScheduling', obligation: 'Plugin lifecycle and OS broadcasts', reason: 'Current adapter proves the pure admission table and same-lock callbacks.', requires: ['Android service integration']},
@@ -101,7 +103,7 @@ export async function runNativeRefinement() {
     {model: 'SpeechResources', obligation: 'Combined native microphone/engine/focus lifecycle', reason: 'Capture reservation, PCM queue and focus helpers execute independently. Explicit-stop tail and native pipe ownership remain separate.'},
     {model: 'AlwaysOnListener', obligation: 'Consent store, ListeningEpoch and ListeningService integration', reason: 'Pairwise policy and indicator-loss cases execute without microphone, Android permissions or physical visibility.'},
     {model: 'ResetRecovery', obligation: 'Android durability, installed credential approval and externally observed erasure', reason: 'Actual reset authorization, durable reservation, listener-first retry and process-exit paths execute against controlled ports, including cross-process contention. Device power-loss behavior, Binder identity and actual package erasure require platform observations.'},
-    {model: 'DeletionJournal', obligation: 'Coordinator identity admission, multi-row scheduling and provider persistence', reason: 'One row and controlled atomic store/provider outcomes execute. Power-loss durability and actual provider effects are external.'},
+    {model: 'DeletionJournal', obligation: 'Arbitrary multi-row scheduling and installed provider persistence', reason: 'The full coordinator and reminder host execute 22 bounded schedules, including stale identity admission, partial storage failures, restart and multiple rows. Power-loss durability and actual provider effects remain external.'},
     {model: 'MediaLifecycle', obligation: 'Catalog, edit review, temporary camera resources and video lifecycle', reason: 'NativeReadEpoch and exact attachment copy/publication guards execute. MediaStore, camera and Activity lifecycle remain external.'},
     {model: 'DeviceActions', obligation: 'AOSP image/role, Contacts, Reminders and Clock', reason: 'Only the real SMS journal executes in these traces. Carrier outcomes are fixture inputs.'},
     {model: 'ApplicationComposition', obligation: 'Cross-domain implementation orchestration', reason: 'Root integration driver owns this combined scope. Standalone native receipts do not establish composition.'},
