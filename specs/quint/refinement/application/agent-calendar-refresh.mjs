@@ -19,7 +19,7 @@ const errors = new Map([[null, ''], ['Calendar could not load. Try again.', 'loa
   ['Calendar could not be refreshed. Saved next event is unverified.', 'feed'],
   ['Next event could not be refreshed. Saved event is unverified.', 'next']]);
 
-async function compile(extraSources) {
+export async function buildAgentCalendar(extraSources = []) {
   const built = await build({absWorkingDir: root, entryPoints: [implementation], bundle: true,
     platform: 'node', format: 'cjs', write: false, metafile: true, plugins: [{name: 'calendar-read-clock', setup(builder) {
       builder.onLoad({filter: /\/runtime\/agent-calendar\.ts$/}, ({path}) => {
@@ -229,7 +229,7 @@ const cases = [
 ];
 
 export async function checkAgentCalendarRefresh(extraSources = []) {
-  const compiled = await compile(extraSources), traces = [];
+  const compiled = await buildAgentCalendar(extraSources), traces = [];
   for (const [name, steps] of cases) {
     const f = fixture(compiled), t = trace(name, f.observe());
     try {

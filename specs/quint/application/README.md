@@ -31,6 +31,7 @@ repository-wide allocation and source hashes are recorded in `../coverage.json`.
 | `CalendarPresentation` | `calendar-views`, `calendar-month-focus`, Google Calendar selection | Selected month/day, menu/delete/search Back order, query-range generations, visible calendars and captured edit identity |
 | `CanonicalCalendarDraft` | Canonical Calendar editor and shared durable draft | Bound slot ownership, stale reads/writes, held clears, same-account replacement and recovery |
 | `AgentCalendarRefresh` | Current Agent Calendar read controller | Range and session fencing, coalesced readback, legacy gate and next-event freshness |
+| `AgentCalendarMutation` | Current Agent Calendar write controller | Edit admission, preservation and owner checks, exact dispatch and deferred refresh |
 | `GoogleConsentAdmission` | Mounted Google connections panel and shared Gmail grant rules | Verified account readback, preserved Gmail tier, stale permission continuation and revoke readback |
 | `NotificationCollection` | `notification-store`, `notifications-adapter`, `AlphaNotificationListener` | Opt-in external collection, package/signature/preview consent, lock privacy, history expiry, policy epoch and independent app/channel delivery settings |
 | `FilesAndSharing` | `reviewFileEmail`, `reviewMailAttachment`, `mediaCopyIntent`, share adapters | One exact source, owner and draft identity, initially unchecked selection, reread before local insertion, cancellation and revoked grant. Send has its own Inbox model |
