@@ -189,6 +189,18 @@
           "afterSha256": "fe829258c9a4c1d17185bc29071dab59a0af2927e8106e703c1adf7a157b327c"
         }
       ]
+    },
+    {
+      "file": "speech-recording-admission.patch",
+      "sha256": "f790a2729575ccf55e5e26650fe7e94ab0175ab0571ce8e8e57ce4579a3793bb",
+      "module": "plugins/plugin-local-inference/native/android",
+      "targets": [
+        {
+          "path": "plugins/plugin-local-inference/native/android/speech-bridge/src/main/java/ai/eliza/voice/LocalSpeechBridgePlugin.java",
+          "beforeSha256": "e453f1e3289e85791b5ec729db56f9708afab15be54088d57d7bd3e1602e78c7",
+          "afterSha256": "530d65b12169c2d00ee4c4e800d1759cc564fcde7aaa50b07c752d2e25a717a8"
+        }
+      ]
     }
   ],
   "modules": [

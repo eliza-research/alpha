@@ -88,3 +88,20 @@ The product now rechecks those boundaries inside each queued opening callback.
 do not rewrite a previously valid start. Twenty-two real-source schedules cover
 all declared state fields and actions. Device microphone enforcement and concurrent
 permission requests remain explicit obligations.
+
+## Shared recording and cancellation boundary
+
+`shared-recording.mjs` runs the complete staged `LocalSpeechBridgePlugin`, its real
+request gate, draft recorder, speech engine lifecycle and serial worker. The
+observer reads actual permission maps, captured queued callback epochs, waiter
+identities, recorder ownership, emitted events and caller settlements. A held
+worker controls the cancellation barrier. Filling its real bounded queue tests
+worker refusal. A MediaRecorder release failure reaches the source cleanup catch.
+No copied admission or cancellation algorithm supplies expected observations.
+
+`SharedRecordingAdmission` is bounded to two recording requests, two cancellation
+waiters, four epoch increments and two successful captures. Android permissions,
+call-mode delivery, installed lifecycle and the physical microphone remain
+external. Live-capture, inference, prepared playback and latency dependencies are
+unexercised explicit ports. The host `org.json` float overload is accommodated by
+widening only the fixture listener sink to `JSONObject`.

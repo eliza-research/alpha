@@ -928,6 +928,39 @@
         "One pending request, two successful capture starts and serialized main queue delivery. Pause/resume/stop/discard operate on the current recording identity.",
         "The complete product bridge note methods execute against controlled parent lifecycle/permission ports and the real segmented recorder. Shared parent bridge lifecycle and physical microphone permission enforcement remain separate obligations."
       ]
+    },
+    {
+      "path": "specs/quint/native/SharedRecordingAdmission.qnt",
+      "module": "SharedRecordingAdmission",
+      "init": "init",
+      "step": "step",
+      "invariant": "safety",
+      "sources": [
+        "vendor/eliza/plugins/plugin-local-inference/native/android/speech-bridge/src/main/java/ai/eliza/voice/LocalSpeechBridgePlugin.java",
+        "vendor/eliza/plugins/plugin-local-inference/native/android/src/main/java/ai/eliza/voice/LocalVoiceRecording.java",
+        "vendor/eliza/plugins/plugin-local-inference/native/android/src/main/java/ai/eliza/voice/SpeechRequestGate.java",
+        "patches/eliza/speech-recording-admission.patch"
+      ],
+      "tests": [
+        "lateCallRejectsPermissionStartTest",
+        "pauseForPromptCanResumeTest",
+        "pauseRetiresQueuedStartTest",
+        "cancelRetiresPromptTest",
+        "timeoutKeepsAdmissionClosedTest",
+        "joinedCancelWaitsForOneBarrierTest",
+        "refusedBarrierStaysClosedTest"
+      ],
+      "invariants": [
+        "AcceptedInCurrentLiveEpoch",
+        "CaptureHasOwner",
+        "PendingNotQueued",
+        "DrainOwnsWaiters",
+        "Bounded"
+      ],
+      "abstractions": [
+        "Two recording requests, two cancellation waiters and two capture openings, with exact permission epochs through four.",
+        "The complete shared bridge, draft recorder and request gate execute. Platform audio mode/permission, unrelated live capture, inference and playback are controlled ports."
+      ]
     }
   ]
 }

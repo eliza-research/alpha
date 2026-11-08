@@ -375,3 +375,22 @@ This campaign supplies the shared parent lifecycle/permission interface as a
 controlled port. It covers one pending Notes request and two successful capture
 starts. Shared `LocalSpeechBridgePlugin` behavior, multiple simultaneous prompts,
 installed microphone enforcement and physical audio remain separate obligations.
+
+`SharedRecordingAdmission` executes the complete shared `LocalSpeechBridgePlugin`
+draft-recording entry points, permission callbacks and cancellation barrier with
+real `SpeechRequestGate` and `LocalVoiceRecording`. Its state distinguishes
+pending permission epochs, queued starts, active recorder ownership, cancellation
+waiters and a posted worker completion. A prompt-induced pause preserves the
+permission epoch, while a pause with no prompt retires queued starts. Cancellation
+timeout removes its waiter while the drain stays closed. Failed cleanup or a
+rejected worker barrier also preserves closed admission.
+
+The authenticated `speech-recording-admission.patch` adds a call-state recheck
+immediately before queued recording startup. Thirty source schedules include
+concurrent prompts, late permission after cancellation/destruction, active-call
+interruption, joined drains, timeout, media-release failure and worker saturation.
+Every declared state field and action has source observations. The finite scope
+uses two recording requests, two cancellation waiters and two successful starts.
+`captureOpen` observes the retained MediaRecorder reference, with physical capture
+state left to Android acceptance. Live capture, inference and playback paths are
+separate source scopes and fail fast if reached by this recording fixture.
