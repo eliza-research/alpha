@@ -351,8 +351,8 @@ claim that the current development build reproduces those bytes.
    emits both source fields; the wrapper rejects disagreement and unrecorded engine staging
    checks the original record against every selected engine hash. No vendor source is edited.
    The upstream builder always writes its untracked build tree (including eSpeak NG) to
-   `vendor/eliza/.cache/elizavoice-android`. The pinned-source check admits only that directory;
-   any other new file in `vendor/eliza` refuses the wrapper and every Android build. Remove the
+   `vendor/eliza/.cache/elizavoice-android`. The pinned-source check admits that directory;
+   any other unexpected file in `vendor/eliza` fails the wrapper and every Android build. Remove the
    tree with `rm -rf vendor/eliza/.cache/elizavoice-android` when it is no longer needed.
    The current engines were built from clean Eliza `58dfddf87ee5` and native
    `6003a10368d8` checkouts on 2026-10-23. The canonical Paradee v1.1 model was
