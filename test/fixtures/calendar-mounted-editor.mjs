@@ -9,6 +9,7 @@ import {createServer} from 'vite';
 const root = fileURLToPath(new URL('../../', import.meta.url));
 const main = resolve(root, 'apps/app/src/main.tsx');
 const adapter = resolve(root, 'apps/app/src/prototype/agent-calendar-adapter.ts');
+const cameraAdapter = resolve(root, 'apps/app/src/prototype/camera-adapter.ts');
 export const mountedCalendarFixtureSources = [fileURLToPath(import.meta.url), main, adapter, resolve(root, 'vite.config.ts'),
   resolve(root, 'package-lock.json')];
 
@@ -229,7 +230,7 @@ async function installCalendar({legacyTitle, eventTitles, notes}) {
 }
 
 /** Run the actual renderer with a closed record port and the actual IndexedDB document store. */
-export async function startMountedCalendar({onSource = () => {}} = {}) {
+export async function startMountedCalendar({onSource = () => {}, observeCamera = false} = {}) {
   const profile = mkdtempSync(join(tmpdir(), 'alpha-quint-calendar-'));
   const previous = {mocks: process.env.ELIZA_DEV_ALLOW_TEST_MOCKS, profile: process.env.ALPHA_BROWSER_CLOUD_PROFILE};
   let server, browser;
@@ -252,6 +253,11 @@ export async function startMountedCalendar({onSource = () => {}} = {}) {
           const anchor = 'shell = value;';
           assert.ok(code.includes(anchor), 'The mounted Calendar shell ref must remain observable');
           return code.replace(anchor, anchor + ' window.quintMountedCalendar = value;');
+        }
+        if (observeCamera && path === cameraAdapter) {
+          const anchor = '  function hideAccess(){';
+          assert.ok(code.includes(anchor), 'The mounted camera session must remain observable');
+          return code.replace(anchor, 'window.quintMountedCamera=()=>({phase:session.phase,lens:direction,flash,zoom:zoomRatio,chat:chatCovers(),capture:session.recording?"recording":session.capturing?"photo":"idle"});\n' + anchor);
         }
         if (path === adapter && code.includes('let retentionAttempt:')) {
           const anchors = ['this.agentCalendar=controller;', 'retain:async(ownerKey,fingerprint,signal,current)=>{',
