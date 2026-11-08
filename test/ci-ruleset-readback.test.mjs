@@ -2,7 +2,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
-import {compareRequiredChecks, repositoryFromRemote, INTENDED_FILE} from '../scripts/ci/read-required-checks.mjs';
+import os from 'node:os';
+import path from 'node:path';
+import {compareRequiredChecks, ghGet, repositoryFromRemote, INTENDED_FILE} from '../scripts/ci/read-required-checks.mjs';
 
 const intended = JSON.parse(fs.readFileSync(INTENDED_FILE, 'utf8'));
 const parameters = intended.rules[0].parameters;
@@ -14,13 +16,27 @@ const clone = value => JSON.parse(JSON.stringify(value));
 
 test('the read-back script only issues GET requests', () => {
   const source = fs.readFileSync('scripts/ci/read-required-checks.mjs', 'utf8');
-  const calls = source.match(/execFileSync\('gh',[^\n]*/g);
+  const calls = source.match(/execFileSync\(bin,[^\n]*/g);
   assert.equal(calls.length, 1);
-  assert.match(calls[0], /execFileSync\('gh', \['api', '--method', 'GET', endpoint\]/);
+  assert.match(calls[0], /execFileSync\(bin, \['api', '--method', 'GET', endpoint\]/);
   // The only other method named is the command printed for the owner to run.
   assert.deepEqual(source.match(/--method (?!GET)\w+/g), ['--method POST']);
   assert.match(source, /console\.log\(named\(result\) \?[^\n]*\n\s+: `  gh api --method POST repos\/\$\{repo\}\/rulesets --input \$\{INTENDED_FILE\}`\)/);
   assert.doesNotMatch(source, /-X\b|--input['"]|-f\b|--field|--raw-field|PATCH|PUT|DELETE/);
+});
+
+test('a stalled gh is killed and reported as an unreadable read', () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'gh-stall-'));
+  const bin = path.join(dir, 'gh');
+  fs.writeFileSync(bin, '#!/bin/sh\nexec sleep 30\n', {mode: 0o755});
+  try {
+    const started = Date.now();
+    // A status of 0 is not an "absent" status, so the caller lists it as UNREADABLE and exits 2.
+    assert.deepEqual(ghGet('repos/o/r', {bin, timeoutMs: 300}), {ok: false, status: 0, message: 'gh timed out after 0.3s'});
+    assert.ok(Date.now() - started < 10_000);
+  } finally {
+    fs.rmSync(dir, {recursive: true, force: true});
+  }
 });
 
 test('today\'s state: baseline only, so every intended check is reported missing', () => {
