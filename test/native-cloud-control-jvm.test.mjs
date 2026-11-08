@@ -17,7 +17,7 @@ test('microphone permission result cannot start after Stop, replacement, backgro
   enum PermissionState{GRANTED,DENIED}
   static final class Handler{final ArrayDeque<Runnable> pending=new ArrayDeque<>();void post(Runnable r){pending.add(r);}void run(){while(!pending.isEmpty())pending.remove().run();}}
   final Handler main=new Handler();boolean destroyed,foreground=true;PermissionState permission=PermissionState.GRANTED;PluginCall permissionCall;int starts;
-  PermissionState getPermissionState(String s){return permission;}void start(PluginCall call){starts++;}static class Session{}Session owned(PluginCall c){return null;}void detach(Session s){}void queueCleanup(Session s,Runnable r){r.run();}
+  PermissionState getPermissionState(String s){return permission;}void start(PluginCall call,boolean permissionStart){starts++;}static class Session{}Session owned(PluginCall c){return null;}void detach(Session s){}void queueCleanup(Session s,Runnable r){r.run();}
   ${callback} ${stop}
   static void check(boolean x,String m){if(!x)throw new AssertionError(m);}
   public static void main(String[]a){

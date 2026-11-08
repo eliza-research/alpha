@@ -1,6 +1,6 @@
 --- /dev/null
 +++ b/plugins/plugin-local-inference/native/android/speech-bridge/src/main/java/ai/eliza/voice/SpeechStreamBridgePlugin.java
-@@ -0,0 +1,299 @@
+@@ -0,0 +1,308 @@
 +package ai.eliza.voice;
 +
 +import android.Manifest;
@@ -81,21 +81,28 @@
 + @Override @PluginMethod public void requestPermissions(PluginCall call){launch(call,()->super.requestPermissions(call));}
 + @PluginMethod public void startCloudSpeech(PluginCall call){
 +  if(destroyed||!foreground){call.reject("Voice is not in the foreground");return;}
-+  if(session!=null||permissionCall!=null){call.reject("Voice is already active");return;}
-+  if(getPermissionState("microphone")!=PermissionState.GRANTED){permissionCall=call;if(!launch(call,()->requestPermissionForAlias("microphone",call,"microphoneReady")))permissionCall=null;return;}
-+  start(call);
++  final boolean permission=getPermissionState("microphone")!=PermissionState.GRANTED;
++  synchronized(this){if(session!=null||permissionCall!=null||destroyed||!foreground){call.reject("Voice is already active or unavailable");return;}if(permission)permissionCall=call;}
++  if(permission){if(!launch(call,()->requestPermissionForAlias("microphone",call,"microphoneReady"))){synchronized(this){if(permissionCall==call)permissionCall=null;}}return;}
++  start(call,false);
 + }
 + @PermissionCallback private void microphoneReady(PluginCall call){
-+  if(permissionCall!=call)return;
-+  if(getPermissionState("microphone")!=PermissionState.GRANTED){permissionCall=null;call.reject("Microphone permission denied","permission-denied");return;}
-+  // Keep the pending identity until the queued resume check: Stop and Destroy must still cancel it.
-+  main.post(()->{if(permissionCall!=call)return;permissionCall=null;if(destroyed||!foreground){call.reject("Voice is not in the foreground");return;}start(call);});
++  synchronized(this){if(permissionCall!=call)return;if(getPermissionState("microphone")!=PermissionState.GRANTED){permissionCall=null;call.reject("Microphone permission denied","permission-denied");return;}}
++  // Keep this owner through the authority lookup; only publication or cancellation clears it.
++  main.post(()->{synchronized(this){if(permissionCall!=call)return;if(destroyed||!foreground){permissionCall=null;call.reject("Voice is not in the foreground");return;}}start(call,true);});
 + }
-+ private void start(PluginCall call){
++ private void start(PluginCall call,boolean permissionStart){
 +  final String id=call.getString("sessionId"),environment=call.getString("environment"),credential=call.getString("credentialId");
-+  try{UUID.fromString(id);if(credential==null||credential.length()>128)throw new IllegalArgumentException();}catch(Exception invalid){call.reject("Invalid speech session");return;}
-+  final Session own=new Session(id,environment,credential,authorityEpoch(),call);
-+  synchronized(this){if(session!=null||destroyed||!foreground){call.reject("Voice is already active or unavailable");return;}session=own;}mark(own,"start");own.scheduleStartupDeadline();
++  try{UUID.fromString(id);if(credential==null||credential.length()>128)throw new IllegalArgumentException();}catch(Exception invalid){synchronized(this){if(permissionStart){if(permissionCall!=call)return;permissionCall=null;}}call.reject("Invalid speech session");return;}
++  // Product authority can take lifecycle/vault locks. Never hold this monitor across that lookup.
++  final Session own;
++  try{own=new Session(id,environment,credential,authorityEpoch(),call);}catch(RuntimeException unavailable){synchronized(this){if(permissionStart){if(permissionCall!=call)return;permissionCall=null;}}call.reject("Cloud account unavailable");return;}
++  synchronized(this){
++   if(permissionStart&&permissionCall!=call)return;
++   if(session!=null||destroyed||!foreground){if(permissionStart)permissionCall=null;call.reject("Voice is already active or unavailable");return;}
++   if(permissionStart)permissionCall=null;
++   session=own;
++  }mark(own,"start");own.scheduleStartupDeadline();
 +  submit(control,()->{try{
 +   own.check();if(focus.callActive())throw new IOException("call-active");
 +   own.origin=cloudOrigin(environment);
@@ -137,8 +144,10 @@
 +  }finally{own.pending=null;}
 + }
 + @PluginMethod public void stopCloudSpeech(PluginCall call){
-+  PluginCall waiting=permissionCall;if(waiting!=null&&String.valueOf(call.getString("sessionId")).equals(waiting.getString("sessionId"))){permissionCall=null;waiting.reject("Cloud streaming speech stopped","cancelled");}
-+  Session own=owned(call);if(own==null){call.resolve();return;}detach(own);queueCleanup(own,call::resolve);}
++  final PluginCall waiting;final Session own;
++  synchronized(this){PluginCall pending=permissionCall;waiting=pending!=null&&String.valueOf(call.getString("sessionId")).equals(pending.getString("sessionId"))?pending:null;if(waiting!=null)permissionCall=null;own=owned(call);}
++  if(waiting!=null)waiting.reject("Cloud streaming speech stopped","cancelled");
++  if(own==null){call.resolve();return;}detach(own);queueCleanup(own,call::resolve);}
 + @PluginMethod public void setCloudSpeechMuted(PluginCall call){
 +  Session own=owned(call);if(own==null){call.reject("Speech session changed");return;}
 +  boolean muted=Boolean.TRUE.equals(call.getBoolean("muted",false));own.muted=muted;long mute=++own.muteGeneration;if(muted)silence(own,mute,30);
@@ -298,7 +307,7 @@
 + @Override protected void handleOnResume(){foreground=true;super.handleOnResume();}
 + /** A pending microphone request survives its own dialog's pause; a live session tells the client why it ended. */
 + @Override protected void handleOnPause(){foreground=false;Session own=session;if(own!=null)retire(own,"paused");super.handleOnPause();}
-+ @Override protected void handleOnDestroy(){destroyed=true;PluginCall pending=permissionCall;permissionCall=null;if(pending!=null)pending.reject("Voice stopped");Session own=session;if(own!=null){detach(own);queueCleanup(own,()->{});}control.shutdown();media.shutdown();http.dispatcher().executorService().shutdown();http.connectionPool().evictAll();main.post(()->focus.close());super.handleOnDestroy();}
++ @Override protected void handleOnDestroy(){final PluginCall pending;final Session own;synchronized(this){destroyed=true;pending=permissionCall;permissionCall=null;own=session;}if(pending!=null)pending.reject("Voice stopped");if(own!=null){detach(own);queueCleanup(own,()->{});}control.shutdown();media.shutdown();http.dispatcher().executorService().shutdown();http.connectionPool().evictAll();main.post(()->focus.close());super.handleOnDestroy();}
 +}
 --- /dev/null
 +++ b/plugins/plugin-local-inference/native/android/speech-bridge/src/main/java/ai/eliza/voice/CloudSpeechTimings.java
