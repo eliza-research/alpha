@@ -55,14 +55,14 @@ module NativeClockReview {
     }
   }
 
-  // As built, settle(id) can remove a successor claim before the old owner's
-  // destroyed check suppresses its callback. The durable reviewing row remains.
+  // Each bounded actor has one exact dialog. A retired callback cannot
+  // consume another dialog's active claim.
   action answer(actor: int, choice: str, saved: str): bool = all {
     actors.contains(actor), s.confirming==0, faults.contains(saved),
     choice.in(Set("positive","negative","cancel")),
     s.dialogReplies.get(actor)=="pending",
     val closed=hide(s,actor)
-    if (s.openOwner==0) s' = { ...closed,outcome:"pending" }
+    if (s.openOwner!=actor) s' = { ...closed,outcome:"pending" }
     else {
       val unclaimed={ ...closed,openOwner:0 }
       if (s.retired.contains(actor)) s' = { ...unclaimed,outcome:"pending" }
@@ -181,10 +181,12 @@ module NativeClockReview {
   action opened = init.then(review(1,"complete","complete")).then(answer(1,"positive","complete"))
   action sealed = opened.then(confirm(1,1,"complete","complete"))
 
-  run staleDialogCanStrandReplacementAsBuiltTest = init.then(review(1,"complete","complete"))
+  run staleDialogPreservesExactReplacementTest = init.then(review(1,"complete","complete"))
     .then(retire(1)).then(review(2,"complete","complete")).then(answer(1,"positive","complete"))
-    .expect(s.openOwner==0 and s.visible==Set(2) and s.phase=="reviewing")
-    .then(answer(2,"positive","complete")).expect(s.phase=="reviewing" and s.outcome=="pending")
+    .expect(s.openOwner==2 and s.visible==Set(2) and s.phase=="reviewing")
+    .then(answer(2,"positive","complete")).expect(s.phase=="approved" and s.outcome=="approved")
+    .then(confirm(2,1,"complete","complete")).then(dispatch("opened","complete"))
+    .expect(s.deliveries==1 and s.outcome=="opened")
 
   run fabricatedOpenedOuterReceiptAsBuiltTest = init.then(finish(1,"ringing"))
     .expect(s.outcome=="rejected")

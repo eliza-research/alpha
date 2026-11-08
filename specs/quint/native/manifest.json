@@ -2076,7 +2076,7 @@
       "step": "step",
       "invariant": "safety",
       "tests": [
-        "staleDialogCanStrandReplacementAsBuiltTest",
+        "staleDialogPreservesExactReplacementTest",
         "fabricatedOpenedOuterReceiptAsBuiltTest",
         "approvalTokenIsOneUseTest",
         "uncertainEffectNeverReplaysTest",
@@ -2109,7 +2109,7 @@
       },
       "abstractions": [
         "One reviewed journal entry, two exact plugin objects, one dialog per actor and one external handoff. A handoff receipt proves only an activity delivery attempt outcome.",
-        "The as-built source admits a stale abandoned dialog callback that strands a replacement and a fabricated outer opened receipt before a Clock result exists. Both divergences have named traces.",
+        "A retired dialog callback leaves its successor claim intact. The remaining as-built outer journal accepts a fabricated opened result before a native Clock result exists.",
         "Synthetic Android resolver/dialog, storage, keyguard and wall time. Installed AOSP DeskClock owns ringing, stopping and snoozing."
       ],
       "bounds": {

@@ -596,8 +596,8 @@ Activity error never authorizes an automatic second launch. A successful
 launch reports only `opened`. Android DeskClock owns alarm scheduling, ringing
 and manual acknowledgement.
 
-The as-built source traces preserve two divergences. A late callback from an
-abandoned dialog can remove its successor's claim. A caller can also supply a
-well-shaped `opened` result to the outer journal before a native Clock receipt
-exists. The JVM executes the relevant product bridge methods and the pinned
-journal and handoff classes over controlled ports.
+A dialog callback now settles only its captured claim. The as-built source
+trace demonstrated that a retired callback could strand its replacement.
+The outer journal still accepts a well-shaped `opened` result before a native
+Clock receipt exists. The JVM executes the relevant product bridge methods
+and the pinned journal and handoff classes over controlled ports.

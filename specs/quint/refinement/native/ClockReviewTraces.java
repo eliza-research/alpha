@@ -265,14 +265,16 @@ public final class ClockReviewTraces {
   };
   Fixture f=new Fixture(mode,action);
   switch(mode){
-   case "late-dialog":
+   case "late-dialog","late-dialog-negative","late-dialog-cancel":
     f.review(1,"complete","complete");f.retire(1);f.review(2,"complete","complete");
     check(f.openOwner()==2 && f.dialog(2).visible,"Successor holds visible review");
-    f.answer(1,"positive","complete");
-    check(f.openOwner()==0 && f.dialog(2).visible && f.clock().optString("phase").equals("reviewing"),
-     "As built, late old callback removes the successor without a receipt");
+    String late=mode.equals("late-dialog")?"positive":mode.equals("late-dialog-negative")?"negative":"cancel";
+    f.answer(1,late,"complete");
+    check(f.openOwner()==2 && f.dialog(2).visible && f.clock().optString("phase").equals("reviewing"),
+     "Late old callback leaves successor's exact claim and durable review intact");
     f.answer(2,"positive","complete");
-    check(!f.dialogs.get(2).done(),"Successor callback no longer has a claim");
+    check(f.dialogs.get(2).result.has("reviewToken") && !f.dialogs.get(1).done(),"Only the live successor obtains approval");
+    f.confirm(2,1,"complete","complete",true);f.dispatch("opened","complete");
     break;
    case "fabricated-outer":
     f.finish(1,"ringing");f.finish(1,"opened");

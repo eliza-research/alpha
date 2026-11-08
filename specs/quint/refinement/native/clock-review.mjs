@@ -46,7 +46,7 @@ export async function checkNativeClockReview(extraSources = []) {
     assert.equal(driverHashes[join(root,'vendor/eliza',path)],upstream.read(path).get(path).sha256);
   }
   const traces=clockReviewSourceTraces([
-    'late-dialog','fabricated-outer','approved-once','review-storage-and-foreground-retry',
+    'late-dialog','late-dialog-negative','late-dialog-cancel','fabricated-outer','approved-once','review-storage-and-foreground-retry',
     'approval-committed-before-failure-report','cancel-current-review','show-lost-mark','show-self',
     'show-missing','show-denied','show-unknown-before','snooze-manual','dismiss-manual',
     'effect-before-refused-receipt','terminal-receipt-before-refusal','expire-after-consume',
