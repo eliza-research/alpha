@@ -39,7 +39,13 @@ export function calendarDraftFixture(compiled) {
   const module = {exports: {}}, port = {}, slots = new Map();
   const heldReads = new Set(), heldWrites = new Set(), reads = new Map(), writes = new Map();
   const recoveries = [], toasts = [];
-  let revision = 0;
+  let revision = 0, sequence = 0, remembered = 0, oldDiscard;
+  const stamps = new WeakMap();
+  const stamp = token => {
+    if (!token) return 0;
+    if (!stamps.has(token)) stamps.set(token, ++sequence);
+    return stamps.get(token);
+  };
   new Function('module', 'exports', '__port', 'window', compiled.code)(module, module.exports, port, {confirm: () => true});
   const {installCanonicalCalendarDrafts, encodeCanonicalCalendarDraft, decodeCanonicalCalendarDraft, compareExchangeDraftStore} = module.exports;
   const settle = async () => {await tick(); await tick();};
@@ -49,14 +55,20 @@ export function calendarDraftFixture(compiled) {
     return {owner: form.canonicalOwnerKey, title: form.title};
   };
   port.store = slot => {
-    const owner = decodeBinding(slot);
+    const owner = decodeBinding(slot), lease = stamp(host.canonicalDraftBinding);
     return compareExchangeDraftStore(slot, {
       async read() {
-        if (heldReads.delete(owner)) await new Promise(resolve => {reads.set(owner, resolve);});
-        return slots.get(slot) ?? null;
+        const raw = slots.get(slot) ?? null;
+        if (heldReads.delete(owner)) await new Promise(resolve => {reads.set(owner, {lease, resolve});});
+        return raw;
       },
       async compareExchange(expected, value) {
-        if (heldWrites.delete(owner)) await new Promise(resolve => {writes.set(owner, resolve);});
+        if (heldWrites.delete(owner)) {
+          const next = JSON.parse(value);
+          const kind = next.text ? 'write' : 'clear';
+          const draft = project(next.text || JSON.parse(expected ?? 'null')?.text);
+          await new Promise(resolve => {writes.set(owner, {kind, lease, draft, resolve});});
+        }
         if ((slots.get(slot) ?? null) !== expected) return {status: 'conflict'};
         slots.set(slot, value);
         return {status: 'saved'};
@@ -82,7 +94,7 @@ export function calendarDraftFixture(compiled) {
   host.componentDidMount();
   const render = () => views.calendar.render(host.calendar, {set: patch => host.vset('calendar', patch), toast: message => host.toast(message)});
   const release = async (owners, owner) => {
-    const resolve = owners.get(owner);
+    const resolve = owners.get(owner)?.resolve;
     assert.equal(typeof resolve, 'function', 'Actual held store request');
     owners.delete(owner);
     resolve();
@@ -107,9 +119,14 @@ export function calendarDraftFixture(compiled) {
     async edit(owner, title) {host.calendar.form = form(owner, title); this.update(); await settle();},
     async closeForm() {host.calendar.form = null; this.update(); await settle();},
     async resume() {render().resumeFormDraft?.(); this.update(); await settle();},
+    async restoreSaved() {render().restoreFormDraft?.(); this.update(); await settle();},
     async discard() {render().discardFormDraft?.(); await settle();},
     async commit(saved = host.calendar.form) {host.calendarFormCommitted(saved); await settle();},
     async openRecovery() {render().recoverFormDraft?.(); await settle();},
+    async commitRetained() {await this.commit(decodeCanonicalCalendarDraft(host.canonicalDraftText).form);},
+    async commitForeign(owner) {await this.commit(form(owner, 'First A'));},
+    remember() {oldDiscard = render().discardFormDraft; remembered = stamp(host.canonicalDraftBinding);},
+    async useRemembered() {oldDiscard?.(); await settle();},
     async close() {host.componentWillUnmount(); await settle();},
     async awaitReadFailure() {
       for (let tries = 0; tries < 150 && host.canonicalDraft.state.opening; tries++)
@@ -119,12 +136,24 @@ export function calendarDraftFixture(compiled) {
     },
     observe() {
       const out = render(), controller = host.canonicalDraft;
-      return {owner: host.agentCalendar.state.ownerKey ?? '', bound: decodeBinding(controller.binding),
+      const bound = decodeBinding(controller.binding);
+      const lease = bound ? stamp(host.canonicalDraftBinding) : 0;
+      return {live: host.live, owner: host.agentCalendar.state.ownerKey ?? '', bound, lease, sequence,
         text: project(host.canonicalDraftText), form: host.calendar.form?.title ?? '',
+        formDraft: host.calendar.form
+          ? {owner: host.calendar.form.canonicalOwnerKey ?? '', title: host.calendar.form.title}
+          : {owner: '', title: ''},
+        suppressed: project(host.canonicalDraftSuppressed),
         renderedForm: out.renderedForm, resumeOffered: !!out.formDraftAvailable,
         busy: !!out.formDraftBusy, storageError: !!(out.formDraftError || out.formDraftListError),
         recovery: !!controller.recovery(), notices: toasts.length,
-        readPending: [...reads.keys()], writePending: [...writes.keys()]};
+        opening: controller.state.opening, consuming: controller.state.consuming,
+        error: controller.state.error, conflict: controller.state.conflict, savedText: project(controller.state.savedText),
+        foreign: !!bound && !controller.recovery(),
+        recoveryOpen: recoveries.some(args => !args[4].aborted), remembered,
+        readPending: [...reads.keys()], writePending: [...writes.keys()],
+        reads: [...reads].map(([owner, job]) => [owner, job.lease]),
+        writes: [...writes].map(([owner, {kind, lease, draft}]) => [owner, {kind, lease, draft}])};
     },
   };
 }

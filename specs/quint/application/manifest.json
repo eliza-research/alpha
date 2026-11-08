@@ -1605,5 +1605,38 @@
       "maxSteps": 80,
       "maxVerifyDepth": 4
     }
+  },
+  {
+    "path": "specs/quint/application/CanonicalCalendarDraft.qnt",
+    "module": "CanonicalCalendarDraft",
+    "init": "init",
+    "step": "step",
+    "invariant": "safety",
+    "tests": [
+      "previousAccountBytesStayInOriginalSlotTest",
+      "oldReadCannotFillNextAccountTest",
+      "queuedEditStaysWithCapturedOwnerTest",
+      "lateClearKeepsOriginalAccountDraftTest",
+      "foreignStoredFrameCannotBeOfferedTest",
+      "earlierLifetimeCannotDiscardNewDraftTest"
+    ],
+    "invariants": [
+      "OwnsEditor",
+      "CurrentLease",
+      "ForeignUnavailable",
+      "OwnsWrites"
+    ],
+    "sources": [
+      "apps/app/src/prototype/canonical-calendar-drafts.ts",
+      "apps/app/src/runtime/canonical-calendar-draft.ts",
+      "apps/app/src/runtime/calendar-form-draft.ts",
+      "apps/app/src/prototype/assistant-draft-controller.ts",
+      ".eliza/client-features/packages/ui/src/state/durable-draft-controller.ts",
+      ".eliza/client-features/packages/ui/src/state/durable-draft.ts"
+    ],
+    "abstractions": [
+      "Canonical Calendar editor owner transition, opaque lifetime, durable slot reads/writes, consumed records, stale controls and recovery.",
+      "Two owner identities, six lifetimes, synthetic title classes, one held read and write per owner. Pending operations bind to actual lifetime observations. Provider dispatch, reminder destination conversion, arbitrary invalid fields and native storage durability remain external."
+    ]
   }
 ]
