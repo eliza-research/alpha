@@ -543,3 +543,24 @@ verification if all exact bytes were already read. The process guard protects
 the active cache file from peer taps and sweeps. An unsuccessful file deletion
 can leave an orphan for a later idle bridge to sweep. A refused Android
 abandonment can likewise leave the copied uncommitted session listed.
+
+### Hosted inbox retention and receipts
+
+`NativeHostedInbox` follows `HostedDelivery.sync` through the single-flight
+operation and `HostedInbox.sync` through row, index and notice persistence.
+The resident credential expires independently of the cached history. History
+has an ordered 100-row cap and survives the matching scope reopening. The JVM
+checks exact per-scope client UUIDs, GET and ACK paths, cursor and run ID.
+
+The native receipt can acknowledge a row still listed or awaiting removal.
+The source writes both the row and its index or journal entry before
+requesting the receipt. A provider acceptance already recorded at the
+synthetic IPC boundary can survive generation retirement. The retired
+worker cannot mark the replacement current or commit its late result.
+Pending notice and removal journals recover independently. The campaign
+covers an already-visible post followed by a failed journal clear.
+
+Two scopes, three tracked rows, a seeded historical suffix and held
+synthetic IPC requests bound the model and source schedules. Actual server
+cursor behavior, encrypted storage and WorkManager execution are separate
+boundaries.
