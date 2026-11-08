@@ -1,13 +1,13 @@
 import type {Reminder} from '../daily';
 import {rendererDeletionClock,claimDeletion,deletionDeadline,deletionWindow,type PendingDeletion} from '../../../../.eliza/client-features/packages/contracts/src/deletion-window';
 import {revision} from './revision';
+import {trimDeletionJournal} from './journal-retention';
 export type DeletableReminder=Reminder&{revision:string;pendingDeletion?:string};
 export type ReminderDeletion=PendingDeletion<{sourceRevision:string;row:DeletableReminder}>&{blocked?:string;binding?:string;journalBinding?:{scope:string;proposalId:string;operationHash:string}};
-export type ReminderDeletionState={sourceRevision:string;reminders:DeletableReminder[];deletions?:Record<string,ReminderDeletion>};
+export type ReminderDeletionState={sourceRevision:string;reminders:DeletableReminder[];deletions?:Record<string,ReminderDeletion>;deleteClaims?:Record<string,string>};
 export function stageReminderDeletion(data:ReminderDeletionState,row:DeletableReminder,owner:string,id:string=crypto.randomUUID(),binding?:string){
  if(row.pendingDeletion||row.status==='cancelled'||data.deletions?.[id])throw Error('Reminder deletion already pending or settled.');
- const terminal=Object.values(data.deletions||{}).filter(e=>['deleted','undone','conflict'].includes(e.phase)).sort((a,b)=>a.deadline.createdElapsed-b.deadline.createdElapsed);
- for(const entry of terminal.slice(0,Math.max(0,terminal.length-127)))delete data.deletions![entry.id];
+ trimDeletionJournal(data);
  if(Object.keys(data.deletions||{}).length>=500)throw Error('Pending reminder deletions require review.');
  const entry:ReminderDeletion={version:1,id,owner,target:{sourceRevision:data.sourceRevision,row:structuredClone(row)},deadline:deletionDeadline(rendererDeletionClock()),phase:'queued',...(binding?{binding}:{})};
  (data.deletions??={})[id]=entry;row.pendingDeletion=id;return structuredClone(entry);

@@ -4,7 +4,7 @@ import type {CalendarResult} from '../../../../.eliza/client-features/plugins/pl
 import {revision} from './revision';
 import {browserDocuments} from './documents';
 import {BrowserDomainDocument,type DomainRecovery} from './domain-document';
-export type BrowserCalendarState={deletions?:Record<string,CalendarDeletion>;deleteClaims?:Record<string,string>;creations?:Record<string,{binding:string;result:{status:'saved';id:string;calendarId:string;creationId:string};acknowledged:boolean}>;alertDismissed?:Record<string,number>;preferences?:{visible:boolean;color:'acc'|'fg'|'mut'};sourceRevision:string;events:CalendarRecord[];receipts?:Record<string,{binding:string;result:CalendarResult}>};
+export type BrowserCalendarState={deletions?:Record<string,CalendarDeletion>;deleteClaims?:Record<string,string>;creations?:Record<string,{binding:string;result:{status:'saved';id:string;calendarId:string;creationId:string};acknowledged:boolean;at?:number}>;alertDismissed?:Record<string,number>;preferences?:{visible:boolean;color:'acc'|'fg'|'mut'};sourceRevision:string;events:CalendarRecord[];receipts?:Record<string,{binding:string;result:CalendarResult;at?:number}>};
 export const initialCalendarState=():BrowserCalendarState=>({sourceRevision:revision(),events:[]});
 
 export const calendarStorageKey='alpha.browser.calendar.v1';
