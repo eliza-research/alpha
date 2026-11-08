@@ -63,8 +63,9 @@ function fixture(code){
   dialog:value=>{if(value){const dialog=document.createElement('dialog');dialog.open=true;document.body.append(dialog);}else document.querySelector('dialog')?.remove();}};
 }
 
-export async function listFocus(){
- const driverHashes=captureInputs(sources);
+export async function listFocus(extraSources=[]){
+ const inputs=[...sources,...extraSources];
+ const driverHashes=captureInputs(inputs);
  let code=stripTypeScriptTypes(readFileSync(new URL(source,root),'utf8'),{mode:'strip'}).replace(/^export /gm,'');
  const marker='return {\n    capture()';assert.equal(code.split(marker).length,2,'exact read-only observer insertion');
  // The getter exposes actual closure values. Queue/listener shims retain source callbacks.
@@ -114,7 +115,7 @@ export async function listFocus(){
    step('capture',1);traces.push(trace);
   }finally{f.dom.window.close();}
  }
- return checkTraces({model:'ListFocus',sources,driverHashes,traces,scope:'bounded-orchestration',assumptions:[
+ return checkTraces({model:'ListFocus',sources:inputs,driverHashes,traces,scope:'bounded-orchestration',assumptions:[
   'Actual createKeyedListFocus executes in JSDOM with a read-only getter exposing its root/revision closure and source queue callbacks executed in FIFO order.',
   'Two capture slots, two root identities and five DOM-node identities bound the schedules. DOM rendering and focus events execute through real DOM APIs; visibility geometry is an explicit JSDOM port.',
   'Browser Notes/Photos tests separately execute the real React renderer. Native accessibility, arbitrary unbounded queued renders and browser-engine-specific focus behavior remain outside this bounded adapter.',

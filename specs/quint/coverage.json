@@ -21849,7 +21849,8 @@
       "models": [
         "Application",
         "AssistantConversation",
-        "ShellNavigation"
+        "ShellNavigation",
+        "NotesLifecycle"
       ],
       "scope": "application",
       "treatment": "state-and-transition-projection",
@@ -22270,7 +22271,7 @@
     },
     {
       "path": "apps/app/src/prototype/browser-adapter.ts",
-      "sha256": "ee460c5ab89432412cec23e591caeac1533975871fbcae4b261d8575792aff4d",
+      "sha256": "de5cc4eb84afa902ecdb28575daa0c12f2b3414d0cebb3bea008244d41490479",
       "models": [
         "BrowserSession"
       ],
@@ -22700,7 +22701,7 @@
     },
     {
       "path": "apps/app/src/prototype/camera-adapter.ts",
-      "sha256": "59ad6f96c711bf40915193cc55d98ed1d170abd024383aa9b0789588e31f3065",
+      "sha256": "dd1c14911fc040a5654e3e7edeb121868d87eaf154d408868a4c1791a3f9ed5f",
       "models": [
         "MediaLifecycle"
       ],
@@ -23303,7 +23304,9 @@
       "sha256": "3b106bf61f3c1b5982ffc254475e4c2efbeab077b1e2e69ead2400424e1c22c8",
       "models": [
         "Application",
-        "ShellNavigation"
+        "ShellNavigation",
+        "BrowserSession",
+        "FilesTree"
       ],
       "scope": "application",
       "treatment": "state-and-transition-projection",
@@ -23495,7 +23498,7 @@
     },
     {
       "path": "apps/app/src/prototype/files-tree-adapter.ts",
-      "sha256": "35f0f5e54259111e453da998e0d2d819948f3b0660b0df7c4b2536bcfe6f13f9",
+      "sha256": "f45d4eba3efb92a32ce6b520f871c94063c9fb8daf5c66bdc2a2ee5e2e911da3",
       "models": [
         "FilesAndSharing",
         "FilesTree"
@@ -24696,7 +24699,7 @@
     },
     {
       "path": "apps/app/src/prototype/model.js",
-      "sha256": "89a0a237a80f0393758742347e51f5c0d84669dc7ef3029ca06b6c62317631c5",
+      "sha256": "fa06c85354e6c8a450ac587a52961b9e116cf549e0d501a5fa01cfd9bf62e9ac",
       "models": [
         "Application",
         "CalendarPresentation",
@@ -26574,7 +26577,7 @@
         },
         {
           "line": 1847,
-          "text": "var libRows = (st.lib === \"history\" ? st.visits : st.marks).map(function (u) {"
+          "text": "var libRows = Array.from(new Set(st.lib === \"history\" ? st.visits : st.marks)).map(function (u) {"
         },
         {
           "line": 1848,
@@ -27118,7 +27121,7 @@
         },
         {
           "line": 2453,
-          "text": "var people = (cur.people || []).map(function (id) { var p = api.person(id); return p ? { ini: p.ini, first: p.name.split(\" \")[0], label: \"Open \" + p.name, open:"
+          "text": "var people = (cur.people || []).map(function (id) { var p = api.person(id); return p ? { id: id, ini: p.ini, first: p.name.split(\" \")[0], label: \"Open \" + p.nam"
         },
         {
           "line": 2487,
@@ -30494,7 +30497,7 @@
     },
     {
       "path": "apps/app/src/prototype/photo-library-adapter.ts",
-      "sha256": "6fa5469a4bae6d4904f9c5023aabc8fcc33500b0f85bb074693de77a79434c65",
+      "sha256": "a40e44db61651882432f249631bc5dc0bba5939ac5e9aa13a844ff905c7d9e41",
       "models": [
         "MediaLifecycle"
       ],
@@ -31258,7 +31261,9 @@
         "ShellNavigation",
         "PreferencesAndPresentation",
         "HomeLayout",
-        "ListFocus"
+        "ListFocus",
+        "BrowserSession",
+        "FilesTree"
       ],
       "treatment": "stateless-presentation-contract",
       "scope": "application",
@@ -31335,7 +31340,7 @@
     },
     {
       "path": "apps/app/src/prototype/voice-adapter.ts",
-      "sha256": "d6dbd95f68299a6aa20097db565db319f20337bcf044f67f9469ee4f0b13d9c8",
+      "sha256": "29cf2b832048c99ff15235a93bab3589453be7f76af1f238e1a8db87962789c7",
       "models": [
         "VoiceSession"
       ],

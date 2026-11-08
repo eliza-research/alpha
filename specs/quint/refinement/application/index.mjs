@@ -10,6 +10,7 @@ import {filesAndSharing, notificationCollection, developmentHost} from './bounda
 import {checkShellCoordinator} from './shell-coordinator.mjs';
 import {checkVaultCoordinator} from './vault-coordinator.mjs';
 import {checkNotesCoordinator} from './notes-coordinator.mjs';
+import {listFocus} from './list-focus.mjs';
 import {fileURLToPath} from 'node:url';
 
 const adapters = [application, shellNavigation, startupPermissions, assistantConversation, notesLifecycle,
@@ -29,6 +30,7 @@ export async function runApplicationRefinement() {
   receipts.push(await checkShellCoordinator([fileURLToPath(import.meta.url), 'test/quint-application-refinement.test.mjs']));
   receipts.push(await checkVaultCoordinator([fileURLToPath(import.meta.url), 'test/quint-application-refinement.test.mjs']));
   receipts.push(await checkNotesCoordinator([fileURLToPath(import.meta.url), 'test/quint-application-refinement.test.mjs']));
+  receipts.push(await listFocus([fileURLToPath(import.meta.url), 'test/quint-application-refinement.test.mjs']));
   for (const model of new Set(receipts.map(receipt => receipt.coverageModel || receipt.model))) {
     const related = receipts.filter(receipt => (receipt.coverageModel || receipt.model) === model);
     const entry = (Array.isArray(manifest) ? manifest : manifest.models).find(entry => entry.module === model);
