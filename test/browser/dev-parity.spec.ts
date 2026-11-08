@@ -44,13 +44,15 @@ test('browser surface isolates pages, persists bookmarks and hides overlaid tabs
  await page.reload();
  expect(await page.evaluate(async()=>{const {registerPlugin}=await import('/src/platform-plugins.ts');return (await registerPlugin<any>('AlphaBrowser').bookmarks()).urls;})).toEqual(['https://parity.example/page']);
 });
-test('local dev device exposes deferred apps without dispatching external effects',async({page})=>{
+test('local dev device opens each deferred app without dispatching external effects',async({page})=>{
  const requests:string[]=[];page.on('request',request=>{if(!request.url().startsWith('http://127.0.0.1:'))requests.push(request.url());});
  await page.goto('/?mode=dev&tools=1');
  await expect(page.getByText('Dev data',{exact:true})).toBeVisible();
  for(const name of ['Phone','Messages','Contacts','Wallet']){
   await page.getByRole('button',{name,exact:true}).first().click();
+  await expect(page.locator('html')).toHaveAttribute('data-active-view',name.toLowerCase());
   await page.evaluate(()=>window.dispatchEvent(new Event('alpha-back',{cancelable:true})));
+  await expect(page.locator('html')).toHaveAttribute('data-active-view','home');
  }
  expect(requests.filter(url=>!url.startsWith('data:')&&!url.startsWith('blob:'))).toEqual([]);
 });

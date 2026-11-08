@@ -45,23 +45,6 @@ async function seedLoops(page:import('@playwright/test').Page,templates:Array<{t
   loops.push({source:source.source,loop:(await digestCall(page,'loops',{mutationId:crypto.randomUUID(),confirmed:true,spec:{version:1,template:item.template,sourceId:source.source.id,sourceRevision:source.source.revision,enabled:true,timeZone:zone,localTime:item.localTime}})).loop});}
  return loops;
 }
-test('a schedule whose time passed while the app was closed yields exactly one missed record and no backlog',async({page})=>{
- await page.clock.install({time:new Date('2026-10-03T07:55:00Z')});await page.goto('/?mode=dev');
- const [{loop}]=await seedLoops(page,[{template:'morning',localTime:'08:00',text:'Morning text'}]);
- // Three scheduled days pass with no page (the "host") running at all.
- await page.goto('about:blank');await page.clock.setFixedTime(new Date('2026-10-06T09:30:00Z'));await page.goto('/?mode=dev');
- await digestCall(page,'tick');const first=await digestState(page);
- expect(first.results.map(row=>[row.status,row.scheduledAt,row.workflowId,row.workflowVersionId])).toEqual([['missed','2026-10-06T08:00:00.000Z',loop.id,loop.versionId]]);
- expect(first.results[0].output).toEqual({status:'missed',text:'The scheduled time was missed. No backlog was executed.'});expect(first.results[0].error).toBeNull();
- expect(first.results[0].source).toMatchObject({id:loop.spec.sourceId,revision:loop.spec.sourceRevision});
- // Restart, repeated and concurrent admission of the same occurrence settle nothing further.
- await Promise.all([digestCall(page,'tick'),digestCall(page,'tick'),digestCall(page,'results?clientId=reader-a'),digestCall(page,'results?clientId=reader-b')]);await page.reload();await digestCall(page,'tick');
- expect((await digestState(page)).results).toEqual(first.results);
- // The next occurrence runs normally and is a distinct result.
- await page.clock.setFixedTime(new Date('2026-10-07T08:00:20Z'));await digestCall(page,'tick');await digestCall(page,'tick');
- const later=await digestState(page);expect(later.results.map(row=>[row.status,row.scheduledAt])).toEqual([['missed','2026-10-06T08:00:00.000Z'],['completed','2026-10-07T08:00:00.000Z']]);expect(new Set(later.results.map(row=>row.runId)).size).toBe(2);
-});
-
 test('a clock set back, a paused schedule and a revoked source never settle an occurrence twice or late',async({page})=>{
  // Held at 07:59:30 while the app loads and the schedule is seeded: with a running clock, a slow load or seed
  // under machine load carried the creation itself past 08:00, so the first occurrence was never due.
@@ -174,6 +157,16 @@ test('reopening after a missed time shows one honest missed record and one notic
  const second=await page.context().newPage();await second.clock.install({time:new Date('2026-10-05T12:45:30Z')});await second.goto('/?mode=dev');await second.evaluate(async()=>window.dispatchEvent(new Event('alpha:hosted-digests')));await expect(second.getByRole('dialog',{name:'Scheduled digests',exact:true}).locator('article')).toHaveCount(1);await second.close();
  await page.reload();await page.evaluate(async()=>window.dispatchEvent(new Event('alpha:hosted-digests')));await expect(records).toHaveCount(1);await expect(records).toContainText('Missed — not run');
  expect((await digestState(page)).results.map(row=>[row.status,row.scheduledAt])).toEqual([['missed','2026-10-05T12:05:00.000Z']]);expect(await notices()).toBe(1);
+ // The record is bound to the reviewed schedule and source revision.
+ const first=await digestState(page),[loop]=first.loops;
+ expect(first.results[0]).toMatchObject({workflowId:loop.id,workflowVersionId:loop.versionId,error:null,source:{id:loop.spec.sourceId,revision:loop.spec.sourceRevision}});
+ expect(first.results[0].output).toEqual({status:'missed',text:'The scheduled time was missed. No backlog was executed.'});
+ // Restart, repeated and concurrent admission of the same occurrence settle nothing further.
+ await Promise.all([digestCall(page,'tick'),digestCall(page,'tick'),digestCall(page,'results?clientId=reader-a'),digestCall(page,'results?clientId=reader-b')]);await page.reload();await digestCall(page,'tick');
+ expect((await digestState(page)).results).toEqual(first.results);
+ // The next occurrence runs normally and is a distinct result.
+ await page.clock.setFixedTime(new Date('2026-10-06T12:05:20Z'));await digestCall(page,'tick');await digestCall(page,'tick');
+ const later=await digestState(page);expect(later.results.map(row=>[row.status,row.scheduledAt])).toEqual([['missed','2026-10-05T12:05:00.000Z'],['completed','2026-10-06T12:05:00.000Z']]);expect(new Set(later.results.map(row=>row.runId)).size).toBe(2);
 });
 
 test.describe('device in another time zone',()=>{
