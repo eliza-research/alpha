@@ -32,7 +32,8 @@ test('keyed groups and rows preserve a focused action through insertions and rem
   let fixture, selected = '';
   const row = (id, label) => ({id, label, go:() => { selected = id; }});
   const theme = row('theme', 'Theme'), text = row('text', 'Text size');
-  const appearance = {id:'appearance', rows:[theme, text]};
+  const otherText = row('other-text', 'Text size');
+  const appearance = {id:'appearance', rows:[theme, text, otherText]};
   const privacy = {id:'privacy', rows:[row('permissions', 'App permissions')]};
   try {
     await act(async () => root.render(React.createElement(Fixture, {ref:value => { fixture = value; }})));
@@ -40,12 +41,16 @@ test('keyed groups and rows preserve a focused action through insertions and rem
     const focused = [...container.querySelectorAll('button')].find(button => button.textContent === 'Text size');
     focused.focus();
     const assistant = {id:'assistant', rows:[row('agent', 'Agent')]};
-    await act(async () => fixture.setState({groups:[assistant, {...appearance, rows:[row('contrast', 'Contrast'), theme, text]}, privacy]}));
+    await act(async () => fixture.setState({groups:[assistant, {...appearance, rows:[row('contrast', 'Contrast'), theme, otherText, text]}, privacy]}));
     assert.equal(dom.window.document.activeElement, focused);
     assert.equal(focused.textContent, 'Text size');
     focused.click();
     assert.equal(selected, 'text');
-    await act(async () => fixture.setState({groups:[assistant, {...appearance, rows:[theme]}, privacy]}));
+    const sameLabel = [...container.querySelectorAll('button')].filter(button => button.textContent === 'Text size');
+    assert.equal(sameLabel.length, 2);
+    sameLabel[0].click();
+    assert.equal(selected, 'other-text');
+    await act(async () => fixture.setState({groups:[assistant, {...appearance, rows:[theme, otherText]}, privacy]}));
     assert.equal(focused.isConnected, false);
     assert.notEqual(dom.window.document.activeElement?.textContent, 'Theme');
   } finally {
