@@ -12,7 +12,7 @@
   "toolSha256": "403a33cab0dff7ace6219b29e7ffef373319677a7d8be6641466dd16a6750b5b",
   "dependencyLockSha256": "944123c801157a7ba3676a886d0b28a54bef32735ae96da5c6dd0f206c88c8bf",
   "sourcePin": "99b49439ce9d0cb5607e9831b9f7f58d89525029",
-  "ledgerSha256": "85a1c14bc61c0e66d290823f490df697981f68ff829f3339b2fe7f59e81776f8",
+  "ledgerSha256": "a7e6f880b5b8bbc2b7ef6ab70eb5ca72a47878aeae3d9f64199085427d5a7956",
   "method": "TypeScript syntax trees for JavaScript/TypeScript and JDK compiler trees for Java. Mutable fields, bindings, containers, state hooks, write sites and asynchronous registration calls are candidates for semantic review.",
   "limitations": [
     "Candidate extraction does not establish state-machine coverage or implementation refinement.",
@@ -28,10 +28,10 @@
     "parsedFiles": 5625,
     "languageReview": 55,
     "parseErrors": 0,
-    "candidates": 67035,
-    "writeSites": 66493,
-    "writeAssociations": 59665,
-    "asynchronous": 8296,
+    "candidates": 67051,
+    "writeSites": 66497,
+    "writeAssociations": 59669,
+    "asynchronous": 8297,
     "unassignedWrites": 10195
   },
   "files": [
@@ -20719,34 +20719,36 @@
     },
     {
       "path": "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaMailAttachmentsPlugin.java",
-      "sha256": "9aae4452a4cf0d3f1364d1a16da5ddce505ad49cfbd0f6ab3f5478c25714fcf8",
+      "sha256": "40f8bc3393fd6215057b0b59901297588242df7a4731850eafdc30808f0d22ff",
       "allocatedModels": [
-        "FilesAndSharing"
+        "FilesAndSharing",
+        "ReviewedCopies"
       ],
+      "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
       "classification": "syntactic-candidates",
       "owners": [
         {
           "owner": "AlphaMailAttachmentsPlugin",
-          "line": 35,
+          "line": 34,
           "bindings": 8,
-          "writes": 21
+          "writes": 20
         },
         {
-          "owner": "AlphaMailAttachmentsPlugin.lambda@42",
-          "line": 42,
+          "owner": "AlphaMailAttachmentsPlugin.lambda@41",
+          "line": 41,
           "bindings": 1,
           "writes": 0
         },
         {
-          "owner": "AlphaMailAttachmentsPlugin.work@48",
-          "line": 48,
+          "owner": "AlphaMailAttachmentsPlugin.work@47",
+          "line": 47,
           "bindings": 2,
           "writes": 0
         },
         {
-          "owner": "AlphaMailAttachmentsPlugin.handoff@52",
-          "line": 52,
+          "owner": "AlphaMailAttachmentsPlugin.handoff@51",
+          "line": 51,
           "bindings": 1,
           "writes": 0
         },
@@ -20866,109 +20868,109 @@
         },
         {
           "owner": "AlphaMailAttachmentsPlugin.openReviewedAt@100.lambda@100",
-          "line": 100,
+          "line": 101,
           "bindings": 7,
           "writes": 1
         },
         {
-          "owner": "AlphaMailAttachmentsPlugin.openReviewedAt@100.lambda@100.lambda@100",
-          "line": 100,
+          "owner": "AlphaMailAttachmentsPlugin.openReviewedAt@100.lambda@100.lambda@112",
+          "line": 115,
           "bindings": 6,
           "writes": 2
         },
         {
-          "owner": "AlphaMailAttachmentsPlugin.sourceBytes@101",
-          "line": 101,
+          "owner": "AlphaMailAttachmentsPlugin.sourceBytes@132",
+          "line": 132,
           "bindings": 2,
           "writes": 0
         },
         {
-          "owner": "AlphaMailAttachmentsPlugin.retainSourceReference@102",
-          "line": 102,
-          "bindings": 2,
-          "writes": 0
-        },
-        {
-          "owner": "AlphaMailAttachmentsPlugin.retainSourceReference@102.lambda@102",
-          "line": 103,
-          "bindings": 5,
-          "writes": 1
-        },
-        {
-          "owner": "AlphaMailAttachmentsPlugin.openSourceReference@108",
-          "line": 108,
-          "bindings": 2,
-          "writes": 0
-        },
-        {
-          "owner": "AlphaMailAttachmentsPlugin.openSourceReference@108.lambda@108",
-          "line": 109,
-          "bindings": 6,
-          "writes": 1
-        },
-        {
-          "owner": "AlphaMailAttachmentsPlugin.releaseSourceReferences@119",
-          "line": 119,
-          "bindings": 6,
-          "writes": 2
-        },
-        {
-          "owner": "AlphaMailAttachmentsPlugin.releaseSourceReferences@119.lambda@123",
-          "line": 124,
-          "bindings": 3,
-          "writes": 3
-        },
-        {
-          "owner": "AlphaMailAttachmentsPlugin.releaseSourceReferences@119.lambda@123.lambda@124",
-          "line": 124,
-          "bindings": 1,
-          "writes": 0
-        },
-        {
-          "owner": "AlphaMailAttachmentsPlugin.saveResult@128",
-          "line": 128,
-          "bindings": 3,
-          "writes": 2
-        },
-        {
-          "owner": "AlphaMailAttachmentsPlugin.reviewedBytes@129",
-          "line": 129,
-          "bindings": 3,
-          "writes": 0
-        },
-        {
-          "owner": "AlphaMailAttachmentsPlugin.saveReviewed@133",
+          "owner": "AlphaMailAttachmentsPlugin.retainSourceReference@133",
           "line": 133,
           "bindings": 2,
           "writes": 0
         },
         {
-          "owner": "AlphaMailAttachmentsPlugin.saveReviewed@133.lambda@135.lambda@135",
-          "line": 137,
+          "owner": "AlphaMailAttachmentsPlugin.retainSourceReference@133.lambda@133",
+          "line": 134,
+          "bindings": 5,
+          "writes": 1
+        },
+        {
+          "owner": "AlphaMailAttachmentsPlugin.openSourceReference@139",
+          "line": 139,
           "bindings": 2,
           "writes": 0
         },
         {
-          "owner": "AlphaMailAttachmentsPlugin.saveReviewed@133.lambda@135",
+          "owner": "AlphaMailAttachmentsPlugin.openSourceReference@139.lambda@139",
           "line": 140,
+          "bindings": 6,
+          "writes": 1
+        },
+        {
+          "owner": "AlphaMailAttachmentsPlugin.releaseSourceReferences@150",
+          "line": 150,
+          "bindings": 6,
+          "writes": 2
+        },
+        {
+          "owner": "AlphaMailAttachmentsPlugin.releaseSourceReferences@150.lambda@154",
+          "line": 155,
+          "bindings": 3,
+          "writes": 3
+        },
+        {
+          "owner": "AlphaMailAttachmentsPlugin.releaseSourceReferences@150.lambda@154.lambda@155",
+          "line": 155,
           "bindings": 1,
           "writes": 0
         },
         {
-          "owner": "AlphaMailAttachmentsPlugin.savedReviewed@142",
-          "line": 142,
-          "bindings": 4,
-          "writes": 0
+          "owner": "AlphaMailAttachmentsPlugin.saveResult@159",
+          "line": 159,
+          "bindings": 3,
+          "writes": 2
         },
         {
-          "owner": "AlphaMailAttachmentsPlugin.savedReviewed@142.lambda@147",
-          "line": 148,
+          "owner": "AlphaMailAttachmentsPlugin.reviewedBytes@160",
+          "line": 160,
           "bindings": 3,
           "writes": 0
         },
         {
-          "owner": "AlphaMailAttachmentsPlugin.handleOnDestroy@159",
-          "line": 159,
+          "owner": "AlphaMailAttachmentsPlugin.saveReviewed@164",
+          "line": 164,
+          "bindings": 2,
+          "writes": 0
+        },
+        {
+          "owner": "AlphaMailAttachmentsPlugin.saveReviewed@164.lambda@166.lambda@166",
+          "line": 168,
+          "bindings": 2,
+          "writes": 0
+        },
+        {
+          "owner": "AlphaMailAttachmentsPlugin.saveReviewed@164.lambda@166",
+          "line": 171,
+          "bindings": 1,
+          "writes": 0
+        },
+        {
+          "owner": "AlphaMailAttachmentsPlugin.savedReviewed@173",
+          "line": 173,
+          "bindings": 4,
+          "writes": 0
+        },
+        {
+          "owner": "AlphaMailAttachmentsPlugin.savedReviewed@173.lambda@178",
+          "line": 179,
+          "bindings": 3,
+          "writes": 0
+        },
+        {
+          "owner": "AlphaMailAttachmentsPlugin.handleOnDestroy@190",
+          "line": 190,
           "bindings": 1,
           "writes": 0
         }
@@ -20979,10 +20981,12 @@
     },
     {
       "path": "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaMailFileProvider.java",
-      "sha256": "f82d45555301b81a42f9d3165a200aad4102fa58b52e1b4bd745a7b6c9a0171b",
+      "sha256": "a6374fa3fea4635fc2f6670187441de4d14d1abfe67039b1aa4f316f334aa942",
       "allocatedModels": [
-        "FilesAndSharing"
+        "FilesAndSharing",
+        "ReviewedCopies"
       ],
+      "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
       "classification": "syntactic-candidates",
       "owners": [
@@ -26879,10 +26883,11 @@
     },
     {
       "path": "android/app/src/main/java/ai/elizaresearch/alphaphone/ReviewedCopies.java",
-      "sha256": "d113e3d5b79186ba435baaca8c0a188678b5ce1c0c3ae9759b8c44f763d3b2c2",
+      "sha256": "2df2b226824e06633ed79011167a51fbbf6561ba919afa9a1b71bdecda4cfeb0",
       "allocatedModels": [
         "FilesAndSharing",
-        "DeviceActions"
+        "DeviceActions",
+        "ReviewedCopies"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -26890,38 +26895,50 @@
       "owners": [
         {
           "owner": "ReviewedCopies",
-          "line": 13,
-          "bindings": 3,
+          "line": 15,
+          "bindings": 4,
           "writes": 4
         },
         {
-          "owner": "ReviewedCopies.<init>@16",
-          "line": 16,
-          "bindings": 1,
-          "writes": 0
-        },
-        {
-          "owner": "ReviewedCopies.add@17",
-          "line": 17,
-          "bindings": 1,
-          "writes": 0
-        },
-        {
-          "owner": "ReviewedCopies.revoke@18",
-          "line": 18,
-          "bindings": 1,
-          "writes": 0
-        },
-        {
-          "owner": "ReviewedCopies.clear@19",
+          "owner": "ReviewedCopies.Copy",
           "line": 19,
+          "bindings": 2,
+          "writes": 1
+        },
+        {
+          "owner": "ReviewedCopies.Copy.<init>@21",
+          "line": 21,
           "bindings": 1,
           "writes": 0
         },
         {
-          "owner": "ReviewedCopies.sweep@20",
-          "line": 20,
-          "bindings": 5,
+          "owner": "ReviewedCopies.<init>@24",
+          "line": 24,
+          "bindings": 1,
+          "writes": 0
+        },
+        {
+          "owner": "ReviewedCopies.write@28",
+          "line": 28,
+          "bindings": 9,
+          "writes": 2
+        },
+        {
+          "owner": "ReviewedCopies.revoke@49",
+          "line": 49,
+          "bindings": 2,
+          "writes": 0
+        },
+        {
+          "owner": "ReviewedCopies.clear@58",
+          "line": 59,
+          "bindings": 1,
+          "writes": 0
+        },
+        {
+          "owner": "ReviewedCopies.sweep@62",
+          "line": 62,
+          "bindings": 7,
           "writes": 0
         }
       ],
@@ -34709,7 +34726,9 @@
       "sha256": "db624735d90036440679278ec1b0d99770fdf9c946aa326f9dff3101d6d0bb27",
       "allocatedModels": [
         "ShellNavigation",
-        "PreferencesAndPresentation"
+        "PreferencesAndPresentation",
+        "HomeFailureNotice",
+        "LauncherOwnership"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -39297,11 +39316,12 @@
     },
     {
       "path": "apps/app/src/prototype/settings-adapter.ts",
-      "sha256": "2258dd0b909f0388db7cd4dc9d7b2baad38c1ea6b041290720ae9be1fb09d9c3",
+      "sha256": "06f4eedc5fd1d70fb76dbc1fd955170f131a4b7941cc5abc816a23a30d7390d2",
       "allocatedModels": [
         "PreferencesAndPresentation",
         "SettingsNav"
       ],
+      "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
       "classification": "syntactic-candidates",
       "owners": [
@@ -39351,11 +39371,11 @@
           "owner": "installSettingsAdapter.ArrowFunction@521",
           "line": 526,
           "bindings": 37,
-          "writes": 637
+          "writes": 638
         },
         {
-          "owner": "installSettingsAdapter.ArrowFunction@521.ArrowFunction@887",
-          "line": 889,
+          "owner": "installSettingsAdapter.ArrowFunction@521.ArrowFunction@888",
+          "line": 890,
           "bindings": 1,
           "writes": 1
         }
@@ -39726,7 +39746,8 @@
       "sha256": "2fc5a031eb6e00f97a6c73db2ce08ac8edab97ca4f066575c42a126d6746d68c",
       "allocatedModels": [
         "VoiceSession",
-        "ControllerComposition"
+        "ControllerComposition",
+        "BatchCaptureCompletion"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -41339,7 +41360,8 @@
       "path": "apps/app/src/runtime/cloud-voice.ts",
       "sha256": "f02adef4716231d29e4b29adf15cbf1e5124c787be8b76ae75970ed19d1c71a3",
       "allocatedModels": [
-        "VoiceSession"
+        "VoiceSession",
+        "BatchCaptureCompletion"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -41382,22 +41404,24 @@
     },
     {
       "path": "apps/app/src/runtime/connection-ui.tsx",
-      "sha256": "842736cefa94d11e6d528aa065865580b4db747aac8bf403544cfc25a8d05039",
+      "sha256": "85ff4157a733b8dc475d016a2cd64332d1229fd6a4a7b154cd1e8cf2fb8d13b0",
       "allocatedModels": [
         "Application",
         "ApplicationComposition",
         "SignIn",
         "IdentitySession",
-        "ControllerComposition"
+        "ControllerComposition",
+        "ResidentLiveness"
       ],
+      "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
       "classification": "syntactic-candidates",
       "owners": [
         {
           "owner": "<module>",
           "line": 207,
-          "bindings": 73,
-          "writes": 203
+          "bindings": 74,
+          "writes": 204
         },
         {
           "owner": "flushConversationEvents",
@@ -41473,343 +41497,343 @@
         },
         {
           "owner": "work",
-          "line": 924,
+          "line": 938,
           "bindings": 1,
           "writes": 0
         },
         {
           "owner": "manageProviderKey",
-          "line": 1013,
+          "line": 1027,
           "bindings": 2,
           "writes": 3
         },
         {
           "owner": "activate",
-          "line": 1054,
+          "line": 1068,
           "bindings": 2,
           "writes": 1
         },
         {
           "owner": "connectRemote",
-          "line": 1127,
+          "line": 1141,
           "bindings": 9,
           "writes": 13
         },
         {
           "owner": "admitCloudResident",
-          "line": 1212,
+          "line": 1226,
           "bindings": 2,
           "writes": 2
         },
         {
           "owner": "recheckResidentPlan",
-          "line": 1310,
+          "line": 1324,
           "bindings": 1,
           "writes": 0
         },
         {
           "owner": "restoreOwnProviderCloudServices",
-          "line": 1428,
+          "line": 1442,
           "bindings": 3,
           "writes": 3
         },
         {
           "owner": "connectResident",
-          "line": 1453,
+          "line": 1467,
           "bindings": 10,
           "writes": 13
         },
         {
           "owner": "connectCloud",
-          "line": 1548,
+          "line": 1562,
           "bindings": 6,
           "writes": 20
         },
         {
           "owner": "migrateLegacyMock",
-          "line": 1606,
+          "line": 1620,
           "bindings": 1,
           "writes": 1
         },
         {
           "owner": "migrateLegacyHostedSelection",
-          "line": 1631,
+          "line": 1645,
           "bindings": 2,
           "writes": 3
         },
         {
           "owner": "ensureSelectedConversation",
-          "line": 1660,
+          "line": 1674,
           "bindings": 1,
           "writes": 1
         },
         {
           "owner": "createSelectedConversation",
-          "line": 1667,
+          "line": 1681,
           "bindings": 1,
           "writes": 1
         },
         {
           "owner": "effectAppliedBeforeFailure",
-          "line": 1734,
+          "line": 1748,
           "bindings": 1,
           "writes": 0
         },
         {
           "owner": "scheduleStoppedReply",
-          "line": 1844,
+          "line": 1858,
           "bindings": 2,
           "writes": 1
         },
         {
           "owner": "restoreConversationHistory",
-          "line": 1900,
+          "line": 1914,
           "bindings": 2,
           "writes": 2
         },
         {
           "owner": "readConversation",
-          "line": 1949,
+          "line": 1963,
           "bindings": 5,
           "writes": 11
         },
         {
           "owner": "presentActionEntry",
-          "line": 2009,
+          "line": 2023,
           "bindings": 2,
           "writes": 5
         },
         {
           "owner": "boundNavigation",
-          "line": 2042,
+          "line": 2056,
           "bindings": 1,
           "writes": 1
         },
         {
-          "owner": "personalAccept.ArrowFunction@2088",
-          "line": 2092,
+          "owner": "personalAccept.ArrowFunction@2102",
+          "line": 2106,
           "bindings": 2,
           "writes": 3
         },
         {
-          "owner": "personalFinalize.ArrowFunction@2100",
-          "line": 2105,
+          "owner": "personalFinalize.ArrowFunction@2114",
+          "line": 2119,
           "bindings": 1,
           "writes": 2
         },
         {
           "owner": "residentBrowserLoginAction",
-          "line": 2145,
+          "line": 2159,
           "bindings": 1,
           "writes": 1
         },
         {
           "owner": "rejectWorkflowPhoneAction",
-          "line": 2330,
+          "line": 2344,
           "bindings": 1,
           "writes": 1
         },
         {
           "owner": "cancelReadReply",
-          "line": 2361,
+          "line": 2375,
           "bindings": 1,
           "writes": 1
         },
         {
           "owner": "rejectProposal",
-          "line": 2383,
+          "line": 2397,
           "bindings": 1,
           "writes": 1
         },
         {
           "owner": "getOwnerReminderNotificationBinding.openConversation",
-          "line": 2428,
+          "line": 2442,
           "bindings": 1,
           "writes": 1
         },
         {
           "owner": "getAppRecordClient.request",
-          "line": 2446,
+          "line": 2460,
           "bindings": 1,
           "writes": 0
         },
         {
           "owner": "getAutomationsClient.request",
-          "line": 2461,
+          "line": 2475,
           "bindings": 2,
           "writes": 3
         },
         {
-          "owner": "initialize.ArrowFunction@2603",
-          "line": 2607,
+          "owner": "initialize.ArrowFunction@2617",
+          "line": 2621,
           "bindings": 3,
           "writes": 3
         },
         {
           "owner": "configureLocal",
-          "line": 2686,
+          "line": 2700,
           "bindings": 3,
           "writes": 3
         },
         {
-          "owner": "configureLocal.ArrowFunction@2694.ArrowFunction@2700",
-          "line": 2700,
+          "owner": "configureLocal.ArrowFunction@2708.ArrowFunction@2714",
+          "line": 2714,
           "bindings": 1,
           "writes": 1
         },
         {
           "owner": "selectSavedProvider",
-          "line": 2718,
+          "line": 2732,
           "bindings": 2,
           "writes": 2
         },
         {
-          "owner": "newConversation.ArrowFunction@2759",
-          "line": 2766,
+          "owner": "newConversation.ArrowFunction@2773",
+          "line": 2780,
           "bindings": 1,
           "writes": 1
         },
         {
           "owner": "confirmRecovery",
-          "line": 2794,
+          "line": 2808,
           "bindings": 1,
           "writes": 1
         },
         {
           "owner": "beginSignIn",
-          "line": 2846,
+          "line": 2865,
           "bindings": 3,
           "writes": 4
         },
         {
           "owner": "cancelSignIn",
-          "line": 2909,
+          "line": 2928,
           "bindings": 2,
           "writes": 4
         },
         {
-          "owner": "signInGoogle.ArrowFunction@2929",
-          "line": 2935,
+          "owner": "signInGoogle.ArrowFunction@2948",
+          "line": 2954,
           "bindings": 2,
           "writes": 2
         },
         {
           "owner": "reopenGoogle",
-          "line": 2955,
+          "line": 2974,
           "bindings": 1,
           "writes": 1
         },
         {
-          "owner": "verifySignInCode.ArrowFunction@2987",
-          "line": 2989,
+          "owner": "verifySignInCode.ArrowFunction@3006",
+          "line": 3008,
           "bindings": 1,
           "writes": 2
         },
         {
           "owner": "signInReturned",
-          "line": 3028,
+          "line": 3047,
           "bindings": 1,
           "writes": 1
         },
         {
           "owner": "residentRedeem",
-          "line": 3116,
+          "line": 3135,
           "bindings": 1,
           "writes": 1
         },
         {
-          "owner": "residentRedeem.ArrowFunction@3119",
-          "line": 3122,
+          "owner": "residentRedeem.ArrowFunction@3138",
+          "line": 3141,
           "bindings": 1,
           "writes": 1
         },
         {
-          "owner": "disconnect.ArrowFunction@3241",
-          "line": 3245,
+          "owner": "disconnect.ArrowFunction@3260",
+          "line": 3264,
           "bindings": 1,
           "writes": 2
         },
         {
-          "owner": "cloudSignOut.ArrowFunction@3262",
-          "line": 3264,
+          "owner": "cloudSignOut.ArrowFunction@3281",
+          "line": 3283,
           "bindings": 2,
           "writes": 2
         },
         {
-          "owner": "mock.ArrowFunction@3302",
-          "line": 3309,
+          "owner": "mock.ArrowFunction@3321",
+          "line": 3328,
           "bindings": 1,
           "writes": 1
         },
         {
           "owner": "truncateMessage",
-          "line": 3336,
+          "line": 3355,
           "bindings": 2,
           "writes": 1
         },
         {
           "owner": "prepareVoiceConversation",
-          "line": 3366,
+          "line": 3385,
           "bindings": 1,
           "writes": 1
         },
         {
           "owner": "send",
-          "line": 3378,
+          "line": 3397,
           "bindings": 10,
           "writes": 12
         },
         {
           "owner": "ConnectionChooser",
-          "line": 3631,
+          "line": 3651,
           "bindings": 36,
           "writes": 15
         },
         {
-          "owner": "ConnectionChooser.ArrowFunction@3645",
-          "line": 3647,
+          "owner": "ConnectionChooser.ArrowFunction@3665",
+          "line": 3667,
           "bindings": 1,
           "writes": 1
         },
         {
-          "owner": "ConnectionChooser.ArrowFunction@3658",
-          "line": 3658,
+          "owner": "ConnectionChooser.ArrowFunction@3678",
+          "line": 3678,
           "bindings": 1,
           "writes": 1
         },
         {
-          "owner": "ConnectionChooser.ArrowFunction@3662",
-          "line": 3662,
+          "owner": "ConnectionChooser.ArrowFunction@3682",
+          "line": 3682,
           "bindings": 1,
           "writes": 1
         },
         {
           "owner": "OwnKeyForm",
-          "line": 4030,
+          "line": 4051,
           "bindings": 2,
           "writes": 2
         },
         {
           "owner": "OwnProviderChoice",
-          "line": 4051,
+          "line": 4072,
           "bindings": 4,
           "writes": 0
         },
         {
           "owner": "ProviderKeys",
-          "line": 4089,
+          "line": 4110,
           "bindings": 15,
           "writes": 16
         },
         {
           "owner": "ProviderKeys.run",
-          "line": 4107,
+          "line": 4128,
           "bindings": 1,
           "writes": 0
         }
       ],
       "parseErrors": [],
-      "asynchronous": 120,
+      "asynchronous": 121,
       "unassignedWrites": 17
     },
     {
@@ -43026,11 +43050,13 @@
     },
     {
       "path": "apps/app/src/runtime/local-agent.ts",
-      "sha256": "9c146151173285789a490d345d848a495f8046d7b706a8a11b176c2b65624986",
+      "sha256": "af398afff3ca3f8823ee9fffdd5d5b496136b28d8ec75f42265f3de95c6213d1",
       "allocatedModels": [
         "ApplicationComposition",
-        "ResidentRuntime"
+        "ResidentRuntime",
+        "ResidentLiveness"
       ],
+      "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
       "classification": "syntactic-candidates",
       "owners": [
@@ -43042,127 +43068,127 @@
         },
         {
           "owner": "subscribeBrowserConversationEvents",
-          "line": 105,
+          "line": 111,
           "bindings": 7,
           "writes": 16
         },
         {
           "owner": "subscribeBrowserConversationEvents.connect",
-          "line": 113,
+          "line": 119,
           "bindings": 3,
           "writes": 11
         },
         {
-          "owner": "subscribeBrowserConversationEvents.connect.ArrowFunction@122",
-          "line": 123,
+          "owner": "subscribeBrowserConversationEvents.connect.ArrowFunction@128",
+          "line": 129,
           "bindings": 2,
           "writes": 7
         },
         {
-          "owner": "subscribeBrowserConversationEvents.connect.ArrowFunction@132",
-          "line": 132,
+          "owner": "subscribeBrowserConversationEvents.connect.ArrowFunction@138",
+          "line": 138,
           "bindings": 1,
           "writes": 1
         },
         {
           "owner": "LocalAgentProtocol",
-          "line": 167,
+          "line": 173,
           "bindings": 7,
           "writes": 20
         },
         {
           "owner": "LocalAgentProtocol.subscribeVoiceEvents",
-          "line": 175,
+          "line": 181,
           "bindings": 1,
           "writes": 1
         },
         {
           "owner": "LocalAgentProtocol.subscribeConversationEvents",
-          "line": 184,
+          "line": 190,
           "bindings": 1,
           "writes": 1
         },
         {
           "owner": "LocalAgentProtocol.request",
-          "line": 205,
+          "line": 211,
           "bindings": 5,
           "writes": 5
         },
         {
           "owner": "LocalAgentProtocol.connect",
-          "line": 257,
+          "line": 263,
           "bindings": 5,
           "writes": 4
         },
         {
           "owner": "LocalAgentProtocol.speechRequest",
-          "line": 298,
+          "line": 304,
           "bindings": 4,
           "writes": 3
         },
         {
           "owner": "LocalAgentProtocol.developmentCloudSpeech",
-          "line": 326,
+          "line": 332,
           "bindings": 5,
           "writes": 4
         },
         {
           "owner": "LocalAgentProtocol.cloudSpeechAudio",
-          "line": 357,
+          "line": 363,
           "bindings": 1,
           "writes": 1
         },
         {
           "owner": "LocalAgentProtocol.synthesizeSpeech",
-          "line": 377,
+          "line": 383,
           "bindings": 1,
           "writes": 0
         },
         {
           "owner": "LocalAgentProtocol.disconnect",
-          "line": 391,
+          "line": 397,
           "bindings": 1,
           "writes": 1
         },
         {
           "owner": "LocalAgentProtocol.send",
-          "line": 428,
+          "line": 434,
           "bindings": 1,
           "writes": 0
         },
         {
           "owner": "parseProviderStatus",
-          "line": 507,
+          "line": 513,
           "bindings": 1,
           "writes": 1
         },
         {
           "owner": "selectLocalProvider",
-          "line": 564,
+          "line": 570,
           "bindings": 1,
           "writes": 2
         },
         {
           "owner": "editLocalProviderKeys",
-          "line": 581,
+          "line": 587,
           "bindings": 1,
           "writes": 2
         },
         {
           "owner": "removeLocalProviderKey",
-          "line": 595,
+          "line": 601,
           "bindings": 1,
           "writes": 2
         },
         {
           "owner": "revealLocalProviderKey",
-          "line": 611,
+          "line": 617,
           "bindings": 1,
           "writes": 2
         },
         {
           "owner": "LocalCloudProviderStopUnconfirmed",
-          "line": 680,
+          "line": 686,
           "bindings": 1,
           "writes": 1
         }
@@ -44212,7 +44238,8 @@
       "path": "apps/app/src/runtime/resident-recovery.ts",
       "sha256": "a848ff65fde1cbaa1f5e0b4a99932008404c4d92e9c827890995a00b9b095e06",
       "allocatedModels": [
-        "ResidentRuntime"
+        "ResidentRuntime",
+        "ResidentLiveness"
       ],
       "sourcePathClass": "other-source-path",
       "classification": "syntactic-candidates",
@@ -79921,7 +79948,8 @@
         "WorkflowExecution",
         "CoreRuntimeRetirement",
         "CoreRuntimeShutdown",
-        "CoreServiceLifecycle"
+        "CoreServiceLifecycle",
+        "EmbeddingStoreIdentity"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -179175,7 +179203,8 @@
       "path": "vendor/eliza/plugins/plugin-native-media/android/src/main/java/ai/eliza/plugins/media/ReviewedFileHandoff.java",
       "sha256": "55dc93eb38ae50ac72822a8b22a704d76d63720ea77e9ffc9aa711b6b63e1b05",
       "allocatedModels": [
-        "MediaLifecycle"
+        "MediaLifecycle",
+        "ReviewedCopies"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -218139,6 +218168,6 @@
   ],
   "detail": {
     "path": "test-results/quint-state-audit/details.json",
-    "sha256": "309ae95acb513a9b22a42939249a66c38e1a3531d48fd390f886415b76ca9a3e"
+    "sha256": "1d81ee191963107f022c52d5ba0324676c63f38c80c2b833b7b58b8f7114442e"
   }
 }

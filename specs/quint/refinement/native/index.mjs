@@ -33,6 +33,7 @@ import {checkListenerInput} from './listener-input.mjs';
 import {checkSpeechGate} from './speech-gate.mjs';
 import {checkSpeechOutputPreparation} from './speech-output-preparation.mjs';
 import {checkBatchCaptureCompletion} from './batch-capture-completion.mjs';
+import {checkReviewedCopies, reviewedCopiesObligations} from './reviewed-copies.mjs';
 
 export async function runNativeRefinement() {
   const models = ['VadSegmentation', 'RendererRecovery', 'ResidentScheduling'];
@@ -138,10 +139,11 @@ export async function runNativeRefinement() {
   results.push(await checkSharedRecording([fileURLToPath(import.meta.url)]));
   results.push(await checkLiveCapture([fileURLToPath(import.meta.url)]));
   const nativeInputs = [fileURLToPath(import.meta.url), join(root, 'specs/quint/refinement/model-state.mjs')];
-  for (const check of [checkAsrPipe, checkPipedCapture, checkCaptureFrames, checkIndicatorProvider, checkListenerStore, checkListenerService, checkSpeechWarmup, checkRecognizerAvailability, checkOnDeviceRecognizer, checkListenerInput, checkSpeechGate, checkSpeechOutputPreparation, checkBatchCaptureCompletion]) {
+  for (const check of [checkAsrPipe, checkPipedCapture, checkCaptureFrames, checkIndicatorProvider, checkListenerStore, checkListenerService, checkSpeechWarmup, checkRecognizerAvailability, checkOnDeviceRecognizer, checkListenerInput, checkSpeechGate, checkSpeechOutputPreparation, checkBatchCaptureCompletion, checkReviewedCopies]) {
     results.push(await check(nativeInputs));
   }
   const obligations = [
+    ...reviewedCopiesObligations,
     {model: 'RendererRecovery', obligation: 'Android lifecycle, task selection and HOME-role delivery', reason: 'Actual MainActivity recovery and handoff execute under controlled Android ports. Physical renderer death, background lifecycle and OS task delivery require platform checks.', requires: ['Android Activity/WebView harness']},
     {model: 'ResidentScheduling', obligation: 'Plugin lifecycle and OS broadcasts', reason: 'Current adapter proves the pure admission table and same-lock callbacks.', requires: ['Android service integration']},
     {model: 'VadSegmentation', obligation: 'PCM model output and capture pre-roll', reason: 'The gate consumes probabilities; capture/model execution is external.', requires: ['native capture integration']},
