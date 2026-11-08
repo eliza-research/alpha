@@ -178,6 +178,27 @@ module CoreServiceLifecycleDesign {
   action init = Model::Init
   action step = Model::Step
   action rawStep = Model::Next
+  // Observation and replay aliases for source schedules. Neither profile uses them in Next.
+  val sourceState = Model::s
+  val sourcePendingCallers = Set(21, 22).filter(e => Model::s.epc.get(e) == "wait")
+  val sourceCompletedCallers = Set(21, 22).filter(e => Model::s.epc.get(e) == "done")
+  action sourceBegin(caller: int): bool = Model::EBegin(caller)
+  action sourceEnsure(caller: int): bool = Model::EEnsure(caller)
+  action sourceSettle(caller: int): bool = Model::ESettle(caller)
+  action sourceStartFail(cls: int): bool = Model::StartFail(cls)
+  action sourceStartOk(cls: int): bool = Model::StartOk(cls)
+  action sourceStartEvent(cls: int): bool = Model::StartEvent(cls)
+  action sourceLateStopped(cls: int): bool = Model::StartLateStopped(cls)
+  action sourceStopDone(instance: int): bool = Model::StopOpDone(instance)
+  action sourceRequestStop = Model::RRequest
+  action sourceStopServices = Model::RServices
+  action sourceStopNext = Model::RStopNext
+  action sourceWaitStop = Model::RStopWait
+  action sourceClear = Model::RClear
+  action sourceUnload = Model::UStart
+  action sourceAwaitUnload = Model::UAwaited
+  action sourceDrainUnload = Model::UDrain
+  action sourceFinishUnload = Model::UStopped
   val safety = Model::TypeOK and Model::OneLivePerClass and Model::StopAtMostOnce and Model::NoLatePublish
     and Model::NoOrphan and Model::StatusConsistent and Model::NoStatusWithoutClasses and Model::StoppedNotReachable
   temporal CheckedTemporal = Model::Fairness implies Model::StopReachesAll and Model::CallersReturn
@@ -194,6 +215,18 @@ module CoreServiceLifecycleDesignSiblings {
   action init = Model::Init
   action step = Model::Step
   action rawStep = Model::Next
+  // Observation and replay aliases for source schedules. Neither profile uses them in Next.
+  val sourceState = Model::s
+  val sourcePendingCallers = Set(21, 22).filter(e => Model::s.epc.get(e) == "wait")
+  val sourceCompletedCallers = Set(21, 22).filter(e => Model::s.epc.get(e) == "done")
+  action sourceBegin(caller: int): bool = Model::EBegin(caller)
+  action sourceEnsure(caller: int): bool = Model::EEnsure(caller)
+  action sourceSettle(caller: int): bool = Model::ESettle(caller)
+  action sourceStartFail(cls: int): bool = Model::StartFail(cls)
+  action sourceStartOk(cls: int): bool = Model::StartOk(cls)
+  action sourceStartEvent(cls: int): bool = Model::StartEvent(cls)
+  action sourceRegisterLate(cls: int): bool = Model::RegisterLate(cls)
+  action sourceDelay(caller: int): bool = Model::EDelay(caller)
   val safety = Model::TypeOK and Model::OneLivePerClass and Model::StopAtMostOnce and Model::NoLatePublish
     and Model::NoOrphan and Model::StatusConsistent and Model::NoStatusWithoutClasses and Model::StoppedNotReachable
   run failedClassLeavesSiblingAvailableTest = init.then(Model::RegisterLate(12)).then(Model::EBegin(21)).then(Model::EEnsure(21))
