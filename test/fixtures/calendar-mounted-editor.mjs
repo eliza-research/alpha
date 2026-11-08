@@ -257,7 +257,7 @@ export async function startMountedCalendar({onSource = () => {}, observeCamera =
         if (observeCamera && path === cameraAdapter) {
           const anchor = '  function hideAccess(){';
           assert.ok(code.includes(anchor), 'The mounted camera session must remain observable');
-          return code.replace(anchor, 'window.quintMountedCamera=()=>({phase:session.phase,lens:direction,flash,zoom:zoomRatio,chat:chatCovers(),capture:session.recording?"recording":session.capturing?"photo":"idle"});\n' + anchor);
+          return code.replace(anchor, 'window.quintMountedCamera=()=>({phase:session.phase,released:previewReleased,token:session.token(),lens:direction,flash,zoom:zoomRatio,chat:chatCovers(),capture:session.recording?"recording":session.capturing?"photo":"idle"});\n' + anchor);
         }
         if (path === adapter && code.includes('let retentionAttempt:')) {
           const anchors = ['this.agentCalendar=controller;', 'retain:async(ownerKey,fingerprint,signal,current)=>{',

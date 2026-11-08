@@ -2285,5 +2285,33 @@
       "Exact mounted Note and scanned-event draft admission to the canonical Calendar editor, retaining earlier drafts and separate reminder authority.",
       "Two owners and selected slot open, retain, consume and ready phases. Chromium IndexedDB, closed Calendar transport, synthetic image and camera port. Native capture and provider writes remain separate."
     ]
+  },
+  {
+    "path": "specs/quint/application/CameraPreviewRetirement.qnt",
+    "module": "CameraPreviewRetirement",
+    "init": "init",
+    "step": "step",
+    "invariant": "safety",
+    "tests": [
+      "pendingLeaveBeforeHomeFencesPreviewTest",
+      "readyLeaveReleasesItsExactTrackTest",
+      "retiredStreamCannotReplaceTheFreshPreviewTest"
+    ],
+    "invariants": [
+      "RetirementStopsAdmission",
+      "CurrentRequestOwnsPreview",
+      "VisibleTrackMatchesRequest"
+    ],
+    "sources": [
+      "apps/app/src/prototype/camera-adapter.ts",
+      "apps/app/src/prototype/browser-camera.ts",
+      "apps/app/src/prototype/model.js",
+      "apps/app/src/prototype/template.html",
+      ".eliza/client-features/plugins/plugin-native-camera/src/session.ts"
+    ],
+    "abstractions": [
+      "Mounted pre-commit Camera leave and committed Home, preview-release latch, exact pending request owner, retired stream disposal and deliberate fresh reentry.",
+      "Two browser visits and controlled canvas MediaStreams. Native permissions, conversation and media writes are separate."
+    ]
   }
 ]
