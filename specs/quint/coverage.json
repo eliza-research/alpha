@@ -33950,7 +33950,8 @@
       "path": "apps/app/src/runtime/crash-log.ts",
       "sha256": "397fc468feb2406d81177aabef21283761685b5e4fc32a12029737462dd8556a",
       "models": [
-        "Application"
+        "Application",
+        "RendererFailureUI"
       ],
       "scope": "application",
       "treatment": "domain-contract-or-support",
@@ -34385,9 +34386,10 @@
     },
     {
       "path": "apps/app/src/runtime/error-boundary.tsx",
-      "sha256": "1f5ae609e3def31aecb0d4160f46ee60265d2b0f3572deb0b7e6d83e045b7984",
+      "sha256": "ae1173d4e8a29ff4fb7c93d40974f05c0e90c79b6bc92ef68f93fe84d2672f40",
       "models": [
-        "Application"
+        "Application",
+        "RendererFailureUI"
       ],
       "scope": "application",
       "treatment": "state-and-transition-projection",

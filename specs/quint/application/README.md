@@ -54,3 +54,8 @@ The other modules decompose domain state so each can be explored independently.
 The complete Cartesian product of all domain variables is not enumerated by
 these checks. The inventory records domain allocation, not a proof that every
 source variable or every possible implementation behavior refines its model.
+
+`RendererFailureUI` models global startup recovery and the React root boundary,
+including panel ownership, modal dismissal, focus, reload requests and bounded
+class-only logging. Its source driver and Chromium regressions are described in
+[the recovery refinement notes](../refinement/application/recovery-ui.md).

@@ -626,5 +626,32 @@
       "A source-executing JSDOM adapter observes the actual helper closure through a read-only getter and controls its queue/listener/geometry environment. Real Notes and Photos browser traces are separate bounded renderer evidence.",
       "No unbounded event-loop liveness, native accessibility or universal implementation refinement is claimed."
     ]
+  },
+  {
+    "path": "specs/quint/application/RendererFailureUI.qnt",
+    "module": "RendererFailureUI",
+    "init": "init",
+    "step": "step",
+    "invariant": "safety",
+    "tests": [
+      "ignoredResourceErrorTest",
+      "startupClosesDialogsTest",
+      "mountedErrorIgnoredTest",
+      "renderFailureTest",
+      "startupThenRenderTest",
+      "renderThenStartupTest",
+      "stickyBoundaryTest",
+      "pendingForcedFailureTest",
+      "forceAfterFailureTest",
+      "repeatedRecoveryTest"
+    ],
+    "sources": [
+      "apps/app/src/runtime/error-boundary.tsx",
+      "apps/app/src/runtime/crash-log.ts"
+    ],
+    "abstractions": [
+      "Actual React and global listener coordination is projected with four error-class representatives, two dialogs and two reload requests. The existing native RendererRecovery model owns Android renderer-process recovery.",
+      "Reload dispatch, JSDOM geometry, native logging and the test-only forced-error hook are explicit environment boundaries."
+    ]
   }
 ]
