@@ -25,6 +25,8 @@ public final class ListenerServiceTraces {
    "physical",last!=null&&last.recording,"released",last!=null&&last.released,
    "microphoneHeld",Listener.microphoneHeld,"unsilenced",Listener.unsilencedSince>=0,
    "marker",StorePorts.preferences.getBoolean("captureSessionOpen",false),
+   "durableMarker",StorePorts.preferences.disk.getOrDefault("captureSessionOpen",false),
+   "storageFailed",ListenerStore.storageFailed(),"stopRequests",StorePorts.stops,
    "epoch",Trace.read(Listener.epoch,"generation"),"epochActive",Trace.read(Listener.epoch,"active"),
    "enginePresent",Trace.read(service,"engine")!=null,"engineClosed",ServicePorts.engine!=null&&ServicePorts.engine.closed,
    "engineLoading",ServicePorts.holdLoad&&ServicePorts.loadEntered.getCount()==0&&ServicePorts.allowLoad.getCount()>0,
@@ -40,6 +42,11 @@ public final class ListenerServiceTraces {
   if(ServicePorts.records.size()>prior&&!ServicePorts.record.began.await(5,TimeUnit.SECONDS))throw new AssertionError("Capture did not start");
   if(ServicePorts.engine==null&&!ServicePorts.loadEntered.await(5,TimeUnit.SECONDS))throw new AssertionError("ASR load did not start");
   record("start");
+ }
+ static void markerWriteFailed()throws Exception {
+  StorePorts.preferences.outcome="memory-failure";
+  service.onStartCommand(new android.content.Intent(),0,1);
+  executor().submit(()->{}).get(5,TimeUnit.SECONDS);record("markerWriteFailed");
  }
  static void load()throws Exception {ServicePorts.allowLoad.countDown();if(executor().isShutdown())executor().awaitTermination(5,TimeUnit.SECONDS);else executor().submit(()->{}).get(5,TimeUnit.SECONDS);record("load");}
  static void stop(boolean disable,boolean stopOk,boolean releaseOk)throws Exception {
@@ -57,7 +64,9 @@ public final class ListenerServiceTraces {
   long generation=Listener.lease.acquire(1);Listener.lease.renew(generation,ServicePorts.now,1,true,true,true);
   ServicePorts.holdLoad=true;service=new ListeningService();trace=new Trace("listener-service-"+mode,observe());
   try{
-   create();start();
+   create();
+   if(mode.equals("marker-write-failure")){markerWriteFailed();destroy(true,true);System.out.println(trace.value);return;}
+   start();
    if(mode.equals("destroy-loading")){destroy(true,true);load();}
    else if(mode.equals("pause-loading")){stop(false,true,true);load();destroy(true,true);}
    else{

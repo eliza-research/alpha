@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {checkListenerService,listenerServiceScenarios,probeListenerService} from '../specs/quint/refinement/native/listener-service.mjs';
+import {probeListenerAdmission} from '../specs/quint/refinement/native/listener-admission-probe.mjs';
 
 test('actual listener/service lifecycle retains failed resources and completes destruction', {timeout:360000},async()=>{
  const result=await checkListenerService(['test/quint-listener-service.test.mjs']);
@@ -8,7 +9,7 @@ test('actual listener/service lifecycle retains failed resources and completes d
  assert.equal(result.traces,listenerServiceScenarios.length);
  assert.equal(result.driverInputsBound,true);
  assert.equal(result.inputsUnchanged,true);
- for(const action of ['create','start','load','pause','disable','destroy'])assert.ok(result.actions[action]>0,action);
+ for(const action of ['create','start','markerWriteFailed','load','pause','disable','destroy'])assert.ok(result.actions[action]>0,action);
 });
 
 test('release failure preserves uncertainty while retiring callbacks and recognizer', {timeout:90000},()=>{
@@ -24,4 +25,15 @@ test('release failure preserves uncertainty while retiring callbacks and recogni
   assert.equal(result.superDestroyed,true);
   for(const field of ['modeRegistered','recordingRegistered','playbackRegistered','observerRegistered'])assert.equal(result[field],false,field);
  }
+});
+
+
+test('failed durable listener session admission cannot arm recognition or load an engine', {timeout:90000},()=>{
+ const result=probeListenerAdmission();
+ assert.equal(result.storageFailed,true);
+ assert.equal(result.memoryMarker,true);
+ assert.equal(result.durableMarker,false);
+ assert.equal(result.released,true);
+ assert.equal(result.stops,1);
+ for(const field of ['epochActive','analyse','engineLoaded','capture','physical'])assert.equal(result[field],false,field);
 });

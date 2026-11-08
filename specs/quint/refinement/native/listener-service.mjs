@@ -7,7 +7,7 @@ import {directory,javaTraces} from './java.mjs';
 import {currentNativeSource,nativePatchInputs} from './current-sources.mjs';
 import {listenerServicePlatform} from './listener-service-platform.mjs';
 function compiled(platform){return ['ListeningService','Listener','ListenerStore','ListeningEpoch','IndicatorLease','ListenerPolicy','CrashLoopBreaker','SpeechGate','WakePhrase','SenseConfig'].map(currentNativeSource).concat(directory+'/StorePorts.java',directory+'/ServicePorts.java',platform.paths);}
-export const listenerServiceScenarios=['repeated-start','normal','release-failure','both-failure','stop-failure','paused','disabled','retained-refuses-replacement','retained-release-retry','reopen','late-start','destroy-loading','pause-loading'];
+export const listenerServiceScenarios=['marker-write-failure','repeated-start','normal','release-failure','both-failure','stop-failure','paused','disabled','retained-refuses-replacement','retained-release-retry','reopen','late-start','destroy-loading','pause-loading'];
 export function probeListenerService(mode){const platform=listenerServicePlatform(),state=mkdtempSync(join(tmpdir(),'quint-listener-service-'));try{return javaTraces('ListenerServiceProbe.java',compiled(platform),[join(state,'settings.json'),mode],'ai.eliza.sense.ListenerServiceProbe');}finally{platform.close();rmSync(state,{recursive:true,force:true});}}
 export async function checkListenerService(extraSources=[]){
  const platform=listenerServicePlatform(),state=mkdtempSync(join(tmpdir(),'quint-listener-service-')),inputs=compiled(platform);

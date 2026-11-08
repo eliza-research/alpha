@@ -381,9 +381,12 @@ an `AudioRecord.release()` exception escaped destruction before audio callbacks,
 the ASR engine, executor and superclass lifecycle were cleaned up.
 `listener-service-cleanup.patch` now completes those lifecycle steps, retains an
 unreleased record, preserves its durable open marker and refuses a replacement
-capture while that handle remains. A later Stop can retry the release.
+capture while that handle remains. A later Stop can retry the release. When the durable open-session marker is
+refused, the service now keeps recognition inactive and does not load a new
+ASR engine. The memory-only marker and the durable marker are observed
+separately.
 
-Thirteen source schedules observe all thirty-one lifecycle fields. They include
+Fourteen source schedules observe all thirty-four lifecycle fields. They include
 successful and failed release, a failed stop plus failed release, retry, attempted
 replacement, late service start, and ASR allocation completing after destruction.
 Physical recording and confirmed resource release are separate observations. A

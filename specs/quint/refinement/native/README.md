@@ -193,7 +193,9 @@ The release regression compares the original and patched source. Both release-on
 and combined stop/release failures now allow destruction to retire callbacks and
 the recognizer. A failed release remains an owned resource with its durable
 marker, and another start cannot overwrite that reference. The campaign checks a
-later successful release and capture restart. Installed Binder/audio behavior,
+later successful release and capture restart. `listener-admission-probe.mjs`
+drives a memory-only failed open-session commit and observes that capture, the
+recognition epoch and a new engine load remain off. Installed Binder/audio behavior,
 physical release acceptance and arbitrary callbacks remain external obligations.
 
 ### Speech warm-up writer and recognition availability

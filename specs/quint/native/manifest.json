@@ -1306,6 +1306,7 @@
         "patches/eliza/listener-service-cleanup.patch"
       ],
       "tests": [
+        "failedDurableMarkerCannotArmRecognitionTest",
         "releaseFailureStillCleansLifecycleTest",
         "combinedFailureKeepsPhysicalUncertaintyTest",
         "failedRecordRefusesReplacementTest",
@@ -1317,6 +1318,7 @@
         "DestructionRetiresCallbacks",
         "DestructionStopsExecutor",
         "UnreleasedCaptureRetainsMarker",
+        "AnalysisNeedsCapture",
         "Bounded"
       ],
       "abstractions": [
