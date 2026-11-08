@@ -371,7 +371,7 @@ for(const subscription of ['credits','active','canceled'] as const)test(`Setting
  await page.getByRole('button',{name:'Settings',exact:true}).click();
  await current(page).getByRole('button',{name:'Eliza Cloud',exact:true}).click();
  const plan=current(page),redeem=plan.getByRole('button',{name:'Redeem code',exact:true});
- if(subscription==='credits')await expect(plan).toContainText('Eliza Cloud credits');
+ if(subscription==='credits')await expect(plan).toContainText('No active subscription');
  await expect(plan.getByRole('button',{name:'Manage plan',exact:true})).toBeVisible();
  await expect(page.getByLabel('Membership code',{exact:true})).toHaveCount(0);
  // A signed-in owner may open code entry without changing current plan admission.

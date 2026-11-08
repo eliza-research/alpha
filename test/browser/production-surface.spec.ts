@@ -439,7 +439,7 @@ for (const mode of ['signed-out','empty','credits','unavailable','funded','repla
    await expect(dialog).not.toContainText(/Available credits|Add credits|\$\d/);
   }
   if(mode==='replaced')await expect(dialog.getByText(/account changed/i)).toBeVisible();
-  if(admitted)await expect(dialog.getByRole('button',{name:'Sign out of Eliza Cloud',exact:true})).toBeVisible();
+  if(admitted)await expect(dialog.getByRole('button',{name:'Sign out',exact:true})).toBeVisible();
   // Legacy credit admission keeps the subscription and membership-code options visible.
   if(mode==='credits'){await expect(dialog.getByText('No active subscription',{exact:true})).toBeVisible();await expect(dialog.getByRole('button',{name:'Redeem code',exact:true})).toBeVisible();}
   for(const retired of ['Use local apps without AI','Continue offline'])await expect(dialog.getByRole('button',{name:retired,exact:true})).toHaveCount(0);

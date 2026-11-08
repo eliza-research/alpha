@@ -84,13 +84,14 @@ test('production Settings controls act or explain the current Calendar authority
  }
  await test.info().attach('visited-controls',{body:visited.join('\n'),contentType:'text/plain'});
  writeFileSync(test.info().outputPath('visited.txt'),visited.join('\n'));
- expect(visited.length).toBeGreaterThan(top.length);
+ for(const label of top.filter(label=>!external.has(label)))expect(visited).toContain(label);
+ expect(visited).toEqual(expect.arrayContaining(['Calendars > Google Calendar','About > Problem log','About > Export diagnostics','About > Open source licenses']));
  expect(toastOnly).toEqual([]);
 });
 
 /** Rows the Settings cleanup removed or put behind the Developer gate; a product build shows none of them. */
 const removedRows:Record<string,RegExp[]>={
- '':[/^Developer$/,/^Try mock mode$/,/^Saved data needs recovery$/,/^Last change$/,/^Connections$/,/^Notifications$/,/^Voice and agent settings$/,/^Privacy & data$/],
+ '':[/^Developer$/,/^Try mock mode$/,/^Saved data needs recovery$/,/^Last change$/,/^Connections$/,/^Voice and agent settings$/,/^Privacy & data$/],
  'About':[/^Update channel \(development\)$/,/^Updates$/,/^Alpha does not check for updates$/,/^Runtime$/],
  'Calendars':[/^Calendar backups$/,/^Display only$/],
 };
@@ -101,6 +102,7 @@ test('production Settings shows no developer or removed rows, even with ?tools=1
    await page.goto(query);await page.getByRole('button',{name:'Settings',exact:true}).click();
    await expect(page.locator('html')).toHaveAttribute('data-active-view','settings');
    if(label){await current(page).getByText(label,{exact:true}).first().click();await expect(page.getByRole('button',{name:'Back to Settings',exact:true})).toBeVisible();}
+   if(!label)await expect(current(page).getByRole('button',{name:'Notifications',exact:true})).toHaveCount(0);
    for(const row of rows)await expect(current(page).getByText(row),`${query} ${label||'Settings'}: ${row}`).toHaveCount(0);
   }
  }
