@@ -147,7 +147,6 @@ class MicrophonePreflight(unittest.TestCase):
         self.assertFalse(destination.exists())
 
 
-
 class Discovery(unittest.TestCase):
     """Discovery file lookup; no gRPC, protocol compilation or emulator."""
 
