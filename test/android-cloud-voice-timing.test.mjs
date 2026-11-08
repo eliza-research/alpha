@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { sanitizeTurns, summarizeTurns, sanitizeNative, evaluate } from '../scripts/android-cloud-voice-timing.mjs';
+import { sanitizeTurns, summarizeTurns, sanitizeNative, sanitizeBuild, evaluate } from '../scripts/android-cloud-voice-timing.mjs';
 
 const turn = { route: 'eliza-cloud', cold: false, entry: 'conversation', marks: {
   'recording-end': 0, 'transcript-ready': 2100, send: 2120,
@@ -48,4 +48,11 @@ test('debugger disconnect rejects promptly instead of waiting for the read deadl
   };
   try { await assert.rejects(evaluate('ws://127.0.0.1/unused', '0', 10000), /closed during diagnostic read/); }
   finally { globalThis.WebSocket = original; }
+});
+
+test('a readable build-flags file without runtimeProfile is the native build; an unreadable one stays unknown', () => {
+  assert.deepEqual(sanitizeBuild({ testMocks: false }), { runtimeProfile: 'native', testMocks: false });
+  assert.deepEqual(sanitizeBuild({ testMocks: true, runtimeProfile: 'cloud' }), { runtimeProfile: 'cloud', testMocks: true });
+  assert.deepEqual(sanitizeBuild(null), { runtimeProfile: null, testMocks: null });
+  assert.deepEqual(sanitizeBuild({ testMocks: false, runtimeProfile: 'other' }), { runtimeProfile: null, testMocks: false });
 });

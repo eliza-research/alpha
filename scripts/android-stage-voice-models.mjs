@@ -91,10 +91,6 @@ export function stageVoiceModels(productRoot, {from, unrecordedEngine = false, a
     }
     rows.push({target: `jniLibs/${abi.abi}/${engine.name}`, sha256: engine.sha256, bytes: engine.bytes, source});
   }
-  if (record.abis.some(abi => abi.engineAdmission)) {
-    record.qualified = false;
-    fs.writeFileSync(path.join(productRoot, VOICE_HOST_MANIFEST), `${JSON.stringify(record, null, 2)}\n`);
-  }
   const output = path.join(productRoot, VOICE_ASSET_ROOT);
   for (let p = output; p !== productRoot && p !== path.dirname(p); p = path.dirname(p))
     if (fs.existsSync(p) && fs.lstatSync(p).isSymbolicLink()) throw Error('Voice outputs must not traverse a link');
@@ -117,6 +113,15 @@ export function stageVoiceModels(productRoot, {from, unrecordedEngine = false, a
   const files = [{path: `${VOICE_BUNDLE_ASSETS}/manifest.json`, bytes: Buffer.byteLength(manifestText), sha256: createHash('sha256').update(manifestText).digest('hex')},
     ...rows.map(row => ({path: row.target, bytes: row.bytes, sha256: row.sha256}))].sort((a, b) => a.path.localeCompare(b.path));
   fs.writeFileSync(path.join(output, 'build-record.json'), `${JSON.stringify({sourceCommit:record.pin, nativeCommit:record.forkPin, inputs, abis: selected, files}, null, 2)}\n`);
+  // Rewritten only after every conflict check and copy succeeded, and atomically, so a refusal
+  // leaves the tracked record untouched.
+  if (record.abis.some(abi => abi.engineAdmission)) {
+    record.qualified = false;
+    const recordFile = path.join(productRoot, VOICE_HOST_MANIFEST), temporary = `${recordFile}.tmp-${process.pid}`;
+    fs.writeFileSync(temporary, `${JSON.stringify(record, null, 2)}\n`);
+    fs.renameSync(temporary, recordFile);
+    console.warn(`${VOICE_HOST_MANIFEST} was rewritten to name an unreviewed engine build; never commit it.`);
+  }
   return {staged: files.map(row => row.path), asr: bundleFiles.some(row => row.path.startsWith('asr/'))};
 }
 

@@ -80,6 +80,14 @@ export function sanitizeStreaming(value) {
   }) };
 }
 
+/** build-flags.json names runtimeProfile only for cloud builds; a readable file without it is native. */
+export function sanitizeBuild(value) {
+  const testMocks = typeof value?.testMocks === 'boolean' ? value.testMocks : null;
+  const runtimeProfile = ['native', 'cloud'].includes(value?.runtimeProfile) ? value.runtimeProfile
+    : testMocks !== null && value.runtimeProfile === undefined ? 'native' : null;
+  return { runtimeProfile, testMocks };
+}
+
 export async function evaluate(socketUrl, expression, timeoutMs = 10000) {
   return new Promise((resolve, reject) => {
     const ws = new WebSocket(socketUrl);
@@ -129,8 +137,7 @@ export async function collectDevice({ serial } = {}) {
     return { format: 'alpha-cloud-voice-diagnostic-v1', collectedAt: new Date().toISOString(),
       installed: { versionName: installed.match(/versionName=([A-Za-z0-9._-]+)/)?.[1] ?? null,
         versionCode: Number(installed.match(/versionCode=(\d+)/)?.[1]) || null,
-        runtimeProfile: ['native', 'cloud'].includes(value?.build?.runtimeProfile) ? value.build.runtimeProfile : null,
-        testMocks: typeof value?.build?.testMocks === 'boolean' ? value.build.testMocks : null },
+        ...sanitizeBuild(value?.build) },
       currentProvider: value?.provider && ['cerebras', 'elizacloud'].includes(value.provider.provider)
         ? { provider: value.provider.provider, configured: value.provider.configured === true, voiceConfigured: value.provider.voiceConfigured === true } : null,
       boundary: 'Renderer recording-stop to playback-start; excludes speech endpoint silence and does not measure first physical audible sample.',
