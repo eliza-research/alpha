@@ -28,7 +28,7 @@ test('the read-back script only issues GET requests', () => {
 test('a stalled gh is killed and reported as an unreadable read', () => {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'gh-stall-'));
   const bin = path.join(dir, 'gh');
-  fs.writeFileSync(bin, '#!/bin/sh\nsleep 30\n', {mode: 0o755});
+  fs.writeFileSync(bin, '#!/bin/sh\nexec sleep 30\n', {mode: 0o755});
   try {
     const started = Date.now();
     // A status of 0 is not an "absent" status, so the caller lists it as UNREADABLE and exits 2.

@@ -29,7 +29,7 @@ export function ghGet(endpoint, {bin = process.env.GH_BIN || 'gh', timeoutMs = 1
   try {
     return {ok: true, data: JSON.parse(execFileSync(bin, ['api', '--method', 'GET', endpoint], {encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'], maxBuffer: 16 * 1024 * 1024, timeout: timeoutMs, killSignal: 'SIGKILL'}))};
   } catch (error) {
-    if (error.signal || error.code === 'ETIMEDOUT') return {ok: false, status: 0, message: `gh timed out after ${timeoutMs / 1000}s`};
+    if (error.code === 'ETIMEDOUT') return {ok: false, status: 0, message: `gh timed out after ${timeoutMs / 1000}s`};
     const text = `${error.stdout ?? ''}${error.stderr ?? ''}`.trim();
     const status = Number(/\(HTTP (\d{3})\)/.exec(text)?.[1] ?? /"status":\s*"(\d{3})"/.exec(text)?.[1] ?? 0);
     return {ok: false, status, message: text.split('\n').pop() || error.message};
