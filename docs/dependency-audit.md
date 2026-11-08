@@ -1,5 +1,21 @@
 # Dependency and artifact supply chain
 
+## Staged Cloud runtime review — November 7
+
+The Android Cloud payload at Alpha `6f9e00c2` and SDK `9237023aee38`
+passed source, bundle, native Bun and staging verification. A live npm audit of
+its 457 packaged versions reported one moderate UUID advisory and no high or
+critical findings. The emitted legacy UUID namespaces have no callers of the
+affected v3/v5 buffer functions. The existing exception retains its original
+terms and review deadline.
+
+The source review now names this SDK. Five exceptions and 24 pending rows
+that the current full-lock snapshot no longer reports were removed. All 84
+retained exception objects are unchanged. The exact files, UUID references and
+removed records are in the [staged runtime review](security/resident-staged-review-a2b3f601e26f-2026-11-07.json).
+Final APK, native-library and device verification remain open.
+
+
 ## Reviewed native Android APK npm closure (2026-10-25)
 
 The exact signed ARM64 APK `d3f1fd7792071e0ac76484e437e9a15cd1aa082e75f236ea8c4e4b8e5bdd5e10`
