@@ -37,6 +37,7 @@ import {checkReviewedCopies, reviewedCopiesObligations} from './reviewed-copies.
 import {checkNavigationProgress} from './navigation-progress.mjs';
 import {checkNativeNavigationOwnership} from './navigation-service.mjs';
 import {checkGoogleBrowserReturnClaim} from './google-browser-return-claim.mjs';
+import {checkRuntimeUpdatePause} from './runtime-update-pause.mjs';
 
 export async function runNativeRefinement() {
   const models = ['VadSegmentation', 'RendererRecovery', 'ResidentScheduling'];
@@ -144,7 +145,10 @@ export async function runNativeRefinement() {
   for (const check of [checkAsrPipe, checkPipedCapture, checkCaptureFrames, checkIndicatorProvider, checkListenerStore, checkListenerService, checkSpeechWarmup, checkRecognizerAvailability, checkOnDeviceRecognizer, checkListenerInput, checkSpeechGate, checkSpeechOutputPreparation, checkBatchCaptureCompletion, checkReviewedCopies]) {
     results.push(await check(nativeInputs));
   }
+  const updatePause = await checkRuntimeUpdatePause(nativeInputs);
+  results.push(updatePause.receipt);
   const obligations = [
+    ...updatePause.obligations,
     {model: 'GoogleBrowserReturnClaim', obligation: 'Installed callback delivery and durable credential custody',
       reason: 'The authenticated Java claim and grace functions execute under controlled queues, storage and HTTPS. Installed lifecycle, secure-store durability and intra-worker schedules remain separate.'},
     ...reviewedCopiesObligations,
