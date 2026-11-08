@@ -303,7 +303,7 @@ async function panel(rows,{calendarEdits=true,gmailChanges=true,unreadable=false
   './google-calendar-selection':{clearGoogleCalendarSelectionForConnection:()=>{}},
   './native-connection':{openConnectionBrowser:async()=>{p.opens++;},googleWorkspaceReturnPort:undefined},
   // Like 3800a178e's google-agent-access: a fresh capture with a revision receipt, and a guarded save that rechecks it.
-  './google-agent-access':{googleAgentAccess:()=>({...access}),publishGoogleAgentAccess:async()=>{},captureGoogleCalendarAccess:async()=>p.unreadable?undefined:{calendarEdits:access.calendarEdits,receipt:{revision:p.revision}},setGoogleAgentAccess:async(change,guard)=>{if(saveFails)throw Error('Settings could not be saved');if(guard&&(!guard.current()||access.calendarEdits!==guard.expectedCalendarEdits||guard.receipt.revision!==p.revision))throw Error('Calendar choice changed. Review it again.');p.accessChanges.push({...change});Object.assign(access,change);p.revision++;p.unreadable=false;dom.window.dispatchEvent(new dom.window.Event('alpha:device-settings'));}},
+  './google-agent-access':{googleAgentAccess:()=>({...access}),publishGoogleAgentAccess:async()=>{},captureGoogleCalendarAccess:async()=>{await p.onCapture?.();return p.unreadable?undefined:{calendarEdits:access.calendarEdits,receipt:{revision:p.revision}};},setGoogleAgentAccess:async(change,guard)=>{if(saveFails)throw Error('Settings could not be saved');if(guard&&(!guard.current()||access.calendarEdits!==guard.expectedCalendarEdits||guard.receipt.revision!==p.revision))throw Error('Calendar choice changed. Review it again.');p.accessChanges.push({...change});Object.assign(access,change);p.revision++;p.unreadable=false;dom.window.dispatchEvent(new dom.window.Event('alpha:device-settings'));}},
  };
  const compiled=transformSync(readFileSync(new URL('../apps/app/src/runtime/google-connection-ui.tsx',import.meta.url),'utf8'),{loader:'tsx',jsx:'automatic',format:'cjs',target:'es2022'}).code;
  const module={exports:{}};
@@ -449,7 +449,7 @@ test('a panel opened from Calendar passes its disconnect lifecycle and keeps an 
   await p.act(()=>p.button('Disconnect Google account owner@example.test').click());await p.act(()=>p.button('Confirm disconnect Google account').click());
   const [{calendar}]=p.disconnects;
   assert.deepEqual(calendar.capture().control,{revision:2,paused:false,destination:{connectorAccountId:GRANT,providerCalendarId:OWNER},pendingDispatch:null},'the review the link read back');
-  assert.match(p.status(),/^Disconnect disconnected\. Calendar sync pause was not confirmed\. Ask your agent to check Calendar sync/);
+  assert.match(p.status(),/^Disconnect disconnected\. Calendar sync pause was not confirmed\. Review Calendar sync; saved events are unchanged\./);
   assert.equal(p.controller.calendar().retained.get('pause-key').status,'unknown','the unknown pause stays retained');
   await p.act(()=>p.controller.close());p.onDisconnect=null;await p.act(()=>p.controller.open());
   await p.act(()=>p.button('Disconnect Google account owner@example.test').click());await p.act(()=>p.button('Confirm disconnect Google account').click());
@@ -467,6 +467,23 @@ test('Connect Google Calendar starts no consent until this load verified the acc
   p.listFails=false;await p.act(()=>p.button('Check Google connections').click());
   await p.act(()=>p.button('Connect Google Calendar').click());assert.deepEqual(p.consents,[['write','send']]);
  }finally{await p.close();f.calendar.retire();}
+});
+
+test('a failed replacement account read retires consent waiting on Calendar access',async()=>{
+ const f=await agent(),p=await panel([account(OWNER,[...READ,'google.gmail.send'])]);
+ const capture=deferred();let waiting=false;
+ try{
+  await p.act(()=>p.controller.openCalendar(f.scope));
+  p.onCapture=()=>{waiting=true;return capture.promise;};
+  await p.act(()=>p.button('Connect Google Calendar').click());
+  await p.until(()=>waiting,'the consent is waiting on the Calendar permission read');
+  p.listFails=true;await p.dispatch('alpha:test-google-accounts');
+  assert.match(p.status(),/could not be verified/);
+  await p.act(()=>capture.resolve());
+  assert.deepEqual(p.consents,[],'a verified row from an older load cannot authorize consent');
+  assert.equal(p.opens,0);
+  assert.match(p.status(),/could not be verified/);
+ }finally{capture.resolve();await p.close();f.calendar.retire();}
 });
 
 test('after a disconnect with no account readback, Connect Google Calendar starts no consent',async()=>{
