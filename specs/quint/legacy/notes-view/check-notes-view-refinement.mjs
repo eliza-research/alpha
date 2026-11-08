@@ -20,6 +20,7 @@ const button = (page, name) => page.getByRole('button', {name, exact: true});
 const editor = page => page.locator('[data-alpha-subview="notes-editor"]');
 const trash = page => page.locator('[data-alpha-subview="notes-trash"]');
 const recorder = page => page.locator('[data-alpha-subview="notes-recorder"]');
+const toast = page => page.locator('[data-alpha-toast] > .drop');
 const action = (name, ...args) => ({name, args});
 const firstFolder = 'f-retained-a';
 const secondFolder = 'f-retained-b';
@@ -125,9 +126,11 @@ async function remove(page, title) {
   await expect(editor(page)).toHaveCount(0);
   await expect(button(page, 'Open '+title)).toHaveCount(0);
   await expect(button(page, 'Recently deleted')).toBeVisible();
+  await expect(toast(page)).toContainText('Moved to Recently deleted');
 }
 
 async function recover(page, title, legacy = false) {
+  await expect(toast(page)).toHaveCount(0);
   await button(page, 'Recently deleted').click();
   await expect(trash(page)).toBeVisible();
   if (!legacy) await expect(button(page, 'Empty Recently deleted')).toHaveCount(0);
@@ -364,7 +367,8 @@ async function mounted(extraSources) {
     ...filesWithin(resolve(root, 'vendor/eliza/plugins/plugin-native-system/src')),
     'vendor/eliza/packages/core/src/utils/uuid.ts',
     'apps/app/index.html', 'vite.config.ts', 'package.json', 'package-lock.json', 'upstream.lock.json',
-    'scripts/prepare-client-features.mjs', 'scripts/quint-lib.mjs', modelPath, fileURLToPath(import.meta.url),
+    'scripts/prepare-client-features.mjs', 'scripts/quint-lib.mjs', 'scripts/browser-full-reload.ts',
+    modelPath, fileURLToPath(import.meta.url),
     'test/browser/helpers/canonical-notes.ts', 'test/browser/helpers/page-modules.ts',
     'test/browser/cloud-voice-fixture.ts', ...extraSources,
   ])];
@@ -375,7 +379,9 @@ async function mounted(extraSources) {
   try {
     process.env.ELIZA_DEV_ALLOW_TEST_MOCKS = '';
     server = await createServer({configFile: resolve(root, 'vite.config.ts'), logLevel: 'error', cacheDir,
-      server: {host: '127.0.0.1', port: 0, strictPort: false},
+      // The captured sources are immutable during a replay. Vite's development reload
+      // would replace the document and discard its closed provider and recording ports.
+      server: {host: '127.0.0.1', port: 0, strictPort: false, hmr: false, watch: null},
       define: {'import.meta.env.VITE_ELIZA_DEV_ALLOW_TEST_MOCKS': JSON.stringify('')},
       plugins: [{name: 'quint-legacy-notes-inputs', enforce: 'pre', transform(code, id) {
         const path = id.split('?')[0];
@@ -413,7 +419,10 @@ async function mounted(extraSources) {
         const {foreign, errors} = await canonicalNotesFixture(fixturePage, {notes});
         await page.waitForFunction(() => window.quintLegacyNotes?.live);
         await preloadPageModules(page, notePaths);
+        const navigations = [];
+        page.on('framenavigated', frame => {if (frame === page.mainFrame()) navigations.push(frame.url());});
         results.push(await run(page));
+        assert.deepEqual(navigations, [], 'Replay retains its original mounted document and fixture');
         assert.deepEqual(foreign, [], 'External requests are fenced');
         assert.deepEqual(errors, [], 'Mounted Notes reports no uncaught errors');
       } catch (error) {
