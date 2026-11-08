@@ -12,7 +12,7 @@
   "toolSha256": "403a33cab0dff7ace6219b29e7ffef373319677a7d8be6641466dd16a6750b5b",
   "dependencyLockSha256": "944123c801157a7ba3676a886d0b28a54bef32735ae96da5c6dd0f206c88c8bf",
   "sourcePin": "99b49439ce9d0cb5607e9831b9f7f58d89525029",
-  "ledgerSha256": "99b353d3ab708607ce3bf486e4be5bddf63793f8fa586d1100733c892a41bfd7",
+  "ledgerSha256": "71e9c4f488071f41bc3fa640f90fce9a0ed24f374118358c50532eb90b94f62f",
   "method": "TypeScript syntax trees for JavaScript/TypeScript and JDK compiler trees for Java. Mutable fields, bindings, containers, state hooks, write sites and asynchronous registration calls are candidates for semantic review.",
   "limitations": [
     "Candidate extraction does not establish state-machine coverage or implementation refinement.",
@@ -18329,7 +18329,8 @@
         "MountedUpdateAdmission",
         "StartupUpdateAdmission",
         "RuntimeUpdatePause",
-        "NativeUpdateActivation"
+        "NativeUpdateActivation",
+        "NativeUpdateComposition"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -19752,7 +19753,8 @@
         "ResidentRuntime",
         "ResidentScheduling",
         "NativeGoogleAccessFile",
-        "RuntimeUpdatePause"
+        "RuntimeUpdatePause",
+        "NativeUpdateComposition"
       ],
       "sourcePathClass": "other-source-path",
       "classification": "syntactic-candidates",
@@ -40299,7 +40301,8 @@
       "path": "apps/app/src/runtime/abort-signal.ts",
       "sha256": "41fb14face24a817c183099ea4882ecf7d3beef2788ec879ff86f6286328d8f7",
       "allocatedModels": [
-        "Application"
+        "Application",
+        "AgentCalendarEventReturn"
       ],
       "sourcePathClass": "other-source-path",
       "classification": "syntactic-candidates",
@@ -40401,7 +40404,8 @@
         "CalendarPresentation",
         "CalendarSync",
         "AgentCalendarRefresh",
-        "AgentCalendarMutation"
+        "AgentCalendarMutation",
+        "AgentCalendarEventReturn"
       ],
       "sourcePathClass": "other-source-path",
       "classification": "syntactic-candidates",
@@ -40431,7 +40435,8 @@
         "CalendarPresentation",
         "CalendarSync",
         "AgentCalendarRefresh",
-        "AgentCalendarMutation"
+        "AgentCalendarMutation",
+        "AgentCalendarEventReturn"
       ],
       "sourcePathClass": "other-source-path",
       "classification": "syntactic-candidates",
@@ -43471,7 +43476,8 @@
       "path": "apps/app/src/runtime/maps-event-return.ts",
       "sha256": "2391c7630dd40c995cb8749e1a0cc7c878d927d72e557a3f44d1b0d9321c59df",
       "allocatedModels": [
-        "MapsNavigation"
+        "MapsNavigation",
+        "AgentCalendarEventReturn"
       ],
       "sourcePathClass": "other-source-path",
       "classification": "syntactic-candidates",
@@ -166844,7 +166850,8 @@
         "AssistantConversation",
         "CredentialVault",
         "NativeCredentialMutation",
-        "ResidentRuntime"
+        "ResidentRuntime",
+        "NativeUpdateComposition"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -167539,7 +167546,8 @@
         "ApplicationComposition",
         "NativeCredentialMutation",
         "RuntimeUpdatePause",
-        "NativeUpdateActivation"
+        "NativeUpdateActivation",
+        "NativeUpdateComposition"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -218372,6 +218380,6 @@
   ],
   "detail": {
     "path": "test-results/quint-state-audit/details.json",
-    "sha256": "d5ce1200ff7e2ff9503831b14de6cd33d7823ed3b85e516589fa8e76128122cc"
+    "sha256": "28123cf37e95958822e32c515ba822c1f12e2798316fa5fbdad4299070e67df6"
   }
 }

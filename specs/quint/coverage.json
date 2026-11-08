@@ -6524,7 +6524,8 @@
         "MountedUpdateAdmission",
         "StartupUpdateAdmission",
         "RuntimeUpdatePause",
-        "NativeUpdateActivation"
+        "NativeUpdateActivation",
+        "NativeUpdateComposition"
       ],
       "scope": "application",
       "treatment": "state-and-transition-projection",
@@ -6741,7 +6742,8 @@
         "ResidentRuntime",
         "ResidentScheduling",
         "NativeGoogleAccessFile",
-        "RuntimeUpdatePause"
+        "RuntimeUpdatePause",
+        "NativeUpdateComposition"
       ],
       "scope": "application",
       "treatment": "state-and-transition-projection",
@@ -36862,7 +36864,8 @@
       "path": "apps/app/src/runtime/abort-signal.ts",
       "sha256": "41fb14face24a817c183099ea4882ecf7d3beef2788ec879ff86f6286328d8f7",
       "models": [
-        "Application"
+        "Application",
+        "AgentCalendarEventReturn"
       ],
       "scope": "application",
       "treatment": "state-and-transition-projection",
@@ -37200,7 +37203,8 @@
         "CalendarPresentation",
         "CalendarSync",
         "AgentCalendarRefresh",
-        "AgentCalendarMutation"
+        "AgentCalendarMutation",
+        "AgentCalendarEventReturn"
       ],
       "scope": "application",
       "treatment": "domain-contract-or-support",
@@ -37262,7 +37266,8 @@
         "CalendarPresentation",
         "CalendarSync",
         "AgentCalendarRefresh",
-        "AgentCalendarMutation"
+        "AgentCalendarMutation",
+        "AgentCalendarEventReturn"
       ],
       "scope": "application",
       "treatment": "domain-contract-or-support",
@@ -43743,7 +43748,8 @@
       "path": "apps/app/src/runtime/maps-event-return.ts",
       "sha256": "2391c7630dd40c995cb8749e1a0cc7c878d927d72e557a3f44d1b0d9321c59df",
       "models": [
-        "MapsNavigation"
+        "MapsNavigation",
+        "AgentCalendarEventReturn"
       ],
       "scope": "application",
       "treatment": "domain-contract-or-support",
@@ -487220,7 +487226,8 @@
         "AssistantConversation",
         "CredentialVault",
         "NativeCredentialMutation",
-        "ResidentRuntime"
+        "ResidentRuntime",
+        "NativeUpdateComposition"
       ],
       "scope": "shared-module-dependency",
       "treatment": "domain-contract-or-support",
@@ -487467,7 +487474,8 @@
         "ApplicationComposition",
         "NativeCredentialMutation",
         "RuntimeUpdatePause",
-        "NativeUpdateActivation"
+        "NativeUpdateActivation",
+        "NativeUpdateComposition"
       ],
       "scope": "shared-module-dependency",
       "treatment": "domain-contract-or-support",
