@@ -101,6 +101,9 @@ export function StartupPermissions({active:enabled = true}: {active?: boolean} =
     actionPending.current = false;
     setBusy(false);
   };
+  const contextCurrent = (ticket: number, credentialId: string | undefined) =>
+    alive.current && ticket === sequence.current &&
+    connectionController.getSnapshot().cloudAccount?.credentialId === credentialId;
 
   useEffect(() => { invalidatePending(); }, [enabled, connection.cloudAccount?.credentialId]);
   useEffect(() => {
@@ -166,19 +169,23 @@ export function StartupPermissions({active:enabled = true}: {active?: boolean} =
   }
   async function allow() {
     if (actionPending.current) return;
+    const ticket = sequence.current, credentialId = connection.cloudAccount?.credentialId;
+    if (!contextCurrent(ticket, credentialId)) return;
     if (target && !native && state === 'ready') {advance('continued'); return;}
     actionPending.current = true; setBusy(true);
-    const ticket = sequence.current;
     try {
       let value: StartupPermissionState | null;
       if (target && native && state === 'ready') {await device.openSettings({page: key === 'notifications' ? 'notifications' : 'privacy'}); value = await flows[key].refresh();}
       else value = state === 'unavailable' || (!native && state === 'settings') ? await flows[key].refresh() : await flows[key].enable();
-      if (alive.current && ticket === sequence.current && value !== null) {setStates(previous => ({...previous, [key]: value})); changed(); if (value === 'ready' && !target) advance(state === 'ready' ? 'continued' : 'allowed');}
-    } catch {if (alive.current && ticket === sequence.current) setStates(previous => ({...previous, [key]: 'unavailable'}));}
-    finally {if (alive.current && ticket === sequence.current) {actionPending.current = false;setBusy(false);}}
+      if (contextCurrent(ticket, credentialId) && value !== null) {setStates(previous => ({...previous, [key]: value})); changed(); if (value === 'ready' && !target) advance(state === 'ready' ? 'continued' : 'allowed');}
+    } catch {if (contextCurrent(ticket, credentialId)) setStates(previous => ({...previous, [key]: 'unavailable'}));}
+    finally {if (contextCurrent(ticket, credentialId)) {actionPending.current = false;setBusy(false);}}
   }
   async function finish() {
-    if(actionPending.current)return;actionPending.current=true;setBusy(true);const ticket=sequence.current;
+    if(actionPending.current)return;
+    const ticket=sequence.current,credentialId=connection.cloudAccount?.credentialId;
+    if(!contextCurrent(ticket,credentialId))return;
+    actionPending.current=true;setBusy(true);
     try {
       // A historical completed installation remains complete after auth. This UI marker grants
       // no OS/provider authority; every feature still checks its actual access on use.
@@ -193,7 +200,7 @@ export function StartupPermissions({active:enabled = true}: {active?: boolean} =
         const resume=savedProgress(native)??{version:3 as const,step:0,choices:[]};writeProgress(resume);return;
       }
       const results=await Promise.all(keys.map(key=>flows[key].refresh()));
-      if(!alive.current||ticket!==sequence.current)return;
+      if(!contextCurrent(ticket,credentialId))return;
       setStates(previous=>({...previous,...Object.fromEntries(keys.map((key,index)=>[key,results[index]??'unavailable']))}));
       const missing=results.findIndex(value=>value!=='ready');
       if(missing>=0){setReady(false);setActive(true);writeProgress({version:3,step:missing,choices:Array(missing).fill('continued')});return;}
@@ -201,8 +208,8 @@ export function StartupPermissions({active:enabled = true}: {active?: boolean} =
       writeStartupPermissionMemory({dismissed:true});setActive(false);setReady(false);
       try{sessionStorage.setItem(dismissedKey,'1');}catch{}
       if(!reopened)window.dispatchEvent(new Event('launcher-home'));
-    } catch {if(alive.current&&ticket===sequence.current)setProgressError(true);}
-    finally {if(alive.current&&ticket===sequence.current){actionPending.current=false;setBusy(false);}}
+    } catch {if(contextCurrent(ticket,credentialId))setProgressError(true);}
+    finally {if(contextCurrent(ticket,credentialId)){actionPending.current=false;setBusy(false);}}
   }
   if (!visible) return null;
   if(ready)return <dialog ref={dialog} className="alpha-startup-permissions" aria-label="You’re all set" onCancel={event=>event.preventDefault()}><div className="alpha-permission-content">

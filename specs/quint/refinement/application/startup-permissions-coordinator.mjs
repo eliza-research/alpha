@@ -24,7 +24,14 @@ export const googleConnectionController={subscribe:fn=>fixture().google.subscrib
   const react = `const React=globalThis.${reactKey};export default React;
 export const useState=(...args)=>{const result=React.useState(...args);globalThis.${fixtureKey}.hooks.states.push(result[0]);return result;};
 export const useRef=(...args)=>{const result=React.useRef(...args);globalThis.${fixtureKey}.hooks.refs.push(result);return result;};
-export const {useEffect,useLayoutEffect,useSyncExternalStore}=React;`;
+export const useEffect=(effect,deps)=>{
+  const fixture=globalThis.${fixtureKey},index=fixture.hooks.effects++;
+  return React.useEffect(()=>{
+    if(index===0&&fixture.pauseInvalidation){fixture.deferredEffects.push(effect);return;}
+    return effect();
+  },deps);
+};
+export const {useLayoutEffect,useSyncExternalStore}=React;`;
   const built = await build({
     absWorkingDir:root, stdin:{contents:`export {StartupPermissions} from './apps/app/src/startup-permissions.tsx';export {readStartupPermissionProgress} from './apps/app/src/startup-permission-progress.ts';`,resolveDir:root,loader:'ts'},
     bundle:true,write:false,format:'cjs',platform:'node',metafile:true,
@@ -71,7 +78,7 @@ async function fixture(component, options = {}) {
   const state = {notifications:true,microphone:'granted',camera:'granted',location:'granted',calendar:'granted',photos:'selected',...options.permissions};
   const calls = [], held = new Map(), resumes = new Set(), inFlight = new Map();
   let instance = 0, ticket = 0;
-  const runtime = {platform:'android',hooks:{states:[],refs:[]},
+  const runtime = {platform:'android',hooks:{states:[],refs:[],effects:0},pauseInvalidation:false,deferredEffects:[],
     connection:observable({cloudAccount:options.signedOut?null:{credentialId:'owner-a',environment:'production'},open:false}),
     google:observable(false),ports:{}};
   globalThis[fixtureKey]=runtime;
@@ -106,7 +113,7 @@ async function fixture(component, options = {}) {
   const {createRoot}=await import('react-dom/client');
   let mounted=createRoot(document.getElementById('root'));
   function Observed(props) {
-    runtime.hooks={states:[],refs:[]};
+    runtime.hooks={states:[],refs:[],effects:0};
     return component.StartupPermissions(props);
   }
   const render=()=>mounted.render(React.createElement(Observed,{active:enabled}));
@@ -136,6 +143,19 @@ async function fixture(component, options = {}) {
     hold(key){let release,reject;const promise=new Promise((yes,no)=>{release=yes;reject=no;});held.set(key,{promise,release,reject});},
     async release(key,reject=false){await React.act(async()=>reject?held.get(key).reject(Error('Injected rejected callback')):held.get(key).release());},
     async owner(credentialId){await React.act(async()=>runtime.connection.update({cloudAccount:credentialId?{credentialId,environment:'production'}:null}));},
+    async ownerAndSettle(credentialId,key,reject,deferEffect=false){
+      runtime.pauseInvalidation=deferEffect;
+      await React.act(async()=>{
+        runtime.connection.update({cloudAccount:{credentialId,environment:'production'}});
+        if(reject)held.get(key).reject(Error('Injected same-turn rejection'));
+        else held.get(key).release();
+        // Keep the callback in this act turn while the queued passive effect
+        // has not yet invalidated the component's previous generation.
+        for(let turn=0;turn<8;turn++)await Promise.resolve();
+      });
+      runtime.pauseInvalidation=false;
+      await React.act(async()=>{for(const effect of runtime.deferredEffects.splice(0))effect();});
+    },
     async connection(credentialId,value){enabled=value;await React.act(async()=>{runtime.connection.update({cloudAccount:credentialId?{credentialId,environment:'production'}:null});render();});},
     async auth(){await React.act(async()=>runtime.connection.update({setupRevision:(runtime.connection.snapshot.setupRevision||0)+1}));},
     async enabled(value){enabled=value;await React.act(async()=>render());},
@@ -251,6 +271,25 @@ export async function runStartupPermissionsCoordinatorRefinement() {
     assert.equal(f.snapshot().component.progress.step,0);
     await f.click('Allow');
     record('new-owner-explicit-check',advance);
+  });
+  for(const rejects of [false,true])await scenario(`same-turn-owner-${rejects?'rejection':'completion'}`,{permissions:{notifications:false}},async(f,record)=>{
+    f.hold('notifications');
+    await f.click('Allow');
+    record('old-request-held',[action('begin'),action('request')]);
+    f.state.notifications=true;
+    await f.ownerAndSettle('owner-b','notifications',rejects);
+    record('owner-and-callback-in-same-turn',[action('ownerChange'),action('staleResult',0)]);
+    assert.equal(f.snapshot().component.progress.step,0,'Old callback advanced setup during the passive-effect window');
+  });
+  for(const rejects of [false,true])await scenario(`deferred-effect-owner-${rejects?'rejection':'completion'}`,{permissions:{notifications:false}},async(f,record)=>{
+    f.hold('notifications');
+    await f.click('Allow');
+    record('old-request-held',[action('begin'),action('request')]);
+    f.state.notifications=true;
+    await f.ownerAndSettle('owner-b','notifications',rejects,true);
+    record('callback-before-owner-passive-effect',[action('ownerChange'),action('staleResult',0)]);
+    assert.equal(f.snapshot().component.progress.step,0,'Old callback advanced setup before the deferred owner effect');
+    assert.equal(f.snapshot().component.states.notifications,'request','Old rejection changed the new owner permission state');
   });
   for(const rejects of [false,true])await scenario(`stale-${rejects?'rejection':'completion'}-keeps-newer-busy`,{permissions:{notifications:false,microphone:'prompt'}},async(f,record)=>{
     f.hold('notifications');

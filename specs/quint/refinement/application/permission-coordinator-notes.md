@@ -26,8 +26,14 @@ The adapter checks finite native-port schedules. Browser-specific four-step orch
 
 ## Validation on 2026-11-07
 
-- The coordinator receipt passed 22 concrete source traces with 150 checker checkpoints and all 19 state fields observed. Source and driver input hashes remained unchanged.
+- The coordinator receipt passed 26 concrete source traces with 166 checker checkpoints and all 19 state fields observed. Source and driver input hashes remained unchanged.
 - The new coordinator test and 23 existing completion tests passed. Seven adjacent modal/identity tests also passed.
 - All eight model scenarios passed. Seed `20261107` completed 1,000 simulations of 80 steps without a safety violation.
 - Apalache 0.62.4 completed bounded symbolic safety checking through depth 4 without a violation. The model hash matched before and after the proof.
 - These are bounded component/orchestration checks. No Android build, real permission dialog or device acceptance was run for this change.
+
+## Passive-effect scheduling
+
+A live controller identity check also gates action entry, completion, catch and finally. The captured credential must still equal `connectionController.getSnapshot()` even before React runs the owner-change passive effect.
+
+The normal same-act owner update and promise completion passes under React's observed scheduling. A controlled scheduler additionally holds only the owner's actual passive-effect callback while committing the new external-store identity and completing or rejecting the old request. The preceding implementation advanced to step one in that completion schedule. The live-identity fence keeps the original step and permission state. Both scheduling classes remain in the source trace suite.

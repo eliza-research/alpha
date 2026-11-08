@@ -10,6 +10,8 @@ test('actual permission coordinator traces refine the bounded walkthrough model'
   assert.equal(result.receipt.observedFields.length, 19);
   for (const name of ['credential-change-held-completion', 'credential-change-held-rejection',
     'stale-completion-keeps-newer-busy', 'stale-rejection-keeps-newer-busy',
+    'same-turn-owner-completion', 'same-turn-owner-rejection',
+    'deferred-effect-owner-completion', 'deferred-effect-owner-rejection',
     'null-result-while-old-platform-call-is-pending', 'required-flow-dismissal-is-blocked']) {
     assert(result.scenarios.some(scenario => scenario.name === name), name);
   }
