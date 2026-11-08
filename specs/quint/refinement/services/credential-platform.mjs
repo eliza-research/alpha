@@ -42,7 +42,17 @@ public class AlphaLocalAgentPlugin {
   owner.run();requested=mutation.requiresShutdown();beforeCommit.run();owner.run();return mutation.commit();
  }
  public static boolean providerAdmissionReadable(){return true;}
+ public static long authority, intent;
+ public static void powerAuthorizationChanged(){authority++;}
+ public static long credentialAuthorityEpoch(){return authority;}
+ public static long currentCredentialIntent(){return intent;}
+ public static long reserveCredentialIntent(){return ++intent;}
+ public static void requireCredentialIntent(long expected){if(expected!=intent)throw new IllegalStateException("retired intent");}
+ public static <T>T withCredentialAuthority(long expected,java.util.concurrent.Callable<T> action)throws Exception {if(expected!=authority)throw new IllegalStateException("retired authority");return action.call();}
+ public static <T>T withCredentialSlotMutation(Runnable owner,java.util.concurrent.Callable<T> mutation)throws Exception {owner.run();return mutation.call();}
 }`,
+    'ai/elizaresearch/alphaphone/AlphaConnectionPlugin.java': `package ai.elizaresearch.alphaphone;
+public class AlphaConnectionPlugin {public static void readCloudIdentity(String token){}}`,
   };
   const paths = [];
   for (const [name, source] of Object.entries(files)) { const path = join(root, name); mkdirSync(dirname(path), {recursive: true}); writeFileSync(path, source); paths.push(path); }

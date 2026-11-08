@@ -4,7 +4,7 @@ import {javaTraces} from '../native/java.mjs';
 import {credentialPlatform} from './credential-platform.mjs';
 export async function credentialRefinement() {
   const base = 'android/app/src/main/java/ai/elizaresearch/alphaphone/';
-  const product = ['AlphaCredentialStore.java', 'LocalAgentProviderAdmission.java', 'CloudDeployment.java'].map(name => base + name);
+  const product = ['AlphaCredentialStore.java', 'LocalAgentProviderAdmission.java', 'CloudDeployment.java', 'LegacyCloudRecovery.java', 'GoogleWorkspaceReturn.java'].map(name => base + name).concat('vendor/eliza/plugins/plugin-native-agent/android/src/main/java/ai/eliza/plugins/agent/runtime/NativeProviderAdmission.java');
   const sources = [...product, fileURLToPath(import.meta.url), 'specs/quint/refinement/services/ServiceCredentialTraces.java', 'specs/quint/refinement/services/credential-platform.mjs', 'specs/quint/refinement/native/java.mjs', 'specs/quint/refinement/native/Trace.java'];
   const driverHashes = captureInputs(sources), platform = credentialPlatform();
   try {

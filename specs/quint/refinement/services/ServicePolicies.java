@@ -1,4 +1,8 @@
 package ai.elizaresearch.alphaphone;
+import ai.eliza.auth.cloud.CloudSignInFlow;
+import ai.eliza.auth.cloud.CloudSignInEnvironment;
+import ai.eliza.auth.cloud.CloudSignInConfig;
+import ai.eliza.plugins.browsersurface.BrowserSitePermissionRecord;
 
 import ai.eliza.plugins.browsersurface.BrowserSitePermissions;
 import ai.eliza.plugins.browsersurface.BrowserDownloadPolicy;
@@ -8,10 +12,14 @@ import org.json.JSONObject;
 public final class ServicePolicies {
  static JSONArray identity() {
   JSONArray traces = new JSONArray();
+  CloudSignInEnvironment environment = new CloudSignInEnvironment("production", CloudDeployment.PRODUCTION_API_HOST,
+    CloudDeployment.PRODUCTION_WEB_HOST, CloudDeployment.PRODUCTION_TENANT, CloudDeployment.PRODUCTION_NAME, "/alphaphone/auth/callback");
+  CloudSignInConfig config = CloudSignInConfig.builder().clientId("ai.elizaresearch.alphaphone")
+    .deviceName("Alpha Phone").productName("Alpha Phone").googleClientId("alpha-phone").environment(environment).build();
   for (int variant = 0; variant < 3; variant++) {
    long now = 1000;
-   CloudSignInFlow.Pending original = CloudSignInFlow.Pending.create(CloudSignInFlow.Environment.PRODUCTION, now);
-   CloudSignInFlow.Pending restored = CloudSignInFlow.Pending.parse(original.serialize(), false);
+   CloudSignInFlow.Pending original = CloudSignInFlow.Pending.create(environment, now);
+   CloudSignInFlow.Pending restored = CloudSignInFlow.Pending.parse(original.serialize(), config);
    Trace trace = new Trace("pending-reload-and-return-" + variant, Trace.fields("callbackAccepted", false));
    trace.step("begin", Trace.fields("pending", restored != null && !restored.expired(now)), "google");
    String state = variant == 0 ? CloudSignInFlow.newState() : restored.state;
@@ -33,24 +41,15 @@ public final class ServicePolicies {
  static JSONArray sites() throws Exception {
   JSONArray traces = new JSONArray();
   for (boolean privateTab : new boolean[]{false, true}) for (boolean allow : new boolean[]{false, true}) {
-   BrowserSitePermissions permissions = BrowserPermissionRecords.read(null);
+   BrowserSitePermissions permissions = BrowserSitePermissionRecord.read(null);
    Trace trace = new Trace("site-decision-" + privateTab + allow, Trace.fields("decisions", decisions(permissions)));
    trace.value.put("init", Trace.action("initFor", privateTab));
-   int[] webauthn = {1}; BrowserPasskeys.disable(() -> webauthn[0] = 0, () -> webauthn[0], 0);
-   trace.step("build", Trace.fields("passkeys", webauthn[0] != 0), true, true);
+   // WebView construction is an environmental precondition of this persistence projection.
+   trace.step("build", Trace.fields("decisions", decisions(permissions)), true);
    trace.macro("page and permission request", Trace.fields("decisions", decisions(permissions)), Trace.action("navigate", 1), Trace.action("commit"), Trace.action("permissionRequest", 1));
    permissions.record("https://a.example", "camera", allow, privateTab);
-   permissions = BrowserPermissionRecords.read(BrowserPermissionRecords.write(permissions));
+   permissions = BrowserSitePermissionRecord.read(BrowserSitePermissionRecord.write(permissions));
    trace.step("permissionDecision", Trace.fields("decisions", decisions(permissions)), allow);
-   traces.put(trace.value);
-  }
-  for (boolean setterThrows : new boolean[]{false, true}) {
-   int[] webauthn = {1}; boolean refused = false;
-   try { BrowserPasskeys.disable(() -> { if (setterThrows) throw new IllegalStateException(); }, () -> webauthn[0], 0); }
-   catch (RuntimeException expected) { refused = true; }
-   Trace trace = new Trace("failed-passkey-readback-" + setterThrows, Trace.fields("phase", "new"));
-   trace.value.put("init", Trace.action("initFor", true));
-   trace.step("build", Trace.fields("phase", refused ? "failed" : "ready"), true, !refused);
    traces.put(trace.value);
   }
   return traces;

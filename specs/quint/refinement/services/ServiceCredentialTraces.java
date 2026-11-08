@@ -12,7 +12,7 @@ public final class ServiceCredentialTraces {
   JSONArray result=new JSONArray();
   for(boolean conflict:new boolean[]{false,true}) {
    reset();String before="{\"key\":\"old\"}",after="{\"key\":\"new\"}";
-   put("cloud:production",before);put(LocalAgentProviderAdmission.PROVIDER_SLOT,"{\"environment\":\"production\",\"admissionGeneration\":\"old\",\"admissionFingerprint\":\"old\"}");
+   put("cloud:production",before);put(LocalAgentProviderAdmission.PROVIDER_SLOT,"{\"provider\":\"elizacloud\",\"environment\":\"production\",\"admissionGeneration\":\"old\",\"admissionFingerprint\":\"old\"}");
    AlphaCredentialStore store=new AlphaCredentialStore(new Context());
    Trace trace=new Trace("real-slot-mutation-provider-race-"+conflict,Trace.fields("credential",get("cloud:production").equals(before)?1:2));
    AlphaLocalAgentPlugin.beforeCommit=()->{if(conflict)put(LocalAgentProviderAdmission.PROVIDER_SLOT,"{\"environment\":\"production\",\"revision\":2}");};

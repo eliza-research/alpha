@@ -27,8 +27,13 @@ public final class Trace {
   return out;
  }
  public static Object read(Object instance, String fieldName) throws Exception {
-  Field field = instance.getClass().getDeclaredField(fieldName);
-  field.setAccessible(true);
-  return field.get(instance);
+  for (Class<?> type = instance.getClass(); type != null; type = type.getSuperclass()) {
+   try {
+    Field field = type.getDeclaredField(fieldName);
+    field.setAccessible(true);
+    return field.get(instance);
+   } catch (NoSuchFieldException missing) { /* The shared implementation can own this field. */ }
+  }
+  throw new NoSuchFieldException(fieldName);
  }
 }
