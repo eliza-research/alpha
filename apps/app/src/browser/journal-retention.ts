@@ -14,7 +14,7 @@ type Deletion={id:string;phase:string;deadline:DeletionDeadline};
 export function trimDeletionJournal(data:{deletions?:Record<string,Deletion>;deleteClaims?:Record<string,string>}){
  const terminal=Object.values(data.deletions||{}).filter(e=>['deleted','undone','conflict'].includes(e.phase)).sort((a,b)=>a.deadline.createdElapsed-b.deadline.createdElapsed);
  for(const entry of terminal.slice(0,Math.max(0,terminal.length-SETTLED)))delete data.deletions![entry.id];
- for(const id of Object.keys(data.deleteClaims||{}))if(!data.deletions?.[id])delete data.deleteClaims![id];
+ for(const id of Object.keys(data.deleteClaims||{}))if(!data.deletions||!Object.hasOwn(data.deletions,id))delete data.deleteClaims![id];
 }
 /** Undo polling runs every 500ms. Only an expired queued deletion may change the document;
  * any other edit mints a revision and replaces the one held by recovery and editors. */

@@ -42,6 +42,24 @@ test('501 agent calendar deletions all queue and settle; claims follow their kep
  assert.deepEqual(await calendar.executeAgent({operationId:'delete-500',operation:{type:'calendar_delete',target:{sourceId:'local',sourceRevision,eventId:'event-500',revision:'0'.repeat(61)+'500'}},journalIdentity:{scope:'scope',proposalId:'proposal-500'}}),{status:'unknown'});
 });
 
+test('Calendar retention drops claims whose deletion is absent even when the key is inherited',async()=>{
+ resetDocuments();const calendar=new BrowserCalendar(),{sourceRevision}=await calendar.prepareAgentSource();
+ await calendarDocument.edit(()=>null,data=>{
+  data.events.push({id:'reviewed',calendarId:'local',title:'Reviewed event',body:'',location:'',begin:start,end:start+HOUR,revision:hash,timeZone:'UTC',repeat:'none'});
+  const terminal=Array.from({length:128},(_,i)=>{
+   const id=i===0?'constructor':'previous-'+i;
+   return [id,{id,phase:'deleted',deadline:{createdElapsed:i}}];
+  });
+  data.deletions=Object.fromEntries(terminal);
+  data.deleteClaims=Object.fromEntries([['constructor','old'],['toString','dangling'],['__proto__','dangling'],['previous-127','kept']]);
+ });
+ const result=await calendar.executeAgent({operationId:'queued',operation:{type:'calendar_delete',target:{sourceId:'local',sourceRevision,eventId:'reviewed',revision:hash}},journalIdentity:{scope:'scope',proposalId:'proposal'}});
+ assert.equal(result.status,'queued');
+ const {deletions,deleteClaims}=await read(calendarDocument);
+ assert.equal(Object.hasOwn(deletions,'constructor'),false);
+ assert.deepEqual(Object.keys(deleteClaims),['previous-127','queued']);
+});
+
 test('agent calendar receipts are bounded and next-event reads are not journaled',async()=>{
  const harness=resetDocuments(),calendar=new BrowserCalendar(),{sourceRevision}=await calendar.prepareAgentSource();
  for(let i=0;i<260;i++){
