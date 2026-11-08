@@ -11,18 +11,17 @@ async function expectWhiteImageContrast(elements:Locator) {
 }
 
 for(const theme of ['light','dark']) {
- test(`photo metadata and selection stay readable over white images ${theme}`,async({page},info)=>{
+ test(`photo metadata and selection stay readable over white images ${theme}`,async({page})=>{
   await page.goto(`/?mode=mock&theme=${theme}&start=photos`);
   await expect(page.locator('.photo-media-badge').first()).toBeAttached();
   await expect(page.locator('.photo-favorite-badge').first()).toBeAttached();
   await expectWhiteImageContrast(page.locator('.photo-media-badge,.photo-favorite-badge'));
   await page.locator('.photo-media-badge').first().scrollIntoViewIfNeeded();
-  await page.screenshot({path:info.outputPath('photo-badges.png'),animations:'disabled'});
   await page.getByRole('button',{name:'Select photos',exact:true}).click();
   await expect(page.locator('.photo-selection-badge').first()).toBeVisible();
   await expectWhiteImageContrast(page.locator('.photo-selection-badge'));
  });
- test(`compact video controls remain readable over bright media ${theme}`,async({page},info)=>{
+ test(`compact video controls remain readable over bright media ${theme}`,async({page})=>{
   await page.setViewportSize({width:360,height:420});
   await page.goto(`/?mode=mock&theme=${theme}&start=photos`);
   await page.getByRole('button',{name:/^Video,/}).first().click();
@@ -30,7 +29,6 @@ for(const theme of ['light','dark']) {
   await expect(play).toBeVisible();await expectWhiteImageContrast(play);
   // Worst-case photograph underneath the actual viewer controls.
   await page.locator('[data-alpha-subview="photos-viewer"] > button:first-child > span > span').first().evaluate(el=>(el as HTMLElement).style.background='#fff');
-  await page.screenshot({path:info.outputPath('video-bright.png'),animations:'disabled'});
   await play.click();
   const pause=page.getByRole('button',{name:'Pause video',exact:true});
   await expect(pause).toBeVisible();await expectWhiteImageContrast(pause);
