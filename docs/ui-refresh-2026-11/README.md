@@ -1,5 +1,12 @@
 # UI refresh, November 2026: Settings, Home and the chat dock
 
+This is a historical design and model input. Current behavior is documented in
+[Settings](../settings.md), [Daily overview](../daily-overview.md) and
+[Gesture zones](../gesture-zones.md). The current product uses grouped Settings and keeps empty
+Home widgets visible. The original TLA files and results below remain available for the Quint
+legacy model references.
+
+
 Review of four owner requests (2026-11-06): slim Settings, clean up Home's top card row, stop the
 app grid moving, and make the chat dock behave by one set of rules. Each part has a model in
 [Quint specifications](../../specs/quint/legacy/README.md) comparing the historical current
