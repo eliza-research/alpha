@@ -128,7 +128,7 @@ export function aggregate(exports, requested = minimumSamples) {
 /** One line per native cohort: class, counts and cold/warm p50/p95/max of the full interval. */
 export function nativeTable(native) {
   const cell = stats => (stats.samples ? `n=${stats.samples} p50=${stats.p50} p95=${stats.p95} max=${stats.max}` : 'n=0');
-  return native.cohorts.map(row => `[${row.class}] ${row.pipeline} ${row.identity.environment} ${row.identity.abi} ${row.identity.device} @${row.identity.sourceCommit.slice(0, 10)} network=${row.network}: trials=${row.trials} passed=${row.passed} failed=${row.failures} abandoned=${row.abandoned} | warm ${cell(row.warm)} | cold ${cell(row.cold)} (ms, last speech -> audible)`);
+  return native.cohorts.map(row => `[${row.class}] ${row.pipeline} ${row.identity.environment} ${row.identity.abi} ${row.identity.device} @${row.identity.sourceCommit.slice(0, 10)} network=${row.network}: trials=${row.trials} passed=${row.passed} ineligible=${row.ineligibleRows} failed=${row.failures} abandoned=${row.abandoned} | warm ${cell(row.warm)} | cold ${cell(row.cold)} (ms, last speech -> audible)`);
 }
 
 if (import.meta.url === `file://${process.argv[1]}`) {

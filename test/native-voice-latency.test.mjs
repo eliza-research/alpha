@@ -183,13 +183,14 @@ test('duplicate trial provenance changes cannot replace an accepted record', () 
   assert.equal(rejection({ ...trial(0), pipeline: 'toString' }), 'pipeline');
 });
 
-test('v3 trials link one turn end to end; unlinked, legacy and fallback-clock trials stay diagnostic', () => {
+test('v3 trials link one turn end to end; unlinked, legacy and fallback-clock trials fail a release cohort', () => {
   assert.equal(aggregateNativeVoice([document(samples())]).sufficient, true);
   for (const mutate of [row => delete row.marks.request, row => delete row.marks['first-token'], row => delete row.marks['asr-final'], row => (row.audibleClock = 'audiotrack-head-position')]) {
     const rows = samples(); mutate(rows[7]);
     const summary = aggregateNativeVoice([document(rows)]);
     assert.equal(summary.invalid, 0);
-    assert.equal(summary.cohorts[0].class, 'diagnostic');
+    assert.equal(summary.cohorts[0].class, 'acceptance-candidate', 'release identity alone picks the class');
+    assert.equal(summary.cohorts[0].ineligibleRows, 1);
     assert.equal(summary.sufficient, false);
   }
   for (const mutate of [row => delete row.turnId, row => (row.turnId = 'turn-1'), row => (row.marks.request = 1600)]) {
@@ -201,8 +202,24 @@ test('v3 trials link one turn end to end; unlinked, legacy and fallback-clock tr
   const legacy = samples().map(row => { const { turnId, ...rest } = row; const marks = { ...rest.marks }; delete marks.request; delete marks['first-token']; return { ...rest, audibleClock: 'mediaplayer-timestamp', marks }; });
   const old = aggregateNativeVoice([{ format: legacyNativeTimingFormat, records: legacy }]);
   assert.equal(old.invalid, 0);
-  assert.equal(old.cohorts[0].class, 'diagnostic');
+  assert.equal(old.cohorts[0].ineligibleRows, 50);
   assert.equal(old.sufficient, false);
   assert.ok(rejection({ ...legacy[0], marks: { ...legacy[0].marks, request: 1720 } }, legacyNativeTimingFormat), 'v2 has no request mark');
   assert.throws(() => aggregateNativeVoice([{ format: 'alpha-native-voice-timing-v1', records: [] }]), /export/);
+});
+
+test('an ineligible row on a release device fails the document instead of hiding its cohort failures', () => {
+  const wifi = samples();
+  const cellular = Array.from({ length: 50 }, (_, i) => ({ ...trial(100 + i), network: 'cellular', cold: i < 5 }));
+  delete cellular[10].marks['first-token'];
+  for (const row of cellular.slice(20, 23)) { row.outcome = 'failed'; row.reason = 'asr-error'; }
+  const summary = aggregateNativeVoice([document([...wifi, ...cellular])]);
+  const byNetwork = Object.fromEntries(summary.cohorts.map(row => [row.network, row]));
+  assert.equal(byNetwork.wifi.withinBudget, true);
+  assert.equal(byNetwork.cellular.class, 'acceptance-candidate');
+  assert.equal(byNetwork.cellular.ineligibleRows, 1);
+  assert.equal(byNetwork.cellular.failures, 3);
+  assert.equal(byNetwork.cellular.sufficient, false);
+  assert.equal(summary.sufficient, false);
+  assert.equal(summary.withinBudget, false);
 });
