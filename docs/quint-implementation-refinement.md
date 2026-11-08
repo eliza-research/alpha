@@ -237,3 +237,7 @@ owner enforcement and Binder delivery remain platform obligations. A late or
 mismatched subscribe reply can request unsubscribe twice, matching the existing
 idempotent protocol. Source execution uses the actual function with TypeScript
 annotations stripped and controlled native/UUID ports.
+
+Deferred storage notices now recheck the captured connection epoch and exact
+sign-in view before appearing. Regressions show that a newer code-entry step and
+a replaced connection keep their state when an older notice settles.

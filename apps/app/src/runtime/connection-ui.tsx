@@ -2727,7 +2727,12 @@ export const connectionController = {
     const code = value && typeof value === 'object' ? (value as { code?: unknown }).code : undefined;
     if (code !== 'app-link-unverified' && code !== 'storage') return;
     if (operation) {
-      if (code === 'storage') void operationSettled.then(() => connectionController.signInIncomplete(value));
+      if (code === 'storage') {
+        const noticeEpoch = epoch, noticeView = state.signIn;
+        void operationSettled.then(() => {
+          if (epoch === noticeEpoch && state.signIn === noticeView) connectionController.signInIncomplete(value);
+        });
+      }
       return;
     }
     update({ open: true, signIn: state.signIn ? { step: 'choose', environment: state.signIn.environment } : state.signIn, message: '', error: signInFailureMessage(code) });
