@@ -92,6 +92,7 @@ export function StartupPermissions({active:enabled = true}: {active?: boolean} =
   const alive = useRef(false), actionPending = useRef(false), sequence = useRef(0), action = useRef(0);
   const finalChoices = useRef<Progress['choices']>([]);
   const dialog = useRef<HTMLDialogElement>(null);
+  const previousEnabled = useRef(enabled);
   const key = target ?? keys[progress?.step ?? 0];
   const state = states[key];
   const visible = (active || ready) && (enabled || reopened) && !connection.open && !googleOpen;
@@ -115,6 +116,21 @@ export function StartupPermissions({active:enabled = true}: {active?: boolean} =
     alive.current && ticket === sequence.current &&
     connectionController.getSnapshot().cloudAccount?.credentialId === credentialId;
   useLayoutEffect(() => { invalidatePending(); }, [enabled, connection.cloudAccount?.credentialId]);
+  useEffect(() => {
+    const reactivated = enabled && !previousEnabled.current;
+    previousEnabled.current = enabled;
+    if (!reactivated) return;
+    const ticket = sequence.current, credentialId = connection.cloudAccount?.credentialId;
+    let disposed = false;
+    // An OS prompt can finish behind another screen. Read access again on return
+    // without allowing its retired callback to publish or request another prompt.
+    void Promise.all(keys.map(async key => {
+      const value = await flows[key].refresh();
+      if (!disposed && contextCurrent(ticket, credentialId) && value !== null)
+        setStates(previous => ({...previous, [key]: value}));
+    }));
+    return () => { disposed = true; };
+  }, [enabled, flows]);
   useEffect(() => {
     if (!connection.setupRevision) return;
     // Sign-in retires any in-flight request; its late answer advances nothing and cannot hold Checking.
