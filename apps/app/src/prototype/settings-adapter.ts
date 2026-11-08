@@ -511,7 +511,7 @@ export function installSettingsAdapter(Component: any, views: Bag) {
   const categoryNames:Record<string,string>={'settings-account':'Account','settings-general':'General','settings-privacy':'Privacy','settings-help':'About','settings-apps':'Apps'};
   let activeSettingsCategory:string|null=null;
   const settingsBack = definition.back;
-  const settingsParents: Record<string,string> = {history:'agent-connection',problems:'about',licenses:'about','password-entry':'password-provider','settings-permissions':'settings-privacy','license-detail':'licenses'};
+  const settingsParents: Record<string,string> = {history:'agent-connection','agent-connection':'about',problems:'about',licenses:'about','password-entry':'password-provider','settings-permissions':'settings-privacy','license-detail':'licenses'};
   definition.back = (state:Bag,api:Bag) => {
     if(!state.sheet&&((typeof state.page==='string'&&Object.hasOwn(categoryNames,state.page))||(!state.page&&activeSettingsCategory))){activeSettingsCategory=null;api.set({page:null});return true;}
     if(!state.sheet&&settingsParents[state.page]){if(state.page==='password-entry')leavePasswordEntry();api.set({page:settingsParents[state.page]});return true;}
@@ -569,6 +569,7 @@ export function installSettingsAdapter(Component: any, views: Bag) {
     const problemCount = crashLog ? crashLog.entries.length : null;
     const problemsRow = (): Bag => ({ kNav:true, label:'Problem log', lbl:'Problem log', val: problemCount === null ? 'Unavailable' : problemCount ? `${problemCount} recorded` : 'None recorded', hasVal:true, chev:true, noAB:true, go:()=>{ api.set({ page:'problems' }); void refresh(); void refreshResidentDiagnostics(); } });
     const diagnosticsRow = (): Bag => ({ kNav:true, label:'Export diagnostics', lbl: diagnosticsBusy ? 'Preparing diagnostics…' : 'Export diagnostics', chev:true, noAB:true, go:()=>void exportDiagnostics(api) });
+    const connectionHelpRow = (): Bag => ({kNav:true,label:'Connection help',lbl:'Connection help',val:connection.name,hasVal:true,chev:true,noAB:true,go:()=>Capacitor.isNativePlatform()&&!testMocksEnabled?api.set({page:'agent-connection'}):connectionController.open()});
     const licensesRow = (): Bag => ({ kNav:true, label:'Open source licenses', lbl:'Open source licenses', chev:true, noAB:true, go:()=>{ api.set({ page:'licenses',licenseQuery:'' }); void loadLicenses(changed); } });
     const percent = typeof facts.batteryPercent === 'number' ? `${facts.batteryPercent}%` : 'Unavailable';
     const active = (key: string) => typeof facts[key] === 'boolean' ? facts[key] ? 'Active connection' : 'Not active' : 'Unavailable';
@@ -715,7 +716,7 @@ export function installSettingsAdapter(Component: any, views: Bag) {
             out.stack.push({isTop:false,notTop:true,cls:'enter',z:4,title:'Account & plan',hasTitle:true,backLabel:'Back to Settings',back:()=>api.set({page:null}),hero:{},groups:[group(rows),group(actions)]});
           }
         }
-        page.groups.push(group([{kNav:true,label:'Agent connection',lbl:'Agent connection',val:connectionController.getSnapshot().name,hasVal:true,chev:true,noAB:true,go:()=>native&&!testMocksEnabled?api.set({page:'agent-connection'}):connectionController.open()},{kNav:true,label:'AI provider',lbl:'AI provider',val:connection.providerStatus?.selected&&connection.providerStatus.provider==='cerebras'?'Own API keys':connection.providerStatusError?'Status unavailable':'Cloud',hasVal:true,chev:true,noAB:true,go:()=>connectionController.openProviderSettings()}]));
+        page.groups.push(group([{...connectionHelpRow(),label:'Agent connection',lbl:'Agent connection'},{kNav:true,label:'AI provider',lbl:'AI provider',val:connection.providerStatus?.selected&&connection.providerStatus.provider==='cerebras'?'Own API keys':connection.providerStatusError?'Status unavailable':'Cloud',hasVal:true,chev:true,noAB:true,go:()=>connectionController.openProviderSettings()}]));
         // Raw recovery reason, stage and record count are developer data: the product keeps the plain status.
         if(native&&developerTools&&state.page==='agent-recovery-details'){
           const reason=connection.residentRecoveryReason,recovery=connection.residentRecovery;
@@ -823,7 +824,7 @@ export function installSettingsAdapter(Component: any, views: Bag) {
       } else if (page.title === 'About') {
         const native=Capacitor.isNativePlatform();
         page.hero={kAlpha:true,version:native?versionLabel(facts.appVersion||buildVersion,facts.appVersionCode):buildVersion==='Unavailable'?'Development preview':'Version '+buildVersion};
-        page.groups=[...(native&&facts.androidRelease?[group([info('Android version',facts.androidRelease)])]:[]),group([licensesRow()])];
+        page.groups=[...(native&&facts.androidRelease?[group([info('Android version',facts.androidRelease)])]:[]),group([licensesRow(),connectionHelpRow()])];
       } else if (page.title === 'Wi-Fi') {
         page.hasHdrTog = false; page.hdrTog = null;
         page.hero = { ...page.hero, big: wifiValue, sub: 'Manage networks in Android' };
@@ -945,10 +946,9 @@ export function installSettingsAdapter(Component: any, views: Bag) {
         ['Preferences', ['Display', 'Notifications']],
         ['Privacy', ['Set up Alpha access', 'Review phone actions first']],
         ['Apps', ['Calendar', 'Scheduled digests', 'Password manager', 'Photos']],
-        ['Help', ['About']],
+        ['Help', ['About', 'Agent connection']],
       ] as const;
       rows.delete('Models');
-      rows.delete('Agent connection');
       rows.delete('Privacy & data');
       settingsTop.groups = sections.map(([caption, names]) => {
         const selected = names.flatMap(name => {
@@ -1008,7 +1008,7 @@ export function installSettingsAdapter(Component: any, views: Bag) {
       out.stack.push({isTop:false,notTop:true,cls:'enter',z:4,title:'App permissions',backLabel:'Back to Privacy',back:()=>api.set({page:'settings-privacy'}),hero:{},groups:[group(rows)]});
     }
     if(activeSettingsCategory&&!categoryPage)for(const page of out.stack)if(!page.isTop&&page.backLabel==='Back to Settings')page.backLabel='Back to '+categoryNames[activeSettingsCategory];
-    const nestedParents:Record<string,[string,string]>={licenses:['about','About'],problems:['about','About'],history:['agent-connection','Connection help'],'license-detail':['licenses','licenses']};
+    const nestedParents:Record<string,[string,string]>={'agent-connection':['about','About'],licenses:['about','About'],problems:['about','About'],history:['agent-connection','Connection help'],'license-detail':['licenses','licenses']};
     if(nestedParents[state.page]){const [parent,label]=nestedParents[state.page];const page=out.stack[out.stack.length-1];if(page&&!page.isTop){page.backLabel='Back to '+label;page.back=()=>api.set({page:parent});}}
     const settingsIcons:Record<string,string>={General:'settings',Privacy:'shield',Apps:'layout-grid',Help:'info',About:'info',Browser:'globe',Calendar:'calendar-days',Camera:'camera',Files:'folder',Inbox:'mail',Maps:'map-pin',Notes:'notebook-text',Passwords:'lock-keyhole',Photos:'images',Workflows:'workflow','Account & plan':'user-round','Google & email':'link','AI connection':'cpu',Display:'sun',Notifications:'bell','Privacy & data':'shield','App permissions':'fingerprint-pattern','Scheduled summaries':'clock'};
     for(const page of out.stack)for(const section of page.groups||[])for(const row of section.rows||[])if(row.kNav){row.lucideIcon='/icons/lucide/'+(row.licenseComponent?'file-text':settingsIcons[row.label]||'sliders-horizontal')+'.svg';row.hasLucideIcon=!row.isTextSize;row.hasIcon=false;row.hasTile=false;}

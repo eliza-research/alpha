@@ -1831,7 +1831,7 @@ export const STOPPED_REPLY_NOTICE = 'This reply may still finish. It will appear
 export const STOPPED_CONFIRMED_NOTICE = 'The agent stopped this reply.';
 export const STOPPED_CANCELLED_NOTICE = 'Reply cancelled. If it had already finished, it will appear here.';
 /** The single check did not settle the stopped reply: where to look later. */
-export const STOPPED_UNCHECKED_NOTICE = 'Stopped. To see if it finished, load this conversation in Agent connection.';
+export const STOPPED_UNCHECKED_NOTICE = 'Stopped. To see if it finished, load this conversation in Connection help.';
 let stoppedReply: { timer: ReturnType<typeof setTimeout>; controller: AbortController } | null = null;
 function cancelStoppedReply() { if (!stoppedReply) return; clearTimeout(stoppedReply.timer); stoppedReply.controller.abort(); stoppedReply = null; }
 /** A restart can land while the resident still holds the reply to the last message: the stop-check
