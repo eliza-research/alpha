@@ -2,7 +2,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {build} from 'esbuild';
-import {mkdtemp,writeFile,rm,readFile} from 'node:fs/promises';
+import {mkdtemp,writeFile,rm} from 'node:fs/promises';
+import {fixture,jvmSkip,runJvm} from './fixtures/jvm-tools.mjs';
 import {tmpdir} from 'node:os';
 import path from 'node:path';
 import {pathToFileURL} from 'node:url';
@@ -38,7 +39,19 @@ test('canonical previews never dispatch record writes and exact local navigation
   reply.proposals[0].navigation.values.navigationBinding.requestId=crypto.randomUUID();
   await assert.rejects(transport.send({requestId:'nav',text:'Open Calendar',context,signal}),/navigation preparation/);
   transport.close();
-  const native=await readFile('android/app/src/testMocks/java/ai/elizaresearch/alphaphone/DevelopmentAgentPlugin.java','utf8');
-  assert.match(native,/noteTitle.length\(\) > 256 \|\| noteBody.length\(\) > 32000/,'Native boundary must admit the same canonical note limits');
  }finally{globalThis.__developmentPreview=previous;await rm(dir,{recursive:true,force:true});}
+});
+
+// Host JVM, not Android: the native /chat size limits and proposal checks the plugin applies.
+test('native development boundary refuses oversize text and drops only the invalid proposals',{skip:jvmSkip('json','javac')},()=>{
+ const contract='android/app/src/testMocks/java/ai/elizaresearch/alphaphone/DevelopmentChatContract.java';
+ const out=JSON.parse(runJvm([contract,fixture('DevelopmentChatContractTest.java')],'ai.elizaresearch.alphaphone.DevelopmentChatContractTest',{json:true}));
+ assert.equal(out.text12000,true);
+ assert.equal(out.text12001,false,'text over the host 12000-character limit is refused before queuing');
+ assert.equal(out.wideText,false,'an encoded body over 32768 bytes is refused before queuing');
+ // Phone clock two minutes ahead of the host: the Date header keeps the fresh proposal.
+ assert.deepEqual(out.withDate.map(proposal=>proposal.id),['fresh']);
+ assert.equal(out.withDate[0].expiresAt,out.phone+120000,'expiry is re-stamped on the phone clock');
+ assert.deepEqual(out.withoutDate.map(proposal=>proposal.id),['skewed'],'without a Date header a minute of skew is allowed');
+ assert.deepEqual(out.noteLimits.map(proposal=>proposal.id),['longest'],'native boundary admits the canonical note limits');
 });
