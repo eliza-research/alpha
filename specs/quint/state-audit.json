@@ -12,7 +12,7 @@
   "toolSha256": "403a33cab0dff7ace6219b29e7ffef373319677a7d8be6641466dd16a6750b5b",
   "dependencyLockSha256": "944123c801157a7ba3676a886d0b28a54bef32735ae96da5c6dd0f206c88c8bf",
   "sourcePin": "99b49439ce9d0cb5607e9831b9f7f58d89525029",
-  "ledgerSha256": "59ae60b9502d0767e85765f358cabd70a41ebbebb2b0e4f8340f68ca999443bd",
+  "ledgerSha256": "98d72a87b0f48742832059f9c00c190d41081d9c2b0654a1a5cd24d549c755de",
   "method": "TypeScript syntax trees for JavaScript/TypeScript and JDK compiler trees for Java. Mutable fields, bindings, containers, state hooks, write sites and asynchronous registration calls are candidates for semantic review.",
   "limitations": [
     "Candidate extraction does not establish state-machine coverage or implementation refinement.",
@@ -28,10 +28,10 @@
     "parsedFiles": 5625,
     "languageReview": 55,
     "parseErrors": 0,
-    "candidates": 67073,
-    "writeSites": 66500,
-    "writeAssociations": 59683,
-    "asynchronous": 8298,
+    "candidates": 67079,
+    "writeSites": 66508,
+    "writeAssociations": 59691,
+    "asynchronous": 8299,
     "unassignedWrites": 10184
   },
   "files": [
@@ -21024,7 +21024,7 @@
     },
     {
       "path": "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaMapsTransportPlugin.java",
-      "sha256": "4652d12e562d01f8741f38182842314733a791c4cf050918c6fbd4a7150b6dc3",
+      "sha256": "bd73db2189ce0f2174ff362eda64157fe539646e54eb5e44f3752c20f2be3219",
       "allocatedModels": [
         "MapsNavigation",
         "NavigationProgress",
@@ -21036,103 +21036,103 @@
       "owners": [
         {
           "owner": "AlphaMapsTransportPlugin",
-          "line": 19,
+          "line": 20,
           "bindings": 7,
           "writes": 14
         },
         {
           "owner": "AlphaMapsTransportPlugin.Pending",
-          "line": 27,
+          "line": 28,
           "bindings": 6,
           "writes": 6
         },
         {
-          "owner": "AlphaMapsTransportPlugin.Pending.<init>@28",
-          "line": 28,
-          "bindings": 1,
-          "writes": 0
-        },
-        {
-          "owner": "AlphaMapsTransportPlugin.Pending.reject@29",
+          "owner": "AlphaMapsTransportPlugin.Pending.<init>@29",
           "line": 29,
           "bindings": 1,
           "writes": 0
         },
         {
-          "owner": "AlphaMapsTransportPlugin.Pending.resolve@30",
+          "owner": "AlphaMapsTransportPlugin.Pending.reject@30",
           "line": 30,
           "bindings": 1,
           "writes": 0
         },
         {
-          "owner": "AlphaMapsTransportPlugin.Pending.cancel@31",
+          "owner": "AlphaMapsTransportPlugin.Pending.resolve@31",
           "line": 31,
-          "bindings": 3,
-          "writes": 1
-        },
-        {
-          "owner": "AlphaMapsTransportPlugin.request@35",
-          "line": 35,
-          "bindings": 9,
-          "writes": 9
-        },
-        {
-          "owner": "AlphaMapsTransportPlugin.request@35.lambda@48",
-          "line": 50,
-          "bindings": 10,
-          "writes": 3
-        },
-        {
-          "owner": "AlphaMapsTransportPlugin.cancel@65",
-          "line": 65,
-          "bindings": 4,
-          "writes": 1
-        },
-        {
-          "owner": "AlphaMapsTransportPlugin.cancel@65.lambda@65",
-          "line": 65,
           "bindings": 1,
           "writes": 0
         },
         {
-          "owner": "AlphaMapsTransportPlugin.lambda@66",
-          "line": 66,
-          "bindings": 3,
-          "writes": 2
-        },
-        {
-          "owner": "AlphaMapsTransportPlugin.text@67",
-          "line": 67,
-          "bindings": 3,
-          "writes": 0
-        },
-        {
-          "owner": "AlphaMapsTransportPlugin.navigationAvailability@68",
-          "line": 68,
-          "bindings": 2,
-          "writes": 2
-        },
-        {
-          "owner": "AlphaMapsTransportPlugin.startNavigation@69",
-          "line": 69,
-          "bindings": 3,
-          "writes": 0
-        },
-        {
-          "owner": "AlphaMapsTransportPlugin.updateNavigation@84",
-          "line": 84,
-          "bindings": 4,
-          "writes": 2
-        },
-        {
-          "owner": "AlphaMapsTransportPlugin.stopNavigation@89",
-          "line": 89,
+          "owner": "AlphaMapsTransportPlugin.Pending.cancel@32",
+          "line": 32,
           "bindings": 3,
           "writes": 1
         },
         {
-          "owner": "AlphaMapsTransportPlugin.handleOnDestroy@93",
-          "line": 98,
+          "owner": "AlphaMapsTransportPlugin.request@36",
+          "line": 36,
+          "bindings": 9,
+          "writes": 9
+        },
+        {
+          "owner": "AlphaMapsTransportPlugin.request@36.lambda@49",
+          "line": 51,
+          "bindings": 10,
+          "writes": 3
+        },
+        {
+          "owner": "AlphaMapsTransportPlugin.cancel@66",
+          "line": 66,
+          "bindings": 4,
+          "writes": 1
+        },
+        {
+          "owner": "AlphaMapsTransportPlugin.cancel@66.lambda@66",
+          "line": 66,
+          "bindings": 1,
+          "writes": 0
+        },
+        {
+          "owner": "AlphaMapsTransportPlugin.lambda@67",
+          "line": 67,
+          "bindings": 3,
+          "writes": 2
+        },
+        {
+          "owner": "AlphaMapsTransportPlugin.text@68",
+          "line": 68,
+          "bindings": 3,
+          "writes": 0
+        },
+        {
+          "owner": "AlphaMapsTransportPlugin.navigationAvailability@69",
+          "line": 69,
+          "bindings": 2,
+          "writes": 2
+        },
+        {
+          "owner": "AlphaMapsTransportPlugin.startNavigation@70",
+          "line": 70,
+          "bindings": 4,
+          "writes": 0
+        },
+        {
+          "owner": "AlphaMapsTransportPlugin.updateNavigation@87",
+          "line": 87,
+          "bindings": 4,
+          "writes": 2
+        },
+        {
+          "owner": "AlphaMapsTransportPlugin.stopNavigation@92",
+          "line": 92,
+          "bindings": 3,
+          "writes": 1
+        },
+        {
+          "owner": "AlphaMapsTransportPlugin.handleOnDestroy@96",
+          "line": 101,
           "bindings": 1,
           "writes": 1
         }
@@ -21156,7 +21156,7 @@
     },
     {
       "path": "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaNavigationService.java",
-      "sha256": "7c5ff189ddee511598ededcf03663fbc13b5fb18abc2d019dd02e0afce89f327",
+      "sha256": "562ef8707a77070679f348dd04bfee15ee2596c06916d5a4cc2479623ac8079d",
       "allocatedModels": [
         "MapsNavigation",
         "NavigationProgress",
@@ -21175,120 +21175,120 @@
         {
           "owner": "AlphaNavigationService.Session",
           "line": 42,
-          "bindings": 4,
-          "writes": 4
+          "bindings": 5,
+          "writes": 5
         },
         {
-          "owner": "AlphaNavigationService.Session.<init>@46",
-          "line": 46,
-          "bindings": 4,
+          "owner": "AlphaNavigationService.Session.<init>@47",
+          "line": 47,
+          "bindings": 5,
           "writes": 0
         },
         {
-          "owner": "AlphaNavigationService.Session.matches@52",
-          "line": 52,
+          "owner": "AlphaNavigationService.Session.matches@54",
+          "line": 54,
           "bindings": 1,
           "writes": 0
         },
         {
           "owner": "AlphaNavigationService",
-          "line": 57,
+          "line": 59,
           "bindings": 7,
           "writes": 9
         },
         {
-          "owner": "AlphaNavigationService.declared@71",
-          "line": 71,
+          "owner": "AlphaNavigationService.declared@73",
+          "line": 73,
           "bindings": 3,
           "writes": 0
         },
         {
-          "owner": "AlphaNavigationService.locationGranted@78",
-          "line": 78,
+          "owner": "AlphaNavigationService.locationGranted@80",
+          "line": 80,
           "bindings": 1,
           "writes": 0
         },
         {
-          "owner": "AlphaNavigationService.start@83",
-          "line": 83,
-          "bindings": 10,
+          "owner": "AlphaNavigationService.start@85",
+          "line": 85,
+          "bindings": 11,
           "writes": 3
         },
         {
-          "owner": "AlphaNavigationService.update@111",
-          "line": 111,
+          "owner": "AlphaNavigationService.update@113",
+          "line": 113,
           "bindings": 6,
           "writes": 3
         },
         {
-          "owner": "AlphaNavigationService.stop@124",
-          "line": 124,
+          "owner": "AlphaNavigationService.stop@126",
+          "line": 126,
           "bindings": 5,
           "writes": 1
         },
         {
-          "owner": "AlphaNavigationService.retireLocked@135",
-          "line": 135,
+          "owner": "AlphaNavigationService.retireLocked@137",
+          "line": 137,
           "bindings": 2,
           "writes": 0
         },
         {
-          "owner": "AlphaNavigationService.notifyStopped@145",
-          "line": 145,
+          "owner": "AlphaNavigationService.notifyStopped@147",
+          "line": 147,
           "bindings": 2,
           "writes": 0
         },
         {
-          "owner": "AlphaNavigationService.dispatchStop@149",
-          "line": 149,
+          "owner": "AlphaNavigationService.dispatchStop@151",
+          "line": 151,
           "bindings": 4,
           "writes": 0
         },
         {
-          "owner": "AlphaNavigationService.intent@164",
-          "line": 164,
+          "owner": "AlphaNavigationService.intent@166",
+          "line": 166,
           "bindings": 4,
           "writes": 1
         },
         {
-          "owner": "AlphaNavigationService.bounded@170",
-          "line": 170,
+          "owner": "AlphaNavigationService.bounded@172",
+          "line": 172,
           "bindings": 2,
           "writes": 1
         },
         {
-          "owner": "AlphaNavigationService.onBind@179",
-          "line": 179,
+          "owner": "AlphaNavigationService.onBind@181",
+          "line": 181,
           "bindings": 1,
           "writes": 0
         },
         {
-          "owner": "AlphaNavigationService.onStartCommand@181",
-          "line": 181,
+          "owner": "AlphaNavigationService.onStartCommand@183",
+          "line": 183,
           "bindings": 9,
           "writes": 3
         },
         {
-          "owner": "AlphaNavigationService.onTaskRemoved@213",
-          "line": 213,
-          "bindings": 2,
+          "owner": "AlphaNavigationService.onTaskRemoved@215",
+          "line": 215,
+          "bindings": 3,
           "writes": 1
         },
         {
-          "owner": "AlphaNavigationService.onDestroy@223",
-          "line": 224,
+          "owner": "AlphaNavigationService.onDestroy@228",
+          "line": 229,
           "bindings": 1,
           "writes": 1
         },
         {
-          "owner": "AlphaNavigationService.endIfIdle@233",
-          "line": 233,
+          "owner": "AlphaNavigationService.endIfIdle@238",
+          "line": 238,
           "bindings": 1,
           "writes": 0
         },
         {
-          "owner": "AlphaNavigationService.notification@239",
-          "line": 239,
+          "owner": "AlphaNavigationService.notification@244",
+          "line": 244,
           "bindings": 8,
           "writes": 0
         }
@@ -32496,7 +32496,8 @@
       "sha256": "6bd9f5e8eb3ac838ec92fa5bb7d050a801982632dfb66674f7cb170f2bf79ce1",
       "allocatedModels": [
         "Application",
-        "AccessibleToastLifetime"
+        "AccessibleToastLifetime",
+        "ModalToastForwarding"
       ],
       "sourcePathClass": "other-source-path",
       "classification": "syntactic-candidates",
@@ -34770,13 +34771,14 @@
     },
     {
       "path": "apps/app/src/prototype/home-shell.ts",
-      "sha256": "db624735d90036440679278ec1b0d99770fdf9c946aa326f9dff3101d6d0bb27",
+      "sha256": "d0ca94b914f166cd6ee5b10909be191c617f0fecf6503aae7755cc168727bff3",
       "allocatedModels": [
         "ShellNavigation",
         "PreferencesAndPresentation",
         "HomeFailureNotice",
         "LauncherOwnership",
-        "LauncherObserver"
+        "LauncherObserver",
+        "HomeGesture"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -34786,7 +34788,7 @@
           "owner": "installHomeShell",
           "line": 50,
           "bindings": 10,
-          "writes": 31
+          "writes": 32
         },
         {
           "owner": "installHomeShell.reportHomeFailure",
@@ -34796,19 +34798,19 @@
         },
         {
           "owner": "installHomeShell.place",
-          "line": 107,
+          "line": 112,
           "bindings": 1,
           "writes": 1
         },
         {
-          "owner": "installHomeShell.FunctionExpression@147.tile",
-          "line": 159,
+          "owner": "installHomeShell.FunctionExpression@154.tile",
+          "line": 166,
           "bindings": 1,
           "writes": 2
         },
         {
-          "owner": "installHomeShell.FunctionExpression@147.ArrowFunction@255",
-          "line": 256,
+          "owner": "installHomeShell.FunctionExpression@154.ArrowFunction@279",
+          "line": 280,
           "bindings": 1,
           "writes": 2
         }
@@ -39680,7 +39682,8 @@
         "ShellNavigation",
         "PreferencesAndPresentation",
         "HomeLayout",
-        "ListFocus"
+        "ListFocus",
+        "ModalToastForwarding"
       ],
       "sourcePathClass": "other-source-path",
       "classification": "language-review-required",
@@ -44526,10 +44529,12 @@
     },
     {
       "path": "apps/app/src/runtime/toast-layer.ts",
-      "sha256": "6ec9b6ebdeae0cfca3768d99dbbe4f14a7fc094191d9fd406ae540355829b05a",
+      "sha256": "c76ea870764fbca7595735b9ec32834492f5e22787c0dd86f0d6da94e56f803d",
       "allocatedModels": [
-        "ShellNavigation"
+        "ShellNavigation",
+        "ModalToastForwarding"
       ],
+      "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
       "classification": "syntactic-candidates",
       "owners": [
@@ -44542,24 +44547,24 @@
         {
           "owner": "installToastLayer",
           "line": 26,
-          "bindings": 2,
-          "writes": 4
+          "bindings": 3,
+          "writes": 10
         },
         {
           "owner": "installToastLayer.host",
-          "line": 29,
+          "line": 40,
           "bindings": 1,
           "writes": 2
         },
         {
           "owner": "installToastLayer.sync",
-          "line": 50,
+          "line": 61,
           "bindings": 4,
           "writes": 10
         }
       ],
       "parseErrors": [],
-      "asynchronous": 3,
+      "asynchronous": 4,
       "unassignedWrites": 0
     },
     {
@@ -45513,7 +45518,7 @@
     },
     {
       "path": "scripts/core-state-patch.mjs",
-      "sha256": "c70dfa41066e58cd79f2eb4cb1bace70e4ec8cb684856c72d092e117776fcb92",
+      "sha256": "a728a657be5445e384ec00a91b91174da2f89de7c78aaba8e2690ca03db86265",
       "allocatedModels": [
         "TaskServiceLifecycle",
         "TaskSchedulerRuntime"
@@ -45524,31 +45529,31 @@
       "owners": [
         {
           "owner": "<module>",
-          "line": 13,
+          "line": 14,
           "bindings": 3,
           "writes": 0
         },
         {
           "owner": "readRegular",
-          "line": 31,
+          "line": 33,
           "bindings": 1,
           "writes": 1
         },
         {
           "owner": "coreStateReceipt",
-          "line": 46,
+          "line": 48,
           "bindings": 2,
           "writes": 2
         },
         {
           "owner": "coreStatePatch",
-          "line": 93,
+          "line": 95,
           "bindings": 1,
           "writes": 1
         },
         {
           "owner": "coreStateBuildPlugin",
-          "line": 111,
+          "line": 113,
           "bindings": 2,
           "writes": 1
         }
@@ -79004,7 +79009,8 @@
         "CoreRuntimeRetirement",
         "CoreRuntimeShutdown",
         "CoreServiceLifecycle",
-        "TaskServiceLifecycle"
+        "TaskServiceLifecycle",
+        "EmbeddingStoreIdentity"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -80448,7 +80454,8 @@
         "WorkflowExecution",
         "CoreRuntimeRetirement",
         "CoreRuntimeShutdown",
-        "CoreServiceLifecycle"
+        "CoreServiceLifecycle",
+        "EmbeddingStoreIdentity"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -212244,7 +212251,8 @@
         "CoreServiceLifecycle",
         "CoreRuntimeShutdown",
         "TaskServiceLifecycle",
-        "CoreEmbeddingDimension"
+        "CoreEmbeddingDimension",
+        "EmbeddingStoreIdentity"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -218228,6 +218236,6 @@
   ],
   "detail": {
     "path": "test-results/quint-state-audit/details.json",
-    "sha256": "6ae1df0495a9a4b5c983fbc6041a36684da7af6455ccdf53abf0d3c90aabdc72"
+    "sha256": "4adc5adb5e5164249fa302750a86b4c925942a78f62a19492d0b452bf08fed95"
   }
 }

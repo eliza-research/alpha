@@ -193,13 +193,15 @@ update campaign uses scripted ADB and an actual temporary rotation journal to
 compare 12 schedules and 149 checkpoints, including uncertainty after an
 ambiguous install reply.
 
-The embedding identity campaign checks seven schedules and 51 checkpoints
-against the shared runtime. It covers same-width model replacement,
-acknowledgement, unlabelled provider identity, joined initialization, and
-degraded generation. A failed identity-cache read after width change leaves the
-new adapter column active while the previous provider and pin remain. This
-observed transition is an open source repair. Named vector spaces and concrete
-database recovery need separate source evidence.
+The embedding identity campaign checks ten schedules and 139 checkpoints
+against the shared runtime and real PGlite. The previous source changed the
+adapter column before reading the identity cache. A failed read left the
+previous provider and pin active against the new width. The authenticated
+repair validates the identity before resizing and holds generated vectors
+until the adapter and cache confirm their writes. A retry reads back a
+durable identity after a lost acknowledgement. Same-width provider
+replacement, independent runtime owners, process restarts and named vector
+spaces have separate evidence requirements.
 The PGlite source campaign also confirms the translated dimension model's
 provenance counterexample. A delayed unmarked vector is admitted under the
 adapter's new space before the runtime publishes its pin. A stale direct SQL
@@ -228,8 +230,10 @@ retains the possibility that the host and preferences diverge.
 
 The native Google browser campaign checks 23 schedules and 121 checkpoints
 against the authenticated Java callback and grace queues. The native Maps
-campaign checks 21 schedules and 107 checkpoints around exact command
-authority, replacement, foreground startup and teardown. Browser retention
+campaign checks 27 schedules and 135 checkpoints around exact command
+authority, replacement, foreground startup and teardown. A task removal
+must have the same root activity component as the active route. Android
+callbacks cannot distinguish two task generations sharing that component. Browser retention
 also checks prototype-shaped operation IDs with actual Calendar and Reminder
 stores. Recovery for older orphaned Reminder markers remains open.
 
@@ -250,3 +254,14 @@ reply cannot overwrite a newer reading or a non-native reset. A new toast
 uses the current scale, and an already scheduled toast keeps its original
 duration. Dialog forwarding, Undo selection and installed TalkBack behavior
 have separate evidence requirements.
+
+The Home gesture campaign checks 20 schedules and 114 checkpoints against the
+actual Home controller. A second pointer cannot cancel a held press, move an
+active drag, or commit its reorder. Opening the drawer or replacing the Home
+surface retires that interaction and its click suppression.
+
+The modal toast campaign checks five schedules and 38 settled DOM
+checkpoints. It tracks opening order, region ownership, forwarded Undo and
+exact observer cleanup. Chromium also exercised dialogs opened in reverse
+document order, close and reopen, Undo, and replacement cleanup. Browser
+focus supplies a fallback when installation starts with existing dialogs.

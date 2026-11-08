@@ -11,31 +11,33 @@
       "upstream.lock.json": "62682bc4e49ea7c2f187a3b688f65289b4092c0438fd1cc210b5892ab306ee9d",
       "patches/eliza/mobile-uuid-build.json": "bf31b0a89b756b5deb7281bd3f56baccba25ccea0337fba04ae2ddf9d31a011b",
       "scripts/build-mobile-agent.mjs": "a806e8eada974f400afe18e00e5cf275d3519ab00462615076e3d4124639a288",
-      "scripts/mobile-uuid-adapter.mjs": "0cfd5cdb4060105597c4c86bd5ff781ac91011a4dbe6723eab4a7bd2601810c9",
+      "scripts/mobile-uuid-adapter.mjs": "6c4b069155b550ec85ed5959f84f3f5657ae6a9e83c19138478d735d2da6609f",
       "scripts/mobile-bundle-smoke.mjs": "2e4f7ef05ae6f09285c2a6141876c14b5f30539c926a46864bf8862ae8d3b7bd",
       "scripts/local-agent-source.mjs": "321abaf05f9e8cbf6e4ba642ec7ebf45a6c693331a637210610a1f7723662daa",
-      "scripts/core-state-patch.mjs": "c70dfa41066e58cd79f2eb4cb1bace70e4ec8cb684856c72d092e117776fcb92",
+      "scripts/core-state-patch.mjs": "a728a657be5445e384ec00a91b91174da2f89de7c78aaba8e2690ca03db86265",
       "scripts/core-state-preload.mjs": "c5368c9075aa8c7660bee01338185fbe673c9b8dd6889dd1ab01d195efa17c10",
       "scripts/combined-agent-source.mjs": "a2f4d279f3f98ff078f3aedd6b9dc2dc5c3396ecdc7fb7f09b0da7e0c085062e",
-      "patches/eliza/core-state-manifest.json": "6d846f843633bd2a81de1bc78bcf4f52ce129cdb3890531eab37446d898b01f3",
+      "patches/eliza/core-state-manifest.json": "6ac23d97e3d889af83a545b54865a2e8b5e75db214a3ecec113a60e0511be633",
       "patches/eliza/task-service-stop.patch": "d3b80ffb0dad32e3a17b50dbbb0d4c0dfb3f60b0f2a35f577be4612aa2f9db1e",
       "patches/eliza/notes-state-runtime.patch": "5f62c6742a0c8f85f47aec6a629a1454d7cc74c5060d75a72b5c3d77a43dda18",
       "patches/eliza/turn-controller-isolation.patch": "d587459e0123599d17f886fcc855eb90ce7ec20b286a42ce47a02a1ab1bd110b",
-      "patches/eliza/room-queue-admission.patch": "343e39a3c756e3679b8a1e577352638119e0f17b1d0535023cbd1720fdddedde"
+      "patches/eliza/room-queue-admission.patch": "343e39a3c756e3679b8a1e577352638119e0f17b1d0535023cbd1720fdddedde",
+      "patches/eliza/embedding-store-identity.patch": "358327f35c37bd5862ec6dcaa7657c4db545a548e4d5de63cf8efd8120f01d1e"
     },
     "coreState": {
       "version": 1,
       "baseCommit": "99b49439ce9d0cb5607e9831b9f7f58d89525029",
-      "manifestSha256": "6d846f843633bd2a81de1bc78bcf4f52ce129cdb3890531eab37446d898b01f3",
+      "manifestSha256": "6ac23d97e3d889af83a545b54865a2e8b5e75db214a3ecec113a60e0511be633",
       "inputHashes": {
-        "scripts/core-state-patch.mjs": "c70dfa41066e58cd79f2eb4cb1bace70e4ec8cb684856c72d092e117776fcb92",
+        "scripts/core-state-patch.mjs": "a728a657be5445e384ec00a91b91174da2f89de7c78aaba8e2690ca03db86265",
         "scripts/core-state-preload.mjs": "c5368c9075aa8c7660bee01338185fbe673c9b8dd6889dd1ab01d195efa17c10",
         "scripts/combined-agent-source.mjs": "a2f4d279f3f98ff078f3aedd6b9dc2dc5c3396ecdc7fb7f09b0da7e0c085062e",
-        "patches/eliza/core-state-manifest.json": "6d846f843633bd2a81de1bc78bcf4f52ce129cdb3890531eab37446d898b01f3",
+        "patches/eliza/core-state-manifest.json": "6ac23d97e3d889af83a545b54865a2e8b5e75db214a3ecec113a60e0511be633",
         "patches/eliza/task-service-stop.patch": "d3b80ffb0dad32e3a17b50dbbb0d4c0dfb3f60b0f2a35f577be4612aa2f9db1e",
         "patches/eliza/notes-state-runtime.patch": "5f62c6742a0c8f85f47aec6a629a1454d7cc74c5060d75a72b5c3d77a43dda18",
         "patches/eliza/turn-controller-isolation.patch": "d587459e0123599d17f886fcc855eb90ce7ec20b286a42ce47a02a1ab1bd110b",
-        "patches/eliza/room-queue-admission.patch": "343e39a3c756e3679b8a1e577352638119e0f17b1d0535023cbd1720fdddedde"
+        "patches/eliza/room-queue-admission.patch": "343e39a3c756e3679b8a1e577352638119e0f17b1d0535023cbd1720fdddedde",
+        "patches/eliza/embedding-store-identity.patch": "358327f35c37bd5862ec6dcaa7657c4db545a548e4d5de63cf8efd8120f01d1e"
       },
       "patches": [
         {
@@ -53,6 +55,10 @@
         {
           "file": "room-queue-admission.patch",
           "sha256": "343e39a3c756e3679b8a1e577352638119e0f17b1d0535023cbd1720fdddedde"
+        },
+        {
+          "file": "embedding-store-identity.patch",
+          "sha256": "358327f35c37bd5862ec6dcaa7657c4db545a548e4d5de63cf8efd8120f01d1e"
         }
       ],
       "files": {
@@ -83,9 +89,18 @@
         "packages/core/src/runtime/room-handler-queue.ts": {
           "beforeSha256": "f5a31f3276827e90448df4198ae559135d32604132d2775948df9d5b2e496fac",
           "afterSha256": "cd8f23f09c191aa9ebe3048e688a46a4a81b730405351a1cf809f4c8e214fce1"
+        },
+        "packages/core/src/runtime/embeddings.ts": {
+          "beforeSha256": "36605cc23b7e423f5dd0edd8cef4e7a7f91cb85860c864af9781b5fbd0f71176",
+          "afterSha256": "e3acd82d9bc623f12253356fd63172d29c895a714c4345a809d5e9b8f807e7a9"
         }
       },
       "transforms": [
+        {
+          "path": "packages/core/src/runtime/embeddings.ts",
+          "sourceSha256": "36605cc23b7e423f5dd0edd8cef4e7a7f91cb85860c864af9781b5fbd0f71176",
+          "outputSha256": "e3acd82d9bc623f12253356fd63172d29c895a714c4345a809d5e9b8f807e7a9"
+        },
         {
           "path": "packages/core/src/runtime/room-handler-queue.ts",
           "sourceSha256": "f5a31f3276827e90448df4198ae559135d32604132d2775948df9d5b2e496fac",
@@ -127,11 +142,11 @@
       "version": "1.4.2",
       "revision": "744846f844374847c902b5e7fd59b4342a51ef99"
     },
-    "bundleSha256": "2da4294c68889e1c76acfc28965e7623aafdac23d9e0726cfb809cdaefde0b21",
+    "bundleSha256": "2a669ca6eeb3b4673f366168e99b7e138b65e6cb26d7252ff580222191afbdea",
     "sourceTreeVerifiedBeforeAndAfter": true,
     "inputHashesUnchanged": true,
-    "rawMetafileSha256": "2beb865b65e7ef6a84e5613a2f13ea15bd111fbe7bb3edbe3e45b9ea164149ad",
-    "producerObservationSha256": "297374dccf942c42e73461c1a20481cac82b3736224aa3808a3bd199807c05a3"
+    "rawMetafileSha256": "171d4858d21c3411e152f665fee91f80b0cc068d5c6c93ace62324f930313ea4",
+    "producerObservationSha256": "5f132c57e715183a71cb7d50886d6171b8d743137080ac3deca7566d246b1fa3"
   },
   "counts": {
     "parsed": 9988,
@@ -27672,7 +27687,9 @@
     },
     "packages/core/src/runtime/embeddings.ts": {
       "sha256": "36605cc23b7e423f5dd0edd8cef4e7a7f91cb85860c864af9781b5fbd0f71176",
-      "bytesInOutput": 14304,
+      "effectiveSourceSha256": "e3acd82d9bc623f12253356fd63172d29c895a714c4345a809d5e9b8f807e7a9",
+      "transformation": "authenticated-core-state",
+      "bytesInOutput": 14782,
       "tracked": true,
       "gitObject": "7fdd55f704a01300d7af441470a98a1efddbce90",
       "imports": [
@@ -96529,7 +96546,7 @@
     },
     "plugins/plugin-local-inference/src/services/voice/wake-word.ts": {
       "sha256": "d29607d0602c1712a59e3060da29d39554987e8c35a30003c5ddd035c2a36a24",
-      "bytesInOutput": 6729,
+      "bytesInOutput": 6694,
       "tracked": true,
       "gitObject": "1a0c32165c499612ac599f2b1778b52bcff83ab8",
       "imports": [
@@ -120066,7 +120083,7 @@
     },
     "plugins/plugin-vision/src/vision-worker-manager.ts": {
       "sha256": "227585cb5446d878cc936fb22ccae10c222f76637e389a30b57c5a2d1863b971",
-      "bytesInOutput": 8857,
+      "bytesInOutput": 8822,
       "tracked": true,
       "gitObject": "963484a67214e88aff052f9cd81f4d0d6fa806d1",
       "imports": [

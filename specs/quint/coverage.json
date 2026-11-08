@@ -6958,34 +6958,34 @@
       "scope": "application",
       "treatment": "state-and-transition-projection",
       "reviewStatus": "state-audit-required",
-      "sha256": "4652d12e562d01f8741f38182842314733a791c4cf050918c6fbd4a7150b6dc3",
+      "sha256": "bd73db2189ce0f2174ff362eda64157fe539646e54eb5e44f3752c20f2be3219",
       "stateAnchors": [
         {
-          "line": 19,
+          "line": 20,
           "text": "private final ConcurrentHashMap<String,Pending> pending=new ConcurrentHashMap<>();"
         },
         {
-          "line": 20,
+          "line": 21,
           "text": "private final ThreadPoolExecutor workers=new ThreadPoolExecutor(3,3,30,TimeUnit.SECONDS,new ArrayBlockingQueue<>(24));"
         },
         {
-          "line": 21,
+          "line": 22,
           "text": "private final ScheduledThreadPoolExecutor deadlines=new ScheduledThreadPoolExecutor(1);"
         },
         {
-          "line": 23,
+          "line": 24,
           "text": "private final ExecutorService closers=new ThreadPoolExecutor(1,1,30,TimeUnit.SECONDS,new ArrayBlockingQueue<>(32));"
         },
         {
-          "line": 24,
+          "line": 25,
           "text": "private volatile boolean destroyed;"
         },
         {
-          "line": 25,
+          "line": 26,
           "text": "private final ConcurrentHashMap<String,Long> earlyCancelled=new ConcurrentHashMap<>();"
         },
         {
-          "line": 34,
+          "line": 35,
           "text": "private static final String DEVELOPMENT_ORIGIN=BuildConfig.ELIZA_DEV_ALLOW_TEST_MOCKS?\"http://10.0.2.2:47850\":\"\";"
         }
       ]
@@ -7010,22 +7010,22 @@
       "scope": "application",
       "treatment": "state-and-transition-projection",
       "reviewStatus": "state-audit-required",
-      "sha256": "7c5ff189ddee511598ededcf03663fbc13b5fb18abc2d019dd02e0afce89f327",
+      "sha256": "562ef8707a77070679f348dd04bfee15ee2596c06916d5a4cc2479623ac8079d",
       "stateAnchors": [
         {
-          "line": 57,
+          "line": 59,
           "text": "private static final Object lock = new Object();"
         },
         {
-          "line": 59,
+          "line": 61,
           "text": "private static int stopCount;"
         },
         {
-          "line": 60,
+          "line": 62,
           "text": "private static String lastStopReason = \"\";"
         },
         {
-          "line": 61,
+          "line": 63,
           "text": "private static String lastTitle = \"\", lastText = \"\";"
         }
       ]
@@ -14702,7 +14702,8 @@
       "sha256": "6bd9f5e8eb3ac838ec92fa5bb7d050a801982632dfb66674f7cb170f2bf79ce1",
       "models": [
         "Application",
-        "AccessibleToastLifetime"
+        "AccessibleToastLifetime",
+        "ModalToastForwarding"
       ],
       "scope": "application",
       "treatment": "state-and-transition-projection",
@@ -23094,12 +23095,13 @@
         "PreferencesAndPresentation",
         "HomeFailureNotice",
         "LauncherOwnership",
-        "LauncherObserver"
+        "LauncherObserver",
+        "HomeGesture"
       ],
       "scope": "application",
       "treatment": "domain-contract-or-support",
       "reviewStatus": "state-audit-required",
-      "sha256": "db624735d90036440679278ec1b0d99770fdf9c946aa326f9dff3101d6d0bb27",
+      "sha256": "d0ca94b914f166cd6ee5b10909be191c617f0fecf6503aae7755cc168727bff3",
       "stateAnchors": []
     },
     {
@@ -35605,7 +35607,8 @@
         "ShellNavigation",
         "PreferencesAndPresentation",
         "HomeLayout",
-        "ListFocus"
+        "ListFocus",
+        "ModalToastForwarding"
       ],
       "treatment": "stateless-presentation-contract",
       "scope": "application",
@@ -46142,12 +46145,14 @@
     },
     {
       "path": "apps/app/src/runtime/toast-layer.ts",
-      "sha256": "6ec9b6ebdeae0cfca3768d99dbbe4f14a7fc094191d9fd406ae540355829b05a",
       "models": [
-        "ShellNavigation"
+        "ShellNavigation",
+        "ModalToastForwarding"
       ],
       "scope": "application",
       "treatment": "state-and-transition-projection",
+      "reviewStatus": "state-audit-required",
+      "sha256": "c76ea870764fbca7595735b9ec32834492f5e22787c0dd86f0d6da94e56f803d",
       "stateAnchors": [
         {
           "line": 19,
@@ -46166,79 +46171,71 @@
           "text": "let frame = 0, undo: HTMLButtonElement | null = null;"
         },
         {
-          "line": 27,
-          "text": "const modals = () => Array.from(document.querySelectorAll<HTMLDialogElement>('dialog[open]')).filter(dialog => dialog.matches(':modal'));"
-        },
-        {
-          "line": 28,
+          "line": 39,
           "text": "const host = (dialog: HTMLDialogElement) => {"
         },
         {
-          "line": 29,
+          "line": 40,
           "text": "let region = Array.from(dialog.children).find((child): child is HTMLElement => child instanceof HTMLElement && child.hasAttribute(HOST));"
         },
         {
-          "line": 40,
+          "line": 51,
           "text": "const sync = () => {"
         },
         {
-          "line": 42,
+          "line": 53,
           "text": "const open = modals(), topmost = open.at(-1);"
         },
         {
-          "line": 43,
+          "line": 54,
           "text": "for (const stale of document.querySelectorAll<HTMLElement>(`[${HOST}]`)) if (!open.includes(stale.parentElement as HTMLDialogElement)) stale.remove();"
         },
         {
-          "line": 45,
+          "line": 56,
           "text": "const regions = open.map(host);"
         },
         {
-          "line": 46,
+          "line": 57,
           "text": "const source = document.querySelector<HTMLElement>(SOURCE), shown = source?.firstElementChild as HTMLElement | null;"
         },
         {
-          "line": 47,
+          "line": 58,
           "text": "const text = (shown?.querySelector('span')?.textContent ?? '').trim();"
         },
         {
-          "line": 49,
+          "line": 60,
           "text": "const signature = text ? `${text}\\n${undo ? 'undo' : ''}` : '';"
         },
         {
-          "line": 50,
+          "line": 61,
           "text": "for (const region of regions) {"
         },
         {
-          "line": 51,
+          "line": 62,
           "text": "const wanted = region === regions.at(-1) ? signature : '';"
         },
         {
-          "line": 56,
+          "line": 67,
           "text": "const paint = getComputedStyle(shown);"
         },
         {
-          "line": 57,
+          "line": 68,
           "text": "const body = document.createElement('div');"
         },
         {
-          "line": 61,
+          "line": 72,
           "text": "const message = document.createElement('span');"
         },
         {
-          "line": 66,
+          "line": 77,
           "text": "const button = document.createElement('button');"
         },
         {
-          "line": 76,
+          "line": 87,
           "text": "const schedule = () => { if (!frame) frame = requestAnimationFrame(sync); };"
         },
         {
-          "line": 77,
-          "text": "const changes = new MutationObserver(schedule);"
-        },
-        {
-          "line": 85,
+          "line": 109,
           "text": "for (const region of document.querySelectorAll(`[${HOST}]`)) region.remove();"
         }
       ]
@@ -49274,7 +49271,7 @@
       "scope": "development-runtime",
       "treatment": "domain-contract-or-support",
       "reviewStatus": "state-audit-required",
-      "sha256": "c70dfa41066e58cd79f2eb4cb1bace70e4ec8cb684856c72d092e117776fcb92",
+      "sha256": "a728a657be5445e384ec00a91b91174da2f89de7c78aaba8e2690ca03db86265",
       "stateAnchors": []
     },
     {
@@ -176410,7 +176407,8 @@
         "CoreRuntimeRetirement",
         "CoreRuntimeShutdown",
         "CoreServiceLifecycle",
-        "TaskServiceLifecycle"
+        "TaskServiceLifecycle",
+        "EmbeddingStoreIdentity"
       ],
       "scope": "shared-module-dependency",
       "treatment": "domain-contract-or-support",
@@ -181576,7 +181574,8 @@
         "WorkflowExecution",
         "CoreRuntimeRetirement",
         "CoreRuntimeShutdown",
-        "CoreServiceLifecycle"
+        "CoreServiceLifecycle",
+        "EmbeddingStoreIdentity"
       ],
       "scope": "shared-module-dependency",
       "treatment": "domain-contract-or-support",
@@ -593327,7 +593326,8 @@
         "CoreServiceLifecycle",
         "CoreRuntimeShutdown",
         "TaskServiceLifecycle",
-        "CoreEmbeddingDimension"
+        "CoreEmbeddingDimension",
+        "EmbeddingStoreIdentity"
       ],
       "scope": "shared-module-dependency",
       "treatment": "domain-contract-or-support",
@@ -618702,7 +618702,7 @@
         "CoreServiceLifecycle",
         "ApplicationComposition"
       ],
-      "sha256": "d0d8f092bb6cbc9c4e8941841f7e0a8d8fa72cb9bcc010f5f5397f5ebef38a4f"
+      "sha256": "9ecf248ddb3760f6d9882abee8ba60b51ca2b4b7bcb59c351fd52343009e3bc6"
     },
     {
       "path": "specs/quint/refinement/services/runtime-bundle-audit.mjs",
@@ -618747,7 +618747,7 @@
         "CanonicalNotesStore",
         "CoreTurnControllers"
       ],
-      "sha256": "0cfd5cdb4060105597c4c86bd5ff781ac91011a4dbe6723eab4a7bd2601810c9"
+      "sha256": "6c4b069155b550ec85ed5959f84f3f5657ae6a9e83c19138478d735d2da6609f"
     },
     {
       "path": "scripts/mobile-bundle-smoke.mjs",
@@ -618775,7 +618775,7 @@
         "CoreTurnControllers",
         "TaskSchedulerRuntime"
       ],
-      "sha256": "c70dfa41066e58cd79f2eb4cb1bace70e4ec8cb684856c72d092e117776fcb92"
+      "sha256": "a728a657be5445e384ec00a91b91174da2f89de7c78aaba8e2690ca03db86265"
     },
     {
       "path": "scripts/core-state-preload.mjs",
@@ -618802,7 +618802,7 @@
         "CanonicalNotesStore",
         "CoreTurnControllers"
       ],
-      "sha256": "6d846f843633bd2a81de1bc78bcf4f52ce129cdb3890531eab37446d898b01f3"
+      "sha256": "6ac23d97e3d889af83a545b54865a2e8b5e75db214a3ecec113a60e0511be633"
     },
     {
       "path": "patches/eliza/task-service-stop.patch",
@@ -618963,6 +618963,16 @@
         "LauncherFavorites"
       ],
       "sha256": "40793b4b952f6637cf9144fa22d369c4675966d79942910a6e94e35ae40d9e84"
+    },
+    {
+      "path": "patches/eliza/embedding-store-identity.patch",
+      "models": [
+        "TaskServiceLifecycle",
+        "CanonicalNotesStore",
+        "CoreTurnControllers",
+        "EmbeddingStoreIdentity"
+      ],
+      "sha256": "358327f35c37bd5862ec6dcaa7657c4db545a548e4d5de63cf8efd8120f01d1e"
     }
   ],
   "runtimeAssets": [
