@@ -33,7 +33,18 @@ export class BrowserHostedResults extends WebPlugin {
    const saved:RecordRow={scope:route.scope,origin:route.origin,ownerId:route.ownerId,agentId:route.agentId,runId:route.runId,workflowId:route.workflowId,workflowVersionId:route.workflowVersionId,id,digest,at:Date.now(),revision:revision(),phase:state.enabled?'posted':'denied'};state.rows.push(saved);while(state.rows.length>200){const index=state.rows.findIndex(row=>row.id!==id&&row.id!==state.pending?.id);state.rows.splice(index,1);}return saved.phase;});this.changed();return {phase};
  }
  async pendingResult(){const state=await hostedResultsDocument.read(initial),row=state.rows.find(row=>row.id===state.pending?.id);if(!row||!state.pending)return {};let retained=false;try{retained=(await this.retained(row)).digest===row.digest;}catch{}const {digest,at,revision,phase,id,...route}=row;return {...route,token:state.pending.token,retained};}
- async consumeResult(input:{token:string}){await hostedResultsDocument.edit(initial,state=>{if(!state.pending||state.pending.token!==input.token)throw Error('Result link changed');const row=state.rows.find(row=>row.id===state.pending!.id);if(row)row.phase='opened';delete state.pending;});this.changed();}
+ async consumeResult(input:{token:string}){
+  const binding=this.binding;
+  await hostedResultsDocument.edit(initial,state=>{
+   const pending=state.pending;
+   if(!pending||pending.token!==input.token)throw Error('Result link changed');
+   const row=state.rows.find(row=>row.id===pending.id);
+   if(!row||!binding||this.binding!==binding||!binding.value.current()||!matches(row,binding.value))throw Error('Hosted account changed');
+   row.phase='opened';
+   delete state.pending;
+  });
+  this.changed();
+ }
  async status(){const state=await hostedResultsDocument.read(initial);return {enabled:state.enabled,backgroundEnabled:state.polling&&!!this.binding?.value.current(),backgroundStatus:state.polling?'waiting':'paused'};}
  async setBackgroundPolling(input:{enabled:boolean}){if(typeof input.enabled!=='boolean')throw Error('Invalid polling preference');await hostedResultsDocument.edit(initial,state=>{state.polling=input.enabled;});this.changed();return this.status();}
  async setNotifications(input:{enabled:boolean}){if(typeof input.enabled!=='boolean')throw Error('Invalid notification preference');await hostedResultsDocument.edit(initial,state=>{state.enabled=input.enabled;for(const row of state.rows)row.revision=revision();});this.changed();return this.status();}

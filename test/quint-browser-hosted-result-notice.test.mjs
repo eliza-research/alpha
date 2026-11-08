@@ -5,7 +5,7 @@ import {checkBrowserHostedResultNotice} from '../specs/quint/refinement/applicat
 
 test('the browser hosted ledger refines exact published results, redaction and tap readback', {timeout: 120000}, async () => {
   const {receipt} = await checkBrowserHostedResultNotice([fileURLToPath(import.meta.url)]);
-  assert.equal(receipt.traces, 8);
-  assert.equal(receipt.observedFields.length, 13);
+  assert.equal(receipt.traces, 10);
+  assert.equal(receipt.observedFields.length, 14);
   assert.ok(receipt.passed && receipt.inputsUnchanged && receipt.driverInputsBound);
 });

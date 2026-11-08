@@ -28,12 +28,18 @@ const payload = (id, digest) => ({runId: route(id).runId, workflowId: route(id).
 async function scenario(name, drive) {
   const {window} = new JSDOM('<!doctype html><body></body>', {url: 'https://alpha.test/', pretendToBeVisual: true});
   let raw, revision = 0, binding, unbind, bindingCount = 0, visibleSession = 0, retiredSession;
-  let reading, history = [], historyReads = 0, revalidate = true, observation = '';
+  let reading, settlement, holdNextEdit, history = [], historyReads = 0, revalidate = true, observation = '';
   const revisionSeen = new Map(), tokens = new Map();
   const documents = {
     async read() {return raw;},
     async readOrCreate(_key, value) {return raw ??= {revision: String(++revision), raw: value};},
     async edit(_key, edit, signal) {
+      const hold = holdNextEdit;
+      holdNextEdit = undefined;
+      if (hold) {
+        hold.entered.resolve();
+        await hold.resume.promise;
+      }
       const before = raw;
       signal?.throwIfAborted();
       const result = await edit(before);
@@ -104,6 +110,7 @@ async function scenario(name, drive) {
       's.polling': saved.polling, 's.session': visibleSession, 's.locked': locked, 's.rows': qmap(rows),
       's.pending': pending, 's.token': token, 's.minted': tokens.size,
       's.publication': reading ? {id: reading.id, digest: reading.digest, binding: reading.binding} : idle,
+      's.settlement': settlement ? {token: settlement.token, binding: settlement.binding} : {token: 0, binding: 0},
       's.notifications': port.notifications, 's.observation': observation};
   }
   const schedule = trace(name, await observe());
@@ -206,9 +213,31 @@ async function scenario(name, drive) {
         await port.consumeResult({token: exact && saved.pending ? saved.pending.token : wrong})
           .then(() => {observation = 'consumed';}, refused);
         await record('Settlement compares the exact token inside the durable edit', 'consume', exact);
+        return observation;
+      },
+      async startConsume() {
+        const saved = await read();
+        assert.ok(saved.pending);
+        const gate = {entered: deferred(), resume: deferred()};
+        holdNextEdit = gate;
+        const completion = port.consumeResult({token: saved.pending.token})
+          .then(() => {observation = 'consumed';}, refused);
+        await Promise.race([gate.entered.promise, completion]);
+        settlement = {completion, gate, binding: bindingCount, token: tokens.get(saved.pending.token)};
+        await record('The source settlement waits at serialized document admission', 'startConsume');
+      },
+      async finishConsume() {
+        const current = settlement;
+        assert.ok(current);
+        current.gate.resume.resolve();
+        await current.completion;
+        settlement = undefined;
+        await record('The queued edit checks token and exact captured binding', 'finishConsume');
+        return observation;
       },
     });
     assert.equal(reading, undefined);
+    assert.equal(settlement, undefined);
     return schedule;
   } finally {
     unbind?.();
@@ -251,10 +280,27 @@ export async function checkBrowserHostedResultNotice(extraSources = []) {
       await f.inspect('changed', true); await f.inspect('missing', true); await f.inspect('exact', false);
       await f.inspect('exact', true); await f.consume(true);
     }),
-    await scenario('as-built-token-settlement-after-owner-retirement', async f => {
+    await scenario('only-returning-owner-can-settle-retained-token', async f => {
       await f.bind('A'); await publish(f, 1); await f.act(1, true, true);
-      await f.bind('B'); await f.inspect('exact', true); await f.bind('');
-      await f.inspect('exact', true); await f.consume(true);
+      await f.bind('B'); await f.inspect('exact', true);
+      assert.equal(await f.consume(true), 'owner', 'A replacement owner cannot settle the previous token');
+      await f.bind(''); await f.inspect('exact', true);
+      assert.equal(await f.consume(true), 'owner', 'An unbound caller cannot settle the retained token');
+      await f.bind('A'); await f.consume(true);
+    }),
+    await scenario('queued-settlement-refuses-same-scope-replacement', async f => {
+      await f.bind('A'); await publish(f, 1); await f.act(1, true, true);
+      await f.startConsume(); await f.bind('A');
+      assert.equal(await f.finishConsume(), 'owner', 'An old queued call cannot transfer to a same-scope binding');
+      await f.consume(true);
+    }),
+    await scenario('queued-settlement-refuses-different-owner-and-later-tap', async f => {
+      await f.bind('A'); await publish(f, 1); await publish(f, 2); await f.act(1, true, true);
+      await f.startConsume(); await f.bind('B');
+      assert.equal(await f.finishConsume(), 'owner', 'A queued edit retains its dispatch owner');
+      await f.bind('A'); await f.startConsume(); await f.act(2, true, true);
+      assert.equal(await f.finishConsume(), 'stale', 'The old edit cannot settle a later tap');
+      await f.consume(true);
     }),
   ];
   const receipt = await checkTraces(boundInputs({model, traces, sources: [driver, ...sources, ...extraSources],
@@ -264,6 +310,6 @@ export async function checkBrowserHostedResultNotice(extraSources = []) {
     ]}));
   return {receipt, obligations: [
     {model, obligation: 'Owner retirement at browser token settlement',
-      reason: 'The renderer verifier refuses other-account history, while the browser ledger still accepts its exact token after binding retirement. Mounted lifecycle ownership remains separate.'},
+      reason: 'The queued document edit checks the captured owner and binding before settlement. Cross-tab edits after the in-process check and mounted lifecycle delivery remain separate.'},
   ]};
 }

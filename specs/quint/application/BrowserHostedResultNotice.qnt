@@ -2,15 +2,17 @@
 module BrowserHostedResultNotice {
   type Row = {phase: str, digest: int, revision: int}
   type Publication = {id: int, digest: int, binding: int}
+  type Settlement = {token: int, binding: int}
   type State = {owner: str, binding: int, enabled: bool, polling: bool, session: int, locked: bool,
     rows: int -> Row, pending: int, token: int, minted: int, publication: Publication,
-    notifications: int, observation: str}
+    settlement: Settlement, notifications: int, observation: str}
   var s: State
   pure val IDs = Set(1, 2, 3)
   pure val Owners = Set("", "A", "B")
   pure val Digests = Set(1, 2)
   pure val Empty: Row = {phase: "", digest: 0, revision: 0}
   pure val Idle: Publication = {id: 0, digest: 0, binding: 0}
+  pure val NoSettlement: Settlement = {token: 0, binding: 0}
   pure def ownerOf(id: int): str = if (id == 3) "B" else "A"
   pure def cards(x: State): Set[int] =
     if (x.enabled) IDs.filter(id => x.rows.get(id).phase == "posted") else Set()
@@ -19,7 +21,7 @@ module BrowserHostedResultNotice {
 
   action init = s' = {owner: "", binding: 0, enabled: true, polling: true, session: 0, locked: false,
     rows: IDs.mapBy(_ => Empty), pending: 0, token: 0, minted: 0, publication: Idle,
-    notifications: 0, observation: ""}
+    settlement: NoSettlement, notifications: 0, observation: ""}
   action bind(owner: str): bool = all {
     Owners.contains(owner), s' = {...s, owner: owner, binding: s.binding + 1},
   }
@@ -66,10 +68,21 @@ module BrowserHostedResultNotice {
       else if (s.owner != ownerOf(s.pending)) "otherAccount"
       else if (not(allowed) or history != "exact") "unavailable" else "ready"},
   }
-  action consume(exact: bool): bool =
-    s' = if (s.pending == 0 or not(exact)) {...s, observation: "stale"}
-      else {...s, rows: s.rows.set(s.pending, {...s.rows.get(s.pending), phase: "opened"}),
+  pure def settleTap(x: State, exact: bool, sameBinding: bool): State =
+    if (x.pending == 0 or not(exact)) {...x, observation: "stale"}
+    else if (not(sameBinding) or x.owner != ownerOf(x.pending)) {...x, observation: "owner"}
+    else {...x, rows: x.rows.set(x.pending, {...x.rows.get(x.pending), phase: "opened"}),
         pending: 0, token: 0, observation: "consumed"}
+  action consume(exact: bool): bool = s' = settleTap(s, exact, true)
+  action startConsume = all {
+    s.settlement == NoSettlement, s.pending != 0,
+    s' = {...s, settlement: {token: s.token, binding: s.binding}},
+  }
+  action finishConsume = all {
+    s.settlement != NoSettlement,
+    s' = settleTap({...s, settlement: NoSettlement}, s.settlement.token == s.token,
+      s.settlement.binding == s.binding),
+  }
 
   action step = any {
     { nondet owner = Owners.oneOf(); bind(owner) },
@@ -78,11 +91,12 @@ module BrowserHostedResultNotice {
     finishPublish(true), finishPublish(false),
     { nondet id = IDs.oneOf(); nondet exact = Bool.oneOf(); nondet open = Bool.oneOf(); act(id, exact, open) },
     { nondet history = Set("exact", "changed", "missing").oneOf(); nondet allowed = Bool.oneOf(); inspect(history, allowed) },
-    consume(true), consume(false),
+    consume(true), consume(false), startConsume, finishConsume,
   }
   val safety = all {
     (s.pending == 0) == (s.token == 0),
     s.token <= s.minted,
+    s.settlement.token <= s.minted,
     s.pending == 0 or s.rows.get(s.pending).digest > 0,
     IDs.forall(id => s.rows.get(id) == Empty or Digests.contains(s.rows.get(id).digest)),
     not(s.enabled) implies cards(s).size() == 0,
@@ -98,8 +112,13 @@ module BrowserHostedResultNotice {
     .then(act(2, true, true)).then(consume(false)).expect(s.pending == 2 and s.token == 2)
     .then(inspect("exact", true)).expect(s.observation == "ready")
     .then(consume(true)).expect(s.rows.get(2).phase == "opened" and safety)
-  run browserTokenSurvivesOwnerRetirementTest = init.then(bind("A"))
+  run retiredOwnerCannotSettleBrowserTokenTest = init.then(bind("A"))
     .then(startPublish(1, 1)).then(finishPublish(true)).then(act(1, true, true))
     .then(bind("B")).then(inspect("exact", true)).expect(s.observation == "otherAccount")
-    .then(consume(true)).expect(s.rows.get(1).phase == "opened" and safety)
+    .then(consume(true)).expect(s.observation == "owner" and s.pending == 1)
+    .then(bind("A")).then(consume(true)).expect(s.rows.get(1).phase == "opened" and safety)
+  run queuedSettlementCannotTransferToSameScopeReplacementTest = init.then(bind("A"))
+    .then(startPublish(1, 1)).then(finishPublish(true)).then(act(1, true, true))
+    .then(startConsume).then(bind("A")).then(finishConsume)
+    .expect(s.observation == "owner" and s.pending == 1 and safety)
 }

@@ -1954,7 +1954,8 @@
     "tests": [
       "exactReplayAndDigestChangeTest",
       "latestExactTokenControlsSettlementTest",
-      "browserTokenSurvivesOwnerRetirementTest"
+      "retiredOwnerCannotSettleBrowserTokenTest",
+      "queuedSettlementCannotTransferToSameScopeReplacementTest"
     ],
     "sources": [
       "apps/app/src/browser/hosted-results.ts",
