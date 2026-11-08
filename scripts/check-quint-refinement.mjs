@@ -48,7 +48,9 @@ for (const family of requested) {
     report.obligations.push(...result.obligations);
   } catch (error) {
     failed = true;
-    report.families.push({family, status: 'failed', error: error instanceof Error ? error.stack : String(error)});
+    const detail = error instanceof Error ? error.stack ?? error.message : String(error);
+    const diagnostic = detail.replace(/data:text\/javascript;base64,[\w+/=]+(?:#tsx-namespace=[\w-]+)?/g, '[bundled source]');
+    report.families.push({family, status: 'failed', error: diagnostic});
   }
 }
 for (const model of models) {

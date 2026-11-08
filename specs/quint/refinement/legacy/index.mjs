@@ -3,6 +3,7 @@ import {checkActionSettlementRefinement} from '../../legacy/core/check-action-se
 import {checkApprovalServiceRefinement} from '../../legacy/core/check-approval-service-refinement.mjs';
 import {checkEmbeddingSqlRefinement} from '../../legacy/core/check-embedding-sql-refinement.mjs';
 import {checkFactWriteDedupeRefinement} from '../../legacy/core/check-fact-write-dedupe-refinement.mjs';
+import {checkInteractiveTaskTraces} from '../../legacy/core/check-interactive-task-traces.mjs';
 import {checkInteractionSessionRefinement} from '../../legacy/core/check-interaction-session-refinement.mjs';
 import {checkPluginLifecycleRefinement} from '../../legacy/core/check-plugin-lifecycle-refinement.mjs';
 import {runProviderExecutionRefinement} from '../../legacy/core/check-provider-execution-refinement.mjs';
@@ -11,6 +12,7 @@ import {checkRuntimeLifecycleRefinement} from '../../legacy/core/check-runtime-l
 import {checkServiceLifecycleDesignRefinement} from '../../legacy/core/check-service-lifecycle-refinement.mjs';
 import {runSingleFlightRefinement} from '../../legacy/core/check-single-flight-refinement.mjs';
 import {checkTaskSchedulingRefinement} from '../../legacy/core/check-task-scheduling-refinement.mjs';
+import {checkTaskServiceRefinement} from '../../legacy/core/check-task-service-refinement.mjs';
 import {runTaskSchedulerRefinement} from '../services/task-scheduler/index.mjs';
 
 const driver = fileURLToPath(import.meta.url);
@@ -30,6 +32,14 @@ export async function runLegacyRefinement() {
     ['CoreApprovalService', () => checkApprovalServiceRefinement(undefined, [driver])],
     ['CoreEmbeddingDimension', () => checkEmbeddingSqlRefinement([driver])],
     ['CoreFactWriteDedupe', () => checkFactWriteDedupeRefinement([driver])],
+    ['CoreInteractiveTask', async () => {
+      const {receipts, mismatch} = await checkInteractiveTaskTraces([driver]);
+      return {receipts, obligations: [
+        {model: 'CoreInteractiveTask', obligation: 'Trusted rebind adds a reducer transition',
+          reason: 'Current active-to-active rebind clears the observation and cancels the prepared operation while advancing the epoch. The exact target is absent from the original finite graph.',
+          evidence: mismatch.receiptPath},
+      ]};
+    }],
     ['CoreInteractionSession', () => checkInteractionSessionRefinement(undefined, [driver])],
     ['CorePluginLifecycle', async () => {
       const {receipts, mismatches} = await checkPluginLifecycleRefinement([driver]);
@@ -55,6 +65,14 @@ export async function runLegacyRefinement() {
     ['CoreSingleFlightMemo', runSingleFlightRefinement],
     [null, () => checkTaskSchedulingRefinement(undefined, [driver])],
     ['CoreTaskScheduler', () => runTaskSchedulerRefinement([driver])],
+    ['CoreTaskService', async () => {
+      const {receipts, mismatch} = await checkTaskServiceRefinement([driver]);
+      return {receipts, obligations: [
+        {model: 'CoreTaskService', obligation: 'Current task failures can persist auto-pause',
+          reason: 'The repeating task auto-pauses at its configured failure threshold. The original Write failure branch leaves pause unchanged.',
+          evidence: mismatch.receiptPath},
+      ]};
+    }],
   ];
   for (const [coverageModel, run] of campaigns) {
     const result = await run();

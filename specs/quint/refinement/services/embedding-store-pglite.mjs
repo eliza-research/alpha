@@ -16,6 +16,9 @@ export const loadEmbeddingStoreDatabase = extraSources => loadTaskService([fileU
 async function scenario(loaded, name, drive) {
   const db = await loaded.createIsolatedTestDatabase('quint-embedding-'+randomUUID(), [], {postgresUrl: null});
   const {adapter, runtime} = db;
+  // The shared test helper shallow-copies its character. Own the settings
+  // before changing provider selection for this runtime.
+  runtime.character.settings = {...runtime.character.settings};
   const embeddings = runtime.embeddings;
   const read = adapter.getCache.bind(adapter), write = adapter.setCache.bind(adapter);
   const resize = adapter.ensureEmbeddingDimension.bind(adapter);

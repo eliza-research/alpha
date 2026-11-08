@@ -314,5 +314,5 @@ export async function checkTaskServiceRefinement(extraSources = []) {
   const mismatch = JSON.parse(readFileSync(out, 'utf8'));
   assert.equal(mismatch.results[0].kind, 'observation-mismatch');
   assert.ok(mismatch.driverInputsBound);
-  return {receipts, mismatch};
+  return {receipts, mismatch: {...mismatch, receiptPath: out}};
 }

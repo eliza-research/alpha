@@ -272,5 +272,5 @@ export async function checkInteractiveTaskTraces(extraSources = []) {
   const mismatch = JSON.parse(readFileSync(resolve(root, out), 'utf8'));
   assert.equal(mismatch.results[0].kind, 'observation-mismatch');
   assert.ok(mismatch.driverInputsBound);
-  return {receipts: [receipt], mismatch};
+  return {receipts: [receipt], mismatch: {...mismatch, receiptPath: out}};
 }

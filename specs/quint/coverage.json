@@ -6694,7 +6694,8 @@
       "path": "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaHostedResultsPlugin.java",
       "sha256": "df1bcf8f34e9cbf6eedcd87ee587ed18bb825c01cca49f1d27524bf885759c48",
       "models": [
-        "NoticesAndCaches"
+        "NoticesAndCaches",
+        "NativeHostedResultNotices"
       ],
       "scope": "application",
       "treatment": "state-and-transition-projection",
@@ -7943,7 +7944,8 @@
       "path": "android/app/src/main/java/ai/elizaresearch/alphaphone/HostedInbox.java",
       "sha256": "94e88f01e325bbb9f9c60122033ddfe8cea3ebc5ac18f6b5e436d175a891e569",
       "models": [
-        "InboxDelivery"
+        "InboxDelivery",
+        "NativeHostedResultNotices"
       ],
       "scope": "application",
       "treatment": "state-and-transition-projection",
@@ -7990,7 +7992,8 @@
       "path": "android/app/src/main/java/ai/elizaresearch/alphaphone/HostedNoticePoster.java",
       "sha256": "ed2079506a3e0263c15fa08d470019497eacad19ad86b9fb1ffb3b44fc9b39bb",
       "models": [
-        "NoticesAndCaches"
+        "NoticesAndCaches",
+        "NativeHostedResultNotices"
       ],
       "scope": "application",
       "treatment": "state-and-transition-projection",
@@ -8007,12 +8010,14 @@
     },
     {
       "path": "android/app/src/main/java/ai/elizaresearch/alphaphone/HostedResultNotices.java",
-      "sha256": "d840cfe1250435ab1384d540962e98f4969d9a01edaf4818990c9c062c7f5d4a",
       "models": [
-        "NoticesAndCaches"
+        "NoticesAndCaches",
+        "NativeHostedResultNotices"
       ],
       "scope": "application",
       "treatment": "state-and-transition-projection",
+      "reviewStatus": "state-audit-required",
+      "sha256": "e3e142f1584b3125cb1aef338968ef2e11bd31e51f0673bd2e085181c4ac5591",
       "stateAnchors": [
         {
           "line": 26,
@@ -504658,7 +504663,8 @@
         "DeviceActions",
         "NoticesAndCaches",
         "NotificationCollection",
-        "WorkflowNoticeDelivery"
+        "WorkflowNoticeDelivery",
+        "NativeHostedResultNotices"
       ],
       "scope": "shared-module-dependency",
       "treatment": "domain-contract-or-support",

@@ -119,6 +119,13 @@ worker log. A concurrent verification run exhausted the previous 8 MiB
 output pipe. The scoped Calendar fixture starts SQLite subprocesses and now
 allows the same 60-second budget for execution as for JVM compilation.
 
+The strict all-family run exposed a shared nested character settings object
+in the upstream PGlite test helper. The embedding identity fixture changes
+provider selection and now gives its runtime a separate settings object.
+The identity and named-provenance campaigns pass consecutively in one
+process. Aggregate errors retain source locations without embedding a copy
+of a generated JavaScript bundle in the report.
+
 ## Platform validation
 
 The initial local Android attempts stopped at input preflight. The current
@@ -455,3 +462,25 @@ uncertainty remains. Shade close can accompany an explicit open. The
 port currently invokes the latest bound UI when a held open completes,
 and detaching that UI makes the call fail before mark-read. This component
 API has no mounted shade consumer in the current checkout.
+
+The Android hosted-result notice campaign checks 12 schedules and 170
+checkpoints. If cancellation fails during owner withdrawal, the durable
+owner can change while the old pending token survives. The original bridge
+accepted that token for consume or question release. The repaired ledger
+validates the current owner under the same lock before either settlement.
+Absent-owner bootstrap and retry after a same-owner clear failure remain
+covered. The repaired model passed symbolic safety through four steps.
+
+The original task service now checks seven real schedules and 38
+checkpoints across the four host, daemon and local timer profiles. Actual
+PGlite wake revisions are read, preserved across a stale completion and
+consumed by the exact later run. A separate mismatch captures automatic
+pause at the configured failure limit, which the original failure action
+does not represent. All four original finite profiles passed TLC.
+
+The original interactive task reducer checks five source schedules and 65
+checkpoints. Independent graph conformance reproduced 1,015 states and
+3,136 edges and passed both upstream tests. The current trusted rebind
+transition can keep the task active, retire its observation and prepared
+operation, and advance the epoch. That exact target state is outside the
+original finite graph and has a separate mismatch receipt.

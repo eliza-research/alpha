@@ -43,6 +43,7 @@ import {checkNativeUpdateStaging} from './update-staging.mjs';
 import {runNativeUpdateActivationRefinement} from './update-barrier.mjs';
 import {checkCanonicalNotificationTap} from './canonical-notification-tap.mjs';
 import {checkWorkflowNoticeDelivery} from './workflow-notice-delivery.mjs';
+import {checkNativeHostedResultNotices} from './hosted-result-notices.mjs';
 
 export async function runNativeRefinement() {
   const models = ['VadSegmentation', 'RendererRecovery', 'ResidentScheduling'];
@@ -162,6 +163,8 @@ export async function runNativeRefinement() {
   results.push(notificationTap.receipt);
   const noticeDelivery = await checkWorkflowNoticeDelivery(nativeInputs);
   results.push(noticeDelivery.receipt);
+  const hostedResults = await checkNativeHostedResultNotices(nativeInputs);
+  results.push(hostedResults.receipt);
   const obligations = [
     ...updatePause.obligations,
     ...updateActivation.obligations,
@@ -169,6 +172,7 @@ export async function runNativeRefinement() {
     ...updateStaging.obligations,
     ...notificationTap.obligations,
     ...noticeDelivery.obligations,
+    ...hostedResults.obligations,
     {model: 'GoogleBrowserReturnClaim', obligation: 'Installed callback delivery and durable credential custody',
       reason: 'The authenticated Java claim and grace functions execute under controlled queues, storage and HTTPS. Installed lifecycle, secure-store durability and intra-worker schedules remain separate.'},
     ...reviewedCopiesObligations,

@@ -12,7 +12,7 @@
   "toolSha256": "403a33cab0dff7ace6219b29e7ffef373319677a7d8be6641466dd16a6750b5b",
   "dependencyLockSha256": "944123c801157a7ba3676a886d0b28a54bef32735ae96da5c6dd0f206c88c8bf",
   "sourcePin": "99b49439ce9d0cb5607e9831b9f7f58d89525029",
-  "ledgerSha256": "0661867ff7d8b59a8d822cc8803e0acf212eb9533158d5434091e4e347a3dbd1",
+  "ledgerSha256": "7d12176fa007cc0463d80f7c822326269367acca40caab45456572ec9fe92fdc",
   "method": "TypeScript syntax trees for JavaScript/TypeScript and JDK compiler trees for Java. Mutable fields, bindings, containers, state hooks, write sites and asynchronous registration calls are candidates for semantic review.",
   "limitations": [
     "Candidate extraction does not establish state-machine coverage or implementation refinement.",
@@ -28,7 +28,7 @@
     "parsedFiles": 5626,
     "languageReview": 55,
     "parseErrors": 0,
-    "candidates": 67100,
+    "candidates": 67103,
     "writeSites": 66534,
     "writeAssociations": 59713,
     "asynchronous": 8298,
@@ -19329,7 +19329,8 @@
       "path": "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaHostedResultsPlugin.java",
       "sha256": "df1bcf8f34e9cbf6eedcd87ee587ed18bb825c01cca49f1d27524bf885759c48",
       "allocatedModels": [
-        "NoticesAndCaches"
+        "NoticesAndCaches",
+        "NativeHostedResultNotices"
       ],
       "sourcePathClass": "other-source-path",
       "classification": "syntactic-candidates",
@@ -24763,7 +24764,8 @@
       "path": "android/app/src/main/java/ai/elizaresearch/alphaphone/HostedInbox.java",
       "sha256": "94e88f01e325bbb9f9c60122033ddfe8cea3ebc5ac18f6b5e436d175a891e569",
       "allocatedModels": [
-        "InboxDelivery"
+        "InboxDelivery",
+        "NativeHostedResultNotices"
       ],
       "sourcePathClass": "other-source-path",
       "classification": "syntactic-candidates",
@@ -24873,7 +24875,8 @@
       "path": "android/app/src/main/java/ai/elizaresearch/alphaphone/HostedNoticePoster.java",
       "sha256": "ed2079506a3e0263c15fa08d470019497eacad19ad86b9fb1ffb3b44fc9b39bb",
       "allocatedModels": [
-        "NoticesAndCaches"
+        "NoticesAndCaches",
+        "NativeHostedResultNotices"
       ],
       "sourcePathClass": "other-source-path",
       "classification": "syntactic-candidates",
@@ -24963,10 +24966,12 @@
     },
     {
       "path": "android/app/src/main/java/ai/elizaresearch/alphaphone/HostedResultNotices.java",
-      "sha256": "d840cfe1250435ab1384d540962e98f4969d9a01edaf4818990c9c062c7f5d4a",
+      "sha256": "e3e142f1584b3125cb1aef338968ef2e11bd31e51f0673bd2e085181c4ac5591",
       "allocatedModels": [
-        "NoticesAndCaches"
+        "NoticesAndCaches",
+        "NativeHostedResultNotices"
       ],
+      "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
       "classification": "syntactic-candidates",
       "owners": [
@@ -25103,14 +25108,20 @@
           "writes": 7
         },
         {
-          "owner": "HostedResultNotices.releaseQuestion@87",
-          "line": 87,
+          "owner": "HostedResultNotices.requireSettlementOwner@88",
+          "line": 88,
+          "bindings": 3,
+          "writes": 0
+        },
+        {
+          "owner": "HostedResultNotices.releaseQuestion@93",
+          "line": 93,
           "bindings": 2,
           "writes": 0
         },
         {
-          "owner": "HostedResultNotices.consume@91",
-          "line": 91,
+          "owner": "HostedResultNotices.consume@98",
+          "line": 98,
           "bindings": 5,
           "writes": 1
         }
@@ -184291,7 +184302,8 @@
         "DeviceActions",
         "NoticesAndCaches",
         "NotificationCollection",
-        "WorkflowNoticeDelivery"
+        "WorkflowNoticeDelivery",
+        "NativeHostedResultNotices"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -218413,6 +218425,6 @@
   ],
   "detail": {
     "path": "test-results/quint-state-audit/details.json",
-    "sha256": "d0f0f37bf65045237b5cf360f4de224fd9ce7b4959f3fc130aa06956bd69b4e5"
+    "sha256": "a4121c44cbe762336244d1a0b63d516e2384c4b8b2d074e6e9eacfafbc51297b"
   }
 }
