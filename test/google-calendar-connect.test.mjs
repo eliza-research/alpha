@@ -550,3 +550,66 @@ test('a retired Calendar host permission result cannot start the link helper', a
     assert.equal(f.links.length, 0);
   } finally {await f.close();}
 });
+
+const replacementAccount = grants => account(SECOND, grants, '22222222-2222-4222-8222-222222222222');
+const allowChoice = p => p.button('Allow Calendar changes');
+
+test('a retired Calendar access choice cannot authorize a replacement read-only account', async () => {
+  const f = await heldLinkPanel({calendarEdits: false});
+  try {
+    await f.clickLink();
+    assert.ok(allowChoice(f.p));
+    f.p.rows = [replacementAccount(READ)];
+    await f.p.act(f.p.replaceCloud);
+    assert.ok(f.p.button('Connect Google Calendar'));
+    assert.equal(!!allowChoice(f.p), false, 'the retired write-grant choice is withdrawn');
+    assert.deepEqual(f.p.accessChanges, []);
+    assert.equal(f.links.length, 0);
+
+    await f.p.act(() => f.p.button('Connect Google Calendar').click());
+    assert.ok(allowChoice(f.p), 'the current read-only account can request its own consent');
+    assert.equal(f.links.length, 0);
+    assert.deepEqual(f.p.accessChanges, []);
+
+    f.p.rows = [replacementAccount(WRITE)];
+    await f.p.dispatch('alpha:test-google-accounts');
+    assert.equal(!!allowChoice(f.p), false, 'even this owner needs a choice from the latest exact review');
+    await f.clickLink();
+    await f.p.act(() => allowChoice(f.p).click());
+    assert.equal(f.links.length, 1);
+    assert.deepEqual(f.links[0].rows.map(row => row.connectionId), [replacementAccount(WRITE).connectionId]);
+    await f.p.act(() => f.links[0].resolve({outcome: 'synced', message: 'Replacement account synced'}));
+    assert.equal(f.p.status(), 'Replacement account synced');
+  } finally {await f.close();}
+});
+
+test('a newer same-owner account read retires an Allow tap waiting on the device receipt', async () => {
+  const f = await heldLinkPanel({calendarEdits: false}), capture = deferred();
+  try {
+    await f.clickLink();
+    f.p.onCapture = () => capture.promise;
+    await f.p.act(() => allowChoice(f.p).click());
+    f.p.rows = [account(OWNER, READ)];
+    await f.p.dispatch('alpha:test-google-accounts');
+    f.p.onCapture = null;
+    await f.p.act(() => capture.resolve());
+    assert.deepEqual(f.p.accessChanges, [], 'the retired Allow tap cannot persist native access');
+    assert.equal(f.links.length, 0);
+    assert.ok(f.p.button('Connect Google Calendar'));
+  } finally {capture.resolve(); await f.close();}
+});
+
+test('a held access read cannot display a choice for a replacement Cloud binding', async () => {
+  const f = await heldLinkPanel({calendarEdits: false}), capture = deferred();
+  try {
+    f.p.onCapture = () => capture.promise;
+    await f.clickLink();
+    f.p.rows = [replacementAccount(READ)];
+    await f.p.act(f.p.replaceCloud);
+    f.p.onCapture = null;
+    await f.p.act(() => capture.resolve());
+    assert.equal(!!allowChoice(f.p), false);
+    assert.deepEqual(f.p.accessChanges, []);
+    assert.equal(f.links.length, 0);
+  } finally {capture.resolve(); await f.close();}
+});
