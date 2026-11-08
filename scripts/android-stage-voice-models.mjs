@@ -13,7 +13,9 @@
  * recorded sourceFile, then checked by size and SHA-256 and copied. The result is the layout the
  * shared paradee-voice consumer.gradle reads: jniLibs/<abi>/libelizainference.so, the bundle
  * manifest at assets/paradee-voice/v1/manifest.json and build-record.json, which
- * scripts/paradee-runtime.mjs and scripts/voice-host.mjs verify before Gradle runs.
+ * scripts/paradee-runtime.mjs and scripts/voice-host.mjs verify before Gradle runs. The engine for
+ * each selected ABI the embedding host does not supply (x86_64) is also copied into the app's
+ * jniLibs, so the app linkage check finds the recorded bytes.
  *
  * The bundle ships in the APK assets (about 1.1 GB with the ASR pair) and the app copies it to
  * its storage with per-file hash verification on first use. Nothing is downloaded or repaired;
@@ -118,6 +120,37 @@ export function stageVoiceModels(productRoot, {from, unrecordedEngine = false, a
   return {staged: files.map(row => row.path), asr: bundleFiles.some(row => row.path.startsWith('asr/'))};
 }
 
+/**
+ * The app packages the voice engine through its own jniLibs. The qualified embedding host supplies
+ * that file for its ABI (android/embedding-host, arm64-v8a) and :app:verifyParadeeAppLinkage checks
+ * it against the build record. Every other selected ABI (x86_64, debug only) takes the recorded
+ * engine from the verified voice outputs; the host's ABI is never written here.
+ */
+export function stageAppEngines(productRoot, {abis}) {
+  const hostAbi = JSON.parse(fs.readFileSync(path.join(productRoot, 'android/embedding-host/qualified-host.json'), 'utf8')).abi;
+  const output = path.join(productRoot, VOICE_ASSET_ROOT);
+  const record = JSON.parse(fs.readFileSync(path.join(output, 'build-record.json'), 'utf8'));
+  const staged = [];
+  for (const abi of selectedAndroidAbis(abis)) {
+    if (abi === hostAbi) continue;
+    const relative = `jniLibs/${abi}/libelizainference.so`, entry = record.files.find(row => row.path === relative);
+    if (!entry) throw Error(`Voice build record is missing ${relative}`);
+    const matches = file => !fs.lstatSync(file).isSymbolicLink() && fs.statSync(file).size === entry.bytes && digest(file) === entry.sha256;
+    const source = path.join(output, relative), destination = path.join(productRoot, 'android/app/src/main', relative);
+    if (!fs.existsSync(source) || !matches(source)) throw Error(`${path.relative(productRoot, source)} does not match the voice build record`);
+    for (let p = path.dirname(destination); p !== productRoot && p !== path.dirname(p); p = path.dirname(p))
+      if (fs.existsSync(p) && fs.lstatSync(p).isSymbolicLink()) throw Error('App engine output must not traverse a link');
+    if (fs.lstatSync(destination, {throwIfNoEntry: false})) {
+      if (!matches(destination)) throw Error(`${path.relative(productRoot, destination)} already exists with other bytes; review before replacing`);
+    } else {
+      fs.mkdirSync(path.dirname(destination), {recursive: true});
+      fs.copyFileSync(source, destination, fs.constants.COPYFILE_EXCL);
+    }
+    staged.push(path.relative(productRoot, destination));
+  }
+  return staged;
+}
+
 function main() {
   const {rest: args, abis} = abiArguments(process.argv.slice(2));
   if (args.length === 1 && args[0] === '--plan') {
@@ -134,6 +167,7 @@ function main() {
   }
   if (!from.length) throw Error('--from <directory of pinned voice outputs and models> is required');
   const result = stageVoiceModels(root, {from, unrecordedEngine, abis});
+  result.appEngines = stageAppEngines(root, {abis});
   const admission = verifyVoiceHost(root, {abis});
   console.log(JSON.stringify({...result, admission: admission.status, qualified: admission.qualified, note: 'Integrity only: on-device qualification and device acceptance are still required.'}, null, 2));
 }

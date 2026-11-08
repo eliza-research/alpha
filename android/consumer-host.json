@@ -41,7 +41,8 @@
       { "name": "sense", "source": { "root": "consumer", "path": "android/sense" }, "appDependency": false },
       { "name": "sense-speech", "source": { "root": "consumer", "path": "android/sense-speech" }, "appDependency": false },
       { "name": "notification-fixture", "source": { "root": "consumer", "path": "android/notification-fixture" }, "appDependency": false },
-      { "name": "video-fixture", "source": { "root": "consumer", "path": "android/video-fixture" }, "appDependency": false }
+      { "name": "video-fixture", "source": { "root": "consumer", "path": "android/video-fixture" }, "appDependency": false },
+      { "name": "private-peer-fixture", "source": { "root": "consumer", "path": "android/private-peer-fixture" }, "appDependency": false }
     ],
     "dependencies": [
       { "configuration": "implementation", "coordinate": "androidx.credentials:credentials:1.6.0" },

@@ -106,10 +106,10 @@ test('the listener, fixtures and test sources never link into either distributio
  const {profile} = generate(t);
  const linked = profile.modules.filter(module => module.appDependency).map(module => module.name);
  const separate = profile.modules.filter(module => !module.appDependency).map(module => module.name).sort();
- assert.deepEqual(separate, ['notification-fixture', 'sense', 'sense-speech', 'video-fixture']);
+ assert.deepEqual(separate, ['notification-fixture', 'private-peer-fixture', 'sense', 'sense-speech', 'video-fixture']);
  // Shared checkouts, node_modules and the authenticated patched staging never receive build outputs.
  assert.deepEqual(profile.modules.filter(module => !module.relocateBuild).map(module => module.name).sort(),
-  ['local-speech', 'notification-fixture', 'sense', 'sense-speech', 'video-fixture']);
+  ['local-speech', 'notification-fixture', 'private-peer-fixture', 'sense', 'sense-speech', 'video-fixture']);
  for (const name of ['capacitor-android', 'local-speech', 'eliza-system', 'eliza-contacts', 'elizaos-capacitor-secure-store']) assert.ok(linked.includes(name), name);
  assert.ok(!profile.sourceSets.main, 'main sources stay in the standard android/app/src layout');
  assert.deepEqual(profile.dependencies.find(dependency => dependency.coordinate.startsWith('androidx.webkit:webkit:')).coordinate, `androidx.webkit:webkit:${profile.toolchain.versions.androidxWebkitVersion}`);
