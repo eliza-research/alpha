@@ -76,11 +76,12 @@ test('canonical Notes UI creates, edits, trashes and restores the same committed
 test('Stop saves canonical audio locally and Generate transcript later uses its retained recording only on request',async({page})=>{
  const {foreign,errors}=await canonicalNotesFixture(page);await openCanonicalNotes(page);
  let uploads=0;
+ const pending=Promise.withResolvers<void>();
  await page.route('**/__alpha-browser-cloud',async route=>{
   const request=route.request(),type=request.headers()['content-type']||'';
   if(type.includes('multipart/form-data')){
    const body=request.postDataBuffer()!;expect(body.includes(Buffer.from('audio/wav'))).toBe(true);expect(body.indexOf(Buffer.from('RIFF'))).toBeGreaterThan(0);expect(body.includes(Buffer.from('WAVE'))).toBe(true);
-   uploads++;await route.fulfill({json:{text:'A closed Notes fixture.',local:false}});return;
+   uploads++;await pending.promise;await route.fulfill({json:{text:'A closed Notes fixture.',local:false}});return;
   }
   const input=request.method()==='POST'?request.postDataJSON():null;
   if(input?.operation==='secureRead'&&input.slot==='cloud:production'){await route.fulfill({json:{value:JSON.stringify({credentialId:'notes-fixture',credentialReference:'closed-fixture-reference'})}});return;}
@@ -119,6 +120,12 @@ test('Stop saves canonical audio locally and Generate transcript later uses its 
  expect(retained.audioId).toBe(saved.format.data.audio.audioId);expect(retained.noteId).toBe(saved.id);
  await expect(page.getByRole('button',{name:'Generate transcript',exact:true})).toBeVisible();
  await page.getByRole('button',{name:'Generate transcript',exact:true}).click();
+ try {
+  await expect(page.getByRole('status').filter({hasText:'Transcribing…'})).toBeVisible();
+  await expect(page.getByRole('button',{name:'Cancel transcription'})).toBeEnabled();
+  await expect(page.getByRole('button',{name:'Generate transcript',exact:true})).toHaveCount(0);
+ } finally {pending.resolve();}
+
  await expect.poll(()=>snapshot(page).then((state:any)=>state.notes[0].body)).toBe('\nA closed Notes fixture.');
  expect(uploads).toBe(1);
  await expect(page.getByRole('button',{name:'Generate transcript',exact:true})).toHaveCount(0);

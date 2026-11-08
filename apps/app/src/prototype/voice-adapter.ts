@@ -1156,10 +1156,9 @@ export function installPrototypeVoiceAdapter(Component: any, views: Record<strin
       vo.ready=Array.isArray(selected.summary)&&selected.summary.length>0;vo.noSummary=false;
       vo.canReviewTranscript=!!String(selected.body||selected.audio.transcript||'').trim();
       const addingTranscript=savedTranscription?.noteId===selected.id;
-      vo.canAddTranscript=!vo.canReviewTranscript;
+      vo.canAddTranscript=!vo.canReviewTranscript&&!addingTranscript;
       vo.transcriptBusy=addingTranscript;
       vo.transcriptDisabled=addingTranscript||!!current.canonicalNotes?.dirty||!!current.canonicalNotes?.pending;
-      vo.transcriptLabel=addingTranscript?'Generating transcript…':'Generate transcript';
       vo.cancelTranscript=cancelSavedTranscription;
       vo.addTranscript=async()=>{
         if(savedTranscription||vo.canReviewTranscript||current.canonicalNotes?.dirty||noteRecorder.open||stage!=='closed')return;
