@@ -238,3 +238,15 @@ the pinned runtime and real PGlite. All 12 writer schedules match across 144
 checkpoints. Equivalent writes can duplicate across separate runtime owners
 or when the previous row falls outside the newest 120 candidates. The original
 profiles describe the serialized, in-window case.
+
+The launcher favorites campaign checks 21 schedules and 126 checkpoints
+against the prepared Home controller and durable favorites adapter. Legacy
+favorites remain accessible when the migration write is refused. The original
+stored key stays in place until a save succeeds.
+
+The accessibility timeout campaign checks six schedules and 46 checkpoints
+against the actual timeout reader and shell timer methods. An older native
+reply cannot overwrite a newer reading or a non-native reset. A new toast
+uses the current scale, and an already scheduled toast keeps its original
+duration. Dialog forwarding, Undo selection and installed TalkBack behavior
+have separate evidence requirements.

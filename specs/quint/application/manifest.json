@@ -1312,5 +1312,42 @@
       "Actual ordered favorites storage, legacy view-ID and default-policy migration, unavailable storage, held-load external writes, profile identity and visible-only reorder.",
       "Two product views and a legacy alias, three installed app keys and one uninstalled key. One held inventory request and a separate recreation. Full storage durability, general load overlap and pointer gestures have separate obligations."
     ]
+  },
+  {
+    "path": "specs/quint/application/AccessibleToastLifetime.qnt",
+    "module": "AccessibleToastLifetime",
+    "init": "init",
+    "step": "step",
+    "invariant": "safety",
+    "tests": [
+      "staleBootCannotReplaceResumeTest",
+      "resetInvalidatesPendingNativeReadTest",
+      "failedReadKeepsLastGoodScaleTest",
+      "refreshAffectsOnlyNewToastsTest"
+    ],
+    "invariants": [
+      "requestOwnership",
+      "toastOwnership"
+    ],
+    "sources": [
+      "apps/app/src/runtime/accessibility-timeout.ts",
+      "apps/app/src/prototype/model.js",
+      "apps/app/src/main.tsx",
+      "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaDevicePlugin.java"
+    ],
+    "stateMapping": {
+      "scale/latest": "Last known timeout percentage and exact current native read token",
+      "started/pending": "Observed native read calls and unresolved replies",
+      "message/undo/duration": "Shell message identity, retained Undo and its scheduled timeout"
+    },
+    "abstractions": [
+      "Three native read identities with sampled timeout percentages and explicit rejection.",
+      "One active shell toast. Modal presentation, Undo action selection and real platform scheduling are separate."
+    ],
+    "bounds": {
+      "maxSamples": 1000,
+      "maxSteps": 80,
+      "maxVerifyDepth": 4
+    }
   }
 ]

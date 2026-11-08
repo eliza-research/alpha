@@ -90,3 +90,5 @@ The other modules decompose domain state so each can be explored independently.
 The complete Cartesian product of all domain variables is not enumerated by
 these checks. The inventory records domain allocation, not a proof that every
 source variable or every possible implementation behavior refines its model.
+
+`AccessibleToastLifetime` checks native timeout refresh ownership and the shell's toast timer replacement and expiration.
