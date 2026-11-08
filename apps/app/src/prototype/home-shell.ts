@@ -1,5 +1,5 @@
 import {createElement, type CSSProperties} from 'react';
-import type {FavoritesStore, LauncherBridge} from '@elizaos/capacitor-system/launcher';
+import {appKey, type FavoritesStore, type LauncherBridge} from '@elizaos/capacitor-system/launcher';
 import {createMobileShellLauncher, mobileShellIconUrl, MobileAllAppsDrawer, MobileHomeScreen, type MobileHomeEntry, type MobileHomeTile} from '@elizaos/ui/mobile-shell';
 import {ALPHA_PRODUCT, alphaViews} from '../product/alpha-product';
 type Bag = Record<string, any>;
@@ -21,12 +21,29 @@ export function installHomeShell(Component: any, views: Record<string, Bag>, bri
   storage?: () => Storage;
 } = {}) {
   const p = Component.prototype, mount = p.componentDidMount, unmount = p.componentWillUnmount, render = p.renderVals;
-  let owner: any = null;
+  let owner: any = null, seenError: string | null = null, seenStatus = 'idle', seenApps: unknown = null, launchReported = false;
+  // The drawer shows launch and inventory failures itself; with it closed, Home reports them as a
+  // toast, once per new failure. A failed read keeps only the product views, so pinned apps leave Home;
+  // the read that follows a failed launch is not reported again, since the launch toast explains it.
+  const report = () => {
+    if (!owner) return;
+    const state = shell.launcher.snapshot(), error = state.launchError, read = state.apps !== seenApps;
+    const failed = state.status === 'failed' && seenStatus !== 'failed', fresh = !!error && error !== seenError;
+    const afterLaunch = launchReported && read;
+    seenError = error; seenStatus = state.status; seenApps = state.apps;
+    if (read) launchReported = false;
+    if (owner.S().drawer) return;
+    if (fresh) { owner.toast(error); launchReported = true; }
+    else if (failed && !afterLaunch) {
+      const shown = new Set(state.apps.map(appKey));
+      if (state.favorites.some(key => !shown.has(key))) owner.toast("Apps couldn't load. Open All apps to try again.");
+    }
+  };
   const shell = createMobileShellLauncher({
     bridge, registry: alphaViews, icons: options.icons, aliases: options.aliases,
     favorites: options.favorites, storage: options.storage,
     open: view => owner?.openView(alphaViews.hostKey(view)),
-    changed: () => owner?.setState({launcherRevision: Date.now()}),
+    changed: () => { report(); owner?.setState({launcherRevision: Date.now()}); },
   });
   const grid = mobileShellIconUrl(ALPHA_PRODUCT, ALPHA_PRODUCT.icons.allApps);
   let stop: (() => void) | undefined;
