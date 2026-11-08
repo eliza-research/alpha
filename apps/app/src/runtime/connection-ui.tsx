@@ -264,7 +264,7 @@ function residentSignInRequired(): boolean { return !ownProviderSelected()&&resi
 function residentEnvironment(): CloudEnvironment { return browserCloudResidentEnabled?browserCloudResidentEnvironment:residentQa() ?? 'production'; }
 /** The on-device agent's Cloud inference binding is production-only (native reads cloud:production). */
 function residentBindable(): boolean { return browserCloudResidentEnabled || isAndroid && residentEnvironment() === 'production'; }
-/** Warn this long before this phone's Cloud sign-in key expires (CLI keys last 30 days). */
+/** Warn this long before this phone's Cloud sign-in key expires (mobile app keys last 30 days). */
 export const CLOUD_KEY_EXPIRY_WARNING_MS = 14 * 24 * 60 * 60 * 1000;
 /**
  * A verified Cloud billing mode within the shared controller's OFFLINE_PLAN_GRACE_MS (7 days) keeps
@@ -281,6 +281,8 @@ const providerRechecks = new Set<string>();
 /** The next return checks the plan inside the once-a-minute limit: set by a return from plan
  * management or a billing refusal during a turn. */
 let planManagementReturn = false;
+/** A billing refusal arrived during a turn: its plan refresh runs once that turn has ended. */
+let refusalRecheckPending = false;
 /** The owner, Cloud environment and provider a plan check is for. With its own provider the Cloud
  * account only serves optional services (a failed read detaches it), so the provider stands for it. */
 function planCheckScope(){return JSON.stringify([ownProviderSelected()||(state.cloudAccount?.credentialId??null),residentEnvironment()]);}
@@ -794,7 +796,7 @@ function retire(name?: string) {
   for(const request of appRequests)request.abort(new DOMException('The connection changed','AbortError'));
   epoch++;
   sending?.abort(new DOMException('The connection changed.', 'AbortError'));
-  sending = null;
+  sending = null; refusalRecheckPending = false;
   active = null;
   update({ phoneActionsAvailable:false, phoneCapabilityReason:'', session: null, kind: residentAlwaysPresent ? 'starting' : 'offline', name: name ?? (residentAlwaysPresent ? RESIDENT_NAME : 'Offline'), conversations: [], history: null, conversationDelivery:undefined,conversationEvents:'unavailable', historyError:'', historyPartial:false, replyNotice:'', actionHistory: [] });
   return retirement;
@@ -965,7 +967,7 @@ function activate(next: Active, session: VerifiedSession, name: string) {
   conversationMemory.clear();
   cancelStoppedReply();
   for(const request of appRequests)request.abort(new DOMException('The connection changed','AbortError'));
-  epoch++; sending?.abort(new DOMException('The connection changed.', 'AbortError')); sending = null; active = next;
+  epoch++; sending?.abort(new DOMException('The connection changed.', 'AbortError')); sending = null; refusalRecheckPending = false; active = next;
   update({ residentRecoveryReason:undefined,residentRecovery:undefined,phoneActionsAvailable:!!next.actions, conversations: [], history: null, conversationDelivery:undefined,conversationEvents:'unavailable', historyError: '', historyPartial:false, replyNotice:'', actionHistory: [], kind: next.kind, name, session, open: false, message: next.kind === 'resident' && state.inferenceOffline ? '' : 'Connected', error: '' });
   // Canonical app Calendar records currently belong to this resident transport only.
   // Read the existing allowed authenticated status route, never a native auth/status expansion.
@@ -2869,8 +2871,9 @@ export const connectionController = {
     await ensureResident();
   },
   /**
-   * Native finished a Google return after Alpha restarted (the process stopped while the Custom Tab
-   * was open). Completed sign-ins have a stored key; MFA returns first revalidate the native attempt.
+   * A retained native Google outcome: a live attempt finished after its waiting call was released.
+   * A return after Alpha restarted has no live attempt; native reports it incomplete and the owner
+   * signs in again. Completed sign-ins have a stored key; MFA returns first revalidate the attempt.
    */
   async signInReturned(value: unknown) {
     const environment = residentCloudFlow() ? residentEnvironment() : cloud.environment;
@@ -3035,8 +3038,9 @@ export const connectionController = {
     if(!residentCloudFlow()||!entitlementRefresher)return;
     // Deliver the terminal refusal before refreshing a plan that could rebind the resident.
     // Rebinding here aborts the known failed turn and replaces its billing feedback with an
-    // unknown-outcome notice. The next return from account management performs the check.
-    if(sending){planManagementReturn=true;return;}
+    // unknown-outcome notice. The refresh runs once the turn has ended (send's finally), and the
+    // next return from account management checks too.
+    if(sending){planManagementReturn=true;refusalRecheckPending=true;return;}
     const now=Date.now();if(now-lastRefusalRecheck<PLAN_RECHECK_INTERVAL_MS)return;
     lastRefusalRecheck=now;entitlementRefresher.refreshNow();
   },
@@ -3401,11 +3405,12 @@ export const connectionController = {
       // Any other failure that was not a Stop: check whether the resident behind it is still listening.
       else if (selected.kind === 'resident' && !signal.aborted) checkResidentAlive(generation);
       throw error;
-    } finally { signal.removeEventListener('abort', cancel); if (sending === controller) { sending = null; /* Let the caller commit this reply before a deferred plan rebind. */ setTimeout(()=>{update({});runQueuedResidentRebind();},0); } }
+    } finally { signal.removeEventListener('abort', cancel); if (sending === controller) { sending = null; /* Let the caller commit this reply before a deferred plan rebind. */ setTimeout(()=>{update({});runQueuedResidentRebind();if(refusalRecheckPending){refusalRecheckPending=false;connectionController.recheckPlanAfterRefusal();}},0); } }
   },
 };
 
-// A Google sign-in that native finished after Alpha restarted arrives as a retained event.
+// A live Google attempt that finished after its waiting call was released arrives as a retained
+// event. A return after a restart has no live attempt and arrives as signInIncomplete instead.
 if (cloudSignIn?.addListener) Promise.resolve(cloudSignIn.addListener('signInCompleted', outcome => { void connectionController.signInReturned(outcome); })).catch(() => { /* No retained return. */ });
 if (cloudSignIn?.addListener) Promise.resolve(cloudSignIn.addListener('signInMfaRequired', outcome => { void connectionController.signInReturned(outcome); })).catch(() => { /* No retained challenge. */ });
 if (cloudSignIn?.addListener) Promise.resolve(cloudSignIn.addListener('signInIncomplete', value => { connectionController.signInIncomplete(value); })).catch(() => { /* No retained return. */ });

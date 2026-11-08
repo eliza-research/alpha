@@ -239,8 +239,8 @@ proof that this product makefile built or booted in a custom AOSP image.
 
 ## Cuttlefish and Pixel 10a handoff
 
-Track image work in [Alpha #377](https://github.com/AlphaCompute/alphaphone/issues/377)
-and app acceptance in [Alpha #378](https://github.com/AlphaCompute/alphaphone/issues/378).
+Track image work in [Alpha #377](https://github.com/eliza-research/alphaphone/issues/377)
+and app acceptance in [Alpha #378](https://github.com/eliza-research/alphaphone/issues/378).
 The image build and Cuttlefish run will be completed on the separate Linux builder.
 
 On that builder, check out the reviewed Alpha commit and its exact `vendor/eliza`
@@ -735,7 +735,10 @@ proof that an image was built and booted. A privileged image builder can control
 its system/product partitions. A real image must separately verify installation,
 RRO activation, signing and the expected build fingerprint.
 
-Telecom and SMS adapters remain unavailable on all images. Alpha's shared System bridge hides and refuses dialer/SMS roles;
+The overlay is a required input to Phone, Messages and Contacts admission: only a verified image
+mounts the Messages and Phone views (`ADMITTED_AOSP_VIEW_ADAPTERS` in
+`apps/app/src/runtime/aosp-image.ts`) and Contacts (`DeviceApps.platformCapabilities`); every other
+install mounts none of them. Alpha's shared System bridge hides and refuses dialer/SMS roles;
 its role callback rechecks the product policy. Product-owned empty-dial-pad
 shortcuts and both native default-app bridge entry points require image
 admission. The ordinary installed-app drawer and Android's own emergency access

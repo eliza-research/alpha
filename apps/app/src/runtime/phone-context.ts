@@ -149,7 +149,7 @@ export function selectDeviceCapabilities(offered: unknown, profile: DeviceCapabi
   if((android||!native)&&profile.foregroundReview&&agent.includes('calendar.named-read.v1'))capabilities.push('calendar.named-read.v1');
   // One shared external-handoff policy for every brand: never clock.alarms.v1 (P-17).
   capabilities.push(...clockHandoffCapabilities({offered:agent,handler:android,repeatDays:android&&agent.includes('clock.handoff.v2')&&profile.clockRepeatDays}));
-  // SMS sending is negotiated only on the AOSP image, where Alpha holds the SMS role.
+  // SMS sending is negotiated only on the AOSP image, where the launcher holds SEND_SMS.
   if(profile.aospImage&&agent.includes(SMS_SEND_CAPABILITY))capabilities.push(SMS_SEND_CAPABILITY);
   // The reviewed dial handoff only with the native telephony profile (the verified image). The
   // on-device contact lookup waits for an owner number picker in the review, so it is not offered.
