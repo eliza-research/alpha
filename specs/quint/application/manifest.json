@@ -1784,5 +1784,36 @@
       "Actual create/update/delete admission, exact preservation read, captured owner/session and dispatch fields, synthetic provider completion, and latest deferred refresh.",
       "Two owner/session identities and windows, eight epochs and six attempts. One active mutation, plus retired replies, and one visible event partition. Native provider effects, idempotency/replay, linked control and Maps readback remain external."
     ]
+  },
+  {
+    "path": "specs/quint/application/AgentCalendarEventReturn.qnt",
+    "module": "AgentCalendarEventReturn",
+    "init": "init",
+    "step": "step",
+    "invariant": "safety",
+    "tests": [
+      "exactReadbackWaitsForBothRepliesTest",
+      "sameEpochSelectionChangeRefusesReadbackTest",
+      "oldEpochCannotReturnWhileNewAttemptSucceedsTest",
+      "hiddenDuplicateSourceCannotCreateOriginTest",
+      "transportRefusalPrecedesDelayedCancellationCheckTest"
+    ],
+    "invariants": [
+      "FoundRequiresReadback",
+      "PendingOwnsTwoReads",
+      "SelectionProjection",
+      "Bounded"
+    ],
+    "sources": [
+      "apps/app/src/runtime/agent-calendar.ts",
+      "apps/app/src/runtime/agent-calendar-client.ts",
+      "apps/app/src/runtime/abort-signal.ts",
+      "apps/app/src/runtime/maps-event-return.ts",
+      ".eliza/client-features/plugins/plugin-calendar/src/api/calendar-api.ts"
+    ],
+    "abstractions": [
+      "Canonical event selection and Maps origin capture, exact Calendar feed and source requests through the actual API, current binding and same-epoch selection checks.",
+      "Two owner/session/scope classes, eight epochs, four attempts and finite provider response classes. Mounted Maps navigation and native Calendar returns, remote effects and linked provider control have separate scope."
+    ]
   }
 ]
