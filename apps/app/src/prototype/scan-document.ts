@@ -93,7 +93,7 @@ export function openScanDocument(first?:Blob):()=>void{
  /** Close and Back on native ask about the draft this review wrote by itself; pagehide and a
   * hidden page keep it, since Android may be ending Alpha. */
  const keepPrompt=document.createElement('div'),keepText=document.createElement('p');keepPrompt.hidden=true;keepPrompt.className='scan-dialog-actions';keepText.style.cssText='flex-basis:100%;margin:0';keepPrompt.setAttribute('role','group');keepPrompt.setAttribute('aria-label','Close document');keepText.textContent='Keep these pages as a draft?';
- const keep=button('Keep draft',dispose),discard=button('Discard draft',()=>void draftAction(async()=>{if(await doc.deleteDraft(async()=>true))dispose();}));
+ const keep=button('Keep draft',dispose),discard=button('Discard draft',()=>void draftAction(async()=>{await doc.settled();const {autoSaved,draftRevision}=doc.snapshot();if(autoSaved&&draftRevision)await deleteScanDraft(draftRevision,doc.signal);dispose();}));
  keepPrompt.append(keepText,keep,discard);
  const requestClose=async()=>{
   if(closed)return;if(!keepPrompt.hidden){keepPrompt.hidden=true;close.focus();return;}
@@ -123,6 +123,6 @@ export function openScanDocument(first?:Blob):()=>void{
  // The first page is admitted like any other; with autosave it is written to the device draft.
  if(first)try{doc.put(first);}catch(error){failed(error,'Could not add page.');}
  render();dialog.showModal();(native?add:capture).focus();
- void(async()=>{try{await doc.settled();if(closed)return;const draft=await readScanDraft();if(closed||!draft)return;stored=draft.revision;render();}catch{/* An unreadable draft stays reachable through Draft options. */}})();
+ void(async()=>{try{await doc.settled();if(closed)return;const draft=await readScanDraft();if(closed||!draft||doc.snapshot().draftRevision)return;stored=draft.revision;render();}catch{/* An unreadable draft stays reachable through Draft options. */}})();
  return dispose;
 }

@@ -5,7 +5,7 @@ const root=path.resolve(import.meta.dirname,'..');
 const stubs={
  '@capacitor/core':'export const Capacitor={isNativePlatform:()=>globalThis.scanTest.native,convertFileSrc:value=>value};',
  '../browser/scan-draft':'export const readScanDraft=(...a)=>globalThis.scanTest.drafts.read(...a),saveScanDraft=(...a)=>globalThis.scanTest.drafts.save(...a),deleteScanDraft=(...a)=>globalThis.scanTest.drafts.remove(...a),copyScanTextLayers=value=>value;',
- '../../../../.eliza/client-features/plugins/plugin-files/src/documents/scan-pdf.ts':'export const createScanPdf=async()=>new Uint8Array();',
+ '../../../../.eliza/client-features/plugins/plugin-files/src/documents/scan-pdf.ts':'export const createScanPdf=async(...a)=>globalThis.scanTest.create?await globalThis.scanTest.create(...a):new Uint8Array();',
  '../runtime/browser-note-documents':'export class BrowserNoteDocuments{}',
  '../platform-plugins':'export const registerPlugin=()=>({exportPdf:async()=>{throw Error("not used");}});',
  '../daily':'export const DailyApps={};','./local-ocr':'export const recognizeLocalText=async()=>({lines:[]});','./scan-page-camera':'export const captureScanPage=async()=>undefined;',
@@ -22,12 +22,12 @@ function drafts(){let draft,n=0;return {
  remove:async revision=>{if(draft?.revision!==revision)throw Error('The saved draft changed.');draft=undefined;},
 };}
 let opened=0;
-async function open({native,stored}){
+async function open({native,stored,create}){
  const dom=new JSDOM('<div class="os"></div>');const {window}=dom;
  window.HTMLDialogElement.prototype.showModal??=function(){this.open=true;};window.confirm=()=>true;
  Object.assign(globalThis,{window,document:window.document,HTMLElement:window.HTMLElement});
  const store=drafts();if(stored)await store.save([new Blob(['old'],{type:'image/png'})],undefined);
- globalThis.scanTest={native,drafts:store};
+ globalThis.scanTest={native,drafts:store,create};
  const {openScanDocument}=await import('data:text/javascript;base64,'+Buffer.from(bundle+'//'+ ++opened).toString('base64'));
  openScanDocument(new Blob(['page'],{type:'image/jpeg'}));await settle();
  const dialog=()=>window.document.querySelector('dialog[aria-label="Review scan document"]');
@@ -68,4 +68,10 @@ test('Keep closes and leaves the draft; pagehide closes without asking and keeps
 test('on the web Close does not ask (no automatic draft)',async()=>{
  const s=await open({native:false});assert.equal(s.store.get(),undefined);
  s.button('Close document').click();await settle();assert.equal(s.dialog(),null);
+});
+test('Discard works while a PDF is still being prepared',async()=>{
+ const s=await open({native:true,create:()=>new Promise(()=>{})});
+ s.button('Save document PDF').click();await settle();assert.equal(s.button('Save document PDF').disabled,true,'the export holds the document');
+ s.button('Close document').click();await settle();s.button('Discard draft').click();await settle();
+ assert.equal(s.dialog(),null);assert.equal(s.store.get(),undefined);
 });
