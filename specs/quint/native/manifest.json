@@ -1323,6 +1323,59 @@
         "One explicitly opted-in service instance, fresh visible lease, two AudioRecord allocations, controlled Android/ASR ports.",
         "Lifecycle projection covers cleanup, ASR loading, retained failed handles and replacement refusal; arbitrary audio/notification callback schedules remain separate obligations."
       ]
+    },
+    {
+      "path": "specs/quint/native/NativeSpeechWarmup.qnt",
+      "module": "NativeSpeechWarmup",
+      "init": "init",
+      "step": "step",
+      "invariant": "safety",
+      "sources": [
+        "patches/eliza/local-speech-streaming.patch"
+      ],
+      "tests": [
+        "closeFencesLateOpenTest",
+        "exactDeadlineTest",
+        "closeDuringWriteTest",
+        "refusedWriteDoesNotSpinTest"
+      ],
+      "invariants": [
+        "OwnedOutputHasWriter",
+        "SilentOnly",
+        "DeadlineRetiresOutput",
+        "SingleRelease"
+      ],
+      "abstractions": [
+        "Single silent output writer with exact 15 second deadline and up to three modeled writes.",
+        "Actual staged helper runs under controlled output factory, write and release ports."
+      ]
+    },
+    {
+      "path": "specs/quint/native/NativeRecognizerAvailability.qnt",
+      "module": "NativeRecognizerAvailability",
+      "init": "init",
+      "step": "step",
+      "invariant": "safety",
+      "sources": [
+        "vendor/eliza/plugins/plugin-local-inference/native/android/src/main/java/ai/eliza/voice/RecognizerAvailability.java"
+      ],
+      "tests": [
+        "newerAnswerKeepsAuthorityTest",
+        "lateInstalledReplacesUnansweredTest",
+        "temporaryDemotionCannotBeShortenedTest",
+        "globalDemotionSurvivesInFlightAnswerTest"
+      ],
+      "invariants": [
+        "AllLanguageDemotion",
+        "RecordedTicketBounded",
+        "PendingTicketAdmitted",
+        "PermanentEntriesHaveNoDeadline",
+        "DemotionHasNoProbeTicket"
+      ],
+      "abstractions": [
+        "Two language tags, four real probe tickets, sampled monotonic deadline classes.",
+        "Installed and permanent demotion deadlines normalize Long.MAX_VALUE to -1."
+      ]
     }
   ]
 }

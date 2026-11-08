@@ -26,6 +26,8 @@ import {checkCaptureFrames} from './capture-frames.mjs';
 import {checkIndicatorProvider} from './indicator-provider.mjs';
 import {checkListenerStore} from './listener-store.mjs';
 import {checkListenerService} from './listener-service.mjs';
+import {checkSpeechWarmup} from './speech-warmup.mjs';
+import {checkRecognizerAvailability} from './recognizer-availability.mjs';
 
 export async function runNativeRefinement() {
   const models = ['VadSegmentation', 'RendererRecovery', 'ResidentScheduling'];
@@ -131,7 +133,7 @@ export async function runNativeRefinement() {
   results.push(await checkSharedRecording([fileURLToPath(import.meta.url)]));
   results.push(await checkLiveCapture([fileURLToPath(import.meta.url)]));
   const nativeInputs = [fileURLToPath(import.meta.url), join(root, 'specs/quint/refinement/model-state.mjs')];
-  for (const check of [checkAsrPipe, checkPipedCapture, checkCaptureFrames, checkIndicatorProvider, checkListenerStore, checkListenerService]) {
+  for (const check of [checkAsrPipe, checkPipedCapture, checkCaptureFrames, checkIndicatorProvider, checkListenerStore, checkListenerService, checkSpeechWarmup, checkRecognizerAvailability]) {
     results.push(await check(nativeInputs));
   }
   const obligations = [
@@ -156,6 +158,8 @@ export async function runNativeRefinement() {
     {model: 'NativeIndicatorProvider', obligation: 'Installed Binder authority and SystemUI visibility', reason: 'Actual provider/lease and controlled death/identity ports execute. SystemUI geometry and service convergence require installed evidence.'},
     {model: 'NativeListenerStore', obligation: 'Android durability, arbitrary preference writers and service acceptance', reason: 'Actual store executes with separate in-memory and persistent fixture state, including fresh-JVM restart.'},
     {model: 'NativeListenerService', obligation: 'Installed resource release and arbitrary audio/recognition callbacks', reason: 'Actual service lifecycle, store and lease execute. Unconfirmed physical release remains a distinct observed outcome.'},
+    {model: 'NativeSpeechWarmup', obligation: 'Bridge admission and installed AudioTrack behavior', reason: 'The actual silent output writer runs with controlled factory, clock and output primitives. Shared bridge publication and physical audibility are separate.'},
+    {model: 'NativeRecognizerAvailability', obligation: 'Android recognizer support and installed model delivery', reason: 'Actual per-language cache and concurrent probes execute with controlled answer/clock inputs. Full Android speech sessions remain separate.'},
     {model: 'StreamingPlayback', obligation: 'All writer interleavings, actual AudioTrack and audibility', reason: 'Five writer traces cover completion, partial writes, failed open/write and canceled opening. Detailed failure-code mapping is unobserved.'},
     {model: 'VoiceIpcAssembly', obligation: 'Deadline scheduling races and actual owner/binding admission', reason: 'Eight actual exchanges check return/cleanup. Static deadline scheduling and local assembly state need a deterministic observer seam.'},
     {model: 'ListenerLeaseProducer', obligation: 'Controller measurement and real SystemUI/Binder identity', reason: 'Actual lease delivery consumes fixture snapshots. Controller/view geometry and real identity checks remain external.'},

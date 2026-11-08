@@ -195,3 +195,14 @@ the recognizer. A failed release remains an owned resource with its durable
 marker, and another start cannot overwrite that reference. The campaign checks a
 later successful release and capture restart. Installed Binder/audio behavior,
 physical release acceptance and arbitrary callbacks remain external obligations.
+
+### Speech warm-up writer and recognition availability
+
+`speech-warmup.mjs` executes `SpeechOutputWarmup` from authenticated product
+staging. The actual writer thread owns its output. Primitive ports observe
+open/play/write/abort/release, and hold open or write while close runs.
+`recognizer-availability.mjs` executes the shared cache and concurrent probe
+callbacks directly. A held provider reply exposes actual ticket ordering,
+including an old installed answer after a newer authoritative or unanswered
+result. Source `known` and `available` calls check exact expiry and demotion.
+Neither campaign uses a real microphone, installed speech service or output.

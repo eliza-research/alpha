@@ -395,3 +395,18 @@ lease and at most two recording allocations. Notification visibility, AudioRecor
 and ASR allocation are controlled platform ports. Arbitrary recording/playback
 callback interleavings, frame content and installed Android scheduling remain
 separate from these lifecycle traces.
+
+`NativeSpeechWarmup` covers the silent speech-output writer added by the
+current product streaming patch. It observes the actual writer, late factory
+return, play and write failure, close while blocked, duplicate close, and
+release attempts. The injected clock crosses the 15 second boundary exactly.
+An abort/release attempt is separate from confirmation that a physical track
+has closed. Full bridge admission and the installed audio path are outside this
+component projection.
+
+`NativeRecognizerAvailability` covers the shared per-language cache. It
+observes entries, real probe tickets, held concurrent probes, late answers,
+cache lookups and demotion deadlines. Authoritative and unanswered results have
+different replacement rules. Timed demotion and global/per-language retirement
+are kept distinct. Android's recognizer support service and installed speech
+models remain external inputs to this campaign.
