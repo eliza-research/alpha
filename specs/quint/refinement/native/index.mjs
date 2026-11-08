@@ -38,6 +38,7 @@ import {checkNavigationProgress} from './navigation-progress.mjs';
 import {checkNativeNavigationOwnership} from './navigation-service.mjs';
 import {checkGoogleBrowserReturnClaim} from './google-browser-return-claim.mjs';
 import {checkRuntimeUpdatePause} from './runtime-update-pause.mjs';
+import {runNativeUpdateActivationRefinement} from './update-barrier.mjs';
 
 export async function runNativeRefinement() {
   const models = ['VadSegmentation', 'RendererRecovery', 'ResidentScheduling'];
@@ -147,8 +148,11 @@ export async function runNativeRefinement() {
   }
   const updatePause = await checkRuntimeUpdatePause(nativeInputs);
   results.push(updatePause.receipt);
+  const updateActivation = await runNativeUpdateActivationRefinement(nativeInputs);
+  results.push(...updateActivation.receipts);
   const obligations = [
     ...updatePause.obligations,
+    ...updateActivation.obligations,
     {model: 'GoogleBrowserReturnClaim', obligation: 'Installed callback delivery and durable credential custody',
       reason: 'The authenticated Java claim and grace functions execute under controlled queues, storage and HTTPS. Installed lifecycle, secure-store durability and intra-worker schedules remain separate.'},
     ...reviewedCopiesObligations,
