@@ -16,9 +16,10 @@ async function fixture(){
  const scoped=join(profile,cloudStorageNamespace.replaceAll(':','-'));await mkdir(scoped,{mode:0o700});
  const credential={credentialReference:'browser-cloud-reference:44444444-4444-4444-8444-444444444444',credentialId:grant,userId:owner,organizationId:org,token:'synthetic-only'};
  const save=()=>writeFile(join(scoped,'credentials.json'),JSON.stringify({production:credential}),{mode:0o600});await save();
- const calls=[],sends=new Map();let beforeOwner=async()=>{},feedStatus=0,loseDispatch=false,accounts=()=>[account],afterRead=async()=>{},pages=()=>({messages:[message],syncedAt:message.receivedAt}),calendars=()=>[{calendarId:'primary',summary:'Owned calendar',primary:true,selected:true,accessRole:'owner'}];
+ const calls=[],sends=new Map();let beforeOwner=async()=>{},feedStatus=0,loseDispatch=false,accounts=()=>[account],afterRead=async()=>{},pages=()=>({messages:[message],syncedAt:message.receivedAt}),route=()=>undefined,body='Exact synthetic body',calendars=()=>[{calendarId:'primary',summary:'Owned calendar',primary:true,selected:true,accessRole:'owner'}];
  const original=globalThis.fetch;globalThis.fetch=async(url,init={})=>{
   const u=new URL(url);calls.push(u);
+  const custom=await route(u,init);if(custom)return custom;
   if(u.pathname==='/api/v1/user'){await beforeOwner();return Response.json({success:true,data:{id:owner,organization_id:org}});}
   if(u.pathname.endsWith('/accounts'))return Response.json(accounts());
   if(u.pathname.includes('/inbox-v1/operations')){
@@ -39,13 +40,14 @@ async function fixture(){
   if(u.pathname.endsWith('/calendars'))return Response.json(calendars(u));
   if(u.pathname.endsWith('/feed')){if(feedStatus)return Response.json({error:'Refused'},{status:feedStatus});await afterRead();return Response.json({calendarId:'primary',events:[],syncedAt:message.receivedAt});}
   if(u.pathname.endsWith('/search')){const data=pages(u);await afterRead();return Response.json(data);}
-  if(u.pathname.endsWith('/read')){await afterRead();return Response.json({message:{...message,metadata:{historyId:'h1'}},bodyText:'Exact synthetic body'});}
+  if(u.pathname.endsWith('/read')){await afterRead();return Response.json({message:{...message,metadata:{historyId:'h1'}},bodyText:body});}
   throw Error('Unexpected route');
  };
  let reader;try{reader=createGmailAgentReadHost(profile);}finally{globalThis.fetch=original;}
- return {reader,calls,credential,save,sends,setAccounts:fn=>accounts=fn,setAfterRead:fn=>afterRead=fn,setPages:fn=>pages=fn,setCalendars:fn=>calendars=fn,setBeforeOwner:fn=>beforeOwner=fn,setFeedStatus:status=>feedStatus=status,loseDispatch:()=>{loseDispatch=true;},close:()=>rm(profile,{recursive:true,force:true})};
+ return {reader,calls,credential,save,sends,setAccounts:fn=>accounts=fn,setAfterRead:fn=>afterRead=fn,setPages:fn=>pages=fn,setCalendars:fn=>calendars=fn,setRoute:fn=>route=fn,setBody:value=>body=value,setBeforeOwner:fn=>beforeOwner=fn,setFeedStatus:status=>feedStatus=status,loseDispatch:()=>{loseDispatch=true;},close:()=>rm(profile,{recursive:true,force:true})};
 }
 const sendAccount={...account,grantedCapabilities:['google.gmail.triage','google.gmail.send']};
+const mailboxAccount={...sendAccount,grantedCapabilities:[...sendAccount.grantedCapabilities,'google.gmail.mailbox']};
 const email=()=>({requestId:randomUUID(),to:['self@example.invalid'],subject:'Synthetic QA',bodyText:'No real email is sent by this fixture.'});
 test('managed Gmail prepares an exact review and sends only once after matching dispatch',async()=>{
  const f=await fixture();try{f.setAccounts(()=>[sendAccount]);const content=email(),prepared=await f.reader.prepareSend(content);
@@ -78,8 +80,23 @@ test('owner-scoped Gmail IDs read exact bodies and cannot cross credential gener
 test('Gmail grant revocation during a read prevents content delivery',async()=>{
  const f=await fixture();try{f.setAfterRead(async()=>f.setAccounts(()=>[]));await assert.rejects(f.reader.list({}),/permission changed/);}finally{await f.close();}
 });
-test('multiple readable Gmail accounts refuse before any mailbox read',async()=>{
- const f=await fixture();try{f.setAccounts(()=>[account,{...account,connectionId:owner}]);await assert.rejects(f.reader.list({}),/More than one/);assert.equal(f.calls.some(u=>u.pathname.endsWith('/search')),false);}finally{await f.close();}
+const refused=reason=>error=>error.reason===reason;
+test('two Gmail accounts refuse a list or new send, and an id names its own account',async()=>{
+ const f=await fixture();try{
+  const second='55555555-5555-4555-8555-555555555555',both=[mailboxAccount,{...mailboxAccount,connectionId:second}];
+  const messageId=(await f.reader.list({limit:1}))[0].id;f.setAccounts(()=>[sendAccount]);const content=email(),prepared=await f.reader.prepareSend(content);
+  f.setAccounts(()=>both);f.calls.length=0;
+  await assert.rejects(f.reader.list({}),refused('multiple-accounts'));await assert.rejects(f.reader.prepareSend(email()),refused('multiple-accounts'));
+  assert.equal(f.calls.some(u=>u.pathname.endsWith('/search')||u.pathname.endsWith('/operations')),false);
+  assert.equal((await f.reader.message(messageId)).bodyText,'Exact synthetic body');
+  assert.equal((await f.reader.mailbox({messageId,kind:'archive',requestId:randomUUID()})).ok,true);
+  assert.equal((await f.reader.sendReceipt(prepared.id)).state,'prepared');
+  assert.equal((await f.reader.dispatchSend({...content,id:prepared.id,reviewDigest:prepared.reviewDigest})).state,'succeeded');
+  const reads=f.calls.filter(u=>u.pathname.endsWith('/read')||u.pathname.includes('/operations/')&&!u.pathname.endsWith('/dispatch'));
+  assert.ok(reads.length>=3&&reads.every(u=>u.searchParams.get('grantId')===grant),'each id reaches only the account it names');
+  f.setAccounts(()=>[{...mailboxAccount,connectionId:second}]);
+  await assert.rejects(f.reader.message(messageId),refused('no-account'));
+ }finally{await f.close();}
 });
 test('paged Gmail reads reject a mailbox revision change',async()=>{
  const f=await fixture();try{f.setPages(u=>({messages:[message],syncedAt:message.receivedAt,mailboxHistoryId:u.searchParams.has('pageToken')?'2':'1',nextPageToken:u.searchParams.has('pageToken')?null:'next'}));await assert.rejects(f.reader.list({limit:25}),/mailbox changed/);}finally{await f.close();}
@@ -294,11 +311,10 @@ test('Calendar reads list and read every connected account while Gmail still nee
   const sources=await f.reader.calendarSources();assert.equal(sources.length,2);assert.notEqual(sources[0].grantId,sources[1].grantId);
   const input={grantId:sources[1].grantId,calendarId:'primary',timeMin:'2026-10-14T00:00:00Z',timeMax:'2026-10-16T00:00:00Z',timeZone:'UTC'};
   assert.equal((await f.reader.calendarFeed(input)).state,'complete');assert.ok(f.calls.some(u=>u.href.includes(second)&&u.pathname.endsWith('/feed')),'the feed reads the named account');
-  await assert.rejects(f.reader.list({}),/More than one/);
+  await assert.rejects(f.reader.list({}),refused('multiple-accounts'));
  }finally{await f.close();}
 });
 
-const mailboxAccount={...sendAccount,grantedCapabilities:[...sendAccount.grantedCapabilities,'google.gmail.mailbox']};
 test('agent mailbox changes use a durable turn ID, exact labels and one dispatch after a lost response',async()=>{
  const f=await fixture();try{
   f.setAccounts(()=>[mailboxAccount]);const messageId=(await f.reader.list({limit:1}))[0].id;
@@ -313,9 +329,60 @@ test('agent mailbox changes refuse missing scope, foreign account, unknown recei
  const f=await fixture();try{
   const messageId=(await f.reader.list({limit:1}))[0].id,input={messageId,kind:'archive',requestId:randomUUID()};
   await assert.rejects(f.reader.mailbox(input),/mailbox changes need permission/);assert.equal(f.sends.size,0);
-  f.setAccounts(()=>[mailboxAccount]);await assert.rejects(f.reader.mailbox({...input,messageId:'alpha-gmail:'+'f'.repeat(64)+':mail1'}),/current Gmail owner/);assert.equal(f.sends.size,0);
+  f.setAccounts(()=>[mailboxAccount]);await assert.rejects(f.reader.mailbox({...input,messageId:'alpha-gmail:'+'f'.repeat(64)+':mail1'}),refused('no-account'));assert.equal(f.sends.size,0);
   f.sends.set(input.requestId,{receipt:{requestId:input.requestId,kind:'archive',state:'outcome-unknown',reviewDigest:'a'.repeat(64),providerResult:null,rejectionCode:null}});
   assert.equal((await f.reader.mailbox(input)).ok,false);assert.equal(f.calls.some(u=>u.pathname.endsWith('/dispatch')),false);
   f.setAfterRead(async()=>f.setAccounts(()=>[]));await assert.rejects(f.reader.mailbox({...input,requestId:randomUUID()}));assert.equal(f.calls.some(u=>u.pathname.endsWith('/dispatch')),false);
+ }finally{await f.close();}
+});
+
+test('A Calendar write the provider accepted returns its receipt when the trailing permission check fails',async()=>{
+ const f=await fixture();try{
+  const writer={...account,label:'owned@example.invalid',grantedCapabilities:['google.calendar.read','google.calendar.write']};f.setAccounts(()=>[writer]);
+  const [{grantId:source}]=await f.reader.calendarSources(),startAt='2026-10-15T15:00:00.000Z',endAt='2026-10-15T16:00:00.000Z';
+  const semantic={title:'Synthetic',description:'',location:'',startAt,endAt,isAllDay:false,timeZone:'UTC',attendees:[],recurrence:[]};
+  const caps={version:1,calendarId:'primary',accountId:'owned@example.invalid',read:true,write:true,idempotentCreate:true,conditionalWrites:true,providerExactlyOnce:false};
+  let created=0;
+  f.setRoute(async(u,init)=>{
+   if(u.pathname.endsWith('/sync-v1/capabilities'))return Response.json(caps);
+   if(u.pathname.endsWith('/sync-v1/event')&&init.method==='POST'){created++;return Response.json({event:{eventId:'evt1',etag:'"e1"',event:semantic}});}
+   if(u.pathname.endsWith('/feed')&&created){f.setAccounts(()=>[]);return Response.json({calendarId:'primary',syncedAt:message.receivedAt,events:[{externalId:'evt1',calendarId:'primary',title:'Synthetic',description:'',location:'',status:'confirmed',startAt,endAt,isAllDay:false,metadata:{etag:'"e1"'},attendees:[]}]});}
+  });
+  const payload={action:'schedule_event',side:'owner',grantId:source,calendarId:'primary',title:'Synthetic',startsAtMs:Date.parse(startAt),endsAtMs:Date.parse(endAt),timeZone:'UTC'};
+  const result=await f.reader.calendarWrite({operation:'write-execute',grantId:source,calendarId:'primary',accountId:caps.accountId,payload,preflight:{idempotencyKey:'synthetic-key'}});
+  assert.equal(created,1);assert.equal(result.event.id,`${source}:evt1`);
+  f.setAccounts(()=>[writer]);f.setRoute(async u=>{if(u.pathname.endsWith('/sync-v1/capabilities')){f.setAccounts(()=>[]);return Response.json(caps);}});
+  await assert.rejects(f.reader.calendarWrite({operation:'write-capabilities',grantId:source,calendarId:'primary'}),refused('permission-needed'));
+ }finally{await f.close();}
+});
+test('A Calendar feed too large for the agent is refused whole, never returned in part',async()=>{
+ const f=await fixture();try{
+  f.setAccounts(()=>[calendarAccount]);const [source]=await f.reader.calendarSources();
+  const event=i=>({externalId:'evt'+i,calendarId:'primary',title:'Synthetic',description:'x'.repeat(2000),location:'',status:'confirmed',startAt:'2026-10-15T15:00:00Z',endAt:'2026-10-15T16:00:00Z',isAllDay:false,metadata:{},attendees:[]});
+  f.setRoute(async u=>{if(u.pathname.endsWith('/feed'))return Response.json({calendarId:'primary',syncedAt:message.receivedAt,events:Array.from({length:150},(_,i)=>event(i))});});
+  await assert.rejects(f.reader.calendarFeed(calendarInput(source.grantId)),refused('result-too-large'));
+ }finally{await f.close();}
+});
+test('A long email body is cut to a fixed size and marked truncated',async()=>{
+ const f=await fixture();try{
+  const id=(await f.reader.list({}))[0].id;assert.equal((await f.reader.message(id)).truncated,undefined);
+  f.setBody('a'.repeat(31_999)+'\u{1F600}'+'b'.repeat(100_000));const read=await f.reader.message(id);
+  assert.equal(read.truncated,true);assert.equal(read.bodyText,'a'.repeat(31_999));
+ }finally{await f.close();}
+});
+test('A Gmail search and its date clause stay within what Cloud admits',async()=>{
+ const f=await fixture();try{
+  await assert.rejects(f.reader.list({query:'x'.repeat(2040),since:'2026-10-01T00:00:00Z'}),refused('invalid-request'));
+  assert.equal(f.calls.length,0,'refused before any Cloud request');
+  await assert.rejects(f.reader.prepareSend({...email(),subject:'s'.repeat(501)}),refused('invalid-request'));
+ }finally{await f.close();}
+});
+test('List rows carry the sender address next to its display name, and none when Gmail has none',async()=>{
+ const f=await fixture();try{
+  f.setPages(()=>({messages:[{...message,from:'Ann Sender',fromEmail:'ann@example.invalid'},{...message,externalId:'mail2',from:'No Address',fromEmail:null}],syncedAt:message.receivedAt}));
+  const [named,bare]=await f.reader.list({});
+  assert.equal(named.senderName,'Ann Sender');assert.equal(named.senderIdentifier,'ann@example.invalid');
+  // The upstream adapter uses senderIdentifier ?? senderName and refuses a sender filter when that is not an address.
+  assert.equal(bare.senderName,'No Address');assert.equal('senderIdentifier' in bare,false);
  }finally{await f.close();}
 });
