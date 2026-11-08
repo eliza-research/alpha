@@ -321,3 +321,16 @@ test('a watch whose unwatch lands before the storage worker registers leaves no 
  assert.match(plugin,/private void stopWatching\(\)\{watch\.clear\(\);\}/);
  assert.doesNotMatch(plugin,/\bmediaObserver=|\bobserver=new FileObserver/,'no observer field is assigned outside the slot');
 });
+test('the browser volume answers the folder filter with folders, as Android walks them (files_filter kind folder)',async()=>{
+ const v=await fresh();await v.createFolder('Documents','Taxes');await v.createFolder('Documents/Taxes','2025');await v.add('Documents','a.pdf');
+ const all=(await v.run('storageQuery',{folders:true})).entries;
+ assert.ok(all.every(e=>e.directory),'only folders');
+ assert.ok(['DCIM/Camera','Documents/Taxes','Documents/Taxes/2025'].every(p=>all.some(e=>e.path===p)));
+ const under=(await v.run('storageQuery',{folders:true,folder:'Documents'})).entries.map(e=>e.path).sort();
+ assert.deepEqual(under,['Documents/Taxes','Documents/Taxes/2025']);
+ assert.equal((await v.run('storageQuery',{folders:true,folder:'Documents'})).entries.find(e=>e.path==='Documents/Taxes').children,1);
+ const shown=all.filter(e=>storage.filterMatches({kind:'folder',text:'taxes'},e));
+ assert.deepEqual(shown.map(e=>e.path),['Documents/Taxes'],'the renderer\'s filter now has folders to match');
+ assert.deepEqual((await v.run('storageQuery',{folders:true,folder:'Nope'})).entries,[]);
+ assert.ok((await v.run('storageQuery',{})).entries.every(e=>!e.directory),'without folders the query is the file walk');
+});
