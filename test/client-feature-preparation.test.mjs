@@ -4,13 +4,14 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import {spawnSync} from 'node:child_process';
+import {spawn, spawnSync} from 'node:child_process';
 import {git as fixtureGit} from './fixtures/git-fixture.mjs';
 import {prepareClientFeatures, CLIENT_FEATURE_PATHS} from '../scripts/prepare-client-features.mjs';
 function fixture(run) {
  const root=fs.mkdtempSync(path.join(os.tmpdir(),'alpha-client-source-'));
  const vendor=path.join(root,'vendor/eliza');fs.mkdirSync(vendor,{recursive:true});
- const git=args=>fixtureGit(vendor,...args);
+ const git=args=>fixtureGit(vendor,...args),cleanup=()=>fs.rmSync(root,{recursive:true,force:true});
+ let pending=false;
  try {
   git(['init','-q']);
   for(const prefix of CLIENT_FEATURE_PATHS) {
@@ -24,14 +25,29 @@ function fixture(run) {
   }
   git(['add','.']);git(['commit','-qm','Fixture']);
   const commit=git(['rev-parse','HEAD']);fs.writeFileSync(path.join(root,'upstream.lock.json'),JSON.stringify({commit}));
-  return run({root,vendor,commit,git});
- } finally {fs.rmSync(root,{recursive:true,force:true});}
+  const result=run({root,vendor,commit,git});
+  if(result?.then){pending=true;return result.finally(cleanup);}
+  return result;
+ } finally {if(!pending)cleanup();}
 }
 test('prepared client source repairs changed, missing and unexpected cached files',()=>fixture(({root,commit})=>{
  const source=prepareClientFeatures({root,projectVoice:false}),stamp=JSON.parse(fs.readFileSync(path.join(source,'.source.json'))),file=Object.keys(stamp.files)[0],original=fs.readFileSync(path.join(source,file));
  fs.writeFileSync(path.join(source,file),'corrupt');fs.writeFileSync(path.join(source,'unexpected.ts'),'unreviewed');
  assert.equal(prepareClientFeatures({root,projectVoice:false}),source);assert.deepEqual(fs.readFileSync(path.join(source,file)),original);assert.equal(fs.existsSync(path.join(source,'unexpected.ts')),false);
  fs.unlinkSync(path.join(source,file));prepareClientFeatures({root,projectVoice:false});assert.deepEqual(fs.readFileSync(path.join(source,file)),original);assert.equal(stamp.baseCommit,commit);
+}));
+test('concurrent preparers after a source change all succeed and leave one authenticated tree',()=>fixture(async({root,vendor,git})=>{
+ prepareClientFeatures({root,projectVoice:false});
+ fs.appendFileSync(path.join(vendor,CLIENT_FEATURE_PATHS[0]),'export const changed = 2;\n');
+ git(['add','.']);git(['-c','user.name=Source fixture','-c','user.email=fixture@example.invalid','commit','-qm','Change']);
+ const commit=git(['rev-parse','HEAD']);fs.writeFileSync(path.join(root,'upstream.lock.json'),JSON.stringify({commit}));
+ const script=`import {prepareClientFeatures} from ${JSON.stringify(path.resolve('scripts/prepare-client-features.mjs'))};prepareClientFeatures({root:${JSON.stringify(root)},projectVoice:false});`;
+ const run=()=>new Promise(resolve=>{const child=spawn(process.execPath,['--input-type=module','-e',script],{stdio:['ignore','ignore','pipe']});let stderr='';child.stderr.on('data',chunk=>{stderr+=chunk;});child.on('close',status=>resolve({status,stderr}));});
+ for(const result of await Promise.all(Array.from({length:12},run))) assert.equal(result.status,0,result.stderr);
+ const source=path.join(root,'.eliza/client-features'),stamp=JSON.parse(fs.readFileSync(path.join(source,'.source.json')));
+ assert.equal(stamp.baseCommit,commit);assert.match(fs.readFileSync(path.join(source,CLIENT_FEATURE_PATHS[0]),'utf8'),/changed = 2/);
+ assert.equal(prepareClientFeatures({root,projectVoice:false,check:true}),source);
+ assert.deepEqual(fs.readdirSync(path.join(root,'.eliza')),['client-features'],'no staging or set-aside tree is left behind');
 }));
 test('client source rejects changed pin and upstream content without replacing its cache',()=>fixture(({root,vendor,commit})=>{
  const source=prepareClientFeatures({root,projectVoice:false}),stamp=fs.readFileSync(path.join(source,'.source.json'));
@@ -74,6 +90,8 @@ assert.equal(stamp.baseCommit,JSON.parse(fs.readFileSync('upstream.lock.json','u
   assert.equal(projected,original.replace('} from "@elizaos/contracts";','} from "../../../../packages/contracts/src/calendar-linked-sync.ts";'),name+' differs from the pinned SDK only in that specifier');
  }
  // Renderer types come from upstream leaf entries copied byte-for-byte; no declaration is extracted.
+ // Upstream runs its own notes tests; Alpha copies none of them.
+ assert.equal(fs.existsSync(path.join(source,'plugins/plugin-notes/test')),false);
  for(const name of ['alpha-voice-core-types.ts','alpha-client-fetch-types.ts']) assert.equal(fs.existsSync(path.join(source,name)),false,name+' is no longer projected');
  for(const file of ['packages/core/src/schema-types.ts','packages/core/src/types/json.ts','packages/core/src/types/schema.ts','packages/core/src/types/surface-manifest.ts','packages/core/src/types/view-capability.ts','packages/core/src/types/view-kind.ts','packages/ui/src/api/transport.ts','plugins/plugin-calendar/src/meetings/auto-join-types.ts','plugins/plugin-calendar/src/api/calendar-api.ts','plugins/plugin-notes/src/types.ts','plugins/plugin-notes/src/capabilities.ts','plugins/plugin-notes/src/client/notes-api.ts']){
   assert.equal(stamp.sourceFiles[file],stamp.files[file],file+' is not projected');

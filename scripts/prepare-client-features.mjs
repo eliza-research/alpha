@@ -1,4 +1,4 @@
-import { createHash } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 import { upstreamNativeSource } from './upstream-native-source.mjs';
 import { clientSpeechPatch } from './client-speech-patch.mjs';
 import fs from 'node:fs';
@@ -278,11 +278,6 @@ export const CLIENT_FEATURE_PATHS = [
   'plugins/plugin-maps/src/client',
   'plugins/plugin-maps/test/navigation-client.test.mjs',
   'plugins/plugin-notes/src/client',
-  'plugins/plugin-notes/test/device-query.test.mjs',
-  'plugins/plugin-notes/test/notes-trash-policy.test.mjs',
-  'plugins/plugin-notes/test/notes-trash-maintenance.test.mjs',
-  'plugins/plugin-notes/test/notes-trash-schedule.test.mjs',
-  'plugins/plugin-notes/test/notes-trash-store.test.mjs',
   'packages/cloud/sdk/src/subscription-entitlement.ts',
   'packages/ui/src/components/settings/cloud-subscription-summary.tsx',
   'packages/auth/src/auth/native-cloud-sign-in.ts',
@@ -366,13 +361,24 @@ export function prepareClientFeatures({ root = projectRoot, projectVoice = true,
   const provenance = { baseCommit: upstream.pin, sourceFiles, projectionVersion:projectVoice?12:0, ...(speechPatch.receipt?{speechPatch:speechPatch.receipt}:{}), files };
   const parent = path.join(root, '.eliza'), destination = path.join(parent, 'client-features');
   regularPath(parent, true);
-  const exists = regularPath(destination, true), stamp = path.join(destination, '.source.json');
-  if (exists) {
-    if (!regularPath(stamp)) throw Error('Refusing to replace an unrecognized client feature directory.');
-    const previous = JSON.parse(fs.readFileSync(stamp));
-    const actual = inventory(destination); delete actual['.source.json'];
-    if (previous.baseCommit === upstream.pin && previous.projectionVersion === provenance.projectionVersion && JSON.stringify(previous.speechPatch ?? null) === JSON.stringify(provenance.speechPatch ?? null) && matches(previous.files || {}, files) && matches(actual, files)) return destination;
-  }
+  const stamp = path.join(destination, '.source.json');
+  // Whether the prepared tree is current. A concurrent preparer can move the tree aside while it
+  // is read, so a tree that vanishes mid-read is read again; one without a stamp is not ours.
+  const current = () => {
+    for (let attempt = 0; ; attempt++) {
+      try {
+        if (!regularPath(destination, true)) return false;
+        if (!regularPath(stamp)) {
+          if (attempt < 4) continue;
+          throw Error('Refusing to replace an unrecognized client feature directory.');
+        }
+        const previous = JSON.parse(fs.readFileSync(stamp));
+        const actual = inventory(destination); delete actual['.source.json'];
+        return previous.baseCommit === upstream.pin && previous.projectionVersion === provenance.projectionVersion && JSON.stringify(previous.speechPatch ?? null) === JSON.stringify(provenance.speechPatch ?? null) && matches(previous.files || {}, files) && matches(actual, files);
+      } catch (error) { if (error.code !== 'ENOENT' || attempt >= 4) throw error; }
+    }
+  };
+  if (current()) return destination;
   if (check) throw Error('Client feature source is missing or stale: run npm run upstream:prepare-client');
   fs.mkdirSync(parent, { recursive: true });
   const temporary = fs.mkdtempSync(path.join(parent, 'client-features-stage-'));
@@ -384,9 +390,20 @@ export function prepareClientFeatures({ root = projectRoot, projectVoice = true,
     }
     if (!matches(inventory(temporary), files)) throw Error('Client feature source copy failed authentication.');
     fs.writeFileSync(path.join(temporary, '.source.json'), JSON.stringify(provenance, null, 2));
-    fs.rmSync(destination, { force: true, recursive: true });
-    fs.renameSync(temporary, destination);
-    return destination;
+    // Move the old tree aside rather than deleting it in place, so no preparer deletes part of a
+    // tree another one just installed. A concurrent preparer may install first; accept it if current.
+    for (let attempt = 0; ; attempt++) {
+      const aside = path.join(parent, '.client-features-old-' + randomUUID());
+      try {
+        try { fs.renameSync(destination, aside); } catch (error) { if (error.code !== 'ENOENT') throw error; }
+        fs.renameSync(temporary, destination);
+        return destination;
+      } catch (error) {
+        if (!['EEXIST', 'ENOTEMPTY'].includes(error.code)) throw error;
+        if (current()) return destination;
+        if (attempt >= 4) throw Error('A concurrent client feature preparation installed a different tree.');
+      } finally { fs.rmSync(aside, { force: true, recursive: true }); }
+    }
   } finally { fs.rmSync(temporary, { force: true, recursive: true }); }
 }
 /** Check-only: the prepared copy's path when current; never writes the shared tree. */
