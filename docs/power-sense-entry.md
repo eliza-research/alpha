@@ -25,8 +25,10 @@ conditional SystemUI dispatcher. `SearchManagerService` must strip a spoofed
 Power invocation from non-system callers; the protected child permission alone
 does not authenticate an arbitrary invocation Bundle forwarded by SystemUI.
 
-`python3 test/power-sense-entry.test.py` checks the actual activity methods with
-modeled host/Sense dependencies, the manifest contract, and Android36 API compilation.
+The entry ships disabled: `AlphaPowerVoiceActivity` is `enabled="false"` and
+`exported="false"` in the manifest until the owner enables Power.
+`node --test test/power-sense-entry.test.mjs` checks the actual activity methods with
+modeled host/Sense dependencies, that shipped manifest entry, and Android36 API compilation.
 These checks do not prove the full APK, real permission enforcement or Binder behavior.
 Before delivery, use an isolated separate-UID Android test to show an ordinary app
 cannot launch the protected child or spoof Power through SearchManager. On the exact
