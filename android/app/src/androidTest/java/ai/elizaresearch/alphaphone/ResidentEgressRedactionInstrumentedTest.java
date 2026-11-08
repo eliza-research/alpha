@@ -9,6 +9,8 @@ import androidx.test.platform.app.InstrumentationRegistry;
 import java.io.File;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
+import java.security.MessageDigest;
+import java.util.Locale;
 import java.util.UUID;
 import org.json.JSONArray;
 import org.json.JSONObject;
@@ -38,6 +40,7 @@ public class ResidentEgressRedactionInstrumentedTest {
   {"selected-file","Selected file credentials.txt: DB_PASSWORD=FileTailZ5cL1","FileTailZ5cL1"},
  };
  private Context context;private String root;
+ private static String sha256(String text)throws Exception{StringBuilder value=new StringBuilder();for(byte b:MessageDigest.getInstance("SHA-256").digest(text.getBytes(StandardCharsets.UTF_8)))value.append(String.format(Locale.ROOT,"%02x",b&255));return value.toString();}
  private JSONObject call(String path,String method,JSONObject body)throws Exception{
   JSONObject headers=new JSONObject().put("Authorization","Bearer "+root);
   JSONObject args=new JSONObject().put("path",path).put("method",method).put("headers",headers).put("timeoutMs",120000);
@@ -45,12 +48,25 @@ public class ResidentEgressRedactionInstrumentedTest {
   JSONObject result=new JSONObject(ElizaAgentService.requestLocalAgent(args.toString()));
   assertEquals("HTTP "+path+" "+result.optString("body"),200,result.getInt("status"));return new JSONObject(result.getString("body"));
  }
- /** The provider requests recorded for one room's finished trajectories (the request after the swap). */
+ /**
+  * The provider requests recorded for every trajectory of one room, task trajectories included (the request after
+  * the swap). Polls until the room's trajectories and their end times stay unchanged for a settle window, so a
+  * model call that finishes after the reply is still inspected; fails if any is unfinished at the deadline.
+  */
  private JSONArray recordedCalls(String room)throws Exception{
-  JSONArray llm=new JSONArray();long end=SystemClock.elapsedRealtime()+30000;
-  while(llm.length()==0&&SystemClock.elapsedRealtime()<end){JSONArray list=call("/api/trajectories?limit=100&roomId="+room,"GET",null).getJSONArray("trajectories");
-   for(int i=0;i<list.length();i++){JSONObject d=call("/api/trajectories/"+list.getJSONObject(i).getString("id")+"?includePayloads=1","GET",null);if(d.has("llmCalls")&&!d.getJSONObject("trajectory").isNull("endTime"))for(int j=0;j<d.getJSONArray("llmCalls").length();j++)llm.put(d.getJSONArray("llmCalls").getJSONObject(j));}
-   if(llm.length()==0)SystemClock.sleep(500);}
+  long end=SystemClock.elapsedRealtime()+60000,stableSince=0;String seen=null;boolean finished=false;JSONArray llm=new JSONArray();
+  while(SystemClock.elapsedRealtime()<end){
+   JSONArray list=call("/api/trajectories?limit=100&roomId="+room,"GET",null).getJSONArray("trajectories");
+   java.util.TreeMap<String,String> state=new java.util.TreeMap<>();JSONArray calls=new JSONArray();finished=true;
+   for(int i=0;i<list.length();i++){String trajectory=list.getJSONObject(i).getString("id");JSONObject d=call("/api/trajectories/"+trajectory+"?includePayloads=1","GET",null);
+    boolean done=!d.getJSONObject("trajectory").isNull("endTime");finished&=done;state.put(trajectory,done?d.getJSONObject("trajectory").get("endTime").toString():"");
+    if(d.has("llmCalls"))for(int j=0;j<d.getJSONArray("llmCalls").length();j++)calls.put(d.getJSONArray("llmCalls").getJSONObject(j));}
+   String now=state.toString();long at=SystemClock.elapsedRealtime();
+   if(!now.equals(seen)){seen=now;stableSince=at;}
+   llm=calls;
+   if(finished&&!state.isEmpty()&&at-stableSince>=5000)return llm;
+   SystemClock.sleep(500);}
+  assertTrue("Room "+room+" has a trajectory still unfinished at the deadline: "+seen,finished);
   return llm;
  }
  @Test public void swappedTurnCompletesWithoutRawIdentifiers()throws Exception{
@@ -69,7 +85,7 @@ public class ResidentEgressRedactionInstrumentedTest {
    JSONObject conversation=call("/api/conversations","POST",new JSONObject().put("title","Redaction probe")).getJSONObject("conversation");
    String id=conversation.getString("id"),room=conversation.getString("roomId");
    JSONObject reply=call("/api/conversations/"+id+"/messages","POST",new JSONObject().put("text","Context only, do not repeat it: email "+RAW[0]+", card "+RAW[1]+", SSN "+RAW[2]+". Reply with the value of seven times eight. Do not use tools or create anything.").put("channelType","DM").put("clientMessageId",UUID.randomUUID().toString()));
-   String text=reply.getString("text");proof.put("reply",text).put("replyHas56",text.contains("56"));
+   String text=reply.getString("text");proof.put("replyLength",text.length()).put("replySha256",sha256(text)).put("replyHas56",text.contains("56"));
    for(String raw:RAW)proof.put("replyContains:"+raw,text.contains(raw));
    JSONArray llm=recordedCalls(room);
    String recorded=llm.toString();proof.put("recordedLlmCalls",llm.length()).put("recordedHasSecretPlaceholder",recorded.contains("__ELIZA_SECRET_"));
