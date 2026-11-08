@@ -1916,5 +1916,33 @@
       "Exact reviewed notification, action admission, policy and open callbacks, mark-read and ambiguity reconciliation.",
       "Two owner identities, two UI callback objects, one active explicit operation and one canonical reminder per reply. No mounted shade, history or actual server writes."
     ]
+  },
+  {
+    "path": "specs/quint/application/GoogleCalendarLinkFlow.qnt",
+    "module": "GoogleCalendarLinkFlow",
+    "init": "init",
+    "step": "step",
+    "invariant": "safety",
+    "tests": [
+      "selectResumeAndFinalReadbackTest",
+      "pendingDispatchNeedsChangedReadbackTest",
+      "priorReviewClearsOnlyAtSendTest",
+      "cancellationWhileWaitingMakesNoReadTest",
+      "changedControlRevisionDoesNotResumeTest"
+    ],
+    "invariants": [
+      "ReviewBudget",
+      "NoGrantNoRequest",
+      "ReadbackRequired",
+      "RetainedReview"
+    ],
+    "sources": [
+      "apps/app/src/runtime/google-accounts.ts",
+      "apps/app/src/runtime/agent-calendar.ts"
+    ],
+    "abstractions": [
+      "Current Google Calendar setup from verified grants through bounded review, select, resume and final readback. Preserve exact destination, captured control revision, stable key and most recent readback.",
+      "Two owners and account identities, three destinations, three reviews and at most two writes. AgentCalendar control is a controlled interface in this campaign. Mounted caller and installed provider obligations remain separate."
+    ]
   }
 ]
