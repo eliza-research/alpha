@@ -321,6 +321,7 @@ export function prepareClientFeatures({ root = projectRoot, projectVoice = true,
   for(const [name,file] of speechPatch.files)source.set(name,file);
   const clientPatches = {};
   for (const [key, prefix, name] of [
+    ['filesListIdentityPatch', 'files-list-identity-client', 'plugins/plugin-files/src/browser/files-browser-adapter.ts'],
     ['calendarSemanticPatch', 'calendar-semantic-client', 'packages/contracts/src/calendar-linked-sync.ts'],
     ['inboxConfirmationPatch', 'inbox-confirmation-client', 'plugins/plugin-inbox/src/mailbox/review-controller.ts'],
     ['inboxCleanupPatch', 'inbox-cleanup-client', 'plugins/plugin-inbox/src/mailbox/drafts-controller.ts'],

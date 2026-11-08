@@ -1768,7 +1768,7 @@ registerView("browser", {
     /* tabs */
     var tabCards = st.tabs.map(function (x) {
       var p = brPage(x.hist[x.pos]); var on = x.id === st.cur;
-      return { title: p.title, host: p.host || "New tab", css: on ? "box-shadow:inset 0 0 0 2px var(--acc)" : "", prev: "background:" + imgBg({ news: "news", enclave: "enclave", book: "nopa" }[p.kind] || "-", p.tile), aria: "Switch to " + p.title, closeAria: "Close " + p.title,
+      return { id: x.id, title: p.title, host: p.host || "New tab", css: on ? "box-shadow:inset 0 0 0 2px var(--acc)" : "", prev: "background:" + imgBg({ news: "news", enclave: "enclave", book: "nopa" }[p.kind] || "-", p.tile), aria: "Switch to " + p.title, closeAria: "Close " + p.title,
         pick: function () { set({ cur: x.id, tabsOpen: false }); },
         close: function () {
           var s = api.get("browser"); var rest = s.tabs.filter(function (y) { return y.id !== x.id; });
@@ -1778,9 +1778,9 @@ registerView("browser", {
     });
 
     /* library */
-    var libRows = (st.lib === "history" ? st.visits : st.marks).map(function (u) {
+    var libRows = Array.from(new Set(st.lib === "history" ? st.visits : st.marks)).map(function (u) {
       var p = brPage(u);
-      return { title: p.title, host: p.host + p.path, ini: (p.host || "?").charAt(0).toUpperCase(), css: "background:" + (p.tile && p.tile.indexOf("var") < 0 ? p.tile + ";color:var(--alpha-white)" : "var(--s3)"), go: link(u),
+      return { id: u, title: p.title, host: p.host + p.path, ini: (p.host || "?").charAt(0).toUpperCase(), css: "background:" + (p.tile && p.tile.indexOf("var") < 0 ? p.tile + ";color:var(--alpha-white)" : "var(--s3)"), go: link(u),
         canRemove: st.lib !== "history", removeAria: "Remove bookmark " + p.title, remove: function () { var s = api.get("browser"); set({ marks: s.marks.filter(function (x) { return x !== u; }) }); } };
     });
 
@@ -2229,7 +2229,7 @@ registerView("photos", {
       var on = selecting && sel.indexOf(it.id) >= 0;
       var v = phLook(it, "thumb", null, on);
       return {
-        bg: v.bg, tf: v.tf, flt: v.flt, vid: it.kind === "video" && !selecting, dur: it.dur, fav: !!it.fav && !trashMode && !selecting, selecting: selecting && !trashMode, on: on,
+        id: "fixture:" + it.id, bg: v.bg, tf: v.tf, flt: v.flt, vid: it.kind === "video" && !selecting, dur: it.dur, fav: !!it.fav && !trashMode && !selecting, selecting: selecting && !trashMode, on: on,
         dim: trashMode ? "opacity:.6" : "",
         selCss: on ? "background:var(--acc);box-shadow:0 0 0 2px var(--alpha-white)" : "background:rgba(0,0,0,.7);box-shadow:inset 0 0 0 2px var(--alpha-white)",
         alt: (trashMode ? "Restore " : "") + (it.kind === "video" ? "Video" : "Photo") + ", " + phDayLabel(it.ts, now) + (it.place ? ", " + it.place : ""),
@@ -2265,7 +2265,7 @@ registerView("photos", {
     var groups = []; var gi = {};
     shown.forEach(function (it) {
       var k = phDayKey(it.ts);
-      if (gi[k] == null) { gi[k] = groups.length; groups.push({ label: phDayLabel(it.ts, now), pc: {}, items: [] }); }
+      if (gi[k] == null) { gi[k] = groups.length; groups.push({ id: k, label: phDayLabel(it.ts, now), pc: {}, items: [] }); }
       var g = groups[gi[k]]; g.items.push(thumb(it, seqIds)); if (it.place) g.pc[it.place] = (g.pc[it.place] || 0) + 1;
     });
     groups.forEach(function (g) { g.place = Object.keys(g.pc).sort(function (a, b) { return g.pc[b] - g.pc[a]; }).slice(0, 2).join(", "); });
@@ -2293,7 +2293,7 @@ registerView("photos", {
     function tile(key) {
       var items = albumItems(key); if (!items.length) return null;
       var cov = items.filter(function (it) { return it.kind === "photo" && it.scene !== "portrait" && it.scene !== "selfie"; })[0] || items[0]; var c = phLook(cov, "thumb");
-      return { name: albumName(key), count: items.length, bg: c.bg, tf: c.tf, flt: c.flt, open: function () { api.set({ album: key }); } };
+      return { id: "album:" + key, name: albumName(key), count: items.length, bg: c.bg, tf: c.tf, flt: c.flt, open: function () { api.set({ album: key }); } };
     }
     var keys = (st.albums || []).map(function (a) { return "user:" + a.id; }).concat(["fav", "video"]);
     var pc = {}; list.forEach(function (it) { if (it.place) pc[it.place] = (pc[it.place] || 0) + 1; });
@@ -2304,7 +2304,7 @@ registerView("photos", {
       var mine = list.filter(function (it) { return (it.people || []).indexOf(p.id) >= 0; }); if (!mine.length) return null;
       var cover = mine.filter(function (it) { return it.scene === "portrait" || (it.people.length === 1 && it.figs); })[0] || mine[0];
       var c = phLook(cover, "thumb");
-      return { first: p.name.split(" ")[0], name: p.name, bg: c.bg, tf: c.tf, open: function () { api.set({ album: "person:" + p.id }); } };
+      return { id: p.id, first: p.name.split(" ")[0], name: p.name, bg: c.bg, tf: c.tf, open: function () { api.set({ album: "person:" + p.id }); } };
     }).filter(Boolean);
 
     var alb = null;
@@ -2338,7 +2338,7 @@ registerView("photos", {
         else return false;
       });
       var ed = st.edit || null;
-      var people = (cur.people || []).map(function (id) { var p = api.person(id); return p ? { ini: p.ini, first: p.name.split(" ")[0], label: "Open " + p.name, open: function () { api.open("contacts", { open: id }); } } : null; }).filter(Boolean);
+      var people = (cur.people || []).map(function (id) { var p = api.person(id); return p ? { id: id, ini: p.ini, first: p.name.split(" ")[0], label: "Open " + p.name, open: function () { api.open("contacts", { open: id }); } } : null; }).filter(Boolean);
       vw = {
         bg: look.bg, tf: look.tf, flt: look.flt,
         slide: "transform: translateX(" + (st.vx || 0) + "px); opacity: " + (st.vx ? 0.35 : 1) + "; transition: " + (st.vt ? "transform .32s cubic-bezier(.19,1,.22,1), opacity .25s" : "none"),
@@ -2384,7 +2384,7 @@ registerView("photos", {
           filters: PH_FILTER_LIST.map(function (f) {
             var fl = phLook(cur, "thumb", { filter: f[0] });
             var on = (ed.filter || "none") === f[0];
-            return { label: f[1], bg: fl.bg, flt: fl.flt, on: on, ring: on ? "box-shadow: 0 0 0 2px var(--alpha-black), 0 0 0 4px var(--alpha-white)" : "", lc: on ? "var(--alpha-white)" : "rgba(255,255,255,.6)", pick: function () { var e2 = api.get("photos").edit; api.set({ edit: Object.assign({}, e2, { filter: f[0] }) }); } };
+            return { id: f[0], label: f[1], bg: fl.bg, flt: fl.flt, on: on, ring: on ? "box-shadow: 0 0 0 2px var(--alpha-black), 0 0 0 4px var(--alpha-white)" : "", lc: on ? "var(--alpha-white)" : "rgba(255,255,255,.6)", pick: function () { var e2 = api.get("photos").edit; api.set({ edit: Object.assign({}, e2, { filter: f[0] }) }); } };
           }),
           cancel: function () { api.set({ edit: null }); },
           save: function () { var s = api.get("photos"); var e2 = s.edit; var clean = (!e2.rot && !e2.crop && (e2.filter || "none") === "none") ? null : e2; api.set({ edit: null, list: s.list.map(function (it) { return it.id === cur.id ? Object.assign({}, it, { edit: clean }) : it; }) }); api.toast("Saved"); }
@@ -2398,21 +2398,21 @@ registerView("photos", {
     var share = {
       people: PH_SHARE.map(function (id) {
         var p = api.person(id); if (!p) return null;
-        return { ini: p.ini, first: p.name.split(" ")[0], label: "Send to " + p.name, send: function () { api.set({ sheet: null, sel: null }); api.toast(nShare > 1 ? "Sent " + nShare + " to " + p.name.split(" ")[0] : "Sent to " + p.name.split(" ")[0]); } };
+        return { id: id, ini: p.ini, first: p.name.split(" ")[0], label: "Send to " + p.name, send: function () { api.set({ sheet: null, sel: null }); api.toast(nShare > 1 ? "Sent " + nShare + " to " + p.name.split(" ")[0] : "Sent to " + p.name.split(" ")[0]); } };
       }).filter(Boolean),
       apps: [
         ["bubble", "Messages", function () { api.set({ sheet: null, sel: null }); api.open("messages", { compose: true }); }],
         ["mail", "Mail", function () { api.set({ sheet: null, sel: null }); api.open("inbox", { compose: { subject: nShare > 1 ? nShare + " photos" : "Photo", body: "", attach: shareIds } }); }],
         ["link", "Copy link", function () { api.set({ sheet: null, sel: null }); api.toast("Link copied"); }],
         ["folder", "Files", function () { api.set({ sheet: null, sel: null }); api.toast("Saved to Files"); }]
-      ].map(function (a) { return { d: IC[a[0]], label: a[1], go: a[2] }; })
+      ].map(function (a) { return { id: a[0], d: IC[a[0]], label: a[1], go: a[2] }; })
     };
 
     var nSel = sel ? sel.length : 0;
     return {
       hdr: !selecting && !st.searching, isLib: st.tab !== "alb" || !!st.searching, isAlb: st.tab === "alb" && !st.searching, libTab: st.tab !== "alb",
       title: st.tab === "alb" ? "Albums" : "Photos",
-      tabs: [["lib", "Library", IC.photo], ["alb", "Albums", IC.phAlbums]].map(function (t) { var on = (st.tab || "lib") === t[0]; return { label: t[1], d: t[2], on: on, css: on ? "background:var(--fg);color:var(--bg)" : "color:var(--fg)", pick: function () { api.set({ tab: t[0], sel: null }); } }; }),
+      tabs: [["lib", "Library", IC.photo], ["alb", "Albums", IC.phAlbums]].map(function (t) { var on = (st.tab || "lib") === t[0]; return { id: t[0], label: t[1], d: t[2], on: on, css: on ? "background:var(--fg);color:var(--bg)" : "color:var(--fg)", pick: function () { api.set({ tab: t[0], sel: null }); } }; }),
       searching: !!st.searching, q: st.q || "", hasQ: !!(st.q || "").trim(), askLabel: "Ask " + api.name + ": “" + (st.q || "").trim() + "”",
       search: function () { api.set({ searching: true, q: "", sel: null, album: null }); },
       onQ: function (e) { api.set({ q: e.target.value }); },
@@ -2711,7 +2711,7 @@ registerView("maps", {
     else pinList = [dst.id];
     var pins = pinList.map(function (id) {
       var p = mapsPlace(id); var o = scr(p.x, p.y); var big = mode !== "base" && mode !== "results";
-      return { l: o.l, t: o.t, d: IC[p.icon], name: p.name, sz: big ? 44 : 34, off: big ? -22 : -17, isz: big ? 20 : 16,
+      return { id: id, l: o.l, t: o.t, d: IC[p.icon], name: p.name, sz: big ? 44 : 34, off: big ? -22 : -17, isz: big ? 20 : 16,
         css: big ? "background: var(--acc); color: var(--alpha-white); box-shadow: 0 0 0 3px var(--alpha-white), 0 6px 18px rgba(0,0,0,.25)" : "background: var(--bg); color: var(--fg); box-shadow: 0 0 0 1.5px var(--line), 0 4px 12px var(--shc)",
         tap: function () { if (tapGuard() || mode === "nav" || mode === "dir") return; api.set({ place: id, pan: null }); } };
     });
@@ -2734,15 +2734,15 @@ registerView("maps", {
     /* saved chips */
     var chips = mapsSavedIds(st).map(function (id) {
       var p = mapsPlace(id);
-      return { label: id === MAPS_FIX.work ? MAPS_FIX.workLabel || p.name : p.name, d: IC[p.icon], go: function () { api.set({ place: id, pan: null }); } };
+      return { id: id, label: id === MAPS_FIX.work ? MAPS_FIX.workLabel || p.name : p.name, d: IC[p.icon], go: function () { api.set({ place: id, pan: null }); } };
     });
     var cats = [["Coffee", "mapsCup", "coffee"], ["Food", "mapsFood", "food"], ["Gym", "mapsGym", "gym"]].map(function (c) {
-      return { label: c[0], d: IC[c[1]], go: function () { api.set({ query: c[2], sheet: "half", place: null, pan: null }); } };
+      return { id: c[2], label: c[0], d: IC[c[1]], go: function () { api.set({ query: c[2], sheet: "half", place: null, pan: null }); } };
     });
 
     var row = function (p) {
       var h = mapsHours(p, api.now);
-      return { name: p.name, d: IC[p.icon], sub: p.cat + " · " + mapsMi(p.mi) + " mi" + (h ? " · " + (h.open ? "Open" : "Closed") : ""), go: function () { api.set({ place: p.id, pan: null }); } };
+      return { id: p.id, name: p.name, d: IC[p.icon], sub: p.cat + " · " + mapsMi(p.mi) + " mi" + (h ? " · " + (h.open ? "Open" : "Closed") : ""), go: function () { api.set({ place: p.id, pan: null }); } };
     };
     var savedRows = mapsSavedIds(st).map(function (id) { var r = row(mapsPlace(id)); if (id === MAPS_FIX.work && MAPS_FIX.workName) r.name = MAPS_FIX.workName; return r; });
     var q = st.query || "";
@@ -3609,7 +3609,7 @@ registerView("files", {
     /* top level */
     var locs = FILES_FOLDERS.filter(function (d) { return !d.parent; }).map(function (d) {
       var n = filesCount(files, d.id);
-      return { name: d.id, d: IC[d.icon], sub: n === 1 ? "1 item" : n + " items", go: function () { api.set({ folder: d.id, q: null }); } };
+      return { id: "category:" + d.id, name: d.id, d: IC[d.icon], sub: n === 1 ? "1 item" : n + " items", go: function () { api.set({ folder: d.id, q: null }); } };
     });
     var q = st.q == null ? null : String(st.q).toLowerCase().trim();
     var results = q ? files.filter(function (f) { return filesNorm(f.name + " " + f.folder + " " + (FILES_TYPES[f.type] || {}).label).indexOf(filesNorm(q)) >= 0; }).map(row) : [];
@@ -3626,7 +3626,7 @@ registerView("files", {
         toggleView: function () { api.set({ grid: !st.grid }); },
         hasMenu: true, hasCrumbs: false, openMenu: function () { api.set({ menu: true }); },
         menuRows: [["list", IC.filesRows, "List", !st.grid, { grid: false }], ["grid", IC.grid, "Grid", !!st.grid, { grid: true }], ["recent", IC.clock, "Newest first", st.sort !== "name", { sort: "recent" }], ["name", IC.filesSort, "Name", st.sort === "name", { sort: "name" }]].map(function (m) {
-          return { label: m[2], d: m[1], on: m[3], go: function () { api.set(Object.assign({ menu: false }, m[4])); } };
+          return { id: m[0], label: m[2], d: m[1], on: m[3], go: function () { api.set(Object.assign({ menu: false }, m[4])); } };
         }),
         sortLabel: st.sort === "name" ? "Sort by date" : "Sort by name", sortCss: st.sort === "name" ? "color: var(--acct)" : "",
         toggleSort: function () { var nx = st.sort === "name" ? "recent" : "name"; api.set({ sort: nx }); },
@@ -3708,7 +3708,7 @@ registerView("files", {
     var curFolder = f ? f.folder : st.folder;
     var moveTo = FILES_FOLDERS.map(function (d) {
       var here = d.id === curFolder;
-      return { name: d.id, d: IC[d.icon] || IC.folder, here: here, notHere: !here, sub: d.parent ? d.parent : "",
+      return { id: d.id, name: d.id, d: IC[d.icon] || IC.folder, here: here, notHere: !here, sub: d.parent ? d.parent : "",
         go: function () {
           if (here) { api.set({ sheet: null }); return; }
           var ids = targetIds.slice();

@@ -1,0 +1,66 @@
+--- a/plugins/plugin-files/src/browser/files-browser-adapter.ts
++++ b/plugins/plugin-files/src/browser/files-browser-adapter.ts
+@@ -1010,7 +1010,7 @@
+           .filter(Boolean)
+           .join(" · ");
+     return {
+-      id: entry.path,
++      id: JSON.stringify([place.kind === "folder" ? place.volume || "primary" : "primary", entry.path]),
+       name: entry.name,
+       sub: meta,
+       d: iconFor(entry),
+@@ -1106,6 +1106,7 @@
+       allFiles: () => go(rootFolder),
+       allFilesIcon: ICONS.folder,
+       cats: CATEGORIES.map(({ id, label }) => ({
++        id,
+         name: label,
+         d: ICONS[id],
+         count: counts[id] === undefined ? "" : String(counts[id]),
+@@ -1113,6 +1114,7 @@
+         go: () => go({ kind: "category", category: id }),
+       })),
+       vols: volumes.map((volume) => ({
++        id: volume.id,
+         name: volume.name,
+         free: formatFree(volume),
+         barW:
+@@ -1255,6 +1257,7 @@
+         crumbs:
+           at.kind === "folder"
+             ? breadcrumbs(at.path, volumeName).map((crumb, index, all) => ({
++                id: JSON.stringify([at.volume || "primary", crumb.path]),
+                 label: crumb.label,
+                 last: index === all.length - 1,
+                 notLast: index < all.length - 1,
+@@ -1281,12 +1284,14 @@
+         moreD: ICONS.more,
+         menuRows: [
+           ...(["name", "date", "size"] as SortMode[]).map((mode) => ({
++            id: "sort:" + mode,
+             label: SORT_LABELS[mode] + (sort === mode ? " · " + (mode === "name" ? (state.sortReverse ? "Z–A" : "A–Z") : mode === "date" ? (state.sortReverse ? "Oldest first" : "Newest first") : (state.sortReverse ? "Smallest first" : "Largest first")) : ""),
+             d: ICONS.sort,
+             on: sort === mode,
+             go: () => currentApi.set({ menu: false, sort: mode, sortReverse: sort === mode ? !state.sortReverse : false }),
+           })),
+           {
++            id: "reverse-order",
+             label: "Reverse order",
+             d: ICONS.sort,
+             on: state.sortReverse === true,
+@@ -1295,6 +1300,7 @@
+           ...(listed && items.length
+             ? [
+                 {
++                  id: "select",
+                   label: "Select",
+                   d: ICONS.check,
+                   on: false,
+@@ -1458,6 +1464,7 @@
+                       ),
+                   )
+                   .map((f) => ({
++                    id: JSON.stringify([d.volume || "primary", f.path]),
+                     name: f.name,
+                     label: "Open " + f.name,
+                     d: ICONS.folder,

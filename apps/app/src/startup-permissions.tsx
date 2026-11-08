@@ -105,7 +105,16 @@ export function StartupPermissions({active:enabled = true}: {active?: boolean} =
     progressRef.current = value; setProgress(value);
   };
 
-  useEffect(() => { if (!enabled) ++sequence.current; }, [enabled, connection.cloudAccount?.credentialId]);
+  const invalidatePending = () => {
+    ++sequence.current;
+    ++action.current;
+    actionPending.current = false;
+    setBusy(false);
+  };
+  const contextCurrent = (ticket: number, credentialId: string | undefined) =>
+    alive.current && ticket === sequence.current &&
+    connectionController.getSnapshot().cloudAccount?.credentialId === credentialId;
+  useLayoutEffect(() => { invalidatePending(); }, [enabled, connection.cloudAccount?.credentialId]);
   useEffect(() => {
     if (!connection.setupRevision) return;
     // Sign-in retires any in-flight request; its late answer advances nothing and cannot hold Checking.
@@ -193,19 +202,21 @@ export function StartupPermissions({active:enabled = true}: {active?: boolean} =
   }
   async function allow() {
     if (actionPending.current) return;
+    const ticket = sequence.current, credentialId = connection.cloudAccount?.credentialId;
+    if (!contextCurrent(ticket, credentialId)) return;
     if (target && !native && state === 'ready') {advance('continued'); return;}
     actionPending.current = true; setBusy(true);setCheckNotice('');
-    const ticket = sequence.current, id = ++action.current;
+    const id = ++action.current;
     try {
       let value: StartupPermissionState | null;
       if (target && native && state === 'ready') {await (key === 'files' ? files.storageRequestAccess({settings: true}) : device.openSettings({page: key === 'notifications' ? 'notifications' : 'privacy'})); value = await flows[key].refresh();}
       else value = state === 'unavailable' || (!native && state === 'settings') ? await flows[key].refresh() : await flows[key].enable();
-      if (alive.current && ticket === sequence.current && value !== null) {
+      if (contextCurrent(ticket, credentialId) && value !== null) {
         setStates(previous => ({...previous, [key]: value}));
         if (value === 'ready' && !target) advance(state === 'ready' ? 'continued' : 'allowed');
         else if (!native && value !== 'ready') setCheckNotice(value === 'settings' ? 'Access is still off. Change it using the site controls.' : 'This browser could not confirm access.');
-      } else if (alive.current && value !== null) setStates(previous => ({...previous, [key]: value})); // Retired: show current access, never advance.
-    } catch {if (alive.current && ticket === sequence.current) setStates(previous => ({...previous, [key]: 'unavailable'}));}
+      }
+    } catch {if (contextCurrent(ticket, credentialId)) setStates(previous => ({...previous, [key]: 'unavailable'}));}
     finally {if (id === action.current) {actionPending.current = false; if (alive.current) setBusy(false);}}
   }
   function finish() {

@@ -5,12 +5,12 @@ import vm from 'node:vm';
 import {stripTypeScriptTypes} from './support/strip-types.mjs';
 const source=stripTypeScriptTypes(fs.readFileSync('.eliza/client-features/plugins/plugin-files/src/browser/files-browser-adapter.ts','utf8').replace(/^import[\s\S]*?;\n/gm,'').replace(/^export /gm,''),{mode:'transform'});
 const rules=stripTypeScriptTypes(fs.readFileSync('.eliza/client-features/plugins/plugin-files/src/browser/storage-model.ts','utf8').replace(/^export /gm,''),{mode:'transform'});
-async function harness(){
+async function harness({volumes=[]}={}){
  let resolve,active=true,agent;const doc=Object.assign(new EventTarget(),{hidden:false}),toasts=[];let failForget=false;
  const result=new Promise(done=>{resolve=done;}),accepted=[],forgotten=[],calls=[],state={};
  const entry={path:'Documents/fixture.txt',name:'fixture.txt',mimeType:'text/plain',directory:false,size:7,modified:1};
  const api={ic:{},get:()=>state,set:patch=>Object.assign(state,patch),isActive:()=>active,toast:message=>toasts.push(message)};
- const storage={storageSelect:input=>{calls.push(input);return result;},storageState:async()=>({status:'ready',access:'granted',volumes:[]}),storageCategory:async()=>({status:'ready',entries:[entry]}),storageTrashList:async()=>({status:'ready',items:[]}),storageWatch:async()=>({status:'ready'}),storageUnwatch:async()=>({status:'ready'}),addListener:async()=>({remove:async()=>{}})};
+ const storage={storageSelect:input=>{calls.push(input);return result;},storageState:async()=>({status:'ready',access:'granted',volumes}),storageCategory:async()=>({status:'ready',entries:[entry]}),storageTrashList:async()=>({status:'ready',items:[]}),storageWatch:async()=>({status:'ready'}),storageUnwatch:async()=>({status:'ready'}),addListener:async()=>({remove:async()=>{}})};
  const view={render:()=>({}),onLeave(){}};
  const ctx=vm.createContext({setTimeout,clearTimeout,queueMicrotask,window:new EventTarget(),CustomEvent:class{},HTMLElement:class{},document:doc});
  vm.runInContext(rules+';'+source+';globalThis.install=installFilesBrowserAdapter',ctx);
@@ -20,7 +20,7 @@ async function harness(){
  });
  const settle=async()=>{for(let i=0;i<30;i++)await Promise.resolve();};
  view.render(state,api);await settle();view.render(state,api).browse.cats.find(row=>row.name==='Documents').go();await settle();
- return {accepted,forgotten,calls,toasts,doc,failRelease(){failForget=true;},pick(){view.render(state,api).fd.items[0].tap();},agentOpen(){return agent.run({type:'files_open',path:entry.path},new AbortController().signal);},release:value=>resolve(value),leave(){active=false;view.onLeave(api);},return(){active=true;view.render(state,api);},settle};
+ return {render:()=>view.render(state,api),accepted,forgotten,calls,toasts,doc,failRelease(){failForget=true;},pick(){view.render(state,api).fd.items[0].tap();},agentOpen(){return agent.run({type:'files_open',path:entry.path},new AbortController().signal);},release:value=>resolve(value),leave(){active=false;view.onLeave(api);},return(){active=true;view.render(state,api);},settle};
 }
 const selected={status:'selected',action:'files',selectionId:'owned-selected-fixture',name:'fixture.txt',mimeType:'text/plain'};
 test('an active storage selection accepts its result once',async()=>{
@@ -43,4 +43,19 @@ test('a failed release of a late selection does not toast the owner who left',as
 });
 test('an agent file-open cannot revive a selection after leaving and returning',async()=>{
  const h=await harness();const pending=h.agentOpen();await h.settle();h.leave();h.return();h.release(selected);const outcome=await pending;await h.settle();assert.equal(outcome.status,'failed');assert.deepEqual(h.accepted,[]);assert.deepEqual(h.forgotten,[selected.selectionId]);
+});
+
+test('current Files rows retain semantic identities despite identical storage labels',async()=>{
+ const h=await harness({volumes:[
+  {id:'primary',name:'Storage',primary:true,total:100,free:50},
+  {id:'removable',name:'Storage',primary:false,total:100,free:50},
+ ]});
+ const rendered=h.render();
+ assert.deepEqual(Array.from(rendered.browse.vols,row=>row.id),['primary','removable']);
+ const categoryIds=Array.from(rendered.browse.cats,row=>row.id);
+ assert.equal(new Set(categoryIds).size,categoryIds.length);
+ assert.equal(rendered.fd.items[0].id,JSON.stringify(['primary','Documents/fixture.txt']));
+ const sort=rendered.fd.menuRows.find(row=>row.id==='sort:name');
+ assert.ok(sort);sort.go();
+ assert.ok(h.render().fd.menuRows.some(row=>row.id==='sort:name'));
 });

@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
-import {stripTypeScriptTypes} from 'node:module';
+import {stripTypeScriptTypes} from './support/strip-types.mjs';
 import vm from 'node:vm';
 
 // spec-cloud-sign-in-F02: native retains one signInIncomplete across a process restart and delivers
@@ -61,4 +61,18 @@ test('other codes are ignored',()=>{
   box.connectionController.signInIncomplete({code:'other'});box.connectionController.signInIncomplete(null);
   box.runQueuedSignInReturn();
   assert.equal(box.state.error,'');
+});
+
+test('native storage refusal survives pending startup and keeps its specific recovery message',()=>{
+ const box=harness({startupResolved:false,signIn:{step:'google',environment:'production'}});
+ box.operation={};box.connectionController.signInIncomplete({code:'storage'});
+ assert.equal(box.state.error,'');
+ box.operation=null;box.update({startupResolved:true});box.runQueuedSignInReturn();
+ assert.equal(box.state.error,'failure:storage');
+ assert.equal(box.state.signIn.step,'choose');
+ box.update({error:''});box.runQueuedSignInReturn();assert.equal(box.state.error,'');
+});
+test('an idle native storage refusal is shown without starting a credential write',()=>{
+ const box=harness({startupResolved:true});box.connectionController.signInIncomplete({code:'storage'});
+ assert.equal(box.state.error,'failure:storage');assert.deepEqual(box.returned,[]);
 });

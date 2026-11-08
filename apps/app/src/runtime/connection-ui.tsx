@@ -1094,13 +1094,13 @@ function rebindResident() {
 /** A native sign-in return that arrived while another step was running; handled once it ends. */
 let queuedSignInReturn: unknown = null;
 /** A return without a sign-in result that arrived during a step or before startup settled. */
-let queuedSignInIncomplete: { restarted: boolean } | null = null;
+let queuedSignInIncomplete: { restarted: boolean; code?: 'storage' } | null = null;
 function runQueuedSignInReturn() {
   if (queuedSignInReturn !== null && !operation) { const value = queuedSignInReturn; queuedSignInReturn = null; void connectionController.signInReturned(value); }
-  if (queuedSignInIncomplete && !operation && state.startupResolved) { const { restarted } = queuedSignInIncomplete; queuedSignInIncomplete = null; showSignInIncomplete(restarted); }
+  if (queuedSignInIncomplete && !operation && state.startupResolved) { const { restarted, code } = queuedSignInIncomplete; queuedSignInIncomplete = null; showSignInIncomplete(restarted, code); }
 }
-function showSignInIncomplete(restarted: boolean) {
-  update({ open: true, signIn: state.signIn ? { step: 'choose', environment: state.signIn.environment } : state.signIn, message: '', error: restarted ? 'Alpha restarted before your sign-in finished. Sign in again.' : signInFailureMessage('app-link-unverified') });
+function showSignInIncomplete(restarted: boolean, code?: 'storage') {
+  update({ open: true, signIn: state.signIn ? { step: 'choose', environment: state.signIn.environment } : state.signIn, message: '', error: code === 'storage' ? signInFailureMessage(code) : restarted ? 'Alpha restarted before your sign-in finished. Sign in again.' : signInFailureMessage('app-link-unverified') });
 }
 function runQueuedResidentRebind() { if (residentRebindQueue?.pending && residentCloudFlow()) void residentRebindQueue.resume(rebindResident, residentRebindBlocked)?.catch(() => {}); }
 async function remoteIdentity(remote: RemoteProtocol, signal: AbortSignal) {
@@ -3054,11 +3054,11 @@ export const connectionController = {
    */
   signInIncomplete(value: unknown) {
     const code = value && typeof value === 'object' ? (value as { code?: unknown }).code : undefined;
-    if (code !== 'app-link-unverified') return;
+    if (code !== 'app-link-unverified' && code !== 'storage') return;
     // Retained across a process restart, the event can land while startup runs; it waits for startup
     // to settle so the start does not clear it, and then says the restart is why.
-    if (operation || !state.startupResolved) { queuedSignInIncomplete = { restarted: queuedSignInIncomplete?.restarted || !state.startupResolved }; return; }
-    showSignInIncomplete(false);
+    if (operation || !state.startupResolved) { queuedSignInIncomplete = { restarted: queuedSignInIncomplete?.restarted || !state.startupResolved, ...(code === 'storage' ? {code} : {}) }; return; }
+    showSignInIncomplete(false, code === 'storage' ? code : undefined);
   },
   /**
    * The Cloud sign-in hand-off in the browser (cli-session), used by the explicit browser
