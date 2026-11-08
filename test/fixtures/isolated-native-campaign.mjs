@@ -5,11 +5,13 @@ import os from 'node:os';
 import path from 'node:path';
 import {spawnSync} from 'node:child_process';
 const scripts={'recovery':path.resolve('scripts/test-reminder-recovery.mjs'),'recurrence-recovery':path.resolve('scripts/test-reminder-recurrence-recovery.mjs'),'one-off':path.resolve('scripts/test-reminder-one-off.mjs'),recurrence:path.resolve('scripts/test-reminder-recurrence.mjs'),workflow:path.resolve('scripts/android-workflow-native.mjs'),calendar:path.resolve('scripts/test-calendar-regression.mjs'),camera:path.resolve('scripts/test-native-permissions.mjs'),'camera-capture':path.resolve('scripts/test-native-permissions.mjs'),settings:path.resolve('scripts/test-native-permissions.mjs'),channels:path.resolve('scripts/test-native-permissions.mjs'),voice:path.resolve('scripts/test-native-permissions.mjs'),'voice-revoke':path.resolve('scripts/test-native-permissions.mjs'),'voice-limit':path.resolve('scripts/test-native-permissions.mjs'),notice:path.resolve('scripts/test-native-permissions.mjs'),'notice-denied':path.resolve('scripts/test-native-permissions.mjs')};
+// Kinds the native-permissions runner owns.
+export const permissionCampaign=['camera','camera-capture','settings','channels','voice','voice-revoke','voice-limit','notice','notice-denied'];
 export function exercise(mode,kind='calendar',extraArguments=[]){
  const homePackage=mode==='google-home'?'com.google.android.apps.nexuslauncher':'com.android.launcher3';
  const restartCampaign=['inbox','notes','document','text-scale','tree','bookmark','notes-secure-migration','crash-log','theme','source-reference'].includes(kind);
  const reminderCampaign=['one-off','recurrence','recovery','recurrence-recovery'].includes(kind);
- const permissionCampaign=['camera','camera-capture','settings','channels','voice','voice-revoke','voice-limit','notice','notice-denied'].includes(kind);
+ const permissionCase=permissionCampaign.includes(kind);
  const root=fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(),'alpha-calendar-runner-')));
  try{
   const selectedClass={'home-card':'HomeCalendarCardInstrumentedTest','home-card-revoked':'HomeCalendarCardInstrumentedTest','notes-secure-migration':'NotesSecureStorageInstrumentedTest','crash-log':'SettingsCrashLogInstrumentedTest',theme:'SettingsFlowInstrumentedTest','source-reference':'SelectedDocumentInstrumentedTest','text-scale':'TextScaleInstrumentedTest',tree:'FilesTreeRestartInstrumentedTest',bookmark:'BrowserContinuityInstrumentedTest','recovery':'ReminderRecoveryInstrumentedTest','recurrence-recovery':'ReminderRecurrenceRecoveryInstrumentedTest','one-off':'ReminderOneOffInstrumentedTest',recurrence:'ReminderRecurrenceInstrumentedTest',inbox:'InboxDraftInstrumentedTest',notes:'NotesDocumentInstrumentedTest',document:'SelectedDocumentInstrumentedTest','camera-capture':'CameraFlowInstrumentedTest',settings:'SettingsNativeInstrumentedTest',channels:'NotificationChannelsInstrumentedTest',voice:'VoicePermissionDeniedInstrumentedTest','voice-revoke':'VoicePermissionRevokeInstrumentedTest','voice-limit':'LocalVoiceRecordingLimitInstrumentedTest',notice:'HostedResultNoticeInstrumentedTest','notice-denied':'HostedResultNoticeInstrumentedTest',agent:'CalendarAgentCrudInstrumentedTest',options:'CalendarAgentCrudInstrumentedTest','agent-class':'CalendarAgentCrudInstrumentedTest',availability:'CalendarAvailabilityInstrumentedTest',range:'CalendarRangeInstrumentedTest',truncation:'CalendarTruncationInstrumentedTest','calendar-flow':'CalendarFlowInstrumentedTest'}[kind]??'CalendarCreationRecoveryInstrumentedTest';
@@ -27,14 +29,28 @@ export function exercise(mode,kind='calendar',extraArguments=[]){
   for(const variant of ['standalone','launcher'])for(const [name,source] of [[variant+'-debug.apk',apk],[variant+'-androidTest.apk',testApk]])fs.copyFileSync(source,path.join(mocks,name));
   fs.writeFileSync(path.join(mocks,'apk-manifest.json'),JSON.stringify({testMocks:true,results:['standalone','launcher'].map(variant=>({variant,mode:'debug',sha256:hash(apk),versionCode:1})),instrumentation:Object.fromEntries(['standalone','launcher'].map(variant=>[variant,{sha256:hash(testApk)}]))}));
   if(mode==='pair-mismatch')fs.writeFileSync(path.join(mocks,'standalone-androidTest.apk'),'a test APK from another build');
+  // The workflow campaign reads a flag-off archive and, for its owner-fixture cases, a separate test-mocks archive.
+  const mocksArchive=path.join(root,'mocks-archive');
+  if(kind==='workflow'){
+   fs.writeFileSync(path.join(root,'artifacts/archive-source.json'),JSON.stringify({kind:'developer-archive',testMocks:mode==='mislabelled-build-archive'}));
+   fs.mkdirSync(mocksArchive);const mocks={};
+   for(const name of ['standalone-debug.apk','standalone-androidTest.apk','launcher-debug.apk','launcher-androidTest.apk']){fs.writeFileSync(path.join(mocksArchive,name),'test-mocks '+name);mocks[name]=hash(path.join(mocksArchive,name));}
+   fs.writeFileSync(path.join(mocksArchive,'apk-manifest.json'),JSON.stringify(mocks));
+   fs.writeFileSync(path.join(mocksArchive,'archive-source.json'),JSON.stringify({kind:'developer-archive',testMocks:mode!=='mislabelled-mocks-archive'}));
+  }
   const jdk=path.join(root,'jdk');fs.mkdirSync(jdk);fs.writeFileSync(path.join(jdk,'release'),'JAVA_VERSION="21.0.1"');
   if(mode==='archive-pin')fs.writeFileSync(cameraTest,'changed');
   if(mode==='companion-pin'){const file=path.join(root,'artifacts/calendar-external/ws.xsoh.etar_57.apk');fs.mkdirSync(path.dirname(file),{recursive:true});fs.writeFileSync(file,'unreviewed APK');}
   fs.writeFileSync(path.join(root,'app.config.json'),JSON.stringify({appId:pkg}));
   const adb=path.join(root,'platform-tools/adb'),aapt=path.join(root,'build-tools/36.0.0/aapt'),state=path.join(root,'state.json'),log=path.join(root,'commands.jsonl');
   fs.mkdirSync(path.dirname(adb),{recursive:true});fs.mkdirSync(path.dirname(aapt),{recursive:true});fs.writeFileSync(log,'');fs.writeFileSync(state,JSON.stringify({user:'0',created:false,files:mode==='existing'?{[pkg]:'unowned'}:{}}));
-  fs.writeFileSync(aapt,`#!/usr/bin/env node
-const args=process.argv.slice(2);if(args[1]==='badging')console.log("package: name='${pkg}"+(args[2].includes('androidTest')?'.test':'')+"'");else console.log('E: manifest\\n  E: instrumentation\\n    A: android:name="androidx.test.runner.AndroidJUnitRunner"\\n    A: android:targetPackage="${pkg}"\\n  E: instrumentation\\n    A: android:name="${pkg}.WorkflowNoticeProcessRunner"\\n    A: android:targetPackage="${pkg}"');
+  // Canned aapt output: a shell script, so each call does not start Node.
+  fs.writeFileSync(aapt,`#!/bin/sh
+if [ "$2" = badging ]; then
+ case "$3" in *androidTest*) echo "package: name='${pkg}.test'";; *) echo "package: name='${pkg}'";; esac
+else
+ printf '%s\\n' 'E: manifest' '  E: instrumentation' '    A: android:name="androidx.test.runner.AndroidJUnitRunner"' '    A: android:targetPackage="${pkg}"' '  E: instrumentation' '    A: android:name="${pkg}.WorkflowNoticeProcessRunner"' '    A: android:targetPackage="${pkg}"'
+fi
 `,{mode:0o700});
   fs.writeFileSync(adb,`#!/usr/bin/env node
 const fs=require('node:fs'),a=process.argv.slice(4),file=${JSON.stringify(state)},s=JSON.parse(fs.readFileSync(file)),pkg=${JSON.stringify(pkg)},mode=${JSON.stringify(mode)};const save=()=>{const next=file+'.'+process.pid+'.tmp';fs.writeFileSync(next,JSON.stringify(s));fs.renameSync(next,file);};fs.appendFileSync(${JSON.stringify(log)},JSON.stringify(a)+'\\n');
@@ -126,16 +142,16 @@ else if(a.includes('instrument')){
 else{console.error('Unexpected command '+JSON.stringify(a));process.exit(1);}
 `,{mode:0o700});
   const testClass=mode==='companion-pin'?'CalendarExternalEditorInstrumentedTest':selectedClass;
-  const run=spawnSync(process.execPath,[restartCampaign?path.resolve('scripts/test-native-restart.mjs'):scripts[kind]??scripts.calendar,...(kind==='workflow'?extraArguments:permissionCampaign||restartCampaign?[kind,apk,cameraTest,path.join(root,'output')]:reminderCampaign?[apk,cameraTest,path.join(root,'output')]:[`--case=${['agent','options','home-card','home-card-revoked'].includes(kind)?testClass+'#'+selectedMethod:testClass}`,'--variant=standalone',...(mode==='companion-pin'?['--external']:[])])],{cwd:root,env:{...process.env,ALPHA_CALENDAR_TEST_ROOT:root,ALPHA_CALENDAR_TEST_SERIAL:'emulator-5580',ALPHA_CALENDAR_TEST_AVD:'calendar-fixture',ALPHA_CALENDAR_TEST_ABI:'x86_64',ANDROID_HOME:root,ANDROID_SDK_ROOT:root,JAVA_HOME:jdk,ANDROID_SERIAL:'emulator-5580',ALPHA_TEST_HOME_PACKAGE:homePackage,ALPHA_NATIVE_TEST_AVD:'calendar-fixture',ALPHA_NATIVE_TEST_ABI:'x86_64',ALPHA_BUILD_ARCHIVE:path.join(root,'artifacts'),ALPHA_CAMPAIGN_OUTPUT:path.join(root,'test-results/workflow'),ALPHA_WORKFLOW_TEST_AVD:'calendar-fixture',ALPHA_WORKFLOW_TEST_ABI:'x86_64',ELIZA_DEVICE_LEASE_DIR:path.join(root,'leases')},encoding:'utf8',timeout:kind==='workflow'?360000:120000});
+  const run=spawnSync(process.execPath,[restartCampaign?path.resolve('scripts/test-native-restart.mjs'):scripts[kind]??scripts.calendar,...(kind==='workflow'?extraArguments:permissionCase||restartCampaign?[kind,apk,cameraTest,path.join(root,'output')]:reminderCampaign?[apk,cameraTest,path.join(root,'output')]:[`--case=${['agent','options','home-card','home-card-revoked'].includes(kind)?testClass+'#'+selectedMethod:testClass}`,'--variant=standalone',...(mode==='companion-pin'?['--external']:[])])],{cwd:root,env:{...process.env,ALPHA_CALENDAR_TEST_ROOT:root,ALPHA_CALENDAR_TEST_SERIAL:'emulator-5580',ALPHA_CALENDAR_TEST_AVD:'calendar-fixture',ALPHA_CALENDAR_TEST_ABI:'x86_64',ANDROID_HOME:root,ANDROID_SDK_ROOT:root,JAVA_HOME:jdk,ANDROID_SERIAL:'emulator-5580',ALPHA_TEST_HOME_PACKAGE:homePackage,ALPHA_NATIVE_TEST_AVD:'calendar-fixture',ALPHA_NATIVE_TEST_ABI:'x86_64',ALPHA_BUILD_ARCHIVE:path.join(root,'artifacts'),ALPHA_TEST_MOCKS_ARCHIVE:kind==='workflow'&&mode!=='no-mocks-archive'?mocksArchive:'',ALPHA_CAMPAIGN_OUTPUT:path.join(root,'test-results/workflow'),ALPHA_WORKFLOW_TEST_AVD:'calendar-fixture',ALPHA_WORKFLOW_TEST_ABI:'x86_64',ELIZA_DEVICE_LEASE_DIR:path.join(root,'leases')},encoding:'utf8',timeout:kind==='workflow'?360000:120000});
   // Source authentication alone can exceed the old whole-fixture deadline.
   // Surface process failures before reading output that may never have been created.
   assert.ifError(run.error);
   // A refused APK pair stops the Calendar runner before it leases the device or writes evidence.
   if(mode==='pair-mismatch')return {code:run.status,stderr:run.stderr,state:JSON.parse(fs.readFileSync(state)),commands:fs.readFileSync(log,'utf8').trim().split('\n').filter(Boolean).map(JSON.parse),evidence:fs.existsSync(path.join(root,'test-results'))};
-  if(!permissionCampaign&&!restartCampaign&&!reminderCampaign&&kind!=='workflow')assert.ok(fs.existsSync(path.join(root,'test-results')),`Native fixture exited before writing evidence (status ${run.status}):\n${run.stdout}\n${run.stderr}`);
-  const directory=kind==='workflow'?path.join(root,'test-results/workflow'):permissionCampaign||restartCampaign||reminderCampaign?path.join(root,'output'):path.join(root,'test-results',fs.readdirSync(path.join(root,'test-results'))[0],`standalone-${testClass}${['options','home-card-revoked'].includes(kind)?'-'+selectedMethod:''}`);
+  if(!permissionCase&&!restartCampaign&&!reminderCampaign&&kind!=='workflow')assert.ok(fs.existsSync(path.join(root,'test-results')),`Native fixture exited before writing evidence (status ${run.status}):\n${run.stdout}\n${run.stderr}`);
+  const directory=kind==='workflow'?path.join(root,'test-results/workflow'):permissionCase||restartCampaign||reminderCampaign?path.join(root,'output'):path.join(root,'test-results',fs.readdirSync(path.join(root,'test-results'))[0],`standalone-${testClass}${['options','home-card-revoked'].includes(kind)?'-'+selectedMethod:''}`);
   // Every result folder a Calendar run wrote, by name: a class selected with two methods writes two.
-  const calendarOutput=kind!=='workflow'&&!permissionCampaign&&!restartCampaign&&!reminderCampaign?path.dirname(directory):null;
+  const calendarOutput=kind!=='workflow'&&!permissionCase&&!restartCampaign&&!reminderCampaign?path.dirname(directory):null;
   const records=calendarOutput&&fs.existsSync(calendarOutput)?Object.fromEntries(fs.readdirSync(calendarOutput).sort().map(name=>[name,fs.existsSync(path.join(calendarOutput,name,'result.json'))?JSON.parse(fs.readFileSync(path.join(calendarOutput,name,'result.json'),'utf8')):null])):{};
   return {code:run.status,stderr:run.stderr,records,record:fs.existsSync(path.join(directory,'result.json'))?JSON.parse(fs.readFileSync(path.join(directory,'result.json'),'utf8')):null,state:JSON.parse(fs.readFileSync(state)),commands:fs.readFileSync(log,'utf8').trim().split('\n').filter(Boolean).map(JSON.parse),log:kind==='workflow'&&fs.existsSync(path.join(directory,'standalone-privateReadResultSurvivesRecreationButNeverExpandsPassiveHistory/standalone.log'))?fs.readFileSync(path.join(directory,'standalone-privateReadResultSurvivesRecreationButNeverExpandsPassiveHistory/standalone.log'),'utf8'):fs.existsSync(path.join(directory,'standalone.log'))?fs.readFileSync(path.join(directory,'standalone.log'),'utf8'):''};
  }finally{fs.rmSync(root,{recursive:true,force:true});}
