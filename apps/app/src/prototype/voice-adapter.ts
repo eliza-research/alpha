@@ -11,7 +11,6 @@ import {developmentCartesiaConversation,developmentCartesiaVoiceEnabled} from '.
 import {BatchVoiceConversation,type BatchVoiceState} from '@elizaos/ui/voice/batch-conversation';
 import {recordingRevision} from './summary-source';
 import {noteOriginFor,voiceNoteContentRevision} from '../runtime/note-origin';
-import {reviewContentQuestion} from '../browser/content-question';
 import {recordingLevels} from '../browser/audio-levels';
 import {browserDevProfile} from '../browser/dev-profile';
 import {pendingAudioDeletions,withAudioDeletionLock,changeAudioDeletion,audioDeletionNoteState,audioDeletionJournal,type AudioDeletion} from '../runtime/note-audio-deletions';
@@ -79,7 +78,6 @@ export function installPrototypeVoiceAdapter(Component: any, views: Record<strin
   installLocalSpeechPlayback(Component);
   installNativeVoiceTurnMarks();
   const notes = views.notes, render = notes.render, back = notes.back, leave = notes.onLeave;
-  let closeTranscriptQuestion:(()=>void)|undefined;
   let savedTranscription:{noteId:string;controller:AbortController;current:()=>boolean}|undefined;
   const cancelSavedTranscription=()=>{savedTranscription?.controller.abort();};
   const originalApi = Component.prototype.api;
@@ -225,7 +223,7 @@ export function installPrototypeVoiceAdapter(Component: any, views: Record<strin
     conversationLive=undefined;conversationInterim='';assistantState={phase:'idle'};conversationDenied=false;
     // Stopping the assistant cancels its capture, request and playback and releases its agent session.
     const conversationStopped=previousConversation?.stop();
-    closeTranscriptQuestion?.();
+
     ++generation; readiness?.abort(); readiness = undefined; transcription?.abort(); transcription = undefined; pairedVoice = null; onDeviceVoice = null; onDeviceReady = false; liveDictation = undefined; preparingLocal = false; preparingPaired = false; pairedReady = false; pairedAsrReady = false; busy = false; stopClock(); stopSaved(); if (quietRetry) clearTimeout(quietRetry); quietRetry = undefined;
     if (requestId) void driver.cancel({ requestId }).catch(() => {});
     playback?.abort(); playback = undefined; playing = false;
@@ -1190,10 +1188,10 @@ export function installPrototypeVoiceAdapter(Component: any, views: Record<strin
         finally{controller.signal.removeEventListener('abort',cancel);unsubscribe();document.removeEventListener('visibilitychange',changed);if(driver&&requestId)await driver.cancel({requestId}).catch(()=>{});if(savedTranscription===task)savedTranscription=undefined;if(current.isActive()&&current.voiceNoteActive())current.setView('notes',{noteTranscriptRevision:Date.now()});}
       };
       vo.reviewTranscript=()=>{
-        closeTranscriptQuestion?.();stopSaved();
-        const snapshot=JSON.stringify(selected),active=()=>current.voiceNoteActive()&&current.isActive()&&!document.hidden&&!connectionController.getSnapshot().open&&current.get('notes').open===selected.id&&JSON.stringify(current.get('notes').list.find((n:Bag)=>n.id===selected.id))===snapshot;
-        if(!active())return;
-        closeTranscriptQuestion=reviewContentQuestion({name:selected.title||'Recording transcript',text:String(selected.body||selected.audio.transcript||''),question:'Summarize this meeting and list its action items. Do not change or schedule anything. Return JSON with exactly two fields: summary (a string) and actions (an array of short strings). Include only actions supported by this excerpt.',sourceLabel:'Offer to save the reviewed answer to this recording',sourceDescription:'You can then edit the summary and action items before saving them to this recording.',current:active,source:async()=>({kind:'recording',version:1,name:String(selected.title||'Recording transcript').slice(0,120),noteId:selected.id,revision:await recordingRevision(selected)}),compose:(text,source)=>current.composeContentQuestion(text,source),closed:()=>{closeTranscriptQuestion=undefined;}});
+        stopSaved();
+        if(current.isActive() && current.voiceNoteActive() && current.get('notes').open===selected.id) {
+          current.composeTranscriptQuestion(selected.id, selected.title || 'Voice note');
+        }
       };
       // Both hand-offs open a Calendar draft only. Nothing is written until the user saves there.
       // The draft carries a back-reference to this exact note (id, recording and reviewed revision).
@@ -1365,7 +1363,7 @@ export function installPrototypeVoiceAdapter(Component: any, views: Record<strin
   notes.back = (state: Bag, current: Bag) => { if (noteRecorder.open) { if (noteRecorder.confirmingDiscard) noteRecorder.keep(); else if (noteRecorder.phase === 'failed' && !noteRecorder.recordingId) void noteRecorder.discard(); else void finishNoteRecording(); return true; } return back?.(state, current); };
   const noteReadingChanged=()=>{if(api)api.setView('notes',{noteReadingRevision:Date.now()});};
   window.addEventListener('alpha:note-reading',noteReadingChanged);
-  notes.onLeave = (current: Bag) => { cancelSavedTranscription();if(!ownedNavigation?.applying)noteRealtimeCancellation(conversationVoice,'notes-left-unowned');closeTranscriptQuestion?.();stopSpeaking();noteRecorder.leave(!Capacitor.isNativePlatform());noteRecorderAdopted=false;if(!ownedNavigation?.applying)cleanup(); leave?.(current); };
+  notes.onLeave = (current: Bag) => { cancelSavedTranscription();if(!ownedNavigation?.applying)noteRealtimeCancellation(conversationVoice,'notes-left-unowned');stopSpeaking();noteRecorder.leave(!Capacitor.isNativePlatform());noteRecorderAdopted=false;if(!ownedNavigation?.applying)cleanup(); leave?.(current); };
   const visibility = () => {
     // Speech preparation is foreground-only; returning prepares the same route again.
     if (!document.hidden) { if (reprepare && stage === 'ready' && !busy) { reprepare = false; reopen(error); } return; }
@@ -1382,8 +1380,8 @@ export function installPrototypeVoiceAdapter(Component: any, views: Record<strin
   const unsubscribe = connectionController.subscribe(() => {
     noteRecorder.recheckOwner();
     const next = binding();
-    if (connectionController.getSnapshot().open) { if(stage!=='closed')noteRealtimeCancellation(conversationVoice,'connection-opened');closeTranscriptQuestion?.(); if (stage !== 'closed') cleanup(); }
-    if (next !== account) { if(stage!=='closed')noteRealtimeCancellation(conversationVoice,'account-changed');closeTranscriptQuestion?.(); account = next; stopSaved(); if (stage !== 'closed') cleanup(); }
+    if (connectionController.getSnapshot().open) { if(stage!=='closed')noteRealtimeCancellation(conversationVoice,'connection-opened'); if (stage !== 'closed') cleanup(); }
+    if (next !== account) { if(stage!=='closed')noteRealtimeCancellation(conversationVoice,'account-changed'); account = next; stopSaved(); if (stage !== 'closed') cleanup(); }
   });
   const noteRouteChanged = () => noteRecorder.recheckOwner();
   window.addEventListener(voicePreferenceKeys().event, noteRouteChanged);

@@ -677,7 +677,7 @@ export function installAgentAdapter(Component: Shell, views: Shell) {
         this.composerDraft.retire(false);
         this.startupDraft=null;
         cancelMessageContext(this);
-        this.closeSummaryReview?.();this.reviewedSourceDraft=null;
+        this.closeSummaryReview?.();this.reviewedSourceDraft=null;this.transcriptAttachment=null;
         clearMapsSelection();
         this.connectionSession = session;
         alphaClient.disconnect();
@@ -688,7 +688,7 @@ export function installAgentAdapter(Component: Shell, views: Shell) {
       }
       const history = connectionController.getSnapshot().history;
       if (history && history.sessionId === session && this.restoredHistory !== history) {
-        if(!history.automatic){this.draftRecoveryAbort?.abort();this.draftBindingAbort?.abort();this.composerDraft.retire(false);draftBindingAfterPaint=true;cancelMessageContext(this);this.reviewedSourceDraft=null;}
+        if(!history.automatic){this.draftRecoveryAbort?.abort();this.draftBindingAbort?.abort();this.composerDraft.retire(false);draftBindingAfterPaint=true;cancelMessageContext(this);this.reviewedSourceDraft=null;this.transcriptAttachment=null;}
         this.restoredHistory = history;
         alphaClient.disconnect();
         if (this.live) this.setState((previous:Shell)=>{
@@ -1294,6 +1294,15 @@ export function installAgentAdapter(Component: Shell, views: Shell) {
       context(this);await this.send(text,expected);return true;
     };
     api.openReviewedWebSource=(url:string,signal:AbortSignal)=>this.browserNavigateApproved(url,signal);
+    api.composeTranscriptQuestion=(noteId:string,title:string)=>{
+      context(this);
+      const selection=this.notesSelection;
+      if(selection?.id!==noteId || this.messageEditTarget || this.composerDraft?.holding){
+        this.toast('Reopen the recording before attaching its transcript.');return;
+      }
+      this.transcriptAttachment={title,selection:JSON.stringify(selection)};
+      this.setState({chat:'sheet',shade:false});
+    };
     api.composeContentQuestion=(draft:string,source?:Source)=>{
       this.reviewedSourceDraft={draft,source:sourceOf(source)};
       context(this);this.setState({chat:'sheet',shade:false,draft});
@@ -1355,6 +1364,8 @@ export function installAgentAdapter(Component: Shell, views: Shell) {
   p.renderVals = function () {
     const out = originalVals.call(this);
     const composeTarget=this.messageEditTarget||this.messageReplyTarget;
+    out.attachedTranscript=this.transcriptAttachment?.title||'';
+    out.removeTranscript=()=>{this.transcriptAttachment=null;this.setState({});};
     out.messageComposeContext=composeTarget?(this.messageEditTarget?'Editing message':'Replying to '+(composeTarget.from==='user'?'your message':out.name))+': '+composeTarget.text.replace(/\s+/g,' ').slice(0,160):'';
     out.cancelMessageContext=()=>{cancelMessageContext(this);this.setState({});};
     const draft=this.composerDraft?.state;
@@ -1594,6 +1605,9 @@ export function installAgentAdapter(Component: Shell, views: Shell) {
     }
     const sourceDraft=fromComposer&&this.reviewedSourceDraft?.draft===text?sourceOf(this.reviewedSourceDraft.source):undefined;
     context(this);
+    const transcript=fromComposer?this.transcriptAttachment:null;
+    const transcriptCurrent=()=>!transcript||(this.S().view==='notes'&&JSON.stringify(this.notesSelection)===transcript.selection&&this.transcriptAttachment===transcript);
+    if(!transcriptCurrent()){this.toast('The recording changed. Remove the transcript or attach it again.');return;}
     const revision=alphaClient.getState().context.revision,connection=connectionController.getSnapshot(),sessionId=connection.session?.sessionId,conversationId=connection.history?.conversationId;
     const current=()=>{const selected=connectionController.getSnapshot();return this.live&&!document.hidden&&(!selected.busy||selected.backgroundWork===true)&&!selected.open&&!document.querySelector('[data-alpha-chat-recorder],[data-alpha-pill-voice]')&&selected.session?.sessionId===sessionId&&selected.history?.conversationId===conversationId&&alphaClient.getState().context.revision===revision;};
     const heldText=String(s.draft||'');let heldKey:string|undefined;
@@ -1628,7 +1642,10 @@ export function installAgentAdapter(Component: Shell, views: Shell) {
       const showStatus=(event:Event)=>{if(this.live&&!streamed&&this.sendAttempt===attempt)this.setState({turnStatus:(event as CustomEvent<string>).detail});};
       localTurnStatus.addEventListener('label',showStatus);
       let reply;
-      try{reply = await alphaClient.send(text,value=>{
+      if(!transcriptCurrent())throw new NotDispatched('The recording changed. Attach the transcript again.');
+      // The Notes view context carries the exact selected record and revision.
+      const requestText=transcript?'Use the transcript of the selected voice note to answer this question.\n\n'+text:text;
+      try{reply = await alphaClient.send(requestText,value=>{
         attempt.streamed=true;
         if(!this.live)return;
         if(streamed){
@@ -1648,6 +1665,7 @@ export function installAgentAdapter(Component: Shell, views: Shell) {
       const settlementCurrent=()=>this.live&&sameChat()&&JSON.stringify(connectionController.getSnapshot().session)===JSON.stringify(sourceSession)&&(!identity||connectionController.getSelectedConversationId()===identity.conversationId);
       if(!settlementCurrent())return;
       // The agent chose not to reply: no empty bubble, the sent message keeps its saved identity.
+      if(transcript && this.transcriptAttachment===transcript){this.transcriptAttachment=null;this.setState({});}
       if(reply.ignored&&!reply.proposals?.length&&!reply.completedActions?.length&&!reply.completedReads?.length){
         await new Promise<void>(resolve=>this.setState((previous:Shell)=>settlementCurrent()?(()=>{const saved=!!reply.userMessageId&&previous.msgs.some((m:Shell)=>m.id===reply.userMessageId);return {msgs:previous.msgs.filter((m:Shell)=>m.id!==streamedId&&!(m.id===userId&&saved)).map((m:Shell)=>m.id===userId&&reply.userMessageId&&identity?{...m,id:reply.userMessageId,messageBinding:identity}:m)};})():null,resolve));
         if(this.messageReplyTarget===replyTarget)this.messageReplyTarget=undefined;

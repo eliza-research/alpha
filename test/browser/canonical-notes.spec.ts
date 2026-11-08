@@ -135,6 +135,14 @@ test('Stop saves canonical audio locally and Generate transcript later uses its 
  const requests=await page.evaluate(()=>(window as any).canonicalNotesFixture.requests.filter((r:any)=>r.path==='/api/views/notes/interact'));
  expect(requests.filter((r:any)=>r.body.capability==='create-note')).toHaveLength(1);expect(requests.filter((r:any)=>r.body.capability==='update-note')).toHaveLength(1);
  expect(JSON.stringify(requests)).not.toMatch(/blob:|file:\/\/|content:\/\//);
+ await page.getByRole('button',{name:'Ask Alpha about this transcript',exact:true}).click();
+ const attachment=page.getByRole('group',{name:'Attached transcript'});
+ await expect(attachment).toBeVisible();await expect(attachment).not.toContainText('A closed Notes fixture.');
+ await expect(page.getByRole('dialog',{name:'Ask about selected content'})).toHaveCount(0);
+ const question=page.locator('textarea[data-alpha-composer]:visible').first();
+ await expect(question).toHaveValue('');await question.fill('What did I say?');
+ await attachment.getByRole('button',{name:'Remove transcript'}).click();
+ await expect(attachment).toHaveCount(0);await expect(question).toHaveValue('What did I say?');
  await page.evaluate(()=>(window as any).micContext.close());
  expect(foreign).toEqual([]);expect(errors).toEqual([]);
 });

@@ -695,3 +695,7 @@ button[aria-label$=" on or off"][aria-pressed]::before { content:""; position:ab
 .home-date-line { min-height:180px; flex-shrink:0; box-sizing:border-box; padding:0 24px 6px; display:flex; flex-direction:column; justify-content:flex-end; align-items:flex-start; gap:14px; }
 .home-date-text { font-size:40px; line-height:1.08; letter-spacing:-.01em; overflow-wrap:anywhere; }
 .home-date-setup { min-height:48px; padding:0 18px; border-radius:24px; background:var(--s2); color:var(--fg); font-size:15px; font-weight:600; }
+
+.note-transcript-chip { display:flex; align-items:center; align-self:flex-start; max-width:calc(100% - 32px); margin:0 16px 6px; padding-left:12px; border-radius:14px; background:var(--s2); color:var(--fg); font-size:14px; }
+.note-transcript-chip span { min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.note-transcript-chip button { flex-shrink:0; min-width:44px; min-height:44px; font:inherit; }
