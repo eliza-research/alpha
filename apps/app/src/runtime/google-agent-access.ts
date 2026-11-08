@@ -48,7 +48,12 @@ export async function setGoogleAgentAccess(change:Partial<GoogleAgentAccess>,gua
   try{await publishSavedGoogleAgentAccess();}
   catch(error){
    // No later Google choice can interleave before the failed publication is rolled back.
-   const previous=before;if(previous)await editDevicePreferences(state=>{state.agentGmailChanges=previous.gmailChanges;state.agentCalendarEdits=previous.calendarEdits;}).catch(()=>{});
+   const previous=before;
+   if(previous){
+    await editDevicePreferences(state=>{state.agentGmailChanges=previous.gmailChanges;state.agentCalendarEdits=previous.calendarEdits;}).catch(()=>{});
+    // A lost reply can follow a committed host write. Reconcile from the current canonical document under the same lock.
+    await publishSavedGoogleAgentAccess().catch(()=>{});
+   }
    throw error;
   }
  });
