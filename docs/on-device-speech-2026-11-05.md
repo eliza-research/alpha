@@ -37,6 +37,11 @@ from confirmed model text of a reply the stream has proven direct; see [streamed
 
 ## November 8: requalification at 4787d51a14 and the #829 build
 
+- **Owner acceptance (P-83).** The owner accepted the requalified engine and speech bridge at
+  `4787d51a14`; the voice record is now `userAccepted` and `qualified`. Not covered: a measured spoken
+  turn on a build from this pin, a same-day spoken A/B with Cloud speech, and the embedding host's
+  requalification at this pin (in progress separately).
+
 - **Requalified.** The upstream qualify app was rebuilt from the prepared source at `4787d51a14`, so it
   runs the changed `ParadeeVoice` (per-request cancel path), `NativeAsr` and `VoiceAssets`, with engine
   `6337fd4c4b` (both `libelizainference.so` hashes equal the voice record). Installed APK hashes were
