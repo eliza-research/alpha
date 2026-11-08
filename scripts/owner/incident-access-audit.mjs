@@ -46,6 +46,7 @@ export function auditRepository(repo, actor, {get = ghGet} = {}) {
   const list = (label, endpoint, pick) => {
     const result = ghGetAll(endpoint, {pick, get});
     if (!result.ok) { unreadable.push(`${label}: ${unreadableNote(result)}`); return []; }
+    if (result.truncated) unreadable.push(`${label}: incomplete (${result.truncated})`);
     return result.data;
   };
   const meta = get(`repos/${repo}`);

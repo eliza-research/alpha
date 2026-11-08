@@ -9,13 +9,15 @@
  * each head whose objects exist locally (run `git fetch <remote>` first) it uses only `git
  * merge-base --is-ancestor`, `git ls-tree` and `git show <sha>:<path>` (object reads; no work
  * tree, no hooks, no npm). Checks:
+ *   - the ref itself: the ls-remote SHA (or an annotated tag's peeled commit) starts with a forged
+ *     prefix; this needs no local objects;
  *   - ancestry: the head reaches a forged commit recorded for --repo in the IOC file;
  *   - paths: root `init`, `.env`, `.vscode/tasks.json`, `.vscode/settings.json`, any
  *     `reminders/public/fonts/` directory and `.orc` files;
  *   - package.json scripts that run `node init`;
  *   - content patterns (folderOpen tasks, `atob(process.env.X)` loaders, `eval(proxyInfo)`) in
  *     package.json, .vscode/tasks.json and the root *.config.{ts,js,mjs,cjs} files.
- * Exit: 0 clean, 1 at least one marker, 2 a head could not be scanned (object missing).
+ * Exit: 0 clean, 1 at least one marker, 2 a branch or tag could not be scanned (object missing).
  */
 import path from 'node:path';
 import {execFileSync, spawnSync} from 'node:child_process';
@@ -28,9 +30,21 @@ const git = (gitDir, args, {allowFail = false} = {}) => {
   return result;
 };
 
+/** ls-remote rows; an annotated tag's `^{}` line becomes `peeled` (the commit the tag points at). */
 export function parseLsRemote(text) {
-  return text.split('\n').filter(Boolean).map(line => line.split('\t')).filter(([, ref]) => ref && !ref.endsWith('^{}'))
-    .map(([sha, ref]) => ({sha, ref}));
+  const rows = text.split('\n').filter(Boolean).map(line => line.split('\t')).filter(([, ref]) => ref);
+  const heads = rows.filter(([, ref]) => !ref.endsWith('^{}')).map(([sha, ref]) => ({sha, ref}));
+  for (const [sha, ref] of rows.filter(([, ref]) => ref.endsWith('^{}'))) {
+    const head = heads.find(row => row.ref === ref.slice(0, -3));
+    if (head) head.peeled = sha;
+  }
+  return heads;
+}
+
+/** Findings from the advertised SHAs alone: the ref or its peeled commit is a forged commit. */
+export function forgedRefFindings(head, prefixes) {
+  return [head.sha, head.peeled].filter(Boolean).flatMap(sha => prefixes.filter(prefix => sha.startsWith(prefix)))
+    .map(prefix => `ref points at forged commit ${prefix}`);
 }
 
 /** Path markers in a `git ls-tree -r --name-only` listing. */
@@ -57,21 +71,25 @@ export function contentTargets(files) {
   return files.filter(file => file === 'package.json' || file === '.vscode/tasks.json' || /^[^/]+\.config\.(ts|js|mjs|cjs)$/.test(file));
 }
 
-export function scanHead(gitDir, head, forgedShas, markers) {
-  const exists = git(gitDir, ['cat-file', '-e', `${head.sha}^{commit}`], {allowFail: true}).status === 0;
-  if (!exists) return {...head, scanned: false, findings: [], note: head.ref.startsWith('refs/tags/') ? 'tag object not fetched' : 'commit not fetched locally'};
-  const findings = [];
+export function scanHead(gitDir, head, forgedShas, markers, prefixes = []) {
+  const findings = forgedRefFindings(head, prefixes);
+  const commit = head.peeled ?? head.sha;
+  const exists = git(gitDir, ['cat-file', '-e', `${commit}^{commit}`], {allowFail: true}).status === 0;
+  if (!exists) return {...head, scanned: false, findings, note: head.ref.startsWith('refs/tags/') ? 'tag object not fetched' : 'commit not fetched locally'};
   for (const forged of forgedShas)
-    if (git(gitDir, ['merge-base', '--is-ancestor', forged, head.sha], {allowFail: true}).status === 0) findings.push(`reaches forged commit ${forged.slice(0, 9)}`);
-  const files = git(gitDir, ['ls-tree', '-r', '--name-only', head.sha]).stdout.split('\n').filter(Boolean);
+    if (git(gitDir, ['merge-base', '--is-ancestor', forged, commit], {allowFail: true}).status === 0) findings.push(`reaches forged commit ${forged.slice(0, 9)}`);
+  const files = git(gitDir, ['ls-tree', '-r', '--name-only', commit]).stdout.split('\n').filter(Boolean);
   for (const file of pathMarkers(files, markers)) findings.push(`marker path ${file}`);
   for (const file of contentTargets(files)) {
-    const text = git(gitDir, ['show', `${head.sha}:${file}`], {allowFail: true}).stdout ?? '';
+    const text = git(gitDir, ['show', `${commit}:${file}`], {allowFail: true}).stdout ?? '';
     if (file === 'package.json') for (const name of initScripts(text, markers)) findings.push(`package.json script "${name}" runs init`);
     for (const pattern of contentMarkers(text, markers)) findings.push(`${file} matches /${pattern}/`);
   }
   return {...head, scanned: true, findings};
 }
+
+/** 1 when anything is flagged, else 2 when any branch or tag was not scanned, else 0. */
+export const scanExitCode = results => results.some(row => row.findings.length) ? 1 : results.some(row => !row.scanned) ? 2 : 0;
 
 function main(argv) {
   let args;
@@ -85,7 +103,7 @@ function main(argv) {
   // Resolve prefixes to full SHAs only when the objects are present locally (they are data; never checked out).
   const forgedShas = prefixes.map(prefix => git(gitDir, ['rev-parse', '-q', '--verify', `${prefix}^{commit}`], {allowFail: true}).stdout.trim()).filter(Boolean);
   const heads = parseLsRemote(execFileSync('git', ['-C', gitDir, 'ls-remote', '--heads', '--tags', remote], {encoding: 'utf8', maxBuffer: 64 * 1024 * 1024}));
-  const results = heads.map(head => scanHead(gitDir, head, forgedShas, iocs.markers));
+  const results = heads.map(head => scanHead(gitDir, head, forgedShas, iocs.markers, prefixes));
   const flagged = results.filter(row => row.findings.length);
   const unscanned = results.filter(row => !row.scanned);
   const summary = {remote, url: git(gitDir, ['remote', 'get-url', remote]).stdout.trim(), repo, forgedPrefixes: prefixes, forgedResolvedLocally: forgedShas.length, heads: results.length, scanned: results.length - unscanned.length, flagged: flagged.length, unscanned: unscanned.length};
@@ -95,10 +113,10 @@ function main(argv) {
     console.log(`Forged prefixes for ${repo}: ${prefixes.join(', ') || '(none)'}; resolved locally for ancestry: ${forgedShas.length}/${prefixes.length}`);
     console.log(`Heads: ${summary.heads}, scanned ${summary.scanned}, flagged ${summary.flagged}, not scanned ${summary.unscanned}`);
     for (const row of flagged) console.log(`FLAG ${row.ref} ${row.sha.slice(0, 12)}: ${row.findings.join('; ')}`);
-    for (const row of unscanned) console.log(`SKIP ${row.ref} ${row.sha.slice(0, 12)}: ${row.note}`);
+    for (const row of unscanned) console.log(`SKIP ${row.ref} ${row.sha.slice(0, 12)}: ${row.note} (git fetch ${remote} ${row.peeled ?? row.sha}, then re-run)`);
     if (forgedShas.length < prefixes.length) console.log('NOTE Some forged commits are not in the local object store, so ancestry was checked only for the ones present; path and content markers were still checked.');
   }
-  return flagged.length ? 1 : unscanned.some(row => row.ref.startsWith('refs/heads/')) ? 2 : 0;
+  return scanExitCode(results);
 }
 
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) process.exitCode = main(process.argv.slice(2));

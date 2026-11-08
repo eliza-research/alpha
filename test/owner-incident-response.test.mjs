@@ -7,9 +7,9 @@ import os from 'node:os';
 import path from 'node:path';
 import {execFileSync} from 'node:child_process';
 import {assertReadOnlyEndpoint, fullName, ghGetAll, loadIocs, parseArgs} from '../scripts/owner/gh-readonly.mjs';
-import {forgedPrefixes, matchRuns, rotationState, auditRepository as auditCi} from '../scripts/owner/incident-ci-exposure.mjs';
-import {actorPermission, actorHasAccess, grantsAccess, hookRow, hostOf, keyRow, summarizeAudit} from '../scripts/owner/incident-access-audit.mjs';
-import {contentMarkers, initScripts, parseLsRemote, pathMarkers, scanHead} from '../scripts/owner/forged-branch-scan.mjs';
+import {exposureCutoff, forgedPrefixes, matchRuns, rotationState, auditRepository as auditCi} from '../scripts/owner/incident-ci-exposure.mjs';
+import {actorPermission, actorHasAccess, grantsAccess, hookRow, hostOf, keyRow, summarizeAudit, auditRepository as auditAccess} from '../scripts/owner/incident-access-audit.mjs';
+import {contentMarkers, initScripts, parseLsRemote, pathMarkers, scanExitCode, scanHead} from '../scripts/owner/forged-branch-scan.mjs';
 import {compareIntegrity} from '../scripts/owner/read-branch-integrity.mjs';
 
 const root = path.resolve(import.meta.dirname, '..');
@@ -83,7 +83,7 @@ test('the CI exposure audit lists names only and reports unreadable endpoints', 
     if (endpoint.includes('actions/runs')) return {ok: true, data: {workflow_runs: [{id: 9, head_sha: '39ef594011c34d625882ee8f4ecb5a0a07788885', name: 'Browser MVP', created_at: '2026-10-27T22:49:12Z'}]}};
     if (endpoint.includes('/actions/secrets')) return {ok: true, data: {secrets: [{name: 'DEPLOY_TOKEN', updated_at: '2026-09-01T00:00:00Z', value: 'never-printed'}]}};
     if (endpoint.includes('/environments?')) return {ok: true, data: {environments: [{name: 'release', protection_rules: [{type: 'required_reviewers'}]}]}};
-    if (endpoint.includes('/environments/release/secrets')) return {ok: true, data: {secrets: [{name: 'SIGNING', updated_at: '2026-10-28T10:00:00Z'}]}};
+    if (endpoint.includes('/environments/release/secrets')) return {ok: true, data: {secrets: [{name: 'SIGNING', updated_at: '2026-10-29T10:00:00Z'}]}};
     if (endpoint.includes('/environments/release/variables')) return {ok: true, data: {variables: [{name: 'AWS_ROLE_ARN', updated_at: '2026-10-01T00:00:00Z'}]}};
     return {ok: false, status: 403, message: 'Must have admin rights'};
   };
@@ -94,6 +94,37 @@ test('the CI exposure audit lists names only and reports unreadable endpoints', 
   assert.deepEqual(report.environments[0].variables.map(row => row.state), ['VARIABLE']);
   assert.ok(!JSON.stringify(report).includes('never-printed'));
   assert.ok(report.unreadable.some(line => line.startsWith('organization secrets')));
+});
+
+test('a run on a commit built on top of a forged commit is exposure and moves the rotation cutoff', () => {
+  const forged = '39ef594011c34d625882ee8f4ecb5a0a07788885';
+  const child = 'aaaa'.repeat(10), clean = 'bbbb'.repeat(10);
+  const calls = [];
+  const get = endpoint => {
+    calls.push(endpoint);
+    if (endpoint.startsWith('repos/o/alphaphone/commits/39ef59401')) return {ok: true, data: {sha: forged}};
+    if (endpoint.startsWith('repos/o/alphaphone/commits/')) return {ok: false, status: 422, message: 'No commit'};
+    if (endpoint.includes('actions/runs?head_sha=')) return {ok: true, data: {workflow_runs: []}};
+    if (endpoint.includes('actions/runs?created=')) return {ok: true, data: {workflow_runs: [
+      {id: 21, head_sha: child, name: 'Android', created_at: '2026-10-28T09:00:00Z', updated_at: '2026-10-29T02:00:00Z'},
+      {id: 22, head_sha: clean, name: 'Android', created_at: '2026-10-28T09:05:00Z'},
+    ]}};
+    if (endpoint === `repos/o/alphaphone/compare/${forged}...${child}?per_page=1`) return {ok: true, data: {status: 'ahead'}};
+    if (endpoint === `repos/o/alphaphone/compare/${forged}...${clean}?per_page=1`) return {ok: true, data: {status: 'diverged'}};
+    if (endpoint.includes('/actions/secrets')) return {ok: true, data: {secrets: [{name: 'DEPLOY_TOKEN', updated_at: '2026-10-29T01:00:00Z'}]}};
+    return {ok: true, data: {secrets: [], variables: [], environments: []}};
+  };
+  const report = auditCi('o/alphaphone', iocs, {get});
+  assert.ok(calls.some(endpoint => endpoint.includes(`created=2026-10-27..${iocs.window.cleanupEnd.slice(0, 10)}`)));
+  assert.deepEqual(report.forgedRuns.map(run => [run.id, run.forged, run.via]), [[21, '39ef59401', 'descendant']]);
+  assert.equal(report.compares, 2);
+  // Updated after the cleanup end but before the exposed run finished: still to rotate.
+  assert.equal(report.rotationCutoff, '2026-10-29T02:00:00Z');
+  assert.deepEqual(report.secrets.map(row => row.state), ['NOT-ROTATED-YET']);
+  assert.equal(exposureCutoff(iocs.window.cleanupEnd, []), iocs.window.cleanupEnd);
+
+  const failing = endpoint => endpoint.includes('/compare/') ? {ok: false, status: 404, message: 'Not Found'} : get(endpoint);
+  assert.ok(auditCi('o/alphaphone', iocs, {get: failing}).unreadable.some(line => line.startsWith(`compare 39ef59401...${child.slice(0, 9)}`)));
 });
 
 test('access audit: public read is not access, a pending invitation is, hook URLs keep only the host', () => {
@@ -111,6 +142,19 @@ test('access audit: public read is not access, a pending invitation is, hook URL
   assert.ok(!JSON.stringify(hookRow({id: 1, active: true, events: ['push'], config: {url: 'https://h.test/x?token=abc', secret: '***'}})).includes('abc'));
   assert.ok(!('key' in keyRow({id: 1, title: 't', key: 'ssh-ed25519 AAAA', read_only: true})));
   assert.deepEqual(summarizeAudit([{action: 'git.push'}, {action: 'git.push'}, {action: 'repo.access'}]), {'git.push': 2, 'repo.access': 1});
+});
+
+test('access audit: a repository list cut short by a failed page is unreadable', () => {
+  const get = endpoint => {
+    if (endpoint.includes('collaborators?affiliation=outside')) return /&page=1\b/.test(endpoint)
+      ? {ok: true, data: Array.from({length: 100}, (_, i) => ({login: `u${i}`}))} : {ok: false, status: 403, message: 'secondary rate limit'};
+    if (endpoint.includes('/permission')) return {ok: false, status: 404, message: 'Not Found'};
+    if (endpoint === 'repos/o/r') return {ok: true, data: {visibility: 'private'}};
+    return {ok: true, data: []};
+  };
+  const report = auditAccess('o/r', 'x', {get});
+  assert.equal(report.outsideCollaborators.length, 100);
+  assert.deepEqual(report.unreadable, ['outside collaborators: incomplete (page 2: 403)']);
 });
 
 test('branch-integrity read-back names the source of each protection', () => {
@@ -146,7 +190,26 @@ test('marker detection matches the recorded payload shape', () => {
   assert.deepEqual(contentMarkers('"runOptions": { "runOn": "folderOpen" }', iocs.markers).length, 1);
   assert.deepEqual(contentMarkers('const src = atob(process.env.AUTH_API_KEY); eval(proxyInfo);', iocs.markers).length, 2);
   assert.deepEqual(contentMarkers('export default {webDir: "web-dist"}', iocs.markers), []);
-  assert.deepEqual(parseLsRemote('abc\trefs/heads/main\ndef\trefs/tags/v1\n123\trefs/tags/v1^{}\n'), [{sha: 'abc', ref: 'refs/heads/main'}, {sha: 'def', ref: 'refs/tags/v1'}]);
+  assert.deepEqual(parseLsRemote('abc\trefs/heads/main\ndef\trefs/tags/v1\n123\trefs/tags/v1^{}\n'), [{sha: 'abc', ref: 'refs/heads/main'}, {sha: 'def', ref: 'refs/tags/v1', peeled: '123'}]);
+});
+
+test('a tag peeling to a forged commit is flagged from ls-remote alone; an unscanned tag is not clean', () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'forged-tag-'));
+  try {
+    execFileSync('git', ['-C', dir, 'init', '-q']);
+    const [tag] = parseLsRemote(`${'d'.repeat(40)}\trefs/tags/v0.0.1\n39ef594011c34d625882ee8f4ecb5a0a07788885\trefs/tags/v0.0.1^{}\n`);
+    const prefixes = forgedPrefixes(iocs, 'alphaphone');
+    const forgedTag = scanHead(dir, tag, [], iocs.markers, prefixes);
+    assert.equal(forgedTag.scanned, false);
+    assert.deepEqual(forgedTag.findings, ['ref points at forged commit 39ef59401']);
+    const otherTag = scanHead(dir, {ref: 'refs/tags/v2', sha: 'e'.repeat(40)}, [], iocs.markers, prefixes);
+    assert.deepEqual([otherTag.scanned, otherTag.findings], [false, []]);
+    assert.equal(scanExitCode([otherTag]), 2);
+    assert.equal(scanExitCode([otherTag, forgedTag]), 1);
+    assert.equal(scanExitCode([{scanned: true, findings: []}]), 0);
+  } finally {
+    fs.rmSync(dir, {recursive: true, force: true});
+  }
 });
 
 test('the branch scan flags a payload commit and its descendants without a checkout', () => {

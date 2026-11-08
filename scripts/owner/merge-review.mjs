@@ -5,7 +5,8 @@
  *   node scripts/owner/merge-review.mjs [MERGE_SHA] [--json]
  *
  * Reads only local git objects: it never fetches, checks out, runs package scripts or contacts a
- * service. It reports, for MERGE^1..MERGE:
+ * service. The forged SHAs and marker patterns come from scripts/owner/incident-2026-10-27-iocs.json,
+ * plus a few broader local shapes. It reports, for MERGE^1..MERGE:
  *  - every package.json script that was added, removed or changed;
  *  - every binary file the diff adds, deletes or modifies (git numstat "-");
  *  - the 2026-10-27 forged-commit markers: reachability of each forged SHA from the merge, and
@@ -17,25 +18,43 @@
 import {execFileSync} from 'node:child_process';
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';
+import {loadIocs} from './gh-readonly.mjs';
 
-/** Forged commits from the 2026-10-27 compromise (repository memory and incident record). */
-export const FORGED_COMMITS = Object.freeze(['39ef59401', '61d293f61', '131cd0e63', '0cefd6e47', 'cc3f7a709']);
-
-/** Path shapes the forged commits used: npm-hooked init script, .env, VS Code folderOpen task, payload "fonts". */
-export const FORGED_PATH_PATTERNS = Object.freeze([
+/** Broader path shapes than the IOC file records: init script, .env or VS Code files in any directory. */
+export const LOCAL_PATH_PATTERNS = Object.freeze([
  {name: 'init script', pattern: /(^|\/)init(\.[cm]?js)?$/},
  {name: '.env file', pattern: /(^|\/)\.env(\.|$)/},
  {name: 'VS Code tasks', pattern: /(^|\/)\.vscode\//},
- {name: 'reminders public fonts', pattern: /(^|\/)reminders\/public\/fonts\//},
 ]);
 
-/** Added-line shapes of the forged loader: a remote eval and a folderOpen task. */
-export const FORGED_LINE_PATTERNS = Object.freeze([
- {name: 'folderOpen task', pattern: /"runOn"\s*:\s*"folderOpen"|folderOpen/},
+/** Broader added-line shapes than the IOC file records: a remote eval, a folderOpen task, an npm hook into init. */
+export const LOCAL_LINE_PATTERNS = Object.freeze([
+ {name: 'folderOpen task', pattern: /folderOpen/},
  {name: 'eval of fetched code', pattern: /\beval\s*\(\s*(await\s+)?(fetch|\(await|res|response|body|data)\b/},
  {name: 'new Function of fetched code', pattern: /new\s+Function\s*\(\s*(await\s+)?(fetch|res|response|body|data)\b/},
  {name: 'npm hook into init', pattern: /"(predev|prebuild|postinstall|preinstall|dev|build)"\s*:\s*"[^"]*node\s+(\.\/)?init\b/},
 ]);
+
+const escapeRegExp = text => text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+/** Forged SHA prefixes and marker patterns for one repository: the IOC file's first, then the local ones. */
+export function markerPatterns(iocs, repo = 'alphaphone') {
+ const markers = iocs.markers;
+ return {
+  forged: [...new Set(iocs.branches.filter(row => row.repo === repo).map(row => row.forged))],
+  paths: [
+   ...markers.paths.map(file => ({name: `IOC path ${file}`, pattern: new RegExp(`^${escapeRegExp(file)}$`)})),
+   ...markers.pathPatterns.map(source => ({name: `IOC path /${source}/`, pattern: new RegExp(source)})),
+   ...LOCAL_PATH_PATTERNS,
+  ],
+  lines: [...markers.contentPatterns.map(source => ({name: `IOC /${source}/`, pattern: new RegExp(source)})), ...LOCAL_LINE_PATTERNS],
+ };
+}
+
+export const MARKERS = markerPatterns(loadIocs());
+
+/** Forged commits from the 2026-10-27 compromise, as the IOC file records them for this repository. */
+export const FORGED_COMMITS = Object.freeze(MARKERS.forged);
 
 /** Modules and helpers #659 names: #636, #641, #650 and the #642 browser-surface helpers. */
 export const EXPECTED_MODULES = Object.freeze(['eliza-cloud-auth', 'eliza-messages', 'eliza-phone']);
@@ -70,11 +89,17 @@ export function binaryChanges(numstat, nameStatus) {
   .map(([, , file]) => ({path: file, status: status.get(file) ?? '?'}));
 }
 
-/** Forged-marker findings among changed paths and added diff lines. */
-export function forgedMarkers(changedPaths, addedLines) {
+/** Forged-marker findings among changed paths and added diff lines: the first matching pattern for each. */
+export function forgedMarkers(changedPaths, addedLines, markers = MARKERS) {
  const findings = [];
- for (const file of changedPaths) for (const {name, pattern} of FORGED_PATH_PATTERNS) if (pattern.test(file)) findings.push({kind: 'path', name, path: file});
- for (const {file, line} of addedLines) for (const {name, pattern} of FORGED_LINE_PATTERNS) if (pattern.test(line)) findings.push({kind: 'line', name, path: file, line: line.slice(0, 200)});
+ for (const file of changedPaths) {
+  const hit = markers.paths.find(({pattern}) => pattern.test(file));
+  if (hit) findings.push({kind: 'path', name: hit.name, path: file});
+ }
+ for (const {file, line} of addedLines) {
+  const hit = markers.lines.find(({pattern}) => pattern.test(line));
+  if (hit) findings.push({kind: 'line', name: hit.name, path: file, line: line.slice(0, 200)});
+ }
  return findings;
 }
 

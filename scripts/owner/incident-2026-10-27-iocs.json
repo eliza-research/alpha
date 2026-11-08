@@ -4,6 +4,8 @@
   "window": {
     "start": "2026-10-27T22:45:00Z",
     "end": "2026-10-27T23:36:00Z",
+    "cleanupEnd": "2026-10-28T23:59:59Z",
+    "cleanupEndNote": "End of 2026-10-28, the branch-cleanup date in the owner's incident record. Not the recorded cleanup time: the owner replaces it with that time.",
     "reviewFrom": "2026-10-21T00:00:00Z"
   },
   "defaultOwner": "AlphaCompute",

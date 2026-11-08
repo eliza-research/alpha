@@ -2,7 +2,7 @@
 // read no git history and are source checks only (no APK, emulator, image or device evidence).
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {addedLinesFromDiff, binaryChanges, descriptorCoverage, diffScripts, forgedMarkers, FORGED_COMMITS} from '../scripts/owner/merge-review.mjs';
+import {addedLinesFromDiff, binaryChanges, descriptorCoverage, diffScripts, forgedMarkers, FORGED_COMMITS, markerPatterns} from '../scripts/owner/merge-review.mjs';
 
 test('package scripts are reported as added, removed and changed', () => {
  const before = JSON.stringify({scripts: {build: 'vite build', old: 'node old.mjs', test: 'node --test'}});
@@ -34,15 +34,41 @@ test('forged payload shapes are found in paths and added lines; ordinary changes
  const paths = ['.vscode/tasks.json', 'init', 'apps/reminders/public/fonts/x.woff2', '.env', 'src/a.ts', 'docs/initial.md', 'apps/app/public/fonts/a.woff2'];
  const found = forgedMarkers(paths, addedLinesFromDiff(diff));
  const names = found.map(item => `${item.kind}:${item.name}:${item.path}`);
- assert.ok(names.includes('path:VS Code tasks:.vscode/tasks.json'));
- assert.ok(names.includes('path:init script:init'));
- assert.ok(names.includes('path:reminders public fonts:apps/reminders/public/fonts/x.woff2'));
- assert.ok(names.includes('path:.env file:.env'));
- assert.ok(names.includes('line:folderOpen task:.vscode/tasks.json'));
+ assert.ok(names.includes('path:IOC path .vscode/tasks.json:.vscode/tasks.json'));
+ assert.ok(names.includes('path:IOC path init:init'));
+ assert.ok(names.includes('path:IOC path /(^|/)reminders/public/fonts//:apps/reminders/public/fonts/x.woff2'));
+ assert.ok(names.includes('path:IOC path .env:.env'));
+ assert.ok(names.some(name => name.startsWith('line:IOC /"runOn"') && name.endsWith(':.vscode/tasks.json')));
  assert.ok(names.includes('line:eval of fetched code:capacitor.config.ts'));
  assert.ok(names.includes('line:npm hook into init:package.json'));
  assert.ok(!names.some(name => name.endsWith(':src/a.ts') || name.includes('docs/initial.md') || name.includes('apps/app/public/fonts')));
- assert.equal(FORGED_COMMITS.length, 5);
+ assert.deepEqual([...FORGED_COMMITS].sort(), ['0cefd6e47', '131cd0e63', '39ef59401', '61d293f61', 'cc3f7a709']);
+});
+
+test('the recorded loader shapes from the IOC file are flagged', () => {
+ const diff = [
+  'diff --git a/capacitor.config.ts b/capacitor.config.ts', '+++ b/capacitor.config.ts',
+  '+const proxyInfo = atob(process.env.AUTH_API_KEY);', '+eval(proxyInfo);',
+ ].join('\n');
+ const found = forgedMarkers(['android/x/reminders/fa-brand-400.orc', 'capacitor.config.ts'], addedLinesFromDiff(diff));
+ assert.deepEqual(found.map(item => `${item.kind}:${item.name}:${item.path}`), [
+  'path:IOC path /\\.orc$/:android/x/reminders/fa-brand-400.orc',
+  'line:IOC /atob\\(process\\.env\\.[A-Z_]+\\)/:capacitor.config.ts',
+  'line:IOC /eval\\(proxyInfo\\)/:capacitor.config.ts',
+ ]);
+});
+
+test('markers come from the IOC data passed in, with the local shapes after them', () => {
+ const iocs = {
+  branches: [{repo: 'alphaphone', forged: 'abcdef012'}, {repo: 'other', forged: '999999999'}],
+  markers: {paths: ['payload.bin'], pathPatterns: ['\\.xyz$'], contentPatterns: ['runPayload\\(']},
+ };
+ const markers = markerPatterns(iocs);
+ assert.deepEqual(markers.forged, ['abcdef012']);
+ const found = forgedMarkers(['payload.bin', 'a/b.xyz', 'sub/payload.bin', 'sub/.env'], [{file: 'a.js', line: 'runPayload(x)'}, {file: 'b.js', line: 'eval(proxyInfo)'}], markers);
+ assert.deepEqual(found.map(item => `${item.name}:${item.path}`), [
+  'IOC path payload.bin:payload.bin', 'IOC path /\\.xyz$/:a/b.xyz', '.env file:sub/.env', 'IOC /runPayload\\(/:a.js',
+ ]);
 });
 
 test('descriptor coverage names the issue modules and helpers that are missing', () => {
