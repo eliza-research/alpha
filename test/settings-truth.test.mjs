@@ -125,7 +125,7 @@ test('Cloud privacy hero includes speech while retaining native and offline/star
   assert.equal(fact.big,'Uses Nebula');assert.ok(fact.sub.includes('go to Nebula for AI'));
   for(const content of ['When used','messages','selected content','Voice recordings','text for playback'])assert.ok(fact.sub.includes(content),content);
  }
- assert.equal(native.egressPrivacy(connected,true).big,'Identifier swap only');
+ assert.equal(native.egressPrivacy(connected,true).big,'Partly masked');
  for(const [kind,label]of [['starting','Agent starting'],['recovering','Agent not running'],['none','Offline']])assert.equal(cloud.egressPrivacy({kind,session:null,cloudAccount:null},true).big,label);
 });
 
@@ -179,4 +179,18 @@ test('update index refuses duplicate pairs, nested feeds, malformed families and
   assert.doesNotThrow(()=>m.parseUpdateManifest(index([release,malformed]),installed));
   assert.equal(m.parseUpdateManifest(index([release,malformed]),installed),null);
  }
+});
+
+// Both installed Back handlers clear the password entry before returning to the unlocked list.
+test('Android Back from a password entry forgets its draft',()=>{
+ assert.match(source,/if \(st\.page === 'password-entry' && !st\.sheet\) \{ leavePasswordEntry\(\); api\.set\(\{ page: 'password-provider' \}\); return true; \}/);
+ assert.match(source,/if\(!state\.sheet&&settingsParents\[state\.page\]\)\{if\(state\.page==='password-entry'\)leavePasswordEntry\(\);api\.set\(\{page:settingsParents\[state\.page\]\}\);return true;\}/);
+ const passwords=readFileSync('apps/app/src/passwords/password-manager.ts','utf8');
+ assert.match(passwords,/export function leavePasswordEntry\(\) \{ clearSecrets\(\); \}/);
+ assert.match(passwords,/function clearSecrets\(\) \{ if \(draft\) draft\.password = ''; draft = null; \}/);
+});
+
+// Problem log is opened from the gated Developer page. Back returns to that owner.
+test('Problem log returns to its Developer parent',()=>{
+ assert.match(source,/problems:\['developer','Developer'\]/);
 });

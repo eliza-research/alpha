@@ -217,3 +217,30 @@ export function mapsChatText(text:string){
  const displayText=cards.length||choice||forms?rendered.replace(/\n{3,}/g,'\n\n').trim():rendered;
  return {displayText,cards,choice:choice as MapsShareChoice|null};
 }
+
+/** A chat-started workflow run replies with a [WORKFLOW] block (plugin-workflow's WORKFLOW run
+ * action) that upstream's UI renders and Alpha does not import. Only a block whose tags sit on
+ * their own lines counts, so prose that mentions the tag stays as written. A block with valid
+ * JSON naming string runId and workflowId becomes a run card; a malformed or unterminated block
+ * is removed and never shown or spoken raw. */
+export type WorkflowRunCard={workflowId:string;runId:string;title:string};
+// String.replace resets a global pattern's lastIndex, so one shared pattern is safe. The body is
+// tried empty first, so an empty block ends at its own closing tag, not at the end of the reply.
+const blockPattern=/(^|\n)[ \t]*\[WORKFLOW\][ \t]*(?:\r?\n([\s\S]*?))??(?:\r?\n[ \t]*(\[\/WORKFLOW\])[ \t]*(?=\r?\n|$)|$)/g;
+const runCard=(body:string):WorkflowRunCard|null=>{
+ let value:unknown;try{value=JSON.parse(body);}catch{return null;}
+ if(!value||typeof value!=='object'||Array.isArray(value))return null;
+ const {runId,workflowId,title}=value as Record<string,unknown>;
+ if(typeof runId!=='string'||!runId.trim()||typeof workflowId!=='string'||!workflowId.trim())return null;
+ return {workflowId,runId,title:typeof title==='string'&&title.trim()?title.trim():'Workflow run'};
+};
+export function workflowReplyText(text:string){
+ const runs:WorkflowRunCard[]=[];let removed=false;
+ const rendered=text.replace(blockPattern,(_whole,lead:string,body:string|undefined,closed:string|undefined)=>{
+  removed=true;const card=closed&&body!==undefined?runCard(body):null;
+  if(card&&!runs.some(run=>run.runId===card.runId&&run.workflowId===card.workflowId))runs.push(card);
+  return lead;
+ });
+ // Ordinary messages keep their exact text, including indentation and trailing paragraphs.
+ return {text:removed?rendered.replace(/\n{3,}/g,'\n\n').trim():text,runs};
+}

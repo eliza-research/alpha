@@ -34,12 +34,12 @@ public final class CloudSignInCallbackInstrumentedTest {
 
  private static void holdFor(long millis) { SystemClock.sleep(millis); }
 
- /** The return resolves to MainActivity only, at one exact path on the build's App Link host. */
+ /** The return resolves to MainActivity only, at one exact path, on the build's App Link host (production.web). */
  @Test public void returnLinkResolvesOnlyToMainActivity() {
-  assertFalse("The build declares an App Link host", HOST == null || HOST.isEmpty());
   PackageManager packages = context().getPackageManager();
   Intent link = new Intent(Intent.ACTION_VIEW, Uri.parse(callback(CloudSignInFlow.newState()))).addCategory(Intent.CATEGORY_BROWSABLE).setPackage(context().getPackageName());
   List<ResolveInfo> matches = packages.queryIntentActivities(link, 0);
+  assertEquals("eliza.app", HOST);
   assertEquals(1, matches.size());
   assertEquals(MainActivity.class.getName(), matches.get(0).activityInfo.name);
   for (String other : new String[]{"https://" + HOST + "/", "https://" + HOST + "/alphaphone/auth/callback/extra", "https://" + HOST + "/auth/callback", "https://api." + HOST + "/alphaphone/auth/callback", "http://" + HOST + "/alphaphone/auth/callback"})

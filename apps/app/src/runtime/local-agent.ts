@@ -39,6 +39,8 @@ export interface LocalAgentBridge {
   /** Read-only native query; see residentAttachable. */
   residentAttachment?(input:{credentialId?:string}):Promise<{attachable?:unknown;reason?:unknown;bindingGuard?:unknown}>;
   configureCloudProvider?(input:{credentialId:string;model:string}):Promise<unknown>;
+  /** Owner switches enforced by the native Google host before agent writes. */
+  setGoogleAgentAccess?(input:{gmailChanges:boolean;calendarEdits:boolean}):Promise<void>;
   request(input: { path: string; audioBase64?:string;requestId?:string;ownerId?:string; method: LocalAgentMethod; headers: Record<string,string>; body?: string; timeoutMs: number }, signal?:AbortSignal): Promise<{status:number;body?:string}>;
   stream?(input:{path:string;ownerId:string;headers:Record<string,string>;body:string},signal:AbortSignal,onText:StreamTextListener,onReplyReady?:(results:readonly unknown[]|undefined)=>void):Promise<RemoteChatReply>;
   /** Cloud read-aloud as it arrives: binary audio/mpeg, or the JSON envelope of a refusal. */
@@ -524,6 +526,11 @@ export async function configureLocalProvider(apiKey:string,model:string=LOCAL_PR
   if(!native.prepareProviderConfiguration||!native.configureProvider||!native.cancelProviderConfiguration)throw Error('Cancellable model provider setup is unavailable.');
   if(model!==LOCAL_PROVIDER_MODEL)throw Error(`Alpha Phone uses ${LOCAL_PROVIDER_MODEL} on Cerebras.`);
   return runProviderConfiguration(signal,{prepare:()=>native.prepareProviderConfiguration!(),configure:requestId=>native.configureProvider!({apiKey,model,requestId,...(cartesiaKey?{cartesiaKey}:{})}),cancel:requestId=>native.cancelProviderConfiguration!({requestId})});
+}
+/** Publish the saved owner switches to the on-device Google host. */
+export async function saveNativeGoogleAgentAccess(access:{gmailChanges:boolean;calendarEdits:boolean}):Promise<void> {
+  if(!Capacitor.isNativePlatform()||!native.setGoogleAgentAccess)throw Error('Google access cannot be saved here.');
+  await native.setGoogleAgentAccess({gmailChanges:access.gmailChanges,calendarEdits:access.calendarEdits});
 }
 export async function localProviderStatus():Promise<LocalProviderStatus> {
   if(browserCloudResidentEnabled)return parseProviderStatus(await browserResidentCall('residentStatus'));

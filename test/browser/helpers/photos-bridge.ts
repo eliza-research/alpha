@@ -1,14 +1,17 @@
 import {flagOffAndroid,completeAccessSetup} from '../flag-off-android';
 import {type Page} from '@playwright/test';
 // Renderer contract only. The synthetic bridge does not qualify Android permissions or MediaStore.
-export async function photosBridge(page:Page,scope='full',openPhotos=true,authenticated=false){
+// `owned` adds an Alpha-owned favorite that the native list returns whatever the provider scope.
+export async function photosBridge(page:Page,scope='full',openPhotos=true,authenticated=false,owned=false){
  if(authenticated)await flagOffAndroid(page);
- await page.addInitScript(scope=>{
+ await page.addInitScript(({scope,owned})=>{
   localStorage.setItem('alpha.connection.selection.v1',JSON.stringify({kind:'offline'}));
   const w=window as any,previous=w.Capacitor;w.androidBridge={};const calls:any[]=[];const listeners:Record<string,()=>void>={};
   const image='data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==';
   const row={id:'m:external_primary:i:91',name:'Synthetic beach.jpg',kind:'image',image,width:100,height:80,date:Date.now(),revision:'provider:1:100:2:1:2',mutationRevision:'provider:1:100:2:1:2',favorite:true,owned:false};
-  const state=w.mediaFixture={scope,calls,emit:()=>listeners['AlphaPhotos:libraryChanged']?.(),row};
+  const ownedRow={...row,id:'m:external_primary:i:92',name:'Alpha capture.jpg',date:Date.UTC(2026,0,1,9,30),owned:true};
+  const ownedRows=owned?[ownedRow]:[];
+  const state=w.mediaFixture={scope,calls,emit:()=>listeners['AlphaPhotos:libraryChanged']?.(),row,ownedRow};
   const access=()=>({scope:state.scope,images:state.scope==='partial'?'full':state.scope,videos:state.scope==='partial'?'denied':state.scope});
   const plugins:Record<string,string[]>={AlphaMailAttachments:['readPhotoSelected','cancelPhotoSelected'],AlphaPhotos:['libraryAccess','requestLibraryAccess','openLibrarySettings','listPermitted','list','summary','albums','read','beginVideoEdit','saveVideoEdit','cancelVideoEdit','editResult','watchLibrary'],ElizaSystem:['getBuildInfo','getLaunchInfo','getLocaleInfo','listLauncherApps','resolveDefaultApp'],DailyApps:['surfaceInfo','listReminders','pendingReminderTap'],AlphaNotifications:['status','list'],AlphaVoiceCloud:['checkPermissions']};
   w.Capacitor={Plugins:{},PluginHeaders:[...(previous?.PluginHeaders||[]).filter((p:any)=>!(p.name in plugins)),...Object.entries(plugins).map(([name,methods])=>({name,methods:[...methods,'addListener','removeListener'].map(name=>({name,rtype:name==='addListener'?'callback':'promise'}))}))],
@@ -26,8 +29,8 @@ export async function photosBridge(page:Page,scope='full',openPhotos=true,authen
     if(plugin==='AlphaPhotos'){
      if(method==='libraryAccess')return access();
      if(method==='requestLibraryAccess'){state.scope='full';return access();}
-     if(method==='listPermitted')return {items:state.scope==='denied'||input?.query&&!row.name.toLowerCase().includes(input.query.toLowerCase())?[]:[row],next:'',access:access()};
-     if(method==='list')return {items:state.scope==='denied'||input?.trashed?[]:[row],next:''};
+     if(method==='listPermitted')return {items:state.scope==='denied'?[]:[row,...ownedRows].filter(item=>!input?.query||item.name.toLowerCase().includes(input.query.toLowerCase())),next:'',access:access()};
+     if(method==='list')return {items:input?.trashed?[]:[...(state.scope==='denied'?[]:[row]),...ownedRows],next:''};
      if(method==='summary')return {favorites:state.scope==='denied'?0:1,videos:0,trash:0,canFavorite:true};
      if(method==='albums')return {items:[]};if(method==='read')return row;
     }
@@ -37,6 +40,6 @@ export async function photosBridge(page:Page,scope='full',openPhotos=true,authen
     if(plugin==='AlphaNotifications')return method==='status'?{permissionGranted:true,appEnabled:true}:{items:[]};
     return previous?previous.nativePromise(plugin,method,input):{};
    }};
- },scope);
+ },{scope,owned});
  await page.goto('/');if(authenticated)await completeAccessSetup(page);if(openPhotos)await page.getByRole('button',{name:'Photos',exact:true}).click();
 }

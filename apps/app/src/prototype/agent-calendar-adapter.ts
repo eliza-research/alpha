@@ -188,17 +188,17 @@ export function installAgentCalendarAdapter(Component:any,views:Bag,preservation
   }
   if(out.ev)out.ev.canModify=!out.ev.readOnly;
   if(state.form&&state.form.cal!=='alpha-reminders'&&out.f){const f=state.form;
-   const reminderSource=out.f.cals?.filter((c:Bag)=>c.domain==='reminders')??[];out.f.cals=[...cals.filter((c:Bag)=>c.writable).map(c=>({...c,pick:()=>api.set({form:{...f,cal:c.id}})})),...reminderSource];out.f.alerts=null;out.f.video=false;out.f.toggleVideo=()=>api.toast('Use a meeting action to create a video room.');
+   const reminderSource=out.f.cals?.filter((c:Bag)=>c.domain==='reminders')??[];out.f.cals=[...cals.filter((c:Bag)=>c.writable).map(c=>({...c,on:f.cal===c.id,pick:()=>api.set({form:{...f,cal:c.id}})})),...reminderSource];out.f.alerts=null;out.f.video=false;out.f.toggleVideo=()=>api.toast('Use a meeting action to create a video room.');
    const original=model?.feed?.events.find(e=>calendarEventKey(e)===f.canonicalEventKey),recurring=!!(original?.recurringEventId||original?.recurrence?.length),managedSeries=recurring&&managedGoogleSource(original);
    out.f.allDay=!!f.allDay;out.f.allDayTrack='background: '+(f.allDay?'var(--acc)':'var(--s3)');out.f.allDayKx=f.allDay?20:0;out.f.toggleAllDay=()=>api.set({form:{...f,allDay:!f.allDay}});
    out.f.recurrenceScopes=recurring?(managedSeries?['instance']:['instance','this_and_following','series']).map(scope=>({label:scope==='instance'?'This occurrence':scope==='series'?'Entire series':'This and following',selected:f.recurrenceScope===scope,pick:()=>api.set({form:{...f,recurrenceScope:scope}})})):[];
    // The host writes one occurrence of a managed Google series; the series itself is edited in Google Calendar.
    if(managedSeries)out.f.repeats=null;
-   else if(recurring)out.f.repeats=[{label:'Keep existing repeat',pick:()=>api.set({form:{...f,repeat:'preserve'}})},...out.f.repeats];
+   else if(recurring)out.f.repeats=[{label:'Keep existing repeat',on:f.repeat==='preserve',pick:()=>api.set({form:{...f,repeat:'preserve'}})},...out.f.repeats];
    const selectedSourceKey=controller?.sourceKeyForHandle(f.cal),selectedSource=controller?.state.calendars.find(c=>calendarSourceKey(c)===selectedSourceKey);
-   if(!f.id){const source=newEventSource(),key=source?calendarSourceKey(source):null,eventHandle=key===null?undefined:controller?.sourceHandle(key),reminders=out.f.cals.filter((choice:Bag)=>choice.domain==='reminders'),events=out.f.cals.filter((choice:Bag)=>!!eventHandle&&choice.id===eventHandle);out.f.cals=reminders.length?[...events.map((choice:Bag)=>({...choice,name:'Event',dot:'var(--acc)',css:f.cal===choice.id?'background:var(--fg);color:var(--bg)':'background:var(--bg)'})),...reminders]:selectedSourceKey===key?[]:events;}
+   if(!f.id){const source=newEventSource(),key=source?calendarSourceKey(source):null,eventHandle=key===null?undefined:controller?.sourceHandle(key),reminders=out.f.cals.filter((choice:Bag)=>choice.domain==='reminders'),events=out.f.cals.filter((choice:Bag)=>!!eventHandle&&choice.id===eventHandle);out.f.cals=reminders.length?[...events.map((choice:Bag)=>({...choice,on:f.cal===choice.id,name:'Event',dot:'var(--acc)',css:f.cal===choice.id?'background:var(--fg);color:var(--bg)':'background:var(--bg)'})),...reminders]:selectedSourceKey===key?[]:events;}
    // Unsupported retained intent stays in the draft until the owner removes it.
-   if((original??selectedSource)?.provider==='eliza')out.f.repeats=f.repeat==='none'?null:[{label:'Remove requested repeat',pick:()=>api.set({form:{...f,repeat:'none'}})}];
+   if((original??selectedSource)?.provider==='eliza')out.f.repeats=f.repeat==='none'?null:[{label:'Remove requested repeat',on:false,pick:()=>api.set({form:{...f,repeat:'none'}})}];
    // aria-disabled does not stop a tap, so a disabled Save says why and does nothing.
    const saveOffReason=!model||!['ready','partial','unavailable'].includes(model.status)?'Calendar is still loading. Try again in a moment.':model.mutating?'Calendar is saving. Try again in a moment.':f.canonicalOwnerKey!==model.ownerKey?'This draft is from another account.':f.canonicalUncertain===true?'Check this event in Calendar before saving again.':'';
    out.f.saveOff=!!saveOffReason;out.f.save=async()=>{if(saveOffReason){api.toast(saveOffReason);return;}try{

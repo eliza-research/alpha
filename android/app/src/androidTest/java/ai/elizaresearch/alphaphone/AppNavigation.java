@@ -59,6 +59,8 @@ final class AppNavigation {
   org.junit.Assume.assumeTrue(journey + " needs the views: this flag-off build is signed out of Eliza Cloud, so P-43's sign-in screen opens by itself and cannot be dismissed (tests never sign in). Run it on the test-mocks pair or on a flag-off phone its owner signed in.",
    new AlphaCredentialStore(context).readCredentialSlot("cloud:production") != null);
  }
+ /** P-43's required sign-in page (signed out, flag-off) has finished its readiness check and takes an email. */
+ static final String SIGN_IN_PAGE_READY = "(()=>{const p=document.querySelector('.alpha-auth-page .alpha-auth-content');return !!p&&p.getAttribute('aria-busy')!=='true'&&!!p.querySelector('input[name=email]:not(:disabled)')})()";
  static String selected(String view) { return "document.documentElement.dataset.activeView==="+JSONObject.quote(view.toLowerCase()); }
  static String composer() { return "[...document.querySelectorAll('textarea[data-alpha-composer]')].find(e=>!e.disabled&&e.getClientRects().length&&!e.closest('[inert], [aria-hidden=\"true\"]'))"; }
  static String type() { return "document.querySelector('button[aria-label=\"Type\"]')?.click()"; }

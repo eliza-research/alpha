@@ -2,7 +2,7 @@
 // Telecom is involved: this proves the renderer's fences and handoff wording, not a device read.
 import test from 'node:test';import assert from 'node:assert/strict';import {build} from 'esbuild';import {mkdtempSync,writeFileSync,rmSync,readFileSync} from 'node:fs';import {tmpdir} from 'node:os';import {join,resolve} from 'node:path';import {pathToFileURL} from 'node:url';
 const dir=mkdtempSync(join(tmpdir(),'phone-adapter-'));
-const output=await build({entryPoints:[resolve('apps/app/src/prototype/phone-adapter.ts')],bundle:true,format:'esm',platform:'node',write:false,external:['@capacitor/core'],plugins:[{name:'stubs',setup(b){b.onResolve({filter:/^(\.\.\/runtime\/aosp-image|\.\/native-adapter|\.\.\/platform-plugins)$/},a=>({path:a.path,namespace:'stub'}));b.onLoad({filter:/.*/,namespace:'stub'},a=>({contents:a.path.includes('aosp-image')?'export const aospImage=false;':a.path.includes('native-adapter')?'export function watchReturnToApp(){return ()=>{};}':'export function registerPlugin(){return {};}',loader:'js'}));}}]});
+const output=await build({entryPoints:[resolve('apps/app/src/prototype/phone-adapter.ts')],bundle:true,format:'esm',platform:'node',write:false,external:['@capacitor/core'],plugins:[{name:'stubs',setup(b){b.onResolve({filter:/^(\.\.\/runtime\/aosp-image|\.\/native-adapter|\.\/mvp-features|\.\.\/platform-plugins)$/},a=>({path:a.path,namespace:'stub'}));b.onLoad({filter:/.*/,namespace:'stub'},a=>({contents:a.path.includes('aosp-image')?'export const aospImage=false;':a.path.includes('native-adapter')?'export function watchReturnToApp(){return ()=>{};}':a.path.includes('mvp-features')?'export function isMvpView(view){return (globalThis.mvpViews||[]).includes(view);}':'export function registerPlugin(){return {};}',loader:'js'}));}}]});
 writeFileSync(join(dir,'adapter.mjs'),output.outputFiles[0].text);process.on('exit',()=>rmSync(dir,{recursive:true,force:true}));
 const {installPhoneAdapter,phoneRows}=await import(pathToFileURL(join(dir,'adapter.mjs')));
 const {createAospTelephony}=await import('../apps/app/src/runtime/aosp-telephony.ts');
@@ -23,7 +23,7 @@ test('the simulated call, agent reply and suggestions are replaced on the image'
 });
 test('a host without the read shows no history and never asks for it',async()=>{
  const {views,calls}=mount({status:status()});await settle();
- assert.match(views.phone.render({},{}).nativeStatus,/not available/);assert.ok(!calls.some(([m])=>m==='listRecentCalls'||m==='requestAccess'));
+ assert.equal(views.phone.render({},{}).nativeStatus,'Recent calls aren\'t available.');assert.ok(!calls.some(([m])=>m==='listRecentCalls'||m==='requestAccess'));
 });
 test('access is asked for only from the owner control; recents are then read bounded',async()=>{
  let granted=false;const {views,calls}=mount({status:()=>status(granted?'granted':'prompt'),requestAccess:()=>{granted=true;return status('granted');},listRecentCalls:{calls:[call]}});await settle();
@@ -37,7 +37,24 @@ test('dialing a recent call or a typed number is a handoff with the native messa
  views.phone.render({},{}).nativeRows[0].dial();await settle();
  assert.deepEqual(calls.find(([m])=>m==='dial'),['dial',{number:'+15555550100'}]);assert.match(views.phone.render({},{}).nativeNotice,/phone app is open/);
  const model=views.phone.render({},{});model.nativeOnNumber({target:{value:'*#06#'}});views.phone.render({},{}).nativeDial();await settle();
- assert.match(views.phone.render({},{}).nativeNotice,/Enter a phone number/);assert.equal(calls.filter(([m])=>m==='dial').length,1,'an MMI string never reaches the dial handoff');
+ assert.equal(views.phone.render({},{}).nativeNotice,'Enter a valid phone number.');assert.equal(calls.filter(([m])=>m==='dial').length,1,'an MMI string never reaches the dial handoff');
+});
+test('a number from Contacts fills the field once and dials only on the owner tap',async()=>{
+ const {views,calls}=mount({status:status('granted'),listRecentCalls:{calls:[]},dial:{status:'handed-off',target:'dialer',handler:null,message:'Your phone app is open with the number.'}});await settle();
+ const sets=[];const api={set:patch=>sets.push(patch)};
+ let model=views.phone.render({prefill:'+15555550100'},api);await settle();
+ assert.equal(model.nativeNumber,'+15555550100');assert.deepEqual(sets,[{prefill:null}]);assert.ok(!calls.some(([m])=>m==='dial'),'a prefill never dials');
+ model=views.phone.render({},api);model.nativeOnNumber({target:{value:'+15555550199'}});assert.equal(views.phone.render({},api).nativeNumber,'+15555550199','the consumed prefill does not overwrite the owner edit');
+ views.phone.render({},api).nativeDial();await settle();assert.deepEqual(calls.filter(([m])=>m==='dial'),[['dial',{number:'+15555550199'}]]);
+});
+test('a failed handoff says the phone app did not open',async()=>{
+ const {views}=mount({status:status('granted'),listRecentCalls:{calls:[call]},dial:()=>{throw Error('no activity');}});await settle();
+ views.phone.render({},{}).nativeRows[0].dial();await settle();assert.equal(views.phone.render({},{}).nativeNotice,'Couldn\'t open the phone app.');
+});
+test('Contacts opens only where Contacts is admitted',async()=>{
+ const {views}=mount({status:status()});await settle();const opened=[],toasts=[];const api={open:view=>opened.push(view),toast:text=>toasts.push(text)};
+ globalThis.mvpViews=[];views.phone.render({},api).nativeContacts();assert.deepEqual(opened,[]);assert.deepEqual(toasts,['Contacts isn\'t available on this phone.']);
+ globalThis.mvpViews=['contacts'];views.phone.render({},api).nativeContacts();assert.deepEqual(opened,['contacts']);globalThis.mvpViews=[];
 });
 test('rows without a dialable number cannot dial',()=>{const rows=phoneRows([{...call,number:'',cachedName:null}],()=>{throw Error('dialed');});assert.equal(rows[0].noDial,true);rows[0].dial();assert.match(rows[0].label,/Unknown caller/);});
 test('the template wraps the prototype Phone behind nativePrototype',()=>{const html=readFileSync('apps/app/src/prototype/template.html','utf8');const start=html.indexOf('<sc-if value="{{is.phone}}">');assert.ok(html.indexOf('<sc-if value="{{phone.nativeManaged}}">',start)>start);assert.ok(html.indexOf('<sc-if value="{{phone.nativePrototype}}">',start)<html.indexOf('{{phone.title}}',start));});

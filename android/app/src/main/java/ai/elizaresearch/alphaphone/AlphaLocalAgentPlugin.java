@@ -367,6 +367,16 @@ private static final class ResidentAttachDiagnostic {
    }}
   }catch(Exception unavailable){call.resolve(new JSObject().put("attachable",false).put("reason","unavailable"));}},()->{call.reject("Local agent bridge is closed.");});
  }
+ /** The owner's Settings switches for agent Gmail changes and Calendar edits. Off never disconnects Google;
+  * the on-device Google host refuses agent writes unless this file says on. */
+ @PluginMethod public void setGoogleAgentAccess(PluginCall call){
+  final Boolean gmailChanges=call.getBoolean("gmailChanges"),calendarEdits=call.getBoolean("calendarEdits");
+  if(gmailChanges==null||calendarEdits==null){call.reject("Invalid Google access.");return;}
+  PluginWorkers.submit(workers,()->{
+   try{GoogleAgentAccessFile.write(GoogleAgentAccessFile.in(getContext().getFilesDir()),gmailChanges,calendarEdits);call.resolve();}
+   catch(Exception unavailable){call.reject("Google access could not be saved.");}
+  },()->{call.reject("Local agent bridge is closed.");});
+ }
  /** Owner-selected direct provider configuration; shared admission owns validation and secure CAS. */
  static boolean directProviderAllowed(boolean testMocks){return NativeProviderSlot.directProviderAllowed(testMocks);}
  @PluginMethod public void configureProvider(PluginCall call) {
@@ -616,6 +626,8 @@ private static final class ResidentAttachDiagnostic {
   java.io.File google=nativeHostResources==null?null:new java.io.File(nativeHostResources,"google-host.mjs");
   if(google!=null&&google.isFile())env.put("ELIZA_NATIVE_GOOGLE_HOST_MODULE",google.getCanonicalPath());
   else if("cloud".equals(BuildConfig.ELIZA_RUNTIME_PROFILE))throw new java.io.IOException("Native Cloud routing module unavailable");
+  // The owner's Gmail changes / Calendar edits switches (setGoogleAgentAccess), read before every agent write.
+  env.put("ALPHA_GOOGLE_AGENT_ACCESS_FILE",GoogleAgentAccessFile.in(context.getFilesDir()).getAbsolutePath());
   try {
   // Decision P-43: the resident always runs. With no provider slot it launches with no hosted
   // provider environment; upstream then reports no_provider for each turn.

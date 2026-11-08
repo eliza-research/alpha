@@ -349,9 +349,10 @@ cache, and the 71 shipped coordinates were fetched again directly from their rep
 SHA-256, as did the three `aapt2` archives. The remaining components (plugins, lint, build
 tools and test libraries) were not fetched a second time.
 
-Not covered: the two side projects built with their own Gradle root
-(`android/private-peer-fixture`, and the calendar consumer fixture of
-`scripts/test-native-calendar-consumer.mjs`) have no verification metadata. Neither ships.
+`android/private-peer-fixture` is a debug-only module of the verified build
+(`:private-peer-fixture:assembleDebug`). Not covered: the calendar consumer fixture of
+`scripts/test-native-calendar-consumer.mjs` is built with its own Gradle root and has no
+verification metadata. It does not ship.
 
 Both branches of the 2026-10-13 merge had generated a metadata file independently; the merge
 keeps the one described above (with `scripts/gradle-verification.mjs` and its reviewed groups).

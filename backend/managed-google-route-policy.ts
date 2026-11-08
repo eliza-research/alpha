@@ -1,6 +1,8 @@
 import {productionCloud} from '../apps/app/src/runtime/cloud-deployment.generated.ts';
 import {managedServiceRequest} from '../apps/app/src/runtime/managed-service-routes.ts';
 export function object(value:unknown):Record<string,any>{if(!value||typeof value!=='object'||Array.isArray(value))throw Error('Invalid Cloud request');return value as Record<string,any>;}
+/** Longest Gmail search Cloud admits, including any date clause the host appends. */
+export const GMAIL_QUERY_MAX=2048;
 const GOOGLE_UUID=/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 /** Narrow owner-service surface. URL queries carry opaque provider IDs; paths never do. */
 export function managedGoogleRequest(url:URL,method:string,body:unknown):boolean {
@@ -54,7 +56,7 @@ export function managedGoogleRequest(url:URL,method:string,body:unknown):boolean
   const start=Date.parse(params.get('timeMin')!),end=Date.parse(params.get('timeMax')!);if(!Number.isFinite(start)||!Number.isFinite(end)||end<=start)return false;
   try{new Intl.DateTimeFormat('en-US',{timeZone:params.get('timeZone')!}).format();return true;}catch{return false;}
  }
- if(route==='gmail/search')return exact(['side','grantId','query','maxResults','pageToken'])&&params.get('side')==='owner'&&clean('query',2048)&&['10','25','50'].includes(params.get('maxResults')??'')&&(!params.has('pageToken')||clean('pageToken',4096));
+ if(route==='gmail/search')return exact(['side','grantId','query','maxResults','pageToken'])&&params.get('side')==='owner'&&clean('query',GMAIL_QUERY_MAX)&&['10','25','50'].includes(params.get('maxResults')??'')&&(!params.has('pageToken')||clean('pageToken',4096));
  if(route==='gmail/read')return exact(['side','grantId','messageId'])&&params.get('side')==='owner'&&clean('messageId');
  if(route==='gmail/inbox-v1/capabilities')return exact(['grantId']);
  if(route==='gmail/inbox-v1/thread')return exact(['grantId','threadId','offset','historyId'])&&clean('threadId')&&(!params.has('offset')||/^\d{1,4}$/.test(params.get('offset')!)&&clean('historyId'))&&(!params.has('historyId')||params.has('offset'));

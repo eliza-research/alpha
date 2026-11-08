@@ -37,14 +37,15 @@ export function createFilesIndex(store:Store|undefined=defaultStore(),now:()=>nu
   return {
     list:()=>read().sort((a,b)=>b.openedAt-a.openedAt),
     has:(selectionId:string)=>read().some(row=>row.selectionId===selectionId),
-    /** Insert or refresh a row. Returns selection IDs evicted past the limit so
-     * the caller can release their grants. */
+    /** Insert or refresh a row. Returns selection IDs replaced or evicted past
+     * the limit so the caller can release their grants. */
     record(input:Omit<RecentFile,'key'|'openedAt'|'status'>&{status?:RecentFile['status']}):string[]{
       const row=clean({...input,key:recentKey(input),openedAt:now(),status:input.status??(input.kind==='scan-pdf'?'saved':'ready')});
       if(!row)return [];
-      // The same document chosen again replaces its older row (and grant).
-      const previous=read(),same=(old:RecentFile)=>old.key===row.key||old.kind===row.kind&&old.name===row.name&&old.mimeType===row.mimeType&&(row.kind!=='tree'||old.status==='revoked');
-      const rows=[row,...previous.filter(old=>!same(old))],replaced=previous.filter(old=>same(old)&&old.key!==row.key);
+      // The same row (a reopened folder file mints a new selection) replaces its older
+      // grant. Picked files match only by selection: two files may share a name.
+      const previous=read(),same=(old:RecentFile)=>old.key===row.key||row.kind==='tree'&&old.kind==='tree'&&old.status==='revoked'&&old.name===row.name&&old.mimeType===row.mimeType;
+      const rows=[row,...previous.filter(old=>!same(old))],replaced=previous.filter(same);
       const kept=rows.slice(0,RECENT_LIMIT),evicted=[...replaced,...rows.slice(RECENT_LIMIT)];
       write(kept);
       return evicted.flatMap(old=>old.selectionId&&!kept.some(k=>k.selectionId===old.selectionId)?[old.selectionId]:[]);
@@ -58,8 +59,13 @@ export function createFilesIndex(store:Store|undefined=defaultStore(),now:()=>nu
     /** The selection showing when the app last closed, so a restart restores only that one. */
     open():string|null{if(!store)return openMemory;try{const value=store.getItem(filesOpenKey);return value&&/^[A-Za-z0-9:_-]{1,100}$/.test(value)?value:null;}catch{return null;}},
     setOpen(selectionId:string|null){openMemory=selectionId;if(!store)return;try{if(selectionId)store.setItem(filesOpenKey,selectionId);else store.removeItem(filesOpenKey);}catch{/* Restore is a convenience. */}},
-    /** Tree capabilities last only for one Android session. */
-    revokeTree(){write(read().map(row=>row.kind==='tree'&&row.status==='ready'?{...row,status:'revoked' as const}:row));},
+    /** Tree capabilities last only for one Android session. Returns the selection
+     * IDs the revoked rows held so the caller can release their grants. */
+    revokeTree():string[]{
+      const rows=read(),ended=rows.filter(row=>row.kind==='tree'&&row.status==='ready');
+      write(rows.map(row=>ended.includes(row)?{key:row.key,kind:row.kind,name:row.name,mimeType:row.mimeType,openedAt:row.openedAt,status:'revoked' as const,...(row.treeId?{treeId:row.treeId}:{})}:row));
+      return ended.flatMap(row=>row.selectionId?[row.selectionId]:[]);
+    },
   };
 }
 export const filesIndex=createFilesIndex();

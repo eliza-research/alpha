@@ -34,7 +34,7 @@ export function HostedLiveSourcePicker({
 		[calendarId, setCalendarId] = useState(""),
 		[pending, setPending] = useState(false),
 		[message, setMessage] = useState(
-			"Choose a Google account connected to this agent. No Google token is copied from this phone.",
+			"Choose a Google account connected to this agent. Your Google sign-in stays on this phone.",
 		),
 		[windowHours, setWindowHours] = useState(24),
 		[expiresHours, setExpiresHours] = useState(24),
@@ -130,7 +130,7 @@ export function HostedLiveSourcePicker({
 					...(kind === "calendar" ? { calendarId: calendar!.calendarId } : {}),
 				},
 			},
-			summary: `Allow scheduled read-only access to ${label} through this agent until ${new Date(expiresAt).toLocaleString()}. Each run may read up to ${maxItems} ${kind === "email" ? "inbox subjects and snippets from the previous" : "events from the next"} ${windowHours} hours. ${kind === "email" ? "Message bodies and attachments are excluded." : "Only this calendar is included."} Reads require this agent to be running. An on-device agent cannot read while the phone is off. This does not send mail or change calendar events. Enabling a schedule is a separate review.`,
+			summary: `Allow this agent to read ${label} until ${new Date(expiresAt).toLocaleString()}: up to ${maxItems} ${kind === "email" ? "inbox subjects and snippets from the last" : "events from the next"} ${windowHours} hours per run. ${kind === "email" ? "Message bodies and attachments are excluded." : "Only this calendar is read."} Reads run only while your agent is running. It can't send mail or change events. Turning on a schedule is a separate review.`,
 		});
 	}
 	return (
@@ -142,7 +142,7 @@ export function HostedLiveSourcePicker({
 				Refresh connected accounts
 			</button>
 			{account?.expiresAt && <p>Cloud access expires {new Date(account.expiresAt).toLocaleString()}.</p>}
-            {account?.accountId.startsWith("cloud:") && <button disabled={busy||pending} onClick={()=>void (async()=>{setPending(true);try{const result=await client.delegation("revoke",{grantId:account.accountId.split(":")[1],confirmed:true},signal);if(current()){setMessage(result.remoteRevocation==="confirmed"?"Cloud grant revoked. All sources using it are disabled.":"Reads disabled. Retry revocation to finish disconnecting in Cloud.");if(result.remoteRevocation==="confirmed"){setAccounts([]);setAccountId("");}}}catch{if(current())setMessage("Revocation is not confirmed. Try again.");}finally{if(current())setPending(false);}})()}>Revoke selected Cloud grant for all its sources</button>}
+            {account?.accountId.startsWith("cloud:") && <button disabled={busy||pending} onClick={()=>void (async()=>{setPending(true);try{const result=await client.delegation("revoke",{grantId:account.accountId.split(":")[1],confirmed:true},signal);if(current()){setMessage(result.remoteRevocation==="confirmed"?"Google access removed. Every source that used it is turned off.":"Reads are off. Try again to finish removing access in Cloud.");if(result.remoteRevocation==="confirmed"){setAccounts([]);setAccountId("");}}}catch{if(current())setMessage("Revocation is not confirmed. Try again.");}finally{if(current())setPending(false);}})()}>Remove Google access for every source that uses it</button>}
             {accounts.length > 0 && (
 				<>
 					<label>

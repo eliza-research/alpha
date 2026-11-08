@@ -10,9 +10,10 @@
  * Nothing here qualifies anything. The reviewed bytes are named by SHA-256 in the committed
  * android/embedding-host/qualified-host.json; this step can only reproduce them, and stages a
  * rebuild only when it is byte-identical. android/embedding-host/build-toolchain.json records
- * whether the reviewed bytes are reproducible at all: while `remapBuildPath` is false they embed
- * the absolute directory they were built in, which this repository does not record, so the step
- * stops without compiling and names the person who is needed (HUMAN_ACTION).
+ * the NDK, CMake and whether the reviewed bytes were built with a remapped build path
+ * (`remapBuildPath`); only then can a rebuild reproduce them. Without it, or while
+ * qualified-host.json carries `requalification.required`, the step stops without compiling and
+ * names the person who is needed (HUMAN_ACTION).
  *
  * Exit codes: 0 staged (already, or reproduced), or a candidate was built; 2 a prerequisite is
  * missing or a staged file conflicts; 3 the reviewed bytes are not staged and cannot be produced.
@@ -75,6 +76,18 @@ export function describeDifference(comparison) {
     : `${row.name}: ${row.reason}, reviewed ${row.expected.bytes} bytes sha256 ${row.expected.sha256}`);
 }
 
+/**
+ * Whether the staged host can be used and who supplies it: 'person' while the record awaits
+ * requalification (a fork bump changed a reviewed input) or its bytes are not reproducible.
+ * `staged` is stagedLibraries() for the same manifest.
+ */
+export function embeddingHostState(manifest, toolchain, staged) {
+  if (manifest.requalification?.required === true)
+    return {ready: false, suppliedBy: 'person', reason: `${QUALIFIED_HOST} must be requalified at ${String(manifest.requalification.atPin).slice(0, 12)}: ${manifest.requalification.reason}. A person must requalify it; no script may build or stage it until then.`};
+  const reproducible = toolchain.remapBuildPath === true;
+  return {ready: staged.every(row => row.state === 'staged'), suppliedBy: reproducible ? 'script' : 'person', reason: reproducible ? null : `No script can produce them: ${toolchain.remapBuildPathEvidence}`};
+}
+
 export class Stop extends Error {
   constructor(code, message) { super(message); this.code = code; }
 }
@@ -124,7 +137,8 @@ function fetchEngine(engine, toolchain, forkPin, {offline}) {
 
 function compile(root, manifest, toolchain, output, {offline, remap}) {
   // Source admission: the pinned checkout still carries exactly the reviewed native inputs.
-  verifyEmbeddingInputs(root, manifest);
+  try { verifyEmbeddingInputs(root, manifest); }
+  catch (error) { throw new Stop(3, `The pinned checkout does not carry the reviewed embedding host inputs (${error.message}).\n${HUMAN_ACTION}`); }
   const sdk = resolveSdk();
   const ndk = path.join(sdk, 'ndk', toolchain.ndk);
   if (!fs.existsSync(path.join(ndk, 'build/cmake/android.toolchain.cmake')))
@@ -167,7 +181,9 @@ export function run(root, {status = false, offline = false, candidate = false, b
     return 0;
   }
   const staged = stagedLibraries(root, manifest);
-  if (staged.every(row => row.state === 'staged')) {
+  const host = embeddingHostState(manifest, toolchain, staged);
+  if (manifest.requalification?.required === true) throw new Stop(3, `${host.reason}\n${HUMAN_ACTION}`);
+  if (host.ready) {
     console.log('Reviewed ARM64 embedding host libraries are staged (bytes match android/embedding-host/qualified-host.json).');
     return 0;
   }
@@ -175,8 +191,8 @@ export function run(root, {status = false, offline = false, candidate = false, b
   if (different.length)
     throw new Stop(2, `Staged ${different.map(row => row.name).join(', ')} in android/app/src/main/jniLibs/${manifest.abi} is not the reviewed bytes. Review where it came from and remove it; this step never replaces a staged library.`);
   const missing = `Embedding host not staged: ${staged.filter(row => row.state === 'missing').map(row => row.name).join(', ')} missing from android/app/src/main/jniLibs/${manifest.abi}.`;
-  if (toolchain.remapBuildPath !== true)
-    throw new Stop(3, `${missing}\nNo script can produce them: ${toolchain.remapBuildPathEvidence}\n${HUMAN_ACTION}`);
+  if (host.suppliedBy === 'person')
+    throw new Stop(3, `${missing}\n${host.reason}\n${HUMAN_ACTION}`);
   if (status) {
     console.log(`${missing} Run: npm run agent:build-embedding-host`);
     return 3;

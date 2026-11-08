@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {readFileSync} from 'node:fs';
+import {readFileSync,readdirSync} from 'node:fs';
 import vm from 'node:vm';
 import {stripTypeScriptTypes} from './support/strip-types.mjs';
 const read=path=>readFileSync(new URL('../'+path,import.meta.url),'utf8');
@@ -57,4 +57,20 @@ test('in-chat-only startup requests the canonical native listener stop and repor
  }
  assert.match(read('apps/app/src/main.tsx'),/if \(isAndroid && !externalVoiceInvocationEnabled\) void stopWakeListenerForChatOnly\(\)/);
  assert.match(read('apps/app/src/prototype/settings-adapter.ts'),/wakeListeningStopUnconfirmed\(\)/);
+});
+
+test('no enabled component opens the dormant assistant entries',()=>{
+ const sources={},java='android/app/src/main/java/ai/elizaresearch/alphaphone/';
+ for(const entry of readdirSync(new URL('../'+java,import.meta.url)))if(entry.endsWith('.java'))sources[entry.slice(0,-5)]=read(java+entry);
+ const dormant=['AlphaAssistActivity','AlphaPowerVoiceActivity'];
+ for(const flavor of ['launcher','standalone']){
+  const merged={};
+  for(const manifest of ['main',flavor])for(const [,attrs] of read(`android/app/src/${manifest}/AndroidManifest.xml`).matchAll(/<(?:activity|activity-alias|service|receiver|provider)\s([^>]*)>/g)){
+   const name=attrs.match(/android:name="\.?([^"]+)"/)[1].replace(/^ai\.elizaresearch\.alphaphone\./,'');
+   merged[name]={...merged[name],...Object.fromEntries([...attrs.matchAll(/([\w:]+)="([^"]*)"/g)].map(([,key,value])=>[key,value]))};
+  }
+  const openers=Object.keys(merged).filter(name=>!dormant.includes(name)&&dormant.some(target=>sources[name]?.includes(target)));
+  assert.ok(openers.includes('AlphaQuickSettingsTile'),'the tile still targets the assistant entry');
+  for(const name of openers)assert.equal(merged[name]['android:enabled'],'false',`${flavor}: ${name} opens a dormant assistant entry (P-78)`);
+ }
 });

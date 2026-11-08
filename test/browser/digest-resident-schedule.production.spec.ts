@@ -58,10 +58,10 @@ test('loop D on Android: a reviewed snapshot, morning and evening schedules, a l
   await digests.getByRole('combobox', { name: 'Reviewed source', exact: true }).selectOption(source.id);
   await digests.getByLabel('Morning', { exact: true }).fill('07:30');
   await button(page, 'Review morning schedule').click();
-  await confirmReview(page, `Enable morning digest at 07:30 in ${zone}, every day. Source: Errands.`);
-  await expect(digests.getByRole('status')).toHaveText('Save outcome is unconfirmed. Retry the same saved request to recover it safely.');
+  await confirmReview(page, `Runs daily at 07:30 (${zone}) and reads the Errands snapshot.`);
+  await expect(digests.getByRole('status')).toHaveText('Save not confirmed. Retry.');
   const pendingSection = digests.locator('section', { has: page.getByRole('heading', { name: 'Unconfirmed save', exact: true }) });
-  await expect(pendingSection).toContainText('Enable morning digest at 07:30');
+  await expect(pendingSection).toContainText('Runs daily at 07:30');
   const morning = (await posts(page))[1];
   expect(morning).toEqual({ path: 'loops', body: { spec: { version: 1, template: 'morning', sourceId: source.id, sourceRevision: source.revision, timeZone: zone, localTime: '07:30', enabled: true }, mutationId: expect.stringMatching(/^[0-9a-f-]{36}$/), confirmed: true } });
   expect(await harness(page, f => [f.digests.dropped, f.digests.loops.length])).toEqual([['loops'], 1]);
@@ -79,23 +79,23 @@ test('loop D on Android: a reviewed snapshot, morning and evening schedules, a l
   // 3. Evening schedule on the same source.
   await digests.getByLabel('Evening', { exact: true }).fill('19:15');
   await button(page, 'Review evening schedule').click();
-  await confirmReview(page, `Enable evening digest at 19:15 in ${zone}, every day. Source: Errands.`);
+  await confirmReview(page, `Runs daily at 19:15 (${zone}) and reads the Errands snapshot.`);
   await expect(schedules(page)).toHaveText([`Morning at 07:30 (${zone}) · Errands · On`, `Evening at 19:15 (${zone}) · Errands · On`]);
   expect((await posts(page))[3].body).toEqual({ spec: { version: 1, template: 'evening', sourceId: source.id, sourceRevision: source.revision, timeZone: zone, localTime: '19:15', enabled: true }, mutationId: expect.stringMatching(/^[0-9a-f-]{36}$/), confirmed: true });
 
   // 4. Pause the morning schedule: an edit of that exact version.
   const loop = await harness(page, f => f.digests.loops.find((row: any) => row.spec.template === 'morning')) as { id: string; versionId: string };
   await digests.getByRole('button', { name: 'Review pause', exact: true }).first().click();
-  await confirmReview(page, `Pause morning digest at 07:30 in ${zone}, every day.`);
+  await confirmReview(page, `Pause the morning digest at 07:30 (${zone})?`);
   await expect(schedules(page)).toHaveText([`Morning at 07:30 (${zone}) · Errands · Paused`, `Evening at 19:15 (${zone}) · Errands · On`]);
   expect((await posts(page))[4].body).toEqual({ spec: { version: 1, template: 'morning', sourceId: source.id, sourceRevision: source.revision, timeZone: zone, localTime: '07:30', enabled: false }, mutationId: expect.stringMatching(/^[0-9a-f-]{36}$/), confirmed: true, id: loop.id, expectedVersionId: loop.versionId });
 
   // 5. Revoke the source: the running evening schedule reports the revoked source and pauses.
   await digests.getByRole('button', { name: 'Review revocation', exact: true }).click();
-  await confirmReview(page, 'Revoke Errands for future runs. Previously generated results are retained.');
+  await confirmReview(page, 'Revoke Errands? Future runs stop and saved results stay.');
   await expect(schedules(page)).toHaveText([`Morning at 07:30 (${zone}) · Errands · Paused`, `Evening at 19:15 (${zone}) · Errands · Source revoked — paused`]);
   expect((await posts(page))[5]).toEqual({ path: 'sources/revoke', body: { id: source.id, confirmed: true } });
-  await expect(digests.getByRole('region', { name: 'Source renewal' })).toContainText('Errands: Source revoked. Its schedule is paused until you review a new source for it. No failure briefs are created.');
+  await expect(digests.getByRole('region', { name: 'Source renewal' })).toContainText('Errands: Source revoked. Its schedule is paused until you review a new source for it.');
   // A revoked source cannot be chosen again or renewed in place.
   await expect(digests.getByRole('combobox', { name: 'Reviewed source', exact: true }).locator('option')).toHaveText(['Choose source']);
   await expect(digests.getByRole('button', { name: 'Renew Errands', exact: true })).toHaveCount(0);
@@ -125,13 +125,13 @@ test('loop D on Android: a schedule edit made against an older version is refuse
   const source = await harness(page, f => f.digests.sources[0].id) as string;
   await digests.getByRole('combobox', { name: 'Reviewed source', exact: true }).selectOption(source);
   await button(page, 'Review morning schedule').click();
-  await confirmReview(page, 'Enable morning digest at 08:00');
+  await confirmReview(page, 'Runs daily at 08:00');
   await expect(schedules(page)).toHaveCount(1);
   // The agent's loop changes after the panel read it (another device edited it).
   await button(page, 'Review pause').click();
   await page.evaluate(() => { const loop = (window as any).flagOff.digests.loops[0]; loop.versionId = 'changed-elsewhere'; });
   await digests.locator('section', { has: page.getByRole('heading', { name: 'Review', exact: true }) }).getByRole('button', { name: 'Confirm', exact: true }).click();
-  await expect(digests.getByRole('status')).toHaveText('Save outcome is unconfirmed. Retry the same saved request to recover it safely.');
+  await expect(digests.getByRole('status')).toHaveText('Save not confirmed. Retry.');
   expect(await harness(page, f => [f.digests.loops[0].spec.enabled, f.digests.loops[0].versionId])).toEqual([true, 'changed-elsewhere']);
   expect(Object.keys(await harness(page, f => f.digests.receipts))).toHaveLength(1);
   // The refused edit was sent once and applied nothing.

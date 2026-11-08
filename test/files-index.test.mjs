@@ -9,20 +9,28 @@ test('recent sort is newest modified first with folders first and unknown times 
  assert.equal(compareFilesEntries('name')({name:'A',directory:false},{name:'a',directory:false})<0,true,'stable tie-break');
  assert.equal(sortLabel('name'),'Sorted by name');assert.equal(sortLabel('recent'),'Sorted by newest');
 });
-test('recent rows persist newest first, replace the same document and report evicted grants',()=>{
+test('recent rows persist newest first, keep same-name picks and report evicted grants',()=>{
  const store=memory();let now=1;const index=createFilesIndex(store,()=>++now);
- assert.deepEqual(index.record({kind:'selected',name:'Plan.pdf',mimeType:'application/pdf',selectionId:'s1'}),[]);
+ assert.deepEqual(index.record({kind:'selected',name:'Scan.pdf',mimeType:'application/pdf',selectionId:'s1'}),[]);
  index.record({kind:'scan-pdf',name:'Alpha scan.pdf',mimeType:'application/pdf'});
- assert.deepEqual(index.record({kind:'selected',name:'Plan.pdf',mimeType:'application/pdf',selectionId:'s2'}),['s1'],'reselecting releases the older grant');
- assert.deepEqual(index.list().map(r=>[r.kind,r.name,r.status]),[['selected','Plan.pdf','ready'],['scan-pdf','Alpha scan.pdf','saved']]);
- assert.equal(createFilesIndex(store).list().length,2,'survives a restart');assert.equal(index.has('s2'),true);assert.equal(index.has('s1'),false);
- const evicted=[];for(let i=0;i<RECENT_LIMIT;i++)evicted.push(...index.record({kind:'selected',name:'n'+i+'.txt',mimeType:'text/plain',selectionId:'x'+i}));
- assert.deepEqual(evicted,['s2'],'only grants that fall out of Recent are released');assert.equal(index.list().length,RECENT_LIMIT);
+ assert.deepEqual(index.record({kind:'selected',name:'Scan.pdf',mimeType:'application/pdf',selectionId:'s2'}),[],'a second file with the same name releases nothing');
+ assert.deepEqual(index.list().map(r=>[r.kind,r.name,r.selectionId]),[['selected','Scan.pdf','s2'],['scan-pdf','Alpha scan.pdf',undefined],['selected','Scan.pdf','s1']]);
+ assert.equal(createFilesIndex(store).list().length,3,'survives a restart');assert.equal(index.has('s2'),true);assert.equal(index.has('s1'),true);
+ const evicted=[];for(let i=0;i<RECENT_LIMIT-1;i++)evicted.push(...index.record({kind:'selected',name:'n'+i+'.txt',mimeType:'text/plain',selectionId:'x'+i}));
+ assert.deepEqual(evicted,['s1'],'only grants that fall out of Recent are released');assert.equal(index.list().length,RECENT_LIMIT);
+});
+test('reopening a folder file replaces its row and returns the older selection',()=>{
+ const index=createFilesIndex(memory());
+ assert.deepEqual(index.record({kind:'tree',name:'notes.txt',mimeType:'text/plain',selectionId:'t1',treeId:'tree-1'}),[]);
+ assert.deepEqual(index.record({kind:'tree',name:'notes.txt',mimeType:'text/plain',selectionId:'t2',treeId:'tree-1'}),['t1']);
+ assert.deepEqual(index.record({kind:'tree',name:'notes.txt',mimeType:'text/plain',selectionId:'t2',treeId:'tree-1'}),[],'the same selection is kept');
+ assert.deepEqual(index.list().map(r=>r.selectionId),['t2']);
 });
 test('revoked rows stay visible as Select again and tree capabilities end with the session',()=>{
  const store=memory();const index=createFilesIndex(store);
  index.record({kind:'tree',name:'notes.txt',mimeType:'text/plain',selectionId:'t1',treeId:'tree-1'});index.record({kind:'selected',name:'a.pdf',mimeType:'application/pdf',selectionId:'s1'});
- index.revokeTree();assert.deepEqual(index.list().map(r=>r.status).sort(),['ready','revoked']);
+ assert.deepEqual(index.revokeTree(),['t1'],'revoked tree grants are returned for release');assert.deepEqual(index.list().map(r=>r.status).sort(),['ready','revoked']);
+ assert.equal(index.has('t1'),false);assert.deepEqual(index.revokeTree(),[]);
  const row=index.list().find(r=>r.kind==='selected');index.revoke(row.key);assert.equal(index.list().every(r=>r.status==='revoked'),true);
  index.record({kind:'tree',name:'notes.txt',mimeType:'text/plain',selectionId:'t2',treeId:'tree-2'});assert.equal(index.list().filter(r=>r.name==='notes.txt').length,1,'reopening replaces the revoked row');
  index.setOpen('t2');assert.equal(createFilesIndex(store).open(),'t2');index.setOpen(null);assert.equal(createFilesIndex(store).open(),null);

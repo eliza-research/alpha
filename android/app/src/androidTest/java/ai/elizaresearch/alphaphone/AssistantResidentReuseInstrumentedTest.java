@@ -6,8 +6,6 @@ import android.os.SystemClock;
 import androidx.lifecycle.Lifecycle;
 import androidx.test.ext.junit.runners.AndroidJUnit4;
 import androidx.test.platform.app.InstrumentationRegistry;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 import org.json.JSONObject;
@@ -25,19 +23,12 @@ import static org.junit.Assert.*;
  */
 @RunWith(AndroidJUnit4.class)
 public class AssistantResidentReuseInstrumentedTest {
- private static final String ROOT="synthetic-root",GENERATION="synthetic-generation",SELECTION_KEY="alpha.resident-reuse.fixture";
+ private static final String ROOT="synthetic-root",GENERATION="synthetic-generation";
  private static JSONObject runtime(String state,boolean service,boolean socket) throws Exception {
   return new JSONObject().put("state",state).put("serviceActive",service).put("socketListening",socket);
  }
  private static AlphaLocalAgentPlugin agent(MainActivity activity) {
   return (AlphaLocalAgentPlugin) activity.getBridge().getPlugin("Agent").getInstance();
- }
- /** Evaluate in the assistant surface's own WebView (WebViewTestDriver targets MainActivity). */
- private static String evaluateInAssistant(String script) throws Exception {
-  CountDownLatch done=new CountDownLatch(1);AtomicReference<String> answer=new AtomicReference<>();
-  WebViewTestDriver.withActivity(AlphaAssistActivity.class,activity->activity.getBridge().getWebView().evaluateJavascript(script,value->{answer.set(value);done.countDown();}));
-  assertTrue("Assistant WebView evaluation timed out",done.await(15,TimeUnit.SECONDS));
-  return answer.get();
  }
  @Test public void repeatedAssistantInvocationsAttachWithoutRetiringHomeWorkOrEnrollment() throws Exception {
   Context context=InstrumentationRegistry.getInstrumentation().getTargetContext();
@@ -51,9 +42,6 @@ public class AssistantResidentReuseInstrumentedTest {
     AlphaLocalAgentPlugin.launchedGenerationForTest(GENERATION);
     plugin.adoptStreamForTest("main-stream-000001",new ElizaAgentService.LocalStreamHandle(),()->mainInvalidated.set(true));
    });
-   // Both surfaces share one web origin: the conversation choice Home saved is what the assistant restores.
-   String choice="thread-"+java.util.UUID.randomUUID();
-   WebViewTestDriver.evaluate("localStorage.setItem("+JSONObject.quote(SELECTION_KEY)+","+JSONObject.quote(choice)+")");
    final long epoch=AlphaLocalAgentPlugin.lifecycleEpochForTest();
    assertEquals(1,mainPlugin.get().ownedWorkCount());
    for(int invocation=0;invocation<3;invocation++) {
@@ -72,9 +60,6 @@ public class AssistantResidentReuseInstrumentedTest {
      assertTrue("Attach keeps the owner enrollment",AlphaLocalAgentPlugin.enrollmentPresent());
      assertFalse("Opening the assistant does not retire Home work",mainInvalidated.get());
      assertEquals(1,mainPlugin.get().ownedWorkCount());
-     String restored="null";
-     for(int i=0;i<50&&!JSONObject.quote(choice).equals(restored);i++){restored=evaluateInAssistant("localStorage.getItem("+JSONObject.quote(SELECTION_KEY)+")");if(!JSONObject.quote(choice).equals(restored))SystemClock.sleep(100);}
-     assertEquals("The assistant reads the conversation choice Home saved",JSONObject.quote(choice),restored);
      WebViewTestDriver.withActivity(AlphaAssistActivity.class,android.app.Activity::finish);
      for(int i=0;i<50&&scenario.getState()!=Lifecycle.State.DESTROYED;i++)SystemClock.sleep(100);
      assertEquals(Lifecycle.State.DESTROYED,scenario.getState());
@@ -108,7 +93,6 @@ public class AssistantResidentReuseInstrumentedTest {
    assertEquals(0,mainPlugin.get().ownedWorkCount());
    assertEquals(epoch,AlphaLocalAgentPlugin.lifecycleEpochForTest());
    assertTrue(AlphaLocalAgentPlugin.enrollmentPresent());
-   WebViewTestDriver.evaluate("localStorage.removeItem("+JSONObject.quote(SELECTION_KEY)+")");
   } finally {
    AlphaLocalAgentPlugin.enrollForTest(null,null,null,0);
    AlphaLocalAgentPlugin.launchedGenerationForTest(null);

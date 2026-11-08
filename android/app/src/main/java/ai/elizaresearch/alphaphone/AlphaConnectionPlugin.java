@@ -58,7 +58,7 @@ public final class AlphaConnectionPlugin extends Plugin {
  }
 
  /** Workspace return uses only its own native protected pending slot, on the build's verified App Link host
-  * (BuildConfig.ELIZAOS_APP_LINK_HOST, the sign-in return host). A build without one reports the return unsupported. */
+  * (BuildConfig.ELIZAOS_APP_LINK_HOST, the sign-in return host). */
  private GoogleWorkspaceReturnFlow workspaceFlow(){
   return new GoogleWorkspaceReturnFlow(BuildConfig.ELIZAOS_APP_LINK_HOST,new GoogleWorkspaceReturnFlow.Store(){
    public String credential()throws Exception{return storage().readCredentialSlot("cloud:production");}

@@ -10,6 +10,7 @@
         {"methods": ["POST"], "paths": ["/api/views/notes/interact"]},
         {"methods": ["POST"], "paths": ["/api/lifeops/calendar/events"], "query": []},
         {"methods": ["GET", "POST"], "paths": ["/api/lifeops/calendar/sync-control"], "query": []},
+        {"methods": ["GET"], "paths": ["/api/lifeops/calendar/links"], "query": ["view"]},
         {"methods": ["GET"], "paths": ["/api/lifeops/calendar/feed", "/api/lifeops/calendar/calendars", "/api/lifeops/calendar/next-context"],
          "query": ["mode", "side", "grantId", "calendarId", "includeHiddenCalendars", "timeMin", "timeMax", "timeZone", "forceSync"]},
         {"methods": ["PATCH"], "paths": ["/api/lifeops/calendar/events/{id}"], "query": ["mode", "side", "grantId", "calendarId"]},

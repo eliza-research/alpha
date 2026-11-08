@@ -8,6 +8,7 @@ import { spawnSync } from "node:child_process";
 import { auditWebBundle } from "../scripts/audit-production-bundle.mjs";
 import { appLinkFilters, assetLinksProblems, fingerprint, PLACEHOLDER, renderAssetLinks, TEMPLATE } from "../scripts/render-assetlinks.mjs";
 import { buildEnv, partialSigningProblem, readReleaseSigner, releaseAdmission, SIGNING_ENV, signingRequested, validateReleaseSigner } from "../scripts/build-android.mjs";
+import { releaseDistributable } from "../scripts/release-distributable.mjs";
 
 const ALL = { ELIZAOS_KEYSTORE_PATH: "/k", ELIZAOS_KEYSTORE_PASSWORD: "p", ELIZAOS_KEY_ALIAS: "a", ELIZAOS_KEY_PASSWORD: "q" };
 const SIGNER = "a".repeat(64);
@@ -80,12 +81,39 @@ test("a test-mocks release signed with the release key fails admission; other te
   assert.deepEqual(releaseAdmission({ signed: false, signerSha256: null, versionCode: 3 }, descriptor(), { testMocks: true }).failures, []);
 });
 
-test("verify-apks requires signed:true and the descriptor match for distributable", () => {
+// Every fact a distributable release row carries; each test below breaks exactly one.
+const DISTRIBUTABLE = {
+  testMocks: false, signed: true, releaseAdmission: { signerMatches: true, blockers: [], failures: [] },
+  runtime: { distributable: true }, runtimeNotices: true, voiceHost: { packaged: true, asr: true, qualified: true }, licenceBlockers: [],
+};
+
+test("a release is distributable only when every term holds", () => {
+  assert.equal(releaseDistributable(DISTRIBUTABLE), true);
+  const broken = {
+    "test-mocks build": { testMocks: true },
+    "unsigned": { signed: false },
+    "signed is not exactly true": { signed: "true" },
+    "signer does not match the descriptor": { releaseAdmission: { ...DISTRIBUTABLE.releaseAdmission, signerMatches: false } },
+    "admission blocker": { releaseAdmission: { ...DISTRIBUTABLE.releaseAdmission, blockers: ["versionCode not greater"] } },
+    "admission failure": { releaseAdmission: { ...DISTRIBUTABLE.releaseAdmission, failures: ["test-mocks APK signed with the release key"] } },
+    "no packaged runtime": { runtime: { distributable: false } },
+    // A PACKAGED distribution must ship the regenerated runtime notices (Bun and bundled packages).
+    "notices lack the runtime": { runtimeNotices: false },
+    "no on-device voice": { voiceHost: { ...DISTRIBUTABLE.voiceHost, packaged: false } },
+    "no on-device ASR": { voiceHost: { ...DISTRIBUTABLE.voiceHost, asr: false } },
+    "voice host not qualified": { voiceHost: { ...DISTRIBUTABLE.voiceHost, qualified: false } },
+    "licence blocker": { licenceBlockers: ["unresolved-font-licence: x"] },
+  };
+  for (const [name, change] of Object.entries(broken))
+    assert.equal(releaseDistributable({ ...DISTRIBUTABLE, ...change }), false, name);
+});
+
+test("verify-apks sets distributable only through releaseDistributable and fails a signing admission failure", () => {
   const source = fs.readFileSync("scripts/verify-apks.mjs", "utf8");
-  assert.match(source, /row\.distributable = !testMocks && row\.signed === true && row\.releaseAdmission\.signerMatches === true/);
+  // One assignment, through the tested predicate, so a later overwrite of the row is caught here.
+  assert.deepEqual(source.match(/\.distributable\s*=[^=]/g), [".distributable = "]);
+  assert.match(source, /row\.distributable = releaseDistributable\(\{ testMocks, signed: row\.signed, releaseAdmission: row\.releaseAdmission, runtime,\n\s+runtimeNotices: row\.runtimeNotices, voiceHost: row\.voiceHost, licenceBlockers: row\.licenceBlockers \}\);/);
   assert.match(source, /Release signing admission failed/);
-  // A PACKAGED distribution must ship the regenerated runtime notices (Bun and bundled packages).
-  assert.match(source, /runtime\.distributable === true && row\.runtimeNotices === true/);
   assert.match(source, /entry\?\.name === BUN_ENTRY/);
 });
 
@@ -141,17 +169,21 @@ test("the bundle audit fails an assetlinks.json with a placeholder or debug fing
   assert.equal(auditWebBundle(dir, { debugFingerprints: [SIGNER] }).ok, false);
 });
 
-test("the https autoVerify filter defaults to the configured host and is read back from the APK manifest", () => {
+test("the https autoVerify filters are the two returns on the configured host and are read back from the APK manifest", () => {
   const gradle = fs.readFileSync("android/app/product.gradle", "utf8");
-  const manifest = fs.readFileSync("android/app/src/main/AndroidManifest.xml", "utf8");
-  // The generated overlay owns the HTTPS filter and defaults to the configured Cloud host.
-  assert.doesNotMatch(manifest.replace(/<!--[\s\S]*?-->/g, ""), /autoVerify/);
+  const manifest = fs.readFileSync("android/app/src/main/AndroidManifest.xml", "utf8").replace(/<!--[\s\S]*?-->/g, "");
+  // MainActivity declares the HTTPS filters for the ${appLinkHost} placeholder, which is the configured Cloud host.
+  const main = manifest.slice(manifest.indexOf('<activity android:name=".MainActivity"'), manifest.indexOf("</activity>", manifest.indexOf('<activity android:name=".MainActivity"')));
+  const https = [...manifest.matchAll(/<intent-filter android:autoVerify="true">.*?<data android:scheme="https" android:host="\$\{appLinkHost\}" android:(path|pathPrefix)="([^"]+)"\/><\/intent-filter>/g)];
+  assert.deepEqual(https.map(match => `${match[1]}=${match[2]}`), ["path=/alphaphone/auth/callback", "path=/alphaphone/gmail/callback"]);
+  for (const match of https) assert.ok(main.includes(match[0]), "the returns belong to MainActivity");
+  assert.equal(manifest.match(/autoVerify/g).length, 2);
+  assert.doesNotMatch(manifest, /scheme="https"[^>]*cloud-delegation/, "no https Cloud delegation filter: only the custom scheme has a handler");
   assert.match(gradle, /project\.findProperty\('ELIZAOS_APP_LINK_HOST'\) \?: envValue\('ELIZAOS_APP_LINK_HOST'\)/);
   assert.match(gradle, /\? cloudWebHost : appLinkHostRaw\.toString\(\)\.trim\(\)/);
-  assert.ok(gradle.includes('<activity android:name="${android.namespace}.MainActivity" android:exported="true">'), 'the generated App Link activity explicitly exports its external return intent');
+  assert.match(gradle, /if \(appLinkHost != cloudWebHost\)/);
   assert.match(gradle, /manifestPlaceholders\.put\('appLinkHost', appLinkHost\)/);
-  assert.match(gradle, /if \(appLinkHost\) androidComponents \{ onVariants\(selector\(\)\.all\(\)\) \{ variant -> variant\.sources\.manifests\.addStaticManifestFile\(appLinksManifest\) \} \}/);
-  assert.match(gradle, /<intent-filter android:autoVerify="true">[^\n]*android:scheme="https" android:host="\\\$\{appLinkHost\}" android:pathPrefix="\/alphaphone\/cloud-delegation"/);
+  assert.doesNotMatch(gradle, /app-links|addStaticManifestFile|autoVerify/, "no configuration-time manifest overlay");
   assert.doesNotMatch(gradle, /ALPHA_APP_LINK/);
   // verify-apks records the filter from `aapt dump xmltree` of the packaged manifest.
   const filter = scheme => [
@@ -167,7 +199,7 @@ test("the https autoVerify filter defaults to the configured host and is read ba
     "          A: http://schemas.android.com/apk/res/android:scheme(0x01010027)=\"alphaphone\" (Raw: \"alphaphone\")",
     "          A: http://schemas.android.com/apk/res/android:host(0x01010028)=\"cloud-delegation\" (Raw: \"cloud-delegation\")"];
   assert.deepEqual(appLinkFilters([...custom, ...filter("https"), "    E: activity (line=50)"].join("\n")), { present: true, hosts: ["links.example.com"] });
-  assert.deepEqual(appLinkFilters(custom.join("\n")), { present: false, hosts: [] }, "the default build: custom scheme only");
+  assert.deepEqual(appLinkFilters(custom.join("\n")), { present: false, hosts: [] }, "a custom scheme alone is no App Link");
   assert.deepEqual(appLinkFilters(filter("http").join("\n")), { present: false, hosts: [] });
   assert.match(fs.readFileSync("scripts/verify-apks.mjs", "utf8"), /appLinks: appLinkFilters\(xml\),/);
 });

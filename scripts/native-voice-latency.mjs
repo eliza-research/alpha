@@ -25,10 +25,12 @@
 // 'device', ABI arm64-v8a, a release build from a clean source tree, capture timed from AudioRecord
 // timestamps. Emulator runs, the harness ('harness-no-inference': no language model; a document
 // with a `harness` section is treated as harness whatever its rows say) and debug or dirty builds
-// are summarized as diagnostic cohorts and can never make the evidence sufficient. An acceptance
-// cohort also needs every passed trial linked (v3 turnId with asr-final, request and first-token) and
-// audible time from a platform output timestamp. Turns that waited
-// for a response that never came (abandoned, no-response) fail the reliability check.
+// are summarized as diagnostic cohorts and can never make the evidence sufficient. Release identity
+// alone makes a cohort an acceptance candidate; such a cohort is sufficient only when every passed
+// trial is linked (v3 turnId with asr-final, request and first-token) and has audible time from a
+// platform output timestamp. A candidate with an ineligible row (counted in ineligibleRows) fails the
+// whole document rather than becoming diagnostic. Turns that waited for a response that never came
+// (abandoned, no-response) fail the reliability check.
 export const nativeTimingFormat = 'alpha-native-voice-timing-v3';
 export const legacyNativeTimingFormat = 'alpha-native-voice-timing-v2';
 export const nativeTimingFormats = Object.freeze([legacyNativeTimingFormat, nativeTimingFormat]);
@@ -134,14 +136,15 @@ export function aggregateNativeVoice(documents, required = { warm: 20, cold: 5 }
   const warmNeeded = Math.max(20, required.warm ?? 0), coldNeeded = Math.max(5, required.cold ?? 0);
   const cohorts = [...groups.values()].map(({ pipeline, network, identity, models, rows }) => {
     const passed = rows.filter(row => row.outcome === 'passed');
-    const eligible = pipelines[pipeline] === 'voice-assistant' && identity.environment === 'device' && identity.abi === 'arm64-v8a'
-      && /-release$/.test(identity.build) && identity.sourceDirty === false
-      && passed.every(row => row.captureClock === 'audiorecord-timestamp' && audibleClocks.includes(row.audibleClock) && linked(row));
+    // Release identity alone picks the cohort class, so a weak row cannot demote a cohort to diagnostic.
+    const releaseIdentity = pipelines[pipeline] === 'voice-assistant' && identity.environment === 'device' && identity.abi === 'arm64-v8a'
+      && /-release$/.test(identity.build) && identity.sourceDirty === false;
+    const ineligibleRows = passed.filter(row => !(row.captureClock === 'audiorecord-timestamp' && audibleClocks.includes(row.audibleClock) && linked(row))).length;
     const result = {
       pipeline, network, identity, models,
-      class: eligible ? 'acceptance-candidate' : identity.environment === 'emulator' ? 'emulator-diagnostic' : 'diagnostic',
+      class: releaseIdentity ? 'acceptance-candidate' : identity.environment === 'emulator' ? 'emulator-diagnostic' : 'diagnostic',
       trials: rows.length, passed: passed.length,
-      linked: passed.filter(linked).length,
+      linked: passed.filter(linked).length, ineligibleRows,
       formats: histogram(rows.map(row => row.format)),
       failures: rows.filter(row => row.outcome === 'failed').length,
       abandoned: rows.filter(row => row.outcome === 'abandoned').length,
@@ -157,7 +160,7 @@ export function aggregateNativeVoice(documents, required = { warm: 20, cold: 5 }
     result.all = statistics(passed.map(latency));
     result.stagesDiagnosticOnly = Object.fromEntries(Object.entries(stages).map(([name, measure]) => [name, statistics(passed.map(measure))]));
     result.sampleSufficient = passed.length >= minimumTrials && result.warm.samples >= warmNeeded && result.cold.samples >= coldNeeded;
-    result.sufficient = eligible && result.sampleSufficient;
+    result.sufficient = releaseIdentity && !ineligibleRows && result.sampleSufficient;
     const throttled = rows.some(row => ['severe', 'critical', 'emergency', 'shutdown'].includes(row.thermal));
     result.withinBudget = result.sufficient && !result.failures && !result.noResponse && !throttled && result.warm.max <= budgetMs && result.cold.max <= budgetMs;
     return result;

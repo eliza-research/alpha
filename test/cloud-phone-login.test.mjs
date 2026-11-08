@@ -6,6 +6,9 @@ import {createRequire} from 'node:module';
 import React from 'react';
 import {renderToStaticMarkup} from 'react-dom/server';
 import {createServer} from 'vite';
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
 const require=createRequire(import.meta.url);
 
 test('phone sign-in and code entry stay in the app and are absent without native support',()=>{
@@ -28,8 +31,10 @@ test('phone sign-in and code entry stay in the app and are absent without native
  assert.doesNotMatch(entered,/href=|iframe|type="email"/);
 });
 
-test('phone codes use the native host, retain MFA, and never reach renderer HTTP',async()=>{
- const server=await createServer({configFile:false,logLevel:'silent',server:{middlewareMode:true,hmr:false,ws:false,watch:null}});
+test('phone codes use the native host, retain MFA, and never reach renderer HTTP',async t=>{
+ // Keep Vite's dependency scan and cache out of the repository's shared node_modules/.vite.
+ const cacheDir=fs.mkdtempSync(path.join(os.tmpdir(),'alpha-phone-login-vite-'));t.after(()=>fs.rmSync(cacheDir,{recursive:true,force:true}));
+ const server=await createServer({configFile:false,logLevel:'silent',cacheDir,optimizeDeps:{noDiscovery:true,include:[]},server:{middlewareMode:true,hmr:false,ws:false,watch:null}});
  try {
   const {CloudProtocol}=await server.ssrLoadModule('/apps/app/src/runtime/cloud-protocol.ts');
   const calls=[];const attemptId='00000000-0000-4000-8000-000000000001';

@@ -27,6 +27,7 @@ const plugins={
  AlphaMapsTransportPlugin:['workers','closers','deadlines'],
  AlphaNoteAudioPlugin:['migrationWorker'],
  AlphaNoteDocumentsPlugin:['worker'],
+ DailyAppsPlugin:['worker'],
 };
 const escape=value=>value.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
 
@@ -50,6 +51,15 @@ test('the Maps deadline scheduler is the one dispatch that cannot use Executor a
  const schedule=request.indexOf('deadlines.schedule(');
  assert.ok(schedule>0&&request.lastIndexOf('try{',schedule)>0,'deadlines.schedule runs inside a try');
  assert.match(request.slice(schedule),/\}catch\(RejectedExecutionException busy\)\{[^\n]*pending\.remove\(id,job\);job\.cancel\(/,'and a stopped scheduler cancels the job instead of throwing');
+});
+
+test('DailyApps runs every selected-document call on its worker, never on the plugin thread',()=>{
+ const source=readFileSync(nativeSource('DailyAppsPlugin.java'),'utf8');
+ const methods=[...source.matchAll(/@PluginMethod public void (\w+Selected)\(PluginCall call\)\{([^\n]*)\}\n/g)];
+ assert.deepEqual(methods.map(match=>match[1]).sort(),['describeSelected','forgetSelected','openSelected','pdfSelected','readSelected','renameSelected','restoreSelected','shareSelected']);
+ for(const [,name,body] of methods)assert.match(body,/^(?:Activity activity=getActivity\(\);)?documents\(call,\(\)->SelectedDocumentCalls\.\w+\(/,`${name} goes through the worker`);
+ assert.match(source,/private void documents\(PluginCall call,Runnable task\)\{PluginWorkers\.submit\(worker,task,/);
+ assert.match(source,/protected void handleOnDestroy\(\)\{worker\.shutdownNow\(\);super\.handleOnDestroy\(\);\}/,'and stops it without dropping the reminder teardown');
 });
 
 test('every worker a plugin declares is listed and checked above',()=>{

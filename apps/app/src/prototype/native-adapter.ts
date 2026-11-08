@@ -35,13 +35,13 @@ export function egressPrivacy(connection: Pick<ConnectionSnapshot, 'kind' | 'ses
     return { big: `Uses ${serviceName}`, sub: `When used, messages and selected content go to ${serviceName} for AI. Voice recordings and text for playback also go to Cloud.` };
   }
   if (connection.session && connection.kind === 'resident' && native)
-    return { big: 'Identifier swap only', sub: 'Secret and contact identifiers are swapped before hosted inference; names and free text are not covered' };
+    return { big: 'Partly masked', sub: 'Keys and contact details are masked before AI requests. Names and message text are not.' };
   if (connection.session || connection.cloudAccount) return { big: 'Not reported', sub: 'Depends on your agent' };
   // P-43: no session means the resident is starting or recovering, never "no agent".
-  if (connection.kind === 'recovering') return { big: 'Agent not running', sub: 'No hosted inference requests until your agent is running and AI is set up' };
-  if (connection.kind === 'starting') return { big: 'Agent starting', sub: 'No hosted inference requests until your agent is running and AI is set up' };
+  if (connection.kind === 'recovering') return { big: 'Agent not running', sub: 'No AI requests until your agent is running and AI is set up' };
+  if (connection.kind === 'starting') return { big: 'Agent starting', sub: 'No AI requests until your agent is running and AI is set up' };
   // Only a build without the resident (the production web preview, test mocks) gets here.
-  return { big: 'Offline', sub: testMocksEnabled ? 'No remote agent connected; no hosted inference requests' : 'Your agent runs on your phone; no hosted inference requests from here' };
+  return { big: 'Offline', sub: testMocksEnabled ? 'No remote agent connected; no hosted inference requests' : 'Your agent runs on your phone. No AI requests from here.' };
 }
 /** Only a verified resident session on Android reports its configured hosted model.
  * Exported for the Settings rows that show it (About and Models). */
@@ -110,7 +110,7 @@ export function installPrototypeNativeAdapters(
   const restore: Array<() => void> = [];
   const busy = new Set<string>();
   const notify = (api: Bag, message: string) => api.toast(message);
-  const unavailable = (api: Bag, message = 'This action needs a connected native provider. Nothing has been changed.') => () => notify(api, message);
+  const unavailable = (api: Bag, message = 'This isn’t available on this phone.') => () => notify(api, message);
   async function perform(module: string, api: Bag, action: Action, payload: Bag = {}) {
     if (busy.has(module)) return;
     busy.add(module);
@@ -122,7 +122,7 @@ export function installPrototypeNativeAdapters(
         notify(api, result.message || 'No installed app can complete this action.');
       }
     } catch {
-      notify(api, 'Native action unavailable. Use the installed Android app.');
+      notify(api, 'This isn’t available here.');
     } finally { busy.delete(module); }
   }
   function browser(module: string, api: Bag, value: unknown) {
@@ -168,16 +168,16 @@ export function installPrototypeNativeAdapters(
     };
     // Camera and Photos questions go to the reviewed local flow with the exact subject: the
     // live frame, or the one saved item that is open. A typed library search names no
-    // capture, so it stays visibly unavailable below instead of reaching a capture review.
+    // capture: product builds hide that chip (walk below), and a stale one never reaches a capture review.
     const capture = captureQuestion(module, key, path, st);
-    if (capture?.kind === 'frame') return () => { if (!askAboutCapture()) notify(api, 'Start the camera, or finish the current capture, then ask again. Nothing has been sent.'); };
+    if (capture?.kind === 'frame') return () => { if (!askAboutCapture()) notify(api, 'Start the camera or finish the capture, then ask again.'); };
     if (capture?.kind === 'item') return () => {
       // Read the open item when pressed: the render that built this control may be stale.
       const open = api.get(module).open;
-      if (open !== capture.id || !askAboutCapture({ id: capture.id })) notify(api, 'Open a saved photo or video, then ask again. Nothing has been sent.');
+      if (open !== capture.id || !askAboutCapture({ id: capture.id })) notify(api, 'Open a saved photo or video, then ask again.');
     };
-    if (['camera', 'photos', 'files'].includes(module) && ['ask', 'askQ', 'askSearch'].includes(key)) return unavailable(api, 'Content analysis is not connected. No photo or document content has been sent.');
-    if (module === 'workflows' && ['run', 'again', 'toggle', 'save'].includes(key)) return unavailable(api, 'Workflow execution is not connected. No automation has been activated or run.');
+    if (['camera', 'photos', 'files'].includes(module) && ['ask', 'askQ', 'askSearch'].includes(key)) return unavailable(api);
+    if (module === 'workflows' && ['run', 'again', 'toggle', 'save'].includes(key)) return unavailable(api, 'Workflow execution is not connected.');
     const native = (action: Action, payload: Bag = {}) => () => perform(module, api, action, payload);
     if (module === 'phone') {
       if (key === 'dialCall') return () => perform(module, api, 'phone', { query: text(api.get('phone').dial) });
@@ -252,7 +252,7 @@ export function installPrototypeNativeAdapters(
     if (module === 'settings') {
       // Opening Activity only shows what is already known; reading history is a separate explicit step.
       if (st.page === 'privacy' && key === 'go' && row.label === 'Activity') return () => api.set({ log: true });
-      if (key === 'pick' && st.page !== 'display') return unavailable(api, 'This setting needs a connected provider. No change was applied.');
+      if (key === 'pick' && st.page !== 'display') return unavailable(api);
       if (key === 'onPw' || (st.adding && ['change', 'onKey', 'go', 'ok'].includes(key))) return native('settings');
       // Memory deletion is not offered; a stale wipe sheet only closes.
       if (key === 'ok') return st.sheet?.kind === 'wipe' ? () => api.set({ sheet: null }) : native('settings');
@@ -273,6 +273,11 @@ export function installPrototypeNativeAdapters(
         ? replacement(module, key, path + key, value, st, api, child as Callback) || child
         : walk(child, module, st, api, path + key + '.');
     }
+    // A typed Photos or Files search names no content to analyze; product builds offer no Ask chip for it.
+    if (!browserDevProfile && (module === 'photos' || module === 'files') && ('askQ' in result || 'askSearch' in result)) {
+      delete result.askQ; delete result.askSearch;
+      if (module === 'photos') result.hasQ = false;
+    }
     if (module === 'settings') {
       if (result.big === 'Redaction on') Object.assign(result, egressPrivacy(connectionController.getSnapshot()));
       if (result.label === 'Privacy & data') result.val = 'Review';
@@ -282,7 +287,8 @@ export function installPrototypeNativeAdapters(
           ? 'Prompts and selected context go to the development host and its configured inference provider'
           : 'Depends on active services';
       }
-      if (result.label === 'On-device model') result.val = 'Not loaded';
+      // Nothing here reads on-device model or speech readiness; say so instead of guessing.
+      if (result.label === 'On-device model') result.val = 'Not reported';
       if (st.page === 'privacy' && ['Microphone','Location','Camera','Contacts'].includes(result.label)) result.val = 'Review access';
       if (st.page === 'privacy' && result.label === 'Activity') result.val = activityValue(connectionController.getSnapshot());
     }
@@ -310,8 +316,8 @@ export function installPrototypeNativeAdapters(
         for (const group of page.groups) for (const row of group.rows || []) if (row.label === 'Inference model' || row.label === 'AI model') { row.val = model; row.hasVal = true; }
       if (st.page === 'privacy' && st.log && page.title === 'Activity') {
         const sessionId = connection.session?.sessionId ?? null;
-        // Reading history is an explicit step. Progress and errors appear in the connection panel;
-        // decline and reconcile controls are rendered here, beside each entry.
+        // Reading history is an explicit step; its progress and errors appear in the connection panel.
+        // Decline and reconcile controls are rendered here, beside each entry, and report their own failures.
         const load = (label: string) => nav(label, () => {
           const before = connectionController.getSnapshot().actionHistory;
           void connectionController.actionHistory().then(() => {
@@ -321,16 +327,23 @@ export function installPrototypeNativeAdapters(
           });
         });
         // A decision clears the read history; show it as unread rather than as empty.
-        const decide = (label: string, run: () => Promise<unknown>) => nav(label, () => {
-          void run().finally(() => { actionHistoryRead = null; try { api.set({ actionHistoryReadAt: Date.now() }); } catch { /* view closed */ } });
+        // One decision per entry at a time; a failed one says so instead of leaving the row unchanged.
+        const decide = (id: string, label: string, run: () => Promise<unknown>) => nav(label, () => {
+          const key = 'activity:' + id;
+          if (busy.has(key)) return;
+          busy.add(key);
+          void run().catch(error => {
+            const reason = error instanceof Error ? error.message.trim() : '';
+            notify(api, reason ? 'Not recorded. ' + reason + (/[.!?]$/.test(reason) ? '' : '.') : 'Not recorded. Nothing was repeated.');
+          }).finally(() => { busy.delete(key); actionHistoryRead = null; try { api.set({ actionHistoryReadAt: Date.now() }); } catch { /* view closed */ } });
         });
         const entryRows = (entry: ConnectionSnapshot['actionHistory'][number]): Bag[] => [
           info(entry.description, activityState(entry.state)),
-          ...(entry.state === 'pending' ? [decide('Decline', () => connectionController.rejectProposal(entry.id))]
+          ...(entry.state === 'pending' ? [decide(entry.id, 'Decline', () => connectionController.rejectProposal(entry.id))]
             : ['executing', 'reconciliation_required'].includes(entry.state) ? [
-              info('Check this phone, then confirm whether this exact action happened. Nothing is repeated.', ''),
-              decide('It happened', () => connectionController.reconcile(entry.id, true)),
-              decide('It did not happen', () => connectionController.reconcile(entry.id, false)),
+              info('Check your phone, then confirm whether this happened.', ''),
+              decide(entry.id, 'It happened', () => connectionController.reconcile(entry.id, true)),
+              decide(entry.id, 'It did not happen', () => connectionController.reconcile(entry.id, false)),
             ] : []),
         ];
         const groups: Bag[] = !connection.session

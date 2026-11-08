@@ -19,7 +19,7 @@ test('a bound source shows its renewal window, pauses at expiry and renews with 
  // At expiry the loop is paused with a clear state, and no failure brief is produced. Like the agent, the
  // schedule's next settlement is one explicit "unavailable" record (not a run), and nothing after it.
  await page.clock.setFixedTime(new Date('2026-10-04T08:30:00Z'));await panel.getByRole('button',{name:'Refresh',exact:true}).click();
- await expect(renewal).toContainText('Daily source: Source expired. Its schedule is paused until you renew it. No failure briefs are created.');
+ await expect(renewal).toContainText('Daily source: Source expired. Its schedule is paused until you renew it.');
  await expect(schedules).toContainText('Source expired — paused');
  await page.clock.setFixedTime(new Date('2026-10-04T12:30:05Z'));await page.evaluate(async()=>{const {developmentDigestRequest:request}=await import('/src/browser/development-digests.ts'),{developmentIdentity}=await import('/src/browser/development-identity.ts');await request(developmentIdentity('local'),'/api/workflow/hosted/tick',undefined);});
  const lapsed=(await digests(page)).results;expect(lapsed.map((r:any)=>[r.status,r.output,r.error])).toEqual([['unavailable',{status:'unavailable',sourceState:'expired',paused:true,text:'Source expired. This schedule is paused until you renew the source. No fresh phone data was read.'},null]]);

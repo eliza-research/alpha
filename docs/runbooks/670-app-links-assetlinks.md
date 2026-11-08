@@ -29,7 +29,7 @@ which appears in no other record in this repository (presumably the operator's t
 
 Implication: production `eliza.app` today verifies Alpha's package for a **debug** certificate. Any
 APK with package `ai.elizaresearch.alphaphone` signed by that debug key gets verified handling of
-`https://eliza.app/alphaphone/auth/callback` (and the delegation filter) on a phone where the real
+`https://eliza.app/alphaphone/auth/callback` (and the Workspace return) on a phone where the real
 app is not installed. PKCE limits what an intercepted authorization code is worth, but production
 should list only the release certificate (decision 1).
 
@@ -39,13 +39,11 @@ Other prepared checks:
   exits 0, then `adb shell pm get-app-links ...` reports `eliza.app` verified on an installed release
   build"); H-09 `open` (12 of 12 release digests unset); H-10 `open` with
   "ELIZAOS_APP_LINK_HOST unset" for this environment.
-- `ELIZAOS_APP_LINK_HOST` for release: `android/app/product.gradle` emits the HTTPS autoVerify filter
-  only when it is set, and refuses any value other than `config/cloud-deployment.json`
-  `production.web` (`eliza.app`). **Nothing requires it on a release:** `scripts/verify-apks.mjs`
-  records `appLinks` per APK but does not include it in `distributable`, so a release-signed APK built
-  without `ELIZAOS_APP_LINK_HOST=eliza.app` would be marked distributable and would have no verified
-  return. Check the `appLinks` row (`present: true`, hosts `["eliza.app"]`) of every release in
-  `artifacts/apk-manifest.json` before distribution (see decision 2).
+- `ELIZAOS_APP_LINK_HOST`: `MainActivity` declares the HTTPS autoVerify filters on
+  `config/cloud-deployment.json` `production.web` (`eliza.app`) in every build, and
+  `android/app/product.gradle` refuses any other value. `scripts/verify-apks.mjs` records `appLinks`
+  per APK but does not include it in `distributable`. Check the `appLinks` row (`present: true`,
+  hosts `["eliza.app"]`) of every release in `artifacts/apk-manifest.json` before distribution.
 - Hosted fallback page `https://eliza.app/alphaphone/auth/callback` answers 200 (probe "callback
   page" gate), so Alpha's `ELIZA_NATIVE_AUTH_CALLBACKS_JSON` entry is in place.
 
@@ -62,7 +60,7 @@ Other prepared checks:
 4. Staging keeps the debug signer of test-mocks builds (`node scripts/cloud-readiness.mjs probe --environment staging --signer <SHA-256>`
    names a specific build's certificate).
 5. Keep Alpha's `ELIZA_NATIVE_AUTH_CALLBACKS_JSON` entry (printed by `cloud-readiness.mjs registration`).
-6. On an installed release build built with `ELIZAOS_APP_LINK_HOST=eliza.app`:
+6. On an installed release build:
    `adb shell pm get-app-links ai.elizaresearch.alphaphone > pm-get-app-links.txt`, then
    `node scripts/owner/app-links-evidence.mjs pm-get-app-links.txt` must exit 0. If the state is not
    `verified`, re-trigger with `adb shell pm verify-app-links --re-verify ai.elizaresearch.alphaphone`

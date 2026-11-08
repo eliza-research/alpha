@@ -42,7 +42,7 @@ reportMissingEmbeddingRoute(savedConfig,config);
 const log = fs.openSync(path.join(profile,'server.log'), 'a', 0o600);
 fs.fchmodSync(log, 0o600);
 const baseEnv = Object.fromEntries(['PATH','TMPDIR','LANG','SHELL','USER','LOGNAME','HOME'].filter(key=>process.env[key]).map(key=>[key,process.env[key]]));
-const env = {...baseEnv, ...AGENT_CHARACTER_ENVIRONMENT, ELIZA_HEADLESS:'1', ELIZA_API_BIND:'127.0.0.1', ELIZA_ALLOWED_HOSTS:'10.0.2.2', ELIZA_API_PORT:String(port), ELIZA_API_EXPOSE_PORT:'1', ELIZA_STATE_DIR:profile, ELIZA_CONFIG_PATH:config, ELIZA_API_TOKEN:fs.readFileSync(tokenPath,'utf8').trim(), CEREBRAS_API_KEY:fs.readFileSync(keyPath,'utf8').trim(), ...modelEnvironment, ELIZAOS_CLOUD_USE_INFERENCE:'false'};
+const env = {...baseEnv, ...AGENT_CHARACTER_ENVIRONMENT, ELIZA_HEADLESS:'1', ELIZA_REQUIRE_LOCAL_AUTH:'1', ELIZA_API_BIND:'127.0.0.1', ELIZA_ALLOWED_HOSTS:'10.0.2.2', ELIZA_API_PORT:String(port), ELIZA_API_EXPOSE_PORT:'1', ELIZA_STATE_DIR:profile, ELIZA_CONFIG_PATH:config, ELIZA_API_TOKEN:fs.readFileSync(tokenPath,'utf8').trim(), CEREBRAS_API_KEY:fs.readFileSync(keyPath,'utf8').trim(), ...modelEnvironment, ELIZAOS_CLOUD_USE_INFERENCE:'false'};
 Object.assign(env, admitSpeech('tts'));
 if(process.env.ELIZA_ASR_ENABLED==='1')Object.assign(env,admitSpeech('asr'));
 Object.assign(env, localEmbeddingEnvironment({...process.env,...env}));

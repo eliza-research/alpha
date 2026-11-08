@@ -81,6 +81,42 @@ export function stagingBuildPatches(names, imageTarget) {
   return names.map(aospBuildPatch);
 }
 
+/**
+ * Checks the listener APK before any staging output is written: a release build outside --development,
+ * its reviewed descriptor when one is given, and (refused in production) its packaged speech model.
+ * Returns the permission dump and signer stageListener needs.
+ */
+function admitListener({ listenerApk, listenerDescriptor, development, production, appId, env }) {
+  // Debuggable listener builds are development-only; a production image takes a release build.
+  if (!development) {
+    let debuggable;
+    try {
+      debuggable = manifestTreeIsDebuggable(aaptManifestTree(listenerApk, { aapt: tool("aapt"), env }));
+    } catch {
+      throw new Error(`Refusing ${listenerApk}: its manifest could not be read.`);
+    }
+    if (debuggable) throw new Error(`Refusing ${listenerApk}: a debuggable listener is staged only with --development.`);
+  }
+  const listenerCert = execFileSync(tool("apksigner"), ["verify", "--print-certs", listenerApk], { encoding: "utf8", env });
+  const signer = /Signer #1 certificate SHA-256 digest:\s*([a-fA-F0-9]+)/.exec(listenerCert)?.[1]?.toLowerCase();
+  const dump = execFileSync(tool("aapt"), ["dump", "permissions", listenerApk], { encoding: "utf8", env, maxBuffer: 16 << 20 });
+  // The privileged APK is pinned like the launcher: reviewed bytes and signer, not just a name.
+  const listenerHash = createHash("sha256").update(fs.readFileSync(listenerApk)).digest("hex");
+  if (listenerDescriptor)
+    checkListenerDescriptor(JSON.parse(fs.readFileSync(listenerDescriptor, "utf8")), { appId, apkSha256: listenerHash, signer });
+  // A listener without its speech model can never listen; production refuses it.
+  const voiceHost = JSON.parse(fs.readFileSync(VOICE_HOST_RECORD, "utf8"));
+  const entries = execFileSync("unzip", ["-Z1", listenerApk], { encoding: "utf8", maxBuffer: 64 << 20 }).split(/\r?\n/).filter(Boolean);
+  try {
+    const packaged = checkListenerSpeechBundle(entries, voiceHost, entry => execFileSync("unzip", ["-p", listenerApk, entry], { encoding: "utf8", maxBuffer: 1 << 20 }));
+    checkListenerSpeechNatives(packaged, voiceHost, entry => createHash("sha256").update(execFileSync("unzip", ["-p", listenerApk, entry], { maxBuffer: 256 << 20 })).digest("hex"), file => JSON.parse(fs.readFileSync(file, "utf8")));
+  } catch (problem) {
+    if (production) throw new Error(`Refusing ${listenerApk}: ${problem.message}`);
+    console.warn(`Development listener: ${problem.message}. It will report SPEECH_UNAVAILABLE on the image.`);
+  }
+  return { dump, signer };
+}
+
 async function main(args) {
 const appliedPatchNames = [];
 const appliedBuildNames = [];
@@ -111,6 +147,11 @@ const cuttlefish = cuttlefishOptions({target:get('--target'), source:get('--aosp
 const physical = pixel10aOptions({target:cuttlefish ? null : get('--target'), development, production, source:get('--aosp-source'), factory:get('--factory-image')});
 if (get('--boot-animation') && !physical) throw new Error('--boot-animation belongs to --target pixel10a');
 if (production && development) throw new Error("--production and --development are exclusive");
+// P-78 defers wake listening, and AlphaSense's tile and consent would open a microphone whose wake
+// lands on the disabled AlphaAssistActivity, so no production image carries it while P-78 stands.
+// Development staging still takes it so the listener can be tested.
+if (production && (get("--listener-apk") || get("--listener-descriptor")))
+  throw new Error("Refusing --listener-apk for --production: wake listening is deferred (P-78, docs/decisions.md), so production images leave AlphaSense out. Stage the listener with --development.");
 // The product lock is checked before any source or APK is read: production never stages into an
 // unset product. Pixel 10a has its own production descriptor; the Cuttlefish product its own lock.
 if (production) {
@@ -127,7 +168,7 @@ const physicalSource = physical ? await verifyPixel10aSource({source:get('--aosp
 const vendorApi = physical ? pixel10aVendorApi({root:process.cwd(), source:get('--aosp-source')}) : null;
 if (physical && production && physicalSource.sourceLockSha256 !== JSON.parse(fs.readFileSync(PIXEL10A_PRODUCT, "utf8")).sourceLock?.sha256)
   throw new Error(`Refusing production staging: the verified source lock is not the one pinned in ${PIXEL10A_PRODUCT}.`);
-// The always-on listener is part of the AOSP MVP (issue #424): production images must include it.
+// The always-on listener is development-only while P-78 stands (refused for production above).
 const listenerApk = get("--listener-apk");
 const listenerDescriptor = get("--listener-descriptor");
 if (listenerDescriptor && !listenerApk) throw new Error("--listener-descriptor needs --listener-apk");
@@ -153,11 +194,6 @@ if (descriptor) {
   if (supplied.packageName !== identity.appId || supplied.moduleName !== identity.moduleName)
     throw new Error(`Descriptor does not belong to this product: packageName ${supplied.packageName} and moduleName ${supplied.moduleName} must be ${identity.appId} and ${identity.moduleName} (app.config.json).`);
 }
-// Checked after APK admission so input refusals are reported first.
-if (production && !listenerApk)
-  throw new Error("Production staging requires --listener-apk (the always-on listener built by ./gradlew :sense:assembleRelease).");
-if (production && !listenerDescriptor)
-  throw new Error("Production staging requires --listener-descriptor: an independently reviewed record of the listener's packageName, apkSha256 and certificateSha256.");
 const cameraOverrides = reviewedSourceOverrides({physicalSource, cuttlefish, source:get('--aosp-source'), appliedPatches});
 const cameraSource = get("--aosp-source") || !development
   ? verifySecureCameraSource(get("--aosp-source"), undefined, cameraOverrides)
@@ -203,11 +239,15 @@ if (
   reviewed.moduleName !== identity.moduleName
 )
   throw new Error("Descriptor does not belong to this product");
+// The listener is admitted before any staging output exists, so its refusals leave none behind.
+const listener = listenerApk ? admitListener({ listenerApk, listenerDescriptor, development, production, appId: identity.appId, env }) : null;
 const destination = path.resolve(get("--output") || `artifacts/aosp/${identity.slug}-${hash.slice(0, 12)}`);
-if ((physical || cuttlefish) && fs.existsSync(destination)) throw Error('Output already exists: ' + destination);
-if (physical || cuttlefish) fs.mkdirSync(path.dirname(destination), {recursive:true});
-const temporary = physical || cuttlefish ? fs.mkdtempSync(path.join(path.dirname(destination), physical ? '.pixel10a-stage-' : '.cuttlefish-stage-')) : null;
-const output = physical || cuttlefish ? path.join(temporary, 'overlay') : destination;
+// Every product is staged in a sibling temporary directory (same filesystem, so the rename is atomic)
+// and published only after the last check; a refusal leaves the destination absent.
+if (fs.existsSync(destination)) throw Error('Output already exists: ' + destination);
+fs.mkdirSync(path.dirname(destination), {recursive:true});
+const temporary = fs.mkdtempSync(path.join(path.dirname(destination), `.${physical ? 'pixel10a' : cuttlefish ? 'cuttlefish' : identity.slug}-stage-`));
+const output = path.join(temporary, 'overlay');
 try {
 execFileSync(
   "node",
@@ -247,51 +287,22 @@ if (production) {
   writeProvisioningOverlay(output, identity.appId, components);
   // The shared Pixel 10a composition writes the same overlay from products/pixel10a-alpha.json.
   if (!physical) writeAospCapabilityOverlay(output, identity.appId);
-  console.log(`Provisioning overlay: HOME ${components.home}, assistant ${identity.appId}, Autofill ${components.autofill}.`);
+  console.log(`Provisioning overlay: HOME ${components.home}, assistant ${components.assistant ? identity.appId : "none (P-78)"}, Autofill ${components.autofill}.`);
 }
 if (listenerApk) {
-  // Debuggable listener builds are development-only; a production image takes a release build.
-  if (!development) {
-    let debuggable;
-    try {
-      debuggable = manifestTreeIsDebuggable(aaptManifestTree(listenerApk, { aapt: tool("aapt"), env }));
-    } catch {
-      throw new Error(`Refusing ${listenerApk}: its manifest could not be read.`);
-    }
-    if (debuggable) throw new Error(`Refusing ${listenerApk}: a debuggable listener is staged only with --development.`);
-  }
-  const listenerCert = execFileSync(tool("apksigner"), ["verify", "--print-certs", listenerApk], { encoding: "utf8", env });
-  const listenerSigner = /Signer #1 certificate SHA-256 digest:\s*([a-fA-F0-9]+)/.exec(listenerCert)?.[1]?.toLowerCase();
-  const dump = execFileSync(tool("aapt"), ["dump", "permissions", listenerApk], { encoding: "utf8", env, maxBuffer: 16 << 20 });
-  // The privileged APK is pinned like the launcher: reviewed bytes and signer, not just a name.
-  const listenerHash = createHash("sha256").update(fs.readFileSync(listenerApk)).digest("hex");
-  if (listenerDescriptor)
-    checkListenerDescriptor(JSON.parse(fs.readFileSync(listenerDescriptor, "utf8")), { appId: identity.appId, apkSha256: listenerHash, signer: listenerSigner });
-  // A listener without its speech model can never listen; production refuses it.
-  const voiceHost = JSON.parse(fs.readFileSync(VOICE_HOST_RECORD, "utf8"));
-  const entries = execFileSync("unzip", ["-Z1", listenerApk], { encoding: "utf8", maxBuffer: 64 << 20 }).split(/\r?\n/).filter(Boolean);
-  try {
-    const packaged = checkListenerSpeechBundle(entries, voiceHost, entry => execFileSync("unzip", ["-p", listenerApk, entry], { encoding: "utf8", maxBuffer: 1 << 20 }));
-    checkListenerSpeechNatives(packaged, voiceHost, entry => createHash("sha256").update(execFileSync("unzip", ["-p", listenerApk, entry], { maxBuffer: 256 << 20 })).digest("hex"), file => JSON.parse(fs.readFileSync(file, "utf8")));
-  } catch (problem) {
-    if (production) throw new Error(`Refusing ${listenerApk}: ${problem.message}`);
-    console.warn(`Development listener: ${problem.message}. It will report SPEECH_UNAVAILABLE on the image.`);
-  }
-  stageListener({ root: process.cwd(), output, apk: listenerApk, dump, signer: listenerSigner, launcherSigner: String(reviewed.certificateSha256 ?? "").toLowerCase(), appId: identity.appId });
+  stageListener({ root: process.cwd(), output, apk: listenerApk, dump: listener.dump, signer: listener.signer, launcherSigner: String(reviewed.certificateSha256 ?? "").toLowerCase(), appId: identity.appId });
   console.log(`Always-on listener staged: ${identity.appId}.sense (privileged, no network). Grants, indicator and invocation are image-boot evidence, not staging evidence.`);
 }
 if (cuttlefish) writeCuttlefishNatives({root:process.cwd(), output, apk, module:identity.moduleName});
 if (physical) {
   writePixel10aProduct({root:process.cwd(), output, apk, identity, launcher:reviewed, sourceEvidence:physicalSource, production, bootAnimation:get('--boot-animation'), vendorApi});
 }
-if (physical || cuttlefish) {
-  if (fs.existsSync(destination)) throw Error('Output appeared during staging: ' + destination);
-  fs.renameSync(output, destination);
-}
+if (fs.existsSync(destination)) throw Error('Output appeared during staging: ' + destination);
+fs.renameSync(output, destination);
 console.log(
   `Add under vendor/${identity.slug.replaceAll("-", "_")} and inherit product.mk from the selected AOSP product. This is staging evidence, not an image boot.`,
 );
-} finally { if (temporary) fs.rmSync(temporary, {recursive:true, force:true}); }
+} finally { fs.rmSync(temporary, {recursive:true, force:true}); }
 }
 
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) await main(process.argv.slice(2));

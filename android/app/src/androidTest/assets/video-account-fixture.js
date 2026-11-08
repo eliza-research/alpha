@@ -1,5 +1,7 @@
-// Test APK only: qualify Camera/Photos through the production account UI without
-// real Cloud traffic or a resident service. Media and other native plugins stay real.
+// Test APK only: qualify Camera/Photos through the production account UI without real Cloud
+// traffic. Installed before startup settles, so the required sign-in page's readiness probe
+// reaches it. The real resident starts first (P-43) and its status and stop stay native; only the
+// account binding and the bound start are synthetic. Media and other native plugins stay real.
 (() => {
   if (window.__alphaVideoAccount) throw Error('Video account fixture already installed');
   const native = Capacitor.nativePromise;
@@ -15,6 +17,7 @@
       calls.push('signIn:' + method);
       if (method === 'cancel') return {};
       if (method === 'status') return { active: false, inApp: true, google: false, email: true };
+      if (method === 'savedSignInRecoveryStatus') return { eligible: false };
       if (method === 'startEmail') {
         if (input.email !== 'video-fixture@example.invalid' || input.environment !== 'production') throw Error('Unexpected sign-in request');
         return { attemptId: session, expiresAt: Date.now() + 600000, resendAt: Date.now() + 60000 };
@@ -48,16 +51,20 @@
       }
     }
     if (plugin === 'Agent') {
-      calls.push(method);
-      if (method === 'getStatus') return { packaged: true, state: running ? 'running' : 'stopped', serviceActive: running, socketListening: running };
-      if (method === 'stop') { running = false; return {}; }
+      // Until the synthetic account is bound this is the real resident: forward it unchanged.
+      const forward = !binding && method !== 'configureCloudProvider' || method === 'stop' || method === 'getStatus' && !running;
+      calls.push(forward ? 'native:' + method : method);
+      if (method === 'stop') running = false;
+      if (forward) return native.apply(this, arguments);
+      if (method === 'getStatus') return { packaged: true, state: 'running', serviceActive: true, socketListening: true };
       if (method === 'configureCloudProvider') {
         const saved = credential && JSON.parse(credential);
         if (!saved || input.credentialId !== saved.credentialId || input.model !== 'cerebras/qwen-3.8-27b') throw Error('Unbound resident account');
         binding = input.credentialId; return { configured: true };
       }
       if (method === 'start') {
-        if (!binding || binding !== JSON.parse(credential).credentialId) throw Error('Unbound resident startup');
+        const saved = credential && JSON.parse(credential);
+        if (!saved || binding !== saved.credentialId) throw Error('Unbound resident startup');
         running = true; return {};
       }
       if (method === 'cancelStart') { running = false; return {}; }

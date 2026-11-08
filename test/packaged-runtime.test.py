@@ -47,7 +47,11 @@ class PackagedRuntimeTest(unittest.TestCase):
                         'assets/agent/workflow-worker/manifest.json': manifest,
                         'assets/agent/workflow-worker/files.sha256': index,
                         'lib/arm64-v8a/libeliza_bun.so': b'arm64 runtime',
-                        'lib/x86_64/libeliza_bun.so': b'x86 runtime'}
+                        'lib/x86_64/libeliza_bun.so': b'x86 runtime',
+                        'lib/arm64-v8a/libeliza_ld_musl_aarch64.so': b'arm64 loader'}
+        rows = [{'path': name, 'sha256': sha(data), 'size_bytes': len(data)} for name, data in self.entries.items() if name.startswith('lib/') or name.endswith('agent-bundle.js')]
+        self.entries['assets/agent/alpha-runtime-profile.json'] = json.dumps({'version': 1, 'runtimeProfile': 'native'}).encode()
+        self.entries['assets/agent/android-agent-runtime-provenance.json'] = json.dumps({'schema': 'eliza.android_agent_runtime_provenance.v1', 'files': rows}).encode()
         for name, data in self.entries.items():
             local = name.replace('assets/', 'android/app/src/main/assets/', 1) if name.startswith('assets/') else name.replace('lib/', 'android/app/src/main/jniLibs/', 1)
             self.write(local, data)
@@ -74,6 +78,36 @@ class PackagedRuntimeTest(unittest.TestCase):
         self.assertEqual(result['upstreamCommit'], self.pin)
         self.assertEqual(result['verifiedEntries'], 9)
         self.assertFalse(result['runtimeExecution'])
+
+    def test_native_provenance_rows_are_checked(self):
+        loader = 'lib/arm64-v8a/libeliza_ld_musl_aarch64.so'
+        for release in [False, True]:
+            with self.subTest(release=release, mutation='tampered'), self.assertRaisesRegex(ValueError, 'provenance mismatch: ' + loader):
+                verifier.verify(self.package({**self.entries, loader: b'tampered loader'}), release=release)
+            entries = dict(self.entries)
+            del entries[loader]
+            with self.subTest(release=release, mutation='missing'), self.assertRaisesRegex(ValueError, 'provenance entry missing: ' + loader):
+                verifier.verify(self.package(entries), release=release)
+
+    def test_native_requires_staged_provenance(self):
+        entries = dict(self.entries)
+        del entries['assets/agent/android-agent-runtime-provenance.json']
+        (self.root / 'android/app/src/main/assets/agent/android-agent-runtime-provenance.json').unlink()
+        with self.assertRaisesRegex(ValueError, 'provenance missing. Run: npm run agent:stage-android'):
+            verifier.verify(self.package(entries))
+
+    def test_native_apk_refuses_cloud_or_missing_profile_marker(self):
+        name = 'assets/agent/alpha-runtime-profile.json'
+        cloud = json.dumps({'version': 1, 'runtimeProfile': 'cloud', 'omittedLocalModels': []}).encode()
+        with self.assertRaisesRegex(ValueError, 'differs from staged profile'):
+            verifier.verify(self.package({**self.entries, name: cloud}))
+        self.write('android/app/src/main/' + name, cloud)
+        with self.assertRaisesRegex(ValueError, 'native profile mismatch'):
+            verifier.verify(self.package({**self.entries, name: cloud}))
+        entries = dict(self.entries)
+        del entries[name]
+        with self.assertRaisesRegex(ValueError, 'profile marker missing'):
+            verifier.verify(self.package(entries))
 
     def test_inventory_must_describe_the_packaged_bundle_even_if_staging_matches(self):
         name = 'assets/agent/agent-bundle-dependencies.json'

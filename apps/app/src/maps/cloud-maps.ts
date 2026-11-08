@@ -27,8 +27,10 @@ export function cloudMapsBasemap():CloudMapsBasemap|undefined {
 let previous = connectionController.getCloudClient();
 connectionController.subscribe(() => {
  const next = connectionController.getCloudClient();
- if (previous?.sessionId !== next?.sessionId || previous?.credentialId !== next?.credentialId || previous?.client !== next?.client) {
-  previous = next;
+ const changed = previous?.sessionId !== next?.sessionId || previous?.credentialId !== next?.credentialId;
+ previous = next;
+ // A rebuilt client for the same session and credential keeps guidance; requests resolve the client per call.
+ if (changed) {
   // Retry requires an explicit search; a new account never inherits automatic rerouting.
   if (maps.cloudMapsDiagnostics().configured) maps.retireCloudMaps();
  }

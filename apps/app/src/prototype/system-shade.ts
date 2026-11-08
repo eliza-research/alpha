@@ -32,7 +32,7 @@ export type { PullContext, PullStart, ShadeSurface } from '@elizaos/capacitor-sy
 
 /** Alpha's words for each outcome; they never claim the shade opened. */
 export const ALPHA_SHADE_COPY = defaultShadeFallbackCopy('Alpha');
-const HOME = { home: '[data-alpha-layer="home"]', screen: '[data-screen]', canvasWidth: 412 };
+const HOME = { home: '[data-alpha-layer="home"]', screen: '[data-screen]' };
 
 /** The fallback a person sees when Android did not open its shade. It never claims the shade opened. */
 export function shadeFallback(outcome: unknown): string { return sharedShadeFallback(outcome, ALPHA_SHADE_COPY); }

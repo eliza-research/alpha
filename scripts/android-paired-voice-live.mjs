@@ -1,5 +1,6 @@
 /** Actual isolated Eliza47844 -> Notes Listen -> native decoding. Synthetic recording ingress only. */
 import fs from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
 import crypto from 'node:crypto';
 import assert from 'node:assert/strict';
@@ -19,7 +20,7 @@ for(const variant of ['standalone','launcher']){
  try{
   run(['install','--no-incremental','-r',apk]);run(['install','--no-incremental','-r',testApk]);run(['shell','am','force-stop',appId]);
   stage='private pairing fixture';
-  const response=await fetch('http://127.0.0.1:47844/api/auth/pair-code',{redirect:'error',signal:AbortSignal.timeout(15000)});if(!response.ok)throw Error('Pairing unavailable');const data=await response.json();if(typeof data.code!=='string'||!data.code)throw Error('Invalid pairing fixture');
+  const response=await fetch('http://127.0.0.1:47844/api/auth/pair-code',{headers:{Authorization:'Bearer '+fs.readFileSync(path.join(os.homedir(),'.local/share/alphaphone/local-voice/owner-token'),'utf8').trim()},redirect:'error',signal:AbortSignal.timeout(15000)});if(!response.ok)throw Error('Pairing unavailable');const data=await response.json();if(typeof data.code!=='string'||!data.code)throw Error('Invalid pairing fixture');
   run(['shell',`run-as ${appId} sh -c 'umask 077; mkdir -p files; cat > files/paired-voice-live.json'`],JSON.stringify({origin:'http://10.0.2.2:47844',code:data.code}));
   stage='native Notes flow';
   const log=run(['shell','am','instrument','-w','-e','pairedVoiceLive','1','-e','class',`${appId}.PairedVoiceLiveInstrumentedTest`,`${appId}.test/androidx.test.runner.AndroidJUnitRunner`]);

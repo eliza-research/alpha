@@ -63,7 +63,7 @@ else if(a.includes('instrument')){const selector=a[a.indexOf('class')+1],parts=s
 else if(a.includes('start-user')||a.includes('stop-user')||a.includes('grant')||a[1]==='input'||a[1]==='wm'){}
 else {console.error('Unexpected command '+JSON.stringify(a));process.exit(1);}
 `,{mode:0o700});
-  const prefix=`ALPHA_${kind.toUpperCase()}`,run=spawnSync(process.execPath,[path.resolve(`scripts/test-${kind}-upgrade.mjs`),...(bridge?['--bridge']:[]),...(mode==='baseline-process'?['--baseline-process-runner']:[])],{encoding:'utf8',timeout:300000,env:{...process.env,ANDROID_HOME:root,ELIZA_DEVICE_LEASE_DIR:path.join(root,'leases'),[`${prefix}_TEST_ROOT`]:root,[`${prefix}_BASELINE_DIR`]:path.join(root,'baseline'),[`${prefix}_TEST_SERIAL`]:'emulator-5596',[`${prefix}_TEST_AVD`]:'owned-fixture',[`${prefix}_TEST_ABI`]:'x86_64'}});
+  const prefix=`ALPHA_${kind.toUpperCase()}`,run=spawnSync(process.execPath,[path.resolve('scripts/test-installed-upgrade.mjs'),kind,...(bridge?['--bridge']:[]),...(mode==='baseline-process'?['--baseline-process-runner']:[])],{encoding:'utf8',timeout:300000,env:{...process.env,ANDROID_HOME:root,ELIZA_DEVICE_LEASE_DIR:path.join(root,'leases'),[`${prefix}_TEST_ROOT`]:root,[`${prefix}_BASELINE_DIR`]:path.join(root,'baseline'),[`${prefix}_TEST_SERIAL`]:'emulator-5596',[`${prefix}_TEST_AVD`]:'owned-fixture',[`${prefix}_TEST_ABI`]:'x86_64'}});
   // Source authentication alone can exceed the old whole-fixture deadline.
   // Surface process failures before reading output that may never have been created.
   assert.ifError(run.error);
@@ -152,4 +152,10 @@ test('calendar upgrade refuses a candidate rebuilt after admission before instal
  assert.ok(!r.commands.some(a=>a[0]==='install'||a.includes('instrument')));
  assert.equal(r.reports.length,1);assert.equal(r.reports[0].passed,false);assert.equal(r.reports[0].failedPhase,'admission');
  assert.deepEqual(r.state.files,{});assert.equal(r.state.exists,false);assert.equal(r.state.user,'0');
+});
+test('the upgrade runner refuses a missing or unknown kind with usage before touching a device',()=>{
+ for(const args of [[],['photos']]){
+  const run=spawnSync(process.execPath,[path.resolve('scripts/test-installed-upgrade.mjs'),...args],{encoding:'utf8',timeout:30000,env:{...process.env,ANDROID_HOME:'/nonexistent'}});
+  assert.equal(run.status,2,run.stderr);assert.match(run.stderr,/Usage: node scripts\/test-installed-upgrade\.mjs <calendar\|reminder>/);
+ }
 });

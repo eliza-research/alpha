@@ -78,7 +78,6 @@ public final class BrowserExternalHandoffInstrumentedTest {
     FrameLayout frame=(FrameLayout)get(t,"frame");frame.setLayoutParams(new FrameLayout.LayoutParams(400,400));frame.setVisibility(View.VISIBLE);web.get().setVisibility(View.VISIBLE);
     set(p,"externalBrowserResolver",(Function<Intent,List<ResolveInfo>>)intent->{assertEquals(Intent.ACTION_VIEW,intent.getAction());assertEquals("https://browser-handoff.invalid/",intent.getDataString());assertTrue(intent.hasCategory(Intent.CATEGORY_DEFAULT));assertTrue(intent.hasCategory(Intent.CATEGORY_BROWSABLE));return Arrays.asList(browser(instrumentation.getTargetContext().getPackageName(),true),browser("fixture.deep.link",false),browser("fixture.browser",true),browser("fixture.browser",true));});
    }catch(Exception failure){throw new AssertionError(failure);}});
-   instrumentation.waitForIdleSync();
    Instrumentation.ActivityMonitor monitor=new Instrumentation.ActivityMonitor(){@Override public Instrumentation.ActivityResult onStartActivity(Intent intent){outgoing.set(new Intent(intent));return new Instrumentation.ActivityResult(Activity.RESULT_CANCELED,null);}};
    instrumentation.addMonitor(monitor);
    try{

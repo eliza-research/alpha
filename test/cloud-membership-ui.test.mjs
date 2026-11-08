@@ -1,11 +1,11 @@
-import {after,test}from'node:test';
+import {test}from'node:test';
 import assert from'node:assert/strict';
-import fs from'node:fs';import path from'node:path';import{pathToFileURL}from'node:url';
-import React from'react';import{renderToStaticMarkup}from'react-dom/server';import{build}from'esbuild';
-const root=path.resolve(import.meta.dirname,'..'),temp=fs.mkdtempSync(path.join(root,'.membership-ui-test-')),file=path.join(temp,'component.mjs');
-after(()=>fs.rmSync(temp,{recursive:true,force:true}));
-await build({entryPoints:[path.join(root,'apps/app/src/runtime/cloud-membership-ui.tsx')],bundle:true,platform:'node',format:'esm',outfile:file,external:['react','react/jsx-runtime'],loader:{'.css':'empty'},logLevel:'silent'});
-const{CloudMembershipControls,BillingAccountReview}=await import(pathToFileURL(file).href);
+import {createRequire}from'node:module';
+import React from'react';import{renderToStaticMarkup}from'react-dom/server';import{buildSync}from'esbuild';
+const code=buildSync({entryPoints:['apps/app/src/runtime/cloud-membership-ui.tsx'],bundle:true,write:false,platform:'node',format:'cjs',jsx:'automatic',external:['react','react/jsx-runtime'],loader:{'.css':'empty'},logLevel:'silent'}).outputFiles[0].text;
+const module={exports:{}};
+new Function('require','module','exports',code)(createRequire(import.meta.url),module,module.exports);
+const{CloudMembershipControls,BillingAccountReview}=module.exports;
 const calls=[];const base={email:'example@alpha.test',busy:false,balance:'funded',plan:{kind:'credits'},onRedeem:async()=>{calls.push('redeem');return false;},onManagePlan:()=>calls.push('plan'),onRefresh:()=>calls.push('refresh')};
 const render=(extra={})=>renderToStaticMarkup(React.createElement(CloudMembershipControls,{...base,...extra}));
 test('subscription entry offers a monthly plan and keeps code redemption secondary without acting on render',()=>{const s=render();assert.match(s,/aria-label="Subscription"/);assert.match(s,/Choose a monthly plan/);assert.match(s,/Enter membership code/);assert.doesNotMatch(s,/<details|Have a membership code|<input/);assert.deepEqual(calls,[]);});

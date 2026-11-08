@@ -135,11 +135,11 @@ public final class BrowserAutofillInstrumentedTest {
   String prior=shell("settings --user "+user+" get secure autofill_service");
   assertTrue("Existing provider setting must be safely restorable",prior.isEmpty()||prior.equals("null")||prior.matches("[A-Za-z0-9_.$]+/[A-Za-z0-9_.$]+"));
   String component=InstrumentationRegistry.getInstrumentation().getTargetContext().getPackageName()+"/ai.elizaresearch.alphaphone.SyntheticAutofillService";
-  SyntheticAutofillService.accepted.set(0);SyntheticAutofillService.rejected.set(0);SyntheticAutofillService.armed=true;
+  SyntheticAutofillService.accepted.set(0);SyntheticAutofillService.rejected.set(0);SyntheticAutofillService.requests.set(0);SyntheticAutofillService.armed=true;
   try{
    shell("settings --user "+user+" put secure autofill_service "+component);
    try(BoundedActivityScenario<MainActivity> scenario=BoundedActivityScenario.launch(MainActivity.class)){
-    AppNavigation.liveMode();host(AppNavigation.request("Browser"));waitHost(AppNavigation.selected("Browser"));AppNavigation.declineStartupAccess();
+    AppNavigation.liveMode();host(AppNavigation.request("Browser"));waitHost(AppNavigation.selected("Browser"));
     // A fresh install opens the modal access panel a few seconds after launch, in the middle of the
     // real taps below. Answer it first, as an owner does ("Not now" grants nothing).
     AppNavigation.declineStartupAccess();
@@ -190,8 +190,13 @@ public final class BrowserAutofillInstrumentedTest {
      address("http://127.0.0.1:"+server.getLocalPort()+"/");
      childReady("location.protocol==='http:' && document.title==='Cleartext synthetic fixture' && document.readyState==='complete'");
      eligibility(child,View.IMPORTANT_FOR_AUTOFILL_NO_EXCLUDE_DESCENDANTS);
-     int accepted=SyntheticAutofillService.accepted.get();form();tapUsername();SystemClock.sleep(800);
+     // The synthetic provider refuses non-HTTPS domains by itself, so the property is that no
+     // request reaches it at all. Wait several request latencies, not one popup frame.
+     int requests=SyntheticAutofillService.requests.get(),accepted=SyntheticAutofillService.accepted.get(),rejected=SyntheticAutofillService.rejected.get();
+     form();tapUsername();SystemClock.sleep(5000);
+     assertEquals("Cleartext document never reaches the Autofill provider",requests,SyntheticAutofillService.requests.get());
      assertEquals("Cleartext document never requests a credential dataset",accepted,SyntheticAutofillService.accepted.get());
+     assertEquals("Cleartext document is never offered to the provider for rejection",rejected,SyntheticAutofillService.rejected.get());
      assertNull("Cleartext form has no provider suggestion",suggestion());
      assertEquals("Cleartext fields remain empty","true",browser.child("document.querySelector('#alpha-user').value==='' && document.querySelector('#alpha-password').value===''") );
     }finally{server.close();worker.shutdownNow();}

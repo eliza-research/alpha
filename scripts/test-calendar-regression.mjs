@@ -5,6 +5,10 @@
  * revoke its own). `--case=` takes a class name (every case of that class) or
  * `Class#method`; `--variant=` takes standalone or launcher. A class listed with two methods keeps
  * the class-named result folder for its first case and adds `-<method>` for the others.
+ * The cases drive the views, which P-43's required sign-in covers on a flag-off build in a fresh user,
+ * so the runner installs the verified test-mocks pair (artifacts/test-mocks, checked against its
+ * apk-manifest.json before the device is leased). The device time zone and automatic time zone
+ * setting are read before each case and put back after it, also when the test process died.
  * Emulator-class evidence only: no synced account, no live calendar and no device acceptance. */
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
@@ -16,6 +20,7 @@ verifyPinnedUpstream(repository);
 const {runIsolatedAndroidTest}=await import('../vendor/eliza/packages/app/scripts/lib/isolated-android-test.mjs');
 const {withIsolatedAndroidUser}=await import('../vendor/eliza/packages/app/scripts/lib/isolated-android-user.mjs');
 const {acquireDeviceLease}=await import('../vendor/eliza/packages/app/scripts/lib/device-lease.ts');
+const {admitApks}=await import('./android-instrumentation.mjs');
 const root=process.env.ALPHA_CALENDAR_TEST_ROOT??repository,serial=process.env.ALPHA_CALENDAR_TEST_SERIAL,avd=process.env.ALPHA_CALENDAR_TEST_AVD,abi=process.env.ALPHA_CALENDAR_TEST_ABI;
 assert.match(serial??'',/^emulator-\d+$/);assert.match(avd??'',/^[A-Za-z0-9_.-]+$/);assert.ok(['x86_64','arm64-v8a'].includes(abi),'Explicit owned fixture ABI required');
 const sdk=process.env.ANDROID_HOME??process.env.ANDROID_SDK_ROOT;assert.ok(sdk&&path.isAbsolute(sdk),'Provide an absolute Android SDK path');
@@ -42,6 +47,15 @@ const optionsOf=([,,,,options])=>options??{};
 assert.ok(!requestedCase||cases.some(selects),'Unknown Calendar case');assert.ok(!requestedVariant||['standalone','launcher'].includes(requestedVariant),'Unknown variant');
 const output=path.join(root,'test-results',`calendar-regression-${Date.now()}-${process.pid}`),cancellation=new AbortController(),cancel=()=>cancellation.abort();
 const call=(...args)=>execFileSync(adb,['-s',serial,...args],{encoding:'utf8',timeout:120000,maxBuffer:16*1024*1024}).trim();
+// Shared Gradle outputs are not used: a later build can overwrite them, and only verify-apks binds a test APK to its app.
+const admitted=Object.fromEntries(['standalone','launcher'].filter(v=>!requestedVariant||v===requestedVariant).map(variant=>[variant,admitApks(path.join(root,'artifacts/test-mocks'),variant,{testMocks:true})]));
+/** The time zone and automatic setting every user shares; CalendarFlow changes both. */
+const readClock=()=>({timeZone:call('shell','getprop','persist.sys.timezone'),autoTimeZone:call('shell','settings','get','global','auto_time_zone')});
+const restoreClock=saved=>{
+ if(JSON.stringify(readClock())===JSON.stringify(saved))return false;
+ call('shell','settings','put','global','auto_time_zone','0');call('shell','cmd','alarm','set-timezone',saved.timeZone);call('shell','settings','put','global','auto_time_zone',saved.autoTimeZone);
+ assert.deepEqual(readClock(),saved,'Device time zone was not restored');return true;
+};
 const lease=await acquireDeviceLease(`android:${serial}`,{waitMs:0,ttlMs:Number.MAX_SAFE_INTEGER});
 process.once('SIGINT',cancel);process.once('SIGTERM',cancel);
 try{
@@ -49,17 +63,20 @@ try{
  for(const variant of ['standalone','launcher'].filter(v=>!requestedVariant||v===requestedVariant))for(const selected of cases.filter(selects)){const [testClass,flag,count,testMethod]=selected,{value='1',revoked=false}=optionsOf(selected);
   cancellation.signal.throwIfAborted();
   const directory=path.join(output,`${variant}-${folder([testClass,flag,count,testMethod])}`);fs.mkdirSync(directory);
-  const record={serial,avd,abi,variant,testClass,...(testMethod?{testMethod}:{}),gate:flag,...(value==='1'?{}:{gateValue:value}),...(revoked?{calendarPermissions:'revoked'}:{}),expectedTests:count,passed:false};let failure;
+  const [app,pair]=admitted[variant];
+  const record={serial,avd,abi,variant,build:'test-mocks',apks:[app,pair].map(({role,sha256})=>({role,sha256})),testClass,...(testMethod?{testMethod}:{}),gate:flag,...(value==='1'?{}:{gateValue:value}),...(revoked?{calendarPermissions:'revoked'}:{}),expectedTests:count,passed:false};let failure;
   const persist=()=>fs.writeFileSync(path.join(directory,'result.json'),JSON.stringify(record,null,2)+'\n');
+  let clock;
   try{
+   record.deviceClock=clock=readClock();persist();
    const installed=call('shell','pm','list','packages','-u','--user','all').split(/\r?\n/);
    assert.ok(![pkg,`${pkg}.test`,...(external?[companion.packageName]:[])].some(name=>installed.includes(`package:${name}`)),'Existing package registration; refusing replacement');
    await withIsolatedAndroidUser({serial,deviceLease:lease,expectedAvdName:avd,homePackage:process.env.ALPHA_TEST_HOME_PACKAGE??'com.android.launcher3',name:`calendar-${variant}-${Date.now()}`,signal:cancellation.signal,execute:args=>call(...args),record:state=>{record.userLifecycle=state;persist();},run:async({user})=>{
     record.user=user;
     try{
      record.result=await runIsolatedAndroidTest({serial,adb,aapt,packageName:pkg,additionalInstrumentationRunners:[pkg+'.WorkflowNoticeProcessRunner'],testClass:`${pkg}.${testClass}`,testMethod,expectedTests:count,requiredAbi:abi,expectedAvdName:avd,androidUser:user,deviceLease:lease,directory,signal:cancellation.signal,commandTimeoutMs:120000,instrumentationTimeoutMs:external?300000:['calendarRange','calendarCrud','calendarAgent','calendarOptions','calendarAvailability','homeCalendar'].includes(flag)?240000:120000,cleanupTimeoutMs:120000,
-      variants:[{name:variant,apk:path.join(root,'artifacts',`${variant}-debug.apk`),testApk:path.join(root,'android/app/build/outputs/apk/androidTest',variant,'debug',`app-${variant}-debug-androidTest.apk`)}],companionApks:external?[companion]:[],runnerArgs:['-e',flag,external?'true':value],
-      evidence:'Alpha Calendar regression in an owned secondary emulator user. No live account acceptance.',
+      variants:[{name:variant,apk:app.file,testApk:pair.file}],companionApks:external?[companion]:[],runnerArgs:['-e',flag,external?'true':value],
+      evidence:'Alpha Calendar regression on the test-mocks pair in an owned secondary emulator user. No live account acceptance.',
       collectVariant:external?()=>{
        const receipt=JSON.parse(call('shell','run-as',pkg,'--user',String(user),'cat','files/external-calendar-result.json'));
        for(const field of ['implicitHandoff','cancelUnchanged','saveSameRowAndEpochs','returnedToAlpha','fixtureCleaned','timezoneUnchanged'])assert.equal(receipt[field],true,field);
@@ -77,7 +94,10 @@ try{
     return {cleaned:proof?.cleaned===true,cleanupDeferred:proof?.cleanupDeferred===true};
    }});
   }catch(error){failure??=error;record.error=failure.message;}
-  finally{record.passed=!failure;persist();}
+  finally{
+   if(clock)try{record.deviceClockRestored=restoreClock(clock);}catch(error){failure??=error;record.error??=error.message;record.deviceClockRestored=false;}
+   record.passed=!failure;persist();
+  }
   if(failure)throw failure;
  }
  console.log(output);

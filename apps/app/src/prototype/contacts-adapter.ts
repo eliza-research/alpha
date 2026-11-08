@@ -3,6 +3,13 @@ import { watchReturnToApp } from './native-adapter';
 import { isMvpView } from './mvp-features';
 type Bag=Record<string,any>;
 const contacts=registerPlugin<any>('AlphaContacts');
+const PHONE='M4 4h4l2 5-2 2 5 5 2-2 5 2v4C10 22 2 14 4 4',BUBBLE='M4 5h16v11H9l-5 4z';
+/** Per-number Call and Message open Phone or Messages with the number filled in; nothing dials or sends until the owner does it there. */
+export function contactActs(phones:readonly string[],api:Bag){
+ return phones.flatMap(number=>[
+  ...(isMvpView('phone')?[{d:PHONE,label:`Call ${number}`,go:()=>api.open('phone',{prefill:number})}]:[]),
+  ...(isMvpView('messages')?[{d:BUBBLE,label:`Message ${number}`,go:()=>api.open('messages',{prefill:number})}]:[])]);
+}
 /** Native address-book rows stay in memory, never in prototype persistence or agent context. */
 export function installContactsAdapter(Component:any,views:Bag){
  const render=views.contacts.render,p=Component.prototype,mount=p.componentDidMount,update=p.componentDidUpdate,unmount=p.componentWillUnmount;
@@ -21,7 +28,7 @@ export function installContactsAdapter(Component:any,views:Bag){
    const value=await contacts.list({query:queryOverride??String(target.vget('contacts').q||''),limit});
    if(token!==epoch||target!==owner||!available())return;
    if(!Array.isArray(value.contacts))throw Error();rows=value.contacts;more=value.more===true;
-   status=rows.length?`${rows.length} contacts${more?' · more available':''}`:'No contacts found.';
+   status=more&&limit>=200?'200 shown. Search to find other contacts.':rows.length?`${rows.length} contacts${more?' · more available':''}`:'No contacts found.';
   }catch{if(token===epoch){rows=[];status='Contacts could not be read. Check access and refresh.';}}
   finally{if(token===epoch){loading=false;changed();}}
  }
@@ -41,8 +48,8 @@ export function installContactsAdapter(Component:any,views:Bag){
   model.hasQ=false;model.noHits=false;model.addNew=()=>void editor();
   model.onQ=(event:Event)=>{api.set({q:(event.target as HTMLInputElement).value,open:null});limit=50;void refresh(false,(event.target as HTMLInputElement).value);};
   model.closeSearch=()=>{api.set({q:'',searching:false,open:null});limit=50;void refresh(false,'');};
-  if(model.d){const selected=rows.find(row=>row.id===st.open);model.d.nativeManaged=true;model.d.acts=[];model.d.hasActs=false;model.d.hasCtx=false;
-   model.d.fields=selected?[...(selected.phones||[]).map((v:string)=>({d:'M4 4h4l2 5-2 2 5 5 2-2 5 2v4C10 22 2 14 4 4',v})),...(selected.emails||[]).map((v:string)=>({d:'M3 5h18v14H3zM3 5l9 7 9-7',v}))]:[];
+  if(model.d){const selected=rows.find(row=>row.id===st.open);model.d.nativeManaged=true;model.d.acts=selected?contactActs(selected.phones||[],api):[];model.d.hasActs=model.d.acts.length>0;model.d.hasCtx=false;
+   model.d.fields=selected?[...(selected.phones||[]).map((v:string)=>({d:PHONE,v})),...(selected.emails||[]).map((v:string)=>({d:'M3 5h18v14H3zM3 5l9 7 9-7',v}))]:[];
    model.d.hasFields=model.d.fields.length>0;model.d.edit=()=>selected&&void editor(selected);model.d.del=()=>{};model.d.toggleFav=()=>{};
   }
   return model;

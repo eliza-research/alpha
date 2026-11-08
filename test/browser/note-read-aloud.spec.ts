@@ -14,7 +14,8 @@ async function openNote(page:Page){
  await page.getByRole('button',{name:'New note',exact:true}).click();
  await page.getByRole('textbox',{name:'Title',exact:true}).fill('Groceries');
  await page.getByRole('textbox',{name:'Note',exact:true}).fill('Milk and eggs.');
- await page.waitForTimeout(500);
+ // Autosave is asynchronous: wait until the note is stored before anything reads its id.
+ await expect.poll(()=>page.evaluate(async()=>{const raw=await(await import('/src/runtime/browser-notes-document.ts')).readBrowserNotesRaw();return raw?JSON.parse(raw).records.some((n:any)=>n.title==='Groceries'&&n.body==='Milk and eggs.'):false;})).toBe(true);
 }
 /** Starts reading through the module entry point, so the resolved outcome is observable. The editor
  * has no Read aloud button (PLAN.md section 3): reading a note is asked of Alpha. */

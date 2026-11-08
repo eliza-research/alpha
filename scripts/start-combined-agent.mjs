@@ -16,8 +16,8 @@ if(execFileSync(nodeBin,['--version'],{encoding:'utf8'}).trim()!=='v26.13.0'||ex
 const runtimePath=path.dirname(nodeBin)+path.delimiter+(process.env.PATH||'');
 const source=process.env.ALPHA_COMBINED_SOURCE,manifestPath=process.env.ALPHA_COMBINED_SOURCE_MANIFEST;
 if(!source||!manifestPath||!path.isAbsolute(source)||!path.isAbsolute(manifestPath))throw Error('Explicit absolute ALPHA_COMBINED_SOURCE and ALPHA_COMBINED_SOURCE_MANIFEST required');
-const realSource=fs.realpathSync(source),repo=fs.realpathSync(process.cwd());
-if(realSource===path.join(repo,'vendor/eliza')||realSource===path.join(repo,'base/eliza-app'))throw Error('Never launch mutable pinned vendor or pristine baseline as combined source');
+const realSource=fs.realpathSync(source),repo=fs.realpathSync(path.resolve(import.meta.dirname,'..'));
+if(['vendor/eliza','base/eliza-app'].map(dir=>path.join(repo,dir)).some(dir=>realSource===dir||realSource.startsWith(dir+path.sep)))throw Error('Never launch mutable pinned vendor or pristine baseline as combined source');
 const expected=JSON.parse(fs.readFileSync(manifestPath,'utf8')),actual=sourceManifest(realSource);
 if(expected.format!==1||expected.revision!==actual.revision||expected.contentSha256!==actual.contentSha256||JSON.stringify(expected.entries)!==JSON.stringify(actual.entries))throw Error('Frozen source content differs from reviewed manifest');
 const entry=path.join(realSource,'packages/app/src/runtime/dev-server.ts');if(!fs.statSync(entry).isFile())throw Error('Runtime entry missing');

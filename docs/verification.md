@@ -62,7 +62,7 @@ record that claims qualification without passed gates and image/device evidence.
 
 | Check | Class | What it does not prove |
 | --- | --- | --- |
-| `node --test test/always-on-listener.test.mjs test/listener-store-failure.test.mjs test/aosp-listening-chip.test.mjs test/aosp-listener.test.mjs test/listener-qualification.test.mjs` | S | That the listener or SystemUI builds as an APK/image, or that any indicator is visible |
+| `node --test test/always-on-listener.test.mjs test/aosp-listener.test.mjs test/listener-qualification.test.mjs` (the first two run the upstream sense suites at the pin) | S | That the listener or SystemUI builds as an APK/image, or that any indicator is visible |
 | A `listener` row in `apk-manifest.json` | B | Privileges, the lease or capture on an image |
 | `node scripts/verify-aosp-listener.mjs --serial S --user 0` on a booted image | I | Indicator visibility, stop reliability, coexistence, battery |
 | Gates G3–G6 on a Pixel 10a | D | Other devices |
@@ -726,7 +726,7 @@ stops on a clean checkout:
 | Order | Input | Supplied by | State on a clean checkout |
 | --- | --- | --- | --- |
 | 1 | Pinned `vendor/eliza` | script (`git submodule update`) | present |
-| 2 | Speech AAR matching `runtime-manifest.json` | the reviewed AAR: a person (A-24, MVP-23). A local rebuild: scripts, with `--allow-unqualified-runtime` | missing; the preflight exits 2 here |
+| 2 | Speech AAR matching `runtime-manifest.json` (retired by P-42; today the input is the staged on-device voice outputs, see [fused speech](fused-speech.md)) | then: the reviewed AAR, a person (A-24, MVP-23), or a local rebuild by script | missing; the preflight exits 2 here |
 | 3 | Reviewed ARM64 embedding host libraries | a person (see below) | missing; `agent:build-embedding-host` exits 3 here |
 | 4 | Prepared runtime source | script (`agent:prepare`) | produced |
 | 5 | Workflow worker artifact | script (`agent:build-workflow-worker`) | produced |
@@ -903,7 +903,7 @@ history and none of this is evidence for them. Branch `claude/r10-a11y-gaps`, fr
 | A toast under a top-layer dialog was neither seen nor announced | The topmost modal dialog gets a live region of its own, drawn above it (`runtime/toast-layer.ts`) | rules `toast-not-announced` and `toast-covered`; the dialog toast tests (position, hit test, accessibility tree, Undo, cleanup) |
 | Landscape with 200% text was not swept | A lane of its own. It needed one fix, caused by the title row: in landscape the camera's capture rail starts below that row and the camera's message stops at the rail | `accessibility-sweep.spec.ts` |
 | Provider-connected states were not swept | Ten states against a synthetic mailbox at the provider boundary. They found two defects, fixed: the email message field ran 16px under the pill, and a connection's status was cut off at 200% text in Settings | `accessibility-sweep.spec.ts`, `test/accessibility-coverage.test.mjs` |
-| Launcher flavor: "an accessibility click reaches no page control on this WebView" | Test defect, not a product one; see below | `test/accessibility-stand-in.test.mjs` (source checks only) |
+| Launcher flavor: "an accessibility click reaches no page control on this WebView" | Test defect, not a product one; see below | `test/accessibility-stand-in.test.mjs` (source checks only; superseded: f21e9a6e4b removed the stand-in and this test) |
 
 Each new rule is shown to fire on a seeded defect and to stay quiet on corrected markup in
 `accessibility-audit.spec.ts`. With the Home rule, the scroll padding and the focus handler
@@ -933,7 +933,8 @@ TalkBack or Switch Access bound it would not. The product side was checked in Ch
 handle is a named, enabled button with no disabled or read-only ancestor in the
 accessibility tree, and the event sequence an accessibility click produces (pointerdown,
 mousedown, pointerup, mouseup, click on the element) opens the panel in both shells.
-`AccessibilityInstrumentedTest` now binds a stand-in screen reader from the instrumentation
+*Superseded: f21e9a6e4b removed the stand-in screen reader and its click step; the rest of this
+paragraph is history.* `AccessibilityInstrumentedTest` then bound a stand-in screen reader from the instrumentation
 APK for that step (`ScreenReaderStandInService`: every event type, spoken feedback, no touch
 exploration), connects UiAutomation without suspending other services, requires the click to
 open the panel, then requires a single further click to open it again, and restores the two
@@ -1400,7 +1401,7 @@ string; gesture tests did not settle the startup access panel; `InboxDraft` and
 
 Keep generated logs, screenshots and machine-readable receipts under ignored
 `test-results/` or CI artifacts. Link the exact workflow run and commit when reporting
-results; consult [GitHub Actions](https://github.com/AlphaCompute/alphaphone/actions)
+results; consult [GitHub Actions](https://github.com/eliza-research/alphaphone/actions)
 for hosted status. Record failures, skipped cases and unavailable prerequisites along
 with the passing subset. A rerun replaces evidence only for the scope it executes.
 Never carry a dated APK or device result forward as proof for changed source.
@@ -1427,7 +1428,7 @@ case is `AssistantResidentReuseInstrumentedTest`; it uses a synthetic runtime ob
 enrollment and streams, so a passing run is emulator-class evidence of surface ownership only,
 not of a live inference stream surviving, and never device acceptance.
 
-Native runner phases (MVP-18): `node scripts/test-reminder-upgrade.mjs` now also runs
+Native runner phases (MVP-18): `node scripts/test-installed-upgrade.mjs reminder` now also runs
 `WorkflowLegacyReminderUpgradeInstrumentedTest` on both distributions after the candidate verify
 phase, against the same upgraded data. Calendar and reminder upgrades admit the candidate app
 and instrumentation APK as one verified pair from `artifacts/apk-manifest.json` and

@@ -335,7 +335,7 @@
       "launcher.installed-apps", "launcher.default-dial", "launcher.favorites",
       "calendar.local-event.v1", "calendar.agenda-read.v1", "calendar.availability-read.v1", "calendar.create.v1", "calendar.named-read.v1", "calendar.next-read.v1",
       "camera.capture-photo.v1", "clock.handoff.v1", "clock.handoff.v2", "maps.selected-read.v1",
-      "notes.local-record.v1", "notes.query.v1", "reminders.create.v1", "reminders.local-record.v1", "reminders.local-record.v2", "sms.send.v1"
+      "notes.local-record.v1", "notes.query.v1", "photos.library.v1", "reminders.create.v1", "reminders.local-record.v1", "reminders.local-record.v2", "sms.send.v1"
     ],
     "actions": []
   }

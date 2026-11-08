@@ -41,8 +41,8 @@ public final class LocalSpeechBridgeInstrumentedTest {
   try{fixture.setDataSource(audio.getAbsolutePath());assertEquals("One recorder audio track",1,fixture.getTrackCount());android.media.MediaFormat format=fixture.getTrackFormat(0);assertEquals("audio/mp4a-latm",format.getString(android.media.MediaFormat.KEY_MIME));assertEquals(16000,format.getInteger(android.media.MediaFormat.KEY_SAMPLE_RATE));assertEquals(1,format.getInteger(android.media.MediaFormat.KEY_CHANNEL_COUNT));}finally{fixture.release();}
    until("window.Capacitor?.Plugins?.AlphaVoiceCloud&&document.querySelector('.os')",30000);
    // Resident startup changes the selected session and deliberately releases prior speech.
-   // The signed-out production screen exposes connection work through aria-busy.
-   if(!BuildConfig.ELIZA_DEV_ALLOW_TEST_MOCKS)until("document.querySelector('.alpha-auth-content')&&document.querySelector('.alpha-auth-content').getAttribute('aria-busy')!=='true'&&[...document.querySelectorAll('.alpha-auth-content button')].some(b=>b.textContent==='Sign in with Eliza Cloud'&&!b.disabled)",120000);
+   // The signed-out production sign-in page exposes connection work through aria-busy.
+   if(!BuildConfig.ELIZA_DEV_ALLOW_TEST_MOCKS)until(AppNavigation.SIGN_IN_PAGE_READY,120000);
    try {
     assertFalse(call("Capacitor.Plugins.AlphaVoiceCloud.cancelRecording()").has("error"));ready("bridge-ready");
     AlphaVoiceCloudPlugin nativePlugin=plugin();Object capture=field(ai.eliza.voice.LocalSpeechBridgePlugin.class,"capture").get(nativePlugin);

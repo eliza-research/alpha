@@ -62,13 +62,8 @@ export function syncRecurrence(row: CalendarRecord): string[] {
 			"Sync the series rather than an individual occurrence. Nothing changed.",
 		);
 	const repeat = row.repeat || "none";
-	if (repeat === "none") {
-		if (row.excluded?.length)
-			throw Error(
-				"This event has recurrence metadata that needs review. Nothing changed.",
-			);
-		return [];
-	}
+	// Deleted dates mean nothing once an event no longer repeats. Older edits kept them.
+	if (repeat === "none") return [];
 	const rule = rules[repeat];
 	if (!rule)
 		throw Error(

@@ -81,7 +81,7 @@ export function checkLayout(root) {
     class: row.class, build: row.identity.build, abi: row.identity.abi, environment: row.identity.environment, network: row.network,
     source: row.identity.sourceCommit.slice(0, 12), passed: row.passed, warm: row.warm.samples, cold: row.cold.samples,
     needs: { passed: Math.max(0, minimumTrials - row.passed), warm: Math.max(0, summary.requiredWarm - row.warm.samples), cold: Math.max(0, summary.requiredCold - row.cold.samples) },
-    failures: row.failures, noResponse: row.noResponse, withinBudget: row.withinBudget,
+    ineligibleRows: row.ineligibleRows, failures: row.failures, noResponse: row.noResponse, withinBudget: row.withinBudget,
   }));
   return { files: documents.length, problems, invalid: summary?.invalid ?? 0, rejected: summary?.rejected ?? {}, conflictingTrials: summary?.conflictingTrials ?? 0, cohorts,
     command: `node scripts/aggregate-voice-latency.mjs ${path.join(root, "*", "*", "*.native-voice-timing.json")} --out ${path.join(root, "summary.json")}` };

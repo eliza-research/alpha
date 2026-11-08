@@ -5,6 +5,7 @@ import ai.eliza.plugins.media.DocumentExport;
 import android.app.Activity;
 import android.content.Intent;
 import android.net.Uri;
+import android.os.Bundle;
 import android.provider.OpenableColumns;
 import androidx.activity.result.ActivityResult;
 import com.getcapacitor.*;
@@ -41,7 +42,7 @@ public final class AlphaNoteDocumentsPlugin extends Plugin {
  }
  @ActivityCallback private void exportedPdf(PluginCall call,ActivityResult response){Uri uri=chosen(call,response);if(uri==null)return;run(call,()->{
   byte[] content;try{content=pdfBytes(call);}catch(RuntimeException invalid){call.resolve(result("failed","The selected destination could not be written."));return;}
-  write(call,uri,content,"PDF saved and exact bytes verified.","The provider may have saved some or all PDF bytes. Inspect the destination before retrying.");
+  write(call,uri,content,"Saved.","Save not confirmed. Check the file before trying again.");
  });}
  private Uri chosen(PluginCall call,ActivityResult response){
   if(call==null){busy.set(false);return null;}
@@ -58,7 +59,11 @@ public final class AlphaNoteDocumentsPlugin extends Plugin {
  });}
  @ActivityCallback private void exported(PluginCall call,ActivityResult response){Uri uri=chosen(call,response);if(uri==null)return;run(call,()->{
   byte[] content;try{content=DocumentExport.utf8(call.getString("text"));}catch(Exception invalid){call.resolve(result("failed","The selected destination could not be written."));return;}
-  write(call,uri,content,"Export saved and exact bytes verified.","The provider may have saved some or all text, but exact bytes could not be verified. Inspect the destination before retrying.");
+  write(call,uri,content,"Saved.","Save not confirmed. Check the file before trying again.");
  });}
+ /** A pending PDF export holds the whole file in its call data; Capacitor would copy that into the
+  * Activity's saved state, which Android rejects above about 1 MB and ends the process. An export
+  * is not resumed after process death; chosen() answers a missing call. */
+ @Override protected Bundle saveInstanceState(){return null;}
  @Override protected void handleOnDestroy(){closed=true;worker.shutdown();super.handleOnDestroy();}
 }

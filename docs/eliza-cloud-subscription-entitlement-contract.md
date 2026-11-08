@@ -186,7 +186,9 @@ refuses every AI request without a plan. The record behind it (`alpha.connection
 holds the environment, local credential generation id, user and organization ids, plan name and
 status, and the verification time; no credential. A failed background refresh does not renew that
 verification time, even while the previous entitlement remains valid. A reported plan window
-that has ended cannot retain a Cloud binding under this grace. The resident keeps running.
+that has ended cannot retain a Cloud binding at admission under this grace. A warm bound process
+keeps its binding and shows "Plan status is out of date" until a check succeeds (the refresh row
+above); Cloud still authorizes every request. The resident keeps running.
 
 Background refresh happens at `rfa`, or after 75% of the lifetime. After a failure it retries
 after 30 s, then doubles the wait up to 5 minutes. It also runs when the owner returns to the app, at most once per minute for automatic

@@ -71,7 +71,8 @@ export const CLASS_REGISTRY = {
   BrowserCookiePolicy: { note: "Synthetic intercepted HTTPS origins; private method requires scoped WebView deletion support" },
   BrowserSignins: { note: "signinProcessRestartPhase is skipped here; run node scripts/test-native-restart.mjs signin" },
   BrowserFlow: { liveArgs: { browserFlowLive: "1" }, note: "loopback fixture methods need --test-mocks; by default the search method asserts the submitted www.google.com/search URL and the javascript: refusal offline; only --live-network (browserFlowLive=1) needs live HTTPS to www.google.com and records INSTRUMENTATION_STATUS browserFlowSearch=results or provider-check (the provider's own check page for that exact search)" },
-  BrowserContinuity: { note: "bookmarkProcessRestartPhase is skipped here; run node scripts/test-native-restart.mjs bookmark" },
+  // Every method drives the views, which P-43's required sign-in covers on a signed-out flag-off build.
+  BrowserContinuity: { requiresTestMocksBuild: true, note: "bookmarkProcessRestartPhase is skipped here; run node scripts/test-native-restart.mjs bookmark" },
   BrowserDownload: { note: "needs --test-mocks (loopback HTTP fixtures); skipped on any other build, so it is not a default class" },
   // src/testMocks/androidTest: compiled only into the test-mocks instrumentation APK.
   BrowserAutofill: { testMocks: true },
@@ -96,7 +97,7 @@ export const CLASS_REGISTRY = {
   // Core-loop classes (docs/core-loop-audit.md). Registered so their opt-in gates are passed; none
   // has a recorded run through this runner yet. An unmet device assumption reports "skipped".
   // Decision P-43 replaced LocalAgentOfflineApps (the retired "without AI" path); written, no recorded run.
-  ResidentAlwaysPresent: { flagOffOnly: true, note: "signed out with the network off and a legacy local-apps selection: the resident starts, the required Eliza Cloud sign-in dialog opens over Home with the agent state and cannot be dismissed; not a device or full-image run" },
+  ResidentAlwaysPresent: { flagOffOnly: true, note: "signed out with the network off and a legacy local-apps selection: the resident starts, the required Eliza Cloud sign-in page opens over Home and cannot be dismissed; not a device or full-image run" },
   LauncherHome: { homeRole: "held", note: "launcher variant with Alpha selected as HOME by --home-role; not boot-time HOME or device acceptance" },
   SettingsRoles: { homeRole: "requests", note: "removes, declines and accepts the HOME role in Android's dialog and restores the previous holder; --home-role proves the restoration" },
   NotesTrashBackstop: {},
@@ -196,6 +197,8 @@ export const CLASS_REGISTRY = {
   CalendarDeletionReview: { secondaryUser: true, args: { calendarDeletionReview: "1" }, grant: ["READ_CALENDAR", "WRITE_CALENDAR"], note: "Actual native review, Cancel, Undo and expiry against an owned disposable Calendar" },
   CalendarSyncProvider: { secondaryUser: true, args: { calendarSyncProvider: "1" }, grant: ["READ_CALENDAR", "WRITE_CALENDAR"], note: "Exact rich-event CalendarProvider CAS in a fresh disposable user; no Google or agent traffic" },
   ScopedCalendarDeletion: { secondaryUser: true, args: { scopedCalendarDeletion: "1" }, grant: ["READ_CALENDAR", "WRITE_CALENDAR"], note: "Exact synthetic provider rows in a fresh owned secondary user; no real account integration" },
+  CalendarFlow: { secondaryUser: true, args: { calendarFlow: "1" }, grant: ["READ_CALENDAR", "WRITE_CALENDAR"], note: "changes the emulator's time zone and automatic time zone setting and restores them when it closes; node scripts/test-calendar-regression.mjs --case=CalendarFlowInstrumentedTest also restores them if the process dies. Skipped on a signed-out flag-off build (P-43); run it with --test-mocks" },
+  PrototypeFlow: { note: "the Wallet method runs on a flag-off build only; the view methods skip on a signed-out flag-off build (P-43)" },
   ReminderCapacity: {},
   ReminderHeadsUp: { note: "skips unless notifications are enabled for the app and Do Not Disturb is off" },
   ReminderStale: {},
@@ -210,7 +213,7 @@ export const CLASS_REGISTRY = {
   VoicePermissionDenied: { campaign: "node scripts/test-native-permissions.mjs voice APP.apk TEST.apk OUTPUT (RECORD_AUDIO revoked before the app starts)" },
   VoicePermissionRevoke: { campaign: "node scripts/test-native-permissions.mjs voice-revoke APP.apk TEST.apk OUTPUT (RECORD_AUDIO revoked while recording; the process is killed)" },
   LocalVoiceRecordingLimit: { campaign: "node scripts/test-native-permissions.mjs voice-limit APP.apk TEST.apk OUTPUT (RECORD_AUDIO granted before the app starts)" },
-  WorkflowLegacyReminderUpgrade: { campaign: "node scripts/test-installed-upgrade.mjs (installed-upgrade campaign; runs upgradedLegacyOneOffReminderIsIncludedInNativeDigest after the candidate verify phase)" },
+  WorkflowLegacyReminderUpgrade: { campaign: "node scripts/test-installed-upgrade.mjs reminder (installed-upgrade campaign; runs upgradedLegacyOneOffReminderIsIncludedInNativeDigest after the candidate verify phase)" },
   SettingsCrashLog: { campaign: "node scripts/test-native-restart.mjs crash-log APP.apk TEST.apk OUTPUT (the crash phase kills the process; readback in a new one)" },
   NativeVoiceLatency: { campaign: "node scripts/native-voice-latency-emulator.mjs --serial <owned emulator> --avd <name> --python <grpc venv python> --wav <speech.wav> --out <dir> (issue #395; injects speech into the virtual microphone while the harness runs)" },
   HomeCalendarCard: { campaign: "node scripts/test-calendar-regression.mjs --case=HomeCalendarCardInstrumentedTest (granted, then with calendar access revoked before the process starts)" },
@@ -251,10 +254,8 @@ export const NOT_RUN_BY_A_RUNNER = {
   PairedReminder: "needs a real paired host (pairedReminder=1); no runner pairs one",
   PhotosFixtureRecovery: "operator tool that inventories or deletes stranded test-owned media (alphaPhotoRecovery=inventory|delete); never part of a campaign",
   VideoCopyClosedFailureReview: "native-only preservation operator for one existing closed failed copy; requires the exact operation, reviewed record SHA, owner UID and explicit main-process lifecycle approval. Never a generic or bulk campaign; the signed entry is admitted separately after fixture qualification",
-  PrototypeFlow: "needs the same live provider host as LiveAgent (liveAgent=true)",
   PublicCloudTransportProbe: "probes the public Eliza Cloud endpoint with an owned account (publicCloudProbe=1, ownedCloudRead=1); a human sign-in step",
   RemoteAgent: "needs the real local Eliza app host at 10.0.2.2:47839 and a pairing-code file (localRemote=true); its runner was removed in 49b1bf4c",
-  ResidentAgent: "needs the packaged ARM64 resident runtime and a run id; scripts/android-resident-instrumentation.mjs runs ResidentService and ResidentEgressRedaction, not this class",
   ResidentModelResponseContractTest: "plain contract test without the InstrumentedTest suffix; it runs under --all or by its full dotted name and needs no registry entry",
   SpeechPipelineTrace: "diagnostic acquisition for the on-device speech failure, explicitly not acceptance evidence",
   VoiceFloatPathDiagnostic: "root-cause diagnostic for the on-device speech round trip, explicitly not acceptance evidence",
@@ -265,10 +266,11 @@ export const NOT_RUN_BY_A_RUNNER = {
  * flag-off build, so a default run can pass. BrowserDownload is not listed: its only
  * method needs a test-mocks app build, so on the default build the class could only be recorded
  * "skipped", which fails the run. It runs with `--test-mocks --classes BrowserDownload`.
+ * BrowserContinuity is not listed for the same reason: each of its methods drives the views, which
+ * P-43's required sign-in covers on a signed-out flag-off build. It runs with `--test-mocks`.
  */
 export const DEFAULT_CLASSES = [
   "NoMockProduct", "Shell", "StartupReadiness", "TextScale", "BrowserSignins", "BrowserFlow",
-  "BrowserContinuity",
 ];
 
 const short = name => name.replace(new RegExp(`^${PACKAGE.replace(/\./g, "\\.")}\\.`), "").replace(/InstrumentedTest$/, "");
@@ -595,7 +597,8 @@ export async function runLeased({ options, serial, adb, timing = {}, withSeconda
             for (const cls of secondary.filter(cls => !classes.some(row => row.variant === variant && row.class === cls)))
               record(cls, { started: 0, passed: 0, failed: [], ignored: [], status: "missing" }, { user: "secondary", note: `secondary user phase failed: ${error.message}` });
           }
-          // An unremoved user keeps this run's state on the emulator: stop, and keep the packages for recovery.
+          // An unremoved user keeps this run's state on the emulator (its packages were still uninstalled):
+          // stop further variants; remove the retained user by hand with the recovery command printed at the end of the run.
           if (!lifecycle.removed) break;
         }
         if (home && variant === "launcher") {

@@ -85,6 +85,10 @@ test('tile service is protected by Android and introduces no permission, listene
  const entry=manifest.match(/<service android:name="\.AlphaQuickSettingsTile"[\s\S]*?<\/service>/)?.[0];assert.ok(entry);
  assert.match(entry,/android:permission="android.permission.BIND_QUICK_SETTINGS_TILE"/);
  assert.match(entry,/android.service.quicksettings.TOGGLEABLE_TILE" android:value="false"/);
+ // The tile opens only AlphaAssistActivity; while P-78 keeps that activity disabled, so is the tile.
+ const assist=manifest.match(/<activity android:name="\.AlphaAssistActivity"[^>]*>/)?.[0];assert.ok(assist);
+ assert.ok(read(tilePath).includes('new Intent(this, AlphaAssistActivity.class)'));
+ assert.equal(/android:enabled="false"/.test(entry.split('>')[0]),/android:enabled="false"/.test(assist),'the tile and its target are enabled together');
  const source=read(tilePath)+read(sharedTilePath);
  assert.match(read(tilePath),/class AlphaQuickSettingsTile extends AssistantEntryTile/);
  for(const text of ['getUserMedia','requestPermissions','startForegroundService','setShowWhenLocked','setTurnScreenOn','requestDismissKeyguard','setData(','putExtra(','CloudProtocol','startGoogle'])assert.ok(!source.includes(text),text);

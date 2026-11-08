@@ -27,7 +27,23 @@ public final class StoreIntegrationTest {
     check(!store.legacyCloudRecoveryEligible(),"actual explicit mutation suppresses future restore: "+operation);
     check(raw.read(CloudDeployment.STORAGE_NAMESPACE+LegacyCloudRecovery.JOURNAL).contains("blocked"),"durable tombstone");
    }
-   check(LegacyCloudRecoveryTest.SAVED.equals(raw.read("cloud:production")),"legacy copy preserved");
+   check(raw.read("cloud:production")==null,"legacy copy removed once restored or ended: "+operation);
+  }
+  // Cloud's own 401/403 ends the offer; a server or transport failure leaves it to retry.
+  for(int status:new int[]{401,403,500}){
+   android.content.Context refusedContext=new android.content.Context(new File(args[0],"refused-"+status));
+   JsonCredentialSlots refusedRaw=new JsonCredentialSlots(new File(refusedContext.getNoBackupFilesDir(),"connection-credentials"),"alpha.connection.aes.v1",name->262144);
+   String refusedKey=new org.json.JSONObject(LegacyCloudRecoveryTest.SAVED).put("token","refused-"+status).toString();
+   refusedRaw.write("cloud:production",refusedKey);
+   AlphaCredentialStore refusedStore=new AlphaCredentialStore(refusedContext);
+   String code=null;
+   try{refusedStore.restoreLegacyCloudCredential();throw new AssertionError("refused key restored");}
+   catch(AlphaCredentialStore.RecoveryRefused refused){code=refused.code;}
+   catch(SecurityException transport){code="unavailable";}
+   check((status==500?"unavailable":"rejected").equals(code),"refusal code for "+status);
+   check(refusedStore.legacyCloudRecoveryEligible()==(status==500),"offer after "+status);
+   check(status==500?refusedKey.equals(refusedRaw.read("cloud:production")):refusedRaw.read("cloud:production")==null,"legacy copy after "+status);
+   check(refusedStore.readCredentialSlot("cloud:production")==null,"nothing restored after "+status);
   }
   android.content.Context context=new android.content.Context(new File(args[0],"failed-tombstone"));
   JsonCredentialSlots raw=new JsonCredentialSlots(new File(context.getNoBackupFilesDir(),"connection-credentials"),"alpha.connection.aes.v1",name->262144);
@@ -106,7 +122,7 @@ public final class StoreIntegrationTest {
   store.writeCredentialSlot(GoogleWorkspaceReturn.SLOT,pending);
   check(store.restoreLegacyCloudCredential(),"legacy direct write restores credential");
   check(store.readCredentialSlot(GoogleWorkspaceReturn.SLOT)==null,"legacy direct credential write clears pending");
-  check(original.equals(raw.read("cloud:production")),"legacy source retained after Workspace invalidation");
+  check(raw.read("cloud:production")==null&&original.equals(store.readCredentialSlot("cloud:production")),"legacy source moved to the scoped slot after Workspace invalidation");
   for(String slot:new String[]{"google-workspace-return",GoogleWorkspaceReturn.SLOT,"google-workspace-return:v99:future"}){
    try{RendererCredentialSlots.requireAllowed(slot);throw new AssertionError("Workspace slot was renderer accessible");}
    catch(SecurityException expected){}

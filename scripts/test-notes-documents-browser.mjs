@@ -8,7 +8,7 @@ const browser=await chromium.launch({headless:true});try{
   window.documentsFixture={status:'read',exports:[],imports:0};window.Capacitor={PluginHeaders:[{name:'AlphaNoteDocuments',methods:['importText','exportText'].map(name=>({name,rtype:'promise'}))}],nativePromise:async(plugin,method,input)=>{
    if(plugin!=='AlphaNoteDocuments')throw Error('Unexpected native call');
    if(method==='importText'){window.documentsFixture.imports++;return {status:window.documentsFixture.status,message:'Synthetic result',name:'Owned fixture.txt',text:'Exact 🧪 text\r\nline two\n'};}
-   window.documentsFixture.exports.push(input);return {status:'exported',message:'Export saved and exact bytes verified.'};
+   window.documentsFixture.exports.push(input);return {status:'exported',message:'Saved.'};
   }};
  });
  const openOlder=async()=>{

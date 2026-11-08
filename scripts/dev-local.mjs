@@ -8,7 +8,7 @@ import {resolve,join} from 'node:path';
 import {homedir} from 'node:os';
 import {readFileSync,existsSync} from 'node:fs';
 import {createServer} from 'node:net';
-// This launcher invokes Vite directly, so npm's predev hook does not run.
+// This launcher invokes Vite directly, so it prepares the client features itself (npm run dev has no predev hook).
 prepareClientFeatures();
 const profile=resolve(process.env.ALPHA_REMOTE_PROFILE||join(homedir(),'.local/share/alphaphone/browser-agent'));
 const configuredEnvironment=developmentSpeechEnvironment(profile);

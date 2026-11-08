@@ -123,7 +123,7 @@ public final class NotesDocumentInstrumentedTest {
    JSONArray imported=new JSONArray(NotesSecureFixture.evaluate("__notesEnvelope.records.filter(n=>n.body==="+JSONObject.quote(text)+").map(n=>n.id)"));assertEquals(1,imported.length());created.add(imported.getString(0));
    title(outName);click("Share note");shareTo("Save locally");cancelPicker("Share note");
    assertTrue("Cancelled export retains exact note",NotesSecureFixture.evaluate("__notesEnvelope.records.some(n=>n.body==="+JSONObject.quote(text)+")").equals("true"));
-   until("!document.body.textContent.includes('Export saved and exact bytes verified.')");observeReceipt("Export saved and exact bytes verified.");
+   until("!document.body.textContent.includes('Saved.')");observeReceipt("Saved.");
    click("Share note");shareTo("Save locally");awaitDocumentPicker();exportStarted=System.currentTimeMillis()/1000;java.nio.file.Files.write(exportJournal.toPath(),new JSONObject().put("name",outName+".txt").put("expectedText",text).put("createdAfter",exportStarted).toString().getBytes(StandardCharsets.UTF_8));nativeSave();awaitReceipt();output=selectExport(outName+".txt",exportStarted,text);
    click("Back to notes");click("Import text note");picker.selectDocument(outName+".txt");until("document.querySelector('textarea[aria-label=Note]')?.value==="+JSONObject.quote(text.replace("\r\n","\n")));
    JSONArray all=new JSONArray(NotesSecureFixture.evaluate("__notesEnvelope.records.filter(n=>n.body==="+JSONObject.quote(text)+").map(n=>n.id)"));assertEquals("Import always creates a new note",2,all.length());for(int i=0;i<all.length();i++)created.add(all.getString(i));

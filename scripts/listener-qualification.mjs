@@ -15,8 +15,16 @@ export const LISTENER_RECORD = "android/sense/qualified-listener.json";
 export const LISTENER_GATES = ["G1", "G2", "G3", "G4", "G5", "G6"];
 const DIGEST = /^[0-9a-f]{64}$/;
 
+/** An evidence path under `root`, or null unless it is a non-empty relative path that stays inside it. */
+function evidencePath(root, file) {
+  if (typeof file !== "string" || !file.trim() || path.isAbsolute(file) || file.split(/[\\/]/).includes("..")) return null;
+  return path.join(root, file);
+}
+const isFile = file => { try { return fs.statSync(file).isFile(); } catch { return false; } };
+const captureSource = file => { try { return JSON.parse(fs.readFileSync(file, "utf8")).captureSource ?? null; } catch { return null; } };
+
 /** Problems with a listener record; empty when it is well formed and its claims are earned. */
-export function listenerRecordProblems(record, appId = "ai.elizaresearch.alphaphone") {
+export function listenerRecordProblems(record, appId = "ai.elizaresearch.alphaphone", root = ROOT) {
   const problems = [];
   if (!record || typeof record !== "object") return ["The listener record is not an object"];
   if (record.schemaVersion !== 1) problems.push("schemaVersion must be 1");
@@ -29,8 +37,13 @@ export function listenerRecordProblems(record, appId = "ai.elizaresearch.alphaph
   const evidence = record.evidence ?? {};
   for (const name of ["hostTests", "apkBuild", "emulator", "aospImage", "deviceAcceptance"])
     if (typeof evidence[name]?.recorded !== "boolean") problems.push(`evidence.${name}.recorded must be a boolean`);
-  if (evidence.apkBuild?.recorded && !fs.existsSync(path.join(ROOT, String(evidence.apkBuild.record ?? ""))))
+  if (evidence.apkBuild?.recorded && !isFile(evidencePath(root, evidence.apkBuild.record)))
     problems.push("evidence.apkBuild.record must name a committed evidence file");
+  // scripts/owner/listener-evidence.mjs --fixtures output is test data and never earns image or device evidence.
+  for (const name of ["aospImage", "deviceAcceptance"]) {
+    const file = evidence[name]?.recorded ? evidencePath(root, evidence[name].record) : null;
+    if (file && isFile(file) && captureSource(file) === "fixtures") problems.push(`evidence.${name}.record is fixture evidence, which never earns gates`);
+  }
   const earned = LISTENER_GATES.every(gate => record.gates?.[gate] === "passed") &&
     evidence.apkBuild?.recorded === true && evidence.apkBuild?.current === true &&
     evidence.aospImage?.recorded === true && evidence.deviceAcceptance?.recorded === true &&
@@ -43,7 +56,7 @@ export function listenerRecordProblems(record, appId = "ai.elizaresearch.alphaph
 
 export function readListenerRecord(root = ROOT) {
   const record = JSON.parse(fs.readFileSync(path.join(root, LISTENER_RECORD), "utf8"));
-  const problems = listenerRecordProblems(record);
+  const problems = listenerRecordProblems(record, undefined, root);
   if (problems.length) throw new Error(`${LISTENER_RECORD} is invalid:\n  - ${problems.join("\n  - ")}`);
   return record;
 }

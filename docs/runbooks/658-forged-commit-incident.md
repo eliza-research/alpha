@@ -14,8 +14,8 @@ that a rotation happened; those need the human steps below.
 
 | File | Purpose |
 |---|---|
-| `scripts/owner/incident-2026-10-27-iocs.json` | The 102 forged branches (pre-attack and forged SHA prefixes), the 18 repositories with CI runs on forged commits, the attack window, and the marker patterns. Transcribed from the owner's private cleanup record, which is held off-repo and is not in this repository, so the transcription cannot be checked from here; the owner can compare it with that record. |
-| `scripts/owner/incident-ci-exposure.mjs` | Lists workflow runs whose head SHA is a forged commit, and the secret, variable and environment NAMES per repository with `updated_at` and `NOT-ROTATED-YET` / `UPDATED-AFTER-INCIDENT`. |
+| `scripts/owner/incident-2026-10-27-iocs.json` | The 102 forged branches (pre-attack and forged SHA prefixes), the 18 repositories with CI runs on forged commits, the attack window, the cleanup end (end of the cleanup day until the owner records the exact time), and the marker patterns. Transcribed from the owner's private cleanup record, which is held off-repo and is not in this repository, so the transcription cannot be checked from here; the owner can compare it with that record. |
+| `scripts/owner/incident-ci-exposure.mjs` | Lists workflow runs, up to `window.cleanupEnd` in the IOC file, whose head SHA is a forged commit or descends from one, and the secret, variable and environment NAMES per repository with `updated_at` and `NOT-ROTATED-YET` / `UPDATED-AFTER-INCIDENT`. |
 | `scripts/owner/incident-access-audit.mjs` | Per repository: the actor's effective permission, outside collaborators, pending invitations, deploy keys (no key material) and webhooks (host only). Per organization: membership, outside-collaborator and invitation state of the actor, GitHub App installations, and audit-log event counts for the actor since 2026-10-21. |
 | `scripts/owner/forged-branch-scan.mjs` | Scans every current branch and tag of a remote, without a checkout, for ancestry to a forged commit, marker paths, `node init` script hooks and loader patterns. |
 | `scripts/owner/read-branch-integrity.mjs` | Reads back which ruleset or classic protection blocks force push, deletion and unsigned commits on `main` and `develop`. |
@@ -184,7 +184,9 @@ gh api --method GET orgs/AlphaCompute/rulesets
 
 `read-branch-integrity.mjs` names the ruleset enforcing each rule, which is the evidence the issue
 asks for ("ruleset names now enforcing no-force-push and signed commits"). A ruleset in `evaluate`
-mode is reported separately and does not count.
+mode is reported separately and does not count. It also reads each enforcing ruleset's bypass
+actors: any bypass actor exits 1 unless `--allow-bypass` is passed, and a ruleset whose bypass list
+this account cannot read exits 2.
 
 ## Machine-check IOC checklist (step 3)
 

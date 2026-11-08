@@ -32,6 +32,7 @@ import path from "node:path";
 import { execFileSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import {apkUpdateChannel,validateUpdateChannel} from './update-channel.mjs';
+import {releaseDistributable} from './release-distributable.mjs';
 import {
   auditBundle, distributionProblems, extractWebPayload, parseXmlTree, readBuildFlags, signerDigest, validateApk, verifyOwnerRouteTable,
 } from "./apk.mjs";
@@ -258,11 +259,13 @@ for (const row of release) {
   const speechQualified=runtimeProfile==='cloud'
     ? cloudVoiceBlockers(row,'cartesia').length===0
     : row.voiceHost.packaged===true&&row.voiceHost.asr===true&&row.voiceHost.qualified===true;
-  row.distributable = !testMocks && row.signed === true && row.releaseAdmission.signerMatches === true &&
-    row.releaseAdmission.blockers.length === 0 && row.releaseAdmission.failures.length === 0 &&
-    runtime.distributable === true && row.runtimeNotices === true &&
-    speechQualified &&
-    row.licenceBlockers.length === 0 && updateChannel.kind==='public';
+  const releaseReady = runtimeProfile === 'native'
+    ? releaseDistributable({testMocks, signed: row.signed, releaseAdmission: row.releaseAdmission,
+      runtime, runtimeNotices: row.runtimeNotices, voiceHost: row.voiceHost, licenceBlockers: row.licenceBlockers})
+    : !testMocks && row.signed === true && row.releaseAdmission.signerMatches === true &&
+      row.releaseAdmission.blockers.length === 0 && row.releaseAdmission.failures.length === 0 &&
+      runtime.distributable === true && row.runtimeNotices === true && speechQualified && row.licenceBlockers.length === 0;
+  row.distributable = releaseReady && updateChannel.kind === 'public';
 }
 for (const row of results.filter(row => row.mode === "debug")) {
   row.runtime = runtimePackaging.find(entry => entry.apk === row.file).runtime;

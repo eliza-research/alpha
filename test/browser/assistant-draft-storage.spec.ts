@@ -49,7 +49,7 @@ test('explicit development fixture native recovery backup passes exact UTF-8 byt
   const bytes=Uint8Array.from(atob(input.dataBase64),n=>n.charCodeAt(0)),digest=Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',bytes)),n=>n.toString(16).padStart(2,'0')).join('');
   const cancel=new AbortController();cancel.abort();let cancelled=false;try{await saveNativeRecoveryBackup(raw,'backup.txt',cancel.signal,{saveReviewed:async()=>{throw Error('Must not dispatch');}});}catch(e){cancelled=(e as Error).name==='AbortError';}
   return {text:new TextDecoder().decode(bytes)===raw,hash:input.sha256===digest,reviewed:input.reviewed,mime:input.mimeType,message,cancelled};
- })).toEqual({text:true,hash:true,reviewed:true,mime:'text/plain',message:'Backup saved and exact bytes verified.',cancelled:true});
+ })).toEqual({text:true,hash:true,reviewed:true,mime:'text/plain',message:'Backup saved.',cancelled:true});
 });
 test('device draft recovery requires a separate reset confirmation and keeps saved text on close',async({page})=>{
  await page.evaluate(async()=>{

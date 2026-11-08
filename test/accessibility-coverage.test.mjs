@@ -5,6 +5,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
+import { blocking, format } from './browser/accessibility-audit.ts';
 
 const root = path.resolve(import.meta.dirname, '..');
 const read = file => fs.readFileSync(path.join(root, file), 'utf8');
@@ -113,9 +114,15 @@ test('the sweep applies every dimension and cannot be narrowed silently', () => 
   for (const spec of [sweep, production]) assert.match(spec, /toHaveClass\(\/alpha-landscape\/\)/, 'the landscape lane asserts the landscape layout is active');
   // Only deliberate truncation is tolerated.
   assert.doesNotMatch(sweep, /process\.env/);
-  assert.match(sweep, /lines\.filter\(line => !line\.startsWith\('text-truncated:'\) \|\| appTitle\(line\)\)/);
+  const audit = read('test/browser/accessibility-audit.ts');
+  assert.match(audit, /lines\.filter\(line => !line\.startsWith\('text-truncated:'\) \|\| appTitle\(line\)\)/);
   // A cut app title is never tolerated (AP-15): it names the screen and has room to wrap.
-  assert.match(sweep, /const appTitle = \(line: string\) => \/\^text-truncated: \.\*<\[\^>\]\*\\bdata-alpha-app-title\\b\/\.test\(line\);/);
+  assert.match(audit, /export const appTitle = \(line: string\) => \/\^text-truncated: \.\*<\[\^>\]\*\\bdata-alpha-app-title\\b\/\.test\(line\);/);
+  // Both sweeps use that one rule; neither keeps a looser copy.
+  for (const spec of [sweep, production]) {
+    assert.match(spec, /import \{[^}]*\bblocking\b[^}]*\} from '\.\/accessibility-audit';/);
+    assert.doesNotMatch(spec, /const (blocking|appTitle) =/);
+  }
   // The fixture lock screen and photos-empty viewer and the launcher presentation run at 100%
   // and 200% with names, focus, contrast and the dock rules (provider-connected states are in STATES).
   assert.match(sweep, /for \(const state of \[\.\.\.FIXTURE_STATES, \.\.\.LAUNCHER_STATES\]\) \{\s*for \(const scale of \[1, 2\]\)/);
@@ -146,8 +153,9 @@ test('the sweep applies every dimension and cannot be narrowed silently', () => 
 });
 
 test('TalkBack reading order is checked in every lane, as Android checks it, across views and the lifecycle', () => {
-  // Every lane of both sweeps reads the order (the light theme once; it does not depend on the theme).
-  assert.match(sweep, /\.\.\.theme === 'light' \? await auditReadingOrder\(page\) : \[\]/);
+  // Every lane of both sweeps reads the order (the light theme once; it does not depend on the theme,
+  // and neither do names or the tab order: the dark pass is the page audit, contrast included).
+  assert.match(sweep, /\.\.\.theme === 'light' \? \[\.\.\.await auditTabOrder\(page\), \.\.\.await auditReadingOrder\(page\)\] : \[\]/);
   assert.match(sweep, /200% text is not clipped[\s\S]*?const order = format\(await auditReadingOrder\(page\)\);\s*expect\(order, order\.join\('\\n'\)\)\.toEqual\(\[\]\);/);
   assert.equal([...sweep.matchAll(/auditReadingOrder\(page\)/g)].length, 6, 'all six sweep lanes read the order');
   assert.equal([...production.matchAll(/auditReadingOrder\(page\)/g)].length, 2, 'both production lanes read the order');
@@ -187,6 +195,15 @@ test('TalkBack reading order is checked in every lane, as Android checks it, acr
   assert.match(viewFocus, /createScreenFocus\(/);
   assert.doesNotMatch(viewFocus, /setAttribute\('tabindex'|requestAnimationFrame/, 'no local copy of the focus mover');
   assert.match(read('scripts/prepare-client-features.mjs'), /'packages\/ui\/src\/accessibility\/screen-focus\.ts'/);
+});
+
+test('both sweeps fail on a cut app title and allow a clamped preview', () => {
+  const found = format([
+    { rule: 'text-truncated', target: '[app] <h1 class="title" data-alpha-app-title="">Calendar and reminders</h1>' },
+    { rule: 'text-truncated', target: '[app] <p class="preview">A long message preview that ends in an ellipsis</p>' },
+    { rule: 'clipped', target: '[app] <button>Save</button>' },
+  ]);
+  assert.deepEqual(blocking(found), [found[0], found[2]]);
 });
 
 test('provider-connected screens are swept, against a synthetic mailbox only', () => {

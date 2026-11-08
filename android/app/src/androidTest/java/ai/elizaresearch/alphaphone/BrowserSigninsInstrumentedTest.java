@@ -105,6 +105,7 @@ public final class BrowserSigninsInstrumentedTest {
  }
 
  @Test public void signInSurvivesTabCloseUntilClearBrowsingData()throws Exception{
+  AppNavigation.assumeNoRequiredSignIn("Browser sign-in persistence");
   String token=UUID.randomUUID().toString(),url="https://example.com/?alpha_signin="+token;
   try(BoundedActivityScenario<MainActivity> scenario=BoundedActivityScenario.launch(MainActivity.class)){
    AppNavigation.liveMode();app("Browser");address(url);page(url);
@@ -134,6 +135,7 @@ public final class BrowserSigninsInstrumentedTest {
  }
 
  @Test public void targetBlankOpensTabInOpenerProfileAndScriptPopupIsBlocked()throws Exception{
+  AppNavigation.assumeNoRequiredSignIn("Browser popups");
   String token=UUID.randomUUID().toString(),url="https://example.com/?alpha_opener="+token,popup="https://example.com/?alpha_popup="+token;
   try(BoundedActivityScenario<MainActivity> scenario=BoundedActivityScenario.launch(MainActivity.class)){
    AppNavigation.liveMode();app("Browser");address(url);page(url);
@@ -161,6 +163,7 @@ public final class BrowserSigninsInstrumentedTest {
  }
 
  @Test public void tappedTelLinkGoesToAndroidAndKeepsThePage()throws Exception{
+  AppNavigation.assumeNoRequiredSignIn("Browser tel links");
   String url="https://example.com/?alpha_tel="+UUID.randomUUID();
   try(BoundedActivityScenario<MainActivity> scenario=BoundedActivityScenario.launch(MainActivity.class)){
    AppNavigation.liveMode();app("Browser");address(url);page(url);
@@ -183,6 +186,7 @@ public final class BrowserSigninsInstrumentedTest {
  }
 
  @Test public void targetBlankAppLinkHandsOffOnceAndClosesItsEmptyPopup()throws Exception{
+  AppNavigation.assumeNoRequiredSignIn("Browser app links");
   String url="https://example.com/?alpha_blank_tel="+UUID.randomUUID();
   try(BoundedActivityScenario<MainActivity> scenario=BoundedActivityScenario.launch(MainActivity.class)){
    AppNavigation.liveMode();app("Browser");address(url);page(url);
@@ -216,6 +220,7 @@ public final class BrowserSigninsInstrumentedTest {
   * and its profile is gone; cleanup clears only this fixture's data. */
  @Test public void signinProcessRestartPhase()throws Exception{
   String phase=InstrumentationRegistry.getArguments().getString("signinPhase");org.junit.Assume.assumeTrue("Explicit process runner only",phase!=null);
+  AppNavigation.assumeNoRequiredSignIn("Browser sign-in restart");
   android.content.Context context=InstrumentationRegistry.getInstrumentation().getTargetContext();
   android.content.SharedPreferences fixture=context.getSharedPreferences("browser-signin-restart-fixture",0);
   if("cleanup".equals(phase)){

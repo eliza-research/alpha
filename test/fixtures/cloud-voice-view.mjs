@@ -34,6 +34,8 @@ export function cloudVoiceViewFixture(options={}){
  // The real read-aloud refusal; the on-device planner stays a stub.
  load('runtime/local-speech-text.ts',box,['screenSpeechText']);
  load('runtime/cloud-voice.ts',box,['cloudVoiceFailure','createCloudVoice']);
+ // Only the [WORKFLOW] reply filter: the rest of the module reads pinned upstream notice text.
+ load('runtime/action-message-presentation.ts',box,['workflowReplyText'],source=>{const start=source.indexOf('/** A chat-started workflow run');if(start<0)throw Error('Missing actual workflow reply filter source');return source.slice(start);});
  // Legacy fixtures exercise batch compatibility; streaming scenarios opt in explicitly.
  box.nativeCloudStreamingAvailable=()=>false;
  vm.runInNewContext('{'+stripTypeScriptTypes(fs.readFileSync('.eliza/client-features/packages/voice/src/cloud-speech-chunks.ts','utf8').replaceAll('export async function','async function').replaceAll('export function','function').replaceAll('export const','const').replaceAll('export type','type'))+';globalThis.speakCloudSpeechChunks=speakCloudSpeechChunks;}',box);

@@ -34,7 +34,7 @@ public final class ProviderCancellationTest {
   String accepted=requests.reserve();long committed=requests.begin(accepted);
   AlphaCredentialStore positive=new AlphaCredentialStore(context,()->requests.require(accepted,committed));
   check(NativeProviderSlot.saveVerifiedProvider(AlphaLocalAgentPlugin.providerSlot(positive),"synthetic-positive-key",LocalAgentProviderAdmission.CEREBRAS_PROVIDER_MODEL,null,(key,model)->null,"Alpha")==null,"positive commit succeeds");requests.finish(accepted,committed);
-  check(retirements[0]>0,"positive change uses existing retirement lifecycle");check(initial.readCredentialSlot("local-agent-provider:v1").contains("synthetic-positive-key"),"positive key saved");
+  check(retirements[0]>0,"positive change selects the shutdown branch");check(initial.readCredentialSlot("local-agent-provider:v1").contains("synthetic-positive-key"),"positive key saved");
   String stale=requests.reserve();long older=requests.begin(stale);String newest=requests.reserve();long latest=requests.begin(newest);requests.cancel(stale);requests.require(newest,latest);requests.finish(stale,older);requests.finish(newest,latest);
   String direct=initial.readCredentialSlot("local-agent-provider:v1");retirements[0]=0;
   String clearing=requests.reserve();long clearIntent=requests.begin(clearing);

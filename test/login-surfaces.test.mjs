@@ -203,9 +203,9 @@ test('External authorization uses the browser and Google sign-in uses the native
   const policy = read('vendor/eliza/plugins/plugin-native-agent/android/src/main/java/ai/eliza/plugins/agent/connection/CloudConnectionPolicy.java');
   assert.match(policy, /if \(hosts\.productionWeb\.equals\(value\) \|\| hosts\.productionServices\.equals\(value\) \|\| hosts\.externalProviders\.contains\(value\)\)\s+return true;/);
   assert.doesNotMatch(open, /setPackage\(getContext\(\)\.getPackageName\(\)\)|AlphaBrowserPlugin/, 'never opened in Alpha\'s own browser');
-  // Alpha registers no general web handler, so a sign-in page cannot resolve back into Alpha. The one
-  // exception is the verified in-app sign-in return: exactly one https host and one exact path.
-  const callback = /^<intent-filter android:autoVerify="true"><action android:name="android\.intent\.action\.VIEW"\/><category android:name="android\.intent\.category\.DEFAULT"\/><category android:name="android\.intent\.category\.BROWSABLE"\/><data android:scheme="https" android:host="(eliza\.app|\$\{stagingCloudWebHost\})" android:path="\/alphaphone\/auth\/callback"\/><\/intent-filter>$/;
+  // Alpha registers no general web handler, so a sign-in page cannot resolve back into Alpha. The
+  // exceptions are the verified returns: the in-app sign-in and the Workspace consent, each one exact path.
+  const callback = /^<intent-filter android:autoVerify="true"><action android:name="android\.intent\.action\.VIEW"\/><category android:name="android\.intent\.category\.DEFAULT"\/><category android:name="android\.intent\.category\.BROWSABLE"\/><data android:scheme="https" android:host="(\$\{appLinkHost\}|\$\{stagingCloudWebHost\})" android:path="\/alphaphone\/(auth|gmail)\/callback"\/><\/intent-filter>$/;
   const returns = [];
   for (const manifest of walk('android', file => file.endsWith('AndroidManifest.xml') && !/[\\/](test|androidTest|build)[\\/]/.test(file))) {
     const live = read(manifest).replace(/<!--[\s\S]*?-->/g, '');
@@ -213,11 +213,10 @@ test('External authorization uses the browser and Google sign-in uses the native
       if (!/android\.intent\.action\.VIEW/.test(filter) || !/android:scheme="https?"/.test(filter)) continue;
       const match = filter.match(callback);
       assert.ok(match, `${manifest} declares a web VIEW handler other than the verified sign-in return`);
-      returns.push(`${manifest.split(path.sep).join('/')}:${match[1]}`);
+      returns.push(`${manifest.split(path.sep).join('/')}:${match[1]}:${match[2]}`);
     }
   }
-  assert.deepEqual(returns.sort(), ['android/app/src/testMocks/AndroidManifest.xml:${stagingCloudWebHost}'], 'the production return comes only from the ELIZAOS_APP_LINK_HOST overlay (android/app/product.gradle); the staging return exists only in the test-mocks overlay');
-  assert.match(read('android/app/product.gradle'), /android:host="\\\$\{appLinkHost\}" android:path="\/alphaphone\/auth\/callback"\/><\/intent-filter>/, 'the build-gated sign-in return is one exact path');
+  assert.deepEqual(returns.sort(), ['android/app/src/main/AndroidManifest.xml:${appLinkHost}:auth', 'android/app/src/main/AndroidManifest.xml:${appLinkHost}:gmail', 'android/app/src/testMocks/AndroidManifest.xml:${stagingCloudWebHost}:auth'], 'the production returns use the configured host placeholder (android/app/product.gradle); the staging return exists only in the test-mocks overlay');
   // Inspect the exact shared source that the Android build packages.
   const staged=preparePatchedNative({root:process.cwd()});
   const signIn = read(path.join(staged.root,'packages/auth/android/src/main/java/ai/eliza/auth/cloud/CloudSignInPlugin.java'));

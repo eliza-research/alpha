@@ -194,12 +194,25 @@ final class AlphaCredentialStore {
   catch(Exception failure){if(intent[0]>=0&&AlphaLocalAgentPlugin.currentCredentialIntent()!=intent[0])return false;throw failure;}
  }
  boolean legacyCloudRecoveryEligible()throws Exception{return recoveryStep(()->legacyRecovery().eligible());}
+ /** A saved sign-in that cannot be restored by retrying: {@code expired} or {@code rejected}. */
+ static final class RecoveryRefused extends Exception{
+  final String code;
+  RecoveryRefused(String code){super("Saved sign-in refused");this.code=code;}
+ }
  boolean restoreLegacyCloudCredential()throws Exception{
   LegacyCloudRecovery.Snapshot before=recoveryStep(()->legacyRecovery().snapshot());
   if(before==null)return false;
+  String token;
+  try{token=before.token();}catch(Exception expired){throw new RecoveryRefused("expired");}
   // Never hold lifecycle or vault locks across HTTP. The second critical section rechecks
   // intent/owner, exact old bytes, journal and absent targets before committing.
-  AlphaConnectionPlugin.readCloudIdentity(before.token());
+  try{AlphaConnectionPlugin.readCloudIdentity(token);}
+  catch(LocalAgentProviderAdmission.CloudReadFailure failure){
+   // Cloud refused the key itself; any other failure stays retryable.
+   if(failure.status!=401&&failure.status!=403)throw failure;
+   recoveryStep(()->{legacyRecovery().reject(before);return null;});
+   throw new RecoveryRefused("rejected");
+  }
   return recoveryStep(()->{boolean restored=legacyRecovery().commit(before);if(restored)AlphaLocalAgentPlugin.powerAuthorizationChanged();return restored;});
  }
  void assertCurrent(){assertOwner.run();}

@@ -59,20 +59,21 @@ public class VideoInstrumentedTest {
  }
  private void admitAccount()throws Exception{
   if(BuildConfig.ELIZA_DEV_ALLOW_TEST_MOCKS){AppNavigation.liveMode();return;}
-  until("[...document.querySelectorAll('.alpha-connection button')].some(b=>b.textContent.trim()==='Sign in with Eliza Cloud'&&!b.disabled)");
+  // Install at launch, before startup settles: the required sign-in page opens by itself (P-43) and
+  // its readiness probe must reach the fixture, never Cloud. A late install fails the check below.
+  until("window.Capacitor?.nativePromise&&!window.__alphaVideoAccount");
   try(java.io.InputStream input=InstrumentationRegistry.getInstrumentation().getContext().getAssets().open("video-account-fixture.js")){
    eval(new String(input.readAllBytes(),java.nio.charset.StandardCharsets.UTF_8));
   }
-  // Use the production control and identity/balance/provider binding path.
+  // Use the production sign-in page and identity/balance/provider binding path.
   // Only its account/runtime boundary is synthetic; Camera/Photos remain native.
-  eval("[...document.querySelectorAll('.alpha-connection button')].find(b=>b.textContent.trim()==='Sign in with Eliza Cloud').click()");
-  // In-app sign-in: the email code is entered on Alpha's own screen (the host is the fixture above).
-  until("document.querySelector('.alpha-cloud-sign-in input[name=email]')");
+  until(AppNavigation.SIGN_IN_PAGE_READY);
+  assertEquals("The readiness probe reached the fixture: "+eval("JSON.stringify(window.__alphaVideoAccount.calls)"),"true",eval("window.__alphaVideoAccount.calls.includes('signIn:status')"));
   eval("(()=>{const toggle=document.getElementById('alpha-sign-in-other-methods')?.previousElementSibling;if(toggle?.getAttribute('aria-expanded')==='false')toggle.click();const field=document.querySelector('.alpha-cloud-sign-in input[name=email]');field.value='video-fixture@example.invalid';[...document.querySelectorAll('.alpha-cloud-sign-in button')].find(b=>b.textContent.trim()==='Email me a code').click();})()");
   until("document.querySelector('.alpha-cloud-sign-in input[name=one-time-code]')");
   eval("(()=>{const field=document.querySelector('.alpha-cloud-sign-in input[name=one-time-code]');field.value='123456';[...document.querySelectorAll('.alpha-cloud-sign-in button')].find(b=>b.textContent.trim()==='Verify').click();})()");
-  until("!document.querySelector('.alpha-connection-scrim')");
-  assertEquals("Production account admission reached native startup","true",eval("window.__alphaVideoAccount.calls.includes('/api/v1/user')&&window.__alphaVideoAccount.calls.includes('/api/v1/billing/limits')&&window.__alphaVideoAccount.calls.includes('configureCloudProvider')&&window.__alphaVideoAccount.calls.includes('start')"));
+  // Admission stops the real resident, then binds and starts the synthetic one.
+  until("['/api/v1/user','/api/v1/billing/limits','native:stop','configureCloudProvider','start'].every(c=>window.__alphaVideoAccount.calls.includes(c))&&!document.querySelector('.alpha-auth-page')");
  }
  private void begin()throws Exception{
   navigate("Camera");until("document.querySelector('[data-alpha-camera-screen]')");

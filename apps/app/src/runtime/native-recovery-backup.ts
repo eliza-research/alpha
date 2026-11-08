@@ -12,5 +12,5 @@ export async function saveNativeRecoveryBackup(raw:string,name:string,signal:Abo
  let binary='';for(let i=0;i<bytes.length;i+=8192)binary+=String.fromCharCode(...bytes.subarray(i,i+8192));
  signal.throwIfAborted();
  const result=await (saver||registerPlugin<Saver>('AlphaMailAttachments')).saveReviewed({name,mimeType:'text/plain',dataBase64:btoa(binary),sha256,reviewed:true});
- return result.status==='saved'?'Backup saved and exact bytes verified.':result.status==='cancelled'?'Backup cancelled. Saved drafts are unchanged.':'Backup could not be confirmed. Inspect the chosen destination before resetting.';
+ return result.status==='saved'?'Backup saved.':result.status==='cancelled'?'Backup cancelled. Saved drafts are unchanged.':'Backup could not be confirmed. Inspect the chosen destination before resetting.';
 }

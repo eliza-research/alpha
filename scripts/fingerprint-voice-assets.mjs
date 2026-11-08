@@ -1,7 +1,8 @@
 #!/usr/bin/env node
-/** Read-only hashes of explicitly configured local voice assets and discoverable dylib closure. */
+/** Read-only hashes of explicitly configured local voice assets and discoverable dylib closure. macOS only. */
 import {admitSpeech} from './host-speech-admission.mjs';
 import fs from 'node:fs';import path from 'node:path';import crypto from 'node:crypto';import {execFileSync} from 'node:child_process';
+if(process.platform!=='darwin')throw Error('Mach-O closure needs macOS otool; this script runs only on macOS');
 const input=path.resolve(process.argv[2]||'test-results/combined-agent/voice-assets.json'),output=path.resolve(process.argv[3]||'test-results/combined-agent/voice-asset-closure.json');
 if(fs.existsSync(output))throw Error('Preserve prior closure; choose a new output path');
 const raw=fs.readFileSync(input),config=JSON.parse(raw),hash=bytes=>crypto.createHash('sha256').update(bytes).digest('hex'),entries=[],seen=new Set(),unresolved=[],system=new Set();

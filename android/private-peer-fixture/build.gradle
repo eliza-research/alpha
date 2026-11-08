@@ -1,8 +1,9 @@
-plugins { id 'com.android.application' version '8.13.0' }
+apply plugin: 'com.android.application'
+// Ordinary-UID private socket probe for resident CI (scripts/ci/build-private-peer.py). Never a dependency of :app.
 android {
  namespace 'ai.elizaresearch.alphaphone.peerfixture'
- compileSdk 36
- defaultConfig { applicationId 'ai.elizaresearch.alphaphone.peerfixture'; minSdk 29; targetSdk 36; versionCode 1; versionName 'fixture-1' }
+ compileSdk rootProject.ext.compileSdkVersion
+ defaultConfig { applicationId 'ai.elizaresearch.alphaphone.peerfixture'; minSdk 29; targetSdk rootProject.ext.targetSdkVersion; versionCode 1; versionName 'fixture-1' }
  buildFeatures { buildConfig true }
  compileOptions { sourceCompatibility JavaVersion.VERSION_21; targetCompatibility JavaVersion.VERSION_21 }
  // Only debug artifacts are admitted. Never distribute this test helper.

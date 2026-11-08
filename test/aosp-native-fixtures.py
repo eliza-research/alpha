@@ -97,10 +97,11 @@ class Packaging(unittest.TestCase):
             self.assertFalse(report[flag])
         self.assertEqual(json.loads((self.output / 'native-libraries.json').read_text()), report)
 
-    def resident_fixture(self, target='stallion'):
+    def resident_fixture(self, target='stallion', bun_target='linux-musl'):
         config = native.TARGETS[target]
         abi = config['abi']
         elf = ELF_X86 if target == 'cuttlefish' else ELF
+        android_bun = elf + b'android bun'
         # Synthetic source and binary pins keep these tests offline; actual APK
         # provenance and executable loading require their separate checks.
         trust = self.root / 'trust'
@@ -115,23 +116,32 @@ class Packaging(unittest.TestCase):
         digest = lambda data: hashlib.sha256(data).hexdigest()
         bun = {'version': '1.4.2', 'revision': '2' * 40,
                'artifacts': {config['bunArch']: {'binarySha256': digest(elf)}}}
-        pin_files['vendor/eliza/packages/app/scripts/lib/android-bun-artifacts.lock.json'] = json.dumps({'channels': {'stable': bun}}).encode()
+        # The native Android build has its own pin; the musl build keeps channels.stable.
+        android_pin = {'version': '1.4.3', 'revision': '3' * 40,
+                       'artifacts': {config['bunArch']: {'binarySha256': digest(android_bun)}}}
+        pin_files['vendor/eliza/packages/app/scripts/lib/android-bun-artifacts.lock.json'] = json.dumps(
+            {'channels': {'stable': bun}, 'targets': {'android': {'stable': android_pin}}}).encode()
         for name, data in pin_files.items():
-            target = trust / name
-            target.parent.mkdir(parents=True, exist_ok=True)
-            target.write_bytes(data)
+            path = trust / name
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_bytes(data)
         # Evaluate the actual preparer's stamp expression against synthetic pins.
         # A new/removed field in production must exercise the native verifier too.
         expression = re.search(r'const stamp=(.+);', pin_files['scripts/prepare-local-agent.mjs'].decode()).group(1)
         script = "const fs=require('node:fs'),path=require('node:path'),crypto=require('node:crypto');const root=process.argv[1];const lock=JSON.parse(fs.readFileSync(path.join(root,'upstream.lock.json')));const digest=file=>crypto.createHash('sha256').update(fs.readFileSync(file)).digest('hex');console.log(JSON.stringify(" + expression + "))"
         stamp = json.loads(subprocess.check_output(['node', '-e', script, str(trust)]))
         stamp_bytes = json.dumps(stamp).encode()
-        entries = {'lib/' + abi + '/' + name: elf for name in config['modes']}
+        if bun_target == 'android':
+            entries = {'lib/' + abi + '/libeliza_bun.so': android_bun, 'assets/agent/' + abi + '/bun': android_bun}
+            identity = {'version': android_pin['version'], 'revision': android_pin['revision'], 'channel': 'stable', 'target': 'android'}
+        else:
+            entries = {'lib/' + abi + '/' + name: elf for name in config['modes']}
+            entries.update({'assets/agent/' + abi + '/' + name: elf for name in config['assets'].values()})
+            entries['assets/agent/' + abi + '/libstdc++.so.6.0.33'] = elf
+            identity = {'version': bun['version'], 'revision': bun['revision'], 'channel': 'stable'}
         entries.update({'assets/agent/' + name: b'fixture asset' for name in native.REQUIRED_AGENT_ASSETS})
-        entries.update({'assets/agent/' + abi + '/' + name: elf for name in config['assets'].values()})
-        entries['assets/agent/' + abi + '/libstdc++.so.6.0.33'] = elf
         provenance = {'schema': 'eliza.android_agent_runtime_provenance.v1',
-                      'bun': {'version': bun['version'], 'revision': bun['revision'], 'channel': 'stable'},
+                      'bun': identity,
                       'files': [{'path': n, 'size_bytes': len(data), 'sha256': digest(data)} for n, data in entries.items()]}
         entries['assets/agent/android-agent-runtime-provenance.json'] = json.dumps(provenance).encode()
         entries['assets/agent/alpha-source.json'] = stamp_bytes
@@ -148,8 +158,8 @@ class Packaging(unittest.TestCase):
         entries.update({prefix + n: data for n, data in worker_files.items()})
         return trust, entries
 
-    def cloud_fixture(self, target='stallion'):
-        trust, entries = self.resident_fixture(target)
+    def cloud_fixture(self, target='stallion', bun_target='linux-musl'):
+        trust, entries = self.resident_fixture(target, bun_target)
         omitted = native.CLOUD_OMITTED_MODEL
         del entries[omitted['path']]
         provenance_path = 'assets/agent/android-agent-runtime-provenance.json'
@@ -294,6 +304,47 @@ class Packaging(unittest.TestCase):
         with patch.object(native, 'ROOT', trust), self.assertRaisesRegex(ValueError, 'pinned binary'):
             native.stage(self.apk, self.output, 'AlphaPhone')
         self.assertEqual(set(self.output.iterdir()), {self.output / 'Android.bp', self.output / 'Launcher.apk'})
+
+    def test_android_bun_target_stages_from_apk_provenance(self):
+        for target in ['stallion', 'cuttlefish']:
+            with self.subTest(target=target):
+                trust, entries = self.cloud_fixture(target, 'android')
+                abi, arch = native.TARGETS[target]['abi'], native.TARGETS[target]['arch']
+                self.assertFalse(any('musl' in name for name in entries))
+                self.archive(list(entries.items()))
+                if self.output.exists():
+                    shutil.rmtree(self.output)
+                self.overlay()
+                with patch.object(native, 'ROOT', trust):
+                    report = native.stage(self.apk, self.output, 'AlphaPhone', target)
+                self.assertTrue(report['residentAgentIncluded'])
+                self.assertFalse(report['deployReady'])
+                self.assertEqual({x.name for x in (self.output / ('native-' + arch)).iterdir()}, {'libeliza_bun.so'})
+                self.assertEqual((self.output / ('native-' + arch) / 'libeliza_bun.so').read_bytes(), entries['lib/' + abi + '/libeliza_bun.so'])
+
+    def test_android_bun_target_refuses_musl_binary_and_unknown_targets(self):
+        trust, original = self.cloud_fixture(bun_target='android')
+        path = 'assets/agent/android-agent-runtime-provenance.json'
+        musl = dict(original)
+        # Provenance claims the native Android build but carries the musl-pinned bytes.
+        for name in ['lib/arm64-v8a/libeliza_bun.so', 'assets/agent/arm64-v8a/bun']:
+            musl[name] = ELF
+        provenance = json.loads(musl[path])
+        for entry in provenance['files']:
+            if entry['path'] in ['lib/arm64-v8a/libeliza_bun.so', 'assets/agent/arm64-v8a/bun']:
+                entry.update(size_bytes=len(ELF), sha256=hashlib.sha256(ELF).hexdigest())
+        musl[path] = json.dumps(provenance).encode()
+        unknown = dict(original)
+        provenance = json.loads(unknown[path])
+        provenance['bun']['target'] = 'linux-gnu'
+        unknown[path] = json.dumps(provenance).encode()
+        self.overlay()
+        for entries, message in [(musl, 'pinned binary'), (unknown, 'Unsupported Bun target')]:
+            with self.subTest(message=message):
+                self.archive(list(entries.items()))
+                with patch.object(native, 'ROOT', trust), self.assertRaisesRegex(ValueError, message):
+                    native.stage(self.apk, self.output, 'AlphaPhone')
+                self.assertEqual(set(self.output.iterdir()), {self.output / 'Android.bp', self.output / 'Launcher.apk'})
 
     def test_cuttlefish_exact_x86_payload_modes_and_no_arm64_installation(self):
         trust, entries = self.cloud_fixture('cuttlefish')

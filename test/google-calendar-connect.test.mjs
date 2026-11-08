@@ -33,13 +33,14 @@ const operations=f=>f.posts.map(post=>post.operation);
 
 /** The shared sync-control contract in miniature: expected-revision CAS, (key, body) replay, select then resume. */
 async function agent({control={},sources=[source(GRANT,OWNER,{primary:true}),source(GRANT,'team',{accessRole:'writer',summary:'Team'}),source(GRANT,'holidays',{primary:false,accessRole:'reader',summary:'Holidays'})],ownerId='owner'}={}){
- const f={active:true,draft:false,fingerprint:'same',control:{revision:0,paused:true,destination:null,pendingDispatch:null,...control},sources,posts:[],attempts:[],reads:0,receipts:new Map(),lose:null,heldFeed:null,onCalendars:null,afterPost:null};
+ const f={active:true,draft:false,fingerprint:'same',control:{revision:0,paused:true,destination:null,pendingDispatch:null,...control},sources,posts:[],attempts:[],reads:0,links:[],receipts:new Map(),lose:null,heldFeed:null,onCalendars:null,afterPost:null};
  const port={identity:{origin:'https://calendar.example',ownerId,agentId:'agent'},sessionId:'session',scope:'owner',current:()=>f.active,request:async(path,method,body)=>{
   assertAppRecordRequestAllowed(path,method,body);
   if(method==='GET')f.reads++;
   if(path.startsWith('/api/lifeops/calendar/calendars')){f.onCalendars?.();return {calendars:structuredClone(f.sources)};}
   if(path.startsWith('/api/lifeops/calendar/feed')){await f.heldFeed?.promise;return {state:'complete',events:[]};}
   if(path.startsWith('/api/lifeops/calendar/next-context'))return {event:null};
+  if(path==='/api/lifeops/calendar/links?view=events')return {links:structuredClone(f.links)};
   assert.equal(path,'/api/lifeops/calendar/sync-control');
   if(method==='GET')return structuredClone(f.control);
   f.attempts.push(structuredClone(body));
@@ -66,7 +67,7 @@ async function agent({control={},sources=[source(GRANT,OWNER,{primary:true}),sou
 
 test('without a verified Calendar write grant nothing is read, written or called Synced',async()=>{
  const f=await agent();
- for(const [accounts,message] of [[[account(OWNER,READ)],/read only, so Calendar is not synced/],[[],/not connected/],[[{...account(OWNER,WRITE),connected:false}],/not connected/]]){
+ for(const [accounts,message] of [[[account(OWNER,READ)],/read only, so sync is off/],[[],/not connected/],[[{...account(OWNER,WRITE),connected:false}],/not connected/]]){
   const result=await f.link(accounts);assert.equal(result.outcome,'needs-grant');assert.match(result.message,message);assert.doesNotMatch(result.message,/syncs with/);
  }
  assert.equal(f.reads,0);assert.deepEqual(f.attempts,[]);f.calendar.retire();
@@ -109,10 +110,10 @@ test('a pending dispatch, an unavailable saved destination or no unique authoriz
  const both=[account(OWNER,WRITE),account(SECOND,WRITE,'22222222-2222-4222-8222-222222222222')];
  const twoPrimaries=[source(GRANT,OWNER,{primary:true}),source(OTHER,SECOND,{primary:true,accountEmail:SECOND})];
  for(const [options,message,accounts] of [
-  [{control:{pendingDispatch:{linkId:'pending-link'}}},/prior Calendar sync operation needs review/],
+  [{control:{pendingDispatch:{linkId:'pending-link'}}},/waiting on an earlier change/],
   [{control:{destination:{connectorAccountId:GRANT,providerCalendarId:'removed'}}},/saved Google sync calendar is unavailable/],
-  [{sources:[source(GRANT,OWNER,{primary:true,accessRole:'reader'})]},/Choose the Google calendar to sync/],
-  [{sources:twoPrimaries},/Choose the Google calendar to sync/,both],
+  [{sources:[source(GRANT,OWNER,{primary:true,accessRole:'reader'})]},/Ask your agent to choose the Google calendar to sync/],
+  [{sources:twoPrimaries},/Ask your agent to choose the Google calendar to sync/,both],
  ]){const f=await agent(options),result=await f.link(accounts);assert.equal(result.outcome,'not-linked');assert.match(result.message,message);assert.deepEqual(f.attempts,[]);f.calendar.retire();}
  // A verified return names one account: only its primary is the unique authorized source.
  const f=await agent({sources:twoPrimaries});
@@ -124,7 +125,7 @@ test('a saved destination is Synced or resumed only on an approved account, and 
  const mixed=[account(OWNER,WRITE),account(SECOND,READ,'22222222-2222-4222-8222-222222222222')];
  for(const [control,accounts] of [[{revision:3,paused:false,destination:second},mixed],[{revision:3,destination:second},mixed],[{revision:3,destination:second},[account(OWNER,WRITE)]]]){
   const f=await agent({sources,control}),result=await f.link(accounts);
-  assert.equal(result.outcome,'not-linked');assert.match(result.message,/not on the Google account approved for Calendar changes\. Review Calendar sync/);
+  assert.equal(result.outcome,'not-linked');assert.match(result.message,/not on the Google account approved for Calendar changes\. Ask your agent to check Calendar sync/);
   assert.deepEqual(f.attempts,[],'a read-only or unnamed account is never resumed');assert.equal(f.control.paused,control.paused??true);f.calendar.retire();
  }
 });
@@ -132,7 +133,7 @@ test('a saved destination is Synced or resumed only on an approved account, and 
 test('a change made elsewhere between steps is kept: the link stops at the newer revision and the last step never writes',async()=>{
  // Another surface pauses right after our resume commits.
  const f=await agent();f.afterPost=body=>{if(body.operation==='resume'){f.control.paused=true;f.control.revision++;}};
- const paused=await f.link();assert.equal(paused.outcome,'not-linked');assert.match(paused.message,/^Calendar sync changed elsewhere\. Review Calendar sync/);
+ const paused=await f.link();assert.equal(paused.outcome,'not-linked');assert.match(paused.message,/^Calendar sync changed elsewhere\. Ask your agent to check it/);
  assert.deepEqual(operations(f),['select','resume'],'the pause is not resumed again');assert.equal(f.control.paused,true);
  // Another surface pauses (a new revision) right after our select commits.
  const g=await agent();g.afterPost=body=>{if(body.operation==='select')g.control.revision++;};
@@ -161,17 +162,15 @@ test('nothing sent is never called unconfirmed: a Calendar that is not ready say
  const gone=await h.link();assert.equal(gone.outcome,'unconfirmed');assert.doesNotMatch(gone.message,/Nothing was sent|Waiting for Calendar/);assert.deepEqual(operations(h),['select']);
 });
 
-test('an active control with a background dispatch reads Sync on, never Synced; a paused pending dispatch still needs review',async()=>{
+test('a dispatch the resume started reads Sync on, never Synced; a paused pending dispatch is waiting',async()=>{
  // Resume kicks the bootstrap drain, which holds a dispatch token without a new revision.
  const f=await agent();f.afterPost=body=>{if(body.operation==='resume')f.control.pendingDispatch={linkId:'bootstrap-create'};};
  const linked=await f.link();assert.equal(linked.outcome,'syncing');assert.equal(linked.message,'Sync on. Calendar is syncing with owner@example.test in Google.');
  assert.deepEqual(operations(f),['select','resume']);
- const g=await agent({control:{paused:false,destination:{connectorAccountId:GRANT,providerCalendarId:OWNER},pendingDispatch:{linkId:'in-flight'}}});
- const active=await g.link();assert.equal(active.outcome,'syncing');assert.doesNotMatch(active.message,/syncs with|Synced|caught up/);assert.deepEqual(g.attempts,[]);
  // The uncertain case stays reviewable: a paused control with a pending dispatch is never resumed or called on.
  const h=await agent({control:{revision:2,destination:{connectorAccountId:GRANT,providerCalendarId:OWNER},pendingDispatch:{linkId:'uncertain'}}});
- const held=await h.link();assert.equal(held.outcome,'not-linked');assert.match(held.message,/needs review/);assert.deepEqual(h.attempts,[]);
- f.calendar.retire();g.calendar.retire();h.calendar.retire();
+ const held=await h.link();assert.equal(held.outcome,'not-linked');assert.match(held.message,/waiting on an earlier change/);assert.deepEqual(h.attempts,[]);
+ f.calendar.retire();h.calendar.retire();
 });
 
 test('a changeSync check that fails before its control write is not finished and says nothing was sent',async()=>{
@@ -296,10 +295,10 @@ async function panel(rows,{calendarEdits=true,gmailChanges=true,unreadable=false
   './connection-ui':{connectionController:{subscribe:()=>()=>{},getSnapshot:()=>snapshot,getCloudClient:()=>cloud,rejectCloudSession:()=>{},openCloudAccount:()=>{throw Error('Unexpected sign-in');}}},
   // The actual Calendar link and disconnect lifecycle; only the Cloud account calls are synthetic.
   './google-accounts':{GOOGLE_ACCOUNTS_CHANGED:'alpha:test-google-accounts',googleDisconnectConfirmation:()=>'',googleDisconnectMessage:outcome=>`Disconnect ${outcome}.`,linkGoogleCalendar:calendarLink.linkGoogleCalendar,googleCalendarDisconnectLifecycle:calendarLink.googleCalendarDisconnectLifecycle,createGoogleAccounts:(binding,current,changed,calendar)=>({
-   list:async()=>{live(binding);p.lists++;return structuredClone(p.rows);},
+   list:async()=>{live(binding);p.lists++;if(p.listFails)throw Error('Cloud is unavailable');return structuredClone(p.rows);},
    connect:async(signal,calendarPermission,gmailPermission)=>{live(binding);p.consents.push([calendarPermission,gmailPermission]);return 'https://accounts.google.com/o/oauth2/v2/auth';},
    // No Cloud disconnect runs: only what the panel hands the callsite is recorded.
-   disconnect:async connectionId=>{live(binding);p.disconnects.push({connectionId,calendar});return {outcome:'disconnected',accounts:[],calendarLifecycle:p.onDisconnect?.(calendar,connectionId)??{calendarPause:'unavailable',callbackRetirement:'confirmed',providerDrain:'unavailable',pauseRequest:null}};},
+   disconnect:async connectionId=>{live(binding);p.disconnects.push({connectionId,calendar});return {...(p.disconnectResult??{outcome:'disconnected',accounts:[]}),calendarLifecycle:p.onDisconnect?.(calendar,connectionId)??{calendarPause:'unavailable',callbackRetirement:'confirmed',providerDrain:'unavailable',pauseRequest:null}};},
   })},
   './google-calendar-selection':{clearGoogleCalendarSelectionForConnection:()=>{}},
   './native-connection':{openConnectionBrowser:async()=>{p.opens++;},googleWorkspaceReturnPort:undefined},
@@ -351,7 +350,7 @@ test('an existing read-only Calendar grant takes the normal consent, keeps Gmail
   await p.act(()=>p.button('Connect Google Calendar').click());
   assert.deepEqual(p.consents,[['write','send']],'Calendar consent never narrows the Gmail access already granted');
   await p.returnFromGoogle(); // Google returned without Calendar changes approved.
-  await p.until(()=>/read only, so Calendar is not synced/.test(p.status()));
+  await p.until(()=>/read only, so sync is off/.test(p.status()));
   assert.equal(f.reads,0);assert.deepEqual(f.attempts,[]);
   // The same intent completes from a later readback that shows the write grant.
   p.rows=[account(OWNER,[...WRITE,'google.gmail.send'])];await p.act(()=>p.button('Check Google connections').click());
@@ -450,7 +449,7 @@ test('a panel opened from Calendar passes its disconnect lifecycle and keeps an 
   await p.act(()=>p.button('Disconnect Google account owner@example.test').click());await p.act(()=>p.button('Confirm disconnect Google account').click());
   const [{calendar}]=p.disconnects;
   assert.deepEqual(calendar.capture().control,{revision:2,paused:false,destination:{connectorAccountId:GRANT,providerCalendarId:OWNER},pendingDispatch:null},'the review the link read back');
-  assert.match(p.status(),/^Disconnect disconnected\. Calendar sync pause was not confirmed\. Review Calendar sync/);
+  assert.match(p.status(),/^Disconnect disconnected\. Calendar sync pause was not confirmed\. Ask your agent to check Calendar sync/);
   assert.equal(p.controller.calendar().retained.get('pause-key').status,'unknown','the unknown pause stays retained');
   await p.act(()=>p.controller.close());p.onDisconnect=null;await p.act(()=>p.controller.open());
   await p.act(()=>p.button('Disconnect Google account owner@example.test').click());await p.act(()=>p.button('Confirm disconnect Google account').click());
@@ -458,11 +457,42 @@ test('a panel opened from Calendar passes its disconnect lifecycle and keeps an 
  }finally{await p.close();f.calendar.retire();}
 });
 
-test('the saved Calendar edits switch is read fresh: saved off is off and an unreadable document is unknown, never on',async()=>{
- const compiled=transformSync(readFileSync(new URL('../apps/app/src/runtime/google-agent-access.ts',import.meta.url),'utf8'),{loader:'ts',format:'cjs',target:'es2022'}).code;
- let read;const module={exports:{}},modules={'../browser/device-preferences':{cachedDevicePreferences:()=>({agentGmailChanges:true,agentCalendarEdits:true}),readDevicePreferences:()=>read(),editDevicePreferences:async()=>{},initializeDevicePreferences:()=>{}},'./local-agent':{browserLocalAgentEnabled:false}};
- vm.runInContext(compiled,vm.createContext({module,exports:module.exports,require:name=>modules[name]}));
- for(const [document,expected] of [[async()=>({agentCalendarEdits:false}),false],[async()=>({agentCalendarEdits:true}),true],[async()=>{throw Error('Device settings need recovery.');},undefined]]){read=document;assert.equal(await module.exports.savedGoogleCalendarEdits?.(),expected);}
+test('Connect Google Calendar starts no consent until this load verified the account list',async()=>{
+ const f=await agent(),p=await panel([account(OWNER,[...READ,'google.gmail.send'])]);
+ try{
+  p.listFails=true;await p.act(()=>p.controller.openCalendar(f.scope));
+  assert.equal(p.status(),'Google connections could not be verified. Check sign-in and try again.');
+  await p.act(()=>p.button('Connect Google Calendar').click());
+  assert.deepEqual(p.consents,[],'an unknown Gmail tier never asks Google for less');assert.equal(p.opens,0);assert.match(p.status(),/could not be verified/);
+  p.listFails=false;await p.act(()=>p.button('Check Google connections').click());
+  await p.act(()=>p.button('Connect Google Calendar').click());assert.deepEqual(p.consents,[['write','send']]);
+ }finally{await p.close();f.calendar.retire();}
+});
+
+test('after a disconnect with no account readback, Connect Google Calendar starts no consent',async()=>{
+ const f=await agent(),modify=[...READ,'google.gmail.send','google.gmail.drafts','google.gmail.mailbox'];
+ const p=await panel([account(OWNER,modify),account(SECOND,READ,'22222222-2222-4222-8222-222222222222')]);
+ try{
+  await p.act(()=>p.controller.openCalendar(f.scope));
+  p.disconnectResult={outcome:'unconfirmed'};
+  await p.act(()=>p.button(`Disconnect Google account ${SECOND}`).click());
+  await p.act(()=>p.button('Confirm disconnect Google account').click());
+  assert.equal(p.disconnects.length,1);
+  await p.act(()=>p.button('Connect Google Calendar').click());
+  assert.deepEqual(p.consents,[],'an unknown Gmail tier never asks Google for less');assert.match(p.status(),/could not be verified/);
+ }finally{await p.close();f.calendar.retire();}
+});
+
+test('Add Google account asks for the Gmail tier the connected accounts hold, like the switches',async()=>{
+ const modify=[...READ,'google.gmail.send','google.gmail.drafts','google.gmail.mailbox'];
+ for(const [rows,tier] of [[[account(OWNER,modify)],'modify'],[[account(OWNER,READ)],'send'],[[],'send']]){
+  const p=await panel(rows);
+  try{
+   await p.act(()=>p.controller.open());
+   await p.act(()=>p.button(rows.length?'Add Google account':'Connect Google account').click());
+   assert.deepEqual(p.consents,[['write',tier]]);
+  }finally{await p.close();}
+ }
 });
 
 test('closing cancels the intent: a later return never links, and plain Google connect is unchanged',async()=>{

@@ -473,7 +473,7 @@ test('loops D and F in the web build: digests and mail name the missing account 
   await button(page, 'Workflows').click();
   await button(page, 'Scheduled summaries').click();
   const digests = page.getByRole('dialog', { name: 'Scheduled digests', exact: true });
-  await expect(digests).toContainText('Choose where your agent runs to set up scheduled digests.');
+  await expect(digests).not.toContainText('Choose where your agent runs');
   await expect(digests).toContainText('Your agent runs on your phone, not here. Open Alpha on your Android phone to use it.');
   await expect(digests).not.toContainText(/remote agent/i);
   // None of the development scheduler exists: no snapshot, no schedule review, no "runs while open".

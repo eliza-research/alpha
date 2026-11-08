@@ -69,8 +69,8 @@ public final class VoicePermissionDeniedInstrumentedTest {
     until(button("Connect Eliza Cloud"),20000);
     for(String absent:new String[]{"Start recording","Record without transcription"})assertEquals("Signed-out recorder offers no "+absent,"false",eval("Boolean("+button(absent)+")"));
     assertTrue("No permission prompt while signed out",appFocused());
-    // A signed-out production build opens the required sign-in page by itself; drive that page.
-    until("document.querySelector('.alpha-auth-page .alpha-cloud-sign-in input[name=email]')",30000);eval(InboxFixtureSignIn.DRIVE_EMAIL);
+    // A signed-out production build shows the required sign-in page itself; fill it in place.
+    until(AppNavigation.SIGN_IN_PAGE_READY,20000);eval(InboxFixtureSignIn.DRIVE_EMAIL);
     until("document.querySelector('.alpha-cloud-sign-in input[name=one-time-code]')",20000);eval(InboxFixtureSignIn.DRIVE_CODE);
     // Signed in: the required page goes away and the recorder offers recording instead of Eliza Cloud.
     until("!document.querySelector('.alpha-auth-page')",30000);

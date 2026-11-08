@@ -109,7 +109,7 @@ public class CameraScanInstrumentedTest {
    clickText("Save searchable PDF");until(dialog("Review searchable PDF"));
    clickText("Save reviewed searchable PDF");nativeSave();
    // The loaded-draft status also says "saved"; wait for the provider's verified export receipt.
-   until(dialog("Review scan document")+"?.textContent.includes('exact bytes verified')",60000);
+   until(dialog("Review scan document")+"?.textContent.includes('Saved.')",60000);
    assertEquals("No page was published to Photos",before,ownedImages());
    listing=exports();
   }finally{for(Uri uri:fixtures)resolver.delete(uri,null,null);}

@@ -16,13 +16,17 @@ public final class LegacyCloudRecoveryTest {
  public static void main(String[] args)throws Exception{
   root=new File(args[0]);fresh();check(recovery.eligible(),"legacy eligible without importing");check(slots.read(NS+"cloud:production")==null,"ordinary scoped read stays absent");
   check(restore(token->{check(token.equals("synthetic-test-token"),"actual current token validator");}),"explicit recovery");
-  check(SAVED.equals(slots.read(NS+"cloud:production"))&&SAVED.equals(slots.read("cloud:production")),"exact bytes copied old kept");check(!recovery.eligible()&&!restore(token->{throw new AssertionError();}),"idempotent");check(slots.read(NS+"local-agent-provider:v1")==null,"no provider proof imported");
+  check(SAVED.equals(slots.read(NS+"cloud:production"))&&slots.read("cloud:production")==null,"exact bytes copied, legacy copy removed");check(!recovery.eligible()&&!restore(token->{throw new AssertionError();}),"idempotent");check(slots.read(NS+"local-agent-provider:v1")==null,"no provider proof imported");
   for(String value:new String[]{"{}","\"invalid-but-established\"",SAVED}){fresh();slots.write(NS+"cloud:production",value);check(!recovery.eligible()&&!restore(token->{throw new AssertionError();}),"all current targets win");check(value.equals(slots.read(NS+"cloud:production")),"target unchanged");}
   fresh();slots.write(NS+"local-agent-provider:v1","{}");check(!recovery.eligible(),"current provider wins");
   for(String ns:new String[]{"cloud-deployment:other:","",NS+"other:"}){fresh();check(!new LegacyCloudRecovery(slots,ns,()->{}).eligible(),"authority mismatch");}
-  fresh();recovery.block();check(!recovery.eligible(),"signout tombstone");slots.remove(NS+"cloud:production");check(!recovery.eligible(),"no key means no resurrection");
+  fresh();recovery.block();check(!recovery.eligible(),"signout tombstone");check(slots.read("cloud:production")==null,"signout removes the legacy copy");slots.remove(NS+"cloud:production");check(!recovery.eligible(),"no key means no resurrection");
   fresh();fails(token->{throw new IllegalStateException("offline");});check(recovery.eligible()&&slots.read(NS+"cloud:production")==null,"transport failure recoverable");
-  fresh();slots.write("cloud:production",new JSONObject(SAVED).put("expiresAt",1).toString());fails(token->{throw new AssertionError("expired key reached network");});
+  for(String unusable:new String[]{new JSONObject(SAVED).put("expiresAt",1).toString(),new JSONObject(SAVED).put("credentialId","").toString(),"{}","not-json"}){
+   fresh();slots.write("cloud:production",unusable);check(!recovery.eligible()&&!restore(token->{throw new AssertionError("unusable key reached network");}),"expired, credentialId-less or malformed key not offered");}
+  fresh();recovery.reject(recovery.snapshot());check(!recovery.eligible()&&slots.read("cloud:production")==null,"Cloud refusal stops offering the key");
+  fresh();LegacyCloudRecovery.Snapshot stale=recovery.snapshot();String replaced=new JSONObject(SAVED).put("token","different-synthetic-token").toString();slots.write("cloud:production",replaced);recovery.reject(stale);check(recovery.eligible()&&replaced.equals(slots.read("cloud:production")),"a refusal of older bytes leaves a replaced key");
+  fresh();new LegacyCloudRecovery(slots,"cloud-deployment:other:",()->{}).block();check(SAVED.equals(slots.read("cloud:production")),"another deployment never removes the legacy copy");
   fresh();check(!restore(token->recovery.block()),"signout during verification wins");
   fresh();check(!restore(token->slots.write(NS+"cloud:production","{}")),"new target during verification wins");
   fresh();check(!restore(token->slots.write(NS+"local-agent-provider:v1","{}")),"provider during verification wins");
