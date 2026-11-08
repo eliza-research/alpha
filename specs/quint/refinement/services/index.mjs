@@ -1,3 +1,4 @@
+import {fileURLToPath} from 'node:url';
 import {authorizationRefinement} from './authorization.mjs';
 import {googleAccountsRefinement} from './google-accounts.mjs';
 import {calendarRefinement} from './calendar.mjs';
@@ -55,7 +56,7 @@ export async function runServicesRefinement() {
     {model: 'NativeCredentialMutation', obligation: 'Real shutdown, encryption and lock interleavings', reason: 'Actual credential-store classification, recheck, admission invalidation and preflight run against primitive storage/lifecycle ports. Those ports do not establish native shutdown or encrypted persistence.'},
     {model: 'PdfWorker', obligation: 'Kernel isolation, descriptor transfer, watchdog and memory kill', reason: 'Actual service request/render/cleanup/reply code executes against Android primitives. Host stubs cannot establish kernel or real PDF renderer behavior.', requires: ['IsolatedPdfInstrumentedTest on a disposable admitted installation']},
   ];
-  for (const check of [runInboxCoordinatorRefinement, runInboxCleanupRefinement, runInboxProviderDraftsRefinement, runWorkflowEngineRefinement, runWorkflowWakeupRefinement, runWorkflowTaskRefinement, runCanonicalNotesRefinement, runTaskServiceRefinement, runTaskSchedulerRuntimeRefinement, runPilotApkUpdateRefinement, runEmbeddingStoreIdentityRefinement, runFactWriteScopeRefinement]) {
+  for (const check of [runInboxCoordinatorRefinement, runInboxCleanupRefinement, runInboxProviderDraftsRefinement, runWorkflowEngineRefinement, runWorkflowWakeupRefinement, runWorkflowTaskRefinement, runCanonicalNotesRefinement, runTaskServiceRefinement, runTaskSchedulerRuntimeRefinement, runPilotApkUpdateRefinement, runEmbeddingStoreIdentityRefinement, () => runFactWriteScopeRefinement([fileURLToPath(import.meta.url)])]) {
     const result = await check();
     receipts.push(...result.receipts);
     obligations.push(...result.obligations);
