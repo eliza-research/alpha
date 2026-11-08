@@ -263,7 +263,7 @@ test('an agent append refreshes the open note and its row, and a stale owner edi
  expect(foreign).toEqual([]);expect(errors).toEqual([]);
 });
 
-test('the single Notes list hides Previous notes without importing or changing retained device data',async({page})=>{
+test('the Notes list keeps retained device data separate behind Previous notes',async({page})=>{
  const {errors}=await canonicalNotesFixture(page);
  const before=await page.evaluate(async()=>{
   const m=await import('/src/runtime/browser-notes-document.ts');
@@ -273,7 +273,7 @@ test('the single Notes list hides Previous notes without importing or changing r
  await openCanonicalNotes(page);
  await expect(page.getByRole('button',{name:'Open Previous local note',exact:true})).toHaveCount(0);
  await expect(page.getByRole('button',{name:'Record voice note',exact:true})).toBeVisible();
- await expect(page.getByRole('button',{name:'Previous notes',exact:true})).toHaveCount(0);
+ await expect(page.getByRole('button',{name:'Previous notes',exact:true})).toBeVisible();
  await expect(page.getByRole('group',{name:'Folders',exact:true})).toHaveCount(0);
  await page.getByRole('button',{name:'New note',exact:true}).click();
  await page.getByRole('textbox',{name:'Title',exact:true}).fill('Canonical only');

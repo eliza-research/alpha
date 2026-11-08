@@ -3353,6 +3353,7 @@ export const connectionController = {
     sending = controller;
     const requestSignal = controller.signal;
     let dispatched: { conversationId: string; at: number } | null = null;
+    const retiredStop={notice:state.replyNotice,conversationId:conversationMemory.get(conversationKey(session))};
     if (state.replyNotice) update({ replyNotice: '' });
     cancelStoppedReply();
     try {
@@ -3491,6 +3492,9 @@ export const connectionController = {
       const refused = !!error && typeof error === 'object' && (error as { beforeDispatch?: unknown }).beforeDispatch === true;
       const mark = (target: unknown) => { if (target && typeof target === 'object' && (!dispatched || refused || 'notDispatched' in target)) try { Object.defineProperty(target, 'notDispatched', { value: !dispatched || refused, configurable: true }); } catch { /* An unmarkable error stays an unknown outcome. */ } };
       mark(error);
+      // A refused new send did not supersede the old turn. Its retired check can no longer
+      // promise a read, so retain an honest unknown outcome for the same conversation.
+      if((!dispatched||refused)&&(retiredStop.notice===STOPPED_REPLY_NOTICE||retiredStop.notice===STOPPED_CANCELLED_NOTICE)&&generation===epoch&&selected===active&&state.session?.sessionId===session.sessionId&&conversationMemory.get(conversationKey(session))===retiredStop.conversationId)update({replyNotice:STOPPED_UNCHECKED_NOTICE});
       // Stop (or leaving the chat) after dispatch: the turn may still complete on the agent.
       if (signal.aborted && dispatched && generation === epoch && selected === active && state.session?.sessionId === session.sessionId) scheduleStoppedReply(selected, session, dispatched.conversationId, { clientMessageId: requestId, text, sentAt: dispatched.at });
       if (refused && error && typeof error === 'object' && 'status' in error && error.status === 403) {

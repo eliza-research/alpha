@@ -453,8 +453,9 @@ export function installAgentAdapter(Component: Shell, views: Shell) {
     shell.stoppedReplyNotice=notice;
     if(!shell.live)return;
     const pending=notice===STOPPED_REPLY_NOTICE||notice===STOPPED_CANCELLED_NOTICE,sessionId=snapshot.session?.sessionId;
-    // Without a notice: a restored conversation already shows the outcome; otherwise say why the check ended.
-    const text=notice||(replaced?'':snapshot.message===STOPPED_CONFIRMED_NOTICE?STOPPED_CONFIRMED_NOTICE:STOPPED_UNCHECKED_NOTICE);
+    // A new send retires the pending check; clearing it must not invent an unchecked outcome.
+    // Confirmed cancellation and outcomes the check actually reported remain in the transcript.
+    const text=notice||(!replaced&&snapshot.message===STOPPED_CONFIRMED_NOTICE?STOPPED_CONFIRMED_NOTICE:'');
     // A check that already reported its result keeps that statement (and its offer) when a later send clears the notice.
     const reported=!notice&&!replaced&&!!before&&before!==STOPPED_REPLY_NOTICE&&before!==STOPPED_CANCELLED_NOTICE;
     shell.setState((previous:Shell)=>{
