@@ -497,7 +497,7 @@ export function installSettingsAdapter(Component: any, views: Bag) {
           const identity = value.id ?? `row:${value.aria ?? value.label ?? value.time ?? ''}:${value.text ?? ''}`;
           const occurrence = occurrences.get(identity) ?? 0;
           occurrences.set(identity, occurrence + 1);
-          return { ...value, id: occurrence ? `${identity}:${occurrence}` : identity };
+          return { ...value, id: JSON.stringify([identity, occurrence]) };
         }),
         ...(cap ? { cap, hasCap: true } : {}),
       };

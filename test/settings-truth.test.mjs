@@ -199,6 +199,8 @@ test('identically labelled Settings actions preserve their source identity',()=>
  assert.notEqual(a.id,b.id);
  const obligations=helpers.group([{time:'Obligation',text:'First'},{time:'Obligation',text:'Second'},{time:'Obligation',text:'First'}]);
  assert.equal(new Set(obligations.rows.map(row=>row.id)).size,3);
- after.rows.find(row=>row.id==='conversation:a').go();
+ const suffixes=helpers.group([{id:'a'},{id:'a'},{id:'a:1'}]);
+ assert.equal(new Set(suffixes.rows.map(row=>row.id)).size,3);
+ after.rows.find(row=>row.id===JSON.stringify(['conversation:a',0])).go();
  assert.deepEqual(calls,['a']);
 });
