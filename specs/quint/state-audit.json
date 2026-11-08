@@ -12,7 +12,7 @@
   "toolSha256": "403a33cab0dff7ace6219b29e7ffef373319677a7d8be6641466dd16a6750b5b",
   "dependencyLockSha256": "944123c801157a7ba3676a886d0b28a54bef32735ae96da5c6dd0f206c88c8bf",
   "sourcePin": "99b49439ce9d0cb5607e9831b9f7f58d89525029",
-  "ledgerSha256": "1b2ce8060d58143a77cacdbed363277678e776f0a494ae70475efd4b569e31b4",
+  "ledgerSha256": "c816bba5e2404ab467481936cc0e06fcca5ebd1a69f613dc203a2ef774344d53",
   "method": "TypeScript syntax trees for JavaScript/TypeScript and JDK compiler trees for Java. Mutable fields, bindings, containers, state hooks, write sites and asynchronous registration calls are candidates for semantic review.",
   "limitations": [
     "Candidate extraction does not establish state-machine coverage or implementation refinement.",
@@ -28,9 +28,9 @@
     "parsedFiles": 5626,
     "languageReview": 55,
     "parseErrors": 0,
-    "candidates": 67103,
-    "writeSites": 66534,
-    "writeAssociations": 59713,
+    "candidates": 67106,
+    "writeSites": 66535,
+    "writeAssociations": 59714,
     "asynchronous": 8298,
     "unassignedWrites": 10188
   },
@@ -42555,7 +42555,8 @@
       "allocatedModels": [
         "GoogleAccounts",
         "GoogleConsentAdmission",
-        "GoogleCalendarLinkFlow"
+        "GoogleCalendarLinkFlow",
+        "GoogleCalendarDisconnect"
       ],
       "sourcePathClass": "other-source-path",
       "classification": "syntactic-candidates",
@@ -42683,7 +42684,7 @@
     },
     {
       "path": "apps/app/src/runtime/google-connection-ui.tsx",
-      "sha256": "602d15e789f19680bd46d02ade16ecc3629af155345d02159643f03b52566bd3",
+      "sha256": "fbd8ebfb3786594cbc8ec34c02dfe375eba9934109cb3bd7c6d5b51468b57a4e",
       "allocatedModels": [
         "GoogleAccounts",
         "GoogleConnect",
@@ -42702,7 +42703,7 @@
         {
           "owner": "GoogleConnectionsPanel",
           "line": 49,
-          "bindings": 24,
+          "bindings": 26,
           "writes": 26
         },
         {
@@ -42712,20 +42713,26 @@
           "writes": 1
         },
         {
+          "owner": "GoogleConnectionsPanel.ArrowFunction@70.ArrowFunction@70",
+          "line": 71,
+          "bindings": 1,
+          "writes": 1
+        },
+        {
           "owner": "GoogleConnectionsPanel.load",
-          "line": 85,
+          "line": 93,
           "bindings": 1,
           "writes": 1
         },
         {
           "owner": "GoogleConnectionsPanel.connect",
-          "line": 152,
+          "line": 160,
           "bindings": 3,
           "writes": 5
         },
         {
           "owner": "GoogleConnectionsPanel.disconnect",
-          "line": 185,
+          "line": 193,
           "bindings": 2,
           "writes": 1
         }
@@ -218439,6 +218446,6 @@
   ],
   "detail": {
     "path": "test-results/quint-state-audit/details.json",
-    "sha256": "e79e7647c03ea89794ceca349c12344b53fdf6a3331aa8f5ac5cd7d56a662c34"
+    "sha256": "fe4c2882ceff816c278abad428dc04392d405bd8aa9a7de64d6cb0ef28078475"
   }
 }

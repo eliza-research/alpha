@@ -305,9 +305,9 @@ qualified.
 ## Current SDK source-owner inventory
 
 The integrated `99b4943` snapshot admits 5,681 source inputs, including 4,841
-shared inputs, and registers 170 Quint models. The syntax audit parses 5,626
+shared inputs, and registers 171 Quint models. The syntax audit parses 5,626
 JavaScript, TypeScript and Java files without syntax errors. The source-owner
-summary records 67,103 candidate bindings, 66,534 write sites, 8,298
+summary records 67,106 candidate bindings, 66,535 write sites, 8,298
 asynchronous registrations and 10,188
 write sites without a syntactically matched declaration. Test-support paths
 account for 287 files and 11,480 candidate bindings.

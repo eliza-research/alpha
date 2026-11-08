@@ -508,6 +508,8 @@ and 110 checkpoints. The browser edit compares the captured binding and
 current owner before changing the exact pending row. A queued settlement
 can neither transfer to a same-scope replacement nor consume a later tap.
 The old pending token remains available to its owner in a new explicit call.
+All four existing hosted-result Chromium journeys pass with the fixture
+using the current connection entry.
 
 The Android hosted inbox campaign checks 12 schedules and 133 checkpoints
 against the actual inbox, delivery, resident transport and local notice
@@ -517,3 +519,17 @@ is held. A replay can acknowledge a result that aged out of the history
 index while its exact bytes remain in the pending-removal journal. The
 JVM fixture blocks real HTTP and HTTPS, and symbolic safety passed through
 four steps.
+
+The Google Calendar disconnect campaign checks 59 schedules and 272
+checkpoints. It separates Cloud privacy authorization from stale Calendar
+pause authority and records the exact pause, revoke and callback retirement
+outcomes. A mounted panel repair also fences link publication and busy
+cleanup by the current intent, Cloud binding and request. Three mounted
+regressions cover stale review publication, a replacement account read,
+and a late host permission reply.
+
+The historical ChatInput campaign compares six mounted Chromium schedules
+and 40 checkpoints. Current source agrees with selected proposed
+interactions and the common full-chat sequence. Separate mismatch receipts
+cover outside taps, Back after the IME dismisses, upward content drags,
+and pointer ownership at the raised dock. The original design stays intact.

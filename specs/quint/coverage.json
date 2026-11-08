@@ -41630,7 +41630,8 @@
       "models": [
         "GoogleAccounts",
         "GoogleConsentAdmission",
-        "GoogleCalendarLinkFlow"
+        "GoogleCalendarLinkFlow",
+        "GoogleCalendarDisconnect"
       ],
       "scope": "application",
       "treatment": "domain-contract-or-support",
@@ -42105,7 +42106,7 @@
       "scope": "application",
       "treatment": "state-and-transition-projection",
       "reviewStatus": "state-audit-required",
-      "sha256": "602d15e789f19680bd46d02ade16ecc3629af155345d02159643f03b52566bd3",
+      "sha256": "fbd8ebfb3786594cbc8ec34c02dfe375eba9934109cb3bd7c6d5b51468b57a4e",
       "stateAnchors": []
     },
     {
