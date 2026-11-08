@@ -185,8 +185,9 @@ or action outcome can come from this turn. After a provisional frame, early spee
 and the confirmed reply is spoken in full. The confirmed reply skips streamed sentences only while
 they match it sentence for sentence. A barge-in or Stop during a streamed sentence reports what was
 heard: the reply is found by the turn's request id once the agent has recorded it. With the Cloud
-provider in use, drafts lead the confirmed text by only about 100 ms, so correctness is preferred over
-that residual gain.
+provider in use, drafts led `reply_ready` by only 76 to 162 ms in the confirmed turns above, so
+correctness is preferred over that residual gain: early speech now starts at `reply_ready` at the
+earliest.
 
 ### Where a voice turn's time goes now
 
