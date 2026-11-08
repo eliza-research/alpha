@@ -36,6 +36,7 @@ import {checkBatchCaptureCompletion} from './batch-capture-completion.mjs';
 import {checkReviewedCopies, reviewedCopiesObligations} from './reviewed-copies.mjs';
 import {checkNavigationProgress} from './navigation-progress.mjs';
 import {checkNativeNavigationOwnership} from './navigation-service.mjs';
+import {checkGoogleBrowserReturnClaim} from './google-browser-return-claim.mjs';
 
 export async function runNativeRefinement() {
   const models = ['VadSegmentation', 'RendererRecovery', 'ResidentScheduling'];
@@ -117,6 +118,7 @@ export async function runNativeRefinement() {
       'Voice traces bound two sentences and one submitted turn.']}));
   results.push(await checkNavigationProgress([fileURLToPath(import.meta.url)]));
   results.push(await checkNativeNavigationOwnership([fileURLToPath(import.meta.url)]));
+  results.push(await checkGoogleBrowserReturnClaim([fileURLToPath(import.meta.url)]));
   const lifecycle = await residentLifecycleTraces([fileURLToPath(import.meta.url)]);
   results.push(await checkTraces({model: 'ResidentRuntime', id: 'ResidentRuntime-lifecycle-native', scope: 'bounded-component',
     ...lifecycle, assumptions: [
@@ -143,6 +145,8 @@ export async function runNativeRefinement() {
     results.push(await check(nativeInputs));
   }
   const obligations = [
+    {model: 'GoogleBrowserReturnClaim', obligation: 'Installed callback delivery and durable credential custody',
+      reason: 'The authenticated Java claim and grace functions execute under controlled queues, storage and HTTPS. Installed lifecycle, secure-store durability and intra-worker schedules remain separate.'},
     ...reviewedCopiesObligations,
     {model: 'RendererRecovery', obligation: 'Android lifecycle, task selection and HOME-role delivery', reason: 'Actual MainActivity recovery and handoff execute under controlled Android ports. Physical renderer death, background lifecycle and OS task delivery require platform checks.', requires: ['Android Activity/WebView harness']},
     {model: 'ResidentScheduling', obligation: 'Plugin lifecycle and OS broadcasts', reason: 'Current adapter proves the pure admission table and same-lock callbacks.', requires: ['Android service integration']},

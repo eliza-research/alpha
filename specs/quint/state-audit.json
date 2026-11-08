@@ -12,7 +12,7 @@
   "toolSha256": "403a33cab0dff7ace6219b29e7ffef373319677a7d8be6641466dd16a6750b5b",
   "dependencyLockSha256": "944123c801157a7ba3676a886d0b28a54bef32735ae96da5c6dd0f206c88c8bf",
   "sourcePin": "99b49439ce9d0cb5607e9831b9f7f58d89525029",
-  "ledgerSha256": "4c138abc0de0c91d47c80c5b06978ed88a658eedd2dbe7f1ba107cf261c7c334",
+  "ledgerSha256": "b07dd3225d1d497472714e1ba9f30d202788a0c08d5f93846a81454c5561beb1",
   "method": "TypeScript syntax trees for JavaScript/TypeScript and JDK compiler trees for Java. Mutable fields, bindings, containers, state hooks, write sites and asynchronous registration calls are candidates for semantic review.",
   "limitations": [
     "Candidate extraction does not establish state-machine coverage or implementation refinement.",
@@ -28,11 +28,11 @@
     "parsedFiles": 5625,
     "languageReview": 55,
     "parseErrors": 0,
-    "candidates": 67051,
-    "writeSites": 66497,
-    "writeAssociations": 59669,
-    "asynchronous": 8297,
-    "unassignedWrites": 10195
+    "candidates": 67072,
+    "writeSites": 66499,
+    "writeAssociations": 59682,
+    "asynchronous": 8298,
+    "unassignedWrites": 10184
   },
   "files": [
     {
@@ -21023,11 +21023,13 @@
     },
     {
       "path": "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaMapsTransportPlugin.java",
-      "sha256": "349580a8e1d358123cffb7a9db3041298381edd43bb3710a000e13eeec54744b",
+      "sha256": "4652d12e562d01f8741f38182842314733a791c4cf050918c6fbd4a7150b6dc3",
       "allocatedModels": [
         "MapsNavigation",
-        "NavigationProgress"
+        "NavigationProgress",
+        "NativeNavigationOwnership"
       ],
+      "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
       "classification": "syntactic-candidates",
       "owners": [
@@ -21098,39 +21100,39 @@
           "writes": 2
         },
         {
-          "owner": "AlphaMapsTransportPlugin.text@68",
-          "line": 68,
+          "owner": "AlphaMapsTransportPlugin.text@67",
+          "line": 67,
           "bindings": 3,
           "writes": 0
         },
         {
-          "owner": "AlphaMapsTransportPlugin.navigationAvailability@69",
-          "line": 69,
+          "owner": "AlphaMapsTransportPlugin.navigationAvailability@68",
+          "line": 68,
           "bindings": 2,
           "writes": 2
         },
         {
-          "owner": "AlphaMapsTransportPlugin.startNavigation@70",
-          "line": 70,
-          "bindings": 4,
+          "owner": "AlphaMapsTransportPlugin.startNavigation@69",
+          "line": 69,
+          "bindings": 3,
           "writes": 0
         },
         {
-          "owner": "AlphaMapsTransportPlugin.updateNavigation@87",
-          "line": 87,
+          "owner": "AlphaMapsTransportPlugin.updateNavigation@84",
+          "line": 84,
           "bindings": 4,
           "writes": 2
         },
         {
-          "owner": "AlphaMapsTransportPlugin.stopNavigation@92",
-          "line": 92,
+          "owner": "AlphaMapsTransportPlugin.stopNavigation@89",
+          "line": 89,
           "bindings": 3,
           "writes": 1
         },
         {
-          "owner": "AlphaMapsTransportPlugin.handleOnDestroy@96",
-          "line": 100,
-          "bindings": 2,
+          "owner": "AlphaMapsTransportPlugin.handleOnDestroy@93",
+          "line": 98,
+          "bindings": 1,
           "writes": 1
         }
       ],
@@ -21153,120 +21155,146 @@
     },
     {
       "path": "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaNavigationService.java",
-      "sha256": "266fb93764dc824be0e9c8a5c0f55169fb36ee5d93e85bd5365a9608f8584ae9",
+      "sha256": "7c5ff189ddee511598ededcf03663fbc13b5fb18abc2d019dd02e0afce89f327",
       "allocatedModels": [
         "MapsNavigation",
-        "NavigationProgress"
+        "NavigationProgress",
+        "NativeNavigationOwnership"
       ],
+      "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
       "classification": "syntactic-candidates",
       "owners": [
         {
-          "owner": "AlphaNavigationService.StopListener.stopped@36",
-          "line": 36,
+          "owner": "AlphaNavigationService.StopListener.stopped@39",
+          "line": 39,
           "bindings": 2,
+          "writes": 0
+        },
+        {
+          "owner": "AlphaNavigationService.Session",
+          "line": 42,
+          "bindings": 4,
+          "writes": 4
+        },
+        {
+          "owner": "AlphaNavigationService.Session.<init>@46",
+          "line": 46,
+          "bindings": 4,
+          "writes": 0
+        },
+        {
+          "owner": "AlphaNavigationService.Session.matches@52",
+          "line": 52,
+          "bindings": 1,
           "writes": 0
         },
         {
           "owner": "AlphaNavigationService",
-          "line": 38,
-          "bindings": 8,
-          "writes": 11
+          "line": 57,
+          "bindings": 7,
+          "writes": 9
         },
         {
-          "owner": "AlphaNavigationService.setStopListener@45",
-          "line": 45,
-          "bindings": 1,
-          "writes": 0
-        },
-        {
-          "owner": "AlphaNavigationService.clearStopListener@46",
-          "line": 46,
-          "bindings": 1,
-          "writes": 0
-        },
-        {
-          "owner": "AlphaNavigationService.declared@55",
-          "line": 55,
+          "owner": "AlphaNavigationService.declared@71",
+          "line": 71,
           "bindings": 3,
           "writes": 0
         },
         {
-          "owner": "AlphaNavigationService.locationGranted@62",
-          "line": 62,
+          "owner": "AlphaNavigationService.locationGranted@78",
+          "line": 78,
           "bindings": 1,
           "writes": 0
         },
         {
-          "owner": "AlphaNavigationService.start@67",
-          "line": 67,
+          "owner": "AlphaNavigationService.start@83",
+          "line": 83,
+          "bindings": 10,
+          "writes": 3
+        },
+        {
+          "owner": "AlphaNavigationService.update@111",
+          "line": 111,
+          "bindings": 6,
+          "writes": 3
+        },
+        {
+          "owner": "AlphaNavigationService.stop@124",
+          "line": 124,
+          "bindings": 5,
+          "writes": 1
+        },
+        {
+          "owner": "AlphaNavigationService.retireLocked@135",
+          "line": 135,
+          "bindings": 2,
+          "writes": 0
+        },
+        {
+          "owner": "AlphaNavigationService.notifyStopped@145",
+          "line": 145,
+          "bindings": 2,
+          "writes": 0
+        },
+        {
+          "owner": "AlphaNavigationService.dispatchStop@149",
+          "line": 149,
           "bindings": 4,
           "writes": 0
         },
         {
-          "owner": "AlphaNavigationService.update@72",
-          "line": 72,
+          "owner": "AlphaNavigationService.intent@164",
+          "line": 164,
           "bindings": 4,
-          "writes": 0
+          "writes": 1
         },
         {
-          "owner": "AlphaNavigationService.stop@81",
-          "line": 81,
-          "bindings": 4,
-          "writes": 0
-        },
-        {
-          "owner": "AlphaNavigationService.finish@88",
-          "line": 88,
-          "bindings": 3,
-          "writes": 2
-        },
-        {
-          "owner": "AlphaNavigationService.intent@98",
-          "line": 98,
-          "bindings": 3,
-          "writes": 0
-        },
-        {
-          "owner": "AlphaNavigationService.bounded@102",
-          "line": 102,
+          "owner": "AlphaNavigationService.bounded@170",
+          "line": 170,
           "bindings": 2,
           "writes": 1
         },
         {
-          "owner": "AlphaNavigationService.onBind@111",
-          "line": 111,
+          "owner": "AlphaNavigationService.onBind@179",
+          "line": 179,
           "bindings": 1,
           "writes": 0
         },
         {
-          "owner": "AlphaNavigationService.onStartCommand@113",
-          "line": 113,
+          "owner": "AlphaNavigationService.onStartCommand@181",
+          "line": 181,
           "bindings": 9,
-          "writes": 0
+          "writes": 3
         },
         {
-          "owner": "AlphaNavigationService.onTaskRemoved@146",
-          "line": 146,
+          "owner": "AlphaNavigationService.onTaskRemoved@213",
+          "line": 213,
+          "bindings": 2,
+          "writes": 1
+        },
+        {
+          "owner": "AlphaNavigationService.onDestroy@223",
+          "line": 224,
+          "bindings": 1,
+          "writes": 1
+        },
+        {
+          "owner": "AlphaNavigationService.endIfIdle@233",
+          "line": 233,
           "bindings": 1,
           "writes": 0
         },
         {
-          "owner": "AlphaNavigationService.end@160",
-          "line": 160,
-          "bindings": 1,
-          "writes": 0
-        },
-        {
-          "owner": "AlphaNavigationService.notification@165",
-          "line": 165,
+          "owner": "AlphaNavigationService.notification@239",
+          "line": 239,
           "bindings": 8,
           "writes": 0
         }
       ],
       "parseErrors": [],
       "asynchronous": 0,
-      "unassignedWrites": 7
+      "unassignedWrites": 3
     },
     {
       "path": "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaNoteAudioPlugin.java",
@@ -29181,11 +29209,12 @@
     },
     {
       "path": "apps/app/src/browser/calendar-deletions.ts",
-      "sha256": "168b052147eb37e274f5704236eb5579c1610a46ba9b1a7850b6673c5cf21f97",
+      "sha256": "e69631651b24124df509cb3e8defeb0143e63ace8bcc23050f252e713728514e",
       "allocatedModels": [
         "CalendarSync",
         "BrowserJournalRetention"
       ],
+      "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
       "classification": "syntactic-candidates",
       "owners": [
@@ -29198,7 +29227,7 @@
       ],
       "parseErrors": [],
       "asynchronous": 0,
-      "unassignedWrites": 3
+      "unassignedWrites": 2
     },
     {
       "path": "apps/app/src/browser/calendar-editor-draft.ts",
@@ -29483,12 +29512,13 @@
     },
     {
       "path": "apps/app/src/browser/calendar.ts",
-      "sha256": "349a1b5846168a1b4c2b804a5e4d81a346dabc16c64850c591ca0e83c0c2df31",
+      "sha256": "76e34c16d2a5bf77eb834810b297f0c40917d73d1e40ad65e6fe8275c443311d",
       "allocatedModels": [
         "CalendarSync",
         "BrowserDeletionPoll",
         "BrowserJournalRetention"
       ],
+      "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
       "classification": "syntactic-candidates",
       "owners": [
@@ -29567,7 +29597,7 @@
       ],
       "parseErrors": [],
       "asynchronous": 4,
-      "unassignedWrites": 11
+      "unassignedWrites": 9
     },
     {
       "path": "apps/app/src/browser/camera-focus.ts",
@@ -29737,12 +29767,13 @@
     },
     {
       "path": "apps/app/src/browser/daily.ts",
-      "sha256": "c7af57fc06d6d4f86e29dae139e7bae0f228fa4ab07befadd4114c5319c07b5c",
+      "sha256": "76a44e3231014073dfdd3d6251ec528df0aecd7461179390a8fc03a82ae070f2",
       "allocatedModels": [
         "BrowserSession",
         "BrowserDeletionPoll",
         "BrowserJournalRetention"
       ],
+      "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
       "classification": "syntactic-candidates",
       "owners": [
@@ -29785,7 +29816,7 @@
       ],
       "parseErrors": [],
       "asynchronous": 1,
-      "unassignedWrites": 11
+      "unassignedWrites": 8
     },
     {
       "path": "apps/app/src/browser/deleted-note-origins.ts",
@@ -30233,7 +30264,8 @@
       "path": "apps/app/src/browser/device-preferences.ts",
       "sha256": "646761ac633666987a37e72b4339dfa4e0c149f754959500c8152357f6b1835e",
       "allocatedModels": [
-        "BrowserSession"
+        "BrowserSession",
+        "GoogleAccessPublication"
       ],
       "sourcePathClass": "other-source-path",
       "classification": "syntactic-candidates",
@@ -30466,7 +30498,8 @@
       "allocatedModels": [
         "BrowserSession",
         "DurableStore",
-        "NotesLifecycle"
+        "NotesLifecycle",
+        "GoogleAccessPublication"
       ],
       "sourcePathClass": "other-source-path",
       "classification": "syntactic-candidates",
@@ -30697,7 +30730,7 @@
     },
     {
       "path": "apps/app/src/browser/journal-retention.ts",
-      "sha256": "ebd423507e014dfb420aaffa9715ef84262de5dda8aa37b02b7496830efa0cb5",
+      "sha256": "f21ed41d07572eafa19f30a3a2d987c28f09483b0202500a37b658962c687088",
       "allocatedModels": [
         "DeletionJournal",
         "DurableStore",
@@ -31091,7 +31124,8 @@
       "sha256": "4d5b233491d275cb9fff8f333fd5c3a6c9d1bcb3144ec0d8eceb92e6d28a3b36",
       "allocatedModels": [
         "BrowserSession",
-        "DurableStore"
+        "DurableStore",
+        "GoogleAccessPublication"
       ],
       "sourcePathClass": "other-source-path",
       "classification": "syntactic-candidates",
@@ -31214,11 +31248,12 @@
     },
     {
       "path": "apps/app/src/browser/reminder-deletions.ts",
-      "sha256": "5ee15a9c2d962bf738e42beeb78d55e8abb9af194b75b0bf58efd2bfd0b544b2",
+      "sha256": "cae0cb3978bcc9864ff21033f68a90cae962cc39b56bba0ffce7755008a6fdaf",
       "allocatedModels": [
         "DeletionJournal",
         "BrowserJournalRetention"
       ],
+      "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
       "classification": "syntactic-candidates",
       "owners": [
@@ -31231,7 +31266,7 @@
       ],
       "parseErrors": [],
       "asynchronous": 0,
-      "unassignedWrites": 3
+      "unassignedWrites": 2
     },
     {
       "path": "apps/app/src/browser/reminder-recovery.ts",
@@ -42433,11 +42468,13 @@
     },
     {
       "path": "apps/app/src/runtime/google-agent-access.ts",
-      "sha256": "1aeb223979c21b8ca5670fcc16472776683a8176fcdf233b794d8cd5fabb5081",
+      "sha256": "55e1b1d5f527f42c5b50aa8a090cfdae9bed31c167eba6f34a0f42add0c964e8",
       "allocatedModels": [
         "ServiceAuthorization",
-        "GoogleConsentAdmission"
+        "GoogleConsentAdmission",
+        "GoogleAccessPublication"
       ],
+      "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
       "classification": "syntactic-candidates",
       "owners": [
@@ -42449,7 +42486,7 @@
         }
       ],
       "parseErrors": [],
-      "asynchronous": 2,
+      "asynchronous": 3,
       "unassignedWrites": 4
     },
     {
@@ -66382,7 +66419,8 @@
       "allocatedModels": [
         "CredentialVault",
         "IdentitySession",
-        "NativeCredentialMutation"
+        "NativeCredentialMutation",
+        "GoogleBrowserReturnClaim"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -66704,7 +66742,8 @@
       "path": "vendor/eliza/packages/auth/android/src/main/java/ai/eliza/auth/cloud/CloudSignInFlow.java",
       "sha256": "5a333c1b5e6295ff30afd4959bbb5d25aaa5a6d97da61b0ea9a82b6d639b4242",
       "allocatedModels": [
-        "IdentitySession"
+        "IdentitySession",
+        "GoogleBrowserReturnClaim"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -66905,7 +66944,8 @@
       "path": "vendor/eliza/packages/auth/android/src/main/java/ai/eliza/auth/cloud/CloudSignInPlugin.java",
       "sha256": "0c2ba91faf22459538bd852cb305507ac2b17982afbe6bdc6e8465526a1ba1d4",
       "allocatedModels": [
-        "IdentitySession"
+        "IdentitySession",
+        "GoogleBrowserReturnClaim"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -218182,6 +218222,6 @@
   ],
   "detail": {
     "path": "test-results/quint-state-audit/details.json",
-    "sha256": "d5800355b5f0dcc21f57be164f6952949aefab84d1e070245d1d79d692d5e757"
+    "sha256": "788f981670d0b666c4e636ac8a1e11b6a279dae34430e4f05f31f2c1f1e3d2cf"
   }
 }

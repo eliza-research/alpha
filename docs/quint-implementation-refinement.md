@@ -124,6 +124,7 @@ admission using the repository qualification receipt. The local build and APK
 verifier passed on commit `839325d966` for the standalone and launcher debug
 and unsigned release APKs. Both unsigned releases report
 `distributable: false`. The build also generated both instrumentation APKs.
+The same build and APK verification passed again on commit `b7d63199b8`.
 Installed emulator HOME behavior, full AOSP boot, real integrations and
 physical-device acceptance each require their own evidence.
 
@@ -217,3 +218,17 @@ controller releases its foreground location watch. The launcher observer
 campaign checks exact subscription retirement and timer cleanup. The browser
 journal retention campaign checks production count and age cutoffs, pending
 rows and replay claims against actual Calendar and Reminder source.
+
+The Google access publication campaign checks five schedules and 29
+checkpoints around an exclusive lock, canonical preferences and host replies.
+After a lost acknowledgement, the controller attempts to republish the
+canonical choice under the same lock. The original caller still receives the
+failure. If corrective publication fails before the host write, the model
+retains the possibility that the host and preferences diverge.
+
+The native Google browser campaign checks 23 schedules and 121 checkpoints
+against the authenticated Java callback and grace queues. The native Maps
+campaign checks 21 schedules and 107 checkpoints around exact command
+authority, replacement, foreground startup and teardown. Browser retention
+also checks prototype-shaped operation IDs with actual Calendar and Reminder
+stores. Recovery for older orphaned Reminder markers remains open.
