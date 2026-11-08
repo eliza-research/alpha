@@ -12,7 +12,7 @@ node --test test/quint-signin-refinement.test.mjs
 node --import=tsx specs/quint/refinement/services/sign-in-coordinator.mjs
 ```
 
-The adapter remains separate from the fourteen-model aggregate. Its fifteen schedules
+The adapter runs in the fourteen-model services aggregate and also has a standalone command. Its fifteen schedules
 cover initial successful sign-in, successful replacement, retryable acknowledgement,
 pre-commit cancellation, post-commit cancellation, acknowledgement after restart,
 failed callback retirement with and without a waiting renderer, failed cancellation

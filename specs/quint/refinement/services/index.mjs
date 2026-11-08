@@ -10,6 +10,8 @@ import {readingRefinement} from './reading.mjs';
 import {scanRefinement} from './scan.mjs';
 import {credentialRefinement} from './credentials.mjs';
 import {pdfRefinement} from './pdf.mjs';
+import {runSignInCoordinatorRefinement} from './sign-in-coordinator.mjs';
+import {fileURLToPath} from 'node:url';
 
 export async function runServicesRefinement() {
   const receipts = [];
@@ -19,8 +21,9 @@ export async function runServicesRefinement() {
     const result = await check();
     receipts.push(...(Array.isArray(result) ? result : [result]));
   }
+  receipts.push(await runSignInCoordinatorRefinement(undefined, [fileURLToPath(import.meta.url)]));
   const obligations = [
-    {model: 'IdentitySession', obligation: 'Native sign-in orchestration', reason: 'Observed Pending parsing, state matching and expiry do not cover callback burn, credential/receipt commit, acknowledgement and transient-session cleanup.', requires: ['controlled native sign-in transport', 'encrypted store', 'process recreation']},
+    {model: 'IdentitySession', obligation: 'Native authorization, encrypted storage and wider concurrent activation', reason: 'Fifteen full-plugin schedules now cover callback retirement, cancellation races, receipt/key commits, acknowledgement, previous-key revocation and restart. Native authorization timing, actual Keystore behavior and a new interactive attempt overlapping an earlier post-key acknowledgement remain further obligations.'},
     {model: 'ServiceAuthorization', obligation: 'Managed-service dispatch authorization', reason: 'Entitlement refresh and admission views execute; exact route validation and server authorization still need their own dispatch trace adapter.'},
     {model: 'GoogleAccounts', obligation: 'Account-list consumers and native return delivery', reason: 'Connect/disconnect orchestration executes with controlled browser return and retirement ports; Inbox/Calendar cache consumers and installed App Link delivery remain separate.'},
     {model: 'CalendarSync', obligation: 'Linked native Calendar consent and mutation', reason: 'Outbox claim/revision/undo/restart/unknown-outcome paths execute. Linked-store reconciliation and installed Calendar provider mutation remain outside this adapter.'},

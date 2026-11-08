@@ -10,7 +10,7 @@ const defaultScenarios = [
   'stale-read-replacement', 'cancel-then-email', 'cancel-then-phone', 'callback-cas-lost',
 ];
 
-export async function runSignInCoordinatorRefinement(scenarios = defaultScenarios) {
+export async function runSignInCoordinatorRefinement(scenarios = defaultScenarios, extraSources = []) {
   const base = 'android/app/src/main/java/ai/elizaresearch/alphaphone/';
   const product = [
     'AlphaCloudSignInPlugin.java', 'CloudSignInFlow.java', 'CloudSignInReadiness.java',
@@ -24,7 +24,7 @@ export async function runSignInCoordinatorRefinement(scenarios = defaultScenario
   const sources = [
     ...product, base + 'AlphaCredentialStore.java', 'docs/architecture.md', ...fixture,
     fileURLToPath(import.meta.url), 'specs/quint/refinement/services/sign-in-platform.mjs',
-    'specs/quint/refinement/native/java.mjs', 'specs/quint/refinement/native/Trace.java',
+    'specs/quint/refinement/native/java.mjs', 'specs/quint/refinement/native/Trace.java', ...extraSources,
   ];
   const driverHashes = captureInputs(sources);
   const platform = signInPlatform();
