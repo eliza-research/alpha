@@ -20,10 +20,10 @@ test('Sign out asks first and does nothing when declined',()=>{
  const accepted=page();accepted.out.actions.find(a=>a.label==='Sign out').go();assert.deepEqual(accepted.calls,['signOut']);
  assert.ok(!accepted.out.actions.some(a=>a.label==='Cancel'));
 });
-test('the status line is the plan and its renewal; expiring sign-in and redeem appear only when they apply',()=>{
+test('the status line gives the plan and renewal, with explicit redemption for every signed-in account',()=>{
  assert.equal(page().out.status,'Synthetic plan · Access until day '+plan.endsAt);
  assert.equal(page().out.detail,'synthetic@example.invalid');
- assert.deepEqual(page().out.actions.map(a=>a.label),['Manage plan','Sign out']);
+ assert.deepEqual(page().out.actions.map(a=>a.label),['Redeem code','Manage plan','Sign out']);
  const expiring=page({plan:{keyExpiring:true,offerRedeem:true}});
  assert.equal(expiring.out.status,'Sign-in expiring');
  assert.deepEqual(expiring.out.actions.map(a=>a.label),['Sign in again','Redeem code','Manage plan','Sign out']);
