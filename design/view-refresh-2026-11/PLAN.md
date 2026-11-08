@@ -325,8 +325,9 @@ Final:
 
 ## Formal models (written and checked in TLA+ 2026-11-06, migrated to Quint 2026-11-07)
 The models are the Quint modules `specs/quint/legacy/{CameraSession,PhotosLibrary,NotesView,FilesBrowser}.qnt`,
-registered in `specs/quint/legacy/view-refresh.manifest.json` and checked by the repository
-Quint runner (`npm run quint:check`, `quint:compare`, `quint:temporal`). Each original TLA+
+registered in `specs/quint/legacy/view-refresh.manifest.json` for the repository Quint runner
+(`npm run quint:*`, which lands with the central framework) and checked directly with
+`node_modules/.bin/quint` meanwhile (commands and results in `model-results.md`). Each original TLA+
 configuration is one checker initializer: `checkerInit` is the proposed design (`Design.cfg`).
 Each as-built initializer (`AsBuilt_*`) turns off one fix, to show that today's code has the
 defect. Each ablation initializer (`Ablate_*`) turns off one design rule, to show the rule is
