@@ -4,6 +4,7 @@ import {checkApprovalServiceRefinement} from '../../legacy/core/check-approval-s
 import {checkEmbeddingSqlRefinement} from '../../legacy/core/check-embedding-sql-refinement.mjs';
 import {checkFactWriteDedupeRefinement} from '../../legacy/core/check-fact-write-dedupe-refinement.mjs';
 import {checkInteractionSessionRefinement} from '../../legacy/core/check-interaction-session-refinement.mjs';
+import {checkPluginLifecycleRefinement} from '../../legacy/core/check-plugin-lifecycle-refinement.mjs';
 import {runProviderExecutionRefinement} from '../../legacy/core/check-provider-execution-refinement.mjs';
 import {checkRoomHandlerQueueRefinement} from '../../legacy/core/check-room-handler-queue-refinement.mjs';
 import {checkRuntimeLifecycleRefinement} from '../../legacy/core/check-runtime-lifecycle-refinement.mjs';
@@ -13,6 +14,14 @@ import {checkTaskSchedulingRefinement} from '../../legacy/core/check-task-schedu
 import {runTaskSchedulerRefinement} from '../services/task-scheduler/index.mjs';
 
 const driver = fileURLToPath(import.meta.url);
+const pluginDifferences = {
+  PluginLateStartConnector: ['Late service start can register a connector after unload',
+    'The runtime stops the late instance but leaves its connector registered after ownership has been removed. The original design forbids that orphan.'],
+  PluginRegistrationRollbackVisibility: ['Registration rollback removes public visibility before settlement',
+    'During held disposal the runtime hides the plugin while both registrations are pending. The original action combines removal and settlement.'],
+  PluginRuntimeStopLookup: ['Runtime shutdown clears the public service lookup',
+    'The source clears both service indexes. The original final shutdown step leaves the public lookup unchanged.'],
+};
 
 export async function runLegacyRefinement() {
   const receipts = [], obligations = [];
@@ -22,6 +31,14 @@ export async function runLegacyRefinement() {
     ['CoreEmbeddingDimension', () => checkEmbeddingSqlRefinement([driver])],
     ['CoreFactWriteDedupe', () => checkFactWriteDedupeRefinement([driver])],
     ['CoreInteractionSession', () => checkInteractionSessionRefinement(undefined, [driver])],
+    ['CorePluginLifecycle', async () => {
+      const {receipts, mismatches} = await checkPluginLifecycleRefinement([driver]);
+      const obligations = mismatches.map(mismatch => {
+        const [obligation, reason] = pluginDifferences[mismatch.name];
+        return {model: 'CorePluginLifecycle', obligation, reason, evidence: mismatch.receiptPath};
+      });
+      return {receipts, obligations};
+    }],
     ['CoreProviderExecution', runProviderExecutionRefinement],
     ['CoreRoomHandlerQueue', () => checkRoomHandlerQueueRefinement(undefined, [driver])],
     ['CoreRuntimeLifecycle', () => checkRuntimeLifecycleRefinement([driver])],

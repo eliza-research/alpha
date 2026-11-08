@@ -431,3 +431,11 @@ can join the old flight and receive an empty result before its next read can
 dispatch. The source currently binds the port during browser startup without
 a mounted shade consumer. The campaign leaves explicit opens, mark-read and
 readback reconciliation to a separate projection.
+
+The original plugin lifecycle checks six source schedules and 33
+checkpoints across its three profiles. Three separate mismatch receipts
+cover registration rollback visibility, a connector registered by a late
+service start after withdrawal, and final shutdown lookup clearing. The
+late service instance is stopped while its connector remains registered.
+The original model forbids that orphan. All three original finite profiles
+passed TLC on the translated relation.

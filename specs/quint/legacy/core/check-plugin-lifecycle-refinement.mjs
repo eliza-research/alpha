@@ -323,7 +323,7 @@ export async function checkPluginLifecycleRefinement(extraSources = []) {
     const mismatch = JSON.parse(readFileSync(out, 'utf8'));
     assert.equal(mismatch.results[0].kind, 'observation-mismatch');
     assert.ok(mismatch.driverInputsBound);
-    mismatches.push(mismatch);
+    mismatches.push({...mismatch, name, receiptPath: out});
   }
   return {receipts, mismatches};
 }
