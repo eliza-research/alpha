@@ -22,6 +22,10 @@ const title=(page:Page)=>page.getByRole('textbox',{name:'Title',exact:true});
 
 /** Two saved recordings with reviewed action items, written through the real Notes port. */
 async function setup(page:Page){
+ // The hand-off drafts for tomorrow 9:00 and the Calendar week strip runs Monday to Sunday, so on a
+ // Sunday the saved day is in the next week, which openCalendarItem cannot reach. Start the clock on
+ // a Wednesday morning (local time); it keeps running, so timed steps such as pending deletions still elapse.
+ await page.clock.install({time:new Date(2027,2,10,8,0,0)});
  await page.addInitScript(()=>{if(!localStorage.getItem('alpha.connection.selection.v1'))localStorage.setItem('alpha.connection.selection.v1',JSON.stringify({kind:'offline'}));});
  await page.goto('/?mode=dev&tools=1',{waitUntil:'domcontentloaded'});
  await openLegacyNotes(page);
