@@ -96,7 +96,7 @@ test('retry facts: body, Retry-After seconds or date, and bounds',()=>{
  assert.equal(cloudVoiceLimitOf({code:'voice-http-402',data:{retryAfterSeconds:5}}),null);
 });
 
-test('native CloudVoiceLimit keeps the same facts and never the body text',()=>{
+test('native CloudVoiceLimit keeps the same facts, never the body text, and replays only a cache-warming 503',()=>{
  const out=fs.mkdtempSync(path.join(os.tmpdir(),'alpha-cloud-voice-limit-'));
  try{
   const binary=name=>process.env.JAVA_HOME?path.join(process.env.JAVA_HOME,'bin',name):name;

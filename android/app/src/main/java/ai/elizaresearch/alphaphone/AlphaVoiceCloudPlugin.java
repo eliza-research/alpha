@@ -69,7 +69,7 @@ public final class AlphaVoiceCloudPlugin extends LocalSpeechBridgePlugin {
   if(failure instanceof VoiceHttpException){VoiceHttpException limited=(VoiceHttpException)failure;call.reject(message,"voice-http-"+limited.status,limitData(limited.limit));return;}
   super.rejectFailure(call,message,code,failure);
  }
- /** A 429's retry facts only (CloudVoiceLimit): the body is read bounded and never forwarded. */
+ /** A 429's or 503's retry facts only (CloudVoiceLimit): the body is read bounded and never forwarded. */
  private static CloudVoiceLimit limitOf(HttpURLConnection c){
   String body=null;
   try(InputStream in=c.getErrorStream()){
@@ -77,12 +77,19 @@ public final class AlphaVoiceCloudPlugin extends LocalSpeechBridgePlugin {
   }catch(Exception ignored){/* A body that is absent or oversized leaves only Retry-After. */}
   return limitOf(c.getHeaderField("Retry-After"),body);
  }
+ /** The wait before replaying Cloud's pre-admission cache-warming 503, or -1 for any other answer. */
+ private static long warmingReplay(HttpURLConnection c)throws IOException{return c.getResponseCode()==503?CloudVoiceLimit.warmingWaitMs(limitOf(c)):-1;}
+ /** Closes the refused attempt and waits, ending early on Stop or teardown. */
+ private void replayAfter(HttpURLConnection c,long waitMs,SpeechRequestGate.Request request)throws Exception{
+  c.disconnect();long end=System.nanoTime()+waitMs*1_000_000L;
+  while(System.nanoTime()<end){if(request.cancelled||destroyed())throw new IOException();Thread.sleep(50);}
+ }
  /** The one 429 reader for the batch and streaming routes: `Retry-After` and an already bounded body. */
  static CloudVoiceLimit limitOf(String retryAfter,String body){
   String code=null,retryAt=null,resetAt=null;Number seconds=null;
   if(body!=null)try{
    JSONObject parsed=new JSONObject(body);JSONObject error=parsed.optJSONObject("error");JSONObject row=error!=null?error:parsed;
-   code=jsonText(row,"code");retryAt=jsonText(row,"retryAt");resetAt=jsonText(row,"resetAt");
+   code=jsonText(row,"code");retryAt=jsonText(row,"retryAt");resetAt=jsonText(row,"resetAt");if(code==null&&row!=parsed)code=jsonText(parsed,"code");
    Object value=row.opt("retryAfterSeconds");if(value instanceof Number)seconds=(Number)value;
   }catch(Exception ignored){/* A body that is not JSON leaves only Retry-After. */}
   return CloudVoiceLimit.read(retryAfter,code,seconds,retryAt,resetAt,System.currentTimeMillis());
@@ -122,9 +129,13 @@ public final class AlphaVoiceCloudPlugin extends LocalSpeechBridgePlugin {
   String boundary="AlphaVoice"+UUID.randomUUID().toString().replace("-","");
   byte[] prefix=("--"+boundary+"\r\nContent-Disposition: form-data; name=\"provider\"\r\n\r\ncartesia\r\n--"+boundary+"\r\nContent-Disposition: form-data; name=\"audio\"; filename=\"recording.wav\"\r\nContent-Type: audio/wav\r\n\r\n").getBytes(StandardCharsets.US_ASCII);
   byte[] suffix=("\r\n--"+boundary+"--\r\n").getBytes(StandardCharsets.US_ASCII);
+  // The decoded audio is kept until the answer so a cache-warming 503 can be replayed once.
+  for(int attempt=0;;attempt++){
   request.failureCode="voice-stt-connect";cloudTimings.mark(timing,"upload-start");c=connect(call,"stt",request);
   request.failureCode="voice-stt-upload";c.setRequestProperty("Content-Type","multipart/form-data; boundary="+boundary);c.setFixedLengthStreamingMode(prefix.length+audio.length+suffix.length);
   try(OutputStream out=c.getOutputStream()){if(request.cancelled)throw new IOException();out.write(prefix);out.write(audio);out.write(suffix);}cloudTimings.mark(timing,"upload-end");
+  request.failureCode="voice-stt-response";long wait=attempt<1?warmingReplay(c):-1;if(wait<0)break;replayAfter(c,wait,request);
+  }
   }finally{Arrays.fill(audio,(byte)0);}
   request.failureCode="voice-stt-response";answeredTimed(c,timing);CloudSpeechPolicy.requireProvider(BuildConfig.ELIZA_RUNTIME_PROFILE,c.getHeaderField("X-Eliza-STT-Provider"));byte[] response;try(InputStream in=c.getInputStream()){response=read(in,256*1024,request);}cloudTimings.mark(timing,"body-end");JSONObject data=new JSONObject(new String(response,StandardCharsets.UTF_8));Object transcript=data.get("transcript");if(!(transcript instanceof String))throw new IOException();
   if(request.cancelled||destroyed())throw new IOException();JSObject result=new JSObject();result.put("text",transcript);result.put("local",false);request.result=result;request.failureCode=null;completed=true;
@@ -197,7 +208,13 @@ public final class AlphaVoiceCloudPlugin extends LocalSpeechBridgePlugin {
  /** Cloud or paired synthesis into a prepared clip on the shared playback. */
  private void synthesizeAudio(PluginCall call,boolean paired,String reviewed){submit(call,request->{
   CloudSpeechTimings.Record timing=paired?null:cloudTimings.begin("tts");boolean completed=false;try{
-  String text=required(reviewed==null?call.getString("text"):reviewed,5000);cloudTimings.mark(timing,"upload-start");if(!paired)request.failureCode="voice-tts-connect";HttpURLConnection c=paired?connectPaired(call,false,request,false):connect(call,"tts",request);request.failureCode=null;byte[] body=(paired?PairedSpeechContract.ttsBody(text):new JSONObject().put("text",text).put("format","mp3")).toString().getBytes(StandardCharsets.UTF_8);if(paired)c.setRequestProperty("X-Request-Id",PairedSpeechContract.requestId(call.getString("requestId")));c.setRequestProperty("Content-Type","application/json");c.setFixedLengthStreamingMode(body.length);try(OutputStream out=c.getOutputStream()){if(request.cancelled)throw new IOException();out.write(body);}cloudTimings.mark(timing,"upload-end");if(paired)answered(c);else answeredTimed(c,timing);
+  String text=required(reviewed==null?call.getString("text"):reviewed,5000);cloudTimings.mark(timing,"upload-start");byte[] body=(paired?PairedSpeechContract.ttsBody(text):new JSONObject().put("text",text).put("format","mp3")).toString().getBytes(StandardCharsets.UTF_8);HttpURLConnection c;
+  // Cloud's cache-warming 503 is replayed at most twice; paired agents are never replayed.
+  for(int attempt=0;;attempt++){
+  if(!paired)request.failureCode="voice-tts-connect";c=paired?connectPaired(call,false,request,false):connect(call,"tts",request);request.failureCode=null;if(paired)c.setRequestProperty("X-Request-Id",PairedSpeechContract.requestId(call.getString("requestId")));c.setRequestProperty("Content-Type","application/json");c.setFixedLengthStreamingMode(body.length);try(OutputStream out=c.getOutputStream()){if(request.cancelled)throw new IOException();out.write(body);}cloudTimings.mark(timing,"upload-end");
+  long wait=!paired&&attempt<2?warmingReplay(c):-1;if(wait<0)break;replayAfter(c,wait,request);
+  }
+  if(paired)answered(c);else answeredTimed(c,timing);
   if(!paired)CloudSpeechPolicy.requireProvider(BuildConfig.ELIZA_RUNTIME_PROFILE,c.getHeaderField("X-Eliza-TTS-Provider"));
   String mime=c.getContentType();if(paired)PairedSpeechContract.ttsHeaders(call.getString("requestId"),c.getHeaderField("X-Request-Id"),c.getHeaderField("X-Eliza-Speech-Provider"),mime);if(mime==null||!Set.of("audio/mpeg","audio/mp3","audio/wav").contains(mime.split(";")[0].trim().toLowerCase(Locale.ROOT)))throw new IOException();byte[] audio;try(InputStream in=c.getInputStream()){audio=read(in,AUDIO_LIMIT,request);}cloudTimings.mark(timing,"body-end");if(audio.length==0)throw new IOException();
   publishPreparedAudio(call,request,audio);completed=request.failure==null&&request.result!=null;if(completed)cloudTimings.mark(timing,"prepared");
