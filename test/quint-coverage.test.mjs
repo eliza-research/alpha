@@ -105,6 +105,11 @@ test('source discovery follows consumed shared modules and rejects a stale clien
     write('.eliza/client-features/.source.json', {baseCommit: 'fixture', sourceFiles: {'packages/ui/src/state.ts': 'fixture'}});
     write('android/consumer-host.json', {profile: {modules: [{source: {root: 'upstream', path: 'plugins/fixture/android'}}]}, residentHost: {helpers: ['packages/runtime/Owner.java']}});
     write('patches/eliza/native-manifest.json', {modules: [], patches: []});
+    for (const family of ['application', 'services', 'native', 'legacy']) {
+      write(`specs/quint/${family}/manifest.json`, family === 'services'
+        ? [{sources: ['vendor/eliza/plugins/worker/src/state.ts']}] : []);
+    }
+    write('vendor/eliza/plugins/worker/src/state.ts', 'export let queued = false;');
     write('vendor/eliza/packages/ui/src/state.ts', 'export let active = false;');
     write('vendor/eliza/plugins/fixture/android/src/main/java/Fixture.java', 'class Fixture {}');
     write('vendor/eliza/packages/runtime/Owner.java', 'class Owner {}');
@@ -117,6 +122,7 @@ test('source discovery follows consumed shared modules and rejects a stale clien
       'vendor/eliza/packages/runtime/Owner.java',
       'vendor/eliza/packages/ui/src/state.ts',
       'vendor/eliza/plugins/fixture/android/src/main/java/Fixture.java',
+      'vendor/eliza/plugins/worker/src/state.ts',
     ]);
     write('vendor/eliza/plugins/fixture/android/src/main/java/Added.java', 'class Added {}');
     assert.ok(JSON.parse(run().stdout).includes('vendor/eliza/plugins/fixture/android/src/main/java/Added.java'));

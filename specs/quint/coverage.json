@@ -50,7 +50,7 @@
         "NotificationCollection",
         "ResetRecovery"
       ],
-      "scope": "verification-support",
+      "scope": "application",
       "treatment": "domain-allocation",
       "reviewStatus": "retained-source-domain",
       "stateAnchors": [
@@ -84,7 +84,7 @@
         "NoticesAndCaches",
         "NotificationCollection"
       ],
-      "scope": "verification-support",
+      "scope": "application",
       "treatment": "domain-allocation",
       "reviewStatus": "retained-source-domain",
       "stateAnchors": [
@@ -110,7 +110,7 @@
         "NoticesAndCaches",
         "NotificationCollection"
       ],
-      "scope": "verification-support",
+      "scope": "application",
       "treatment": "domain-allocation",
       "reviewStatus": "retained-source-domain",
       "stateAnchors": [
@@ -147,7 +147,7 @@
         "Application",
         "DeviceActions"
       ],
-      "scope": "verification-support",
+      "scope": "application",
       "treatment": "domain-allocation",
       "reviewStatus": "retained-source-domain",
       "stateAnchors": []
@@ -158,7 +158,7 @@
       "models": [
         "DeviceActions"
       ],
-      "scope": "verification-support",
+      "scope": "application",
       "treatment": "domain-allocation",
       "reviewStatus": "state-audit-required",
       "stateAnchors": []
@@ -170,7 +170,7 @@
         "Application",
         "DeviceActions"
       ],
-      "scope": "verification-support",
+      "scope": "application",
       "treatment": "domain-allocation",
       "reviewStatus": "state-audit-required",
       "stateAnchors": []
@@ -181,7 +181,7 @@
       "models": [
         "DeviceActions"
       ],
-      "scope": "verification-support",
+      "scope": "application",
       "treatment": "domain-allocation",
       "reviewStatus": "state-audit-required",
       "stateAnchors": []
@@ -192,7 +192,7 @@
       "models": [
         "DeviceActions"
       ],
-      "scope": "verification-support",
+      "scope": "application",
       "treatment": "domain-allocation",
       "reviewStatus": "state-audit-required",
       "stateAnchors": []
@@ -205,7 +205,7 @@
         "DurableStore",
         "WorkflowExecution"
       ],
-      "scope": "verification-support",
+      "scope": "application",
       "treatment": "domain-allocation",
       "reviewStatus": "retained-source-domain",
       "stateAnchors": [
@@ -226,7 +226,7 @@
         "DeviceActions",
         "ShellNavigation"
       ],
-      "scope": "verification-support",
+      "scope": "application",
       "treatment": "domain-allocation",
       "reviewStatus": "retained-source-domain",
       "stateAnchors": [
@@ -257,7 +257,7 @@
         "ResidentRuntime",
         "ShellNavigation"
       ],
-      "scope": "verification-support",
+      "scope": "application",
       "treatment": "domain-allocation",
       "reviewStatus": "state-audit-required",
       "stateAnchors": []
@@ -269,7 +269,7 @@
         "Application",
         "DeviceActions"
       ],
-      "scope": "verification-support",
+      "scope": "application",
       "treatment": "domain-allocation",
       "reviewStatus": "retained-source-domain",
       "stateAnchors": [
@@ -305,7 +305,7 @@
       "models": [
         "DeviceActions"
       ],
-      "scope": "verification-support",
+      "scope": "application",
       "treatment": "domain-allocation",
       "reviewStatus": "state-audit-required",
       "stateAnchors": []
@@ -317,7 +317,7 @@
         "Application",
         "DeviceActions"
       ],
-      "scope": "verification-support",
+      "scope": "application",
       "treatment": "domain-allocation",
       "reviewStatus": "retained-source-domain",
       "stateAnchors": [
@@ -334,7 +334,7 @@
         "AssistantConversation",
         "DeviceActions"
       ],
-      "scope": "verification-support",
+      "scope": "application",
       "treatment": "domain-allocation",
       "reviewStatus": "retained-source-domain",
       "stateAnchors": [
@@ -376,7 +376,7 @@
         "DeviceActions",
         "ResidentRuntime"
       ],
-      "scope": "verification-support",
+      "scope": "application",
       "treatment": "domain-allocation",
       "reviewStatus": "retained-source-domain",
       "stateAnchors": [
@@ -441,7 +441,7 @@
         "Application",
         "DeviceActions"
       ],
-      "scope": "verification-support",
+      "scope": "application",
       "treatment": "domain-allocation",
       "reviewStatus": "state-audit-required",
       "stateAnchors": []
@@ -454,7 +454,7 @@
         "BrowserSiteState",
         "DeviceActions"
       ],
-      "scope": "verification-support",
+      "scope": "application",
       "treatment": "domain-allocation",
       "reviewStatus": "state-audit-required",
       "stateAnchors": []
@@ -467,7 +467,7 @@
         "BrowserSiteState",
         "DeviceActions"
       ],
-      "scope": "verification-support",
+      "scope": "application",
       "treatment": "domain-allocation",
       "reviewStatus": "state-audit-required",
       "stateAnchors": []
@@ -480,7 +480,7 @@
         "BrowserSiteState",
         "DeviceActions"
       ],
-      "scope": "verification-support",
+      "scope": "application",
       "treatment": "domain-allocation",
       "reviewStatus": "state-audit-required",
       "stateAnchors": []
@@ -494,7 +494,7 @@
         "BrowserSiteState",
         "DeviceActions"
       ],
-      "scope": "verification-support",
+      "scope": "application",
       "treatment": "domain-allocation",
       "reviewStatus": "retained-source-domain",
       "stateAnchors": [
@@ -576,7 +576,7 @@
         "BrowserSiteState",
         "DeviceActions"
       ],
-      "scope": "verification-support",
+      "scope": "application",
       "treatment": "domain-allocation",
       "reviewStatus": "state-audit-required",
       "stateAnchors": []
@@ -589,7 +589,7 @@
         "BrowserSiteState",
         "DeviceActions"
       ],
-      "scope": "verification-support",
+      "scope": "application",
       "treatment": "domain-allocation",
       "reviewStatus": "retained-source-domain",
       "stateAnchors": [
@@ -683,7 +683,7 @@
         "BrowserSiteState",
         "DeviceActions"
       ],
-      "scope": "verification-support",
+      "scope": "application",
       "treatment": "domain-allocation",
       "reviewStatus": "state-audit-required",
       "stateAnchors": []
@@ -697,7 +697,7 @@
         "BrowserSiteState",
         "DeviceActions"
       ],
-      "scope": "verification-support",
+      "scope": "application",
       "treatment": "domain-allocation",
       "reviewStatus": "state-audit-required",
       "stateAnchors": []
@@ -710,7 +710,7 @@
         "BrowserSiteState",
         "DeviceActions"
       ],
-      "scope": "verification-support",
+      "scope": "application",
       "treatment": "domain-allocation",
       "reviewStatus": "state-audit-required",
       "stateAnchors": []
@@ -724,7 +724,7 @@
         "BrowserSiteState",
         "DeviceActions"
       ],
-      "scope": "verification-support",
+      "scope": "application",
       "treatment": "domain-allocation",
       "reviewStatus": "state-audit-required",
       "stateAnchors": []
@@ -738,7 +738,7 @@
         "BrowserSiteState",
         "DeviceActions"
       ],
-      "scope": "verification-support",
+      "scope": "application",
       "treatment": "domain-allocation",
       "reviewStatus": "state-audit-required",
       "stateAnchors": []
@@ -752,7 +752,7 @@
         "BrowserSiteState",
         "DeviceActions"
       ],
-      "scope": "verification-support",
+      "scope": "application",
       "treatment": "domain-allocation",
       "reviewStatus": "state-audit-required",
       "stateAnchors": []
@@ -766,7 +766,7 @@
         "BrowserSiteState",
         "DeviceActions"
       ],
-      "scope": "verification-support",
+      "scope": "application",
       "treatment": "domain-allocation",
       "reviewStatus": "state-audit-required",
       "stateAnchors": []
@@ -779,7 +779,7 @@
         "BrowserSiteState",
         "DeviceActions"
       ],
-      "scope": "verification-support",
+      "scope": "application",
       "treatment": "domain-allocation",
       "reviewStatus": "retained-source-domain",
       "stateAnchors": [
@@ -830,7 +830,7 @@
         "DeviceActions",
         "IdentitySession"
       ],
-      "scope": "verification-support",
+      "scope": "application",
       "treatment": "domain-allocation",
       "reviewStatus": "state-audit-required",
       "stateAnchors": []
@@ -843,7 +843,7 @@
         "BrowserSiteState",
         "DeviceActions"
       ],
-      "scope": "verification-support",
+      "scope": "application",
       "treatment": "domain-allocation",
       "reviewStatus": "state-audit-required",
       "stateAnchors": []
@@ -857,7 +857,7 @@
         "BrowserSiteState",
         "DeviceActions"
       ],
-      "scope": "verification-support",
+      "scope": "application",
       "treatment": "domain-allocation",
       "reviewStatus": "state-audit-required",
       "stateAnchors": []
@@ -870,7 +870,7 @@
         "BrowserSiteState",
         "DeviceActions"
       ],
-      "scope": "verification-support",
+      "scope": "application",
       "treatment": "domain-allocation",
       "reviewStatus": "state-audit-required",
       "stateAnchors": []
@@ -885,7 +885,7 @@
         "DeviceActions",
         "ResidentRuntime"
       ],
-      "scope": "verification-support",
+      "scope": "application",
       "treatment": "domain-allocation",
       "reviewStatus": "retained-source-domain",
       "stateAnchors": [
@@ -951,7 +951,7 @@
         "CalendarPresentation",
         "DeviceActions"
       ],
-      "scope": "verification-support",
+      "scope": "application",
       "treatment": "domain-allocation",
       "reviewStatus": "retained-source-domain",
       "stateAnchors": [
@@ -1017,7 +1017,7 @@
         "CalendarPresentation",
         "DeviceActions"
       ],
-      "scope": "verification-support",
+      "scope": "application",
       "treatment": "domain-allocation",
       "reviewStatus": "retained-source-domain",
       "stateAnchors": [
@@ -1043,7 +1043,7 @@
         "CalendarPresentation",
         "DeviceActions"
       ],
-      "scope": "verification-support",
+      "scope": "application",
       "treatment": "domain-allocation",
       "reviewStatus": "retained-source-domain",
       "stateAnchors": [
@@ -1087,7 +1087,7 @@
         "DeviceActions",
         "ResetRecovery"
       ],
-      "scope": "verification-support",
+      "scope": "application",
       "treatment": "domain-allocation",
       "reviewStatus": "state-audit-required",
       "stateAnchors": []
@@ -1102,7 +1102,7 @@
         "DeviceActions",
         "ResetRecovery"
       ],
-      "scope": "verification-support",
+      "scope": "application",
       "treatment": "domain-allocation",
       "reviewStatus": "retained-source-domain",
       "stateAnchors": [
@@ -1144,7 +1144,7 @@
         "CalendarPresentation",
         "DeviceActions"
       ],
-      "scope": "verification-support",
+      "scope": "application",
       "treatment": "domain-allocation",
       "reviewStatus": "retained-source-domain",
       "stateAnchors": [
@@ -1234,7 +1234,7 @@
         "CalendarPresentation",
         "DeviceActions"
       ],
-      "scope": "verification-support",
+      "scope": "application",
       "treatment": "domain-allocation",
       "reviewStatus": "state-audit-required",
       "stateAnchors": []
@@ -1247,7 +1247,7 @@
         "CalendarPresentation",
         "DeviceActions"
       ],
-      "scope": "verification-support",
+      "scope": "application",
       "treatment": "domain-allocation",
       "reviewStatus": "state-audit-required",
       "stateAnchors": []
@@ -1260,7 +1260,7 @@
         "CalendarPresentation",
         "DeviceActions"
       ],
-      "scope": "verification-support",
+      "scope": "application",
       "treatment": "domain-allocation",
       "reviewStatus": "retained-source-domain",
       "stateAnchors": [
@@ -1298,7 +1298,7 @@
         "CalendarPresentation",
         "DeviceActions"
       ],
-      "scope": "verification-support",
+      "scope": "application",
       "treatment": "domain-allocation",
       "reviewStatus": "state-audit-required",
       "stateAnchors": []
@@ -1311,7 +1311,7 @@
         "CalendarPresentation",
         "DeviceActions"
       ],
-      "scope": "verification-support",
+      "scope": "application",
       "treatment": "domain-allocation",
       "reviewStatus": "retained-source-domain",
       "stateAnchors": [
@@ -1396,7 +1396,7 @@
         "DeviceActions",
         "MediaLifecycle"
       ],
-      "scope": "verification-support",
+      "scope": "application",
       "treatment": "domain-allocation",
       "reviewStatus": "state-audit-required",
       "stateAnchors": []
@@ -1408,7 +1408,7 @@
         "DeviceActions",
         "MediaLifecycle"
       ],
-      "scope": "verification-support",
+      "scope": "application",
       "treatment": "domain-allocation",
       "reviewStatus": "state-audit-required",
       "stateAnchors": []
@@ -1421,7 +1421,7 @@
         "MediaLifecycle",
         "ScanDocument"
       ],
-      "scope": "verification-support",
+      "scope": "application",
       "treatment": "domain-allocation",
       "reviewStatus": "state-audit-required",
       "stateAnchors": []
@@ -1434,7 +1434,7 @@
         "AssistantConversation",
         "DeviceActions"
       ],
-      "scope": "verification-support",
+      "scope": "application",
       "treatment": "domain-allocation",
       "reviewStatus": "retained-source-domain",
       "stateAnchors": [
@@ -1488,7 +1488,7 @@
         "DeviceActions",
         "ResidentRuntime"
       ],
-      "scope": "verification-support",
+      "scope": "application",
       "treatment": "domain-allocation",
       "reviewStatus": "retained-source-domain",
       "stateAnchors": [
@@ -1552,7 +1552,7 @@
       "models": [
         "DeviceActions"
       ],
-      "scope": "verification-support",
+      "scope": "application",
       "treatment": "domain-allocation",
       "reviewStatus": "state-audit-required",
       "stateAnchors": []
@@ -1565,7 +1565,7 @@
         "DevelopmentSurfaces",
         "DeviceActions"
       ],
-      "scope": "verification-support",
+      "scope": "application",
       "treatment": "domain-allocation",
       "reviewStatus": "retained-source-domain",
       "stateAnchors": [
@@ -1585,7 +1585,7 @@
       "models": [
         "DeviceActions"
       ],
-      "scope": "verification-support",
+      "scope": "application",
       "treatment": "domain-allocation",
       "reviewStatus": "state-audit-required",
       "stateAnchors": []
@@ -1597,7 +1597,7 @@
         "Application",
         "DeviceActions"
       ],
-      "scope": "verification-support",
+      "scope": "application",
       "treatment": "domain-allocation",
       "reviewStatus": "retained-source-domain",
       "stateAnchors": [
@@ -1658,7 +1658,7 @@
         "DeviceActions",
         "ServiceAuthorization"
       ],
-      "scope": "verification-support",
+      "scope": "application",
       "treatment": "domain-allocation",
       "reviewStatus": "retained-source-domain",
       "stateAnchors": [
@@ -1675,7 +1675,7 @@
         "DeviceActions",
         "IdentitySession"
       ],
-      "scope": "verification-support",
+      "scope": "application",
       "treatment": "domain-allocation",
       "reviewStatus": "state-audit-required",
       "stateAnchors": []
@@ -1687,7 +1687,7 @@
         "DeviceActions",
         "IdentitySession"
       ],
-      "scope": "verification-support",
+      "scope": "application",
       "treatment": "domain-allocation",
       "reviewStatus": "state-audit-required",
       "stateAnchors": []
@@ -1701,7 +1701,7 @@
         "StreamingPlayback",
         "VoiceSession"
       ],
-      "scope": "verification-support",
+      "scope": "application",
       "treatment": "domain-allocation",
       "reviewStatus": "retained-source-domain",
       "stateAnchors": [
@@ -1760,7 +1760,7 @@
         "DeviceActions",
         "ResidentRuntime"
       ],
-      "scope": "verification-support",
+      "scope": "application",
       "treatment": "domain-allocation",
       "reviewStatus": "state-audit-required",
       "stateAnchors": []
@@ -1774,7 +1774,7 @@
         "DeviceActions",
         "ResidentRuntime"
       ],
-      "scope": "verification-support",
+      "scope": "application",
       "treatment": "domain-allocation",
       "reviewStatus": "state-audit-required",
       "stateAnchors": []
@@ -1786,7 +1786,7 @@
         "Application",
         "DeviceActions"
       ],
-      "scope": "verification-support",
+      "scope": "application",
       "treatment": "domain-allocation",
       "reviewStatus": "retained-source-domain",
       "stateAnchors": [
@@ -1807,7 +1807,7 @@
         "Application",
         "DeviceActions"
       ],
-      "scope": "verification-support",
+      "scope": "application",
       "treatment": "domain-allocation",
       "reviewStatus": "retained-source-domain",
       "stateAnchors": [
@@ -1856,7 +1856,7 @@
         "DeviceActions",
         "ServiceAuthorization"
       ],
-      "scope": "verification-support",
+      "scope": "application",
       "treatment": "domain-allocation",
       "reviewStatus": "retained-source-domain",
       "stateAnchors": [
@@ -1894,7 +1894,7 @@
         "ListFocus",
         "ShellNavigation"
       ],
-      "scope": "verification-support",
+      "scope": "application",
       "treatment": "domain-allocation",
       "reviewStatus": "state-audit-required",
       "stateAnchors": []
@@ -1905,7 +1905,7 @@
       "models": [
         "DeviceActions"
       ],
-      "scope": "verification-support",
+      "scope": "application",
       "treatment": "domain-allocation",
       "reviewStatus": "retained-source-domain",
       "stateAnchors": [
@@ -1943,7 +1943,7 @@
         "NoticesAndCaches",
         "NotificationCollection"
       ],
-      "scope": "verification-support",
+      "scope": "application",
       "treatment": "domain-allocation",
       "reviewStatus": "retained-source-domain",
       "stateAnchors": [
@@ -2021,7 +2021,7 @@
         "NoticesAndCaches",
         "NotificationCollection"
       ],
-      "scope": "verification-support",
+      "scope": "application",
       "treatment": "domain-allocation",
       "reviewStatus": "retained-source-domain",
       "stateAnchors": [
@@ -2142,7 +2142,7 @@
         "Application",
         "DeviceActions"
       ],
-      "scope": "verification-support",
+      "scope": "application",
       "treatment": "domain-allocation",
       "reviewStatus": "state-audit-required",
       "stateAnchors": []
@@ -2158,7 +2158,7 @@
         "DeviceActions",
         "ResidentRuntime"
       ],
-      "scope": "verification-support",
+      "scope": "application",
       "treatment": "domain-allocation",
       "reviewStatus": "retained-source-domain",
       "stateAnchors": [
@@ -2178,7 +2178,7 @@
       "models": [
         "DeviceActions"
       ],
-      "scope": "verification-support",
+      "scope": "application",
       "treatment": "domain-allocation",
       "reviewStatus": "retained-source-domain",
       "stateAnchors": [
@@ -2215,7 +2215,7 @@
         "Application",
         "DeviceActions"
       ],
-      "scope": "verification-support",
+      "scope": "application",
       "treatment": "domain-allocation",
       "reviewStatus": "retained-source-domain",
       "stateAnchors": [
@@ -2240,7 +2240,7 @@
         "Application",
         "DeviceActions"
       ],
-      "scope": "verification-support",
+      "scope": "application",
       "treatment": "domain-allocation",
       "reviewStatus": "retained-source-domain",
       "stateAnchors": [
@@ -2286,7 +2286,7 @@
         "CalendarPresentation",
         "DeviceActions"
       ],
-      "scope": "verification-support",
+      "scope": "application",
       "treatment": "domain-allocation",
       "reviewStatus": "retained-source-domain",
       "stateAnchors": [
@@ -2319,7 +2319,7 @@
         "DeviceActions",
         "NoticesAndCaches"
       ],
-      "scope": "verification-support",
+      "scope": "application",
       "treatment": "domain-allocation",
       "reviewStatus": "retained-source-domain",
       "stateAnchors": [
@@ -2356,7 +2356,7 @@
         "DeviceActions",
         "NoticesAndCaches"
       ],
-      "scope": "verification-support",
+      "scope": "application",
       "treatment": "domain-allocation",
       "reviewStatus": "retained-source-domain",
       "stateAnchors": [
@@ -2410,7 +2410,7 @@
         "NoticesAndCaches",
         "NotificationCollection"
       ],
-      "scope": "verification-support",
+      "scope": "application",
       "treatment": "domain-allocation",
       "reviewStatus": "retained-source-domain",
       "stateAnchors": [
@@ -2455,7 +2455,7 @@
         "DeviceActions",
         "NoticesAndCaches"
       ],
-      "scope": "verification-support",
+      "scope": "application",
       "treatment": "domain-allocation",
       "reviewStatus": "retained-source-domain",
       "stateAnchors": []
@@ -2466,7 +2466,7 @@
       "models": [
         "DeviceActions"
       ],
-      "scope": "verification-support",
+      "scope": "application",
       "treatment": "domain-allocation",
       "reviewStatus": "state-audit-required",
       "stateAnchors": []
@@ -2480,7 +2480,7 @@
         "InboxDelivery",
         "InboxProviderDrafts"
       ],
-      "scope": "verification-support",
+      "scope": "application",
       "treatment": "domain-allocation",
       "reviewStatus": "state-audit-required",
       "stateAnchors": []
@@ -2496,7 +2496,7 @@
         "InboxDelivery",
         "InboxProviderDrafts"
       ],
-      "scope": "verification-support",
+      "scope": "application",
       "treatment": "domain-allocation",
       "reviewStatus": "retained-source-domain",
       "stateAnchors": []
@@ -2512,7 +2512,7 @@
         "InboxDelivery",
         "InboxProviderDrafts"
       ],
-      "scope": "verification-support",
+      "scope": "application",
       "treatment": "domain-allocation",
       "reviewStatus": "retained-source-domain",
       "stateAnchors": [
@@ -2537,7 +2537,7 @@
         "InboxDelivery",
         "InboxProviderDrafts"
       ],
-      "scope": "verification-support",
+      "scope": "application",
       "treatment": "domain-allocation",
       "reviewStatus": "retained-source-domain",
       "stateAnchors": [
@@ -2559,7 +2559,7 @@
         "InboxDelivery",
         "InboxProviderDrafts"
       ],
-      "scope": "verification-support",
+      "scope": "application",
       "treatment": "domain-allocation",
       "reviewStatus": "state-audit-required",
       "stateAnchors": []
@@ -2574,7 +2574,7 @@
         "InboxDelivery",
         "InboxProviderDrafts"
       ],
-      "scope": "verification-support",
+      "scope": "application",
       "treatment": "domain-allocation",
       "reviewStatus": "retained-source-domain",
       "stateAnchors": [
@@ -2604,7 +2604,7 @@
         "MediaLifecycle",
         "PdfWorker"
       ],
-      "scope": "verification-support",
+      "scope": "application",
       "treatment": "domain-allocation",
       "reviewStatus": "retained-source-domain",
       "stateAnchors": []
@@ -2616,7 +2616,7 @@
         "Application",
         "DeviceActions"
       ],
-      "scope": "verification-support",
+      "scope": "application",
       "treatment": "domain-allocation",
       "reviewStatus": "retained-source-domain",
       "stateAnchors": []
@@ -2628,7 +2628,7 @@
         "DeviceActions",
         "MediaLifecycle"
       ],
-      "scope": "verification-support",
+      "scope": "application",
       "treatment": "domain-allocation",
       "reviewStatus": "state-audit-required",
       "stateAnchors": []
@@ -2642,7 +2642,7 @@
         "InboxDelivery",
         "InboxProviderDrafts"
       ],
-      "scope": "verification-support",
+      "scope": "application",
       "treatment": "domain-allocation",
       "reviewStatus": "retained-source-domain",
       "stateAnchors": [
@@ -2677,7 +2677,7 @@
         "PreferencesAndPresentation",
         "ShellNavigation"
       ],
-      "scope": "verification-support",
+      "scope": "application",
       "treatment": "domain-allocation",
       "reviewStatus": "state-audit-required",
       "stateAnchors": []
@@ -2691,7 +2691,7 @@
         "PreferencesAndPresentation",
         "ShellNavigation"
       ],
-      "scope": "verification-support",
+      "scope": "application",
       "treatment": "domain-allocation",
       "reviewStatus": "state-audit-required",
       "stateAnchors": []
@@ -2705,7 +2705,7 @@
         "DeviceActions",
         "ResidentRuntime"
       ],
-      "scope": "verification-support",
+      "scope": "application",
       "treatment": "domain-allocation",
       "reviewStatus": "retained-source-domain",
       "stateAnchors": [
@@ -2748,7 +2748,7 @@
         "StreamingPlayback",
         "VoiceSession"
       ],
-      "scope": "verification-support",
+      "scope": "application",
       "treatment": "domain-allocation",
       "reviewStatus": "state-audit-required",
       "stateAnchors": []
@@ -2761,7 +2761,7 @@
         "DeviceActions",
         "ResidentRuntime"
       ],
-      "scope": "verification-support",
+      "scope": "application",
       "treatment": "domain-allocation",
       "reviewStatus": "state-audit-required",
       "stateAnchors": []
@@ -2773,7 +2773,7 @@
         "Application",
         "DeviceActions"
       ],
-      "scope": "verification-support",
+      "scope": "application",
       "treatment": "domain-allocation",
       "reviewStatus": "retained-source-domain",
       "stateAnchors": [
@@ -2796,7 +2796,7 @@
         "StreamingPlayback",
         "VoiceSession"
       ],
-      "scope": "verification-support",
+      "scope": "application",
       "treatment": "domain-allocation",
       "reviewStatus": "state-audit-required",
       "stateAnchors": []
@@ -2810,7 +2810,7 @@
         "StreamingPlayback",
         "VoiceSession"
       ],
-      "scope": "verification-support",
+      "scope": "application",
       "treatment": "domain-allocation",
       "reviewStatus": "state-audit-required",
       "stateAnchors": []
@@ -2824,7 +2824,7 @@
         "StreamingPlayback",
         "VoiceSession"
       ],
-      "scope": "verification-support",
+      "scope": "application",
       "treatment": "domain-allocation",
       "reviewStatus": "state-audit-required",
       "stateAnchors": []
@@ -2836,7 +2836,7 @@
         "DeviceActions",
         "FilesAndSharing"
       ],
-      "scope": "verification-support",
+      "scope": "application",
       "treatment": "domain-allocation",
       "reviewStatus": "retained-source-domain",
       "stateAnchors": []
@@ -2849,7 +2849,7 @@
         "MapsNavigation",
         "NavigationProgress"
       ],
-      "scope": "verification-support",
+      "scope": "application",
       "treatment": "domain-allocation",
       "reviewStatus": "state-audit-required",
       "stateAnchors": []
@@ -2862,7 +2862,7 @@
         "MapsNavigation",
         "NavigationProgress"
       ],
-      "scope": "verification-support",
+      "scope": "application",
       "treatment": "domain-allocation",
       "reviewStatus": "state-audit-required",
       "stateAnchors": []
@@ -2875,7 +2875,7 @@
         "MapsNavigation",
         "NavigationProgress"
       ],
-      "scope": "verification-support",
+      "scope": "application",
       "treatment": "domain-allocation",
       "reviewStatus": "state-audit-required",
       "stateAnchors": []
@@ -2889,7 +2889,7 @@
         "StreamingPlayback",
         "VoiceSession"
       ],
-      "scope": "verification-support",
+      "scope": "application",
       "treatment": "domain-allocation",
       "reviewStatus": "state-audit-required",
       "stateAnchors": []
@@ -2901,7 +2901,7 @@
         "DevelopmentSurfaces",
         "DeviceActions"
       ],
-      "scope": "verification-support",
+      "scope": "application",
       "treatment": "domain-allocation",
       "reviewStatus": "retained-source-domain",
       "stateAnchors": [
@@ -2925,7 +2925,7 @@
         "StreamingPlayback",
         "VoiceSession"
       ],
-      "scope": "verification-support",
+      "scope": "application",
       "treatment": "domain-allocation",
       "reviewStatus": "retained-source-domain",
       "stateAnchors": [
@@ -2985,7 +2985,7 @@
         "StreamingPlayback",
         "VoiceSession"
       ],
-      "scope": "verification-support",
+      "scope": "application",
       "treatment": "domain-allocation",
       "reviewStatus": "retained-source-domain",
       "stateAnchors": [
@@ -3006,7 +3006,7 @@
         "DeviceActions",
         "NotesLifecycle"
       ],
-      "scope": "verification-support",
+      "scope": "application",
       "treatment": "domain-allocation",
       "reviewStatus": "retained-source-domain",
       "stateAnchors": [
@@ -3038,7 +3038,7 @@
       "models": [
         "DeviceActions"
       ],
-      "scope": "verification-support",
+      "scope": "application",
       "treatment": "domain-allocation",
       "reviewStatus": "state-audit-required",
       "stateAnchors": []
@@ -3049,7 +3049,7 @@
       "models": [
         "DeviceActions"
       ],
-      "scope": "verification-support",
+      "scope": "application",
       "treatment": "domain-allocation",
       "reviewStatus": "state-audit-required",
       "stateAnchors": []
@@ -3063,7 +3063,7 @@
         "DeviceActions",
         "NotesLifecycle"
       ],
-      "scope": "verification-support",
+      "scope": "application",
       "treatment": "domain-allocation",
       "reviewStatus": "retained-source-domain",
       "stateAnchors": [
@@ -3092,7 +3092,7 @@
         "DeviceActions",
         "NotesLifecycle"
       ],
-      "scope": "verification-support",
+      "scope": "application",
       "treatment": "domain-allocation",
       "reviewStatus": "state-audit-required",
       "stateAnchors": []
@@ -3106,7 +3106,7 @@
         "DeviceActions",
         "NotesLifecycle"
       ],
-      "scope": "verification-support",
+      "scope": "application",
       "treatment": "domain-allocation",
       "reviewStatus": "retained-source-domain",
       "stateAnchors": [
@@ -3127,7 +3127,7 @@
         "DeviceActions",
         "NotesLifecycle"
       ],
-      "scope": "verification-support",
+      "scope": "application",
       "treatment": "domain-allocation",
       "reviewStatus": "retained-source-domain",
       "stateAnchors": [
@@ -3176,7 +3176,7 @@
         "DeviceActions",
         "NotesLifecycle"
       ],
-      "scope": "verification-support",
+      "scope": "application",
       "treatment": "domain-allocation",
       "reviewStatus": "retained-source-domain",
       "stateAnchors": [
@@ -3225,7 +3225,7 @@
         "DeviceActions",
         "NotesLifecycle"
       ],
-      "scope": "verification-support",
+      "scope": "application",
       "treatment": "domain-allocation",
       "reviewStatus": "retained-source-domain",
       "stateAnchors": [
@@ -3303,7 +3303,7 @@
         "NoticesAndCaches",
         "NotificationCollection"
       ],
-      "scope": "verification-support",
+      "scope": "application",
       "treatment": "domain-allocation",
       "reviewStatus": "retained-source-domain",
       "stateAnchors": [
@@ -3349,7 +3349,7 @@
         "NoticesAndCaches",
         "NotificationCollection"
       ],
-      "scope": "verification-support",
+      "scope": "application",
       "treatment": "domain-allocation",
       "reviewStatus": "retained-source-domain",
       "stateAnchors": [
@@ -3382,7 +3382,7 @@
         "Application",
         "DeviceActions"
       ],
-      "scope": "verification-support",
+      "scope": "application",
       "treatment": "domain-allocation",
       "reviewStatus": "state-audit-required",
       "stateAnchors": []
@@ -3394,7 +3394,7 @@
         "Application",
         "DeviceActions"
       ],
-      "scope": "verification-support",
+      "scope": "application",
       "treatment": "domain-allocation",
       "reviewStatus": "state-audit-required",
       "stateAnchors": []
@@ -3407,7 +3407,7 @@
         "MapsNavigation",
         "NavigationProgress"
       ],
-      "scope": "verification-support",
+      "scope": "application",
       "treatment": "domain-allocation",
       "reviewStatus": "state-audit-required",
       "stateAnchors": []
@@ -3420,7 +3420,7 @@
         "NoticesAndCaches",
         "NotificationCollection"
       ],
-      "scope": "verification-support",
+      "scope": "application",
       "treatment": "domain-allocation",
       "reviewStatus": "retained-source-domain",
       "stateAnchors": [
@@ -3483,7 +3483,7 @@
         "StreamingPlayback",
         "VoiceSession"
       ],
-      "scope": "verification-support",
+      "scope": "application",
       "treatment": "domain-allocation",
       "reviewStatus": "retained-source-domain",
       "stateAnchors": [
@@ -3510,7 +3510,7 @@
         "StreamingPlayback",
         "VoiceSession"
       ],
-      "scope": "verification-support",
+      "scope": "application",
       "treatment": "domain-allocation",
       "reviewStatus": "state-audit-required",
       "stateAnchors": []
@@ -3524,7 +3524,7 @@
         "CredentialVault",
         "DeviceActions"
       ],
-      "scope": "verification-support",
+      "scope": "application",
       "treatment": "domain-allocation",
       "reviewStatus": "state-audit-required",
       "stateAnchors": []
@@ -3538,7 +3538,7 @@
         "DevelopmentSurfaces",
         "DeviceActions"
       ],
-      "scope": "verification-support",
+      "scope": "application",
       "treatment": "domain-allocation",
       "reviewStatus": "retained-source-domain",
       "stateAnchors": [
@@ -3555,7 +3555,7 @@
         "CredentialVault",
         "DeviceActions"
       ],
-      "scope": "verification-support",
+      "scope": "application",
       "treatment": "domain-allocation",
       "reviewStatus": "retained-source-domain",
       "stateAnchors": [
@@ -3590,7 +3590,7 @@
         "DevelopmentSurfaces",
         "DeviceActions"
       ],
-      "scope": "verification-support",
+      "scope": "application",
       "treatment": "domain-allocation",
       "reviewStatus": "retained-source-domain",
       "stateAnchors": [
@@ -3628,7 +3628,7 @@
         "DeviceActions",
         "PreferencesAndPresentation"
       ],
-      "scope": "verification-support",
+      "scope": "application",
       "treatment": "domain-allocation",
       "reviewStatus": "retained-source-domain",
       "stateAnchors": [
@@ -3686,7 +3686,7 @@
         "DeviceActions",
         "PdfWorker"
       ],
-      "scope": "verification-support",
+      "scope": "application",
       "treatment": "domain-allocation",
       "reviewStatus": "retained-source-domain",
       "stateAnchors": [
@@ -3723,7 +3723,7 @@
         "DeviceActions",
         "MediaLifecycle"
       ],
-      "scope": "verification-support",
+      "scope": "application",
       "treatment": "domain-allocation",
       "reviewStatus": "retained-source-domain",
       "stateAnchors": [
@@ -3764,7 +3764,7 @@
         "DeviceActions",
         "MediaLifecycle"
       ],
-      "scope": "verification-support",
+      "scope": "application",
       "treatment": "domain-allocation",
       "reviewStatus": "retained-source-domain",
       "stateAnchors": [
@@ -3789,7 +3789,7 @@
         "DeviceActions",
         "MediaLifecycle"
       ],
-      "scope": "verification-support",
+      "scope": "application",
       "treatment": "domain-allocation",
       "reviewStatus": "retained-source-domain",
       "stateAnchors": [
@@ -3842,7 +3842,7 @@
         "DeviceActions",
         "MediaLifecycle"
       ],
-      "scope": "verification-support",
+      "scope": "application",
       "treatment": "domain-allocation",
       "reviewStatus": "state-audit-required",
       "stateAnchors": []
@@ -3854,7 +3854,7 @@
         "DeviceActions",
         "MediaLifecycle"
       ],
-      "scope": "verification-support",
+      "scope": "application",
       "treatment": "domain-allocation",
       "reviewStatus": "retained-source-domain",
       "stateAnchors": [
@@ -3925,7 +3925,7 @@
         "MediaLifecycle",
         "ShellNavigation"
       ],
-      "scope": "verification-support",
+      "scope": "application",
       "treatment": "domain-allocation",
       "reviewStatus": "state-audit-required",
       "stateAnchors": []
@@ -3939,7 +3939,7 @@
         "DeviceActions",
         "MediaLifecycle"
       ],
-      "scope": "verification-support",
+      "scope": "application",
       "treatment": "domain-allocation",
       "reviewStatus": "retained-source-domain",
       "stateAnchors": [
@@ -3964,7 +3964,7 @@
         "DeviceActions",
         "MediaLifecycle"
       ],
-      "scope": "verification-support",
+      "scope": "application",
       "treatment": "domain-allocation",
       "reviewStatus": "state-audit-required",
       "stateAnchors": []
@@ -3976,7 +3976,7 @@
         "DeviceActions",
         "MediaLifecycle"
       ],
-      "scope": "verification-support",
+      "scope": "application",
       "treatment": "domain-allocation",
       "reviewStatus": "state-audit-required",
       "stateAnchors": []
@@ -3988,7 +3988,7 @@
         "DeviceActions",
         "MediaLifecycle"
       ],
-      "scope": "verification-support",
+      "scope": "application",
       "treatment": "domain-allocation",
       "reviewStatus": "retained-source-domain",
       "stateAnchors": [
@@ -4045,7 +4045,7 @@
         "DeviceActions",
         "MediaLifecycle"
       ],
-      "scope": "verification-support",
+      "scope": "application",
       "treatment": "domain-allocation",
       "reviewStatus": "state-audit-required",
       "stateAnchors": []
@@ -4058,7 +4058,7 @@
         "CalendarPresentation",
         "DeviceActions"
       ],
-      "scope": "verification-support",
+      "scope": "application",
       "treatment": "domain-allocation",
       "reviewStatus": "retained-source-domain",
       "stateAnchors": [
@@ -4140,7 +4140,7 @@
         "DeviceActions",
         "ResidentRuntime"
       ],
-      "scope": "verification-support",
+      "scope": "application",
       "treatment": "domain-allocation",
       "reviewStatus": "retained-source-domain",
       "stateAnchors": [
@@ -4161,7 +4161,7 @@
         "Application",
         "DeviceActions"
       ],
-      "scope": "verification-support",
+      "scope": "application",
       "treatment": "domain-allocation",
       "reviewStatus": "retained-source-domain",
       "stateAnchors": [
@@ -4223,7 +4223,7 @@
         "AssistantConversation",
         "DeviceActions"
       ],
-      "scope": "verification-support",
+      "scope": "application",
       "treatment": "domain-allocation",
       "reviewStatus": "retained-source-domain",
       "stateAnchors": [
@@ -4240,7 +4240,7 @@
         "Application",
         "DeviceActions"
       ],
-      "scope": "verification-support",
+      "scope": "application",
       "treatment": "domain-allocation",
       "reviewStatus": "retained-source-domain",
       "stateAnchors": [
@@ -4272,7 +4272,7 @@
       "models": [
         "DeviceActions"
       ],
-      "scope": "verification-support",
+      "scope": "application",
       "treatment": "domain-allocation",
       "reviewStatus": "retained-source-domain",
       "stateAnchors": [
@@ -4376,7 +4376,7 @@
         "NotificationCollection",
         "ResidentRuntime"
       ],
-      "scope": "verification-support",
+      "scope": "application",
       "treatment": "domain-allocation",
       "reviewStatus": "retained-source-domain",
       "stateAnchors": [
@@ -4402,7 +4402,7 @@
         "NoticesAndCaches",
         "NotificationCollection"
       ],
-      "scope": "verification-support",
+      "scope": "application",
       "treatment": "domain-allocation",
       "reviewStatus": "retained-source-domain",
       "stateAnchors": [
@@ -4427,7 +4427,7 @@
         "NotificationCollection",
         "ResetRecovery"
       ],
-      "scope": "verification-support",
+      "scope": "application",
       "treatment": "domain-allocation",
       "reviewStatus": "retained-source-domain",
       "stateAnchors": []
@@ -4442,7 +4442,7 @@
         "NotificationCollection",
         "ResetRecovery"
       ],
-      "scope": "verification-support",
+      "scope": "application",
       "treatment": "domain-allocation",
       "reviewStatus": "retained-source-domain",
       "stateAnchors": [
@@ -4492,7 +4492,7 @@
         "NoticesAndCaches",
         "NotificationCollection"
       ],
-      "scope": "verification-support",
+      "scope": "application",
       "treatment": "domain-allocation",
       "reviewStatus": "retained-source-domain",
       "stateAnchors": [
@@ -4514,7 +4514,7 @@
         "NoticesAndCaches",
         "NotificationCollection"
       ],
-      "scope": "verification-support",
+      "scope": "application",
       "treatment": "domain-allocation",
       "reviewStatus": "retained-source-domain",
       "stateAnchors": [
@@ -4560,7 +4560,7 @@
         "NoticesAndCaches",
         "NotificationCollection"
       ],
-      "scope": "verification-support",
+      "scope": "application",
       "treatment": "domain-allocation",
       "reviewStatus": "state-audit-required",
       "stateAnchors": []
@@ -4573,7 +4573,7 @@
         "NoticesAndCaches",
         "NotificationCollection"
       ],
-      "scope": "verification-support",
+      "scope": "application",
       "treatment": "domain-allocation",
       "reviewStatus": "retained-source-domain",
       "stateAnchors": [
@@ -4607,7 +4607,7 @@
         "NoticesAndCaches",
         "NotificationCollection"
       ],
-      "scope": "verification-support",
+      "scope": "application",
       "treatment": "domain-allocation",
       "reviewStatus": "retained-source-domain",
       "stateAnchors": [
@@ -4641,7 +4641,7 @@
         "NoticesAndCaches",
         "NotificationCollection"
       ],
-      "scope": "verification-support",
+      "scope": "application",
       "treatment": "domain-allocation",
       "reviewStatus": "retained-source-domain",
       "stateAnchors": [
@@ -4679,7 +4679,7 @@
         "NoticesAndCaches",
         "NotificationCollection"
       ],
-      "scope": "verification-support",
+      "scope": "application",
       "treatment": "domain-allocation",
       "reviewStatus": "retained-source-domain",
       "stateAnchors": [
@@ -4717,7 +4717,7 @@
         "NoticesAndCaches",
         "NotificationCollection"
       ],
-      "scope": "verification-support",
+      "scope": "application",
       "treatment": "domain-allocation",
       "reviewStatus": "retained-source-domain",
       "stateAnchors": [
@@ -4739,7 +4739,7 @@
         "NoticesAndCaches",
         "NotificationCollection"
       ],
-      "scope": "verification-support",
+      "scope": "application",
       "treatment": "domain-allocation",
       "reviewStatus": "retained-source-domain",
       "stateAnchors": [
@@ -4757,7 +4757,7 @@
         "NoticesAndCaches",
         "NotificationCollection"
       ],
-      "scope": "verification-support",
+      "scope": "application",
       "treatment": "domain-allocation",
       "reviewStatus": "retained-source-domain",
       "stateAnchors": [
@@ -4791,7 +4791,7 @@
         "NoticesAndCaches",
         "NotificationCollection"
       ],
-      "scope": "verification-support",
+      "scope": "application",
       "treatment": "domain-allocation",
       "reviewStatus": "retained-source-domain",
       "stateAnchors": [
@@ -4865,7 +4865,7 @@
         "NoticesAndCaches",
         "NotificationCollection"
       ],
-      "scope": "verification-support",
+      "scope": "application",
       "treatment": "domain-allocation",
       "reviewStatus": "retained-source-domain",
       "stateAnchors": [
@@ -4887,7 +4887,7 @@
         "NoticesAndCaches",
         "NotificationCollection"
       ],
-      "scope": "verification-support",
+      "scope": "application",
       "treatment": "domain-allocation",
       "reviewStatus": "retained-source-domain",
       "stateAnchors": [
@@ -4910,7 +4910,7 @@
         "DeviceActions",
         "ResidentRuntime"
       ],
-      "scope": "verification-support",
+      "scope": "application",
       "treatment": "domain-allocation",
       "reviewStatus": "retained-source-domain",
       "stateAnchors": [
@@ -4935,7 +4935,7 @@
         "Application",
         "DeviceActions"
       ],
-      "scope": "verification-support",
+      "scope": "application",
       "treatment": "domain-allocation",
       "reviewStatus": "retained-source-domain",
       "stateAnchors": [
@@ -4963,7 +4963,7 @@
         "DeviceActions",
         "ResetRecovery"
       ],
-      "scope": "verification-support",
+      "scope": "application",
       "treatment": "domain-allocation",
       "reviewStatus": "state-audit-required",
       "stateAnchors": []
@@ -4976,7 +4976,7 @@
         "DeviceActions",
         "ResetRecovery"
       ],
-      "scope": "verification-support",
+      "scope": "application",
       "treatment": "domain-allocation",
       "reviewStatus": "state-audit-required",
       "stateAnchors": []
@@ -4989,7 +4989,7 @@
         "DeviceActions",
         "ResidentRuntime"
       ],
-      "scope": "verification-support",
+      "scope": "application",
       "treatment": "domain-allocation",
       "reviewStatus": "retained-source-domain",
       "stateAnchors": [
@@ -5071,7 +5071,7 @@
         "DeviceActions",
         "ResidentRuntime"
       ],
-      "scope": "verification-support",
+      "scope": "application",
       "treatment": "domain-allocation",
       "reviewStatus": "retained-source-domain",
       "stateAnchors": [
@@ -5097,7 +5097,7 @@
         "DeviceActions",
         "ResidentRuntime"
       ],
-      "scope": "verification-support",
+      "scope": "application",
       "treatment": "domain-allocation",
       "reviewStatus": "retained-source-domain",
       "stateAnchors": [
@@ -5123,7 +5123,7 @@
         "DeviceActions",
         "ResidentRuntime"
       ],
-      "scope": "verification-support",
+      "scope": "application",
       "treatment": "domain-allocation",
       "reviewStatus": "retained-source-domain",
       "stateAnchors": [
@@ -5141,7 +5141,7 @@
         "DeviceActions",
         "ResidentRuntime"
       ],
-      "scope": "verification-support",
+      "scope": "application",
       "treatment": "domain-allocation",
       "reviewStatus": "retained-source-domain",
       "stateAnchors": [
@@ -5163,7 +5163,7 @@
         "DeviceActions",
         "ResidentRuntime"
       ],
-      "scope": "verification-support",
+      "scope": "application",
       "treatment": "domain-allocation",
       "reviewStatus": "retained-source-domain",
       "stateAnchors": [
@@ -5253,7 +5253,7 @@
         "DeviceActions",
         "ResidentRuntime"
       ],
-      "scope": "verification-support",
+      "scope": "application",
       "treatment": "domain-allocation",
       "reviewStatus": "retained-source-domain",
       "stateAnchors": [
@@ -5300,7 +5300,7 @@
         "ResidentRuntime",
         "WorkflowExecution"
       ],
-      "scope": "verification-support",
+      "scope": "application",
       "treatment": "domain-allocation",
       "reviewStatus": "retained-source-domain",
       "stateAnchors": [
@@ -5485,7 +5485,7 @@
         "Application",
         "DeviceActions"
       ],
-      "scope": "verification-support",
+      "scope": "application",
       "treatment": "domain-allocation",
       "reviewStatus": "state-audit-required",
       "stateAnchors": []
@@ -5500,7 +5500,7 @@
         "DeviceActions",
         "ResetRecovery"
       ],
-      "scope": "verification-support",
+      "scope": "application",
       "treatment": "domain-allocation",
       "reviewStatus": "state-audit-required",
       "stateAnchors": []
@@ -5514,7 +5514,7 @@
         "StreamingPlayback",
         "VoiceSession"
       ],
-      "scope": "verification-support",
+      "scope": "application",
       "treatment": "domain-allocation",
       "reviewStatus": "retained-source-domain",
       "stateAnchors": [
@@ -5535,7 +5535,7 @@
         "DeviceActions",
         "FilesAndSharing"
       ],
-      "scope": "verification-support",
+      "scope": "application",
       "treatment": "domain-allocation",
       "reviewStatus": "retained-source-domain",
       "stateAnchors": [
@@ -5612,7 +5612,7 @@
         "DeviceActions",
         "PreferencesAndPresentation"
       ],
-      "scope": "verification-support",
+      "scope": "application",
       "treatment": "domain-allocation",
       "reviewStatus": "state-audit-required",
       "stateAnchors": []
@@ -5624,7 +5624,7 @@
         "DeviceActions",
         "PreferencesAndPresentation"
       ],
-      "scope": "verification-support",
+      "scope": "application",
       "treatment": "domain-allocation",
       "reviewStatus": "retained-source-domain",
       "stateAnchors": [
@@ -5669,7 +5669,7 @@
         "DeviceActions",
         "PreferencesAndPresentation"
       ],
-      "scope": "verification-support",
+      "scope": "application",
       "treatment": "domain-allocation",
       "reviewStatus": "retained-source-domain",
       "stateAnchors": [
@@ -5702,7 +5702,7 @@
         "DeviceActions",
         "PreferencesAndPresentation"
       ],
-      "scope": "verification-support",
+      "scope": "application",
       "treatment": "domain-allocation",
       "reviewStatus": "retained-source-domain",
       "stateAnchors": [
@@ -5799,7 +5799,7 @@
         "DeviceActions",
         "PreferencesAndPresentation"
       ],
-      "scope": "verification-support",
+      "scope": "application",
       "treatment": "domain-allocation",
       "reviewStatus": "state-audit-required",
       "stateAnchors": []
@@ -5811,7 +5811,7 @@
         "DeviceActions",
         "FilesAndSharing"
       ],
-      "scope": "verification-support",
+      "scope": "application",
       "treatment": "domain-allocation",
       "reviewStatus": "retained-source-domain",
       "stateAnchors": [
@@ -5832,7 +5832,7 @@
         "DeviceActions",
         "FilesAndSharing"
       ],
-      "scope": "verification-support",
+      "scope": "application",
       "treatment": "domain-allocation",
       "reviewStatus": "retained-source-domain",
       "stateAnchors": []
@@ -5844,7 +5844,7 @@
         "Application",
         "DeviceActions"
       ],
-      "scope": "verification-support",
+      "scope": "application",
       "treatment": "domain-allocation",
       "reviewStatus": "state-audit-required",
       "stateAnchors": []
@@ -5858,7 +5858,7 @@
         "StreamingPlayback",
         "VoiceSession"
       ],
-      "scope": "verification-support",
+      "scope": "application",
       "treatment": "domain-allocation",
       "reviewStatus": "state-audit-required",
       "stateAnchors": []
@@ -5872,7 +5872,7 @@
         "StreamingPlayback",
         "VoiceSession"
       ],
-      "scope": "verification-support",
+      "scope": "application",
       "treatment": "domain-allocation",
       "reviewStatus": "state-audit-required",
       "stateAnchors": []
@@ -5886,7 +5886,7 @@
         "StreamingPlayback",
         "VoiceSession"
       ],
-      "scope": "verification-support",
+      "scope": "application",
       "treatment": "domain-allocation",
       "reviewStatus": "state-audit-required",
       "stateAnchors": []
@@ -5898,7 +5898,7 @@
         "DeviceActions",
         "StartupPermissions"
       ],
-      "scope": "verification-support",
+      "scope": "application",
       "treatment": "domain-allocation",
       "reviewStatus": "retained-source-domain",
       "stateAnchors": [
@@ -5967,7 +5967,7 @@
         "DeviceActions",
         "StartupPermissions"
       ],
-      "scope": "verification-support",
+      "scope": "application",
       "treatment": "domain-allocation",
       "reviewStatus": "retained-source-domain",
       "stateAnchors": []
@@ -5978,7 +5978,7 @@
       "models": [
         "DeviceActions"
       ],
-      "scope": "verification-support",
+      "scope": "application",
       "treatment": "domain-allocation",
       "reviewStatus": "state-audit-required",
       "stateAnchors": []
@@ -5989,7 +5989,7 @@
       "models": [
         "DeviceActions"
       ],
-      "scope": "verification-support",
+      "scope": "application",
       "treatment": "domain-allocation",
       "reviewStatus": "state-audit-required",
       "stateAnchors": []
@@ -6001,7 +6001,7 @@
         "DeviceActions",
         "PreferencesAndPresentation"
       ],
-      "scope": "verification-support",
+      "scope": "application",
       "treatment": "domain-allocation",
       "reviewStatus": "state-audit-required",
       "stateAnchors": []
@@ -6012,7 +6012,7 @@
       "models": [
         "DeviceActions"
       ],
-      "scope": "verification-support",
+      "scope": "application",
       "treatment": "domain-allocation",
       "reviewStatus": "state-audit-required",
       "stateAnchors": []
@@ -6024,7 +6024,7 @@
         "Application",
         "DeviceActions"
       ],
-      "scope": "verification-support",
+      "scope": "application",
       "treatment": "domain-allocation",
       "reviewStatus": "retained-source-domain",
       "stateAnchors": [
@@ -6061,7 +6061,7 @@
         "DeviceActions",
         "PreferencesAndPresentation"
       ],
-      "scope": "verification-support",
+      "scope": "application",
       "treatment": "domain-allocation",
       "reviewStatus": "retained-source-domain",
       "stateAnchors": [
@@ -6106,7 +6106,7 @@
         "Application",
         "DeviceActions"
       ],
-      "scope": "verification-support",
+      "scope": "application",
       "treatment": "domain-allocation",
       "reviewStatus": "retained-source-domain",
       "stateAnchors": [
@@ -6139,7 +6139,7 @@
         "Application",
         "DeviceActions"
       ],
-      "scope": "verification-support",
+      "scope": "application",
       "treatment": "domain-allocation",
       "reviewStatus": "retained-source-domain",
       "stateAnchors": [
@@ -6160,7 +6160,7 @@
         "DeviceActions",
         "MediaLifecycle"
       ],
-      "scope": "verification-support",
+      "scope": "application",
       "treatment": "domain-allocation",
       "reviewStatus": "retained-source-domain",
       "stateAnchors": []
@@ -6172,7 +6172,7 @@
         "DeviceActions",
         "MediaLifecycle"
       ],
-      "scope": "verification-support",
+      "scope": "application",
       "treatment": "domain-allocation",
       "reviewStatus": "state-audit-required",
       "stateAnchors": []
@@ -6187,7 +6187,7 @@
         "StreamingPlayback",
         "VoiceSession"
       ],
-      "scope": "verification-support",
+      "scope": "application",
       "treatment": "domain-allocation",
       "reviewStatus": "state-audit-required",
       "stateAnchors": []
@@ -6202,7 +6202,7 @@
         "StreamingPlayback",
         "VoiceSession"
       ],
-      "scope": "verification-support",
+      "scope": "application",
       "treatment": "domain-allocation",
       "reviewStatus": "retained-source-domain",
       "stateAnchors": [
@@ -6226,7 +6226,7 @@
         "StreamingPlayback",
         "VoiceSession"
       ],
-      "scope": "verification-support",
+      "scope": "application",
       "treatment": "domain-allocation",
       "reviewStatus": "state-audit-required",
       "stateAnchors": []
@@ -6241,7 +6241,7 @@
         "StreamingPlayback",
         "VoiceSession"
       ],
-      "scope": "verification-support",
+      "scope": "application",
       "treatment": "domain-allocation",
       "reviewStatus": "retained-source-domain",
       "stateAnchors": [
@@ -6288,7 +6288,7 @@
         "StreamingPlayback",
         "VoiceSession"
       ],
-      "scope": "verification-support",
+      "scope": "application",
       "treatment": "domain-allocation",
       "reviewStatus": "state-audit-required",
       "stateAnchors": []
@@ -6302,7 +6302,7 @@
         "BrowserSiteState",
         "DeviceActions"
       ],
-      "scope": "verification-support",
+      "scope": "application",
       "treatment": "domain-allocation",
       "reviewStatus": "retained-source-domain",
       "stateAnchors": [
@@ -6324,7 +6324,7 @@
         "DeviceActions",
         "RendererFailureUI"
       ],
-      "scope": "verification-support",
+      "scope": "application",
       "treatment": "domain-allocation",
       "reviewStatus": "retained-source-domain",
       "stateAnchors": [
@@ -6347,7 +6347,7 @@
         "NotificationCollection",
         "WorkflowExecution"
       ],
-      "scope": "verification-support",
+      "scope": "application",
       "treatment": "domain-allocation",
       "reviewStatus": "retained-source-domain",
       "stateAnchors": [
@@ -6394,7 +6394,7 @@
         "NotificationCollection",
         "WorkflowExecution"
       ],
-      "scope": "verification-support",
+      "scope": "application",
       "treatment": "domain-allocation",
       "reviewStatus": "retained-source-domain",
       "stateAnchors": [
@@ -6423,7 +6423,7 @@
         "DeviceActions",
         "WorkflowExecution"
       ],
-      "scope": "verification-support",
+      "scope": "application",
       "treatment": "domain-allocation",
       "reviewStatus": "retained-source-domain",
       "stateAnchors": [
@@ -6454,7 +6454,7 @@
         "NotificationCollection",
         "WorkflowExecution"
       ],
-      "scope": "verification-support",
+      "scope": "application",
       "treatment": "domain-allocation",
       "reviewStatus": "retained-source-domain",
       "stateAnchors": []
@@ -6470,7 +6470,7 @@
         "NotificationCollection",
         "WorkflowExecution"
       ],
-      "scope": "verification-support",
+      "scope": "application",
       "treatment": "domain-allocation",
       "reviewStatus": "retained-source-domain",
       "stateAnchors": [
@@ -6493,7 +6493,7 @@
         "NotificationCollection",
         "WorkflowExecution"
       ],
-      "scope": "verification-support",
+      "scope": "application",
       "treatment": "domain-allocation",
       "reviewStatus": "retained-source-domain",
       "stateAnchors": [
@@ -6516,7 +6516,7 @@
         "NotificationCollection",
         "WorkflowExecution"
       ],
-      "scope": "verification-support",
+      "scope": "application",
       "treatment": "domain-allocation",
       "reviewStatus": "retained-source-domain",
       "stateAnchors": []
@@ -6530,7 +6530,7 @@
         "NotificationCollection",
         "WorkflowExecution"
       ],
-      "scope": "verification-support",
+      "scope": "application",
       "treatment": "domain-allocation",
       "reviewStatus": "retained-source-domain",
       "stateAnchors": [
@@ -6579,7 +6579,7 @@
         "DeviceActions",
         "WorkflowExecution"
       ],
-      "scope": "verification-support",
+      "scope": "application",
       "treatment": "domain-allocation",
       "reviewStatus": "retained-source-domain",
       "stateAnchors": [
@@ -7160,7 +7160,9 @@
       "path": "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaNoteRecorder.java",
       "sha256": "1b4c40b6c4583dbb7087a7979c1d3a5e3ef4bec83bcfe5d5d2393df8ffafe727",
       "models": [
-        "DeviceActions"
+        "DeviceActions",
+        "NativeNoteRecording",
+        "NativeNoteRecordingService"
       ],
       "scope": "application",
       "treatment": "domain-allocation",
@@ -7169,9 +7171,10 @@
     },
     {
       "path": "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaNoteRecordingService.java",
-      "sha256": "8bc11676d712143888c54f76e8c4bc771f45959bb84df2367c1c0b1762bdad80",
+      "sha256": "20e21e04eafdd22ef95631e17ef376f5c907b42813e452474d95af99d66004e1",
       "models": [
-        "DeviceActions"
+        "DeviceActions",
+        "NativeNoteRecordingService"
       ],
       "scope": "application",
       "treatment": "domain-allocation",
@@ -8995,7 +8998,7 @@
         "DevelopmentSurfaces",
         "DeviceActions"
       ],
-      "scope": "verification-support",
+      "scope": "application",
       "treatment": "domain-allocation",
       "reviewStatus": "state-audit-required",
       "stateAnchors": []
@@ -9010,7 +9013,7 @@
         "DeviceActions",
         "ResidentRuntime"
       ],
-      "scope": "verification-support",
+      "scope": "application",
       "treatment": "domain-allocation",
       "reviewStatus": "state-audit-required",
       "stateAnchors": []
@@ -9027,7 +9030,7 @@
         "StreamingPlayback",
         "VoiceSession"
       ],
-      "scope": "verification-support",
+      "scope": "application",
       "treatment": "domain-allocation",
       "reviewStatus": "retained-source-domain",
       "stateAnchors": [
@@ -9078,7 +9081,7 @@
         "DevelopmentSurfaces",
         "DeviceActions"
       ],
-      "scope": "verification-support",
+      "scope": "application",
       "treatment": "domain-allocation",
       "reviewStatus": "retained-source-domain",
       "stateAnchors": [
@@ -9309,7 +9312,7 @@
         "DeviceActions",
         "MediaLifecycle"
       ],
-      "scope": "verification-support",
+      "scope": "application",
       "treatment": "domain-allocation",
       "reviewStatus": "state-audit-required",
       "stateAnchors": []
@@ -9323,7 +9326,7 @@
         "DeviceActions",
         "MediaLifecycle"
       ],
-      "scope": "verification-support",
+      "scope": "application",
       "treatment": "domain-allocation",
       "reviewStatus": "state-audit-required",
       "stateAnchors": []
@@ -12746,7 +12749,7 @@
       "stateAnchors": [
         {
           "line": 9,
-          "text": "let owner:any,rows:Bag[]=[],status='Choose Contacts access to see this profile\u2019s address book.',readable=false,loading=false,more=false,limit=50,epoch=0,active="
+          "text": "let owner:any,rows:Bag[]=[],status='Choose Contacts access to see this profile’s address book.',readable=false,loading=false,more=false,limit=50,epoch=0,active="
         },
         {
           "line": 10,
@@ -12880,7 +12883,7 @@
         "DevelopmentDevice",
         "DevelopmentSurfaces"
       ],
-      "scope": "verification-support",
+      "scope": "application",
       "treatment": "domain-allocation",
       "reviewStatus": "state-audit-required",
       "stateAnchors": []
@@ -12892,7 +12895,7 @@
         "DevelopmentDevice",
         "DevelopmentSurfaces"
       ],
-      "scope": "verification-support",
+      "scope": "application",
       "treatment": "domain-allocation",
       "reviewStatus": "state-audit-required",
       "stateAnchors": []
@@ -13421,7 +13424,7 @@
         },
         {
           "line": 21,
-          "text": "event.preventDefault();busy=true;const token=generation;status.textContent='Opening browser\u2026';"
+          "text": "event.preventDefault();busy=true;const token=generation;status.textContent='Opening browser…';"
         },
         {
           "line": 22,
@@ -13699,6 +13702,7 @@
       "path": "apps/app/src/prototype/voice-adapter.ts",
       "sha256": "8d076995863594c35144c4ef5bd489482e0f16c4fa23230c1271f9551c5f41a9",
       "models": [
+        "ApplicationComposition",
         "SpeechResources",
         "StreamingPlayback",
         "VoiceSession"
@@ -14159,6 +14163,7 @@
       "path": "apps/app/src/runtime/calendar-linked-storage.ts",
       "sha256": "558283161969f2a9cc314984f363a9e5cd583ba09257a63d094e4cf8cb05dfee",
       "models": [
+        "ApplicationComposition",
         "AssistantConversation",
         "CalendarLinkedSync",
         "CalendarPresentation",
@@ -14201,6 +14206,7 @@
       "path": "apps/app/src/runtime/calendar-sync-host.ts",
       "sha256": "3cda673cc7c7a6fb1d03aacd6339e4f92cae5c4d9a85025003cd45605e11d5b8",
       "models": [
+        "ApplicationComposition",
         "AssistantConversation",
         "CalendarLinkedSync",
         "CalendarPresentation",
@@ -14565,7 +14571,7 @@
     },
     {
       "path": "apps/app/src/runtime/connection-ui.tsx",
-      "sha256": "5932c225ec91d1c6a850d96c7b24265f318cb23fda6fcc6aa305b48e6bc52b99",
+      "sha256": "ea3364e066299348926085d252b6af8900a1d9b2ad462111b149da934d5588e3",
       "models": [
         "Application",
         "ApplicationComposition",
@@ -14987,6 +14993,7 @@
       "path": "apps/app/src/runtime/google-calendar-selection.ts",
       "sha256": "88b1e154ec9440166beebc8b0d5b519070293f3d0838fd161f26540ac595e1a7",
       "models": [
+        "ApplicationComposition",
         "AssistantConversation",
         "CalendarLinkedSync",
         "CalendarPresentation",
@@ -15547,6 +15554,7 @@
       "path": "apps/app/src/runtime/native-calendar-sync.ts",
       "sha256": "4d7b8148e9fe6162f3c2e284ec17a08ebfcfcb38f5e19e9a239283ac704d34bf",
       "models": [
+        "ApplicationComposition",
         "AssistantConversation",
         "CalendarLinkedSync",
         "CalendarPresentation",
@@ -16534,6 +16542,7 @@
       "models": [
         "BrowserSession",
         "BrowserSiteState",
+        "PermissionWalkthrough",
         "StartupPermissions"
       ],
       "scope": "application",
@@ -16596,7 +16605,7 @@
     },
     {
       "path": "apps/app/src/startup-permissions.tsx",
-      "sha256": "0793f527790200c81e169c6f9c8564e6361118b2811662714e67df96e4c169b7",
+      "sha256": "368b7241459dd0737e3d0a20df4735684c98c1f4e90bf4720f20d4494d054764",
       "models": [
         "PermissionWalkthrough",
         "StartupPermissions"
@@ -17285,7 +17294,7 @@
         "IdentitySession",
         "ResetRecovery"
       ],
-      "scope": "verification-support",
+      "scope": "shared-upstream",
       "treatment": "domain-allocation",
       "reviewStatus": "state-audit-required",
       "stateAnchors": []
@@ -17296,7 +17305,7 @@
       "models": [
         "IdentitySession"
       ],
-      "scope": "verification-support",
+      "scope": "shared-upstream",
       "treatment": "domain-allocation",
       "reviewStatus": "state-audit-required",
       "stateAnchors": []
@@ -17307,7 +17316,7 @@
       "models": [
         "IdentitySession"
       ],
-      "scope": "verification-support",
+      "scope": "shared-upstream",
       "treatment": "domain-allocation",
       "reviewStatus": "state-audit-required",
       "stateAnchors": []
@@ -17320,7 +17329,7 @@
         "IdentitySession",
         "InboxDelivery"
       ],
-      "scope": "verification-support",
+      "scope": "shared-upstream",
       "treatment": "domain-allocation",
       "reviewStatus": "state-audit-required",
       "stateAnchors": []
@@ -17331,7 +17340,7 @@
       "models": [
         "IdentitySession"
       ],
-      "scope": "verification-support",
+      "scope": "shared-upstream",
       "treatment": "domain-allocation",
       "reviewStatus": "state-audit-required",
       "stateAnchors": []
@@ -17340,9 +17349,10 @@
       "path": "vendor/eliza/packages/auth/android/test/native-sign-in.test.mjs",
       "sha256": "17bc2934a095c5b50143263cb74cd5bdcdc0f22de4cbd5236f0ca51908588988",
       "models": [
+        "Application",
         "IdentitySession"
       ],
-      "scope": "verification-support",
+      "scope": "shared-upstream",
       "treatment": "domain-allocation",
       "reviewStatus": "state-audit-required",
       "stateAnchors": []
@@ -17353,7 +17363,7 @@
       "models": [
         "Application"
       ],
-      "scope": "verification-support",
+      "scope": "shared-upstream",
       "treatment": "domain-allocation",
       "reviewStatus": "state-audit-required",
       "stateAnchors": []
@@ -17468,6 +17478,7 @@
       "path": "vendor/eliza/packages/contracts/src/client-turn-observation.ts",
       "sha256": "dbebdd8b74cb27e8fa773ed6522505ca5939c44908405af7b64acf7ed8e35e67",
       "models": [
+        "Application",
         "AssistantConversation"
       ],
       "scope": "shared-upstream",
@@ -17514,6 +17525,7 @@
       "path": "vendor/eliza/packages/contracts/src/device-action-execution.ts",
       "sha256": "a5f2387b1db5d3424e540b11bb53db85fa215f0d4670c1c78401c56a14d5ad25",
       "models": [
+        "Application",
         "DeviceActions"
       ],
       "scope": "shared-upstream",
@@ -17525,6 +17537,7 @@
       "path": "vendor/eliza/packages/contracts/src/device-reviews.ts",
       "sha256": "69af75e916754baa6d84d56c365175e940bdfe398dd02bb43f07460b331548ab",
       "models": [
+        "Application",
         "DeviceActions"
       ],
       "scope": "shared-upstream",
@@ -17547,6 +17560,7 @@
       "path": "vendor/eliza/packages/contracts/src/lifeops-connector-degradation.ts",
       "sha256": "94c85602e836baf7e0bf1e53057d159e58db21e12798baf31e7012b6ea7a218a",
       "models": [
+        "Application",
         "ServiceAuthorization"
       ],
       "scope": "shared-upstream",
@@ -17558,6 +17572,7 @@
       "path": "vendor/eliza/packages/contracts/src/lifeops/connectors.ts",
       "sha256": "7f167c987657652fea54bb4fac7b26dddaf18b8f262a3224ce2fbbe2fa855e9b",
       "models": [
+        "Application",
         "ServiceAuthorization"
       ],
       "scope": "shared-upstream",
@@ -17569,6 +17584,7 @@
       "path": "vendor/eliza/packages/contracts/src/lifeops/events.ts",
       "sha256": "9c080250daac64f38fe181f6f594283e414810e1731d8c56ec55365f71f7f8b5",
       "models": [
+        "Application",
         "WorkflowExecution"
       ],
       "scope": "shared-upstream",
@@ -17592,6 +17608,7 @@
       "path": "vendor/eliza/packages/contracts/src/lifeops/goals.ts",
       "sha256": "a31a1451539efaab9c4c8d19eebfe8b82113b03588cff5205b6997fff4faddeb",
       "models": [
+        "Application",
         "WorkflowExecution"
       ],
       "scope": "shared-upstream",
@@ -17603,6 +17620,7 @@
       "path": "vendor/eliza/packages/contracts/src/lifeops/health.ts",
       "sha256": "ec97927ebcee31be5b97537aad3522c9b044ad7bcec9d0428514aadcfc9c02f1",
       "models": [
+        "Application",
         "ServiceAuthorization"
       ],
       "scope": "shared-upstream",
@@ -17627,6 +17645,7 @@
       "path": "vendor/eliza/packages/contracts/src/lifeops/policy.ts",
       "sha256": "5dd0c031dd9b972714c70704483e27c52114954aa1938e2d9013898c4d1e484f",
       "models": [
+        "Application",
         "ServiceAuthorization"
       ],
       "scope": "shared-upstream",
@@ -17651,6 +17670,7 @@
       "path": "vendor/eliza/packages/contracts/src/lifeops/scheduling.ts",
       "sha256": "3da58d8015881bea10e6d58328d219961f2de28938639f2cd239abf089c0f914",
       "models": [
+        "Application",
         "WorkflowExecution"
       ],
       "scope": "shared-upstream",
@@ -17830,6 +17850,7 @@
       "path": "vendor/eliza/packages/core/src/errors.ts",
       "sha256": "3203a815619e07e7531853e049ce19cc13728db310e7ddc7618379a6926678cd",
       "models": [
+        "Application",
         "RendererFailureUI"
       ],
       "scope": "shared-upstream",
@@ -17863,6 +17884,7 @@
       "path": "vendor/eliza/packages/core/src/logging.ts",
       "sha256": "167f07945cfcd4eb4c47a53e9c32217215954f6bb6d02fe6b5cf3d5dfa9f00be",
       "models": [
+        "Application",
         "RendererFailureUI"
       ],
       "scope": "shared-upstream",
@@ -17874,6 +17896,7 @@
       "path": "vendor/eliza/packages/core/src/read-memo.ts",
       "sha256": "23ae192fbb5b2823cf45576f0580b54406cb0665896a52724102f844c9f215d0",
       "models": [
+        "Application",
         "DurableStore"
       ],
       "scope": "shared-upstream",
@@ -17908,7 +17931,19 @@
       "path": "vendor/eliza/packages/core/src/security/log-redaction.ts",
       "sha256": "af9834ade4ada1d795c53f144c166f26819d73ae48752b3693426b82b3a56a46",
       "models": [
+        "Application",
         "RendererFailureUI"
+      ],
+      "scope": "shared-upstream",
+      "treatment": "domain-allocation",
+      "reviewStatus": "state-audit-required",
+      "stateAnchors": []
+    },
+    {
+      "path": "vendor/eliza/packages/core/src/services/trigger-scheduling.ts",
+      "sha256": "fbadcfbb884b300c4a52bb6ef8eb5edcb36d07e5739ea0e3b2be9e6a554734df",
+      "models": [
+        "WorkflowEngineAdmission"
       ],
       "scope": "shared-upstream",
       "treatment": "domain-allocation",
@@ -17932,6 +17967,7 @@
       "path": "vendor/eliza/packages/core/src/spoken-text.ts",
       "sha256": "ccb08e3d58a4f92a4f814425b7ffb1d3860624a8a156111f4b61f947b6028a0f",
       "models": [
+        "Application",
         "AssistantConversation"
       ],
       "scope": "shared-upstream",
@@ -18033,6 +18069,7 @@
       "path": "vendor/eliza/packages/core/src/utils/errors.ts",
       "sha256": "7d31ab2c77559fec7ffdfc9305f8038de97b0788f6ace8a441ec9e743669b68e",
       "models": [
+        "Application",
         "RendererFailureUI"
       ],
       "scope": "shared-upstream",
@@ -18044,6 +18081,7 @@
       "path": "vendor/eliza/packages/core/src/utils/reasoning-tags.ts",
       "sha256": "7d8ea5ba5194293efce6c63d7385ceab16fd1ec83c3204e5f2d3c192328c75e0",
       "models": [
+        "Application",
         "AssistantConversation"
       ],
       "scope": "shared-upstream",
@@ -18055,6 +18093,7 @@
       "path": "vendor/eliza/packages/core/src/utils/stage-directions.ts",
       "sha256": "cebca8f197936cbc3c1a4ee0d8e1a0fe4c2c12cd9a68c38dfde17ac6fe02370c",
       "models": [
+        "Application",
         "AssistantConversation"
       ],
       "scope": "shared-upstream",
@@ -18077,8 +18116,9 @@
       "path": "vendor/eliza/packages/core/src/view-interaction.ts",
       "sha256": "03bf95ae922b210c826840d473753ef69371a57c886cd2722ff8cbbe71a6c946",
       "models": [
-        "ShellNavigation",
-        "DraftDispatch"
+        "Application",
+        "DraftDispatch",
+        "ShellNavigation"
       ],
       "scope": "shared-upstream",
       "treatment": "domain-allocation",
@@ -18089,8 +18129,9 @@
       "path": "vendor/eliza/packages/core/src/views/completed-action-navigation.ts",
       "sha256": "259178a199e017b977ad1d744d1b7cffe99f41b49b9a4666f2970f9a245a5e36",
       "models": [
-        "ShellNavigation",
-        "DraftDispatch"
+        "Application",
+        "DraftDispatch",
+        "ShellNavigation"
       ],
       "scope": "shared-upstream",
       "treatment": "domain-allocation",
@@ -18101,8 +18142,9 @@
       "path": "vendor/eliza/packages/core/src/views/view-action-handoff.ts",
       "sha256": "f99e662eff594b91d96d3c1927d7704d3ad35f0b9b9166c9282afc6a448fb320",
       "models": [
-        "ShellNavigation",
-        "DraftDispatch"
+        "Application",
+        "DraftDispatch",
+        "ShellNavigation"
       ],
       "scope": "shared-upstream",
       "treatment": "domain-allocation",
@@ -18113,8 +18155,9 @@
       "path": "vendor/eliza/packages/core/src/views/view-interact-protocol.ts",
       "sha256": "bdce19f41e0f0e2c79627a99d6744416dffc55b854410c01ebd4ba91b721df0c",
       "models": [
-        "ShellNavigation",
-        "DraftDispatch"
+        "Application",
+        "DraftDispatch",
+        "ShellNavigation"
       ],
       "scope": "shared-upstream",
       "treatment": "domain-allocation",
@@ -18190,8 +18233,9 @@
       "path": "vendor/eliza/packages/ui/src/accessibility/screen-focus.ts",
       "sha256": "b4b9c173244d0e07f1002000a9f3b740974b6c47af92d4242c9c312f3d522705",
       "models": [
-        "ShellNavigation",
-        "DraftDispatch"
+        "Application",
+        "DraftDispatch",
+        "ShellNavigation"
       ],
       "scope": "shared-upstream",
       "treatment": "domain-allocation",
@@ -18295,8 +18339,9 @@
       "path": "vendor/eliza/packages/ui/src/app-shell-pages.ts",
       "sha256": "c13a6536f1d18c62e18d9ecc844a7bc0e5621e17a2bfffd857ee036494a936d2",
       "models": [
-        "ShellNavigation",
-        "DraftDispatch"
+        "Application",
+        "DraftDispatch",
+        "ShellNavigation"
       ],
       "scope": "shared-upstream",
       "treatment": "domain-allocation",
@@ -18457,8 +18502,9 @@
       "path": "vendor/eliza/packages/ui/src/components/shell/dock-clearance.ts",
       "sha256": "a5748ec4d4309b5e7cc7c4bb1c4bad0722de842d59d6a57a7cc02e1c52ac9743",
       "models": [
-        "ShellNavigation",
-        "PreferencesAndPresentation"
+        "Application",
+        "PreferencesAndPresentation",
+        "ShellNavigation"
       ],
       "scope": "shared-upstream",
       "treatment": "domain-allocation",
@@ -18469,8 +18515,9 @@
       "path": "vendor/eliza/packages/ui/src/components/shell/responsive-layout.ts",
       "sha256": "3316ced7e710081743b843a509f4bd6c564fdc23ec45a5106ace41ea06e17729",
       "models": [
-        "ShellNavigation",
-        "PreferencesAndPresentation"
+        "Application",
+        "PreferencesAndPresentation",
+        "ShellNavigation"
       ],
       "scope": "shared-upstream",
       "treatment": "domain-allocation",
@@ -18481,8 +18528,9 @@
       "path": "vendor/eliza/packages/ui/src/components/shell/use-pull-gesture.ts",
       "sha256": "45795695c036ce7acbe5d0526349c0a18e2282041401240ddd9ba439eb81a546",
       "models": [
-        "ShellNavigation",
-        "PreferencesAndPresentation"
+        "Application",
+        "PreferencesAndPresentation",
+        "ShellNavigation"
       ],
       "scope": "shared-upstream",
       "treatment": "domain-allocation",
@@ -18581,8 +18629,9 @@
       "path": "vendor/eliza/packages/ui/src/gestures/constants.ts",
       "sha256": "cfaa018b7d434cf7f068d308f050c4c626401fa08097de6573a7ed80637f1262",
       "models": [
-        "ShellNavigation",
-        "PreferencesAndPresentation"
+        "Application",
+        "PreferencesAndPresentation",
+        "ShellNavigation"
       ],
       "scope": "shared-upstream",
       "treatment": "domain-allocation",
@@ -18604,8 +18653,9 @@
       "path": "vendor/eliza/packages/ui/src/gestures/recognizers.ts",
       "sha256": "37045a4f311395f9d077275c5708bfd2fa98d64067d7a65849d62cdfee003433",
       "models": [
-        "ShellNavigation",
-        "PreferencesAndPresentation"
+        "Application",
+        "PreferencesAndPresentation",
+        "ShellNavigation"
       ],
       "scope": "shared-upstream",
       "treatment": "domain-allocation",
@@ -18616,8 +18666,9 @@
       "path": "vendor/eliza/packages/ui/src/gestures/useRafCoalescer.ts",
       "sha256": "930a1300972b989c9f2461beff70d0bbd257d0f8340cb7128a43425b04aba3c9",
       "models": [
-        "ShellNavigation",
-        "PreferencesAndPresentation"
+        "Application",
+        "PreferencesAndPresentation",
+        "ShellNavigation"
       ],
       "scope": "shared-upstream",
       "treatment": "domain-allocation",
@@ -18628,6 +18679,7 @@
       "path": "vendor/eliza/packages/ui/src/logger.ts",
       "sha256": "23b9e85486ed020c7204aba4da2b949ea70dfc5061f12a489776be0d32ee404b",
       "models": [
+        "Application",
         "RendererFailureUI"
       ],
       "scope": "shared-upstream",
@@ -18878,8 +18930,9 @@
       "path": "vendor/eliza/packages/ui/src/registry-host.ts",
       "sha256": "244bac3526568000bbe81bc99c5e07f8d1aa66d0c39a83a453f0d9b8d8523737",
       "models": [
-        "ShellNavigation",
-        "DraftDispatch"
+        "Application",
+        "DraftDispatch",
+        "ShellNavigation"
       ],
       "scope": "shared-upstream",
       "treatment": "domain-allocation",
@@ -18901,6 +18954,7 @@
       "path": "vendor/eliza/packages/ui/src/state/durable-draft.ts",
       "sha256": "10978b5da6c44130f683379c013595d54ee388b464b0b727ac82999aa6e779d9",
       "models": [
+        "Application",
         "DurableStore"
       ],
       "scope": "shared-upstream",
@@ -18934,6 +18988,7 @@
       "path": "vendor/eliza/packages/ui/src/utils/cron-format.ts",
       "sha256": "1cf708b7253f587570f339fa3d8a30cfb18577a582044d2284dd788991d8dcd9",
       "models": [
+        "Application",
         "WorkflowExecution"
       ],
       "scope": "shared-upstream",
@@ -20099,7 +20154,7 @@
         "FilesAndSharing",
         "FilesTree"
       ],
-      "scope": "verification-support",
+      "scope": "shared-upstream",
       "treatment": "domain-allocation",
       "reviewStatus": "state-audit-required",
       "stateAnchors": []
@@ -20112,7 +20167,7 @@
         "FilesTree",
         "ScanDocument"
       ],
-      "scope": "verification-support",
+      "scope": "shared-upstream",
       "treatment": "domain-allocation",
       "reviewStatus": "state-audit-required",
       "stateAnchors": []
@@ -20124,7 +20179,7 @@
         "FilesAndSharing",
         "FilesTree"
       ],
-      "scope": "verification-support",
+      "scope": "shared-upstream",
       "treatment": "domain-allocation",
       "reviewStatus": "state-audit-required",
       "stateAnchors": []
@@ -20477,7 +20532,7 @@
         "StreamingPlayback",
         "VoiceSession"
       ],
-      "scope": "verification-support",
+      "scope": "shared-upstream",
       "treatment": "domain-allocation",
       "reviewStatus": "state-audit-required",
       "stateAnchors": []
@@ -20950,7 +21005,7 @@
         "StreamingPlayback",
         "VoiceSession"
       ],
-      "scope": "verification-support",
+      "scope": "shared-upstream",
       "treatment": "domain-allocation",
       "reviewStatus": "state-audit-required",
       "stateAnchors": []
@@ -21259,7 +21314,7 @@
         "MapsNavigation",
         "NavigationProgress"
       ],
-      "scope": "verification-support",
+      "scope": "shared-upstream",
       "treatment": "domain-allocation",
       "reviewStatus": "state-audit-required",
       "stateAnchors": []
@@ -21270,7 +21325,7 @@
       "models": [
         "DurableStore"
       ],
-      "scope": "verification-support",
+      "scope": "shared-upstream",
       "treatment": "domain-allocation",
       "reviewStatus": "state-audit-required",
       "stateAnchors": []
@@ -21965,7 +22020,7 @@
         "CalendarLinkedSync",
         "CalendarPresentation"
       ],
-      "scope": "verification-support",
+      "scope": "shared-upstream",
       "treatment": "domain-allocation",
       "reviewStatus": "state-audit-required",
       "stateAnchors": []
@@ -22110,7 +22165,7 @@
       "models": [
         "MediaLifecycle"
       ],
-      "scope": "verification-support",
+      "scope": "shared-upstream",
       "treatment": "domain-allocation",
       "reviewStatus": "state-audit-required",
       "stateAnchors": []
@@ -22121,7 +22176,7 @@
       "models": [
         "MediaLifecycle"
       ],
-      "scope": "verification-support",
+      "scope": "shared-upstream",
       "treatment": "domain-allocation",
       "reviewStatus": "state-audit-required",
       "stateAnchors": []
@@ -22132,7 +22187,7 @@
       "models": [
         "MediaLifecycle"
       ],
-      "scope": "verification-support",
+      "scope": "shared-upstream",
       "treatment": "domain-allocation",
       "reviewStatus": "state-audit-required",
       "stateAnchors": []
@@ -22143,7 +22198,7 @@
       "models": [
         "MediaLifecycle"
       ],
-      "scope": "verification-support",
+      "scope": "shared-upstream",
       "treatment": "domain-allocation",
       "reviewStatus": "state-audit-required",
       "stateAnchors": []
@@ -22244,7 +22299,7 @@
       "models": [
         "DeviceActions"
       ],
-      "scope": "verification-support",
+      "scope": "shared-upstream",
       "treatment": "domain-allocation",
       "reviewStatus": "state-audit-required",
       "stateAnchors": []
@@ -22256,7 +22311,7 @@
         "DeviceActions",
         "StartupPermissions"
       ],
-      "scope": "verification-support",
+      "scope": "shared-upstream",
       "treatment": "domain-allocation",
       "reviewStatus": "state-audit-required",
       "stateAnchors": []
@@ -22267,7 +22322,7 @@
       "models": [
         "DeviceActions"
       ],
-      "scope": "verification-support",
+      "scope": "shared-upstream",
       "treatment": "domain-allocation",
       "reviewStatus": "state-audit-required",
       "stateAnchors": []
@@ -22325,7 +22380,7 @@
         "MapsNavigation",
         "NavigationProgress"
       ],
-      "scope": "verification-support",
+      "scope": "shared-upstream",
       "treatment": "domain-allocation",
       "reviewStatus": "state-audit-required",
       "stateAnchors": []
@@ -22337,7 +22392,7 @@
         "MapsNavigation",
         "NavigationProgress"
       ],
-      "scope": "verification-support",
+      "scope": "shared-upstream",
       "treatment": "domain-allocation",
       "reviewStatus": "state-audit-required",
       "stateAnchors": []
@@ -22349,7 +22404,7 @@
         "MapsNavigation",
         "NavigationProgress"
       ],
-      "scope": "verification-support",
+      "scope": "shared-upstream",
       "treatment": "domain-allocation",
       "reviewStatus": "state-audit-required",
       "stateAnchors": []
@@ -22776,9 +22831,10 @@
       "path": "vendor/eliza/plugins/plugin-native-messages/android/src/androidTest/java/ai/eliza/plugins/messages/MessagesReaderInstrumentedTest.kt",
       "sha256": "14a38563c3ad3b788b899de694cf6f8fedef333240d69a7ebbea5c052ce1eced",
       "models": [
+        "Application",
         "DeviceActions"
       ],
-      "scope": "verification-support",
+      "scope": "shared-upstream",
       "treatment": "domain-allocation",
       "reviewStatus": "state-audit-required",
       "stateAnchors": []
@@ -22789,7 +22845,7 @@
       "models": [
         "DeviceActions"
       ],
-      "scope": "verification-support",
+      "scope": "shared-upstream",
       "treatment": "domain-allocation",
       "reviewStatus": "state-audit-required",
       "stateAnchors": []
@@ -22798,6 +22854,7 @@
       "path": "vendor/eliza/plugins/plugin-native-messages/android/src/main/java/ai/eliza/plugins/messages/CallLogRows.java",
       "sha256": "379c607c0509ee10cf64aa43deeb85b3b8d2e6b6ab967fbdae32e5ca16fdfb8b",
       "models": [
+        "Application",
         "DeviceActions"
       ],
       "scope": "shared-upstream",
@@ -22809,6 +22866,7 @@
       "path": "vendor/eliza/plugins/plugin-native-messages/android/src/main/java/ai/eliza/plugins/messages/ImageCapability.java",
       "sha256": "f5fbbd0d52cbaccc04a8c8872306d13b2338d3750248519e847f25d4b3f341a8",
       "models": [
+        "Application",
         "DeviceActions"
       ],
       "scope": "shared-upstream",
@@ -22820,6 +22878,7 @@
       "path": "vendor/eliza/plugins/plugin-native-messages/android/src/main/java/ai/eliza/plugins/messages/MessagesPlugin.kt",
       "sha256": "b394d6e48ae41dcfc124708c2b664fd0fec15e7af645daeb076307f3df77fb8d",
       "models": [
+        "Application",
         "DeviceActions"
       ],
       "scope": "shared-upstream",
@@ -22831,6 +22890,7 @@
       "path": "vendor/eliza/plugins/plugin-native-messages/android/src/main/java/ai/eliza/plugins/messages/MessagesReader.kt",
       "sha256": "a616acc2def6b9398ec20aaeaec834d300ba4f86e77be39bf84f5071b9f84e6f",
       "models": [
+        "Application",
         "DeviceActions"
       ],
       "scope": "shared-upstream",
@@ -22898,6 +22958,7 @@
       "path": "vendor/eliza/plugins/plugin-native-messages/android/src/main/java/ai/eliza/plugins/messages/RespondViaMessageService.java",
       "sha256": "b69df60f5cb6f654375d4a9a1cf4013222621872d2fdc18a6079cced2452441b",
       "models": [
+        "Application",
         "DeviceActions"
       ],
       "scope": "shared-upstream",
@@ -23053,9 +23114,10 @@
       "path": "vendor/eliza/plugins/plugin-native-messages/android/src/test/java/ai/eliza/plugins/messages/CallLogRowsTest.java",
       "sha256": "75b0c68b61b67ae98b9fbd5b740bd7437c06754855f828bfd63962eeb506d8d3",
       "models": [
+        "Application",
         "DeviceActions"
       ],
-      "scope": "verification-support",
+      "scope": "shared-upstream",
       "treatment": "domain-allocation",
       "reviewStatus": "state-audit-required",
       "stateAnchors": []
@@ -23066,7 +23128,7 @@
       "models": [
         "DeviceActions"
       ],
-      "scope": "verification-support",
+      "scope": "shared-upstream",
       "treatment": "domain-allocation",
       "reviewStatus": "state-audit-required",
       "stateAnchors": []
@@ -23078,7 +23140,7 @@
         "DeviceActions",
         "DurableStore"
       ],
-      "scope": "verification-support",
+      "scope": "shared-upstream",
       "treatment": "domain-allocation",
       "reviewStatus": "state-audit-required",
       "stateAnchors": []
@@ -23089,7 +23151,7 @@
       "models": [
         "DeviceActions"
       ],
-      "scope": "verification-support",
+      "scope": "shared-upstream",
       "treatment": "domain-allocation",
       "reviewStatus": "state-audit-required",
       "stateAnchors": []
@@ -23101,7 +23163,7 @@
         "DeviceActions",
         "DurableStore"
       ],
-      "scope": "verification-support",
+      "scope": "shared-upstream",
       "treatment": "domain-allocation",
       "reviewStatus": "state-audit-required",
       "stateAnchors": []
@@ -23112,7 +23174,7 @@
       "models": [
         "ServiceAuthorization"
       ],
-      "scope": "verification-support",
+      "scope": "shared-upstream",
       "treatment": "domain-allocation",
       "reviewStatus": "state-audit-required",
       "stateAnchors": []
@@ -23572,7 +23634,7 @@
       "models": [
         "DeviceActions"
       ],
-      "scope": "verification-support",
+      "scope": "shared-upstream",
       "treatment": "domain-allocation",
       "reviewStatus": "state-audit-required",
       "stateAnchors": []
@@ -23583,7 +23645,7 @@
       "models": [
         "DeviceActions"
       ],
-      "scope": "verification-support",
+      "scope": "shared-upstream",
       "treatment": "domain-allocation",
       "reviewStatus": "state-audit-required",
       "stateAnchors": []
@@ -23594,7 +23656,7 @@
       "models": [
         "DeviceActions"
       ],
-      "scope": "verification-support",
+      "scope": "shared-upstream",
       "treatment": "domain-allocation",
       "reviewStatus": "state-audit-required",
       "stateAnchors": []
@@ -23605,7 +23667,7 @@
       "models": [
         "DeviceActions"
       ],
-      "scope": "verification-support",
+      "scope": "shared-upstream",
       "treatment": "domain-allocation",
       "reviewStatus": "state-audit-required",
       "stateAnchors": []
@@ -23693,7 +23755,7 @@
       "models": [
         "DeviceActions"
       ],
-      "scope": "verification-support",
+      "scope": "shared-upstream",
       "treatment": "domain-allocation",
       "reviewStatus": "state-audit-required",
       "stateAnchors": []
@@ -23706,7 +23768,7 @@
         "NoticesAndCaches",
         "NotificationCollection"
       ],
-      "scope": "verification-support",
+      "scope": "shared-upstream",
       "treatment": "domain-allocation",
       "reviewStatus": "state-audit-required",
       "stateAnchors": []
@@ -23838,7 +23900,7 @@
         "NoticesAndCaches",
         "NotificationCollection"
       ],
-      "scope": "verification-support",
+      "scope": "shared-upstream",
       "treatment": "domain-allocation",
       "reviewStatus": "state-audit-required",
       "stateAnchors": []
@@ -23877,7 +23939,7 @@
         "DurableStore",
         "NativeCredentialMutation"
       ],
-      "scope": "verification-support",
+      "scope": "shared-upstream",
       "treatment": "domain-allocation",
       "reviewStatus": "state-audit-required",
       "stateAnchors": []
@@ -23890,7 +23952,7 @@
         "DurableStore",
         "NativeCredentialMutation"
       ],
-      "scope": "verification-support",
+      "scope": "shared-upstream",
       "treatment": "domain-allocation",
       "reviewStatus": "state-audit-required",
       "stateAnchors": []
@@ -23903,7 +23965,7 @@
         "DurableStore",
         "NativeCredentialMutation"
       ],
-      "scope": "verification-support",
+      "scope": "shared-upstream",
       "treatment": "domain-allocation",
       "reviewStatus": "state-audit-required",
       "stateAnchors": []
@@ -23916,7 +23978,7 @@
         "DurableStore",
         "NativeCredentialMutation"
       ],
-      "scope": "verification-support",
+      "scope": "shared-upstream",
       "treatment": "domain-allocation",
       "reviewStatus": "state-audit-required",
       "stateAnchors": []
@@ -23929,7 +23991,7 @@
         "DurableStore",
         "NativeCredentialMutation"
       ],
-      "scope": "verification-support",
+      "scope": "shared-upstream",
       "treatment": "domain-allocation",
       "reviewStatus": "state-audit-required",
       "stateAnchors": []
@@ -23942,7 +24004,7 @@
         "DurableStore",
         "NativeCredentialMutation"
       ],
-      "scope": "verification-support",
+      "scope": "shared-upstream",
       "treatment": "domain-allocation",
       "reviewStatus": "state-audit-required",
       "stateAnchors": []
@@ -23955,7 +24017,7 @@
         "DurableStore",
         "NativeCredentialMutation"
       ],
-      "scope": "verification-support",
+      "scope": "shared-upstream",
       "treatment": "domain-allocation",
       "reviewStatus": "state-audit-required",
       "stateAnchors": []
@@ -23968,7 +24030,7 @@
         "DurableStore",
         "NativeCredentialMutation"
       ],
-      "scope": "verification-support",
+      "scope": "shared-upstream",
       "treatment": "domain-allocation",
       "reviewStatus": "state-audit-required",
       "stateAnchors": []
@@ -23981,7 +24043,7 @@
         "DurableStore",
         "NativeCredentialMutation"
       ],
-      "scope": "verification-support",
+      "scope": "shared-upstream",
       "treatment": "domain-allocation",
       "reviewStatus": "state-audit-required",
       "stateAnchors": []
@@ -23994,7 +24056,7 @@
         "DurableStore",
         "NativeCredentialMutation"
       ],
-      "scope": "verification-support",
+      "scope": "shared-upstream",
       "treatment": "domain-allocation",
       "reviewStatus": "state-audit-required",
       "stateAnchors": []
@@ -24007,7 +24069,7 @@
         "DurableStore",
         "NativeCredentialMutation"
       ],
-      "scope": "verification-support",
+      "scope": "shared-upstream",
       "treatment": "domain-allocation",
       "reviewStatus": "state-audit-required",
       "stateAnchors": []
@@ -24291,9 +24353,10 @@
       "path": "vendor/eliza/plugins/plugin-native-system/android/src/androidTest/java/ai/eliza/plugins/system/DeviceSetupInstrumentedTest.java",
       "sha256": "3fd1daa03b30daf980f713d101a00ce1c2524cb8e7e5f268e45c3e460b9ef61e",
       "models": [
+        "Application",
         "StartupPermissions"
       ],
-      "scope": "verification-support",
+      "scope": "shared-upstream",
       "treatment": "domain-allocation",
       "reviewStatus": "state-audit-required",
       "stateAnchors": []
@@ -24304,7 +24367,7 @@
       "models": [
         "Application"
       ],
-      "scope": "verification-support",
+      "scope": "shared-upstream",
       "treatment": "domain-allocation",
       "reviewStatus": "state-audit-required",
       "stateAnchors": []
@@ -24313,10 +24376,11 @@
       "path": "vendor/eliza/plugins/plugin-native-system/android/src/androidTest/java/ai/eliza/plugins/system/SystemAppIntentsInstrumentedTest.java",
       "sha256": "55074eddb73986b165601d347d12e00eeca15a128db37aabad764e8b5db7193a",
       "models": [
-        "PreferencesAndPresentation",
-        "DevelopmentDevice"
+        "Application",
+        "DevelopmentDevice",
+        "PreferencesAndPresentation"
       ],
-      "scope": "verification-support",
+      "scope": "shared-upstream",
       "treatment": "domain-allocation",
       "reviewStatus": "state-audit-required",
       "stateAnchors": []
@@ -24325,10 +24389,11 @@
       "path": "vendor/eliza/plugins/plugin-native-system/android/src/androidTest/java/ai/eliza/plugins/system/SystemDeviceReaderInstrumentedTest.kt",
       "sha256": "97fe6e0903725b6a3aa9fd284e52982f41b6635cd2da6cda9058814af3a96f14",
       "models": [
-        "PreferencesAndPresentation",
-        "DevelopmentDevice"
+        "Application",
+        "DevelopmentDevice",
+        "PreferencesAndPresentation"
       ],
-      "scope": "verification-support",
+      "scope": "shared-upstream",
       "treatment": "domain-allocation",
       "reviewStatus": "state-audit-required",
       "stateAnchors": []
@@ -24337,10 +24402,11 @@
       "path": "vendor/eliza/plugins/plugin-native-system/android/src/androidTest/java/ai/eliza/plugins/system/SystemFlashlightInstrumentedTest.kt",
       "sha256": "1a6f02d4597d2e2d88b082240e036dfe19ef932d2c34f7518e2453683249a753",
       "models": [
-        "PreferencesAndPresentation",
-        "DevelopmentDevice"
+        "Application",
+        "DevelopmentDevice",
+        "PreferencesAndPresentation"
       ],
-      "scope": "verification-support",
+      "scope": "shared-upstream",
       "treatment": "domain-allocation",
       "reviewStatus": "state-audit-required",
       "stateAnchors": []
@@ -24352,7 +24418,7 @@
         "ListFocus",
         "ShellNavigation"
       ],
-      "scope": "verification-support",
+      "scope": "shared-upstream",
       "treatment": "domain-allocation",
       "reviewStatus": "state-audit-required",
       "stateAnchors": []
@@ -24411,8 +24477,9 @@
       "path": "vendor/eliza/plugins/plugin-native-system/android/src/main/java/ai/eliza/plugins/system/SystemAppIntents.java",
       "sha256": "13f281b985a3b3026cc3d2b5c9183fec4194dcca55eb7dae9a9cff295929adab",
       "models": [
-        "PreferencesAndPresentation",
-        "DevelopmentDevice"
+        "Application",
+        "DevelopmentDevice",
+        "PreferencesAndPresentation"
       ],
       "scope": "shared-upstream",
       "treatment": "domain-allocation",
@@ -24423,8 +24490,9 @@
       "path": "vendor/eliza/plugins/plugin-native-system/android/src/main/java/ai/eliza/plugins/system/SystemDeviceReader.kt",
       "sha256": "038f41a2afa3349a72886fc1e792327fa73d28f9eb66684bd509e77f87376054",
       "models": [
-        "PreferencesAndPresentation",
-        "DevelopmentDevice"
+        "Application",
+        "DevelopmentDevice",
+        "PreferencesAndPresentation"
       ],
       "scope": "shared-upstream",
       "treatment": "domain-allocation",
@@ -24435,8 +24503,9 @@
       "path": "vendor/eliza/plugins/plugin-native-system/android/src/main/java/ai/eliza/plugins/system/SystemFacts.java",
       "sha256": "a5de87914e428c8392d83702c91fefdde576dd6f2927224d9174eea6bbb4c52b",
       "models": [
-        "PreferencesAndPresentation",
-        "DevelopmentDevice"
+        "Application",
+        "DevelopmentDevice",
+        "PreferencesAndPresentation"
       ],
       "scope": "shared-upstream",
       "treatment": "domain-allocation",
@@ -24459,8 +24528,9 @@
       "path": "vendor/eliza/plugins/plugin-native-system/android/src/main/java/ai/eliza/plugins/system/SystemPlugin.kt",
       "sha256": "47c9fe05cac28396fe297923085a71f5321c94722b27afdbf19c97e7c80bbb50",
       "models": [
-        "PreferencesAndPresentation",
-        "DevelopmentDevice"
+        "Application",
+        "DevelopmentDevice",
+        "PreferencesAndPresentation"
       ],
       "scope": "shared-upstream",
       "treatment": "domain-allocation",
@@ -24482,8 +24552,9 @@
       "path": "vendor/eliza/plugins/plugin-native-system/android/src/main/java/ai/eliza/plugins/system/SystemShade.java",
       "sha256": "3ae27b0d65888659e3f76417b9354c87cab10a506ae356098f965898be15284d",
       "models": [
-        "PreferencesAndPresentation",
-        "DevelopmentDevice"
+        "Application",
+        "DevelopmentDevice",
+        "PreferencesAndPresentation"
       ],
       "scope": "shared-upstream",
       "treatment": "domain-allocation",
@@ -24527,6 +24598,7 @@
       "path": "vendor/eliza/plugins/plugin-native-system/android/src/main/java/ai/eliza/plugins/system/crash/CrashLog.java",
       "sha256": "a4ea2c5f86003d0b87fe2118a9d20b2c95dadfce788ce3af01697d6faab03fd7",
       "models": [
+        "Application",
         "RendererFailureUI"
       ],
       "scope": "shared-upstream",
@@ -24598,6 +24670,7 @@
       "path": "vendor/eliza/plugins/plugin-native-system/android/src/main/java/ai/eliza/plugins/system/setup/DeviceSetup.java",
       "sha256": "3f5b2c0aeb244c04aa57883f18af5739eb6ce895aad3ca9822e9715167cda2a4",
       "models": [
+        "Application",
         "StartupPermissions"
       ],
       "scope": "shared-upstream",
@@ -24621,8 +24694,9 @@
       "path": "vendor/eliza/plugins/plugin-native-system/src/client/shade.ts",
       "sha256": "76e3f13a7fc8af4844fb724396b0873e0621db5a12124599c5c66fd536925e7e",
       "models": [
-        "PreferencesAndPresentation",
-        "DevelopmentDevice"
+        "Application",
+        "DevelopmentDevice",
+        "PreferencesAndPresentation"
       ],
       "scope": "shared-upstream",
       "treatment": "domain-allocation",
@@ -25117,7 +25191,7 @@
       "models": [
         "NotesLifecycle"
       ],
-      "scope": "verification-support",
+      "scope": "shared-upstream",
       "treatment": "domain-allocation",
       "reviewStatus": "state-audit-required",
       "stateAnchors": []
@@ -25128,7 +25202,7 @@
       "models": [
         "NotesLifecycle"
       ],
-      "scope": "verification-support",
+      "scope": "shared-upstream",
       "treatment": "domain-allocation",
       "reviewStatus": "state-audit-required",
       "stateAnchors": []
@@ -25139,7 +25213,7 @@
       "models": [
         "NotesLifecycle"
       ],
-      "scope": "verification-support",
+      "scope": "shared-upstream",
       "treatment": "domain-allocation",
       "reviewStatus": "state-audit-required",
       "stateAnchors": []
@@ -25150,7 +25224,7 @@
       "models": [
         "NotesLifecycle"
       ],
-      "scope": "verification-support",
+      "scope": "shared-upstream",
       "treatment": "domain-allocation",
       "reviewStatus": "state-audit-required",
       "stateAnchors": []
@@ -25162,7 +25236,7 @@
         "DurableStore",
         "NotesLifecycle"
       ],
-      "scope": "verification-support",
+      "scope": "shared-upstream",
       "treatment": "domain-allocation",
       "reviewStatus": "state-audit-required",
       "stateAnchors": []
@@ -25179,9 +25253,58 @@
       "stateAnchors": []
     },
     {
+      "path": "vendor/eliza/plugins/plugin-workflow/src/db/schema.ts",
+      "sha256": "d08ce0236aa1a3b4be07104c92e87791b34fade2db0af8d63a36d9de73fd72fb",
+      "models": [
+        "WorkflowEngineAdmission",
+        "WorkflowExecution"
+      ],
+      "scope": "shared-upstream",
+      "treatment": "domain-allocation",
+      "reviewStatus": "state-audit-required",
+      "stateAnchors": []
+    },
+    {
+      "path": "vendor/eliza/plugins/plugin-workflow/src/services/embedded-workflow-service.ts",
+      "sha256": "c7620d26adef60dd357b5b1f6f9f0b29b3ae4ea355cd5de4ce2dfb32c64f868c",
+      "models": [
+        "WorkflowEngineAdmission",
+        "WorkflowExecution"
+      ],
+      "scope": "shared-upstream",
+      "treatment": "domain-allocation",
+      "reviewStatus": "state-audit-required",
+      "stateAnchors": []
+    },
+    {
       "path": "vendor/eliza/plugins/plugin-workflow/src/services/hosted-digest-policy.ts",
       "sha256": "1bb5a9744b093f6b9314aad53ef68672571ca96a9faa69a7770c8e1b31a11f3d",
       "models": [
+        "WorkflowExecution"
+      ],
+      "scope": "shared-upstream",
+      "treatment": "domain-allocation",
+      "reviewStatus": "state-audit-required",
+      "stateAnchors": []
+    },
+    {
+      "path": "vendor/eliza/plugins/plugin-workflow/src/services/phone-workflow-spec.ts",
+      "sha256": "be202da490bdb70620577947aadfc4a57efd560e7fff6eed4dd42f0b4d6b5e68",
+      "models": [
+        "DeviceActions",
+        "WorkflowEngineAdmission",
+        "WorkflowExecution"
+      ],
+      "scope": "shared-upstream",
+      "treatment": "domain-allocation",
+      "reviewStatus": "state-audit-required",
+      "stateAnchors": []
+    },
+    {
+      "path": "vendor/eliza/plugins/plugin-workflow/src/services/workflow-dispatch.ts",
+      "sha256": "56737703715210d7b3e72983c781395e3180fe6d94b4ea06632b92fc9a529f1d",
+      "models": [
+        "WorkflowEngineAdmission",
         "WorkflowExecution"
       ],
       "scope": "shared-upstream",
@@ -25437,7 +25560,7 @@
       "models": [
         "Application"
       ],
-      "sha256": "c9ccca7615d4353bb127ee6b5d99b57e8ac905b2381bfb2d3dc68c453d32a462"
+      "sha256": "ab06c47fc31768f5b1e856025089c474049303bb433d935e32dd0d29b4a9fc41"
     },
     {
       "path": "upstream.lock.json",
@@ -25454,7 +25577,7 @@
     "clientProjection": ".eliza/client-features/.source.json",
     "hostDescriptor": "android/consumer-host.json",
     "nativePatches": "patches/eliza/native-manifest.json",
-    "sharedSourceCount": 678,
+    "sharedSourceCount": 683,
     "meaning": "Consumed shared sources are checked alongside product sources. Generated copies and effective patch hashes are bound by source-trace receipts."
   }
 }

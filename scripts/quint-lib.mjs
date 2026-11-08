@@ -43,6 +43,18 @@ export function sharedSourcePaths() {
     'packages/app/platforms/android/sense/src/main',
     'packages/os/android/sense/systemui/chip/source',
   ]);
+  // A finer model may expose a worker source outside the client/native projection.
+  // Keep those registered source dependencies in drift admission as well.
+  for (const family of ['application', 'services', 'native', 'legacy']) {
+    const document = readJson(join(quintRoot, family, 'manifest.json'));
+    for (const model of Array.isArray(document) ? document : document.models) {
+      for (const source of model.sources || []) {
+        if (!source.startsWith('vendor/eliza/')) continue;
+        if (source.split('/').includes('..')) throw Error(`Invalid shared model source ${source}`);
+        prefixes.add(source.slice('vendor/eliza/'.length));
+      }
+    }
+  }
   const sources = new Set();
   for (const prefix of prefixes) {
     const target = join(repositoryRoot, 'vendor/eliza', prefix);

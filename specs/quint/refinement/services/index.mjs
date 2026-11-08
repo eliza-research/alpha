@@ -5,6 +5,7 @@ import {inboxRefinement} from './inbox.mjs';
 import {mapsRefinement} from './maps.mjs';
 import {cacheRefinement} from './cache.mjs';
 import {workflowRefinement} from './workflow.mjs';
+import {runWorkflowEngineRefinement} from './workflow-engine/index.mjs';
 import {policyRefinement} from './policies.mjs';
 import {readingRefinement} from './reading.mjs';
 import {scanRefinement} from './scan.mjs';
@@ -36,6 +37,8 @@ export async function runServicesRefinement() {
   receipts.push(await checkCredentialLeasePolicies(driverSources));
   const credential = await checkCredentialCoordinator(driverSources, ['NativeCredentialMutation']);
   receipts.push(...credential.receipts);
+  const workflowEngine = await runWorkflowEngineRefinement(driverSources);
+  receipts.push(...workflowEngine.receipts);
   const obligations = [
     {model: 'IdentitySession', obligation: 'Native authorization, encrypted storage and wider concurrent activation', reason: 'Twenty-one full-plugin schedules cover callback retirement, cancellation races, receipt/key commits, overlapping acknowledgement and newer attempts, previous-key revocation and restart. Native authorization timing, actual Keystore behavior and arbitrary overlapping attempts remain further obligations.'},
     {model: 'ServiceAuthorization', obligation: 'Managed-service dispatch authorization', reason: 'Entitlement refresh and admission views execute; exact route validation and server authorization still need their own dispatch trace adapter.'},
@@ -56,5 +59,6 @@ export async function runServicesRefinement() {
   obligations.push(...inboxCleanup.obligations);
   obligations.push(...credential.obligations);
   obligations.push(...providerDrafts.obligations);
+  obligations.push(...workflowEngine.obligations);
   return {receipts, obligations};
 }
