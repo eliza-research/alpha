@@ -1,8 +1,10 @@
 package ai.elizaresearch.alphaphone;
 
+import ai.eliza.plugins.agent.runtime.NativeProviderAdmission;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.util.Set;
+import org.json.JSONException;
 import org.json.JSONObject;
 import org.json.JSONArray;
 import org.json.JSONTokener;
@@ -33,6 +35,12 @@ final class GoogleWorkspaceReturnFlow {
    for(byte value:hash)result.append(Character.forDigit((value>>>4)&15,16)).append(Character.forDigit(value&15,16));
    return result.toString();
   }catch(Exception invalid){throw new IllegalArgumentException("Invalid Workspace credential");}
+ }
+ /** Whether a failed identity pre-check falls back to the manual return: a transient HTTP status, a network failure
+  * or an unreadable body says nothing about the account. A 401/403, an identity mismatch or an expired key stops Connect Google. */
+ static boolean manualReturn(Exception error) {
+  if(error instanceof NativeProviderAdmission.CloudReadFailure){int status=((NativeProviderAdmission.CloudReadFailure)error).status;return status!=401&&status!=403;}
+  return error instanceof java.io.IOException||error instanceof JSONException;
  }
  static GoogleWorkspaceReturn.Binding binding(String environment,String userId,String organizationId,String credentialId,String rawCredential) {
   try {
