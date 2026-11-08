@@ -1095,6 +1095,8 @@ export function installPrototypeVoiceAdapter(Component: any, views: Record<strin
   let recordRequested = false;
   notes.render = (state: Bag, current: Bag) => {
     api = current;
+    // Folders remain stored for continuity; this Notes surface is one complete list.
+    if (state.folder && state.folder !== 'deleted') queueMicrotask(() => current.setView('notes', { folder: null }));
     if (noteDestination && !noteDestination.current()) queueMicrotask(() => noteRecorder.recheckOwner());
     // `record` (the notes:rec deep link, or an agent reply) opens the Notes recorder once.
     if (state.record && !recordRequested) {
@@ -1106,7 +1108,7 @@ export function installPrototypeVoiceAdapter(Component: any, views: Record<strin
     if(!state.audioDeletionChecked)void refreshDeletionStatus(current);
     const selected = (current.get('notes').list || []).find((n: Bag) => n.id === state.open);
     if (savedPlaying && selected?.audio?.audioId !== savedPlaying) stopSaved();
-    const result = render({ ...state, record: false, rec: null, ...(selected?.audio ? { playing: false, pos: savedPosition / 1000 } : {}) }, current);
+    const result = render({ ...state, folder: state.folder === 'deleted' ? 'deleted' : null, folderSheet: null, record: false, rec: null, ...(selected?.audio ? { playing: false, pos: savedPosition / 1000 } : {}) }, current);
     result.audioDeletionPending=(state.audioDeletionPending||[]).map((row:AudioDeletion)=>({title:row.note.title||'Voice note',restore:()=>void restoreDeletion(row,current)}));
     result.audioDeletionUnknown=!!state.audioDeletionRecoveryFailed||result.audioDeletionPending.length>0;
     result.checkAudioDeletion=()=>void refreshDeletionStatus(current);

@@ -2239,12 +2239,7 @@
     <sc-if value="{{notes.canRecord}}"><button class="ib" data-agent-id="notes-record" aria-label="Record voice note" onClick="{{notes.record}}"><svg class="i" viewBox="0 0 24 24" style="width: 20px; height: 20px"><path d="{{ic.mic}}"></path></svg></button></sc-if>
       <sc-if value="{{notes.canCreate}}"><button class="ib" data-agent-id="notes-new" aria-label="New note" disabled="{{notes.createDisabled}}" onClick="{{notes.newNote}}"><svg class="i" viewBox="0 0 24 24" style="width: 20px; height: 20px"><path d="{{ic.plus}}"></path></svg></button></sc-if>
   </div>
-  <div class="scr notes-folders" role="group" aria-label="Folders" style="display: flex; gap: 8px; overflow-x: auto; padding: 4px 16px 10px; flex-shrink: 0; touch-action: pan-x">
-    <button class="tap notes-chip" aria-pressed="{{notes.allPressed}}" onClick="{{notes.selectAll}}">All</button>
-    <sc-for list="{{notes.folderChips}}" as="f"><button class="tap notes-chip" data-notes-folder="{{f.id}}" aria-pressed="{{f.pressed}}" aria-label="{{f.label}}" onClick="{{f.select}}" onPointerDown="{{f.down}}" onPointerUp="{{f.up}}" onPointerLeave="{{f.up}}" onPointerCancel="{{f.up}}" onContextMenu="{{f.context}}">{{f.name}}</button></sc-for>
-    <button class="tap notes-chip" data-agent-id="notes-new-folder" aria-label="New folder" onClick="{{notes.newFolder}}"><svg class="i" viewBox="0 0 24 24" style="width: 16px; height: 16px"><path d="{{ic.plus}}"></path></svg></button>
-    <sc-if value="{{notes.hasDeleted}}"><button class="tap notes-chip" data-agent-id="notes-trash" aria-pressed="false" onClick="{{notes.openTrash}}"><svg class="i" viewBox="0 0 24 24" style="width: 16px; height: 16px"><path d="{{ic.trash}}"></path></svg>Recently deleted</button></sc-if>
-  </div>
+  <sc-if value="{{notes.hasDeleted}}"><div style="padding:0 16px 10px"><button class="tap notes-chip" data-agent-id="notes-trash" onClick="{{notes.openTrash}}"><svg class="i" viewBox="0 0 24 24" style="width:16px;height:16px"><path d="{{ic.trash}}"></path></svg>Recently deleted</button></div></sc-if>
   <sc-if value="{{notes.filterOn}}">
     <div style="display: flex; padding: 0 16px 10px; flex-shrink: 0">
       <span class="notes-filter-chip" role="status" style="display: inline-flex; align-items: center; gap: 6px; min-height: 32px; max-width: 100%; padding: 0 4px 0 12px; border-radius: 16px; background: var(--s2); font-size: 13px; font-weight: 600"><svg class="i" viewBox="0 0 24 24" aria-hidden="true" style="width: 14px; height: 14px; flex-shrink: 0"><path d="{{ic.search}}"></path></svg><span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap">{{notes.filterLabel}}</span><button class="ib" aria-label="Clear filter" onClick="{{notes.clearFilter}}" style="width: 44px; height: 44px; margin: -6px 0"><svg class="i" viewBox="0 0 24 24" style="width: 14px; height: 14px"><path d="{{ic.x}}"></path></svg></button></span>
@@ -2273,11 +2268,6 @@
           </button>
     </sc-for>
     <sc-if value="{{notes.canImportText}}"><button class="tap" aria-label="Import text note" disabled="{{notes.documentBusy}}" onClick="{{notes.importText}}" style="display: flex; align-items: center; gap: 8px; min-height: 44px; margin-top: 16px; padding: 0 14px; border-radius: 22px; background: var(--s2); color: var(--fg); font-size: 14px"><svg class="i" viewBox="0 0 24 24" style="width: 18px; height: 18px"><path d="{{ic.filesDown}}"></path></svg>Import text note</button></sc-if>
-    <sc-if value="{{notes.olderNotesAction}}">
-      <div style="display: flex; justify-content: center; margin-top: 12px">
-        <sc-if value="{{notes.olderNotesAction}}"><button class="tap" data-agent-id="notes-source-legacy" onClick="{{notes.olderNotesAction}}" style="display: inline-flex; align-items: center; gap: 6px; min-height: 48px; max-width: 100%; padding: 8px 14px; border-radius: 24px; color: var(--mut); font-size: 14px; font-weight: 500; overflow-wrap: anywhere"><svg class="i" viewBox="0 0 24 24" style="width: 16px; height: 16px"><path d="{{ic.archive}}"></path></svg>Previous notes</button></sc-if>
-      </div>
-    </sc-if>
   </div>
 
   
@@ -2297,8 +2287,6 @@
       <div class="note-source-actions">
       <sc-if value="{{notes.hasWebSource}}"><button class="note-source-trigger" onClick="{{notes.openWebSource}}">Web source linked</button></sc-if>
       <sc-if value="{{notes.canLinkSource}}"><button class="note-source-trigger" onClick="{{notes.sourceDocument}}">{{notes.sourceLabel}}</button></sc-if>
-      <sc-if value="{{notes.ed.draftReminder}}"><button class="note-source-trigger" data-agent-id="notes-draftReminder" aria-label="Review reminder draft" style="min-height: 48px" onClick="{{notes.ed.draftReminder}}">Review reminder</button></sc-if>
-      <sc-if value="{{notes.ed.draftEvent}}"><button class="note-source-trigger" data-agent-id="notes-draftEvent" aria-label="Review calendar event draft" style="min-height: 48px" onClick="{{notes.ed.draftEvent}}">Review event</button></sc-if>
       </div>
       <sc-if value="{{notes.ed.isText}}">
         <textarea data-agent-id="notes-body" aria-label="Note" placeholder="Note" value="{{notes.ed.body}}" onChange="{{notes.ed.onBody}}" class="scr" style="flex-grow: 1; width: calc(100% - 48px); margin: 0 24px; box-sizing: border-box; resize: none; border: 0; outline: 0; background: transparent; color: var(--fg); font: inherit; font-size: 17px; line-height: 1.55; padding: 10px 0 16px; min-height: 0; touch-action: pan-y"></textarea>
@@ -2322,12 +2310,8 @@
       <sc-if value="{{notes.ed.menuShown}}"><button aria-hidden="true" tabindex="-1" onClick="{{notes.ed.closeMenu}}" style="position: absolute; inset: 0; z-index: 11; background: transparent"></button></sc-if>
       <sc-if value="{{notes.ed.menuOpen}}"><div class="notes-menu" role="dialog" aria-label="Note actions">
         <button onClick="{{notes.ed.pin}}"><svg class="i" viewBox="0 0 24 24" style="width: 18px; height: 18px"><path d="{{ic.notesPin}}"></path></svg>{{notes.ed.pinLabel}}</button>
-        <button onClick="{{notes.ed.moveTo}}"><svg class="i" viewBox="0 0 24 24" style="width: 18px; height: 18px"><path d="{{ic.folder}}"></path></svg>Move to…</button>
         <hr>
         <button onClick="{{notes.ed.del}}"><svg class="i" viewBox="0 0 24 24" style="width: 18px; height: 18px"><path d="{{ic.trash}}"></path></svg>Delete</button>
-      </div></sc-if>
-      <sc-if value="{{notes.ed.moveOpen}}"><div class="notes-menu" role="dialog" aria-label="Move to">
-        <sc-for list="{{notes.ed.moveRows}}" as="m"><button aria-pressed="{{m.checked}}" onClick="{{m.pick}}"><svg class="i" viewBox="0 0 24 24" style="width: 18px; height: 18px"><path d="{{ic.folder}}"></path></svg><span style="flex: 1 1 auto">{{m.name}}</span>{{m.mark}}</button></sc-for>
       </div></sc-if>
       </div></sc-if>
     </div>
@@ -2383,8 +2367,6 @@
                   <span style="font-size: 15px; line-height: 1.4; padding: 11px 8px 11px 0; {{a.css}}">{{a.t}}</span>
                 </div>
               </sc-for>
-              <button onClick="{{notes.vo.toCal}}" aria-label="{{notes.vo.calLabel}}" style="display: flex; align-items: center; gap: 8px; min-height: 44px; padding: 0 14px; margin: 6px 0 4px 10px; border-radius: 18px; background: var(--bg); font-size: 14px; font-weight: 600"><svg class="i" viewBox="0 0 24 24" style="width: 18px; height: 18px; color: var(--acct)"><path d="{{notes.vo.calIcon}}"></path></svg>{{notes.vo.calText}}</button>
-              <sc-if value="{{notes.vo.toEvent}}"><button onClick="{{notes.vo.toEvent}}" aria-label="{{notes.vo.eventLabel}}" style="display: flex; align-items: center; gap: 8px; min-height: 44px; padding: 0 14px; margin: 6px 0 4px 10px; border-radius: 18px; background: var(--bg); font-size: 14px; font-weight: 600"><svg class="i" viewBox="0 0 24 24" style="width: 18px; height: 18px; color: var(--acct)"><path d="{{notes.vo.calIcon}}"></path></svg>{{notes.vo.eventText}}</button></sc-if>
             </div>
           </sc-if>
         </sc-if>
@@ -2405,12 +2387,8 @@
       <sc-if value="{{notes.vo.menuShown}}"><button aria-hidden="true" tabindex="-1" onClick="{{notes.vo.closeMenu}}" style="position: absolute; inset: 0; z-index: 11; background: transparent"></button></sc-if>
       <sc-if value="{{notes.vo.menuOpen}}"><div class="notes-menu" role="dialog" aria-label="Note actions">
         <button onClick="{{notes.vo.pin}}"><svg class="i" viewBox="0 0 24 24" style="width: 18px; height: 18px"><path d="{{ic.notesPin}}"></path></svg>{{notes.vo.pinLabel}}</button>
-        <button onClick="{{notes.vo.moveTo}}"><svg class="i" viewBox="0 0 24 24" style="width: 18px; height: 18px"><path d="{{ic.folder}}"></path></svg>Move to…</button>
         <hr>
         <button onClick="{{notes.vo.del}}"><svg class="i" viewBox="0 0 24 24" style="width: 18px; height: 18px"><path d="{{ic.trash}}"></path></svg>Delete</button>
-      </div></sc-if>
-      <sc-if value="{{notes.vo.moveOpen}}"><div class="notes-menu" role="dialog" aria-label="Move to">
-        <sc-for list="{{notes.vo.moveRows}}" as="m"><button aria-pressed="{{m.checked}}" onClick="{{m.pick}}"><svg class="i" viewBox="0 0 24 24" style="width: 18px; height: 18px"><path d="{{ic.folder}}"></path></svg><span style="flex: 1 1 auto">{{m.name}}</span>{{m.mark}}</button></sc-for>
       </div></sc-if>
       </div></sc-if>
     </div>
@@ -2438,12 +2416,8 @@
       <sc-if value="{{notes.lk.menuShown}}"><button aria-hidden="true" tabindex="-1" onClick="{{notes.lk.closeMenu}}" style="position: absolute; inset: 0; z-index: 11; background: transparent"></button></sc-if>
       <sc-if value="{{notes.lk.menuOpen}}"><div class="notes-menu" role="dialog" aria-label="Note actions">
         <button onClick="{{notes.lk.pin}}"><svg class="i" viewBox="0 0 24 24" style="width: 18px; height: 18px"><path d="{{ic.notesPin}}"></path></svg>{{notes.lk.pinLabel}}</button>
-        <button onClick="{{notes.lk.moveTo}}"><svg class="i" viewBox="0 0 24 24" style="width: 18px; height: 18px"><path d="{{ic.folder}}"></path></svg>Move to…</button>
         <hr>
         <button onClick="{{notes.lk.del}}"><svg class="i" viewBox="0 0 24 24" style="width: 18px; height: 18px"><path d="{{ic.trash}}"></path></svg>Delete</button>
-      </div></sc-if>
-      <sc-if value="{{notes.lk.moveOpen}}"><div class="notes-menu" role="dialog" aria-label="Move to">
-        <sc-for list="{{notes.lk.moveRows}}" as="m"><button aria-pressed="{{m.checked}}" onClick="{{m.pick}}"><svg class="i" viewBox="0 0 24 24" style="width: 18px; height: 18px"><path d="{{ic.folder}}"></path></svg><span style="flex: 1 1 auto">{{m.name}}</span>{{m.mark}}</button></sc-for>
       </div></sc-if>
       </div></sc-if>
     </div>
@@ -2482,28 +2456,6 @@
         <sc-if value="{{notes.trashCanErase}}"><button disabled="{{notes.trashBusy}}" onClick="{{notes.trashAskDelete}}" style="flex: 1; height: 52px; border-radius: 26px; font-size: 15px; font-weight: 600; display: flex; align-items: center; justify-content: center; background: var(--s2); color: var(--fg)">Delete now</button></sc-if>
         <button disabled="{{notes.trashBusy}}" onClick="{{notes.trashAskRecover}}" style="flex: 1; height: 52px; border-radius: 26px; font-size: 15px; font-weight: 600; display: flex; align-items: center; justify-content: center; background: var(--fg); color: var(--bg)">Recover</button>
       </div>
-    </div>
-    </div>
-  </sc-if>
-  <sc-if value="{{notes.folderSheetOpen}}">
-    <div ref="{{notes.folderModal}}" data-alpha-popup class="photo-delete-modal" style="position:absolute;inset:0;z-index:20">
-    <button aria-hidden="true" tabindex="-1" aria-label="Close" onClick="{{notes.closeFolderSheet}}" style="position: absolute; inset: 0; z-index: 20; background: var(--scrim)"></button>
-    <div role="dialog" aria-modal="true" aria-label="{{notes.folderSheetTitle}}" class="enter" style="position: absolute; left: 0; right: 0; bottom: 0; z-index: 21; max-height:calc(100% - 44px);overflow:auto;box-sizing:border-box; background: var(--s1); color: var(--fg); border-radius: 28px 28px 0 0; padding: 12px 24px 44px">
-      <div style="display: flex; justify-content: center; padding-bottom: 14px"><span style="width: 40px; height: 4px; border-radius: 2px; background: var(--mut); opacity: .45"></span></div>
-      <div class="serif" style="font-size: 26px; line-height: 1.15; overflow-wrap: anywhere">{{notes.folderSheetTitle}}</div>
-      <sc-if value="{{notes.folderNew}}">
-        <input aria-label="Folder name" placeholder="Name" maxlength="40" value="{{notes.folderName}}" onChange="{{notes.onFolderName}}" onKeyDown="{{notes.folderNameKey}}" style="width: 100%; box-sizing: border-box; height: 52px; margin-top: 18px; padding: 0 16px; border: 0; outline: 0; border-radius: 16px; background: var(--s2); color: var(--fg); font-size: 17px">
-        <div style="display: flex; gap: 10px; margin-top: 18px">
-          <button onClick="{{notes.closeFolderSheet}}" style="flex: 1; height: 52px; border-radius: 26px; font-size: 15px; font-weight: 600; display: flex; align-items: center; justify-content: center; background: var(--s2)">Cancel</button>
-          <button disabled="{{notes.folderSaveDisabled}}" onClick="{{notes.createFolder}}" style="flex: 1; height: 52px; border-radius: 26px; font-size: 15px; font-weight: 600; display: flex; align-items: center; justify-content: center; background: var(--fg); color: var(--bg)">{{notes.folderSubmitLabel}}</button>
-        </div>
-      </sc-if>
-      <sc-if value="{{notes.folderOptions}}">
-        <div style="display: flex; gap: 10px; margin-top: 24px">
-          <button onClick="{{notes.renameFolder}}" style="flex: 1; height: 52px; border-radius: 26px; font-size: 15px; font-weight: 600; display: flex; align-items: center; justify-content: center; background: var(--s2); color: var(--fg)">Rename</button>
-          <button onClick="{{notes.deleteFolder}}" style="flex: 1; height: 52px; border-radius: 26px; font-size: 15px; font-weight: 600; display: flex; align-items: center; justify-content: center; background: var(--s2); color: var(--fg)">Delete folder</button>
-        </div>
-      </sc-if>
     </div>
     </div>
   </sc-if>
