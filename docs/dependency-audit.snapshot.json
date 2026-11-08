@@ -1,7 +1,7 @@
 {
   "description": "Normalised `npm audit --json` for the package-lock.json with this SHA-256. Regenerate with: node scripts/dependency-audit.mjs --write. Dispositions live in docs/dependency-audit.dispositions.json.",
-  "auditedOn": "2026-11-07",
-  "lockSha256": "1902b33a53bc9e210548ffa158ea791f8d977b3b50a4f31d80b937d1607357a0",
+  "auditedOn": "2026-11-08",
+  "lockSha256": "ccb34b6549dc44f88aad45ab13686fb329659b226dd525229a4f697280f56fd9",
   "counts": {
     "info": 0,
     "low": 0,
