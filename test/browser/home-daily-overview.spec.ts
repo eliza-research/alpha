@@ -14,7 +14,7 @@ test.use({contextOptions:{reducedMotion:'reduce'}});
 import {returnToApps} from './app-navigation';
 import {openBrowserCalendar,selectCalendarSource} from './helpers/browser-calendar';
 // Daily overview contract on Home (development lane): every card names its source and when it was
-// read, shows loading/empty/error states honestly, keeps overdue reminders visible, and shows the
+// read; draws no loading/empty/error placeholder card, keeps overdue reminders visible, and shows the
 // latest retained brief only when one exists. Mail and digest data here is synthetic and injected
 // through the same adapters a provider uses; nothing is sent, and Home itself never reads mail.
 // home-daily-overview.production.spec.ts covers the flag-off build.
@@ -68,17 +68,14 @@ test('events of an app calendar hidden in Calendar stay off Home until it is sho
  await page.reload();await browserCalendarHome(page);
  await expect(card).toContainText('Synthetic hidden event');
  await toggle();await page.reload();await browserCalendarHome(page);
- await expect(card).toContainText('No visible events');
- await expect(card).not.toContainText(/Synthetic hidden event|No upcoming events/);
- await expect(card).toHaveAccessibleName('Open your calendar');
- await expect(card).toHaveAttribute('data-alpha-home-calendar-event','false');
+ await expect(card).toHaveCount(0);
  // The calendar was still read; only its display is off.
  await expect(card.locator('[data-alpha-home-calendar-source]')).toHaveCount(0);
  await toggle();await page.reload();await browserCalendarHome(page);
  await expect(card).toContainText('Synthetic hidden event');
 });
 
-test('a failed calendar read shows the failure with no read time, and opening Calendar from the card reads it again',async({page})=>{
+test('a failed calendar read draws no placeholder and opening Calendar explicitly retries',async({page})=>{
  test.slow(); // Chooses the browser calendar in Calendar after every load.
  await page.addInitScript(offline);await page.goto('/');await browserCalendarHome(page);
  const card=calendarCard(page),source=card.locator('[data-alpha-home-calendar-source]');
@@ -88,21 +85,20 @@ test('a failed calendar read shows the failure with no read time, and opening Ca
   (window as any).__calendarList=proto.list;proto.list=()=>Promise.reject(Error('Calendar storage unavailable'));
   window.dispatchEvent(new Event('alpha:calendar-preferences'));
  });
- await expect(card).toContainText('Calendar unavailable');
- await expect(source).toHaveText('Open Calendar to retry');
- await expect(card).not.toContainText(/This app|Read \d/);
- await expect(card).toHaveAttribute('aria-description','Calendar could not be read. Open Calendar to retry.');
- // Staying on Home does not hide the failure, and the source working again changes nothing by itself.
+ await expect(card).toHaveCount(0);
+ await expect(home(page)).not.toContainText(/Calendar unavailable|Open Calendar to retry/);
+ // Home stays empty; provider recovery alone does not trigger another read.
  await page.evaluate(async()=>{
   const {BrowserCalendar}=await import('/src/browser/calendar.ts'),proto=BrowserCalendar.prototype as any,list=(window as any).__calendarList;
   (window as any).__calendarReads=0;proto.list=function(...args:unknown[]){(window as any).__calendarReads++;return list.apply(this,args);};
  });
  await page.getByRole('textbox',{name:'Ask Alpha',exact:true}).fill('Unsent rerender');
  await page.waitForTimeout(500);
- await expect(card).toContainText('Calendar unavailable');
+ await expect(card).toHaveCount(0);
  expect(await page.evaluate(()=>(window as any).__calendarReads)).toBe(0);
- // The route the card names: opening Calendar from it reads the calendar again.
- await card.click();
+ // The owner explicitly opens Calendar; the failed source is read again.
+ await page.getByRole('textbox',{name:'Ask Alpha',exact:true}).blur();
+ await page.getByRole('button',{name:'Calendar',exact:true}).click();
  await expect(page.locator('html')).toHaveAttribute('data-active-view','calendar');
  await expect.poll(()=>page.evaluate(()=>(window as any).__calendarReads)).toBeGreaterThan(0);
  await returnToApps(page);
@@ -215,14 +211,15 @@ test('events excluded by the Agent Calendar feed stay off Home until included ag
  await refreshHomeCalendar(page,{include:true});await expect(card).toContainText(event.title);
 });
 
-test('a failed Agent Calendar read stays honest until an explicit Calendar retry',async({page})=>{
+test('a failed Agent Calendar read stays off Home until an explicit Calendar retry',async({page})=>{
  await page.addInitScript(offline);await page.goto('/');await installHomeCalendar(page);
- const card=calendarCard(page);await refreshHomeCalendar(page,{fail:true});await expect(card).toContainText('Calendar unavailable');await expect(card).not.toContainText(/Nothing planned|No upcoming/);await expect(card).toHaveAttribute('aria-description','Calendar service unavailable. Open Calendar to retry.');
+ const card=calendarCard(page);await refreshHomeCalendar(page,{fail:true});await expect(card).toHaveCount(0);
  const before=await page.evaluate(()=>(window as any).homeCalendarFixture.requests.length);
  await page.evaluate(()=>{(window as any).homeCalendarFixture.fail=false;});await page.getByRole('textbox',{name:'Ask Alpha',exact:true}).fill('Unsent rerender');await page.waitForTimeout(500);
- expect(await page.evaluate(()=>(window as any).homeCalendarFixture.requests.length)).toBe(before);await expect(card).toHaveAttribute('aria-description','Calendar service unavailable. Open Calendar to retry.');
- // Opening Calendar from the failed card is the explicit retry: it reads the agent calendar again.
- await card.click();await expect(page.locator('html')).toHaveAttribute('data-active-view','calendar');await returnToApps(page);await expect(card).toHaveCount(0);
+ expect(await page.evaluate(()=>(window as any).homeCalendarFixture.requests.length)).toBe(before);await expect(card).toHaveCount(0);
+ // Calendar's app entry is the explicit retry when no card is drawn.
+ await page.getByRole('textbox',{name:'Ask Alpha',exact:true}).blur();
+ await page.getByRole('button',{name:'Calendar',exact:true}).click();await expect(page.locator('html')).toHaveAttribute('data-active-view','calendar');await returnToApps(page);await expect(card).toHaveCount(0);
  expect(await page.evaluate(()=>(window as any).homeCalendarFixture.requests.length)).toBeGreaterThan(before);
 });
 
@@ -304,8 +301,8 @@ test('Inbox card never reads mail from Home and shows the account and read time 
  await page.evaluate(()=>{window.dispatchEvent(new Event('focus'));document.dispatchEvent(new Event('visibilitychange'));});
  await page.waitForTimeout(1500);
  expect(await mailReads(page)).toEqual({reads:0,threads:0});
- await expect(card).not.toContainText(/unread|Synthetic overview subject|Read \d/);
- await expect(card).toContainText(/Open to (check|load) email|Connect email|Inbox/);
+ await expect(card).toHaveCount(0);
+ await page.getByRole('textbox',{name:'Ask Alpha',exact:true}).blur();
  // The user opens Inbox: one explicit read. Home then shows that page's metadata and when it was read.
  await page.getByRole('button',{name:'Inbox',exact:true}).click();
  await expect(page.getByRole('button',{name:/Unread, Synthetic sender A/})).toBeVisible();
@@ -325,6 +322,7 @@ test('Inbox card never reads mail from Home and shows the account and read time 
  await expect(card).toHaveAttribute('aria-description',status!);
  await page.screenshot({path:info.outputPath('home-inbox-read-time.png'),animations:'disabled'});
  // A failed refresh in Inbox is reported on Home with the time of the last successful read.
+ await page.getByRole('textbox',{name:'Ask Alpha',exact:true}).blur();
  await page.getByRole('button',{name:'Inbox',exact:true}).click();
  await expect(page.getByRole('button',{name:/Unread, Synthetic sender A/})).toBeVisible();
  await page.evaluate(()=>{(window as any).overviewMail.fail=true;});
@@ -338,7 +336,7 @@ test('Inbox card never reads mail from Home and shows the account and read time 
 
 test('the latest retained brief appears with its agent and run time, reports failure, and is absent otherwise',async({page},info)=>{
  await page.addInitScript(offline);await page.goto('/');
- await expect(calendarCard(page)).toBeVisible();
+ await expect(calendarCard(page)).toHaveCount(0);
  await expect(briefCard(page)).toHaveCount(0);
  await expect(home(page)).not.toContainText(/Morning brief|No brief yet/);
  const {ranAt,ranIso}=await page.evaluate(async()=>{
@@ -356,10 +354,10 @@ test('the latest retained brief appears with its agent and run time, reports fai
  await expect(card).toContainText(`Synthetic agent · Ran ${ranAt}`);
  await expect(card).toHaveAccessibleName(`Open scheduled digests. Latest brief from Synthetic agent, ran ${ranAt}: Synthetic brief: two meetings and one reply to send.`);
  await expect(card).toHaveAttribute('data-alpha-home-brief-failed','false');
- // The three existing cards keep their order and names.
+ // With no other populated sources, only the retained brief is drawn.
  const tiles=home(page).locator('[data-alpha-home-layout] > .scr').first().getByRole('button');
- await expect(tiles).toHaveCount(4);
- await expect(tiles.nth(0)).toHaveAttribute('data-alpha-home-calendar','');await expect(tiles.nth(2)).toHaveAttribute('data-alpha-home-inbox','');await expect(tiles.nth(3)).toHaveAttribute('data-alpha-home-brief','');
+ await expect(tiles).toHaveCount(1);
+ await expect(tiles.first()).toHaveAttribute('data-alpha-home-brief','');
  await card.scrollIntoViewIfNeeded();
  expect(await card.evaluate(element=>{const box=element.getBoundingClientRect(),title=element.querySelector('.home-brief-title')!.getBoundingClientRect(),status=element.querySelector('.home-brief-status')!.getBoundingClientRect();return {height:Math.round(box.height),overflow:element.scrollWidth-element.clientWidth,ordered:title.bottom<=status.top,inside:status.bottom<=box.bottom};})).toEqual({height:196,overflow:0,ordered:true,inside:true});
  await page.screenshot({path:info.outputPath('home-brief.png'),animations:'disabled'});
@@ -409,7 +407,7 @@ test('the digest panel publishes the connected profile\'s newest retained result
  await page.addInitScript(()=>{if(!localStorage.getItem('alpha.connection.selection.v1'))localStorage.setItem('alpha.connection.selection.v1',JSON.stringify({kind:'offline'}));});
  await page.goto('/?mode=dev');
  const retained=()=>page.evaluate(async()=>(await import('/src/runtime/hosted-digests.ts')).latestRetainedDigest());
- await expect(page.locator('[data-alpha-home-calendar]')).toBeVisible();
+ await expect(page.locator('[data-alpha-home-calendar]')).toHaveCount(0);
  expect(await retained()).toBeNull();
  // Saved for the development profile before it is connected, as results retained from an earlier session.
  const completedAt=await page.evaluate(()=>{
@@ -420,7 +418,7 @@ test('the digest panel publishes the connected profile\'s newest retained result
   localStorage.setItem(key,JSON.stringify(state));return iso(at);
  });
  expect(await retained()).toBeNull();
- await page.getByRole('button',{name:'Settings',exact:true}).click();await page.getByRole('button',{name:'Agent connection',exact:true}).click();await page.getByRole('button',{name:'Connect development profile'}).click();
+ await page.getByRole('button',{name:'Settings',exact:true}).click();await page.getByRole('button',{name:'Connection help',exact:true}).click();await page.getByRole('button',{name:'Connect development profile'}).click();
  await expect.poll(retained,{timeout:20000}).toMatchObject({summary:'Synthetic retained brief.',ranAt:completedAt,status:'finished'});
  // Only the final summary is retained for Home, never the typed-step source payload.
  expect(JSON.stringify(await retained())).not.toContain('SYNTHETIC_RAW_SOURCE_456');
@@ -442,7 +440,7 @@ test('workflows card shows when its rows were loaded, and nothing before a list 
  const card=home(page).locator('[data-alpha-home-workflows]'),freshness=card.locator('[data-alpha-home-workflow-freshness]');
  // No agent: no rows and no load time.
  await expect(freshness).toHaveCount(0);
- await expect(card).not.toContainText(/Loaded \d/);
+ await expect(card).toHaveCount(0);
  await page.evaluate(async()=>{const {connectionController:c}=await import('/src/runtime/connection-ui.tsx');await c.initialize();await c.startDevelopment('local');});
  await expect(card).toContainText('Synthetic overview routine');
  const times=await nearNow(page);
@@ -452,7 +450,7 @@ test('workflows card shows when its rows were loaded, and nothing before a list 
  await card.scrollIntoViewIfNeeded();await page.screenshot({path:info.outputPath('home-workflows-loaded.png'),animations:'disabled'});
  // Disconnecting retires the rows and their load time together.
  await page.evaluate(async()=>{await(await import('/src/runtime/connection-ui.tsx')).connectionController.offline();});
- await expect(card).not.toContainText('Synthetic overview routine');
+ await expect(card).toHaveCount(0);
  await expect(freshness).toHaveCount(0);
  expect(await page.evaluate(()=>(window as any).overviewFlows.writes)).toBe(0);
 });
