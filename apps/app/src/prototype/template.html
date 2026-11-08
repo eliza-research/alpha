@@ -2279,8 +2279,10 @@
         <div style="flex-grow: 1"></div>
         <button class="ib" data-agent-id="notes-format" aria-label="{{notes.ed.listLabel}}" onClick="{{notes.ed.toggleList}}" style="{{notes.ed.listCss}}"><svg class="i" viewBox="0 0 24 24"><path d="{{ic.notesList}}"></path></svg></button>
         <button class="ib" data-agent-id="notes-share" aria-label="Share note" onClick="{{notes.ed.share}}"><svg class="i" viewBox="0 0 24 24"><path d="{{ic.share}}"></path></svg></button>
+        <button class="tap" aria-label="Done editing note" disabled="{{notes.ed.doneDisabled}}" onClick="{{notes.ed.done}}" style="min-width:52px;min-height:44px;padding:0 10px;color:var(--acct);font-size:16px;font-weight:600">Done</button>
         <button class="ib" data-agent-id="notes-more" aria-label="More" aria-haspopup="dialog" aria-expanded="{{notes.ed.menuShown}}" onClick="{{notes.ed.more}}"><svg class="i" viewBox="0 0 24 24"><path d="{{ic.more}}"></path></svg></button>
       </div>
+      <sc-if value="{{notes.ed.saveStatus}}"><div role="status" aria-live="polite" style="padding:0 24px 4px;color:var(--mut);font-size:12px">{{notes.ed.saveStatus}}</div></sc-if>
       <div class="note-title-column" style="padding: 4px 24px 0; flex-shrink: 0">
         <input data-agent-id="notes-title" aria-label="Title" placeholder="Title" value="{{notes.ed.title}}" onChange="{{notes.ed.onTitle}}" class="serif" style="width: 100%; box-sizing: border-box; border: 0; outline: 0; background: transparent; color: var(--fg); font-size: 32px; font-family: 'Denton', 'Fraunces', Georgia, serif; font-weight: 300; padding: 6px 0; letter-spacing: -.01em">
       </div>
@@ -2653,6 +2655,7 @@
   <div data-alpha-app-header="main" style="display: flex; align-items: center; height: 56px; margin-top: 44px; padding: 0 8px 0 20px; gap: 2px; flex-shrink: 0">
   <sc-if value="{{showAppBack}}"><button class="app-header-back" aria-label="Back to apps" onClick="{{backToApps}}"><svg class="i" viewBox="0 0 24 24"><path d="{{ic.back}}"></path></svg></button></sc-if>
     <h1 data-alpha-app-title class="serif" style="margin: 0; font-size: 32px; flex-grow: 1; letter-spacing: -.01em">Files</h1>
+    <sc-if value="{{files.toolbar.ready}}"><sc-if value="{{files.toolbar.canCreate}}"><button class="ib" aria-label="New folder" onClick="{{files.toolbar.newFolder}}"><svg class="i" viewBox="0 0 24 24"><path d="{{ic.plus}}"></path></svg></button></sc-if><button class="ib" aria-label="Sort files" onClick="{{files.toolbar.sort}}"><svg class="i" viewBox="0 0 24 24"><path d="{{ic.filesSort}}"></path></svg></button><button class="ib" aria-label="{{files.toolbar.viewLabel}}" onClick="{{files.toolbar.toggleView}}"><svg class="i" viewBox="0 0 24 24"><path d="{{files.toolbar.viewIcon}}"></path></svg></button></sc-if>
   </div>
   <sc-if value="{{files.chip}}">
     <div style="display: flex; padding: 0 16px 8px; flex-shrink: 0">
@@ -2678,6 +2681,7 @@
     </sc-if>
     <sc-if value="{{files.browse.unavailable}}"><div role="alert" style="margin: 8px; padding: 14px 16px; border-radius: 20px; background: var(--s2); font-size: 15px">Storage is unavailable</div></sc-if>
     <sc-if value="{{files.browse.ready}}">
+      <button onClick="{{files.browse.allFiles}}" aria-label="All files" class="tap" style="display:flex;align-items:center;gap:14px;width:100%;min-height:60px;padding:8px;border-radius:18px;text-align:left"><span style="width:44px;height:44px;border-radius:14px;display:flex;align-items:center;justify-content:center;flex-shrink:0;background:var(--s2);color:var(--fg)"><svg class="i" viewBox="0 0 24 24" style="width:20px;height:20px"><path d="{{files.browse.allFilesIcon}}"></path></svg></span><span style="font-size:16px;font-weight:500">All files</span></button>
       <sc-for list="{{files.browse.cats}}" as="c">
         <button onClick="{{c.go}}" aria-label="{{c.label}}" class="tap" style="display: flex; align-items: center; gap: 14px; width: 100%; min-height: 60px; padding: 8px; border-radius: 18px; text-align: left">
           <span style="width: 44px; height: 44px; border-radius: 14px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; background: var(--s2); color: var(--fg)"><svg class="i" viewBox="0 0 24 24" style="width: 20px; height: 20px"><path d="{{c.d}}"></path></svg></span>
@@ -2710,7 +2714,7 @@
           <button class="ib" aria-label="Back" onClick="{{files.fd.close}}"><svg class="i" viewBox="0 0 24 24"><path d="{{ic.back}}"></path></svg></button>
           <h1 data-alpha-app-title class="serif" style="margin: 0 0 0 6px; font-size: 26px; flex-grow: 1; min-width: 0; letter-spacing: -.01em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">{{files.fd.name}}</h1>
           <sc-if value="{{files.fd.canEmpty}}"><button onClick="{{files.fd.empty_}}" style="min-height: 44px; padding: 0 14px; color: var(--warn); font-size: 15px; font-weight: 600">Empty</button></sc-if>
-          <sc-if value="{{files.fd.hasMenu}}"><button class="ib" aria-label="Sort and more" onClick="{{files.fd.openMenu}}"><svg class="i" viewBox="0 0 24 24" style="width: 20px; height: 20px"><path d="{{files.fd.moreD}}"></path></svg></button></sc-if>
+    <sc-if value="{{files.toolbar.ready}}"><sc-if value="{{files.toolbar.canCreate}}"><button class="ib" aria-label="New folder" onClick="{{files.toolbar.newFolder}}"><svg class="i" viewBox="0 0 24 24"><path d="{{ic.plus}}"></path></svg></button></sc-if><button class="ib" aria-label="Sort files" onClick="{{files.toolbar.sort}}"><svg class="i" viewBox="0 0 24 24"><path d="{{ic.filesSort}}"></path></svg></button><button class="ib" aria-label="{{files.toolbar.viewLabel}}" onClick="{{files.toolbar.toggleView}}"><svg class="i" viewBox="0 0 24 24"><path d="{{files.toolbar.viewIcon}}"></path></svg></button></sc-if>
         </div>
       </sc-if>
       <sc-if value="{{files.isSel}}">
