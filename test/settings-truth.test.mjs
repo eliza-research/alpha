@@ -197,6 +197,8 @@ test('identically labelled Settings actions preserve their source identity',()=>
  const before=helpers.group([a,b],'','conversations'),after=helpers.group([b,a],'','conversations');
  assert.equal(before.id,after.id);
  assert.notEqual(a.id,b.id);
+ const obligations=helpers.group([{time:'Obligation',text:'First'},{time:'Obligation',text:'Second'},{time:'Obligation',text:'First'}]);
+ assert.equal(new Set(obligations.rows.map(row=>row.id)).size,3);
  after.rows.find(row=>row.id==='conversation:a').go();
  assert.deepEqual(calls,['a']);
 });
