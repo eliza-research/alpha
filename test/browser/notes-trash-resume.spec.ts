@@ -7,6 +7,11 @@ test.describe.configure({timeout:60_000});
 const trashEntries=(page:Page)=>page.evaluate(async()=>(await (await import('/src/runtime/notes-trash.ts')).readNotesTrash()).entries);
 const savedRecords=(page:Page)=>page.evaluate(async()=>JSON.parse(await (await import('/src/runtime/browser-notes-document.ts')).readBrowserNotesRaw()).records);
 const describe=(page:Page)=>page.evaluate(async()=>{const {registerPlugin}=await import('/src/platform-plugins.ts');return registerPlugin<any>('AlphaNoteAudio').describe({audioId:'resume-audio'});});
+/** Counts requests for the Notes deletion lock from now on, and how many of them have finished. */
+const countDeletionLocks=(page:Page)=>page.evaluate(()=>{
+ const locks=navigator.locks,request=locks.request.bind(locks),count=(window as any).deletionLocks={requested:0,settled:0};
+ (locks as any).request=(name:string,...rest:any[])=>{const pending=(request as any)(name,...rest);if(name!=='alpha.notes-audio-effects.v1')return pending;count.requested++;return pending.finally(()=>{count.settled++;});};
+});
 async function openNotes(page:Page){await openLegacyNotes(page);await expect(page.getByRole('button',{name:'New note',exact:true})).toBeEnabled();}
 async function home(page:Page){await returnToApps(page);await expect(page.locator('html')).not.toHaveAttribute('data-active-view','notes');}
 async function trashTextNote(page:Page,title:string){
@@ -43,8 +48,10 @@ test('a resume on Home erases expired text and voice Trash entries without openi
 
  // One minute short of three days, a resume keeps both entries restorable.
  await page.clock.setSystemTime(last+3*DAY-60_000);
+ await countDeletionLocks(page);
  await page.evaluate(()=>{document.dispatchEvent(new Event('visibilitychange'));window.dispatchEvent(new Event('focus'));});
- await page.waitForTimeout(300);
+ // A pass ends by releasing unused source links under the deletion lock, after any purge it made.
+ await expect.poll(()=>page.evaluate(()=>{const l=(window as any).deletionLocks;return l.requested>0&&l.settled===l.requested;})).toBe(true);
  expect((await trashEntries(page)).length).toBe(2);
  expect((await describe(page)).transcript).toBe('Spoken resume words');
 

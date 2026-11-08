@@ -30,7 +30,9 @@ async function drag(page: Page, from: { x: number; y: number }, dy: number, dx =
   await page.mouse.up();
 }
 async function closed(page: Page, why: string) {
-  await page.waitForTimeout(120);
+  // The pull is decided while the pointer moves and lifts, and the shell renders the result before
+  // the next frame: after two frames an opened shade would show.
+  await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
   await expect(shade(page), why).toHaveAttribute('aria-hidden', 'true');
 }
 
@@ -155,8 +157,10 @@ const contentTop = (page: Page) => page.locator('[data-alpha-home-layout]').eval
 
 // The inset Android reports is in screen pixels; Home is laid out on a 412px canvas scaled to the
 // screen. On a phone narrower than the canvas the margin must still be measured on the screen.
+// Home's top padding has a floor (phone.css), so under a short status bar content starts lower than
+// the margin alone: only the lower bound holds at every inset.
 for (const width of [360, 412, 480]) {
-  test(`launcher Home starts 12 screen pixels below any status bar on a ${width}px wide screen`, async ({ page }) => {
+  test(`launcher Home starts at least 12 screen pixels below any status bar on a ${width}px wide screen`, async ({ page }) => {
     await page.setViewportSize({ width, height: 800 });
     await home(page);
     for (const inset of [24, 48, 56, 72, 100]) {
