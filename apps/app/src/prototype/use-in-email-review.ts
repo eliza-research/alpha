@@ -36,7 +36,8 @@ export function installUseInEmailReview(Component: Shell, views: Record<string, 
     const message = (shell.S().msgs || []).find((row: Shell) => row.id === review.id);
     if (!eligible(message) || message.text !== review.text || review.session !== agentSession()) { reviews.delete(shell); shell.toast?.('The conversation changed. Nothing was added to an email.'); refresh(shell); return; }
     if (shell.S().view !== 'inbox' || !unlocked(shell.S()) || document.hidden || connectionController.getSnapshot().open) { fail('Inbox is no longer in front. Nothing was added.'); return; }
-    if (review.cloud !== cloudSession()) { fail('The Cloud account changed. Check the destination and confirm again. Nothing was added.'); return; }
+    // The notice shows the destination over the current Cloud account, so the next Confirm applies to it.
+    if (review.cloud !== cloudSession()) { fail('The Cloud account changed. Check the destination and confirm again. Nothing was added.'); review.cloud = cloudSession(); return; }
     const inserted = views.inbox.useInEmail?.(review.text, { token: review.target.token, append: review.target.append }) === true;
     if (!inserted) { fail('The email or account changed since you opened this review. Check the destination and confirm again. Nothing was added.'); return; }
     reviews.delete(shell);
