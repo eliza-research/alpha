@@ -1,24 +1,32 @@
-diff --git a/plugins/plugin-local-inference/native/android/src/main/java/ai/eliza/voice/LocalVoiceRecording.java b/plugins/plugin-local-inference/native/android/src/main/java/ai/eliza/voice/LocalVoiceRecording.java
-index e3b9855..f53b3fd 100644
 --- a/plugins/plugin-local-inference/native/android/src/main/java/ai/eliza/voice/LocalVoiceRecording.java
 +++ b/plugins/plugin-local-inference/native/android/src/main/java/ai/eliza/voice/LocalVoiceRecording.java
-@@ -9,6 +9,7 @@ import java.io.File;
+@@ -9,6 +9,7 @@
  import java.io.IOException;
  import java.util.UUID;
  import java.util.function.Consumer;
 +import java.util.function.Function;
  import org.json.JSONException;
  import org.json.JSONObject;
- 
-@@ -35,6 +36,7 @@ public final class LocalVoiceRecording {
+
+@@ -35,6 +36,7 @@
   private long startedAt;
   private long durationMs;
   private Runnable deadline;
 + private volatile Function<String,File> also;
- 
+
   /** Deletes drafts a previous process left behind under {@code prefix}. */
   public LocalVoiceRecording(Context context,String prefix,Consumer<JSONObject> events){
-@@ -85,9 +87,15 @@ public final class LocalVoiceRecording {
+@@ -48,8 +50,8 @@
+   if(maxDurationMs!=SHORT_LIMIT_MS&&maxDurationMs!=LONG_LIMIT_MS)throw new IllegalArgumentException("Unsupported capture duration");
+   if(file!=null)throw new IllegalStateException("Finish or discard the current recording first");
+   id=UUID.randomUUID().toString();file=new File(context.getCacheDir(),prefix+id+".m4a");
+-  recorder=new MediaRecorder();
+   try{
++   recorder=new MediaRecorder();
+    recorder.setAudioSource(MediaRecorder.AudioSource.MIC);
+    recorder.setOutputFormat(MediaRecorder.OutputFormat.MPEG_4);
+    recorder.setAudioEncoder(MediaRecorder.AudioEncoder.AAC);
+@@ -85,9 +87,15 @@
    try{events.accept(stop());}
    catch(RuntimeException error){JSONObject result=new JSONObject();put(result,"recordingId",ownedId);put(result,"status","failed");put(result,"message","Recording could not be saved");events.accept(result);}
   }

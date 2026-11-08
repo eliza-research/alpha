@@ -7,6 +7,7 @@ import android.app.Activity;
 import android.content.*;
 import android.net.Uri;
 import android.os.FileObserver;
+import androidx.activity.result.ActivityResult;
 import com.getcapacitor.*;
 import com.getcapacitor.annotation.*;
 import java.util.*;

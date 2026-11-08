@@ -70,3 +70,17 @@ effects, AOSP SystemUI visibility and physical audio evidence require their
 respective implementation/device tests. The returned obligation list names
 unexecuted model transitions separately so a passed projection cannot silently
 count as full application refinement.
+
+## Notes source campaigns
+
+The four Notes campaigns run the current product recorder, foreground service and complete
+Notes bridge methods, plus the patched shared `LocalVoiceRecording`. They bind native patch
+provenance and every generated platform adapter input before source execution. The service
+campaign exercises failed stop-command launch, exact start-ID retirement, stale recording
+callbacks and Android refusal when a newer start is pending. Recorder recovery keeps unreadable
+or incomplete recordings and refuses replacement capture until recovery is resolved.
+
+Bridge-parent lifecycle and permission behavior, service scheduling, media encoding and
+protected-surface observation are controlled external inputs in these campaigns. Their receipts
+claim the observed Notes transitions. The shared parent bridge and physical audio remain covered
+by their corresponding integration and device gates.

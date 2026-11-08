@@ -267,3 +267,16 @@ The current proof index is `test-results/quint/final-proof-index.json`. It links
 the expanded composition, four new models and corrected IPC successor-ownership
 invariant to their current receipts. The repository verification report records
 the detailed bounds and provenance.
+
+## Notes native contracts
+
+`NativeNoteRecording` follows bounded segmented capture, pause accounting, durable journal
+prefixes and restart. Its `recoveryBlocked` state reflects retained unreadable recordings that
+prevent a new capture. `NativeNoteRecordingService` follows notification ownership and service
+start IDs, including a refused fallback stop when Android has a newer start pending.
+
+`NativeVoiceDraft` follows the shared draft recorder, delayed callbacks, external segment
+selection and cleanup when constructing a MediaRecorder fails. `NativeNotePermission` follows
+the product Notes bridge through queued admission, permission return, foreground retirement
+and active-call refusal. The source campaigns use controlled Android inputs and synthetic audio.
+Microphone, codec, foreground-service eligibility and device acceptance remain separate gates.

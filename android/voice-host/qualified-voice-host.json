@@ -1515,11 +1515,23 @@
               "afterSha256": "6f3ffd2fee75b33cbc473b538ad0cde3192ec1770c74402fa2e1a04c673e83c2"
             }
           ]
+        },
+        {
+          "file": "notes-recording-segments.patch",
+          "sha256": "95d81ef889e2c3e526f2b18fb638134855ebcc5508fb2a463b41c2753bee7ae9",
+          "module": "plugins/plugin-local-inference/native/android",
+          "targets": [
+            {
+              "path": "plugins/plugin-local-inference/native/android/src/main/java/ai/eliza/voice/LocalVoiceRecording.java",
+              "beforeSha256": "23d29b041ee00f6d759d16c23ff223a867567f8e5de113dd2512f960bed0dda2",
+              "afterSha256": "313f5e69f006fb658eb57ab3393898cbea32f273d3a9b6c509e3e2bab76971b2"
+            }
+          ]
         }
       ],
       "nativeInputsUnchanged": false,
       "nativeQualificationTransferred": false,
-      "note": "The SDK pin retains the recorded engine and JNI source. The selected speech bridge includes the hash-bound cloud bridge and additive local warm-up, lead-in trim and first-write marker. SDK99 protected-surface admission and retirement remain in place. JVM/source checks do not transfer historical device or user qualification to this changed bridge."
+      "note": "The SDK pin retains the recorded engine and JNI source. The selected speech bridge includes the hash-bound cloud bridge and additive local warm-up, lead-in trim and first-write marker. SDK99 protected-surface admission and retirement remain in place. JVM/source checks do not transfer historical device or user qualification to this changed bridge. The segmented recording lookup and failed MediaRecorder construction cleanup are bound by notes-recording-segments.patch. Their source checks retain the pending native qualification and acceptance requirements."
     },
     "sourceIntegrationHistory": [
       {

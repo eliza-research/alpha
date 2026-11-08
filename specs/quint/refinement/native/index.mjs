@@ -10,6 +10,10 @@ import {checkResetOrchestration} from './reset-orchestration.mjs';
 import {checkDeletionCoordinator} from './deletion-coordinator.mjs';
 import {checkResidentCoordinator} from './resident-coordinator.mjs';
 import {checkCredentialCoordinator} from './credential-coordinator.mjs';
+import {checkNativeNoteRecording} from './note-recording.mjs';
+import {checkNoteRecordingService} from './note-recording-service.mjs';
+import {checkVoiceDraft} from './voice-draft.mjs';
+import {checkNotePermission} from './note-bridge.mjs';
 
 export async function runNativeRefinement() {
   const models = ['VadSegmentation', 'RendererRecovery', 'ResidentScheduling'];
@@ -107,6 +111,9 @@ export async function runNativeRefinement() {
   results.push(await checkResidentCoordinator([fileURLToPath(import.meta.url)]));
   const credential = await checkCredentialCoordinator([fileURLToPath(import.meta.url)]);
   results.push(...credential.receipts);
+  for (const check of [checkNativeNoteRecording, checkNoteRecordingService, checkVoiceDraft, checkNotePermission]) {
+    results.push(await check([fileURLToPath(import.meta.url)]));
+  }
   const obligations = [
     {model: 'RendererRecovery', obligation: 'Activity lifecycle and visible escape behavior', reason: 'Current adapter projects the pure budget only.', requires: ['Android Activity/WebView harness']},
     {model: 'ResidentScheduling', obligation: 'Plugin lifecycle and OS broadcasts', reason: 'Current adapter proves the pure admission table and same-lock callbacks.', requires: ['Android service integration']},
