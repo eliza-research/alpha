@@ -8,6 +8,8 @@ const ROOT=fileURLToPath(new URL('../',import.meta.url));
 const HEX=/^[a-f0-9]{64}$/;
 const AUTH_ANDROID_MODULE='packages/auth/android';
 const SPEECH_ANDROID_MODULE='plugins/plugin-local-inference/native/android';
+// consumer.gradle compiles the shared speech JNI from <prepared root>/packages/app/...: staged read-only.
+const SPEECH_JNI_SOURCE='packages/app/platforms/android/app/src/main/elizavoice-jni';
 const safe=name=>typeof name==='string'&&!name.startsWith('/')&&!name.split('/').some(x=>!x||x==='.'||x==='..')&&!name.includes('\\');
 function inventory(root){const files={};function visit(dir){for(const row of fs.readdirSync(dir,{withFileTypes:true})){const name=path.join(dir,row.name);if(row.isSymbolicLink())throw Error('Symlink in patched source');if(row.isDirectory())visit(name);else if(row.isFile())files[path.relative(root,name)]=sha(fs.readFileSync(name));else throw Error('Nonregular patched source');}}visit(root);return files;}
 function verifyModes(root,modes){for(const [name,mode] of Object.entries(modes))if((fs.statSync(path.join(root,name)).mode&0o111)!==(mode==='100755'?0o111:0))throw Error('Native staged source mode drift');}
@@ -18,10 +20,11 @@ export function materializeNativePatches({source,manifest,patchRoot,temporary}){
  // Modules with no remaining patch are still staged from the pin so Gradle compiles authenticated source.
  if(manifest.modules!==undefined&&(!Array.isArray(manifest.modules)||manifest.modules.some(m=>typeof m!=='string')))throw Error('Invalid native patch modules');
  const modules=[...new Set([...(manifest.modules||[]),...manifest.patches.map(p=>p.module)])].sort(),files=new Map(),expected={},addedModes={};
- for(const module of modules){if(module!==AUTH_ANDROID_MODULE&&module!==SPEECH_ANDROID_MODULE&&!/^plugins\/plugin-native-[a-z-]+\/android(?:-nativeonly)?$/.test(module))throw Error('Invalid native patch module');for(const [name,file] of source.read(module)){files.set(name,file);expected[name]=file.sha256;}}
+ for(const module of modules){if(module!==AUTH_ANDROID_MODULE&&module!==SPEECH_ANDROID_MODULE&&module!==SPEECH_JNI_SOURCE&&!/^plugins\/plugin-native-[a-z-]+\/android(?:-nativeonly)?$/.test(module))throw Error('Invalid native patch module');for(const [name,file] of source.read(module)){files.set(name,file);expected[name]=file.sha256;}}
  for(const [name,file] of files){const dest=path.join(temporary,name);fs.mkdirSync(path.dirname(dest),{recursive:true});fs.writeFileSync(dest,file.bytes,{mode:parseInt(file.mode,8)});}
  const targets=new Set();
  for(const patch of manifest.patches){
+  if(patch.module===SPEECH_JNI_SOURCE)throw Error('Shared speech JNI companion source is read-only');
   if(!safe(patch.file)||!HEX.test(patch.sha256)||!Array.isArray(patch.targets)||!patch.targets.length)throw Error('Invalid native patch descriptor');
   const filename=path.join(patchRoot,patch.file);if(!fs.lstatSync(filename).isFile()||fs.lstatSync(filename).isSymbolicLink())throw Error('Nonregular native patch');
   for(let current=filename;current!==patchRoot;current=path.dirname(current))if(fs.lstatSync(current).isSymbolicLink())throw Error('Symlink in native patch path');

@@ -11,7 +11,9 @@ test('explicit native legacy recovery uses real encrypted slots and current toke
  try{
   const relative='plugins/plugin-native-secure-store/android-nativeonly/src/main/java/ai/eliza/plugins/securestore/nativeonly/JsonCredentialSlots.java';
   const manifest=JSON.parse(readFileSync(join(root,'patches/eliza/native-manifest.json'),'utf8'));
-  assert.ok(!manifest.patches.some(patch=>patch.module==='plugins/plugin-native-secure-store/android'),'this fixture requires the unpatched canonical slot implementation');
+  // The slot source lives in the native-only module, which the manifest may patch: either module patched voids this fixture.
+  assert.ok(relative.startsWith('plugins/plugin-native-secure-store/android-nativeonly/'));
+  assert.ok(!manifest.patches.some(patch=>patch.module==='plugins/plugin-native-secure-store/android-nativeonly'||patch.module==='plugins/plugin-native-secure-store/android'),'this fixture requires the unpatched canonical slot implementation');
   assert.match(manifest.baseCommit,/^[a-f0-9]{40}$/);
   const prepared=join(root,'vendor/eliza');
   const pinned=execFileSync('git',['-C',process.env.ALPHA_TEST_SDK_OBJECTS||prepared,'-c','core.hooksPath=/dev/null','-c','core.fsmonitor=false','show',manifest.baseCommit+':'+relative],{env:{...process.env,GIT_NO_LAZY_FETCH:'1',GIT_NO_REPLACE_OBJECTS:'1'}});

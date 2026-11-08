@@ -163,6 +163,7 @@
     }
   ],
   "modules": [
+    "packages/app/platforms/android/app/src/main/elizavoice-jni",
     "packages/auth/android",
     "plugins/plugin-local-inference/native/android",
     "plugins/plugin-native-action-journal/android",
