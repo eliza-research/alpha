@@ -62,7 +62,7 @@
     }
   ],
   "resident": {
-    "upstreamCommit": "b23a23c2ef4f83d15591c6368c00f1e9547f7743",
+    "upstreamCommit": "db96bb0a0371dca92707867245bf0bb119b5b4f5",
     "description": "Fresh October 24 registry audit at c95a37be: the upstream lock SHA-256 is unchanged from 58df, but the registry now reports 124 finding rows. Existing still-reported exceptions retain their review dates and scope. Newly reported advisories are conservatively pending upstream fixes and packaged reachability review; they are not waived or declared safe. This does not establish production acceptance. Re-audited at develop 00ee639798a02f3d7f2fae61ea8b902160e85d72: all 124 findings and normalized lock input are identical; pending fixes remain pending with no new exceptions. Re-audited on 2026-10-26 at develop 04658de1b: all 124 advisory rows remain; the affected Zod version set no longer includes 4.6.5. Existing exception deadlines and unresolved findings are unchanged. Rebound to integration pin 6293e29bf398 after comparing the fresh October 27 snapshot: normalized package input, all 124 finding rows and severity counts are identical to the reviewed 04658de1b snapshot. Existing exception scope and deadlines remain unchanged, and pending upstream fixes remain pending; this is not packaged-runtime acceptance. Re-audited at 4e617a0c1508 on 2026-10-27: normalized package input and all 124 finding rows/severity counts are identical to the reviewed 2d1d8797 snapshot. Existing exceptions and deadlines are unchanged; unexcepted full-lock findings remain pending upstream fixes. Final packaged payload audit is separate. Re-audited at develop 3d05abd on October 27: normalized dependency input and all advisory findings are unchanged; existing deadlines and pending fixes remain unchanged. Reviewed native/context integration de1ebdb521 on October 27: normalized package input and all 124 advisory rows are identical to 3d05abdcdc. Pending fixes, exception scope and deadlines are unchanged; a fresh packaged inventory audit remains required. The subsequent f3852e8ee3 merge adds only the native Activity compile dependency; the Bun lock and normalized audit input remain identical. Re-audited at merged develop c307290782dd on October 27: all 124 advisory rows and severity counts remain identical to f3852e8ee3. Pending findings and exception deadlines remain unchanged. Final build snapshot 6497825b38cb on October 27 changes only Cloud release scripts relative to c307290782dd; a fresh registry query returns identical 124 findings. Pending fixes and exception deadlines are unchanged. Fresh normal resident audit at SDK35e0a605 on 2026-11-02 UTC: all 153 finding rows, severity counts and 3677-version normalized input are byte-equivalent to the prior995 snapshot. Existing exception scope, review dates, expiry and shipped flags remain unchanged; unexcepted findings stay unresolved. This review rebinds only the identical source-lock findings, not packaged reachability or release acceptance.",
     "shippedSetEvidence": "docs/security/resident-staged-review-ed4ae8992ce7-2026-11-08.json",
     "pendingUpstreamFixes": [
@@ -1697,10 +1697,11 @@
     ],
     "note": "The complete lock inventory and advisory findings were re-audited unchanged at 9eef5dbd7b381576aad0801b1fee424d1483c63c. Existing pending upstream fixes remain open; no new exception or security acceptance is granted. October 26 build campaign: re-bound to 6293e29bf398603d0ea233871edbdeb57e5c2405 after fresh full-lock and 603-package agent/worker inventory audits. Existing exceptions and expiry dates are unchanged. All unexcepted full-lock findings remain pending; none of their exact vulnerable versions is in this staged inventory. The packaged audit reports only the existing uuid moderate advisory. No release or device qualification is inferred. Rebound to fd5511ca1d after verifying its only delta from 9eef5dbd is the Notes/Calendar end-to-end test fixture; the dependency lock is byte-identical. No new advisory exception or device acceptance. Fresh npm bulk advisory audit on 2026-10-27 at SDK 41d99bb4c86cb61bfa07d5e49b07603dbbe1080b covers the same 3,694 exact package versions and input hash 63509920ce413bb6fcb44fc7e5b1047cc22517eab2ea51a445203e29bd7c6201. All 124 finding rows and severity counts are byte-identical to the prior admitted snapshot. This updates the full-lock evidence binding only: existing exceptions, review dates, expiry dates, shipped-set evidence and pending upstream fixes are unchanged. Historical packaged inventories are not new payload or release acceptance; exact current packaged audit remains required before release. A further normal npm bulk audit at reviewed recovery SDK 18cc0cf2ee9f332afe8b6dffecc8f9b2fbcf8d47 returned the identical package/input/finding set; the current full-lock binding is advanced without changing any exception, expiry, pending-fix or historical packaged-evidence classification. Fresh full-lock registry query at the type-only recovery successor f983d68173f12b89af22f93502d81234c7112b7d returns identical normalized package input and all 124 advisory rows. Existing exceptions, deadlines, pending fixes and historical packaged evidence remain unchanged; this is source binding only. Fresh registry full-lock audit at Calendar schema successor 8cc623855ce49cab68f9ed321b206abcad4d5c0b on 2026-10-27 returns the same 3,694 exact package versions/input hash but 140 advisory rows: all prior 124 are preserved, with 16 new rows across eight advisory IDs. The eight new findings remain pending upstream fixes with current packaged reachability explicitly unknown. Existing exceptions, deadlines, old pending entries and historical shipped-set evidence are unchanged. No security, current payload or release acceptance is granted.",
     "sourceBinding": {
-      "priorUpstreamCommit": "5d1af326e596fea5893d095db882bdb858a4a774",
-      "evidence": "docs/dependency-audit.snapshot.json",
-      "unchangedBunLockGitBlob": "1cc61ff8862fd52607467743370879b575050d4d",
-      "note": "Fresh npm bulk advisory query at 0594fc72da4450a84a986ad12e730e3faa902018 on 2026-11-06 reproduces the same 3677 package versions, normalized input SHA-256 7c9d7bd390a29fac9da3c16af0fdc4d0998ce7eaf6fb2b82020bc9055ee9e11e and all 153 findings; bun.lock is the identical Git blob. Existing exceptions, review dates, pending upstream fixes and unknown packaged reachability are unchanged. No security, payload or release acceptance is granted."
+      "priorUpstreamCommit": "b23a23c2ef4f83d15591c6368c00f1e9547f7743",
+      "upstreamCommit": "db96bb0a0371dca92707867245bf0bb119b5b4f5",
+      "inputSha256": "df24d894bd6f044c2678168b14e6fcfcbaeb2101586d510e3a724746d1f19226",
+      "evidence": "docs/security/resident-full-lock-db96-2026-11-08.json",
+      "scope": "Fresh identical full-lock findings, existing unresolved fixes and all original exceptions retained. Not packaged acceptance."
     },
     "sourceBindingHistory": [
       {
@@ -1821,19 +1822,21 @@
       }
     ],
     "pinReview": {
-      "atUTC": "2026-11-08T01:42:22.146919+00:00",
-      "sdk": "4dae580daa50fa6f0f9a220c6ac1fa0942879b02",
-      "bundleSha256": "ed4ae8992ce76affc2b1a0e4ae4de5578c3ba053a36fc3b8eb4f11f33fffb68a",
-      "evidence": "docs/security/resident-staged-review-ed4ae8992ce7-2026-11-08.json",
-      "note": "Fresh exact staged-byte and advisory review. Existing exception dates, expiry and justification preserved."
+      "atUTC": "2026-11-08T05:48:12.711014+00:00",
+      "sdk": "db96bb0a0371dca92707867245bf0bb119b5b4f5",
+      "evidence": "docs/security/resident-full-lock-db96-2026-11-08.json",
+      "scope": "FULL_LOCK_BINDING_ONLY",
+      "packagedReview": "PENDING_EXACT_CURRENT_BYTES",
+      "priorPackagedEvidence": "docs/security/resident-staged-review-ed4ae8992ce7-2026-11-08.json",
+      "note": "No exception added, renewed or broadened. Exact shipped bundle and reachability need their own current evidence."
     },
     "pinRebind": {
-      "from": "3a2e43de288a5ec8a77212084772fede22577665",
-      "to": "475a8d59dc1811c2cde093613519906a5a3f6457",
-      "date": "2026-11-07",
-      "inputSha256": "7c9d7bd390a29fac9da3c16af0fdc4d0998ce7eaf6fb2b82020bc9055ee9e11e",
-      "basis": "Identical authenticated Bun lock and dependency manifests. Existing153 findings, exception scope and expiry preserved; no new audit or native acceptance claimed.",
-      "evidence": "docs/evidence/sdk-475a8d59dc-build-input-admission-20261107.json"
+      "from": "b23a23c2ef4f83d15591c6368c00f1e9547f7743",
+      "to": "db96bb0a0371dca92707867245bf0bb119b5b4f5",
+      "date": "2026-11-08",
+      "inputSha256": "df24d894bd6f044c2678168b14e6fcfcbaeb2101586d510e3a724746d1f19226",
+      "basis": "Fresh npm bulk query reproduces exact normalized input,103 finding rows/severity counts; Bun lock is byte-identical. All84 exception objects/dates and existing unexcepted pending fixes preserved.",
+      "evidence": "docs/security/resident-full-lock-db96-2026-11-08.json"
     }
   }
 }
