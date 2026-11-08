@@ -301,3 +301,25 @@ Shared dependencies marked `state-audit-required` have a domain allocation and
 drift check while detailed field and transition correspondence remains unproved.
 Fresh expanded-model and source gates remain required before this integration is
 qualified.
+
+## Current SDK source-owner inventory
+
+The integrated `99b4943` snapshot admits 5,679 source inputs, including 4,839
+shared inputs. The syntax audit parses 5,624 JavaScript, TypeScript and Java
+files without syntax errors. The source-owner summary records 67,016 candidate
+bindings, 66,438 write sites, 8,296 asynchronous registrations and 10,193
+write sites without a syntactically matched declaration. Test-support paths
+account for 287 files and 11,480 candidate bindings.
+
+The syntax audit identifies candidates by declaration, owner and write site.
+It includes local bindings and definitions that may be bundled without being
+activated. Scope, lifetime, aliases, authorization and externally persisted
+state still require semantic review. The remaining 55 language and data inputs
+are explicit review rows. The source summary is committed, and the detailed
+report regenerates under `test-results/quint-state-audit/details.json`.
+
+The core conversion now registers all 16 upstream modules and all 31 original
+profiles. The product's four retained design models and 22 configurations have
+registered Quint translations. The original design files remain available for
+comparison. A tracked-file admission test checks that every TLA+ and TLC
+configuration path at the current product and upstream pins is represented.
