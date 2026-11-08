@@ -40,11 +40,18 @@ async function browserCalendarWrites(credentialId:string,calendarEdits:boolean){
  const call=browserResidentCall as unknown as (operation:'residentGoogleCalendarAccess',credentialId:string,calendarEdits:boolean)=>Promise<{calendarEdits?:unknown}|null>;
  try{return (await call('residentGoogleCalendarAccess',credentialId,calendarEdits))?.calendarEdits===calendarEdits;}catch{return false;}
 }
+const unverifiedConnections = 'Google connections could not be verified. Check sign-in and try again.';
+function heldGmailTier(accounts: GmailAccount[], floor: 'read' | 'send') {
+ const connected = accounts.filter(account => account.connected);
+ if (connected.some(account => gmailGrantTier(account) === 'modify')) return 'modify';
+ return connected.some(account => account.grantedCapabilities.includes('google.gmail.send')) ? 'send' : floor;
+}
 export function GoogleConnectionsPanel(){
  const open=useSyncExternalStore(googleConnectionController.subscribe,googleConnectionController.getSnapshot);
  const connection=useSyncExternalStore(connectionController.subscribe,connectionController.getSnapshot);
  const [background,setBackground]=useState('');
  useEffect(()=>{if(!open)return;let alive=true;const read=()=>void gmailBackgroundStatus().then(value=>{if(alive)setBackground(gmailBackgroundMessage(value));});read();window.addEventListener(GMAIL_BACKGROUND_CHANGED,read);return()=>{alive=false;window.removeEventListener(GMAIL_BACKGROUND_CHANGED,read);};},[open]);
+ const listed = useRef(false);
  const [accounts,setAccounts]=useState<GmailAccount[]>([]),[busy,setBusy]=useState(false),[notice,setNotice]=useState(''),[confirm,setConfirm]=useState<GmailAccount|null>(null),[revision,setRevision]=useState(0);
  const [access,setAccess]=useState(googleAgentAccess);
  // The Calendar intent waiting on the owner's Allow Calendar changes tap; rows are the readback to link, if any.
@@ -67,7 +74,7 @@ export function GoogleConnectionsPanel(){
   const returned=sameGoogleWorkspaceBinding(returnedWorkspaceOwner.current??{environment:'production',userId:'',organizationId:'',sessionId:'',credentialId:''},currentWorkspaceBinding())?returnedWorkspace.current:null;
   if(!returned)returnedWorkspace.current=null;
   const requiredConnectionId=returned?.result==='connected'?returned.connectionId:undefined;
-  active.current?.abort();const abort=active.current=new AbortController();setAccounts([]);setConfirm(null);
+  active.current?.abort();const abort=active.current=new AbortController();listed.current=false;setAccounts([]);setConfirm(null);
   if(!cloud||!key){setBusy(false);setNotice('Sign in to connect Google.');return;}
   const current=()=>!abort.signal.aborted&&active.current===abort&&googleConnectionController.getSnapshot()&&sameGoogleConnectionReturnBinding(binding,currentGoogleConnectionReturnBinding());
   setBusy(true);setNotice('Checking Google connections…');
@@ -92,6 +99,7 @@ export function GoogleConnectionsPanel(){
     setAccounts(rows);
     if(!returnedGrantVisible()){setNotice('Google returned, but that connection could not be verified. Existing connections are unchanged.');return;}
    }
+   listed.current=true;
    // Calendar is one merged view: the agent's Calendar reads every calendar these accounts show in Google.
    const kept=disconnectNotice.current;disconnectNotice.current=null;
    setNotice(kept&&sameGoogleConnectionReturnBinding(kept.binding,binding)?kept.message:returned?.result==='denied'?'Google authorization was cancelled. Existing connections are unchanged.':returned?.result==='failed'?'Google authorization did not complete. Existing connections are unchanged.':!rows.some(row=>row.connected)?'No Google account connected.':rows.some(row=>row.connected&&row.grantedCapabilities.includes('google.calendar.read'))?'Calendar includes the calendars you show in Google.':'');if(returnedWorkspace.current===returned)returnedWorkspace.current=null;
@@ -135,8 +143,9 @@ export function GoogleConnectionsPanel(){
  },[open]);
  /** Connect asks once for everything Cloud grants (Gmail read and send, Calendar read and edit), so the agent works on first use.
   * Gmail drafts, archive, trash and read state (gmail.compose/gmail.modify) are not in Cloud's Google scope allowlist yet. */
- async function connect(permission:'read'|'modify'|'send'='send',calendarPermission:'read'|'write'='write'){
+ async function connect(permission:'read'|'modify'|'send'=heldGmailTier(accounts,'send'),calendarPermission:'read'|'write'='write'){
   if(!cloud){googleConnectionController.close();connectionController.openCloudAccount();return;}
+  if(!listed.current){setNotice(unverifiedConnections);return;}
   const watcher=returnWatch.current;if(!watcher)return;
   active.current?.abort();const abort=active.current=new AbortController();let cancelReturn:(()=>void)|undefined;let returnState:string|undefined;let phase:'native-return'|'cloud'|'browser'='native-return';
   const current=()=>!abort.signal.aborted&&active.current===abort&&returnWatch.current===watcher&&watcher.isCurrent()&&googleConnectionController.getSnapshot()&&sameGoogleConnectionReturnBinding(binding,currentGoogleConnectionReturnBinding());
@@ -167,7 +176,7 @@ export function GoogleConnectionsPanel(){
   try{await setGoogleAgentAccess({[kind]:on});}catch{setNotice('That setting could not be saved. Try again.');return;}
   if(on&&!granted)await connect(accounts.some(account=>gmailGrantTier(account)==='modify')?'modify':'send','write');
  }
- async function disconnect(account:GmailAccount){if(!cloud||!key||!account.connectionId)return;active.current?.abort();const abort=active.current=new AbortController();setBusy(true);setConfirm(null);
+ async function disconnect(account:GmailAccount){if(!cloud||!key||!account.connectionId)return;listed.current=false;active.current?.abort();const abort=active.current=new AbortController();setBusy(true);setConfirm(null);
   const current=()=>!abort.signal.aborted&&active.current===abort&&googleConnectionController.getSnapshot()&&sameGoogleConnectionReturnBinding(binding,currentGoogleConnectionReturnBinding());
   // Opened from Calendar: its lifecycle may pause Calendar sync around the revoke. Otherwise the revoke is privacy only.
   const calendar=googleConnectionController.calendar(),lifecycle=calendar?googleCalendarDisconnectLifecycle(calendar,()=>calendar.review,()=>{const b=currentGoogleConnectionReturnBinding();return b?JSON.stringify([b.environment,b.userId,b.organizationId,b.sessionId,b.credentialId]):null;},calendar.retained):undefined;
@@ -180,7 +189,7 @@ export function GoogleConnectionsPanel(){
    // An earlier attempt's unknown pause stays reviewable unless this one confirmed the pause.
    if(calendar&&pause!=='unknown')for(const [pauseKey,context] of calendar.retained)if(context.connectionId===account.connectionId&&(pause==='confirmed'||!before.has(pauseKey)))calendar.retained.delete(pauseKey);
    const message=googleDisconnectMessage(result.outcome,account.label)+(pause==='confirmed'?' Calendar sync is paused; saved events are kept.':pause==='unknown'?' Calendar sync pause was not confirmed. Review Calendar sync; saved events are unchanged.':'');
-   disconnectNotice.current={binding:binding!,message};setNotice(message);setAccounts(result.accounts||[]);
+   disconnectNotice.current={binding:binding!,message};setNotice(message);setAccounts(result.accounts||[]);listed.current=Array.isArray(result.accounts);
   }catch(error){if(current()){connectionController.rejectCloudSession(cloud.sessionId,error);setNotice('Disconnect was not confirmed. Check Google connections before trying again.'+(calendar&&[...calendar.retained.values()].some(context=>context.connectionId===account.connectionId)?' Review Calendar sync too; saved events are unchanged.':''));}}
   finally{if(active.current===abort)setBusy(false);}
  }
@@ -207,10 +216,11 @@ export function GoogleConnectionsPanel(){
  }
  /** Calendar intent: a verified Calendar write grant links now; otherwise the normal consent, keeping granted Gmail access. */
  async function connectCalendar(calendar:GoogleCalendarIntent){
+  if(!listed.current){setNotice(unverifiedConnections);return;}
   const connected=accounts.filter(account=>account.connected);
   if(connected.some(calendarWrite)){await linkCalendar(calendar,connected);return;}
   if(!await calendarChangesAllowed(calendar,null))return; // Asked before Google consent.
-  const gmail=connected.some(account=>gmailGrantTier(account)==='modify')?'modify':connected.some(account=>account.grantedCapabilities.includes('google.gmail.send'))?'send':'read';
+  const gmail=heldGmailTier(connected,'read');
   calendar.authorizing=true;await connect(gmail,'write');
  }
  async function linkCalendar(calendar:GoogleCalendarIntent,rows:GmailAccount[]){

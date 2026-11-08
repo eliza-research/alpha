@@ -449,7 +449,7 @@ test('a panel opened from Calendar passes its disconnect lifecycle and keeps an 
   await p.act(()=>p.button('Disconnect Google account owner@example.test').click());await p.act(()=>p.button('Confirm disconnect Google account').click());
   const [{calendar}]=p.disconnects;
   assert.deepEqual(calendar.capture().control,{revision:2,paused:false,destination:{connectorAccountId:GRANT,providerCalendarId:OWNER},pendingDispatch:null},'the review the link read back');
-  assert.match(p.status(),/^Disconnect disconnected\. Calendar sync pause was not confirmed\. Ask your agent to check Calendar sync/);
+  assert.match(p.status(),/^Disconnect disconnected\. Calendar sync pause was not confirmed\. Review Calendar sync/);
   assert.equal(p.controller.calendar().retained.get('pause-key').status,'unknown','the unknown pause stays retained');
   await p.act(()=>p.controller.close());p.onDisconnect=null;await p.act(()=>p.controller.open());
   await p.act(()=>p.button('Disconnect Google account owner@example.test').click());await p.act(()=>p.button('Confirm disconnect Google account').click());
