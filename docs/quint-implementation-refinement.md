@@ -199,3 +199,9 @@ degraded generation. A failed identity-cache read after width change leaves the
 new adapter column active while the previous provider and pin remain. This
 observed transition is an open source repair. Named vector spaces and concrete
 database recovery need separate source evidence.
+
+The resident liveness campaign checks seven schedules and 38 checkpoints on
+the connection owner and actual rate limiter. It covers duplicate failures,
+delayed native status, a busy rebind, and restart completion after ownership
+changes. The reviewed retry action for an unavailable installed-file check is
+available again in the recovery panel and Settings.

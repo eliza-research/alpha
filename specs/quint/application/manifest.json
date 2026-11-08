@@ -1097,5 +1097,43 @@
       "maxSteps": 80,
       "maxVerifyDepth": 5
     }
+  },
+  {
+    "path": "specs/quint/application/ResidentLiveness.qnt",
+    "module": "ResidentLiveness",
+    "init": "init",
+    "step": "step",
+    "invariant": "safety",
+    "tests": [
+      "rateLimitedNativeReadsTest",
+      "retiredReadCannotRestartSuccessorTest",
+      "restartCompletionOwnedByEpochTest",
+      "busyRecoveryQueuesRebindTest"
+    ],
+    "invariants": [
+      "ownedReads",
+      "boundedRestart",
+      "boundedRate"
+    ],
+    "sources": [
+      "apps/app/src/runtime/connection-ui.tsx",
+      "apps/app/src/runtime/resident-recovery.ts",
+      "apps/app/src/runtime/local-agent.ts"
+    ],
+    "stateMapping": {
+      "epoch/active/busy": "Actual controller closure owner and operation slot at the observed boundary",
+      "clock/last/reading/reads": "Controlled clock and actual admitted status requests",
+      "starting/starts/queued": "Actual calls to restart and queued rebind ports",
+      "notice": "Actual source publication of safe boot-reason copy"
+    },
+    "abstractions": [
+      "Five epochs and five five-second ticks. At most one pending restart and one native status read.",
+      "Controlled native and connection ports, including reply, loss, refusal and replacement. Installed lifecycle remains a separate test."
+    ],
+    "bounds": {
+      "maxSamples": 1000,
+      "maxSteps": 80,
+      "maxVerifyDepth": 4
+    }
   }
 ]
