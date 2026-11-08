@@ -422,6 +422,8 @@ export function HostedDigestPanel({composeQuestion,canComposeQuestion}:{composeQ
             }catch(error){
               // The phone refused before anything was sent (consent expired, a calendar changed): nothing to retry.
               if(binding.current!==b)return;
+              // A retry of a dispatched request may already have reached the agent: keep it for Retry.
+              if(!digestPendingDiscardable(reviewed)){setMessage(`Not confirmed: ${(error as Error)?.message||'this phone did not confirm access.'} Retry.`);return;}
               try{await b.storage.remove(b.pendingSlot);}catch{setMessage('Not sent. Its saved request could not be cleared. Try again.');return;}
               setPending(null);setReview(null);setMessage(`Not sent: ${(error as Error)?.message||'this phone did not confirm access.'} Review it again.`);return;
             }
