@@ -48,9 +48,9 @@ test('branding never counts as a functional difference, and the launcher is shar
 test('every device capability Alpha negotiates is declared in its registration', () => {
   // The manifest is only as honest as the declared list: a capability added to the negotiation
   // without being declared would never surface as a parity difference.
-  const source = fs.readFileSync('apps/app/src/runtime/connection-ui.tsx', 'utf8');
-  const start = source.indexOf('async function deviceCapabilities(');
-  assert.ok(start >= 0, 'deviceCapabilities negotiation found');
+  const source = fs.readFileSync('apps/app/src/runtime/phone-context.ts', 'utf8');
+  const start = source.indexOf('export function selectDeviceCapabilities(');
+  assert.ok(start >= 0, 'device capability selection found');
   const body = source.slice(start, source.indexOf('\n}\n', start));
   const constants = Object.fromEntries([...source.matchAll(/(?:export )?const ([A-Z_]+_CAPABILITY)\s*=\s*'([^']+)'/g)].map(match => [match[1], match[2]]));
   const literals = [...body.matchAll(/'([a-z]+\.[a-z0-9.-]+\.v\d+)'/g)].map(match => match[1]);
