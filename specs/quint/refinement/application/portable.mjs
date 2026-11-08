@@ -107,7 +107,7 @@ export async function preferences() {
 }
 
 export async function browserSession() {
-  const source = 'apps/app/src/browser/browsing-session.ts';
+  const source = '.eliza/client-features/plugins/plugin-native-browser-surface/src/browsing-session.ts';
   const {browsingSnapshot, restoreBrowsing} = await sourceModule(source);
   const traces = [];
   for (const privateTab of [false, true]) {
@@ -119,12 +119,22 @@ export async function browserSession() {
     const saved = browsingSnapshot(state, id => ({url: `https://example.test/${id}`, title: id}));
     checkpoint(t, 'persist only normal tabs', call('snapshot'), {'s.saved': qset(saved.tabs.map(tab => Number(tab.id))), 's.savedOrder': saved.tabs.map(tab => Number(tab.id)), 's.savedActive': saved.cur ? Number(saved.cur) : 0});
     const restored = restoreBrowsing(saved, {tabs: [{id: 'fresh'}], visits: []}, true);
-    checkpoint(t, 'reconstruct from snapshot', call('restart'), {'s.normal': qset(restored.tabs.map(tab => Number(tab.id))), 's.privateTabs': qset(restored.tabs.filter(tab => tab.priv).map(tab => Number(tab.id))), 's.order': restored.tabs.map(tab => Number(tab.id)), 's.active': Number(restored.cur)});
+    checkpoint(t, 'reconstruct from snapshot', call('restart'), {'s.normal': qset(restored.restored.map(tab => Number(tab.id))), 's.privateTabs': qset(restored.restored.filter(tab => tab.priv).map(tab => Number(tab.id))), 's.order': restored.restored.map(tab => Number(tab.id)), 's.active': Number(restored.cur)});
     traces.push(t);
   }
+  const current = {tabs: [{id:'1'}], visits: [], cur:'1'};
+  const late = trace('late-restore-keeps-current-tabs', {'s.normal':qset(current.tabs.map(tab => Number(tab.id))), 's.active':Number(current.cur)});
+  current.tabs.push({id:'2'}); current.cur='2';
+  checkpoint(late, 'current second tab', call('normalTab'), {'s.normal':qset(current.tabs.map(tab => Number(tab.id))), 's.active':Number(current.cur)});
+  const previous = browsingSnapshot({tabs:[{id:'1'}],visits:[],cur:'1'}, () => ({url:'https://example.test/1',title:'1'}));
+  const result = restoreBrowsing(previous, current, false);
+  assert.equal(result.restored.length, 0);
+  checkpoint(late, 'late saved state provides no replacement tabs', call('lateRestore'),
+    {'s.normal':qset(current.tabs.map(tab => Number(tab.id))), 's.active':Number(current.cur)});
+  traces.push(late);
   return checkTraces({model: 'BrowserSession', sources: [source], traces, scope: 'bounded-component',
     assumptions: ['Persistence projection executes real snapshot and restore helpers for normal/private tabs.',
-      'Supplied page metadata has valid persistence-eligible URLs. Blank-tab filtering, WebView navigation callbacks, late-restore admission and native encrypted persistence remain outside this helper adapter.']});
+      'The current shared helper returns recreation descriptors in restored. A non-pristine caller receives no replacement tabs. The host owns WebViews and computes pristine admission. Supplied page metadata has valid persistence-eligible URLs. Blank-tab filtering, WebView navigation callbacks, host pristine admission and native encrypted persistence remain outside this helper adapter.']});
 }
 
 export async function permanentVoiceDeletion() {

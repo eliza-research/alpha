@@ -158,10 +158,10 @@
       "closureFallbackUsesOrderTest"
     ],
     "sources": [
-      "apps/app/src/browser/browsing-session.ts",
+      ".eliza/client-features/plugins/plugin-native-browser-surface/src/browsing-session.ts",
       "apps/app/src/browser/browser-surface.ts",
       "apps/app/src/prototype/browser-adapter.ts",
-      "android/app/src/main/java/ai/elizaresearch/alphaphone/BrowserSessionStore.java",
+      "vendor/eliza/plugins/plugin-native-browser-surface/android/src/main/java/ai/eliza/plugins/browsersurface/BrowserSessionStore.java",
       "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaBrowserPlugin.java",
       "apps/app/src/prototype/template.html",
       "apps/app/src/prototype/dc-lite.js"
@@ -170,7 +170,18 @@
       "Finite representative identities and contents. Exact source symbols and modeling limits are documented in the family README.",
       "Model safety checks do not establish implementation refinement or device acceptance.",
       "Three normal representative tabs and one private tab. Browser focus trace checks closing an earlier tab preserves the focused tab identity and subsequent activation.",
-      "Tab order and saved selected normal tab are retained. The abstract snapshot action assumes persistence-eligible normal tabs; blank or invalid URL filtering is a separate source boundary."
+      "Tab order and saved selected normal tab are retained. The abstract snapshot action assumes persistence-eligible normal tabs; blank or invalid URL filtering is a separate source boundary.",
+      "Current shared browsing-session snapshot/restore helpers are source-executed. The adapter covers normal/private saved descriptors and non-pristine restoration refusal. Native encrypted persistence and renderer navigation/callback protocols remain separate obligations."
+    ],
+    "historicalSources": [
+      {
+        "path": "apps/app/src/browser/browsing-session.ts",
+        "commit": "796880e9eca39e13d69a38e2376e0907083bfaab"
+      },
+      {
+        "path": "android/app/src/main/java/ai/elizaresearch/alphaphone/BrowserSessionStore.java",
+        "commit": "796880e9eca39e13d69a38e2376e0907083bfaab"
+      }
     ]
   },
   {

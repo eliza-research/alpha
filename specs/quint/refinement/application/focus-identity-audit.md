@@ -119,3 +119,14 @@ The fixed regression and the two existing native role cases pass. The renderer
 unit cases cover insertion, reordering, removal, unkeyed behavior and missing-key
 fallback. The extended shell model passes all 14 scenarios, 1,000 sampled traces
 of 80 transitions and a four-transition symbolic safety check.
+
+## Current-main Browser snapshot helper
+
+The Browser snapshot adapter now executes the staged shared `browsing-session.ts`
+used by the product. Restore returns recreation descriptors through `restored`.
+Three traces cover normal/private snapshot restoration and refusal to replace
+live tabs when the caller reports a non-pristine surface. The source-bound
+receipt has 11 checkpoints and seven observed model fields. Host computation of
+the pristine flag, native encrypted persistence and mounted tab/navigation
+callbacks remain explicit obligations. The removed local source paths remain
+historical metadata at commit `796880e9eca39e13d69a38e2376e0907083bfaab`.
