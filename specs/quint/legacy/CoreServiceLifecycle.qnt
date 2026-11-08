@@ -10,7 +10,7 @@ module CoreServiceLifecycleTemplate {
   const None: int
   assume OneEarlyOwner = Owned.size() == 1 and Owned.subseteq(Classes.exclude(LateClasses))
   pure val Inst = 1.to(MaxInst)
-  pure val OwnedClass = Owned.chooseSome()
+  pure val OwnedClass = Owned.fold(None, (_, c) => c)
   type State = {types: Set[int], byClass: int -> int, starting: int -> bool, failed: int -> bool,
     sc: int -> str, att: int -> int, scInst: int -> int, published: Set[int], status: str,
     nextInst: int, cls: int -> int, late: int -> bool, stopCalls: int -> int, stopOp: int -> str,
@@ -184,6 +184,8 @@ module CoreServiceLifecycle {
   run lateStartIsStoppedOnceTest = init.then(Model::EBegin(21)).then(Model::EEnsure(21)).then(Model::RRequest)
     .then(Model::StartOk(11)).then(Model::StopOpDone(1)).then(Model::StartLateStopped(11)).then(Model::ESettle(21))
     .expect(Model::s.published == Set() and Model::s.stopCalls.get(1) == 1 and safety)
+  run unloadLastClassClearsStatusTest = init.then(Model::UStart).then(Model::UDrain)
+    .expect(Model::s.types == Set() and Model::s.status == "unknown" and Model::s.upc == "done" and safety)
 }
 
 module CoreServiceLifecycleSiblings {

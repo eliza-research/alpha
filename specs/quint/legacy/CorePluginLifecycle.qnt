@@ -198,6 +198,8 @@ module CorePluginLifecycle {
   temporal CheckedTemporal = Model::Fairness implies Model::Terminates
   run eagerStartRetiresDuringUnloadTest = init.then(Model::UCall(11)).then(Model::UDispose(11)).then(Model::SDone(1))
     .expect(Model::s.byClass.get(1) == 0 and not(Model::s.live.contains(1)) and safety)
+  run secondUnloadJoinsWithoutDisposingTwiceTest = init.then(Model::UCall(11)).then(Model::UCall(12))
+    .expect(Model::s.pc.get(12) == "join" and Model::s.joinOf.get(12) == 11 and Model::s.disposeCalls == 1 and safety)
 }
 
 module CorePluginLifecycleRegister {

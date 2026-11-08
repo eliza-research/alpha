@@ -6,7 +6,8 @@
     "step": "step",
     "invariant": "safety",
     "tests": [
-      "eagerStartRetiresDuringUnloadTest"
+      "eagerStartRetiresDuringUnloadTest",
+      "secondUnloadJoinsWithoutDisposingTwiceTest"
     ],
     "temporal": [
       "CheckedTemporal"
@@ -21,7 +22,8 @@
         "invariant": "safety",
         "temporal": "CheckedTemporal",
         "tests": [
-          "eagerStartRetiresDuringUnloadTest"
+          "eagerStartRetiresDuringUnloadTest",
+          "secondUnloadJoinsWithoutDisposingTwiceTest"
         ],
         "invariants": [
           "TypeOK",
@@ -216,7 +218,8 @@
     "step": "step",
     "invariant": "safety",
     "tests": [
-      "lateStartIsStoppedOnceTest"
+      "lateStartIsStoppedOnceTest",
+      "unloadLastClassClearsStatusTest"
     ],
     "temporal": [
       "CheckedTemporal"
@@ -231,7 +234,8 @@
         "invariant": "safety",
         "temporal": "CheckedTemporal",
         "tests": [
-          "lateStartIsStoppedOnceTest"
+          "lateStartIsStoppedOnceTest",
+          "unloadLastClassClearsStatusTest"
         ],
         "invariants": [
           "TypeOK",
@@ -404,7 +408,8 @@
     "step": "step",
     "invariant": "safety",
     "tests": [
-      "staleOneShotSnapshotDoesNotRerunTest"
+      "staleOneShotSnapshotDoesNotRerunTest",
+      "preservedOneShotRemainsEligibleTest"
     ],
     "temporal": [
       "CheckedTemporal"
@@ -419,7 +424,8 @@
         "invariant": "safety",
         "temporal": "CheckedTemporal",
         "tests": [
-          "staleOneShotSnapshotDoesNotRerunTest"
+          "staleOneShotSnapshotDoesNotRerunTest",
+          "preservedOneShotRemainsEligibleTest"
         ],
         "invariants": [
           "TypeOK",

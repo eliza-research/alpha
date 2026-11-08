@@ -168,6 +168,9 @@ module CoreTaskService {
     .then(Model::Select(2)).then(Model::RecheckFound(2)).then(Model::WorkWith(2, "ok")).then(Model::Write(2)).then(Model::Release(2))
     .then(Model::Select(3)).then(Model::Recheck(3)).then(Model::Release(3))
     .expect(Model::s.starts == 1 and not(Model::s.row.exists) and safety)
+  run preservedOneShotRemainsEligibleTest = init.then(Model::Begin(2)).then(Model::Read(2)).then(Model::Select(2))
+    .then(Model::RecheckFound(2)).then(Model::WorkWith(2, "preserve")).then(Model::Release(2))
+    .expect(Model::s.row.exists and Model::s.starts == 0 and not(Model::s.inSet) and safety)
 }
 
 module CoreTaskServiceDaemonRepeat {
