@@ -1491,5 +1491,44 @@
       "Mounted installed drawer long press, search, current menu, keyboard focus, home pin, and exact synthetic App Info handoff with late replies.",
       "Two package/activity/profile identities and pointer IDs, four query classes, one mounted host, one timer and one outstanding App Info. Current committed DOM is observed. Physical input, Android screens and concurrent handoffs remain external."
     ]
+  },
+  {
+    "path": "specs/quint/application/DockClearanceOwnership.qnt",
+    "module": "DockClearanceOwnership",
+    "init": "init",
+    "step": "step",
+    "invariant": "safety",
+    "tests": [
+      "chatModeSelectsHeaderWithoutResizingTest",
+      "retiredDockKeepsLastFootprintTest",
+      "screenRestorationMeasuresCurrentLayoutTest",
+      "staleCleanupCannotEraseReplacementMeasurementsTest"
+    ],
+    "invariants": [
+      "exactInstaller",
+      "visibleHeader",
+      "safeInsets"
+    ],
+    "sources": [
+      "apps/app/src/runtime/dock-clearance.ts",
+      "apps/app/src/main.tsx",
+      "apps/app/src/prototype/template.html",
+      "vendor/eliza/packages/ui/src/components/shell/dock-clearance.ts"
+    ],
+    "stateMapping": {
+      "installed/generation": "Actual paired observer cleanup and installation count",
+      "screen/scale/conversation/half": "Current synthetic layout owner, measured scale and conversation mode",
+      "dock/appBottom/chatBottom": "Controlled layout measurements from the actual fixture DOM",
+      "clearance/rest/header": "Published product CSS custom properties"
+    },
+    "abstractions": [
+      "One screen and one dock with two layouts. Frame and observer callbacks settle before observation.",
+      "Physical insets, assistive focus scrolling and arbitrary CSS transitions have separate evidence."
+    ],
+    "bounds": {
+      "maxSamples": 1000,
+      "maxSteps": 80,
+      "maxVerifyDepth": 4
+    }
   }
 ]

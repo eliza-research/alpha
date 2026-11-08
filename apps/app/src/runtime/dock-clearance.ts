@@ -46,8 +46,14 @@ export function installDockClearance(): () => void {
   if (installed) return installed;
   const uninstall = installSharedDockClearance({ screen: '[data-screen]', docks: DOCK, bar: '[data-alpha-input-bar]', clearanceProperty: DOCK_CLEARANCE_PROPERTY, restProperty: DOCK_REST_PROPERTY });
   const uninstallHeader = installHeaderClearance();
-  installed = () => { installed = null; uninstallHeader(); uninstall(); };
-  return installed;
+  const stop = () => {
+    if (installed !== stop) return;
+    installed = null;
+    uninstallHeader();
+    uninstall();
+  };
+  installed = stop;
+  return stop;
 }
 
 /** Product headers stay tappable when transient notices appear at the top. */
@@ -75,7 +81,7 @@ function installHeaderClearance(): () => void {
   };
   const schedule = () => { if (!frame) frame = requestAnimationFrame(measure); };
   const changes = new MutationObserver(schedule);
-  changes.observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['inert'] });
+  changes.observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['inert', 'data-alpha-chat-half'] });
   const root = new MutationObserver(schedule);
   root.observe(document.documentElement, { attributes: true, attributeFilter: ['class', 'style'] });
   window.addEventListener('resize', schedule);
