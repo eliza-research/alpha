@@ -234,13 +234,17 @@ export function installAgentCalendarAdapter(Component:any,views:Bag,preservation
   const now=Date.now(),hidden=new Set<string>();
   const target=port(),model=target?.current()&&controller?.state.ownerKey===calendarOwnerKey(target)?controller.state:undefined;
   const home=homeCalendarSelection(model,zone(),hidden,new Date(now)),event=home.event;
+  const syncedAt=Date.parse(model?.feed?.syncedAt??'');
+  const confirmedEmpty=home.verified&&!event&&Number.isFinite(syncedAt)&&syncedAt>0&&syncedAt<=now&&!homeReadIsStale(syncedAt,now);
   // Shared daily-overview states for the agent calendar feed: reading, not connected, failed, stale and fresh.
   // Only a current complete feed may supply an item or a real empty state.
   const failed=!!model?.error||model?.status==='error'||model?.status==='unavailable',unverified=model?.status==='partial';
   // A verified event names its source on the card and on an overdue reminder's Next line; the quiet
   // read claims no read time, and an empty or unverified card names no source.
   const source=event&&home.verified?'Agent Calendar':'';
-  const feed=failed||unverified?presentHomeAgendaFeed({status:model?.error?'error':model!.status,hasItem:!!event,feedState:model?.feed?.state??null,asOf:Date.parse(model?.feed?.syncedAt??'')||null,error:model?.error??null,now,source:'Agent Calendar',emptyLabel:home.emptyLabel}):{state:home.verified?'ready':'pending',read:source,description:source,stale:false,title:home.emptyLabel};
+  let feed=failed||unverified?presentHomeAgendaFeed({status:model?.error?'error':model!.status,hasItem:!!event,feedState:model?.feed?.state??null,asOf:Date.parse(model?.feed?.syncedAt??'')||null,error:model?.error??null,now,source:'Agent Calendar',emptyLabel:home.emptyLabel}):{state:home.verified?'ready':'pending',read:source,description:source,stale:false,title:home.emptyLabel};
+  // A complete historical or future-dated empty snapshot cannot establish today's empty calendar.
+  if(home.verified&&!event&&!confirmedEmpty)feed={state:'error',read:'Open Calendar to retry',description:'Agent Calendar has not been verified. Open Calendar to retry.',stale:false,title:'Calendar has not been verified'};
   // A partial feed is still retryable, but Home need only show the Calendar entry.
   if(unverified&&!failed){feed.title=home.emptyLabel;feed.description=feed.read;}
   const provenance={origin:'',read:feed.read,description:feed.description};
@@ -256,9 +260,8 @@ export function installAgentCalendarAdapter(Component:any,views:Bag,preservation
   // A failed or out-of-date agent read stays visible above it, and opening the card reads it again.
   if(out.homeAgendaReminder===true&&local?.item&&(!item||local.item.begin<item.begin)){const retry=feed.state==='error'||feed.state==='stale';
    return{...out,...homeCalendarValues(presentHomeAgendaCard(agentReminderLead(local,feed))),...(retry&&typeof out.goCalendar==='function'?{goCalendar:()=>{refresh(true);out.goCalendar();}}:{})};}
-  const syncedAt=Date.parse(model?.feed?.syncedAt??'');
   return{...out,...homeCalendarValues(presentHomeAgendaCard({now,item,provenance,stale:feed.stale,emptyTitle:feed.title,sourceName:'Agent Calendar'})),
-   homeCalendarConfirmedEmpty:home.verified&&!item&&Number.isFinite(syncedAt)&&syncedAt<=now&&!homeReadIsStale(syncedAt,now),
+   homeCalendarConfirmedEmpty:confirmedEmpty,
    goCalendar:()=>{if(feed.state==='error'||feed.state==='stale')refresh(true);this.openView('calendar',{calendarAuthority:'canonical',...(event?(key=>({open:key,deepOpened:key,day:canonicalCalendarRow(event,zone()).off}))('canonical-calendar:'+calendarEventKey(event)):{} )});}};
  };
 }
