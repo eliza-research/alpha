@@ -1,0 +1,43 @@
+--- a/plugins/plugin-native-camera/src/scan-document.ts
++++ b/plugins/plugin-native-camera/src/scan-document.ts
+@@ -204,6 +204,7 @@
+   let closed = false;
+   let draftRevision: string | undefined;
+   let autoSaved = false;
++  let explicitlySaved = false;
+   let saving: Promise<void> = Promise.resolve();
+   const { drafts } = options;
+ 
+@@ -238,7 +239,7 @@
+         );
+         if (closed) return;
+         draftRevision = draft.revision;
+-        autoSaved = true;
++        autoSaved = !explicitlySaved;
+         changed();
+       } catch (error) {
+         if (!closed && !controller.signal.aborted)
+@@ -446,6 +447,7 @@
+         if (closed) return false;
+         draftRevision = draft.revision;
+         autoSaved = false;
++        explicitlySaved = true;
+         return true;
+       });
+       return done === true;
+@@ -474,6 +476,7 @@
+         }));
+         draftRevision = draft.revision;
+         autoSaved = false;
++        explicitlySaved = true;
+         exported = false;
+         return "loaded" as const;
+       });
+@@ -485,6 +488,7 @@
+         if (closed) return false;
+         draftRevision = undefined;
+         autoSaved = false;
++        explicitlySaved = false;
+         return true;
+       });
+       return done === true;

@@ -314,7 +314,7 @@ export function installInboxCloudAdapter(Component: any, views: Record<string, B
   const publish = (patch: Bag = {}) => shell?.vset('inbox', { nativeMailTick: Date.now(), ...patch });
   const provider = inboxProviderControls(() => publish(), text => api?.toast(text));
   const drafts = inboxDrafts(() => publish(), text => api?.toast(text), provider);
-  provider.setEditor((proposal,reference)=>drafts.editProvider(proposal,reference));
+  provider.setEditor((proposal,reference,review)=>drafts.editProvider(proposal,reference,review));
   provider.setComposer(()=>drafts.email());
   const readable = () => accounts.filter(gmailReadable);
   const currentQuery = () => String(api?.get('inbox')?.q || '').trim() || folderQuery[folder];
