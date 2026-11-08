@@ -52,8 +52,9 @@ final class HostedResultNotices {
   if(!ownerMatches(requested))return "owner-changed";
   JSONObject result=result(requested);String digest=hash(result.toString()),key=hash(requested.getString("scope")+":"+requested.getString("runId"));
   JSONObject ledger=read(LEDGER),record=ledger.optJSONObject(key);
+  // HostedInbox replaces a retained result only for a reconciled cancellation; that outcome gets a fresh notice under the same tag.
+  if(record!=null&&!digest.equals(record.getString("digest"))){ledger.remove(key);record=null;}
   if(record!=null){
-   if(!digest.equals(record.getString("digest")))throw new IllegalStateException("Retained result changed");
    String phase=record.getString("phase");
    if(phase.equals("dispatching")){record.put("phase",poster.active(key)?"posted":"uncertain");write(LEDGER,ledger);}
    return record.getString("phase");
