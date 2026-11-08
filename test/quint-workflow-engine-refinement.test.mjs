@@ -2,6 +2,18 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {spawnSync} from 'node:child_process';
 
+
+test('workflow compilation rejects a changed graph or mismatched captured source bytes', async () => {
+  const {engineDriverSources, prepareEngineModule} = await import('../specs/quint/refinement/services/workflow-engine/ports.mjs');
+  const {captureInputs} = await import('../specs/quint/refinement/check-traces.mjs');
+  const sources = await engineDriverSources();
+  const hashes = captureInputs(sources);
+  await assert.rejects(prepareEngineModule(sources.slice(1), hashes), /module graph changed/);
+  const key = Object.keys(hashes).find(path => path.endsWith('/embedded-workflow-service.ts'));
+  assert.ok(key);
+  await assert.rejects(prepareEngineModule(sources, {...hashes, [key]: '0'.repeat(64)}), /compiled bytes differ/);
+});
+
 test('workflow engine SQL admission and source coordinator refine bounded Quint traces', {timeout: 360000}, () => {
   const result = spawnSync(process.execPath, ['--input-type=module', '-e', `
     import assert from 'node:assert/strict';

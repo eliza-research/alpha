@@ -1,6 +1,8 @@
 import assert from 'node:assert/strict';
 import {build} from 'esbuild';
 import {createRequire} from 'node:module';
+import {createHash} from 'node:crypto';
+import {readFileSync} from 'node:fs';
 import {resolve} from 'node:path';
 import {pathToFileURL} from 'node:url';
 import {until} from '../support.mjs';
@@ -8,11 +10,13 @@ import {until} from '../support.mjs';
 const root = process.cwd();
 const packages = createRequire(resolve(root, 'package.json'));
 const prefix = 'vendor/eliza/plugins/plugin-workflow/src/';
-let compiled;
+let compiled, evaluated;
+let compilation = 0;
+const digest = bytes => createHash('sha256').update(bytes).digest('hex');
 
 /** The service, compiler and transaction logic run unchanged. These are process/runtime ports. */
-export async function engineModule() {
-  if (compiled) return compiled;
+async function bundleEngine() {
+  const compiledHashes = {};
   const stubs = {
     '@elizaos/core': `
       export {agentProcessStartedAtMs,computeNextCronRunAtMs,isMissedScheduledOccurrence,recordsMissedScheduledOccurrences,MISSED_SCHEDULED_OCCURRENCE_TEXT} from ${JSON.stringify(resolve(root, 'vendor/eliza/packages/core/src/services/trigger-scheduling.ts'))};
@@ -54,13 +58,47 @@ export async function engineModule() {
       builder.onLoad({filter: /.*/, namespace: 'workflow-port'}, args => ({
         contents: stubs[args.path], loader: 'js', resolveDir: root,
       }));
+      builder.onLoad({filter: /\.(?:ts|tsx|js|mjs|cjs|json)$/, namespace: 'file'}, args => {
+        const contents = readFileSync(args.path);
+        compiledHashes[args.path] = digest(contents);
+        const extension = args.path.split('.').at(-1);
+        return {contents: contents.toString('utf8'), loader: extension === 'mjs' || extension === 'cjs' ? 'js' : extension, resolveDir: resolve(args.path, '..')};
+      });
     }}],
   });
-  const module = await import('data:text/javascript;base64,' + Buffer.from(result.outputFiles[0].text).toString('base64'));
   const sources = Object.keys(result.metafile.inputs)
     .filter(name => !name.startsWith('workflow-port:') && name !== 'workflow-engine-entry.ts');
-  compiled = {...module, sources};
-  return compiled;
+  return {code: result.outputFiles[0].text, sources, compiledHashes};
+}
+
+/** Discover the first-party graph without evaluating its JavaScript. */
+export async function engineDriverSources() {
+  return (await bundleEngine()).sources;
+}
+
+/** Rebuild from the captured input bytes and bind the exact bytes esbuild consumed. */
+export async function prepareEngineModule(discovered, driverHashes) {
+  const artifact = await bundleEngine();
+  assert.deepEqual([...artifact.sources].sort(), [...discovered].sort(), 'Workflow module graph changed during compilation');
+  for (const [path, hash] of Object.entries(artifact.compiledHashes)) {
+    assert.equal(hash, driverHashes[path], `Workflow compiled bytes differ from the before-driver snapshot: ${path}`);
+    assert.equal(digest(readFileSync(path)), hash, `Workflow source changed during compilation: ${path}`);
+  }
+  compiled = artifact;
+  evaluated = undefined;
+  return {...artifact.compiledHashes};
+}
+
+export async function engineModule() {
+  if (!compiled) compiled = await bundleEngine();
+  for (const [path, hash] of Object.entries(compiled.compiledHashes)) {
+    assert.equal(digest(readFileSync(path)), hash, `Workflow source changed before evaluation: ${path}`);
+  }
+  if (!evaluated) {
+    const module = await import('data:text/javascript;base64,' + Buffer.from(compiled.code).toString('base64') + `#${++compilation}`);
+    evaluated = {...module, sources: compiled.sources, compiledHashes: {...compiled.compiledHashes}};
+  }
+  return evaluated;
 }
 
 const quote = value => '"' + value.replaceAll('"', '""') + '"';

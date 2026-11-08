@@ -3,7 +3,7 @@ import {fileURLToPath} from 'node:url';
 import {captureInputs, checkTraces} from '../../check-traces.mjs';
 import {action, until} from '../support.mjs';
 import {serviceInputs} from '../source-inputs.mjs';
-import {createEngineFixture, engineModule} from './ports.mjs';
+import {createEngineFixture, engineDriverSources, prepareEngineModule} from './ports.mjs';
 
 const owner = value => value === 'owner-A' ? 1 : value === 'owner-B' ? 2 : 0;
 const version = value => value === 'version-1' ? 1 : value === 'version-2' ? 2 : 0;
@@ -322,11 +322,13 @@ async function untilExecution(fixture, predicate) {
 }
 
 export async function runWorkflowEngineRefinement(extraSources = []) {
-  const module = await engineModule();
-  const sources = serviceInputs([...module.sources, fileURLToPath(import.meta.url),
+  const discovered = await engineDriverSources();
+  const sources = serviceInputs([...discovered, fileURLToPath(import.meta.url),
     'specs/quint/refinement/services/workflow-engine/ports.mjs', 'specs/quint/refinement/services/support.mjs',
     'package.json', 'package-lock.json', ...extraSources]);
   const driverHashes = captureInputs(sources);
+  const compiledHashes = await prepareEngineModule(discovered, driverHashes);
+  for (const [path, hash] of Object.entries(compiledHashes)) assert.equal(hash, driverHashes[path]);
   const traces = await collectWorkflowEngineTraces();
   const receipt = await checkTraces({model: 'WorkflowEngineAdmission', sources, driverHashes, traces,
     scope: 'bounded-orchestration', assumptions: [
