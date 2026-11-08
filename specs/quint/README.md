@@ -11,7 +11,7 @@ code. All checks execute models or isolated test adapters.
 | [Application](application/README.md) | Shell, startup permissions, assistant requests/drafts, local documents, Notes, vault, files/sharing, preferences and development surfaces |
 | [Services](services/README.md) | Sign-in, service authorization, Google accounts, Calendar, Inbox, Maps, workflows, notices/caches, browser and document pipelines |
 | [Native](native/README.md) | Resident runtime, voice, speech resources, listener, reset, deletions, media, device actions and composed cross-domain behavior |
-| [Legacy](legacy/README.md) | Seven translated historical current/proposed design comparisons, original properties, fairness and expected counterexamples |
+| [Legacy](legacy/README.md) | Eleven translated historical current/proposed design comparisons, original properties, fairness and expected counterexamples |
 
 Each family's `manifest.json` names its executable modules, initial and next
 actions, invariants, scenarios, exact source entry points and abstractions. The

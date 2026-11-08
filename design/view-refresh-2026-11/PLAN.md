@@ -181,9 +181,14 @@ before numbers are captured on-device in phase 0. This review doesn't claim them
 - Paired and Cloud routes upload in 55 s chunks, since those servers cap one request at
   60 s. There's no user-visible limit on any route.
 - Recording continues with the screen off, in a foreground service with a notification,
-  as Recorder apps do. As built, segments are transcribed while Notes is shown; segments
-  recorded with Notes hidden are transcribed when it is shown again, or at Done (spec
-  notes-view `shown`, AsrWhileHidden = FALSE). Native background transcription is open work.
+  as Recorder apps do.
+- **Accepted limitation recorded on 2026-11-07.** Transcription in this design runs
+  while Notes is shown. Audio continues while the screen is off or Notes is hidden;
+  those segments are transcribed when Notes is shown again or at Done (model
+  `shown`, `AsrWhileHidden = FALSE`). Background transcription was excluded from
+  this refresh. The current canonical Notes flow saves audio first and offers
+  transcription as a later action; the historical model is not a claim that the
+  canonical flow automatically starts transcription.
 
 ### Data model
 - Add `folderId` to the note record. Folders are a new `notes-folders:v1:device` slot.
@@ -322,12 +327,28 @@ Final:
 - **F2:** No Recents.
 - **A1:** Apps drawer is a 4-column icon grid.
 
+## Historical review decisions
+
+The 2026-11-07 review recorded a module-ceiling change from 555 to 564 for
+nine product-owned modules. That was the inventory policy at that time. The
+current `config/feature-parity.json` records actual owned modules and has no
+module ceiling. The transcription limitation above is retained with its date.
+
 ## TLA+ models (written and checked 2026-11-06)
 Specs are in `design/view-refresh-2026-11/tla/{camera-session,photos-library,notes-view,files-browser}`,
 run by `tla/check.sh <tla2tools.jar>`; results in `tla/results.md`.
 `Design.cfg` is the proposed design. Each `AsBuilt_*.cfg` turns off one fix, to show that
-today's code has the defect. Each `Ablate_*.cfg` turns off one design rule, to show the
+the historical implementation has the defect. Each `Ablate_*.cfg` turns off one design rule, to show the
 rule is needed.
+
+The four specifications and all 22 configurations also have Quint translations
+in `specs/quint/legacy/{CameraSession,PhotosLibrary,NotesView,FilesBrowser}.qnt`.
+`view-refresh-configurations.json` retains the original configuration values and
+property expectations, and `manifest.json` retains the SHA-256 of each TLA input.
+The original TLA assets remain available for comparison. The 38 executable
+scenarios and seeded simulations are bounded design evidence. Completed TLC
+runs, incomplete runs, and current implementation conformance are recorded
+separately in the legacy README and runtime refinement receipts.
 
 Design changes the models found:
 - **Camera:** if the agent queues a photo during start and you then start recording, the

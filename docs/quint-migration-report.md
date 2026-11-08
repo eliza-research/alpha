@@ -253,8 +253,32 @@ implementation refinement.
 
 ## November 8 source reconciliation
 
-The integration uses SDK99 and 61 registered models. It preserves the older evidence above as historical. Current application and native models use the shared owners for Files, navigation, notifications, speech and credential control. `ListFocus`, `RendererFailureUI` and `InboxCoordinator` add bounded contracts without replacing the canonical Notes variant.
+The integration uses SDK99 and 65 registered models. It preserves the older evidence above as historical. Current application and native models use the shared owners for Files, navigation, notifications, speech and credential control. `ListFocus`, `RendererFailureUI` and `InboxCoordinator` add bounded contracts without replacing the canonical Notes variant.
 
 The review ports callback ownership, retained acknowledgment receipts, current capability checks, failed cleanup, list identity and renderer-recovery behavior. It keeps the current single-list Notes layout, virtual Photos grid, Files volumes and package-keyed app drawer. Superseded local Files/launcher code and its original requirements remain in Git history.
 
 The current source inventory and patch inputs are authenticated separately from the historical receipts. A successful bounded run does not establish universal refinement, physical storage durability, Android platform behavior or device acceptance.
+
+### View-refresh translations retained on 2026-11-08
+
+The four additional historical designs (`CameraSession`, `PhotosLibrary`,
+`NotesView`, `FilesBrowser`) retain all 22 original configuration variants and
+38 executable scenarios. The registry now contains 65 models and 579 scenarios.
+Their original TLA files and configuration assets remain in the repository, and
+the translation manifest records exact input hashes. These historical designs
+are separate from the current-source application, service and native contracts.
+
+The originating four-model check passed typechecking, scenarios and 1,000
+80-transition samples per model. Large temporal checks have separate receipts.
+The Camera Focus property-specific attempt failed during Apalache startup,
+without a counterexample. The historical Focus violation is reproduced by its
+scenario and combined-configuration check; current Camera focus remains
+nonblocking under the existing never-settling-focus shutter regression.
+
+The 17 current service refinement receipts also passed together in a diagnostic
+run with unchanged inputs on 2026-11-08. The complete normal verification command
+remains a separate required gate.
+
+The integration independently passed the four typechecks, all 38 scenarios
+and 80 sampled traces of 40 transitions per model with unchanged inputs, recorded
+in `test-results/quint-view-refresh/integration-bounded.json`.

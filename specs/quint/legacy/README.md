@@ -1,6 +1,6 @@
 # Migrated design models
 
-These seven Quint modules preserve the historical current/proposed comparisons
+These eleven Quint modules preserve the historical current/proposed comparisons
 from the November 2026 design reviews. The current design refers to source
 `ef9fbf7cd7`, as it did in the original models. Runtime coverage for the current
 working tree lives in the other Quint families.
@@ -111,3 +111,100 @@ only the declared finite abstractions and their configured bounds.
 The original historical evidence is retained in the
 [flow design results](../../../docs/flow-redesign-2026-11/tla/results.md) and
 [UI design results](../../../docs/ui-refresh-2026-11/tla/results.md).
+
+## Additional view-refresh designs
+
+
+The four view-refresh designs from commit `7883110c0a` are translated to
+`CameraSession.qnt`, `PhotosLibrary.qnt`, `NotesView.qnt` and `FilesBrowser.qnt`.
+Their 22 original configurations, property lists and input hashes are retained
+in [view-refresh-configurations.json](view-refresh-configurations.json). Each
+configuration has an independent `checker<Name>Init` entry point. `checkerInit`
+selects `Design`. `Rename` retains its separate name domain and bounds.
+
+These models retain every original state field and action, including external
+changes, reviewed revisions, recording visibility and weak/strong fairness.
+The configuration is immutable state. The `history` record observes the exact
+pre-state/post-state formulas of action properties. `stateSafety` combines the
+original configured state invariants. `safety` also checks the action monitors.
+The `Checked<Property>` temporal aliases apply the original fairness assumptions
+to `s`, excluding the observational history record.
+
+The translation uses the following representations.
+
+- TLA model values for Notes and folders become distinct strings.
+- Photos `Take` selects items with fewer than `W` strictly newer or older IDs.
+  This is equivalent to the original recursive maximum/minimum extraction.
+- Files `FreeName` selects the lowest unused numeric name, realizing the source
+  `CHOOSE` under TLC's numeric ordering. The source does not specify a different
+  tie-breaking rule.
+- Camera's per-epoch fairness quantifies over the pure constant `MaxEpoch = 3`.
+  TLC cannot normalize a temporal quantifier whose bound is read from a state
+  record, even when the record is immutable. All camera configurations use 3.
+- Separate checker initializers avoid Quint 0.33.1's restriction on reusing an
+  initializer action inside scenarios and other entry points.
+
+| Model | Retained finite bounds |
+| --- | --- |
+| CameraSession | 3 sessions, media admission bound 2 |
+| PhotosLibrary | 3 item IDs, window 2, historical cap 1, 2 external events, revisions 0–2 |
+| NotesView | 2 notes, 2 folders, 2 names, 3 segments, historical cap 1, 2 disruptions, revisions 0–2. Rename uses 3 names, 1 segment and 1 disruption. ASR while hidden is false in every configuration. |
+| FilesBrowser | 3 files, 3 directories, names 1–3 with initial names 1–2, 1 external event |
+
+The local runner checks these historical design comparisons independently of the
+application coverage ledger. Original TLA specifications and configurations remain
+in `design/view-refresh-2026-11/tla/`; their source hashes match the translation
+manifest. Historical implementation links are metadata, while the application,
+service and native families bind current source owners. It records input hashes before and after execution and rejects an
+unexpected checker error as a counterexample. Separate simultaneous invocations
+need distinct server endpoints. A persistent, independently started Apalache
+server avoids the pinned CLI's automatic server shutdown/startup race.
+
+```sh
+node specs/quint/legacy/check-view-refresh.mjs --phase=check
+node specs/quint/legacy/check-view-refresh.mjs --phase=symbolic --steps=4
+node specs/quint/legacy/check-view-refresh.mjs --phase=compare
+node specs/quint/legacy/check-view-refresh.mjs --phase=properties
+node specs/quint/legacy/check-view-refresh.mjs --phase=temporal --models=NotesView --configurations=AsBuilt_Hidden
+```
+
+`compare` preserves each original configuration's combined verdict. `properties`
+checks all expected passing properties together and each expected violation
+separately. `temporal` checks every temporal property separately. The stronger
+property checks expose two additional historical failures that the earlier
+first-failure results masked.
+
+- `CameraSession.AsBuilt_Leave` also violates `AgentCaptureSettles`. An unfinished
+  photo remains stuck across reopen. A later agent request queues during startup
+  and cannot run after preview becomes ready. Both the translated model and the
+  original TLA+ reproduce this fair liveness counterexample.
+- `FilesBrowser.Ablate_Conflict` also violates `SelectionExists`. A reviewed move
+  can overwrite another selected file while the current listing is not stale.
+  Both source and translation retain this behavior.
+
+All four modules passed typechecking, 38 scenario tests and 1,000 seeded traces
+of 80 transitions at seed 20261108. The originating unchanged-input receipt is
+`test-results/quint-view-refresh/check-stable.json` in the translation worktree.
+The integration records its own fresh checks under `test-results/quint-view-refresh/`. Fresh finite-state and symbolic
+results are written under `test-results/quint-view-refresh/`. The
+[November 6 results](../../../design/view-refresh-2026-11/tla/results.md) remain
+historical. A fresh original Camera `Design` run and its translation both have
+2,742 reachable states. The historical table's 1,344 states predate later edits
+to that specification. Interrupted or failed tool runs remain separate evidence
+and do not establish a completed finite-state check. Current implementation
+conformance is a separate obligation of the application, native and service
+refinement adapters.
+
+The property-specific `CameraSession-properties-final.json` run encountered an
+Apalache startup error while checking `AsBuilt_Focus-NoLostShutter`. That failed
+tool invocation produced no counterexample and does not qualify the property.
+The historical Focus configuration and its executable scenario intentionally
+violate `NoLostShutter`; the Design scenario permits shutter input during focus.
+Photos and the other large temporal state spaces require their own completed
+receipts. Their unfinished runs are not counted as passing evidence here.
+
+The integration recheck passed all four typechecks, all 38 scenarios and
+80 traces of 40 transitions per model at seed 20261108. Its stable-input receipt
+is `test-results/quint-view-refresh/integration-bounded.json`. The exact source
+models remain byte-identical to commit `7883110c0a`; the integration runner also
+checks and captures the retained original TLA and configuration hashes.

@@ -1028,5 +1028,680 @@
         "Shallow"
       ]
     }
+  },
+  {
+    "path": "specs/quint/legacy/CameraSession.qnt",
+    "module": "CameraSession",
+    "init": "checkerInit",
+    "step": "step",
+    "invariant": "safety",
+    "tests": [
+      "designCaptureTest",
+      "designLeaveTest",
+      "designQueueTest",
+      "designChatTest",
+      "asBuiltFocusTest",
+      "asBuiltLeaveTest",
+      "asBuiltLensTest",
+      "asBuiltAgentQueueTest",
+      "asBuiltChatGraceTest",
+      "asBuiltLeaveQueueTest"
+    ],
+    "sources": [
+      "design/view-refresh-2026-11/tla/camera-session/Spec.tla",
+      "design/view-refresh-2026-11/tla/camera-session/AsBuilt_AgentQueue.cfg",
+      "design/view-refresh-2026-11/tla/camera-session/AsBuilt_ChatGrace.cfg",
+      "design/view-refresh-2026-11/tla/camera-session/AsBuilt_Focus.cfg",
+      "design/view-refresh-2026-11/tla/camera-session/AsBuilt_Leave.cfg",
+      "design/view-refresh-2026-11/tla/camera-session/AsBuilt_Lens.cfg",
+      "design/view-refresh-2026-11/tla/camera-session/Design.cfg",
+      "specs/quint/legacy/view-refresh-configurations.json",
+      "specs/quint/legacy/check-view-refresh.mjs"
+    ],
+    "abstractions": [
+      "Historical view-refresh design comparison authored on main before this migration. It is not implementation refinement evidence.",
+      "Every source state variable is a field of s. Immutable config preserves each original TLC constant assignment; history is an observational extension for action properties.",
+      "All original finite domains, nondeterministic initial choices, action guards, frame conditions and fairness are retained.",
+      "All22 source configurations and their exact property lists are retained in view-refresh-configurations.json.",
+      "The implementation entry points are historical links. Current-source conformance remains in the application, service and native families; this translation does not establish that every design action is implemented by the shipping UI.",
+      "The sources array binds retained design inputs and the configuration runner, not current product implementation."
+    ],
+    "constants": {
+      "FixFocus": true,
+      "FixLeave": true,
+      "FixLens": true,
+      "FixAgentQueue": true,
+      "FixChatGrace": true,
+      "MaxEpoch": 3,
+      "MaxMedia": 2
+    },
+    "invariants": [
+      "TypeOK",
+      "NoLostShutter",
+      "NoStuckCapture",
+      "NoOrphanRecording",
+      "LensSettingsValid",
+      "FlipNeverRejected",
+      "SavedIsShown"
+    ],
+    "temporal": [
+      "CheckedTemporal"
+    ],
+    "temporalProperties": [
+      "AgentFailsOnlyForCause",
+      "OpenReachesPreviewOrError",
+      "AgentCaptureSettles",
+      "ChatKeepsPreview",
+      "ChatGraceReleases"
+    ],
+    "currentChecks": [
+      {
+        "invariant": "NoLostShutter",
+        "expected": "violation",
+        "init": "checkerAsBuilt_FocusInit",
+        "step": "step",
+        "configuration": "AsBuilt_Focus"
+      },
+      {
+        "invariant": "NoStuckCapture",
+        "expected": "violation",
+        "init": "checkerAsBuilt_LeaveInit",
+        "step": "step",
+        "configuration": "AsBuilt_Leave"
+      },
+      {
+        "invariant": "LensSettingsValid",
+        "expected": "violation",
+        "init": "checkerAsBuilt_LensInit",
+        "step": "step",
+        "configuration": "AsBuilt_Lens"
+      },
+      {
+        "invariant": "FlipNeverRejected",
+        "expected": "violation",
+        "init": "checkerAsBuilt_LensInit",
+        "step": "step",
+        "configuration": "AsBuilt_Lens"
+      }
+    ],
+    "currentTemporalChecks": [
+      {
+        "property": "CheckedAgentFailsOnlyForCause",
+        "sourceProperty": "AgentFailsOnlyForCause",
+        "expected": "violation",
+        "init": "checkerAsBuilt_AgentQueueInit",
+        "step": "step",
+        "fairness": "Fairness",
+        "configuration": "AsBuilt_AgentQueue"
+      },
+      {
+        "property": "CheckedChatKeepsPreview",
+        "sourceProperty": "ChatKeepsPreview",
+        "expected": "violation",
+        "init": "checkerAsBuilt_ChatGraceInit",
+        "step": "step",
+        "fairness": "Fairness",
+        "configuration": "AsBuilt_ChatGrace"
+      },
+      {
+        "property": "CheckedAgentCaptureSettles",
+        "sourceProperty": "AgentCaptureSettles",
+        "expected": "violation",
+        "init": "checkerAsBuilt_LeaveInit",
+        "step": "step",
+        "fairness": "Fairness",
+        "configuration": "AsBuilt_Leave"
+      }
+    ],
+    "legacySource": {
+      "path": "design/view-refresh-2026-11/tla/camera-session/Spec.tla",
+      "sha256": "2148834fd33729502e83782163483a093f3e43a381812f4e6cb9163fd765f183",
+      "definitions": [
+        "vars",
+        "TypeOK",
+        "Init",
+        "Room",
+        "Ready",
+        "Open",
+        "PermissionResult",
+        "FirstFrame",
+        "StartFail",
+        "Leave",
+        "Shutter",
+        "CaptureDone",
+        "RecStart",
+        "RecStop",
+        "Focus",
+        "FocusDone",
+        "Flip",
+        "SetFlash",
+        "SetZoom",
+        "AgentCapture",
+        "Release",
+        "ChatOpen",
+        "ChatGraceEnds",
+        "ChatClose",
+        "AgentRun",
+        "System",
+        "User",
+        "Next",
+        "Spec",
+        "NoLostShutter",
+        "NoStuckCapture",
+        "NoOrphanRecording",
+        "LensSettingsValid",
+        "FlipNeverRejected",
+        "SavedIsShown",
+        "AgentFailsOnlyForCause",
+        "ChatKeepsPreview",
+        "ChatGraceReleases",
+        "OpenReachesPreviewOrError",
+        "AgentCaptureSettles"
+      ]
+    },
+    "legacyConfigurations": "specs/quint/legacy/view-refresh-configurations.json",
+    "historicalSourceLinks": {
+      "revision": "7883110c0a28539f6d31fb3bdbe7d0aacce93773",
+      "paths": [
+        "apps/app/src/prototype/camera-adapter.ts"
+      ]
+    }
+  },
+  {
+    "path": "specs/quint/legacy/PhotosLibrary.qnt",
+    "module": "PhotosLibrary",
+    "init": "checkerInit",
+    "step": "step",
+    "invariant": "safety",
+    "tests": [
+      "newestWindowTest",
+      "favoriteToggleTest",
+      "selectionPatchTest",
+      "trashRestoreTest",
+      "shareReviewTest",
+      "staleReplaceTest",
+      "asBuiltWindowTest",
+      "asBuiltPatchTest",
+      "asBuiltFavoriteTest",
+      "asBuiltCapTest"
+    ],
+    "sources": [
+      "design/view-refresh-2026-11/tla/photos-library/Spec.tla",
+      "design/view-refresh-2026-11/tla/photos-library/AsBuilt_Cap.cfg",
+      "design/view-refresh-2026-11/tla/photos-library/AsBuilt_FavToggle.cfg",
+      "design/view-refresh-2026-11/tla/photos-library/AsBuilt_Patch.cfg",
+      "design/view-refresh-2026-11/tla/photos-library/AsBuilt_Window.cfg",
+      "design/view-refresh-2026-11/tla/photos-library/Design.cfg",
+      "specs/quint/legacy/view-refresh-configurations.json",
+      "specs/quint/legacy/check-view-refresh.mjs"
+    ],
+    "abstractions": [
+      "Historical view-refresh design comparison authored on main before this migration. It is not implementation refinement evidence.",
+      "Every source state variable is a field of s. Immutable config preserves each original TLC constant assignment; history is an observational extension for action properties.",
+      "All original finite domains, nondeterministic initial choices, action guards, frame conditions and fairness are retained.",
+      "All22 source configurations and their exact property lists are retained in view-refresh-configurations.json.",
+      "The implementation entry points are historical links. Current-source conformance remains in the application, service and native families; this translation does not establish that every design action is implemented by the shipping UI.",
+      "The sources array binds retained design inputs and the configuration runner, not current product implementation."
+    ],
+    "constants": {
+      "Ids": [
+        1,
+        2,
+        3
+      ],
+      "W": 2,
+      "Cap": 1,
+      "Budget": 2,
+      "FixWindow": true,
+      "FixPatch": true,
+      "FixFavToggle": true,
+      "FixNoCap": true
+    },
+    "invariants": [
+      "TypeOK",
+      "NewestNeverDropped",
+      "SelectionSubsetOfVisible",
+      "ViewerShowsExistingItem",
+      "NoSpuriousClear",
+      "FavoriteReversible",
+      "NoSelectionCap",
+      "DeleteForeverOnlyFromTrash"
+    ],
+    "temporal": [
+      "CheckedTemporal"
+    ],
+    "temporalProperties": [
+      "NoActionOnStaleRev",
+      "FilterIsReadOnly",
+      "ShareChangesNothing",
+      "ReviewSettles"
+    ],
+    "currentChecks": [
+      {
+        "invariant": "NoSelectionCap",
+        "expected": "violation",
+        "init": "checkerAsBuilt_CapInit",
+        "step": "step",
+        "configuration": "AsBuilt_Cap"
+      },
+      {
+        "invariant": "FavoriteReversible",
+        "expected": "violation",
+        "init": "checkerAsBuilt_FavToggleInit",
+        "step": "step",
+        "configuration": "AsBuilt_FavToggle"
+      },
+      {
+        "invariant": "NoSpuriousClear",
+        "expected": "violation",
+        "init": "checkerAsBuilt_PatchInit",
+        "step": "step",
+        "configuration": "AsBuilt_Patch"
+      },
+      {
+        "invariant": "NewestNeverDropped",
+        "expected": "violation",
+        "init": "checkerAsBuilt_WindowInit",
+        "step": "step",
+        "configuration": "AsBuilt_Window"
+      }
+    ],
+    "currentTemporalChecks": [],
+    "legacySource": {
+      "path": "design/view-refresh-2026-11/tla/photos-library/Spec.tla",
+      "sha256": "62c77138ce80da19027d6b2d62c586a8aba9b0adb025d06f7e981ffa8e6da0ab",
+      "definitions": [
+        "vars",
+        "MaxRev",
+        "NoReview",
+        "Live",
+        "InTrash",
+        "Matches",
+        "Pool",
+        "Take",
+        "Window",
+        "TypeOK",
+        "Init",
+        "Bump",
+        "Ghosts",
+        "SwitchTab",
+        "EnterSelect",
+        "Toggle",
+        "SelectAll",
+        "CancelSelect",
+        "BatchFavorite",
+        "BatchTrash",
+        "BatchRestore",
+        "DeleteForever",
+        "OpenViewer",
+        "Swipe",
+        "ViewerTrash",
+        "CloseViewer",
+        "Undo",
+        "StoreEvent",
+        "AgentFilter",
+        "AgentReview",
+        "ReviewCurrent",
+        "AgentShareReview",
+        "AgentApply",
+        "AgentOpen",
+        "EditReplace",
+        "AgentReject",
+        "Next",
+        "Spec",
+        "NewestNeverDropped",
+        "SelectionSubsetOfVisible",
+        "ViewerShowsExistingItem",
+        "NoSpuriousClear",
+        "FavoriteReversible",
+        "NoSelectionCap",
+        "DeleteForeverOnlyFromTrash",
+        "NoActionOnStaleRev",
+        "FilterIsReadOnly",
+        "ShareChangesNothing",
+        "ReviewSettles"
+      ]
+    },
+    "legacyConfigurations": "specs/quint/legacy/view-refresh-configurations.json",
+    "historicalSourceLinks": {
+      "revision": "7883110c0a28539f6d31fb3bdbe7d0aacce93773",
+      "paths": [
+        "apps/app/src/prototype/camera-adapter.ts",
+        "apps/app/src/prototype/photo-library-adapter.ts",
+        "apps/app/src/runtime/photos-view.ts",
+        "apps/app/src/runtime/photo-library.ts"
+      ]
+    }
+  },
+  {
+    "path": "specs/quint/legacy/NotesView.qnt",
+    "module": "NotesView",
+    "init": "checkerInit",
+    "step": "step",
+    "invariant": "safety",
+    "tests": [
+      "recordingTest",
+      "hiddenCatchupTest",
+      "restoreFolderTest",
+      "renameTest",
+      "reviewedMoveTest",
+      "asBuiltCapTest",
+      "asBuiltSegmentsTest",
+      "asBuiltStreamAsrTest",
+      "asBuiltHiddenTest",
+      "ablateRestoreFolderTest"
+    ],
+    "sources": [
+      "design/view-refresh-2026-11/tla/notes-view/Spec.tla",
+      "design/view-refresh-2026-11/tla/notes-view/Ablate_RestoreFolder.cfg",
+      "design/view-refresh-2026-11/tla/notes-view/AsBuilt_Cap.cfg",
+      "design/view-refresh-2026-11/tla/notes-view/AsBuilt_Hidden.cfg",
+      "design/view-refresh-2026-11/tla/notes-view/AsBuilt_Segments.cfg",
+      "design/view-refresh-2026-11/tla/notes-view/AsBuilt_StreamAsr.cfg",
+      "design/view-refresh-2026-11/tla/notes-view/Design.cfg",
+      "design/view-refresh-2026-11/tla/notes-view/Rename.cfg",
+      "specs/quint/legacy/view-refresh-configurations.json",
+      "specs/quint/legacy/check-view-refresh.mjs"
+    ],
+    "abstractions": [
+      "Historical view-refresh design comparison authored on main before this migration. It is not implementation refinement evidence.",
+      "Every source state variable is a field of s. Immutable config preserves each original TLC constant assignment; history is an observational extension for action properties.",
+      "All original finite domains, nondeterministic initial choices, action guards, frame conditions and fairness are retained.",
+      "All22 source configurations and their exact property lists are retained in view-refresh-configurations.json.",
+      "The implementation entry points are historical links. Current-source conformance remains in the application, service and native families; this translation does not establish that every design action is implemented by the shipping UI.",
+      "The sources array binds retained design inputs and the configuration runner, not current product implementation."
+    ],
+    "constants": {
+      "Notes": [
+        "n1",
+        "n2"
+      ],
+      "Folders": [
+        "f1",
+        "f2"
+      ],
+      "Names": [
+        "a",
+        "b"
+      ],
+      "None": "None",
+      "MaxSeg": 3,
+      "CapSeg": 1,
+      "Budget": 2,
+      "FixUnlimited": true,
+      "FixSegments": true,
+      "FixStreamAsr": true,
+      "FixRestoreFolder": true,
+      "AsrWhileHidden": false
+    },
+    "invariants": [
+      "TypeOK",
+      "NoLengthLimit",
+      "TranscriptPrefixOfAudio",
+      "FolderRefsValid",
+      "FolderNamesUnique"
+    ],
+    "temporal": [
+      "CheckedTemporal"
+    ],
+    "temporalProperties": [
+      "CrashKeepsAudio",
+      "AgentMoveOnlyReviewed",
+      "RenameKeepsMembership",
+      "TranscriptKeepsUp",
+      "AsrSettles",
+      "ReviewSettles"
+    ],
+    "currentChecks": [
+      {
+        "invariant": "FolderRefsValid",
+        "expected": "violation",
+        "init": "checkerAblate_RestoreFolderInit",
+        "step": "step",
+        "configuration": "Ablate_RestoreFolder"
+      },
+      {
+        "invariant": "NoLengthLimit",
+        "expected": "violation",
+        "init": "checkerAsBuilt_CapInit",
+        "step": "step",
+        "configuration": "AsBuilt_Cap"
+      }
+    ],
+    "currentTemporalChecks": [
+      {
+        "property": "CheckedTranscriptKeepsUpHidden",
+        "sourceProperty": "TranscriptKeepsUpHidden",
+        "expected": "violation",
+        "init": "checkerAsBuilt_HiddenInit",
+        "step": "step",
+        "fairness": "Fairness",
+        "configuration": "AsBuilt_Hidden"
+      },
+      {
+        "property": "CheckedCrashKeepsAudio",
+        "sourceProperty": "CrashKeepsAudio",
+        "expected": "violation",
+        "init": "checkerAsBuilt_SegmentsInit",
+        "step": "step",
+        "fairness": "Fairness",
+        "configuration": "AsBuilt_Segments"
+      },
+      {
+        "property": "CheckedTranscriptKeepsUp",
+        "sourceProperty": "TranscriptKeepsUp",
+        "expected": "violation",
+        "init": "checkerAsBuilt_StreamAsrInit",
+        "step": "step",
+        "fairness": "Fairness",
+        "configuration": "AsBuilt_StreamAsr"
+      }
+    ],
+    "legacySource": {
+      "path": "design/view-refresh-2026-11/tla/notes-view/Spec.tla",
+      "sha256": "e716d3cc9899d8665de6e7f50e1069a8d9fdc9c7c6893d4d666d602355d7c459",
+      "definitions": [
+        "vars",
+        "MaxRev",
+        "NoReview",
+        "TypeOK",
+        "Init",
+        "NoteVars",
+        "RecVars",
+        "Bump",
+        "Record",
+        "Segment",
+        "Pause",
+        "Resume",
+        "Stop",
+        "StorageFull",
+        "ProcessDeath",
+        "AsrSegment",
+        "Hide",
+        "Show",
+        "MoveToFolder",
+        "DeleteFolder",
+        "RenameFolder",
+        "TrashNote",
+        "Restore",
+        "Expire",
+        "AgentProposeMove",
+        "ReviewCurrent",
+        "AgentApply",
+        "AgentReject",
+        "Next",
+        "Spec",
+        "NoLengthLimit",
+        "CrashKeepsAudio",
+        "TranscriptPrefixOfAudio",
+        "TranscriptKeepsUp",
+        "TranscriptKeepsUpHidden",
+        "FolderNamesUnique",
+        "RenameKeepsMembership",
+        "FolderRefsValid",
+        "AgentMoveOnlyReviewed",
+        "AsrSettles",
+        "ReviewSettles"
+      ]
+    },
+    "legacyConfigurations": "specs/quint/legacy/view-refresh-configurations.json",
+    "historicalSourceLinks": {
+      "revision": "7883110c0a28539f6d31fb3bdbe7d0aacce93773",
+      "paths": [
+        "apps/app/src/prototype/voice-adapter.ts",
+        "apps/app/src/prototype/canonical-notes-ui.ts",
+        "apps/app/src/prototype/note-recorder.ts",
+        "apps/app/src/runtime/note-recorder-driver.ts"
+      ]
+    }
+  },
+  {
+    "path": "specs/quint/legacy/FilesBrowser.qnt",
+    "module": "FilesBrowser",
+    "init": "checkerInit",
+    "step": "step",
+    "invariant": "safety",
+    "tests": [
+      "designConflictTest",
+      "missingSelectionTest",
+      "staleReviewTest",
+      "restoreConflictTest",
+      "asBuiltCategoriesTest",
+      "ablateConflictTest",
+      "asBuiltIdentityTest",
+      "ablateSelectedTargetTest"
+    ],
+    "sources": [
+      "design/view-refresh-2026-11/tla/files-browser/Spec.tla",
+      "design/view-refresh-2026-11/tla/files-browser/Ablate_Conflict.cfg",
+      "design/view-refresh-2026-11/tla/files-browser/AsBuilt_Categories.cfg",
+      "design/view-refresh-2026-11/tla/files-browser/AsBuilt_Identity.cfg",
+      "design/view-refresh-2026-11/tla/files-browser/Design.cfg",
+      "specs/quint/legacy/view-refresh-configurations.json",
+      "specs/quint/legacy/check-view-refresh.mjs"
+    ],
+    "abstractions": [
+      "Historical view-refresh design comparison authored on main before this migration. It is not implementation refinement evidence.",
+      "Every source state variable is a field of s. Immutable config preserves each original TLC constant assignment; history is an observational extension for action properties.",
+      "All original finite domains, nondeterministic initial choices, action guards, frame conditions and fairness are retained.",
+      "All22 source configurations and their exact property lists are retained in view-refresh-configurations.json.",
+      "FreeName chooses the lowest free numeric name as a deterministic realization of the source CHOOSE; the source specifies no different tie-breaking rule.",
+      "The implementation entry points are historical links. Current-source conformance remains in the application, service and native families; this translation does not establish that every design action is implemented by the shipping UI.",
+      "The sources array binds retained design inputs and the configuration runner, not current product implementation."
+    ],
+    "constants": {
+      "Budget": 1,
+      "FixCategories": true,
+      "FixConflict": true,
+      "FixIdentity": true
+    },
+    "invariants": [
+      "TypeOK",
+      "CategoryIsQuery",
+      "NoOverwriteWithoutConfirm",
+      "NamesUniquePerDir",
+      "SelectionExists",
+      "TrashReversible"
+    ],
+    "temporal": [
+      "CheckedTemporal"
+    ],
+    "temporalProperties": [
+      "AgentMoveOnlyReviewed",
+      "ListingsConverge",
+      "ReviewSettles",
+      "SelectionActsOnlyOnPresent"
+    ],
+    "currentChecks": [
+      {
+        "invariant": "NoOverwriteWithoutConfirm",
+        "expected": "violation",
+        "init": "checkerAblate_ConflictInit",
+        "step": "step",
+        "configuration": "Ablate_Conflict"
+      },
+      {
+        "invariant": "CategoryIsQuery",
+        "expected": "violation",
+        "init": "checkerAsBuilt_CategoriesInit",
+        "step": "step",
+        "configuration": "AsBuilt_Categories"
+      },
+      {
+        "invariant": "SelectionExists",
+        "expected": "violation",
+        "init": "checkerAblate_ConflictInit",
+        "step": "step",
+        "configuration": "Ablate_Conflict"
+      }
+    ],
+    "currentTemporalChecks": [
+      {
+        "property": "CheckedAgentMoveOnlyReviewed",
+        "sourceProperty": "AgentMoveOnlyReviewed",
+        "expected": "violation",
+        "init": "checkerAsBuilt_IdentityInit",
+        "step": "step",
+        "fairness": "Fairness",
+        "configuration": "AsBuilt_Identity"
+      }
+    ],
+    "legacySource": {
+      "path": "design/view-refresh-2026-11/tla/files-browser/Spec.tla",
+      "sha256": "bdb5535f587a1f9fb918d69bc7d8c57f745d3e4b2f2ec3b1acf44d1b5431467a",
+      "definitions": [
+        "FilesSet",
+        "Dirs",
+        "Gone",
+        "Trash",
+        "Kind",
+        "Home0",
+        "Names",
+        "vars",
+        "NoReview",
+        "Present",
+        "NamesUniquePerDir",
+        "Category",
+        "Categories",
+        "Listing",
+        "TypeOK",
+        "Init",
+        "Navigate",
+        "Toggle",
+        "Clash",
+        "FreeName",
+        "MoveOne",
+        "MoveSel",
+        "TrashSel",
+        "Restore",
+        "EmptyTrash",
+        "External",
+        "Refresh",
+        "AgentPropose",
+        "Reviewed",
+        "AgentApply",
+        "AgentRefused",
+        "AgentReject",
+        "Next",
+        "Spec",
+        "CategoryIsQuery",
+        "NoOverwriteWithoutConfirm",
+        "SelectionExists",
+        "SelectionActsOnlyOnPresent",
+        "TrashReversible",
+        "AgentMoveOnlyReviewed",
+        "ListingsConverge",
+        "ReviewSettles"
+      ]
+    },
+    "legacyConfigurations": "specs/quint/legacy/view-refresh-configurations.json",
+    "historicalSourceLinks": {
+      "revision": "7883110c0a28539f6d31fb3bdbe7d0aacce93773",
+      "paths": [
+        "apps/app/src/prototype/files-browser-adapter.ts",
+        "apps/app/src/runtime/files-storage.ts",
+        "apps/app/src/runtime/files-agent-contract.ts"
+      ]
+    }
   }
 ]
