@@ -1,0 +1,2096 @@
+{
+  "sdk": "4e561dc37e962595d8e28e600600430d50e9dd7d",
+  "artifactSHA256": "ab2dbd9ca2e756bd954fce21adcf17c76c0fa5717671a50f0062b35ad7cefe27",
+  "bundleHashes": {
+    "assets/public/licenses/third-party-notices.json": "e1e0b7f0a216514d6c2fb09eda21877585a1be72c12dbdcb82b93126a019997a",
+    "assets/agent/agent-bundle.js": "83c0a8b23e7bb84a7cd6722b1842fa38ab4cb81c4dfd1908c35b19f9174d5f9f",
+    "assets/agent/workflow-worker/google-host.mjs": "1a637559e1929dc4a341f96f8166b619b76e930fa3c99817083cba31ce1ff116",
+    "assets/agent/workflow-worker/dependencies.json": "baa224936bc218e6973c6e477d292552a4f6fffab64be10401d31257371f61eb",
+    "assets/agent/workflow-worker/compiler/dependencies.json": "64199c09cd16636f068d3bd4bf1809ea416d197e67bb80364832c5815ce5d04e"
+  },
+  "rows": [
+    {
+      "package": "@fastify/busboy",
+      "advisory": "GHSA-gxm5-99cw-xjw9",
+      "severity": "moderate",
+      "affectedVersions": [
+        "2.1.1"
+      ],
+      "verifiedNoticeVersions": [],
+      "affectedNoticeVersions": [],
+      "moduleVersionMatches": [],
+      "unversionedModules": [],
+      "externalReferences": [],
+      "classification": "AFFECTED_NPM_VERSION_ABSENT_FROM_INSPECTED_CLOSURE",
+      "nextDecision": "Review scoped npm-nonshipment at current ab2 artifact after explicit identity comparison; no claim dependencyfixed upstream"
+    },
+    {
+      "package": "@fastify/busboy",
+      "advisory": "GHSA-x8mw-p69m-v3mx",
+      "severity": "high",
+      "affectedVersions": [
+        "2.1.1"
+      ],
+      "verifiedNoticeVersions": [],
+      "affectedNoticeVersions": [],
+      "moduleVersionMatches": [],
+      "unversionedModules": [],
+      "externalReferences": [],
+      "classification": "AFFECTED_NPM_VERSION_ABSENT_FROM_INSPECTED_CLOSURE",
+      "nextDecision": "Review scoped npm-nonshipment at current ab2 artifact after explicit identity comparison; no claim dependencyfixed upstream"
+    },
+    {
+      "package": "@modelcontextprotocol/sdk",
+      "advisory": "GHSA-22jm-h49p-29qw",
+      "severity": "high",
+      "affectedVersions": [
+        "1.30.1"
+      ],
+      "verifiedNoticeVersions": [],
+      "affectedNoticeVersions": [],
+      "moduleVersionMatches": [],
+      "unversionedModules": [],
+      "externalReferences": [],
+      "classification": "AFFECTED_NPM_VERSION_ABSENT_FROM_INSPECTED_CLOSURE",
+      "nextDecision": "Review scoped npm-nonshipment at current ab2 artifact after explicit identity comparison; no claim dependencyfixed upstream"
+    },
+    {
+      "package": "@modelcontextprotocol/sdk",
+      "advisory": "GHSA-46jr-4wx8-v453",
+      "severity": "high",
+      "affectedVersions": [
+        "1.30.1"
+      ],
+      "verifiedNoticeVersions": [],
+      "affectedNoticeVersions": [],
+      "moduleVersionMatches": [],
+      "unversionedModules": [],
+      "externalReferences": [],
+      "classification": "AFFECTED_NPM_VERSION_ABSENT_FROM_INSPECTED_CLOSURE",
+      "nextDecision": "Review scoped npm-nonshipment at current ab2 artifact after explicit identity comparison; no claim dependencyfixed upstream"
+    },
+    {
+      "package": "@modelcontextprotocol/sdk",
+      "advisory": "GHSA-6prh-2h8m-c8cw",
+      "severity": "moderate",
+      "affectedVersions": [
+        "1.30.1"
+      ],
+      "verifiedNoticeVersions": [],
+      "affectedNoticeVersions": [],
+      "moduleVersionMatches": [],
+      "unversionedModules": [],
+      "externalReferences": [],
+      "classification": "AFFECTED_NPM_VERSION_ABSENT_FROM_INSPECTED_CLOSURE",
+      "nextDecision": "Review scoped npm-nonshipment at current ab2 artifact after explicit identity comparison; no claim dependencyfixed upstream"
+    },
+    {
+      "package": "@modelcontextprotocol/sdk",
+      "advisory": "GHSA-6qxp-vccf-f47h",
+      "severity": "high",
+      "affectedVersions": [
+        "1.30.1"
+      ],
+      "verifiedNoticeVersions": [],
+      "affectedNoticeVersions": [],
+      "moduleVersionMatches": [],
+      "unversionedModules": [],
+      "externalReferences": [],
+      "classification": "AFFECTED_NPM_VERSION_ABSENT_FROM_INSPECTED_CLOSURE",
+      "nextDecision": "Review scoped npm-nonshipment at current ab2 artifact after explicit identity comparison; no claim dependencyfixed upstream"
+    },
+    {
+      "package": "@modelcontextprotocol/sdk",
+      "advisory": "GHSA-rvq5-wwqv-78pq",
+      "severity": "moderate",
+      "affectedVersions": [
+        "1.30.1"
+      ],
+      "verifiedNoticeVersions": [],
+      "affectedNoticeVersions": [],
+      "moduleVersionMatches": [],
+      "unversionedModules": [],
+      "externalReferences": [],
+      "classification": "AFFECTED_NPM_VERSION_ABSENT_FROM_INSPECTED_CLOSURE",
+      "nextDecision": "Review scoped npm-nonshipment at current ab2 artifact after explicit identity comparison; no claim dependencyfixed upstream"
+    },
+    {
+      "package": "@toon-format/toon",
+      "advisory": "GHSA-p95v-992w-h6c3",
+      "severity": "high",
+      "affectedVersions": [
+        "2.3.0"
+      ],
+      "verifiedNoticeVersions": [],
+      "affectedNoticeVersions": [],
+      "moduleVersionMatches": [],
+      "unversionedModules": [],
+      "externalReferences": [],
+      "classification": "AFFECTED_NPM_VERSION_ABSENT_FROM_INSPECTED_CLOSURE",
+      "nextDecision": "Review scoped npm-nonshipment at current ab2 artifact after explicit identity comparison; no claim dependencyfixed upstream"
+    },
+    {
+      "package": "adm-zip",
+      "advisory": "GHSA-7q85-xj36-vmfc",
+      "severity": "high",
+      "affectedVersions": [
+        "0.6.0"
+      ],
+      "verifiedNoticeVersions": [],
+      "affectedNoticeVersions": [],
+      "moduleVersionMatches": [],
+      "unversionedModules": [],
+      "externalReferences": [],
+      "classification": "AFFECTED_NPM_VERSION_ABSENT_FROM_INSPECTED_CLOSURE",
+      "nextDecision": "Review scoped npm-nonshipment at current ab2 artifact after explicit identity comparison; no claim dependencyfixed upstream"
+    },
+    {
+      "package": "adm-zip",
+      "advisory": "GHSA-8238-w5pm-2374",
+      "severity": "high",
+      "affectedVersions": [
+        "0.6.0"
+      ],
+      "verifiedNoticeVersions": [],
+      "affectedNoticeVersions": [],
+      "moduleVersionMatches": [],
+      "unversionedModules": [],
+      "externalReferences": [],
+      "classification": "AFFECTED_NPM_VERSION_ABSENT_FROM_INSPECTED_CLOSURE",
+      "nextDecision": "Review scoped npm-nonshipment at current ab2 artifact after explicit identity comparison; no claim dependencyfixed upstream"
+    },
+    {
+      "package": "adm-zip",
+      "advisory": "GHSA-c6fg-446q-cg94",
+      "severity": "moderate",
+      "affectedVersions": [
+        "0.6.0"
+      ],
+      "verifiedNoticeVersions": [],
+      "affectedNoticeVersions": [],
+      "moduleVersionMatches": [],
+      "unversionedModules": [],
+      "externalReferences": [],
+      "classification": "AFFECTED_NPM_VERSION_ABSENT_FROM_INSPECTED_CLOSURE",
+      "nextDecision": "Review scoped npm-nonshipment at current ab2 artifact after explicit identity comparison; no claim dependencyfixed upstream"
+    },
+    {
+      "package": "adm-zip",
+      "advisory": "GHSA-j5f4-cc29-5x44",
+      "severity": "high",
+      "affectedVersions": [
+        "0.6.0"
+      ],
+      "verifiedNoticeVersions": [],
+      "affectedNoticeVersions": [],
+      "moduleVersionMatches": [],
+      "unversionedModules": [],
+      "externalReferences": [],
+      "classification": "AFFECTED_NPM_VERSION_ABSENT_FROM_INSPECTED_CLOSURE",
+      "nextDecision": "Review scoped npm-nonshipment at current ab2 artifact after explicit identity comparison; no claim dependencyfixed upstream"
+    },
+    {
+      "package": "adm-zip",
+      "advisory": "GHSA-p634-w6r4-rjp2",
+      "severity": "moderate",
+      "affectedVersions": [
+        "0.6.0"
+      ],
+      "verifiedNoticeVersions": [],
+      "affectedNoticeVersions": [],
+      "moduleVersionMatches": [],
+      "unversionedModules": [],
+      "externalReferences": [],
+      "classification": "AFFECTED_NPM_VERSION_ABSENT_FROM_INSPECTED_CLOSURE",
+      "nextDecision": "Review scoped npm-nonshipment at current ab2 artifact after explicit identity comparison; no claim dependencyfixed upstream"
+    },
+    {
+      "package": "adm-zip",
+      "advisory": "GHSA-rcw4-f5rp-g42v",
+      "severity": "high",
+      "affectedVersions": [
+        "0.6.0"
+      ],
+      "verifiedNoticeVersions": [],
+      "affectedNoticeVersions": [],
+      "moduleVersionMatches": [],
+      "unversionedModules": [],
+      "externalReferences": [],
+      "classification": "AFFECTED_NPM_VERSION_ABSENT_FROM_INSPECTED_CLOSURE",
+      "nextDecision": "Review scoped npm-nonshipment at current ab2 artifact after explicit identity comparison; no claim dependencyfixed upstream"
+    },
+    {
+      "package": "adm-zip",
+      "advisory": "GHSA-vwc7-r8mq-g2x9",
+      "severity": "moderate",
+      "affectedVersions": [
+        "0.6.0"
+      ],
+      "verifiedNoticeVersions": [],
+      "affectedNoticeVersions": [],
+      "moduleVersionMatches": [],
+      "unversionedModules": [],
+      "externalReferences": [],
+      "classification": "AFFECTED_NPM_VERSION_ABSENT_FROM_INSPECTED_CLOSURE",
+      "nextDecision": "Review scoped npm-nonshipment at current ab2 artifact after explicit identity comparison; no claim dependencyfixed upstream"
+    },
+    {
+      "package": "axios",
+      "advisory": "GHSA-3pq3-5fj3-cg6v",
+      "severity": "high",
+      "affectedVersions": [
+        "1.19.0"
+      ],
+      "verifiedNoticeVersions": [],
+      "affectedNoticeVersions": [],
+      "moduleVersionMatches": [],
+      "unversionedModules": [],
+      "externalReferences": [],
+      "classification": "AFFECTED_NPM_VERSION_ABSENT_FROM_INSPECTED_CLOSURE",
+      "nextDecision": "Review scoped npm-nonshipment at current ab2 artifact after explicit identity comparison; no claim dependencyfixed upstream"
+    },
+    {
+      "package": "axios",
+      "advisory": "GHSA-44g4-m2mj-wpvx",
+      "severity": "moderate",
+      "affectedVersions": [
+        "1.19.0"
+      ],
+      "verifiedNoticeVersions": [],
+      "affectedNoticeVersions": [],
+      "moduleVersionMatches": [],
+      "unversionedModules": [],
+      "externalReferences": [],
+      "classification": "AFFECTED_NPM_VERSION_ABSENT_FROM_INSPECTED_CLOSURE",
+      "nextDecision": "Review scoped npm-nonshipment at current ab2 artifact after explicit identity comparison; no claim dependencyfixed upstream"
+    },
+    {
+      "package": "axios",
+      "advisory": "GHSA-4hqw-qxg8-jxx2",
+      "severity": "moderate",
+      "affectedVersions": [
+        "1.19.0"
+      ],
+      "verifiedNoticeVersions": [],
+      "affectedNoticeVersions": [],
+      "moduleVersionMatches": [],
+      "unversionedModules": [],
+      "externalReferences": [],
+      "classification": "AFFECTED_NPM_VERSION_ABSENT_FROM_INSPECTED_CLOSURE",
+      "nextDecision": "Review scoped npm-nonshipment at current ab2 artifact after explicit identity comparison; no claim dependencyfixed upstream"
+    },
+    {
+      "package": "axios",
+      "advisory": "GHSA-542g-h47m-68v8",
+      "severity": "high",
+      "affectedVersions": [
+        "1.19.0"
+      ],
+      "verifiedNoticeVersions": [],
+      "affectedNoticeVersions": [],
+      "moduleVersionMatches": [],
+      "unversionedModules": [],
+      "externalReferences": [],
+      "classification": "AFFECTED_NPM_VERSION_ABSENT_FROM_INSPECTED_CLOSURE",
+      "nextDecision": "Review scoped npm-nonshipment at current ab2 artifact after explicit identity comparison; no claim dependencyfixed upstream"
+    },
+    {
+      "package": "axios",
+      "advisory": "GHSA-9fr6-4gfg-395g",
+      "severity": "moderate",
+      "affectedVersions": [
+        "1.19.0"
+      ],
+      "verifiedNoticeVersions": [],
+      "affectedNoticeVersions": [],
+      "moduleVersionMatches": [],
+      "unversionedModules": [],
+      "externalReferences": [],
+      "classification": "AFFECTED_NPM_VERSION_ABSENT_FROM_INSPECTED_CLOSURE",
+      "nextDecision": "Review scoped npm-nonshipment at current ab2 artifact after explicit identity comparison; no claim dependencyfixed upstream"
+    },
+    {
+      "package": "axios",
+      "advisory": "GHSA-c29m-xwm3-cm6r",
+      "severity": "high",
+      "affectedVersions": [
+        "1.19.0"
+      ],
+      "verifiedNoticeVersions": [],
+      "affectedNoticeVersions": [],
+      "moduleVersionMatches": [],
+      "unversionedModules": [],
+      "externalReferences": [],
+      "classification": "AFFECTED_NPM_VERSION_ABSENT_FROM_INSPECTED_CLOSURE",
+      "nextDecision": "Review scoped npm-nonshipment at current ab2 artifact after explicit identity comparison; no claim dependencyfixed upstream"
+    },
+    {
+      "package": "axios",
+      "advisory": "GHSA-j8rh-479h-cp32",
+      "severity": "moderate",
+      "affectedVersions": [
+        "1.19.0"
+      ],
+      "verifiedNoticeVersions": [],
+      "affectedNoticeVersions": [],
+      "moduleVersionMatches": [],
+      "unversionedModules": [],
+      "externalReferences": [],
+      "classification": "AFFECTED_NPM_VERSION_ABSENT_FROM_INSPECTED_CLOSURE",
+      "nextDecision": "Review scoped npm-nonshipment at current ab2 artifact after explicit identity comparison; no claim dependencyfixed upstream"
+    },
+    {
+      "package": "axios",
+      "advisory": "GHSA-m8m8-qj5v-23w3",
+      "severity": "high",
+      "affectedVersions": [
+        "1.19.0"
+      ],
+      "verifiedNoticeVersions": [],
+      "affectedNoticeVersions": [],
+      "moduleVersionMatches": [],
+      "unversionedModules": [],
+      "externalReferences": [],
+      "classification": "AFFECTED_NPM_VERSION_ABSENT_FROM_INSPECTED_CLOSURE",
+      "nextDecision": "Review scoped npm-nonshipment at current ab2 artifact after explicit identity comparison; no claim dependencyfixed upstream"
+    },
+    {
+      "package": "axios",
+      "advisory": "GHSA-mghh-pgcx-3jjj",
+      "severity": "high",
+      "affectedVersions": [
+        "1.19.0"
+      ],
+      "verifiedNoticeVersions": [],
+      "affectedNoticeVersions": [],
+      "moduleVersionMatches": [],
+      "unversionedModules": [],
+      "externalReferences": [],
+      "classification": "AFFECTED_NPM_VERSION_ABSENT_FROM_INSPECTED_CLOSURE",
+      "nextDecision": "Review scoped npm-nonshipment at current ab2 artifact after explicit identity comparison; no claim dependencyfixed upstream"
+    },
+    {
+      "package": "axios",
+      "advisory": "GHSA-r4gj-5m52-g5wh",
+      "severity": "high",
+      "affectedVersions": [
+        "1.19.0"
+      ],
+      "verifiedNoticeVersions": [],
+      "affectedNoticeVersions": [],
+      "moduleVersionMatches": [],
+      "unversionedModules": [],
+      "externalReferences": [],
+      "classification": "AFFECTED_NPM_VERSION_ABSENT_FROM_INSPECTED_CLOSURE",
+      "nextDecision": "Review scoped npm-nonshipment at current ab2 artifact after explicit identity comparison; no claim dependencyfixed upstream"
+    },
+    {
+      "package": "axios",
+      "advisory": "GHSA-vh66-26gq-q6x8",
+      "severity": "moderate",
+      "affectedVersions": [
+        "1.19.0"
+      ],
+      "verifiedNoticeVersions": [],
+      "affectedNoticeVersions": [],
+      "moduleVersionMatches": [],
+      "unversionedModules": [],
+      "externalReferences": [],
+      "classification": "AFFECTED_NPM_VERSION_ABSENT_FROM_INSPECTED_CLOSURE",
+      "nextDecision": "Review scoped npm-nonshipment at current ab2 artifact after explicit identity comparison; no claim dependencyfixed upstream"
+    },
+    {
+      "package": "axios",
+      "advisory": "GHSA-x97p-jq2g-jp4f",
+      "severity": "high",
+      "affectedVersions": [
+        "1.19.0"
+      ],
+      "verifiedNoticeVersions": [],
+      "affectedNoticeVersions": [],
+      "moduleVersionMatches": [],
+      "unversionedModules": [],
+      "externalReferences": [],
+      "classification": "AFFECTED_NPM_VERSION_ABSENT_FROM_INSPECTED_CLOSURE",
+      "nextDecision": "Review scoped npm-nonshipment at current ab2 artifact after explicit identity comparison; no claim dependencyfixed upstream"
+    },
+    {
+      "package": "basic-ftp",
+      "advisory": "GHSA-c475-qrg2-pj4r",
+      "severity": "high",
+      "affectedVersions": [
+        "5.3.1"
+      ],
+      "verifiedNoticeVersions": [],
+      "affectedNoticeVersions": [],
+      "moduleVersionMatches": [],
+      "unversionedModules": [],
+      "externalReferences": [],
+      "classification": "AFFECTED_NPM_VERSION_ABSENT_FROM_INSPECTED_CLOSURE",
+      "nextDecision": "Review scoped npm-nonshipment at current ab2 artifact after explicit identity comparison; no claim dependencyfixed upstream"
+    },
+    {
+      "package": "bigint-buffer",
+      "advisory": "GHSA-3gc7-fjrx-p6mg",
+      "severity": "high",
+      "affectedVersions": [
+        "1.1.5"
+      ],
+      "verifiedNoticeVersions": [],
+      "affectedNoticeVersions": [],
+      "moduleVersionMatches": [],
+      "unversionedModules": [],
+      "externalReferences": [],
+      "classification": "AFFECTED_NPM_VERSION_ABSENT_FROM_INSPECTED_CLOSURE",
+      "nextDecision": "Review scoped npm-nonshipment at current ab2 artifact after explicit identity comparison; no claim dependencyfixed upstream"
+    },
+    {
+      "package": "body-parser",
+      "advisory": "GHSA-27r3-jxmh-p828",
+      "severity": "high",
+      "affectedVersions": [
+        "1.20.8"
+      ],
+      "verifiedNoticeVersions": [],
+      "affectedNoticeVersions": [],
+      "moduleVersionMatches": [],
+      "unversionedModules": [],
+      "externalReferences": [],
+      "classification": "AFFECTED_NPM_VERSION_ABSENT_FROM_INSPECTED_CLOSURE",
+      "nextDecision": "Review scoped npm-nonshipment at current ab2 artifact after explicit identity comparison; no claim dependencyfixed upstream"
+    },
+    {
+      "package": "body-parser",
+      "advisory": "GHSA-27r3-jxmh-p828",
+      "severity": "high",
+      "affectedVersions": [
+        "2.3.0"
+      ],
+      "verifiedNoticeVersions": [],
+      "affectedNoticeVersions": [],
+      "moduleVersionMatches": [],
+      "unversionedModules": [],
+      "externalReferences": [],
+      "classification": "AFFECTED_NPM_VERSION_ABSENT_FROM_INSPECTED_CLOSURE",
+      "nextDecision": "Review scoped npm-nonshipment at current ab2 artifact after explicit identity comparison; no claim dependencyfixed upstream"
+    },
+    {
+      "package": "brace-expansion",
+      "advisory": "GHSA-6j4f-fj2g-mc7p",
+      "severity": "high",
+      "affectedVersions": [
+        "5.0.9"
+      ],
+      "verifiedNoticeVersions": [],
+      "affectedNoticeVersions": [],
+      "moduleVersionMatches": [],
+      "unversionedModules": [],
+      "externalReferences": [],
+      "classification": "AFFECTED_NPM_VERSION_ABSENT_FROM_INSPECTED_CLOSURE",
+      "nextDecision": "Review scoped npm-nonshipment at current ab2 artifact after explicit identity comparison; no claim dependencyfixed upstream"
+    },
+    {
+      "package": "brace-expansion",
+      "advisory": "GHSA-q2hr-2g5m-vwhr",
+      "severity": "moderate",
+      "affectedVersions": [
+        "5.0.9"
+      ],
+      "verifiedNoticeVersions": [],
+      "affectedNoticeVersions": [],
+      "moduleVersionMatches": [],
+      "unversionedModules": [],
+      "externalReferences": [],
+      "classification": "AFFECTED_NPM_VERSION_ABSENT_FROM_INSPECTED_CLOSURE",
+      "nextDecision": "Review scoped npm-nonshipment at current ab2 artifact after explicit identity comparison; no claim dependencyfixed upstream"
+    },
+    {
+      "package": "brace-expansion",
+      "advisory": "GHSA-qhr7-859c-m2p7",
+      "severity": "high",
+      "affectedVersions": [
+        "5.0.9"
+      ],
+      "verifiedNoticeVersions": [],
+      "affectedNoticeVersions": [],
+      "moduleVersionMatches": [],
+      "unversionedModules": [],
+      "externalReferences": [],
+      "classification": "AFFECTED_NPM_VERSION_ABSENT_FROM_INSPECTED_CLOSURE",
+      "nextDecision": "Review scoped npm-nonshipment at current ab2 artifact after explicit identity comparison; no claim dependencyfixed upstream"
+    },
+    {
+      "package": "compression",
+      "advisory": "GHSA-vc2v-76pw-4v95",
+      "severity": "high",
+      "affectedVersions": [
+        "1.8.1"
+      ],
+      "verifiedNoticeVersions": [],
+      "affectedNoticeVersions": [],
+      "moduleVersionMatches": [],
+      "unversionedModules": [],
+      "externalReferences": [],
+      "classification": "AFFECTED_NPM_VERSION_ABSENT_FROM_INSPECTED_CLOSURE",
+      "nextDecision": "Review scoped npm-nonshipment at current ab2 artifact after explicit identity comparison; no claim dependencyfixed upstream"
+    },
+    {
+      "package": "cookie",
+      "advisory": "GHSA-pxg6-pf52-xh8x",
+      "severity": "low",
+      "affectedVersions": [
+        "0.4.2"
+      ],
+      "verifiedNoticeVersions": [
+        "1.1.1"
+      ],
+      "affectedNoticeVersions": [],
+      "moduleVersionMatches": [],
+      "unversionedModules": [],
+      "externalReferences": [],
+      "classification": "AFFECTED_NPM_VERSION_ABSENT_FROM_INSPECTED_CLOSURE",
+      "nextDecision": "Review scoped npm-nonshipment at current ab2 artifact after explicit identity comparison; no claim dependencyfixed upstream"
+    },
+    {
+      "package": "decode-uri-component",
+      "advisory": "GHSA-vcc3-ghjq-m6fr",
+      "severity": "moderate",
+      "affectedVersions": [
+        "0.2.2"
+      ],
+      "verifiedNoticeVersions": [],
+      "affectedNoticeVersions": [],
+      "moduleVersionMatches": [],
+      "unversionedModules": [],
+      "externalReferences": [],
+      "classification": "AFFECTED_NPM_VERSION_ABSENT_FROM_INSPECTED_CLOSURE",
+      "nextDecision": "Review scoped npm-nonshipment at current ab2 artifact after explicit identity comparison; no claim dependencyfixed upstream"
+    },
+    {
+      "package": "diff",
+      "advisory": "GHSA-73rr-hh4g-fpgx",
+      "severity": "low",
+      "affectedVersions": [
+        "7.0.0"
+      ],
+      "verifiedNoticeVersions": [
+        "9.0.0"
+      ],
+      "affectedNoticeVersions": [],
+      "moduleVersionMatches": [],
+      "unversionedModules": [],
+      "externalReferences": [],
+      "classification": "AFFECTED_NPM_VERSION_ABSENT_FROM_INSPECTED_CLOSURE",
+      "nextDecision": "Review scoped npm-nonshipment at current ab2 artifact after explicit identity comparison; no claim dependencyfixed upstream"
+    },
+    {
+      "package": "elliptic",
+      "advisory": "GHSA-848j-6mx2-7j84",
+      "severity": "low",
+      "affectedVersions": [
+        "6.6.1"
+      ],
+      "verifiedNoticeVersions": [],
+      "affectedNoticeVersions": [],
+      "moduleVersionMatches": [],
+      "unversionedModules": [],
+      "externalReferences": [],
+      "classification": "AFFECTED_NPM_VERSION_ABSENT_FROM_INSPECTED_CLOSURE",
+      "nextDecision": "Review scoped npm-nonshipment at current ab2 artifact after explicit identity comparison; no claim dependencyfixed upstream"
+    },
+    {
+      "package": "esbuild",
+      "advisory": "GHSA-67mh-4wv8-2f99",
+      "severity": "moderate",
+      "affectedVersions": [
+        "0.18.20"
+      ],
+      "verifiedNoticeVersions": [
+        "0.28.2"
+      ],
+      "affectedNoticeVersions": [],
+      "moduleVersionMatches": [],
+      "unversionedModules": [],
+      "externalReferences": [],
+      "classification": "AFFECTED_NPM_VERSION_ABSENT_FROM_INSPECTED_CLOSURE",
+      "nextDecision": "Review scoped npm-nonshipment at current ab2 artifact after explicit identity comparison; no claim dependencyfixed upstream"
+    },
+    {
+      "package": "esbuild",
+      "advisory": "GHSA-g7r4-m6w7-qqqr",
+      "severity": "low",
+      "affectedVersions": [
+        "0.27.7"
+      ],
+      "verifiedNoticeVersions": [
+        "0.28.2"
+      ],
+      "affectedNoticeVersions": [],
+      "moduleVersionMatches": [],
+      "unversionedModules": [],
+      "externalReferences": [],
+      "classification": "AFFECTED_NPM_VERSION_ABSENT_FROM_INSPECTED_CLOSURE",
+      "nextDecision": "Review scoped npm-nonshipment at current ab2 artifact after explicit identity comparison; no claim dependencyfixed upstream"
+    },
+    {
+      "package": "extract-zip",
+      "advisory": "GHSA-7pqw-9j4j-h8q3",
+      "severity": "high",
+      "affectedVersions": [
+        "2.0.1"
+      ],
+      "verifiedNoticeVersions": [],
+      "affectedNoticeVersions": [],
+      "moduleVersionMatches": [],
+      "unversionedModules": [],
+      "externalReferences": [],
+      "classification": "AFFECTED_NPM_VERSION_ABSENT_FROM_INSPECTED_CLOSURE",
+      "nextDecision": "Review scoped npm-nonshipment at current ab2 artifact after explicit identity comparison; no claim dependencyfixed upstream"
+    },
+    {
+      "package": "extract-zip",
+      "advisory": "GHSA-jmr9-qjv8-65gv",
+      "severity": "high",
+      "affectedVersions": [
+        "2.0.1"
+      ],
+      "verifiedNoticeVersions": [],
+      "affectedNoticeVersions": [],
+      "moduleVersionMatches": [],
+      "unversionedModules": [],
+      "externalReferences": [],
+      "classification": "AFFECTED_NPM_VERSION_ABSENT_FROM_INSPECTED_CLOSURE",
+      "nextDecision": "Review scoped npm-nonshipment at current ab2 artifact after explicit identity comparison; no claim dependencyfixed upstream"
+    },
+    {
+      "package": "fast-uri",
+      "advisory": "GHSA-333x-w4r6-6crp",
+      "severity": "low",
+      "affectedVersions": [
+        "3.1.8"
+      ],
+      "verifiedNoticeVersions": [],
+      "affectedNoticeVersions": [],
+      "moduleVersionMatches": [],
+      "unversionedModules": [],
+      "externalReferences": [],
+      "classification": "AFFECTED_NPM_VERSION_ABSENT_FROM_INSPECTED_CLOSURE",
+      "nextDecision": "Review scoped npm-nonshipment at current ab2 artifact after explicit identity comparison; no claim dependencyfixed upstream"
+    },
+    {
+      "package": "fast-uri",
+      "advisory": "GHSA-w74x-v6f9-j3xg",
+      "severity": "moderate",
+      "affectedVersions": [
+        "3.1.8"
+      ],
+      "verifiedNoticeVersions": [],
+      "affectedNoticeVersions": [],
+      "moduleVersionMatches": [],
+      "unversionedModules": [],
+      "externalReferences": [],
+      "classification": "AFFECTED_NPM_VERSION_ABSENT_FROM_INSPECTED_CLOSURE",
+      "nextDecision": "Review scoped npm-nonshipment at current ab2 artifact after explicit identity comparison; no claim dependencyfixed upstream"
+    },
+    {
+      "package": "fast-uri",
+      "advisory": "GHSA-wjr9-j795-jxcr",
+      "severity": "moderate",
+      "affectedVersions": [
+        "3.1.8"
+      ],
+      "verifiedNoticeVersions": [],
+      "affectedNoticeVersions": [],
+      "moduleVersionMatches": [],
+      "unversionedModules": [],
+      "externalReferences": [],
+      "classification": "AFFECTED_NPM_VERSION_ABSENT_FROM_INSPECTED_CLOSURE",
+      "nextDecision": "Review scoped npm-nonshipment at current ab2 artifact after explicit identity comparison; no claim dependencyfixed upstream"
+    },
+    {
+      "package": "fast-uri",
+      "advisory": "GHSA-xhq7-xmqj-769h",
+      "severity": "low",
+      "affectedVersions": [
+        "3.1.8"
+      ],
+      "verifiedNoticeVersions": [],
+      "affectedNoticeVersions": [],
+      "moduleVersionMatches": [],
+      "unversionedModules": [],
+      "externalReferences": [],
+      "classification": "AFFECTED_NPM_VERSION_ABSENT_FROM_INSPECTED_CLOSURE",
+      "nextDecision": "Review scoped npm-nonshipment at current ab2 artifact after explicit identity comparison; no claim dependencyfixed upstream"
+    },
+    {
+      "package": "file-type",
+      "advisory": "GHSA-5v7r-6r5c-r473",
+      "severity": "moderate",
+      "affectedVersions": [
+        "16.5.4"
+      ],
+      "verifiedNoticeVersions": [
+        "21.3.4",
+        "22.1.1"
+      ],
+      "affectedNoticeVersions": [],
+      "moduleVersionMatches": [],
+      "unversionedModules": [],
+      "externalReferences": [],
+      "classification": "AFFECTED_NPM_VERSION_ABSENT_FROM_INSPECTED_CLOSURE",
+      "nextDecision": "Review scoped npm-nonshipment at current ab2 artifact after explicit identity comparison; no claim dependencyfixed upstream"
+    },
+    {
+      "package": "follow-redirects",
+      "advisory": "GHSA-8r9p-f939-6h3c",
+      "severity": "high",
+      "affectedVersions": [
+        "1.16.0"
+      ],
+      "verifiedNoticeVersions": [],
+      "affectedNoticeVersions": [],
+      "moduleVersionMatches": [],
+      "unversionedModules": [],
+      "externalReferences": [],
+      "classification": "AFFECTED_NPM_VERSION_ABSENT_FROM_INSPECTED_CLOSURE",
+      "nextDecision": "Review scoped npm-nonshipment at current ab2 artifact after explicit identity comparison; no claim dependencyfixed upstream"
+    },
+    {
+      "package": "follow-redirects",
+      "advisory": "GHSA-q3jh-wrc6-jgq8",
+      "severity": "high",
+      "affectedVersions": [
+        "1.16.0"
+      ],
+      "verifiedNoticeVersions": [],
+      "affectedNoticeVersions": [],
+      "moduleVersionMatches": [],
+      "unversionedModules": [],
+      "externalReferences": [],
+      "classification": "AFFECTED_NPM_VERSION_ABSENT_FROM_INSPECTED_CLOSURE",
+      "nextDecision": "Review scoped npm-nonshipment at current ab2 artifact after explicit identity comparison; no claim dependencyfixed upstream"
+    },
+    {
+      "package": "http-cache-semantics",
+      "advisory": "GHSA-ch52-4w7c-c8xp",
+      "severity": "high",
+      "affectedVersions": [
+        "4.2.0"
+      ],
+      "verifiedNoticeVersions": [],
+      "affectedNoticeVersions": [],
+      "moduleVersionMatches": [],
+      "unversionedModules": [],
+      "externalReferences": [],
+      "classification": "AFFECTED_NPM_VERSION_ABSENT_FROM_INSPECTED_CLOSURE",
+      "nextDecision": "Review scoped npm-nonshipment at current ab2 artifact after explicit identity comparison; no claim dependencyfixed upstream"
+    },
+    {
+      "package": "js-yaml",
+      "advisory": "GHSA-2883-xcg3-v3hh",
+      "severity": "high",
+      "affectedVersions": [
+        "4.3.0"
+      ],
+      "verifiedNoticeVersions": [],
+      "affectedNoticeVersions": [],
+      "moduleVersionMatches": [],
+      "unversionedModules": [],
+      "externalReferences": [],
+      "classification": "AFFECTED_NPM_VERSION_ABSENT_FROM_INSPECTED_CLOSURE",
+      "nextDecision": "Review scoped npm-nonshipment at current ab2 artifact after explicit identity comparison; no claim dependencyfixed upstream"
+    },
+    {
+      "package": "js-yaml",
+      "advisory": "GHSA-5p4m-2wfm-xmqj",
+      "severity": "high",
+      "affectedVersions": [
+        "4.3.0"
+      ],
+      "verifiedNoticeVersions": [],
+      "affectedNoticeVersions": [],
+      "moduleVersionMatches": [],
+      "unversionedModules": [],
+      "externalReferences": [],
+      "classification": "AFFECTED_NPM_VERSION_ABSENT_FROM_INSPECTED_CLOSURE",
+      "nextDecision": "Review scoped npm-nonshipment at current ab2 artifact after explicit identity comparison; no claim dependencyfixed upstream"
+    },
+    {
+      "package": "js-yaml",
+      "advisory": "GHSA-r3ph-w7gj-g6xm",
+      "severity": "moderate",
+      "affectedVersions": [
+        "5.3.0"
+      ],
+      "verifiedNoticeVersions": [],
+      "affectedNoticeVersions": [],
+      "moduleVersionMatches": [],
+      "unversionedModules": [],
+      "externalReferences": [],
+      "classification": "AFFECTED_NPM_VERSION_ABSENT_FROM_INSPECTED_CLOSURE",
+      "nextDecision": "Review scoped npm-nonshipment at current ab2 artifact after explicit identity comparison; no claim dependencyfixed upstream"
+    },
+    {
+      "package": "katex",
+      "advisory": "GHSA-238p-pmpm-9mq7",
+      "severity": "low",
+      "affectedVersions": [
+        "0.16.47",
+        "0.17.0"
+      ],
+      "verifiedNoticeVersions": [],
+      "affectedNoticeVersions": [],
+      "moduleVersionMatches": [],
+      "unversionedModules": [],
+      "externalReferences": [],
+      "classification": "AFFECTED_NPM_VERSION_ABSENT_FROM_INSPECTED_CLOSURE",
+      "nextDecision": "Review scoped npm-nonshipment at current ab2 artifact after explicit identity comparison; no claim dependencyfixed upstream"
+    },
+    {
+      "package": "node-forge",
+      "advisory": "GHSA-86w9-cpqp-85rv",
+      "severity": "high",
+      "affectedVersions": [
+        "1.4.0"
+      ],
+      "verifiedNoticeVersions": [],
+      "affectedNoticeVersions": [],
+      "moduleVersionMatches": [],
+      "unversionedModules": [],
+      "externalReferences": [],
+      "classification": "AFFECTED_NPM_VERSION_ABSENT_FROM_INSPECTED_CLOSURE",
+      "nextDecision": "Review scoped npm-nonshipment at current ab2 artifact after explicit identity comparison; no claim dependencyfixed upstream"
+    },
+    {
+      "package": "nodemailer",
+      "advisory": "GHSA-85x2-q946-cp5h",
+      "severity": "moderate",
+      "affectedVersions": [
+        "10.0.12"
+      ],
+      "verifiedNoticeVersions": [],
+      "affectedNoticeVersions": [],
+      "moduleVersionMatches": [],
+      "unversionedModules": [],
+      "externalReferences": [],
+      "classification": "AFFECTED_NPM_VERSION_ABSENT_FROM_INSPECTED_CLOSURE",
+      "nextDecision": "Review scoped npm-nonshipment at current ab2 artifact after explicit identity comparison; no claim dependencyfixed upstream"
+    },
+    {
+      "package": "nodemailer",
+      "advisory": "GHSA-8c8m-p3m8-cjg8",
+      "severity": "moderate",
+      "affectedVersions": [
+        "10.0.12"
+      ],
+      "verifiedNoticeVersions": [],
+      "affectedNoticeVersions": [],
+      "moduleVersionMatches": [],
+      "unversionedModules": [],
+      "externalReferences": [],
+      "classification": "AFFECTED_NPM_VERSION_ABSENT_FROM_INSPECTED_CLOSURE",
+      "nextDecision": "Review scoped npm-nonshipment at current ab2 artifact after explicit identity comparison; no claim dependencyfixed upstream"
+    },
+    {
+      "package": "nodemailer",
+      "advisory": "GHSA-m943-m63m-w62w",
+      "severity": "moderate",
+      "affectedVersions": [
+        "10.0.12"
+      ],
+      "verifiedNoticeVersions": [],
+      "affectedNoticeVersions": [],
+      "moduleVersionMatches": [],
+      "unversionedModules": [],
+      "externalReferences": [],
+      "classification": "AFFECTED_NPM_VERSION_ABSENT_FROM_INSPECTED_CLOSURE",
+      "nextDecision": "Review scoped npm-nonshipment at current ab2 artifact after explicit identity comparison; no claim dependencyfixed upstream"
+    },
+    {
+      "package": "pbkdf2",
+      "advisory": "GHSA-477h-4r7f-fvrx",
+      "severity": "moderate",
+      "affectedVersions": [
+        "3.1.6"
+      ],
+      "verifiedNoticeVersions": [],
+      "affectedNoticeVersions": [],
+      "moduleVersionMatches": [],
+      "unversionedModules": [],
+      "externalReferences": [],
+      "classification": "AFFECTED_NPM_VERSION_ABSENT_FROM_INSPECTED_CLOSURE",
+      "nextDecision": "Review scoped npm-nonshipment at current ab2 artifact after explicit identity comparison; no claim dependencyfixed upstream"
+    },
+    {
+      "package": "serialize-javascript",
+      "advisory": "GHSA-m5mm-p8h7-m29v",
+      "severity": "low",
+      "affectedVersions": [
+        "7.0.5"
+      ],
+      "verifiedNoticeVersions": [],
+      "affectedNoticeVersions": [],
+      "moduleVersionMatches": [],
+      "unversionedModules": [],
+      "externalReferences": [],
+      "classification": "AFFECTED_NPM_VERSION_ABSENT_FROM_INSPECTED_CLOSURE",
+      "nextDecision": "Review scoped npm-nonshipment at current ab2 artifact after explicit identity comparison; no claim dependencyfixed upstream"
+    },
+    {
+      "package": "sharp",
+      "advisory": "GHSA-rgj7-g3m4-5g8c",
+      "severity": "high",
+      "affectedVersions": [
+        "0.35.2"
+      ],
+      "verifiedNoticeVersions": [],
+      "affectedNoticeVersions": [],
+      "moduleVersionMatches": [],
+      "unversionedModules": [],
+      "externalReferences": [],
+      "classification": "AFFECTED_NPM_VERSION_ABSENT_FROM_INSPECTED_CLOSURE",
+      "nextDecision": "Review scoped npm-nonshipment at current ab2 artifact after explicit identity comparison; no claim dependencyfixed upstream"
+    },
+    {
+      "package": "sharp",
+      "advisory": "GHSA-wq5f-xc86-pv6w",
+      "severity": "high",
+      "affectedVersions": [
+        "0.35.2",
+        "0.35.4"
+      ],
+      "verifiedNoticeVersions": [],
+      "affectedNoticeVersions": [],
+      "moduleVersionMatches": [],
+      "unversionedModules": [],
+      "externalReferences": [],
+      "classification": "AFFECTED_NPM_VERSION_ABSENT_FROM_INSPECTED_CLOSURE",
+      "nextDecision": "Review scoped npm-nonshipment at current ab2 artifact after explicit identity comparison; no claim dependencyfixed upstream"
+    },
+    {
+      "package": "shell-quote",
+      "advisory": "GHSA-pqg4-j6r4-53mv",
+      "severity": "critical",
+      "affectedVersions": [
+        "1.10.0"
+      ],
+      "verifiedNoticeVersions": [],
+      "affectedNoticeVersions": [],
+      "moduleVersionMatches": [],
+      "unversionedModules": [],
+      "externalReferences": [],
+      "classification": "AFFECTED_NPM_VERSION_ABSENT_FROM_INSPECTED_CLOSURE",
+      "nextDecision": "Review scoped npm-nonshipment at current ab2 artifact after explicit identity comparison; no claim dependencyfixed upstream"
+    },
+    {
+      "package": "smol-toml",
+      "advisory": "GHSA-7w5x-hrqm-74c2",
+      "severity": "high",
+      "affectedVersions": [
+        "1.6.1"
+      ],
+      "verifiedNoticeVersions": [],
+      "affectedNoticeVersions": [],
+      "moduleVersionMatches": [],
+      "unversionedModules": [],
+      "externalReferences": [],
+      "classification": "AFFECTED_NPM_VERSION_ABSENT_FROM_INSPECTED_CLOSURE",
+      "nextDecision": "Review scoped npm-nonshipment at current ab2 artifact after explicit identity comparison; no claim dependencyfixed upstream"
+    },
+    {
+      "package": "smol-toml",
+      "advisory": "GHSA-r4xh-jqrq-34v2",
+      "severity": "moderate",
+      "affectedVersions": [
+        "1.6.1"
+      ],
+      "verifiedNoticeVersions": [],
+      "affectedNoticeVersions": [],
+      "moduleVersionMatches": [],
+      "unversionedModules": [],
+      "externalReferences": [],
+      "classification": "AFFECTED_NPM_VERSION_ABSENT_FROM_INSPECTED_CLOSURE",
+      "nextDecision": "Review scoped npm-nonshipment at current ab2 artifact after explicit identity comparison; no claim dependencyfixed upstream"
+    },
+    {
+      "package": "source-map-js",
+      "advisory": "GHSA-68fv-2mgg-jv7q",
+      "severity": "high",
+      "affectedVersions": [
+        "1.2.1"
+      ],
+      "verifiedNoticeVersions": [],
+      "affectedNoticeVersions": [],
+      "moduleVersionMatches": [],
+      "unversionedModules": [],
+      "externalReferences": [],
+      "classification": "AFFECTED_NPM_VERSION_ABSENT_FROM_INSPECTED_CLOSURE",
+      "nextDecision": "Review scoped npm-nonshipment at current ab2 artifact after explicit identity comparison; no claim dependencyfixed upstream"
+    },
+    {
+      "package": "stream-json",
+      "advisory": "GHSA-528h-pc64-c93x",
+      "severity": "moderate",
+      "affectedVersions": [
+        "1.9.1"
+      ],
+      "verifiedNoticeVersions": [],
+      "affectedNoticeVersions": [],
+      "moduleVersionMatches": [],
+      "unversionedModules": [],
+      "externalReferences": [],
+      "classification": "AFFECTED_NPM_VERSION_ABSENT_FROM_INSPECTED_CLOSURE",
+      "nextDecision": "Review scoped npm-nonshipment at current ab2 artifact after explicit identity comparison; no claim dependencyfixed upstream"
+    },
+    {
+      "package": "stream-json",
+      "advisory": "GHSA-hqr4-qq8f-hg3x",
+      "severity": "moderate",
+      "affectedVersions": [
+        "1.9.1"
+      ],
+      "verifiedNoticeVersions": [],
+      "affectedNoticeVersions": [],
+      "moduleVersionMatches": [],
+      "unversionedModules": [],
+      "externalReferences": [],
+      "classification": "AFFECTED_NPM_VERSION_ABSENT_FROM_INSPECTED_CLOSURE",
+      "nextDecision": "Review scoped npm-nonshipment at current ab2 artifact after explicit identity comparison; no claim dependencyfixed upstream"
+    },
+    {
+      "package": "stream-json",
+      "advisory": "GHSA-mjw6-4jj6-33hc",
+      "severity": "moderate",
+      "affectedVersions": [
+        "1.9.1"
+      ],
+      "verifiedNoticeVersions": [],
+      "affectedNoticeVersions": [],
+      "moduleVersionMatches": [],
+      "unversionedModules": [],
+      "externalReferences": [],
+      "classification": "AFFECTED_NPM_VERSION_ABSENT_FROM_INSPECTED_CLOSURE",
+      "nextDecision": "Review scoped npm-nonshipment at current ab2 artifact after explicit identity comparison; no claim dependencyfixed upstream"
+    },
+    {
+      "package": "toml",
+      "advisory": "GHSA-4qx8-w7c3-pj3p",
+      "severity": "high",
+      "affectedVersions": [
+        "3.0.0"
+      ],
+      "verifiedNoticeVersions": [],
+      "affectedNoticeVersions": [],
+      "moduleVersionMatches": [],
+      "unversionedModules": [],
+      "externalReferences": [],
+      "classification": "AFFECTED_NPM_VERSION_ABSENT_FROM_INSPECTED_CLOSURE",
+      "nextDecision": "Review scoped npm-nonshipment at current ab2 artifact after explicit identity comparison; no claim dependencyfixed upstream"
+    },
+    {
+      "package": "toml",
+      "advisory": "GHSA-82x6-q7mm-w9cf",
+      "severity": "high",
+      "affectedVersions": [
+        "3.0.0"
+      ],
+      "verifiedNoticeVersions": [],
+      "affectedNoticeVersions": [],
+      "moduleVersionMatches": [],
+      "unversionedModules": [],
+      "externalReferences": [],
+      "classification": "AFFECTED_NPM_VERSION_ABSENT_FROM_INSPECTED_CLOSURE",
+      "nextDecision": "Review scoped npm-nonshipment at current ab2 artifact after explicit identity comparison; no claim dependencyfixed upstream"
+    },
+    {
+      "package": "toml",
+      "advisory": "GHSA-9j65-hcg3-gc64",
+      "severity": "high",
+      "affectedVersions": [
+        "3.0.0"
+      ],
+      "verifiedNoticeVersions": [],
+      "affectedNoticeVersions": [],
+      "moduleVersionMatches": [],
+      "unversionedModules": [],
+      "externalReferences": [],
+      "classification": "AFFECTED_NPM_VERSION_ABSENT_FROM_INSPECTED_CLOSURE",
+      "nextDecision": "Review scoped npm-nonshipment at current ab2 artifact after explicit identity comparison; no claim dependencyfixed upstream"
+    },
+    {
+      "package": "toml",
+      "advisory": "GHSA-9qmh-m7c6-f92p",
+      "severity": "high",
+      "affectedVersions": [
+        "3.0.0"
+      ],
+      "verifiedNoticeVersions": [],
+      "affectedNoticeVersions": [],
+      "moduleVersionMatches": [],
+      "unversionedModules": [],
+      "externalReferences": [],
+      "classification": "AFFECTED_NPM_VERSION_ABSENT_FROM_INSPECTED_CLOSURE",
+      "nextDecision": "Review scoped npm-nonshipment at current ab2 artifact after explicit identity comparison; no claim dependencyfixed upstream"
+    },
+    {
+      "package": "toml",
+      "advisory": "GHSA-v5mp-jgw5-2x6j",
+      "severity": "high",
+      "affectedVersions": [
+        "3.0.0"
+      ],
+      "verifiedNoticeVersions": [],
+      "affectedNoticeVersions": [],
+      "moduleVersionMatches": [],
+      "unversionedModules": [],
+      "externalReferences": [],
+      "classification": "AFFECTED_NPM_VERSION_ABSENT_FROM_INSPECTED_CLOSURE",
+      "nextDecision": "Review scoped npm-nonshipment at current ab2 artifact after explicit identity comparison; no claim dependencyfixed upstream"
+    },
+    {
+      "package": "undici",
+      "advisory": "GHSA-2gqq-gqf2-x968",
+      "severity": "low",
+      "affectedVersions": [
+        "8.10.0"
+      ],
+      "verifiedNoticeVersions": [],
+      "affectedNoticeVersions": [],
+      "moduleVersionMatches": [],
+      "unversionedModules": [],
+      "externalReferences": [
+        "undici"
+      ],
+      "classification": "NPM_ABSENT_EXTERNAL_IMPLEMENTATION_LIMITATION",
+      "nextDecision": "No affected npmundici version in603 closure; Bunbuiltin implementation notclassified. Do notclaim entireAPIsecurityor invent binaryauditlaunchblock."
+    },
+    {
+      "package": "undici",
+      "advisory": "GHSA-2gqq-gqf2-x968",
+      "severity": "low",
+      "affectedVersions": [
+        "7.28.0"
+      ],
+      "verifiedNoticeVersions": [],
+      "affectedNoticeVersions": [],
+      "moduleVersionMatches": [],
+      "unversionedModules": [],
+      "externalReferences": [
+        "undici"
+      ],
+      "classification": "NPM_ABSENT_EXTERNAL_IMPLEMENTATION_LIMITATION",
+      "nextDecision": "No affected npmundici version in603 closure; Bunbuiltin implementation notclassified. Do notclaim entireAPIsecurityor invent binaryauditlaunchblock."
+    },
+    {
+      "package": "undici",
+      "advisory": "GHSA-2jfj-6hjv-fm6j",
+      "severity": "moderate",
+      "affectedVersions": [
+        "8.10.0"
+      ],
+      "verifiedNoticeVersions": [],
+      "affectedNoticeVersions": [],
+      "moduleVersionMatches": [],
+      "unversionedModules": [],
+      "externalReferences": [
+        "undici"
+      ],
+      "classification": "NPM_ABSENT_EXTERNAL_IMPLEMENTATION_LIMITATION",
+      "nextDecision": "No affected npmundici version in603 closure; Bunbuiltin implementation notclassified. Do notclaim entireAPIsecurityor invent binaryauditlaunchblock."
+    },
+    {
+      "package": "undici",
+      "advisory": "GHSA-2jfj-6hjv-fm6j",
+      "severity": "moderate",
+      "affectedVersions": [
+        "7.28.0"
+      ],
+      "verifiedNoticeVersions": [],
+      "affectedNoticeVersions": [],
+      "moduleVersionMatches": [],
+      "unversionedModules": [],
+      "externalReferences": [
+        "undici"
+      ],
+      "classification": "NPM_ABSENT_EXTERNAL_IMPLEMENTATION_LIMITATION",
+      "nextDecision": "No affected npmundici version in603 closure; Bunbuiltin implementation notclassified. Do notclaim entireAPIsecurityor invent binaryauditlaunchblock."
+    },
+    {
+      "package": "undici",
+      "advisory": "GHSA-2mjp-6q6p-2qxm",
+      "severity": "moderate",
+      "affectedVersions": [
+        "5.29.0"
+      ],
+      "verifiedNoticeVersions": [],
+      "affectedNoticeVersions": [],
+      "moduleVersionMatches": [],
+      "unversionedModules": [],
+      "externalReferences": [
+        "undici"
+      ],
+      "classification": "NPM_ABSENT_EXTERNAL_IMPLEMENTATION_LIMITATION",
+      "nextDecision": "No affected npmundici version in603 closure; Bunbuiltin implementation notclassified. Do notclaim entireAPIsecurityor invent binaryauditlaunchblock."
+    },
+    {
+      "package": "undici",
+      "advisory": "GHSA-35p6-xmwp-9g52",
+      "severity": "low",
+      "affectedVersions": [
+        "5.29.0"
+      ],
+      "verifiedNoticeVersions": [],
+      "affectedNoticeVersions": [],
+      "moduleVersionMatches": [],
+      "unversionedModules": [],
+      "externalReferences": [
+        "undici"
+      ],
+      "classification": "NPM_ABSENT_EXTERNAL_IMPLEMENTATION_LIMITATION",
+      "nextDecision": "No affected npmundici version in603 closure; Bunbuiltin implementation notclassified. Do notclaim entireAPIsecurityor invent binaryauditlaunchblock."
+    },
+    {
+      "package": "undici",
+      "advisory": "GHSA-3wwx-pv8p-q78v",
+      "severity": "moderate",
+      "affectedVersions": [
+        "8.10.0"
+      ],
+      "verifiedNoticeVersions": [],
+      "affectedNoticeVersions": [],
+      "moduleVersionMatches": [],
+      "unversionedModules": [],
+      "externalReferences": [
+        "undici"
+      ],
+      "classification": "NPM_ABSENT_EXTERNAL_IMPLEMENTATION_LIMITATION",
+      "nextDecision": "No affected npmundici version in603 closure; Bunbuiltin implementation notclassified. Do notclaim entireAPIsecurityor invent binaryauditlaunchblock."
+    },
+    {
+      "package": "undici",
+      "advisory": "GHSA-3wwx-pv8p-q78v",
+      "severity": "moderate",
+      "affectedVersions": [
+        "7.28.0"
+      ],
+      "verifiedNoticeVersions": [],
+      "affectedNoticeVersions": [],
+      "moduleVersionMatches": [],
+      "unversionedModules": [],
+      "externalReferences": [
+        "undici"
+      ],
+      "classification": "NPM_ABSENT_EXTERNAL_IMPLEMENTATION_LIMITATION",
+      "nextDecision": "No affected npmundici version in603 closure; Bunbuiltin implementation notclassified. Do notclaim entireAPIsecurityor invent binaryauditlaunchblock."
+    },
+    {
+      "package": "undici",
+      "advisory": "GHSA-3xpg-4rpp-hhhm",
+      "severity": "moderate",
+      "affectedVersions": [
+        "8.10.0"
+      ],
+      "verifiedNoticeVersions": [],
+      "affectedNoticeVersions": [],
+      "moduleVersionMatches": [],
+      "unversionedModules": [],
+      "externalReferences": [
+        "undici"
+      ],
+      "classification": "NPM_ABSENT_EXTERNAL_IMPLEMENTATION_LIMITATION",
+      "nextDecision": "No affected npmundici version in603 closure; Bunbuiltin implementation notclassified. Do notclaim entireAPIsecurityor invent binaryauditlaunchblock."
+    },
+    {
+      "package": "undici",
+      "advisory": "GHSA-3xpg-4rpp-hhhm",
+      "severity": "moderate",
+      "affectedVersions": [
+        "7.28.0"
+      ],
+      "verifiedNoticeVersions": [],
+      "affectedNoticeVersions": [],
+      "moduleVersionMatches": [],
+      "unversionedModules": [],
+      "externalReferences": [
+        "undici"
+      ],
+      "classification": "NPM_ABSENT_EXTERNAL_IMPLEMENTATION_LIMITATION",
+      "nextDecision": "No affected npmundici version in603 closure; Bunbuiltin implementation notclassified. Do notclaim entireAPIsecurityor invent binaryauditlaunchblock."
+    },
+    {
+      "package": "undici",
+      "advisory": "GHSA-4992-7rv2-5pvq",
+      "severity": "moderate",
+      "affectedVersions": [
+        "5.29.0"
+      ],
+      "verifiedNoticeVersions": [],
+      "affectedNoticeVersions": [],
+      "moduleVersionMatches": [],
+      "unversionedModules": [],
+      "externalReferences": [
+        "undici"
+      ],
+      "classification": "NPM_ABSENT_EXTERNAL_IMPLEMENTATION_LIMITATION",
+      "nextDecision": "No affected npmundici version in603 closure; Bunbuiltin implementation notclassified. Do notclaim entireAPIsecurityor invent binaryauditlaunchblock."
+    },
+    {
+      "package": "undici",
+      "advisory": "GHSA-4cwx-7wf7-3272",
+      "severity": "high",
+      "affectedVersions": [
+        "7.28.0"
+      ],
+      "verifiedNoticeVersions": [],
+      "affectedNoticeVersions": [],
+      "moduleVersionMatches": [],
+      "unversionedModules": [],
+      "externalReferences": [
+        "undici"
+      ],
+      "classification": "NPM_ABSENT_EXTERNAL_IMPLEMENTATION_LIMITATION",
+      "nextDecision": "No affected npmundici version in603 closure; Bunbuiltin implementation notclassified. Do notclaim entireAPIsecurityor invent binaryauditlaunchblock."
+    },
+    {
+      "package": "undici",
+      "advisory": "GHSA-4qv8-2p9j-2685",
+      "severity": "moderate",
+      "affectedVersions": [
+        "8.10.0",
+        "8.10.2",
+        "8.11.2"
+      ],
+      "verifiedNoticeVersions": [],
+      "affectedNoticeVersions": [],
+      "moduleVersionMatches": [],
+      "unversionedModules": [],
+      "externalReferences": [
+        "undici"
+      ],
+      "classification": "NPM_ABSENT_EXTERNAL_IMPLEMENTATION_LIMITATION",
+      "nextDecision": "No affected npmundici version in603 closure; Bunbuiltin implementation notclassified. Do notclaim entireAPIsecurityor invent binaryauditlaunchblock."
+    },
+    {
+      "package": "undici",
+      "advisory": "GHSA-4qv8-2p9j-2685",
+      "severity": "moderate",
+      "affectedVersions": [
+        "7.28.0",
+        "7.29.1"
+      ],
+      "verifiedNoticeVersions": [],
+      "affectedNoticeVersions": [],
+      "moduleVersionMatches": [],
+      "unversionedModules": [],
+      "externalReferences": [
+        "undici"
+      ],
+      "classification": "NPM_ABSENT_EXTERNAL_IMPLEMENTATION_LIMITATION",
+      "nextDecision": "No affected npmundici version in603 closure; Bunbuiltin implementation notclassified. Do notclaim entireAPIsecurityor invent binaryauditlaunchblock."
+    },
+    {
+      "package": "undici",
+      "advisory": "GHSA-4qv8-2p9j-2685",
+      "severity": "moderate",
+      "affectedVersions": [
+        "6.28.1"
+      ],
+      "verifiedNoticeVersions": [],
+      "affectedNoticeVersions": [],
+      "moduleVersionMatches": [],
+      "unversionedModules": [],
+      "externalReferences": [
+        "undici"
+      ],
+      "classification": "NPM_ABSENT_EXTERNAL_IMPLEMENTATION_LIMITATION",
+      "nextDecision": "No affected npmundici version in603 closure; Bunbuiltin implementation notclassified. Do notclaim entireAPIsecurityor invent binaryauditlaunchblock."
+    },
+    {
+      "package": "undici",
+      "advisory": "GHSA-8436-99hf-9mmv",
+      "severity": "low",
+      "affectedVersions": [
+        "8.10.0"
+      ],
+      "verifiedNoticeVersions": [],
+      "affectedNoticeVersions": [],
+      "moduleVersionMatches": [],
+      "unversionedModules": [],
+      "externalReferences": [
+        "undici"
+      ],
+      "classification": "NPM_ABSENT_EXTERNAL_IMPLEMENTATION_LIMITATION",
+      "nextDecision": "No affected npmundici version in603 closure; Bunbuiltin implementation notclassified. Do notclaim entireAPIsecurityor invent binaryauditlaunchblock."
+    },
+    {
+      "package": "undici",
+      "advisory": "GHSA-8436-99hf-9mmv",
+      "severity": "low",
+      "affectedVersions": [
+        "7.28.0"
+      ],
+      "verifiedNoticeVersions": [],
+      "affectedNoticeVersions": [],
+      "moduleVersionMatches": [],
+      "unversionedModules": [],
+      "externalReferences": [
+        "undici"
+      ],
+      "classification": "NPM_ABSENT_EXTERNAL_IMPLEMENTATION_LIMITATION",
+      "nextDecision": "No affected npmundici version in603 closure; Bunbuiltin implementation notclassified. Do notclaim entireAPIsecurityor invent binaryauditlaunchblock."
+    },
+    {
+      "package": "undici",
+      "advisory": "GHSA-8xcm-r25x-g524",
+      "severity": "moderate",
+      "affectedVersions": [
+        "7.28.0"
+      ],
+      "verifiedNoticeVersions": [],
+      "affectedNoticeVersions": [],
+      "moduleVersionMatches": [],
+      "unversionedModules": [],
+      "externalReferences": [
+        "undici"
+      ],
+      "classification": "NPM_ABSENT_EXTERNAL_IMPLEMENTATION_LIMITATION",
+      "nextDecision": "No affected npmundici version in603 closure; Bunbuiltin implementation notclassified. Do notclaim entireAPIsecurityor invent binaryauditlaunchblock."
+    },
+    {
+      "package": "undici",
+      "advisory": "GHSA-8xcm-r25x-g524",
+      "severity": "moderate",
+      "affectedVersions": [
+        "5.29.0"
+      ],
+      "verifiedNoticeVersions": [],
+      "affectedNoticeVersions": [],
+      "moduleVersionMatches": [],
+      "unversionedModules": [],
+      "externalReferences": [
+        "undici"
+      ],
+      "classification": "NPM_ABSENT_EXTERNAL_IMPLEMENTATION_LIMITATION",
+      "nextDecision": "No affected npmundici version in603 closure; Bunbuiltin implementation notclassified. Do notclaim entireAPIsecurityor invent binaryauditlaunchblock."
+    },
+    {
+      "package": "undici",
+      "advisory": "GHSA-f72v-6w45-q472",
+      "severity": "moderate",
+      "affectedVersions": [
+        "8.10.0",
+        "8.10.2",
+        "8.11.2"
+      ],
+      "verifiedNoticeVersions": [],
+      "affectedNoticeVersions": [],
+      "moduleVersionMatches": [],
+      "unversionedModules": [],
+      "externalReferences": [
+        "undici"
+      ],
+      "classification": "NPM_ABSENT_EXTERNAL_IMPLEMENTATION_LIMITATION",
+      "nextDecision": "No affected npmundici version in603 closure; Bunbuiltin implementation notclassified. Do notclaim entireAPIsecurityor invent binaryauditlaunchblock."
+    },
+    {
+      "package": "undici",
+      "advisory": "GHSA-f72v-6w45-q472",
+      "severity": "moderate",
+      "affectedVersions": [
+        "7.28.0",
+        "7.29.1"
+      ],
+      "verifiedNoticeVersions": [],
+      "affectedNoticeVersions": [],
+      "moduleVersionMatches": [],
+      "unversionedModules": [],
+      "externalReferences": [
+        "undici"
+      ],
+      "classification": "NPM_ABSENT_EXTERNAL_IMPLEMENTATION_LIMITATION",
+      "nextDecision": "No affected npmundici version in603 closure; Bunbuiltin implementation notclassified. Do notclaim entireAPIsecurityor invent binaryauditlaunchblock."
+    },
+    {
+      "package": "undici",
+      "advisory": "GHSA-g8m3-5g58-fq7m",
+      "severity": "low",
+      "affectedVersions": [
+        "5.29.0"
+      ],
+      "verifiedNoticeVersions": [],
+      "affectedNoticeVersions": [],
+      "moduleVersionMatches": [],
+      "unversionedModules": [],
+      "externalReferences": [
+        "undici"
+      ],
+      "classification": "NPM_ABSENT_EXTERNAL_IMPLEMENTATION_LIMITATION",
+      "nextDecision": "No affected npmundici version in603 closure; Bunbuiltin implementation notclassified. Do notclaim entireAPIsecurityor invent binaryauditlaunchblock."
+    },
+    {
+      "package": "undici",
+      "advisory": "GHSA-g9mf-h72j-4rw9",
+      "severity": "moderate",
+      "affectedVersions": [
+        "5.29.0"
+      ],
+      "verifiedNoticeVersions": [],
+      "affectedNoticeVersions": [],
+      "moduleVersionMatches": [],
+      "unversionedModules": [],
+      "externalReferences": [
+        "undici"
+      ],
+      "classification": "NPM_ABSENT_EXTERNAL_IMPLEMENTATION_LIMITATION",
+      "nextDecision": "No affected npmundici version in603 closure; Bunbuiltin implementation notclassified. Do notclaim entireAPIsecurityor invent binaryauditlaunchblock."
+    },
+    {
+      "package": "undici",
+      "advisory": "GHSA-jr45-8vmc-qm54",
+      "severity": "moderate",
+      "affectedVersions": [
+        "7.28.0"
+      ],
+      "verifiedNoticeVersions": [],
+      "affectedNoticeVersions": [],
+      "moduleVersionMatches": [],
+      "unversionedModules": [],
+      "externalReferences": [
+        "undici"
+      ],
+      "classification": "NPM_ABSENT_EXTERNAL_IMPLEMENTATION_LIMITATION",
+      "nextDecision": "No affected npmundici version in603 closure; Bunbuiltin implementation notclassified. Do notclaim entireAPIsecurityor invent binaryauditlaunchblock."
+    },
+    {
+      "package": "undici",
+      "advisory": "GHSA-m8rv-5g2x-5cg5",
+      "severity": "moderate",
+      "affectedVersions": [
+        "7.28.0"
+      ],
+      "verifiedNoticeVersions": [],
+      "affectedNoticeVersions": [],
+      "moduleVersionMatches": [],
+      "unversionedModules": [],
+      "externalReferences": [
+        "undici"
+      ],
+      "classification": "NPM_ABSENT_EXTERNAL_IMPLEMENTATION_LIMITATION",
+      "nextDecision": "No affected npmundici version in603 closure; Bunbuiltin implementation notclassified. Do notclaim entireAPIsecurityor invent binaryauditlaunchblock."
+    },
+    {
+      "package": "undici",
+      "advisory": "GHSA-m8rv-5g2x-5cg5",
+      "severity": "moderate",
+      "affectedVersions": [
+        "5.29.0"
+      ],
+      "verifiedNoticeVersions": [],
+      "affectedNoticeVersions": [],
+      "moduleVersionMatches": [],
+      "unversionedModules": [],
+      "externalReferences": [
+        "undici"
+      ],
+      "classification": "NPM_ABSENT_EXTERNAL_IMPLEMENTATION_LIMITATION",
+      "nextDecision": "No affected npmundici version in603 closure; Bunbuiltin implementation notclassified. Do notclaim entireAPIsecurityor invent binaryauditlaunchblock."
+    },
+    {
+      "package": "undici",
+      "advisory": "GHSA-p88m-4jfj-68fv",
+      "severity": "moderate",
+      "affectedVersions": [
+        "5.29.0"
+      ],
+      "verifiedNoticeVersions": [],
+      "affectedNoticeVersions": [],
+      "moduleVersionMatches": [],
+      "unversionedModules": [],
+      "externalReferences": [
+        "undici"
+      ],
+      "classification": "NPM_ABSENT_EXTERNAL_IMPLEMENTATION_LIMITATION",
+      "nextDecision": "No affected npmundici version in603 closure; Bunbuiltin implementation notclassified. Do notclaim entireAPIsecurityor invent binaryauditlaunchblock."
+    },
+    {
+      "package": "undici",
+      "advisory": "GHSA-pmjh-fq2x-6v4x",
+      "severity": "moderate",
+      "affectedVersions": [
+        "8.10.0"
+      ],
+      "verifiedNoticeVersions": [],
+      "affectedNoticeVersions": [],
+      "moduleVersionMatches": [],
+      "unversionedModules": [],
+      "externalReferences": [
+        "undici"
+      ],
+      "classification": "NPM_ABSENT_EXTERNAL_IMPLEMENTATION_LIMITATION",
+      "nextDecision": "No affected npmundici version in603 closure; Bunbuiltin implementation notclassified. Do notclaim entireAPIsecurityor invent binaryauditlaunchblock."
+    },
+    {
+      "package": "undici",
+      "advisory": "GHSA-pmjh-fq2x-6v4x",
+      "severity": "moderate",
+      "affectedVersions": [
+        "7.28.0"
+      ],
+      "verifiedNoticeVersions": [],
+      "affectedNoticeVersions": [],
+      "moduleVersionMatches": [],
+      "unversionedModules": [],
+      "externalReferences": [
+        "undici"
+      ],
+      "classification": "NPM_ABSENT_EXTERNAL_IMPLEMENTATION_LIMITATION",
+      "nextDecision": "No affected npmundici version in603 closure; Bunbuiltin implementation notclassified. Do notclaim entireAPIsecurityor invent binaryauditlaunchblock."
+    },
+    {
+      "package": "undici",
+      "advisory": "GHSA-r53p-7pc4-xj5r",
+      "severity": "low",
+      "affectedVersions": [
+        "8.10.0"
+      ],
+      "verifiedNoticeVersions": [],
+      "affectedNoticeVersions": [],
+      "moduleVersionMatches": [],
+      "unversionedModules": [],
+      "externalReferences": [
+        "undici"
+      ],
+      "classification": "NPM_ABSENT_EXTERNAL_IMPLEMENTATION_LIMITATION",
+      "nextDecision": "No affected npmundici version in603 closure; Bunbuiltin implementation notclassified. Do notclaim entireAPIsecurityor invent binaryauditlaunchblock."
+    },
+    {
+      "package": "undici",
+      "advisory": "GHSA-r53p-7pc4-xj5r",
+      "severity": "low",
+      "affectedVersions": [
+        "7.28.0"
+      ],
+      "verifiedNoticeVersions": [],
+      "affectedNoticeVersions": [],
+      "moduleVersionMatches": [],
+      "unversionedModules": [],
+      "externalReferences": [
+        "undici"
+      ],
+      "classification": "NPM_ABSENT_EXTERNAL_IMPLEMENTATION_LIMITATION",
+      "nextDecision": "No affected npmundici version in603 closure; Bunbuiltin implementation notclassified. Do notclaim entireAPIsecurityor invent binaryauditlaunchblock."
+    },
+    {
+      "package": "undici",
+      "advisory": "GHSA-r53p-7pc4-xj5r",
+      "severity": "low",
+      "affectedVersions": [
+        "5.29.0"
+      ],
+      "verifiedNoticeVersions": [],
+      "affectedNoticeVersions": [],
+      "moduleVersionMatches": [],
+      "unversionedModules": [],
+      "externalReferences": [
+        "undici"
+      ],
+      "classification": "NPM_ABSENT_EXTERNAL_IMPLEMENTATION_LIMITATION",
+      "nextDecision": "No affected npmundici version in603 closure; Bunbuiltin implementation notclassified. Do notclaim entireAPIsecurityor invent binaryauditlaunchblock."
+    },
+    {
+      "package": "undici",
+      "advisory": "GHSA-rfgv-xxqx-mfg5",
+      "severity": "high",
+      "affectedVersions": [
+        "8.10.0"
+      ],
+      "verifiedNoticeVersions": [],
+      "affectedNoticeVersions": [],
+      "moduleVersionMatches": [],
+      "unversionedModules": [],
+      "externalReferences": [
+        "undici"
+      ],
+      "classification": "NPM_ABSENT_EXTERNAL_IMPLEMENTATION_LIMITATION",
+      "nextDecision": "No affected npmundici version in603 closure; Bunbuiltin implementation notclassified. Do notclaim entireAPIsecurityor invent binaryauditlaunchblock."
+    },
+    {
+      "package": "undici",
+      "advisory": "GHSA-rfgv-xxqx-mfg5",
+      "severity": "high",
+      "affectedVersions": [
+        "7.28.0"
+      ],
+      "verifiedNoticeVersions": [],
+      "affectedNoticeVersions": [],
+      "moduleVersionMatches": [],
+      "unversionedModules": [],
+      "externalReferences": [
+        "undici"
+      ],
+      "classification": "NPM_ABSENT_EXTERNAL_IMPLEMENTATION_LIMITATION",
+      "nextDecision": "No affected npmundici version in603 closure; Bunbuiltin implementation notclassified. Do notclaim entireAPIsecurityor invent binaryauditlaunchblock."
+    },
+    {
+      "package": "undici",
+      "advisory": "GHSA-rx4f-c7p8-82vq",
+      "severity": "moderate",
+      "affectedVersions": [
+        "8.10.0"
+      ],
+      "verifiedNoticeVersions": [],
+      "affectedNoticeVersions": [],
+      "moduleVersionMatches": [],
+      "unversionedModules": [],
+      "externalReferences": [
+        "undici"
+      ],
+      "classification": "NPM_ABSENT_EXTERNAL_IMPLEMENTATION_LIMITATION",
+      "nextDecision": "No affected npmundici version in603 closure; Bunbuiltin implementation notclassified. Do notclaim entireAPIsecurityor invent binaryauditlaunchblock."
+    },
+    {
+      "package": "undici",
+      "advisory": "GHSA-rx4f-c7p8-82vq",
+      "severity": "moderate",
+      "affectedVersions": [
+        "7.28.0"
+      ],
+      "verifiedNoticeVersions": [],
+      "affectedNoticeVersions": [],
+      "moduleVersionMatches": [],
+      "unversionedModules": [],
+      "externalReferences": [
+        "undici"
+      ],
+      "classification": "NPM_ABSENT_EXTERNAL_IMPLEMENTATION_LIMITATION",
+      "nextDecision": "No affected npmundici version in603 closure; Bunbuiltin implementation notclassified. Do notclaim entireAPIsecurityor invent binaryauditlaunchblock."
+    },
+    {
+      "package": "undici",
+      "advisory": "GHSA-v3r7-h72x-cjcm",
+      "severity": "moderate",
+      "affectedVersions": [
+        "7.28.0"
+      ],
+      "verifiedNoticeVersions": [],
+      "affectedNoticeVersions": [],
+      "moduleVersionMatches": [],
+      "unversionedModules": [],
+      "externalReferences": [
+        "undici"
+      ],
+      "classification": "NPM_ABSENT_EXTERNAL_IMPLEMENTATION_LIMITATION",
+      "nextDecision": "No affected npmundici version in603 closure; Bunbuiltin implementation notclassified. Do notclaim entireAPIsecurityor invent binaryauditlaunchblock."
+    },
+    {
+      "package": "undici",
+      "advisory": "GHSA-v3r7-h72x-cjcm",
+      "severity": "moderate",
+      "affectedVersions": [
+        "5.29.0"
+      ],
+      "verifiedNoticeVersions": [],
+      "affectedNoticeVersions": [],
+      "moduleVersionMatches": [],
+      "unversionedModules": [],
+      "externalReferences": [
+        "undici"
+      ],
+      "classification": "NPM_ABSENT_EXTERNAL_IMPLEMENTATION_LIMITATION",
+      "nextDecision": "No affected npmundici version in603 closure; Bunbuiltin implementation notclassified. Do notclaim entireAPIsecurityor invent binaryauditlaunchblock."
+    },
+    {
+      "package": "undici",
+      "advisory": "GHSA-v9p9-hfj2-hcw8",
+      "severity": "high",
+      "affectedVersions": [
+        "5.29.0"
+      ],
+      "verifiedNoticeVersions": [],
+      "affectedNoticeVersions": [],
+      "moduleVersionMatches": [],
+      "unversionedModules": [],
+      "externalReferences": [
+        "undici"
+      ],
+      "classification": "NPM_ABSENT_EXTERNAL_IMPLEMENTATION_LIMITATION",
+      "nextDecision": "No affected npmundici version in603 closure; Bunbuiltin implementation notclassified. Do notclaim entireAPIsecurityor invent binaryauditlaunchblock."
+    },
+    {
+      "package": "undici",
+      "advisory": "GHSA-vp8m-p9jh-q5pm",
+      "severity": "high",
+      "affectedVersions": [
+        "8.10.0"
+      ],
+      "verifiedNoticeVersions": [],
+      "affectedNoticeVersions": [],
+      "moduleVersionMatches": [],
+      "unversionedModules": [],
+      "externalReferences": [
+        "undici"
+      ],
+      "classification": "NPM_ABSENT_EXTERNAL_IMPLEMENTATION_LIMITATION",
+      "nextDecision": "No affected npmundici version in603 closure; Bunbuiltin implementation notclassified. Do notclaim entireAPIsecurityor invent binaryauditlaunchblock."
+    },
+    {
+      "package": "undici",
+      "advisory": "GHSA-vrm6-8vpv-qv8q",
+      "severity": "high",
+      "affectedVersions": [
+        "5.29.0"
+      ],
+      "verifiedNoticeVersions": [],
+      "affectedNoticeVersions": [],
+      "moduleVersionMatches": [],
+      "unversionedModules": [],
+      "externalReferences": [
+        "undici"
+      ],
+      "classification": "NPM_ABSENT_EXTERNAL_IMPLEMENTATION_LIMITATION",
+      "nextDecision": "No affected npmundici version in603 closure; Bunbuiltin implementation notclassified. Do notclaim entireAPIsecurityor invent binaryauditlaunchblock."
+    },
+    {
+      "package": "undici",
+      "advisory": "GHSA-vxpw-j846-p89q",
+      "severity": "high",
+      "affectedVersions": [
+        "5.29.0"
+      ],
+      "verifiedNoticeVersions": [],
+      "affectedNoticeVersions": [],
+      "moduleVersionMatches": [],
+      "unversionedModules": [],
+      "externalReferences": [
+        "undici"
+      ],
+      "classification": "NPM_ABSENT_EXTERNAL_IMPLEMENTATION_LIMITATION",
+      "nextDecision": "No affected npmundici version in603 closure; Bunbuiltin implementation notclassified. Do notclaim entireAPIsecurityor invent binaryauditlaunchblock."
+    },
+    {
+      "package": "undici",
+      "advisory": "GHSA-w293-vg96-wgc3",
+      "severity": "high",
+      "affectedVersions": [
+        "8.10.0"
+      ],
+      "verifiedNoticeVersions": [],
+      "affectedNoticeVersions": [],
+      "moduleVersionMatches": [],
+      "unversionedModules": [],
+      "externalReferences": [
+        "undici"
+      ],
+      "classification": "NPM_ABSENT_EXTERNAL_IMPLEMENTATION_LIMITATION",
+      "nextDecision": "No affected npmundici version in603 closure; Bunbuiltin implementation notclassified. Do notclaim entireAPIsecurityor invent binaryauditlaunchblock."
+    },
+    {
+      "package": "undici",
+      "advisory": "GHSA-w293-vg96-wgc3",
+      "severity": "high",
+      "affectedVersions": [
+        "7.28.0"
+      ],
+      "verifiedNoticeVersions": [],
+      "affectedNoticeVersions": [],
+      "moduleVersionMatches": [],
+      "unversionedModules": [],
+      "externalReferences": [
+        "undici"
+      ],
+      "classification": "NPM_ABSENT_EXTERNAL_IMPLEMENTATION_LIMITATION",
+      "nextDecision": "No affected npmundici version in603 closure; Bunbuiltin implementation notclassified. Do notclaim entireAPIsecurityor invent binaryauditlaunchblock."
+    },
+    {
+      "package": "undici",
+      "advisory": "GHSA-xjj6-f33q-929c",
+      "severity": "high",
+      "affectedVersions": [
+        "8.10.0",
+        "8.10.2",
+        "8.11.2"
+      ],
+      "verifiedNoticeVersions": [],
+      "affectedNoticeVersions": [],
+      "moduleVersionMatches": [],
+      "unversionedModules": [],
+      "externalReferences": [
+        "undici"
+      ],
+      "classification": "NPM_ABSENT_EXTERNAL_IMPLEMENTATION_LIMITATION",
+      "nextDecision": "No affected npmundici version in603 closure; Bunbuiltin implementation notclassified. Do notclaim entireAPIsecurityor invent binaryauditlaunchblock."
+    },
+    {
+      "package": "undici",
+      "advisory": "GHSA-xjj6-f33q-929c",
+      "severity": "high",
+      "affectedVersions": [
+        "7.28.0",
+        "7.29.1"
+      ],
+      "verifiedNoticeVersions": [],
+      "affectedNoticeVersions": [],
+      "moduleVersionMatches": [],
+      "unversionedModules": [],
+      "externalReferences": [
+        "undici"
+      ],
+      "classification": "NPM_ABSENT_EXTERNAL_IMPLEMENTATION_LIMITATION",
+      "nextDecision": "No affected npmundici version in603 closure; Bunbuiltin implementation notclassified. Do notclaim entireAPIsecurityor invent binaryauditlaunchblock."
+    },
+    {
+      "package": "undici",
+      "advisory": "GHSA-xjj6-f33q-929c",
+      "severity": "high",
+      "affectedVersions": [
+        "6.28.1"
+      ],
+      "verifiedNoticeVersions": [],
+      "affectedNoticeVersions": [],
+      "moduleVersionMatches": [],
+      "unversionedModules": [],
+      "externalReferences": [
+        "undici"
+      ],
+      "classification": "NPM_ABSENT_EXTERNAL_IMPLEMENTATION_LIMITATION",
+      "nextDecision": "No affected npmundici version in603 closure; Bunbuiltin implementation notclassified. Do notclaim entireAPIsecurityor invent binaryauditlaunchblock."
+    },
+    {
+      "package": "uuid",
+      "advisory": "GHSA-w5hq-g745-h8pq",
+      "severity": "moderate",
+      "affectedVersions": [
+        "7.0.3",
+        "8.3.2",
+        "9.0.1"
+      ],
+      "verifiedNoticeVersions": [
+        "14.0.2",
+        "8.3.2",
+        "9.0.1"
+      ],
+      "affectedNoticeVersions": [
+        "8.3.2",
+        "9.0.1"
+      ],
+      "moduleVersionMatches": [
+        {
+          "bundle": "assets/agent/agent-bundle.js",
+          "module": "../../node_modules/.bun/uuid@8.3.2/node_modules/uuid/dist/rng.js"
+        },
+        {
+          "bundle": "assets/agent/agent-bundle.js",
+          "module": "../../node_modules/.bun/uuid@8.3.2/node_modules/uuid/dist/regex.js"
+        },
+        {
+          "bundle": "assets/agent/agent-bundle.js",
+          "module": "../../node_modules/.bun/uuid@8.3.2/node_modules/uuid/dist/validate.js"
+        },
+        {
+          "bundle": "assets/agent/agent-bundle.js",
+          "module": "../../node_modules/.bun/uuid@8.3.2/node_modules/uuid/dist/stringify.js"
+        },
+        {
+          "bundle": "assets/agent/agent-bundle.js",
+          "module": "../../node_modules/.bun/uuid@8.3.2/node_modules/uuid/dist/v1.js"
+        },
+        {
+          "bundle": "assets/agent/agent-bundle.js",
+          "module": "../../node_modules/.bun/uuid@8.3.2/node_modules/uuid/dist/parse.js"
+        }
+      ],
+      "unversionedModules": [],
+      "externalReferences": [],
+      "classification": "AFFECTED_NPM_VERSION_PRESENT",
+      "nextDecision": "Review exactuuidv4-onlycallproof; no shippedhigh/criticalwaiver"
+    },
+    {
+      "package": "zod",
+      "advisory": "GHSA-mrhx-c7xc-m3w5",
+      "severity": "high",
+      "affectedVersions": [
+        "3.22.4",
+        "3.25.76",
+        "4.4.3"
+      ],
+      "verifiedNoticeVersions": [
+        "4.6.6"
+      ],
+      "affectedNoticeVersions": [],
+      "moduleVersionMatches": [],
+      "unversionedModules": [
+        {
+          "bundle": "assets/agent/agent-bundle.js",
+          "module": "../../node_modules/zod/index.cjs"
+        },
+        {
+          "bundle": "assets/agent/agent-bundle.js",
+          "module": "../../node_modules/zod/v4/index.cjs"
+        },
+        {
+          "bundle": "assets/agent/agent-bundle.js",
+          "module": "../../node_modules/zod/v3/index.cjs"
+        },
+        {
+          "bundle": "assets/agent/agent-bundle.js",
+          "module": "../../node_modules/zod/mini/index.cjs"
+        }
+      ],
+      "externalReferences": [
+        "zod"
+      ],
+      "classification": "PATCHED_NPM_VERSION_PRESENT_OLD_VERSIONS_ABSENT",
+      "nextDecision": "Root4.6.6package shipped; oldaffected3.22.4/3.25.76/4.4.3NPMversionsabsent from exactnotices/versionedmoduleclosure. v3compat source belongs4.6.6package.",
+      "aliasProof": "ZOD-UNVERSIONED-ALIAS-PROOF.json; same agent bundle SHA confirmed in currentAPK"
+    }
+  ],
+  "previousArtifactSHA256": "6ff73fcb4c22744a2b8c138a029b4aa7add6ac57295df358e61fc40f100259e4",
+  "reuseProof": "../packaged-ab2dbd9ca2e756bd/ARTIFACT-COMPARISON.json",
+  "rootReviewAtUTC": "2026-10-25T20:50:17.939474+00:00",
+  "artifactComparison": {
+    "apk": "/Users/nubs/.local/state/eliza-five-lane-coordination/android-simulator-lane-20261025/native-google-credential-manager/full-browser-c83f75a2/full-standalone-release.apk",
+    "sha256": "ab2dbd9ca2e756bd954fce21adcf17c76c0fa5717671a50f0062b35ad7cefe27",
+    "sdk": "4e561dc37e962595d8e28e600600430d50e9dd7d",
+    "previousAPK_SHA256": "6ff73fcb4c22744a2b8c138a029b4aa7add6ac57295df358e61fc40f100259e4",
+    "files": {
+      "assets/public/licenses/third-party-notices.json": {
+        "sha256": "e1e0b7f0a216514d6c2fb09eda21877585a1be72c12dbdcb82b93126a019997a",
+        "bytes": 2391034,
+        "identicalTo6ff": true
+      },
+      "assets/agent/agent-bundle.js": {
+        "sha256": "83c0a8b23e7bb84a7cd6722b1842fa38ab4cb81c4dfd1908c35b19f9174d5f9f",
+        "bytes": 101623875,
+        "identicalTo6ff": true
+      },
+      "assets/agent/workflow-worker/google-host.mjs": {
+        "sha256": "1a637559e1929dc4a341f96f8166b619b76e930fa3c99817083cba31ce1ff116",
+        "bytes": 2945074,
+        "identicalTo6ff": false
+      },
+      "assets/agent/workflow-worker/dependencies.json": {
+        "sha256": "baa224936bc218e6973c6e477d292552a4f6fffab64be10401d31257371f61eb",
+        "bytes": 17598,
+        "identicalTo6ff": true
+      },
+      "assets/agent/workflow-worker/compiler/dependencies.json": {
+        "sha256": "64199c09cd16636f068d3bd4bf1809ea416d197e67bb80364832c5815ce5d04e",
+        "bytes": 14216,
+        "identicalTo6ff": true
+      }
+    },
+    "registryRequery": false,
+    "googleHostNpmModuleVersionsIdentical": true,
+    "googleHostAddedSourceComments": [
+      "backend/managed-google-failure-stage.ts"
+    ],
+    "noticesRegistryInputIdentical": true,
+    "reuseDecision": "Exact notices bytes and agent bundle/worker/compiler dependency bytes identical; Googlehost npm module-version set unchanged. Reuse fresh audited findings, not newregistrylookup."
+  },
+  "limitations": [
+    "Npm package closure review only; no global binary security clearance",
+    "Builtin/external runtime implementation risks remain unclassified by npm advisory absence",
+    "Unshipped full-lock packages remain unresolved upstream maintenance; no desktop/cloud safety claim",
+    "A changed artifact requires closure/call-path re-review; do not silently carry this decision forward"
+  ]
+}

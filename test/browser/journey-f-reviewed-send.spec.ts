@@ -134,6 +134,9 @@ const editedStatus = 'This email was edited after this review, so the review was
 test.beforeEach(async ({page}) => {
   // Nothing in this file may leave the machine.
   await page.route(/^https?:\/\/(?!127\.0\.0\.1:|localhost:)/, route => route.abort());
+  // A signed-in fixture account models an installation that already finished access setup; with
+  // setup pending the startup walkthrough would cover Inbox once the swapped snapshot re-renders.
+  await page.addInitScript(() => localStorage.setItem('alpha:startup-permission-walkthrough:v1', JSON.stringify({version: 1, status: 'completed', step: 4})));
 });
 
 test('F-5: the send review shows From, To, Cc, Bcc, subject, body and the attachment, and the dispatched request is the reviewed one byte for byte', async ({page}) => {
@@ -541,7 +544,7 @@ test('F-13: a lost Trash reply is an unknown outcome, handled like an unknown se
   expect(state).toMatchObject({trashed: ['m2'], inbox: ['m1']});
 });
 
-const mailboxChanged = 'New mail arrived.';
+const mailboxChanged = 'Newer mail arrived while this list was loading and is not shown yet. Load newer mail to read the list again.';
 test('F-12: new mail between pages never shows a message twice, and the list says it is no longer the whole mailbox', async ({page}) => {
   test.setTimeout(120_000);
   await openInbox(page, {inbox: ['m1', 'm2', 'm3', 'm4', 'm5'], pageSize: 2,deferPaging:true});
@@ -568,7 +571,7 @@ test('F-12: new mail between pages never shows a message twice, and the list say
   await button(page, 'Load more').click();
   await button(page, 'Load more').click();
   await expect.poll(() => rows(page)).toEqual(['m9', 'm1', 'm2', 'm3', 'm4', 'm5']);
-  await expect(page.getByText(mailboxChanged, { exact: true })).toHaveCount(0);
+  await expect(page.getByText(/Newer mail arrived/)).toHaveCount(0);
   expect((await provider(page)).searches).toEqual([['in:inbox', null], ['in:inbox', '1:2'], ['in:inbox', '2:4'], ['in:inbox', null], ['in:inbox', '2:2'], ['in:inbox', '2:4']]);
 });
 

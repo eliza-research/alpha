@@ -82,16 +82,16 @@ export function admitUnitApk(manifestFile, { variant, build }, { descriptor = re
       "Pilot and acceptance units get distributable releases only; --build debug rehearses the same steps on a disposable emulator.");
   }
   return { file, sha256: actual, variant, build, versionCode: row.versionCode, versionName: row.versionName, signed: row.signed === true,
-    signerSha256: row.signerSha256 ?? null, distributable: row.distributable === true, runtime: row.runtime ?? null, rehearsal: build === "debug" };
+    signerSha256: row.signerSha256 ?? null, signerApiLevel: row.signerApiLevel ?? null, distributable: row.distributable === true, runtime: row.runtime ?? null, rehearsal: build === "debug" };
 }
 
 /** Facts read from the APK file itself. A fact that cannot be read is null, which no check accepts. */
-export function apkFacts(file) {
+export function apkFacts(file, {apiLevel} = {}) {
   const attempt = read => { try { return read(); } catch { return null; } };
   return {
     testMocks: attempt(() => JSON.parse(execFileSync("unzip", ["-p", file, "assets/public/build-flags.json"], { encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] })).testMocks ?? null),
     debuggable: attempt(() => /android:debuggable[^\n]*0xffffffff/.test(execFileSync(tool("aapt"), ["dump", "xmltree", file, "AndroidManifest.xml"], { encoding: "utf8", env: androidEnv(), maxBuffer: 64 << 20, stdio: ["ignore", "pipe", "ignore"] }))),
-    signerSha256: attempt(() => signerDigest(file)),
+    signerSha256: attempt(() => signerDigest(file, {apiLevel})),
     runtime: attempt(() => apkRuntimeIdentity(file).runtime),
   };
 }
@@ -104,7 +104,7 @@ export function apkFacts(file) {
  * android/release-signer.json. Speech qualification and licence blockers cannot be re-derived
  * from the file; for those the manifest written by verify-apks remains the record.
  */
-export function apkContradictions(apk, { descriptor = readReleaseSigner(), facts = apkFacts(apk.file) } = {}) {
+export function apkContradictions(apk, { descriptor = readReleaseSigner(), apiLevel, facts = apkFacts(apk.file, {apiLevel}) } = {}) {
   const problems = [];
   if (facts.testMocks !== false) problems.push("its web bundle is not a verified flag-off build");
   if (apk.build === "release") {
@@ -172,10 +172,11 @@ function sourceCommit() {
 async function main() {
   const options = parseUnitArgs(process.argv.slice(2));
   const apk = admitUnitApk(options.apkManifest, options);
-  requireConsistentApk(apk);
   const adb = adbFor(options.serial);
   if (adb(["get-state"]) !== "device") throw new Error("Unit is not online");
   const device = deviceFacts(adb, options.serial);
+  if (!Number.isSafeInteger(device.sdk) || device.sdk < 1) throw new Error("Device Android API level is unavailable");
+  requireConsistentApk(apk, {apiLevel: device.sdk});
   if (apk.rehearsal && !device.emulator) throw new Error("--build debug is an emulator rehearsal; physical pilot units get the signed release");
   if (adb(["shell", "pm", "list", "packages", PACKAGE], { allowFailure: true }).split(/\r?\n/).includes(`package:${PACKAGE}`))
     throw new Error("Alpha Phone is already installed on this unit; use scripts/pilot-update.mjs for an update");
@@ -206,7 +207,7 @@ async function main() {
     notEvidenceFor: ["device acceptance", "user acceptance", "real integrations"],
     device,
     apk: { variant: apk.variant, build: apk.build, sha256: apk.sha256, versionCode: apk.versionCode, versionName: apk.versionName,
-      signed: apk.signed, signerSha256: apk.signerSha256, distributable: apk.distributable, rehearsal: apk.rehearsal },
+      signed: apk.signed, signerSha256: apk.signerSha256, signerApiLevel: device.sdk, distributable: apk.distributable, rehearsal: apk.rehearsal },
     installed: { sha256: installedSha256, versionCode: installed.versionCode, versionName: installed.versionName, firstInstallTime: installed.firstInstallTime },
     runtimeIdentity: apkRuntimeIdentity(apk.file),
     homeRole: home,

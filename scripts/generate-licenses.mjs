@@ -1,6 +1,9 @@
 #!/usr/bin/env node
 import {VOICE_HOST_MANIFEST, voiceHostProblems} from './voice-host.mjs';
-import {canonicalNativeGradleSettings} from './native-gradle-descriptors.mjs';
+import {HOST_DESCRIPTOR, generateAlphaAndroidHost, readHostDescriptor} from './android-host.mjs';
+import {HOST_TEMPLATES, referencePath} from './gradle-verification.mjs';
+import {preparePatchedNative} from './prepare-patched-native.mjs';
+import {readAgentBundleDependencies} from './agent-bundle-dependencies.mjs';
 // Generates the third-party notices shipped in the web bundle and in every APK payload.
 //
 //   node scripts/generate-licenses.mjs                    write apps/app/public/licenses/*
@@ -9,8 +12,8 @@ import {canonicalNativeGradleSettings} from './native-gradle-descriptors.mjs';
 //                                                         classpath into licenses/android-runtime-classpath.json
 //
 //   node scripts/generate-licenses.mjs --packaged-runtime  also list Bun and every npm package bundled
-//                                                         into the staged agent (from the bundle's module
-//                                                         paths, resolved in the prepared lockfile source)
+//                                                         into the staged agent (from its hash-bound
+//                                                         inventory, verified in the prepared source)
 //                                                         and workflow worker (its dependencies.json)
 //
 // Runtime enumeration is explicit: a staged runtime in a development checkout never changes the
@@ -62,6 +65,8 @@ export const MAVEN_FAMILIES = [
   {prefix: 'org.jetbrains.kotlinx', name: 'Kotlin coroutines', license: 'Apache-2.0', source: 'https://github.com/Kotlin/kotlinx.coroutines'},
   {prefix: 'org.jetbrains.kotlin', name: 'Kotlin standard library', license: 'Apache-2.0', source: 'https://github.com/JetBrains/kotlin'},
   {prefix: 'org.jetbrains', exact: true, name: 'JetBrains Java annotations', license: 'Apache-2.0', source: 'https://github.com/JetBrains/java-annotations'},
+  {prefix: 'com.squareup.okhttp3', exact: true, name: 'OkHttp HTTP and WebSocket client', license: 'Apache-2.0', source: 'https://square.github.io/okhttp/'},
+  {prefix: 'com.squareup.okio', exact: true, name: 'Okio I/O library', license: 'Apache-2.0', source: 'https://square.github.io/okio/'},
   {prefix: 'com.google.guava', name: 'Guava and ListenableFuture', license: 'Apache-2.0', source: 'https://github.com/google/guava'},
   {prefix: 'com.google.auto.value', name: 'AutoValue annotations', license: 'Apache-2.0', source: 'https://github.com/google/auto'},
   {prefix: 'org.jspecify', name: 'JSpecify annotations', license: 'Apache-2.0', source: 'https://github.com/jspecify/jspecify'},
@@ -93,8 +98,8 @@ const LICENSE_FILE = /^(licen[cs]e|copying|notice)([.\-_].*)?$/i;
 // ---------------------------------------------------------------- helpers
 
 const read = (root, rel) => fs.readFileSync(path.join(root, rel), 'utf8');
-const readJson = (root, rel) => JSON.parse(read(root, rel));
-const exists = (root, rel) => fs.existsSync(path.join(root, rel));
+export const readJson = (root, rel) => JSON.parse(read(root, rel));
+export const exists = (root, rel) => fs.existsSync(path.join(root, rel));
 export const sha256 = data => createHash('sha256').update(data).digest('hex');
 const normalizeText = text => text.replace(/\r\n?/g, '\n').replace(/[ \t]+$/gm, '').replace(/^\n+|\n+$/g, '');
 
@@ -366,7 +371,7 @@ export function fontLicense(names) {
   return NO_FONT_LICENCE;
 }
 
-function listFonts(root, dir) {
+export function listFonts(root) {
   const out = [];
   const walk = rel => {
     for (const entry of fs.readdirSync(path.join(root, rel), {withFileTypes: true}).sort((a, b) => a.name.localeCompare(b.name))) {
@@ -374,7 +379,7 @@ function listFonts(root, dir) {
       if (entry.isDirectory()) { if (entry.name !== 'licenses') walk(child); } else if (/\.(woff2|ttf|otf)$/i.test(entry.name)) out.push(child);
     }
   };
-  walk(dir);
+  walk('apps/app/public');
   return out;
 }
 
@@ -449,7 +454,7 @@ function tesseractCoreEntries(root, errors) {
 function fontEntries(root, templates, errors) {
   const entries = [];
   const groups = new Map();
-  for (const rel of listFonts(root, 'apps/app/public')) {
+  for (const rel of listFonts(root)) {
     const bytes = fs.readFileSync(path.join(root, rel));
     let names;
     try { names = fontNames(bytes); } catch (error) { errors.push(`${rel}: cannot read font metadata (${error.message})`); continue; }
@@ -532,21 +537,37 @@ export function parseGradleTree(output) {
   return [...coords].sort();
 }
 
-/** Fingerprint only Gradle inputs that can change the resolved runtime classpath. */
+/**
+ * Fingerprint only inputs that can change the resolved runtime classpath: the host descriptor's
+ * dependencies and app modules, the pinned generator toolchain and template, and each linked
+ * module's own declarations. Native plugin descriptors stay pinned; shared auth's
+ * one patchable descriptor contributes its authenticated staged bytes under its canonical label.
+ */
 export function androidDependencyFingerprint(root) {
-  const settings = canonicalNativeGradleSettings(read(root, 'android/settings.gradle'));
-  const modules = new Map([...settings.matchAll(/project\('(:[^']+)'\)\.projectDir\s*=\s*new File\('([^']+)'\)/g)].map(m => [m[1], path.posix.join('android', m[2])]));
-  const files = ['android/variables.gradle', 'android/build.gradle', 'android/app/build.gradle'];
-  const app = read(root, 'android/app/build.gradle');
-  for (const [, name] of app.matchAll(/^\s*implementation\s+project\('(:[^']+)'\)/gm)) {
-    if (modules.has(name)) files.push(path.posix.join(modules.get(name), 'build.gradle'));
-    // A module included without a projectDir lives at android/<name>; only an existing one is read.
-    else if (exists(root, path.posix.join('android', name.slice(1), 'build.gradle'))) files.push(path.posix.join('android', name.slice(1), 'build.gradle'));
+  const {profile} = readHostDescriptor(root);
+  const modules = profile.modules.filter(module => module.appDependency !== false)
+    .map(module => [module.name, referencePath(module.source)]).sort(([a], [b]) => a.localeCompare(b));
+  const toolchain = readJson(root, `${HOST_TEMPLATES}/toolchain.json`);
+  const template = read(root, `${HOST_TEMPLATES}/app.gradle`).split('\n').map(line => line.trim()).filter(line => /\b(implementation|add)\b.*(module|dependency)/.test(line));
+  const declared = [
+    `${HOST_DESCRIPTOR}:\n${JSON.stringify({dependencies: profile.dependencies, modules})}`,
+    `${HOST_TEMPLATES}/toolchain.json:\n${JSON.stringify({androidGradlePlugin: toolchain.androidGradlePlugin, kotlin: toolchain.kotlin, versions: toolchain.versions})}`,
+    `${HOST_TEMPLATES}/app.gradle:\n${template.join('\n')}`,
+  ];
+  const files = modules.map(([, directory]) => path.posix.join(directory, 'build.gradle'));
+  const authDescriptor = 'packages/auth/android/build.gradle', authFile = `vendor/eliza/${authDescriptor}`;
+  const patchManifest = 'patches/eliza/native-manifest.json';
+  const patches = exists(root, patchManifest) ? readJson(root, patchManifest).patches : [];
+  const patchedDescriptors = new Map();
+  if (files.includes(authFile) && patches?.some(patch => patch.targets?.some(target => target.path === authDescriptor))) {
+    const staged = preparePatchedNative({root});
+    patchedDescriptors.set(authFile, fs.readFileSync(path.join(staged.root, authDescriptor), 'utf8'));
   }
+  const readDescriptor = file => patchedDescriptors.get(file) ?? read(root, file);
   // A module that applies a shared script (`ext.<dir> = file('…')` then `apply from: new File(ext.<dir>, '<file>')`) declares its dependencies there.
   for (const file of [...files]) {
     if (!exists(root, file)) continue;
-    const text = read(root, file);
+    const text = readDescriptor(file);
     for (const [, variable, applied] of text.matchAll(/apply from:\s*new File\(ext\.(\w+),\s*'([^']+)'\)/g)) {
       const dir = text.match(new RegExp(`ext\\.${variable}\\s*=\\s*file\\('([^']+)'\\)`))?.[1];
       if (dir) files.push(path.posix.join(path.posix.dirname(file), dir, applied));
@@ -555,10 +576,10 @@ export function androidDependencyFingerprint(root) {
   // The shared paradee-voice library (:local-speech) declares its build in the pinned consumer script.
   const paradeeConsumer = 'vendor/eliza/plugins/plugin-local-inference/native/android/consumer.gradle';
   if (exists(root, paradeeConsumer) && !files.includes(paradeeConsumer)) files.push(paradeeConsumer);
-  const lines = [];
+  const lines = [...declared];
   for (const file of [...new Set(files)].sort()) {
     if (!exists(root, file)) { lines.push(`${file}: missing`); continue; }
-    const relevant = (file === 'android/settings.gradle' ? settings : read(root, file)).split('\n').map(line => line.trim())
+    const relevant = readDescriptor(file).split('\n').map(line => line.trim())
       .filter(line => /^(implementation|api|runtimeOnly)\b/.test(line) || /Version\s*=/.test(line) || /^include\b|projectDir\s*=/.test(line));
     lines.push(`${file}:\n${relevant.join('\n')}`);
   }
@@ -567,6 +588,7 @@ export function androidDependencyFingerprint(root) {
 
 export function refreshAndroidClasspath(root, env) {
   const configurations = ['standaloneReleaseRuntimeClasspath', 'launcherReleaseRuntimeClasspath', 'standaloneDebugRuntimeClasspath', 'launcherDebugRuntimeClasspath'];
+  generateAlphaAndroidHost(root);
   const coords = new Set();
   for (const configuration of configurations) {
     const output = execFileSync('./gradlew', ['-q', ':app:dependencies', '--configuration', configuration], {cwd: path.join(root, 'android'), env, encoding: 'utf8', maxBuffer: 64 << 20});
@@ -675,38 +697,6 @@ export function packagedRuntimePresent(root = ROOT, agentDir = path.join(root, A
   return fs.existsSync(path.join(agentDir, 'agent-bundle.js')) && fs.existsSync(path.join(agentDir, 'android-agent-runtime-provenance.json'));
 }
 
-/**
- * npm package directories that contributed modules to the Bun agent bundle, from the
- * bundler's per-module path comments (`// ../../node_modules/.bun/<id>/node_modules/<name>/…`).
- * Paths are relative to the prepared source root; workspace sources (packages/, plugins/)
- * are elizaOS itself and are covered by the elizaOS entry.
- */
-export function agentBundlePackageDirs(bundleText) {
-  const dirs = new Set();
-  for (const match of bundleText.matchAll(/^\/\/ (?:\.\.\/)*(node_modules\/(?:\.bun\/[^/\s]+\/node_modules\/)?(?:@[^/\s]+\/)?[^/\s@][^/\s]*)\//gm))
-    dirs.add(match[1]);
-  return [...dirs].sort();
-}
-
-/** The minified bundle's package inventory is the build's emitted-input metadata, bound to the
- * staged bundle bytes. Older unminified bundles carry it as module path comments instead. */
-export function agentBundleDependencyDirs(agentDir, bundleBytes, errors) {
-  const manifestFile = path.join(agentDir, 'plugins-manifest.json');
-  const recorded = fs.existsSync(manifestFile) ? JSON.parse(fs.readFileSync(manifestFile, 'utf8')).bundleDependencies : undefined;
-  if (!recorded) return agentBundlePackageDirs(bundleBytes.toString('utf8'));
-  if (recorded.version !== 1 || !Array.isArray(recorded.packages) || recorded.bundleSha256 !== createHash('sha256').update(bundleBytes).digest('hex')) {
-    errors.push('agent bundle: plugins-manifest.json bundleDependencies does not describe the staged agent-bundle.js; run npm run agent:stage-android');
-    return [];
-  }
-  const dirs = new Set();
-  for (const entry of recorded.packages) {
-    const dir = entry?.directory;
-    if (typeof dir !== 'string' || !dir.startsWith('node_modules/') || dir.split('/').some(part => !part || part === '.' || part === '..')) { errors.push('agent bundle: invalid recorded package directory'); continue; }
-    dirs.add(dir);
-  }
-  return [...dirs].sort();
-}
-
 function runtimePackageEntry(dir, bundle, templates, errors) {
   if (!fs.existsSync(path.join(dir, 'package.json'))) { errors.push(`${bundle}: ${dir} is not in the prepared runtime source; run npm run agent:prepare`); return null; }
   const manifest = readManifest(dir, `${bundle}: ${dir}`, errors);
@@ -754,9 +744,10 @@ export function runtimeEntries(root, templates, errors, {agentDir = path.join(ro
     if (existing) existing._bundles = [...new Set([...existing._bundles, ...entry._bundles])];
     else byId.set(key, entry);
   };
-  const bundleBytes = fs.readFileSync(path.join(agentDir, 'agent-bundle.js'));
-  for (const dir of agentBundleDependencyDirs(agentDir, bundleBytes, errors))
-    add(runtimePackageEntry(path.join(sourceDir, dir), 'agent bundle', templates, errors));
+  try {
+    for (const {directory} of readAgentBundleDependencies(sourceDir, agentDir))
+      add(runtimePackageEntry(path.join(sourceDir, directory), 'agent bundle', templates, errors));
+  } catch (error) { errors.push(error.message); }
   const workerDir = path.join(agentDir, 'workflow-worker');
   if (fs.existsSync(path.join(workerDir, 'dependencies.json'))) {
     for (const dep of JSON.parse(fs.readFileSync(path.join(workerDir, 'dependencies.json'), 'utf8'))) {

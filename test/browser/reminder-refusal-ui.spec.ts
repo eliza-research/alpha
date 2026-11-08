@@ -1,10 +1,11 @@
 import {test,expect} from '@playwright/test';
+import {openBrowserCalendar} from './helpers/browser-calendar';
 // A definite native refusal shows its specific reason, leaves no unknown creation and keeps
 // the draft open. Browser storage only; the refusal is injected at the plugin boundary.
 test.use({timezoneId:'UTC'});
 for(const status of ['storage-full','past','permission-denied','failed'] as const)test(`refused reminder creation (${status}) is retired with its reason`,async({page})=>{
  await page.addInitScript(()=>localStorage.setItem('alpha.connection.selection.v1',JSON.stringify({kind:'offline'})));await page.clock.setFixedTime(new Date('2027-03-13T00:00Z'));await page.goto('/');
- await page.getByRole('button',{name:'Calendar',exact:true}).click();
+ await openBrowserCalendar(page);
  const accept=async(dialog:any)=>{await dialog.accept();};page.on('dialog',accept);
  await page.getByRole('button',{name:'New event',exact:true}).click();
  await page.getByRole('textbox',{name:'Title',exact:true}).fill('Refused reminder');await page.getByRole('button',{name:'Reminders',exact:true}).click();

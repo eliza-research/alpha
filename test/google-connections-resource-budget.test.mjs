@@ -7,39 +7,42 @@ import {transformSync} from 'esbuild';
 import {JSDOM} from 'jsdom';
 import {tsImport} from 'tsx/esm/api';
 const {cloudServiceName}=await tsImport(new URL('../apps/app/src/runtime/cloud-protocol.ts',import.meta.url).href,{parentURL:import.meta.url});
+const connectionReturn=await tsImport(new URL('../apps/app/src/runtime/google-connection-return.ts',import.meta.url).href,{parentURL:import.meta.url});
+const workspaceReturn=await tsImport(new URL('../apps/app/src/runtime/google-workspace-return.ts',import.meta.url).href,{parentURL:import.meta.url});
 
 // Mount the actual panel. Only external account/Calendar I/O is replaced.
-test('Google settings list accounts only, revalidate grants and own Android Back',async()=>{
+test('Google settings offer no calendar choice, revalidate grants and own Android Back',async()=>{
  const dom=new JSDOM('<div class="os" style="--bg:#121212;--fg:#fff;--acct:#95a0ff;--acc:#0000ff"></div><div id="root"></div>',{url:'https://alpha.invalid'});
  const saved={window:globalThis.window,document:globalThis.document,HTMLElement:globalThis.HTMLElement,IS_REACT_ACT_ENVIRONMENT:globalThis.IS_REACT_ACT_ENVIRONMENT};
  Object.assign(globalThis,{window:dom.window,document:dom.window.document,HTMLElement:dom.window.HTMLElement,IS_REACT_ACT_ENVIRONMENT:true});
  const require=createRequire(import.meta.url),React=require('react'),{createRoot}=require('react-dom/client');
- const counts={accounts:0,calendars:0};
+ const counts={accounts:0,calendars:0};const access={gmailChanges:true,calendarEdits:true},published=[],hostCalls=[];
  const account={connectionId:'11111111-1111-4111-8111-111111111111',connected:true,label:'owner@example.invalid',grantedCapabilities:['google.calendar.read','google.calendar.write','google.gmail.read','google.gmail.send']};
- const binding={client:{},sessionId:'fixture-session',credentialId:'fixture-credential'};
+ // Calendar is one merged view of the agent's feed: the panel never lists or reads Google calendars.
+ const binding={client:{googleCalendars:async()=>{counts.calendars++;return [];}},sessionId:'fixture-session',credentialId:'fixture-credential'};
  const snapshot={cloudAccount:{environment:'production',userId:'22222222-2222-4222-8222-222222222222',organizationId:'33333333-3333-4333-8333-333333333333'}};
  const ACCOUNTS='alpha:test-google-accounts';
  const modules={
   './cloud-protocol':{cloudServiceName},
-  './gmail-background':{gmailBackgroundStatus:async()=>({status:'watching'}),gmailNotificationSettings:async()=>{},GMAIL_BACKGROUND_CHANGED:'alpha:test-gmail-background'},
+  './google-connection-return':connectionReturn,
+  './google-workspace-return':workspaceReturn,
+  '../daily':{DailyApps:{addListener:async()=>({remove(){}})}},
+  './gmail-background':{gmailBackgroundStatus:async()=>({}),gmailBackgroundMessage:()=>'',GMAIL_BACKGROUND_CHANGED:'alpha:test-gmail-background'},
   '../native':{isAndroid:true},
-  './gmail-grants':{googleAccountAccessLabel:()=> 'Limited access'},
+  './browser-cloud-resident':{browserCloudResidentEnabled:true,browserResidentCall:async(...call)=>{hostCalls.push(call);}},
+  './gmail-grants':{gmailGrantTier:()=> 'send',googleAccountAccessLabel:()=> 'Read and send access'},
   './modal-inert':{holdPhoneInert:()=>()=>{}},
   './connection-ui':{connectionController:{subscribe:()=>()=>{},getSnapshot:()=>snapshot,getCloudClient:()=>binding,rejectCloudSession:()=>{throw Error('Unexpected rejection');}}},
-  './google-accounts':{GOOGLE_ACCOUNTS_CHANGED:ACCOUNTS,createGoogleAccounts:()=>({list:async()=>{counts.accounts++;return [account];}})},
-  './google-calendar':{GoogleCalendarReader:class {async listSources(){counts.calendars++;return {status:'ready',calendars:[]};}invalidate(){}}},
-  './google-calendar-selection':{clearGoogleCalendarPrefsForConnection:()=>true},
-  './google-connect-flow':{googleConnect:{start(){throw Error('Unexpected OAuth request');},getSnapshot:()=>'idle',subscribe:()=>()=>{}},googleConnectNote:()=>''},
+  './google-accounts':{GOOGLE_ACCOUNTS_CHANGED:ACCOUNTS,createGoogleAccounts:()=>({list:async()=>{counts.accounts++;return [account];}}),linkGoogleCalendar:()=>{throw Error('Unexpected Calendar link without the Calendar intent');}},
+  './google-calendar-selection':{clearGoogleCalendarSelectionForConnection:()=>{throw Error('Unexpected disconnect');}},
+  './native-connection':{openConnectionBrowser:()=>{throw Error('Unexpected OAuth request');},googleWorkspaceReturnPort:undefined},
+  './google-agent-access':{googleAgentAccess:()=>({...access}),publishGoogleAgentAccess:async()=>{published.push({...access});},setGoogleAgentAccess:async change=>{Object.assign(access,change);dom.window.dispatchEvent(new dom.window.Event('alpha:device-settings'));}},
  };
  const compiled=transformSync(readFileSync('apps/app/src/runtime/google-connection-ui.tsx','utf8'),{loader:'tsx',jsx:'automatic',format:'cjs',target:'es2022'}).code;
  const module={exports:{}};
  const context=vm.createContext({module,exports:module.exports,require:name=>name==='react'||name==='react/jsx-runtime'?require(name):modules[name]??(()=>{throw Error('Unexpected import '+name);})(),window:dom.window,document:dom.window.document,getComputedStyle:dom.window.getComputedStyle,HTMLElement:dom.window.HTMLElement,AbortController,Event:dom.window.Event});
  vm.runInContext(compiled,context);
- const {GoogleConnectionsPanel,googleConnectionController,gmailAlertLine}=module.exports;
- assert.equal(gmailAlertLine({status:'watching',lastSyncAt:1}),'');
- assert.equal(gmailAlertLine({status:'watching',notificationsAllowed:false}),'Gmail notifications are off.');
- assert.equal(gmailAlertLine({status:'disabled'}),'Open Inbox to finish setting up Gmail alerts.');
- assert.equal(gmailAlertLine({status:'retrying'}),'');
+ const {GoogleConnectionsPanel,googleConnectionController}=module.exports;
  const root=createRoot(dom.window.document.getElementById('root'));
  const flush=()=>new Promise(resolve=>setTimeout(resolve,0));
  try{
@@ -48,18 +51,34 @@ test('Google settings list accounts only, revalidate grants and own Android Back
   const panel=dom.window.document.querySelector('[role="dialog"]');
   assert.equal(panel.style.getPropertyValue('--connection-bg'),'#121212');
   assert.equal(panel.style.getPropertyValue('--connection-acc'),'#95a0ff','Use the theme text accent, not its lower-contrast fill accent');
-  assert.deepEqual(counts,{accounts:1,calendars:0},'Settings lists accounts only; Calendar chooses which calendars show');
-  assert.equal(dom.window.document.querySelectorAll('input[type="radio"],[role="radiogroup"]').length,0,'There is no "Calendar to display" picker');
-  assert.equal(dom.window.document.querySelector('[role="dialog"]').textContent.includes('Watching for new unread'),false,'Normal Gmail watching shows no diagnostics');
-  assert.equal([...dom.window.document.querySelectorAll('button')].some(button=>button.textContent==='Check Google connections'),false,'Coming back from Google refreshes; there is no Check button');
-  await React.act(async()=>{dom.window.dispatchEvent(new dom.window.Event(ACCOUNTS));await flush();});
+  assert.deepEqual(counts,{accounts:1,calendars:0});
+  assert.equal(dom.window.document.querySelectorAll('input[type="radio"]').length,0,'No calendar picker: every calendar shown in Google is part of Calendar');
+  assert.doesNotMatch(panel.textContent,/Calendar to display|Local calendars only/);
+  assert.equal(panel.querySelector('[role="status"]').textContent,'Calendar includes the calendars you show in Google.');
+  assert.ok([...dom.window.document.querySelectorAll('button')].some(button=>button.textContent==='Add Google account'));
+  const refresh=[...dom.window.document.querySelectorAll('button')].find(button=>button.textContent==='Check Google connections');assert.ok(refresh);
+  await React.act(async()=>{refresh.click();await flush();});
   assert.deepEqual(counts,{accounts:2,calendars:0});
+  assert.deepEqual(published.at(-1),{gmailChanges:true,calendarEdits:true},'The agent host receives the default-on switches');
+  assert.deepEqual(hostCalls,[],'Loading the default-on switches never enables browser host Calendar writes');
+  {const gmail=dom.window.document.querySelector('[aria-label="Agent access to Google"] input[aria-label="Gmail changes"]'),calendar=dom.window.document.querySelector('[aria-label="Agent access to Google"] input[aria-label="Calendar edits"]');
+   assert.equal(gmail.checked,true,'Gmail changes default on when granted');assert.equal(calendar.checked,true,'Calendar edits default on when granted');
+   await React.act(async()=>{gmail.click();await flush();});
+   assert.equal(access.gmailChanges,false);assert.deepEqual(published.at(-1),{gmailChanges:false,calendarEdits:true});
+   assert.equal(dom.window.document.querySelector('[aria-label="Agent access to Google"] input[aria-label="Gmail changes"]').checked,false);
+   assert.ok(dom.window.document.querySelector('[aria-label="Disconnect Google account owner@example.invalid"]'),'Turning a switch off never disconnects Google');
+   assert.deepEqual(counts,{accounts:2,calendars:0},'Turning a switch off makes no provider request');
+   await React.act(async()=>{dom.window.document.querySelector('[aria-label="Agent access to Google"] input[aria-label="Gmail changes"]').click();await flush();});
+   assert.equal(access.gmailChanges,true,'An existing grant turns back on with no new consent');}
   account.grantedCapabilities=['google.calendar.read','google.gmail.read'];
   await React.act(async()=>{dom.window.dispatchEvent(new dom.window.Event(ACCOUNTS));await flush();});
   assert.deepEqual(counts,{accounts:3,calendars:0});
-  const buttons=[...dom.window.document.querySelectorAll('button')];
-  assert.ok(buttons.some(button=>button.textContent==='Update Google access'),'Reduced grants offer one upgrade');
-  assert.equal(buttons.find(button=>button.textContent==='Add Google account')?.className,'alpha-connection-cancel','Only the upgrade stays the primary pill');
+  const switches=()=>Object.fromEntries([...dom.window.document.querySelectorAll('[aria-label="Agent access to Google"] input[role="switch"]')].map(input=>[input.getAttribute('aria-label'),input]));
+  const agentAccess=dom.window.document.querySelector('[aria-label="Agent access to Google"]');
+  assert.ok(agentAccess,'Connected Google exposes the agent access switches');
+  assert.match(agentAccess.textContent,/review email sends and Calendar changes, even when “Ask before agent actions” is off/,'Provider consent must not imply the optional local-action setting bypasses send or Calendar review');
+  assert.equal(switches()['Gmail changes'].checked,false,'A switch whose grant is missing shows off');
+  assert.match(agentAccess.textContent,/Needs Google approval/);
   let underlyingBack=0;dom.window.addEventListener('alpha-back',()=>underlyingBack++);
   const back=new dom.window.Event('alpha-back',{cancelable:true});
   await React.act(async()=>{dom.window.dispatchEvent(back);await flush();});

@@ -24,9 +24,7 @@ export function affected(paths) {
       continue;
     }
     result.verify = true;
-    if (/^specs\/quint\//.test(path) || /^scripts\/(check-quint|quint-lib)\.mjs$/.test(path)) {
-      // Executable formal models are checked by verify and do not change APK or browser bytes.
-    } else if (/^test\/browser\//.test(path) || path === 'playwright.config.ts' || path === 'scripts/storage-specs.mjs') {
+    if (/^test\/browser\//.test(path) || path === 'playwright.config.ts' || path === 'scripts/storage-specs.mjs') {
       result.browser = true;
     } else if (/^test\//.test(path)) {
       // Host contract tests run in verify, not in an emulator.
@@ -63,7 +61,7 @@ export function browserPlan(paths, exists = existsSync) {
   const narrow = changed.length > 0 && changed.every(path => selectableSpec.test(path) && exists(path));
   const specs = narrow ? [...new Set(changed)].sort() : [];
   const development = specs.filter(path => !productionSpec.test(path));
-  const shards = narrow && development.length <= 3 ? [1] : [1, 2, 3, 4];
+  const shards = narrow && development.length <= 3 ? [1] : [1, 2, 3, 4, 5, 6];
   return {
     browser_specs: JSON.stringify(development),
     browser_shards: JSON.stringify(shards),

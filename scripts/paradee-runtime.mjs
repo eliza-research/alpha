@@ -1,3 +1,4 @@
+import {selectedAndroidAbis, abiArguments} from './android-abis.mjs';
 import fs from 'node:fs';
 import {execFileSync} from 'node:child_process';
 import path from 'node:path';
@@ -5,7 +6,6 @@ import {createHash} from 'node:crypto';
 import {fileURLToPath} from 'node:url';
 export const PARADEE_SOURCE='vendor/eliza/plugins/plugin-local-inference/native/android';
 export const PARADEE_NATIVE='.eliza/paradee-voice/native';
-export const usesParadee=root=>fs.existsSync(path.join(root,PARADEE_SOURCE,'consumer.gradle'));
 const digest=value=>createHash('sha256').update(value).digest('hex');
 function checkedFile(root,entry){
  if(!entry||typeof entry.path!=='string'||!entry.path||path.isAbsolute(entry.path)||entry.path.split(/[\\/]/).some(part=>!part||part==='.'||part==='..')||!Number.isSafeInteger(entry.bytes)||entry.bytes<=0||!/^[a-f0-9]{64}$/.test(entry.sha256))throw Error('Invalid Paradee build record entry');
@@ -46,7 +46,8 @@ export function asrSlotFiles(slot){
  return slot.files;
 }
 /** Integrity only. This never establishes functional, device or release qualification. */
-export function verifyParadeeRuntime(root,{allowAbsent=false}={}){
+export function verifyParadeeRuntime(root,{allowAbsent=false,abis}={}){
+ const selected=selectedAndroidAbis(abis);
  const native=path.join(root,PARADEE_NATIVE);
  if(allowAbsent&&!fs.existsSync(native))return {packaged:false,qualified:false};
  if(!fs.existsSync(path.join(native,'build-record.json')))throw Error('Paradee native build record is missing. Build pinned paradee-voice outputs outside vendor, then stage a reviewed ASR model pair.');
@@ -57,14 +58,14 @@ export function verifyParadeeRuntime(root,{allowAbsent=false}={}){
  if(record.sourceCommit!==pin||record.nativeCommit!==forkPin)throw Error('Paradee build record does not match the pinned source revisions');
  const inputs=JSON.parse(fs.readFileSync(path.join(root,PARADEE_SOURCE,'inputs.json'),'utf8'));
  if(JSON.stringify(record.inputs)!==JSON.stringify(inputs))throw Error('Paradee inputs do not match the pinned upstream source');
- if(!Array.isArray(record.abis)||!['arm64-v8a','x86_64'].every(abi=>record.abis.includes(abi)))throw Error('Paradee requires both Android ABIs');
+ selectedAndroidAbis(record.abis);if(!selected.every(abi=>record.abis.includes(abi)))throw Error('Paradee is missing a requested Android ABI');
  if(!Array.isArray(record.files)||!record.files.length||new Set(record.files.map(row=>row.path)).size!==record.files.length)throw Error('Paradee build record is incomplete');
  for(const entry of record.files)checkedFile(native,entry);
  const names=new Set(record.files.map(row=>row.path)),bundle='assets/paradee-voice/v1/';
  const walk=directory=>{for(const entry of fs.readdirSync(directory,{withFileTypes:true})){const file=path.join(directory,entry.name),relative=path.relative(native,file);if(entry.isSymbolicLink())throw Error('Paradee output contains a symbolic link');if(entry.isDirectory())walk(file);else if(!entry.isFile()||(relative!=='build-record.json'&&!names.has(relative)))throw Error('Unrecorded Paradee output: '+relative);}};walk(native);
- for(const name of ['arm64-v8a','x86_64'].map(abi=>`jniLibs/${abi}/libelizainference.so`).concat(bundle+'manifest.json'))if(!names.has(name))throw Error('Paradee build record missing '+name);
+ for(const name of selected.map(abi=>`jniLibs/${abi}/libelizainference.so`).concat(bundle+'manifest.json'))if(!names.has(name))throw Error('Paradee build record missing '+name);
  const manifest=JSON.parse(fs.readFileSync(path.join(native,bundle,'manifest.json'),'utf8'));
- if(manifest.format!=='eliza-paradee-voice-v2'||manifest.model!==inputs.paradee.path||manifest.lexicon!==inputs.lexicon.path||!Array.isArray(manifest.files))throw Error('Paradee voice manifest changed');
+ if(manifest.format!=='eliza-paradee-voice-v1'||manifest.model!==inputs.paradee.path||manifest.lexicon!==inputs.lexicon.path||!Array.isArray(manifest.files))throw Error('Paradee voice manifest changed');
  for(const entry of manifest.files){checkedFile(path.join(native,bundle),entry);const recorded=record.files.find(row=>row.path===bundle+entry.path);if(!recorded||recorded.sha256!==entry.sha256||recorded.bytes!==entry.bytes)throw Error('Voice manifest differs from build record');}
  for(const pin of [inputs.paradee,inputs.lexicon]){const entry=manifest.files.find(row=>row.path===pin.path);if(!entry||entry.sha256!==pin.sha256||entry.bytes!==pin.bytes)throw Error('Pinned speech model or lexicon changed');}
  // The upstream builder currently produces TTS only. Never call that complete local speech.
@@ -81,7 +82,7 @@ export function verifyParadeeRuntime(root,{allowAbsent=false}={}){
 export function verifyParadeeAppLinkage(root,options={}){
  const result=verifyParadeeRuntime(root,options);if(!result.packaged)return result;
  const native=path.join(root,PARADEE_NATIVE),record=JSON.parse(fs.readFileSync(path.join(native,'build-record.json'),'utf8'));
- for(const abi of ['arm64-v8a','x86_64']){
+ for(const abi of selectedAndroidAbis(options.abis)){
   const entry=record.files.find(row=>row.path===`jniLibs/${abi}/libelizainference.so`);
   try{checkedFile(root,{...entry,path:`android/app/src/main/jniLibs/${abi}/libelizainference.so`});}
   catch(error){throw Error('App inference library must match the Paradee build record for '+abi,{cause:error});}
@@ -89,6 +90,6 @@ export function verifyParadeeAppLinkage(root,options={}){
  return result; // Integrity/linkage only; functional qualification is still false.
 }
 if(process.argv[1]&&path.resolve(process.argv[1])===fileURLToPath(import.meta.url)){
- const args=process.argv.slice(2);if(args.some(arg=>arg!=='--allow-absent'&&arg!=='--app-linkage'))throw Error('Unknown Paradee verification option');
- console.log(JSON.stringify((args.includes('--app-linkage')?verifyParadeeAppLinkage:verifyParadeeRuntime)(path.resolve(import.meta.dirname,'..'),{allowAbsent:args.includes('--allow-absent')})));
+ const {rest:args,abis}=abiArguments(process.argv.slice(2));if(args.some(arg=>arg!=='--allow-absent'&&arg!=='--app-linkage'))throw Error('Unknown Paradee verification option');
+ console.log(JSON.stringify((args.includes('--app-linkage')?verifyParadeeAppLinkage:verifyParadeeRuntime)(path.resolve(import.meta.dirname,'..'),{allowAbsent:args.includes('--allow-absent'),abis})));
 }

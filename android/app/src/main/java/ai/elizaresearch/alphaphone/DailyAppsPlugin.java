@@ -8,6 +8,7 @@ import android.content.Intent;
 import android.database.Cursor;
 import android.net.Uri;
 import android.provider.CalendarContract;
+import android.provider.DocumentsContract;
 // MVP-DEFERRED: import android.provider.ContactsContract;
 import android.provider.MediaStore;
 import android.provider.OpenableColumns;
@@ -18,6 +19,7 @@ import com.getcapacitor.JSArray;
 import com.getcapacitor.JSObject;
 import com.getcapacitor.PluginCall;
 import com.getcapacitor.PluginMethod;
+import ai.eliza.plugins.media.SelectedDocumentCalls;
 import com.getcapacitor.annotation.ActivityCallback;
 import com.getcapacitor.annotation.CapacitorPlugin;
 import java.util.ArrayList;
@@ -60,22 +62,15 @@ public class DailyAppsPlugin extends ai.eliza.plugins.reminders.ReminderPlugin {
   JSObject value = new JSObject(); value.put("closed", assistant); call.resolve(value);
   if (assistant) getActivity().runOnUiThread(() -> getActivity().finish());
  }
- @PluginMethod public void restoreSelected(PluginCall call) {try{call.resolve(SelectedDocumentAccess.restore(getContext()));}catch(RuntimeException error){call.reject("Saved document access is unavailable");}}
- @PluginMethod public void renameSelected(PluginCall call) {call.resolve(SelectedDocumentAccess.rename(getContext(),call.getString("selectionId"),call.getString("name")));}
- @PluginMethod public void pdfSelected(PluginCall call) {call.resolve(SelectedDocumentAccess.pdf(getContext(),call.getString("selectionId"),call.getInt("page",0)));}
- @PluginMethod public void describeSelected(PluginCall call) {try{call.resolve(SelectedDocumentAccess.describeSelected(getContext(),call.getString("selectionId")));}catch(RuntimeException error){call.reject("Saved document access is unavailable");}}
- @PluginMethod public void readSelected(PluginCall call) {
-  call.resolve(SelectedDocumentAccess.read(getContext(), call.getString("selectionId")));
- }
- @PluginMethod public void openSelected(PluginCall call) {
-  call.resolve(SelectedDocumentAccess.open(getActivity(), call.getString("selectionId")));
- }
- @PluginMethod public void shareSelected(PluginCall call) {
-  call.resolve(SelectedDocumentAccess.share(getActivity(), call.getString("selectionId")));
- }
- @PluginMethod public void forgetSelected(PluginCall call) {
-  try{SelectedDocumentAccess.forget(call.getString("selectionId"));call.resolve();}catch(RuntimeException error){call.reject("Document access could not be released");}
- }
+ /** Selected-document capabilities: the shared bridge contract over Alpha's installed registry (SelectedDocumentAccess). */
+ @PluginMethod public void restoreSelected(PluginCall call){SelectedDocumentCalls.restore(call,()->SelectedDocumentAccess.documents(getContext()));}
+ @PluginMethod public void renameSelected(PluginCall call){SelectedDocumentCalls.rename(call,()->SelectedDocumentAccess.documents(getContext()));}
+ @PluginMethod public void pdfSelected(PluginCall call){SelectedDocumentCalls.pdf(call,()->SelectedDocumentAccess.documents(getContext()));}
+ @PluginMethod public void describeSelected(PluginCall call){SelectedDocumentCalls.describe(call,()->SelectedDocumentAccess.documents(getContext()));}
+ @PluginMethod public void readSelected(PluginCall call){SelectedDocumentCalls.read(call,()->SelectedDocumentAccess.documents(getContext()));}
+ @PluginMethod public void openSelected(PluginCall call){SelectedDocumentCalls.open(call,()->SelectedDocumentAccess.documents(getContext()),getActivity());}
+ @PluginMethod public void shareSelected(PluginCall call){SelectedDocumentCalls.share(call,()->SelectedDocumentAccess.documents(getContext()),getActivity());}
+ @PluginMethod public void forgetSelected(PluginCall call){SelectedDocumentCalls.forget(call,()->SelectedDocumentAccess.documents(getContext()));}
  private Integer clockInteger(JSObject data,String key) {
   Object value=data.opt(key);if(value==null||value==org.json.JSONObject.NULL)return null;
   if(!(value instanceof Number))throw new IllegalArgumentException("Invalid Clock number");
@@ -88,8 +83,14 @@ public class DailyAppsPlugin extends ai.eliza.plugins.reminders.ReminderPlugin {
    while(keys.hasNext()){String key=keys.next();if(!java.util.Arrays.asList("action","hour","minute","label","snoozeMinutes","reviewed","timeZone","days").contains(key))throw new IllegalArgumentException("Unexpected Clock option");}
    if(data.has("timeZone")&&(!(data.opt("timeZone") instanceof String)||((String)data.opt("timeZone")).length()>100))throw new IllegalArgumentException("Invalid Clock time zone");
    Object label=data.opt("label");if(label!=null&&label!=org.json.JSONObject.NULL&&!(label instanceof String))throw new IllegalArgumentException("Invalid Clock label");
-   call.resolve(ClockHandoff.launch(getActivity(),call.getString("action"),clockInteger(data,"hour"),clockInteger(data,"minute"),label instanceof String?(String)label:null,clockInteger(data,"snoozeMinutes"),Boolean.TRUE.equals(data.opt("reviewed")),call.getString("timeZone"),ClockHandoff.days(data.opt("days"))));
-  }catch(IllegalArgumentException invalid){call.resolve(ClockHandoff.result(call.getString("action"),"failed",invalid.getMessage()));}
+   // Shared reviewed handoff (plugin-native-system clock.ClockHandoff): a launched Clock activity is
+   // never a receipt; the strongest status is "opened", naming the package that received it.
+   call.resolve(clockResult(ai.eliza.plugins.system.clock.ClockHandoff.launch(getActivity(),"Alpha",call.getString("action"),clockInteger(data,"hour"),clockInteger(data,"minute"),label instanceof String?(String)label:null,clockInteger(data,"snoozeMinutes"),Boolean.TRUE.equals(data.opt("reviewed")),call.getString("timeZone"),ai.eliza.plugins.system.clock.ClockDays.strict(data.opt("days")))));
+  }catch(IllegalArgumentException invalid){call.resolve(clockResult(ai.eliza.plugins.system.clock.ClockHandoff.result(call.getString("action"),ai.eliza.plugins.system.clock.ClockHandoff.Status.FAILED,invalid.getMessage())));}
+ }
+ static JSObject clockResult(ai.eliza.plugins.system.clock.ClockHandoff.Result result){
+  JSObject out=new JSObject();out.put("action",result.action);out.put("status",result.status.wire);out.put("message",result.message);
+  if(result.receiver!=null)out.put("package",result.receiver);return out;
  }
  @PluginMethod public void capabilities(PluginCall call) {
   JSArray actions = new JSArray();
@@ -133,6 +134,10 @@ public class DailyAppsPlugin extends ai.eliza.plugins.reminders.ReminderPlugin {
     Intent result = new Intent(Intent.ACTION_OPEN_DOCUMENT).setType("*/*").addCategory(Intent.CATEGORY_OPENABLE).addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_GRANT_WRITE_URI_PERMISSION | Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION);
     String[] types = mimeTypes(call);
     if (types.length == 1) result.setType(types[0]); else if (types.length > 1) result.putExtra(Intent.EXTRA_MIME_TYPES, types);
+    if ("downloads".equals(string(call, "initialLocation", ""))) {
+     result.putExtra(DocumentsContract.EXTRA_INITIAL_URI,
+       DocumentsContract.buildDocumentUri("com.android.externalstorage.documents", "primary:Download"));
+    }
     return result;
    }
    case "maps": return new Intent(Intent.ACTION_VIEW, Uri.parse("geo:0,0?q=" + Uri.encode(string(call, "query", ""))));

@@ -5,18 +5,25 @@ import path from 'node:path';
 import test from 'node:test';
 import {createCombinedDeviceRunner,requireCombinedCase} from '../scripts/combined-agent-device.mjs';
 
-function fixture(t) {
+function fixture(t,{hangStartupDelay=0}={}) {
   const dir=fs.mkdtempSync(path.join(os.tmpdir(),'alpha-combined-command-'));
   t.after(()=>fs.rmSync(dir,{recursive:true,force:true}));
   const adb=path.join(dir,'adb'),pidFile=path.join(dir,'pid');
   fs.writeFileSync(adb,`#!${process.execPath}
 import fs from 'node:fs';
 const mode=process.argv[4];
+if(mode==='hang'){
+  await new Promise(resolve=>setTimeout(resolve,${hangStartupDelay}));
+  process.on('SIGTERM',()=>process.stdout.write('combinedStage=term-handled\\n'));
+  setInterval(()=>{},1000);
+  fs.writeFileSync(process.argv[5],String(process.pid));
+  process.stdout.write('combinedStage=term-ready\\n');
+} else {
 fs.writeFileSync(process.argv[5],String(process.pid));
-if(mode==='hang'){process.on('SIGTERM',()=>{});setInterval(()=>{},1000);}
-else if(mode==='stdout'||mode==='stderr'){process[mode].write('x'.repeat(8192));}
+if(mode==='stdout'||mode==='stderr'){process[mode].write('x'.repeat(8192));}
 else if(mode==='fail'){process.stderr.write('private fixture bytes');process.exitCode=1;}
 else {let text='';process.stdin.setEncoding('utf8');process.stdin.on('data',chunk=>text+=chunk);process.stdin.on('end',()=>{process.stdout.write('INSTRUMENTATION_STATUS: combinedSta');setTimeout(()=>process.stdout.write('ge=paired\\r\\n'+text),10);});}
+}
 `,{mode:0o700});
   return {adb,pidFile};
 }
@@ -30,8 +37,25 @@ test('device runner preserves private stdin and reports a split progress line on
   assert.deepEqual(stages,['paired']);dead(pidFile);
 });
 test('timeout kills a TERM-resistant child before returning failure',async t=>{
-  const {adb,pidFile}=fixture(t);
-  await assert.rejects(runner(adb,{timeout:1000})(['hang',pidFile]),/execution bound/);dead(pidFile);
+  // execFile's clock includes Node startup. Prove readiness within a separate
+  // finite fixture budget, then retain a full second of TERM-resistant running.
+  const startupBudget=3000,executionWindow=1000;
+  const {adb,pidFile}=fixture(t,{hangStartupDelay:1200}),stages=[];
+  const started=performance.now();let readyAt;
+  await assert.rejects(runner(adb,{
+    timeout:startupBudget+executionWindow,
+    onStage:stage=>{
+      stages.push(stage);
+      if(stage==='term-ready'){
+        readyAt=performance.now();
+        process.kill(Number(fs.readFileSync(pidFile,'utf8')),'SIGTERM');
+      }
+    },
+  })(['hang',pidFile]),/execution bound/);
+  assert.deepEqual(stages,['term-ready','term-handled'],'fixture must start and actually resist SIGTERM before timeout');
+  assert.ok(readyAt-started<=startupBudget,'fixture startup exceeded its finite budget');
+  assert.ok(performance.now()-readyAt>=executionWindow,'timeout must exercise the ready child for the execution window');
+  dead(pidFile);
 });
 for(const mode of ['stdout','stderr'])test(`oversized ${mode} fails even if the child would exit successfully`,async t=>{
   const {adb,pidFile}=fixture(t);

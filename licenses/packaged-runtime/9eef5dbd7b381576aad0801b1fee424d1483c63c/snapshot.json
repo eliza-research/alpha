@@ -1,0 +1,14 @@
+{
+  "schemaVersion": 1,
+  "recordedAt": "2026-10-27T13:44:21.179409+00:00",
+  "upstreamCommit": "9eef5dbd7b381576aad0801b1fee424d1483c63c",
+  "sourceCommit": "8ea44958e66ca9241fa767e92c1287e6ede068e6",
+  "scope": "Archived packaged-runtime notices for these APK bytes; source-only defaults are generated separately. No device or voice qualification is claimed.",
+  "noticeEntries": 722,
+  "agentBundleSha256": "0cf2d7f2f21aae829a893b2671e73ebfaa1e946284c8a19c5e73ce05495a53eb",
+  "agentInventoryPackages": 568,
+  "files": {
+    "third-party-notices.json": "0e7f4ce65bed4cd411f3394ea5612283684d8fdef16edbe300b5c5d4f2502ab8",
+    "THIRD_PARTY_NOTICES.txt": "a2359e67ae80e86ac117d0756dabe4a89a9af3fb23b3eaa58d8bbfd0020e7363"
+  }
+}

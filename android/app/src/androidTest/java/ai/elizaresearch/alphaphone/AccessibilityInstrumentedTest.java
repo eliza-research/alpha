@@ -12,7 +12,6 @@ import androidx.test.ext.junit.runners.AndroidJUnit4;
 import androidx.test.platform.app.InstrumentationRegistry;
 import androidx.test.uiautomator.By;
 import androidx.test.uiautomator.UiDevice;
-import androidx.test.uiautomator.UiObject2;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
@@ -27,6 +26,11 @@ import org.junit.runner.RunWith;
  * Accessibility Test Framework checks on the native view hierarchy (Espresso) and a
  * UiAutomator check that every actionable node TalkBack reaches has a label, is not
  * clipped off-screen and appears in reading order. Emulator evidence only.
+ *
+ * A flag-off build signed out of Eliza Cloud shows nothing but the required sign-in page (P-43),
+ * which tests never get past (they never sign in). There the Home journey is skipped by its own
+ * assumption and the sign-in page itself, the first screen of a production phone, is checked at
+ * 200% instead; on the test-mocks pair (or a phone its owner signed in) it is the other way round.
  */
 @RunWith(AndroidJUnit4.class)
 public final class AccessibilityInstrumentedTest {
@@ -45,114 +49,8 @@ public final class AccessibilityInstrumentedTest {
  private static void until(String code)throws Exception{for(int i=0;i<200;i++){if("true".equals(js("Boolean("+code+")")))return;SystemClock.sleep(100);}fail("Accessibility flow condition: "+code);}
  private static void open(String view)throws Exception{js(AppNavigation.request(view));until(AppNavigation.selected(view));}
 
- /** Actionable or labelled leaf nodes in accessibility-tree (TalkBack linear) order. */
- private static void collect(UiObject2 node,List<UiObject2> out){
-  List<UiObject2> children=node.getChildren();
-  boolean actionable=node.isClickable()||node.isCheckable()||node.isLongClickable();
-  String label=(node.getText()==null?"":node.getText())+(node.getContentDescription()==null?"":node.getContentDescription());
-  if(actionable||(children.isEmpty()&&!label.trim().isEmpty()))out.add(node);
-  for(UiObject2 child:children)collect(child,out);
- }
- /** Failure evidence uses raw AX rectangles as well as UiAutomator's visible bounds. The
-  * pinned UiAutomator helper retains the original rectangle when intersection is empty. */
- private static android.view.accessibility.AccessibilityNodeInfo geometryNode(android.view.accessibility.AccessibilityNodeInfo node,String label,int depth){
-  if(node==null||depth>60)return null;
-  if(label.contentEquals(node.getText()==null?"":node.getText())||label.contentEquals(node.getContentDescription()==null?"":node.getContentDescription()))return node;
-  for(int i=0;i<node.getChildCount();i++){android.view.accessibility.AccessibilityNodeInfo found=geometryNode(node.getChild(i),label,depth+1);if(found!=null)return found;}
-  return null;
- }
- private static String accessibilityGeometry(String label){
-  android.view.accessibility.AccessibilityNodeInfo root=automation().getRootInActiveWindow();
-  android.view.accessibility.AccessibilityNodeInfo node=geometryNode(root,label,0);
-  StringBuilder out=new StringBuilder(label);
-  for(int depth=0;node!=null&&depth<16;depth++,node=node.getParent()){
-   Rect raw=new Rect();node.getBoundsInScreen(raw);
-   out.append(" < ").append(node.getClassName()).append(" raw=").append(raw.toShortString())
-    .append(" scrollable=").append(node.isScrollable()).append(" visible=").append(node.isVisibleToUser());
-  }
-  return out.toString();
- }
- /** UiAutomator 2.3.0 keeps a nonempty rectangle when intersection with a scrollable
-  * ancestor fails. Intersect explicitly so fully clipped descendants do not masquerade as
-  * visible controls; partially visible nodes keep only their painted area. */
- private static Rect visibleBounds(UiObject2 node,UiDevice device){
-  Rect bounds=node.getVisibleBounds();List<int[]> frames=new ArrayList<>();
-  frames.add(new int[]{0,0,device.getDisplayWidth(),device.getDisplayHeight()});
-  for(UiObject2 parent=node.getParent();parent!=null;parent=parent.getParent())if(parent.isScrollable()){
-   Rect frame=parent.getVisibleBounds();frames.add(new int[]{frame.left,frame.top,frame.right,frame.bottom});
-  }
-  int[] clipped=AccessibilityBounds.clip(new int[]{bounds.left,bounds.top,bounds.right,bounds.bottom},frames);
-  return new Rect(clipped[0],clipped[1],clipped[2],clipped[3]);
- }
- /** A named semantic group, not a geometry/class exception for arbitrary controls. */
- private static boolean assistantGroup(UiObject2 node){
-  for(UiObject2 current=node;current!=null;current=current.getParent())
-   if("Assistant controls".equals(current.getContentDescription())||"Assistant controls".equals(current.getText()))return true;
-  return false;
- }
- private static int assistantGroups(UiObject2 node){
-  int count="Assistant controls".equals(node.getContentDescription())||"Assistant controls".equals(node.getText())?1:0;
-  for(UiObject2 child:node.getChildren())count+=assistantGroups(child);
-  return count;
- }
- private static void talkBackOrder(UiDevice device,String surface)throws Exception{
-  device.waitForIdle(2000);
-  // The WebView publishes a layer's accessibility nodes shortly after the layer appears; read the
-  // tree again until it holds a clickable control (five seconds at most). The checks below are unchanged.
-  UiObject2 root=null;List<UiObject2> nodes=new ArrayList<>();
-  for(int attempt=0;attempt<25;attempt++){
-   root=device.findObject(By.pkg(BuildConfig.APPLICATION_ID).depth(0));nodes=new ArrayList<>();
-   if(root!=null){try{collect(root,nodes);}catch(androidx.test.uiautomator.StaleObjectException changing){nodes.clear();}}
-   boolean clickable=false;try{for(UiObject2 node:nodes)if(node.isClickable()&&!visibleBounds(node,device).isEmpty())clickable=true;}catch(androidx.test.uiautomator.StaleObjectException changing){clickable=false;}
-   if(clickable)break;
-   SystemClock.sleep(200);
-  }
-  assertNotNull(surface+": app window has an accessibility tree",root);
-  int width=device.getDisplayWidth();
-  List<String> problems=new ArrayList<>();
-  UiObject2 previous=null;Rect previousBounds=null;
-  int actionable=0;boolean seenAssistant=false,previousAssistant=false;
-  assertTrue(surface+": at most one assistant control group",assistantGroups(root)<=1);
-  for(UiObject2 node:nodes){
-   Rect r=visibleBounds(node,device);
-   if(r.isEmpty())continue;
-   String label=((node.getText()==null?"":node.getText())+" "+(node.getContentDescription()==null?"":node.getContentDescription())).trim();
-   // An empty text field has no text; Android carries its accessible name (aria-label/placeholder) as the hint, which TalkBack reads.
-   if(label.isEmpty()&&"android.widget.EditText".equals(node.getClassName())&&node.getHint()!=null)label=node.getHint().trim();
-   if(node.isClickable()){actionable++;if(label.isEmpty()&&node.getChildren().stream().noneMatch(c->c.getText()!=null&&!c.getText().trim().isEmpty()))problems.add("unlabelled control at "+r.toShortString());}
-   if(r.left<0||r.right>width)problems.add("clipped '"+label+"' at "+r.toShortString());
-   boolean assistant=assistantGroup(node);
-   if(seenAssistant&&!assistant)problems.add("App content follows the assistant control group");
-   seenAssistant|=assistant;
-   // Main app content is read before the persistent assistant group. That group
-   // floats above the bottom edge, so this semantic transition may move upward.
-   // Check every node and retain geometric order checks within each region.
-   if(previous!=null&&assistant==previousAssistant){
-    Rect p=previousBounds;
-    // The next node may start a new column to the right, otherwise it must not read upward.
-    if(r.top<p.top-Math.max(p.height(),r.height())/2&&r.left<p.right){
-     problems.add("reading order goes up from '"+previous.getText()+"' to '"+label+"'");
-     System.out.println("ALPHA_ACCESSIBILITY_ORDER_BOUNDS previous="+p.toShortString()+" next="+r.toShortString());
-     System.out.println("ALPHA_ACCESSIBILITY_PREVIOUS "+accessibilityGeometry(previous.getText()==null?String.valueOf(previous.getContentDescription()):previous.getText()));
-     System.out.println("ALPHA_ACCESSIBILITY_NEXT "+accessibilityGeometry(label));
-    }
-   }
-   previous=node;previousBounds=r;previousAssistant=assistant;
-  }
-  if(!problems.isEmpty())System.out.println("ALPHA_ACCESSIBILITY_HOME_GEOMETRY "+js("(()=>{const rect=e=>{if(!e)return null;const r=e.getBoundingClientRect(),s=getComputedStyle(e);return {x:r.x,y:r.y,width:r.width,height:r.height,overflowX:s.overflowX,overflowY:s.overflowY,scrollTop:e.scrollTop,scrollHeight:e.scrollHeight,clientHeight:e.clientHeight};};const q=s=>document.querySelector(s),css=getComputedStyle(document.documentElement);return JSON.stringify({viewport:{width:innerWidth,height:innerHeight},textScale:css.getPropertyValue('--alpha-text-scale'),dockClearance:css.getPropertyValue('--alpha-dock-clearance'),dockRest:css.getPropertyValue('--alpha-dock-rest'),phoneScale:css.getPropertyValue('--phone-scale'),home:rect(q('[data-alpha-layer=home]')),allApps:rect(q('[data-alpha-home-apps] button[aria-label=\"All apps\"]')),composer:rect(q('[data-alpha-layer=composer]')),pill:rect(q('[data-alpha-layer=pill]')),inputBar:rect(q('[data-alpha-input-bar]'))});})()"));
-  if(!problems.isEmpty()){
-   System.out.println("ALPHA_ACCESSIBILITY_SETTINGS_GEOMETRY "+js("(()=>{const rect=e=>{const r=e.getBoundingClientRect(),s=getComputedStyle(e);return {tag:e.tagName,classes:e.className,x:r.x,y:r.y,width:r.width,height:r.height,overflowX:s.overflowX,overflowY:s.overflowY,scrollTop:e.scrollTop,scrollLeft:e.scrollLeft,scrollHeight:e.scrollHeight,clientHeight:e.clientHeight,position:s.position};};const nodes=[...document.querySelectorAll('button,[role=button]')].filter(e=>!e.classList.contains('alpha-shade-handle')&&(e.getAttribute('aria-label')==='Notifications'||e.textContent.trim()==='Notifications')).slice(0,2);return JSON.stringify({activeView:document.documentElement.dataset.activeView,notifications:nodes.map(e=>{const ancestors=[];for(let p=e.parentElement;p&&ancestors.length<12;p=p.parentElement)ancestors.push(rect(p));return {control:rect(e),ancestors};})});})()"));
-   // This owned-emulator diagnostic survives app uninstall so the host can pull and
-   // remove its unique file. It does not change the collected assertion or UI state.
-   String screenshot="/sdcard/Download/alpha-accessibility-fixture-"+java.util.UUID.randomUUID()+".png";
-   try(InputStream capture=new ParcelFileDescriptor.AutoCloseInputStream(automation().executeShellCommand("screencap -p "+screenshot))){
-    capture.readAllBytes();System.out.println("ALPHA_ACCESSIBILITY_SCREENSHOT "+surface+" "+screenshot);
-   }catch(Exception error){System.out.println("ALPHA_ACCESSIBILITY_SCREENSHOT_ERROR "+error.getClass().getName());}
-  }
-  if(!"Notification shade".equals(surface))assertTrue(surface+": assistant controls form one final accessible group",seenAssistant&&assistantGroups(root)==1);
-  assertTrue(surface+": TalkBack reaches actionable controls",actionable>0);
-  assertTrue(surface+" at 200% font: "+problems,problems.isEmpty());
- }
+ /** TalkBack linear order of the app window at 200% font, read with this test's UiAutomation flags (TalkBackOrder). */
+ private static void talkBackOrder(UiDevice device,String surface)throws Exception{TalkBackOrder.check(device,surface,TalkBackOrder.Assistant.REQUIRED_LAST);}
 
  /** evaluateJavascript returns a JSON value; this unwraps a JSON string result. */
  private static String unquote(String json)throws Exception{return (String)new org.json.JSONTokener(json).nextValue();}
@@ -171,7 +69,58 @@ public final class AccessibilityInstrumentedTest {
  private static final String HOME_LABELS_SPLIT="(()=>{const bad=[];for(const button of document.querySelectorAll('[data-alpha-home-apps] > button')){const label=button.lastElementChild,text=(label.textContent||'').trim();if(!text||/\\s/.test(text))continue;"
   +"const range=document.createRange();range.selectNodeContents(label);const tops=new Set([...range.getClientRects()].filter(b=>b.width>1).map(b=>Math.round(b.top)));if(tops.size>1)bad.push(text);}return JSON.stringify(bad);})()";
 
+ /** A flag-off build without a stored Cloud credential: P-43's required sign-in page covers every view. */
+ private static boolean requiredSignIn()throws Exception{
+  if(BuildConfig.ELIZA_DEV_ALLOW_TEST_MOCKS)return false;
+  return new AlphaCredentialStore(InstrumentationRegistry.getInstrumentation().getTargetContext()).readCredentialSlot("cloud:production")==null;
+ }
+ /**
+  * Controls of the required sign-in page that cannot be brought wholly on screen by scrolling, or
+  * that something else is painted over once they are, as a JSON array (empty when none).
+  */
+ private static final String SIGN_IN_UNREACHABLE="(()=>{const page=document.querySelector('.alpha-auth-page');if(!page)return JSON.stringify(['no sign-in page']);const bad=[];"
+  +"for(const el of page.querySelectorAll('button,input:not([type=hidden]),a[href],textarea,select')){if(el.disabled||!el.getClientRects().length||el.closest('[hidden],[inert],[aria-hidden=\"true\"]'))continue;"
+  +"el.scrollIntoView({block:'center',inline:'nearest',behavior:'instant'});const r=el.getBoundingClientRect(),name=el.getAttribute('aria-label')||el.textContent.trim().slice(0,40)||el.getAttribute('placeholder')||el.tagName;"
+  +"if(r.left<-1||r.top<-1||r.right>innerWidth+1||r.bottom>innerHeight+1){bad.push(name+' off screen');continue;}"
+  +"const hit=document.elementFromPoint(r.left+r.width/2,r.top+r.height/2);if(!hit||!(hit===el||el.contains(hit)||hit.closest('label')?.contains(el)))bad.push(name+' covered');}"
+  +"document.getElementById('cloud-sign-in-title')?.scrollIntoView({block:'start',behavior:'instant'});return JSON.stringify(bad);})()";
+
+ /**
+  * The first screen of a production phone that is signed out, at 200% font: Accessibility Test
+  * Framework checks, the measured text scale, TalkBack order with nothing of the phone behind the
+  * page exposed (no assistant controls), and every control reachable by scrolling and uncovered.
+  * Never enters an address or a code: nothing is sent to Eliza Cloud.
+  */
+ @Test public void requiredCloudSignInAtDoubleFontScale()throws Exception{
+  org.junit.Assume.assumeTrue("Only a flag-off build signed out of Eliza Cloud opens the required sign-in page (P-43)",requiredSignIn());
+  androidx.test.uiautomator.Configurator configurator=androidx.test.uiautomator.Configurator.getInstance();
+  int previousFlags=configurator.getUiAutomationFlags();
+  configurator.setUiAutomationFlags(AUTOMATION_FLAGS);
+  String previous=shell("settings get system font_scale");
+  UiDevice device=UiDevice.getInstance(InstrumentationRegistry.getInstrumentation());
+  try{
+   shell("settings put system font_scale 2.0");
+   try(BoundedActivityScenario<MainActivity> scenario=BoundedActivityScenario.launch(MainActivity.class)){
+    AppNavigation.liveMode();
+    AccessibilityChecks.enable().setRunChecksFromRootView(true);
+    until("document.querySelector('.alpha-auth-page #cloud-sign-in-title')?.textContent==='Welcome to Alpha.'");
+    onView(isRoot()).check(AccessibilityChecks.accessibilityAssertion());
+    until("Number(getComputedStyle(document.documentElement).getPropertyValue('--alpha-text-scale'))>0");
+    double measured=Double.parseDouble(js("Number(getComputedStyle(document.documentElement).getPropertyValue('--alpha-text-scale'))"));
+    assertTrue("The sign-in page measures the 200% text it is drawn at (measured "+measured+")",Math.abs(measured-2.0)<0.2);
+    TalkBackOrder.check(device,"Required Cloud sign-in",TalkBackOrder.Assistant.ABSENT);
+    assertEquals("Sign-in controls out of reach at 200% font","[]",unquote(js(SIGN_IN_UNREACHABLE)));
+   }
+  }finally{
+   shell("settings put system font_scale "+(previous.isEmpty()||"null".equals(previous)?"1.0":previous));
+   configurator.setUiAutomationFlags(previousFlags);
+  }
+ }
+
  @Test public void homeShadeSettingsAndComposerAtDoubleFontScale()throws Exception{
+  // P-43: a flag-off build signed out of Eliza Cloud shows only the sign-in page, which
+  // requiredCloudSignInAtDoubleFontScale checks; the views need the test-mocks pair or a signed-in phone.
+  AppNavigation.assumeNoRequiredSignIn("The accessibility journey through Home, Settings and the composer");
   androidx.test.uiautomator.Configurator configurator=androidx.test.uiautomator.Configurator.getInstance();
   int previousFlags=configurator.getUiAutomationFlags();
   configurator.setUiAutomationFlags(AUTOMATION_FLAGS);

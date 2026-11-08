@@ -25,7 +25,7 @@ async function setup(page:Page,reviewFile=true){
  if(!reviewFile)return;
  await expect.poll(()=>page.evaluate(async()=>{const {VIEWS}=await import('/src/prototype/model.js');return VIEWS.inbox.fileEmailTarget().ready;})).toBe(true);
  await page.evaluate(()=>(window as any).fileEmail.shell.openView('files',{}));
- await page.getByText('App files',{exact:true}).first().click();
+ await page.getByRole('button',{name:'Internal storage',exact:true}).click();
  await page.getByRole('button',{name:'Open selected.txt',exact:true}).click();
  await page.getByRole('button',{name:'Use in email',exact:true}).click();
  await expect(dialog(page)).toContainText('selected.txt · text/plain · 17 bytes');

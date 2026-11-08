@@ -1,0 +1,94 @@
+{
+  "artifacts": [
+    {
+      "group": "androidx.startup",
+      "name": "startup-runtime",
+      "version": "1.2.0",
+      "artifact": "startup-runtime-1.2.0.aar",
+      "sha256": "f51d361d17b30b09cfb9e2aebf301d113f99437cbf462a066092795fb60eddd2",
+      "origin": "https://dl.google.com/dl/android/maven2",
+      "independentlyMatched": true
+    },
+    {
+      "group": "androidx.startup",
+      "name": "startup-runtime",
+      "version": "1.2.0",
+      "artifact": "startup-runtime-1.2.0.module",
+      "sha256": "39387ad16429950ac100a055bc7cc809b0ecef86da29c5b41f2fb0d2ff063c1c",
+      "origin": "https://dl.google.com/dl/android/maven2",
+      "independentlyMatched": true
+    },
+    {
+      "group": "com.squareup.okhttp3",
+      "name": "okhttp",
+      "version": "5.3.2",
+      "artifact": "okhttp-5.3.2.module",
+      "sha256": "0b7774203a736b5d22fc45b522ec927bbe2c90487dd5865b64e57e00605e4711",
+      "origin": "https://repo.maven.apache.org/maven2",
+      "independentlyMatched": true
+    },
+    {
+      "group": "com.squareup.okhttp3",
+      "name": "okhttp-android",
+      "version": "5.3.2",
+      "artifact": "okhttp-android-5.3.2.module",
+      "sha256": "1cdc2e14a56795213d9b6f34d5f6dad235cd199ca39dc8d3e427e91e5a5b63e8",
+      "origin": "https://repo.maven.apache.org/maven2",
+      "independentlyMatched": true
+    },
+    {
+      "group": "com.squareup.okhttp3",
+      "name": "okhttp-android",
+      "version": "5.3.2",
+      "artifact": "okhttp-release.aar",
+      "sha256": "f1a78812ebeef4d45eee0dbeb4f27347210f564d2b8ee411f012ce8573b0a658",
+      "origin": "https://repo.maven.apache.org/maven2",
+      "independentlyMatched": true
+    },
+    {
+      "group": "com.squareup.okio",
+      "name": "okio",
+      "version": "3.16.4",
+      "artifact": "okio-3.16.4.module",
+      "sha256": "c8441a8726db1a4f9d4f39e068ebb42df6a59d647e32a9c61c15b5390ed59252",
+      "origin": "https://repo.maven.apache.org/maven2",
+      "independentlyMatched": true
+    },
+    {
+      "group": "com.squareup.okio",
+      "name": "okio-jvm",
+      "version": "3.16.4",
+      "artifact": "okio-jvm-3.16.4.jar",
+      "sha256": "2196b993cd34dbbd919e7e01f57a4781b58bee80f86106163e287c20343a96a7",
+      "origin": "https://repo.maven.apache.org/maven2",
+      "independentlyMatched": true
+    },
+    {
+      "group": "com.squareup.okio",
+      "name": "okio-jvm",
+      "version": "3.16.4",
+      "artifact": "okio-jvm-3.16.4.module",
+      "sha256": "9008d5a2954a068c6848274f6eebdff48b14a70dbc693d3302e08c570cca032f",
+      "origin": "https://repo.maven.apache.org/maven2",
+      "independentlyMatched": true
+    },
+    {
+      "group": "org.jetbrains.kotlin",
+      "name": "kotlin-stdlib",
+      "version": "2.2.21",
+      "artifact": "kotlin-stdlib-2.2.21.jar",
+      "sha256": "6558a3d233da56a20934b32159f9db5f86ed5816ef098f78a2c223dc6abb79dd",
+      "origin": "https://repo.maven.apache.org/maven2",
+      "independentlyMatched": true
+    },
+    {
+      "group": "org.jetbrains.kotlin",
+      "name": "kotlin-stdlib",
+      "version": "2.2.21",
+      "artifact": "kotlin-stdlib-2.2.21.module",
+      "sha256": "bfbc657ddd3a8e37e4c8ad417968d5eb0b0b171c9fce48f962c2ad32ee434c21",
+      "origin": "https://repo.maven.apache.org/maven2",
+      "independentlyMatched": true
+    }
+  ]
+}

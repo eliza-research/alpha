@@ -275,6 +275,14 @@ Physical-device qualification must cover radios, camera/audio, suspend/resume,
 accessibility, recovery and signed updates/rollback. Production signing, distribution,
 device-owner provisioning and target-user task acceptance remain independent gates.
 
+For Pixel 10a these gates are recorded separately in
+`android/aosp/pixel10a-qualification-gates.json` (see the
+[source contract](pixel10a-source-contract.md#distribution-gates)).
+`node --test test/pixel10a-gates.test.mjs` (class S) checks that the record keeps them
+distinct, that only release-level evidence passes a gate, and that the record agrees with
+the source lock, product descriptor and update channel. It does not prove any build, boot,
+drill or acceptance.
+
 ## Pin move to fb62325230 (2026-10-14): agent-event IPC
 
 Branch `claude/pin-eliza-develop-fb62325`. The pin moved from `c7a9a0d7e7` to `fb62325230`, the

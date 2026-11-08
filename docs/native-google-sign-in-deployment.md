@@ -1,24 +1,35 @@
 # Native Google sign-in deployment
 
-Alpha renders its own Cloud sign-in screen. Google account authorization uses the
-provider's Custom Tab and returns to Alpha through a verified App Link; it must
+Alpha renders its own Cloud sign-in screen. Google account authorization uses an
+external browser and returns to Alpha through a verified App Link; it must
 not open the hosted Eliza login page. Email codes stay in Alpha and do not depend
 on Google redirect or App Link readiness.
 
 ## Build and server requirements
 
-Build the production Android variants with `ELIZAOS_APP_LINK_HOST=eliza.app`:
+Production Android variants declare the configured production web host by default:
 
 ```sh
-ELIZAOS_APP_LINK_HOST=eliza.app npm run android:build:local
+npm run android:build:local
 ```
 
-Without that explicit build setting, Gradle emits no HTTPS App Link filter.
-`android/app/build.gradle` deliberately writes a `${appLinkHost}` manifest
+`ELIZAOS_APP_LINK_HOST`, when supplied, must equal the configured production web host.
+`android/app/product.gradle` deliberately writes a `${appLinkHost}` manifest
 placeholder; Android manifest merging resolves it from `manifestPlaceholders`.
 Inspect the final APK manifest, not only the generated overlay. Both distributions
 must declare HTTPS host `eliza.app` and exact path `/alphaphone/auth/callback`.
 The same host also receives the Google connector delegation return filter.
+
+Alpha selects `googleSignInMode("browser")` in the shared native auth client. A browser that
+offers Android Custom Tabs opens as a Custom Tab. Without one (stock AOSP ships only the WebView
+shell browser), the default HTTPS browser opens with a plain `ACTION_VIEW`, as Google
+connections do; Alpha's own WebView is never used. At least one external HTTPS browser is required.
+This supports AOSP without Google Play services. PKCE, the pending state, code exchange,
+MFA and credential writes stay in the native client. A cancelled, expired or superseded
+attempt cannot commit a credential. A process restart during browser sign-in requires a
+fresh explicit attempt rather than granting the old return new credential authority.
+The pinned shared source is unchanged; the reviewed patch and source hashes are in
+`patches/eliza/native-manifest.json`.
 
 The Cloud and Steward deployments must independently satisfy all of these:
 
@@ -58,3 +69,28 @@ app admission require the corresponding deployed configuration to be repaired.
 Passing these probes still does not prove provider login, callback interception,
 MFA, mobile credential exchange, account binding or session persistence. Verify
 those through an explicitly initiated sign-in on the physical device.
+
+## Credential-free probe, October 27, 2026
+
+`node scripts/cloud-readiness.mjs probe` (and `--environment staging`) repeats these
+observations with the requests the phone makes, once each, and names the owning step in
+[human actions](human-actions.md). Recorded in
+[cloud-readiness-2026-10-27.json](evidence/cloud-readiness-2026-10-27.json):
+
+| Gate | Production | Staging |
+| --- | --- | --- |
+| Mobile App Auth registration for `ai.elizaresearch.alphaphone`, S256 | Passed (the October 24 503 is resolved) | Passed |
+| Email sign-in (offered without a captcha, code route present) | Passed | Passed |
+| Native Google (`googleNative` advertised) | Passed | Not advertised: no `STEWARD_GOOGLE_NATIVE_CLIENT_IDS` client for the staging app client |
+| Tenant allowlist admits the return URL | Passed (the October 24 400 is resolved) | Passed |
+| `assetlinks.json` grants the release certificate | No release certificate is enrolled; two other certificates are listed | One certificate is listed (staging serves debug-signed test-mocks builds) |
+| Hosted callback page, service documents, entitlement keys | Passed | Passed |
+| Maps and Google connector routes | Not checkable without an account | Not checkable without an account |
+
+At the time of this historical probe, native Google on a release-signed build needed an Android OAuth client for the release
+certificate's SHA-1 under `alpha-phone` in `STEWARD_GOOGLE_NATIVE_CLIENT_IDS` (H-12), and the
+release fingerprint in `ELIZA_ANDROID_ASSET_LINKS_JSON` (H-13). Cloud's global auth gate
+answers every protected `/api/` path that carries no credential with 401 before routing, so an
+unauthenticated request cannot show whether the Maps or Google connector routes are deployed;
+the probe lists them without requesting them. These probes are deployment configuration
+evidence only: no account signed in and nothing was verified on a device.

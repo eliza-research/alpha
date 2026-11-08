@@ -4,7 +4,7 @@ import templateHtml from "./template.html?raw";
 /* Minimal renderer for the prototype's .dc.html template: {{holes}}, sc-if, sc-for, events, refs. */
 
   var h = React.createElement;
-  var EVENTS = { onsubmit:"onSubmit", onerror:"onError", onload:"onLoad", onfocuscapture: "onFocusCapture", onfocus: "onFocus", onblur: "onBlur", onclick: "onClick", oncontextmenu: "onContextMenu", onpointermove: "onPointerMove", onpointerdown: "onPointerDown", onpointerup: "onPointerUp", onpointerleave: "onPointerLeave", onpointercancel: "onPointerCancel", onlostpointercapture: "onLostPointerCapture", onchange: "onChange", onkeydown: "onKeyDown", oninput: "onInput" };
+  var EVENTS = { onsubmit:"onSubmit", onerror:"onError", onload:"onLoad", onfocuscapture: "onFocusCapture", onclick: "onClick", oncontextmenu: "onContextMenu", onpointermove: "onPointerMove", onpointerdown: "onPointerDown", onpointerup: "onPointerUp", onpointerleave: "onPointerLeave", onpointercancel: "onPointerCancel", onlostpointercapture: "onLostPointerCapture", onchange: "onChange", onkeydown: "onKeyDown", oninput: "onInput" };
   var HOLE = /\{\{\s*([^}]+?)\s*\}\}/g;
   var WHOLE = /^\{\{\s*([^}]+?)\s*\}\}$/;
 
@@ -94,7 +94,7 @@ import templateHtml from "./template.html?raw";
     if (n.nodeType === 3) {
       var t = n.nodeValue;
       if (!t.trim() && /\n/.test(t)) return null;
-      var whole = t.match(WHOLE);
+      var whole = t.trim().match(WHOLE);
       var value = whole ? lookup(whole[1], scope) : null;
       if (React.isValidElement(value)) return h(React.Fragment, { key: key }, value);
       return t.indexOf("{{") >= 0 ? interp(t, scope) : t;
@@ -106,14 +106,27 @@ import templateHtml from "./template.html?raw";
       var ok = m ? lookup(m[1], scope) : false;
       return ok ? h(React.Fragment, { key: key }, kids(n.childNodes, scope)) : null;
     }
+    // A React element from the scope, with template-rendered children passed as named props:
+    // <sc-element value="{{el}}"><sc-slot name="cards">…</sc-slot></sc-element>.
+    if (tag === "sc-element") {
+      var em = (n.getAttribute("value") || "").match(WHOLE);
+      var element = em ? lookup(em[1], scope) : null;
+      if (!React.isValidElement(element)) return null;
+      var slots = { key: key };
+      for (var c = 0; c < n.childNodes.length; c++) {
+        var slot = n.childNodes[c];
+        if (slot.nodeType === 1 && slot.tagName.toLowerCase() === "sc-slot") slots[slot.getAttribute("name")] = h(React.Fragment, null, kids(slot.childNodes, scope));
+      }
+      return React.cloneElement(element, slots);
+    }
     if (tag === "sc-for") {
       var lm = (n.getAttribute("list") || "").match(WHOLE);
       var list = (lm ? lookup(lm[1], scope) : []) || [];
       var as = n.getAttribute("as") || "item";
-      var identity = (n.getAttribute("key") || "").match(WHOLE);
+      var km = (n.getAttribute("key") || "").match(WHOLE);
       return h(React.Fragment, { key: key }, list.map(function (item, i) {
         var s = Object.create(scope); s[as] = item; s.$index = i;
-        var itemKey = identity ? lookup(identity[1], s) : i;
+        var itemKey = km ? lookup(km[1], s) : i;
         return h(React.Fragment, { key: itemKey == null ? i : itemKey }, kids(n.childNodes, s));
       }));
     }

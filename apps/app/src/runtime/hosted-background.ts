@@ -1,6 +1,7 @@
 import { registerPlugin } from '../platform-plugins';
 import { isAndroid } from '../native';
 import { parseDigestResult, type DigestResult, type HostedDigestProtocol } from './hosted-digests';
+import type { ResultInbox } from './digest-inbox';
 interface NativeInbox {
  beginBackground(input:{attemptId:string}):Promise<void>;
  cancelBackground(input:{attemptId:string}):Promise<void>;
@@ -34,7 +35,6 @@ export async function configureHostedBackground(input:Record<string,unknown>,sig
  }catch(error){await cancel();signal.throwIfAborted();return false;}
  finally{signal.removeEventListener('abort',abort);external.removeEventListener('abort',forwardAbort);configuring.delete(controller);}
 }
-export interface ResultInbox {history():Promise<DigestResult[]>;sync(client:HostedDigestProtocol,signal:AbortSignal):Promise<DigestResult[]>;}
 export class NativeResultInbox implements ResultInbox {
  constructor(private sessionId:string){}
  async history(){return (await native.inboxHistory({sessionId:this.sessionId})).entries.map(parseDigestResult);}

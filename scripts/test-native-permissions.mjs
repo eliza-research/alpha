@@ -21,6 +21,16 @@ export const cases = {
 		value: "true",
 		permissions: [["revoke", "CAMERA"]],
 	},
+	// Granted camera: the real CameraX preview, Ask about the live frame (nothing published), one
+	// Take photo published to MediaStore, the exact item shared and asked about from Photos, and the
+	// preview released on leaving Camera (MVP-13, MVP-30).
+	"camera-capture": {
+		testClass: "CameraFlowInstrumentedTest",
+		method: "photoCapturePublishesReadableImageAndShowsRealViewer",
+		gate: "cameraCapture",
+		value: "1",
+		permissions: [["grant", "CAMERA"]],
+	},
 	settings: {
 		testClass: "SettingsNativeInstrumentedTest",
 		method: "accountsHandoffAndLocationAccuracyReadback",

@@ -1,5 +1,5 @@
 import {reviewContentQuestion} from '../browser/content-question';
-import {sensitiveReadingText} from '../browser/reading-sensitive';
+import {sensitiveReadingText} from '../../../../.eliza/client-features/plugins/plugin-native-browser-surface/src/page-reading.ts';
 import {noticeReviewable} from '../prototype/context-selection';
 import {alphaClient} from './alpha-client';
 import type {HostedNativeSelection} from './hosted-digests';

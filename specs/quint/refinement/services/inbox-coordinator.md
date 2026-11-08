@@ -89,7 +89,7 @@ notice delivery, message pagination and installed UI layout also remain outside
 these projections. Their state allocation in the coverage ledger is not a claim
 that this runner establishes their implementation refinement.
 
-## Source validation
+## Historical b25-pin source validation
 
 The 2026-11-07 source run checks 18 schedules and 131 observed checkpoints,
 including 25 generated scenario and rejected-action checks. Input hashes are
@@ -133,8 +133,20 @@ source parts and provider-draft editing remain additional obligations.
 node --test test/quint-inbox-cleanup.test.mjs
 ```
 
-The cleanup follow-up passes all 19 current model scenarios, 1,000 sampled runs
+The historical b25-pin cleanup follow-up passed all 19 model scenarios, 1,000 sampled runs
 of 80 steps with seed 123, and Apalache 0.62.4 safety checking through four
 transitions. Both source runners pass together, with 27 schedules and 241
 observed checkpoints. The existing 26 cleanup tests and 2 saved/multiple-draft
 tests also pass. Current receipts are under `test-results/quint-inbox-cleanup/final`.
+
+## Main-based shared-controller port
+
+The current475a-pin campaign executes the same18 admission schedules and9
+per-write cleanup schedules against the shared review, draft and durable
+controllers, with Alpha account, attachment and storage injection wrappers.
+They pass241 observed checkpoints. `serviceInputs()` verifies and binds the
+authenticated projection and reviewed patch artifacts before source execution.
+Forwarding and provider-reference schedules are now covered separately by
+[InboxProviderDrafts](inbox-provider-drafts.md). Wider shelf collections and
+concurrent cleanups remain open scope. Historical source-test counts above do
+not establish execution against the current upstream pin.

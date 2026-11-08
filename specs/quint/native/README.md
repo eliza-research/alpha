@@ -1,7 +1,7 @@
 # Native application models
 
-These finite models describe Alpha-owned protocol boundaries in the current
-working source. The source lists, named invariants, scenarios and bounds are in
+These finite models describe product and shared-native protocol boundaries in
+the current working source. The source lists, named invariants, scenarios and bounds are in
 [manifest.json](manifest.json). Each exposes `init`, `step` and `safety`.
 
 ## Source correspondence
@@ -9,17 +9,17 @@ working source. The source lists, named invariants, scenarios and bounds are in
 | Model | Source symbols inspected | State represented |
 | --- | --- | --- |
 | `ResidentRuntime` | `AlphaLocalAgentPlugin.start`, `cancelStart`, `stop`, `getStatus`, `handleOnDestroy`, `startResidentIfAdmissible`, `LocalAgentProviderAdmission.bindCloudProvider`, `applyProviderEnvironment`, `providerStatus`, `ResidentCredentialShutdownRetry.await`, `ResidentScheduleRearm.decide`, renderer `residentRecoveryReason` | Local resident lifecycle, source admission, exact credential generation, uncertain unbind, retained recovery records, reset fence |
-| `VoiceSession` | `VoiceAssistantSession.start`, `stop`, `setMuted`, `speechStarted`, `schedule`, `submit`, `respond`, `resume`, `playSentence`, `createNativeLiveDictation`, `createCloudVoice` | Session/turn/utterance generations, semantic and long-gap endpointing, capture, mute, barge-in, completed-sentence accounting, separately reviewed read response and local dictation |
+| `VoiceSession` | `VoiceAssistantSession.start`, `stop`, `setMuted`, `speechStarted`, `schedule`, `submit`, `respond`, `resume`, `respond`, `createNativeLiveDictation`, `createCloudVoice` | Session/turn/utterance generations, semantic and long-gap endpointing, capture, mute, barge-in, completed-sentence accounting, separately reviewed read response and local dictation |
 | `SpeechResources` | `LiveCaptureAdmission.begin`, `attach`, `stop`, `cancelAll`, `SpeechAudioFocusPolicy.changed`, `stopsCapture`, `SpeechPcmQueue.offer`, `take`, `close` | Capture reservation and late startup, one capture owner, transient focus/duck/loss, bounded PCM queue and canceled stream |
 | `AlwaysOnListener` | `ListenerPolicy.decide`, `holdsMicrophone`, `processesAudio`, `latchesIndicatorLoss`, `IndicatorLease.renew`, `verdict`, `ListeningEpoch.current`, `ListenerStore` consent generation | Consent, visibility, unlock, call/privacy, SystemUI lease, explained pause, sticky indicator loss and queued recognition invalidation |
-| `ResetRecovery` | `ResetAuthorization.begin`, `confirm`, `authenticate`, `retire`, `AlphaDataReset.record`, `automaticAttempt`, `retry`, `admittedAttempt`, `automaticAttemptAllowed`, `admitAndExit` | Activity-bound approval, durable pending marker, listener-first reset, bounded automatic retry, recovery surface, accepted dispatch and externally observed erasure |
+| `ResetRecovery` | `ResetAuthorization.begin`, `confirm`, `authenticate`, `retire`, `DataReset.record`, `automaticAttempt`, `retry`, `admittedAttempt`, `automaticAttemptAllowed`, `admitAndExit` | Activity-bound approval, durable pending marker, listener-first reset, bounded automatic retry, recovery surface, accepted dispatch and externally observed erasure |
 | `DeletionJournal` | `DeferredDeletionJournal.stage`, `undo`, `expire`, `list`, `acknowledge`, `NativeDeletionCoordinator.reconcile`, `stageOwnerCurrent` | Durable intent, monotonic Undo window, changed boot, exact owner/source admission, dispatch uncertainty and retained no-replay receipt |
-| `MediaLifecycle` | `NativeReadEpoch.current`, `LibraryCatalog.observeScope`, `PhotoAttachmentSource.read`, `publish`, browser `beginPhotoEdit`, `savePhotoEdit`, `cancelPhotoEdit`, `resultPhotoEdit` | Per-item permission, lifecycle/source revision, selected read, reviewed output, canceled temporary capture and active playback |
-| `DeviceActions` | `SmsSendJournal.beginDispatch`, `endDispatch`, `sentResult`, `status`, `existing`, telephony read epoch checks, `retainReminderCreation`, `checkReminderCreation`, `reconcileReminderCreations`, `ClockContract.receiver` | Image/permission/SIM gates, exact reviewed SMS binding, durable dispatch, multipart evidence, retired operation id, stale contacts, reminder creation recovery and revision-bound notification |
+| `MediaLifecycle` | `NativeReadEpoch.current`, `PermittedMediaCatalog.observeScope`, `SelectedPhotoCopy.read`, `publish`, browser `beginPhotoEdit`, `savePhotoEdit`, `cancelPhotoEdit`, `resultPhotoEdit` | Per-item permission, lifecycle/source revision, selected read, reviewed output, canceled temporary capture and active playback |
+| `DeviceActions` | `SmsSendJournal.beginDispatch`, `endDispatch`, `sentResult`, `status`, `existing`, telephony read epoch checks, `retainReminderCreation`, `checkReminderCreation`, `reconcileReminderCreations`, `ClockHandoff.receiver` | Image/permission/SIM gates, exact reviewed SMS binding, durable dispatch, multipart evidence, retired operation id, stale contacts, reminder creation recovery and revision-bound notification |
 | `RendererRecovery` | `RendererRecoveryBudget.onLoss`, `MainActivity.onRenderProcessGone`, delayed recreation and stock Settings actions | Three immediate losses, exact 60-second window, five-second backoff, HOME escape, duplicate callbacks and activity ownership |
 | `VadSegmentation` | `LiveVadGate.accept`, `close` | Two high windows to open, sixteen low windows to close, hysteresis thresholds, nonfinite values and counter reset |
-| `VoiceIpcAssembly` | `NativeVoiceIpc.exchange` | Handle ownership, deadline, response/chunk assembly, size limit, completion validation, first failure and cleanup |
-| `ListenerLeaseProducer` | SystemUI `AlphaListeningController`, `AlphaListeningLease` | Measured eligible surfaces, queued acknowledgements, target validation, client generation and lease retirement |
+| `VoiceIpcAssembly` | `BufferedStreamExchange.exchange` | Handle ownership, deadline, response/chunk assembly, size limit, completion validation, first failure and cleanup |
+| `ListenerLeaseProducer` | SystemUI `SenseListeningController`, `SenseListeningLease` | Measured eligible surfaces, queued acknowledgements, target validation, client generation and lease retirement |
 
 The reviewed source paths are listed as repository-relative paths in the
 manifest. Every callback accepting an identity has matching and stale scenarios.
@@ -28,28 +28,25 @@ outcome, including provider dispatch, storage failure and native acknowledgement
 
 ## Composed application boundaries
 
-`ApplicationComposition` instantiates the actual `IdentitySession`, `VoiceSession`,
-`ResidentRuntime`, `CalendarSync`, `InboxDelivery` and `ResetRecovery` modules. It
-invokes their transitions and safety predicates with explicit frame assignments
-for the unaffected components. Small constant-instantiated wrappers give each
-module's internal `s` a distinct qualified identity in Quint's effect checker.
-The wrappers preserve the imported transitions and export only the symbols used
-by the composition.
+`ApplicationComposition` now imports the current `IdentitySession`,
+`CalendarLinkedSync` and `VoiceSession` modules. Native credential commit and
+renderer publication are separate transitions. The renderer can retain the old
+account while native activation completes. A published replacement invalidates
+captured consumer bindings. A Calendar request already dispatched may still
+apply remotely while its local checkpoint remains dirty.
 
-The host adds foreground state and the account/epoch captured at voice start.
-Coordinated sign-in replacement retires voice and provider work while switching
-Calendar/Inbox owners through their existing actions. Reset applies the real
-model's marker transition together with resident stop and Inbox permission
-withdrawal. Lifecycle pause invokes the imported voice stop transition. Late
-voice/provider callbacks therefore exercise their imported generation checks.
-Expected-rejection tests execute the imported Calendar/Inbox guards after account
-retirement and reset. An intentionally uncoordinated identity transition appears
-only in a canary scenario, where it must violate shared safety.
+The source campaign executes the actual renderer connection controller, Alpha
+Calendar sync host and its shared controller/store/reconciler, plus the shared
+voice session under the actual conversation-binding predicate. Nine controlled
+schedules check 44 checkpoints. Native authentication internals are explicit
+contract macros. The full voice UI listener wiring, Inbox multi-slot composition,
+Resident lifecycle and reset cross-domain coordination remain separate
+obligations. See the [composition refinement report](../refinement/composition/README.md).
 
-These boundary actions express the intended product integration contract.
-Per-component source mappings and the executable Java policy replay establish
-narrower correspondence evidence. Cross-domain implementation refinement remains
-an additional obligation.
+The former Calendar outbox model is a historical-source model in the legacy
+family. Its removed runtime API is not imported by the current composition.
+The intentionally unsafe identity initializer remains a synthetic checker
+canary and is excluded from ordinary transitions.
 
 ## Deliberate abstractions
 
@@ -286,3 +283,95 @@ credential store's real lifecycle coordinator, including strict shutdown,
 rebind, partial writes, concurrent owners and in-flight request/stream retirement.
 Its observation relation and platform boundaries are in
 [credential-coordinator-report.md](../refinement/native/credential-coordinator-report.md).
+
+## Current shared-source port
+
+The current pin is `475a8d59dc1811c2cde093613519906a5a3f6457`. The manifest now
+maps the retained models to current product wrappers and shared Java or client
+implementations. `current-policies.mjs` compiles the current classes directly,
+including package-scoped SMS operations in a package-local observation harness.
+`current-renderer.mjs` records the transitive source graph before executing the
+shared voice controller and renderer resident wrapper.
+
+The shared voice controller closes its capture before sending a turn and holds
+input closed through response playback and owner review. `beginSubmission` and
+`inputClosed` represent the asynchronous close boundary, while `submit` combines
+the completed boundary for synchronous source observations. `inputCloseFailed`
+retires the active session and reports the source error state. Eight actual
+controller schedules include delayed close, rejected close and Stop racing close.
+The request and service-stop lease fields in `NativeCredentialMutation` model
+native-issued request expiry/cancellation and exact shutdown ownership.
+
+The detailed current-pin source report is
+`specs/quint/refinement/native/current-port-report.md`. Earlier counts above are
+historical checks of their stated revisions. Current implementation receipts
+retain source/model/driver hashes and explicit Android/provider obligations.
+
+## Current aggregate integration
+
+The native aggregate uses the current shared Java paths and product wrappers.
+It includes the full MainActivity, reset, resident and deletion coordinators,
+provider admission and native credential mutation/lease adapters. Each driver
+hash includes the aggregate entry point and the shared Quint syntax-tree state
+inventory helper. Missing actions and fields are derived from declarations and
+imported state rather than a type-name or text-pattern heuristic.
+
+Additional source schedules exercise semantic endpoint completion/continuation,
+exact owner-reviewed voice resume, explicit speech interruption, timestamp and
+head-position playback evidence, zero writes, ducking, expired IPC deadlines and
+rejected deadline scheduling. The playback model only records fresh head-position
+evidence while an audible timestamp has not already been reported. Native and
+service ownership remain separate in the source manifest, and the aggregate
+retains both credential and resident observations from their shared coordinator.
+
+The aggregate emits explicit remaining obligations for complete native service,
+media, navigation and SystemUI controller orchestration, alongside the Android,
+provider and physical acceptance boundaries. A field absent from concrete source
+observations is reported as unobserved even if its model invariant passes.
+
+## Native segmented Notes recording
+
+`NativeNoteRecording` covers the product-owned `AlphaNoteRecorder` state that the
+older media model did not represent. Capture instances, current and finished
+segment files, exact pause accounting, rollover, two transcript value classes,
+durable journal prefixes, corruption, missing audio, legacy binding recovery and
+remux outcomes remain distinct. A failed journal write may retain newer
+in-memory text or audio until restart. The JVM driver observes the real files and
+public status rather than reconstructing expected storage contents.
+
+`NativeNoteRecordingService` covers the corresponding foreground notification
+owner. A delayed START, STOP or empty legacy STOP cannot remove a newer
+recording's foreground ownership. Initial invalid starts still enter and leave
+the foreground as required by Android. Current-owner and closed-recorder cleanup,
+pause/resume notification state and service recreation execute against controlled
+Android ports. Installed foreground eligibility and physical recording remain
+platform obligations. The renderer's recorder coordination is modeled separately.
+
+## Shared voice draft
+
+`NativeVoiceDraft` executes the current patched `LocalVoiceRecording`. It models
+private draft capture, bounded duration/size validation, automatic stop events,
+exact-ID discard and selection, stale callbacks, external Notes segment lookup
+and constructor cache cleanup. A callback consumer that throws after a successful
+recording can receive a subsequent failure event while the recorded file remains
+available. Constructor failure now passes through the existing cleanup region,
+so the failed start leaves no phantom draft admission.
+
+MediaRecorder and Handler are controlled primitive ports. Permission epochs,
+parent bridge cancellation barriers and physical Android media behavior remain
+separate obligations. The source, model, adapter and authenticated patch hashes
+are retained with each source trace.
+
+`NativeNotePermission` models the product Notes bridge's pending permission,
+queued start/resume, foreground/destruction, call activity and actual recording
+state. Both queued opening paths recheck call and lifecycle admission when they
+run. The source campaign executes the complete `AlphaVoiceCloudPlugin` against
+the actual segmented recorder. Twenty-two schedules include call entry during
+permission and queued work, host retirement, denied permission, existing-recording
+refusal, failed openings, stop/resume and discard/retry. Every model state field
+and non-environment action has source observations.
+
+This campaign supplies the shared parent lifecycle/permission interface as a
+controlled port. It covers one pending Notes request and two successful capture
+starts. Shared `LocalSpeechBridgePlugin` behavior, multiple simultaneous prompts,
+installed microphone enforcement and physical audio remain separate obligations.

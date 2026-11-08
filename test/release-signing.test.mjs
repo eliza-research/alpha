@@ -6,8 +6,8 @@ import os from "node:os";
 import path from "node:path";
 import { spawnSync } from "node:child_process";
 import { auditWebBundle } from "../scripts/audit-production-bundle.mjs";
-import { appLinkFilters, signInAppLinkProblems, assetLinksProblems, fingerprint, PLACEHOLDER, renderAssetLinks, TEMPLATE } from "../scripts/render-assetlinks.mjs";
-import { partialSigningProblem, readReleaseSigner, releaseAdmission, signingRequested, validateReleaseSigner } from "../scripts/build-android.mjs";
+import { appLinkFilters, assetLinksProblems, fingerprint, PLACEHOLDER, renderAssetLinks, TEMPLATE } from "../scripts/render-assetlinks.mjs";
+import { partialSigningProblem, readReleaseSigner, releaseAdmission, SIGNING_ENV, signingRequested, validateReleaseSigner } from "../scripts/build-android.mjs";
 
 const ALL = { ELIZAOS_KEYSTORE_PATH: "/k", ELIZAOS_KEYSTORE_PASSWORD: "p", ELIZAOS_KEY_ALIAS: "a", ELIZAOS_KEY_PASSWORD: "q" };
 const SIGNER = "a".repeat(64);
@@ -22,14 +22,21 @@ test("a partial ELIZAOS_ signing set is refused by name, never by value", () => 
   assert.ok(!problem.includes("/k") && !problem.includes("\"p\""));
   assert.match(partialSigningProblem({ ...ALL, ELIZAOS_KEY_ALIAS: "  " }), /missing ELIZAOS_KEY_ALIAS/, "blank counts as missing, as in Gradle");
   assert.equal(signingRequested({ ...ALL, ELIZAOS_KEY_ALIAS: " " }), false);
-  const gradle = fs.readFileSync("android/app/build.gradle", "utf8");
-  assert.match(gradle, /releaseSigningMissing\.size\(\) < releaseSigningNames\.size\(\)\)\n throw new GradleException/);
-  assert.doesNotMatch(gradle, /producing unsigned release APKs/);
+  // The generated host reads the names android/consumer-host.json declares; the pinned upstream
+  // template refuses a partial set by name and signs only when all four are present.
+  const { signing } = JSON.parse(fs.readFileSync("android/consumer-host.json", "utf8")).profile;
+  assert.deepEqual(signing, { storeFile: "ELIZAOS_KEYSTORE_PATH", storePassword: "ELIZAOS_KEYSTORE_PASSWORD", keyAlias: "ELIZAOS_KEY_ALIAS", keyPassword: "ELIZAOS_KEY_PASSWORD" });
+  assert.deepEqual(SIGNING_ENV, Object.keys(ALL));
+  const gradle = fs.readFileSync("vendor/eliza/packages/app/scripts/mobile/android/consumer-host/app.gradle", "utf8");
+  assert.match(gradle, /if \(!missing\.isEmpty\(\) && missing\.size\(\) < names\.size\(\)\)\n  throw new GradleException\("\[release-signing\] incomplete signing environment/);
+  assert.match(gradle, /if \(hostSigning\) signingConfig signingConfigs\.release/);
+  assert.doesNotMatch(gradle, /producing unsigned release APKs|println|logger/);
 });
 
-test("the committed descriptor is valid and starts unset", () => {
+test("the committed descriptor is valid and unset fixtures remain supported", () => {
   const committed = readReleaseSigner();
-  assert.equal(committed.signerSha256, "unset");
+  assert.equal(validateReleaseSigner(committed), committed);
+  assert.equal(validateReleaseSigner(descriptor("unset")).signerSha256, "unset");
   assert.throws(() => validateReleaseSigner({ ...descriptor(), signerSha256: "ABC" }), /signerSha256/);
   assert.throws(() => validateReleaseSigner({ ...descriptor(), lastRelease: { versionCode: 0 } }), /versionCode/);
   assert.throws(() => validateReleaseSigner({ ...descriptor(), schema: 2 }), /schema/);
@@ -74,8 +81,8 @@ test("assetlinks.json is rendered only from the recorded release signer, never u
   assert.match(statement.target.sha256_cert_fingerprints[0], /^(AA:){31}AA$/);
   assert.doesNotMatch(text, new RegExp(PLACEHOLDER));
   assert.deepEqual(assetLinksProblems(text), []);
-  // The committed descriptor is unset, so rendering is refused until the release key exists (A-06).
-  assert.throws(() => renderAssetLinks({ template, signerSha256: readReleaseSigner().signerSha256, packageName }), /"unset"/);
+  // An unset descriptor is refused until its release key exists (A-06).
+  assert.throws(() => renderAssetLinks({ template, signerSha256: "unset", packageName }), /"unset"/);
   assert.throws(() => renderAssetLinks({ template, signerSha256: PLACEHOLDER, packageName }), /placeholder/);
   assert.throws(() => renderAssetLinks({ template, signerSha256: "ABC", packageName }), /64 lower-case hex/);
   assert.throws(() => renderAssetLinks({ template, signerSha256: SIGNER, packageName: "other.app" }), /not other\.app/);
@@ -86,9 +93,15 @@ test("assetlinks.json is rendered only from the recorded release signer, never u
   const debugFile = text.replace(fingerprint(SIGNER), fingerprint(debugKey));
   assert.match(assetLinksProblems(debugFile, { debugFingerprints: [debugKey] }).join(), /is a debug signing certificate/);
   assert.match(assetLinksProblems(text.replace(fingerprint(SIGNER), "unset")).join(), /unset release signer/);
-  // The CLI exits non-zero on the committed (unset) descriptor and writes nothing.
+  // The CLI exits non-zero on an isolated unset descriptor and writes nothing.
   const out = path.join(fs.mkdtempSync(path.join(os.tmpdir(), "alpha-assetlinks-")), "assetlinks.json");
-  const run = spawnSync(process.execPath, ["scripts/render-assetlinks.mjs", "--out", out], { encoding: "utf8" });
+  const fixtureRoot = path.dirname(out);
+  for (const file of ["scripts/render-assetlinks.mjs", TEMPLATE, "app.config.json"]) {
+    fs.mkdirSync(path.dirname(path.join(fixtureRoot, file)), {recursive:true});
+    fs.copyFileSync(file, path.join(fixtureRoot, file));
+  }
+  fs.writeFileSync(path.join(fixtureRoot, "android/release-signer.json"), JSON.stringify(descriptor("unset")));
+  const run = spawnSync(process.execPath, ["scripts/render-assetlinks.mjs", "--out", out], { cwd:fixtureRoot, encoding: "utf8" });
   assert.equal(run.status, 1);
   assert.match(run.stderr, /signerSha256 is "unset"/);
   assert.equal(fs.existsSync(out), false);
@@ -109,16 +122,15 @@ test("the bundle audit fails an assetlinks.json with a placeholder or debug fing
   assert.equal(auditWebBundle(dir, { debugFingerprints: [SIGNER] }).ok, false);
 });
 
-test("the https autoVerify filter defaults to the configured Cloud host and is read back from the APK manifest", () => {
-  const gradle = fs.readFileSync("android/app/build.gradle", "utf8");
+test("the https autoVerify filter defaults to the configured host and is read back from the APK manifest", () => {
+  const gradle = fs.readFileSync("android/app/product.gradle", "utf8");
   const manifest = fs.readFileSync("android/app/src/main/AndroidManifest.xml", "utf8");
-  // The main manifest uses a generated overlay so changing the deployment changes its return host.
+  // The generated overlay owns the HTTPS filter and defaults to the configured Cloud host.
   assert.doesNotMatch(manifest.replace(/<!--[\s\S]*?-->/g, ""), /autoVerify/);
   assert.match(gradle, /project\.findProperty\('ELIZAOS_APP_LINK_HOST'\) \?: envValue\('ELIZAOS_APP_LINK_HOST'\)/);
-  assert.match(gradle, /def appLinkHost = .*\? cloudWebHost :/);
-  assert.match(gradle, /appLinkHost != cloudWebHost/,'a mismatched override is still rejected');
-  assert.ok(gradle.includes('<activity android:name="${identity.appId}.MainActivity" android:exported="true">'), 'the generated App Link activity explicitly exports its external return intent');
-  assert.match(gradle, /manifestPlaceholders = \[appOrientation: identity\.orientation, appLinkHost: appLinkHost\]/);
+  assert.match(gradle, /\? cloudWebHost : appLinkHostRaw\.toString\(\)\.trim\(\)/);
+  assert.ok(gradle.includes('<activity android:name="${android.namespace}.MainActivity" android:exported="true">'), 'the generated App Link activity explicitly exports its external return intent');
+  assert.match(gradle, /manifestPlaceholders\.put\('appLinkHost', appLinkHost\)/);
   assert.match(gradle, /if \(appLinkHost\) androidComponents \{ onVariants\(selector\(\)\.all\(\)\) \{ variant -> variant\.sources\.manifests\.addStaticManifestFile\(appLinksManifest\) \} \}/);
   assert.match(gradle, /<intent-filter android:autoVerify="true">[^\n]*android:scheme="https" android:host="\\\$\{appLinkHost\}" android:pathPrefix="\/alphaphone\/cloud-delegation"/);
   assert.doesNotMatch(gradle, /ALPHA_APP_LINK/);
@@ -136,32 +148,7 @@ test("the https autoVerify filter defaults to the configured Cloud host and is r
     "          A: http://schemas.android.com/apk/res/android:scheme(0x01010027)=\"alphaphone\" (Raw: \"alphaphone\")",
     "          A: http://schemas.android.com/apk/res/android:host(0x01010028)=\"cloud-delegation\" (Raw: \"cloud-delegation\")"];
   assert.deepEqual(appLinkFilters([...custom, ...filter("https"), "    E: activity (line=50)"].join("\n")), { present: true, hosts: ["links.example.com"] });
-  assert.deepEqual(appLinkFilters(custom.join("\n")), { present: false, hosts: [] }, "custom-scheme filters alone do not establish a verified return");
+  assert.deepEqual(appLinkFilters(custom.join("\n")), { present: false, hosts: [] }, "the default build: custom scheme only");
   assert.deepEqual(appLinkFilters(filter("http").join("\n")), { present: false, hosts: [] });
   assert.match(fs.readFileSync("scripts/verify-apks.mjs", "utf8"), /appLinks: appLinkFilters\(xml\),/);
-});
-
-test('APK admission requires the exact sign-in return for the configured deployment', () => {
-  const filter = (host, pathAttribute = 'path', path = '/alphaphone/auth/callback') => `
-      E: intent-filter (line=40)
-        A: android:autoVerify(0x010104ee)=(type 0x12)0xffffffff
-        E: action (line=41)
-          A: android:name(0x01010003)="android.intent.action.VIEW"
-        E: category (line=42)
-          A: android:name(0x01010003)="android.intent.category.DEFAULT"
-        E: category (line=43)
-          A: android:name(0x01010003)="android.intent.category.BROWSABLE"
-        E: data (line=44)
-          A: android:scheme(0x01010027)="https"
-          A: android:host(0x01010028)="${host}"
-          A: android:${pathAttribute}(0x0101002a)="${path}"
-      E: activity (line=50)`;
-  assert.deepEqual(signInAppLinkProblems(filter('eliza.app'), ['eliza.app']), []);
-  for (const xml of ['', filter('alphacompute.ai'), filter('eliza.app','pathPrefix'), filter('eliza.app','path','/alphaphone/cloud-delegation'),
-    filter('eliza.app').replace('android.intent.category.BROWSABLE','android.intent.category.DEFAULT'),
-    filter('eliza.app').replace('0xffffffff','0x0')]) {
-    assert.equal(signInAppLinkProblems(xml, ['eliza.app']).length, 1);
-  }
-  assert.equal(signInAppLinkProblems(filter('eliza.app'), ['eliza.app','staging.eliza.app']).length, 1);
-  assert.deepEqual(signInAppLinkProblems(filter('eliza.app')+filter('staging.eliza.app'), ['eliza.app','staging.eliza.app']), []);
 });

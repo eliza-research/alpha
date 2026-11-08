@@ -3,6 +3,7 @@ import {dirname, join, resolve, basename} from 'node:path';
 import {pathToFileURL} from 'node:url';
 import {tsImport} from 'tsx/esm/api';
 import {repositoryRoot, loadModels, sha256} from './quint-lib.mjs';
+import {modelStateInventory, unobservedStateFields} from '../specs/quint/refinement/model-state.mjs';
 
 const args = process.argv.slice(2);
 const families = ['application', 'services', 'native', 'composition'];
@@ -11,7 +12,9 @@ const output = resolve(repositoryRoot, args.find(arg => arg.startsWith('--out=')
 for (const arg of args) if (!arg.startsWith('--families=') && !arg.startsWith('--out=') && arg !== '--require-complete') throw Error(`Unknown option ${arg}`);
 for (const family of requested) if (!families.includes(family)) throw Error(`Unknown family ${family}`);
 const models = loadModels().filter(model => model.family !== 'legacy');
+const reportingInputs = ['scripts/check-quint-refinement.mjs', 'specs/quint/refinement/model-state.mjs', 'package-lock.json'];
 const report = {schemaVersion: 1, startedAt: new Date().toISOString(), evidence: 'implementation trace refinement with explicit projections',
+  reportingInputHashes: Object.fromEntries(reportingInputs.map(path => [path, sha256(readFileSync(join(repositoryRoot, path)))])),
   modelCount: models.length, families: [], models: [], obligations: [], checksPassed: false, completeApplicationRefinement: false};
 let failed = false;
 for (const family of requested) {
@@ -49,18 +52,20 @@ for (const model of models) {
     receipt.sourceHashesAfter?.[join(repositoryRoot, model.path)] === currentHash &&
     Object.entries(receipt.sourceHashesAfter).every(([path, expected]) =>
       existsSync(path) && sha256(readFileSync(path)) === expected));
-  const text = readFileSync(join(repositoryRoot, model.path), 'utf8').split(`module ${model.module} {`).at(-1);
-  const declaredActions = [...text.matchAll(/\baction\s+(\w+)/g)].map(match => match[1]);
+  const inventory = modelStateInventory(join(repositoryRoot, model.path), model.module);
   const entry = {model: model.module, family: model.family, modelSha256: currentHash,
     status: current.length ? 'trace-checked' : 'unverified',
     traceCount: current.reduce((sum, receipt) => sum + receipt.traces, 0),
     checkpoints: current.reduce((sum, receipt) => sum + receipt.checkpoints, 0),
+    declaredStateVariables: inventory.variables,
+    declaredStateFields: inventory.fields,
     observedFields: [...new Set(current.flatMap(receipt => receipt.observedFields))].sort(),
     modelActions: [...new Set(current.flatMap(receipt => Object.keys(receipt.actions)))].sort(),
     modelInitializers: [...new Set(current.flatMap(receipt => receipt.traceInputs.map(trace => trace.init?.name || 'init')))].sort(),
     scopes: [...new Set(current.map(receipt => receipt.scope))],
     receipts: current.map(receipt => receipt.receiptPath)};
-  entry.unexercisedModelActions = [...new Set(declaredActions)].filter(action =>
+  entry.unobservedStateFields = unobservedStateFields(inventory, entry.observedFields);
+  entry.unexercisedModelActions = inventory.actions.filter(action =>
     !['init', 'step', 'check'].includes(action) && !entry.modelActions.includes(action) && !entry.modelInitializers.includes(action));
   report.models.push(entry);
   if (!current.length) report.obligations.push({model: model.module, obligation: 'implementation transition relation', reason: 'No passing source-bound adapter receipt for this model revision.'});
@@ -68,6 +73,9 @@ for (const model of models) {
 report.traceCheckedModels = report.models.filter(model => model.status === 'trace-checked').length;
 report.campaignCoverageComplete = report.traceCheckedModels === report.modelCount;
 if (families.every(family => requested.includes(family)) && !report.campaignCoverageComplete) failed = true;
+report.reportingInputsUnchanged = reportingInputs.every(path => report.reportingInputHashes[path] === sha256(readFileSync(join(repositoryRoot, path))));
+if (!report.reportingInputsUnchanged) failed = true;
+report.unobservedStateFieldCount = report.models.reduce((count, model) => count + model.unobservedStateFields.length, 0);
 report.checksPassed = !failed;
 report.finishedAt = new Date().toISOString();
 report.obligations.push({obligation: 'unbounded implementation refinement', reason: 'Concrete trace campaigns establish their recorded finite/bounded projections. A universal simulation-relation proof requires separately discharged source semantics and environment assumptions.'});

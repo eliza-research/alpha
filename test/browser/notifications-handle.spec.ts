@@ -90,11 +90,8 @@ test.describe('launcher', () => {
     // A mostly sideways drag is a card row or Back, not the shade.
     await drag(page, { x: 120, y: 420 }, 120, 160);
     await closed(page, 'sideways');
-    // An upward drag on Home opens nothing: only the dock opens the chat (docs/ui-refresh-2026-11).
+    // An upward swipe on Home is the conversation sheet; while it is open a pull down closes it.
     await drag(page, { x: 206, y: 600 }, -260);
-    await expect(page.locator('[data-alpha-layer="conversation"]')).toHaveAttribute('aria-hidden', 'true');
-    // While the sheet is open a pull down closes it.
-    await page.locator('[data-alpha-layer="composer"]').getByRole('button', { name: 'Open conversation', exact: true }).click();
     await expect(page.locator('[data-alpha-transcript]')).toBeVisible();
     await drag(page, { x: 206, y: 300 }, 260);
     await closed(page, 'pull while the conversation sheet was open');
@@ -116,18 +113,22 @@ test.describe('launcher', () => {
 
   test('a Home scrolled away from its top scrolls back before a pull opens the shade', async ({ page }) => {
     await home(page);
-    // Large text makes Home taller than the screen.
-    await page.evaluate(async () => { const display = await import('/src/browser/display.ts' as string); display.installBrowserDisplay(); document.documentElement.style.setProperty('--browser-text-scale', '2'); });
+    // Model the bounded dock/content clearance the Home fit observer already watches.
+    // Large text alone is not an overflow guarantee: the current Home adapts its layout.
+    const clearance = page.locator('[data-alpha-home-clearance]');
+    await clearance.evaluate(element => { (element as HTMLElement).style.height = '160px'; });
     const layer = page.locator('[data-alpha-layer="home"]');
-    await expect.poll(() => layer.evaluate(element => element.scrollHeight > element.clientHeight + 40)).toBe(true);
+    await expect.poll(() => layer.evaluate(element => element.scrollHeight > element.clientHeight + 1)).toBe(true);
     // An overflowing Home keeps ordinary vertical scrolling for touch.
     await expect(layer).toHaveAttribute('data-alpha-home-fits', 'false');
     await layer.evaluate(element => { element.scrollTop = 120; });
+    await expect.poll(() => layer.evaluate(element => element.scrollTop)).toBeGreaterThan(0);
     await drag(page, { x: 206, y: 420 }, 240);
     await closed(page, 'scrolled Home');
     await layer.evaluate(element => { element.scrollTop = 0; });
     await drag(page, { x: 206, y: 420 }, 240);
     await expect(shade(page)).toHaveAttribute('aria-hidden', 'false');
+    await clearance.evaluate(element => { (element as HTMLElement).style.removeProperty('height'); });
   });
 
   for (const height of [915, 1200]) test(`a Home that fits hands vertical touch drags to the page at 412x${height}`, async ({ page }) => {
@@ -203,8 +204,7 @@ test.describe('launcher Home taller than the screen (landscape)', () => {
     // Empty Home, clear of every control and below the status bar, where vertical touch would scroll Home.
     const start = await page.evaluate(() => {
       const screen = document.querySelector('[data-screen]')!.getBoundingClientRect();
-      // Below Android's 44px status band in canvas pixels (the canvas is scaled to the screen).
-      for (let y = screen.top + Math.ceil(60 * screen.width / 412); y < screen.bottom; y += 4) for (let x = screen.left + 12; x < screen.right; x += 12) {
+      for (let y = screen.top + 90; y < screen.bottom; y += 4) for (let x = screen.left + 12; x < screen.right; x += 12) {
         const hit = document.elementFromPoint(x, y);
         if (hit?.closest('[data-alpha-layer="home"]') && !hit.closest('button,.scr')) return { x, y };
       }

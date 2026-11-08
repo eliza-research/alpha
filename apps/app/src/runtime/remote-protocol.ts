@@ -1,3 +1,5 @@
+import { isPreparedViewNavigationRequest } from './prepared-view-navigation.ts';
+import { parseViewInteractionClientId } from "../../../../.eliza/client-features/packages/core/src/views/view-interact-protocol.ts";
 import type {ChatChannel} from './alpha-client';
 /** Eliza app-host REST protocol. Native composition owns network and secure storage.
  * Reference: packages/app/src/api/auth-{pairing,session}-routes.ts and
@@ -106,11 +108,11 @@ export class RemoteProtocol {
   }
   private readonly now: () => number;
   get session(): RemoteIdentity | null { return this.identity ? { ...this.identity } : null; }
-  private async json(path: string, method: "GET" | "POST", body?: unknown, token?: string, signal?: AbortSignal): Promise<unknown> {
+  private async json(path: string, method: "GET" | "POST", body?: unknown, token?: string, signal?: AbortSignal, headers: Record<string,string> = {}): Promise<unknown> {
     abort(signal);
     const result = await this.request({
       url: this.origin + path, method,
-      headers: { Accept: "application/json", ...(body === undefined ? {} : { "Content-Type": "application/json" }), ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+      headers: { Accept: "application/json", ...(body === undefined ? {} : { "Content-Type": "application/json" }), ...(token ? { Authorization: `Bearer ${token}` } : {}), ...headers },
       ...(body === undefined ? {} : { body: JSON.stringify(body) }), signal,
     });
     abort(signal);
@@ -201,17 +203,21 @@ export class RemoteProtocol {
     this.identity = null;
     await this.store.remove(this.origin);
   }
-  private async authorized(path: string, method: "GET" | "POST", body?: unknown, signal?: AbortSignal): Promise<unknown> {
+  private async authorized(path: string, method: "GET" | "POST", body?: unknown, signal?: AbortSignal, headers: Record<string,string> = {}): Promise<unknown> {
     const credential = this.credential, generation = this.generation;
     if (!credential || credential.expiresAt <= this.now()) throw new RemoteProtocolError("not_connected");
     try {
-      const result = await this.json(path, method, body, credential.token, signal);
+      const result = await this.json(path, method, body, credential.token, signal, headers);
       if (generation !== this.generation) throw new RemoteProtocolError("connection_changed");
       return result;
     } catch (error) {
       if (generation === this.generation && error instanceof RemoteProtocolError && error.status === 401) await this.disconnect();
       throw error;
     }
+  }
+  async viewNavigationRequest(path:string,body:unknown,signal:AbortSignal):Promise<unknown> {
+    if(path!=="/api/views/interact-claim"&&path!=="/api/views/interact-result"&&!isPreparedViewNavigationRequest(path,body))throw new RemoteProtocolError("invalid_view_route");
+    return this.authorized(path,"POST",body,signal);
   }
   async listConversations(signal?: AbortSignal): Promise<RemoteConversation[]> {
     const value = object(await this.authorized("/api/conversations", "GET", undefined, signal));
@@ -275,11 +281,12 @@ export class RemoteProtocol {
   async send(id: string, text: string, options: { metadata?: Record<string, unknown>; clientMessageId?: string; channelType?:ChatChannel; signal?: AbortSignal } = {}): Promise<RemoteChatReply> {
     const path = `/api/conversations/${encodeURIComponent(string(id))}/messages`;
     const body = { text: string(text), channelType: options.channelType ?? "DM", ...(options.metadata ? { metadata: options.metadata } : {}), ...(options.clientMessageId ? { clientMessageId: options.clientMessageId } : {}) };
+    const headers = conversationViewHeaders(options.metadata);
     let raw: unknown;
-    try { raw = await this.authorized(path, "POST", body, options.signal); }
+    try { raw = await this.authorized(path, "POST", body, options.signal, headers); }
     catch (error) {
       if (!options.clientMessageId || options.signal?.aborted || !droppedResponse(error)) throw error;
-      raw = await this.authorized(path, "POST", body, options.signal);
+      raw = await this.authorized(path, "POST", body, options.signal, headers);
     }
     const value = object(raw);
     if (typeof value.text !== "string" || typeof value.agentName !== "string") throw new RemoteProtocolError("invalid_response");
@@ -320,4 +327,12 @@ export function droppedResponse(error: unknown): boolean {
   if (error instanceof DOMException && error.name === "AbortError") return false;
   if (error instanceof RemoteProtocolError) return error.status === 502 || error.status === 504;
   return true;
+}
+
+/** The renderer routing ID is not an authentication credential. */
+export function conversationViewHeaders(metadata?:Record<string,unknown>):Record<string,string> {
+  if(metadata?.viewClientId===undefined)return {};
+  const clientId=parseViewInteractionClientId(metadata.viewClientId);
+  if(!clientId)throw new RemoteProtocolError("invalid_view_client_id");
+  return {"X-ElizaOS-Client-Id":clientId};
 }

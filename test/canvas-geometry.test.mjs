@@ -80,7 +80,7 @@ test('list-detail split and Calendar day columns follow measured width, with an 
 
 test('wide Calendar leads with the previous day from three columns and keeps those days when an event closes', () => {
   const source = readFileSync(new URL('../apps/app/src/prototype/calendar-days.ts', import.meta.url), 'utf8').replace(/^import .*\n/gm, '').replace(/^export /gm, '');
-  const days = vm.runInNewContext(stripTypeScriptTypes('const currentSurfaceLayout=()=>({split:false,calendarDays:1,agenda:false});\n' + source, { mode: 'strip' }) + '\n({visibleCalendarDays,calendarReturnDay,markVisibleWeek,calendarAgendaRows})');
+  const days = vm.runInNewContext(stripTypeScriptTypes('const currentSurfaceLayout=()=>({split:false,calendarDays:1,agenda:false});\n' + source, { mode: 'transform' }) + '\n({visibleCalendarDays,calendarReturnDay,markVisibleWeek,calendarAgendaRows})');
   assert.deepEqual([...days.visibleCalendarDays(4, 1)], [4]);
   assert.deepEqual([...days.visibleCalendarDays(4, 2)], [4, 5]);
   assert.deepEqual([...days.visibleCalendarDays(4, 5)], [3, 4, 5, 6, 7]);

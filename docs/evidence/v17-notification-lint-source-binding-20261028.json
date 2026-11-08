@@ -1,0 +1,163 @@
+{
+  "schema": 1,
+  "atUTC": "2026-10-28T11:10:25.438108+00:00",
+  "state": "DATA_ONLY_LINT_REPIN_NO_RUNTIME_ACCEPTANCE",
+  "priorSDK": "96c560ec9c57c6f98cafc523c1ddbb9cea8a3379",
+  "candidateSDK": "e40497d5d0111d557aef022eb01d4f03023c9fc8",
+  "parents": [
+    "44dd10390683274175552ba5ff3da57e5347ff56"
+  ],
+  "method": "Offline Git merge and object equality; no source execution",
+  "inputComparisons": [
+    {
+      "path": "plugins/plugin-local-inference/native/llama.cpp",
+      "fromObject": "0d9fd4b9db239bbf851068f98c99f4263f8c05c5",
+      "toObject": "0d9fd4b9db239bbf851068f98c99f4263f8c05c5",
+      "equal": true
+    },
+    {
+      "path": "plugins/plugin-local-inference/native/android/inputs.json",
+      "fromObject": "8e303364ecffd4056b494d5dde808f5887eca120",
+      "toObject": "8e303364ecffd4056b494d5dde808f5887eca120",
+      "equal": true
+    },
+    {
+      "path": "packages/app/scripts/paradee-voice",
+      "fromObject": "e18c150daf71c321ba287e0c6e5484e487367fd9",
+      "toObject": "e18c150daf71c321ba287e0c6e5484e487367fd9",
+      "equal": true
+    },
+    {
+      "path": "packages/app/scripts/stage-elizavoice-lib.ts",
+      "fromObject": "2ff1adb9ed9a394759562c2ff6a1f7e4b0d75f3c",
+      "toObject": "2ff1adb9ed9a394759562c2ff6a1f7e4b0d75f3c",
+      "equal": true
+    },
+    {
+      "path": "packages/app/platforms/android/app/src/main/elizavoice-jni",
+      "fromObject": "1016d67d05ce8f4c7bc10412372cc71d7ad48aee",
+      "toObject": "1016d67d05ce8f4c7bc10412372cc71d7ad48aee",
+      "equal": true
+    },
+    {
+      "path": "packages/app/platforms/android/app/src/main/java/ai/elizaos/app/ElizaVoiceNative.java",
+      "fromObject": "1cd241c5710fc302e75aec8993eefee0a709ab9c",
+      "toObject": "1cd241c5710fc302e75aec8993eefee0a709ab9c",
+      "equal": true
+    },
+    {
+      "path": "packages/app/scripts/lib/android-bun-artifacts.lock.json",
+      "fromObject": "83c8e91becc3a2c46902cc168fdc9b88fc038e5d",
+      "toObject": "83c8e91becc3a2c46902cc168fdc9b88fc038e5d",
+      "equal": true
+    },
+    {
+      "path": "plugins/plugin-local-inference/native",
+      "fromObject": "a403e3519315fd99bb811c88f07673d8f7616f85",
+      "toObject": "a403e3519315fd99bb811c88f07673d8f7616f85",
+      "equal": true
+    },
+    {
+      "path": "plugins/plugin-native-system/android",
+      "fromObject": "63d823cef5c559d599fcf241f89a6182cbed75e1",
+      "toObject": "63d823cef5c559d599fcf241f89a6182cbed75e1",
+      "equal": true
+    },
+    {
+      "path": "plugins/plugin-native-action-journal/android",
+      "fromObject": "939cdf4c8cda26bef587476f13dfef9e760ebcb8",
+      "toObject": "939cdf4c8cda26bef587476f13dfef9e760ebcb8",
+      "equal": true
+    },
+    {
+      "path": "plugins/plugin-native-calendar/android",
+      "fromObject": "85eb68f5126a91b57aa62591e0bceb42de1c330c",
+      "toObject": "85eb68f5126a91b57aa62591e0bceb42de1c330c",
+      "equal": true
+    },
+    {
+      "path": "plugins/plugin-native-media/android",
+      "fromObject": "7a7caf33e46ef52d0ce0752673453070c6107309",
+      "toObject": "7a7caf33e46ef52d0ce0752673453070c6107309",
+      "equal": true
+    },
+    {
+      "path": "plugins/plugin-native-notifications/android",
+      "fromObject": "8544d529a5a02d6ddec1733ea8f44b4f74f99b85",
+      "toObject": "8544d529a5a02d6ddec1733ea8f44b4f74f99b85",
+      "equal": true
+    },
+    {
+      "path": "plugins/plugin-native-reminders/android",
+      "fromObject": "5f4fbf13505e0fd0a4eed5b773075d3eaaa02aa5",
+      "toObject": "5f4fbf13505e0fd0a4eed5b773075d3eaaa02aa5",
+      "equal": true
+    },
+    {
+      "path": "plugins/plugin-native-secure-store/android",
+      "fromObject": "b6cd284b734a62603938a20ca0b945e22122df99",
+      "toObject": "b6cd284b734a62603938a20ca0b945e22122df99",
+      "equal": true
+    },
+    {
+      "path": "plugins/plugin-workflow",
+      "fromObject": "28f0fef4426a6ff5a5f2a279b565f1cae044bc30",
+      "toObject": "28f0fef4426a6ff5a5f2a279b565f1cae044bc30",
+      "equal": true
+    },
+    {
+      "path": "packages/contracts/src/lifeops/workflows.ts",
+      "fromObject": "3a52ac39c667c81631d1b07ddf903092ea5ece81",
+      "toObject": "3a52ac39c667c81631d1b07ddf903092ea5ece81",
+      "equal": true
+    },
+    {
+      "path": "packages/host",
+      "fromObject": "29a466e6c334a04904cfcf5ee3d02b1867664fad",
+      "toObject": "29a466e6c334a04904cfcf5ee3d02b1867664fad",
+      "equal": true
+    },
+    {
+      "path": "plugins/plugin-pdf",
+      "fromObject": "d651309f60c46c70aa35a92a548396487b44fa9a",
+      "toObject": "d651309f60c46c70aa35a92a548396487b44fa9a",
+      "equal": true
+    },
+    {
+      "path": "LICENSE",
+      "fromObject": "2a5dfe7a78df1ec7dad9fe5fbbf41fc65f6fa8fd",
+      "toObject": "2a5dfe7a78df1ec7dad9fe5fbbf41fc65f6fa8fd",
+      "equal": true
+    },
+    {
+      "path": "package.json",
+      "fromObject": "6facdf6e8322509ea6108e0856bd6266c328c577",
+      "toObject": "6facdf6e8322509ea6108e0856bd6266c328c577",
+      "equal": true
+    },
+    {
+      "path": "bun.lock",
+      "fromObject": "0144b57346079d23998cede8993c55507fae24ab",
+      "toObject": "0144b57346079d23998cede8993c55507fae24ab",
+      "equal": true
+    }
+  ],
+  "changedSDKFiles": [
+    "packages/app/platforms/android/app/src/main/java/ai/elizaos/app/NativeNotificationProjector.java"
+  ],
+  "noticeMetadataFields": [
+    "[40].version",
+    "[40].source",
+    "[41].version",
+    "[43].version",
+    "[64].version",
+    "[65].version",
+    "[71].version",
+    "[80].version",
+    "[102].version"
+  ],
+  "noticeMetadataLines": 18,
+  "nativeQualificationTransferred": false,
+  "appRuntimeQualified": false,
+  "deviceAcceptance": false
+}

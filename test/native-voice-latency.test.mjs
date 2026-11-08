@@ -143,18 +143,20 @@ test('CLI distinguishes insufficient samples, failed budgets and measured timing
 });
 
 test('the Android collector times capture from AudioRecord and playback from the output timestamp (host JVM state)', async () => {
-  const { nativeSource, fixture, runJvm } = await import('./fixtures/jvm-tools.mjs');
-  assert.match(runJvm([nativeSource('VoiceLatencyTrials.java'), fixture('VoiceLatencyTrialsTest.java')], 'ai.elizaresearch.alphaphone.VoiceLatencyTrialsTest'), /^PASS voice latency trials/);
+  const { nativeSource, runJvm, upstreamBridgeSource, upstreamVoiceFixture, upstreamVoiceSource } = await import('./fixtures/jvm-tools.mjs');
+  assert.match(runJvm([upstreamVoiceSource('VoiceLatencyTrials.java'), upstreamVoiceFixture('VoiceLatencyTrialsTest.java')], 'ai.eliza.voice.VoiceLatencyTrialsTest'), /^PASS voice latency trials/);
   const harness = fs.readFileSync(path.join(path.dirname(nativeSource('x')), '../../../../../androidTest/java/ai/elizaresearch/alphaphone/NativeVoiceLatencyInstrumentedTest.java'), 'utf8');
-  assert.match(harness, /\},"harness-no-inference",source\);/, 'the harness labels its own trials');
-  const read = name => fs.readFileSync(nativeSource(name), 'utf8');
-  const probe = read('AlphaVoiceLatencyProbe.java'), capture = read('AlphaLiveVoiceCapture.java'), plugin = read('AlphaVoiceCloudPlugin.java');
+  assert.match(harness, /\},"harness-no-inference",source,LiveVoiceCapture\.detectors\(VoiceAssets\.sharedInference\(app\)\)\);/, 'the harness labels its own trials');
+  const read = name => fs.readFileSync(nativeSource(name), 'utf8'), shared = name => fs.readFileSync(upstreamVoiceSource(name), 'utf8');
+  const probe = shared('VoiceLatencyProbe.java'), capture = shared('LiveVoiceCapture.java'), plugin = fs.readFileSync(upstreamBridgeSource('LocalSpeechBridgePlugin.java'), 'utf8');
+  // The shared probe keeps Alpha's timing document name and build identity, configured once per process.
+  assert.match(read('AlphaApplication.java'), /VoiceLatencyProbe\.configureHost\("alpha-native-voice-timing-v3",BuildConfig\.ELIZA_SOURCE_COMMIT,BuildConfig\.ELIZA_SOURCE_DIRTY,/);
   assert.match(probe, /getTimestamp\(scratch,AudioTimestamp\.TIMEBASE_MONOTONIC\)/);
   assert.match(probe, /getAnchorSystemNanoTime\(\)/);
-  assert.match(probe, /"alpha-native-voice-timing-v3"/);
+  assert.match(probe, /\.put\("format",format\)/);
   assert.match(probe, /\.put\("turnId",trial\.turnId\)/);
   // Streamed speech (#397): first-pcm at the first AudioTrack write, audible from AudioTrack.getTimestamp.
-  const output = read('AudioTrackSpeechOutput.java');
+  const output = shared('AudioTrackSpeechOutput.java');
   assert.match(output, /track\.getTimestamp\(stamp\)/);
   assert.match(output, /MODE_STREAM/);
   assert.match(plugin, /TRIALS\.firstPcm\(trial,nanos\)/);
@@ -162,9 +164,9 @@ test('the Android collector times capture from AudioRecord and playback from the
   assert.match(plugin, /@PluginMethod public void markVoiceTurn\(PluginCall call\)\{\n  long at=System\.nanoTime\(\);/);
   assert.equal(probe.includes('Log.'), false, 'the collector logs nothing');
   assert.match(capture, /TRIALS\.speechEnded\(lastSpeechNs,System\.nanoTime\(\)/);
-  assert.match(plugin, /p\.start\(\);cloudTimings\.mark\(playbackTiming,"playback-start"\);if\(playbackLocalReply\)AlphaVoiceLatencyProbe\.playbackStarted\(/);
+  assert.match(plugin, /p\.start\(\);if\(playbackLocalReply\)VoiceLatencyProbe\.playbackStarted\(/);
   // The trial carries numbers and labels only: no text reaches the collector.
-  for (const source of [probe, read('VoiceLatencyTrials.java')]) assert.doesNotMatch(source.replace(/\/\*[\s\S]*?\*\/|\/\/[^\n]*/g, ''), /transcript|\btext\b/i);
+  for (const source of [probe, shared('VoiceLatencyTrials.java')]) assert.doesNotMatch(source.replace(/\/\*[\s\S]*?\*\/|\/\/[^\n]*/g, ''), /transcript|\btext\b/i);
 });
 
 test('duplicate trial provenance changes cannot replace an accepted record', () => {

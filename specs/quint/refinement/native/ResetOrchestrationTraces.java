@@ -1,5 +1,9 @@
 package ai.elizaresearch.alphaphone;
 
+import ai.eliza.plugins.system.reset.DataReset;
+import ai.eliza.plugins.system.reset.ResetAuthorization;
+import ai.eliza.plugins.system.SenseListenerClient;
+
 import java.io.File;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -22,6 +26,7 @@ public final class ResetOrchestrationTraces {
   long[] priorBudget;
 
   Scenario(String name, Path root) throws Exception {
+   ai.eliza.auth.cloud.CloudKeyRevocation.pending = c -> AlphaDataReset.RESET.pending((android.content.Context)c);
    android.content.Context.data = root.resolve(name).toFile();
    android.content.Context.data.mkdirs();
    android.app.Application.process = "fixture.alpha";
@@ -30,8 +35,8 @@ public final class ResetOrchestrationTraces {
    android.app.ActivityManager.startsFail = false;
    android.app.ActivityManager.starts = java.util.List.of(new android.app.ApplicationStartInfo(123, android.app.ApplicationStartInfo.START_REASON_LAUNCHER));
    android.content.Context.recoveries = 0;
-   AlphaListenerPlugin.resetSaved = false;
-   AlphaListenerPlugin.calls = 0;
+   SenseListenerClient.resetSaved = false;
+   SenseListenerClient.calls = 0;
    NativeSourceHost.started = 0;
    ResetTraceHooks.listenerAcknowledged = false;
    ResetTraceHooks.dispatched = false;
@@ -51,8 +56,8 @@ public final class ResetOrchestrationTraces {
 
   JSONObject observe() {
    try {
-    long[] failures = AlphaDataReset.failureState(application);
-    boolean marker = AlphaDataReset.pending(application);
+    long[] failures = AlphaDataReset.RESET.failureState(application);
+    boolean marker = AlphaDataReset.RESET.pending(application);
     return Trace.fields("review", Trace.read(authorization, "active"), "confirmed", Trace.read(authorization, "confirmed"),
       "authGeneration", Trace.read(authorization, "generation"), "marker", marker,
       "failures", Math.min(3, failures[0]), "budgetReadable", failures[1] >= 0,
@@ -65,17 +70,17 @@ public final class ResetOrchestrationTraces {
   void event(String kind, String detail) {
    if (preparing && kind.equals("write-start") && detail.equals("reset-alpha.pending")) markerWriteStarted = true;
    JSONObject observation = observe();
-   long[] failures = AlphaDataReset.failureState(application);
+   long[] failures = AlphaDataReset.RESET.failureState(application);
    events.put(new JSONObject().put("kind", kind).put("detail", detail).put("observation", observation)
      .put("rawFailureCount", failures[0]).put("rawFirstFailure", failures[1])
-     .put("initializerCalls", NativeSourceHost.started).put("listenerCalls", AlphaListenerPlugin.calls)
+     .put("initializerCalls", NativeSourceHost.started).put("listenerCalls", SenseListenerClient.calls)
      .put("androidCalls", android.app.ActivityManager.calls));
    if (preparing && kind.equals("durable-write") && detail.equals("reset-alpha.failures")) {
     trace.step("prepareBudget", observation, true);
    } else if (preparing && kind.equals("durable-write") && detail.equals("reset-alpha.pending")) {
     trace.step("persistMarker", observation, true); preparing = false;
-   } else if (attemptActive && kind.equals("durable-write") && detail.equals("reset-alpha.failures")) {
-    long[] current = AlphaDataReset.failureState(application);
+   } else if (attemptActive && !reservationSeen && kind.equals("durable-write") && detail.equals("reset-alpha.failures")) {
+    long[] current = AlphaDataReset.RESET.failureState(application);
     boolean fresh = priorBudget[0] == 0 || priorBudget[1] < 0 || priorBudget[1] != current[1];
     trace.step("reserveAttempt", observation, true, fresh); reservationSeen = true;
    } else if (attemptActive && kind.equals("listener-result")) {
@@ -97,11 +102,11 @@ public final class ResetOrchestrationTraces {
    if (!persist) ResetTraceHooks.failWrite = "reset-alpha.pending";
    if (interruptAfter) ResetTraceHooks.crashAfterCommit = "reset-alpha.pending";
    preparing = true;
-   try { AlphaDataReset.record(application); }
+   try { AlphaDataReset.RESET.record(application); }
    catch (ResetTraceHooks.Interruption expected) { events.put(new JSONObject().put("kind", "process-interrupted-after-marker")); }
    catch (Exception failed) {
     events.put(new JSONObject().put("kind", "marker-write-failed").put("type", failed.getClass().getName()));
-    if (AlphaDataReset.pending(application)) trace.stutter("record failed after marker commit", observe());
+    if (AlphaDataReset.RESET.pending(application)) trace.stutter("record failed after marker commit", observe());
     else trace.step(markerWriteStarted ? "persistMarker" : "prepareBudget", observe(), false);
    }
    preparing = false;
@@ -111,18 +116,18 @@ public final class ResetOrchestrationTraces {
   }
 
   void directAttempt(long now, boolean acknowledged, int androidMode, boolean explicitRetry) {
-   AlphaListenerPlugin.resetSaved = acknowledged;
+   SenseListenerClient.resetSaved = acknowledged;
    android.app.ActivityManager.mode = androidMode;
    ResetTraceHooks.listenerAcknowledged = false;
    beginAttempt(explicitRetry);
-   AlphaDataReset.Outcome outcome = explicitRetry ? AlphaDataReset.retry(application, now) : AlphaDataReset.automaticAttempt(application, now);
+   DataReset.Outcome outcome = explicitRetry ? AlphaDataReset.RESET.retry(application, now) : AlphaDataReset.RESET.automaticAttempt(application, now);
    endAttempt();
    events.put(new JSONObject().put("kind", "attempt-result").put("outcome", outcome.name()).put("observation", observe()));
   }
 
   void beginAttempt(boolean explicit) {
    attemptActive = true; reservationSeen = listenerSeen = androidSeen = false;
-   priorBudget = AlphaDataReset.failureState(application);
+   priorBudget = AlphaDataReset.RESET.failureState(application);
    ResetTraceHooks.listenerAcknowledged = false;
    ResetTraceHooks.dispatched = false;
    trace.step("beginAttempt", observe(), explicit);
@@ -156,7 +161,7 @@ public final class ResetOrchestrationTraces {
   for (String mode : new String[]{"marker", "write-failed", "before-marker-interruption", "after-marker-interruption"}) {
    Scenario scenario = new Scenario(mode, root);
    scenario.authorize(!mode.equals("write-failed"), mode.equals("before-marker-interruption"), mode.equals("after-marker-interruption"));
-   if (AlphaDataReset.pending(scenario.application)) scenario.launch(android.app.ApplicationStartInfo.START_REASON_LAUNCHER);
+   if (AlphaDataReset.RESET.pending(scenario.application)) scenario.launch(android.app.ApplicationStartInfo.START_REASON_LAUNCHER);
    traces.put(scenario.trace.value);
   }
   Scenario retired = new Scenario("retired-authentication", root);
@@ -195,7 +200,7 @@ public final class ResetOrchestrationTraces {
   failedBudget.authorize(true, false, false);
   ResetTraceHooks.failWrite = "reset-alpha.failures";
   for (int launch = 0; launch < 5; launch++) failedBudget.launch(android.app.ApplicationStartInfo.START_REASON_LAUNCHER);
-  if (AlphaListenerPlugin.calls != 0 || AlphaDataReset.failureState(failedBudget.application)[0] != 0)
+  if (SenseListenerClient.calls != 0 || AlphaDataReset.RESET.failureState(failedBudget.application)[0] != 0)
    throw new AssertionError("Failure-budget reproduction changed");
   traces.put(failedBudget.trace.value);
 

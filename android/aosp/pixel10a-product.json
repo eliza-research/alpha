@@ -12,8 +12,8 @@
     "production": "alpha_stallion_phone-cp2a-user"
   },
   "sourceLock": {
-    "file": "android/aosp/pixel10a-source.json",
-    "sha256": "UNSET"
+    "file": "vendor/eliza/packages/os/android/sources/pixel10a-stallion.json",
+    "sha256": "760a7184c62c93aeac40595cf5733f8089aa16ccd28eb7a5f5ce41d4dae741d3"
   },
   "signer": {
     "apkDescriptor": "android/release-signer.json",

@@ -15,8 +15,10 @@ Alpha's reviewed Eliza pin. Alpha owns identity and policy:
 no-backup directory, Keystore alias and AAD `alpha.passwords.vault.v1`, 60 s unlock window,
 biometric allowed, host identifies itself as a browser), the service declaration in `AndroidManifest.xml`,
 `PasswordsPlugin` registration in `MainActivity`, the browser's engine-attested field adapter
-(`BrowserLoginFields`, `BrowserFieldOrigin`, `res/raw/browser_login_fields.js`), the top-level-origin
-extra in `AlphaBrowserPlugin.CredentialWebView`, and the renderer screens in `apps/app/src/passwords`.
+(`BrowserLoginFields` with its isolated-world reporter, and `BrowserFieldOrigin`, both shared from
+`plugin-native-browser-surface` at the reviewed pin; Alpha passes the vault's two extras keys), the
+top-level-origin extra in `AlphaBrowserPlugin.CredentialWebView`, and the renderer screens in
+`apps/app/src/passwords`.
 
 | Capability | Behavior |
 | --- | --- |
@@ -106,7 +108,7 @@ requires the native `PasswordAutofillPolicy.FIELD_ORIGIN` contract for every log
 them. Alpha's browser supplies that contract itself, from the WebView engine:
 
 - `BrowserLoginFields` installs, before a tab loads anything, a `WebViewCompat.WebMessageListener`
-  and a document-start script (`res/raw/browser_login_fields.js`) in an **isolated JavaScript
+  and a document-start script (`BrowserLoginFields.SCRIPT`) in an **isolated JavaScript
   world** of every frame (`JS_INJECTION_IN_FRAME_AND_WORLD`). Page script cannot reach that world's
   channel, so it cannot post reports or read fill values sent to it. The script reports trusted
   focus on a username/password field of its own frame; its message has no origin, address or frame
@@ -156,7 +158,8 @@ them. Alpha's browser supplies that contract itself, from the WebView engine:
   requests, its own commit on form submission, keyboard inline suggestions tied to the WebView).
   How that interacts with the attested fields must be checked on a device.
 
-Evidence: `test/fixtures/FieldOriginBindingTest.java` (JVM; wrong origin, cross-origin, subdomain,
+Evidence: the shared `BrowserFieldOriginTest` (JVM, in `plugin-native-browser-surface`, run at the
+pin by `test/login-surfaces.test.mjs`; wrong origin, cross-origin, subdomain,
 port and sandboxed frames, cleartext, binding expiry on navigation, hidden/paused/deselected tabs, spoofed
 script messages, unsupported WebView, revocation, and the pinned `PasswordFormPolicy` on the
 adapter's structure), source guards in `test/login-surfaces.test.mjs`, and
@@ -199,6 +202,6 @@ Android WebView reports only host and realm, so Alpha's browser uses `STANDARD_W
 no challenge: the prompt states why password-manager fill is off, the fields are excluded from
 Autofill with no hints, and manual entry remains. A bound prompt's binding is revoked on Cancel,
 dismissal, a repeated challenge, navigation, tab change, close or renderer loss; revoked or unbound fields
-leave every Autofill request, report no typed value even to a manual request, and drop late fill values. The JVM fixture (`test/fixtures/LoginBindingTest.java`) covers
+leave every Autofill request, report no typed value even to a manual request, and drop late fill values. The shared JVM test (`BrowserHttpAuthOriginTest`, run at the pin by `test/login-surfaces.test.mjs`) covers
 redirects, frames, wrong origin/port/realm, cleartext, stale and hidden tabs, lock (pause) and cancel;
 it does not run a provider, a vault, Android's structure code or a device.

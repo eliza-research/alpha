@@ -39,6 +39,10 @@ async function expectInert(page:Page,seen:Awaited<ReturnType<typeof watch>>){
  expect(await page.evaluate(()=>document.querySelectorAll('a#a, input[name="password"], img[src*="attacker"], svg image, foreignObject').length)).toBe(0);
 }
 async function setup(page:Page,parts:Part[],options:{opaque?:boolean;agent?:boolean}={}){
+ // The fixture models an installation that already finished access setup; a signed-in account with
+ // pending setup is owed the startup walkthrough, which would otherwise cover Home once the swapped
+ // snapshot re-renders (startup-permissions-walkthrough.spec.ts owns that flow).
+ await page.addInitScript(()=>localStorage.setItem('alpha:startup-permission-walkthrough:v1',JSON.stringify({version:1,status:'completed',step:4})));
  await page.goto('/');
  await page.evaluate(async({parts,options})=>{
   const {connectionController:c}=await import('/src/runtime/connection-ui.tsx');
@@ -47,11 +51,13 @@ async function setup(page:Page,parts:Part[],options:{opaque?:boolean;agent?:bool
   s.read=async()=>null;s.compareExchange=async()=>({status:'saved'});
   const f=(window as any).hostileFixture={attachmentRequests:[] as string[],mutations:0,agentPosts:[] as unknown[]};
   const message={id:'selected',threadId:'thread',from:'Fixture sender',fromEmail:'sender@example.invalid',to:['reader@example.invalid'],cc:[],replyTo:null,subject:'Invoices attached',snippet:'See attached',receivedAt:'2026-10-04T12:00:00Z',unread:false};
-  // The product's own response validation, fed the server's JSON for the requested part.
+  // The product's own response validation (CloudProtocol over the shared managed Gmail client), fed the
+  // server's JSON for the requested part through a synthetic authenticated transport.
   const validated=(method:'gmailAttachment'|'gmailOpaqueAttachment')=>async(grant:string,messageId:string,partId:string,historyId:string,signal:AbortSignal)=>{
    f.attachmentRequests.push(`${method}:${partId}`);
    const row=parts.find(part=>part.partId===partId);
-   return (CloudProtocol.prototype as any)[method].call({call:async()=>structuredClone(row!.response)},grant,messageId,partId,historyId,signal);
+   const protocol=new CloudProtocol('production',async()=>({status:200,data:structuredClone(row!.response)}),{read:async()=>({token:'fixture-token',credentialId:'fixture'}),write:async()=>{},clear:async()=>{}},async()=>{});
+   return (protocol as any)[method](grant,messageId,partId,historyId,signal);
   };
   const client={
    gmailAccounts:async()=>[{connectionId:'fixture-grant',label:'Fixture mailbox',configured:true,connected:true,reason:'connected',grantedCapabilities:['google.gmail.triage']}],
@@ -84,7 +90,7 @@ async function expectRefused(page:Page){
 const openFile=async(page:Page,name:string)=>{
  await page.reload();
  await page.getByRole('button',{name:'Files',exact:true}).click();
- await page.getByText('App files',{exact:true}).first().click();
+ await page.getByRole('button',{name:'Internal storage',exact:true}).click();
  await page.getByRole('button',{name:`Open ${name}`,exact:true}).click();
 };
 const storedBytes=(page:Page,name:string)=>page.evaluate(async name=>{const {registerPlugin}=await import('/src/platform-plugins.ts');const f=registerPlugin<any>('AlphaFiles'),row=(await f.list({})).entries.find((entry:any)=>entry.name===name),selected=await f.select({id:row.id});try{return (await f.attachment(selected)).dataBase64 as string;}finally{await f.forgetSelected(selected);}},name);

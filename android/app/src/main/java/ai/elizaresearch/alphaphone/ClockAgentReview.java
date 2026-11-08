@@ -1,5 +1,7 @@
 package ai.elizaresearch.alphaphone;
 
+import ai.eliza.plugins.system.clock.ClockDays;
+import ai.eliza.plugins.system.clock.ClockHandoff;
 import android.app.Activity;
 import android.app.AlertDialog;
 import android.app.KeyguardManager;
@@ -34,8 +36,8 @@ final class ClockAgentReview {
    if(!(operation.get("label") instanceof String)||operation.getString("label").length()>200)throw new IllegalArgumentException();
    for(char c:operation.getString("label").toCharArray())if(c<32||c==127)throw new IllegalArgumentException();
    if(!(operation.get("timeZone") instanceof String)||operation.getString("timeZone").length()>100)throw new IllegalArgumentException();
-   // Upstream admits unordered days and an explicit empty list (a one-time alarm); see ClockContract.agentDays.
-   if(operation.has("days"))ClockContract.agentDays(operation.get("days"));
+   // Upstream admits unordered days and an explicit empty list (a one-time alarm); see the shared ClockDays.agent.
+   if(operation.has("days"))ClockDays.agent(operation.get("days"));
   }
   if("snooze".equals(action))integer(operation,"snoozeMinutes",1,60);
  }
@@ -53,7 +55,7 @@ final class ClockAgentReview {
  }
  static Intent intent(JSONObject operation)throws Exception{
   validate(operation);String action=operation.getString("action");
-  if("set".equals(action))return ClockHandoff.intent("set",operation.getInt("hour"),operation.getInt("minute"),operation.getString("label"),null,ClockContract.agentDays(operation.opt("days")));
+  if("set".equals(action))return ClockHandoff.intent("set",operation.getInt("hour"),operation.getInt("minute"),operation.getString("label"),null,ClockDays.agent(operation.opt("days")));
   // Android's unqualified snooze affects all ringing alarms; dismissal can act without selection.
   // Open Clock instead: the owner selects the actual alarm and completes either action there.
   return new Intent(AlarmClock.ACTION_SHOW_ALARMS);
@@ -66,15 +68,14 @@ final class ClockAgentReview {
   AlertDialog dialog=new AlertDialog.Builder(activity).setTitle("Review agent Clock handoff").setMessage(text).setPositiveButton("Continue to Clock",(d,w)->{dialogs.remove(id);pending.remove(id);decision.selected(true);}).setNegativeButton("Cancel",(d,w)->{dialogs.remove(id);pending.remove(id);decision.selected(false);}).setOnCancelListener(d->{dialogs.remove(id);pending.remove(id);decision.selected(false);}).create();
   dialogs.put(id,dialog);pending.put(id,decision);dialog.show();
  }
- private static String repeatText(JSONObject operation){java.util.List<Integer> days=ClockContract.agentDays(operation.opt("days"));return days==null?(operation.has("days")?", one time":""):", repeating "+dayNames(days);}
- static String dayNames(java.util.List<Integer> days){String[] names={"","Sun","Mon","Tue","Wed","Thu","Fri","Sat"};StringBuilder out=new StringBuilder();for(Integer day:days){if(out.length()>0)out.append(", ");out.append(names[day]);}return out.toString();}
+ private static String repeatText(JSONObject operation){java.util.List<Integer> days=ClockDays.agent(operation.opt("days"));return days==null?(operation.has("days")?", one time":""):", repeating "+ClockDays.names(days);}
  static void abandon(){for(AlertDialog dialog:dialogs.values())dialog.dismiss();dialogs.clear();pending.clear();}
  static void dismiss(String id){AlertDialog dialog=dialogs.remove(id);Decision decision=pending.remove(id);if(dialog!=null)dialog.dismiss();if(decision!=null)decision.selected(false);}
  static JSObject dispatch(Activity activity,JSONObject operation){String action=operation.optString("action");Intent intent;
   try{foreground(activity);zone(operation);intent=intent(operation);}catch(Exception refused){return result(action,"failed");}
   try{
   android.content.pm.ResolveInfo resolved=activity.getPackageManager().resolveActivity(intent,0);
-  if(resolved==null||resolved.activityInfo==null||ClockContract.receiver(activity.getPackageName(),resolved.activityInfo.packageName)==null)return result(action,"unavailable");
+  if(resolved==null||resolved.activityInfo==null||ClockHandoff.receiver(activity.getPackageName(),resolved.activityInfo.packageName)==null)return result(action,"unavailable");
   // Bind the resolved external component; do not allow an own-app routing loop.
   intent.setComponent(new android.content.ComponentName(resolved.activityInfo.packageName,resolved.activityInfo.name));activity.startActivity(intent);return result(action,"opened");
  }catch(android.content.ActivityNotFoundException absent){return result(action,"unavailable");}catch(SecurityException denied){return result(action,"denied");}catch(Exception uncertain){return result(action,"unknown");}}

@@ -1,0 +1,23 @@
+{
+  "from": "2a8a5928e881ecbfb777fc2a2655230b66fc422e",
+  "to": "0fde8e0a288bc2dc94bac78d4c431c6a0d6056b7",
+  "nativeInputEntries": {
+    "plugins/plugin-local-inference/native": "040000 tree 6ab16b4a9feca594eccb6197f451210a70e32b44\tplugins/plugin-local-inference/native",
+    "packages/app/scripts/paradee-voice": "040000 tree 203bc324e2da09ac614fdde3e36152b23fe35971\tpackages/app/scripts/paradee-voice",
+    "packages/app/scripts/stage-elizavoice-lib.ts": "100644 blob 5fc80a6ddf8e5e0f266c6481996568025763f5a3\tpackages/app/scripts/stage-elizavoice-lib.ts",
+    "packages/app/platforms/android/app/src/main/elizavoice-jni": "040000 tree 4918776fc9b898a46390735527bb003d48c6bf54\tpackages/app/platforms/android/app/src/main/elizavoice-jni",
+    "packages/app/platforms/android/app/src/main/java/ai/elizaos/app/ElizaVoiceNative.java": "100644 blob 386478a98d8182a0541779922894a4d77ea8f3e8\tpackages/app/platforms/android/app/src/main/java/ai/elizaos/app/ElizaVoiceNative.java",
+    "packages/app/scripts/lib/android-bun-artifacts.lock.json": "100644 blob 83c8e91becc3a2c46902cc168fdc9b88fc038e5d\tpackages/app/scripts/lib/android-bun-artifacts.lock.json"
+  },
+  "dependencyInputs207Exact": true,
+  "qualified": false,
+  "admitted": false,
+  "requalificationRequired": true,
+  "multiCueSuccessor": {
+    "from": "0fde8e0a288bc2dc94bac78d4c431c6a0d6056b7",
+    "to": "9af104a1c7c7021493db575899baee666ea0ff6a",
+    "nativeInputsChanged": false,
+    "SDKDependencyInputsChanged": false,
+    "validation": "6pureprefixchecks+2actualVoiceSessiontests(selected8scenario variants)PASS;no liveaudio/fullsuite"
+  }
+}

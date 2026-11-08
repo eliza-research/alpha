@@ -1,9 +1,18 @@
 # Quint implementation refinement
 
-## Published source baseline
+## Current main reconciliation
+
+The PR was retargeted to `main` on GitHub. A separate reconciliation worktree
+starts from `f2a0eb035d` and upstream `475a8d59dc`. The source receipts below
+belong to the earlier implementation and retain their original input hashes.
+They become current evidence only after each adapter is ported and rerun.
+Four additional authored TLA+ designs on main also require conversion. The
+updated work packages are in `quint-migration-report.md`.
+
+## Initial published source baseline
 
 The migration and its required product-source prerequisites are in draft PR 825.
-The base is `claude/finish-open-issues`, the published source lineage of the
+The original base was `claude/finish-open-issues`, the published source lineage of the
 starting checkout. The prerequisite changes are a separate commit. The original
 working tree was preserved. The upstream pin remains
 `b25d8aef2916385c571f4367e099809254fde0bb`.
@@ -174,3 +183,61 @@ permitted interleavings remains open. Provider responses, Android execution,
 physical audio, durable power-loss behavior and actual reset erasure require
 additional contract or integration evidence. The source ledger's file coverage
 does not discharge those obligations.
+
+### Current-main sign-in refinement
+
+The current shared native sign-in implementation retains the original live-owner
+browser policy. Callback consumption now compares the exact durable record and
+uses the secure store's atomic compare/exchange. Cancellation captures its record
+before work is queued. A cancelled or idle plugin cannot delete a later attempt's
+record. Failed storage retirement emits the retained storage failure after the
+renderer operation settles. Pending-record ownership is separate from the active
+email/phone attempt in the model.
+
+The current campaign passes 18 source schedules and 155 checkpoints. The model
+passes 18 registered scenarios, 1,000 samples of 80 steps with seed 123, and an
+Apalache depth-six safety check. The expanded UI fixture tests pass 123 cases after
+including the actual operation-settlement helper in their extracted source. The
+first focused run exposed this missing fixture dependency. Native App Link
+verification, real HTTPS services and Keystore durability remain platform
+obligations.
+
+### Model-input binding
+
+Source campaigns now capture all registered Quint definitions, transitive model
+imports and model-selection/invariant manifests before executing the source
+driver. The checker validates that complete captured set afterward. Changing a
+model or its selected safety predicate between observation and checking rejects
+the receipt. The regression harness exercises changed definition and changed
+manifest fingerprints as separate failures. Existing receipts must be refreshed
+against this strengthened checker before final aggregate admission.
+
+The next sign-in campaign adds real email/phone code exhaustion and native email
+to MFA progression. Entering MFA resets the per-challenge failed-code counter.
+The model now preserves this reset and allows either supported challenge to
+exhaust its own five attempts. The campaign has 21 source schedules and 181
+checkpoints. Its model has 19 scenarios and passes 1,000-by-80 sampled safety and
+a depth-six symbolic safety check. Java sources compile once per campaign, with
+a fresh JVM for every schedule. The 21-schedule test completed in 54 seconds on
+the first run of that compilation arrangement.
+
+### Native view-event subscriptions
+
+`NativeViewSubscription` covers listener registration, native subscribe replies,
+identity-filtered frames and teardown in `runtime/native-view-events.ts`.
+Synchronous listener removal previously prevented the terminal callback. Cleanup
+now handles synchronous errors and rejected promises before publishing that
+callback. Twenty source schedules and 96 checkpoints pass, including late replies,
+foreign frames, native terminal frames and both cleanup failure forms. The full
+seven-field observable state is checked at each checkpoint. Eight model scenarios,
+1,000 samples of 80 steps and depth-eight symbolic safety also pass.
+
+Cleanup counters record attempted calls. Actual native resource release, IPC
+owner enforcement and Binder delivery remain platform obligations. A late or
+mismatched subscribe reply can request unsubscribe twice, matching the existing
+idempotent protocol. Source execution uses the actual function with TypeScript
+annotations stripped and controlled native/UUID ports.
+
+Deferred storage notices now recheck the captured connection epoch and exact
+sign-in view before appearing. Regressions show that a newer code-entry step and
+a replaced connection keep their state when an older notice settles.

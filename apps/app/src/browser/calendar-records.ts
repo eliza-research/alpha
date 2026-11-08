@@ -1,5 +1,5 @@
 import type {CalendarResponse} from './calendar-response';
-import {calendarInstant,calendarWall} from './calendar-editor';
+import {calendarInstant,calendarWall} from './calendar-time';
 import {expandCalendarSeries,type CalendarRepeat} from './calendar-recurrence';
 export type CalendarRecord={id:string;calendarId:string;title:string;body:string;location:string;begin:number;end:number;revision:string;allDay?:boolean;timeZone?:string;repeat?:CalendarRepeat;who?:string[];attendeeOptions?:Record<string,{optional:boolean}>;responses?:Record<string,CalendarResponse>;video?:boolean;alert?:number|null;seriesId?:string;occurrenceBegin?:number;excluded?:number[]};
 export function calendarRecord(rows:CalendarRecord[],id:string):CalendarRecord|undefined{

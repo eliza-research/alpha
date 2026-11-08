@@ -6,7 +6,7 @@ import vm from 'node:vm';
 const source=readFileSync('apps/app/src/prototype/agent-adapter.ts','utf8');
 const begin=source.indexOf('this.backHandler = (event: Event) => {'),end=source.indexOf("window.addEventListener('alpha-back', this.backHandler)",begin);
 assert.ok(begin>=0&&end>begin);
-const code=stripTypeScriptTypes(source.slice(begin,end),{mode:'strip'});
+const code=stripTypeScriptTypes(source.slice(begin,end),{mode:'transform'});
 function fixture({popover=true,dialog=false,supported=true,toast=false,fallback=false}={}){
  const calls={popover:0,focus:0,dialog:0,navigate:0,cancelReply:0};
  const menu={id:'alpha-mail-folders',hidePopover(){calls.popover++;popover=false;}};

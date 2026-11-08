@@ -77,10 +77,11 @@ This document concerns third-party native apps. Alpha Phone's own APKs follow
 [the Android build contract](android-and-aosp.md): distribution builds exclude every
 mock, fixture and developer surface (`ELIZA_DEV_ALLOW_TEST_MOCKS` off); release signing
 uses `ELIZAOS_KEYSTORE_PATH`, `ELIZAOS_KEYSTORE_PASSWORD`, `ELIZAOS_KEY_ALIAS` and
-`ELIZAOS_KEY_PASSWORD`; version comes from `ELIZAOS_VERSION_CODE`/`ELIZAOS_VERSION_NAME`
+`ELIZAOS_KEY_PASSWORD`, or `scripts/sign-release-apks.mjs` with the ceremony key files or a
+PKCS#11 token after an unsigned build; version comes from `ELIZAOS_VERSION_CODE`/`ELIZAOS_VERSION_NAME`
 or `app.config.json`; release variants are R8-minified with retained mapping files; and
-App Links are prepared from `assetlinks.template.json` but inactive until a domain and
-release signer exist. Alpha's in-app third-party notices
+App Links stay inactive until the release signer is enrolled and the Eliza Cloud web host
+lists it ([human actions](human-actions.md) H-09 and H-13). Alpha's in-app third-party notices
 (`apps/app/public/licenses/third-party-notices.json` and `THIRD_PARTY_NOTICES.txt`) cover
 the app's own dependencies only; the native apps staged here need their own notices in
 the image's license bundle. Under decision P-09 those in-app notices include every

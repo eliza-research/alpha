@@ -4,6 +4,7 @@ import {existsSync,readdirSync,mkdtempSync,rmSync,writeFileSync} from 'node:fs';
 import {homedir,tmpdir} from 'node:os';
 import {join,resolve} from 'node:path';
 import {execFileSync} from 'node:child_process';
+import {prepareNativeFixture,noticeSources} from './fixtures/native-source.mjs';
 const cache=join(homedir(),'.gradle/caches/modules-2/files-2.1/org.json/json/20250517');
 const cached=existsSync(cache)?readdirSync(cache).flatMap(hash=>readdirSync(join(cache,hash)).filter(name=>name==='json-20250517.jar').map(name=>join(cache,hash,name)))[0]:undefined;
 const jsonJar=process.env.ALPHA_JSON_JAR||cached;
@@ -13,7 +14,7 @@ test('resident result IPC verifies identity and preserves durable inbox recovery
  const binary=name=>java?join(java,'bin',name):name;
  const base=join(root,'android/app/src/main/java/ai/elizaresearch/alphaphone');
  try{
-  execFileSync(binary('javac'),['--release','11','-cp',jsonJar,'-d',temporary,...['CloudDeployment','RendererCredentialSlots','ResidentResultTransport','ResidentResultSession','HostedInbox','HostedResultNotices','NoticeOwner','HostedStorageFault'].map(name=>join(base,name+'.java')),join(root,'test/fixtures/ResidentResultTransportTest.java')],{timeout:20000});
+  execFileSync(binary('javac'),['--release','11','-cp',jsonJar,'-d',temporary,join(root,'vendor/eliza/plugins/plugin-native-agent/android/src/main/java/ai/eliza/plugins/agent/connection/SecureSlotPolicy.java'),...['CloudDeployment','RendererCredentialSlots','ResidentResultTransport','ResidentResultSession','HostedInbox','HostedResultNotices','HostedStorageFault'].map(name=>join(base,name+'.java')),...noticeSources(prepareNativeFixture(root,temporary).root,'NoticeOwner'),join(root,'test/fixtures/ResidentResultTransportTest.java')],{timeout:20000});
   assert.match(execFileSync(binary('java'),['-cp',temporary+':'+jsonJar,'ai.elizaresearch.alphaphone.ResidentResultTransportTest'],{encoding:'utf8',timeout:20000}),/^PASS resident/);
  }finally{rmSync(temporary,{recursive:true,force:true});}
 });
@@ -33,7 +34,7 @@ class HostedDeliveryWorker {static boolean resident;static int scheduled;static 
 class AlphaLocalAgentPlugin {static JSONObject captureResultSession(String owner)throws Exception {if(!owner.equals("owner"))throw new SecurityException();return ResidentResultSession.snapshot(owner,"session",System.currentTimeMillis()+60000,ElizaAgentService.root);}}
 class ElizaAgentService {static String root="root";static final ResidentResultTransportTest.Channel channel=new ResidentResultTransportTest.Channel();static String localAgentToken(){return root;}static String requestLocalAgent(String raw)throws Exception {JSONObject r=new JSONObject(raw);if(!r.getJSONObject("headers").getString("Authorization").equals("Bearer session"))throw new AssertionError();return channel.exchange(r.getString("path"),r.getString("method"),r.has("body")?new JSONObject(r.getString("body")):null,r.getInt("timeoutMs")).toString();}}
 `);
-  execFileSync(binary('javac'),['--release','11','-cp',jsonJar,'-d',temporary,context,support,...['CloudDeployment','RendererCredentialSlots','ResidentResultTransport','ResidentResultSession','HostedTransport','NativeDigestSources','HostedDelivery','HostedInbox','HostedResultNotices','NoticeOwner','HostedStorageFault','HostedDeliveryCancelled'].map(name=>join(base,name+'.java')),join(root,'test/fixtures/ResidentResultTransportTest.java'),join(root,'test/fixtures/ResidentDeliveryTest.java')],{timeout:20000});
+  execFileSync(binary('javac'),['--release','11','-cp',jsonJar,'-d',temporary,join(root,'vendor/eliza/plugins/plugin-native-agent/android/src/main/java/ai/eliza/plugins/agent/connection/SecureSlotPolicy.java'),context,support,...['CloudDeployment','RendererCredentialSlots','ResidentResultTransport','ResidentResultSession','HostedTransport','NativeDigestSources','HostedDelivery','HostedInbox','HostedResultNotices','HostedStorageFault','HostedDeliveryCancelled','NativeDeviceEnrollmentKey'].map(name=>join(base,name+'.java')),...noticeSources(prepareNativeFixture(root,temporary).root,'NoticeOwner'),join(root,'test/fixtures/ResidentResultTransportTest.java'),join(root,'test/fixtures/ResidentDeliveryTest.java')],{timeout:20000});
   assert.match(execFileSync(binary('java'),['-cp',temporary+':'+jsonJar,'ai.elizaresearch.alphaphone.ResidentDeliveryTest'],{encoding:'utf8',timeout:20000}),/^PASS resident configure/);
  }finally{rmSync(temporary,{recursive:true,force:true});}
 });

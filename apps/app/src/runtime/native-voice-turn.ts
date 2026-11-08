@@ -1,28 +1,23 @@
 import { Capacitor } from '@capacitor/core';
 import { registerPlugin } from '../platform-plugins';
 import { setNativeVoiceStageSink } from './voice-timing';
+import { nativeVoiceStageSink, readNativeVoiceTiming as readBridgeTiming, type NativeVoiceTimingPort } from '../../../../.eliza/client-features/packages/voice/src/native-live-voice.ts';
 
 /**
- * Issue #395 bridge from renderer agent-turn events to the native latency collector
- * (AlphaVoiceCloudPlugin.markVoiceTurn, VoiceLatencyTrials). The renderer reports only a stage name
- * ('asr-final', 'request', 'first-token') and the native turn id it was given; the native side
- * stamps the monotonic time on arrival. No text, account or conversation identifier is sent.
+ * Issue #395: Alpha's binding of the shared native voice-turn sink (`@elizaos/voice/native-live`)
+ * to the AlphaVoiceCloud bridge's latency collector (LocalSpeechBridgePlugin.markVoiceTurn,
+ * VoiceLatencyTrials). The renderer reports only a stage name and the native turn id it was given;
+ * the native side stamps the monotonic time on arrival. No text, account or conversation id is sent.
  */
-type NativeVoiceTiming = {
-  markVoiceTurn(input: { stage: 'asr-final' | 'request' | 'first-token'; voiceTurnId?: string }): Promise<{ marked?: boolean; voiceTurnId?: string }>;
-  nativeVoiceTiming(): Promise<unknown>;
-};
-const plugin = () => registerPlugin<NativeVoiceTiming>('AlphaVoiceCloud');
+const plugin = () => registerPlugin<NativeVoiceTimingPort>('AlphaVoiceCloud');
+const available = () => Capacitor.isNativePlatform() && Capacitor.isPluginAvailable('AlphaVoiceCloud');
 let installed = false;
 
 /** On the phone, forward conversation stage marks to the native collector. Idempotent. */
 export function installNativeVoiceTurnMarks() {
-  if (installed || !Capacitor.isNativePlatform() || !Capacitor.isPluginAvailable('AlphaVoiceCloud')) return;
+  if (installed || !available()) return;
   installed = true;
-  setNativeVoiceStageSink(async (stage, voiceTurnId) => {
-    const result = await plugin().markVoiceTurn({ stage, ...(voiceTurnId ? { voiceTurnId } : {}) });
-    return typeof result?.voiceTurnId === 'string' ? result.voiceTurnId : undefined;
-  });
+  setNativeVoiceStageSink(nativeVoiceStageSink(plugin()));
 }
 
 /**
@@ -30,10 +25,6 @@ export function installNativeVoiceTurnMarks() {
  * available within the time limit. buildDiagnostics copies timing fields only.
  */
 export async function readNativeVoiceTiming(timeoutMs = 10_000): Promise<unknown> {
-  if (!Capacitor.isNativePlatform() || !Capacitor.isPluginAvailable('AlphaVoiceCloud')) return null;
-  let timer: ReturnType<typeof setTimeout> | undefined;
-  try {
-    return await Promise.race([plugin().nativeVoiceTiming(), new Promise<null>(resolve => { timer = setTimeout(() => resolve(null), timeoutMs); })]);
-  } catch { return null; }
-  finally { if (timer) clearTimeout(timer); }
+  if (!available()) return null;
+  return readBridgeTiming(plugin(), timeoutMs);
 }

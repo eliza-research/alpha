@@ -7,20 +7,19 @@ import com.getcapacitor.PluginCall;
 import java.io.File;
 import java.lang.reflect.*;
 import java.net.*;
-import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicReference;
 import org.junit.Test;
 import static org.junit.Assert.*;
 
-/** Real Android Handler + plugin serial executor; no microphone/network/model access. */
+/** Real Android Handler + the shared bridge's serial executor (LocalSpeechBridgePlugin); no microphone/network/model access. */
 public final class VoiceWorkerSettlementInstrumentedTest {
  private interface Body { void run(Object request) throws Exception; }
- private static Field field(String name)throws Exception{Field f=AlphaVoiceCloudPlugin.class.getDeclaredField(name);f.setAccessible(true);return f;}
+ private static Field field(String name)throws Exception{Field f=ai.eliza.voice.LocalSpeechBridgePlugin.class.getDeclaredField(name);f.setAccessible(true);return f;}
  private static void result(Object request)throws Exception{Field f=request.getClass().getDeclaredField("result");f.setAccessible(true);f.set(request,new JSObject().put("ready",true));}
  private static void submit(AlphaVoiceCloudPlugin plugin,Call call,Body body)throws Exception{
-  Class<?> type=Class.forName(AlphaVoiceCloudPlugin.class.getName()+"$Work");Method m=AlphaVoiceCloudPlugin.class.getDeclaredMethod("submit",PluginCall.class,type);m.setAccessible(true);
+  Class<?> type=Class.forName(ai.eliza.voice.LocalSpeechBridgePlugin.class.getName()+"$Work");Method m=ai.eliza.voice.LocalSpeechBridgePlugin.class.getDeclaredMethod("submit",PluginCall.class,type);m.setAccessible(true);
   Object work=java.lang.reflect.Proxy.newProxyInstance(type.getClassLoader(),new Class<?>[]{type},(proxy,method,args)->{body.run(args[0]);return null;});m.invoke(plugin,call,work);
  }
  private static class Call extends PluginCall {
@@ -35,7 +34,7 @@ public final class VoiceWorkerSettlementInstrumentedTest {
   AlphaVoiceCloudPlugin p=new AlphaVoiceCloudPlugin();ExecutorService worker=(ExecutorService)field("workers").get(p);
   CountDownLatch disconnectEntered=new CountDownLatch(1),releaseDisconnect=new CountDownLatch(1);AtomicReference<Throwable> failure=new AtomicReference<>();Call first=new Call(),next=new Call();
   try{
-   first.continuation=()->{try{assertTrue(((Map<?,?>)field("pending").get(p)).isEmpty());submit(p,next,VoiceWorkerSettlementInstrumentedTest::result);}catch(Throwable e){failure.set(e);}};
+   first.continuation=()->{try{assertTrue(((ai.eliza.voice.SpeechRequestGate)field("gate").get(p)).idle());submit(p,next,VoiceWorkerSettlementInstrumentedTest::result);}catch(Throwable e){failure.set(e);}};
    submit(p,first,request->{Field f=request.getClass().getDeclaredField("connection");f.setAccessible(true);f.set(request,new HttpURLConnection(new URL("http://127.0.0.1/")){
     public void connect(){}public boolean usingProxy(){return false;}public void disconnect(){disconnectEntered.countDown();try{assertTrue(releaseDisconnect.await(10,TimeUnit.SECONDS));}catch(InterruptedException e){Thread.currentThread().interrupt();throw new AssertionError(e);}}
    });result(request);});
@@ -45,18 +44,18 @@ public final class VoiceWorkerSettlementInstrumentedTest {
  @Test public void rejectedWorkReleasesAdmissionBeforeFailureContinuation()throws Exception{
   AlphaVoiceCloudPlugin p=new AlphaVoiceCloudPlugin();ExecutorService worker=(ExecutorService)field("workers").get(p);Call first=new Call(),next=new Call();AtomicReference<Throwable> failure=new AtomicReference<>();
   try{
-   first.continuation=()->{try{assertTrue(((Map<?,?>)field("pending").get(p)).isEmpty());submit(p,next,VoiceWorkerSettlementInstrumentedTest::result);}catch(Throwable error){failure.set(error);}};
+   first.continuation=()->{try{assertTrue(((ai.eliza.voice.SpeechRequestGate)field("gate").get(p)).idle());submit(p,next,VoiceWorkerSettlementInstrumentedTest::result);}catch(Throwable error){failure.set(error);}};
    submit(p,first,request->{throw new java.io.IOException("synthetic failure");});first.await();next.await();assertNotNull(first.error);assertNull(next.error);assertNull(failure.get());
   }finally{worker.shutdown();assertTrue(worker.awaitTermination(10,TimeUnit.SECONDS));}
  }
  @Test public void cancellationWaitsForWorkerAndRejectsAdmissionDuringDrain()throws Exception{
   AlphaVoiceCloudPlugin p=new AlphaVoiceCloudPlugin();ExecutorService worker=(ExecutorService)field("workers").get(p);File directory=new File(InstrumentationRegistry.getInstrumentation().getTargetContext().getCacheDir(),"voice-drain-test-"+UUID.randomUUID());assertTrue(directory.mkdir());
-  ContextWrapper context=new ContextWrapper(InstrumentationRegistry.getInstrumentation().getTargetContext()){@Override public File getCacheDir(){return directory;}};field("capture").set(p,new AlphaCloudVoiceCapture(context,value->{}));
+  ContextWrapper context=new ContextWrapper(InstrumentationRegistry.getInstrumentation().getTargetContext()){@Override public File getCacheDir(){return directory;}};field("capture").set(p,new ai.eliza.voice.LocalVoiceRecording(context,"alpha-cloud-voice-",value->{}));
   CountDownLatch entered=new CountDownLatch(1),release=new CountDownLatch(1);Call first=new Call(),cancel=new Call(),blocked=new Call(),next=new Call();
   try{
    submit(p,first,request->{entered.countDown();assertTrue(release.await(10,TimeUnit.SECONDS));result(request);});assertTrue(entered.await(10,TimeUnit.SECONDS));
    p.cancelRecording(cancel);submit(p,blocked,VoiceWorkerSettlementInstrumentedTest::result);blocked.await();assertNotNull("No admission during drain",blocked.error);assertFalse("Cancellation must await worker cleanup",cancel.done.await(100,TimeUnit.MILLISECONDS));
-   release.countDown();first.await();cancel.await();assertNotNull(first.error);assertNull(cancel.error);assertTrue(((Map<?,?>)field("pending").get(p)).isEmpty());submit(p,next,VoiceWorkerSettlementInstrumentedTest::result);next.await();assertNull(next.error);
+   release.countDown();first.await();cancel.await();assertNotNull(first.error);assertNull(cancel.error);assertTrue(((ai.eliza.voice.SpeechRequestGate)field("gate").get(p)).idle());submit(p,next,VoiceWorkerSettlementInstrumentedTest::result);next.await();assertNull(next.error);
   }finally{release.countDown();worker.shutdown();assertTrue(worker.awaitTermination(10,TimeUnit.SECONDS));assertTrue(directory.delete());}
  }
 }

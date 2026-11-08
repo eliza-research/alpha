@@ -22,6 +22,19 @@ is mono16kHz signed16 PCM. Its hash is reported; no credentials are reported.
 
 ## Coordinated run
 
+Before opening the app microphone, the emulator owner can use the read-only
+`--check-microphone` flag with the admitted authenticated runtime and explicit
+port (for example `--port 5556 --check-microphone`). It calls only
+`getMicrophoneState`, reads no WAV and reports `hostMicEnabled` and
+`safeForControlledInjection`. Host input enabled returns exit2; safe returns
+exit0. Missing supported bearer discovery refuses as before. This flag cannot be
+combined with `--prepare` or `--inject`; it never disables host input or injects
+audio. Temporary local protocol compilation is not an emulator/file-state change.
+For the current Cloud chat test, use the separately reviewed **Open Calendar**
+fixture and the normal Talk control after this preflight. The Notes/local-ASR
+record/save campaign below is historical evidence for a different flow, not a
+substitute for Cartesia STT, Cerebras action and Cartesia playback acceptance.
+
 The emulator owner launches phone port5554 with a loopback gRPC endpoint and
 `-grpc-use-token` (for example `-grpc 8554 -grpc-use-token`). Do not restart a
 shared running emulator while another test owns it. The helper requires its

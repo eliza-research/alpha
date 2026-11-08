@@ -176,7 +176,7 @@ test('verify-apks records licence flags and the font check, and only an unresolv
   assert.match(source, /fontCheck = fontLicenceCheck\(payload\.public\);/);
   assert.match(source, /const licenceBlockers = fontCheck\.blockers;/);
   assert.match(source, /fontLicenceCheck: \{ check: fontCheck\.check, status: fontCheck\.status, blocksDistribution: fontCheck\.blocksDistribution, items: fontCheck\.items, resolved: fontCheck\.resolved \},/);
-  assert.match(source, /row\.runtimeNotices === true &&\n\s+row\.voiceHost\.packaged === true && row\.voiceHost\.qualified === true &&\n\s+row\.licenceBlockers\.length === 0;/);
+  assert.match(source, /row\.runtimeNotices === true &&\n\s+speechQualified &&\n\s+row\.licenceBlockers\.length === 0;/);
   // Flags are recorded per APK and printed; they are not part of the distributable expression or of any failure.
   assert.match(source, /licenceFlags = licenceFlagRecords\(entries\);/);
   assert.match(source, /for \(const line of flagLines\) console\.warn\(line\);/);
@@ -195,6 +195,8 @@ function scratchRoot(t) {
   fs.symlinkSync(path.join(ROOT, 'apps/app/public'), path.join(dir, 'apps/app/public'));
   for (const name of ['package.json', 'package-lock.json', 'upstream.lock.json']) fs.copyFileSync(path.join(ROOT, name), path.join(dir, name));
   for (const name of ['licenses', 'config']) fs.cpSync(path.join(ROOT, name), path.join(dir, name), {recursive: true});
+  // Match the declared Android dependency inputs while keeping derived native staging inside this fixture.
+  fs.cpSync(path.join(ROOT, 'patches/eliza'), path.join(dir, 'patches/eliza'), {recursive: true});
   // The reviewed ASR model pins are listed in the notices, so their recorded reasons are not stale.
   fs.mkdirSync(path.join(dir, 'scripts'));
   fs.copyFileSync(path.join(ROOT, 'scripts/host-speech-assets.json'), path.join(dir, 'scripts/host-speech-assets.json'));
@@ -272,10 +274,10 @@ test('choice (b): Denton is loaded by one rule, and upright Fraunces is not bund
     }
   };
   walk('apps/app/src');
-  sources.push('apps/app/index.html');
+  sources.push('apps/app/index.html', 'config/alpha-product.json');
   const text = Object.fromEntries(sources.map(file => [file, fs.readFileSync(path.join(ROOT, file), 'utf8')]));
   const referencing = sources.filter(file => /denton/i.test(text[file])).sort();
-  assert.deepEqual(referencing, ['apps/app/src/prototype/phone.css', 'apps/app/src/prototype/prototype.css', 'apps/app/src/prototype/scan-dialog.css', 'apps/app/src/prototype/template.html'], 'update docs/dependency-audit.md when Denton is referenced elsewhere');
+  assert.deepEqual(referencing, ['apps/app/src/prototype/phone.css', 'apps/app/src/prototype/prototype.css', 'apps/app/src/prototype/scan-dialog.css', 'apps/app/src/prototype/template.html', 'config/alpha-product.json'], 'update docs/dependency-audit.md when Denton is referenced elsewhere');
   const css = text['apps/app/src/prototype/prototype.css'];
   // The only rule that loads the file; removing it (and the file) drops every stack to its next family.
   assert.deepEqual(css.match(/@font-face\{[^}]*Denton[^}]*\}/g), ["@font-face{font-family:'Denton';src:url(/denton-300.woff2) format('woff2');font-weight:100 900;font-style:normal;font-display:swap}"]);

@@ -1,0 +1,50 @@
+{
+  "qualifiedReceiptSha256": "78d598438eb62947532b02251565181e7c8f505fe453488deec605b10a65f20a",
+  "pin": "6293e29bf398603d0ea233871edbdeb57e5c2405",
+  "forkPin": "0d9fd4b9db239bbf851068f98c99f4263f8c05c5",
+  "ndk": "28.2.13676358",
+  "buildPathRemapped": true,
+  "reproduced": true,
+  "staged": true,
+  "libraries": [
+    {
+      "name": "libelizainference.so",
+      "reproduced": true,
+      "expected": {
+        "sha256": "c1679c25c28f1ba5a7757aa821265135f3c8f09657a16804ae744761f262eb1e",
+        "bytes": 8066120
+      },
+      "actual": {
+        "sha256": "c1679c25c28f1ba5a7757aa821265135f3c8f09657a16804ae744761f262eb1e",
+        "bytes": 8066120
+      },
+      "file": "/home/shaw/.codex/worktrees/merge-build-latest/alphaphone/.eliza/embedding-host/build-0d9fd4b9db239bbf851068f98c99f4263f8c05c5/source/packages/app/platforms/android/app/src/main/jniLibs/arm64-v8a/libelizainference.so"
+    },
+    {
+      "name": "libelizavoicejni.so",
+      "reproduced": true,
+      "expected": {
+        "sha256": "49f59561bf022650f813d79cf0ab0be84f53f37f908c679e05d80ce4e444a491",
+        "bytes": 1190824
+      },
+      "actual": {
+        "sha256": "49f59561bf022650f813d79cf0ab0be84f53f37f908c679e05d80ce4e444a491",
+        "bytes": 1190824
+      },
+      "file": "/home/shaw/.codex/worktrees/merge-build-latest/alphaphone/.eliza/embedding-host/build-0d9fd4b9db239bbf851068f98c99f4263f8c05c5/jni-build/libelizavoicejni.so"
+    },
+    {
+      "name": "libc++_shared.so",
+      "reproduced": true,
+      "expected": {
+        "sha256": "cd61762848882a16c8244c964a6f396c0caa0b440588a210ce9cc4ab0e6d9f0c",
+        "bytes": 1253544
+      },
+      "actual": {
+        "sha256": "cd61762848882a16c8244c964a6f396c0caa0b440588a210ce9cc4ab0e6d9f0c",
+        "bytes": 1253544
+      },
+      "file": "/home/shaw/.codex/worktrees/merge-build-latest/alphaphone/.eliza/embedding-host/build-0d9fd4b9db239bbf851068f98c99f4263f8c05c5/source/packages/app/platforms/android/app/src/main/jniLibs/arm64-v8a/libc++_shared.so"
+    }
+  ]
+}

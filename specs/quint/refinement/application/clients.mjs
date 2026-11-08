@@ -1,14 +1,16 @@
 import assert from 'node:assert/strict';
 import {checkTraces as check} from '../check-traces.mjs';
-import {sourceModule, deferred, tick, trace, checkpoint, call, captureSources, boundInputs} from './support.mjs';
+import {bundledSource, deferred, tick, trace, checkpoint, call, captureSources, boundInputs} from './support.mjs';
 
 const source = 'apps/app/src/runtime/alpha-client.ts';
 captureSources(['specs/quint/refinement/application/clients.mjs']);
-const checkTraces = options => check(boundInputs({...options, sources: [source,
+let clientModule;
+const checkTraces = options => check(boundInputs({...options, sources: [...clientModule.sources,
   'specs/quint/refinement/application/clients.mjs', 'specs/quint/refinement/application/support.mjs']}));
 
 async function fixture() {
-  const {AlphaClient} = await sourceModule(source);
+  clientModule ??= await bundledSource(source);
+  const {AlphaClient} = clientModule.exports;
   const client = new AlphaClient(), pending = [], dispatches = [];
   let operation = 'none';
   const transport = owner => ({session: {ownerId: String(owner), agentId: 'agent', sessionId: `session-${owner}`, origin: 'https://fixture.example'},

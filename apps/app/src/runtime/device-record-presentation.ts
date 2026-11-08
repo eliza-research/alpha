@@ -8,27 +8,28 @@ import type {
 } from "../../../../.eliza/client-features/plugins/plugin-assistant/src/services/device-actions/reminder-contract.ts";
 import type { ReminderCreateOperation } from "../../../../.eliza/client-features/plugins/plugin-assistant/src/services/device-actions/reminder-create-contract.ts";
 
+/** Minute-precision review-card copy; relative reminders carry millisecond instants that only receipts print exactly. */
+const formatReviewDateTime = (value: string | number, timeZone: string) =>
+  new Intl.DateTimeFormat("en-US", { timeZone, year: "numeric", month: "long", day: "numeric", hour: "numeric", minute: "2-digit", timeZoneName: "short" }).format(new Date(value));
+
 function presentReminderTiming(
   schedule: ReminderSchedule,
   timeZone: string,
 ): { description: string; summary: string } {
   const zone = schedule.recurrence?.zone ?? timeZone;
-  const lines = [
-    `Due ${formatDeviceRecordDateTime(schedule.dueAt ?? schedule.at, zone)} (${zone}).`,
+  const timing = (format: typeof formatReviewDateTime) => [
+    `Due ${format(schedule.dueAt ?? schedule.at, zone)} (${zone}).`,
+    ...(schedule.alertMinutes === null
+      ? ["No alert; saved task only."]
+      : [`Alert ${format(schedule.at, zone)}. Notification delivery may be approximate.`]),
   ];
-  if (schedule.alertMinutes === null) lines.push("No alert; saved task only.");
-  else {
-    lines.push(
-      `Alert ${formatDeviceRecordDateTime(schedule.at, zone)}. Notification delivery may be approximate.`,
-    );
-  }
-  const summary = lines.join(" ");
+  const lines = timing(formatReviewDateTime);
   lines.push(
     schedule.recurrence
       ? `Repeats ${schedule.recurrence.rule === "weekdays" ? "on weekdays" : schedule.recurrence.rule} at ${schedule.recurrence.time} (${zone}).`
       : "Does not repeat.",
   );
-  return { description: lines.join("\n"), summary };
+  return { description: lines.join("\n"), summary: timing(formatDeviceRecordDateTime).join(" ") };
 }
 
 /** Use appliedSummary only after the existing native receipt proves application. */
@@ -125,9 +126,10 @@ export function presentDeviceRecordOperation(
       const timing = fields.schedule
         ? presentReminderTiming(fields.schedule, timeZone)
         : undefined;
+      const body = fields.body.trim();
       details = [
         `“${fields.title}”`,
-        ...(fields.body.trim() ? [fields.body] : []),
+        ...(body && body.toLowerCase() !== fields.title.trim().toLowerCase() ? [fields.body] : []),
         timing?.description ?? "Timing unchanged.",
       ].join("\n");
       summaryDetails = `“${fields.title}”. ${timing?.summary ?? "Timing unchanged."}`;
@@ -136,7 +138,7 @@ export function presentDeviceRecordOperation(
     case "create_reminder":
       title = "Create reminder";
       applied = "Created reminder";
-      details = `“${operation.title}”\nDue ${formatDeviceRecordDateTime(operation.dueAt, timeZone)} (${timeZone}).\nNotification delivery may be approximate.`;
+      details = `“${operation.title}”\nDue ${formatReviewDateTime(operation.dueAt, timeZone)} (${timeZone}).\nNotification delivery may be approximate.`;
       summaryDetails = `“${operation.title}”. Due ${formatDeviceRecordDateTime(operation.dueAt, timeZone)} (${timeZone}). Alert requested; notification delivery may be approximate.`;
       break;
     case "reminder_read_selected":

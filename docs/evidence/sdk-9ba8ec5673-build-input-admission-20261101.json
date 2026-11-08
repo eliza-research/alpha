@@ -1,0 +1,138 @@
+{
+  "from": "4573a187b0dc44c0b0dd111a0b0720aaa13d6bc4",
+  "to": "9ba8ec567376cae10e60d1b19cd17d4f827bfe33",
+  "inputs": [
+    {
+      "path": "plugins/plugin-local-inference/native/llama.cpp",
+      "entries": 1,
+      "gitModeTypeBlobPathInventorySha256": "8f6439ef64642a68e912bc87e116bd46b98aa2b872675d6012d9d03819dc9576",
+      "unchanged": false
+    },
+    {
+      "path": "plugins/plugin-local-inference/native/android/inputs.json",
+      "entries": 1,
+      "gitModeTypeBlobPathInventorySha256": "18a5a1ce73339d57b743da175b81dda53b6d7d0719b7135742bc7a2b98876d90",
+      "unchanged": true
+    },
+    {
+      "path": "plugins/plugin-local-inference/native/android/consumer.gradle",
+      "entries": 1,
+      "gitModeTypeBlobPathInventorySha256": "8188e8e9bf6ad1b2358bd186aa8cc00f9a8cf39efc5030786df0e2a930df4d68",
+      "unchanged": true
+    },
+    {
+      "path": "packages/app/scripts/paradee-voice/build-native.ts",
+      "entries": 1,
+      "gitModeTypeBlobPathInventorySha256": "c5dbe8d5b7ff109a9efabdc415ef040545c21b86fc1c92b7e676a50c7b05e05f",
+      "unchanged": true
+    },
+    {
+      "path": "packages/app/scripts/stage-elizavoice-lib.ts",
+      "entries": 1,
+      "gitModeTypeBlobPathInventorySha256": "836b590792362de9411863c0c32d9ee2ed8c7fe74fab19e405663809e03ee352",
+      "unchanged": true
+    },
+    {
+      "path": "packages/app/scripts/build-helpers/arm64-simd.ts",
+      "entries": 1,
+      "gitModeTypeBlobPathInventorySha256": "77fa89da9b1e02685ca2b911a321a2b7a0064badb0d3fb5531e9eb34e77e1645",
+      "unchanged": true
+    },
+    {
+      "path": "packages/app/scripts/build-helpers/verify-fused-symbols.ts",
+      "entries": 1,
+      "gitModeTypeBlobPathInventorySha256": "2820a2a2dfb2cdbb6e2055ebee72f68d186e182f20d1b8933e550af11d54fccf",
+      "unchanged": true
+    },
+    {
+      "path": "packages/app/platforms/android/app/src/main/elizavoice-jni",
+      "entries": 2,
+      "gitModeTypeBlobPathInventorySha256": "7a0d2e02a38892aaacb3faa8758c5d8eccc565e12b29279ebdb49a79bff555c0",
+      "unchanged": false
+    },
+    {
+      "path": "packages/app/platforms/android/app/src/main/java/ai/elizaos/app/ElizaVoiceNative.java",
+      "entries": 1,
+      "gitModeTypeBlobPathInventorySha256": "79035774dbe0c15084e4863af506ffc82f9d81c2aed3a084bf114e2f9805872b",
+      "unchanged": false
+    },
+    {
+      "path": "packages/app/scripts/lib/android-bun-artifacts.lock.json",
+      "entries": 1,
+      "gitModeTypeBlobPathInventorySha256": "b04a6f9e0c1cc14b36bd23080073583186356cb2ecaa01e556bc63f047456b4b",
+      "unchanged": true
+    },
+    {
+      "path": "plugins/plugin-local-inference/native",
+      "entries": 334,
+      "gitModeTypeBlobPathInventorySha256": "c2ec528b9c76497aa5e0cce8e3aa2c8d9ff3c01cd310251a604c152e4c3e6dfa",
+      "unchanged": false
+    },
+    {
+      "path": "packages/app/scripts/paradee-voice",
+      "entries": 38,
+      "gitModeTypeBlobPathInventorySha256": "9582ef25e9360fc96e3e819eb6028eede58a6f234cff438dceaeb7271e9323e6",
+      "unchanged": false
+    },
+    {
+      "path": "plugins/plugin-native-agent/android",
+      "entries": 91,
+      "gitModeTypeBlobPathInventorySha256": "dc096353139809485a8294e92e331465ad2306b0811b31992e4e371243633772",
+      "unchanged": true
+    }
+  ],
+  "changedPaths": [
+    "packages/app/platforms/android/app/src/main/elizavoice-jni/elizavoice-jni.cpp",
+    "packages/app/platforms/android/app/src/main/java/ai/elizaos/app/ElizaVoiceNative.java",
+    "packages/app/scripts/paradee-voice/stream-contract/StreamContract.java",
+    "packages/app/scripts/paradee-voice/stream-contract/VoiceNative.java",
+    "plugins/plugin-local-inference/native/android/README.md",
+    "plugins/plugin-local-inference/native/android/src/main/java/ai/eliza/voice/ParadeeVoice.java",
+    "plugins/plugin-local-inference/native/android/src/main/java/ai/eliza/voice/VoiceNative.java",
+    "plugins/plugin-local-inference/native/llama.cpp"
+  ],
+  "forkPins": {
+    "from": "d960f633ddb034d0dd828a55216cfc17d012acbd",
+    "to": "b3eb2bf63b3c02cd37ee09d442911ace99975b38"
+  },
+  "embeddingInputs": {
+    "changedPaths": [
+      "packages/app/platforms/android/app/src/main/elizavoice-jni/elizavoice-jni.cpp",
+      "packages/app/platforms/android/app/src/main/java/ai/elizaos/app/ElizaVoiceNative.java",
+      "plugins/plugin-local-inference/native/llama.cpp"
+    ],
+    "unchangedPaths": [
+      "packages/app/scripts/stage-elizavoice-lib.ts",
+      "packages/app/scripts/build-helpers/arm64-simd.ts",
+      "packages/app/scripts/build-helpers/verify-fused-symbols.ts",
+      "packages/app/platforms/android/app/src/main/elizavoice-jni/CMakeLists.txt"
+    ]
+  },
+  "consumerAndroidModules": {
+    "changedPaths": [],
+    "unchangedPaths": [
+      "plugins/plugin-native-agent/android",
+      "plugins/plugin-native-system/android",
+      "plugins/plugin-native-camera/android",
+      "plugins/plugin-native-location/android",
+      "plugins/plugin-native-network-policy/android",
+      "plugins/plugin-native-calendar/android",
+      "plugins/plugin-native-reminders/android",
+      "plugins/plugin-native-secure-store/android",
+      "plugins/plugin-native-passwords/android",
+      "packages/auth/android",
+      "plugins/plugin-native-notifications/android",
+      "plugins/plugin-native-media/android",
+      "plugins/plugin-native-contacts/android",
+      "plugins/plugin-native-messages/android",
+      "plugins/plugin-native-phone/android",
+      "plugins/plugin-native-action-journal/android"
+    ]
+  },
+  "command": "git -C vendor/eliza ls-tree -r <commit> -- <path> | sha256sum; git -C vendor/eliza diff --name-only 4573a187b0dc44c0b0dd111a0b0720aaa13d6bc4 9ba8ec567376cae10e60d1b19cd17d4f827bfe33 -- <paths>",
+  "evidenceScope": "Source-only comparison of the listed on-device native build inputs between the two SDK commits; other SDK changes are outside this inventory. No build, binary, emulator, device or user qualification is established.",
+  "qualificationTransferred": false,
+  "admitted": false,
+  "requalificationRequired": true,
+  "note": "elizaOS/eliza #38470 adds a caller-set Paradee speed range (libelizainference ABI 21): it moves the native engine gitlink plugins/plugin-local-inference/native/llama.cpp from d960f633 to b3eb2bf6 and changes the elizavoice JNI, ElizaVoiceNative, the shared ai.eliza.voice ParadeeVoice/VoiceNative and the paradee-voice stream contract. Model inputs (inputs.json), consumer.gradle, build-native.ts, stage-elizavoice-lib.ts and the Bun artifact lock are unchanged, and no consumer Android module changed. The recorded engine, embedding host and voice bytes are not admitted at this pin; fresh native builds for both ABIs and on-device requalification remain required. No historic qualification transfers."
+}

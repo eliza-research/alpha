@@ -1,0 +1,15 @@
+--- a/ui/build/soong.go
++++ b/ui/build/soong.go
+@@ -215,6 +215,12 @@
+ 
+ 	commonArgs = append(commonArgs, "-l", filepath.Join(pb.config.FileListDir(), "Android.bp.list"))
+ 	invocationEnv := make(map[string]string)
++	// Preserve operator-selected Go heap controls across the clean bootstrap environment.
++	for _, key := range []string{"GOGC", "GOMEMLIMIT"} {
++		if value := os.Getenv(key); value != "" {
++			invocationEnv[key] = value
++		}
++	}
+ 	if pb.debugPort != "" {
+ 		//debug mode
+ 		commonArgs = append(commonArgs, "--delve_listen", pb.debugPort,

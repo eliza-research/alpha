@@ -104,16 +104,13 @@ public class CalendarFlowInstrumentedTest {
   }
   @Override public void close(){try{if(calendar!=null)resolver.delete(sync(calendar),null,null);}finally{timezone(previousZone,automatic);}}
  }
- /** The title opens the views menu; Month is a radio in it. Month cells are labelled with the long
-  * date, followed by the event count when the day has events. */
  private void chooseDate(java.time.LocalDate date)throws Exception {
   java.time.LocalDate today=java.time.LocalDate.now(java.time.ZoneId.of("America/Los_Angeles"));
   if("true".equals(eval("!!document.querySelector('button[aria-label=\"Today\"]')")))click("Today");
-  click("Calendar views");String month="[...document.querySelectorAll('[role=\"dialog\"][aria-label=\"Views and calendars\"] [role=\"radio\"]')].find(e=>e.textContent.trim()==='Month')";until(month);eval("("+month+").click()");until("document.querySelector('[data-alpha-calendar-month]')");
+  click("Month view");
   int months=(date.getYear()-today.getYear())*12+date.getMonthValue()-today.getMonthValue();
   for(int i=0;i<Math.abs(months);i++)click(months>0?"Next month":"Previous month");
-  String label=date.format(java.time.format.DateTimeFormatter.ofPattern("EEEE, MMMM d",Locale.US)),day="[...document.querySelectorAll('[data-alpha-calendar-month] button')].find(e=>{const l=e.getAttribute('aria-label')||'';return l==="+JSONObject.quote(label)+"||l.startsWith("+JSONObject.quote(label+", ")+");})";
-  until(day);eval("("+day+").click()");
+  click(date.format(java.time.format.DateTimeFormatter.ofPattern("EEEE MMMM d",Locale.US)));
  }
  @Test public void allDayUtcDatesStayOnTheirCivilDaysWithoutTimedBlocks()throws Exception {
   try(CalendarFixture fixture=new CalendarFixture()){

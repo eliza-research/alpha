@@ -1,3 +1,4 @@
+import {installNativeNavigationFixture} from './helpers/native-navigation-protocol';
 // Production Android as the FLAG-OFF renderer sees it, for the *.production.spec.ts files that
 // need mail, an agent conversation, scheduled-digest results or device calendars together.
 //
@@ -52,6 +53,7 @@ export interface FlagOffSchedules {
 export const AGENT_NAME = 'Alpha';
 
 export async function flagOffAndroid(page: Page, options: FlagOffOptions = {}) {
+  await page.addInitScript(installNativeNavigationFixture);
   await page.addInitScript(({ options, agentName }) => {
     const w = window as any; w.androidBridge = {};
     if(!options.freshAccess)localStorage.setItem('alpha:startup-permission-walkthrough:v1',JSON.stringify({version:1,status:'completed',step:4}));
@@ -86,10 +88,16 @@ export async function flagOffAndroid(page: Page, options: FlagOffOptions = {}) {
     const emitStream = (streamId: string, event: unknown) => f.emit('Agent', 'alphaAgentStream', { streamId, event });
     const data = (streamId: string, value: unknown) => emitStream(streamId, { type: 'chunk', dataBase64: btoa('data: ' + JSON.stringify(value) + '\n\n') });
     const ok = (value: unknown) => ({ status: 200, data: value });
-    const request = async (method: string, path: string, body: any, headers: Record<string, string>): Promise<{ status: number; data: unknown }> => {
+    let fixtureNavigation: any;
+    const navigation=()=>fixtureNavigation??=(window as any).createNativeNavigationFixture(id,agentId,f);
+    const request = async (method: string, path: string, body: any, headers: Record<string, string>, owner?: unknown): Promise<{ status: number; data: unknown }> => {
+      const navigationResult=navigation().request(method,path,body,headers,owner);if(navigationResult)return navigationResult;
+      // Mounted canonical views probe these sources; this native fixture provides none.
+      if (method === 'GET' && ['/api/notes/state', '/api/lifeops/calendar/feed', '/api/lifeops/calendar/calendars', '/api/lifeops/calendar/next-context'].includes(path.split('?')[0])) return { status: 503, data: { error: 'Canonical records unavailable in this fixture' } };
       if (path === '/api/auth/me') return ok({ identity: { id, kind: 'owner' }, access: { role: 'OWNER', mode: 'local' } });
+      if (path === '/api/notes/state' && method === 'GET') return ok({success:true,data:{notes:[],trash:[],revision:0}});
       if (path === '/api/agents') return ok({ agents: [{ id: agentId, name: agentName, status: 'running' }] });
-      if (path === '/api/client-devices/register') { f.installationId = headers['X-Eliza-Device-Id']; }
+      if (path === '/api/client-devices/register') { f.installationId = headers['X-Eliza-Device-Id']; navigation().register(headers); }
       if (path === '/api/client-devices/register') return ok({ installationId: headers['X-Eliza-Device-Id'], enrollmentId: 'fixture-enrollment', capabilities: [] });
       if (path === '/api/client-devices/proposals') return ok({ proposals: [] });
       // The agent advertises scheduled digests only; the workflow engine itself is not offered here.
@@ -201,8 +209,6 @@ export async function flagOffAndroid(page: Page, options: FlagOffOptions = {}) {
       if (path === '/api/v1/user') return { status: 200, data: { success: true, data: { id } } };
       if (path === '/api/v1/subscription/entitlement') return { status: 404, data: {} }; // Deployed Cloud has no subscription entitlement route yet.
       if (path === '/api/v1/billing/limits') return { status: 200, data: { success: true, data: { v2: { subscription: { status: 'available', value: { planKey: 'plus_monthly', state: 'active', currentPeriodEnd: '2099-01-01T00:00:00.000Z' } } } } } }; // Synthetic active plan from the billing snapshot.
-      // Maps connects at sign-in (docs/flow-redesign-2026-11); this synthetic Cloud serves no Maps.
-      if (path === '/api/v1/maps/capabilities') return { status: 404, data: {} };
       if (!m.accounts) return { status: 404, data: {} };
       const grant = () => m.accounts!.find(a => a.connectionId === (url.searchParams.get('grantId') ?? body?.grantId) && a.connected);
       if (path === google + '/accounts') { m.accountReads++; return { status: 200, data: m.accounts.map(a => ({ configured: true, connected: a.connected, reason: a.connected ? 'connected' : 'needs_reauth', connectionId: a.connectionId, grantedCapabilities: a.connected ? ['google.gmail.triage'] : [], identity: { email: a.email } })) }; }
@@ -239,9 +245,11 @@ export async function flagOffAndroid(page: Page, options: FlagOffOptions = {}) {
     w.Capacitor = {
       PluginHeaders: [
         { name: 'AlphaDeletions', methods: promise(['pending']) },
-        { name: 'DeviceApps', methods: promise(['buildInfo']) },
+        { name: 'ElizaSystem', methods: promise(['getBuildInfo']) },
         { name: 'DailyApps', methods: withListeners(['surfaceInfo', 'listReminders', 'pendingReminderTap', ...(options.document ? ['perform', 'readSelected', 'forgetSelected', 'describeSelected'] : [])]) },
         ...(options.document ? [{ name: 'AlphaMailAttachments', methods: promise(['readSelected', 'retainSourceReference', 'openSourceReference', 'cancel']) }] : []),
+        // Files browser with all-files access (AlphaFilesPlugin storage* methods): the document sits in Documents/.
+        ...(options.document ? [{ name: 'AlphaFiles', methods: withListeners(['storageState', 'storageRequestAccess', 'storageList', 'storageCategory', 'storageQuery', 'storageTrashList', 'storageSelect', 'storageWatch', 'storageUnwatch']) }] : []),
         { name: 'Agent', methods: withListeners(['getStatus', 'start', 'stop', 'configureCloudProvider', 'clearProvider', 'request', 'providerStatus', 'requestStream', 'cancelStream']) },
         { name: 'AlphaConnection', methods: withListeners(['secureRead', 'secureWrite', 'secureRemove', 'secureCompareExchange', 'request', 'cancel', 'openExternal']) },
         { name: 'AlphaActionJournal', methods: promise(['list', 'get']) },
@@ -255,14 +263,24 @@ export async function flagOffAndroid(page: Page, options: FlagOffOptions = {}) {
       nativePromise: async (plugin: string, method: string, input: any) => {
         if (plugin === 'AlphaDeletions' && method === 'pending') return { deletions: [] };
         f.calls.push(plugin + '.' + method);
-        if (plugin === 'DeviceApps') return { launcher: true, version: 'flag-off-harness' };
+        if (plugin === 'ElizaSystem' && method === 'getBuildInfo') return { launcher: true, version: 'flag-off-harness' };
         if (plugin === 'DailyApps' && method === 'surfaceInfo') return { developmentBuild: false, assistant: false };
         // No reminders are saved on this phone.
         if (plugin === 'DailyApps' && method === 'listReminders') return { reminders: [] };
         if (plugin === 'DailyApps' && method === 'pendingReminderTap') return {};
-        if (options.document && (plugin === 'DailyApps' || plugin === 'AlphaMailAttachments')) {
+        if (options.document && (plugin === 'DailyApps' || plugin === 'AlphaMailAttachments' || plugin === 'AlphaFiles')) {
           const doc = options.document, d = f.documents, bytes = new TextEncoder().encode(doc.text);
           const selected = { status: 'selected', action: 'files', selectionId: 'selection-' + (d.picks.length || 1), name: doc.name, mimeType: doc.mimeType, uri: 'content://fixture.documents/' + encodeURIComponent(doc.name) };
+          if (plugin === 'AlphaFiles') {
+            const entry = { path: 'Documents/' + doc.name, name: doc.name, directory: false, mimeType: doc.mimeType, size: bytes.length, modified: 1_790_000_000_000 };
+            if (method === 'storageState' || method === 'storageRequestAccess') return { status: 'ready', access: 'granted', volumes: [{ id: 'primary', name: 'Internal storage', primary: true, free: 8e9, total: 64e9 }] };
+            if (method === 'storageCategory') return { status: 'ready', entries: input.category === 'documents' ? [entry] : [] };
+            if (method === 'storageQuery') return { status: 'ready', entries: [entry] };
+            if (method === 'storageList') return { status: 'ready', entries: input.path === 'Documents' ? [entry] : input.path ? [] : [{ path: 'Documents', name: 'Documents', directory: true, mimeType: '', size: 0, modified: entry.modified, children: 1 }] };
+            if (method === 'storageTrashList') return { status: 'ready', items: [] };
+            if (method === 'storageSelect') { d.picks.push({ action: 'files', path: input.path }); return input.path === entry.path ? selected : { status: 'missing', message: 'This item is no longer there.' }; }
+            return { status: 'ready' };
+          }
           if (plugin === 'DailyApps' && method === 'perform') { d.picks.push(structuredClone(input)); return input.action === 'files' ? selected : { status: 'cancelled' }; }
           if (plugin === 'DailyApps' && method === 'describeSelected') return selected;
           if (plugin === 'DailyApps' && method === 'readSelected') { d.reads.push('text:' + input.selectionId); return { status: 'read', text: doc.text, mimeType: doc.mimeType, bytes: bytes.length }; }
@@ -326,7 +344,7 @@ export async function flagOffAndroid(page: Page, options: FlagOffOptions = {}) {
           if (method === 'configureCloudProvider') { slots['native:local-agent-provider'] = String(input.credentialId); persist(); return {}; }
           if (method === 'clearProvider') { delete slots['native:local-agent-provider']; persist(); return { configured: false }; }
           if (method === 'request') {
-            const result = await request(input.method || 'GET', input.path, input.body ? JSON.parse(input.body) : {}, input.headers || {});
+            const result = await request(input.method || 'GET', input.path, input.body ? JSON.parse(input.body) : {}, input.headers || {}, input.ownerId);
             // A lost acknowledgement: the agent applied the request, but its response never arrives.
             if (result.status === 0) throw Error('Agent response lost');
             return { status: result.status, body: JSON.stringify(result.data) };
@@ -362,7 +380,9 @@ export async function flagOffAndroid(page: Page, options: FlagOffOptions = {}) {
 
 /** Reads (or changes) the harness state from the test. */
 export const harness = <T>(page: Page, read: (f: any) => T) => page.evaluate(`(${read.toString()})(window.flagOff)`) as Promise<T>;
-export const button = (page: Page, name: string) => page.getByRole('button', { name, exact: true });
+export const button = (page: Page, name: string) => name==='Inbox'
+  ? page.getByRole('button', { name, exact: true }).and(page.locator('[data-mobile-shell-tile]'))
+  : page.getByRole('button', { name, exact: true });
 
 /** Aborts and records every request that leaves the preview server. */
 export async function fenceNetwork(page: Page) {
@@ -408,12 +428,14 @@ export async function residentHome(page: Page) {
 }
 /** Production sign-in is a page; signed-in agent controls live in Settings. */
 export async function openYourAgent(page: Page) {
-  const gate = page.getByRole('main', { name: 'Sign in', exact: true });
+  const gate = page.locator('[role="main"].alpha-cloud-sign-in');
   if (await gate.isVisible()) return gate;
+  // A touch outside the open chat only collapses it, so collapse it before going to Settings.
+  const minimize = page.getByRole('button', { name: 'Minimize chat', exact: true });
+  if (await minimize.isVisible()) await minimize.click();
   await button(page, 'Settings').click();
-  // Settings › Assistant › Agent (docs/ui-refresh-2026-11).
-  await page.getByRole('button', { name: 'Agent', exact: true }).click();
+  await page.getByRole('button', { name: 'Agent connection', exact: true }).click();
   const panel = page.getByRole('region', { name: 'Settings', exact: true });
-  await expect(panel.getByRole('heading', {name:'Agent',exact:true})).toBeVisible();
+  await expect(panel.getByRole('heading', {name:'Agent connection',exact:true})).toBeVisible();
   return panel;
 }

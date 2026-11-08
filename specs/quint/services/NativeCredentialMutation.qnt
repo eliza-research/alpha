@@ -6,7 +6,9 @@ module NativeCredentialMutation {
     capturedProvider: int, providerPresent: bool, matchingEnvironment: bool,
     admission: bool, oldSize: int, newSize: int, requiresStop: bool,
     running: bool, requestedStop: int, acknowledgedStop: int, stopped: bool,
-    committed: bool, admissionInvalidated: bool, previousCredential: int
+    committed: bool, admissionInvalidated: bool, previousCredential: int, legacyBlocked: bool,
+    leaseSequence: int, leasePending: bool, leaseConfirmed: bool, leaseAbandoned: bool,
+    requestKnown: bool, requestBegun: bool, requestEpoch: int
   }
   var s: Mutation
   action init = s' = {
@@ -15,7 +17,9 @@ module NativeCredentialMutation {
     capturedProvider: 1, providerPresent: true, matchingEnvironment: true,
     admission: true, oldSize: 3, newSize: 1, requiresStop: false,
     running: true, requestedStop: 0, acknowledgedStop: 0, stopped: false,
-    committed: false, admissionInvalidated: false, previousCredential: 1 }
+    committed: false, admissionInvalidated: false, previousCredential: 1, legacyBlocked: false,
+    leaseSequence: 0, leasePending: false, leaseConfirmed: false, leaseAbandoned: false,
+    requestKnown: false, requestBegun: false, requestEpoch: 0 }
   action begin(operation: str, replacement: int, bytes: int): bool = all {
     s.phase.in(Set("idle", "done", "conflict", "full", "failed")),
     operation.in(Set("cloud", "provider", "ordinary", "rollback", "rebind")),
@@ -95,10 +99,61 @@ module NativeCredentialMutation {
   action ordinarySize = all { s.phase == "idle", s' = { ...s, oldSize: 1 } }
   action otherEnvironment = all { s.phase == "idle", s' = { ...s, matchingEnvironment: false } }
   action unbound = all { s.phase == "idle", s' = { ...s, providerPresent: false, admission: false } }
+  action blockLegacy = s' = { ...s, legacyBlocked: true }
+  action reserveProviderRequest = all {
+    not(s.requestKnown), s.ownerEpoch < 2,
+    s' = { ...s, ownerEpoch: s.ownerEpoch + 1, requestKnown: true, requestBegun: false,
+      requestEpoch: s.ownerEpoch + 1, committed: false }
+  }
+  action beginProviderRequest = all {
+    s.requestKnown, not(s.requestBegun), s.requestEpoch == s.ownerEpoch,
+    s' = { ...s, requestBegun: true }
+  }
+  action staleProviderRequestRefused = all {
+    s.requestKnown, not(s.requestBegun), s.requestEpoch != s.ownerEpoch,
+    s' = { ...s, requestKnown: false, requestBegun: false }
+  }
+  action cancelProviderRequest(matching: bool): bool =
+    if (matching and s.requestKnown) all {
+      s.requestEpoch != s.ownerEpoch or s.ownerEpoch < 2,
+      s' = { ...s, requestKnown: false, requestBegun: false, committed: false,
+        ownerEpoch: if (s.requestEpoch == s.ownerEpoch) s.ownerEpoch + 1 else s.ownerEpoch }
+    } else s' = s
+  action expireProviderRequest = s' = { ...s, requestKnown: false, requestBegun: false }
+  action finishProviderRequest(matching: bool): bool =
+    if (matching) s' = { ...s, requestKnown: false, requestBegun: false } else s' = s
+  action acquireShutdownLease = all {
+    s.leaseSequence < 2,
+    s' = { ...s, leaseSequence: s.leaseSequence + 1, leasePending: true,
+      leaseConfirmed: false, leaseAbandoned: false }
+  }
+  action retryShutdownLease(token: int): bool = all {
+    s.leasePending, token == s.leaseSequence, s' = s
+  }
+  action acknowledgeShutdownLease(token: int, stopped: bool): bool =
+    if (s.leasePending and token == s.leaseSequence)
+      s' = { ...s, leaseConfirmed: stopped, leasePending: not(stopped and s.leaseAbandoned) }
+    else s' = s
+  action abandonShutdownLease(token: int): bool =
+    if (s.leasePending and token == s.leaseSequence)
+      s' = { ...s, leaseAbandoned: true, leasePending: not(s.leaseConfirmed) }
+    else s' = s
+  action releaseShutdownLease(token: int): bool =
+    if (token == s.leaseSequence and s.leaseConfirmed) s' = { ...s, leasePending: false }
+    else s' = s
+  action serviceStarts = all {
+    not(s.leasePending), s.leaseSequence < 2,
+    s' = { ...s, leaseSequence: s.leaseSequence + 1, leaseConfirmed: false }
+  }
   action step = any {
     begin("cloud", 1, 1), begin("cloud", 2, 1), begin("cloud", 2, 3), begin("cloud", 2, 4),
     begin("provider", 2, 1), begin("ordinary", 2, 1), begin("rollback", 1, 1),
-    begin("rebind", 2, 1),
+    begin("rebind", 2, 1), blockLegacy, reserveProviderRequest, beginProviderRequest, staleProviderRequestRefused,
+    cancelProviderRequest(true), cancelProviderRequest(false), expireProviderRequest,
+    finishProviderRequest(true), finishProviderRequest(false), acquireShutdownLease,
+    retryShutdownLease(1), retryShutdownLease(2), acknowledgeShutdownLease(1, true),
+    acknowledgeShutdownLease(1, false), acknowledgeShutdownLease(2, true),
+    abandonShutdownLease(1), abandonShutdownLease(2), releaseShutdownLease(1), releaseShutdownLease(2), serviceStarts,
     retire, observeStop(true, true), observeStop(false, true), observeStop(true, false),
     prepareCommit, write, writeUnconfirmed, commitWrite, reportWrite(true), reportWrite(false), operationFailure, compareConflict,
     capacityFailure, stale, shutdownTimeout, ownerChanged,
@@ -109,7 +164,9 @@ module NativeCredentialMutation {
   val CurrentMutation = s.committed implies s.capturedEpoch == s.ownerEpoch
   val RejectedWriteRetainsBytes = s.phase == "full" implies s.credential == s.previousCredential
   val Bounded = s.ownerEpoch.in(0.to(2)) and s.oldSize.in(1.to(3)) and s.providerRevision <= 4
-  val safety = ShutdownBeforeCriticalWrite and AdmissionInvalidated and CurrentMutation and RejectedWriteRetainsBytes and Bounded
+  val LeaseBounds = s.leaseSequence.in(0.to(2)) and s.requestEpoch.in(0.to(2))
+  val BegunRequestIsKnown = s.requestBegun implies s.requestKnown
+  val safety = LeaseBounds and BegunRequestIsKnown and ShutdownBeforeCriticalWrite and AdmissionInvalidated and CurrentMutation and RejectedWriteRetainsBytes and Bounded
   run shutdownAckTest = init.then(begin("cloud", 2, 1)).then(retire).then(observeStop(false, true))
     .expect(s.phase == "stopping" and not(s.committed)).then(observeStop(true, true))
     .then(prepareCommit).then(write).expect(s.credential == 2 and safety)
@@ -144,4 +201,14 @@ module NativeCredentialMutation {
   run writeCheckpointCanPrecedeReportedFailureTest = init.then(begin("cloud", 2, 1)).then(retire)
     .then(observeStop(true, true)).then(prepareCommit).then(commitWrite).then(reportWrite(false))
     .expect(s.committed and s.phase == "failed" and s.credential == 2 and safety)
+  run abandonedShutdownWaitsForAckTest = init.then(acquireShutdownLease).then(abandonShutdownLease(1))
+    .expect(s.leasePending).then(acknowledgeShutdownLease(1, true)).then(serviceStarts).expect(safety and not(s.leasePending))
+  run acknowledgementKeepsStartFencedTest = init.then(acquireShutdownLease).then(acknowledgeShutdownLease(1, true))
+    .expect(s.leasePending).then(releaseShutdownLease(1)).expect(safety and not(s.leasePending))
+  run lateLeaseAckCannotReleaseSuccessorTest = init.then(acquireShutdownLease).then(acquireShutdownLease)
+    .then(acknowledgeShutdownLease(1, true)).expect(safety and s.leasePending and not(s.leaseConfirmed))
+  run providerCancellationRetiresIntentTest = init.then(reserveProviderRequest).then(beginProviderRequest)
+    .then(cancelProviderRequest(true)).expect(safety and s.ownerEpoch == 2 and not(s.requestKnown))
+  run unknownProviderCancellationPreservesLeaseTest = init.then(reserveProviderRequest).then(cancelProviderRequest(false))
+    .expect(safety and s.requestKnown and s.ownerEpoch == 1)
 }

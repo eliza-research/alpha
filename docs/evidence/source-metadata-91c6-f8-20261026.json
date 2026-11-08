@@ -1,0 +1,80 @@
+{
+  "schema": 1,
+  "recordedAt": "2026-10-26",
+  "baseProduct": "91c6a74b3123d3e15a10c5711cfb2f94b025e281",
+  "SDK": "f8b8299cc2be0f6e91127808384cbd17b90f906f",
+  "previousSDK": "7481f0eac237341903c5c1fad9208879d442cf9d",
+  "behavioralFix": true,
+  "liveVerified": false,
+  "upstreamFixReceipt": "/Users/nubs/.local/state/alpha-local-personal-provider-20261023/c9-release-join-20261025/notes-combined-748-review/ROOT-INTEGRATED.json",
+  "upstreamValidation": {
+    "focusedPass": 28,
+    "typecheck": "PASS",
+    "knownBaselineFailures": 37
+  },
+  "dependencyInputIdentity": {
+    "parent": "7481f0eac237341903c5c1fad9208879d442cf9d",
+    "SDK": "f8b8299cc2be0f6e91127808384cbd17b90f906f",
+    "changedFiles": [
+      "plugins/plugin-notes/src/action.ts",
+      "plugins/plugin-notes/src/delete-id.test.ts",
+      "plugins/plugin-notes/src/native-note-update.ts",
+      "plugins/plugin-notes/src/note-patch.ts",
+      "plugins/plugin-notes/src/service.ts",
+      "plugins/plugin-notes/src/text-append.test.ts",
+      "plugins/plugin-notes/src/types.ts",
+      "plugins/plugin-notes/src/validation.ts"
+    ],
+    "rawLockBytesIdentical": true,
+    "rawLockSHA256": "c88cc7693c852e49ec1a2aebfba619d9a76cf038c26c5d0c19fa2994b9f4f762",
+    "nativeAndVoiceSourceInputsIdentical": true,
+    "normalizedInputIdentical": true,
+    "normalizedInputSHA256": "6db6e88363397fd2c73a561ea1f3a071dfc11b31378cbe0c193163ea1ecf70ff",
+    "packageVersions": 3694
+  },
+  "preservation": {
+    "upstream.lock.json": "Only commit changed",
+    "patches/eliza/native-manifest.json": "Only baseCommit changed",
+    "android/voice-host/qualified-voice-host.json": "Only pin changed",
+    "docs/dependency-audit.snapshot.json": "Only resident.upstreamCommit changed",
+    "docs/dependency-audit.dispositions.json": "Only resident.upstreamCommit changed",
+    "docs/requirements.json": "Only note changed",
+    "docs/mvp-remaining-work-2026-10-09.json": "Only upstream_pin changed",
+    "apps/app/public/licenses/third-party-notices.json": "Generator output differs only by source pin",
+    "apps/app/public/licenses/THIRD_PARTY_NOTICES.txt": "Generator output differs only by source pin"
+  },
+  "audit": {
+    "auditedOn": "2026-10-26",
+    "findings": 124,
+    "counts": {
+      "info": 0,
+      "low": 17,
+      "moderate": 53,
+      "high": 53,
+      "critical": 1
+    },
+    "exceptions": 104,
+    "maintenance": 103,
+    "allDeadlinesUnchanged": true
+  },
+  "reachability": {
+    "status": "diverged",
+    "aheadBy": 51,
+    "behindBy": 208,
+    "baseCommit": "04658de1b942510e0d37efc777c154530f5c0ef1"
+  },
+  "consumerChecks": {
+    "pass": 48,
+    "fail": 0,
+    "skip": 0,
+    "residentOffline": "PASS",
+    "notices": "PASS"
+  },
+  "qualificationChanged": false,
+  "liveActions": false,
+  "remaining": [
+    "Root integration",
+    "Coherent direct preview/native build activation",
+    "Actual combined append/delete prompt proof"
+  ]
+}

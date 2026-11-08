@@ -1,22 +1,29 @@
 import assert from 'node:assert/strict';
 import vm from 'node:vm';
+import {stripTypeScriptTypes} from '../../../../test/support/strip-types.mjs';
 import {checkTraces as check} from '../check-traces.mjs';
-import {read, sourceContext, deferred, tick, trace, checkpoint, call, captureSources, boundInputs} from './support.mjs';
-captureSources(['specs/quint/refinement/application/surfaces.mjs']);
+import {read, bundledSource, sourceContext, deferred, tick, trace, checkpoint, call, captureSources, boundInputs} from './support.mjs';
+captureSources(['specs/quint/refinement/application/surfaces.mjs', 'test/support/strip-types.mjs']);
 const checkTraces = options => check(boundInputs({...options, sources: [...options.sources,
-  'specs/quint/refinement/application/surfaces.mjs', 'specs/quint/refinement/application/support.mjs']}));
+  'specs/quint/refinement/application/surfaces.mjs', 'specs/quint/refinement/application/support.mjs', 'test/support/strip-types.mjs']}));
 
 export async function shellNavigation() {
   const path = 'apps/app/src/prototype/model.js', source = read(path);
   const methods = source.slice(source.indexOf('  goHome(chat) {'), source.indexOf('  /* ---- Android', source.indexOf('  goHome(chat) {')));
+  const navigation = await bundledSource('.eliza/client-features/packages/ui/src/mobile-shell/navigation.ts');
+  const policy = ['defaultChat', 'rest'].map(name => {
+    const line = source.split('\n').find(line => line.startsWith(`  ${name}(`));
+    assert.ok(line?.endsWith('}'), `Current ${name} policy remains a single source method`);
+    return line;
+  }).join('\n');
   const traces = [];
   for (const view of ['notes', 'calendar', 'files', 'browser', 'settings']) {
-    const context = vm.createContext({VIEWS: {[view]: {}}, isMvpView: value => value === view});
+    const context = vm.createContext({VIEWS: {[view]: {}}, isMvpView: value => value === view, navigateMobileShell: navigation.exports.navigateMobileShell});
     vm.runInContext(`class Shell {
       constructor(){this.state={view:null,chat:'input',shade:false,drawer:false,voice:'off'};this.props={};}
       S(){return this.state;} setState(patch){Object.assign(this.state,patch);} clear(){} leave(){}
       mod(){return {};} vget(){return {};} vset(){} vreset(){} homeHint(){} toast(){}
-      defaultChat(){return 'hidden';} rest(){return this.state.view?'hidden':'input';}
+      ${policy}
       ${methods}
     };globalThis.shell=new Shell();`, context);
     const shell = context.shell;
@@ -26,9 +33,9 @@ export async function shellNavigation() {
     shell.openView(view); checkpoint(t, 'actual shell opens view', call('open', view), observe());
     shell.back(); checkpoint(t, 'actual shell returns home', call('back'), observe()); traces.push(t);
   }
-  return checkTraces({model: 'ShellNavigation', sources: [path], traces, scope: 'bounded-component', assumptions: [
+  return checkTraces({model: 'ShellNavigation', sources: [path, ...navigation.sources], traces, scope: 'bounded-component', assumptions: [
     'Actual goHome/openView/back method bodies execute with synchronous React state commits and empty view-specific handlers.',
-    'Hidden and input are the model collapsed-chat class. Modal interception, focus, drawer gestures and asynchronous navigation claims remain untested here.']});
+    'Home input and hidden app chat retain the actual current rest policy. Modal interception, focus, drawer gestures and asynchronous navigation claims remain untested here.']});
 }
 
 export async function developmentSurfaces() {
@@ -36,8 +43,8 @@ export async function developmentSurfaces() {
   const traces = [];
   for (const enabled of [false, true]) {
     const environment = {DEV: true, VITE_ELIZA_DEV_ALLOW_TEST_MOCKS: enabled ? '1' : '', VITE_ELIZA_RUNTIME_PROFILE: 'native'};
-    const flags = read(paths[0]).replace(/export /g, '').replace(/: boolean/g, '').replaceAll('import.meta.env', 'environment');
-    const profile = read(paths[1]).replace(/^import.*$/gm, '').replace(/export /g, '')
+    const flags = stripTypeScriptTypes(read(paths[0]), {mode: 'strip'}).replace(/export /g, '').replaceAll('import.meta.env', 'environment');
+    const profile = stripTypeScriptTypes(read(paths[1]), {mode: 'strip'}).replace(/^import.*$/gm, '').replace(/export /g, '')
       .replaceAll('devSurfacesEnabled', 'profileEnabled').replace(/:boolean/g, '').replaceAll('import.meta.env', 'environment');
     const context = vm.createContext({environment, Capacitor: {isNativePlatform: () => false}, location: {search: '?mode=dev'}, URLSearchParams});
     vm.runInContext(`${flags}\n${profile}\nglobalThis.values={testMocksEnabled,devSurfacesEnabled,browserDevProfile};`, context);
@@ -77,30 +84,52 @@ export async function developmentDevice() {
 }
 
 export async function filesTree() {
-  const source = 'apps/app/src/prototype/files-tree-adapter.ts', traces = [];
-  for (const leave of [false, true]) {
-    let active = true;
-    const result = deferred(), accepted = [], forgotten = [], state = {}, document = {hidden: false};
-    const api = {ic: {folder: ''}, get: () => state, set: patch => Object.assign(state, patch), isActive: () => active, toast() {}};
-    const view = {render: () => ({locs: [{name: 'Documents'}]}), onLeave() {}};
-    const module = sourceContext([source], ['installFilesTreeAdapter'], {
-      document, window: {dispatchEvent() {}}, Capacitor: {isNativePlatform: () => false}, registerPlugin: () => ({}),
-      DailyApps: {perform: () => result.promise, async forgetSelected(input) {forgotten.push(input.selectionId);}},
-      filesIndex: {list: () => [], revokeTree() {}}, createInlineModal: () => ({}), FOLDER_CONTEXT_EVENT: 'folder',
-      createFolderRevisions: () => () => null, folderScope: () => null,
+  const source = 'apps/app/src/prototype/files-browser-adapter.ts', traces = [];
+  const rules = await bundledSource('apps/app/src/runtime/files-storage.ts');
+  const contract = await bundledSource('apps/app/src/runtime/files-agent-contract.ts');
+  for (const outcome of ['current', 'retired', 'returned']) {
+    let active = true, pending = false;
+    const result = deferred(), accepted = [], forgotten = [], state = {};
+    const document = Object.assign(new EventTarget(), {hidden: false, querySelector: () => null});
+    const entry = {path: 'Owned.txt', name: 'Owned.txt', mimeType: 'text/plain', size: 4, modified: 1, directory: false};
+    const storage = {
+      async storageState() {return {status: 'ready', access: 'granted', volumes: [{id: 'primary', primary: true, name: 'Internal', free: 1, total: 2}]};},
+      async storageCategory() {return {status: 'ready', entries: [], count: 0};},
+      async storageTrashList() {return {status: 'ready', items: []};},
+      async storageList() {return {status: 'ready', entries: [entry]};},
+      async storageWatch() {return {status: 'ready'};},
+      async storageUnwatch() {return {status: 'ready'};},
+      async addListener() {return {async remove() {}};},
+      storageSelect() {pending = true; return result.promise.finally(() => {pending = false;});},
+    };
+    const api = {ic: {}, get: () => state, set: patch => Object.assign(state, patch), isActive: () => active, toast() {}};
+    const view = {render: () => ({}), onLeave() {}};
+    const module = sourceContext([source], ['installFilesBrowserAdapter'], {
+      ...rules.exports, ...contract.exports, document, window: new EventTarget(),
+      registerPlugin: () => storage, queueMicrotask,
+      DailyApps: {async forgetSelected(input) {forgotten.push(input.selectionId);}},
+      createInlineModal: () => ({ref() {}}),
     });
-    module.installFilesTreeAdapter({files: view}, async (_module, selected) => accepted.push(selected.selectionId), () => {});
-    const observe = () => ({'s.preview': accepted.length ? 1 : 0});
-    const t = trace(`picker-${leave ? 'retired' : 'current'}`, observe());
-    view.render(state, api).locs.find(row => row.name === 'Documents').go();
-    checkpoint(t, 'source opens system picker', call('pickFile'), observe());
-    if (leave) {active = false; view.onLeave(api); checkpoint(t, 'source retires picker owner', call('leave'), observe());}
-    result.resolve({status: 'selected', action: 'files', selectionId: 'owned-selected', name: 'Owned.txt', mimeType: 'text/plain'});
+    module.installFilesBrowserAdapter({files: view}, async (_module, selected) => accepted.push(selected.selectionId), () => {});
+    view.render(state, api); await tick(); await tick();
+    view.render(state, api).browse.vols[0].go(); await tick(); await tick();
+    const observe = () => ({'s.preview': accepted.length ? 1 : 0, 's.active': active, 's.pending': pending, 's.released': forgotten.length > 0});
+    const t = trace(`storage-preview-${outcome}`, observe());
+    view.render(state, api).fd.items[0].tap();
+    checkpoint(t, 'actual storageSelect awaits owned capability', call('beginPreview'), observe());
+    if (outcome !== 'current') {
+      active = false; view.onLeave(api); checkpoint(t, 'source retires preview owner', call('leave'), observe());
+      if (outcome === 'returned') {
+        active = true; view.render(state, api); await tick(); await tick();
+        checkpoint(t, 'returning to Files retains the new preview epoch', call('enter'), observe());
+      }
+    }
+    result.resolve({status: 'selected', action: 'files', selectionId: 'owned-selected', name: entry.name, mimeType: entry.mimeType});
     await tick(); await tick();
-    checkpoint(t, 'actual picker completion', call('pickerReply', 1), observe());
-    assert.deepEqual(forgotten, leave ? ['owned-selected'] : []); traces.push(t);
+    checkpoint(t, 'actual storage capability completion', call('previewReply'), observe());
+    assert.deepEqual(forgotten, outcome === 'current' ? [] : ['owned-selected']); traces.push(t);
   }
-  return checkTraces({model: 'FilesTree', sources: [source], traces, scope: 'bounded-component', assumptions: [
-    'Actual picker completion and view-leave handlers execute. The external picker is a deferred capability port.',
-    'Tree enumeration, revisions, partial mutation batches, persistent Recent and native grant enforcement remain additional obligations.']});
+  return checkTraces({model: 'FilesPreview', sources: [source, ...rules.sources, ...contract.sources], traces, scope: 'bounded-component', assumptions: [
+    'Current installFilesBrowserAdapter listing, storageSelect completion and view-leave handlers execute. Storage and modal UI are controlled ports.',
+    'The current preview request keeps the page visible. Old tree-token semantics are historical. The full current per-volume load/filter/watch/mutation state needs FilesBrowserController. Storage access and modal behavior are controlled ports.']});
 }

@@ -1,0 +1,10 @@
+{
+  "atUTC": "2026-10-26T23:37:17.333876+00:00",
+  "productBase": "af09c3f3668cd192d87bf1d912f1c8c4d76ca8e3",
+  "SDK": "2a8bbc5d55f9100cd55c00f1ca9df98cd6b02e40",
+  "previousSDK": "94a2f9d848d2d1ed311fb5c28eba94b58635eeae",
+  "scope": "Combined navigation cost/alias, explicit Calendar weekday facts, canonical reminder inventory-read route",
+  "tests": "Focused behavior and narrow production checks passed. Full Calendar/reminder-test semantic graphs remain unqualified after unchanged heap limits. Consumer source-only qualification separate.",
+  "liveNewSourceVerified": false,
+  "fullNativeAcceptance": false
+}

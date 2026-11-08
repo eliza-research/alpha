@@ -3,7 +3,9 @@
 Device: Pixel 10a `stallion`, `ro.soc.model` Tensor G4, Alpha userdebug image. Engine
 `b3eb2bf63b`, measured at Eliza pin `36236fc059`; the pin is now `5d1af326e5` with byte-identical engines. Raw results are under
 [evidence](evidence/on-device-speech-2026-11-05). Everything here is development evidence from
-a dirty tree and a debug APK: not release, AOSP image or user acceptance.
+a dirty tree and a debug APK: not release, AOSP image or user acceptance. The defect 1 fix is on main;
+`SpeechLeadTrim`, `SpeechOutputWarmup` and `FirstWriteSpeechOutput` targeted the older app-owned playback and
+are kept on branch `claude/finish-open-issues` (ef9fbf7cd7); landing them means a change to the shared upstream speech bridge.
 
 ## Status
 
@@ -50,7 +52,7 @@ does not reach the bridge log, so an absent log line proves nothing.
 The boot hook runs and registers the loader in `local` mode (`runBootHooks`, `ensure mode=local`,
 `tryBionic`). The Cloud rule in `ensureLocalInferenceHandler` is not involved.
 
-[`patches/eliza/local-inference-live-asr.patch`](../patches/eliza/local-inference-live-asr.patch) fixes 2,
+A local patch (`patches/eliza/local-inference-live-asr.patch`, kept on branch `claude/finish-open-issues`) fixed 2,
 3 and 4; it applies to the pin. With it, status returned `ready:true, streaming:true` and a
 real clip posted to the route returned "If you go into different cultures, they have different concepts
 of creation." in stream mode in 287 ms, including the final IPC round trip. That run was a one-off

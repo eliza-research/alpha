@@ -1,4 +1,4 @@
-node_modules/
+node_modules
 web-dist/
 artifacts/
 test-results/
@@ -11,6 +11,19 @@ android/app/src/main/assets/
 .env*
 !.env.example
 .DS_Store
+
+# Android host generated from android/consumer-host.json by the upstream generator
+# (node scripts/android-host.mjs; every Android build regenerates it)
+android/.eliza-consumer-host.json
+android/.eliza-consumer-profile.json
+android/build.gradle
+android/settings.gradle
+android/gradle.properties
+android/gradlew
+android/gradlew.bat
+android/gradle/wrapper/
+android/app/build.gradle
+android/eliza-consumer-host/
 
 # Capacitor sync output (regenerated from checked-in config)
 android/capacitor.settings.gradle
@@ -32,6 +45,3 @@ android/.kotlin/
 __pycache__/
 # Android externalNativeBuild caches (CMake/ninja state with absolute build paths)
 .cxx/
-
-# Quint model-checker intermediate output
-/_apalache-out/

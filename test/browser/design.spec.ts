@@ -14,6 +14,7 @@ for (const theme of ['light','dark']) for(const [view,subs] of Object.entries(st
       await expect(page.locator('[data-screen]')).toBeVisible();
       if(view==='workflows'&&sub==='failed'){
         await expect(page.getByText('Failed', {exact:true})).toBeVisible();
+        await page.getByText('Execution details', {exact:true}).click();
         await expect(page.getByText('Calendar access was revoked.', {exact:true})).toBeVisible();
       }
       await page.evaluate(()=>document.fonts.ready);

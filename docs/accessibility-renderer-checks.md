@@ -14,6 +14,9 @@ navigation, process death and full storage on hardware remain device acceptance 
 | `test/browser/accessibility-sweep.production.spec.ts` | `npm run test:browser:production` | The live states against the flag-off production bundle |
 | `test/browser/accessibility-audit.spec.ts` | `npm run test:browser` | Each rule fires on a seeded defect and stays quiet on corrected markup |
 | `test/browser/accessibility-resilience.spec.ts` | `npm run test:browser` | Behaviour behind the defects the sweep found |
+| `test/browser/accessibility-lifecycle.spec.ts` | `npm run test:browser` | Every retained view through repeated HOME (with menus, sheets and dialogs open), rotation, a reload, camera permission withdrawn while away and the network going away mid-session, at 100% and 200% text: focus, names, reading order and the composer draft (AP-15) |
+| `test/browser/view-focus.spec.ts` | `npm run test:browser` | Focus moved by a screen change, HOME, Apps or a rotation lands on the new screen's name; focus somewhere real stays |
+| `test/browser/accessibility-sign-in.production.spec.ts` | `npm run test:browser:production` | The required Eliza Cloud sign-in page of a signed-out production phone (P-43) at 100% and 200% text and in landscape; nothing is entered or sent |
 | `test/browser/large-text-overlap.spec.ts` | `npm run test:browser` | Home, the app library and the tile grids at 100%, 150% and 200% text, measured from bounding boxes (round 8, after the round-7 emulator run showed the Home card title printed over its neighbours at 200% font) |
 | `test/browser/notifications-handle.spec.ts` | `npm run test:browser` | A pull on launcher's empty Home that asks for Android's shade, and the gesture zones ([gesture zones](gesture-zones.md)) |
 
@@ -45,6 +48,8 @@ announces are not exercised here. Geometry, contrast and clipping are measured i
 | `focus-obscured` | A tab stop took focus with part of its painted box under the dock. A focusable scroll region is exempt: it is the scroller, and its content is judged by `obscured-by-dock` (round 10) |
 | `toast-not-announced`, `toast-covered` | A toast on screen is inert (under a top-layer dialog, so removed from the accessibility tree), or something is painted over it (round 10) |
 | `text-truncated` | Reported, not failed: a deliberate ellipsis or line clamp |
+| `reading-order` | TalkBack's linear order goes up the screen: the next node starts above the previous one by more than half the taller of the two, without starting a new column to its right (the rule `TalkBackOrder.java` applies on Android) |
+| `assistant-group-order`, `assistant-group-duplicate` | App content is read after the floating assistant controls, or more than one assistant group is exposed |
 
 Menus and sheets drawn over a scrim (browser menu and share, photo info and share, note
 share, file sort, move and share, the workflow step editor and the Settings sheet) own
@@ -61,6 +66,41 @@ the dialog opens, shown as a manual popover so it is drawn above the dialog. A t
 meanwhile is copied into the region of the topmost modal dialog, and its Undo runs the
 page's Undo. Whether TalkBack speaks either region is a device check.
 
+## Reading order and focus
+
+TalkBack reads a WebView in the order of its accessibility tree, which follows the DOM, not
+the screen. `auditReadingOrder` walks Chromium's accessibility tree the way Android WebView
+exposes it (a control is one node with its label, a heading or text-only element is one
+node) and judges the visible nodes by where they are painted, with the rule
+`AccessibilityInstrumentedTest`, `AccessibilityViewsInstrumentedTest` and
+`AccessibilityLifecycleInstrumentedTest` apply on an emulator (`TalkBackOrder.java`). Every
+lane of the sweep runs it. Not judged: live regions (announced, not read on to), the order
+inside one bar of controls (an app header keeps navigation, title, actions when a large
+font moves its title below its buttons; the camera's capture row keeps its order as a
+landscape rail), names painted on the pannable map, and content outside the phone screen.
+The conversation sheet floats over the app like the dock and is read after it.
+
+What it found, fixed in the renderer: Maps read its credits and pins before the search
+field and status drawn over the top of the map, and its route card and turn banner after
+Recenter (the layers drawn over the map now come first; stacking is by z-index); the
+browser page stayed in the order and Tab sequence under the address suggestions that cover
+it (it is now inert while the address is edited); and HOME left the browser build's alarm
+settings dialog open over Home.
+
+Opening an app, HOME, Back and Apps retire the layer that held focus, and the browser
+then drops focus to the page body, where TalkBack (which follows input focus in WebView)
+announces nothing. `runtime/view-focus.ts` moves focus a screen change dropped to what is
+now in front: an inline modal surface by its label, else the app's visible title, its
+labelled region, or the Home region. The target takes focus only programmatically
+(`tabindex="-1"`), so Tab continues into the screen from there; focus a view put somewhere
+real, native dialogs, the conversation and the voice panel are left alone.
+
+The mover itself is Eliza's shared `createScreenFocus` (`@elizaos/ui/accessibility`, projected
+as `packages/ui/src/accessibility/screen-focus.ts`, with its own jsdom tests upstream);
+`runtime/view-focus.ts` keeps only what is Alpha's: the title, region and Home selectors, the
+surfaces that own their focus, and the `data-active-view` and `launcher-home` signals. It
+needs a pin that contains that module (eliza branch `claude/alpha-c1-a11y`).
+
 ## The floating dock
 
 The composer bar and the pill float over the page. Round 8's emulator run found Home's last
@@ -68,7 +108,9 @@ row drawn under the composer at 200% text, and TalkBack read the composer after 
 that sat lower on the screen. Since round 10:
 
 - Home and the app library end above the dock. The dock's footprint is measured
-  (`runtime/dock-clearance.ts`, published as `--alpha-dock-clearance`) rather than assumed
+  (`runtime/dock-clearance.ts`, published as `--alpha-dock-clearance`; the measuring and
+  publishing are Eliza's shared `packages/ui/src/components/shell/dock-clearance.ts`, to which
+  Alpha supplies its selectors and property names) rather than assumed
   to be 108px, because Android's navigation inset raises the dock and a status line or a
   longer draft makes it taller. 108px stays the minimum, so Home is unchanged wherever it
   already fitted. Home lays its rows out against the bar at rest (`--alpha-dock-rest`), so a
@@ -90,14 +132,23 @@ These are the sizes the sweep holds the renderer to. They are test definitions, 
 product commitment; the landscape decision is still A-22 in `docs/decisions.md`.
 
 - Portrait 412 by 915, light and dark: all rules.
-- Text at 200%, portrait: clipping, overlap and dock rules, names, and no tab stop left under
-  the dock. Android applies large text as WebView
+- Text at 200%, portrait: clipping, overlap and dock rules, names, reading order, and no tab
+  stop left under the dock. Android applies large text as WebView
   text zoom (the in-app text size multiplied by the system font scale), so 200% is the
   system's largest font at the default in-app size. The existing large-text specs cover
   150%, the largest in-app size.
-- Landscape 915 by 412 on a touch phone: clipping, overlap and dock rules, names and tab order.
+- Landscape 915 by 412 on a touch phone: clipping, overlap and dock rules, names, tab order and
+  reading order.
 - Landscape 915 by 412 at 200% text: the same rules (round 10). It passed for every state
   without a layout change of its own.
+- Text at 300%, portrait: the largest in-app size (150%) with the largest system font (200%),
+  which Android multiplies. The 200% rules over every live state and every launcher state
+  (`accessibility-sweep.spec.ts`, "300% text"). When the lane was added (cycle 2) 38 of the 55
+  states passed; the other 17 fail on real layout defects (a display title split mid-word,
+  segmented controls and header actions pushed off screen, chips and menu tiles narrower than
+  their labels) and are tracked in issue #701. They are listed in `OPEN_AT_300` and still run
+  every rule; each must still report a layout defect, so a fix (or a state that no longer opens or
+  times out) fails the test, and the list can only shrink.
 
 Truncation policy: a single-line ellipsis or line clamp on a preview of user content
 (a mail snippet, a file name in a list, a note preview) is allowed, because the full text
@@ -134,22 +185,29 @@ text scale, so its last line is no longer cut by the clamp at 200%.
   completion integration, the launcher presentation too.
 - The composer field keeps a pixel line height, and text typed into inputs is not judged
   for clipping; only rendered text nodes are.
-- No zoom above 200% is swept: the largest in-app size with the largest system font
-  multiplies to 300%.
+- Zoom above 300% is not swept: 300% is the largest size the in-app setting and the system font
+  can reach together. Display size (density) is not emulated.
 - Provider-connected states are one synthetic mailbox held at the provider boundary
   (`connectMailbox` in `accessibility-states.ts`): Home with its unread card, the Inbox
   list, an empty folder, search, an open message, a long subject, compose, and Settings with
-  its accounts and connections pages. No account, OAuth or mail exists. A connected
-  calendar, cloud agent or password provider is not swept; dialogs and flows that need a
-  permission are covered by their own accessibility specs. These states run on the
-  development server only, so the flag-off production sweep does not include them. The
-  fixture lock screen, the `photos-empty` viewer state and the launcher presentation are swept
-  at 100% and 200% (`FIXTURE_STATES` and `LAUNCHER_STATES` in `accessibility-states.ts`).
+  its accounts and connections pages. No account, OAuth or mail exists. Since cycle 2 the
+  connected states also cover an agent's own calendar (Agent Calendar on Home and in Calendar,
+  held at the app-record boundary as in `home-daily-overview.spec.ts`), a linked Google Calendar
+  account's sync sheet before and after its read-only review (`calendar-sync-fixture.ts`; no
+  write is made) and a connected agent (the on-device development profile) in Settings and in a
+  conversation with its reply. A Cloud-hosted agent and a password provider are not swept;
+  dialogs and flows that need a permission are covered by their own accessibility specs. These
+  states run on the development server only, so the flag-off production sweep does not include
+  them. The fixture lock screen, the `photos-empty` viewer state and the launcher presentation
+  of Home, Apps, the conversation and every retained app view are swept at 100% and 200%,
+  and the launcher states at 300% too (`FIXTURE_STATES` and `LAUNCHER_STATES` in
+  `accessibility-states.ts`).
 - The dock rules judge the composer bar, the pill and the resting sheet. Only Home and the
   app library end above the dock; an app page's content still passes under it and is only
-  required to be scrollable clear of it. Whether TalkBack's reading order is affected on
-  such a page is an emulator and device question (`AccessibilityInstrumentedTest` checks
-  Settings).
+  required to be scrollable clear of it. The renderer reads every state's order; TalkBack's
+  own order on an emulator (`AccessibilityViewsInstrumentedTest` reads every view,
+  `AccessibilityLifecycleInstrumentedTest` after repeated HOME, rotation and a new process)
+  has not been run, and TalkBack itself remains a device check.
 - The dock's footprint is measured after layout. On Android it depends on insets the WebView
   reports; that path is not exercised in Chromium beyond setting the same custom property.
 - A state is a screen as it opens. Flows inside a state (typing, multi-step dialogs,

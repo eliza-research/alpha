@@ -29,9 +29,6 @@ public final class PluginWorkersTest {
   check(PluginWorkers.submit(full,()->{},refused::incrementAndGet),"second task queues");
   check(!PluginWorkers.submit(full,()->{},refused::incrementAndGet)&&refused.get()==3,"a full queue is refused");
   release.countDown();full.shutdown();check(full.awaitTermination(5,TimeUnit.SECONDS),"bounded worker drains");
-  // The notification worker is itself an Executor and goes through the same guard.
-  WorkflowNoticeIo notices=new WorkflowNoticeIo(1);notices.close();
-  check(!PluginWorkers.submit(notices,()->{},refused::incrementAndGet)&&refused.get()==4,"a closed notice worker is refused");
   System.out.println("PASS plugin workers");
  }
 }

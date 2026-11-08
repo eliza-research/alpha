@@ -41,6 +41,11 @@ function fixture(t) {
     fs.mkdirSync(path.dirname(file), {recursive: true});
     fs.writeFileSync(file, text);
   };
+  // Model a checkout's committed metadata, not native artifacts or qualification.
+  const voice = JSON.parse(read(VOICE_HOST_MANIFEST));
+  write('app.config.json', read('app.config.json'));
+  write('android/paradee-voice/asr-inputs.json', read('android/paradee-voice/asr-inputs.json'));
+  write(VOICE_HOST_MANIFEST, JSON.stringify({...voice, pin: commit, qualified: false, evidence: {deviceExecuted: false, emulatorDeviceExecuted: false, userAccepted: false, scope: 'Synthetic checkout metadata only; no native execution or acceptance'}}));
   const source = path.join(root, 'artifacts/local-agent-resident-' + commit);
   return {root, source, write, commit};
 }
@@ -87,8 +92,10 @@ test('preflight rejects an unpinned checkout and android:build stops before sync
   f.write('upstream.lock.json', JSON.stringify({commit: 'f'.repeat(40)}));
   assert.match(checkoutProblems(f.root)[0], /vendor\/eliza is at .*pins f{40}\. Run: git submodule update --init vendor\/eliza/);
   // The real entry point exits with status 2 and the guidance, without starting the build.
-  for (const file of ['embedding-native-contract.mjs', 'paradee-runtime.mjs', 'voice-host.mjs', 'build-android.mjs', 'android-build-preflight.mjs', 'stage-embedding-host.mjs', 'build-embedding-host.mjs', 'toolchain.mjs', 'copy-file-clone.mjs'])
+  for (const file of ['android-abis.mjs', 'embedding-native-contract.mjs', 'paradee-runtime.mjs', 'voice-host.mjs', 'build-android.mjs', 'android-build-preflight.mjs', 'mobile-uuid-adapter.mjs', 'stage-embedding-host.mjs', 'build-embedding-host.mjs', 'toolchain.mjs', 'copy-file-clone.mjs'])
     f.write('scripts/' + file, read('scripts/' + file));
+  // build-android.mjs reads the release-signing environment names from the host descriptor.
+  f.write('android/consumer-host.json', read('android/consumer-host.json'));
   const result = spawnSync(process.execPath, ['scripts/build-android.mjs'], {cwd: f.root, encoding: 'utf8'});
   assert.equal(result.status, 2, result.stderr);
   assert.match(result.stderr, /Android build prerequisites are missing/);
@@ -149,7 +156,7 @@ test('android:build:local builds the workflow worker before staging and stages b
   // Staging itself refuses a missing or foreign worker artifact before the long mobile bundle build.
   const stage = read('scripts/stage-local-agent-runtime.mjs');
   assert.ok(stage.indexOf('verifyWorkerArtifact(workerArtifactDirectory(root)') > 0);
-  assert.ok(stage.indexOf('verifyWorkerArtifact(workerArtifactDirectory(root)') < stage.indexOf("'build:mobile'"));
+  assert.ok(stage.indexOf('verifyWorkerArtifact(workerArtifactDirectory(root)') < stage.indexOf("'scripts/build-mobile-agent.mjs'"));
 });
 
 test('preflight names the embedding host and who must supply it when the build step cannot', t => {

@@ -1,0 +1,22 @@
+{
+  "schemaVersion": 1,
+  "reviewedHeads": {
+    "620": "9c02d7a4fa2a3bec9953ba089dff39f631529784",
+    "626": "f6fbb24cec5f457b1d2e7ad4a989a5e32eef1ca2",
+    "627": "8ff335bd6782d9b6968cd71ef444be3f147437c7"
+  },
+  "upstream": "c307290782dd7fa22c2c826ccc6a929574ea418d",
+  "reviewedUpstream": "f3852e8ee338c2397336aecd1abb790e1bd25c46",
+  "identicalUpstreamTree": "03d40a2db2608f4e73f1ec453074c10d57a7125d",
+  "reviewNotes": [
+    "Automatic sign-in readiness preserves existing errors and does not restart a blocked resident; explicit attempts retain their normal behavior.",
+    "Compact runtime notices use producer inventory bound to the actual bundle hash and prepared source package records.",
+    "Shared Notes and Sense retain Alpha package, theme, storage and explicit owner binding.",
+    "Development note/reminder previews cannot dispatch native writes.",
+    "Shared Soong app-native patch is byte-identical to the previously checked downstream patch."
+  ],
+  "verification": "Final current-pin verification and APK/image builds pending; earlier pin evidence remains historical.",
+  "mainUpdated": false,
+  "bootTested": false,
+  "deviceAccepted": false
+}

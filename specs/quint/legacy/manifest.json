@@ -14,11 +14,6 @@
       "currentMissingGoogleTest",
       "currentThreeTapEmailTest"
     ],
-    "sources": [
-      "apps/app/src/runtime/connection-ui.tsx",
-      "apps/app/src/runtime/cloud-sign-in-ui.tsx",
-      "android/app/src/main/java/ai/elizaresearch/alphaphone/CloudSignInFlow.java"
-    ],
     "abstractions": [
       "Historical current/proposed design comparison at source ef9fbf7cd7, not a runtime conformance claim.",
       "All original state variables are fields of s; immutable Design selects behavior; record spreads preserve the original frame conditions.",
@@ -146,6 +141,16 @@
         "GoogleWhenPossible",
         "ReachesHome"
       ]
+    },
+    "sources": [],
+    "classification": "historical-design-comparison",
+    "historicalSources": {
+      "commit": "ef9fbf7cd7",
+      "paths": [
+        "apps/app/src/runtime/connection-ui.tsx",
+        "apps/app/src/runtime/cloud-sign-in-ui.tsx",
+        "android/app/src/main/java/ai/elizaresearch/alphaphone/CloudSignInFlow.java"
+      ]
     }
   },
   {
@@ -164,11 +169,6 @@
       "currentGrantShrinksTest",
       "currentStaleInboxTest",
       "currentTabAndTapCountTest"
-    ],
-    "sources": [
-      "apps/app/src/runtime/google-connect-flow.ts",
-      "apps/app/src/runtime/google-connection-ui.tsx",
-      "apps/app/src/runtime/cloud-protocol.ts"
     ],
     "abstractions": [
       "Historical current/proposed design comparison at source ef9fbf7cd7, not a runtime conformance claim.",
@@ -313,7 +313,17 @@
         "relation": "TwoTapsToMailRelation",
         "invariant": "TwoTapsToMailInvariant"
       }
-    ]
+    ],
+    "sources": [],
+    "classification": "historical-design-comparison",
+    "historicalSources": {
+      "commit": "ef9fbf7cd7",
+      "paths": [
+        "apps/app/src/runtime/google-connect-flow.ts",
+        "apps/app/src/runtime/google-connection-ui.tsx",
+        "apps/app/src/runtime/cloud-protocol.ts"
+      ]
+    }
   },
   {
     "path": "specs/quint/legacy/Calendar.qnt",
@@ -330,11 +340,6 @@
       "currentPickerRequiredTest",
       "currentMalformedFeedTest",
       "currentReadOnlyGoogleTest"
-    ],
-    "sources": [
-      "apps/app/src/runtime/google-calendar.ts",
-      "apps/app/src/runtime/google-calendar-outbox.ts",
-      "apps/app/src/prototype/calendar-adapter.ts"
     ],
     "abstractions": [
       "Historical current/proposed design comparison at source ef9fbf7cd7, not a runtime conformance claim.",
@@ -470,7 +475,17 @@
         "relation": "UndoBeforeSendRelation",
         "invariant": "UndoBeforeSendInvariant"
       }
-    ]
+    ],
+    "sources": [],
+    "classification": "historical-design-comparison",
+    "historicalSources": {
+      "commit": "ef9fbf7cd7",
+      "paths": [
+        "apps/app/src/runtime/google-calendar.ts",
+        "apps/app/src/runtime/google-calendar-outbox.ts",
+        "apps/app/src/prototype/calendar-adapter.ts"
+      ]
+    }
   },
   {
     "path": "specs/quint/legacy/Maps.qnt",
@@ -486,11 +501,6 @@
       "currentProviderTalkTest",
       "currentAssistantStopsGuidanceTest",
       "currentRerouteLosesRouteTest"
-    ],
-    "sources": [
-      "apps/app/src/maps/cloud-provider.ts",
-      "apps/app/src/maps/agent-navigation.ts",
-      "apps/app/src/prototype/maps-adapter.ts"
     ],
     "abstractions": [
       "Historical current/proposed design comparison at source ef9fbf7cd7, not a runtime conformance claim.",
@@ -674,7 +684,17 @@
         "relation": "RouteKeptOnFailureRelation",
         "invariant": "RouteKeptOnFailureInvariant"
       }
-    ]
+    ],
+    "sources": [],
+    "classification": "historical-design-comparison",
+    "historicalSources": {
+      "commit": "ef9fbf7cd7",
+      "paths": [
+        "apps/app/src/maps/cloud-provider.ts",
+        "apps/app/src/maps/agent-navigation.ts",
+        "apps/app/src/prototype/maps-adapter.ts"
+      ]
+    }
   },
   {
     "path": "specs/quint/legacy/ChatInput.qnt",
@@ -689,10 +709,6 @@
       "currentStrayTest",
       "currentBackTest",
       "currentOneTouchTest"
-    ],
-    "sources": [
-      "apps/app/src/prototype/model.js",
-      "apps/app/src/prototype/chat-overlay-motion-adapter.ts"
     ],
     "abstractions": [
       "Historical current/proposed design comparison at source ef9fbf7cd7, not a runtime conformance claim.",
@@ -787,6 +803,15 @@
         "FocusNeedsComposer",
         "OneTouchDown"
       ]
+    },
+    "sources": [],
+    "classification": "historical-design-comparison",
+    "historicalSources": {
+      "commit": "ef9fbf7cd7",
+      "paths": [
+        "apps/app/src/prototype/model.js",
+        "apps/app/src/prototype/chat-overlay-motion-adapter.ts"
+      ]
     }
   },
   {
@@ -801,11 +826,6 @@
       "negativeGridDivisionTest",
       "currentGridShiftTest",
       "currentEmptyCardsTest"
-    ],
-    "sources": [
-      "apps/app/src/prototype/template.html",
-      "apps/app/src/prototype/phone.css",
-      "apps/app/src/runtime/dock-clearance.ts"
     ],
     "abstractions": [
       "Historical current/proposed design comparison at source ef9fbf7cd7, not a runtime conformance claim.",
@@ -893,6 +913,16 @@
         "TopNeverBlank",
         "SetupOnlyWhenNeeded"
       ]
+    },
+    "sources": [],
+    "classification": "historical-design-comparison",
+    "historicalSources": {
+      "commit": "ef9fbf7cd7",
+      "paths": [
+        "apps/app/src/prototype/template.html",
+        "apps/app/src/prototype/phone.css",
+        "apps/app/src/runtime/dock-clearance.ts"
+      ]
     }
   },
   {
@@ -907,10 +937,6 @@
       "currentInfoRowsTest",
       "currentUnconfirmedSignOutTest",
       "currentMirrorPageTest"
-    ],
-    "sources": [
-      "apps/app/src/prototype/model.js",
-      "apps/app/src/prototype/settings-adapter.ts"
     ],
     "abstractions": [
       "Historical current/proposed design comparison at source ef9fbf7cd7, not a runtime conformance claim.",
@@ -1009,6 +1035,827 @@
         "ConfirmBeforeDestroy",
         "Shallow"
       ]
+    },
+    "sources": [],
+    "classification": "historical-design-comparison",
+    "historicalSources": {
+      "commit": "ef9fbf7cd7",
+      "paths": [
+        "apps/app/src/prototype/model.js",
+        "apps/app/src/prototype/settings-adapter.ts"
+      ]
     }
+  },
+  {
+    "path": "specs/quint/legacy/CameraSession.qnt",
+    "module": "CameraSession",
+    "init": "checkerInit",
+    "step": "step",
+    "invariant": "safety",
+    "tests": [
+      "designCaptureTest",
+      "designLeaveTest",
+      "designQueueTest",
+      "designChatTest",
+      "asBuiltFocusTest",
+      "asBuiltLeaveTest",
+      "asBuiltLensTest",
+      "asBuiltAgentQueueTest",
+      "asBuiltChatGraceTest",
+      "asBuiltLeaveQueueTest"
+    ],
+    "abstractions": [
+      "Historical view-refresh design comparison authored on main before this migration. It is not implementation refinement evidence.",
+      "Every source state variable is a field of s. Immutable config preserves each original TLC constant assignment; history is an observational extension for action properties.",
+      "All original finite domains, nondeterministic initial choices, action guards, frame conditions and fairness are retained.",
+      "All22 source configurations and their exact property lists are retained in view-refresh-configurations.json."
+    ],
+    "constants": {
+      "FixFocus": true,
+      "FixLeave": true,
+      "FixLens": true,
+      "FixAgentQueue": true,
+      "FixChatGrace": true,
+      "MaxEpoch": 3,
+      "MaxMedia": 2
+    },
+    "invariants": [
+      "TypeOK",
+      "NoLostShutter",
+      "NoStuckCapture",
+      "NoOrphanRecording",
+      "LensSettingsValid",
+      "FlipNeverRejected",
+      "SavedIsShown"
+    ],
+    "temporal": [
+      "CheckedTemporal"
+    ],
+    "temporalProperties": [
+      "AgentFailsOnlyForCause",
+      "OpenReachesPreviewOrError",
+      "AgentCaptureSettles",
+      "ChatKeepsPreview",
+      "ChatGraceReleases"
+    ],
+    "currentChecks": [
+      {
+        "invariant": "NoLostShutter",
+        "expected": "violation",
+        "init": "checkerAsBuilt_FocusInit",
+        "step": "step",
+        "configuration": "AsBuilt_Focus"
+      },
+      {
+        "invariant": "NoStuckCapture",
+        "expected": "violation",
+        "init": "checkerAsBuilt_LeaveInit",
+        "step": "step",
+        "configuration": "AsBuilt_Leave"
+      },
+      {
+        "invariant": "LensSettingsValid",
+        "expected": "violation",
+        "init": "checkerAsBuilt_LensInit",
+        "step": "step",
+        "configuration": "AsBuilt_Lens"
+      },
+      {
+        "invariant": "FlipNeverRejected",
+        "expected": "violation",
+        "init": "checkerAsBuilt_LensInit",
+        "step": "step",
+        "configuration": "AsBuilt_Lens"
+      }
+    ],
+    "currentTemporalChecks": [
+      {
+        "property": "CheckedAgentFailsOnlyForCause",
+        "sourceProperty": "AgentFailsOnlyForCause",
+        "expected": "violation",
+        "init": "checkerAsBuilt_AgentQueueInit",
+        "step": "step",
+        "fairness": "Fairness",
+        "configuration": "AsBuilt_AgentQueue"
+      },
+      {
+        "property": "CheckedChatKeepsPreview",
+        "sourceProperty": "ChatKeepsPreview",
+        "expected": "violation",
+        "init": "checkerAsBuilt_ChatGraceInit",
+        "step": "step",
+        "fairness": "Fairness",
+        "configuration": "AsBuilt_ChatGrace"
+      },
+      {
+        "property": "CheckedAgentCaptureSettles",
+        "sourceProperty": "AgentCaptureSettles",
+        "expected": "violation",
+        "init": "checkerAsBuilt_LeaveInit",
+        "step": "step",
+        "fairness": "Fairness",
+        "configuration": "AsBuilt_Leave"
+      }
+    ],
+    "legacySource": {
+      "path": "design/view-refresh-2026-11/tla/camera-session/Spec.tla",
+      "sha256": "2148834fd33729502e83782163483a093f3e43a381812f4e6cb9163fd765f183",
+      "definitions": [
+        "vars",
+        "TypeOK",
+        "Init",
+        "Room",
+        "Ready",
+        "Open",
+        "PermissionResult",
+        "FirstFrame",
+        "StartFail",
+        "Leave",
+        "Shutter",
+        "CaptureDone",
+        "RecStart",
+        "RecStop",
+        "Focus",
+        "FocusDone",
+        "Flip",
+        "SetFlash",
+        "SetZoom",
+        "AgentCapture",
+        "Release",
+        "ChatOpen",
+        "ChatGraceEnds",
+        "ChatClose",
+        "AgentRun",
+        "System",
+        "User",
+        "Next",
+        "Spec",
+        "NoLostShutter",
+        "NoStuckCapture",
+        "NoOrphanRecording",
+        "LensSettingsValid",
+        "FlipNeverRejected",
+        "SavedIsShown",
+        "AgentFailsOnlyForCause",
+        "ChatKeepsPreview",
+        "ChatGraceReleases",
+        "OpenReachesPreviewOrError",
+        "AgentCaptureSettles"
+      ]
+    },
+    "legacyConfigurations": "specs/quint/legacy/view-refresh-configurations.json",
+    "classification": "historical-design-comparison",
+    "historicalSources": {
+      "commit": "f2a0eb035da9c8ede24efe735d981a27dd403283",
+      "paths": [
+        "apps/app/src/prototype/camera-adapter.ts"
+      ]
+    },
+    "sources": []
+  },
+  {
+    "path": "specs/quint/legacy/PhotosLibrary.qnt",
+    "module": "PhotosLibrary",
+    "init": "checkerInit",
+    "step": "step",
+    "invariant": "safety",
+    "tests": [
+      "newestWindowTest",
+      "favoriteToggleTest",
+      "selectionPatchTest",
+      "trashRestoreTest",
+      "shareReviewTest",
+      "staleReplaceTest",
+      "asBuiltWindowTest",
+      "asBuiltPatchTest",
+      "asBuiltFavoriteTest",
+      "asBuiltCapTest"
+    ],
+    "abstractions": [
+      "Historical view-refresh design comparison authored on main before this migration. It is not implementation refinement evidence.",
+      "Every source state variable is a field of s. Immutable config preserves each original TLC constant assignment; history is an observational extension for action properties.",
+      "All original finite domains, nondeterministic initial choices, action guards, frame conditions and fairness are retained.",
+      "All22 source configurations and their exact property lists are retained in view-refresh-configurations.json."
+    ],
+    "constants": {
+      "Ids": [
+        1,
+        2,
+        3
+      ],
+      "W": 2,
+      "Cap": 1,
+      "Budget": 2,
+      "FixWindow": true,
+      "FixPatch": true,
+      "FixFavToggle": true,
+      "FixNoCap": true
+    },
+    "invariants": [
+      "TypeOK",
+      "NewestNeverDropped",
+      "SelectionSubsetOfVisible",
+      "ViewerShowsExistingItem",
+      "NoSpuriousClear",
+      "FavoriteReversible",
+      "NoSelectionCap",
+      "DeleteForeverOnlyFromTrash"
+    ],
+    "temporal": [
+      "CheckedTemporal"
+    ],
+    "temporalProperties": [
+      "NoActionOnStaleRev",
+      "FilterIsReadOnly",
+      "ShareChangesNothing",
+      "ReviewSettles"
+    ],
+    "currentChecks": [
+      {
+        "invariant": "NoSelectionCap",
+        "expected": "violation",
+        "init": "checkerAsBuilt_CapInit",
+        "step": "step",
+        "configuration": "AsBuilt_Cap"
+      },
+      {
+        "invariant": "FavoriteReversible",
+        "expected": "violation",
+        "init": "checkerAsBuilt_FavToggleInit",
+        "step": "step",
+        "configuration": "AsBuilt_FavToggle"
+      },
+      {
+        "invariant": "NoSpuriousClear",
+        "expected": "violation",
+        "init": "checkerAsBuilt_PatchInit",
+        "step": "step",
+        "configuration": "AsBuilt_Patch"
+      },
+      {
+        "invariant": "NewestNeverDropped",
+        "expected": "violation",
+        "init": "checkerAsBuilt_WindowInit",
+        "step": "step",
+        "configuration": "AsBuilt_Window"
+      }
+    ],
+    "currentTemporalChecks": [],
+    "legacySource": {
+      "path": "design/view-refresh-2026-11/tla/photos-library/Spec.tla",
+      "sha256": "62c77138ce80da19027d6b2d62c586a8aba9b0adb025d06f7e981ffa8e6da0ab",
+      "definitions": [
+        "vars",
+        "MaxRev",
+        "NoReview",
+        "Live",
+        "InTrash",
+        "Matches",
+        "Pool",
+        "Take",
+        "Window",
+        "TypeOK",
+        "Init",
+        "Bump",
+        "Ghosts",
+        "SwitchTab",
+        "EnterSelect",
+        "Toggle",
+        "SelectAll",
+        "CancelSelect",
+        "BatchFavorite",
+        "BatchTrash",
+        "BatchRestore",
+        "DeleteForever",
+        "OpenViewer",
+        "Swipe",
+        "ViewerTrash",
+        "CloseViewer",
+        "Undo",
+        "StoreEvent",
+        "AgentFilter",
+        "AgentReview",
+        "ReviewCurrent",
+        "AgentShareReview",
+        "AgentApply",
+        "AgentOpen",
+        "EditReplace",
+        "AgentReject",
+        "Next",
+        "Spec",
+        "NewestNeverDropped",
+        "SelectionSubsetOfVisible",
+        "ViewerShowsExistingItem",
+        "NoSpuriousClear",
+        "FavoriteReversible",
+        "NoSelectionCap",
+        "DeleteForeverOnlyFromTrash",
+        "NoActionOnStaleRev",
+        "FilterIsReadOnly",
+        "ShareChangesNothing",
+        "ReviewSettles"
+      ]
+    },
+    "legacyConfigurations": "specs/quint/legacy/view-refresh-configurations.json",
+    "classification": "historical-design-comparison",
+    "historicalSources": {
+      "commit": "f2a0eb035da9c8ede24efe735d981a27dd403283",
+      "paths": [
+        "apps/app/src/prototype/camera-adapter.ts",
+        "apps/app/src/prototype/photo-library-adapter.ts",
+        "apps/app/src/runtime/photos-view.ts",
+        "apps/app/src/runtime/photo-library.ts"
+      ]
+    },
+    "sources": []
+  },
+  {
+    "path": "specs/quint/legacy/NotesView.qnt",
+    "module": "NotesView",
+    "init": "checkerInit",
+    "step": "step",
+    "invariant": "safety",
+    "tests": [
+      "recordingTest",
+      "hiddenCatchupTest",
+      "restoreFolderTest",
+      "renameTest",
+      "reviewedMoveTest",
+      "asBuiltCapTest",
+      "asBuiltSegmentsTest",
+      "asBuiltStreamAsrTest",
+      "asBuiltHiddenTest",
+      "ablateRestoreFolderTest"
+    ],
+    "abstractions": [
+      "Historical view-refresh design comparison authored on main before this migration. It is not implementation refinement evidence.",
+      "Every source state variable is a field of s. Immutable config preserves each original TLC constant assignment; history is an observational extension for action properties.",
+      "All original finite domains, nondeterministic initial choices, action guards, frame conditions and fairness are retained.",
+      "All22 source configurations and their exact property lists are retained in view-refresh-configurations.json."
+    ],
+    "constants": {
+      "Notes": [
+        "n1",
+        "n2"
+      ],
+      "Folders": [
+        "f1",
+        "f2"
+      ],
+      "Names": [
+        "a",
+        "b"
+      ],
+      "None": "None",
+      "MaxSeg": 3,
+      "CapSeg": 1,
+      "Budget": 2,
+      "FixUnlimited": true,
+      "FixSegments": true,
+      "FixStreamAsr": true,
+      "FixRestoreFolder": true,
+      "AsrWhileHidden": false
+    },
+    "invariants": [
+      "TypeOK",
+      "NoLengthLimit",
+      "TranscriptPrefixOfAudio",
+      "FolderRefsValid",
+      "FolderNamesUnique"
+    ],
+    "temporal": [
+      "CheckedTemporal"
+    ],
+    "temporalProperties": [
+      "CrashKeepsAudio",
+      "AgentMoveOnlyReviewed",
+      "RenameKeepsMembership",
+      "TranscriptKeepsUp",
+      "AsrSettles",
+      "ReviewSettles"
+    ],
+    "currentChecks": [
+      {
+        "invariant": "FolderRefsValid",
+        "expected": "violation",
+        "init": "checkerAblate_RestoreFolderInit",
+        "step": "step",
+        "configuration": "Ablate_RestoreFolder"
+      },
+      {
+        "invariant": "NoLengthLimit",
+        "expected": "violation",
+        "init": "checkerAsBuilt_CapInit",
+        "step": "step",
+        "configuration": "AsBuilt_Cap"
+      }
+    ],
+    "currentTemporalChecks": [
+      {
+        "property": "CheckedTranscriptKeepsUpHidden",
+        "sourceProperty": "TranscriptKeepsUpHidden",
+        "expected": "violation",
+        "init": "checkerAsBuilt_HiddenInit",
+        "step": "step",
+        "fairness": "Fairness",
+        "configuration": "AsBuilt_Hidden"
+      },
+      {
+        "property": "CheckedCrashKeepsAudio",
+        "sourceProperty": "CrashKeepsAudio",
+        "expected": "violation",
+        "init": "checkerAsBuilt_SegmentsInit",
+        "step": "step",
+        "fairness": "Fairness",
+        "configuration": "AsBuilt_Segments"
+      },
+      {
+        "property": "CheckedTranscriptKeepsUp",
+        "sourceProperty": "TranscriptKeepsUp",
+        "expected": "violation",
+        "init": "checkerAsBuilt_StreamAsrInit",
+        "step": "step",
+        "fairness": "Fairness",
+        "configuration": "AsBuilt_StreamAsr"
+      }
+    ],
+    "legacySource": {
+      "path": "design/view-refresh-2026-11/tla/notes-view/Spec.tla",
+      "sha256": "e716d3cc9899d8665de6e7f50e1069a8d9fdc9c7c6893d4d666d602355d7c459",
+      "definitions": [
+        "vars",
+        "MaxRev",
+        "NoReview",
+        "TypeOK",
+        "Init",
+        "NoteVars",
+        "RecVars",
+        "Bump",
+        "Record",
+        "Segment",
+        "Pause",
+        "Resume",
+        "Stop",
+        "StorageFull",
+        "ProcessDeath",
+        "AsrSegment",
+        "Hide",
+        "Show",
+        "MoveToFolder",
+        "DeleteFolder",
+        "RenameFolder",
+        "TrashNote",
+        "Restore",
+        "Expire",
+        "AgentProposeMove",
+        "ReviewCurrent",
+        "AgentApply",
+        "AgentReject",
+        "Next",
+        "Spec",
+        "NoLengthLimit",
+        "CrashKeepsAudio",
+        "TranscriptPrefixOfAudio",
+        "TranscriptKeepsUp",
+        "TranscriptKeepsUpHidden",
+        "FolderNamesUnique",
+        "RenameKeepsMembership",
+        "FolderRefsValid",
+        "AgentMoveOnlyReviewed",
+        "AsrSettles",
+        "ReviewSettles"
+      ]
+    },
+    "legacyConfigurations": "specs/quint/legacy/view-refresh-configurations.json",
+    "classification": "historical-design-comparison",
+    "historicalSources": {
+      "commit": "f2a0eb035da9c8ede24efe735d981a27dd403283",
+      "paths": [
+        "apps/app/src/prototype/voice-adapter.ts",
+        "apps/app/src/prototype/canonical-notes-ui.ts",
+        "apps/app/src/prototype/note-recorder.ts",
+        "apps/app/src/runtime/note-recorder-driver.ts"
+      ]
+    },
+    "sources": []
+  },
+  {
+    "path": "specs/quint/legacy/FilesBrowser.qnt",
+    "module": "FilesBrowser",
+    "init": "checkerInit",
+    "step": "step",
+    "invariant": "safety",
+    "tests": [
+      "designConflictTest",
+      "missingSelectionTest",
+      "staleReviewTest",
+      "restoreConflictTest",
+      "asBuiltCategoriesTest",
+      "ablateConflictTest",
+      "asBuiltIdentityTest",
+      "ablateSelectedTargetTest"
+    ],
+    "abstractions": [
+      "Historical view-refresh design comparison authored on main before this migration. It is not implementation refinement evidence.",
+      "Every source state variable is a field of s. Immutable config preserves each original TLC constant assignment; history is an observational extension for action properties.",
+      "All original finite domains, nondeterministic initial choices, action guards, frame conditions and fairness are retained.",
+      "All22 source configurations and their exact property lists are retained in view-refresh-configurations.json.",
+      "FreeName chooses the lowest free numeric name as a deterministic realization of the source CHOOSE; the source specifies no different tie-breaking rule."
+    ],
+    "constants": {
+      "Budget": 1,
+      "FixCategories": true,
+      "FixConflict": true,
+      "FixIdentity": true
+    },
+    "invariants": [
+      "TypeOK",
+      "CategoryIsQuery",
+      "NoOverwriteWithoutConfirm",
+      "NamesUniquePerDir",
+      "SelectionExists",
+      "TrashReversible"
+    ],
+    "temporal": [
+      "CheckedTemporal"
+    ],
+    "temporalProperties": [
+      "AgentMoveOnlyReviewed",
+      "ListingsConverge",
+      "ReviewSettles",
+      "SelectionActsOnlyOnPresent"
+    ],
+    "currentChecks": [
+      {
+        "invariant": "NoOverwriteWithoutConfirm",
+        "expected": "violation",
+        "init": "checkerAblate_ConflictInit",
+        "step": "step",
+        "configuration": "Ablate_Conflict"
+      },
+      {
+        "invariant": "CategoryIsQuery",
+        "expected": "violation",
+        "init": "checkerAsBuilt_CategoriesInit",
+        "step": "step",
+        "configuration": "AsBuilt_Categories"
+      },
+      {
+        "invariant": "SelectionExists",
+        "expected": "violation",
+        "init": "checkerAblate_ConflictInit",
+        "step": "step",
+        "configuration": "Ablate_Conflict"
+      }
+    ],
+    "currentTemporalChecks": [
+      {
+        "property": "CheckedAgentMoveOnlyReviewed",
+        "sourceProperty": "AgentMoveOnlyReviewed",
+        "expected": "violation",
+        "init": "checkerAsBuilt_IdentityInit",
+        "step": "step",
+        "fairness": "Fairness",
+        "configuration": "AsBuilt_Identity"
+      }
+    ],
+    "legacySource": {
+      "path": "design/view-refresh-2026-11/tla/files-browser/Spec.tla",
+      "sha256": "bdb5535f587a1f9fb918d69bc7d8c57f745d3e4b2f2ec3b1acf44d1b5431467a",
+      "definitions": [
+        "FilesSet",
+        "Dirs",
+        "Gone",
+        "Trash",
+        "Kind",
+        "Home0",
+        "Names",
+        "vars",
+        "NoReview",
+        "Present",
+        "NamesUniquePerDir",
+        "Category",
+        "Categories",
+        "Listing",
+        "TypeOK",
+        "Init",
+        "Navigate",
+        "Toggle",
+        "Clash",
+        "FreeName",
+        "MoveOne",
+        "MoveSel",
+        "TrashSel",
+        "Restore",
+        "EmptyTrash",
+        "External",
+        "Refresh",
+        "AgentPropose",
+        "Reviewed",
+        "AgentApply",
+        "AgentRefused",
+        "AgentReject",
+        "Next",
+        "Spec",
+        "CategoryIsQuery",
+        "NoOverwriteWithoutConfirm",
+        "SelectionExists",
+        "SelectionActsOnlyOnPresent",
+        "TrashReversible",
+        "AgentMoveOnlyReviewed",
+        "ListingsConverge",
+        "ReviewSettles"
+      ]
+    },
+    "legacyConfigurations": "specs/quint/legacy/view-refresh-configurations.json",
+    "classification": "historical-design-comparison",
+    "historicalSources": {
+      "commit": "f2a0eb035da9c8ede24efe735d981a27dd403283",
+      "paths": [
+        "apps/app/src/prototype/files-browser-adapter.ts",
+        "apps/app/src/runtime/files-storage.ts",
+        "apps/app/src/runtime/files-agent-contract.ts"
+      ]
+    },
+    "sources": []
+  },
+  {
+    "stateMapping": {
+      "phase/kind/holder/instance": "GoogleCalendarOutboxOp phase and durable holder recovery",
+      "undoOpen/clockKnown": "monotonic deletion deadline, paused restart and owner choice",
+      "baseRevision/remoteRevision/checked": "read-before-write and conditional event version",
+      "retryAuthorized/applied/sends": "uncertain create matching, explicit retry and write outcome",
+      "consent/localRevision/consentReview": "reviewed linked-sync preference and exact current context",
+      "writable/restorePermission": "Fresh current-account Calendar permission read updates admission without resetting durable operation ownership, unknown outcome or retry authorization"
+    },
+    "abstractions": [
+      "One outbox entry, two revisions, two holders and at most two sends expose interference without the full event collection.",
+      "checking splits the durable dispatching phase into preflight and actual network dispatch. Restarts map both back to source recovery states.",
+      "Recurring-event scope, timestamp parsing, merging multiple queued edits and upstream linked reconciler internals remain abstractions checked by runtime contracts.",
+      "Unknown creates allow an explicit retry after owner review. The model does not claim globally exactly-once Calendar creates.",
+      "Permission restoration is an authorized current-account readback. It preserves pending operation owner, request epoch, unknown-create state and linked-sync consent."
+    ],
+    "path": "specs/quint/legacy/CalendarSync.qnt",
+    "module": "CalendarSync",
+    "init": "init",
+    "step": "step",
+    "invariant": "safety",
+    "tests": [
+      "reviewedSyncConsentTest",
+      "undoDeleteTest",
+      "conflictTest",
+      "uncertainCreateTest",
+      "restartDeleteTest",
+      "retiredOwnerTest",
+      "permissionRestorationTest",
+      "restoredPermissionKeepsUnknownTest",
+      "restoredPermissionKeepsOwnerFenceTest"
+    ],
+    "invariants": [
+      "NoAutomaticUnknownCreate",
+      "UndoBeforeDispatch",
+      "PausedNeedsDecision",
+      "DurableClaim",
+      "VisibleOwnerBound",
+      "TypeOK"
+    ],
+    "bounds": {
+      "maxSamples": 1000,
+      "maxSteps": 60,
+      "seed": "123"
+    },
+    "historicalSources": {
+      "commit": "a6fce187c935d0cb4b5bb40aadcbe1263fb4011f",
+      "paths": [
+        "apps/app/src/runtime/google-calendar-outbox.ts",
+        "apps/app/src/runtime/google-calendar-writer.ts",
+        "apps/app/src/runtime/google-calendar.ts",
+        "apps/app/src/runtime/calendar-sync-controller.ts",
+        "apps/app/src/runtime/calendar-sync-settings.ts",
+        "apps/app/src/runtime/calendar-linked-provider.ts",
+        "apps/app/src/runtime/calendar-linked-store.ts",
+        "apps/app/src/runtime/calendar-sync-host.ts",
+        "android/app/src/main/java/ai/elizaresearch/alphaphone/CalendarSyncConsent.java",
+        "android/app/src/main/java/ai/elizaresearch/alphaphone/CalendarSyncFreshness.java",
+        "android/app/src/main/java/ai/elizaresearch/alphaphone/CalendarSyncMutation.java",
+        "android/app/src/main/java/ai/elizaresearch/alphaphone/CalendarSyncReceiptRecovery.java"
+      ]
+    },
+    "sources": [],
+    "classification": "historical-source-model"
+  },
+  {
+    "path": "specs/quint/legacy/FilesTree.qnt",
+    "module": "FilesTree",
+    "init": "init",
+    "step": "step",
+    "invariant": "safety",
+    "tests": [
+      "partialBatchTest",
+      "staleRevisionTest",
+      "permissionLossMidBatchTest",
+      "hiddenPickerReturnTest",
+      "stalePickerReturnTest",
+      "folderCreationTest",
+      "recentInsertionKeepsFocusTest",
+      "removedRowClearsFocusTest"
+    ],
+    "sources": [],
+    "stateMapping": {
+      "granted/session/capabilities": "native persisted tree grant and bounded per-process entry map",
+      "selection/review/expected/pending/attempted/succeeded/failed": "current selection, revision-bound changeMany and per-item partial outcomes",
+      "picker/pickerEpoch/active/hidden": "view-generation-fenced system picker return, permitted while the document is hidden",
+      "folder/requestFolder/shown/cursor/listingPending": "single-flight tree listing, page cursor and deduplicated loadMore"
+    },
+    "abstractions": [
+      "Three representative entries (two files and one created folder), two folder identities, two sessions, revisions 0..2 and up to four applied effects.",
+      "Opaque entry and selection capabilities retain their role without provider paths or credentials. Tree access and separately selected document access remain distinct.",
+      "Provider failures and stale revisions are per-item; a committed item is not rolled back when a later item fails. Review is required before mutation, with an extra permanent-delete confirmation.",
+      "The model covers Alpha tree orchestration and native request admission. Document provider filesystem implementation and exact payload bytes remain implementation test boundaries.",
+      "Recent/tree presentation uses three representative row identities. Focus and activation target are independent of native file capabilities. Browser trace checks a Recent insertion without granting native tree authority.",
+      "Historical pre-reconciliation model. Current main removed the source protocol; this model is excluded from claims about current implementation refinement."
+    ],
+    "historicalSources": [
+      {
+        "path": "apps/app/src/prototype/files-tree-adapter.ts",
+        "commit": "796880e9eca39e13d69a38e2376e0907083bfaab"
+      },
+      {
+        "path": "apps/app/src/prototype/files-index.ts",
+        "commit": "796880e9eca39e13d69a38e2376e0907083bfaab"
+      },
+      {
+        "path": "apps/app/src/prototype/context-selection.ts",
+        "commit": "796880e9eca39e13d69a38e2376e0907083bfaab"
+      },
+      {
+        "path": "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaFilesPlugin.java",
+        "commit": "796880e9eca39e13d69a38e2376e0907083bfaab"
+      },
+      {
+        "path": "android/app/src/main/java/ai/elizaresearch/alphaphone/SelectedDocumentAccess.java",
+        "commit": "796880e9eca39e13d69a38e2376e0907083bfaab"
+      },
+      {
+        "path": "apps/app/src/prototype/template.html",
+        "commit": "796880e9eca39e13d69a38e2376e0907083bfaab"
+      },
+      {
+        "path": "apps/app/src/prototype/dc-lite.js",
+        "commit": "796880e9eca39e13d69a38e2376e0907083bfaab"
+      }
+    ]
+  },
+  {
+    "path": "specs/quint/legacy/ListFocus.qnt",
+    "module": "ListFocus",
+    "init": "init",
+    "step": "step",
+    "invariant": "safety",
+    "tests": [
+      "unmountedCaptureTest",
+      "keylessCaptureTest",
+      "otherOwnerCaptureTest",
+      "crossParentRestoreTest",
+      "removedItemTest",
+      "duplicateCandidateTest",
+      "movedFocusTest",
+      "hiddenRootTest",
+      "hiddenNodeTest",
+      "disabledCandidateTest",
+      "dialogTest",
+      "hiddenDocumentTest",
+      "disconnectedRootTest",
+      "newerCommitTest",
+      "navigationTest",
+      "discardedRenderTest",
+      "restoringCancelsUncommittedCaptureTest",
+      "twoCapturesLatestCommitTest"
+    ],
+    "sources": [],
+    "abstractions": [
+      "Two capture slots, two list-root identities and five DOM-node identities preserve capture versus commit, root-ref generations, FIFO microtasks, focusin cancellation, and all source restoration guards. Generations stop at eight instead of wrapping.",
+      "A source-executing JSDOM adapter observes the actual helper closure through a read-only getter and controls its queue/listener/geometry environment. Real Notes and Photos browser traces are separate bounded renderer evidence.",
+      "No unbounded event-loop liveness, native accessibility or universal implementation refinement is claimed.",
+      "Historical pre-reconciliation model. Current main removed the source protocol; this model is excluded from claims about current implementation refinement."
+    ],
+    "historicalSources": [
+      {
+        "path": "apps/app/src/prototype/keyed-list-focus.ts",
+        "commit": "796880e9eca39e13d69a38e2376e0907083bfaab"
+      },
+      {
+        "path": "apps/app/src/prototype/subview-accessibility.ts",
+        "commit": "796880e9eca39e13d69a38e2376e0907083bfaab"
+      },
+      {
+        "path": "apps/app/src/prototype/template.html",
+        "commit": "796880e9eca39e13d69a38e2376e0907083bfaab"
+      },
+      {
+        "path": "apps/app/src/prototype/home-launcher.ts",
+        "commit": "796880e9eca39e13d69a38e2376e0907083bfaab"
+      }
+    ]
   }
 ]

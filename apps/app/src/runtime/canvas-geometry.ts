@@ -1,3 +1,4 @@
+import { DEFAULT_SURFACE_LAYOUT, keyboardFreeHeight, raisesSoftKeyboard, sameSurfaceLayout, surfaceLayout as sharedSurfaceLayout, type SurfaceLayout } from '../../../../.eliza/client-features/packages/ui/src/components/shell/responsive-layout.ts';
 /**
  * How the phone canvas is fitted to the window (issue #411, responsive-surface matrix in
  * docs/implementation-plan.md).
@@ -39,27 +40,11 @@ const REFERENCE_WIDTH = 412, REFERENCE_HEIGHT = 915;
 export const WIDE_CANVAS = 760;
 
 /**
- * Remembers the window height without the keyboard for the current width.
- *
- * Android keeps the field focused and the keyboard up through a rotation (MainActivity handles
- * orientation changes itself and resizes for the keyboard), so the first measurement after turning
- * a small phone back to portrait can already be shorter than it is wide. When the width changes
- * while a field has focus and the new width is about the previous keyboard-free height, the sides
- * were swapped: the previous width stands in for the new keyboard-free height until the keyboard
- * closes or the field loses focus.
+ * The window height without the soft keyboard for the current width, shared with Eliza
+ * (packages/ui/src/components/shell/responsive-layout.ts): Android keeps a focused field and its
+ * keyboard through a rotation, so a swap of the sides while editing is a rotation, not a keyboard.
  */
-export function keyboardFreeHeight() {
-  let base = { width: 0, height: 0 };
-  return (width: number, height: number, editing: boolean) => {
-    if (width === base.width) {
-      if (!editing || height > base.height) base = { width, height };
-    } else {
-      const swapped = editing && base.width > 0 && Math.abs(width - base.height) <= base.height * 0.2;
-      base = { width, height: swapped ? Math.max(height, base.width) : height };
-    }
-    return base.height;
-  };
-}
+export { keyboardFreeHeight };
 
 export function canvasGeometry(input: CanvasInput, freeHeight: number, banner = 0): CanvasGeometry {
   const { width, available, desktop, fluid, launcher } = input;
@@ -79,13 +64,7 @@ export function canvasGeometry(input: CanvasInput, freeHeight: number, banner = 
 }
 
 /** Text entry that raises the software keyboard. */
-export function isEditing(element: Element | null): boolean {
-  if (!(element instanceof HTMLElement)) return false;
-  if (element.isContentEditable) return true;
-  if (element instanceof HTMLTextAreaElement) return !element.readOnly;
-  if (element instanceof HTMLInputElement) return !element.readOnly && !['checkbox', 'radio', 'button', 'submit', 'reset', 'range', 'color', 'file', 'image', 'hidden'].includes(element.type);
-  return false;
-}
+export const isEditing = raisesSoftKeyboard;
 
 /** Canvas width from which Inbox, Notes and Files show the open item beside their list. */
 export const SPLIT_CANVAS = 1000;
@@ -99,21 +78,17 @@ const DAY_COLUMN = 240;
 export const LARGE_TEXT = 1.5;
 
 /** Layout choices that change what a surface renders, not only how CSS places it. */
-export type SurfaceLayout = { split: boolean; calendarDays: number; agenda: boolean };
+export type { SurfaceLayout };
+/** Alpha's responsive-matrix breakpoints for the shared surface layout policy. */
 export function surfaceLayout(canvasWidth: number, textScale: number, desktop = false): SurfaceLayout {
-  if (desktop || !Number.isFinite(canvasWidth)) return { split: false, calendarDays: 1, agenda: false };
-  const scale = Number.isFinite(textScale) && textScale > 0 ? textScale : 1;
-  if (scale >= LARGE_TEXT) return { split: false, calendarDays: 1, agenda: true };
-  // Day columns widen with the text they hold, so enlarged text gets fewer, readable columns.
-  const days = Math.floor((canvasWidth - 76) / (DAY_COLUMN * Math.max(1, scale)));
-  return { split: canvasWidth >= SPLIT_CANVAS, calendarDays: Math.max(1, Math.min(7, days)), agenda: false };
+  return sharedSurfaceLayout(canvasWidth, textScale, { desktop, splitWidth: SPLIT_CANVAS, dayColumn: DAY_COLUMN, timeGutter: 76, largeText: LARGE_TEXT });
 }
-let published: SurfaceLayout = { split: false, calendarDays: 1, agenda: false };
+let published: SurfaceLayout = { ...DEFAULT_SURFACE_LAYOUT };
 /** The layout surfaces render from; main.tsx publishes it from measured canvas and text size. */
 export const currentSurfaceLayout = (): SurfaceLayout => published;
 /** Returns true when the layout changed and surfaces must render again. */
 export function publishSurfaceLayout(next: SurfaceLayout): boolean {
-  if (next.split === published.split && next.calendarDays === published.calendarDays && next.agenda === published.agenda) return false;
+  if (sameSurfaceLayout(next, published)) return false;
   published = next;
   return true;
 }

@@ -101,12 +101,9 @@ public class DailyAppsInstrumentedTest {
    assertNotNull("Real native record created from Calendar form",reminderId);
    // Saving returns to Calendar; select the record's civil day before opening it.
    long due=ReminderTestAccess.read(context,reminderId).getLong("dueAt");
-   // Title -> views menu -> Month; a Month cell is labelled with the long date (plus its event count).
-   evaluate(scenario,"document.querySelector('button[aria-label=\"Calendar views\"]').click()");
-   String monthRadio="[...document.querySelectorAll('[role=\"dialog\"][aria-label=\"Views and calendars\"] [role=\"radio\"]')].find(e=>e.textContent.trim()==='Month')";
-   uiWait(scenario,monthRadio);evaluate(scenario,"("+monthRadio+").click()");uiWait(scenario,"document.querySelector('[data-alpha-calendar-month]')");
+   evaluate(scenario,"document.querySelector('button[aria-label=\"Month view\"]').click()");
    evaluate(scenario,"(()=>{const d=new Date("+due+");const now=new Date();if(d.getMonth()!==now.getMonth()||d.getFullYear()!==now.getFullYear())document.querySelector('button[aria-label=\"Next month\"]').click();})()");
-   String day="(()=>{const d=new Date("+due+");const label=d.toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric'});return [...document.querySelectorAll('[data-alpha-calendar-month] button[aria-label]')].find(b=>{const l=b.getAttribute('aria-label');return l===label||l.startsWith(label+', ');});})()";
+   String day="(()=>{const d=new Date("+due+");const label=d.toLocaleDateString('en-US',{weekday:'long'})+' '+d.toLocaleDateString('en-US',{month:'long'})+' '+d.getDate();return [...document.querySelectorAll('button[aria-label]')].find(b=>b.getAttribute('aria-label')===label);})()";
    uiWait(scenario,day);evaluate(scenario,"("+day+").click()");
    String selected="[...document.querySelectorAll('button[aria-label]')].find(b=>b.getAttribute('aria-label').startsWith("+JSONObject.quote(title+", ")+"))";
    uiWait(scenario,selected);evaluate(scenario,"("+selected+").click()");

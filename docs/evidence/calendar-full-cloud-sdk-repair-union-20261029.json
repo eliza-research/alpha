@@ -1,0 +1,34 @@
+{
+  "atUTC": "2026-10-29T11:52:37.774041+00:00",
+  "state": "INERT_UNION_SOURCE_PENDING_EXACT_QUALIFICATION",
+  "appCalendarBase": "e2c0da7db48a79961a767280428035fb422e9781",
+  "fullCloudCarry": "1a294ba1fc334a40317afd9a2712ec62e43a8eb0",
+  "SDK": "210bc893b3dda55daba72d914bd851155f954f86",
+  "SDKParent": "1d09118cfd33cf21d3532119e28d34fd566f3d3e",
+  "exactSDKDelta": [
+    "plugins/plugin-calendar/src/actions/calendar-handler.ts",
+    "plugins/plugin-personal-assistant/test/calendar-action-effect-receipts.pglite.test.ts"
+  ],
+  "all304RendererProjectionInputsUnchangedFromQualified1d": true,
+  "independentSDKRepairReview": "/Users/nubs/.local/state/eliza-five-lane-coordination/sdk38069-reconciliation-e87-20261028/SDK-210BC-INTERNAL-NEXT-EVENT-INDEPENDENT-REVIEW.json",
+  "independentDayAppReview": "/Users/nubs/.local/state/eliza-five-lane-coordination/sdk38069-reconciliation-e87-20261028/CALENDAR-DAY-E2C-QUALIFICATION-INDEPENDENT-REVIEW.json",
+  "fullCloudComponentReceipt": "/Users/nubs/.local/state/eliza-five-lane-coordination/sdk38069-reconciliation-e87-20261028/FULL-CLOUD-CARRY-62FF-FROZEN-RECEIPT.json",
+  "fullCloud8PostimagesExactReviewedCarry": true,
+  "allOtherAppProductionPostimagesExactQualifiedE2c": true,
+  "normalizedRegistryPackagesAndFindingsUnchanged": true,
+  "freshRegistryAudit": false,
+  "newAuditWaivers": false,
+  "APITypeBaseline": "Five optional-declaration diagnostics remain baseline; full API green not claimed",
+  "SDKCalendarOwningTests": "56 unique passes in fresh process groups; no whole-file heap-pass relabel",
+  "selectedAndroidProfile": "cloud",
+  "heldOfflineProfile": "13d/models/bothABIs remain separate; no qualifier flags cleared",
+  "newActorModelProfileSchedulerDevicePublicEffects": false,
+  "prebindingFailurePreserved": "First exact delta assertion used incorrect shortened file paths; stopped before metadata writes. Actual immutable diff read and used; only detached SDK checkout changed before correction.",
+  "pending": [
+    "Exact joint normal client/types/build/audit and current SDK Cloud collector",
+    "Normal combined runtime/worker preparation",
+    "Live timed Calendar correctness and voice proof",
+    "ReviewedUIon5229 thenCloudAndroid in-place identity/all200 continuity",
+    "Current-main/publication integration and human mergeOK"
+  ]
+}

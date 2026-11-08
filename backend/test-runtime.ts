@@ -3,6 +3,7 @@ import { mkdtemp, readFile, mkdir, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { randomUUID } from 'node:crypto';
+if(process.env.ELIZA_DEV_ALLOW_TEST_MOCKS!=='1')throw Error('Development runtime diagnostics are disabled');
 const phase=process.argv.find(arg=>arg.startsWith('--phase='))?.slice(8);
 if(phase!==undefined){
  if(!['seed','recover','proposal'].includes(phase))throw Error('Unknown live acceptance phase');
@@ -55,8 +56,8 @@ async function run({head,mode,dataDir,module}:{head:string;mode:string;dataDir:s
    if(navigation.proposals.length!==1||navigation.proposals[0].operation.type!=='open_view'||navigation.proposals[0].operation.view!=='calendar'||navigation.proposals[0].contextRevision!==8)throw new Error('Runtime navigation proposal mismatch');
    reports.push({test:'real-runtime-navigation-proposal',passed:true,result:navigation});
    const at=Math.ceil((Date.now()+3600000)/60000)*60000,local=new Date(at).toISOString().slice(0,16);
-   const reminder=await backend.chat('Prepare a one-time reminder with exact title Runtime reminder acceptance, exact body Check the native receipt, at local time '+local+' in time zone UTC. Use CREATE_REMINDER and do not execute it.',AbortSignal.timeout(90000),{view:'calendar',revision:9});
-   if(reminder.proposals.length!==1||reminder.proposals[0].operation.type!=='create_reminder'||reminder.proposals[0].operation.at!==at||reminder.proposals[0].operation.title!=='Runtime reminder acceptance'||reminder.proposals[0].operation.body!=='Check the native receipt'||reminder.proposals[0].contextRevision!==9)throw new Error('Runtime reminder proposal mismatch');
+   const reminder=await backend.chat('Prepare a one-time reminder with exact title Runtime reminder acceptance, exact body Check the native receipt, at local time '+local+' in time zone UTC. Use DEVICE_REMINDER_CREATE with alertMinutes 0 and recurrence null; prepare a simulation only.',AbortSignal.timeout(90000),{view:'calendar',revision:9});
+   if(reminder.proposals.length!==1||reminder.proposals[0].operation.type!=='reminder_create'||reminder.proposals[0].operation.fields.schedule.at!==at||reminder.proposals[0].operation.fields.title!=='Runtime reminder acceptance'||reminder.proposals[0].operation.fields.body!=='Check the native receipt'||reminder.proposals[0].contextRevision!==9)throw new Error('Runtime reminder proposal mismatch');
    reports.push({test:'real-runtime-reminder-proposal-only',passed:true,result:reminder,nativeSchedulingTested:false});
   }
   await writeFile(resolve(dataDir,'report-'+mode+'.json'),JSON.stringify({testedAt:new Date().toISOString(),...backend.info,reports},null,2),{mode:0o600});

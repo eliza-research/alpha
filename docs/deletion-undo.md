@@ -3,6 +3,17 @@
 Implementation work for #414. This document describes source behavior and explicit
 remaining acceptance, not a completed device or provider qualification.
 
+The window is shared elizaOS code consumed through the pin. The native engine is
+`@elizaos/capacitor-action-journal`'s `ai.eliza.plugins.actionjournal.deletion` package
+(`DeletionDeadline`, `DeferredDeletionJournal`, `DeletionDispatchClaim`,
+`DeletionReceiptRecovery` and `DeferredDeletionCoordinator` with slot, clock, owner, reminder,
+Calendar and scheduler ports). The renderer contract is `@elizaos/contracts/deletion-window`
+and the Undo notice is `@elizaos/ui`'s `DeferredDeletionNotice`. Alpha keeps bindings only:
+`NativeDeletionCoordinator` (installed slots `native-delete-journal:v1` and
+`native-delete-installation:v1`, boot-count clock, owner route, reminder engine, Calendar
+writes and the `alpha-delete-window` WorkManager job), the `AlphaDeletions` review dialogs and
+bridge, and `runtime/deletion-undo.tsx`.
+
 A reviewed deletion records the exact target and a ten-second monotonic deadline
 before any deletion. Reminder admission persists suspension in the same envelope
 as the intent; delivery and rearming read that suspension. Undo removes suspension

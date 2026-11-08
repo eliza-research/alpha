@@ -37,6 +37,6 @@
     "implemented": "source",
     "systemUiCompiled": false,
     "qualified": false,
-    "note": "Listener side (IndicatorLease, IndicatorLeaseProvider, ListeningService) and the SystemUI chip client (android/aosp/listener/systemui/chip) exist in source with host tests only; see docs/aosp-listening-chip.md."
+    "note": "Listener side (IndicatorLease, IndicatorLeaseProvider, ListeningService) and the SystemUI chip client (vendor/eliza/packages/os/android/sense/systemui/chip) exist in source with host tests only; see docs/aosp-listening-chip.md."
   }
 }

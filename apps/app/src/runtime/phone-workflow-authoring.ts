@@ -1,27 +1,28 @@
-import { parseWorkflowRead, workflowBytes, workflowId, workflowEnrollmentId, workflowObject, workflowSha, type WorkflowDeviceTarget } from './workflow-device-contract';
+import {assertPhoneWorkflowCapabilities,describePhoneWorkflowTrigger,parsePhoneWorkflowCatalog,validatePhoneWorkflowSpec,type PhoneTimeTrigger,type PhoneWorkflowCatalog,type PhoneWorkflowSaveReceipt,type PhoneWorkflowTrigger} from '../../../../.eliza/client-features/packages/contracts/src/phone-workflow.ts';
+import {browserDevProfile} from '../browser/dev-profile';
+import type {WorkflowDeviceTarget} from './workflow-device-contract';
+/** Typed phone workflows use the shared upstream contract (`@elizaos/contracts/phone-workflow`): the agent
+ * normalizes, digests and compiles exactly the bytes this phone reviews. Only editor typing and the
+ * development-profile enrollment label stay here. */
+export type {PhoneTimeTrigger};
+export type PhoneTrigger=PhoneWorkflowTrigger;
+/** Editor view of the shared step union: loosely indexed so the authoring form can edit any variant. */
 export interface PhoneStep {id:string;kind:'Read'|'If'|'Write'|'Notify'|'Speak';operation:string;[key:string]:any}
-export interface PhoneSpec {device?:WorkflowDeviceTarget;version:1;name:string;description:string;trigger:{kind:'manual'};steps:PhoneStep[]}
-export interface PhoneCatalog {generationProtocol?:1;catalogRevision:string;compilerRevision:string;maximumSteps:number;maximumSpecBytes:number;triggers:Array<{kind:string;available:boolean;reason?:string}>;palette:Array<{kind:string;operations:Array<{id:string;label?:string;available:boolean;reason?:string}>}>}
-export interface PhoneSaveReceipt {mutationId:string;workflowId:string;operation:'create'|'edit';previousVersionId:string|null;versionId:string;specDigest:string;compilerRevision:string;appliedAt:string}
-const text=(v:unknown,max:number,empty=false):string=>{if(typeof v!=='string'||v.length>max||v.includes('\0')||(!empty&&!v.trim()))throw new Error('Complete the workflow text fields within their stated limits');return v;};
-const keys=(v:Record<string,any>,allowed:string[])=>{if(Object.keys(v).some(k=>!allowed.includes(k)))throw new Error('Unsupported workflow field');};
+export interface PhoneSpec {device?:WorkflowDeviceTarget;version:1;name:string;description:string;trigger:PhoneTrigger;steps:PhoneStep[]}
+export type PhoneCatalog=PhoneWorkflowCatalog;
+export type PhoneSaveReceipt=PhoneWorkflowSaveReceipt;
+const DEVELOPMENT_ENROLLMENT=/^development-cloud\.(first|second)-enrollment$/;
 export function normalizePhoneSpec(value:unknown):PhoneSpec{
- const p=workflowObject(value);keys(p,['device','version','name','description','trigger','steps']);if(p.version!==1||workflowObject(p.trigger).kind!=='manual')throw new Error('Only explicitly started workflows are available');keys(p.trigger,['kind']);if(!Array.isArray(p.steps)||p.steps.length<1||p.steps.length>32)throw new Error('Add between 1 and 32 steps');const seen=new Set<string>();
- const steps=p.steps.map((raw:unknown):PhoneStep=>{const s=workflowObject(raw),id=text(s.id,80);if(!/^[A-Za-z][A-Za-z0-9_-]*$/.test(id)||seen.has(id))throw new Error('Step identity is invalid');let step:PhoneStep;
-  if(s.kind==='Read'&&s.operation==='supplied_text'){keys(s,['id','kind','operation','text']);step={id,kind:'Read',operation:s.operation,text:text(s.text,16000,true)};}
-  else if(s.kind==='Read'&&s.operation==='selected_notes'){keys(s,['id','kind','operation','notes']);const op=parseWorkflowRead({type:'read_selected_notes',notes:s.notes});if(op.type!=='read_selected_notes')throw new Error('Notes scope invalid');step={id,kind:'Read',operation:s.operation,notes:op.notes};}
-  else if(s.kind==='Read'&&s.operation==='calendar_range'){keys(s,['id','kind','operation','range']);const op=parseWorkflowRead({type:'read_calendar_range',...workflowObject(s.range)});if(op.type!=='read_calendar_range')throw new Error('Calendar scope invalid');const {type,...range}=op;step={id,kind:'Read',operation:s.operation,range};}
-  else{const source=text(s.source,80);if(!seen.has(source))throw new Error('Choose an earlier step as the input');
-   if(s.kind==='If'&&s.operation==='contains'){keys(s,['id','kind','operation','source','text','caseSensitive']);if(typeof s.caseSensitive!=='boolean')throw new Error('Choose case matching');step={id,kind:'If',operation:s.operation,source,text:text(s.text,1000),caseSensitive:s.caseSensitive};}
-   else if(s.kind==='Write'&&s.operation==='compose_draft'){keys(s,['id','kind','operation','source','prefix','suffix']);step={id,kind:'Write',operation:s.operation,source,prefix:text(s.prefix,4000,true),suffix:text(s.suffix,4000,true)};}
-   else if(s.kind==='Write'&&s.operation==='model_draft'){keys(s,['id','kind','operation','source','instruction']);step={id,kind:'Write',operation:s.operation,source,instruction:text(s.instruction,4000)};}
-   else if(s.kind==='Write'&&s.operation==='save_note'){keys(s,['id','kind','operation','source','title']);step={id,kind:'Write',operation:s.operation,source,title:text(s.title,256)};}
-   else if(s.kind==='Notify'&&s.operation==='app_notification'){keys(s,['id','kind','operation','source','title']);step={id,kind:'Notify',operation:s.operation,source,title:text(s.title,200)};}
-   else if(s.kind==='Speak'&&s.operation==='read_aloud'){keys(s,['id','kind','operation','source']);step={id,kind:'Speak',operation:s.operation,source};}
-   else throw new Error('This workflow operation is unavailable');}
-  seen.add(id);return step;});let device:WorkflowDeviceTarget|undefined;if(p.device!==undefined){const d=workflowObject(p.device);keys(d,['installationId','enrollmentId']);device={installationId:workflowId(d.installationId),enrollmentId:workflowEnrollmentId(d.enrollmentId)};}if(steps.some(s=>['selected_notes','calendar_range','save_note','app_notification','read_aloud'].includes(s.operation))&&!device)throw new Error('A verified phone enrollment is required');const spec:PhoneSpec={...(device?{device}:{}),version:1,name:text(p.name,200),description:text(p.description??'',4000,true),trigger:{kind:'manual'},steps};if(workflowBytes(spec)>65536)throw new Error('Workflow draft exceeds 64 KiB');return spec;
+ const raw=value&&typeof value==='object'&&!Array.isArray(value)?value as Record<string,any>:null;
+ const device=raw?.device&&typeof raw.device==='object'&&!Array.isArray(raw.device)?raw.device as Record<string,unknown>:null;
+ // Preserve the public development enrollment labels (test-mocks builds only) without broadening native identifiers.
+ const label=browserDevProfile&&typeof device?.enrollmentId==='string'&&DEVELOPMENT_ENROLLMENT.test(device.enrollmentId)?device.enrollmentId:undefined;
+ if(!label)return validatePhoneWorkflowSpec(value) as PhoneSpec;
+ const spec=validatePhoneWorkflowSpec({...raw,device:{...device,enrollmentId:label.replace('.','-')}}) as PhoneSpec;
+ return {...spec,device:{...spec.device!,enrollmentId:label}};
 }
-export function parsePhoneCatalog(value:unknown):PhoneCatalog{const p=workflowObject(value);if(p.specVersion!==1||p.maximumSteps!==32||p.maximumSpecBytes!==65536||!Array.isArray(p.palette)||p.palette.length>16||!Array.isArray(p.triggers)||p.triggers.length>16)throw new Error('Unsupported workflow capabilities');return {...(p.generationProtocol===1?{generationProtocol:1 as const}:{}),catalogRevision:text(p.catalogRevision,100),compilerRevision:text(p.compilerRevision,100),maximumSteps:32,maximumSpecBytes:65536,triggers:p.triggers.map((raw:unknown)=>{const t=workflowObject(raw);if(typeof t.available!=='boolean')throw new Error('Invalid trigger capability');return {kind:text(t.kind,50),available:t.available,...(t.reason?{reason:text(t.reason,1000)}:{})};}),palette:p.palette.map((raw:unknown)=>{const row=workflowObject(raw);if(!Array.isArray(row.operations)||row.operations.length>32)throw new Error('Invalid operation catalog');return {kind:text(row.kind,30),operations:row.operations.map((raw:unknown)=>{const op=workflowObject(raw);if(typeof op.available!=='boolean')throw new Error('Invalid operation capability');return {id:text(op.id,100),available:op.available,...(op.label?{label:text(op.label,200)}:{}),...(op.reason?{reason:text(op.reason,1000)}:{})};})};})};}
-export function assertPhoneCapabilities(spec:PhoneSpec,catalog:PhoneCatalog){if(!catalog.triggers.some(t=>t.kind==='manual'&&t.available)||spec.steps.some(s=>!catalog.palette.some(k=>k.kind===s.kind&&k.operations.some(o=>o.id===s.operation&&o.available))))throw new Error('Agent capabilities changed. Review the available steps again.');}
-export async function verifyPhoneValidation(value:unknown,spec:PhoneSpec,catalog:PhoneCatalog){const p=workflowObject(value),canonical=normalizePhoneSpec(p.spec);if(JSON.stringify(canonical)!==JSON.stringify(spec)||p.specDigest!==await workflowSha(spec)||p.compilerRevision!==catalog.compilerRevision||p.catalogRevision!==catalog.catalogRevision||p.active!==false)throw new Error('Agent validation changed the reviewed workflow');return {spec:canonical,specDigest:p.specDigest as string};}
-export function parsePhoneReceipt(value:unknown,expected:{mutationId:string;specDigest:string;compilerRevision:string;workflowId?:string;versionId?:string}):PhoneSaveReceipt{const p=workflowObject(value);if(p.mutationId!==expected.mutationId||p.specDigest!==expected.specDigest||p.compilerRevision!==expected.compilerRevision||p.operation!==(expected.workflowId?'edit':'create')||p.previousVersionId!==(expected.versionId??null)||(expected.workflowId&&p.workflowId!==expected.workflowId))throw new Error('Saved workflow receipt identity mismatch');return {mutationId:p.mutationId,workflowId:workflowId(p.workflowId),operation:p.operation,previousVersionId:p.previousVersionId,versionId:workflowId(p.versionId),specDigest:p.specDigest,compilerRevision:p.compilerRevision,appliedAt:text(p.appliedAt,40)};}
+export const parsePhoneCatalog=(value:unknown):PhoneCatalog=>parsePhoneWorkflowCatalog(value);
+export function assertPhoneCapabilities(spec:PhoneSpec,catalog:PhoneCatalog){assertPhoneWorkflowCapabilities(spec as Parameters<typeof assertPhoneWorkflowCapabilities>[0],catalog);}
+export const describePhoneTrigger=(trigger:PhoneTrigger):string=>describePhoneWorkflowTrigger(trigger);
+/** Review copy for a scheduled time a forward clock change skips: shared `@elizaos/contracts/phone-workflow`. */
+export {phoneTriggerClockChangeNote,zoneOffsetMinutes} from '../../../../.eliza/client-features/packages/contracts/src/phone-workflow.ts';

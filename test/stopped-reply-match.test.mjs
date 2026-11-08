@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
-import {findStoppedUserTurn} from '../apps/app/src/runtime/stopped-reply-match.ts';
+import {findStoppedUserTurn} from '../.eliza/client-features/packages/ui/src/api/conversation-turn-controller.ts';
 // Contract: GET /api/conversations/:id/messages returns `clientMessageId` on user rows sent with one
 // (elizaOS/eliza#35907). A Stop check matches its own turn by that id, never by text alone.
 const root=path.resolve(import.meta.dirname,'..');

@@ -21,12 +21,13 @@ out.oldCompletion=await rejects(async()=>c.validateWorkflowReminderResult(op,{ki
 out.tampered=await rejects(()=>c.validateWorkflowReminderResult(op,{kind:'reminders',reminders:[{...open,title:'Changed'}]}));
 out.privateBody=await rejects(()=>c.validateWorkflowReminderResult(op,{kind:'reminders',reminders:[{...open,body:'secret'}]}));
 out.overflow=await rejects(()=>c.validateWorkflowReminderResult(op,{kind:'reminders',reminders:[open,done,open,done]}));
-const review={runId:'r',workflowId:'w',versionId:'v',specDigest:'a'.repeat(64),finished:false,cancellationRequestedAt:null,status:'running',spec:{device:{installationId:'i',enrollmentId:'e'},steps:[{id:'reminders',kind:'Read',operation:'selected_reminders',scope:{window:op.window,day:op.day,timeZone:op.timeZone,maximumItems:3}}]}};
+const review={runId:'r',workflowId:'w',versionId:'v',specDigest:'a'.repeat(64),finished:false,cancellationRequestedAt:null,status:'running',spec:{device:{installationId:'i',enrollmentId:'e'},steps:[{id:'reminders',kind:'Read',operation:'selected_reminders',scope:{window:op.window,timeZone:op.timeZone,maximumItems:3}}]}};
 const binding={workflowId:'w',versionId:'v',runId:'r',stepId:'reminders',specDigest:'a'.repeat(64)},target={installationId:'i',enrollmentId:'e'};
-c.assertWorkflowOperation(review,binding,target,op);out.bound=true;
-out.widened=await rejects(()=>c.assertWorkflowOperation(review,binding,target,{...op,maximumItems:200}));
+const now=Date.UTC(2026,9,8,18);c.assertWorkflowOperation(review,binding,target,op,now);out.bound=true;
+out.otherDay=await rejects(()=>c.assertWorkflowOperation(review,binding,target,{...op,day:'2026-10-07'},now));
+out.widened=await rejects(()=>c.assertWorkflowOperation(review,binding,target,{...op,maximumItems:200},now));
 console.log(JSON.stringify(out));`;
 test('selected reminder reads stay inside the reviewed owner-day window',()=>{
  const out=JSON.parse(execFileSync(process.execPath,['--import=tsx','--input-type=module','-e',script],{cwd:root,encoding:'utf8',timeout:60000}));
- assert.deepEqual(out,{op:{type:'read_selected_reminders',window:'open_and_completed_today',day:'2026-10-08',timeZone:'America/Los_Angeles',maximumItems:3},badWindow:true,badDay:true,extra:true,valid:['open','done'],future:true,oldCompletion:true,tampered:true,privateBody:true,overflow:true,bound:true,widened:true});
+ assert.deepEqual(out,{op:{type:'read_selected_reminders',window:'open_and_completed_today',day:'2026-10-08',timeZone:'America/Los_Angeles',maximumItems:3},badWindow:true,badDay:true,extra:true,valid:['open','done'],future:true,oldCompletion:true,tampered:true,privateBody:true,overflow:true,bound:true,otherDay:true,widened:true});
 });

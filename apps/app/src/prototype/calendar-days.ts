@@ -26,64 +26,18 @@ export const visibleCalendarDays = (day: number, count = calendarDayCount()): nu
  */
 export const calendarReturnDay = (day: number, eventDay: number, count = calendarDayCount()): number => { const first = firstCalendarDay(day, count); return eventDay >= first && eventDay < first + count ? day : eventDay; };
 
-/** The views offered from the Calendar title menu (docs/flow-redesign-2026-11). */
-export type CalendarView = 'schedule' | 'day' | 'week' | 'month';
-export const CALENDAR_VIEWS: CalendarView[] = ['schedule', 'day', 'week', 'month'];
-export const calendarView = (value: unknown): CalendarView => CALENDAR_VIEWS.includes(value as CalendarView) ? value as CalendarView : 'day';
-
-/**
- * Day offsets drawn as columns. Week is Monday to Sunday of the selected day's week; every other
- * view keeps the measured column count around the selected day.
- */
-export function calendarViewDays(view: string, day: number, now: Date | number, count = calendarDayCount()): number[] {
-  if (view !== 'week') return visibleCalendarDays(day, count);
-  const date = new Date(now); date.setHours(12, 0, 0, 0); date.setDate(date.getDate() + day);
-  const monday = day - (date.getDay() + 6) % 7;
-  return Array.from({ length: 7 }, (_, index) => monday + index);
-}
-
-/**
- * The provider read window for the current Calendar state. By default it is the month before the
- * shown month through the month after it (Month view moves it with `month`; Schedule anchors it on
- * today). Search widens it to
- * 90 days back and a year ahead so results are not limited to the visible weeks.
- */
-export function calendarLoadRange(state: Bag, now: Date | number = Date.now()): { begin: number; end: number; key: string } {
-  const today = new Date(now);
-  if (state.search != null) {
-    const begin = new Date(today.getFullYear(), today.getMonth(), today.getDate() - 90).getTime(), end = new Date(today.getFullYear(), today.getMonth(), today.getDate() + 366).getTime();
-    return { begin: Math.max(0, begin), end, key: `${begin}:${end}` };
-  }
-  // Schedule always runs from today, whatever day was last selected.
-  const anchor = calendarView(state.view) === 'schedule' ? 0 : Number(state.day || 0);
-  const date = new Date(today.getFullYear(), today.getMonth(), today.getDate() + anchor); date.setDate(1);
-  if (state.month != null) date.setMonth(date.getMonth() + Number(state.month || 0));
-  const begin = new Date(date.getFullYear(), date.getMonth() - 1, 1).getTime(), end = new Date(date.getFullYear(), date.getMonth() + 2, 1).getTime();
-  return { begin: Math.max(0, begin), end, key: `${begin}:${end}` };
-}
-
 export function calendarDayLabel(now: Date | number, off: number): string {
   const date = new Date(now); date.setDate(date.getDate() + off);
   return date.toLocaleDateString(undefined, { weekday: 'short', day: 'numeric' });
 }
 
-/**
- * Template rows for each visible day; `showNow` marks today's column when now is on the timeline.
- * `compact` (Week view: seven narrow columns) drops the time and place lines from each block;
- * `pick` makes each column head open that day.
- */
-export function calendarDayColumns(columns: Array<{ off: number; events: Bag[] }>, now: Date | number, nowTop: number, nowVisible: boolean, selected?: number, options: { compact?: boolean; pick?: (off: number) => void } = {}) {
-  return columns.map(({ off, events }) => {
-    const date = new Date(now); date.setDate(date.getDate() + off);
-    return {
-      off, label: calendarDayLabel(now, off), isToday: off === 0, showNow: off === 0 && nowVisible, nowTop,
-      weekday: date.toLocaleDateString(undefined, { weekday: 'narrow' }), n: date.getDate(),
-      dayLabel: date.toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' }),
-      current: off === selected ? 'date' : 'false', headCss: off === 0 ? 'color:var(--acct);font-weight:700' : off === selected ? 'color:var(--fg)' : '',
-      pick: () => options.pick?.(off),
-      events: events.map(event => ({ ...event, ...(options.compact ? { showTime: false, sub: '' } : {}), x: ((event.left - REFERENCE_LEFT) / REFERENCE_WIDTH * 100).toFixed(3), wp: ((event.w + 4) / REFERENCE_WIDTH * 100).toFixed(3) })),
-    };
-  });
+/** Template rows for each visible day; `showNow` marks today's column when now is on the timeline. */
+export function calendarDayColumns(columns: Array<{ off: number; events: Bag[] }>, now: Date | number, nowTop: number, nowVisible: boolean, selected?: number) {
+  return columns.map(({ off, events }) => ({
+    label: calendarDayLabel(now, off), isToday: off === 0, showNow: off === 0 && nowVisible, nowTop,
+    current: off === selected ? 'date' : 'false', headCss: off === selected ? 'color:var(--fg)' : '',
+    events: events.map(event => ({ ...event, x: ((event.left - REFERENCE_LEFT) / REFERENCE_WIDTH * 100).toFixed(3), wp: ((event.w + 4) / REFERENCE_WIDTH * 100).toFixed(3) })),
+  }));
 }
 
 /** The week strip shows which of its days are on screen as columns. */

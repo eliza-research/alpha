@@ -1,7 +1,17 @@
+import {openLegacyNotes} from './helpers/legacy-notes';
 import {expect,type Page} from '@playwright/test';
 // Closed media/Cloud ports. No microphone, speech model, audio playback or provider HTTP.
 export async function cloudNotesVoiceFixture(page:Page,signed=true,development=false){
  const foreign:string[]=[];
+ // Keep the voice fixture's account entry independent of the dev host's optional
+ // provider-readiness probe, which may take the full six-second email fallback.
+ await page.route('**/__alpha-browser-cloud', async route => {
+  if (route.request().method() === 'POST' && route.request().postDataJSON()?.operation === 'signInStatus') {
+   await route.fulfill({json:{active:false,inApp:true,google:false,email:true}});
+   return;
+  }
+  await route.fallback();
+ });
  await page.route(/^https?:\/\/(?!127\.0\.0\.1:|localhost:)/,async route=>{foreign.push(route.request().url());await route.abort();});
  await page.addInitScript(()=>{
   localStorage.setItem('alpha.connection.selection.v1',JSON.stringify({kind:'offline'}));
@@ -19,15 +29,25 @@ export async function cloudNotesVoiceFixture(page:Page,signed=true,development=f
   BrowserVoice.prototype.startRecording=async function(){f.starts++;if(f.denied)throw new DOMException('Denied','NotAllowedError');const recordingId=crypto.randomUUID();f.clip=recordingId;f.active=recordingId;(this as any).capture.clips.set(recordingId,{blob:new Blob(['closed-fixture'],{type:'audio/webm'}),durationMs:1000});return {recordingId,maxDurationMs:59000};};
   BrowserVoice.prototype.stopRecording=async()=>{f.stops++;f.active=null;return {recordingId:f.clip,durationMs:1000};};
   BrowserVoice.prototype.cancelRecording=async()=>{f.active=null;f.cancels++;};
-  BrowserVoice.prototype.transcribeRecording=async(input:any)=>{f.uploads++;f.requests.push(input);if(f.hold)await new Promise<void>(resolve=>{f.release=resolve;});if(f.billing)throw Object.assign(Error('Synthetic billing refusal'),{code:'voice-http-402'});if(f.failureCode)throw Object.assign(Error('PRIVATE_TRANSCRIPTION_SENTINEL'),{code:f.failureCode});return {text:f.empty?'':f.transcript,local:false};};
+  BrowserVoice.prototype.transcribeRecording=async(input:any)=>{f.uploads++;f.requests.push(input);if(f.hold)await new Promise<void>(resolve=>{f.release=resolve;});if(f.billing)throw Object.assign(Error('Synthetic billing refusal'),{code:'voice-http-402'});if(f.failureCode)throw Object.assign(Error('PRIVATE_TRANSCRIPTION_SENTINEL'),{code:f.failureCode,...(f.failureData?{data:f.failureData}:{})});return {text:f.empty?'':f.transcript,local:false};};
   BrowserVoice.prototype.transcribePairedRecording=async()=>{f.paired++;throw Error('Paired transcription forbidden');};
   BrowserVoice.prototype.synthesize=async()=>{f.syntheses++;return {playbackId:crypto.randomUUID()};};
   BrowserVoice.prototype.play=async function(input:any){queueMicrotask(()=>void (this as any).notifyListeners('playbackEnded',{playbackId:input.playbackId}));};
   BrowserVoice.prototype.stopPlayback=async()=>{};BrowserVoice.prototype.cancel=async()=>{f.cancels++;};
+  // The Notes recorder (no length limit) runs on its own capture: a closed one-segment recording.
+  const {BrowserAudioCapture}=await import('/src/browser/audio-capture.ts');const capture=BrowserAudioCapture.prototype as any;
+  capture.start=async function(input:any){f.starts++;if(f.denied)throw new DOMException('Denied','NotAllowedError');const recordingId=crypto.randomUUID();f.clip=recordingId;f.active=recordingId;this.fixture={recordingId};return {recordingId,maxDurationMs:input?.unlimited?Infinity:59000};};
+  capture.stop=async function(){const recordingId=this.fixture?.recordingId;f.stops++;f.active=null;this.clips.set(recordingId,{blob:new Blob(['closed-fixture'],{type:'audio/webm'}),durationMs:1500});return {recordingId,durationMs:1500};};
+  capture.pause=function(){};capture.resume=function(){};
+  capture.elapsed=function(id:string){return this.fixture?.recordingId===id?1500:0;};
+  capture.metrics=function(id:string){return {recordingId:id,peak:0};};
+  capture.cancel=function(){if(this.fixture){f.active=null;f.cancels++;}this.fixture=undefined;};
  },signed);
  return {foreign};
 }
-export const notesRecorder=(page:Page)=>page.locator('[data-alpha-subview="notes-recording"]');
-export async function openNotesRecorder(page:Page){await page.getByRole('button',{name:'Notes',exact:true}).click();await page.getByRole('button',{name:'Record and transcribe',exact:true}).click();}
-export async function recordClosedClip(page:Page){const panel=notesRecorder(page);await panel.getByRole('button',{name:'Start recording',exact:true}).click();await expect(panel.getByRole('button',{name:'Stop recording',exact:true})).toBeVisible();await panel.getByRole('button',{name:'Stop recording',exact:true}).click();await expect(panel.getByRole('button',{name:'Transcribe with Eliza Cloud',exact:true})).toBeVisible();}
+export const notesRecorder=(page:Page)=>page.locator('[data-alpha-subview="notes-recorder"]');
+export async function openNotesRecorder(page:Page){await openLegacyNotes(page);await page.getByRole('button',{name:'Record and transcribe',exact:true}).click();}
+/** The recorder starts at once; Done stops it, transcribes its segment and saves the voice note. */
+export async function recordAndFinish(page:Page){const panel=notesRecorder(page);await expect(panel).toHaveAttribute('data-recorder-state','recording');await panel.getByRole('button',{name:'Done',exact:true}).click();}
+export const savedVoiceNotes=(page:Page)=>page.evaluate(async()=>JSON.parse((await(await import('/src/runtime/browser-notes-document.ts')).readBrowserNotesRaw())||'{"records":[]}').records.filter((n:any)=>n.kind==='voice'));
 export async function noPhysicalOrLocalVoice(page:Page){expect(await page.evaluate(()=>{const f=(window as any).cloudNotesVoice;return {mic:f.mic,plays:f.plays,local:f.local,paired:f.paired};})).toEqual({mic:0,plays:0,local:0,paired:0});}

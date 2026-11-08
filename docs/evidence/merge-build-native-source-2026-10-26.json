@@ -1,0 +1,39 @@
+{
+  "previousPin": "04658de1b942510e0d37efc777c154530f5c0ef1",
+  "candidatePin": "6293e29bf398603d0ea233871edbdeb57e5c2405",
+  "comparisons": [
+    {
+      "path": "packages/app/scripts/paradee-voice",
+      "unchanged": true
+    },
+    {
+      "path": "packages/app/scripts/stage-elizavoice-lib.ts",
+      "unchanged": true
+    },
+    {
+      "path": "packages/app/platforms/android/app/src/main/elizavoice-jni",
+      "unchanged": true
+    },
+    {
+      "path": "plugins/plugin-local-inference/native/llama.cpp",
+      "unchanged": true
+    },
+    {
+      "path": "plugins/plugin-local-inference/native/android/inputs.json",
+      "unchanged": true
+    },
+    {
+      "path": "packages/ui/src/voice",
+      "unchanged": true
+    },
+    {
+      "path": "packages/host/src/voice.ts",
+      "unchanged": true
+    },
+    {
+      "path": "packages/core/src/logger.ts",
+      "unchanged": true
+    }
+  ],
+  "claim": "Identical committed native and voice projection source; does not establish new runtime, APK, image or device acceptance."
+}

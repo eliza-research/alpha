@@ -16,8 +16,12 @@ import path from "node:path";
 import test from "node:test";
 
 const root = "android/app/src/main/java/ai/elizaresearch/alphaphone";
-const files = fs.readdirSync(root).filter(name => name.endsWith(".java")).sort();
-const read = name => fs.readFileSync(path.join(root, name), "utf8");
+// Shared browser classes the app compiles from the reviewed pin (scripts/stage-local-agent-sources.mjs).
+const shared = "vendor/eliza/plugins/plugin-native-browser-surface/android/src/main/java/ai/eliza/plugins/browsersurface";
+// The browser tab host and its reviewed reading are the shared BrowserTabHostPlugin; AlphaBrowserPlugin only names it.
+const sharedFiles = ["BrowserBlobCapture.java", "BrowserDownloads.java", "BrowserLoginFields.java", "BrowserReadingWorld.java", "BrowserReviewedReading.java", "BrowserTabHostPlugin.java"];
+const files = [...fs.readdirSync(root).filter(name => name.endsWith(".java")), ...sharedFiles].sort();
+const read = name => fs.readFileSync(path.join(sharedFiles.includes(name) ? shared : root, name), "utf8");
 
 /** Blanks comments, strings, text blocks and character literals, keeping every offset. */
 function mask(source) {
@@ -72,7 +76,7 @@ function blocks(code) {
 }
 
 const ANSWERS_A_STOPPED_EXECUTOR = new Set(["RejectedExecutionException", "java.util.concurrent.RejectedExecutionException", "RuntimeException", "Exception", "Throwable"]);
-const EXECUTOR_TYPES = "ExecutorService|ScheduledExecutorService|ThreadPoolExecutor|ScheduledThreadPoolExecutor|Executor|WorkflowNoticeIo";
+const EXECUTOR_TYPES = "ExecutorService|ScheduledExecutorService|ThreadPoolExecutor|ScheduledThreadPoolExecutor|Executor|NoticeWorker";
 
 /** Hand-offs to an executor field of this file (or the shared journal plugin's worker()). */
 function handOffs(name, code) {
@@ -102,20 +106,42 @@ function handOffs(name, code) {
 
 // Hand-offs that are safe for a reason the scanner cannot see. Each entry is one exact place.
 const REVIEWED = [
+  { file: "AlphaCanonicalNotifications.java", receiver: "SERIAL", method: "execute", count: 7,
+    why: "private static final process dispatcher; stop retires sessions, never the executor; lifetime and non-escape checked below" },
+  { file: "AlphaCanonicalNotifications.java", receiver: "SERIAL", method: "schedule", count: 2,
+    why: "same process dispatcher; queued retries check session generation and the dispatcher is never shut down" },
   { file: "HostedTransport.java", receiver: "timer", method: "schedule", count: 1,
     why: "runs in the constructor, on a timer created by that same object's field initialiser; nothing can have stopped it yet" },
-  { file: "IsolatedPdfService.java", receiver: "worker", method: "execute", count: 1,
-    why: "not a plugin: an isolated service whose onDestroy kills its own process right after stopping the worker; a request outside the isolated process is refused before the hand-off" },
-  { file: "WorkflowNoticeIo.java", receiver: "executor", method: "execute", count: 1,
-    why: "the wrapper itself; it deliberately lets the rejection reach its callers, and every NOTICE_IO.execute call is scanned here" },
 ];
 
+/** A lifetime exception is safe only while the executor cannot escape or be stopped. */
+function assertNotificationDispatcherLifetime(source) {
+  const code = mask(source);
+  const declaration = /\bprivate\s+static\s+final\s+ScheduledExecutorService\s+SERIAL\s*=\s*Executors\.newSingleThreadScheduledExecutor\(\s*\)\s*;/g;
+  const declarations = [...code.matchAll(declaration)];
+  assert.equal(declarations.length, 1, "notification dispatcher must remain privately owned and immutable");
+  const start = declarations[0].index, end = start + declarations[0][0].length;
+  for (const reference of code.matchAll(/\bSERIAL\b/g)) {
+    if (reference.index >= start && reference.index < end) continue;
+    assert.match(code.slice(reference.index), /^SERIAL\s*\.\s*(?:execute|schedule)\s*\(/,
+      "notification dispatcher must not escape, be reassigned or be shut down");
+  }
+}
+
 const sites = files.flatMap(name => handOffs(name, mask(read(name))));
+
+test("notification dispatcher outlives sessions and cannot escape to a shutdown owner", () => {
+  const source = read("AlphaCanonicalNotifications.java");
+  assertNotificationDispatcherLifetime(source);
+  assert.throws(() => assertNotificationDispatcherLifetime(source.replace("static final ScheduledExecutorService SERIAL", "static ScheduledExecutorService SERIAL")));
+  assert.throws(() => assertNotificationDispatcherLifetime(source.replace("SERIAL.execute(", "SERIAL.shutdown(); SERIAL.execute(")));
+  assert.throws(() => assertNotificationDispatcherLifetime(source.replace("SERIAL.execute(", "ExecutorService alias = SERIAL; SERIAL.execute(")));
+});
 
 test("the scanner sees the executors the app really has", () => {
   // A scanner that silently finds nothing would pass every assertion below.
   assert.ok(sites.length >= 30, `only ${sites.length} executor hand-offs were found`);
-  for (const name of ["AlphaDevicePlugin.java", "AlphaMailAttachmentsPlugin.java", "AlphaActionJournalPlugin.java", "AlphaLocalAgentPlugin.java", "AlphaNotificationsPlugin.java", "BrowserDownloads.java", "AlphaConnectionPlugin.java"])
+  for (const name of ["AlphaDevicePlugin.java", "AlphaMailAttachmentsPlugin.java", "AlphaActionJournalPlugin.java", "AlphaLocalAgentPlugin.java", "BrowserDownloads.java", "AlphaConnectionPlugin.java"])
     assert.ok(sites.some(site => site.file === name), `${name}: no executor hand-off found`);
   const sample = "class A{private final ExecutorService w=null;void a(PluginCall c){w.execute(()->{});}void b(){try{w.execute(()->{});}catch(RejectedExecutionException e){}}void c(){try{run(()->{w.execute(()->{});});}catch(Exception e){}}void d(){try{w.execute(()->{});}catch(java.io.IOException e){}}}";
   assert.deepEqual(handOffs("A.java", mask(sample)).map(site => site.guarded), [false, true, false, false],
@@ -154,13 +180,14 @@ test("the workers that plugins stop on destroy are reached through one rejecting
   assert.match(journal, /public void reviewClock\(PluginCall call\)\{\s*clockWork\(call,/);
   assert.match(journal, /public void confirmClock\(PluginCall call\)\{[\s\S]{0,400}?\n\s*clockWork\(call,/);
 
+  // The shared download list stops its workers on destroy; every hand-off answers a stopped worker.
   const downloads = read("BrowserDownloads.java");
-  assert.match(helper("BrowserDownloads.java", "private void work(ExecutorService worker,Runnable task,Runnable dropped){"), /try\{worker\.execute\(task\);\}\s*catch\(java\.util\.concurrent\.RejectedExecutionException \w+\)\{dropped\.run\(\);\}/);
+  assert.match(downloads, /private void work\(ExecutorService worker, Runnable task, Runnable dropped\) \{\s*try \{\s*worker\.execute\(task\);\s*\} catch \(RejectedExecutionException \w+\) \{\s*dropped\.run\(\);\s*\}/);
   assert.equal([...downloads.matchAll(/\b(?:io|network)\.execute\(/g)].length, 0, "download workers are reached only through the helper");
 });
 
 test("nothing is shown or created on a destroyed activity by a late browser call", () => {
-  const plugin = read("AlphaBrowserPlugin.java");
+  const plugin = read("BrowserTabHostPlugin.java");
   assert.match(plugin, /private boolean closed\(PluginCall call\)\{if\(!destroyed\)return false;call\.reject\("Browser closed"\);return true;\}/);
   // Every plugin method that reaches the main thread checks first; load() has no call to reject.
   const posts = plugin.split("\n").filter(line => /getActivity\(\)\.runOnUiThread\(/.test(line) && /PluginCall call/.test(line));
@@ -170,11 +197,11 @@ test("nothing is shown or created on a destroyed activity by a late browser call
 
   // The download dialogs: a completion posted from a worker can land after destroy().
   const downloads = read("BrowserDownloads.java");
-  assert.match(downloads, /void destroy\(\)\{closed=true;dismissDialogs\(\);/);
-  assert.match(downloads, /private void message\(String text\)\{if\(closed\)return;new AlertDialog\.Builder/);
-  assert.match(downloads, /void show\(\)\{\n\s*if\(closed\)return;/);
-  assert.match(downloads, /private void review\(String tab,String title,String details,Runnable confirm\)\{\n\s*if\(closed\)return;/);
-  assert.match(downloads, /private boolean reviewable\(\)\{\n\s*if\(closed\)return false;/);
+  assert.match(downloads, /public void destroy\(\) \{\s*closed = true;\s*dismissDialogs\(\);/);
+  assert.match(downloads, /private void message\(String text\) \{\s*if \(closed\)\s*return;\s*new AlertDialog\.Builder/);
+  assert.match(downloads, /public void show\(\) \{\s*if \(closed\)\s*return;/);
+  assert.match(downloads, /private void review\(String tab, String title, String details, Runnable confirm\) \{\s*if \(closed\)\s*return;/);
+  assert.match(downloads, /private boolean reviewable\(\) \{\s*if \(closed\)\s*return false;/);
 });
 
 test("receivers and callbacks a plugin registers are released when it is destroyed", () => {
@@ -208,7 +235,9 @@ function launches(name, code) {
     if (method === "launch" ? !launchers.has(receiver) : receiver !== undefined && receiver !== "super" && receiver !== "this") continue;
     // A declaration of the method, not a call of it.
     if (/\b(?:void|boolean)\s+$/.test(code.slice(Math.max(0, at - 12), at))) continue;
-    let guarded = /LateLaunch\.ask\(\s*\w+\s*,\s*\(\)\s*->\s*$/.test(code.slice(Math.max(0, at - 80), at));
+    // LateLaunch.ask in Alpha; the shared TelephonyPlugin base has the same guard as its launch(call, ...) helper
+    // and the shared PhotosPlugin as its ask(call, ...) helper (both checked below).
+    let guarded = /(?:LateLaunch\.ask|(?<![\w.])(?:launch|ask))\(\s*\w+\s*,\s*\(\)\s*->\s*$/.test(code.slice(Math.max(0, at - 80), at));
     for (const block of all.filter(block => block.start < at && at < block.end).sort((a, b) => b.start - a.start)) {
       if (guarded || block.kind === "deferred") break;
       if (block.kind === "try" && block.catches.some(type => ANSWERS_A_MISSING_LAUNCHER.has(type))) guarded = true;
@@ -239,7 +268,7 @@ test("a permission or activity-result request that arrives after the activity is
 
   const found = files.flatMap(name => launches(name, mask(read(name))));
   // A scanner that silently finds nothing would pass.
-  for (const [name, method] of [["AlphaHostedResultsPlugin.java", "requestPermissionForAlias"], ["AlphaVoiceCloudPlugin.java", "requestPermissionForAlias"], ["DailyAppsPlugin.java", "startActivityForResult"], ["AlphaFilesPlugin.java", "startActivityForResult"], ["AlphaMailAttachmentsPlugin.java", "startActivityForResult"], ["AlphaNoteDocumentsPlugin.java", "startActivityForResult"], ["AlphaBrowserPlugin.java", "takePicture.launch"], ["AlphaBrowserPlugin.java", "runtimePermissions.launch"], ["AlphaBrowserPlugin.java", "filePicker.launch"], ["AlphaBrowserPlugin.java", "pageShare.launch"]])
+  for (const [name, method] of [["AlphaHostedResultsPlugin.java", "requestPermissionForAlias"], ["DailyAppsPlugin.java", "startActivityForResult"], ["AlphaFilesPlugin.java", "startActivityForResult"], ["AlphaMailAttachmentsPlugin.java", "startActivityForResult"], ["AlphaNoteDocumentsPlugin.java", "startActivityForResult"], ["BrowserTabHostPlugin.java", "takePicture.launch"], ["BrowserTabHostPlugin.java", "runtimePermissions.launch"], ["BrowserTabHostPlugin.java", "filePicker.launch"], ["BrowserTabHostPlugin.java", "pageShare.launch"]])
     assert.ok(found.some(site => site.file === name && site.method === method), `${name}: ${method} not found`);
   assert.deepEqual(found.filter(site => !site.guarded).map(site => `${site.file}:${site.line} ${site.method}(`), [],
     "each of these throws on the calling thread once the activity is destroyed; make it the body of LateLaunch.ask");
@@ -250,13 +279,34 @@ test("Capacitor's own permission request, and the shared plugins' requests an ap
   const guardedOverride = (source, method) => new RegExp(`@Override @PluginMethod public void ${method}\\(PluginCall call\\) ?\\{(?: if \\(refused\\(call\\)\\) return;)? ?LateLaunch\\.ask\\(call, ?\\(\\) ?-> ?super\\.${method}\\(call\\)\\); ?\\}`).test(source);
   // Plugin.requestPermissions is a plugin method of every plugin and launches for one that declares permissions.
   const declaring = files.filter(name => /@CapacitorPlugin\([^\n]*\bpermissions\s*=/.test(read(name)));
-  assert.deepEqual(declaring, ["AlphaCalendarPlugin.java", "AlphaContactsPlugin.java", "AlphaHostedResultsPlugin.java", "AlphaPhotoLibraryPlugin.java", "AlphaPhotosPlugin.java", "AlphaSystemPlugin.java", "AlphaTelephonyPlugin.java", "AlphaVoiceCloudPlugin.java", "DailyAppsPlugin.java"], "the plugins that declare permissions");
+  assert.deepEqual(declaring, ["AlphaCalendarPlugin.java", "AlphaContactsPlugin.java", "AlphaFilesPlugin.java", "AlphaHostedResultsPlugin.java", "AlphaPhotoLibraryPlugin.java", "AlphaPhotosPlugin.java", "AlphaSystemPlugin.java", "AlphaTelephonyPlugin.java", "AlphaVoiceCloudPlugin.java", "DailyAppsPlugin.java"], "the plugins that declare permissions");
   for (const name of declaring.filter(name=>name!=="AlphaContactsPlugin.java")) {
     if(name==='AlphaPhotosPlugin.java'||name==='AlphaPhotoLibraryPlugin.java') {
-      // Photos must select aliases for this Android version, rather than asking
-      // for the obsolete legacy permission together with the current media grants.
-      assert.match(read(name),/@Override @PluginMethod public void requestPermissions\(PluginCall call\)\{(?:requestLibraryAccess|requestAccess)\(call\);\}/);
-      assert.match(read(name),/LateLaunch\.ask\(call,\(\)->requestPermissionForAliases\(aliases,call,"libraryPermissionResult"\)\)/);
+      // Registrations of the shared PhotosPlugin and DeviceLibraryPlugin. Photos must select aliases for this
+      // Android version, rather than asking for the obsolete legacy permission together with the current media
+      // grants, and a late request is answered with Alpha's LateLaunch wording.
+      const media="vendor/eliza/plugins/plugin-native-media/android/src/main/java/ai/eliza/plugins/media/";
+      const base=fs.readFileSync(media+(name==='AlphaPhotosPlugin.java'?"PhotosPlugin.java":"DeviceLibraryPlugin.java"),"utf8");
+      assert.match(base,/@Override\n {2}@PluginMethod\n {2}public void requestPermissions\(PluginCall call\) \{\n {4}(?:requestLibraryAccess|requestAccess)\(call\);\n {2}\}/);
+      if(name==='AlphaPhotosPlugin.java'){
+        assert.match(base,/ask\(call, \(\) -> requestPermissionForAliases\(aliases, call, "libraryPermissionResult"\)\);/);
+        assert.match(base,/protected final boolean ask\(PluginCall call, Runnable launch\) \{\n {4}try \{\n {6}launch\.run\(\);\n {6}return true;\n {4}\} catch \(IllegalStateException closed\) \{\n {6}call\.reject\(closedMessage\(\)\);\n {6}return false;/);
+      } else assert.match(base,/try \{\n {6}requestPermissionForAliases\(aliases, call, "libraryPermissionResult"\);\n {4}\} catch \(IllegalStateException closed\) \{\n {6}call\.reject\(closedMessage\(\)\);/);
+      assert.match(read(name),/@Override protected String closedMessage\(\)\{return LateLaunch\.CLOSED;\}/);
+    } else if(name==='AlphaTelephonyPlugin.java') {
+      // The shared TelephonyPlugin base answers a late request the same way (its launch helper rejects with CLOSED).
+      const base=fs.readFileSync("vendor/eliza/plugins/plugin-native-messages/android/src/main/java/ai/eliza/plugins/messages/TelephonyPlugin.java","utf8");
+      assert.match(base,/@Override @PluginMethod public void requestPermissions\(PluginCall call\) \{ if \(refused\(call\)\) return; launch\(call, \(\) -> super\.requestPermissions\(call\)\); \}/);
+      assert.match(base,/protected static boolean launch\(PluginCall call, Runnable start\) \{\n  try \{ start\.run\(\); return true; \} catch \(IllegalStateException gone\) \{ call\.reject\(CLOSED\); return false; \}/);
+    } else if(name==='AlphaVoiceCloudPlugin.java') {
+      // The shared LocalSpeechBridgePlugin base sends every prompt (requestPermissions and both
+      // microphone requests) through its launch port, which Alpha answers with LateLaunch.ask.
+      const base=fs.readFileSync("vendor/eliza/plugins/plugin-local-inference/native/android/speech-bridge/src/main/java/ai/eliza/voice/LocalSpeechBridgePlugin.java","utf8");
+      assert.match(base,/@Override @PluginMethod public void requestPermissions\(PluginCall call\)\{launch\(call,\(\)->super\.requestPermissions\(call\)\);\}/);
+      assert.match(base,/protected boolean launch\(PluginCall call,Runnable request\)\{\n  try\{request\.run\(\);return true;\}catch\(IllegalStateException closed\)\{call\.reject\(LAUNCH_CLOSED\);return false;\}/);
+      const prompts=[...base.matchAll(/requestPermissionForAlias\(/g)].map(match=>base.slice(Math.max(0,match.index-24),match.index));
+      assert.equal(prompts.length,2);for(const before of prompts)assert.match(before,/launch\(call,\(\)->$/);
+      assert.match(read(name),/@Override protected boolean launch\(PluginCall call,Runnable request\)\{return LateLaunch\.ask\(call,request\);\}/);
     } else assert.ok(guardedOverride(read(name), "requestPermissions"), `${name}: requestPermissions is overridden with the guard`);
   }
 
@@ -289,24 +339,7 @@ test("background navigation cannot be started by a call that arrives after its r
   assert.ok(start.indexOf(refused) > 0 && start.indexOf(refused) < start.indexOf("AlphaNavigationService.start("), "refused before the service is started");
   assert.match(start, /AlphaNavigationService\.start\([^\n]*\n[^\n]*\n\s*if\(destroyed\)\{AlphaNavigationService\.stop\(getContext\(\),session,"renderer-closed"\);call\.reject\(/, "a start that raced destruction retires its own session");
   const destroy = maps.slice(maps.indexOf("@Override protected void handleOnDestroy(){"));
-  assert.ok(destroy.indexOf("destroyed=true;") > 0 && destroy.indexOf("destroyed=true;") < destroy.indexOf("AlphaNavigationService.activeSessionOwnedBy(navigationStops)"), "the flag is set before the owned session is read and stopped");
-});
-
-test("closing the assistant window never ends the launcher's navigation session", () => {
-  const maps = read("AlphaMapsTransportPlugin.java");
-  const start = maps.slice(maps.indexOf("@PluginMethod public void startNavigation(PluginCall call){"), maps.indexOf("@PluginMethod public void updateNavigation(PluginCall call){"));
-  assert.ok(start.indexOf("getActivity() instanceof AlphaAssistActivity") > 0 && start.indexOf("getActivity() instanceof AlphaAssistActivity") < start.indexOf("AlphaNavigationService.start("), "the assistant window cannot start guidance");
-  assert.match(start, /AlphaNavigationService\.start\(getContext\(\),session,[^\n]*,navigationStops,getActivity\(\)/, "each session records the bridge and task that started it");
-  const destroy = maps.slice(maps.indexOf("@Override protected void handleOnDestroy(){"));
-  const stops = [...destroy.matchAll(/AlphaNavigationService\.stop\(getContext\(\),(\w+),/g)].map(match => match[1]);
-  assert.deepEqual(stops, ["owned"], "a closing bridge stops only the session it started");
-  assert.match(destroy, /String owned=AlphaNavigationService\.activeSessionOwnedBy\(navigationStops\);/);
-  assert.doesNotMatch(maps, /setStopListener\(|AlphaNavigationService\.activeSession\(\);if\(active/, "no process-wide stop listener a second bridge could replace");
-  const service = read("AlphaNavigationService.java");
-  const removed = service.slice(service.indexOf("@Override public void onTaskRemoved("), service.indexOf("@Override public void onDestroy()"));
-  assert.ok(removed.indexOf("AlphaAssistActivity.class.getName()") > 0 && removed.indexOf("ownerTaskAlive()") > 0, "task removal checks the assistant root and the owner's task");
-  assert.ok(removed.indexOf("ownerTaskAlive()") < removed.indexOf('finish(null, "task-removed")'), "the owner's task is checked before the session ends");
-  assert.match(service, /target = owner;/, "the stop is reported to the session's own bridge");
+  assert.ok(destroy.indexOf("destroyed=true;") > 0 && destroy.indexOf("destroyed=true;") < destroy.indexOf("AlphaNavigationService.activeSession()"), "the flag is set before the active session is read and stopped");
 });
 
 // Kotlin shared plugins are outside the Java scanner above. Inventory every plugin method
@@ -324,4 +357,10 @@ test("shared Kotlin System activity launch methods have guarded product override
   for(const method of inherited) assert.ok(wrapper.includes(`@Override @PluginMethod public void ${method}(PluginCall call){LateLaunch.ask(call,()->super.${method}(call));}`),method);
 });
 
-test("Contacts generic permission requests remain image and foreground gated",()=>{const source=read("AlphaContactsPlugin.java");assert.match(source,/public void requestPermissions\(PluginCall call\)\{\s*if\(!foreground\(\)\)/);assert.match(source,/LateLaunch.ask\(call,\(\)->requestPermissionForAlias\("contacts",call,"permissionResult"\)\)/);});
+test("Contacts generic permission requests remain image and foreground gated",()=>{
+  // AlphaContactsPlugin is the shared AOSP-profile address book under Alpha's plugin name and image admission.
+  const alpha=read("AlphaContactsPlugin.java");assert.match(alpha,/public final class AlphaContactsPlugin extends AddressBookPlugin \{/);assert.match(alpha,/protected boolean admitted\(\)\{return AlphaImageCapabilities\.aospImage\(getContext\(\)\);\}/);assert.match(alpha,/protected String closedMessage\(\)\{return LateLaunch\.CLOSED;\}/);
+  const base=fs.readFileSync("vendor/eliza/plugins/plugin-native-contacts/android/src/main/java/ai/eliza/plugins/contacts/AddressBookPlugin.java","utf8");
+  assert.match(base,/public void requestPermissions\(PluginCall call\) \{\n    if \(!foreground\(\)\) \{/);assert.match(base,/launch\(call, \(\) -> requestPermissionForAlias\("contacts", call, "permissionResult"\)\)/);
+  assert.match(base,/launch\(call, \(\) -> startActivityForResult\(call, intent, "editorResult"\)\)/);assert.match(base,/catch \(IllegalStateException gone\) \{\n      call\.reject\(closedMessage\(\)\);/);
+});

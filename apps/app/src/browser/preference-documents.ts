@@ -10,8 +10,8 @@ function document(key:string,event:string){
   readRaw:(signal?:AbortSignal)=>domain.readRaw(signal),
   capture:(signal?:AbortSignal)=>domain.capture(signal),
   async reset(expected:DomainRecovery,signal?:AbortSignal){await domain.reset(expected,signal);changed();},
-  async edit<T,R>(initial:()=>T|Promise<T>,edit:(state:T)=>R|Promise<R>,signal?:AbortSignal):Promise<R>{
-   let modified=false;const result=await domain.edit(initial,async state=>{const before=JSON.stringify(state),result=await edit(state);modified=before!==JSON.stringify(state);return result;},signal);if(modified)changed();return result;
+  async edit<T,R>(initial:()=>T|Promise<T>,edit:(state:T)=>R|Promise<R>,signal?:AbortSignal,expected?:DomainRecovery):Promise<R>{
+   let modified=false;const result=await domain.edit(initial,async state=>{const before=JSON.stringify(state),result=await edit(state);modified=before!==JSON.stringify(state);return result;},signal,expected);if(modified)changed();return result;
   }
  };
 }

@@ -24,7 +24,7 @@ try{
  const prefs=JSON.parse(fs.readFileSync(path.join(state,'local-inference/routing.json'),'utf8')).preferences;
  for(const slot of ['TEXT_SMALL','TEXT_LARGE']){assert.equal(prefs.preferredProvider[slot],'elizacloud');assert.equal(prefs.policy[slot],'manual');}
  for(const slot of ['TRANSCRIPTION','TEXT_TO_SPEECH'])assert.equal(prefs.policy[slot],'local-only');assert.equal(prefs.preferredProvider.TEXT_EMBEDDING,'local-embedding-fixture');
- const {AgentRuntime,ModelType}=await import(pathToFileURL(Bun.resolveSync('@elizaos/core',sdk)).href);
+ const {AgentRuntime,ModelType}=await import(pathToFileURL(Bun.resolveSync('@elizaos/core',path.join(sdk,'packages/app/package.json'))).href);
  const {installRouterHandler}=await import(pathToFileURL(path.join(sdk,'plugins/plugin-local-inference/src/services/router-handler.ts')).href);
  const runtime=new AgentRuntime({character:{name:'Native route QA'}});let cloudCalls=0,localCalls=0;const modelLogs:unknown[]=[];
  runtime.registerDatabaseAdapter({createLogs:async(rows:unknown[])=>{modelLogs.push(...rows);}});

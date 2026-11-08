@@ -23,9 +23,6 @@ await page.route(gateway+'/place?*',async route=>{if(!holdDetail)return route.co
 const root=()=>page.locator('[data-alpha-maps-root]');
 const rootText=text=>page.waitForFunction(value=>document.querySelector('[data-alpha-maps-root]')?.textContent.includes(value),text);
 const status=text=>page.waitForFunction(value=>document.querySelector('[data-alpha-maps-status]')?.textContent.includes(value),text);
-// The route sheet names only live traffic, so a planned route shows as an enabled Start.
-const routeReady=()=>page.waitForFunction(()=>document.querySelector('[data-alpha-maps-start]')?.dataset.canStart==='true');
-const routeShown=()=>page.locator('[data-alpha-maps-start][data-can-start="true"]').count();
 const evidence={};
 try{
  // Rendered vector roads in the default app profile.
@@ -52,29 +49,28 @@ try{
  await page.getByRole('button',{name:'Rename place'}).filter({hasText:'Casino de Monte Carlo'}).waitFor();
  assert.equal(await page.locator('[data-alpha-map-plane] [data-map-pin]').count(),0,'Pins clear when a place is selected');
  await page.getByRole('button',{name:'Directions',exact:true}).click();
- const origin=page.getByRole('textbox',{name:'Starting point',exact:true});await origin.fill('43.7384, 7.4246');await origin.press('Enter');
+ const origin=page.getByRole('textbox',{name:'Route origin coordinates'});await origin.fill('43.7384, 7.4246');await origin.press('Enter');
  await detailReady;
  assert.equal(requests.filter(p=>p==='/route').length,0,'Route waits for the selected place detail');
  releaseDetail();holdDetail=false;
- await routeReady();
- for(const mode of ['Walk','Bike','Drive']){await page.getByRole('button',{name:mode,exact:true}).click();await routeReady();}
+ await rootText('no live traffic');
+ for(const mode of ['Walk','Bike','Drive']){await page.getByRole('button',{name:mode,exact:true}).click();await rootText('no live traffic');}
  await origin.fill('37, -122');await origin.press('Enter');await page.getByText('Both endpoints must be inside the Monaco region.',{exact:true}).waitFor();
- assert.equal(await routeShown(),0,'Old route removed on changed origin');
- await origin.fill('43.7384, 7.4246');await origin.press('Enter');await routeReady();
+ assert.ok(!await page.getByText('no live traffic',{exact:false}).count(),'Old route removed on changed origin');
+ await origin.fill('43.7384, 7.4246');await origin.press('Enter');await rootText('no live traffic');
  const dir='test-results/maps-regional-development';fs.mkdirSync(dir,{recursive:true});await page.screenshot({path:path.join(dir,'route.png')});
 
  // A stale origin search is cancelled by editing: its late response never shows.
  let releaseOrigin;const originGate=new Promise(resolve=>{releaseOrigin=resolve;});let originHeld;const originSeen=new Promise(resolve=>{originHeld=resolve;});
  await page.route(gateway+'/search?q=Decathlon',async route=>{originHeld();await originGate;try{await route.fulfill({response:await route.fetch()});}catch{}},{times:1});
  await origin.fill('Decathlon');await origin.press('Enter');await originSeen;
- // Choosing an origin shows no instruction status.
- assert.ok(!(await page.locator('[data-alpha-maps-status]').textContent().catch(()=>'')||'').includes('Choose a starting point for the route'),'No origin instruction status');
+ await status('Choose a starting point for the route to Casino de Monte Carlo');
  // While choosing, the search bar holds the origin text; editing it cancels the held search.
  assert.equal(await query.inputValue(),'Decathlon');
  await query.fill('43.7384, 7.4246');releaseOrigin();
  await page.waitForTimeout(500);
  assert.equal(await page.getByRole('button',{name:/^Decathlon/}).count(),0,'Cancelled origin search never shows results');
- await query.press('Enter');await routeReady();
+ await query.press('Enter');await rootText('no live traffic');
  assert.equal(await origin.inputValue(),'43.7384, 7.4246');
 
  // Named origin: the origin field searches regional places; choosing one replans.
@@ -83,7 +79,7 @@ try{
  await origin.fill('Decathlon');await origin.press('Enter');
  await page.waitForFunction(()=>document.querySelectorAll('[data-alpha-map-plane] [data-map-pin]').length>0);
  await page.locator('[data-alpha-maps-root] button.tap').filter({hasText:/^Decathlon/}).first().click();
- await rootText('From Decathlon');await routeReady();
+ await rootText('From Decathlon');await rootText('no live traffic');
  assert.ok(requests.filter(p=>p==='/route').length>routesBefore,'Choosing the origin plans a new route');
  assert.equal(await origin.inputValue(),'Decathlon');
  evidence.namedOrigin='Decathlon';
@@ -97,8 +93,7 @@ try{
  const move=point=>page.evaluate(({latitude,longitude})=>{localStorage.setItem('alpha.dev.location.v1',JSON.stringify({mode:'coordinates',latitude,longitude,accuracy:5,homeId:'',radius:200}));window.dispatchEvent(new Event('alpha:dev-location'));},point);
  await move(decathlon.coordinate);
  await page.getByRole('button',{name:'Start',exact:true}).click();
- // Guidance shows no status line unless there is a notice; End navigation marks the session.
- await page.getByRole('button',{name:'End navigation'}).waitFor();
+ await status('Foreground guidance · location accuracy');
  // The upcoming maneuver is the first one the device has not yet come within 40 m of.
  const meters=(a,b)=>{const r=Math.PI/180,dlat=(a.latitude-b.latitude)*r,dlon=(a.longitude-b.longitude)*r;return 6371000*2*Math.asin(Math.min(1,Math.sqrt(Math.sin(dlat/2)**2+Math.cos(a.latitude*r)*Math.cos(b.latitude*r)*Math.sin(dlon/2)**2)));};
  let index=0;while(index<route.steps.length-1&&meters(decathlon.coordinate,route.steps[index].coordinate)<40)index++;
@@ -111,7 +106,7 @@ try{
  await page.waitForFunction(()=>!!document.querySelector('[data-alpha-map-plane] [data-map-position]'));
  evidence.guidance={next:next.instruction,maneuver:next.maneuver,steps:route.steps.length};
  await page.screenshot({path:path.join(dir,'navigation.png')});
- await move({latitude:43.725,longitude:7.410});await status('Off route. Reroute from here, or end navigation.');
+ await move({latitude:43.725,longitude:7.410});await status('Off route. Stop and calculate a new route.');
  await move(casino.coordinate);await status('Destination reached.');
  await page.getByRole('button',{name:'End navigation'}).click();
  assert.equal(await page.locator('[data-alpha-map-plane] [data-map-position]').count(),0,'Position marker ends with navigation');

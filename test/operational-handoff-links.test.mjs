@@ -42,9 +42,10 @@ test('every repository path named in a code span exists', () => {
   assert.deepEqual(missing, []);
 });
 
-test('backup and rollback are stated as pending, not as available', () => {
+test('backup is stated as decided out of scope and rollback as not offered', () => {
   const section = heading => text.slice(text.indexOf(`\n## ${heading}\n`)).split('\n## ')[1];
-  assert.match(section('Backup and export'), /Pending decision \[A-19\]/);
+  assert.match(section('Backup and export'), /Decided by P-25 \(A-19/);
+  assert.match(section('Backup and export'), /no app-data backup/);
   assert.match(section('Rollback'), /^Rollback\n\nNot offered\./);
   assert.match(section('Rollback'), /A-06/);
 });

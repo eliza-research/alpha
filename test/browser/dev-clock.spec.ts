@@ -40,9 +40,8 @@ test('a queued alarm deletion disables its controls until the failed write settl
  await page.evaluate(async()=>{const {registerPlugin}=await import('/src/platform-plugins.ts');await registerPlugin<any>('DailyApps').clockHandoff({action:'set',hour:7,minute:0,label:'Queued',reviewed:true});});const d=await open(page);await expect(d.getByText('Queued',{exact:true})).toBeVisible();await page.evaluate(async()=>{let ready!:()=>void;const started=new Promise<void>(r=>ready=r);(window as any).heldAlarm=navigator.locks.request(JSON.stringify(['browser-document','alpha.browser.documents.v1','alpha.browser.reminders.v1']),async()=>{ready();await new Promise<void>(r=>(window as any).releaseAlarm=r);});await started;const set=IDBObjectStore.prototype.put;(window as any).restoreAlarm=()=>IDBObjectStore.prototype.put=set;IDBObjectStore.prototype.put=function(value,key){if(key==='alpha.browser.reminders.v1')throw Error('Full');return set.call(this,value,key);};});await d.getByRole('button',{name:'Delete Queued',exact:true}).click();await expect(d.getByRole('button',{name:'Delete Queued',exact:true})).toBeDisabled();await page.evaluate(async()=>{(window as any).releaseAlarm();await (window as any).heldAlarm;});await expect(d.getByRole('button',{name:'Delete Queued',exact:true})).toBeEnabled();await expect(d.getByRole('status')).toContainText('could not');await page.evaluate(()=>(window as any).restoreAlarm());expect(await page.evaluate(async ()=>JSON.parse((await (await import('/src/browser/reminder-store.ts')).reminderDocument.readRaw())!).reminders[0].status)).toBe('scheduled');
 });
 
-// Formerly scripts/test-clock-rendered.mjs (orphaned; no lane ran it). Mock mode simulates a
-// reviewed Clock request in the rendered dialog and never reaches the Clock handoff. The Android
-// handoffs it also drove (set, snooze, dismiss, Escape) are covered by
+// Mock mode simulates a reviewed Clock request in the rendered dialog and never reaches the Clock
+// handoff. The Android handoffs (set, snooze, dismiss, Escape) are covered by
 // journey-core-loops.production.spec.ts, clock-repeat.production.spec.ts (set and show) and
 // clock-dialog-accessibility.spec.ts.
 test('mock mode simulates a reviewed Clock request without any Clock handoff',async({page})=>{

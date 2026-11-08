@@ -23,3 +23,16 @@ test('Cuttlefish staging admits exactly the reviewed Android 17 source overrides
   assert.deepEqual(reviewedSourceOverrides({physicalSource:{sourceLockSha256}, lockPath}), overrides);
   assert.throws(() => reviewedSourceOverrides({physicalSource:{sourceLockSha256:'0'.repeat(64)}, lockPath}), /source lock changed/);
 });
+
+
+test('image staging admits named SystemUI patches only through the exact Pixel source verifier', async () => {
+  const {stagingSystemuiPatches} = await import('../scripts/stage-aosp.mjs');
+  assert.deepEqual(stagingSystemuiPatches([], false), []);
+  assert.throws(() => stagingSystemuiPatches(['chip'], false), /requires --target pixel10a/);
+  assert.throws(() => stagingSystemuiPatches(['chip', 'chip'], true), /Duplicate/);
+  assert.throws(() => stagingSystemuiPatches(['unknown'], true), /Unknown SystemUI bundle/);
+  const patches = stagingSystemuiPatches(['chip'], true);
+  assert.equal(patches.length, 1);
+  assert.equal(patches[0].name, 'listener-systemui-chip');
+  assert.equal(patches[0].manifest.baselineLockSha256.length, 64);
+});

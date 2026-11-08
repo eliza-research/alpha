@@ -76,7 +76,7 @@ public final class NotesDocumentInstrumentedTest {
  }
  private String selectedExportId;
  private java.util.Map<?,?> selections()throws Exception{
-  java.lang.reflect.Field field=SelectedDocumentAccess.class.getDeclaredField("selected");field.setAccessible(true);synchronized(SelectedDocumentAccess.class){return new HashMap<>((java.util.Map<?,?>)field.get(null));}
+  return new HashMap<>(SelectedDocumentAccess.selections());
  }
  private Uri selectExport(String name,long createdAfter,String text)throws Exception{
   // This is a genuine user-mediated grant; no raw URI is injected or authorized.

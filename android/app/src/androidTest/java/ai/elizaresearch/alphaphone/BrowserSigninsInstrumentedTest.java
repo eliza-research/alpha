@@ -1,4 +1,5 @@
 package ai.elizaresearch.alphaphone;
+import ai.eliza.plugins.browsersurface.BrowserExternalHandoff;
 
 import android.app.Activity;
 import android.content.Intent;
@@ -72,18 +73,18 @@ public final class BrowserSigninsInstrumentedTest {
   assertTrue("Alpha returned to the foreground",mainIn(Stage.RESUMED));
  }
  private int liveTabs()throws Exception{
-  int[] count=new int[1];WebViewTestDriver.withActivity(MainActivity.class,activity->{try{Object plugin=activity.getBridge().getPlugin("AlphaBrowser").getInstance();java.lang.reflect.Field tabs=plugin.getClass().getDeclaredField("tabs");tabs.setAccessible(true);count[0]=((java.util.Map<?,?>)tabs.get(plugin)).size();}catch(Exception failure){throw new AssertionError(failure);}});return count[0];
+  int[] count=new int[1];WebViewTestDriver.withActivity(MainActivity.class,activity->{try{Object plugin=activity.getBridge().getPlugin("AlphaBrowser").getInstance();java.lang.reflect.Field tabs=ai.eliza.plugins.browsersurface.BrowserTabHostPlugin.class.getDeclaredField("tabs");tabs.setAccessible(true);count[0]=((java.util.Map<?,?>)tabs.get(plugin)).size();}catch(Exception failure){throw new AssertionError(failure);}});return count[0];
  }
 
  @Test public void externalLinkIntentsAreImplicitBrowsableAndNeverTargetAlpha() {
   String own=InstrumentationRegistry.getInstrumentation().getTargetContext().getPackageName();
-  Intent mail=BrowserExternalLinks.intentFor("mailto:alpha@example.com",own);
+  Intent mail=BrowserExternalHandoff.intentFor("mailto:alpha@example.com",own,AlphaBrowserStores.HOST_SCHEMES);
   assertEquals(Intent.ACTION_SENDTO,mail.getAction());assertEquals("mailto",mail.getData().getScheme());
-  Intent tel=BrowserExternalLinks.intentFor("tel:+15555550100",own);
+  Intent tel=BrowserExternalHandoff.intentFor("tel:+15555550100",own,AlphaBrowserStores.HOST_SCHEMES);
   assertEquals("A tel link only opens the dialer",Intent.ACTION_DIAL,tel.getAction());
-  Intent market=BrowserExternalLinks.intentFor("market://details?id=com.example.app",own);
+  Intent market=BrowserExternalHandoff.intentFor("market://details?id=com.example.app",own,AlphaBrowserStores.HOST_SCHEMES);
   assertEquals(Intent.ACTION_VIEW,market.getAction());assertTrue(market.hasCategory(Intent.CATEGORY_BROWSABLE));
-  Intent parsed=BrowserExternalLinks.intentFor("intent://scan/#Intent;scheme=zxing;package=com.example.scanner;component=com.example.scanner/.Private;launchFlags=0x10000001;S.secret=value;SEL;action=android.intent.action.MAIN;end",own);
+  Intent parsed=BrowserExternalHandoff.intentFor("intent://scan/#Intent;scheme=zxing;package=com.example.scanner;component=com.example.scanner/.Private;launchFlags=0x10000001;S.secret=value;SEL;action=android.intent.action.MAIN;end",own,AlphaBrowserStores.HOST_SCHEMES);
   assertNotNull(parsed);
   assertNull("Page-chosen component removed",parsed.getComponent());
   assertNull("Page-chosen selector removed",parsed.getSelector());
@@ -91,16 +92,16 @@ public final class BrowserSigninsInstrumentedTest {
   assertNull("Page extras are not forwarded",parsed.getExtras());
   assertTrue(parsed.hasCategory(Intent.CATEGORY_BROWSABLE));
   assertEquals(Intent.ACTION_VIEW,parsed.getAction());assertEquals("zxing",parsed.getData().getScheme());assertEquals("com.example.scanner",parsed.getPackage());
-  assertNull("Alpha's own delegation route is refused",BrowserExternalLinks.intentFor("intent://cloud-delegation#Intent;scheme=alphaphone;end",own));
-  assertNull("Alpha package is refused",BrowserExternalLinks.intentFor("intent://x#Intent;scheme=https;package="+own+";end",own));
-  assertNull("Non-VIEW actions are refused",BrowserExternalLinks.intentFor("intent:#Intent;action=android.intent.action.CALL;S.number=1;end",own));
-  assertNull("File data is refused",BrowserExternalLinks.intentFor("intent:///sdcard/x#Intent;scheme=file;end",own));
-  assertNull("Content data is refused",BrowserExternalLinks.intentFor("intent://media/1#Intent;scheme=content;end",own));
-  assertNull("JavaScript is not an external link",BrowserExternalLinks.intentFor("javascript:alert(1)",own));
-  assertNull("Malformed intent URI is refused",BrowserExternalLinks.intentFor("intent:#Intent;component=;end\n",own));
-  assertEquals("https://example.com/app",BrowserExternalLinks.fallback("intent://x#Intent;scheme=zxing;S.browser_fallback_url=https%3A%2F%2Fexample.com%2Fapp;end"));
-  assertNull("Only HTTPS fallbacks are followed",BrowserExternalLinks.fallback("intent://x#Intent;scheme=zxing;S.browser_fallback_url=javascript%3Aalert(1);end"));
-  assertTrue(BrowserExternalLinks.external("TEL:123"));assertFalse(BrowserExternalLinks.external("https://example.com/"));
+  assertNull("Alpha's own delegation route is refused",BrowserExternalHandoff.intentFor("intent://cloud-delegation#Intent;scheme=alphaphone;end",own,AlphaBrowserStores.HOST_SCHEMES));
+  assertNull("Alpha package is refused",BrowserExternalHandoff.intentFor("intent://x#Intent;scheme=https;package="+own+";end",own,AlphaBrowserStores.HOST_SCHEMES));
+  assertNull("Non-VIEW actions are refused",BrowserExternalHandoff.intentFor("intent:#Intent;action=android.intent.action.CALL;S.number=1;end",own,AlphaBrowserStores.HOST_SCHEMES));
+  assertNull("File data is refused",BrowserExternalHandoff.intentFor("intent:///sdcard/x#Intent;scheme=file;end",own,AlphaBrowserStores.HOST_SCHEMES));
+  assertNull("Content data is refused",BrowserExternalHandoff.intentFor("intent://media/1#Intent;scheme=content;end",own,AlphaBrowserStores.HOST_SCHEMES));
+  assertNull("JavaScript is not an external link",BrowserExternalHandoff.intentFor("javascript:alert(1)",own,AlphaBrowserStores.HOST_SCHEMES));
+  assertNull("Malformed intent URI is refused",BrowserExternalHandoff.intentFor("intent:#Intent;component=;end\n",own,AlphaBrowserStores.HOST_SCHEMES));
+  assertEquals("https://example.com/app",BrowserExternalHandoff.fallback("intent://x#Intent;scheme=zxing;S.browser_fallback_url=https%3A%2F%2Fexample.com%2Fapp;end"));
+  assertNull("Only HTTPS fallbacks are followed",BrowserExternalHandoff.fallback("intent://x#Intent;scheme=zxing;S.browser_fallback_url=javascript%3Aalert(1);end"));
+  assertTrue(BrowserExternalHandoff.external("TEL:123"));assertFalse(BrowserExternalHandoff.external("https://example.com/"));
  }
 
  @Test public void signInSurvivesTabCloseUntilClearBrowsingData()throws Exception{
@@ -123,7 +124,7 @@ public final class BrowserSigninsInstrumentedTest {
    host("[...document.querySelectorAll('dialog.alpha-operation-review button')].find(b=>b.textContent==='Clear data').click()");
    ready("document.body.innerText.includes('Browsing data cleared')");
    assertEquals("Normal tabs closed",0,liveTabs());
-   assertEquals("Saved tabs and history cleared",0,new BrowserSessionStore(InstrumentationRegistry.getInstrumentation().getTargetContext()).read().getJSONArray("history").length());
+   assertEquals("Saved tabs and history cleared",0,AlphaBrowserStores.session(InstrumentationRegistry.getInstrumentation().getTargetContext()).read().getJSONArray("history").length());
    address(url);page(url);
    assertEquals("Site storage cleared","null",browser.child("localStorage.getItem('alpha_signin')"));
    assertEquals("Cookies cleared","false",browser.child("document.cookie.includes('alpha_signin=')"));
@@ -203,7 +204,7 @@ public final class BrowserSigninsInstrumentedTest {
  private java.util.HashSet<String> ephemeralProfiles()throws Exception{
   java.util.HashSet<String> names=new java.util.HashSet<>();
   WebViewTestDriver.withActivity(MainActivity.class,activity->{try{
-   Object plugin=activity.getBridge().getPlugin("AlphaBrowser").getInstance();java.lang.reflect.Field tabs=plugin.getClass().getDeclaredField("tabs");tabs.setAccessible(true);
+   Object plugin=activity.getBridge().getPlugin("AlphaBrowser").getInstance();java.lang.reflect.Field tabs=ai.eliza.plugins.browsersurface.BrowserTabHostPlugin.class.getDeclaredField("tabs");tabs.setAccessible(true);
    for(Object tab:((java.util.Map<?,?>)tabs.get(plugin)).values()){java.lang.reflect.Field profile=tab.getClass().getDeclaredField("profile");profile.setAccessible(true);String name=(String)profile.get(tab);if(AlphaBrowserPlugin.ephemeralProfile(name))names.add(name);}
   }catch(Exception failure){throw new AssertionError(failure);}});
   return names;
@@ -226,7 +227,7 @@ public final class BrowserSigninsInstrumentedTest {
      browser.child("localStorage.removeItem('alpha_signin_restart');document.cookie='alpha_signin_restart=; Secure; SameSite=Lax; Path=/; Max-Age=0';true");
     }
    }
-   new BrowserSessionStore(context).clear();assertTrue(fixture.edit().clear().commit());return;
+   AlphaBrowserStores.session(context).clear();assertTrue(fixture.edit().clear().commit());return;
   }
   if("prepare".equals(phase)){
    assertFalse("Clean previous owned fixture first",fixture.contains("token"));

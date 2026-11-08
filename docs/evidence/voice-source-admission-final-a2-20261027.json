@@ -1,0 +1,360 @@
+{
+  "schemaVersion": 1,
+  "scope": "Final source/consumer-change admission only, not packaged native or device qualification",
+  "priorAdmittedSDK": "8cc623855ce49cab68f9ed321b206abcad4d5c0b",
+  "currentAdmittedSDK": "a2e66801f4828c290e9f45849cb40ff6bfd1adc9",
+  "unchangedEngineInputComparisons": [
+    {
+      "path": "plugins/plugin-local-inference/native/llama.cpp",
+      "mode": "160000",
+      "type": "commit",
+      "priorObject": "0d9fd4b9db239bbf851068f98c99f4263f8c05c5",
+      "currentObject": "0d9fd4b9db239bbf851068f98c99f4263f8c05c5"
+    },
+    {
+      "path": "plugins/plugin-local-inference/native/android/inputs.json",
+      "mode": "100644",
+      "type": "blob",
+      "priorObject": "8e303364ecffd4056b494d5dde808f5887eca120",
+      "currentObject": "8e303364ecffd4056b494d5dde808f5887eca120"
+    },
+    {
+      "path": "packages/app/scripts/paradee-voice",
+      "mode": "040000",
+      "type": "tree",
+      "priorObject": "e18c150daf71c321ba287e0c6e5484e487367fd9",
+      "currentObject": "e18c150daf71c321ba287e0c6e5484e487367fd9"
+    },
+    {
+      "path": "packages/app/scripts/stage-elizavoice-lib.ts",
+      "mode": "100644",
+      "type": "blob",
+      "priorObject": "2ff1adb9ed9a394759562c2ff6a1f7e4b0d75f3c",
+      "currentObject": "2ff1adb9ed9a394759562c2ff6a1f7e4b0d75f3c"
+    },
+    {
+      "path": "packages/app/platforms/android/app/src/main/elizavoice-jni",
+      "mode": "040000",
+      "type": "tree",
+      "priorObject": "1016d67d05ce8f4c7bc10412372cc71d7ad48aee",
+      "currentObject": "1016d67d05ce8f4c7bc10412372cc71d7ad48aee"
+    },
+    {
+      "path": "packages/app/platforms/android/app/src/main/java/ai/elizaos/app/ElizaVoiceNative.java",
+      "mode": "100644",
+      "type": "blob",
+      "priorObject": "1cd241c5710fc302e75aec8993eefee0a709ab9c",
+      "currentObject": "1cd241c5710fc302e75aec8993eefee0a709ab9c"
+    },
+    {
+      "path": "packages/app/scripts/lib/android-bun-artifacts.lock.json",
+      "mode": "100644",
+      "type": "blob",
+      "priorObject": "83c8e91becc3a2c46902cc168fdc9b88fc038e5d",
+      "currentObject": "83c8e91becc3a2c46902cc168fdc9b88fc038e5d"
+    }
+  ],
+  "changedBroadNativeTrees": [
+    {
+      "path": "plugins/plugin-local-inference/native",
+      "priorObject": "5fd29ab443616f86840e3b9f6e9cb1ad052eb436",
+      "currentObject": "a403e3519315fd99bb811c88f07673d8f7616f85"
+    },
+    {
+      "path": "plugins/plugin-native-system",
+      "priorObject": "02723fead7149f47737465e2bad827a53edb7af9",
+      "currentObject": "38e83aab31a0547229880d1ed4b964f00c89c45f"
+    }
+  ],
+  "allChangedSDKSourcePaths": [
+    {
+      "path": "packages/agent/test/trigger-schedule-persistence.test.ts",
+      "priorObject": "d08388947e07bfe252c2e7579ff70e429bafc418",
+      "currentObject": "e3e62328aa0fb1af101035fdd4ce600d269336d2"
+    },
+    {
+      "path": "packages/app/README.md",
+      "priorObject": "1bfe5e6854e11599ee222ad63ffd576016a1256d",
+      "currentObject": "8e9cf634701ffacd3425dc8baa7da9cb4cdbf08a"
+    },
+    {
+      "path": "packages/app/platforms/android/app/build.gradle",
+      "priorObject": "dff1c845fe1105cb5b31d10c07a1d7823b9cac8f",
+      "currentObject": "b95bd6a14b165b8eb39af43f5a9b4d42a7b109dd"
+    },
+    {
+      "path": "packages/app/platforms/android/app/src/main/AndroidManifest.xml",
+      "priorObject": "1605b4e4a93f63c372869c42fc4e8a8ba1eda744",
+      "currentObject": "3b7d343d4757f3fbb06c91bb0d31aab584f7a284"
+    },
+    {
+      "path": "packages/app/platforms/android/app/src/main/java/ai/elizaos/app/ElizaAgentService.java",
+      "priorObject": "b56e9c2f9bbb911adcbe3b3fb1413b688e6cd2f6",
+      "currentObject": "3f381e979cfffe29d07ef2471e0dea69b9d20490"
+    },
+    {
+      "path": "packages/app/platforms/android/runtime-abis.gradle",
+      "priorObject": null,
+      "currentObject": "86fe0b2a3da5191bb72d1e6e84ee58bb1131d873"
+    },
+    {
+      "path": "packages/app/platforms/android/settings.gradle",
+      "priorObject": "c8e9666fb704342790c6a057181ca960234847f0",
+      "currentObject": "45a737b1e74186297e217cb2a6e2c14c6ca934ce"
+    },
+    {
+      "path": "packages/app/platforms/android/voice-assets/build.gradle",
+      "priorObject": null,
+      "currentObject": "37ab41ec38b9d28b2435c57a4f671f653bb80f60"
+    },
+    {
+      "path": "packages/app/scripts/mobile/android/gradle-patches.ts",
+      "priorObject": "b428bc67db727c8e383d52bf330b8a6eda43ed57",
+      "currentObject": "2d45a94cfdfadfc945018a3a9c1e84fdf128ff1c"
+    },
+    {
+      "path": "packages/app/scripts/mobile/artifact-inspection/android-audit.ts",
+      "priorObject": "d4150619233edc77fbb039b3f6e06afb50ae86eb",
+      "currentObject": "17855d8f2c82bf33274abeccdc9afbdb7e3be028"
+    },
+    {
+      "path": "packages/app/scripts/run-mobile-build-android-app-actions.test.ts",
+      "priorObject": "c309090a5520c1a09ddebb0fb3e2a99c72a0ed09",
+      "currentObject": "ad574f25d2db215785e14d23c5398f31e783bcff"
+    },
+    {
+      "path": "packages/app/src/api/first-run-routes.cloud-key.test.ts",
+      "priorObject": "563ca9ea1c5242159c9b10ceda05a8a89d330399",
+      "currentObject": "3bd5c89daa83aa4e1bc8d818b8dbd423048cb7a0"
+    },
+    {
+      "path": "packages/app/src/api/first-run-routes.ts",
+      "priorObject": "5aac083ccd7721a5fdf0db2e052f89b375e0b522",
+      "currentObject": "6fdcc8f61fed8b577c565ff3539112c3b2a85fdc"
+    },
+    {
+      "path": "packages/testing/e2e/notes-calendar-runtime.e2e.test.ts",
+      "priorObject": "ac03ed958ab00099c35b8f4c87a7010ad21d98ca",
+      "currentObject": "49cc2ef7f9c664a98a5fc365c907ceb1125598a1"
+    },
+    {
+      "path": "plugins/plugin-assistant/src/runtime/planner-long-trajectory.test.ts",
+      "priorObject": "b9a50e12f4fb53337e35571674f0588c0b187fb4",
+      "currentObject": "ad050d6042a4d641eb0920b3e417054d3c0a8b3a"
+    },
+    {
+      "path": "plugins/plugin-assistant/src/services/message/background-history.test.ts",
+      "priorObject": "0fcaeedc514633d909fbeca5fb2c153566b24bff",
+      "currentObject": "d0cd082c176bf7123500a803ba9460a3c9f23697"
+    },
+    {
+      "path": "plugins/plugin-assistant/src/services/message/egress-policy.ts",
+      "priorObject": "ccd6f86da090bbfeabe0db46b49f70028e7be669",
+      "currentObject": "100f47ea556641c2a782a2b675fe03259422e620"
+    },
+    {
+      "path": "plugins/plugin-calendar/src/actions/create-event-authority.ts",
+      "priorObject": "46c92573cb53041bc001a406d7220d0b8e48f103",
+      "currentObject": "c360cbe164fc07ba07a72083ae1288d56edc3b5a"
+    },
+    {
+      "path": "plugins/plugin-local-inference/native/android/README.md",
+      "priorObject": "25d40debff30cc4bb5e255b3c2d6be6781fbe5e2",
+      "currentObject": "345d97da14762b21698b4f555d3729981e02d6c1"
+    },
+    {
+      "path": "plugins/plugin-local-inference/native/android/consumer.gradle",
+      "priorObject": "c8542f3d0131c5ba4695bcffbd53a93c2919accd",
+      "currentObject": "54c1ed5fdc416fa6da02bccf05221465ab9e7c7e"
+    },
+    {
+      "path": "plugins/plugin-local-inference/native/android/src/main/java/ai/eliza/voice/VoiceAssets.java",
+      "priorObject": "551bb32bf240e9a5fd8c3845225c8cabc41f9efe",
+      "currentObject": "cbfcd2d5ccba3b87da8645b192ac589617abb1ea"
+    },
+    {
+      "path": "plugins/plugin-local-inference/native/android/src/main/java/ai/eliza/voice/VoiceBundleAssets.java",
+      "priorObject": null,
+      "currentObject": "85ba123fb0276a59799db016728c1cf7ffc66d20"
+    },
+    {
+      "path": "plugins/plugin-local-inference/native/android/test/assets/VoiceBundleAssetsTest.java",
+      "priorObject": null,
+      "currentObject": "77f6363553803b091d277c4b1c113fc86a0a19f5"
+    },
+    {
+      "path": "plugins/plugin-local-inference/native/android/test/voice-assets.node.mjs",
+      "priorObject": null,
+      "currentObject": "2faba7fd77cd751941e7f9f7bb9015949e8dc203"
+    },
+    {
+      "path": "plugins/plugin-local-inference/package.json",
+      "priorObject": "5fa930c6ee8c646be27272b872fe19e57cae2884",
+      "currentObject": "b33d3949abb4ba8a568abc7f231ed2865b3b6087"
+    },
+    {
+      "path": "plugins/plugin-native-system/README.md",
+      "priorObject": "8fe5dec3eeb444b3abaaa721e58c23251c41f337",
+      "currentObject": "7acaf6bf67d638ea889e981d4576ced3f93c91a9"
+    },
+    {
+      "path": "plugins/plugin-native-system/android/src/main/java/ai/eliza/plugins/system/SenseInvocation.java",
+      "priorObject": "c5ebe83caed91a188fd7d825ae220040862a4129",
+      "currentObject": "8b2063e3581d44e267f5d955f70db0e7baa22c6c"
+    },
+    {
+      "path": "plugins/plugin-native-system/android/src/main/java/ai/eliza/plugins/system/SenseListenerClient.java",
+      "priorObject": "ac04e9e6ad9bef464c551f7ab4d3e2ca8774902a",
+      "currentObject": "22b77f3b428a30eddba93b309f07f23de97b261a"
+    },
+    {
+      "path": "plugins/plugin-native-system/android/src/main/java/ai/eliza/plugins/system/SensePlugin.java",
+      "priorObject": "8f197c26eb43eb267444df0624f626064ca70e22",
+      "currentObject": "4383fcfc2a35c7e0fc3b4790a32de5ba0d59a286"
+    },
+    {
+      "path": "plugins/plugin-native-system/src/sense.ts",
+      "priorObject": "f0756ce52842f02df1653d5ecd26e5356d60d658",
+      "currentObject": "92adbf02fc1c8cf908dd616bb3e37705c5e1f99e"
+    },
+    {
+      "path": "plugins/plugin-native-system/test/SenseInvocationTest.java",
+      "priorObject": "880b9a94e12a6a01e506ae5987a7b3fa9bcc8d13",
+      "currentObject": "78127eadaf51ffa1d749589061448efd4030c8dc"
+    },
+    {
+      "path": "plugins/plugin-native-system/test/sense-client-stubs.json",
+      "priorObject": "f3eea6550532df907af47481b76db7b9df4d0e87",
+      "currentObject": "4fc97148b250706d325bb31d25754bb614178fb0"
+    },
+    {
+      "path": "plugins/plugin-native-system/test/sense.test.mjs",
+      "priorObject": "a3aa55b89338a53d1ea66c38470a7c7b9c311cb6",
+      "currentObject": "728a276cb90e4c4f176335a48eb8d98a65c17c3c"
+    }
+  ],
+  "changedConsumerInputs": [
+    {
+      "path": "packages/app/platforms/android/app/build.gradle",
+      "priorObject": "dff1c845fe1105cb5b31d10c07a1d7823b9cac8f",
+      "currentObject": "b95bd6a14b165b8eb39af43f5a9b4d42a7b109dd"
+    },
+    {
+      "path": "packages/app/platforms/android/app/src/main/AndroidManifest.xml",
+      "priorObject": "1605b4e4a93f63c372869c42fc4e8a8ba1eda744",
+      "currentObject": "3b7d343d4757f3fbb06c91bb0d31aab584f7a284"
+    },
+    {
+      "path": "packages/app/platforms/android/app/src/main/java/ai/elizaos/app/ElizaAgentService.java",
+      "priorObject": "b56e9c2f9bbb911adcbe3b3fb1413b688e6cd2f6",
+      "currentObject": "3f381e979cfffe29d07ef2471e0dea69b9d20490"
+    },
+    {
+      "path": "packages/app/platforms/android/runtime-abis.gradle",
+      "priorObject": null,
+      "currentObject": "86fe0b2a3da5191bb72d1e6e84ee58bb1131d873"
+    },
+    {
+      "path": "packages/app/platforms/android/settings.gradle",
+      "priorObject": "c8e9666fb704342790c6a057181ca960234847f0",
+      "currentObject": "45a737b1e74186297e217cb2a6e2c14c6ca934ce"
+    },
+    {
+      "path": "packages/app/platforms/android/voice-assets/build.gradle",
+      "priorObject": null,
+      "currentObject": "37ab41ec38b9d28b2435c57a4f671f653bb80f60"
+    },
+    {
+      "path": "packages/app/scripts/mobile/android/gradle-patches.ts",
+      "priorObject": "b428bc67db727c8e383d52bf330b8a6eda43ed57",
+      "currentObject": "2d45a94cfdfadfc945018a3a9c1e84fdf128ff1c"
+    },
+    {
+      "path": "packages/app/scripts/mobile/artifact-inspection/android-audit.ts",
+      "priorObject": "d4150619233edc77fbb039b3f6e06afb50ae86eb",
+      "currentObject": "17855d8f2c82bf33274abeccdc9afbdb7e3be028"
+    },
+    {
+      "path": "plugins/plugin-local-inference/native/android/README.md",
+      "priorObject": "25d40debff30cc4bb5e255b3c2d6be6781fbe5e2",
+      "currentObject": "345d97da14762b21698b4f555d3729981e02d6c1"
+    },
+    {
+      "path": "plugins/plugin-local-inference/native/android/consumer.gradle",
+      "priorObject": "c8542f3d0131c5ba4695bcffbd53a93c2919accd",
+      "currentObject": "54c1ed5fdc416fa6da02bccf05221465ab9e7c7e"
+    },
+    {
+      "path": "plugins/plugin-local-inference/native/android/src/main/java/ai/eliza/voice/VoiceAssets.java",
+      "priorObject": "551bb32bf240e9a5fd8c3845225c8cabc41f9efe",
+      "currentObject": "cbfcd2d5ccba3b87da8645b192ac589617abb1ea"
+    },
+    {
+      "path": "plugins/plugin-local-inference/native/android/src/main/java/ai/eliza/voice/VoiceBundleAssets.java",
+      "priorObject": null,
+      "currentObject": "85ba123fb0276a59799db016728c1cf7ffc66d20"
+    },
+    {
+      "path": "plugins/plugin-local-inference/native/android/test/assets/VoiceBundleAssetsTest.java",
+      "priorObject": null,
+      "currentObject": "77f6363553803b091d277c4b1c113fc86a0a19f5"
+    },
+    {
+      "path": "plugins/plugin-local-inference/native/android/test/voice-assets.node.mjs",
+      "priorObject": null,
+      "currentObject": "2faba7fd77cd751941e7f9f7bb9015949e8dc203"
+    },
+    {
+      "path": "plugins/plugin-native-system/README.md",
+      "priorObject": "8fe5dec3eeb444b3abaaa721e58c23251c41f337",
+      "currentObject": "7acaf6bf67d638ea889e981d4576ced3f93c91a9"
+    },
+    {
+      "path": "plugins/plugin-native-system/android/src/main/java/ai/eliza/plugins/system/SenseInvocation.java",
+      "priorObject": "c5ebe83caed91a188fd7d825ae220040862a4129",
+      "currentObject": "8b2063e3581d44e267f5d955f70db0e7baa22c6c"
+    },
+    {
+      "path": "plugins/plugin-native-system/android/src/main/java/ai/eliza/plugins/system/SenseListenerClient.java",
+      "priorObject": "ac04e9e6ad9bef464c551f7ab4d3e2ca8774902a",
+      "currentObject": "22b77f3b428a30eddba93b309f07f23de97b261a"
+    },
+    {
+      "path": "plugins/plugin-native-system/android/src/main/java/ai/eliza/plugins/system/SensePlugin.java",
+      "priorObject": "8f197c26eb43eb267444df0624f626064ca70e22",
+      "currentObject": "4383fcfc2a35c7e0fc3b4790a32de5ba0d59a286"
+    },
+    {
+      "path": "plugins/plugin-native-system/src/sense.ts",
+      "priorObject": "f0756ce52842f02df1653d5ecd26e5356d60d658",
+      "currentObject": "92adbf02fc1c8cf908dd616bb3e37705c5e1f99e"
+    },
+    {
+      "path": "plugins/plugin-native-system/test/SenseInvocationTest.java",
+      "priorObject": "880b9a94e12a6a01e506ae5987a7b3fa9bcc8d13",
+      "currentObject": "78127eadaf51ffa1d749589061448efd4030c8dc"
+    },
+    {
+      "path": "plugins/plugin-native-system/test/sense-client-stubs.json",
+      "priorObject": "f3eea6550532df907af47481b76db7b9df4d0e87",
+      "currentObject": "4fc97148b250706d325bb31d25754bb614178fb0"
+    },
+    {
+      "path": "plugins/plugin-native-system/test/sense.test.mjs",
+      "priorObject": "a3aa55b89338a53d1ea66c38470a7c7b9c311cb6",
+      "currentObject": "728a276cb90e4c4f176335a48eb8d98a65c17c3c"
+    }
+  ],
+  "priorEvidenceSHA256": {
+    "docs/evidence/voice-source-admission-41d99-20261027.json": "aea99515a5b29b58d9b868640fdbad6a5e6575a744670b95e10ed6cc655b3f52",
+    "docs/evidence/voice-source-admission-18cc0-20261027.json": "a7cc86f21550b04aba8f526ddc8fb192540225c976dd408d6937d0cd552ae37a",
+    "docs/evidence/voice-source-admission-f983d-20261027.json": "73f51db714ccf56401e1293628c2b29276a1a863c395c4d6b33998325598e3a8",
+    "docs/evidence/voice-source-admission-8cc62-20261027.json": "2f59c6a8ba8a74c3958850e4889a0bb6f88a3881ba081a6df964f0a84d59ff60"
+  },
+  "historicalPublicConsumerComparison": "Exact c8f5212e/5c source comparison retained in sourceAdmission.consumerSourceComparisonHistory",
+  "qualified": false,
+  "nativeQualificationTransferred": false,
+  "binaryModelABIHistoryUnchanged": true,
+  "guardChanges": false,
+  "needsCurrentConsumerAPKAndPairedImageQualification": true
+}

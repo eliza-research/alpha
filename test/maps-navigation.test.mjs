@@ -10,7 +10,7 @@ test('upstream plugin-maps navigation tests pass on the pinned source', () => {
   const directory = path.join(root, 'plugins/plugin-maps/test');
   const tests = ['navigation-client.test.mjs'].map(name => path.join(directory, name));
   for (const file of tests) assert.ok(fs.existsSync(file), file);
-  execFileSync(process.execPath, ['--import=tsx', '--test', ...tests], { stdio: 'pipe', timeout: 60_000 });
+  execFileSync(process.execPath, ['--experimental-transform-types', '--test', ...tests], { stdio: 'pipe', timeout: 60_000 });
 });
 
 test('guidance presents the next maneuver, the following step and the remaining trip', async () => {
@@ -29,11 +29,6 @@ test('guidance presents the next maneuver, the following step and the remaining 
   assert.equal(view.thenIcon, MANEUVER_ICONS.right);
   assert.equal(view.remainingTime, '3 min');
   assert.match(view.remaining, /^900 m · arrive .+ · no live traffic$/);
-  // A route planned with live traffic says so; the shown arrival is never presented as more than it is.
-  const live = guidanceView({ offRouteMeters: 2, alongMeters: 100, remainingMeters: 900, remainingSeconds: 150, stepIndex: 0,
-    next: { index: 1, step: step('Turn left onto Rue A', 'left'), distanceMeters: 120 } }, new Date(2026, 9, 8, 12, 0), 'live');
-  assert.match(live.remaining, /^900 m · arrive .+ · live traffic$/);
-  assert.doesNotMatch(live.remaining, /no live traffic/);
   assert.equal(view.spoken, 'Turn left onto Rue A');
   const near = guidanceView({ offRouteMeters: 1, alongMeters: 0, remainingMeters: 10, remainingSeconds: 5, stepIndex: 0, next: { index: 1, step: step('Arrive at destination', 'arrive'), distanceMeters: 10 } });
   assert.equal(near.spoken, 'Arrive at destination');
@@ -145,5 +140,23 @@ test('a failed update from an old route cannot retire its replacement', async ()
  await new Promise(resolve => setImmediate(resolve));
  assert.equal(session.active(), true);
  assert.deepEqual(heard, []);
+ await session.stop();
+});
+
+test('an instruction that changes while native navigation is starting is sent once it has started', async () => {
+ const { BackgroundNavigation } = await import('../apps/app/src/maps/background-navigation.ts');
+ const native = bridge(), heard = [], session = new BackgroundNavigation(native, () => true);
+ let started = false, release;
+ native.startNavigation = input => new Promise(resolve => { release = () => { started = true; native.calls.push(['start', input.sessionId]); resolve(); }; });
+ native.updateNavigation = async input => { native.calls.push(['update', input.title]); return { active: started }; };
+ const running = session.start('Route', 'Waiting for location', reason => heard.push(reason));
+ while (!release) await new Promise(resolve => setImmediate(resolve));
+ session.update('Turn left', 'In 40 m');
+ release();
+ assert.equal(await running, true);
+ await new Promise(resolve => setImmediate(resolve));
+ assert.equal(session.active(), true);
+ assert.deepEqual(heard, []);
+ assert.deepEqual(native.calls.filter(([kind]) => kind === 'update'), [['update', 'Turn left']]);
  await session.stop();
 });

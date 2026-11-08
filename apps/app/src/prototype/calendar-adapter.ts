@@ -1,3 +1,4 @@
+import {presentCalendarIntervals} from './calendar-interval-presentation';
 import {refreshDeletionViews} from '../runtime/deletions';
 import {openReminderRecovery,openReminderCreationRecovery,openReminderActionRecovery} from '../browser/reminder-recovery';
 import {openCalendarRecovery} from '../browser/calendar-recovery';
@@ -5,21 +6,14 @@ import { registerPlugin } from '../platform-plugins';
 import { Capacitor } from '@capacitor/core';
 import { DailyApps } from '../daily';
 import {calendarFormTimeProblem} from '../runtime/calendar-form-draft';
-import {calendarAgenda,calendarAgendaRows,calendarDayColumns,calendarDayCount,calendarDayLabel,calendarLoadRange,calendarReturnDay,calendarView,calendarViewDays} from './calendar-days';
+import {calendarAgenda,calendarAgendaRows,calendarDayColumns,calendarDayCount,calendarDayLabel,calendarReturnDay,visibleCalendarDays} from './calendar-days';
 import {mapsEventOriginFor} from '../runtime/maps-event-return';
 import {rememberNoteOrigin,forgetNoteOrigin,noteOriginSupported,eventNoteOriginId} from './note-origin-adapter';
+import {reminderWallTime} from '../runtime/reminder-creations';
 type Bag = Record<string, any>;
 const calendar = registerPlugin<any>('AlphaCalendar');
 const DAY=86400000;
 const civilDay=(date:Date,utc=false)=>Date.UTC(utc?date.getUTCFullYear():date.getFullYear(),utc?date.getUTCMonth():date.getMonth(),utc?date.getUTCDate():date.getDate());
-/** Date setters normalize missing DST wall times; reject that normalization. */
-function wallTime(off:number,hours:number):Date|null {
-  if(!Number.isSafeInteger(off)||!Number.isFinite(hours))return null;
-  const minutes=Math.round(hours*60),today=new Date();
-  const target=new Date(Date.UTC(today.getFullYear(),today.getMonth(),today.getDate()+off,0,minutes));
-  const date=new Date(target.getUTCFullYear(),target.getUTCMonth(),target.getUTCDate(),target.getUTCHours(),target.getUTCMinutes());
-  return date.getFullYear()===target.getUTCFullYear()&&date.getMonth()===target.getUTCMonth()&&date.getDate()===target.getUTCDate()&&date.getHours()===target.getUTCHours()&&date.getMinutes()===target.getUTCMinutes()?date:null;
-}
 
 /** Instant of a civil wall time in an IANA zone; undefined when it does not exist or occurs twice. */
 export function zonedInstant(date:{year:number;month:number;day:number},minutes:number,zone:string):number|undefined{
@@ -57,18 +51,17 @@ export function calendarOptionEvent(form:Bag,deviceZone:string,now=new Date()):{
 }
 
 /** Android CalendarProvider data in the original calendar presentation. */
-export function installCalendarAdapter(Component: any, views: Bag) {
+export function installCalendarAdapter(Component: any, views: Bag, options:{active?:(shell:any)=>boolean}={}) {
+  const active=(shell:any)=>options.active?.(shell)??true;
   const p=Component.prototype, mount=p.componentDidMount, unmount=p.componentWillUnmount;
   const render=views.calendar.render;
   let owner:any, calendars:Bag[]=[], status='Not connected', loading=false, generation=0, loadFailed=false;
   let creationPending:Bag[]|null=null,creationRecoveryFailed=false,creationDraftEpoch=0,creationReadEpoch=0;
-  async function readCreations(){const token=++creationReadEpoch,readingOwner=owner,draftEpoch=creationDraftEpoch;const value=await calendar.pendingCreations();if(value.status!=='ready'||!Array.isArray(value.creations))throw Error('Calendar creation recovery unavailable');if(owner===readingOwner&&draftEpoch===creationDraftEpoch&&token===creationReadEpoch){creationPending=value.creations;creationRecoveryFailed=false;}return value.creations as Bag[];}
+  async function readCreations(){if(!owner||!active(owner))return [];const token=++creationReadEpoch,readingOwner=owner,draftEpoch=creationDraftEpoch;const value=await calendar.pendingCreations();if(value.status!=='ready'||!Array.isArray(value.creations))throw Error('Calendar creation recovery unavailable');if(owner===readingOwner&&draftEpoch===creationDraftEpoch&&token===creationReadEpoch){creationPending=value.creations;creationRecoveryFailed=false;}return value.creations as Bag[];}
   let agentSelection:Bag|undefined,agentSelectionKey='',agentSelectionEpoch=0;
-  p.calendarSelection=function(){const state=this.vget('calendar');if(agentSelection?.kind==='calendar-source')return state.form?.cal===agentSelection.formCal?{kind:'calendar-source',id:agentSelection.id,revision:agentSelection.revision,accountId:agentSelection.id,sourceRevision:agentSelection.revision}:undefined;return agentSelection&&state.open===agentSelection.open?{kind:'calendar-event',id:agentSelection.id,revision:agentSelection.revision,accountId:agentSelection.accountId,sourceRevision:agentSelection.sourceRevision}:undefined;};
+  p.calendarSelection=function(){if(!active(this))return;const state=this.vget('calendar');if(agentSelection?.kind==='calendar-source')return state.form?.cal===agentSelection.formCal?{kind:'calendar-source',id:agentSelection.id,revision:agentSelection.revision,accountId:agentSelection.id,sourceRevision:agentSelection.revision}:undefined;return agentSelection&&state.open===agentSelection.open?{kind:'calendar-event',id:agentSelection.id,revision:agentSelection.revision,accountId:agentSelection.accountId,sourceRevision:agentSelection.sourceRevision}:undefined;};
   type Range={begin:number;end:number;key:string};
-  // The shown month and its neighbours; Search widens it (calendar-days.ts).
-  const rangeFor=(state:Bag):Range=>calendarLoadRange(state);
-  const rangeCovers=(key:string,range:Range)=>{if(!key)return false;const [begin,end]=key.split(':').map(Number),[wantBegin,wantEnd]=range.key.split(':').map(Number);return begin<=wantBegin&&end>=wantEnd;};
+  const rangeFor=(state:Bag):Range=>{const today=new Date(),date=new Date(today.getFullYear(),today.getMonth(),today.getDate()+Number(state.day||0));date.setDate(1);if(state.month!=null)date.setMonth(date.getMonth()+Number(state.month||0));const begin=new Date(date.getFullYear(),date.getMonth()-1,1).getTime(),end=new Date(date.getFullYear(),date.getMonth()+2,1).getTime();return {begin:Math.max(0,begin),end,key:`${begin}:${end}`};};
   let desired:Range|undefined,loadedKey='',attemptedKey='',scheduled=false,runningToken=0,truncated=false;
   const schedule=()=>{if(scheduled)return;scheduled=true;queueMicrotask(()=>{scheduled=false;if(owner&&!loading&&desired?.key!==attemptedKey)void refresh();});};
   const mapEvent=(event:Bag)=>{
@@ -82,7 +75,7 @@ export function installCalendarAdapter(Component: any, views: Bag) {
       cal:'personal',who:event.who||[],video:event.video?'Local meeting room':false,repeat:'none',alert:event.alert??null,allDay};
   };
   async function refresh(request=false, force=false) {
-    if(!owner || (loading&&!force))return;
+    if(!owner||!active(owner)||(loading&&!force))return;
     if (Capacitor.getPlatform() === 'web' && !Capacitor.isPluginAvailable('AlphaCalendar')) {
       desired=rangeFor(owner.vget('calendar'));attemptedKey=desired.key;
       status='Device calendars are available in the Android app.';
@@ -93,13 +86,13 @@ export function installCalendarAdapter(Component: any, views: Bag) {
     let readAt:number|null=null;
     const currentOwner=owner,range=desired||rangeFor(owner.vget('calendar')), token=++generation;desired=range;attemptedKey=range.key;runningToken=token;loading=true;loadFailed=false;status='Loading calendars…';currentOwner.vset('calendar',{nativeCalendarStatus:status});
     try {
-      if(request) {const permission=await calendar.requestAccess();if(owner!==currentOwner||token!==generation)return;if(permission.status!=='granted'){loadedKey='';status='Calendar access denied';calendars=[];currentOwner.nativeCalendarRows=[];await currentOwner.refreshReminders();return;}}
+      if(request) {const permission=await calendar.requestAccess();if(owner!==currentOwner||token!==generation||!active(currentOwner))return;if(permission.status!=='granted'){loadedKey='';status='Calendar access denied';calendars=[];currentOwner.nativeCalendarRows=[];await currentOwner.refreshReminders();return;}}
       const result=await calendar.list({begin:range.begin,end:range.end});
-      if(owner!==currentOwner||token!==generation)return;
+      if(owner!==currentOwner||token!==generation||!active(currentOwner))return;
       if(result.status==='ready')readAt=Date.now();
       if(result.status!=='ready'){loadedKey='';status='Connect device calendars';calendars=[];currentOwner.nativeCalendarRows=[];await currentOwner.refreshReminders();return;}
       try{await readCreations();}catch{if(owner===currentOwner&&token===generation){creationPending=null;creationRecoveryFailed=true;}}
-      if(owner!==currentOwner||token!==generation)return;
+      if(owner!==currentOwner||token!==generation||!active(currentOwner))return;
       loadedKey=range.key;truncated=!!result.truncated;calendars=result.calendars;status=result.truncated?'Calendar range limited to 2,000 events':Capacitor.isNativePlatform()?(calendars.length?'Device calendar access allowed':'No device calendars found'):'Local calendar ready';
       currentOwner.nativeCalendarRows=result.events.map(mapEvent);
       await currentOwner.refreshReminders();
@@ -111,7 +104,7 @@ export function installCalendarAdapter(Component: any, views: Bag) {
   // controls never create native agent read grants or change source identities.
   views.calendar.displaySources=()=>{
     const currentOwner=owner,native=Capacitor.isNativePlatform();
-    const current=()=>owner===currentOwner&&!!currentOwner?.live&&!document.hidden;
+    const current=()=>owner===currentOwner&&!!currentOwner?.live&&active(currentOwner)&&!document.hidden;
     return {native,loading,status,error:loadFailed,ready:!!loadedKey&&loadedKey===desired?.key&&!loadFailed&&!loading,truncated,
       connect:()=>{if(current()&&!loading)void refresh(true);},
       // Reads the current range again after a failed read. It requests no new access.
@@ -123,130 +116,53 @@ export function installCalendarAdapter(Component: any, views: Bag) {
   let navigationEpoch=0;
   const openCalendarEvent=(event:Event)=>{
     const request=(event as CustomEvent).detail,currentOwner=owner,epoch=++navigationEpoch;
-    if(!currentOwner||typeof request?.id!=='string'||!Number.isFinite(request.begin)||typeof request.complete!=='function')return;
+    if(!currentOwner||!active(currentOwner)||typeof request?.id!=='string'||!Number.isFinite(request.begin)||typeof request.complete!=='function')return;
     event.preventDefault();
     void (async()=>{let opened=false;try{
       const day=(civilDay(new Date(request.begin),request.allDay)-civilDay(new Date()))/DAY;
-      currentOwner.vset('calendar',{day,month:null,open:null,openDay:null,form:null});desired=rangeFor({day});
+      // Cover the day list until the event opens, so a deep link never flashes the full calendar.
+      currentOwner.vset('calendar',{day,month:null,open:null,openDay:null,form:null,deepOpening:request.id});desired=rangeFor({day});
       await refresh(false,true);
       if(owner!==currentOwner||epoch!==navigationEpoch||document.hidden||currentOwner.S().view!=='calendar'||currentOwner.vget('calendar').day!==day)return;
       const row=currentOwner.nativeCalendarRows?.find((row:Bag)=>row.alphaCalendarId===request.id);
       if(!row)return;
-      currentOwner.vset('calendar',{open:row.id,openDay:day});opened=true;
-    }finally{request.complete(opened);}})();
+      currentOwner.vset('calendar',{open:row.id,openDay:day,deepOpening:null,deepOpened:row.id});opened=true;
+    }finally{if(!opened&&owner===currentOwner&&epoch===navigationEpoch)currentOwner.vset('calendar',{deepOpening:null});request.complete(opened);}})();
   };
-  const calendarCommitted=()=>{if(owner){owner.vset('calendar',{open:null,openDay:null});void refresh(false,true);}};
+  const calendarCommitted=()=>{if(owner&&active(owner)){owner.vset('calendar',{open:null,openDay:null});void refresh(false,true);}};
   p.refreshAgentCalendar=function(){return refresh(false,true);};
   p.componentDidMount=function(){mount.call(this);owner=this;void refresh();window.addEventListener('alpha:calendar-committed',calendarCommitted);this.calendarPreferenceChanged=(event:Event)=>{if(event.type==='storage'){const e=event as StorageEvent;if(e.key!=='alpha.browser.calendar.v1')return;try{if(JSON.stringify(JSON.parse(e.oldValue||'{}').preferences)===JSON.stringify(JSON.parse(e.newValue||'{}').preferences))return;}catch{return;}}void refresh(false,true);};window.addEventListener('alpha:calendar-document-changed',this.calendarPreferenceChanged);if(!Capacitor.isNativePlatform()){window.addEventListener('alpha:calendar-open',openCalendarEvent);window.addEventListener('alpha:calendar-preferences',this.calendarPreferenceChanged);window.addEventListener('storage',this.calendarPreferenceChanged);}this.calendarResume=DailyApps.addListener('appResumed',()=>void refresh()).catch(()=>null);};
   p.componentWillUnmount=function(){if(owner===this){agentSelection=undefined;agentSelectionKey='';agentSelectionEpoch++;owner=null;++creationReadEpoch;creationPending=null;creationRecoveryFailed=false;loading=false;calendars=[];status='Not connected';desired=undefined;loadedKey='';attemptedKey='';++generation;}void this.calendarResume?.then((l:any)=>l?.remove());window.removeEventListener('alpha:calendar-committed',calendarCommitted);window.removeEventListener('alpha:calendar-document-changed',this.calendarPreferenceChanged);if(!Capacitor.isNativePlatform()){++navigationEpoch;window.removeEventListener('alpha:calendar-open',openCalendarEvent);window.removeEventListener('alpha:calendar-preferences',this.calendarPreferenceChanged);window.removeEventListener('storage',this.calendarPreferenceChanged);}unmount.call(this);};
   views.calendar.render=(state:Bag,api:Bag)=>{
+    if(!owner||!active(owner))return render(state,api);
     const range=rangeFor(state);
     if(desired?.key!==range.key){desired=range;++generation;status='Loading calendars…';schedule();}
-    // A loaded window that covers the requested one stays usable while the exact window loads, so
-    // closing Search (wide window to the shown months) neither blanks the timeline nor drops rows.
-    const rangeReady=loadedKey===range.key||rangeCovers(loadedKey,range),reminderStale=!!state.reminderStale||!!owner?.reminderRefreshFailed;
+    const rangeReady=loadedKey===range.key,reminderStale=!!state.reminderStale||!!owner?.reminderRefreshFailed;
     if(!rangeReady)state={...state,events:(state.events||[]).filter((e:Bag)=>!e.alphaCalendarId)};
     const providerState=state;
     const browserCalendar=!Capacitor.isNativePlatform()?calendars.find(c=>c.id==='local'):undefined;
     if(browserCalendar){state={...state,calPrefs:{...state.calPrefs,personal:{on:browserCalendar.visible!==false,color:browserCalendar.color||'acc'}},events:browserCalendar.visible===false?(state.events||[]).filter((e:Bag)=>!e.alphaCalendarId):state.events};}
     const out=render(state,api);
+    // The cover stays under a deep-linked event while it fades in and is open, so the day list never shows through.
+    out.deepOpening=!!state.deepOpening&&!state.open||!!state.open&&state.open===state.deepOpened;
+    // While the open still waits for its read, only Back to apps sits above that cover: the owner can leave,
+    // and the other header actions stay covered until the event is shown.
+    out.openingBackCss=!!state.deepOpening&&!state.open?'position:relative;z-index:5':'';
     if(browserCalendar?.visible===false&&state.open){const detail=render(providerState,api);out.ev=detail.ev;out.detail=detail.detail;}
-    out.emptyText=rangeReady?(truncated?'Calendar results incomplete. Some events may be missing.':reminderStale?'Reminders unavailable. Retry before relying on this schedule.':'Nothing scheduled'):status;
+    out.emptyText=rangeReady?(truncated?'Calendar results incomplete. Some events may be missing.':reminderStale?'Reminders unavailable. Retry before relying on this schedule.':'No visible events or reminders for this day.'+(Capacitor.isNativePlatform()?' Only calendars stored in Android Calendar on this phone appear here.':'')):status;
+    // Source disclosure: Android CalendarProvider calendars only. Connected Google calendars need OAuth (not yet available).
+    out.calendarSourceLabel=Capacitor.isNativePlatform()?'On-device calendars':'Browser calendar';
+    out.calendarSourceText=Capacitor.isNativePlatform()?'Shows calendars stored in Android Calendar on this phone, including accounts synced by Android. Connected Google calendars are not shown here yet.':'Shows the calendar stored in this browser.';
     out.nativeStatusLabel=[rangeReady&&truncated?'Calendar results incomplete. Some events may be missing.':'',reminderStale?'Reminders may be out of date. Tap to retry.':''].filter(Boolean).join(' ');
     out.nativeStatusRetry=()=>{void refresh(false,true);void owner?.refreshReminders();};
     out.browserRecovery=!Capacitor.isNativePlatform()&&loadFailed&&!loading;out.openBrowserRecovery=openCalendarRecovery;
     out.reminderRecovery=!Capacitor.isNativePlatform()&&reminderStale;out.openReminderRecovery=openReminderRecovery;out.openReminderCreationRecovery=openReminderCreationRecovery;out.openReminderActionRecovery=openReminderActionRecovery;
     if(!rangeReady&&!state.open&&!state.form)out.empty=true;
-    // Search results wait for the wide read instead of reporting no results for events that exist.
-    if(!rangeReady&&state.search!=null){out.searchEmpty=false;out.searchLoading=String(state.search).trim()?status:'';}
-    const allDay=(state.events||[]).filter((e:Bag)=>(e.alphaCalendarId||e.googleCalendarRecord)&&e.allDay);
-    const day=Number(state.day||0),onDay=(off:number)=>allDay.filter((e:Bag)=>off>=e.off&&off<e.nativeAllDayEndOff);
-    const timed=(state.events||[]).filter((e:Bag)=>(e.alphaCalendarId||e.googleCalendarRecord)&&!e.allDay);
-    const bounds=(off:number)=>{const now=new Date(api.now);return [new Date(now.getFullYear(),now.getMonth(),now.getDate()+off).getTime(),new Date(now.getFullYear(),now.getMonth(),now.getDate()+off+1).getTime()];};
-    const timedOn=(off:number)=>{const [start,end]=bounds(off);return timed.filter((e:Bag)=>e.nativeEvent.begin<end&&e.nativeEvent.end>start);};
-    const segmentsFor=(off:number)=>{
-      const [dayStart,dayEnd]=bounds(off);
-      return timedOn(off).map((e:Bag)=>{
-        const start=new Date(Math.max(dayStart,e.nativeEvent.begin)),end=new Date(Math.min(dayEnd,e.nativeEvent.end));
-        const t=start.getHours()+start.getMinutes()/60,finish=end.getTime()===dayEnd?24:end.getHours()+end.getMinutes()/60;
-        // A repeated-hour interval may have a nonpositive wall span. Its visual
-        // height uses actual elapsed time; detail always retains original instants.
-        const d=Math.min(24-t,Math.max(.25,finish>t?finish-t:(end.getTime()-start.getTime())/3600000));
-        return {...e,off,t,d};
-      });
-    };
-    const segments=segmentsFor(day);
-    const local=(state.events||[]).filter((e:Bag)=>!e.alphaCalendarId&&!e.googleCalendarRecord);
-    const timeline=[...local,...segments];
-    // Temporary per-day layout only: provider IDs, original timestamps and
-    // selected-object identity stay in the durable state, never in split copies.
-    // The renderer's selected-day layout (`events` from a renderer without day columns).
-    const dayEventsOf=(result:Bag):Bag[]=>result.dayEvents??result.events??[];
-    out.dayEvents=dayEventsOf(out);
-    // Layout-only passes render one day (view 'day'), so they never rebuild Week, Month or Schedule.
-    if(allDay.length||timed.length)out.dayEvents=dayEventsOf(render({...state,view:'day',events:timeline},api));
-    // Wide canvases show the selected day and the days after it side by side (measured width,
-    // runtime/canvas-geometry.ts); large text keeps the single-day agenda. Each column is the
-    // same per-day layout, so event identity, recurrence occurrence and time zone are unchanged.
-    const view=calendarView(state.view),dayCount=view==='week'?7:calendarDayCount();
-    const visibleDays=calendarViewDays(view,day,api.now,dayCount);
-    const timelines=new Map<number,Bag[]>(visibleDays.map(off=>[off,off===day?timeline:[...local,...segmentsFor(off)]]));
-    const columns=dayCount>1?visibleDays.map(off=>({off,events:off===day?out.dayEvents as Bag[]:dayEventsOf(render({...state,view:'day',day:off,events:timelines.get(off)},api))})):[];
-    const realDay=visibleDays.flatMap(off=>timelines.get(off)!.filter((e:Bag)=>(e.alphaCalendarId||e.googleCalendarRecord||e.alphaReminderId)&&!e.allDay&&e.off===off&&Number.isFinite(e.t)&&e.t>=0));
-    const first=Math.min(7,...realDay.map((e:Bag)=>Math.floor(e.t))),last=Math.max(23,...realDay.map((e:Bag)=>Math.min(24,Math.ceil(e.t+e.d))));
-    if(first<7||last>23){
-      const shift=(7-first)*56;
-      for(const column of columns)column.events=column.events.map((e:Bag)=>({...e,top:e.top+shift}));
-      out.dayEvents=out.dayEvents.map((e:Bag)=>({...e,top:e.top+shift}));
-      const added=[];
-      for(let hour=first;hour<7;hour++)added.push({top:(hour-first)*56+8,lt:(hour-first)*56,label:`${hour%12||12} am`});
-      out.hours=[...added,...out.hours.map((h:Bag)=>({...h,top:h.top+shift,lt:h.lt+shift}))];
-      if(last===24)out.hours.push({top:(24-first)*56+8,lt:(24-first)*56,label:'Midnight'});
-      out.nowTop+=shift;out.nativeTimelineHeight=`${Math.max(912+shift,(last-first)*56+16)}px`;
-      const now=new Date(api.now),time=now.getHours()+now.getMinutes()/60;
-      out.showNow=day===0&&time>=first&&time<=last;
-    }
-    const occupied=(off:number)=>onDay(off).length>0||timedOn(off).length>0;
-    if(segments.length)out.empty=false;
-    out.nativeAllDay=onDay(day).map((e:Bag)=>({title:e.title,open:()=>api.set({open:e.id,openDay:day})}));
-    out.events=dayCount>1?[]:out.dayEvents;
-    if(dayCount>1){
-      out.nativeAllDay=visibleDays.flatMap(off=>onDay(off).map((e:Bag)=>({title:`${calendarDayLabel(api.now,off)} · ${e.title}`,open:()=>api.set({open:e.id,openDay:off})})));
-      const now=new Date(api.now),time=now.getHours()+now.getMinutes()/60;
-      out.dayColumns=calendarDayColumns(columns,api.now,out.nowTop,time>=first&&time<=last,day,{compact:view==='week',pick:(off:number)=>api.set({view:'day',day:off,month:null})});
-      out.multiDay=true;out.dayCount=dayCount;out.showNow=false;
-      out.empty=(!rangeReady&&!state.open&&!state.form)||(columns.every(column=>!column.events.length)&&!out.nativeAllDay.length);
-      if(out.empty&&rangeReady)out.emptyText='Nothing scheduled';
-    }
-    // The all-day strip belongs to the timeline (Day and Week); Month and Schedule list those rows themselves.
-    out.hasNativeAllDay=out.nativeAllDay.length>0&&(view==='day'||view==='week');
-    if(out.hasNativeAllDay)out.empty=false;
-    // Large text lists the selected day instead of drawing timed blocks; the timeline stays mounted
-    // (hidden) so its scroll position survives returning to normal text.
-    out.agenda=(view==='day'||view==='week')&&calendarAgenda();
-    out.agendaRows=out.agenda?calendarAgendaRows(out.nativeAllDay,out.dayEvents):[];
-    const selectedDate=new Date(api.now);selectedDate.setDate(selectedDate.getDate()+day);
-    const weekStart=day-(selectedDate.getDay()+6)%7;
-    out.week=(out.week||[]).map((w:Bag,i:number)=>occupied(weekStart+i)?{...w,dot:weekStart+i===0?'var(--acct)':'var(--mut)'}:w);
-    // Month and Schedule from the merged rows: local events, Android and Google all-day spans, and
-    // timed provider events clipped to each day they cover (so an overnight event shows on both days).
-    if(typeof out.calItems==='function'&&(allDay.length||timed.length)){
-      const eventsOn=(off:number)=>out.calItems(off,[...local,...onDay(off),...segmentsFor(off)]);
-      if(out.monthView&&out.monthCellsFor)out.monthCells=out.monthCellsFor(eventsOn);
-      if(out.scheduleView&&out.scheduleRowsFor){out.scheduleRows=out.scheduleRowsFor(eventsOn);out.scheduleEmpty=!out.scheduleRows.length;}
-    }
-    // The device calendars as one switch in the title menu, named for where they are. It stays
-    // listed while hidden, when none of its rows reach the renderer.
-    if(calendars.length&&Array.isArray(out.calToggles)){
-      const prefs=providerState.calPrefs||{},on=browserCalendar?browserCalendar.visible!==false:prefs.personal?.on!==false;
-      const name=browserCalendar?'In this app':Capacitor.isNativePlatform()?'On this phone':'Personal',existing=out.calToggles.find((row:Bag)=>row.id==='personal');
-      const toggle=browserCalendar?()=>void calendar.changePreferences({action:'visibility'}).catch(()=>api.toast('Calendar settings could not be saved. Try again.')):()=>api.set({calPrefs:{...prefs,personal:{...(prefs.personal||{}),on:!on}}});
-      out.calToggles=[{id:'personal',sub:'',dot:existing?.dot||'var(--acct)',name,on,checked:String(on),label:`Show ${name} calendar`,toggle},...out.calToggles.filter((row:Bag)=>row.id!=='personal')];out.hasCalToggles=true;
-    }
+    presentCalendarIntervals(render,{...state,events:(state.events||[]).map((e:Bag)=>e.alphaCalendarId||e.googleCalendarRecord?{...e,calendarInterval:true,calendarIntervalData:e.nativeEvent,allDayEndOff:e.nativeAllDayEndOff}:e)},api,out,rangeReady);
     const newEvent=async(separateCreation=false)=>{
       const activeOwner=owner,now=new Date(),day=Number(state.day||0),hour=now.getHours()+now.getMinutes()/60;
       const draft={id:null,creationId:crypto.randomUUID(),separateCreation,title:'',off:day,t:day===0?Math.min(21,Math.ceil(hour+.01)):10,d:1,where:'',video:false,who:[],cal:'native:local',repeat:'none',alert:null,notes:''};
-      ++creationDraftEpoch;api.set({menu:false,form:draft});
+      ++creationDraftEpoch;api.set({month:null,form:draft});
       const token=++agentSelectionEpoch;agentSelection=undefined;agentSelectionKey='';
       const current=()=>owner===activeOwner&&!document.hidden&&api.isActive()&&api.get('calendar').form?.creationId===draft.creationId;
       try{const permission=await calendar.requestAccess();if(permission.status!=='granted'||!current())return;const source=await calendar.prepareAgentSource();if(current()&&token===agentSelectionEpoch&&source.status==='ready'&&api.get('calendar').form?.cal==='native:local'){agentSelection={kind:'calendar-source',id:source.sourceId,revision:source.sourceRevision,formCal:'native:local'};api.set({nativeAgentSourceRevision:source.sourceRevision});}}catch{if(current())api.toast('Calendar source unavailable for agent actions.');}
@@ -272,7 +188,7 @@ export function installCalendarAdapter(Component: any, views: Bag) {
     };
     if(out.f&&state.form){
       const f=state.form;
-      const reviewedDate=wallTime(Number(f.off||0),12);
+      const reviewedDate=reminderWallTime(Number(f.off||0),12);
       // Android events have no stable identity for a note link yet, so say so before Save rather than drop it silently.
       // An event Android Calendar saves (the guests, video or alert hand-off) carries no Alpha creationId,
       // so it cannot be linked back to its note.
@@ -340,7 +256,7 @@ export function installCalendarAdapter(Component: any, views: Bag) {
           if(current.alphaCalendarId){api.toast('Edit all-day, time-zone and repeating events in Android Calendar.');return;}
           await saveOptions(current,currentOwner);return;
         }
-        const date=wallTime(Number(current.off||0),Number(current.t)),end=wallTime(Number(current.off||0),Number(current.t)+Number(current.d));
+        const date=reminderWallTime(Number(current.off||0),Number(current.t)),end=reminderWallTime(Number(current.off||0),Number(current.t)+Number(current.d));
         const timeProblem=calendarFormTimeProblem(date,end,Number(current.d));if(timeProblem||!date||!end){api.toast(timeProblem);return;}
         const epoch=creationDraftEpoch;let submittedForm=current;
         const ownsForm=()=>owner===currentOwner&&!document.hidden&&api.isActive()&&creationDraftEpoch===epoch&&api.get('calendar').form===submittedForm;
@@ -412,7 +328,7 @@ export function installCalendarAdapter(Component: any, views: Bag) {
       out.ev.edit=async()=>{
         const event=selected.nativeEvent,source=calendars.find(c=>c.id===event.calendarId);
         const begin=new Date(event.begin),end=new Date(event.end);
-        const representedBegin=wallTime(selected.off,selected.t),representedEnd=wallTime(selected.off,selected.t+selected.d);
+        const representedBegin=reminderWallTime(selected.off,selected.t),representedEnd=reminderWallTime(selected.off,selected.t+selected.d);
         const complex=civilDay(begin)!==civilDay(end)||begin.getTimezoneOffset()!==end.getTimezoneOffset()||representedBegin?.getTime()!==event.begin||representedEnd?.getTime()!==event.end;
         if(!Capacitor.isNativePlatform()&&(event.seriesId||event.allDay||complex)){
           try{const result=await calendar.edit({id:event.id,revision:event.revision,people:out.attendeeChoices||[]});if(result.status==='saved'){api.set({open:null,openDay:null});await refresh(false,true);api.toast('Event saved.');}}catch{api.toast('This event changed or could not be opened. Refresh and try again.');}return;

@@ -1,0 +1,79 @@
+{
+  "schemaVersion": 1,
+  "atUTC": "2026-10-28T03:22:38.762799+00:00",
+  "priorAdmittedAt": "a2e66801f4828c290e9f45849cb40ff6bfd1adc9",
+  "admittedAt": "ea0899fd7f19b2bf3552127d6566c15e23b4c303",
+  "onlySourceDelta": "Four reviewed Calendar helper/handler/test files; no native consumer delta from A2",
+  "unchangedInputs": [
+    {
+      "path": "plugins/plugin-local-inference/native/llama.cpp",
+      "priorObject": "160000 commit 0d9fd4b9db239bbf851068f98c99f4263f8c05c5\tplugins/plugin-local-inference/native/llama.cpp",
+      "currentObject": "160000 commit 0d9fd4b9db239bbf851068f98c99f4263f8c05c5\tplugins/plugin-local-inference/native/llama.cpp",
+      "equal": true
+    },
+    {
+      "path": "plugins/plugin-local-inference/native/android/inputs.json",
+      "priorObject": "100644 blob 8e303364ecffd4056b494d5dde808f5887eca120\tplugins/plugin-local-inference/native/android/inputs.json",
+      "currentObject": "100644 blob 8e303364ecffd4056b494d5dde808f5887eca120\tplugins/plugin-local-inference/native/android/inputs.json",
+      "equal": true
+    },
+    {
+      "path": "packages/app/scripts/paradee-voice",
+      "priorObject": "040000 tree e18c150daf71c321ba287e0c6e5484e487367fd9\tpackages/app/scripts/paradee-voice",
+      "currentObject": "040000 tree e18c150daf71c321ba287e0c6e5484e487367fd9\tpackages/app/scripts/paradee-voice",
+      "equal": true
+    },
+    {
+      "path": "packages/app/scripts/stage-elizavoice-lib.ts",
+      "priorObject": "100644 blob 2ff1adb9ed9a394759562c2ff6a1f7e4b0d75f3c\tpackages/app/scripts/stage-elizavoice-lib.ts",
+      "currentObject": "100644 blob 2ff1adb9ed9a394759562c2ff6a1f7e4b0d75f3c\tpackages/app/scripts/stage-elizavoice-lib.ts",
+      "equal": true
+    },
+    {
+      "path": "packages/app/platforms/android/app/src/main/elizavoice-jni",
+      "priorObject": "040000 tree 1016d67d05ce8f4c7bc10412372cc71d7ad48aee\tpackages/app/platforms/android/app/src/main/elizavoice-jni",
+      "currentObject": "040000 tree 1016d67d05ce8f4c7bc10412372cc71d7ad48aee\tpackages/app/platforms/android/app/src/main/elizavoice-jni",
+      "equal": true
+    },
+    {
+      "path": "packages/app/platforms/android/app/src/main/java/ai/elizaos/app/ElizaVoiceNative.java",
+      "priorObject": "100644 blob 1cd241c5710fc302e75aec8993eefee0a709ab9c\tpackages/app/platforms/android/app/src/main/java/ai/elizaos/app/ElizaVoiceNative.java",
+      "currentObject": "100644 blob 1cd241c5710fc302e75aec8993eefee0a709ab9c\tpackages/app/platforms/android/app/src/main/java/ai/elizaos/app/ElizaVoiceNative.java",
+      "equal": true
+    },
+    {
+      "path": "packages/app/scripts/lib/android-bun-artifacts.lock.json",
+      "priorObject": "100644 blob 83c8e91becc3a2c46902cc168fdc9b88fc038e5d\tpackages/app/scripts/lib/android-bun-artifacts.lock.json",
+      "currentObject": "100644 blob 83c8e91becc3a2c46902cc168fdc9b88fc038e5d\tpackages/app/scripts/lib/android-bun-artifacts.lock.json",
+      "equal": true
+    },
+    {
+      "path": "plugins/plugin-local-inference/native",
+      "priorObject": "040000 tree a403e3519315fd99bb811c88f07673d8f7616f85\tplugins/plugin-local-inference/native",
+      "currentObject": "040000 tree a403e3519315fd99bb811c88f07673d8f7616f85\tplugins/plugin-local-inference/native",
+      "equal": true
+    },
+    {
+      "path": "plugins/plugin-native-system/android",
+      "priorObject": "040000 tree 63d823cef5c559d599fcf241f89a6182cbed75e1\tplugins/plugin-native-system/android",
+      "currentObject": "040000 tree 63d823cef5c559d599fcf241f89a6182cbed75e1\tplugins/plugin-native-system/android",
+      "equal": true
+    },
+    {
+      "path": "packages/app/platforms/android",
+      "priorObject": "040000 tree dc048743daa30f8b86e78297224bb3afb5a3a010\tpackages/app/platforms/android",
+      "currentObject": "040000 tree dc048743daa30f8b86e78297224bb3afb5a3a010\tpackages/app/platforms/android",
+      "equal": true
+    }
+  ],
+  "priorEvidence": "docs/evidence/voice-source-admission-final-a2-20261027.json",
+  "priorEvidenceSHA256": "fb6b8e0ba3f4efd164d90f7af7e34316353f144c620367ea2c7663c91d603117",
+  "nativeInputsUnchangedFromOlder8cc": false,
+  "qualified": false,
+  "nativeQualificationTransferred": false,
+  "binaryModelABIHistoryUnchanged": true,
+  "databaseEffectAcceptance": "pending VPS admitted harness",
+  "currentPairedAPKImageAcceptance": "pending; small9a/8cc APK is distinct source",
+  "recordPinRepresentsCurrentSourceAdmission": true,
+  "nativeBuildAndComponentRecordsKeepOriginalIdentity": true
+}

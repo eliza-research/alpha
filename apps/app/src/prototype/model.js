@@ -1,3 +1,4 @@
+import { externalVoiceInvocationEnabled } from '../runtime/voice-entry-policy';
 import iconCatalog from '../icon-catalog.json';
 /* Seeds, scripted replies and fixture images. Production builds resolve this
    specifier to ./fixtures.empty.js (same names, empty values). */
@@ -5,17 +6,19 @@ import {
   IMG, PEOPLE, PN_REC, PN_VM, PN_SCRIPT, PN_SCREEN, PN_REPLIES, MSG_PHOTOS, MSG_SEED, MSG_UNREAD,
   MSG_SMART, MSG_BOT, INBOX_ACCTS, INBOX_SEED, CAL_SEED, CAL_PREP, BR_START, BR_PAGES, BR_ME,
   PH_SEED, PH_DESC, PH_SHARE, MAPS_PLACES, MAPS_FAR, MAPS_MATCH, MAPS_SAVED, NOTES_SEED,
-  NOTES_LIVE, NOTES_DICT, CT_SEED, FILES_FOLDERS_EXTRA, FILES_SEED, WAL_CARDS, WAL_TRIPS,
+  CT_SEED, FILES_FOLDERS_EXTRA, FILES_SEED, WAL_CARDS, WAL_TRIPS,
   WAL_MERCH, WAL_PASSES, WF_SEED, ST_ACCOUNTS, ST_NETS, ST_BT, ST_PERM0, ST_MODELS, ST_LOG,
   ST_DEVLOG, ST_DEVICE, ST_ABOUT, NOTIF, LOCK_SUM, QUICK_SETTINGS, QUICK_TILES, HEADS, VOICE, COPY,
   ATTENTION_ROWS, HOME_DEFAULTS
 } from "./fixtures.js";
 import { isMvpView, DEFERRED_MVP_VIEWS, deferredMvpPrompt } from "./mvp-features";
+import { ALPHA_PRODUCT, alphaPaletteColor, alphaThemeVariables } from "../product/alpha-product";
+import { navigateMobileShell, resolveMobileShellSwipe } from "@elizaos/ui/mobile-shell/core";
 import { emptyHomeShadePull, pullStart, shadeFallback } from "./system-shade";
 import React from "react";
 import { DCLogic } from "./dc-lite.js";
-import { calendarDayColumns, calendarDayCount, calendarLoadRange, calendarReturnDay, calendarView, calendarViewDays, markVisibleWeek, visibleCalendarDays } from "./calendar-days";
-import { calendarMonthCells, calendarScheduleRows, calendarSearchRows } from "./calendar-views";
+import { calendarDayColumns, calendarDayCount, calendarReturnDay, markVisibleWeek, visibleCalendarDays } from "./calendar-days";
+import { filterNotes, sortNotes, notePreview, noteDateLabel, notesFilterLabel } from "../runtime/notes-view";
 import { WEEKDAYS, MONTHS, formatTime, formatClock, formatHours, formatHoursRange, formatHour, weekdayName, formatShortDate, formatLongDate, formatMonthDay, formatMonthTitle } from "./locale-time";
 
 
@@ -86,8 +89,6 @@ var IC = {
   spark: "M12 3v4M12 17v4M3 12h4M17 12h4M6 6l2.5 2.5M15.5 15.5L18 18M18 6l-2.5 2.5M8.5 15.5L6 18",
   dial: "M6 6h.01M12 6h.01M18 6h.01M6 12h.01M12 12h.01M18 12h.01M6 18h.01M12 18h.01M18 18h.01"
 };
-var DARK = { bg: "#000000", s1: "#0B0B0B", s2: "#151515", s3: "#262626", line: "#262626", fg: "#FFFFFF", mut: "#8F8F8F", acct: "#8A93FF", scrim: "rgba(0,0,0,.55)", frame: "#161616", shc: "rgba(0,0,0,.45)" };
-var LIGHT = { bg: "#FFFFFF", s1: "#FAFAFA", s2: "#F3F3F3", s3: "#E6E6E6", line: "#E3E3E3", fg: "#000000", mut: "#6B6B6B", acct: "#0000FF", scrim: "rgba(0,0,0,.18)", frame: "#DCDCDC", shc: "rgba(0,0,0,.12)" };
 // Device-locale names (Sunday-first, January-first), refilled when locale preferences change.
 var DAYS = WEEKDAYS;
 var MONS = MONTHS;
@@ -236,8 +237,8 @@ registerView("phone", {
   },
   /* calls and ringing keep going in the background: status-bar chip returns here */
   ongoing: function (st, api) {
-    if (st.incoming) { var ip = pnWho(api, st.incoming); return { label: (st.ring === "screen" ? api.name + " · " : "Incoming · ") + (ip ? pnFirst(ip) : "Unknown"), icon: "phone", color: "#1e9e4a" }; }
-    if (st.callWho) return { label: st.liveAt ? (st.hold ? "Hold " : "") + pnClock((Date.now() - st.liveAt) / 1000) : "Calling…", icon: "phone", color: "#1e9e4a" };
+    if (st.incoming) { var ip = pnWho(api, st.incoming); return { label: (st.ring === "screen" ? api.name + " · " : "Incoming · ") + (ip ? pnFirst(ip) : "Unknown"), icon: "phone", color: "var(--alpha-call-green)" }; }
+    if (st.callWho) return { label: st.liveAt ? (st.hold ? "Hold " : "") + pnClock((Date.now() - st.liveAt) / 1000) : "Calling…", icon: "phone", color: "var(--alpha-call-green)" };
     return null;
   },
   onLeave: function (api) {
@@ -389,9 +390,9 @@ registerView("phone", {
     var status = !live ? "Calling…" : (st.hold ? "On hold · " : "") + pnClock(el);
     var sc = pnScript(st.call);
     var themName = cp ? pnFirst(cp) : "Caller";
-    var lines = sc.lines.slice(0, st.aiN || 0).map(function (l) { return { who: l[0] === "you" ? "You" : themName, text: l[1], css: l[0] === "you" ? "color:#8F8F8F" : "color:#FFFFFF" }; }).slice(-5);
+    var lines = sc.lines.slice(0, st.aiN || 0).map(function (l) { return { who: l[0] === "you" ? "You" : themName, text: l[1], css: l[0] === "you" ? "color:var(--alpha-gray-8f)" : "color:var(--alpha-white)" }; }).slice(-5);
     var ctrl = function (key, d, label, on, extra) {
-      return { d: d, label: label, on: !!on, css: on ? (key === "ai" ? "background:var(--acc);color:#fff" : "background:#FFFFFF;color:#000000") : "background:rgba(255,255,255,.12);color:#FFFFFF", glyph: key === "ai", icon: key !== "ai",
+      return { d: d, label: label, on: !!on, css: on ? (key === "ai" ? "background:var(--acc);color:var(--alpha-white)" : "background:var(--alpha-white);color:var(--alpha-black)") : "background:rgba(255,255,255,.12);color:var(--alpha-white)", glyph: key === "ai", icon: key !== "ai",
         toggle: function () { var s = api.get("phone"); var p = {}; p[key] = !s[key]; if (key === "ai" && p.ai) p.kp = false; api.set(p); if (key === "ai" && p.ai) api.toast(api.name + " is taking notes"); } };
     };
     var controls = inCall ? [
@@ -405,10 +406,11 @@ registerView("phone", {
     /* incoming */
     var ip = st.incoming ? pnWho(api, st.incoming) : null;
     var screening = st.ring === "screen";
-    var scrLines = PN_SCREEN.slice(0, st.scrN || 0).map(function (l) { return { who: l[0] === "alpha" ? api.name : (ip ? pnFirst(ip) : "Caller"), text: l[1].replace("{name}", api.name), css: l[0] === "alpha" ? "color:#8F8F8F" : "color:#FFFFFF" }; });
+    var scrLines = PN_SCREEN.slice(0, st.scrN || 0).map(function (l) { return { who: l[0] === "alpha" ? api.name : (ip ? pnFirst(ip) : "Caller"), text: l[1].replace("{name}", api.name), css: l[0] === "alpha" ? "color:var(--alpha-gray-8f)" : "color:var(--alpha-white)" }; });
     var scrDone = screening && (st.scrN || 0) >= PN_SCREEN.length;
 
     return {
+      nativePrototype: true,
       tab: tab, title: tab === "keypad" ? "Keypad" : (tab === "voicemail" ? "Voicemail" : "Recents"),
       tabs: tabs, isRecents: tab === "recents", isKeypad: tab === "keypad", isVm: tab === "voicemail",
       favs: favs, hasFavs: favs.length > 0, recents: recents, noRecents: recents.length === 0,
@@ -672,7 +674,7 @@ registerView("messages", {
           text: m.text || "", isText: !isPhoto && !isFile, isPhoto: isPhoto, isFile: isFile, file: m.file || "", size: m.size || "",
           openFile: function () { if (VIEWS.files && m.fid) api.open("files", { open: m.fid }); else api.toast(m.file); },
           row: "justify-content:" + (m.me ? "flex-end" : "flex-start") + ";margin-top:" + (sep ? "4px" : (prev && prev.me === m.me ? "3px" : "12px")),
-          css: (m.me ? "background:var(--acc);color:#fff;" : "background:var(--s2);color:var(--fg);") + "border-radius:" + r,
+          css: (m.me ? "background:var(--acc);color:var(--alpha-white);" : "background:var(--s2);color:var(--fg);") + "border-radius:" + r,
           photoCss: "background:" + (MSG_PHOTOS.length ? imgBg("msg" + ((m.photo || 0) % MSG_PHOTOS.length), MSG_PHOTOS[(m.photo || 0) % MSG_PHOTOS.length]) : "var(--s3)") + ";border-radius:" + r,
           openPhoto: function () { if (VIEWS.photos) api.open("photos"); else api.toast("Photo"); }
         };
@@ -695,7 +697,7 @@ registerView("messages", {
         atts: atts.map(function (f) { return { name: f.name, rm: function () { api.set({ attach: (api.get("messages").attach || []).filter(function (x) { return x !== f.id; }) }); } }; }),
         hasAtts: atts.length > 0,
         text: st.text || "", hasText: !!(st.text || "").trim(),
-        sendCss: ((st.text || "").trim() || atts.length) ? "background:var(--acc);color:#fff" : "background:var(--s2);color:var(--mut)",
+        sendCss: ((st.text || "").trim() || atts.length) ? "background:var(--acc);color:var(--alpha-white)" : "background:var(--s2);color:var(--mut)",
         onText: function (e) { api.set({ text: e.target.value }); },
         onKey: function (e) { if (e.key === "Enter") { e.preventDefault(); send(); } },
         send: function () { send(); },
@@ -1106,10 +1108,6 @@ var CAL_REPEAT = [["none", "Once"], ["daily", "Daily"], ["weekdays", "Weekdays"]
 var CAL_ALERT = [[null, "None"], [0, "At start"], [10, "10 min"], [60, "1 hour"]];
 var CAL_PENDING = null;
 var CAL_H0 = 7, CAL_H1 = 23, CAL_PX = 56;
-var CAL_VIEW_MENU = [["schedule", "Schedule"], ["day", "Day"], ["week", "Week"], ["month", "Month"]];
-var CAL_DELETE_SCOPE = { "this": "This event", following: "This and following events", all: "All events" };
-/* A calendar colour is a theme key (CAL_COLORS) or, for provider calendars, a CSS colour. */
-function calColor(c) { return CAL_COLORS[c.color] || c.color || CAL_COLORS.fg; }
 
 function calAmpm(t) { t = ((t % 24) + 24) % 24; return formatHours(t); }
 function calRange(t, d) { return formatHoursRange(((t % 24) + 24) % 24, (((t + d) % 24) + 24) % 24); }
@@ -1121,22 +1119,20 @@ function calDayName(api, off) {
   var d = calDate(api, off); return formatShortDate(d);
 }
 function calOccurs(e, off, api) {
-  if (e.skip && e.skip.indexOf(off) >= 0) return false;
   if (e.off === off) return true;
   if (!e.repeat || e.repeat === "none" || off < e.off) return false;
-  if (e.until != null && off > e.until) return false;
   if (e.repeat === "daily") return true;
   if (e.repeat === "weekdays") return calDow(api, off) < 5;
   if (e.repeat === "weekly") return (off - e.off) % 7 === 0;
   return false;
 }
-/* On a day, including every day a provider all-day event spans. */
-function calOn(e, off, api) { return e.nativeAllDayEndOff != null ? off >= e.off && off < e.nativeAllDayEndOff : calOccurs(e, off, api); }
 function calEvents(api) { var st = api.get("calendar"); return st.events || CAL_SEED; }
 function calFind(list, id) { for (var i = 0; i < list.length; i++) if (list[i].id === id) return list[i]; return null; }
 function calPeople(api) { var c = api.get("contacts"); return (c && c.list && c.list.length) ? c.list : PEOPLE; }
 function calPerson(api, id) { var l = calPeople(api); for (var i = 0; i < l.length; i++) if (l[i].id === id) return l[i]; return api.person(id) || { id: id, name: id, ini: id.slice(0, 2).toUpperCase() }; }
 function calCals(st, api) {
+  if(Array.isArray(st.calendarPresentationSources))return st.calendarPresentationSources;
+  if(Array.isArray(st.canonicalCalendars))return st.canonicalCalendars;
   var accts = (api.get("settings") || {}).accounts;
   var list = [{ id: "personal", name: "Personal", sub: "", color: "fg" }, { id: "work", name: "Work", sub: "", color: "acc" }];
   if (Array.isArray(accts)) {
@@ -1145,10 +1141,6 @@ function calCals(st, api) {
       else list.push({ id: a.id || ("acct" + i), name: a.provider || "Calendar", sub: a.address || "", color: "mut" });
     });
   } else { var subs = copy("calendar").calendarSubs || []; list[0].sub = subs[0] || ""; list[1].sub = subs[1] || ""; }
-  // Every Google calendar the owner shows on Google, each with its own colour (a CSS colour);
-  // rows carry that calendar's id in `cal`. The single-calendar `googleCalendarName` stays as a fallback.
-  if (Array.isArray(st.googleCalendars) && st.googleCalendars.length) st.googleCalendars.forEach(function (g) { if (g && g.id) list.push({ id: g.id, name: g.name || "Google Calendar", sub: g.account || "", color: g.color || "acc", provider: true }); });
-  else if (st.googleCalendarName) list.push({ id: 'google', name: st.googleCalendarName, sub: '', color: 'acc', provider: true });
   var prefs = st.calPrefs || {};
   return list.map(function (c) { var p = prefs[c.id] || {}; return Object.assign({}, c, { on: p.on !== false, color: p.color || c.color }); });
 }
@@ -1194,16 +1186,14 @@ function calPrep(e, api) {
 
 registerView("calendar", {
   title: "Calendar", icon: "cal", aliases: ["schedule", "agenda"],
-  // view: Schedule / Day / Week / Month (title menu). month: Month view's offset from the selected
-  // day's month, null outside Month view. search: the query while Search is open, else null.
-  state: { day: 0, view: "day", menu: false, search: null, deleteAsk: null, open: null, openDay: null, month: null, form: null, add: null, events: CAL_SEED, calPrefs: {} },
-  persist: ["events", "calPrefs", "view"],
+  state: { day: 0, open: null, openDay: null, month: null, form: null, add: null, events: CAL_SEED, calPrefs: {} },
+  persist: ["events", "calPrefs"],
   jumps: [[null, "Calendar"], ["event", "Event"], ["new", "New event"], ["month", "Month"], ["invite", "Invite"], ["add", "Add from app"]],
   preset: function (sub, api) {
     var pr = copy("calendar").presets || {};
     if (sub === "event") return pr.event || null;
     if (sub === "invite") return pr.invite || null;
-    if (sub === "month") return { view: "month", month: 0 };
+    if (sub === "month") return { month: 0 };
     if (sub === "add") return pr.add || null;
     if (sub === "new") return { form: { id: null, title: "", off: 0, t: 17, d: 1, where: "", video: false, who: [], cal: "work", repeat: "none", alert: 10, notes: "" } };
   },
@@ -1215,17 +1205,11 @@ registerView("calendar", {
     return sg.day || ["What does my afternoon look like?", "Find me an hour to focus"];
   },
   voicePhrase: "Find me an hour to focus",
-  // The title menu and the delete sheet never outlive a visit; the chosen view does.
-  onLeave: function (api) { var s = api.get("calendar"); if (s.menu || s.deleteAsk) api.set({ menu: false, deleteAsk: null }); },
   back: function (st, api) {
     if (st.form && st.form.pq != null) { api.set({ form: Object.assign({}, st.form, { pq: null }) }); return true; }
     if (st.form) { api.set({ form: null }); return true; }
-    if (st.deleteAsk) { api.set({ deleteAsk: null }); return true; }
-    // Schedule always runs from today, so closing anything there keeps day 0 (calendarLoadRange).
-    var sched = calendarView(st.view) === "schedule";
-    if (st.open) { var oe = calFind(st.events || CAL_SEED, st.open); api.set({ open: null, openDay: null, day: sched ? 0 : calendarReturnDay(st.day || 0, st.openDay != null ? st.openDay : (oe ? oe.off : st.day || 0)) }); return true; }
-    if (st.menu) { api.set({ menu: false }); return true; }
-    if (st.search != null) { api.set(sched ? { search: null, day: 0 } : { search: null }); return true; }
+    if (st.open) { var oe = calFind(st.events || CAL_SEED, st.open); api.set({ open: null, openDay: null, day: calendarReturnDay(st.day || 0, st.openDay != null ? st.openDay : (oe ? oe.off : st.day || 0)) }); return true; }
+    if (st.month != null) { api.set({ month: null }); return true; }
     return false;
   },
   actions: {
@@ -1354,8 +1338,8 @@ registerView("calendar", {
     var list = st.events || CAL_SEED;
     var sel = st.day || 0;
     var cals = calCals(st, api);
-    var calOf = function (id) { for (var i = 0; i < cals.length; i++) if (cals[i].id === id) return cals[i]; return cals[0]; };
-    var visible = function (e) { return calOf(e.cal).on && !(e.invite && e.invite.status === "declined"); };
+    var calOf = function (id) { for (var i = 0; i < cals.length; i++) if (cals[i].id === id) return cals[i]; return null; };
+    var visible = function (e) { var source = calOf(e.cal); return !!source && source.on && !(e.invite && e.invite.status === "declined"); };
     var on = function (off) { return list.filter(function (e) { return visible(e) && calOccurs(e, off, api); }); };
     var set = function (p) { api.set(p); };
     var today = calDate(api, 0);
@@ -1365,7 +1349,7 @@ registerView("calendar", {
     var sdow = calDow(api, sel);
     var week = "MTWTFSS".split("").map(function (l, i) {
       var off = sel - sdow + i; var dt = calDate(api, off);
-      var cs = off === 0 ? "background:var(--acc);color:#fff" : (off === sel ? "box-shadow:inset 0 0 0 1.5px var(--fg)" : "");
+      var cs = off === 0 ? "background:var(--acc);color:var(--alpha-white)" : (off === sel ? "box-shadow:inset 0 0 0 1.5px var(--fg)" : "");
       return { l: l, n: dt.getDate(), cs: cs, dot: on(off).length ? (off === 0 ? "var(--acct)" : "var(--mut)") : "transparent", pick: function () { set({ day: off }); } };
     });
 
@@ -1379,118 +1363,81 @@ registerView("calendar", {
       var n = 1; evs.forEach(function (o) { if (o !== e && o.t < e.t + e.d && o.t + o.d > e.t) n = Math.max(n, Math.max(laneOf[o.id], laneOf[e.id]) + 1); });
       var w = W / n; var c = calOf(e.cal);
       var pending = e.invite && e.invite.status === "pending";
-      var css = e.key ? "background:var(--acc);color:#fff" : (e.hold || pending ? "background:var(--bg);box-shadow:inset 0 0 0 1.5px " + (pending ? "var(--mut)" : "var(--acct)") : "background:var(--s2)");
+      var css = e.key ? "background:var(--acc);color:var(--alpha-white)" : (e.hold || pending ? "background:var(--bg);box-shadow:inset 0 0 0 1.5px " + (pending ? "var(--mut)" : "var(--acct)") : "background:var(--s2)");
       if (pending) css += ";border:1.5px dashed var(--mut);box-shadow:none";
       var h = Math.max(24, e.d * CAL_PX - 4); var short = h < 40;
       return {
         title: e.title, time: fmtT(e.t), agendaTime: formatHours(e.t), top: (e.t - CAL_H0) * CAL_PX + 8, h: h, left: 60 + laneOf[e.id] * w, w: w - 4,
         css: css + (short ? ";align-items:center;padding-top:0;padding-bottom:0" : ""),
-        stripe: e.key || e.hold || pending ? "transparent" : calColor(c),
+        stripe: e.key || e.hold || pending ? "transparent" : CAL_COLORS[c.color],
         sub: !short && e.d >= 1 ? (e.where || (e.video ? "Video call" : "")) : "", showTime: w >= 150,
-        // A change saved here that has not reached its calendar yet (offline outbox).
-        pending: !!e.pendingSync,
         open: function () { if (api.swallowed()) return; set({ open: e.id, openDay: day }); }
       };
     });
     return events;
     };
-    var view = calendarView(st.view);
-    var weekView = view === "week", monthView = view === "month", scheduleView = view === "schedule";
-    var searching = st.search != null;
     var evs = on(sel);
     var dayEvents = layoutDay(sel);
-    // Week view is always seven columns, Monday to Sunday; Day view keeps the measured count.
-    var dayCount = weekView ? 7 : calendarDayCount();
-    var dayOffs = calendarViewDays(view, sel, api.now, dayCount);
+    var dayCount = calendarDayCount();
+    var dayOffs = visibleCalendarDays(sel, dayCount);
     var dayColumns = dayCount > 1 ? dayOffs.map(function (off) { return { off: off, events: off === sel ? dayEvents : layoutDay(off) }; }) : [];
-    var pickDay = function (off) { set({ view: "day", day: off, month: null }); };
     var hours = []; for (var h = CAL_H0; h <= CAL_H1; h++) hours.push({ top: (h - CAL_H0) * CAL_PX + 8, label: formatHour(h), lt: (h - CAL_H0) * CAL_PX });
     var nowT = api.now.getHours() + api.now.getMinutes() / 60;
     var sw = api.sw(function (dx, dy) { if (Math.abs(dx) < Math.abs(dy) * 1.2) return false; set({ day: sel + (dx < 0 ? 1 : -1) }); }, { axis: "x" });
     var tlDown = sw.down, tlUp = sw.up;
 
     // pending invites
-    var invites = list.filter(function (e) { return e.invite && e.invite.status === "pending" && calOf(e.cal).on; }).map(function (e) {
+    var invites = list.filter(function (e) { return e.invite && e.invite.status === "pending" && visible(e); }).map(function (e) {
       var p = calPerson(api, e.invite.from);
       var rs = function (s) { return function () { set({ events: list.map(function (x) { return x.id === e.id ? Object.assign({}, x, { invite: Object.assign({}, x.invite, { status: s }) }) : x; }) }); api.toast(s === "yes" ? "Accepted · " + p.name.split(" ")[0] + " will see it" : "Declined"); }; };
       return { ini: p.ini, title: e.title, when: calDayName(api, e.off) + " · " + calAmpm(e.t), open: function () { set({ day: e.off, open: e.id, openDay: e.off }); }, accept: rs("yes"), decline: rs("declined") };
     });
 
-    // Month, Schedule and Search share one item shape (calendar-views.ts). The provider adapter
-    // passes its own `eventsOn` (Android and Google rows clipped per day) to the same builders.
-    var calItem = function (e, off) {
-      var c = calOf(e.cal), allDay = !!e.allDay;
-      return { id: e.id, title: e.title, color: calColor(c), pending: !!e.pendingSync, allDay: allDay, t: allDay ? 0 : e.t, d: e.d, time: allDay ? "All day" : calRange(e.t, e.d), where: e.where || "",
-        open: function () { set({ open: e.id, openDay: off }); } };
-    };
-    var itemsOn = function (off, events) { return (events || list).filter(function (e) { return visible(e) && calOn(e, off, api); }).map(function (e) { return calItem(e, off); }); };
-    var mBase = new Date(selDate); mBase.setDate(1); mBase.setMonth(mBase.getMonth() + (monthView ? (st.month || 0) : 0));
-    var monthCellsFor = function (eventsOn) {
-      return calendarMonthCells(mBase, api.now, eventsOn, { selected: sel }).map(function (m) {
-        return Object.assign({}, m, { numCss: m.isToday ? "background:var(--acc);color:#fff" : (m.selected ? "box-shadow:inset 0 0 0 1.5px var(--fg)" : ""), cellCss: m.inMonth ? "" : "color:var(--mut)", current: m.isToday ? "date" : "false", pick: function () { pickDay(m.off); } });
-      });
-    };
-    var scheduleRowsFor = function (eventsOn) {
-      // Today forward, never before the loaded window, so no row stands for days that were not read.
-      var range = calendarLoadRange(st, api.now), offOf = function (t) { return Math.round((new Date(t).setHours(12, 0, 0, 0) - today.getTime()) / 864e5); };
-      var from = Math.max(0, offOf(range.begin)), last = offOf(range.end) - 1;
-      return calendarScheduleRows(from, Math.max(from, last), eventsOn, api.now).map(function (row) { return Object.assign({}, row, { headCss: row.isToday ? "color:var(--acct)" : "" }); });
-    };
-    var searchRows = !searching ? [] : calendarSearchRows(st.search, list.filter(visible).map(function (e) {
-      return { event: e, title: e.title, where: e.where, notes: e.notes, start: e.nativeEvent && Number.isFinite(e.nativeEvent.begin) ? e.nativeEvent.begin : calDate(api, e.off).getTime() + ((e.t || 0) - 12) * 36e5 };
-    }), 100, api.now.getTime()).map(function (r) {
-      var e = r.event;
-      return { title: e.title, when: calDayName(api, e.off) + " · " + (e.allDay ? "All day" : calRange(e.t, e.d)), where: e.where || "", color: calColor(calOf(e.cal)), open: function () { set({ open: e.id, openDay: e.off, day: scheduleView ? 0 : e.off }); } };
-    });
-    // Title menu: the four views, then one switch per calendar that has events or comes from a provider.
-    var viewMenu = CAL_VIEW_MENU.map(function (v) {
-      return { id: v[0], label: v[1], on: view === v[0], checked: view === v[0] ? "true" : "false",
-        pick: function () { set({ view: v[0], menu: false, month: v[0] === "month" ? 0 : null, day: v[0] === "schedule" ? 0 : sel }); } };
-    });
-    var calToggles = cals.filter(function (c) { return c.provider || list.some(function (e) { return e.cal === c.id; }); }).map(function (c) {
+    // month panel
+    var monthOpen = st.month != null;
+    var mBase = new Date(selDate); mBase.setDate(1); mBase.setMonth(mBase.getMonth() + (st.month || 0));
+    var mStartDow = (mBase.getDay() + 6) % 7;
+    var gridStart = new Date(mBase); gridStart.setDate(1 - mStartDow);
+    var mdays = [];
+    for (var i = 0; i < 42; i++) {
+      var gd = new Date(gridStart); gd.setDate(gridStart.getDate() + i); gd.setHours(12, 0, 0, 0);
+      (function (gd) {
+        var off = Math.round((gd - today) / 864e5);
+        var inM = gd.getMonth() === mBase.getMonth();
+        var has = on(off).length > 0;
+        var cs = off === 0 ? "background:var(--acc);color:var(--alpha-white)" : (off === sel ? "box-shadow:inset 0 0 0 1.5px var(--fg)" : "");
+        mdays.push({ n: gd.getDate(), cs: cs + (inM || off === 0 ? "" : ";color:var(--mut)"), dot: has ? (off === 0 ? "var(--acct)" : "var(--fg)") : "transparent", pick: function () { set({ day: off, month: null }); }, label: DAYS[gd.getDay()] + " " + MONS[gd.getMonth()] + " " + gd.getDate() });
+      })(gd);
+    }
+    var lastRow = mdays.slice(35).every(function (d) { return d.cs.indexOf("opacity") >= 0; });
+    if (lastRow) mdays = mdays.slice(0, 35);
+    var calRows = cals.map(function (c) {
       var patch = function (p) { var pr = Object.assign({}, st.calPrefs || {}); pr[c.id] = Object.assign({}, pr[c.id] || {}, p); set({ calPrefs: pr }); };
-      return { id: c.id, name: c.name, sub: c.sub, on: c.on, checked: c.on ? "true" : "false", dot: calColor(c), label: "Show " + c.name, toggle: function () { patch({ on: !c.on }); } };
+      return { name: c.name, sub: c.sub, on: c.on, sw: CAL_COLORS[c.color], track: api.track(c.on), kx: api.kx(c.on), dim: c.on ? "" : "opacity:.5",
+        toggle: function () { patch({ on: !c.on }); },
+        color: function () { patch({ color: CAL_COLOR_ORDER[(CAL_COLOR_ORDER.indexOf(c.color) + 1) % CAL_COLOR_ORDER.length] }); } };
     });
 
     // detail
     var ev = st.open ? calFind(list, st.open) : null;
+    if (ev && !calOf(ev.cal)) ev = null;
     var evDay = ev ? (st.openDay != null && calOccurs(ev, st.openDay, api) ? st.openDay : ev.off) : 0;
     var undo = function (label, ev) {
-      api.toast(label, { undo: function () { var l = calEvents(api); api.setView("calendar", { events: calFind(l, ev.id) ? l.map(function (x) { return x.id === ev.id ? ev : x; }) : l.concat([ev]) }); } });
+      api.toast(label, { undo: function () { var l = calEvents(api); if (!calFind(l, ev.id)) api.setView("calendar", { events: l.concat([ev]) }); } });
     };
-    // Delete one occurrence, it and the rest of the series, or the whole event; Undo restores it.
-    var deleteScope = function (e, off, scope) {
-      var repeats = !!(e.repeat && e.repeat !== "none");
-      var whole = !repeats || scope === "all" || (scope === "following" && off <= e.off);
-      var next = whole ? null : Object.assign({}, e, scope === "this" ? { skip: (e.skip || []).concat([off]) } : { until: off - 1 });
-      var l = calEvents(api);
-      set({ events: next ? l.map(function (x) { return x.id === e.id ? next : x; }) : l.filter(function (x) { return x.id !== e.id; }), deleteAsk: null, open: null, openDay: null, day: scheduleView ? 0 : off });
-      undo(e.title + " deleted", e);
-    };
-    var DS = null, askEv = st.deleteAsk ? calFind(list, st.deleteAsk.id) : null;
-    if (askEv) {
-      var askOff = st.deleteAsk.off != null ? st.deleteAsk.off : askEv.off;
-      var scopes = st.deleteAsk.scopes || (askEv.repeat && askEv.repeat !== "none" ? ["this", "following", "all"] : ["all"]);
-      DS = { title: "Delete “" + askEv.title + "”?",
-        options: scopes.map(function (s, i) { return { scope: s, label: scopes.length === 1 ? "Delete" : CAL_DELETE_SCOPE[s], css: i === 0 ? "background:var(--fg);color:var(--bg)" : "background:var(--s2);color:var(--fg)", go: function () { deleteScope(askEv, askOff, s); } }; }),
-        cancel: function () { set({ deleteAsk: null }); } };
-    }
     var formFrom = function (e, off) { return { id: e ? e.id : null, title: e ? e.title : "", off: e ? (e.repeat && e.repeat !== "none" ? e.off : off) : off, t: e ? e.t : 17, d: e ? e.d : 1, where: e ? (e.where === "Phone" ? "Phone" : e.where || "") : "", video: e ? !!e.video : false, who: e ? (e.who || []).slice() : [], cal: e ? e.cal : "work", repeat: e ? e.repeat || "none" : "none", alert: e ? (e.alert == null ? null : e.alert) : 10, notes: e ? e.notes || "" : "" }; };
     var D = null;
     if (ev) {
       var c = calOf(ev.cal);
       var isInvite = !!ev.invite;
       var rsvp = ev.invite ? ev.invite.status : null;
-      var rsvpBtn = function (s, label) { var act = rsvp === s; return { label: label, css: act ? (s === "declined" ? "background:var(--fg);color:var(--bg)" : "background:var(--acc);color:#fff") : "background:var(--s2)", go: function () { set({ events: list.map(function (x) { return x.id === ev.id ? Object.assign({}, x, { invite: Object.assign({}, x.invite, { status: s }) }) : x; }) }); api.toast(s === "yes" ? "Going · " + calPerson(api, ev.invite.from).name.split(" ")[0] + " will see it" : (s === "maybe" ? "Maybe" : "Declined")); } }; };
+      var rsvpBtn = function (s, label) { var act = rsvp === s; return { label: label, css: act ? (s === "declined" ? "background:var(--fg);color:var(--bg)" : "background:var(--acc);color:var(--alpha-white)") : "background:var(--s2)", go: function () { set({ events: list.map(function (x) { return x.id === ev.id ? Object.assign({}, x, { invite: Object.assign({}, x.invite, { status: s }) }) : x; }) }); api.toast(s === "yes" ? "Going · " + calPerson(api, ev.invite.from).name.split(" ")[0] + " will see it" : (s === "maybe" ? "Maybe" : "Declined")); } }; };
       var isPhone = ev.where === "Phone";
       var repeatLabel = ev.repeat && ev.repeat !== "none" ? CAL_REPEAT.filter(function (r) { return r[0] === ev.repeat; })[0][1] : "";
       var alertLabel = ev.alert == null ? "" : (ev.alert === 0 ? "Alert at start" : (ev.alert >= 60 ? ev.alert / 60 + " hour before" : ev.alert + " min before"));
       D = {
         title: ev.title, when: calRange(ev.t, ev.d), day: calDayName(api, evDay) + (repeatLabel ? " · " + repeatLabel : ""),
-        dot: calColor(c), calName: c.name,
-        // Provider adapters fill these: where the event lives (shown under the title), a conflict
-        // ({ text, keepMine, keepTheirs }) and a note that guests will not be notified.
-        sourceNote: "", pending: !!ev.pendingSync, conflict: null, guestNote: "",
+        dot: CAL_COLORS[c.color], calName: c.name, canModify: true,
         recurringReminder: false, reminderPolicy: "", reminderHistory: [], reminderDone: function () {}, reminderSnooze: function () {},
         hasWhere: !!ev.where, where: isPhone ? ((ev.who || [])[0] ? "Call " + calPerson(api, ev.who[0]).name.split(" ")[0] : "Phone call") : ev.where, whereIcon: isPhone ? IC.phone : IC.pin,
         goWhere: function () { if (isPhone) { if ((ev.who || [])[0]) api.open("phone", { call: ev.who[0] }); } else api.open("maps", { query: ev.where }); },
@@ -1503,9 +1450,9 @@ registerView("calendar", {
         rsvp: isInvite ? [rsvpBtn("yes", "Going"), rsvpBtn("maybe", "Maybe"), rsvpBtn("declined", "No")] : [],
         hasPrep: !!(ev.prep && ev.prep.length), prep: ev.prep || [], noPrep: !(ev.prep && ev.prep.length),
         ask: function () { api.send("Prep me for " + ev.title); },
-        close: function () { set({ open: null, openDay: null, day: scheduleView ? 0 : calendarReturnDay(sel, evDay) }); },
+        close: function () { set({ open: null, openDay: null, day: calendarReturnDay(sel, evDay) }); },
         edit: function () { set({ form: formFrom(ev, evDay) }); },
-        del: function () { if (ev.repeat && ev.repeat !== "none") set({ deleteAsk: { id: ev.id, off: evDay } }); else deleteScope(ev, evDay, "all"); }
+        del: function () { set({ events: list.filter(function (x) { return x.id !== ev.id; }), open: null, openDay: null, day: evDay }); undo(ev.title + " deleted", ev); }
       };
     }
 
@@ -1517,7 +1464,7 @@ registerView("calendar", {
       var first = Math.min(0, f.off);
       for (var k = first; k < first + 21; k++) (function (k) {
         var dt = calDate(api, k); var act = k === f.off;
-        dayChips.push({ top: k === 0 ? "Today" : weekdayName(dt, "short"), n: dt.getDate(), css: act ? "background:var(--acc);color:#fff" : "background:var(--s2)", pick: function () { fp({ off: k }); }, label: calDayName(api, k) });
+        dayChips.push({ top: k === 0 ? "Today" : weekdayName(dt, "short"), n: dt.getDate(), css: act ? "background:var(--acc);color:var(--alpha-white)" : "background:var(--s2)", pick: function () { fp({ off: k }); }, label: calDayName(api, k) });
       })(k);
       var chosen = f.who.map(function (id) { var p = calPerson(api, id); return { ini: p.ini, first: p.name.split(" ")[0], label: "Remove " + p.name, remove: function () { fp({ who: f.who.filter(function (x) { return x !== id; }) }); } }; });
       var q = (f.pq || "").toLowerCase().trim();
@@ -1540,8 +1487,8 @@ registerView("calendar", {
         openPick: function () { fp({ pq: "" }); }, closePick: function () { fp({ pq: null }); },
         onPq: function (e) { fp({ pq: e.target.value }); },
         pqKey: function (e) { if (e.key === "Enter" && sugg.length) { e.preventDefault(); sugg[0].pick(); } if (e.key === "Escape") fp({ pq: null }); },
-        valid: !!(f.title || "").trim(), saveOff: !(f.title || "").trim(), saveCss: (f.title || "").trim() ? "background:var(--acc);color:#fff" : "background:var(--s2);color:var(--mut)",
-        cals: cals.filter(function (c) { return !c.provider; }).map(function (c) { return { name: c.name, dot: calColor(c), css: chip(f.cal === c.id), pick: function () { fp({ cal: c.id }); } }; }),
+        valid: !!(f.title || "").trim(), saveOff: !(f.title || "").trim(), saveCss: (f.title || "").trim() ? "background:var(--acc);color:var(--alpha-white)" : "background:var(--s2);color:var(--mut)",
+        cals: (Array.isArray(st.canonicalCalendars) ? st.canonicalCalendars : cals).map(function (c) { return { name: c.name, dot: CAL_COLORS[c.color], css: chip(f.cal === c.id), pick: function () { fp({ cal: c.id }); } }; }),
         repeats: CAL_REPEAT.map(function (r) { return { label: r[1], css: chip(f.repeat === r[0]), pick: function () { fp({ repeat: r[0] }); } }; }),
         alerts: CAL_ALERT.map(function (a) { return { label: a[1], css: chip(f.alert === a[0]), pick: function () { fp({ alert: a[0] }); } }; }),
         cancel: function () { set({ form: null }); },
@@ -1553,45 +1500,32 @@ registerView("calendar", {
           if (f.video && !ne.video) ne.video = "meet.lumen.example/" + title.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
           if (!f.video) delete ne.video;
           var nl = old ? list.map(function (x) { return x.id === old.id ? ne : x; }) : list.concat([ne]);
-          if (old) { set({ events: nl, form: null, day: scheduleView ? 0 : f.off, openDay: f.off }); api.toast("Saved"); }
-          else { set({ events: nl, form: null, day: scheduleView ? 0 : f.off, open: null }); api.toast("Added " + title); }
+          if (old) { set({ events: nl, form: null, day: f.off, openDay: f.off }); api.toast("Saved"); }
+          else { set({ events: nl, form: null, day: f.off, open: null }); api.toast("Added " + title); }
         }
       };
     }
 
-    var scheduleRows = scheduleView ? scheduleRowsFor(itemsOn) : [];
     return {
       attendeeChoices: calPeople(api).map(function (person) { return { id: person.id, name: person.name }; }),
-      month: monthView ? formatMonthTitle(mBase, mBase.getFullYear() !== today.getFullYear()) : formatMonthTitle(selDate, selDate.getFullYear() !== today.getFullYear()),
-      view: view, dayView: view === "day", weekView: weekView, monthView: monthView, scheduleView: scheduleView, timelineView: view === "day" || weekView,
-      dayMode: view === "day",
+      month: monthOpen ? formatMonthTitle(mBase, mBase.getFullYear() !== today.getFullYear()) : formatMonthTitle(selDate, selDate.getFullYear() !== today.getFullYear()),
+      dayMode: !monthOpen,
       dayName: calDayName(api, sel),
-      emptyText: "Nothing scheduled",
-      week: markVisibleWeek(week, sel - sdow, sel, weekView ? 1 : dayCount),
+      emptyText: dayCount > 1 ? "Free on these days" : sel === 0 ? "Nothing scheduled today" : "Free all day",
+      week: markVisibleWeek(week, sel - sdow, sel, dayCount),
       events: dayCount > 1 ? [] : dayEvents, dayEvents: dayEvents, hours: hours,
       empty: dayCount > 1 ? dayColumns.every(function (c) { return !c.events.length; }) : evs.length === 0,
       multiDay: dayCount > 1, dayCount: dayCount,
-      dayColumns: calendarDayColumns(dayColumns, api.now, (nowT - CAL_H0) * CAL_PX + 8, nowT >= CAL_H0 && nowT <= CAL_H1, sel, { compact: weekView, pick: pickDay }),
+      dayColumns: calendarDayColumns(dayColumns, api.now, (nowT - CAL_H0) * CAL_PX + 8, nowT >= CAL_H0 && nowT <= CAL_H1, sel),
       showNow: dayCount < 2 && sel === 0 && nowT >= CAL_H0 && nowT <= CAL_H1, nowTop: (nowT - CAL_H0) * CAL_PX + 8,
       tlDown: tlDown, tlUp: tlUp,
-      notToday: monthView ? sel !== 0 || (st.month || 0) !== 0 : !scheduleView && sel !== 0,
-      goToday: function () { set({ day: 0, month: monthView ? 0 : null }); },
-      // Title menu (views and calendar switches), owned by calendar-month-focus.ts for focus and Back.
-      menuOpen: !!st.menu, toggleMenu: function () { set({ menu: !st.menu }); }, closeMenu: function () { set({ menu: false }); },
-      viewMenu: viewMenu, calToggles: calToggles, hasCalToggles: calToggles.length > 0, chevron: st.menu ? IC.up : IC.down,
-      newEvent: function () { var nx = sel === 0 ? Math.min(21, Math.ceil(nowT + 0.01)) : 10; set({ form: Object.assign(formFrom(null, sel), { t: nx }), menu: false }); },
-      hasInvites: invites.length > 0 && view === "day", invites: invites,
-      // Month view: a grid of whole weeks with event chips; a day opens Day view.
-      monthCells: monthView ? monthCellsFor(itemsOn) : [], mTitle: formatMonthTitle(mBase, mBase.getFullYear() !== today.getFullYear()),
-      monthWeekdays: [0, 1, 2, 3, 4, 5, 6].map(function (i) { return calDate(api, i - calDow(api, 0)).toLocaleDateString(undefined, { weekday: "narrow" }); }),
-      mPrev: function () { set({ month: (st.month || 0) - 1 }); }, mNext: function () { set({ month: (st.month || 0) + 1 }); },
-      // Schedule view: today forward through the loaded range, days with something on them.
-      scheduleRows: scheduleRows, scheduleEmpty: scheduleView && !scheduleRows.length,
-      calItems: itemsOn, monthCellsFor: monthCellsFor, scheduleRowsFor: scheduleRowsFor,
-      // Search: results open the event; the detail closes back to the results.
-      searching: searching, notSearching: !searching, searchQuery: st.search || "", searchRows: searchRows, searchEmpty: searching && !!String(st.search).trim() && !searchRows.length, searchLoading: "",
-      openSearch: function () { set({ search: "", menu: false }); }, onSearch: function (e) { set({ search: e.target.value }); }, closeSearch: function () { set(scheduleView ? { search: null, day: 0 } : { search: null }); },
-      deleteSheet: DS,
+      notToday: sel !== 0, goToday: function () { set({ day: 0, month: null }); },
+      toggleMonth: function () { set({ month: monthOpen ? null : 0 }); },
+      newEvent: function () { var nx = sel === 0 ? Math.min(21, Math.ceil(nowT + 0.01)) : 10; set({ form: Object.assign(formFrom(null, sel), { t: nx }), month: null }); },
+      hasInvites: invites.length > 0 && !monthOpen, invites: invites,
+      monthOpen: monthOpen, mTitle: formatMonthTitle(mBase, mBase.getFullYear() !== today.getFullYear()),
+      mdays: mdays, mPrev: function () { set({ month: (st.month || 0) - 1 }); }, mNext: function () { set({ month: (st.month || 0) + 1 }); },
+      closeMonth: function () { set({ month: null }); }, calRows: calRows, chevron: monthOpen ? IC.up : IC.down,
       detail: !!D && !F, ev: D,
       form: !!F, f: F,
       noop: function () {}
@@ -1821,7 +1755,7 @@ registerView("browser", {
     /* booking page */
     var bk = st.bk; var agBook = st.ag && st.ag.task === "book";
     var times = BR_TIMES.slice(); if (bk.time && times.indexOf(bk.time) < 0) times.push(bk.time);
-    var chip = function (on) { return on ? "background:var(--acc);color:#fff" : "background:var(--s2)"; };
+    var chip = function (on) { return on ? "background:var(--acc);color:var(--alpha-white)" : "background:var(--s2)"; };
     var canBook = !!(bk.time && bk.name.trim() && bk.phone.trim());
     var bkSet = function (p) { var b = Object.assign({}, api.get("browser").bk, p); set({ bk: b }); };
 
@@ -1829,12 +1763,12 @@ registerView("browser", {
     var results = pg.kind === "search" ? brResults(pg.q).map(function (u) { var p = BR_PAGES[u]; return { title: p.title, host: p.host + p.path, snip: p.snip, go: link(u) }; }) : [];
 
     /* recent sites for new tab */
-    var recents = st.visits.slice(0, 6).map(function (u) { var p = brPage(u); return { ini: (p.host || "?").charAt(0).toUpperCase(), host: p.host, go: link(u), css: "background:" + (p.tile && p.tile.indexOf("var") < 0 ? p.tile + ";color:#fff" : "var(--s2)") }; });
+    var recents = st.visits.slice(0, 6).map(function (u) { var p = brPage(u); return { ini: (p.host || "?").charAt(0).toUpperCase(), host: p.host, go: link(u), css: "background:" + (p.tile && p.tile.indexOf("var") < 0 ? p.tile + ";color:var(--alpha-white)" : "var(--s2)") }; });
 
     /* tabs */
     var tabCards = st.tabs.map(function (x) {
       var p = brPage(x.hist[x.pos]); var on = x.id === st.cur;
-      return { id: x.id, title: p.title, host: p.host || "New tab", css: on ? "box-shadow:inset 0 0 0 2px var(--acc)" : "", prev: "background:" + imgBg({ news: "news", enclave: "enclave", book: "nopa" }[p.kind] || "-", p.tile), aria: "Switch to " + p.title, closeAria: "Close " + p.title,
+      return { title: p.title, host: p.host || "New tab", css: on ? "box-shadow:inset 0 0 0 2px var(--acc)" : "", prev: "background:" + imgBg({ news: "news", enclave: "enclave", book: "nopa" }[p.kind] || "-", p.tile), aria: "Switch to " + p.title, closeAria: "Close " + p.title,
         pick: function () { set({ cur: x.id, tabsOpen: false }); },
         close: function () {
           var s = api.get("browser"); var rest = s.tabs.filter(function (y) { return y.id !== x.id; });
@@ -1844,9 +1778,9 @@ registerView("browser", {
     });
 
     /* library */
-    var libRows = Array.from(new Set(st.lib === "history" ? st.visits : st.marks)).map(function (u) {
+    var libRows = (st.lib === "history" ? st.visits : st.marks).map(function (u) {
       var p = brPage(u);
-      return { id: u, title: p.title, host: p.host + p.path, ini: (p.host || "?").charAt(0).toUpperCase(), css: "background:" + (p.tile && p.tile.indexOf("var") < 0 ? p.tile + ";color:#fff" : "var(--s3)"), go: link(u),
+      return { title: p.title, host: p.host + p.path, ini: (p.host || "?").charAt(0).toUpperCase(), css: "background:" + (p.tile && p.tile.indexOf("var") < 0 ? p.tile + ";color:var(--alpha-white)" : "var(--s3)"), go: link(u),
         canRemove: st.lib !== "history", removeAria: "Remove bookmark " + p.title, remove: function () { var s = api.get("browser"); set({ marks: s.marks.filter(function (x) { return x !== u; }) }); } };
     });
 
@@ -1858,8 +1792,11 @@ registerView("browser", {
 
     return {
       rootRef: function () { brNoScroll(); },
-      pg: pg, heroNews: imgBg("news", "#000"), heroEnc: imgBg("enclave", "#0000FF"), heroBook: imgBg("nopa", "#17352A"), heroArt: IMG.news ? "none" : "block", isNews: pg.kind === "news", isEnc: pg.kind === "enclave", isBook: pg.kind === "book", isSearch: pg.kind === "search", isNew: pg.kind === "newtab", isGeneric: pg.kind === "generic", genLinks: (pg.links || []).map(function (l) { return { label: l.label, host: l.url, go: link(l.url) }; }),
-      host: pg.host || "Search or type address", hostCss: pg.host ? "" : "color:var(--mut)", path: pg.path, hasLock: !!pg.host,
+      // Fixture pages are available only in explicit mock builds; production fixtures are empty.
+      pageContentAvailable: Object.prototype.hasOwnProperty.call(BR_PAGES, url),
+      pageShareAvailable: Object.prototype.hasOwnProperty.call(BR_PAGES, url),
+      pg: pg, heroNews: imgBg("news", "var(--alpha-black)"), heroEnc: imgBg("enclave", "var(--alpha-blue)"), heroBook: imgBg("nopa", "var(--alpha-web-hero-1)"), heroArt: IMG.news ? "none" : "block", isNews: pg.kind === "news", isEnc: pg.kind === "enclave", isBook: pg.kind === "book", isSearch: pg.kind === "search", isNew: pg.kind === "newtab", isGeneric: pg.kind === "generic", genLinks: (pg.links || []).map(function (l) { return { label: l.label, host: l.url, go: link(l.url) }; }),
+      host: pg.host || "Search or address", hostCss: pg.host ? "" : "color:var(--mut)", path: pg.path, hasLock: !!pg.host,
       backOp: canBack ? 1 : 0.3, fwdOp: canFwd ? 1 : 0.3, goBack: stepTab(-1), goFwd: stepTab(1),
       nTabs: st.tabs.length, openTabs: function () { set({ tabsOpen: true, menu: false, editing: false }); }, closeTabs: function () { set({ tabsOpen: false }); },
       tabsTitle: st.tabs.length === 1 ? "1 tab" : st.tabs.length + " tabs", tabCards: tabCards, newTab: newTab, tabsOpen: st.tabsOpen,
@@ -1875,7 +1812,7 @@ registerView("browser", {
       toggleMark: function () { var s = api.get("browser"); var on = s.marks.indexOf(url) >= 0; if (!pg.host) return; set({ marks: on ? s.marks.filter(function (x) { return x !== url; }) : [url].concat(s.marks), menu: false }); },
       openLib: function () { set({ lib: "bookmarks", menu: false }); }, lib: !!st.lib, closeLib: function () { set({ lib: null }); },
       libMarks: function () { set({ lib: "bookmarks" }); }, libHist: function () { set({ lib: "history" }); },
-      libMarksCss: st.lib !== "history" ? "background:var(--acc);color:#fff" : "color:var(--mut)", libHistCss: st.lib === "history" ? "background:var(--acc);color:#fff" : "color:var(--mut)",
+      libMarksCss: st.lib !== "history" ? "background:var(--acc);color:var(--alpha-white)" : "color:var(--mut)", libHistCss: st.lib === "history" ? "background:var(--acc);color:var(--alpha-white)" : "color:var(--mut)",
       libRows: libRows, libEmpty: !libRows.length, libIsHist: st.lib === "history" && libRows.length > 0, clearHist: function () { set({ visits: [] }); },
       openShare: function () { set({ share: true, menu: false }); }, share: st.share, closeShare: function () { set({ share: false }); }, people: people,
       copyLink: function () { set({ share: false }); api.toast("Link copied"); },
@@ -1889,7 +1826,7 @@ registerView("browser", {
       times: times.map(function (x) { return { label: x, key: "t-" + x, css: chip(bk.time === x), on: bk.time === x, aria: x + " PM", pick: function () { bkSet({ time: x }); } }; }),
       bkName: bk.name, bkPhone: bk.phone, onName: function (e) { bkSet({ name: e.target.value }); }, onPhone: function (e) { bkSet({ phone: e.target.value }); },
       fieldCss: agBook ? "box-shadow:inset 0 0 0 1.5px var(--acct)" : "",
-      bookCss: canBook ? "background:var(--acc);color:#fff" : "background:var(--s3);color:var(--mut)", canBookNot: !canBook,
+      bookCss: canBook ? "background:var(--acc);color:var(--alpha-white)" : "background:var(--s3);color:var(--mut)", canBookNot: !canBook,
       bookNow: function () { if (!canBook || api.get("browser").ag) return; brFinishBook(api); },
       booked: st.booked, isBooked: !!st.booked, notBooked: !st.booked,
       rebook: function () { set({ booked: null }); },
@@ -1905,51 +1842,36 @@ registerView("browser", {
 });
 
 /* ===== module: camera ===== */
-/* Camera: photo / video / scan. Immersive. Captures are prepended to Photos' shared list.
+/* Camera: video / photo. Immersive. Captures are prepended to Photos' shared list.
+   Scanning is not a mode: asking Alpha to scan while Camera is open captures one frame into scan review.
    Scenes come from phScene()/phLook() in the Photos module (CSS compositions, no images). All holes are {{camera.*}}. */
 IC.camFlash = IC.camFlash || "M13 3L5 14h6l-1 7 8-11h-6l1-7z";
 IC.camFlashOff = IC.camFlashOff || "M13 3L9.5 8M8 10l-3 4h6l-1 7 3.2-4.4M15 13.6L18 10h-6l1-7M3 3l18 18";
 IC.camFlip = IC.camFlip || "M4 12a8 8 0 0 1 13.7-5.6L20 9M20 4v5h-5M20 12a8 8 0 0 1-13.7 5.6L4 15M4 20v-5h5";
 IC.camScan = IC.camScan || "M4 8V4h4M16 4h4v4M20 16v4h-4M8 20H4v-4M7 12h10";
 
-var CAM = { live: false, scan: false, lp: null, long: false, g: null };
+/* Zoom ratios of the simulated lenses: the back lens has an ultra-wide, the front lens only 1×. */
 var CAM_ZOOM = [[".5", 1], ["1×", 1.35], ["2", 2], ["5", 3.4]];
-var CAM_MODES = [["video", "Video"], ["photo", "Photo"], ["scan", "Scan"]];
-var CAM_DRIFT = [[0, 0], [-5, 3], [3, -4], [-2, -6], [4, 2]];
-function camScene(st) { return st.mode === "scan" ? "poster" : (st.front ? "selfie" : "park"); }
-function camFigs(st) { return st.mode !== "scan" && st.front ? [[50, 2.2]] : null; }
-function camPoster(now) {
-  var d = new Date(now); var add = (5 - d.getDay() + 7) % 7 || 7; d.setDate(d.getDate() + add);
-  return { day: formatShortDate(d), short: weekdayName(d, "short") + " " + formatHours(18) };
-}
+var CAM_MODES = [["video", "Video"], ["photo", "Photo"]];
+var CAM_SCAN_WORDS = /\bscan\b.*\b(document|doc|receipt|qr|code|poster|page|this|that|a|it|text)\b|\bscan (this|it|that)\b/;
+function camScene(st) { return st.front ? "selfie" : "park"; }
+function camFigs(st) { return st.front ? [[50, 2.2]] : null; }
 function camSave(api, item) {
   var ph = api.get("photos");
   api.setView("photos", { list: [item].concat(ph.list || []) });
   api.set({ session: [item.id].concat(api.get("camera").session || []) });   // this session's captures (all secure mode may show)
 }
 function camFlashFx(api) { api.set({ fl: 1 }); api.later(function () { api.set({ fl: 0 }); }, 90); }
+function camShot(s) { return { id: "c" + Date.now(), ts: Date.now(), kind: "photo", scene: camScene(s), figs: camFigs(s), place: copy("camera").place || "", people: [], tags: s.front ? ["selfie"] : [], fav: false, z: s.front ? 1 : CAM_ZOOM[s.zoom][1] }; }
 function camStopRec(api) {
   var s = api.get("camera"); if (!s.rec) return;
   var sec = Math.max(1, Math.floor((Date.now() - s.recAt) / 1000));
   camSave(api, { id: "c" + Date.now(), ts: Date.now(), kind: "video", dur: Math.floor(sec / 60) + ":" + pad2(sec % 60), scene: camScene(s), figs: camFigs(s), place: copy("camera").place || "", people: [], tags: s.front ? ["selfie"] : [], fav: false, z: s.front ? 1 : CAM_ZOOM[s.zoom][1] });
   api.set({ rec: false, recAt: 0 }); api.stopBg();
 }
-function camAsk(api) {
-  var s = api.get("camera");
-  if (api.secure) { var k = Date.now(); api.set({ said: camDescribe(s, Date.now()), saidK: k }); api.later(function () { if (api.get("camera").saidK === k) api.set({ said: "" }); }, 7000); return; }
-  api.send(s.mode === "scan" ? "What does it say?" : "What am I looking at?");
-}
 function camRecLabel(st) { var sec = Math.max(0, Math.floor((Date.now() - st.recAt) / 1000)); return Math.floor(sec / 60) + ":" + pad2(sec % 60); }
-function camSaveScan(api, quiet) {
-  var s = api.get("camera");
-  var scan = copy("camera").scan || {};
-  camSave(api, { id: "c" + Date.now(), ts: Date.now(), kind: "doc", scene: "poster", figs: null, place: scan.place || "", people: [], tags: (scan.tags || []).slice(), fav: false, z: 1 });
-  if (!quiet) camFlashFx(api);
-  return s;
-}
-function camDescribe(st, now) {
+function camDescribe(st) {
   var cc = copy("camera");
-  if (st.mode === "scan") { var scan = cc.scan || {}; return scan.describe ? scan.describe.replace("{day}", camPoster(now).day) : "Document reading is not connected."; }
   if (st.front) return cc.describeFront || "Scene description is not connected.";
   return cc.describeBack || "Scene description is not connected.";
 }
@@ -1957,113 +1879,79 @@ function camDescribe(st, now) {
 registerView("camera", {
   title: "Camera", icon: "camera", aliases: ["cam"],
   chat: "hidden",
-  state: { mode: "photo", front: false, flash: false, zoom: 1, rec: false, recAt: 0, tick: 0, fl: 0, focus: null, found: false, flip: false, session: [], said: "" },
-  ongoing: function (st) { return st.rec ? { label: camRecLabel(st), icon: "video", color: "#E53935" } : null; },
-  jumps: [[null, "Camera"], ["video", "Video"], ["scan", "Scan"]],
-  preset: function (sub) { if (sub) return { mode: sub }; },
-  immersive: function () { return { dark: true, noPill: true }; },
+  state: { mode: "photo", front: false, flash: false, zoom: 1, rec: false, recAt: 0, tick: 0, fl: 0, session: [], said: "" },
+  ongoing: function (st) { return st.rec ? { label: camRecLabel(st), icon: "video", color: "var(--alpha-record-red)" } : null; },
+  jumps: [[null, "Camera"], ["video", "Video"]],
+  preset: function (sub) { if (sub === "video" || sub === "photo") return { mode: sub }; },
+  // The assistant pill stays below the shutter row: asking Alpha (about the frame, or to scan it) replaces header buttons.
+  immersive: function (st) { return st.rec ? { dark: true, noPill: true } : { dark: true }; },
   back: function (st, api) { if (st.rec) { camStopRec(api); return true; } return false; },
-  onLeave: function (api) { if (api.secure && api.get("camera").rec) camStopRec(api); CAM.live = false; CAM.scan = false; clearTimeout(CAM.lp); },  // recording keeps going in the background (ongoing chip) except from the lock screen
-  suggestions: function (st) {
-    if (st.mode === "scan") return ["What does it say?", "Add it to my calendar", "Save it to Files"];
-    return ["What am I looking at?", "Take a selfie", "Scan a document"];
-  },
+  onLeave: function (api) { if (api.secure && api.get("camera").rec) camStopRec(api); },  // recording keeps going in the background (ongoing chip) except from the lock screen
+  suggestions: function () { return ["What am I looking at?", "Take a selfie", "Scan this"]; },
   voicePhrase: "What am I looking at?",
   actions: {
-    addEvent: function (card, api) { api.toast("Added to Calendar"); }
+    /* The camera adapter replaces this with one frame into scan review. */
+    scan: function (card, api) { camFlashFx(api); }
   },
   reply: function (t, raw, api) {
-    var st = api.st; var now = api.now.getTime();
+    var st = api.st;
     if (api.active) {
-      if (/what (am i|do you|is (this|that)|'s (this|that))|what.*(see|looking)|read (this|it)|what does it say|describe/.test(t)) {
-        if (st.mode === "scan" && (copy("camera").scan || {}).title) { var p = camPoster(now); return { text: camDescribe(st, now), card: { type: "event", time: p.day + " · 6:00 PM", title: copy("camera").scan.title, act: { mod: "camera", fn: "addEvent" } } }; }
-        return { text: camDescribe(st, now) };
-      }
-      if (st.mode === "scan" && (copy("camera").scan || {}).added && /calendar|add (it|the event|event)/.test(t)) return { text: copy("camera").scan.added, then: function () { api.toast("Added to Calendar"); } };
-      if (st.mode === "scan" && /files|save (it|this)/.test(t)) return { text: "Saved to Files, under Scans.", then: function () { camSaveScan(api, true); api.toast("Saved to Files"); } };
-      if (/\b(take|snap|shoot)\b.*\bselfie\b/.test(t)) return { text: "Smile.", then: function () { api.set({ mode: "photo", front: true }); api.later(function () { api.set({ fl: 1 }); var s = api.get("camera"); camSave(api, { id: "c" + Date.now(), ts: Date.now(), kind: "photo", scene: "selfie", figs: [[50, 2.2]], place: copy("camera").place || "", people: [], tags: ["selfie"], fav: false, z: 1 }); api.later(function () { api.set({ fl: 0 }); }, 90); }, 900); } };
-      if (/\b(take|snap|shoot)\b.*\b(photo|picture|pic|shot)\b/.test(t)) return { text: "Got it.", then: function () { var s = api.get("camera"); camFlashFx(api); camSave(api, { id: "c" + Date.now(), ts: Date.now(), kind: "photo", scene: camScene(s), figs: camFigs(s), place: copy("camera").place || "", people: [], tags: s.front ? ["selfie"] : [], fav: false, z: s.front ? 1 : CAM_ZOOM[s.zoom][1] }); } };
+      if (CAM_SCAN_WORDS.test(t)) return { text: "Scanning.", then: function () { VIEWS.camera.actions.scan(null, api); } };
+      if (/what (am i|do you|is (this|that)|'s (this|that))|what.*(see|looking)|read (this|it)|what does it say|describe/.test(t)) return { text: camDescribe(st) };
+      if (/\b(take|snap|shoot)\b.*\bselfie\b/.test(t)) return { text: "Smile.", then: function () { api.set({ mode: "photo", front: true, flash: false, zoom: 1 }); api.later(function () { camFlashFx(api); camSave(api, camShot(api.get("camera"))); }, 900); } };
+      if (/\b(take|snap|shoot)\b.*\b(photo|picture|pic|shot)\b/.test(t)) return { text: "Got it.", then: function () { camFlashFx(api); camSave(api, camShot(api.get("camera"))); } };
     }
-    if (/\b(take|snap)\b.*\bselfie\b/.test(t)) return { text: "Front camera's ready.", nav: { view: "camera", patch: { mode: "photo", front: true } } };
+    if (/\b(take|snap)\b.*\bselfie\b/.test(t)) return { text: "Front camera's ready.", nav: { view: "camera", patch: { mode: "photo", front: true, flash: false, zoom: 1 } } };
     if (/\b(take|snap|shoot)\b.*\b(photo|picture|pic)\b|\bopen (the )?camera\b/.test(t)) return { text: "Camera's ready.", nav: { view: "camera", patch: { mode: "photo" } } };
-    if (/\b(record|film|shoot)\b.*\bvideo\b/.test(t)) return { text: "Tap the red button to start.", nav: { view: "camera", patch: { mode: "video" } } };
-    if (/\bscan\b.*\b(document|doc|receipt|qr|code|poster|page|this|a|it)\b/.test(t)) return { text: "Point it at the page. I'll read it.", nav: { view: "camera", patch: { mode: "scan", found: false } } };
+    if (/\b(record|film|shoot)\b.*\bvideo\b/.test(t)) return { text: "Camera's ready.", nav: { view: "camera", patch: { mode: "video" } } };
+    if (CAM_SCAN_WORDS.test(t)) return { text: "Camera's ready. Point it at the page and ask again.", nav: { view: "camera", patch: { mode: "photo" } } };
     return null;
   },
   render: function (st, api) {
-    var now = api.now.getTime();
-    if (!CAM.live) { CAM.live = true; api.every(function () { var s = api.get("camera"); if (!s.rec) api.set({ tick: (s.tick || 0) + 1 }); }, 1000); }
-    if (st.mode === "scan" && !st.found && !CAM.scan) { CAM.scan = true; api.later(function () { CAM.scan = false; if (api.get("camera").mode === "scan") api.set({ found: true }); }, 1100); }
-    var isScan = st.mode === "scan", isVideo = st.mode === "video";
-    var front = st.front && !isScan;
-    var zs = isScan ? 0.8 : (front ? 1.05 : CAM_ZOOM[st.zoom][1]);
-    var dr = CAM_DRIFT[Math.floor((st.tick || 0) / 2) % CAM_DRIFT.length];
+    var isVideo = st.mode === "video";
+    var front = st.front;
+    var zs = front ? 1.05 : CAM_ZOOM[st.zoom][1];
     var bg = phScene(camScene(st), camFigs(st), 0, PH_SCENE_IMG[camScene(st)]);
-    var setMode = function (m) { var s = api.get("camera"); if (s.rec) camStopRec(api); if (s.mode !== m) api.set({ mode: m, found: false }); };
-    var modeIdx = CAM_MODES.map(function (m) { return m[0]; }).indexOf(st.mode);
+    var setMode = function (m) { var s = api.get("camera"); if (s.rec) camStopRec(api); if (s.mode !== m) api.set({ mode: m }); };
 
     var ph = api.get("photos"); var sess = st.session || [];
     var last = (ph.list || []).filter(function (it) { return !api.secure || sess.indexOf(it.id) >= 0; })[0] || null;
     var lastLook = last ? phLook(last, "thumb") : null;
-    var poster = camPoster(now);
-
-    function pt(e) { var sc = e.currentTarget.closest("[data-screen]"); var r = sc.getBoundingClientRect(); var s = r.width / 412 || 1; return { x: (e.clientX - r.left) / s, y: (e.clientY - r.top) / s }; }
+    // The simulated front lens has no ultra-wide or telephoto: 1× only, so no chips.
+    var zooms = front ? [] : CAM_ZOOM.map(function (z, i) { return [z[0], i]; });
     return {
-      bg: bg, vfBg: isScan ? "linear-gradient(135deg, #6B5A4A, #4E4036)" : "#111111",
-      drift: "transform: translate(" + dr[0] + "px, calc(-50% + " + dr[1] + "px))",
-      zoomCss: "transform: scale(" + zs + ")" + (front ? " scaleX(-1)" : "") + "; filter: " + (st.flip ? "blur(14px) brightness(.7)" : "none"),
+      bg: bg, vfBg: "var(--alpha-gray-11)", vfOp: 1,
+      zoomCss: "transform: scale(" + zs + ")" + (front ? " scaleX(-1)" : ""),
       flOp: st.fl ? (st.flash ? 1 : 0.85) : 0, flTr: st.fl ? "none" : "opacity .45s",
-      hasFocus: !!st.focus, focus: st.focus ? "left: " + (st.focus.x - 34) + "px; top: " + (st.focus.y - 34) + "px" : "",
-      flashIcon: st.flash ? IC.camFlash : IC.camFlashOff, flashAvailable: true, flashLabel: st.flash ? "Flash on" : "Flash off",
+      flashIcon: st.flash ? IC.camFlash : IC.camFlashOff, flashAvailable: !front, flashLabel: st.flash ? "Flash on" : "Flash off",
       toggleFlash: function () { api.set({ flash: !api.get("camera").flash }); },
       rec: st.rec, recTime: st.rec ? camRecLabel(st) : "",
       said: st.said || "", hasSaid: !!st.said, clearSaid: function () { api.set({ said: "" }); },
-      showZoom: !isScan && !front,
-      zooms: CAM_ZOOM.map(function (z, i) {
-        var on = st.zoom === i;
-        return { label: z[0], aria: "Zoom " + z[0].replace("×", "") + "x", css: on ? "background-color:#ffffff;color:#000000;width:40px;height:40px;padding:2px;box-sizing:content-box;background-clip:content-box;font-size:13px" : "background-color:rgba(0,0,0,.65);color:#ffffff;width:34px;height:34px;padding:5px;box-sizing:content-box;background-clip:content-box;font-size:12px", pick: function () { api.set({ zoom: i }); } };
+      showZoom: !st.rec && zooms.length > 1,
+      zooms: zooms.map(function (z) {
+        var on = st.zoom === z[1];
+        return { label: z[0], aria: "Zoom " + z[0].replace("×", "") + "x", css: on ? "background-color:var(--alpha-white);color:var(--alpha-black);width:40px;height:40px;padding:2px;box-sizing:content-box;background-clip:content-box;font-size:13px" : "background-color:rgba(0,0,0,.65);color:var(--alpha-white);width:34px;height:34px;padding:5px;box-sizing:content-box;background-clip:content-box;font-size:12px", pick: function () { api.set({ zoom: z[1] }); } };
       }),
-      scanFound: isScan && st.found, scanning: isScan && !st.found,
-      posterDay: poster.short,
-      addEvent: function () { api.toast("Added to Calendar · " + poster.short); },
-      saveFiles: function () { camSaveScan(api); api.toast("Saved to Files"); },
-      openLink: function () { var link = (copy("camera").scan || {}).link; if (link) api.open("browser", { url: link }); else api.toast("No link was read from this scan"); },
+      showModes: !st.rec,
       modes: CAM_MODES.map(function (m) {
         var on = st.mode === m[0];
-        return { label: m[1], css: on ? "color:#ffffff" : "color:rgba(255,255,255,.55)", dot: on ? 1 : 0, pick: function () { setMode(m[0]); } };
+        return { label: m[1], css: on ? "color:var(--alpha-white)" : "color:rgba(255,255,255,.55)", dot: on ? 1 : 0, pick: function () { setMode(m[0]); } };
       }),
-      innerCss: isVideo ? (st.rec ? "width:30px;height:30px;border-radius:8px;background:#E53935" : "width:62px;height:62px;border-radius:31px;background:#E53935") : "width:62px;height:62px;border-radius:31px;background:#ffffff",
-      scanGlyph: isScan,
-      shutterLabel: isVideo ? (st.rec ? "Stop recording" : "Start recording") : (isScan ? "Save scan" : "Take photo"),
+      innerCss: isVideo ? (st.rec ? "width:30px;height:30px;border-radius:8px;background:var(--alpha-record-red)" : "width:62px;height:62px;border-radius:31px;background:var(--alpha-record-red)") : "width:62px;height:62px;border-radius:31px;background:var(--alpha-white)",
+      shutterLabel: isVideo ? (st.rec ? "Stop recording" : "Start recording") : "Take photo",
       shutter: function () {
         var s = api.get("camera");
         if (s.mode === "video") { if (s.rec) camStopRec(api); else { api.set({ rec: true, recAt: Date.now() }); api.everyBg(function () { var c = api.get("camera"); api.set({ tick: (c.tick || 0) + 1 }); }, 1000); } return; }
-        if (s.mode === "scan") { camSaveScan(api); api.toast("Scan saved"); return; }
         camFlashFx(api);
-        camSave(api, { id: "c" + Date.now(), ts: Date.now(), kind: "photo", scene: camScene(s), figs: camFigs(s), place: copy("camera").place || "", people: [], tags: s.front ? ["selfie"] : [], fav: false, z: s.front ? 1 : CAM_ZOOM[s.zoom][1] });
+        camSave(api, camShot(s));
       },
       hasLast: !!last, lastBg: lastLook ? lastLook.bg : "", lastTf: lastLook ? lastLook.tf : "", lastFlt: lastLook ? lastLook.flt : "none",
       lastLabel: last && last.kind === "video" ? "Open last video" : "Open last photo",
       openLast: function () { if (last) api.open("photos", { open: last.id, from: "camera", seq: api.secure ? sess.slice() : null, chrome: true, sheet: null, edit: null, sel: null, searching: false }); },
-      showFlip: !isScan && !st.rec, noFlip: isScan || !!st.rec, noLast: !last,
-      flip: function () { api.set({ front: !api.get("camera").front, flip: true }); api.later(function () { api.set({ flip: false }); }, 260); },
-      ask: function () { camAsk(api); },
-      vfDown: function (e) {
-        CAM.g = pt(e); CAM.long = false; clearTimeout(CAM.lp); try { e.currentTarget.setPointerCapture(e.pointerId); } catch (err) {}
-        CAM.lp = setTimeout(function () { CAM.long = true; camAsk(api); }, 650);
-      },
-      vfUp: function (e) {
-        clearTimeout(CAM.lp); var g = CAM.g; CAM.g = null; if (!g || CAM.long) return;
-        var p = pt(e); var dx = p.x - g.x, dy = p.y - g.y;
-        if (Math.abs(dx) > 50 && Math.abs(dx) > Math.abs(dy) && g.x > 30 && g.x < 382) {
-          var ni = modeIdx + (dx < 0 ? 1 : -1); if (ni >= 0 && ni < CAM_MODES.length) setMode(CAM_MODES[ni][0]); return;
-        }
-        if (Math.abs(dx) < 10 && Math.abs(dy) < 10) {
-          var k = Date.now(); api.set({ focus: { x: g.x, y: g.y - 96, k: k } });
-          api.later(function () { var s = api.get("camera"); if (s.focus && s.focus.k === k) api.set({ focus: null }); }, 1100);
-        }
-      },
-      vfLeave: function () { clearTimeout(CAM.lp); CAM.g = null; }
+      showFlip: !st.rec, noFlip: !!st.rec, noLast: !last,
+      // Flash and zoom reset before the lens changes, so the new lens never inherits an unsupported setting.
+      flip: function () { var s = api.get("camera"); api.set({ flash: false, zoom: 1, front: !s.front }); },
+      vfUp: function () {}
     };
   }
 });
@@ -2088,43 +1976,43 @@ function phW(x, y, from, span, c) { return "conic-gradient(from " + from + "deg 
 function phFig(x, s, c) { // head + shoulders silhouette; s = 1 mid shot, 2 portrait
   return [phE(8.5 * s, 6.4 * s, x, 100 - 28 * s, c), phE(19 * s, 22 * s, x, 100 + 2 * s, c)];
 }
-var PH_TONES = [["#EBC9B6", "#B89AB3"], ["#CFE0D3", "#8FAE9C"], ["#D6DDEB", "#9AA8C4"], ["#F0DDB0", "#C99B6A"]];
+var PH_TONES = [["var(--alpha-photo-tone-1)", "var(--alpha-photo-tone-2)"], ["var(--alpha-photo-tone-3)", "var(--alpha-photo-tone-4)"], ["var(--alpha-photo-tone-5)", "var(--alpha-photo-tone-6)"], ["var(--alpha-photo-tone-7)", "var(--alpha-photo-tone-8)"]];
 function phCity(win) {
-  var b = [[14, 40, 4, 60, "#1B1C36"], [10, 52, 19, 48, "#22244A"], [16, 34, 30, 66, "#191A31"], [12, 58, 47, 42, "#23254C"], [18, 38, 60, 62, "#1A1B34"], [9, 48, 79, 52, "#20224A"], [12, 30, 89, 70, "#181930"]];
+  var b = [[14, 40, 4, 60, "var(--alpha-photo-city-1)"], [10, 52, 19, 48, "var(--alpha-photo-city-2)"], [16, 34, 30, 66, "var(--alpha-photo-city-3)"], [12, 58, 47, 42, "var(--alpha-photo-city-4)"], [18, 38, 60, 62, "var(--alpha-photo-city-5)"], [9, 48, 79, 52, "var(--alpha-photo-city-6)"], [12, 30, 89, 70, "var(--alpha-photo-city-7)"]];
   var L = [phRg(8, 50, 49, 46, "repeating-linear-gradient(to bottom, " + win + " 0 1.2%, transparent 1.2% 4%)"), phRg(6, 44, 21, 52, "repeating-linear-gradient(to bottom, " + win + " 0 1.2%, transparent 1.2% 4.4%)"), phRg(5, 40, 81, 56, "repeating-linear-gradient(to bottom, " + win + " 0 1.2%, transparent 1.2% 5%)")];
   b.forEach(function (r) { L.push(phR(r[0], r[1], r[2], r[3], r[4])); });
   return L;
 }
 function phQR(x, y) { // 18% x 13.5% box (square in a 3:4 frame): three finder squares + a module field
   var L = [];
-  [[x, y], [x + 12, y], [x, y + 9]].forEach(function (f) { L.push(phR(2, 1.5, f[0] + 2, f[1] + 1.5, "#111")); L.push(phR(4, 3, f[0] + 1, f[1] + 0.75, "#FAFAF7")); L.push(phR(6, 4.5, f[0], f[1], "#111")); });
-  L.unshift(phRg(9, 6.75, x + 8, y + 6, "repeating-conic-gradient(#111 0 25%, transparent 0 50%)"));
-  L.unshift(phR(3, 2.25, x + 8, y + 1, "#111"), phR(1.5, 4.5, x + 7.5, y + 6.75, "#111"), phR(3, 1.1, x + 1.5, y + 6.1, "#111"), phR(1.5, 2.25, x + 15, y + 11.25, "#111"));
+  [[x, y], [x + 12, y], [x, y + 9]].forEach(function (f) { L.push(phR(2, 1.5, f[0] + 2, f[1] + 1.5, "var(--alpha-photo-qr-1)")); L.push(phR(4, 3, f[0] + 1, f[1] + 0.75, "var(--alpha-photo-qr-2)")); L.push(phR(6, 4.5, f[0], f[1], "var(--alpha-photo-qr-1)")); });
+  L.unshift(phRg(9, 6.75, x + 8, y + 6, "repeating-conic-gradient(var(--alpha-photo-qr-1) 0 25%, transparent 0 50%)"));
+  L.unshift(phR(3, 2.25, x + 8, y + 1, "var(--alpha-photo-qr-1)"), phR(1.5, 4.5, x + 7.5, y + 6.75, "var(--alpha-photo-qr-1)"), phR(3, 1.1, x + 1.5, y + 6.1, "var(--alpha-photo-qr-1)"), phR(1.5, 2.25, x + 15, y + 11.25, "var(--alpha-photo-qr-1)"));
   return L;
 }
 var PH_SCENES = {
-  beach: function () { return [phE(7, 5.25, 72, 24, "#FFF6DE"), phE(45, 26, 72, 24, "rgba(255,238,200,.55)", 1), phR(100, 0.6, 0, 57, "rgba(255,255,255,.5)"), phR(100, 0.8, 0, 61.2, "rgba(255,255,255,.75)"), "linear-gradient(to bottom, #8DBFE6 0%, #D2E6EF 45%, #6AA6C6 45.3%, #2E7098 58%, #3F86A8 61.5%, #E8D5B2 62%, #D2B68A 100%)"]; },
-  sea: function () { return [phRg(100, 78, 0, 22, "repeating-linear-gradient(176deg, transparent 0 6%, rgba(255,255,255,.4) 6.4% 7.2%, transparent 7.8% 12%)"), "linear-gradient(to bottom, #9CC9E4 0%, #D3E8F1 22%, #3C86AE 22.3%, #1F5F86 100%)"]; },
-  sunset: function () { return [phR(100, 36, 0, 64, "#1F1826"), phE(13, 9.75, 50, 64, "#FFE0A6"), phE(75, 32, 50, 64, "rgba(255,170,110,.55)", 1), "linear-gradient(to bottom, #2C2B5C 0%, #78497D 30%, #D9687A 48%, #F4A262 60%, #F9CB82 64%)"]; },
-  sunsea: function () { return [phR(12, 30, 44, 64.5, "rgba(255,196,130,.35)"), phRg(100, 36, 0, 64, "linear-gradient(to bottom, #5A3A55, #22192E)"), phE(13, 9.75, 50, 64, "#FFE0A6"), phE(75, 32, 50, 64, "rgba(255,170,110,.55)", 1), "linear-gradient(to bottom, #2C2B5C 0%, #78497D 30%, #D9687A 48%, #F4A262 60%, #F9CB82 64%)"]; },
-  mountain: function () { return [phR(100, 20, 0, 80, "#2F4839"), phW(70, 50, 122, 116, "#46624F"), phRg(34, 7, 11, 40, "conic-gradient(from 120deg at 50% 0%, #EEF3F6 0deg 119.4deg, transparent 120deg)"), phW(28, 40, 120, 120, "#7D95A3"), phE(8, 6, 82, 18, "#FFF9EC"), "linear-gradient(to bottom, #A7CAE4 0%, #E6EEF1 75%)"]; },
-  lake: function () { return [phR(30, 0.5, 35, 72, "rgba(255,255,255,.35)"), phR(20, 0.5, 50, 79, "rgba(255,255,255,.25)"), phRg(100, 34, 0, 66, "linear-gradient(to bottom, #4B86A6, #1F4C6B)"), phW(64, 44, 122, 116, "#3E5B55"), phRg(34, 6, 13, 38, "conic-gradient(from 120deg at 50% 0%, #EEF3F6 0deg 119.4deg, transparent 120deg)"), phW(30, 38, 120, 120, "#7890A0"), "linear-gradient(to bottom, #B4D0E6 0%, #EEF2F2 66%)"]; },
-  forest: function () { return [phR(100, 16, 0, 84, "#33452F"), phW(12, 28, 162, 36, "#2D4731"), phW(34, 20, 160, 40, "#26402B"), phW(58, 30, 163, 34, "#35553A"), phW(80, 22, 160, 40, "#2B4530"), phW(96, 34, 162, 36, "#2F4C34"), "linear-gradient(to bottom, #DDE8D6 0%, #B9CCB0 70%, #8FA884 100%)"]; },
-  park: function () { return [phW(56, 62, 168, 24, "#D8C9AC"), phE(10, 7.5, 24, 50, "#3E6B45"), phE(8, 6, 74, 55, "#4B7A4F"), phR(1.6, 10, 23.2, 54, "#4A3A2C"), phR(1.4, 8, 73.3, 58, "#4A3A2C"), phE(90, 20, 30, 68, "#86B06D"), "linear-gradient(to bottom, #94C0E8 0%, #DCEBF4 58%, #7CA864 58.3%, #6C9A58 100%)"]; },
-  city: function () { return phCity("rgba(255,210,140,.5)").concat([phE(3, 2.25, 78, 16, "#F5F0E0"), "linear-gradient(to bottom, #161A45 0%, #4B3F82 50%, #D98C86 82%, #F0B48A 100%)"]); },
-  night: function () { return phCity("rgba(255,214,150,.75)").concat([phE(2.6, 1.95, 22, 12, "#F5F0E0"), "linear-gradient(to bottom, #05071A 0%, #141838 60%, #2A2458 100%)"]); },
-  cafe: function () { return [phE(6.6, 2, 60, 74.6, "#5A3923"), phE(8, 2.6, 60, 74.5, "#FBF8F4"), phE(12, 3.6, 60, 77, "#EDE6DC"), phE(12, 16, 86, 50, "#5E7E52"), phR(10, 10, 81, 60, "#B87A56"), phR(100, 30, 0, 70, "#7B573B"), phR(0.8, 34, 28.6, 14, "#D2B895"), phR(38, 0.8, 10, 30.6, "#D2B895"), phR(38, 34, 10, 14, "#F6EAD6"), "linear-gradient(to bottom, #DCC6A8, #C6A986)"]; },
-  food: function () { return [phE(7, 5.25, 44, 46, "#79A552"), phE(6, 4.5, 57, 54, "#E0B04A"), phE(20, 15, 50, 50, "#C8643C"), phE(34, 25.5, 50, 50, "#F6F3EE"), phE(38, 29, 51, 52, "rgba(0,0,0,.2)", 1), phE(4, 3, 84, 16, "#6E4A2E"), phE(6, 4.5, 84, 16, "#EDE7DE"), "repeating-linear-gradient(90deg, #BE8F63 0 12%, #B3845A 12% 24%)"]; },
-  whiteboard: function () { return [phR(44, 1, 12, 20, "#2F55D4"), phR(30, 1, 12, 27, "#2F55D4"), phR(36, 1, 12, 34, "#2F55D4"), phR(22, 1, 12, 48, "#D8433B"), phE(10, 7.5, 60, 58, "#F4F4F0"), phE(11.5, 8.6, 60, 58, "#2F55D4"), phR(16, 11, 74, 16, "#FFE173"), phR(16, 11, 74, 30, "#FF9DB6"), phR(16, 11, 22, 66, "#9EE3C4"), phR(100, 5, 0, 90, "#B9BDC3"), phR(100, 90, 0, 0, "#F4F4F0"), "linear-gradient(#DADDE2, #DADDE2)"]; },
-  shot: function () { return [phR(80, 2.4, 10, 86, "#E6E6E6"), phR(56, 2.4, 10, 80, "#E6E6E6"), phR(38, 6, 10, 62, "#111111"), phR(30, 6, 60, 62, "#111111"), phR(40, 3, 14, 23, "rgba(255,255,255,.85)"), phR(24, 8, 14, 34, "#FFFFFF"), phR(24, 8, 62, 34, "#FFFFFF"), phR(84, 32, 8, 16, "#0000FF"), phR(100, 5, 0, 0, "#F2F2F2"), "linear-gradient(#FFFFFF, #FFFFFF)"]; },
-  shot2: function () { return [phE(3, 2.25, 72, 66, "#FFFFFF"), phR(1.6, 26, 40.2, 40, "#3D5AFE"), phR(33, 1.6, 40, 65.6, "#3D5AFE"), phR(92, 16, 4, 80, "#232323"), phR(100, 1.2, 0, 40, "#2A2A2A"), phR(1.2, 100, 40, 0, "#2A2A2A"), phR(100, 1.2, 0, 66, "#2A2A2A"), phR(1.2, 100, 72, 0, "#2A2A2A"), phR(100, 1.2, 0, 20, "#232323"), "linear-gradient(#141414, #141414)"]; },
-  doc: function () { return [phR(40, 1.6, 30, 18, "#222222"), phRg(56, 44, 22, 26, "repeating-linear-gradient(to bottom, #A5A5A5 0 1.6%, transparent 1.6% 7%)"), phR(56, 0.4, 22, 74, "#222222"), phR(30, 2, 48, 78, "#222222"), phR(70, 80, 15, 10, "#FBFAF6"), "linear-gradient(135deg, #5F646B, #474B52)"]; },
-  poster: function () { return phQR(64, 66).concat([phRg(38, 12, 22, 66, "repeating-linear-gradient(to bottom, #8A8A8A 0 9%, transparent 9% 28%)"), phR(58, 22, 22, 36, "#0000FF"), phR(40, 4.5, 22, 24, "#111111"), phR(52, 4.5, 22, 16, "#111111"), phR(70, 80, 15, 10, "#FAFAF7"), "linear-gradient(135deg, #6B5A4A, #4E4036)"]); },
+  beach: function () { return [phE(7, 5.25, 72, 24, "var(--alpha-photo-beach-1)"), phE(45, 26, 72, 24, "rgba(255,238,200,.55)", 1), phR(100, 0.6, 0, 57, "rgba(255,255,255,.5)"), phR(100, 0.8, 0, 61.2, "rgba(255,255,255,.75)"), "linear-gradient(to bottom, var(--alpha-photo-beach-2) 0%, var(--alpha-photo-beach-3) 45%, var(--alpha-photo-beach-4) 45.3%, var(--alpha-photo-beach-5) 58%, var(--alpha-photo-beach-6) 61.5%, var(--alpha-photo-beach-7) 62%, var(--alpha-photo-beach-8) 100%)"]; },
+  sea: function () { return [phRg(100, 78, 0, 22, "repeating-linear-gradient(176deg, transparent 0 6%, rgba(255,255,255,.4) 6.4% 7.2%, transparent 7.8% 12%)"), "linear-gradient(to bottom, var(--alpha-photo-sea-1) 0%, var(--alpha-photo-sea-2) 22%, var(--alpha-photo-sea-3) 22.3%, var(--alpha-photo-sea-4) 100%)"]; },
+  sunset: function () { return [phR(100, 36, 0, 64, "var(--alpha-photo-sunset-1)"), phE(13, 9.75, 50, 64, "var(--alpha-photo-sunset-2)"), phE(75, 32, 50, 64, "rgba(255,170,110,.55)", 1), "linear-gradient(to bottom, var(--alpha-photo-sunset-3) 0%, var(--alpha-photo-sunset-4) 30%, var(--alpha-photo-sunset-5) 48%, var(--alpha-photo-sunset-6) 60%, var(--alpha-photo-sunset-7) 64%)"]; },
+  sunsea: function () { return [phR(12, 30, 44, 64.5, "rgba(255,196,130,.35)"), phRg(100, 36, 0, 64, "linear-gradient(to bottom, var(--alpha-photo-sunsea-1), var(--alpha-photo-sunsea-2))"), phE(13, 9.75, 50, 64, "var(--alpha-photo-sunsea-3)"), phE(75, 32, 50, 64, "rgba(255,170,110,.55)", 1), "linear-gradient(to bottom, var(--alpha-photo-sunsea-4) 0%, var(--alpha-photo-sunsea-5) 30%, var(--alpha-photo-sunsea-6) 48%, var(--alpha-photo-sunsea-7) 60%, var(--alpha-photo-sunsea-8) 64%)"]; },
+  mountain: function () { return [phR(100, 20, 0, 80, "var(--alpha-photo-mountain-1)"), phW(70, 50, 122, 116, "var(--alpha-photo-mountain-2)"), phRg(34, 7, 11, 40, "conic-gradient(from 120deg at 50% 0%, var(--alpha-photo-mountain-3) 0deg 119.4deg, transparent 120deg)"), phW(28, 40, 120, 120, "var(--alpha-photo-mountain-4)"), phE(8, 6, 82, 18, "var(--alpha-photo-mountain-5)"), "linear-gradient(to bottom, var(--alpha-photo-mountain-6) 0%, var(--alpha-photo-mountain-7) 75%)"]; },
+  lake: function () { return [phR(30, 0.5, 35, 72, "rgba(255,255,255,.35)"), phR(20, 0.5, 50, 79, "rgba(255,255,255,.25)"), phRg(100, 34, 0, 66, "linear-gradient(to bottom, var(--alpha-photo-lake-1), var(--alpha-photo-lake-2))"), phW(64, 44, 122, 116, "var(--alpha-photo-lake-3)"), phRg(34, 6, 13, 38, "conic-gradient(from 120deg at 50% 0%, var(--alpha-photo-lake-4) 0deg 119.4deg, transparent 120deg)"), phW(30, 38, 120, 120, "var(--alpha-photo-lake-5)"), "linear-gradient(to bottom, var(--alpha-photo-lake-6) 0%, var(--alpha-photo-lake-7) 66%)"]; },
+  forest: function () { return [phR(100, 16, 0, 84, "var(--alpha-photo-forest-1)"), phW(12, 28, 162, 36, "var(--alpha-photo-forest-2)"), phW(34, 20, 160, 40, "var(--alpha-photo-forest-3)"), phW(58, 30, 163, 34, "var(--alpha-photo-forest-4)"), phW(80, 22, 160, 40, "var(--alpha-photo-forest-5)"), phW(96, 34, 162, 36, "var(--alpha-photo-forest-6)"), "linear-gradient(to bottom, var(--alpha-photo-forest-7) 0%, var(--alpha-photo-forest-8) 70%, var(--alpha-photo-forest-9) 100%)"]; },
+  park: function () { return [phW(56, 62, 168, 24, "var(--alpha-photo-park-1)"), phE(10, 7.5, 24, 50, "var(--alpha-photo-park-2)"), phE(8, 6, 74, 55, "var(--alpha-photo-park-3)"), phR(1.6, 10, 23.2, 54, "var(--alpha-photo-park-4)"), phR(1.4, 8, 73.3, 58, "var(--alpha-photo-park-4)"), phE(90, 20, 30, 68, "var(--alpha-photo-park-5)"), "linear-gradient(to bottom, var(--alpha-photo-park-6) 0%, var(--alpha-photo-park-7) 58%, var(--alpha-photo-park-8) 58.3%, var(--alpha-photo-park-9) 100%)"]; },
+  city: function () { return phCity("rgba(255,210,140,.5)").concat([phE(3, 2.25, 78, 16, "var(--alpha-photo-city-8)"), "linear-gradient(to bottom, var(--alpha-photo-city-9) 0%, var(--alpha-photo-city-10) 50%, var(--alpha-photo-city-11) 82%, var(--alpha-photo-city-12) 100%)"]); },
+  night: function () { return phCity("rgba(255,214,150,.75)").concat([phE(2.6, 1.95, 22, 12, "var(--alpha-photo-night-1)"), "linear-gradient(to bottom, var(--alpha-photo-night-2) 0%, var(--alpha-photo-night-3) 60%, var(--alpha-photo-night-4) 100%)"]); },
+  cafe: function () { return [phE(6.6, 2, 60, 74.6, "var(--alpha-photo-cafe-1)"), phE(8, 2.6, 60, 74.5, "var(--alpha-photo-cafe-2)"), phE(12, 3.6, 60, 77, "var(--alpha-photo-cafe-3)"), phE(12, 16, 86, 50, "var(--alpha-photo-cafe-4)"), phR(10, 10, 81, 60, "var(--alpha-photo-cafe-5)"), phR(100, 30, 0, 70, "var(--alpha-photo-cafe-6)"), phR(0.8, 34, 28.6, 14, "var(--alpha-photo-cafe-7)"), phR(38, 0.8, 10, 30.6, "var(--alpha-photo-cafe-7)"), phR(38, 34, 10, 14, "var(--alpha-photo-cafe-8)"), "linear-gradient(to bottom, var(--alpha-photo-cafe-9), var(--alpha-photo-cafe-10))"]; },
+  food: function () { return [phE(7, 5.25, 44, 46, "var(--alpha-photo-food-1)"), phE(6, 4.5, 57, 54, "var(--alpha-photo-food-2)"), phE(20, 15, 50, 50, "var(--alpha-photo-food-3)"), phE(34, 25.5, 50, 50, "var(--alpha-photo-food-4)"), phE(38, 29, 51, 52, "rgba(0,0,0,.2)", 1), phE(4, 3, 84, 16, "var(--alpha-photo-food-5)"), phE(6, 4.5, 84, 16, "var(--alpha-photo-food-6)"), "repeating-linear-gradient(90deg, var(--alpha-photo-food-7) 0 12%, var(--alpha-photo-food-8) 12% 24%)"]; },
+  whiteboard: function () { return [phR(44, 1, 12, 20, "var(--alpha-photo-whiteboard-1)"), phR(30, 1, 12, 27, "var(--alpha-photo-whiteboard-1)"), phR(36, 1, 12, 34, "var(--alpha-photo-whiteboard-1)"), phR(22, 1, 12, 48, "var(--alpha-photo-whiteboard-2)"), phE(10, 7.5, 60, 58, "var(--alpha-photo-whiteboard-3)"), phE(11.5, 8.6, 60, 58, "var(--alpha-photo-whiteboard-1)"), phR(16, 11, 74, 16, "var(--alpha-photo-whiteboard-4)"), phR(16, 11, 74, 30, "var(--alpha-photo-whiteboard-5)"), phR(16, 11, 22, 66, "var(--alpha-photo-whiteboard-6)"), phR(100, 5, 0, 90, "var(--alpha-photo-whiteboard-7)"), phR(100, 90, 0, 0, "var(--alpha-photo-whiteboard-3)"), "linear-gradient(var(--alpha-photo-whiteboard-8), var(--alpha-photo-whiteboard-8))"]; },
+  shot: function () { return [phR(80, 2.4, 10, 86, "var(--alpha-photo-shot-1)"), phR(56, 2.4, 10, 80, "var(--alpha-photo-shot-1)"), phR(38, 6, 10, 62, "var(--alpha-photo-shot-2)"), phR(30, 6, 60, 62, "var(--alpha-photo-shot-2)"), phR(40, 3, 14, 23, "rgba(255,255,255,.85)"), phR(24, 8, 14, 34, "var(--alpha-white)"), phR(24, 8, 62, 34, "var(--alpha-white)"), phR(84, 32, 8, 16, "var(--alpha-blue)"), phR(100, 5, 0, 0, "var(--alpha-photo-shot-3)"), "linear-gradient(var(--alpha-white), var(--alpha-white))"]; },
+  shot2: function () { return [phE(3, 2.25, 72, 66, "var(--alpha-white)"), phR(1.6, 26, 40.2, 40, "var(--alpha-photo-shot2-1)"), phR(33, 1.6, 40, 65.6, "var(--alpha-photo-shot2-1)"), phR(92, 16, 4, 80, "var(--alpha-photo-shot2-2)"), phR(100, 1.2, 0, 40, "var(--alpha-photo-shot2-3)"), phR(1.2, 100, 40, 0, "var(--alpha-photo-shot2-3)"), phR(100, 1.2, 0, 66, "var(--alpha-photo-shot2-3)"), phR(1.2, 100, 72, 0, "var(--alpha-photo-shot2-3)"), phR(100, 1.2, 0, 20, "var(--alpha-photo-shot2-2)"), "linear-gradient(var(--alpha-photo-shot2-4), var(--alpha-photo-shot2-4))"]; },
+  doc: function () { return [phR(40, 1.6, 30, 18, "var(--alpha-photo-doc-1)"), phRg(56, 44, 22, 26, "repeating-linear-gradient(to bottom, var(--alpha-photo-doc-2) 0 1.6%, transparent 1.6% 7%)"), phR(56, 0.4, 22, 74, "var(--alpha-photo-doc-1)"), phR(30, 2, 48, 78, "var(--alpha-photo-doc-1)"), phR(70, 80, 15, 10, "var(--alpha-photo-doc-3)"), "linear-gradient(135deg, var(--alpha-photo-doc-4), var(--alpha-photo-doc-5))"]; },
+  poster: function () { return phQR(64, 66).concat([phRg(38, 12, 22, 66, "repeating-linear-gradient(to bottom, var(--alpha-photo-poster-1) 0 9%, transparent 9% 28%)"), phR(58, 22, 22, 36, "var(--alpha-blue)"), phR(40, 4.5, 22, 24, "var(--alpha-photo-poster-2)"), phR(52, 4.5, 22, 16, "var(--alpha-photo-poster-2)"), phR(70, 80, 15, 10, "var(--alpha-photo-poster-3)"), "linear-gradient(135deg, var(--alpha-photo-poster-4), var(--alpha-photo-poster-5))"]); },
   portrait: function (tone) { var t = PH_TONES[tone || 0]; return [phE(70, 50, 28, 20, "rgba(255,255,255,.35)", 1), "linear-gradient(160deg, " + t[0] + ", " + t[1] + ")"]; },
-  selfie: function () { return [phR(30, 60, 0, 0, "rgba(255,255,255,.35)"), phE(60, 60, 10, 20, "rgba(255,255,255,.35)", 1), "linear-gradient(90deg, #E4E9EF, #AEB8C6)"]; },
-  birthday: function () { return [phE(1.6, 1.8, 50, 58, "#FFD27A"), phR(1, 5, 49.5, 59, "#F4E9D8"), phR(34, 12, 33, 64, "#F7EFE6"), phR(44, 2, 28, 76, "#E9DCCB"), phE(4, 3, 15, 20, "rgba(255,206,120,.55)"), phE(3, 2.25, 82, 14, "rgba(255,206,120,.45)"), phE(5, 3.75, 72, 34, "rgba(255,190,110,.35)"), phE(3, 2.25, 30, 40, "rgba(255,220,150,.4)"), phE(40, 26, 50, 60, "rgba(255,180,90,.25)", 1), "linear-gradient(to bottom, #2B1B16, #4A2E20)"]; }
+  selfie: function () { return [phR(30, 60, 0, 0, "rgba(255,255,255,.35)"), phE(60, 60, 10, 20, "rgba(255,255,255,.35)", 1), "linear-gradient(90deg, var(--alpha-photo-selfie-1), var(--alpha-photo-selfie-2))"]; },
+  birthday: function () { return [phE(1.6, 1.8, 50, 58, "var(--alpha-photo-birthday-1)"), phR(1, 5, 49.5, 59, "var(--alpha-photo-birthday-2)"), phR(34, 12, 33, 64, "var(--alpha-photo-birthday-3)"), phR(44, 2, 28, 76, "var(--alpha-photo-birthday-4)"), phE(4, 3, 15, 20, "rgba(255,206,120,.55)"), phE(3, 2.25, 82, 14, "rgba(255,206,120,.45)"), phE(5, 3.75, 72, 34, "rgba(255,190,110,.35)"), phE(3, 2.25, 30, 40, "rgba(255,220,150,.4)"), phE(40, 26, 50, 60, "rgba(255,180,90,.25)", 1), "linear-gradient(to bottom, var(--alpha-photo-birthday-5), var(--alpha-photo-birthday-6))"]; }
 };
-var PH_FIGC = { beach: "#2A2B38", sunsea: "#1A1320", sunset: "#1A1320", mountain: "#26332C", lake: "#23303A", night: "#07081A", birthday: "#6A4431", park: "#2B3A30", portrait: "#262A36", selfie: "#353B48" };
+var PH_FIGC = { beach: "var(--alpha-photo-figure-beach)", sunsea: "var(--alpha-photo-figure-sunsea)", sunset: "var(--alpha-photo-figure-sunsea)", mountain: "var(--alpha-photo-figure-mountain)", lake: "var(--alpha-photo-figure-lake)", night: "var(--alpha-photo-figure-night)", birthday: "var(--alpha-photo-figure-birthday)", park: "var(--alpha-photo-figure-park)", portrait: "var(--alpha-photo-figure-portrait)", selfie: "var(--alpha-photo-figure-selfie)" };
 var PH_CACHE = {};
 var PH_SCENE_IMG = { park: "cam_park", selfie: "cam_selfie", poster: "cam_poster" };
 function phImg(it) { return IMG[it.id] ? it.id : (IMG[PH_SCENE_IMG[it.scene]] ? PH_SCENE_IMG[it.scene] : null); }
@@ -2133,7 +2021,7 @@ function phScene(scene, figs, tone, img) {
   var k = scene + "|" + JSON.stringify(figs || []) + "|" + (tone || 0);
   if (PH_CACHE[k]) return PH_CACHE[k];
   var L = [];
-  var c = PH_FIGC[scene] || "#1E2230";
+  var c = PH_FIGC[scene] || "var(--alpha-photo-figure-1)";
   (figs || []).forEach(function (f) { L = L.concat(phFig(f[0], f[1], f[2] || c)); });
   if (scene === "birthday") L = L.slice(0, 0).concat(PH_SCENES.birthday().slice(0, 4), L, PH_SCENES.birthday().slice(4)); // cake in front of people
   else L = L.concat((PH_SCENES[scene] || PH_SCENES.beach)(tone));
@@ -2341,9 +2229,9 @@ registerView("photos", {
       var on = selecting && sel.indexOf(it.id) >= 0;
       var v = phLook(it, "thumb", null, on);
       return {
-        id: "fixture:" + it.id, bg: v.bg, tf: v.tf, flt: v.flt, vid: it.kind === "video" && !selecting, dur: it.dur, fav: !!it.fav && !trashMode && !selecting, selecting: selecting && !trashMode, on: on,
+        bg: v.bg, tf: v.tf, flt: v.flt, vid: it.kind === "video" && !selecting, dur: it.dur, fav: !!it.fav && !trashMode && !selecting, selecting: selecting && !trashMode, on: on,
         dim: trashMode ? "opacity:.6" : "",
-        selCss: on ? "background:var(--acc);box-shadow:0 0 0 2px #ffffff" : "background:rgba(0,0,0,.7);box-shadow:inset 0 0 0 2px #ffffff",
+        selCss: on ? "background:var(--acc);box-shadow:0 0 0 2px var(--alpha-white)" : "background:rgba(0,0,0,.7);box-shadow:inset 0 0 0 2px var(--alpha-white)",
         alt: (trashMode ? "Restore " : "") + (it.kind === "video" ? "Video" : "Photo") + ", " + phDayLabel(it.ts, now) + (it.place ? ", " + it.place : ""),
         tap: function () {
           if (PH_T.fired) { PH_T.fired = false; return; }
@@ -2377,7 +2265,7 @@ registerView("photos", {
     var groups = []; var gi = {};
     shown.forEach(function (it) {
       var k = phDayKey(it.ts);
-      if (gi[k] == null) { gi[k] = groups.length; groups.push({ id: k, label: phDayLabel(it.ts, now), pc: {}, items: [] }); }
+      if (gi[k] == null) { gi[k] = groups.length; groups.push({ label: phDayLabel(it.ts, now), pc: {}, items: [] }); }
       var g = groups[gi[k]]; g.items.push(thumb(it, seqIds)); if (it.place) g.pc[it.place] = (g.pc[it.place] || 0) + 1;
     });
     groups.forEach(function (g) { g.place = Object.keys(g.pc).sort(function (a, b) { return g.pc[b] - g.pc[a]; }).slice(0, 2).join(", "); });
@@ -2405,7 +2293,7 @@ registerView("photos", {
     function tile(key) {
       var items = albumItems(key); if (!items.length) return null;
       var cov = items.filter(function (it) { return it.kind === "photo" && it.scene !== "portrait" && it.scene !== "selfie"; })[0] || items[0]; var c = phLook(cov, "thumb");
-      return { id: "album:" + key, name: albumName(key), count: items.length, bg: c.bg, tf: c.tf, flt: c.flt, open: function () { api.set({ album: key }); } };
+      return { name: albumName(key), count: items.length, bg: c.bg, tf: c.tf, flt: c.flt, open: function () { api.set({ album: key }); } };
     }
     var keys = (st.albums || []).map(function (a) { return "user:" + a.id; }).concat(["fav", "video"]);
     var pc = {}; list.forEach(function (it) { if (it.place) pc[it.place] = (pc[it.place] || 0) + 1; });
@@ -2416,7 +2304,7 @@ registerView("photos", {
       var mine = list.filter(function (it) { return (it.people || []).indexOf(p.id) >= 0; }); if (!mine.length) return null;
       var cover = mine.filter(function (it) { return it.scene === "portrait" || (it.people.length === 1 && it.figs); })[0] || mine[0];
       var c = phLook(cover, "thumb");
-      return { id: p.id, first: p.name.split(" ")[0], name: p.name, bg: c.bg, tf: c.tf, open: function () { api.set({ album: "person:" + p.id }); } };
+      return { first: p.name.split(" ")[0], name: p.name, bg: c.bg, tf: c.tf, open: function () { api.set({ album: "person:" + p.id }); } };
     }).filter(Boolean);
 
     var alb = null;
@@ -2450,7 +2338,7 @@ registerView("photos", {
         else return false;
       });
       var ed = st.edit || null;
-      var people = (cur.people || []).map(function (id) { var p = api.person(id); return p ? { id: id, ini: p.ini, first: p.name.split(" ")[0], label: "Open " + p.name, open: function () { api.open("contacts", { open: id }); } } : null; }).filter(Boolean);
+      var people = (cur.people || []).map(function (id) { var p = api.person(id); return p ? { ini: p.ini, first: p.name.split(" ")[0], label: "Open " + p.name, open: function () { api.open("contacts", { open: id }); } } : null; }).filter(Boolean);
       vw = {
         bg: look.bg, tf: look.tf, flt: look.flt,
         slide: "transform: translateX(" + (st.vx || 0) + "px); opacity: " + (st.vx ? 0.35 : 1) + "; transition: " + (st.vt ? "transform .32s cubic-bezier(.19,1,.22,1), opacity .25s" : "none"),
@@ -2458,7 +2346,7 @@ registerView("photos", {
         chromeOp: st.chrome ? 1 : 0, chromePE: st.chrome ? "auto" : "none",
         notDeleted: true,
         favIcon: cur.fav ? "fill: currentColor" : "", favLabel: cur.fav ? "Remove from favorites" : "Add to favorites",
-        viewerLabel: (cur.kind === "video" ? "Video" : "Photo") + ". Tap to show or hide controls, swipe to browse",
+        viewerLabel: (cur.kind === "video" ? "Video" : "Photo") + ", " + phDayLabel(cur.ts, now) + " " + phTime(cur.ts),
         askLabel: "Ask Alpha about this " + (cur.kind === "video" ? "video" : "photo"),
         editLabel: cur.kind === "video" ? "Edit video" : "Edit photo", shareLabel: cur.kind === "video" ? "Share video" : "Share photo", infoLabel: cur.kind === "video" ? "Video info" : "Photo info", deleteLabel: cur.kind === "video" ? "Delete video" : "Delete photo",
         vid: cur.kind === "video", playBtn: cur.kind === "video" && !st.playing, playing: !!st.playing,
@@ -2487,14 +2375,14 @@ registerView("photos", {
         var el = phLook(cur, "view", ed);
         vw.ed = {
           bg: el.bg, tf: el.tf, flt: el.flt,
-          cropCss: ed.crop ? "background:#ffffff;color:#000000" : "background:rgba(255,255,255,.12);color:#ffffff",
+          cropCss: ed.crop ? "background:var(--alpha-white);color:var(--alpha-black)" : "background:rgba(255,255,255,.12);color:var(--alpha-white)",
           cropOn: !!ed.crop,
           rotate: function () { var e2 = api.get("photos").edit; api.set({ edit: Object.assign({}, e2, { rot: ((e2.rot || 0) + 90) % 360 }) }); },
           crop: function () { var e2 = api.get("photos").edit; api.set({ edit: Object.assign({}, e2, { crop: !e2.crop }) }); },
           filters: PH_FILTER_LIST.map(function (f) {
             var fl = phLook(cur, "thumb", { filter: f[0] });
             var on = (ed.filter || "none") === f[0];
-            return { id: f[0], label: f[1], bg: fl.bg, flt: fl.flt, on: on, ring: on ? "box-shadow: 0 0 0 2px #000000, 0 0 0 4px #ffffff" : "", lc: on ? "#ffffff" : "rgba(255,255,255,.6)", pick: function () { var e2 = api.get("photos").edit; api.set({ edit: Object.assign({}, e2, { filter: f[0] }) }); } };
+            return { label: f[1], bg: fl.bg, flt: fl.flt, on: on, ring: on ? "box-shadow: 0 0 0 2px var(--alpha-black), 0 0 0 4px var(--alpha-white)" : "", lc: on ? "var(--alpha-white)" : "rgba(255,255,255,.6)", pick: function () { var e2 = api.get("photos").edit; api.set({ edit: Object.assign({}, e2, { filter: f[0] }) }); } };
           }),
           cancel: function () { api.set({ edit: null }); },
           save: function () { var s = api.get("photos"); var e2 = s.edit; var clean = (!e2.rot && !e2.crop && (e2.filter || "none") === "none") ? null : e2; api.set({ edit: null, list: s.list.map(function (it) { return it.id === cur.id ? Object.assign({}, it, { edit: clean }) : it; }) }); api.toast("Saved"); }
@@ -2508,21 +2396,21 @@ registerView("photos", {
     var share = {
       people: PH_SHARE.map(function (id) {
         var p = api.person(id); if (!p) return null;
-        return { id: id, ini: p.ini, first: p.name.split(" ")[0], label: "Send to " + p.name, send: function () { api.set({ sheet: null, sel: null }); api.toast(nShare > 1 ? "Sent " + nShare + " to " + p.name.split(" ")[0] : "Sent to " + p.name.split(" ")[0]); } };
+        return { ini: p.ini, first: p.name.split(" ")[0], label: "Send to " + p.name, send: function () { api.set({ sheet: null, sel: null }); api.toast(nShare > 1 ? "Sent " + nShare + " to " + p.name.split(" ")[0] : "Sent to " + p.name.split(" ")[0]); } };
       }).filter(Boolean),
       apps: [
         ["bubble", "Messages", function () { api.set({ sheet: null, sel: null }); api.open("messages", { compose: true }); }],
         ["mail", "Mail", function () { api.set({ sheet: null, sel: null }); api.open("inbox", { compose: { subject: nShare > 1 ? nShare + " photos" : "Photo", body: "", attach: shareIds } }); }],
         ["link", "Copy link", function () { api.set({ sheet: null, sel: null }); api.toast("Link copied"); }],
         ["folder", "Files", function () { api.set({ sheet: null, sel: null }); api.toast("Saved to Files"); }]
-      ].map(function (a) { return { id: a[0], d: IC[a[0]], label: a[1], go: a[2] }; })
+      ].map(function (a) { return { d: IC[a[0]], label: a[1], go: a[2] }; })
     };
 
     var nSel = sel ? sel.length : 0;
     return {
       hdr: !selecting && !st.searching, isLib: st.tab !== "alb" || !!st.searching, isAlb: st.tab === "alb" && !st.searching, libTab: st.tab !== "alb",
       title: st.tab === "alb" ? "Albums" : "Photos",
-      tabs: [["lib", "Library", IC.photo], ["alb", "Albums", IC.phAlbums]].map(function (t) { var on = (st.tab || "lib") === t[0]; return { id: t[0], label: t[1], d: t[2], on: on, css: on ? "background:var(--fg);color:var(--bg)" : "color:var(--fg)", pick: function () { api.set({ tab: t[0], sel: null }); } }; }),
+      tabs: [["lib", "Library", IC.photo], ["alb", "Albums", IC.phAlbums]].map(function (t) { var on = (st.tab || "lib") === t[0]; return { label: t[1], d: t[2], on: on, css: on ? "background:var(--fg);color:var(--bg)" : "color:var(--fg)", pick: function () { api.set({ tab: t[0], sel: null }); } }; }),
       searching: !!st.searching, q: st.q || "", hasQ: !!(st.q || "").trim(), askLabel: "Ask " + api.name + ": “" + (st.q || "").trim() + "”",
       search: function () { api.set({ searching: true, q: "", sel: null, album: null }); },
       onQ: function (e) { api.set({ q: e.target.value }); },
@@ -2769,8 +2657,8 @@ registerView("maps", {
   render: function (st, api) {
     if (st.query && mapsIsAddr(st.query) && !st.place && !st.directions) api.later(function () { var s0 = api.get("maps"); if (s0.query && mapsIsAddr(s0.query) && !s0.place) api.set({ place: "addr:" + s0.query.trim(), query: null, pan: null }); }, 0);
     var dark = api.theme === "dark" || st.nav;
-    var C = dark ? { land: "#101010", minor: "#1C1C1C", major: "#282828", fwy: "#333333", fwyE: "#1A1A1A", water: "#0A1022", park: "#0D1A12", rwy: "#222222", route: "#4A58FF", done: "#3A3A3A", halo: "#101010", label: "#AAAAAA" }
-                 : { land: "#EFEFEC", minor: "#FFFFFF", major: "#FFFFFF", fwy: "#FFFFFF", fwyE: "#D9D9D4", water: "#D3DCEA", park: "#DCE6D4", rwy: "#DADAD6", route: "#0000FF", done: "#B8B8B8", halo: "#EFEFEC", label: "#555555" };
+    var C = dark ? { land: "var(--alpha-map-dark-land)", minor: "var(--alpha-map-dark-minor)", major: "var(--alpha-map-dark-major)", fwy: "var(--alpha-map-dark-fwy)", fwyE: "var(--alpha-map-dark-fwye)", water: "var(--alpha-map-dark-water)", park: "var(--alpha-map-dark-park)", rwy: "var(--alpha-map-dark-rwy)", route: "var(--alpha-map-dark-route)", done: "var(--alpha-map-dark-done)", halo: "var(--alpha-map-dark-land)", label: "var(--alpha-map-dark-label)" }
+                 : { land: "var(--alpha-map-light-land)", minor: "var(--alpha-map-light-minor)", major: "var(--alpha-map-light-minor)", fwy: "var(--alpha-map-light-minor)", fwyE: "var(--alpha-map-light-fwye)", water: "var(--alpha-map-light-water)", park: "var(--alpha-map-light-park)", rwy: "var(--alpha-map-light-rwy)", route: "var(--alpha-map-light-route)", done: "var(--alpha-map-light-done)", halo: "var(--alpha-map-light-land)", label: "var(--alpha-map-light-label)" };
     var mi = mapsModeI(st.mode);
     var place = mapsPlace(st.place);
     var dst = mapsPlace(st.directions);
@@ -2821,8 +2709,8 @@ registerView("maps", {
     else pinList = [dst.id];
     var pins = pinList.map(function (id) {
       var p = mapsPlace(id); var o = scr(p.x, p.y); var big = mode !== "base" && mode !== "results";
-      return { id: id, l: o.l, t: o.t, d: IC[p.icon], name: p.name, sz: big ? 44 : 34, off: big ? -22 : -17, isz: big ? 20 : 16,
-        css: big ? "background: var(--acc); color: #fff; box-shadow: 0 0 0 3px #fff, 0 6px 18px rgba(0,0,0,.25)" : "background: var(--bg); color: var(--fg); box-shadow: 0 0 0 1.5px var(--line), 0 4px 12px var(--shc)",
+      return { l: o.l, t: o.t, d: IC[p.icon], name: p.name, sz: big ? 44 : 34, off: big ? -22 : -17, isz: big ? 20 : 16,
+        css: big ? "background: var(--acc); color: var(--alpha-white); box-shadow: 0 0 0 3px var(--alpha-white), 0 6px 18px rgba(0,0,0,.25)" : "background: var(--bg); color: var(--fg); box-shadow: 0 0 0 1.5px var(--line), 0 4px 12px var(--shc)",
         tap: function () { if (tapGuard() || mode === "nav" || mode === "dir") return; api.set({ place: id, pan: null }); } };
     });
     var me = navPt ? scr(navPt.x, navPt.y) : scr(MAPS_ME[0], MAPS_ME[1]);
@@ -2844,15 +2732,15 @@ registerView("maps", {
     /* saved chips */
     var chips = mapsSavedIds(st).map(function (id) {
       var p = mapsPlace(id);
-      return { id: id, label: id === MAPS_FIX.work ? MAPS_FIX.workLabel || p.name : p.name, d: IC[p.icon], go: function () { api.set({ place: id, pan: null }); } };
+      return { label: id === MAPS_FIX.work ? MAPS_FIX.workLabel || p.name : p.name, d: IC[p.icon], go: function () { api.set({ place: id, pan: null }); } };
     });
     var cats = [["Coffee", "mapsCup", "coffee"], ["Food", "mapsFood", "food"], ["Gym", "mapsGym", "gym"]].map(function (c) {
-      return { id: c[2], label: c[0], d: IC[c[1]], go: function () { api.set({ query: c[2], sheet: "half", place: null, pan: null }); } };
+      return { label: c[0], d: IC[c[1]], go: function () { api.set({ query: c[2], sheet: "half", place: null, pan: null }); } };
     });
 
     var row = function (p) {
       var h = mapsHours(p, api.now);
-      return { id: p.id, name: p.name, d: IC[p.icon], sub: p.cat + " · " + mapsMi(p.mi) + " mi" + (h ? " · " + (h.open ? "Open" : "Closed") : ""), go: function () { api.set({ place: p.id, pan: null }); } };
+      return { name: p.name, d: IC[p.icon], sub: p.cat + " · " + mapsMi(p.mi) + " mi" + (h ? " · " + (h.open ? "Open" : "Closed") : ""), go: function () { api.set({ place: p.id, pan: null }); } };
     };
     var savedRows = mapsSavedIds(st).map(function (id) { var r = row(mapsPlace(id)); if (id === MAPS_FIX.work && MAPS_FIX.workName) r.name = MAPS_FIX.workName; return r; });
     var q = st.query || "";
@@ -2898,7 +2786,7 @@ registerView("maps", {
         via: "via " + [first].concat(via).filter(function (v, i, a) { return a.indexOf(v) === i; }).slice(0, 2).join(" and "),
         modes: MAPS_MODES.map(function (md, i) {
           var on = i === mi;
-          return { d: IC[md[1]], label: md[2] + ", " + mapsFmtMin(dst.min[i]), t: mapsFmtMin(dst.min[i]), on: on, css: on ? "background: var(--acc); color: #fff" : "background: var(--s2); color: var(--fg)", go: function () { api.set({ mode: md[0] }); } };
+          return { d: IC[md[1]], label: md[2] + ", " + mapsFmtMin(dst.min[i]), t: mapsFmtMin(dst.min[i]), on: on, css: on ? "background: var(--acc); color: var(--alpha-white)" : "background: var(--s2); color: var(--fg)", go: function () { api.set({ mode: md[0] }); } };
         }),
         close: function () { api.set({ directions: null, place: dst.id, pan: null }); },
         start: function () { mapsStartNav(api, dst.id); },
@@ -2963,17 +2851,25 @@ IC.notesList = IC.notesList || "M10 6h10M10 12h10M10 18h10M4 6l1.5 1.5L8 5M4 12l
 IC.notesBox = IC.notesBox || "M5 5h14v14H5z";
 IC.notesRecDot = IC.notesRecDot || "M12 7.5a4.5 4.5 0 1 1 0 9a4.5 4.5 0 1 1 0-9zM12 10a2 2 0 1 1 0 4a2 2 0 1 1 0-4z";
 IC.notesWave = IC.notesWave || "M3 12h2M7 8v8M11 5v14M15 9v6M19 11v2M21 12h0";
-var NOTES_RED = "#E5484D";
+var NOTES_RED = "var(--alpha-notes-red)";
 
 var NOTES_WAVE = []; (function () { for (var i = 0; i < 56; i++) NOTES_WAVE.push(Math.round(8 + 26 * Math.abs(Math.sin(i * 0.9) * Math.cos(i * 0.37)) + (i % 3) * 3)); })();
-var NT = { pend: false, recI: null, playI: null, dicI: null, dIdx: 0, undoT: null };
+var NT = { pend: false, playI: null, undoT: null, holdT: null, held: null };
 
-function notesFmt(sec) { sec = Math.max(0, Math.floor(sec)); return Math.floor(sec / 60) + ":" + pad2(sec % 60); }
+function notesFmt(sec) { if (!Number.isFinite(sec)) return ""; sec = Math.max(0, Math.floor(sec)); return Math.floor(sec / 60) + ":" + pad2(sec % 60); }
 function notesNowLabel(d) { return formatTime(d); }
 function notesFind(list, id) { for (var i = 0; i < list.length; i++) if (list[i].id === id) return list[i]; return null; }
+/* Live agent Notes (canonical-notes-ui.ts) bind api.canonicalNotes: the same view, saved through the canonical Notes client. */
 function notesUpd(api, id, patch) {
+  if (api.canonicalNotes) return api.canonicalNotes.update(id, patch);
   var s = api.get("notes");
-  var list = s.list.map(function (n) { return n.id === id ? Object.assign({}, n, typeof patch === "function" ? patch(n) : patch) : n; });
+  var list = s.list.map(function (n) {
+    if (n.id !== id) return n;
+    var next = Object.assign({}, n, typeof patch === "function" ? patch(n) : patch);
+    // An edit to the content is a modification (the list is newest first); pinning or a folder move is not.
+    if (["title", "body", "items", "lines"].some(function (k) { return next[k] !== n[k]; })) next.modifiedAt = Date.now();
+    return next;
+  });
   var change = { list: list };
   if (s.blankCreationId === id && !notesEmpty(notesFind(list, id))) change.blankCreationId = null;
   return api.set(change);
@@ -2984,16 +2880,17 @@ function notesEmpty(n) {
   if (n.kind === "list") return !String(n.title || "").trim() && !(n.items || []).some(function (i) { return String(i.t).trim(); });
   return false;
 }
-function notesStopTimers() { clearInterval(NT.playI); clearInterval(NT.dicI); NT.playI = null; NT.dicI = null; }
+function notesStopTimers() { clearInterval(NT.playI); NT.playI = null; }
 function notesClose(api) {
   api.set(notesLeave(api, null));
 }
 /** Leaves the open note as Back does: dictation and the unsent checklist item end with it, and an
  * empty new note is dropped. On a split canvas (#411) another note opens beside the list directly. */
 function notesLeave(api, next) {
+  if (api.canonicalNotes) { void api.canonicalNotes.leave(next); return {}; }
   var s = api.get("notes"); notesStopTimers();
   var n = s.open !== next && s.open === s.blankCreationId ? notesFind(s.list, s.open) : null;
-  var patch = { open: next, sheet: null, playing: false, dict: false, newItem: "", blankCreationId: next === s.open ? s.blankCreationId : null };
+  var patch = { open: next, sheet: null, playing: false, newItem: "", blankCreationId: next === s.open ? s.blankCreationId : null };
   if (n && notesEmpty(n)) patch.list = s.list.filter(function (x) { return x.id !== n.id; });
   return patch;
 }
@@ -3001,57 +2898,85 @@ function notesUndoable(api, note, idx, label) {
   api.toast(label, { undo: function () { var s = api.get("notes"); if (notesFind(s.list, note.id)) return; var l = s.list.slice(); l.splice(Math.min(idx, l.length), 0, note); api.set({ list: l }); } });
 }
 async function notesDelete(api, id) {
+  if (api.canonicalNotes) return api.canonicalNotes.remove(id, api);
   var s = api.get("notes"); notesStopTimers();
   var idx = -1; s.list.forEach(function (n, i) { if (n.id === id) idx = i; });
   if (idx < 0) return;
   var note = s.list[idx];
   // Live Notes move the note to the durable Trash (and offer Undo); fixtures keep the in-memory undo.
   if (api.moveNoteToTrash) { await api.moveNoteToTrash(note, idx); return; }
-  if(await api.set({ list: s.list.filter(function (n) { return n.id !== id; }), open: null, sheet: null, playing: false, dict: false })===false)return;
+  if(await api.set({ list: s.list.filter(function (n) { return n.id !== id; }), open: null, sheet: null, playing: false })===false)return;
   notesUndoable(api, note, idx, (note.title || "Note") + " deleted");
 }
+/** The folder a note shows in: its folderId while that folder exists, else none (specs/notes-view FolderRefsValid). */
+function notesFolderOf(n, folders) { return n && typeof n.folderId === "string" && (folders || []).some(function (f) { return f.id === n.folderId; }) ? n.folderId : null; }
+/** Moves a note by the owner's own tap: folderId set, or removed for "No folder". */
+async function notesMove(api, id, folderId, name) {
+  if (api.canonicalNotes) {
+    api.set({ menu: null });
+    if (!await api.canonicalNotes.update(id, { folderId: folderId || null })) return;
+    api.toast(folderId ? "Moved to " + name : "Removed from folder");
+    return;
+  }
+  var s = api.get("notes");
+  var list = s.list.map(function (n) { if (n.id !== id) return n; var x = Object.assign({}, n); if (folderId) x.folderId = folderId; else delete x.folderId; return x; });
+  api.set({ list: list, menu: null });
+  api.toast(folderId ? "Moved to " + name : "Removed from folder");
+}
+/** Live Notes keep folders in their own encrypted slot (api.notesFolders); fixtures keep them in view state. */
+async function notesCreateFolder(api) {
+  var sheet = api.get("notes").folderSheet, name = sheet && sheet.kind === "new" ? String(sheet.name || "").replace(/\s+/g, " ").trim() : "";
+  if (!name) return;
+  if (name.length > 40) { api.toast("Use a shorter name."); return; }
+  var folders = api.get("notes").folders || [];
+  var existing = folders.filter(function (f) { return f.name.toLowerCase() === name.toLowerCase(); })[0];
+  if (existing) { api.set({ folderSheet: null, folder: existing.id, filter: null }); return; }
+  var created = api.notesFolders ? await api.notesFolders.create(name) : { id: "f-" + Date.now(), name: name, createdAt: Date.now() };
+  if (!created) return;
+  var patch = { folderSheet: null, folder: created.id, filter: null };
+  if (!api.notesFolders) patch.folders = folders.concat([created]);
+  api.set(patch);
+}
+/** Renaming keeps the folder's id, so every note stays in it. A name another folder uses is refused. */
+async function notesRenameFolder(api, id) {
+  var st = api.get("notes"), sheet = st.folderSheet, name = sheet && sheet.kind === "rename" && sheet.id === id ? String(sheet.name || "").replace(/\s+/g, " ").trim() : "";
+  if (!name) return;
+  if (name.length > 40) { api.toast("Use a shorter name."); return; }
+  var folders = st.folders || [], folder = folders.filter(function (f) { return f.id === id; })[0];
+  if (!folder) { api.set({ folderSheet: null }); return; }
+  if (folder.name === name) { api.set({ folderSheet: null }); return; }
+  if (folders.some(function (f) { return f.id !== id && f.name.toLowerCase() === name.toLowerCase(); })) { api.toast("A folder with that name exists."); return; }
+  if (api.notesFolders) { if (!await api.notesFolders.rename(id, name)) return; }
+  else api.set({ folders: folders.map(function (f) { return f.id === id ? Object.assign({}, f, { name: name }) : f; }) });
+  api.set({ folderSheet: null });
+}
+/** Long-press (or a context-menu click) on a folder chip opens its options. */
+function notesChipHold(api, id) {
+  return {
+    down: function () { clearTimeout(NT.holdT); NT.held = null; NT.holdT = setTimeout(function () { NT.holdT = null; NT.held = id; api.set({ folderSheet: { kind: "options", id: id } }); }, 450); },
+    up: function () { clearTimeout(NT.holdT); NT.holdT = null; },
+    context: function (e) { if (e && e.preventDefault) e.preventDefault(); clearTimeout(NT.holdT); NT.holdT = null; NT.held = id; api.set({ folderSheet: { kind: "options", id: id } }); }
+  };
+}
+/** Deleting a folder moves its notes to no folder; it never deletes a note. */
+async function notesDeleteFolder(api, id) {
+  if (api.notesFolders) { if (!await api.notesFolders.remove(id)) return; }
+  else {
+    var s = api.get("notes");
+    api.set({ folders: (s.folders || []).filter(function (f) { return f.id !== id; }), list: s.list.map(function (n) { if (n.folderId !== id) return n; var x = Object.assign({}, n); delete x.folderId; return x; }) });
+  }
+  var cur = api.get("notes");
+  api.set({ folderSheet: null, folder: cur.folder === id ? null : cur.folder });
+}
 function notesNew(api, kind) {
-  var id = "n" + Date.now();
-  var n = kind === "list" ? { id: id, kind: "list", title: "", items: [], pinned: false, when: "Now" } : { id: id, kind: "text", title: "", body: "", pinned: false, when: "Now" };
+  var id = "n" + Date.now(), st0 = api.get("notes");
+  var inFolder = notesFolderOf({ folderId: st0.folder }, st0.folders);
+  if (api.canonicalNotes) { void api.canonicalNotes.create(kind, inFolder); api.set({ compose: false, q: null }); return; }
+  var now = Date.now();
+  var n = kind === "list" ? { id: id, kind: "list", title: "", items: [], pinned: false, when: "Now", createdAt: now, modifiedAt: now } : { id: id, kind: "text", title: "", body: "", pinned: false, when: "Now", createdAt: now, modifiedAt: now };
+  if (inFolder) n.folderId = inFolder;
   var leave = notesLeave(api, id);
   api.set(Object.assign(leave, { list: [n].concat(leave.list || api.get("notes").list), blankCreationId: id, compose: false, q: null }));
-}
-function notesStartRec(api) {
-  notesStopTimers();
-  api.set({ record: false, open: null, sheet: null, q: null, rec: { tick: 0, paused: false, levels: [] } });
-  api.stopBg();
-  NT.recI = api.everyBg(function () {
-    var s = api.get("notes"); var r = s.rec; if (!r || r.paused) return;
-    var t = r.tick + 1;
-    var speaking = t >= NOTES_T0 && ((t - NOTES_T0) % NOTES_STEP) < 9 && notesLiveCount(t) <= NOTES_LIVE.length && t < NOTES_T0 + NOTES_LIVE.length * NOTES_STEP;
-    var lv = speaking ? 0.3 + 0.7 * Math.abs(Math.sin(t * 1.7) * Math.cos(t * 0.53)) : 0.08 + 0.1 * Math.abs(Math.sin(t));
-    api.set({ rec: Object.assign({}, r, { tick: t, levels: r.levels.concat([lv]).slice(-44) }) });
-  }, 250);
-}
-var NOTES_T0 = 2, NOTES_STEP = 12;
-function notesLiveCount(tick) { return Math.max(0, Math.min(NOTES_LIVE.length, Math.floor((tick - NOTES_T0) / NOTES_STEP) + 1)); }
-function notesBuildRec(api, r) {
-  var n = notesLiveCount(r.tick); var got = NOTES_LIVE.slice(0, n);
-  var sum = [], acts = [];
-  got.forEach(function (l) { if (l.sum) sum.push(l.sum); if (l.act) acts.push({ t: l.act, done: false }); });
-  if (!sum.length && got.length) sum.push("Short check-in, nothing decided yet");
-  return { id: "r" + Date.now(), kind: "voice", title: got.length ? "Standup" : "Recording", when: "Today · " + notesNowLabel(api.now), dur: Math.round(r.tick / 4), pinned: false,
-    lines: got.map(function (l, i) { return { s: l.s, t: l.t, at: Math.round((NOTES_T0 + i * NOTES_STEP) / 4) }; }), summary: sum, actions: acts, fresh: true };
-}
-function notesStopRec(api, quiet) {
-  api.stopBg(); NT.recI = null;
-  var s = api.get("notes"); if (!s.rec) return;
-  var note = notesBuildRec(api, s.rec);
-  api.set({ rec: null, list: [note].concat(s.list), open: quiet ? null : note.id, proc: quiet ? null : note.id, pos: 0, playing: false });
-  if (quiet) api.toast("Recording saved to Notes");
-  else api.later(function () { api.set({ proc: null }); }, 1500);
-}
-function notesDiscardRec(api) {
-  api.stopBg(); NT.recI = null;
-  var s = api.get("notes"); if (!s.rec) return;
-  var note = notesBuildRec(api, s.rec);
-  api.set({ rec: null });
-  notesUndoable(api, note, 0, "Recording discarded");
 }
 function notesLast(list) { for (var i = 0; i < list.length; i++) if (list[i].kind === "voice") return list[i]; return null; }
 function notesShare(api, n, via) {
@@ -3071,25 +2996,26 @@ function notesShare(api, n, via) {
 registerView("notes", {
   title: "Notes", icon: "notes", aliases: ["note", "recorder", "memos"],
   chat: "hidden",
-  state: { list: NOTES_SEED, open: null, blankCreationId: null, q: null, rec: null, record: false, compose: false, proc: null, sheet: null, pos: 0, playing: false, dict: false, newItem: "" },
+  state: { list: NOTES_SEED, open: null, blankCreationId: null, folders: [], folder: null, filter: null, menu: null, folderSheet: null, record: false, compose: false, proc: null, sheet: null, pos: 0, playing: false, newItem: "" },
   persist: ["list"],
-  jumps: [[null, "Notes"], ["editor", "Note editor"], ["rec", "Recording"], ["voice", "Voice note"]],
+  jumps: [[null, "Notes"], ["editor", "Note editor"], ["voice", "Voice note"]],
   preset: function (sub) {
     var pr = copy("notes").presets || {};
     if (sub === "editor") return pr.editor ? { open: pr.editor } : { compose: true };
+    // notes:rec opens the Notes recorder (voice-adapter) where it is installed.
     if (sub === "rec") return { record: true };
     if (sub === "voice") return pr.voice ? { open: pr.voice } : null;
   },
-  immersive: function (st) { return st.rec || st.record || st.sheet ? { noPill: true } : null; },
+  immersive: function (st) { return st.sheet ? { noPill: true } : null; },
   back: function (st, api) {
-    if (st.rec) { notesStopRec(api); return true; }
     if (st.sheet) { api.set({ sheet: null }); return true; }
+    if (st.menu) { api.set({ menu: null }); return true; }
     if (st.open) { notesClose(api); return true; }
-    if (st.q !== null && st.q !== undefined) { api.set({ q: null }); return true; }
+    if (st.folderSheet) { api.set({ folderSheet: null }); return true; }
+    if (st.filter) { api.set({ filter: null }); return true; }
     return false;
   },
   onLeave: function (api) { var s = api.get("notes"); if (s.blankCreationId) api.set(notesLeave(api, null)); else notesStopTimers(); },
-  ongoing: function (st) { return st.rec ? { label: notesFmt(st.rec.tick / 4), icon: "notesRecDot", color: NOTES_RED } : null; },
   suggestions: function (st, api) {
     var n = st.open ? notesFind(st.list, st.open) : null;
     if (n && n.kind === "voice") {
@@ -3102,8 +3028,13 @@ registerView("notes", {
   },
   voicePhrase: "Start recording",
   actions: {
-    save: function (card, api) {
+    save: async function (card, api) {
       var body = card.body || (card.bullets || []).join("\n");
+      if (api.canonicalNotes) {
+        var content = card.title ? card.title + (body ? "\n" + body : "") : body;
+        if (await api.canonicalNotes.saveCard(content, api)) api.toast("Saved to Notes");
+        return;
+      }
       var s = api.get("notes");
       api.set({ list: [{ id: "n" + Date.now(), kind: "text", title: card.title || "Key points", body: body, pinned: false, when: "Now" }].concat(s.list) });
       api.toast("Saved to Notes");
@@ -3111,12 +3042,13 @@ registerView("notes", {
     sendShare: function (card, api) { api.toast("Sent to " + card.to.split(" ")[0]); }
   },
   reply: function (t, raw, api) {
+    if (api.notesSourceMode === "canonical") return null;
     var st = api.get("notes");
     var m = raw.match(/^\s*(?:please\s+)?(?:take a note|make a note|note|jot down|write down|remember)\b(?:\s+(?:that|to))?\s*[:,]?\s*(.+)$/i);
     if (m && m[1].trim()) {
       var text = m[1].trim().replace(/\.$/, ""); var id = "n" + Date.now();
       var title = text.length <= 44 ? cap(text) : cap(text.split(/\s+/).slice(0, 5).join(" ")) + "…";
-      var note = { id: id, kind: "text", title: title, body: text.length <= 44 ? "" : cap(text) + ".", pinned: false, when: "Now" };
+      var note = { id: id, kind: "text", title: title, body: text.length <= 44 ? "" : cap(text) + ".", pinned: false, when: "Now", createdAt: Date.now(), modifiedAt: Date.now() };
       return { text: /^\s*remember/i.test(raw) ? "I'll remember. It's in Notes." : "Saved to Notes.", card: { type: "note", body: cap(text), go: { view: "notes", patch: { open: id } } },
         then: function () { var s = api.get("notes"); api.set({ list: [note].concat(s.list) }); } };
     }
@@ -3125,10 +3057,10 @@ registerView("notes", {
       var term = fm[1].trim().replace(/[?.!]$/, ""); var tl = term.toLowerCase();
       var hits = st.list.filter(function (n) { return [n.title, n.body, (n.items || []).map(function (i) { return i.t; }).join(" "), (n.lines || []).map(function (l) { return l.t; }).join(" "), (n.summary || []).join(" ")].join(" ").toLowerCase().indexOf(tl) >= 0; });
       if (!hits.length) return { text: "No notes mention \u201c" + term + "\u201d." };
-      return { text: hits.length === 1 ? "One note: " + (hits[0].title || "Untitled") + "." : hits.length + " notes mention \u201c" + term + "\u201d.", nav: { view: "notes", patch: hits.length === 1 ? { open: hits[0].id, q: null } : { q: term, open: null } } };
+      return { text: hits.length === 1 ? "One note: " + (hits[0].title || "Untitled") + "." : hits.length + " notes mention \u201c" + term + "\u201d.", nav: { view: "notes", patch: hits.length === 1 ? { open: hits[0].id, filter: null } : { filter: { text: term }, folder: null, open: null } } };
     }
     if (/(start|begin)\s+(a\s+)?(recording|transcri)|record (this|the) (meeting|call)|^record$|^transcribe/.test(t)) {
-      return { text: "Recording. I'll transcribe as we go and summarize when you stop.", nav: { view: "notes", patch: { record: true } } };
+      return { text: "Recording.", nav: { view: "notes", patch: { record: true } } };
     }
     var digest = copy("notes").digest;
     if (digest && digest.re.test(t) && /decide|decision|agree|summar|what/.test(t)) {
@@ -3160,29 +3092,42 @@ registerView("notes", {
   render: function (st, api) {
     if (!NT.pend && (st.record || st.compose)) {
       NT.pend = true;
-      setTimeout(function () { NT.pend = false; var s = api.get("notes"); if (s.record) notesStartRec(api); else if (s.compose) notesNew(api, "text"); }, 0);
+      // The Notes recorder is installed by the voice adapter, which consumes `record` first; only a
+      // fixture preview without it gets here.
+      setTimeout(function () { NT.pend = false; var s = api.get("notes"); if (s.record) { api.set({ record: false }); api.toast("Recording isn’t available in this preview."); } else if (s.compose) notesNew(api, "text"); }, 0);
     }
     var list = st.list || [];
-    var q = st.q == null ? null : String(st.q).toLowerCase().trim();
-    var shown = list.filter(function (n) {
-      if (!q) return true;
-      var hay = [n.title, n.body, n.domain, (n.items || []).map(function (i) { return i.t; }).join(" "), (n.lines || []).map(function (l) { return l.t; }).join(" "), (n.summary || []).join(" ")].join(" ").toLowerCase();
-      return hay.indexOf(q) >= 0;
-    });
-    shown = shown.filter(function (n) { return n.pinned; }).concat(shown.filter(function (n) { return !n.pinned; }));
-    var cards = shown.map(function (n) {
-      var items = (n.items || []).slice(0, 5).map(function (i) { return { t: i.t, css: i.done ? "text-decoration: line-through; color: var(--mut)" : "", box: i.done ? "background: var(--fg); box-shadow: none" : "box-shadow: inset 0 0 0 1.5px var(--mut)", done: i.done }; });
-      var more = (n.items || []).length - items.length;
-      var bars = NOTES_WAVE.slice(0, 22);
+    /* One-column list (PLAN.md section 3, decision N3): the selected folder chip, then the agent's
+       read-only filter, pinned notes first. A note whose folder was deleted shows under All only. */
+    var folders = Array.isArray(st.folders) ? st.folders : [];
+    var folder = st.folder && st.folder !== "deleted" && folders.some(function (f) { return f.id === st.folder; }) ? st.folder : null;
+    var filter = st.filter && typeof st.filter === "object" ? st.filter : null;
+    var shown = sortNotes(filterNotes(filterNotes(list, folder ? { folder: folder } : null, folders), filter, folders));
+    var now = Date.now();
+    var rows = shown.map(function (n) {
+      var voiceDur = n.kind === "voice" ? (typeof n.dur === "number" ? n.dur : n.audio && typeof n.audio.durationMs === "number" ? n.audio.durationMs / 1000 : null) : null;
+      var preview = notePreview(n) || (n.audio && typeof n.audio.transcript === "string" ? n.audio.transcript.trim().slice(0, 240) : "");
       return {
-        id: n.id, title: n.title || "Untitled", hasTitle: true, body: n.kind === "text" ? String(n.body || "").slice(0, 180) : "", hasBody: n.kind === "text" && !!String(n.body || "").trim(),
-        isList: n.kind === "list", isVoice: n.kind === "voice", isLink: n.kind === "link", items: items, more: more > 0 ? "+" + more : "", hasMore: more > 0,
-        bars: bars, dur: n.kind === "voice" ? notesFmt(n.dur) + (n.actions && n.actions.length ? " · " + n.actions.length + " to-dos" : "") : "", domain: n.domain || "",
-        pinned: !!n.pinned, current: st.open === n.id ? "true" : "false", open: function () { api.set(Object.assign(notesLeave(api, n.id), { pos: 0 })); }
+        id: n.id, title: n.title || "Untitled", date: noteDateLabel(n, now) || (typeof n.when === "string" ? n.when : ""),
+        preview: (voiceDur != null ? notesFmt(voiceDur) + (preview ? " · " : "") : "") + preview,
+        isVoice: n.kind === "voice", isLink: n.kind === "link", pinned: !!n.pinned,
+        current: st.open === n.id ? "true" : "false", open: function () { api.set(Object.assign(notesLeave(api, n.id), { pos: 0, menu: null })); }
       };
     });
-    var colL = [], colR = [];
-    cards.forEach(function (c, i) { (i % 2 ? colR : colL).push(c); });
+    var pinnedRows = rows.filter(function (r) { return r.pinned; }), otherRows = rows.filter(function (r) { return !r.pinned; });
+    var folderChips = folders.map(function (f) {
+      var on = folder === f.id, hold = notesChipHold(api, f.id);
+      return { id: f.id, name: f.name, pressed: on ? "true" : "false", label: on ? f.name + ", folder options" : f.name,
+        down: hold.down, up: hold.up, context: hold.context,
+        select: function () {
+          // The click that ends a long-press only opened the options.
+          if (NT.held === f.id) { NT.held = null; return; }
+          if (api.get("notes").folder === f.id) api.set({ folderSheet: { kind: "options", id: f.id } }); else api.set({ folder: f.id, filter: null, folderSheet: null });
+        } };
+    });
+    var sheet = st.folderSheet && typeof st.folderSheet === "object" ? st.folderSheet : null;
+    var sheetFolder = sheet && (sheet.kind === "options" || sheet.kind === "rename") ? folders.filter(function (f) { return f.id === sheet.id; })[0] || null : null;
+    var renaming = !!sheetFolder && sheet.kind === "rename";
 
     /* open note */
     var n = st.open ? notesFind(list, st.open) : null;
@@ -3191,9 +3136,18 @@ registerView("notes", {
     var common = n ? {
       close: function () { notesClose(api); },
       pinIcon: IC.notesPin, pinCss: n.pinned ? "color: var(--acct)" : "", pinLabel: n.pinned ? "Unpin" : "Pin",
-      pin: async function () { await notesUpd(api, n.id, { pinned: !n.pinned }); },
-      share: function () { api.set({ sheet: "share" }); },
-      del: function () { notesDelete(api, n.id); },
+      pin: async function () { api.set({ menu: null }); await notesUpd(api, n.id, { pinned: !n.pinned }); },
+      share: function () { api.set({ sheet: "share", menu: null }); },
+      del: function () { api.set({ menu: null }); notesDelete(api, n.id); },
+      /* ⋯ menu: Pin, Move to…, Delete (PLAN.md section 3). */
+      menuOpen: st.menu === "main", moveOpen: st.menu === "move", menuShown: !!st.menu,
+      more: function () { api.set({ menu: api.get("notes").menu ? null : "main" }); },
+      closeMenu: function () { api.set({ menu: null }); },
+      moveTo: function () { api.set({ menu: "move" }); },
+      moveRows: [{ id: null, name: "No folder" }].concat(folders).map(function (f) {
+        var on = (notesFolderOf(n, folders) || null) === f.id;
+        return { name: f.name, checked: on ? "true" : "false", mark: on ? "✓" : "", pick: function () { notesMove(api, n.id, f.id, f.name); } };
+      }),
       title: n.title || "",
       onTitle: function (e) { notesUpd(api, n.id, { title: e.target.value }); }
     } : null;
@@ -3209,7 +3163,7 @@ registerView("notes", {
         },
         items: (n.items || []).map(function (it, i) {
           return {
-            t: it.t, done: it.done, css: it.done ? "text-decoration: line-through; color: var(--mut)" : "",
+            t: it.t, done: it.done, idx: i, css: it.done ? "text-decoration: line-through; color: var(--mut)" : "",
             box: it.done ? "background: var(--fg); color: var(--bg)" : "box-shadow: inset 0 0 0 1.5px var(--mut); color: transparent",
             label: (it.done ? "Uncheck " : "Check ") + (it.t || "item"),
             toggle: function () { notesUpd(api, n.id, function (x) { return { items: x.items.map(function (y, j) { return j === i ? Object.assign({}, y, { done: !y.done }) : y; }) }; }); },
@@ -3221,30 +3175,6 @@ registerView("notes", {
         onNew: function (e) { api.set({ newItem: e.target.value }); },
         addItem: function () { var v = String(api.get("notes").newItem || "").trim(); if (!v) return; notesUpd(api, n.id, function (x) { return { items: (x.items || []).concat([{ t: v, done: false }]) }; }); api.set({ newItem: "" }); },
         newKey: function (e) { if (e.key === "Enter") { e.preventDefault(); var v = String(api.get("notes").newItem || "").trim(); if (!v) return; notesUpd(api, n.id, function (x) { return { items: (x.items || []).concat([{ t: v, done: false }]) }; }); api.set({ newItem: "" }); } },
-        dict: !!st.dict, notDict: !st.dict,
-        dictLabel: st.dict ? "Stop dictation" : "Dictate", dictCss: st.dict ? "background: var(--acc); color: #fff" : "",
-        dictate: function () {
-          if (api.get("notes").dict) { clearInterval(NT.dicI); NT.dicI = null; api.set({ dict: false }); return; }
-          if (!NOTES_DICT.length) { api.toast("Dictation is not connected"); return; }
-          var phrase = NOTES_DICT[NT.dIdx++ % NOTES_DICT.length]; var i = 0; var id = n.id;
-          api.set({ dict: true });
-          clearInterval(NT.dicI);
-          NT.dicI = api.every(function () {
-            var cur = notesFind(api.get("notes").list, id); if (!cur) { clearInterval(NT.dicI); return; }
-            i++;
-            var ch = phrase.charAt(i - 1);
-            if (cur.kind === "list") {
-              var its = (cur.items || []).slice();
-              if (i === 1) its.push({ t: ch, done: false }); else { var L = its.length - 1; its[L] = Object.assign({}, its[L], { t: its[L].t + ch }); }
-              notesUpd(api, id, { items: its });
-            } else {
-              var b = String(cur.body || "");
-              if (i === 1 && b && !/\s$/.test(b)) b += /[.!?]$/.test(b) ? " " : "\n";
-              notesUpd(api, id, { body: b + ch });
-            }
-            if (i >= phrase.length) { clearInterval(NT.dicI); NT.dicI = null; api.later(function () { api.set({ dict: false }); }, 400); }
-          }, 38);
-        }
       });
     }
     if (n && n.kind === "voice") {
@@ -3252,7 +3182,7 @@ registerView("notes", {
       var bars = NOTES_WAVE.map(function (h, i) { return { h: h, c: i / NOTES_WAVE.length < frac ? "var(--acct)" : "var(--s3)" }; });
       var nextIdx = -1; (n.lines || []).forEach(function (l, i) { if (l.at <= pos) nextIdx = i; });
       vo = Object.assign({}, common, {
-        meta: n.when + " · " + notesFmt(n.dur), bars: bars,
+        meta: [n.when, notesFmt(n.dur)].filter(Boolean).join(" · "), bars: bars, hasPlayback: true,
         time: notesFmt(pos) + " / " + notesFmt(n.dur),
         playIcon: st.playing ? IC.pause : IC.play, playLabel: st.playing ? "Pause" : "Play", playCss: st.playing ? "" : "fill: currentColor",
         play: function () {
@@ -3271,7 +3201,7 @@ registerView("notes", {
         hasActions: (n.actions || []).length > 0,
         actCount: (n.actions || []).length === 1 ? "1 action item" : (n.actions || []).length + " action items",
         actions: (n.actions || []).map(function (a, i) {
-          return { t: a.t, css: a.done ? "text-decoration: line-through; color: var(--mut)" : "", box: a.done ? "background: var(--fg); color: var(--bg)" : "box-shadow: inset 0 0 0 1.5px var(--mut); color: transparent", label: (a.done ? "Uncheck " : "Check ") + a.t,
+          return { t: a.t, idx: i, css: a.done ? "text-decoration: line-through; color: var(--mut)" : "", box: a.done ? "background: var(--fg); color: var(--bg)" : "box-shadow: inset 0 0 0 1.5px var(--mut); color: transparent", label: (a.done ? "Uncheck " : "Check ") + a.t,
             toggle: function () { notesUpd(api, n.id, function (x) { return { actions: x.actions.map(function (y, j) { return j === i ? Object.assign({}, y, { done: !y.done }) : y; }) }; }); } };
         }),
         calIcon: n.onCal ? IC.check : IC.cal, calLabel: n.onCal ? "Added to calendar" : "Add action items to calendar", calText: n.onCal ? "On calendar" : "Add to calendar",
@@ -3284,7 +3214,7 @@ registerView("notes", {
         lines: (n.lines || []).map(function (l, i) {
           var p = l.s === "me" ? null : api.person(l.s);
           return { ini: p ? p.ini : "You", who: p ? p.name.split(" ")[0] : "You", t: l.t, at: notesFmt(l.at),
-            chip: l.s === "me" ? "background: var(--acc); color: #fff" : "background: var(--s3); color: var(--fg)",
+            chip: l.s === "me" ? "background: var(--acc); color: var(--alpha-white)" : "background: var(--s3); color: var(--fg)",
             css: i === nextIdx && pos > 0 ? "color: var(--fg)" : (pos > 0 ? "color: var(--mut)" : ""),
             seek: function () { api.set({ pos: l.at }); } };
         }),
@@ -3298,46 +3228,31 @@ registerView("notes", {
       });
     }
 
-    /* recorder */
-    var r = st.rec;
-    var rec = null;
-    if (r) {
-      var cnt = notesLiveCount(r.tick);
-      var within = r.tick - NOTES_T0 - (cnt - 1) * NOTES_STEP;
-      var lines = NOTES_LIVE.slice(0, cnt).map(function (l, i) {
-        var p = l.s === "me" ? null : api.person(l.s);
-        var tx = i === cnt - 1 && within < 9 ? l.t.slice(0, Math.max(1, Math.round(l.t.length * (within + 1) / 9))) : l.t;
-        return { ini: p ? p.ini : "You", t: tx, chip: l.s === "me" ? "background: var(--acc); color: #fff" : "background: var(--s3); color: var(--fg)", css: i === cnt - 1 ? "" : "color: var(--mut)" };
-      }).reverse();
-      var lv = r.levels.slice(); while (lv.length < 44) lv.unshift(0.06);
-      rec = {
-        clock: notesFmt(r.tick / 4), paused: r.paused, live: !r.paused,
-        primaryLabel: "Stop and save", primaryIcon: IC.stop,
-        clockCss: r.paused ? "opacity: .4" : "",
-        levels: lv.map(function (v) { return { h: Math.round(4 + v * 64) }; }),
-        lines: lines, dotCss: r.paused ? "background: var(--mut)" : "background: " + NOTES_RED,
-        pauseIcon: r.paused ? IC.mic : IC.pause, pauseLabel: r.paused ? "Resume" : "Pause",
-        toggle: function () { var s = api.get("notes"); if (s.rec) api.set({ rec: Object.assign({}, s.rec, { paused: !s.rec.paused }) }); },
-        stop: function () { notesStopRec(api); },
-        discard: function () { notesDiscardRec(api); }
-      };
-    }
-
     var shareSheet = st.sheet === "share" && !!n;
     return {
-      searching: st.q !== null && st.q !== undefined, notSearching: st.q === null || st.q === undefined,
-      q: st.q || "",
-      onQ: function (e) { api.set({ q: e.target.value }); },
-      search: function () { api.set({ q: "" }); },
-      endSearch: function () { api.set({ q: null }); },
+      notesTitle: "Notes", primaryNotes: true, canRecord: true, canCreate: true,
       newNote: function () { notesNew(api, "text"); },
-      record: function () { notesStartRec(api); },
-      colL: colL, colR: colR, none: cards.length === 0,
-      emptyText: q ? "No matches" : "No notes yet. Create a note to get started.",
-      askQ: "Ask " + api.name + ": “" + String(st.q || "").trim() + "”", hasQ: !!q,
-      askSearch: function () { var qq = String(api.get("notes").q || "").trim(); api.set({ q: null }); api.send("Find my notes about " + qq); },
+      // The Notes recorder (voice-adapter, note-recorder.ts) handles Record; `record` is its deep-link flag.
+      record: function () { api.set({ record: true }); },
+      pinnedRows: pinnedRows, otherRows: otherRows, hasPinned: pinnedRows.length > 0, notesHead: pinnedRows.length > 0 && otherRows.length > 0,
+      allPressed: folder ? "false" : "true", selectAll: function () { api.set({ folder: null, filter: null, folderSheet: null }); },
+      folderChips: folderChips,
+      newFolder: function () { api.set({ folderSheet: { kind: "new", name: "" } }); },
+      filterOn: !!filter, filterLabel: filter ? notesFilterLabel(filter, folders) + " · " + shown.length : "",
+      clearFilter: function () { api.set({ filter: null }); },
+      folderSheetOpen: !!sheet && (sheet.kind === "new" || !!sheetFolder),
+      folderNew: !!sheet && sheet.kind === "new" || renaming, folderOptions: !!sheetFolder && !renaming,
+      folderName: sheet && (sheet.kind === "new" || renaming) ? String(sheet.name || "") : "", folderOptionsTitle: sheetFolder ? sheetFolder.name : "",
+      folderSheetTitle: sheet && sheet.kind === "new" ? "New folder" : renaming ? "Rename folder" : sheetFolder ? sheetFolder.name : "",
+      folderSubmitLabel: renaming ? "Save" : "Create",
+      onFolderName: function (e) { var cur = api.get("notes").folderSheet; if (cur && (cur.kind === "new" || cur.kind === "rename")) api.set({ folderSheet: Object.assign({}, cur, { name: e.target.value }) }); },
+      folderNameKey: function (e) { if (e.key === "Enter") { e.preventDefault(); var cur = api.get("notes").folderSheet; if (cur && cur.kind === "rename") notesRenameFolder(api, cur.id); else notesCreateFolder(api); } },
+      createFolder: function () { var cur = api.get("notes").folderSheet; if (cur && cur.kind === "rename") notesRenameFolder(api, cur.id); else notesCreateFolder(api); },
+      folderSaveDisabled: !(sheet && (sheet.kind === "new" || renaming) && String(sheet.name || "").trim()),
+      renameFolder: function () { if (sheetFolder) api.set({ folderSheet: { kind: "rename", id: sheetFolder.id, name: sheetFolder.name } }); },
+      deleteFolder: function () { if (sheetFolder) notesDeleteFolder(api, sheetFolder.id); },
+      closeFolderSheet: function () { api.set({ folderSheet: null }); },
       isEdit: isEdit, ed: ed, isVoice: !!vo, vo: vo, isLink: !!lk, lk: lk,
-      recording: !!rec, rec: rec,
       shareSheet: shareSheet,
       closeSheet: function () { api.set({ sheet: null }); },
       shareMsg: function () { notesShare(api, n, "msg"); },
@@ -3573,7 +3488,7 @@ registerView("contacts", {
       eIni: form ? ctIni(form.first, form.last) : "", eHasIni: !!form && ctIni(form.first, form.last) !== "#", eNoIni: !!form && ctIni(form.first, form.last) === "#",
       nameInputs: form ? [input("first", "First name", IC.user), input("last", "Last name", "")] : [],
       inputs: form ? [input("phone", "Phone", IC.phone, "tel"), input("email", "Email", IC.mail, "email"), input("address", "Address", IC.pin), input("birthday", "Birthday", IC.contactsGift), input("note", "Note", IC.contactsNote)] : [],
-      saveCss: canSave ? "background: var(--acc); color: #fff" : "background: var(--s2); color: var(--mut)", canSave: canSave, cantSave: !canSave,
+      saveCss: canSave ? "background: var(--acc); color: var(--alpha-white)" : "background: var(--s2); color: var(--mut)", canSave: canSave, cantSave: !canSave,
       cancelEdit: function () { var s = api.get("contacts"); api.set({ edit: null, add: null, form: null, open: s.edit || s.open }); },
       save: function () { ctSave(api); }
     };
@@ -3596,7 +3511,6 @@ IC.filesZip = IC.filesZip || "M6 3h12v18H6zM12 3v2M12 7v2M12 11v2M10.5 15h3v3h-3
 var FILES_FOLDERS = [
   { id: "Downloads", icon: "filesDown" },
   { id: "Documents", icon: "folder" },
-  { id: "Receipts", icon: "filesReceipt" },
   { id: "Recordings", icon: "wave" }
 ].concat(FILES_FOLDERS_EXTRA);
 var FILES_TYPES = {
@@ -3658,52 +3572,8 @@ registerView("files", {
     return false;
   },
   onLeave: function () { clearInterval(FL.playI); },
-  suggestions: function (st) {
-    var sg = copy("files").suggestions || {};
-    if (st.open) return sg.open || ["Summarize this file"];
-    if (st.folder === "Receipts") return sg.receipts || ["Show my receipts"];
-    return sg.root || ["Show my receipts"];
-  },
+  suggestions: function (st) { return st.open ? ["Summarize this file"] : []; },
   voicePhrase: copy("files").voicePhrase,
-  reply: function (t, raw, api) {
-    var st = api.get("files");
-    var cur = api.active && st.open ? filesFind(st.files, st.open) : null;
-    var fs = copy("files").findShortcut;
-    if (fs && fs.re.test(t) && /\b(find|where|open|show|pull up|get)\b/.test(t) && !/summar/.test(t)) {
-      var ts = filesFind(st.files, fs.id);
-      if (ts) return { text: "In " + ts.folder + fs.from, card: { type: "generic", icon: "filesDoc", title: ts.name, sub: ts.folder + " · " + ts.size, go: { view: "files", patch: { open: fs.id } } }, nav: { view: "files", patch: { open: fs.id } } };
-    }
-    var ff = raw.match(/^\s*(?:find|where(?:'s| is))\s+(?:the\s+|my\s+)?(?:file\s+)?(.+?)\s*(?:file)?\??$/i);
-    if (ff && !/\bnotes?\b/i.test(raw)) {
-      var nq = filesNorm(ff[1].replace(/^(named|called)\s+/i, ""));
-      var hit = nq.length > 2 ? st.files.filter(function (x) { return filesNorm(x.name).indexOf(nq) >= 0 || nq.indexOf(filesNorm(filesSplit(x.name)[0])) >= 0; })[0] : null;
-      if (hit) return { text: "In " + hit.folder + ".", card: { type: "generic", icon: "filesDoc", title: hit.name, sub: hit.folder + " · " + hit.size, go: { view: "files", patch: { open: hit.id } } }, nav: { view: "files", patch: { open: hit.id, q: null } } };
-    }
-    if (/receipts?/.test(t) && /\b(show|find|open|my|where|total)\b/.test(t)) {
-      var rs = st.files.filter(function (f) { return f.folder === "Receipts"; });
-      var rc = copy("files").receipts;
-      if (!rc) return { text: rs.length ? rs.length + (rs.length === 1 ? " receipt" : " receipts") + " in Files. Totals are not calculated." : "No receipts in Files.", nav: { view: "files", patch: { folder: "Receipts", open: null } } };
-      return { text: /total/.test(t) ? rc.total + " across " + rs.length + " receipts this month." : rs.length + " receipts: " + rc.list + ".", card: { type: "generic", icon: "filesReceipt", title: "Receipts", sub: rs.length + " files · " + rc.total, go: { view: "files", patch: { folder: "Receipts" } } }, nav: { view: "files", patch: { folder: "Receipts", open: null } } };
-    }
-    if (/summar|what'?s in|tl;?dr|key points/.test(t) && (cur || /\b(pdf|file|document|doc|term sheet|receipt)\b/.test(t))) {
-      var sd = copy("files").summaryDefaults || {};
-      var f = cur || (/receipt/.test(t) ? filesFind(st.files, sd.receipt) : /term sheet/.test(t) || /pdf/.test(t) ? filesFind(st.files, sd.pdf) : null);
-      if (f && f.sum) return { text: f.name, card: { type: "summary", title: filesSplit(f.name)[0] + " · summary", bullets: f.sum, act: VIEWS.notes ? { mod: "notes", fn: "save" } : null },
-        then: function () { var a = Object.assign({}, api.get("files").asked); a[f.id] = true; api.set({ asked: a }); } };
-    }
-    var storage = copy("files").storage;
-    if (storage && /taking up space|storage|free up/.test(t)) {
-      return { text: storage.text, card: { type: "generic", icon: "filesDisk", title: storage.title, sub: storage.sub, go: { view: "files", patch: { folder: "Downloads" } } } };
-    }
-    if (cur && /send (this|it)|share (this|it)/.test(t)) {
-      var shareTo = copy("files").shareTo || {};
-      var pid = (shareTo.match || []).filter(function (x) { return x[0].test(t); }).map(function (x) { return x[1]; })[0] || cur.from || shareTo.fallback;
-      var p = pid ? api.person(pid) : null;
-      if (!p) return { text: "Choose who to send " + cur.name + " to.", then: function () { api.set({ sheet: "share", sel: null }); } };
-      return { text: "Draft to " + p.name.split(" ")[0] + " with " + cur.name + " attached.", card: { type: "draft", to: p.name, pid: pid, body: "Here's " + filesSplit(cur.name)[0] + ". Let me know if anything's off.", act: VIEWS.messages && VIEWS.messages.actions && VIEWS.messages.actions.sendDraft ? { mod: "messages", fn: "sendDraft" } : null } };
-    }
-    return null;
-  },
 
   render: function (st, api) {
     var files = st.files || [];
@@ -3736,9 +3606,8 @@ registerView("files", {
     /* top level */
     var locs = FILES_FOLDERS.filter(function (d) { return !d.parent; }).map(function (d) {
       var n = filesCount(files, d.id);
-      return { id: "category:" + d.id, name: d.id, d: IC[d.icon], sub: n === 1 ? "1 item" : n + " items", go: function () { api.set({ folder: d.id, q: null }); } };
+      return { name: d.id, d: IC[d.icon], sub: n === 1 ? "1 item" : n + " items", go: function () { api.set({ folder: d.id, q: null }); } };
     });
-    locs.push({ id: "photos", name: "Photos", d: IC.photo, sub: copy("files").photosSub || "Photo library", go: function () { if (VIEWS.photos) api.open("photos"); else api.toast("Opening Photos"); } });
     var q = st.q == null ? null : String(st.q).toLowerCase().trim();
     var results = q ? files.filter(function (f) { return filesNorm(f.name + " " + f.folder + " " + (FILES_TYPES[f.type] || {}).label).indexOf(filesNorm(q)) >= 0; }).map(row) : [];
 
@@ -3752,9 +3621,9 @@ registerView("files", {
         close: function () { var d = null; FILES_FOLDERS.forEach(function (x) { if (x.id === st.folder) d = x; }); api.set({ folder: d && d.parent ? d.parent : null, sel: null }); },
         viewIcon: st.grid ? IC.filesRows : IC.grid, viewLabel: st.grid ? "Show as list" : "Show as grid",
         toggleView: function () { api.set({ grid: !st.grid }); },
-        openMenu: function () { api.set({ menu: true }); },
+        hasMenu: true, hasCrumbs: false, openMenu: function () { api.set({ menu: true }); },
         menuRows: [["list", IC.filesRows, "List", !st.grid, { grid: false }], ["grid", IC.grid, "Grid", !!st.grid, { grid: true }], ["recent", IC.clock, "Newest first", st.sort !== "name", { sort: "recent" }], ["name", IC.filesSort, "Name", st.sort === "name", { sort: "name" }]].map(function (m) {
-          return { id: m[0], label: m[2], d: m[1], on: m[3], go: function () { api.set(Object.assign({ menu: false }, m[4])); } };
+          return { label: m[2], d: m[1], on: m[3], go: function () { api.set(Object.assign({ menu: false }, m[4])); } };
         }),
         sortLabel: st.sort === "name" ? "Sort by date" : "Sort by name", sortCss: st.sort === "name" ? "color: var(--acct)" : "",
         toggleSort: function () { var nx = st.sort === "name" ? "recent" : "name"; api.set({ sort: nx }); },
@@ -3769,7 +3638,7 @@ registerView("files", {
     if (f) {
       var ty = FILES_TYPES[f.type] || FILES_TYPES.pdf;
       var parts = filesSplit(f.name);
-      var paper = api.theme === "dark" ? "#E9E9E9" : "#FFFFFF";
+      var paper = api.theme === "dark" ? "var(--alpha-gray-e9)" : "var(--alpha-white)";
       var pages = [];
       if (f.type === "pdf" || f.type === "doc") {
         for (var p = 0; p < Math.min(f.pages || 1, 2); p++) {
@@ -3785,7 +3654,7 @@ registerView("files", {
         meta: (f.type === "pdf" ? "PDF" : ty.label) + " · " + f.size + (fromP ? " · from " + fromP.name.split(" ")[0] : "") + " · " + f.folder,
         d: IC[ty.icon],
         isPages: pages.length > 0, pages: pages, paper: paper,
-        isReceipt: f.scan === "receipt", isPhoto: f.scan === "photo", photoBg: imgBg("p10", "linear-gradient(180deg, #F4B26B 0%, #E57A5A 45%, #6D5A8C 62%, #2F4A6B 63%, #1E3550 100%)"), photoSun: IMG.p10 ? "none" : "block", isAudio: f.type === "audio", isArchive: f.type === "archive",
+        isReceipt: f.scan === "receipt", isPhoto: f.scan === "photo", photoBg: imgBg("p10", "linear-gradient(180deg, var(--alpha-scan-photo-1) 0%, var(--alpha-scan-photo-2) 45%, var(--alpha-scan-photo-3) 62%, var(--alpha-scan-photo-4) 63%, var(--alpha-scan-photo-5) 100%)"), photoSun: IMG.p10 ? "none" : "block", isAudio: f.type === "audio", isArchive: f.type === "archive",
         receipt: f.receipt ? { shop: f.receipt.shop, rows: f.receipt.rows.map(function (r) { return { k: r[0], v: r[1] }; }), total: f.receipt.total } : null,
         contents: (f.contents || []).map(function (c) { return { name: c, d: /\/$/.test(c) ? IC.folder : IC.filesDoc }; }),
         wave: wave, time: Math.floor((st.pos || 0) / 60) + ":" + pad2(Math.floor(st.pos || 0) % 60) + " / " + Math.floor((f.dur || 0) / 60) + ":" + pad2((f.dur || 0) % 60),
@@ -3836,7 +3705,7 @@ registerView("files", {
     var curFolder = f ? f.folder : st.folder;
     var moveTo = FILES_FOLDERS.map(function (d) {
       var here = d.id === curFolder;
-      return { id: d.id, name: d.id, d: IC[d.icon] || IC.folder, here: here, notHere: !here, sub: d.parent ? d.parent : "",
+      return { name: d.id, d: IC[d.icon] || IC.folder, here: here, notHere: !here, sub: d.parent ? d.parent : "",
         go: function () {
           if (here) { api.set({ sheet: null }); return; }
           var ids = targetIds.slice();
@@ -3849,7 +3718,9 @@ registerView("files", {
       top: !st.folder, searching: st.q !== null && st.q !== undefined, notSearching: st.q === null || st.q === undefined,
       q: st.q || "", onQ: function (e) { api.set({ q: e.target.value }); }, search: function () { api.set({ q: "" }); }, endSearch: function () { api.set({ q: null }); },
       hasQuery: !!q, noQuery: !q, results: results, noResults: !!q && results.length === 0,
-      locs: locs, recent: files.slice(0, 5).map(row), noRecent: files.length === 0, recentEmptyText: "No recent files. Files you open here or save from scans appear here.",
+      locs: locs, recent: [],
+      // Fixture browse (mock mode only): the fixture folders stand in for categories; Trash is an empty folder.
+      browse: { ready: true, cats: locs.map(function (l) { return { name: l.name, d: l.d, count: l.sub.split(" ")[0], label: l.name, go: l.go }; }), vols: [], trashD: IC.trash, trashCount: "", openTrash: function () { api.set({ folder: "Trash", q: null }); } },
       storageText: copy("files").storageText || "Storage usage unavailable",
       storageW: copy("files").storageW || "0%",
       inFolder: !!fd, fd: fd,
@@ -3885,7 +3756,7 @@ IC.walGym = IC.walGym || "M7 7v10M4 9.5v5M17 7v10M20 9.5v5M7 12h10";
 IC.walBag = IC.walBag || "M5 8h14l-1 12H6zM9 8V6a3 3 0 0 1 6 0v2";
 IC.walUnlock = IC.walUnlock || "M6 11h12v9H6zM8.5 11V8a3.5 3.5 0 0 1 6.8-1.2";
 
-var WAL_NEW_BG = ["#0C0C61", "#3A3A3A", "#5B5BD6"];
+var WAL_NEW_BG = ["var(--alpha-wallet-navy)", "var(--alpha-gray-3a)", "var(--alpha-wallet-new-1)"];
 
 function walMoney(a) { return "$" + a.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ","); }
 function walDay(d, now) {
@@ -4009,7 +3880,7 @@ registerView("wallet", {
     var vis = function (c) {
       return { name: c.name, last4: "•••• " + c.last4, kind: c.kind, locked: c.locked, unlocked: !c.locked,
         css: "background: " + c.bg + "; color: " + c.fg + (c.locked ? "; filter: saturate(.25) brightness(.85)" : ""),
-        chip: c.fg === "#000000" ? "rgba(0,0,0,.16)" : "rgba(255,255,255,.28)" };
+        chip: c.fg === "var(--alpha-black)" || c.fg === alphaPaletteColor("--alpha-black") ? "rgba(0,0,0,.16)" : "rgba(255,255,255,.28)" };
     };
     /* stack: default card in front (last) */
     var order = cards.filter(function (c) { return !c.def; }).concat(cards.filter(function (c) { return c.def; }));
@@ -4017,7 +3888,7 @@ registerView("wallet", {
       return Object.assign(vis(c), { mt: i === 0 ? 0 : -174, label: c.name + " card ending " + c.last4, open: function () { set({ open: c.id }); } });
     });
     var passes = WAL_PASSES.map(function (p) {
-      return { id: p.id, title: p.title, sub: walDate(p.day, now) + " · " + p.time, d: IC[p.icon], iconCss: p.accent ? "background: var(--acc); color: #fff" : "background: var(--s3)", right: "" };
+      return { id: p.id, title: p.title, sub: walDate(p.day, now) + " · " + p.time, d: IC[p.icon], iconCss: p.accent ? "background: var(--acc); color: var(--alpha-white)" : "background: var(--s3)", right: "" };
     }).concat(WAL_TRANSIT != null ? [
       { id: "transit", title: "Transit", sub: "Tap at the gate", d: IC.walBus, iconCss: "background: var(--s3)", right: walMoney(st.transit) }
     ] : []).map(function (p) { return Object.assign(p, { go: function () { set({ open: p.id }); } }); });
@@ -4089,7 +3960,7 @@ registerView("wallet", {
         has: !!pc, none: !pc,
         c: pc ? vis(pc) : null,
         isAuth: stage === "auth", isHold: stage === "hold", isDone: stage === "done",
-        dots: payable.length > 1 && !secure ? payable.map(function (c) { var on = pc && c.id === pc.id; return { label: "Pay with " + c.name, css: on ? "background: #ffffff; width: 22px" : "background: #555555; width: 8px", go: function () { if (stage === "auth") set({ card: c.id }); } }; }) : [],
+        dots: payable.length > 1 && !secure ? payable.map(function (c) { var on = pc && c.id === pc.id; return { label: "Pay with " + c.name, css: on ? "background: var(--alpha-white); width: 22px" : "background: var(--alpha-gray-55); width: 8px", go: function () { if (stage === "auth") set({ card: c.id }); } }; }) : [],
         swDown: function (e) { try { e.currentTarget.setPointerCapture(e.pointerId); } catch (err) {} sw.down(e); }, swUp: sw.up,
         paid: st.paid ? walMoney(st.paid.a) : "", paidAt: st.paid ? st.paid.m : "",
         auth: function () {
@@ -4139,7 +4010,7 @@ registerView("wallet", {
       prevNum: digits.length ? "•••• " + (digits.length >= 4 ? digits.slice(-4) : digits) : "•••• ••••",
       prevExp: f.exp || "MM/YY",
       ok: formOk, notOk: !formOk,
-      nextCss: formOk ? "background: var(--acc); color: #fff" : "background: var(--s2); color: var(--mut)",
+      nextCss: formOk ? "background: var(--acc); color: var(--alpha-white)" : "background: var(--s2); color: var(--mut)",
       next: function () {
         if (!formOk) return;
         set({ add: "verify", code: "" });
@@ -4148,13 +4019,13 @@ registerView("wallet", {
       code: st.code || "", auto: !!st.auto && (st.code || "") === "482913",
       onCode: function (e) { set({ code: e.target.value.replace(/\D/g, "").slice(0, 6), auto: false }); },
       codeOk: (st.code || "").length === 6, codeBad: (st.code || "").length !== 6,
-      verifyCss: (st.code || "").length === 6 ? "background: var(--acc); color: #fff" : "background: var(--s2); color: var(--mut)",
+      verifyCss: (st.code || "").length === 6 ? "background: var(--acc); color: var(--alpha-white)" : "background: var(--s2); color: var(--mut)",
       verify: function () {
         var s2 = api.get("wallet");
         if ((s2.code || "").length !== 6) return;
         var d4 = s2.form.num.replace(/\D/g, "").slice(-4);
         var nid = "c" + Date.now();
-        var nc = { id: nid, name: s2.form.name ? s2.form.name.split(" ")[0] + "'s card" : "Card " + d4, last4: d4, kind: "Credit", bg: WAL_NEW_BG[(s2.cards.length) % WAL_NEW_BG.length], fg: "#FFFFFF", def: s2.cards.length === 0, locked: false, tx: [] };
+        var nc = { id: nid, name: s2.form.name ? s2.form.name.split(" ")[0] + "'s card" : "Card " + d4, last4: d4, kind: "Credit", bg: WAL_NEW_BG[(s2.cards.length) % WAL_NEW_BG.length], fg: "var(--alpha-white)", def: s2.cards.length === 0, locked: false, tx: [] };
         api.stop();
         api.set({ cards: [nc].concat(s2.cards), add: null, code: "", auto: false, form: { num: "", exp: "", name: "", cvv: "" }, open: nid });
         api.toast("Card added");
@@ -4276,7 +4147,7 @@ function wfRawFlows(api) { return api.get("workflows").flows || WF_SEED; }
 function wfFlows(api) { return wfRawFlows(api).filter(wfAllowed); }
 // Editing an enabled fixture must not erase retained out-of-scope user records.
 function wfMerge(api, enabled) { return wfRawFlows(api).filter(function (f) { return !wfAllowed(f); }).concat(enabled.filter(wfAllowed)); }
-function wfDeferred(api) { api.toast("This workflow is deferred from the MVP"); }
+function wfDeferred(api) { api.toast("This workflow is not available on this phone yet."); }
 function wfFind(list, id) { for (var i = 0; i < list.length; i++) if (String(list[i].id) === String(id)) return list[i]; return null; }
 function wfMatch(list, t) {
   var best = null, sc = 0;
@@ -4416,9 +4287,9 @@ registerView("workflows", {
     }
     // create
     if (/^(every|whenever|each)\b|\bevery (day|weekday|morning|evening|night|week|monday|tuesday|wednesday|thursday|friday|saturday|sunday)\b|\bwhenever\b|\bwhen i (get|arrive|leave)\b|automate|new workflow/.test(t)) {
-      if (wfDeferredRequest(raw)) return { text: "This workflow is deferred from the MVP." };
+      if (wfDeferredRequest(raw)) return { text: "I can't set up that workflow on this phone yet." };
       var nf = wfFromText(t, raw, api);
-      if (!wfAllowed(nf)) return { text: "This workflow is deferred from the MVP." };
+      if (!wfAllowed(nf)) return { text: "I can't set up that workflow on this phone yet." };
       return { text: "Here's the workflow. Turn it on?", card: { type: "flow", name: nf.name, short: nf.summary, flow: nf, act: { mod: "workflows", fn: "enable" } } };
     }
     return null;
@@ -4532,7 +4403,7 @@ registerView("workflows", {
             add: function () { var p = wfPresets(k)[0]; if (!p) return wfDeferred(api); var steps = b.steps.concat([{ k: k, t: p[0], apps: p[1].slice() }]); set({ build: Object.assign({}, b, { steps: steps }), sheet: { type: "step", i: steps.length - 1 } }); } };
         }),
         apps: chipsOf(b), hasApps: wfApps(b).length > 0, empty: b.steps.length === 0,
-        saveOff: b.steps.length === 0, saveCss: b.steps.length ? "background:var(--acc);color:#fff" : "background:var(--s2);color:var(--mut)",
+        saveOff: b.steps.length === 0, saveCss: b.steps.length ? "background:var(--acc);color:var(--alpha-white)" : "background:var(--s2);color:var(--mut)",
         describe: function () { set({ build: null }); api.chat("Every weekday at 6, "); },
         cancel: function () { set({ build: null, sheet: null }); },
         save: function () {
@@ -4551,14 +4422,14 @@ registerView("workflows", {
         var tr = b.trig; var tp = function (p) { bp({ trig: Object.assign({}, tr, p) }); };
         var chip = function (on) { return on ? "background:var(--fg);color:var(--bg)" : "background:var(--s2)"; };
         B.tr = {
-          kinds: WF_TRIG.filter(function (k) { return k[0] !== "message" || isMvpView("messages"); }).map(function (k) { var on = tr.kind === k[0]; return { d: IC[k[1]], label: k[2], css: on ? "background:var(--acc);color:#fff" : "background:var(--s2)", pressed: on, pick: function () { bp({ trig: { kind: k[0], days: "Weekdays", t: 18, ev: WF_EVENTS[0][0], person: copy("workflows").triggerPerson || null, place: WF_PLACES[0], match: "receipt" } }); } }; }),
+          kinds: WF_TRIG.filter(function (k) { return k[0] !== "message" || isMvpView("messages"); }).map(function (k) { var on = tr.kind === k[0]; return { d: IC[k[1]], label: k[2], css: on ? "background:var(--acc);color:var(--alpha-white)" : "background:var(--s2)", pressed: on, pick: function () { bp({ trig: { kind: k[0], days: "Weekdays", t: 18, ev: WF_EVENTS[0][0], person: copy("workflows").triggerPerson || null, place: WF_PLACES[0], match: "receipt" } }); } }; }),
           text: wfTrigText(tr, api),
           isTime: tr.kind === "time", isEvent: tr.kind === "event", isMsg: tr.kind === "message", isPlace: tr.kind === "location", isEmail: tr.kind === "email",
           days: WF_DAYS.map(function (d) { return { label: d, css: chip(tr.days === d), pick: function () { tp({ days: d }); } }; }),
           time: wfAmpm(tr.t == null ? 18 : tr.t), tMinus: function () { tp({ t: Math.max(0, (tr.t || 0) - 0.5) }); }, tPlus: function () { tp({ t: Math.min(23.5, (tr.t || 0) + 0.5) }); },
           evs: WF_EVENTS.map(function (e) { return { label: e[0], css: chip(tr.ev === e[0]), pick: function () { tp({ ev: e[0] }); } }; }),
           places: WF_PLACES.map(function (p) { return { label: p, css: chip(tr.place === p), pick: function () { tp({ place: p }); } }; }),
-          people: PEOPLE.map(function (p) { var on = tr.person === p.id; return { ini: p.ini, first: p.name.split(" ")[0], css: on ? "background:var(--acc);color:#fff" : "background:var(--s2)", pick: function () { tp({ person: p.id }); } }; }),
+          people: PEOPLE.map(function (p) { var on = tr.person === p.id; return { ini: p.ini, first: p.name.split(" ")[0], css: on ? "background:var(--acc);color:var(--alpha-white)" : "background:var(--s2)", pick: function () { tp({ person: p.id }); } }; }),
           match: tr.match || "", onMatch: function (e) { tp({ match: e.target.value }); }
         };
       }
@@ -4568,7 +4439,7 @@ registerView("workflows", {
         var mv = function (dir) { return function () { var j = i + dir; if (j < 0 || j >= b.steps.length) return; var steps = b.steps.slice(); var tmp = steps[i]; steps[i] = steps[j]; steps[j] = tmp; set({ build: Object.assign({}, b, { steps: steps }), sheet: { type: "step", i: j } }); }; };
         B.sp = {
           k: s.k, d: IC[WF_KINDS[s.k].icon], text: s.t, onText: function (e) { sp({ t: e.target.value }); },
-          presets: wfPresets(s.k).map(function (p) { var on = s.t === p[0]; return { label: p[0], on: on, css: on ? "background:var(--acc);color:#fff" : "background:var(--s2)", pick: function () { sp({ t: p[0], apps: p[1].slice() }); } }; }),
+          presets: wfPresets(s.k).map(function (p) { var on = s.t === p[0]; return { label: p[0], on: on, css: on ? "background:var(--acc);color:var(--alpha-white)" : "background:var(--s2)", pick: function () { sp({ t: p[0], apps: p[1].slice() }); } }; }),
           canUp: i > 0, canDown: i < b.steps.length - 1, up: mv(-1), down: mv(1),
           upCss: i > 0 ? "" : "opacity:.3", downCss: i < b.steps.length - 1 ? "" : "opacity:.3",
           del: function () { set({ build: Object.assign({}, b, { steps: b.steps.filter(function (_, j) { return j !== i; }) }), sheet: null }); }
@@ -4627,7 +4498,7 @@ function stNav(o) { var r = stRow("kNav", o); if (o.bold) r.labCss0 = "font-weig
 function stTog(o, on, fn) { var r = stRow("kTog", o); r.aria = o.aria || r.label; r.on = !!on; r.track = on ? "background:var(--acc)" : "background:var(--s3)"; r.kx = on ? 20 : 0; r.toggle = fn; return r; }
 function stSeg(o, opts, cur, fn) {
   var r = stRow("kSeg", o);
-  r.opts = opts.map(function (op) { var on = op[0] === cur; return { label: op[1], on: on, aria: (o.label ? o.label + ": " : "") + op[1], css: on ? "background:var(--acc);color:#fff" : "color:var(--mut)", pick: function () { fn(op[0]); } }; });
+  r.opts = opts.map(function (op) { var on = op[0] === cur; return { label: op[1], on: on, aria: (o.label ? o.label + ": " : "") + op[1], css: on ? "background:var(--acc);color:var(--alpha-white)" : "color:var(--mut)", pick: function () { fn(op[0]); } }; });
   return r;
 }
 function stRemoveAcct(api, id) {
@@ -4865,7 +4736,7 @@ registerView("settings", {
       p1 = page("", { hero: { kChar: true }, groups: [
         { rows: [stRow("kChips", { items: ST_VOICES.map(function (v, i) {
           var on = ch.voice === i; var pl = st.playing === i;
-          return { label: v, on: on, playing: pl, notPlaying: !pl, aria: v + " voice", css: on ? "background:var(--acc);color:#fff" : "background:var(--bg)",
+          return { label: v, on: on, playing: pl, notPlaying: !pl, aria: v + " voice", css: on ? "background:var(--acc);color:var(--alpha-white)" : "background:var(--bg)",
             pick: function () { set({ char: Object.assign({}, api.get("settings").char, { voice: i }), playing: i }); api.later(function () { if (api.get("settings").playing === i) set({ playing: null }); }, 1800); } };
         }) })] },
         { rows: [["Short", "Detailed", "brev"], ["Formal", "Casual", "tone"], ["Asks first", "Acts first", "init"]].map(function (s) {
@@ -4879,18 +4750,18 @@ registerView("settings", {
       p1 = page("Accounts", { groups: [
         { rows: accts.map(function (a) {
           var pv = provOf(a.provider);
-          return stNav({ tile: pv.name.charAt(0), tileCss: a.label === "Personal" ? "background:var(--acc);color:#fff" : "background:var(--s3)", label: a.address, sub: (a.label ? a.label + " · " : "") + pv.name + " · " + lvlText(a), bold: true, go: function () { set({ acct: a.id }); } });
+          return stNav({ tile: pv.name.charAt(0), tileCss: a.label === "Personal" ? "background:var(--acc);color:var(--alpha-white)" : "background:var(--s3)", label: a.address, sub: (a.label ? a.label + " · " : "") + pv.name + " · " + lvlText(a), bold: true, go: function () { set({ acct: a.id }); } });
         }).concat([stNav({ d: IC.plus, label: "Add account", accent: true, noChev: true, go: function () { set({ adding: true, addStep: null, addProv: null, addEmail: "", addPw: "", addServer: "", addLvl: null, busy: null }); } })]) }
       ] });
     } else if (P === "connections") {
       p1 = page("Connections", { groups: [{ rows: ST_CONNS.map(function (c) {
         var on = !!st.conns[c.id];
-        return stNav({ tile: c.name.charAt(0), tileCss: on ? "background:var(--acc);color:#fff" : "background:var(--s3)", label: c.name, sub: on ? c.scopes[0] : "", val: on ? "" : "Connect", valCss: "color:var(--acct);font-weight:600", trail: on ? IC.check : "", trailCss: "color:var(--acct)", go: function () { set({ sheet: { kind: "conn", id: c.id } }); } });
+        return stNav({ tile: c.name.charAt(0), tileCss: on ? "background:var(--acc);color:var(--alpha-white)" : "background:var(--s3)", label: c.name, sub: on ? c.scopes[0] : "", val: on ? "" : "Connect", valCss: "color:var(--acct);font-weight:600", trail: on ? IC.check : "", trailCss: "color:var(--acct)", go: function () { set({ sheet: { kind: "conn", id: c.id } }); } });
       }) }] });
     } else if (P === "privacy") {
       var logN = ST_LOG.length + (api.get("browser").booked && BR_LINKS.venue ? 1 : 0);
       p1 = page("Privacy & data", {
-        hero: { kBig: true, hasIcon: true, d: IC.shield, iconCss: "background:var(--acc);color:#fff", big: "Redaction on", sub: "Identifiers replaced before hosted requests" },
+        hero: { kBig: true, hasIcon: true, d: IC.shield, iconCss: "background:var(--acc);color:var(--alpha-white)", big: "Redaction on", sub: "Identifiers replaced before hosted requests" },
         groups: [
           { rows: [
             stNav({ label: "Leaves this device", val: st.cloud ? "Hard questions" : "Nothing", go: go("models") }),
@@ -4898,8 +4769,7 @@ registerView("settings", {
           ] },
           { rows: ST_PERMS.map(function (pm) { var n = Object.keys(st.perms[pm[0]] || {}).filter(function (k) { return st.perms[pm[0]][k] && (k === "alpha" || isMvpView(k)); }).length; return stNav({ d: IC[pm[2]], label: pm[1], val: n === 1 ? "1 app" : n + " apps", go: function () { set({ perm: pm[0] }); } }); }) },
           { rows: [
-            stNav({ d: IC.stList, label: "Activity", val: logN + " today", go: function () { set({ log: true }); } }),
-            stNav({ d: IC.flow, label: "Workflow runs", go: function () { api.open("workflows"); } })
+            stNav({ d: IC.stList, label: "Activity", val: logN + " today", go: function () { set({ log: true }); } })
           ] },
           { rows: [
             // No "Wipe memory" action: there is no reviewed memory-erase path to call, so none is offered.
@@ -4909,7 +4779,7 @@ registerView("settings", {
     } else if (P === "wifi") {
       var wOn = !!S.q.wifi; var cur = ST_NETS.filter(function (n) { return n.id === st.wifiCur; })[0];
       p1 = page("Wi-Fi", { hdrTog: stTog({ label: "Wi-Fi", aria: "Use Wi-Fi" }, wOn, function () { q({ wifi: !api.S.q.wifi }); }),
-        hero: wOn && cur ? { kBig: true, hasIcon: true, d: IC.wifi, iconCss: "background:var(--acc);color:#fff", big: cur.name, sub: "Connected · " + (cur.lock ? "Secure" : "Open") } : { kBig: true, hasIcon: true, d: IC.wifi, iconCss: "background:var(--s2);color:var(--mut)", big: wOn ? "Not connected" : "Off", sub: "" },
+        hero: wOn && cur ? { kBig: true, hasIcon: true, d: IC.wifi, iconCss: "background:var(--acc);color:var(--alpha-white)", big: cur.name, sub: "Connected · " + (cur.lock ? "Secure" : "Open") } : { kBig: true, hasIcon: true, d: IC.wifi, iconCss: "background:var(--s2);color:var(--mut)", big: wOn ? "Not connected" : "Off", sub: "" },
         groups: wOn ? [{ rows: ST_NETS.filter(function (n) { return !cur || n.id !== cur.id; }).map(function (n) {
           var known = (st.wifiKnown || []).indexOf(n.id) >= 0; var busy = st.busy === "w_" + n.id;
           return stNav({ d: IC.wifi, label: n.name, sub: busy ? "Connecting…" : (known ? "Saved" : n.sig), trail: n.lock ? IC.lock : "", trailCss: "color:var(--mut)", noChev: true, aria: n.name,
@@ -4982,7 +4852,7 @@ registerView("settings", {
         { rows: (ST_DEVICE ? ST_DEVICE.battery.usage : []).map(function (u) { return stRow("kInfo", { d: IC[u[0]], label: u[1], val: u[2] }); }) }
       ].filter(function (g) { return g.rows.length; }) });
     } else if (P === "models") {
-      p1 = page("Models", { hero: { kBig: true, hasIcon: true, d: IC.chip, iconCss: "background:var(--acc);color:#fff", big: ST_DEVICE ? ST_DEVICE.model.name : "No model loaded", sub: ST_DEVICE ? ST_DEVICE.model.sub : "Model details are not reported" }, groups: [
+      p1 = page("Models", { hero: { kBig: true, hasIcon: true, d: IC.chip, iconCss: "background:var(--acc);color:var(--alpha-white)", big: ST_DEVICE ? ST_DEVICE.model.name : "No model loaded", sub: ST_DEVICE ? ST_DEVICE.model.sub : "Model details are not reported" }, groups: [
         { rows: [stTog({ label: "Cloud fallback", sub: st.cloud ? "Asks each time, sends only the question" : "Off · nothing leaves this phone" }, st.cloud, function () { set({ cloud: !api.get("settings").cloud }); })] },
         { rows: (st.models || []).map(function (md) {
           var done = md.pct >= 100; var going = md.pct >= 0 && md.pct < 100;
@@ -5034,28 +4904,28 @@ registerView("settings", {
           stRow("kInput", { d: IC.lock, label: "Password", ph: "Password", type: "password", value: st.addPw, change: function (e) { set({ addPw: e.target.value }); } })
         ];
         if (pv.id === "other") rows.push(stRow("kInput", { d: IC.globe, label: "Server", ph: "Server (imap.example.com)", type: "text", value: st.addServer, change: function (e) { set({ addServer: e.target.value }); } }));
-        var gr = [{ plain: true, rows: rows }, { plain: true, rows: [stRow("kBtn", { label: busy ? "Signing in…" : "Sign in", primary: true, dis: !ok || busy, css: ok ? "background:var(--acc);color:#fff" : "background:var(--s3);color:var(--mut)",
+        var gr = [{ plain: true, rows: rows }, { plain: true, rows: [stRow("kBtn", { label: busy ? "Signing in…" : "Sign in", primary: true, dis: !ok || busy, css: ok ? "background:var(--acc);color:var(--alpha-white)" : "background:var(--s3);color:var(--mut)",
           go: function () { if (!ok) return; set({ busy: "signin" }); api.later(function () { set({ busy: null, addStep: "perms" }); }, 900); } })] }];
         if (pv.oauth) gr[1].rows.push(stRow("kBtn", { label: "Continue in browser", dis: false, css: "background:var(--s2)", d: IC.globe, hasIcon: true, go: function () { set({ addStep: "oauth" }); } }));
         p2 = page(pv.name, { back: back2, backLabel: "Back to providers", groups: gr });
       } else if (step === "oauth") {
         p2 = page(pv.name, { back: back2, backLabel: "Back to sign in", hero: { kWeb: true, host: pv.web, big: "Alpha wants to access your " + pv.name + " account", sub: stEmailOk(st.addEmail) ? st.addEmail : "Choose an account on " + pv.web },
           groups: [{ plain: true, rows: [
-            stRow("kBtn", { label: st.busy === "oauth" ? "Allowing…" : "Allow", primary: true, dis: false, css: "background:var(--acc);color:#fff", go: function () { set({ busy: "oauth" }); api.later(function () { set({ busy: null, addStep: "perms" }); }, 800); } }),
+            stRow("kBtn", { label: st.busy === "oauth" ? "Allowing…" : "Allow", primary: true, dis: false, css: "background:var(--acc);color:var(--alpha-white)", go: function () { set({ busy: "oauth" }); api.later(function () { set({ busy: null, addStep: "perms" }); }, 800); } }),
             stRow("kBtn", { label: "Cancel", dis: false, css: "background:var(--s2)", go: function () { set({ addStep: "signin" }); } })
           ] }] });
       } else if (step === "perms") {
         var lv = st.addLvl || { mail: "act", calendar: "act", contacts: "read" };
         p2 = page(name + " can", { back: back2, backLabel: "Back to sign in", groups: [
           { rows: ST_TYPES.map(function (x) { return stSeg({ d: IC[x[2]], label: x[1] }, [["off", "Off"], ["read", "Read"], ["act", "Act"]], lv[x[0]], function (v) { var o = Object.assign({}, lv); o[x[0]] = v; set({ addLvl: o }); }); }) },
-          { plain: true, cap: "Stored on this phone. Act always asks before sending.", rows: [stRow("kBtn", { label: "Connect", primary: true, dis: false, css: "background:var(--acc);color:#fff", go: finish })] }
+          { plain: true, cap: "Stored on this phone. Act always asks before sending.", rows: [stRow("kBtn", { label: "Connect", primary: true, dis: false, css: "background:var(--acc);color:var(--alpha-white)", go: finish })] }
         ] });
       } else {
-        p2 = page("", { back: closeAdd, hero: { kBig: true, hasIcon: true, d: IC.check, iconCss: "background:var(--acc);color:#fff", big: "Added", sub: st.addEmail }, groups: [{ plain: true, rows: [stRow("kBtn", { label: "Done", primary: true, dis: false, css: "background:var(--acc);color:#fff", go: closeAdd })] }] });
+        p2 = page("", { back: closeAdd, hero: { kBig: true, hasIcon: true, d: IC.check, iconCss: "background:var(--acc);color:var(--alpha-white)", big: "Added", sub: st.addEmail }, groups: [{ plain: true, rows: [stRow("kBtn", { label: "Done", primary: true, dis: false, css: "background:var(--acc);color:var(--alpha-white)", go: closeAdd })] }] });
       }
     } else if (P === "accounts" && a) {
       var pva = provOf(a.provider);
-      p2 = page("", { back: function () { set({ acct: null }); }, hero: { kBig: true, bigCss: "font-family:'Public Sans',system-ui,sans-serif;font-size:24px;font-weight:600;letter-spacing:0", ini: pva.name.charAt(0), hasIni: true, iconCss: a.label === "Personal" ? "background:var(--acc);color:#fff" : "background:var(--s3)", big: a.address, sub: (a.label ? a.label + " · " : "") + pva.name },
+      p2 = page("", { back: function () { set({ acct: null }); }, hero: { kBig: true, bigCss: "font-family:'Public Sans',system-ui,sans-serif;font-size:24px;font-weight:600;letter-spacing:0", ini: pva.name.charAt(0), hasIni: true, iconCss: a.label === "Personal" ? "background:var(--acc);color:var(--alpha-white)" : "background:var(--s3)", big: a.address, sub: (a.label ? a.label + " · " : "") + pva.name },
         groups: [
           { rows: ST_TYPES.map(function (x) { return stSeg({ d: IC[x[2]], label: x[1] }, [["off", "Off"], ["read", "Read"], ["act", "Act"]], levelOf(a, x[0]), function (v) {
             var cur = api.get("settings").accounts.filter(function (y) { return y.id === a.id; })[0]; var p = {}; p[x[0]] = v !== "off"; if (v !== "off") p.access = Object.assign({}, cur.access, (function () { var o = {}; o[x[0]] = v; return o; })()); setAcct(a.id, p);
@@ -5073,8 +4943,7 @@ registerView("settings", {
     } else if (P === "privacy" && st.log) {
       var lg = ST_LOG.slice(); if (api.get("browser").booked && BR_LINKS.venue) lg.unshift(["now", "Booked " + BR_LINKS.venue + " for you (confirmed)", "globe"]);
       p2 = page("Activity", { back: function () { set({ log: false }); }, groups: [
-        { rows: lg.map(function (l) { return stNav({ d: IC[l[2]] || IC.check, label: l[1], val: l[0], noChev: true, go: function () {} }); }) },
-        { rows: [stNav({ d: IC.flow, label: "Workflow runs", go: function () { api.open("workflows"); } })] }
+        { rows: lg.map(function (l) { return stNav({ d: IC[l[2]] || IC.check, label: l[1], val: l[0], noChev: true, go: function () {} }); }) }
       ] });
     }
     if (p2) { p2.z = 6; stack.push(p2); }
@@ -5112,7 +4981,7 @@ registerView("settings", {
     if (sh) {
       api.later(stUnscroll, 30); api.later(stUnscroll, 400);
       sh.hasSub = !!sh.sub; sh.close = closeSheet; sh.hasInput = !!sh.hasInput; sh.hasScopes = !!sh.hasScopes;
-      sh.okCss = sh.dis ? "background:var(--s3);color:var(--mut)" : "background:var(--acc);color:#fff";
+      sh.okCss = sh.dis ? "background:var(--s3);color:var(--mut)" : "background:var(--acc);color:var(--alpha-white)";
       if (!sh.onKey) sh.onKey = function () {};
       if (!sh.onPw) sh.onPw = function () {};
     }
@@ -5144,11 +5013,17 @@ var BASE = {
   // Quick-settings facts; tiles stay neutral until a fact is known.
   q: Object.assign({}, QUICK_SETTINGS),
   nGone: [], nSlide: null, bright: 70, theme: null, fs: null, now: Date.now(),
-  charName: "Alpha", vs: {}, secure: false, stack: [], toastUndo: false, drawer: false, drawerQ: "",
+  charName: ALPHA_PRODUCT.identity.characterName, vs: {}, secure: false, stack: [], toastUndo: false, drawer: false, drawerQ: "",
   msgs: []
 };
 
 class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    // React state updaters can run before mount-time history restoration.
+    // Give each shell its own complete state instead of relying on S() defaults.
+    this.state = structuredClone(BASE);
+  }
   componentDidMount() {
     this.G = {}; this.I = {};
     var self = this;
@@ -5223,8 +5098,7 @@ class Component extends DCLogic {
     opts = opts || {}; var self = this;
     this.undoFn = opts.undo || null;
     this.setState({ toast: msg, toastUndo: !!opts.undo }); this.clear("t");
-    // An Undo toast may ask to stay for its action's Undo window (Calendar delete: DELETE_UNDO_MS), up to 30 s.
-    this.later(function () { self.undoFn = null; self.setState({ toast: "", toastUndo: false }); }, opts.undo ? (opts.ms > 0 && opts.ms <= 30000 ? opts.ms : 5000) : 1900, "t");
+    this.later(function () { self.undoFn = null; self.setState({ toast: "", toastUndo: false }); }, opts.undo ? 5000 : 1900, "t");
   }
 
   /* ---- per-app state ---- */
@@ -5251,7 +5125,7 @@ class Component extends DCLogic {
     return {
       key: k, S: S, st: this.vget(k), ic: IC, people: PEOPLE, person: function (id) { var c = self.vget("contacts"); var l = (c && c.list) || []; for (var i = 0; i < l.length; i++) if (l[i].id === id) return l[i]; return person(id); },
       isActive: function () { return self.S().view === k; }, now: new Date(S.now), theme: theme,
-      name: S.charName || "Alpha", active: S.view === k,
+      name: S.charName || ALPHA_PRODUCT.identity.characterName, active: S.view === k,
       set: function (p) { self.vset(k, p); },
       get: function (other) { return self.vget(other); },
       setView: function (other, p) { self.vset(other, p); },
@@ -5296,7 +5170,7 @@ class Component extends DCLogic {
     // The development stand-in for Android's shade; product builds have no Alpha shade (#416).
     if (n === "shade") return this.setState(Object.assign({}, home, { shade: this.simulatedShade() }));
     if (n === "sheet" || n === "full") return this.setState(Object.assign({}, home, { chat: n }));
-    if (n === "voice") { this.setState(home); this.later(function () { self.startVoice(); }, 60); return; }
+    if (n === "voice") { if (!externalVoiceInvocationEnabled) return; this.setState(home); this.later(function () { self.startVoice(); }, 60); return; }
     if (n === "heads") { this.setState(home); this.later(function () { self.showHeads(); }, 60); return; }
     var parts = String(n).split(":"); var k = parts[0], sub = parts[1];
     if (VIEWS[k]) {
@@ -5333,48 +5207,54 @@ class Component extends DCLogic {
   }
   goHome(chat) {
     this.clear("hint"); this.leave();
-    if (this.S().secure) return this.setState({ secure: false, screen: "lock", view: null, shade: false, chat: "input", hint: false, heads: false, stack: [] });
-    this.setState({ view: null, shade: false, chat: chat === "sheet" || chat === "full" ? chat : "input", hint: false, heads: false, stack: [], drawer: false, drawerQ: "" });
+    if (this.S().secure) return this.setState(Object.assign(this.shellNavigate({ type: "home" }), { secure: false, screen: "lock", shade: false, hint: false, heads: false }));
+    this.setState(Object.assign(this.shellNavigate({ type: "home", assistant: chat === "sheet" || chat === "full" ? chat : "input" }), { shade: false, hint: false, heads: false }));
   }
   openView(k, patch, chat, opts) {
-    if (!isMvpView(k)) return this.toast("This app is deferred from the MVP");
+    if (!isMvpView(k)) return this.toast("This app is not available on this phone yet.");
     // openView(view, { keepState: true }) is shorthand for the keepState option.
     if (patch && patch.keepState === true && Object.keys(patch).length === 1) { opts = Object.assign({}, opts, { keepState: true }); patch = null; }
     // keepState returns to a view exactly as it was left (open note, event, email or tab and its
     // selection revision): the target's state is not reset. A different current view still gets
     // its onLeave, so its camera, recording or timers stop exactly as on any other switch.
-    if (opts && opts.keepState && VIEWS[k]) { if (this.S().view !== k) this.leave(); if (patch) this.vset(k, patch); this.setState({ screen: "home", view: k, shade: false, heads: false, drawer: false, drawerQ: "", chat: chat || this.defaultChat(k) }); return; }
+    if (opts && opts.keepState && VIEWS[k]) { if (this.S().view !== k) this.leave(); if (patch) this.vset(k, patch); this.setState(Object.assign(this.shellNavigate({ type: "open", view: k, history: "keep", assistant: this.shellDetent(chat) }), { screen: "home", shade: false, heads: false })); return; }
+    // Back's stack pop: the caller already set the stack; only the view changes here.
     if (opts && opts.keepStack) { var S0 = this.S(); if (S0.view !== k) { this.leave(); } this.setState({ screen: "home", view: k, shade: false, heads: false, chat: chat || this.defaultChat(k) }); return; }
     if (!VIEWS[k]) return;
     var S = this.S(); opts = opts || {};
-    if (S.secure && ["camera", "photos", "wallet"].indexOf(k) < 0) { this.leave(); this.setState({ secure: false, screen: "lock", view: null, shade: false, stack: [] }); return this.toast("Unlock to continue"); }
-    var stack = S.stack || [];
-    if (opts.push && S.view && S.view !== k) stack = stack.concat([S.view]).slice(-6);
-    else if (!opts.keepStack) stack = [];
+    if (S.secure && ["camera", "photos", "wallet"].indexOf(k) < 0) { this.leave(); this.setState(Object.assign(this.shellNavigate({ type: "home" }), { secure: false, screen: "lock", shade: false })); return this.toast("Unlock to continue"); }
+    var nav = this.shellNavigate({ type: "open", view: k, history: opts.push ? "push" : "reset", assistant: this.shellDetent(chat) });
     if (S.view !== k) {
       this.leave();
       var m = this.mod(k), cur = this.vget(k);
       var busy = m.ongoing && m.ongoing(cur, this.api(k));
       if (busy || opts.restore) { if (patch) this.vset(k, patch); } else this.vreset(k, patch);
     } else if (patch) { this.vset(k, patch); }
-    this.setState({ screen: "home", view: k, shade: false, heads: false, drawer: false, drawerQ: "", chat: chat || this.defaultChat(k), stack: stack });
+    this.setState(Object.assign(nav, { screen: "home", shade: false, heads: false }));
     this.homeHint();
+  }
+  /* ---- navigation: the shared mobile shell reducer owns view, Back stack, drawer and the
+     assistant detent (Alpha's "hidden" chat is the shell's pill) ---- */
+  shellNav() { var S = this.S(); return { view: S.view || null, stack: S.stack || [], drawer: !!S.drawer, drawerQuery: S.drawerQ || "", assistant: this.shellDetent(S.chat) || "input" }; }
+  /** A chat state as a shell assistant detent; none for an absent request (the surface's rest). */
+  shellDetent(chat) { return chat === "hidden" ? "pill" : chat === "input" || chat === "sheet" || chat === "full" ? chat : undefined; }
+  shellNavigate(action) {
+    var self = this, next = navigateMobileShell(this.shellNav(), action, { assistantRest: function (k) { return self.defaultChat(k) === "input" ? "input" : "pill"; } });
+    return { view: next.view, stack: next.stack.slice(), drawer: next.drawer, drawerQ: next.drawerQuery, chat: next.assistant === "pill" ? "hidden" : next.assistant };
   }
   back() {
     var S = this.S();
     if (S.shade) return this.setState({ shade: false });
     if (this.props && this.props.assistantSurface && !S.view && S.voice === "off") return this.closeAssistant();
-    if (S.drawer && !S.view) return this.setState({ drawer: false, drawerQ: "" });
+    if (S.drawer && !S.view) return this.setState(this.shellNavigate({ type: "back" }));
     if (S.voice !== "off") return this.stopVoice();
-    if (S.chat === "full") return this.setState({ chat: "sheet" });
-    if (S.chat === "sheet") return this.setState({ chat: this.rest() });
-    // A bar raised from the pill lowers before Back leaves the view: one level at a time.
-    if (S.chat === "input" && this.rest() === "hidden") return this.setState({ chat: "hidden" });
+    // An open conversation lowers one detent (full, sheet, rest) before Back leaves the view.
+    if (S.chat === "full" || S.chat === "sheet") return this.setState(this.shellNavigate({ type: "back" }));
     if (S.view) {
       var m = this.mod(S.view);
       if (m.back && m.back(this.vget(S.view), this.api(S.view))) return;
-      var stack = S.stack || [];
-      if (stack.length) { var prev = stack[stack.length - 1]; this.setState({ stack: stack.slice(0, -1) }); return this.openView(prev, null, null, { restore: true, keepStack: true }); }
+      var previous = this.shellNavigate({ type: "back" });
+      if (previous.view) { this.setState({ stack: previous.stack }); return this.openView(previous.view, null, null, { restore: true, keepStack: true }); }
       return this.goHome();
     }
   }
@@ -5422,24 +5302,20 @@ class Component extends DCLogic {
   gDown(e) { if (e.target.closest?.("[data-alpha-transcript]")) { this.g = null; return; } var o = this.scale(e.currentTarget); this.g = { x: (e.clientX - o.r.left) / o.s, y: (e.clientY - o.r.top) / o.s, cx: e.clientX, cy: e.clientY, s: o.s, pull: pullStart(e.target) }; }
   gUp(e) { var g = this.g; this.g = null; if (!g || window.getSelection()?.isCollapsed === false) return; this.swipe(g, (e.clientX - g.cx) / g.s, (e.clientY - g.cy) / g.s); }
   swipe(g, dx, dy) {
-    var S = this.S(); var T = 46; var ax = Math.abs(dx), ay = Math.abs(dy);
-    if (ax < T && ay < T) return;
-    if (S.screen === "lock") { if (dy < -T && ay > ax) this.unlock(); return; }
-    if (S.screen !== "home") return;
-    if (S.shade) { if (dy < -T && ay > ax) this.setState({ shade: false }); else if (ax > ay && ((g.x < 30 && dx > T) || (g.x > 382 && dx < -T))) this.back(); return; }
-    if (ay > ax) {
-      // Gesture zones (docs/gesture-zones.md). The top edge of the screen belongs to Android: a swipe
-      // from there opens Android's own shade, and Alpha does not answer it. On launcher Home a pull
-      // down that starts on empty Home asks Android for the same
-      // shade (#417); a pull on editable or scrollable content, or with the keyboard up, does not.
-      if (dy > T && emptyHomeShadePull(this.pullContext(), g.pull, g.y, dx, dy, T)) return this.openSystemShade();
-      if (this.props.systemShell !== false && dy < -T && g.y > 872) return this.goHome();
-      // Only the dock opens the chat (its own drag handlers, chat-overlay-motion-adapter.ts): a
-      // vertical drag anywhere else on Home scrolls or does nothing (docs/ui-refresh-2026-11).
-      if (S.chat === "sheet" && dy > T) return this.setState({ chat: this.rest() });
-    } else {
-      if ((g.x < 30 && dx > T) || (g.x > 382 && dx < -T)) return this.back();
-    }
+    // Gesture zones (docs/gesture-zones.md) are the shared shell's (resolveMobileShellSwipe). The top
+    // edge belongs to Android; on launcher Home a pull down that starts
+    // on empty Home asks Android for its shade (#417, @elizaos/capacitor-system/shade).
+    var self = this, S = this.S();
+    var action = resolveMobileShellSwipe({ screen: S.screen, shade: !!S.shade, view: S.view, chat: S.chat, launcher: this.props.systemShell !== false }, { x: g.x, y: g.y, onShadeControl: false }, dx, dy, {
+      pullOpensShade: function (px, py, threshold) { return emptyHomeShadePull(self.pullContext(), g.pull, g.y, px, py, threshold); },
+    });
+    if (action === "unlock") return this.unlock();
+    if (action === "close-shade") return this.setState({ shade: false });
+    if (action === "back") return this.back();
+    if (action === "open-system-shade") return this.openSystemShade();
+    if (action === "home") return this.goHome();
+    if (action === "lower-assistant") return this.setState({ chat: this.rest() });
+    if (action === "raise-assistant") return this.setState({ chat: "sheet" });
   }
   pullContext() {
     var S = this.S();
@@ -5495,7 +5371,7 @@ class Component extends DCLogic {
   }
   send(textArg) {
     var S = this.S(); var text = String(textArg != null ? textArg : S.draft).trim(); if (!text) return;
-    if (deferredMvpPrompt(text)) return this.toast("This action is deferred from the MVP");
+    if (deferredMvpPrompt(text)) return this.toast("This action is not available on this phone yet.");
     var id = Date.now(); var self = this;
     if (textArg == null && S.editCard) { // composer holds an edited draft card: send it as the draft, not as a question
       var em = S.msgs.filter(function (x) { return x.id === S.editCard; })[0];
@@ -5519,7 +5395,7 @@ class Component extends DCLogic {
   }
   cardAct(m) {
     var S = this.S(); var c = m.card || {}; var self = this;
-    if ((c.act && DEFERRED_MVP_VIEWS.has(c.act.mod)) || (c.go && DEFERRED_MVP_VIEWS.has(c.go.view))) return this.toast("This action is deferred from the MVP");
+    if ((c.act && DEFERRED_MVP_VIEWS.has(c.act.mod)) || (c.go && DEFERRED_MVP_VIEWS.has(c.go.view))) return this.toast("This action is not available on this phone yet.");
     var markDone = function () { self.setState({ msgs: self.S().msgs.map(function (x) { return x.id === m.id ? Object.assign({}, x, { card: Object.assign({}, x.card, m.card, { done: true }) }) : x; }) }); };
     if (c.act && VIEWS[c.act.mod] && VIEWS[c.act.mod].actions && VIEWS[c.act.mod].actions[c.act.fn]) {
       if (c.done) { if (c.go) this.openView(c.go.view, c.go.patch, c.go.chat || "hidden"); return; }
@@ -5569,25 +5445,27 @@ class Component extends DCLogic {
     var S = this.S(); var P = this.props || {}; var self = this;
     var fs = S.fs == null ? !!P.phoneOnly : S.fs;
     var theme = S.theme || P.theme || "light"; if (theme !== "dark") theme = "light";
-    var th = theme === "light" ? LIGHT : DARK;
-    var acc = P.accent || "#0000FF";
-    var acct = theme === "light" ? acc : (acc.toUpperCase() === "#0000FF" ? th.acct : "#9DB4FF");
-    var VM = { "--bg": th.bg, "--s1": th.s1, "--s2": th.s2, "--s3": th.s3, "--line": th.line, "--fg": th.fg, "--mut": th.mut, "--acc": acc, "--acct": acct, "--scrim": th.scrim, "--shc": th.shc };
+    // The product record (config/alpha-product.json) supplies every color and font.
+    var VM = alphaThemeVariables(theme);
     var vars = Object.keys(VM).map(function (k) { return k + ":" + VM[k]; }).join(";");
     var rootRef = function (el) {
       if (!el || !el.style) return;
       Object.keys(VM).forEach(function (k) { el.style.setProperty(k, VM[k]); });
+      // The palette's fixed colours (--alpha-...) are also read outside the phone: html/body and
+      // the review dialogs Alpha appends to document.body. Define them on the document root too.
+      var docRoot = el.ownerDocument && el.ownerDocument.documentElement;
+      if (docRoot && docRoot.style) Object.keys(ALPHA_PRODUCT.theme.palette || {}).forEach(function (k) { if (VM[k]) docRoot.style.setProperty(k, VM[k]); });
       // Connection and digest dialogs are siblings of the phone. Share the
       // selected palette with their common root, including live theme changes.
       if (P.phoneSurface && el.parentElement) {
-        var palette = { bg: th.bg, fg: th.fg, s2: th.s2, line: th.line, mut: th.mut, acc: acct };
+        var palette = { bg: VM["--bg"], fg: VM["--fg"], s2: VM["--s2"], line: VM["--line"], mut: VM["--mut"], acc: VM["--acct"] };
         Object.keys(palette).forEach(function (k) { el.parentElement.style.setProperty("--connection-" + k, palette[k]); });
       }
     };
     var d = new Date(S.now);
     var clock = formatClock(d);
     var dateStr = formatLongDate(d);
-    var name = S.charName || "Alpha";
+    var name = S.charName || ALPHA_PRODUCT.identity.characterName;
     var isOn = S.screen === "home"; var v = S.view; var isView = isOn && !!v;
     var voiceOn = S.voice !== "off";
     var panelOpen = isOn && (S.chat === "sheet" || S.chat === "full");
@@ -5605,11 +5483,6 @@ class Component extends DCLogic {
     // reviewed file until an adapter reports more.
     if (v === "inbox" && out.inbox && out.inbox.c && !out.inbox.c.attachLabel) out.inbox.c = Object.assign({}, out.inbox.c, { attachLabel: "Attach file", heading: "New message" });
 
-    var apps = ORDER.filter(function (k) { return !VIEWS[k].hidden; }).map(function (k) {
-      var def = VIEWS[k];
-      return { key: k, d: IC[def.icon] || IC.grid, label: def.title, open: function () { self.openView(k); }, badge: def.badge && ["phone", "messages", "inbox"].indexOf(k) >= 0 ? !!def.badge(self.vget(k)) : false };
-    });
-
     var NOTIFS = NOTIF.map(function (n) { return Object.assign({}, n, { d: IC[n.icon] || IC.bell }); });
     var shadeN = NOTIFS.filter(function (n) { return isMvpView(n.go.view) && S.nGone.indexOf(n.id) < 0; }).map(function (n) {
       var s = self.sw(function (dx, dy) { self.setState({ nSlide: n.id }); self.later(function () { var S2 = self.S(); self.setState({ nGone: S2.nGone.concat([n.id]), nSlide: null }); }, 250); }, { axis: "x" });
@@ -5625,7 +5498,7 @@ class Component extends DCLogic {
       var facts = S.q.tileFacts && typeof S.q.tileFacts === "object" ? S.q.tileFacts : null;
       var known = facts ? typeof facts[t[0]] === "boolean" : typeof S.q[t[0]] === "boolean"; var on = known ? (facts ? facts[t[0]] : S.q[t[0]]) : undefined;
       // Reference tiles switch in place, so each is a toggle: its name is the label and aria-pressed its state.
-      return { d: t[1], label: t[2], aria: t[2], pressed: on, on: on, css: on ? "background:var(--acc);color:#fff" : "background:var(--s2);color:var(--fg)", toggle: function () {
+      return { d: t[1], label: t[2], aria: t[2], pressed: on, on: on, css: on ? "background:var(--acc);color:var(--alpha-white)" : "background:var(--s2);color:var(--fg)", toggle: function () {
         var q = Object.assign({}, self.S().q); q[t[0]] = !q[t[0]];
         if (t[0] === "plane") { if (q.plane) { self.prePlane = { wifi: q.wifi, bt: q.bt }; q.wifi = false; q.bt = false; } else if (self.prePlane) { q.wifi = self.prePlane.wifi; q.bt = self.prePlane.bt; } }
         self.setState({ q: q });
@@ -5635,7 +5508,7 @@ class Component extends DCLogic {
     var msgs = S.msgs.map(function (m) {
       var c = m.card || {}; var t = c.type;
       return {
-        id: m.id, text: m.text, displayText: m.text, hasCalendarText: true, calendarReviews: [], mapsCards: [], hasMapsChoice: false, mapsChoices: [], isUser: m.from === "user", isAgent: m.from === "agent", c: c,
+        id: m.id, text: m.text, displayText: m.from === "agent" && typeof m.displayText === "string" ? m.displayText : m.text, hasCalendarText: true, calendarReviews: [], isUser: m.from === "user", isAgent: m.from === "agent", c: c,
         cAgenda: t === "agenda", cEvent: t === "event", cDigest: t === "digest", cNote: t === "note", cFlow: t === "flow", cSummary: t === "summary", cDraft: t === "draft", cCall: t === "call", cGeneric: t === "generic",
         gIcon: IC[c.icon] || IC.spark, evIcon: c.act && !c.done ? IC.plus : IC.check, callIni: c.ini || ((c.who || "").split(" ").map(function (w) { return w.charAt(0); }).join("").slice(0, 2)),
         sumSave: t === "summary" && !c.done && !!c.act, sumOpen: t === "summary" && !c.act && !!c.go,
@@ -5657,26 +5530,26 @@ class Component extends DCLogic {
     var cur = S.screen === "home" ? (v ? v : (S.shade ? "shade" : "home")) : S.screen;
     var jumpDefs = [["boot", "Power on"], ["lock", "Lock"], ["home", "Home"], ["shade", "Shade"]];
     ORDER.forEach(function (k) { jumpDefs.push([k, VIEWS[k].title]); });
-    var jumps = jumpDefs.map(function (j) { return { label: j[1], go: function () { self.lastSub = null; self.preset(j[0]); }, css: cur === j[0] ? "background:#ffffff;color:#000000;border-color:#ffffff" : "" }; });
+    var jumps = jumpDefs.map(function (j) { return { label: j[1], go: function () { self.lastSub = null; self.preset(j[0]); }, css: cur === j[0] ? "background:var(--alpha-white);color:var(--alpha-black);border-color:var(--alpha-white)" : "" }; });
     var subJumps = (v && VIEWS[v].jumps ? VIEWS[v].jumps : []).filter(function (j) { return j[0]; }).map(function (j) {
       var key = v + ":" + j[0];
-      return { label: j[1], go: function () { self.lastSub = key; self.preset(key); }, css: self.lastSub === key ? "background:#2a2a2a;color:#ffffff" : "" };
+      return { label: j[1], go: function () { self.lastSub = key; self.preset(key); }, css: self.lastSub === key ? "background:var(--alpha-gray-2a);color:var(--alpha-white)" : "" };
     });
     var modes = [["hidden", IC.pill, "Pill"], ["input", IC.kbd, "Input"], ["sheet", IC.half, "Overlay"], ["full", IC.expand, "Full"]].map(function (md) {
       var on = isOn && S.chat === md[0];
-      return { d: md[1], label: md[2], on: on, css: on ? "background:#0000FF;border-color:#0000FF" : "", go: function () { var S2 = self.S(); if (S2.screen !== "home") self.unlock(); self.setState({ chat: md[0], shade: false }); } };
+      return { d: md[1], label: md[2], on: on, css: on ? "background:var(--alpha-blue);border-color:var(--alpha-blue)" : "", go: function () { var S2 = self.S(); if (S2.screen !== "home") self.unlock(); self.setState({ chat: md[0], shade: false }); } };
     });
     var legend = [
       [IC.up, "Swipe up from the bottom bar, or tap it · Home, from anywhere"],
       [IC.back, "Swipe in from either edge · back one step inside the app"],
       [IC.down, "Swipe down on launcher Home, or tap Notifications · Android notifications and quick settings"],
       [IC.half, "Swipe up on Home · chat. Drag its grabber to resize"],
-      [IC.mic, "Side key: hold · talk, tap · lock"]
+      [IC.lock, "Side key: tap · lock or wake"]
     ].map(function (l) { return { d: l[0], t: l[1] }; });
 
     var showPill = isOn && S.chat === "hidden" && !voiceOn && !imm.noPill;
     var showComposer = isOn && S.chat === "input" && !voiceOn && !imm.noPill;
-    var sbColor = isView && imm.dark && !S.shade && S.chat !== "full" && S.chat !== "sheet" ? "#ffffff" : "var(--fg)";
+    var sbColor = isView && imm.dark && !S.shade && S.chat !== "full" && S.chat !== "sheet" ? "var(--alpha-white)" : "var(--fg)";
     if (S.secure) { showPill = false; showComposer = false; }
     var ongoing = null;
     ORDER.forEach(function (k) {
@@ -5690,9 +5563,9 @@ class Component extends DCLogic {
     return Object.assign(out, {
       assistantSurface: assistantOnly, notAssistantSurface: !assistantOnly, closeAssistant: closeAssistant,
       mvpMessages: isMvpView("messages"),
-      ic: IC, iconAssets: ICON_ASSETS, vars: vars, rootRef: rootRef, frame: th.frame, clock: clock, dateStr: dateStr, name: name,
+      ic: IC, iconAssets: ICON_ASSETS, vars: vars, rootRef: rootRef, frame: VM["--mobile-shell-frame"], clock: clock, dateStr: dateStr, name: name,
       isBoot: S.screen === "boot", isOff: S.screen === "off", isLock: S.screen === "lock", isOn: isOn, isView: isView,
-      viewBg: imm.dark ? "#000000" : "var(--bg)", viewFg: imm.dark ? "#ffffff" : "var(--fg)", sbColor: sbColor, homeIndicatorColor: out.photos && out.photos.albumManager ? "var(--fg)" : sbColor,
+      viewBg: imm.dark ? "var(--alpha-black)" : "var(--bg)", viewFg: imm.dark ? "var(--alpha-white)" : "var(--fg)", sbColor: sbColor, homeIndicatorColor: out.photos && out.photos.albumManager ? "var(--fg)" : sbColor,
       systemShell: P.systemShell !== false,
       showAppBack: P.systemShell === false && isOn && isView && !S.shade,
       // A fresh Home or Talk press is intentional even immediately after opening chat.
@@ -5701,14 +5574,13 @@ class Component extends DCLogic {
       showStatus: !P.nativeSystemChrome && S.screen !== "boot" && S.screen !== "off" && !imm.noStatus, micLive: S.voice === "listening",
       showIndicator: !P.nativeSystemChrome && (isOn || S.screen === "lock") && !(isOn && !S.view && !S.drawer && !S.shade && S.chat !== "sheet" && S.chat !== "full"),
       toast: S.toast, toastOn: !!S.toast, toastUndo: !!S.toastUndo, toastPadR: S.toastUndo ? 5 : 18, doUndo: function () { var f = self.undoFn; self.undoFn = null; self.clear("t"); self.setState({ toast: "", toastUndo: false }); if (f) f(); },
-      hasOngoing: !!ongoing && isOn, ongoing: ongoing || {}, sbWifi: S.q.wifi, sbPlane: S.q.plane, apps: assistantOnly ? [] : apps,
+      hasOngoing: !!ongoing && isOn, ongoing: ongoing || {}, sbWifi: S.q.wifi, sbPlane: S.q.plane,
       goCalendar: function () { self.openView("calendar", copy("shell").homeCalendar || null); },
       goTriage: function () { self.send("What needs me?"); },
       goFlows: function () { self.openView("workflows", copy("shell").homeWorkflow || null); },
       goSettings: function () { self.openView("settings"); },
       tiles: tiles, bright: S.bright, brightHandoff: true, brightSlider: false, onBright: function () { self.openView("settings", { page: "display" }); }, shadeN: shadeN, shadeY: isOn && S.shade && this.simulatedShade() ? "0" : "-100%",
-      // Android owns the shade (#416): only the development build renders its stand-in, and only
-      // launcher Home offers the Notifications button that asks Android for its shade (#417).
+      // Android owns the shade (#416): only the development build renders its stand-in.
       simulatedShade: this.simulatedShade(),
       closeShade: function () { self.setState({ shade: false }); }, openSystemShade: function () { self.openSystemShade(); },
       shadeKey: function (event) { if (event.key === "Escape" && !event.defaultPrevented) { event.preventDefault(); self.setState({ shade: false }); } }, clearAll: function () { self.setState({ nGone: NOTIFS.map(function (n) { return n.id; }), shade: false }); },
@@ -5717,15 +5589,17 @@ class Component extends DCLogic {
       // phone frame (no OS lock screen) keeps the prototype's lock-screen camera.
       lockCameraOffered: !P.nativeSystemChrome, noLockCamera: !!P.nativeSystemChrome,
       lockCamera: function () { if (P.nativeSystemChrome) return; self.setState({ screen: "home", secure: true }); self.openView("camera"); },
-      msgs: msgs, typing: S.typing, sugg: sugg, showSugg: panelOpen && !S.draft && !S.typing && !voiceOn,
+      msgs: msgs, typing: S.typing && !S.turnStatus, turnStatus: S.typing ? S.turnStatus || "" : "", sugg: sugg, showSugg: panelOpen && !S.draft && !S.typing && !voiceOn,
       panelComposer: panelOpen && !voiceOn,
       panelH: !isOn ? 0 : (S.chat === "full" ? 915 : (S.chat === "sheet" ? 560 : 0)), panelR: S.chat === "full" ? "0px" : "30px 30px 0 0",
       panelOp: panelOpen ? 1 : 0, panelPE: panelOpen ? "auto" : "none", panelTop: S.chat === "full" && this.props.systemShell !== false ? "var(--alpha-chat-full-top,60px)" : "4px",
       scrimOp: 0, scrimPE: "none",
       showGrabber: S.chat !== "full", sizeIcon: S.chat === "full" ? IC.shrink : IC.expand, sizeLabel: S.chat === "full" ? "Shrink chat" : "Expand chat",
-      showComposer: showComposer, showPill: showPill, cmpBottom: 28, dockGuardPE: "none", dockGuardSw: {}, dockGuardTap: null, dockGuardMenu: null,
+      showComposer: showComposer, showPill: showPill, cmpBottom: 28,
       cmpPlaceholder: (mod && mod.placeholder) ? mod.placeholder : "Ask " + name,
       draft: S.draft, hasDraft: !!S.draft, noDraft: !S.draft,
+      // The composer template binds these; the agent adapter refines them for a live turn.
+      sendVisible: !!S.draft && !S.typing, talkVisible: !S.draft && !S.typing, replyIdle: !S.typing,
       onDraft: function (e) { self.setState(e.target.value ? { draft: e.target.value } : { draft: "", editCard: null }); },
       onKey: function (e) { if (e.key === "Enter") { e.preventDefault(); self.send(); } },
       sendNow: function () { self.send(); },
@@ -5740,6 +5614,7 @@ class Component extends DCLogic {
       pillSw: this.sw(function (dx, dy) { if (dy < 0) self.setState({ chat: "sheet" }); }),
       voiceOn: voiceOn, vShow: vShow, vRing: S.voice === "listening" || S.voice === "speaking",
       vTextCss: S.voice === "thinking" ? "color:var(--mut)" : "", vBarColor: S.voice === "thinking" ? "var(--line)" : "var(--acc)", vPlay: S.voice === "thinking" ? "paused" : "running", bars: bars,
+      externalVoiceInvocation: externalVoiceInvocationEnabled,
       startVoice: function () { self.startVoice(); }, stopVoice: function () { self.stopVoice(); },
       voiceToType: function () { var vt = self.S().vtext; self.stopVoice(); self.setState({ chat: self.S().screen === "home" ? "sheet" : self.S().chat, draft: vt }); },
       headsSw: this.sw(function () { self.setState({ heads: false }); }),
@@ -5749,7 +5624,7 @@ class Component extends DCLogic {
       headsReply: function () { self.setState({ heads: false }); if (HEADS) self.agentSay("Here's a reply to " + HEADS.who.split(" ")[0] + ".", { type: "draft", to: HEADS.who, body: HEADS.reply, act: { mod: "messages", fn: "sendDraft" }, pid: HEADS.pid }); },
       fireHeads: function () { var S2 = self.S(); if (S2.screen !== "home") self.unlock(); self.later(function () { self.showHeads(); }, 80); },
       unlock: function () { self.unlock(); }, wake: function () { self.setState({ screen: "lock" }); },
-      pDown: function (e) { e.stopPropagation(); self.pLong = false; clearTimeout(self.pT); self.pT = setTimeout(function () { self.pLong = true; self.startVoice(); }, 550); },
+      pDown: function (e) { e.stopPropagation(); self.pLong = false; clearTimeout(self.pT); if (externalVoiceInvocationEnabled) self.pT = setTimeout(function () { self.pLong = true; self.startVoice(); }, 550); },
       pUp: function (e) {
         e.stopPropagation(); clearTimeout(self.pT); if (self.pLong) return; self.pLong = true;
         var now = Date.now();
@@ -5767,7 +5642,7 @@ class Component extends DCLogic {
         var next = !fs; self.setState({ fs: next });
         try { if (window.top === window.self && document.fullscreenEnabled) { if (next && !document.fullscreenElement) document.documentElement.requestFullscreen(); if (!next && document.fullscreenElement) document.exitFullscreen(); } } catch (err) {}
       },
-      themes: [["light", "Light", "#FFFFFF"], ["dark", "Dark", "#000000"]].map(function (t) { var on = theme === t[0]; return { label: t[1], sw: t[2], on: on, css: on ? "background:#ffffff;color:#000000;border-color:#ffffff" : "", go: function () { self.setState({ theme: t[0] }); } }; })
+      themes: [["light", "Light", "var(--alpha-white)"], ["dark", "Dark", "var(--alpha-black)"]].map(function (t) { var on = theme === t[0]; return { label: t[1], sw: t[2], on: on, css: on ? "background:var(--alpha-white);color:var(--alpha-black);border-color:var(--alpha-white)" : "", go: function () { self.setState({ theme: t[0] }); } }; })
     });
   }
 }

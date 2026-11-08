@@ -1,4 +1,6 @@
 package ai.elizaresearch.alphaphone;
+import ai.eliza.plugins.actionjournal.deletion.DeferredDeletionCoordinator;
+import ai.eliza.plugins.actionjournal.deletion.DeferredDeletionJournal;
 
 import android.Manifest;
 import android.content.ContentUris;
@@ -35,7 +37,7 @@ public final class CalendarDeletionRestartInstrumentedTest {
   assertTrue(run.matches("[0-9a-f]{32}"));assertTrue(mode.equals("undo")||mode.equals("expiry"));assertTrue(phase.equals("prepare")||phase.equals("verify")||phase.equals("replay"));
   Context context=InstrumentationRegistry.getInstrumentation().getTargetContext();
   for(String permission:new String[]{Manifest.permission.READ_CALENDAR,Manifest.permission.WRITE_CALENDAR})assertEquals(PackageManager.PERMISSION_GRANTED,context.checkSelfPermission(permission));
-  File file=new File(context.getFilesDir(),"calendar-restart-"+run+".json");NativeDeletionCoordinator coordinator=NativeDeletionCoordinator.get(context);
+  File file=new File(context.getFilesDir(),"calendar-restart-"+run+".json");DeferredDeletionCoordinator coordinator=NativeDeletionCoordinator.get(context);
   JSONObject fixture;
   if(phase.equals("prepare")){
    assertFalse("Fresh fixture required",file.exists());assertNull(new AlphaCredentialStore(context).readCredentialSlot(NativeDeletionCoordinator.JOURNAL));

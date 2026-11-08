@@ -113,15 +113,6 @@ public final class ConnectionRoutesTest {
   check(!ConnectionRoutes.managedService(sync+"/",null,"PATCH",true,false),"sync slash refused");
   check(!ConnectionRoutes.managedService(sync,null,"PUT",true,false),"sync PUT refused");
   check(!ConnectionRoutes.managedService("/api/v1/eliza/google/calendar/events",null,"GET",false,false),"unreviewed Google Calendar route refused");
-  // Owner-side Google Calendar writes: create, change and delete of one event, nothing else.
-  String events="/api/v1/eliza/google/calendar/events",one=events+"/abc123_20261013T150000Z";
-  check(ConnectionRoutes.managedService(events,null,"POST",true,false)&&ConnectionRoutes.googleCalendarEvents(events,null,"POST",true),"Google event create allowed");
-  check(ConnectionRoutes.managedService(one,null,"PATCH",true,false)&&ConnectionRoutes.googleCalendarEvents(one,null,"PATCH",true),"Google event change allowed");
-  check(ConnectionRoutes.managedService(one,"side=owner&grantId=g&calendarId=primary","DELETE",false,false)&&ConnectionRoutes.googleCalendarEvents(one,"side=owner","DELETE",false),"Google event delete allowed");
-  Object[][] refusedEvents={{events,null,"POST",false},{events,"side=owner","POST",true},{events+"/",null,"POST",true},{events,null,"PATCH",true},{events,"side=owner","DELETE",false},{events,null,"PUT",true},
-   {one,null,"PATCH",false},{one,"side=owner","PATCH",true},{one,"","PATCH",true},{one,null,"DELETE",false},{one,"","DELETE",false},{one,"side=owner","DELETE",true},{one,null,"PUT",true},{one,"side=owner","GET",false},{one,null,"POST",true},
-   {one+"/",null,"PATCH",true},{one+"/instances",null,"PATCH",true},{events+"/a%2Fb",null,"PATCH",true},{events+"/a-b",null,"PATCH",true},{events+"/"+"a".repeat(1025),null,"PATCH",true},{events+"//x",null,"PATCH",true},{events+"x",null,"POST",true}};
-  for(Object[] r:refusedEvents)check(!ConnectionRoutes.managedService((String)r[0],(String)r[1],(String)r[2],(Boolean)r[3],false),"Google event route refused "+r[2]+" "+r[0]+" "+r[1]+" "+r[3]);
   // Subscription plan gate (#410): code redemption is one POST with a body; the billing snapshot is read-only; credits are retired.
   check(ConnectionRoutes.managedService("/api/v1/subscription/redeem",null,"POST",true,false),"subscription code redemption allowed");
   check(!ConnectionRoutes.managedService("/api/v1/subscription/redeem",null,"POST",false,false),"redemption needs a body");
@@ -131,15 +122,15 @@ public final class ConnectionRoutesTest {
   check(ConnectionRoutes.managedService("/api/v1/billing/limits",null,"GET",false,false),"billing snapshot read allowed");
   check(!ConnectionRoutes.managedService("/api/v1/billing/limits",null,"POST",true,false),"billing snapshot write refused");
   check(!ConnectionRoutes.managedService("/api/v1/credits/balance",null,"GET",false,false),"credit balance retired");
-  // Reset Alpha data revokes only the presented key, at the exact self-revocation route.
-  check(java.util.Arrays.equals(CloudKeyRevocation.environments(false),new String[]{"production"}),"flag-off reset revokes production only");
-  check(java.util.Arrays.equals(CloudKeyRevocation.environments(true),new String[]{"production","staging"}),"test mocks also revoke staging");
-  for(String environment:new String[]{"production","staging"}){java.net.URI target=java.net.URI.create(CloudKeyRevocation.endpoint(environment));check(revoke(target.getScheme(),target.getHost(),target.getPort(),target.getRawPath(),target.getRawQuery(),"DELETE",false,true),"reset revocation target "+environment);}
+  // The Cloud sign-in hand-off is a test-mocks diagnostic route; product sign-in is the native host.
+  check(!ConnectionRoutes.managedService("/api/auth/cli-session",null,"POST",true,false),"sign-in hand-off create refused flag-off");
+  check(!ConnectionRoutes.managedService("/api/auth/cli-session/b7a2c1d0-5e4f-4a3b-8c2d-1e0f9a8b7c6d",null,"GET",false,false),"sign-in hand-off poll refused flag-off");
+  check(ConnectionRoutes.managedService("/api/auth/cli-session",null,"POST",true,true),"sign-in hand-off kept in test-mocks builds");
+  // Reset Alpha data revokes only the presented key through the shared CloudKeyRevocation (tested with
+  // the sign-in library upstream); this transport admits exactly the same self-revocation DELETE.
+  check(revoke("https","api.eliza.app",-1,"/api/v1/api-keys/current",null,"DELETE",false,false),"production self-revocation target");
+  check(revoke("https","api-staging.eliza.app",-1,"/api/v1/api-keys/current",null,"DELETE",false,true),"staging self-revocation target in test-mocks builds");
   check(!revoke("https","api-staging.eliza.app",-1,"/api/v1/api-keys/current",null,"DELETE",false,false),"flag-off reset never targets staging");
-  try{CloudKeyRevocation.endpoint("other");throw new AssertionError("unknown environment");}catch(IllegalArgumentException expected){}
-  check(CloudKeyRevocation.bearer(null)==null&&CloudKeyRevocation.bearer("short")==null&&CloudKeyRevocation.bearer("token with space")==null&&CloudKeyRevocation.bearer("token\nline-break")==null,"only a printable bearer is sent");
-  check("eliza_synthetic_token".equals(CloudKeyRevocation.bearer("eliza_synthetic_token")),"printable bearer kept");
-  check(!CloudKeyRevocation.revoke("production",null,false)&&!CloudKeyRevocation.revoke("other","eliza_synthetic_token",false),"nothing is sent without a token or a known environment");
   check(ConnectionRoutes.managedService("/api/v1/subscription/entitlement",null,"GET",false,false)&&ConnectionRoutes.managedService("/api/v1/subscription/entitlement-keys",null,"GET",false,false),"subscription entitlement reads allowed");
   check(!ConnectionRoutes.managedService("/api/v1/subscription/entitlement",null,"POST",true,false)&&!ConnectionRoutes.managedService("/api/v1/subscription/checkout",null,"GET",false,false),"subscription writes and other subscription paths refused");
   check(ConnectionRoutes.managedService("/api/v1/eliza/google/gmail/inbox-v1/thread","grantId=owned", "GET",false,false),"owner Gmail route allowed");

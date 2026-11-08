@@ -19,6 +19,6 @@ test('all renderer slot operations use the serialized lane through response disp
   const start=source.indexOf('@PluginMethod public void '+method+'('),end=source.indexOf('\n }',start),body=source.slice(start,end);
   assert.match(body,/submitStorage\(call,/);assert.doesNotMatch(body,/\bsubmit\(call,/);assert.ok(body.indexOf('call.resolve(')>body.indexOf('submitStorage(call,'));
  }
- assert.match(source,/requests\.clear\(\);storageTasks\.close\(\);workers\.shutdownNow\(\)/);
+ assert.match(source,/requests\.cancelAll\(\);\n\s+synchronized\(foregroundLock\)\{foregroundLock\.notifyAll\(\);\}\n\s+storageTasks\.close\(\);workers\.shutdownNow\(\)/);
  assert.match(source,/workers = Executors\.newFixedThreadPool\(4\)/);
 });

@@ -1,0 +1,29 @@
+{
+  "atUTC": "2026-10-26T22:46:58.629911+00:00",
+  "productBase": "79eafc5511296a915933a6fef8bcc3d228cc1aa3",
+  "SDK": "da82a74e8bb1c45ae76beba64ee5bf0c1c2778e6",
+  "previousSDK": "50394d04d5f9714b98c7bdce48a720bee1f70099",
+  "SDKChangedFiles": [
+    "packages/agent/src/api/views-routes.ts",
+    "packages/agent/src/runtime/view-navigation.ts",
+    "packages/agent/test/confirmed-navigation-history.test.ts",
+    "plugins/plugin-assistant/src/services/message/action-surface.ts",
+    "plugins/plugin-assistant/src/services/message/dialogue-context.navigation.test.ts",
+    "plugins/plugin-assistant/src/services/message/initial-tool-exposure.test.ts",
+    "plugins/plugin-assistant/src/services/message/navigation-history.ts"
+  ],
+  "dependencyLockUnchanged": true,
+  "packageManifestUnchanged": true,
+  "scope": "source qualification; no binary, model, provider or native acceptance transferred",
+  "focusedTests": {
+    "back": 6,
+    "initialToolExposure": 12,
+    "accountPreflightAndReference": 25
+  },
+  "limitations": [
+    "Existing broader compound phone tests have two unresolved failures",
+    "Final attested schema byte measurement pending",
+    "Full Life type graph remains unqualified under prior bound",
+    "New runtime and actual Back/native proof pending"
+  ]
+}

@@ -74,7 +74,7 @@ test('without clockRepeatDaysVersion there are no day chips and a set request ca
   const [request] = await handoffs(page);
   expect(request).toMatchObject({ action: 'set', hour: 6, minute: 30, reviewed: true });
   expect('days' in request).toBe(false);
-  // Show alarms is its own reviewed handoff (formerly covered only by the orphaned rendered script).
+  // Show alarms is its own reviewed handoff.
   await clock.getByRole('button', { name: 'Show alarms', exact: true }).click();
   await clock.getByRole('button', { name: 'Review Clock request', exact: true }).click();
   await expect(clock).toContainText('Open the installed Clock app’s alarms page.');

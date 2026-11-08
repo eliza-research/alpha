@@ -1,0 +1,39 @@
+{
+  "schema": 1,
+  "template": "cuttlefish-boot-evidence",
+  "evidenceClass": "cuttlefish-image-boot",
+  "gate": "cuttlefishBoot",
+  "level": "release",
+  "description": "Release-candidate Cuttlefish boot record for the cuttlefishBoot gate (docs/human-actions.md H-23, docs/runbooks/672-pixel10a-production-image.md). Copy to docs/evidence/cuttlefish-release-boot-<YYYY-MM-DD>.json and fill every UNSET field from the executed boot. Virtual-target image evidence only: it never satisfies physicalDevice or signedUpdateRecovery and is not device acceptance.",
+  "imageHost": "UNSET",
+  "operator": "UNSET",
+  "observedAtUtc": "UNSET",
+  "hostPackages": {
+    "cuttlefish-base": { "version": "UNSET", "sha256": "UNSET" },
+    "cuttlefish-user": { "version": "UNSET", "sha256": "UNSET" }
+  },
+  "candidate": {
+    "alphaCommit": "UNSET",
+    "elizaPin": "UNSET",
+    "launcherApkSha256": "UNSET",
+    "launcherDescriptorSha256": "UNSET",
+    "lunchTarget": "UNSET",
+    "buildFingerprint": "UNSET",
+    "sameCandidateAsPixelSignedRelease": "UNSET"
+  },
+  "checks": {
+    "bootCompleted": "not run",
+    "selinuxEnforcing": "not run",
+    "alphaFromSystemPartition": "not run",
+    "alphaIsHome": "not run",
+    "recoveryHomePresent": "not run"
+  },
+  "verifierReport": {
+    "command": "node scripts/verify-cuttlefish-launcher.mjs <options per the shared verifier>",
+    "reportSha256": "UNSET",
+    "exitCode": "UNSET"
+  },
+  "result": "not run",
+  "imageBuiltFromAdmittedSource": false,
+  "releaseQualified": false
+}

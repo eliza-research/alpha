@@ -1,3 +1,4 @@
+import {openLegacyNotes} from './helpers/legacy-notes';
 import {test,expect} from '@playwright/test';
 import {silentMicrophone,agentContext} from './voice-fixture';
 
@@ -10,7 +11,7 @@ test.beforeEach(async({page})=>{await page.addInitScript(()=>localStorage.setIte
 test('unavailable chat voice preserves the selected note and returns to typing without sending',async({page})=>{
  let sent=0;page.on('request',request=>{if(request.method()==='POST')sent++;});
  await page.goto('/');await silentMicrophone(page);
- await page.getByRole('button',{name:'Notes',exact:true}).click();
+ await openLegacyNotes(page);
  await page.getByRole('button',{name:'New note',exact:true}).click();
  await page.getByRole('textbox',{name:'Title',exact:true}).fill('Voice context');
  await page.getByRole('textbox',{name:'Note',exact:true}).fill('Original body stays put.');
@@ -23,7 +24,8 @@ test('unavailable chat voice preserves the selected note and returns to typing w
  await page.getByRole('button',{name:'Talk',exact:true}).press('Enter');
  const voice=page.getByRole('region',{name:'Voice conversation',exact:true});
  await expect(voice).toBeVisible();
- await expect(page.getByRole('button',{name:'Connect Eliza Cloud',exact:true})).toBeEnabled();
+ await expect(voice.getByRole('button',{name:'Stop voice conversation',exact:true})).toBeEnabled();
+ await expect(voice.getByRole('button',{name:'Microphone off',exact:true})).toBeDisabled();
  await page.getByRole('button',{name:'Minimize chat',exact:true}).click();
  await expect(voice).toHaveCount(0);
  await page.getByRole('button',{name:'Type',exact:true}).click();

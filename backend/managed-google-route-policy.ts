@@ -1,6 +1,6 @@
 import {productionCloud} from '../apps/app/src/runtime/cloud-deployment.generated.ts';
 import {managedServiceRequest} from '../apps/app/src/runtime/managed-service-routes.ts';
-function object(value:unknown):Record<string,any>{if(!value||typeof value!=='object'||Array.isArray(value))throw Error('Invalid Cloud request');return value as Record<string,any>;}
+export function object(value:unknown):Record<string,any>{if(!value||typeof value!=='object'||Array.isArray(value))throw Error('Invalid Cloud request');return value as Record<string,any>;}
 const GOOGLE_UUID=/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 /** Narrow owner-service surface. URL queries carry opaque provider IDs; paths never do. */
 export function managedGoogleRequest(url:URL,method:string,body:unknown):boolean {
@@ -69,6 +69,6 @@ export async function boundedServiceJson(response:Response):Promise<any>{
  try{for(;;){const part=await reader.read();if(part.done)break;size+=part.value.byteLength;if(size>16*1024*1024)throw Error('Cloud response too large');chunks.push(part.value);}}finally{await reader.cancel().catch(()=>{});}
  const value=JSON.parse(Buffer.concat(chunks).toString('utf8'));
  // Managed services never return authentication material. Refuse accidental exposure.
- const inspect=(item:any):void=>{if(item&&typeof item==='object')for(const [key,nested]of Object.entries(item)){if(/^(?:access_?token|refresh_?token|api_?key|authorization|credentialReference|credentialFile|token|sessionId)$/i.test(key))throw Error('Unexpected Cloud credential response');inspect(nested);}};
+ const inspect=(item:unknown):void=>{if(item&&typeof item==='object')for(const [key,nested]of Object.entries(item)){if(/^(?:access_?token|refresh_?token|api_?key|authorization|credentialReference|credentialFile|token|sessionId)$/i.test(key))throw Error('Unexpected Cloud credential response');inspect(nested);}};
  inspect(value);return value;
 }

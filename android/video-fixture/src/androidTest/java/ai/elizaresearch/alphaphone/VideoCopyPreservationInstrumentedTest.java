@@ -1,4 +1,5 @@
 package ai.elizaresearch.alphaphone;
+import ai.eliza.plugins.media.VideoCopyEdits;
 
 import static org.junit.Assert.*;
 import android.content.*;
@@ -51,7 +52,7 @@ public final class VideoCopyPreservationInstrumentedTest {
    assertNotNull(row);assertTrue(row.moveToFirst());assertEquals(context.getPackageName(),row.getString(2));StringBuilder out=new StringBuilder();for(int i=0;i<row.getColumnCount();i++)out.append(row.isNull(i)?"NULL":row.getString(i)).append('|');assertFalse(row.moveToNext());return out.toString();
   }
  }
- private VideoCopyEdits editor(BooleanSupplier foreground)throws Exception{return new VideoCopyEdits(context,(id,revision)->{throw new AssertionError("Preservation must not read an editor source");},foreground);}
+ private VideoCopyEdits editor(BooleanSupplier foreground)throws Exception{return new VideoCopyEdits(context,AlphaMediaConfig.MEDIA,(id,revision)->{throw new AssertionError("Preservation must not read an editor source");},foreground);}
  private void refused(Response call)throws Exception{assertTrue(call.done.await(15,TimeUnit.SECONDS));assertNotNull(call.error);assertNull(call.value);}
  private void unchanged(Pending p,String before)throws Exception{assertEquals(p.record,journal.getString(p.token,null));assertEquals(before,metadata(p.uri));assertArrayEquals(p.bytes,bytes(p.uri));}
  private void noComplete(Pending p)throws Exception{assertFalse(new File(p.directory(),"COMPLETE.json").exists());}
@@ -80,7 +81,7 @@ public final class VideoCopyPreservationInstrumentedTest {
     Pending p=new Pending(asset());File denied=null;Uri duplicate=null;Context owner=context;
     if(mode.equals("owner-denied"))owner=new ContextWrapper(context){@Override public Context getApplicationContext(){return this;}@Override public String getPackageName(){return "not-the-fixture-owner";}};
     if(mode.equals("private-storage-denied")){denied=new File(context.getFilesDir(),"QA-denied-private-"+UUID.randomUUID());Os.mkdir(denied.getAbsolutePath(),0000);final File deniedRoot=denied;owner=new ContextWrapper(context){@Override public Context getApplicationContext(){return this;}@Override public File getFilesDir(){return deniedRoot;}};}
-    VideoCopyEdits editor=new VideoCopyEdits(owner,(id,revision)->{throw new AssertionError("Preservation source callback is forbidden");},()->!mode.equals("foreground-denied")&&activity.get().hasWindowFocus());boolean verified=false;
+    VideoCopyEdits editor=new VideoCopyEdits(owner,AlphaMediaConfig.MEDIA,(id,revision)->{throw new AssertionError("Preservation source callback is forbidden");},()->!mode.equals("foreground-denied")&&activity.get().hasWindowFocus());boolean verified=false;
     try{
      if(mode.equals("not-failed"))p.setRecord(new JSONObject(p.record).put("status","exporting"));
      if(mode.equals("wrong-row"))p.setRecord(new JSONObject(p.record).put("pendingId","9223372036854775806"));
@@ -99,7 +100,7 @@ public final class VideoCopyPreservationInstrumentedTest {
    // Begin first, before introducing the closed pending fixture; no export runs.
    ContentValues values=new ContentValues();values.put("_display_name","QA-active-source-"+UUID.randomUUID()+".mp4");values.put("mime_type","video/mp4");values.put("relative_path","Movies/Alpha Video QA/");values.put("is_pending",1);Uri source=context.getContentResolver().insert(MediaStore.Video.Media.EXTERNAL_CONTENT_URI,values);assertNotNull(source);
    try(OutputStream output=context.getContentResolver().openOutputStream(source,"w")){output.write(asset());}values.clear();values.put("is_pending",0);assertEquals(1,context.getContentResolver().update(source,values,null,null));
-   VideoCopyEdits editor=new VideoCopyEdits(context,(id,revision)->new VideoCopyEdits.Source(source,revision),()->activity.get().hasWindowFocus());String prepared=null;Pending p=null;boolean verified=false;
+   VideoCopyEdits editor=new VideoCopyEdits(context,AlphaMediaConfig.MEDIA,(id,revision)->new VideoCopyEdits.Source(source,revision),()->activity.get().hasWindowFocus());String prepared=null;Pending p=null;boolean verified=false;
    try{Response begin=new Response();editor.begin("owned-source","fixture-revision",begin);prepared=begin.await().getString("sessionId");p=new Pending(asset());String before=metadata(p.uri);Response call=new Response();editor.preserveClosedFailure(p.token,recordHash(p.record),call);refused(call);assertFalse(p.directory().exists());unchanged(p,before);editor.cancel(prepared);Response cancel=new Response();editor.result(prepared,cancel);assertEquals("not-started",cancel.await().getString("status"));verified=true;
    }finally{editor.close();if(verified){dispose(p);assertEquals(1,context.getContentResolver().delete(source,"owner_package_name=?",new String[]{context.getPackageName()}));assertTrue(journal.edit().remove(prepared).commit());}}
   }

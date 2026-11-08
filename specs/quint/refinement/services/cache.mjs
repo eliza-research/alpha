@@ -1,12 +1,14 @@
+import {serviceInputs} from './source-inputs.mjs';
 import assert from 'node:assert/strict';
 import {ServiceReadCache} from '../../../../apps/app/src/runtime/service-read-cache.ts';
-import {NoticeOwnerCoordinator} from '../../../../apps/app/src/runtime/notice-owner-coordinator.ts';
+import {NoticeOwnerCoordinator} from '../../../../.eliza/client-features/packages/contracts/src/notice-routes.ts';
 import {checkTraces, captureInputs} from '../check-traces.mjs';
 import {action, casStore, deferred, until} from './support.mjs';
 
-export async function cacheRefinement() {
-  const sources = ['apps/app/src/runtime/service-read-cache.ts', 'apps/app/src/runtime/notice-owner-coordinator.ts', 'specs/quint/refinement/services/cache.mjs', 'specs/quint/refinement/services/support.mjs'];
-  const driverHashes = captureInputs(sources);
+export async function cacheRefinement(extraSources = []) {
+  const sources = ['apps/app/src/runtime/service-read-cache.ts', '.eliza/client-features/packages/contracts/src/notice-routes.ts', 'specs/quint/refinement/services/cache.mjs', 'specs/quint/refinement/services/support.mjs'];
+  const inputs = serviceInputs([...sources, ...extraSources]);
+  const driverHashes = captureInputs(inputs);
   const traces = [];
   for (const advance of [0, 30 * 86400000 - 1, 30 * 86400000]) {
     let now = 10000000000;
@@ -56,5 +58,5 @@ export async function cacheRefinement() {
     assert.equal(pending, 0);
     traces.push(trace);
   }
-  return checkTraces({model: 'NoticesAndCaches', sources, driverHashes, traces, scope: 'bounded-component', assumptions: ['Cache age maps the exact 30-day boundary to two abstract expiry ticks.', 'This adapter covers cache CAS and owner transition retry. Native posting, delivery claims, tap consumption and acknowledgement need a separate native ledger adapter.']});
+  return checkTraces({model: 'NoticesAndCaches', sources: inputs, driverHashes, traces, scope: 'bounded-component', assumptions: ['Cache age maps the exact 30-day boundary to two abstract expiry ticks.', 'This adapter covers cache CAS and owner transition retry. Native posting, delivery claims, tap consumption and acknowledgement need a separate native ledger adapter.']});
 }

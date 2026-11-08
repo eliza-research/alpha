@@ -8,6 +8,8 @@ def sources():
  paths=[project/'build.gradle',project/'settings.gradle',Path(__file__)]+list((project/'src').rglob('*'))
  return {str(p.resolve().relative_to(repository)):h(p) for p in sorted(paths) if p.is_file()}
 before=sources()
+# The generated Android host supplies the hash-pinned Gradle wrapper (scripts/android-host.mjs).
+subprocess.run(['node','scripts/android-host.mjs'],check=True,timeout=300)
 subprocess.run(['android/gradlew','-p',str(project),'--no-daemon','assembleDebug'],check=True,timeout=600)
 assert sources()==before,'Helper sources changed during build'
 target=archive/'private-peer-debug.apk';assert not target.exists()

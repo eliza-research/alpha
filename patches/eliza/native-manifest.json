@@ -1,15 +1,206 @@
 {
   "schema": 1,
-  "baseCommit": "b25d8aef2916385c571f4367e099809254fde0bb",
-  "patches": [],
+  "baseCommit": "475a8d59dc1811c2cde093613519906a5a3f6457",
+  "patches": [
+    {
+      "file": "google-browser-sign-in.patch",
+      "sha256": "b466bc82bc2de5484091777beb903696b02f248f5b2c8ffcb40b548903335a0b",
+      "module": "packages/auth/android",
+      "targets": [
+        {
+          "path": "packages/auth/android/build.gradle",
+          "beforeSha256": "3646fd6127c5fe0d7d6b9fd593871e558684a8c816ed96691e5341ddb0385ddf",
+          "afterSha256": "a343928a6a5fc7e346de79d9ea89795006072d3aa345efa0efcad6067e1d00b4"
+        },
+        {
+          "path": "packages/auth/android/src/main/java/ai/eliza/auth/cloud/CloudSignInConfig.java",
+          "beforeSha256": "73bc99db2cbe955887f5696109952dfecc08532cb1c711159d9106dcd9499336",
+          "afterSha256": "e9175c8d72a58bd0670356f059070a09e0e57fa391a07120f12c8c49e4a7c167"
+        },
+        {
+          "path": "packages/auth/android/src/main/java/ai/eliza/auth/cloud/CloudSignInFlow.java",
+          "beforeSha256": "5a333c1b5e6295ff30afd4959bbb5d25aaa5a6d97da61b0ea9a82b6d639b4242",
+          "afterSha256": "37439cfc9e929d95515d6cbd575b5d62ef88128b093e4b4ca5409e1ebbc224b8"
+        },
+        {
+          "path": "packages/auth/android/src/main/java/ai/eliza/auth/cloud/CloudSignInPlugin.java",
+          "beforeSha256": "0c2ba91faf22459538bd852cb305507ac2b17982afbe6bdc6e8465526a1ba1d4",
+          "afterSha256": "da6fadf2f6c96eefa658498c7dc0338991db0934ccf1533121fbec239efee343"
+        },
+        {
+          "path": "packages/auth/android/src/main/java/ai/eliza/auth/cloud/CloudSignInReadiness.java",
+          "beforeSha256": "7d2cc138b5ec88a1ef2ad41aa4de39819788861dfa41a1d18c00f8799889aa9a",
+          "afterSha256": "ea8c32c69bdb9dc0ed145dc15266fa25fa2f73d10cc193059647f3f36ef2174f"
+        },
+        {
+          "path": "packages/auth/android/src/main/java/ai/eliza/auth/cloud/CloudSignInRoutes.java",
+          "beforeSha256": "2212e5fb65109ecef6ae1cb2fb6a8fd172de2f38c3cd5bf133cfda8c8e408556",
+          "afterSha256": "60861474e28f99fddacac70d382612e762a6c7526f2c455ecee1dd5f2128d825"
+        },
+        {
+          "path": "packages/auth/android/src/main/java/ai/eliza/auth/cloud/CloudCredentialSlots.java",
+          "beforeSha256": "c7bf0d9ee0c11374c735ede10db5b0d50a657943442721b4cd1eedc7ce5323f2",
+          "afterSha256": "ae7b8dbfc0d865ef193826b0b226132f4653de1a6691facfbb4c0cabd592c27a"
+        }
+      ]
+    },
+    {
+      "file": "cloud-speech-native.patch",
+      "sha256": "2237ec8621662f18b2d0b23361fcb612b59accd8d399f8ff0080983488b9f610",
+      "module": "plugins/plugin-local-inference/native/android",
+      "targets": [
+        {
+          "path": "plugins/plugin-local-inference/native/android/speech-bridge/src/main/java/ai/eliza/voice/SpeechStreamBridgePlugin.java",
+          "beforeSha256": null,
+          "afterSha256": "1ea1c873dbaabb1d85d7c78a46c8c0a357340e6c62b0d75bd74f9be394d2c026"
+        },
+        {
+          "path": "plugins/plugin-local-inference/native/android/speech-bridge/src/main/java/ai/eliza/voice/CloudSpeechTimings.java",
+          "beforeSha256": null,
+          "afterSha256": "e38e0413662e7f00cf01557174046c47783f8fddf49b2bf8fe58a677c6dd099b"
+        },
+        {
+          "path": "plugins/plugin-local-inference/native/android/speech-bridge/src/main/java/ai/eliza/voice/CloudSpeechWire.java",
+          "beforeSha256": null,
+          "afterSha256": "1ea0e5b147169d7548290d24122edb287e65b29c8682531db314f35b3292945e"
+        }
+      ]
+    },
+    {
+      "file": "camera-capture-latency.patch",
+      "sha256": "50b8fa55d2f016bd475134ecde94fd2ce26649d67914f1c0f91875f06b15a913",
+      "module": "plugins/plugin-native-camera/android",
+      "targets": [
+        {
+          "path": "plugins/plugin-native-camera/android/src/main/java/ai/eliza/plugins/camera/CameraPlugin.kt",
+          "beforeSha256": "0d6dec5115f050cfac2f6f32b22f68e4a36e6d4ec2b10e815fa74303ec2d4c53",
+          "afterSha256": "21062bbea75e071ef5f6c503aea2deb09b73b6675d6dde93e82a4847be534049"
+        },
+        {
+          "path": "plugins/plugin-native-camera/android/src/main/java/ai/eliza/plugins/camera/GalleryImageWriter.kt",
+          "beforeSha256": "a41a4fe0bd2dfcd910529b420ffae72f51399066d991cbdd2c562e6cec284d30",
+          "afterSha256": "3da76a1466457bc3acbd0d5ba1fc4b248624c4a4daac714baf77a6f62b053d37"
+        }
+      ]
+    },
+    {
+      "file": "photos-library.patch",
+      "sha256": "5f531b35a2288f8d24cbc1710d0b4558f199291ef7a1338a490982e54ab005c0",
+      "module": "plugins/plugin-native-media/android",
+      "targets": [
+        {
+          "path": "plugins/plugin-native-media/android/src/main/java/ai/eliza/plugins/media/OwnedMediaLibrary.java",
+          "beforeSha256": "c9e797b91f47bb36ed2d6f503ecb9b26c7da5bf18411a49c86ae7d559c9eda0c",
+          "afterSha256": "5e40d710350d933465842c9126c4ad87d1958b317df904875aabb11b45d7db9c"
+        },
+        {
+          "path": "plugins/plugin-native-media/android/src/main/java/ai/eliza/plugins/media/OwnedMediaSelection.java",
+          "beforeSha256": "06f7ff0ded262d8a3cf9d8a770c4ab036278f5f5065d96693b0da14fff26c6b4",
+          "afterSha256": "28d23cbf9229a5918840d5189653c171df6119f9ec5ff0eabbdcc76aa7699712"
+        },
+        {
+          "path": "plugins/plugin-native-media/android/src/main/java/ai/eliza/plugins/media/OwnedPhotoEdits.java",
+          "beforeSha256": "3f09d9455d95e8bec27699133ecb976466ca6af690f3563a466399bb282e4d48",
+          "afterSha256": "4915e9017c2fec9c27cfb42c2a1af1d7c7d209c001bbb71591f7061376fd8b35"
+        },
+        {
+          "path": "plugins/plugin-native-media/android/src/main/java/ai/eliza/plugins/media/PermittedMediaCatalog.java",
+          "beforeSha256": "e1ab1a24393b45b05025415e8809b3dd61b3e7f0d9bb757395123791bec1814a",
+          "afterSha256": "92dbdd426903bb24978d558c184219fc1f70e1ae2e511fab6c3d22a12437bbb4"
+        },
+        {
+          "path": "plugins/plugin-native-media/android/src/main/java/ai/eliza/plugins/media/PermittedMediaReview.java",
+          "beforeSha256": "67915467619a8f13b4856718a151d300ec2ef3b4c43191d6ee0a94ffc5a5cbb2",
+          "afterSha256": "7f9bf177953c34f8d9da32dd81807ea20b63328c426259a42abd9404c95b50b4"
+        },
+        {
+          "path": "plugins/plugin-native-media/android/src/main/java/ai/eliza/plugins/media/PhotoLibraryAccess.java",
+          "beforeSha256": "f56c327aaed4f2e30770201bf9e4c5976764c00a31c7e279f3eb3051fd843e4b",
+          "afterSha256": "4ee226a2eaf5ee21cdc77669a301b29152a5d3b72ffda46b1d4cb9ac251646b7"
+        },
+        {
+          "path": "plugins/plugin-native-media/android/src/main/java/ai/eliza/plugins/media/PhotosPlugin.java",
+          "beforeSha256": "62e8269a02b73c580824c0c946f6a12123d88db3fc9e525b5439cb7af969d92b",
+          "afterSha256": "8afabf1acaee115cf79eed141c1e7f966027c5cc89262c84ee1eb7b2d5163ec3"
+        }
+      ]
+    },
+    {
+      "file": "notes-recording-store.patch",
+      "sha256": "f75ecf069bdd3c5bf7666731925c2c8eed8baa8a475e7074ddefeb48c633cb84",
+      "module": "plugins/plugin-native-media/android",
+      "targets": [
+        {
+          "path": "plugins/plugin-native-media/android/src/main/java/ai/eliza/plugins/media/RecordingStore.java",
+          "beforeSha256": "deee099f3392489f3a09d177729e691e7febc03c8cde54d3725e8cd803809694",
+          "afterSha256": "9ce74e3998bdbdc84414c81fdc0cd10175d96dc235129cb1ffa4be82fe580a3e"
+        }
+      ]
+    },
+    {
+      "file": "notes-recording-segments.patch",
+      "sha256": "95d81ef889e2c3e526f2b18fb638134855ebcc5508fb2a463b41c2753bee7ae9",
+      "module": "plugins/plugin-local-inference/native/android",
+      "targets": [
+        {
+          "path": "plugins/plugin-local-inference/native/android/src/main/java/ai/eliza/voice/LocalVoiceRecording.java",
+          "beforeSha256": "23d29b041ee00f6d759d16c23ff223a867567f8e5de113dd2512f960bed0dda2",
+          "afterSha256": "313f5e69f006fb658eb57ab3393898cbea32f273d3a9b6c509e3e2bab76971b2"
+        }
+      ]
+    },
+    {
+      "file": "owned-captures-legacy-path.patch",
+      "sha256": "dca98fd6b13493eb4da6e6dd8f0ccda62595ada2c138633647d76df34ceb225c",
+      "module": "plugins/plugin-native-media/android",
+      "targets": [
+        {
+          "path": "plugins/plugin-native-media/android/src/main/java/ai/eliza/plugins/media/OwnedCaptures.java",
+          "beforeSha256": "ceb5ccf19584a0e571457626d09562f1c3acab3b0a8ebd37ac99f21818a33238",
+          "afterSha256": "32978b5a793ed4075091f25e79b0beb972d1dd8630b25b9656a0cbae9ca93c30"
+        },
+        {
+          "path": "plugins/plugin-native-media/android/src/main/java/ai/eliza/plugins/media/OwnedMediaConfig.java",
+          "beforeSha256": "8044c67413198a22881a8695888d52aaafcc648543e21d06aa4e88e1d74e78fc",
+          "afterSha256": "e424f82ed28593e4db227e65f16e95754934d0c17a1b43ddd1af8a4f434d5fbd"
+        }
+      ]
+    },
+    {
+      "file": "reset-durable-admission.patch",
+      "sha256": "986776fdf50e98db66f8270848b46932482dac4f5cb0aeb119bb75b2ec41f5c1",
+      "module": "plugins/plugin-native-system/android",
+      "targets": [
+        {
+          "path": "plugins/plugin-native-system/android/src/main/java/ai/eliza/plugins/system/reset/DataReset.java",
+          "beforeSha256": "96c3f4525587ee42658cafe8b84d0e4650925c52b3a78475d13a6ec5a1fb243d",
+          "afterSha256": "d52ef2f124b683476c42ba15806de5cc0cb8ce70b7ff3507929aa922c6fa7279"
+        }
+      ]
+    },
+    {
+      "file": "deletion-owner-dispatch.patch",
+      "sha256": "d8c920838f8ff4aecb40ed3caae848b9bec0a69855375139fb95ba5a388740a5",
+      "module": "plugins/plugin-native-action-journal/android",
+      "targets": [
+        {
+          "path": "plugins/plugin-native-action-journal/android/src/main/java/ai/eliza/plugins/actionjournal/deletion/DeferredDeletionCoordinator.java",
+          "beforeSha256": "875a275d95e47318bfa3fec6e98dc9bce1569e26a2902cd817a86f37185d18e8",
+          "afterSha256": "fe829258c9a4c1d17185bc29071dab59a0af2927e8106e703c1adf7a157b327c"
+        }
+      ]
+    }
+  ],
   "modules": [
+    "packages/auth/android",
+    "plugins/plugin-local-inference/native/android",
     "plugins/plugin-native-action-journal/android",
     "plugins/plugin-native-calendar/android",
+    "plugins/plugin-native-camera/android",
     "plugins/plugin-native-media/android",
     "plugins/plugin-native-notifications/android",
     "plugins/plugin-native-reminders/android",
     "plugins/plugin-native-secure-store/android",
-    "plugins/plugin-native-secure-store/android-nativeonly",
     "plugins/plugin-native-system/android"
   ]
 }

@@ -63,8 +63,8 @@ public final class AlphaMapsTransportPlugin extends Plugin {
   }catch(RejectedExecutionException busy){/* deadlines.schedule after shutdown. */pending.remove(id,job);job.cancel("Regional service is busy; try again");}
  }
  @PluginMethod public void cancel(PluginCall call){String id=call.getString("requestId");Pending job=id==null?null:pending.get(id);if(job!=null){job.cancel("Regional request cancelled");pending.remove(id,job);}else if(id!=null&&id.matches("[a-zA-Z0-9_-]{1,80}")){long now=android.os.SystemClock.elapsedRealtime();earlyCancelled.entrySet().removeIf(e->now-e.getValue()>30000);if(earlyCancelled.size()<64)earlyCancelled.put(id,now);}call.resolve();}
- // Each session reports its single stop to the bridge that started it, never to another window's.
  private final AlphaNavigationService.StopListener navigationStops=(session,reason)->{JSObject event=new JSObject();event.put("sessionId",session);event.put("reason",reason);notifyListeners("navigationStopped",event);};
+ @Override public void load(){AlphaNavigationService.setStopListener(navigationStops);}
  private static String text(PluginCall call,String name){String value=call.getString(name,"");return value==null?"":value.length()>200?value.substring(0,200):value;}
  @PluginMethod public void navigationAvailability(PluginCall call){JSObject result=new JSObject();result.put("background",AlphaNavigationService.declared(getContext()));result.put("activeSessionId",AlphaNavigationService.activeSession());call.resolve(result);}
  @PluginMethod public void startNavigation(PluginCall call){
@@ -74,12 +74,10 @@ public final class AlphaMapsTransportPlugin extends Plugin {
   if(!AlphaNavigationService.locationGranted(getContext())){call.reject("Location permission is required for background navigation","permission-denied");return;}
   // A Start delivered after this renderer closed has no guidance behind it and nothing left to stop it.
   if(destroyed){call.reject("Background navigation is unavailable: Alpha closed","unavailable");return;}
-  // Guidance never runs in the assistant window; it closes when the assistant does.
-  if(getActivity() instanceof AlphaAssistActivity){call.reject("Navigation runs in Maps","unavailable");return;}
   // One session at a time: a new explicit Start retires the previous one first.
   String previous=AlphaNavigationService.activeSession();if(previous!=null)AlphaNavigationService.stop(getContext(),previous,"replaced");
   try{
-   AlphaNavigationService.start(getContext(),session,text(call,"title"),text(call,"text"),navigationStops,getActivity()==null?-1:getActivity().getTaskId());
+   AlphaNavigationService.start(getContext(),session,text(call,"title"),text(call,"text"));
    // Destruction may have passed the check above while this ran; it sets the flag before it stops the active session, so one of the two stops this one.
    if(destroyed){AlphaNavigationService.stop(getContext(),session,"renderer-closed");call.reject("Background navigation is unavailable: Alpha closed","unavailable");return;}
    call.resolve();
@@ -98,8 +96,7 @@ public final class AlphaMapsTransportPlugin extends Plugin {
  @Override protected void handleOnDestroy(){
   // Guidance lives in this renderer; without it the session must not keep a stale notification.
   // The flag comes first: a Start still running on the bridge thread sees it and retires its own session.
-  // Only the session this bridge started: closing the assistant never ends the launcher's guidance.
   destroyed=true;
-  String owned=AlphaNavigationService.activeSessionOwnedBy(navigationStops);if(owned!=null)AlphaNavigationService.stop(getContext(),owned,"renderer-closed");
+  AlphaNavigationService.clearStopListener(navigationStops);String active=AlphaNavigationService.activeSession();if(active!=null)AlphaNavigationService.stop(getContext(),active,"renderer-closed");
   for(Pending job:pending.values())job.cancel("Regional transport closed");workers.shutdownNow();deadlines.shutdownNow();closers.shutdown();pending.clear();earlyCancelled.clear();}
 }

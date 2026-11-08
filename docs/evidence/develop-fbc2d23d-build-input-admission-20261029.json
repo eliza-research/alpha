@@ -1,0 +1,111 @@
+{
+  "from": "1f2a922f86e2a1f3d6cd62e097145492bd49ebfc",
+  "to": "fbc2d23d4bae0c7086ea529c019e5a47fb7b8352",
+  "inputs": [
+    {
+      "path": "plugins/plugin-local-inference/native/llama.cpp",
+      "entries": 1,
+      "gitModeTypeBlobPathInventorySha256": "a34aec8d7f526b8cdab2301a3c5b11ba110e449cfb899ba42a6fc7a3bb134a35",
+      "unchanged": false
+    },
+    {
+      "path": "plugins/plugin-local-inference/native/android/inputs.json",
+      "entries": 1,
+      "gitModeTypeBlobPathInventorySha256": "d7607f1c2fb4abd7abad1a38b657de52dc00223dd63e762e0b6b67c60b4d923c",
+      "unchanged": false
+    },
+    {
+      "path": "plugins/plugin-local-inference/native/android/consumer.gradle",
+      "entries": 1,
+      "gitModeTypeBlobPathInventorySha256": "6d7ae679508b3ee4f5331ed0d6473af29babe01cb211025b752a44a8a985e750",
+      "unchanged": false
+    },
+    {
+      "path": "packages/app/scripts/paradee-voice/build-native.ts",
+      "entries": 1,
+      "gitModeTypeBlobPathInventorySha256": "c5dbe8d5b7ff109a9efabdc415ef040545c21b86fc1c92b7e676a50c7b05e05f",
+      "unchanged": false
+    },
+    {
+      "path": "packages/app/scripts/stage-elizavoice-lib.ts",
+      "entries": 1,
+      "gitModeTypeBlobPathInventorySha256": "836b590792362de9411863c0c32d9ee2ed8c7fe74fab19e405663809e03ee352",
+      "unchanged": false
+    },
+    {
+      "path": "packages/app/scripts/build-helpers/arm64-simd.ts",
+      "entries": 1,
+      "gitModeTypeBlobPathInventorySha256": "77fa89da9b1e02685ca2b911a321a2b7a0064badb0d3fb5531e9eb34e77e1645",
+      "unchanged": true
+    },
+    {
+      "path": "packages/app/scripts/build-helpers/verify-fused-symbols.ts",
+      "entries": 1,
+      "gitModeTypeBlobPathInventorySha256": "2820a2a2dfb2cdbb6e2055ebee72f68d186e182f20d1b8933e550af11d54fccf",
+      "unchanged": true
+    },
+    {
+      "path": "packages/app/platforms/android/app/src/main/elizavoice-jni",
+      "entries": 2,
+      "gitModeTypeBlobPathInventorySha256": "d9ef3a68534a71219586d091099cf89c1f1d70ca71c4fc169f58ca41fbba1444",
+      "unchanged": false
+    },
+    {
+      "path": "packages/app/platforms/android/app/src/main/java/ai/elizaos/app/ElizaVoiceNative.java",
+      "entries": 1,
+      "gitModeTypeBlobPathInventorySha256": "e6b261e7ed97f3ec85e5ebf20047cc65dc35d6205a4a7433f48390b101ba51b6",
+      "unchanged": false
+    },
+    {
+      "path": "packages/app/scripts/lib/android-bun-artifacts.lock.json",
+      "entries": 1,
+      "gitModeTypeBlobPathInventorySha256": "b04a6f9e0c1cc14b36bd23080073583186356cb2ecaa01e556bc63f047456b4b",
+      "unchanged": true
+    },
+    {
+      "path": "plugins/plugin-local-inference/native",
+      "entries": 332,
+      "gitModeTypeBlobPathInventorySha256": "2cd42d4a92ce151c70a7d7153f4991d776ff6f23ae92f74429b6b5161ef77213",
+      "unchanged": false
+    },
+    {
+      "path": "packages/app/scripts/paradee-voice",
+      "entries": 38,
+      "gitModeTypeBlobPathInventorySha256": "a9d0da370c51dbc11f11e23106d81357f257c17370cc2fb67fefdd0bf7c805d9",
+      "unchanged": false
+    }
+  ],
+  "changedPaths": [
+    "plugins/plugin-local-inference/native/llama.cpp",
+    "plugins/plugin-local-inference/native/android/inputs.json",
+    "plugins/plugin-local-inference/native/android/consumer.gradle",
+    "packages/app/scripts/paradee-voice/build-native.ts",
+    "packages/app/scripts/stage-elizavoice-lib.ts",
+    "packages/app/platforms/android/app/src/main/elizavoice-jni",
+    "packages/app/platforms/android/app/src/main/java/ai/elizaos/app/ElizaVoiceNative.java",
+    "plugins/plugin-local-inference/native",
+    "packages/app/scripts/paradee-voice"
+  ],
+  "forkPins": {
+    "from": "0d9fd4b9db239bbf851068f98c99f4263f8c05c5",
+    "to": "13d0ccbf55c2e48f1ad88fdd9a858fa3aa44e05d"
+  },
+  "paradeeModel": {
+    "from": {
+      "path": "tts/paradee/paradee-8m-v1_1.gguf",
+      "sha256": "f205ab055f0120d571aa6fda2deadde1e6fbc88e8d8bd56a592917fd0e50892e",
+      "bytes": 31275232
+    },
+    "to": {
+      "path": "tts/paradee/paradee-8m-v1_2.gguf",
+      "sha256": "a43118932f7ec01bb3e9f1b92a56b24dd2622011c8fd5c77dca1e353b56e6df6",
+      "bytes": 31276064
+    }
+  },
+  "command": "git -C vendor/eliza ls-tree -r <commit> -- <path> | sha256sum",
+  "evidenceScope": "Source-only comparison of on-device voice build inputs between the two develop commits; no binary, emulator, device or user qualification is transferred",
+  "qualificationTransferred": false,
+  "admitted": false,
+  "requalificationRequired": true,
+  "note": "The native engine inputs changed between develop 1f2a922f86 and fbc2d23d4b: the llama.cpp fork gitlink moved from 0d9fd4b9 to 13d0ccbf, native/android/inputs.json now pins Paradee-8M v1.2 (and an enabled Castilian Spanish Delibes-8M voice plus Spanish eSpeak NG data), consumer.gradle, build-native.ts, stage-elizavoice-lib.ts, the elizavoice JNI sources, ElizaVoiceNative.java and the ai.eliza.voice Java API (LocalSpeechBridgePlugin, SpeechRequestGate, LocalVoiceRecording and others) changed. Only arm64-simd.ts, verify-fused-symbols.ts and the Bun artifact lock are byte-identical. The recorded native libraries were built from fork 0d9fd4b9 and are NOT admitted at this pin: a fresh native engine build from 13d0ccbf for both ABIs, a fresh record of library and model bytes, a fresh APK and on-device voice validation are required. Nothing here was built, staged or run."
+}

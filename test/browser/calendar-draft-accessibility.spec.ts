@@ -1,10 +1,11 @@
+import {openBrowserCalendar} from './helpers/browser-calendar';
 import {test,expect} from '@playwright/test';
 for(const theme of ['light','dark'])test(`calendar draft retains reachable fields and actions at large text: ${theme}`,async({page},info)=>{
  await page.setViewportSize({width:360,height:430});
  await page.addInitScript(()=>localStorage.setItem('alpha.connection.selection.v1',JSON.stringify({kind:'offline'})));
  await page.goto('/?mode=dev&theme='+theme);
  await page.evaluate(async()=>{const {BrowserDevice}=await import('/src/browser/device.ts');await BrowserDevice.prototype.setTextScale({percent:150});});await page.reload();
- await page.getByRole('button',{name:'Calendar',exact:true}).click();await page.getByRole('button',{name:'New event',exact:true}).click();
+ await openBrowserCalendar(page);await page.getByRole('button',{name:'New event',exact:true}).click();
  const save=page.getByRole('button',{name:'Save event',exact:true});expect((await save.boundingBox())!.height).toBeGreaterThanOrEqual(44);
  const fields=page.getByRole('region',{name:'Event details',exact:true});await expect(fields).toBeVisible();await fields.focus();await page.keyboard.press('End');
  const notes=page.getByRole('textbox',{name:'Notes',exact:true});await notes.fill('First paragraph\n\nLong reference '+'abc'.repeat(80));await notes.scrollIntoViewIfNeeded();await expect(notes).toBeInViewport();
@@ -15,7 +16,7 @@ for(const theme of ['light','dark'])test(`calendar draft retains reachable field
 });
 
 for(const theme of ['light','dark'])test(`Calendar timeline fades only clipped content after scrolling: ${theme}`,async({page},info)=>{
- await page.setViewportSize({width:360,height:600});await page.addInitScript(()=>localStorage.setItem('alpha.connection.selection.v1',JSON.stringify({kind:'offline'})));await page.goto('/?theme='+theme);await page.getByRole('button',{name:'Calendar',exact:true}).click();
+ await page.setViewportSize({width:360,height:600});await page.addInitScript(()=>localStorage.setItem('alpha.connection.selection.v1',JSON.stringify({kind:'offline'})));await page.goto('/?theme='+theme);await openBrowserCalendar(page);
  const timeline=page.getByRole('region',{name:'Calendar timeline',exact:true}),create=page.getByRole('button',{name:'New event',exact:true});await expect(timeline).toBeVisible();expect(await page.evaluate(()=>CSS.supports('animation-timeline','scroll()'))).toBe(true);await timeline.evaluate(el=>el.scrollTop=0);await expect.poll(()=>timeline.evaluate(el=>parseFloat(getComputedStyle(el).getPropertyValue('--calendar-scroll-fade-top')))).toBe(0);await expect(create).toBeVisible();expect(await create.evaluate(el=>getComputedStyle(el).maskImage)).toBe('none');await page.screenshot({path:info.outputPath('calendar-scroll-start.png'),animations:'disabled'});
  await timeline.evaluate(el=>el.scrollTop=96);await expect.poll(()=>timeline.evaluate(el=>parseFloat(getComputedStyle(el).getPropertyValue('--calendar-scroll-fade-top')))).toBeGreaterThan(0);expect(await timeline.evaluate(el=>getComputedStyle(el).maskImage)).toContain('linear-gradient');await expect(create).toBeInViewport();expect(await create.evaluate(el=>getComputedStyle(el).maskImage)).toBe('none');await page.screenshot({path:info.outputPath('calendar-scroll-middle.png'),animations:'disabled'});
  await create.click();const save=page.getByRole('button',{name:'Save event',exact:true}),fields=page.getByRole('region',{name:'Event details',exact:true});await expect(save).toBeInViewport();expect(await save.evaluate(el=>getComputedStyle(el).maskImage)).toBe('none');expect(await fields.evaluate(el=>getComputedStyle(el).maskImage)).toBe('none');

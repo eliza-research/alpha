@@ -31,7 +31,7 @@ const clock=(page:Page)=>page.getByRole('dialog',{name:'Clock alarms',exact:true
 async function openClock(page:Page){await page.getByRole('button',{name:'Calendar',exact:true}).click();await page.getByRole('button',{name:'Clock alarms',exact:true}).click();await expect(clock(page)).toBeVisible();return clock(page);}
 async function queue(page:Page,operation:object){
  await page.getByRole('button',{name:'Settings',exact:true}).click();
- await page.getByRole('button',{name:'Agent',exact:true}).click();
+ await page.getByRole('button',{name:'Agent connection',exact:true}).click();
  const dialog=page.getByRole('dialog',{name:'Development connections'});
  await dialog.getByText('Development device actions',{exact:true}).click();
  await dialog.getByRole('textbox',{name:'Action JSON'}).fill(JSON.stringify(operation));
@@ -56,7 +56,7 @@ test('journey C: agent-proposed alarm is reviewed, saved once, survives reload, 
 
  // 2. Connect the development agent and let it propose a Clock handoff.
  await page.getByRole('button',{name:'Settings',exact:true}).click();
- await page.getByRole('button',{name:'Agent',exact:true}).click();
+ await page.getByRole('button',{name:'Agent connection',exact:true}).click();
  await page.getByRole('button',{name:'Connect development profile'}).click();
  await expect(page.getByRole('dialog',{name:'Development connections'})).toHaveCount(0);
  await returnToApps(page);
@@ -73,7 +73,7 @@ test('journey C: agent-proposed alarm is reviewed, saved once, survives reload, 
 
  // 4. Approve once. The durable receipt records only that the handoff was opened.
  await approve(page).click();
- await expect(page.getByRole('button',{name:'Completed Alarm saved.',exact:true})).toHaveCount(1);
+ await expect(conversation.getByText('Alarm saved.',{exact:true})).toHaveCount(1);
  await expect(approve(page)).toHaveCount(0);
  state=await actions(page);
  expect(state.proposals).toHaveLength(1);
@@ -138,7 +138,7 @@ test('journey C: agent-proposed alarm is reviewed, saved once, survives reload, 
  await dialog.getByRole('button',{name:'Cancel',exact:true}).click();
  await returnToApps(page);
  await page.getByRole('button',{name:'Settings',exact:true}).click();
- await page.getByRole('button',{name:'Agent',exact:true}).click();
+ await page.getByRole('button',{name:'Agent connection',exact:true}).click();
  const connection=page.getByRole('dialog',{name:'Development connections'});
  await connection.getByText('Development device actions',{exact:true}).click();
  await connection.getByRole('button',{name:'Sync recorded receipts'}).click();
@@ -155,7 +155,7 @@ test('journey C: a declined alarm proposal hands nothing to Clock, before or aft
  await page.goto('/?mode=dev');
  const ask=page.getByRole('textbox',{name:'Ask Alpha',exact:true}),conversation=page.locator('[data-alpha-layer="conversation"]');
  await page.getByRole('button',{name:'Settings',exact:true}).click();
- await page.getByRole('button',{name:'Agent',exact:true}).click();
+ await page.getByRole('button',{name:'Agent connection',exact:true}).click();
  await page.getByRole('button',{name:'Connect development profile'}).click();
  await expect(page.getByRole('dialog',{name:'Development connections'})).toHaveCount(0);
  await returnToApps(page);

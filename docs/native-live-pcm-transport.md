@@ -18,14 +18,15 @@ request and returned IPC frame checks that binding, including same-owner
 re-enrollment. An idle transport checks it every 250 ms. A changed binding stops
 capture and never sends cleanup with new credentials.
 
-`NativeLiveVoicePipe` holds at most eight batches, each at most 32 frames and
+The shared `ai.eliza.voice.LiveSegmentPipe` (plugin-local-inference), driven by
+`LiveCaptureController`, holds at most eight batches, each at most 32 frames and
 128 KiB of serialized data. A single worker drains them in order. Saturation drops
 queued audio, stops capture and reports a fixed failure; it does not keep recording
 or retry. One native transport worker per bridge surface uses a synchronous queue
 with no worker backlog. PCM and transcript state are not persisted or logged.
 
 The private IPC's normal buffered inference API raises caller timeouts. This path
-therefore uses its existing cancellable stream handle with a separate eight-second
+therefore uses its existing cancellable stream handle (shared `BufferedStreamExchange`) with a separate eight-second
 deadline and a 128 KiB response limit. It assembles the JSON response natively and
 projects only transcript fields. Stop's graceful close drains admitted audio and
 closes the session. Queued frames after the Stop cutoff are omitted. Audio already

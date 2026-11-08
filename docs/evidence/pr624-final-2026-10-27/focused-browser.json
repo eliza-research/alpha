@@ -1,0 +1,3839 @@
+{
+  "schemaVersion": 1,
+  "generatedAtUtc": "2026-10-27T12:49:57.698445+00:00",
+  "scope": "Focused local browser and supporting source validation. These logs do not establish APK installation, emulator HOME role, full AOSP boot, real provider integration, or device/user acceptance.",
+  "repository": {
+    "path": "/home/shaw/.codex/worktrees/review-pr624-audit/alphaphone",
+    "headAtAssembly": "7f014b0e6244d3978a38d3fbf71160ea6c53a7bb",
+    "headClaim": "Context only. These focused runs span reviewed commits and are not all executions at this exact integration head."
+  },
+  "countPolicy": {
+    "aggregateUniqueTotal": null,
+    "reason": "No group counts are added together; groups overlap and span different focused runs. Every completed count is distinct only within its named group.",
+    "successfulRerunPolicy": "A passing rerun supplies coverage for its exact case; it does not turn earlier failed or interrupted logs into all-green runs. Each log records its own summary.",
+    "excluded": "Earlier mixed-edit viewport/audio logs and other superseded diagnostics are not counted as completion evidence."
+  },
+  "sourceInventories": [
+    {
+      "path": "/tmp/bundle-inventory-browser-validation.json",
+      "sha256": "b7b5e71806ce4c4e81458a8b7d92800f858f8b06a5795103ecf7eb5b4693a333",
+      "reportedDistinctWithinSource": 226
+    },
+    {
+      "path": "/tmp/calendar-final-evidence.json",
+      "sha256": "cb681f2e72c10de4faf740881b941573b3be830f4806302feeeee52cde6f03eb",
+      "reportedDistinctWithinSource": 82
+    }
+  ],
+  "groups": [
+    {
+      "id": "bundle_inventory/calendar_source_fixtures",
+      "origin": "bundle_inventory",
+      "countMeaning": "distinct successful test cases within this group only",
+      "completedDistinctWithinGroup": 39,
+      "expectedWithinGroup": 39,
+      "executionClaim": "successful case coverage across the listed logs; see each log run summary",
+      "logPaths": [
+        "/tmp/calendar-fixtures-frozen.log",
+        "/tmp/calendar-alert-route.log",
+        "/tmp/calendar-navigation-frozen.log",
+        "/tmp/calendar-editor-fixtures-frozen.log",
+        "/tmp/calendar-response-retry.log"
+      ],
+      "cases": [
+        {
+          "id": "test/browser/dev-calendar-alerts.spec.ts › all-day alerts use local midnight in the saved zone, including the international date line",
+          "passingLogPaths": [
+            "/tmp/calendar-fixtures-frozen.log"
+          ]
+        },
+        {
+          "id": "test/browser/dev-calendar-alerts.spec.ts › failed dismissal preserves the active alert and deletion removes it without a stale open",
+          "passingLogPaths": [
+            "/tmp/calendar-fixtures-frozen.log"
+          ]
+        },
+        {
+          "id": "test/browser/dev-calendar-alerts.spec.ts › rendered Calendar alert becomes due and opens the exact event from the shade",
+          "passingLogPaths": [
+            "/tmp/calendar-alert-route.log"
+          ]
+        },
+        {
+          "id": "test/browser/dev-calendar-alerts.spec.ts › repeating alerts dismiss only one date and title changes do not replay dismissed schedules",
+          "passingLogPaths": [
+            "/tmp/calendar-fixtures-frozen.log"
+          ]
+        },
+        {
+          "id": "test/browser/dev-calendar-alerts.spec.ts › rescheduling invalidates stale alerts and the Calendar channel suppresses delivery",
+          "passingLogPaths": [
+            "/tmp/calendar-fixtures-frozen.log"
+          ]
+        },
+        {
+          "id": "test/browser/dev-calendar-all-day-save.spec.ts › invalid all-day types or non-midnight boundaries fail without storing an event",
+          "passingLogPaths": [
+            "/tmp/calendar-fixtures-frozen.log"
+          ]
+        },
+        {
+          "id": "test/browser/dev-calendar-all-day-save.spec.ts › provider saves daily all-day events as exact UTC civil boundaries",
+          "passingLogPaths": [
+            "/tmp/calendar-fixtures-frozen.log"
+          ]
+        },
+        {
+          "id": "test/browser/dev-calendar-all-day-save.spec.ts › provider saves none all-day events as exact UTC civil boundaries",
+          "passingLogPaths": [
+            "/tmp/calendar-fixtures-frozen.log"
+          ]
+        },
+        {
+          "id": "test/browser/dev-calendar-editor.spec.ts › browser complex Calendar editor preserves all-day dates",
+          "passingLogPaths": [
+            "/tmp/calendar-editor-fixtures-frozen.log",
+            "/tmp/calendar-fixtures-frozen.log"
+          ]
+        },
+        {
+          "id": "test/browser/dev-calendar-editor.spec.ts › browser complex Calendar editor preserves multi-day dates",
+          "passingLogPaths": [
+            "/tmp/calendar-editor-fixtures-frozen.log",
+            "/tmp/calendar-fixtures-frozen.log"
+          ]
+        },
+        {
+          "id": "test/browser/dev-calendar-editor.spec.ts › browser complex Calendar editor preserves overlap dates",
+          "passingLogPaths": [
+            "/tmp/calendar-editor-fixtures-frozen.log",
+            "/tmp/calendar-fixtures-frozen.log"
+          ]
+        },
+        {
+          "id": "test/browser/dev-calendar-editor.spec.ts › editor rejects nonexistent times, stale saves, and cancellation without replacing the event",
+          "passingLogPaths": [
+            "/tmp/calendar-editor-fixtures-frozen.log",
+            "/tmp/calendar-fixtures-frozen.log"
+          ]
+        },
+        {
+          "id": "test/browser/dev-calendar-guests.spec.ts › complex editor saves guests, prunes removed responses, and persists meeting and alert controls",
+          "passingLogPaths": [
+            "/tmp/calendar-editor-fixtures-frozen.log"
+          ]
+        },
+        {
+          "id": "test/browser/dev-calendar-guests.spec.ts › failed guest save retains selections and cancellation leaves the saved event unchanged",
+          "passingLogPaths": [
+            "/tmp/calendar-editor-fixtures-frozen.log"
+          ]
+        },
+        {
+          "id": "test/browser/dev-calendar-guests.spec.ts › occurrence guest changes do not replace sibling guest lists",
+          "passingLogPaths": [
+            "/tmp/calendar-editor-fixtures-frozen.log"
+          ]
+        },
+        {
+          "id": "test/browser/dev-calendar-guests.spec.ts › rendered all-day event edit receives the Calendar contact choices",
+          "passingLogPaths": [
+            "/tmp/calendar-editor-fixtures-frozen.log"
+          ]
+        },
+        {
+          "id": "test/browser/dev-calendar-meeting.spec.ts › Calendar attendees and video option persist through rendered creation, editing and reload",
+          "passingLogPaths": [
+            "/tmp/calendar-editor-fixtures-frozen.log"
+          ]
+        },
+        {
+          "id": "test/browser/dev-calendar-meeting.spec.ts › denied meeting sensors retain a usable room and retry controls",
+          "passingLogPaths": [
+            "/tmp/calendar-editor-fixtures-frozen.log"
+          ]
+        },
+        {
+          "id": "test/browser/dev-calendar-meeting.spec.ts › late camera permission after leaving releases the granted stream",
+          "passingLogPaths": [
+            "/tmp/calendar-editor-fixtures-frozen.log"
+          ]
+        },
+        {
+          "id": "test/browser/dev-calendar-meeting.spec.ts › meeting preview acquires media only on request and releases both sensors on leave",
+          "passingLogPaths": [
+            "/tmp/calendar-editor-fixtures-frozen.log"
+          ]
+        },
+        {
+          "id": "test/browser/dev-calendar-navigation.spec.ts › a delayed event open cannot take over after navigation away",
+          "passingLogPaths": [
+            "/tmp/calendar-navigation-frozen.log"
+          ]
+        },
+        {
+          "id": "test/browser/dev-calendar-navigation.spec.ts › browser Calendar opens the exact all-day event",
+          "passingLogPaths": [
+            "/tmp/calendar-navigation-frozen.log"
+          ]
+        },
+        {
+          "id": "test/browser/dev-calendar-navigation.spec.ts › browser Calendar opens the exact future event",
+          "passingLogPaths": [
+            "/tmp/calendar-navigation-frozen.log"
+          ]
+        },
+        {
+          "id": "test/browser/dev-calendar-navigation.spec.ts › browser Calendar opens the exact hidden event",
+          "passingLogPaths": [
+            "/tmp/calendar-navigation-frozen.log"
+          ]
+        },
+        {
+          "id": "test/browser/dev-calendar-navigation.spec.ts › missing Calendar event cannot report a successful open",
+          "passingLogPaths": [
+            "/tmp/calendar-navigation-frozen.log"
+          ]
+        },
+        {
+          "id": "test/browser/dev-calendar-preferences.spec.ts › calendar preferences synchronize across tabs and failed writes preserve saved controls",
+          "passingLogPaths": [
+            "/tmp/calendar-editor-fixtures-frozen.log"
+          ]
+        },
+        {
+          "id": "test/browser/dev-calendar-preferences.spec.ts › calendar visibility and color affect the timeline and persist across reload",
+          "passingLogPaths": [
+            "/tmp/calendar-editor-fixtures-frozen.log"
+          ]
+        },
+        {
+          "id": "test/browser/dev-calendar-preferences.spec.ts › month dialog closes and restores the toggle for pointer and keyboard at large text: 2026-02-15T12:00:00Z",
+          "passingLogPaths": [
+            "/tmp/calendar-editor-fixtures-frozen.log"
+          ]
+        },
+        {
+          "id": "test/browser/dev-calendar-preferences.spec.ts › month dialog closes and restores the toggle for pointer and keyboard at large text: 2026-08-15T12:00:00Z",
+          "passingLogPaths": [
+            "/tmp/calendar-editor-fixtures-frozen.log"
+          ]
+        },
+        {
+          "id": "test/browser/dev-calendar-response.spec.ts › a recurring attendee response changes only the selected occurrence",
+          "passingLogPaths": [
+            "/tmp/calendar-editor-fixtures-frozen.log"
+          ]
+        },
+        {
+          "id": "test/browser/dev-calendar-response.spec.ts › rendered guest responses persist and clear through overnight editing",
+          "passingLogPaths": [
+            "/tmp/calendar-editor-fixtures-frozen.log"
+          ]
+        },
+        {
+          "id": "test/browser/dev-calendar-response.spec.ts › rendered guest responses persist and clear through same-day editing",
+          "passingLogPaths": [
+            "/tmp/calendar-response-retry.log"
+          ]
+        },
+        {
+          "id": "test/browser/dev-calendar-response.spec.ts › stale guest review and failed storage keep the prior record unchanged",
+          "passingLogPaths": [
+            "/tmp/calendar-editor-fixtures-frozen.log"
+          ]
+        },
+        {
+          "id": "test/browser/dev-calendar-series.spec.ts › moving the whole series keeps deleted dates and edited occurrences excluded from regeneration",
+          "passingLogPaths": [
+            "/tmp/calendar-editor-fixtures-frozen.log"
+          ]
+        },
+        {
+          "id": "test/browser/dev-calendar-series.spec.ts › overlapping multi-day occurrences resolve the selected date rather than an earlier sibling",
+          "passingLogPaths": [
+            "/tmp/calendar-editor-fixtures-frozen.log"
+          ]
+        },
+        {
+          "id": "test/browser/dev-calendar-series.spec.ts › rendered daily series creates, edits and deletes one occurrence while retaining the others",
+          "passingLogPaths": [
+            "/tmp/calendar-editor-fixtures-frozen.log"
+          ]
+        },
+        {
+          "id": "test/browser/dev-calendar-series.spec.ts › selected occurrence agent mutation and replay keep exact identity and leave sibling dates unchanged",
+          "passingLogPaths": [
+            "/tmp/calendar-editor-fixtures-frozen.log"
+          ]
+        },
+        {
+          "id": "test/browser/dev-calendar-series.spec.ts › series review detects concurrent occurrence edits and failed writes preserve the schedule",
+          "passingLogPaths": [
+            "/tmp/calendar-editor-fixtures-frozen.log"
+          ]
+        },
+        {
+          "id": "test/browser/dev-calendar-series.spec.ts › whole-series editing and deletion require explicit scope and preserve cancellation",
+          "passingLogPaths": [
+            "/tmp/calendar-editor-fixtures-frozen.log"
+          ]
+        }
+      ],
+      "notes": [
+        "Coverage may include successful reruns after failures or interruptions. Original inventory source labels are retained."
+      ]
+    },
+    {
+      "id": "bundle_inventory/notes_source_storage_recovery",
+      "origin": "bundle_inventory",
+      "countMeaning": "distinct successful test cases within this group only",
+      "completedDistinctWithinGroup": 27,
+      "expectedWithinGroup": 27,
+      "executionClaim": "successful case coverage across the listed logs; see each log run summary",
+      "logPaths": [
+        "/tmp/notes-frozen.log",
+        "/tmp/notes-recovery-final.log",
+        "/tmp/notes-recovery-retry-final.log"
+      ],
+      "cases": [
+        {
+          "id": "test/browser/note-source.spec.ts › closing the retained source review rejects a delayed replacement read",
+          "passingLogPaths": [
+            "/tmp/notes-frozen.log"
+          ]
+        },
+        {
+          "id": "test/browser/note-source.spec.ts › retained source fingerprint survives reload, rejects changed bytes and opens exact source dark",
+          "passingLogPaths": [
+            "/tmp/notes-frozen.log"
+          ]
+        },
+        {
+          "id": "test/browser/note-source.spec.ts › retained source fingerprint survives reload, rejects changed bytes and opens exact source light",
+          "passingLogPaths": [
+            "/tmp/notes-frozen.log"
+          ]
+        },
+        {
+          "id": "test/browser/note-source.spec.ts › source metadata save failure retains the persisted note and reports uncertainty",
+          "passingLogPaths": [
+            "/tmp/notes-frozen.log"
+          ]
+        },
+        {
+          "id": "test/browser/notes-permanent-delete-backstop.spec.ts › a permanent deletion that fails inside the process that started it is never settled by that process: a tombstone that lands late keeps its recovery row, and the next start finishes the erase",
+          "passingLogPaths": [
+            "/tmp/notes-frozen.log"
+          ]
+        },
+        {
+          "id": "test/browser/notes-permanent-delete-backstop.spec.ts › a recording that another finisher erased under the same operation while this pass was moving it is confirmed and the row retired, not left under review",
+          "passingLogPaths": [
+            "/tmp/notes-frozen.log"
+          ]
+        },
+        {
+          "id": "test/browser/notes-permanent-delete-backstop.spec.ts › death after the recording reached the audio trash, before its erase: explicit source activation erases it",
+          "passingLogPaths": [
+            "/tmp/notes-frozen.log"
+          ]
+        },
+        {
+          "id": "test/browser/notes-permanent-delete-backstop.spec.ts › death after the tombstone commit, before the recording moved: explicit source activation finishes the erase for that recording only",
+          "passingLogPaths": [
+            "/tmp/notes-frozen.log"
+          ]
+        },
+        {
+          "id": "test/browser/notes-permanent-delete-backstop.spec.ts › death before the tombstone commit: explicit source activation rolls back with the note and recording unchanged",
+          "passingLogPaths": [
+            "/tmp/notes-frozen.log"
+          ]
+        },
+        {
+          "id": "test/browser/notes-permanent-delete-backstop.spec.ts › source activation never erases a recording that a different or a restored note owns; those deletions stay under review",
+          "passingLogPaths": [
+            "/tmp/notes-frozen.log"
+          ]
+        },
+        {
+          "id": "test/browser/notes-permanent-delete-backstop.spec.ts › the other order: a recording moved or erased before its note was deleted is rolled back or finished for that exact note",
+          "passingLogPaths": [
+            "/tmp/notes-frozen.log"
+          ]
+        },
+        {
+          "id": "test/browser/notes-save-failure.spec.ts › Notes retains unsaved text after concurrent edit",
+          "passingLogPaths": [
+            "/tmp/notes-frozen.log"
+          ]
+        },
+        {
+          "id": "test/browser/notes-save-failure.spec.ts › Notes retains unsaved text after quota",
+          "passingLogPaths": [
+            "/tmp/notes-frozen.log"
+          ]
+        },
+        {
+          "id": "test/browser/notes-trash-full.spec.ts › a deletion that would overfill Trash is refused: the note stays saved, Trash is unchanged, and making room lets it through",
+          "passingLogPaths": [
+            "/tmp/notes-frozen.log"
+          ]
+        },
+        {
+          "id": "test/browser/notes-trash-full.spec.ts › a deletion that would push Trash past its byte limit is refused: the note stays saved, Trash is unchanged, and the confirmed choices still work",
+          "passingLogPaths": [
+            "/tmp/notes-frozen.log"
+          ]
+        },
+        {
+          "id": "test/browser/notes-trash-recovery.spec.ts › Trash written under a larger limit stays readable, restorable and purgeable; a full Trash refuses without losing a note and offers a confirmed permanent delete",
+          "passingLogPaths": [
+            "/tmp/notes-frozen.log",
+            "/tmp/notes-recovery-final.log"
+          ]
+        },
+        {
+          "id": "test/browser/notes-trash-recovery.spec.ts › a clock moved backwards never purges early or extends the label, and the purge resumes at the original deadline after restarts",
+          "passingLogPaths": [
+            "/tmp/notes-recovery-retry-final.log"
+          ]
+        },
+        {
+          "id": "test/browser/notes-trash-recovery.spec.ts › a note edited after a full Trash refused it is not deleted by the earlier confirmation",
+          "passingLogPaths": [
+            "/tmp/notes-frozen.log",
+            "/tmp/notes-recovery-final.log"
+          ]
+        },
+        {
+          "id": "test/browser/notes-trash-recovery.spec.ts › a permanent-delete confirmation in a stale view never drops the Trash copy another view wrote for that note",
+          "passingLogPaths": [
+            "/tmp/notes-frozen.log",
+            "/tmp/notes-recovery-final.log"
+          ]
+        },
+        {
+          "id": "test/browser/notes-trash-recovery.spec.ts › a stale Trash row of a note that is then deleted permanently is dropped, so the note cannot be restored from Trash afterwards",
+          "passingLogPaths": [
+            "/tmp/notes-recovery-final.log"
+          ]
+        },
+        {
+          "id": "test/browser/notes-trash-recovery.spec.ts › a voice note refused by a full Trash is erased with its own recording only after separate confirmation",
+          "passingLogPaths": [
+            "/tmp/notes-frozen.log",
+            "/tmp/notes-recovery-final.log"
+          ]
+        },
+        {
+          "id": "test/browser/notes-trash-recovery.spec.ts › an interrupted permanent voice deletion keeps a recovery row and finishes the erase after a restart",
+          "passingLogPaths": [
+            "/tmp/notes-recovery-final.log"
+          ]
+        },
+        {
+          "id": "test/browser/notes-trash-recovery.spec.ts › process death between the write-ahead Trash row and the deletion commit keeps the note; death after a recording erase but before the row is dropped converges",
+          "passingLogPaths": [
+            "/tmp/notes-recovery-retry-final.log"
+          ]
+        },
+        {
+          "id": "test/browser/notes-trash-recovery.spec.ts › two views: a move to Trash from a stale view keeps the newer Trash row the other view wrote",
+          "passingLogPaths": [
+            "/tmp/notes-recovery-final.log"
+          ]
+        },
+        {
+          "id": "test/browser/notes-trash-recovery.spec.ts › two views: a second tab never settles a permanent deletion the first open tab still shows under review",
+          "passingLogPaths": [
+            "/tmp/notes-recovery-final.log"
+          ]
+        },
+        {
+          "id": "test/browser/notes-trash-resume.spec.ts › a resume on Home erases expired text and voice Trash entries without opening Notes",
+          "passingLogPaths": [
+            "/tmp/notes-recovery-retry-final.log"
+          ]
+        },
+        {
+          "id": "test/browser/notes-trash-resume.spec.ts › the 15-minute shell timer purges an expired Trash entry with no navigation or resume event",
+          "passingLogPaths": [
+            "/tmp/notes-recovery-retry-final.log"
+          ]
+        }
+      ],
+      "notes": [
+        "Coverage may include successful reruns after failures or interruptions. Original inventory source labels are retained."
+      ]
+    },
+    {
+      "id": "bundle_inventory/journey_b",
+      "origin": "bundle_inventory",
+      "countMeaning": "distinct successful test cases within this group only",
+      "completedDistinctWithinGroup": 2,
+      "expectedWithinGroup": 2,
+      "executionClaim": "single all-green run",
+      "logPaths": [
+        "/tmp/journey-b-frozen.log"
+      ],
+      "cases": [
+        {
+          "id": "test/browser/journey-b-voice-note-actions.spec.ts › Journey B: a calendar proposal for a changed source is refused, and leaving an open review saves nothing",
+          "passingLogPaths": [
+            "/tmp/journey-b-frozen.log"
+          ]
+        },
+        {
+          "id": "test/browser/journey-b-voice-note-actions.spec.ts › Journey B: recorded note is read aloud, summarized, and becomes an event and a reminder that persist once, then are edited and deleted",
+          "passingLogPaths": [
+            "/tmp/journey-b-frozen.log"
+          ]
+        }
+      ],
+      "notes": [
+        "Coverage may include successful reruns after failures or interruptions. Original inventory source labels are retained."
+      ]
+    },
+    {
+      "id": "bundle_inventory/journey_f",
+      "origin": "bundle_inventory",
+      "countMeaning": "distinct successful test cases within this group only",
+      "completedDistinctWithinGroup": 5,
+      "expectedWithinGroup": 5,
+      "executionClaim": "single all-green run",
+      "logPaths": [
+        "/tmp/journey-f-final.log"
+      ],
+      "cases": [
+        {
+          "id": "test/browser/journey-f-email-notifications.spec.ts › a due reminder notice tapped after reload opens exactly its own event, once",
+          "passingLogPaths": [
+            "/tmp/journey-f-final.log"
+          ]
+        },
+        {
+          "id": "test/browser/journey-f-email-notifications.spec.ts › development mailbox: load, open a message, local draft survives reload, one local send",
+          "passingLogPaths": [
+            "/tmp/journey-f-final.log"
+          ]
+        },
+        {
+          "id": "test/browser/journey-f-email-notifications.spec.ts › synthetic provider: a lost send reply is an unknown outcome and is never sent again",
+          "passingLogPaths": [
+            "/tmp/journey-f-final.log"
+          ]
+        },
+        {
+          "id": "test/browser/journey-f-email-notifications.spec.ts › synthetic provider: a send reply that names another operation is not shown as confirmed and is never sent again",
+          "passingLogPaths": [
+            "/tmp/journey-f-final.log"
+          ]
+        },
+        {
+          "id": "test/browser/journey-f-email-notifications.spec.ts › synthetic provider: reviewed send leaves exactly one receipt and one message after reload",
+          "passingLogPaths": [
+            "/tmp/journey-f-final.log"
+          ]
+        }
+      ],
+      "notes": [
+        "Coverage may include successful reruns after failures or interruptions. Original inventory source labels are retained."
+      ]
+    },
+    {
+      "id": "bundle_inventory/development_actions_and_setup",
+      "origin": "bundle_inventory",
+      "countMeaning": "distinct successful test cases within this group only",
+      "completedDistinctWithinGroup": 5,
+      "expectedWithinGroup": 5,
+      "executionClaim": "successful case coverage across the listed logs; see each log run summary",
+      "logPaths": [
+        "/tmp/development-frozen.log",
+        "/tmp/development-two-tabs-frozen.log"
+      ],
+      "cases": [
+        {
+          "id": "test/browser/dev-connection-actions.spec.ts › journal write failure never dispatches the reviewed effect",
+          "passingLogPaths": [
+            "/tmp/development-frozen.log"
+          ]
+        },
+        {
+          "id": "test/browser/dev-connection-actions.spec.ts › queued development action executes once only after review and preserves its receipt on reload",
+          "passingLogPaths": [
+            "/tmp/development-frozen.log"
+          ]
+        },
+        {
+          "id": "test/browser/dev-connection-actions.spec.ts › rejected chat review becomes unavailable after refresh and cannot dispatch",
+          "passingLogPaths": [
+            "/tmp/development-two-tabs-frozen.log"
+          ]
+        },
+        {
+          "id": "test/browser/dev-connection-actions.spec.ts › two tabs cannot execute the same development proposal twice",
+          "passingLogPaths": [
+            "/tmp/development-two-tabs-frozen.log"
+          ]
+        },
+        {
+          "id": "test/browser/dev-connection-setup.spec.ts › interactive development connection supplies a real workflow Write result",
+          "passingLogPaths": [
+            "/tmp/development-frozen.log"
+          ]
+        }
+      ],
+      "notes": [
+        "Coverage may include successful reruns after failures or interruptions. Original inventory source labels are retained."
+      ]
+    },
+    {
+      "id": "bundle_inventory/calendar_parity",
+      "origin": "bundle_inventory",
+      "countMeaning": "distinct successful test cases within this group only",
+      "completedDistinctWithinGroup": 1,
+      "expectedWithinGroup": 1,
+      "executionClaim": "successful case coverage across the listed logs; see each log run summary",
+      "logPaths": [
+        "/tmp/development-frozen.log"
+      ],
+      "cases": [
+        {
+          "id": "test/browser/dev-parity.spec.ts › browser calendar persists events and rejects stale modifications",
+          "passingLogPaths": [
+            "/tmp/development-frozen.log"
+          ]
+        }
+      ],
+      "notes": [
+        "Coverage may include successful reruns after failures or interruptions. Original inventory source labels are retained."
+      ]
+    },
+    {
+      "id": "bundle_inventory/mvp_document_and_exit",
+      "origin": "bundle_inventory",
+      "countMeaning": "distinct successful test cases within this group only",
+      "completedDistinctWithinGroup": 6,
+      "expectedWithinGroup": 6,
+      "executionClaim": "successful case coverage across the listed logs; see each log run summary",
+      "logPaths": [
+        "/tmp/notes-document-plugin.log",
+        "/tmp/development-frozen.log"
+      ],
+      "cases": [
+        {
+          "id": "test/browser/mvp.spec.ts › Local text import and complete selected-note download: UTF-8 BOM",
+          "passingLogPaths": [
+            "/tmp/notes-document-plugin.log"
+          ]
+        },
+        {
+          "id": "test/browser/mvp.spec.ts › Local text import and complete selected-note download: empty",
+          "passingLogPaths": [
+            "/tmp/notes-document-plugin.log"
+          ]
+        },
+        {
+          "id": "test/browser/mvp.spec.ts › Local text import and complete selected-note download: unicode CRLF",
+          "passingLogPaths": [
+            "/tmp/notes-document-plugin.log"
+          ]
+        },
+        {
+          "id": "test/browser/mvp.spec.ts › MVP Notes sharing keeps email and export without a deferred SMS dead end",
+          "passingLogPaths": [
+            "/tmp/notes-document-plugin.log"
+          ]
+        },
+        {
+          "id": "test/browser/mvp.spec.ts › Mock is explicit, its banner does not cover the phone, and exit restores live mode",
+          "passingLogPaths": [
+            "/tmp/development-frozen.log"
+          ]
+        },
+        {
+          "id": "test/browser/mvp.spec.ts › Notes rejects invalid text and cancels an empty file selection without creating records",
+          "passingLogPaths": [
+            "/tmp/notes-document-plugin.log"
+          ]
+        }
+      ],
+      "notes": [
+        "Coverage may include successful reruns after failures or interruptions. Original inventory source labels are retained."
+      ]
+    },
+    {
+      "id": "bundle_inventory/workflow_adjacency",
+      "origin": "bundle_inventory",
+      "countMeaning": "distinct successful test cases within this group only",
+      "completedDistinctWithinGroup": 8,
+      "expectedWithinGroup": 8,
+      "executionClaim": "single all-green run",
+      "logPaths": [
+        "/tmp/workflow-adjacent-fix.log"
+      ],
+      "cases": [
+        {
+          "id": "test/browser/unified-automations.spec.ts › Alpha unified list, filters, paused authoring and explicit owner review use canonical contracts",
+          "passingLogPaths": [
+            "/tmp/workflow-adjacent-fix.log"
+          ]
+        },
+        {
+          "id": "test/browser/unified-automations.spec.ts › missing server capability is an explicit source state, not a healthy empty automation list",
+          "passingLogPaths": [
+            "/tmp/workflow-adjacent-fix.log"
+          ]
+        },
+        {
+          "id": "test/browser/workflow-open-view.spec.ts › approved navigation opens Workflows only after claim: expired",
+          "passingLogPaths": [
+            "/tmp/workflow-adjacent-fix.log"
+          ]
+        },
+        {
+          "id": "test/browser/workflow-open-view.spec.ts › approved navigation opens Workflows only after claim: pending",
+          "passingLogPaths": [
+            "/tmp/workflow-adjacent-fix.log"
+          ]
+        },
+        {
+          "id": "test/browser/workflow-open-view.spec.ts › approved navigation opens Workflows only after claim: wrong-owner",
+          "passingLogPaths": [
+            "/tmp/workflow-adjacent-fix.log"
+          ]
+        },
+        {
+          "id": "test/browser/workflow-outcome-unknown.spec.ts › hosted digest: interrupted occurrence is not replayable from the phone",
+          "passingLogPaths": [
+            "/tmp/workflow-adjacent-fix.log"
+          ]
+        },
+        {
+          "id": "test/browser/workflow-outcome-unknown.spec.ts › read-only digest: Run again is explicit, confirmed and creates a new run ID without replaying the interrupted one",
+          "passingLogPaths": [
+            "/tmp/workflow-adjacent-fix.log"
+          ]
+        },
+        {
+          "id": "test/browser/workflow-outcome-unknown.spec.ts › side-effecting workflow: interrupted run is shown as outcome unknown, never replayed, and blocks new runs until cancelled",
+          "passingLogPaths": [
+            "/tmp/workflow-adjacent-fix.log"
+          ]
+        }
+      ],
+      "notes": [
+        "Coverage may include successful reruns after failures or interruptions. Original inventory source labels are retained."
+      ]
+    },
+    {
+      "id": "bundle_inventory/map_information",
+      "origin": "bundle_inventory",
+      "countMeaning": "distinct successful test cases within this group only",
+      "completedDistinctWithinGroup": 8,
+      "expectedWithinGroup": 8,
+      "executionClaim": "single all-green run",
+      "logPaths": [
+        "/tmp/maps-information-fix.log"
+      ],
+      "cases": [
+        {
+          "id": "test/browser/upstream-map-plane.spec.ts › Maps location recovery without a configured search or route provider: denied",
+          "passingLogPaths": [
+            "/tmp/maps-information-fix.log"
+          ]
+        },
+        {
+          "id": "test/browser/upstream-map-plane.spec.ts › Maps location recovery without a configured search or route provider: granted",
+          "passingLogPaths": [
+            "/tmp/maps-information-fix.log"
+          ]
+        },
+        {
+          "id": "test/browser/upstream-map-plane.spec.ts › Maps location recovery without a configured search or route provider: late-fix",
+          "passingLogPaths": [
+            "/tmp/maps-information-fix.log"
+          ]
+        },
+        {
+          "id": "test/browser/upstream-map-plane.spec.ts › configured synthetic Maps provider › Maps configured renderer recovery: granted",
+          "passingLogPaths": [
+            "/tmp/maps-information-fix.log"
+          ]
+        },
+        {
+          "id": "test/browser/upstream-map-plane.spec.ts › configured synthetic Maps provider › Maps configured renderer recovery: outside-coverage",
+          "passingLogPaths": [
+            "/tmp/maps-information-fix.log"
+          ]
+        },
+        {
+          "id": "test/browser/upstream-map-plane.spec.ts › configured synthetic Maps provider › Maps configured renderer recovery: tiles",
+          "passingLogPaths": [
+            "/tmp/maps-information-fix.log"
+          ]
+        },
+        {
+          "id": "test/browser/upstream-map-plane.spec.ts › configured synthetic Maps provider › Maps configured renderer recovery: webgl",
+          "passingLogPaths": [
+            "/tmp/maps-information-fix.log"
+          ]
+        },
+        {
+          "id": "test/browser/upstream-map-plane.spec.ts › shared map renderer loads its real worker and draws host-styled route geometry",
+          "passingLogPaths": [
+            "/tmp/maps-information-fix.log"
+          ]
+        }
+      ],
+      "notes": [
+        "Coverage may include successful reruns after failures or interruptions. Original inventory source labels are retained."
+      ]
+    },
+    {
+      "id": "bundle_inventory/voice_entry_and_route",
+      "origin": "bundle_inventory",
+      "countMeaning": "distinct successful test cases within this group only",
+      "completedDistinctWithinGroup": 4,
+      "expectedWithinGroup": 4,
+      "executionClaim": "single all-green run",
+      "logPaths": [
+        "/tmp/voice-adjacent-fix.log"
+      ],
+      "cases": [
+        {
+          "id": "test/browser/voice-preparation-ownership.spec.ts › Cloud Notes recorder uses the official microphone and requires explicit upload and retry",
+          "passingLogPaths": [
+            "/tmp/voice-adjacent-fix.log"
+          ]
+        },
+        {
+          "id": "test/browser/voice-preparation-ownership.spec.ts › unsigned Cloud conversation connects its account without Notes or microphone: development browser",
+          "passingLogPaths": [
+            "/tmp/voice-adjacent-fix.log"
+          ]
+        },
+        {
+          "id": "test/browser/voice-preparation-ownership.spec.ts › unsigned Cloud conversation connects its account without Notes or microphone: normal browser",
+          "passingLogPaths": [
+            "/tmp/voice-adjacent-fix.log"
+          ]
+        },
+        {
+          "id": "test/browser/voice-route-preference.spec.ts › Cloud remains the default across reload and legacy local preferences cannot silently switch routes",
+          "passingLogPaths": [
+            "/tmp/voice-adjacent-fix.log"
+          ]
+        }
+      ],
+      "notes": [
+        "Coverage may include successful reruns after failures or interruptions. Original inventory source labels are retained."
+      ]
+    },
+    {
+      "id": "bundle_inventory/earlier_workflow_fixtures",
+      "origin": "bundle_inventory",
+      "countMeaning": "distinct successful test cases within this group only",
+      "completedDistinctWithinGroup": 84,
+      "expectedWithinGroup": 84,
+      "executionClaim": "successful case coverage across the listed logs; see each log run summary",
+      "logPaths": [
+        "/tmp/workflow-review-remaining.log",
+        "/tmp/workflow-review-urgency.log",
+        "/tmp/workflow-review-timeout-retries.log",
+        "/tmp/workflow-review-reload-retry.log",
+        "/tmp/workflow-review-history-final.log"
+      ],
+      "cases": [
+        {
+          "id": "test/browser/dev-workflow-dates.spec.ts › approved Notes update timestamp is included in its exact returned revision",
+          "passingLogPaths": [
+            "/tmp/workflow-review-remaining.log"
+          ]
+        },
+        {
+          "id": "test/browser/dev-workflow-dates.spec.ts › approved no-op edits do not make an old note appear modified today",
+          "passingLogPaths": [
+            "/tmp/workflow-review-remaining.log"
+          ]
+        },
+        {
+          "id": "test/browser/dev-workflow-dates.spec.ts › dated workflow source: Overnight inbox",
+          "passingLogPaths": [
+            "/tmp/workflow-review-remaining.log"
+          ]
+        },
+        {
+          "id": "test/browser/dev-workflow-dates.spec.ts › dated workflow source: Overnight inbox and today's calendar",
+          "passingLogPaths": [
+            "/tmp/workflow-review-remaining.log"
+          ]
+        },
+        {
+          "id": "test/browser/dev-workflow-dates.spec.ts › dated workflow source: This week's calendar, notes and sent mail",
+          "passingLogPaths": [
+            "/tmp/workflow-review-remaining.log"
+          ]
+        },
+        {
+          "id": "test/browser/dev-workflow-dates.spec.ts › dated workflow source: Today's calendar, notes and sent mail",
+          "passingLogPaths": [
+            "/tmp/workflow-review-remaining.log"
+          ]
+        },
+        {
+          "id": "test/browser/dev-workflow-dates.spec.ts › dated workflow source: Today's notes",
+          "passingLogPaths": [
+            "/tmp/workflow-review-remaining.log"
+          ]
+        },
+        {
+          "id": "test/browser/dev-workflow-dates.spec.ts › local date boundaries follow DST and legacy notes keep unknown creation dates",
+          "passingLogPaths": [
+            "/tmp/workflow-review-remaining.log"
+          ]
+        },
+        {
+          "id": "test/browser/dev-workflow-dates.spec.ts › overnight reads exclude deleted and archived messages in both source combinations",
+          "passingLogPaths": [
+            "/tmp/workflow-review-remaining.log"
+          ]
+        },
+        {
+          "id": "test/browser/dev-workflow-dates.spec.ts › rendered Notes creation and edits retain exact dates across reload",
+          "passingLogPaths": [
+            "/tmp/workflow-review-timeout-retries.log"
+          ]
+        },
+        {
+          "id": "test/browser/dev-workflow-executor.spec.ts › Run again from run history uses the executor and creates another durable receipt",
+          "passingLogPaths": [
+            "/tmp/workflow-review-remaining.log"
+          ]
+        },
+        {
+          "id": "test/browser/dev-workflow-executor.spec.ts › a false evaluated condition skips subsequent device effects",
+          "passingLogPaths": [
+            "/tmp/workflow-review-remaining.log"
+          ]
+        },
+        {
+          "id": "test/browser/dev-workflow-executor.spec.ts › action failure records a failed run with no invented completed step",
+          "passingLogPaths": [
+            "/tmp/workflow-review-remaining.log"
+          ]
+        },
+        {
+          "id": "test/browser/dev-workflow-executor.spec.ts › cancel during a held step preserves its effect and prevents later steps",
+          "passingLogPaths": [
+            "/tmp/workflow-review-remaining.log"
+          ]
+        },
+        {
+          "id": "test/browser/dev-workflow-executor.spec.ts › cancel while waiting for the notification store lock prevents publication",
+          "passingLogPaths": [
+            "/tmp/workflow-review-remaining.log"
+          ]
+        },
+        {
+          "id": "test/browser/dev-workflow-executor.spec.ts › empty workflow input cannot create a blank Notes record",
+          "passingLogPaths": [
+            "/tmp/workflow-review-remaining.log"
+          ]
+        },
+        {
+          "id": "test/browser/dev-workflow-executor.spec.ts › failed Notes persistence stops workflow without a completed write receipt",
+          "passingLogPaths": [
+            "/tmp/workflow-review-remaining.log"
+          ]
+        },
+        {
+          "id": "test/browser/dev-workflow-executor.spec.ts › failed destination save stops later sends and a fresh run creates only the successful copies",
+          "passingLogPaths": [
+            "/tmp/workflow-review-timeout-retries.log"
+          ]
+        },
+        {
+          "id": "test/browser/dev-workflow-executor.spec.ts › failed notification persistence leaves no posted receipt",
+          "passingLogPaths": [
+            "/tmp/workflow-review-remaining.log"
+          ]
+        },
+        {
+          "id": "test/browser/dev-workflow-executor.spec.ts › failure to save run intent prevents any device effect",
+          "passingLogPaths": [
+            "/tmp/workflow-review-remaining.log"
+          ]
+        },
+        {
+          "id": "test/browser/dev-workflow-executor.spec.ts › journal capacity is reserved before a destination effect",
+          "passingLogPaths": [
+            "/tmp/workflow-review-remaining.log"
+          ]
+        },
+        {
+          "id": "test/browser/dev-workflow-executor.spec.ts › local run changes the device and persists its actual step outputs after reload",
+          "passingLogPaths": [
+            "/tmp/workflow-review-remaining.log"
+          ]
+        },
+        {
+          "id": "test/browser/dev-workflow-executor.spec.ts › reload interrupts a held run without replaying or executing the later steps",
+          "passingLogPaths": [
+            "/tmp/workflow-review-remaining.log"
+          ]
+        },
+        {
+          "id": "test/browser/dev-workflow-executor.spec.ts › summary step cannot report success from a truncated input",
+          "passingLogPaths": [
+            "/tmp/workflow-review-remaining.log"
+          ]
+        },
+        {
+          "id": "test/browser/dev-workflow-executor.spec.ts › unsupported read does not silently widen or narrow Calendar next 90 years",
+          "passingLogPaths": [
+            "/tmp/workflow-review-remaining.log"
+          ]
+        },
+        {
+          "id": "test/browser/dev-workflow-executor.spec.ts › unsupported read does not silently widen or narrow Unsupported mailbox",
+          "passingLogPaths": [
+            "/tmp/workflow-review-remaining.log"
+          ]
+        },
+        {
+          "id": "test/browser/dev-workflow-executor.spec.ts › workflow notification is retained, redacted, opened and never duplicated on replay",
+          "passingLogPaths": [
+            "/tmp/workflow-review-remaining.log"
+          ]
+        },
+        {
+          "id": "test/browser/dev-workflow-executor.spec.ts › workflow preserves a newer Notes revision from another view",
+          "passingLogPaths": [
+            "/tmp/workflow-review-remaining.log"
+          ]
+        },
+        {
+          "id": "test/browser/dev-workflow-executor.spec.ts › workflow result renders in the shade and Clear all persists dismissal",
+          "passingLogPaths": [
+            "/tmp/workflow-review-remaining.log"
+          ]
+        },
+        {
+          "id": "test/browser/dev-workflow-executor.spec.ts › workflow saves a real Notes record and reads it after reload",
+          "passingLogPaths": [
+            "/tmp/workflow-review-remaining.log"
+          ]
+        },
+        {
+          "id": "test/browser/dev-workflow-executor.spec.ts › workflow sends actual local message and email copies with replay-bound receipts",
+          "passingLogPaths": [
+            "/tmp/workflow-review-remaining.log"
+          ]
+        },
+        {
+          "id": "test/browser/dev-workflow-result.spec.ts › back discards pending result and stops later effects",
+          "passingLogPaths": [
+            "/tmp/workflow-review-remaining.log"
+          ]
+        },
+        {
+          "id": "test/browser/dev-workflow-result.spec.ts › cancel discards pending result and stops later effects",
+          "passingLogPaths": [
+            "/tmp/workflow-review-remaining.log"
+          ]
+        },
+        {
+          "id": "test/browser/dev-workflow-result.spec.ts › editing the workflow during input prevents downstream use of the supplied result",
+          "passingLogPaths": [
+            "/tmp/workflow-review-remaining.log"
+          ]
+        },
+        {
+          "id": "test/browser/dev-workflow-result.spec.ts › empty and oversized supplied results cannot be submitted",
+          "passingLogPaths": [
+            "/tmp/workflow-review-remaining.log"
+          ]
+        },
+        {
+          "id": "test/browser/dev-workflow-result.spec.ts › escape discards pending result and stops later effects",
+          "passingLogPaths": [
+            "/tmp/workflow-review-remaining.log"
+          ]
+        },
+        {
+          "id": "test/browser/dev-workflow-result.spec.ts › home discards pending result and stops later effects",
+          "passingLogPaths": [
+            "/tmp/workflow-review-remaining.log"
+          ]
+        },
+        {
+          "id": "test/browser/dev-workflow-result.spec.ts › offline Write accepts supplied output for A draft reply",
+          "passingLogPaths": [
+            "/tmp/workflow-review-remaining.log"
+          ]
+        },
+        {
+          "id": "test/browser/dev-workflow-result.spec.ts › offline Write accepts supplied output for Reformat the input as a table",
+          "passingLogPaths": [
+            "/tmp/workflow-review-remaining.log"
+          ]
+        },
+        {
+          "id": "test/browser/dev-workflow-result.spec.ts › offline Write accepts supplied output for Tomorrow's first three tasks",
+          "passingLogPaths": [
+            "/tmp/workflow-review-remaining.log"
+          ]
+        },
+        {
+          "id": "test/browser/dev-workflow-result.spec.ts › reload marks pending result interrupted without adopting its draft",
+          "passingLogPaths": [
+            "/tmp/workflow-review-remaining.log"
+          ]
+        },
+        {
+          "id": "test/browser/dev-workflow-result.spec.ts › retire discards pending result and stops later effects",
+          "passingLogPaths": [
+            "/tmp/workflow-review-remaining.log"
+          ]
+        },
+        {
+          "id": "test/browser/dev-workflow-result.spec.ts › supplied result drives exact local notes, notices and messages and survives reload",
+          "passingLogPaths": [
+            "/tmp/workflow-review-remaining.log"
+          ]
+        },
+        {
+          "id": "test/browser/dev-workflow-triggers.spec.ts › Calendar automatic trigger: 10 minutes before a meeting",
+          "passingLogPaths": [
+            "/tmp/workflow-review-remaining.log"
+          ]
+        },
+        {
+          "id": "test/browser/dev-workflow-triggers.spec.ts › Calendar automatic trigger: A deep-work event starts",
+          "passingLogPaths": [
+            "/tmp/workflow-review-remaining.log"
+          ]
+        },
+        {
+          "id": "test/browser/dev-workflow-triggers.spec.ts › Calendar automatic trigger: An event ends",
+          "passingLogPaths": [
+            "/tmp/workflow-review-remaining.log"
+          ]
+        },
+        {
+          "id": "test/browser/dev-workflow-triggers.spec.ts › Device controls delivers an incoming email and triggers its workflow",
+          "passingLogPaths": [
+            "/tmp/workflow-review-remaining.log"
+          ]
+        },
+        {
+          "id": "test/browser/dev-workflow-triggers.spec.ts › Device controls delivers an incoming message and triggers its workflow",
+          "passingLogPaths": [
+            "/tmp/workflow-review-remaining.log"
+          ]
+        },
+        {
+          "id": "test/browser/dev-workflow-triggers.spec.ts › a second tab cannot dispatch a second copy of the same schedule",
+          "passingLogPaths": [
+            "/tmp/workflow-review-remaining.log"
+          ]
+        },
+        {
+          "id": "test/browser/dev-workflow-triggers.spec.ts › automatic save refusal stays visible from Workflows list",
+          "passingLogPaths": [
+            "/tmp/workflow-review-remaining.log"
+          ]
+        },
+        {
+          "id": "test/browser/dev-workflow-triggers.spec.ts › automatic save refusal stays visible from Workflows other-detail",
+          "passingLogPaths": [
+            "/tmp/workflow-review-remaining.log"
+          ]
+        },
+        {
+          "id": "test/browser/dev-workflow-triggers.spec.ts › automatic save refusal stays visible over same-workflow builder",
+          "passingLogPaths": [
+            "/tmp/workflow-review-remaining.log"
+          ]
+        },
+        {
+          "id": "test/browser/dev-workflow-triggers.spec.ts › automatic save refusal stays visible over same-workflow history",
+          "passingLogPaths": [
+            "/tmp/workflow-review-history-final.log"
+          ]
+        },
+        {
+          "id": "test/browser/dev-workflow-triggers.spec.ts › automatic save refusal stays visible over same-workflow new-builder",
+          "passingLogPaths": [
+            "/tmp/workflow-review-remaining.log"
+          ]
+        },
+        {
+          "id": "test/browser/dev-workflow-triggers.spec.ts › changed queued message cannot be reused as the earlier trigger input",
+          "passingLogPaths": [
+            "/tmp/workflow-review-remaining.log"
+          ]
+        },
+        {
+          "id": "test/browser/dev-workflow-triggers.spec.ts › disabled queued workflow cannot execute when opened",
+          "passingLogPaths": [
+            "/tmp/workflow-review-remaining.log"
+          ]
+        },
+        {
+          "id": "test/browser/dev-workflow-triggers.spec.ts › failed run-intent persistence retains its queued occurrence without a device effect",
+          "passingLogPaths": [
+            "/tmp/workflow-review-remaining.log"
+          ]
+        },
+        {
+          "id": "test/browser/dev-workflow-triggers.spec.ts › failed trigger queue write reports recovery without unhandled rejection or effect",
+          "passingLogPaths": [
+            "/tmp/workflow-review-remaining.log"
+          ]
+        },
+        {
+          "id": "test/browser/dev-workflow-triggers.spec.ts › incoming editor retains input on storage failure and cancels cleanly",
+          "passingLogPaths": [
+            "/tmp/workflow-review-remaining.log"
+          ]
+        },
+        {
+          "id": "test/browser/dev-workflow-triggers.spec.ts › interactive queue survives reload and starts when its workflow is opened",
+          "passingLogPaths": [
+            "/tmp/workflow-review-reload-retry.log"
+          ]
+        },
+        {
+          "id": "test/browser/dev-workflow-triggers.spec.ts › matching incoming email supplies actual content to a local Notes effect",
+          "passingLogPaths": [
+            "/tmp/workflow-review-remaining.log"
+          ]
+        },
+        {
+          "id": "test/browser/dev-workflow-triggers.spec.ts › new message triggers a local reply bound to only its actual sender and source",
+          "passingLogPaths": [
+            "/tmp/workflow-review-remaining.log"
+          ]
+        },
+        {
+          "id": "test/browser/dev-workflow-triggers.spec.ts › place automatic trigger: I arrive at work",
+          "passingLogPaths": [
+            "/tmp/workflow-review-remaining.log"
+          ]
+        },
+        {
+          "id": "test/browser/dev-workflow-triggers.spec.ts › place automatic trigger: I arrive home",
+          "passingLogPaths": [
+            "/tmp/workflow-review-remaining.log"
+          ]
+        },
+        {
+          "id": "test/browser/dev-workflow-triggers.spec.ts › place automatic trigger: I leave home",
+          "passingLogPaths": [
+            "/tmp/workflow-review-remaining.log"
+          ]
+        },
+        {
+          "id": "test/browser/dev-workflow-triggers.spec.ts › receipt trigger limits review to its exact incoming mail and saved bytes",
+          "passingLogPaths": [
+            "/tmp/workflow-review-remaining.log"
+          ]
+        },
+        {
+          "id": "test/browser/dev-workflow-triggers.spec.ts › synchronous incoming and sent writes retain both persisted changes",
+          "passingLogPaths": [
+            "/tmp/workflow-review-remaining.log"
+          ]
+        },
+        {
+          "id": "test/browser/dev-workflow-triggers.spec.ts › time trigger runs from Home without opening Workflows and never repeats after reload",
+          "passingLogPaths": [
+            "/tmp/workflow-review-remaining.log"
+          ]
+        },
+        {
+          "id": "test/browser/dev-workflow-urgency.spec.ts › back retires the offline urgency review without effects",
+          "passingLogPaths": [
+            "/tmp/workflow-review-timeout-retries.log"
+          ]
+        },
+        {
+          "id": "test/browser/dev-workflow-urgency.spec.ts › background retires the offline urgency review without effects",
+          "passingLogPaths": [
+            "/tmp/workflow-review-urgency.log"
+          ]
+        },
+        {
+          "id": "test/browser/dev-workflow-urgency.spec.ts › cancelling offline review prevents notification and subsequent actions",
+          "passingLogPaths": [
+            "/tmp/workflow-review-urgency.log"
+          ]
+        },
+        {
+          "id": "test/browser/dev-workflow-urgency.spec.ts › connected urgency decision false uses the actual returned JSON",
+          "passingLogPaths": [
+            "/tmp/workflow-review-urgency.log"
+          ]
+        },
+        {
+          "id": "test/browser/dev-workflow-urgency.spec.ts › connected urgency decision true uses the actual returned JSON",
+          "passingLogPaths": [
+            "/tmp/workflow-review-urgency.log"
+          ]
+        },
+        {
+          "id": "test/browser/dev-workflow-urgency.spec.ts › escape retires the offline urgency review without effects",
+          "passingLogPaths": [
+            "/tmp/workflow-review-urgency.log"
+          ]
+        },
+        {
+          "id": "test/browser/dev-workflow-urgency.spec.ts › externally edited workflow cannot publish an already pending urgent decision",
+          "passingLogPaths": [
+            "/tmp/workflow-review-urgency.log"
+          ]
+        },
+        {
+          "id": "test/browser/dev-workflow-urgency.spec.ts › failure to persist the decision prevents notification publication",
+          "passingLogPaths": [
+            "/tmp/workflow-review-urgency.log"
+          ]
+        },
+        {
+          "id": "test/browser/dev-workflow-urgency.spec.ts › home retires the offline urgency review without effects",
+          "passingLogPaths": [
+            "/tmp/workflow-review-timeout-retries.log"
+          ]
+        },
+        {
+          "id": "test/browser/dev-workflow-urgency.spec.ts › incoming-call retires the offline urgency review without effects",
+          "passingLogPaths": [
+            "/tmp/workflow-review-urgency.log"
+          ]
+        },
+        {
+          "id": "test/browser/dev-workflow-urgency.spec.ts › late urgent result after cancellation cannot publish",
+          "passingLogPaths": [
+            "/tmp/workflow-review-urgency.log"
+          ]
+        },
+        {
+          "id": "test/browser/dev-workflow-urgency.spec.ts › malformed decision cannot publish: true",
+          "passingLogPaths": [
+            "/tmp/workflow-review-urgency.log"
+          ]
+        },
+        {
+          "id": "test/browser/dev-workflow-urgency.spec.ts › malformed decision cannot publish: {\"urgent\":\"true\",\"reason\":\"Text\"}",
+          "passingLogPaths": [
+            "/tmp/workflow-review-urgency.log"
+          ]
+        },
+        {
+          "id": "test/browser/dev-workflow-urgency.spec.ts › malformed decision cannot publish: {\"urgent\":true,\"reason\":\"Text\",\"extra\":1}",
+          "passingLogPaths": [
+            "/tmp/workflow-review-urgency.log"
+          ]
+        },
+        {
+          "id": "test/browser/dev-workflow-urgency.spec.ts › offline review omits the notification and continues",
+          "passingLogPaths": [
+            "/tmp/workflow-review-urgency.log"
+          ]
+        },
+        {
+          "id": "test/browser/dev-workflow-urgency.spec.ts › offline review posts the notification and continues",
+          "passingLogPaths": [
+            "/tmp/workflow-review-urgency.log"
+          ]
+        }
+      ],
+      "notes": [
+        "Coverage may include successful reruns after failures or interruptions. Original inventory source labels are retained."
+      ]
+    },
+    {
+      "id": "bundle_inventory/earlier_reminder_fixtures",
+      "origin": "bundle_inventory",
+      "countMeaning": "distinct successful test cases within this group only",
+      "completedDistinctWithinGroup": 37,
+      "expectedWithinGroup": 37,
+      "executionClaim": "successful case coverage across the listed logs; see each log run summary",
+      "logPaths": [
+        "/tmp/reminder-review-complete.log",
+        "/tmp/reminder-review-overdue-retry.log"
+      ],
+      "cases": [
+        {
+          "id": "test/browser/reminder-creation-storage.spec.ts › a stale recovery capture cannot erase a newer pending request",
+          "passingLogPaths": [
+            "/tmp/reminder-review-complete.log"
+          ]
+        },
+        {
+          "id": "test/browser/reminder-creation-storage.spec.ts › an older tab changing the legacy copy cannot overwrite canonical requests",
+          "passingLogPaths": [
+            "/tmp/reminder-review-complete.log"
+          ]
+        },
+        {
+          "id": "test/browser/reminder-creation-storage.spec.ts › empty reads and absent discard do not initialize creation history",
+          "passingLogPaths": [
+            "/tmp/reminder-review-complete.log"
+          ]
+        },
+        {
+          "id": "test/browser/reminder-creation-storage.spec.ts › failed commit preserves pending identity and rejects stale acknowledgement",
+          "passingLogPaths": [
+            "/tmp/reminder-review-complete.log"
+          ]
+        },
+        {
+          "id": "test/browser/reminder-creation-storage.spec.ts › legacy archive preserves exact \"  {broken pending history  \" bytes",
+          "passingLogPaths": [
+            "/tmp/reminder-review-complete.log"
+          ]
+        },
+        {
+          "id": "test/browser/reminder-creation-storage.spec.ts › legacy archive preserves exact \"\" bytes",
+          "passingLogPaths": [
+            "/tmp/reminder-review-complete.log"
+          ]
+        },
+        {
+          "id": "test/browser/reminder-creation-storage.spec.ts › legacy archive preserves exact \"null\" bytes",
+          "passingLogPaths": [
+            "/tmp/reminder-review-complete.log"
+          ]
+        },
+        {
+          "id": "test/browser/reminder-creation-storage.spec.ts › two tabs retain all pending requests without scheduling reminders",
+          "passingLogPaths": [
+            "/tmp/reminder-review-complete.log"
+          ]
+        },
+        {
+          "id": "test/browser/reminder-creation-storage.spec.ts › unreadable history offers exact backup and explicit reset without scheduling",
+          "passingLogPaths": [
+            "/tmp/reminder-review-complete.log"
+          ]
+        },
+        {
+          "id": "test/browser/reminder-lifecycle.spec.ts › one-off reminder in America/Los_Angeles › keeps its instant and re-renders the wall time",
+          "passingLogPaths": [
+            "/tmp/reminder-review-complete.log"
+          ]
+        },
+        {
+          "id": "test/browser/reminder-lifecycle.spec.ts › one-off reminder in America/New_York › keeps its instant and re-renders the wall time",
+          "passingLogPaths": [
+            "/tmp/reminder-review-complete.log"
+          ]
+        },
+        {
+          "id": "test/browser/reminder-lifecycle.spec.ts › reminder lifecycle › 33 definite refusals are retired after absent readback and creation still works",
+          "passingLogPaths": [
+            "/tmp/reminder-review-complete.log"
+          ]
+        },
+        {
+          "id": "test/browser/reminder-lifecycle.spec.ts › reminder lifecycle › Clock repeat days are validated and carried in the reviewed request",
+          "passingLogPaths": [
+            "/tmp/reminder-review-complete.log"
+          ]
+        },
+        {
+          "id": "test/browser/reminder-lifecycle.spec.ts › reminder lifecycle › each refusal shows a specific reason",
+          "passingLogPaths": [
+            "/tmp/reminder-review-complete.log"
+          ]
+        },
+        {
+          "id": "test/browser/reminder-lifecycle.spec.ts › reminder lifecycle › overdue lists posted and late scheduled reminders only, oldest first",
+          "passingLogPaths": [
+            "/tmp/reminder-review-overdue-retry.log"
+          ]
+        },
+        {
+          "id": "test/browser/reminder-lifecycle.spec.ts › reminder lifecycle › reopen runs a reviewed reminder_update to an open no-alert occurrence with readback",
+          "passingLogPaths": [
+            "/tmp/reminder-review-complete.log"
+          ]
+        },
+        {
+          "id": "test/browser/reminder-lifecycle.spec.ts › reminder lifecycle › undated to-dos never become calendar events and list open first",
+          "passingLogPaths": [
+            "/tmp/reminder-review-complete.log"
+          ]
+        },
+        {
+          "id": "test/browser/reminder-notice-taps.spec.ts › durable reminder tap chooser-close",
+          "passingLogPaths": [
+            "/tmp/reminder-review-complete.log"
+          ]
+        },
+        {
+          "id": "test/browser/reminder-notice-taps.spec.ts › durable reminder tap consume-failure",
+          "passingLogPaths": [
+            "/tmp/reminder-review-complete.log"
+          ]
+        },
+        {
+          "id": "test/browser/reminder-notice-taps.spec.ts › durable reminder tap dismiss-stale",
+          "passingLogPaths": [
+            "/tmp/reminder-review-complete.log"
+          ]
+        },
+        {
+          "id": "test/browser/reminder-notice-taps.spec.ts › durable reminder tap draft-race",
+          "passingLogPaths": [
+            "/tmp/reminder-review-complete.log"
+          ]
+        },
+        {
+          "id": "test/browser/reminder-notice-taps.spec.ts › durable reminder tap navigation-race",
+          "passingLogPaths": [
+            "/tmp/reminder-review-complete.log"
+          ]
+        },
+        {
+          "id": "test/browser/reminder-notice-taps.spec.ts › durable reminder tap queue-change",
+          "passingLogPaths": [
+            "/tmp/reminder-review-complete.log"
+          ]
+        },
+        {
+          "id": "test/browser/reminder-notice-taps.spec.ts › durable reminder tap read-failure",
+          "passingLogPaths": [
+            "/tmp/reminder-review-complete.log"
+          ]
+        },
+        {
+          "id": "test/browser/reminder-notice-taps.spec.ts › durable reminder tap recover",
+          "passingLogPaths": [
+            "/tmp/reminder-review-complete.log"
+          ]
+        },
+        {
+          "id": "test/browser/reminder-notice-taps.spec.ts › durable reminder tap reload-recovery",
+          "passingLogPaths": [
+            "/tmp/reminder-review-complete.log"
+          ]
+        },
+        {
+          "id": "test/browser/reminder-notice-taps.spec.ts › durable reminder tap stale",
+          "passingLogPaths": [
+            "/tmp/reminder-review-complete.log"
+          ]
+        },
+        {
+          "id": "test/browser/reminder-refusal-ui.spec.ts › refused reminder creation (failed) is retired with its reason",
+          "passingLogPaths": [
+            "/tmp/reminder-review-complete.log"
+          ]
+        },
+        {
+          "id": "test/browser/reminder-refusal-ui.spec.ts › refused reminder creation (past) is retired with its reason",
+          "passingLogPaths": [
+            "/tmp/reminder-review-complete.log"
+          ]
+        },
+        {
+          "id": "test/browser/reminder-refusal-ui.spec.ts › refused reminder creation (permission-denied) is retired with its reason",
+          "passingLogPaths": [
+            "/tmp/reminder-review-complete.log"
+          ]
+        },
+        {
+          "id": "test/browser/reminder-refusal-ui.spec.ts › refused reminder creation (storage-full) is retired with its reason",
+          "passingLogPaths": [
+            "/tmp/reminder-review-complete.log"
+          ]
+        },
+        {
+          "id": "test/browser/reminder-storage-migration.spec.ts › concurrent tabs retain every scheduled reminder",
+          "passingLogPaths": [
+            "/tmp/reminder-review-complete.log"
+          ]
+        },
+        {
+          "id": "test/browser/reminder-storage-migration.spec.ts › damaged reminders expose exact backup and explicit reset from Calendar",
+          "passingLogPaths": [
+            "/tmp/reminder-review-complete.log"
+          ]
+        },
+        {
+          "id": "test/browser/reminder-storage-migration.spec.ts › empty and unchanged reminder polling preserves document identity",
+          "passingLogPaths": [
+            "/tmp/reminder-review-complete.log"
+          ]
+        },
+        {
+          "id": "test/browser/reminder-storage-migration.spec.ts › failed transactions retain the reminder and its operation receipts together",
+          "passingLogPaths": [
+            "/tmp/reminder-review-complete.log"
+          ]
+        },
+        {
+          "id": "test/browser/reminder-storage-migration.spec.ts › legacy migration preserves exact bytes and refuses later older-tab writes",
+          "passingLogPaths": [
+            "/tmp/reminder-review-complete.log"
+          ]
+        },
+        {
+          "id": "test/browser/reminder-storage-migration.spec.ts › stale reset cannot erase a newer reminder",
+          "passingLogPaths": [
+            "/tmp/reminder-review-complete.log"
+          ]
+        }
+      ],
+      "notes": [
+        "Coverage may include successful reruns after failures or interruptions. Original inventory source labels are retained."
+      ]
+    },
+    {
+      "id": "pr_audit/calendar_clock_reminder",
+      "origin": "pr_audit",
+      "countMeaning": "distinct successful test cases within this group only",
+      "completedDistinctWithinGroup": 82,
+      "expectedWithinGroup": 82,
+      "executionClaim": "successful case coverage across the listed logs; see each log run summary",
+      "logPaths": [
+        "/tmp/calendar-recovery-retry.log",
+        "/tmp/calendar-source-frozen.log",
+        "/tmp/calendar-source-resumed.log",
+        "/tmp/calendar-source-retries-original.log"
+      ],
+      "cases": [
+        {
+          "id": "test/browser/agent-clock-handoff.spec.ts › agent Clock handoff: browser",
+          "passingLogPaths": [
+            "/tmp/calendar-source-frozen.log",
+            "/tmp/calendar-source-resumed.log"
+          ]
+        },
+        {
+          "id": "test/browser/agent-clock-handoff.spec.ts › agent Clock handoff: browser development refuses a repeat instead of saving a one-time alarm",
+          "passingLogPaths": [
+            "/tmp/calendar-source-resumed.log"
+          ]
+        },
+        {
+          "id": "test/browser/agent-clock-handoff.spec.ts › agent Clock handoff: confirm",
+          "passingLogPaths": [
+            "/tmp/calendar-source-frozen.log"
+          ]
+        },
+        {
+          "id": "test/browser/agent-clock-handoff.spec.ts › agent Clock handoff: denied",
+          "passingLogPaths": [
+            "/tmp/calendar-source-frozen.log"
+          ]
+        },
+        {
+          "id": "test/browser/agent-clock-handoff.spec.ts › agent Clock handoff: dismiss",
+          "passingLogPaths": [
+            "/tmp/calendar-source-frozen.log"
+          ]
+        },
+        {
+          "id": "test/browser/agent-clock-handoff.spec.ts › agent Clock handoff: duplicate",
+          "passingLogPaths": [
+            "/tmp/calendar-source-resumed.log"
+          ]
+        },
+        {
+          "id": "test/browser/agent-clock-handoff.spec.ts › agent Clock handoff: failed",
+          "passingLogPaths": [
+            "/tmp/calendar-source-frozen.log"
+          ]
+        },
+        {
+          "id": "test/browser/agent-clock-handoff.spec.ts › agent Clock handoff: modal",
+          "passingLogPaths": [
+            "/tmp/calendar-source-frozen.log"
+          ]
+        },
+        {
+          "id": "test/browser/agent-clock-handoff.spec.ts › agent Clock handoff: old-host",
+          "passingLogPaths": [
+            "/tmp/calendar-source-resumed.log"
+          ]
+        },
+        {
+          "id": "test/browser/agent-clock-handoff.spec.ts › agent Clock handoff: receipt-loss",
+          "passingLogPaths": [
+            "/tmp/calendar-source-frozen.log"
+          ]
+        },
+        {
+          "id": "test/browser/agent-clock-handoff.spec.ts › agent Clock handoff: review-cancel",
+          "passingLogPaths": [
+            "/tmp/calendar-source-resumed.log"
+          ]
+        },
+        {
+          "id": "test/browser/agent-clock-handoff.spec.ts › agent Clock handoff: review-cancel-failure",
+          "passingLogPaths": [
+            "/tmp/calendar-source-resumed.log"
+          ]
+        },
+        {
+          "id": "test/browser/agent-clock-handoff.spec.ts › agent Clock handoff: review-context",
+          "passingLogPaths": [
+            "/tmp/calendar-source-resumed.log"
+          ]
+        },
+        {
+          "id": "test/browser/agent-clock-handoff.spec.ts › agent Clock handoff: review-owner",
+          "passingLogPaths": [
+            "/tmp/calendar-source-resumed.log"
+          ]
+        },
+        {
+          "id": "test/browser/agent-clock-handoff.spec.ts › agent Clock handoff: show",
+          "passingLogPaths": [
+            "/tmp/calendar-source-resumed.log"
+          ]
+        },
+        {
+          "id": "test/browser/agent-clock-handoff.spec.ts › agent Clock handoff: snooze",
+          "passingLogPaths": [
+            "/tmp/calendar-source-frozen.log"
+          ]
+        },
+        {
+          "id": "test/browser/agent-clock-handoff.spec.ts › agent Clock handoff: transcribed",
+          "passingLogPaths": [
+            "/tmp/calendar-source-frozen.log"
+          ]
+        },
+        {
+          "id": "test/browser/agent-clock-handoff.spec.ts › agent Clock handoff: unavailable",
+          "passingLogPaths": [
+            "/tmp/calendar-source-frozen.log"
+          ]
+        },
+        {
+          "id": "test/browser/agent-clock-handoff.spec.ts › agent Clock handoff: unknown",
+          "passingLogPaths": [
+            "/tmp/calendar-source-frozen.log"
+          ]
+        },
+        {
+          "id": "test/browser/agent-clock-handoff.spec.ts › agent Clock handoff: zone",
+          "passingLogPaths": [
+            "/tmp/calendar-source-frozen.log"
+          ]
+        },
+        {
+          "id": "test/browser/calendar-availability.spec.ts › empty browser calendar requires freshness evidence on both reads",
+          "passingLogPaths": [
+            "/tmp/calendar-source-resumed.log"
+          ]
+        },
+        {
+          "id": "test/browser/calendar-availability.spec.ts › foreground Calendar availability: all-day",
+          "passingLogPaths": [
+            "/tmp/calendar-source-resumed.log"
+          ]
+        },
+        {
+          "id": "test/browser/calendar-availability.spec.ts › foreground Calendar availability: cancel-choice",
+          "passingLogPaths": [
+            "/tmp/calendar-source-resumed.log"
+          ]
+        },
+        {
+          "id": "test/browser/calendar-availability.spec.ts › foreground Calendar availability: cancel-result",
+          "passingLogPaths": [
+            "/tmp/calendar-source-resumed.log"
+          ]
+        },
+        {
+          "id": "test/browser/calendar-availability.spec.ts › foreground Calendar availability: changed-during-review",
+          "passingLogPaths": [
+            "/tmp/calendar-source-resumed.log"
+          ]
+        },
+        {
+          "id": "test/browser/calendar-availability.spec.ts › foreground Calendar availability: free",
+          "passingLogPaths": [
+            "/tmp/calendar-source-resumed.log"
+          ]
+        },
+        {
+          "id": "test/browser/calendar-availability.spec.ts › foreground Calendar availability: left-during-review",
+          "passingLogPaths": [
+            "/tmp/calendar-source-resumed.log"
+          ]
+        },
+        {
+          "id": "test/browser/calendar-availability.spec.ts › foreground Calendar availability: not-offered",
+          "passingLogPaths": [
+            "/tmp/calendar-source-resumed.log"
+          ]
+        },
+        {
+          "id": "test/browser/calendar-availability.spec.ts › foreground Calendar availability: other-zone",
+          "passingLogPaths": [
+            "/tmp/calendar-source-resumed.log"
+          ]
+        },
+        {
+          "id": "test/browser/calendar-availability.spec.ts › foreground Calendar availability: share",
+          "passingLogPaths": [
+            "/tmp/calendar-source-resumed.log"
+          ]
+        },
+        {
+          "id": "test/browser/calendar-maps-handoff.spec.ts › a late event-address response cannot replace a newer Maps search",
+          "passingLogPaths": [
+            "/tmp/calendar-source-resumed.log"
+          ]
+        },
+        {
+          "id": "test/browser/calendar-maps-handoff.spec.ts › event address searches once, preserves result choice and returns to the same event",
+          "passingLogPaths": [
+            "/tmp/calendar-source-retries-original.log"
+          ]
+        },
+        {
+          "id": "test/browser/calendar-maps-handoff.spec.ts › leaving during an event-address search prevents late results and automatic replay",
+          "passingLogPaths": [
+            "/tmp/calendar-source-resumed.log"
+          ]
+        },
+        {
+          "id": "test/browser/calendar-maps-handoff.spec.ts › missing Maps provider retains the event address without inventing a destination",
+          "passingLogPaths": [
+            "/tmp/calendar-source-resumed.log"
+          ]
+        },
+        {
+          "id": "test/browser/calendar-recovery.spec.ts › a current recovery receipt can reset atomically without Web Locks",
+          "passingLogPaths": [
+            "/tmp/calendar-source-resumed.log"
+          ]
+        },
+        {
+          "id": "test/browser/calendar-recovery.spec.ts › a newer canonical receipt invalidates reset even when legacy bytes are unchanged",
+          "passingLogPaths": [
+            "/tmp/calendar-source-resumed.log"
+          ]
+        },
+        {
+          "id": "test/browser/calendar-recovery.spec.ts › another tab changing the saved calendar invalidates the reset confirmation",
+          "passingLogPaths": [
+            "/tmp/calendar-source-resumed.log"
+          ]
+        },
+        {
+          "id": "test/browser/calendar-recovery.spec.ts › backup preserves damaged bytes and reviewed reset restores an empty usable calendar",
+          "passingLogPaths": [
+            "/tmp/calendar-recovery-retry.log"
+          ]
+        },
+        {
+          "id": "test/browser/calendar-recovery.spec.ts › closing recovery while a transaction holds storage cancels the queued reset",
+          "passingLogPaths": [
+            "/tmp/calendar-source-resumed.log"
+          ]
+        },
+        {
+          "id": "test/browser/calendar-recovery.spec.ts › failed transaction retains the original and does not claim success",
+          "passingLogPaths": [
+            "/tmp/calendar-source-resumed.log"
+          ]
+        },
+        {
+          "id": "test/browser/calendar-recovery.spec.ts › reset renews calendar authority and rejects a proposal bound to the deleted source",
+          "passingLogPaths": [
+            "/tmp/calendar-source-resumed.log"
+          ]
+        },
+        {
+          "id": "test/browser/calendar-save-completion.spec.ts › edited event refresh waits for React completion and preserves home",
+          "passingLogPaths": [
+            "/tmp/calendar-source-resumed.log"
+          ]
+        },
+        {
+          "id": "test/browser/calendar-save-completion.spec.ts › edited event refresh waits for React completion and preserves new-draft",
+          "passingLogPaths": [
+            "/tmp/calendar-source-resumed.log"
+          ]
+        },
+        {
+          "id": "test/browser/calendar-save-completion.spec.ts › edited event refresh waits for React completion and preserves stay",
+          "passingLogPaths": [
+            "/tmp/calendar-source-resumed.log"
+          ]
+        },
+        {
+          "id": "test/browser/calendar-sync-settings.spec.ts › Calendar sync is reached through the Settings app",
+          "passingLogPaths": [
+            "/tmp/calendar-source-resumed.log"
+          ]
+        },
+        {
+          "id": "test/browser/calendar-sync-settings.spec.ts › Settings reviews the destination before opt-in, then explicitly syncs actual local data in both directions",
+          "passingLogPaths": [
+            "/tmp/calendar-source-resumed.log"
+          ]
+        },
+        {
+          "id": "test/browser/calendar-sync-settings.spec.ts › account change after review refuses enablement before any provider write",
+          "passingLogPaths": [
+            "/tmp/calendar-source-resumed.log"
+          ]
+        },
+        {
+          "id": "test/browser/calendar-sync-settings.spec.ts › agent change after review refuses enablement before any provider write",
+          "passingLogPaths": [
+            "/tmp/calendar-source-resumed.log"
+          ]
+        },
+        {
+          "id": "test/browser/calendar-sync-settings.spec.ts › lost create responses recover from the retained event key without a second provider write",
+          "passingLogPaths": [
+            "/tmp/calendar-source-resumed.log"
+          ]
+        },
+        {
+          "id": "test/browser/calendar-sync-settings.spec.ts › revision change after review refuses enablement before any provider write",
+          "passingLogPaths": [
+            "/tmp/calendar-source-resumed.log"
+          ]
+        },
+        {
+          "id": "test/browser/calendar-sync-settings.spec.ts › unsupported Google recurrence is retained and quarantined without flattening either event",
+          "passingLogPaths": [
+            "/tmp/calendar-source-resumed.log"
+          ]
+        },
+        {
+          "id": "test/browser/dev-calendar-assistant.spec.ts › browser assistant Calendar action: cancel",
+          "passingLogPaths": [
+            "/tmp/calendar-source-resumed.log"
+          ]
+        },
+        {
+          "id": "test/browser/dev-calendar-assistant.spec.ts › browser assistant Calendar action: confirm",
+          "passingLogPaths": [
+            "/tmp/calendar-source-resumed.log"
+          ]
+        },
+        {
+          "id": "test/browser/dev-calendar-assistant.spec.ts › browser assistant Calendar action: delete",
+          "passingLogPaths": [
+            "/tmp/calendar-source-resumed.log"
+          ]
+        },
+        {
+          "id": "test/browser/dev-calendar-assistant.spec.ts › browser assistant Calendar action: read",
+          "passingLogPaths": [
+            "/tmp/calendar-source-resumed.log"
+          ]
+        },
+        {
+          "id": "test/browser/dev-calendar-assistant.spec.ts › browser assistant Calendar action: update",
+          "passingLogPaths": [
+            "/tmp/calendar-source-resumed.log"
+          ]
+        },
+        {
+          "id": "test/browser/dev-calendar-recurring-assistant.spec.ts › browser assistant recurring Calendar action: cancel",
+          "passingLogPaths": [
+            "/tmp/calendar-source-resumed.log"
+          ]
+        },
+        {
+          "id": "test/browser/dev-calendar-recurring-assistant.spec.ts › browser assistant recurring Calendar action: delete",
+          "passingLogPaths": [
+            "/tmp/calendar-source-resumed.log"
+          ]
+        },
+        {
+          "id": "test/browser/dev-calendar-recurring-assistant.spec.ts › browser assistant recurring Calendar action: read",
+          "passingLogPaths": [
+            "/tmp/calendar-source-resumed.log"
+          ]
+        },
+        {
+          "id": "test/browser/dev-calendar-recurring-assistant.spec.ts › browser assistant recurring Calendar action: stale",
+          "passingLogPaths": [
+            "/tmp/calendar-source-resumed.log"
+          ]
+        },
+        {
+          "id": "test/browser/dev-calendar-recurring-assistant.spec.ts › browser assistant recurring Calendar action: update",
+          "passingLogPaths": [
+            "/tmp/calendar-source-resumed.log"
+          ]
+        },
+        {
+          "id": "test/browser/dev-reminder-assistant.spec.ts › browser assistant reminder action: cancel",
+          "passingLogPaths": [
+            "/tmp/calendar-source-resumed.log"
+          ]
+        },
+        {
+          "id": "test/browser/dev-reminder-assistant.spec.ts › browser assistant reminder action: complete",
+          "passingLogPaths": [
+            "/tmp/calendar-source-resumed.log"
+          ]
+        },
+        {
+          "id": "test/browser/dev-reminder-assistant.spec.ts › browser assistant reminder action: create",
+          "passingLogPaths": [
+            "/tmp/calendar-source-resumed.log"
+          ]
+        },
+        {
+          "id": "test/browser/dev-reminder-assistant.spec.ts › browser assistant reminder action: read",
+          "passingLogPaths": [
+            "/tmp/calendar-source-resumed.log"
+          ]
+        },
+        {
+          "id": "test/browser/dev-reminder-assistant.spec.ts › browser assistant reminder action: recurring-complete",
+          "passingLogPaths": [
+            "/tmp/calendar-source-resumed.log"
+          ]
+        },
+        {
+          "id": "test/browser/dev-reminder-assistant.spec.ts › browser assistant reminder action: snooze",
+          "passingLogPaths": [
+            "/tmp/calendar-source-resumed.log"
+          ]
+        },
+        {
+          "id": "test/browser/dev-reminder-assistant.spec.ts › browser assistant reminder action: stale",
+          "passingLogPaths": [
+            "/tmp/calendar-source-resumed.log"
+          ]
+        },
+        {
+          "id": "test/browser/dev-reminder-assistant.spec.ts › browser assistant reminder action: update",
+          "passingLogPaths": [
+            "/tmp/calendar-source-resumed.log"
+          ]
+        },
+        {
+          "id": "test/browser/native-calendar-deletion-routing.spec.ts › native Calendar occurrence deletion carries only its exact inspected identity",
+          "passingLogPaths": [
+            "/tmp/calendar-source-retries-original.log"
+          ]
+        },
+        {
+          "id": "test/browser/native-calendar-deletion-routing.spec.ts › native Calendar series deletion carries only its exact inspected identity",
+          "passingLogPaths": [
+            "/tmp/calendar-source-retries-original.log"
+          ]
+        },
+        {
+          "id": "test/browser/reminder-v2-assistant.spec.ts › browser assistant v2 no-alert action: cancel",
+          "passingLogPaths": [
+            "/tmp/calendar-source-resumed.log"
+          ]
+        },
+        {
+          "id": "test/browser/reminder-v2-assistant.spec.ts › browser assistant v2 no-alert action: complete",
+          "passingLogPaths": [
+            "/tmp/calendar-source-resumed.log"
+          ]
+        },
+        {
+          "id": "test/browser/reminder-v2-assistant.spec.ts › browser assistant v2 no-alert action: create-lead",
+          "passingLogPaths": [
+            "/tmp/calendar-source-resumed.log"
+          ]
+        },
+        {
+          "id": "test/browser/reminder-v2-assistant.spec.ts › browser assistant v2 no-alert action: create-none",
+          "passingLogPaths": [
+            "/tmp/calendar-source-resumed.log"
+          ]
+        },
+        {
+          "id": "test/browser/reminder-v2-assistant.spec.ts › browser assistant v2 no-alert action: create-old-peer",
+          "passingLogPaths": [
+            "/tmp/calendar-source-resumed.log"
+          ]
+        },
+        {
+          "id": "test/browser/reminder-v2-assistant.spec.ts › browser assistant v2 no-alert action: create-repeat",
+          "passingLogPaths": [
+            "/tmp/calendar-source-resumed.log"
+          ]
+        },
+        {
+          "id": "test/browser/reminder-v2-assistant.spec.ts › browser assistant v2 no-alert action: older-peer",
+          "passingLogPaths": [
+            "/tmp/calendar-source-resumed.log"
+          ]
+        },
+        {
+          "id": "test/browser/reminder-v2-assistant.spec.ts › browser assistant v2 no-alert action: read",
+          "passingLogPaths": [
+            "/tmp/calendar-source-resumed.log"
+          ]
+        },
+        {
+          "id": "test/browser/reminder-v2-assistant.spec.ts › browser assistant v2 no-alert action: recurring-complete",
+          "passingLogPaths": [
+            "/tmp/calendar-source-resumed.log"
+          ]
+        },
+        {
+          "id": "test/browser/reminder-v2-assistant.spec.ts › browser assistant v2 no-alert action: stale",
+          "passingLogPaths": [
+            "/tmp/calendar-source-resumed.log"
+          ]
+        },
+        {
+          "id": "test/browser/reminder-v2-assistant.spec.ts › browser assistant v2 no-alert action: update",
+          "passingLogPaths": [
+            "/tmp/calendar-source-resumed.log"
+          ]
+        }
+      ],
+      "notes": [
+        "Distinct successful cases across targeted runs; interrupted runs and failed attempts are not counted as passing cases. CLI timeout was 60000 ms. Repository CI config was unchanged.",
+        "CLI timeout was 60000 ms for these focused validations; repository CI configuration was unchanged.",
+        "The initial log has other passing lines outside the selected 82-case inventory. No claim of a single clean 82-case run or execution at the final integration commit."
+      ]
+    },
+    {
+      "id": "root/journey_recoveries",
+      "origin": "root",
+      "countMeaning": "distinct successful test cases within this group only",
+      "completedDistinctWithinGroup": 22,
+      "expectedWithinGroup": 22,
+      "executionClaim": "successful case coverage across the listed logs; see each log run summary",
+      "logPaths": [
+        "/tmp/alpha626-final-journey-regressions.log",
+        "/tmp/alpha626-journey-a-e-final.log",
+        "/tmp/alpha626-journey-e-persistence-final.log",
+        "/tmp/journey-f-final.log",
+        "/tmp/browser-agent-journey-auth-retry.log"
+      ],
+      "cases": [
+        {
+          "id": "test/browser/journey-a-conversation.spec.ts › journey A: a proposed phone action is declined from the conversation and nothing runs, before or after a reload",
+          "passingLogPaths": [
+            "/tmp/alpha626-final-journey-regressions.log"
+          ]
+        },
+        {
+          "id": "test/browser/journey-a-conversation.spec.ts › journey A: a spoken request is transcribed, sent once, answered once and read back, and silence sends nothing",
+          "passingLogPaths": [
+            "/tmp/alpha626-final-journey-regressions.log"
+          ]
+        },
+        {
+          "id": "test/browser/journey-a-conversation.spec.ts › journey A: boot, connect, converse across apps, stop a reply, reload and recover one result per accepted request",
+          "passingLogPaths": [
+            "/tmp/alpha626-journey-a-e-final.log"
+          ]
+        },
+        {
+          "id": "test/browser/journey-c-alarms.spec.ts › journey C: a declined alarm proposal hands nothing to Clock, before or after a reload",
+          "passingLogPaths": [
+            "/tmp/alpha626-final-journey-regressions.log",
+            "/tmp/browser-agent-journey-auth-retry.log"
+          ]
+        },
+        {
+          "id": "test/browser/journey-c-alarms.spec.ts › journey C: agent-proposed alarm is reviewed, saved once, survives reload, rings, snoozes, rings again and is dismissed",
+          "passingLogPaths": [
+            "/tmp/browser-agent-journey-auth-retry.log"
+          ]
+        },
+        {
+          "id": "test/browser/journey-e-browser-credentials.spec.ts › browser navigation, tabs, private tab, reviewed reading and password manager complete as one journey",
+          "passingLogPaths": [
+            "/tmp/alpha626-journey-e-persistence-final.log"
+          ]
+        },
+        {
+          "id": "test/browser/journey-f-email-notifications.spec.ts › a due reminder notice tapped after reload opens exactly its own event, once",
+          "passingLogPaths": [
+            "/tmp/journey-f-final.log"
+          ]
+        },
+        {
+          "id": "test/browser/journey-f-email-notifications.spec.ts › development mailbox: load, open a message, local draft survives reload, one local send",
+          "passingLogPaths": [
+            "/tmp/alpha626-final-journey-regressions.log",
+            "/tmp/journey-f-final.log"
+          ]
+        },
+        {
+          "id": "test/browser/journey-f-email-notifications.spec.ts › synthetic provider: a lost send reply is an unknown outcome and is never sent again",
+          "passingLogPaths": [
+            "/tmp/journey-f-final.log"
+          ]
+        },
+        {
+          "id": "test/browser/journey-f-email-notifications.spec.ts › synthetic provider: a send reply that names another operation is not shown as confirmed and is never sent again",
+          "passingLogPaths": [
+            "/tmp/journey-f-final.log"
+          ]
+        },
+        {
+          "id": "test/browser/journey-f-email-notifications.spec.ts › synthetic provider: reviewed send leaves exactly one receipt and one message after reload",
+          "passingLogPaths": [
+            "/tmp/journey-f-final.log"
+          ]
+        },
+        {
+          "id": "test/browser/journey-j01-poster-calendar.spec.ts › J01 poster scan becomes exactly one reviewed Calendar event; suggestions and drafts never save by themselves",
+          "passingLogPaths": [
+            "/tmp/alpha626-final-journey-regressions.log"
+          ]
+        },
+        {
+          "id": "test/browser/journey-j03-document-analysis.spec.ts › J03: an Inbox attachment is saved to Files, analysed, and kept as a reviewed note whose source link opens the source and fails closed when it changes or is deleted",
+          "passingLogPaths": [
+            "/tmp/alpha626-final-journey-regressions.log"
+          ]
+        },
+        {
+          "id": "test/browser/journey-j04-schedule-travel.spec.ts › calendar event location is handed to Maps once, routed by explicit choices, and returns to the event",
+          "passingLogPaths": [
+            "/tmp/alpha626-final-journey-regressions.log"
+          ]
+        },
+        {
+          "id": "test/browser/journey-j05-web-research-note.spec.ts › navigating after the question review opens closes it: no draft, no message and no note",
+          "passingLogPaths": [
+            "/tmp/alpha626-final-journey-regressions.log"
+          ]
+        },
+        {
+          "id": "test/browser/journey-j05-web-research-note.spec.ts › reviewed page excerpt, development agent answer and explicit Save leave exactly one source-linked note",
+          "passingLogPaths": [
+            "/tmp/alpha626-final-journey-regressions.log"
+          ]
+        },
+        {
+          "id": "test/browser/journey-j05-web-research-note.spec.ts › when cross-origin reading is denied, pasted text is reviewed instead and still saves one linked note",
+          "passingLogPaths": [
+            "/tmp/alpha626-final-journey-regressions.log"
+          ]
+        },
+        {
+          "id": "test/browser/maps-event-return.spec.ts › Back to event returns to exactly the originating event from every Maps layer, once, without a new search",
+          "passingLogPaths": [
+            "/tmp/alpha626-final-journey-regressions.log"
+          ]
+        },
+        {
+          "id": "test/browser/maps-event-return.spec.ts › a deleted or moved event fails closed: Maps stays open and the control is withdrawn",
+          "passingLogPaths": [
+            "/tmp/alpha626-final-journey-regressions.log"
+          ]
+        },
+        {
+          "id": "test/browser/maps-event-return.spec.ts › a refused or failed calendar read keeps Back to event and never claims the event is gone",
+          "passingLogPaths": [
+            "/tmp/alpha626-final-journey-regressions.log"
+          ]
+        },
+        {
+          "id": "test/browser/maps-event-return.spec.ts › double activation returns once; a reload in Maps drops the return and replays nothing",
+          "passingLogPaths": [
+            "/tmp/alpha626-final-journey-regressions.log"
+          ]
+        },
+        {
+          "id": "test/browser/maps-event-return.spec.ts › system Back from the hand-off returns to that event; a place the user opened is unwound first; nothing is searched again",
+          "passingLogPaths": [
+            "/tmp/alpha626-final-journey-regressions.log"
+          ]
+        }
+      ],
+      "notes": [
+        "The initial 22-case run had 15 passes, four failures and three cases not run. Final successful retries supply the missing cases.",
+        "Journey F cases overlap bundle_inventory/journey_f. Journey C results come from a log that also contains auth retries; only matching journey cases count here."
+      ]
+    },
+    {
+      "id": "root/core_regressions",
+      "origin": "root",
+      "countMeaning": "distinct successful test cases within this group only",
+      "completedDistinctWithinGroup": 22,
+      "expectedWithinGroup": 22,
+      "executionClaim": "single all-green run",
+      "logPaths": [
+        "/tmp/alpha626-isolated-current-regressions.log"
+      ],
+      "cases": [
+        {
+          "id": "test/browser/browser-navigation.spec.ts › BrowserSurface shares only an admitted current page: Web Share available",
+          "passingLogPaths": [
+            "/tmp/alpha626-isolated-current-regressions.log"
+          ]
+        },
+        {
+          "id": "test/browser/browser-navigation.spec.ts › BrowserSurface shares only an admitted current page: Web Share unavailable",
+          "passingLogPaths": [
+            "/tmp/alpha626-isolated-current-regressions.log"
+          ]
+        },
+        {
+          "id": "test/browser/browser-navigation.spec.ts › browser UI does not offer native page sharing: Web Share available",
+          "passingLogPaths": [
+            "/tmp/alpha626-isolated-current-regressions.log"
+          ]
+        },
+        {
+          "id": "test/browser/browser-navigation.spec.ts › browser UI does not offer native page sharing: Web Share unavailable",
+          "passingLogPaths": [
+            "/tmp/alpha626-isolated-current-regressions.log"
+          ]
+        },
+        {
+          "id": "test/browser/browser-navigation.spec.ts › simultaneous bookmark edits from two tabs retain every change and survive reload",
+          "passingLogPaths": [
+            "/tmp/alpha626-isolated-current-regressions.log"
+          ]
+        },
+        {
+          "id": "test/browser/chat-dictation-api.spec.ts › API dictation and assistant stay distinct: draft editing never sends, voice conversation submits",
+          "passingLogPaths": [
+            "/tmp/alpha626-isolated-current-regressions.log"
+          ]
+        },
+        {
+          "id": "test/browser/chat-dictation-api.spec.ts › API dictation recovery: without an echo canceller, speech during playback never interrupts; a lost Transcribe capture can start again",
+          "passingLogPaths": [
+            "/tmp/alpha626-isolated-current-regressions.log"
+          ]
+        },
+        {
+          "id": "test/browser/chat-dictation-api.spec.ts › API dictation: Transcribe cancellation discards late ASR and preserves the original draft",
+          "passingLogPaths": [
+            "/tmp/alpha626-isolated-current-regressions.log"
+          ]
+        },
+        {
+          "id": "test/browser/chat-dictation-api.spec.ts › API dictation: Transcribe stops into editable local text and appends only to the unsent draft",
+          "passingLogPaths": [
+            "/tmp/alpha626-isolated-current-regressions.log"
+          ]
+        },
+        {
+          "id": "test/browser/chat-dictation-api.spec.ts › API dictation: leaving foreground during Transcribe discards late output without changing the draft",
+          "passingLogPaths": [
+            "/tmp/alpha626-isolated-current-regressions.log"
+          ]
+        },
+        {
+          "id": "test/browser/chat-dictation-api.spec.ts › API dictation: unavailable Transcribe retains keyboard and never starts a capture",
+          "passingLogPaths": [
+            "/tmp/alpha626-isolated-current-regressions.log"
+          ]
+        },
+        {
+          "id": "test/browser/chat-dictation-api.spec.ts › API interruptSpeech preserves listening; Mute controls capture with pressed state",
+          "passingLogPaths": [
+            "/tmp/alpha626-isolated-current-regressions.log"
+          ]
+        },
+        {
+          "id": "test/browser/design.spec.ts › design dark: workflows states",
+          "passingLogPaths": [
+            "/tmp/alpha626-isolated-current-regressions.log"
+          ]
+        },
+        {
+          "id": "test/browser/design.spec.ts › design light: workflows states",
+          "passingLogPaths": [
+            "/tmp/alpha626-isolated-current-regressions.log"
+          ]
+        },
+        {
+          "id": "test/browser/local-ocr.spec.ts › Camera Scan reviews real OCR and commits only corrected text to durable Notes",
+          "passingLogPaths": [
+            "/tmp/alpha626-isolated-current-regressions.log"
+          ]
+        },
+        {
+          "id": "test/browser/maps-approved-read.spec.ts › approved Maps snapshot: basemap-ready",
+          "passingLogPaths": [
+            "/tmp/alpha626-isolated-current-regressions.log"
+          ]
+        },
+        {
+          "id": "test/browser/maps-approved-read.spec.ts › approved Maps snapshot: place",
+          "passingLogPaths": [
+            "/tmp/alpha626-isolated-current-regressions.log"
+          ]
+        },
+        {
+          "id": "test/browser/maps-approved-read.spec.ts › approved Maps snapshot: receipt-replay",
+          "passingLogPaths": [
+            "/tmp/alpha626-isolated-current-regressions.log"
+          ]
+        },
+        {
+          "id": "test/browser/maps-approved-read.spec.ts › approved Maps snapshot: route",
+          "passingLogPaths": [
+            "/tmp/alpha626-isolated-current-regressions.log"
+          ]
+        },
+        {
+          "id": "test/browser/maps-approved-read.spec.ts › approved Maps snapshot: stale-after-read",
+          "passingLogPaths": [
+            "/tmp/alpha626-isolated-current-regressions.log"
+          ]
+        },
+        {
+          "id": "test/browser/maps-approved-read.spec.ts › approved Maps snapshot: stale-before-approval",
+          "passingLogPaths": [
+            "/tmp/alpha626-isolated-current-regressions.log"
+          ]
+        },
+        {
+          "id": "test/browser/maps-approved-read.spec.ts › approved Maps snapshot: stale-replay",
+          "passingLogPaths": [
+            "/tmp/alpha626-isolated-current-regressions.log"
+          ]
+        }
+      ],
+      "notes": [
+        "One complete all-green run. Earlier failing or interrupted core runs are not used as completion evidence."
+      ]
+    },
+    {
+      "id": "root/home_recoveries",
+      "origin": "root",
+      "countMeaning": "distinct successful test cases within this group only",
+      "completedDistinctWithinGroup": 8,
+      "expectedWithinGroup": 8,
+      "executionClaim": "successful case coverage across the listed logs; see each log run summary",
+      "logPaths": [
+        "/tmp/alpha626-home-current-retry.log",
+        "/tmp/alpha626-home-two-final.log"
+      ],
+      "cases": [
+        {
+          "id": "test/browser/home-attention.spec.ts › a failed Agent Calendar read shows the retry state and recovers only after retry",
+          "passingLogPaths": [
+            "/tmp/alpha626-home-current-retry.log"
+          ]
+        },
+        {
+          "id": "test/browser/home-workflows.spec.ts › empty Home opens unified metadata honestly and rerenders do not refetch it",
+          "passingLogPaths": [
+            "/tmp/alpha626-home-current-retry.log"
+          ]
+        },
+        {
+          "id": "test/browser/home-workflows.spec.ts › unified metadata loading and failure offer explicit refresh without running anything",
+          "passingLogPaths": [
+            "/tmp/alpha626-home-current-retry.log"
+          ]
+        },
+        {
+          "id": "test/browser/large-text-overlap.spec.ts › empty Home at 100% text: no card text or app label is printed over another or cut",
+          "passingLogPaths": [
+            "/tmp/alpha626-home-current-retry.log"
+          ]
+        },
+        {
+          "id": "test/browser/large-text-overlap.spec.ts › empty Home at 150% text: no card text or app label is printed over another or cut",
+          "passingLogPaths": [
+            "/tmp/alpha626-home-current-retry.log"
+          ]
+        },
+        {
+          "id": "test/browser/large-text-overlap.spec.ts › empty Home at 200% text: no card text or app label is printed over another or cut",
+          "passingLogPaths": [
+            "/tmp/alpha626-home-current-retry.log"
+          ]
+        },
+        {
+          "id": "test/browser/large-text-overlap.spec.ts › the Home calendar card shows its whole title at 200% and widens to the row",
+          "passingLogPaths": [
+            "/tmp/alpha626-home-two-final.log"
+          ]
+        },
+        {
+          "id": "test/browser/message-actions.spec.ts › Home shows clean Calendar and Workflows tiles with Inbox last",
+          "passingLogPaths": [
+            "/tmp/alpha626-home-two-final.log"
+          ]
+        }
+      ],
+      "notes": [
+        "Six successful cases in the initial retry plus two successful targeted retries; not an all-green eight-case single run."
+      ]
+    },
+    {
+      "id": "browser_ci/auth_resident",
+      "origin": "browser_ci",
+      "countMeaning": "distinct successful test cases within this group only",
+      "completedDistinctWithinGroup": 23,
+      "expectedWithinGroup": 23,
+      "executionClaim": "successful case coverage across the listed logs; see each log run summary",
+      "logPaths": [
+        "/tmp/browser-agent-native-auth-resident.log",
+        "/tmp/browser-agent-journey-auth-retry.log"
+      ],
+      "cases": [
+        {
+          "id": "test/browser/local-agent-availability.spec.ts › native local-agent packaging: available",
+          "passingLogPaths": [
+            "/tmp/browser-agent-native-auth-resident.log"
+          ]
+        },
+        {
+          "id": "test/browser/local-agent-availability.spec.ts › native local-agent packaging: checking",
+          "passingLogPaths": [
+            "/tmp/browser-agent-native-auth-resident.log"
+          ]
+        },
+        {
+          "id": "test/browser/local-agent-availability.spec.ts › native local-agent packaging: unavailable",
+          "passingLogPaths": [
+            "/tmp/browser-agent-native-auth-resident.log"
+          ]
+        },
+        {
+          "id": "test/browser/local-agent-stop.spec.ts › Restart local agent waits for native shutdown, then starts again: confirmed",
+          "passingLogPaths": [
+            "/tmp/browser-agent-journey-auth-retry.log"
+          ]
+        },
+        {
+          "id": "test/browser/local-agent-stop.spec.ts › Restart local agent waits for native shutdown, then starts again: incomplete-timeout",
+          "passingLogPaths": [
+            "/tmp/browser-agent-journey-auth-retry.log"
+          ]
+        },
+        {
+          "id": "test/browser/native-cloud-signin.spec.ts › configured provider name is shown in the app-owned sign-in view",
+          "passingLogPaths": [
+            "/tmp/browser-agent-native-auth-resident.log"
+          ]
+        },
+        {
+          "id": "test/browser/native-cloud-signin.spec.ts › in-app Eliza Cloud sign-in on the production Android composition › Continue with Google returns through the native host and an unexpected new account is said out loud",
+          "passingLogPaths": [
+            "/tmp/browser-agent-native-auth-resident.log"
+          ]
+        },
+        {
+          "id": "test/browser/native-cloud-signin.spec.ts › in-app Eliza Cloud sign-in on the production Android composition › Timed-out readiness keeps email sign-in in Alpha without Google",
+          "passingLogPaths": [
+            "/tmp/browser-agent-native-auth-resident.log"
+          ]
+        },
+        {
+          "id": "test/browser/native-cloud-signin.spec.ts › in-app Eliza Cloud sign-in on the production Android composition › Unavailable readiness keeps email sign-in in Alpha without Google",
+          "passingLogPaths": [
+            "/tmp/browser-agent-native-auth-resident.log"
+          ]
+        },
+        {
+          "id": "test/browser/native-cloud-signin.spec.ts › in-app Eliza Cloud sign-in on the production Android composition › a plan ending during readiness still rebinds inference and keeps the requested sign-in screen",
+          "passingLogPaths": [
+            "/tmp/browser-agent-journey-auth-retry.log"
+          ]
+        },
+        {
+          "id": "test/browser/native-cloud-signin.spec.ts › in-app Eliza Cloud sign-in on the production Android composition › a second verification step is completed in Alpha",
+          "passingLogPaths": [
+            "/tmp/browser-agent-native-auth-resident.log"
+          ]
+        },
+        {
+          "id": "test/browser/native-cloud-signin.spec.ts › in-app Eliza Cloud sign-in on the production Android composition › a slow sign-in readiness check shows progress, prevents repeated taps and respects Cancel",
+          "passingLogPaths": [
+            "/tmp/browser-agent-native-auth-resident.log"
+          ]
+        },
+        {
+          "id": "test/browser/native-cloud-signin.spec.ts › in-app Eliza Cloud sign-in on the production Android composition › cancelling a Google sign-in burns the pending attempt, stores nothing and keeps the agent running",
+          "passingLogPaths": [
+            "/tmp/browser-agent-native-auth-resident.log"
+          ]
+        },
+        {
+          "id": "test/browser/native-cloud-signin.spec.ts › in-app Eliza Cloud sign-in on the production Android composition › email code sign-in stays in Alpha, retries a wrong code, waits out resend and binds Cloud AI",
+          "passingLogPaths": [
+            "/tmp/browser-agent-native-auth-resident.log"
+          ]
+        },
+        {
+          "id": "test/browser/native-cloud-signin.spec.ts › in-app Eliza Cloud sign-in on the production Android composition › email cooldown starts when the host sends the code, even after time spent entering an address",
+          "passingLogPaths": [
+            "/tmp/browser-agent-native-auth-resident.log"
+          ]
+        },
+        {
+          "id": "test/browser/native-cloud-signin.spec.ts › in-app Eliza Cloud sign-in on the production Android composition › offline sign-in explains itself and stores nothing",
+          "passingLogPaths": [
+            "/tmp/browser-agent-native-auth-resident.log"
+          ]
+        },
+        {
+          "id": "test/browser/native-cloud-signin.spec.ts › long provider documents scroll to the end and return to an unfinished sign-in on a small phone",
+          "passingLogPaths": [
+            "/tmp/browser-agent-native-auth-resident.log"
+          ]
+        },
+        {
+          "id": "test/browser/native-cloud-signin.spec.ts › phone code cancellation discards the in-app step without a credential",
+          "passingLogPaths": [
+            "/tmp/browser-agent-journey-auth-retry.log"
+          ]
+        },
+        {
+          "id": "test/browser/native-cloud-signin.spec.ts › phone code stays inside Alpha through MFA",
+          "passingLogPaths": [
+            "/tmp/browser-agent-native-auth-resident.log"
+          ]
+        },
+        {
+          "id": "test/browser/native-cloud-signin.spec.ts › phone code stays inside Alpha through verification",
+          "passingLogPaths": [
+            "/tmp/browser-agent-native-auth-resident.log"
+          ]
+        },
+        {
+          "id": "test/browser/native-cloud-signin.spec.ts › provider legal text stays inside Alpha and returning preserves phone entry and the code attempt",
+          "passingLogPaths": [
+            "/tmp/browser-agent-native-auth-resident.log"
+          ]
+        },
+        {
+          "id": "test/browser/native-cloud-signin.spec.ts › tenant method discovery hides all disabled methods",
+          "passingLogPaths": [
+            "/tmp/browser-agent-native-auth-resident.log"
+          ]
+        },
+        {
+          "id": "test/browser/native-cloud-signin.spec.ts › tenant method discovery offers phone without email",
+          "passingLogPaths": [
+            "/tmp/browser-agent-native-auth-resident.log"
+          ]
+        }
+      ],
+      "notes": [
+        "Confirmed by browser_ci: initial 19 passes comprise native sign-in 16 and packaging three; subsequent log supplies native sign-in two and stop two.",
+        "Fixture commit b76471501. These local browser mocks are not device or real service qualification."
+      ]
+    },
+    {
+      "id": "browser_ci/native_subscription",
+      "origin": "browser_ci",
+      "countMeaning": "distinct successful test cases within this group only",
+      "completedDistinctWithinGroup": 40,
+      "expectedWithinGroup": 40,
+      "executionClaim": "single all-green run",
+      "logPaths": [
+        "/tmp/browser-agent-native-subscription-full-final.log"
+      ],
+      "cases": [
+        {
+          "id": "test/browser/native-cloud-subscription.spec.ts › account, plan and sign-in expiry › Settings data and the plan panel show account, plan, Redeem code, Manage plan and Sign out",
+          "passingLogPaths": [
+            "/tmp/browser-agent-native-subscription-full-final.log"
+          ]
+        },
+        {
+          "id": "test/browser/native-cloud-subscription.spec.ts › account, plan and sign-in expiry › a key with more than 14 days left shows no expiry warning",
+          "passingLogPaths": [
+            "/tmp/browser-agent-native-subscription-full-final.log"
+          ]
+        },
+        {
+          "id": "test/browser/native-cloud-subscription.spec.ts › account, plan and sign-in expiry › a sign-in key that expires within 14 days is warned about and offers re-approval",
+          "passingLogPaths": [
+            "/tmp/browser-agent-native-subscription-full-final.log"
+          ]
+        },
+        {
+          "id": "test/browser/native-cloud-subscription.spec.ts › entitlement route unavailable: authenticated billing mode fallback › a active billing snapshot admits the agent",
+          "passingLogPaths": [
+            "/tmp/browser-agent-native-subscription-full-final.log"
+          ]
+        },
+        {
+          "id": "test/browser/native-cloud-subscription.spec.ts › entitlement route unavailable: authenticated billing mode fallback › a billing snapshot with plan canceled needs a plan",
+          "passingLogPaths": [
+            "/tmp/browser-agent-native-subscription-full-final.log"
+          ]
+        },
+        {
+          "id": "test/browser/native-cloud-subscription.spec.ts › entitlement route unavailable: authenticated billing mode fallback › a past_due billing snapshot admits the agent",
+          "passingLogPaths": [
+            "/tmp/browser-agent-native-subscription-full-final.log"
+          ]
+        },
+        {
+          "id": "test/browser/native-cloud-subscription.spec.ts › entitlement route unavailable: authenticated billing mode fallback › a valid signed allowance remains usable with zero USD without a cash preflight or automatic redemption",
+          "passingLogPaths": [
+            "/tmp/browser-agent-native-subscription-full-final.log"
+          ]
+        },
+        {
+          "id": "test/browser/native-cloud-subscription.spec.ts › entitlement route unavailable: authenticated billing mode fallback › credits-mode code entry uses the existing client and an invalid code leaves billing unchanged",
+          "passingLogPaths": [
+            "/tmp/browser-agent-native-subscription-full-final.log"
+          ]
+        },
+        {
+          "id": "test/browser/native-cloud-subscription.spec.ts › entitlement route unavailable: authenticated billing mode fallback › no plan source at all is unknown: needs plan with a retry, never admitted",
+          "passingLogPaths": [
+            "/tmp/browser-agent-native-subscription-full-final.log"
+          ]
+        },
+        {
+          "id": "test/browser/native-cloud-subscription.spec.ts › entitlement route unavailable: authenticated billing mode fallback › organization credits bind the verified account without inventing a subscription",
+          "passingLogPaths": [
+            "/tmp/browser-agent-native-subscription-full-final.log"
+          ]
+        },
+        {
+          "id": "test/browser/native-cloud-subscription.spec.ts › failed native provider binding reports AI off and exposes the error before history",
+          "passingLogPaths": [
+            "/tmp/browser-agent-native-subscription-full-final.log"
+          ]
+        },
+        {
+          "id": "test/browser/native-cloud-subscription.spec.ts › first run requires Eliza Cloud sign-in while the agent runs › a migrated phone with a saved sign-in and an active plan starts the agent without the bypass",
+          "passingLogPaths": [
+            "/tmp/browser-agent-native-subscription-full-final.log"
+          ]
+        },
+        {
+          "id": "test/browser/native-cloud-subscription.spec.ts › first run requires Eliza Cloud sign-in while the agent runs › a phone without a saved sign-in shows the dedicated sign-in page, no local-only bypass, and the agent runs",
+          "passingLogPaths": [
+            "/tmp/browser-agent-native-subscription-full-final.log"
+          ]
+        },
+        {
+          "id": "test/browser/native-cloud-subscription.spec.ts › first run requires Eliza Cloud sign-in while the agent runs › an earlier \"local apps without AI\" choice migrates to the always-running resident on the next launch and keeps local data",
+          "passingLogPaths": [
+            "/tmp/browser-agent-native-subscription-full-final.log"
+          ]
+        },
+        {
+          "id": "test/browser/native-cloud-subscription.spec.ts › first run requires Eliza Cloud sign-in while the agent runs › an expired saved sign-in exposes the real sign-in action without a plan or permission bypass",
+          "passingLogPaths": [
+            "/tmp/browser-agent-native-subscription-full-final.log"
+          ]
+        },
+        {
+          "id": "test/browser/native-cloud-subscription.spec.ts › outages and offline use › a billing outage after a recent verified plan keeps the agent",
+          "passingLogPaths": [
+            "/tmp/browser-agent-native-subscription-full-final.log"
+          ]
+        },
+        {
+          "id": "test/browser/native-cloud-subscription.spec.ts › outages and offline use › a billing outage without a recent plan is \"needs plan\" with a retry",
+          "passingLogPaths": [
+            "/tmp/browser-agent-native-subscription-full-final.log"
+          ]
+        },
+        {
+          "id": "test/browser/native-cloud-subscription.spec.ts › outages and offline use › a failed background refresh does not renew the verified plan timestamp",
+          "passingLogPaths": [
+            "/tmp/browser-agent-native-subscription-full-final.log"
+          ]
+        },
+        {
+          "id": "test/browser/native-cloud-subscription.spec.ts › outages and offline use › an ended cached plan window cannot keep the Cloud binding during an outage",
+          "passingLogPaths": [
+            "/tmp/browser-agent-native-subscription-full-final.log"
+          ]
+        },
+        {
+          "id": "test/browser/native-cloud-subscription.spec.ts › outages and offline use › billing refusals refresh plan state once per minute without stopping the resident",
+          "passingLogPaths": [
+            "/tmp/browser-agent-native-subscription-full-final.log"
+          ]
+        },
+        {
+          "id": "test/browser/native-cloud-subscription.spec.ts › outages and offline use › frequent Home returns are throttled but returning from plan management rechecks",
+          "passingLogPaths": [
+            "/tmp/browser-agent-native-subscription-full-final.log"
+          ]
+        },
+        {
+          "id": "test/browser/native-cloud-subscription.spec.ts › outages and offline use › offline with a recent plan: the resident runs and retains the saved sign-in without claiming verification",
+          "passingLogPaths": [
+            "/tmp/browser-agent-native-subscription-full-final.log"
+          ]
+        },
+        {
+          "id": "test/browser/native-cloud-subscription.spec.ts › outages and offline use › offline without a recent plan retains sign-in but unbinds inference (other-credential)",
+          "passingLogPaths": [
+            "/tmp/browser-agent-native-subscription-full-final.log"
+          ]
+        },
+        {
+          "id": "test/browser/native-cloud-subscription.spec.ts › outages and offline use › offline without a recent plan retains sign-in but unbinds inference (stale)",
+          "passingLogPaths": [
+            "/tmp/browser-agent-native-subscription-full-final.log"
+          ]
+        },
+        {
+          "id": "test/browser/native-cloud-subscription.spec.ts › plan state binds Cloud inference; the agent always runs › a canceled plan shows \"needs plan\" beside the running agent and binds no inference",
+          "passingLogPaths": [
+            "/tmp/browser-agent-native-subscription-full-final.log"
+          ]
+        },
+        {
+          "id": "test/browser/native-cloud-subscription.spec.ts › plan state binds Cloud inference; the agent always runs › a format v2 entitlement shows the share of the period allowance left, not an amount of money",
+          "passingLogPaths": [
+            "/tmp/browser-agent-native-subscription-full-final.log"
+          ]
+        },
+        {
+          "id": "test/browser/native-cloud-subscription.spec.ts › plan state binds Cloud inference; the agent always runs › a none plan shows \"needs plan\" beside the running agent and binds no inference",
+          "passingLogPaths": [
+            "/tmp/browser-agent-native-subscription-full-final.log"
+          ]
+        },
+        {
+          "id": "test/browser/native-cloud-subscription.spec.ts › plan state binds Cloud inference; the agent always runs › a past-due plan is admitted with a clear warning and the hosted plan page",
+          "passingLogPaths": [
+            "/tmp/browser-agent-native-subscription-full-final.log"
+          ]
+        },
+        {
+          "id": "test/browser/native-cloud-subscription.spec.ts › plan state binds Cloud inference; the agent always runs › a plan that ends while admitted unbinds inference on the next check; the agent keeps running",
+          "passingLogPaths": [
+            "/tmp/browser-agent-native-subscription-full-final.log"
+          ]
+        },
+        {
+          "id": "test/browser/native-cloud-subscription.spec.ts › plan state binds Cloud inference; the agent always runs › a tampered entitlement is never trusted: needs plan with a retry, no inference bound",
+          "passingLogPaths": [
+            "/tmp/browser-agent-native-subscription-full-final.log"
+          ]
+        },
+        {
+          "id": "test/browser/native-cloud-subscription.spec.ts › plan state binds Cloud inference; the agent always runs › a trialing plan is admitted",
+          "passingLogPaths": [
+            "/tmp/browser-agent-native-subscription-full-final.log"
+          ]
+        },
+        {
+          "id": "test/browser/native-cloud-subscription.spec.ts › plan state binds Cloud inference; the agent always runs › an active entitlement shows the plan and its Cloud allowance and admits the agent",
+          "passingLogPaths": [
+            "/tmp/browser-agent-native-subscription-full-final.log"
+          ]
+        },
+        {
+          "id": "test/browser/native-cloud-subscription.spec.ts › plan state binds Cloud inference; the agent always runs › an entitlement for another account is refused and binds no inference",
+          "passingLogPaths": [
+            "/tmp/browser-agent-native-subscription-full-final.log"
+          ]
+        },
+        {
+          "id": "test/browser/native-cloud-subscription.spec.ts › plan state binds Cloud inference; the agent always runs › returning from Eliza Cloud checks the plan again and admits a plan chosen there",
+          "passingLogPaths": [
+            "/tmp/browser-agent-native-subscription-full-final.log"
+          ]
+        },
+        {
+          "id": "test/browser/native-cloud-subscription.spec.ts › redeem a subscription code › a lost response is replayed once with the same key; a new submission uses a new key",
+          "passingLogPaths": [
+            "/tmp/browser-agent-native-subscription-full-final.log"
+          ]
+        },
+        {
+          "id": "test/browser/native-cloud-subscription.spec.ts › redeem a subscription code › a rate-limited redemption shows the Cloud retry time",
+          "passingLogPaths": [
+            "/tmp/browser-agent-native-subscription-full-final.log"
+          ]
+        },
+        {
+          "id": "test/browser/native-cloud-subscription.spec.ts › redeem a subscription code › an account that already holds the grant is told so without a new grant",
+          "passingLogPaths": [
+            "/tmp/browser-agent-native-subscription-full-final.log"
+          ]
+        },
+        {
+          "id": "test/browser/native-cloud-subscription.spec.ts › redeem a subscription code › an invalid code gets one generic answer, keeps the plan notice and is not retried",
+          "passingLogPaths": [
+            "/tmp/browser-agent-native-subscription-full-final.log"
+          ]
+        },
+        {
+          "id": "test/browser/native-cloud-subscription.spec.ts › redeem a subscription code › success redeems once with a fresh key, admits the verified grant at zero USD and refreshes the entitlement",
+          "passingLogPaths": [
+            "/tmp/browser-agent-native-subscription-full-final.log"
+          ]
+        },
+        {
+          "id": "test/browser/native-cloud-subscription.spec.ts › signed no-subscription admits canonical credits, then an unconfirmed credit mode unbinds without offline grace",
+          "passingLogPaths": [
+            "/tmp/browser-agent-native-subscription-full-final.log"
+          ]
+        }
+      ],
+      "notes": [
+        "Confirmed by browser_ci at fixture commit d945bcc40: one all-green 40-case run."
+      ]
+    },
+    {
+      "id": "browser_ci/native_provider_clean_followup",
+      "origin": "browser_ci",
+      "countMeaning": "distinct successful test cases within this group only",
+      "completedDistinctWithinGroup": 1,
+      "expectedWithinGroup": 1,
+      "executionClaim": "single all-green run",
+      "logPaths": [
+        "/tmp/browser-agent-native-provider-clean.log"
+      ],
+      "cases": [
+        {
+          "id": "test/browser/native-cloud-subscription.spec.ts › failed native provider binding reports AI off and exposes the error before history",
+          "passingLogPaths": [
+            "/tmp/browser-agent-native-provider-clean.log"
+          ]
+        }
+      ],
+      "notes": [
+        "Confirmed by browser_ci after passive stub follow-up 7bd3f0d68 with pageErrors empty.",
+        "This case overlaps native_subscription and is separate follow-up evidence, not an additional unique case."
+      ]
+    }
+  ],
+  "overlappingCaseIds": [
+    {
+      "caseId": "test/browser/journey-f-email-notifications.spec.ts › a due reminder notice tapped after reload opens exactly its own event, once",
+      "groups": [
+        "bundle_inventory/journey_f",
+        "root/journey_recoveries"
+      ]
+    },
+    {
+      "caseId": "test/browser/journey-f-email-notifications.spec.ts › development mailbox: load, open a message, local draft survives reload, one local send",
+      "groups": [
+        "bundle_inventory/journey_f",
+        "root/journey_recoveries"
+      ]
+    },
+    {
+      "caseId": "test/browser/journey-f-email-notifications.spec.ts › synthetic provider: a lost send reply is an unknown outcome and is never sent again",
+      "groups": [
+        "bundle_inventory/journey_f",
+        "root/journey_recoveries"
+      ]
+    },
+    {
+      "caseId": "test/browser/journey-f-email-notifications.spec.ts › synthetic provider: a send reply that names another operation is not shown as confirmed and is never sent again",
+      "groups": [
+        "bundle_inventory/journey_f",
+        "root/journey_recoveries"
+      ]
+    },
+    {
+      "caseId": "test/browser/journey-f-email-notifications.spec.ts › synthetic provider: reviewed send leaves exactly one receipt and one message after reload",
+      "groups": [
+        "bundle_inventory/journey_f",
+        "root/journey_recoveries"
+      ]
+    },
+    {
+      "caseId": "test/browser/native-cloud-subscription.spec.ts › failed native provider binding reports AI off and exposes the error before history",
+      "groups": [
+        "browser_ci/native_subscription",
+        "browser_ci/native_provider_clean_followup"
+      ]
+    }
+  ],
+  "logs": [
+    {
+      "path": "/tmp/alpha626-final-journey-regressions.log",
+      "sha256": "8b93c38fba6deff0ab705ecea30cae43fd2f900a038935e56c020cb63dc1dfb9",
+      "bytes": 100596,
+      "successfulResultLines": 15,
+      "distinctSuccessfulCaseIds": 15,
+      "runs": [
+        {
+          "declaredTests": 22,
+          "workers": 1,
+          "summary": {
+            "passed": 15,
+            "failed": 4,
+            "skipped": 0,
+            "did not run": 3,
+            "interrupted": 0
+          },
+          "summaryPresent": true,
+          "allGreen": false
+        }
+      ],
+      "singleAllGreenRun": false
+    },
+    {
+      "path": "/tmp/alpha626-home-current-retry.log",
+      "sha256": "478def1f3e380fd22f7dfbe9420520b2f2fc2e70be4ac689c75fe96d4c057213",
+      "bytes": 9600,
+      "successfulResultLines": 6,
+      "distinctSuccessfulCaseIds": 6,
+      "runs": [
+        {
+          "declaredTests": 8,
+          "workers": 1,
+          "summary": {
+            "passed": 6,
+            "failed": 2,
+            "skipped": 0,
+            "did not run": 0,
+            "interrupted": 0
+          },
+          "summaryPresent": true,
+          "allGreen": false
+        }
+      ],
+      "singleAllGreenRun": false
+    },
+    {
+      "path": "/tmp/alpha626-home-two-final.log",
+      "sha256": "7796124c2a04c85e30888150a0e330c8dcfe64c6ff59f31ac74fcbf88ab7e5c4",
+      "bytes": 1955,
+      "successfulResultLines": 2,
+      "distinctSuccessfulCaseIds": 2,
+      "runs": [
+        {
+          "declaredTests": 2,
+          "workers": 1,
+          "summary": {
+            "passed": 2,
+            "failed": 0,
+            "skipped": 0,
+            "did not run": 0,
+            "interrupted": 0
+          },
+          "summaryPresent": true,
+          "allGreen": true
+        }
+      ],
+      "singleAllGreenRun": true
+    },
+    {
+      "path": "/tmp/alpha626-isolated-current-regressions.log",
+      "sha256": "937fd1342d6f0f4abecf30a5a14cab73b693910130702f508777512b513d8e52",
+      "bytes": 17793,
+      "successfulResultLines": 22,
+      "distinctSuccessfulCaseIds": 22,
+      "runs": [
+        {
+          "declaredTests": 22,
+          "workers": 1,
+          "summary": {
+            "passed": 22,
+            "failed": 0,
+            "skipped": 0,
+            "did not run": 0,
+            "interrupted": 0
+          },
+          "summaryPresent": true,
+          "allGreen": true
+        }
+      ],
+      "singleAllGreenRun": true
+    },
+    {
+      "path": "/tmp/alpha626-journey-a-e-final.log",
+      "sha256": "7537f9c112345de9bce35ee94cb34754640881b680e4c5831bc88449fb22b9f9",
+      "bytes": 5749,
+      "successfulResultLines": 1,
+      "distinctSuccessfulCaseIds": 1,
+      "runs": [
+        {
+          "declaredTests": 2,
+          "workers": 1,
+          "summary": {
+            "passed": 1,
+            "failed": 1,
+            "skipped": 0,
+            "did not run": 0,
+            "interrupted": 0
+          },
+          "summaryPresent": true,
+          "allGreen": false
+        }
+      ],
+      "singleAllGreenRun": false
+    },
+    {
+      "path": "/tmp/alpha626-journey-e-persistence-final.log",
+      "sha256": "da80c74e86c49cb11724f83442aeb19fde83596666c025f3b4e1faf78a48ab63",
+      "bytes": 1851,
+      "successfulResultLines": 1,
+      "distinctSuccessfulCaseIds": 1,
+      "runs": [
+        {
+          "declaredTests": 1,
+          "workers": 1,
+          "summary": {
+            "passed": 1,
+            "failed": 0,
+            "skipped": 0,
+            "did not run": 0,
+            "interrupted": 0
+          },
+          "summaryPresent": true,
+          "allGreen": true
+        }
+      ],
+      "singleAllGreenRun": true
+    },
+    {
+      "path": "/tmp/browser-agent-journey-auth-retry.log",
+      "sha256": "408dbf146ade7cfeb185ec4c6ea4bcf9144ae1ce46639bf82d373ca10c0e7815",
+      "bytes": 5083,
+      "successfulResultLines": 6,
+      "distinctSuccessfulCaseIds": 6,
+      "runs": [
+        {
+          "declaredTests": 6,
+          "workers": 1,
+          "summary": {
+            "passed": 6,
+            "failed": 0,
+            "skipped": 0,
+            "did not run": 0,
+            "interrupted": 0
+          },
+          "summaryPresent": true,
+          "allGreen": true
+        }
+      ],
+      "singleAllGreenRun": true
+    },
+    {
+      "path": "/tmp/browser-agent-native-auth-resident.log",
+      "sha256": "e2d1f57722ee8b9eff2fed43fa195f5dadc168caf4689a825420e096700ff771",
+      "bytes": 26016,
+      "successfulResultLines": 19,
+      "distinctSuccessfulCaseIds": 19,
+      "runs": [
+        {
+          "declaredTests": 23,
+          "workers": 1,
+          "summary": {
+            "passed": 19,
+            "failed": 4,
+            "skipped": 0,
+            "did not run": 0,
+            "interrupted": 0
+          },
+          "summaryPresent": true,
+          "allGreen": false
+        }
+      ],
+      "singleAllGreenRun": false
+    },
+    {
+      "path": "/tmp/browser-agent-native-provider-clean.log",
+      "sha256": "00b74cd8e13df20119d9dbc19b11569ff32b95a472937c5133652ced050e756d",
+      "bytes": 2382,
+      "successfulResultLines": 1,
+      "distinctSuccessfulCaseIds": 1,
+      "runs": [
+        {
+          "declaredTests": 1,
+          "workers": 1,
+          "summary": {
+            "passed": 1,
+            "failed": 0,
+            "skipped": 0,
+            "did not run": 0,
+            "interrupted": 0
+          },
+          "summaryPresent": true,
+          "allGreen": true
+        }
+      ],
+      "singleAllGreenRun": true
+    },
+    {
+      "path": "/tmp/browser-agent-native-subscription-full-final.log",
+      "sha256": "3f822f59efdc6b7b48ff3687346532ac33a04c8c773c21c80a9e3705430c8c1e",
+      "bytes": 29500,
+      "successfulResultLines": 40,
+      "distinctSuccessfulCaseIds": 40,
+      "runs": [
+        {
+          "declaredTests": 40,
+          "workers": 1,
+          "summary": {
+            "passed": 40,
+            "failed": 0,
+            "skipped": 0,
+            "did not run": 0,
+            "interrupted": 0
+          },
+          "summaryPresent": true,
+          "allGreen": true
+        }
+      ],
+      "singleAllGreenRun": true
+    },
+    {
+      "path": "/tmp/calendar-alert-route.log",
+      "sha256": "a68a3a692df8a528405585ab796941772af86a4a1ea265a979ede90de5bd6b4f",
+      "bytes": 1931,
+      "successfulResultLines": 1,
+      "distinctSuccessfulCaseIds": 1,
+      "runs": [
+        {
+          "declaredTests": 1,
+          "workers": 1,
+          "summary": {
+            "passed": 1,
+            "failed": 0,
+            "skipped": 0,
+            "did not run": 0,
+            "interrupted": 0
+          },
+          "summaryPresent": true,
+          "allGreen": true
+        }
+      ],
+      "singleAllGreenRun": true
+    },
+    {
+      "path": "/tmp/calendar-editor-fixtures-frozen.log",
+      "sha256": "5ac54a2ba68cb4626127a5d97096056379d521818dc0e183a5051c0f4b026a6e",
+      "bytes": 11677,
+      "successfulResultLines": 25,
+      "distinctSuccessfulCaseIds": 25,
+      "runs": [
+        {
+          "declaredTests": 26,
+          "workers": 1,
+          "summary": {
+            "passed": 25,
+            "failed": 1,
+            "skipped": 0,
+            "did not run": 0,
+            "interrupted": 0
+          },
+          "summaryPresent": true,
+          "allGreen": false
+        }
+      ],
+      "singleAllGreenRun": false
+    },
+    {
+      "path": "/tmp/calendar-fixtures-frozen.log",
+      "sha256": "bf61e6a0172d5314c43ef118cc794f6e7f1f76729f026305696385f34d0c29b9",
+      "bytes": 14784,
+      "successfulResultLines": 11,
+      "distinctSuccessfulCaseIds": 11,
+      "runs": [
+        {
+          "declaredTests": 39,
+          "workers": 1,
+          "summary": {
+            "passed": 11,
+            "failed": 1,
+            "skipped": 0,
+            "did not run": 26,
+            "interrupted": 1
+          },
+          "summaryPresent": true,
+          "allGreen": false
+        }
+      ],
+      "singleAllGreenRun": false
+    },
+    {
+      "path": "/tmp/calendar-navigation-frozen.log",
+      "sha256": "4c2abc673bba8ca8829660246d066ae4b8250b4167fef0efb06d66f386887634",
+      "bytes": 2452,
+      "successfulResultLines": 5,
+      "distinctSuccessfulCaseIds": 5,
+      "runs": [
+        {
+          "declaredTests": 5,
+          "workers": 1,
+          "summary": {
+            "passed": 5,
+            "failed": 0,
+            "skipped": 0,
+            "did not run": 0,
+            "interrupted": 0
+          },
+          "summaryPresent": true,
+          "allGreen": true
+        }
+      ],
+      "singleAllGreenRun": true
+    },
+    {
+      "path": "/tmp/calendar-recovery-retry.log",
+      "sha256": "aace8d4c3ae210198b17af0dd45ebc8f9313e71b0cfab202494632d2bee44012",
+      "bytes": 1936,
+      "successfulResultLines": 1,
+      "distinctSuccessfulCaseIds": 1,
+      "runs": [
+        {
+          "declaredTests": 1,
+          "workers": 1,
+          "summary": {
+            "passed": 1,
+            "failed": 0,
+            "skipped": 0,
+            "did not run": 0,
+            "interrupted": 0
+          },
+          "summaryPresent": true,
+          "allGreen": true
+        }
+      ],
+      "singleAllGreenRun": true
+    },
+    {
+      "path": "/tmp/calendar-response-retry.log",
+      "sha256": "8c8fce22210df17780d1d394b88cb69a2d4f85b0c317df1771dbb64eda2b14d2",
+      "bytes": 1926,
+      "successfulResultLines": 1,
+      "distinctSuccessfulCaseIds": 1,
+      "runs": [
+        {
+          "declaredTests": 1,
+          "workers": 1,
+          "summary": {
+            "passed": 1,
+            "failed": 0,
+            "skipped": 0,
+            "did not run": 0,
+            "interrupted": 0
+          },
+          "summaryPresent": true,
+          "allGreen": true
+        }
+      ],
+      "singleAllGreenRun": true
+    },
+    {
+      "path": "/tmp/calendar-source-frozen.log",
+      "sha256": "4e3767272bff7cbdde003fa1ba8d35edaa7c2aef0b23c270feb1bd7809bbd6c7",
+      "bytes": 12605,
+      "successfulResultLines": 12,
+      "distinctSuccessfulCaseIds": 12,
+      "runs": [
+        {
+          "declaredTests": 82,
+          "workers": 1,
+          "summary": {
+            "passed": 12,
+            "failed": 1,
+            "skipped": 0,
+            "did not run": 68,
+            "interrupted": 1
+          },
+          "summaryPresent": true,
+          "allGreen": false
+        }
+      ],
+      "singleAllGreenRun": false
+    },
+    {
+      "path": "/tmp/calendar-source-resumed.log",
+      "sha256": "8feed713e435b5059c8bee65228bbfcd0dc59ac4745b26b28fed870eef4fe6d3",
+      "bytes": 30359,
+      "successfulResultLines": 67,
+      "distinctSuccessfulCaseIds": 67,
+      "runs": [
+        {
+          "declaredTests": 71,
+          "workers": 1,
+          "summary": {
+            "passed": 67,
+            "failed": 4,
+            "skipped": 0,
+            "did not run": 0,
+            "interrupted": 0
+          },
+          "summaryPresent": true,
+          "allGreen": false
+        }
+      ],
+      "singleAllGreenRun": false
+    },
+    {
+      "path": "/tmp/calendar-source-retries-original.log",
+      "sha256": "ab40997712e469d15cad0fd69496a490eef60155f04a8895ee4c048265fe8c88",
+      "bytes": 7608,
+      "successfulResultLines": 3,
+      "distinctSuccessfulCaseIds": 3,
+      "runs": [
+        {
+          "declaredTests": 4,
+          "workers": 1,
+          "summary": {
+            "passed": 3,
+            "failed": 1,
+            "skipped": 0,
+            "did not run": 0,
+            "interrupted": 0
+          },
+          "summaryPresent": true,
+          "allGreen": false
+        }
+      ],
+      "singleAllGreenRun": false
+    },
+    {
+      "path": "/tmp/development-frozen.log",
+      "sha256": "b12f90c51f14858fe05f5a623080cbf931ce4fa9e1c24171c830a7203782b9c2",
+      "bytes": 6435,
+      "successfulResultLines": 5,
+      "distinctSuccessfulCaseIds": 5,
+      "runs": [
+        {
+          "declaredTests": 6,
+          "workers": 1,
+          "summary": {
+            "passed": 5,
+            "failed": 1,
+            "skipped": 0,
+            "did not run": 0,
+            "interrupted": 0
+          },
+          "summaryPresent": true,
+          "allGreen": false
+        }
+      ],
+      "singleAllGreenRun": false
+    },
+    {
+      "path": "/tmp/development-two-tabs-frozen.log",
+      "sha256": "155395ad99944a85ccde84ecfcd163b146cc74b617362f9127459610d7d43de8",
+      "bytes": 2080,
+      "successfulResultLines": 2,
+      "distinctSuccessfulCaseIds": 2,
+      "runs": [
+        {
+          "declaredTests": 2,
+          "workers": 1,
+          "summary": {
+            "passed": 2,
+            "failed": 0,
+            "skipped": 0,
+            "did not run": 0,
+            "interrupted": 0
+          },
+          "summaryPresent": true,
+          "allGreen": true
+        }
+      ],
+      "singleAllGreenRun": true
+    },
+    {
+      "path": "/tmp/journey-b-frozen.log",
+      "sha256": "d5449fc98b4af160a885dffb11576b1d46ee34748155ab0041470746c6efc2dd",
+      "bytes": 2196,
+      "successfulResultLines": 2,
+      "distinctSuccessfulCaseIds": 2,
+      "runs": [
+        {
+          "declaredTests": 2,
+          "workers": 1,
+          "summary": {
+            "passed": 2,
+            "failed": 0,
+            "skipped": 0,
+            "did not run": 0,
+            "interrupted": 0
+          },
+          "summaryPresent": true,
+          "allGreen": true
+        }
+      ],
+      "singleAllGreenRun": true
+    },
+    {
+      "path": "/tmp/journey-f-final.log",
+      "sha256": "8e28b3422ee473139fe3c81278d59fffbcad19160b76ee4489e4247ad0ce4ba8",
+      "bytes": 2688,
+      "successfulResultLines": 5,
+      "distinctSuccessfulCaseIds": 5,
+      "runs": [
+        {
+          "declaredTests": 5,
+          "workers": 1,
+          "summary": {
+            "passed": 5,
+            "failed": 0,
+            "skipped": 0,
+            "did not run": 0,
+            "interrupted": 0
+          },
+          "summaryPresent": true,
+          "allGreen": true
+        }
+      ],
+      "singleAllGreenRun": true
+    },
+    {
+      "path": "/tmp/maps-information-fix.log",
+      "sha256": "f818bf3d3d15106fb795311dca672ac079d1128ecdb2711f0c2e095f5e90bce7",
+      "bytes": 4172,
+      "successfulResultLines": 8,
+      "distinctSuccessfulCaseIds": 8,
+      "runs": [
+        {
+          "declaredTests": 8,
+          "workers": 1,
+          "summary": {
+            "passed": 8,
+            "failed": 0,
+            "skipped": 0,
+            "did not run": 0,
+            "interrupted": 0
+          },
+          "summaryPresent": true,
+          "allGreen": true
+        }
+      ],
+      "singleAllGreenRun": true
+    },
+    {
+      "path": "/tmp/notes-document-plugin.log",
+      "sha256": "3501072069ebc036a3972bced4761d9e1d710ab221bffa10368ab8254d45df23",
+      "bytes": 2347,
+      "successfulResultLines": 5,
+      "distinctSuccessfulCaseIds": 5,
+      "runs": [
+        {
+          "declaredTests": 5,
+          "workers": 1,
+          "summary": {
+            "passed": 5,
+            "failed": 0,
+            "skipped": 0,
+            "did not run": 0,
+            "interrupted": 0
+          },
+          "summaryPresent": true,
+          "allGreen": true
+        }
+      ],
+      "singleAllGreenRun": true
+    },
+    {
+      "path": "/tmp/notes-frozen.log",
+      "sha256": "223ea475f7bbdf57e4b050a5d2af112c43114a3fb838eba30b64284c3ebfa937",
+      "bytes": 8899,
+      "successfulResultLines": 19,
+      "distinctSuccessfulCaseIds": 19,
+      "runs": [
+        {
+          "declaredTests": 27,
+          "workers": 1,
+          "summary": {
+            "passed": 19,
+            "failed": 0,
+            "skipped": 0,
+            "did not run": 7,
+            "interrupted": 1
+          },
+          "summaryPresent": true,
+          "allGreen": false
+        }
+      ],
+      "singleAllGreenRun": false
+    },
+    {
+      "path": "/tmp/notes-recovery-final.log",
+      "sha256": "4fcc1d10da6e6b7f461c3e825966ee1b29acac78d5a40a4851d8bbfcfe1ecb26",
+      "bytes": 17851,
+      "successfulResultLines": 8,
+      "distinctSuccessfulCaseIds": 8,
+      "runs": [
+        {
+          "declaredTests": 12,
+          "workers": 1,
+          "summary": {
+            "passed": 8,
+            "failed": 3,
+            "skipped": 0,
+            "did not run": 0,
+            "interrupted": 1
+          },
+          "summaryPresent": true,
+          "allGreen": false
+        }
+      ],
+      "singleAllGreenRun": false
+    },
+    {
+      "path": "/tmp/notes-recovery-retry-final.log",
+      "sha256": "8387b66eb68d0b6eb7fb4adaa0ebbbe3e86be7119f4ab23a5075a20b03afadb3",
+      "bytes": 2563,
+      "successfulResultLines": 4,
+      "distinctSuccessfulCaseIds": 4,
+      "runs": [
+        {
+          "declaredTests": 4,
+          "workers": 1,
+          "summary": {
+            "passed": 4,
+            "failed": 0,
+            "skipped": 0,
+            "did not run": 0,
+            "interrupted": 0
+          },
+          "summaryPresent": true,
+          "allGreen": true
+        }
+      ],
+      "singleAllGreenRun": true
+    },
+    {
+      "path": "/tmp/reminder-review-complete.log",
+      "sha256": "7dfccfc5425f8450bec5a5e7490773cce8a178ae83f17db916c362dbd47b8876",
+      "bytes": 9729,
+      "successfulResultLines": 36,
+      "distinctSuccessfulCaseIds": 36,
+      "runs": [
+        {
+          "declaredTests": 37,
+          "workers": 1,
+          "summary": {
+            "passed": 36,
+            "failed": 1,
+            "skipped": 0,
+            "did not run": 0,
+            "interrupted": 0
+          },
+          "summaryPresent": true,
+          "allGreen": false
+        }
+      ],
+      "singleAllGreenRun": false
+    },
+    {
+      "path": "/tmp/reminder-review-overdue-retry.log",
+      "sha256": "70f332ef1ccdab70b34e41b257e1f2f5d38fa61f26058b6b3b8cf811fbf93945",
+      "bytes": 1830,
+      "successfulResultLines": 1,
+      "distinctSuccessfulCaseIds": 1,
+      "runs": [
+        {
+          "declaredTests": 1,
+          "workers": 1,
+          "summary": {
+            "passed": 1,
+            "failed": 0,
+            "skipped": 0,
+            "did not run": 0,
+            "interrupted": 0
+          },
+          "summaryPresent": true,
+          "allGreen": true
+        }
+      ],
+      "singleAllGreenRun": true
+    },
+    {
+      "path": "/tmp/voice-adjacent-fix.log",
+      "sha256": "bacf443986ed5b2c235f9ac151990c3f0db4672e53d0b710f4725c4c509147ab",
+      "bytes": 2389,
+      "successfulResultLines": 4,
+      "distinctSuccessfulCaseIds": 4,
+      "runs": [
+        {
+          "declaredTests": 4,
+          "workers": 1,
+          "summary": {
+            "passed": 4,
+            "failed": 0,
+            "skipped": 0,
+            "did not run": 0,
+            "interrupted": 0
+          },
+          "summaryPresent": true,
+          "allGreen": true
+        }
+      ],
+      "singleAllGreenRun": true
+    },
+    {
+      "path": "/tmp/workflow-adjacent-fix.log",
+      "sha256": "2dedb8ea05bcdcfa2131dcca81c113c8bb8a0680bbb6fbdf93a39f6546c7395a",
+      "bytes": 3003,
+      "successfulResultLines": 8,
+      "distinctSuccessfulCaseIds": 8,
+      "runs": [
+        {
+          "declaredTests": 8,
+          "workers": 1,
+          "summary": {
+            "passed": 8,
+            "failed": 0,
+            "skipped": 0,
+            "did not run": 0,
+            "interrupted": 0
+          },
+          "summaryPresent": true,
+          "allGreen": true
+        }
+      ],
+      "singleAllGreenRun": true
+    },
+    {
+      "path": "/tmp/workflow-review-history-final.log",
+      "sha256": "7cdede4d7b0427687b507543a552db61128ccbd625189ee0d21232f70a71c65e",
+      "bytes": 1806,
+      "successfulResultLines": 1,
+      "distinctSuccessfulCaseIds": 1,
+      "runs": [
+        {
+          "declaredTests": 1,
+          "workers": 1,
+          "summary": {
+            "passed": 1,
+            "failed": 0,
+            "skipped": 0,
+            "did not run": 0,
+            "interrupted": 0
+          },
+          "summaryPresent": true,
+          "allGreen": true
+        }
+      ],
+      "singleAllGreenRun": true
+    },
+    {
+      "path": "/tmp/workflow-review-reload-retry.log",
+      "sha256": "9eb8672710eeda175aa52a7cffe284a36c2b15d2da64acc6522522521389dc5d",
+      "bytes": 374,
+      "successfulResultLines": 1,
+      "distinctSuccessfulCaseIds": 1,
+      "runs": [
+        {
+          "declaredTests": 1,
+          "workers": 1,
+          "summary": {
+            "passed": 1,
+            "failed": 0,
+            "skipped": 0,
+            "did not run": 0,
+            "interrupted": 0
+          },
+          "summaryPresent": true,
+          "allGreen": true
+        }
+      ],
+      "singleAllGreenRun": true
+    },
+    {
+      "path": "/tmp/workflow-review-remaining.log",
+      "sha256": "fc49e0daab37f1ef33c305dc341172a33b3e8d39b97efe76a5c57c7811b1d5b4",
+      "bytes": 33053,
+      "successfulResultLines": 64,
+      "distinctSuccessfulCaseIds": 64,
+      "runs": [
+        {
+          "declaredTests": 68,
+          "workers": 1,
+          "summary": {
+            "passed": 64,
+            "failed": 4,
+            "skipped": 0,
+            "did not run": 0,
+            "interrupted": 0
+          },
+          "summaryPresent": true,
+          "allGreen": false
+        }
+      ],
+      "singleAllGreenRun": false
+    },
+    {
+      "path": "/tmp/workflow-review-timeout-retries.log",
+      "sha256": "91130bc2ffabb3eca497cb078c9c7a58c743acfb3e7efba5de05a906ba12cc59",
+      "bytes": 822,
+      "successfulResultLines": 4,
+      "distinctSuccessfulCaseIds": 4,
+      "runs": [
+        {
+          "declaredTests": 4,
+          "workers": 1,
+          "summary": {
+            "passed": 4,
+            "failed": 0,
+            "skipped": 0,
+            "did not run": 0,
+            "interrupted": 0
+          },
+          "summaryPresent": true,
+          "allGreen": true
+        }
+      ],
+      "singleAllGreenRun": true
+    },
+    {
+      "path": "/tmp/workflow-review-urgency.log",
+      "sha256": "aea98c82b8d363a04e0ba114fee9471059b8f4f2efac11ecd76a0e0faaa81387",
+      "bytes": 19990,
+      "successfulResultLines": 14,
+      "distinctSuccessfulCaseIds": 14,
+      "runs": [
+        {
+          "declaredTests": 16,
+          "workers": 1,
+          "summary": {
+            "passed": 14,
+            "failed": 2,
+            "skipped": 0,
+            "did not run": 0,
+            "interrupted": 0
+          },
+          "summaryPresent": true,
+          "allGreen": false
+        }
+      ],
+      "singleAllGreenRun": false
+    }
+  ],
+  "supportingSourceValidation": [
+    {
+      "path": "/tmp/calendar-routing-unit.log",
+      "sha256": "a589d49c2aa2197aa656d7885bbf4909e81a67268f5bd30a485d860fa90dd824",
+      "bytes": 3988,
+      "kind": "unit",
+      "claim": "35 tests passed, zero failures",
+      "origin": "bundle_inventory"
+    },
+    {
+      "path": "/tmp/calendar-routing-typecheck.log",
+      "sha256": "5c3a8f2e74aa7ecd59d81d6f57cae0c1663a266367e24a1e31c4ede013ebb950",
+      "bytes": 62,
+      "kind": "typecheck",
+      "claim": "TypeScript typecheck passed (reported completion; log contains command output)",
+      "origin": "bundle_inventory"
+    }
+  ],
+  "runningValidation": {
+    "id": "browser_ci/full_production",
+    "status": "pending",
+    "expectedCases": 305,
+    "logPath": "/tmp/browser-agent-final-production-004a19b5d.log",
+    "sha256": null,
+    "note": "Still running when assembled; no successful completion claim or partial-file hash. browser_ci confirmed tree-identical source to root004a19b5d and its own23cc30fb2 at launch. Replace only after a completed result is confirmed."
+  }
+}

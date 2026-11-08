@@ -1,0 +1,142 @@
+{
+  "schemaVersion": 1,
+  "scope": "Clean local coherent source integration, not artifact/device/release qualification",
+  "atUTC": "2026-10-28T07:28:49.193346+00:00",
+  "productBase": "c5b559a5a1a4df973832a69468038e37d41b5cba",
+  "oldSDK": "ea0899fd7f19b2bf3552127d6566c15e23b4c303",
+  "SDK": "de16c240f8ef77779edd3aa411e407018d2be209",
+  "changedSDKPaths": [
+    "packages/contracts/src/calendar.ts",
+    "plugins/plugin-assistant/src/runtime/calendar-read-coverage.test.ts",
+    "plugins/plugin-assistant/src/runtime/evaluator.ts",
+    "plugins/plugin-assistant/src/runtime/planner-long-trajectory.test.ts",
+    "plugins/plugin-assistant/src/runtime/planner-loop.ts",
+    "plugins/plugin-assistant/src/services/message/provider-state.ts",
+    "plugins/plugin-calendar/src/actions/calendar-handler.ts",
+    "plugins/plugin-calendar/src/read-binding.test.ts",
+    "plugins/plugin-calendar/src/read-binding.ts",
+    "plugins/plugin-calendar/test/calendar-private-meeting-authority.pglite.test.ts",
+    "plugins/plugin-elizacloud/__tests__/cloud-model-readiness.test.ts",
+    "plugins/plugin-elizacloud/src/services/cloud-model-identity.ts",
+    "plugins/plugin-elizacloud/src/services/cloud-model-readiness.ts",
+    "plugins/plugin-elizacloud/src/services/cloud-model-registry.ts",
+    "plugins/plugin-notes/src/named-routing.stage1.test.ts",
+    "plugins/plugin-notes/src/plugin.ts",
+    "plugins/plugin-notes/src/provider.ts",
+    "plugins/plugin-personal-assistant/src/actions/calendar.ts",
+    "plugins/plugin-personal-assistant/src/actions/lib/scheduling-handler.ts",
+    "plugins/plugin-personal-assistant/src/lifeops/owner-profile.ts"
+  ],
+  "unchangedInputObjectComparisons": [
+    {
+      "path": "plugins/plugin-local-inference/native/llama.cpp",
+      "oldAndCurrentObject": "160000 commit 0d9fd4b9db239bbf851068f98c99f4263f8c05c5\tplugins/plugin-local-inference/native/llama.cpp"
+    },
+    {
+      "path": "plugins/plugin-local-inference/native/android/inputs.json",
+      "oldAndCurrentObject": "100644 blob 8e303364ecffd4056b494d5dde808f5887eca120\tplugins/plugin-local-inference/native/android/inputs.json"
+    },
+    {
+      "path": "packages/app/scripts/paradee-voice",
+      "oldAndCurrentObject": "040000 tree e18c150daf71c321ba287e0c6e5484e487367fd9\tpackages/app/scripts/paradee-voice"
+    },
+    {
+      "path": "packages/app/scripts/stage-elizavoice-lib.ts",
+      "oldAndCurrentObject": "100644 blob 2ff1adb9ed9a394759562c2ff6a1f7e4b0d75f3c\tpackages/app/scripts/stage-elizavoice-lib.ts"
+    },
+    {
+      "path": "packages/app/platforms/android/app/src/main/elizavoice-jni",
+      "oldAndCurrentObject": "040000 tree 1016d67d05ce8f4c7bc10412372cc71d7ad48aee\tpackages/app/platforms/android/app/src/main/elizavoice-jni"
+    },
+    {
+      "path": "packages/app/platforms/android/app/src/main/java/ai/elizaos/app/ElizaVoiceNative.java",
+      "oldAndCurrentObject": "100644 blob 1cd241c5710fc302e75aec8993eefee0a709ab9c\tpackages/app/platforms/android/app/src/main/java/ai/elizaos/app/ElizaVoiceNative.java"
+    },
+    {
+      "path": "packages/app/scripts/lib/android-bun-artifacts.lock.json",
+      "oldAndCurrentObject": "100644 blob 83c8e91becc3a2c46902cc168fdc9b88fc038e5d\tpackages/app/scripts/lib/android-bun-artifacts.lock.json"
+    },
+    {
+      "path": "plugins/plugin-local-inference/native",
+      "oldAndCurrentObject": "040000 tree a403e3519315fd99bb811c88f07673d8f7616f85\tplugins/plugin-local-inference/native"
+    },
+    {
+      "path": "plugins/plugin-native-system/android",
+      "oldAndCurrentObject": "040000 tree 63d823cef5c559d599fcf241f89a6182cbed75e1\tplugins/plugin-native-system/android"
+    },
+    {
+      "path": "packages/app/platforms/android",
+      "oldAndCurrentObject": "040000 tree dc048743daa30f8b86e78297224bb3afb5a3a010\tpackages/app/platforms/android"
+    },
+    {
+      "path": "plugins/plugin-native-action-journal/android",
+      "oldAndCurrentObject": "040000 tree 939cdf4c8cda26bef587476f13dfef9e760ebcb8\tplugins/plugin-native-action-journal/android"
+    },
+    {
+      "path": "plugins/plugin-native-calendar/android",
+      "oldAndCurrentObject": "040000 tree 85eb68f5126a91b57aa62591e0bceb42de1c330c\tplugins/plugin-native-calendar/android"
+    },
+    {
+      "path": "plugins/plugin-native-media/android",
+      "oldAndCurrentObject": "040000 tree 7a7caf33e46ef52d0ce0752673453070c6107309\tplugins/plugin-native-media/android"
+    },
+    {
+      "path": "plugins/plugin-native-notifications/android",
+      "oldAndCurrentObject": "040000 tree 8544d529a5a02d6ddec1733ea8f44b4f74f99b85\tplugins/plugin-native-notifications/android"
+    },
+    {
+      "path": "plugins/plugin-native-reminders/android",
+      "oldAndCurrentObject": "040000 tree 5f4fbf13505e0fd0a4eed5b773075d3eaaa02aa5\tplugins/plugin-native-reminders/android"
+    },
+    {
+      "path": "plugins/plugin-native-secure-store/android",
+      "oldAndCurrentObject": "040000 tree b6cd284b734a62603938a20ca0b945e22122df99\tplugins/plugin-native-secure-store/android"
+    },
+    {
+      "path": "packages/core",
+      "oldAndCurrentObject": "040000 tree d4fd60bb02b1a6dd2e6c995c97eeb0e20623ad8d\tpackages/core"
+    },
+    {
+      "path": "plugins/plugin-workflow",
+      "oldAndCurrentObject": "040000 tree 28f0fef4426a6ff5a5f2a279b565f1cae044bc30\tplugins/plugin-workflow"
+    },
+    {
+      "path": "packages/agent",
+      "oldAndCurrentObject": "040000 tree b2cd657243c25bad345563b5229814ac0b02c213\tpackages/agent"
+    },
+    {
+      "path": "packages/contracts/src/lifeops/workflows.ts",
+      "oldAndCurrentObject": "100644 blob 3a52ac39c667c81631d1b07ddf903092ea5ece81\tpackages/contracts/src/lifeops/workflows.ts"
+    },
+    {
+      "path": "packages/host",
+      "oldAndCurrentObject": "040000 tree 29a466e6c334a04904cfcf5ee3d02b1867664fad\tpackages/host"
+    },
+    {
+      "path": "plugins/plugin-pdf",
+      "oldAndCurrentObject": "040000 tree d651309f60c46c70aa35a92a548396487b44fa9a\tplugins/plugin-pdf"
+    },
+    {
+      "path": "LICENSE",
+      "oldAndCurrentObject": "100644 blob 2a5dfe7a78df1ec7dad9fe5fbbf41fc65f6fa8fd\tLICENSE"
+    },
+    {
+      "path": "package.json",
+      "oldAndCurrentObject": "100644 blob 6facdf6e8322509ea6108e0856bd6266c328c577\tpackage.json"
+    },
+    {
+      "path": "bun.lock",
+      "oldAndCurrentObject": "100644 blob 0144b57346079d23998cede8993c55507fae24ab\tbun.lock"
+    }
+  ],
+  "rawBunLockUnchanged": true,
+  "preservedSDKSource": "EA/public/recovery/Power/aliases/diagnostics plus579/e600 Calendar planning, provider-aware model catalog, private-event guidance, empty-reply handling and body-free Notes availability routing",
+  "sourceQualification": "Independent immutable reviews, normal Notes7+PA7, focused24+130 current joined; source evidence packets retain exact scope of other component tests and be058 normalwholeCloud7 pass",
+  "actualModelGuestAndNotesPerformance": "Root-owned livecanary pending; deterministic3authoritycases baseline+candidate bothpassed, notmodelproof",
+  "nativeInputsUnchangedFromEA": true,
+  "nativeInputsUnchangedFromOlder8cc": false,
+  "nativeQualificationTransferred": false,
+  "qualified": false,
+  "compiledWorkerSourceIdentityIsNotNewBuildProof": true,
+  "liveOrProfileOrDeviceActions": false
+}

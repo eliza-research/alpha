@@ -1,13 +1,21 @@
 import type {Page} from '@playwright/test';
 // Synthetic Google/native boundaries; actual Settings, controller and checkpoint code.
-export async function calendarSyncFixture(page:Page,native=false){
+export async function calendarSyncFixture(page:Page,native=false,theme?:'light'|'dark'){
  await page.addInitScript(()=>localStorage.setItem('alpha.connection.selection.v1',JSON.stringify({kind:'offline'})));
- await page.goto('/?mode=dev');
+ await page.goto(theme?`/?mode=dev&theme=${theme}`:'/?mode=dev');
  await page.evaluate(async(native)=>{
   const {connectionController}=await import('/src/runtime/connection-ui.tsx'),{saveGoogleCalendarSelection}=await import('/src/runtime/google-calendar-selection.ts'),{calendarDocument,initialCalendarState,prepareCalendarSource}=await import('/src/browser/calendar-store.ts');
   const userId='11111111-1111-4111-8111-111111111111',organizationId='22222222-2222-4222-8222-222222222222',grantId='33333333-3333-4333-8333-333333333333';
   const f=(window as any).calendarSyncFixture={writes:0,calls:[],remote:null,lost:false,keys:new Map(),credentialId:'fixture-credential',agentId:'fixture-agent'};
-  const snapshot=connectionController.getSnapshot();connectionController.getSnapshot=()=>({...snapshot,session:{agentId:f.agentId,sessionId:'fixture-agent-session'},cloudAccount:{environment:'production',userId,organizationId,sessionId:'fixture-cloud-session',credentialId:f.credentialId}} as any);
+  const snapshot=connectionController.getSnapshot();
+  let currentSnapshot:typeof snapshot|undefined, currentAgentId='', currentCredentialId='';
+  connectionController.getSnapshot=()=>{
+   if(!currentSnapshot||currentAgentId!==f.agentId||currentCredentialId!==f.credentialId){
+    currentAgentId=f.agentId;currentCredentialId=f.credentialId;
+    currentSnapshot={...snapshot,session:{agentId:f.agentId,sessionId:'fixture-agent-session'},cloudAccount:{environment:'production',userId,organizationId,sessionId:'fixture-cloud-session',credentialId:f.credentialId}} as any;
+   }
+   return currentSnapshot!;
+  };
   const client={googleCalendarSync:async(input:any)=>{
    f.calls.push(structuredClone(input));const reply=(event:any)=>({version:1,calendarId:'primary',event,providerExactlyOnce:false});
    if(input.kind==='capabilities')return {version:1,calendarId:'primary',accountId:'fixture-google-user',accountEmail:'owner@example.invalid',calendarLabel:'Personal',read:true,write:true,idempotentCreate:true,conditionalWrites:true,providerExactlyOnce:false};

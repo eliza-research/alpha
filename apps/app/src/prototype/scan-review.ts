@@ -11,6 +11,9 @@ import {recognizeLocalText} from './local-ocr';
 /** 'unsaved' is a scan-mode capture that was not published to Photos. It stays
  * in memory unless the user explicitly chooses Keep photo. */
 export type ScanSource='captured'|'selected'|'unsaved';
+/** A Keep photo outcome other than saved. `retry` is set only when keeping again cannot duplicate
+ * the photo: the host kept nothing, or it resolves a retry against the same operation identity. */
+export class ScanKeepError extends Error {constructor(message:string,readonly retry:boolean){super(message);}}
 export function openScanReview(image:Blob,save:(text:string,id:string)=>Promise<boolean>,reviewEvent?:(draft:ScanEventDraft)=>boolean,source:ScanSource='captured',keep?:(image:Blob,signal:AbortSignal)=>Promise<string>):()=>void {
   const controller=new AbortController();const previous=document.activeElement;
   const dialog=document.createElement('dialog');dialog.setAttribute('aria-label','Review scanned text');
@@ -24,7 +27,12 @@ export function openScanReview(image:Blob,save:(text:string,id:string)=>Promise<
   const tools=document.createElement('div');tools.className='scan-dialog-tools';
   let closeDocument:(()=>void)|undefined;
   {const document=button('Build multi-page PDF');document.onclick=()=>{closeDocument?.();closeDocument=openScanDocument(image);};tools.append(document);}
-  if(source==='unsaved'&&keep){const kept=button('Keep photo');let keeping=false;kept.onclick=()=>{if(keeping||closed)return;keeping=true;kept.disabled=true;status.textContent='Saving photo to Photos…';void keep(image,controller.signal).then(message=>{if(!closed){status.textContent=message;kept.textContent='Photo kept';}},()=>{if(!closed)status.textContent='Keep photo unconfirmed. Check Photos before keeping it again.';});};tools.append(kept);}
+  if(source==='unsaved'&&keep){const kept=button('Keep photo');let keeping=false;kept.onclick=()=>{if(keeping||closed)return;keeping=true;kept.disabled=true;status.textContent='Saving photo to Photos…';void keep(image,controller.signal).then(message=>{if(!closed){status.textContent=message;kept.textContent='Photo kept';}},error=>{if(closed)return;
+    // A host that keeps under one operation identity (or kept nothing) marks the failure retryable:
+    // trying again resolves the same save. Otherwise Keep stays off so a retry cannot duplicate it.
+    const retry=error instanceof ScanKeepError&&error.retry;
+    status.textContent=error instanceof ScanKeepError&&error.message?error.message:'Keep photo unconfirmed. Check Photos before keeping it again.';
+    if(retry){keeping=false;kept.disabled=false;kept.textContent='Try keeping again';}});};tools.append(kept);}
   const pdf=button(Capacitor.isNativePlatform()?'Save photo PDF':'Download photo PDF');
   const copy=button('Copy text'),commit=button('Save to Notes'),close=button('Cancel scan');copy.disabled=true;commit.disabled=true;commit.className='primary';
   const pdfStatus=document.createElement('p');pdfStatus.setAttribute('role','status');pdfStatus.setAttribute('aria-label','PDF export status');

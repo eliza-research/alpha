@@ -1,0 +1,213 @@
+{
+ "note": "Copy to a new file per capture session. result is pass, fail or not attested; media names a committed photo or screen recording path (no audio, no personal content). A gate is earned only when every item of that gate is pass, its automated checks pass and reviewer is named.",
+ "reviewer": null,
+ "operator": null,
+ "date": null,
+ "items": {
+  "G2.noCaptureBeforeConsent": {
+   "result": "not attested",
+   "note": null,
+   "media": null
+  },
+  "G2.consentRequestsRecordAudioAndNotifications": {
+   "result": "not attested",
+   "note": null,
+   "media": null
+  },
+  "G3.micIndicatorUnlocked": {
+   "result": "not attested",
+   "note": null,
+   "media": null
+  },
+  "G3.chipStatusBar": {
+   "result": "not attested",
+   "note": null,
+   "media": null
+  },
+  "G3.chipLockScreen": {
+   "result": "not attested",
+   "note": null,
+   "media": null
+  },
+  "G3.chipAod": {
+   "result": "not attested",
+   "note": null,
+   "media": null
+  },
+  "G3.hideSilentNotificationsOn": {
+   "result": "not attested",
+   "note": null,
+   "media": null
+  },
+  "G3.notificationLockScreenControls": {
+   "result": "not attested",
+   "note": null,
+   "media": null
+  },
+  "G3.systemUiKillStops": {
+   "result": "not attested",
+   "note": null,
+   "media": null
+  },
+  "G3.immersivePauses": {
+   "result": "not attested",
+   "note": null,
+   "media": null
+  },
+  "G3.shadePauses": {
+   "result": "not attested",
+   "note": null,
+   "media": null
+  },
+  "G3.unattributedRecordingStops": {
+   "result": "not attested",
+   "note": null,
+   "media": null
+  },
+  "G3.aodOffPausesAndResumes": {
+   "result": "not attested",
+   "note": null,
+   "media": null
+  },
+  "G3.noResumeAfterLoss": {
+   "result": "not attested",
+   "note": null,
+   "media": null
+  },
+  "G3.senseConsentText": {
+   "result": "not attested",
+   "note": null,
+   "media": null
+  },
+  "G4.pressHoldStartsOneVoiceTurn": {
+   "result": "not attested",
+   "note": null,
+   "media": null
+  },
+  "G4.appSentAssistOnlyOpens": {
+   "result": "not attested",
+   "note": null,
+   "media": null
+  },
+  "G4.powerVolumeUpPowerMenu": {
+   "result": "not attested",
+   "note": null,
+   "media": null
+  },
+  "G4.emergencySosUnchanged": {
+   "result": "not attested",
+   "note": null,
+   "media": null
+  },
+  "G4.doublePressCameraUnchanged": {
+   "result": "not attested",
+   "note": null,
+   "media": null
+  },
+  "G4.coldStartWakeOwnerAdmission": {
+   "result": "not attested",
+   "note": null,
+   "media": null
+  },
+  "G4.lockedWakeIgnored": {
+   "result": "not attested",
+   "note": null,
+   "media": null
+  },
+  "G5.guestSwitchStops": {
+   "result": "not attested",
+   "note": null,
+   "media": null
+  },
+  "G5.secondaryUserStops": {
+   "result": "not attested",
+   "note": null,
+   "media": null
+  },
+  "G5.ringingPauses": {
+   "result": "not attested",
+   "note": null,
+   "media": null
+  },
+  "G5.callPauses": {
+   "result": "not attested",
+   "note": null,
+   "media": null
+  },
+  "G5.otherRecorderReleases": {
+   "result": "not attested",
+   "note": null,
+   "media": null
+  },
+  "G5.alphaVoiceTurnReleases": {
+   "result": "not attested",
+   "note": null,
+   "media": null
+  },
+  "G5.mediaSuppressesWake": {
+   "result": "not attested",
+   "note": null,
+   "media": null
+  },
+  "G5.bluetoothRouting": {
+   "result": "not attested",
+   "note": null,
+   "media": null
+  },
+  "G5.noEchoReinvocation": {
+   "result": "not attested",
+   "note": null,
+   "media": null
+  },
+  "G5.recoversAfterEach": {
+   "result": "not attested",
+   "note": null,
+   "media": null
+  },
+  "G5.revocationOnReset": {
+   "result": "not attested",
+   "note": null,
+   "media": null
+  },
+  "G6.pauseFromNotification": {
+   "result": "not attested",
+   "note": null,
+   "media": null
+  },
+  "G6.turnOffFromNotification": {
+   "result": "not attested",
+   "note": null,
+   "media": null
+  },
+  "G6.tilePause": {
+   "result": "not attested",
+   "note": null,
+   "media": null
+  },
+  "G6.lockScreenPause": {
+   "result": "not attested",
+   "note": null,
+   "media": null
+  },
+  "G6.rebootBeforeUnlockNoCapture": {
+   "result": "not attested",
+   "note": null,
+   "media": null
+  },
+  "G6.crashLoopStops": {
+   "result": "not attested",
+   "note": null,
+   "media": null
+  },
+  "G6.multiHourRun": {
+   "result": "not attested",
+   "note": null,
+   "media": null
+  },
+  "G6.twentyFourHourRun": {
+   "result": "not attested",
+   "note": null,
+   "media": null
+  }
+ }
+}

@@ -3,19 +3,20 @@ import {resolveCloudEnvironment} from '../apps/app/src/runtime/cloud-environment
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
-import {stripTypeScriptTypes} from './support/strip-types.mjs';
+import {stripTypeScriptTypes} from 'node:module';
 import vm from 'node:vm';
 import {EntitlementError} from '../apps/app/src/runtime/subscription-entitlement.ts';
 import * as cloudSignInModule from '../apps/app/src/runtime/cloud-sign-in.ts';
-const coordinatorSource=stripTypeScriptTypes(readFileSync('apps/app/src/runtime/notice-owner-coordinator.ts','utf8'),{mode:'strip'}).replace(/export /g,'');
-const controllerSource=stripTypeScriptTypes(readFileSync('apps/app/src/runtime/connection-ui.tsx','utf8').split('export function ConnectionChooser()')[0].replace(/\nfunction ResidentRecoveryPanel\([\s\S]*?\n}\n(?=export function productionCloudSignInRequired)/, '\n').replace(/^import .*;\n/gm,'').replace(/export /g,'').replaceAll('import.meta.env','fixtureViteEnv'),{mode:'strip'});
+// The shared upstream coordinator (@elizaos/contracts/notice-routes), as the renderer imports it.
+import {NoticeOwnerCoordinator} from '../.eliza/client-features/packages/contracts/src/notice-routes.ts';
+const controllerSource=stripTypeScriptTypes(readFileSync('apps/app/src/runtime/connection-ui.tsx','utf8').split('export function ConnectionChooser()')[0].replace(/\nfunction ResidentRecoveryPanel\([\s\S]*?\n}\n(?=export function productionCloudSignInRequired)/, '\n').replace(/^import .*;\n/gm,'').replace(/export /g,'').replaceAll('import.meta.env','fixtureViteEnv'),{mode:'transform'});
 function fixture({offline=false,credential=null,fail=false}={}){
  let release;const read=new Promise(resolve=>release=resolve),transitions=[];
  const memory=new Map(offline?[['alpha.connection.selection.v1',JSON.stringify({kind:'offline',localApps:true})]]:[]);
- const box={browserCloudResidentEnabled:false,browserCloudResidentEnvironment:'production',...residentRecovery,resolveCloudEnvironment,fixtureViteEnv:{DEV:false},EntitlementError,...cloudSignInModule,cloudSignIn:undefined,cloudSignInGoogle:false,devSurfacesEnabled:false,devProfileQuery:false,testMocksEnabled:false,cloudSelfRevocationSupported:true,isAndroid:true,browserLocalAgentEnabled:false,setTimeout:()=>0,registerPlugin:()=>({}),pauseHostedBackground:async()=>{},retireClockReviews:async()=>{},CloudProtocol:class{},nativeCloudRequest:()=>{throw Error('No provider request');},openConnectionBrowser:()=>{throw Error('No browser');},cloudCredentialStore:{read:async()=>{await read;return credential;}},localStorage:{getItem:k=>memory.get(k)??null,setItem:(k,v)=>memory.set(k,v),removeItem:k=>memory.delete(k)},URL,URLSearchParams,AbortController,DOMException,console,transitions,fail};
+ const box={NoticeOwnerCoordinator,privateLocalPreviewEnabled:false,browserCloudResidentEnabled:false,browserCloudResidentEnvironment:'production',...residentRecovery,resolveCloudEnvironment,fixtureViteEnv:{DEV:false},EntitlementError,...cloudSignInModule,cloudSignIn:undefined,cloudSignInGoogle:false,devSurfacesEnabled:false,devProfileQuery:false,testMocksEnabled:false,cloudSelfRevocationSupported:true,isAndroid:true,browserLocalAgentEnabled:false,registerPlugin:()=>({}),pauseHostedBackground:async()=>{},retireClockReviews:async()=>{},CloudProtocol:class{},nativeCloudRequest:()=>{throw Error('No provider request');},openConnectionBrowser:()=>{throw Error('No browser');},cloudCredentialStore:{read:async()=>{await read;return credential;}},localStorage:{getItem:k=>memory.get(k)??null,setItem:(k,v)=>memory.set(k,v),removeItem:k=>memory.delete(k)},URL,URLSearchParams,AbortController,DOMException,console,transitions,fail};
  // Only resident transport admission is synthetic. Real initialize/work/update/subscribe and the
  // real coordinator run together; no live credential or provider is involved.
- vm.runInNewContext(coordinatorSource+'\n'+controllerSource+`\nconnectResident=async()=>{await cloudCredentialStore.read();if(fail)throw Error('revoked');update({session:{sessionId:'A',origin:'https://a.invalid',ownerId:'A',agentId:'agent'}});};
+ vm.runInNewContext(controllerSource+`\nconnectResident=async()=>{await cloudCredentialStore.read();if(fail)throw Error('revoked');update({session:{sessionId:'A',origin:'https://a.invalid',ownerId:'A',agentId:'agent'}});};
  let queue=Promise.resolve();const notices=new NoticeOwnerCoordinator({transition:async s=>{transitions.push(s.owner?.ownerId??null);return{};},enqueue:work=>queue=queue.then(work),available:()=>true,restore:async()=>{}});
  const changed=()=>{const s=connectionController.getSnapshot(),a=s.session;notices.update({identity:a?.sessionId??'',owner:a?{origin:a.origin,ownerId:a.ownerId,agentId:a.agentId}:null,hasSession:!!a,startupResolved:s.startupResolved,busy:s.busy});};connectionController.subscribe(changed);changed();globalThis.controller=connectionController;globalThis.drain=()=>queue;`,box);
  return{...box,release,transitions,memory};
@@ -43,7 +44,7 @@ test('reconnects retire the session while busy, and the notice owner update carr
  // The real controller marks the connection busy before Continue / Check plan again / pairing
  // retires the session; the coordinator (tested directly) defers a null owner until it settles.
  const controller=readFileSync('apps/app/src/runtime/connection-ui.tsx','utf8'),adapter=readFileSync('apps/app/src/prototype/workflow-adapter.ts','utf8');
- assert.match(controller,/update\(\{ busy: true, \.\.\.\(background \? \{\} : \{ open: true \}\), message, error: '' \}\);\s*try \{ await action\(controller\.signal\); \}/);
+ assert.match(controller,/update\(\{ busy: true, \.\.\.\(background \? \{\} : \{ open: true \}\), message, error: preserveError \? state\.error : '' \}\);\s*try \{ await action\(controller\.signal\); \}/);
  assert.match(controller,/async startLocal\(\) \{ if\(state\.residentRecoveryReason\)\{update\(\{open:true,purpose:'agent',error:residentRecoveryMessage\(state\.residentRecoveryReason\)\}\);return;\} if \(residentAlwaysPresent\) \{ if \(!operation\) \{ retire\(\); await startResident\('Starting the local agent…', false\); \} return; \} await work\('Starting the local agent…', signal => \{ retire\(\);/);
  assert.match(adapter,/startupResolved:connectionController\.getSnapshot\(\)\.startupResolved,busy:connectionController\.getSnapshot\(\)\.busy\}\)/);
 });

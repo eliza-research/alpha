@@ -1,12 +1,9 @@
 import {iconStyle} from '../icon-style';
+import {calendarInstant,calendarWall,civil} from './calendar-time';
 import {calendarEditorDraft,type CalendarEditorFields} from './calendar-editor-draft';
 import './calendar-editor.css';
 export interface EditableCalendarEvent {title:string;body:string;location:string;begin:number;end:number;allDay?:boolean;timeZone?:string;repeat?:'none'|'daily'|'weekdays'|'weekly';alert?:number|null;who?:string[];video?:boolean}
 export type CalendarPerson={id:string;name:string};
-export function calendarWall(instant:number,zone:string){const p=Object.fromEntries(new Intl.DateTimeFormat('en-GB',{timeZone:zone,calendar:'iso8601',numberingSystem:'latn',year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',second:'2-digit',hourCycle:'h23'}).formatToParts(instant).map(p=>[p.type,p.value]));return `${p.year}-${p.month}-${p.day}T${p.hour}:${p.minute}:${p.second}.${String(((instant%1000)+1000)%1000).padStart(3,'0')}`;}
-function civil(text:string){const n=Date.parse(text+'Z');if(!Number.isFinite(n)||new Date(n).toISOString().slice(0,10)!==text.slice(0,10))throw Error('Choose valid dates and times.');return n;}
-/** Explicit saved-zone conversion: reject gaps and preserve the original overlap instant. */
-export function calendarInstant(value:string,zone:string,original:number,gap:'reject'|'forward'='reject'){const desired=civil(value),normalized=new Date(desired).toISOString().slice(0,-1);if(Number.isFinite(original)&&calendarWall(original,zone)===normalized)return original;const offsets=new Set<number>();for(let h=-48;h<=48;h+=6){const probe=desired+h*3600000;offsets.add(civil(calendarWall(probe,zone))-probe);}const candidates=[...offsets].map(o=>desired-o).filter(n=>calendarWall(n,zone)===normalized).sort((a,b)=>a-b);if(!candidates.length){if(gap==='forward'){const after=[...offsets].map(o=>desired-o).filter(n=>civil(calendarWall(n,zone))>desired).sort((a,b)=>a-b);if(after.length)return after[0];}throw Error('That time does not exist in this time zone. Choose another time.');}return candidates[0];}
 export function editCalendarEvent(row:EditableCalendarEvent,commit:(next:EditableCalendarEvent,current:()=>boolean,signal:AbortSignal)=>Promise<void>,people:CalendarPerson[]=[],identity?:{id:string;revision:string}):Promise<{status:'saved'|'cancelled'}>{
  const cancellation=new AbortController();
  const zone=row.timeZone||Intl.DateTimeFormat().resolvedOptions().timeZone;

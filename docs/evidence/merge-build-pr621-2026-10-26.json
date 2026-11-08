@@ -1,0 +1,116 @@
+{
+  "schema": 1,
+  "observedOn": "2026-10-26",
+  "baseIntegration": "d1487df60f634a3fdf915fedd9a41f4a2a2ffa96",
+  "pullRequest": 621,
+  "reviewedHead": "08ea12a32fb4335158bb0bc293579a67e2d11e6f",
+  "upstream": "6293e29bf398603d0ea233871edbdeb57e5c2405",
+  "resolution": [
+    "Use canonical Notes/Calendar records, shared owner routes, native Google Credential Manager, and action result presentation from PR 621.",
+    "Preserve independent email and phone readiness, configured Cloud deployment, native authorization before account-key exchange, and environment-bound MFA.",
+    "Preserve the newer admitted native source and library hashes. PR 621 native-engine and pin changes do not replace these inputs.",
+    "Keep the production release signer unset: a candidate APK signer receipt is not production-key admission.",
+    "Keep explicit Talk auto-start from PR 621 while binding the disclosure to the configured service; show an unavailable-Google notice and in-button email-send progress."
+  ],
+  "verification": {
+    "focusedAuthenticationVoiceAndPresentation": {
+      "tests": 36,
+      "passed": 36,
+      "failed": 0
+    },
+    "typecheck": "passed",
+    "fullRepository": {
+      "command": "npm run verify",
+      "tests": 2106,
+      "passed": 2100,
+      "failed": 0,
+      "skipped": 6,
+      "typecheck": "passed",
+      "productionBuild": "passed",
+      "productionBundleAudit": "passed"
+    },
+    "androidBuildLocal": {
+      "command": "npm run android:build:local",
+      "status": "passed",
+      "upstream": "4b928290d388e8f9866b6c404a1b186c7bfe7f70",
+      "variants": [
+        "standaloneDebug",
+        "standaloneRelease",
+        "launcherDebug",
+        "launcherRelease"
+      ],
+      "testMocks": false,
+      "runtimeProfile": "native",
+      "releaseSigned": false,
+      "manifest": "docs/evidence/merge-build-all-prs-apks-2026-10-27.json"
+    },
+    "finalUpstream": "4b928290d388e8f9866b6c404a1b186c7bfe7f70",
+    "followUpGoogleChooserFixture": {
+      "tests": 10,
+      "passed": 10,
+      "failed": 0
+    },
+    "packagedAudit": {
+      "packages": 603,
+      "moderate": 1,
+      "high": 0,
+      "critical": 0,
+      "disposition": "Existing unexpired UUID exception; no new exception. Full-lock pending findings do not become exceptions."
+    },
+    "latestHeadFullRepository": {
+      "tests": 2106,
+      "passed": 2100,
+      "skipped": 6,
+      "failed": 0,
+      "typecheck": "passed",
+      "productionBundleAudit": "passed"
+    },
+    "phoneVersionBuild": {
+      "versionCode": 10,
+      "versionName": "0.1.0-native-4b928290",
+      "variants": 4,
+      "status": "passed",
+      "signedRelease": false,
+      "manifest": "docs/evidence/merge-build-phone-apks-v10-2026-10-27.json"
+    },
+    "imageStaging": {
+      "cuttlefish": "passed",
+      "pixel10a": "passed",
+      "source": "android-17.0.0_r1",
+      "sameDevelopmentSigner": true,
+      "payloadUnchanged": true,
+      "deployReady": false
+    },
+    "latestBrowserChecks": {
+      "changedDevelopmentCases": 85,
+      "initialPassed": 81,
+      "initialFailed": 4,
+      "autosaveRaceFixtureRepair": {
+        "passed": 1,
+        "failed": 0
+      },
+      "singleWorkerTimeoutRerun": {
+        "passed": 3,
+        "failed": 0,
+        "timeoutMs": 120000
+      },
+      "productionWorkflowCases": {
+        "passed": 4,
+        "failed": 0
+      },
+      "evidenceBoundary": "Local browser fixtures, not real providers, device actions or native acceptance."
+    },
+    "pr617FinalReceipt": "Final documentation-only commit merged; current source status retained, previous build receipts preserved as historical evidence."
+  },
+  "mainUpdated": false,
+  "deviceAcceptance": false,
+  "latestReviewedHead": "f7fb45c50002c72f8a822c3481ba33eeeef79ed8",
+  "integratedHeads": {
+    "616": "baa1d6bf0c3a1797a10c9f1faff3443c11d1e102",
+    "617": "2ceec4593a8d8adfcef0faa3d6abfc01dce5baf3",
+    "620": "0d6a168a269863f8813a0a39326c7257eeb973ba",
+    "621": "f7fb45c50002c72f8a822c3481ba33eeeef79ed8",
+    "622": "231b26280d121ae8747f9309a5eb845a258ea79e",
+    "623": "aabe72f867c9777e2ebc6e2d2f229a23c25b532f"
+  }
+}

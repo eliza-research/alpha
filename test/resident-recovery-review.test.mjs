@@ -34,8 +34,8 @@ test('plugin binds actual native review within its authority and consumes scope 
  const source=readFileSync(join(directory,'AlphaLocalAgentPlugin.java'),'utf8');
  const start=source.indexOf('ElizaAgentService.RecoveryAuthority authority=');
  const authority=source.slice(start,source.indexOf('JSONObject result=archive?ElizaAgentService.',start));
- assert.ok(authority.indexOf('recoveryReview.consume(token,lifecycleEpoch,credentialIntentEpoch)')<authority.indexOf('JSONObject result=operation.run()'));
- assert.match(authority,/if\(!archive&&"reviewable"\.equals\(result\.optString\("status"\)\)\)recoveryReview\.bind\(result\.getString\("reviewToken"\),lifecycleEpoch,credentialIntentEpoch\)/);
+ assert.ok(authority.indexOf('recoveryReview.consume(token,lifecycleEpoch,credentialIntents.current())')<authority.indexOf('JSONObject result=operation.run()'));
+ assert.match(authority,/if\(!archive&&"reviewable"\.equals\(result\.optString\("status"\)\)\)recoveryReview\.bind\(result\.getString\("reviewToken"\),lifecycleEpoch,credentialIntents\.current\(\)\)/);
  assert.match(source,/private void invalidateOwnCalls\(\)\{\s*recoveryReview\.clear\(\)/);
  assert.match(source,/if\(!archive\)recoveryReview\.clear\(\)/);
 });

@@ -1,3 +1,4 @@
+import {openLegacyNotes} from './helpers/legacy-notes';
 // Journey J05: Web research -> note, driven through rendered controls in the browser build
 // (development profile, /?mode=dev, with the development agent profile connected).
 //
@@ -25,6 +26,7 @@ const url = 'https://public-fixture.test/harbour';
 const html = '<article><h1>Harbour report</h1><p>The ferry leaves at nine from pier four.</p><p>OMIT THIS: internal planning detail.</p></article>';
 const answer = 'The ferry leaves at nine.';
 const button = (page: Page, name: string) => page.getByRole('button', {name, exact: true});
+// The test selects the retained (Older notes) document explicitly, as web-summary-note.spec.ts does.
 const notes = (page: Page) => page.evaluate(async () => JSON.parse((await (await import('/src/runtime/browser-notes-document.ts')).readBrowserNotesRaw()) || '{"records":[]}').records as any[]);
 const agentMessages = (page: Page) => page.evaluate(async () => (await (await import('/src/browser/development-agent-document.ts')).readDevelopmentAgent((await import('/src/browser/development-identity.ts')).developmentIdentity('local'))).conversations.flatMap((c: any) => c.messages) as {role: string; text: string}[]);
 const sourceHeading = (page: Page) => page.locator('iframe[title="Website"]:visible').contentFrame().getByRole('heading', {name: 'Harbour report', exact: true});
@@ -42,7 +44,7 @@ async function begin(page: Page, external: string[], crossOriginReadable: boolea
   await page.getByRole('button', {name: 'Save development reply'}).click();
   await expect(page.getByRole('status').filter({hasText: 'Development reply saved.'})).toBeVisible();
   await page.getByRole('button', {name: 'Connect development profile'}).click();
-  await returnToApps(page);
+  await returnToApps(page);await openLegacyNotes(page);await returnToApps(page);
   await button(page, 'Browser').click();
   await button(page, 'Search or type address').click();
   await page.getByRole('textbox', {name: 'Address', exact: true}).fill(url);
@@ -78,7 +80,7 @@ async function expectOneLinkedNoteAfterReload(page: Page, title: string, body: s
   expect(saved).toHaveLength(1);
   expect(saved[0]).toMatchObject({title, body, webSource: {kind: 'web-page', version: 1, url}});
   expect(JSON.stringify(saved)).not.toContain('OMIT THIS');
-  await button(page, 'Notes').click();
+  await openLegacyNotes(page);
   await expect(page.getByRole('region', {name: 'Notes'}).getByRole('button', {name: /^Open (?!Trash$)/})).toHaveCount(1);
   await button(page, `Open ${title}`).click();
   await expect(page.getByRole('textbox', {name: 'Title', exact: true})).toHaveValue(title);

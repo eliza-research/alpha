@@ -61,7 +61,10 @@ the current source says so in its own document, and the gaps named below are ope
 - Eliza Cloud routes and their production validation state:
   [Cloud production validation](cloud-production-validation.md).
 - Password provider setup: [password provider setup](password-provider-setup.md).
-- What only the owner can do: [owner actions](mvp-owner-actions.md).
+- What only a person can do, in order, with each step's seam and verification:
+  [human actions](human-actions.md) (`npm run human:status`); Alpha's Eliza Cloud registration
+  values and a credential-free deployment probe: [`scripts/cloud-readiness.mjs`](../scripts/cloud-readiness.mjs).
+  The inventory coverage note is in [owner actions](mvp-owner-actions.md).
 
 ## Privacy and retention
 
@@ -77,7 +80,12 @@ the current source says so in its own document, and the gaps named below are ope
 ## Release manifests
 
 - Release signer record: [`android/release-signer.json`](../android/release-signer.json)
-  (`signerSha256` is unset until the release keys exist).
+  (`signerSha256` is unset until the release keys exist). The key ceremony uses
+  [`android/signing/alpha-key-manifest.json`](../android/signing/alpha-key-manifest.json);
+  [`scripts/enroll-release-keys.mjs`](../scripts/enroll-release-keys.mjs) records its public
+  digests here and in the Pixel 10a descriptor and update channel, and
+  [`scripts/sign-release-apks.mjs`](../scripts/sign-release-apks.mjs) signs release APKs with
+  ceremony key files or a PKCS#11 token when Gradle's keystore signing is not used.
 - Update channel and recovery references:
   [`android/aosp/pixel10a-ota-channel.json`](../android/aosp/pixel10a-ota-channel.json);
   each signed release writes a `release-record.json` version/hash compatibility record.
@@ -93,8 +101,9 @@ the current source says so in its own document, and the gaps named below are ope
 
 ## Backup and export
 
-Pending decision [A-19](decisions.md#new-decision-items). Today there is no backup and no
-in-app erase; data does not move to a new phone. `scripts/pilot-update.mjs` reads an in-app
+Decided by P-25 (A-19, [decisions](decisions.md#october-12-owner-decisions)): no app-data backup,
+import/export or device transfer; a confirmed Reset Alpha data erases Alpha's private data. Data
+does not move to a new phone. `scripts/pilot-update.mjs` reads an in-app
 integrity export on release units (file HMACs only, no names or contents leave the device);
 that is an update check, not a user data export.
 

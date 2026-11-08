@@ -1,4 +1,6 @@
 import {test,expect,type Page} from '@playwright/test';
+// The closing sheet keeps an inert composer briefly; interact with the one exposed to users.
+import {preloadPageModules} from './helpers/page-modules';
 
 const voice=(page:Page)=>page.getByRole('region',{name:'Voice conversation',exact:true});
 async function setup(page:Page,signed=true,theme='light'){
@@ -9,7 +11,8 @@ async function setup(page:Page,signed=true,theme='light'){
   if(navigator.mediaDevices)navigator.mediaDevices.getUserMedia=async()=>{f.media++;throw Error('This test forbids microphone access');};
  });
  await page.goto('/?theme='+theme);
- await expect(page.locator('textarea[data-alpha-composer]')).toBeEnabled();
+ await expect(page.getByRole('textbox',{name:/^(Ask|Message) Alpha$/})).toBeEnabled();
+ await preloadPageModules(page,['/src/browser/voice.ts','/src/runtime/connection-ui.tsx','/src/prototype/model.js','/src/runtime/voice-selection.ts','/src/runtime/voice-timing.ts','/src/runtime/diagnostics-export.ts']);
  await page.evaluate(async signed=>{
   const {BrowserVoice}=await import('/src/browser/voice.ts'),{connectionController:c}=await import('/src/runtime/connection-ui.tsx'),{Component}=await import('/src/prototype/model.js');
   const f=(window as any).chatVoiceFixture;
@@ -35,18 +38,22 @@ async function setup(page:Page,signed=true,theme='light'){
  await expect.poll(()=>page.evaluate(()=>!!(window as any).chatVoiceFixture.shell)).toBe(true);
  await expect.poll(()=>page.evaluate(()=>(window as any).chatVoiceFixture.shell.swallowed())).toBe(false);
 }
+// A retained typed draft intentionally shows Send instead of Talk. This is
+// explicit public-API coverage of preserving that draft, not a claim that a
+// second Talk control is visible beside Send.
+async function startWithRetainedDraft(page:Page){
+ await expect(page.getByRole('button',{name:'Talk',exact:true})).toHaveCount(0);
+ await page.evaluate(()=>(window as any).chatVoiceFixture.shell.startVoice());
+}
 async function utterance(page:Page){await page.evaluate(()=>(window as any).chatVoiceFixture.peak=.25);await page.waitForTimeout(950);await page.evaluate(()=>(window as any).chatVoiceFixture.peak=0);}
 async function noMedia(page:Page){expect(await page.evaluate(()=>{const f=(window as any).chatVoiceFixture;return {media:f.media,local:f.localProbes};})).toEqual({media:0,local:0});}
 
-test('unsigned chat voice stays in Home and offers only explicit Cloud sign-in',async({page},info)=>{
+test('unsigned chat voice stays in Home and can stop without opening the microphone',async({page},info)=>{
  await setup(page,false);await page.getByRole('button',{name:'Talk',exact:true}).click();await expect(voice(page)).toBeVisible();await expect(page.locator('html')).toHaveAttribute('data-active-view','home');
- await expect(page.getByRole('button',{name:'Connect Eliza Cloud',exact:true})).toBeEnabled();await expect(voice(page).getByRole('button',{name:'Microphone off',exact:true})).toBeDisabled();await expect(voice(page).getByRole('button',{name:'Stop voice conversation',exact:true})).toBeEnabled();expect(await page.evaluate(()=>(window as any).chatVoiceFixture.starts)).toBe(0);await expect(page.locator('[data-alpha-subview="notes-recording"]')).toHaveCount(0);await expect(page.locator('[data-alpha-transcript]')).toBeVisible();await expect(page.locator('textarea[data-alpha-composer]')).toHaveCount(0);
- const notice=page.locator('.alpha-chat-notices');await expect(notice.getByRole('alert')).toBeVisible();
- await page.locator('[data-alpha-layer="conversation"]').evaluate(element=>Promise.all(element.getAnimations().map(animation=>animation.finished.catch(()=>{}))));
- const layout=await page.evaluate(()=>{const notice=document.querySelector('.alpha-chat-notices')!.getBoundingClientRect(),voice=document.querySelector('[data-alpha-chat-recorder]')!.getBoundingClientRect(),recovery=document.querySelector('[data-alpha-voice-recovery]')!.getBoundingClientRect();return {noticeBottom:notice.bottom,voiceTop:voice.top,recoveryBottom:recovery.bottom};});
- expect(layout.noticeBottom).toBeLessThanOrEqual(layout.voiceTop);expect(layout.recoveryBottom).toBeLessThanOrEqual(layout.noticeBottom);
+ await expect(voice(page).getByRole('button',{name:'Microphone off',exact:true})).toBeDisabled();await expect(voice(page).getByRole('button',{name:'Stop voice conversation',exact:true})).toBeEnabled();expect(await page.evaluate(()=>(window as any).chatVoiceFixture.starts)).toBe(0);await expect(page.locator('[data-alpha-subview="notes-recording"], [data-alpha-subview="notes-recorder"]')).toHaveCount(0);await expect(page.locator('[data-alpha-transcript]')).toBeVisible();await expect(page.getByRole('textbox',{name:/^(Ask|Message) Alpha$/})).toHaveCount(0);
+ const notice=page.locator('.alpha-chat-notices');await expect(notice.getByRole('alert')).toHaveCount(0);await expect(notice.getByRole('button',{name:'Connect Eliza Cloud',exact:true})).toHaveCount(0);
  await page.screenshot({path:info.outputPath('unsigned-stop-microphone-off.png'),animations:'disabled'});
- await voice(page).getByRole('button',{name:'Stop voice conversation',exact:true}).click();await expect(voice(page)).toHaveCount(0);await expect(page.locator('[data-alpha-layer="conversation"]')).toBeVisible();await expect(page.locator('textarea[data-alpha-composer]')).toBeVisible();expect(await page.evaluate(()=>(window as any).chatVoiceFixture.starts)).toBe(0);await noMedia(page);
+ await voice(page).getByRole('button',{name:'Stop voice conversation',exact:true}).click();await expect(voice(page)).toHaveCount(0);await expect(page.locator('[data-alpha-layer="conversation"]')).toBeVisible();await expect(page.getByRole('textbox',{name:/^(Ask|Message) Alpha$/})).toBeVisible();expect(await page.evaluate(()=>(window as any).chatVoiceFixture.starts)).toBe(0);await noMedia(page);
 });
 
 test('ongoing Cloud conversation stays in Calendar, sends only new speech and preserves the saved draft and Notes',async({page})=>{
@@ -55,17 +62,35 @@ test('ongoing Cloud conversation stays in Calendar, sends only new speech and pr
  expect(await page.evaluate(()=>{const f=(window as any).chatVoiceFixture;return {notes:JSON.stringify(f.shell.vget('notes'))===f.notes,draft:f.shell.S().draft,starts:f.starts,uploads:f.uploads,sends:f.sends,sent:f.sent,speech:f.speech};})).toEqual({notes:true,draft:'Existing unsent draft',starts:1,uploads:1,sends:1,sent:'Synthetic Cloud transcript',speech:1});
  await voice(page).getByRole('button',{name:'Stop voice conversation',exact:true}).click();await expect(voice(page)).toHaveCount(0);expect(await page.evaluate(()=>(window as any).chatVoiceFixture.shell.S().draft)).toBe('Existing unsent draft');await noMedia(page);
 });
-test('the default send policy is auto-send: a finished transcript is sent with no review step',async({page})=>{
+test('the recorded-clip conversation shows no interruption notice and records its batch path',async({page})=>{
+ await setup(page);await page.evaluate(()=>{const f=(window as any).chatVoiceFixture,toast=f.shell.toast.bind(f.shell);f.toasts=[];f.shell.toast=(message:string,...rest:unknown[])=>{f.toasts.push(message);return toast(message,...rest);};});
+ await expect(page.getByRole('textbox',{name:/^(Ask|Message) Alpha$/})).toHaveValue('');
+ await expect(page.getByRole('button',{name:'Talk',exact:true})).toBeVisible();
+ await page.getByRole('button',{name:'Talk',exact:true}).click();await expect(voice(page)).toHaveAttribute('data-voice-state','listening');
+ await utterance(page);await expect(voice(page)).toHaveAttribute('data-voice-state','speaking');
+ await voice(page).getByRole('button',{name:'Stop voice conversation',exact:true}).click();await expect(voice(page)).toHaveCount(0);
+ await page.getByRole('button',{name:'Talk',exact:true}).click();await expect(voice(page)).toHaveAttribute('data-voice-state','listening');
+ await voice(page).getByRole('button',{name:'Stop voice conversation',exact:true}).click();
+ expect(await page.evaluate(()=>(window as any).chatVoiceFixture.toasts)).toEqual([]);
+ const paths=await page.evaluate(async()=>{const timing=await import('/src/runtime/voice-timing.ts'),{buildDiagnostics}=await import('/src/runtime/diagnostics-export.ts');
+  const records=timing.voiceTimingRecords().filter((r:any)=>r.entry==='conversation');
+  return {live:records.map((r:any)=>r.live),paths:buildDiagnostics({voiceTiming:JSON.parse(timing.exportVoiceTiming())}).voiceTiming.records.filter((r:any)=>r.entry==='conversation').map((r:any)=>r.path)};});
+ expect(paths.live[0]).toEqual({mode:'batch',partials:0});expect(paths.paths[0]).toBe('batch');
+ await noMedia(page);
+});
+test('explicit voice API with a retained draft uses auto-send without a review step',async({page})=>{
  await setup(page);expect(await page.evaluate(async()=>(await import('/src/runtime/voice-selection.ts')).voiceSendPolicy())).toBe('auto-send');
- await page.getByRole('button',{name:'Talk',exact:true}).click();await expect(voice(page)).toHaveAttribute('data-voice-state','listening');await expect(voice(page)).toContainText('Pause to send your message.');
+ await page.evaluate(()=>new Promise<void>(resolve=>(window as any).chatVoiceFixture.shell.setState({draft:'Existing unsent draft'},resolve)));
+ await startWithRetainedDraft(page);await expect(voice(page)).toHaveAttribute('data-voice-state','listening');await expect(voice(page)).toContainText('Listening…');expect(await page.evaluate(()=>(window as any).chatVoiceFixture.sends)).toBe(0);
  await utterance(page);await expect(voice(page)).toHaveAttribute('data-voice-state','speaking');
  await expect(voice(page).getByRole('button',{name:'Send voice message',exact:true})).toHaveCount(0);await expect(voice(page).getByRole('textbox',{name:'Review transcript',exact:true})).toHaveCount(0);
  expect(await page.evaluate(()=>{const f=(window as any).chatVoiceFixture;return {sends:f.sends,sent:f.sent};})).toEqual({sends:1,sent:'Synthetic Cloud transcript'});
- await voice(page).getByRole('button',{name:'Stop voice conversation',exact:true}).click();await noMedia(page);
+ await voice(page).getByRole('button',{name:'Stop voice conversation',exact:true}).click();expect(await page.evaluate(()=>(window as any).chatVoiceFixture.shell.S().draft)).toBe('Existing unsent draft');await noMedia(page);
 });
-test('the review send policy holds each transcript for an edited Send or a Discard that sends nothing',async({page})=>{
+test('explicit voice API with a retained draft holds review for edited Send or zero-send Discard',async({page})=>{
  await setup(page);expect(await page.evaluate(async()=>(await import('/src/runtime/voice-selection.ts')).setVoiceSendPolicyForTests('review'))).toBe(true);
- await page.getByRole('button',{name:'Talk',exact:true}).click();await expect(voice(page)).toHaveAttribute('data-voice-state','listening');await expect(voice(page)).toContainText('Pause to review your message.');
+ await page.evaluate(()=>new Promise<void>(resolve=>(window as any).chatVoiceFixture.shell.setState({draft:'Existing unsent draft'},resolve)));
+ await startWithRetainedDraft(page);await expect(voice(page)).toHaveAttribute('data-voice-state','listening');await expect(voice(page)).toContainText('Listening…');expect(await page.evaluate(()=>(window as any).chatVoiceFixture.sends)).toBe(0);
  await utterance(page);await expect(voice(page)).toHaveAttribute('data-voice-state','review');
  await expect(voice(page).getByRole('button',{name:'Stop voice conversation',exact:true})).toBeEnabled();await expect(voice(page).getByRole('button',{name:'Microphone off',exact:true})).toBeDisabled();
  const review=voice(page).getByRole('textbox',{name:'Review transcript',exact:true});await expect(review).toHaveValue('Synthetic Cloud transcript');await expect(voice(page)).toContainText('Nothing has been sent.');
@@ -75,8 +100,8 @@ test('the review send policy holds each transcript for an edited Send or a Disca
  expect(await page.evaluate(()=>{const f=(window as any).chatVoiceFixture;return {sends:f.sends,sent:f.sent};})).toEqual({sends:1,sent:'Edited Cloud words'});
  await page.evaluate(()=>(window as any).chatVoiceFixture.finishPlayback());await expect(voice(page)).toHaveAttribute('data-voice-state','listening');
  await utterance(page);await expect(voice(page)).toHaveAttribute('data-voice-state','review');await voice(page).getByRole('button',{name:'Discard voice message',exact:true}).click();
- await expect(voice(page)).toHaveCount(0);await expect(page.locator('textarea[data-alpha-composer]')).toBeVisible();
- expect(await page.evaluate(()=>{const f=(window as any).chatVoiceFixture;return {sends:f.sends,uploads:f.uploads,active:f.active};})).toEqual({sends:1,uploads:2,active:null});await noMedia(page);
+ await expect(voice(page)).toHaveCount(0);await expect(page.getByRole('textbox',{name:/^(Ask|Message) Alpha$/})).toBeVisible();
+ expect(await page.evaluate(()=>{const f=(window as any).chatVoiceFixture;return {sends:f.sends,uploads:f.uploads,active:f.active,draft:f.shell.S().draft};})).toEqual({sends:1,uploads:2,active:null,draft:'Existing unsent draft'});await noMedia(page);
 });
 test('minimize returns the same owned capture to compact pill; explicit Stop retires media',async({page})=>{await setup(page);await page.evaluate(()=>(window as any).chatVoiceFixture.shell.setState({chat:'hidden',draft:'Keep this draft'}));await page.getByRole('button',{name:'Talk',exact:true}).click();await expect(page.locator('[data-alpha-pill-voice]')).toBeVisible();expect(await page.evaluate(()=>(window as any).chatVoiceFixture.shell.S().chat)).toBe('hidden');await expect.poll(()=>page.evaluate(()=>(window as any).chatVoiceFixture.shell.swallowed())).toBe(false);await page.locator('[data-alpha-pill-voice]').getByRole('button',{name:'Open conversation',exact:true}).click();await expect(voice(page)).toHaveAttribute('data-voice-state','listening');await page.getByRole('button',{name:'Minimize chat',exact:true}).click();await expect(page.locator('[data-alpha-pill-voice]')).toBeVisible();expect(await page.evaluate(()=>{const f=(window as any).chatVoiceFixture;return {chat:f.shell.S().chat,draft:f.shell.S().draft,active:f.active,starts:f.starts,sends:f.sends};})).toEqual({chat:'hidden',draft:'Keep this draft',active:'synthetic-clip-1',starts:1,sends:0});await page.locator('[data-alpha-pill-voice]').getByRole('button',{name:'Stop voice conversation',exact:true}).click();await expect.poll(()=>page.evaluate(()=>(window as any).chatVoiceFixture.active)).toBe(null);await expect(page.locator('[data-alpha-pill-voice]')).toHaveCount(0);expect(await page.evaluate(()=>(window as any).chatVoiceFixture.starts)).toBe(1);await noMedia(page);});
 test('account change discards held ASR and never resumes it',async({page})=>{await setup(page);await page.evaluate(()=>(window as any).chatVoiceFixture.holdTranscript=true);await page.getByRole('button',{name:'Talk',exact:true}).click();await expect(voice(page)).toHaveAttribute('data-voice-state','listening');await utterance(page);await expect(voice(page)).toHaveAttribute('data-voice-state','transcribing');await page.evaluate(async()=>{const f=(window as any).chatVoiceFixture;f.owner='b';(await import('/src/runtime/connection-ui.tsx')).connectionController.close();});await expect(voice(page)).toHaveCount(0);await page.evaluate(()=>(window as any).chatVoiceFixture.releaseTranscript());expect(await page.evaluate(()=>(window as any).chatVoiceFixture.sends)).toBe(0);await noMedia(page);});

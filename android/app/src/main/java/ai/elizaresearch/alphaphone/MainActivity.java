@@ -129,9 +129,13 @@ public class MainActivity extends BridgeActivity {
  /** Bring-to-front starts the live instance has not yet received. It answers each within a frame or two. */
  private static int unackedFrontStarts = 0;
  private static final int MAX_UNACKED_FRONT_STARTS = 3;
- /** The task of the instance that owns the page, and whether that task has the home activity type. */
- private static int liveTaskId = -1;
- private static boolean liveTaskHome = false;
+ /** Each surviving task keeps its kind when unreliable handoff permits more than one page. */
+ private static final class TaskKind {
+  final boolean home;
+  java.lang.ref.WeakReference<MainActivity> owner;
+  TaskKind(boolean home,MainActivity owner){this.home=home;this.owner=new java.lang.ref.WeakReference<>(owner);}
+ }
+ private static final java.util.Map<Integer,TaskKind> taskKinds = new java.util.HashMap<>();
  private boolean handedOff = false;
  private boolean startedAsHome = false;
  static boolean isHomeIntent(Intent intent) {
@@ -243,8 +247,13 @@ public class MainActivity extends BridgeActivity {
    // First instance in this task: its start intent says which kind of task Android made. A relaunch
    // in the same task keeps that answer whatever intent it was handed (see "One live MainActivity").
    int task = getTaskId();
-   if (task == -1 || task != liveTaskId) { liveTaskId = task; liveTaskHome = isHomeTypeStart(getIntent()); }
-   startedAsHome = liveTaskHome;
+   if (task == -1) startedAsHome = isHomeTypeStart(getIntent());
+   else {
+    TaskKind kind = taskKinds.get(task);
+    if (kind == null) { kind = new TaskKind(isHomeTypeStart(getIntent()),this); taskKinds.put(task,kind); }
+    kind.owner = new java.lang.ref.WeakReference<>(this);
+    startedAsHome = kind.home;
+   }
   }
   registerPlugin(AlphaSystemPlugin.class);
   registerPlugin(AlphaResetPlugin.class);
@@ -267,21 +276,26 @@ public class MainActivity extends BridgeActivity {
   registerPlugin(AlphaLocalAgentPlugin.class);
   registerPlugin(AlphaActionJournalPlugin.class);
   registerPlugin(AlphaVoiceCloudPlugin.class);
+  registerPlugin(AlphaVoiceCloudPlugin.Streaming.class);
   registerPlugin(AlphaNoteAudioPlugin.class);
   registerPlugin(AlphaNoteDocumentsPlugin.class);
   registerPlugin(AlphaNotificationsPlugin.class);
   registerPlugin(AlphaHostedResultsPlugin.class);
   registerPlugin(AlphaGmailPlugin.class);
   registerPlugin(AlphaListenerPlugin.class);
+  registerPlugin(ai.eliza.plugins.system.SensePlugin.class);
   registerPlugin(ai.eliza.plugins.passwords.PasswordsPlugin.class);
   if(BuildConfig.ELIZA_DEV_ALLOW_TEST_MOCKS)registerPlugin(ai.eliza.plugins.passwords.PasswordTransferPlugin.class);
   // The native image gate is checked again by every telephony operation.
+  // Dialer-role components follow the verified image; Android's role dialog stays the owner's choice.
+  AlphaTelephonyRoles.sync(this);
   if (AlphaImageCapability.verified(this)) registerPlugin(AlphaTelephonyPlugin.class);
   if (BuildConfig.ELIZA_DEV_ALLOW_TEST_MOCKS) {
    // Present only in debug builds made with -PELIZA_DEV_ALLOW_TEST_MOCKS=1 (src/testMocks).
    try { registerPlugin(Class.forName("ai.elizaresearch.alphaphone.DevelopmentAgentPlugin").asSubclass(com.getcapacitor.Plugin.class)); }
    catch (ClassNotFoundException ignored) { /* Test-mocks overlay not attached to this build. */ }
   }
+  AlphaCanonicalNotifications.captureTap(this,getIntent());
   super.onCreate(state);
   // Capacitor displays its no-WebView fallback without creating a bridge when
   // the system provider cannot initialize. Preserve that screen and lifecycle.
@@ -335,6 +349,7 @@ public class MainActivity extends BridgeActivity {
   });
  }
  @Override public void onNewIntent(Intent intent) {
+  AlphaCanonicalNotifications.captureTap(this,intent);
   super.onNewIntent(intent);
   // Our own bring-to-front start (see handOff) carries nothing: the real intent was delivered first.
   if (hasFrontMarker(intent)) {
@@ -348,6 +363,9 @@ public class MainActivity extends BridgeActivity {
  }
  @Override public void onDestroy() {
   if (liveInstance.get() == this) liveInstance = new java.lang.ref.WeakReference<>(null);
+  TaskKind kind = taskKinds.get(getTaskId());
+  // Configuration/renderer recreation keeps the task. Only its current finishing owner retires it.
+  if (isFinishing() && kind != null && kind.owner.get() == this) taskKinds.remove(getTaskId());
   super.onDestroy();
  }
  /**
@@ -361,6 +379,7 @@ public class MainActivity extends BridgeActivity {
    getBridge().getWebView().evaluateJavascript("window.dispatchEvent(new Event('focus'))",null);
  }
  @Override public void onResume(){super.onResume();
+  AlphaCanonicalNotifications.ensure(this);
   // The page owner is in front again: whatever brought it there (the task move or the front start) worked.
   if(liveInstance.get()==this)unackedFrontStarts=0;
   if(getBridge()!=null&&getBridge().getWebView()!=null)AlphaDevicePlugin.applyTextScale(this);}

@@ -1,0 +1,171 @@
+--- a/plugins/plugin-native-system/android/src/main/java/ai/eliza/plugins/system/reset/DataReset.java
++++ b/plugins/plugin-native-system/android/src/main/java/ai/eliza/plugins/system/reset/DataReset.java
+@@ -64,6 +64,19 @@
+         void postDelayed(Runnable task, long delayMs);
+     }
+
++    private static final java.util.concurrent.locks.ReentrantLock ATTEMPT_LOCK = new java.util.concurrent.locks.ReentrantLock();
++    private interface Locked<T> { T run() throws Exception; }
++
++    /** Main and recovery processes reserve the same durable attempt budget. */
++    private <T> T locked(Context context, Locked<T> operation) throws Exception {
++        if (!ATTEMPT_LOCK.tryLock()) throw new java.io.IOException("Reset attempt already active");
++        try (java.io.RandomAccessFile file = new java.io.RandomAccessFile(new File(directory(context), markerName + ".lock"), "rw")) {
++            java.nio.channels.FileLock lease = file.getChannel().tryLock();
++            if (lease == null) throw new java.io.IOException("Reset attempt already active");
++            try (java.nio.channels.FileLock ignored = lease) { return operation.run(); }
++        } finally { ATTEMPT_LOCK.unlock(); }
++    }
++
+     private final String markerName;
+     private final Class<? extends Activity> recoveryActivity;
+     private final String recoveryProcessSuffix;
+@@ -89,7 +102,20 @@
+     }
+
+     public static final class Builder {
+-        private final String markerName;
++        private static final java.util.concurrent.locks.ReentrantLock ATTEMPT_LOCK = new java.util.concurrent.locks.ReentrantLock();
++    private interface Locked<T> { T run() throws Exception; }
++
++    /** Main and recovery processes reserve the same durable attempt budget. */
++    private <T> T locked(Context context, Locked<T> operation) throws Exception {
++        if (!ATTEMPT_LOCK.tryLock()) throw new java.io.IOException("Reset attempt already active");
++        try (java.io.RandomAccessFile file = new java.io.RandomAccessFile(new File(directory(context), markerName + ".lock"), "rw")) {
++            java.nio.channels.FileLock lease = file.getChannel().tryLock();
++            if (lease == null) throw new java.io.IOException("Reset attempt already active");
++            try (java.nio.channels.FileLock ignored = lease) { return operation.run(); }
++        } finally { ATTEMPT_LOCK.unlock(); }
++    }
++
++    private final String markerName;
+         private final Class<? extends Activity> recoveryActivity;
+         private String recoveryProcessSuffix = ":reset_recovery";
+         private String logTag = "ElizaDataReset";
+@@ -151,8 +177,12 @@
+
+     /** Durably records a confirmed request. A new confirmation starts a fresh automatic budget. */
+     public void record(Context context) throws Exception {
+-        failures(context).delete();
+-        write(marker(context), new byte[] {1});
++        locked(context, () -> {
++            if (pending(context)) return null;
++            write(failures(context), "0:0".getBytes(StandardCharsets.US_ASCII));
++            write(marker(context), new byte[] {1});
++            return null;
++        });
+     }
+
+     private static void write(AtomicFile file, byte[] value) throws Exception {
+@@ -169,6 +199,7 @@
+             } finally {
+                 android.system.Os.close(parent);
+             }
++            if (!java.util.Arrays.equals(file.readFully(), value)) throw new java.io.IOException("Reset write was not committed");
+         } finally {
+             if (out != null) file.failWrite(out);
+         }
+@@ -182,7 +213,7 @@
+         AtomicFile file = failures(context);
+         if (!exists(file)) return null;
+         try {
+-            return new String(file.readFully(), StandardCharsets.US_ASCII).trim().split(":");
++            return new String(file.readFully(), StandardCharsets.US_ASCII).trim().split(":", -1);
+         } catch (Exception unreadable) {
+             return new String[0];
+         }
+@@ -201,7 +232,7 @@
+      */
+     public long[] failureState(Context context) {
+         String[] parts = failureRecord(context);
+-        if (parts == null) return new long[] {0, 0};
++        if (parts == null) return pending(context) ? new long[] {AUTOMATIC_ATTEMPTS, -1} : new long[] {0, 0};
+         try {
+             long count = Long.parseLong(parts[0]), first = Long.parseLong(parts[1]);
+             boolean shape = parts.length == 2 || (parts.length == 3 && outcomeNamed(parts[2]) != null);
+@@ -230,17 +261,13 @@
+         return now < state[1] || now - state[1] >= AUTOMATIC_WINDOW_MS;
+     }
+
+-    private void recordFailure(Context context, long now, Outcome outcome) {
+-        // A late result after Android finished the clear must not recreate state in fresh data.
++    private void recordFailure(Context context, Outcome outcome) {
+         if (!pending(context)) return;
+         long[] state = failureState(context);
+-        long[] next = state[0] == 0 || now < state[1] || now - state[1] >= AUTOMATIC_WINDOW_MS
+-                ? new long[] {1, now}
+-                : new long[] {Math.min(state[0] + 1, Integer.MAX_VALUE), state[1]};
+-        try {
+-            write(failures(context), (next[0] + ":" + next[1] + ":" + outcome.name()).getBytes(StandardCharsets.US_ASCII));
++        try {
++            write(failures(context), (state[0] + ":" + state[1] + ":" + outcome.name()).getBytes(StandardCharsets.US_ASCII));
+         } catch (Exception unavailable) {
+-            // The pending marker, not this counter, keeps the reset fail-closed.
++            // The durable reservation remains consumed even when its explanatory outcome is lost.
+         }
+     }
+
+@@ -252,22 +279,38 @@
+      * a stale caller (for example a recovery retry after the reset already finished) can neither
+      * withdraw the listener's consent nor erase data the owner did not confirm deleting.
+      */
+-    public Outcome attempt(Context context, long now) {
+-        if (!pending(context)) return Outcome.DEFERRED;
+-        Outcome outcome;
+-        try {
+-            // True when no listener is installed or the installed one durably acknowledged.
+-            if (!new SenseListenerClient(context).resetForData()) {
+-                outcome = Outcome.LISTENER_UNACKNOWLEDGED;
+-            } else {
+-                ActivityManager manager = context.getSystemService(ActivityManager.class);
+-                outcome = manager != null && manager.clearApplicationUserData() ? Outcome.DISPATCHED : Outcome.ANDROID_REFUSED;
+-            }
+-        } catch (RuntimeException failure) {
+-            outcome = Outcome.ANDROID_REFUSED;
+-        }
+-        if (outcome != Outcome.DISPATCHED) recordFailure(context, now, outcome);
+-        return outcome;
++    public Outcome attempt(Context context, long now) { return retry(context, now); }
++
++    /** Explicit recovery may repair a legacy budget or exceed the automatic limit. */
++    public Outcome retry(Context context, long now) { return admittedAttempt(context, now, true); }
++
++    public Outcome automaticAttempt(Context context, long now) { return admittedAttempt(context, now, false); }
++
++    private Outcome admittedAttempt(Context context, long now, boolean explicit) {
++        if (now < 0 || !pending(context)) return Outcome.DEFERRED;
++        try {
++            return locked(context, () -> {
++                if (!pending(context)) return Outcome.DEFERRED;
++                long[] state = failureState(context);
++                if (!explicit && !automaticAttemptAllowed(state, now)) return Outcome.DEFERRED;
++                boolean newWindow = state[1] < 0 || state[0] == 0 || now < state[1] || now - state[1] >= AUTOMATIC_WINDOW_MS;
++                long count = newWindow ? 1 : Math.min(state[0] + 1, Integer.MAX_VALUE);
++                long first = newWindow ? now : state[1];
++                write(failures(context), (count + ":" + first).getBytes(StandardCharsets.US_ASCII));
++                if (!pending(context)) return Outcome.DEFERRED;
++                Outcome outcome;
++                try {
++                    if (!new SenseListenerClient(context).resetForData()) outcome = Outcome.LISTENER_UNACKNOWLEDGED;
++                    else if (!pending(context)) return Outcome.DEFERRED;
++                    else {
++                        ActivityManager manager = context.getSystemService(ActivityManager.class);
++                        outcome = manager != null && manager.clearApplicationUserData() ? Outcome.DISPATCHED : Outcome.ANDROID_REFUSED;
++                    }
++                } catch (RuntimeException failure) { outcome = Outcome.ANDROID_REFUSED; }
++                if (outcome != Outcome.DISPATCHED) recordFailure(context, outcome);
++                return outcome;
++            });
++        } catch (Exception unavailable) { return Outcome.DEFERRED; }
+     }
+
+     /** Runs the host's bounded pre-dispatch work, only while a confirmed reset is pending. */
+@@ -369,7 +412,7 @@
+     private void dispatchAndExit(Context context, boolean showRecovery) {
+         try {
+             long now = System.currentTimeMillis();
+-            Outcome outcome = automaticAttemptAllowed(failureState(context), now) ? attempt(context, now) : Outcome.DEFERRED;
++            Outcome outcome = automaticAttempt(context, now);
+             if (outcome != Outcome.DISPATCHED) {
+                 android.util.Log.w(logTag, "Reset not finished (" + outcome + ")" + (showRecovery ? "; showing recovery" : "; background start"));
+                 if (showRecovery) showRecovery(context);

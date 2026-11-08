@@ -2,7 +2,7 @@ import type {VideoEdit} from './video-edit';
 
 /** Encode media timestamps, independently of playback and the device audio clock. */
 export async function transcodeVideo(source:string,edit:VideoEdit,dimensions:{width:number;height:number;sourceWidth:number;sourceHeight:number},signal:AbortSignal):Promise<Blob|null>{
- if(typeof VideoEncoder==='undefined'||typeof VideoDecoder==='undefined'||typeof (globalThis as any).AudioEncoder==='undefined'||typeof (globalThis as any).AudioDecoder==='undefined')return null;
+ if(typeof VideoEncoder==='undefined'||typeof VideoDecoder==='undefined'||typeof AudioEncoder==='undefined'||typeof AudioDecoder==='undefined')return null;
  signal.throwIfAborted();
  const {Input,BlobSource,ALL_FORMATS,Output,WebMOutputFormat,BufferTarget,Conversion}=await import('mediabunny');
  signal.throwIfAborted();

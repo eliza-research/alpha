@@ -1,0 +1,12 @@
+{
+  "schemaVersion": 1,
+  "recordedAtEpoch": 1793108861.1411326,
+  "upstreamCommit": "fd5511ca1dacdccfadd93879bddff2038ebe8665",
+  "sourceCommit": "f586c926c528b2bc54b6f1858b9e0148ed1e3cda",
+  "apkEvidence": "docs/evidence/merge-build-final-apks-v17-2026-10-27.json",
+  "scope": "Complete packaged-runtime notices from the strict version 17 build. No runtime, device or release qualification is inferred.",
+  "files": {
+    "THIRD_PARTY_NOTICES.txt": "1c99910ce05573a47645e4e4e548e9354404eef82f3ac16ba217baf0f9d77d70",
+    "third-party-notices.json": "3fcf043dd54cdb1bbb85bafb43e59d84759b8a94888e3d22bd609b638ac824bf"
+  }
+}

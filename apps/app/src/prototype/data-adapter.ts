@@ -3,7 +3,7 @@ import {mockAttentionRows} from './mock-attention';
 import {HOME_DEFAULTS} from './model.js';
 import {browserStorageUsage} from '../browser/storage-usage';
 import {browserDevProfile} from '../browser/dev-profile';
-import {attendeeInitials, homeAgendaHeader, homeCalendarEmptyTitle, homeCalendarName, overdueDueLabel, presentHomeAttention, presentHomeBrief, presentHomeBriefCard, presentHomeCalendar, presentHomeCalendarSource, presentHomeNext, type HomeAttentionSummary, type HomeBriefSummary} from './home-cards';
+import {homeCalendarEmptyTitle, homeCalendarName, homeCalendarValues, homeReadIsStale, presentHomeAgendaCard, presentHomeAttention, presentHomeBrief, presentHomeBriefCard, presentHomeCalendarSource, selectHomeAgenda, type HomeAgendaCardInput, type HomeAttentionSummary, type HomeBriefSummary} from './home-cards';
 type Bag = Record<string, any>;
 const installed = new WeakSet<object>();
 
@@ -13,12 +13,6 @@ const installed = new WeakSet<object>();
 export function installPrototypeDataAdapter(Component: any, views: Record<string, Bag>) {
   if (installed.has(views)) return;
   installed.add(views);
-  // Home draws no card for a failed calendar read, so opening Calendar by any route reads it again.
-  const openView = Component.prototype.openView;
-  Component.prototype.openView = function (key: string, ...args: any[]) {
-    if (key === 'calendar') { const source = views.calendar?.displaySources?.(); if (source?.error) source.retry?.(); }
-    return openView.call(this, key, ...args);
-  };
   const empty: Record<string, Bag> = {
     photos: { list: [], trash: [], albums: [], open: null, album: null, edit: null, sheet: null, filter: null, seq: null, sel: null },
     files: { files: [], folder: null, open: null, asked: {}, asking: null, sel: null, sheet: null },
@@ -70,6 +64,13 @@ export function installPrototypeDataAdapter(Component: any, views: Record<string
   const renderVals = p.renderVals;
   p.renderVals = function () {
     const out = renderVals.call(this);
+    // Offer only connected operations. Reference suggestions name fictional
+    // people and imply image analysis/mail/workflows that are not available yet.
+    const view = this.S().view;
+    const first = view === 'camera' ? 'Open Photos' : view === 'photos' ? 'Open Camera'
+      : view === 'files' || view === 'browser' || view === 'inbox' ? 'Open Notes'
+      : view === 'phone' || view === 'messages' ? 'Open Contacts' : 'Open Calendar';
+    const suggestions = ['Create a note', 'Set a reminder', first];
     const now = Date.now();
     const calendarSource = views.calendar.displaySources?.();
     const calendarState = this.vget('calendar');
@@ -78,21 +79,20 @@ export function installPrototypeDataAdapter(Component: any, views: Record<string
     // The app calendar can be hidden in Calendar's display settings; Calendar then leaves its events
     // out, and so does Home. Device calendars have no in-app toggle. Reminders are not affected.
     const calendarHidden = !!calendarSource && !calendarSource.native && (calendarSource.sources || []).some((source: Bag) => source.id === 'local' && source.on === false);
-    const ordered = (calendarState.events || [])
+    const candidates = (calendarState.events || [])
       .filter((event: Bag) => event.reminderStatus !== 'completed')
       .filter((event: Bag) => !event.alphaCalendarId || (calendarSource?.ready && !calendarHidden))
       .map((event: Bag) => {
         const instant=(value:number)=>{const date=new Date(value);return event.nativeEvent?.allDay?new Date(date.getUTCFullYear(),date.getUTCMonth(),date.getUTCDate()).getTime():Number(value);};
-        return {event,begin:instant(event.nativeEvent?.begin??event.reminderAt),end:instant(event.nativeEvent?.end??event.reminderAt)};
+        return {item:event,begin:instant(event.nativeEvent?.begin??event.reminderAt),end:instant(event.nativeEvent?.end??event.reminderAt),allDay:!!event.nativeEvent?.allDay};
       })
       // Overdue reminders (reminder adapter's overdueReminders()) stay on Home until handled.
-      .concat(overdueRows.map((row: Bag) => ({event: {id: row.id, title: row.title, off: row.off, overdue: true}, begin: Number(row.at), end: Infinity})))
-      .filter((item: Bag) => Number.isFinite(item.begin) && (Number.isFinite(item.end) || item.event.overdue) && (item.event.nativeEvent?.allDay?item.end>now:item.end>=now))
-      // An overdue reminder is first even when an event already in progress began before it was due.
-      .sort((a: Bag, b: Bag) => Number(!!b.event.overdue) - Number(!!a.event.overdue) || a.begin - b.begin);
-    const agenda = ordered[0];
-    // Under an overdue reminder, the next event (or reminder) still shows on a line of its own.
-    const following = agenda?.event.overdue ? ordered.find((item: Bag) => !item.event.overdue) : undefined;
+      .concat(overdueRows.map((row: Bag) => ({item: {id: row.id, title: row.title, off: row.off, overdue: true} as Bag, begin: Number(row.at), end: Infinity, allDay: false, overdue: true})));
+    // Shared agenda selection: an overdue reminder is first even when an event already in progress
+    // began before it was due, and the next item that is not overdue still shows on its own line.
+    const selection = selectHomeAgenda<Bag>(candidates, now);
+    const agenda = selection.agenda ? {...selection.agenda, event: selection.agenda.item} : undefined;
+    const following = selection.following ? {...selection.following, event: selection.following.item} : undefined;
     const cardState = calendarSource?.loading ? 'loading' : calendarSource?.ready ? 'ready' : 'error';
     // The calendar adapter may report its read time; otherwise the first render that sees the
     // loaded rows stands in for it (both are reads from this device, never a sync claim).
@@ -100,15 +100,14 @@ export function installPrototypeDataAdapter(Component: any, views: Record<string
     if (cardState === 'ready' && rows !== calendarReadRows) { calendarReadRows = rows; calendarReadAt = now; }
     if (cardState !== 'ready') calendarReadRows = undefined;
     const readAt = Number.isFinite(calendarState.nativeCalendarReadAt) ? Number(calendarState.nativeCalendarReadAt) : cardState === 'ready' ? calendarReadAt : null;
+    // The last completed read is from an earlier day: keep what it showed, say since when, and read
+    // again when the card is opened.
+    const stale = cardState === 'ready' && homeReadIsStale(readAt, now);
     // Reminders have their own store and read time: the reminder adapter replaces reminderRows on
     // each completed read, and the first render that sees the new rows stands in for that read.
     const reminderRows = this.reminderRows;
     if (reminderRows !== reminderReadRows) { reminderReadRows = reminderRows; reminderReadAt = Array.isArray(reminderRows) ? now : null; }
     const meeting = (event: Bag) => [event.nativeEvent?.meetingUrl, event.nativeEvent?.location, event.where].some((value: unknown) => typeof value === 'string' && /\bhttps:\/\/[^\s]+/i.test(value));
-    const calendar = presentHomeCalendar({
-      state: cardState, readAt, now, device: Capacitor.isNativePlatform() ? 'this device' : 'this browser',
-      agenda: agenda ? {title: agenda.event.title || 'Untitled event', begin: agenda.begin, overdue: !!agenda.event.overdue, allDay: !!(agenda.event.nativeEvent?.allDay ?? agenda.event.allDay), video: meeting(agenda.event), people: attendeeInitials(agenda.event.nativeEvent?.attendees ?? agenda.event.who ?? [])} : null,
-    });
     // Development inbox fixtures report through the same summary as a provider adapter.
     const unreadRows:Bag[]=browserDevProfile?(this.vget('inbox').mails||[]).filter((mail:Bag)=>mail.unread&&!mail.arch&&!mail.del):[];
     const unread=unreadRows.length;
@@ -116,41 +115,49 @@ export function installPrototypeDataAdapter(Component: any, views: Record<string
     const attention = presentHomeAttention(attentionSummary, now);
     const retainedBrief = homeSources.brief();
     const brief = presentHomeBrief(retainedBrief, now), briefCard = presentHomeBriefCard(retainedBrief, now);
-    const day = agenda ? new Date(agenda.begin) : null;
-    const dateLabel = (day || new Date(now)).toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' });
     const overdue = !!agenda?.event.overdue;
     // Source and freshness of the item on the card: the calendar it was read from and when this
     // app read it, or the reminder store for an overdue reminder.
-    const calendarName = agenda && !overdue ? homeCalendarName(calendarSource?.sources, agenda.event.nativeEvent?.calendarId) : null;
-    const provenance = presentHomeCalendarSource({state: cardState === 'error' && !calendarSource?.error ? 'other' : cardState, overdue, reminder: !!agenda?.event.alphaReminderId, reminderReadAt, readAt, now, native: Capacitor.isNativePlatform(), calendar: calendarName, truncated: !!calendarSource?.truncated});
-    const next = following ? presentHomeNext({title: String(following.event.title || ''), begin: following.begin, allDay: !!(following.event.nativeEvent?.allDay ?? following.event.allDay), now,
-      provenance: presentHomeCalendarSource({state: cardState === 'error' && !calendarSource?.error ? 'other' : cardState, overdue: false, reminder: !!following.event.alphaReminderId, reminderReadAt, readAt, now, native: Capacitor.isNativePlatform(), calendar: homeCalendarName(calendarSource?.sources, following.event.nativeEvent?.calendarId), truncated: !!calendarSource?.truncated})}) : null;
-    const eventTitle=agenda?String(agenda.event.title||'Untitled event'):'';
-    const timeLabel=(instant:number)=>new Date(instant).toLocaleTimeString([],{hour:'numeric',minute:'2-digit'});
-    const endDay=agenda?new Date(agenda.end):null;
-    const endLabel=agenda&&endDay&&day&&endDay.toDateString()!==day.toDateString()?`${endDay.toLocaleDateString([],{weekday:'short',month:'short',day:'numeric'})}, ${timeLabel(agenda.end)}`:agenda?timeLabel(agenda.end):'';
-    const eventTime=agenda?overdue?overdueDueLabel(agenda.begin,now):agenda.event.nativeEvent?.allDay?'All day':timeLabel(agenda.begin)+(Number.isFinite(agenda.end)&&agenda.end>agenda.begin?` – ${endLabel}`:''):'';
+    const sourceState = stale ? 'stale' as const : cardState === 'error' && !calendarSource?.error ? 'other' as const : cardState;
+    const native = Capacitor.isNativePlatform();
+    const provenanceIn = (state: typeof sourceState) => (event: Bag | undefined, shownOverdue: boolean) => presentHomeCalendarSource({state, overdue: shownOverdue, reminder: !!event?.alphaReminderId, reminderReadAt, readAt, now, native,
+      calendar: event && !shownOverdue ? homeCalendarName(calendarSource?.sources, event.nativeEvent?.calendarId) : null, truncated: !!calendarSource?.truncated});
+    const provenanceOf = provenanceIn(sourceState);
+    const itemOf = (candidate: {event: Bag; begin: number; end: number; allDay: boolean}) => ({title: String(candidate.event.title || ''), begin: candidate.begin, end: candidate.end, allDay: candidate.allDay,
+      overdue: !!candidate.event.overdue, video: meeting(candidate.event), people: candidate.event.nativeEvent?.attendees ?? candidate.event.who ?? []});
+    // The shared agenda card: the item's day or the overdue count, its time, accessible name and
+    // description, and under an overdue reminder the next item with its own source.
+    const agendaInput: HomeAgendaCardInput = {now, item: agenda ? itemOf(agenda) : null, provenance: provenanceOf(agenda?.event, overdue),
+      next: following ? {item: itemOf(following), provenance: provenanceOf(following.event, false)} : null,
+      overdueCount: overdueRows.length, stale, emptyTitle: homeCalendarEmptyTitle(calendarSource, calendarHidden)};
+    // The agent calendar adapter (Agent Calendar chosen in Calendar) re-presents reminders from this
+    // input. Home's own read-time staleness does not apply there: it stands for the first render that
+    // saw the rows, or a device read left over from device calendars chosen earlier, while the agent
+    // feed reports its own freshness (agentReminderLead in home-cards.ts).
+    const deviceFresh = provenanceIn(stale ? 'ready' : sourceState);
+    const agentAgendaInput: HomeAgendaCardInput = stale ? {...agendaInput, stale: false, provenance: deviceFresh(agenda?.event, overdue),
+      next: following ? {item: itemOf(following), provenance: deviceFresh(following.event, false)} : null} : agendaInput;
     return {
       ...out, shadeN: [],
-      // No suggestion chips: the owner types or speaks their own request.
-      sugg: [], showSugg: false,
-      homeCalendarHasEvent:!!agenda,homeCalendarFooter:eventTime,
-      homeCalendarLabel: agenda ? overdue ? `Open overdue reminder: ${eventTitle}, ${eventTime}` : `Open calendar event: ${eventTitle}, ${dateLabel}, ${eventTime}` : 'Open your calendar',
-      homeCalendarTime: homeAgendaHeader(dateLabel, overdue ? overdueRows.length : 0),
-      homeCalendarTitle: eventTitle || homeCalendarEmptyTitle(calendarSource, calendarHidden),
-      // The card's last row holds the event time and, when known, where and when it was read.
-      homeCalendarHasMeta: !!(agenda || provenance.read),
-      homeCalendarSource: provenance.read, homeCalendarOrigin: provenance.origin, homeCalendarOverdue: overdue,
-      homeCalendarDescription: [provenance.description, next?.description].filter(Boolean).join('. '),
-      homeCalendarNext: next?.text || '', homeCalendarNextSource: next?.source || '', homeCalendarHasNext: !!next,
-      homeCalendarVideo: calendar.video, homeCalendarPeople: calendar.people.map(ini => ({ini})),
-      homePeopleVisibility: calendar.people.length ? 'visible' : 'hidden',
-      homeAttentionLabel: attention.label,
+      sugg: suggestions.map(label => ({ label, go: () => this.send(label) })),
+      ...homeCalendarValues(presentHomeAgendaCard(agendaInput)),
+      homeCalendarConfirmedEmpty: cardState === 'ready' && readAt != null && readAt > 0 && readAt <= now
+        && !stale && !calendarHidden && !calendarSource?.truncated && !agenda && !following,
+      // The agent calendar adapter presents the card again with the agent's next event under an overdue
+      // reminder, and lets an upcoming reminder lead when it comes first.
+      homeAgendaInput: agentAgendaInput, homeAgendaReminder: !!agenda?.event.alphaReminderId && !overdue,
+      homeAgendaNextReminder: !!following?.event.alphaReminderId,
+      homeAttentionLabel: attention.label, homeAttentionAction: attention.action,
       homeAttentionPeople: [], homeAttentionPeopleVisibility: 'hidden',
-      ...(browserDevProfile?{homeInboxCount:attention.count,homeInboxRows:unreadRows.slice(0,2).map(mail=>({subject:mail.subj||'(no subject)',from:mail.name||mail.email||''})),homeInboxHasRows:unread>0,homeInboxTitle:unread?'':'No unread email',homeInboxStatus:'Development inbox'}:{}),
+      ...(browserDevProfile?{homeInboxCount:attention.count,homeInboxRows:unreadRows.slice(0,2).map(mail=>({subject:mail.subj||'(no subject)',from:mail.name||mail.email||''})),homeInboxHasRows:unread>0,homeInboxConfirmedEmpty:unread===0,homeInboxTitle:unread?'':'No unread email',homeInboxStatus:'Development inbox'}:{}),
       homeWorkflowLabel: brief.label, homeWorkflowTitle: brief.title, homeWorkflowTime: brief.time, homeWorkflowSource: brief.source,
       // After a failed read, opening Calendar from the card reads it again; Calendar itself does not retry on entry.
-      goCalendar: () => { if (calendarSource?.error) calendarSource.retry?.(); this.openView('calendar', agenda ? {open:agenda.event.id, day:agenda.event.off, openDay:agenda.event.off} : undefined); },
+      // A stale read is read again when the card is opened (the same forced read Calendar's retry uses).
+      // Opening a view resets its state, so the card names the calendar source it showed: Calendar
+      // opens on that source (a device scope chosen there, or the default) with the item selected.
+      goCalendar: () => { if (calendarSource?.error) calendarSource.retry?.(); else if (stale) void this.refreshAgentCalendar?.();
+        const authority = this.vget('calendar').calendarAuthority, patch = {...(authority ? {calendarAuthority: authority} : {}), ...(agenda ? {open:agenda.event.id, day:agenda.event.off, openDay:agenda.event.off} : {})};
+        this.openView('calendar', Object.keys(patch).length ? patch : undefined); },
       homeBriefHas: briefCard.has, homeBriefTitle: briefCard.title, homeBriefStatus: briefCard.status, homeBriefLabel: briefCard.label, homeBriefFailed: briefCard.failed,
       // Opens the retained results list. Showing the card reads nothing; opening the list syncs
       // retained results with the agent as it does from Settings. Neither runs a digest.
@@ -185,28 +192,10 @@ export function setHomeSources(next: Partial<typeof homeSources>) {
   window.dispatchEvent(new Event(HOME_SOURCES_CHANGED));
 }
 
-/** Which Home cards are drawn (docs/ui-refresh-2026-11, specs/quint/legacy/HomeLayout.qnt). A card is drawn only
- * when it has something to show: the next event or an overdue reminder, an enabled workflow,
- * unread mail from a connected account, a retained brief. With none, Home shows the date, and a
- * Connect Google button while Google is known to be disconnected. Installed outermost, after
- * every adapter that writes the card values. */
-export function installHomeCardVisibility(Component: any, openGoogle: () => void) {
-  const p = Component.prototype, render = p.renderVals;
-  p.renderVals = function () {
-    const out = render.call(this);
-    const calendar = !!out.homeCalendarHasEvent, workflows = !!out.homeWorkflowHasRows, inbox = !!out.homeInboxHasRows, brief = !!out.homeBriefHas;
-    const none = !calendar && !workflows && !inbox && !brief;
-    return {...out, homeShowCalendar: calendar, homeShowWorkflows: workflows, homeShowInbox: inbox, homeShowDate: none,
-      homeShowSetup: none && out.homeGoogleConnected === false,
-      homeDateLabel: new Date().toLocaleDateString([], {weekday: 'long', month: 'long', day: 'numeric'}),
-      connectGoogle: openGoogle};
-  };
-}
-
 /** Neutral Home card values used when no fixture defaults are bundled. */
 const NEUTRAL_HOME = {
   homeCalendarLabel: 'Open your calendar', homeCalendarTime: 'Calendar', homeCalendarTitle: 'Loading events…',homeCalendarHasEvent:false,homeCalendarHasMeta:false,homeCalendarFooter:'',
-  homeCalendarSource: '', homeCalendarOrigin: '', homeCalendarDescription: '', homeCalendarOverdue: false, homeCalendarNext: '', homeCalendarNextSource: '', homeCalendarHasNext: false, homeCalendarVideo: false, homeCalendarPeople: [] as Bag[],
+  homeCalendarSource: '', homeCalendarOrigin: '', homeCalendarDescription: '', homeCalendarOverdue: false, homeCalendarStale: false, homeCalendarNext: '', homeCalendarNextSource: '', homeCalendarHasNext: false, homeCalendarVideo: false, homeCalendarPeople: [] as Bag[],
   homeWorkflowFreshness: '', homeWorkflowDescription: '',
   homeBriefHas: false, homeBriefTitle: '', homeBriefStatus: '', homeBriefLabel: '', homeBriefFailed: false, homeInboxDescription: '',
   homeWorkflowLabel: 'Open workflows', homeWorkflowTitle: 'No brief yet', homeWorkflowTime: 'Workflows', homeWorkflowSource: '',

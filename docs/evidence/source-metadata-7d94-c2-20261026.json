@@ -1,0 +1,71 @@
+{
+  "schema": 1,
+  "recordedAt": "2026-10-26",
+  "recordedAtUTC": "2026-10-26T11:45:06.736280+00:00",
+  "baseProduct": "7d94781429cbf027d1522d4cf68d46434e12e730",
+  "SDK": "c2a0ef993bcf790a920698a8b661511b81725891",
+  "previousSDK": "8d4228f4d9801e6ec4bc04a3720756b61c4f93b8",
+  "diagnosticOnly": true,
+  "behavioralFix": false,
+  "sourceDelta": [
+    "plugins/plugin-assistant/src/runtime/evaluator.ts"
+  ],
+  "dependencyInputIdentity": {
+    "parent": "8d4228f4d9801e6ec4bc04a3720756b61c4f93b8",
+    "SDK": "c2a0ef993bcf790a920698a8b661511b81725891",
+    "changedFiles": [
+      "plugins/plugin-assistant/src/runtime/evaluator.ts"
+    ],
+    "rawLockBytesIdentical": true,
+    "rawLockSHA256": "c88cc7693c852e49ec1a2aebfba619d9a76cf038c26c5d0c19fa2994b9f4f762",
+    "nativeAndVoiceSourceInputsIdentical": true,
+    "normalizedInputIdentical": true,
+    "normalizedInputSHA256": "6db6e88363397fd2c73a561ea1f3a071dfc11b31378cbe0c193163ea1ecf70ff",
+    "packageVersions": 3694
+  },
+  "preservation": {
+    "docs/dependency-audit.snapshot.json": "Only resident.upstreamCommit changed",
+    "docs/dependency-audit.dispositions.json": "Only resident.upstreamCommit changed",
+    "patches/eliza/native-manifest.json": "Only baseCommit changed",
+    "android/voice-host/qualified-voice-host.json": "Only pin changed",
+    "docs/requirements.json": "Only note changed",
+    "docs/mvp-remaining-work-2026-10-09.json": "Only upstream_pin changed",
+    "apps/app/public/licenses/third-party-notices.json": "Generator output differs only by source pin",
+    "apps/app/public/licenses/THIRD_PARTY_NOTICES.txt": "Generator output differs only by source pin"
+  },
+  "retainedAudit": {
+    "auditedOn": "2026-10-26",
+    "findings": 124,
+    "counts": {
+      "info": 0,
+      "low": 17,
+      "moderate": 53,
+      "high": 53,
+      "critical": 1
+    },
+    "exceptionsAndDeadlinesUnchanged": true,
+    "exceptions": 104,
+    "maintenance": 103
+  },
+  "reachability": {
+    "status": "diverged",
+    "aheadBy": 49,
+    "behindBy": 208,
+    "baseCommit": "04658de1b942510e0d37efc777c154530f5c0ef1"
+  },
+  "sourceChecks": {
+    "tests": 48,
+    "fail": 0,
+    "skip": 0,
+    "residentOffline": "PASS",
+    "generatedNotices": "PASS",
+    "sourceSBOM": "generated outside product; not an APK inventory"
+  },
+  "qualificationStatesChanged": false,
+  "runtimeBuildDeviceActions": false,
+  "remaining": [
+    "Root integration",
+    "Native build and real diagnostic test",
+    "Canonical behavioral fix after diagnosis"
+  ]
+}

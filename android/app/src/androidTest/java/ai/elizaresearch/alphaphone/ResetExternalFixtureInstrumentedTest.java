@@ -74,7 +74,7 @@ public final class ResetExternalFixtureInstrumentedTest {
   String payload=new org.json.JSONObject().put("fixture",run).toString();
   JobScheduler jobs=c.getSystemService(JobScheduler.class);NotificationManager notices=c.getSystemService(NotificationManager.class);
   if("prepare".equals(phase)){
-   assertFalse("No pending real reset",AlphaDataReset.pending(c));assertFalse(file.exists());assertFalse(keys().containsAlias(alias));
+   assertFalse("No pending real reset",AlphaDataReset.RESET.pending(c));assertFalse(file.exists());assertFalse(keys().containsAlias(alias));
    assertNull("Only fresh synthetic Notes",store.readCredentialSlot(AlphaCredentialStore.NOTES_RECORDS));
    assertNull("Only fresh synthetic draft",store.readCredentialSlot(AlphaCredentialStore.NOTES_DRAFT));assertNull(store.readCredentialSlot(SLOT));
    assertFalse(pendingJob(jobs,run));assertNull("No existing fixture alarm",alarm(c,run,PendingIntent.FLAG_NO_CREATE));
@@ -110,12 +110,12 @@ public final class ResetExternalFixtureInstrumentedTest {
    if(notes(run).equals(saved))assertEquals("Unmerged draft retained",draft(run),keptDraft);
    else{assertEquals("Saved and drafted Notes retained after normal startup recovery",recoveredNotes(run),saved);assertTrue("Recovered draft is either retained exactly or cleared after saving",keptDraft==null||draft(run).equals(keptDraft));}
    assertEquals("Runtime fixture retained",payload,store.readCredentialSlot(SLOT));
-   assertTrue("UID key retained",keys().containsAlias(alias));assertTrue("Owned job retained",pendingJob(jobs,run));assertTrue("Owned alarm remains scheduled",scheduledAlarm(run));assertTrue("Notification retained",java.util.Arrays.stream(notices.getActiveNotifications()).anyMatch(n->n.getId()==NOTICE));assertFalse("No reset authority recorded",AlphaDataReset.pending(c));
+   assertTrue("UID key retained",keys().containsAlias(alias));assertTrue("Owned job retained",pendingJob(jobs,run));assertTrue("Owned alarm remains scheduled",scheduledAlarm(run));assertTrue("Notification retained",java.util.Arrays.stream(notices.getActiveNotifications()).anyMatch(n->n.getId()==NOTICE));assertFalse("No reset authority recorded",AlphaDataReset.RESET.pending(c));
   }else if("verify".equals(phase)){
    assertFalse("Private file erased",file.exists());assertFalse("Cache erased",cache.exists());assertFalse("Preferences erased",c.getSharedPreferences(name,0).contains("value"));
    assertNull("Notes erased",store.readCredentialSlot(AlphaCredentialStore.NOTES_RECORDS));assertNull("Draft erased",store.readCredentialSlot(AlphaCredentialStore.NOTES_DRAFT));assertNull("Runtime fixture erased",store.readCredentialSlot(SLOT));
    assertFalse("UID Keystore fixture erased",keys().containsAlias(alias));assertFalse("Owned job cancelled",pendingJob(jobs,run));long alarmDeadline=android.os.SystemClock.elapsedRealtime()+10000;while(scheduledAlarm(run)&&android.os.SystemClock.elapsedRealtime()<alarmDeadline)android.os.SystemClock.sleep(100);assertFalse("Owned scheduled alarm cancelled",scheduledAlarm(run));assertTrue("Owned WorkManager record erased",androidx.work.WorkManager.getInstance(c).getWorkInfosByTag(name).get(10,java.util.concurrent.TimeUnit.SECONDS).isEmpty());
-   assertFalse("Owned notification cancelled",java.util.Arrays.stream(notices.getActiveNotifications()).anyMatch(n->n.getId()==NOTICE));assertFalse("Reset marker erased",AlphaDataReset.pending(c));
+   assertFalse("Owned notification cancelled",java.util.Arrays.stream(notices.getActiveNotifications()).anyMatch(n->n.getId()==NOTICE));assertFalse("Reset marker erased",AlphaDataReset.RESET.pending(c));
    // Shared-media permissions may be revoked by reset. The external runner owns
    // URI/name/hash verification and cleanup; never infer deletion from denied access.
    assertTrue("External media oracle identifier must survive outside app data",args.getString("resetFixtureMediaId", "").matches("[1-9][0-9]*"));
@@ -123,8 +123,8 @@ public final class ResetExternalFixtureInstrumentedTest {
     AppNavigation.liveMode();assertEquals("null",WebViewTestDriver.evaluate("localStorage.getItem('alpha.connection.selection.v1')"));
    }
   }else if("record-before-dispatch".equals(phase)){
-   assertEquals("Only a seeded disposable fixture may record",payload,store.readCredentialSlot(SLOT));assertFalse(AlphaDataReset.pending(c));
-   AlphaDataReset.record(c);assertTrue(AlphaDataReset.pending(c));
+   assertEquals("Only a seeded disposable fixture may record",payload,store.readCredentialSlot(SLOT));assertFalse(AlphaDataReset.RESET.pending(c));
+   AlphaDataReset.RESET.record(c);assertTrue(AlphaDataReset.RESET.pending(c));
    // Return without dispatch. The external runner stops this process and launches
    // the app to verify attachBaseContext resumes the persisted clear request.
   }else throw new AssertionError("Unknown reset fixture phase");

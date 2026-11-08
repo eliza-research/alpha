@@ -17,7 +17,7 @@ import static org.junit.Assert.*;
 public final class BrowserCookiePolicyInstrumentedTest {
  private static WebView build(MainActivity activity,String id,boolean priv,String profile)throws Exception{
   Object plugin=activity.getBridge().getPlugin("AlphaBrowser").getInstance();
-  java.lang.reflect.Method build=AlphaBrowserPlugin.class.getDeclaredMethod("build",String.class,boolean.class,String.class);build.setAccessible(true);
+  java.lang.reflect.Method build=ai.eliza.plugins.browsersurface.BrowserTabHostPlugin.class.getDeclaredMethod("build",String.class,boolean.class,String.class);build.setAccessible(true);
   Object tab=build.invoke(plugin,id,priv,profile);java.lang.reflect.Field web=tab.getClass().getDeclaredField("web");web.setAccessible(true);return (WebView)web.get(tab);
  }
  /** Exercise the real product popup callback with a controlled committed opener.
@@ -25,7 +25,7 @@ public final class BrowserCookiePolicyInstrumentedTest {
   * committed/selected state; the product constructs and profiles the child. */
  private static WebView popup(MainActivity activity,WebView opener)throws Exception{
   AlphaBrowserPlugin plugin=(AlphaBrowserPlugin)activity.getBridge().getPlugin("AlphaBrowser").getInstance();
-  java.lang.reflect.Field tabs=AlphaBrowserPlugin.class.getDeclaredField("tabs");tabs.setAccessible(true);
+  java.lang.reflect.Field tabs=ai.eliza.plugins.browsersurface.BrowserTabHostPlugin.class.getDeclaredField("tabs");tabs.setAccessible(true);
   Object selected=null;String id=null;
   for(Object tab:((java.util.Map<?,?>)tabs.get(plugin)).values()){
    java.lang.reflect.Field web=tab.getClass().getDeclaredField("web");web.setAccessible(true);
@@ -33,7 +33,7 @@ public final class BrowserCookiePolicyInstrumentedTest {
   }
   assertNotNull("Owned fixture opener exists",selected);
   java.lang.reflect.Field committed=selected.getClass().getDeclaredField("committed");committed.setAccessible(true);committed.setBoolean(selected,true);
-  java.lang.reflect.Field presented=AlphaBrowserPlugin.class.getDeclaredField("presentedId");presented.setAccessible(true);presented.set(plugin,id);
+  java.lang.reflect.Field presented=ai.eliza.plugins.browsersurface.BrowserTabHostPlugin.class.getDeclaredField("presentedId");presented.setAccessible(true);presented.set(plugin,id);
   WebView.WebViewTransport transport=opener.new WebViewTransport();
   android.os.Message message=android.os.Message.obtain(new android.os.Handler(android.os.Looper.getMainLooper()),()->{});message.obj=transport;
   assertTrue("Product popup callback accepts a reviewed user gesture",opener.getWebChromeClient().onCreateWindow(opener,false,true,message));

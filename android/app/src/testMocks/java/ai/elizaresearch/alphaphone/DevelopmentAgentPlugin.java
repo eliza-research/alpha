@@ -168,31 +168,29 @@ public final class DevelopmentAgentPlugin extends Plugin {
    JSONObject value = input.getJSONObject(i), operation = value.getJSONObject("operation");
    String id = value.getString("id"), title = value.getString("title"), description = value.getString("description");
    long expiry = value.getLong("expiresAt"), revision = value.getLong("contextRevision");
-   if (!id.matches("[A-Za-z0-9_-]{1,100}") || !ids.add(id) || title.trim().isEmpty() || title.length() > 300 || description.length() > 16000
+   if (!id.matches("[A-Za-z0-9_-]{1,100}") || !ids.add(id) || title.trim().isEmpty() || title.length() > 300 || description.length() > 64000
        || expiry <= System.currentTimeMillis() || expiry > System.currentTimeMillis() + 300000
        || revision != requestContext.getLong("revision")) throw new IOException("invalid proposal context");
    JSONObject safeOperation = new JSONObject();
    String type = operation.getString("type");
    if ("create_note".equals(type)) {
     String noteTitle = operation.getString("title"), noteBody = operation.getString("body");
-    if (noteTitle.trim().isEmpty() || noteTitle.length() > 200 || noteBody.length() > 12000) throw new IOException("invalid note proposal");
+    if (noteTitle.trim().isEmpty() || noteTitle.length() > 256 || noteBody.length() > 32000) throw new IOException("invalid note proposal");
     safeOperation.put("type", type).put("title", noteTitle).put("body", noteBody);
-   } else if ("create_reminder".equals(type)) {
-    String reminderTitle = operation.getString("title"), reminderBody = operation.getString("body");
-    Object rawAt = operation.get("at");
-    if (!(rawAt instanceof Number)) throw new IOException("invalid reminder timestamp");
-    double at = ((Number) rawAt).doubleValue();
-    if (reminderTitle.trim().isEmpty() || reminderTitle.length() > 200 || reminderBody.length() > 4000
-        || !Double.isFinite(at) || at != Math.rint(at) || at <= System.currentTimeMillis() || at > 8640000000000000d)
-      throw new IOException("invalid reminder proposal");
-    safeOperation.put("type", type).put("title", reminderTitle.trim()).put("body", reminderBody).put("at", (long) at);
+   } else if ("reminder_create".equals(type)) {
+    // Exact canonical fields are validated again by the shared renderer contract.
+    operation.getJSONObject("fields").getJSONObject("schedule");
+    safeOperation = operation;
    } else if ("open_view".equals(type)) {
     String view = operation.getString("view");
     // Mirrors DEVELOPMENT_PROPOSAL_VIEWS; parity is checked by the owning development scope flow.
     if (!java.util.Arrays.asList("home","maps","camera","photos","notes","calendar","notifications","reminders","workflows","files","inbox","browser","settings").contains(view)) throw new IOException("invalid view proposal");
     safeOperation.put("type", type).put("view", view);
    } else throw new IOException("unsupported proposal");
-   output.put(new JSONObject().put("id",id).put("title",title).put("description",description).put("expiresAt",expiry).put("contextRevision",revision).put("operation",safeOperation));
+   JSONObject safe = new JSONObject().put("id",id).put("title",title).put("description",description).put("expiresAt",expiry).put("contextRevision",revision).put("operation",safeOperation);
+   if (value.has("simulated")) safe.put("simulated",value.getBoolean("simulated"));
+   if ("open_view".equals(type) && value.has("navigation")) safe.put("navigation",value.getJSONObject("navigation"));
+   output.put(safe);
   }
   return output;
  }

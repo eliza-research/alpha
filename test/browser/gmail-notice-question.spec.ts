@@ -1,24 +1,27 @@
 import {seedCompletedAccessSetup} from './flag-off-android';
+import {installResidentAgentPlugin} from './helpers/resident-agent-plugin';
 import {test,expect} from '@playwright/test';
 for(const mode of ['compose','cancel','source-changed','owner-changed'] as const)test('Gmail Ask explicit source review '+mode,async({page},testInfo)=>{
  const errors:string[]=[];page.on('pageerror',e=>errors.push(e.message));
+  await installResidentAgentPlugin(page);
   await page.addInitScript(scenario=>{
    const w=window as any;w.androidBridge={};
    localStorage.setItem('alpha.connection.selection.v1',JSON.stringify({kind:'offline'}));
    const store=new Map();
    const f=w.deliveryFixture={configured:0,cancelled:0,disabled:[] as string[],nativeSync:0,foregroundSync:0,polling:true,enabled:false,notifications:false,events:[] as string[],input:null as any,release:null as any,holdRetire:false,retireRelease:null as any,mockHold:false,mockReleases:{} as Record<string,()=>void>,removed:[] as string[]};
+   const agent=w.residentAgent=w.createResidentAgentPlugin({owner:()=>f.owner||'fixture-owner',agentId:'fixture-agent',providerStatus:{provider:'elizacloud',configured:false}});
    const methods=(names:string[])=>names.map(name=>({name,rtype:'promise'}));
    w.Capacitor={PluginHeaders:[
     {name:'AlphaGmail',methods:methods(['pending','consume','releaseQuestion','configure','withdraw','addListener','removeListener'])},
     {name:'DailyApps',methods:methods(['surfaceInfo','listReminders','pendingReminderTap','consumeReminderTap','releaseReminderQuestion','addListener','removeListener'])},
     {name:'AlphaVoiceCloud',methods:methods(['checkPermissions'])},
     {name:'AlphaNotifications',methods:methods(['status','crossAppStatus','pendingWorkflowTap','consumeWorkflowTap','addListener','removeListener'])},
-    {name:'Agent',methods:methods(['getStatus','start','request'])},
+    {name:'Agent',methods:agent.methods(['getStatus','start','request'])},
     {name:'AlphaConnection',methods:methods(['secureRead','secureWrite','secureCompareExchange','secureRemove','cancel','addListener','removeListener','pauseNotificationCollection'])},
     {name:'AlphaActionJournal',methods:methods(['list'])},
-    {name:'DeviceApps',methods:methods(['buildInfo'])},
+    {name:'ElizaSystem',methods:methods(['getBuildInfo'])},
     {name:'AlphaHostedResults',methods:methods(['beginBackground','cancelBackground','configureBackground','disableBackground','inboxHistory','syncInbox','status','setBackgroundPolling','enable','pendingResult','withdrawOtherOwnerApprovalNotices','addListener','removeListener'])},
-   ],nativePromise:async(plugin:string,method:string,input:any)=>{
+   ],nativeCallback:agent.nativeCallback,nativePromise:async(plugin:string,method:string,input:any)=>{
     if(plugin==='AlphaGmail'){
      if(method==='pending')return f.gmailTap||{};
      if(method==='consume'){if(input.token!==f.gmailTap?.token)throw Error('changed');f.consumed=(f.consumed||0)+1;f.gmailTap={};return {};}
@@ -42,6 +45,7 @@ for(const mode of ['compose','cancel','source-changed','owner-changed'] as const
      return {};
     }
     if(plugin==='Agent'){
+     const owned=agent.answer(method,input);if(owned)return owned;
      if(method==='getStatus')return {packaged:true,state:'ready'};
      if(method==='start')return {state:'ready'};
      if(method==='request'){
@@ -75,7 +79,7 @@ for(const mode of ['compose','cancel','source-changed','owner-changed'] as const
      return {};
     }
     if(plugin==='AlphaActionJournal')return {entries:[]};
-    if(plugin==='DeviceApps')return {launcher:false,version:'fixture'};
+    if(plugin==='ElizaSystem'&&method==='getBuildInfo')return {launcher:false,version:'fixture'};
     if(plugin==='AlphaHostedResults'){
      if(method==='configureBackground'){
       f.configured++;f.input=input;
@@ -118,7 +122,7 @@ for(const mode of ['compose','cancel','source-changed','owner-changed'] as const
    expect(await page.evaluate(()=>(window as any).deliveryFixture.consumed||0)).toBe(0);
   }
  }
- expect(errors).toEqual([]);
+ expect(await page.evaluate(()=>(window as any).residentAgent.state.unexpected)).toEqual([]);expect(errors).toEqual([]);
 });
 
 test.beforeEach(async({page})=>seedCompletedAccessSetup(page));

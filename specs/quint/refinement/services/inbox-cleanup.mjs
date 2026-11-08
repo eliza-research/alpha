@@ -1,3 +1,4 @@
+import {serviceInputs} from './source-inputs.mjs';
 import assert from 'node:assert/strict';
 import {fileURLToPath} from 'node:url';
 import {captureInputs, checkTraces} from '../check-traces.mjs';
@@ -180,7 +181,8 @@ export async function runInboxCleanupRefinement(extraSources = []) {
   const sources = [...discovered, ...extraSources, fileURLToPath(import.meta.url),
     'specs/quint/refinement/services/inbox-coordinator-ports.mjs',
     'specs/quint/refinement/services/inbox-coordinator.mjs', 'package-lock.json'];
-  const driverHashes = captureInputs(sources);
+  const inputs = serviceInputs(sources);
+  const driverHashes = captureInputs(inputs);
   rebuildInboxDriver(discovered);
   const traces = [];
   await interruptedCleanup(null, null, traces);
@@ -189,7 +191,7 @@ export async function runInboxCleanupRefinement(extraSources = []) {
   }
   await retiredDuringKnownClear(traces);
   await peerSavedDuringCleanup(traces);
-  const receipt = await checkTraces({model: 'InboxCoordinator', id: 'InboxCleanup', sources, driverHashes,
+  const receipt = await checkTraces({model: 'InboxCoordinator', id: 'InboxCleanup', sources: inputs, driverHashes,
     traces, scope: 'bounded-orchestration', assumptions: [
       'Actual composer, unsaved recovery, provider controls and InboxOperation execute. Faults occur before an atomic storage CAS or after its durable commit but before its reply.',
       'Four copies of one exact draft arise through real source entrypoints, including a set-aside whose shelf write succeeds before saved-copy removal is refused.',

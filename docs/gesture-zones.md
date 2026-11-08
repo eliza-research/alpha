@@ -3,7 +3,8 @@
 This page says which swipes belong to Android and which to Alpha, and how a person reaches
 notifications and quick settings. It records the behaviour in source after the owner's
 2026-10-12 decisions A-32 and A-33 (issues #416 and #417): `apps/app/src/prototype/model.js`,
-`system-shade.ts`, `template.html`, `phone.css`, `SystemShade.java` and `AlphaDevicePlugin.java`.
+`system-shade.ts`, `template.html`, `phone.css`, the shared `SystemShade.java` (plugin-native-system,
+consumed through the pin) and `AlphaDevicePlugin.java`.
 Browser tests are Chromium on a development or production build. They are not emulator,
 TalkBack, AOSP-image or device evidence. The instrumented classes named at the end, except
 `NotificationChannelsInstrumentedTest`, ran at `69a4be6c` on an API 35 Google APIs emulator on
@@ -33,11 +34,9 @@ SystemUI, because a browser has none; it is a developer surface (`simulatedShade
 | Standalone app: any downward pull on Home | Nobody in Alpha | An ordinary app: Android's top-edge swipe is the way in. |
 | A swipe in from the left or right edge | Android (gesture navigation) | Android delivers Back. In the browser build the same swipe within 30px of an edge goes Back. |
 | A swipe up from the bottom edge | Android (gesture navigation) | Android delivers HOME; the launcher flavor shows Alpha Home. |
-| A swipe up on Alpha Home, away from the bottom edge and the dock | Nobody | Nothing opens. Home scrolls if it overflows. |
-| A tap on the Alpha mark, or a drag up that starts on the bar or pill | Alpha | Opens the conversation sheet. Only the dock opens the chat (`docs/ui-refresh-2026-11`). |
+| A swipe up on Alpha Home, away from the bottom edge | Alpha | Opens the conversation sheet. |
 | The open chat sheet: the Resize chat grabber | Alpha | The sheet follows the finger and rests where it is released. A release within 120 canvas pixels of the collapsed form collapses it, within 120 of the top goes full screen, and a flick (at least 1 canvas pixel per millisecond at release) jumps to either end (`chatRelease` in `chat-overlay-motion-adapter.ts`). |
-| Outside a raised chat (portrait): the open sheet, the bar raised from the pill, or the bar with the keyboard up | Alpha | Any touch, tap or drag, lowers it to the view's resting form (pill, or the unfocused bar on Home and Browser), closes the keyboard and reaches nothing underneath; the next touch is ordinary. The draft stays. Assistive technology activates controls directly. In landscape the chat docks beside the app, which stays live. |
-| Back with a raised chat | Alpha | Unwinds one level: keyboard, full to sheet, sheet to rest, raised bar to pill, then the view's own Back (`specs/quint/legacy/ChatInput.qnt`). |
+| Outside the open chat sheet (portrait) | Alpha | Any touch, tap or drag, collapses the chat and reaches nothing underneath; the next touch is ordinary. Assistive technology activates controls directly. In landscape the chat docks beside the app, which stays live. |
 | Full-screen chat | Alpha | No grabber: nothing of Alpha's competes with Android's top-edge band. The header starts 16 screen pixels below Android's status bar on the launcher (`--alpha-chat-full-top`, at least 60px of canvas). Shrink chat returns to the last resting height, Minimize chat collapses. |
 
 ## Empty Home
@@ -57,7 +56,7 @@ of these hold:
 
 On a phone the WebView may take a vertical drag for scrolling before the page sees it. A Home
 whose content fits the screen is marked `data-alpha-home-fits="true"` and gives vertical drags to
-the page (`touch-action: pan-x pinch-zoom`). A Home that overflows (launcher landscape, large
+the page (`touch-action: pan-x pinch-zoom`). A Home that overflows (large
 text or display size) scrolls normally; only at its top, where it cannot scroll further down, does
 Alpha take a clearly downward drag on empty Home from the WebView (a non-passive `touchmove` that
 calls `preventDefault`, `overflowPullDecision` in `system-shade.ts`), so that pull reaches Alpha

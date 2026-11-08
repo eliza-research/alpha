@@ -1,5 +1,9 @@
 package ai.elizaresearch.alphaphone;
 
+import ai.eliza.plugins.browsersurface.BrowserPageReading;
+import ai.eliza.plugins.browsersurface.BrowserReadingWorld;
+import ai.eliza.plugins.browsersurface.BrowserReviewedReading;
+
 import android.net.Uri;
 import android.os.SystemClock;
 import android.webkit.*;
@@ -79,17 +83,19 @@ public final class BrowserReadingNavigationInstrumentedTest {
     BoundedActivityScenario.main(()->{try{
      assertFalse("No isolated world exists on this provider",world.available());
      assertFalse("A loaded document never becomes ready for reading",world.ready());
-     world.evaluate(BrowserReading.EXTRACT,value->extracted.set("RESULT:"+value),()->extracted.set("REFUSED"));
+     world.evaluate(BrowserPageReading.EXTRACT,value->extracted.set("RESULT:"+value),()->extracted.set("REFUSED"));
      assertEquals("Extraction is refused at once, without running any script","REFUSED",extracted.get());
      // The native review of this loaded, non-sensitive HTTPS document: refused as unavailable, nothing shown.
-     BrowserReading reading=new BrowserReading(web.getContext() instanceof android.app.Activity?(android.app.Activity)web.getContext():null,id->{});
-     reading.reviewQuestion(call,web,world,()->true);
-     java.lang.reflect.Field dialog=BrowserReading.class.getDeclaredField("dialog");dialog.setAccessible(true);assertNull("No review dialog is shown",dialog.get(reading));
+     // The shared reviewed reading (plugin-native-browser-surface); reviewQuestion is package-private there.
+     BrowserReviewedReading reading=new BrowserReviewedReading(web.getContext() instanceof android.app.Activity?(android.app.Activity)web.getContext():null,id->{},BuildConfig.ELIZA_DEV_ALLOW_TEST_MOCKS);
+     java.lang.reflect.Method review=BrowserReviewedReading.class.getDeclaredMethod("reviewQuestion",com.getcapacitor.PluginCall.class,WebView.class,BrowserReadingWorld.class,java.util.function.BooleanSupplier.class);review.setAccessible(true);
+     review.invoke(reading,call,web,world,(java.util.function.BooleanSupplier)()->true);
+     java.lang.reflect.Field dialog=BrowserReviewedReading.class.getDeclaredField("dialog");dialog.setAccessible(true);assertNull("No review dialog is shown",dialog.get(reading));
     }catch(Throwable failure){error.set(failure);}});
     if(error.get()!=null)throw new AssertionError(error.get());
     assertFalse("The review never resolves",call.resolved.get());
-    assertEquals("The refusal names the missing capability, not the page",BrowserReading.UNSUPPORTED,call.message.get());
-    assertEquals(BrowserReading.UNSUPPORTED_CODE,call.code.get());
+    assertEquals("The refusal names the missing capability, not the page",BrowserPageReading.UNSUPPORTED_MESSAGE,call.message.get());
+    assertEquals(BrowserPageReading.READING_UNSUPPORTED,call.code.get());
     assertTrue("The refusal tells the owner what to do",call.message.get().contains("unavailable on this device")&&call.message.get().contains("Update Android System WebView"));
    }finally{BoundedActivityScenario.main(()->{if(worldRef.get()!=null)worldRef.get().close();if(webRef.get()!=null)webRef.get().destroy();});}
    // The product's surface: the plugin answers the capability question, and the browser says so.
@@ -98,9 +104,9 @@ public final class BrowserReadingNavigationInstrumentedTest {
    until("window.__readingSupport!==null");
    assertEquals("{\"available\":false}",(String)new org.json.JSONTokener(host("window.__readingSupport")).nextValue());host("delete window.__readingSupport");
    host(AppNavigation.request("Browser"));until(AppNavigation.selected("Browser"));AppNavigation.declineStartupAccess();
-   String note="document.querySelector('[data-alpha-browser-menu] [data-alpha-reading-unavailable]')",said="document.querySelector('[data-alpha-toast]').innerText.includes("+org.json.JSONObject.quote(BrowserReading.UNSUPPORTED)+")";
+   String note="document.querySelector('[data-alpha-browser-menu] [data-alpha-reading-unavailable]')",said="document.querySelector('[data-alpha-toast]').innerText.includes("+org.json.JSONObject.quote(BrowserPageReading.UNSUPPORTED_MESSAGE)+")";
    click("Menu");until(note+"&&"+note+".getClientRects().length>0");
-   assertEquals("The menu states that page reading is unavailable, in the same words as the native refusal",org.json.JSONObject.quote(BrowserReading.UNSUPPORTED),host(note+".innerText.trim()"));
+   assertEquals("The menu states that page reading is unavailable, in the same words as the native refusal",org.json.JSONObject.quote(BrowserPageReading.UNSUPPORTED_MESSAGE),host(note+".innerText.trim()"));
    assertEquals("note",(String)new org.json.JSONTokener(host(note+".getAttribute('role')")).nextValue());
    assertEquals("Nothing has been announced before an action is chosen","false",host(said));
    click("Read aloud");until("!document.querySelector('[data-alpha-browser-menu]')");until(said);

@@ -18,7 +18,7 @@ async function bundle() {
     "domain-recovery": "export function openDomainRecovery(){throw Error('Recovery UI is outside this fixture');}",
     "device-preferences": "export const cachedDevicePreferences=()=>({autoLoadMailImages:false});export const initializeDevicePreferences=()=>{};",
     "gmail-background": "export const configureGmailBackground=async()=>{};export const withdrawGmailBackground=async()=>{};export const retireGmailBackground=async()=>{};export const pendingGmailNotice=async()=>null;export const consumeGmailNotice=async()=>{};export const releaseGmailQuestion=async()=>{};export const onGmailNotice=async()=>({remove:async()=>{}});",
-    "google-connect-flow": "export const googleConnect={subscribe:()=>()=>{},getSnapshot:()=> 'idle',start:()=>{throw Error('OAuth is outside this fixture');}};export const googleConnectNote=()=>'';",
+    "google-connection-ui": "export const googleConnectionController={subscribe:()=>()=>{},getSnapshot:()=>({phase:'idle'}),open:()=>{throw Error('Google account panel is outside this fixture');}};",
     "mail-html": "export const prepareMailHtml=()=>{throw Error('HTML body rendering is outside this fixture');};",
     "own-notice-question": "export const reviewOwnNoticeQuestion=()=>{throw Error('Notice question is outside this fixture');};",
     "alpha-client": "export const alphaClient={getState:()=>({context:{sensitive:false}})};"
@@ -228,6 +228,7 @@ export async function createInboxFixture() {
   }
   fixture = {
     modules,
+    observeTask: track,
     sources: artifact.sources,
     slots,
     receipts,
@@ -298,7 +299,7 @@ export async function createInboxFixture() {
       const drafts = modules.inboxDrafts(() => {
       }, (text) => toasts.push(text), provider);
       provider.setComposer(() => drafts.email());
-      provider.setEditor((proposal, reference) => drafts.editProvider(proposal, reference));
+      provider.setEditor((proposal, reference, review) => drafts.editProvider(proposal, reference, review));
       provider.setObservers({ sent: (source, proposal, grant) => void drafts.settleSent(source.draftId, proposal, grant, source.savedRevision), sentNote: (source) => drafts.sentNote(source.draftId) });
       return { provider, drafts, async bind(grant = "grant-1") {
         await Promise.all([provider.bind(grant), drafts.bind(grant, grant)]);

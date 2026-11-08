@@ -11,12 +11,12 @@ test('native sign-in checks successful replacement, burn failures, owned cancell
   const result = spawnSync(process.execPath, ['--import=tsx', '--input-type=module', '-e', `
     import {runSignInCoordinatorRefinement} from './specs/quint/refinement/services/sign-in-coordinator.mjs';
     const result = await runSignInCoordinatorRefinement();
-    if (!result.passed || result.traces !== 17) throw Error('Incomplete coordinator refinement');
+    if (!result.passed || result.traces !== 21) throw Error('Incomplete coordinator refinement');
     console.log(JSON.stringify({traces: result.traces, checkpoints: result.checkpoints}));
   `], {cwd: new URL('..', import.meta.url), encoding: 'utf8', timeout: 350000, maxBuffer: 8 * 1024 * 1024});
   assert.ifError(result.error);
   assert.equal(result.status, 0, `${result.stdout}\n${result.stderr}`);
-  assert.match(result.stdout, /"traces":17/);
+  assert.match(result.stdout, /"traces":21/);
 });
 
 function incompleteNoticeFixture() {
@@ -29,6 +29,7 @@ function incompleteNoticeFixture() {
   const state = {open: false, signIn: {step: 'google', environment: 'production'}, message: '', error: ''};
   const context = vm.createContext({
     state,
+    epoch: 1,
     operation: {},
     operationSettled: new Promise(resolve => { settle = resolve; }),
     update: next => Object.assign(state, next),
@@ -59,4 +60,27 @@ test('cold storage failure opens recovery while unrelated retained codes remain 
   fixture.context.controller.signInIncomplete({code: 'storage'});
   assert.equal(fixture.state.open, true);
   assert.equal(fixture.state.error, 'storage');
+});
+
+test('a deferred storage notice cannot replace a newer sign-in step', async () => {
+  const fixture = incompleteNoticeFixture();
+  fixture.context.controller.signInIncomplete({code: 'storage'});
+  const nextView = {step: 'code', environment: 'production', attemptId: 'new-attempt'};
+  fixture.state.signIn = nextView;
+  fixture.context.operation = null;
+  fixture.settle();
+  await Promise.resolve();
+  assert.equal(fixture.state.signIn, nextView);
+  assert.equal(fixture.state.open, false);
+});
+
+test('a deferred storage notice cannot reopen a replaced connection', async () => {
+  const fixture = incompleteNoticeFixture();
+  fixture.context.controller.signInIncomplete({code: 'storage'});
+  fixture.context.epoch++;
+  fixture.context.operation = null;
+  fixture.settle();
+  await Promise.resolve();
+  assert.equal(fixture.state.open, false);
+  assert.equal(fixture.state.error, '');
 });

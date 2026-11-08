@@ -8,7 +8,7 @@ import { stripTypeScriptTypes } from 'node:module';
 const source = readFileSync('apps/app/src/prototype/chat-overlay-motion-adapter.ts', 'utf8');
 const region = source.slice(source.indexOf('// chat-release:begin'), source.indexOf('// chat-release:end'));
 assert.ok(region.length > 200, 'chat-release region is present');
-const m = await import('data:text/javascript;base64,' + Buffer.from(stripTypeScriptTypes(region, { mode: 'strip' })).toString('base64'));
+const m = await import('data:text/javascript;base64,' + Buffer.from(stripTypeScriptTypes(region, { mode: 'transform' })).toString('base64'));
 
 const release = (height, options = {}) => m.chatRelease({ mode: 'sheet', direction: 'down', height, floor: 90, full: 915, flick: false, ...options });
 

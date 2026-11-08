@@ -1,0 +1,26 @@
+{
+  "developmentOnly": true,
+  "versionCode": 10,
+  "versionName": "0.1.0-native-4b928290",
+  "sameDebugSigner": true,
+  "apks": [
+    {
+      "file": "artifacts/launcher-debug.apk",
+      "sha256": "7a2ee3072491dd115097ddcfd96dec9ec27f2e8197d57301475c2ae3e3f47d15",
+      "signerSha256": "2242994d2d237f98d01927999157067df4e2495a8f980451ac3de5d40642584a"
+    },
+    {
+      "file": "artifacts/aosp-campaign-20261027/launcher-aosp-debug.apk",
+      "sha256": "5e10e36cf3d9aac54ff243a55815d70edfee0204d78b3c609de422bc09afbc8c",
+      "signerSha256": "2242994d2d237f98d01927999157067df4e2495a8f980451ac3de5d40642584a"
+    },
+    {
+      "file": "artifacts/aosp-campaign-20261027/listener-aosp-debug.apk",
+      "sha256": "98d1510fc6e76357dddf01288096d2fe8df690d3db92c3324a22cddda86e0700",
+      "signerSha256": "2242994d2d237f98d01927999157067df4e2495a8f980451ac3de5d40642584a"
+    }
+  ],
+  "preparedPayloadUnchanged": true,
+  "flashed": false,
+  "deviceAcceptance": false
+}

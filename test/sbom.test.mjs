@@ -171,8 +171,12 @@ test('every component carries its licence expression and flags, matching the not
   assert.equal(prop(npm('tr46'), 'licence-flags'), 'licence-text-missing-from-package');
   assert.deepEqual([prop(npm('react'), 'licence-expression'), prop(npm('react'), 'licence-flags')], ['MIT', 'none']);
   for (const component of sbom.components.filter(item => item.purl?.startsWith('pkg:maven/'))) {
-    const expected=component.group==='org.checkerframework'&&component.name==='checker-qual'?'MIT':'Apache-2.0';
-    assert.deepEqual([prop(component, 'licence-expression'), prop(component, 'licence-flags')], [expected, 'none'], component.name);
+    // Google native authentication artifacts have no reviewed licence family yet.
+    // Keep that uncertainty visible rather than assuming every Maven dependency is Apache-2.0.
+    const unreviewedGoogle = ['com.google.android.gms', 'com.google.android.libraries.identity.googleid'].includes(component.group);
+    const expected = unreviewedGoogle ? ['UNKNOWN', 'unknown-licence']
+      : [component.group === 'org.checkerframework' && component.name === 'checker-qual' ? 'MIT' : 'Apache-2.0', 'none'];
+    assert.deepEqual([prop(component, 'licence-expression'), prop(component, 'licence-flags')], expected, component.name);
   }
   // A component whose licence this inventory does not record says so and is flagged, never left blank.
   const unrecorded = sbom.components.filter(component => prop(component, 'licence-expression') === LICENCE_NOT_RECORDED);

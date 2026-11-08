@@ -9,8 +9,6 @@ import { pendingReminderDeletions,retainReminderDeletion,acknowledgeReminderDele
 import { Capacitor } from '@capacitor/core';
 import {rememberNoteOrigin,forgetNoteOrigin} from './note-origin-adapter';
 type Bag = any;
-type TodoBridge={saveTodo(options:{id:string;title:string;body?:string}):Promise<{status:string;id:string;message?:string}>;todoDecision(options:{target:NonNullable<Reminder['target']>;action:'done'|'reopen'|'cancel'}):Promise<{status:string;id:string}>};
-const todoBridge=()=>DailyApps as unknown as TodoBridge;
 /** Native reminders use the reference calendar form, timeline and detail sheet. */
 export function installReminderAdapter(Component: Bag, views: Bag) {
   const p = Component.prototype, mount = p.componentDidMount, unmount = p.componentWillUnmount;
@@ -171,7 +169,7 @@ export function installReminderAdapter(Component: Bag, views: Bag) {
       if(action==='cancel'&&!window.confirm(`Delete the to-do “${r.title}”?`))return;
       todoOwner.reminderSaving=true;
       try{
-        const result=await todoBridge().todoDecision({target:r.target,action});
+        const result=await DailyApps.todoDecision({target:r.target,action});
         const saved=(await DailyApps.listReminders()).reminders.find(row=>row.id===r.id);
         const expected=action==='done'?'completed':action==='reopen'?'todo':'cancelled';
         if(result.status!==expected||(expected!=='cancelled'&&(saved?.status as string)!==expected)||(expected==='cancelled'&&saved))throw Error('To-do readback mismatch');
@@ -189,7 +187,7 @@ export function installReminderAdapter(Component: Bag, views: Bag) {
       todoOwner.todoAttempt=attempt;todoOwner.reminderSaving=true;
       try{
         let response:{status:string}|undefined;
-        try{response=await todoBridge().saveTodo({id:attempt.id,title:text,body});}catch{/* Readback decides. */}
+        try{response=await DailyApps.saveTodo({id:attempt.id,title:text,body});}catch{/* Readback decides. */}
         const saved=(await DailyApps.listReminders()).reminders.find(r=>r.id===attempt.id);
         if(!saved&&isReminderRefusal(response?.status)){todoOwner.todoAttempt=undefined;if(owner===todoOwner)api.toast(reminderRefusalMessage(response.status as ReminderRefusal).replace('This reminder','This to-do'));return;}
         if(!saved||!isUndatedReminder(saved))throw Error('To-do save unconfirmed');
@@ -203,12 +201,13 @@ export function installReminderAdapter(Component: Bag, views: Bag) {
     if(out.f) {
       const f=state.form;
       if(f.cal==='alpha-reminders'&&owner?.reminderSaving)out.f.saveOff=true;
-      out.f.cals.push({name:'Reminders',dot:'var(--acc)',css:f.cal==='alpha-reminders'?'background:var(--fg);color:var(--bg)':'background:var(--bg)',pick:()=>api.set({form:{...api.get('calendar').form,cal:'alpha-reminders',repeat:'none',alert:0}})});
+      out.f.cals.push({domain:'reminders',name:'Reminders',dot:'var(--acc)',css:f.cal==='alpha-reminders'?'background:var(--fg);color:var(--bg)':'background:var(--bg)',pick:()=>{const original=api.get('calendar').form;const {canonicalOwnerKey,canonicalEventKey,expectedProviderVersion,canonicalTiming,canonicalAllDay,...kept}=original;const next={...kept,cal:'alpha-reminders',repeat:'none',alert:0};api.set({form:owner?.calendarFormDestinationChanged?.(original,next)??next});}});
       if(f.cal==='alpha-reminders') out.f.save=async()=>{
         if(owner?.reminderSaving)return;
         const current=api.get('calendar').form;
         if(current?.alphaReminderId&&(api.get('calendar').reminderStale||owner?.reminderRefreshFailed)){api.toast('Refresh reminders before changing this saved reminder.');void owner?.refreshReminders();return;}
         if(!current?.title?.trim())return;
+        const formAdmission=owner?.calendarFormAdmitted?.(current);
 
         const unchangedSchedule=current.alphaReminderId&&current.reminderEditSchedule&&JSON.stringify([current.off,current.t,current.repeat,current.alert])===JSON.stringify(current.reminderEditSchedule);
         const saveEdit=async(schedule?:{at:number;recurrence:any;dueAt:number;alertMinutes:number|null})=>{
@@ -254,7 +253,7 @@ export function installReminderAdapter(Component: Bag, views: Bag) {
             saveOwner.reminderSaving=false;
             if(owner===saveOwner&&saveOwner.live)api.set({});
             // Keep the editor visible until refreshed targets and the mutation lock settle.
-            if(editSaved&&sameEditor()){saveOwner.calendarFormCommitted?.(api.get('calendar').form);api.set({form:null});}
+            if(editSaved&&sameEditor()){saveOwner.calendarFormCommitted?.(api.get('calendar').form,formAdmission);api.set({form:null});}
           }
         };
         if(unchangedSchedule){await saveEdit();return;}
@@ -307,7 +306,7 @@ export function installReminderAdapter(Component: Bag, views: Bag) {
             if(found!=='found')throw Error('Creation outcome unknown');
             // Only the reminder this exact reviewed draft created is linked to the note it came from.
             if(current.origin&&matchesAttempt&&!await rememberNoteOrigin('reminder',id,current.origin)&&owner===createOwner&&createOwner.live)api.toast('Reminder saved. The link to its note could not be saved.');
-            if(active()){createOwner.calendarFormCommitted?.(api.get('calendar').form);api.set({form:null});}
+            if(active()){createOwner.calendarFormCommitted?.(api.get('calendar').form,formAdmission);api.set({form:null});}
             if(owner===createOwner&&createOwner.live){await createOwner.refreshReminders();api.toast(!matchesAttempt?'The previous reminder was found. This edited draft was not saved. Close it to start a separate reminder.':notificationsBlocked?'Reminder saved; notifications are disabled. Enable notifications, then review its time.':scheduled?(alertMinutes===null?'Reminder saved with no alert.':'Reminder scheduled · approximate delivery'):alertMinutes===null?'The saved reminder was found. No alert is enabled.':'The saved reminder was found. Delivery is not verified.');}
           }catch{
             if(owner===createOwner&&createOwner.live)api.toast('Reminder creation is unconfirmed. Check new reminder status in Calendar; it will not be created again automatically.');

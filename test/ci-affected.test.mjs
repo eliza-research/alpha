@@ -43,7 +43,7 @@ test('CI selection follows changed files, renames, missing history and manual di
   base=git('rev-parse','HEAD');git('mv','apps/app/source.ts','docs/reference.ts');commit('.');
   result=select(pr());assert.deepEqual(lanes(result),[true,true,true,false]);assert.deepEqual(result.browser_specs,[]);
   base=git('rev-parse','HEAD');git('rm','test/browser/notes.spec.ts');commit('.');
-  result=select(pr());assert.deepEqual(result.browser_shards,[1,2,3,4]);assert.equal(result.browser_production,true);
+  result=select(pr());assert.deepEqual(result.browser_shards,[1,2,3,4,5,6]);assert.equal(result.browser_production,true);
   base=git('rev-parse','HEAD');put('unknown-build-input');commit('unknown-build-input');
   assert.deepEqual(lanes(select({before:base},'push')),[true,true,true,true]);
   assert.deepEqual(lanes(select({before:'0'.repeat(40)},'push')),[true,true,true,true]);
@@ -60,7 +60,6 @@ test('docs read by node tests select verify; design and research notes select no
   }
   assert.deepEqual(lanes(['design/prototype.html','design/assets/icon.svg']), [false,false,false,false]);
   assert.deepEqual(lanes(['.github/workflows/dependency-audit.yml']), [true,false,false,false], 'the scheduled audit workflow selects verify only');
-  assert.deepEqual(lanes(['specs/quint/application/Application.qnt','specs/quint/coverage.json','scripts/check-quint.mjs']), [true,false,false,false], 'formal specifications run repository verification');
   assert.deepEqual(lanes(['docs/market-research/proposal.md','AGENTS.md','LICENSE']), [false,false,false,false]);
   // Every docs file a node test names must select verify.
   const named = new Set();

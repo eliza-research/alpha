@@ -5,7 +5,7 @@ test('departing development connection stops rendering until page restoration',a
  await page.addInitScript(()=>localStorage.setItem('alpha.connection.selection.v1',JSON.stringify({kind:'offline'})));
  await page.goto('/?mode=dev');
  await page.getByRole('button',{name:'Settings',exact:true}).click();
- await page.getByRole('button',{name:'Agent',exact:true}).click();
+ await page.getByRole('button',{name:'Agent connection',exact:true}).click();
  await expect(page.getByRole('button',{name:'Connect development profile'})).toBeVisible();
  await page.evaluate(async()=>{
   const read=Storage.prototype.getItem;
@@ -24,8 +24,8 @@ test('departing development connection stops rendering until page restoration',a
   }
  });
  await expect(page.getByRole('button',{name:'Connect development profile'})).toHaveCount(0);
- await expect(page.getByRole('button',{name:'Agent',exact:true})).toBeVisible();
+ await expect(page.getByRole('button',{name:'Agent connection',exact:true})).toBeVisible();
  expect(errors).toEqual([]);
- await page.getByRole('button',{name:'Agent',exact:true}).click();
+ await page.getByRole('button',{name:'Agent connection',exact:true}).click();
  await expect(page.getByRole('button',{name:'Connect development profile'})).toBeVisible();
 });

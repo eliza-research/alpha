@@ -1,0 +1,14 @@
+{
+  "atUTC": "2026-10-27T00:09:01.177705+00:00",
+  "productBase": "4ad78f16744a4a32fc19e1bac4116554bbfc5cd2",
+  "SDK": "1e4a4a274cb1712eb733ab1b4e1f96adc0bfa703",
+  "previousSDK": "2a8bbc5d55f9100cd55c00f1ca9df98cd6b02e40",
+  "scope": "Root-selected Browser source snapshot; Calendar range fix retained",
+  "BrowserPatchSHA256": "34761c169ce921c385d9c7c6b6cc13be49229a2355297c343371c4f23f93af8a",
+  "BrowserFocusedTests": 32,
+  "laterPortRefinementConsumed": true,
+  "typeLimits": "Scoped Browser checks passed; full Calendar/reminder-test semantic graphs remain unqualified after unchanged heap limits.",
+  "liveNewSourceVerified": false,
+  "fullNativeAcceptance": false,
+  "nativeEnrollment": "Unqualified: VIEWS installation is not proof of client_devices enrollment or request-time DeviceTurn; actual native Browser request remains open."
+}

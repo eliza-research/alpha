@@ -1,4 +1,5 @@
 package ai.elizaresearch.alphaphone;
+import ai.eliza.plugins.media.OwnedVideoPlayback;
 
 import android.Manifest;
 import android.content.ContentUris;
@@ -36,7 +37,7 @@ public class VideoInstrumentedTest {
   java.util.concurrent.atomic.AtomicReference<String> result=new java.util.concurrent.atomic.AtomicReference<>("unavailable");
   WebViewTestDriver.withActivity(MainActivity.class,activity->{try{
    Object plugin=activity.getBridge().getPlugin("AlphaPhotos").getInstance();
-   java.lang.reflect.Field field=plugin.getClass().getDeclaredField("playback");field.setAccessible(true);
+   java.lang.reflect.Field field=ai.eliza.plugins.media.PhotosPlugin.class.getDeclaredField("playback");field.setAccessible(true);
    result.set(((OwnedVideoPlayback)field.get(plugin)).diagnostics());
   }catch(Exception error){result.set(error.getClass().getSimpleName());}});return result.get();
  }
@@ -60,10 +61,10 @@ public class VideoInstrumentedTest {
   // Only its account/runtime boundary is synthetic; Camera/Photos remain native.
   eval("[...document.querySelectorAll('.alpha-connection button')].find(b=>b.textContent.trim()==='Sign in with Eliza Cloud').click()");
   // In-app sign-in: the email code is entered on Alpha's own screen (the host is the fixture above).
-  until("document.querySelector('.alpha-cloud-sign-in input[name=username]')");
-  eval("(()=>{const field=document.querySelector('.alpha-cloud-sign-in input[name=username]');field.value='video-fixture@example.invalid';[...document.querySelectorAll('.alpha-cloud-sign-in button')].find(b=>b.textContent.trim()==='Continue').click();})()");
+  until("document.querySelector('.alpha-cloud-sign-in input[name=email]')");
+  eval("(()=>{const toggle=document.getElementById('alpha-sign-in-other-methods')?.previousElementSibling;if(toggle?.getAttribute('aria-expanded')==='false')toggle.click();const field=document.querySelector('.alpha-cloud-sign-in input[name=email]');field.value='video-fixture@example.invalid';[...document.querySelectorAll('.alpha-cloud-sign-in button')].find(b=>b.textContent.trim()==='Email me a code').click();})()");
   until("document.querySelector('.alpha-cloud-sign-in input[name=one-time-code]')");
-  eval("(()=>{const field=document.querySelector('.alpha-cloud-sign-in input[name=one-time-code]');field.value='123456';field.dispatchEvent(new Event('input',{bubbles:true}));})()");
+  eval("(()=>{const field=document.querySelector('.alpha-cloud-sign-in input[name=one-time-code]');field.value='123456';[...document.querySelectorAll('.alpha-cloud-sign-in button')].find(b=>b.textContent.trim()==='Verify').click();})()");
   until("!document.querySelector('.alpha-connection-scrim')");
   assertEquals("Production account admission reached native startup","true",eval("window.__alphaVideoAccount.calls.includes('/api/v1/user')&&window.__alphaVideoAccount.calls.includes('/api/v1/billing/limits')&&window.__alphaVideoAccount.calls.includes('configureCloudProvider')&&window.__alphaVideoAccount.calls.includes('start')"));
  }

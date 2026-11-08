@@ -1,0 +1,12 @@
+{
+  "exit": 0,
+  "seconds": 183.39485499984585,
+  "guardStop": null,
+  "sampledPeakRSSKiB": 1541824,
+  "output": "/Users/nubs/.local/state/eliza-five-lane-coordination/native-google-auth-implementation-20261025/engine-reproduction/output/arm64-v8a/libelizainference.so",
+  "bytes": 8062696,
+  "sha256": "ffb1855a8478780fda444bea058f584ce8c4267dcb0db62d5ec34b5ca3154625",
+  "matchesExpected": false,
+  "network": "denied",
+  "descriptorChanged": false
+}

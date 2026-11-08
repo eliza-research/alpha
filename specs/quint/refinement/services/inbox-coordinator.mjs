@@ -1,3 +1,4 @@
+import {serviceInputs} from './source-inputs.mjs';
 // Observation labels are derived from real product state after each controlled schedule.
 import assert from "node:assert/strict";
 import { fileURLToPath } from "node:url";
@@ -83,7 +84,8 @@ async function startSend(fixture, coordinator, trace) {
 export async function runInboxCoordinatorRefinement(extraSources = []) {
   const discovered = await inboxDriverSources();
   const sources = [...discovered, fileURLToPath(import.meta.url), "specs/quint/refinement/services/inbox-coordinator-ports.mjs", "package-lock.json", ...extraSources];
-  const driverHashes = captureInputs(sources);
+  const inputs = serviceInputs(sources);
+  const driverHashes = captureInputs(inputs);
   rebuildInboxDriver(discovered);
   const traces = [];
   for (const mode of ["capability-withdrawn", "capability-unavailable"]) {
@@ -433,7 +435,7 @@ export async function runInboxCoordinatorRefinement(extraSources = []) {
     assert.equal(coordinator.provider.render().provider.canConfirm, true);
     coordinator.dispose();
   }
-  const receipt = await checkTraces({ model: "InboxCoordinator", sources, driverHashes, traces, scope: "bounded-orchestration", assumptions: [
+  const receipt = await checkTraces({ model: "InboxCoordinator", sources: inputs, driverHashes, traces, scope: "bounded-orchestration", assumptions: [
     "Actual provider controls, composer, InboxOperation, inboxUnsaved and AssistantDraftController execute in isolated JavaScript realms. Primitive storage, Gmail, attachment picker and native lifecycle ports are controlled.",
     "Two logical account/grant identities, one dispatched request per identity, and fixed original/edited body and attachment equivalence classes bound these schedules.",
     "The imported InboxDelivery committing phase records the awaited CAS boundary. Network dispatch is observed separately. Already-admitted requests may remain uncertain after permission changes.",

@@ -93,7 +93,7 @@ final class BoundedActivityScenario<T extends Activity> implements AutoCloseable
   * launch starts from no saved tabs or history so earlier tests cannot change
   * which page opens; restart tests opt out with launchRetainingBrowserSession. */
  static <T extends Activity> BoundedActivityScenario<T> launch(Class<T> type)throws Exception{
-  if(type==MainActivity.class)new BrowserSessionStore(InstrumentationRegistry.getInstrumentation().getTargetContext()).clear();
+  if(type==MainActivity.class)AlphaBrowserStores.session(InstrumentationRegistry.getInstrumentation().getTargetContext()).clear();
   return launchRetainingBrowserSession(type);
  }
  static <T extends Activity> BoundedActivityScenario<T> launchRetainingBrowserSession(Class<T> type)throws Exception{

@@ -1,5 +1,7 @@
 package ai.elizaresearch.alphaphone;
+import ai.eliza.plugins.browsersurface.BrowserSessionStore;
 
+import ai.eliza.plugins.browsersurface.BrowserDownloadPolicy;
 import android.content.Context;
 import android.os.Bundle;
 import android.os.SystemClock;
@@ -89,10 +91,17 @@ public final class BrowserWebFeaturesInstrumentedTest {
 
  // ---- Plugin state through reflection (native witness, not renderer state) --------
  private Object plugin(MainActivity activity){return activity.getBridge().getPlugin("AlphaBrowser").getInstance();}
- private Object field(Object owner,String name)throws Exception{java.lang.reflect.Field field=owner.getClass().getDeclaredField(name);field.setAccessible(true);return field.get(owner);}
+ /** A declared field of owner's class or a superclass (the shared BrowserTabHostPlugin holds the host state). */
+ private Object field(Object owner,String name)throws Exception{for(Class<?> type=owner.getClass();type!=null;type=type.getSuperclass())try{java.lang.reflect.Field field=type.getDeclaredField(name);field.setAccessible(true);return field.get(owner);}catch(NoSuchFieldException next){/* superclass */}throw new NoSuchFieldException(name);}
+ /** The shared download list (BrowserDownloadPolicy.History), as the persisted record keys plus the in-memory private and transfer state. */
  private List<JSONObject> downloadEntries()throws Exception{
   List<JSONObject> result=new ArrayList<>();AtomicReference<Exception> error=new AtomicReference<>();
-  WebViewTestDriver.withActivity(MainActivity.class,activity->{try{Object downloads=field(plugin(activity),"downloads");for(Object item:((Map<?,?>)field(downloads,"owned")).values())result.add(new JSONObject(item.toString()));}catch(Exception failure){error.set(failure);}});
+  WebViewTestDriver.withActivity(MainActivity.class,activity->{try{Object downloads=field(plugin(activity),"downloads");
+   for(BrowserDownloadPolicy.Entry entry:((BrowserDownloadPolicy.History)field(downloads,"history")).all()){
+    JSONObject item=new JSONObject().put("id",entry.id).put("name",entry.name).put("origin",entry.origin);
+    if(entry.ephemeral)item.put("private",true).put("tab",entry.tab);if(entry.uri!=null)item.put("uri",entry.uri);if(entry.running)item.put("running",true);if(entry.failed)item.put("failed",true);
+    result.add(item);
+   }}catch(Exception failure){error.set(failure);}});
   if(error.get()!=null)throw error.get();return result;
  }
  private String pluginString(String name)throws Exception{AtomicReference<String> value=new AtomicReference<>();WebViewTestDriver.withActivity(MainActivity.class,activity->{try{value.set((String)field(plugin(activity),name));}catch(Exception failure){throw new AssertionError(failure);}});return value.get();}
@@ -158,7 +167,7 @@ public final class BrowserWebFeaturesInstrumentedTest {
   // Remove only fixture-owned download history and permission decisions.
   android.content.SharedPreferences preferences=context.getSharedPreferences("alpha-browser-downloads",Context.MODE_PRIVATE);JSONArray kept=new JSONArray(),all=new JSONArray(preferences.getString("owned","[]"));
   for(int i=0;i<all.length();i++){JSONObject item=all.getJSONObject(i);if(!item.toString().contains(token)&&!item.optString("origin").contains(":"+(server==null?"":String.valueOf(server.getLocalPort()))))kept.put(item);}preferences.edit().putString("owned",kept.toString()).commit();
-  if(server!=null)new BrowserSessionStore(context).clearPermissionsForSite("127.0.0.1");
+  if(server!=null)AlphaBrowserStores.session(context).clearPermissionsForSite("127.0.0.1");
  }
  private void openFixture()throws Exception{address(base);page("Web features fixture");}
  private byte[] read(android.net.Uri uri)throws Exception{
@@ -226,7 +235,8 @@ public final class BrowserWebFeaturesInstrumentedTest {
    android.net.Uri blob=savedCapture(before+1);assertArrayEquals("Exact blob: bytes",("blob bytes "+token).getBytes(StandardCharsets.UTF_8),read(blob));nativeClick("Close");
    File[] left=new File(InstrumentationRegistry.getInstrumentation().getTargetContext().getCacheDir(),"browser-captures").listFiles();
    assertTrue("App-owned capture files are removed after saving",left==null||left.length==0);
-   assertEquals("Child page retains no app bridge","true",browser.child("typeof Capacitor==='undefined' && typeof androidBridge==='undefined' && typeof __alphaBrowserCapture==='undefined'"));
+   // The capture and login-field channels exist only in their isolated worlds (BrowserBlobCapture, BrowserLoginFields).
+   assertEquals("Child page retains no app bridge","true",browser.child("typeof Capacitor==='undefined' && typeof androidBridge==='undefined' && typeof __elizaBrowserCapture==='undefined' && typeof __elizaLoginFields==='undefined'"));
   }
  }
 
@@ -244,7 +254,7 @@ public final class BrowserWebFeaturesInstrumentedTest {
  }
 
  @Test public void sitePermissionsAreOriginLabelledStoredPerProfileAndRevocable()throws Exception{
-  Context context=InstrumentationRegistry.getInstrumentation().getTargetContext();BrowserSessionStore store=new BrowserSessionStore(context);
+  Context context=InstrumentationRegistry.getInstrumentation().getTargetContext();BrowserSessionStore store=AlphaBrowserStores.session(context);
   // Pre-grant the Android runtime permission so only the site prompt is under test.
   InstrumentationRegistry.getInstrumentation().getUiAutomation().grantRuntimePermission(context.getPackageName(),android.Manifest.permission.CAMERA);
   String origin=base.substring(0,base.length()-1),request="(()=>{window.__perm='pending';navigator.mediaDevices.getUserMedia({video:true}).then(s=>{s.getTracks().forEach(t=>t.stop());window.__perm='granted'},e=>{window.__perm=e.name});return true})()";

@@ -1,23 +1,6 @@
 import type {NoteRecord} from '../runtime/notes-store';
 import type {NamedTargetOperation} from '../../../../.eliza/client-features/packages/contracts/src/device-reviews.ts';
-import {holdPhoneInert} from '../runtime/modal-inert';
-type Dialog={dialog:HTMLDialogElement;content:HTMLElement;footer:HTMLElement;close:(value:unknown,error?:unknown)=>void};
-/** One modal review on the phone surface: inert background, focus return, and closing
- * (with null) on cancel, Back, abort, background or page hide. */
-function openReview<T>(label:string,region:string,signal:AbortSignal,build:(dialog:Dialog)=>HTMLElement|null):Promise<T|null>{
- return new Promise((resolve,reject)=>{
-  const previous=document.activeElement as HTMLElement|null,dialog=document.createElement('dialog');dialog.className='note-source-dialog';dialog.setAttribute('aria-label',label);
-  const theme=document.querySelector('.os');if(theme){const style=getComputedStyle(theme);for(const token of ['bg','fg'])dialog.style.setProperty('--source-'+token,style.getPropertyValue('--'+token));}
-  const content=document.createElement('div');content.className='note-source-content';content.tabIndex=0;content.setAttribute('role','region');content.setAttribute('aria-label',region);
-  const footer=document.createElement('footer');
-  let done=false;const release=holdPhoneInert(document.querySelector<HTMLElement>('.os'));
-  const close=(value:unknown,error?:unknown)=>{if(done)return;done=true;signal.removeEventListener('abort',abort);document.removeEventListener('visibilitychange',visibility);window.removeEventListener('pagehide',abort);window.removeEventListener('alpha-back',back,true);dialog.remove();release();if(previous?.isConnected)previous.focus();error?reject(error):resolve(value as T|null);};
-  const abort=()=>close(null),visibility=()=>{if(document.hidden)close(null);},back=(event:Event)=>{event.preventDefault();event.stopImmediatePropagation();close(null);};
-  dialog.oncancel=event=>{event.preventDefault();close(null);};dialog.onclose=()=>close(null);
-  signal.addEventListener('abort',abort,{once:true});document.addEventListener('visibilitychange',visibility);window.addEventListener('pagehide',abort);window.addEventListener('alpha-back',back,true);
-  try{const focus=build({dialog,content,footer,close});dialog.append(content,footer);document.body.append(dialog);dialog.showModal();(focus??content).focus();if(signal.aborted)close(null);}catch(error){close(null,error);}
- });
-}
+import {openReview} from './source-review-dialog';
 function button(text:string){const element=document.createElement('button');element.textContent=text;return element;}
 function heading(text:string){const element=document.createElement('h2');element.textContent=text;return element;}
 function paragraph(text:string){const element=document.createElement('p');element.textContent=text;return element;}

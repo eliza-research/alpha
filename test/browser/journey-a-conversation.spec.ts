@@ -1,3 +1,4 @@
+import {openLegacyNotes} from './helpers/legacy-notes';
 /*
  * Journey A (docs/mvp-completion-plan.md "A. Boot, authenticate and keep a conversation"), browser build.
  *
@@ -43,7 +44,7 @@ const agentDocument=(page:Page)=>page.evaluate(async key=>{
 },AGENT_KEY);
 async function openConnection(page:Page){
  await page.getByRole('button',{name:'Settings',exact:true}).click();
- await page.getByRole('button',{name:'Agent',exact:true}).click();
+ await page.getByRole('button',{name:'Agent connection',exact:true}).click();
  await expect(page.getByRole('dialog',{name:'Development connections'})).toBeVisible();
 }
 
@@ -61,8 +62,10 @@ test('journey A: boot, connect, converse across apps, stop a reply, reload and r
 
  // 1b. Composer draft around a failed send: with no agent nothing is sent and the text returns to the composer.
  await ask.fill('Journey A unsent draft');await ask.press('Enter');
- await expect(page.getByText('Not sent. Your message is back in the composer.',{exact:true}).first()).toBeVisible();
  await expect(message).toHaveValue('Journey A unsent draft');
+ // The text simply comes back: no line under the composer and no toast (owner, 2026-11-03).
+ await expect(page.getByRole('status',{name:'Assistant draft status'})).toHaveCount(0);
+ await expect(page.getByText('Your message is back in the composer')).toHaveCount(0);
  await expect(bubble(page,'Journey A unsent draft')).toHaveCount(0);
  expect(await agentDocument(page)).toBeNull();
  await message.fill('');
@@ -70,8 +73,8 @@ test('journey A: boot, connect, converse across apps, stop a reply, reload and r
 
  // 2. Connection choice: Settings -> Agent connection, save a scripted reply and connect the development profile.
  await page.getByRole('button',{name:'Settings',exact:true}).click();
- await expect(page.getByRole('button',{name:'Agent',exact:true})).toContainText('Offline');
- await page.getByRole('button',{name:'Agent',exact:true}).click();
+ await expect(page.getByRole('button',{name:'Agent connection',exact:true})).toContainText('Offline');
+ await page.getByRole('button',{name:'Agent connection',exact:true}).click();
  const dialog=page.getByRole('dialog',{name:'Development connections'});
  await expect(dialog).toBeVisible();
  await dialog.getByRole('textbox',{name:'Scripted reply'}).fill(REPLY);
@@ -79,7 +82,7 @@ test('journey A: boot, connect, converse across apps, stop a reply, reload and r
  await expect(page.getByRole('status').filter({hasText:'Development reply saved.'})).toBeVisible();
  await dialog.getByRole('button',{name:'Connect development profile'}).click();
  await expect(dialog).toHaveCount(0);
- await expect(page.getByRole('button',{name:'Agent',exact:true})).toContainText('On-device agent · development');
+ await expect(page.getByRole('button',{name:'Agent connection',exact:true})).toContainText('On-device agent · development');
  await returnToApps(page);
 
  // 3. Typed conversation from Home.
@@ -91,7 +94,8 @@ test('journey A: boot, connect, converse across apps, stop a reply, reload and r
  for(const app of ['Notes','Calendar','Browser']){
   await returnToApps(page);
   await page.getByRole('button',{name:app,exact:true}).click();
-  await expect(page.getByRole('region',{name:app,exact:true})).toBeVisible();
+  const region=page.getByRole('region',{name:app,exact:true});
+  await expect(region).toBeVisible();
   await page.getByRole('button',{name:'Open conversation',exact:true}).click();
   await expect(bubble(page,'Journey A first request')).toHaveCount(1);
   if(app==='Notes'){
@@ -119,7 +123,7 @@ test('journey A: boot, connect, converse across apps, stop a reply, reload and r
    await expect(bubble(page,'Your message may have reached the agent. Check before sending it again.')).toHaveCount(0);
    await expect(conversation.getByText('The agent stopped this reply.',{exact:true})).toHaveCount(0);
    // While the single check is pending there is nothing to press: the check is automatic.
-   await expect(page.getByRole('button',{name:/^Check for reply/})).toHaveCount(0);
+   await expect(page.getByRole('button',{name:/^Check saved conversation/})).toHaveCount(0);
    await expect(bubble(page,'Journey A cancelled request')).toHaveCount(1);
    await expect(bubble(page,REPLY)).toHaveCount(2);
    // The cancelled text is not returned to the composer (it was dispatched; never a blind resend).
@@ -136,7 +140,7 @@ test('journey A: boot, connect, converse across apps, stop a reply, reload and r
    // the agent has no record of the stopped message. The pending notice is replaced, not added to.
    await expect(conversation.getByText(NOT_RECORDED,{exact:true})).toHaveCount(1,{timeout:60_000});
    await expect(conversation.getByText(MAY_FINISH,{exact:true})).toHaveCount(0);
-   await expect(page.getByRole('button',{name:/^Check for reply/})).toHaveCount(1);
+   await expect(page.getByRole('button',{name:/^Check saved conversation/})).toHaveCount(0);
    await expect(bubble(page,'Journey A cancelled request')).toHaveCount(1);
    await expect(bubble(page,REPLY)).toHaveCount(2);
    await expect(message).toHaveValue('');
@@ -149,15 +153,11 @@ test('journey A: boot, connect, converse across apps, stop a reply, reload and r
    await expect(conversation.getByText(NOT_RECORDED,{exact:true})).toHaveCount(1);
    await expect(conversation.getByText(MAY_FINISH,{exact:true})).toHaveCount(0);
    expect(await agentDocument(page)).toEqual(afterStop);
-   // The Check card is the user's explicit re-read of the agent's history. It never posts: the unconfirmed
-   // bubble is replaced by what the agent holds.
-   await page.getByRole('button',{name:/^Check for reply/}).click();
-   await expect(bubble(page,'Journey A cancelled request')).toHaveCount(0);
-   await expect(bubble(page,'Journey A first request')).toHaveCount(1);
-   await expect(bubble(page,'Journey A second request')).toHaveCount(1);
-   await expect(bubble(page,REPLY)).toHaveCount(2);
-   expect(await agentDocument(page)).toEqual(afterStop);
-   await expect(page.getByRole('button',{name:/^Check for reply/})).toHaveCount(0);
+   // The Check saved conversation card, the user's explicit re-read of the agent's history, was removed, so
+   // there is nothing to press: the stopped request stays in this transcript beside the outcome until step 8
+   // restores the agent's own copy.
+   await expect(page.getByRole('button',{name:/^Check saved conversation/})).toHaveCount(0);
+   await expect(bubble(page,'Journey A cancelled request')).toHaveCount(1);
   }
  }
 
@@ -205,7 +205,7 @@ test('journey A: a proposed phone action is declined from the conversation and n
  test.setTimeout(120_000);
  const notes=()=>page.evaluate(async()=>JSON.parse((await (await import('/src/runtime/browser-notes-document.ts')).readBrowserNotesRaw())||'{"records":[]}').records as any[]);
  const actions=()=>page.evaluate(async()=>(await (await import('/src/browser/development-execution-document.ts')).readExecutionPart({namespace:'local'} as any,'actions',()=>({proposals:[],journal:[]}))) as any);
- await page.goto('/?mode=dev');
+ await page.goto('/?mode=dev');await openLegacyNotes(page);await returnToApps(page);
  await expect(page.getByRole('region',{name:'Home'})).toBeVisible();
  const ask=page.getByRole('textbox',{name:'Ask Alpha',exact:true}),conversation=page.locator('[data-alpha-layer="conversation"]');
  await openConnection(page);
@@ -214,7 +214,7 @@ test('journey A: a proposed phone action is declined from the conversation and n
  await dialog.getByRole('button',{name:'Save development reply'}).click();
  await dialog.getByRole('button',{name:'Connect development profile'}).click();
  await expect(dialog).toHaveCount(0);
- await page.getByRole('button',{name:'Agent',exact:true}).click();
+ await page.getByRole('button',{name:'Agent connection',exact:true}).click();
  await dialog.getByText('Development device actions',{exact:true}).click();
  await dialog.getByRole('textbox',{name:'Action JSON'}).fill(JSON.stringify({type:'create_note',title:'Journey A declined note',body:'Must never be saved'}));
  await dialog.getByRole('button',{name:'Queue action for review'}).click();
@@ -247,7 +247,7 @@ test('journey A: a proposed phone action is declined from the conversation and n
 
  await page.reload();
  await expect(page.getByRole('region',{name:'Home'})).toBeVisible();
- await page.getByRole('button',{name:'Notes',exact:true}).click();
+ await openLegacyNotes(page);
  await expect(page.getByRole('button',{name:'Open Journey A declined note',exact:true})).toHaveCount(0);
  expect(await notes()).toEqual([]);
  state=await actions();
@@ -294,7 +294,9 @@ test('journey A: a spoken request is transcribed, sent once, answered once and r
  await expect(talk).toHaveCount(1);
  await talk.click();
  await expect(voice).toHaveAttribute('data-voice-state','listening',{timeout:30_000});
- await expect(voice).toContainText('Speech is transcribed with Eliza Cloud and sent to this conversation');
+ // Speech routing is disclosed in Settings > Voice; the live composer stays quiet (#745).
+ await expect(voice).toContainText('Listening…');
+ await expect(voice).not.toContainText('Eliza Cloud');
  // Silence: the microphone is open and nothing is transcribed or sent.
  await page.waitForTimeout(2500);
  expect(await cloud()).toEqual({transcriptions:0,speech:[]});

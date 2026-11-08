@@ -11,7 +11,7 @@ pinned AOSP source is unchanged.
 
 ## Trust and data flow
 
-`AlphaListeningController` is a SystemUI `CoreStartable`, bound in the existing
+`SenseListeningController` is a SystemUI `CoreStartable`, bound in the existing
 privacy Dagger module. It registers an `AudioManager.AudioRecordingCallback` and
 reads active recording configurations on startup. The pinned SystemUI already
 requests `MODIFY_AUDIO_ROUTING`; no permission is added. Visibility comes from
@@ -84,7 +84,7 @@ surface, a chip SystemUI does not show while it observes the recording, a
 recording SystemUI cannot attribute, an expired lease or an explicit revoke stop
 capture, and capture does **not** resume by itself afterwards.
 
-**SystemUI side** (`AlphaListeningLease`, driven by `AlphaListeningController`).
+**SystemUI side** (`SenseListeningLease`, driven by `SenseListeningController`).
 Every second (`LEASE_RENEW_MS`), and at once when a chip view is attached,
 detached, re-rendered or changes window or aggregated visibility, SystemUI
 measures its own views on the main thread and sends one acknowledgement on its
@@ -93,7 +93,7 @@ background executor:
 - `surfaceVisible`: a chip view or its host (status bar or keyguard indication
   area) is attached, its window is visible, it is shown through every ancestor,
   aggregated-visible, at least 50% effective alpha along the ancestor chain and at
-  least 90% inside its global visible rectangle (`AlphaListeningPolicy.effectivelyVisible`).
+  least 90% inside its global visible rectangle (`SenseListeningPolicy.effectivelyVisible`).
 - `chipVisible`: the rendered chip itself passes the same test, and is sent as
   true only while SystemUI itself observes the listener's unsilenced recording.
 - `recordingObserved`: SystemUI's own `AudioRecordingCallback` attribution.
@@ -103,7 +103,7 @@ background executor:
 - `hiddenReason`: why the indicator is not shown (below), or `none`.
 
 Which views count depends on what SystemUI positively reports, not only on view
-measurement (`AlphaListeningPolicy.statusBarCounts`/`keyguardCounts` and the dedicated shade surface):
+measurement (`SenseListeningPolicy.statusBarCounts`/`keyguardCounts` and the dedicated shade surface):
 
 - **Lock screen and AOD.** The keyguard indication-area chip (created in code by
   `DefaultIndicationAreaSection`) counts while `KeyguardStateController.isShowing()`
@@ -162,7 +162,7 @@ the lease cannot be renewed through the existing control provider. The lease:
   or resume command, and it cannot start, resume or enable listening.
 
 **Explained pauses and unexplained losses.** When the indicator is not shown,
-SystemUI attaches `hiddenReason` (`AlphaListeningPolicy.hiddenReason`), saying why
+SystemUI attaches `hiddenReason` (`SenseListeningPolicy.hiddenReason`), saying why
 from what it positively knows. The reasons, in order:
 
 | SystemUI report | Listener state | Status text |
@@ -266,8 +266,8 @@ locked `frameworks/base` revision and touch disjoint files. Listener staging
 (`stageListener`, used by `scripts/stage-aosp.mjs` in production and development)
 copies both bundles, generates the exact certificate resource overlay in
 `listener/systemui/chip/overlay`, appends an include of
-`listener/systemui/chip/chip.mk` to the staged `product.mk` **by default**, and
-writes `listener/systemui/required-source-patches.json`. That file records the
+`listener/listener.mk` to the staged `product.mk` **by default**, and
+writes `listener/evidence.json`. That file records the
 chip bundle (project, revision, patch hash) as a required SystemUI source patch,
 with `sourcePatched: false` and `imageBuilt: false`. The overlay names a resource
 that only the patched SystemUI defines, so the image's SystemUI must be built with
@@ -286,13 +286,17 @@ Copy its manifest-listed files only into the separate disposable build copy,
 after checking that copy's preimages with `--source … --chip`. Verify the resulting
 files with `--source … --chip --after`. Prepare/copy/verify the separate op-list
 overlay as well. The staged product already includes
-`vendor/alphaphone/listener/systemui/chip/chip.mk`, which activates the generated
+`vendor/alphaphone/listener/listener.mk`, which activates the generated
 certificate overlay. Without it the empty resource refuses identity, the chip stays
 inactive and the listener never captures. Never replace the complete baseline receipt with either derived
 receipt. The chip receipt verifies only its nine listed files; all other files
 in the build copy remain outside its verification scope. Newly added source files
 must be absent in the original input; collisions and changed bytes are refused.
-The ordinary full-source verifier still rejects this modified build tree.
+The ordinary full-source verifier still rejects this modified build tree. To check that
+such a copy is otherwise the exact locked baseline, run `scripts/verify-pixel10a-source.mjs`
+with `--applied-systemui-patch chip` (and `ops` when applied): only the bundle's listed files
+may differ, each preimage at the pinned revision and each postimage must match its manifest,
+and every other check is unchanged.
 
 The manifest and derived receipts keep `fullTreeVerified`, `imageBuilt` and
 `lockAodIndicatorQualified` false. `indicatorHealthLeaseImplemented` is true for

@@ -1,4 +1,5 @@
 package ai.elizaresearch.alphaphone;
+import ai.eliza.plugins.media.VideoCopyEdits;
 
 import static org.junit.Assert.*;
 import android.content.ContentUris;
@@ -108,7 +109,7 @@ public final class VideoCopyInstrumentedTest {
   try(ActivityScenario<VideoFixtureActivity> scene=ActivityScenario.launch(VideoFixtureActivity.class)){
    AtomicReference<VideoFixtureActivity> activity=new AtomicReference<>();scene.onActivity(activity::set);InstrumentationRegistry.getInstrumentation().waitForIdleSync();assertTrue("Unlock the device and leave the QA activity visible",activity.get().hasWindowFocus());
    Uri original=source();String initial=revision(original);byte[] originalBytes=digest(original);String sourceId=UUID.randomUUID().toString();
-   VideoCopyEdits editor=new VideoCopyEdits(context,(id,expected)->{if(!activity.get().hasWindowFocus()||!id.equals(sourceId)||!revision(original).equals(expected))throw new IllegalStateException("Video source changed or activity left foreground");return new VideoCopyEdits.Source(original,expected);});activity.get().editor=editor;
+   VideoCopyEdits editor=new VideoCopyEdits(context,AlphaMediaConfig.MEDIA,(id,expected)->{if(!activity.get().hasWindowFocus()||!id.equals(sourceId)||!revision(original).equals(expected))throw new IllegalStateException("Video source changed or activity left foreground");return new VideoCopyEdits.Source(original,expected);});activity.get().editor=editor;
    Response begin=new Response();editor.begin(sourceId,initial,begin);JSObject session=begin.await();String token=session.getString("sessionId");
    Response save=new Response();editor.save(token,1.2,2.8,90,true,save);JSObject saved=save.await();Uri result=copy(saved);inspect(original,result);assertArrayEquals(originalBytes,digest(original));assertEquals(initial,revision(original));assertEquals(1,copies(token));
    // Simulate only the missing post-publication journal update, after a real save.
@@ -130,7 +131,7 @@ public final class VideoCopyInstrumentedTest {
   try(ActivityScenario<VideoFixtureActivity> scene=ActivityScenario.launch(VideoFixtureActivity.class)){
    AtomicReference<VideoFixtureActivity> activity=new AtomicReference<>();scene.onActivity(activity::set);InstrumentationRegistry.getInstrumentation().waitForIdleSync();assertTrue(activity.get().hasWindowFocus());
    Uri original=source("qa-long.mp4");byte[] originalBytes=digest(original);String id=UUID.randomUUID().toString();
-   VideoCopyEdits editor=new VideoCopyEdits(context,(key,expected)->{if(!activity.get().hasWindowFocus()||!key.equals(id)||!revision(original).equals(expected))throw new IllegalStateException("Source changed or activity left foreground");return new VideoCopyEdits.Source(original,expected);});activity.get().editor=editor;
+   VideoCopyEdits editor=new VideoCopyEdits(context,AlphaMediaConfig.MEDIA,(key,expected)->{if(!activity.get().hasWindowFocus()||!key.equals(id)||!revision(original).equals(expected))throw new IllegalStateException("Source changed or activity left foreground");return new VideoCopyEdits.Source(original,expected);});activity.get().editor=editor;
    Response open=new Response();editor.begin(id,revision(original),open);String changed=open.await().getString("sessionId");Response save=new Response();editor.save(changed,0,19.5,90,true,save);encoding(changed,save);
    ContentValues mutation=new ContentValues();mutation.put("_display_name","AlphaVideo-QA-mutated-"+UUID.randomUUID()+".mp4");assertEquals(1,context.getContentResolver().update(original,mutation,null,null));assertEquals("failed",save.await().getString("status"));assertEquals(0,copies(changed));assertArrayEquals(originalBytes,digest(original));
    Response next=new Response();editor.begin(id,revision(original),next);String background=next.await().getString("sessionId");Response pending=new Response();editor.save(background,0,19.5,90,true,pending);encoding(background,pending);
@@ -143,7 +144,7 @@ public final class VideoCopyInstrumentedTest {
    AtomicReference<VideoFixtureActivity> activity=new AtomicReference<>();scene.onActivity(activity::set);InstrumentationRegistry.getInstrumentation().waitForIdleSync();
    Uri original=source();byte[] originalBytes=digest(original);String revision=revision(original),id=UUID.randomUUID().toString();
    VideoCopyEdits.Sources sources=(key,expected)->{if(!key.equals(id)||!revision(original).equals(expected))throw new IllegalStateException("Source changed");return new VideoCopyEdits.Source(original,expected);};
-   VideoCopyEdits editor=new VideoCopyEdits(context,sources);activity.get().editor=editor;
+   VideoCopyEdits editor=new VideoCopyEdits(context,AlphaMediaConfig.MEDIA,sources);activity.get().editor=editor;
    Response begin=new Response();editor.begin(id,revision,begin);String token=begin.await().getString("sessionId");
    java.lang.reflect.Field active=VideoCopyEdits.class.getDeclaredField("active");active.setAccessible(true);Object session=active.get(editor);assertNotNull(session);
    Response save=new Response();java.lang.reflect.Field call=session.getClass().getDeclaredField("saveCall");call.setAccessible(true);call.set(session,save);
@@ -151,14 +152,14 @@ public final class VideoCopyInstrumentedTest {
    java.lang.reflect.Method callback=VideoCopyEdits.class.getDeclaredMethod("finish",session.getClass(),Exception.class);callback.setAccessible(true);callback.invoke(editor,session,null);
    assertTrue(save.done.await(2,TimeUnit.SECONDS));assertTrue(save.error.contains("outcome is unresolved"));assertEquals(0,copies(token));assertArrayEquals(originalBytes,digest(original));
    Response late=new Response();editor.result(token,late);assertTrue(late.done.await(2,TimeUnit.SECONDS));assertEquals("Video editor closed",late.error);editor.close();editor.close();
-   VideoCopyEdits recovery=new VideoCopyEdits(context,sources);try{Response read=new Response();recovery.result(token,read);assertEquals("not-started",read.await().getString("status"));assertEquals(0,copies(token));}finally{recovery.close();}
+   VideoCopyEdits recovery=new VideoCopyEdits(context,AlphaMediaConfig.MEDIA,sources);try{Response read=new Response();recovery.result(token,read);assertEquals("not-started",read.await().getString("status"));assertEquals(0,copies(token));}finally{recovery.close();}
   }finally{cleanup();}
  }
 
  @SuppressWarnings("deprecation")
  @Test public void failedReceiptRetainsPendingProviderOutput()throws Exception {
   String token="video-"+UUID.randomUUID();android.content.SharedPreferences journal=context.getSharedPreferences("alpha-video-copy-results-v1",0);
-  VideoCopyEdits editor=new VideoCopyEdits(context,(id,revision)->{throw new AssertionError("Recovery must not open another source");});
+  VideoCopyEdits editor=new VideoCopyEdits(context,AlphaMediaConfig.MEDIA,(id,revision)->{throw new AssertionError("Recovery must not open another source");});
   boolean verified=false;
   try{
    ContentValues values=new ContentValues();values.put("_display_name","Alpha-video-edit-"+token.substring(6)+".mp4");values.put("mime_type","video/mp4");values.put("relative_path","Movies/Alpha Video QA/");values.put("is_pending",1);
@@ -171,7 +172,7 @@ public final class VideoCopyInstrumentedTest {
  }
  @Test public void recordedMissingPendingOutputCannotBecomeFalseFailure()throws Exception {
   String token="video-"+UUID.randomUUID();android.content.SharedPreferences journal=context.getSharedPreferences("alpha-video-copy-results-v1",0);
-  VideoCopyEdits editor=new VideoCopyEdits(context,(id,revision)->{throw new AssertionError("Recovery must not open another source");});
+  VideoCopyEdits editor=new VideoCopyEdits(context,AlphaMediaConfig.MEDIA,(id,revision)->{throw new AssertionError("Recovery must not open another source");});
   boolean verified=false;
   try{
    String record=new JSONObject().put("status","exporting").put("createdAt",System.currentTimeMillis()).put("pendingId","9223372036854775806").toString();assertTrue(journal.edit().putString(token,record).commit());
@@ -183,7 +184,7 @@ public final class VideoCopyInstrumentedTest {
   for(boolean mismatch:new boolean[]{false,true}){
    String token="video-"+UUID.randomUUID();android.content.SharedPreferences journal=context.getSharedPreferences("alpha-video-copy-results-v1",0);
    java.util.concurrent.atomic.AtomicBoolean sourceRead=new java.util.concurrent.atomic.AtomicBoolean();
-   VideoCopyEdits editor=new VideoCopyEdits(context,(id,revision)->{sourceRead.set(true);throw new AssertionError("Custody hold must happen before source read/export");});
+   VideoCopyEdits editor=new VideoCopyEdits(context,AlphaMediaConfig.MEDIA,(id,revision)->{sourceRead.set(true);throw new AssertionError("Custody hold must happen before source read/export");});
    boolean verified=false;
    java.io.File directory=new java.io.File(context.getCacheDir(),"alpha-video-edits"),input=new java.io.File(directory,token+"-input.mp4"),output=new java.io.File(directory,token+"-output.mp4");
    if(!directory.isDirectory())assertTrue(directory.mkdirs());

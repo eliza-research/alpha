@@ -15,9 +15,9 @@ import {execFileSync} from 'node:child_process';
 import {archiveWebPayload} from './apk.mjs';
 import {parseBuildArgs,buildEnv as androidBuildEnv} from './build-android.mjs';
 const cli=process.argv.slice(2);
-const buildArgs=cli.filter(arg=>arg==='--test-mocks'||arg==='--runtime-profile=cloud');
+const buildArgs=cli.filter(arg=>arg==='--test-mocks'||arg==='--runtime-profile=cloud'||arg==='--local-embeddings');
 const options=parseBuildArgs(buildArgs);
-const {testMocks,runtimeProfile='native'}=options;
+const {testMocks,runtimeProfile='native',localEmbeddings=false}=options;
 const positional=cli.filter(arg=>!buildArgs.includes(arg));
 assert.ok(positional.length===1&&!positional[0].startsWith('--'),'Use: node scripts/build-archive.mjs [--test-mocks | --runtime-profile=cloud] test-results/<new-archive>');
 const [destination]=positional;
@@ -33,7 +33,11 @@ const snapshot=()=>JSON.parse(execFileSync(process.execPath,['scripts/source-sna
 // before freezing the baseline. Gradle repeats this stage; final equality below
 // still rejects any non-deterministic regeneration or later source drift.
 const nativeStageLog=fs.openSync(path.join(destination,'native-source-prestage.log'),'wx');
-try{execFileSync(process.execPath,['scripts/stage-local-agent-sources.mjs'],{stdio:['ignore',nativeStageLog,nativeStageLog],timeout:180000,env:buildEnv});}
+try{
+ // The generated Gradle host is a build input too; android:build regenerates identical bytes.
+ execFileSync(process.execPath,['scripts/android-host.mjs'],{stdio:['ignore',nativeStageLog,nativeStageLog],timeout:180000,env:buildEnv});
+ execFileSync(process.execPath,['scripts/stage-local-agent-sources.mjs'],{stdio:['ignore',nativeStageLog,nativeStageLog],timeout:180000,env:buildEnv});
+}
 finally{fs.closeSync(nativeStageLog);}
 // Capacitor generates res/xml/config.xml, an authenticated native build input.
 // Complete normal sync before freezing; the build repeats sync and equality
@@ -43,7 +47,7 @@ try{execFileSync('npm',['run','android:sync'],{stdio:['ignore',capacitorStageLog
 finally{fs.closeSync(capacitorStageLog);}
 const before=snapshot();
 fs.writeFileSync(path.join(destination,'inputs-before.json'),JSON.stringify(before,null,2));
-fs.writeFileSync(path.join(destination,'configuration.json'),JSON.stringify({testMocks,runtimeProfile,mapsConfigured:Boolean(process.env.VITE_MAPS_BASE_URL),startedAt:new Date().toISOString()},null,2));
+fs.writeFileSync(path.join(destination,'configuration.json'),JSON.stringify({testMocks,runtimeProfile,...(localEmbeddings?{localEmbeddings:true}:{}),mapsConfigured:Boolean(process.env.VITE_MAPS_BASE_URL),startedAt:new Date().toISOString()},null,2));
 for(const command of ['verify','android:build']){
  const log=fs.openSync(path.join(destination,command.replace(':','-')+'.log'),'wx');
  const extra=command==='android:build'&&buildArgs.length?['--',...buildArgs]:[];
@@ -60,6 +64,7 @@ function retain(source,name){const target=path.join(destination,name);fs.copyFil
 const verification=JSON.parse(fs.readFileSync(path.join(sourceDir,'apk-manifest.json'),'utf8'));
 assert.equal(verification.testMocks,testMocks,`Archive expects a testMocks=${testMocks} build`);
 assert.equal(verification.runtimeProfile||'native',runtimeProfile,'Verified APK runtime profile differs from archive');
+assert.equal(verification.localEmbeddings===true,localEmbeddings,'Verified embedding capability differs from archive');
 // apk-manifest.json keeps its six-APK name->hash shape for existing consumers;
 // release mappings are retained beside it with their own hashes.
 const mappings={};

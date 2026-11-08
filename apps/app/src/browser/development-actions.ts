@@ -1,24 +1,20 @@
 import {isReminderCreate,validateReminderCreateResult} from '../../../../.eliza/client-features/plugins/plugin-assistant/src/services/device-actions/reminder-create-contract.ts';
-import {devSurfacesEnabled} from '../build-flags';
 import type {WorkflowDeviceBinding} from '../runtime/workflow-device-contract';
-import {developmentIdentity,verifyDevelopmentIdentity,assertDevelopmentIdentity,type DevelopmentIdentity} from './development-identity';
+import {developmentIdentity,verifyDevelopmentIdentity,assertDevelopmentIdentity,assertDevelopmentProfile,developmentProfiles,type DevelopmentIdentity,type DevelopmentProfile} from './development-identity';
 import {isReminderOperation,validateReminderResult} from '../../../../.eliza/client-features/plugins/plugin-assistant/src/services/device-actions/reminder-contract.ts';
-import {browserDevProfile} from './dev-profile';
 import {readExecutionPart,editExecutionPart,executionPart,type ExecutionDocument} from './development-execution-document';
 import {actionScope,validateDeviceOperation,type DeviceOperation,type ActionJournal,type JournalEntry} from '../runtime/device-actions';
-import type {DevelopmentProfile} from './development-connection';
 type Proposal={id:string;digest:string;state:string;subjectUserId:string;requestedBy:string;action:'device_action';expiresAt:string;payload:{action:'device_action';version:1;installationId:string;enrollmentId:string;workflow?:WorkflowDeviceBinding;operation:DeviceOperation};execution?:{attemptId:string};receipt?:Record<string,unknown>};
 type State={version:1;proposals:Proposal[];journal:JournalEntry[]};
 const initial=():State=>({version:1,proposals:[],journal:[]});
 
-const allowed=(p:DevelopmentProfile)=>{if(!devSurfacesEnabled||!browserDevProfile||!['local','cloud','remote'].includes(p))throw Error('Choose a development profile.');};
 function validate(s:State){if(!s||s.version!==1||!Array.isArray(s.proposals)||!Array.isArray(s.journal)||s.proposals.length>100||s.journal.length>100)throw Error('Development action data needs recovery.');return s;}
-function current(profile:DevelopmentProfile,signal?:AbortSignal){allowed(profile);signal?.throwIfAborted();const selection=JSON.parse(localStorage.getItem('alpha.connection.selection.v1')||'null');if(selection?.kind!=='development'||selection.profile!==profile)throw Error('Development profile changed.');}
+function current(profile:DevelopmentProfile,signal?:AbortSignal){assertDevelopmentProfile(profile);signal?.throwIfAborted();const selection=JSON.parse(localStorage.getItem('alpha.connection.selection.v1')||'null');if(selection?.kind!=='development'||selection.profile!==profile)throw Error('Development profile changed.');}
 /** These fixed IDs are public local-fixture labels, never network credentials. */
-export function developmentCredential(profile:DevelopmentProfile,identity=developmentIdentity(profile)){allowed(profile);return {installationId:`00000000-0000-4000-8000-00000000000${identity.account?(identity.account==='first'?4:5):['local','cloud','remote'].indexOf(profile)+1}`,key:'0'.repeat(64),enrollmentId:`development-${identity.namespace}-enrollment`};}
+export function developmentCredential(profile:DevelopmentProfile,identity=developmentIdentity(profile)){assertDevelopmentProfile(profile);return {installationId:`00000000-0000-4000-8000-00000000000${identity.account?(identity.account==='first'?4:5):developmentProfiles.indexOf(profile)+1}`,key:'0'.repeat(64),enrollmentId:`development-${identity.namespace}-enrollment`};}
 export async function authorDevelopmentAction(profile:DevelopmentProfile,json:string,signal:AbortSignal){
  const identity=developmentIdentity(profile);await verifyDevelopmentIdentity(identity,signal);current(profile,signal);if(json.length>64000)throw Error('Action is too large.');const operation=validateDeviceOperation(JSON.parse(json)),id=crypto.randomUUID(),credential=developmentCredential(profile,identity),digest=await actionScope(JSON.stringify(operation));
- if(operation.type==='read_selected_notes'||operation.type==='read_calendar_range')throw Error('Configure this read through a workflow with a bound step and run.');
+ if(operation.type==='read_selected_notes'||operation.type==='read_calendar_range'||operation.type==='read_selected_reminders')throw Error('Configure this read through a workflow with a bound step and run.');
  return editExecutionPart(identity,'actions',initial,async data=>{await verifyDevelopmentIdentity(identity,signal);assertDevelopmentIdentity(identity);current(profile,signal);validate(data);if(data.proposals.length>=100)throw Error('Development action history is full.');data.proposals.push({id,digest,state:'pending',subjectUserId:identity.ownerId,requestedBy:identity.agentId,action:'device_action',expiresAt:new Date(Date.now()+3600000).toISOString(),payload:{action:'device_action',version:1,installationId:credential.installationId,enrollmentId:credential.enrollmentId,operation}});return id;},signal);
 }
 export function existingWorkflowProposal(document:ExecutionDocument,runId:string,stepId:string){const matches=validate(executionPart(document,'actions',initial)).proposals.filter(p=>p.payload.workflow?.runId===runId&&p.payload.workflow.stepId===stepId);if(matches.length>1)throw Error('Workflow proposal history needs recovery.');return matches[0];}
@@ -43,7 +39,7 @@ async function actionRequest(profile:DevelopmentProfile,path:string,body:any,sig
  },signal);
 }
 export function developmentJournal(profile:DevelopmentProfile,identity=developmentIdentity(profile)):ActionJournal{
- allowed(profile);const edit=<T>(run:(data:State)=>T|Promise<T>)=>editExecutionPart(identity,'actions',initial,data=>run(validate(data)));
+ assertDevelopmentProfile(profile);const edit=<T>(run:(data:State)=>T|Promise<T>)=>editExecutionPart(identity,'actions',initial,data=>run(validate(data)));
  const find=(data:State,input:{scope:string;proposalId:string})=>data.journal.find(e=>e.scope===input.scope&&e.proposalId===input.proposalId);
  return {
   reserve:input=>edit(async data=>{await verifyDevelopmentIdentity(identity);assertDevelopmentIdentity(identity);current(profile);if(!/^[a-f0-9]{64}$/.test(input.scope)||!/^[a-f0-9]{64}$/.test(input.operationHash))throw Error('Invalid journal identity.');const prior=find(data,input);if(prior)return {created:false,entry:prior};const proposal=data.proposals.find(p=>p.id===input.proposalId);if(!proposal||proposal.digest!==input.record.digest||data.journal.length>=100)throw Error('Action reservation changed.');const entry:JournalEntry={...input,phase:'reserved'};data.journal.push(entry);return {created:true,entry};}),

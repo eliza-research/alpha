@@ -1,0 +1,14 @@
+{
+  "schemaVersion": 1,
+  "recordedAt": "2026-10-27T12:39:57.946786+00:00",
+  "upstreamCommit": "6497825b38cbe41b3677c0a445341fec900f0dd2",
+  "sourceCommit": "45cc0243b20f88ff54d9b445a24129634144c8c9",
+  "scope": "Archived packaged-runtime notice snapshot, not the source-only web notice default. Strict Android builds regenerate and verify the packaged notices against their staged runtime. No runtime/device qualification is claimed.",
+  "noticeEntries": 722,
+  "agentBundleSha256": "e063f5072ce06f1a55d9387a7ff955e065e9a41ca2e7480ea2943a94b9ee8ca4",
+  "agentInventoryPackages": 568,
+  "files": {
+    "THIRD_PARTY_NOTICES.txt": "dc6cd7e8879a8d10447315b4f1ca3d1c340f102d8c21e09f46433b2a5b1cc45a",
+    "third-party-notices.json": "a8234035325ae27743684d68daece69ac33331a223c6f62ebce8548522b1db77"
+  }
+}

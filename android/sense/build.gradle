@@ -1,61 +1,8 @@
-// Alpha Phone always-on listener: a separate, network-less APK that ships only in the Alpha AOSP
-// image as a privileged persistent app (docs/adr/0001-privileged-listener.md). It is never part of
-// the standalone or launcher APK and never a dependency of :app. Build it explicitly:
-//   ./gradlew :sense:assembleRelease
-// It reuses the same audited local speech runtime and model bundle as Alpha (:local-speech).
-apply plugin: 'com.android.application'
+// Product identities stay here; capture, consent and lifecycle are owned upstream.
 def identity = new groovy.json.JsonSlurper().parse(file('../../app.config.json'))
-def envValue = { String name -> def value = System.getenv(name); value == null || value.trim().isEmpty() ? null : value.trim() }
-// Same upstream signing names and all-or-none rule as :app. The listener must share Alpha's signer:
-// its LISTENER_CONTROL permission is signature-level and invocation checks the signatures match.
-def releaseSigningNames = ['ELIZAOS_KEYSTORE_PATH', 'ELIZAOS_KEYSTORE_PASSWORD', 'ELIZAOS_KEY_ALIAS', 'ELIZAOS_KEY_PASSWORD']
-def releaseSigningMissing = releaseSigningNames.findAll { envValue(it) == null }
-def releaseSigningReady = releaseSigningMissing.isEmpty()
-if (!releaseSigningReady && releaseSigningMissing.size() < releaseSigningNames.size())
- throw new GradleException("[release-signing] incomplete signing environment. Missing: ${releaseSigningMissing.join(', ')}.")
-android {
- namespace 'ai.elizaresearch.alphaphone.sense'
- // Voice bundle models are stored, not deflated (paradee-voice README).
- androidResources { noCompress += ['gguf', 'lex'] }
- // Match the pinned paradee-voice consumer so AGP strips the shared STL with the
- // same NDK used to build it; AGP's implicit default may be absent on the host.
- ndkVersion '28.2.13676358'
- compileSdk rootProject.ext.compileSdkVersion
- defaultConfig {
-  applicationId "${identity.appId}.sense"
-  // Image-only component: the Alpha AOSP target is Android 17; 34 is the lowest API whose
-  // invocation-identity and notification-authentication APIs this code uses.
-  minSdk 34
-  targetSdk rootProject.ext.targetSdkVersion
-  versionCode identity.versionCode
-  versionName identity.version
- }
- signingConfigs {
-  if (releaseSigningReady) {
-   release {
-    storeFile file(envValue('ELIZAOS_KEYSTORE_PATH'))
-    storePassword envValue('ELIZAOS_KEYSTORE_PASSWORD')
-    keyAlias envValue('ELIZAOS_KEY_ALIAS')
-    keyPassword envValue('ELIZAOS_KEY_PASSWORD')
-   }
-  }
- }
- buildTypes {
-  debug { ndk { abiFilters 'arm64-v8a', 'x86_64' } }
-  release {
-   minifyEnabled false
-   ndk { abiFilters 'arm64-v8a' }
-   if (releaseSigningReady) signingConfig signingConfigs.release
-  }
- }
- // :local-speech omits inference JNI to avoid duplicating :app's resident host.
- // This separate APK has no resident host and must package its own reviewed bytes.
- if (file('../../vendor/eliza/plugins/plugin-local-inference/native/android/consumer.gradle').isFile()) {
-  sourceSets.main.jniLibs.srcDirs += [file('../../.eliza/paradee-voice/native/jniLibs')]
- }
- lint { abortOnError true; disable 'ProtectedPermissions', 'SystemPermissionTypo' }
- compileOptions { sourceCompatibility JavaVersion.VERSION_21; targetCompatibility JavaVersion.VERSION_21 }
-}
-dependencies {
- implementation project(':local-speech')
-}
+ext.elizaSenseSourceDir = file('../../vendor/eliza/packages/app/platforms/android/sense')
+ext.elizaSenseProfile = file('../../vendor/eliza/packages/os/android/products/pixel10a-alpha.json')
+ext.elizaSenseSpeechProject = ':sense-speech'
+ext.elizaSenseVersionCode = identity.versionCode
+ext.elizaSenseVersionName = identity.version
+apply from: new File(elizaSenseSourceDir, 'consumer.gradle')

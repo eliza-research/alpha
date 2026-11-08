@@ -1,7 +1,6 @@
 import {reviewContentQuestion} from '../browser/content-question';
-import {sensitiveReadingText} from '../browser/reading-sensitive';
-import {noticeExcerpt,noticeReviewable} from './context-selection';
-type Notice=Parameters<typeof noticeReviewable>[0];
+import {sensitiveReadingText} from '../../../../.eliza/client-features/plugins/plugin-native-browser-surface/src/page-reading.ts';
+import {noticeExcerpt,noticeReviewable,type Notice} from './context-selection';
 /** The publisher supplies an exact current own-notice excerpt, never an arbitrary deep-link payload. */
 export function reviewOwnNoticeQuestion(options:{notice:Notice;current:()=>boolean;recheck:()=>Promise<boolean>;consume:()=>Promise<void>;release:()=>Promise<void>;compose:(draft:string)=>void;report:(message:string)=>void;closed:()=>void}):(()=>void)|undefined{
  if(!options.current()||!noticeReviewable(options.notice)){options.report('This notification is unavailable for review. Nothing was added.');return;}

@@ -1,0 +1,21 @@
+{
+  "schemaVersion": 1,
+  "recordedAt": "2026-10-27",
+  "alphaCommit": "3010db6cf1900eff9e9ebc858f24643df3616ac9",
+  "upstreamCommit": "f3852e8ee338c2397336aecd1abb790e1bd25c46",
+  "command": "npm run android:build:local",
+  "status": "passed",
+  "testMocks": false,
+  "allowUnpackagedRuntime": false,
+  "runtimeProfile": "native",
+  "apkManifestSha256": "60ba842c4547911037577040d6a871747dc455a4ecae3d38a52c13aafb58fc33",
+  "buildLogSha256": "8e6b64f57501e0943506e678bb2181fc059f67d4405e5a5bbac26d1b621d4d0f",
+  "evidenceDirectory": "artifacts/unification-checkpoints/f3852e8e/",
+  "scope": "Four app APKs, both instrumentation APK builds, lint and APK package inspection. No installation, emulator HOME-role test, full AOSP boot, real-provider or physical-device acceptance.",
+  "limitations": [
+    "Unsigned release APKs",
+    "On-device model qualification remains false",
+    "Full Alpha verification is pending for the newer integrated source",
+    "Separate Sense APKs must be rebuilt for the current pin"
+  ]
+}

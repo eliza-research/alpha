@@ -10,3 +10,7 @@ verifyNativeGoogleHostArtifact(root,output);
 const bun=process.env.ALPHA_BUN||'bun';
 if(execFileSync(bun,['--version'],{encoding:'utf8'}).trim()!=='1.4.2')throw Error('Native Cloud routing check requires Bun1.4.2');
 execFileSync(bun,['--conditions=eliza-source',path.join(root,'scripts/native-cloud-runtime-config-check.ts'),sdk,path.join(output,'google-host.mjs')],{stdio:'inherit',cwd:root});
+
+// These cases import the verified compiled host, after the normal producer has
+// installed the SDK graph; cheap repository verification has no such graph.
+execFileSync(process.execPath,['--test',path.join(root,'scripts/native-cloud-embedding-ownership.test.mjs')],{stdio:'inherit',cwd:root,env:{...process.env,BUN_BIN:bun,ALPHA_NATIVE_CLOUD_HOST_MODULE:path.join(output,'google-host.mjs'),ALPHA_NATIVE_CLOUD_SDK:sdk}});

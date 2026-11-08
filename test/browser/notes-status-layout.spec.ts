@@ -1,9 +1,10 @@
+import {openLegacyNotes} from './helpers/legacy-notes';
 import {test,expect} from '@playwright/test';
 for(const theme of ['light','dark'])for(const viewport of [{width:360,height:740},{width:412,height:915},{width:1440,height:500}]){
  test(`Notes storage failure has its own space: ${theme} ${viewport.width}x${viewport.height}`,async({page})=>{
   await page.setViewportSize(viewport);
   await page.addInitScript((theme)=>{localStorage.setItem('alpha.connection.selection.v1',JSON.stringify({kind:'offline'}));localStorage.setItem('alpha.appearance.v1',theme);},theme);
-  await page.goto(`/?theme=${theme}`);await expect(page.locator('[data-screen]')).toHaveCSS('background-color',theme==='dark'?'rgb(0, 0, 0)':'rgb(255, 255, 255)');await page.getByRole('button',{name:'Notes',exact:true}).click();
+  await page.goto(`/?theme=${theme}`);await expect(page.locator('[data-screen]')).toHaveCSS('background-color',theme==='dark'?'rgb(0, 0, 0)':'rgb(255, 255, 255)');await openLegacyNotes(page);
   const status=page.locator('.notes-storage-status');await expect(status).toHaveCount(0);
   const check=async()=>{
    const result=await page.evaluate(()=>{

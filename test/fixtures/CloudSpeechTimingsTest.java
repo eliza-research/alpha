@@ -1,4 +1,5 @@
 package ai.elizaresearch.alphaphone;
+import ai.eliza.voice.CloudSpeechTimings;
 
 import java.util.List;
 import java.util.Map;
@@ -14,8 +15,8 @@ public final class CloudSpeechTimingsTest {
   CloudSpeechTimings.Record tts=timings.begin("tts");
   clock.ms=12;timings.mark(tts,"worker-start");clock.ms=15;timings.mark(tts,"upload-start");
   clock.ms=44;timings.mark(tts,"upload-end");clock.ms=244;timings.mark(tts,"headers");
-  timings.response(tts,200,"cartesia","auth;dur=2.5;desc=\"bearer-secret\", admission;dur=11, synthesis;dur=165, private-user;dur=999");
-  clock.ms=275;timings.mark(tts,"body-end");clock.ms=280;timings.mark(tts,"prepared");
+  timings.response(tts,200,"cartesia","auth;dur=2.5;desc=\"bearer-secret\", admission;dur=11, synthesis;dur=165, moderation;dur=20, private-user;dur=999");
+  timings.moderation(tts,"approved-hit");clock.ms=275;timings.mark(tts,"body-end");clock.ms=280;timings.mark(tts,"prepared");
   check(rows(timings).get(0).get("outcome").equals("active"),"prepared speech is still waiting for playback");
   clock.ms=330;timings.mark(tts,"playback-start");clock.ms=1330;timings.mark(tts,"playback-end");timings.finish(tts,"completed");
   Map<String,Object> first=rows(timings).get(0);Map<String,Long> p=phases(first);
@@ -23,8 +24,8 @@ public final class CloudSpeechTimingsTest {
   check(p.get("prepareMs")==5&&p.get("playbackStartMs")==50&&p.get("playbackMs")==1000,"playback phases");
   check(first.get("status").equals(200)&&first.get("provider").equals("cartesia"),"bounded response metadata");
   check(first.get("elapsedMs").equals(1330L)&&first.get("outcome").equals("completed"),"completion");
-  check(first.get("server").equals(Map.of("auth",2.5,"admission",11.0,"synthesis",165.0)),"server durations only");
-  String snapshot=timings.snapshot().toString();check(!snapshot.contains("bearer-secret")&&!snapshot.contains("private-user"),"no headers or descriptions retained");
+  check(first.get("server").equals(Map.of("auth",2.5,"admission",11.0,"synthesis",165.0,"moderation",20.0)),"server durations only");
+  check(first.get("moderation").equals("approved-hit"),"bounded moderation outcome");String snapshot=timings.snapshot().toString();check(!snapshot.contains("bearer-secret")&&!snapshot.contains("private-user"),"no headers or descriptions retained");
   // Immutable snapshot, first terminal outcome, and late callbacks cannot revise history.
   marks(first).put("uploaded-secret",42L);clock.ms=2000;timings.mark(tts,"body-end");timings.finish(tts,"cancelled");
   check(!marks(rows(timings).get(0)).containsKey("uploaded-secret"),"snapshot isolation");

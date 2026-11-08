@@ -1,5 +1,9 @@
 # Dynamic list focus identity
 
+The earlier sections record the pre-retarget implementation and retain historical
+evidence. Current-main validation is recorded at the end as each source path is
+reviewed and ported.
+
 The Settings failure was reproduced by holding the browser permission query, focusing About, then releasing the query. The same focused DOM button became Finish setup when the Privacy group appeared. Enter opened Notifications. The renderer keyed every `sc-for` item by its array position.
 
 The fix adds an optional semantic key to `sc-for`. Missing keys retain positional reconciliation. Settings supplies stable identities for its top-level groups and rows, including a deployment-independent Cloud account row identity. Its existing subpages keep their previous fallback behavior where no identity is supplied.
@@ -87,3 +91,42 @@ Launcher validation passed both new focus cases, both existing launcher browser 
 Five Maps loops now retain source identities. Saved places use their durable saved ID, provider results use the provider/place-ID tuple, and the two namespaces remain distinct when origin results combine them. Fixture pins, saved chips, results and category choices retain their source IDs as well.
 
 A real Maps-controller browser trace reproduces focus retargeting when a synthetic provider inserts a preceding result. The fix keeps the original DOM node and opens the originally focused place. A second trace deletes another saved place through the actual controller/store and verifies the retained focused saved row and selection. Both traces retain source hashes and DOM observations. Both browser cases, thirteen Maps/source unit tests and TypeScript checking passed. Provider network behavior and native acceptance remain outside these two controlled browser schedules.
+
+## Current-main Settings role readback
+
+Current main uses `Set up Alpha access`, which is present before the permission
+readback. The earlier delayed `Finish setup` regression does not describe this
+implementation. The port exercises a delayed native role response instead. A
+`Make Alpha your Home app` row appears before `Default apps in Android` while
+that existing control is focused.
+
+The renderer accepts optional semantic keys. The four existing top-level Settings
+groups carry their source identities, and the native role group and its rows have
+stable identities through the delayed insertion. Unkeyed callers and missing-key
+fallback retain positional reconciliation. Other dynamic Settings collections
+remain separate identity-review obligations.
+
+The mounted Chromium regression controls the existing `ElizaSystem.getStatus`
+port, observes the real DOM and invokes the actual native-settings action. Its
+`ShellSettingsRoleFocus` receipt retains one source-bound trace, five checkpoints,
+four observed fields and unchanged driver/source hashes. The abstract row set adds
+`request-home` and `default-apps`. The external-activation action preserves the
+mounted renderer's focused row. Android activity focus and other Settings lists
+are outside this trace.
+
+Disabling semantic keys reproduces the failure at the retained-focus assertion.
+The fixed regression and the two existing native role cases pass. The renderer
+unit cases cover insertion, reordering, removal, unkeyed behavior and missing-key
+fallback. The extended shell model passes all 14 scenarios, 1,000 sampled traces
+of 80 transitions and a four-transition symbolic safety check.
+
+## Current-main Browser snapshot helper
+
+The Browser snapshot adapter now executes the staged shared `browsing-session.ts`
+used by the product. Restore returns recreation descriptors through `restored`.
+Three traces cover normal/private snapshot restoration and refusal to replace
+live tabs when the caller reports a non-pristine surface. The source-bound
+receipt has 11 checkpoints and seven observed model fields. Host computation of
+the pristine flag, native encrypted persistence and mounted tab/navigation
+callbacks remain explicit obligations. The removed local source paths remain
+historical metadata at commit `796880e9eca39e13d69a38e2376e0907083bfaab`.

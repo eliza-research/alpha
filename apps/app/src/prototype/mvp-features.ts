@@ -9,7 +9,7 @@ import { admittedAospViews, aospImage } from '../runtime/aosp-image';
 // reachable anywhere.
 // Reference definitions and saved user data are retained; development fixtures are non-product.
 export const ENABLED_MVP_VIEWS = new Set([
-  // "phone", // Alpha AOSP image only, once its adapter is admitted (runtime/aosp-image.ts).
+  // "phone", // Alpha AOSP image only: admitted with its native adapter (runtime/aosp-image.ts).
   // "messages", // SMS UI: Alpha AOSP image only. This does not defer email.
   "inbox", "calendar", "browser", "camera", "photos", "maps", "notes",
   // "contacts", // Alpha AOSP image only, once its adapter is admitted.
@@ -17,8 +17,6 @@ export const ENABLED_MVP_VIEWS = new Set([
   // "wallet", // Removed from MVP in both distributions and AOSP; no payment flow.
   "workflows", "settings",
 ]);
-/** Views limited to the Alpha AOSP image (P-36). */
-export const AOSP_ONLY_VIEWS: ReadonlySet<string> = new Set(["phone", "messages", "contacts"]);
 const IMAGE_VIEWS: ReadonlySet<string> = new Set(admittedAospViews(aospImage));
 for (const view of IMAGE_VIEWS) ENABLED_MVP_VIEWS.add(view);
 /** Views unavailable in this install: deferred, or image-only without the verified image and an admitted adapter. */
@@ -39,5 +37,5 @@ export function deferredMvpPrompt(text: unknown) {
   return !view || !(view === "contacts" ? !browserDevProfile && isMvpView("contacts") : IMAGE_VIEWS.has(view));
 }
 
-/** Native image admission enables only implemented adapters; Phone/SMS remain unavailable. */
+/** Admits Contacts from the native image capability at runtime; other image views are fixed at load (IMAGE_VIEWS). */
 export function admitImageContacts(admitted:boolean){if(browserDevProfile)return;if(admitted){ENABLED_MVP_VIEWS.add("contacts");DEFERRED_MVP_VIEWS.delete("contacts");}else{ENABLED_MVP_VIEWS.delete("contacts");DEFERRED_MVP_VIEWS.add("contacts");}}

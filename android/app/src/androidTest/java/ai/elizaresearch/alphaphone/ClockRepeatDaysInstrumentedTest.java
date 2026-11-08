@@ -1,5 +1,7 @@
 package ai.elizaresearch.alphaphone;
 
+import ai.eliza.plugins.system.clock.ClockDays;
+import ai.eliza.plugins.system.clock.ClockHandoff;
 import android.app.Instrumentation;
 import android.content.Context;
 import android.content.Intent;
@@ -18,21 +20,21 @@ import static org.junit.Assert.*;
 @RunWith(AndroidJUnit4.class)
 public final class ClockRepeatDaysInstrumentedTest {
  @Test public void setIntentCarriesExactRepeatDaysOnlyForSet(){
-  Intent once=ClockHandoff.intent("set",7,30,"Run",null);
+  Intent once=ClockHandoff.intent("set",7,30,"Run",null,null);
   assertFalse("One-time alarm has no EXTRA_DAYS",once.hasExtra(AlarmClock.EXTRA_DAYS));
   Intent weekdays=ClockHandoff.intent("set",7,30,"Run",null,Arrays.asList(2,3,4,5,6));
   assertEquals(new ArrayList<>(Arrays.asList(2,3,4,5,6)),weekdays.getIntegerArrayListExtra(AlarmClock.EXTRA_DAYS));
   for(java.util.List<Integer> invalid:Arrays.asList(Arrays.asList(0),Arrays.asList(8),Arrays.asList(3,2),Arrays.asList(2,2),new ArrayList<Integer>()))
    try{ClockHandoff.intent("set",7,30,"Run",null,invalid);fail("Invalid repeat days accepted: "+invalid);}catch(IllegalArgumentException expected){}
   try{ClockHandoff.intent("show",null,null,null,null,Arrays.asList(2));fail("Repeat days on a non-set action");}catch(IllegalArgumentException expected){}
-  try{ClockHandoff.days(new JSONArray().put("2"));fail("String day accepted");}catch(IllegalArgumentException expected){}
+  try{ClockDays.strict(new JSONArray().put("2"));fail("String day accepted");}catch(IllegalArgumentException expected){}
  }
  @Test public void agentReviewValidatesDaysAndBuildsTheSameIntent()throws Exception{
   JSONObject operation=new JSONObject().put("type","clock_handoff").put("action","set").put("hour",6).put("minute",0).put("label","Gym").put("timeZone","UTC").put("days",new JSONArray().put(1).put(7));
   ClockAgentReview.validate(operation);
   assertEquals(new ArrayList<>(Arrays.asList(1,7)),ClockAgentReview.intent(operation).getIntegerArrayListExtra(AlarmClock.EXTRA_DAYS));
   try{ClockAgentReview.validate(new JSONObject(operation.toString()).put("days",new JSONArray().put(9)));fail("Invalid agent days accepted");}catch(IllegalArgumentException expected){}
-  assertEquals("Mon, Fri",ClockAgentReview.dayNames(Arrays.asList(2,6)));
+  assertEquals("Mon, Fri",ClockDays.names(Arrays.asList(2,6)));
  }
  @Test public void launchedSetIntentIsInterceptedWithRepeatDays(){
   Instrumentation instrumentation=InstrumentationRegistry.getInstrumentation();Context context=instrumentation.getTargetContext();

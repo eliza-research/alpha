@@ -1,0 +1,3301 @@
+{
+  "createdAt": "2026-10-27T11:56:43.934Z",
+  "evidence": "apk-build",
+  "testMocks": false,
+  "demoEntryPoints": false,
+  "mapsConfigured": false,
+  "allowUnpackagedRuntime": false,
+  "runtimeProfile": "native",
+  "version": {
+    "code": 12,
+    "name": "0.1.0-native-c3072907"
+  },
+  "signing": {
+    "release": {
+      "signed": false
+    },
+    "debugSignerSha256": "2242994d2d237f98d01927999157067df4e2495a8f980451ac3de5d40642584a",
+    "apksigner": "0.9",
+    "apiLevel": null,
+    "scope": "unscoped legacy signer",
+    "descriptor": {
+      "file": "android/release-signer.json",
+      "signerSha256": "unset",
+      "lastReleaseVersionCode": null
+    }
+  },
+  "mappings": {
+    "standalone": "artifacts/mapping/standalone-release-mapping.txt",
+    "launcher": "artifacts/mapping/launcher-release-mapping.txt"
+  },
+  "instrumentation": {
+    "standalone": {
+      "file": "artifacts/instrumentation/standalone-androidTest.apk",
+      "sha256": "dd7ced711973a295e9bdefb25a2a6bad902b0798ff65e4d8341a688bf3daa609"
+    },
+    "launcher": {
+      "file": "artifacts/instrumentation/launcher-androidTest.apk",
+      "sha256": "d2b404eeb4a91d7fd341483e95afb362c6043399f42e33dbac8c86aeb837df47"
+    }
+  },
+  "upstream": {
+    "url": "https://github.com/elizaOS/eliza.git",
+    "commit": "c307290782dd7fa22c2c826ccc6a929574ea418d",
+    "appSource": "packages/app",
+    "nativeSystemSource": "plugins/plugin-native-system",
+    "osSource": "packages/os"
+  },
+  "nativePatches": {
+    "baseCommit": "c307290782dd7fa22c2c826ccc6a929574ea418d",
+    "manifestSha256": "65757260d5861c7ab6f2d1adf979d9f18ecada1869858b393fdb73b263f435f1",
+    "preparerSha256": "7cbacc300559bb414814ace2f5a5085fd6ebe499f6bab78dfa7e0ccb0adcae6e",
+    "modules": [
+      "plugins/plugin-native-action-journal/android",
+      "plugins/plugin-native-calendar/android",
+      "plugins/plugin-native-media/android",
+      "plugins/plugin-native-notifications/android",
+      "plugins/plugin-native-reminders/android",
+      "plugins/plugin-native-secure-store/android",
+      "plugins/plugin-native-system/android"
+    ],
+    "files": {
+      "plugins/plugin-native-action-journal/android/README.md": "099347b647cab050184cad867e39d3a09e356e89fd96562a5ccd471cf149db16",
+      "plugins/plugin-native-action-journal/android/build.gradle": "1f11075cc8ac71c4c11d4be61fbcee5935c42083d4b27d2f6ab59ce72dfb2fd0",
+      "plugins/plugin-native-action-journal/android/src/androidTest/java/example/actionjournal/JournalConsumerTest.java": "9eb5d1a6ca8d4e32b409ba293c5ec69f6d177cfa32c4651e66adef765a09a057",
+      "plugins/plugin-native-action-journal/android/src/main/AndroidManifest.xml": "108cabbbdc93da70e1da3e60b74171580872017d996c20e37946c27aaa078031",
+      "plugins/plugin-native-action-journal/android/src/main/java/ai/eliza/plugins/actionjournal/ActionJournal.java": "4902e0d10862fad375d87e70f15782017b685726c069b54e25350368b6cdd346",
+      "plugins/plugin-native-action-journal/android/src/main/java/ai/eliza/plugins/actionjournal/ActionJournalConfiguration.java": "7e3d6b2289f9ee939fcc2c4354320f40eb4d434d6a6a4a396c24bef698d712a0",
+      "plugins/plugin-native-action-journal/android/src/main/java/ai/eliza/plugins/actionjournal/ActionJournalPlugin.java": "783f9add42e344e6b00e6be534387cf87bf0eba8f363f100cd54df81a51baf04",
+      "plugins/plugin-native-calendar/android/README.md": "f0c1bed712f25c76db62f202fb51aeecde836b04e27f28c01931b99f437ad56b",
+      "plugins/plugin-native-calendar/android/build.gradle": "3859749ad3ebe253c8f241676e54f08395e6be2789c1a32a2712223930f83c1f",
+      "plugins/plugin-native-calendar/android/src/androidTest/java/ai/eliza/plugins/calendar/CalendarConfigurationInstrumentedTest.java": "0b205930e2e8e45d14c19a9b63be4627062d2f4bbfc4ffcb1c7172ab4083a0e0",
+      "plugins/plugin-native-calendar/android/src/main/AndroidManifest.xml": "c2572fb9756fe43a5a1be517333fa72bef55ac7b0e26fae0d7af9229a45a902d",
+      "plugins/plugin-native-calendar/android/src/main/java/ai/eliza/plugins/calendar/CalendarConfiguration.java": "6f9c909d574771dc10693b646708d5ef81d871bb68dcb78a6944ff50d41666c0",
+      "plugins/plugin-native-calendar/android/src/main/java/ai/eliza/plugins/calendar/CalendarCreationStore.java": "841902e69b482701b0bee1d2d14aeec241943bee3a409f7fe9eab8b587ae25b1",
+      "plugins/plugin-native-calendar/android/src/main/java/ai/eliza/plugins/calendar/CalendarEventGuard.java": "3ec5cc1b3cb8f56680f100126b0439ef6e6dd3f6f2b224652bc06bf5d3a0b84d",
+      "plugins/plugin-native-calendar/android/src/main/java/ai/eliza/plugins/calendar/CalendarPlugin.java": "ac943b95a3b860e3de0b5be6793b9cdfe0e9ef59cb17ef56321b38c3b4a0bc59",
+      "plugins/plugin-native-calendar/android/src/main/java/ai/eliza/plugins/calendar/read/CalendarReadAccess.java": "4075943d6714d3abd26df45472336d1c6d398f83598796d31ac12dc60f738774",
+      "plugins/plugin-native-calendar/android/src/main/java/ai/eliza/plugins/calendar/read/CalendarSourceIdentity.java": "bf1580e4a3a3b0b92cb28edef77a4f66652174ed1e0fc1306cd71a1b95acfa41",
+      "plugins/plugin-native-calendar/android/src/main/java/ai/eliza/plugins/calendar/read/SelectedCalendarReader.java": "dcb430fcee88cb1451d3c11079b07af2308305dfd0f0db565b68e4912ea3f4df",
+      "plugins/plugin-native-calendar/android/src/main/java/ai/eliza/plugins/calendar/write/CalendarDestinations.java": "99e77983d938836813d37873cdffd8e895388b7dcf76f3b8b06bee4aa675000b",
+      "plugins/plugin-native-calendar/android/src/main/java/ai/eliza/plugins/calendar/write/CalendarEventOptions.java": "1554f88ea011b1147bf932526e13692215bfbacbd808a51c6695694c9caabeeb",
+      "plugins/plugin-native-calendar/android/src/main/java/ai/eliza/plugins/calendar/write/CalendarInsertHandoff.java": "12a7cee804fdf38ae9af61496c8a3c1297f871f50166be3d7dff97ba6af9c9d1",
+      "plugins/plugin-native-calendar/android/src/main/java/ai/eliza/plugins/calendar/write/CalendarOptionCreationStore.java": "a262b713f162b0f15265e9b584e690b66bc11f4ec466c2a187c605d5358d7d9c",
+      "plugins/plugin-native-media/android/build.gradle": "81455a7129c51063553508d309f0a5612229b0243bd46ddc5beb5a630add3fce",
+      "plugins/plugin-native-media/android/src/main/AndroidManifest.xml": "1e570e702bee2e36567e435018fdcfef63d57b889b80d9cc01fb221d615ef2f3",
+      "plugins/plugin-native-media/android/src/main/java/ai/eliza/plugins/media/CaptureAdmission.java": "11663ef89ad56aa6a55474b525c4de96842b37a648c1cf41c59e61d9ab4f4609",
+      "plugins/plugin-native-media/android/src/main/java/ai/eliza/plugins/media/MediaBytes.java": "659590b64eda267285ed8dcb787523ee0debcf0af12b2c240b4b00c1dab9b358",
+      "plugins/plugin-native-media/android/src/main/java/ai/eliza/plugins/media/OwnedCaptures.java": "ceb5ccf19584a0e571457626d09562f1c3acab3b0a8ebd37ac99f21818a33238",
+      "plugins/plugin-native-media/android/src/main/java/ai/eliza/plugins/media/OwnedMediaConfig.java": "6e6171310881a9abb6ce20ab7208b2d60933bbc4f5c7f46a23ce008ea3cc8ddb",
+      "plugins/plugin-native-media/android/src/main/java/ai/eliza/plugins/media/OwnedMediaSelection.java": "306dc0993f3e134bc781093ddf45b93824a2802ca58bec388b1e6e9272775937",
+      "plugins/plugin-native-media/android/src/main/java/ai/eliza/plugins/media/OwnedPhotoEdits.java": "3f09d9455d95e8bec27699133ecb976466ca6af690f3563a466399bb282e4d48",
+      "plugins/plugin-native-media/android/src/main/java/ai/eliza/plugins/media/PhotoFilter.java": "a64d582cc10c6614dd9dc1df53ddb23c2a2a0cf9a47f33ae823d18d592f71697",
+      "plugins/plugin-native-media/android/src/main/java/ai/eliza/plugins/media/PhotoFilterMath.java": "fc535fc5f7cb5d63cba1300b14a439ca4e1601126cf7c8be57d0b8daac6e529a",
+      "plugins/plugin-native-notifications/android/build.gradle": "327422a3191ef01a89c649d43d121d5b0100040109e069dff5da729cff62bc53",
+      "plugins/plugin-native-notifications/android/src/main/AndroidManifest.xml": "7195a052095c6e13b2762d7c95bc6c4929804f437bce38403717a7f49dd0e9a0",
+      "plugins/plugin-native-notifications/android/src/main/java/ai/eliza/plugins/notifications/NoticeDelivery.java": "4fb3b7c8a9a56ceb3c51c5990b4e41439d031c729f5db221bd19d4a53b7b3bce",
+      "plugins/plugin-native-notifications/android/src/main/java/ai/eliza/plugins/notifications/NotificationMirror.java": "30864badd72f15b6f8927ad24da5fa09e4f42cb2f1a5fc7e8769c4dce6d54cb6",
+      "plugins/plugin-native-notifications/android/src/main/java/ai/eliza/plugins/notifications/NotificationMirrorConfig.java": "46633966af736d22edf9b9b9a6180fc18ba28d4709a63e3fc804022b7a2a7c68",
+      "plugins/plugin-native-notifications/android/src/main/java/ai/eliza/plugins/notifications/NotificationMirrorListenerService.java": "607fda56bcc045c6006a920e3d83ed06a3e1db966e4703d84542faeae39e6556",
+      "plugins/plugin-native-notifications/android/src/main/java/ai/eliza/plugins/notifications/NotificationMirrorPolicy.java": "ec5a146c55914d5333f32eeec55d2ed2ba712a71e22c924a0265f1a10091e803",
+      "plugins/plugin-native-reminders/android/README.md": "71bf434d896f171d757000520feb9aafda0befeeb7a0011e1e66a1f0e51ce3b5",
+      "plugins/plugin-native-reminders/android/build.gradle": "d94710c778e1bc7557e70c839e9e9a55933ca40a2637e0bf2094944b06e9e9a5",
+      "plugins/plugin-native-reminders/android/src/androidTest/java/ai/eliza/plugins/reminders/ReminderEngineIdentityInstrumentedTest.java": "7d5c06a8ae0999848ce67890b514ee60478c6a95bf13c1bb82edc73ac79909ba",
+      "plugins/plugin-native-reminders/android/src/main/AndroidManifest.xml": "ed4cf3d58ca01a0a23dd5261f2c821e484962919773aadc44aff1f4997b44e91",
+      "plugins/plugin-native-reminders/android/src/main/java/ai/eliza/plugins/reminders/ReminderConfiguration.java": "31c3486b0a396b8e75a20fc21db901048ae45f61ac61c4bb9b9d2a6bddc2e2b1",
+      "plugins/plugin-native-reminders/android/src/main/java/ai/eliza/plugins/reminders/ReminderEngine.java": "41787333fc7918eb5f44ce73d2ee99e7999fc99dae2e8f8084863efbc9790af6",
+      "plugins/plugin-native-reminders/android/src/main/java/ai/eliza/plugins/reminders/ReminderEnvelope.java": "cca3f0cae8d49dfb923e6a5c1858fb2d7b16a7a59f8649aabb598f0a32316b96",
+      "plugins/plugin-native-reminders/android/src/main/java/ai/eliza/plugins/reminders/ReminderIo.java": "9b933e77ebce9ebe06eb8b4c8982bdbb6941ef4c15c1f1bed9736c3167a1a7f6",
+      "plugins/plugin-native-reminders/android/src/main/java/ai/eliza/plugins/reminders/ReminderPlugin.java": "461a84a698c96624ed973b07d36e9c3ba0ae31ee7a99d2e6d9ac6bd09c6d6861",
+      "plugins/plugin-native-reminders/android/src/main/java/ai/eliza/plugins/reminders/ReminderReceiver.java": "41221fdd128dfce6d1d5baa08265253fcb28007e4d894931bb30917b80f4d9c2",
+      "plugins/plugin-native-reminders/android/src/main/java/ai/eliza/plugins/reminders/ReminderStore.java": "ba96ba19d3e53e71e44516b7970b4783aa158784e9fe8bc278f34832519f2520",
+      "plugins/plugin-native-reminders/android/src/main/java/ai/eliza/plugins/reminders/ReminderTaps.java": "c3ea3c0eb862f0f631005c0d5575e5f426f6207fae376bcbdc00e0a260e716a5",
+      "plugins/plugin-native-reminders/android/src/main/java/ai/eliza/plugins/reminders/SecureStringStore.java": "5855cbf72e9ad6dc8d0ddf7e74dbc0025e51a836a6c98a8c05847b162a72c8a2",
+      "plugins/plugin-native-reminders/android/src/test/java/ai/eliza/plugins/reminders/ReminderQuestionTest.java": "12e51aab58286adca4b5edf3f2374d02ff4c2761ae7521ccb929a02b30f6ed46",
+      "plugins/plugin-native-secure-store/android/build.gradle": "db7c79cb08a1eabe70cf08b8b69de6fcd2a2d00a173218f2046d170958f81120",
+      "plugins/plugin-native-secure-store/android/src/androidTest/AndroidManifest.xml": "7a24e24ec609ec403b9c3728695f860eccfa30375b201737d36708a62adae046",
+      "plugins/plugin-native-secure-store/android/src/androidTest/assets/public/index.html": "b9a6a86b6e7b37e2d2049458f8a6e510167522e94b2a397ced3298236fb3890a",
+      "plugins/plugin-native-secure-store/android/src/androidTest/java/ai/eliza/plugins/securestore/NativeCustodyInstrumentedTest.java": "f857c719b8f0249a4da88876ff18142a4edeaaefa9fb5c86acb2b5e63bc31b34",
+      "plugins/plugin-native-secure-store/android/src/androidTest/java/ai/eliza/plugins/securestore/SecureStoreBridgeInstrumentedTest.kt": "2bd4d184ca4dc729b4efe36dbf81a07de7a89ae7c0c2cb1eeb396123fec52a95",
+      "plugins/plugin-native-secure-store/android/src/androidTest/java/ai/eliza/plugins/securestore/SecureStoreInstrumentedTest.kt": "0b6656b56d6ff066e079e02ef11e7f1590125aa609affa670167b16d83a2add6",
+      "plugins/plugin-native-secure-store/android/src/androidTest/java/ai/eliza/plugins/securestore/nativeonly/DeviceCredentialSessionInstrumentedTest.java": "c6837cf45fadd9351d6bd15b67da916068d17f5f0fb1f0223cbaffb61a4027d9",
+      "plugins/plugin-native-secure-store/android/src/androidTest/java/ai/eliza/plugins/securestore/nativeonly/JsonCredentialSlotsInstrumentedTest.java": "d5648338fceca2f41319a6d12380e00d680e384a8a90c1363f045c005c457dc7",
+      "plugins/plugin-native-secure-store/android/src/androidTest/java/ai/eliza/plugins/securestore/nativeonly/NativeDeadlineTimerInstrumentedTest.java": "eb3b95fe3268bd172db62a017c2509406eacdd57e61f0dc63fd6b0e3a56fb2cd",
+      "plugins/plugin-native-secure-store/android/src/androidTest/java/ai/eliza/plugins/securestore/nativeonly/PasswordAutofillCompletionInstrumentedTest.java": "055aeeba9fe36367289e50ac7f6bdfe51b6e8c1a5c31514ee898a14046824fa7",
+      "plugins/plugin-native-secure-store/android/src/androidTest/java/ai/eliza/plugins/securestore/nativeonly/PasswordAutofillOfferInstrumentedTest.java": "012d66bdb9549a343b0b9913d0d56fb17317de3a7c6f25b1be77b02f71f0cd99",
+      "plugins/plugin-native-secure-store/android/src/androidTest/java/ai/eliza/plugins/securestore/nativeonly/PasswordVaultEntriesInstrumentedTest.java": "f8a278c1c37cc10a778066316b5f20740b985c09a1daead6206f171a9497acf2",
+      "plugins/plugin-native-secure-store/android/src/androidTest/java/ai/eliza/plugins/securestore/nativeonly/TaskDataKeyStoreInstrumentedTest.java": "214eecff8331f338cba5ae7659ccdf5fe05650ee3329cb90fb951ee198282aa5",
+      "plugins/plugin-native-secure-store/android/src/androidTest/java/ai/eliza/plugins/securestore/nativeonly/VerifiedAccountCredentialStoreInstrumentedTest.java": "6817d075393791e38622d959a8d00d1e46e40c838c3cde5b8b7299cba597cc47",
+      "plugins/plugin-native-secure-store/android/src/main/AndroidManifest.xml": "c8fe08b06e479efc7e3d00476fffe693a3e943e2b874b3c6a1ba5156fc180751",
+      "plugins/plugin-native-secure-store/android/src/main/java/ai/eliza/plugins/securestore/SecureStorePlugin.kt": "8b1f1bb128cb45d85cf8def88b68b9643e5dbccb0ffc3898d23b3c8369fe453d",
+      "plugins/plugin-native-secure-store/android/src/main/java/ai/eliza/plugins/securestore/nativeonly/CredentialAccessSession.java": "ecc2ee5476d88a829947eadcb31c6bc43317292b4effa1686aeae0bd3673fe94",
+      "plugins/plugin-native-secure-store/android/src/main/java/ai/eliza/plugins/securestore/nativeonly/DeviceCredentialSession.java": "cf6a6ac83afe2b77cd3a0dd91c42c00ffbdc074c5f0b45023c0fffa6205d0132",
+      "plugins/plugin-native-secure-store/android/src/main/java/ai/eliza/plugins/securestore/nativeonly/JsonCredentialSlots.java": "8b42b6706874bbb9326ecf3d047bf327977f48ec3bd25d6967509da363172bfd",
+      "plugins/plugin-native-secure-store/android/src/main/java/ai/eliza/plugins/securestore/nativeonly/KeystoreTextFrame.java": "5c5d904606eb9aa0d20cb439bb6292de3e3da38a0e1d414c46e42fb645d940a2",
+      "plugins/plugin-native-secure-store/android/src/main/java/ai/eliza/plugins/securestore/nativeonly/NativeDeadlineTimer.java": "36f83cc144895f05c88b323df1ab07dd3a1839c2c46cb602dbbb4178beda9309",
+      "plugins/plugin-native-secure-store/android/src/main/java/ai/eliza/plugins/securestore/nativeonly/NativeSecureStore.java": "fa191aa291e5e721bdf543a9b2274439740936691c0fc16c327192db6a05142f",
+      "plugins/plugin-native-secure-store/android/src/main/java/ai/eliza/plugins/securestore/nativeonly/PasswordAutofillCompletion.java": "0d55bbecc19edd471acbe5b754a176350199307c0f7c973558a5d74d7761b42d",
+      "plugins/plugin-native-secure-store/android/src/main/java/ai/eliza/plugins/securestore/nativeonly/PasswordAutofillOffer.java": "dacefe9bb31b397987de5d376414aff0b1d21169c54486402eabcf284f969354",
+      "plugins/plugin-native-secure-store/android/src/main/java/ai/eliza/plugins/securestore/nativeonly/PasswordAutofillPolicy.java": "37a66efe53b7847bd88102d78dcaf714f8ba556f817bd87dbce35463a7db2a97",
+      "plugins/plugin-native-secure-store/android/src/main/java/ai/eliza/plugins/securestore/nativeonly/PasswordAutofillRequest.java": "b0c86a19bdba4dc20b761e30d1be3a2ed058d2b8af2bfebfe5da4d11d6529610",
+      "plugins/plugin-native-secure-store/android/src/main/java/ai/eliza/plugins/securestore/nativeonly/PasswordAutofillSessions.java": "cc4e7d0c82a52e5638ce2ac41c71cad1fbef18e9b5d4d47c0b8d5de3ee8d1c3d",
+      "plugins/plugin-native-secure-store/android/src/main/java/ai/eliza/plugins/securestore/nativeonly/PasswordFacets.java": "73b079ee814e960becbe9d373c513f282f0daf86a8cceac2a407215f01edd803",
+      "plugins/plugin-native-secure-store/android/src/main/java/ai/eliza/plugins/securestore/nativeonly/PasswordVaultFrame.java": "26ba44b57cea7a016a4a3831341c5b55070a7f38d6ada4f6c81a2c90eb56cd57",
+      "plugins/plugin-native-secure-store/android/src/main/java/ai/eliza/plugins/securestore/nativeonly/PasswordVaultStore.java": "aa20835178d19f17a5175933c7e9b01407b15c9ce5c605d22101990c115a2f49",
+      "plugins/plugin-native-secure-store/android/src/main/java/ai/eliza/plugins/securestore/nativeonly/RuntimeCredentialStore.java": "ee9a96ebdc4e93590c37e46c4805a3385fd15dce1f5c8ba6914b6cef5b98b4d0",
+      "plugins/plugin-native-secure-store/android/src/main/java/ai/eliza/plugins/securestore/nativeonly/TaskDataKeyStore.java": "eeef09f43bd6efee99c1db5ae82ec314aa5715a9a1f5e07b654ea6b4279bba71",
+      "plugins/plugin-native-secure-store/android/src/main/java/ai/eliza/plugins/securestore/nativeonly/VerifiedAccountCredentialStore.java": "1fbdf6bff12e6623b81365ddd01bd394050f4b74c53a9945cd21f73ca8472271",
+      "plugins/plugin-native-system/android/build.gradle": "285a7861e7f3e5cb2c81bfaad9d4f639c1eea560674eb020e048cf0bb55664e5",
+      "plugins/plugin-native-system/android/src/androidTest/AndroidManifest.xml": "66e8b5b7cdbb808607ef969035947cace7f11edfd9eb1282f2044b5f2d6c6fc3",
+      "plugins/plugin-native-system/android/src/androidTest/java/ai/eliza/plugins/system/DeviceSetupInstrumentedTest.java": "3fd1daa03b30daf980f713d101a00ce1c2524cb8e7e5f268e45c3e460b9ef61e",
+      "plugins/plugin-native-system/android/src/androidTest/java/ai/eliza/plugins/system/ReaderShowcaseActivity.kt": "361227f981c372a17a4d1a657421c483fc2b2f2d98830d9ae779915b1d05812a",
+      "plugins/plugin-native-system/android/src/androidTest/java/ai/eliza/plugins/system/SystemAppIntentsInstrumentedTest.java": "55074eddb73986b165601d347d12e00eeca15a128db37aabad764e8b5db7193a",
+      "plugins/plugin-native-system/android/src/androidTest/java/ai/eliza/plugins/system/SystemDeviceReaderInstrumentedTest.kt": "97fe6e0903725b6a3aa9fd284e52982f41b6635cd2da6cda9058814af3a96f14",
+      "plugins/plugin-native-system/android/src/androidTest/java/ai/eliza/plugins/system/SystemFlashlightInstrumentedTest.kt": "1a6f02d4597d2e2d88b082240e036dfe19ef932d2c34f7518e2453683249a753",
+      "plugins/plugin-native-system/android/src/androidTest/java/ai/eliza/plugins/system/SystemLauncherAppsInstrumentedTest.java": "7eafb14b5789e8a552b4de959c966b513536f7975d1e7ea64aa77ae758437906",
+      "plugins/plugin-native-system/android/src/main/AndroidManifest.xml": "de9afbc21d693edc6ce591db1fc4a9a8ce693def385d4946d59119a256826a2e",
+      "plugins/plugin-native-system/android/src/main/java/ai/eliza/plugins/system/SenseInvocation.java": "60379fb41ef82ab4bcee47f1a399bae65ea18113c87ab3cea8271235deea850b",
+      "plugins/plugin-native-system/android/src/main/java/ai/eliza/plugins/system/SenseListenerClient.java": "79dd874a25cc502e4b2b4ad46e8b0189879b03cdbd511b0228206da5e2f7c364",
+      "plugins/plugin-native-system/android/src/main/java/ai/eliza/plugins/system/SensePlugin.java": "67b078ef2fb5ea3e8047e517be5a8a81f5c7240b973ab4d3b189424b3cad3883",
+      "plugins/plugin-native-system/android/src/main/java/ai/eliza/plugins/system/SystemAppIntents.java": "13f281b985a3b3026cc3d2b5c9183fec4194dcca55eb7dae9a9cff295929adab",
+      "plugins/plugin-native-system/android/src/main/java/ai/eliza/plugins/system/SystemDeviceReader.kt": "038f41a2afa3349a72886fc1e792327fa73d28f9eb66684bd509e77f87376054",
+      "plugins/plugin-native-system/android/src/main/java/ai/eliza/plugins/system/SystemLauncherApps.java": "ee19f93e384ad0213bbbc22f88f3dd4ff6c16183538c1215c823c46769b879bf",
+      "plugins/plugin-native-system/android/src/main/java/ai/eliza/plugins/system/SystemPlugin.kt": "4056a1d7a1a2e7b400df8551302c3135bde59bc97dd4735d6ecc1ca64910b396",
+      "plugins/plugin-native-system/android/src/main/java/ai/eliza/plugins/system/setup/DeviceSetup.java": "3f5b2c0aeb244c04aa57883f18af5739eb6ce895aad3ca9822e9715167cda2a4"
+    },
+    "modes": {
+      "plugins/plugin-native-action-journal/android/README.md": "100644",
+      "plugins/plugin-native-action-journal/android/build.gradle": "100644",
+      "plugins/plugin-native-action-journal/android/src/androidTest/java/example/actionjournal/JournalConsumerTest.java": "100644",
+      "plugins/plugin-native-action-journal/android/src/main/AndroidManifest.xml": "100644",
+      "plugins/plugin-native-action-journal/android/src/main/java/ai/eliza/plugins/actionjournal/ActionJournal.java": "100644",
+      "plugins/plugin-native-action-journal/android/src/main/java/ai/eliza/plugins/actionjournal/ActionJournalConfiguration.java": "100644",
+      "plugins/plugin-native-action-journal/android/src/main/java/ai/eliza/plugins/actionjournal/ActionJournalPlugin.java": "100644",
+      "plugins/plugin-native-calendar/android/README.md": "100644",
+      "plugins/plugin-native-calendar/android/build.gradle": "100644",
+      "plugins/plugin-native-calendar/android/src/androidTest/java/ai/eliza/plugins/calendar/CalendarConfigurationInstrumentedTest.java": "100644",
+      "plugins/plugin-native-calendar/android/src/main/AndroidManifest.xml": "100644",
+      "plugins/plugin-native-calendar/android/src/main/java/ai/eliza/plugins/calendar/CalendarConfiguration.java": "100644",
+      "plugins/plugin-native-calendar/android/src/main/java/ai/eliza/plugins/calendar/CalendarCreationStore.java": "100644",
+      "plugins/plugin-native-calendar/android/src/main/java/ai/eliza/plugins/calendar/CalendarEventGuard.java": "100644",
+      "plugins/plugin-native-calendar/android/src/main/java/ai/eliza/plugins/calendar/CalendarPlugin.java": "100644",
+      "plugins/plugin-native-calendar/android/src/main/java/ai/eliza/plugins/calendar/read/CalendarReadAccess.java": "100644",
+      "plugins/plugin-native-calendar/android/src/main/java/ai/eliza/plugins/calendar/read/CalendarSourceIdentity.java": "100644",
+      "plugins/plugin-native-calendar/android/src/main/java/ai/eliza/plugins/calendar/read/SelectedCalendarReader.java": "100644",
+      "plugins/plugin-native-calendar/android/src/main/java/ai/eliza/plugins/calendar/write/CalendarDestinations.java": "100644",
+      "plugins/plugin-native-calendar/android/src/main/java/ai/eliza/plugins/calendar/write/CalendarEventOptions.java": "100644",
+      "plugins/plugin-native-calendar/android/src/main/java/ai/eliza/plugins/calendar/write/CalendarInsertHandoff.java": "100644",
+      "plugins/plugin-native-calendar/android/src/main/java/ai/eliza/plugins/calendar/write/CalendarOptionCreationStore.java": "100644",
+      "plugins/plugin-native-media/android/build.gradle": "100644",
+      "plugins/plugin-native-media/android/src/main/AndroidManifest.xml": "100644",
+      "plugins/plugin-native-media/android/src/main/java/ai/eliza/plugins/media/CaptureAdmission.java": "100644",
+      "plugins/plugin-native-media/android/src/main/java/ai/eliza/plugins/media/MediaBytes.java": "100644",
+      "plugins/plugin-native-media/android/src/main/java/ai/eliza/plugins/media/OwnedCaptures.java": "100644",
+      "plugins/plugin-native-media/android/src/main/java/ai/eliza/plugins/media/OwnedMediaConfig.java": "100644",
+      "plugins/plugin-native-media/android/src/main/java/ai/eliza/plugins/media/OwnedMediaSelection.java": "100644",
+      "plugins/plugin-native-media/android/src/main/java/ai/eliza/plugins/media/OwnedPhotoEdits.java": "100644",
+      "plugins/plugin-native-media/android/src/main/java/ai/eliza/plugins/media/PhotoFilter.java": "100644",
+      "plugins/plugin-native-media/android/src/main/java/ai/eliza/plugins/media/PhotoFilterMath.java": "100644",
+      "plugins/plugin-native-notifications/android/build.gradle": "100644",
+      "plugins/plugin-native-notifications/android/src/main/AndroidManifest.xml": "100644",
+      "plugins/plugin-native-notifications/android/src/main/java/ai/eliza/plugins/notifications/NoticeDelivery.java": "100644",
+      "plugins/plugin-native-notifications/android/src/main/java/ai/eliza/plugins/notifications/NotificationMirror.java": "100644",
+      "plugins/plugin-native-notifications/android/src/main/java/ai/eliza/plugins/notifications/NotificationMirrorConfig.java": "100644",
+      "plugins/plugin-native-notifications/android/src/main/java/ai/eliza/plugins/notifications/NotificationMirrorListenerService.java": "100644",
+      "plugins/plugin-native-notifications/android/src/main/java/ai/eliza/plugins/notifications/NotificationMirrorPolicy.java": "100644",
+      "plugins/plugin-native-reminders/android/README.md": "100644",
+      "plugins/plugin-native-reminders/android/build.gradle": "100644",
+      "plugins/plugin-native-reminders/android/src/androidTest/java/ai/eliza/plugins/reminders/ReminderEngineIdentityInstrumentedTest.java": "100644",
+      "plugins/plugin-native-reminders/android/src/main/AndroidManifest.xml": "100644",
+      "plugins/plugin-native-reminders/android/src/main/java/ai/eliza/plugins/reminders/ReminderConfiguration.java": "100644",
+      "plugins/plugin-native-reminders/android/src/main/java/ai/eliza/plugins/reminders/ReminderEngine.java": "100644",
+      "plugins/plugin-native-reminders/android/src/main/java/ai/eliza/plugins/reminders/ReminderEnvelope.java": "100644",
+      "plugins/plugin-native-reminders/android/src/main/java/ai/eliza/plugins/reminders/ReminderIo.java": "100644",
+      "plugins/plugin-native-reminders/android/src/main/java/ai/eliza/plugins/reminders/ReminderPlugin.java": "100644",
+      "plugins/plugin-native-reminders/android/src/main/java/ai/eliza/plugins/reminders/ReminderReceiver.java": "100644",
+      "plugins/plugin-native-reminders/android/src/main/java/ai/eliza/plugins/reminders/ReminderStore.java": "100644",
+      "plugins/plugin-native-reminders/android/src/main/java/ai/eliza/plugins/reminders/ReminderTaps.java": "100644",
+      "plugins/plugin-native-reminders/android/src/main/java/ai/eliza/plugins/reminders/SecureStringStore.java": "100644",
+      "plugins/plugin-native-reminders/android/src/test/java/ai/eliza/plugins/reminders/ReminderQuestionTest.java": "100644",
+      "plugins/plugin-native-secure-store/android/build.gradle": "100644",
+      "plugins/plugin-native-secure-store/android/src/androidTest/AndroidManifest.xml": "100644",
+      "plugins/plugin-native-secure-store/android/src/androidTest/assets/public/index.html": "100644",
+      "plugins/plugin-native-secure-store/android/src/androidTest/java/ai/eliza/plugins/securestore/NativeCustodyInstrumentedTest.java": "100644",
+      "plugins/plugin-native-secure-store/android/src/androidTest/java/ai/eliza/plugins/securestore/SecureStoreBridgeInstrumentedTest.kt": "100644",
+      "plugins/plugin-native-secure-store/android/src/androidTest/java/ai/eliza/plugins/securestore/SecureStoreInstrumentedTest.kt": "100644",
+      "plugins/plugin-native-secure-store/android/src/androidTest/java/ai/eliza/plugins/securestore/nativeonly/DeviceCredentialSessionInstrumentedTest.java": "100644",
+      "plugins/plugin-native-secure-store/android/src/androidTest/java/ai/eliza/plugins/securestore/nativeonly/JsonCredentialSlotsInstrumentedTest.java": "100644",
+      "plugins/plugin-native-secure-store/android/src/androidTest/java/ai/eliza/plugins/securestore/nativeonly/NativeDeadlineTimerInstrumentedTest.java": "100644",
+      "plugins/plugin-native-secure-store/android/src/androidTest/java/ai/eliza/plugins/securestore/nativeonly/PasswordAutofillCompletionInstrumentedTest.java": "100644",
+      "plugins/plugin-native-secure-store/android/src/androidTest/java/ai/eliza/plugins/securestore/nativeonly/PasswordAutofillOfferInstrumentedTest.java": "100644",
+      "plugins/plugin-native-secure-store/android/src/androidTest/java/ai/eliza/plugins/securestore/nativeonly/PasswordVaultEntriesInstrumentedTest.java": "100644",
+      "plugins/plugin-native-secure-store/android/src/androidTest/java/ai/eliza/plugins/securestore/nativeonly/TaskDataKeyStoreInstrumentedTest.java": "100644",
+      "plugins/plugin-native-secure-store/android/src/androidTest/java/ai/eliza/plugins/securestore/nativeonly/VerifiedAccountCredentialStoreInstrumentedTest.java": "100644",
+      "plugins/plugin-native-secure-store/android/src/main/AndroidManifest.xml": "100644",
+      "plugins/plugin-native-secure-store/android/src/main/java/ai/eliza/plugins/securestore/SecureStorePlugin.kt": "100644",
+      "plugins/plugin-native-secure-store/android/src/main/java/ai/eliza/plugins/securestore/nativeonly/CredentialAccessSession.java": "100644",
+      "plugins/plugin-native-secure-store/android/src/main/java/ai/eliza/plugins/securestore/nativeonly/DeviceCredentialSession.java": "100644",
+      "plugins/plugin-native-secure-store/android/src/main/java/ai/eliza/plugins/securestore/nativeonly/JsonCredentialSlots.java": "100644",
+      "plugins/plugin-native-secure-store/android/src/main/java/ai/eliza/plugins/securestore/nativeonly/KeystoreTextFrame.java": "100644",
+      "plugins/plugin-native-secure-store/android/src/main/java/ai/eliza/plugins/securestore/nativeonly/NativeDeadlineTimer.java": "100644",
+      "plugins/plugin-native-secure-store/android/src/main/java/ai/eliza/plugins/securestore/nativeonly/NativeSecureStore.java": "100644",
+      "plugins/plugin-native-secure-store/android/src/main/java/ai/eliza/plugins/securestore/nativeonly/PasswordAutofillCompletion.java": "100644",
+      "plugins/plugin-native-secure-store/android/src/main/java/ai/eliza/plugins/securestore/nativeonly/PasswordAutofillOffer.java": "100644",
+      "plugins/plugin-native-secure-store/android/src/main/java/ai/eliza/plugins/securestore/nativeonly/PasswordAutofillPolicy.java": "100644",
+      "plugins/plugin-native-secure-store/android/src/main/java/ai/eliza/plugins/securestore/nativeonly/PasswordAutofillRequest.java": "100644",
+      "plugins/plugin-native-secure-store/android/src/main/java/ai/eliza/plugins/securestore/nativeonly/PasswordAutofillSessions.java": "100644",
+      "plugins/plugin-native-secure-store/android/src/main/java/ai/eliza/plugins/securestore/nativeonly/PasswordFacets.java": "100644",
+      "plugins/plugin-native-secure-store/android/src/main/java/ai/eliza/plugins/securestore/nativeonly/PasswordVaultFrame.java": "100644",
+      "plugins/plugin-native-secure-store/android/src/main/java/ai/eliza/plugins/securestore/nativeonly/PasswordVaultStore.java": "100644",
+      "plugins/plugin-native-secure-store/android/src/main/java/ai/eliza/plugins/securestore/nativeonly/RuntimeCredentialStore.java": "100644",
+      "plugins/plugin-native-secure-store/android/src/main/java/ai/eliza/plugins/securestore/nativeonly/TaskDataKeyStore.java": "100644",
+      "plugins/plugin-native-secure-store/android/src/main/java/ai/eliza/plugins/securestore/nativeonly/VerifiedAccountCredentialStore.java": "100644",
+      "plugins/plugin-native-system/android/build.gradle": "100644",
+      "plugins/plugin-native-system/android/src/androidTest/AndroidManifest.xml": "100644",
+      "plugins/plugin-native-system/android/src/androidTest/java/ai/eliza/plugins/system/DeviceSetupInstrumentedTest.java": "100644",
+      "plugins/plugin-native-system/android/src/androidTest/java/ai/eliza/plugins/system/ReaderShowcaseActivity.kt": "100644",
+      "plugins/plugin-native-system/android/src/androidTest/java/ai/eliza/plugins/system/SystemAppIntentsInstrumentedTest.java": "100644",
+      "plugins/plugin-native-system/android/src/androidTest/java/ai/eliza/plugins/system/SystemDeviceReaderInstrumentedTest.kt": "100644",
+      "plugins/plugin-native-system/android/src/androidTest/java/ai/eliza/plugins/system/SystemFlashlightInstrumentedTest.kt": "100644",
+      "plugins/plugin-native-system/android/src/androidTest/java/ai/eliza/plugins/system/SystemLauncherAppsInstrumentedTest.java": "100644",
+      "plugins/plugin-native-system/android/src/main/AndroidManifest.xml": "100644",
+      "plugins/plugin-native-system/android/src/main/java/ai/eliza/plugins/system/SenseInvocation.java": "100644",
+      "plugins/plugin-native-system/android/src/main/java/ai/eliza/plugins/system/SenseListenerClient.java": "100644",
+      "plugins/plugin-native-system/android/src/main/java/ai/eliza/plugins/system/SensePlugin.java": "100644",
+      "plugins/plugin-native-system/android/src/main/java/ai/eliza/plugins/system/SystemAppIntents.java": "100644",
+      "plugins/plugin-native-system/android/src/main/java/ai/eliza/plugins/system/SystemDeviceReader.kt": "100644",
+      "plugins/plugin-native-system/android/src/main/java/ai/eliza/plugins/system/SystemLauncherApps.java": "100644",
+      "plugins/plugin-native-system/android/src/main/java/ai/eliza/plugins/system/SystemPlugin.kt": "100644",
+      "plugins/plugin-native-system/android/src/main/java/ai/eliza/plugins/system/setup/DeviceSetup.java": "100644"
+    }
+  },
+  "results": [
+    {
+      "file": "artifacts/standalone-debug.apk",
+      "packageName": "ai.elizaresearch.alphaphone",
+      "home": false,
+      "launcher": true,
+      "debuggable": true,
+      "sha256": "8eeb15b72bbb4ad0bd9fa9745c090f598bd92bd563625f5cfba4e025338344c1",
+      "webPayload": true,
+      "variant": "standalone",
+      "mode": "debug",
+      "versionCode": 12,
+      "versionName": "0.1.0-native-c3072907",
+      "signed": true,
+      "signerSha256": "2242994d2d237f98d01927999157067df4e2495a8f980451ac3de5d40642584a",
+      "signerApiLevel": null,
+      "exportedComponents": [
+        "ai.eliza.plugins.passwords.ElizaPasswordAutofillService",
+        "ai.elizaresearch.alphaphone.AlphaAssistActivity",
+        "ai.elizaresearch.alphaphone.AlphaNotificationListener",
+        "ai.elizaresearch.alphaphone.AlphaQuickSettingsTile",
+        "ai.elizaresearch.alphaphone.MainActivity",
+        "ai.elizaresearch.alphaphone.release.DataIntegrityProvider",
+        "androidx.profileinstaller.ProfileInstallReceiver",
+        "androidx.work.impl.background.systemjob.SystemJobService",
+        "androidx.work.impl.diagnostics.DiagnosticsReceiver",
+        "com.google.android.gms.auth.api.signin.RevocationBoundService"
+      ],
+      "appLinks": {
+        "present": false,
+        "hosts": []
+      },
+      "testMocks": false,
+      "bundleAudit": "passed",
+      "runtimeNotices": true,
+      "licenceFlags": [
+        {
+          "name": "@ai-sdk/provider-utils",
+          "version": "4.0.54",
+          "license": "Apache-2.0",
+          "flags": [
+            "licence-text-missing-from-package"
+          ]
+        },
+        {
+          "name": "@ai-sdk/provider-utils",
+          "version": "5.0.47",
+          "license": "Apache-2.0",
+          "flags": [
+            "licence-text-missing-from-package"
+          ]
+        },
+        {
+          "name": "@lit-labs/ssr-dom-shim",
+          "version": "1.6.0",
+          "license": "BSD-3-Clause",
+          "flags": [
+            "licence-text-missing-from-package"
+          ]
+        },
+        {
+          "name": "@metamask/sdk",
+          "version": "0.33.1",
+          "license": "UNKNOWN",
+          "flags": [
+            "unknown-licence",
+            "non-open-source-terms"
+          ]
+        },
+        {
+          "name": "@metamask/sdk-analytics",
+          "version": "0.0.5",
+          "license": "MIT",
+          "flags": [
+            "licence-text-missing-from-package"
+          ]
+        },
+        {
+          "name": "@radix-ui/react-compose-refs",
+          "version": "1.1.2",
+          "license": "MIT",
+          "flags": [
+            "licence-text-missing-from-package"
+          ]
+        },
+        {
+          "name": "@safe-global/safe-apps-provider",
+          "version": "0.18.6",
+          "license": "MIT",
+          "flags": [
+            "licence-text-missing-from-package"
+          ]
+        },
+        {
+          "name": "@safe-global/safe-apps-sdk",
+          "version": "9.1.0",
+          "license": "MIT",
+          "flags": [
+            "licence-text-missing-from-package"
+          ]
+        },
+        {
+          "name": "@sapphire/async-queue",
+          "version": "1.5.5",
+          "license": "MIT",
+          "flags": [
+            "licence-text-missing-from-package"
+          ]
+        },
+        {
+          "name": "@sapphire/snowflake",
+          "version": "3.5.5",
+          "license": "MIT",
+          "flags": [
+            "licence-text-missing-from-package"
+          ]
+        },
+        {
+          "name": "@smthrs/agents",
+          "version": "0.35.0",
+          "license": "MIT",
+          "flags": [
+            "unverified"
+          ]
+        },
+        {
+          "name": "@smthrs/components",
+          "version": "0.35.0",
+          "license": "MIT",
+          "flags": [
+            "unverified"
+          ]
+        },
+        {
+          "name": "@smthrs/db",
+          "version": "0.35.0",
+          "license": "MIT",
+          "flags": [
+            "unverified"
+          ]
+        },
+        {
+          "name": "@smthrs/driver",
+          "version": "0.35.0",
+          "license": "MIT",
+          "flags": [
+            "unverified"
+          ]
+        },
+        {
+          "name": "@smthrs/engine",
+          "version": "0.35.0",
+          "license": "MIT",
+          "flags": [
+            "unverified"
+          ]
+        },
+        {
+          "name": "@smthrs/errors",
+          "version": "0.35.0",
+          "license": "MIT",
+          "flags": [
+            "unverified"
+          ]
+        },
+        {
+          "name": "@smthrs/graph",
+          "version": "0.35.0",
+          "license": "MIT",
+          "flags": [
+            "unverified"
+          ]
+        },
+        {
+          "name": "@smthrs/memory",
+          "version": "0.35.0",
+          "license": "MIT",
+          "flags": [
+            "unverified"
+          ]
+        },
+        {
+          "name": "@smthrs/observability",
+          "version": "0.35.0",
+          "license": "MIT",
+          "flags": [
+            "unverified"
+          ]
+        },
+        {
+          "name": "@smthrs/react-reconciler",
+          "version": "0.35.0",
+          "license": "MIT",
+          "flags": [
+            "unverified"
+          ]
+        },
+        {
+          "name": "@smthrs/sandbox",
+          "version": "0.35.0",
+          "license": "MIT",
+          "flags": [
+            "unverified"
+          ]
+        },
+        {
+          "name": "@smthrs/scheduler",
+          "version": "0.35.0",
+          "license": "MIT",
+          "flags": [
+            "unverified"
+          ]
+        },
+        {
+          "name": "@smthrs/scorers",
+          "version": "0.35.0",
+          "license": "MIT",
+          "flags": [
+            "unverified"
+          ]
+        },
+        {
+          "name": "@smthrs/time-travel",
+          "version": "0.35.0",
+          "license": "MIT",
+          "flags": [
+            "unverified"
+          ]
+        },
+        {
+          "name": "@smthrs/tool-context",
+          "version": "0.35.0",
+          "license": "MIT",
+          "flags": [
+            "unverified"
+          ]
+        },
+        {
+          "name": "@smthrs/vcs",
+          "version": "0.35.0",
+          "license": "MIT",
+          "flags": [
+            "unverified"
+          ]
+        },
+        {
+          "name": "@solflare-wallet/sdk",
+          "version": "1.4.2",
+          "license": "Apache-2.0",
+          "flags": [
+            "licence-text-missing-from-package"
+          ]
+        },
+        {
+          "name": "@tesseract.js-data/eng",
+          "version": "1.0.0",
+          "license": "MIT",
+          "flags": [
+            "licence-text-missing-from-package"
+          ]
+        },
+        {
+          "name": "@vectorize-io/hindsight-client",
+          "version": "0.8.4",
+          "license": "MIT",
+          "flags": [
+            "licence-text-missing-from-package"
+          ]
+        },
+        {
+          "name": "Android dependency com.google.android.gms:play-services-auth",
+          "version": "21.1.1",
+          "license": "UNKNOWN",
+          "flags": [
+            "unknown-licence",
+            "licence-text-missing-from-package"
+          ]
+        },
+        {
+          "name": "Android dependency com.google.android.gms:play-services-auth-api-phone",
+          "version": "18.0.2",
+          "license": "UNKNOWN",
+          "flags": [
+            "unknown-licence",
+            "licence-text-missing-from-package"
+          ]
+        },
+        {
+          "name": "Android dependency com.google.android.gms:play-services-auth-base",
+          "version": "18.0.10",
+          "license": "UNKNOWN",
+          "flags": [
+            "unknown-licence",
+            "licence-text-missing-from-package"
+          ]
+        },
+        {
+          "name": "Android dependency com.google.android.gms:play-services-auth-blockstore",
+          "version": "16.4.0",
+          "license": "UNKNOWN",
+          "flags": [
+            "unknown-licence",
+            "licence-text-missing-from-package"
+          ]
+        },
+        {
+          "name": "Android dependency com.google.android.gms:play-services-base",
+          "version": "18.5.0",
+          "license": "UNKNOWN",
+          "flags": [
+            "unknown-licence",
+            "licence-text-missing-from-package"
+          ]
+        },
+        {
+          "name": "Android dependency com.google.android.gms:play-services-basement",
+          "version": "18.5.0",
+          "license": "UNKNOWN",
+          "flags": [
+            "unknown-licence",
+            "licence-text-missing-from-package"
+          ]
+        },
+        {
+          "name": "Android dependency com.google.android.gms:play-services-fido",
+          "version": "21.0.0",
+          "license": "UNKNOWN",
+          "flags": [
+            "unknown-licence",
+            "licence-text-missing-from-package"
+          ]
+        },
+        {
+          "name": "Android dependency com.google.android.gms:play-services-identity-credentials",
+          "version": "16.0.0-alpha08",
+          "license": "UNKNOWN",
+          "flags": [
+            "unknown-licence",
+            "licence-text-missing-from-package"
+          ]
+        },
+        {
+          "name": "Android dependency com.google.android.gms:play-services-tasks",
+          "version": "18.2.0",
+          "license": "UNKNOWN",
+          "flags": [
+            "unknown-licence",
+            "licence-text-missing-from-package"
+          ]
+        },
+        {
+          "name": "Android dependency com.google.android.libraries.identity.googleid:googleid",
+          "version": "1.1.1",
+          "license": "UNKNOWN",
+          "flags": [
+            "unknown-licence",
+            "licence-text-missing-from-package"
+          ]
+        },
+        {
+          "name": "bs58",
+          "version": "4.0.1",
+          "license": "MIT",
+          "flags": [
+            "licence-text-missing-from-package"
+          ]
+        },
+        {
+          "name": "Bun JavaScript runtime (libeliza_bun.so)",
+          "version": "1.4.2 (oven-sh/bun 744846f844374847c902b5e7fd59b4342a51ef99)",
+          "license": "license unverified",
+          "flags": [
+            "copyleft-weak",
+            "unverified"
+          ]
+        },
+        {
+          "name": "clean-git-ref",
+          "version": "2.0.1",
+          "license": "Apache-2.0",
+          "flags": [
+            "licence-text-missing-from-package"
+          ]
+        },
+        {
+          "name": "Denton typeface",
+          "version": "1.004;FEAKit 1.0",
+          "license": "LicenseRef-Commercial-Font",
+          "flags": [
+            "proprietary-licence-held-outside-repo"
+          ]
+        },
+        {
+          "name": "diff3",
+          "version": "0.0.3",
+          "license": "MIT",
+          "flags": [
+            "licence-text-missing-from-package"
+          ]
+        },
+        {
+          "name": "drizzle-orm",
+          "version": "0.45.4",
+          "license": "Apache-2.0",
+          "flags": [
+            "licence-text-missing-from-package"
+          ]
+        },
+        {
+          "name": "drizzle-zod",
+          "version": "0.8.3",
+          "license": "Apache-2.0",
+          "flags": [
+            "licence-text-missing-from-package"
+          ]
+        },
+        {
+          "name": "elizaOS voice runtime sources (Paradee graph, kokoro layers, eliza-inference FFI, elizavoice-jni) in libelizainference",
+          "version": "elizaOS llama.cpp fork 0d9fd4b9db239bbf851068f98c99f4263f8c05c5 (eliza c307290782dd7fa22c2c826ccc6a929574ea418d); ABIs arm64-v8a, x86_64; recorded bytes, not yet device-qualified",
+          "license": "license unverified",
+          "flags": [
+            "licence-text-missing-from-package",
+            "unverified"
+          ]
+        },
+        {
+          "name": "encode-utf8",
+          "version": "1.0.3",
+          "license": "MIT",
+          "flags": [
+            "licence-text-missing-from-package"
+          ]
+        },
+        {
+          "name": "eSpeak NG 1.52.0 (statically linked into libelizainference)",
+          "version": "elizaOS llama.cpp fork 0d9fd4b9db239bbf851068f98c99f4263f8c05c5 (eliza c307290782dd7fa22c2c826ccc6a929574ea418d); ABIs arm64-v8a, x86_64; recorded bytes, not yet device-qualified",
+          "license": "GPL-3.0-or-later",
+          "flags": [
+            "copyleft-strong",
+            "licence-text-missing-from-package"
+          ]
+        },
+        {
+          "name": "eSpeak NG 1.52.0 English data (voice bundle, tts/paradee/espeak-ng-data)",
+          "version": "tts/paradee/espeak-ng-data/phontab sha256 1b40690667e1e9aa1ba5e5234773c799e7e72ea751426e5150423d53c3f24fa2 (58652 bytes); tts/paradee/espeak-ng-data/phonindex sha256 384e5fa6f714ba5356c58008249b78699c31c1ad044b243068d263fb806b7d73 (43316 bytes); tts/paradee/espeak-ng-data/phondata sha256 a0b643b155cb6b12628d9e7865b57d9fca0d35844614f2594a5e009c80c80bb4 (554740 bytes); tts/paradee/espeak-ng-data/intonations sha256 031a105bf6bb2ebcd73a2c579ccfb42469b27266db0078af65ae298fd3588b21 (2312 bytes); tts/paradee/espeak-ng-data/en_dict sha256 1053f74a34af38abb6fbd64b7838dacbc655a687c48ce1bb663d364a127b05de (168204 bytes); tts/paradee/espeak-ng-data/lang/gmw/en sha256 4605d5330801de3641c6e366d15f129ea1f5ffbce8722642aba01ace07ab9c83 (140 bytes); tts/paradee/espeak-ng-data/lang/gmw/en-US sha256 41534c2a22df5dd4f1052ff9e1a33a3ea7bff5a26b5c02bdad5ba8ddb7524704 (257 bytes)",
+          "license": "GPL-3.0-or-later",
+          "flags": [
+            "copyleft-strong",
+            "licence-text-missing-from-package"
+          ]
+        },
+        {
+          "name": "eth-query",
+          "version": "2.1.2",
+          "license": "ISC",
+          "flags": [
+            "licence-text-missing-from-package"
+          ]
+        },
+        {
+          "name": "exif-parser",
+          "version": "0.1.12",
+          "license": "MIT",
+          "flags": [
+            "unverified"
+          ]
+        },
+        {
+          "name": "ffmpeg-static",
+          "version": "5.3.0",
+          "license": "GPL-3.0-or-later",
+          "flags": [
+            "copyleft-strong"
+          ]
+        },
+        {
+          "name": "js-tiktoken",
+          "version": "1.0.21",
+          "license": "MIT",
+          "flags": [
+            "licence-text-missing-from-package"
+          ]
+        },
+        {
+          "name": "json-rpc-random-id",
+          "version": "1.0.1",
+          "license": "ISC",
+          "flags": [
+            "licence-text-missing-from-package"
+          ]
+        },
+        {
+          "name": "llama.cpp, ggml and mtmd (libelizainference)",
+          "version": "elizaOS llama.cpp fork 0d9fd4b9db239bbf851068f98c99f4263f8c05c5 (eliza c307290782dd7fa22c2c826ccc6a929574ea418d); ABIs arm64-v8a, x86_64; recorded bytes, not yet device-qualified",
+          "license": "MIT",
+          "flags": [
+            "licence-text-missing-from-package"
+          ]
+        },
+        {
+          "name": "LLVM libc++ (libc++_shared.so from the Android NDK)",
+          "version": "elizaOS llama.cpp fork 0d9fd4b9db239bbf851068f98c99f4263f8c05c5 (eliza c307290782dd7fa22c2c826ccc6a929574ea418d); ABIs arm64-v8a, x86_64; recorded bytes, not yet device-qualified",
+          "license": "Apache-2.0 WITH LLVM-exception",
+          "flags": [
+            "licence-text-missing-from-package"
+          ]
+        },
+        {
+          "name": "mediabunny",
+          "version": "1.61.0",
+          "license": "MPL-2.0",
+          "flags": [
+            "copyleft-weak"
+          ]
+        },
+        {
+          "name": "misaki English (US) lexicon (g2p-lexicon)",
+          "version": "tts/paradee/misaki-en-us.lex sha256 fbf09090cff0a41f3f579bf03ab9fc42710b04d7284767b10467a5f182c23925 (12947790 bytes)",
+          "license": "Apache-2.0",
+          "flags": [
+            "licence-text-missing-from-package"
+          ]
+        },
+        {
+          "name": "misaki G2P (C++ port in libelizainference)",
+          "version": "elizaOS llama.cpp fork 0d9fd4b9db239bbf851068f98c99f4263f8c05c5 (eliza c307290782dd7fa22c2c826ccc6a929574ea418d); ABIs arm64-v8a, x86_64; recorded bytes, not yet device-qualified",
+          "license": "Apache-2.0",
+          "flags": [
+            "licence-text-missing-from-package"
+          ]
+        },
+        {
+          "name": "murmurhash-js",
+          "version": "1.0.0",
+          "license": "MIT",
+          "flags": [
+            "licence-text-missing-from-package"
+          ]
+        },
+        {
+          "name": "omggif",
+          "version": "1.0.10",
+          "license": "MIT",
+          "flags": [
+            "licence-text-missing-from-package"
+          ]
+        },
+        {
+          "name": "On-device elizaOS agent runtime payload",
+          "version": "pinned upstream runtime when present in the APK payload",
+          "license": "license unverified",
+          "flags": [
+            "unverified"
+          ]
+        },
+        {
+          "name": "OpenStreetMap data",
+          "version": "regional extract served by the configured Maps endpoint",
+          "license": "ODbL-1.0",
+          "flags": [
+            "share-alike-data"
+          ]
+        },
+        {
+          "name": "Paradee-8M v1.1 (F32 GGUF) (tts-model)",
+          "version": "tts/paradee/paradee-8m-v1_1.gguf sha256 f205ab055f0120d571aa6fda2deadde1e6fbc88e8d8bd56a592917fd0e50892e (31275232 bytes)",
+          "license": "Apache-2.0",
+          "flags": [
+            "licence-text-missing-from-package"
+          ]
+        },
+        {
+          "name": "Parakeet-TDT decoder (tools/parakeet parakeet_lib, statically linked into libelizainference)",
+          "version": "elizaOS llama.cpp fork 0d9fd4b9db239bbf851068f98c99f4263f8c05c5 (eliza c307290782dd7fa22c2c826ccc6a929574ea418d); ABIs arm64-v8a, x86_64; recorded bytes, not yet device-qualified",
+          "license": "MIT",
+          "flags": [
+            "licence-text-missing-from-package"
+          ]
+        },
+        {
+          "name": "parse-bmfont-ascii",
+          "version": "1.0.6",
+          "license": "MIT",
+          "flags": [
+            "licence-text-missing-from-package"
+          ]
+        },
+        {
+          "name": "pdf.js QuickJS sandbox",
+          "version": "bundled with pdfjs-dist 6.3.289",
+          "license": "license unverified",
+          "flags": [
+            "licence-text-missing-from-package",
+            "unverified"
+          ]
+        },
+        {
+          "name": "pdf.js standard fonts: Liberation",
+          "version": "bundled with pdfjs-dist 6.3.289",
+          "license": "GPL-2.0-only WITH Font-exception-2.0",
+          "flags": [
+            "copyleft-strong"
+          ]
+        },
+        {
+          "name": "pg-types",
+          "version": "2.2.0",
+          "license": "MIT",
+          "flags": [
+            "licence-text-missing-from-package"
+          ]
+        },
+        {
+          "name": "pgpass",
+          "version": "1.0.5",
+          "license": "MIT",
+          "flags": [
+            "licence-text-missing-from-package"
+          ]
+        },
+        {
+          "name": "Phonon-2 (Parakeet-TDT 0.6B, five-value GGUF; ASR slot model) (asr-model)",
+          "version": "asr/phonon-2-fv5.gguf sha256 c0f6ad42f0a5b481904416077dde0a1a78e5b8642295fdf2356ace822588c3df (208932352 bytes)",
+          "license": "CC-BY-4.0",
+          "flags": [
+            "unverified",
+            "permissive-not-previously-listed"
+          ]
+        },
+        {
+          "name": "porto",
+          "version": "0.2.35",
+          "license": "MIT",
+          "flags": [
+            "licence-text-missing-from-package"
+          ]
+        },
+        {
+          "name": "react-remove-scroll-bar",
+          "version": "2.3.8",
+          "license": "MIT",
+          "flags": [
+            "licence-text-missing-from-package"
+          ]
+        },
+        {
+          "name": "rpc-websockets",
+          "version": "9.3.10",
+          "license": "LGPL-3.0-only",
+          "flags": [
+            "copyleft-weak",
+            "licence-text-missing-from-package"
+          ]
+        },
+        {
+          "name": "sax",
+          "version": "1.6.1",
+          "license": "BlueOak-1.0.0",
+          "flags": [
+            "permissive-not-previously-listed"
+          ]
+        },
+        {
+          "name": "Silero VAD (graph in libelizainference)",
+          "version": "elizaOS llama.cpp fork 0d9fd4b9db239bbf851068f98c99f4263f8c05c5 (eliza c307290782dd7fa22c2c826ccc6a929574ea418d); ABIs arm64-v8a, x86_64; recorded bytes, not yet device-qualified",
+          "license": "MIT",
+          "flags": [
+            "licence-text-missing-from-package"
+          ]
+        },
+        {
+          "name": "Silero VAD v5 (GGUF) (vad-model)",
+          "version": "vad/silero-vad-v5.gguf sha256 d348cd6d87ea53dcd3e6680698c88be326082e27dae899adef653d090bee4995 (620736 bytes)",
+          "license": "MIT",
+          "flags": [
+            "licence-text-missing-from-package"
+          ]
+        },
+        {
+          "name": "text-encoding-utf-8",
+          "version": "1.0.2",
+          "license": "Unlicense",
+          "flags": [
+            "unverified",
+            "permissive-not-previously-listed"
+          ]
+        },
+        {
+          "name": "tr46",
+          "version": "0.0.3",
+          "license": "MIT",
+          "flags": [
+            "licence-text-missing-from-package"
+          ]
+        },
+        {
+          "name": "ua-parser-js",
+          "version": "2.0.10",
+          "license": "AGPL-3.0-or-later",
+          "flags": [
+            "copyleft-strong",
+            "network-copyleft"
+          ]
+        },
+        {
+          "name": "uint8arrays",
+          "version": "3.1.0",
+          "license": "MIT",
+          "flags": [
+            "licence-text-missing-from-package"
+          ]
+        },
+        {
+          "name": "url-template",
+          "version": "2.0.8",
+          "license": "BSD",
+          "flags": [
+            "unknown-licence"
+          ]
+        }
+      ],
+      "fontLicenceCheck": {
+        "check": "unresolved-font-licence",
+        "status": "resolved-by-owner-statement",
+        "blocksDistribution": false,
+        "items": [],
+        "resolved": [
+          "unresolved-font-licence: resolved-by-owner-statement: Denton typeface (denton-300.woff2) is proprietary; the owner states the licence is held and its document is kept outside this repository (licenses/font-licenses.json, owner decision A-21)"
+        ]
+      },
+      "licenceBlockers": [],
+      "runtime": "PACKAGED",
+      "voiceHost": {
+        "packaged": true,
+        "asr": true,
+        "differences": [],
+        "qualified": false
+      }
+    },
+    {
+      "file": "artifacts/standalone-release-unsigned.apk",
+      "packageName": "ai.elizaresearch.alphaphone",
+      "home": false,
+      "launcher": true,
+      "debuggable": false,
+      "sha256": "7a3e84c784263263460bdba3fb89233d3b556156b865cc06356488e4533b2149",
+      "webPayload": true,
+      "variant": "standalone",
+      "mode": "release",
+      "versionCode": 12,
+      "versionName": "0.1.0-native-c3072907",
+      "signed": false,
+      "signerSha256": null,
+      "signerApiLevel": null,
+      "exportedComponents": [
+        "ai.eliza.plugins.passwords.ElizaPasswordAutofillService",
+        "ai.elizaresearch.alphaphone.AlphaAssistActivity",
+        "ai.elizaresearch.alphaphone.AlphaNotificationListener",
+        "ai.elizaresearch.alphaphone.AlphaQuickSettingsTile",
+        "ai.elizaresearch.alphaphone.MainActivity",
+        "ai.elizaresearch.alphaphone.release.DataIntegrityProvider",
+        "androidx.profileinstaller.ProfileInstallReceiver",
+        "androidx.work.impl.background.systemjob.SystemJobService",
+        "androidx.work.impl.diagnostics.DiagnosticsReceiver",
+        "com.google.android.gms.auth.api.signin.RevocationBoundService"
+      ],
+      "appLinks": {
+        "present": false,
+        "hosts": []
+      },
+      "testMocks": false,
+      "bundleAudit": "passed",
+      "runtimeNotices": true,
+      "licenceFlags": [
+        {
+          "name": "@ai-sdk/provider-utils",
+          "version": "4.0.54",
+          "license": "Apache-2.0",
+          "flags": [
+            "licence-text-missing-from-package"
+          ]
+        },
+        {
+          "name": "@ai-sdk/provider-utils",
+          "version": "5.0.47",
+          "license": "Apache-2.0",
+          "flags": [
+            "licence-text-missing-from-package"
+          ]
+        },
+        {
+          "name": "@lit-labs/ssr-dom-shim",
+          "version": "1.6.0",
+          "license": "BSD-3-Clause",
+          "flags": [
+            "licence-text-missing-from-package"
+          ]
+        },
+        {
+          "name": "@metamask/sdk",
+          "version": "0.33.1",
+          "license": "UNKNOWN",
+          "flags": [
+            "unknown-licence",
+            "non-open-source-terms"
+          ]
+        },
+        {
+          "name": "@metamask/sdk-analytics",
+          "version": "0.0.5",
+          "license": "MIT",
+          "flags": [
+            "licence-text-missing-from-package"
+          ]
+        },
+        {
+          "name": "@radix-ui/react-compose-refs",
+          "version": "1.1.2",
+          "license": "MIT",
+          "flags": [
+            "licence-text-missing-from-package"
+          ]
+        },
+        {
+          "name": "@safe-global/safe-apps-provider",
+          "version": "0.18.6",
+          "license": "MIT",
+          "flags": [
+            "licence-text-missing-from-package"
+          ]
+        },
+        {
+          "name": "@safe-global/safe-apps-sdk",
+          "version": "9.1.0",
+          "license": "MIT",
+          "flags": [
+            "licence-text-missing-from-package"
+          ]
+        },
+        {
+          "name": "@sapphire/async-queue",
+          "version": "1.5.5",
+          "license": "MIT",
+          "flags": [
+            "licence-text-missing-from-package"
+          ]
+        },
+        {
+          "name": "@sapphire/snowflake",
+          "version": "3.5.5",
+          "license": "MIT",
+          "flags": [
+            "licence-text-missing-from-package"
+          ]
+        },
+        {
+          "name": "@smthrs/agents",
+          "version": "0.35.0",
+          "license": "MIT",
+          "flags": [
+            "unverified"
+          ]
+        },
+        {
+          "name": "@smthrs/components",
+          "version": "0.35.0",
+          "license": "MIT",
+          "flags": [
+            "unverified"
+          ]
+        },
+        {
+          "name": "@smthrs/db",
+          "version": "0.35.0",
+          "license": "MIT",
+          "flags": [
+            "unverified"
+          ]
+        },
+        {
+          "name": "@smthrs/driver",
+          "version": "0.35.0",
+          "license": "MIT",
+          "flags": [
+            "unverified"
+          ]
+        },
+        {
+          "name": "@smthrs/engine",
+          "version": "0.35.0",
+          "license": "MIT",
+          "flags": [
+            "unverified"
+          ]
+        },
+        {
+          "name": "@smthrs/errors",
+          "version": "0.35.0",
+          "license": "MIT",
+          "flags": [
+            "unverified"
+          ]
+        },
+        {
+          "name": "@smthrs/graph",
+          "version": "0.35.0",
+          "license": "MIT",
+          "flags": [
+            "unverified"
+          ]
+        },
+        {
+          "name": "@smthrs/memory",
+          "version": "0.35.0",
+          "license": "MIT",
+          "flags": [
+            "unverified"
+          ]
+        },
+        {
+          "name": "@smthrs/observability",
+          "version": "0.35.0",
+          "license": "MIT",
+          "flags": [
+            "unverified"
+          ]
+        },
+        {
+          "name": "@smthrs/react-reconciler",
+          "version": "0.35.0",
+          "license": "MIT",
+          "flags": [
+            "unverified"
+          ]
+        },
+        {
+          "name": "@smthrs/sandbox",
+          "version": "0.35.0",
+          "license": "MIT",
+          "flags": [
+            "unverified"
+          ]
+        },
+        {
+          "name": "@smthrs/scheduler",
+          "version": "0.35.0",
+          "license": "MIT",
+          "flags": [
+            "unverified"
+          ]
+        },
+        {
+          "name": "@smthrs/scorers",
+          "version": "0.35.0",
+          "license": "MIT",
+          "flags": [
+            "unverified"
+          ]
+        },
+        {
+          "name": "@smthrs/time-travel",
+          "version": "0.35.0",
+          "license": "MIT",
+          "flags": [
+            "unverified"
+          ]
+        },
+        {
+          "name": "@smthrs/tool-context",
+          "version": "0.35.0",
+          "license": "MIT",
+          "flags": [
+            "unverified"
+          ]
+        },
+        {
+          "name": "@smthrs/vcs",
+          "version": "0.35.0",
+          "license": "MIT",
+          "flags": [
+            "unverified"
+          ]
+        },
+        {
+          "name": "@solflare-wallet/sdk",
+          "version": "1.4.2",
+          "license": "Apache-2.0",
+          "flags": [
+            "licence-text-missing-from-package"
+          ]
+        },
+        {
+          "name": "@tesseract.js-data/eng",
+          "version": "1.0.0",
+          "license": "MIT",
+          "flags": [
+            "licence-text-missing-from-package"
+          ]
+        },
+        {
+          "name": "@vectorize-io/hindsight-client",
+          "version": "0.8.4",
+          "license": "MIT",
+          "flags": [
+            "licence-text-missing-from-package"
+          ]
+        },
+        {
+          "name": "Android dependency com.google.android.gms:play-services-auth",
+          "version": "21.1.1",
+          "license": "UNKNOWN",
+          "flags": [
+            "unknown-licence",
+            "licence-text-missing-from-package"
+          ]
+        },
+        {
+          "name": "Android dependency com.google.android.gms:play-services-auth-api-phone",
+          "version": "18.0.2",
+          "license": "UNKNOWN",
+          "flags": [
+            "unknown-licence",
+            "licence-text-missing-from-package"
+          ]
+        },
+        {
+          "name": "Android dependency com.google.android.gms:play-services-auth-base",
+          "version": "18.0.10",
+          "license": "UNKNOWN",
+          "flags": [
+            "unknown-licence",
+            "licence-text-missing-from-package"
+          ]
+        },
+        {
+          "name": "Android dependency com.google.android.gms:play-services-auth-blockstore",
+          "version": "16.4.0",
+          "license": "UNKNOWN",
+          "flags": [
+            "unknown-licence",
+            "licence-text-missing-from-package"
+          ]
+        },
+        {
+          "name": "Android dependency com.google.android.gms:play-services-base",
+          "version": "18.5.0",
+          "license": "UNKNOWN",
+          "flags": [
+            "unknown-licence",
+            "licence-text-missing-from-package"
+          ]
+        },
+        {
+          "name": "Android dependency com.google.android.gms:play-services-basement",
+          "version": "18.5.0",
+          "license": "UNKNOWN",
+          "flags": [
+            "unknown-licence",
+            "licence-text-missing-from-package"
+          ]
+        },
+        {
+          "name": "Android dependency com.google.android.gms:play-services-fido",
+          "version": "21.0.0",
+          "license": "UNKNOWN",
+          "flags": [
+            "unknown-licence",
+            "licence-text-missing-from-package"
+          ]
+        },
+        {
+          "name": "Android dependency com.google.android.gms:play-services-identity-credentials",
+          "version": "16.0.0-alpha08",
+          "license": "UNKNOWN",
+          "flags": [
+            "unknown-licence",
+            "licence-text-missing-from-package"
+          ]
+        },
+        {
+          "name": "Android dependency com.google.android.gms:play-services-tasks",
+          "version": "18.2.0",
+          "license": "UNKNOWN",
+          "flags": [
+            "unknown-licence",
+            "licence-text-missing-from-package"
+          ]
+        },
+        {
+          "name": "Android dependency com.google.android.libraries.identity.googleid:googleid",
+          "version": "1.1.1",
+          "license": "UNKNOWN",
+          "flags": [
+            "unknown-licence",
+            "licence-text-missing-from-package"
+          ]
+        },
+        {
+          "name": "bs58",
+          "version": "4.0.1",
+          "license": "MIT",
+          "flags": [
+            "licence-text-missing-from-package"
+          ]
+        },
+        {
+          "name": "Bun JavaScript runtime (libeliza_bun.so)",
+          "version": "1.4.2 (oven-sh/bun 744846f844374847c902b5e7fd59b4342a51ef99)",
+          "license": "license unverified",
+          "flags": [
+            "copyleft-weak",
+            "unverified"
+          ]
+        },
+        {
+          "name": "clean-git-ref",
+          "version": "2.0.1",
+          "license": "Apache-2.0",
+          "flags": [
+            "licence-text-missing-from-package"
+          ]
+        },
+        {
+          "name": "Denton typeface",
+          "version": "1.004;FEAKit 1.0",
+          "license": "LicenseRef-Commercial-Font",
+          "flags": [
+            "proprietary-licence-held-outside-repo"
+          ]
+        },
+        {
+          "name": "diff3",
+          "version": "0.0.3",
+          "license": "MIT",
+          "flags": [
+            "licence-text-missing-from-package"
+          ]
+        },
+        {
+          "name": "drizzle-orm",
+          "version": "0.45.4",
+          "license": "Apache-2.0",
+          "flags": [
+            "licence-text-missing-from-package"
+          ]
+        },
+        {
+          "name": "drizzle-zod",
+          "version": "0.8.3",
+          "license": "Apache-2.0",
+          "flags": [
+            "licence-text-missing-from-package"
+          ]
+        },
+        {
+          "name": "elizaOS voice runtime sources (Paradee graph, kokoro layers, eliza-inference FFI, elizavoice-jni) in libelizainference",
+          "version": "elizaOS llama.cpp fork 0d9fd4b9db239bbf851068f98c99f4263f8c05c5 (eliza c307290782dd7fa22c2c826ccc6a929574ea418d); ABIs arm64-v8a, x86_64; recorded bytes, not yet device-qualified",
+          "license": "license unverified",
+          "flags": [
+            "licence-text-missing-from-package",
+            "unverified"
+          ]
+        },
+        {
+          "name": "encode-utf8",
+          "version": "1.0.3",
+          "license": "MIT",
+          "flags": [
+            "licence-text-missing-from-package"
+          ]
+        },
+        {
+          "name": "eSpeak NG 1.52.0 (statically linked into libelizainference)",
+          "version": "elizaOS llama.cpp fork 0d9fd4b9db239bbf851068f98c99f4263f8c05c5 (eliza c307290782dd7fa22c2c826ccc6a929574ea418d); ABIs arm64-v8a, x86_64; recorded bytes, not yet device-qualified",
+          "license": "GPL-3.0-or-later",
+          "flags": [
+            "copyleft-strong",
+            "licence-text-missing-from-package"
+          ]
+        },
+        {
+          "name": "eSpeak NG 1.52.0 English data (voice bundle, tts/paradee/espeak-ng-data)",
+          "version": "tts/paradee/espeak-ng-data/phontab sha256 1b40690667e1e9aa1ba5e5234773c799e7e72ea751426e5150423d53c3f24fa2 (58652 bytes); tts/paradee/espeak-ng-data/phonindex sha256 384e5fa6f714ba5356c58008249b78699c31c1ad044b243068d263fb806b7d73 (43316 bytes); tts/paradee/espeak-ng-data/phondata sha256 a0b643b155cb6b12628d9e7865b57d9fca0d35844614f2594a5e009c80c80bb4 (554740 bytes); tts/paradee/espeak-ng-data/intonations sha256 031a105bf6bb2ebcd73a2c579ccfb42469b27266db0078af65ae298fd3588b21 (2312 bytes); tts/paradee/espeak-ng-data/en_dict sha256 1053f74a34af38abb6fbd64b7838dacbc655a687c48ce1bb663d364a127b05de (168204 bytes); tts/paradee/espeak-ng-data/lang/gmw/en sha256 4605d5330801de3641c6e366d15f129ea1f5ffbce8722642aba01ace07ab9c83 (140 bytes); tts/paradee/espeak-ng-data/lang/gmw/en-US sha256 41534c2a22df5dd4f1052ff9e1a33a3ea7bff5a26b5c02bdad5ba8ddb7524704 (257 bytes)",
+          "license": "GPL-3.0-or-later",
+          "flags": [
+            "copyleft-strong",
+            "licence-text-missing-from-package"
+          ]
+        },
+        {
+          "name": "eth-query",
+          "version": "2.1.2",
+          "license": "ISC",
+          "flags": [
+            "licence-text-missing-from-package"
+          ]
+        },
+        {
+          "name": "exif-parser",
+          "version": "0.1.12",
+          "license": "MIT",
+          "flags": [
+            "unverified"
+          ]
+        },
+        {
+          "name": "ffmpeg-static",
+          "version": "5.3.0",
+          "license": "GPL-3.0-or-later",
+          "flags": [
+            "copyleft-strong"
+          ]
+        },
+        {
+          "name": "js-tiktoken",
+          "version": "1.0.21",
+          "license": "MIT",
+          "flags": [
+            "licence-text-missing-from-package"
+          ]
+        },
+        {
+          "name": "json-rpc-random-id",
+          "version": "1.0.1",
+          "license": "ISC",
+          "flags": [
+            "licence-text-missing-from-package"
+          ]
+        },
+        {
+          "name": "llama.cpp, ggml and mtmd (libelizainference)",
+          "version": "elizaOS llama.cpp fork 0d9fd4b9db239bbf851068f98c99f4263f8c05c5 (eliza c307290782dd7fa22c2c826ccc6a929574ea418d); ABIs arm64-v8a, x86_64; recorded bytes, not yet device-qualified",
+          "license": "MIT",
+          "flags": [
+            "licence-text-missing-from-package"
+          ]
+        },
+        {
+          "name": "LLVM libc++ (libc++_shared.so from the Android NDK)",
+          "version": "elizaOS llama.cpp fork 0d9fd4b9db239bbf851068f98c99f4263f8c05c5 (eliza c307290782dd7fa22c2c826ccc6a929574ea418d); ABIs arm64-v8a, x86_64; recorded bytes, not yet device-qualified",
+          "license": "Apache-2.0 WITH LLVM-exception",
+          "flags": [
+            "licence-text-missing-from-package"
+          ]
+        },
+        {
+          "name": "mediabunny",
+          "version": "1.61.0",
+          "license": "MPL-2.0",
+          "flags": [
+            "copyleft-weak"
+          ]
+        },
+        {
+          "name": "misaki English (US) lexicon (g2p-lexicon)",
+          "version": "tts/paradee/misaki-en-us.lex sha256 fbf09090cff0a41f3f579bf03ab9fc42710b04d7284767b10467a5f182c23925 (12947790 bytes)",
+          "license": "Apache-2.0",
+          "flags": [
+            "licence-text-missing-from-package"
+          ]
+        },
+        {
+          "name": "misaki G2P (C++ port in libelizainference)",
+          "version": "elizaOS llama.cpp fork 0d9fd4b9db239bbf851068f98c99f4263f8c05c5 (eliza c307290782dd7fa22c2c826ccc6a929574ea418d); ABIs arm64-v8a, x86_64; recorded bytes, not yet device-qualified",
+          "license": "Apache-2.0",
+          "flags": [
+            "licence-text-missing-from-package"
+          ]
+        },
+        {
+          "name": "murmurhash-js",
+          "version": "1.0.0",
+          "license": "MIT",
+          "flags": [
+            "licence-text-missing-from-package"
+          ]
+        },
+        {
+          "name": "omggif",
+          "version": "1.0.10",
+          "license": "MIT",
+          "flags": [
+            "licence-text-missing-from-package"
+          ]
+        },
+        {
+          "name": "On-device elizaOS agent runtime payload",
+          "version": "pinned upstream runtime when present in the APK payload",
+          "license": "license unverified",
+          "flags": [
+            "unverified"
+          ]
+        },
+        {
+          "name": "OpenStreetMap data",
+          "version": "regional extract served by the configured Maps endpoint",
+          "license": "ODbL-1.0",
+          "flags": [
+            "share-alike-data"
+          ]
+        },
+        {
+          "name": "Paradee-8M v1.1 (F32 GGUF) (tts-model)",
+          "version": "tts/paradee/paradee-8m-v1_1.gguf sha256 f205ab055f0120d571aa6fda2deadde1e6fbc88e8d8bd56a592917fd0e50892e (31275232 bytes)",
+          "license": "Apache-2.0",
+          "flags": [
+            "licence-text-missing-from-package"
+          ]
+        },
+        {
+          "name": "Parakeet-TDT decoder (tools/parakeet parakeet_lib, statically linked into libelizainference)",
+          "version": "elizaOS llama.cpp fork 0d9fd4b9db239bbf851068f98c99f4263f8c05c5 (eliza c307290782dd7fa22c2c826ccc6a929574ea418d); ABIs arm64-v8a, x86_64; recorded bytes, not yet device-qualified",
+          "license": "MIT",
+          "flags": [
+            "licence-text-missing-from-package"
+          ]
+        },
+        {
+          "name": "parse-bmfont-ascii",
+          "version": "1.0.6",
+          "license": "MIT",
+          "flags": [
+            "licence-text-missing-from-package"
+          ]
+        },
+        {
+          "name": "pdf.js QuickJS sandbox",
+          "version": "bundled with pdfjs-dist 6.3.289",
+          "license": "license unverified",
+          "flags": [
+            "licence-text-missing-from-package",
+            "unverified"
+          ]
+        },
+        {
+          "name": "pdf.js standard fonts: Liberation",
+          "version": "bundled with pdfjs-dist 6.3.289",
+          "license": "GPL-2.0-only WITH Font-exception-2.0",
+          "flags": [
+            "copyleft-strong"
+          ]
+        },
+        {
+          "name": "pg-types",
+          "version": "2.2.0",
+          "license": "MIT",
+          "flags": [
+            "licence-text-missing-from-package"
+          ]
+        },
+        {
+          "name": "pgpass",
+          "version": "1.0.5",
+          "license": "MIT",
+          "flags": [
+            "licence-text-missing-from-package"
+          ]
+        },
+        {
+          "name": "Phonon-2 (Parakeet-TDT 0.6B, five-value GGUF; ASR slot model) (asr-model)",
+          "version": "asr/phonon-2-fv5.gguf sha256 c0f6ad42f0a5b481904416077dde0a1a78e5b8642295fdf2356ace822588c3df (208932352 bytes)",
+          "license": "CC-BY-4.0",
+          "flags": [
+            "unverified",
+            "permissive-not-previously-listed"
+          ]
+        },
+        {
+          "name": "porto",
+          "version": "0.2.35",
+          "license": "MIT",
+          "flags": [
+            "licence-text-missing-from-package"
+          ]
+        },
+        {
+          "name": "react-remove-scroll-bar",
+          "version": "2.3.8",
+          "license": "MIT",
+          "flags": [
+            "licence-text-missing-from-package"
+          ]
+        },
+        {
+          "name": "rpc-websockets",
+          "version": "9.3.10",
+          "license": "LGPL-3.0-only",
+          "flags": [
+            "copyleft-weak",
+            "licence-text-missing-from-package"
+          ]
+        },
+        {
+          "name": "sax",
+          "version": "1.6.1",
+          "license": "BlueOak-1.0.0",
+          "flags": [
+            "permissive-not-previously-listed"
+          ]
+        },
+        {
+          "name": "Silero VAD (graph in libelizainference)",
+          "version": "elizaOS llama.cpp fork 0d9fd4b9db239bbf851068f98c99f4263f8c05c5 (eliza c307290782dd7fa22c2c826ccc6a929574ea418d); ABIs arm64-v8a, x86_64; recorded bytes, not yet device-qualified",
+          "license": "MIT",
+          "flags": [
+            "licence-text-missing-from-package"
+          ]
+        },
+        {
+          "name": "Silero VAD v5 (GGUF) (vad-model)",
+          "version": "vad/silero-vad-v5.gguf sha256 d348cd6d87ea53dcd3e6680698c88be326082e27dae899adef653d090bee4995 (620736 bytes)",
+          "license": "MIT",
+          "flags": [
+            "licence-text-missing-from-package"
+          ]
+        },
+        {
+          "name": "text-encoding-utf-8",
+          "version": "1.0.2",
+          "license": "Unlicense",
+          "flags": [
+            "unverified",
+            "permissive-not-previously-listed"
+          ]
+        },
+        {
+          "name": "tr46",
+          "version": "0.0.3",
+          "license": "MIT",
+          "flags": [
+            "licence-text-missing-from-package"
+          ]
+        },
+        {
+          "name": "ua-parser-js",
+          "version": "2.0.10",
+          "license": "AGPL-3.0-or-later",
+          "flags": [
+            "copyleft-strong",
+            "network-copyleft"
+          ]
+        },
+        {
+          "name": "uint8arrays",
+          "version": "3.1.0",
+          "license": "MIT",
+          "flags": [
+            "licence-text-missing-from-package"
+          ]
+        },
+        {
+          "name": "url-template",
+          "version": "2.0.8",
+          "license": "BSD",
+          "flags": [
+            "unknown-licence"
+          ]
+        }
+      ],
+      "fontLicenceCheck": {
+        "check": "unresolved-font-licence",
+        "status": "resolved-by-owner-statement",
+        "blocksDistribution": false,
+        "items": [],
+        "resolved": [
+          "unresolved-font-licence: resolved-by-owner-statement: Denton typeface (denton-300.woff2) is proprietary; the owner states the licence is held and its document is kept outside this repository (licenses/font-licenses.json, owner decision A-21)"
+        ]
+      },
+      "licenceBlockers": [],
+      "releaseAdmission": {
+        "failures": [],
+        "blockers": [
+          "unsigned release",
+          "release signer is unset in android/release-signer.json"
+        ],
+        "signerMatches": false
+      },
+      "runtime": "PACKAGED",
+      "voiceHost": {
+        "packaged": true,
+        "asr": true,
+        "differences": [],
+        "qualified": false
+      },
+      "distributable": false
+    },
+    {
+      "file": "artifacts/launcher-debug.apk",
+      "packageName": "ai.elizaresearch.alphaphone",
+      "home": true,
+      "launcher": true,
+      "debuggable": true,
+      "sha256": "7bd88a8ed5522ec33b957c6008061ce85321fd10b641e0983ea26e0b5f11afa1",
+      "webPayload": true,
+      "variant": "launcher",
+      "mode": "debug",
+      "versionCode": 12,
+      "versionName": "0.1.0-native-c3072907",
+      "signed": true,
+      "signerSha256": "2242994d2d237f98d01927999157067df4e2495a8f980451ac3de5d40642584a",
+      "signerApiLevel": null,
+      "exportedComponents": [
+        "ai.eliza.plugins.passwords.ElizaPasswordAutofillService",
+        "ai.elizaresearch.alphaphone.AlphaAssistActivity",
+        "ai.elizaresearch.alphaphone.AlphaNotificationListener",
+        "ai.elizaresearch.alphaphone.AlphaQuickSettingsTile",
+        "ai.elizaresearch.alphaphone.MainActivity",
+        "ai.elizaresearch.alphaphone.release.DataIntegrityProvider",
+        "androidx.profileinstaller.ProfileInstallReceiver",
+        "androidx.work.impl.background.systemjob.SystemJobService",
+        "androidx.work.impl.diagnostics.DiagnosticsReceiver",
+        "com.google.android.gms.auth.api.signin.RevocationBoundService"
+      ],
+      "appLinks": {
+        "present": false,
+        "hosts": []
+      },
+      "testMocks": false,
+      "bundleAudit": "passed",
+      "runtimeNotices": true,
+      "licenceFlags": [
+        {
+          "name": "@ai-sdk/provider-utils",
+          "version": "4.0.54",
+          "license": "Apache-2.0",
+          "flags": [
+            "licence-text-missing-from-package"
+          ]
+        },
+        {
+          "name": "@ai-sdk/provider-utils",
+          "version": "5.0.47",
+          "license": "Apache-2.0",
+          "flags": [
+            "licence-text-missing-from-package"
+          ]
+        },
+        {
+          "name": "@lit-labs/ssr-dom-shim",
+          "version": "1.6.0",
+          "license": "BSD-3-Clause",
+          "flags": [
+            "licence-text-missing-from-package"
+          ]
+        },
+        {
+          "name": "@metamask/sdk",
+          "version": "0.33.1",
+          "license": "UNKNOWN",
+          "flags": [
+            "unknown-licence",
+            "non-open-source-terms"
+          ]
+        },
+        {
+          "name": "@metamask/sdk-analytics",
+          "version": "0.0.5",
+          "license": "MIT",
+          "flags": [
+            "licence-text-missing-from-package"
+          ]
+        },
+        {
+          "name": "@radix-ui/react-compose-refs",
+          "version": "1.1.2",
+          "license": "MIT",
+          "flags": [
+            "licence-text-missing-from-package"
+          ]
+        },
+        {
+          "name": "@safe-global/safe-apps-provider",
+          "version": "0.18.6",
+          "license": "MIT",
+          "flags": [
+            "licence-text-missing-from-package"
+          ]
+        },
+        {
+          "name": "@safe-global/safe-apps-sdk",
+          "version": "9.1.0",
+          "license": "MIT",
+          "flags": [
+            "licence-text-missing-from-package"
+          ]
+        },
+        {
+          "name": "@sapphire/async-queue",
+          "version": "1.5.5",
+          "license": "MIT",
+          "flags": [
+            "licence-text-missing-from-package"
+          ]
+        },
+        {
+          "name": "@sapphire/snowflake",
+          "version": "3.5.5",
+          "license": "MIT",
+          "flags": [
+            "licence-text-missing-from-package"
+          ]
+        },
+        {
+          "name": "@smthrs/agents",
+          "version": "0.35.0",
+          "license": "MIT",
+          "flags": [
+            "unverified"
+          ]
+        },
+        {
+          "name": "@smthrs/components",
+          "version": "0.35.0",
+          "license": "MIT",
+          "flags": [
+            "unverified"
+          ]
+        },
+        {
+          "name": "@smthrs/db",
+          "version": "0.35.0",
+          "license": "MIT",
+          "flags": [
+            "unverified"
+          ]
+        },
+        {
+          "name": "@smthrs/driver",
+          "version": "0.35.0",
+          "license": "MIT",
+          "flags": [
+            "unverified"
+          ]
+        },
+        {
+          "name": "@smthrs/engine",
+          "version": "0.35.0",
+          "license": "MIT",
+          "flags": [
+            "unverified"
+          ]
+        },
+        {
+          "name": "@smthrs/errors",
+          "version": "0.35.0",
+          "license": "MIT",
+          "flags": [
+            "unverified"
+          ]
+        },
+        {
+          "name": "@smthrs/graph",
+          "version": "0.35.0",
+          "license": "MIT",
+          "flags": [
+            "unverified"
+          ]
+        },
+        {
+          "name": "@smthrs/memory",
+          "version": "0.35.0",
+          "license": "MIT",
+          "flags": [
+            "unverified"
+          ]
+        },
+        {
+          "name": "@smthrs/observability",
+          "version": "0.35.0",
+          "license": "MIT",
+          "flags": [
+            "unverified"
+          ]
+        },
+        {
+          "name": "@smthrs/react-reconciler",
+          "version": "0.35.0",
+          "license": "MIT",
+          "flags": [
+            "unverified"
+          ]
+        },
+        {
+          "name": "@smthrs/sandbox",
+          "version": "0.35.0",
+          "license": "MIT",
+          "flags": [
+            "unverified"
+          ]
+        },
+        {
+          "name": "@smthrs/scheduler",
+          "version": "0.35.0",
+          "license": "MIT",
+          "flags": [
+            "unverified"
+          ]
+        },
+        {
+          "name": "@smthrs/scorers",
+          "version": "0.35.0",
+          "license": "MIT",
+          "flags": [
+            "unverified"
+          ]
+        },
+        {
+          "name": "@smthrs/time-travel",
+          "version": "0.35.0",
+          "license": "MIT",
+          "flags": [
+            "unverified"
+          ]
+        },
+        {
+          "name": "@smthrs/tool-context",
+          "version": "0.35.0",
+          "license": "MIT",
+          "flags": [
+            "unverified"
+          ]
+        },
+        {
+          "name": "@smthrs/vcs",
+          "version": "0.35.0",
+          "license": "MIT",
+          "flags": [
+            "unverified"
+          ]
+        },
+        {
+          "name": "@solflare-wallet/sdk",
+          "version": "1.4.2",
+          "license": "Apache-2.0",
+          "flags": [
+            "licence-text-missing-from-package"
+          ]
+        },
+        {
+          "name": "@tesseract.js-data/eng",
+          "version": "1.0.0",
+          "license": "MIT",
+          "flags": [
+            "licence-text-missing-from-package"
+          ]
+        },
+        {
+          "name": "@vectorize-io/hindsight-client",
+          "version": "0.8.4",
+          "license": "MIT",
+          "flags": [
+            "licence-text-missing-from-package"
+          ]
+        },
+        {
+          "name": "Android dependency com.google.android.gms:play-services-auth",
+          "version": "21.1.1",
+          "license": "UNKNOWN",
+          "flags": [
+            "unknown-licence",
+            "licence-text-missing-from-package"
+          ]
+        },
+        {
+          "name": "Android dependency com.google.android.gms:play-services-auth-api-phone",
+          "version": "18.0.2",
+          "license": "UNKNOWN",
+          "flags": [
+            "unknown-licence",
+            "licence-text-missing-from-package"
+          ]
+        },
+        {
+          "name": "Android dependency com.google.android.gms:play-services-auth-base",
+          "version": "18.0.10",
+          "license": "UNKNOWN",
+          "flags": [
+            "unknown-licence",
+            "licence-text-missing-from-package"
+          ]
+        },
+        {
+          "name": "Android dependency com.google.android.gms:play-services-auth-blockstore",
+          "version": "16.4.0",
+          "license": "UNKNOWN",
+          "flags": [
+            "unknown-licence",
+            "licence-text-missing-from-package"
+          ]
+        },
+        {
+          "name": "Android dependency com.google.android.gms:play-services-base",
+          "version": "18.5.0",
+          "license": "UNKNOWN",
+          "flags": [
+            "unknown-licence",
+            "licence-text-missing-from-package"
+          ]
+        },
+        {
+          "name": "Android dependency com.google.android.gms:play-services-basement",
+          "version": "18.5.0",
+          "license": "UNKNOWN",
+          "flags": [
+            "unknown-licence",
+            "licence-text-missing-from-package"
+          ]
+        },
+        {
+          "name": "Android dependency com.google.android.gms:play-services-fido",
+          "version": "21.0.0",
+          "license": "UNKNOWN",
+          "flags": [
+            "unknown-licence",
+            "licence-text-missing-from-package"
+          ]
+        },
+        {
+          "name": "Android dependency com.google.android.gms:play-services-identity-credentials",
+          "version": "16.0.0-alpha08",
+          "license": "UNKNOWN",
+          "flags": [
+            "unknown-licence",
+            "licence-text-missing-from-package"
+          ]
+        },
+        {
+          "name": "Android dependency com.google.android.gms:play-services-tasks",
+          "version": "18.2.0",
+          "license": "UNKNOWN",
+          "flags": [
+            "unknown-licence",
+            "licence-text-missing-from-package"
+          ]
+        },
+        {
+          "name": "Android dependency com.google.android.libraries.identity.googleid:googleid",
+          "version": "1.1.1",
+          "license": "UNKNOWN",
+          "flags": [
+            "unknown-licence",
+            "licence-text-missing-from-package"
+          ]
+        },
+        {
+          "name": "bs58",
+          "version": "4.0.1",
+          "license": "MIT",
+          "flags": [
+            "licence-text-missing-from-package"
+          ]
+        },
+        {
+          "name": "Bun JavaScript runtime (libeliza_bun.so)",
+          "version": "1.4.2 (oven-sh/bun 744846f844374847c902b5e7fd59b4342a51ef99)",
+          "license": "license unverified",
+          "flags": [
+            "copyleft-weak",
+            "unverified"
+          ]
+        },
+        {
+          "name": "clean-git-ref",
+          "version": "2.0.1",
+          "license": "Apache-2.0",
+          "flags": [
+            "licence-text-missing-from-package"
+          ]
+        },
+        {
+          "name": "Denton typeface",
+          "version": "1.004;FEAKit 1.0",
+          "license": "LicenseRef-Commercial-Font",
+          "flags": [
+            "proprietary-licence-held-outside-repo"
+          ]
+        },
+        {
+          "name": "diff3",
+          "version": "0.0.3",
+          "license": "MIT",
+          "flags": [
+            "licence-text-missing-from-package"
+          ]
+        },
+        {
+          "name": "drizzle-orm",
+          "version": "0.45.4",
+          "license": "Apache-2.0",
+          "flags": [
+            "licence-text-missing-from-package"
+          ]
+        },
+        {
+          "name": "drizzle-zod",
+          "version": "0.8.3",
+          "license": "Apache-2.0",
+          "flags": [
+            "licence-text-missing-from-package"
+          ]
+        },
+        {
+          "name": "elizaOS voice runtime sources (Paradee graph, kokoro layers, eliza-inference FFI, elizavoice-jni) in libelizainference",
+          "version": "elizaOS llama.cpp fork 0d9fd4b9db239bbf851068f98c99f4263f8c05c5 (eliza c307290782dd7fa22c2c826ccc6a929574ea418d); ABIs arm64-v8a, x86_64; recorded bytes, not yet device-qualified",
+          "license": "license unverified",
+          "flags": [
+            "licence-text-missing-from-package",
+            "unverified"
+          ]
+        },
+        {
+          "name": "encode-utf8",
+          "version": "1.0.3",
+          "license": "MIT",
+          "flags": [
+            "licence-text-missing-from-package"
+          ]
+        },
+        {
+          "name": "eSpeak NG 1.52.0 (statically linked into libelizainference)",
+          "version": "elizaOS llama.cpp fork 0d9fd4b9db239bbf851068f98c99f4263f8c05c5 (eliza c307290782dd7fa22c2c826ccc6a929574ea418d); ABIs arm64-v8a, x86_64; recorded bytes, not yet device-qualified",
+          "license": "GPL-3.0-or-later",
+          "flags": [
+            "copyleft-strong",
+            "licence-text-missing-from-package"
+          ]
+        },
+        {
+          "name": "eSpeak NG 1.52.0 English data (voice bundle, tts/paradee/espeak-ng-data)",
+          "version": "tts/paradee/espeak-ng-data/phontab sha256 1b40690667e1e9aa1ba5e5234773c799e7e72ea751426e5150423d53c3f24fa2 (58652 bytes); tts/paradee/espeak-ng-data/phonindex sha256 384e5fa6f714ba5356c58008249b78699c31c1ad044b243068d263fb806b7d73 (43316 bytes); tts/paradee/espeak-ng-data/phondata sha256 a0b643b155cb6b12628d9e7865b57d9fca0d35844614f2594a5e009c80c80bb4 (554740 bytes); tts/paradee/espeak-ng-data/intonations sha256 031a105bf6bb2ebcd73a2c579ccfb42469b27266db0078af65ae298fd3588b21 (2312 bytes); tts/paradee/espeak-ng-data/en_dict sha256 1053f74a34af38abb6fbd64b7838dacbc655a687c48ce1bb663d364a127b05de (168204 bytes); tts/paradee/espeak-ng-data/lang/gmw/en sha256 4605d5330801de3641c6e366d15f129ea1f5ffbce8722642aba01ace07ab9c83 (140 bytes); tts/paradee/espeak-ng-data/lang/gmw/en-US sha256 41534c2a22df5dd4f1052ff9e1a33a3ea7bff5a26b5c02bdad5ba8ddb7524704 (257 bytes)",
+          "license": "GPL-3.0-or-later",
+          "flags": [
+            "copyleft-strong",
+            "licence-text-missing-from-package"
+          ]
+        },
+        {
+          "name": "eth-query",
+          "version": "2.1.2",
+          "license": "ISC",
+          "flags": [
+            "licence-text-missing-from-package"
+          ]
+        },
+        {
+          "name": "exif-parser",
+          "version": "0.1.12",
+          "license": "MIT",
+          "flags": [
+            "unverified"
+          ]
+        },
+        {
+          "name": "ffmpeg-static",
+          "version": "5.3.0",
+          "license": "GPL-3.0-or-later",
+          "flags": [
+            "copyleft-strong"
+          ]
+        },
+        {
+          "name": "js-tiktoken",
+          "version": "1.0.21",
+          "license": "MIT",
+          "flags": [
+            "licence-text-missing-from-package"
+          ]
+        },
+        {
+          "name": "json-rpc-random-id",
+          "version": "1.0.1",
+          "license": "ISC",
+          "flags": [
+            "licence-text-missing-from-package"
+          ]
+        },
+        {
+          "name": "llama.cpp, ggml and mtmd (libelizainference)",
+          "version": "elizaOS llama.cpp fork 0d9fd4b9db239bbf851068f98c99f4263f8c05c5 (eliza c307290782dd7fa22c2c826ccc6a929574ea418d); ABIs arm64-v8a, x86_64; recorded bytes, not yet device-qualified",
+          "license": "MIT",
+          "flags": [
+            "licence-text-missing-from-package"
+          ]
+        },
+        {
+          "name": "LLVM libc++ (libc++_shared.so from the Android NDK)",
+          "version": "elizaOS llama.cpp fork 0d9fd4b9db239bbf851068f98c99f4263f8c05c5 (eliza c307290782dd7fa22c2c826ccc6a929574ea418d); ABIs arm64-v8a, x86_64; recorded bytes, not yet device-qualified",
+          "license": "Apache-2.0 WITH LLVM-exception",
+          "flags": [
+            "licence-text-missing-from-package"
+          ]
+        },
+        {
+          "name": "mediabunny",
+          "version": "1.61.0",
+          "license": "MPL-2.0",
+          "flags": [
+            "copyleft-weak"
+          ]
+        },
+        {
+          "name": "misaki English (US) lexicon (g2p-lexicon)",
+          "version": "tts/paradee/misaki-en-us.lex sha256 fbf09090cff0a41f3f579bf03ab9fc42710b04d7284767b10467a5f182c23925 (12947790 bytes)",
+          "license": "Apache-2.0",
+          "flags": [
+            "licence-text-missing-from-package"
+          ]
+        },
+        {
+          "name": "misaki G2P (C++ port in libelizainference)",
+          "version": "elizaOS llama.cpp fork 0d9fd4b9db239bbf851068f98c99f4263f8c05c5 (eliza c307290782dd7fa22c2c826ccc6a929574ea418d); ABIs arm64-v8a, x86_64; recorded bytes, not yet device-qualified",
+          "license": "Apache-2.0",
+          "flags": [
+            "licence-text-missing-from-package"
+          ]
+        },
+        {
+          "name": "murmurhash-js",
+          "version": "1.0.0",
+          "license": "MIT",
+          "flags": [
+            "licence-text-missing-from-package"
+          ]
+        },
+        {
+          "name": "omggif",
+          "version": "1.0.10",
+          "license": "MIT",
+          "flags": [
+            "licence-text-missing-from-package"
+          ]
+        },
+        {
+          "name": "On-device elizaOS agent runtime payload",
+          "version": "pinned upstream runtime when present in the APK payload",
+          "license": "license unverified",
+          "flags": [
+            "unverified"
+          ]
+        },
+        {
+          "name": "OpenStreetMap data",
+          "version": "regional extract served by the configured Maps endpoint",
+          "license": "ODbL-1.0",
+          "flags": [
+            "share-alike-data"
+          ]
+        },
+        {
+          "name": "Paradee-8M v1.1 (F32 GGUF) (tts-model)",
+          "version": "tts/paradee/paradee-8m-v1_1.gguf sha256 f205ab055f0120d571aa6fda2deadde1e6fbc88e8d8bd56a592917fd0e50892e (31275232 bytes)",
+          "license": "Apache-2.0",
+          "flags": [
+            "licence-text-missing-from-package"
+          ]
+        },
+        {
+          "name": "Parakeet-TDT decoder (tools/parakeet parakeet_lib, statically linked into libelizainference)",
+          "version": "elizaOS llama.cpp fork 0d9fd4b9db239bbf851068f98c99f4263f8c05c5 (eliza c307290782dd7fa22c2c826ccc6a929574ea418d); ABIs arm64-v8a, x86_64; recorded bytes, not yet device-qualified",
+          "license": "MIT",
+          "flags": [
+            "licence-text-missing-from-package"
+          ]
+        },
+        {
+          "name": "parse-bmfont-ascii",
+          "version": "1.0.6",
+          "license": "MIT",
+          "flags": [
+            "licence-text-missing-from-package"
+          ]
+        },
+        {
+          "name": "pdf.js QuickJS sandbox",
+          "version": "bundled with pdfjs-dist 6.3.289",
+          "license": "license unverified",
+          "flags": [
+            "licence-text-missing-from-package",
+            "unverified"
+          ]
+        },
+        {
+          "name": "pdf.js standard fonts: Liberation",
+          "version": "bundled with pdfjs-dist 6.3.289",
+          "license": "GPL-2.0-only WITH Font-exception-2.0",
+          "flags": [
+            "copyleft-strong"
+          ]
+        },
+        {
+          "name": "pg-types",
+          "version": "2.2.0",
+          "license": "MIT",
+          "flags": [
+            "licence-text-missing-from-package"
+          ]
+        },
+        {
+          "name": "pgpass",
+          "version": "1.0.5",
+          "license": "MIT",
+          "flags": [
+            "licence-text-missing-from-package"
+          ]
+        },
+        {
+          "name": "Phonon-2 (Parakeet-TDT 0.6B, five-value GGUF; ASR slot model) (asr-model)",
+          "version": "asr/phonon-2-fv5.gguf sha256 c0f6ad42f0a5b481904416077dde0a1a78e5b8642295fdf2356ace822588c3df (208932352 bytes)",
+          "license": "CC-BY-4.0",
+          "flags": [
+            "unverified",
+            "permissive-not-previously-listed"
+          ]
+        },
+        {
+          "name": "porto",
+          "version": "0.2.35",
+          "license": "MIT",
+          "flags": [
+            "licence-text-missing-from-package"
+          ]
+        },
+        {
+          "name": "react-remove-scroll-bar",
+          "version": "2.3.8",
+          "license": "MIT",
+          "flags": [
+            "licence-text-missing-from-package"
+          ]
+        },
+        {
+          "name": "rpc-websockets",
+          "version": "9.3.10",
+          "license": "LGPL-3.0-only",
+          "flags": [
+            "copyleft-weak",
+            "licence-text-missing-from-package"
+          ]
+        },
+        {
+          "name": "sax",
+          "version": "1.6.1",
+          "license": "BlueOak-1.0.0",
+          "flags": [
+            "permissive-not-previously-listed"
+          ]
+        },
+        {
+          "name": "Silero VAD (graph in libelizainference)",
+          "version": "elizaOS llama.cpp fork 0d9fd4b9db239bbf851068f98c99f4263f8c05c5 (eliza c307290782dd7fa22c2c826ccc6a929574ea418d); ABIs arm64-v8a, x86_64; recorded bytes, not yet device-qualified",
+          "license": "MIT",
+          "flags": [
+            "licence-text-missing-from-package"
+          ]
+        },
+        {
+          "name": "Silero VAD v5 (GGUF) (vad-model)",
+          "version": "vad/silero-vad-v5.gguf sha256 d348cd6d87ea53dcd3e6680698c88be326082e27dae899adef653d090bee4995 (620736 bytes)",
+          "license": "MIT",
+          "flags": [
+            "licence-text-missing-from-package"
+          ]
+        },
+        {
+          "name": "text-encoding-utf-8",
+          "version": "1.0.2",
+          "license": "Unlicense",
+          "flags": [
+            "unverified",
+            "permissive-not-previously-listed"
+          ]
+        },
+        {
+          "name": "tr46",
+          "version": "0.0.3",
+          "license": "MIT",
+          "flags": [
+            "licence-text-missing-from-package"
+          ]
+        },
+        {
+          "name": "ua-parser-js",
+          "version": "2.0.10",
+          "license": "AGPL-3.0-or-later",
+          "flags": [
+            "copyleft-strong",
+            "network-copyleft"
+          ]
+        },
+        {
+          "name": "uint8arrays",
+          "version": "3.1.0",
+          "license": "MIT",
+          "flags": [
+            "licence-text-missing-from-package"
+          ]
+        },
+        {
+          "name": "url-template",
+          "version": "2.0.8",
+          "license": "BSD",
+          "flags": [
+            "unknown-licence"
+          ]
+        }
+      ],
+      "fontLicenceCheck": {
+        "check": "unresolved-font-licence",
+        "status": "resolved-by-owner-statement",
+        "blocksDistribution": false,
+        "items": [],
+        "resolved": [
+          "unresolved-font-licence: resolved-by-owner-statement: Denton typeface (denton-300.woff2) is proprietary; the owner states the licence is held and its document is kept outside this repository (licenses/font-licenses.json, owner decision A-21)"
+        ]
+      },
+      "licenceBlockers": [],
+      "runtime": "PACKAGED",
+      "voiceHost": {
+        "packaged": true,
+        "asr": true,
+        "differences": [],
+        "qualified": false
+      }
+    },
+    {
+      "file": "artifacts/launcher-release-unsigned.apk",
+      "packageName": "ai.elizaresearch.alphaphone",
+      "home": true,
+      "launcher": true,
+      "debuggable": false,
+      "sha256": "b45664fb448686c9b485d79de84ee7a659dc63dbc21bbcdd5dd3651b7d457f04",
+      "webPayload": true,
+      "variant": "launcher",
+      "mode": "release",
+      "versionCode": 12,
+      "versionName": "0.1.0-native-c3072907",
+      "signed": false,
+      "signerSha256": null,
+      "signerApiLevel": null,
+      "exportedComponents": [
+        "ai.eliza.plugins.passwords.ElizaPasswordAutofillService",
+        "ai.elizaresearch.alphaphone.AlphaAssistActivity",
+        "ai.elizaresearch.alphaphone.AlphaNotificationListener",
+        "ai.elizaresearch.alphaphone.AlphaQuickSettingsTile",
+        "ai.elizaresearch.alphaphone.MainActivity",
+        "ai.elizaresearch.alphaphone.release.DataIntegrityProvider",
+        "androidx.profileinstaller.ProfileInstallReceiver",
+        "androidx.work.impl.background.systemjob.SystemJobService",
+        "androidx.work.impl.diagnostics.DiagnosticsReceiver",
+        "com.google.android.gms.auth.api.signin.RevocationBoundService"
+      ],
+      "appLinks": {
+        "present": false,
+        "hosts": []
+      },
+      "testMocks": false,
+      "bundleAudit": "passed",
+      "runtimeNotices": true,
+      "licenceFlags": [
+        {
+          "name": "@ai-sdk/provider-utils",
+          "version": "4.0.54",
+          "license": "Apache-2.0",
+          "flags": [
+            "licence-text-missing-from-package"
+          ]
+        },
+        {
+          "name": "@ai-sdk/provider-utils",
+          "version": "5.0.47",
+          "license": "Apache-2.0",
+          "flags": [
+            "licence-text-missing-from-package"
+          ]
+        },
+        {
+          "name": "@lit-labs/ssr-dom-shim",
+          "version": "1.6.0",
+          "license": "BSD-3-Clause",
+          "flags": [
+            "licence-text-missing-from-package"
+          ]
+        },
+        {
+          "name": "@metamask/sdk",
+          "version": "0.33.1",
+          "license": "UNKNOWN",
+          "flags": [
+            "unknown-licence",
+            "non-open-source-terms"
+          ]
+        },
+        {
+          "name": "@metamask/sdk-analytics",
+          "version": "0.0.5",
+          "license": "MIT",
+          "flags": [
+            "licence-text-missing-from-package"
+          ]
+        },
+        {
+          "name": "@radix-ui/react-compose-refs",
+          "version": "1.1.2",
+          "license": "MIT",
+          "flags": [
+            "licence-text-missing-from-package"
+          ]
+        },
+        {
+          "name": "@safe-global/safe-apps-provider",
+          "version": "0.18.6",
+          "license": "MIT",
+          "flags": [
+            "licence-text-missing-from-package"
+          ]
+        },
+        {
+          "name": "@safe-global/safe-apps-sdk",
+          "version": "9.1.0",
+          "license": "MIT",
+          "flags": [
+            "licence-text-missing-from-package"
+          ]
+        },
+        {
+          "name": "@sapphire/async-queue",
+          "version": "1.5.5",
+          "license": "MIT",
+          "flags": [
+            "licence-text-missing-from-package"
+          ]
+        },
+        {
+          "name": "@sapphire/snowflake",
+          "version": "3.5.5",
+          "license": "MIT",
+          "flags": [
+            "licence-text-missing-from-package"
+          ]
+        },
+        {
+          "name": "@smthrs/agents",
+          "version": "0.35.0",
+          "license": "MIT",
+          "flags": [
+            "unverified"
+          ]
+        },
+        {
+          "name": "@smthrs/components",
+          "version": "0.35.0",
+          "license": "MIT",
+          "flags": [
+            "unverified"
+          ]
+        },
+        {
+          "name": "@smthrs/db",
+          "version": "0.35.0",
+          "license": "MIT",
+          "flags": [
+            "unverified"
+          ]
+        },
+        {
+          "name": "@smthrs/driver",
+          "version": "0.35.0",
+          "license": "MIT",
+          "flags": [
+            "unverified"
+          ]
+        },
+        {
+          "name": "@smthrs/engine",
+          "version": "0.35.0",
+          "license": "MIT",
+          "flags": [
+            "unverified"
+          ]
+        },
+        {
+          "name": "@smthrs/errors",
+          "version": "0.35.0",
+          "license": "MIT",
+          "flags": [
+            "unverified"
+          ]
+        },
+        {
+          "name": "@smthrs/graph",
+          "version": "0.35.0",
+          "license": "MIT",
+          "flags": [
+            "unverified"
+          ]
+        },
+        {
+          "name": "@smthrs/memory",
+          "version": "0.35.0",
+          "license": "MIT",
+          "flags": [
+            "unverified"
+          ]
+        },
+        {
+          "name": "@smthrs/observability",
+          "version": "0.35.0",
+          "license": "MIT",
+          "flags": [
+            "unverified"
+          ]
+        },
+        {
+          "name": "@smthrs/react-reconciler",
+          "version": "0.35.0",
+          "license": "MIT",
+          "flags": [
+            "unverified"
+          ]
+        },
+        {
+          "name": "@smthrs/sandbox",
+          "version": "0.35.0",
+          "license": "MIT",
+          "flags": [
+            "unverified"
+          ]
+        },
+        {
+          "name": "@smthrs/scheduler",
+          "version": "0.35.0",
+          "license": "MIT",
+          "flags": [
+            "unverified"
+          ]
+        },
+        {
+          "name": "@smthrs/scorers",
+          "version": "0.35.0",
+          "license": "MIT",
+          "flags": [
+            "unverified"
+          ]
+        },
+        {
+          "name": "@smthrs/time-travel",
+          "version": "0.35.0",
+          "license": "MIT",
+          "flags": [
+            "unverified"
+          ]
+        },
+        {
+          "name": "@smthrs/tool-context",
+          "version": "0.35.0",
+          "license": "MIT",
+          "flags": [
+            "unverified"
+          ]
+        },
+        {
+          "name": "@smthrs/vcs",
+          "version": "0.35.0",
+          "license": "MIT",
+          "flags": [
+            "unverified"
+          ]
+        },
+        {
+          "name": "@solflare-wallet/sdk",
+          "version": "1.4.2",
+          "license": "Apache-2.0",
+          "flags": [
+            "licence-text-missing-from-package"
+          ]
+        },
+        {
+          "name": "@tesseract.js-data/eng",
+          "version": "1.0.0",
+          "license": "MIT",
+          "flags": [
+            "licence-text-missing-from-package"
+          ]
+        },
+        {
+          "name": "@vectorize-io/hindsight-client",
+          "version": "0.8.4",
+          "license": "MIT",
+          "flags": [
+            "licence-text-missing-from-package"
+          ]
+        },
+        {
+          "name": "Android dependency com.google.android.gms:play-services-auth",
+          "version": "21.1.1",
+          "license": "UNKNOWN",
+          "flags": [
+            "unknown-licence",
+            "licence-text-missing-from-package"
+          ]
+        },
+        {
+          "name": "Android dependency com.google.android.gms:play-services-auth-api-phone",
+          "version": "18.0.2",
+          "license": "UNKNOWN",
+          "flags": [
+            "unknown-licence",
+            "licence-text-missing-from-package"
+          ]
+        },
+        {
+          "name": "Android dependency com.google.android.gms:play-services-auth-base",
+          "version": "18.0.10",
+          "license": "UNKNOWN",
+          "flags": [
+            "unknown-licence",
+            "licence-text-missing-from-package"
+          ]
+        },
+        {
+          "name": "Android dependency com.google.android.gms:play-services-auth-blockstore",
+          "version": "16.4.0",
+          "license": "UNKNOWN",
+          "flags": [
+            "unknown-licence",
+            "licence-text-missing-from-package"
+          ]
+        },
+        {
+          "name": "Android dependency com.google.android.gms:play-services-base",
+          "version": "18.5.0",
+          "license": "UNKNOWN",
+          "flags": [
+            "unknown-licence",
+            "licence-text-missing-from-package"
+          ]
+        },
+        {
+          "name": "Android dependency com.google.android.gms:play-services-basement",
+          "version": "18.5.0",
+          "license": "UNKNOWN",
+          "flags": [
+            "unknown-licence",
+            "licence-text-missing-from-package"
+          ]
+        },
+        {
+          "name": "Android dependency com.google.android.gms:play-services-fido",
+          "version": "21.0.0",
+          "license": "UNKNOWN",
+          "flags": [
+            "unknown-licence",
+            "licence-text-missing-from-package"
+          ]
+        },
+        {
+          "name": "Android dependency com.google.android.gms:play-services-identity-credentials",
+          "version": "16.0.0-alpha08",
+          "license": "UNKNOWN",
+          "flags": [
+            "unknown-licence",
+            "licence-text-missing-from-package"
+          ]
+        },
+        {
+          "name": "Android dependency com.google.android.gms:play-services-tasks",
+          "version": "18.2.0",
+          "license": "UNKNOWN",
+          "flags": [
+            "unknown-licence",
+            "licence-text-missing-from-package"
+          ]
+        },
+        {
+          "name": "Android dependency com.google.android.libraries.identity.googleid:googleid",
+          "version": "1.1.1",
+          "license": "UNKNOWN",
+          "flags": [
+            "unknown-licence",
+            "licence-text-missing-from-package"
+          ]
+        },
+        {
+          "name": "bs58",
+          "version": "4.0.1",
+          "license": "MIT",
+          "flags": [
+            "licence-text-missing-from-package"
+          ]
+        },
+        {
+          "name": "Bun JavaScript runtime (libeliza_bun.so)",
+          "version": "1.4.2 (oven-sh/bun 744846f844374847c902b5e7fd59b4342a51ef99)",
+          "license": "license unverified",
+          "flags": [
+            "copyleft-weak",
+            "unverified"
+          ]
+        },
+        {
+          "name": "clean-git-ref",
+          "version": "2.0.1",
+          "license": "Apache-2.0",
+          "flags": [
+            "licence-text-missing-from-package"
+          ]
+        },
+        {
+          "name": "Denton typeface",
+          "version": "1.004;FEAKit 1.0",
+          "license": "LicenseRef-Commercial-Font",
+          "flags": [
+            "proprietary-licence-held-outside-repo"
+          ]
+        },
+        {
+          "name": "diff3",
+          "version": "0.0.3",
+          "license": "MIT",
+          "flags": [
+            "licence-text-missing-from-package"
+          ]
+        },
+        {
+          "name": "drizzle-orm",
+          "version": "0.45.4",
+          "license": "Apache-2.0",
+          "flags": [
+            "licence-text-missing-from-package"
+          ]
+        },
+        {
+          "name": "drizzle-zod",
+          "version": "0.8.3",
+          "license": "Apache-2.0",
+          "flags": [
+            "licence-text-missing-from-package"
+          ]
+        },
+        {
+          "name": "elizaOS voice runtime sources (Paradee graph, kokoro layers, eliza-inference FFI, elizavoice-jni) in libelizainference",
+          "version": "elizaOS llama.cpp fork 0d9fd4b9db239bbf851068f98c99f4263f8c05c5 (eliza c307290782dd7fa22c2c826ccc6a929574ea418d); ABIs arm64-v8a, x86_64; recorded bytes, not yet device-qualified",
+          "license": "license unverified",
+          "flags": [
+            "licence-text-missing-from-package",
+            "unverified"
+          ]
+        },
+        {
+          "name": "encode-utf8",
+          "version": "1.0.3",
+          "license": "MIT",
+          "flags": [
+            "licence-text-missing-from-package"
+          ]
+        },
+        {
+          "name": "eSpeak NG 1.52.0 (statically linked into libelizainference)",
+          "version": "elizaOS llama.cpp fork 0d9fd4b9db239bbf851068f98c99f4263f8c05c5 (eliza c307290782dd7fa22c2c826ccc6a929574ea418d); ABIs arm64-v8a, x86_64; recorded bytes, not yet device-qualified",
+          "license": "GPL-3.0-or-later",
+          "flags": [
+            "copyleft-strong",
+            "licence-text-missing-from-package"
+          ]
+        },
+        {
+          "name": "eSpeak NG 1.52.0 English data (voice bundle, tts/paradee/espeak-ng-data)",
+          "version": "tts/paradee/espeak-ng-data/phontab sha256 1b40690667e1e9aa1ba5e5234773c799e7e72ea751426e5150423d53c3f24fa2 (58652 bytes); tts/paradee/espeak-ng-data/phonindex sha256 384e5fa6f714ba5356c58008249b78699c31c1ad044b243068d263fb806b7d73 (43316 bytes); tts/paradee/espeak-ng-data/phondata sha256 a0b643b155cb6b12628d9e7865b57d9fca0d35844614f2594a5e009c80c80bb4 (554740 bytes); tts/paradee/espeak-ng-data/intonations sha256 031a105bf6bb2ebcd73a2c579ccfb42469b27266db0078af65ae298fd3588b21 (2312 bytes); tts/paradee/espeak-ng-data/en_dict sha256 1053f74a34af38abb6fbd64b7838dacbc655a687c48ce1bb663d364a127b05de (168204 bytes); tts/paradee/espeak-ng-data/lang/gmw/en sha256 4605d5330801de3641c6e366d15f129ea1f5ffbce8722642aba01ace07ab9c83 (140 bytes); tts/paradee/espeak-ng-data/lang/gmw/en-US sha256 41534c2a22df5dd4f1052ff9e1a33a3ea7bff5a26b5c02bdad5ba8ddb7524704 (257 bytes)",
+          "license": "GPL-3.0-or-later",
+          "flags": [
+            "copyleft-strong",
+            "licence-text-missing-from-package"
+          ]
+        },
+        {
+          "name": "eth-query",
+          "version": "2.1.2",
+          "license": "ISC",
+          "flags": [
+            "licence-text-missing-from-package"
+          ]
+        },
+        {
+          "name": "exif-parser",
+          "version": "0.1.12",
+          "license": "MIT",
+          "flags": [
+            "unverified"
+          ]
+        },
+        {
+          "name": "ffmpeg-static",
+          "version": "5.3.0",
+          "license": "GPL-3.0-or-later",
+          "flags": [
+            "copyleft-strong"
+          ]
+        },
+        {
+          "name": "js-tiktoken",
+          "version": "1.0.21",
+          "license": "MIT",
+          "flags": [
+            "licence-text-missing-from-package"
+          ]
+        },
+        {
+          "name": "json-rpc-random-id",
+          "version": "1.0.1",
+          "license": "ISC",
+          "flags": [
+            "licence-text-missing-from-package"
+          ]
+        },
+        {
+          "name": "llama.cpp, ggml and mtmd (libelizainference)",
+          "version": "elizaOS llama.cpp fork 0d9fd4b9db239bbf851068f98c99f4263f8c05c5 (eliza c307290782dd7fa22c2c826ccc6a929574ea418d); ABIs arm64-v8a, x86_64; recorded bytes, not yet device-qualified",
+          "license": "MIT",
+          "flags": [
+            "licence-text-missing-from-package"
+          ]
+        },
+        {
+          "name": "LLVM libc++ (libc++_shared.so from the Android NDK)",
+          "version": "elizaOS llama.cpp fork 0d9fd4b9db239bbf851068f98c99f4263f8c05c5 (eliza c307290782dd7fa22c2c826ccc6a929574ea418d); ABIs arm64-v8a, x86_64; recorded bytes, not yet device-qualified",
+          "license": "Apache-2.0 WITH LLVM-exception",
+          "flags": [
+            "licence-text-missing-from-package"
+          ]
+        },
+        {
+          "name": "mediabunny",
+          "version": "1.61.0",
+          "license": "MPL-2.0",
+          "flags": [
+            "copyleft-weak"
+          ]
+        },
+        {
+          "name": "misaki English (US) lexicon (g2p-lexicon)",
+          "version": "tts/paradee/misaki-en-us.lex sha256 fbf09090cff0a41f3f579bf03ab9fc42710b04d7284767b10467a5f182c23925 (12947790 bytes)",
+          "license": "Apache-2.0",
+          "flags": [
+            "licence-text-missing-from-package"
+          ]
+        },
+        {
+          "name": "misaki G2P (C++ port in libelizainference)",
+          "version": "elizaOS llama.cpp fork 0d9fd4b9db239bbf851068f98c99f4263f8c05c5 (eliza c307290782dd7fa22c2c826ccc6a929574ea418d); ABIs arm64-v8a, x86_64; recorded bytes, not yet device-qualified",
+          "license": "Apache-2.0",
+          "flags": [
+            "licence-text-missing-from-package"
+          ]
+        },
+        {
+          "name": "murmurhash-js",
+          "version": "1.0.0",
+          "license": "MIT",
+          "flags": [
+            "licence-text-missing-from-package"
+          ]
+        },
+        {
+          "name": "omggif",
+          "version": "1.0.10",
+          "license": "MIT",
+          "flags": [
+            "licence-text-missing-from-package"
+          ]
+        },
+        {
+          "name": "On-device elizaOS agent runtime payload",
+          "version": "pinned upstream runtime when present in the APK payload",
+          "license": "license unverified",
+          "flags": [
+            "unverified"
+          ]
+        },
+        {
+          "name": "OpenStreetMap data",
+          "version": "regional extract served by the configured Maps endpoint",
+          "license": "ODbL-1.0",
+          "flags": [
+            "share-alike-data"
+          ]
+        },
+        {
+          "name": "Paradee-8M v1.1 (F32 GGUF) (tts-model)",
+          "version": "tts/paradee/paradee-8m-v1_1.gguf sha256 f205ab055f0120d571aa6fda2deadde1e6fbc88e8d8bd56a592917fd0e50892e (31275232 bytes)",
+          "license": "Apache-2.0",
+          "flags": [
+            "licence-text-missing-from-package"
+          ]
+        },
+        {
+          "name": "Parakeet-TDT decoder (tools/parakeet parakeet_lib, statically linked into libelizainference)",
+          "version": "elizaOS llama.cpp fork 0d9fd4b9db239bbf851068f98c99f4263f8c05c5 (eliza c307290782dd7fa22c2c826ccc6a929574ea418d); ABIs arm64-v8a, x86_64; recorded bytes, not yet device-qualified",
+          "license": "MIT",
+          "flags": [
+            "licence-text-missing-from-package"
+          ]
+        },
+        {
+          "name": "parse-bmfont-ascii",
+          "version": "1.0.6",
+          "license": "MIT",
+          "flags": [
+            "licence-text-missing-from-package"
+          ]
+        },
+        {
+          "name": "pdf.js QuickJS sandbox",
+          "version": "bundled with pdfjs-dist 6.3.289",
+          "license": "license unverified",
+          "flags": [
+            "licence-text-missing-from-package",
+            "unverified"
+          ]
+        },
+        {
+          "name": "pdf.js standard fonts: Liberation",
+          "version": "bundled with pdfjs-dist 6.3.289",
+          "license": "GPL-2.0-only WITH Font-exception-2.0",
+          "flags": [
+            "copyleft-strong"
+          ]
+        },
+        {
+          "name": "pg-types",
+          "version": "2.2.0",
+          "license": "MIT",
+          "flags": [
+            "licence-text-missing-from-package"
+          ]
+        },
+        {
+          "name": "pgpass",
+          "version": "1.0.5",
+          "license": "MIT",
+          "flags": [
+            "licence-text-missing-from-package"
+          ]
+        },
+        {
+          "name": "Phonon-2 (Parakeet-TDT 0.6B, five-value GGUF; ASR slot model) (asr-model)",
+          "version": "asr/phonon-2-fv5.gguf sha256 c0f6ad42f0a5b481904416077dde0a1a78e5b8642295fdf2356ace822588c3df (208932352 bytes)",
+          "license": "CC-BY-4.0",
+          "flags": [
+            "unverified",
+            "permissive-not-previously-listed"
+          ]
+        },
+        {
+          "name": "porto",
+          "version": "0.2.35",
+          "license": "MIT",
+          "flags": [
+            "licence-text-missing-from-package"
+          ]
+        },
+        {
+          "name": "react-remove-scroll-bar",
+          "version": "2.3.8",
+          "license": "MIT",
+          "flags": [
+            "licence-text-missing-from-package"
+          ]
+        },
+        {
+          "name": "rpc-websockets",
+          "version": "9.3.10",
+          "license": "LGPL-3.0-only",
+          "flags": [
+            "copyleft-weak",
+            "licence-text-missing-from-package"
+          ]
+        },
+        {
+          "name": "sax",
+          "version": "1.6.1",
+          "license": "BlueOak-1.0.0",
+          "flags": [
+            "permissive-not-previously-listed"
+          ]
+        },
+        {
+          "name": "Silero VAD (graph in libelizainference)",
+          "version": "elizaOS llama.cpp fork 0d9fd4b9db239bbf851068f98c99f4263f8c05c5 (eliza c307290782dd7fa22c2c826ccc6a929574ea418d); ABIs arm64-v8a, x86_64; recorded bytes, not yet device-qualified",
+          "license": "MIT",
+          "flags": [
+            "licence-text-missing-from-package"
+          ]
+        },
+        {
+          "name": "Silero VAD v5 (GGUF) (vad-model)",
+          "version": "vad/silero-vad-v5.gguf sha256 d348cd6d87ea53dcd3e6680698c88be326082e27dae899adef653d090bee4995 (620736 bytes)",
+          "license": "MIT",
+          "flags": [
+            "licence-text-missing-from-package"
+          ]
+        },
+        {
+          "name": "text-encoding-utf-8",
+          "version": "1.0.2",
+          "license": "Unlicense",
+          "flags": [
+            "unverified",
+            "permissive-not-previously-listed"
+          ]
+        },
+        {
+          "name": "tr46",
+          "version": "0.0.3",
+          "license": "MIT",
+          "flags": [
+            "licence-text-missing-from-package"
+          ]
+        },
+        {
+          "name": "ua-parser-js",
+          "version": "2.0.10",
+          "license": "AGPL-3.0-or-later",
+          "flags": [
+            "copyleft-strong",
+            "network-copyleft"
+          ]
+        },
+        {
+          "name": "uint8arrays",
+          "version": "3.1.0",
+          "license": "MIT",
+          "flags": [
+            "licence-text-missing-from-package"
+          ]
+        },
+        {
+          "name": "url-template",
+          "version": "2.0.8",
+          "license": "BSD",
+          "flags": [
+            "unknown-licence"
+          ]
+        }
+      ],
+      "fontLicenceCheck": {
+        "check": "unresolved-font-licence",
+        "status": "resolved-by-owner-statement",
+        "blocksDistribution": false,
+        "items": [],
+        "resolved": [
+          "unresolved-font-licence: resolved-by-owner-statement: Denton typeface (denton-300.woff2) is proprietary; the owner states the licence is held and its document is kept outside this repository (licenses/font-licenses.json, owner decision A-21)"
+        ]
+      },
+      "licenceBlockers": [],
+      "releaseAdmission": {
+        "failures": [],
+        "blockers": [
+          "unsigned release",
+          "release signer is unset in android/release-signer.json"
+        ],
+        "signerMatches": false
+      },
+      "runtime": "PACKAGED",
+      "voiceHost": {
+        "packaged": true,
+        "asr": true,
+        "differences": [],
+        "qualified": false
+      },
+      "distributable": false
+    }
+  ],
+  "runtimePackaging": [
+    {
+      "apk": "artifacts/standalone-release-unsigned.apk",
+      "runtime": "PACKAGED",
+      "runtimeProfile": "native",
+      "upstreamCommit": "c307290782dd7fa22c2c826ccc6a929574ea418d",
+      "verifiedEntries": 1118,
+      "runtimeExecution": false,
+      "release": true,
+      "distributable": true
+    },
+    {
+      "apk": "artifacts/launcher-release-unsigned.apk",
+      "runtime": "PACKAGED",
+      "runtimeProfile": "native",
+      "upstreamCommit": "c307290782dd7fa22c2c826ccc6a929574ea418d",
+      "verifiedEntries": 1118,
+      "runtimeExecution": false,
+      "release": true,
+      "distributable": true
+    },
+    {
+      "apk": "artifacts/standalone-debug.apk",
+      "runtime": "PACKAGED",
+      "runtimeProfile": "native",
+      "upstreamCommit": "c307290782dd7fa22c2c826ccc6a929574ea418d",
+      "verifiedEntries": 1119,
+      "runtimeExecution": false
+    },
+    {
+      "apk": "artifacts/launcher-debug.apk",
+      "runtime": "PACKAGED",
+      "runtimeProfile": "native",
+      "upstreamCommit": "c307290782dd7fa22c2c826ccc6a929574ea418d",
+      "verifiedEntries": 1119,
+      "runtimeExecution": false
+    }
+  ],
+  "listener": {
+    "record": "android/sense/qualified-listener.json",
+    "qualified": false,
+    "gates": {
+      "G1": "open",
+      "G2": "open",
+      "G3": "open",
+      "G4": "open",
+      "G5": "open",
+      "G6": "open",
+      "G7": "deferred"
+    },
+    "apks": [],
+    "blockers": [
+      "no listener APK in this build (./gradlew :sense:assembleRelease, then copy it next to the Alpha APKs)",
+      "listener not device-qualified (gates G1-G6 open)",
+      "SystemUI indicator lease not compiled or qualified on an image"
+    ]
+  }
+}

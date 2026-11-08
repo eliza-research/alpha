@@ -1,7 +1,6 @@
 package ai.elizaresearch.alphaphone;
 
 import android.Manifest;
-import android.app.ActivityManager;
 import android.app.Notification;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
@@ -22,10 +21,7 @@ import android.os.IBinder;
  * delivering fixes to the renderer, which owns guidance and voice. The ongoing notification
  * mirrors the next instruction and offers Stop. The service never requests location itself,
  * never starts navigation on its own, and a session stops exactly once: from the app, from
- * the notification, or when its owner's task is removed.</p>
- *
- * <p>Each session belongs to the Maps bridge that started it. The assistant window runs its own
- * renderer and bridge; closing it never ends the launcher's session or silences its Stop.</p>
+ * the notification, or when the task is removed.</p>
  */
 public final class AlphaNavigationService extends Service {
  static final String CHANNEL = "alpha.maps.navigation";
@@ -36,23 +32,19 @@ public final class AlphaNavigationService extends Service {
  static final String EXTRA_SESSION = "session", EXTRA_TITLE = "title", EXTRA_TEXT = "text", EXTRA_REASON = "reason";
  static final String SESSION_PATTERN = "[A-Za-z0-9_-]{8,80}";
 
- /** Receives the single terminal stop of a session: the Maps bridge that started it. */
+ /** Receives the single terminal stop of each session; registered by the Maps bridge. */
  interface StopListener { void stopped(String session, String reason); }
 
  private static final Object lock = new Object();
  private static String activeSession;
- /** The bridge that started the active session, and the task its activity runs in. */
- private static StopListener owner;
- private static int ownerTask = -1;
+ private static StopListener listener;
  private static int stopCount;
  private static String lastStopReason = "";
  private static String lastTitle = "", lastText = "";
 
+ static void setStopListener(StopListener value) { synchronized (lock) { listener = value; } }
+ static void clearStopListener(StopListener value) { synchronized (lock) { if (listener == value) listener = null; } }
  static String activeSession() { synchronized (lock) { return activeSession; } }
- /** The active session only when this bridge started it; a closing bridge retires nothing else. */
- static String activeSessionOwnedBy(StopListener bridge) {
-  synchronized (lock) { return bridge != null && owner == bridge ? activeSession : null; }
- }
 
  /** Instrumentation-visible state: active session, total terminal stops and last reason. */
  static String[] snapshot() {
@@ -72,8 +64,8 @@ public final class AlphaNavigationService extends Service {
    || context.checkSelfPermission(Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED;
  }
 
- static void start(Context context, String session, String title, String text, StopListener bridge, int bridgeTask) {
-  synchronized (lock) { activeSession = session; owner = bridge; ownerTask = bridgeTask; lastTitle = bounded(title); lastText = bounded(text); }
+ static void start(Context context, String session, String title, String text) {
+  synchronized (lock) { activeSession = session; lastTitle = bounded(title); lastText = bounded(text); }
   context.startForegroundService(intent(context, ACTION_START, session).putExtra(EXTRA_TITLE, title).putExtra(EXTRA_TEXT, text));
  }
 
@@ -97,8 +89,7 @@ public final class AlphaNavigationService extends Service {
   StopListener target;
   synchronized (lock) {
    if (activeSession == null || (session != null && !activeSession.equals(session))) return false;
-   session = activeSession; activeSession = null; stopCount++; lastStopReason = reason; target = owner;
-   owner = null; ownerTask = -1;
+   session = activeSession; activeSession = null; stopCount++; lastStopReason = reason; target = listener;
   }
   if (target != null) target.stopped(session, reason);
   return true;
@@ -153,28 +144,9 @@ public final class AlphaNavigationService extends Service {
  }
 
  @Override public void onTaskRemoved(Intent rootIntent) {
-  // The assistant's task, or another secondary task, closing is not the owner's task closing.
-  ComponentName root = rootIntent == null ? null : rootIntent.getComponent();
-  boolean assistant = root != null && AlphaAssistActivity.class.getName().equals(root.getClassName());
-  if (!assistant && !ownerTaskAlive()) {
-   finish(null, "task-removed");
-   if (activeSession() == null) end(-1);
-  }
+  finish(null, "task-removed");
+  end(-1);
   super.onTaskRemoved(rootIntent);
- }
-
- /** True while the task of the activity that started the active session is still listed. */
- private boolean ownerTaskAlive() {
-  int task;
-  synchronized (lock) { task = ownerTask; }
-  if (task < 0) return false;
-  try {
-   for (ActivityManager.AppTask app : getSystemService(ActivityManager.class).getAppTasks()) {
-    ActivityManager.RecentTaskInfo info = app.getTaskInfo();
-    if (info != null && info.taskId == task) return true;
-   }
-  } catch (RuntimeException unavailable) { return false; }
-  return false;
  }
 
  @Override public void onDestroy() {

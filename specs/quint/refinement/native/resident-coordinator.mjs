@@ -3,16 +3,17 @@ import {createHash} from 'node:crypto';
 import {captureInputs, checkTraces} from '../check-traces.mjs';
 import {app, directory, javaTraces} from './java.mjs';
 import {residentPlatform} from './resident-platform.mjs';
+import {currentNativeSource,nativePatchInputs} from './current-sources.mjs';
 
 export const residentSources = ['AlphaLocalAgentPlugin.java','LocalAgentProviderAdmission.java','CloudDeployment.java',
   'PluginWorkers.java','ResidentAttachment.java','ResidentCredentialShutdownRetry.java','ResidentRecoveryReview.java',
-  'ResidentScheduleRearm.java','NativeVoiceBinding.java','NativeVoiceIpc.java','VoiceEventAdmission.java','AutomationsRoutes.java']
-  .map(name=>app+name);
+  'ResidentScheduleRearm.java','NativeVoiceBinding.java','NativeVoiceIpc.java','VoiceEventAdmission.java','InvocationOwnerCache.java','NativeNotificationSession.java','HostedResultNotices.java','NativeDeviceEnrollmentKey.java','HostedInbox.java','HostedStorageFault.java','NativeNotificationDiagnostics.java','PreparedViewNavigation.java','OwnerRoutes.java']
+  .map(name=>currentNativeSource(name)).concat(['CredentialRequestFence','NativeProviderSlot','NativeProviderAdmission','NativeRuntimeEmbeddings','LiveSegmentPipe','OwnerRoutePolicy','NoticeOwner'].map(name=>currentNativeSource(name+'.java')), 'vendor/eliza/plugins/plugin-native-agent/android/src/main/java/ai/eliza/plugins/agent/runtime/CredentialIntentFence.java','vendor/eliza/plugins/plugin-native-secure-store/android/src/main/java/ai/eliza/plugins/securestore/nativeonly/CredentialIntentFence.java');
 export const residentScenarios=['stop','stop-error','late-stop','late-cancel','owned-cancel',
   'attached-cancel','unowned-cancel','lost-pair','last-surface','broadcast-race'];
 export function generateResidentCoordinatorTraces(scenario,extraSources=[]){
   const platform=residentPlatform();
-  const sources=[...residentSources,`${directory}/ResidentTestPorts.java`,`${directory}/ResidentCoordinatorTraces.java`,
+  const sources=[...residentSources,'config/owner-routes.json',...nativePatchInputs,`${directory}/current-sources.mjs`,`${directory}/ResidentTestPorts.java`,`${directory}/ResidentCoordinatorTraces.java`,
     `${directory}/Trace.java`,`${directory}/java.mjs`,`${directory}/resident-platform.mjs`,fileURLToPath(import.meta.url),...extraSources];
   try {
     const driverHashes=captureInputs(sources);

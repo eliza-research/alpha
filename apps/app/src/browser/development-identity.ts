@@ -1,7 +1,10 @@
 import type {BrowserDomainDocument,DomainRecovery} from './domain-document';
 import {developmentCloudAccount,readDevelopmentCloudAccount} from './development-cloud';
-import type {DevelopmentProfile} from './development-connection';
 import {devSurfacesEnabled} from '../build-flags';
+import {browserDevProfile} from './dev-profile';
+export const developmentProfiles=['local','cloud','remote'] as const;
+export type DevelopmentProfile=typeof developmentProfiles[number];
+export function assertDevelopmentProfile(profile:DevelopmentProfile){if(!devSurfacesEnabled||!browserDevProfile||!developmentProfiles.includes(profile))throw Error('Choose a development profile.');}
 export type DevelopmentIdentity={profile:DevelopmentProfile;account?:'first'|'second';session?:string;namespace:string;ownerId:string;agentId:string};
 /** Default reply for explicit development profiles; absent from flag-off builds. */
 export const developmentDefaultReply:string=devSurfacesEnabled?'Development reply. Edit this response in Agent connection.':'';

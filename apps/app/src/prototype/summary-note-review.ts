@@ -1,4 +1,4 @@
-import {proposedRecordingSummary} from './recording-summary';
+import {proposedRecordingSummary} from '../../../../.eliza/client-features/plugins/plugin-notes/src/client/notes-recording-summary.ts';
 import {summarySourceOf,webSourceOf,recordingSourceOf,type SummarySource,type WebSource,type RecordingSource} from './summary-source';
 import type {Source} from './note-source-adapter';
 /** A direct user edit/save, separate from an agent proposal. Never saves on reply arrival. */

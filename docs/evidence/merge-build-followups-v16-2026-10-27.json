@@ -1,0 +1,45 @@
+{
+  "schemaVersion": 1,
+  "date": "2026-10-27",
+  "reviewedRemoteHead": "7f014b0e6",
+  "integrationCommit": "5d5fb2769168c09b8c6c74047d423ce0c4d08388",
+  "upstreamCommit": "6497825b38cbe41b3677c0a445341fec900f0dd2",
+  "userDirective": "Keep incorporating new pushes and rebuild as needed.",
+  "changesReviewed": [
+    "Confirmed committed embedded-page navigation may update ordinary saved tabs/history; private and unconfirmed events remain excluded.",
+    "Membership error appears once and is associated with its invalid input using unique React IDs.",
+    "Preserved complete packaged notices in a pinned archive while restoring independently verifiable source-only defaults.",
+    "Updated browser fixtures retain source selection, privacy, exact reservation, recovery and native provider assertions."
+  ],
+  "validation": {
+    "focusedNodeTests": {
+      "tests": 51,
+      "passed": 51,
+      "failed": 0
+    },
+    "currentFullVerification": {
+      "command": [
+        "npm",
+        "run",
+        "verify"
+      ],
+      "startedAtEpoch": 1793105797.6374366,
+      "passed": true,
+      "pin": "6497825b38cbe41b3677c0a445341fec900f0dd2",
+      "exitCode": 0,
+      "finishedAtEpoch": 1793106060.15186,
+      "tests": 2089,
+      "passedTests": 2085,
+      "skippedTests": 4,
+      "failedTests": 0,
+      "productionBundleFilesAudited": 419,
+      "testMocks": false
+    },
+    "currentAndroidBuild": "all four version 16 APKs passed; see merge-build-final-apks-v16-2026-10-27.json",
+    "currentImageBuilds": "pending"
+  },
+  "limits": [
+    "Synthetic browser/native fixtures do not prove real integrations.",
+    "No current image boot, device flash or acceptance is claimed."
+  ]
+}

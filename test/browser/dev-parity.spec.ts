@@ -1,3 +1,4 @@
+import {openBrowserCalendar} from './helpers/browser-calendar';
 import {test,expect} from '@playwright/test';
 test.beforeEach(async({page})=>{await page.addInitScript(()=>localStorage.setItem('alpha.connection.selection.v1',JSON.stringify({kind:'offline'})));});
 test('browser calendar persists events and rejects stale modifications',async({page})=>{
@@ -13,7 +14,7 @@ test('browser calendar persists events and rejects stale modifications',async({p
   return {saved:saved.status,edited:edited.status,stale:stale.status};
  });
  expect(result).toEqual({saved:'saved',edited:'saved',stale:'conflict'});
- await page.reload();await page.getByRole('button',{name:'Calendar',exact:true}).click();
+ await page.reload();await openBrowserCalendar(page);
  await expect(page.getByText('Edited event',{exact:true}).first()).toBeVisible();
 });
 test('browser reminder posts, snoozes and completes without repeating completion',async({page})=>{

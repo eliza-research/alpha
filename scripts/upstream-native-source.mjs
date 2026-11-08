@@ -57,22 +57,3 @@ export function upstreamNativeSource(root) {
  }
  return {pin,directory,read};
 }
-export function stageNativePlugin(root,name) {
- const source=upstreamNativeSource(root),prefix=`plugins/plugin-native-${name}/android`;
- const files=source.read(prefix),output=path.join(root,`artifacts/native-${name}`);
- const identity=sha(JSON.stringify({commit:source.pin,files:[...files].map(([name,file])=>[name,file.mode,file.sha256])}));
- for(let current=output;current!==root;current=path.dirname(current))if(fs.existsSync(current)&&fs.lstatSync(current).isSymbolicLink())throw Error('Symlink in native artifact path');
- const marker=path.join(output,'.source-sha256');
- if(!fs.existsSync(marker)||fs.readFileSync(marker,'utf8')!==identity){
-  fs.rmSync(output,{recursive:true,force:true});fs.mkdirSync(output,{recursive:true});
-  for(const [name,file] of files){const target=path.join(output,path.relative(prefix,name));fs.mkdirSync(path.dirname(target),{recursive:true});fs.writeFileSync(target,file.bytes,{mode:parseInt(file.mode,8)});}
-  fs.writeFileSync(marker,identity);
- }else{
-  const actual=[];
-  function walk(directory){for(const entry of fs.readdirSync(directory,{withFileTypes:true})){if(directory===output&&['build','.gradle','.source-sha256'].includes(entry.name))continue;const target=path.join(directory,entry.name);if(entry.isDirectory())walk(target);else if(entry.isFile())actual.push(path.relative(output,target));else throw Error('Nonregular staged native source');}}
-  walk(output);
-  if(actual.sort().join('\n')!==[...files.keys()].map(name=>path.relative(prefix,name)).sort().join('\n'))throw Error('Unexpected staged native source inventory');
-  for(const [name,file] of files){const target=path.join(output,path.relative(prefix,name));if(sha(fs.readFileSync(target))!==file.sha256||(fs.statSync(target).mode&0o111)!==(file.mode==='100755'?0o111:0))throw Error('Staged native source drift');}
- }
- console.log(`Native ${name} staged from ${source.pin} (${files.size} authenticated files)`);
-}

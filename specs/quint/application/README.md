@@ -1,15 +1,16 @@
 # Application state models
 
-These modules describe the current product shell and its storage and review
-boundaries. The exact entry-point paths are recorded in `manifest.json`. The
+These modules describe product shell, storage and review contracts. Current-main
+refinement is partial, and the source-bound adapters list their remaining
+field and transition obligations. The exact entry-point paths are recorded in `manifest.json`. The
 repository-wide allocation and source hashes are recorded in `../coverage.json`.
 
 | Module | Source symbols | Modeled state and abstraction |
 | --- | --- | --- |
 | `Application` | `AlphaClient.attachVerifiedTransport`, `disconnect`, `setViewContext`, native startup/reset gates | Two owners, three non-reused epochs, lifecycle, sensitive observation, pending work, reviewed dispatch, voice and owner-scoped visible cache |
 | `ShellNavigation` | `ViewNavigationClient.capture`, `deliver`, `cancel`, shell `back`, `goHome`, `openView` | All 19 `AlphaView` values, modal/shade/composer ordering, focus, draft and one completed-action claim. View-specific record bodies use their domain models |
-| `StartupPermissions` | `createStartupPermissionFlow`, `readStartupPermissionMemory`, `readStartupPermissionProgress`, `writeStartupPermissionProgress` | One representative permission transaction, six ordered native setup steps, durable prompt attempt and progress, legacy completed installation |
-| `PermissionWalkthrough` | `StartupPermissions.allow`, `advance`, `finish`, `savedProgress` | Six independent permission maps, signed-in prerequisite, sequential requests, targeted Settings review, final platform recheck and historical completed records |
+| `StartupPermissions` | `createStartupPermissionFlow`, `readStartupPermissionMemory`, `readStartupPermissionProgress`, `writeStartupPermissionProgress` | One representative permission transaction, durable or failed prompt-attempt persistence and legacy completed installation |
+| `PermissionWalkthrough` | `StartupPermissions.allow`, `advance`, `finish`, `savedProgress` | Seven native or four browser permission steps, independent platform-call/UI ownership, sequential and targeted review, cancellation, owner invalidation, final readback and historical completion records |
 | `AssistantConversation` | `AlphaClient.run`, `send`, `approve`, `cancel`, `replaceAssistantDraft` | One foreground request and one proposal identity, consumption before dispatch, automatic-workflow survival across ordinary navigation, sensitive-view cancellation, compare-and-exchange composer draft |
 | `NotesLifecycle` | `editNotesTrash`, `planNotesTrash`, Notes document adapter and secure store | One representative note, opaque record content, dirty draft, revision conflict, write-ahead Trash, three-day boundary, restore and storage failure |
 | `DurableStore` | `BrowserDomainDocument.load`, `edit`, `capture`, `restore`, `reset` | One document transaction, two distinct revisions, preserved legacy bytes, corrupt metadata, explicit recovery and persistence failure |
@@ -20,8 +21,8 @@ repository-wide allocation and source hashes are recorded in `../coverage.json`.
 | `DevelopmentHost` | `createBrowserCloudDevHandler`, `createCloudResidentHost`, local launcher scripts | Private credential claims and serialized replacement, active request fencing, resident binding/expiry and coordinated child-process shutdown |
 | `PermanentVoiceDeletion` | `planInterruptedPermanentDeletion`, `leasedDeletionRow`, `claimDeletion`, `changeAudioDeletion` | Separate note and recording effects, exact ownership, external references, shared-lock/renderer-lease admission, restore versus erase and interrupted recovery |
 | `DraftDispatch` | `AssistantDraftController.hold`, `release`, `commit`, `open` | Text retained through dispatch, newer typing, per-conversation queues, reopened pending drafts and failed durable clears. `A+B` represents the ordered newline concatenation |
-| `FilesTree` | `files-tree-adapter` mutation, selection, paging and picker entry points | Separate tree/picker access, revision-bound partial batch results, selection invalidation, permanent deletion review and native restart |
-| `CalendarPresentation` | `calendar-views`, `calendar-month-focus`, Google Calendar selection | Selected month/day, menu/delete/search Back order, query-range generations, visible calendars and captured edit identity |
+| `FilesPreview` | `installFilesBrowserAdapter`, `storageSelect`, `onLeave` | One current per-volume preview callback, non-reused owner epochs, late selected-capability release and leave/return fencing. Full Files browser state remains an explicit obligation |
+| `CalendarPresentation` | Current `calendar-form-draft` plus partially retained presentation contract | Creation identity and authority-free draft restoration have current source traces. Removed Google display toggles and old range-loader behavior remain unrefined, pending a separate current Calendar UI model |
 | `NotificationCollection` | `notification-store`, `notifications-adapter`, `AlphaNotificationListener` | Opt-in external collection, package/signature/preview consent, lock privacy, history expiry, policy epoch and independent app/channel delivery settings |
 | `FilesAndSharing` | `reviewFileEmail`, `reviewMailAttachment`, `mediaCopyIntent`, share adapters | One exact source, owner and draft identity, initially unchecked selection, reread before local insertion, cancellation and revoked grant. Send has its own Inbox model |
 | `PreferencesAndPresentation` | `keyboardFreeHeight`, `canvasGeometry`, `surfaceLayout`, `publishSurfaceLayout`, shell preferences | Representative portrait/wide geometry, keyboard exclusion, large-text fallback, preference readback, draft/selection continuity and one system shade |
@@ -59,3 +60,9 @@ source variable or every possible implementation behavior refines its model.
 including panel ownership, modal dismissal, focus, reload requests and bounded
 class-only logging. Its source driver and Chromium regressions are described in
 [the recovery refinement notes](../refinement/application/recovery-ui.md).
+
+`FilesTree` and `ListFocus` are retained under the legacy family after current
+main removed their source protocols. Their historical results do not establish
+current Files browser or mutable-list refinement. The current reconciliation
+status and required controller work are listed in
+[the application gap report](../refinement/application/current-main-gaps.md).

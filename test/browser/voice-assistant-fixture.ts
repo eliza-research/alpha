@@ -28,8 +28,12 @@ export async function setupLiveAssistant(page:Page){
     f.eotCalls.push(JSON.parse(input.body).transcript);return {status:200,body:JSON.stringify(f.eot)};
    }
    if(plugin==='Agent'&&method==='request'&&/^\/api\/conversations\/[^/]+\/messages\/[0-9a-f-]{36}\/heard$/.test(String(input.path))){
-    const body=JSON.parse(input.body),messageId=String(input.path).split('/')[5];f.heard.push({path:input.path,heardText:body.heardText,ownerId:input.ownerId});
-    return {status:200,body:JSON.stringify({ok:true,messageId,text:body.heardText,truncated:true,changed:true})};
+    const body=JSON.parse(input.body),messageId=String(input.path).split('/')[5];
+    // The pinned route takes exactly { heardText } (non-empty) or { nothingHeard: true }; anything else is 400.
+    const nothing=body.nothingHeard===true&&Object.keys(body).length===1,heardText=typeof body.heardText==='string'&&body.heardText.trim()&&Object.keys(body).length===1?body.heardText:undefined;
+    if(!nothing&&heardText===undefined){f.forbidden.push(`heard body ${input.body}`);return {status:400,body:JSON.stringify({error:'Body must be { heardText } or { nothingHeard: true }'})};}
+    f.heard.push(nothing?{path:input.path,nothingHeard:true,ownerId:input.ownerId}:{path:input.path,heardText,ownerId:input.ownerId});
+    return {status:200,body:JSON.stringify({ok:true,messageId,text:nothing?'':heardText,truncated:true,changed:true})};
    }
    if(plugin==='Agent'&&method==='request'&&String(input.path).startsWith('/api/asr/local-inference/live')){
     if(input.path==='/api/asr/local-inference/live/status')return {status:200,body:JSON.stringify({ready:true,streaming:true,sessions:0,maxSessions:4})};

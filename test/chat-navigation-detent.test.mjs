@@ -3,6 +3,11 @@ import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {stripTypeScriptTypes} from 'node:module';
 import vm from 'node:vm';
+import {tsImport} from 'tsx/esm/api';
+const {alphaNavigation}=await tsImport('../apps/app/src/product/alpha-product.ts',import.meta.url);
+const {navigateMobileShell}=await tsImport('../.eliza/client-features/packages/ui/src/mobile-shell/navigation.ts',import.meta.url);
+// Only Notes is available here; the product registry resolves Home and canonical ids.
+const notesOnly=alphaNavigation(view=>view==='notes');
 
 const adapter=readFileSync('apps/app/src/prototype/agent-adapter.ts','utf8');
 const helper=adapter.slice(adapter.indexOf('  function openInternalView('),adapter.indexOf('  function context(shell:',adapter.indexOf('  function openInternalView(')));
@@ -11,7 +16,7 @@ const model=readFileSync('apps/app/src/prototype/model.js','utf8');
 const transitions=model.slice(model.indexOf('  goHome(chat) {'),model.indexOf('  back() {',model.indexOf('  goHome(chat) {')));
 assert.ok(transitions.includes('openView(k, patch, chat, opts)'));
 function harness(initial,source=helper){
-  const context={views:{notes:{}},VIEWS:{notes:{}},isMvpView:view=>view==='notes',alphaClient:{getState:()=>({context:{}})},context:()=>{}};
+  const context={views:{notes:{}},VIEWS:{notes:{}},isMvpView:view=>view==='notes',alphaViewKey:notesOnly.viewKey,navigateMobileShell,alphaClient:{getState:()=>({context:{}})},context:()=>{}};
   vm.createContext(context);
   vm.runInContext(`class Shell {
     constructor(){this.state=${JSON.stringify(initial)};this.live=true;this.transitions=[];this.toasts=[];}
@@ -20,7 +25,7 @@ function harness(initial,source=helper){
     setState(patch,done){Object.assign(this.state,patch);this.transitions.push({...this.state});done?.();}
     ${transitions}
   }
-  ${stripTypeScriptTypes(source,{mode:'strip'})}
+  ${stripTypeScriptTypes(source,{mode:'transform'})}
   globalThis.shell=new Shell();globalThis.deliver=deliverChatNavigation;`,context);
   return {shell:context.shell,deliver:context.deliver};
 }

@@ -6,7 +6,8 @@ import {openDomainRecovery} from '../browser/domain-recovery';
 import {browserDevProfile} from '../browser/dev-profile';
 type Bag=Record<string,any>;
 /** Retained creation forms use the existing transactional text-draft primitive. */
-export function installCalendarFormDraftAdapter(Component:any,views:Bag){
+export function installCalendarFormDraftAdapter(Component:any,views:Bag,options:{active?:(shell:any)=>boolean}={}){
+ const enabled=(shell:any)=>options.active?.(shell)??true;
  const p=Component.prototype,mount=p.componentDidMount,update=p.componentDidUpdate,unmount=p.componentWillUnmount,render=views.calendar.render;
  let owner:any;
  p.componentDidMount=function(){
@@ -15,10 +16,10 @@ export function installCalendarFormDraftAdapter(Component:any,views:Bag){
    this.calendarDraftText=text;
    if(this.calendarDraftRestore&&text){const restored=decodeCalendarForm(text);this.calendarDraftAnchor=new Date();this.calendarDraftIdentity=restored.form.creationId;this.vset('calendar',{form:restored.form,open:null,month:null});if(restored.zone!==Intl.DateTimeFormat().resolvedOptions().timeZone)this.toast('Time zone changed. Review the restored date and time before saving.');}
   },()=>{if(this.live)this.vset('calendar',{});});
-  void this.calendarDraft.open(JSON.stringify(['calendar-creation-form',browserDevProfile?'development':'app']));
+  if(enabled(this)){this.calendarDraftBound=true;void this.calendarDraft.open(JSON.stringify(['calendar-creation-form',browserDevProfile?'development':'app']));}
  };
  p.componentDidUpdate=function(previous:Bag){
-  update.call(this,previous);const form=this.vget('calendar').form;
+  update.call(this,previous);if(!enabled(this))return;if(!this.calendarDraftBound){this.calendarDraftBound=true;void this.calendarDraft.open(JSON.stringify(['calendar-creation-form',browserDevProfile?'development':'app']));}const form=this.vget('calendar').form;
   if(!form||form.id||form.alphaCalendarId||form.alphaReminderId||!form.creationId)return;
   if(this.calendarDraftIdentity!==form.creationId){this.calendarDraftIdentity=form.creationId;this.calendarDraftAnchor=new Date();}
   const today=new Date(),anchor=this.calendarDraftAnchor as Date;
@@ -35,6 +36,7 @@ export function installCalendarFormDraftAdapter(Component:any,views:Bag){
  };
  p.componentWillUnmount=function(){this.calendarDraft?.retire(false);this.calendarDraftRecovery?.abort();if(owner===this)owner=undefined;unmount.call(this);};
  views.calendar.render=function(state:Bag,api:Bag){
+  if(!owner||!enabled(owner))return render(state,api);
   const out=render(state,api),shell=owner,controller=shell?.calendarDraft,draft=controller?.state;
   if(!shell||!controller)return out;
   const active=!!state.form&&!state.form.id;

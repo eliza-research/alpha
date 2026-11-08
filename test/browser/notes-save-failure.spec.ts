@@ -1,9 +1,10 @@
+import {openLegacyNotes} from './helpers/legacy-notes';
 import { test, expect } from '@playwright/test';
 
 for (const failure of ['quota', 'concurrent edit'] as const) {
   test(`Notes retains unsaved text after ${failure}`, async ({ page }) => {
     await page.goto('/');
-    await page.getByRole('button', { name: 'Notes', exact: true }).click();
+    await openLegacyNotes(page);
     await page.getByRole('button', { name: 'New note', exact: true }).click();
     await page.getByRole('textbox', { name: 'Title', exact: true }).fill('Recovery note');
     const body = page.getByRole('textbox', { name: 'Note', exact: true });

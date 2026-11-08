@@ -1,0 +1,3728 @@
+{
+  "schema": 1,
+  "recordedAt": "2026-10-25",
+  "reviewStatus": "candidate pending independent Root approval",
+  "sdk": "f4142d3a92d6b5b49ef6c6a666155218b8b75b07",
+  "product": "a424de923b4b19aa0d86a7e23ef30598f6704d94",
+  "artifactSHA256": "77c65ebe29c011f7d8f211a3a5dcfb2a79d1909cc74ecf0e40a0f4a68377f0cb",
+  "signer": "edbfcacb1da689008bf4e7d675176c302decf83161a877eb8b1de4ffae0445ed",
+  "previousArtifactSHA256": "ab2dbd9ca2e756bd954fce21adcf17c76c0fa5717671a50f0062b35ad7cefe27",
+  "historicalReviewPreserved": "docs/security/resident-artifact-review-2026-10-25.json",
+  "bundleHashes": {
+    "assets/public/licenses/third-party-notices.json": {
+      "sha256": "220a6cfc1d4d178aea1ca9a032c5d7114ed3114f3958aba39662e3415406dcc0",
+      "bytes": 2391034
+    },
+    "assets/agent/agent-bundle.js": {
+      "sha256": "ba59f8eed6398e9d69f77d6015ba62cd659a7110751cfd51de04bbd6cd78e224",
+      "bytes": 101624639
+    },
+    "assets/agent/workflow-worker/google-host.mjs": {
+      "sha256": "90be81359e4ecbe82d7f64e4000597f6d737608f6d11cdd1ba66bf2aacce6510",
+      "bytes": 2948555
+    },
+    "assets/agent/workflow-worker/dependencies.json": {
+      "sha256": "56ce2b9521210b7fb4aeaf0ad4c7d29721e07a0c92c7e2689ea4ec6b32913009",
+      "bytes": 17598
+    },
+    "assets/agent/workflow-worker/compiler/dependencies.json": {
+      "sha256": "64199c09cd16636f068d3bd4bf1809ea416d197e67bb80364832c5815ce5d04e",
+      "bytes": 14216
+    }
+  },
+  "noticePackageIdentity": {
+    "packages": 603,
+    "inputIdentical": true,
+    "inputSha256": "2c5adf868030111f24c0b6d3aa2596afb023aaf732910f767d492970ff901ef6",
+    "added": [],
+    "removed": [],
+    "registryRequery": false
+  },
+  "packagedAudit": {
+    "description": "Advisories for the resident runtime's npm packages at the pinned upstream commit, from the npm bulk advisory endpoint. Regenerate with: node scripts/dependency-audit.mjs --resident --write. Dispositions live in docs/dependency-audit.dispositions.json under \"resident\".",
+    "upstreamCommit": "f4142d3a92d6b5b49ef6c6a666155218b8b75b07",
+    "input": "packaged-runtime notices",
+    "auditedOn": "2026-10-25",
+    "inputSha256": "2c5adf868030111f24c0b6d3aa2596afb023aaf732910f767d492970ff901ef6",
+    "packages": 603,
+    "counts": {
+      "info": 0,
+      "low": 0,
+      "moderate": 1,
+      "high": 0,
+      "critical": 0
+    },
+    "findings": [
+      {
+        "package": "uuid",
+        "versions": [
+          "8.3.2",
+          "9.0.1"
+        ],
+        "severity": "moderate",
+        "advisory": {
+          "id": "GHSA-w5hq-g745-h8pq",
+          "severity": "moderate",
+          "vulnerableRange": "<11.1.1",
+          "title": "uuid: Missing buffer bounds check in v3/v5/v6 when buf is provided",
+          "url": "https://github.com/advisories/GHSA-w5hq-g745-h8pq"
+        }
+      }
+    ],
+    "inputReuse": {
+      "fromArtifact": "ab2dbd9ca2e756bd954fce21adcf17c76c0fa5717671a50f0062b35ad7cefe27",
+      "normalizedInputIdentical": true,
+      "newRegistryQuery": false,
+      "registryAuditedOnPreserved": "2026-10-25"
+    }
+  },
+  "moduleComparison": {
+    "assets/agent/agent-bundle.js": {
+      "moduleSetsIdentical": true,
+      "added": [],
+      "removed": [],
+      "changedModules": [
+        "../../plugins/plugin-personal-assistant/src/plugin.ts",
+        "src/api/views-registry.ts"
+      ],
+      "npmModuleChanges": []
+    },
+    "assets/agent/workflow-worker/google-host.mjs": {
+      "moduleSetsIdentical": true,
+      "added": [],
+      "removed": [],
+      "changedModules": [
+        "artifacts/local-agent-resident-<SOURCE>/node_modules/.bun/@noble+curves@2.2.0/node_modules/@noble/curves/secp256k1.js",
+        "artifacts/local-agent-resident-<SOURCE>/node_modules/.bun/@noble+hashes@2.2.0/node_modules/@noble/hashes/sha2.js",
+        "artifacts/local-agent-resident-<SOURCE>/node_modules/.bun/@noble+hashes@2.2.0/node_modules/@noble/hashes/sha3.js",
+        "backend/managed-google-agent-broker.ts",
+        "backend/managed-google-failure-stage.ts",
+        "backend/native-google-cloud-port.ts"
+      ],
+      "npmModuleChanges": [
+        "artifacts/local-agent-resident-<SOURCE>/node_modules/.bun/@noble+curves@2.2.0/node_modules/@noble/curves/secp256k1.js",
+        "artifacts/local-agent-resident-<SOURCE>/node_modules/.bun/@noble+hashes@2.2.0/node_modules/@noble/hashes/sha2.js",
+        "artifacts/local-agent-resident-<SOURCE>/node_modules/.bun/@noble+hashes@2.2.0/node_modules/@noble/hashes/sha3.js"
+      ]
+    }
+  },
+  "priorityModuleIdentity": {
+    "assets/agent/agent-bundle.js": [
+      {
+        "path": "../../node_modules/.bun/zod@4.6.6/node_modules/zod/v4/core/util.cjs",
+        "sha256": "bc86d35000811be12507d1baecfa97c96aa41cce0714e68d7ad08727414c8cc7",
+        "unchangedFromPriorArtifact": true,
+        "normalizedBodyUnchangedFromPriorArtifact": true
+      },
+      {
+        "path": "../../node_modules/.bun/zod@4.6.6/node_modules/zod/v4/core/core.cjs",
+        "sha256": "7dcea9078afb50266d67a5dbaf90634c83eaa947eb791970336475e9fb7f4a64",
+        "unchangedFromPriorArtifact": true,
+        "normalizedBodyUnchangedFromPriorArtifact": true
+      },
+      {
+        "path": "../../node_modules/.bun/zod@4.6.6/node_modules/zod/v4/core/errors.cjs",
+        "sha256": "ab87ebbc69b0592f1f775f9a805fa1c0e0d8ab44f4a778f01d25fd1ef4b05349",
+        "unchangedFromPriorArtifact": true,
+        "normalizedBodyUnchangedFromPriorArtifact": true
+      },
+      {
+        "path": "../../node_modules/.bun/zod@4.6.6/node_modules/zod/v4/core/parse.cjs",
+        "sha256": "41d2d53397ce731af3f1d60660fbfffb8f2323716d51b66502be3df095ae6197",
+        "unchangedFromPriorArtifact": true,
+        "normalizedBodyUnchangedFromPriorArtifact": true
+      },
+      {
+        "path": "../../node_modules/.bun/zod@4.6.6/node_modules/zod/v4/core/regexes.cjs",
+        "sha256": "ba4a39a8708889523ea960279b94794c036f72f655abfb63155a2f9936531736",
+        "unchangedFromPriorArtifact": true,
+        "normalizedBodyUnchangedFromPriorArtifact": true
+      },
+      {
+        "path": "../../node_modules/.bun/zod@4.6.6/node_modules/zod/v4/core/checks.cjs",
+        "sha256": "7a89e15627b908d2d844f89970ce58c30ac6fba230382e94ba00885f4708baac",
+        "unchangedFromPriorArtifact": true,
+        "normalizedBodyUnchangedFromPriorArtifact": true
+      },
+      {
+        "path": "../../node_modules/.bun/zod@4.6.6/node_modules/zod/v4/core/doc.cjs",
+        "sha256": "7d51502a9b1612a986184f787971383e1b416349c834c89cf5236e51d7931966",
+        "unchangedFromPriorArtifact": true,
+        "normalizedBodyUnchangedFromPriorArtifact": true
+      },
+      {
+        "path": "../../node_modules/.bun/zod@4.6.6/node_modules/zod/v4/core/versions.cjs",
+        "sha256": "d45882afe9a156868a6cce29a46d79c16a4bf6a43b8b1a604ff31944cd3c5d5a",
+        "unchangedFromPriorArtifact": true,
+        "normalizedBodyUnchangedFromPriorArtifact": true
+      },
+      {
+        "path": "../../node_modules/.bun/zod@4.6.6/node_modules/zod/v4/core/schemas.cjs",
+        "sha256": "b7c70abff441a50136be6e8b1d90fad063bd62b0657165e4802f641280377a9f",
+        "unchangedFromPriorArtifact": true,
+        "normalizedBodyUnchangedFromPriorArtifact": true
+      },
+      {
+        "path": "../../node_modules/.bun/zod@4.6.6/node_modules/zod/v4/core/memoizer.cjs",
+        "sha256": "259363ec3a1f31d511bbb35f2311662d78363fb957a1521301de8a4343fb9073",
+        "unchangedFromPriorArtifact": true,
+        "normalizedBodyUnchangedFromPriorArtifact": true
+      },
+      {
+        "path": "../../node_modules/.bun/zod@4.6.6/node_modules/zod/v4/locales/ar.cjs",
+        "sha256": "1c69c709e90f8a5e72f50ecefb97171f0ceaa11c04c10042e51428645ebe47db",
+        "unchangedFromPriorArtifact": true,
+        "normalizedBodyUnchangedFromPriorArtifact": true
+      },
+      {
+        "path": "../../node_modules/.bun/zod@4.6.6/node_modules/zod/v4/locales/az.cjs",
+        "sha256": "3678098d1a2e0c8b6399f7d1f3f32cf6051765fef00d934e71a03834abb15e0d",
+        "unchangedFromPriorArtifact": true,
+        "normalizedBodyUnchangedFromPriorArtifact": true
+      },
+      {
+        "path": "../../node_modules/.bun/zod@4.6.6/node_modules/zod/v4/locales/be.cjs",
+        "sha256": "ceb147a70ba026e5a95bb0b4ff2734a91b53547c4f5a933f06e05c229ad346ec",
+        "unchangedFromPriorArtifact": true,
+        "normalizedBodyUnchangedFromPriorArtifact": true
+      },
+      {
+        "path": "../../node_modules/.bun/zod@4.6.6/node_modules/zod/v4/locales/bg.cjs",
+        "sha256": "d4b738d410dfe635993f5dade1fa2cbf77f624c98ba981b05bf8710da5f3010c",
+        "unchangedFromPriorArtifact": true,
+        "normalizedBodyUnchangedFromPriorArtifact": true
+      },
+      {
+        "path": "../../node_modules/.bun/zod@4.6.6/node_modules/zod/v4/locales/bn.cjs",
+        "sha256": "36c6747ce204264e52663e3524c3fd62d7881d740c1e4dc04c283691a9375373",
+        "unchangedFromPriorArtifact": true,
+        "normalizedBodyUnchangedFromPriorArtifact": true
+      },
+      {
+        "path": "../../node_modules/.bun/zod@4.6.6/node_modules/zod/v4/locales/ca.cjs",
+        "sha256": "80ce58a151c8012bf9daa11124e9622c7eb9cfe4d7b2ea839f62b9807e0de993",
+        "unchangedFromPriorArtifact": true,
+        "normalizedBodyUnchangedFromPriorArtifact": true
+      },
+      {
+        "path": "../../node_modules/.bun/zod@4.6.6/node_modules/zod/v4/locales/ckb.cjs",
+        "sha256": "5173b622e8c26c5219049e8c15333541da76c271d651bdb9acea072e591dd525",
+        "unchangedFromPriorArtifact": true,
+        "normalizedBodyUnchangedFromPriorArtifact": true
+      },
+      {
+        "path": "../../node_modules/.bun/zod@4.6.6/node_modules/zod/v4/locales/cs.cjs",
+        "sha256": "3d2db9bb3c144026bcbccbe5e57b88cdf924ed5b96d984960d14b3b914212019",
+        "unchangedFromPriorArtifact": true,
+        "normalizedBodyUnchangedFromPriorArtifact": true
+      },
+      {
+        "path": "../../node_modules/.bun/zod@4.6.6/node_modules/zod/v4/locales/da.cjs",
+        "sha256": "1ceb1c9121ac9faa2704868474801a9a37f9edf23fc5192b6db174618b11c821",
+        "unchangedFromPriorArtifact": true,
+        "normalizedBodyUnchangedFromPriorArtifact": true
+      },
+      {
+        "path": "../../node_modules/.bun/zod@4.6.6/node_modules/zod/v4/locales/de.cjs",
+        "sha256": "85c4aeff5f772b222774e7273cb4ea58501dd26bbb6b40c8bfc8385f4798fef6",
+        "unchangedFromPriorArtifact": true,
+        "normalizedBodyUnchangedFromPriorArtifact": true
+      },
+      {
+        "path": "../../node_modules/.bun/zod@4.6.6/node_modules/zod/v4/locales/el.cjs",
+        "sha256": "bd334f9cb540957a541a19c58e320eb13ac70dece460224eb03cef8ee1ec8eba",
+        "unchangedFromPriorArtifact": true,
+        "normalizedBodyUnchangedFromPriorArtifact": true
+      },
+      {
+        "path": "../../node_modules/.bun/zod@4.6.6/node_modules/zod/v4/locales/en.cjs",
+        "sha256": "072527d534a018f206afb0dd7b4802218717827a1d051b2a3b295c0d448e2b25",
+        "unchangedFromPriorArtifact": true,
+        "normalizedBodyUnchangedFromPriorArtifact": true
+      },
+      {
+        "path": "../../node_modules/.bun/zod@4.6.6/node_modules/zod/v4/locales/eo.cjs",
+        "sha256": "76e957e8d5f67f30530f5cecfb14ac0b06f89355ecd04424037d1d943016885b",
+        "unchangedFromPriorArtifact": true,
+        "normalizedBodyUnchangedFromPriorArtifact": true
+      },
+      {
+        "path": "../../node_modules/.bun/zod@4.6.6/node_modules/zod/v4/locales/es.cjs",
+        "sha256": "037cfa873f07adb368da9461093209fa413da239897ffa86f3643f6365106e22",
+        "unchangedFromPriorArtifact": true,
+        "normalizedBodyUnchangedFromPriorArtifact": true
+      },
+      {
+        "path": "../../node_modules/.bun/zod@4.6.6/node_modules/zod/v4/locales/fa.cjs",
+        "sha256": "ed2ef4b7066c8d1cc2b00f83570445eb8ea9b873bf48d3c22c023da876e8f87f",
+        "unchangedFromPriorArtifact": true,
+        "normalizedBodyUnchangedFromPriorArtifact": true
+      },
+      {
+        "path": "../../node_modules/.bun/zod@4.6.6/node_modules/zod/v4/locales/fi.cjs",
+        "sha256": "c7df32eb0df625b89937db7e9442ae619e48ebb54c15d78135042fb4fba74ac5",
+        "unchangedFromPriorArtifact": true,
+        "normalizedBodyUnchangedFromPriorArtifact": true
+      },
+      {
+        "path": "../../node_modules/.bun/zod@4.6.6/node_modules/zod/v4/locales/fr.cjs",
+        "sha256": "585675ccd6dd5f74a25815559a2fa46e7d13a1ee482f3f8ab276c90ce60f5d80",
+        "unchangedFromPriorArtifact": true,
+        "normalizedBodyUnchangedFromPriorArtifact": true
+      },
+      {
+        "path": "../../node_modules/.bun/zod@4.6.6/node_modules/zod/v4/locales/fr-CA.cjs",
+        "sha256": "1ffcaf5b3f8cc46e1447c403cafeba5443daaf9e4b00fbe22d5c83dd0a1896a3",
+        "unchangedFromPriorArtifact": true,
+        "normalizedBodyUnchangedFromPriorArtifact": true
+      },
+      {
+        "path": "../../node_modules/.bun/zod@4.6.6/node_modules/zod/v4/locales/gu.cjs",
+        "sha256": "24b440bee6b98aa9b77b0d18473b4333383cc058717464463d84e3a84dc03b42",
+        "unchangedFromPriorArtifact": true,
+        "normalizedBodyUnchangedFromPriorArtifact": true
+      },
+      {
+        "path": "../../node_modules/.bun/zod@4.6.6/node_modules/zod/v4/locales/he.cjs",
+        "sha256": "112124bae9ca70675d51d66ac93373b085b153077740d94734030574aba995f4",
+        "unchangedFromPriorArtifact": true,
+        "normalizedBodyUnchangedFromPriorArtifact": true
+      },
+      {
+        "path": "../../node_modules/.bun/zod@4.6.6/node_modules/zod/v4/locales/hi.cjs",
+        "sha256": "865f67d06bf704680e35d70d0f1c08380425efd2935fd7f9c5020e290bc2f1cc",
+        "unchangedFromPriorArtifact": true,
+        "normalizedBodyUnchangedFromPriorArtifact": true
+      },
+      {
+        "path": "../../node_modules/.bun/zod@4.6.6/node_modules/zod/v4/locales/hr.cjs",
+        "sha256": "be7a795c34be353f55b98e1c0151eadac05da71bcabc0d219ff6a7b01ba52b7f",
+        "unchangedFromPriorArtifact": true,
+        "normalizedBodyUnchangedFromPriorArtifact": true
+      },
+      {
+        "path": "../../node_modules/.bun/zod@4.6.6/node_modules/zod/v4/locales/hu.cjs",
+        "sha256": "891df4fe2b12c02e7079fef4626a5a4b91f2d8682e321b42ca9a3ae6c18acb41",
+        "unchangedFromPriorArtifact": true,
+        "normalizedBodyUnchangedFromPriorArtifact": true
+      },
+      {
+        "path": "../../node_modules/.bun/zod@4.6.6/node_modules/zod/v4/locales/hy.cjs",
+        "sha256": "4dc30ec334386ed372e053b2fad5e2e9a5201060d61d8f8c1d963033f0caea95",
+        "unchangedFromPriorArtifact": true,
+        "normalizedBodyUnchangedFromPriorArtifact": true
+      },
+      {
+        "path": "../../node_modules/.bun/zod@4.6.6/node_modules/zod/v4/locales/id.cjs",
+        "sha256": "a8560c63114dee4ab80e0ead13c9649fcf6e764e4085049e31afc7ec48d0b7bc",
+        "unchangedFromPriorArtifact": true,
+        "normalizedBodyUnchangedFromPriorArtifact": true
+      },
+      {
+        "path": "../../node_modules/.bun/zod@4.6.6/node_modules/zod/v4/locales/is.cjs",
+        "sha256": "3e7800d9fe4badf7a20d1ed9f94a3fca007d1172a795525fb7074302025ee0b1",
+        "unchangedFromPriorArtifact": true,
+        "normalizedBodyUnchangedFromPriorArtifact": true
+      },
+      {
+        "path": "../../node_modules/.bun/zod@4.6.6/node_modules/zod/v4/locales/it.cjs",
+        "sha256": "0c52835a07c0e445dbf2ff575986b5cd4c7acabd9ce98d91cac96131ea1830b9",
+        "unchangedFromPriorArtifact": true,
+        "normalizedBodyUnchangedFromPriorArtifact": true
+      },
+      {
+        "path": "../../node_modules/.bun/zod@4.6.6/node_modules/zod/v4/locales/ja.cjs",
+        "sha256": "942d96da83d8765aff7ea398bdd8d310218539c6d9ac65c5d64e414f92d9e01a",
+        "unchangedFromPriorArtifact": true,
+        "normalizedBodyUnchangedFromPriorArtifact": true
+      },
+      {
+        "path": "../../node_modules/.bun/zod@4.6.6/node_modules/zod/v4/locales/ka.cjs",
+        "sha256": "c760e683fba2f416ed0be8ecde1d78e99c4fef69eca5dcced8f3dd62336ee006",
+        "unchangedFromPriorArtifact": true,
+        "normalizedBodyUnchangedFromPriorArtifact": true
+      },
+      {
+        "path": "../../node_modules/.bun/zod@4.6.6/node_modules/zod/v4/locales/km.cjs",
+        "sha256": "1a5840303c1f11dd1a04a874a6080e726d83d15e502245d358747f974e9d87c0",
+        "unchangedFromPriorArtifact": true,
+        "normalizedBodyUnchangedFromPriorArtifact": true
+      },
+      {
+        "path": "../../node_modules/.bun/zod@4.6.6/node_modules/zod/v4/locales/kh.cjs",
+        "sha256": "cf20a773788309788acc00db6a95b14d77b543dafdfc23227febce95d142b484",
+        "unchangedFromPriorArtifact": true,
+        "normalizedBodyUnchangedFromPriorArtifact": true
+      },
+      {
+        "path": "../../node_modules/.bun/zod@4.6.6/node_modules/zod/v4/locales/kn.cjs",
+        "sha256": "e5f580e04ae7a5bd4ed7bcfdf49944cc4ec1f3f8069e5050acc6a30aec9094a6",
+        "unchangedFromPriorArtifact": true,
+        "normalizedBodyUnchangedFromPriorArtifact": true
+      },
+      {
+        "path": "../../node_modules/.bun/zod@4.6.6/node_modules/zod/v4/locales/ko.cjs",
+        "sha256": "832e5329f15ee93c64fdc2f527fd43ed48e5d9adc3329b2fb22c968e18b1265c",
+        "unchangedFromPriorArtifact": true,
+        "normalizedBodyUnchangedFromPriorArtifact": true
+      },
+      {
+        "path": "../../node_modules/.bun/zod@4.6.6/node_modules/zod/v4/locales/lt.cjs",
+        "sha256": "fe807f770aa78bafc218f82860de4fce9f3dd151f710f785bc84f4f249405b3c",
+        "unchangedFromPriorArtifact": true,
+        "normalizedBodyUnchangedFromPriorArtifact": true
+      },
+      {
+        "path": "../../node_modules/.bun/zod@4.6.6/node_modules/zod/v4/locales/mk.cjs",
+        "sha256": "40397a2f63ccdf13ab5e052d288049f210f01fb50bd6eaa9ab60f07dc6aea693",
+        "unchangedFromPriorArtifact": true,
+        "normalizedBodyUnchangedFromPriorArtifact": true
+      },
+      {
+        "path": "../../node_modules/.bun/zod@4.6.6/node_modules/zod/v4/locales/ms.cjs",
+        "sha256": "75f457fd0f6f4f727c0c5e744ffe022b35c8f49c45b9665b8efa74822813b49f",
+        "unchangedFromPriorArtifact": true,
+        "normalizedBodyUnchangedFromPriorArtifact": true
+      },
+      {
+        "path": "../../node_modules/.bun/zod@4.6.6/node_modules/zod/v4/locales/ne.cjs",
+        "sha256": "8d95a7ee34f625befbd5253ad23503eeec93c70838e890d68ed58ff74585c307",
+        "unchangedFromPriorArtifact": true,
+        "normalizedBodyUnchangedFromPriorArtifact": true
+      },
+      {
+        "path": "../../node_modules/.bun/zod@4.6.6/node_modules/zod/v4/locales/nl.cjs",
+        "sha256": "cfc90c6ecf8cc33d4b7d67d5e9983474689220b483caaa1295636b0fc13b6325",
+        "unchangedFromPriorArtifact": true,
+        "normalizedBodyUnchangedFromPriorArtifact": true
+      },
+      {
+        "path": "../../node_modules/.bun/zod@4.6.6/node_modules/zod/v4/locales/nn.cjs",
+        "sha256": "a44263687b4b1c564889dfb1cdcbdbe6d69af16d4079db4e995ac12fa1a43eea",
+        "unchangedFromPriorArtifact": true,
+        "normalizedBodyUnchangedFromPriorArtifact": true
+      },
+      {
+        "path": "../../node_modules/.bun/zod@4.6.6/node_modules/zod/v4/locales/no.cjs",
+        "sha256": "16c27d163ac72137968c218a9a6ec374f6bfcd1857a9aec2c458df098d66cfd4",
+        "unchangedFromPriorArtifact": true,
+        "normalizedBodyUnchangedFromPriorArtifact": true
+      },
+      {
+        "path": "../../node_modules/.bun/zod@4.6.6/node_modules/zod/v4/locales/ota.cjs",
+        "sha256": "37fcff23c314a1975826a3bfb11c3f47d6158559a1d72ad8c713daac7e704736",
+        "unchangedFromPriorArtifact": true,
+        "normalizedBodyUnchangedFromPriorArtifact": true
+      },
+      {
+        "path": "../../node_modules/.bun/zod@4.6.6/node_modules/zod/v4/locales/ps.cjs",
+        "sha256": "528e54779e4a4f895d81caebc655e896c10cec0f2f578be1f636fb256ed922b9",
+        "unchangedFromPriorArtifact": true,
+        "normalizedBodyUnchangedFromPriorArtifact": true
+      },
+      {
+        "path": "../../node_modules/.bun/zod@4.6.6/node_modules/zod/v4/locales/pl.cjs",
+        "sha256": "74aad2b2f02662a8b504d6e6c00d658f7efaca33d23b5b50b3caaeef36c4d4f3",
+        "unchangedFromPriorArtifact": true,
+        "normalizedBodyUnchangedFromPriorArtifact": true
+      },
+      {
+        "path": "../../node_modules/.bun/zod@4.6.6/node_modules/zod/v4/locales/pt.cjs",
+        "sha256": "5018861dcdbc4aefe244a6712f26286e36eb1ce6e57d7c614f1f50b8b63291eb",
+        "unchangedFromPriorArtifact": true,
+        "normalizedBodyUnchangedFromPriorArtifact": true
+      },
+      {
+        "path": "../../node_modules/.bun/zod@4.6.6/node_modules/zod/v4/locales/pt-BR.cjs",
+        "sha256": "bb003816b85631f2c36c97279a1bbd16704859fc25796ed4b4eb9afcf0598b5c",
+        "unchangedFromPriorArtifact": true,
+        "normalizedBodyUnchangedFromPriorArtifact": true
+      },
+      {
+        "path": "../../node_modules/.bun/zod@4.6.6/node_modules/zod/v4/locales/ro.cjs",
+        "sha256": "e85d8c0212008a0b04fd305be1fbece8620029e93b7b0e5f21c26d0123f14a69",
+        "unchangedFromPriorArtifact": true,
+        "normalizedBodyUnchangedFromPriorArtifact": true
+      },
+      {
+        "path": "../../node_modules/.bun/zod@4.6.6/node_modules/zod/v4/locales/ru.cjs",
+        "sha256": "ac0ace91f3b7bd9a75a833af9cdedcc9f60d75e474b45bfadddeefccb5ba4297",
+        "unchangedFromPriorArtifact": true,
+        "normalizedBodyUnchangedFromPriorArtifact": true
+      },
+      {
+        "path": "../../node_modules/.bun/zod@4.6.6/node_modules/zod/v4/locales/sk.cjs",
+        "sha256": "da1162b82a2e683b77df0eba4cf9e45000ee9a6b704daa36c72858de0e1c4388",
+        "unchangedFromPriorArtifact": true,
+        "normalizedBodyUnchangedFromPriorArtifact": true
+      },
+      {
+        "path": "../../node_modules/.bun/zod@4.6.6/node_modules/zod/v4/locales/sl.cjs",
+        "sha256": "8c06b01d2de43c29926b9ff3792fb72113940e0e0a3c4a674c36fa4093299d30",
+        "unchangedFromPriorArtifact": true,
+        "normalizedBodyUnchangedFromPriorArtifact": true
+      },
+      {
+        "path": "../../node_modules/.bun/zod@4.6.6/node_modules/zod/v4/locales/sv.cjs",
+        "sha256": "dae38e986e0ad7f06cc735a1abee2f1f7996c23c395ca51484e0524793e4aa11",
+        "unchangedFromPriorArtifact": true,
+        "normalizedBodyUnchangedFromPriorArtifact": true
+      },
+      {
+        "path": "../../node_modules/.bun/zod@4.6.6/node_modules/zod/v4/locales/ta.cjs",
+        "sha256": "1ad61646ccc3064c4a5e08b302a4f009f16820d9f89410609f81889d153252f9",
+        "unchangedFromPriorArtifact": true,
+        "normalizedBodyUnchangedFromPriorArtifact": true
+      },
+      {
+        "path": "../../node_modules/.bun/zod@4.6.6/node_modules/zod/v4/locales/tg.cjs",
+        "sha256": "4c3b1f74dada3184f6a1c5a219934cceb183c2872816e15da30928a853191f07",
+        "unchangedFromPriorArtifact": true,
+        "normalizedBodyUnchangedFromPriorArtifact": true
+      },
+      {
+        "path": "../../node_modules/.bun/zod@4.6.6/node_modules/zod/v4/locales/th.cjs",
+        "sha256": "494fee3a6c4e7d2b01586d3ff24e3f5f22de46757d6b2d0b6f09bdd258bb1db0",
+        "unchangedFromPriorArtifact": true,
+        "normalizedBodyUnchangedFromPriorArtifact": true
+      },
+      {
+        "path": "../../node_modules/.bun/zod@4.6.6/node_modules/zod/v4/locales/tk.cjs",
+        "sha256": "d621423f15617185925fa182a0a3331836fdb9f565032437fb07ba3e2c9cdcee",
+        "unchangedFromPriorArtifact": true,
+        "normalizedBodyUnchangedFromPriorArtifact": true
+      },
+      {
+        "path": "../../node_modules/.bun/zod@4.6.6/node_modules/zod/v4/locales/tr.cjs",
+        "sha256": "2a682440fc2dad3e503925142b89e629af1c7128b0c2c9562ddcf6decba0e69f",
+        "unchangedFromPriorArtifact": true,
+        "normalizedBodyUnchangedFromPriorArtifact": true
+      },
+      {
+        "path": "../../node_modules/.bun/zod@4.6.6/node_modules/zod/v4/locales/uk.cjs",
+        "sha256": "d75ad87b326980e4c17893e5ec2d06f4f29f6e58e8f5bf8943d801bb760712b5",
+        "unchangedFromPriorArtifact": true,
+        "normalizedBodyUnchangedFromPriorArtifact": true
+      },
+      {
+        "path": "../../node_modules/.bun/zod@4.6.6/node_modules/zod/v4/locales/ua.cjs",
+        "sha256": "77cc9e9a53293b0d698730b45cc8ee5a1bdc84654608fa44f02eefc0fb3f4ec3",
+        "unchangedFromPriorArtifact": true,
+        "normalizedBodyUnchangedFromPriorArtifact": true
+      },
+      {
+        "path": "../../node_modules/.bun/zod@4.6.6/node_modules/zod/v4/locales/ur.cjs",
+        "sha256": "d7114788e68d32ef2c5d560dcb669d41411f238501aeca4a4d3a07e06e41b19a",
+        "unchangedFromPriorArtifact": true,
+        "normalizedBodyUnchangedFromPriorArtifact": true
+      },
+      {
+        "path": "../../node_modules/.bun/zod@4.6.6/node_modules/zod/v4/locales/uz.cjs",
+        "sha256": "d666a27feb956932983088f7cb9370cc59529a1f37431107f4c248a6c75b9c84",
+        "unchangedFromPriorArtifact": true,
+        "normalizedBodyUnchangedFromPriorArtifact": true
+      },
+      {
+        "path": "../../node_modules/.bun/zod@4.6.6/node_modules/zod/v4/locales/vi.cjs",
+        "sha256": "452c379d4aa573b0fea4fe949702675ef4035896d1d7c0aba9fbd4be30a8d7c8",
+        "unchangedFromPriorArtifact": true,
+        "normalizedBodyUnchangedFromPriorArtifact": true
+      },
+      {
+        "path": "../../node_modules/.bun/zod@4.6.6/node_modules/zod/v4/locales/zh-CN.cjs",
+        "sha256": "806f891fe11ff2efdf2f46de72759947f60ecd02dd89a3bfb8e59041cca8fc6a",
+        "unchangedFromPriorArtifact": true,
+        "normalizedBodyUnchangedFromPriorArtifact": true
+      },
+      {
+        "path": "../../node_modules/.bun/zod@4.6.6/node_modules/zod/v4/locales/zh-TW.cjs",
+        "sha256": "b52ae84ed1eea8a9baa0811899103b7ffe08a0bdc1253c1a27ce2e54da17c8e4",
+        "unchangedFromPriorArtifact": true,
+        "normalizedBodyUnchangedFromPriorArtifact": true
+      },
+      {
+        "path": "../../node_modules/.bun/zod@4.6.6/node_modules/zod/v4/locales/yo.cjs",
+        "sha256": "f5d9b2d75cdd84cfe3c5d860f76b6597edd599ee59f9fc777d3f794e049ed21c",
+        "unchangedFromPriorArtifact": true,
+        "normalizedBodyUnchangedFromPriorArtifact": true
+      },
+      {
+        "path": "../../node_modules/.bun/zod@4.6.6/node_modules/zod/v4/locales/index.cjs",
+        "sha256": "9a78458d37f5fe2776e856dec6e3ca005fcf0e34abaea54d69cae40731210c53",
+        "unchangedFromPriorArtifact": true,
+        "normalizedBodyUnchangedFromPriorArtifact": true
+      },
+      {
+        "path": "../../node_modules/.bun/zod@4.6.6/node_modules/zod/v4/core/registries.cjs",
+        "sha256": "44c73d56beeacfe2a6008d6f0ec64e2741ee33f264834d5afe1067cb18903056",
+        "unchangedFromPriorArtifact": true,
+        "normalizedBodyUnchangedFromPriorArtifact": true
+      },
+      {
+        "path": "../../node_modules/.bun/zod@4.6.6/node_modules/zod/v4/core/compile.cjs",
+        "sha256": "8d88432b4afd93d5813f816a664fbdee97b7fc69795cfb22c0930282ab14214a",
+        "unchangedFromPriorArtifact": true,
+        "normalizedBodyUnchangedFromPriorArtifact": true
+      },
+      {
+        "path": "../../node_modules/.bun/zod@4.6.6/node_modules/zod/v4/core/api.cjs",
+        "sha256": "b9c471d53a7e18a50f6c3eebfbcf1883b5f37aafb71c8c151b5a4c68e453bdbd",
+        "unchangedFromPriorArtifact": true,
+        "normalizedBodyUnchangedFromPriorArtifact": true
+      },
+      {
+        "path": "../../node_modules/.bun/zod@4.6.6/node_modules/zod/v4/core/to-json-schema.cjs",
+        "sha256": "869bc4d532f04e0c5357d18405cd00c7bc992dc7e5015476818ef39c7ba65978",
+        "unchangedFromPriorArtifact": true,
+        "normalizedBodyUnchangedFromPriorArtifact": true
+      },
+      {
+        "path": "../../node_modules/.bun/zod@4.6.6/node_modules/zod/v4/core/json-schema-processors.cjs",
+        "sha256": "5843be7a2c275720d653ab7650031fb16cf99f41f2d40074370a55a8d9e12411",
+        "unchangedFromPriorArtifact": true,
+        "normalizedBodyUnchangedFromPriorArtifact": true
+      },
+      {
+        "path": "../../node_modules/.bun/zod@4.6.6/node_modules/zod/v4/core/json-schema-generator.cjs",
+        "sha256": "67a58432aa42ec241aaa687cd206203bef91e17301d1070a89823d08c729b6fc",
+        "unchangedFromPriorArtifact": true,
+        "normalizedBodyUnchangedFromPriorArtifact": true
+      },
+      {
+        "path": "../../node_modules/.bun/zod@4.6.6/node_modules/zod/v4/core/json-schema.cjs",
+        "sha256": "823b887d58651df691fb2ad08fc4ac556cbb30f1f099351a8e261f0b8802185c",
+        "unchangedFromPriorArtifact": true,
+        "normalizedBodyUnchangedFromPriorArtifact": true
+      },
+      {
+        "path": "../../node_modules/.bun/zod@4.6.6/node_modules/zod/v4/core/index.cjs",
+        "sha256": "e215a3d8a2225a2e1ca95c1ea7f9f694aa80620512c827af3348f6a300241e2e",
+        "unchangedFromPriorArtifact": true,
+        "normalizedBodyUnchangedFromPriorArtifact": true
+      },
+      {
+        "path": "../../node_modules/.bun/zod@4.6.6/node_modules/zod/v4/classic/checks.cjs",
+        "sha256": "6935801a663827ffa95ab20f0d8a08843cec547bc533b4d815ee0c3cd98bdf12",
+        "unchangedFromPriorArtifact": true,
+        "normalizedBodyUnchangedFromPriorArtifact": true
+      },
+      {
+        "path": "../../node_modules/.bun/zod@4.6.6/node_modules/zod/v4/classic/errors.cjs",
+        "sha256": "bed7d72c50e2b783d9dc0b22a713018ee0780794ab047824b8a1a73c11e8f59b",
+        "unchangedFromPriorArtifact": true,
+        "normalizedBodyUnchangedFromPriorArtifact": true
+      },
+      {
+        "path": "../../node_modules/.bun/zod@4.6.6/node_modules/zod/v4/classic/parse.cjs",
+        "sha256": "1c05d30c11ba28e3ac7ef7cdb99e902afeb8ddbcec780ffb59079e3c44b219d3",
+        "unchangedFromPriorArtifact": true,
+        "normalizedBodyUnchangedFromPriorArtifact": true
+      },
+      {
+        "path": "../../node_modules/.bun/zod@4.6.6/node_modules/zod/v4/classic/schemas.cjs",
+        "sha256": "37c60966d492f6f4fa22c5f6a9dc26dab77d9dd5f0d2c690cb4208f670c3aadc",
+        "unchangedFromPriorArtifact": true,
+        "normalizedBodyUnchangedFromPriorArtifact": true
+      },
+      {
+        "path": "../../node_modules/.bun/zod@4.6.6/node_modules/zod/v4/classic/compat.cjs",
+        "sha256": "f5baaf091b597a0733b771e9471ed3bcf3aaa4b5830b76719876bf6ec2c8e7d1",
+        "unchangedFromPriorArtifact": true,
+        "normalizedBodyUnchangedFromPriorArtifact": true
+      },
+      {
+        "path": "../../node_modules/.bun/zod@4.6.6/node_modules/zod/v4/classic/iso.cjs",
+        "sha256": "7d78a93be3874010c8e62b3ca48c21c4c69e80c06c9a636202da32f423b18756",
+        "unchangedFromPriorArtifact": true,
+        "normalizedBodyUnchangedFromPriorArtifact": true
+      },
+      {
+        "path": "../../node_modules/.bun/zod@4.6.6/node_modules/zod/v4/classic/from-json-schema.cjs",
+        "sha256": "cc94d74a6104eda0a93ea8ed053cc65193cc9a12c6a9f56f1988942f20952371",
+        "unchangedFromPriorArtifact": true,
+        "normalizedBodyUnchangedFromPriorArtifact": true
+      },
+      {
+        "path": "../../node_modules/.bun/zod@4.6.6/node_modules/zod/v4/core/visit.cjs",
+        "sha256": "b749508defe291c73a27024d7c406e66a15092c62eacd8b6d1dc65ca84bdfe93",
+        "unchangedFromPriorArtifact": true,
+        "normalizedBodyUnchangedFromPriorArtifact": true
+      },
+      {
+        "path": "../../node_modules/.bun/zod@4.6.6/node_modules/zod/v4/classic/deep-partial.cjs",
+        "sha256": "4b07e2d9335b392ec753cbc327468ddf6e8308f14577b6edafe09b506384d43c",
+        "unchangedFromPriorArtifact": true,
+        "normalizedBodyUnchangedFromPriorArtifact": true
+      },
+      {
+        "path": "../../node_modules/.bun/zod@4.6.6/node_modules/zod/v4/classic/in-out.cjs",
+        "sha256": "7b9e1738807ca665297435a17a85ae50eb9e04a85095753b98f352e74f043222",
+        "unchangedFromPriorArtifact": true,
+        "normalizedBodyUnchangedFromPriorArtifact": true
+      },
+      {
+        "path": "../../node_modules/.bun/zod@4.6.6/node_modules/zod/v4/classic/coerce.cjs",
+        "sha256": "84df55f164dc7e557f9707d81c27b3a7230572e3815423491ffb2202e666af69",
+        "unchangedFromPriorArtifact": true,
+        "normalizedBodyUnchangedFromPriorArtifact": true
+      },
+      {
+        "path": "../../node_modules/.bun/zod@4.6.6/node_modules/zod/v4/classic/external.cjs",
+        "sha256": "4d3066c9550fd86acbdaea02a926a434f8e4ab444ebabc01659fa8327c967fbd",
+        "unchangedFromPriorArtifact": true,
+        "normalizedBodyUnchangedFromPriorArtifact": true
+      },
+      {
+        "path": "../../node_modules/zod/index.cjs",
+        "sha256": "d086cb90b06bf6aa590ca0c4cd2de50a16cede92b93d479dc522f1edc3622fbd",
+        "unchangedFromPriorArtifact": true,
+        "normalizedBodyUnchangedFromPriorArtifact": true
+      },
+      {
+        "path": "../../node_modules/.bun/uuid@14.0.2/node_modules/uuid/dist-node/rng.js",
+        "sha256": "e05623ffc9d5a50f8178e849613de4964ee1a5c52e3edfb79c44304ec9000e96",
+        "unchangedFromPriorArtifact": true,
+        "normalizedBodyUnchangedFromPriorArtifact": true
+      },
+      {
+        "path": "../../node_modules/.bun/uuid@14.0.2/node_modules/uuid/dist-node/regex.js",
+        "sha256": "fb2bd483be86895996f432a5c360d09d7e63d2de742f1cc1f935b5d43fa3a821",
+        "unchangedFromPriorArtifact": true,
+        "normalizedBodyUnchangedFromPriorArtifact": true
+      },
+      {
+        "path": "../../node_modules/.bun/uuid@14.0.2/node_modules/uuid/dist-node/validate.js",
+        "sha256": "94af568ffaaace86c26fb277bf05ab3a80d79dae1cf9e43997afe3e4bd3bcdd9",
+        "unchangedFromPriorArtifact": true,
+        "normalizedBodyUnchangedFromPriorArtifact": true
+      },
+      {
+        "path": "../../node_modules/.bun/uuid@14.0.2/node_modules/uuid/dist-node/stringify.js",
+        "sha256": "90a58322d9999492afee90741ab2e92f2899a2f6d08fec92edf23e819d568aa7",
+        "unchangedFromPriorArtifact": true,
+        "normalizedBodyUnchangedFromPriorArtifact": true
+      },
+      {
+        "path": "../../node_modules/.bun/uuid@14.0.2/node_modules/uuid/dist-node/v4.js",
+        "sha256": "1fbebfc9f9b9fbe5c7cb94770827655cbf12581fc47a62311f3da4461fab08f8",
+        "unchangedFromPriorArtifact": true,
+        "normalizedBodyUnchangedFromPriorArtifact": true
+      },
+      {
+        "path": "../../node_modules/.bun/uuid@14.0.2/node_modules/uuid/dist-node/sha1.js",
+        "sha256": "2a40e1bb7ce2ed5861439c73b700b0344cd0d794e841884077ab4886d1a191a9",
+        "unchangedFromPriorArtifact": true,
+        "normalizedBodyUnchangedFromPriorArtifact": true
+      },
+      {
+        "path": "../../node_modules/.bun/uuid@14.0.2/node_modules/uuid/dist-node/parse.js",
+        "sha256": "0c2c259cfadfaaa9107fff0b2ca525ac30e96dedab20160380560e665ab1f83e",
+        "unchangedFromPriorArtifact": true,
+        "normalizedBodyUnchangedFromPriorArtifact": true
+      },
+      {
+        "path": "../../node_modules/.bun/uuid@14.0.2/node_modules/uuid/dist-node/v35.js",
+        "sha256": "2bd6ce493f2146d9f5b676c0413f9c5022e96b5afe7cef1e1e4a59e2bd2c515c",
+        "unchangedFromPriorArtifact": true,
+        "normalizedBodyUnchangedFromPriorArtifact": true
+      },
+      {
+        "path": "../../node_modules/.bun/uuid@14.0.2/node_modules/uuid/dist-node/v5.js",
+        "sha256": "daae199a36a6328aad90237df7c20b7b7f9373f8eb2cc9f85511d3fa4db29c86",
+        "unchangedFromPriorArtifact": true,
+        "normalizedBodyUnchangedFromPriorArtifact": true
+      },
+      {
+        "path": "../../node_modules/.bun/uuid@14.0.2/node_modules/uuid/dist-node/index.js",
+        "sha256": "81f79b63097195e64c7b39270bfc2592bc4e2c19fe2207996177e6a0e5c4cf7a",
+        "unchangedFromPriorArtifact": true,
+        "normalizedBodyUnchangedFromPriorArtifact": true
+      },
+      {
+        "path": "../../node_modules/.bun/zod@4.6.6/node_modules/zod/v4/classic/index.cjs",
+        "sha256": "f07effffabbada33169d874fd394ecee38174f1c7ed99acac53a0cd5315f5e7c",
+        "unchangedFromPriorArtifact": true,
+        "normalizedBodyUnchangedFromPriorArtifact": true
+      },
+      {
+        "path": "../../node_modules/zod/v4/index.cjs",
+        "sha256": "d9071a1c185144fdefdbb9584241fe5367c59938416e66b5b21d586a2297ed5b",
+        "unchangedFromPriorArtifact": true,
+        "normalizedBodyUnchangedFromPriorArtifact": true
+      },
+      {
+        "path": "../../node_modules/.bun/zod@4.6.6/node_modules/zod/v3/helpers/util.cjs",
+        "sha256": "a92424b16cc821836da9031a6a69bf3520c9106262ce2b4bd22021c4a00dd4b4",
+        "unchangedFromPriorArtifact": true,
+        "normalizedBodyUnchangedFromPriorArtifact": true
+      },
+      {
+        "path": "../../node_modules/.bun/zod@4.6.6/node_modules/zod/v3/ZodError.cjs",
+        "sha256": "cb70853cf1928c5a8c66872f49ec3988005d617543bd2bd8333540b45bff6748",
+        "unchangedFromPriorArtifact": true,
+        "normalizedBodyUnchangedFromPriorArtifact": true
+      },
+      {
+        "path": "../../node_modules/.bun/zod@4.6.6/node_modules/zod/v3/locales/en.cjs",
+        "sha256": "07a5507d3d9eae47715a872b903d86967b42f45f3317a9e336bb236da083eaa7",
+        "unchangedFromPriorArtifact": true,
+        "normalizedBodyUnchangedFromPriorArtifact": true
+      },
+      {
+        "path": "../../node_modules/.bun/zod@4.6.6/node_modules/zod/v3/errors.cjs",
+        "sha256": "eaf9ce644386546a0f362a411e058c29308d479711a78b481a9ef215e9cba2f4",
+        "unchangedFromPriorArtifact": true,
+        "normalizedBodyUnchangedFromPriorArtifact": true
+      },
+      {
+        "path": "../../node_modules/.bun/zod@4.6.6/node_modules/zod/v3/helpers/parseUtil.cjs",
+        "sha256": "6702b2f4927dce6790ef413fe905c3b4a0aab4142a72c166cb06772f0a49aaba",
+        "unchangedFromPriorArtifact": true,
+        "normalizedBodyUnchangedFromPriorArtifact": true
+      },
+      {
+        "path": "../../node_modules/.bun/zod@4.6.6/node_modules/zod/v3/helpers/typeAliases.cjs",
+        "sha256": "29e9a061c7667392c5f88b7e67b59f6d926c05049837c50bda79b26b9612f14b",
+        "unchangedFromPriorArtifact": true,
+        "normalizedBodyUnchangedFromPriorArtifact": true
+      },
+      {
+        "path": "../../node_modules/.bun/zod@4.6.6/node_modules/zod/v3/helpers/errorUtil.cjs",
+        "sha256": "f1a087d9853dfc5124fac3cb186355bab7159c3871ce6ed982375947913d45ce",
+        "unchangedFromPriorArtifact": true,
+        "normalizedBodyUnchangedFromPriorArtifact": true
+      },
+      {
+        "path": "../../node_modules/.bun/zod@4.6.6/node_modules/zod/v3/types.cjs",
+        "sha256": "de0731d8a9f2eaab8814199f15ce2cd101a172b6bd0501a881f9d57359dc5636",
+        "unchangedFromPriorArtifact": true,
+        "normalizedBodyUnchangedFromPriorArtifact": true
+      },
+      {
+        "path": "../../node_modules/.bun/zod@4.6.6/node_modules/zod/v3/external.cjs",
+        "sha256": "2dd1ff6251e4fc9edcc4f0b32c3ab0b3f23ab818c863b6b324191b16e22f10da",
+        "unchangedFromPriorArtifact": true,
+        "normalizedBodyUnchangedFromPriorArtifact": true
+      },
+      {
+        "path": "../../node_modules/zod/v3/index.cjs",
+        "sha256": "f92124773f12eb4a1e54b2149af893751c99e33b47b02761078dfd51936789b4",
+        "unchangedFromPriorArtifact": true,
+        "normalizedBodyUnchangedFromPriorArtifact": true
+      },
+      {
+        "path": "../../node_modules/.bun/uuid@8.3.2/node_modules/uuid/dist/rng.js",
+        "sha256": "3ec019bf3d39bc4cd38fbd04513e383dd65de6b6d6d40bf706a51d5d87bbf804",
+        "unchangedFromPriorArtifact": true,
+        "normalizedBodyUnchangedFromPriorArtifact": true
+      },
+      {
+        "path": "../../node_modules/.bun/uuid@8.3.2/node_modules/uuid/dist/regex.js",
+        "sha256": "6f125001f6e9d886dd5ca96d29cbc93d8db2830f4e80da421ae60b051b273d6f",
+        "unchangedFromPriorArtifact": true,
+        "normalizedBodyUnchangedFromPriorArtifact": true
+      },
+      {
+        "path": "../../node_modules/.bun/uuid@8.3.2/node_modules/uuid/dist/validate.js",
+        "sha256": "ca950751b798069036aa31a680c4c63a5241a3a251b20fffe44250da09c8ab7c",
+        "unchangedFromPriorArtifact": true,
+        "normalizedBodyUnchangedFromPriorArtifact": true
+      },
+      {
+        "path": "../../node_modules/.bun/uuid@8.3.2/node_modules/uuid/dist/stringify.js",
+        "sha256": "7f7bc7c6a13256588882ad45d566a3efe9ca0da96c46cb1d5cdea3a5a32be331",
+        "unchangedFromPriorArtifact": true,
+        "normalizedBodyUnchangedFromPriorArtifact": true
+      },
+      {
+        "path": "../../node_modules/.bun/uuid@8.3.2/node_modules/uuid/dist/v1.js",
+        "sha256": "1b1d3139d3bdd9bffdc9817afed67c12d5a4ca5d1c9aafe42794087c5226a6e9",
+        "unchangedFromPriorArtifact": true,
+        "normalizedBodyUnchangedFromPriorArtifact": true
+      },
+      {
+        "path": "../../node_modules/.bun/uuid@8.3.2/node_modules/uuid/dist/parse.js",
+        "sha256": "cdc4064ab453a12d4629ce5a1e4d45085afe5d7b77e559f148a8c73824d5fd3c",
+        "unchangedFromPriorArtifact": true,
+        "normalizedBodyUnchangedFromPriorArtifact": true
+      },
+      {
+        "path": "../../node_modules/.bun/uuid@8.3.2/node_modules/uuid/dist/v35.js",
+        "sha256": "39e05815e36d0e8b9c0e98cbc103ddfd49cf70bfc6a987205c665474996e08bf",
+        "unchangedFromPriorArtifact": true,
+        "normalizedBodyUnchangedFromPriorArtifact": true
+      },
+      {
+        "path": "../../node_modules/.bun/uuid@8.3.2/node_modules/uuid/dist/md5.js",
+        "sha256": "ab6b819ce3ef62c699d019c64fca733d17e25f1fcfc2329c3fa8351a03f13485",
+        "unchangedFromPriorArtifact": true,
+        "normalizedBodyUnchangedFromPriorArtifact": true
+      },
+      {
+        "path": "../../node_modules/.bun/uuid@8.3.2/node_modules/uuid/dist/v3.js",
+        "sha256": "5d43b5f45630b288615e4cd13417e2acb4de5a7e7a3a4249c4e7a0c30db1659b",
+        "unchangedFromPriorArtifact": true,
+        "normalizedBodyUnchangedFromPriorArtifact": true
+      },
+      {
+        "path": "../../node_modules/.bun/uuid@8.3.2/node_modules/uuid/dist/v4.js",
+        "sha256": "fc38f78314b598706f1e3e044388428109780cf87c70fb3650f6c6cd0bc56b93",
+        "unchangedFromPriorArtifact": true,
+        "normalizedBodyUnchangedFromPriorArtifact": true
+      },
+      {
+        "path": "../../node_modules/.bun/uuid@8.3.2/node_modules/uuid/dist/sha1.js",
+        "sha256": "95f074231c06d26747b793b52745bcbe1b5da15183a8b3dd9d7033806844d734",
+        "unchangedFromPriorArtifact": true,
+        "normalizedBodyUnchangedFromPriorArtifact": true
+      },
+      {
+        "path": "../../node_modules/.bun/uuid@8.3.2/node_modules/uuid/dist/v5.js",
+        "sha256": "b93ab7c3ec723128eb54173ae22aeb1f3fe7528a6bc9307bb6a5f673e2de7afc",
+        "unchangedFromPriorArtifact": true,
+        "normalizedBodyUnchangedFromPriorArtifact": true
+      },
+      {
+        "path": "../../node_modules/.bun/uuid@8.3.2/node_modules/uuid/dist/nil.js",
+        "sha256": "fa8bd1b8244f1f07e63c08b76ba0d65588ce8614894413440721da9de5207e50",
+        "unchangedFromPriorArtifact": true,
+        "normalizedBodyUnchangedFromPriorArtifact": true
+      },
+      {
+        "path": "../../node_modules/.bun/uuid@8.3.2/node_modules/uuid/dist/version.js",
+        "sha256": "4769c8074da3ea01c8a2b01b949f513d5d5f71a56593439433004dcdfc691538",
+        "unchangedFromPriorArtifact": true,
+        "normalizedBodyUnchangedFromPriorArtifact": true
+      },
+      {
+        "path": "../../node_modules/.bun/uuid@8.3.2/node_modules/uuid/dist/index.js",
+        "sha256": "920eeb684272738cc04c0f977dd5079bb825382a208bd3347c463a210f0232c9",
+        "unchangedFromPriorArtifact": true,
+        "normalizedBodyUnchangedFromPriorArtifact": true
+      },
+      {
+        "path": "../../node_modules/.bun/uuid@8.3.2/node_modules/uuid/wrapper.mjs",
+        "sha256": "fa415a081d7963dbfd8f54bd83b0f0f31415ab01aabc6094767034d11af2acff",
+        "unchangedFromPriorArtifact": true,
+        "normalizedBodyUnchangedFromPriorArtifact": true
+      },
+      {
+        "path": "../../node_modules/.bun/zod@4.6.6/node_modules/zod/v4/mini/parse.cjs",
+        "sha256": "de5c07f97b1d9b0848584aa5f658e0f8a38310578a8346f8d7965914cca7de86",
+        "unchangedFromPriorArtifact": true,
+        "normalizedBodyUnchangedFromPriorArtifact": true
+      },
+      {
+        "path": "../../node_modules/.bun/zod@4.6.6/node_modules/zod/v4/mini/schemas.cjs",
+        "sha256": "d7f0d7bf39c152298f1f9c27f596b27360736036f8c7820c24688d63ce88491a",
+        "unchangedFromPriorArtifact": true,
+        "normalizedBodyUnchangedFromPriorArtifact": true
+      },
+      {
+        "path": "../../node_modules/.bun/zod@4.6.6/node_modules/zod/v4/mini/checks.cjs",
+        "sha256": "a1cf8f9b72bdd8d952616450df655d119a31cf12424918361e95957a3f091a6b",
+        "unchangedFromPriorArtifact": true,
+        "normalizedBodyUnchangedFromPriorArtifact": true
+      },
+      {
+        "path": "../../node_modules/.bun/zod@4.6.6/node_modules/zod/v4/mini/deep-partial.cjs",
+        "sha256": "5eea8bc3ceeb9dfd911cebc37f47b0ed10e63daf2278ed25a1b25e843c53cbac",
+        "unchangedFromPriorArtifact": true,
+        "normalizedBodyUnchangedFromPriorArtifact": true
+      },
+      {
+        "path": "../../node_modules/.bun/zod@4.6.6/node_modules/zod/v4/mini/in-out.cjs",
+        "sha256": "1a719580e5314b7411677ff2cc3fb16c81f29cf6cc44e01dcf7bfff8b7f6bf9f",
+        "unchangedFromPriorArtifact": true,
+        "normalizedBodyUnchangedFromPriorArtifact": true
+      },
+      {
+        "path": "../../node_modules/.bun/zod@4.6.6/node_modules/zod/v4/mini/iso.cjs",
+        "sha256": "e4c71ff598c48b337924f59862f2014e420af6d9391925d5deea5573a0ca60f5",
+        "unchangedFromPriorArtifact": true,
+        "normalizedBodyUnchangedFromPriorArtifact": true
+      },
+      {
+        "path": "../../node_modules/.bun/zod@4.6.6/node_modules/zod/v4/mini/coerce.cjs",
+        "sha256": "a829f67353ee40e1b7364a22db1b57ebcf693f5e53a2b27f4b24ad37e6b53bf8",
+        "unchangedFromPriorArtifact": true,
+        "normalizedBodyUnchangedFromPriorArtifact": true
+      },
+      {
+        "path": "../../node_modules/.bun/zod@4.6.6/node_modules/zod/v4/mini/external.cjs",
+        "sha256": "b155de182b9de17678fd9f2ac3cd0c700e9a90ea6adc18448fe8f1bc10dfa98e",
+        "unchangedFromPriorArtifact": true,
+        "normalizedBodyUnchangedFromPriorArtifact": true
+      },
+      {
+        "path": "../../node_modules/zod/mini/index.cjs",
+        "sha256": "2aca4be71ba9a5b0e5003a971488e783062a78eb9e581ec38f4e94a96d06d7e1",
+        "unchangedFromPriorArtifact": true,
+        "normalizedBodyUnchangedFromPriorArtifact": true
+      },
+      {
+        "path": "../../node_modules/.bun/uuid@9.0.1/node_modules/uuid/dist/rng.js",
+        "sha256": "05c51a1062f08997e6b2c404ee5f258d365a466582ae8cb2ef678f74e667da59",
+        "unchangedFromPriorArtifact": true,
+        "normalizedBodyUnchangedFromPriorArtifact": true
+      },
+      {
+        "path": "../../node_modules/.bun/uuid@9.0.1/node_modules/uuid/dist/regex.js",
+        "sha256": "0ec9ac9b2bb8a84747303354a2719dc3f8e6bc7349be59b251e8a672c4c9b9d7",
+        "unchangedFromPriorArtifact": true,
+        "normalizedBodyUnchangedFromPriorArtifact": true
+      },
+      {
+        "path": "../../node_modules/.bun/uuid@9.0.1/node_modules/uuid/dist/validate.js",
+        "sha256": "3c7dd97c04c31b7ecd69bf9f7d38e90a06f314fe8eefd907e6a03f8b1ce747ff",
+        "unchangedFromPriorArtifact": true,
+        "normalizedBodyUnchangedFromPriorArtifact": true
+      },
+      {
+        "path": "../../node_modules/.bun/uuid@9.0.1/node_modules/uuid/dist/stringify.js",
+        "sha256": "1eb74bb60d3c83c7f0cef775bb64f6d02b82b5694914d8b5eb85f294badc7f8a",
+        "unchangedFromPriorArtifact": true,
+        "normalizedBodyUnchangedFromPriorArtifact": true
+      },
+      {
+        "path": "../../node_modules/.bun/uuid@9.0.1/node_modules/uuid/dist/v1.js",
+        "sha256": "ff272ee817010b62962da93d5b2250aa1364dc32266c8a910e57415199f6a729",
+        "unchangedFromPriorArtifact": true,
+        "normalizedBodyUnchangedFromPriorArtifact": true
+      },
+      {
+        "path": "../../node_modules/.bun/uuid@9.0.1/node_modules/uuid/dist/parse.js",
+        "sha256": "7da778e1d8f8b582bfbd2d013b228f199d31f914c172730059f78dc80400d3cc",
+        "unchangedFromPriorArtifact": true,
+        "normalizedBodyUnchangedFromPriorArtifact": true
+      },
+      {
+        "path": "../../node_modules/.bun/uuid@9.0.1/node_modules/uuid/dist/v35.js",
+        "sha256": "f2469b0d888e49e8afbc5a47f64d5a5a7547b96b7482521e750569fa7b3e1b12",
+        "unchangedFromPriorArtifact": true,
+        "normalizedBodyUnchangedFromPriorArtifact": true
+      },
+      {
+        "path": "../../node_modules/.bun/uuid@9.0.1/node_modules/uuid/dist/md5.js",
+        "sha256": "5b0728c8e172c10265ec5aeca9608d538847f66759f0eb964b059eba8a275bbc",
+        "unchangedFromPriorArtifact": true,
+        "normalizedBodyUnchangedFromPriorArtifact": true
+      },
+      {
+        "path": "../../node_modules/.bun/uuid@9.0.1/node_modules/uuid/dist/v3.js",
+        "sha256": "e9774d9d535d68bdfb6777b6a5d422826caacc0d127f277433af976bf082498e",
+        "unchangedFromPriorArtifact": true,
+        "normalizedBodyUnchangedFromPriorArtifact": true
+      },
+      {
+        "path": "../../node_modules/.bun/uuid@9.0.1/node_modules/uuid/dist/native.js",
+        "sha256": "ced88cee7e2d3d641d3897fc6091d7a61d7d4a608604676a802ae024844c587c",
+        "unchangedFromPriorArtifact": true,
+        "normalizedBodyUnchangedFromPriorArtifact": true
+      },
+      {
+        "path": "../../node_modules/.bun/uuid@9.0.1/node_modules/uuid/dist/v4.js",
+        "sha256": "dd7b65c29ea5f7565fc39b95611df02aee9df9b8bead5ce597e1ae922e426e70",
+        "unchangedFromPriorArtifact": true,
+        "normalizedBodyUnchangedFromPriorArtifact": true
+      },
+      {
+        "path": "../../node_modules/.bun/uuid@9.0.1/node_modules/uuid/dist/sha1.js",
+        "sha256": "ab592d8089415472c1dd02bdd5d335e8e139a7ef28c930594066fd48b9ba3fc4",
+        "unchangedFromPriorArtifact": true,
+        "normalizedBodyUnchangedFromPriorArtifact": true
+      },
+      {
+        "path": "../../node_modules/.bun/uuid@9.0.1/node_modules/uuid/dist/v5.js",
+        "sha256": "6ef853daf8ad2102775ccab852f3cee9173fb0f94966e0b8112d48f25990070f",
+        "unchangedFromPriorArtifact": true,
+        "normalizedBodyUnchangedFromPriorArtifact": true
+      },
+      {
+        "path": "../../node_modules/.bun/uuid@9.0.1/node_modules/uuid/dist/nil.js",
+        "sha256": "9a64ec0b2405b4fb1efd2883626b616979124cae84eac4d981bd196eb6af40fc",
+        "unchangedFromPriorArtifact": true,
+        "normalizedBodyUnchangedFromPriorArtifact": true
+      },
+      {
+        "path": "../../node_modules/.bun/uuid@9.0.1/node_modules/uuid/dist/version.js",
+        "sha256": "c761d56cd82629dac002bda5d9c05014a3f7865a4ba8a4ea66ea09ace0e4bfad",
+        "unchangedFromPriorArtifact": true,
+        "normalizedBodyUnchangedFromPriorArtifact": true
+      },
+      {
+        "path": "../../node_modules/.bun/uuid@9.0.1/node_modules/uuid/dist/index.js",
+        "sha256": "67f8d6e7424dd4497c030a9c1c4e7f8cae7d724e1cdc17d31fdc7a3fbe439528",
+        "unchangedFromPriorArtifact": true,
+        "normalizedBodyUnchangedFromPriorArtifact": true
+      },
+      {
+        "path": "../../node_modules/.bun/uuid@9.0.1/node_modules/uuid/wrapper.mjs",
+        "sha256": "7ae52e38a5a041edb78e30cd460ea2d72344bd01a221257ee823d5dabd9c29e0",
+        "unchangedFromPriorArtifact": true,
+        "normalizedBodyUnchangedFromPriorArtifact": true
+      }
+    ],
+    "assets/agent/workflow-worker/google-host.mjs": [
+      {
+        "path": "artifacts/local-agent-resident-f4142d3a92d6b5b49ef6c6a666155218b8b75b07/node_modules/.bun/zod@4.6.6/node_modules/zod/v4/core/util.js",
+        "sha256": "439a95d6998c3e94959d27c48bdf3bc1cf2fe458bf0fe77bbbea0506ab5c8d8a",
+        "unchangedFromPriorArtifact": false,
+        "normalizedBodyUnchangedFromPriorArtifact": true
+      },
+      {
+        "path": "artifacts/local-agent-resident-f4142d3a92d6b5b49ef6c6a666155218b8b75b07/node_modules/.bun/zod@4.6.6/node_modules/zod/v4/core/core.js",
+        "sha256": "0a6225a75cf8ab5f2278002c934fa238c5f90823e5ab9a74c271d471d880bba2",
+        "unchangedFromPriorArtifact": false,
+        "normalizedBodyUnchangedFromPriorArtifact": true
+      },
+      {
+        "path": "artifacts/local-agent-resident-f4142d3a92d6b5b49ef6c6a666155218b8b75b07/node_modules/.bun/zod@4.6.6/node_modules/zod/v4/core/errors.js",
+        "sha256": "f53df8be423fe1f9c49d03e88c7615256181f7d59f7532269850478631ecba3d",
+        "unchangedFromPriorArtifact": false,
+        "normalizedBodyUnchangedFromPriorArtifact": true
+      },
+      {
+        "path": "artifacts/local-agent-resident-f4142d3a92d6b5b49ef6c6a666155218b8b75b07/node_modules/.bun/zod@4.6.6/node_modules/zod/v4/core/parse.js",
+        "sha256": "b23a1dc79ea6c0162810de56a32adeb36ecc993dc35b2de8fa08804aa7e4a19c",
+        "unchangedFromPriorArtifact": false,
+        "normalizedBodyUnchangedFromPriorArtifact": true
+      },
+      {
+        "path": "artifacts/local-agent-resident-f4142d3a92d6b5b49ef6c6a666155218b8b75b07/node_modules/.bun/zod@4.6.6/node_modules/zod/v4/core/regexes.js",
+        "sha256": "71bba739a61157d471b26e385ba7a00614a6535e9bacc0bae12ba5cdeff74776",
+        "unchangedFromPriorArtifact": false,
+        "normalizedBodyUnchangedFromPriorArtifact": true
+      },
+      {
+        "path": "artifacts/local-agent-resident-f4142d3a92d6b5b49ef6c6a666155218b8b75b07/node_modules/.bun/zod@4.6.6/node_modules/zod/v4/core/checks.js",
+        "sha256": "639272fa601ac651dc559bdc909adbf7490962058a997237ad9582525777662c",
+        "unchangedFromPriorArtifact": false,
+        "normalizedBodyUnchangedFromPriorArtifact": true
+      },
+      {
+        "path": "artifacts/local-agent-resident-f4142d3a92d6b5b49ef6c6a666155218b8b75b07/node_modules/.bun/zod@4.6.6/node_modules/zod/v4/core/doc.js",
+        "sha256": "44f0c94ac8749d5fe481b7adaf5adce8039a79d11b7f8da658d8c73fcd64f1b4",
+        "unchangedFromPriorArtifact": false,
+        "normalizedBodyUnchangedFromPriorArtifact": true
+      },
+      {
+        "path": "artifacts/local-agent-resident-f4142d3a92d6b5b49ef6c6a666155218b8b75b07/node_modules/.bun/zod@4.6.6/node_modules/zod/v4/core/versions.js",
+        "sha256": "019eba461db55692e293e3d23641e3ac2dcf999d98b24fc933c9155083487f90",
+        "unchangedFromPriorArtifact": false,
+        "normalizedBodyUnchangedFromPriorArtifact": true
+      },
+      {
+        "path": "artifacts/local-agent-resident-f4142d3a92d6b5b49ef6c6a666155218b8b75b07/node_modules/.bun/zod@4.6.6/node_modules/zod/v4/core/schemas.js",
+        "sha256": "d21450398774b063417898fe69f28ac319c36cb0c3c1f760a7b5f8fbbce503e6",
+        "unchangedFromPriorArtifact": false,
+        "normalizedBodyUnchangedFromPriorArtifact": true
+      },
+      {
+        "path": "artifacts/local-agent-resident-f4142d3a92d6b5b49ef6c6a666155218b8b75b07/node_modules/.bun/zod@4.6.6/node_modules/zod/v4/core/memoizer.js",
+        "sha256": "3fde64b821302130facf68614ad1a3c8f663c0c7f74042bd0acf1be9d42fb457",
+        "unchangedFromPriorArtifact": false,
+        "normalizedBodyUnchangedFromPriorArtifact": true
+      },
+      {
+        "path": "artifacts/local-agent-resident-f4142d3a92d6b5b49ef6c6a666155218b8b75b07/node_modules/.bun/zod@4.6.6/node_modules/zod/v4/locales/ar.js",
+        "sha256": "ca36538e510b3340e3b7d69e341ad3dbaf9768d9279faf34ec576dd5b87604bf",
+        "unchangedFromPriorArtifact": false,
+        "normalizedBodyUnchangedFromPriorArtifact": true
+      },
+      {
+        "path": "artifacts/local-agent-resident-f4142d3a92d6b5b49ef6c6a666155218b8b75b07/node_modules/.bun/zod@4.6.6/node_modules/zod/v4/locales/az.js",
+        "sha256": "0dd5cae263f58644f4ed58f22bf82ec1d4fba3bfe6906e05f58be147dd7db21f",
+        "unchangedFromPriorArtifact": false,
+        "normalizedBodyUnchangedFromPriorArtifact": true
+      },
+      {
+        "path": "artifacts/local-agent-resident-f4142d3a92d6b5b49ef6c6a666155218b8b75b07/node_modules/.bun/zod@4.6.6/node_modules/zod/v4/locales/be.js",
+        "sha256": "5138a8cc0941768c65a71fd6637225ad42488862da5093d2744e878f6ea32533",
+        "unchangedFromPriorArtifact": false,
+        "normalizedBodyUnchangedFromPriorArtifact": true
+      },
+      {
+        "path": "artifacts/local-agent-resident-f4142d3a92d6b5b49ef6c6a666155218b8b75b07/node_modules/.bun/zod@4.6.6/node_modules/zod/v4/locales/bg.js",
+        "sha256": "872ea0d04398cfa985dd808b1edc6919021e583a01448250baba7ddb5ed07da7",
+        "unchangedFromPriorArtifact": false,
+        "normalizedBodyUnchangedFromPriorArtifact": true
+      },
+      {
+        "path": "artifacts/local-agent-resident-f4142d3a92d6b5b49ef6c6a666155218b8b75b07/node_modules/.bun/zod@4.6.6/node_modules/zod/v4/locales/bn.js",
+        "sha256": "a1024359a4ff946b9dd4bd0a1b6e78996297f99dd944ad8c350934300695178c",
+        "unchangedFromPriorArtifact": false,
+        "normalizedBodyUnchangedFromPriorArtifact": true
+      },
+      {
+        "path": "artifacts/local-agent-resident-f4142d3a92d6b5b49ef6c6a666155218b8b75b07/node_modules/.bun/zod@4.6.6/node_modules/zod/v4/locales/ca.js",
+        "sha256": "22d56af51fb522503ad0302f68c06a29c72d4fcfed9c959c5e6e59fe02b30f77",
+        "unchangedFromPriorArtifact": false,
+        "normalizedBodyUnchangedFromPriorArtifact": true
+      },
+      {
+        "path": "artifacts/local-agent-resident-f4142d3a92d6b5b49ef6c6a666155218b8b75b07/node_modules/.bun/zod@4.6.6/node_modules/zod/v4/locales/ckb.js",
+        "sha256": "e32fb6b9ea84f97632a7905696bf345d9b5e61f6a8b5c3e6cf2429c4207bc882",
+        "unchangedFromPriorArtifact": false,
+        "normalizedBodyUnchangedFromPriorArtifact": true
+      },
+      {
+        "path": "artifacts/local-agent-resident-f4142d3a92d6b5b49ef6c6a666155218b8b75b07/node_modules/.bun/zod@4.6.6/node_modules/zod/v4/locales/cs.js",
+        "sha256": "bd7714b6d9100c9508a431285f15361e422c525d6e891846099879714bc34f4a",
+        "unchangedFromPriorArtifact": false,
+        "normalizedBodyUnchangedFromPriorArtifact": true
+      },
+      {
+        "path": "artifacts/local-agent-resident-f4142d3a92d6b5b49ef6c6a666155218b8b75b07/node_modules/.bun/zod@4.6.6/node_modules/zod/v4/locales/da.js",
+        "sha256": "5b196b0a4a5022b88968613ad9841d69a1212f1bbbd2cc6f8f63c1f59a411b54",
+        "unchangedFromPriorArtifact": false,
+        "normalizedBodyUnchangedFromPriorArtifact": true
+      },
+      {
+        "path": "artifacts/local-agent-resident-f4142d3a92d6b5b49ef6c6a666155218b8b75b07/node_modules/.bun/zod@4.6.6/node_modules/zod/v4/locales/de.js",
+        "sha256": "39aafc1159ad1f0127c69862702ead06c5a2adf7cb87391c82ae40d9d480cb6d",
+        "unchangedFromPriorArtifact": false,
+        "normalizedBodyUnchangedFromPriorArtifact": true
+      },
+      {
+        "path": "artifacts/local-agent-resident-f4142d3a92d6b5b49ef6c6a666155218b8b75b07/node_modules/.bun/zod@4.6.6/node_modules/zod/v4/locales/el.js",
+        "sha256": "7dc4b73cd3e2e4243f047a6483abf6377a106922f4f51cc73f10285dbc843b58",
+        "unchangedFromPriorArtifact": false,
+        "normalizedBodyUnchangedFromPriorArtifact": true
+      },
+      {
+        "path": "artifacts/local-agent-resident-f4142d3a92d6b5b49ef6c6a666155218b8b75b07/node_modules/.bun/zod@4.6.6/node_modules/zod/v4/locales/en.js",
+        "sha256": "a98158f032b39b721776fe3ce7d8f0d3b11db8d755282f37a2e752e198564577",
+        "unchangedFromPriorArtifact": false,
+        "normalizedBodyUnchangedFromPriorArtifact": true
+      },
+      {
+        "path": "artifacts/local-agent-resident-f4142d3a92d6b5b49ef6c6a666155218b8b75b07/node_modules/.bun/zod@4.6.6/node_modules/zod/v4/locales/eo.js",
+        "sha256": "00df9ca2d3a1c3ff4b51835bf484d717d5ac97c895de9eb8e5eb7680f6cf6cc5",
+        "unchangedFromPriorArtifact": false,
+        "normalizedBodyUnchangedFromPriorArtifact": true
+      },
+      {
+        "path": "artifacts/local-agent-resident-f4142d3a92d6b5b49ef6c6a666155218b8b75b07/node_modules/.bun/zod@4.6.6/node_modules/zod/v4/locales/es.js",
+        "sha256": "5024d210e3cecf4c29e695f1e90bd71fd76312236c5b3b04ac16f02de2c86af3",
+        "unchangedFromPriorArtifact": false,
+        "normalizedBodyUnchangedFromPriorArtifact": true
+      },
+      {
+        "path": "artifacts/local-agent-resident-f4142d3a92d6b5b49ef6c6a666155218b8b75b07/node_modules/.bun/zod@4.6.6/node_modules/zod/v4/locales/fa.js",
+        "sha256": "d7199d3d3f162d25893db93f6e3b7f90632a6b3397f1f6dac106fc103f04bb1c",
+        "unchangedFromPriorArtifact": false,
+        "normalizedBodyUnchangedFromPriorArtifact": true
+      },
+      {
+        "path": "artifacts/local-agent-resident-f4142d3a92d6b5b49ef6c6a666155218b8b75b07/node_modules/.bun/zod@4.6.6/node_modules/zod/v4/locales/fi.js",
+        "sha256": "5d780718815d1eba182ba045409cd491ab64cbf548dc228cc763bff11bb821d4",
+        "unchangedFromPriorArtifact": false,
+        "normalizedBodyUnchangedFromPriorArtifact": true
+      },
+      {
+        "path": "artifacts/local-agent-resident-f4142d3a92d6b5b49ef6c6a666155218b8b75b07/node_modules/.bun/zod@4.6.6/node_modules/zod/v4/locales/fr.js",
+        "sha256": "fdeb83376012c31bbed52fc64c96bf0d536a462dc4083907732e542d2bd25933",
+        "unchangedFromPriorArtifact": false,
+        "normalizedBodyUnchangedFromPriorArtifact": true
+      },
+      {
+        "path": "artifacts/local-agent-resident-f4142d3a92d6b5b49ef6c6a666155218b8b75b07/node_modules/.bun/zod@4.6.6/node_modules/zod/v4/locales/fr-CA.js",
+        "sha256": "c2004da327092562a5ff567b9e331b7ef1a4330a2eb5626109e55de5dc2743cd",
+        "unchangedFromPriorArtifact": false,
+        "normalizedBodyUnchangedFromPriorArtifact": true
+      },
+      {
+        "path": "artifacts/local-agent-resident-f4142d3a92d6b5b49ef6c6a666155218b8b75b07/node_modules/.bun/zod@4.6.6/node_modules/zod/v4/locales/gu.js",
+        "sha256": "bdfa1401f9db57c2163215f5140e4b458e3ceff67f73045b02ec7015a5c80097",
+        "unchangedFromPriorArtifact": false,
+        "normalizedBodyUnchangedFromPriorArtifact": true
+      },
+      {
+        "path": "artifacts/local-agent-resident-f4142d3a92d6b5b49ef6c6a666155218b8b75b07/node_modules/.bun/zod@4.6.6/node_modules/zod/v4/locales/he.js",
+        "sha256": "7aafe8cff7a5342a25c20b8d742525211065d6e09c7b716189ac2ca9d95a95d0",
+        "unchangedFromPriorArtifact": false,
+        "normalizedBodyUnchangedFromPriorArtifact": true
+      },
+      {
+        "path": "artifacts/local-agent-resident-f4142d3a92d6b5b49ef6c6a666155218b8b75b07/node_modules/.bun/zod@4.6.6/node_modules/zod/v4/locales/hi.js",
+        "sha256": "470b5f71143489cfdfed6d8d3cd56528d9634fb43ba2e354ea4a41a9e26ed377",
+        "unchangedFromPriorArtifact": false,
+        "normalizedBodyUnchangedFromPriorArtifact": true
+      },
+      {
+        "path": "artifacts/local-agent-resident-f4142d3a92d6b5b49ef6c6a666155218b8b75b07/node_modules/.bun/zod@4.6.6/node_modules/zod/v4/locales/hr.js",
+        "sha256": "637118bc64e66f26b469cd4b64cacd4804e86f6365fa1a6539e585c3bbe587b4",
+        "unchangedFromPriorArtifact": false,
+        "normalizedBodyUnchangedFromPriorArtifact": true
+      },
+      {
+        "path": "artifacts/local-agent-resident-f4142d3a92d6b5b49ef6c6a666155218b8b75b07/node_modules/.bun/zod@4.6.6/node_modules/zod/v4/locales/hu.js",
+        "sha256": "e6d2047eea414aba874424c0c9305c67ccc8279ec06140a5f41c21ae274ef1b2",
+        "unchangedFromPriorArtifact": false,
+        "normalizedBodyUnchangedFromPriorArtifact": true
+      },
+      {
+        "path": "artifacts/local-agent-resident-f4142d3a92d6b5b49ef6c6a666155218b8b75b07/node_modules/.bun/zod@4.6.6/node_modules/zod/v4/locales/hy.js",
+        "sha256": "4c305ffe19964341003dddb124975613840ef2a252ab0a35802a0ab6701e285e",
+        "unchangedFromPriorArtifact": false,
+        "normalizedBodyUnchangedFromPriorArtifact": true
+      },
+      {
+        "path": "artifacts/local-agent-resident-f4142d3a92d6b5b49ef6c6a666155218b8b75b07/node_modules/.bun/zod@4.6.6/node_modules/zod/v4/locales/id.js",
+        "sha256": "00fe11aa2f272c5ab1537a03a914fc6744168c7184ab3094aa43474b6793dca0",
+        "unchangedFromPriorArtifact": false,
+        "normalizedBodyUnchangedFromPriorArtifact": true
+      },
+      {
+        "path": "artifacts/local-agent-resident-f4142d3a92d6b5b49ef6c6a666155218b8b75b07/node_modules/.bun/zod@4.6.6/node_modules/zod/v4/locales/is.js",
+        "sha256": "b7c40ba9301d99b418aba13bd00cc7fd1b1213535c58b2b284db070006abe5b6",
+        "unchangedFromPriorArtifact": false,
+        "normalizedBodyUnchangedFromPriorArtifact": true
+      },
+      {
+        "path": "artifacts/local-agent-resident-f4142d3a92d6b5b49ef6c6a666155218b8b75b07/node_modules/.bun/zod@4.6.6/node_modules/zod/v4/locales/it.js",
+        "sha256": "173e923299b14bf1349dfd1e0d7e9c27974f901d9a22f82cebd596ae6650141e",
+        "unchangedFromPriorArtifact": false,
+        "normalizedBodyUnchangedFromPriorArtifact": true
+      },
+      {
+        "path": "artifacts/local-agent-resident-f4142d3a92d6b5b49ef6c6a666155218b8b75b07/node_modules/.bun/zod@4.6.6/node_modules/zod/v4/locales/ja.js",
+        "sha256": "8fbd3573227e727fec0320caa2d6b0e101c92a63ebee0ec13ba8f6524df3828d",
+        "unchangedFromPriorArtifact": false,
+        "normalizedBodyUnchangedFromPriorArtifact": true
+      },
+      {
+        "path": "artifacts/local-agent-resident-f4142d3a92d6b5b49ef6c6a666155218b8b75b07/node_modules/.bun/zod@4.6.6/node_modules/zod/v4/locales/ka.js",
+        "sha256": "321a4513986f00a0c610f06e70470c5035211ad1fd852705cbe7025c5ea462d7",
+        "unchangedFromPriorArtifact": false,
+        "normalizedBodyUnchangedFromPriorArtifact": true
+      },
+      {
+        "path": "artifacts/local-agent-resident-f4142d3a92d6b5b49ef6c6a666155218b8b75b07/node_modules/.bun/zod@4.6.6/node_modules/zod/v4/locales/km.js",
+        "sha256": "15a6602badf81725cdc9946ebb561d24ddf821ef109890962275db85e864e526",
+        "unchangedFromPriorArtifact": false,
+        "normalizedBodyUnchangedFromPriorArtifact": true
+      },
+      {
+        "path": "artifacts/local-agent-resident-f4142d3a92d6b5b49ef6c6a666155218b8b75b07/node_modules/.bun/zod@4.6.6/node_modules/zod/v4/locales/kh.js",
+        "sha256": "fc226ab356ba28e0a2d5b7f4b4d88edb57ba9e11ec63cba7394a1426867f3307",
+        "unchangedFromPriorArtifact": false,
+        "normalizedBodyUnchangedFromPriorArtifact": true
+      },
+      {
+        "path": "artifacts/local-agent-resident-f4142d3a92d6b5b49ef6c6a666155218b8b75b07/node_modules/.bun/zod@4.6.6/node_modules/zod/v4/locales/kn.js",
+        "sha256": "dc0e3d81497d89e6233e27d2f2a366940f7163785d4fcb36a0bf57dbe686b8e7",
+        "unchangedFromPriorArtifact": false,
+        "normalizedBodyUnchangedFromPriorArtifact": true
+      },
+      {
+        "path": "artifacts/local-agent-resident-f4142d3a92d6b5b49ef6c6a666155218b8b75b07/node_modules/.bun/zod@4.6.6/node_modules/zod/v4/locales/ko.js",
+        "sha256": "2bc6bd11f26c7ca5cfff0b0478efb78d45099416d86feb1fa2987a1b7f64c1a5",
+        "unchangedFromPriorArtifact": false,
+        "normalizedBodyUnchangedFromPriorArtifact": true
+      },
+      {
+        "path": "artifacts/local-agent-resident-f4142d3a92d6b5b49ef6c6a666155218b8b75b07/node_modules/.bun/zod@4.6.6/node_modules/zod/v4/locales/lt.js",
+        "sha256": "59f2d7295e068acd3edfe76bad1f8647f4b346556ec457cf607231d775e7e71f",
+        "unchangedFromPriorArtifact": false,
+        "normalizedBodyUnchangedFromPriorArtifact": true
+      },
+      {
+        "path": "artifacts/local-agent-resident-f4142d3a92d6b5b49ef6c6a666155218b8b75b07/node_modules/.bun/zod@4.6.6/node_modules/zod/v4/locales/mk.js",
+        "sha256": "18c87051de74a9822fda5f771e00ffd231d94b123f0b8180b21734e5d902925f",
+        "unchangedFromPriorArtifact": false,
+        "normalizedBodyUnchangedFromPriorArtifact": true
+      },
+      {
+        "path": "artifacts/local-agent-resident-f4142d3a92d6b5b49ef6c6a666155218b8b75b07/node_modules/.bun/zod@4.6.6/node_modules/zod/v4/locales/ms.js",
+        "sha256": "37679c0cbfb0d55030632e2d6c9a0d7199fa3b903f1e3c19bb5fbbb3d6804982",
+        "unchangedFromPriorArtifact": false,
+        "normalizedBodyUnchangedFromPriorArtifact": true
+      },
+      {
+        "path": "artifacts/local-agent-resident-f4142d3a92d6b5b49ef6c6a666155218b8b75b07/node_modules/.bun/zod@4.6.6/node_modules/zod/v4/locales/ne.js",
+        "sha256": "a8b87f090c05b3c746b30ecdbaf8b79e477ab4411ad2e2715a68e77a4f1f9bdc",
+        "unchangedFromPriorArtifact": false,
+        "normalizedBodyUnchangedFromPriorArtifact": true
+      },
+      {
+        "path": "artifacts/local-agent-resident-f4142d3a92d6b5b49ef6c6a666155218b8b75b07/node_modules/.bun/zod@4.6.6/node_modules/zod/v4/locales/nl.js",
+        "sha256": "c639e09903f58e9f6b613d4d9cfbed23c941bd95fd0b2370e3adcf9f7dbea188",
+        "unchangedFromPriorArtifact": false,
+        "normalizedBodyUnchangedFromPriorArtifact": true
+      },
+      {
+        "path": "artifacts/local-agent-resident-f4142d3a92d6b5b49ef6c6a666155218b8b75b07/node_modules/.bun/zod@4.6.6/node_modules/zod/v4/locales/nn.js",
+        "sha256": "493475f80c6bf49b26a570a78d7c3d5fc867003f5627a80b51dba1356efbd468",
+        "unchangedFromPriorArtifact": false,
+        "normalizedBodyUnchangedFromPriorArtifact": true
+      },
+      {
+        "path": "artifacts/local-agent-resident-f4142d3a92d6b5b49ef6c6a666155218b8b75b07/node_modules/.bun/zod@4.6.6/node_modules/zod/v4/locales/no.js",
+        "sha256": "84b1531e11389b680eee8ded6d781449ba24cb5d09c1e2ea0e87d36f4abeb704",
+        "unchangedFromPriorArtifact": false,
+        "normalizedBodyUnchangedFromPriorArtifact": true
+      },
+      {
+        "path": "artifacts/local-agent-resident-f4142d3a92d6b5b49ef6c6a666155218b8b75b07/node_modules/.bun/zod@4.6.6/node_modules/zod/v4/locales/ota.js",
+        "sha256": "9e92c964d0ef373d2cb024710ae70301dceb4ea68959bbfe8c28a96411def410",
+        "unchangedFromPriorArtifact": false,
+        "normalizedBodyUnchangedFromPriorArtifact": true
+      },
+      {
+        "path": "artifacts/local-agent-resident-f4142d3a92d6b5b49ef6c6a666155218b8b75b07/node_modules/.bun/zod@4.6.6/node_modules/zod/v4/locales/ps.js",
+        "sha256": "8d5391e32a8ad2e1b4049a65517bffddda49ab1cc80dfa707b101adbff461baf",
+        "unchangedFromPriorArtifact": false,
+        "normalizedBodyUnchangedFromPriorArtifact": true
+      },
+      {
+        "path": "artifacts/local-agent-resident-f4142d3a92d6b5b49ef6c6a666155218b8b75b07/node_modules/.bun/zod@4.6.6/node_modules/zod/v4/locales/pl.js",
+        "sha256": "2f47d970f8296df7edfcd193a35f7557dc6356ec7a7cdac920b3b7298f590ba5",
+        "unchangedFromPriorArtifact": false,
+        "normalizedBodyUnchangedFromPriorArtifact": true
+      },
+      {
+        "path": "artifacts/local-agent-resident-f4142d3a92d6b5b49ef6c6a666155218b8b75b07/node_modules/.bun/zod@4.6.6/node_modules/zod/v4/locales/pt.js",
+        "sha256": "9a4185f762156efc9dcb8a0d088e7feea5f87391049ccdf8362d3cab73945bdb",
+        "unchangedFromPriorArtifact": false,
+        "normalizedBodyUnchangedFromPriorArtifact": true
+      },
+      {
+        "path": "artifacts/local-agent-resident-f4142d3a92d6b5b49ef6c6a666155218b8b75b07/node_modules/.bun/zod@4.6.6/node_modules/zod/v4/locales/pt-BR.js",
+        "sha256": "5a3da011200254ba2f2657357c27e15c647bee4c7f155519023c131f4d5ace82",
+        "unchangedFromPriorArtifact": false,
+        "normalizedBodyUnchangedFromPriorArtifact": true
+      },
+      {
+        "path": "artifacts/local-agent-resident-f4142d3a92d6b5b49ef6c6a666155218b8b75b07/node_modules/.bun/zod@4.6.6/node_modules/zod/v4/locales/ro.js",
+        "sha256": "a936b877d2071ee1ff072ac58e1e64f513efffef6b3939a472d6cf9b7e3e2f13",
+        "unchangedFromPriorArtifact": false,
+        "normalizedBodyUnchangedFromPriorArtifact": true
+      },
+      {
+        "path": "artifacts/local-agent-resident-f4142d3a92d6b5b49ef6c6a666155218b8b75b07/node_modules/.bun/zod@4.6.6/node_modules/zod/v4/locales/ru.js",
+        "sha256": "e9187c6484d26388f0b5c22730d81991bfec4ae1bdcd58c5262d20ea8d36b47e",
+        "unchangedFromPriorArtifact": false,
+        "normalizedBodyUnchangedFromPriorArtifact": true
+      },
+      {
+        "path": "artifacts/local-agent-resident-f4142d3a92d6b5b49ef6c6a666155218b8b75b07/node_modules/.bun/zod@4.6.6/node_modules/zod/v4/locales/sk.js",
+        "sha256": "1ebe49fa65622fe3b5a188bbc968f76f785519a2fcbb6e0e2927ad5de08f8a47",
+        "unchangedFromPriorArtifact": false,
+        "normalizedBodyUnchangedFromPriorArtifact": true
+      },
+      {
+        "path": "artifacts/local-agent-resident-f4142d3a92d6b5b49ef6c6a666155218b8b75b07/node_modules/.bun/zod@4.6.6/node_modules/zod/v4/locales/sl.js",
+        "sha256": "b9ff2a1b81d29d0c8c9d7ee6248b7559850499b804b57799b023cea4a28ff7a7",
+        "unchangedFromPriorArtifact": false,
+        "normalizedBodyUnchangedFromPriorArtifact": true
+      },
+      {
+        "path": "artifacts/local-agent-resident-f4142d3a92d6b5b49ef6c6a666155218b8b75b07/node_modules/.bun/zod@4.6.6/node_modules/zod/v4/locales/sv.js",
+        "sha256": "1d723b5325966fad420da97f857cd69cd197cdd3700bd1408146b72258e106e0",
+        "unchangedFromPriorArtifact": false,
+        "normalizedBodyUnchangedFromPriorArtifact": true
+      },
+      {
+        "path": "artifacts/local-agent-resident-f4142d3a92d6b5b49ef6c6a666155218b8b75b07/node_modules/.bun/zod@4.6.6/node_modules/zod/v4/locales/ta.js",
+        "sha256": "5d4b7abc6798cca0931d000ca4f68cca99e5cde4ed431aeeb900e58a0303dbbf",
+        "unchangedFromPriorArtifact": false,
+        "normalizedBodyUnchangedFromPriorArtifact": true
+      },
+      {
+        "path": "artifacts/local-agent-resident-f4142d3a92d6b5b49ef6c6a666155218b8b75b07/node_modules/.bun/zod@4.6.6/node_modules/zod/v4/locales/tg.js",
+        "sha256": "76de3c795b1ef1778629faf40683486482de6ea317e3ca0a6bcbf52784c00e63",
+        "unchangedFromPriorArtifact": false,
+        "normalizedBodyUnchangedFromPriorArtifact": true
+      },
+      {
+        "path": "artifacts/local-agent-resident-f4142d3a92d6b5b49ef6c6a666155218b8b75b07/node_modules/.bun/zod@4.6.6/node_modules/zod/v4/locales/th.js",
+        "sha256": "9a28696b4005b801864ad3fb6c56a2ec2e4955d27957a0eaf34ce422d96613c1",
+        "unchangedFromPriorArtifact": false,
+        "normalizedBodyUnchangedFromPriorArtifact": true
+      },
+      {
+        "path": "artifacts/local-agent-resident-f4142d3a92d6b5b49ef6c6a666155218b8b75b07/node_modules/.bun/zod@4.6.6/node_modules/zod/v4/locales/tk.js",
+        "sha256": "4ca27b4285028f05cbe7880d1b7dbac7ca6316f07c08e8c50b1157ccd2ce69cd",
+        "unchangedFromPriorArtifact": false,
+        "normalizedBodyUnchangedFromPriorArtifact": true
+      },
+      {
+        "path": "artifacts/local-agent-resident-f4142d3a92d6b5b49ef6c6a666155218b8b75b07/node_modules/.bun/zod@4.6.6/node_modules/zod/v4/locales/tr.js",
+        "sha256": "1a75cc45aeb50ea46f4005ef51be267fb9d829b85fe16de6a21f6483209a3284",
+        "unchangedFromPriorArtifact": false,
+        "normalizedBodyUnchangedFromPriorArtifact": true
+      },
+      {
+        "path": "artifacts/local-agent-resident-f4142d3a92d6b5b49ef6c6a666155218b8b75b07/node_modules/.bun/zod@4.6.6/node_modules/zod/v4/locales/uk.js",
+        "sha256": "0c4e0b5b15861347a88555c8bc5a6a03337d812b7896c0f94a529395556cc798",
+        "unchangedFromPriorArtifact": false,
+        "normalizedBodyUnchangedFromPriorArtifact": true
+      },
+      {
+        "path": "artifacts/local-agent-resident-f4142d3a92d6b5b49ef6c6a666155218b8b75b07/node_modules/.bun/zod@4.6.6/node_modules/zod/v4/locales/ua.js",
+        "sha256": "8a21aa2b05e8ac9e021ced5b674155a85daabbfc533b4541d6ba693a1cde06cd",
+        "unchangedFromPriorArtifact": false,
+        "normalizedBodyUnchangedFromPriorArtifact": true
+      },
+      {
+        "path": "artifacts/local-agent-resident-f4142d3a92d6b5b49ef6c6a666155218b8b75b07/node_modules/.bun/zod@4.6.6/node_modules/zod/v4/locales/ur.js",
+        "sha256": "fd73bc668b30427e8d3a3fbc181604f87377b96e129e22fa216cee42b8238a73",
+        "unchangedFromPriorArtifact": false,
+        "normalizedBodyUnchangedFromPriorArtifact": true
+      },
+      {
+        "path": "artifacts/local-agent-resident-f4142d3a92d6b5b49ef6c6a666155218b8b75b07/node_modules/.bun/zod@4.6.6/node_modules/zod/v4/locales/uz.js",
+        "sha256": "285864cc74d30753cb86deeb7034cfa6b8ea9deaf9c12332a686833c57d0432a",
+        "unchangedFromPriorArtifact": false,
+        "normalizedBodyUnchangedFromPriorArtifact": true
+      },
+      {
+        "path": "artifacts/local-agent-resident-f4142d3a92d6b5b49ef6c6a666155218b8b75b07/node_modules/.bun/zod@4.6.6/node_modules/zod/v4/locales/vi.js",
+        "sha256": "88cdc1e78c26b990d922c2963b2d86b2f8618d8b943c36ca532a735b0b318f7f",
+        "unchangedFromPriorArtifact": false,
+        "normalizedBodyUnchangedFromPriorArtifact": true
+      },
+      {
+        "path": "artifacts/local-agent-resident-f4142d3a92d6b5b49ef6c6a666155218b8b75b07/node_modules/.bun/zod@4.6.6/node_modules/zod/v4/locales/zh-CN.js",
+        "sha256": "cca72bc62455ddaa25019ae7c83bd5c15552e5ec1436d7c3da9337d650e7cbb2",
+        "unchangedFromPriorArtifact": false,
+        "normalizedBodyUnchangedFromPriorArtifact": true
+      },
+      {
+        "path": "artifacts/local-agent-resident-f4142d3a92d6b5b49ef6c6a666155218b8b75b07/node_modules/.bun/zod@4.6.6/node_modules/zod/v4/locales/zh-TW.js",
+        "sha256": "d07b0c659cd32b8d3fb60a47a804de4d7cd62a2c7cc25805553d1df8aa37941f",
+        "unchangedFromPriorArtifact": false,
+        "normalizedBodyUnchangedFromPriorArtifact": true
+      },
+      {
+        "path": "artifacts/local-agent-resident-f4142d3a92d6b5b49ef6c6a666155218b8b75b07/node_modules/.bun/zod@4.6.6/node_modules/zod/v4/locales/yo.js",
+        "sha256": "52816b5f1196859a791cd14ddddf6fa1dfd2d468454bcdf1ee8f28bd9a709ab1",
+        "unchangedFromPriorArtifact": false,
+        "normalizedBodyUnchangedFromPriorArtifact": true
+      },
+      {
+        "path": "artifacts/local-agent-resident-f4142d3a92d6b5b49ef6c6a666155218b8b75b07/node_modules/.bun/zod@4.6.6/node_modules/zod/v4/locales/index.js",
+        "sha256": "8f0abe2dadb8a23c0eb8e94482105a02308e4ca10fb33ca1de8d5f7fc49f88a9",
+        "unchangedFromPriorArtifact": false,
+        "normalizedBodyUnchangedFromPriorArtifact": true
+      },
+      {
+        "path": "artifacts/local-agent-resident-f4142d3a92d6b5b49ef6c6a666155218b8b75b07/node_modules/.bun/zod@4.6.6/node_modules/zod/v4/core/registries.js",
+        "sha256": "3044d9055f1271cf50455ef652f79cbfd5090533fda6694ef4d5362be41bfda1",
+        "unchangedFromPriorArtifact": false,
+        "normalizedBodyUnchangedFromPriorArtifact": true
+      },
+      {
+        "path": "artifacts/local-agent-resident-f4142d3a92d6b5b49ef6c6a666155218b8b75b07/node_modules/.bun/zod@4.6.6/node_modules/zod/v4/core/compile.js",
+        "sha256": "9e1fe729ff90ba98fe9802e606bc9a7dd2613d0d414c3d15f72cdb9aabb6f0dc",
+        "unchangedFromPriorArtifact": false,
+        "normalizedBodyUnchangedFromPriorArtifact": true
+      },
+      {
+        "path": "artifacts/local-agent-resident-f4142d3a92d6b5b49ef6c6a666155218b8b75b07/node_modules/.bun/zod@4.6.6/node_modules/zod/v4/core/api.js",
+        "sha256": "9cbb81f4a3bed0630febbecdcbe92837ec6c6913134086345c1ff8788e2ed617",
+        "unchangedFromPriorArtifact": false,
+        "normalizedBodyUnchangedFromPriorArtifact": true
+      },
+      {
+        "path": "artifacts/local-agent-resident-f4142d3a92d6b5b49ef6c6a666155218b8b75b07/node_modules/.bun/zod@4.6.6/node_modules/zod/v4/core/to-json-schema.js",
+        "sha256": "8bf62d0c797224229c5ef31a734d65452a797dbf59b52bcee967492fe9f68064",
+        "unchangedFromPriorArtifact": false,
+        "normalizedBodyUnchangedFromPriorArtifact": true
+      },
+      {
+        "path": "artifacts/local-agent-resident-f4142d3a92d6b5b49ef6c6a666155218b8b75b07/node_modules/.bun/zod@4.6.6/node_modules/zod/v4/core/json-schema-processors.js",
+        "sha256": "ccce1cee31cf810907cb5bc8e33e34ff5a93b0f586774809e7a541de9256a755",
+        "unchangedFromPriorArtifact": false,
+        "normalizedBodyUnchangedFromPriorArtifact": true
+      },
+      {
+        "path": "artifacts/local-agent-resident-f4142d3a92d6b5b49ef6c6a666155218b8b75b07/node_modules/.bun/zod@4.6.6/node_modules/zod/v4/core/json-schema-generator.js",
+        "sha256": "0693db3ea5a58e8fe52442dfca08f284df64b173e5e63ed738ad37c187b2b7bd",
+        "unchangedFromPriorArtifact": false,
+        "normalizedBodyUnchangedFromPriorArtifact": true
+      },
+      {
+        "path": "artifacts/local-agent-resident-f4142d3a92d6b5b49ef6c6a666155218b8b75b07/node_modules/.bun/zod@4.6.6/node_modules/zod/v4/core/json-schema.js",
+        "sha256": "f93f796ff7648a84d5259112c1b30f5cf24a20d06205ad4f81b7b082db10c7dd",
+        "unchangedFromPriorArtifact": false,
+        "normalizedBodyUnchangedFromPriorArtifact": true
+      },
+      {
+        "path": "artifacts/local-agent-resident-f4142d3a92d6b5b49ef6c6a666155218b8b75b07/node_modules/.bun/zod@4.6.6/node_modules/zod/v4/core/index.js",
+        "sha256": "e6b71934e32b2505b2b5d44e1ba716bfa1113278111f0f7c57f4899ba25d02c1",
+        "unchangedFromPriorArtifact": false,
+        "normalizedBodyUnchangedFromPriorArtifact": true
+      },
+      {
+        "path": "artifacts/local-agent-resident-f4142d3a92d6b5b49ef6c6a666155218b8b75b07/node_modules/.bun/zod@4.6.6/node_modules/zod/v4/classic/checks.js",
+        "sha256": "d8710d3d28267631a4d71bf4701f5d6b1f3d90ff99cc2b3ed3f634427fdc2616",
+        "unchangedFromPriorArtifact": false,
+        "normalizedBodyUnchangedFromPriorArtifact": true
+      },
+      {
+        "path": "artifacts/local-agent-resident-f4142d3a92d6b5b49ef6c6a666155218b8b75b07/node_modules/.bun/zod@4.6.6/node_modules/zod/v4/classic/errors.js",
+        "sha256": "044b3722d92ec565058dec4abb57401bc7e78364549ccb76531851c7cf637e38",
+        "unchangedFromPriorArtifact": false,
+        "normalizedBodyUnchangedFromPriorArtifact": true
+      },
+      {
+        "path": "artifacts/local-agent-resident-f4142d3a92d6b5b49ef6c6a666155218b8b75b07/node_modules/.bun/zod@4.6.6/node_modules/zod/v4/classic/parse.js",
+        "sha256": "7e308a5a6caff439991cf4ccf8ff5b383707f74f1ffcbf4baced702f98a121ed",
+        "unchangedFromPriorArtifact": false,
+        "normalizedBodyUnchangedFromPriorArtifact": true
+      },
+      {
+        "path": "artifacts/local-agent-resident-f4142d3a92d6b5b49ef6c6a666155218b8b75b07/node_modules/.bun/zod@4.6.6/node_modules/zod/v4/classic/schemas.js",
+        "sha256": "bb372d9a857cb305c9459b8926f489869ed83ed96ee01c03d91c64f6c66d26fd",
+        "unchangedFromPriorArtifact": false,
+        "normalizedBodyUnchangedFromPriorArtifact": true
+      },
+      {
+        "path": "artifacts/local-agent-resident-f4142d3a92d6b5b49ef6c6a666155218b8b75b07/node_modules/.bun/zod@4.6.6/node_modules/zod/v4/classic/compat.js",
+        "sha256": "308d11dfbe3aa816e4ac7d2690a8357825d9fb6b1fc43e6033f004c4b4ede4e2",
+        "unchangedFromPriorArtifact": false,
+        "normalizedBodyUnchangedFromPriorArtifact": true
+      },
+      {
+        "path": "artifacts/local-agent-resident-f4142d3a92d6b5b49ef6c6a666155218b8b75b07/node_modules/.bun/zod@4.6.6/node_modules/zod/v4/classic/iso.js",
+        "sha256": "f6540b7444b8524c59db03cc3c443a93e62c2889eae1a4c2070435be5289982a",
+        "unchangedFromPriorArtifact": false,
+        "normalizedBodyUnchangedFromPriorArtifact": true
+      },
+      {
+        "path": "artifacts/local-agent-resident-f4142d3a92d6b5b49ef6c6a666155218b8b75b07/node_modules/.bun/zod@4.6.6/node_modules/zod/v4/classic/from-json-schema.js",
+        "sha256": "104f7f087b6bd19d0f9c1e675aec009b315a9440794b3706300d1778776b9d80",
+        "unchangedFromPriorArtifact": false,
+        "normalizedBodyUnchangedFromPriorArtifact": true
+      },
+      {
+        "path": "artifacts/local-agent-resident-f4142d3a92d6b5b49ef6c6a666155218b8b75b07/node_modules/.bun/zod@4.6.6/node_modules/zod/v4/core/visit.js",
+        "sha256": "b6f5e258dd3ee308f5c86712796712a67893f0df0353430d1249fb026bb20837",
+        "unchangedFromPriorArtifact": false,
+        "normalizedBodyUnchangedFromPriorArtifact": true
+      },
+      {
+        "path": "artifacts/local-agent-resident-f4142d3a92d6b5b49ef6c6a666155218b8b75b07/node_modules/.bun/zod@4.6.6/node_modules/zod/v4/classic/deep-partial.js",
+        "sha256": "970cdecae5e3e6cfc3d335e02768c3ccf669857140ffee0bc6ea64de7c484c59",
+        "unchangedFromPriorArtifact": false,
+        "normalizedBodyUnchangedFromPriorArtifact": true
+      },
+      {
+        "path": "artifacts/local-agent-resident-f4142d3a92d6b5b49ef6c6a666155218b8b75b07/node_modules/.bun/zod@4.6.6/node_modules/zod/v4/classic/in-out.js",
+        "sha256": "cc444a4f6abc20699c2d88f4343a6fc01d96c5cb0c9ab4cc7b89d11a6c20570d",
+        "unchangedFromPriorArtifact": false,
+        "normalizedBodyUnchangedFromPriorArtifact": true
+      },
+      {
+        "path": "artifacts/local-agent-resident-f4142d3a92d6b5b49ef6c6a666155218b8b75b07/node_modules/.bun/zod@4.6.6/node_modules/zod/v4/classic/coerce.js",
+        "sha256": "060d15917ec08d53feaac186a181677b21018ce9229e6a18be369a6f3cd5e982",
+        "unchangedFromPriorArtifact": false,
+        "normalizedBodyUnchangedFromPriorArtifact": true
+      },
+      {
+        "path": "artifacts/local-agent-resident-f4142d3a92d6b5b49ef6c6a666155218b8b75b07/node_modules/.bun/zod@4.6.6/node_modules/zod/v4/classic/external.js",
+        "sha256": "f32ba1cad0f057c5b8f393bf91577b33043565a64dcbc6d04e87b6815f3f7bf1",
+        "unchangedFromPriorArtifact": false,
+        "normalizedBodyUnchangedFromPriorArtifact": true
+      },
+      {
+        "path": "artifacts/local-agent-resident-f4142d3a92d6b5b49ef6c6a666155218b8b75b07/node_modules/.bun/zod@4.6.6/node_modules/zod/index.js",
+        "sha256": "61ff0da79aa4aedc63fa15a839189d97b2404316e6fcfec12250ed547d64f341",
+        "unchangedFromPriorArtifact": false,
+        "normalizedBodyUnchangedFromPriorArtifact": true
+      }
+    ]
+  },
+  "workerDependencyIdentity": {
+    "orderIndependentEntriesIdentical": true,
+    "oldCount": 53,
+    "newCount": 53
+  },
+  "rows": [
+    {
+      "package": "@fastify/busboy",
+      "advisory": "GHSA-gxm5-99cw-xjw9",
+      "severity": "moderate",
+      "affectedVersions": [
+        "2.1.1"
+      ],
+      "verifiedNoticeVersions": [],
+      "affectedNoticeVersions": [],
+      "moduleVersionMatches": [],
+      "unversionedModules": [],
+      "externalReferences": [],
+      "classification": "AFFECTED_NPM_VERSION_ABSENT_FROM_INSPECTED_CLOSURE",
+      "nextDecision": "Review scoped npm-nonshipment at current ab2 artifact after explicit identity comparison; no claim dependencyfixed upstream"
+    },
+    {
+      "package": "@fastify/busboy",
+      "advisory": "GHSA-x8mw-p69m-v3mx",
+      "severity": "high",
+      "affectedVersions": [
+        "2.1.1"
+      ],
+      "verifiedNoticeVersions": [],
+      "affectedNoticeVersions": [],
+      "moduleVersionMatches": [],
+      "unversionedModules": [],
+      "externalReferences": [],
+      "classification": "AFFECTED_NPM_VERSION_ABSENT_FROM_INSPECTED_CLOSURE",
+      "nextDecision": "Review scoped npm-nonshipment at current ab2 artifact after explicit identity comparison; no claim dependencyfixed upstream"
+    },
+    {
+      "package": "@modelcontextprotocol/sdk",
+      "advisory": "GHSA-22jm-h49p-29qw",
+      "severity": "high",
+      "affectedVersions": [
+        "1.30.1"
+      ],
+      "verifiedNoticeVersions": [],
+      "affectedNoticeVersions": [],
+      "moduleVersionMatches": [],
+      "unversionedModules": [],
+      "externalReferences": [],
+      "classification": "AFFECTED_NPM_VERSION_ABSENT_FROM_INSPECTED_CLOSURE",
+      "nextDecision": "Review scoped npm-nonshipment at current ab2 artifact after explicit identity comparison; no claim dependencyfixed upstream"
+    },
+    {
+      "package": "@modelcontextprotocol/sdk",
+      "advisory": "GHSA-46jr-4wx8-v453",
+      "severity": "high",
+      "affectedVersions": [
+        "1.30.1"
+      ],
+      "verifiedNoticeVersions": [],
+      "affectedNoticeVersions": [],
+      "moduleVersionMatches": [],
+      "unversionedModules": [],
+      "externalReferences": [],
+      "classification": "AFFECTED_NPM_VERSION_ABSENT_FROM_INSPECTED_CLOSURE",
+      "nextDecision": "Review scoped npm-nonshipment at current ab2 artifact after explicit identity comparison; no claim dependencyfixed upstream"
+    },
+    {
+      "package": "@modelcontextprotocol/sdk",
+      "advisory": "GHSA-6prh-2h8m-c8cw",
+      "severity": "moderate",
+      "affectedVersions": [
+        "1.30.1"
+      ],
+      "verifiedNoticeVersions": [],
+      "affectedNoticeVersions": [],
+      "moduleVersionMatches": [],
+      "unversionedModules": [],
+      "externalReferences": [],
+      "classification": "AFFECTED_NPM_VERSION_ABSENT_FROM_INSPECTED_CLOSURE",
+      "nextDecision": "Review scoped npm-nonshipment at current ab2 artifact after explicit identity comparison; no claim dependencyfixed upstream"
+    },
+    {
+      "package": "@modelcontextprotocol/sdk",
+      "advisory": "GHSA-6qxp-vccf-f47h",
+      "severity": "high",
+      "affectedVersions": [
+        "1.30.1"
+      ],
+      "verifiedNoticeVersions": [],
+      "affectedNoticeVersions": [],
+      "moduleVersionMatches": [],
+      "unversionedModules": [],
+      "externalReferences": [],
+      "classification": "AFFECTED_NPM_VERSION_ABSENT_FROM_INSPECTED_CLOSURE",
+      "nextDecision": "Review scoped npm-nonshipment at current ab2 artifact after explicit identity comparison; no claim dependencyfixed upstream"
+    },
+    {
+      "package": "@modelcontextprotocol/sdk",
+      "advisory": "GHSA-rvq5-wwqv-78pq",
+      "severity": "moderate",
+      "affectedVersions": [
+        "1.30.1"
+      ],
+      "verifiedNoticeVersions": [],
+      "affectedNoticeVersions": [],
+      "moduleVersionMatches": [],
+      "unversionedModules": [],
+      "externalReferences": [],
+      "classification": "AFFECTED_NPM_VERSION_ABSENT_FROM_INSPECTED_CLOSURE",
+      "nextDecision": "Review scoped npm-nonshipment at current ab2 artifact after explicit identity comparison; no claim dependencyfixed upstream"
+    },
+    {
+      "package": "@toon-format/toon",
+      "advisory": "GHSA-p95v-992w-h6c3",
+      "severity": "high",
+      "affectedVersions": [
+        "2.3.0"
+      ],
+      "verifiedNoticeVersions": [],
+      "affectedNoticeVersions": [],
+      "moduleVersionMatches": [],
+      "unversionedModules": [],
+      "externalReferences": [],
+      "classification": "AFFECTED_NPM_VERSION_ABSENT_FROM_INSPECTED_CLOSURE",
+      "nextDecision": "Review scoped npm-nonshipment at current ab2 artifact after explicit identity comparison; no claim dependencyfixed upstream"
+    },
+    {
+      "package": "adm-zip",
+      "advisory": "GHSA-7q85-xj36-vmfc",
+      "severity": "high",
+      "affectedVersions": [
+        "0.6.0"
+      ],
+      "verifiedNoticeVersions": [],
+      "affectedNoticeVersions": [],
+      "moduleVersionMatches": [],
+      "unversionedModules": [],
+      "externalReferences": [],
+      "classification": "AFFECTED_NPM_VERSION_ABSENT_FROM_INSPECTED_CLOSURE",
+      "nextDecision": "Review scoped npm-nonshipment at current ab2 artifact after explicit identity comparison; no claim dependencyfixed upstream"
+    },
+    {
+      "package": "adm-zip",
+      "advisory": "GHSA-8238-w5pm-2374",
+      "severity": "high",
+      "affectedVersions": [
+        "0.6.0"
+      ],
+      "verifiedNoticeVersions": [],
+      "affectedNoticeVersions": [],
+      "moduleVersionMatches": [],
+      "unversionedModules": [],
+      "externalReferences": [],
+      "classification": "AFFECTED_NPM_VERSION_ABSENT_FROM_INSPECTED_CLOSURE",
+      "nextDecision": "Review scoped npm-nonshipment at current ab2 artifact after explicit identity comparison; no claim dependencyfixed upstream"
+    },
+    {
+      "package": "adm-zip",
+      "advisory": "GHSA-c6fg-446q-cg94",
+      "severity": "moderate",
+      "affectedVersions": [
+        "0.6.0"
+      ],
+      "verifiedNoticeVersions": [],
+      "affectedNoticeVersions": [],
+      "moduleVersionMatches": [],
+      "unversionedModules": [],
+      "externalReferences": [],
+      "classification": "AFFECTED_NPM_VERSION_ABSENT_FROM_INSPECTED_CLOSURE",
+      "nextDecision": "Review scoped npm-nonshipment at current ab2 artifact after explicit identity comparison; no claim dependencyfixed upstream"
+    },
+    {
+      "package": "adm-zip",
+      "advisory": "GHSA-j5f4-cc29-5x44",
+      "severity": "high",
+      "affectedVersions": [
+        "0.6.0"
+      ],
+      "verifiedNoticeVersions": [],
+      "affectedNoticeVersions": [],
+      "moduleVersionMatches": [],
+      "unversionedModules": [],
+      "externalReferences": [],
+      "classification": "AFFECTED_NPM_VERSION_ABSENT_FROM_INSPECTED_CLOSURE",
+      "nextDecision": "Review scoped npm-nonshipment at current ab2 artifact after explicit identity comparison; no claim dependencyfixed upstream"
+    },
+    {
+      "package": "adm-zip",
+      "advisory": "GHSA-p634-w6r4-rjp2",
+      "severity": "moderate",
+      "affectedVersions": [
+        "0.6.0"
+      ],
+      "verifiedNoticeVersions": [],
+      "affectedNoticeVersions": [],
+      "moduleVersionMatches": [],
+      "unversionedModules": [],
+      "externalReferences": [],
+      "classification": "AFFECTED_NPM_VERSION_ABSENT_FROM_INSPECTED_CLOSURE",
+      "nextDecision": "Review scoped npm-nonshipment at current ab2 artifact after explicit identity comparison; no claim dependencyfixed upstream"
+    },
+    {
+      "package": "adm-zip",
+      "advisory": "GHSA-rcw4-f5rp-g42v",
+      "severity": "high",
+      "affectedVersions": [
+        "0.6.0"
+      ],
+      "verifiedNoticeVersions": [],
+      "affectedNoticeVersions": [],
+      "moduleVersionMatches": [],
+      "unversionedModules": [],
+      "externalReferences": [],
+      "classification": "AFFECTED_NPM_VERSION_ABSENT_FROM_INSPECTED_CLOSURE",
+      "nextDecision": "Review scoped npm-nonshipment at current ab2 artifact after explicit identity comparison; no claim dependencyfixed upstream"
+    },
+    {
+      "package": "adm-zip",
+      "advisory": "GHSA-vwc7-r8mq-g2x9",
+      "severity": "moderate",
+      "affectedVersions": [
+        "0.6.0"
+      ],
+      "verifiedNoticeVersions": [],
+      "affectedNoticeVersions": [],
+      "moduleVersionMatches": [],
+      "unversionedModules": [],
+      "externalReferences": [],
+      "classification": "AFFECTED_NPM_VERSION_ABSENT_FROM_INSPECTED_CLOSURE",
+      "nextDecision": "Review scoped npm-nonshipment at current ab2 artifact after explicit identity comparison; no claim dependencyfixed upstream"
+    },
+    {
+      "package": "axios",
+      "advisory": "GHSA-3pq3-5fj3-cg6v",
+      "severity": "high",
+      "affectedVersions": [
+        "1.19.0"
+      ],
+      "verifiedNoticeVersions": [],
+      "affectedNoticeVersions": [],
+      "moduleVersionMatches": [],
+      "unversionedModules": [],
+      "externalReferences": [],
+      "classification": "AFFECTED_NPM_VERSION_ABSENT_FROM_INSPECTED_CLOSURE",
+      "nextDecision": "Review scoped npm-nonshipment at current ab2 artifact after explicit identity comparison; no claim dependencyfixed upstream"
+    },
+    {
+      "package": "axios",
+      "advisory": "GHSA-44g4-m2mj-wpvx",
+      "severity": "moderate",
+      "affectedVersions": [
+        "1.19.0"
+      ],
+      "verifiedNoticeVersions": [],
+      "affectedNoticeVersions": [],
+      "moduleVersionMatches": [],
+      "unversionedModules": [],
+      "externalReferences": [],
+      "classification": "AFFECTED_NPM_VERSION_ABSENT_FROM_INSPECTED_CLOSURE",
+      "nextDecision": "Review scoped npm-nonshipment at current ab2 artifact after explicit identity comparison; no claim dependencyfixed upstream"
+    },
+    {
+      "package": "axios",
+      "advisory": "GHSA-4hqw-qxg8-jxx2",
+      "severity": "moderate",
+      "affectedVersions": [
+        "1.19.0"
+      ],
+      "verifiedNoticeVersions": [],
+      "affectedNoticeVersions": [],
+      "moduleVersionMatches": [],
+      "unversionedModules": [],
+      "externalReferences": [],
+      "classification": "AFFECTED_NPM_VERSION_ABSENT_FROM_INSPECTED_CLOSURE",
+      "nextDecision": "Review scoped npm-nonshipment at current ab2 artifact after explicit identity comparison; no claim dependencyfixed upstream"
+    },
+    {
+      "package": "axios",
+      "advisory": "GHSA-542g-h47m-68v8",
+      "severity": "high",
+      "affectedVersions": [
+        "1.19.0"
+      ],
+      "verifiedNoticeVersions": [],
+      "affectedNoticeVersions": [],
+      "moduleVersionMatches": [],
+      "unversionedModules": [],
+      "externalReferences": [],
+      "classification": "AFFECTED_NPM_VERSION_ABSENT_FROM_INSPECTED_CLOSURE",
+      "nextDecision": "Review scoped npm-nonshipment at current ab2 artifact after explicit identity comparison; no claim dependencyfixed upstream"
+    },
+    {
+      "package": "axios",
+      "advisory": "GHSA-9fr6-4gfg-395g",
+      "severity": "moderate",
+      "affectedVersions": [
+        "1.19.0"
+      ],
+      "verifiedNoticeVersions": [],
+      "affectedNoticeVersions": [],
+      "moduleVersionMatches": [],
+      "unversionedModules": [],
+      "externalReferences": [],
+      "classification": "AFFECTED_NPM_VERSION_ABSENT_FROM_INSPECTED_CLOSURE",
+      "nextDecision": "Review scoped npm-nonshipment at current ab2 artifact after explicit identity comparison; no claim dependencyfixed upstream"
+    },
+    {
+      "package": "axios",
+      "advisory": "GHSA-c29m-xwm3-cm6r",
+      "severity": "high",
+      "affectedVersions": [
+        "1.19.0"
+      ],
+      "verifiedNoticeVersions": [],
+      "affectedNoticeVersions": [],
+      "moduleVersionMatches": [],
+      "unversionedModules": [],
+      "externalReferences": [],
+      "classification": "AFFECTED_NPM_VERSION_ABSENT_FROM_INSPECTED_CLOSURE",
+      "nextDecision": "Review scoped npm-nonshipment at current ab2 artifact after explicit identity comparison; no claim dependencyfixed upstream"
+    },
+    {
+      "package": "axios",
+      "advisory": "GHSA-j8rh-479h-cp32",
+      "severity": "moderate",
+      "affectedVersions": [
+        "1.19.0"
+      ],
+      "verifiedNoticeVersions": [],
+      "affectedNoticeVersions": [],
+      "moduleVersionMatches": [],
+      "unversionedModules": [],
+      "externalReferences": [],
+      "classification": "AFFECTED_NPM_VERSION_ABSENT_FROM_INSPECTED_CLOSURE",
+      "nextDecision": "Review scoped npm-nonshipment at current ab2 artifact after explicit identity comparison; no claim dependencyfixed upstream"
+    },
+    {
+      "package": "axios",
+      "advisory": "GHSA-m8m8-qj5v-23w3",
+      "severity": "high",
+      "affectedVersions": [
+        "1.19.0"
+      ],
+      "verifiedNoticeVersions": [],
+      "affectedNoticeVersions": [],
+      "moduleVersionMatches": [],
+      "unversionedModules": [],
+      "externalReferences": [],
+      "classification": "AFFECTED_NPM_VERSION_ABSENT_FROM_INSPECTED_CLOSURE",
+      "nextDecision": "Review scoped npm-nonshipment at current ab2 artifact after explicit identity comparison; no claim dependencyfixed upstream"
+    },
+    {
+      "package": "axios",
+      "advisory": "GHSA-mghh-pgcx-3jjj",
+      "severity": "high",
+      "affectedVersions": [
+        "1.19.0"
+      ],
+      "verifiedNoticeVersions": [],
+      "affectedNoticeVersions": [],
+      "moduleVersionMatches": [],
+      "unversionedModules": [],
+      "externalReferences": [],
+      "classification": "AFFECTED_NPM_VERSION_ABSENT_FROM_INSPECTED_CLOSURE",
+      "nextDecision": "Review scoped npm-nonshipment at current ab2 artifact after explicit identity comparison; no claim dependencyfixed upstream"
+    },
+    {
+      "package": "axios",
+      "advisory": "GHSA-r4gj-5m52-g5wh",
+      "severity": "high",
+      "affectedVersions": [
+        "1.19.0"
+      ],
+      "verifiedNoticeVersions": [],
+      "affectedNoticeVersions": [],
+      "moduleVersionMatches": [],
+      "unversionedModules": [],
+      "externalReferences": [],
+      "classification": "AFFECTED_NPM_VERSION_ABSENT_FROM_INSPECTED_CLOSURE",
+      "nextDecision": "Review scoped npm-nonshipment at current ab2 artifact after explicit identity comparison; no claim dependencyfixed upstream"
+    },
+    {
+      "package": "axios",
+      "advisory": "GHSA-vh66-26gq-q6x8",
+      "severity": "moderate",
+      "affectedVersions": [
+        "1.19.0"
+      ],
+      "verifiedNoticeVersions": [],
+      "affectedNoticeVersions": [],
+      "moduleVersionMatches": [],
+      "unversionedModules": [],
+      "externalReferences": [],
+      "classification": "AFFECTED_NPM_VERSION_ABSENT_FROM_INSPECTED_CLOSURE",
+      "nextDecision": "Review scoped npm-nonshipment at current ab2 artifact after explicit identity comparison; no claim dependencyfixed upstream"
+    },
+    {
+      "package": "axios",
+      "advisory": "GHSA-x97p-jq2g-jp4f",
+      "severity": "high",
+      "affectedVersions": [
+        "1.19.0"
+      ],
+      "verifiedNoticeVersions": [],
+      "affectedNoticeVersions": [],
+      "moduleVersionMatches": [],
+      "unversionedModules": [],
+      "externalReferences": [],
+      "classification": "AFFECTED_NPM_VERSION_ABSENT_FROM_INSPECTED_CLOSURE",
+      "nextDecision": "Review scoped npm-nonshipment at current ab2 artifact after explicit identity comparison; no claim dependencyfixed upstream"
+    },
+    {
+      "package": "basic-ftp",
+      "advisory": "GHSA-c475-qrg2-pj4r",
+      "severity": "high",
+      "affectedVersions": [
+        "5.3.1"
+      ],
+      "verifiedNoticeVersions": [],
+      "affectedNoticeVersions": [],
+      "moduleVersionMatches": [],
+      "unversionedModules": [],
+      "externalReferences": [],
+      "classification": "AFFECTED_NPM_VERSION_ABSENT_FROM_INSPECTED_CLOSURE",
+      "nextDecision": "Review scoped npm-nonshipment at current ab2 artifact after explicit identity comparison; no claim dependencyfixed upstream"
+    },
+    {
+      "package": "bigint-buffer",
+      "advisory": "GHSA-3gc7-fjrx-p6mg",
+      "severity": "high",
+      "affectedVersions": [
+        "1.1.5"
+      ],
+      "verifiedNoticeVersions": [],
+      "affectedNoticeVersions": [],
+      "moduleVersionMatches": [],
+      "unversionedModules": [],
+      "externalReferences": [],
+      "classification": "AFFECTED_NPM_VERSION_ABSENT_FROM_INSPECTED_CLOSURE",
+      "nextDecision": "Review scoped npm-nonshipment at current ab2 artifact after explicit identity comparison; no claim dependencyfixed upstream"
+    },
+    {
+      "package": "body-parser",
+      "advisory": "GHSA-27r3-jxmh-p828",
+      "severity": "high",
+      "affectedVersions": [
+        "1.20.8"
+      ],
+      "verifiedNoticeVersions": [],
+      "affectedNoticeVersions": [],
+      "moduleVersionMatches": [],
+      "unversionedModules": [],
+      "externalReferences": [],
+      "classification": "AFFECTED_NPM_VERSION_ABSENT_FROM_INSPECTED_CLOSURE",
+      "nextDecision": "Review scoped npm-nonshipment at current ab2 artifact after explicit identity comparison; no claim dependencyfixed upstream"
+    },
+    {
+      "package": "body-parser",
+      "advisory": "GHSA-27r3-jxmh-p828",
+      "severity": "high",
+      "affectedVersions": [
+        "2.3.0"
+      ],
+      "verifiedNoticeVersions": [],
+      "affectedNoticeVersions": [],
+      "moduleVersionMatches": [],
+      "unversionedModules": [],
+      "externalReferences": [],
+      "classification": "AFFECTED_NPM_VERSION_ABSENT_FROM_INSPECTED_CLOSURE",
+      "nextDecision": "Review scoped npm-nonshipment at current ab2 artifact after explicit identity comparison; no claim dependencyfixed upstream"
+    },
+    {
+      "package": "brace-expansion",
+      "advisory": "GHSA-6j4f-fj2g-mc7p",
+      "severity": "high",
+      "affectedVersions": [
+        "5.0.9"
+      ],
+      "verifiedNoticeVersions": [],
+      "affectedNoticeVersions": [],
+      "moduleVersionMatches": [],
+      "unversionedModules": [],
+      "externalReferences": [],
+      "classification": "AFFECTED_NPM_VERSION_ABSENT_FROM_INSPECTED_CLOSURE",
+      "nextDecision": "Review scoped npm-nonshipment at current ab2 artifact after explicit identity comparison; no claim dependencyfixed upstream"
+    },
+    {
+      "package": "brace-expansion",
+      "advisory": "GHSA-q2hr-2g5m-vwhr",
+      "severity": "moderate",
+      "affectedVersions": [
+        "5.0.9"
+      ],
+      "verifiedNoticeVersions": [],
+      "affectedNoticeVersions": [],
+      "moduleVersionMatches": [],
+      "unversionedModules": [],
+      "externalReferences": [],
+      "classification": "AFFECTED_NPM_VERSION_ABSENT_FROM_INSPECTED_CLOSURE",
+      "nextDecision": "Review scoped npm-nonshipment at current ab2 artifact after explicit identity comparison; no claim dependencyfixed upstream"
+    },
+    {
+      "package": "brace-expansion",
+      "advisory": "GHSA-qhr7-859c-m2p7",
+      "severity": "high",
+      "affectedVersions": [
+        "5.0.9"
+      ],
+      "verifiedNoticeVersions": [],
+      "affectedNoticeVersions": [],
+      "moduleVersionMatches": [],
+      "unversionedModules": [],
+      "externalReferences": [],
+      "classification": "AFFECTED_NPM_VERSION_ABSENT_FROM_INSPECTED_CLOSURE",
+      "nextDecision": "Review scoped npm-nonshipment at current ab2 artifact after explicit identity comparison; no claim dependencyfixed upstream"
+    },
+    {
+      "package": "compression",
+      "advisory": "GHSA-vc2v-76pw-4v95",
+      "severity": "high",
+      "affectedVersions": [
+        "1.8.1"
+      ],
+      "verifiedNoticeVersions": [],
+      "affectedNoticeVersions": [],
+      "moduleVersionMatches": [],
+      "unversionedModules": [],
+      "externalReferences": [],
+      "classification": "AFFECTED_NPM_VERSION_ABSENT_FROM_INSPECTED_CLOSURE",
+      "nextDecision": "Review scoped npm-nonshipment at current ab2 artifact after explicit identity comparison; no claim dependencyfixed upstream"
+    },
+    {
+      "package": "cookie",
+      "advisory": "GHSA-pxg6-pf52-xh8x",
+      "severity": "low",
+      "affectedVersions": [
+        "0.4.2"
+      ],
+      "verifiedNoticeVersions": [
+        "1.1.1"
+      ],
+      "affectedNoticeVersions": [],
+      "moduleVersionMatches": [],
+      "unversionedModules": [],
+      "externalReferences": [],
+      "classification": "AFFECTED_NPM_VERSION_ABSENT_FROM_INSPECTED_CLOSURE",
+      "nextDecision": "Review scoped npm-nonshipment at current ab2 artifact after explicit identity comparison; no claim dependencyfixed upstream"
+    },
+    {
+      "package": "decode-uri-component",
+      "advisory": "GHSA-vcc3-ghjq-m6fr",
+      "severity": "moderate",
+      "affectedVersions": [
+        "0.2.2"
+      ],
+      "verifiedNoticeVersions": [],
+      "affectedNoticeVersions": [],
+      "moduleVersionMatches": [],
+      "unversionedModules": [],
+      "externalReferences": [],
+      "classification": "AFFECTED_NPM_VERSION_ABSENT_FROM_INSPECTED_CLOSURE",
+      "nextDecision": "Review scoped npm-nonshipment at current ab2 artifact after explicit identity comparison; no claim dependencyfixed upstream"
+    },
+    {
+      "package": "diff",
+      "advisory": "GHSA-73rr-hh4g-fpgx",
+      "severity": "low",
+      "affectedVersions": [
+        "7.0.0"
+      ],
+      "verifiedNoticeVersions": [
+        "9.0.0"
+      ],
+      "affectedNoticeVersions": [],
+      "moduleVersionMatches": [],
+      "unversionedModules": [],
+      "externalReferences": [],
+      "classification": "AFFECTED_NPM_VERSION_ABSENT_FROM_INSPECTED_CLOSURE",
+      "nextDecision": "Review scoped npm-nonshipment at current ab2 artifact after explicit identity comparison; no claim dependencyfixed upstream"
+    },
+    {
+      "package": "elliptic",
+      "advisory": "GHSA-848j-6mx2-7j84",
+      "severity": "low",
+      "affectedVersions": [
+        "6.6.1"
+      ],
+      "verifiedNoticeVersions": [],
+      "affectedNoticeVersions": [],
+      "moduleVersionMatches": [],
+      "unversionedModules": [],
+      "externalReferences": [],
+      "classification": "AFFECTED_NPM_VERSION_ABSENT_FROM_INSPECTED_CLOSURE",
+      "nextDecision": "Review scoped npm-nonshipment at current ab2 artifact after explicit identity comparison; no claim dependencyfixed upstream"
+    },
+    {
+      "package": "esbuild",
+      "advisory": "GHSA-67mh-4wv8-2f99",
+      "severity": "moderate",
+      "affectedVersions": [
+        "0.18.20"
+      ],
+      "verifiedNoticeVersions": [
+        "0.28.2"
+      ],
+      "affectedNoticeVersions": [],
+      "moduleVersionMatches": [],
+      "unversionedModules": [],
+      "externalReferences": [],
+      "classification": "AFFECTED_NPM_VERSION_ABSENT_FROM_INSPECTED_CLOSURE",
+      "nextDecision": "Review scoped npm-nonshipment at current ab2 artifact after explicit identity comparison; no claim dependencyfixed upstream"
+    },
+    {
+      "package": "esbuild",
+      "advisory": "GHSA-g7r4-m6w7-qqqr",
+      "severity": "low",
+      "affectedVersions": [
+        "0.27.7"
+      ],
+      "verifiedNoticeVersions": [
+        "0.28.2"
+      ],
+      "affectedNoticeVersions": [],
+      "moduleVersionMatches": [],
+      "unversionedModules": [],
+      "externalReferences": [],
+      "classification": "AFFECTED_NPM_VERSION_ABSENT_FROM_INSPECTED_CLOSURE",
+      "nextDecision": "Review scoped npm-nonshipment at current ab2 artifact after explicit identity comparison; no claim dependencyfixed upstream"
+    },
+    {
+      "package": "extract-zip",
+      "advisory": "GHSA-7pqw-9j4j-h8q3",
+      "severity": "high",
+      "affectedVersions": [
+        "2.0.1"
+      ],
+      "verifiedNoticeVersions": [],
+      "affectedNoticeVersions": [],
+      "moduleVersionMatches": [],
+      "unversionedModules": [],
+      "externalReferences": [],
+      "classification": "AFFECTED_NPM_VERSION_ABSENT_FROM_INSPECTED_CLOSURE",
+      "nextDecision": "Review scoped npm-nonshipment at current ab2 artifact after explicit identity comparison; no claim dependencyfixed upstream"
+    },
+    {
+      "package": "extract-zip",
+      "advisory": "GHSA-jmr9-qjv8-65gv",
+      "severity": "high",
+      "affectedVersions": [
+        "2.0.1"
+      ],
+      "verifiedNoticeVersions": [],
+      "affectedNoticeVersions": [],
+      "moduleVersionMatches": [],
+      "unversionedModules": [],
+      "externalReferences": [],
+      "classification": "AFFECTED_NPM_VERSION_ABSENT_FROM_INSPECTED_CLOSURE",
+      "nextDecision": "Review scoped npm-nonshipment at current ab2 artifact after explicit identity comparison; no claim dependencyfixed upstream"
+    },
+    {
+      "package": "fast-uri",
+      "advisory": "GHSA-333x-w4r6-6crp",
+      "severity": "low",
+      "affectedVersions": [
+        "3.1.8"
+      ],
+      "verifiedNoticeVersions": [],
+      "affectedNoticeVersions": [],
+      "moduleVersionMatches": [],
+      "unversionedModules": [],
+      "externalReferences": [],
+      "classification": "AFFECTED_NPM_VERSION_ABSENT_FROM_INSPECTED_CLOSURE",
+      "nextDecision": "Review scoped npm-nonshipment at current ab2 artifact after explicit identity comparison; no claim dependencyfixed upstream"
+    },
+    {
+      "package": "fast-uri",
+      "advisory": "GHSA-w74x-v6f9-j3xg",
+      "severity": "moderate",
+      "affectedVersions": [
+        "3.1.8"
+      ],
+      "verifiedNoticeVersions": [],
+      "affectedNoticeVersions": [],
+      "moduleVersionMatches": [],
+      "unversionedModules": [],
+      "externalReferences": [],
+      "classification": "AFFECTED_NPM_VERSION_ABSENT_FROM_INSPECTED_CLOSURE",
+      "nextDecision": "Review scoped npm-nonshipment at current ab2 artifact after explicit identity comparison; no claim dependencyfixed upstream"
+    },
+    {
+      "package": "fast-uri",
+      "advisory": "GHSA-wjr9-j795-jxcr",
+      "severity": "moderate",
+      "affectedVersions": [
+        "3.1.8"
+      ],
+      "verifiedNoticeVersions": [],
+      "affectedNoticeVersions": [],
+      "moduleVersionMatches": [],
+      "unversionedModules": [],
+      "externalReferences": [],
+      "classification": "AFFECTED_NPM_VERSION_ABSENT_FROM_INSPECTED_CLOSURE",
+      "nextDecision": "Review scoped npm-nonshipment at current ab2 artifact after explicit identity comparison; no claim dependencyfixed upstream"
+    },
+    {
+      "package": "fast-uri",
+      "advisory": "GHSA-xhq7-xmqj-769h",
+      "severity": "low",
+      "affectedVersions": [
+        "3.1.8"
+      ],
+      "verifiedNoticeVersions": [],
+      "affectedNoticeVersions": [],
+      "moduleVersionMatches": [],
+      "unversionedModules": [],
+      "externalReferences": [],
+      "classification": "AFFECTED_NPM_VERSION_ABSENT_FROM_INSPECTED_CLOSURE",
+      "nextDecision": "Review scoped npm-nonshipment at current ab2 artifact after explicit identity comparison; no claim dependencyfixed upstream"
+    },
+    {
+      "package": "file-type",
+      "advisory": "GHSA-5v7r-6r5c-r473",
+      "severity": "moderate",
+      "affectedVersions": [
+        "16.5.4"
+      ],
+      "verifiedNoticeVersions": [
+        "21.3.4",
+        "22.1.1"
+      ],
+      "affectedNoticeVersions": [],
+      "moduleVersionMatches": [],
+      "unversionedModules": [],
+      "externalReferences": [],
+      "classification": "AFFECTED_NPM_VERSION_ABSENT_FROM_INSPECTED_CLOSURE",
+      "nextDecision": "Review scoped npm-nonshipment at current ab2 artifact after explicit identity comparison; no claim dependencyfixed upstream"
+    },
+    {
+      "package": "follow-redirects",
+      "advisory": "GHSA-8r9p-f939-6h3c",
+      "severity": "high",
+      "affectedVersions": [
+        "1.16.0"
+      ],
+      "verifiedNoticeVersions": [],
+      "affectedNoticeVersions": [],
+      "moduleVersionMatches": [],
+      "unversionedModules": [],
+      "externalReferences": [],
+      "classification": "AFFECTED_NPM_VERSION_ABSENT_FROM_INSPECTED_CLOSURE",
+      "nextDecision": "Review scoped npm-nonshipment at current ab2 artifact after explicit identity comparison; no claim dependencyfixed upstream"
+    },
+    {
+      "package": "follow-redirects",
+      "advisory": "GHSA-q3jh-wrc6-jgq8",
+      "severity": "high",
+      "affectedVersions": [
+        "1.16.0"
+      ],
+      "verifiedNoticeVersions": [],
+      "affectedNoticeVersions": [],
+      "moduleVersionMatches": [],
+      "unversionedModules": [],
+      "externalReferences": [],
+      "classification": "AFFECTED_NPM_VERSION_ABSENT_FROM_INSPECTED_CLOSURE",
+      "nextDecision": "Review scoped npm-nonshipment at current ab2 artifact after explicit identity comparison; no claim dependencyfixed upstream"
+    },
+    {
+      "package": "http-cache-semantics",
+      "advisory": "GHSA-ch52-4w7c-c8xp",
+      "severity": "high",
+      "affectedVersions": [
+        "4.2.0"
+      ],
+      "verifiedNoticeVersions": [],
+      "affectedNoticeVersions": [],
+      "moduleVersionMatches": [],
+      "unversionedModules": [],
+      "externalReferences": [],
+      "classification": "AFFECTED_NPM_VERSION_ABSENT_FROM_INSPECTED_CLOSURE",
+      "nextDecision": "Review scoped npm-nonshipment at current ab2 artifact after explicit identity comparison; no claim dependencyfixed upstream"
+    },
+    {
+      "package": "js-yaml",
+      "advisory": "GHSA-2883-xcg3-v3hh",
+      "severity": "high",
+      "affectedVersions": [
+        "4.3.0"
+      ],
+      "verifiedNoticeVersions": [],
+      "affectedNoticeVersions": [],
+      "moduleVersionMatches": [],
+      "unversionedModules": [],
+      "externalReferences": [],
+      "classification": "AFFECTED_NPM_VERSION_ABSENT_FROM_INSPECTED_CLOSURE",
+      "nextDecision": "Review scoped npm-nonshipment at current ab2 artifact after explicit identity comparison; no claim dependencyfixed upstream"
+    },
+    {
+      "package": "js-yaml",
+      "advisory": "GHSA-5p4m-2wfm-xmqj",
+      "severity": "high",
+      "affectedVersions": [
+        "4.3.0"
+      ],
+      "verifiedNoticeVersions": [],
+      "affectedNoticeVersions": [],
+      "moduleVersionMatches": [],
+      "unversionedModules": [],
+      "externalReferences": [],
+      "classification": "AFFECTED_NPM_VERSION_ABSENT_FROM_INSPECTED_CLOSURE",
+      "nextDecision": "Review scoped npm-nonshipment at current ab2 artifact after explicit identity comparison; no claim dependencyfixed upstream"
+    },
+    {
+      "package": "js-yaml",
+      "advisory": "GHSA-r3ph-w7gj-g6xm",
+      "severity": "moderate",
+      "affectedVersions": [
+        "5.3.0"
+      ],
+      "verifiedNoticeVersions": [],
+      "affectedNoticeVersions": [],
+      "moduleVersionMatches": [],
+      "unversionedModules": [],
+      "externalReferences": [],
+      "classification": "AFFECTED_NPM_VERSION_ABSENT_FROM_INSPECTED_CLOSURE",
+      "nextDecision": "Review scoped npm-nonshipment at current ab2 artifact after explicit identity comparison; no claim dependencyfixed upstream"
+    },
+    {
+      "package": "katex",
+      "advisory": "GHSA-238p-pmpm-9mq7",
+      "severity": "low",
+      "affectedVersions": [
+        "0.16.47",
+        "0.17.0"
+      ],
+      "verifiedNoticeVersions": [],
+      "affectedNoticeVersions": [],
+      "moduleVersionMatches": [],
+      "unversionedModules": [],
+      "externalReferences": [],
+      "classification": "AFFECTED_NPM_VERSION_ABSENT_FROM_INSPECTED_CLOSURE",
+      "nextDecision": "Review scoped npm-nonshipment at current ab2 artifact after explicit identity comparison; no claim dependencyfixed upstream"
+    },
+    {
+      "package": "node-forge",
+      "advisory": "GHSA-86w9-cpqp-85rv",
+      "severity": "high",
+      "affectedVersions": [
+        "1.4.0"
+      ],
+      "verifiedNoticeVersions": [],
+      "affectedNoticeVersions": [],
+      "moduleVersionMatches": [],
+      "unversionedModules": [],
+      "externalReferences": [],
+      "classification": "AFFECTED_NPM_VERSION_ABSENT_FROM_INSPECTED_CLOSURE",
+      "nextDecision": "Review scoped npm-nonshipment at current ab2 artifact after explicit identity comparison; no claim dependencyfixed upstream"
+    },
+    {
+      "package": "nodemailer",
+      "advisory": "GHSA-85x2-q946-cp5h",
+      "severity": "moderate",
+      "affectedVersions": [
+        "10.0.12"
+      ],
+      "verifiedNoticeVersions": [],
+      "affectedNoticeVersions": [],
+      "moduleVersionMatches": [],
+      "unversionedModules": [],
+      "externalReferences": [],
+      "classification": "AFFECTED_NPM_VERSION_ABSENT_FROM_INSPECTED_CLOSURE",
+      "nextDecision": "Review scoped npm-nonshipment at current ab2 artifact after explicit identity comparison; no claim dependencyfixed upstream"
+    },
+    {
+      "package": "nodemailer",
+      "advisory": "GHSA-8c8m-p3m8-cjg8",
+      "severity": "moderate",
+      "affectedVersions": [
+        "10.0.12"
+      ],
+      "verifiedNoticeVersions": [],
+      "affectedNoticeVersions": [],
+      "moduleVersionMatches": [],
+      "unversionedModules": [],
+      "externalReferences": [],
+      "classification": "AFFECTED_NPM_VERSION_ABSENT_FROM_INSPECTED_CLOSURE",
+      "nextDecision": "Review scoped npm-nonshipment at current ab2 artifact after explicit identity comparison; no claim dependencyfixed upstream"
+    },
+    {
+      "package": "nodemailer",
+      "advisory": "GHSA-m943-m63m-w62w",
+      "severity": "moderate",
+      "affectedVersions": [
+        "10.0.12"
+      ],
+      "verifiedNoticeVersions": [],
+      "affectedNoticeVersions": [],
+      "moduleVersionMatches": [],
+      "unversionedModules": [],
+      "externalReferences": [],
+      "classification": "AFFECTED_NPM_VERSION_ABSENT_FROM_INSPECTED_CLOSURE",
+      "nextDecision": "Review scoped npm-nonshipment at current ab2 artifact after explicit identity comparison; no claim dependencyfixed upstream"
+    },
+    {
+      "package": "pbkdf2",
+      "advisory": "GHSA-477h-4r7f-fvrx",
+      "severity": "moderate",
+      "affectedVersions": [
+        "3.1.6"
+      ],
+      "verifiedNoticeVersions": [],
+      "affectedNoticeVersions": [],
+      "moduleVersionMatches": [],
+      "unversionedModules": [],
+      "externalReferences": [],
+      "classification": "AFFECTED_NPM_VERSION_ABSENT_FROM_INSPECTED_CLOSURE",
+      "nextDecision": "Review scoped npm-nonshipment at current ab2 artifact after explicit identity comparison; no claim dependencyfixed upstream"
+    },
+    {
+      "package": "serialize-javascript",
+      "advisory": "GHSA-m5mm-p8h7-m29v",
+      "severity": "low",
+      "affectedVersions": [
+        "7.0.5"
+      ],
+      "verifiedNoticeVersions": [],
+      "affectedNoticeVersions": [],
+      "moduleVersionMatches": [],
+      "unversionedModules": [],
+      "externalReferences": [],
+      "classification": "AFFECTED_NPM_VERSION_ABSENT_FROM_INSPECTED_CLOSURE",
+      "nextDecision": "Review scoped npm-nonshipment at current ab2 artifact after explicit identity comparison; no claim dependencyfixed upstream"
+    },
+    {
+      "package": "sharp",
+      "advisory": "GHSA-rgj7-g3m4-5g8c",
+      "severity": "high",
+      "affectedVersions": [
+        "0.35.2"
+      ],
+      "verifiedNoticeVersions": [],
+      "affectedNoticeVersions": [],
+      "moduleVersionMatches": [],
+      "unversionedModules": [],
+      "externalReferences": [],
+      "classification": "AFFECTED_NPM_VERSION_ABSENT_FROM_INSPECTED_CLOSURE",
+      "nextDecision": "Review scoped npm-nonshipment at current ab2 artifact after explicit identity comparison; no claim dependencyfixed upstream"
+    },
+    {
+      "package": "sharp",
+      "advisory": "GHSA-wq5f-xc86-pv6w",
+      "severity": "high",
+      "affectedVersions": [
+        "0.35.2",
+        "0.35.4"
+      ],
+      "verifiedNoticeVersions": [],
+      "affectedNoticeVersions": [],
+      "moduleVersionMatches": [],
+      "unversionedModules": [],
+      "externalReferences": [],
+      "classification": "AFFECTED_NPM_VERSION_ABSENT_FROM_INSPECTED_CLOSURE",
+      "nextDecision": "Review scoped npm-nonshipment at current ab2 artifact after explicit identity comparison; no claim dependencyfixed upstream"
+    },
+    {
+      "package": "shell-quote",
+      "advisory": "GHSA-pqg4-j6r4-53mv",
+      "severity": "critical",
+      "affectedVersions": [
+        "1.10.0"
+      ],
+      "verifiedNoticeVersions": [],
+      "affectedNoticeVersions": [],
+      "moduleVersionMatches": [],
+      "unversionedModules": [],
+      "externalReferences": [],
+      "classification": "AFFECTED_NPM_VERSION_ABSENT_FROM_INSPECTED_CLOSURE",
+      "nextDecision": "Review scoped npm-nonshipment at current ab2 artifact after explicit identity comparison; no claim dependencyfixed upstream"
+    },
+    {
+      "package": "smol-toml",
+      "advisory": "GHSA-7w5x-hrqm-74c2",
+      "severity": "high",
+      "affectedVersions": [
+        "1.6.1"
+      ],
+      "verifiedNoticeVersions": [],
+      "affectedNoticeVersions": [],
+      "moduleVersionMatches": [],
+      "unversionedModules": [],
+      "externalReferences": [],
+      "classification": "AFFECTED_NPM_VERSION_ABSENT_FROM_INSPECTED_CLOSURE",
+      "nextDecision": "Review scoped npm-nonshipment at current ab2 artifact after explicit identity comparison; no claim dependencyfixed upstream"
+    },
+    {
+      "package": "smol-toml",
+      "advisory": "GHSA-r4xh-jqrq-34v2",
+      "severity": "moderate",
+      "affectedVersions": [
+        "1.6.1"
+      ],
+      "verifiedNoticeVersions": [],
+      "affectedNoticeVersions": [],
+      "moduleVersionMatches": [],
+      "unversionedModules": [],
+      "externalReferences": [],
+      "classification": "AFFECTED_NPM_VERSION_ABSENT_FROM_INSPECTED_CLOSURE",
+      "nextDecision": "Review scoped npm-nonshipment at current ab2 artifact after explicit identity comparison; no claim dependencyfixed upstream"
+    },
+    {
+      "package": "source-map-js",
+      "advisory": "GHSA-68fv-2mgg-jv7q",
+      "severity": "high",
+      "affectedVersions": [
+        "1.2.1"
+      ],
+      "verifiedNoticeVersions": [],
+      "affectedNoticeVersions": [],
+      "moduleVersionMatches": [],
+      "unversionedModules": [],
+      "externalReferences": [],
+      "classification": "AFFECTED_NPM_VERSION_ABSENT_FROM_INSPECTED_CLOSURE",
+      "nextDecision": "Review scoped npm-nonshipment at current ab2 artifact after explicit identity comparison; no claim dependencyfixed upstream"
+    },
+    {
+      "package": "stream-json",
+      "advisory": "GHSA-528h-pc64-c93x",
+      "severity": "moderate",
+      "affectedVersions": [
+        "1.9.1"
+      ],
+      "verifiedNoticeVersions": [],
+      "affectedNoticeVersions": [],
+      "moduleVersionMatches": [],
+      "unversionedModules": [],
+      "externalReferences": [],
+      "classification": "AFFECTED_NPM_VERSION_ABSENT_FROM_INSPECTED_CLOSURE",
+      "nextDecision": "Review scoped npm-nonshipment at current ab2 artifact after explicit identity comparison; no claim dependencyfixed upstream"
+    },
+    {
+      "package": "stream-json",
+      "advisory": "GHSA-hqr4-qq8f-hg3x",
+      "severity": "moderate",
+      "affectedVersions": [
+        "1.9.1"
+      ],
+      "verifiedNoticeVersions": [],
+      "affectedNoticeVersions": [],
+      "moduleVersionMatches": [],
+      "unversionedModules": [],
+      "externalReferences": [],
+      "classification": "AFFECTED_NPM_VERSION_ABSENT_FROM_INSPECTED_CLOSURE",
+      "nextDecision": "Review scoped npm-nonshipment at current ab2 artifact after explicit identity comparison; no claim dependencyfixed upstream"
+    },
+    {
+      "package": "stream-json",
+      "advisory": "GHSA-mjw6-4jj6-33hc",
+      "severity": "moderate",
+      "affectedVersions": [
+        "1.9.1"
+      ],
+      "verifiedNoticeVersions": [],
+      "affectedNoticeVersions": [],
+      "moduleVersionMatches": [],
+      "unversionedModules": [],
+      "externalReferences": [],
+      "classification": "AFFECTED_NPM_VERSION_ABSENT_FROM_INSPECTED_CLOSURE",
+      "nextDecision": "Review scoped npm-nonshipment at current ab2 artifact after explicit identity comparison; no claim dependencyfixed upstream"
+    },
+    {
+      "package": "toml",
+      "advisory": "GHSA-4qx8-w7c3-pj3p",
+      "severity": "high",
+      "affectedVersions": [
+        "3.0.0"
+      ],
+      "verifiedNoticeVersions": [],
+      "affectedNoticeVersions": [],
+      "moduleVersionMatches": [],
+      "unversionedModules": [],
+      "externalReferences": [],
+      "classification": "AFFECTED_NPM_VERSION_ABSENT_FROM_INSPECTED_CLOSURE",
+      "nextDecision": "Review scoped npm-nonshipment at current ab2 artifact after explicit identity comparison; no claim dependencyfixed upstream"
+    },
+    {
+      "package": "toml",
+      "advisory": "GHSA-82x6-q7mm-w9cf",
+      "severity": "high",
+      "affectedVersions": [
+        "3.0.0"
+      ],
+      "verifiedNoticeVersions": [],
+      "affectedNoticeVersions": [],
+      "moduleVersionMatches": [],
+      "unversionedModules": [],
+      "externalReferences": [],
+      "classification": "AFFECTED_NPM_VERSION_ABSENT_FROM_INSPECTED_CLOSURE",
+      "nextDecision": "Review scoped npm-nonshipment at current ab2 artifact after explicit identity comparison; no claim dependencyfixed upstream"
+    },
+    {
+      "package": "toml",
+      "advisory": "GHSA-9j65-hcg3-gc64",
+      "severity": "high",
+      "affectedVersions": [
+        "3.0.0"
+      ],
+      "verifiedNoticeVersions": [],
+      "affectedNoticeVersions": [],
+      "moduleVersionMatches": [],
+      "unversionedModules": [],
+      "externalReferences": [],
+      "classification": "AFFECTED_NPM_VERSION_ABSENT_FROM_INSPECTED_CLOSURE",
+      "nextDecision": "Review scoped npm-nonshipment at current ab2 artifact after explicit identity comparison; no claim dependencyfixed upstream"
+    },
+    {
+      "package": "toml",
+      "advisory": "GHSA-9qmh-m7c6-f92p",
+      "severity": "high",
+      "affectedVersions": [
+        "3.0.0"
+      ],
+      "verifiedNoticeVersions": [],
+      "affectedNoticeVersions": [],
+      "moduleVersionMatches": [],
+      "unversionedModules": [],
+      "externalReferences": [],
+      "classification": "AFFECTED_NPM_VERSION_ABSENT_FROM_INSPECTED_CLOSURE",
+      "nextDecision": "Review scoped npm-nonshipment at current ab2 artifact after explicit identity comparison; no claim dependencyfixed upstream"
+    },
+    {
+      "package": "toml",
+      "advisory": "GHSA-v5mp-jgw5-2x6j",
+      "severity": "high",
+      "affectedVersions": [
+        "3.0.0"
+      ],
+      "verifiedNoticeVersions": [],
+      "affectedNoticeVersions": [],
+      "moduleVersionMatches": [],
+      "unversionedModules": [],
+      "externalReferences": [],
+      "classification": "AFFECTED_NPM_VERSION_ABSENT_FROM_INSPECTED_CLOSURE",
+      "nextDecision": "Review scoped npm-nonshipment at current ab2 artifact after explicit identity comparison; no claim dependencyfixed upstream"
+    },
+    {
+      "package": "undici",
+      "advisory": "GHSA-2gqq-gqf2-x968",
+      "severity": "low",
+      "affectedVersions": [
+        "8.10.0"
+      ],
+      "verifiedNoticeVersions": [],
+      "affectedNoticeVersions": [],
+      "moduleVersionMatches": [],
+      "unversionedModules": [],
+      "externalReferences": [
+        "undici"
+      ],
+      "classification": "NPM_ABSENT_EXTERNAL_IMPLEMENTATION_LIMITATION",
+      "nextDecision": "No affected npmundici version in603 closure; Bunbuiltin implementation notclassified. Do notclaim entireAPIsecurityor invent binaryauditlaunchblock."
+    },
+    {
+      "package": "undici",
+      "advisory": "GHSA-2gqq-gqf2-x968",
+      "severity": "low",
+      "affectedVersions": [
+        "7.28.0"
+      ],
+      "verifiedNoticeVersions": [],
+      "affectedNoticeVersions": [],
+      "moduleVersionMatches": [],
+      "unversionedModules": [],
+      "externalReferences": [
+        "undici"
+      ],
+      "classification": "NPM_ABSENT_EXTERNAL_IMPLEMENTATION_LIMITATION",
+      "nextDecision": "No affected npmundici version in603 closure; Bunbuiltin implementation notclassified. Do notclaim entireAPIsecurityor invent binaryauditlaunchblock."
+    },
+    {
+      "package": "undici",
+      "advisory": "GHSA-2jfj-6hjv-fm6j",
+      "severity": "moderate",
+      "affectedVersions": [
+        "8.10.0"
+      ],
+      "verifiedNoticeVersions": [],
+      "affectedNoticeVersions": [],
+      "moduleVersionMatches": [],
+      "unversionedModules": [],
+      "externalReferences": [
+        "undici"
+      ],
+      "classification": "NPM_ABSENT_EXTERNAL_IMPLEMENTATION_LIMITATION",
+      "nextDecision": "No affected npmundici version in603 closure; Bunbuiltin implementation notclassified. Do notclaim entireAPIsecurityor invent binaryauditlaunchblock."
+    },
+    {
+      "package": "undici",
+      "advisory": "GHSA-2jfj-6hjv-fm6j",
+      "severity": "moderate",
+      "affectedVersions": [
+        "7.28.0"
+      ],
+      "verifiedNoticeVersions": [],
+      "affectedNoticeVersions": [],
+      "moduleVersionMatches": [],
+      "unversionedModules": [],
+      "externalReferences": [
+        "undici"
+      ],
+      "classification": "NPM_ABSENT_EXTERNAL_IMPLEMENTATION_LIMITATION",
+      "nextDecision": "No affected npmundici version in603 closure; Bunbuiltin implementation notclassified. Do notclaim entireAPIsecurityor invent binaryauditlaunchblock."
+    },
+    {
+      "package": "undici",
+      "advisory": "GHSA-2mjp-6q6p-2qxm",
+      "severity": "moderate",
+      "affectedVersions": [
+        "5.29.0"
+      ],
+      "verifiedNoticeVersions": [],
+      "affectedNoticeVersions": [],
+      "moduleVersionMatches": [],
+      "unversionedModules": [],
+      "externalReferences": [
+        "undici"
+      ],
+      "classification": "NPM_ABSENT_EXTERNAL_IMPLEMENTATION_LIMITATION",
+      "nextDecision": "No affected npmundici version in603 closure; Bunbuiltin implementation notclassified. Do notclaim entireAPIsecurityor invent binaryauditlaunchblock."
+    },
+    {
+      "package": "undici",
+      "advisory": "GHSA-35p6-xmwp-9g52",
+      "severity": "low",
+      "affectedVersions": [
+        "5.29.0"
+      ],
+      "verifiedNoticeVersions": [],
+      "affectedNoticeVersions": [],
+      "moduleVersionMatches": [],
+      "unversionedModules": [],
+      "externalReferences": [
+        "undici"
+      ],
+      "classification": "NPM_ABSENT_EXTERNAL_IMPLEMENTATION_LIMITATION",
+      "nextDecision": "No affected npmundici version in603 closure; Bunbuiltin implementation notclassified. Do notclaim entireAPIsecurityor invent binaryauditlaunchblock."
+    },
+    {
+      "package": "undici",
+      "advisory": "GHSA-3wwx-pv8p-q78v",
+      "severity": "moderate",
+      "affectedVersions": [
+        "8.10.0"
+      ],
+      "verifiedNoticeVersions": [],
+      "affectedNoticeVersions": [],
+      "moduleVersionMatches": [],
+      "unversionedModules": [],
+      "externalReferences": [
+        "undici"
+      ],
+      "classification": "NPM_ABSENT_EXTERNAL_IMPLEMENTATION_LIMITATION",
+      "nextDecision": "No affected npmundici version in603 closure; Bunbuiltin implementation notclassified. Do notclaim entireAPIsecurityor invent binaryauditlaunchblock."
+    },
+    {
+      "package": "undici",
+      "advisory": "GHSA-3wwx-pv8p-q78v",
+      "severity": "moderate",
+      "affectedVersions": [
+        "7.28.0"
+      ],
+      "verifiedNoticeVersions": [],
+      "affectedNoticeVersions": [],
+      "moduleVersionMatches": [],
+      "unversionedModules": [],
+      "externalReferences": [
+        "undici"
+      ],
+      "classification": "NPM_ABSENT_EXTERNAL_IMPLEMENTATION_LIMITATION",
+      "nextDecision": "No affected npmundici version in603 closure; Bunbuiltin implementation notclassified. Do notclaim entireAPIsecurityor invent binaryauditlaunchblock."
+    },
+    {
+      "package": "undici",
+      "advisory": "GHSA-3xpg-4rpp-hhhm",
+      "severity": "moderate",
+      "affectedVersions": [
+        "8.10.0"
+      ],
+      "verifiedNoticeVersions": [],
+      "affectedNoticeVersions": [],
+      "moduleVersionMatches": [],
+      "unversionedModules": [],
+      "externalReferences": [
+        "undici"
+      ],
+      "classification": "NPM_ABSENT_EXTERNAL_IMPLEMENTATION_LIMITATION",
+      "nextDecision": "No affected npmundici version in603 closure; Bunbuiltin implementation notclassified. Do notclaim entireAPIsecurityor invent binaryauditlaunchblock."
+    },
+    {
+      "package": "undici",
+      "advisory": "GHSA-3xpg-4rpp-hhhm",
+      "severity": "moderate",
+      "affectedVersions": [
+        "7.28.0"
+      ],
+      "verifiedNoticeVersions": [],
+      "affectedNoticeVersions": [],
+      "moduleVersionMatches": [],
+      "unversionedModules": [],
+      "externalReferences": [
+        "undici"
+      ],
+      "classification": "NPM_ABSENT_EXTERNAL_IMPLEMENTATION_LIMITATION",
+      "nextDecision": "No affected npmundici version in603 closure; Bunbuiltin implementation notclassified. Do notclaim entireAPIsecurityor invent binaryauditlaunchblock."
+    },
+    {
+      "package": "undici",
+      "advisory": "GHSA-4992-7rv2-5pvq",
+      "severity": "moderate",
+      "affectedVersions": [
+        "5.29.0"
+      ],
+      "verifiedNoticeVersions": [],
+      "affectedNoticeVersions": [],
+      "moduleVersionMatches": [],
+      "unversionedModules": [],
+      "externalReferences": [
+        "undici"
+      ],
+      "classification": "NPM_ABSENT_EXTERNAL_IMPLEMENTATION_LIMITATION",
+      "nextDecision": "No affected npmundici version in603 closure; Bunbuiltin implementation notclassified. Do notclaim entireAPIsecurityor invent binaryauditlaunchblock."
+    },
+    {
+      "package": "undici",
+      "advisory": "GHSA-4cwx-7wf7-3272",
+      "severity": "high",
+      "affectedVersions": [
+        "7.28.0"
+      ],
+      "verifiedNoticeVersions": [],
+      "affectedNoticeVersions": [],
+      "moduleVersionMatches": [],
+      "unversionedModules": [],
+      "externalReferences": [
+        "undici"
+      ],
+      "classification": "NPM_ABSENT_EXTERNAL_IMPLEMENTATION_LIMITATION",
+      "nextDecision": "No affected npmundici version in603 closure; Bunbuiltin implementation notclassified. Do notclaim entireAPIsecurityor invent binaryauditlaunchblock."
+    },
+    {
+      "package": "undici",
+      "advisory": "GHSA-4qv8-2p9j-2685",
+      "severity": "moderate",
+      "affectedVersions": [
+        "8.10.0",
+        "8.10.2",
+        "8.11.2"
+      ],
+      "verifiedNoticeVersions": [],
+      "affectedNoticeVersions": [],
+      "moduleVersionMatches": [],
+      "unversionedModules": [],
+      "externalReferences": [
+        "undici"
+      ],
+      "classification": "NPM_ABSENT_EXTERNAL_IMPLEMENTATION_LIMITATION",
+      "nextDecision": "No affected npmundici version in603 closure; Bunbuiltin implementation notclassified. Do notclaim entireAPIsecurityor invent binaryauditlaunchblock."
+    },
+    {
+      "package": "undici",
+      "advisory": "GHSA-4qv8-2p9j-2685",
+      "severity": "moderate",
+      "affectedVersions": [
+        "7.28.0",
+        "7.29.1"
+      ],
+      "verifiedNoticeVersions": [],
+      "affectedNoticeVersions": [],
+      "moduleVersionMatches": [],
+      "unversionedModules": [],
+      "externalReferences": [
+        "undici"
+      ],
+      "classification": "NPM_ABSENT_EXTERNAL_IMPLEMENTATION_LIMITATION",
+      "nextDecision": "No affected npmundici version in603 closure; Bunbuiltin implementation notclassified. Do notclaim entireAPIsecurityor invent binaryauditlaunchblock."
+    },
+    {
+      "package": "undici",
+      "advisory": "GHSA-4qv8-2p9j-2685",
+      "severity": "moderate",
+      "affectedVersions": [
+        "6.28.1"
+      ],
+      "verifiedNoticeVersions": [],
+      "affectedNoticeVersions": [],
+      "moduleVersionMatches": [],
+      "unversionedModules": [],
+      "externalReferences": [
+        "undici"
+      ],
+      "classification": "NPM_ABSENT_EXTERNAL_IMPLEMENTATION_LIMITATION",
+      "nextDecision": "No affected npmundici version in603 closure; Bunbuiltin implementation notclassified. Do notclaim entireAPIsecurityor invent binaryauditlaunchblock."
+    },
+    {
+      "package": "undici",
+      "advisory": "GHSA-8436-99hf-9mmv",
+      "severity": "low",
+      "affectedVersions": [
+        "8.10.0"
+      ],
+      "verifiedNoticeVersions": [],
+      "affectedNoticeVersions": [],
+      "moduleVersionMatches": [],
+      "unversionedModules": [],
+      "externalReferences": [
+        "undici"
+      ],
+      "classification": "NPM_ABSENT_EXTERNAL_IMPLEMENTATION_LIMITATION",
+      "nextDecision": "No affected npmundici version in603 closure; Bunbuiltin implementation notclassified. Do notclaim entireAPIsecurityor invent binaryauditlaunchblock."
+    },
+    {
+      "package": "undici",
+      "advisory": "GHSA-8436-99hf-9mmv",
+      "severity": "low",
+      "affectedVersions": [
+        "7.28.0"
+      ],
+      "verifiedNoticeVersions": [],
+      "affectedNoticeVersions": [],
+      "moduleVersionMatches": [],
+      "unversionedModules": [],
+      "externalReferences": [
+        "undici"
+      ],
+      "classification": "NPM_ABSENT_EXTERNAL_IMPLEMENTATION_LIMITATION",
+      "nextDecision": "No affected npmundici version in603 closure; Bunbuiltin implementation notclassified. Do notclaim entireAPIsecurityor invent binaryauditlaunchblock."
+    },
+    {
+      "package": "undici",
+      "advisory": "GHSA-8xcm-r25x-g524",
+      "severity": "moderate",
+      "affectedVersions": [
+        "7.28.0"
+      ],
+      "verifiedNoticeVersions": [],
+      "affectedNoticeVersions": [],
+      "moduleVersionMatches": [],
+      "unversionedModules": [],
+      "externalReferences": [
+        "undici"
+      ],
+      "classification": "NPM_ABSENT_EXTERNAL_IMPLEMENTATION_LIMITATION",
+      "nextDecision": "No affected npmundici version in603 closure; Bunbuiltin implementation notclassified. Do notclaim entireAPIsecurityor invent binaryauditlaunchblock."
+    },
+    {
+      "package": "undici",
+      "advisory": "GHSA-8xcm-r25x-g524",
+      "severity": "moderate",
+      "affectedVersions": [
+        "5.29.0"
+      ],
+      "verifiedNoticeVersions": [],
+      "affectedNoticeVersions": [],
+      "moduleVersionMatches": [],
+      "unversionedModules": [],
+      "externalReferences": [
+        "undici"
+      ],
+      "classification": "NPM_ABSENT_EXTERNAL_IMPLEMENTATION_LIMITATION",
+      "nextDecision": "No affected npmundici version in603 closure; Bunbuiltin implementation notclassified. Do notclaim entireAPIsecurityor invent binaryauditlaunchblock."
+    },
+    {
+      "package": "undici",
+      "advisory": "GHSA-f72v-6w45-q472",
+      "severity": "moderate",
+      "affectedVersions": [
+        "8.10.0",
+        "8.10.2",
+        "8.11.2"
+      ],
+      "verifiedNoticeVersions": [],
+      "affectedNoticeVersions": [],
+      "moduleVersionMatches": [],
+      "unversionedModules": [],
+      "externalReferences": [
+        "undici"
+      ],
+      "classification": "NPM_ABSENT_EXTERNAL_IMPLEMENTATION_LIMITATION",
+      "nextDecision": "No affected npmundici version in603 closure; Bunbuiltin implementation notclassified. Do notclaim entireAPIsecurityor invent binaryauditlaunchblock."
+    },
+    {
+      "package": "undici",
+      "advisory": "GHSA-f72v-6w45-q472",
+      "severity": "moderate",
+      "affectedVersions": [
+        "7.28.0",
+        "7.29.1"
+      ],
+      "verifiedNoticeVersions": [],
+      "affectedNoticeVersions": [],
+      "moduleVersionMatches": [],
+      "unversionedModules": [],
+      "externalReferences": [
+        "undici"
+      ],
+      "classification": "NPM_ABSENT_EXTERNAL_IMPLEMENTATION_LIMITATION",
+      "nextDecision": "No affected npmundici version in603 closure; Bunbuiltin implementation notclassified. Do notclaim entireAPIsecurityor invent binaryauditlaunchblock."
+    },
+    {
+      "package": "undici",
+      "advisory": "GHSA-g8m3-5g58-fq7m",
+      "severity": "low",
+      "affectedVersions": [
+        "5.29.0"
+      ],
+      "verifiedNoticeVersions": [],
+      "affectedNoticeVersions": [],
+      "moduleVersionMatches": [],
+      "unversionedModules": [],
+      "externalReferences": [
+        "undici"
+      ],
+      "classification": "NPM_ABSENT_EXTERNAL_IMPLEMENTATION_LIMITATION",
+      "nextDecision": "No affected npmundici version in603 closure; Bunbuiltin implementation notclassified. Do notclaim entireAPIsecurityor invent binaryauditlaunchblock."
+    },
+    {
+      "package": "undici",
+      "advisory": "GHSA-g9mf-h72j-4rw9",
+      "severity": "moderate",
+      "affectedVersions": [
+        "5.29.0"
+      ],
+      "verifiedNoticeVersions": [],
+      "affectedNoticeVersions": [],
+      "moduleVersionMatches": [],
+      "unversionedModules": [],
+      "externalReferences": [
+        "undici"
+      ],
+      "classification": "NPM_ABSENT_EXTERNAL_IMPLEMENTATION_LIMITATION",
+      "nextDecision": "No affected npmundici version in603 closure; Bunbuiltin implementation notclassified. Do notclaim entireAPIsecurityor invent binaryauditlaunchblock."
+    },
+    {
+      "package": "undici",
+      "advisory": "GHSA-jr45-8vmc-qm54",
+      "severity": "moderate",
+      "affectedVersions": [
+        "7.28.0"
+      ],
+      "verifiedNoticeVersions": [],
+      "affectedNoticeVersions": [],
+      "moduleVersionMatches": [],
+      "unversionedModules": [],
+      "externalReferences": [
+        "undici"
+      ],
+      "classification": "NPM_ABSENT_EXTERNAL_IMPLEMENTATION_LIMITATION",
+      "nextDecision": "No affected npmundici version in603 closure; Bunbuiltin implementation notclassified. Do notclaim entireAPIsecurityor invent binaryauditlaunchblock."
+    },
+    {
+      "package": "undici",
+      "advisory": "GHSA-m8rv-5g2x-5cg5",
+      "severity": "moderate",
+      "affectedVersions": [
+        "7.28.0"
+      ],
+      "verifiedNoticeVersions": [],
+      "affectedNoticeVersions": [],
+      "moduleVersionMatches": [],
+      "unversionedModules": [],
+      "externalReferences": [
+        "undici"
+      ],
+      "classification": "NPM_ABSENT_EXTERNAL_IMPLEMENTATION_LIMITATION",
+      "nextDecision": "No affected npmundici version in603 closure; Bunbuiltin implementation notclassified. Do notclaim entireAPIsecurityor invent binaryauditlaunchblock."
+    },
+    {
+      "package": "undici",
+      "advisory": "GHSA-m8rv-5g2x-5cg5",
+      "severity": "moderate",
+      "affectedVersions": [
+        "5.29.0"
+      ],
+      "verifiedNoticeVersions": [],
+      "affectedNoticeVersions": [],
+      "moduleVersionMatches": [],
+      "unversionedModules": [],
+      "externalReferences": [
+        "undici"
+      ],
+      "classification": "NPM_ABSENT_EXTERNAL_IMPLEMENTATION_LIMITATION",
+      "nextDecision": "No affected npmundici version in603 closure; Bunbuiltin implementation notclassified. Do notclaim entireAPIsecurityor invent binaryauditlaunchblock."
+    },
+    {
+      "package": "undici",
+      "advisory": "GHSA-p88m-4jfj-68fv",
+      "severity": "moderate",
+      "affectedVersions": [
+        "5.29.0"
+      ],
+      "verifiedNoticeVersions": [],
+      "affectedNoticeVersions": [],
+      "moduleVersionMatches": [],
+      "unversionedModules": [],
+      "externalReferences": [
+        "undici"
+      ],
+      "classification": "NPM_ABSENT_EXTERNAL_IMPLEMENTATION_LIMITATION",
+      "nextDecision": "No affected npmundici version in603 closure; Bunbuiltin implementation notclassified. Do notclaim entireAPIsecurityor invent binaryauditlaunchblock."
+    },
+    {
+      "package": "undici",
+      "advisory": "GHSA-pmjh-fq2x-6v4x",
+      "severity": "moderate",
+      "affectedVersions": [
+        "8.10.0"
+      ],
+      "verifiedNoticeVersions": [],
+      "affectedNoticeVersions": [],
+      "moduleVersionMatches": [],
+      "unversionedModules": [],
+      "externalReferences": [
+        "undici"
+      ],
+      "classification": "NPM_ABSENT_EXTERNAL_IMPLEMENTATION_LIMITATION",
+      "nextDecision": "No affected npmundici version in603 closure; Bunbuiltin implementation notclassified. Do notclaim entireAPIsecurityor invent binaryauditlaunchblock."
+    },
+    {
+      "package": "undici",
+      "advisory": "GHSA-pmjh-fq2x-6v4x",
+      "severity": "moderate",
+      "affectedVersions": [
+        "7.28.0"
+      ],
+      "verifiedNoticeVersions": [],
+      "affectedNoticeVersions": [],
+      "moduleVersionMatches": [],
+      "unversionedModules": [],
+      "externalReferences": [
+        "undici"
+      ],
+      "classification": "NPM_ABSENT_EXTERNAL_IMPLEMENTATION_LIMITATION",
+      "nextDecision": "No affected npmundici version in603 closure; Bunbuiltin implementation notclassified. Do notclaim entireAPIsecurityor invent binaryauditlaunchblock."
+    },
+    {
+      "package": "undici",
+      "advisory": "GHSA-r53p-7pc4-xj5r",
+      "severity": "low",
+      "affectedVersions": [
+        "8.10.0"
+      ],
+      "verifiedNoticeVersions": [],
+      "affectedNoticeVersions": [],
+      "moduleVersionMatches": [],
+      "unversionedModules": [],
+      "externalReferences": [
+        "undici"
+      ],
+      "classification": "NPM_ABSENT_EXTERNAL_IMPLEMENTATION_LIMITATION",
+      "nextDecision": "No affected npmundici version in603 closure; Bunbuiltin implementation notclassified. Do notclaim entireAPIsecurityor invent binaryauditlaunchblock."
+    },
+    {
+      "package": "undici",
+      "advisory": "GHSA-r53p-7pc4-xj5r",
+      "severity": "low",
+      "affectedVersions": [
+        "7.28.0"
+      ],
+      "verifiedNoticeVersions": [],
+      "affectedNoticeVersions": [],
+      "moduleVersionMatches": [],
+      "unversionedModules": [],
+      "externalReferences": [
+        "undici"
+      ],
+      "classification": "NPM_ABSENT_EXTERNAL_IMPLEMENTATION_LIMITATION",
+      "nextDecision": "No affected npmundici version in603 closure; Bunbuiltin implementation notclassified. Do notclaim entireAPIsecurityor invent binaryauditlaunchblock."
+    },
+    {
+      "package": "undici",
+      "advisory": "GHSA-r53p-7pc4-xj5r",
+      "severity": "low",
+      "affectedVersions": [
+        "5.29.0"
+      ],
+      "verifiedNoticeVersions": [],
+      "affectedNoticeVersions": [],
+      "moduleVersionMatches": [],
+      "unversionedModules": [],
+      "externalReferences": [
+        "undici"
+      ],
+      "classification": "NPM_ABSENT_EXTERNAL_IMPLEMENTATION_LIMITATION",
+      "nextDecision": "No affected npmundici version in603 closure; Bunbuiltin implementation notclassified. Do notclaim entireAPIsecurityor invent binaryauditlaunchblock."
+    },
+    {
+      "package": "undici",
+      "advisory": "GHSA-rfgv-xxqx-mfg5",
+      "severity": "high",
+      "affectedVersions": [
+        "8.10.0"
+      ],
+      "verifiedNoticeVersions": [],
+      "affectedNoticeVersions": [],
+      "moduleVersionMatches": [],
+      "unversionedModules": [],
+      "externalReferences": [
+        "undici"
+      ],
+      "classification": "NPM_ABSENT_EXTERNAL_IMPLEMENTATION_LIMITATION",
+      "nextDecision": "No affected npmundici version in603 closure; Bunbuiltin implementation notclassified. Do notclaim entireAPIsecurityor invent binaryauditlaunchblock."
+    },
+    {
+      "package": "undici",
+      "advisory": "GHSA-rfgv-xxqx-mfg5",
+      "severity": "high",
+      "affectedVersions": [
+        "7.28.0"
+      ],
+      "verifiedNoticeVersions": [],
+      "affectedNoticeVersions": [],
+      "moduleVersionMatches": [],
+      "unversionedModules": [],
+      "externalReferences": [
+        "undici"
+      ],
+      "classification": "NPM_ABSENT_EXTERNAL_IMPLEMENTATION_LIMITATION",
+      "nextDecision": "No affected npmundici version in603 closure; Bunbuiltin implementation notclassified. Do notclaim entireAPIsecurityor invent binaryauditlaunchblock."
+    },
+    {
+      "package": "undici",
+      "advisory": "GHSA-rx4f-c7p8-82vq",
+      "severity": "moderate",
+      "affectedVersions": [
+        "8.10.0"
+      ],
+      "verifiedNoticeVersions": [],
+      "affectedNoticeVersions": [],
+      "moduleVersionMatches": [],
+      "unversionedModules": [],
+      "externalReferences": [
+        "undici"
+      ],
+      "classification": "NPM_ABSENT_EXTERNAL_IMPLEMENTATION_LIMITATION",
+      "nextDecision": "No affected npmundici version in603 closure; Bunbuiltin implementation notclassified. Do notclaim entireAPIsecurityor invent binaryauditlaunchblock."
+    },
+    {
+      "package": "undici",
+      "advisory": "GHSA-rx4f-c7p8-82vq",
+      "severity": "moderate",
+      "affectedVersions": [
+        "7.28.0"
+      ],
+      "verifiedNoticeVersions": [],
+      "affectedNoticeVersions": [],
+      "moduleVersionMatches": [],
+      "unversionedModules": [],
+      "externalReferences": [
+        "undici"
+      ],
+      "classification": "NPM_ABSENT_EXTERNAL_IMPLEMENTATION_LIMITATION",
+      "nextDecision": "No affected npmundici version in603 closure; Bunbuiltin implementation notclassified. Do notclaim entireAPIsecurityor invent binaryauditlaunchblock."
+    },
+    {
+      "package": "undici",
+      "advisory": "GHSA-v3r7-h72x-cjcm",
+      "severity": "moderate",
+      "affectedVersions": [
+        "7.28.0"
+      ],
+      "verifiedNoticeVersions": [],
+      "affectedNoticeVersions": [],
+      "moduleVersionMatches": [],
+      "unversionedModules": [],
+      "externalReferences": [
+        "undici"
+      ],
+      "classification": "NPM_ABSENT_EXTERNAL_IMPLEMENTATION_LIMITATION",
+      "nextDecision": "No affected npmundici version in603 closure; Bunbuiltin implementation notclassified. Do notclaim entireAPIsecurityor invent binaryauditlaunchblock."
+    },
+    {
+      "package": "undici",
+      "advisory": "GHSA-v3r7-h72x-cjcm",
+      "severity": "moderate",
+      "affectedVersions": [
+        "5.29.0"
+      ],
+      "verifiedNoticeVersions": [],
+      "affectedNoticeVersions": [],
+      "moduleVersionMatches": [],
+      "unversionedModules": [],
+      "externalReferences": [
+        "undici"
+      ],
+      "classification": "NPM_ABSENT_EXTERNAL_IMPLEMENTATION_LIMITATION",
+      "nextDecision": "No affected npmundici version in603 closure; Bunbuiltin implementation notclassified. Do notclaim entireAPIsecurityor invent binaryauditlaunchblock."
+    },
+    {
+      "package": "undici",
+      "advisory": "GHSA-v9p9-hfj2-hcw8",
+      "severity": "high",
+      "affectedVersions": [
+        "5.29.0"
+      ],
+      "verifiedNoticeVersions": [],
+      "affectedNoticeVersions": [],
+      "moduleVersionMatches": [],
+      "unversionedModules": [],
+      "externalReferences": [
+        "undici"
+      ],
+      "classification": "NPM_ABSENT_EXTERNAL_IMPLEMENTATION_LIMITATION",
+      "nextDecision": "No affected npmundici version in603 closure; Bunbuiltin implementation notclassified. Do notclaim entireAPIsecurityor invent binaryauditlaunchblock."
+    },
+    {
+      "package": "undici",
+      "advisory": "GHSA-vp8m-p9jh-q5pm",
+      "severity": "high",
+      "affectedVersions": [
+        "8.10.0"
+      ],
+      "verifiedNoticeVersions": [],
+      "affectedNoticeVersions": [],
+      "moduleVersionMatches": [],
+      "unversionedModules": [],
+      "externalReferences": [
+        "undici"
+      ],
+      "classification": "NPM_ABSENT_EXTERNAL_IMPLEMENTATION_LIMITATION",
+      "nextDecision": "No affected npmundici version in603 closure; Bunbuiltin implementation notclassified. Do notclaim entireAPIsecurityor invent binaryauditlaunchblock."
+    },
+    {
+      "package": "undici",
+      "advisory": "GHSA-vrm6-8vpv-qv8q",
+      "severity": "high",
+      "affectedVersions": [
+        "5.29.0"
+      ],
+      "verifiedNoticeVersions": [],
+      "affectedNoticeVersions": [],
+      "moduleVersionMatches": [],
+      "unversionedModules": [],
+      "externalReferences": [
+        "undici"
+      ],
+      "classification": "NPM_ABSENT_EXTERNAL_IMPLEMENTATION_LIMITATION",
+      "nextDecision": "No affected npmundici version in603 closure; Bunbuiltin implementation notclassified. Do notclaim entireAPIsecurityor invent binaryauditlaunchblock."
+    },
+    {
+      "package": "undici",
+      "advisory": "GHSA-vxpw-j846-p89q",
+      "severity": "high",
+      "affectedVersions": [
+        "5.29.0"
+      ],
+      "verifiedNoticeVersions": [],
+      "affectedNoticeVersions": [],
+      "moduleVersionMatches": [],
+      "unversionedModules": [],
+      "externalReferences": [
+        "undici"
+      ],
+      "classification": "NPM_ABSENT_EXTERNAL_IMPLEMENTATION_LIMITATION",
+      "nextDecision": "No affected npmundici version in603 closure; Bunbuiltin implementation notclassified. Do notclaim entireAPIsecurityor invent binaryauditlaunchblock."
+    },
+    {
+      "package": "undici",
+      "advisory": "GHSA-w293-vg96-wgc3",
+      "severity": "high",
+      "affectedVersions": [
+        "8.10.0"
+      ],
+      "verifiedNoticeVersions": [],
+      "affectedNoticeVersions": [],
+      "moduleVersionMatches": [],
+      "unversionedModules": [],
+      "externalReferences": [
+        "undici"
+      ],
+      "classification": "NPM_ABSENT_EXTERNAL_IMPLEMENTATION_LIMITATION",
+      "nextDecision": "No affected npmundici version in603 closure; Bunbuiltin implementation notclassified. Do notclaim entireAPIsecurityor invent binaryauditlaunchblock."
+    },
+    {
+      "package": "undici",
+      "advisory": "GHSA-w293-vg96-wgc3",
+      "severity": "high",
+      "affectedVersions": [
+        "7.28.0"
+      ],
+      "verifiedNoticeVersions": [],
+      "affectedNoticeVersions": [],
+      "moduleVersionMatches": [],
+      "unversionedModules": [],
+      "externalReferences": [
+        "undici"
+      ],
+      "classification": "NPM_ABSENT_EXTERNAL_IMPLEMENTATION_LIMITATION",
+      "nextDecision": "No affected npmundici version in603 closure; Bunbuiltin implementation notclassified. Do notclaim entireAPIsecurityor invent binaryauditlaunchblock."
+    },
+    {
+      "package": "undici",
+      "advisory": "GHSA-xjj6-f33q-929c",
+      "severity": "high",
+      "affectedVersions": [
+        "8.10.0",
+        "8.10.2",
+        "8.11.2"
+      ],
+      "verifiedNoticeVersions": [],
+      "affectedNoticeVersions": [],
+      "moduleVersionMatches": [],
+      "unversionedModules": [],
+      "externalReferences": [
+        "undici"
+      ],
+      "classification": "NPM_ABSENT_EXTERNAL_IMPLEMENTATION_LIMITATION",
+      "nextDecision": "No affected npmundici version in603 closure; Bunbuiltin implementation notclassified. Do notclaim entireAPIsecurityor invent binaryauditlaunchblock."
+    },
+    {
+      "package": "undici",
+      "advisory": "GHSA-xjj6-f33q-929c",
+      "severity": "high",
+      "affectedVersions": [
+        "7.28.0",
+        "7.29.1"
+      ],
+      "verifiedNoticeVersions": [],
+      "affectedNoticeVersions": [],
+      "moduleVersionMatches": [],
+      "unversionedModules": [],
+      "externalReferences": [
+        "undici"
+      ],
+      "classification": "NPM_ABSENT_EXTERNAL_IMPLEMENTATION_LIMITATION",
+      "nextDecision": "No affected npmundici version in603 closure; Bunbuiltin implementation notclassified. Do notclaim entireAPIsecurityor invent binaryauditlaunchblock."
+    },
+    {
+      "package": "undici",
+      "advisory": "GHSA-xjj6-f33q-929c",
+      "severity": "high",
+      "affectedVersions": [
+        "6.28.1"
+      ],
+      "verifiedNoticeVersions": [],
+      "affectedNoticeVersions": [],
+      "moduleVersionMatches": [],
+      "unversionedModules": [],
+      "externalReferences": [
+        "undici"
+      ],
+      "classification": "NPM_ABSENT_EXTERNAL_IMPLEMENTATION_LIMITATION",
+      "nextDecision": "No affected npmundici version in603 closure; Bunbuiltin implementation notclassified. Do notclaim entireAPIsecurityor invent binaryauditlaunchblock."
+    },
+    {
+      "package": "uuid",
+      "advisory": "GHSA-w5hq-g745-h8pq",
+      "severity": "moderate",
+      "affectedVersions": [
+        "7.0.3",
+        "8.3.2",
+        "9.0.1"
+      ],
+      "verifiedNoticeVersions": [
+        "14.0.2",
+        "8.3.2",
+        "9.0.1"
+      ],
+      "affectedNoticeVersions": [
+        "8.3.2",
+        "9.0.1"
+      ],
+      "moduleVersionMatches": [
+        {
+          "bundle": "assets/agent/agent-bundle.js",
+          "module": "../../node_modules/.bun/uuid@8.3.2/node_modules/uuid/dist/rng.js"
+        },
+        {
+          "bundle": "assets/agent/agent-bundle.js",
+          "module": "../../node_modules/.bun/uuid@8.3.2/node_modules/uuid/dist/regex.js"
+        },
+        {
+          "bundle": "assets/agent/agent-bundle.js",
+          "module": "../../node_modules/.bun/uuid@8.3.2/node_modules/uuid/dist/validate.js"
+        },
+        {
+          "bundle": "assets/agent/agent-bundle.js",
+          "module": "../../node_modules/.bun/uuid@8.3.2/node_modules/uuid/dist/stringify.js"
+        },
+        {
+          "bundle": "assets/agent/agent-bundle.js",
+          "module": "../../node_modules/.bun/uuid@8.3.2/node_modules/uuid/dist/v1.js"
+        },
+        {
+          "bundle": "assets/agent/agent-bundle.js",
+          "module": "../../node_modules/.bun/uuid@8.3.2/node_modules/uuid/dist/parse.js"
+        }
+      ],
+      "unversionedModules": [],
+      "externalReferences": [],
+      "classification": "AFFECTED_NPM_VERSION_PRESENT",
+      "nextDecision": "Review exactuuidv4-onlycallproof; no shippedhigh/criticalwaiver"
+    },
+    {
+      "package": "zod",
+      "advisory": "GHSA-mrhx-c7xc-m3w5",
+      "severity": "high",
+      "affectedVersions": [
+        "3.22.4",
+        "3.25.76",
+        "4.4.3"
+      ],
+      "verifiedNoticeVersions": [
+        "4.6.6"
+      ],
+      "affectedNoticeVersions": [],
+      "moduleVersionMatches": [],
+      "unversionedModules": [
+        {
+          "bundle": "assets/agent/agent-bundle.js",
+          "module": "../../node_modules/zod/index.cjs"
+        },
+        {
+          "bundle": "assets/agent/agent-bundle.js",
+          "module": "../../node_modules/zod/v4/index.cjs"
+        },
+        {
+          "bundle": "assets/agent/agent-bundle.js",
+          "module": "../../node_modules/zod/v3/index.cjs"
+        },
+        {
+          "bundle": "assets/agent/agent-bundle.js",
+          "module": "../../node_modules/zod/mini/index.cjs"
+        }
+      ],
+      "externalReferences": [
+        "zod"
+      ],
+      "classification": "PATCHED_NPM_VERSION_PRESENT_OLD_VERSIONS_ABSENT",
+      "nextDecision": "Root4.6.6package shipped; oldaffected3.22.4/3.25.76/4.4.3NPMversionsabsent from exactnotices/versionedmoduleclosure. v3compat source belongs4.6.6package.",
+      "aliasProof": "Current APK Zod wrappers resolve to versioned4.6.6 implementations; priority module bodies unchanged from reviewed ab2 artifact. See current review zodAliasProof and priorityModuleIdentity."
+    }
+  ],
+  "zodAliasProof": [
+    {
+      "module": "../../node_modules/zod/index.cjs",
+      "references": {
+        "require_external": "../../node_modules/.bun/zod@4.6.6/node_modules/zod/v4/classic/external.cjs"
+      },
+      "sha256": "d086cb90b06bf6aa590ca0c4cd2de50a16cede92b93d479dc522f1edc3622fbd"
+    },
+    {
+      "module": "../../node_modules/zod/v4/index.cjs",
+      "references": {
+        "require_classic": "../../node_modules/.bun/zod@4.6.6/node_modules/zod/v4/classic/index.cjs",
+        "require_external": "../../node_modules/.bun/zod@4.6.6/node_modules/zod/v4/classic/external.cjs"
+      },
+      "sha256": "d9071a1c185144fdefdbb9584241fe5367c59938416e66b5b21d586a2297ed5b"
+    },
+    {
+      "module": "../../node_modules/zod/v3/index.cjs",
+      "references": {
+        "require_external2": "../../node_modules/.bun/zod@4.6.6/node_modules/zod/v3/external.cjs"
+      },
+      "sha256": "f92124773f12eb4a1e54b2149af893751c99e33b47b02761078dfd51936789b4"
+    },
+    {
+      "module": "../../node_modules/zod/mini/index.cjs",
+      "references": {
+        "require_external3": "../../node_modules/.bun/zod@4.6.6/node_modules/zod/v4/mini/external.cjs"
+      },
+      "sha256": "2aca4be71ba9a5b0e5003a971488e783062a78eb9e581ec38f4e94a96d06d7e1"
+    }
+  ],
+  "uuidCallProof": {
+    "v3v5WrapperReferenceCounts": {
+      "v32": 2,
+      "v52": 2,
+      "v33": 2,
+      "v53": 2
+    },
+    "interpretation": "Each affected wrapper v3/v5 alias has declaration+assignment only. Current affected UUID module bodies match prior reviewed artifact; consumer v4 call path preserved. Bounded static inspection, not a general dynamic safety proof."
+  },
+  "externalUndiciReferences": 5,
+  "limitations": [
+    "603-version npm closure only. Five external Undici references remain; Bun builtin implementation not classified by npm version absence.",
+    "Google-host normalized npm output differs only by added init_utils3 initialization in three noble modules; package versions and frozen lock input identity unchanged; this records emitted initialization changes without inferring a package-source regression.",
+    "Source-root strings and ordering differences are documented; raw bundles are not claimed byte-identical.",
+    "No shipped high/critical waiver and no deadline renewal.",
+    "This dependency/artifact review does not establish Google/calendar/navigation/provider/device/full-app acceptance."
+  ]
+}

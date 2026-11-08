@@ -3,12 +3,15 @@ import path from 'node:path';
 import crypto from 'node:crypto';
 import {execFileSync} from 'node:child_process';
 import {androidEnv} from './toolchain.mjs';
+import {generateAlphaAndroidHost} from './android-host.mjs';
 const output=path.resolve(process.argv[2]||'test-results/notification-fixture');
 if(!output.startsWith(path.resolve('test-results')+path.sep)||fs.existsSync(output))throw Error('New test-results output directory required');
 fs.mkdirSync(output,{recursive:true,mode:0o700});
 const env=androidEnv(),keystore=path.join(output,'synthetic-signing.p12');
 execFileSync(path.join(env.JAVA_HOME,'bin/keytool'),['-genkeypair','-keystore',keystore,'-storetype','PKCS12','-storepass','synthetic-fixture','-keypass','synthetic-fixture','-alias','fixture','-keyalg','RSA','-keysize','2048','-validity','30','-dname','CN=Synthetic notification test only'],{env,stdio:'pipe',timeout:60000});
 fs.chmodSync(keystore,0o600);
+// The fixture is a module of the generated Android host.
+generateAlphaAndroidHost();
 const log=execFileSync('./gradlew',['--no-daemon',':notification-fixture:assembleSelectedDebug',':notification-fixture:assembleExcludedDebug',':notification-fixture:lint'],{cwd:'android',env:{...env,ALPHA_NOTIFICATION_FIXTURE_KEYSTORE:keystore},encoding:'utf8',timeout:300000,maxBuffer:16*1024*1024});
 fs.writeFileSync(path.join(output,'build.log'),log);
 const apksigner=path.join(env.ANDROID_HOME,'build-tools/36.0.0/apksigner'),aapt=path.join(env.ANDROID_HOME,'build-tools/36.0.0/aapt');

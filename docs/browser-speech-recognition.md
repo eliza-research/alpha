@@ -35,7 +35,7 @@ engine on its own.
 | Step | What happens |
 | --- | --- |
 | Readiness | `speechRequest()` with no audio asks the agent whether ASR is ready. |
-| Transcribe | The browser decodes the clip and resamples it to a 16 kHz mono PCM16 WAV (`apps/app/src/browser/recording-pcm.ts`). It posts the WAV to the agent at `POST /api/asr/libelizainference` (provider `local-inference`), the shared ASR service over the voice bundle's ASR slot (`apps/app/src/browser/local-transcription.ts`). A changed agent selection during decoding or recognition, or an empty transcript, fails without trying another provider. |
+| Transcribe | The browser decodes the clip and resamples it to a 16 kHz mono PCM16 WAV (`recordingPcmWav` from the shared `packages/voice/src/browser-capture/recording-pcm.ts`). It posts the WAV to the agent at `POST /api/asr/libelizainference` (provider `local-inference`), the shared ASR service over the voice bundle's ASR slot (`apps/app/src/browser/local-transcription.ts`). A changed agent selection during decoding or recognition, or an empty transcript, fails without trying another provider. |
 | Read aloud | `synthesizeSpeech()` posts text to `POST /api/tts/paradee`. The agent runs Paradee-8M on libelizainference through the shared Paradee worker (provider `libelizainference-paradee`). With no agent, read-aloud is unavailable and the reply stays as text. |
 | Cancel | Cancel, a hidden page (`visibilitychange`), `pagehide` or a change of agent session aborts the request. The agent sees the abort, and a late result is discarded. |
 

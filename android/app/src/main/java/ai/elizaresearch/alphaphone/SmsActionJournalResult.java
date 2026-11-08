@@ -1,5 +1,6 @@
 package ai.elizaresearch.alphaphone;
 
+import ai.eliza.plugins.messages.SmsSendJournal;
 import org.json.JSONArray;
 import org.json.JSONObject;
 import java.util.Set;

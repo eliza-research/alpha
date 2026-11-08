@@ -2,11 +2,21 @@
 
 The physical product is `alpha_stallion_phone`, for the exact Android 17 stallion
 source and factory inputs in [the source contract](pixel10a-source-contract.md).
+Before image staging, apply the exact recorded Soong app-native patch to its
+manifest's `build/soong` revision. From this repository, after setting `AOSP_SOURCE`
+to the admitted source checkout:
+
+```sh
+git -C "$AOSP_SOURCE/build/soong" apply --check "$PWD/vendor/eliza/packages/os/android/patches/soong-app-native/soong-app-native.patch"
+git -C "$AOSP_SOURCE/build/soong" apply "$PWD/vendor/eliza/packages/os/android/patches/soong-app-native/soong-app-native.patch"
+```
+
 The following stages a new directory; it does not patch the source, build or flash
 an image, or admit a production release:
 
 ```sh
 npm run aosp:stage -- --target pixel10a --development \
+  --applied-build-patch soong-app-native \
   --apk /absolute/admitted-launcher-debug.apk \
   --aosp-source /absolute/prepared/stallion-source \
   --factory-image /absolute/stallion-cp3a.261005.005-factory-d1d25502.zip \
@@ -51,6 +61,15 @@ profile still requires its original local model. This permits Cloud QA image sta
 it does not qualify offline speech, the image boot, Cloud services or release signing. A compressed or malformed native payload is refused. Failed physical
 staging removes its temporary output and leaves an existing destination untouched.
 
+After source admission and before any output is written, staging runs the shared
+stock-vendor check (`vendor/eliza/packages/os/scripts/android/vendor-api.mjs`): the
+composition's release configuration (`cp2a`) and the generated stallion vendor VINTF
+manifest must both carry the shared profile's locked `vendorApiLevel`. A mismatch is
+refused, never rewritten. The shared composition also declares the launcher's
+`<package>.aosp_image` system feature (`image-capability.mjs`); `physical-product.json`
+records both as `vendorApi` and `imageFeature`. Only an image boot shows Android
+reporting the feature.
+
 `physical-product.json`, `native-libraries.json` and the camera receipt distinguish
 source/staging evidence from execution. None asserts image build, runtime execution,
 release qualification or device acceptance. Full current APK verification, both
@@ -69,7 +88,7 @@ from the production descriptor `android/aosp/pixel10a-product.json`. Before any 
 factory archive or APK is read it refuses, naming each gap, while:
 
 - any descriptor value is `UNSET` or a placeholder;
-- `sourceLock.sha256` does not pin the exact bytes of `android/aosp/pixel10a-source.json`,
+- `sourceLock.sha256` does not pin the exact bytes of `vendor/eliza/packages/os/android/sources/pixel10a-stallion.json`,
   or that lock is still marked `developmentOnly` (admitting the inputs for release is a
   reviewed change to both files);
 - `android/release-signer.json` has no reviewed APK release signer, or
@@ -79,6 +98,7 @@ factory archive or APK is read it refuses, naming each gap, while:
 
 ```sh
 npm run aosp:stage -- --target pixel10a --production \
+  --applied-build-patch soong-app-native \
   --apk /absolute/launcher-release.apk --apk-manifest /absolute/apk-manifest.json \
   --descriptor /absolute/reviewed-launcher.json \
   --listener-apk /absolute/sense-release.apk --listener-descriptor /absolute/reviewed-listener.json \
@@ -96,8 +116,19 @@ and release signing below re-signs vbmeta and every chained partition with the r
 key and the descriptor's algorithm.
 `physical-product.json` records the descriptor hash with `imageBuilt`, `imageSigned`,
 `releaseQualified` and `deviceAcceptanceVerified` all `false`.
+The shared composition keeps the system Clock (`DeskClock`) in the product. A brand boot
+animation is staged only when `vendor/eliza/packages/os/android/products/pixel10a-alpha.json`
+pins its SHA-256 (`brandAssets.bootAnimation`); then pass the reviewed stored
+`bootanimation.zip` with `--boot-animation`. Alpha's composition pins none, so the stock
+animation remains.
 
 ## Release signing, OTA and compatibility record
+
+The signing job, compatibility record, update client and recovery tooling are shared Pixel 10a
+tooling in `vendor/eliza/packages/os/scripts/android` (`aosp-release-signing.mjs`,
+`aosp-release-record.mjs`, `aosp-ota-update.mjs`; see `vendor/eliza/packages/os/android/releases/README.md`).
+Alpha keeps only its inputs: `android/aosp/pixel10a-product.json`, the update channel, the
+qualification gates and `android/release-signer.json`. The scripts below bind those inputs.
 
 On the Linux image host, after the production image build, sign the unsigned target-files
 and build the OTA with the AOSP releasetools (`otatools` `bin/`) and a decrypted release key
@@ -134,12 +165,17 @@ every APEX that is not presigned, and the `avb` key and algorithm for vbmeta and
 partition. Before any OTA is built it runs `apksigner verify --print-certs` on every APK and
 APEX in the signed target-files that is not presigned and refuses any signer that is not a
 release certificate from the key directory (a remaining test, development or unknown key), and
-any re-signed APEX without the release payload public key. Then it runs
+any re-signed APEX without the release payload public key. `sign_target_files_apks` also receives `--package_key KEYS/releasekey` (and, under managed
+signing, the payload signer), so an embedded boot OTA (`VENDOR/` or `SYSTEM/boot_otas/*.zip`)
+is re-signed with the release key rather than the build's development certificate. Only APKs
+packaged in the target-files need a key mapping; `apkcerts.txt` also lists test and CTS packages
+the image does not contain. Then it runs
 `ota_from_target_files -k KEYS/releasekey`, copies the public `avb_pkmd.bin`
 (enrolled on a device with `fastboot flash avb_custom_key avb_pkmd.bin` before
 `fastboot flashing lock`), and writes `release-record.json`: build fingerprints and versions,
 security patch levels, the hashes of vbmeta and of each chained partition image the signed
-build's `misc_info.txt` lists, payload hash and OTA metadata, release
+build's `misc_info.txt` lists with the AVB rollback index at each location (from the vbmeta
+headers and chain descriptors), payload hash and OTA metadata, release
 certificate digests and the APK signer digests from `apk-manifest.json`. The record
 generator also runs on its own: `node scripts/aosp-release-record.mjs --signed-target-files
 ZIP --ota ZIP --out NEW_FILE`.
@@ -197,6 +233,15 @@ stops the job before any OTA is built.
   `SIGNER ARGS... -in HASH_FILE -out SIGNATURE_FILE`; the arguments name the token key.
   `--payload-signer-signature-size` is the signature size in bytes (512 for RSA-4096).
 
+signapk opens the PKCS#11 keystore without a PIN (it passes none, and this job never puts one
+on a command line), so the token must expose its signing keys without a login, as a managed key
+service's PKCS#11 library authenticated by its own credentials does. A token that requires a
+user PIN makes every key lookup fail with `Key ... not found`.
+
+In managed mode the public `avb.pem` must encode to exactly `avb_pkmd.bin`, and
+`apex_payload.pem` to `apex_payload.avbpubkey` (the shared `encodeAvbPublicKey`, byte-identical
+to `avbtool extract_public_key`); a mismatched public key is refused.
+
 Paths and signer arguments must be plain words (no spaces, quotes or shell characters), because
 the releasetools split them with `shlex`. A token PIN or service credential belongs in the
 token's own configuration or environment, never on a command line, where any local user can
@@ -217,6 +262,59 @@ distributable while the known-good release is unset or any signed-update, interr
 compatible-rollback or stock-recovery drill is not `passed`; the script prints those as
 `NOT DISTRIBUTABLE`. Drill results are recorded from executed drills, never by software.
 
-`node --test test/aosp-release-signing.test.mjs` exercises these refusals, the command lines
-(key-file and managed) and the record with mocked releasetools and throwaway certificates. It is not a signed image,
-an image boot, an applied OTA, or a rollback or recovery drill.
+The shared refusals, command lines (key-file and managed), record and update client are tested
+upstream with releasetools test doubles, throwaway certificates and a simulated device
+(`vendor/eliza/packages/os/scripts/__tests__/aosp-release-signing.node.test.ts`,
+`aosp-ota-update.node.test.ts`); `node --test test/aosp-release-signing.test.mjs test/pixel10a-gates.test.mjs`
+checks that Alpha's descriptors, channel and signer are what they receive. None of it is a
+signed image, an image boot, an applied OTA, or a rollback or recovery drill.
+
+## Update, interruption, rollback and recovery
+
+`scripts/aosp-ota-update.mjs` is the operator update client for one serial-bound Pixel 10a; it
+defaults to Alpha's channel and the shared stallion source lock:
+
+```sh
+node scripts/aosp-ota-update.mjs check --from installed/release-record.json --to candidate/release-record.json
+node scripts/aosp-ota-update.mjs apply --serial SERIAL --from installed/release-record.json \
+  --to candidate/release-record.json --ota candidate/ota.zip --journal /abs/new-journal.json \
+  [--execute --confirm-update]
+node scripts/aosp-ota-update.mjs status --serial SERIAL --journal /abs/journal.json
+node scripts/aosp-ota-update.mjs fallback --serial SERIAL --journal /abs/journal.json [--execute --confirm-fallback]
+node scripts/aosp-ota-update.mjs stock-archive --archive /abs/stallion-cp3a.261005.005-factory-d1d25502.zip
+node scripts/aosp-ota-update.mjs verify-stock --serial SERIAL
+```
+
+`check` refuses a candidate that is not newer, lowers the security patch level or any AVB
+rollback index, changes the OTA certificate or AVB key, or (incremental) does not start from the
+installed build. `apply` verifies the package against the candidate record and the device
+against the installed record, then sends the package through the device's own recovery
+(`adb reboot recovery`, then `adb sideload`; a locked user build verifies it against its
+otacerts) and verifies the candidate on the other slot, with verified boot no weaker than
+before. A user build's adbd cannot enter sideload itself (`adb reboot sideload` needs
+`adb root`), so the operator chooses "Apply update from ADB" in recovery when asked, and
+"Reboot system now" if recovery stays in its menu after the installation. Each step is
+journaled. An interrupted run keeps the journal and the device lock; `status` classifies the
+observed device and a repeated `apply` resumes from it without assuming success. `fallback`
+returns to the original slot only before the updated slot is marked successful and, because
+Pixel 10a uses Virtual A/B, only while the bootloader reports a `snapshotted` update (a
+recovery that could not create snapshots overwrites the original slot's dynamic partitions;
+then a compatible release or stock recovery restores the device). `stock-archive` verifies the locked
+factory archive and prints the fastboot plan, which unlocks the bootloader and wipes data and
+is run by the operator; `verify-stock` checks the restored stock build. The unlock is refused
+unless OEM unlocking was enabled from the running image's developer options, which a device that
+no longer boots cannot do: whether released units keep it enabled is a release decision that the
+stock-recovery drill must exercise.
+`scripts/verify-pixel10a-image.mjs` checks a booted image read-only (exact fingerprint, Alpha's
+system launcher bytes as HOME, recovery HOME, Clock handlers, WebView, a green or yellow verified boot state and,
+with `--listener`, the listener's privileges). These are drill tools: drill results and the
+known-good release are recorded in the channel by the release owner from executed drills.
+
+
+When the source tree already carries the reviewed SystemUI listener chip, pass
+`--applied-systemui-patch chip` to Pixel `aosp:stage`. Use `ops` for the other
+reviewed bundle. The option is repeatable, rejects duplicates and unknown names,
+and requires an explicit Pixel or Cuttlefish target. Each patch still requires the
+locked project revision, exact preimages and exact installed postimages; unrelated
+source changes remain rejected. This only admits staging and is not image or
+device acceptance.

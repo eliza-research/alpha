@@ -1,0 +1,30 @@
+{
+  "pass": true,
+  "model": "sdk_gphone64_arm64",
+  "abi": "arm64-v8a",
+  "nativeAbi": "19",
+  "rounds": [
+    {
+      "round": 0,
+      "dimensions": 384,
+      "normSquared": 0.9999999690894585,
+      "repeatCosine": 0.9999999690894585,
+      "relatedCosine": 0.7833642633241752,
+      "unrelatedCosine": 0.2678905609016303,
+      "unicodeDistinct": true,
+      "nulSuffixTokenized": true,
+      "elapsedMs": 94.998167
+    },
+    {
+      "round": 1,
+      "dimensions": 384,
+      "normSquared": 0.9999999690894585,
+      "repeatCosine": 0.9999999690894585,
+      "relatedCosine": 0.7833642633241752,
+      "unrelatedCosine": 0.2678905609016303,
+      "unicodeDistinct": true,
+      "nulSuffixTokenized": true,
+      "elapsedMs": 142.70775
+    }
+  ]
+}

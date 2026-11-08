@@ -1,4 +1,4 @@
-import {calendarInstant,calendarWall} from './calendar-editor';
+import {calendarInstant,calendarWall} from './calendar-time';
 export type CalendarRepeat='none'|'daily'|'weekdays'|'weekly';
 export interface RecurringCalendarRecord {id:string;begin:number;end:number;timeZone?:string;allDay?:boolean;repeat?:CalendarRepeat}
 export type CalendarOccurrence<T> = T & {seriesId?:string;occurrenceBegin?:number};

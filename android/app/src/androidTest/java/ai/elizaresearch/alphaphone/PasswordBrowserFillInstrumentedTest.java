@@ -1,5 +1,6 @@
 package ai.elizaresearch.alphaphone;
 
+import ai.eliza.plugins.browsersurface.BrowserLoginFields;
 import android.accessibilityservice.AccessibilityServiceInfo;
 import android.app.UiAutomation;
 import android.content.Context;
@@ -223,7 +224,7 @@ public final class PasswordBrowserFillInstrumentedTest {
     observedChild.set(visibleChild());
     WebViewTestDriver.withActivity(MainActivity.class,activity->{try{
      Object plugin=activity.getBridge().getPlugin("AlphaBrowser").getInstance();
-     java.lang.reflect.Field field=plugin.getClass().getDeclaredField("autofillCallback");field.setAccessible(true);
+     java.lang.reflect.Field field=ai.eliza.plugins.browsersurface.BrowserTabHostPlugin.class.getDeclaredField("autofillCallback");field.setAccessible(true);
      original.set((android.view.autofill.AutofillManager.AutofillCallback)field.get(plugin));
      android.view.autofill.AutofillManager actual=observedChild.get().getContext().getSystemService(android.view.autofill.AutofillManager.class);
      observationManager.set(actual);actual.registerCallback(callback);

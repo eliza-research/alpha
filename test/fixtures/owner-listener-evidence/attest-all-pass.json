@@ -1,0 +1,171 @@
+{
+ "note": "Synthetic attestation for tests only.",
+ "reviewer": "Fixture Reviewer",
+ "operator": "Fixture Operator",
+ "items": {
+  "G2.noCaptureBeforeConsent": {
+   "result": "pass",
+   "note": "fixture"
+  },
+  "G2.consentRequestsRecordAudioAndNotifications": {
+   "result": "pass",
+   "note": "fixture"
+  },
+  "G3.micIndicatorUnlocked": {
+   "result": "pass",
+   "note": "fixture"
+  },
+  "G3.chipStatusBar": {
+   "result": "pass",
+   "note": "fixture"
+  },
+  "G3.chipLockScreen": {
+   "result": "pass",
+   "note": "fixture"
+  },
+  "G3.chipAod": {
+   "result": "pass",
+   "note": "fixture"
+  },
+  "G3.hideSilentNotificationsOn": {
+   "result": "pass",
+   "note": "fixture"
+  },
+  "G3.notificationLockScreenControls": {
+   "result": "pass",
+   "note": "fixture"
+  },
+  "G3.systemUiKillStops": {
+   "result": "pass",
+   "note": "fixture"
+  },
+  "G3.immersivePauses": {
+   "result": "pass",
+   "note": "fixture"
+  },
+  "G3.shadePauses": {
+   "result": "pass",
+   "note": "fixture"
+  },
+  "G3.unattributedRecordingStops": {
+   "result": "pass",
+   "note": "fixture"
+  },
+  "G3.aodOffPausesAndResumes": {
+   "result": "pass",
+   "note": "fixture"
+  },
+  "G3.noResumeAfterLoss": {
+   "result": "pass",
+   "note": "fixture"
+  },
+  "G3.senseConsentText": {
+   "result": "pass",
+   "note": "fixture"
+  },
+  "G4.pressHoldStartsOneVoiceTurn": {
+   "result": "pass",
+   "note": "fixture"
+  },
+  "G4.appSentAssistOnlyOpens": {
+   "result": "pass",
+   "note": "fixture"
+  },
+  "G4.powerVolumeUpPowerMenu": {
+   "result": "pass",
+   "note": "fixture"
+  },
+  "G4.emergencySosUnchanged": {
+   "result": "pass",
+   "note": "fixture"
+  },
+  "G4.doublePressCameraUnchanged": {
+   "result": "pass",
+   "note": "fixture"
+  },
+  "G4.coldStartWakeOwnerAdmission": {
+   "result": "pass",
+   "note": "fixture"
+  },
+  "G4.lockedWakeIgnored": {
+   "result": "pass",
+   "note": "fixture"
+  },
+  "G5.guestSwitchStops": {
+   "result": "pass",
+   "note": "fixture"
+  },
+  "G5.secondaryUserStops": {
+   "result": "pass",
+   "note": "fixture"
+  },
+  "G5.ringingPauses": {
+   "result": "pass",
+   "note": "fixture"
+  },
+  "G5.callPauses": {
+   "result": "pass",
+   "note": "fixture"
+  },
+  "G5.otherRecorderReleases": {
+   "result": "pass",
+   "note": "fixture"
+  },
+  "G5.alphaVoiceTurnReleases": {
+   "result": "pass",
+   "note": "fixture"
+  },
+  "G5.mediaSuppressesWake": {
+   "result": "pass",
+   "note": "fixture"
+  },
+  "G5.bluetoothRouting": {
+   "result": "pass",
+   "note": "fixture"
+  },
+  "G5.noEchoReinvocation": {
+   "result": "pass",
+   "note": "fixture"
+  },
+  "G5.recoversAfterEach": {
+   "result": "pass",
+   "note": "fixture"
+  },
+  "G5.revocationOnReset": {
+   "result": "pass",
+   "note": "fixture"
+  },
+  "G6.pauseFromNotification": {
+   "result": "pass",
+   "note": "fixture"
+  },
+  "G6.turnOffFromNotification": {
+   "result": "pass",
+   "note": "fixture"
+  },
+  "G6.tilePause": {
+   "result": "pass",
+   "note": "fixture"
+  },
+  "G6.lockScreenPause": {
+   "result": "pass",
+   "note": "fixture"
+  },
+  "G6.rebootBeforeUnlockNoCapture": {
+   "result": "pass",
+   "note": "fixture"
+  },
+  "G6.crashLoopStops": {
+   "result": "pass",
+   "note": "fixture"
+  },
+  "G6.multiHourRun": {
+   "result": "pass",
+   "note": "fixture"
+  },
+  "G6.twentyFourHourRun": {
+   "result": "pass",
+   "note": "fixture"
+  }
+ }
+}

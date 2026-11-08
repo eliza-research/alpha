@@ -14,7 +14,7 @@ export async function setupNativeSpeech(page:Page){
    }
    return emit(plugin,event,value);
   };
-  const f=w.nativeSpeech={ready:true,peak:0,starts:0,stops:0,transcripts:0,spoken:[] as string[],plays:0,cancels:[] as string[],stopped:0,forbidden:[] as string[],active:null as string|null,holdTranscript:false,stages:[] as string[],turns:[] as Array<string|undefined>};
+  const f=w.nativeSpeech={ready:true,peak:0,starts:0,stops:0,transcripts:0,spoken:[] as string[],plays:0,cancels:[] as string[],stopped:0,forbidden:[] as string[],active:null as string|null,holdTranscript:false,stages:[] as string[],turns:[] as Array<string|undefined>,captureStartedAt:0,sampledActivity:[] as Array<{at:number;peak:number}>};
   const events:Array<{event:string;callback:(value:any)=>void}>=[];
   const header=c.PluginHeaders.find((p:any)=>p.name==='AlphaVoiceCloud');
   header.methods=[...['checkPermissions','localSpeechStatus','startRecording','stopRecording','getRecordingMetrics','cancelRecording','transcribeLocalRecording','synthesizeLocal','play','stopPlayback','cancel','releaseLocalSpeech','markVoiceTurn'].map(name=>({name,rtype:'promise'})),{name:'addListener',rtype:'callback'},{name:'removeListener',rtype:'callback'}];
@@ -23,8 +23,8 @@ export async function setupNativeSpeech(page:Page){
    if(plugin!=='AlphaVoiceCloud')return prior(plugin,method,input);
    if(method==='checkPermissions')return {microphone:'granted'};
    if(method==='localSpeechStatus')return {ready:f.ready,execution:'device'};
-   if(method==='startRecording'){f.active='clip-'+ ++f.starts;return {recordingId:f.active,maxDurationMs:29000};}
-   if(method==='getRecordingMetrics')return {recordingId:input.recordingId,peak:f.peak,rms:f.peak};
+   if(method==='startRecording'){f.active='clip-'+ ++f.starts;f.captureStartedAt=performance.now();f.sampledActivity=[];return {recordingId:f.active,maxDurationMs:29000};}
+   if(method==='getRecordingMetrics'){f.sampledActivity.push({at:performance.now(),peak:f.peak});return {recordingId:input.recordingId,peak:f.peak,rms:f.peak};}
    if(method==='stopRecording'){f.stops++;const recordingId=f.active;f.active=null;return {recordingId,durationMs:1500};}
    if(method==='cancelRecording'){f.active=null;return {};}
    if(method==='transcribeLocalRecording'){f.transcripts++;if(f.holdTranscript)await new Promise(resolve=>f.releaseTranscript=resolve);return {text:'Local spoken request',local:true,execution:'device'};}

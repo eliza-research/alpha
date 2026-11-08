@@ -2,34 +2,15 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {stripTypeScriptTypes} from 'node:module';
-// The Eliza Cloud page is a pure function in the settings-facts region of the adapter.
+import vm from 'node:vm';
 const text=readFileSync(process.env.SETTINGS_SOURCE||'apps/app/src/prototype/settings-adapter.ts','utf8');
-const region=text.slice(text.indexOf('// settings-facts:begin'),text.indexOf('// settings-facts:end'));
-const m=await import('data:text/javascript;base64,'+Buffer.from(stripTypeScriptTypes(region,{mode:'strip'})).toString('base64'));
-const plan={signedIn:true,offline:false,offerRedeem:false,account:'synthetic@example.invalid',plan:'Synthetic plan',status:'active',endsAt:Date.UTC(2026,11,6),keyExpiresAt:null,keyExpiring:false};
-const page=(overrides={},confirm=()=>true)=>{const calls=[];const actions=Object.fromEntries(['cancel','approve','redeem','manage','signOut','recheck','signIn'].map(name=>[name,()=>calls.push(name)]));return {calls,out:m.cloudAccountPage({plan:{...plan,...overrides.plan},busy:!!overrides.busy,message:overrides.message||'',serviceName:'Nebula',day:at=>'day '+at,confirm,actions})};};
-test('a busy account operation offers only Cancel and says what is happening',()=>{
- const {calls,out}=page({busy:true,message:'Signing out…'});
- assert.deepEqual(out.actions.map(a=>a.label),['Cancel']);assert.equal(out.status,'Signing out…');
- out.actions[0].go();assert.deepEqual(calls,['cancel']);
-});
-test('Sign out asks first and does nothing when declined',()=>{
- let asked='';const declined=page({},text=>{asked=text;return false;});
- const signOut=declined.out.actions.find(a=>a.label==='Sign out');assert.ok(signOut?.danger);
- signOut.go();assert.match(asked,/Sign out of Nebula\?/);assert.deepEqual(declined.calls,[]);
- const accepted=page();accepted.out.actions.find(a=>a.label==='Sign out').go();assert.deepEqual(accepted.calls,['signOut']);
- assert.ok(!accepted.out.actions.some(a=>a.label==='Cancel'));
-});
-test('the status line is the plan and its renewal; expiring sign-in and redeem appear only when they apply',()=>{
- assert.equal(page().out.status,'Synthetic plan · renews day '+plan.endsAt);
- assert.equal(page().out.detail,'synthetic@example.invalid');
- assert.deepEqual(page().out.actions.map(a=>a.label),['Manage plan','Sign out']);
- const expiring=page({plan:{keyExpiring:true,offerRedeem:true}});
- assert.equal(expiring.out.status,'Sign-in expiring');
- assert.deepEqual(expiring.out.actions.map(a=>a.label),['Sign in again','Redeem code','Manage plan','Sign out']);
-});
-test('signed out and offline states each offer their one way forward',()=>{
- assert.deepEqual(page({plan:{signedIn:false,account:null}}).out.actions.map(a=>a.label),['Sign in with Nebula']);
- const offline=page({plan:{signedIn:false,offline:true,account:null}});
- assert.deepEqual(offline.out.actions.map(a=>a.label),['Check again']);assert.equal(offline.out.detail,'Nebula unreachable');
+const start=text.indexOf('        const plan=connectionController.residentPlanSettings();');
+const end=text.indexOf("        page.groups.push(group([{kNav:true,label:'Agent connection'",start);
+assert(start>=0&&end>start);
+const source=stripTypeScriptTypes(text.slice(start,end),{mode:'transform'});
+for(const busy of [false,true])test(`Cloud account operations retain a usable ${busy?'Cancel':'Sign out'} action`,()=>{
+ let cancellations=0,signouts=0;const box={serviceName:'Nebula',state:{page:'cloud-plan'},connection:{busy,message:'Signing out…'},connectionController:{residentPlanSettings:()=>({signedIn:true,account:'synthetic@example.invalid',plan:'Synthetic plan',inference:'Unavailable'}),cancel:()=>{cancellations++;},cloudSignOut:()=>{signouts++;}},info:(label,value)=>({label,value}),group:rows=>({rows}),action:(label,go)=>({label,go}),runtimeLocation:'On this device',page:{groups:[]},out:{stack:[]},api:{set:()=>{}}};
+ vm.runInNewContext(source,box);assert.equal(box.out.stack[0].title,'Nebula account & plan');const rows=box.out.stack[0].groups.at(-1).rows;
+ if(busy){assert.deepEqual(Array.from(rows,r=>r.label),['Cancel']);assert(box.out.stack[0].groups[0].rows.some(r=>r.label==='Status'&&r.value==='Signing out…'));rows[0].go();assert.equal(cancellations,1);assert.equal(signouts,0);}
+ else{const signout=rows.find(r=>r.label==='Sign out');assert(signout);assert(!rows.some(r=>r.label==='Cancel'));signout.go();assert.equal(signouts,1);}
 });

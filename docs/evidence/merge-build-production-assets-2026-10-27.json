@@ -1,0 +1,13 @@
+{
+  "comparison": "Vite-produced production JS/CSS rebuilt after the latest PR 621 merge versus the version-10 launcher APK, with identical version and runtime-profile inputs",
+  "apk": "artifacts/launcher-debug.apk",
+  "versionName": "0.1.0-native-4b928290",
+  "runtimeProfile": "native",
+  "rendererFiles": 42,
+  "rendererChanged": [],
+  "rendererByteIdentical": true,
+  "additionalCapacitorGeneratedFilesInApk": [
+    "cordova.js",
+    "cordova_plugins.js"
+  ]
+}

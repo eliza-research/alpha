@@ -13,8 +13,11 @@ test('Android\'s shade is the only shade: the swipe handler asks Android, never 
   const model = read('apps/app/src/prototype/model.js');
   const swipe = model.slice(model.indexOf('  swipe(g, dx, dy) {'), model.indexOf('  sw(fn, opts) {'));
   assert.ok(swipe.length > 200 && swipe.length < 6000, 'swipe() located');
-  // The one opener in the gesture handler: a pull on launcher's empty Home asks for Android's shade.
-  assert.match(swipe, /if \(dy > T && emptyHomeShadePull\(this\.pullContext\(\), g\.pull, g\.y, dx, dy, T\)\) return this\.openSystemShade\(\);/);
+  // The zones are the shared shell's (resolveMobileShellSwipe, tested upstream); its one opener asks
+  // for Android's shade: a pull on launcher Home's button or one the shared empty-Home pull accepts.
+  assert.match(swipe, /resolveMobileShellSwipe\(\{ screen: S\.screen, shade: !!S\.shade, view: S\.view, chat: S\.chat, launcher: this\.props\.systemShell !== false \}, \{ x: g\.x, y: g\.y, onShadeControl: false \}, dx, dy,/);
+  assert.match(swipe, /pullOpensShade: function \(px, py, threshold\) \{ return emptyHomeShadePull\(self\.pullContext\(\), g\.pull, g\.y, px, py, threshold\); \}/);
+  assert.match(swipe, /if \(action === "open-system-shade"\) return this\.openSystemShade\(\);/);
   assert.doesNotMatch(swipe, /shade: true/, 'no swipe sets a panel open directly');
   assert.doesNotMatch(swipe, /this\.openShade\(\)/, 'no swipe opens the development stand-in directly');
   assert.doesNotMatch(swipe, /g\.y < 90/, 'the top-edge band is not a gesture zone of Alpha');

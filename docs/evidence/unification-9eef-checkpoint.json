@@ -1,0 +1,95 @@
+{
+  "schemaVersion": 1,
+  "recordedAt": "2026-10-27",
+  "alphaCommit": "8ea44958e66ca9241fa767e92c1287e6ede068e6",
+  "sourceVerificationCommit": "bec132174390f069bccc0fd0decc3a9ccf217b06",
+  "upstreamCommit": "9eef5dbd7b381576aad0801b1fee424d1483c63c",
+  "commands": {
+    "verify": {
+      "command": "npm run verify",
+      "status": "passed",
+      "tests": 2089,
+      "passed": 2086,
+      "skipped": 3,
+      "failed": 0,
+      "logSha256": "e83fc2f30626979021e5f01eb2fa0376eeb47186197a626a7a1f24f607b8fe35"
+    },
+    "android": {
+      "command": "npm run android:build:local",
+      "status": "passed",
+      "logSha256": "9ad47052d3eb61b566c236f297cc3e86bdfca86e9c7925b79d9eb3c503cb3e6a"
+    },
+    "sense": {
+      "command": "./gradlew --no-daemon --max-workers=1 -Dorg.gradle.jvmargs=-Xmx2g :sense:assembleDebug :sense:assembleRelease",
+      "status": "passed",
+      "logSha256": "722bb449b9854eb82547ad1e565b817f6ae862797ca944930e81662e6676d019"
+    },
+    "combinedApkInspection": {
+      "command": "node scripts/verify-apks.mjs",
+      "status": "passed",
+      "appApks": 4,
+      "senseApks": 2,
+      "logSha256": "f8433918319ba78fa40c52b5f43262dc3d9734d265c0201a1d902f1e577e12f1"
+    }
+  },
+  "testMocks": false,
+  "allowUnpackagedRuntime": false,
+  "runtimeProfile": "native",
+  "sourceDirty": false,
+  "sourceBinding": "All four generated BuildConfig sources and both instrumentation sources bind to the alphaCommit with ELIZA_SOURCE_DIRTY=false; sources retained with APK checkpoint.",
+  "apkManifestSha256": "c1256570b29b7ecc87e2aad85ef1960d2d9057ccd4f1949e701b96f110907d77",
+  "apks": [
+    {
+      "file": "artifacts/standalone-debug.apk",
+      "sha256": "6051708cda44b3a2a5502d6820bd8299bc430269af0b452836369c6d66f13d8b",
+      "variant": "standalone",
+      "mode": "debug",
+      "signed": true
+    },
+    {
+      "file": "artifacts/standalone-release-unsigned.apk",
+      "sha256": "7afa7ac381412f43abac3153e35216d887609647f99ea65ab48ef4e4aeae4331",
+      "variant": "standalone",
+      "mode": "release",
+      "signed": false
+    },
+    {
+      "file": "artifacts/launcher-debug.apk",
+      "sha256": "4730fb62a7e95210d41cadb0ce6d45987a017f2943df9492e135ac90a22ae96b",
+      "variant": "launcher",
+      "mode": "debug",
+      "signed": true
+    },
+    {
+      "file": "artifacts/launcher-release-unsigned.apk",
+      "sha256": "0d474a7709e3948fe5a02902e07bd09a7cd1fd931266ebba111a66f54f7d214d",
+      "variant": "launcher",
+      "mode": "release",
+      "signed": false
+    }
+  ],
+  "senseApks": [
+    {
+      "file": "artifacts/sense-debug.apk",
+      "sha256": "22780d3582b2eeb66766a104960967ee2911a53efeabee414344fe941a68c456",
+      "signed": true,
+      "qualified": false,
+      "distributable": false
+    },
+    {
+      "file": "artifacts/sense-release-unsigned.apk",
+      "sha256": "c3ddf7ef480e6ba916e50f9e8ccf6cc09fbedef0082c91f1b1a8a851d5671e53",
+      "signed": false,
+      "qualified": false,
+      "distributable": false
+    }
+  ],
+  "packagedNotices": "licenses/packaged-runtime/9eef5dbd7b381576aad0801b1fee424d1483c63c",
+  "limits": [
+    "Source verification ran before the notice-only build checkpoint; production source is identical.",
+    "APK packaging does not establish installation, HOME role, AOSP boot, live-provider behavior or physical-device acceptance.",
+    "Release APKs remain unsigned and native speech qualification remains false.",
+    "Dependency advisory and notice flags remain reported; this is not security or license clearance.",
+    "Later upstream pins and integration branch changes require their own validation."
+  ]
+}

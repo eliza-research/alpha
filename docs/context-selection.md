@@ -16,7 +16,6 @@ those gates stay open (see [current status](mvp-current-status.md)).
 
 | Source | Identity | Review scope | Ends when |
 | --- | --- | --- | --- |
-| Files folder (`files-tree-adapter.ts`) | `folder`, opaque tree id, session-local `listing-<session>-N` counter | Names and types of the loaded entries of that one folder. No file or subfolder contents | The folder is left, a file is opened, or access ends |
 | Selected document (`selection-adapter.ts`) | `document`, picker capability, accept epoch plus rename count | The shown text or PDF page | Closed, forgotten, reselected or renamed |
 | Alpha Phone notification (`notifications-adapter.ts`) | `notification`, id, revision, `accountId: own` | That notification's shown title and text | The shade closes, or the row is dismissed, updated or hidden |
 | Saved photo or video (`camera-adapter.ts`) | `photo` or `video`, library id, session-local `capture-<session>-N` counter (`createCaptureRevisions`) | The open item, described or read locally (English OCR) | Another item opens, or it is edited, favorited, trashed or removed |

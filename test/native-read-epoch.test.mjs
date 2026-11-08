@@ -10,12 +10,14 @@ test('delayed provider results cannot cross a lifecycle or permission boundary',
  try{
   execFileSync(java('javac'),['--release','11','-d',dir,join(root,'android/app/src/main/java/ai/elizaresearch/alphaphone/NativeReadEpoch.java'),join(root,'test/fixtures/NativeReadEpochTest.java')],{timeout:60000});
   assert.match(execFileSync(java('java'),['-cp',dir,'ai.elizaresearch.alphaphone.NativeReadEpochTest'],{encoding:'utf8',timeout:15000}),/PASS native read publication fences/);
-  const catalog=readFileSync(join(root,'android/app/src/main/java/ai/elizaresearch/alphaphone/PermittedMediaCatalog.java'),'utf8');
-  assert.match(catalog,/main\.post\(\(\)->\{try\{requireReadTicket\(ticket\);call\.resolve/);
-  assert.match(catalog,/checkReadAccess/);assert.match(catalog,/ACTION_SCREEN_OFF/);
-  const photos=readFileSync(join(root,'android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaPhotosPlugin.java'),'utf8');
-  assert.match(photos,/permitted\.publish\(call,value,ticket\)/);
-  const facade=readFileSync(join(root,'android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaPhotoLibraryPlugin.java'),'utf8');
+  // The catalog's own ticket checks live in the shared native media module and are tested there.
+  // AlphaPhotos and AlphaPhotoLibrary register the shared Photos plugins, which publish under the ticket.
+  const media=join(root,'vendor/eliza/plugins/plugin-native-media/android/src/main/java/ai/eliza/plugins/media');
+  const photos=readFileSync(join(media,'PhotosPlugin.java'),'utf8');
+  assert.match(photos,/permitted\.publish\(call, value, ticket\)/);
+  const facade=readFileSync(join(media,'DeviceLibraryPlugin.java'),'utf8');
   assert.equal((facade.match(/catalog\.publish\(call,/g)||[]).length,3);
+  assert.match(readFileSync(join(root,'android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaPhotosPlugin.java'),'utf8'),/extends PhotosPlugin \{/);
+  assert.match(readFileSync(join(root,'android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaPhotoLibraryPlugin.java'),'utf8'),/extends DeviceLibraryPlugin \{/);
  }finally{rmSync(dir,{recursive:true,force:true});}
 });

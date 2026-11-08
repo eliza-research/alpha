@@ -1,0 +1,693 @@
+{
+  "$comment": "Indicators of compromise for the 2026-10-27 forged-commit incident (issue #658). Transcribed from the owner private cleanup record, which is held off-repo and not tracked in this repository, so it cannot be checked from here. Data only: SHAs are 9-hex prefixes. Never check out any forged commit.",
+  "actor": "gabrielbarbera",
+  "window": {
+    "start": "2026-10-27T22:45:00Z",
+    "end": "2026-10-27T23:36:00Z",
+    "reviewFrom": "2026-10-21T00:00:00Z"
+  },
+  "defaultOwner": "AlphaCompute",
+  "ownerOverrides": {
+    "alphaphone": "eliza-research"
+  },
+  "ciRunsOnForgedCommits": {
+    "dstack-tee": 24,
+    "vera": 22,
+    "altx-compute-terminal": 10,
+    "rafay-plugins": 10,
+    "corpus-app": 8,
+    "shroud-go": 7,
+    "alphaphone": 6,
+    "shroud-swarm-worker": 6,
+    "alphabox-deploy": 4,
+    "alpha-infra": 4,
+    "vera.report": 4,
+    "alpha-compute": 2,
+    "confidential-platform": 2,
+    "corpus-supervisor": 2,
+    "expenseATON": 2,
+    "midnight-ton-bridge": 2,
+    "confidential-plane": 1,
+    "kata-containers": 1
+  },
+  "repositories": [
+    "alpha-compute",
+    "alpha-infra",
+    "alpha-tech-ops",
+    "alphabox-deploy",
+    "alphaphone",
+    "altx-compute-terminal",
+    "confidential-plane",
+    "confidential-platform",
+    "corpus-app",
+    "corpus-harness",
+    "corpus-supervisor",
+    "creative-ops",
+    "dstack-tee",
+    "enclave.alpha",
+    "expenseATON",
+    "kata-containers",
+    "midnight-ton-bridge",
+    "platform-documents",
+    "rafay-plugins",
+    "right2compute",
+    "shroud-go",
+    "shroud-swarm-worker",
+    "sqlx",
+    "trade-compliance-training",
+    "vera",
+    "vera.report"
+  ],
+  "markers": {
+    "paths": [
+      "init",
+      ".env",
+      ".vscode/tasks.json",
+      ".vscode/settings.json"
+    ],
+    "pathPatterns": [
+      "(^|/)reminders/public/fonts/",
+      "\\.orc$"
+    ],
+    "packageScriptPattern": "(^|&&\\s*|;\\s*)node\\s+(\\./)?init(\\s|$|&&|;)",
+    "contentPatterns": [
+      "\"runOn\"\\s*:\\s*\"folderOpen\"",
+      "atob\\(process\\.env\\.[A-Z_]+\\)",
+      "eval\\(proxyInfo\\)"
+    ]
+  },
+  "branches": [
+    {
+      "repo": "alpha-compute",
+      "branch": "codex/alphaphone-verification-page",
+      "preAttack": "0e82c199c",
+      "forged": "1a34dbc77"
+    },
+    {
+      "repo": "alpha-compute",
+      "branch": "fix/staging-cloudflare-zone-id",
+      "preAttack": "50503c7ab",
+      "forged": "2f5a17b8b"
+    },
+    {
+      "repo": "alpha-compute",
+      "branch": "infra/terraform-s3-backend-and-config-fixes",
+      "preAttack": "4e314b7b2",
+      "forged": "3e8079ccd"
+    },
+    {
+      "repo": "alpha-compute",
+      "branch": "infra/tf-backend-and-deploy-fixes",
+      "preAttack": "656ba73e6",
+      "forged": "8f2c04e6d"
+    },
+    {
+      "repo": "alpha-compute",
+      "branch": "staging",
+      "preAttack": "49a480a8e",
+      "forged": "41ac0baca"
+    },
+    {
+      "repo": "alpha-infra",
+      "branch": "feat/mcp",
+      "preAttack": "f0748da80",
+      "forged": "f800b5e54"
+    },
+    {
+      "repo": "alpha-infra",
+      "branch": "prd01/alpha-1-g0-profile",
+      "preAttack": "8c8af304d",
+      "forged": "586872d12"
+    },
+    {
+      "repo": "alpha-infra",
+      "branch": "prd01/alpha-1-host-image",
+      "preAttack": "c2569e844",
+      "forged": "e08412842"
+    },
+    {
+      "repo": "alpha-infra",
+      "branch": "prd01/version-audit",
+      "preAttack": "dd385b0fd",
+      "forged": "8fa3e01d5"
+    },
+    {
+      "repo": "alpha-infra",
+      "branch": "prd06/draft-pool-moves",
+      "preAttack": "4d5b701af",
+      "forged": "367e5e46b"
+    },
+    {
+      "repo": "alpha-tech-ops",
+      "branch": "docs/confidential-infrastructure-target-architecture",
+      "preAttack": "d6600e5b9",
+      "forged": "a4d5f4ccc"
+    },
+    {
+      "repo": "alpha-tech-ops",
+      "branch": "docs/confidential-plane-current",
+      "preAttack": "ca096da5c",
+      "forged": "da76ec995"
+    },
+    {
+      "repo": "alpha-tech-ops",
+      "branch": "docs/confidential-stack-as-built",
+      "preAttack": "639fd5f2f",
+      "forged": "d93761bca"
+    },
+    {
+      "repo": "alpha-tech-ops",
+      "branch": "docs/prd-012-netbox-rafay",
+      "preAttack": "e7d7cd3b8",
+      "forged": "e4259b02e"
+    },
+    {
+      "repo": "alpha-tech-ops",
+      "branch": "docs/target-architecture-aws-nitro",
+      "preAttack": "86a986856",
+      "forged": "cc831af91"
+    },
+    {
+      "repo": "alphabox-deploy",
+      "branch": "contracts-p2-hardening",
+      "preAttack": "fc7d5fbac",
+      "forged": "36a0de8e6"
+    },
+    {
+      "repo": "alphabox-deploy",
+      "branch": "feat/documents-in-netbox-extraction",
+      "preAttack": "6e6bedf23",
+      "forged": "a07f0335f"
+    },
+    {
+      "repo": "alphabox-deploy",
+      "branch": "feat/netbox-logs-dashboard",
+      "preAttack": "d537a5c92",
+      "forged": "c4de0572a"
+    },
+    {
+      "repo": "alphabox-deploy",
+      "branch": "feat/shroud-usage-tab-grafana",
+      "preAttack": "6c09c4a2b",
+      "forged": "4e338accb"
+    },
+    {
+      "repo": "alphabox-deploy",
+      "branch": "fix/contracts-bulk-upload-hardening",
+      "preAttack": "8c7053ec5",
+      "forged": "035fe22c9"
+    },
+    {
+      "repo": "alphaphone",
+      "branch": "claude/c1-notes-clock",
+      "preAttack": "9ca8a6073",
+      "forged": "0cefd6e47"
+    },
+    {
+      "repo": "alphaphone",
+      "branch": "claude/c1-shell",
+      "preAttack": "cc7cb00b2",
+      "forged": "131cd0e63"
+    },
+    {
+      "repo": "alphaphone",
+      "branch": "codex/alpha-causal-calendar-schema-8cc-20261027",
+      "preAttack": "00a31c2bc",
+      "forged": "cc3f7a709"
+    },
+    {
+      "repo": "alphaphone",
+      "branch": "codex/alpha-reviewed-release-join-20261027",
+      "preAttack": "a56d3e7b9",
+      "forged": "61d293f61"
+    },
+    {
+      "repo": "alphaphone",
+      "branch": "codex/merge-build-latest-20261026",
+      "preAttack": "c8f5212e0",
+      "forged": "39ef59401"
+    },
+    {
+      "repo": "altx-compute-terminal",
+      "branch": "codex/data-api-latest-settles",
+      "preAttack": "410aa9ce7",
+      "forged": "7ec43bd75"
+    },
+    {
+      "repo": "altx-compute-terminal",
+      "branch": "feat/apisix-enable-fixes",
+      "preAttack": "d7e61e833",
+      "forged": "636f7a8ec"
+    },
+    {
+      "repo": "altx-compute-terminal",
+      "branch": "fix/snyk-security-findings",
+      "preAttack": "7364aacf9",
+      "forged": "bf9751de1"
+    },
+    {
+      "repo": "altx-compute-terminal",
+      "branch": "snyk-upgrade-2c8e3af4136f03dc40ee7c8516697f23",
+      "preAttack": "acf8b38ba",
+      "forged": "ff8659083"
+    },
+    {
+      "repo": "altx-compute-terminal",
+      "branch": "snyk-upgrade-b59e422a4cd5043994929110c81178db",
+      "preAttack": "6af3da510",
+      "forged": "7c2a40624"
+    },
+    {
+      "repo": "confidential-plane",
+      "branch": "chore/bump-golang-x-deps-and-toolchain",
+      "preAttack": "2f19ca158",
+      "forged": "ede29cb4a"
+    },
+    {
+      "repo": "confidential-plane",
+      "branch": "chore/bump-pgx-v5.10.0",
+      "preAttack": "9528fc268",
+      "forged": "b492c8d54"
+    },
+    {
+      "repo": "confidential-plane",
+      "branch": "ci/dev-prod-plane-split",
+      "preAttack": "f74f2a282",
+      "forged": "6cca11d34"
+    },
+    {
+      "repo": "confidential-plane",
+      "branch": "plan-024-canonical-compose-hash",
+      "preAttack": "d7ce164fb",
+      "forged": "61b24fbf4"
+    },
+    {
+      "repo": "confidential-plane",
+      "branch": "revert/skip-gpu-attestation",
+      "preAttack": "2c78f5d49",
+      "forged": "a8cfbef92"
+    },
+    {
+      "repo": "confidential-platform",
+      "branch": "core/coco-revision-v2",
+      "preAttack": "cb2359e25",
+      "forged": "28dcf1ad4"
+    },
+    {
+      "repo": "confidential-platform",
+      "branch": "kms/custodian-sealed-store",
+      "preAttack": "613429eba",
+      "forged": "df2b0b073"
+    },
+    {
+      "repo": "confidential-platform",
+      "branch": "kms/customer-evidence",
+      "preAttack": "14b19204c",
+      "forged": "c6323830f"
+    },
+    {
+      "repo": "confidential-platform",
+      "branch": "signer/portal-embed-view",
+      "preAttack": "7922eaf58",
+      "forged": "0506163bc"
+    },
+    {
+      "repo": "confidential-platform",
+      "branch": "signer/revision-v2-and-embed",
+      "preAttack": "cd3543b67",
+      "forged": "556e737e3"
+    },
+    {
+      "repo": "corpus-app",
+      "branch": "fix/answer-content-copy",
+      "preAttack": "a77ac7dc4",
+      "forged": "66529f579"
+    },
+    {
+      "repo": "corpus-app",
+      "branch": "fix/mobile-thread-layout",
+      "preAttack": "9260c0313",
+      "forged": "399dd435b"
+    },
+    {
+      "repo": "corpus-app",
+      "branch": "fix/prod-deploy-by-revision",
+      "preAttack": "f8c088e66",
+      "forged": "ef8a13498"
+    },
+    {
+      "repo": "corpus-app",
+      "branch": "fix/session-lifetime",
+      "preAttack": "2c8197a4d",
+      "forged": "90e9966c5"
+    },
+    {
+      "repo": "corpus-app",
+      "branch": "fix/session-recovery",
+      "preAttack": "2f408ab78",
+      "forged": "01668436f"
+    },
+    {
+      "repo": "corpus-harness",
+      "branch": "feat/step-and-turn-figures",
+      "preAttack": "888bd65e3",
+      "forged": "2b1f6e5ed"
+    },
+    {
+      "repo": "corpus-supervisor",
+      "branch": "dev",
+      "preAttack": "e7ace12cb",
+      "forged": "5ac463561"
+    },
+    {
+      "repo": "corpus-supervisor",
+      "branch": "prd04/supervisor-on-kata",
+      "preAttack": "aff5fc99c",
+      "forged": "bd966ff33"
+    },
+    {
+      "repo": "corpus-supervisor",
+      "branch": "q146/coco-render",
+      "preAttack": "68c11df19",
+      "forged": "b6641c0a0"
+    },
+    {
+      "repo": "corpus-supervisor",
+      "branch": "q146/coco-spec",
+      "preAttack": "5667ce7c6",
+      "forged": "6ad9b7d41"
+    },
+    {
+      "repo": "creative-ops",
+      "branch": "claude/check-whimpering-failed-45hnug",
+      "preAttack": "8ac24bf0d",
+      "forged": "6c4c9e720"
+    },
+    {
+      "repo": "creative-ops",
+      "branch": "feature/comment-mentions",
+      "preAttack": "2ea45ca04",
+      "forged": "dfb732984"
+    },
+    {
+      "repo": "creative-ops",
+      "branch": "feature/notion-history-property",
+      "preAttack": "437895c03",
+      "forged": "c0802e436"
+    },
+    {
+      "repo": "dstack-tee",
+      "branch": "chore/sync-upstream-20260914",
+      "preAttack": "0937e3038",
+      "forged": "c6cd4a33f"
+    },
+    {
+      "repo": "dstack-tee",
+      "branch": "codex/core-components-test-infrastructure",
+      "preAttack": "ad6f2fd12",
+      "forged": "f98ae12ba"
+    },
+    {
+      "repo": "dstack-tee",
+      "branch": "codex/sync-upstream-20260922",
+      "preAttack": "80c0003c7",
+      "forged": "770e7f7c1"
+    },
+    {
+      "repo": "dstack-tee",
+      "branch": "codex/sync-upstream-20260923",
+      "preAttack": "54c78ba62",
+      "forged": "52845fe26"
+    },
+    {
+      "repo": "dstack-tee",
+      "branch": "next",
+      "preAttack": "89fe3184b",
+      "forged": "0aff5f6c3"
+    },
+    {
+      "repo": "enclave.alpha",
+      "branch": "feat/enclave-chat",
+      "preAttack": "bc45adbca",
+      "forged": "ba9a280dc"
+    },
+    {
+      "repo": "enclave.alpha",
+      "branch": "feat/server-side-enclave-proxy",
+      "preAttack": "156d6fb58",
+      "forged": "df27c06b5"
+    },
+    {
+      "repo": "enclave.alpha",
+      "branch": "fix/enclave-disclosure-guardrails",
+      "preAttack": "e463d7ab2",
+      "forged": "1a212b358"
+    },
+    {
+      "repo": "expenseATON",
+      "branch": "dev",
+      "preAttack": "7c8e59598",
+      "forged": "a08b3a270"
+    },
+    {
+      "repo": "expenseATON",
+      "branch": "enterprise",
+      "preAttack": "92da3abcd",
+      "forged": "56e7f7d69"
+    },
+    {
+      "repo": "expenseATON",
+      "branch": "hotfix/EA-user-deactivation",
+      "preAttack": "531d3f06c",
+      "forged": "8b3acbbeb"
+    },
+    {
+      "repo": "expenseATON",
+      "branch": "staging",
+      "preAttack": "ab56c8200",
+      "forged": "0457b6e52"
+    },
+    {
+      "repo": "kata-containers",
+      "branch": "alphacompute/4.0.0-numa-order",
+      "preAttack": "6f8e78c81",
+      "forged": "4f381d01a"
+    },
+    {
+      "repo": "kata-containers",
+      "branch": "runtime-numa-pxb-order",
+      "preAttack": "3322beb2a",
+      "forged": "6da6ed8e9"
+    },
+    {
+      "repo": "midnight-ton-bridge",
+      "branch": "bridge-web-app",
+      "preAttack": "a9879a951",
+      "forged": "8286e6def"
+    },
+    {
+      "repo": "midnight-ton-bridge",
+      "branch": "cleanup/followups",
+      "preAttack": "53bf87c9f",
+      "forged": "c871878ee"
+    },
+    {
+      "repo": "midnight-ton-bridge",
+      "branch": "infra/aws-hosting",
+      "preAttack": "9329cae07",
+      "forged": "2229ea2fc"
+    },
+    {
+      "repo": "midnight-ton-bridge",
+      "branch": "review/automated-relayer",
+      "preAttack": "fca059f2d",
+      "forged": "53f0d07a3"
+    },
+    {
+      "repo": "midnight-ton-bridge",
+      "branch": "review/fund-safety-fixes",
+      "preAttack": "78bb48c39",
+      "forged": "90b07d54a"
+    },
+    {
+      "repo": "platform-documents",
+      "branch": "dev",
+      "preAttack": "fe068b84b",
+      "forged": "4ef2b87fb"
+    },
+    {
+      "repo": "rafay-plugins",
+      "branch": "feat/encrypted-volumes",
+      "preAttack": "70544873b",
+      "forged": "149ecb4cf"
+    },
+    {
+      "repo": "rafay-plugins",
+      "branch": "feat/fortanix-sku",
+      "preAttack": "ac5310ed7",
+      "forged": "b764806d9"
+    },
+    {
+      "repo": "rafay-plugins",
+      "branch": "feat/kms-endpoints-configmap",
+      "preAttack": "e56f36431",
+      "forged": "f46213cdb"
+    },
+    {
+      "repo": "rafay-plugins",
+      "branch": "feat/sovereign-placement-partner-bundle",
+      "preAttack": "6b6bfb983",
+      "forged": "d4b2f2ed3"
+    },
+    {
+      "repo": "rafay-plugins",
+      "branch": "prd03/bare-metal-handover-verify",
+      "preAttack": "52fc93a3a",
+      "forged": "c2836e9e7"
+    },
+    {
+      "repo": "right2compute",
+      "branch": "staging",
+      "preAttack": "0443f8450",
+      "forged": "b08e10cdb"
+    },
+    {
+      "repo": "shroud-go",
+      "branch": "codex/fix-attestation-fail-closed",
+      "preAttack": "38eb30f1b",
+      "forged": "4b5ccf8eb"
+    },
+    {
+      "repo": "shroud-go",
+      "branch": "feat/apps-connector-demo",
+      "preAttack": "12d34ad7f",
+      "forged": "db7cc5b6f"
+    },
+    {
+      "repo": "shroud-go",
+      "branch": "feat/mcp",
+      "preAttack": "86936784e",
+      "forged": "5a325f94c"
+    },
+    {
+      "repo": "shroud-go",
+      "branch": "feat/mcp-wildcard-scope",
+      "preAttack": "7356f3239",
+      "forged": "ac17cfbdd"
+    },
+    {
+      "repo": "shroud-go",
+      "branch": "feat/pod-namespace-per-instance",
+      "preAttack": "eeb25ca73",
+      "forged": "ce15c881c"
+    },
+    {
+      "repo": "shroud-swarm-worker",
+      "branch": "feat/inference-shim",
+      "preAttack": "e2718cf96",
+      "forged": "5d7646e3a"
+    },
+    {
+      "repo": "shroud-swarm-worker",
+      "branch": "feat/refuse-gateway-fallback",
+      "preAttack": "bc6eeeefc",
+      "forged": "145f23a64"
+    },
+    {
+      "repo": "shroud-swarm-worker",
+      "branch": "fix/sealed-model-and-reasoning",
+      "preAttack": "68b718c58",
+      "forged": "126632723"
+    },
+    {
+      "repo": "shroud-swarm-worker",
+      "branch": "fix/snyk-critical-cves",
+      "preAttack": "a200d2aa0",
+      "forged": "2f2229f20"
+    },
+    {
+      "repo": "shroud-swarm-worker",
+      "branch": "fix/update-actually-applies",
+      "preAttack": "e8404e72d",
+      "forged": "6f42de627"
+    },
+    {
+      "repo": "sqlx",
+      "branch": "scram-channel-binding",
+      "preAttack": "1bb869585",
+      "forged": "640c76de0"
+    },
+    {
+      "repo": "sqlx",
+      "branch": "v0.9.0-direct-tls",
+      "preAttack": "a890b1609",
+      "forged": "223e11760"
+    },
+    {
+      "repo": "trade-compliance-training",
+      "branch": "codex/staged-course-email-delivery",
+      "preAttack": "3abbffb31",
+      "forged": "5c6fbee46"
+    },
+    {
+      "repo": "trade-compliance-training",
+      "branch": "fix-live-check",
+      "preAttack": "6cb10fed1",
+      "forged": "bb441a9b2"
+    },
+    {
+      "repo": "trade-compliance-training",
+      "branch": "hosted-lms",
+      "preAttack": "fb86d3c02",
+      "forged": "beda6b57f"
+    },
+    {
+      "repo": "trade-compliance-training",
+      "branch": "lms-n8n-workflow",
+      "preAttack": "7bafdddfe",
+      "forged": "bd348965c"
+    },
+    {
+      "repo": "trade-compliance-training",
+      "branch": "public-course",
+      "preAttack": "8644038f9",
+      "forged": "9083c6688"
+    },
+    {
+      "repo": "vera",
+      "branch": "codex/enclave-restart-tests",
+      "preAttack": "cce013069",
+      "forged": "3edbd2060"
+    },
+    {
+      "repo": "vera",
+      "branch": "dependabot/github_actions/staging/github/codeql-action/upload-sarif-4.39.1",
+      "preAttack": "e1da49481",
+      "forged": "de323e546"
+    },
+    {
+      "repo": "vera",
+      "branch": "fix/alb-idle-timeout-cloudfront-keepalive",
+      "preAttack": "00f7ca162",
+      "forged": "7261521fd"
+    },
+    {
+      "repo": "vera",
+      "branch": "snyk-upgrade-493b2e18df02072c0e6cec529637ab71",
+      "preAttack": "fc381f1a4",
+      "forged": "f5d25c4f7"
+    },
+    {
+      "repo": "vera.report",
+      "branch": "codex/expand-ci-checks",
+      "preAttack": "3c7667023",
+      "forged": "fe28329bd"
+    },
+    {
+      "repo": "vera.report",
+      "branch": "staging",
+      "preAttack": "a9252880b",
+      "forged": "855be532a"
+    }
+  ]
+}

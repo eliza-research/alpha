@@ -1,5 +1,6 @@
 package ai.elizaresearch.alphaphone;
 
+import ai.eliza.auth.cloud.CloudSignInFlow;
 import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
@@ -51,7 +52,7 @@ public final class CloudSignInCallbackInstrumentedTest {
  @Test public void mismatchingReturnLeavesPendingRecordAndStoresNothing() throws Exception {
   gate();
   String cloudBefore = store().readCredentialSlot("cloud:production");
-  CloudSignInFlow.Pending pending = CloudSignInFlow.Pending.create(CloudSignInFlow.Environment.PRODUCTION, System.currentTimeMillis());
+  CloudSignInFlow.Pending pending = CloudSignInFlow.Pending.create(AlphaCloudSignInPlugin.REGISTRATION.defaultEnvironment(), System.currentTimeMillis());
   store().writeCredentialSlot(AlphaCloudSignInPlugin.PENDING_SLOT, pending.serialize());
   try (BoundedActivityScenario<MainActivity> scenario = BoundedActivityScenario.launch(intent(callback(CloudSignInFlow.newState())).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK))) {
    holdFor(3000);
@@ -64,7 +65,7 @@ public final class CloudSignInCallbackInstrumentedTest {
  @Test public void parameterlessReturnKeepsPendingRecord() throws Exception {
   gate();
   String cloudBefore = store().readCredentialSlot("cloud:production");
-  CloudSignInFlow.Pending pending = CloudSignInFlow.Pending.create(CloudSignInFlow.Environment.PRODUCTION, System.currentTimeMillis());
+  CloudSignInFlow.Pending pending = CloudSignInFlow.Pending.create(AlphaCloudSignInPlugin.REGISTRATION.defaultEnvironment(), System.currentTimeMillis());
   store().writeCredentialSlot(AlphaCloudSignInPlugin.PENDING_SLOT, pending.serialize());
   try (BoundedActivityScenario<MainActivity> scenario = BoundedActivityScenario.launch(intent("https://eliza.app/alphaphone/auth/callback").addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK))) {
    holdFor(3000);
@@ -77,7 +78,7 @@ public final class CloudSignInCallbackInstrumentedTest {
  @Test public void expiredPendingRecordIsNeverUsed() throws Exception {
   gate();
   String cloudBefore = store().readCredentialSlot("cloud:production");
-  CloudSignInFlow.Pending expired = new CloudSignInFlow.Pending(CloudSignInFlow.Environment.PRODUCTION, CloudSignInFlow.newState(), CloudSignInFlow.newVerifier(), System.currentTimeMillis() - 1);
+  CloudSignInFlow.Pending expired = new CloudSignInFlow.Pending(AlphaCloudSignInPlugin.REGISTRATION.defaultEnvironment(), CloudSignInFlow.newState(), CloudSignInFlow.newVerifier(), System.currentTimeMillis() - 1);
   store().writeCredentialSlot(AlphaCloudSignInPlugin.PENDING_SLOT, expired.serialize());
   try (BoundedActivityScenario<MainActivity> scenario = BoundedActivityScenario.launch(intent(callback(expired.state)).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK))) {
    waitForRemoved(AlphaCloudSignInPlugin.PENDING_SLOT);
@@ -89,7 +90,7 @@ public final class CloudSignInCallbackInstrumentedTest {
 
  /** The renderer cannot read or write the native pending and receipt slots. */
  @Test public void signInSlotsAreNativeOnly() {
-  for (String slot : new String[]{AlphaCloudSignInPlugin.PENDING_SLOT, AlphaCloudSignInPlugin.receiptSlot(CloudSignInFlow.Environment.PRODUCTION)}) {
+  for (String slot : new String[]{AlphaCloudSignInPlugin.PENDING_SLOT, AlphaCloudSignInPlugin.receiptSlot(AlphaCloudSignInPlugin.REGISTRATION.defaultEnvironment())}) {
    try { RendererCredentialSlots.requireAllowed(slot); fail(slot); } catch (SecurityException expected) { /* Native only. */ }
   }
  }

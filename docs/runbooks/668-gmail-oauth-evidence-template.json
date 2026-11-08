@@ -1,0 +1,105 @@
+{
+  "schemaVersion": 1,
+  "runbookRow": "Gmail OAuth (docs/pilot-acceptance-runbook.md; draft in docs/runbooks/668-google-oauth-verification.md)",
+  "evidenceClass": "<one of: real-integration-browser-host | real-integration-emulator-apk | real-integration-device>",
+  "evidenceClassNote": "A browser or development host run is not APK, emulator, image or device evidence. Record each class separately.",
+  "operator": "<operator name or role>",
+  "recordedAt": "<ISO-8601 UTC>",
+  "alphaSource": "<alphaphone commit SHA>",
+  "elizaPin": "<upstream.lock.json commit>",
+  "build": {
+    "kind": "<browser-host | apk-developer | apk-distributable | image>",
+    "variant": "<flavor or n/a>",
+    "apkSha256": "<sha256 or n/a>",
+    "versionCode": "<integer or n/a>"
+  },
+  "unit": "<emulator AVD name, device model and unit label, or n/a; never a serial or IMEI>",
+  "cloud": {
+    "environment": "<production | staging>",
+    "api": "<https://api.eliza.app or staging host>",
+    "deployedWorkerVersion": "<Cloud deployment or version id, if the operator can read it>"
+  },
+  "google": {
+    "verificationStatus": "<Testing | In production, unverified | Verification in progress | Verified>",
+    "securityAssessment": "<not started | in progress | passed on YYYY-MM-DD | n/a>",
+    "consentScreenScopes": ["<copy the Data Access list; must match docs/runbooks/668-google-capability-scope-matrix.md>"],
+    "testAccountLabel": "<H-27 designated test account LABEL ONLY, e.g. 'H-27 test account A'; never the address>",
+    "testAccountIsListedTestUser": "<true | false | n/a when verified>"
+  },
+  "steps": [
+    {
+      "id": "grant-read",
+      "action": "Settings > Google > Connect Google account; approve on Google's page",
+      "requestedCapabilities": ["google.basic_identity", "google.gmail.triage", "google.calendar.read"],
+      "observedGrantedCapabilities": ["<from Settings or GET /api/v1/eliza/google/accounts?side=owner readback>"],
+      "googleConsentShowedScopes": ["<scopes listed on Google's page>"],
+      "connectionIdRedacted": "<first 8 hex of the connection id>",
+      "result": "<pass | fail | not run>"
+    },
+    {
+      "id": "read-synthetic-thread",
+      "action": "Inbox: open the synthetic thread seeded in the H-27 account",
+      "syntheticSubjectLabel": "<label of the seeded synthetic thread, never real mail>",
+      "inboxCapabilities": {
+        "readState": "<true | false as returned by inbox-v1/capabilities>",
+        "send": "<true | false>",
+        "providerDrafts": "<true | false>",
+        "mailboxMutations": "<true | false>"
+      },
+      "readStateShownAsAvailable": "<true only if readState is true; otherwise Mark read/unread must be absent>",
+      "result": "<pass | fail | not run>"
+    },
+    {
+      "id": "grant-modify",
+      "action": "Settings > Google > Enable Gmail changes; approve on Google's page",
+      "requestedCapabilities": ["google.basic_identity", "google.gmail.triage", "google.gmail.send", "google.gmail.drafts", "google.gmail.mailbox", "google.calendar.read"],
+      "observedGrantedCapabilities": ["<readback>"],
+      "result": "<pass | fail | not run>"
+    },
+    {
+      "id": "create-provider-draft",
+      "action": "Create a provider draft addressed to <SYNTHETIC_RECIPIENT_PLACEHOLDER>; review; confirm; read the draft back",
+      "recipient": "<SYNTHETIC_RECIPIENT_PLACEHOLDER: no real recipient; a draft is not sent>",
+      "operationRequestId": "<receipt requestId>",
+      "receiptState": "<succeeded | rejected | unknown>",
+      "reviewDigestMatchesReadback": "<true | false>",
+      "result": "<pass | fail | not run>"
+    },
+    {
+      "id": "live-send",
+      "action": "OPTIONAL. Only with the owner's written authorization naming the exact recipient and message (H-27).",
+      "ownerAuthorizationReference": "<private reference to the written authorization, or 'not authorized'>",
+      "recipient": "<AUTHORIZED_RECIPIENT_PLACEHOLDER: record a label, never the address>",
+      "operationRequestId": "<receipt requestId or n/a>",
+      "receiptState": "<succeeded | rejected | unknown | not run>",
+      "result": "<pass | fail | not run>"
+    },
+    {
+      "id": "revoke-in-alpha",
+      "action": "Settings > Google > Disconnect; confirm",
+      "disconnectOutcome": "<disconnected | still-connected | unconfirmed>",
+      "accountsReadbackShowsDisconnected": "<true | false>",
+      "localDraftsRetained": "<true | false>",
+      "result": "<pass | fail | not run>"
+    },
+    {
+      "id": "revoke-in-google-account",
+      "action": "Reconnect, then remove the app in the Google Account's third-party access page; return to Alpha",
+      "alphaShowsRecoveryWithoutDeletingLocalData": "<true | false>",
+      "result": "<pass | fail | not run>"
+    },
+    {
+      "id": "restart-repeat",
+      "action": "Restart the app (and the unit for device runs) and repeat grant-read and read-synthetic-thread",
+      "result": "<pass | fail | not run>"
+    }
+  ],
+  "receiptIds": ["<every operation requestId recorded above>"],
+  "privateEvidencePrefix": "<prefix of the private screenshots/log bundle; never commit mail content>",
+  "doesNotProve": [
+    "Google verification or the security assessment",
+    "any evidence class other than the one recorded above",
+    "a send to any recipient other than the authorized one"
+  ],
+  "neverRecord": ["tokens", "client secret", "authorization codes", "auth URLs with state", "real email addresses", "message bodies"]
+}

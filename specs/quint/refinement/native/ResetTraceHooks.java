@@ -14,6 +14,7 @@ public final class ResetTraceHooks {
  public static boolean dispatched;
  public static boolean recoveryVisible;
  public static final class Interruption extends Error { private static final long serialVersionUID = 1L; }
+ public static void initialized(){NativeSourceHost.started++;}
  public static void event(String kind, String detail) { observer.accept(kind, detail); }
  public static void listenerResult(boolean accepted) {
   listenerAcknowledged = accepted;

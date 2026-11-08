@@ -8,9 +8,11 @@ import {stripTypeScriptTypes} from 'node:module';
 import {InboxOperation, composerKind, composerContent, reviewBinding, reviewBindingRefusal} from '../apps/app/src/runtime/inbox-operation.ts';
 import {classifyGmailFailure} from '../apps/app/src/runtime/gmail-mailbox.ts';
 import * as grants from '../apps/app/src/runtime/gmail-grants.ts';
+import {createMailReviewController} from '../.eliza/client-features/plugins/plugin-inbox/src/mailbox/review-controller.ts';
+import {reviewMailAttachment} from '../apps/app/src/runtime/inbox-attachment.ts';
 
 let source = await readFile(new URL('../apps/app/src/prototype/inbox-provider-controls.ts', import.meta.url), 'utf8');
-source = '{' + stripTypeScriptTypes(source.replace(/^import .*;\n/gm, '').replace(/^export (?=function )/gm, '') + '\nglobalThis.inboxProviderControls=inboxProviderControls;', {mode: 'strip'}) + '}';
+source = '{' + stripTypeScriptTypes(source.replace(/^import .*;\n/gm, '').replace(/^export (?=function )/gm, '') + '\nglobalThis.inboxProviderControls=inboxProviderControls;', {mode: 'transform'}) + '}';
 const digest = async text => Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(text))), b => b.toString(16).padStart(2, '0')).join('');
 // Timer turns do not establish readiness: WebCrypto and secure-store work may still be pending.
 // Await public promises where available, and observable completion for fire-and-forget controls.
@@ -43,7 +45,7 @@ function device() {
     },
   };
   const controller = {getCloudClient: () => ({client, sessionId: 'session-1'}), getSnapshot: () => ({cloudAccount: {environment: 'production', userId: 'owner-1'}})};
-  const sandbox = {InboxOperation, composerKind, composerContent, reviewBinding, reviewBindingRefusal, classifyGmailFailure, ...grants, performance, queueMicrotask, crypto: globalThis.crypto, TextEncoder, structuredClone,
+  const sandbox = {createMailReviewController, reviewMailAttachment, InboxOperation, composerKind, composerContent, reviewBinding, reviewBindingRefusal, classifyGmailFailure, ...grants, performance, queueMicrotask, crypto: globalThis.crypto, TextEncoder, structuredClone,
     inboxLocalStore: store, connectionController: controller, AbortController, DOMException, console, document: {documentElement: {dataset: {connectionMode: 'live'}}}};
   vm.createContext(sandbox); vm.runInContext(source, sandbox);
   const provider = sandbox.inboxProviderControls(() => {}, text => toasts.push(text));
@@ -66,7 +68,7 @@ function device() {
   assert.equal(d.remote.dispatches, 0, 'a withdrawn review is never dispatched');
   assert.ok(d.toasts.some(t => /withdrawn, so the unsent review was discarded/.test(t)), 'the user is told the review was discarded');
   await d.provider.prepare(archive);
-  assert.equal(d.toasts.at(-1), 'Reconnect Gmail, then try again.', 'a new review needs the change grant again'); assert.equal(d.remote.prepares, 1);
+  assert.match(d.toasts.at(-1), /has not granted this provider action/, 'a new review needs the change grant again'); assert.equal(d.remote.prepares, 1);
 }
 // A review still being prepared (a provider run is active): the withdrawal waits for the run and then discards it.
 {

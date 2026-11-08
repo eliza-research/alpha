@@ -1,3 +1,4 @@
+import {openBrowserCalendar} from './helpers/browser-calendar';
 // Journey J04: Schedule -> travel, driven through rendered controls in the browser build
 // (development profile with the development device controls, /?mode=dev&tools=1).
 //
@@ -10,6 +11,8 @@
 //   The fixture logs every search and route request to a test-owned localStorage key so the
 //   exactly-once assertions survive reloads. No map tiles, geocoder or router is contacted.
 // - "Device controls -> Back" is the development stand-in for the Android system Back gesture.
+// - Events live in the development browser calendar, an explicit test-mocks Calendar source
+//   (openBrowserCalendar); Agent Calendar is not involved.
 //
 // Native-only steps (not provable here; the honest browser state is asserted where one exists):
 // - Device location as a route origin and turn-by-turn "Start": the browser build reports that
@@ -66,7 +69,7 @@ test('calendar event location is handed to Maps once, routed by explicit choices
   const from = {latitude: 43.738, longitude: 7.424}, to = {latitude: 43.74, longitude: 7.425};
 
   await test.step('create an event with a location through the editor', async () => {
-    await button(page, 'Calendar').click();
+    await openBrowserCalendar(page);
     await button(page, 'New event').click();
     await page.getByRole('textbox', {name: 'Title', exact: true}).fill('Harbour meeting');
     await page.getByRole('textbox', {name: 'Location', exact: true}).fill(address);
@@ -83,7 +86,7 @@ test('calendar event location is handed to Maps once, routed by explicit choices
   await test.step('reopen the saved event after reload and hand its location to Maps once', async () => {
     await page.reload();
     await installMaps(page);
-    await button(page, 'Calendar').click();
+    await openBrowserCalendar(page);
     await page.getByRole('button', {name: /^Harbour meeting,/}).click();
     await expect(heading).toBeVisible();
     expect(await requests(page)).toEqual({queries: [], routes: []});
@@ -100,23 +103,19 @@ test('calendar event location is handed to Maps once, routed by explicit choices
     await page.getByRole('button', {name: /^West entrance/}).first().click();
     await button(page, 'Directions').click();
     const status = page.getByRole('region', {name: 'Maps'}).getByRole('status');
-    // Directions asks for the device location first; the browser build has none, so the
-    // owner is asked to choose a starting point and nothing is routed.
-    await expect(status).toHaveText('Choose a starting point.');
-    await expect(page.getByText('Choose a starting point', {exact: true})).toBeVisible();
+    await expect(status).toHaveText('Enter an origin latitude, longitude and press Enter, or explicitly use current location.');
+    await expect(page.getByText('Choose a real origin to calculate a route.')).toBeVisible();
     expect((await requests(page)).routes).toEqual([]);
-    const origin = page.getByRole('textbox', {name: 'Starting point', exact: true});
+    const origin = page.getByRole('textbox', {name: 'Route origin coordinates'});
     await origin.fill('43.738, 7.424');
     await origin.press('Enter');
-    await expect(page.getByRole('region', {name: 'Maps'})).toContainText(/5 min\s*0\.4 km/);
-    // Only live traffic is named on the route sheet.
-    await expect(page.locator('[data-alpha-maps-sheet="directions"]')).not.toContainText('traffic');
+    await expect(page.getByRole('region', {name: 'Maps'})).toContainText(/5 min\s*0\.4 km · no live traffic/);
     expect((await requests(page)).routes).toEqual([{from, to, mode: 'drive'}]);
     // A mode the provider does not offer is refused by name and requests nothing.
     await button(page, 'Transit').click();
     await expect(status).toHaveText('Transit schedules are not available for this region.');
     await button(page, 'Bike').click();
-    await expect(status).toHaveText('Bike directions aren’t available here.');
+    await expect(status).toHaveText('Bike directions are not available from this Maps provider.');
     expect((await requests(page)).routes).toEqual([{from, to, mode: 'drive'}]);
     // The selected mode is exposed as state, not by color only; a refused mode is not selected.
     await expect(button(page, 'Drive')).toHaveAttribute('aria-pressed', 'true');
@@ -124,7 +123,7 @@ test('calendar event location is handed to Maps once, routed by explicit choices
     await button(page, 'Walk').click();
     await expect(button(page, 'Walk')).toHaveAttribute('aria-pressed', 'true');
     await expect(button(page, 'Drive')).toHaveAttribute('aria-pressed', 'false');
-    await expect(page.getByRole('region', {name: 'Maps'})).toContainText(/9 min\s*0\.4 km/);
+    await expect(page.getByRole('region', {name: 'Maps'})).toContainText(/9 min\s*0\.4 km · no live traffic/);
     expect((await requests(page)).routes).toEqual([{from, to, mode: 'drive'}, {from, to, mode: 'walk'}]);
     // Native-only: live navigation needs device location; the browser build says so.
     await button(page, 'Start').click();
@@ -177,7 +176,7 @@ test('calendar event location is handed to Maps once, routed by explicit choices
     // Maps opened from the launcher has no event to return to.
     await expect(button(page, 'Back to event')).toHaveCount(0);
     await systemBack(page);
-    await button(page, 'Calendar').click();
+    await openBrowserCalendar(page);
     await page.getByRole('button', {name: /^Harbour meeting,/}).click();
     await expect(heading).toBeVisible();
     expect(await events(page)).toHaveLength(1);

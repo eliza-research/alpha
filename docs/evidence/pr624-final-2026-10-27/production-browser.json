@@ -1,0 +1,40 @@
+{
+  "recordedAt": "2026-10-27T13:04:16.250533+00:00",
+  "evidenceLevel": "local production browser test; synthetic native ports, not APK/device or real integration acceptance",
+  "cwd": "/home/shaw/.codex/worktrees/browser-ci-native-signin/alphaphone",
+  "command": "ALPHA_BROWSER_TEST_PORT=6317 npx playwright test --config playwright.browser-isolated.local.ts --project=production --workers=1",
+  "head": "23cc30fb2dac53dc0b184a170b6805f92d272280",
+  "sourceHead": "004a19b5d86be8afd93fb6e0377143e7c46094cd",
+  "sourceTree": "d9642685ee6124e64b51b7e2ae446609411f2f7a",
+  "treeIdenticalToSourceHead": true,
+  "elizaPin": "6497825b38cbe41b3677c0a445341fec900f0dd2",
+  "configurations": [
+    {
+      "path": "/home/shaw/.codex/worktrees/browser-ci-native-signin/alphaphone/playwright.browser-isolated.local.ts",
+      "sha256": "406cf369197fa30aa1b10011fe387f753b052445bb50493789add6f31eafb212",
+      "contents": "import base from './playwright.config';\nconst servers=Array.isArray(base.webServer)?base.webServer:base.webServer?[base.webServer]:[];\nexport default {...base,workers:1,reporter:[['list']],outputDir:'test-results/browser-isolated',webServer:servers.map(server=>({...server,command:server.command?.replace('npm run dev:ui -- ','npm run dev:ui -- --config vite.browser-isolated.local.ts ').replace('npx vite build ','npx vite build --config vite.browser-isolated.local.ts ').replace('npx vite preview ','npx vite preview --config vite.browser-isolated.local.ts ')}))};\n"
+    },
+    {
+      "path": "/home/shaw/.codex/worktrees/browser-ci-native-signin/alphaphone/vite.browser-isolated.local.ts",
+      "sha256": "a7346a54f1467991174a78e18e57907b93eab2da077a3f61220704e083ad3a77",
+      "contents": "import base from './vite.config';\nexport default {\n ...base,\n cacheDir:`/tmp/alpha-browser-ci-vite-${process.env.ALPHA_BROWSER_TEST_PORT||'6217'}`,\n server:{...base.server,watch:null,hmr:false},\n};\n"
+    }
+  ],
+  "productionPort": 6318,
+  "viteCacheDir": "/tmp/alpha-browser-ci-vite-6317",
+  "workers": 1,
+  "watch": null,
+  "hmr": false,
+  "changedTestTimeouts": false,
+  "retries": 0,
+  "exitCode": 0,
+  "passed": 305,
+  "failed": 0,
+  "skipped": 0,
+  "interrupted": 0,
+  "elapsedReported": "18.5m",
+  "log": {
+    "path": "/tmp/browser-agent-final-production-004a19b5d.log",
+    "sha256": "b697fa99b7c17a156ecda0dff3d1ea5ce5cfb215c73b91e577e1820e0096e97e"
+  }
+}

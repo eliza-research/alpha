@@ -14,7 +14,7 @@ for (const script of [
     // This is an independent child suite, not an IPC worker of node:test.
     const env = {...process.env};
     delete env.NODE_TEST_CONTEXT;
-    try { execFileSync(process.execPath, ['--import', 'tsx', `scripts/${script}`], {
+    try { execFileSync(process.execPath, ['--import', 'tsx', '--experimental-transform-types', `scripts/${script}`], {
       cwd: new URL('..', import.meta.url), timeout: 60_000, stdio: 'pipe', env, encoding: 'utf8',
     }); } catch (error) {
       throw new Error(`${script} failed (status ${error.status}, signal ${error.signal}):\n${error.stdout || ''}\n${error.stderr || ''}`, {cause: error});

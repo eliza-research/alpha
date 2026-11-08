@@ -1,4 +1,5 @@
 package ai.elizaresearch.alphaphone;
+import ai.eliza.plugins.media.PermittedMediaCatalog;
 
 import android.content.*;
 import android.graphics.Bitmap;

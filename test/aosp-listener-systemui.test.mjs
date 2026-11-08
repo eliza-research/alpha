@@ -6,14 +6,14 @@ import os from 'node:os';
 import {createHash} from 'node:crypto';
 import {execFileSync} from 'node:child_process';
 import {prepareListenerSystemui, verifyListenerSystemui} from '../scripts/aosp-listener-systemui.mjs';
-const directory = 'android/aosp/listener/systemui';
+const directory = 'vendor/eliza/packages/os/android/sense/systemui';
 const manifest = JSON.parse(fs.readFileSync(`${directory}/manifest.json`));
 const patch = fs.readFileSync(`${directory}/microphone-ops.patch`, 'utf8');
 
 test('reviewed SystemUI patch binds the baseline and adds both recording ops to all three lists', () => {
   const sha = input => createHash('sha256').update(input).digest('hex');
   assert.equal(sha(patch), manifest.patchSha256);
-  assert.equal(sha(fs.readFileSync('android/aosp/pixel10a-source.json')), manifest.baselineLockSha256);
+  assert.equal(sha(fs.readFileSync('vendor/eliza/packages/os/android/sources/pixel10a-stallion.json')), manifest.baselineLockSha256);
   assert.equal(manifest.files.length, 2);
   assert.equal(manifest.lockAodIndicatorQualified, false);
   const temp = fs.mkdtempSync(path.join(os.tmpdir(), 'systemui-context-'));

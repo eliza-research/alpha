@@ -9,7 +9,7 @@ export function verifyPinnedUpstream(root) {
 	);
 	const directory = path.join(root, "vendor/eliza");
 	verifyCommittedWorkspace(directory, commit, {
-		// These six Gradle projects are declared in android/settings.gradle. Tracked
+		// These six Gradle projects are modules of android/consumer-host.json. Tracked
 		// files are always authenticated, including files inside output directories.
 		generatedDirectories: [
 			"system",

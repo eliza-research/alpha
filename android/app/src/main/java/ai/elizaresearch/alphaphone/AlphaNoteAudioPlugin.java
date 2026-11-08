@@ -1,46 +1,57 @@
 package ai.elizaresearch.alphaphone;
 
+import ai.eliza.plugins.media.RecordingStore;
 import android.media.MediaPlayer;
-import android.util.AtomicFile;
 import com.getcapacitor.*;
 import com.getcapacitor.annotation.CapacitorPlugin;
 import java.io.*;
-import java.nio.charset.StandardCharsets;
 import java.util.*;
 import org.json.JSONObject;
 
-/** Durable, device-local voice notes. No paths, audio bytes or credentials cross the JS bridge. */
+/**
+ * Durable, device-local voice notes. No paths, audio bytes or credentials cross the JS bridge.
+ * Storage, receipts and owner fences are the shared recording store (elizaOS plugin-native-media
+ * RecordingStore); Alpha keeps its installed names, playback and the Notes Trash backstop.
+ */
 @CapacitorPlugin(name="AlphaNoteAudio")
 public class AlphaNoteAudioPlugin extends Plugin {
  private MediaPlayer player; private String playingId; private PluginCall preparing;
  private final android.os.Handler main=new android.os.Handler(android.os.Looper.getMainLooper());
- private static final Object METADATA_LOCK=new Object();
  private final java.util.concurrent.ExecutorService migrationWorker=java.util.concurrent.Executors.newSingleThreadExecutor();
  private volatile boolean destroyed;
  private volatile String migrationState="pending";
  private volatile int migrationFailures;
- private static String id(String value){if(value==null||!value.matches("[A-Za-z0-9_-]{1,100}"))throw new IllegalArgumentException();return value;}
- private File directory(){return directory(getContext());}
- private static File directory(android.content.Context context){File d=new File(context.getNoBackupFilesDir(),"note-audio");if(!d.isDirectory()&&!d.mkdirs())throw new IllegalStateException();return d;}
+ /**
+  * Alpha's installed recording store: note-audio in no-backup storage, metadata in the
+  * Keystore-backed slot store under note-audio-metadata:v1:, owned by noteId. These names predate
+  * the shared store and stay fixed so existing recordings and receipts keep resolving.
+  */
+ static RecordingStore recordings(android.content.Context context){return recordings(context,CLIPS);}
+ /**
+  * Both bounds keep the orphan-recording backstop (AUDIO_BACKSTOP_MS, twice Recently deleted
+  * retention), so a recording a restorable note still uses is never erased first. Clips keep the
+  * shared clip bounds; a Notes recording (AlphaNoteRecorder) has no length limit and its
+  * transcript fits the 512 KiB metadata slot. Requires patches/eliza/notes-recording-store.patch.
+  */
+ static final RecordingStore.Limits CLIPS=new RecordingStore.Limits(RecordingStore.MAX_BYTES,RecordingStore.MAX_DURATION_MS,RecordingStore.MAX_TRANSCRIPT,AlphaNoteAudioPlugin.AUDIO_BACKSTOP_MS);
+ static final RecordingStore.Limits NOTE_RECORDINGS=new RecordingStore.Limits(Long.MAX_VALUE,Long.MAX_VALUE,150_000,AlphaNoteAudioPlugin.AUDIO_BACKSTOP_MS);
+ private static RecordingStore recordings(android.content.Context context,RecordingStore.Limits limits){
+  AlphaCredentialStore store=new AlphaCredentialStore(context);
+  return new RecordingStore(new File(context.getNoBackupFilesDir(),"note-audio"),"note-audio-metadata:v1:","noteId",new RecordingStore.Slots(){
+   @Override public String read(String slot)throws Exception{return store.readCredentialSlot(slot);}
+   @Override public void write(String slot,String value)throws Exception{store.writeCredentialSlot(slot,value);}
+   @Override public void remove(String slot)throws Exception{store.removeCredentialSlot(slot);}
+  },limits);
+ }
+ private RecordingStore recordings(){return recordings(getContext());}
  @Override public void load(){
   // Plugin registration/startup must not synchronously decrypt an entire old collection.
   main.post(()->{if(destroyed)return;if(PluginWorkers.submit(migrationWorker,this::migrateLegacyMetadata,()->migrationState="stopped"))PluginWorkers.submit(migrationWorker,this::sweepTrashOnStart,()->migrationState="stopped");});
  }
  private void migrateLegacyMetadata(){
   migrationState="running";
-  try{
-   File[] records=directory().listFiles((dir,name)->name.endsWith(".json"));
-   if(records==null)throw new IOException("Recording directory unavailable");
-   for(File record:records){
-    if(destroyed||Thread.currentThread().isInterrupted())return;
-    try{synchronized(METADATA_LOCK){
-     if(destroyed)return;
-     String key=record.getName().substring(0,record.getName().length()-5);
-     JSONObject value=read(key);long deleted=value.optLong("deletedAt",0);
-     if(deleted>0&&System.currentTimeMillis()-deleted>30L*24*60*60*1000){if(!audio(key).exists()||audio(key).delete()){if(!value.has("deletionOperations")){secure().removeCredentialSlot(slot(key));metadata(key).delete();}else{value.put("transcript","");write(key,value);}}}
-    }}catch(Exception retained){migrationFailures++;/* Keep both copies; explicit status reports recovery needed. */}
-   }
-  }catch(Exception retained){migrationFailures++;}
+  try{migrationFailures+=recordings().migrateLegacy(()->destroyed);}
+  catch(Exception retained){migrationFailures++;/* Keep both copies; explicit status reports recovery needed. */}
   finally{migrationState=destroyed?"stopped":migrationFailures>0?"needs-recovery":"complete";}
  }
  private void sweepTrashOnStart(){
@@ -49,8 +60,10 @@ public class AlphaNoteAudioPlugin extends Plugin {
   try{sweepExpiredTrash(getContext(),System.currentTimeMillis());}catch(Exception retained){/* The renderer and the periodic sweep retry. */}
  }
 
- /** Product Trash retention, matching notes-trash-policy.ts: three days after deletion. */
- static final long NOTES_TRASH_RETENTION_MS=3L*24*60*60*1000;
+ /** Product Trash retention, matching notes-trash-policy.ts: thirty days after deletion. */
+ static final long NOTES_TRASH_RETENTION_MS=30L*24*60*60*1000;
+ /** Orphan-recording backstop: twice Trash retention, so the Trash rules (live references, review) always decide first. */
+ static final long AUDIO_BACKSTOP_MS=2*NOTES_TRASH_RETENTION_MS;
  static final String NOTES_TRASH_SLOT="notes-trash:v1:device",NOTES_SLOT="notes-records:v1:device",PENDING_AUDIO_SLOT="notes-audio-deletions:v1:device";
  private static final String TRASH_PREFIX="{\"version\":1,\"entries\":[",TRASH_SUFFIX="]}";
  private static final String TRASH_WORK="alpha-notes-trash-backstop";
@@ -74,7 +87,7 @@ public class AlphaNoteAudioPlugin extends Plugin {
  }
 
  /**
-  * Native backstop for Notes Trash. Erases the recording of each Trash entry whose three days
+  * Native backstop for Notes Trash. Erases the recording of each Trash entry whose thirty days
   * have elapsed, then removes those entries from the encrypted Trash slot, under the same rules
   * as the renderer's maintenance: a note that is saved again, a recording that any saved note
   * still references, and a deletion still under review are never touched. Any unreadable or
@@ -84,8 +97,8 @@ public class AlphaNoteAudioPlugin extends Plugin {
   * Returns the number of entries removed.
   */
  static int sweepExpiredTrash(android.content.Context context,long now)throws Exception{
-  // Sweeps serialize among themselves. METADATA_LOCK, which the main-thread plugin methods also
-  // take, is held only while one recording is erased, never while large slots are decrypted.
+  // Sweeps serialize among themselves. The recording store's lock, which the main-thread plugin
+  // methods also take, is held only while one recording is erased, never while large slots are decrypted.
   synchronized(SWEEP_LOCK){
    AlphaCredentialStore store=new AlphaCredentialStore(context);
    String raw=store.readCredentialSlot(NOTES_TRASH_SLOT);if(raw==null)return 0;
@@ -104,7 +117,7 @@ public class AlphaNoteAudioPlugin extends Plugin {
     if(due&&audio!=null){
      String audioId=audio.optString("audioId");
      due=!pending.has(id)&&!liveAudio.contains(audioId);
-     if(due)synchronized(METADATA_LOCK){due=purgeTrashedLocked(context,store,audioId,noteId,id);}
+     if(due)due=recordings(context).purgeTrashed(audioId,noteId,id);
     }
     if(due)removed++;else kept.add(span);
    }
@@ -114,20 +127,6 @@ public class AlphaNoteAudioPlugin extends Plugin {
    next.append(TRASH_SUFFIX);
    return store.compareExchangeCredentialSlot(NOTES_TRASH_SLOT,raw,next.toString())?removed:0;
   }
- }
- /** Same effect and receipt as purge(): only the deletion that owns the audio trash may erase it. */
- private static boolean purgeTrashedLocked(android.content.Context context,AlphaCredentialStore store,String audioId,String noteId,String operation){
-  try{
-   if(operation==null||!operation.matches(OPERATION))return false;
-   JSONObject record=readLocked(context,store,id(audioId));
-   if(!noteId.equals(record.optString("noteId")))return false;
-   JSONObject receipts=record.optJSONObject("deletionOperations");String prior=receipts==null?"unknown":receipts.optString(operation,"unknown");
-   if(prior.equals("purged"))return true;
-   if(!prior.equals("removed")||record.optLong("deletedAt",0)<=0||!operation.equals(record.optString("activeDeletionOperation")))return false;
-   File bytes=audio(context,audioId);if(bytes.exists()&&!bytes.delete())return false;
-   record.put("transcript","");receipts.put(operation,"purged");record.put("deletionOperations",receipts);
-   writeLocked(context,store,audioId,record);return true;
-  }catch(Exception retained){return false;}
  }
  /**
   * Native backstop for a permanent voice deletion ("Delete forever without Trash") that process
@@ -175,7 +174,7 @@ public class AlphaNoteAudioPlugin extends Plugin {
       JSONObject tombstone=tombstones.getJSONObject(i);
       tombstoned=noteId.equals(tombstone.optString("id"))&&target.getString("revision").equals(tombstone.optString("revision"))&&operation.equals(tombstone.optString("operationId"));
      }
-     if(tombstoned)synchronized(METADATA_LOCK){done=finishPermanentLocked(context,store,audioId,noteId,operation,now);}
+     if(tombstoned)done=recordings(context).finishPermanent(audioId,noteId,operation,now);
     }catch(Exception retained){done=false;}
     if(done)retired++;else kept.add(member);
    }
@@ -185,27 +184,6 @@ public class AlphaNoteAudioPlugin extends Plugin {
    next.append('}');
    return store.compareExchangeCredentialSlot(PENDING_AUDIO_SLOT,raw,next.toString())?retired:0;
   }
- }
- /**
-  * The remaining recording steps of a permanent deletion whose tombstone is committed, with the
-  * same receipts as remove() then purge(). Caller holds METADATA_LOCK. True only when the
-  * recording is confirmed erased under this operation.
-  */
- private static boolean finishPermanentLocked(android.content.Context context,AlphaCredentialStore store,String audioId,String noteId,String operation,long now){
-  try{
-   JSONObject record=readLocked(context,store,id(audioId));
-   if(!audioId.equals(record.optString("audioId"))||!noteId.equals(record.optString("noteId")))return false;
-   JSONObject receipts=record.optJSONObject("deletionOperations");String prior=receipts==null?"unknown":receipts.optString(operation,"unknown");
-   if(prior.equals("unknown")){
-    // Never moved. A recording already in the audio trash belongs to another deletion.
-    if(record.has("deletedAt")||record.has("activeDeletionOperation"))return false;
-    if(receipts==null)receipts=new JSONObject();
-    if(receipts.length()>=128)return false;
-    record.put("deletedAt",now);record.put("activeDeletionOperation",operation);receipts.put(operation,"removed");record.put("deletionOperations",receipts);
-    writeLocked(context,store,audioId,record);
-   }else if(!prior.equals("removed")&&!prior.equals("purged"))return false;
-   return purgeTrashedLocked(context,store,audioId,noteId,operation);
-  }catch(Exception retained){return false;}
  }
  /**
   * Top-level entry substrings of a Trash document written by JSON.stringify, or null when the
@@ -252,55 +230,33 @@ public class AlphaNoteAudioPlugin extends Plugin {
 
  @PluginMethod public void migrationStatus(PluginCall call){JSObject result=new JSObject();result.put("state",migrationState);result.put("failedRecords",migrationFailures);call.resolve(result);}
 
- private File audio(String value){return audio(getContext(),value);}
- private static File audio(android.content.Context context,String value){return new File(directory(context),id(value)+".audio");}
- private AtomicFile metadata(String value){return metadata(getContext(),value);}
- private static AtomicFile metadata(android.content.Context context,String value){return new AtomicFile(new File(directory(context),id(value)+".json"));}
- /** The same Keystore-backed slot store the AlphaConnection bridge uses, reachable without a bridge. */
- private AlphaCredentialStore secure(){return new AlphaCredentialStore(getContext());}
- private static String slot(String value){return "note-audio-metadata:v1:"+id(value);}
- private void write(String value,JSONObject record)throws Exception {synchronized(METADATA_LOCK){writeLocked(getContext(),secure(),value,record);}}
- private static void writeLocked(android.content.Context context,AlphaCredentialStore store,String value,JSONObject record)throws Exception {
-  String serialized=record.toString();store.writeCredentialSlot(slot(value),serialized);
-  if(!serialized.equals(store.readCredentialSlot(slot(value))))throw new IOException("Recording metadata commit unconfirmed");
-  // Only replace the legacy file after durable encrypted storage has been read back.
-  atomic(metadata(context,value),"{\"encrypted\":1}".getBytes(StandardCharsets.UTF_8));
- }
- private JSONObject read(String value)throws Exception {synchronized(METADATA_LOCK){return readLocked(getContext(),secure(),value);}}
- private static JSONObject readLocked(android.content.Context context,AlphaCredentialStore store,String value)throws Exception {
-  String encrypted=store.readCredentialSlot(slot(value));
-  JSONObject legacy=null;AtomicFile metadata=metadata(context,value);
-  if(metadata.getBaseFile().exists()||new File(metadata.getBaseFile()+".bak").exists()){
-   try(InputStream in=metadata.openRead()){ByteArrayOutputStream bytes=new ByteArrayOutputStream();copyBounded(in,bytes,512*1024);legacy=new JSONObject(new String(bytes.toByteArray(),StandardCharsets.UTF_8));}
-  }
-  if(legacy!=null&&!legacy.has("encrypted")){
-   String original=legacy.toString();
-   if(encrypted!=null&&!encrypted.equals(original))throw new IOException("Recording metadata copies disagree; originals retained");
-   writeLocked(context,store,value,legacy);return legacy;
-  }
-  if(encrypted==null)throw new IOException("Recording metadata unavailable");
-  return new JSONObject(encrypted);
- }
- private static void copyBounded(InputStream in,OutputStream out,int limit)throws IOException {byte[] buffer=new byte[8192];int total=0,count;while((count=in.read(buffer))!=-1){if(count>limit-total)throw new IOException("Recording data exceeds limit");out.write(buffer,0,count);total+=count;}}
- private static void atomic(AtomicFile file,byte[] bytes)throws Exception {FileOutputStream out=null;try{out=file.startWrite();out.write(bytes);file.finishWrite(out);}catch(Exception error){if(out!=null)file.failWrite(out);throw error;}}
  /** Only native recorders can import a stopped clip; the renderer cannot nominate a path. */
- JSObject retain(File source,String recordingId,String noteId,long duration,String transcript)throws Exception {synchronized(METADATA_LOCK){return retainLocked(source,recordingId,noteId,duration,transcript);}}
- private JSObject retainLocked(File source,String recordingId,String noteId,long duration,String transcript)throws Exception {
-  id(recordingId);id(noteId);if(source==null||!source.isFile()||source.length()<1||source.length()>4*1024*1024||duration<1||duration>60000||transcript==null||transcript.length()>64000)throw new IOException();
-  File target=audio(recordingId);JSONObject record;
-  if(!target.isFile()&&secure().readCredentialSlot(slot(recordingId))!=null&&read(recordingId).has("deletionOperations"))throw new IOException("Recording identity retired");
-  if(target.isFile()&&(metadata(recordingId).getBaseFile().isFile()||secure().readCredentialSlot(slot(recordingId))!=null)) {record=read(recordingId);if(!noteId.equals(record.optString("noteId"))||record.optLong("deletedAt",0)>0)throw new IOException();}
-  else {
-   File temp=new File(directory(),recordingId+".pending");
-   try(InputStream in=new FileInputStream(source);FileOutputStream out=new FileOutputStream(temp)){copyBounded(in,out,4*1024*1024);out.getFD().sync();}catch(Exception error){temp.delete();throw error;}
-   if(!temp.renameTo(target)){temp.delete();throw new IOException();}
-   record=new JSONObject();record.put("audioId",recordingId);record.put("noteId",noteId);record.put("durationMs",duration);record.put("createdAt",System.currentTimeMillis());record.put("mimeType","audio/mp4");
-  }
-  record.put("transcript",transcript);write(recordingId,record);return JSObject.fromJSONObject(record);
+ JSObject retain(File source,String recordingId,String noteId,long duration,String transcript)throws Exception {return JSObject.fromJSONObject(recordings().retain(source,recordingId,noteId,duration,transcript));}
+ /**
+  * Joins a Notes recording's segments and keeps them for the note, on this plugin's worker (after
+  * the startup metadata pass). The renderer discards the segments once the note itself is saved.
+  */
+ void saveNoteRecording(PluginCall call,AlphaNoteRecorder recorder,String id){
+  PluginWorkers.submit(migrationWorker,()->{
+   try{File joined=recorder.joined(id);call.resolve(retainNoteRecording(joined,id,call.getString("noteId"),recorder.totalMs(),call.getString("transcript")));}
+   catch(Exception error){call.reject("The recording could not be saved.");}
+  },()->call.reject("The recording could not be saved."));
  }
- @PluginMethod public void describe(PluginCall call){try{call.resolve(JSObject.fromJSONObject(read(call.getString("audioId"))));}catch(Exception error){call.reject("Saved recording is unavailable");}}
+ /**
+  * A Notes recording has no length limit: the joined file is moved into place, not copied. The
+  * note holds the whole transcript; the recording's metadata keeps at most its bounded prefix, so
+  * a long recording's transcript never stops the audio from being saved.
+  */
+ JSObject retainNoteRecording(File source,String recordingId,String noteId,long duration,String transcript)throws Exception {return JSObject.fromJSONObject(recordings(getContext(),NOTE_RECORDINGS).retain(source,recordingId,noteId,duration,transcriptPrefix(transcript,NOTE_RECORDINGS.maxTranscript),true));}
+ /** At most `max` UTF-16 units, never ending inside a surrogate pair. */
+ static String transcriptPrefix(String transcript,int max){
+  if(transcript==null||transcript.length()<=max)return transcript;
+  int end=max;if(end>0&&Character.isHighSurrogate(transcript.charAt(end-1)))end--;
+  return transcript.substring(0,end);
+ }
+ @PluginMethod public void describe(PluginCall call){try{call.resolve(JSObject.fromJSONObject(recordings().describe(call.getString("audioId"))));}catch(Exception error){call.reject("Saved recording is unavailable");}}
  @PluginMethod public void play(PluginCall call){main.post(()->{try{
-  String key=id(call.getString("audioId"));if(read(key).optLong("deletedAt",0)>0)throw new IOException();File file=audio(key);if(!file.isFile())throw new IOException();stop();
+  String key=RecordingStore.id(call.getString("audioId"));File file=recordings().playable(key);stop();
   MediaPlayer next=new MediaPlayer();player=next;playingId=key;preparing=call;next.setDataSource(file.getAbsolutePath());
   next.setOnPreparedListener(p->{if(player!=p)return;try{p.start();JSObject receipt=new JSObject();receipt.put("audioId",key);receipt.put("playing",p.isPlaying());receipt.put("positionMs",p.getCurrentPosition());preparing=null;notifyListeners("started",receipt);call.resolve(receipt);}catch(RuntimeException e){stop();}});
   next.setOnCompletionListener(p->{if(player==p){stop();JSObject event=new JSObject();event.put("audioId",key);notifyListeners("ended",event);}});
@@ -311,40 +267,17 @@ public class AlphaNoteAudioPlugin extends Plugin {
  @PluginMethod public void remove(PluginCall call){changeDeleted(call,true);}
  @PluginMethod public void restore(PluginCall call){changeDeleted(call,false);}
  /** Notes Trash expiry or "Delete forever": erase the bytes of a recording this operation already moved to the audio trash. */
- @PluginMethod public void purge(PluginCall call){main.post(()->{try{synchronized(METADATA_LOCK){
-  String key=id(call.getString("audioId")),operation=operationId(call);JSONObject record=read(key);
-  if(!record.getString("noteId").equals(id(call.getString("noteId"))))throw new IOException();
-  JSONObject receipts=record.optJSONObject("deletionOperations");String prior=receipts==null?"unknown":receipts.optString(operation,"unknown");
-  if(prior.equals("purged")){call.resolve(operationReceipt(record,operation,prior));return;}
-  // Only the operation that owns the current audio trash may erase it. A restored recording is never purged.
-  if(!prior.equals("removed")||record.optLong("deletedAt",0)<=0||!operation.equals(record.optString("activeDeletionOperation")))throw new IOException("Recording is not in this deletion");
-  if(key.equals(playingId))stop();
-  if(audio(key).exists()&&!audio(key).delete())throw new IOException("Recording bytes retained");
-  record.put("transcript","");receipts.put(operation,"purged");record.put("deletionOperations",receipts);
-  write(key,record);call.resolve(operationReceipt(record,operation,"purged"));
- }}catch(Exception error){call.reject("Saved recording could not be erased");}});}
- private static String operationId(PluginCall call){String value=call.getString("operationId");if(value==null||!value.matches("[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}"))throw new IllegalArgumentException();return value;}
- private JSObject operationReceipt(JSONObject record,String operation,String status)throws Exception{JSObject result=new JSObject();result.put("operationId",operation);result.put("audioId",record.getString("audioId"));result.put("noteId",record.getString("noteId"));result.put("status",status);return result;}
- @PluginMethod public void deletionStatus(PluginCall call){try{synchronized(METADATA_LOCK){JSONObject record=read(id(call.getString("audioId")));if(!record.getString("noteId").equals(id(call.getString("noteId"))))throw new IOException();String operation=operationId(call);JSONObject receipts=record.optJSONObject("deletionOperations");call.resolve(operationReceipt(record,operation,receipts==null?"unknown":receipts.optString(operation,"unknown")));}}catch(Exception error){call.reject("Recording operation is unavailable");}}
- private void changeDeleted(PluginCall call,boolean deleted){main.post(()->{try{synchronized(METADATA_LOCK){
-  String key=id(call.getString("audioId")),operation=operationId(call);JSONObject record=read(key);
-  if(!record.getString("noteId").equals(id(call.getString("noteId"))))throw new IOException();
-  JSONObject receipts=record.optJSONObject("deletionOperations");if(receipts==null)receipts=new JSONObject();
-  String prior=receipts.optString(operation,"unknown");
-  // Retired operations never regain permission to delete, even after renderer death.
-  if(prior.equals("restored")||(deleted&&(prior.equals("removed")||prior.equals("purged")))){call.resolve(operationReceipt(record,operation,prior));return;}
-  if(prior.equals("purged"))throw new IOException("Recording erased");
-  if(!receipts.has(operation)&&receipts.length()>=128)throw new IOException("Recording operation history full");
-  boolean legacyRestore=!deleted&&record.optLong("deletedAt",0)>0&&!record.has("activeDeletionOperation")&&!record.has("deletionOperations");
-  if(record.has("deletedAt")&&!operation.equals(record.optString("activeDeletionOperation"))&&!legacyRestore)throw new IOException("Another deletion owns recording");
-  if(!deleted&&record.optLong("deletedAt",0)>0&&System.currentTimeMillis()-record.getLong("deletedAt")>30L*24*60*60*1000)throw new IOException("Recording expired");
-  if(key.equals(playingId))stop();
-  if(deleted){record.put("deletedAt",System.currentTimeMillis());record.put("activeDeletionOperation",operation);}
-  else {if(!audio(key).isFile())throw new IOException();record.remove("deletedAt");record.remove("activeDeletionOperation");}
-  String status=deleted?"removed":"restored";receipts.put(operation,status);record.put("deletionOperations",receipts);
-  // Receipt and effect share one encrypted metadata commit. No replay tombstone eviction.
-  write(key,record);call.resolve(operationReceipt(record,operation,status));
- }}catch(Exception error){call.reject("Saved recording could not be updated");}});}
+ @PluginMethod public void purge(PluginCall call){main.post(()->{try{
+  String key=RecordingStore.id(call.getString("audioId"));
+  call.resolve(JSObject.fromJSONObject(recordings().purge(key,call.getString("noteId"),call.getString("operationId"),()->{if(key.equals(playingId))stop();})));
+ }catch(Exception error){call.reject("Saved recording could not be erased");}});}
+ @PluginMethod public void deletionStatus(PluginCall call){try{call.resolve(JSObject.fromJSONObject(recordings().deletionStatus(call.getString("audioId"),call.getString("noteId"),call.getString("operationId"))));}catch(Exception error){call.reject("Recording operation is unavailable");}}
+ /** Receipt and effect share one encrypted metadata commit; retired operations never regain permission. */
+ private void changeDeleted(PluginCall call,boolean deleted){main.post(()->{try{
+  String key=RecordingStore.id(call.getString("audioId")),noteId=call.getString("noteId"),operation=call.getString("operationId");
+  Runnable stopPlayback=()->{if(key.equals(playingId))stop();};
+  call.resolve(JSObject.fromJSONObject(deleted?recordings().remove(key,noteId,operation,stopPlayback):recordings().restore(key,noteId,operation,stopPlayback)));
+ }catch(Exception error){call.reject("Saved recording could not be updated");}});}
  private void stop(){if(preparing!=null){preparing.reject("Playback cancelled");preparing=null;}if(player!=null){player.release();player=null;}playingId=null;}
  @Override protected void handleOnPause(){main.post(this::stop);}
  @Override protected void handleOnDestroy(){destroyed=true;migrationWorker.shutdownNow();migrationState="stopped";main.post(this::stop);}

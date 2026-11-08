@@ -62,6 +62,7 @@ public class WorkManager {
     ai.elizaresearch.alphaphone.DeletionTestPorts.schedule(request.delay);
   }
 }`,
+    'ai/elizaresearch/alphaphone/NativeNotificationDiagnostics.java': `package ai.elizaresearch.alphaphone; public class NativeNotificationDiagnostics {public static void ownerRead(String path,int status){}}`,
     'ai/elizaresearch/alphaphone/DeletionWorker.java': `package ai.elizaresearch.alphaphone;
 public class DeletionWorker {}`,
     'ai/elizaresearch/alphaphone/AlphaCredentialStore.java': `package ai.elizaresearch.alphaphone;

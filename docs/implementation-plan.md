@@ -1,5 +1,17 @@
 # Alpha Phone implementation plan
 
+## October 27 consolidation requirement
+
+The owner has requested shared upstream ownership of all common application
+behavior. Follow the [unification audit](unification-audit-2026-10-27.md) alongside
+the feature plan below. Alpha and Eliza must use one mobile shell, canonical
+actions and context, native plugins and Pixel 10a / Android 17 target; Alpha retains
+its theme, character and installed product identity. Native local models use
+libelizainference, with Paradee, Phonon-2 and local embeddings; text inference
+uses Cerebras. The explicit Cloud QA profile remains separate from native
+qualification. Move behavior upstream before deleting the local implementation,
+and preserve all existing data, approval, permission and cancellation contracts.
+
 Updated 2026-10-12 from the owner's answers to all 32 decision issues. This is the
 active implementation plan; conflicting older plans are historical. Approved policy
 is in [decisions](decisions.md#october-12-owner-decisions); every concrete TODO,
@@ -67,6 +79,10 @@ Independent preparation can proceed concurrently; these rows are not instruction
 to defer AOSP listening or Cloud Maps out of MVP. Complete prerequisite contracts
 before integrating a consumer. Subscription pricing/quotas and final model/backend
 selection are explicit tasks, with performance evidence before admission.
+The November 1 owner correction makes subscription status and included usage the
+account screen's primary facts. Hide the credit balance and top-up UI; preserve
+explicit code redemption, monthly plan management and honest temporary-access dates.
+
 
 ## Voice state and runtime design
 

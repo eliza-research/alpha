@@ -19,20 +19,26 @@ android {
  sourceSets.main.assets.srcDir layout.buildDirectory.dir('generated/video-source-assets')
  compileOptions { sourceCompatibility JavaVersion.VERSION_21; targetCompatibility JavaVersion.VERSION_21 }
 }
-// AGP uses source directories rather than Java include filters. Stage only these
-// exact production files and bind their hashes into the witness APK.
+// AGP uses source directories rather than Java include filters. Stage only Alpha's installed media
+// configuration verbatim; the editor itself is the shared native media module, compiled from the
+// admitted native source. Bind the exact compiled editor sources and the configuration into the
+// witness APK.
+def nativeMediaRoot={ new File(gradle.ext.nativePatchReceipt.parentFile, 'plugins/plugin-native-media/android/src/main/java/ai/eliza/plugins/media') }
 def stageVideoSources=tasks.register('stageVideoSources',Copy){
- from('../app/src/main/java'){include '**/VideoCopyEdits.java','**/VideoEditSpec.java','**/PluginWorkers.java'}
+ from('../app/src/main/java'){include '**/AlphaMediaConfig.java'}
  into layout.buildDirectory.dir('generated/video-source')
  doLast {
+  def digest={ f -> java.security.MessageDigest.getInstance('SHA-256').digest(f.bytes).encodeHex().toString() }
   def files=[:]
-  ['VideoCopyEdits.java','VideoEditSpec.java','PluginWorkers.java'].each { name ->
-   def relative='ai/elizaresearch/alphaphone/'+name
-   def source=file('../app/src/main/java/'+relative)
-   def target=layout.buildDirectory.file('generated/video-source/'+relative).get().asFile
-   def digest={ f -> java.security.MessageDigest.getInstance('SHA-256').digest(f.bytes).encodeHex().toString() }
-   if(digest(source)!=digest(target))throw new GradleException('Video witness source changed')
-   files[relative]=digest(source)
+  def relative='ai/elizaresearch/alphaphone/AlphaMediaConfig.java'
+  def source=file('../app/src/main/java/'+relative)
+  def target=layout.buildDirectory.file('generated/video-source/'+relative).get().asFile
+  if(digest(source)!=digest(target))throw new GradleException('Video witness source changed')
+  files[relative]=digest(source)
+  ['VideoCopyEdits.java','VideoEditSpec.java','OwnedMediaConfig.java'].each { name ->
+   def shared=new File(nativeMediaRoot(),name)
+   if(!shared.isFile())throw new GradleException('Shared video editor source is missing: '+name)
+   files['plugins/plugin-native-media/'+name]=digest(shared)
   }
   def receipt=layout.buildDirectory.file('generated/video-source-assets/native-video-source.json').get().asFile
   receipt.parentFile.mkdirs();receipt.text=groovy.json.JsonOutput.prettyPrint(groovy.json.JsonOutput.toJson([media3:'1.11.1',files:files,verbatim:true]))
@@ -41,6 +47,7 @@ def stageVideoSources=tasks.register('stageVideoSources',Copy){
 tasks.named('preBuild').configure {dependsOn stageVideoSources}
 dependencies {
  implementation project(':capacitor-android')
+ implementation project(':eliza-owned-media')
  implementation 'androidx.media3:media3-transformer:1.11.1'
  implementation 'androidx.media3:media3-effect:1.11.1'
  androidTestImplementation 'androidx.test:runner:1.6.2'

@@ -1,0 +1,40 @@
+{
+  "$comment": "Owner-bound renderer-to-agent routes: the single source for the Android request gate (OwnerRoutes.java, packaged as the owner-routes.json asset) and the renderer (apps/app/src/runtime/owner-route-policy.ts). A group claims every path equal to one of its prefixes or under it ('/' or '?'); the longest claiming prefix wins, and a claimed path no route matches is refused. Every route needs a verified owner; domain validation and mutation authority stay in the Eliza services. '{id}' is one path segment matched by the group's id pattern. A route with a 'query' takes a query of only those keys, percent-decoded and unique, and percent-decodes {id}; a route without one matches the path, any query included, literally.",
+  "unsafe": "[\\\\#\\t\\n\\u000B\\f\\r \\u00A0\\u1680\\u2000-\\u200A\\u2028\\u2029\\u202F\\u205F\\u3000\\uFEFF]",
+  "groups": {
+    "records": {
+      "prefixes": ["/api/notes/state", "/api/views/notes/interact", "/api/lifeops/calendar"],
+      "id": "^[A-Za-z0-9][A-Za-z0-9._:@+-]{0,511}$",
+      "routes": [
+        {"methods": ["GET"], "paths": ["/api/notes/state"]},
+        {"methods": ["POST"], "paths": ["/api/views/notes/interact"]},
+        {"methods": ["POST"], "paths": ["/api/lifeops/calendar/events"], "query": []},
+        {"methods": ["GET", "POST"], "paths": ["/api/lifeops/calendar/sync-control"], "query": []},
+        {"methods": ["GET"], "paths": ["/api/lifeops/calendar/feed", "/api/lifeops/calendar/calendars", "/api/lifeops/calendar/next-context"],
+         "query": ["mode", "side", "grantId", "calendarId", "includeHiddenCalendars", "timeMin", "timeMax", "timeZone", "forceSync"]},
+        {"methods": ["PATCH"], "paths": ["/api/lifeops/calendar/events/{id}"], "query": ["mode", "side", "grantId", "calendarId"]},
+        {"methods": ["DELETE"], "paths": ["/api/lifeops/calendar/events/{id}"],
+         "query": ["mode", "side", "grantId", "calendarId", "recurrenceScope", "notifyAttendees", "expectedProviderVersion", "idempotencyKey", "cancellationMode"]}
+      ]
+    },
+    "automations": {
+      "prefixes": ["/api/automations", "/api/lifeops", "/api/triggers"],
+      "id": "^(?!.*\\.\\.)[A-Za-z0-9][A-Za-z0-9._:-]{0,199}$",
+      "routes": [
+        {"methods": ["GET"], "paths": ["/api/automations", "/api/lifeops/reminders", "/api/lifeops/scheduled-tasks?ownerVisibleOnly=1", "/api/lifeops/scheduled-tasks/{id}", "/api/triggers/{id}", "/api/triggers/{id}/runs"]},
+        {"methods": ["POST"], "paths": ["/api/lifeops/definitions", "/api/triggers", "/api/lifeops/occurrences/{id}/snooze", "/api/triggers/{id}/execute",
+          "/api/lifeops/scheduled-tasks/{id}/snooze", "/api/lifeops/scheduled-tasks/{id}/skip", "/api/lifeops/scheduled-tasks/{id}/complete",
+          "/api/lifeops/scheduled-tasks/{id}/dismiss", "/api/lifeops/scheduled-tasks/{id}/escalate", "/api/lifeops/scheduled-tasks/{id}/acknowledge",
+          "/api/lifeops/scheduled-tasks/{id}/edit", "/api/lifeops/scheduled-tasks/{id}/reopen", "/api/lifeops/scheduled-tasks/{id}/fire"]},
+        {"methods": ["PUT"], "paths": ["/api/lifeops/definitions/{id}", "/api/triggers/{id}"]},
+        {"methods": ["DELETE"], "paths": ["/api/triggers/{id}"]}
+      ]
+    },
+    "approvals": {
+      "prefixes": ["/api/approvals"],
+      "routes": [
+        {"methods": ["GET"], "paths": ["/api/approvals?state=all&limit=500"]}
+      ]
+    }
+  }
+}

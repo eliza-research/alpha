@@ -1,6 +1,7 @@
 /** Product storage contracts qualified across Chromium, Firefox and WebKit. */
 export const STORAGE_SPECS = Object.freeze([
   "test/browser/assistant-draft-storage.spec.ts",
+  "test/browser/assistant-draft-recovery.spec.ts",
   "test/browser/device-storage-migration.spec.ts",
   "test/browser/password-provider-storage.spec.ts",
   "test/browser/album-storage-migration.spec.ts",

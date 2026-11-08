@@ -2,7 +2,7 @@ import test from 'node:test';import assert from 'node:assert/strict';import {rea
 const source=readFileSync('apps/app/src/prototype/browser-adapter.ts','utf8');
 const region=source.slice(source.indexOf('// host-modal:begin'),source.indexOf('// host-modal:end'));
 assert.ok(region.length>100,'host-modal region is present');
-const {hostModalOpen}=await import('data:text/javascript;base64,'+Buffer.from(stripTypeScriptTypes(region.replace('const hostModalOpen','export const hostModalOpen'),{mode:'strip'})).toString('base64'));
+const {hostModalOpen}=await import('data:text/javascript;base64,'+Buffer.from(stripTypeScriptTypes(region.replace('const hostModalOpen','export const hostModalOpen'),{mode:'transform'})).toString('base64'));
 const page=present=>({querySelector:selector=>selector.split(',').map(part=>part.trim()).some(part=>present.includes(part))?{}:null});
 
 test('a modal host layer hides the native browser page',()=>{

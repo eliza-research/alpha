@@ -1,13 +1,15 @@
+import {serviceInputs} from './source-inputs.mjs';
 import assert from 'node:assert/strict';
 import {build} from 'esbuild';
 import {chromium} from '@playwright/test';
-import {createReadingSupport} from '../../../../apps/app/src/browser/reading-capability.ts';
+import {createReadingSupport} from '../../../../.eliza/client-features/plugins/plugin-native-browser-surface/src/page-reading.ts';
 import {checkTraces, captureInputs} from '../check-traces.mjs';
 import {action, deferred} from './support.mjs';
 
-export async function readingRefinement() {
-  const sources = ['apps/app/src/browser/reading-capability.ts', 'apps/app/src/browser/content-question.ts', 'specs/quint/refinement/services/reading.mjs', 'specs/quint/refinement/services/support.mjs'];
-  const driverHashes = captureInputs(sources);
+export async function readingRefinement(extraSources = []) {
+  const sources = ['.eliza/client-features/plugins/plugin-native-browser-surface/src/page-reading.ts', 'apps/app/src/browser/content-question.ts', 'specs/quint/refinement/services/reading.mjs', 'specs/quint/refinement/services/support.mjs'];
+  const inputs = serviceInputs([...sources, ...extraSources]);
+  const driverHashes = captureInputs(inputs);
   const traces = [];
   {
     const gate = deferred(); let queries = 0;
@@ -45,5 +47,5 @@ export async function readingRefinement() {
       traces.push(trace); await page.close();
     }
   } finally { await browser.close(); }
-  return checkTraces({model: 'BrowserReadingState', sources, driverHashes, traces, scope: 'bounded-component', assumptions: ['Real capability probing and question-review DOM execute. Native isolated extraction supplies the reviewed-text precondition for question traces.', 'The actual compose callback is observed; no chat-send API is supplied to the component.', 'Native extraction, speech-token lifetime and WebView isolated-world behavior remain Android instrumentation obligations.']});
+  return checkTraces({model: 'BrowserReadingState', sources: inputs, driverHashes, traces, scope: 'bounded-component', assumptions: ['Real capability probing and question-review DOM execute. Native isolated extraction supplies the reviewed-text precondition for question traces.', 'The actual compose callback is observed; no chat-send API is supplied to the component.', 'Native extraction, speech-token lifetime and WebView isolated-world behavior remain Android instrumentation obligations.']});
 }

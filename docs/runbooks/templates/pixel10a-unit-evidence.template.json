@@ -1,0 +1,59 @@
+{
+  "schema": 1,
+  "template": "pixel10a-unit-evidence",
+  "evidenceClass": "physical-device",
+  "gate": "physicalDevice",
+  "level": "release",
+  "description": "One record per physical Pixel 10a unit for the physicalDevice gate (docs/human-actions.md H-24, docs/runbooks/673-pixel10a-device-day.md). Copy to docs/evidence/pixel10a-<unit alias>-device-<YYYY-MM-DD>.json, fill every UNSET field from the executed run, and keep raw serials, account identifiers and personal data out (hash them). This class never satisfies cuttlefishBoot, and a Cuttlefish record never satisfies this one. Not update, recovery or user acceptance.",
+  "unit": {
+    "alias": "UNSET",
+    "serialSha256": "UNSET",
+    "sku": "UNSET",
+    "hardwareRevision": "UNSET",
+    "ownerConsentToFlashAndWipe": "UNSET"
+  },
+  "operator": "UNSET",
+  "releaseOwner": "Shaw",
+  "startedAtUtc": "UNSET",
+  "endedAtUtc": "UNSET",
+  "image": {
+    "buildFingerprint": "UNSET",
+    "signedTargetFilesSha256": "UNSET",
+    "releaseRecordSha256": "UNSET",
+    "flashedImageSha256": "UNSET",
+    "avbPkmdSha256": "UNSET",
+    "signingRun": "UNSET"
+  },
+  "bootloader": {
+    "decision": "UNSET",
+    "avbCustomKeyFlashed": "UNSET",
+    "lockedAfterFlash": "UNSET",
+    "verifiedBootState": "UNSET",
+    "oemUnlockingLeftEnabled": "UNSET"
+  },
+  "checks": {
+    "bootCompleted": "not run",
+    "selinuxEnforcing": "not run",
+    "alphaSystemApkIsHome": "not run",
+    "recoveryHomePresent": "not run",
+    "provisioningOverlayResolves": "not run",
+    "clockHandlers": "not run",
+    "webview": "not run",
+    "listenerPrivileges": "not run"
+  },
+  "verifierReport": {
+    "command": "node scripts/verify-pixel10a-image.mjs --serial <serial> --user 0 --descriptor <reviewed launcher descriptor> --fingerprint <exact> --apk-path /product/app/AlphaPhone/AlphaPhone.apk --out <new report> --listener",
+    "reportSha256": "UNSET",
+    "exitCode": "UNSET"
+  },
+  "pilotRunbookChecks": {
+    "reference": "docs/pilot-acceptance-runbook.md (Execute on every unit; Performance and stability)",
+    "status": "not run",
+    "notes": "UNSET"
+  },
+  "result": "not run",
+  "imageBooted": false,
+  "signedUpdateApplied": false,
+  "releaseQualified": false,
+  "deviceAcceptanceVerified": false
+}

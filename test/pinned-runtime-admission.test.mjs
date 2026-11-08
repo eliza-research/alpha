@@ -7,6 +7,9 @@ import { pathToFileURL } from "node:url";
 import test from "node:test";
 
 function fixture(t) {
+	const priorFlag=process.env.ELIZA_DEV_ALLOW_TEST_MOCKS;
+	process.env.ELIZA_DEV_ALLOW_TEST_MOCKS="1";
+	t.after(()=>{if(priorFlag===undefined)delete process.env.ELIZA_DEV_ALLOW_TEST_MOCKS;else process.env.ELIZA_DEV_ALLOW_TEST_MOCKS=priorFlag;});
 	const root = fs.mkdtempSync(
 		path.join(os.tmpdir(), "alpha-source-admission-"),
 	);

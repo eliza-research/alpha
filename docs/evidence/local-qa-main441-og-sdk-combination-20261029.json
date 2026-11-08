@@ -1,0 +1,86 @@
+{
+  "scope": "LOCAL_SOURCE_ONLY_QA_PAIR_NOT_PUBLIC_PIN_OR_NATIVE_ADMISSION",
+  "appBase": "cfbfe554d15570b0d9627beef0c58b837e3f6c03",
+  "frozenMain": "44124a057acf99c3fa38b8badfa71eac2d9dc916",
+  "fromSDK": "fbc2d23d4bae0c7086ea529c019e5a47fb7b8352",
+  "toSDK": "0db04d25367889fd0b939f9e5f31d38338a37f94",
+  "SDKTree": "9ca0962fdd47849cc9657ba8bcb17bcb8f1035bf",
+  "SDKChangedPathsVsFrozenMain": [
+    "plugins/plugin-assistant/src/__tests__/stage1/response-format.test.ts",
+    "plugins/plugin-assistant/src/runtime/builtin-field-evaluators.ts",
+    "plugins/plugin-assistant/src/services/message.side-effect-claim.test.ts",
+    "plugins/plugin-assistant/src/services/message/prompts.ts",
+    "plugins/plugin-assistant/src/services/message/side-effect-claims.ts",
+    "plugins/plugin-assistant/src/services/message/stage1-input.reply-reference.test.ts",
+    "plugins/plugin-calendar/src/actions/calendar-handler.ts",
+    "plugins/plugin-calendar/test/eliza-calendar.pglite.test.ts"
+  ],
+  "sameBunLock": true,
+  "nativeSourceEntries": [
+    {
+      "path": "packages/app/scripts/build-helpers/arm64-simd.ts",
+      "modeBlobPathSHA256": "cda373322ea1f76557991fd332fcaf93da1db236218beb602b655fee1d3d2476",
+      "identicalToFrozenMainFbc2": true
+    },
+    {
+      "path": "packages/app/scripts/build-helpers/verify-fused-symbols.ts",
+      "modeBlobPathSHA256": "04d1e4d58a72cd3af9c00f05be7373e0c3e7257d052339c7d5f73c2247021ca2",
+      "identicalToFrozenMainFbc2": true
+    },
+    {
+      "path": "packages/app/scripts/lib/android-bun-artifacts.lock.json",
+      "modeBlobPathSHA256": "384511bca6bd73ec4866c2d7c4590837c6e9a928afa48712839db85357eeff73",
+      "identicalToFrozenMainFbc2": true
+    },
+    {
+      "path": "plugins/plugin-local-inference/native/llama.cpp",
+      "modeBlobPathSHA256": "266f10add79b6b1b42b359c39e617428c8b49e9d1a167eb577c39b61f99277a4",
+      "identicalToFrozenMainFbc2": true
+    },
+    {
+      "path": "plugins/plugin-local-inference/native/android/inputs.json",
+      "modeBlobPathSHA256": "539fd2219f200362f8d79678cca243961412c3cdd332aa62efd73c267fd6ca85",
+      "identicalToFrozenMainFbc2": true
+    },
+    {
+      "path": "plugins/plugin-local-inference/native/android/consumer.gradle",
+      "modeBlobPathSHA256": "f47aa074f162e8fb642975a4e8851d68fc7a211cba28de5c5dd9befe224d367a",
+      "identicalToFrozenMainFbc2": true
+    },
+    {
+      "path": "packages/app/scripts/paradee-voice/build-native.ts",
+      "modeBlobPathSHA256": "8904dd4d171133b5ed55144c8403c32e6e9f6ea3764483ebd195155ca7232633",
+      "identicalToFrozenMainFbc2": true
+    },
+    {
+      "path": "packages/app/scripts/stage-elizavoice-lib.ts",
+      "modeBlobPathSHA256": "f29fc724c233da9f731d052bc0e166b871bd3718d1db4ebfedc0e5c29a702896",
+      "identicalToFrozenMainFbc2": true
+    },
+    {
+      "path": "packages/app/platforms/android/app/src/main/elizavoice-jni",
+      "modeBlobPathSHA256": "3d6174f656ccf5d8205857d64ca8402f6575b01558f7ba6c71b859e122798803",
+      "identicalToFrozenMainFbc2": true
+    },
+    {
+      "path": "packages/app/platforms/android/app/src/main/java/ai/elizaos/app/ElizaVoiceNative.java",
+      "modeBlobPathSHA256": "0ca2b526e372e549824d4ddac3dc098dbb0c752268b2ab3e544057d5f249375c",
+      "identicalToFrozenMainFbc2": true
+    },
+    {
+      "path": "plugins/plugin-local-inference/native",
+      "modeBlobPathSHA256": "7a3ea82834316c05e81d0d5e4b8c054816032b101d4da7d171f9745ff1816375",
+      "identicalToFrozenMainFbc2": true
+    },
+    {
+      "path": "packages/app/scripts/paradee-voice",
+      "modeBlobPathSHA256": "80190ef72c8aec3425278d8d279735ef9e768ae8539212b4723f8185fb5a6cb5",
+      "identicalToFrozenMainFbc2": true
+    }
+  ],
+  "auditScope": "Only resident source binding changes; registry findings/counts/dates/deadlines/holds retained without new advisory or packaged acceptance claim.",
+  "qualification": "Independent source union and incident guard pass; owning SDK qualification still pending at collection time. No execution permitted until that receipt plus normal consumer preparation.",
+  "nativeHold": "Recorded0d9 libraries not admitted at fbc2/new source; fresh engine/model/bothABI/APK/device proof still required.",
+  "normalPreparation": "Fresh exact-pin source/client/worker/dependency/normal import outputs required; no patched SDK under fbc2 or1f2 stamp.",
+  "laterCalendarUpdatePort": "Excluded from this initial OG QA SDK; private370/9cbb fixes remain preserved separately and open."
+}

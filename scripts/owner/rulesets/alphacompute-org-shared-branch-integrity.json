@@ -1,0 +1,29 @@
+{
+  "name": "Shared branch integrity",
+  "target": "branch",
+  "enforcement": "evaluate",
+  "bypass_actors": [],
+  "conditions": {
+    "repository_name": {
+      "include": ["~ALL"],
+      "exclude": [],
+      "protected": false
+    },
+    "ref_name": {
+      "include": [
+        "~DEFAULT_BRANCH",
+        "refs/heads/develop",
+        "refs/heads/dev",
+        "refs/heads/staging",
+        "refs/heads/next",
+        "refs/heads/enterprise"
+      ],
+      "exclude": []
+    }
+  },
+  "rules": [
+    { "type": "deletion" },
+    { "type": "non_fast_forward" },
+    { "type": "required_signatures" }
+  ]
+}

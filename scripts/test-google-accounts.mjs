@@ -47,7 +47,8 @@ test('still-connected and unreadable results remain distinct and notify views to
   assert.equal((await live.helper.disconnect(account.connectionId,signal())).outcome,'still-connected');
   const failed=fixture({async gmailAccounts(){throw Error('Read unavailable');}});
   const result=await failed.helper.disconnect(account.connectionId,signal());
-  assert.deepEqual(result,{outcome:'unconfirmed',accounts:null});
+  assert.deepEqual({outcome:result.outcome,accounts:result.accounts},{outcome:'unconfirmed',accounts:null});
+  assert.equal(result.calendarLifecycle.calendarPause,'unavailable');
   assert.equal(live.events.length,1);assert.equal(failed.events.length,1);
 });
 for(const field of ['sessionId','credentialId','client'])test(`a changed ${field} prevents any request under a stale helper`,async()=>{
@@ -80,12 +81,10 @@ test('abort and an empty connection ID cannot start a disconnect',async()=>{
   await assert.rejects(f.helper.disconnect(' ',signal()),TypeError);
   assert.deepEqual(f.calls,[]);
 });
-test('disconnect copy names the account, keeps personal data and stays short',()=>{
-  const prompt=googleDisconnectConfirmation(account.label,'Nebula');
-  assert.ok(prompt.startsWith(`Disconnect ${account.label}?\n\n`));
-  assert.match(prompt,/Nebula/);assert.doesNotMatch(prompt,/Eliza/);assert.match(prompt,/Gmail/);assert.match(prompt,/Calendar/);
-  assert.match(prompt,/Google account, mail and calendar events are not deleted/);
-  assert.equal(googleDisconnectMessage('disconnected',account.label),`${account.label} disconnected.`);
-  assert.equal(googleDisconnectMessage('still-connected',account.label),`${account.label} is still connected. Try again.`);
-  assert.equal(googleDisconnectMessage('unconfirmed',account.label),`Couldn’t disconnect ${account.label}. Try again.`);
+test('disconnect copy identifies the whole integration and explicitly preserves personal data',()=>{
+  const prompt=googleDisconnectConfirmation(account.label,'Nebula'),done=googleDisconnectMessage('disconnected',account.label,'Nebula');
+  for(const copy of [prompt,done]){assert.match(copy,/Nebula/);assert.doesNotMatch(copy,/Eliza/);assert.match(copy,/Gmail/);assert.match(copy,/Calendar/);assert.match(copy,/Google account, mail and (?:calendar )?events (?:are|were) not deleted/);}
+  assert.match(done,/Google may still list the app/);
+  assert.match(googleDisconnectMessage('still-connected',account.label),/still reports/);
+  assert.match(googleDisconnectMessage('unconfirmed',account.label),/not confirmed/);
 });

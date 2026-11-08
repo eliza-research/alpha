@@ -1,6 +1,7 @@
 import {readFileSync} from 'node:fs';
 import {resolve} from 'node:path';
-import {root} from './support.mjs';
+import {root, captureSources} from './support.mjs';
+import {modelStateInventory, unobservedStateFields} from '../model-state.mjs';
 import {startupPermissions, callbackLanding, preferences, browserSession, permanentVoiceDeletion, draftDispatch} from './portable.mjs';
 import {application, assistantConversation} from './clients.mjs';
 import {durableStore} from './storage.mjs';
@@ -10,7 +11,7 @@ import {filesAndSharing, notificationCollection, developmentHost} from './bounda
 import {checkShellCoordinator} from './shell-coordinator.mjs';
 import {checkVaultCoordinator} from './vault-coordinator.mjs';
 import {checkNotesCoordinator} from './notes-coordinator.mjs';
-import {listFocus} from './list-focus.mjs';
+import {checkNativeViewSubscription} from './native-view-subscription.mjs';
 import {checkRecoveryUI} from './recovery-ui.mjs';
 import {fileURLToPath} from 'node:url';
 
@@ -21,6 +22,7 @@ const adapters = [application, shellNavigation, startupPermissions, assistantCon
 
 /** Component traces, with remaining obligations kept explicit for the aggregate report. */
 export async function runApplicationRefinement() {
+  captureSources(['specs/quint/refinement/model-state.mjs']);
   const receipts = [], obligations = [];
   const manifest = JSON.parse(readFileSync(resolve(root, 'specs/quint/application/manifest.json'), 'utf8'));
   for (const adapter of adapters) {
@@ -31,24 +33,23 @@ export async function runApplicationRefinement() {
   receipts.push(await checkShellCoordinator([fileURLToPath(import.meta.url), 'test/quint-application-refinement.test.mjs']));
   receipts.push(await checkVaultCoordinator([fileURLToPath(import.meta.url), 'test/quint-application-refinement.test.mjs']));
   receipts.push(await checkNotesCoordinator([fileURLToPath(import.meta.url), 'test/quint-application-refinement.test.mjs']));
-  receipts.push(await listFocus([fileURLToPath(import.meta.url), 'test/quint-application-refinement.test.mjs']));
+  receipts.push(await checkNativeViewSubscription([fileURLToPath(import.meta.url), 'test/quint-application-refinement.test.mjs', 'specs/quint/refinement/model-state.mjs']));
   receipts.push(await checkRecoveryUI([fileURLToPath(import.meta.url), 'test/quint-application-refinement.test.mjs']));
-  for (const model of new Set(receipts.map(receipt => receipt.coverageModel || receipt.model))) {
+  for (const entry of (Array.isArray(manifest) ? manifest : manifest.models)) {
+    const model = entry.module;
     const related = receipts.filter(receipt => (receipt.coverageModel || receipt.model) === model);
-    const entry = (Array.isArray(manifest) ? manifest : manifest.models).find(entry => entry.module === model);
-    const source = readFileSync(resolve(root, entry.path), 'utf8');
-    const main = source.slice(source.indexOf(`module ${model} {`)).split('\n}')[0];
-    const fields = [...(main.match(/type State\s*=\s*\{([^}]+)\}/s)?.[1] || '').matchAll(/\b(\w+)\s*:/g)].map(match => match[1]);
-    const checked = new Set(related.flatMap(receipt => receipt.observedFields));
-    const missingFields = fields.filter(field => !checked.has(`s.${field}`));
-    const actions = [...main.matchAll(/^\s*action (\w+)/gm)].map(match => match[1]).filter(name => !['init', 'step', 'check'].includes(name));
+    const inventory = modelStateInventory(resolve(root, entry.path), model);
+    const checked = related.flatMap(receipt => receipt.observedFields);
+    const missingFields = unobservedStateFields(inventory, checked);
     const executed = new Set(related.flatMap(receipt => [...Object.keys(receipt.actions), ...receipt.traceInputs.map(trace => trace.init?.name || 'init')]));
-    const missingActions = actions.filter(action => !executed.has(action));
+    const missingActions = inventory.actions.filter(action => !['init', 'step', 'check'].includes(action) && !executed.has(action));
+    if (!related.length) obligations.push({model, obligation: 'Bind the current source transition relation',
+      reason: 'No current source-executing adapter receipt is available for this model.'});
     if (missingFields.length) obligations.push({model, obligation: `Observe state fields ${missingFields.join(', ')}`,
       reason: 'These fields are outside the current concrete projection. Passing traces do not establish their implementation refinement.'});
     if (missingActions.length) obligations.push({model, obligation: `Exercise source transitions for ${missingActions.join(', ')}`,
       reason: 'No current trace maps these actions to implementation execution.'});
-    for (const assumption of new Set(related.flatMap(receipt => receipt.assumptions.slice(1)))) obligations.push({model, obligation: assumption,
+    for (const assumption of new Set(related.flatMap(receipt => receipt.assumptions))) obligations.push({model, obligation: assumption,
       reason: 'Declared boundary of the adapter. Further source scheduling or platform instrumentation is required.'});
   }
   return {receipts, obligations};

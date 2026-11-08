@@ -16,6 +16,8 @@ async function fixture(extraSources) {
     export {NotesCommitUncertain,isStorageFull} from './apps/app/src/runtime/notes-store.ts';
     export {stampNoteChanges} from './apps/app/src/runtime/note-dates.ts';
     export {AlphaClient} from './apps/app/src/runtime/alpha-client.ts';
+    export {AssistantDraftController} from './apps/app/src/prototype/assistant-draft-controller.ts';
+    export {openExistingDeviceNotes} from './apps/app/src/prototype/legacy-notes-access.ts';
   `},bundle:true,format:'cjs',platform:'node',write:false,metafile:true,
     define:{'import.meta.env':'{"VITE_ELIZA_DEV_ALLOW_TEST_MOCKS":""}'}});
   const sources=[...Object.keys(built.metafile.inputs).filter(path=>!path.startsWith('<')),
@@ -67,15 +69,22 @@ async function fixture(extraSources) {
     Capacitor:{isNativePlatform:()=>true,getPlatform:()=> 'android'},
     NO_AGENT_SEND:'unavailable',RESIDENT_STARTING_NOTICE:'starting',RESIDENT_RECOVERING_NOTICE:'recovering',
     alphaClient:new shared.AlphaClient(),connectionController:{getSnapshot:()=>({}),subscribe:()=>()=>{},
-      cancelViewNavigation(){},setDeviceRecovery(){},setDeviceExecutor(){},setNavigationContext(){},
-      setDeviceReadReview(){},setForegroundExecutor(){}},
+      cancelViewNavigation(){},setDeviceRecovery(){},setDeviceExecutor(){},setNavigationContext(){},setViewInteractionExecutor(){},
+      setDeviceReadReview(){},setForegroundExecutor(){},getAppRecordClient:()=>null,
+      assistantDraftBinding:()=>Promise.reject(Error('Unconfigured draft binding port'))},
     passwordSurfaceOpen:()=>false,currentClockTimeZone:()=> 'UTC',
+    assistantDraftStore: async()=>{throw Error('Unconfigured draft store port');},
+    agentAvailabilityNotice:()=> 'No canonical port in this retained-notes fixture',
     secureConnectionStore:vault,
   });
   adapter.installAgentAdapter(Shell,{notes:{onLeave(){},render(){return {};}}});
   const shell=new Shell();
   shell.componentDidMount();
   await shell.notesReady;
+  shell.api('notes').notesSourceOptions.find(row=>row.id==='legacy').choose();
+  await shell.notesReady;
+  assert.equal(shell.notesSourceMode,'legacy');
+  assert.equal(shell.notesStorageFailed,false);
   const observe=(owner=shell)=>({pending:owner.notesPending,fault:owner.notesStorageFailed,
     uncertain:!!owner.notesCommitUncertain,editor:owner.notes.list[0]?.body,
     confirmed:JSON.parse(owner.notesStore.document.saved.raw).records[0]?.body,
@@ -87,7 +96,9 @@ async function fixture(extraSources) {
     conflict:!!owner.notesDraftConflict});
   return {shell,observe,sources,driverHashes,async reopen(){
     shell.componentWillUnmount();
-    const next=new Shell();next.componentDidMount();await next.notesReady;return next;
+    const next=new Shell();next.componentDidMount();await next.notesReady;
+    next.api('notes').notesSourceOptions.find(row=>row.id==='legacy').choose();
+    await next.notesReady;return next;
   },delay(afterCommit){
     delayed=deferred();commitBeforeFailure=afterCommit;return delayed;
   }};
@@ -107,7 +118,7 @@ export async function probeNotesCoordinator(afterCommit=true,extraSources=[]) {
   assert.equal(f.observe().uncertain,true);
   assert.equal(f.observe().draftReason,'uncertain');
   const reopened=await f.reopen();
-  observations.push({label:'restart inspects preserved draft',state:f.observe(reopened)});
+  observations.push({label:'explicit Previous notes opens saved text and leaves recovery draft retained',state:f.observe(reopened)});
   reopened.componentWillUnmount();
   return {observations,sources:f.sources,driverHashes:f.driverHashes};
 }
@@ -129,11 +140,9 @@ export async function checkNotesCoordinator(extraSources=[]) {
     [{name:'enqueue',args:['first']},{name:'enqueue',args:['second']},...(scenario.afterCommit?[{name:'publishWrite'}]:[])],
     [{name:'failWrite',args:[true]},{name:'rejectQueued'},{name:'preserveDraft'}],
     null,
-    [{name:'restart'},{name:'inspectRetainedDraft'},...(scenario.afterCommit?[]:[
-      {name:'beginDraftRecovery'},{name:'publishWrite'},{name:'confirmWrite'},{name:'clearRecoveredDraft'},
-    ])],
+    [{name:'restart'}],
   ];
-    return {name:scenario.afterCommit?'queued-unknown-write-retains-conflict':'queued-unknown-write-recovers-draft',init:{name:'init'},
+    return {name:scenario.afterCommit?'queued-unknown-write-retains-explicit-recovery':'queued-unknown-write-reopens-with-recovery-draft',init:{name:'init'},
       expect:project(scenario.observations[0].state),steps:scenario.observations.slice(1)
         .map((observation,index)=>({label:observation.label,action:actions[index],expect:project(observation.state)}))};
   };
@@ -141,8 +150,8 @@ export async function checkNotesCoordinator(extraSources=[]) {
     sources:[...new Set(generated.flatMap(scenario=>scenario.sources))],driverHashes:generated[0].driverHashes,
     scope:'bounded-orchestration',traces:generated.map(trace),
     assumptions:[
-      'Actual installed agent adapter, SecureNotesStore, shared document engine, draft persistence/merge and startup recovery execute with controlled storage and synchronous shell-render ports.',
-      'The storage port fails either before or after atomically publishing the first edit. The second queued edit receives the retained fault. Recovery inspects the actual stored version before merging.',
+      'Actual installed agent adapter, SecureNotesStore, shared document engine, draft persistence and explicit Previous notes source selection execute with controlled storage and synchronous shell-render ports.',
+      'The storage port fails either before or after atomically publishing the first edit. The second queued edit receives the retained fault. On remount, explicit Previous notes shows committed text and retains the unsaved draft for separate recovery review. Automatic draft recovery is not performed by this source entry.',
       'The model uses equality classes for original and two edited bodies. One checkpoint joins the two source rejection callbacks after their microtasks settle.',
       'Physical durability, Android Keystore, true React rendering, arbitrary note batches and other failure schedules remain separate obligations.',
     ]});

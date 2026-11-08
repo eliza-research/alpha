@@ -1,5 +1,5 @@
-import test from 'node:test';import assert from 'node:assert/strict';import {readFileSync} from 'node:fs';import {stripTypeScriptTypes} from 'node:module';
-const {suggestScanEventDetails,scanAllDayEventDraft,scanEventDraft}=await import('data:text/javascript;base64,'+Buffer.from(stripTypeScriptTypes(readFileSync('apps/app/src/prototype/scan-event.ts','utf8'))).toString('base64'));
+import test from 'node:test';import assert from 'node:assert/strict';
+const {suggestScanEventDetails,scanAllDayEventDraft,scanEventDraft}=await import('../apps/app/src/prototype/scan-event.ts');
 test('an all-day scan suggestion becomes an all-day Calendar draft, never a save',()=>{
  const now=new Date(2026,9,3,15),suggested=suggestScanEventDetails('Book fair\nOctober 10, 2026\nVenue: Library',{now});
  assert.equal(suggested.allDay,true);

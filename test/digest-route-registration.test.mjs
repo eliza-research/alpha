@@ -28,10 +28,12 @@ console.log(JSON.stringify([...new Set(calls)]));`;
 const appCalls=()=>JSON.parse(execFileSync(process.execPath,['--import=tsx','--input-type=module','-e',script],{cwd:root,encoding:'utf8',timeout:60000}));
 
 test('the protocol under test is the whole set of hosted paths the app source names', () => {
-  const source=readFileSync(resolve(root,'apps/app/src/runtime/hosted-digests.ts'),'utf8');
+  // The app's protocol is the shared upstream client, staged from the pin (scripts/prepare-client-features.mjs).
+  const source=readFileSync(resolve(root,'.eliza/client-features/plugins/plugin-workflow/src/client/hosted-digests.ts'),'utf8');
+  assert.match(readFileSync(resolve(root,'apps/app/src/runtime/hosted-digests.ts'),'utf8'),/export \* from '[./]+\.eliza\/client-features\/plugins\/plugin-workflow\/src\/client\/hosted-digests\.ts';/);
   // The enumerations above must cover every mutate and delegation path the source allows.
-  assert.match(source,/path: "sources" \| "loops" \| "sources\/revoke" \| "dossier",/);
-  assert.match(source,/delegation\(path: "start"\|"complete"\|"status"\|"cancel"\|"revoke"\|"revocations",/);
+  assert.match(source,/export type HostedDigestMutationPath = 'sources' \| 'loops' \| 'sources\/revoke' \| 'dossier';/);
+  assert.match(source,/export type HostedDigestDelegationPath =\s*\| 'start'\s*\| 'complete'\s*\| 'status'\s*\| 'cancel'\s*\| 'revoke'\s*\| 'revocations';/);
   const literals=[...source.matchAll(/["'](\/api\/workflow\/hosted\/[^"'?]*)/g)].map(match=>match[1]).filter(path=>!path.endsWith('/'));
   const called=appCalls().map(call=>call.split(' ')[1]);
   for(const path of literals)assert.ok(called.includes(path),`${path} is exercised`);

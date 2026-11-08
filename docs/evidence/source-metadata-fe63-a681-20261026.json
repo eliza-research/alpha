@@ -1,0 +1,21 @@
+{
+  "productBase": "fe63ad6628a7f58f91948173c858efec2c4ccf47",
+  "SDK": "a681dc583ffb7c7c6ecec9e6bcee944ea49f20b2",
+  "SDKParent": "1e4a4a274cb1712eb733ab1b4e1f96adc0bfa703",
+  "SDKTree": "b7063f6726e0c6f475cba3e5a8b716421b993809",
+  "repairScope": "Shared Android resident stop only; no new signal/timeout/global cache/static clear",
+  "owningJVMTests": 29,
+  "nativeAcceptance": false,
+  "currentBlocker": "Post-Google provider transition shutdown confirmation, preserved current fe63 data; successor unbuilt",
+  "historicalAcceptance": "Prior finite native fe63/1e4 six-case functional pass and Google200 are not successor APK acceptance",
+  "dependencyInput": "Exact package and Bun locks unchanged; existing dependency findings/dispositions/deadlines reused without registry query",
+  "nativeProjection": "Existing stage-local-agent-sources namespace/environment projection loop will be checked from exact SDK source; normal full producer still owns prepared-runtime and APK provenance",
+  "reachability": {
+    "baseCommit": "04658de1b942510e0d37efc777c154530f5c0ef1",
+    "aheadBy": 70,
+    "behindBy": 208,
+    "status": "diverged",
+    "method": "Local immutable graph comparison against retained develop baseCommit; no GitHub API or develop refresh performed"
+  },
+  "sourceReviewReceipt": "resident-stop-1e4-review/ROOT-REVIEW-PACKET-FINAL.json"
+}

@@ -1,0 +1,78 @@
+{
+  "schema": 1,
+  "source": "GET https://api.eliza.app/api/v1/subscriptions/plans (unauthenticated), observed 2026-10-28 by scripts/owner/subscription-limits.mjs catalog",
+  "status": "recorded observation of the server-published catalog; becomes the H-02 record only when the owner confirms it in a dated P- entry",
+  "catalog": {
+    "catalogVersion": "v1",
+    "plans": [
+      {
+        "key": "plus_monthly",
+        "name": "Plus",
+        "catalogVersion": "v1",
+        "active": true,
+        "interval": "month",
+        "intervalCount": 1,
+        "currency": "usd",
+        "amountCents": 3000,
+        "allowance": {
+          "amountUsd": "25.000000",
+          "fundingClass": "allowance_eligible",
+          "rollover": false,
+          "expiresAt": "billing_period_end"
+        },
+        "fundingClasses": [
+          "allowance_eligible",
+          "cash_only"
+        ],
+        "rateLimits": {
+          "completionsRpm": 120,
+          "embeddingsRpm": 200,
+          "standardRpm": 60,
+          "strictRpm": 10
+        },
+        "resourceCeilings": {
+          "cloudCharacters": 5,
+          "agentSandboxes": 5,
+          "containers": 1,
+          "storageGiB": 5,
+          "apps": 25,
+          "apiKeys": 10
+        }
+      },
+      {
+        "key": "pro_monthly",
+        "name": "Pro",
+        "catalogVersion": "v1",
+        "active": true,
+        "interval": "month",
+        "intervalCount": 1,
+        "currency": "usd",
+        "amountCents": 10000,
+        "allowance": {
+          "amountUsd": "90.000000",
+          "fundingClass": "allowance_eligible",
+          "rollover": false,
+          "expiresAt": "billing_period_end"
+        },
+        "fundingClasses": [
+          "allowance_eligible",
+          "cash_only"
+        ],
+        "rateLimits": {
+          "completionsRpm": 300,
+          "embeddingsRpm": 600,
+          "standardRpm": 120,
+          "strictRpm": 30
+        },
+        "resourceCeilings": {
+          "cloudCharacters": 5,
+          "agentSandboxes": 5,
+          "containers": 1,
+          "storageGiB": 5,
+          "apps": 25,
+          "apiKeys": 25
+        }
+      }
+    ]
+  }
+}

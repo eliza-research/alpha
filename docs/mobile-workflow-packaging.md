@@ -28,7 +28,7 @@ The initial audit inspected `artifacts/local-agent-digests`; the launch/storage 
 
 `scripts/build-workflow-worker.ts` now builds a relocatable worker dependency artifact from the authenticated prepared source and installed frozen dependencies. It retains shared chunks for Smithers, Effect and React, exposes the package paths used by compiled phone workflows and control workers, and includes the engine's dynamic React/components, graph, scheduler and SQLite imports. The manifest hashes every output file and records source-stamp and lock hashes. `dependencies.json` records bundled package versions, source paths and package-manifest hashes; available license/notice files are copied alongside it. Missing upstream notices still require a distribution review before release.
 
-Build and exercise it without assembling an APK (Node 26 and Bun on PATH):
+Build and exercise it without assembling an APK (Node 24 and Bun on PATH):
 
 ```sh
 export ALPHA_LOCAL_AGENT_SOURCE_DIR="$PWD/artifacts/local-agent-digests"

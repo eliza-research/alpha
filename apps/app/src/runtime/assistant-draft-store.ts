@@ -1,25 +1,25 @@
 import {nativeAssistantDraftRecovery} from './native-assistant-draft-recovery';
 import {Capacitor} from '@capacitor/core';
 import {secureConnectionStore} from './native-connection';
-import {readAssistantDraft,replaceAssistantDraft,type AssistantDraft} from './assistant-draft-record';
+import {compareExchangeDraftStore,emptyDurableDraft,transactionalDraftStore} from '../../../../.eliza/client-features/packages/ui/src/state/durable-draft.ts';
+import type {DomainRecovery} from '../browser/domain-document';
 
+/**
+ * Alpha's installed draft storage over the shared durable draft stores. The slot name
+ * (`assistant-draft:v1:` + SHA-256 of the binding), the Android secure slot and the browser
+ * document key under `alpha.browser.` are installed-data identifiers and stay unchanged.
+ */
 export async function assistantDraftStore(binding:string){
  if(!binding||binding.length>4096)throw Error('Invalid assistant draft identity.');
  const hash=Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(binding))),n=>n.toString(16).padStart(2,'0')).join('');
  const slot='assistant-draft:v1:'+hash;
- const native=Capacitor.getPlatform()==='android';
- const domain=native?null:new (await import('../browser/json-domain-document')).BrowserJsonDomainDocument('alpha.browser.'+slot);
- return {
-  recovery:domain?{
-   capture:(signal?:AbortSignal)=>domain.capture(signal),
-   reset:async(expected:import('../browser/domain-document').DomainRecovery,signal?:AbortSignal)=>{const empty=replaceAssistantDraft(null,null,binding,'',()=>crypto.randomUUID());await domain.restore(expected,JSON.stringify({raw:JSON.stringify(empty)}),signal);},
-  }:nativeAssistantDraftRecovery(binding,{read:()=>secureConnectionStore.readRaw(slot),compareExchange:(expected,value)=>secureConnectionStore.compareExchangeRaw(slot,expected,value)}),
-  async read(signal?:AbortSignal){signal?.throwIfAborted();const value=native?await secureConnectionStore.read(slot):await domain!.readJson(signal);signal?.throwIfAborted();return readAssistantDraft(value,binding);},
-  async save(expected:AssistantDraft|null,text:string,signal?:AbortSignal):Promise<AssistantDraft>{
-   signal?.throwIfAborted();let result:AssistantDraft|undefined;
-   if(native){result=replaceAssistantDraft(expected,expected,binding,text,()=>crypto.randomUUID());const receipt=await secureConnectionStore.compareExchange(slot,expected,result);if(receipt.status!=='saved')throw Error('This draft changed in another view. Review the saved copy before replacing it.');}
-   else await domain!.editJson(actual=>{signal?.throwIfAborted();result=replaceAssistantDraft(actual,expected,binding,text,()=>crypto.randomUUID());return result;},signal);
-   signal?.throwIfAborted();return result!;
-  },
- };
+ if(Capacitor.getPlatform()==='android'){
+  const raw={read:()=>secureConnectionStore.readRaw(slot),compareExchange:(expected:string|null,value:string)=>secureConnectionStore.compareExchangeRaw(slot,expected,value)};
+  return compareExchangeDraftStore(binding,raw,{recovery:nativeAssistantDraftRecovery(binding,raw)});
+ }
+ const domain=new (await import('../browser/json-domain-document')).BrowserJsonDomainDocument('alpha.browser.'+slot);
+ return transactionalDraftStore(binding,domain,{recovery:{
+  capture:(signal?:AbortSignal)=>domain.capture(signal),
+  reset:async(expected:DomainRecovery,signal?:AbortSignal)=>{await domain.restore(expected,JSON.stringify({raw:JSON.stringify(emptyDurableDraft(binding))}),signal);},
+ }});
 }

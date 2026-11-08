@@ -4,11 +4,44 @@ This maps the daily overview requirement to the cards Home actually renders. It 
 source behavior and browser tests only. It is not APK, emulator, AOSP image, real-provider or
 device acceptance evidence; those gates stay open in [current status](mvp-current-status.md).
 
+## Shared ownership (October 27 direction)
+
+The overview domain and cards are upstream elizaOS code that Alpha consumes through the pin
+(`scripts/prepare-client-features.mjs` stages them):
+
+- `packages/ui/src/overview/daily-overview.ts`: presenters for every card state (loading, ready,
+  empty, stale, error, access off, not connected), agenda selection (`selectOverviewAgenda`:
+  overdue reminders first, the next item kept on its own line), the agent-calendar feed states
+  (`presentOverviewAgendaFeed`) and the stale rule (`overviewReadIsStale`: the last completed read
+  is from an earlier local day). Two presenters return everything a card renders:
+  `presentOverviewAgendaCard` (the item's day or the overdue count, `Due`, `All day` or the time
+  range, the accessible name and description, the `Next:` line and attendee initials, from the
+  selected item and where it was read) and `presentOverviewInboxCard` (not connected, connected with
+  nothing loaded, loading, ready, failed or revoked, and stale after a dropped page, from the page
+  the user loaded in Inbox). `apps/app/src/prototype/home-cards.ts` only binds Alpha's locale and
+  maps a card model to the Home template values.
+- `packages/ui/src/overview/OverviewCards.tsx`: the agenda, attention (mail) and brief cards. Home
+  renders all three through `apps/app/src/prototype/home-overview-cards.ts`, which keeps Alpha's
+  classes, inline styles (per-part `styles`) and the installed `data-alpha-home-*` selectors. The
+  device-calendar path (`data-adapter.ts`), the Agent Calendar path (`agent-calendar-adapter.ts`)
+  and the Inbox adapter (`inbox-cloud-adapter.ts`) each describe their source and call the shared
+  presenter; none assembles card text itself.
+- `plugins/plugin-workflow/src/client/hosted-digests.ts`: the digest client, the client-scoped
+  result inbox, retained-brief selection and `RetainedBriefStore`, fenced to the current
+  connection scope (origin, owner and agent). `apps/app/src/runtime/hosted-digests.ts` keeps only
+  Alpha's store binding and the `alpha:retained-digest` event.
+- `plugins/plugin-workflow/src/services/hosted-digest-policy.ts`: the occurrence policy (30-minute
+  run window, P-75, not-run records and their texts, source state) used by the agent's admission and by
+  the test-mocks development scheduler. Scheduling stays with the agent's durable runtime
+  scheduler (TaskService triggers): schedules run only while the phone is on, an occurrence that
+  came due while it was off is recorded once as missed at startup and never run late, and no
+  second scheduler exists.
+
 ## Cards
 
 | Card | Source | Attribution and freshness shown | States |
 | --- | --- | --- | --- |
-| Calendar (`data-alpha-home-calendar`) | Device calendars read by the Calendar adapter (the app's own calendar in a browser), plus reminders from the reminder store | Calendar name beside the date, `Read <time>` beside the event time; the full sentence is the card's accessible description. An upcoming reminder shows `Reminder` and the reminder store's read time instead of a calendar's | Loading, no upcoming events, results limited to the first 2,000 events, read failed with `Open Calendar to retry` (opening Calendar from the card reads it again), access off, not connected |
+| Calendar (`data-alpha-home-calendar`) | The calendar source chosen in Calendar: the agent's calendar feed (Agent Calendar) by default; the device calendars read by the Calendar adapter only after the owner chooses them there (Android calendars, or the browser calendar in test-mocks builds), and Agent Calendar again when chosen back (opening the card opens Calendar on the source it showed); reminders from the reminder store. Agent Calendar states: reading, not connected, under review, failed or unavailable (`Open Calendar to retry`, read again on open), fresh (`Agent Calendar`, `As of <time>` in the description), empty only after a complete read, and stale (a partial feed or a snapshot from an earlier day keeps the item with `Not updated since <time>` and `data-alpha-home-calendar-stale="true"`). An agent event shows its day and time range and is named `Open calendar event: <title>, <day>, <time>` as a device event is. A reminder saved on this phone that comes before the agent's next event leads the card with the reminder store's source, as it does with device calendars. Under an overdue reminder the agent's next event shows on the `Next:` line | Calendar name beside the date, `Read <time>` beside the event time; the full sentence is the card's accessible description. An upcoming reminder shows `Reminder` and the reminder store's read time instead of a calendar's | Loading, no upcoming events, results limited to the first 2,000 events, read failed with `Open Calendar to retry` (opening Calendar from the card reads it again), access off, not connected |
 | Overdue reminder (same card) | Reminders that are due and not done (`overdueReminders`) | Header `Overdue reminder` or `N overdue reminders`, `Due <time>`, `Read <time>` of the reminder store; description names the reminder store | Shown before any event, including one already in progress, until it is completed or cancelled or its due time moves to the future. A snoozed reminder that keeps its original due time stays listed. The next event or reminder still shows below it on a `Next: <title> <time>` line with its own source and read time |
 | Workflows (`data-alpha-home-workflows`) | Workflow list from the connected agent; the unified automations list after the user opens Workflows | `Loaded <time>` under the status line once a list was loaded for the current connection; the source is named in the accessible description only | Connect agent, loading, empty, failed with retry, partial, last loaded |
 | Inbox (`data-alpha-home-inbox`) | Metadata of the Inbox page the user loaded in Inbox | Account label and `Read <time>`; `From loaded messages` when the page was partial. The time is the completed first-page read; loading more pages or changing read state in Inbox does not move it | Connect email, open to check or load, updating, no unread email, failed with `Open to retry · last read <time>`, reconnect |
@@ -43,7 +76,8 @@ A read from an earlier day shows its date.
   was read from: the event's own calendar id in the same read, exact string ids, no name for an
   unknown calendar, a calendar without a display name or a read that returned no calendars, and
   the latest read's name after a rename.
-- `test/browser/home-daily-overview.spec.ts` (development lane, synthetic provider data). The
+- `test/browser/home-daily-overview.spec.ts` (development lane, synthetic provider data). Its
+  device-calendar cases choose the test-mocks browser calendar in Calendar first. The
   brief card is covered in two halves: the card renders a retained result placed directly in the
   retained-result store, and the digest panel is checked to publish the connected development
   profile's newest retained result to that store and withdraw it on disconnect.
@@ -65,11 +99,10 @@ A read from an earlier day shows its date.
     restarts. No request that would start or change a schedule, a source or a delegation is made,
     before or after that restart: the stub records and refuses every such request, and answers only
     the digests list's read of pending Google access revocations.
-  - The calendar name: a named device calendar, a rename seen on the next read after the app
-    resumes, an event whose calendar the read did not return (`Device`, and no other calendar's
-    name), a calendar the provider reports without a display name (`Unnamed calendar`), permission
-    revoked between reads (`Connect your calendar`, no event, name or read time), and permission
-    denied on request (`Calendar access is off`), then granted.
+  - The calendar source: Agent Calendar owns the card by default (its event, a verified empty
+    calendar, and a refused read from another agent, without borrowing device names or reading the
+    device calendar), and after the owner chooses Android calendars in Calendar the card shows the
+    device event with that calendar's name and this read, until Agent Calendar is chosen again.
   The stub is not the resident runtime, its scheduler, `HostedDeliveryWorker`, the native inbox
   journal or Android CalendarProvider. No digest ran and no device calendar was read.
 

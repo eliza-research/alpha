@@ -1,3 +1,4 @@
+import {prepareNativeFixture,noticeSources} from './fixtures/native-source.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {existsSync,readdirSync,mkdtempSync,rmSync} from 'node:fs';
@@ -11,7 +12,7 @@ test('hosted result notices supersede per loop, cancel on acknowledgement and bo
  const root=resolve(import.meta.dirname,'..'),temporary=mkdtempSync(join(tmpdir(),'hosted-notices-'));
  const java=process.env.JAVA_HOME||(process.platform==='darwin'?'/opt/homebrew/opt/openjdk@21/libexec/openjdk.jdk/Contents/Home':'');const binary=name=>java?join(java,'bin',name):name;
  try{
-  execFileSync(binary('javac'),['--release','11','-cp',jsonJar,'-d',temporary,join(root,'android/app/src/main/java/ai/elizaresearch/alphaphone/NoticeOwner.java'),join(root,'android/app/src/main/java/ai/elizaresearch/alphaphone/HostedResultNotices.java'),join(root,'test/fixtures/HostedResultNoticesTest.java')],{timeout:20000});
+  execFileSync(binary('javac'),['--release','11','-cp',jsonJar,'-d',temporary,...noticeSources(prepareNativeFixture(root,temporary).root,'NoticeOwner'),join(root,'android/app/src/main/java/ai/elizaresearch/alphaphone/HostedResultNotices.java'),join(root,'test/fixtures/HostedResultNoticesTest.java')],{timeout:20000});
   assert.match(execFileSync(binary('java'),['-cp',temporary+':'+jsonJar,'ai.elizaresearch.alphaphone.HostedResultNoticesTest'],{encoding:'utf8',timeout:20000}),/^PASS hosted result notices/);
  }finally{rmSync(temporary,{recursive:true,force:true});}
 });

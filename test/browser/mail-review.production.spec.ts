@@ -1,6 +1,7 @@
 import {seedCompletedAccessSetup} from './flag-off-android';
 import {completeAccessSetup} from './flag-off-android';
 import { test, expect, type Page } from '@playwright/test';
+import { installResidentAgentPlugin } from './helpers/resident-agent-plugin';
 
 // Reviewed send on the FLAG-OFF bundle with the Android bridge stubbed (docs/core-loop-audit.md
 // F-5, F-10). The mailbox is a synthetic managed Gmail answered at the native HTTP boundary
@@ -13,10 +14,13 @@ import { test, expect, type Page } from '@playwright/test';
 const AGENT = '6f1d3c3e-8c55-4c1b-9d1f-2b6f0b0d3a11';
 type Wire = { requestId: string; digest: string; proposal: string };
 test.beforeEach(({}, testInfo) => { test.skip(testInfo.project.name !== 'production', 'Production bundle only'); });
-const button = (page: Page, name: string) => page.getByRole('button', { name, exact: true });
+const button = (page: Page, name: string) => name==='Inbox'
+  ? page.getByRole('button', { name, exact: true }).and(page.locator('[data-mobile-shell-tile]'))
+  : page.getByRole('button', { name, exact: true });
 
-async function androidWithMailbox(page: Page) {
-  await page.addInitScript(({ agentId }) => {
+async function androidWithMailbox(page: Page, unread = false) {
+  await installResidentAgentPlugin(page);
+  await page.addInitScript(({ agentId, unread }) => {
     const w = window as any;
     w.androidBridge = {};
     const store = new Map<string, string>();
@@ -24,6 +28,7 @@ async function androidWithMailbox(page: Page) {
     store.set('cloud:production', JSON.stringify({ token: 'synthetic-cloud-key', credentialId: account, expiresAt: future }));
     const f = w.declineFixture = { decisions: [] as string[], reconciliations: [] as unknown[], effects: 0, journal: [] as string[], unexpected: [] as string[], proposals: [] as any[], installationId: '', calendar: [] as any[], receipts: [] as any[], entry: null as any, lists: 0,
       mail: { prepares: [] as { requestId: string; digest: string; proposal: string }[], dispatches: [] as { requestId: string; digest: string; proposal: string }[], operations: {} as Record<string, any>, sent: [] as string[], searches: 0 } };
+    const resident = w.residentAgent = w.createResidentAgentPlugin({ owner: () => 'fixture-owner', agentId, unexpected: f.unexpected });
     // One synthetic resident agent: authenticated identity, device enrollment and proposal store.
     const agent = (method: string, path: string, body: any, headers: Record<string, string>): { status: number; data: unknown } => {
       const ok = (data: unknown) => ({ status: 200, data });
@@ -59,23 +64,24 @@ async function androidWithMailbox(page: Page) {
     const methods = (names: string[]) => names.map(name => ({ name, rtype: 'promise' }));
     w.Capacitor = {
       PluginHeaders: [
-        { name: 'DeviceApps', methods: methods(['buildInfo']) },
-        { name: 'Agent', methods: methods(['getStatus', 'start', 'stop', 'configureCloudProvider', 'request', 'providerStatus']) },
+        { name: 'ElizaSystem', methods: methods(['getBuildInfo']) },
+        { name: 'Agent', methods: resident.methods(['getStatus', 'start', 'stop', 'configureCloudProvider', 'request', 'providerStatus']) },
         { name: 'AlphaConnection', methods: methods(['secureRead', 'secureWrite', 'secureRemove', 'secureCompareExchange', 'request', 'cancel', 'openExternal', 'addListener', 'removeListener', 'pauseNotificationCollection']) },
         { name: 'AlphaActionJournal', methods: methods(['reserve', 'markApplying', 'finish', 'list', 'get']) },
         { name: 'AlphaNotifications', methods: methods(['status', 'crossAppStatus', 'addListener', 'removeListener']) },
         { name: 'AlphaVoiceCloud', methods: methods(['checkPermissions']) },
         { name: 'AlphaCalendar', methods: methods(['requestAccess', 'executeAgent', 'cancelAgent', 'calendars', 'range', 'listAlerts', 'prepareAgentSource', 'addListener', 'removeListener']) },
       ],
+      nativeCallback: resident.nativeCallback,
       nativePromise: async (plugin: string, method: string, input: any) => {
-        if (plugin === 'DeviceApps') return { launcher: false, version: 'decline-fixture' };
+        if (plugin === 'ElizaSystem' && method === 'getBuildInfo') return { launcher: false, version: 'decline-fixture' };
         if (plugin === 'AlphaNotifications') return { permissionGranted: true, appEnabled: true };
         if (plugin === 'AlphaVoiceCloud') return { microphone: 'granted' };
         if (plugin === 'AlphaActionJournal') {
           f.journal.push(method);
           if (method === 'list') return { entries: f.entry ? [structuredClone(f.entry)] : [] };
           if (method === 'get') return { entry: f.entry ? structuredClone(f.entry) : null };
-          if (method === 'reserve') { if (f.entry) return { created: false, entry: structuredClone(f.entry) }; f.entry = { ...structuredClone(input), phase: 'reserved' }; return { created: true }; }
+          if (method === 'reserve') { if (f.entry) return { created: false, entry: structuredClone(f.entry) }; f.entry = { ...structuredClone(input), phase: 'reserved' }; return { created: true, entry: structuredClone(f.entry) }; }
           if (method === 'markApplying') { Object.assign(f.entry, { phase: 'applying', attemptId: input.attemptId }); return {}; }
           if (method === 'finish') { Object.assign(f.entry, { phase: 'terminal', status: input.status, summary: input.summary, result: input.result }); return {}; }
           throw Error('Unexpected journal effect');
@@ -92,7 +98,10 @@ async function androidWithMailbox(page: Page) {
           return {};
         }
         if (plugin === 'Agent') {
+          const owned = resident.answer(method, input); if (owned) return owned;
           if (method === 'getStatus') return { packaged: true, state: 'stopped', serviceActive: false, socketListening: false };
+          // Retained direct inference and the independent Cloud Gmail credential
+          // above must coexist; selecting own keys must not sign Cloud services out.
           if (method === 'providerStatus') return { provider: 'cerebras', configured: true, model: 'qwen-3.8-27b' };
           if (method === 'request') {
             const result = agent(input.method || 'GET', input.path, input.body ? JSON.parse(input.body) : {}, input.headers || {});
@@ -117,7 +126,7 @@ async function androidWithMailbox(page: Page) {
             const reply = (receipt: unknown, extra: Record<string, unknown> = {}) => ({ status: 200, data: { version: 1, providerExactlyOnce: false, receipt, ...extra } });
             if (path === google + '/accounts') return { status: 200, data: [{ configured: true, connected: true, reason: 'connected', connectionId: 'grant-1', grantedCapabilities: ['google.gmail.triage','google.gmail.send','google.gmail.drafts','google.gmail.mailbox'], identity: { email: 'owner@example.invalid' } }] };
             if (path === google + '/gmail/inbox-v1/capabilities') return { status: 200, data: { version: 1, from: 'owner@example.invalid', threads: true, send: true, providerDrafts: false, mailboxMutations: true, attachments: true, providerExactlyOnce: false, atomicDraftReplacement: false } };
-            if (path === google + '/gmail/search') { m.searches++; return { status: 200, data: { messages: [{ externalId: 'm1', threadId: 't1', subject: 'Harbour schedule', from: 'Synthetic sender', fromEmail: 'sender@example.invalid', to: ['owner@example.invalid'], cc: [], snippet: 'Preview', receivedAt: '2026-10-06T12:00:00Z', isUnread: false }], syncedAt: '2026-10-08T12:00:00Z', nextPageToken: null } }; }
+            if (path === google + '/gmail/search') { m.searches++; return { status: 200, data: { messages: [{ externalId: 'm1', threadId: 't1', subject: 'Harbour schedule', from: 'Synthetic sender', fromEmail: 'sender@example.invalid', to: ['owner@example.invalid'], cc: [], snippet: 'Preview', receivedAt: '2026-10-06T12:00:00Z', isUnread: unread }], syncedAt: '2026-10-08T12:00:00Z', nextPageToken: null } }; }
             if(path===google+'/gmail/read')return {status:200,data:{message:{externalId:'m1',threadId:'t1',subject:'Harbour schedule',from:'Synthetic sender',fromEmail:'sender@example.invalid',to:['owner@example.invalid'],cc:[],snippet:'Preview',receivedAt:'2026-10-06T12:00:00Z',isUnread:false},bodyText:'Owned fixture body',links:[]}};
             if (path === google + '/gmail/inbox-v1/operations' && input.method === 'POST') {
               const p = body.proposal, review = { kind: p.kind, mode: p.mode, from: 'owner@example.invalid', to: p.to, cc: p.cc, bcc: p.bcc, subject: p.subject, bodyText: p.bodyText, attachments: [] };
@@ -135,8 +144,6 @@ async function androidWithMailbox(page: Page) {
               return reply(m.operations[id]);
             }
             if (operation && !operation[2]) return m.operations[decodeURIComponent(operation[1])] ? reply(m.operations[decodeURIComponent(operation[1])]) : { status: 404, data: {} };
-            // Maps connects at sign-in (docs/flow-redesign-2026-11); this synthetic Cloud serves no Maps.
-            if (path === '/api/v1/maps/capabilities') return { status: 404, data: {} };
             f.unexpected.push('cloud ' + path); return { status: 404, data: {} };
           }
           return {};
@@ -144,7 +151,7 @@ async function androidWithMailbox(page: Page) {
         f.unexpected.push(plugin + '.' + method); throw Error('Unexpected native operation');
       },
     };
-  }, { agentId: AGENT });
+  }, { agentId: AGENT, unread });
 }
 const fixture = (page: Page) => page.evaluate(() => {
   const f = (window as any).declineFixture;
@@ -207,27 +214,46 @@ test('Android: the send review shows Cc and Bcc, an edit after review is reviewe
   expect(state.unexpected).toEqual([]);
 });
 
-test('Android: after an account change elsewhere, the Home Inbox card says when it last updated', async ({ page }) => {
+test('Android: Home withholds the old count until a changed account is reverified', async ({ page }) => {
   test.setTimeout(120_000);
-  await androidWithMailbox(page);
+  // Keep a non-empty attention card: a fresh mailbox with zero unread now collapses.
+  await androidWithMailbox(page, true);
   await connected(page);
   await button(page, 'Inbox').click();
-  await expect(button(page, 'Synthetic sender, Harbour schedule')).toBeVisible({ timeout: 30_000 });
+  await expect(button(page, 'Unread, Synthetic sender, Harbour schedule')).toBeVisible({ timeout: 30_000 });
   await button(page, 'Back to apps').click();
   const card = page.locator('[data-alpha-layer="home"] [data-alpha-home-inbox]');
   await expect(card).toContainText(/Updated \d{1,2}:\d{2}/);
   await expect(card).not.toContainText('Not updated since');
-  // Settings announces a Gmail account change this way after a disconnect; Home reads no mail.
+  await expect(card).toHaveAccessibleName('Open Inbox: 1 unread email');
+  // Hold the new account lookup: the old read cannot become current merely because
+  // Settings announced a change. Home now refreshes its authorized source itself.
   const searches = (await fixture(page)).searches;
-  await page.evaluate(() => window.dispatchEvent(new CustomEvent('alpha:gmail-accounts-changed', { detail: { source: 'settings' } })));
-  await expect(card).toContainText(/Not updated since .*\d{1,2}:\d{2}/);
-  await expect(card).not.toContainText(/Read \d|unread/);
-  await expect(card).toHaveAccessibleName(/^Open Inbox: .+ has not updated since .*\d{1,2}:\d{2} (AM|PM); 0 unread emails when last read$/);
-  await expect(card).toHaveAttribute('aria-description', /^Not updated since /);
+  await page.evaluate(() => {
+    const w=window as any,base=w.Capacitor.nativePromise;
+    let held=true,release!:()=>void;
+    const gate=new Promise<void>(resolve=>{release=resolve;});
+    w.releaseHomeAccountRead=()=>{held=false;release();};
+    w.Capacitor.nativePromise=async(plugin:string,method:string,input:any)=>{
+      if(held&&plugin==='AlphaConnection'&&method==='request'&&new URL(input.url).pathname==='/api/v1/eliza/google/accounts')await gate;
+      return base(plugin,method,input);
+    };
+    window.dispatchEvent(new CustomEvent('alpha:gmail-accounts-changed', { detail: { source: 'settings' } }));
+  });
+  // The current-account background reader clears the old identity while it is
+  // unverified, rather than retaining another account's count or timestamp.
+  await expect(card).toHaveAccessibleName('Open Inbox');
+  await expect(card).not.toContainText(/Updated|Read \d|unread/);
+  await expect(card.locator('[data-overview-part="count"]')).toHaveText('');
   expect((await fixture(page)).searches).toBe(searches);
-  // Opening it from the stale card reads the account again.
+  await page.evaluate(()=>(window as any).releaseHomeAccountRead());
+  await expect(card).toContainText(/Updated \d{1,2}:\d{2}/);
+  await expect(card).not.toContainText('Not updated since');
+  await expect(card).toHaveAccessibleName('Open Inbox: 1 unread email');
+  await expect.poll(async()=>(await fixture(page)).searches).toBeGreaterThan(searches);
+  // The current card still opens the same verified mailbox.
   await card.click();
-  await expect(button(page, 'Synthetic sender, Harbour schedule')).toBeVisible({ timeout: 30_000 });
+  await expect(button(page, 'Unread, Synthetic sender, Harbour schedule')).toBeVisible({ timeout: 30_000 });
   expect((await fixture(page)).unexpected).toEqual([]);
 });
 

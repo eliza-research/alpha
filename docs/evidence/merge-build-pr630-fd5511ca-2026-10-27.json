@@ -1,0 +1,56 @@
+{
+  "schemaVersion": 1,
+  "date": "2026-10-27",
+  "pullRequest": 630,
+  "reviewedHead": "bec132174390f069bccc0fd0decc3a9ccf217b06",
+  "previousUpstream": "6497825b38cbe41b3677c0a445341fec900f0dd2",
+  "reviewedUpstream": "9eef5dbd7b381576aad0801b1fee424d1483c63c",
+  "buildUpstream": "fd5511ca1dacdccfadd93879bddff2038ebe8665",
+  "review": [
+    "Alpha Maps retains product colors, layout and transport while delegating selection camera state to the shared implementation.",
+    "Calendar creation binds guest and note authority to request-bound original user sources and verified note references; managed synchronization validates account/calendar identities, versions, revisions and exact returned semantics.",
+    "Planner retains unresolved rejected operations until matching successful work supersedes them; pre-execution schema refusals are explicitly marked as not started.",
+    "Optional Capacitor transcription uses the admitted Phonon session; platform fallback is removed. Engine, model, JNI and voice build inputs remain byte-identical.",
+    "Native recovery binds post-publication directory metadata; shared Android staging rejects duplicate module names and verifies library modes and install paths.",
+    "fd5511ca differs from reviewed 9eef5dbd only in the Notes/Calendar end-to-end extraction fixture; runtime and dependency lock unchanged."
+  ],
+  "validation": {
+    "clientPreparation": "passed",
+    "focusedConsumerTests": 34,
+    "focusedFailures": 0,
+    "fullVerification": {
+      "passed": true,
+      "tests": 2089,
+      "passedTests": 2085,
+      "skippedTests": 4,
+      "failedTests": 0,
+      "productionAuditFiles": 419,
+      "testMocks": false
+    },
+    "androidVersion": 17,
+    "androidBuild": "passed all four version 17 native APKs, instrumentation builds, lint and packaged dependency audit",
+    "imageBuilds": "pending",
+    "additionalMapsVoiceTests": 23,
+    "additionalMapsVoiceFailures": 0
+  },
+  "previousPinBrowserRuns": {
+    "firstRun": {
+      "passed": 114,
+      "failed": 1,
+      "failure": "Email receipt reload DOMContentLoaded timeout; passed isolated retry with unchanged assertions/timeouts.",
+      "trace": "Original trace was overwritten by resumed output cleanup; text log retained."
+    },
+    "resumedRun": {
+      "passed": 85,
+      "failed": 1,
+      "failure": "Notes clock-reversal restore readiness timeout; passed isolated retry with unchanged assertions/timeouts.",
+      "trace": "artifacts/aosp-campaign-20261027/v16-notes-clock-failure"
+    },
+    "unrunAtSupersession": 27,
+    "qualification": "Partial previous-pin browser evidence; not complete coverage for fd5511ca."
+  },
+  "limits": [
+    "No new image boot, real provider integration, phone flash or device/user acceptance.",
+    "Release APK signing and native voice qualification remain separate."
+  ]
+}

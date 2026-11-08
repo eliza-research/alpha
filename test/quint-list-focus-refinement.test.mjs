@@ -1,16 +1,16 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {listFocus} from '../specs/quint/refinement/application/list-focus.mjs';
+import {readFileSync} from 'node:fs';
 
-test('source list-focus captures and FIFO callbacks match the bounded Quint helper model', {timeout:180000}, async () => {
- const result=await listFocus();
- assert.equal(result.passed,true);
- assert.equal(result.inputsUnchanged,true);
- assert.equal(result.driverInputsBound,true);
- assert.equal(result.observedFields.length,15);
- assert.equal(result.traceInputs.length,24);
- for(const name of ['capture-unmounted','capture-no-focus','capture-other-owner','capture-missing-key',
-  'restore','removed','duplicate','other','other-blur','hidden-root','hidden-node','disabled','dialog',
-  'hidden-document','disconnected','navigation','newer-commit','discarded','unchanged',
-  'two-captures','restoring-before-expiry'])assert(result.traceInputs.some(trace=>trace.name===name),name);
+test('removed UI helpers remain explicitly historical after current-main reconciliation', () => {
+  const current = JSON.parse(readFileSync(new URL('../specs/quint/application/manifest.json', import.meta.url)));
+  const historical = JSON.parse(readFileSync(new URL('../specs/quint/legacy/manifest.json', import.meta.url)));
+  for (const name of ['ListFocus', 'FilesTree']) {
+    assert.equal(current.some(entry => entry.module === name), false);
+    const entry = historical.find(entry => entry.module === name);
+    assert.ok(entry);
+    assert.deepEqual(entry.sources, []);
+    assert.ok(entry.historicalSources.length > 0);
+    assert.ok(entry.historicalSources.every(source => /^[a-f0-9]{40}$/.test(source.commit)));
+  }
 });

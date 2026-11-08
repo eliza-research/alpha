@@ -1,31 +1,11 @@
 import { createInlineModal } from '../runtime/inline-modal';
 import { connectionController } from '../runtime/connection-ui';
-import type { EmailTarget } from './inbox-cloud-adapter';
+import { describeEmailTarget, fitEmailTarget, USE_IN_EMAIL_ATTACHMENT_POLICY, type EmailTarget } from '../../../../.eliza/client-features/plugins/plugin-inbox/src/mailbox/use-in-email.ts';
 
 type Shell = any;
 type Review = { id: string; text: string; session: string; cloud: string; target: EmailTarget; notice: string; opener: HTMLElement | null };
-const MAXIMUM = 64000;
-/** Selected Files and Photos are never attached by a suggestion; the composer's picker stays the only way. */
-export const USE_IN_EMAIL_ATTACHMENT_POLICY = 'Only this text is added. Files and photos are not attached; use Attach in the email to choose them.';
-
-/** What the review tells the user about the destination. Pure, so the wording is tested without a renderer. */
-export function describeEmailTarget(target: EmailTarget): { account: string; destination: string; effect: string; confirmLabel: string; blocked: boolean } {
-  if (!target.ready) return { account: target.account ? `From ${target.account}` : '', destination: 'No email draft can take this suggestion yet.', effect: target.reason, confirmLabel: 'Insert into draft', blocked: true };
-  const to = target.to.length ? target.to.join(', ') : 'no recipients yet';
-  const subject = target.subject.trim() || '(no subject)';
-  // The literal address comes first; the sender's display name is their own text and only follows it.
-  const destination = target.kind === 'reply' ? (target.to.length ? `New reply to ${to}${target.from ? ` (${target.from})` : ''} · ${subject}` : `New reply · ${subject} · no recipients yet`)
-    : target.kind === 'draft' ? `Your ${target.aside ? 'unfinished' : 'open'} ${target.reply ? 'reply' : 'email'} draft${target.aside ? ' (not on screen)' : ''} · ${subject} · to ${to}`
-    : 'A new email. You add the recipients and subject.';
-  const effect = target.append ? 'This draft already has text. The suggestion is added below it; nothing is replaced.' : target.kind === 'draft' ? 'The draft has no message text yet. The suggestion becomes its text.' : 'A local draft opens with this text for you to edit.';
-  return { account: `From ${target.account || 'the selected Gmail account'}`, destination,
-    // One draft exists per account: a set-aside draft takes the suggestion, not the message on screen.
-    effect: target.kind === 'draft' && target.elsewhere ? `This is not a reply to the message on screen. ${effect}` : effect,
-    confirmLabel: target.append ? 'Add below existing text' : 'Insert into draft', blocked: false };
-}
-
 /**
- * "Use in email" in the assistant conversation. An agent reply is offered for the email the user
+ * "Use in email" in the assistant conversation (review wording and limits: @elizaos/plugin-inbox/mailbox). An agent reply is offered for the email the user
  * has selected in Inbox; the review names the account and the exact draft or message, and the
  * insert is refused if any of them changed in the meantime. It only fills a local draft: sending
  * still requires the composer and the provider review.
@@ -41,10 +21,7 @@ export function installUseInEmailReview(Component: Shell, views: Record<string, 
   const close = (shell: Shell) => { if (reviews.delete(shell)) refresh(shell); };
   /** The review names an account, recipients and a subject: it does not outlive a locked or sleeping phone. */
   const unlocked = (state: Shell) => (state.screen ?? 'home') === 'home';
-  /** A destination that cannot hold the whole reply is blocked in the review; text is never cut short. */
-  const fit = (found: EmailTarget, text: string): EmailTarget => !found.ready ? found
-    : text.length > MAXIMUM ? { ...found, ready: false, reason: 'This reply is longer than an email draft can hold. Copy the part you need instead.' }
-    : text.length > found.room ? { ...found, ready: false, reason: 'The open draft does not have room for this whole reply. Copy the part you need instead. Nothing was added.' } : found;
+  const fit = fitEmailTarget;
   function open(shell: Shell, entry: Shell) {
     if (shell.S().view !== 'inbox' || !unlocked(shell.S()) || !eligible(entry)) return;
     // Focus returns to the reply itself: its actions menu may close while the review is open.

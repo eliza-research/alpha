@@ -5,7 +5,7 @@ The connected development device's hardware SKU is `GE1GQ`. Pixel 10 and Pixel 1
 are different devices and are not supported targets; the former Pixel 10 placeholder lock is
 retired, and no other device configuration can admit this one.
 
-`android/aosp/pixel10a-source.json` records the inspected development source inputs:
+`vendor/eliza/packages/os/android/sources/pixel10a-stallion.json` records the inspected development source inputs:
 
 - AOSP `android-17.0.0_r1`, manifest commit `5bc9a7ce1cd78dd53613bbfd0ebf506e1e4adb0f`.
 - 1,084 platform project revisions plus three pinned device extraction projects.
@@ -51,10 +51,48 @@ Alpha HOME on the physical Pixel, but with an app override under `/data/app`.
 Cuttlefish at the separately inspected target had Alpha under `/product/app` and
 Alpha HOME. Neither observation qualifies the current app/runtime pin or signed updates.
 
-The lock records `developmentOnly: true`. Production staging (`--target pixel10a
---production`, see [Pixel 10a staging](pixel10a-staging.md)) refuses it until a reviewed
-change marks the inputs admitted for release and pins the resulting lock hash in
-`android/aosp/pixel10a-product.json`; the verifier reports the lock's value.
+## Release admission (issue #399)
+
+On October 25 the lock was admitted for release: `developmentOnly` is `false` and
+`android/aosp/pixel10a-product.json` pins its SHA-256
+`760a7184c62c93aeac40595cf5733f8089aa16ccd28eb7a5f5ce41d4dae741d3`. Only that flag
+changed; every source, override, generated-file and factory record is the one verified
+on October 15 and 23. The two listener SystemUI manifests that pin the baseline lock
+were re-pinned for the same reason, with their patches unchanged.
+
+The retained source tree now also carries the listening-chip patch, so the plain verifier
+refuses it. The admission evidence,
+[pixel10a-source-verification-2026-10-25.json](pixel10a-source-verification-2026-10-25.json),
+was produced with:
+
+```sh
+node scripts/verify-pixel10a-source.mjs \
+  --aosp-source /absolute/prepared/stallion-source \
+  --factory-image /absolute/stallion-cp3a.261005.005-factory-d1d25502.zip \
+  --applied-systemui-patch chip --out /absolute/new-source-check.json
+```
+
+All 1,087 revisions, 16 overrides, 6,360 generated files and the factory hash matched the
+admitted lock. The nine chip files matched their committed preimages at the pinned
+`frameworks/base` revision and their postimages. `--applied-systemui-patch` accepts only a
+reviewed listener bundle whose manifest pins this lock, refuses overlap with lock overrides,
+and leaves every other check unchanged.
+
+Admission lets production staging get past the source lock. Production staging still refuses
+until the signing identities (decision A-06) are reviewed. Admission is not an image build,
+signed image, boot or device result.
+
+## Distribution gates
+
+`android/aosp/pixel10a-qualification-gates.json` records each distribution gate on its own:
+source admission, APK variants, Cuttlefish boot, physical device, signed update/recovery, and
+user acceptance. A gate is `passed` only with release-level evidence of its own. Development
+boot evidence, such as the [October 19 image](pixel10a-code6-boot-evidence.md) or a
+[development Cuttlefish observation](evidence/cuttlefish-observation-2026-10-25.json), keeps a
+gate at `development`. The signed update/recovery gate cannot pass while any drill in
+`android/aosp/pixel10a-ota-channel.json` is not `passed`. User acceptance cannot pass before
+every other gate has. `scripts/pixel10a-gates.mjs` enforces these rules (`test/pixel10a-gates.test.mjs`).
+The product descriptor's `releaseQualified` and `deviceAcceptanceVerified` stay `false`.
 
 Remaining work includes integrating these inputs with the current admitted APK and
 listener, rebuilding/booting exact images, native runtime and speech execution,

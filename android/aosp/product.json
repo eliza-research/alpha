@@ -1,11 +1,11 @@
 {
   "schema": 1,
-  "description": "Alpha Phone AOSP product descriptor for the Cuttlefish validation target. The Pixel 10a (stallion) Android 17 hardware product has its own descriptor (physicalProduct) and source lock; the Cuttlefish product never stages against a separate lock. scripts/stage-aosp.mjs --production refuses to stage while any field here, in the brand config or in the selected source-lock profile is UNSET or a placeholder. Values are reviewed source and artifact identities only; no key material belongs here.",
+  "description": "Alpha Phone AOSP product descriptor for the Cuttlefish validation target. The Pixel 10a (stallion) Android 17 hardware product has its own descriptor (physicalProduct) and source lock; the Cuttlefish product never stages against a separate lock. Its source lock is the shared reviewed cuttlefish profile, which admits this product because its brand config inherits only that profile's required device tree (vendor/eliza/packages/os/scripts/android/cuttlefish-product.mjs). scripts/stage-aosp.mjs --production refuses to stage while any field here, in the brand config or in the selected source-lock profile is UNSET or a placeholder. Values are reviewed source and artifact identities only; no key material belongs here.",
   "product": "alphaphone_cf_x86_64_phone",
   "target": "cuttlefish_x86_64",
   "brandConfig": "android/aosp/brand.alphaphone.json",
   "sourceLock": {
-    "file": "android/aosp/aosp.lock.json",
+    "file": "vendor/eliza/packages/os/android/aosp.lock.json",
     "profile": "cuttlefish"
   },
   "hostPackages": [
@@ -18,7 +18,7 @@
     "decision": "A-06"
   },
   "separateLocks": {
-    "pixel10a": "android/aosp/pixel10a-source.json"
+    "pixel10a": "vendor/eliza/packages/os/android/sources/pixel10a-stallion.json"
   },
   "physicalProduct": "android/aosp/pixel10a-product.json"
 }

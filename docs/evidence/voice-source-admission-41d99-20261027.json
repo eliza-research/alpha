@@ -1,0 +1,73 @@
+{
+  "schemaVersion": 1,
+  "scope": "Current source admission only; no binary/model rebuild or new device qualification",
+  "productBase": "9b4b8d3b3b04220f6ff14e993f6a7b4741bf5a1b",
+  "priorAdmittedSDK": "fd5511ca1dacdccfadd93879bddff2038ebe8665",
+  "currentAdmittedSDK": "41d99bb4c86cb61bfa07d5e49b07603dbbe1080b",
+  "sourceComparisons": [
+    {
+      "path": "plugins/plugin-local-inference/native",
+      "priorObject": "5fd29ab443616f86840e3b9f6e9cb1ad052eb436",
+      "currentObject": "5fd29ab443616f86840e3b9f6e9cb1ad052eb436"
+    },
+    {
+      "path": "packages/app/scripts/paradee-voice",
+      "priorObject": "e18c150daf71c321ba287e0c6e5484e487367fd9",
+      "currentObject": "e18c150daf71c321ba287e0c6e5484e487367fd9"
+    },
+    {
+      "path": "packages/app/scripts/stage-elizavoice-lib.ts",
+      "priorObject": "2ff1adb9ed9a394759562c2ff6a1f7e4b0d75f3c",
+      "currentObject": "2ff1adb9ed9a394759562c2ff6a1f7e4b0d75f3c"
+    },
+    {
+      "path": "packages/app/platforms/android/app/src/main/elizavoice-jni",
+      "priorObject": "1016d67d05ce8f4c7bc10412372cc71d7ad48aee",
+      "currentObject": "1016d67d05ce8f4c7bc10412372cc71d7ad48aee"
+    },
+    {
+      "path": "packages/app/platforms/android/app/src/main/java/ai/elizaos/app/ElizaVoiceNative.java",
+      "priorObject": "1cd241c5710fc302e75aec8993eefee0a709ab9c",
+      "currentObject": "1cd241c5710fc302e75aec8993eefee0a709ab9c"
+    },
+    {
+      "path": "packages/app/scripts/lib/android-bun-artifacts.lock.json",
+      "priorObject": "83c8e91becc3a2c46902cc168fdc9b88fc038e5d",
+      "currentObject": "83c8e91becc3a2c46902cc168fdc9b88fc038e5d"
+    }
+  ],
+  "unchanged": {
+    "recordedABIs": {
+      "sha256": "f93c5550a3f2edd5f6feea0fabf1a52f9c3e37eb71a63954ebeabae67e9bb736",
+      "encoding": "UTF-8 compact recursively-key-sorted JSON"
+    },
+    "recordedModels": {
+      "sha256": "20f69eb7291d3013cb8aa49d476ea94e878c6d9c1bbd93352626bac9c6135cab",
+      "encoding": "UTF-8 compact recursively-key-sorted JSON"
+    },
+    "forkPin": {
+      "sha256": "7915bd72abbbc3940fe63510713f4f863550b09a1ebea2112300fd4aebef3e57",
+      "encoding": "UTF-8 compact recursively-key-sorted JSON"
+    },
+    "bundle": {
+      "sha256": "fac92598c106f82fcc330beacb918a7b61e289850156fb3496933f8ee4c72f05",
+      "encoding": "UTF-8 compact recursively-key-sorted JSON"
+    },
+    "asrSlot": {
+      "sha256": "44d0fa2ff8274741d05c72f0748b05de6f68198cc781ea2ef9492cbfe4147ffc",
+      "encoding": "UTF-8 compact recursively-key-sorted JSON"
+    }
+  },
+  "historicalEngineBuildRecord": "docs/evidence/native-c95a/voice-build-record.json",
+  "historicalComponentRecord": "docs/evidence/native-c95a/embedding-QUALIFICATION.json",
+  "qualified": false,
+  "nativeQualificationTransferred": false,
+  "deviceOrUserAcceptanceAdded": false,
+  "guardUnchanged": true,
+  "limits": [
+    "Original c95a build/source digests and component evidence remain historical and unchanged.",
+    "Only the current source admission pointer is advanced using exact unchanged input Git objects.",
+    "Cloud --allow-absent qualification proves metadata admission and absence only; it is not packaged local voice or hardware acceptance.",
+    "Present local runtime outputs still require exact source-stamp/build-record/model/JNI/ABI verification; no old sourceCommit relabeling is allowed."
+  ]
+}

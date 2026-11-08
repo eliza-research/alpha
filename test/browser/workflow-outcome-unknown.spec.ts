@@ -4,7 +4,7 @@ import {test,expect,type Page} from '@playwright/test';
 // plugin-workflow `reconciliation: {state:'outcome-unknown'}`; every request is recorded.
 async function setup(page:Page){
  await page.goto('/?mode=dev&workflows=agent');
- await page.getByRole('button',{name:'Settings',exact:true}).click();await page.getByRole('button',{name:'Agent',exact:true}).click();await page.getByRole('button',{name:'Connect development profile'}).click();
+ await page.getByRole('button',{name:'Settings',exact:true}).click();await page.getByRole('button',{name:'Agent connection',exact:true}).click();await page.getByRole('button',{name:'Connect development profile'}).click();
  await page.evaluate(async()=>{
   const {WorkflowProtocol}=await import('/src/runtime/workflow-protocol.ts');const {connectionController:c}=await import('/src/runtime/connection-ui.tsx');
   const spec=(operations:string[])=>JSON.stringify({version:1,name:'x',description:'',trigger:{kind:'manual'},steps:operations.map((operation,i)=>({id:'s'+i,kind:i?'Write':'Read',operation}))});
@@ -51,7 +51,7 @@ test('side-effecting workflow: interrupted run is shown as outcome unknown, neve
  const history=page.getByRole('button',{name:'Interrupted — outcome unknown execution',exact:true});await expect(history).toBeVisible();
  await page.getByRole('button',{name:'Run now',exact:true}).click();await page.getByRole('button',{name:'Run now',exact:true}).click();
  await expect(page.getByText(/An interrupted run of this workflow has an unknown outcome/).first()).toBeVisible();expect(await posts(page,'/run')).toBe(0);
- await history.click();await expect(page.getByText('Interrupted — outcome unknown',{exact:true}).first()).toBeVisible();await expect(page.getByText(/The agent did not replay it and this phone will not retry it/)).toBeVisible();
+ await history.click();await page.getByText('Execution details',{exact:true}).click();await expect(page.getByText('Interrupted — outcome unknown',{exact:true}).first()).toBeVisible();await expect(page.getByText(/The agent did not replay it and this phone will not retry it/)).toBeVisible();
  await expect(page.getByRole('button',{name:'Run this read-only workflow again as a new run'})).toHaveCount(0);await expect(page.getByRole('button',{name:'Cancel execution',exact:true})).toBeVisible();
  await page.getByRole('button',{name:'Refresh execution receipt',exact:true}).click();await page.waitForTimeout(1000);await expect(page.getByText('Interrupted — outcome unknown',{exact:true}).first()).toBeVisible();
  expect(await posts(page,'/run')).toBe(0);expect(await posts(page,'/cancel')).toBe(0);
@@ -67,7 +67,7 @@ test('side-effecting workflow: interrupted run is shown as outcome unknown, neve
 test('read-only digest: Run again is explicit, confirmed and creates a new run ID without replaying the interrupted one',async({page})=>{
  await setup(page);await page.getByRole('region',{name:'Workflows',exact:true}).getByText('Morning notes digest',{exact:true}).first().click();
  await expect(status(page)).toHaveText('An earlier run was interrupted — outcome unknown. Open it to run these read-only steps again');
- await page.getByRole('button',{name:'Interrupted — outcome unknown execution',exact:true}).click();await expect(page.getByText(/The agent did not replay it/)).toBeVisible();
+ await page.getByRole('button',{name:'Interrupted — outcome unknown execution',exact:true}).click();await page.getByText('Execution details',{exact:true}).click();await expect(page.getByText(/The agent did not replay it/)).toBeVisible();
  await page.waitForTimeout(1000);expect(await posts(page,'/run')).toBe(0);
  await page.getByRole('button',{name:'Run this read-only workflow again as a new run',exact:true}).click();await expect(page.getByText(/Run again starts a new, separate run of these read-only steps/).first()).toBeVisible();expect(await posts(page,'/run')).toBe(0);
  await page.getByRole('button',{name:'Confirm new run of this read-only workflow',exact:true}).click();await expect.poll(()=>posts(page,'/run')).toBe(1);

@@ -17,7 +17,7 @@ for (const mode of ['pending', 'wrong-owner', 'expired', 'wrong-reminder-context
         nativePromise: async (plugin: string, method: string, input: any) => {
           if (plugin === 'AlphaActionJournal') {
             fixture.journal.push(method);
-            if (method === 'reserve') return { created: true };
+            if (method === 'reserve') return { created: true, entry: { ...input, phase: 'reserved' } };
             if (method === 'markApplying' || method === 'finish') return {};
             throw Error('Unexpected journal call');
           }
@@ -72,7 +72,7 @@ for (const mode of ['pending', 'wrong-owner', 'expired', 'wrong-reminder-context
     }, mode);
     await page.goto('/');
     await page.getByRole('button', { name: 'Settings', exact: true }).click();
-    await page.getByRole('button', { name: 'Agent', exact: true }).click();
+    await page.getByRole('button', { name: 'Agent connection', exact: true }).click();
     await page.getByText('Local development agent', { exact: true }).click();
     const local = page.locator('.alpha-connection details').filter({ has: page.getByText('Local development agent', { exact: true }) });
     await local.getByLabel('Local agent address').fill('http://127.0.0.1:47842');
@@ -106,8 +106,9 @@ for (const mode of ['pending', 'wrong-owner', 'expired', 'wrong-reminder-context
       await expect(page.getByText('Review Notes on Home',{exact:true})).toBeVisible();
     } else {
       const failure = mode === 'rate-limit-empty' ? /The AI request rate limit was reached/
-        : mode === 'pending' ? /The agent could not complete this response\./ : /The agent request failed/;
+        : mode === 'pending' ? /The agent could not complete this response\./ : /Sorry, I couldn’t finish that reply\./;
       await expect(page.getByText(failure).first()).toBeVisible();
+      await expect(page.getByRole('button', { name: /^Check saved conversation/ })).toHaveCount(0);
     }
     const counts = () => page.evaluate(() => {
       const f = (window as any).recoveryFixture;

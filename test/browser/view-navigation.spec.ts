@@ -1,12 +1,12 @@
 import { readFileSync } from "node:fs";
-import { stripTypeScriptTypes } from "../support/strip-types.mjs";
+import { stripTypeScriptTypes } from "node:module";
 import { resolve } from "node:path";
 import { expect, test } from "@playwright/test";
 
 const root = resolve(import.meta.dirname, "../..");
 const compile = (path: string) =>
 	stripTypeScriptTypes(readFileSync(resolve(root, path), "utf8"), {
-		mode: "strip",
+		mode: "transform",
 	}).replace(/^import[\s\S]*?;\n/gm, "");
 const source = [
 	".eliza/client-features/packages/core/src/events.ts",
@@ -24,10 +24,15 @@ async function setup(page: import("@playwright/test").Page) {
 	// Native WebView and localhost are secure contexts; about:blank is not.
 	await page.route('**/__navigation-fixture',route=>route.fulfill({contentType:'text/html',body:'<main id="screen">Home</main>'}));
 	await page.goto('/__navigation-fixture');
+	// Targets resolve through Alpha's real product view registry, served by the dev server.
+	await page.evaluate(async () => {
+		const views = await import("/src/product/alpha-product.ts");
+		Object.assign(window, { alphaCanonicalViewId: views.alphaCanonicalViewId, alphaViewKey: views.alphaViewKey, alphaViewPaths: views.alphaViewPaths });
+	});
 	await page.addScriptTag({
 		type: "module",
 		content:
-			"const browserDevProfile=false; const Capacitor={getPlatform:()=>\"web\",PluginHeaders:[]};\n" +
+			"const browserDevProfile=false; const Capacitor={getPlatform:()=>\"web\",PluginHeaders:[]}; const TELEPHONY_PROFILE_METHOD=\"imageCapability\"; const detectTelephonyProfile=()=>false;\n" +
 			source +
 			"\nwindow.ViewNavigationClient=ViewNavigationClient;",
 	});

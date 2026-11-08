@@ -18,7 +18,7 @@ export async function verifyCloudRecordingSignatures(root=process.cwd()) {
  const recordedHeader=Buffer.from('00000018667479706d703432','hex');
  const recordedType=await fileTypeFromBuffer(recordedHeader);
  assert.deepEqual(recordedType,{ext:'mp4',mime:'video/mp4'});
- // Audio-only PCM container matching AlphaVoicePcm's mono16k/16bit output; no recording frames.
+ // Audio-only PCM container matching the shared RecordingPcm (ai.eliza.voice) mono16k/16bit output; no recording frames.
  const wav=Buffer.alloc(76);wav.write('RIFF');wav.writeUInt32LE(68,4);wav.write('WAVEfmt ',8);wav.writeUInt32LE(16,16);wav.writeUInt16LE(1,20);wav.writeUInt16LE(1,22);wav.writeUInt32LE(16000,24);wav.writeUInt32LE(32000,28);wav.writeUInt16LE(2,32);wav.writeUInt16LE(16,34);wav.write('data',36);wav.writeUInt32LE(32,40);
  const wavType=await fileTypeFromBuffer(wav);
  assert.deepEqual(wavType,{ext:'wav',mime:'audio/wav'});

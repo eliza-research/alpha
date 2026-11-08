@@ -4,7 +4,7 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { provisioningComponents, renderProvisioningOverlay, writeProvisioningOverlay } from "../scripts/aosp-provisioning-overlay.mjs";
+import { provisioningComponents, renderProvisioningOverlay, requestsAllFilesAccess, writeProvisioningOverlay } from "../scripts/aosp-provisioning-overlay.mjs";
 
 const PKG = "ai.elizaresearch.alphaphone";
 const str = value => `"${value}" (Raw: "${value}")`;
@@ -12,13 +12,16 @@ const element = (indent, tag, attrs = {}) => [`${" ".repeat(indent)}E: ${tag} (l
   ...Object.entries(attrs).map(([key, value]) => `${" ".repeat(indent + 2)}A: android:${key}(0x01010003)=${value.startsWith("(") ? value : str(value)}`)];
 const filter = (indent, action, categories = []) => [...element(indent, "intent-filter"), ...element(indent + 2, "action", { name: action }),
   ...categories.flatMap(name => element(indent + 2, "category", { name }))];
-function tree({ homes = 1, autofillPermission = "android.permission.BIND_AUTOFILL_SERVICE" } = {}) {
-  return ["N: android=http://schemas.android.com/apk/res/android", "  E: manifest (line=2)", "    E: application (line=3)",
+function tree({ homes = 1, autofillPermission = "android.permission.BIND_AUTOFILL_SERVICE", allFiles = true } = {}) {
+  return ["N: android=http://schemas.android.com/apk/res/android", "  E: manifest (line=2)",
+    ...element(4, "uses-permission", { name: "android.permission.RECORD_AUDIO" }),
+    ...(allFiles ? element(4, "uses-permission", { name: "android.permission.MANAGE_EXTERNAL_STORAGE" }) : []),
+    "    E: application (line=3)",
     ...Array.from({ length: homes }, (_, i) => [...element(6, "activity", { name: `${PKG}.${i ? "Other" : "Main"}Activity`, exported: "(type 0x12)0xffffffff" }),
       ...filter(8, "android.intent.action.MAIN", ["android.intent.category.LAUNCHER"]),
       ...filter(8, "android.intent.action.MAIN", ["android.intent.category.HOME", "android.intent.category.DEFAULT"])]).flat(),
-    ...element(6, "activity", { name: `${PKG}.AlphaAssistActivity` }), ...filter(8, "android.intent.action.ASSIST", ["android.intent.category.DEFAULT"]),
-    ...element(6, "service", { name: "ai.eliza.plugins.passwords.ElizaPasswordAutofillService", permission: autofillPermission }), ...filter(8, "android.service.autofill.AutofillService"),
+    ...element(6, "activity", { name: `${PKG}.AlphaAssistActivity`, exported: "(type 0x12)0xffffffff" }), ...filter(8, "android.intent.action.ASSIST", ["android.intent.category.DEFAULT"]),
+    ...element(6, "service", { name: "ai.eliza.plugins.passwords.ElizaPasswordAutofillService", permission: autofillPermission, exported: "(type 0x12)0xffffffff" }), ...filter(8, "android.service.autofill.AutofillService"),
     ...element(6, "service", { name: `${PKG}.ElizaAgentService` }),
   ].join("\n");
 }
@@ -32,20 +35,29 @@ test("components come from the APK manifest and must be unique", () => {
   assert.throws(() => provisioningComponents(tree({ autofillPermission: "none" }), PKG), /AUTOFILL/);
 });
 
+test("Files all-files access: the launcher must request MANAGE_EXTERNAL_STORAGE (granted as preinstalled)", () => {
+  assert.equal(requestsAllFilesAccess(tree()), true);
+  assert.equal(requestsAllFilesAccess(tree({ allFiles: false })), false);
+  assert.throws(() => provisioningComponents(tree({ allFiles: false }), PKG), /MANAGE_EXTERNAL_STORAGE/);
+  const files = renderProvisioningOverlay(PKG, provisioningComponents(tree(), PKG));
+  assert.match(files["provisioning/README.md"], /MANAGE_EXTERNAL_STORAGE/);
+  assert.match(fs.readFileSync("android/app/src/main/AndroidManifest.xml", "utf8"), /<uses-permission android:name="android\.permission\.MANAGE_EXTERNAL_STORAGE"/);
+});
+
 test("the overlay sets default HOME, assistant and Autofill offer additively", t => {
   const files = renderProvisioningOverlay(PKG, provisioningComponents(tree(), PKG));
   assert.match(files["provisioning/overlay/frameworks/base/core/res/res/values/config.xml"], new RegExp(`config_defaultAssistant" translatable="false">${PKG}<`));
   assert.match(files["provisioning/overlay/frameworks/base/core/res/res/values/config.xml"], /config_defaultAutofillService" translatable="false">ai\.elizaresearch\.alphaphone\/ai\.eliza\.plugins\.passwords\.ElizaPasswordAutofillService</);
-  assert.match(files["provisioning/preferred-apps/alphaphone-home.xml"], /<item name="ai\.elizaresearch\.alphaphone\/ai\.elizaresearch\.alphaphone\.MainActivity"/);
-  assert.match(files["provisioning/preferred-apps/alphaphone-home.xml"], /android\.intent\.category\.HOME/);
+  assert.match(files["provisioning/preferred-apps/launcher-home.xml"], /<item name="ai\.elizaresearch\.alphaphone\/ai\.elizaresearch\.alphaphone\.MainActivity"/);
+  assert.match(files["provisioning/preferred-apps/launcher-home.xml"], /android\.intent\.category\.HOME/);
   assert.doesNotMatch(files.productMakefile, /LOCAL_OVERRIDES_PACKAGES|Launcher3/, "the stock launcher stays as a recovery path");
   assert.doesNotMatch(files.productMakefile, /\bALPHA_/);
   const out = fs.mkdtempSync(path.join(os.tmpdir(), "alpha-provision-"));
   t.after(() => fs.rmSync(out, { recursive: true, force: true }));
   fs.writeFileSync(path.join(out, "product.mk"), "PRODUCT_PACKAGES += AlphaPhone\n");
   writeProvisioningOverlay(out, PKG, provisioningComponents(tree(), PKG));
-  assert.match(fs.readFileSync(path.join(out, "product.mk"), "utf8"), /PRODUCT_PACKAGE_OVERLAYS \+= \$\(alphaphone_provisioning_dir\)\/overlay/);
-  assert.ok(fs.existsSync(path.join(out, "provisioning/preferred-apps/alphaphone-home.xml")));
+  assert.match(fs.readFileSync(path.join(out, "product.mk"), "utf8"), /PRODUCT_PACKAGE_OVERLAYS \+= \$\(launcher_provisioning_dir\)\/overlay/);
+  assert.ok(fs.existsSync(path.join(out, "provisioning/preferred-apps/launcher-home.xml")));
   assert.throws(() => writeProvisioningOverlay(out, PKG, provisioningComponents(tree(), PKG)), /EEXIST/);
 });
 

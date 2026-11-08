@@ -28,8 +28,8 @@ const metadataReads=(page:Page)=>page.evaluate(()=>(window as any).workflowMetad
 test('empty Home opens unified metadata honestly and rerenders do not refetch it',async({page})=>{
  await setup(page);await connect(page);await expect(tile(page)).toContainText('Open to view');expect(await metadataReads(page)).toBe(0);
  await page.getByRole('textbox',{name:'Ask Alpha',exact:true}).fill('Unsent draft');expect(await metadataReads(page)).toBe(0);
- await tile(page).click();await expect(page.locator('[data-alpha-subview="workflows-list"]').getByText('No automations yet',{exact:true})).toBeVisible();
- await back(page);await expect(tile(page)).toContainText('No automations yet');const calls=await metadataReads(page);expect(calls).toBe(1);
+ await tile(page).click();await expect(page.locator('[data-alpha-subview="workflows-list"]').getByText('No workflows yet',{exact:true})).toBeVisible();
+ await back(page);await expect(tile(page)).toHaveCount(0);await expect(page.getByRole('button',{name:'Workflows',exact:true})).toBeVisible();const calls=await metadataReads(page);expect(calls).toBe(1);
  await page.getByRole('textbox',{name:'Ask Alpha',exact:true}).fill('Still unsent');expect(await metadataReads(page)).toBe(calls);
 });
 test('Home retains the unified snapshot and a new list visit refreshes changed names',async({page})=>{
@@ -44,7 +44,7 @@ test('unified metadata loading and failure offer explicit refresh without runnin
  await page.evaluate(()=>{const f=(window as any).homeWorkflowFixture;f.hold=true;f.error=true;});await tile(page).click();await expect(page.getByRole('status').filter({hasText:'Refreshing automations…'})).toBeVisible();
  await expect.poll(()=>page.evaluate(()=>typeof(window as any).homeWorkflowFixture.release)).toBe('function');await page.evaluate(()=>(window as any).homeWorkflowFixture.release());await expect(page.getByRole('alert')).toContainText('Automations could not refresh. Retry to check the current records.');
  await page.evaluate(()=>{const f=(window as any).homeWorkflowFixture;f.hold=false;f.error=false;f.rows=[{id:'ready',name:'Recovered routine',active:true,description:'',versionId:'v1',steps:[]}];});
- await page.getByRole('button',{name:'Refresh',exact:true}).click();await expect(workflowCard(page,'Recovered routine')).toBeVisible();await back(page);await expect(tile(page)).toContainText('Recovered routine');expect(await page.evaluate(()=>(window as any).homeWorkflowFixture.writeCalls)).toBe(0);
+ await page.getByRole('button',{name:'Filter workflows',exact:true}).click();await page.getByRole('dialog',{name:'Filter workflows',exact:true}).getByRole('button',{name:'Refresh list',exact:true}).click();await expect(workflowCard(page,'Recovered routine')).toBeVisible();await back(page);await expect(tile(page)).toContainText('Recovered routine');expect(await page.evaluate(()=>(window as any).homeWorkflowFixture.writeCalls)).toBe(0);
 });
 test('disconnect retires names and a late old-account unified result cannot refill Home',async({page})=>{
  await setup(page);await rows(page,[flow('private','First owner routine')]);await connect(page);await expect(tile(page)).toContainText('First owner routine');

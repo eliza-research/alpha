@@ -1,0 +1,12 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {parseSignerDigest} from '../scripts/apk.mjs';
+const a='A'.repeat(64),b='b'.repeat(64);
+const legacy=`Signer #1 certificate SHA-256 digest: ${a}`;
+const rotated=`Signer (minSdkVersion=24, maxSdkVersion=32) certificate SHA-256 digest: ${a}\nSigner (minSdkVersion=33, maxSdkVersion=2147483647) certificate SHA-256 digest: ${b}`;
+test('legacy signer remains supported and normalized',()=>assert.equal(parseSignerDigest(legacy),a.toLowerCase()));
+test('rotated signer is selected for the exact Android API',()=>{assert.equal(parseSignerDigest(rotated,{apiLevel:32}),a.toLowerCase());assert.equal(parseSignerDigest(rotated,{apiLevel:34}),b);});
+test('rotated output requires an explicit valid API',()=>{for(const apiLevel of [undefined,0,1.5,'34'])assert.throws(()=>parseSignerDigest(rotated,{apiLevel}));});
+test('missing or overlapping applicable ranges are refused',()=>{assert.throws(()=>parseSignerDigest(rotated,{apiLevel:23}));assert.throws(()=>parseSignerDigest(rotated+'\n'+rotated,{apiLevel:34}));});
+test('mixed or multiple signer formats are refused',()=>{assert.throws(()=>parseSignerDigest(legacy+'\n'+rotated,{apiLevel:34}));assert.throws(()=>parseSignerDigest(legacy+'\nSigner #2 certificate SHA-256 digest: '+b));});
+test('unsigned or malformed output cannot pass',()=>assert.throws(()=>parseSignerDigest('no signer')));

@@ -1,3 +1,4 @@
+import {serviceInputs} from './source-inputs.mjs';
 import assert from 'node:assert/strict';
 import {build} from 'esbuild';
 import {chromium, expect} from '@playwright/test';
@@ -24,9 +25,10 @@ async function bundle() {
     }}]});
   return result.outputFiles[0].text;
 }
-export async function scanRefinement() {
+export async function scanRefinement(extraSources = []) {
   const sources = ['apps/app/src/prototype/scan-document.ts', 'apps/app/src/prototype/scan-pdf.ts', 'apps/app/src/browser/scan-draft.ts', 'apps/app/src/runtime/abort-signal.ts', '.eliza/client-features/plugins/plugin-files/src/documents/scan-draft.ts', '.eliza/client-features/plugins/plugin-files/src/documents/scan-text-layer.ts', 'specs/quint/refinement/services/scan.mjs', 'specs/quint/refinement/services/support.mjs'];
-  const driverHashes = captureInputs(sources);
+  const inputs = serviceInputs([...sources, ...extraSources]);
+  const driverHashes = captureInputs(inputs);
   const browser = await chromium.launch({headless: true, ...(process.env.ALPHA_CHROMIUM_PATH ? {executablePath: process.env.ALPHA_CHROMIUM_PATH} : {}), args: ['--no-sandbox']});
   const code = await bundle(), traces = [];
   try {
@@ -98,5 +100,5 @@ export async function scanRefinement() {
       traces.push(trace); await context.close();
     }
   } finally { await browser.close(); }
-  return checkTraces({model: 'ScanDocument', sources, driverHashes, traces, scope: 'bounded-orchestration', assumptions: ['The actual UI, IndexedDB draft implementation and picker/export policy execute in Chromium.', 'Image selection and final document export are controlled external ports. PDF conversion supplies fixed bytes; geometry and PDF content need their existing tests.', 'Distinct real committed revision strings map to increasing finite revision IDs.']});
+  return checkTraces({model: 'ScanDocument', sources: inputs, driverHashes, traces, scope: 'bounded-orchestration', assumptions: ['The actual UI, IndexedDB draft implementation and picker/export policy execute in Chromium.', 'Image selection and final document export are controlled external ports. PDF conversion supplies fixed bytes; geometry and PDF content need their existing tests.', 'Distinct real committed revision strings map to increasing finite revision IDs.']});
 }

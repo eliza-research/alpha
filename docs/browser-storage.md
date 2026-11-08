@@ -83,8 +83,8 @@ state, not new storage domains.
 (`render`/`startup`/`uncaught`) and error class name, never messages, stacks, URLs or
 content. The web build stores them in `alpha.crash-log.v1` in this browser profile (best
 effort: 50 entries, 30 days, unreadable bytes read as empty and storage failures are
-ignored). Android keeps the log natively in `AlphaCrashLog` (no-backup
-`crash-log/v1.json`), adding uncaught exception classes and Android's recorded process
+ignored). Android keeps the log natively in the shared `plugin-native-system`
+`crash.CrashLog` (no-backup `crash-log/v1.json`, the same installed path), adding uncaught exception classes and Android's recorded process
 exit reasons (`getHistoricalProcessExitReasons`, Android 11+). Settings > About shows
 it, and Export diagnostics (`runtime/diagnostics-export.ts`) shares or saves an
 allowlisted JSON report (versions, pin, runtime hashes, permission and role state,
@@ -108,7 +108,11 @@ an uncertain result. The record represents the latest reviewed handoff, not an
 alarm database or proof that an alarm exists. The browser path opens its
 simulated Clock directly; mock requests do not write native history.
 
-`clock-handoff-history.test.mjs` covers competing admissions, lost writes,
+The record rules (exact validation, stale-snapshot refusal, the older-build legacy
+copy check and readback confirmation) are the shared
+`@elizaos/plugin-assistant/device-clock-review` Clock handoff history;
+`apps/app/src/runtime/clock-handoff-history.ts` binds it to Alpha's slot and
+legacy key. `scripts/test-clock-handoff-flow.mjs` covers competing admissions, lost writes,
 retained old bytes, late completion, duplicate clicks and retirement during an
 awaited save. Android Clock fixtures observe encrypted completion and refuse to
 delete changed or unobserved records. Those fixtures require current-source
@@ -120,18 +124,33 @@ Keystore, process death or real Clock behavior.
 The Android browser's camera, microphone and location decisions are decided by
 upstream `BrowserSitePermissions` at the pin: the persistent profile only (a private
 tab asks every time and stores nothing), at most 200 origins with the oldest dropped
-first, and decisions cleared with the site's data or all browsing data. Alpha keeps
-its own sealed storage: `BrowserSessionStore` seals the record with the session
-Keystore key under the `permissions` preference, and `BrowserPermissionRecords` reads
-and writes it through the upstream class. The stored format did not change
-(`{"https://host[:port]":{"camera":true,...}}`, oldest origin first), so records
-written by earlier builds are read as they are; an origin or kind the upstream class
-does not recognize, or a damaged record, grants nothing and the site is asked again.
-Two Alpha rules stay in `AlphaBrowserPlugin.sitePermission`: only the selected,
-shown page may prompt or use a stored Allow, and an Allow is chained to Android's
-runtime permission. `test/browser-site-permissions.test.mjs` reads old-format records
-(allow, deny, a damaged store, the 200-origin bound) through the new path on the
-host JVM; it does not exercise WebView prompts or the Keystore.
+first, and decisions cleared with the site's data or all browsing data. The prompt plan
+is upstream `BrowserSitePrompt`: only a secure top-level page asks, for its own origin;
+only the selected, shown page may prompt or use a stored Allow; a kind the app cannot
+hold is refused with a notice. The sealed records are upstream `BrowserSessionStore`
+(session and `permissions` preferences, `BrowserSitePermissionRecord` format) and
+`BrowserBookmarkStore`. Alpha supplies only its installed-data names in
+`AlphaBrowserStores`: the `alpha-browser-session` and `alpha-browser-bookmarks`
+preference files and their `-v1` Android Keystore aliases, so records written by
+earlier builds are read as they are. The stored format did not change
+(`{"https://host[:port]":{"camera":true,...}}`, oldest origin first); an origin or kind
+the upstream class does not recognize, or a damaged record, grants nothing and the site
+is asked again. The prompt dialog, the single open-prompt slot and the chain from an Allow
+to Android's runtime permission are the shared tab host's (`BrowserTabHostPlugin.sitePermission`
+in plugin-native-browser-surface); `AlphaBrowserPlugin` extends it under Alpha's Capacitor name.
+
+The rest of Alpha's installed browser identity is `AlphaBrowserStores.IDENTITY`
+(`BrowserTabHostConfig`): the persistent normal-tab profile `alpha_browser_v1` (website
+sign-ins), private profiles `alpha_private_<namespace>_<tab>`, leftover pre-P-04
+`alpha_public_*` profiles, and the `alpha-browser` storage prefix from which the shared host
+derives the installed `alpha-browser-downloads`, `alpha-browser-retired-profiles` and
+`alpha-browser-notices` preference files and its activity-result keys. Keeping these names
+is what keeps an existing install's sign-ins, download history and private-profile cleanup
+ledger after the tab host moved upstream; nothing is migrated.
+`test/browser-site-permissions.test.mjs` runs the upstream record test (allow, deny, a
+damaged store, the 200-origin bound) on the host JVM against the pinned sources; it does
+not exercise WebView prompts or the Keystore. `BrowserStorageFormatInstrumentedTest`
+checks installed records on Android and needs a device run.
 
 ## Storage and recovery rules
 
@@ -186,6 +205,11 @@ Original v2, v1 and daily bytes remain verbatim in the archive and localStorage.
 Later changes to retired Notes sources stop normal access. Unrelated daily
 receipts do not invalidate Notes. Confirmed reset creates a new empty collection
 without reimporting retained sources or deleting recording bytes.
+
+Browser recording bytes and transcripts use the shared elizaOS Notes client
+`createNotesAudioStore` (one-note ownership, per-operation deletion receipts, purge
+and 30-day expiry); `browser/note-audio-store.ts` binds it to Alpha's existing
+`alpha.browser.audio.v1` IndexedDB database.
 
 Audio-deletion pending records use a separate canonical document, and recovery
 reads the same authoritative Notes envelope as the editor. The independent

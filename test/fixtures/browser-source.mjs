@@ -4,10 +4,10 @@ import {readFile} from 'node:fs/promises';
 import {dirname,resolve} from 'node:path';
 import {fileURLToPath,pathToFileURL} from 'node:url';
 const root=fileURLToPath(new URL('../../',import.meta.url));
-export async function loadBrowserModule(entry,{testMocks=false}={}) {
+export async function loadBrowserModule(entry,{testMocks=false,env={}}={}) {
  const entries=Array.isArray(entry)?entry:[entry];
  const contents=entries.map((name,index)=>`export * as entry${index} from ${JSON.stringify(resolve(root,name))};`).join('\n');
- const {outputFiles}=await build({absWorkingDir:root,stdin:{contents,resolveDir:root,sourcefile:'browser-fixture.mjs'},bundle:true,write:false,platform:'node',format:'esm',define:{'import.meta.env':JSON.stringify({DEV:testMocks,VITE_ELIZA_DEV_ALLOW_TEST_MOCKS:testMocks?'1':''})},plugins:[{
+ const {outputFiles}=await build({absWorkingDir:root,stdin:{contents,resolveDir:root,sourcefile:'browser-fixture.mjs'},bundle:true,write:false,platform:'node',format:'esm',define:{'import.meta.env':JSON.stringify({DEV:testMocks,VITE_ELIZA_DEV_ALLOW_TEST_MOCKS:testMocks?'1':'',...env})},plugins:[{
   name:'fixture-module-url',setup(builder){builder.onLoad({filter:/\.[cm]?[jt]sx?$/},async({path})=>{
    if(path.includes("/node_modules/"))return;
    const loader=/\.tsx$/.test(path)?'tsx':/\.[cm]?ts$/.test(path)?'ts':/\.jsx$/.test(path)?'jsx':'js';

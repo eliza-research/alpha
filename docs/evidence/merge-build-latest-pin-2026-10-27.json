@@ -1,0 +1,11 @@
+{
+  "schema": 1,
+  "fromCommit": "6293e29bf398603d0ea233871edbdeb57e5c2405",
+  "toCommit": "4b928290d388e8f9866b6c404a1b186c7bfe7f70",
+  "changedPaths": [
+    "packages/testing/e2e/notes-calendar-runtime.e2e.test.ts"
+  ],
+  "nativeInputsUnchanged": true,
+  "qualificationChanged": false,
+  "description": "Latest develop observed after integrating all open PRs. Only upstream test fixtures changed; existing native library qualification and hashes remain authoritative."
+}

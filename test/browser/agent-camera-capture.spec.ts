@@ -10,7 +10,7 @@ for(const mode of ['capture','lost-ack','old-message','ask-first'] as const)test
   const methods=(names:string[])=>names.map(name=>({name,rtype:'promise'}));
   w.Capacitor={PluginHeaders:[{name:'AlphaConnection',methods:methods(['request','cancel','secureRead','secureWrite','secureCompareExchange','secureRemove'])},{name:'AlphaActionJournal',methods:methods(['reserve','markApplying','finish','get','list'])}],nativePromise:async(plugin:string,method:string,input:any)=>{
    if(plugin==='AlphaActionJournal'){
-    if(method==='reserve'){f.entry={...input,phase:'reserved'};return{created:true};}
+    if(method==='reserve'){f.entry={...input,phase:'reserved'};return{created:true,entry:f.entry};}
     if(method==='markApplying'){Object.assign(f.entry,{phase:'applying',attemptId:input.attemptId});return{};}
     if(method==='finish'){Object.assign(f.entry,input,{phase:'terminal'});return{};}
     if(method==='get')return{entry:f.entry};
@@ -50,7 +50,7 @@ for(const mode of ['capture','lost-ack','old-message','ask-first'] as const)test
  },mode);
  await page.goto('/');
  await page.getByRole('button',{name:'Settings',exact:true}).click();
- await page.getByRole('button',{name:'Agent',exact:true}).click();
+ await page.getByRole('button',{name:'Agent connection',exact:true}).click();
  await page.getByText('Local development agent',{exact:true}).click();
  const local=page.locator('.alpha-connection details').filter({has:page.getByText('Local development agent',{exact:true})});
  await local.getByLabel('Local agent address').fill('http://127.0.0.1:47842');

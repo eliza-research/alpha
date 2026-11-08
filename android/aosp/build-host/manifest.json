@@ -1,0 +1,16 @@
+{
+  "schema": 1,
+  "project": "build/soong",
+  "revision": "6722dd8833db7482df1a2543ca3fcf67ddf0f7b1",
+  "baselineLockSha256": "760a7184c62c93aeac40595cf5733f8089aa16ccd28eb7a5f5ce41d4dae741d3",
+  "patch": "soong-memory.patch",
+  "patchSha256": "07927a4a21056cfdd0070248c2e850b079926a8f824ea7947ac2e8327778907f",
+  "purpose": "Host build only: allow explicit Go heap limits to survive bootstrap env -i on memory-constrained build hosts. No default is changed and no device source is changed.",
+  "files": [
+    {
+      "path": "ui/build/soong.go",
+      "beforeSha256": "ab745182f4fba6ab4fbd1cea6fc4943b78e588b4187dfc735cd28826bbaa7027",
+      "afterSha256": "000eadc0cb28df98d66d13680826ccf96713f0e340f5050723ae0eeb639140dd"
+    }
+  ]
+}

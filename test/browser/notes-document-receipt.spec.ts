@@ -1,10 +1,11 @@
 import { expect, test } from '@playwright/test';
+import { openLegacyNotes } from './helpers/legacy-notes';
 
 // Android returns a document picker's result before the app is shown again. A receipt lasts
 // under two seconds, so one issued while the document is hidden could end unseen.
 test('A document receipt that arrives while the page is hidden is shown once the page is visible', async ({ page }) => {
   await page.goto('/');
-  await page.getByRole('button', { name: 'Notes', exact: true }).click();
+  await openLegacyNotes(page);
   const chooser = page.waitForEvent('filechooser');
   await page.getByRole('button', { name: 'Import text note', exact: true }).click();
   await (await chooser).setFiles({ name: 'Receipt note.txt', mimeType: 'text/plain', buffer: Buffer.from('Receipt body\n') });
@@ -37,7 +38,7 @@ test('A document receipt that arrives while the page is hidden is shown once the
 
 test('A visible page shows a document receipt at once', async ({ page }) => {
   await page.goto('/');
-  await page.getByRole('button', { name: 'Notes', exact: true }).click();
+  await openLegacyNotes(page);
   const chooser = page.waitForEvent('filechooser');
   await page.getByRole('button', { name: 'Import text note', exact: true }).click();
   await (await chooser).setFiles({ name: 'Receipt note.txt', mimeType: 'text/plain', buffer: Buffer.from('Receipt body\n') });
@@ -47,7 +48,7 @@ test('A visible page shows a document receipt at once', async ({ page }) => {
 // A failure is a document outcome too, and the one a person most needs to see.
 test('A document failure that arrives while the page is hidden is shown once the page is visible', async ({ page }) => {
   await page.goto('/');
-  await page.getByRole('button', { name: 'Notes', exact: true }).click();
+  await openLegacyNotes(page);
   const chooser = page.waitForEvent('filechooser');
   await page.getByRole('button', { name: 'Import text note', exact: true }).click();
   await (await chooser).setFiles({ name: 'Failure note.txt', mimeType: 'text/plain', buffer: Buffer.from('Failure body\n') });

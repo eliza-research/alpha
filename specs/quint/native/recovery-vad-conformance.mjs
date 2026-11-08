@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import {currentNativeSource} from '../refinement/native/current-sources.mjs';
 import {spawnSync} from 'node:child_process';
 import {createHash} from 'node:crypto';
 import {existsSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync} from 'node:fs';
@@ -85,6 +86,7 @@ export async function runRecoveryVadConformance() {
     writeFileSync(input, lines.join('\n') + '\n');
     const harness = join(work, 'RecoveryVadConformance.java');
     writeFileSync(harness, `package ai.elizaresearch.alphaphone;
+import ai.eliza.voice.LiveVadGate;
 import java.lang.reflect.Field;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -133,7 +135,7 @@ public final class RecoveryVadConformance {
 `);
     const javac = jdkTool('javac');
     const java = jdkTool('java');
-    const sources = [join(native, 'RendererRecoveryBudget.java'), join(native, 'LiveVadGate.java')];
+    const sources = [join(native, 'RendererRecoveryBudget.java'), currentNativeSource('LiveVadGate.java')];
     run(javac, ['-d', work, harness, ...sources]);
     const checks = Number(run(java, ['-cp', work, 'ai.elizaresearch.alphaphone.RecoveryVadConformance', input]));
     assert.ok(Number.isSafeInteger(checks) && checks > 1000);

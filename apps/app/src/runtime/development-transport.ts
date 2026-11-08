@@ -1,3 +1,6 @@
+import { validateDeviceOperation as validatePreparedDeviceOperation } from "./device-actions";
+import { validateReminderCreate, type ReminderCreateOperation } from "../../../../.eliza/client-features/plugins/plugin-assistant/src/services/device-actions/reminder-create-contract.ts";
+import { findViewActionHandoff } from "../../../../.eliza/client-features/packages/core/src/views/view-action-handoff.ts";
 import { DEVELOPMENT_PROPOSAL_VIEWS } from "./development-view-contract.ts";
 import { sanitizePhoneContext } from './phone-context';
 import { registerPlugin } from '../platform-plugins';
@@ -11,7 +14,7 @@ import type {
 
 export type DevelopmentLocalOperation =
   | { type: "create_note"; title: string; body: string }
-  | { type: "create_reminder"; title: string; body: string; at: number }
+  | ReminderCreateOperation
   | { type: "open_view"; view: AlphaView };
 export type DevelopmentLocalDispatcher = (
   operation: DevelopmentLocalOperation,
@@ -30,6 +33,8 @@ export interface DevelopmentAgentStatus {
 }
 interface WireProposal extends ActionProposal {
   operation: DevelopmentLocalOperation;
+  simulated?: boolean;
+  navigation?: unknown;
 }
 const DevelopmentAgent = registerPlugin<{
   status(): Promise<DevelopmentAgentStatus>;
@@ -44,25 +49,8 @@ const allowedViews = new Set<AlphaView>(DEVELOPMENT_PROPOSAL_VIEWS);
 function validateOperation(
   operation: DevelopmentLocalOperation,
 ): DevelopmentLocalOperation {
-  if (
-    operation?.type === "create_note" &&
-    typeof operation.title === "string" &&
-    operation.title.trim() &&
-    operation.title.length <= 200 &&
-    typeof operation.body === "string" &&
-    operation.body.length <= 12000
-  ) {
-    return {
-      type: "create_note",
-      title: operation.title,
-      body: operation.body,
-    };
-  }
-  if (operation?.type === "create_reminder" &&
-      typeof operation.title === "string" && operation.title.trim() && operation.title.length <= 200 &&
-      typeof operation.body === "string" && operation.body.length <= 4000 &&
-      Number.isSafeInteger(operation.at) && operation.at > Date.now() && operation.at <= 8640000000000000)
-    return { type: "create_reminder", title: operation.title.trim(), body: operation.body, at: operation.at };
+  if (operation?.type === "create_note") return validatePreparedDeviceOperation(operation) as Extract<DevelopmentLocalOperation,{type:"create_note"}>;
+  if (operation?.type === "reminder_create") return validateReminderCreate(operation);
   if (operation?.type === "open_view" && allowedViews.has(operation.view))
     return { type: "open_view", view: operation.view };
   throw new Error("Unsupported local action proposal.");
@@ -154,29 +142,20 @@ export async function createDevelopmentTransport(
             wire.contextRevision !== context.revision
           )
             throw new Error("Invalid development action binding.");
+          if (wire.navigation !== undefined) {
+            const handoff=findViewActionHandoff([wire.navigation]);
+            const view=handoff?.viewId==='chat'?'home':handoff?.viewId==='automations'?'workflows':handoff?.viewId;
+            if(operation.type!=='open_view'||view!==operation.view||handoff?.navigationPrepared!==true||handoff.completedActionHandoffId!==wire.id)throw Error('Invalid development navigation preparation');
+          }
+          const record:{title:string;body:string;at?:number}=operation.type==='reminder_create'?{title:operation.fields.title,body:operation.fields.body,at:operation.fields.schedule.at}:operation.type==='open_view'?{title:'',body:''}:operation;
           // Build the review text from the exact validated action, not model prose.
           const proposal: ActionProposal = {
             id: wire.id,
             expiresAt: wire.expiresAt,
             contextRevision: wire.contextRevision,
             title:
-              operation.type === "create_note"
-                ? "Create note: " + operation.title
-                : operation.type === "create_reminder" ? "Create reminder: " + operation.title : "Open " + operation.view,
-            description:
-              operation.type === "create_note"
-                ? "Save this note only on this device. Title: " +
-                  operation.title +
-                  "\n\n" +
-                  operation.body
-                : operation.type === "create_reminder"
-                  ? "Schedule one reminder on this device. Time: " + new Date(operation.at).toLocaleString(undefined, { dateStyle: "full", timeStyle: "long" }) +
-                    "\nExact instant: " + new Date(operation.at).toISOString() +
-                    "\nTitle: " + operation.title + "\n\n" + operation.body +
-                    "\n\nNotification permission is required. Android may delay delivery to conserve battery."
-                : "Navigate to the " +
-                  operation.view +
-                  " view in Alpha Phone. No native action will run.",
+              operation.type === "open_view" ? "Open " + operation.view : "Preview " + (operation.type === "create_note" ? "note: " : "reminder: ") + record.title,
+            description: operation.type === "open_view" ? "Open the " + operation.view + " local view after review. No records are read or changed." : "Development simulation only. Review the exact operation; no note will be saved and no reminder will be scheduled.\n\nTitle: " + record.title + "\n\n" + record.body + (record.at!==undefined ? "\nExact instant: " + new Date(record.at).toISOString() : ""),
           };
           pending.set(proposal.id, { proposal, operation });
           proposals.push({ ...proposal });
@@ -191,7 +170,6 @@ export async function createDevelopmentTransport(
       const stored = pending.get(proposal.id);
       if (
         !stored ||
-        !dispatch ||
         signal.aborted ||
         stored.proposal.expiresAt <= Date.now() ||
         stored.proposal.contextRevision !== context.revision ||
@@ -199,7 +177,10 @@ export async function createDevelopmentTransport(
       )
         throw new Error("Local action is not available for approval.");
       pending.delete(proposal.id); // consume before dispatch; never retry an ambiguous write
-      const result = await dispatch(validateOperation({ ...stored.operation }));
+      const operation=validateOperation({ ...stored.operation });
+      if(operation.type!=="open_view") return {proposalId:proposal.id,status:"failed",summary:"Development simulation reviewed. No note was saved and no reminder was scheduled."};
+      if(!dispatch)throw Error("Local view navigation is unavailable");
+      const result = await dispatch(operation);
       if (
         !result ||
         !["succeeded", "failed"].includes(result.status) ||

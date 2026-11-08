@@ -2090,14 +2090,14 @@
     {
       "id": "settings-google-account-controls",
       "area": "Settings",
-      "viewOrFlow": "Google account card, named calendar choices, theme and Back",
+      "viewOrFlow": "Google account card (no calendar picker: Calendar is one merged view), theme and Back",
       "scope": "MVP",
-      "implementation": "Layout/labels/theme/Back implemented at05; display choice resource budget tested",
+      "implementation": "Layout/labels/theme/Back implemented at05; the calendar display picker was removed 2026-10-30 (one merged Calendar); panel resource budget tested",
       "preview": "Pending visible QA",
       "seeker": "Readable one-column card and named radio controls verified at574; Back returns to Accounts. Dark visual check pending.",
       "userApproval": "Pending",
       "evidence": [],
-      "notes": "Actual React panel test: zero account/source enumerations for local choice; explicit refresh/grant changes revalidate."
+      "notes": "Actual React panel test: no calendar picker and no Google calendar reads; explicit refresh/grant changes revalidate. The radio-control check above predates the picker removal and needs a visible retest."
     },
     {
       "id": "platform-google-oauth-callback",

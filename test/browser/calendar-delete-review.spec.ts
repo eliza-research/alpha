@@ -1,3 +1,4 @@
+import {openBrowserCalendar} from './helpers/browser-calendar';
 // Browser Calendar: "Delete event" shows one review step naming the event, as the Android plugin does.
 // Source/test evidence for the browser build only; the Android dialog is covered by its own tests.
 import {test,expect,type Page} from '@playwright/test';
@@ -9,7 +10,7 @@ async function create(page:Page,title:string){
 }
 test.beforeEach(async({page})=>{
  await page.addInitScript(()=>{if(!localStorage.getItem('alpha.connection.selection.v1'))localStorage.setItem('alpha.connection.selection.v1',JSON.stringify({kind:'offline'}));});
- await page.clock.install();await page.goto('/?mode=dev&tools=1');await button(page,'Calendar').click();
+ await page.clock.install();await page.goto('/?mode=dev&tools=1');await openBrowserCalendar(page);
 });
 test('Cancel, Escape and system Back delete nothing; Delete removes exactly the reviewed event',async({page})=>{
  await create(page,'Keep this one');await button(page,'Back to calendar').click();
@@ -30,7 +31,7 @@ test('Cancel, Escape and system Back delete nothing; Delete removes exactly the 
  // Reload with the review open: nothing was deleted and no review is replayed.
  await button(page,'Delete event').click();await expect(review).toBeVisible();
  await page.reload();await expect(review).toHaveCount(0);expect(await titles(page)).toEqual(['Harbour pickup','Keep this one']);
- await button(page,'Calendar').click();await page.getByRole('button',{name:/^Harbour pickup,/}).click();
+ await openBrowserCalendar(page);await page.getByRole('button',{name:/^Harbour pickup,/}).click();
  await button(page,'Delete event').click();
  await review.getByRole('button',{name:'Delete event',exact:true}).click();
  await expect(page.getByRole('complementary',{name:'Pending deletions'}).getByRole('button',{name:'Undo',exact:true})).toBeVisible();

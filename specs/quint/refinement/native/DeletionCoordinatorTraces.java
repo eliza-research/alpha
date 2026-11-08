@@ -1,4 +1,5 @@
 package ai.elizaresearch.alphaphone;
+import ai.eliza.plugins.actionjournal.deletion.DeferredDeletionCoordinator;
 
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
@@ -6,7 +7,7 @@ import org.json.*;
 
 /** Executes the whole coordinator and journal, observing persisted bytes and provider calls. */
 public final class DeletionCoordinatorTraces {
-  static NativeDeletionCoordinator coordinator;
+  static DeferredDeletionCoordinator coordinator;
   static Trace trace;
   static String previous = "absent";
   static boolean reminder;

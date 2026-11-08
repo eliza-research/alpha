@@ -8,7 +8,7 @@ const read = file => readFileSync(file, 'utf8');
 
 test('every launcher surface is locked to portrait', () => {
   const launcher = read('android/app/src/launcher/AndroidManifest.xml');
-  for (const activity of ['MainActivity', 'AlphaAssistActivity'])
+  for (const activity of ['MainActivity', 'AlphaAssistActivity', 'AlphaPowerVoiceActivity'])
     assert.match(launcher, new RegExp(`<activity android:name="\\.${activity}"[^>]*android:screenOrientation="portrait" tools:replace="android:screenOrientation"`));
 });
 

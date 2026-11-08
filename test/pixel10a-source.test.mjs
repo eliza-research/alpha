@@ -5,7 +5,7 @@ import os from 'node:os';
 import path from 'node:path';
 import {execFileSync} from 'node:child_process';
 import {createHash} from 'node:crypto';
-import {verifyPixel10aSource} from '../scripts/pixel10a-source-contract.mjs';
+import {verifyPixel10aSource, defaultLockPath} from '../scripts/pixel10a-source-contract.mjs';
 const sha = bytes => createHash('sha256').update(bytes).digest('hex');
 function fixture(t) {
  const base=fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(),'pixel-source-')));
@@ -49,7 +49,7 @@ test('unrecorded generated file and changed reviewed override fail',async t=>{
  fs.unlinkSync(extra);fs.writeFileSync(path.join(f.project.dir,'source.txt'),'malicious override');await assert.rejects(verifyPixel10aSource(f),/Source bytes differ/);
 });
 test('wrong device and unsafe source paths fail without staging outputs',async t=>{
- const f=fixture(t);f.contract.device.codename='grizzly';f.save();await assert.rejects(verifyPixel10aSource(f),/Not the Pixel 10a/);
+ const f=fixture(t);f.contract.device.codename='grizzly';f.save();await assert.rejects(verifyPixel10aSource(f),/source contract/);
  f.contract.device.codename='stallion';f.contract.projects[0].path='../outside';f.save();await assert.rejects(verifyPixel10aSource(f),/Unsafe source path/);
 });
 
@@ -64,4 +64,41 @@ test('changing the selected manifest or registered project list fails',async t=>
 
 test('ignored build inputs cannot bypass project status verification',async t=>{
  const f=fixture(t);fs.writeFileSync(path.join(f.project.dir,'.git/info/exclude'),'hidden.cpp\n');fs.writeFileSync(path.join(f.project.dir,'hidden.cpp'),'unreviewed');await assert.rejects(verifyPixel10aSource(f),/Ignored source inventory differs/);
+});
+
+function withPatch(t) {
+ const f=fixture(t);
+ fs.writeFileSync(path.join(f.project.dir,'base.txt'),'pinned');f.project.git('add','base.txt');f.project.git('commit','-m','base');
+ f.contract.projects[0].commit=f.project.git('rev-parse','HEAD');f.save();
+ fs.writeFileSync(path.join(f.project.dir,'base.txt'),'patched');fs.writeFileSync(path.join(f.project.dir,'chip.txt'),'new');
+ const manifest={project:'framework',revision:f.contract.projects[0].commit,baselineLockSha256:sha(fs.readFileSync(f.lock)),patchSha256:'p'.repeat(64),files:[
+  {path:'base.txt',beforeSha256:sha('pinned'),afterSha256:sha('patched')},{path:'chip.txt',beforeSha256:null,afterSha256:sha('new')}]};
+ return {...f,manifest,appliedPatches:[{name:'chip',manifest,manifestSha256:'m'.repeat(64)}]};
+}
+test('a build copy with an exactly applied reviewed patch verifies the baseline and reports the patch',async t=>{
+ const f=withPatch(t);
+ await assert.rejects(verifyPixel10aSource({...f,appliedPatches:[]}),/Unrecorded source changes/);
+ const result=await verifyPixel10aSource(f);
+ assert.deepEqual(result.appliedPatches,[{name:'chip',project:'framework',revision:f.manifest.revision,manifestSha256:'m'.repeat(64),patchSha256:'p'.repeat(64),filesChecked:2}]);
+ assert.equal(result.overridesChecked,1);assert.equal(result.releaseQualified,false);assert.equal(result.imageBuilt,false);
+});
+test('applied patches cannot carry changed bytes, wrong preimages, extra files, another lock or overlaps',async t=>{
+ const f=withPatch(t);
+ fs.writeFileSync(path.join(f.project.dir,'chip.txt'),'tampered');await assert.rejects(verifyPixel10aSource(f),/Applied patch bytes differ/);
+ fs.writeFileSync(path.join(f.project.dir,'chip.txt'),'new');f.manifest.files[0].beforeSha256=sha('other');await assert.rejects(verifyPixel10aSource(f),/Applied patch preimage differs/);
+ f.manifest.files[0].beforeSha256=sha('pinned');fs.writeFileSync(path.join(f.project.dir,'extra.txt'),'x');await assert.rejects(verifyPixel10aSource(f),/Unrecorded source changes/);
+ fs.unlinkSync(path.join(f.project.dir,'extra.txt'));
+ await assert.rejects(verifyPixel10aSource({...f,appliedPatches:[{...f.appliedPatches[0],manifest:{...f.manifest,baselineLockSha256:'0'.repeat(64)}}]}),/not reviewed against this source lock/);
+ await assert.rejects(verifyPixel10aSource({...f,appliedPatches:[{...f.appliedPatches[0],manifest:{...f.manifest,revision:'0'.repeat(40)}}]}),/locked project revision/);
+ await assert.rejects(verifyPixel10aSource({...f,appliedPatches:[{...f.appliedPatches[0],manifest:{...f.manifest,files:[{path:'source.txt',beforeSha256:null,afterSha256:sha('x')}]}}]}),/overlaps/);
+});
+
+
+test('the Alpha adapter uses the shared inventory and retains required-input rejection', async () => {
+  assert.equal(defaultLockPath, path.resolve('vendor/eliza/packages/os/android/sources/pixel10a-stallion.json'));
+  assert.equal(fs.existsSync('android/aosp/pixel10a-source.json'), false);
+  const product = JSON.parse(fs.readFileSync('android/aosp/pixel10a-product.json'));
+  assert.equal(product.sourceLock.file, 'vendor/eliza/packages/os/android/sources/pixel10a-stallion.json');
+  assert.equal(sha(fs.readFileSync(defaultLockPath)), product.sourceLock.sha256);
+  await assert.rejects(verifyPixel10aSource({}), /requires --aosp-source and --factory-image/);
 });

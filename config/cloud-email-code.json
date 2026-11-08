@@ -1,5 +1,5 @@
 {
-  "$comment": "In-app Eliza Cloud email sign-in code routes (elizaOS/eliza PR #36260). The single source for the development browser bridge (scripts/cloud-email-code.ts); android CloudEmailCode.java holds the same values and test/cloud-sign-in-flow.test.mjs pins them together. If Cloud's final routes differ, change this file and CloudEmailCode.java only.",
+  "$comment": "In-app Eliza Cloud email sign-in code routes (elizaOS/eliza PR #36260). The single source for the development browser bridge (scripts/cloud-email-code.ts); the shared native client's CloudEmailCode.java (vendor/eliza packages/auth/android) holds the same values and test/cloud-sign-in-flow.test.mjs pins them together. If Cloud's final routes differ, change this file and the upstream CloudEmailCode.java.",
   "sendPath": "/steward/auth/email/code/send",
   "verifyPath": "/steward/auth/email/code/verify",
   "client": "ai.elizaresearch.alphaphone",

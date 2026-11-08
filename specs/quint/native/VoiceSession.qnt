@@ -5,7 +5,7 @@ module VoiceSession {
     session: int, turn: int, utterance: int, capture: bool, fullDuplex: bool, muted: bool,
     text: bool, endpoint: str, requestTurn: int, playbackTurn: int,
     sent: Set[int], heard: int, availableSentences: int, draft: bool,
-    pendingReview: bool, automaticApprovals: int
+    pendingReview: bool, automaticApprovals: int, inputHeld: bool, closingInput: bool
   }
   var s: State
   action check(condition: bool): bool = all { assert(condition), s' = s }
@@ -14,13 +14,13 @@ module VoiceSession {
     session: 0, turn: 0, utterance: 0, capture: false, fullDuplex: true, muted: false,
     text: false, endpoint: "none", requestTurn: -1, playbackTurn: -1,
     sent: Set(), heard: 0, availableSentences: 0, draft: false,
-    pendingReview: false, automaticApprovals: 0
+    pendingReview: false, automaticApprovals: 0, inputHeld: false, closingInput: false
   }
   action discloseCloud = all {
     s.phase == "idle", s' = {route: "cloud", disclosure: true, ...s}
   }
   action start(dictation: bool, fullDuplex: bool): bool = all {
-    s.phase == "idle", s.session < 2, s.route == "native" or s.disclosure,
+    s.phase.in(Set("idle", "error")), s.session < 2, s.route == "native" or s.disclosure,
     s' = {phase: if (dictation) "dictating" else "listening", capture: true,
       startedExplicitly: true, fullDuplex: fullDuplex, text: false, muted: false,
       pendingReview: false, draft: false, ...s}
@@ -47,12 +47,28 @@ module VoiceSession {
     longGap or s.endpoint == "complete", not(s.sent.contains(s.turn + 1)),
     s' = {phase: "thinking", turn: s.turn + 1, requestTurn: s.turn + 1,
       text: false, endpoint: "none", sent: s.sent.union(Set(s.turn + 1)),
-      heard: 0, availableSentences: 0, ...s}
+      heard: 0, availableSentences: 0, capture: false, inputHeld: true, closingInput: false, ...s}
+  }
+  action beginSubmission(longGap: bool): bool = all {
+    s.phase == "listening", s.text, s.turn < 4,
+    longGap or s.endpoint == "complete", not(s.sent.contains(s.turn + 1)),
+    s' = {phase: "thinking", turn: s.turn + 1, requestTurn: s.turn + 1,
+      text: false, endpoint: "none", sent: s.sent,
+      heard: 0, availableSentences: 0, capture: false, inputHeld: false, closingInput: true, ...s}
+  }
+  action inputClosed = all {
+    s.phase == "thinking", s.closingInput,
+    s' = { ...s, closingInput: false, inputHeld: true, sent: s.sent.union(Set(s.turn)) }
+  }
+  action inputCloseFailed = all {
+    s.phase == "thinking", s.closingInput, s.session < 2,
+    s' = { ...s, phase: "error", session: s.session + 1, capture: false,
+      closingInput: false, inputHeld: false, requestTurn: -1, playbackTurn: -1, text: false }
   }
   action reply(ticketSession: int, ticketTurn: int, needsReview: bool): bool =
-    if (s.phase == "thinking" and ticketSession == s.session and ticketTurn == s.turn)
+    if (s.phase == "thinking" and s.inputHeld and ticketSession == s.session and ticketTurn == s.turn)
       s' = {phase: if (needsReview) "awaiting-review" else "speaking",
-        pendingReview: needsReview, capture: not(needsReview) and not(s.muted),
+        pendingReview: needsReview, capture: false,
         playbackTurn: if (needsReview) -1 else ticketTurn,
         availableSentences: if (needsReview) 0 else 2, ...s}
     else s' = s
@@ -62,7 +78,7 @@ module VoiceSession {
     else s' = s
   action playbackFinished = all {
     s.phase == "speaking", s.heard == s.availableSentences,
-    s' = {phase: "listening", playbackTurn: -1, ...s}
+    s' = {phase: "listening", playbackTurn: -1, capture: not(s.muted), inputHeld: false, ...s}
   }
   // Echo/cough rejection leaves the response untouched; actual barge-in advances generation.
   action bargeIn(confirmed: bool): bool = all {
@@ -71,13 +87,20 @@ module VoiceSession {
       {phase: "listening", turn: s.turn + 1, text: true,
         endpoint: "none", playbackTurn: -1, requestTurn: -1, ...s} else s
   }
+  // Explicit user interruption retains no dictated segment. Input reopens after the aborted playback drains.
+  action interruptSpeech = all {
+    s.phase == "speaking", s.turn < 4,
+    s' = { ...s, phase: "listening", turn: s.turn + 1, text: false,
+      endpoint: "none", playbackTurn: -1, requestTurn: -1, capture: not(s.muted),
+      inputHeld: false, closingInput: false }
+  }
   action mute = all {
     s.phase.in(Set("listening", "thinking", "speaking", "awaiting-review")),
-    s' = {muted: not(s.muted), capture: s.muted and s.phase != "awaiting-review", ...s}
+    s' = {muted: not(s.muted), capture: s.muted and s.phase == "listening" and not(s.inputHeld or s.closingInput), ...s}
   }
   action resumeReview(ticketSession: int, ticketTurn: int, matches: bool): bool =
     if (s.phase == "awaiting-review" and ticketSession == s.session and ticketTurn == s.turn and matches)
-      s' = {phase: "speaking", pendingReview: false, capture: not(s.muted),
+      s' = {phase: "speaking", pendingReview: false, capture: false,
         playbackTurn: s.turn, availableSentences: 2, ...s}
     else s' = s
   action finishDictation = all {
@@ -87,7 +110,7 @@ module VoiceSession {
   action stop = all {
     s.session < 2,
     s' = {phase: "idle", capture: false, session: s.session + 1,
-      endpoint: "none", requestTurn: -1, playbackTurn: -1, text: false,
+      endpoint: "none", requestTurn: -1, playbackTurn: -1, text: false, inputHeld: false, closingInput: false,
       pendingReview: false, ...s}
   }
   action step = {
@@ -96,20 +119,22 @@ module VoiceSession {
     nondet flag = Set(false, true).oneOf()
     nondet duplex = Set(false, true).oneOf()
     any { discloseCloud, start(flag, duplex), segment(ticketSession, flag), speechStarts, shortGap,
-      endpointResult(ticketTurn, flag), submit(flag), reply(ticketSession, ticketTurn, flag),
+      endpointResult(ticketTurn, flag), submit(flag), beginSubmission(flag), inputClosed, inputCloseFailed, reply(ticketSession, ticketTurn, flag),
       sentenceFinished(ticketSession, ticketTurn), playbackFinished,
-      bargeIn(flag), mute, resumeReview(ticketSession, ticketTurn, flag), finishDictation, stop, s' = s }
+      bargeIn(flag), interruptSpeech, mute, resumeReview(ticketSession, ticketTurn, flag), finishDictation, stop, s' = s }
   }
   val TypeOK = s.session.in(0.to(2)) and s.turn.in(0.to(4)) and
-    s.phase.in(Set("idle", "dictating", "listening", "thinking", "speaking", "awaiting-review"))
+    s.phase.in(Set("idle", "dictating", "listening", "thinking", "speaking", "awaiting-review", "error"))
   val CloudConsent = s.capture and s.route == "cloud" implies s.disclosure and s.startedExplicitly
-  val StopReleasesCapture = s.phase.in(Set("idle", "awaiting-review")) implies not(s.capture)
+  val StopReleasesCapture = s.phase.in(Set("idle", "error", "awaiting-review")) implies not(s.capture)
   val PlaybackCurrent = s.phase == "speaking" implies s.playbackTurn == s.turn
   val HeardIsCompleted = s.heard >= 0 and s.heard <= s.availableSentences
   val VoiceNeverApproves = s.automaticApprovals == 0
   val DictationNeverSubmits = s.phase == "dictating" implies s.requestTurn == -1
   val MutedMicrophoneOff = s.muted implies not(s.capture)
-  val safety = MutedMicrophoneOff and TypeOK and CloudConsent and StopReleasesCapture and PlaybackCurrent and
+  val BusyInputClosed = s.phase.in(Set("thinking", "speaking", "awaiting-review")) implies not(s.capture)
+  val SendWaitsForClose = s.closingInput implies not(s.sent.contains(s.turn))
+  val safety = BusyInputClosed and SendWaitsForClose and MutedMicrophoneOff and TypeOK and CloudConsent and StopReleasesCapture and PlaybackCurrent and
     HeardIsCompleted and VoiceNeverApproves and DictationNeverSubmits
 
   run longGapAndPlaybackTest = init.then(start(false, true)).then(segment(0, true))
@@ -138,7 +163,16 @@ module VoiceSession {
   run muteKeepsReplyAndStopsMicrophoneTest = init.then(start(false, true)).then(segment(0, true))
     .then(submit(true)).then(reply(0, 1, false)).then(mute)
     .then(check(safety and s.phase == "speaking" and not(s.capture)))
-    .then(mute).then(check(safety and s.capture))
+    .then(mute).then(check(safety and not(s.capture)))
   run stopRejectsLateCaptureTest = init.then(start(false, true)).then(stop)
     .then(segment(0, true)).then(check(safety and not(s.text)))
+  run inputCloseBarrierTest = init.then(start(false, true)).then(segment(0, true)).then(beginSubmission(true))
+    .expect(safety and s.sent.size() == 0 and not(s.capture)).then(inputClosed)
+    .expect(safety and s.sent == Set(1) and s.inputHeld)
+  run stoppingPendingCloseNeverSendsTest = init.then(start(false, true)).then(segment(0, true)).then(beginSubmission(true))
+    .then(stop).expect(safety and s.sent.size() == 0 and not(s.closingInput))
+  run explicitSpeechInterruptionTest = init.then(start(false, true)).then(segment(0, true)).then(submit(true))
+    .then(reply(0, 1, false)).then(interruptSpeech)
+    .expect(safety and s.phase == "listening" and s.capture and not(s.text or s.inputHeld))
+
 }

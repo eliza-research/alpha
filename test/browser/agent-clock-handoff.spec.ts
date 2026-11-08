@@ -42,7 +42,7 @@ for (const mode of ['confirm','transcribed','zone','modal','unknown','receipt-lo
               return {result:{kind:'clock-handoff',action:w.calendarEntry.record.operation.action,status:mode==='unavailable'?'unavailable':mode==='denied'?'denied':mode==='failed'?'failed':'opened'}};
             }
 
-            if (method === 'reserve') { if(w.calendarEntry)return {created:false,entry:structuredClone(w.calendarEntry)};w.calendarEntry={...structuredClone(input),phase:'reserved'}; localStorage.setItem('fixture-journal',JSON.stringify(w.calendarEntry));return { created: true }; }
+            if (method === 'reserve') { if(w.calendarEntry)return {created:false,entry:structuredClone(w.calendarEntry)};w.calendarEntry={...structuredClone(input),phase:'reserved'}; localStorage.setItem('fixture-journal',JSON.stringify(w.calendarEntry));return { created: true, entry: structuredClone(w.calendarEntry) }; }
             if (method === 'markApplying') { Object.assign(w.calendarEntry,{phase:'applying',attemptId:input.attemptId});return {}; }
             if(method==='get')return {entry:structuredClone(w.calendarEntry)};
             if(method==='list')return {entries:w.calendarEntry?[structuredClone(w.calendarEntry)]:[]};
@@ -97,7 +97,7 @@ for (const mode of ['confirm','transcribed','zone','modal','unknown','receipt-lo
     await page.addInitScript(()=>{Object.defineProperty(navigator,'mediaDevices',{configurable:true,value:{getUserMedia:async()=>{throw Error('Physical capture forbidden');}}});HTMLMediaElement.prototype.play=async()=>{throw Error('Physical playback forbidden');};});
     await page.goto('/?mode=dev');
     const connect=async()=>{
-      if(mode==='browser'){await page.getByRole('button',{name:'Settings',exact:true}).click();await page.getByRole('button',{name:'Agent',exact:true}).click();}
+      if(mode==='browser'){await page.getByRole('button',{name:'Settings',exact:true}).click();await page.getByRole('button',{name:'Agent connection',exact:true}).click();}
     await page.getByText('Local development agent', { exact: true }).click();
     const local = page.locator('.alpha-connection details').filter({ has: page.getByText('Local development agent', { exact: true }) });
     await local.getByLabel('Local agent address').fill('http://127.0.0.1:47842');
@@ -141,7 +141,9 @@ for (const mode of ['confirm','transcribed','zone','modal','unknown','receipt-lo
       expect(await page.evaluate(async()=>{try{await (await import('/src/runtime/alpha-client.ts')).alphaClient.approve('fixture-proposal');return false;}catch{return true;}})).toBe(true);
       expect(await page.evaluate(()=>(window as any).recoveryFixture.effects)).toBe(0);return;
     }
-    await page.getByText('clock handoff',{exact:true}).click();
+    // Activate the actual review button through its keyboard path. The chat sheet
+    // can still be settling after voice closes; nested text is not a stable click target.
+    await page.getByRole('button',{name:/^clock handoff /}).press('Enter');
     if(mode==='zone'){await expect(page.getByText('This action is no longer pending for the current screen. Open its original selection and review again.',{exact:true}).first()).toBeVisible();expect(await page.evaluate(()=>(window as any).recoveryFixture.effects)).toBe(0);return;}
 
     if(mode==='review-cancel'){

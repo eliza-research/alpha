@@ -1,0 +1,123 @@
+{
+  "schema": 1,
+  "recordedAt": "2026-10-25",
+  "recordedAtUTC": "2026-10-26T02:18:42.307065+00:00",
+  "product": "c8801829f4f3ff9c1fed6f700473460852820a65",
+  "sdk": "737c4d578f69659a6881afe8ff06e3379cbc713c",
+  "previousSDK": "a95cd4d28eb2bcd5fe5527e98058c167ff480557",
+  "sourceDelta": [
+    "plugins/plugin-assistant/src/services/message/egress-policy.ts",
+    "plugins/plugin-assistant/src/services/message/historical-owner-read-declarations.test.ts",
+    "plugins/plugin-assistant/src/services/message/navigation-diagnostic.test.mjs",
+    "plugins/plugin-assistant/src/services/message/navigation-diagnostic.ts",
+    "plugins/plugin-assistant/src/services/message/pipeline.ts",
+    "plugins/plugin-calendar/src/actions/calendar-handler.ts",
+    "plugins/plugin-calendar/src/actions/calendar-sources.ts",
+    "plugins/plugin-personal-assistant/src/actions/owner-surfaces.ts"
+  ],
+  "dependencyInputIdentity": {
+    "oldSDK": "a95cd4d28eb2bcd5fe5527e98058c167ff480557",
+    "newSDK": "737c4d578f69659a6881afe8ff06e3379cbc713c",
+    "rawBytesIdentical": true,
+    "rawLockSHA256": "fc88bf9a5d718a932d72d48f2bb58caea32174e9f07d547e9c3dadd2f0901e91",
+    "normalizedInputIdentical": true,
+    "normalizedInputSHA256": "6db6e88363397fd2c73a561ea1f3a071dfc11b31378cbe0c193163ea1ecf70ff",
+    "snapshotInputSHA256": "6db6e88363397fd2c73a561ea1f3a071dfc11b31378cbe0c193163ea1ecf70ff",
+    "packageVersions": 3694,
+    "findings": 124,
+    "auditedOn": "2026-10-25",
+    "newRegistryQuery": false
+  },
+  "scope": "Current SOURCE metadata only. Build-source remains c880/737; this docs-only successor is not a built artifact.",
+  "qualificationStatesChanged": false,
+  "registryQueryRepeated": false,
+  "exceptionDeadlinesRenewed": false,
+  "shippedHighCriticalWaiverAdded": false,
+  "nativeInferenceOrEngineMigrationAdopted": false,
+  "installedArtifact": {
+    "path": "docs/security/resident-artifact-review-d3f1fd7792071e0a-2026-10-25.json",
+    "sha256": "d3f1fd7792071e0ac76484e437e9a15cd1aa082e75f236ea8c4e4b8e5bdd5e10",
+    "product": "4fd822874850a68c3d82675630593e4c63be943d",
+    "sdk": "a95cd4d28eb2bcd5fe5527e98058c167ff480557",
+    "receiptChanged": false,
+    "acceptanceTransferred": false
+  },
+  "currentSourceArtifactQualified": false,
+  "newArtifactReviewPending": true,
+  "nativeInputContinuity": {
+    "comparedScopes": [
+      {
+        "path": "plugins/plugin-native-action-journal/android",
+        "unchangedEntry": "040000 tree 939cdf4c8cda26bef587476f13dfef9e760ebcb8\tplugins/plugin-native-action-journal/android"
+      },
+      {
+        "path": "plugins/plugin-native-calendar/android",
+        "unchangedEntry": "040000 tree 85eb68f5126a91b57aa62591e0bceb42de1c330c\tplugins/plugin-native-calendar/android"
+      },
+      {
+        "path": "plugins/plugin-native-media/android",
+        "unchangedEntry": "040000 tree 7a7caf33e46ef52d0ce0752673453070c6107309\tplugins/plugin-native-media/android"
+      },
+      {
+        "path": "plugins/plugin-native-notifications/android",
+        "unchangedEntry": "040000 tree 8544d529a5a02d6ddec1733ea8f44b4f74f99b85\tplugins/plugin-native-notifications/android"
+      },
+      {
+        "path": "plugins/plugin-native-reminders/android",
+        "unchangedEntry": "040000 tree 5f4fbf13505e0fd0a4eed5b773075d3eaaa02aa5\tplugins/plugin-native-reminders/android"
+      },
+      {
+        "path": "plugins/plugin-native-secure-store/android",
+        "unchangedEntry": "040000 tree 8ed0737d31e112e4cf7b730b90ffc94923005604\tplugins/plugin-native-secure-store/android"
+      },
+      {
+        "path": "plugins/plugin-native-system/android",
+        "unchangedEntry": "040000 tree e85e46be832dec6fd5199ac25c01e7ede567d0ed\tplugins/plugin-native-system/android"
+      },
+      {
+        "path": "packages/app/platforms/android/paradee-voice",
+        "unchangedEntry": "040000 tree 6f6707e6f508513998638ee6f4d561e5a42745af\tpackages/app/platforms/android/paradee-voice"
+      },
+      {
+        "path": "packages/app/platforms/android/app/src/main/elizavoice-jni",
+        "unchangedEntry": "040000 tree 1016d67d05ce8f4c7bc10412372cc71d7ad48aee\tpackages/app/platforms/android/app/src/main/elizavoice-jni"
+      },
+      {
+        "path": "packages/app/platforms/android/app/src/main/java/ai/elizaos/app/ElizaVoiceNative.java",
+        "unchangedEntry": "100644 blob 1cd241c5710fc302e75aec8993eefee0a709ab9c\tpackages/app/platforms/android/app/src/main/java/ai/elizaos/app/ElizaVoiceNative.java"
+      },
+      {
+        "path": "packages/app/scripts/stage-elizavoice-lib.ts",
+        "unchangedEntry": "100644 blob 75ecbfbe34687c697887f0b0252a1a07e3fedcc5\tpackages/app/scripts/stage-elizavoice-lib.ts"
+      },
+      {
+        "path": "packages/app/scripts/build-helpers",
+        "unchangedEntry": "040000 tree 11740c47fb2de1e4eb85fd6c653efad3e8936ad8\tpackages/app/scripts/build-helpers"
+      },
+      {
+        "path": "plugins/plugin-native-inference",
+        "unchangedEntry": "040000 tree 42ec009888f56dfd03f166dd3f746956ab1f666a\tplugins/plugin-native-inference"
+      },
+      {
+        "path": "plugins/plugin-local-inference/native/llama.cpp",
+        "unchangedEntry": "160000 commit 6003a10368d8a6d5fb1f70fe9c63a70866e8bcff\tplugins/plugin-local-inference/native/llama.cpp"
+      }
+    ],
+    "wholeAndroidTreeUnchanged": true,
+    "meaning": "Exactsourceidentityonly; binary/component/deviceacceptance nottransferred."
+  },
+  "reachability": {
+    "status": "diverged",
+    "aheadBy": 39,
+    "behindBy": 208,
+    "baseCommit": "04658de1b942510e0d37efc777c154530f5c0ef1",
+    "reachableFromDevelop": false,
+    "producer": "gh api repos/elizaOS/eliza/compare/develop...737c4d578f69659a6881afe8ff06e3379cbc713c"
+  },
+  "pending": [
+    "Normal new737 fullsource/SDK/worker/native payload/APK production and exact artifact/signature closure",
+    "One fresh operationally scoped native navigation attempt, actual view commit and renderer acknowledgement",
+    "Actual provider/Gmail/Calendar/voice and physical Seeker acceptance on its eventual new qualified artifact"
+  ],
+  "parallelScopeExcluded": "Consumerpin/native-descriptor/client/notices regeneration owned byRoot; thosefiles untouched."
+}

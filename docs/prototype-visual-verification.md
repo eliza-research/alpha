@@ -80,7 +80,7 @@ Reproduction of the final targeted pass (supply your installed Playwright module
 node scripts/prototype-capture.mjs --deterministic \
   --modules=/path/to/node_modules --executable=/path/to/chromium \
   --local=http://127.0.0.1:5175/ \
-  --states=maps:nav,maps:route,lock,calendar,calendar:month,phone,phone:voicemail,contacts:detail,voice,notes:rec \
+  --states=maps:nav,maps:route,lock,calendar,calendar:month,phone,phone:voicemail,contacts:detail,voice \
   --out=test-results/prototype-deterministic-frames
 python3 scripts/compare-prototype.py --captures test-results/prototype-deterministic-frames
 ```

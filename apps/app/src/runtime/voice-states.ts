@@ -18,7 +18,7 @@ export function voiceFailure(reason: unknown, context: { transcribing: boolean; 
       : 'Microphone access is off. Choose Open app settings and allow the microphone for Alpha in Android settings, then choose Start recording again, or use the keyboard instead. Nothing was recorded.' };
   if (!context.transcribing && (name === 'NotFoundError' || name === 'OverconstrainedError' || name === 'NotReadableError'))
     return { kind: 'no-microphone', message: 'No usable microphone was found. Connect or enable a microphone, then choose Start recording again.' };
-  // The Cloud route renders no typing choice (MVP-01 decides whether it should), so its
+  // The Cloud route renders no typing choice (P-39 keeps the conversation spoken; the keyboard stays a separate entry), so its
   // wording offers only what is on screen: the kept clip, Transcribe again and Record again.
   if (code === 'no-speech' && context.cloud)
     return { kind: 'no-speech', message: `${context.serviceName ?? 'Cloud'} heard no speech in this recording. Your recording is kept. Choose Transcribe with ${context.serviceName ?? 'Cloud'} to try again, or Record again.` };

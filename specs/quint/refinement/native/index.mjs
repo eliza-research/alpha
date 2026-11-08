@@ -1,140 +1,81 @@
 import {fileURLToPath} from 'node:url';
-import {readdirSync, readFileSync} from 'node:fs';
 import {join} from 'node:path';
-import {checkTraces, captureInputs} from '../check-traces.mjs';
-import {app, sense, directory, javaTraces, root} from './java.mjs';
-import {voiceTraces, navigationTraces} from './renderer.mjs';
-import {residentLifecycleTraces} from './local-agent.mjs';
+import {modelStateInventory,unobservedStateFields} from '../model-state.mjs';
+import {root} from './java.mjs';
+import {checkCurrentPolicies} from './current-policies.mjs';
+import {checkCurrentRenderer} from './current-renderer.mjs';
+import {checkRendererCoordinator} from './renderer-coordinator.mjs';
 import {checkResetOrchestration} from './reset-orchestration.mjs';
 import {checkResidentCoordinator} from './resident-coordinator.mjs';
 import {checkDeletionCoordinator} from './deletion-coordinator.mjs';
 import {checkCredentialCoordinator} from './credential-coordinator.mjs';
+import {checkCredentialLeasePolicies} from './credential-leases.mjs';
+import {checkProviderAdmission} from './provider-admission.mjs';
+import {checkNativeNoteRecording} from './note-recording.mjs';
+import {checkNoteRecordingService} from './note-recording-service.mjs';
+import {checkVoiceDraft} from './voice-draft.mjs';
+import {checkNotePermission} from './note-bridge.mjs';
 
-export async function runNativeRefinement() {
-  const models = ['VadSegmentation', 'RendererRecovery', 'ResidentScheduling'];
-  const sources = ['LiveVadGate.java', 'RendererRecoveryBudget.java', 'ResidentScheduleRearm.java'].map(name => app + name);
-  const finiteSources = [...sources, `${directory}/Trace.java`, `${directory}/FinitePolicyTraces.java`, fileURLToPath(import.meta.url), `${directory}/java.mjs`];
-  const finiteHashes = captureInputs(finiteSources);
-  const traces = javaTraces('FinitePolicyTraces.java', sources);
-  const results = [];
-  for (const model of models) {
-    const assumptions = model === 'VadSegmentation'
-      ? ['All 18 reachable gate counter states and all 11 probability classes plus close are covered.', 'Float classes use the actual 0.35f and 0.5f comparisons. PCM generation and capture buffers remain external.']
-      : model === 'RendererRecovery'
-        ? ['Helper projection covers count classes 0..4+ and elapsed deltas below/at/above 60000ms, equality and backwards time, with reachable prefixes including a fifth loss.', 'Elapsed realtime is nonnegative. The source counter saturates at four; a 10000-loss run and MAX_VALUE defensive regression verify overflow does not revive immediate recreation.', 'Model Activity recreation actions frame the observed helper state. MainActivity lifecycle and Settings launches remain separate obligations.']
-        : ['Complete five-event/two-unlock/two-package/two-owner/three-lifecycle admission table, with one actual admitAndStart invocation per fresh case.', 'Environment setup is external input. Running-service idempotency and plugin lifecycle mutation remain separate obligations.'];
-    results.push(await checkTraces({model, id: `${model}-native`, sources: finiteSources, driverHashes: finiteHashes,
-      scope: 'complete-finite-helper', assumptions, traces: traces[model]}));
-  }
-  const componentSources = ['ResetAuthorization.java', 'LiveCaptureAdmission.java', 'SpeechPcmQueue.java',
-    'SpeechAudioFocusPolicy.java', 'NativeReadEpoch.java', 'PhotoAttachmentSource.java'].map(name => app + name)
-    .concat(['IndicatorLease.java', 'ListenerPolicy.java', 'CrashLoopBreaker.java'].map(name => sense + name));
-  const componentInputs = [...componentSources, `${directory}/Trace.java`, `${directory}/ComponentTraces.java`, fileURLToPath(import.meta.url), `${directory}/java.mjs`];
-  const componentHashes = captureInputs(componentInputs);
-  const components = javaTraces('ComponentTraces.java', componentSources);
-  for (const [model, modelTraces] of Object.entries(components)) {
-    results.push(await checkTraces({model, id: `${model}-native`, sources: componentInputs, driverHashes: componentHashes,
-      scope: 'bounded-component', traces: modelTraces, assumptions: [
-        'Actual Java helper methods execute against controlled environment inputs. Observed fields are listed in this receipt.',
-        'Model macro setup may include external admission/review actions whose implementation is outside this component projection.',
-        'Android services, permission observers, UI lifecycle and physical devices remain integration obligations.',
-      ]}));
-  }
-  const journalSources = ['DeferredDeletionJournal.java', 'DeletionDeadline.java', 'SmsSendJournal.java', 'NativeVoiceIpc.java'].map(name => app + name);
-  const journalInputs = [...journalSources, `${directory}/Trace.java`, `${directory}/JournalTraces.java`, fileURLToPath(import.meta.url), `${directory}/java.mjs`];
-  const journalHashes = captureInputs(journalInputs);
-  const journals = javaTraces('JournalTraces.java', journalSources);
-  for (const [model, modelTraces] of Object.entries(journals)) {
-    results.push(await checkTraces({model, id: `${model}-native`, scope: 'bounded-component', traces: modelTraces,
-      sources: journalInputs, driverHashes: journalHashes,
-      assumptions: ['In-memory atomic store and serialized callback port execute the actual journal/IPC source.',
-        'Multi-action checkpoints cover one synchronous source call. Internal model states between these actions are not source observations.',
-        'No actual provider effect, telephony role, Binder transport, credential root or power-loss durability is exercised.']}));
-  }
-  const extraGroups = [
-    ['PlaybackTraces.java', ['StreamingSpeechPlayback.java', 'SpeechPcmQueue.java', 'SpeechAudioFocusPolicy.java', 'VoiceLatencyTrials.java'].map(name => app + name)],
-    ['ResidentTraces.java', ['CloudDeployment.java', 'LocalAgentProviderAdmission.java'].map(name => app + name).concat('test/fixtures/LocalAgentProviderAdmissionTest.java')],
-  ];
-  const stubs = 'test/fixtures/systemui-chip-jvm';
-  const producerSources = readdirSync(join(root, stubs), {recursive: true}).filter(name => name.endsWith('.java')).map(name => join(stubs, name))
-    .concat(['AlphaListeningPolicy.java', 'AlphaListeningLease.java'].map(name => `android/aosp/listener/systemui/chip/source/${name}`));
-  extraGroups.push(['ProducerTraces.java', producerSources, 'com.android.systemui.privacy.ProducerTraces']);
-  for (const [harness, groupSources, main] of extraGroups) {
-    const inputs = [...groupSources, `${directory}/${harness}`, `${directory}/Trace.java`, `${directory}/java.mjs`, fileURLToPath(import.meta.url)];
-    const hashes = captureInputs(inputs);
-    const group = javaTraces(harness, groupSources, [], main);
-    for (const [model, modelTraces] of Object.entries(group)) results.push(await checkTraces({model, id: `${model}-native`,
-      sources: inputs, driverHashes: hashes,
-      scope: 'bounded-component', traces: modelTraces, assumptions: [
-        'Actual production helper/class executes with controlled ports and source-executing fixture utilities.',
-        'Only fields present in observedFields are claimed. Multi-action checkpoints map one synchronous call or one completed worker execution.',
-        'External startup, Android observations, provider authenticity and unrestricted scheduler interleavings remain explicit obligations.',
-      ]}));
-  }
-  for (const [model, generate, sourceNames] of [
-    ['VoiceSession', voiceTraces, ['apps/app/src/runtime/voice-assistant.ts']],
-    ['NavigationProgress', navigationTraces, ['apps/app/src/maps/navigation-fix.ts', 'apps/app/src/maps/guidance.ts']],
-  ]) {
-    const inputs = [...sourceNames, `${directory}/renderer.mjs`, fileURLToPath(import.meta.url)];
-    const hashes = captureInputs(inputs);
-    const modelTraces = await generate();
-    results.push(await checkTraces({model, id: `${model}-native`, scope: 'bounded-component', traces: modelTraces,
-    sources: inputs, driverHashes: hashes,
-    assumptions: ['Actual TypeScript executes with controlled capture/reply/playback/timer inputs.',
-      'Voice traces bound two sentences and one submitted turn. Navigation projects fix admission and guidance helpers, not the adapter closure or native service.']}));
-  }
-  const lifecycle = await residentLifecycleTraces([fileURLToPath(import.meta.url)]);
-  results.push(await checkTraces({model: 'ResidentRuntime', id: 'ResidentRuntime-lifecycle-native', scope: 'bounded-component',
-    ...lifecycle, assumptions: [
-      'Unmodified local-agent.ts is bundled with a synthetic Capacitor port and virtual time. All transitive implementation inputs are hashed before execution.',
-      'Stop resolution, rejection and timeout are actual wrapper outcomes. Connect cancellation observes actual cancelStart calls and absent publication.',
-      'The port assumes native owned-start/attached-start cancellation semantics. Actual AlphaLocalAgentPlugin lock/service behavior remains external.',
-    ]}));
-  const reset = await checkResetOrchestration([fileURLToPath(import.meta.url)]);
+const boundaryObligations = [
+  {model:'NativeNotePermission',obligation:'Shared parent lifecycle, overlapping prompts and installed consent',reason:'Complete product Notes methods execute across permission return, call changes, host retirement and failed capture. One pending request and two successful opens bound this campaign. The parent lifecycle/permission interface is supplied by a controlled port; shared LocalSpeechBridgePlugin and Android admission remain separate.'},
+  {model:'NativeVoiceDraft',obligation:'Physical capture and shared bridge permission lifecycle',reason:'The real staged LocalVoiceRecording executes cache cleanup, start/stop/cancel, timer and media callbacks, failure cleanup and external selection. Permission epochs and lifecycle admission in LocalSpeechBridgePlugin remain a separate source scope.'},
+  {model:'NativeNoteRecording',obligation:'Physical recording, free-space exhaustion and unrestricted journal histories',reason:'Actual segmented recorder, journal bytes and file recovery execute. MediaRecorder/codec behavior is a controlled port. Two segments and four capture instances bound the source campaign; free-space exhaustion remains an explicit unexecuted source branch.'},
+  {model:'NativeNoteRecordingService',obligation:'Installed foreground eligibility and full plugin permission bridge',reason:'Actual service and recorder identities execute under serialized command/notification ports. AlphaVoiceCloudPlugin permission callbacks and Android service recreation/notification visibility remain separate integration obligations.'},
+  {model:'RendererRecovery',obligation:'Installed Activity/WebView and task-manager behavior',reason:'The actual MainActivity, per-task HOME ownership and recovery callbacks execute against controlled Android ports. Real task assignment, Settings visibility and renderer process death require platform observations.'},
+  {model:'ResidentScheduling',obligation:'Installed broadcast and service admission',reason:'The full admission table and whole-plugin lifecycle-lock race execute. Android broadcast delivery and service-process launch remain external.'},
+  {model:'VadSegmentation',obligation:'PCM model output and capture pre-roll',reason:'The real gate executes every finite probability/counter partition. Microphone frames, inference and capture pre-roll remain separate.'},
+  {model:'ResidentRuntime',obligation:'Arbitrary streams, recovery combinations and resident service execution',reason:'The actual plugin and renderer wrapper execute owned/attached cancellation, stop, teardown, credential retirement and request/stream callbacks. Binder, HTTP and real process inventory are controlled ports.'},
+  {model:'VoiceSession',obligation:'Dictation and unrestricted voice session schedules',reason:'The shared controller executes semantic endpoint decisions, exact reviewed replies, explicit speech interruption, playback, mute, account retirement and pending/rejected capture-close schedules. Dictation and arbitrary overlapping sessions remain unexecuted source paths.'},
+  {model:'SpeechResources',obligation:'Combined microphone, engine and focus lifecycle',reason:'Capture reservation, PCM queue and audio-focus policy helpers execute. Full capture pipeline ownership and physical audio output remain separate.'},
+  {model:'AlwaysOnListener',obligation:'Consent store and complete listening service lifecycle',reason:'Pairwise policy and indicator-loss cases execute. ListeningEpoch, durable consent and installed microphone/service callbacks require further source and platform adapters.'},
+  {model:'ResetRecovery',obligation:'Installed authentication, durable erasure and Binder identity',reason:'The real reset coordinator executes durable attempt admission, listener-first retries, partial writes, cross-process contention and startup recovery. Device power loss and package erasure remain external.'},
+  {model:'DeletionJournal',obligation:'Arbitrary multi-row scheduling and real provider persistence',reason:'The full coordinator executes bounded owner changes, partial storage failures, restart and multiple rows. Android/provider effects and power-loss durability remain external.'},
+  {model:'MediaLifecycle',obligation:'Complete media catalog, edit and Activity coordinators',reason:'NativeReadEpoch and exact selected-file copy/publication execute. Catalog lifecycle, camera/video resources and Android provider permission callbacks remain separate.'},
+  {model:'DeviceActions',obligation:'Telephony, Contacts, Reminders and Clock coordinators',reason:'The real SMS journal executes controlled carrier outcomes. Actual role/permission and other device-action coordinators remain separate source/platform obligations.'},
+  {model:'ApplicationComposition',obligation:'Cross-domain implementation orchestration',reason:'The current composition migration is owned by the separate application integration adapter. Standalone native traces do not establish its relation.'},
+  {model:'NavigationProgress',obligation:'Complete maneuver/reroute and navigation service coordinator',reason:'Current fix admission and guidance helpers execute. The maps adapter closure, retry timers and actual background service still require source-backed driving.'},
+  {model:'ListenerLeaseRecovery',obligation:'Persistent crash latch, consent and capture integration',reason:'Actual lease and crash helpers execute. Store commit, process consent and microphone lifecycle are separate obligations.'},
+  {model:'StreamingPlayback',obligation:'Unrestricted writer schedules and actual AudioTrack audibility',reason:'The actual writer executes partial/zero writes, completion, failed open/write and cancelled opening. Platform drain, physical audibility and every concurrent schedule remain external.'},
+  {model:'VoiceIpcAssembly',obligation:'Remaining deadline/handle races and complete owner admission',reason:'Actual exchanges execute response/chunk assembly, expired deadlines before dispatch, rejected scheduler admission and cleanup. Arbitrary deadline/return races and installed native transport require further adapters.'},
+  {model:'ListenerLeaseProducer',obligation:'Complete SystemUI controller and Binder identity',reason:'The real lease producer consumes controlled measured snapshots. Real view geometry, controller lifecycle and Binder identity remain external.'},
+];
+
+/** Aggregate current-source adapters. Every receipt binds this entry point before execution. */
+export async function runNativeRefinement(extraSources = []) {
+  const sources = [fileURLToPath(import.meta.url),join(root,'specs/quint/refinement/model-state.mjs'),...extraSources];
+  const receipts = await checkCurrentPolicies([],sources);
+  receipts.push(...await checkCurrentRenderer(sources));
+  receipts.push(await checkProviderAdmission(sources));
+  receipts.push(await checkRendererCoordinator(sources));
+  const reset = await checkResetOrchestration(sources);
   if (reset.results.some(result => result.status !== 'passed')) throw Error('Reset orchestration trace checking failed');
-  results.push(...reset.receipts);
-  results.push(await checkResidentCoordinator([fileURLToPath(import.meta.url)]));
-  results.push(await checkDeletionCoordinator([fileURLToPath(import.meta.url)]));
-  const credential = await checkCredentialCoordinator([fileURLToPath(import.meta.url)], ['ResidentRuntime']);
-  results.push(...credential.receipts);
-  const obligations = [
-    {model: 'RendererRecovery', obligation: 'Activity lifecycle and visible escape behavior', reason: 'Current adapter projects the pure budget only.', requires: ['Android Activity/WebView harness']},
-    {model: 'ResidentScheduling', obligation: 'Plugin lifecycle and OS broadcasts', reason: 'Current adapter proves the pure admission table and same-lock callbacks.', requires: ['Android service integration']},
-    {model: 'VadSegmentation', obligation: 'PCM model output and capture pre-roll', reason: 'The gate consumes probabilities; capture/model execution is external.', requires: ['native capture integration']},
-    {model: 'ResidentRuntime', obligation: 'Broader recovery/stream schedules and actual resident service', reason: 'Whole-plugin start, cancellation, stop, status, destruction, credential mutation, request/stream retirement and broadcast admission execute under controlled ports. Arbitrary streams, retained recovery combinations and the installed resident service remain separate obligations.'},
-    {model: 'VoiceSession', obligation: 'Dictation, semantic endpoints, review resume and full barge-in interleavings', reason: 'One-turn/two-sentence actual controller traces cover mute, stop and account retirement with controlled ports.'},
-    {model: 'SpeechResources', obligation: 'Combined native microphone/engine/focus lifecycle', reason: 'Capture reservation, PCM queue and focus helpers execute independently. Explicit-stop tail and native pipe ownership remain separate.'},
-    {model: 'AlwaysOnListener', obligation: 'Consent store, ListeningEpoch and ListeningService integration', reason: 'Pairwise policy and indicator-loss cases execute without microphone, Android permissions or physical visibility.'},
-    {model: 'ResetRecovery', obligation: 'Android durability, installed credential approval and externally observed erasure', reason: 'Actual reset authorization, durable reservation, listener-first retry and process-exit paths execute against controlled ports, including cross-process contention. Device power-loss behavior, Binder identity and actual package erasure require platform observations.'},
-    {model: 'DeletionJournal', obligation: 'Arbitrary multi-row scheduling and installed provider persistence', reason: 'The full coordinator and reminder host execute 22 bounded schedules, including stale identity admission, partial storage failures, restart and multiple rows. Power-loss durability and actual provider effects remain external.'},
-    {model: 'MediaLifecycle', obligation: 'Catalog, edit review, temporary camera resources and video lifecycle', reason: 'NativeReadEpoch and exact attachment copy/publication guards execute. MediaStore, camera and Activity lifecycle remain external.'},
-    {model: 'DeviceActions', obligation: 'AOSP image/role, Contacts, Reminders and Clock', reason: 'Only the real SMS journal executes in these traces. Carrier outcomes are fixture inputs.'},
-    {model: 'ApplicationComposition', obligation: 'Cross-domain implementation orchestration', reason: 'Root integration driver owns this combined scope. Standalone native receipts do not establish composition.'},
-    {model: 'NavigationProgress', obligation: 'Maneuver cursor, reroute timers and background service', reason: 'Fix admission and guidance helpers execute. The maps-adapter closure and Android service are outside the current projection.'},
-    {model: 'ListenerLeaseRecovery', obligation: 'Persistent crash latch, consent and capture integration', reason: 'Actual lease and crash helpers execute. Store commit, process consent and microphone lifecycle remain separate.'},
-    {model: 'StreamingPlayback', obligation: 'All writer interleavings, actual AudioTrack and audibility', reason: 'Five writer traces cover completion, partial writes, failed open/write and canceled opening. Detailed failure-code mapping is unobserved.'},
-    {model: 'VoiceIpcAssembly', obligation: 'Deadline scheduling races and actual owner/binding admission', reason: 'Eight actual exchanges check return/cleanup. Static deadline scheduling and local assembly state need a deterministic observer seam.'},
-    {model: 'ListenerLeaseProducer', obligation: 'Controller measurement and real SystemUI/Binder identity', reason: 'Actual lease delivery consumes fixture snapshots. Controller/view geometry and real identity checks remain external.'},
-  ];
-  obligations.push(...credential.obligations);
-  for (const model of new Set(results.map(receipt => receipt.model))) {
-    const related = results.filter(receipt => receipt.model === model);
+  receipts.push(...reset.receipts);
+  receipts.push(await checkResidentCoordinator(sources));
+  receipts.push(await checkDeletionCoordinator(sources));
+  const credential = await checkCredentialCoordinator(sources);
+  receipts.push(...credential.receipts);
+  receipts.push(await checkCredentialLeasePolicies(sources));
+  receipts.push(await checkNativeNoteRecording(sources));
+  receipts.push(await checkNoteRecordingService(sources));
+  receipts.push(await checkVoiceDraft(sources));
+  receipts.push(await checkNotePermission(sources));
+  const obligations = [...boundaryObligations,...credential.obligations];
+  for (const model of new Set(receipts.map(receipt => receipt.model))) {
+    const related = receipts.filter(receipt => receipt.model === model);
     const coveredActions = new Set(related.flatMap(receipt => Object.keys(receipt.actions)));
-    const coveredFields = new Set(related.flatMap(receipt => receipt.observedFields));
+    const coveredFields = [...new Set(related.flatMap(receipt => receipt.observedFields))];
     const initializers = new Set(related.flatMap(receipt => receipt.traceInputs.map(trace => trace.init?.name || 'init')));
-    const text = readFileSync(join(root, 'specs/quint/native', `${model}.qnt`), 'utf8');
-    const missing = [...text.matchAll(/\baction\s+(\w+)/g)].map(match => match[1])
-      .filter(name => !['init', 'check', 'step'].includes(name) && !initializers.has(name) && !coveredActions.has(name));
-    if (missing.length) obligations.push({model, obligation: 'Unexecuted model transitions', reason: missing.join(', ')});
-    const state = text.match(/type\s+(?:State|Gate|Recovery|Navigation)\s*=\s*\{([\s\S]*?)\n  \}/)?.[1] || '';
-    const fields = [...state.matchAll(/\b([A-Za-z]\w*)\s*:/g)].map(match => match[1]);
-    const unobserved = fields.filter(field => ![...coveredFields].some(path => path === `s.${field}` || path.startsWith(`s.${field}.`)));
-    if (unobserved.length) obligations.push({model, obligation: 'Unobserved model fields', reason: unobserved.join(', ')});
+    const path = join(root,'specs/quint',model === 'NativeCredentialMutation' ? 'services' : 'native',`${model}.qnt`);
+    const inventory = modelStateInventory(path,model);
+    const missing = inventory.actions.filter(name => !['init','check','step'].includes(name) && !initializers.has(name) && !coveredActions.has(name));
+    if (missing.length) obligations.push({model,obligation:'Unexecuted model transitions',reason:missing.join(', ')});
+    const unobserved = unobservedStateFields(inventory,coveredFields);
+    if (unobserved.length) obligations.push({model,obligation:'Unobserved model fields',reason:unobserved.join(', ')});
   }
-  return {receipts: results, obligations};
+  return {receipts,obligations};
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
   const result = await runNativeRefinement();
-  console.log(JSON.stringify({receipts: result.receipts.map(({model, traces, checkpoints, receiptPath}) => ({model, traces, checkpoints, receiptPath})), obligations: result.obligations}, null, 2));
+  console.log(JSON.stringify({receipts:result.receipts.map(({model,traces,checkpoints,receiptPath}) => ({model,traces,checkpoints,receiptPath})),obligations:result.obligations},null,2));
 }

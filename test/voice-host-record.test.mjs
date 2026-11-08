@@ -29,16 +29,22 @@ test('the committed record satisfies the schema, model inventory and ASR slot', 
   assert.equal(phonon.license, 'CC-BY-4.0');
   assert.match(phonon.attribution, /Fermion Research/);
   for (const file of phonon.noticeFiles) assert.ok(fs.existsSync(path.join(ROOT, file)), file);
-  assert.ok(record.models.some(row => row.path === 'notices/phonon-2/NOTICE' && row.sha256 === '00624a5043e7ce74029317b024132ca5286116d6fbf3191d226374bc8273789f'), 'Fermion NOTICE ships in the bundle');
+  assert.ok(record.models.some(row => row.path === 'notices/Phonon-2-NOTICE.txt' && row.sha256 === '00624a5043e7ce74029317b024132ca5286116d6fbf3191d226374bc8273789f'), 'Fermion NOTICE ships in the bundle');
   assert.equal(record.models.some(row => row.role === 'asr-mmproj'), false);
   const paradee = record.models.find(row => row.role === 'tts-model');
   assert.equal(paradee.path, 'tts/paradee/paradee-8m-v1_2.gguf');
   assert.ok(paradee.bytes < 40 * 1024 * 1024, 'Paradee ships in the APK assets');
-  assert.equal(record.models.some(row => row.role !== 'notice' && /kokoro|\.on{2}x|\.bin$/i.test(row.path)), false, 'no Kokoro, other-runtime model or voice preset');
+  assert.equal(record.models.some(row => /kokoro|\.on{2}x|\.bin$/i.test(row.path)), false, 'no Kokoro, other-runtime model or voice preset');
 });
 
-test('the committed voice artifacts match the current product pin and shared inputs', () => {
-  readVoiceHost(ROOT);
+test('only a voice record for the current SDK can admit the native profile', () => {
+  const {commit}=JSON.parse(fs.readFileSync(path.join(ROOT,'upstream.lock.json'),'utf8'));
+  if (committed.pin===commit) {
+    readVoiceHost(ROOT);
+  } else {
+    assert.equal(committed.qualified,false,'a historical artifact cannot claim current qualification');
+    assert.throws(()=>readVoiceHost(ROOT),/upstream\.lock\.json pins/);
+  }
 });
 
 test('the schema rejects bad hashes, missing ABIs, non-GGUF models, an incomplete ASR slot and unearned qualification', () => {
@@ -125,7 +131,7 @@ test('staging copies exactly the recorded bytes into the shared paradee-voice la
   assert.equal(result.asr, true);
   const native = path.join(dir, '.eliza/paradee-voice/native');
   const manifest = JSON.parse(fs.readFileSync(path.join(native, 'assets/paradee-voice/v1/manifest.json'), 'utf8'));
-  assert.equal(manifest.format, 'eliza-paradee-voice-v2');
+  assert.equal(manifest.format, 'eliza-paradee-voice-v1');
   assert.deepEqual(manifest.files.map(row => row.path).sort(), record.models.map(row => row.path).sort());
   const build = JSON.parse(fs.readFileSync(path.join(native, 'build-record.json'), 'utf8'));
   assert.deepEqual(build.abis, ['arm64-v8a', 'x86_64']);

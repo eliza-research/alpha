@@ -1,0 +1,25 @@
+{
+  "selected": "<H-03: true once the owner has recorded the numbers below in a dated P- entry>",
+  "plans": {
+    "default": {
+      "burst": { "capacity": "<H-03 default burst capacity, integer >= 1>", "refillPerSecond": "<H-03 default burst refill, number > 0>" },
+      "sustained": { "capacity": "<H-03 default sustained capacity, integer >= 1>", "refillPerSecond": "<H-03 default sustained refill, number > 0>" }
+    },
+    "plus_monthly": {
+      "burst": { "capacity": "<H-03 Plus burst capacity>", "refillPerSecond": "<H-03 Plus burst refill>" },
+      "sustained": { "capacity": "<H-03 Plus sustained capacity>", "refillPerSecond": "<H-03 Plus sustained refill>" },
+      "maps": {
+        "burst": { "capacity": "<H-03 Plus Maps burst capacity, or delete the maps entry to reuse the plan numbers>", "refillPerSecond": "<H-03 Plus Maps burst refill>" },
+        "sustained": { "capacity": "<H-03 Plus Maps sustained capacity>", "refillPerSecond": "<H-03 Plus Maps sustained refill>" }
+      }
+    },
+    "pro_monthly": {
+      "burst": { "capacity": "<H-03 Pro burst capacity>", "refillPerSecond": "<H-03 Pro burst refill>" },
+      "sustained": { "capacity": "<H-03 Pro sustained capacity>", "refillPerSecond": "<H-03 Pro sustained refill>" },
+      "maps": {
+        "burst": { "capacity": "<H-03 Pro Maps burst capacity, or delete the maps entry to reuse the plan numbers>", "refillPerSecond": "<H-03 Pro Maps burst refill>" },
+        "sustained": { "capacity": "<H-03 Pro Maps sustained capacity>", "refillPerSecond": "<H-03 Pro Maps sustained refill>" }
+      }
+    }
+  }
+}

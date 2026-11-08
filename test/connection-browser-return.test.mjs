@@ -7,7 +7,7 @@ import vm from 'node:vm';
 const source=await readFile(new URL('../apps/app/src/runtime/native-connection.ts',import.meta.url),'utf8');
 const start=source.indexOf('export async function openConnectionBrowser(');
 assert.ok(start>=0);
-const code=stripTypeScriptTypes(source.slice(start).replace(/^export /,''),{mode:'strip'});
+const code=stripTypeScriptTypes(source.slice(start).replace(/^export /,''),{mode:'transform'});
 class Target extends EventTarget {
   hidden=false;
   listeners=new Set();

@@ -3,7 +3,8 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "test:live": "bun run test-runtime.ts"
+    "test:live": "bun run test-runtime.ts",
+    "test:actions": "node --test test-actions.mjs"
   },
   "dependencies": {
     "zod": "^4.6.5",

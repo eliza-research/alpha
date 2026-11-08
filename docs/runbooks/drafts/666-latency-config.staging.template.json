@@ -1,0 +1,14 @@
+{
+  "apiBase": "https://api-staging.eliza.app",
+  "iterations": 50,
+  "warmup": 3,
+  "services": ["inference"],
+  "inference": { "model": "<the reviewed Cloud model id the phone uses, e.g. the value of ALPHA_QA_MODEL>" },
+  "conditions": {
+    "normal": { "keyEnv": "BENCH_NORMAL_KEY" },
+    "cache-miss": { "keysEnv": "BENCH_FRESH_KEYS" },
+    "exhausted": { "keyEnv": "BENCH_EXHAUSTED_KEY" },
+    "expired": { "keyEnv": "BENCH_EXPIRED_KEY" },
+    "billing-outage": { "keyEnv": "BENCH_OUTAGE_KEY", "apiBase": "<exact https origin of the operator's outage deployment>" }
+  }
+}

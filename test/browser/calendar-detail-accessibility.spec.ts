@@ -1,3 +1,4 @@
+import {openBrowserCalendar} from './helpers/browser-calendar';
 import {test,expect} from '@playwright/test';
 // Layout fixtures use UTC civil dates independently of the runner locale.
 test.use({timezoneId:'UTC'});
@@ -7,7 +8,7 @@ for(const theme of ['light','dark'])for(const kind of ['event','reminder'])test(
  await page.addInitScript(()=>localStorage.setItem('alpha.connection.selection.v1',JSON.stringify({kind:'offline'})));
  await page.goto('/?mode=dev&theme='+theme);
  await page.evaluate(async({kind,title,body})=>{const {registerPlugin}=await import('/src/platform-plugins.ts');if(kind==='event')await registerPlugin<any>('AlphaCalendar').save({creationId:crypto.randomUUID(),separateCreation:true,calendarId:'local',title,body,location:'Building-'+ 'abcdef'.repeat(15),begin:Date.parse('2027-03-13T14:00Z'),end:Date.parse('2027-03-13T15:00Z')});else await registerPlugin<any>('DailyApps').scheduleReminder({id:'large-detail',title,body,at:Date.parse('2027-03-13T14:00Z')});const {BrowserDevice}=await import('/src/browser/device.ts');await BrowserDevice.prototype.setTextScale({percent:150});},{kind,title,body});
- await page.reload();await page.getByRole('button',{name:'Calendar',exact:true}).click();await page.getByRole('button',{name:'Day 13',exact:true}).click();await page.getByRole('button',{name:new RegExp('^Reference-')}).click();
+ await page.reload();await openBrowserCalendar(page);await page.getByRole('button',{name:'Day 13',exact:true}).click();await page.getByRole('button',{name:new RegExp('^Reference-')}).click();
  const heading=page.getByRole('heading',{name:title,exact:true});await expect(heading).toBeVisible();const detail=heading.locator('..');
  expect(await detail.evaluate(el=>el.scrollWidth-el.clientWidth)).toBeLessThanOrEqual(1);
  const notes=page.getByText(kind==='reminder'?body+'\nScheduled · approximate delivery':body,{exact:true});await notes.scrollIntoViewIfNeeded();await expect(notes).toHaveCSS('white-space','pre-wrap');expect(await notes.evaluate(el=>el.scrollWidth-el.clientWidth)).toBeLessThanOrEqual(1);

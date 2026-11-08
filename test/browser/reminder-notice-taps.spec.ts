@@ -1,3 +1,4 @@
+import {selectCalendarSource} from './helpers/browser-calendar';
 import {test,expect} from '@playwright/test';
 // Rendered production navigation with a controlled encrypted-native boundary.
 // OS delivery/process death are exercised separately by Android instrumentation.
@@ -7,13 +8,14 @@ for(const mode of ['recover','stale','read-failure','draft-race','navigation-rac
   const w=window as any;w.androidBridge={};if(mode!=='chooser-close')localStorage.setItem('alpha.connection.selection.v1',JSON.stringify({kind:'offline'}));
   const target={sourceId:'local-source',sourceRevision:'a'.repeat(64),reminderId:'retained-reminder',occurrenceId:'one',revision:'b'.repeat(64),timingVersion:2};
   const f=w.reminderTapFixture={mode,pending:{token:'original-token',target,retained:!['stale','dismiss-stale'].includes(mode)},consumed:[] as string[],reads:0,allow:mode==='chooser-close'||localStorage.getItem('tap-fixture-recover')==='1',release:null as any};
+  const slots:Record<string,string>={};
   const methods=(names:string[])=>names.map(name=>({name,rtype:'promise'}));
   w.Capacitor={PluginHeaders:[
    {name:'AlphaNotifications',methods:methods(['status','crossAppStatus','addListener','removeListener'])},
    {name:'AlphaVoiceCloud',methods:methods(['checkPermissions'])},
    {name:'DailyApps',methods:methods(['surfaceInfo','pendingReminderTap','consumeReminderTap','dismissReminderTap','listReminders','addListener','removeListener'])},
-   {name:'DeviceApps',methods:methods(['buildInfo'])},
-   {name:'AlphaConnection',methods:methods(['secureRead','secureWrite','secureRemove','addListener','removeListener'])},
+   {name:'ElizaSystem',methods:methods(['getBuildInfo'])},
+   {name:'AlphaConnection',methods:methods(['secureRead','secureWrite','secureCompareExchange','secureRemove','addListener','removeListener'])},
    {name:'AlphaHostedResults',methods:methods(['disableBackground','addListener','removeListener'])},
   ],nativePromise:async(plugin:string,method:string,input:any)=>{
    if(plugin==='AlphaNotifications')return {permissionGranted:true,appEnabled:true};
@@ -30,8 +32,17 @@ for(const mode of ['recover','stale','read-failure','draft-race','navigation-rac
     }
     return {};
    }
-   if(plugin==='DeviceApps')return {launcher:false,version:'fixture'};
-   if(plugin==='AlphaConnection'&&method==='secureRead')return {value:null};
+   if(plugin==='ElizaSystem'&&method==='getBuildInfo')return {launcher:false,version:'fixture'};
+   if(plugin==='AlphaConnection'){
+    if(method==='secureRead')return {value:slots[input.slot]??null};
+    if(method==='secureWrite'){slots[input.slot]=input.value;return {};}
+    if(method==='secureRemove'){delete slots[input.slot];return {};}
+    if(method==='secureCompareExchange'){
+     if((slots[input.slot]??null)!==input.expectedValue)return {status:'conflict'};
+     if(input.value===null)delete slots[input.slot];else slots[input.slot]=input.value;
+     return {status:'saved'};
+    }
+   }
    return {};
   }};
  },mode);
@@ -45,6 +56,9 @@ for(const mode of ['recover','stale','read-failure','draft-race','navigation-rac
   await expect.poll(()=>page.evaluate(()=>(window as any).reminderTapFixture.consumed)).toEqual(['original-token']);expect(errors).toEqual([]);return;
  }
  await page.getByRole('button',{name:'Calendar',exact:true}).click();
+ if(mode==='draft-race'){
+  await selectCalendarSource(page, 'Android calendars');
+ }
  await page.evaluate(()=>{(window as any).reminderTapFixture.allow=true;document.dispatchEvent(new Event('visibilitychange'));});
  if(mode==='reload-recovery'){
   await expect(page.getByRole('button',{name:'Open saved reminder notification',exact:true})).toBeVisible();

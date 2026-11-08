@@ -1,4 +1,5 @@
 package ai.elizaresearch.alphaphone;
+import ai.eliza.plugins.agent.runtime.ResidentAttachment;
 
 import com.getcapacitor.JSObject;
 import com.getcapacitor.PluginCall;

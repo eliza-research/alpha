@@ -1,4 +1,5 @@
 package ai.elizaresearch.alphaphone;
+import ai.eliza.plugins.actionjournal.deletion.DeletionReceiptRecovery;
 
 import com.getcapacitor.JSObject;
 import com.getcapacitor.PluginCall;
@@ -6,6 +7,7 @@ import com.getcapacitor.PluginMethod;
 import com.getcapacitor.annotation.CapacitorPlugin;
 import ai.eliza.plugins.actionjournal.ActionJournal;
 import ai.eliza.plugins.actionjournal.ActionJournalPlugin;
+import ai.eliza.plugins.notifications.NoticeRecovery;
 import java.util.Set;
 import org.json.JSONObject;
 import static ai.eliza.plugins.actionjournal.ActionJournal.field;
@@ -21,7 +23,7 @@ public final class AlphaActionJournalPlugin extends ActionJournalPlugin {
   JSONObject entry=read(store,scope,id);
   AlphaCredentialStore noticeStore=new AlphaCredentialStore(getContext());
   WorkflowNoticeDelivery delivery=new WorkflowNoticeDelivery(new WorkflowNoticeDelivery.Storage(){public String read(String slot)throws Exception{return noticeStore.readCredentialSlot(slot);}public void write(String slot,String value)throws Exception{noticeStore.writeCredentialSlot(slot,value);}},new WorkflowNoticePoster(getContext()));
-  JSONObject recovered=WorkflowNoticeRecovery.recover(entry,scope,id,call.getString("bindingHash"),delivery::receipt);
+  JSONObject recovered=NoticeRecovery.recover(entry,scope,id,call.getString("bindingHash"),delivery::receipt);
   if(recovered!=entry)store.update(scope,id,previous->recovered);return response(recovered);
  }});}
  @PluginMethod public void recoverDeletion(PluginCall call){work(call,true,(store,scope,id)->{synchronized(store.lock()){
@@ -33,7 +35,7 @@ public final class AlphaActionJournalPlugin extends ActionJournalPlugin {
    JSONObject binding=receipt.getJSONObject("operationBinding"),saved=AlphaReminders.engine(getContext()).operationReceipt(entry.getString("operationId"),binding.getString("bindingHash"),operation);
    if("succeeded".equals(saved.optString("status")))reminderResult=saved.optJSONObject("result");
   }
-  JSONObject recovered=NativeDeletionRecovery.recover(entry,receipt,reminderResult);
+  JSONObject recovered=DeletionReceiptRecovery.recover(entry,receipt,reminderResult);
   if(recovered!=entry){AlphaActionJournal.checkResult(recovered,recovered.getString("status"),recovered.getJSONObject("result"));store.update(scope,id,previous->recovered);}return response(recovered);
  }});}
  @PluginMethod public void recoverReminder(PluginCall call){work(call,true,(store,scope,id)->{synchronized(store.lock()){

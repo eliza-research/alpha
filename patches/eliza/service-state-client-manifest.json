@@ -1,0 +1,44 @@
+{
+  "schema": 1,
+  "baseCommit": "475a8d59dc1811c2cde093613519906a5a3f6457",
+  "patches": [
+    {
+      "file": "inbox-state-client.patch",
+      "sha256": "36e6a2468effd7d59994f40552c4b8d6c1c0ddc67930e1a3ebb8283e7dd4e10e",
+      "targets": [
+        {
+          "path": "plugins/plugin-inbox/src/mailbox/review-controller.ts",
+          "beforeSha256": "d64dbe9509bb836670edee94f96bb828689aa996fc41cca2cd80da39ec180d37",
+          "afterSha256": "4c8d6f64f6914dacaeadb74f969f84171947b2b2e4c71dee5defa8fa54dbc411"
+        },
+        {
+          "path": "plugins/plugin-inbox/src/mailbox/drafts-controller.ts",
+          "beforeSha256": "8567de114caba06627e2effe5e41b5bcdfd09a9912e7489aea7c2eea3e9d652a",
+          "afterSha256": "5aff6f502ce10a9ac2a985cbeac37cd90cbefb5ffc74492506d41e2d844d71cd"
+        }
+      ]
+    },
+    {
+      "file": "scan-draft-ownership-client.patch",
+      "sha256": "f2f8b6aeccbd8ba7a1dd66b975d1c4768c8151b0835f05ada626a3fd5e573fd3",
+      "targets": [
+        {
+          "path": "plugins/plugin-native-camera/src/scan-document.ts",
+          "beforeSha256": "5b10c2317a305318b221da906b13aebe24f7517a7ac2d7a217ac31095b8101af",
+          "afterSha256": "41a05556f1b73cb9c38a0e3c93a1f9a1bf80ee0ab5894d34debc2118561857e7"
+        }
+      ]
+    },
+    {
+      "file": "crash-log-failure-classification.patch",
+      "sha256": "3f7f238fcaf9348a95cd7442a8a8da977334bf262a4ed8f099fab59c5fd63545",
+      "targets": [
+        {
+          "path": "plugins/plugin-native-system/src/crash-log.ts",
+          "beforeSha256": "1ee78e03512ae23c05ad6ac1ffff9d352e65c51266edad1b65817820116aa56e",
+          "afterSha256": "5b1490b94a1ac069c327641d5afdb452f46d669ed72dfb874d9178994dc0af77"
+        }
+      ]
+    }
+  ]
+}

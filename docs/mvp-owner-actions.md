@@ -6,6 +6,11 @@ and [implementation order](implementation-plan.md) replace the old decision queu
 The [previous owner-action ledger](https://github.com/AlphaCompute/alphaphone/blob/f3ccefd382bd40b29b06117c97da366c1e9b75a7/docs/mvp-owner-actions.md)
 retains earlier campaign details. Policy approval is not evidence of qualification.
 
+The single ordered checklist of every step only a person can take, with the file, setting,
+script or runbook that waits for it and how to verify it, is [human actions](human-actions.md)
+(`npm run human:status` prints the steps this repository records). The groups below summarise
+the same steps by role; this page also keeps the resolved-choice and inventory coverage notes.
+
 ## Resolved choices
 
 A-01 to A-20, A-22 to A-26, A-32 to A-35, MVP-01, MVP-52 and approval-notice policy

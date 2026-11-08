@@ -1,0 +1,43 @@
+{
+  "atUTC": "2026-10-29T11:04:31.515502+00:00",
+  "state": "INERT_SOURCE_BINDING_PENDING_JOINED_QUALIFICATION",
+  "SDK": "1e95a588bd680f18a7b7c1232b1c96145a43f7ee",
+  "priorSDK": "0db04d25367889fd0b939f9e5f31d38338a37f94",
+  "sourceReceipt": "/Users/nubs/.local/state/eliza-five-lane-coordination/browser-request-grounding-20261029/RECEIPT.json",
+  "nativeInputsUnchangedFrom0db": [
+    "packages/app/scripts/build-helpers/arm64-simd.ts",
+    "packages/app/scripts/build-helpers/verify-fused-symbols.ts",
+    "packages/app/scripts/lib/android-bun-artifacts.lock.json",
+    "plugins/plugin-local-inference/native/llama.cpp",
+    "plugins/plugin-local-inference/native/android/inputs.json",
+    "plugins/plugin-local-inference/native/android/consumer.gradle",
+    "packages/app/scripts/paradee-voice/build-native.ts",
+    "packages/app/scripts/stage-elizavoice-lib.ts",
+    "packages/app/platforms/android/app/src/main/elizavoice-jni",
+    "packages/app/platforms/android/app/src/main/java/ai/elizaos/app/ElizaVoiceNative.java",
+    "plugins/plugin-local-inference/native",
+    "packages/app/scripts/paradee-voice"
+  ],
+  "nativeQualified": false,
+  "nativeRequalificationRequired": true,
+  "normalizedRegistryPackageInputSHA256": "7761f08dd9e9d140ddca0c6d3166ba9c083ee1d045200b2ff48a7e8aa5f79263",
+  "registryPackages": 3678,
+  "dependencyFindingSnapshotCarriedOnIdenticalPackageInput": true,
+  "freshRegistryAudit": false,
+  "noNewWaivers": true,
+  "normalProjectionAdds": [
+    "packages/contracts/src/browser-request-grounding.ts",
+    "packages/contracts/src/browser-address-input.ts"
+  ],
+  "runtimeProfileModelDevicePortChanges": false,
+  "publicPushMerge": false,
+  "holds": [
+    "existing SDK device-actions e2e changed-owning classification",
+    "normal joined checks",
+    "Root campaign handoff",
+    "timed Calendar and voice replay",
+    "5229 admission",
+    "fresh native engine bothABIs/models/APK/device continuity"
+  ],
+  "existingNativeAddressReexportProjection": "Exact guarded package specifier rewrite to ../../../packages/contracts/src/browser-address-input.ts for plain Node consumers; source/projection hashes recorded separately"
+}

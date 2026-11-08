@@ -7,7 +7,7 @@ import vm from 'node:vm';
 const source=readFileSync('.eliza/client-features/packages/ui/src/voice/voice-session-client-core.ts','utf8');
 const start=source.indexOf('  function sendUplinkAudio('),end=source.indexOf('  function handleServerFrame(',start);
 assert(start>0&&end>start);
-const body=stripTypeScriptTypes(source.slice(start,end),{mode:'strip'});
+const body=stripTypeScriptTypes(source.slice(start,end),{mode:'transform'});
 function fixture(getUiContext,throwOnError=false){
  const calls=[],errors=[];let stops=0;
  const context=vm.createContext({Uint8Array,ArrayBuffer,JSON,Error,console,ws:{send:value=>calls.push(value)},connPhase:'open',uiContextSupported:true,options:{getUiContext},parseVoiceUiContext:value=>value,encodeClientControl:JSON.stringify,lastUiContext:undefined,microphoneMuted:false,state:{phase:'listening',traceId:'turn'},mark(){},emitError:error=>{errors.push(error.message);if(throwOnError)throw Error("UI failed");},stop:async()=>{stops++}});

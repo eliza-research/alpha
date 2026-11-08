@@ -19,7 +19,7 @@ test('the committed listener record is well formed and honestly not device-quali
  assert.ok(fs.existsSync(path.join(root,record.evidence.apkBuild.record)));
  assert.deepEqual([record.evidence.emulator.recorded,record.evidence.aospImage.recorded,record.evidence.deviceAcceptance.recorded],[false,false,false]);
  assert.deepEqual([record.indicatorLease.implemented,record.indicatorLease.systemUiCompiled,record.indicatorLease.qualified],['source',false,false]);
- const chip=JSON.parse(read('android/aosp/listener/systemui/chip/manifest.json'));
+ const chip=JSON.parse(read('vendor/eliza/packages/os/android/sense/systemui/chip/manifest.json'));
  assert.equal(chip.indicatorHealthLease.systemUiCompiled,record.indicatorLease.systemUiCompiled,'chip manifest and listener record agree');
  assert.equal(chip.indicatorHealthLease.qualified,record.indicatorLease.qualified);
 });

@@ -1,9 +1,10 @@
+import {openLegacyNotes} from './helpers/legacy-notes';
 import {test,expect} from '@playwright/test';
 
-test('production Notes offers editing without import/export migration controls',async({page})=>{
+test('production retained Notes offers editing without import/export migration controls',async({page})=>{
  await page.addInitScript(()=>localStorage.setItem('alpha.connection.selection.v1',JSON.stringify({kind:'offline'})));
  await page.goto('/');
- await page.getByRole('button',{name:'Notes',exact:true}).click();
+ await openLegacyNotes(page);
  await expect(page.getByRole('button',{name:'Import text note',exact:true})).toHaveCount(0);
  await expect(page.getByRole('button',{name:'Export text file',exact:true})).toHaveCount(0);
  await expect(page.getByRole('button',{name:/New note|Create note/}).first()).toBeVisible();

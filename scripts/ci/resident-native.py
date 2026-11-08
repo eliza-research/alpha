@@ -77,7 +77,7 @@ for variant in ['standalone','launcher']:
    for name,digest in worker['files'].items():assert indexed.get(name)==digest and h(apk.read('assets/agent/workflow-worker/'+name))==digest
    assert set(indexed)==set(worker['files'])|{'manifest.json'}
    with zipfile.ZipFile(archive/(variant+'-release-unsigned.apk')) as release:
-    # Release packages arm64-v8a only (android/app/build.gradle abiFilters): compare the
+    # Release packages arm64-v8a only (android/consumer-host.json release abiFilters): compare the
     # ABI-neutral payload and the ARM64 runtime with debug, and require no x86_64 libraries.
     for key,name in entries.items():
      if not name.startswith('lib/'):assert h(release.read(name))==payload[key]

@@ -2,19 +2,26 @@ import fs from 'node:fs';
 import path from 'node:path';
 import {createHash} from 'node:crypto';
 import {execFileSync} from 'node:child_process';
+import {composePixel10aProduct} from '../vendor/eliza/packages/os/scripts/android/pixel10a-product.ts';
+import {placeholderFields, releaseDescriptorProblems} from '../vendor/eliza/packages/os/scripts/android/pixel10a-release.mjs';
+import {assertStockVendorApi} from '../vendor/eliza/packages/os/scripts/android/vendor-api.mjs';
 
+export {placeholderFields};
 /** The production descriptor for Pixel 10a (stallion) on Android 17. */
 export const PIXEL10A_PRODUCT = 'android/aosp/pixel10a-product.json';
-const HEX64 = /^[0-9a-f]{64}$/;
+export const PIXEL10A_COMPOSITION = 'vendor/eliza/packages/os/android/products/pixel10a-alpha.json';
+/**
+ * Alpha's binding of the shared Pixel 10a release inputs: its product (the
+ * alpha_stallion_phone composition), its descriptor, the vendored path of the shared
+ * source lock and its APK release signer. A descriptor naming another product is refused.
+ */
+export const PIXEL10A_RELEASE = Object.freeze({
+  productName: 'alpha_stallion_phone',
+  descriptorFile: PIXEL10A_PRODUCT,
+  sourceLockPath: 'vendor/eliza/packages/os/android/sources/pixel10a-stallion.json',
+  applicationSignerFile: 'android/release-signer.json',
+});
 const sha256 = bytes => createHash('sha256').update(bytes).digest('hex');
-
-/** JSON paths whose string value is unset or a placeholder (descriptions excluded). */
-export function placeholderFields(value, at = '') {
-  if (typeof value === 'string') return /^(unset|todo|tbd)$/i.test(value.trim()) || /placeholder/i.test(value) ? [at || '(value)'] : [];
-  if (Array.isArray(value)) return value.flatMap((item, index) => placeholderFields(item, `${at}[${index}]`));
-  if (value && typeof value === 'object') return Object.entries(value).filter(([key]) => key !== 'description').flatMap(([key, item]) => placeholderFields(item, at ? `${at}.${key}` : key));
-  return [];
-}
 
 /**
  * Whether this run stages the physical Pixel 10a product. Development staging needs the exact
@@ -34,70 +41,41 @@ export function pixel10aOptions({target, development, production, source, factor
 }
 
 /**
- * Problems that keep alpha_stallion_phone from production staging, read from `root`: the
- * production descriptor, its pinned source lock, the APK release signer and the image platform
- * certificate. An empty list admits staging inputs only; it is never an image build, signed
- * image, boot, device or release qualification.
+ * Problems that keep alpha_stallion_phone from production staging, read from `root` by the
+ * shared Pixel 10a release checks: the production descriptor, its pinned source lock, the APK
+ * release signer and the image platform certificate. An empty list admits staging inputs
+ * only; it is never an image build, signed image, boot, device or release qualification.
  */
 export function pixel10aProductProblems(root = process.cwd()) {
   const at = rel => path.join(root, rel);
   if (!fs.existsSync(at(PIXEL10A_PRODUCT))) return [`${PIXEL10A_PRODUCT} is missing`];
   let product;
   try { product = JSON.parse(fs.readFileSync(at(PIXEL10A_PRODUCT), 'utf8')); } catch (error) { return [`${PIXEL10A_PRODUCT} is unreadable: ${error.message}`]; }
-  const problems = [];
-  if (product.schema !== 1) problems.push(`${PIXEL10A_PRODUCT}: schema must be 1`);
-  for (const field of placeholderFields(product)) problems.push(`${PIXEL10A_PRODUCT}: ${field} is unset or a placeholder`);
-  if (product.product !== 'alpha_stallion_phone' || product.target !== 'pixel10a') problems.push(`${PIXEL10A_PRODUCT}: product must be alpha_stallion_phone for target pixel10a`);
-  if (product.device?.codename !== 'stallion' || product.device?.androidRelease !== '17') problems.push(`${PIXEL10A_PRODUCT}: device must be stallion on Android 17`);
-  if (!/^alpha_stallion_phone-[a-z0-9]+-user$/.test(product.lunch?.production ?? '')) problems.push(`${PIXEL10A_PRODUCT}: lunch.production must be a user build of alpha_stallion_phone`);
-  // Software never records release qualification or device acceptance.
-  if (product.releaseQualified !== false) problems.push(`${PIXEL10A_PRODUCT}: releaseQualified must stay false; it is release evidence, not a staging input`);
-  if (product.deviceAcceptanceVerified !== false) problems.push(`${PIXEL10A_PRODUCT}: deviceAcceptanceVerified must stay false; it is device evidence, not a staging input`);
-  // The pinned source lock: exact bytes, the stallion Android 17 contract, admitted for release.
-  const lockFile = product.sourceLock?.file;
-  if (lockFile !== 'android/aosp/pixel10a-source.json' || !fs.existsSync(at(lockFile))) problems.push(`${PIXEL10A_PRODUCT}: sourceLock.file must be android/aosp/pixel10a-source.json`);
-  else {
-    const bytes = fs.readFileSync(at(lockFile));
-    if (!HEX64.test(product.sourceLock.sha256 ?? '')) problems.push(`${PIXEL10A_PRODUCT}: sourceLock.sha256 must pin the reviewed source lock`);
-    else if (sha256(bytes) !== product.sourceLock.sha256) problems.push(`${lockFile} differs from the pinned sourceLock.sha256`);
-    let lock = null;
-    try { lock = JSON.parse(bytes); } catch { problems.push(`${lockFile} is unreadable`); }
-    if (lock) {
-      if (lock.target !== 'pixel10a' || lock.device?.codename !== 'stallion' || lock.device?.androidRelease !== '17') problems.push(`${lockFile} is not the Pixel 10a Android 17 source contract`);
-      if (lock.developmentOnly !== false) problems.push(`${lockFile} is still marked developmentOnly; admit its inputs for release in a reviewed change`);
-      if (lock.releaseQualified !== false) problems.push(`${lockFile}: releaseQualified must stay false`);
-    }
-  }
-  // The reviewed signer: the APK release signer descriptor and the image platform certificate.
-  if (product.signer?.apkDescriptor !== 'android/release-signer.json') problems.push(`${PIXEL10A_PRODUCT}: signer.apkDescriptor must be android/release-signer.json`);
-  else {
-    let signer;
-    try { signer = JSON.parse(fs.readFileSync(at(product.signer.apkDescriptor), 'utf8')).signerSha256; } catch { signer = undefined; }
-    if (!HEX64.test(signer ?? '')) problems.push(`android/release-signer.json signerSha256 is ${JSON.stringify(signer)}, not a reviewed release certificate`);
-  }
-  if (!HEX64.test(product.signer?.platformCertificateSha256 ?? '')) problems.push(`${PIXEL10A_PRODUCT}: signer.platformCertificateSha256 must be a SHA-256`);
-  return [...new Set(problems)];
+  return releaseDescriptorProblems(product, {root, file: PIXEL10A_PRODUCT, productName: PIXEL10A_RELEASE.productName, sourceLockPath: PIXEL10A_RELEASE.sourceLockPath, applicationSignerFile: PIXEL10A_RELEASE.applicationSignerFile});
 }
 
-export function writePixel10aProduct({root, output, apk, identity, sourceEvidence, production = false}) {
-  execFileSync('python3', [path.join(root, 'scripts/stage-aosp-native.py'), '--apk', path.resolve(apk), '--output', output, '--module', identity.moduleName, '--target', 'stallion'], {stdio:'inherit'});
-  const product = path.join(root, 'android/aosp/stallion');
-  const registrationFiles = ['AndroidProducts.mk', 'alpha_stallion_phone.mk'];
-  for (const name of registrationFiles) fs.copyFileSync(path.join(product, name), path.join(output, name), fs.constants.COPYFILE_EXCL);
-  // AOSP discovers AndroidProducts.mk recursively; register this product only at the overlay root.
-  fs.cpSync(product, path.join(output, 'stallion'), {recursive:true, errorOnExist:true, force:false,
-    filter: source => !registrationFiles.includes(path.relative(product, source))});
-  fs.appendFileSync(path.join(output, 'product.mk'), `\n# Exact ARM64 bundled JNI modes for this ${production ? 'production' : 'development'} product.\nTARGET_FS_CONFIG_GEN += vendor/alphaphone/config.fs\n`);
-  let descriptor = null;
+/**
+ * The shared stock-vendor contract for the verified source tree: the composition's lunch release and
+ * the generated stallion vendor VINTF manifest both carry the shared profile's locked vendor API.
+ * A mismatch is refused, never rewritten.
+ */
+export function pixel10aVendorApi({root = process.cwd(), source}) {
+  const profile = JSON.parse(fs.readFileSync(path.join(root, 'vendor/eliza/packages/os/android/aosp.lock.json'), 'utf8')).profiles.pixel10a;
+  const product = JSON.parse(fs.readFileSync(path.join(root, PIXEL10A_COMPOSITION), 'utf8'));
+  return assertStockVendorApi(source, {codename: profile.device.codename, releaseConfig: product.releaseConfig, vendorApiLevel: profile.device.vendorApiLevel});
+}
+
+export function writePixel10aProduct({root, output, apk, identity, launcher, sourceEvidence, production = false, bootAnimation = null, vendorApi = null}) {
+  const nativeStagingEvidence = JSON.parse(execFileSync('python3', [path.join(root, 'scripts/stage-aosp-native.py'), '--apk', path.resolve(apk), '--output', output, '--module', identity.moduleName, '--target', 'stallion', '--defer-soong'], {encoding:'utf8'}));
+  const product = JSON.parse(fs.readFileSync(path.join(root, PIXEL10A_COMPOSITION), 'utf8'));
+  // A brand boot animation is staged only when the shared composition pins its bytes.
+  const report = composePixel10aProduct({output, product, launcher, sourceEvidence, nativeStagingEvidence, production, bootAnimation, vendorApi});
+  execFileSync('python3', [path.join(root, 'scripts/stage-aosp-native.py'), '--apk', path.resolve(apk), '--output', output, '--module', identity.moduleName, '--finalize-soong'], {stdio:'pipe'});
   if (production) {
     const bytes = fs.readFileSync(path.join(root, PIXEL10A_PRODUCT));
-    descriptor = {file:PIXEL10A_PRODUCT, sha256:sha256(bytes), ...JSON.parse(bytes)};
-    // No BOARD_AVB_* here: board variables belong to the device BoardConfig, not product config.
-    // Release AVB keys and algorithms are applied when the target-files are signed
-    // (sign-aosp-release.mjs --avb_<partition>_key/--avb_<partition>_algorithm).
+    const descriptor = JSON.parse(bytes);
+    Object.assign(report, {productDescriptor:{file:PIXEL10A_PRODUCT, sha256:sha256(bytes)}, sourceLockSha256:descriptor.sourceLock.sha256, platformCertificateSha256:descriptor.signer.platformCertificateSha256});
+    fs.writeFileSync(path.join(output, 'physical-product.json'), JSON.stringify(report, null, 2) + '\n');
   }
-  const report = production
-    ? {schema:1, target:'pixel10a', product:'alpha_stallion_phone', lunch:descriptor.lunch.production, production:true, developmentOnly:false, productDescriptor:{file:descriptor.file, sha256:descriptor.sha256}, sourceLockSha256:descriptor.sourceLock.sha256, platformCertificateSha256:descriptor.signer.platformCertificateSha256, sourceEvidence, imageBuilt:false, imageSigned:false, releaseQualified:false, deviceAcceptanceVerified:false}
-    : {schema:1, target:'pixel10a', product:'alpha_stallion_phone', lunch:'alpha_stallion_phone-cp2a-userdebug', sourceEvidence, developmentOnly:true, imageBuilt:false, releaseQualified:false, deviceAcceptanceVerified:false};
-  fs.writeFileSync(path.join(output, 'physical-product.json'), JSON.stringify(report, null, 2) + '\n', {flag:'wx'});
+  return report;
 }

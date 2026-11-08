@@ -1,13 +1,30 @@
 # Alpha Phone (alphaphone)
 
+## Shared application direction — October 27
+
+The owner has requested one upstream Eliza mobile application and AOSP target,
+with Alpha supplying its character, theme and product registration. Shared views,
+plugins, agent context, action contracts and native behavior must move upstream;
+the separate renderer described below is the current implementation, not the target.
+The native profile uses libelizainference for local models (Paradee speech,
+Phonon-2 recognition and local embeddings), with Cerebras for Cloud text inference.
+Both branded images target Pixel 10a / Android 17. Package IDs, signing, callbacks
+and existing storage namespaces remain explicit compatibility inputs.
+
+See the [consolidation audit](docs/unification-audit-2026-10-27.md) for discrepancies,
+migration order and separate source, APK, image and device acceptance gates.
+
 Independent Android UI on Eliza, using the Alpha Phone prototype as its design
 reference. The current renderer includes native browser, camera,
 calendar, reminders, selected files and local notes. Phone, Contacts and SMS/MMS are
 AOSP-only capabilities; standalone APKs do not expose them. Wallet is outside MVP.
-Production Android starts with Eliza Cloud sign-in, followed by required device-permission
+Production Android starts with Eliza Cloud sign-in, followed by device-access
 setup, Ready, and Home. Notifications, microphone, camera and location retain the original
 sequence; Android then reviews Calendar and Photos access. Denied access stays on its
-Settings/check-access step without repeating blocked prompts. Google connects separately
+Settings/check-access step without repeating blocked prompts. Every access step offers
+Skip for now after 20 seconds, including an unavailable or pending browser permission.
+Reviewed choices persist across refresh; skipping never grants OS/browser access, and
+each feature still checks its current permission when used. Google connects separately
 in Settings. Previously completed installations remain completed.
 Cloud inference has a separate entitlement/binding check; a signed-in account does not
 by itself prove that AI is ready, and genuine plan or connection notices remain visible
@@ -49,7 +66,6 @@ the required evidence rather than treating a successful APK build as acceptance.
 - [Working PRD](docs/prd.md)
 - [Detailed implementation plan](docs/implementation-plan.md)
 - [Architecture and upstream ownership](docs/architecture.md)
-- [Quint application-state models](specs/quint/README.md) and [migration report](docs/quint-migration-report.md)
 - [Requirements and open decisions](docs/decisions.md)
 - [Verification gates and evidence](docs/verification.md)
 - [Source/design provenance](docs/sources.md)
@@ -69,6 +85,30 @@ reset-only data management are planned. These are requirements, not claims that 
 current Cloud voice/credit UI or other source already implements them.
 See [speech research](docs/local-speech-research-2026-10-12.md) for native candidates.
 
+## Cloud release qualification — November 6
+
+The release scope is Cloud voice with Cartesia. Keep Android microphone capture,
+playback and the resident agent; local speech-model qualification remains a
+separate native-profile task. The existing explicit `cloud` build profile verifies
+its packaged resident, worker and source provenance and excludes local speech
+models. Direct mode and embedding routing are not changed by release admission.
+
+A Cloud release needs passing voice evidence for each exact signed APK, supplied
+after testing with `node scripts/verify-apks.mjs --runtime-profile=cloud
+--cloud-voice-evidence=/absolute/path/cloud-voice.json`. The receipt format is
+`alpha-cloud-voice-qualification-v1`, with a `results` array. Each result names
+`apkSha256`, `provider: "cartesia"`, `outcome: "passed"`, and a `checks` object
+whose `consent`, `session`, `acousticInput`, `blueBar`, `transcript`,
+`audibleSpeakerReply`, `mute`, `unmute`, and `stopReleased` fields are all true
+only after the corresponding check passed. Do not put transcripts, credentials,
+account identifiers or recorded audio in this receipt.
+
+Missing, failed, incomplete, duplicate or different-APK evidence keeps the release
+non-distributable. The verifier records only the receipt digest and allowed
+fields. Signing, version, flag-off bundle, resident provenance and notice gates
+still apply. Native-profile releases still require their qualified on-device voice
+bundle. This qualification does not publish a release or replace owner acceptance.
+
 ## Explicit Cloud QA profile — October 18
 
 The owner-approved `cloud` runtime profile supersedes the local-speech-only wording
@@ -82,8 +122,11 @@ Select it explicitly with `--runtime-profile=cloud` for runtime staging and Andr
 builds (`agent:stage-android` and `android:build`). Renderer, native and packaged
 runtime admission must agree on the profile; test mocks and unpackaged runtimes
 are rejected. The default remains `native` with its existing qualification gates.
-Use the default `native` profile for on-device speech with Cloud text inference
-([measurements](docs/on-device-speech-2026-11-05.md)).
+The Talk button is the explicit voice start; it opens the voice surface and starts
+the microphone without a second Start Cloud voice button. The active surface keeps
+the Cloud upload and plan-usage disclosure visible. Account and conversation binding,
+permission failures, and explicit Stop remain enforced.
+
 Cloud QA builds do not establish offline/native-speech, AOSP or release acceptance;
 real account, inference, microphone and playback evidence is still required.
 
@@ -158,6 +201,13 @@ npm run dev                       # local agent + development server, switch on
 npm run dev:ui                    # renderer-only development server, switch on
 ```
 
+`npm run dev` shows the product connection sheet, **Alpha connection** (connected, connecting
+or couldn't connect, **Try again**, conversation history), and attaches to the local agent in
+the background, so loading the page while the agent restarts leaves Home recovering instead of
+opening the sheet. Set `ALPHA_DEV_CONNECTION_TOOLS=1` for the development connection sheet:
+development profiles (`?mode=dev`), mock mode, subscription gate QA and the development Cloud
+and pairing tools. `npm run dev:ui` keeps the development connection sheet.
+
 For configured regional Maps, prepare the data once as described in
 [regional Maps setup](docs/maps-regional-validation.md), then run `npm run dev:maps`.
 This starts the local router, gateway and app together; use `-- --port 5194` to
@@ -176,15 +226,16 @@ ignore them and open the live app:
   profile with durable local app data and device controls.
 
 For the complete capability matrix and current verification results, see
-[browser development parity](docs/browser-dev-parity.md). Developer controls are hidden by default, including with `bun run dev`. Add `?tools=1` (or `&tools=1`) to an explicitly enabled development-server URL to show **Tools**. This query cannot enable controls in production builds or on Android. Add `?shell=launcher` only to preview the launcher system presentation; the default preview is the standalone app. In the development profile with tools enabled, open **Device controls** with the sliders button beside **Tools** or **Dev data** below the phone preview. Its profile buttons switch between app and development data. In **Device controls**, use
+[browser development parity](docs/browser-dev-parity.md). Developer controls are hidden by default, including with `bun run dev`. Add `?tools=1` (or `&tools=1`) to an explicitly enabled development-server URL to show **Tools**. The same query is the one Developer gate in Settings: the Developer page, Try mock mode, saved-data recovery rows, Calendar backups and the update channel row appear only with it. This query cannot enable controls in production builds or on Android. Add `?shell=launcher` only to preview the launcher system presentation; the default preview is the standalone app. In the development profile with tools enabled, open **Device controls** with the sliders button beside **Tools** or **Dev data** below the phone preview. Its profile buttons switch between app and development data. In **Device controls**, use
 Home, Back, Power, Background and Resume to exercise device lifecycle; use Incoming
 call/message/email and Post notification to drive incoming events. Location controls
 provide a saved Home place and manual movement for location-triggered workflows.
 The role buttons persist the development device's selected Home, assistant, dialer
 and SMS roles.
 
-On the development server (switch on), **Settings → Agent connection** offers development
-profiles to exercise conversations, approvals and durable receipts without credentials.
+On the development server (switch on; with `npm run dev`, also `ALPHA_DEV_CONNECTION_TOOLS=1`),
+**Settings → Agent connection** offers development profiles to exercise conversations,
+approvals and durable receipts without credentials.
 Use `?mode=dev&workflows=agent` (switch on, development server only) to exercise the
 agent workflow UI with that profile.
 For real host inference and speech, follow the separate [local agent setup](docs/local-agent-development.md).
@@ -212,17 +263,11 @@ file flows, dialog accessibility, disclosed adapter fixtures and reference desig
 states. Reports/screenshots are in `test-results/browser-report` and
 `test-results/browser`. Browser CI runs independently of Android qualification.
 
-Use Node 26.13.0 (`.nvmrc`), the prepared source's pinned Bun version (currently 1.4.2), and JDK 21.
-Node and Bun have separate jobs. Node and npm drive this repository's own tooling: Vite, Playwright,
-the `node --test` suite, Capacitor and the build scripts. Bun is the runtime of the Eliza agent that
-ships on the phone (`libeliza_bun.so`) and the tool upstream Eliza uses to build that agent bundle,
-so it is needed only to prepare or run the agent (`agent:prepare`, the local agent scripts).
-`agent:prepare` checks Bun against the upstream `packageManager` before installing dependencies,
-and `agent:stage-android` refuses to bundle with any other Bun (Bun 1.3.14 dropped modules from
-the mobile bundle, so every chat turn failed).
+Use Node 24.15.0, the prepared source's pinned Bun version (currently 1.4.2), and JDK 21.
+`agent:prepare` checks Bun against the upstream `packageManager` before installing dependencies.
 Put that Bun version first on `PATH` for the build scripts; `ALPHA_BUN` may also select
-its absolute executable for preparation and nested tools.
-Native builds require Android SDK platform 36 and
+its absolute executable for preparation and nested tools. An older Bun can emit incompatible
+plugin imports during the runtime build. Native builds require Android SDK platform 36 and
 build-tools 36.0.0. Set `JAVA_HOME` and `ANDROID_HOME` on Linux; the scripts also
 recognize the usual macOS Homebrew JDK/Android SDK locations. The Gradle 8.13
 wrapper is hash-pinned. No Eliza root dependency installation or package
@@ -292,7 +337,21 @@ npm run android:build -- --allow-unpackaged-runtime
 (exit 2), before the web sync and Gradle, naming the command to run when the pinned
 `vendor/eliza` checkout, the prepared runtime source or (for distribution builds) the staged
 runtime payload is missing or stale, or when the on-device voice outputs are missing (distribution
-builds) or not admitted by the voice-host record.
+builds) or not admitted by the voice-host record. A checkout that matches its own
+`upstream.lock.json` is not enough: the preflight (and `npm run android:build:inputs`) also
+reads the lock on the local `origin/main` ref (`git show origin/main:upstream.lock.json`) and
+refuses a pin that is not that commit or a descendant of it (`git -C vendor/eliza merge-base
+--is-ancestor`), because an APK from a stale branch runs an older agent that can reject state
+the newer agent already wrote on the device. Rebase on `origin/main` to fix it. When main's pin
+is not in `vendor/eliza` it asks for `git -C vendor/eliza fetch origin` (or `--unshallow` for a
+shallow clone) instead of passing; when the clone has no `origin/main` ref at all (a CI
+pull-request checkout) it prints a note and skips the comparison. Run `git fetch origin` first
+so the ref is current. `--allow-older-upstream-pin` (to the preflight or `npm run android:build
+--`) is only for a deliberate, reviewed upstream rollback. `npm run android:build:local` does not
+pass it to its first (`--before-prepare`) check, so a rollback runs the steps of that script
+itself, starting with `node scripts/android-build-preflight.mjs --before-prepare
+--allow-older-upstream-pin`. The comparison is only as current as the local `origin/main` ref:
+a clone that has not fetched since main was repinned still passes.
 
 Three inputs of a distributable build cannot come from a script, and
 `npm run android:build:inputs` names each with who supplies it:
@@ -324,9 +383,12 @@ Three inputs of a distributable build cannot come from a script, and
 - **A qualified speech runtime** (decision A-24). A local rebuild installs only with
   `--allow-unqualified-runtime`. The chain still completes with it; `verify-apks` records
   the releases `distributable:false` and names the speech reasons.
-- **The release signer** (decision A-06). Without the `ELIZAOS_*` signing values and a
-  certificate digest in `android/release-signer.json` the chain completes with unsigned,
-  non-distributable releases.
+- **The release signer** (decision P-16; [human actions](docs/human-actions.md) H-08 to H-10).
+  `node scripts/enroll-release-keys.mjs` records the key ceremony's certificate digest in
+  `android/release-signer.json`; releases are then signed by Gradle with the `ELIZAOS_KEYSTORE_*`
+  values or afterwards with `node scripts/sign-release-apks.mjs` (ceremony key files or a PKCS#11
+  token). Without either the chain completes with unsigned, non-distributable releases.
+  `npm run human:status` lists every step only a person can take and what this checkout records.
 
 Gradle verifies every plugin and dependency artifact against
 `android/gradle/verification-metadata.xml` (SHA-256) in every build of the `android/`
@@ -364,6 +426,19 @@ process memory and the private account store. Sign-out retires the bound process
 commit; `ALPHA_CLOUD_UI_PORT` and `ALPHA_REMOTE_PORT` select free loopback ports.
 This browser check exercises real login, subscription and inference only after
 those actions are completed; it does not establish Android or device acceptance.
+
+The default resident remains the lean chat profile. For full application QA, use
+`ALPHA_CLOUD_RESIDENT_PROFILE=full npm run dev:cloud` with an explicitly selected,
+separate Cloud-only `ALPHA_REMOTE_PROFILE`. A new full profile enables the
+canonical personal assistant and uses the normal SDK plugin set, including Notes
+and Calendar. It uses the same account-bound Cloud inference and speech routes;
+it does not impersonate Android or enable mocks.
+
+Full mode refuses an existing profile whose personal assistant is disabled or
+not explicitly enabled. It never reverses that saved choice or converts a direct
+provider profile. Existing accounts, credentials and histories are not copied or
+reset. Verify the running Notes and Calendar services and real Cloud requests
+before treating the preview as full application acceptance.
 
 ```sh
 npm run android:build
@@ -407,8 +482,10 @@ one APK at a time and removes only reproducible packaging intermediates between
 variants. Source, generated provenance and finished APKs are retained.
 
 When a resident runtime is staged, APK verification checks its source stamp,
-agent bundle, complete workflow-worker inventory and both native runtime ABIs
-against the staged inputs. A stale stamp requires fresh preparation and staging.
+agent bundle, hash-bound agent dependency inventory, complete workflow-worker inventory
+and both native runtime ABIs against the staged inputs. Packaged notices use that
+inventory and verify package metadata in the prepared source; compact bundle text
+is not a dependency list. A stale stamp requires fresh preparation and staging.
 A developer APK without runtime payload is reported as `NOT_PACKAGED`; this is
 not proof of resident runtime execution or device acceptance.
 
@@ -506,7 +583,7 @@ and inherit its `product.mk` from the selected product. See [build instructions]
 for signing, default-home policy and the full image verification boundary.
 
 The opt-in always-on listener ships only in the image. Build it with `./gradlew :sense:assembleRelease`
-(in `android/`, same signing variables as the APKs, after the speech model bundle is prepared) and pass
+(in `android/` after `npm run android:host`, same signing variables as the APKs, after the speech model bundle is prepared) and pass
 it with `--listener-apk FILE`. Production staging requires it together with `--listener-descriptor FILE`, an
 independently reviewed JSON record of `packageName`, `apkSha256` and `certificateSha256`, and refuses a
 listener APK without the qualified speech bundle. `node scripts/verify-aosp-listener.mjs --serial SERIAL --user 0` is a read-only
@@ -517,6 +594,25 @@ boundary and the remaining device gates.
 
 `apps/app` owns this product's UI. `android` owns its packaging and launcher bridge.
 `vendor/eliza` pins shared platform/native/OS code. `design` preserves the supplied references. Use root npm scripts.
+
+## Android host
+
+The upstream Eliza consumer-host generator owns the Android Gradle setup: toolchain and
+wrapper, SDK levels, modules, dependency versions, the standalone/launcher flavors, debug
+and release build types, release signing and version overrides, test-mocks source sets and
+admission hooks. `android/consumer-host.json` is Alpha's only Gradle input: identity comes
+from `app.config.json`; the descriptor names modules, dependencies, the four signing and two
+version environment variables, test-only sources and installed-data compatibility names
+(resident socket namespaces, notification resources and the environment hook used when the
+upstream resident classes are staged into Alpha's package). `android/app/product.gradle`
+keeps Alpha's Gradle-time product admission (runtime profile, App Links, voice and embedding
+hosts). `npm run android:host` writes the generated, git-ignored `settings.gradle`,
+`build.gradle`, `app/build.gradle`, `gradle.properties` and wrapper into `android/`; every
+`npm run android:build` regenerates them, and a host whose inputs changed refuses to
+configure. Run it before opening `android/` in Android Studio or invoking `./gradlew` directly.
+To add a module or dependency, edit the descriptor rather than a Gradle file; a shared native
+plugin Java source compiled beside the staged resident classes is a path in
+`residentHost.helpers` (staged verbatim from the pin unless upstream reviews a rewrite for it).
 
 For affected pull requests, GitHub Actions builds both variants and uploads artifacts. Repository verification runs once per change;
 main-branch pushes repeat only that inexpensive integration check. Full resident

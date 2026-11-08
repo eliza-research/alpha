@@ -1,9 +1,21 @@
 name: Digest process recovery
 # Host-runtime evidence only: a synthetic model in the pinned upstream runtime, no
-# emulator, account, provider key or network after preparation. Dispatch-only until
-# the CI owner chooses a schedule; it is not a required check.
+# emulator, account, provider key or network after preparation. It is not a required check.
+# Dispatch always runs. The weekly schedule and pin changes on main run only when the CI owner
+# sets the repository variable DIGEST_RESTART_AUTOMATIC to "true" (Settings > Variables);
+# unset, the lane stays dispatch-only.
 on:
   workflow_dispatch:
+  schedule:
+    - cron: '17 6 * * 1'
+  push:
+    branches: [main]
+    paths:
+      - upstream.lock.json
+      - scripts/test-local-digest-restart.mjs
+      - scripts/prepare-local-agent.mjs
+      - scripts/local-agent-source.mjs
+      - .github/workflows/digest-restart.yml
 permissions:
   contents: read
 concurrency:
@@ -12,6 +24,7 @@ concurrency:
 jobs:
   digest-restart:
     name: Digest process recovery
+    if: github.event_name == 'workflow_dispatch' || vars.DIGEST_RESTART_AUTOMATIC == 'true'
     runs-on: ubuntu-24.04
     timeout-minutes: 80
     env:

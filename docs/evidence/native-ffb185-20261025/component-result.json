@@ -1,0 +1,32 @@
+{
+  "atUTC": "2026-10-25T08:51:49.229218+00:00",
+  "state": "NEW_ENGINE_COMPONENT_QUALIFICATION_PASS_REVIEW_REQUIRED",
+  "engineSHA256": "ffb1855a8478780fda444bea058f584ce8c4267dcb0db62d5ec34b5ca3154625",
+  "engineBytes": 8062696,
+  "abi": "arm64-v8a",
+  "nativeABI": 19,
+  "BGE": {
+    "rounds": 2,
+    "pass": true,
+    "receipt": "embedding/device-result.json"
+  },
+  "ASR": {
+    "utterances": 101,
+    "wer": 0.01937984496124031,
+    "maxWer": 0.06,
+    "silenceEmpty": true,
+    "receipt": "voice/asr-wer.json"
+  },
+  "TTSRoundtrip": {
+    "sentences": 230,
+    "wer": 0.04503064215294431,
+    "maxWer": 0.08,
+    "receipt": "voice/paradee-roundtrip.json"
+  },
+  "streamAndCancel": true,
+  "modelReopenReuse": true,
+  "hardwareMicSpeakerTested": false,
+  "fullAlphaAppTested": false,
+  "oldDescriptorChanged": false,
+  "networkRestored": true
+}

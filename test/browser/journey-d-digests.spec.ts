@@ -9,7 +9,8 @@
  *    (apps/app/src/browser/development-digests.ts): schedules run in this page while it is open, and every digest
  *    "output" is the saved scripted development reply. No model, hosted worker, account or network.
  *  - The source is a typed snapshot reviewed in the panel; no mail, calendar or task provider is read.
- *  - Time is moved with page.clock. "App closed" is modelled by navigating to about:blank across a scheduled time.
+ *  - Time is moved with page.clock, paused before the first occurrence so only the test advances it. "App closed"
+ *    is modelled by navigating to about:blank across a scheduled time.
  *
  * Native-only / not coverable here (not claimed):
  *  - Hosted execution while the phone is POWERED OFF and delivery once on reconnect. That is owner decision A-09
@@ -19,7 +20,8 @@
  *    provider sources, result notifications on a device.
  *
  * Missed occurrences follow the proposed scheduler policy ("explicit missed/overlap records", no backlog replay):
- * a scheduled time that passed while the app was closed leaves exactly one `missed` record, is never run late, is
+ * a scheduled time that passed while the app was closed (and is beyond the shared 30-minute run window,
+ * DIGEST_RUN_WINDOW_MS) leaves exactly one `missed` record, is never run late, is
  * labelled "Missed — not run" in the panel and does not replace the last real brief on Home (asserted on the
  * rendered Home card; the development profile reads the same latestRetainedDigest source as the product profile). The resident engine's
  * own restart behaviour is covered by scripts/test-local-digest-restart.mjs, not here.
@@ -48,11 +50,18 @@ const BRIEF=(when:string)=>`Open workflows. Latest brief from On-device agent ·
 /** Move the page clock to an instant without running every intermediate timer. */
 /** Read-only: the retained brief Home presents (apps/app/src/runtime/hosted-digests.ts). */
 const retainedBrief=(page:Page)=>page.evaluate(async()=>(await import('/src/runtime/hosted-digests.ts')).latestRetainedDigest());
+/**
+ * Run the paused page clock forward one second at a time. The development scheduler ticks every 15s and
+ * skips a tick while the previous one is still writing; one runFor over many ticks fires them all in
+ * the same burst, so a slow write could swallow the tick that was due. Second by second, each tick's
+ * write completes long before the next is due, so every scheduled tick is admitted.
+ */
+async function tickFor(page:Page,ms:number){for(let left=ms;left>0;left-=1000)await page.clock.runFor(Math.min(1000,left));}
 async function advanceTo(page:Page,iso:string){const delta=Date.parse(iso)-await page.evaluate(()=>Date.now());expect(delta).toBeGreaterThan(0);await page.clock.fastForward(delta);}
 async function connect(page:Page){
  await page.goto('/?mode=dev');
  await page.getByRole('button',{name:'Settings',exact:true}).click();
- await page.getByRole('button',{name:'Agent',exact:true}).click();
+ await page.getByRole('button',{name:'Agent connection',exact:true}).click();
  const dialog=page.getByRole('dialog',{name:'Development connections'});
  await dialog.getByRole('textbox',{name:'Scripted reply'}).fill(OUTPUT);
  await dialog.getByRole('button',{name:'Save development reply'}).click();
@@ -91,7 +100,10 @@ async function createSchedules(page:Page){
 
 test('journey D: morning and evening digests run once each, are retained and acknowledged, and a missed time is not replayed',async({page})=>{
  test.setTimeout(300_000);
- await page.clock.install({time:new Date('2026-10-03T06:58:10Z')});
+ // The clock runs (from well before the first occurrence) while the panel is driven, then is paused
+ // just before 07:00: from there the page's time moves only when this test moves it, so the
+ // "restart inside the scheduled minute" step no longer depends on how long a reload takes.
+ await page.clock.install({time:new Date('2026-10-03T06:50:00Z')});
  await connect(page);
 
  // 1. Create both schedules through the rendered panel.
@@ -106,7 +118,10 @@ test('journey D: morning and evening digests run once each, are retained and ack
  await expect(briefCard(page)).toHaveCount(0);
 
  // 2. Morning occurrence: exactly one retained result, shown once, delivery acknowledged.
- await page.clock.runFor(120_000);
+ // The development scheduler ticks every 15s; 16s past 07:00 always holds one tick at or after it,
+ // and the restart below still lands inside the 07:00 minute.
+ await page.clock.pauseAt(new Date('2026-10-03T06:59:58Z'));
+ await tickFor(page,18_000);
  await expect.poll(async()=>(await digests(page)).results.length).toBe(1);
  await panel.getByRole('button',{name:'Refresh',exact:true}).click();
  await expect(panel.getByRole('article')).toHaveCount(1);
@@ -121,7 +136,7 @@ test('journey D: morning and evening digests run once each, are retained and ack
  expect(new Date(await page.evaluate(()=>Date.now())).toISOString().slice(0,16)).toBe('2026-10-03T07:00');
  await page.reload();
  await expect(page.getByRole('region',{name:'Home'})).toBeVisible();
- await page.clock.runFor(20_000);
+ await tickFor(page,20_000);
  expect(new Date(await page.evaluate(()=>Date.now())).toISOString().slice(0,16)).toBe('2026-10-03T07:00');
  expect((await digests(page)).results).toEqual([first]);
  // Home, the visible screen after the restart, shows that morning brief: its text, its agent and when it ran.
@@ -134,7 +149,7 @@ test('journey D: morning and evening digests run once each, are retained and ack
 
  // 4. Evening occurrence after that restart: one more result, for the evening schedule only.
  await advanceTo(page,'2026-10-03T18:59:30Z');
- await page.clock.runFor(60_000);
+ await tickFor(page,60_000);
  await expect.poll(async()=>(await digests(page)).results.length).toBe(2);
  panel=await openDigests(page);
  await panel.getByRole('button',{name:'Refresh',exact:true}).click();
@@ -150,10 +165,10 @@ test('journey D: morning and evening digests run once each, are retained and ack
 
  // 5. Missed occurrence: the app is closed across the next morning time, then started again.
  await page.goto('about:blank');
- await advanceTo(page,'2026-10-04T07:10:00Z');
+ await advanceTo(page,'2026-10-04T07:40:00Z');
  await page.goto('/?mode=dev');
  await expect(page.getByRole('region',{name:'Home'})).toBeVisible();
- await page.clock.runFor(60_000);
+ await tickFor(page,60_000);
  // Exactly one explicit record for 2026-10-04 07:00: status missed, never run late (no model output), and the
  // first day's results are untouched. No backlog replay.
  await expect.poll(async()=>(await digests(page)).results.length).toBe(3);
@@ -181,10 +196,10 @@ test('journey D: morning and evening digests run once each, are retained and ack
  await expect(homeBrief(page)).toHaveAttribute('aria-label',BRIEF('Sat, Oct 3 7:00 PM'));
  await expect(homeBrief(page)).not.toContainText(/missed|not run/i);
  // A later tick and a restart settle nothing further for that occurrence.
- await page.clock.runFor(120_000);
+ await tickFor(page,120_000);
  await page.reload();
  await expect(page.getByRole('region',{name:'Home'})).toBeVisible();
- await page.clock.runFor(60_000);
+ await tickFor(page,60_000);
  // After the restart Home is the visible screen and shows the same last real brief, never the missed record.
  await expect(homeBrief(page)).toBeVisible();
  await expect(homeBrief(page)).toHaveAttribute('aria-label',BRIEF('Sat, Oct 3 7:00 PM'));
@@ -198,7 +213,7 @@ test('journey D: morning and evening digests run once each, are retained and ack
 
  // 6. The schedules survived: the next evening occurrence runs once.
  await advanceTo(page,'2026-10-04T18:59:30Z');
- await page.clock.runFor(60_000);
+ await tickFor(page,60_000);
  await expect.poll(async()=>(await digests(page)).results.length).toBe(4);
  await panel.getByRole('button',{name:'Refresh',exact:true}).click();
  await expect(panel.getByRole('article')).toHaveCount(4);
@@ -227,13 +242,15 @@ test('journey D: morning and evening digests run once each, are retained and ack
 // only occurrence so far passed while the app was closed has no earlier brief: the single record is the missed one.
 test('journey D: an occurrence missed while the app was closed leaves one explicit missed record and no brief for Home',async({page})=>{
  test.setTimeout(240_000);
- await page.clock.install({time:new Date('2026-10-03T06:58:10Z')});
+ await page.clock.install({time:new Date('2026-10-03T06:50:00Z')});
  await connect(page);
  await createSchedules(page);
+ // Frozen before the occurrence, however long the panel took: 07:00 must pass only while the app is closed.
+ await page.clock.pauseAt(new Date('2026-10-03T06:59:00Z'));
  await page.goto('about:blank');
- await advanceTo(page,'2026-10-03T07:10:00Z');
+ await advanceTo(page,'2026-10-03T07:40:00Z');
  await page.goto('/?mode=dev');
- await page.clock.runFor(60_000);
+ await tickFor(page,60_000);
  const state=await digests(page);
  expect(state.results.map(r=>[r.scheduledAt,r.status,r.output])).toEqual([['2026-10-03T07:00:00.000Z','missed',MISSED]]);
  const panel=await openDigests(page);
@@ -246,7 +263,7 @@ test('journey D: an occurrence missed while the app was closed leaves one explic
  await expect(homeBrief(page)).toHaveAttribute('aria-label','Open workflows');
  await page.reload();
  await expect(page.getByRole('region',{name:'Home'})).toBeVisible();
- await page.clock.runFor(60_000);
+ await tickFor(page,60_000);
  // The card Home renders says so, and names neither a brief nor the missed occurrence.
  await expect(homeBrief(page)).toBeVisible();
  await expect(homeBrief(page)).toHaveAttribute('aria-label','Open workflows');

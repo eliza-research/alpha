@@ -2,7 +2,7 @@ import {readFileSync} from 'node:fs';
 import {stripTypeScriptTypes} from 'node:module';
 import test from 'node:test';
 import assert from 'node:assert/strict';
-const {managedServiceRequest:allowed}=await import('../apps/app/src/runtime/managed-service-routes.ts');
+const {managedServiceRequest:allowed,mapsRequestIdentity}=await import('../apps/app/src/runtime/managed-service-routes.ts');
 test('managed service admission preserves owned service APIs and refuses agent hosts, paths and mutation variants',()=>{
  for(const path of ['/api/v1/user','/api/v1/billing/limits','/api/v1/subscription/entitlement','/api/v1/subscription/entitlement-keys','/api/v1/eliza/google/accounts?side=owner','/api/v1/eliza/google/gmail/inbox-v1/thread?grantId=owner'])assert.equal(allowed('https://api.eliza.app'+path,'GET'),true,path);
  for(const url of ['https://agent.cloud.eliza.app/api/v1/user','https://api.eliza.app.evil.test/api/v1/user','https://api.eliza.app:444/api/v1/user','http://api.eliza.app/api/v1/user','https://owner@api.eliza.app/api/v1/user','https://api.eliza.app/api/v1/user#x'])assert.equal(allowed(url,'GET'),false,url);
@@ -16,6 +16,10 @@ test('managed service admission preserves owned service APIs and refuses agent h
  for(const [url,method,body] of [['https://api.eliza.app/api/v1/subscription/redeem','POST',false],['https://api.eliza.app/api/v1/subscription/redeem','GET',false],['https://api.eliza.app/api/v1/subscription/redeem?code=x','POST',true],['https://api.eliza.app/api/v1/subscription/redeem/','POST',true],['https://api.eliza.app/api/v1/subscription/redeem','DELETE',false],['https://api-staging.eliza.app/api/v1/subscription/redeem','POST',true],['https://api.eliza.app/api/v1/billing/limits','POST',true],['https://api.eliza.app/api/v1/billing/limits?x=1','POST',true]])assert.equal(allowed(url,method,body),false,`${method} ${url}`);
  // The credit balance check is retired with the subscription plan gate.
  assert.equal(allowed('https://api.eliza.app/api/v1/credits/balance','GET'),false);
+ // The Cloud sign-in hand-off is not a product route (product sign-in is the native in-app host).
+ assert.equal(allowed('https://api.eliza.app/api/auth/cli-session','POST',true),false);
+ assert.equal(allowed('https://api.eliza.app/api/auth/cli-session','POST',false),false);
+ assert.equal(allowed('https://api.eliza.app/api/auth/cli-session/b7a2c1d0-5e4f-4a3b-8c2d-1e0f9a8b7c6d','GET'),false);
  const sync='https://api.eliza.app/api/v1/eliza/google/calendar/sync-v1/event';
  for(const method of ['POST','PATCH']){assert.equal(allowed(sync,method,true),true);assert.equal(allowed(sync,method,false),false);assert.equal(allowed(sync+'?grantId=owned',method,true),false);}
  for(const method of ['GET','DELETE']){assert.equal(allowed(sync+'?grantId=owned',method,false),true);assert.equal(allowed(sync,method,false),false);assert.equal(allowed(sync+'?grantId=owned',method,true),false);}
@@ -33,7 +37,7 @@ test('compiled test-mocks transports retain development hosts while flag-off tra
  const transport=module.slice(module.indexOf('export const nativeCloudRequest:'),module.indexOf('export const nativeRemoteRequest:'));
  for(const testMocksEnabled of [false,true]){
   const calls=[];
-  const sandbox={testMocksEnabled,devSurfacesEnabled:false,managedServiceRequest:allowed,browserCloudManagedServiceAllowed:allowed,URL,Headers,AbortController,DOMException,setTimeout,clearTimeout,crypto:globalThis.crypto,webDevelopmentHttp:false,allowedHeaders:new Set(['accept','content-type','authorization']),native:{request:async input=>{calls.push(input.url);return {status:200,data:{}};},cancel:async()=>{}}};
+  const sandbox={testMocksEnabled,devSurfacesEnabled:false,managedServiceRequest:allowed,mapsRequestIdentity,browserCloudManagedServiceAllowed:allowed,URL,Headers,AbortController,DOMException,setTimeout,clearTimeout,crypto:globalThis.crypto,webDevelopmentHttp:false,allowedHeaders:new Set(['accept','content-type','authorization']),native:{request:async input=>{calls.push(input.url);return {status:200,data:{}};},cancel:async()=>{}}};
   vm.runInNewContext(stripTypeScriptTypes((factory+transport).replaceAll('export ',''))+';globalThis.factory=createBrowserConnection;globalThis.request=nativeCloudRequest;',sandbox);
   const url='https://agent.example.test/api/agents';
   const native=sandbox.request({url,method:'GET',headers:{},signal:new AbortController().signal,timeoutMs:1000});
@@ -57,19 +61,6 @@ test('Google Calendar admission is confined to body-free reads of the reviewed s
  assert.equal(allowed('https://api.eliza.app/api/v1/eliza/google/calendar/events','GET'),false);
 });
 
-test('Google Calendar writes admit exactly create, change and delete of one event',()=>{
- const events='https://api.eliza.app/api/v1/eliza/google/calendar/events',one=events+'/abc123_20261013T150000Z';
- assert.equal(allowed(events,'POST',true),true);
- assert.equal(allowed(one,'PATCH',true),true);
- assert.equal(allowed(one+'?side=owner&grantId=g&calendarId=primary','DELETE',false),true);
- for(const [url,method,body] of [
-  [events,'POST',false],[events+'?side=owner','POST',true],[events+'/','POST',true],[events,'GET',false],[events,'PATCH',true],[events,'DELETE',false],[events,'PUT',true],
-  [one,'PATCH',false],[one+'?side=owner','PATCH',true],[one,'DELETE',false],[one+'?side=owner','DELETE',true],[one,'PUT',true],[one+'?side=owner','GET',false],[one,'POST',true],
-  [one+'/','PATCH',true],[one+'/instances','PATCH',true],[events+'/a%2Fb','PATCH',true],[events+'/a-b','PATCH',true],[events+'/'+'a'.repeat(1025),'PATCH',true],
-  [one.replace('api.eliza.app','agent.cloud.eliza.app'),'PATCH',true],[one.replace('api.eliza.app','api-staging.eliza.app'),'PATCH',true],
- ])assert.equal(allowed(url,method,body),false,`${method} ${url} body=${body}`);
-});
-
 test('Eliza Cloud Maps admission is the exact reviewed routes with location data only in a POST body',()=>{
  const base='https://api.eliza.app/api/v1/maps/';
  assert.equal(allowed(base+'capabilities','GET'),true);
@@ -79,4 +70,15 @@ test('Eliza Cloud Maps admission is the exact reviewed routes with location data
   for(const [url,method,body] of [[base+route,'POST',false],[base+route+'?lat=1','POST',true],[base+route+'?q=x','GET',false],[base+route,'GET',false],[base+route+'/','POST',true],[base.replace('api.eliza.app','api-staging.eliza.app')+route,'POST',true],[base.replace('api.eliza.app','agent.cloud.eliza.app')+route,'POST',true]])assert.equal(allowed(url,method,body),false,`${method} ${url}`);
  }
  for(const path of ['/api/v1/maps','/api/v1/maps/tiles/1/2/3','/api/v1/maps/places','/api/v1/maps/navigation','/api/v1/maps/%72outes','/api/v1/maps//routes'])for(const method of ['GET','POST'])assert.equal(allowed('https://api.eliza.app'+path,method,method==='POST'),false,path);
+});
+
+test('Cloud tile admission accepts only in-grid body-free reads and scoped request identities',()=>{
+ const base='https://api.eliza.app',path='/api/v1/maps/tiles/2/1/3';
+ assert.equal(allowed(base+path,'GET'),true);
+ assert.equal(mapsRequestIdentity('Idempotency-Key','owned_1',path,'GET'),true);
+ for(const bad of ['/api/v1/maps/tiles/23/0/0','/api/v1/maps/tiles/2/4/0','/api/v1/maps/tiles/02/1/1',path+'/',path+'?key=x'])assert.equal(allowed(base+bad,'GET'),false,bad);
+ for(const [method,body] of [['POST',true],['GET',true],['DELETE',false]])assert.equal(allowed(base+path,method,body),false);
+ assert.equal(mapsRequestIdentity('Idempotency-Key','owned_1','/api/v1/user','GET'),false);
+ assert.equal(mapsRequestIdentity('Authorization','owned_1',path,'GET'),false);
+ assert.equal(allowed(base+'/api/v1/maps/tiles/viewport','POST',true),true);
 });

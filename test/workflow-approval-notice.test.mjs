@@ -1,4 +1,4 @@
-import {prepareNativeFixture} from './fixtures/native-source.mjs';
+import {prepareNativeFixture,noticeSources} from './fixtures/native-source.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {existsSync,readdirSync,mkdtempSync,rmSync} from 'node:fs';
@@ -11,10 +11,10 @@ const jsonJar=process.env.ALPHA_JSON_JAR||cached;
 test('phone-step approval notices post once per approval, expire, open after restart and withdraw on decision',{skip:!jsonJar?'Set ALPHA_JSON_JAR or install the pinned Gradle JSON test dependency':false},()=>{
  const root=resolve(import.meta.dirname,'..'),temporary=mkdtempSync(join(tmpdir(),'workflow-approval-notice-'));
  const java=process.env.JAVA_HOME||(process.platform==='darwin'?'/opt/homebrew/opt/openjdk@21/libexec/openjdk.jdk/Contents/Home':'');const binary=name=>java?join(java,'bin',name):name;
- const shared=join(prepareNativeFixture(root,temporary).root,'plugins/plugin-native-notifications/android/src/main/java/ai/eliza/plugins/notifications/NoticeDelivery.java');
+ const shared=noticeSources(prepareNativeFixture(root,temporary).root,'NoticeDelivery','NoticeOwner','NoticeRoutes','NoticeCoordinator');
  const source=name=>join(root,'android/app/src/main/java/ai/elizaresearch/alphaphone',name);
  try{
-  execFileSync(binary('javac'),['--release','11','-cp',jsonJar,'-d',temporary,join(root,'android/app/src/main/java/ai/elizaresearch/alphaphone/NoticeOwner.java'),shared,source('WorkflowNoticeDelivery.java'),source('WorkflowNoticeTaps.java'),join(root,'test/fixtures/WorkflowApprovalNoticeTest.java')],{timeout:120000});
+  execFileSync(binary('javac'),['--release','11','-cp',jsonJar,'-d',temporary,...shared,source('WorkflowNoticeDelivery.java'),source('WorkflowNoticeTaps.java'),join(root,'test/fixtures/WorkflowApprovalNoticeTest.java')],{timeout:120000});
   assert.match(execFileSync(binary('java'),['-cp',temporary+':'+jsonJar,'ai.elizaresearch.alphaphone.WorkflowApprovalNoticeTest'],{encoding:'utf8',timeout:120000}),/^PASS workflow approval notices/);
  }finally{rmSync(temporary,{recursive:true,force:true});}
 });

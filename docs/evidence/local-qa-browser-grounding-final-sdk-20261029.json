@@ -1,0 +1,18 @@
+{
+  "atUTC": "2026-10-29T11:09:24.850363+00:00",
+  "state": "FINAL_TEST_ONLY_SDK_SOURCE_BINDING_NO_LIVE_ADOPTION",
+  "SDK": "d5f3af8f10ba41cf41fb723d9374305ad2b3e106",
+  "priorSDK": "1e95a588bd680f18a7b7c1232b1c96145a43f7ee",
+  "exactSDKChangedPaths": [
+    "plugins/plugin-assistant/test/browser-request-grounding.pglite.test.ts",
+    "plugins/plugin-assistant/test/device-actions.e2e.test.ts"
+  ],
+  "allSDKProductionBytesUnchanged": true,
+  "normalClientReprepareAndFullHashComparison": "required after this commit",
+  "priorAppQualification": "aafcac60f022f3f1fcb534e0a1470de2dd783a80",
+  "sourceReceipt": "/Users/nubs/.local/state/eliza-five-lane-coordination/browser-request-grounding-20261029/FINAL-RECEIPT.json",
+  "nativeQualified": false,
+  "nativeRequalificationRequired": true,
+  "newAuditWaivers": false,
+  "newRuntimeModelProfileDevicePortPublicEffects": false
+}

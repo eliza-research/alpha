@@ -1,30 +1,35 @@
 import { test, expect } from '@playwright/test';
+import { installResidentAgentPlugin } from './helpers/resident-agent-plugin';
 // Real Settings Activity over the real connection controller and DeviceActions; only the Android
 // IPC boundary is synthetic. No runtime, model or account is used and no action is performed.
 
 test('Activity presents recorded phone actions in plain language with reconcile controls', async ({ page }) => {
+  await installResidentAgentPlugin(page);
   await page.addInitScript(() => {
     const w = window as any; w.androidBridge = {};
     const store = new Map<string, string>();
     const f = w.activityFixture = { installationId: '', reconciliations: [] as unknown[] };
     const methods = (names: string[]) => names.map(name => ({ name, rtype: 'promise' }));
+    const agent = w.residentAgent = w.createResidentAgentPlugin({ owner: () => 'fixture-owner', agentId: 'fixture-agent', providerStatus: {provider: 'elizacloud', configured: false} });
     const proposal = (id: string, state: string, operation: unknown) => ({ id, subjectUserId: 'fixture-owner', requestedBy: 'fixture-agent', action: 'device_action', state, expiresAt: new Date(Date.now() + 3_600_000).toISOString(), digest: 'a'.repeat(64),
       payload: { action: 'device_action', version: 1, installationId: f.installationId, enrollmentId: 'fixture-enrollment', operation } });
     w.Capacitor = {
       PluginHeaders: [
         { name: 'AlphaNotifications', methods: methods(['status', 'crossAppStatus', 'addListener', 'removeListener']) },
         { name: 'AlphaVoiceCloud', methods: methods(['checkPermissions']) },
-        { name: 'Agent', methods: methods(['getStatus', 'start', 'stop', 'request']) },
+        { name: 'Agent', methods: agent.methods(['getStatus', 'start', 'stop', 'request']) },
         { name: 'AlphaConnection', methods: methods(['secureRead', 'secureWrite', 'secureCompareExchange', 'secureRemove', 'request', 'cancel', 'addListener', 'removeListener']) },
         { name: 'AlphaActionJournal', methods: methods(['list']) },
-        { name: 'DeviceApps', methods: methods(['buildInfo']) },
+        { name: 'ElizaSystem', methods: methods(['getBuildInfo']) },
       ],
+      nativeCallback: agent.nativeCallback,
       nativePromise: async (plugin: string, method: string, input: any) => {
         if (plugin === 'AlphaNotifications') return { permissionGranted: true, appEnabled: true };
         if (plugin === 'AlphaVoiceCloud') return { microphone: 'granted' };
-        if (plugin === 'DeviceApps') return { launcher: false, version: 'activity-fixture' };
+        if (plugin === 'ElizaSystem' && method === 'getBuildInfo') return { launcher: false, version: 'activity-fixture' };
         if (plugin === 'AlphaActionJournal') return { entries: [{ scope: 'any', proposalId: 'note-proposal', operationId: 'op-1', operationHash: 'h', record: {}, phase: 'applying', applyingAt: Date.UTC(2026, 9, 8, 15, 30) }] };
         if (plugin === 'Agent') {
+          const owned = agent.answer(method, input); if (owned) return owned;
           if (method === 'getStatus') return { packaged: true, state: 'stopped', serviceActive: false, socketListening: false };
           if (method === 'start' || method === 'stop') return { state: method === 'start' ? 'ready' : 'stopping' };
           let body: any = {};
@@ -51,7 +56,7 @@ test('Activity presents recorded phone actions in plain language with reconcile 
     };
   });
   await page.goto('/');
-  if (!await page.locator('.alpha-connection-scrim').isVisible()) await page.getByRole('button', { name: 'Agent', exact: true }).click();
+  if (!await page.locator('.alpha-connection-scrim').isVisible()) await page.getByRole('button', { name: 'Agent connection', exact: true }).click();
   await page.locator('.alpha-connection').getByRole('button', { name: 'Start local agent', exact: true }).click();
   await expect(page.locator('.alpha-connection-scrim')).toHaveCount(0);
   await page.getByRole('button', { name: 'Settings', exact: true }).click();
@@ -71,4 +76,5 @@ test('Activity presents recorded phone actions in plain language with reconcile 
   const text = await page.locator('body').innerText();
   expect(text).not.toContain('{"type"');
   expect(text).not.toContain('"title"');
+  expect(await page.evaluate(() => (window as any).residentAgent.state.unexpected)).toEqual([]);
 });

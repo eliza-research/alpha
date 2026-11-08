@@ -1,4 +1,5 @@
 package ai.elizaresearch.alphaphone;
+import ai.eliza.plugins.agent.runtime.ResidentAttachment;
 import org.json.JSONObject;
 /** JVM contract for the production attach decision. Not emulator or device evidence. */
 public final class ResidentAttachmentTest {

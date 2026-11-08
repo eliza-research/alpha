@@ -1,0 +1,109 @@
+{
+  "schema": 1,
+  "recordedAt": "2026-10-25",
+  "productSource": "a424de923b4b19aa0d86a7e23ef30598f6704d94",
+  "sdkSource": "f4142d3a92d6b5b49ef6c6a666155218b8b75b07",
+  "previousSDK": "4e561dc37e962595d8e28e600600430d50e9dd7d",
+  "scope": "Current source metadata only; no runtime, APK, provider, device or shipped-artifact acceptance transferred.",
+  "reviewedSourceTests": {
+    "sdkOwningTests": 21,
+    "productTargetedTests": 49
+  },
+  "nativeSourceIdentity": [
+    {
+      "path": "plugins/plugin-native-action-journal/android",
+      "entry": "040000 tree 939cdf4c8cda26bef587476f13dfef9e760ebcb8\tplugins/plugin-native-action-journal/android",
+      "identical": true
+    },
+    {
+      "path": "plugins/plugin-native-calendar/android",
+      "entry": "040000 tree 85eb68f5126a91b57aa62591e0bceb42de1c330c\tplugins/plugin-native-calendar/android",
+      "identical": true
+    },
+    {
+      "path": "plugins/plugin-native-media/android",
+      "entry": "040000 tree 7a7caf33e46ef52d0ce0752673453070c6107309\tplugins/plugin-native-media/android",
+      "identical": true
+    },
+    {
+      "path": "plugins/plugin-native-notifications/android",
+      "entry": "040000 tree 8544d529a5a02d6ddec1733ea8f44b4f74f99b85\tplugins/plugin-native-notifications/android",
+      "identical": true
+    },
+    {
+      "path": "plugins/plugin-native-reminders/android",
+      "entry": "040000 tree 5f4fbf13505e0fd0a4eed5b773075d3eaaa02aa5\tplugins/plugin-native-reminders/android",
+      "identical": true
+    },
+    {
+      "path": "plugins/plugin-native-secure-store/android",
+      "entry": "040000 tree 8ed0737d31e112e4cf7b730b90ffc94923005604\tplugins/plugin-native-secure-store/android",
+      "identical": true
+    },
+    {
+      "path": "plugins/plugin-native-system/android",
+      "entry": "040000 tree e85e46be832dec6fd5199ac25c01e7ede567d0ed\tplugins/plugin-native-system/android",
+      "identical": true
+    },
+    {
+      "path": "packages/app/platforms/android",
+      "entry": "040000 tree 370a283c193b3ee543c8fa54302d9fc0568cdf99\tpackages/app/platforms/android",
+      "identical": true
+    },
+    {
+      "path": "plugins/plugin-native-inference",
+      "entry": "040000 tree 42ec009888f56dfd03f166dd3f746956ab1f666a\tplugins/plugin-native-inference",
+      "identical": true
+    },
+    {
+      "path": "plugins/plugin-local-inference/native/llama.cpp",
+      "entry": "160000 commit 6003a10368d8a6d5fb1f70fe9c63a70866e8bcff\tplugins/plugin-local-inference/native/llama.cpp",
+      "identical": true
+    }
+  ],
+  "fullLockAuditInputReuse": {
+    "byteIdentical": true,
+    "normalizedInputIdentical": true,
+    "inputSha256": "6db6e88363397fd2c73a561ea1f3a071dfc11b31378cbe0c193163ea1ecf70ff",
+    "snapshotInputSha256": "6db6e88363397fd2c73a561ea1f3a071dfc11b31378cbe0c193163ea1ecf70ff",
+    "packageVersions": 3694,
+    "snapshotPackageVersions": 3694,
+    "findings": 124,
+    "auditedOn": "2026-10-25",
+    "reusedRegistryQuery": true,
+    "newRegistryQuery": false,
+    "snapshot": "docs/dependency-audit.snapshot.json",
+    "snapshotUpstreamCommit": "4e561dc37e962595d8e28e600600430d50e9dd7d",
+    "scope": "Identical normalized full-lock inputs reuse existing findings dated to preserved auditedOn; no fresh registry query.",
+    "artifactClosureReuse": false
+  },
+  "reachability": {
+    "record": "scripts/ci/upstream-reachability.json",
+    "status": "diverged",
+    "aheadBy": 33,
+    "behindBy": 208,
+    "baseCommit": "04658de1b942510e0d37efc777c154530f5c0ef1",
+    "reachableFromDevelop": false
+  },
+  "historicalArtifactDispositions": {
+    "file": "docs/dependency-audit.dispositions.json",
+    "unchangedSHA256": "f67d37ecb77d3bad4950b5031dd72aadf975b2be654c940134ea74fce5562254",
+    "upstreamCommit": "4e561dc37e962595d8e28e600600430d50e9dd7d",
+    "rebindingToNewSDK": false,
+    "deadlinesRenewed": false,
+    "shippedHighCriticalWaiver": false,
+    "next": "Review and bind exact new APK closure after Android producer. Existing ab2 evidence stays historical."
+  },
+  "pending": [
+    "Full exact SDK runtime/APK producer and component admission",
+    "Cloud-bound Calendar fetch diagnostic and successful read",
+    "Native Notes navigation and completed screen",
+    "Current APK closure/audit/disposition binding",
+    "Physical Seeker in-place update and acceptance without data wipe"
+  ],
+  "separateNotAdopted": [
+    "Build-engine migration",
+    "Phonon/VPS58cb migration"
+  ],
+  "historicalEvidenceChanged": false
+}

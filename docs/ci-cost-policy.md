@@ -23,7 +23,7 @@ Markdown that `test/docs-links.test.mjs` scans) select Repository verification o
 | Individual workflow | Yes | Its automatic lane | Its automatic lane | Its automatic lane |
 
 Existing browser-spec-only edits select exact changed spec paths. Up to three
-development spec files use one shard; larger edits use four parallel shards. Production-only specs run just the production project; development-only
+development spec files use one shard; larger edits use six parallel shards, because the heaviest of four reached the 60-minute job limit. Production-only specs run just the production project; development-only
 specs skip production and unrelated speech-profile qualification. Shared helpers,
 deleted or renamed specs, application code, dependencies and unavailable diffs keep
 the full inventory. File selectors are validated and escaped, then passed as process
@@ -34,7 +34,7 @@ The production browser server audits the exact freshly built flag-off bundle bef
 serving it. CI no longer builds a second unused flag-off bundle in that job. The
 separate test-mocks bundle still receives its own audit.
 
-Repository verification runs once in parallel with Chromium's four shards and
+Repository verification runs once in parallel with Chromium's six shards and
 Android, instead of four times per event. Browser shards remain parallel; a failing matrix cancels siblings to limit wasted minutes.
 On October 8 the owner requested removal of all smoke tests and checks. The aggregate
 smoke runners, their emulator CI jobs, the provider diagnostic job and smoke-only APK bundles
@@ -80,8 +80,10 @@ with only the change gate and the two short aggregate jobs.
 
 The ruleset below (`scripts/ci/required-checks-ruleset.json`, integration 15368 is
 GitHub Actions) requires those two aggregates and Repository verification on the
-default branch. It is additive to the existing "Default branch baseline" ruleset
-(PR required, no deletion or force push). Up-to-date branches are not required:
+default branch. It was written as additive to the AlphaCompute "Default branch
+baseline" ruleset (PR required, no deletion or force push); that ruleset did not move
+with the repository to eliza-research, where on October 28 `main` had only classic
+protection against force push and deletion (docs/runbooks/679-main-required-checks.md). Up-to-date branches are not required:
 that would force a rebase and full rerun of every open PR after each merge. A
 semantic conflict between two green PRs is instead caught by the main-push
 verification and Android build. Applying it changes repository settings and needs
@@ -118,9 +120,9 @@ the owner's explicit approval; it had not been applied when this was written.
 
 ```sh
 # Owner-approved only. Creates the ruleset; it does not modify the baseline ruleset.
-gh api --method POST repos/AlphaCompute/alphaphone/rulesets --input scripts/ci/required-checks-ruleset.json
+gh api --method POST repos/eliza-research/alphaphone/rulesets --input scripts/ci/required-checks-ruleset.json
 # Confirm:
-gh api repos/AlphaCompute/alphaphone/rules/branches/main
+node scripts/ci/read-required-checks.mjs --repo eliza-research/alphaphone
 ```
 
 Android still checks both standalone and launcher, debug and release outputs and

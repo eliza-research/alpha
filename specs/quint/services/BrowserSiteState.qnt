@@ -22,11 +22,11 @@ module BrowserSiteState {
     nondet privateTab = Set(false, true).oneOf()
     initFor(privateTab)
   }
-  /// A provider that ignores cookie or WebAuthn policy never gets a usable tab.
-  action build(cookiePolicyAccepted: bool, webAuthnDisabled: bool): bool = all {
+  /// Profile/cookie isolation and multiprocess engine admission precede a usable tab. WebAuthn remains at the fresh WebView disabled default.
+  action build(cookiePolicyAccepted: bool, engineAvailable: bool): bool = all {
     s.phase == "new",
-    s' = { ...s, phase: if (cookiePolicyAccepted and webAuthnDisabled) "ready" else "failed",
-      thirdParty: cookiePolicyAccepted and webAuthnDisabled and not(s.privateTab) }
+    s' = { ...s, phase: if (cookiePolicyAccepted and engineAvailable) "ready" else "failed",
+      thirdParty: cookiePolicyAccepted and engineAvailable and not(s.privateTab) }
   }
   action navigate(origin: int): bool = all {
     s.phase.in(Set("ready", "committed")), s.navigation < 2, origin.in(Set(1, 2)),
