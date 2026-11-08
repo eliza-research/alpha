@@ -70,7 +70,6 @@ const restoreCode = strip([
   section('export const RESTORED_FAILURES', '\n};') + '\n};',
   section('function calendarRefusalKept(', '/** The upstream failure kind a reply'),
   section('function failureKindOf(', '/** The error a failed reply surfaces.'),
-  section('/** A display bound', 'function restoredMessages('),
   section('function restoredMessages(', "/** Eliza Cloud's API answers"),
 ].join('\n'));
 const restore = rows => { const box = vm.createContext({systemNoticeKind: () => undefined, systemNoticeDisplayText: () => '', restoredText: text => text, isCalendarReadFailureCode: () => false, Object}); vm.runInContext(restoreCode, box); return box.restoredMessages(rows); };

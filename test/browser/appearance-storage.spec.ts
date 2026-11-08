@@ -2,6 +2,7 @@ import {test,expect,type Page} from '@playwright/test';
 const key='alpha.appearance.v1';
 const theme=(page:Page)=>page.locator('.os').evaluate(el=>getComputedStyle(el).getPropertyValue('--bg').trim());
 async function choose(page:Page,name:'System'|'Light'|'Dark'){
+ await page.bringToFront();
  await page.getByRole('button',{name:'Settings',exact:true}).click();
  await page.getByRole('button',{name:'General',exact:true}).click();
  await page.getByRole('button',{name:'Display',exact:true}).click();

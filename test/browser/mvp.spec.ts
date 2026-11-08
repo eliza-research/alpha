@@ -171,7 +171,8 @@ test('Unsigned recorder opens without a sign-in step and a refused microphone sh
 });
 test('Display theme survives reload and mock preview does not overwrite it',async({page})=>{
   await page.goto('/');await page.getByRole('button',{name:'Settings',exact:true}).click();
-  
+  await page.getByRole('button',{name:'General',exact:true}).click();
+  await page.getByRole('button',{name:'Display',exact:true}).click();
   await page.getByRole('button',{name:'Theme: Dark',exact:true}).click();
   await expect.poll(()=>page.evaluate(()=>localStorage.getItem('alpha.appearance.v1'))).toBe('dark');
   await page.reload();

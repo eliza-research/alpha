@@ -82,7 +82,8 @@ test('provider status, pinned model, verified save and confirmed key removal', a
   // (the receipt is a toast, not a message left in the closed sheet).
   await expect(page.locator('.alpha-connection-scrim')).toHaveCount(0);
   await page.getByRole('button', { name: 'Settings', exact: true }).click();
-  const agentConnection = page.getByRole('button', { name: 'Agent', exact: true });
+  await page.getByRole('button', { name: 'About', exact: true }).click();
+  const agentConnection = page.getByRole('button', { name: 'Connection help', exact: true });
   await expect(agentConnection).toContainText('Provider fixture');
   await agentConnection.click();
   await chooser.getByText('Model provider', { exact: true }).click();

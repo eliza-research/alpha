@@ -61,7 +61,7 @@ test('Calendar Settings keeps one Google entry without narrowing the merged Cale
  const card=page.locator('[data-alpha-home-calendar]');
  await expect(card).toContainText('Public holiday');
  await page.getByRole('button',{name:'Settings',exact:true}).click();
- await page.getByRole('button',{name:'Calendars',exact:true}).click();
+ await page.getByRole('button',{name:'Apps',exact:true}).click();await page.getByRole('button',{name:'Calendar',exact:true}).click();
  const google=page.getByRole('button',{name:'Google Calendar',exact:true});
  await expect(google).toBeVisible();
  await expect(google).toContainText('Connected');
@@ -100,7 +100,7 @@ test('without a connected Google account Calendar and Home show the local calend
  await page.evaluate(()=>window.dispatchEvent(new Event('launcher-home')));
  await expect(page.locator('html')).toHaveAttribute('data-active-view','home');
  await page.getByRole('button',{name:'Settings',exact:true}).click();
- await page.getByRole('button',{name:'Calendars',exact:true}).click();
+ await page.getByRole('button',{name:'Apps',exact:true}).click();await page.getByRole('button',{name:'Calendar',exact:true}).click();
  const google=page.getByRole('button',{name:'Google Calendar',exact:true});
  await expect(google).toBeVisible();
  await expect(google).toContainText('Not connected');

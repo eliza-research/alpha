@@ -16,8 +16,17 @@ test('failed display persistence leaves the visual value unchanged',async({page}
 test('device permission facts reflect browser grants without requesting access',async({page,context})=>{
  await context.grantPermissions(['geolocation']);const result=await page.evaluate(async()=>{const {registerPlugin}=await import('/src/platform-plugins.ts');const snapshot=await registerPlugin<any>('AlphaDevice').snapshot();const actual=await navigator.permissions.query({name:'camera' as PermissionName});return {snapshot,camera:actual.state};});expect(result.snapshot.permissionStates.Location).toBe('granted');expect(result.snapshot.permissions.Location).toBe(true);expect(result.snapshot.permissionStates.Camera).toBe(result.camera);expect(result.snapshot.permissions.Camera).toBe(result.camera==='granted');
 });
-test('rendered Display slider changes text size while its controls remain usable',async({page},info)=>{
- await page.getByRole('button',{name:'Settings',exact:true}).click();await page.getByRole('button',{name:'General',exact:true}).click();await page.getByRole('button',{name:'Display',exact:true}).click();const slider=page.getByRole('slider');await slider.fill('100');await expect.poll(()=>page.evaluate(()=>document.documentElement.style.getPropertyValue('--browser-text-scale'))).toBe('1.5');await expect(slider).toBeVisible();await expect(page.getByText('150%',{exact:true})).toBeVisible();await page.evaluate(()=>document.fonts.ready);await page.screenshot({path:info.outputPath('display-large-text.png'),animations:'disabled'});await slider.fill('0');await expect.poll(()=>page.evaluate(()=>document.documentElement.style.getPropertyValue('--browser-text-scale'))).toBe('0.75');
+test('rendered Display choices change text size while remaining usable',async({page},info)=>{
+ await page.getByRole('button',{name:'Settings',exact:true}).click();
+ await page.getByRole('button',{name:'General',exact:true}).click();
+ await page.getByRole('button',{name:'Display',exact:true}).click();
+ await page.getByRole('button',{name:'Text size: Largest',exact:true}).click();
+ await expect.poll(()=>page.evaluate(()=>document.documentElement.style.getPropertyValue('--browser-text-scale'))).toBe('1.5');
+ await expect(page.getByRole('button',{name:'Text size: Largest, selected',exact:true})).toBeVisible();
+ await page.evaluate(()=>document.fonts.ready);
+ await page.screenshot({path:info.outputPath('display-large-text.png'),animations:'disabled'});
+ await page.getByRole('button',{name:'Text size: Small',exact:true}).click();
+ await expect.poll(()=>page.evaluate(()=>document.documentElement.style.getPropertyValue('--browser-text-scale'))).toBe('0.75');
 });
 test('display changes in another tab update the current rendered device',async({page,context})=>{
  const other=await context.newPage();await other.goto(page.url());await other.evaluate(async()=>{const {registerPlugin}=await import('/src/platform-plugins.ts');const device=registerPlugin<any>('AlphaDevice');await device.setBrightness({percent:25});await device.setTextScale({percent:125});});await expect.poll(()=>page.locator('.os').evaluate(el=>getComputedStyle(el).filter)).toBe('brightness(0.4)');await expect.poll(()=>page.evaluate(()=>document.documentElement.style.getPropertyValue('--browser-text-scale'))).toBe('1.25');await other.close();

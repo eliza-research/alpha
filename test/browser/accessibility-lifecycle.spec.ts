@@ -156,10 +156,9 @@ test.describe('a reload (the renderer restarted)', () => {
     await page.getByRole('button', { name: 'Settings', exact: true }).click();
     await page.getByRole('button', { name: 'General', exact: true }).click();
     await page.getByRole('button', { name: 'Display', exact: true }).click();
-    const slider = page.getByRole('slider', { name: 'Text size', exact: true });
-    await expect(slider).toBeVisible();
-    // The largest in-app size (150%), set as a person drags the slider: the input event the page listens for.
-    await slider.evaluate(input => { Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')!.set!.call(input, '100'); input.dispatchEvent(new Event('input', { bubbles: true })); });
+    const largest = page.getByRole('button', { name: 'Text size: Largest', exact: true });
+    await largest.click();
+    await expect(page.getByRole('button', { name: 'Text size: Largest, selected', exact: true })).toBeVisible();
     await expect.poll(() => page.evaluate(() => Number(getComputedStyle(document.documentElement).getPropertyValue('--alpha-text-scale')))).toBeGreaterThanOrEqual(1.4);
     const scale = await page.evaluate(() => Number(getComputedStyle(document.documentElement).getPropertyValue('--alpha-text-scale')));
     await page.reload();

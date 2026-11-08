@@ -1,3 +1,4 @@
+import {openConnectionDiagnostics} from './helpers/connection-diagnostics';
 import {test,expect} from '@playwright/test';
 import {installResidentAgentPlugin} from './helpers/resident-agent-plugin';
 
@@ -73,7 +74,7 @@ for(const scenario of ['ready','rejected','late','mock-ready','mock-retire-rejec
   },scenario);
   await page.goto('/');
   await page.getByRole('button',{name:'Settings',exact:true}).click();
-  await page.getByRole('button',{name:'Agent',exact:true}).click();
+  await openConnectionDiagnostics(page);
   await page.getByRole('button',{name:'Start local agent',exact:true}).click();
   await expect(page.locator('.alpha-connection-scrim')).toHaveCount(0);
   await expect.poll(()=>page.evaluate(()=>(window as any).deliveryFixture.configured)).toBe(1);
@@ -83,7 +84,7 @@ for(const scenario of ['ready','rejected','late','mock-ready','mock-retire-rejec
   if(scenario==='mock-ready'||scenario==='mock-retire-rejected'){
    const errors:string[]=[];page.on('pageerror',error=>errors.push(error.message));
    await page.evaluate(()=>(window as any).deliveryFixture.mockHold=true);
-   await page.getByRole('button',{name:'Agent',exact:true}).click();
+   await openConnectionDiagnostics(page);
    await page.locator('.alpha-connection-scrim summary').filter({hasText:/^Mock mode$/}).click();
    await page.getByRole('button',{name:'Enter mock mode',exact:true}).click();
    await expect.poll(()=>page.evaluate(()=>Object.keys((window as any).deliveryFixture.mockReleases).sort())).toEqual(['notifications','scoped','unscoped']);
@@ -108,7 +109,7 @@ for(const scenario of ['ready','rejected','late','mock-ready','mock-retire-rejec
    expect(await page.evaluate(()=>(window as any).residentAgent.state.unexpected)).toEqual([]);expect(errors).toEqual([]);return;
   }
   if(scenario==='late'){
-   await page.getByRole('button',{name:'Agent',exact:true}).click();
+   await openConnectionDiagnostics(page);
    await page.getByRole('button',{name:'Disconnect agent',exact:true}).click();
    await expect(page.getByText('Agent disconnected.',{exact:true})).toBeVisible();
    await page.evaluate(()=>(window as any).deliveryFixture.release());
@@ -140,7 +141,7 @@ for(const scenario of ['ready','rejected','late','mock-ready','mock-retire-rejec
   if(scenario==='ready'){
    await dialog.getByRole('button',{name:'Close scheduled digests',exact:true}).click();
    await page.evaluate(()=>{(window as any).deliveryFixture.holdRetire=true;});
-   await page.getByRole('button',{name:'Agent',exact:true}).click();
+   await openConnectionDiagnostics(page);
    await page.getByRole('button',{name:'Disconnect agent',exact:true}).click();
    await expect(page.getByText('Disconnecting…',{exact:true})).toBeVisible();
    await expect(page.getByText('Agent disconnected.',{exact:true})).toHaveCount(0);

@@ -192,7 +192,7 @@ for(const [kind,text] of [['offline',/offline/],[409,/revoked or needs authoriza
 test('Settings disconnect asks first and Inbox then shows the honest disconnected state',async({page})=>{
  await setup(page);await page.getByRole('button',{name:'Inbox',exact:true}).click();
  await expect(page.getByRole('region',{name:'Inbox',exact:true}).getByText('Subject in-0-a',{exact:true})).toBeVisible();
- await page.getByRole('button',{name:'Back to apps',exact:true}).click();await page.getByRole('button',{name:'Settings',exact:true}).click();await page.getByRole('button',{name:'Google',exact:true}).click();
+ await page.getByRole('button',{name:'Back to apps',exact:true}).click();await page.getByRole('button',{name:'Settings',exact:true}).click();await page.getByRole('button',{name:'Account',exact:true}).filter({visible:true}).click();await page.getByRole('button',{name:'Google & email',exact:true}).click();
  const disconnect=page.getByRole('button',{name:'Disconnect Google account owner@example.test',exact:true});await expect(disconnect).toBeVisible();
  await disconnect.click();await page.getByRole('button',{name:'Keep connected',exact:true}).click();expect((await gm(page)).disconnects).toEqual([]);
  await disconnect.click();const review=page.getByRole('alert');await expect(review).toContainText('including Gmail and Calendar');await expect(review).toContainText('mail and calendar events are not deleted');await review.getByRole('button',{name:'Confirm disconnect Google account',exact:true}).click();
@@ -203,7 +203,7 @@ test('Settings disconnect asks first and Inbox then shows the honest disconnecte
 test('Settings Connections disconnects one confirmed account and reports the read-back',async({page})=>{
  await setup(page,{accounts:['first@example.test','second@example.test']});
  await page.getByRole('button',{name:'Settings',exact:true}).click();
- await page.getByRole('button',{name:'Google',exact:true}).click();
+ await page.getByRole('button',{name:'Account',exact:true}).filter({visible:true}).click();await page.getByRole('button',{name:'Google & email',exact:true}).click();
  await expect(page.getByRole('button',{name:'Disconnect Google account second@example.test',exact:true})).toBeVisible();
  await page.getByRole('button',{name:'Disconnect Google account second@example.test',exact:true}).click();
  await expect(page.getByRole('alert')).toContainText('Calendar');await page.getByRole('button',{name:'Confirm disconnect Google account',exact:true}).click();

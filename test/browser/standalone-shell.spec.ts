@@ -224,9 +224,9 @@ for(const view of ['Settings','Notes','Files'])test(`${view} Back beside the hal
  await page.getByRole('button',{name:'Shrink chat',exact:true}).click();await expect(app).not.toHaveAttribute('inert','');await back.press('Enter');await expect(page.locator('html')).toHaveAttribute('data-active-view','home');
 });
 test('half chat keeps keyboard-focused Settings controls above the sheet',async({page})=>{
- await page.setViewportSize({width:412,height:640});await page.goto('/');await page.getByRole('button',{name:'Settings',exact:true}).click();await page.getByRole('button',{name:'Open conversation',exact:true}).click();
+ await page.setViewportSize({width:412,height:640});await page.goto('/');await page.getByRole('button',{name:'Settings',exact:true}).click();await page.getByRole('button',{name:'Apps',exact:true}).click();await page.getByRole('button',{name:'Open conversation',exact:true}).click();
  const panel=page.locator('[data-alpha-layer="conversation"]'),app=page.locator('[data-alpha-layer="app"]');await panel.evaluate(el=>Promise.all(el.getAnimations().map(animation=>animation.finished.catch(()=>{}))));
- const scroll=app.locator('[data-alpha-app-scroll="settings"]'),target=app.getByRole('button',{name:'Agent',exact:true});await scroll.evaluate(el=>el.scrollTop=0);await target.focus();await expect(target).toBeFocused();
+ const scroll=app.locator('[data-alpha-app-scroll="settings"]'),target=app.getByRole('button',{name:'Workflows',exact:true});await scroll.evaluate(el=>el.scrollTop=0);await target.focus();await expect(target).toBeFocused();
  expect((await target.boundingBox())!.y+(await target.boundingBox())!.height).toBeLessThanOrEqual((await panel.boundingBox())!.y-8);await expect(page.getByRole('button',{name:'Expand chat',exact:true})).toBeVisible();
  await app.getByRole('button',{name:'Back to apps',exact:true}).press('Enter');await page.getByRole('button',{name:'Open conversation',exact:true}).click();const home=page.locator('[data-alpha-layer="home"]');await expect(home).not.toHaveAttribute('inert','');await expect(page.getByRole('button',{name:'Expand chat',exact:true})).toBeVisible();
 });

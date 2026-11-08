@@ -29,6 +29,7 @@ async function nativeFixture(page:any,installation='installed',selection='none')
  },{installation,selection});
  await page.goto('/');
  await page.getByRole('button',{name:'Settings',exact:true}).click();
+ await page.getByRole('button',{name:'Apps',exact:true}).click();
  await page.getByRole('button',{name:'Passwords',exact:true}).click();
 }
 // Settings › Passwords › Password provider: one row whose value is the selection Android reports
@@ -99,12 +100,12 @@ test('browser menu opens the Passwords page with a working Settings back path',a
  await page.goto('/');await page.getByRole('button',{name:'Browser',exact:true}).click();
  await page.getByRole('button',{name:'Menu',exact:true}).click();
  await page.getByRole('button',{name:'Password manager',exact:true}).click();
- await expect(page.getByRole('heading',{name:'Passwords',exact:true})).toBeVisible();
+ await expect(page.getByRole('heading',{name:'Password manager',exact:true})).toBeVisible();
  await page.screenshot({path:testInfo.outputPath('password-provider-detail.png')});
  await page.getByRole('button',{name:'Back to Settings',exact:true}).click();
- await expect(page.getByRole('heading',{name:'Passwords',exact:true})).toHaveCount(0);
+ await expect(page.getByRole('heading',{name:'Password manager',exact:true})).toHaveCount(0);
  await expect(page.getByRole('button',{name:'Passwords',exact:true})).toHaveCount(0);
- await expect(page.getByRole('button',{name:'Agent',exact:true})).toBeVisible();
+ await expect(page.getByRole('button',{name:'General',exact:true})).toBeVisible();
 });
 
 test('disabled verified provider stays unavailable to launch even when selected',async({page})=>{
