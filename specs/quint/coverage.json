@@ -6178,12 +6178,14 @@
     },
     {
       "path": "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaActionJournal.java",
-      "sha256": "da8fb586800338499be02866ef10f6994311f66f15fe5711ad99ae43c430c9f5",
       "models": [
-        "WorkflowExecution"
+        "WorkflowExecution",
+        "NativeClockReview"
       ],
       "scope": "application",
       "treatment": "state-and-transition-projection",
+      "reviewStatus": "state-audit-required",
+      "sha256": "48b5f531109d9b65125048609e386c3ea31aac33f2d54189dc3af21702051e18",
       "stateAnchors": [
         {
           "line": 12,
@@ -6195,7 +6197,8 @@
       "path": "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaActionJournalPlugin.java",
       "sha256": "167d6b90f79481010ddf9f88ae17bd53cb7f2b6bfcda93b84e5f0ba3a0eca629",
       "models": [
-        "WorkflowExecution"
+        "WorkflowExecution",
+        "NativeClockReview"
       ],
       "scope": "application",
       "treatment": "state-and-transition-projection",
@@ -7706,12 +7709,14 @@
     },
     {
       "path": "android/app/src/main/java/ai/elizaresearch/alphaphone/ClockAgentReview.java",
-      "sha256": "4fb53def73fe26f242fd861be9dc12d771c2a1249b89fb3c91d3c428c0e3c803",
       "models": [
-        "DeviceActions"
+        "DeviceActions",
+        "NativeClockReview"
       ],
       "scope": "application",
       "treatment": "state-and-transition-projection",
+      "reviewStatus": "state-audit-required",
+      "sha256": "6e63b565c9e238e26a47d19e14bdb7bd0297b7b58493916e1e768dbf4e4029c4",
       "stateAnchors": [
         {
           "line": 21,
@@ -8508,7 +8513,8 @@
       "models": [
         "Application",
         "NativeUpdateActivation",
-        "NativeUpdateStaging"
+        "NativeUpdateStaging",
+        "NativeClockReview"
       ],
       "scope": "application",
       "treatment": "state-and-transition-projection",
@@ -42814,7 +42820,8 @@
       "models": [
         "NoticesAndCaches",
         "HostedNoticeQuestion",
-        "RendererHostedInbox"
+        "RendererHostedInbox",
+        "RetainedHomeBrief"
       ],
       "scope": "application",
       "treatment": "state-and-transition-projection",
@@ -486600,7 +486607,8 @@
     {
       "path": "vendor/eliza/plugins/plugin-native-action-journal/android/src/main/java/ai/eliza/plugins/actionjournal/ActionJournal.java",
       "models": [
-        "DurableStore"
+        "DurableStore",
+        "NativeClockReview"
       ],
       "scope": "shared-module-dependency",
       "treatment": "domain-contract-or-support",
@@ -486652,7 +486660,8 @@
     {
       "path": "vendor/eliza/plugins/plugin-native-action-journal/android/src/main/java/ai/eliza/plugins/actionjournal/ActionJournalConfiguration.java",
       "models": [
-        "DurableStore"
+        "DurableStore",
+        "NativeClockReview"
       ],
       "scope": "shared-module-dependency",
       "treatment": "domain-contract-or-support",
@@ -486672,7 +486681,8 @@
     {
       "path": "vendor/eliza/plugins/plugin-native-action-journal/android/src/main/java/ai/eliza/plugins/actionjournal/ActionJournalPlugin.java",
       "models": [
-        "DurableStore"
+        "DurableStore",
+        "NativeClockReview"
       ],
       "scope": "shared-module-dependency",
       "treatment": "domain-contract-or-support",
@@ -508069,7 +508079,8 @@
     {
       "path": "vendor/eliza/plugins/plugin-native-system/android/src/main/java/ai/eliza/plugins/system/clock/ClockDays.java",
       "models": [
-        "DeviceActions"
+        "DeviceActions",
+        "NativeClockReview"
       ],
       "scope": "shared-module-dependency",
       "treatment": "domain-contract-or-support",
@@ -508089,7 +508100,8 @@
     {
       "path": "vendor/eliza/plugins/plugin-native-system/android/src/main/java/ai/eliza/plugins/system/clock/ClockHandoff.java",
       "models": [
-        "DeviceActions"
+        "DeviceActions",
+        "NativeClockReview"
       ],
       "scope": "shared-module-dependency",
       "treatment": "domain-contract-or-support",

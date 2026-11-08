@@ -305,9 +305,9 @@ qualified.
 ## Current SDK source-owner inventory
 
 The integrated `99b4943` snapshot admits 5,681 source inputs, including 4,841
-shared inputs, and registers 177 Quint models. The syntax audit parses 5,626
+shared inputs, and registers 179 Quint models. The syntax audit parses 5,626
 JavaScript, TypeScript and Java files without syntax errors. The source-owner
-summary records 67,106 candidate bindings, 66,535 write sites, 8,298
+summary records 67,110 candidate bindings, 66,537 write sites, 8,298
 asynchronous registrations and 10,188
 write sites without a syntactically matched declaration. Test-support paths
 account for 287 files and 11,480 candidate bindings.
@@ -318,6 +318,13 @@ activated. Scope, lifetime, aliases, authorization and externally persisted
 state still require semantic review. The remaining 55 language and data inputs
 are explicit review rows. The source summary is committed, and the detailed
 report regenerates under `test-results/quint-state-audit/details.json`.
+
+Of the 4,886 provisional review rows, 4,841 belong to shared source.
+The remaining 45 cover 36 application paths and nine development-runtime
+paths. The application rows consist of ten Android owners, 24 renderer
+owners and two backend files. These rows can already have bounded source
+receipts. Closing a row requires a semantic decision about each remaining
+binding, write and callback under the relevant owner and environment.
 
 The core conversion now registers all 16 upstream modules and all 31 original
 profiles. The product's four retained design models and 22 configurations have

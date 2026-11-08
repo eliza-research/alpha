@@ -593,3 +593,19 @@ receiving a newer read retires the old choice and its held continuation.
 A fresh read-only owner needs its own consent, and the source admits
 only its own verified write rows. The related consent model now checks
 that a newer read withdraws the saved-off choice.
+
+The retained Home brief campaign checks six schedules and 45 checkpoints
+against the actual Alpha wrapper and shared store. It distinguishes
+completion time from cursor order, selects only occurrences that ran,
+checks exact clipping, and observes copied listener delivery across
+retirement and refusal. The store matches a scope value. Caller lifecycle
+must fence an old read when the same scope returns.
+
+The native Clock campaign checks 27 schedules and 181 checkpoints. Its
+baseline records a late dialog callback removing a replacement review
+and an outer journal accepting an unsupported renderer success. The
+repairs bind each callback to its captured review and each new typed
+non-unknown outcome to the exact durable native receipt. Exact legacy
+terminal replays and unknown outcomes remain supported. The corrected
+model passed depth-four symbolic safety across all four operation classes.
+The evidence ends at Activity handoff.

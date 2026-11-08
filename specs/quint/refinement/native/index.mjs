@@ -46,6 +46,7 @@ import {checkWorkflowNoticeDelivery} from './workflow-notice-delivery.mjs';
 import {checkNativeHostedResultNotices} from './hosted-result-notices.mjs';
 import {checkNativeHostedInbox} from './hosted-inbox.mjs';
 import {checkNativeReminderDelivery} from './reminder-delivery.mjs';
+import {checkNativeClockReview} from './clock-review.mjs';
 
 export async function runNativeRefinement() {
   const models = ['VadSegmentation', 'RendererRecovery', 'ResidentScheduling'];
@@ -171,6 +172,8 @@ export async function runNativeRefinement() {
   results.push(hostedInbox.receipt);
   const reminderDelivery = await checkNativeReminderDelivery(nativeInputs);
   results.push(reminderDelivery.receipt);
+  const clockReview = await checkNativeClockReview(nativeInputs);
+  results.push(clockReview.receipt);
   const obligations = [
     ...updatePause.obligations,
     ...updateActivation.obligations,
@@ -181,6 +184,7 @@ export async function runNativeRefinement() {
     ...hostedResults.obligations,
     ...hostedInbox.obligations,
     ...reminderDelivery.obligations,
+    ...clockReview.obligations,
     {model: 'GoogleBrowserReturnClaim', obligation: 'Installed callback delivery and durable credential custody',
       reason: 'The authenticated Java claim and grace functions execute under controlled queues, storage and HTTPS. Installed lifecycle, secure-store durability and intra-worker schedules remain separate.'},
     ...reviewedCopiesObligations,

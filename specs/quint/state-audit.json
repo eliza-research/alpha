@@ -12,7 +12,7 @@
   "toolSha256": "403a33cab0dff7ace6219b29e7ffef373319677a7d8be6641466dd16a6750b5b",
   "dependencyLockSha256": "944123c801157a7ba3676a886d0b28a54bef32735ae96da5c6dd0f206c88c8bf",
   "sourcePin": "99b49439ce9d0cb5607e9831b9f7f58d89525029",
-  "ledgerSha256": "7bcad280202517e42ead8d8db34f7537e5e495fbf6780b770973a0fc96965b73",
+  "ledgerSha256": "affe45a6890aa52be25af4736b61470c47aa2fddc011d59aec4cbde30132f34d",
   "method": "TypeScript syntax trees for JavaScript/TypeScript and JDK compiler trees for Java. Mutable fields, bindings, containers, state hooks, write sites and asynchronous registration calls are candidates for semantic review.",
   "limitations": [
     "Candidate extraction does not establish state-machine coverage or implementation refinement.",
@@ -28,9 +28,9 @@
     "parsedFiles": 5626,
     "languageReview": 55,
     "parseErrors": 0,
-    "candidates": 67106,
-    "writeSites": 66535,
-    "writeAssociations": 59714,
+    "candidates": 67110,
+    "writeSites": 66537,
+    "writeAssociations": 59716,
     "asynchronous": 8298,
     "unassignedWrites": 10188
   },
@@ -16689,10 +16689,12 @@
     },
     {
       "path": "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaActionJournal.java",
-      "sha256": "da8fb586800338499be02866ef10f6994311f66f15fe5711ad99ae43c430c9f5",
+      "sha256": "48b5f531109d9b65125048609e386c3ea31aac33f2d54189dc3af21702051e18",
       "allocatedModels": [
-        "WorkflowExecution"
+        "WorkflowExecution",
+        "NativeClockReview"
       ],
+      "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
       "classification": "syntactic-candidates",
       "owners": [
@@ -16735,7 +16737,7 @@
         {
           "owner": "AlphaActionJournal.checkResult@32",
           "line": 32,
-          "bindings": 20,
+          "bindings": 22,
           "writes": 0
         }
       ],
@@ -16747,7 +16749,8 @@
       "path": "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaActionJournalPlugin.java",
       "sha256": "167d6b90f79481010ddf9f88ae17bd53cb7f2b6bfcda93b84e5f0ba3a0eca629",
       "allocatedModels": [
-        "WorkflowExecution"
+        "WorkflowExecution",
+        "NativeClockReview"
       ],
       "sourcePathClass": "other-source-path",
       "classification": "syntactic-candidates",
@@ -23648,10 +23651,12 @@
     },
     {
       "path": "android/app/src/main/java/ai/elizaresearch/alphaphone/ClockAgentReview.java",
-      "sha256": "4fb53def73fe26f242fd861be9dc12d771c2a1249b89fb3c91d3c428c0e3c803",
+      "sha256": "6e63b565c9e238e26a47d19e14bdb7bd0297b7b58493916e1e768dbf4e4029c4",
       "allocatedModels": [
-        "DeviceActions"
+        "DeviceActions",
+        "NativeClockReview"
       ],
+      "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
       "classification": "syntactic-candidates",
       "owners": [
@@ -23728,44 +23733,56 @@
           "writes": 0
         },
         {
-          "owner": "ClockAgentReview.settle@67",
-          "line": 67,
-          "bindings": 2,
-          "writes": 0
-        },
-        {
-          "owner": "ClockAgentReview.show@68",
+          "owner": "ClockAgentReview.choose@68",
           "line": 68,
+          "bindings": 4,
+          "writes": 1
+        },
+        {
+          "owner": "ClockAgentReview.show@76",
+          "line": 76,
           "bindings": 9,
-          "writes": 4
+          "writes": 5
         },
         {
-          "owner": "ClockAgentReview.show@68.lambda@74",
-          "line": 74,
-          "bindings": 5,
-          "writes": 0
-        },
-        {
-          "owner": "ClockAgentReview.repeatText@78",
-          "line": 78,
+          "owner": "ClockAgentReview.show@76.lambda@85",
+          "line": 85,
           "bindings": 2,
           "writes": 0
         },
         {
-          "owner": "ClockAgentReview.abandon@80",
-          "line": 80,
+          "owner": "ClockAgentReview.show@76.lambda@86",
+          "line": 86,
+          "bindings": 2,
+          "writes": 0
+        },
+        {
+          "owner": "ClockAgentReview.show@76.lambda@87",
+          "line": 87,
+          "bindings": 1,
+          "writes": 0
+        },
+        {
+          "owner": "ClockAgentReview.repeatText@91",
+          "line": 91,
+          "bindings": 2,
+          "writes": 0
+        },
+        {
+          "owner": "ClockAgentReview.abandon@93",
+          "line": 93,
           "bindings": 5,
           "writes": 2
         },
         {
-          "owner": "ClockAgentReview.dismiss@84",
-          "line": 84,
+          "owner": "ClockAgentReview.dismiss@97",
+          "line": 97,
           "bindings": 2,
           "writes": 1
         },
         {
-          "owner": "ClockAgentReview.dispatch@85",
-          "line": 85,
+          "owner": "ClockAgentReview.dispatch@98",
+          "line": 98,
           "bindings": 9,
           "writes": 1
         }
@@ -26460,7 +26477,8 @@
       "allocatedModels": [
         "Application",
         "NativeUpdateActivation",
-        "NativeUpdateStaging"
+        "NativeUpdateStaging",
+        "NativeClockReview"
       ],
       "sourcePathClass": "other-source-path",
       "classification": "syntactic-candidates",
@@ -42904,7 +42922,8 @@
       "allocatedModels": [
         "NoticesAndCaches",
         "HostedNoticeQuestion",
-        "RendererHostedInbox"
+        "RendererHostedInbox",
+        "RetainedHomeBrief"
       ],
       "sourcePathClass": "other-source-path",
       "classification": "syntactic-candidates",
@@ -165284,7 +165303,8 @@
       "path": "vendor/eliza/plugins/plugin-native-action-journal/android/src/main/java/ai/eliza/plugins/actionjournal/ActionJournal.java",
       "sha256": "4902e0d10862fad375d87e70f15782017b685726c069b54e25350368b6cdd346",
       "allocatedModels": [
-        "DurableStore"
+        "DurableStore",
+        "NativeClockReview"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -165461,7 +165481,8 @@
       "path": "vendor/eliza/plugins/plugin-native-action-journal/android/src/main/java/ai/eliza/plugins/actionjournal/ActionJournalConfiguration.java",
       "sha256": "7e3d6b2289f9ee939fcc2c4354320f40eb4d434d6a6a4a396c24bef698d712a0",
       "allocatedModels": [
-        "DurableStore"
+        "DurableStore",
+        "NativeClockReview"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -165494,7 +165515,8 @@
       "path": "vendor/eliza/plugins/plugin-native-action-journal/android/src/main/java/ai/eliza/plugins/actionjournal/ActionJournalPlugin.java",
       "sha256": "783f9add42e344e6b00e6be534387cf87bf0eba8f363f100cd54df81a51baf04",
       "allocatedModels": [
-        "DurableStore"
+        "DurableStore",
+        "NativeClockReview"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -192424,7 +192446,8 @@
       "path": "vendor/eliza/plugins/plugin-native-system/android/src/main/java/ai/eliza/plugins/system/clock/ClockDays.java",
       "sha256": "f158c0853d498f5f52e3d7596ceff9961e8c895b4c11d15acb06a64969699f0c",
       "allocatedModels": [
-        "DeviceActions"
+        "DeviceActions",
+        "NativeClockReview"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -192487,7 +192510,8 @@
       "path": "vendor/eliza/plugins/plugin-native-system/android/src/main/java/ai/eliza/plugins/system/clock/ClockHandoff.java",
       "sha256": "8ce97603667b010dd5e7fd47e270f281ccf46c983c48dec5b9b02d6be9a1ad9f",
       "allocatedModels": [
-        "DeviceActions"
+        "DeviceActions",
+        "NativeClockReview"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -218467,6 +218491,6 @@
   ],
   "detail": {
     "path": "test-results/quint-state-audit/details.json",
-    "sha256": "1d3e8700e6a0e18b60119e57c3ba6f7943ae00c8c44e918474e4657e722769a6"
+    "sha256": "cbe054a4da2adee7626644fccc446b05ed57b78256398cf6a0eebd781af5aac3"
   }
 }

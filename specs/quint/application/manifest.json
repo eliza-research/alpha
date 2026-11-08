@@ -2122,5 +2122,25 @@
       "Exact verified account read and Calendar intent for a pending Allow Calendar changes prompt and its guarded persistence and continuation.",
       "Two Cloud bindings, four intents, six reads and six access captures. Controlled native access receipts, Calendar helper and browser consent. Post-consent return, physical persistence and provider effects remain separate."
     ]
+  },
+  {
+    "path": "specs/quint/application/RetainedHomeBrief.qnt",
+    "module": "RetainedHomeBrief",
+    "init": "init",
+    "step": "step",
+    "invariant": "safety",
+    "tests": [
+      "latePreviousScopeCannotReplaceCurrentBriefTest",
+      "nonRunningOccurrencesDoNotBecomeABriefTest",
+      "sourcePublicationUsesCopiedObserverSetTest"
+    ],
+    "sources": [
+      "apps/app/src/runtime/hosted-digests.ts",
+      ".eliza/client-features/plugins/plugin-workflow/src/client/hosted-digests.ts"
+    ],
+    "abstractions": [
+      "Actual retained brief selection, scope, result replacement, clipping and observer publication.",
+      "Two owners, seven result profiles and three observers. Exact caller generation and mounted Home rendering have separate evidence."
+    ]
   }
 ]
