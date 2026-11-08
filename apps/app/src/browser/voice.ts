@@ -51,7 +51,7 @@ export class BrowserVoice extends WebPlugin {
   if(start>=end){this.clearSavedSpeech();return {blob:new Blob([]),pcm:undefined,empty:true,verify};}
   const pcm=encodePcm16Wav(this.savedSpeech.pcm.subarray(start,end));
   if(offset+25_000>=duration)this.clearSavedSpeech();
-  return {blob:new Blob([pcm],{type:'audio/wav'}),pcm,empty:false,verify};
+  return {blob:new Blob([Uint8Array.from(pcm).buffer],{type:'audio/wav'}),pcm,empty:false,verify};
  }
  private clip(id:string){return this.capture.get(id)??this.noteCapture.get(id)??this.noteSegments.get(id);}
  private noteChanged(){void this.notifyListeners('noteRecordingChanged',this.noteStatus());}
