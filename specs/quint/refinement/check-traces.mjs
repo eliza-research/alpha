@@ -9,9 +9,27 @@ const root = resolve(dirname(fileURLToPath(import.meta.url)), '../../..');
 const identifier = /^[A-Za-z][A-Za-z0-9_]*$/;
 const fieldPath = /^[A-Za-z][A-Za-z0-9_]*(?:(?:::|\.)[A-Za-z][A-Za-z0-9_]*)*$/;
 const hash = path => createHash('sha256').update(readFileSync(path)).digest('hex');
+function registeredModelInputs() {
+  const paths = new Set();
+  for (const family of ['application', 'services', 'native', 'legacy']) {
+    const manifest = join(root, 'specs/quint', family, 'manifest.json');
+    paths.add(manifest);
+    const document = JSON.parse(readFileSync(manifest));
+    for (const model of Array.isArray(document) ? document : document.models) {
+      for (const path of modelDependencies(join(root, model.path))) paths.add(path);
+    }
+  }
+  return [...paths];
+}
+
+/** Freeze model selection, safety predicates and implementation inputs before driving source. */
 export function captureInputs(sources) {
-  return Object.fromEntries([...new Set([...sources.map(source => resolve(root, source)), fileURLToPath(import.meta.url)])]
-    .map(path => [path, hash(path)]));
+  const inputs = new Set([
+    ...registeredModelInputs(),
+    ...sources.map(source => resolve(root, source)),
+    fileURLToPath(import.meta.url),
+  ]);
+  return Object.fromEntries([...inputs].map(path => [path, hash(path)]));
 }
 export const qset = values => ({quintCollection: 'set', values: [...values]});
 export const qmap = entries => ({quintCollection: 'map', entries: [...entries]});
@@ -88,7 +106,10 @@ export async function checkTraces({model, modelPath, sources, traces, assumption
   const path = modelFile(model, modelPath);
   const invariant = invariantFor(model);
   const modelInputs = modelDependencies(path);
-  const inputs = [...new Set([...modelInputs, ...sources.map(source => resolve(root, source)), fileURLToPath(import.meta.url)])];
+  const inputs = [...new Set([
+    ...registeredModelInputs(), ...Object.keys(driverHashes || {}), ...modelInputs,
+    ...sources.map(source => resolve(root, source)), fileURLToPath(import.meta.url),
+  ])];
   const before = Object.fromEntries(inputs.map(input => [input, hash(input)]));
   const receiptPath = out ? resolve(root, out) : join(root, 'test-results/quint-refinement', `${id}.json`);
   const receipt = {schemaVersion: 1, model, scope, assumptions, invariant, startedAt: new Date().toISOString(),
@@ -147,9 +168,8 @@ export async function checkTraces({model, modelPath, sources, traces, assumption
     receipt.sourceHashesAfter = Object.fromEntries(inputs.map(input => [input, hash(input)]));
     receipt.inputsUnchanged = inputs.every(input => before[input] === receipt.sourceHashesAfter[input]);
     if (!receipt.inputsUnchanged) failure ||= new Error('Refinement input changed during checking');
-    receipt.driverInputsBound = !!driverHashes && inputs.filter(input => !modelInputs.has(input))
-      .every(input => driverHashes[input] === receipt.sourceHashesAfter[input]);
-    if (driverHashes && !receipt.driverInputsBound) failure ||= new Error('Implementation or adapter changed during observation generation');
+    receipt.driverInputsBound = !!driverHashes && inputs.every(input => driverHashes[input] === receipt.sourceHashesAfter[input]);
+    if (driverHashes && !receipt.driverInputsBound) failure ||= new Error('Model, implementation or adapter changed during observation generation');
     receipt.observedFields = [...fields].sort();
     receipt.finishedAt = new Date().toISOString();
     receipt.passed = !failure;

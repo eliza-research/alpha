@@ -27,6 +27,19 @@ test('collection observations are evaluated with the actual Quint value construc
         expect: {'s.active': qset([]), 's.requestOwners': qmap([[1, 0], [2, 0]])}, steps: []}]});
     assert.equal(result.passed, true);
     assert.equal(result.driverInputsBound, true);
+    const manifestPath = Object.keys(driverHashes).find(path => path.endsWith('/application/manifest.json'));
+    const modelPath = Object.keys(driverHashes).find(path => path.endsWith('/DevelopmentHost.qnt'));
+    assert.ok(manifestPath && modelPath, 'Model selection and definitions are captured before source execution');
+    const changedModel = {...driverHashes, [modelPath]: 'changed-before-checking'};
+    await assert.rejects(checkTraces({model: 'DevelopmentHost', sources, driverHashes: changedModel,
+      scope: 'bounded-component', assumptions: ['Model snapshot mutation canary.'], out: join(directory, 'changed-model.json'),
+      traces: [{name: 'empty-runtime', expect: {'s.active': qset([])}, steps: []}]}),
+      /changed during observation generation/);
+    const changedManifest = {...driverHashes, [manifestPath]: 'changed-before-checking'};
+    await assert.rejects(checkTraces({model: 'DevelopmentHost', sources, driverHashes: changedManifest,
+      scope: 'bounded-component', assumptions: ['Safety selector mutation canary.'], out: join(directory, 'changed-manifest.json'),
+      traces: [{name: 'empty-runtime', expect: {'s.active': qset([])}, steps: []}]}),
+      /changed during observation generation/);
     const changedHashes = {...driverHashes};
     changedHashes[Object.keys(changedHashes)[0]] = 'changed-input';
     await assert.rejects(checkTraces({model: 'DevelopmentHost', sources, driverHashes: changedHashes,

@@ -322,7 +322,7 @@ export function installInboxCloudAdapter(Component: any, views: Record<string, B
     if(!exact())throw Error('Inbox changes are still pending');
     await drafts.flushForAppUpdate(exact);
   };
-  provider.setEditor((proposal,reference)=>drafts.editProvider(proposal,reference));
+  provider.setEditor((proposal,reference,review)=>drafts.editProvider(proposal,reference,review));
   provider.setComposer(()=>drafts.email());
   const readable = () => accounts.filter(gmailReadable);
   const currentQuery = () => String(api?.get('inbox')?.q || '').trim() || folderQuery[folder];

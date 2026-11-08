@@ -232,6 +232,7 @@ export async function createInboxFixture() {
   }
   fixture = {
     modules,
+    observeTask: track,
     sources: artifact.sources,
     slots,
     receipts,
@@ -302,7 +303,7 @@ export async function createInboxFixture() {
       const drafts = modules.inboxDrafts(() => {
       }, (text) => toasts.push(text), provider);
       provider.setComposer(() => drafts.email());
-      provider.setEditor((proposal, reference) => drafts.editProvider(proposal, reference));
+      provider.setEditor((proposal, reference, review) => drafts.editProvider(proposal, reference, review));
       provider.setObservers({ sent: (source, proposal, grant) => void drafts.settleSent(source.draftId, proposal, grant, source.savedRevision), sentNote: (source) => drafts.sentNote(source.draftId) });
       return { provider, drafts, async bind(grant = "grant-1") {
         await Promise.all([provider.bind(grant), drafts.bind(grant, grant)]);
