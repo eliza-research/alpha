@@ -16,8 +16,23 @@ final class LegacyCloudRecovery {
  LegacyCloudRecovery(JsonCredentialSlots slots,String namespace,Runnable current){this.slots=slots;this.namespace=namespace;this.current=current;}
  private String scoped(String slot){return namespace+slot;}
  private boolean compatible(){return LEGACY_NAMESPACE.equals(namespace);}
- /** Explicit sign-out/configuration wins even if no scoped credential was ever written. */
- void block()throws Exception {synchronized(JsonCredentialSlots.LOCK){current.run();slots.write(scoped(JOURNAL),"{\"status\":\"blocked\"}");}}
+ /** Explicit sign-out/configuration wins even if no scoped credential was ever written. The
+  * pre-namespace copy goes with it: nothing may restore it again. It is not revoked here (no network
+  * under these locks); a Reset revokes the scoped key, and a never-restored legacy key expires. */
+ void block()throws Exception {
+  synchronized(JsonCredentialSlots.LOCK){
+   current.run();slots.write(scoped(JOURNAL),"{\"status\":\"blocked\"}");
+   if(compatible())slots.remove(CLOUD);
+  }
+ }
+ /** Cloud refused this exact legacy key (401/403): stop offering it, as a sign-out would. */
+ void reject(Snapshot before)throws Exception {
+  synchronized(JsonCredentialSlots.LOCK){
+   current.run();
+   if(!Objects.equals(before.legacy,slots.read(CLOUD))||!Objects.equals(before.journal,slots.read(scoped(JOURNAL))))return;
+   block();
+  }
+ }
  private boolean pending(String journal)throws Exception {
   if(journal==null)return true;
   return "pending".equals(new JSONObject(journal).getString("status"));
@@ -27,8 +42,13 @@ final class LegacyCloudRecovery {
   synchronized(JsonCredentialSlots.LOCK){
    current.run();
    return compatible()&&slots.read(scoped(CLOUD))==null&&slots.read(scoped(PROVIDER))==null
-     &&pending(slots.read(scoped(JOURNAL)))&&slots.read(CLOUD)!=null;
+     &&pending(slots.read(scoped(JOURNAL)))&&usable(slots.read(CLOUD));
   }
+ }
+ /** Offline check only: an expired, malformed or credentialId-less key is never offered. */
+ private static boolean usable(String legacy){
+  if(legacy==null)return false;
+  try{new Snapshot(legacy,null).token();return true;}catch(Exception refused){return false;}
  }
  /** Kept only in native memory across the canonical identity read. */
  static final class Snapshot {
@@ -54,6 +74,8 @@ final class LegacyCloudRecovery {
    slots.remove(CloudDeployment.storageSlot(GoogleWorkspaceReturn.SLOT));
    slots.write(scoped(CLOUD),before.legacy);
    slots.write(scoped(JOURNAL),"{\"status\":\"complete\"}");
+   // The key now lives only in the scoped slot, where it is the active credential.
+   slots.remove(CLOUD);
    return true;
   }
  }

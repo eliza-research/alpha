@@ -104,17 +104,20 @@ public final class AlphaCloudSignInPlugin extends CloudSignInPlugin {
   final long intent = AlphaLocalAgentPlugin.reserveCredentialIntent();
   recovery(() -> {
    JSObject answer = null;
+   String refused = null;
    try {
     AlphaCredentialStore kept = new AlphaCredentialStore(getContext(), () -> {
      synchronized (recoveryLock) { if (closed || recoveryEpoch != owner) throw new IllegalStateException("Sign-in closed"); }
      AlphaLocalAgentPlugin.requireCredentialIntent(intent);
     });
     answer = new JSObject().put("restored", kept.restoreLegacyCloudCredential());
-   } catch (Exception failure) { answer = null; }
+   } catch (AlphaCredentialStore.RecoveryRefused failure) { refused = failure.code; }
+   catch (Exception failure) { answer = null; }
    finally { endRecovery(); }
    // The single-flight guard is released before the call settles, so a caller that retries as soon
    // as it has the answer is never refused as "login-active" by the restore that just finished.
    if (answer != null) call.resolve(answer);
+   else if (refused != null) call.reject("This saved sign-in has expired. Sign in to continue.", refused);
    else call.reject("Saved sign-in could not be restored. Your saved data is retained.", "unavailable");
   }, call, this::endRecovery);
  }
@@ -128,10 +131,14 @@ public final class AlphaCloudSignInPlugin extends CloudSignInPlugin {
  /** Only this pending sign-in return may supersede saved-sign-in recovery. */
  @Override protected void handleOnNewIntent(Intent intent) {
   if(intent!=null&&intent.getData()!=null){try{
-   ai.eliza.auth.cloud.CloudSignInFlow.Pending pending=ai.eliza.auth.cloud.CloudSignInFlow.Pending.parse(new AlphaCredentialStore(getContext()).readCredentialSlot(PENDING_SLOT),REGISTRATION);
-   if(pending!=null){
-    ai.eliza.auth.cloud.CloudSignInFlow.Callback callback=ai.eliza.auth.cloud.CloudSignInFlow.parseCallback(intent.getData().toString(),pending.environment);
-    if(pending.sameState(callback))supersedeRecovery();
+   // Parse first: the encrypted pending slot is read (main thread, vault lock) only for a sign-in return.
+   for(ai.eliza.auth.cloud.CloudSignInEnvironment environment:REGISTRATION.environments()){
+    ai.eliza.auth.cloud.CloudSignInFlow.Callback callback=ai.eliza.auth.cloud.CloudSignInFlow.parseCallback(intent.getData().toString(),environment);
+    if(callback==null)continue;
+    if(callback==ai.eliza.auth.cloud.CloudSignInFlow.Callback.NO_RESULT)break;
+    ai.eliza.auth.cloud.CloudSignInFlow.Pending pending=ai.eliza.auth.cloud.CloudSignInFlow.Pending.parse(new AlphaCredentialStore(getContext()).readCredentialSlot(PENDING_SLOT),REGISTRATION);
+    if(pending!=null&&pending.environment==environment&&pending.sameState(callback))supersedeRecovery();
+    break;
    }
   }catch(Exception ignored){/* Unrelated intents never alter recovery ownership. */}}
   super.handleOnNewIntent(intent);
