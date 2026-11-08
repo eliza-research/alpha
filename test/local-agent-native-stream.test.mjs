@@ -65,3 +65,14 @@ test('other recovery failures keep the unknown outcome',async()=>{
  const local=new LocalAgentProtocol({start:async()=>{},request:async()=>({status:503,body:'{}'}),stream:async()=>{throw Error('Response interrupted. Outcome unknown; check history before retrying.');}});local.session=session;
  await assert.rejects(local.send('room','Hello',{clientMessageId:'client-1',onText(){}}),error=>error.status===503&&!('beforeDispatch' in error));
 });
+
+test('resident protocol preserves streamed voice frame metadata',async()=>{
+ const observed=[];
+ const local=new LocalAgentProtocol({start:async()=>{},request:async()=>{throw Error('No fallback expected');},stream:async(_input,_signal,onText)=>{
+  onText('A settled direct reply.',{provisional:false,direct:true});
+  return {text:'A settled direct reply.',agentName:'Alpha'};
+ }});
+ local.session=session;
+ await local.send('room','Hello',{clientMessageId:'client-1',onText:(text,frame)=>observed.push({text,frame})});
+ assert.deepEqual(observed,[{text:'A settled direct reply.',frame:{provisional:false,direct:true}}]);
+});

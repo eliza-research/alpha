@@ -1939,6 +1939,14 @@ const HISTORY_LIMIT=2000, HISTORY_PAGE=200;
 /** Reads the recent window, then pages older messages with ?before=<createdAt>&beforeId=<id> until
  * the agent reports hasMore:false. A server that does not report hasMore for an older page (or
  * rejects the cursor) ends paging without duplicating messages. Messages stay oldest first. */
+export function turnReplyRow(messages:readonly Record<string,unknown>[],turnId:string):{id:string;text:string}|undefined{
+  if(!turnId)return;
+  const users=messages.filter(item=>item.role==='user'&&item.clientMessageId===turnId);
+  if(users.length!==1||typeof users[0]!.id!=='string')return;
+  const replies=messages.filter(item=>item.role==='assistant'&&item.replyToMessageId===users[0]!.id);
+  const reply=replies.length===1?replies[0]!:undefined;
+  return reply&&typeof reply.id==='string'&&typeof reply.text==='string'?{id:reply.id,text:reply.text}:undefined;
+}
 async function readConversation(selected:Active,id:string,signal:AbortSignal,assertCurrent:()=>void):Promise<{messages:Record<string,unknown>[];partial:boolean;deliveryRevisionAtStart:number}> {
   const deliveryRevisionAtStart=state.conversationDelivery?.revision||0;
   const first=selected.kind==='cloud'?await selected.cloud.messages(selected.agentId,id,signal):await selected.remote.messages(id,signal);
@@ -3340,6 +3348,13 @@ export const connectionController = {
       throw error;
     } finally {releaseOperation(controller);}
   },
+  async voiceReplyForTurn(binding:VoiceConversationBinding,turnId:string,signal:AbortSignal):Promise<{id:string;text:string}|undefined>{
+    const selected=active;
+    if(!selected||selected.kind!=='resident'||!this.voiceConversationCurrent(binding,false))return;
+    const assertCurrent=()=>{signal.throwIfAborted();if(selected!==active||!this.voiceConversationCurrent(binding,false))throw Error('The voice conversation changed.');};
+    const {messages}=await readConversation(selected,binding.conversationId,signal,assertCurrent);assertCurrent();
+    return turnReplyRow(messages,turnId);
+  },
   voiceConversationCurrent(binding:VoiceConversationBinding,foreground=true){
     return !!active&&(!foreground||!state.open&&!state.busy&&!document.hidden)&&binding.connectionEpoch===epoch&&JSON.stringify(state.session)===JSON.stringify(binding.session)&&conversationMemory.get(conversationKey(binding.session))===binding.conversationId;
   },
@@ -3354,7 +3369,7 @@ export const connectionController = {
     try{current();const conversationId=await ensureSelectedConversation(selected,session,controller.signal,current);current();return {conversationId,session:{...session},connectionEpoch:generation};}
     finally{signal.removeEventListener('abort',cancel);releaseOperation(controller);}
   },
-  async send(text: string, context: ContextEnvelope, requestId: string, signal: AbortSignal, onText?:(text:string)=>void,replyTo?:ConversationMessageTarget,onReplyReady?:(results:readonly unknown[]|undefined)=>void,channelType:ChatChannel='DM',expectedConversationId?:string,voiceTurnSignal?:VoiceTurnSignal): Promise<{ ignored?:true;messageId?:string;userMessageId?:string;messageBinding?:{conversationId:string;session:VerifiedSession};text: string; proposals?: ActionProposal[]; actionResults?:readonly unknown[]; planAction?: 'plan' | 'retry' | 'sign-in' }> {
+  async send(text: string, context: ContextEnvelope, requestId: string, signal: AbortSignal, onText?:import('./local-agent-stream').StreamTextListener,replyTo?:ConversationMessageTarget,onReplyReady?:(results:readonly unknown[]|undefined)=>void,channelType:ChatChannel='DM',expectedConversationId?:string,voiceTurnSignal?:VoiceTurnSignal): Promise<{ ignored?:true;messageId?:string;userMessageId?:string;messageBinding?:{conversationId:string;session:VerifiedSession};text: string; proposals?: ActionProposal[]; actionResults?:readonly unknown[]; planAction?: 'plan' | 'retry' | 'sign-in' }> {
     if(!ownProviderSelected()&&state.cloudAccount&&state.membershipBalance==='zero')throw fundingNeeded();
     // P-43: before the resident has a session, say it is starting (or recovering); nothing is sent.
     if (!active && residentAlwaysPresent) throw noSessionError('');
@@ -3408,7 +3423,7 @@ export const connectionController = {
       requestSignal.throwIfAborted();assertCurrent();
       const options = { signal: requestSignal, clientMessageId: requestId, channelType, metadata: { ...(directRequestedActions?{agentActionMode:'direct-request-v1'}:{}), ...(channelType==='VOICE_DM'&&voiceTurnSignal?{voiceTurnSignal}:{}), ...(replyTo?{replyToMessageId:replyTo.messageId}:{}), ...(message.context.timeZone===undefined?{}:{uiTimeZone:message.context.timeZone}), clientDevice: { context: message.context,...(calendarAgendaSource?{calendarAgendaSource:{sourceId:calendarAgendaSource.sourceId,sourceRevision:calendarAgendaSource.sourceRevision}}:{}) }, ...boundNavigation()?.metadata(context), ...(canonicalProse?{userTextFormat:'plain-v1'}:{alphaPhone:{context:message.context}}) } };
       dispatched = { conversationId: id, at: Date.now() };
-      const progress=(value:string)=>{requestSignal.throwIfAborted();if(generation!==epoch||selected!==active||state.session?.sessionId!==session.sessionId)throw Error('The connection changed.');onText?.(value);};
+      const progress=(value:string,frame?:import('./local-agent-stream').StreamTextFrame)=>{requestSignal.throwIfAborted();if(generation!==epoch||selected!==active||state.session?.sessionId!==session.sessionId)throw Error('The connection changed.');onText?.(value,frame);};
       const replyReady=(results:readonly unknown[]|undefined)=>{assertCurrent();onReplyReady?.(results);};
       const voiceTurnId=isAndroid&&selected.kind==='resident'&&channelType==='VOICE_DM'?activeVoiceTurn():undefined;
       const voiceTraceId=voiceTurnId?nativeVoiceTraceId(requestId):undefined;

@@ -788,7 +788,8 @@ test('a confirmed voice reply plays its sentences once after the request settles
   await h.say('what should I cook tonight');
   await h.clock.advance(ASSISTANT_TIMING_DEFAULTS.longGapMs);
   assert.equal(h.log.sends.length, 1);
-  assert.equal(h.replies[0].input.onText, undefined, 'partial text cannot enter playback');
+  assert.equal(typeof h.replies[0].input.onText, 'function');
+  h.replies[0].input.onText('Unconfirmed partial reply. More follows', {provisional:false});
   await flush();
   assert.equal(h.speeches.length, 0, 'the pending reply is silent');
   h.answer(0, 'How about a simple pasta with garlic and lemon? It takes twenty minutes and uses pantry staples.');
@@ -815,4 +816,102 @@ test('a voice reply with an unconfirmed request or conversation never reaches pl
     assert.equal(h.phase(), 'error');
     await h.session.stop();
   }
+});
+
+const confirmedStreamFrame = { origin: 'model', provisional: false, direct: true };
+async function beginStreamedTurn() {
+  const h = harness();
+  await h.session.start();
+  await h.say('read the update');
+  await h.clock.advance(ASSISTANT_TIMING_DEFAULTS.longGapMs);
+  assert.equal(h.replies.length, 1);
+  return { h, input: h.replies[0].input };
+}
+
+test('confirmed direct streaming speaks completed sentences once and then the remaining reply', async () => {
+  const {h, input} = await beginStreamedTurn();
+  input.onText('First headline here. Second headline', confirmedStreamFrame);
+  await flush();
+  assert.deepEqual(h.speeches.map(row => row.input.text), ['First headline here.']);
+  h.speeches[0].input.onStarted();
+  h.speeches[0].done.resolve();
+  await flush();
+  h.answer(0, 'First headline here. Second headline follows.');
+  await flush();
+  assert.deepEqual(h.speeches.map(row => row.input.text), ['First headline here.', 'Second headline follows.']);
+  h.speeches[1].done.resolve();
+  await flush();
+  assert.equal(h.phase(), 'listening');
+  assert.equal(h.log.heard.at(-1).heard, 'First headline here. Second headline follows.');
+});
+
+test('provisional streaming remains silent and retires early speech for that turn', async () => {
+  const {h, input} = await beginStreamedTurn();
+  input.onText('Draft text. More', {provisional:true, direct:true});
+  input.onText('Confirmed sentence. More', confirmedStreamFrame);
+  await flush();
+  assert.equal(h.speeches.length, 0);
+  h.answer(0, 'Confirmed sentence.');
+  await flush();
+  assert.deepEqual(h.speeches.map(row => row.input.text), ['Confirmed sentence.']);
+  h.speeches[0].done.resolve();
+  await flush();
+});
+
+test('a failed reply stream records its heard prefix separately from playback failure', async () => {
+  const {h, input} = await beginStreamedTurn();
+  input.onText('First headline here. Second headline follows. More', confirmedStreamFrame);
+  await flush();
+  h.speeches[0].input.onStarted();
+  h.speeches[0].done.resolve();
+  await flush();
+  h.speeches[1].input.onStarted();
+  h.replies[0].reply.reject(new Error('stream interrupted'));
+  await flush();
+  assert.equal(h.speeches[1].input.signal.aborted, true);
+  assert.deepEqual(h.log.heard, [{turnId:input.turnId, replyId:'', heard:'First headline here.', unheard:'Second headline follows.', interrupted:true, replyFailed:true}]);
+  assert.equal(h.phase(), 'error');
+});
+
+test('a failed first streamed sentence retains an empty heard prefix for the host to preserve', async () => {
+  const {h, input} = await beginStreamedTurn();
+  input.onText('First headline here. More', confirmedStreamFrame);
+  await flush();
+  h.speeches[0].input.onStarted();
+  h.replies[0].reply.reject(new Error('stream interrupted'));
+  await flush();
+  assert.equal(h.log.heard[0].heard, '');
+  assert.equal(h.log.heard[0].replyFailed, true);
+  assert.equal(h.log.heard[0].playbackFailed, undefined);
+});
+
+for (const failure of [new Error('speaker refused'), undefined]) {
+  test(`playback rejection ${failure ? 'with an error' : 'without a reason'} stays an audio failure`, async () => {
+    const {h} = await beginStreamedTurn();
+    h.answer(0, 'First headline here. Second headline follows.');
+    await flush();
+    h.speeches[0].input.onStarted();
+    h.speeches[0].done.resolve();
+    await flush();
+    h.speeches[1].done.reject(failure);
+    await flush();
+    assert.equal(h.phase(), 'error');
+    assert.equal(h.log.heard[0].heard, 'First headline here.');
+    assert.equal(h.log.heard[0].playbackFailed, true);
+    assert.equal(h.log.heard[0].replyFailed, undefined);
+  });
+}
+
+test('explicit interruption of streamed speech remains an owner interruption', async () => {
+  const {h, input} = await beginStreamedTurn();
+  input.onText('First headline here. Second headline follows. More', confirmedStreamFrame);
+  await flush();
+  h.speeches[0].input.onStarted();
+  h.speeches[0].done.resolve();
+  await flush();
+  assert.equal(h.session.interruptSpeech(), true);
+  await flush();
+  assert.equal(h.log.heard[0].heard, 'First headline here.');
+  assert.equal(h.log.heard[0].replyFailed, undefined);
+  assert.equal(h.log.heard[0].playbackFailed, undefined);
 });

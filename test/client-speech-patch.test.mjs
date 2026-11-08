@@ -44,3 +44,36 @@ test('shared client additions reject symlinked input and undeclared extra output
  extra.manifest.patches[0].sha256=sha(payload);extra.write();fs.writeFileSync(path.join(extra.dir,'voice.patch'),payload);
  assert.throws(()=>clientSpeechPatch(extra.root,extra.upstream),/headers mismatch/);
 });
+
+function modificationFixture(t) {
+ const f = fixture(t);
+ const file = 'packages/voice/src/voice-assistant-session.ts';
+ const before = 'export const streamed = false;\n';
+ const after = 'export const streamed = true;\n';
+ const patch = `--- a/${file}\n+++ b/${file}\n@@ -1 +1 @@\n-${before}+${after}`;
+ f.source.set(file, {bytes:Buffer.from(before), mode:'100644', sha256:sha(before)});
+ f.manifest.patches = [{file:'voice.patch',sha256:sha(patch),targets:[{path:file,beforeSha256:sha(before),afterSha256:sha(after)}]}];
+ const write = () => {f.write();fs.writeFileSync(path.join(f.dir,'voice.patch'),patch);};
+ write();
+ return {...f,file,before,after,patch,write};
+}
+test('assistant streaming patch verifies both source and result without changing the upstream map', t => {
+ const f = modificationFixture(t);
+ const before = [...f.source];
+ const result = clientSpeechPatch(f.root,f.upstream);
+ assert.equal(result.files.get(f.file).bytes.toString(),f.after);
+ assert.equal(result.receipt.files[f.file],sha(f.after));
+ assert.deepEqual([...f.source],before);
+});
+test('assistant streaming patch refuses changed source, result, mode and undeclared modification targets', t => {
+ for(const kind of ['source','before','after','mode','target']){
+  const f=modificationFixture(t),entry=f.manifest.patches[0].targets[0];
+  if(kind==='source')f.source.get(f.file).bytes=Buffer.from('changed');
+  if(kind==='before')entry.beforeSha256='0'.repeat(64);
+  if(kind==='after')entry.afterSha256='0'.repeat(64);
+  if(kind==='mode')f.source.get(f.file).mode='100755';
+  if(kind==='target')entry.path='packages/voice/src/random-id.ts';
+  f.write();
+  assert.throws(()=>clientSpeechPatch(f.root,f.upstream),/mismatch/,kind);
+ }
+});

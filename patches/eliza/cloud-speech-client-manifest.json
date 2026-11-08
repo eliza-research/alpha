@@ -17,6 +17,17 @@
           "afterSha256": "e2aef37281aed7e93b42950ba00729fddfd97cd8ac9af240feb00f12546989a5"
         }
       ]
+    },
+    {
+      "file": "voice-assistant-streaming.patch",
+      "sha256": "1ee08f6b12ccb7477961d82ed8afaf536c618fdb63383a8216e3715875aea0b9",
+      "targets": [
+        {
+          "path": "packages/voice/src/voice-assistant-session.ts",
+          "beforeSha256": "7f7d0f37f7ce7b64a2020dc0c9940b76507ff14fb4a0b6fda17557c8d56fa618",
+          "afterSha256": "e844904d9c1858584960fd83f7196fea19b9f39adaa25c20b924a9d0fc13618a"
+        }
+      ]
     }
   ]
 }
