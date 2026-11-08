@@ -13,6 +13,8 @@ export function installCalendarApprovalAdapter(Component:Shell){
   const value=state(shell),snapshot=connectionController.getSnapshot();
   if(value.abort||!shell.live||document.hidden||snapshot.open||snapshot.busy||shell.S().typing)return;
   if(String(shell.S().draft||'').trim()){shell.toast('Keep or send your chat draft before reviewing this request.');return;}
+  // send() refuses a prompt while a message edit is open; do not mark the request as sent.
+  if(shell.messageEditTarget){shell.toast('Finish or cancel the message you are editing first.');return;}
   const observed=alphaClient.getState().context;if(observed.sensitive){shell.toast('Close private content before reviewing this request.');return;}
   const key=binding(),context=JSON.stringify(observed),controller=value.abort=new AbortController();
   const current=()=>{controller.signal.throwIfAborted();const now=connectionController.getSnapshot();if(!shell.live||document.hidden||binding()!==key||now.open||now.busy||JSON.stringify(alphaClient.getState().context)!==context||String(shell.S().draft||'').trim())throw Error('The agent, conversation or draft changed. Review the request again.');};

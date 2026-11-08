@@ -1423,7 +1423,9 @@ export function installAgentAdapter(Component: Shell, views: Shell) {
     const fromComposer=argument===undefined;
     const editTarget:ConversationMessageTarget|undefined=this.messageEditTarget,replyTarget:ConversationMessageTarget|undefined=fromComposer?this.messageReplyTarget:undefined,editView=s.view;
     if(editTarget){
-      if(argument!==undefined||!connectionController.messageTargetCurrent(editTarget))return;
+      // An app action must not replace or abandon the user's open edit.
+      if(argument!==undefined){this.toast('Finish or cancel the message you are editing first.');return;}
+      if(!connectionController.messageTargetCurrent(editTarget))return;
       this.draftSendPending=true;
       try {
         if(!await messageReviews.confirm('edit-message-'+editTarget.messageId,'Edit and resend message','This replaces the selected message and all later messages in this conversation. It does not undo actions that already ran.\n\nOriginal: '+editTarget.text+'\n\nReplacement: '+text,'Edit and resend'))return;
