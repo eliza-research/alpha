@@ -13,7 +13,7 @@ const {DevelopmentCloudAgentProtocol}=await loadBrowserModule('apps/app/src/runt
 const {LocalAgentProtocol}=await loadBrowserModule('apps/app/src/runtime/local-agent.ts');
 const {createLocalAgentDevHandler}=await loadBrowserModule('scripts/local-agent-dev-bridge.ts',{testMocks:true});
 const owner='11111111-1111-4111-8111-111111111111',org='22222222-2222-4222-8222-222222222222',agent='33333333-3333-4333-8333-333333333333';
-const invalid=[['PUT','/api/config'],['DELETE','/api/workflow/workflows/id'],['POST','/api/automations'],['GET','/api/triggers'],['GET','/api/lifeops/scheduled-tasks'],['GET','/api/lifeops/scheduled-tasks?ownerVisibleOnly=0'],['GET','/api/lifeops/scheduled-tasks?ownerVisibleOnly=1&ownerId=other'],['POST','/api/lifeops/scheduled-tasks/id/unknown'],['DELETE','/api/lifeops/definitions/id'],['PATCH','/api/triggers/id'],['GET','https://other/api/automations'],['GET','/api/triggers/%2e%2e'],['GET','/api/triggers/id%2fruns'],['GET','/api/triggers/a..b'],['GET','/api/triggers/id?other=1'],['GET','/api/triggers/id#fragment'],['GET','/api/triggers/id\n'],['GET','/api/triggers/id\\runs'],['GET','/api/triggers/.id'],['GET','/api/triggers/'+ 'a'.repeat(201)]];
+const invalid=[['PUT','/api/config'],['DELETE','/api/workflow/workflows/id'],['POST','/api/automations'],['GET','/api/triggers'],['GET','/api/lifeops/scheduled-tasks'],['GET','/api/lifeops/scheduled-tasks?ownerVisibleOnly=0'],['GET','/api/lifeops/scheduled-tasks?ownerVisibleOnly=1&ownerId=other'],['POST','/api/lifeops/scheduled-tasks/id/unknown'],['DELETE','/api/lifeops/definitions/id?ownerId=other'],['PATCH','/api/triggers/id'],['GET','https://other/api/automations'],['GET','/api/triggers/%2e%2e'],['GET','/api/triggers/id%2fruns'],['GET','/api/triggers/a..b'],['GET','/api/triggers/id?other=1'],['GET','/api/triggers/id#fragment'],['GET','/api/triggers/id\n'],['GET','/api/triggers/id\\runs'],['GET','/api/triggers/.id'],['GET','/api/triggers/'+ 'a'.repeat(201)]];
 const signal=()=>new AbortController().signal;
 function cloudFixture(){
  let credential={credentialId:'one',token:'synthetic-token'};const calls=[];let respond=async()=>({status:200,data:{ok:true}});
@@ -26,11 +26,11 @@ function cloudFixture(){
  return {client,target,calls,replace:()=>{credential={credentialId:'two',token:'replacement'};},respond:fn=>{respond=fn;}};
 }
 test('Cloud automation PUT/DELETE retain verified owner runtime and billing credential',async()=>{
- const f=cloudFixture();for(const [method,path,body]of [['PUT','/api/triggers/prompt-1',{enabled:false}],['DELETE','/api/triggers/prompt-1',undefined]]){
+ const f=cloudFixture();for(const [method,path,body]of [['PUT','/api/triggers/prompt-1',{enabled:false}],['DELETE','/api/triggers/prompt-1',undefined],['GET','/api/lifeops/definitions',undefined],['DELETE','/api/lifeops/definitions/routine-1',undefined]]){
   await f.client.phoneRequest(f.target,path,signal(),body,method);const sent=f.calls.at(-1);assert.equal(sent.url,f.target.origin+path);assert.equal(sent.method,method);assert.deepEqual(sent.body,body);assert.equal(sent.headers.Authorization,'Bearer synthetic-token');assert.equal(sent.headers['X-Eliza-Phone-Protocol'],'1');assert.equal(sent.headers['X-Eliza-Device-Id'],'device');
  }
  for(const [method,path]of invalid)await assert.rejects(f.client.phoneRequest(f.target,path,signal(),undefined,method));
- assert.equal(f.calls.filter(c=>c.url.startsWith(f.target.origin)).length,2);
+ assert.equal(f.calls.filter(c=>c.url.startsWith(f.target.origin)).length,4);
 });
 test('Cloud changed account, wrong owner/runtime and aborted response never become accepted automation results',async()=>{
  const replaced=cloudFixture();replaced.respond(async()=>{replaced.replace();return {status:200,data:{ok:true}}});await assert.rejects(replaced.client.phoneRequest(replaced.target,'/api/automations',signal()),/account changed/);
@@ -53,10 +53,12 @@ test('DEV bridge forwards only canonical scoped mutations; wrong owners and enco
  try{
   await new Promise(r=>server.listen(0,'127.0.0.1',r));const origin=`http://127.0.0.1:${server.address().port}`;
   const send=async input=>fetch(origin,{method:'POST',headers:{Origin:origin,'X-Alpha-Local-Agent':'1','Content-Type':'application/json'},body:JSON.stringify(input)});
-  for(const [method,path,body]of [['PUT','/api/lifeops/definitions/reminder-1','{"title":"Synthetic"}'],['DELETE','/api/triggers/id',undefined]]){const response=await send({path,method,ownerId:owner,headers:{},...(body===undefined?{}:{body})});assert.equal(response.status,200);assert.equal((await response.json()).status,200);}
+  for(const [method,path,body]of [['PUT','/api/lifeops/definitions/reminder-1','{"title":"Synthetic"}'],['DELETE','/api/triggers/id',undefined],['GET','/api/lifeops/definitions',undefined],['DELETE','/api/lifeops/definitions/routine-1',undefined]]){const response=await send({path,method,ownerId:owner,headers:{},...(body===undefined?{}:{body})});assert.equal(response.status,200);assert.equal((await response.json()).status,200);}
   for(const [method,path]of invalid){const response=await send({path,method,ownerId:owner,headers:{}});assert.equal(response.status,400,`${method} ${path}`);}
   assert.equal((await send({path:'/api/triggers/id',method:'DELETE',ownerId:org,headers:{}})).status,409);
   assert.equal((await send({path:'/api/triggers/id',method:'DELETE',headers:{}})).status,400);
-  assert.equal(calls.length,2);assert.equal(calls[0].method,'PUT');assert.equal(calls[1].method,'DELETE');assert.equal(calls[0].headers.Authorization,'Bearer synthetic-machine');
+  assert.equal((await send({path:'/api/lifeops/definitions/routine-1',method:'DELETE',ownerId:org,headers:{}})).status,409);
+  assert.equal((await send({path:'/api/lifeops/definitions/routine-1',method:'DELETE',ownerId:owner,headers:{},body:'{"ownerId":"other"}'})).status,400);
+  assert.equal(calls.length,4);assert.deepEqual(calls.map(call=>call.method),['PUT','DELETE','GET','DELETE']);assert.ok(calls.every(call=>call.headers.Authorization==='Bearer synthetic-machine'));
  }finally{await new Promise(r=>server.close(r));await rm(dir,{recursive:true,force:true});}
 });
