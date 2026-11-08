@@ -222,8 +222,8 @@ test('Browse reads category counts only, without walking or sending any row',asy
 test('a folder watch also follows MediaStore, so provider writes (downloads, camera) refresh the open folder (ListingsConverge)',()=>{
  const plugin=readFileSync('android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaFilesPlugin.java','utf8');
  const watch=plugin.slice(plugin.indexOf('public void storageWatch'),plugin.indexOf('public void storageUnwatch'));
- assert.match(watch,/\n  mediaObserver=new android\.database\.ContentObserver/,'the MediaStore observer is registered for every watch, folders included');
- assert.doesNotMatch(watch,/if\(category!=null\|\|path==null\)\{mediaObserver/);
+ assert.match(watch,/\n   android\.database\.ContentObserver media=new android\.database\.ContentObserver/,'the MediaStore observer is registered for every watch, folders included');
+ assert.doesNotMatch(watch,/if\(category!=null\|\|path==null\)\{/);
  assert.match(watch,/"downloads"\.equals\(category\)\?new java\.io\.File\(primaryBrowser\(\)\.root,StorageCatalog\.DOWNLOAD_FOLDER\)/,'Downloads watches the Download folder too');
 });
 test('every Browse category id has a native answer on Android; Downloads is the Download folder',()=>{
@@ -312,4 +312,12 @@ test('the production plugin exposes only the storage browser; a retired SAF tree
  assert.doesNotMatch(plugin,/tree\.(adopt|list|changeMany|shareMany|rename|delete|move|select)\(/);
  assert.match(plugin,/public void load\(\)\{PluginWorkers\.submit\(storageWorker,this::releaseRetiredTree/);
  assert.match(plugin,/new DocumentFolderTree\(getContext\(\),PREF,[^)]*\)\.forget\(\)/,'a tree an earlier version chose has its persisted grant released');
+});
+test('a watch whose unwatch lands before the storage worker registers leaves no observer registered',()=>{
+ assert.match(runJvm([nativeSource('StorageWatchSlot.java'),fixture('StorageWatchSlotTest.java')],'ai.elizaresearch.alphaphone.StorageWatchSlotTest'),/^PASS storage watch slot/);
+ const plugin=readFileSync('android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaFilesPlugin.java','utf8');
+ assert.match(plugin,/public void storageWatch\(PluginCall call\)\{long ticket=watch\.request\(\);storage\(call,b->\{/,'the request is taken on the plugin thread, before the worker runs');
+ assert.match(plugin,/watch\.install\(ticket,\(\)->\{/,'observers are registered only through the slot');
+ assert.match(plugin,/private void stopWatching\(\)\{watch\.clear\(\);\}/);
+ assert.doesNotMatch(plugin,/\bmediaObserver=|\bobserver=new FileObserver/,'no observer field is assigned outside the slot');
 });

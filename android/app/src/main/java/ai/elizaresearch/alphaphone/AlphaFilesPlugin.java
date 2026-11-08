@@ -33,7 +33,7 @@ public class AlphaFilesPlugin extends Plugin {
  private ContentResolver resolver(){return getContext().getContentResolver();}
  // ---- Storage browser (all-files access) ----
  private final ExecutorService storageWorker=Executors.newSingleThreadExecutor();
- private FileObserver observer;private android.database.ContentObserver mediaObserver;
+ private final StorageWatchSlot watch=new StorageWatchSlot();
  private final android.os.Handler main=new android.os.Handler(android.os.Looper.getMainLooper());
  private final Runnable changed=()->notifyListeners("storageChanged",new JSObject());
  private interface StorageWork {JSObject run(StorageBrowser browser)throws Exception;}
@@ -186,16 +186,19 @@ public class AlphaFilesPlugin extends Plugin {
   * Downloads category, which is the Download folder) is watched with inotify and MediaStore:
   * MediaProvider and DownloadProvider write on the lower filesystem, which may raise no inotify
   * event on the FUSE path. */
- @PluginMethod public void storageWatch(PluginCall call){storage(call,b->{
-  stopWatching();String path=call.getString("path");String category=call.getString("category");
+ @PluginMethod public void storageWatch(PluginCall call){long ticket=watch.request();storage(call,b->{
+  String path=call.getString("path");String category=call.getString("category");
   java.io.File folder=path!=null?b.resolve(path,true):"downloads".equals(category)?new java.io.File(primaryBrowser().root,StorageCatalog.DOWNLOAD_FOLDER):null;
-  if(folder!=null&&folder.isDirectory()){
-   observer=new FileObserver(folder,FileObserver.CREATE|FileObserver.DELETE|FileObserver.MOVED_FROM|FileObserver.MOVED_TO|FileObserver.CLOSE_WRITE|FileObserver.DELETE_SELF|FileObserver.MOVE_SELF){@Override public void onEvent(int event,String name){burst();}};observer.startWatching();}
-  mediaObserver=new android.database.ContentObserver(main){@Override public void onChange(boolean self){burst();}};resolver().registerContentObserver(android.provider.MediaStore.Files.getContentUri(android.provider.MediaStore.VOLUME_EXTERNAL),true,mediaObserver);
+  watch.install(ticket,()->{
+   FileObserver files=folder!=null&&folder.isDirectory()?new FileObserver(folder,FileObserver.CREATE|FileObserver.DELETE|FileObserver.MOVED_FROM|FileObserver.MOVED_TO|FileObserver.CLOSE_WRITE|FileObserver.DELETE_SELF|FileObserver.MOVE_SELF){@Override public void onEvent(int event,String name){burst();}}:null;
+   if(files!=null)files.startWatching();
+   android.database.ContentObserver media=new android.database.ContentObserver(main){@Override public void onChange(boolean self){burst();}};resolver().registerContentObserver(android.provider.MediaStore.Files.getContentUri(android.provider.MediaStore.VOLUME_EXTERNAL),true,media);
+   return ()->{if(files!=null)files.stopWatching();resolver().unregisterContentObserver(media);main.removeCallbacks(changed);};
+  });
   return new JSObject();
  });}
  @PluginMethod public void storageUnwatch(PluginCall call){stopWatching();call.resolve(new JSObject());}
  private void burst(){main.removeCallbacks(changed);main.postDelayed(changed,400);}
- private synchronized void stopWatching(){if(observer!=null){observer.stopWatching();observer=null;}if(mediaObserver!=null){resolver().unregisterContentObserver(mediaObserver);mediaObserver=null;}main.removeCallbacks(changed);}
+ private void stopWatching(){watch.clear();}
  @Override protected void handleOnDestroy(){stopWatching();storageWorker.shutdownNow();}
 }
