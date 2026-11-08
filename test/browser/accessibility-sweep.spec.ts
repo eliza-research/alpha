@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { auditPage, auditReadingOrder, auditTabOrder, auditTree, format } from './accessibility-audit';
+import { auditPage, auditReadingOrder, auditTabOrder, auditTree, blocking, format } from './accessibility-audit';
 import { CONNECTED_STATES, DEVELOPMENT_STATES, FAILURE_STATES, FIXTURE_STATES, LAUNCHER_STATES, LIVE_STATES, MOCK_STATES, setTextScale } from './accessibility-states';
 import { settled } from './helpers/settled';
 
@@ -11,11 +11,8 @@ import { settled } from './helpers/settled';
 test.describe.configure({ mode: 'parallel' });
 
 const STATES = [...LIVE_STATES, ...DEVELOPMENT_STATES, ...MOCK_STATES, ...CONNECTED_STATES, ...FAILURE_STATES];
-// Deliberate single-line ellipsis and line clamps on previews of user content are allowed: the
-// full text is one tap away and is exposed whole to assistive technology. Hard clipping is not, and
-// neither is a cut app title: it names the screen and has room to wrap.
-const appTitle = (line: string) => /^text-truncated: .*<[^>]*\bdata-alpha-app-title\b/.test(line);
-const blocking = (lines: string[]) => lines.filter(line => !line.startsWith('text-truncated:') || appTitle(line));
+// Truncation that is allowed (previews of user content, never an app title) is filtered by
+// blocking() in accessibility-audit.ts, shared with the production sweep.
 // A state at large text is opened, re-laid out and audited rule by rule. Under four workers on a
 // loaded machine that has run past the 30s default, so the large-text and landscape sweeps say
 // how long they may take instead of inheriting it.
@@ -26,12 +23,12 @@ for (const theme of ['light', 'dark'] as const) {
     test(`names, roles, focus and contrast: ${state.name} (${theme})`, async ({ page }) => {
       test.setTimeout(60_000);
       await state.open(page, theme);
+      // Names, focusability, tab order and reading order do not depend on the theme; they are
+      // checked once, in the light one. The dark pass is the page audit, contrast included.
       const found = format([
-        ...await auditTree(page),
+        ...theme === 'light' ? await auditTree(page) : [],
         ...await auditPage(page, { contrast: true, targetSize: 24, clipping: true, overlap: true, dock: true }),
-        ...await auditTabOrder(page),
-        // Reading order does not depend on the theme; it is read once, in the light one.
-        ...theme === 'light' ? await auditReadingOrder(page) : [],
+        ...theme === 'light' ? [...await auditTabOrder(page), ...await auditReadingOrder(page)] : [],
       ]);
       expect(blocking(found), blocking(found).join('\n')).toEqual([]);
     });

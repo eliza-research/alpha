@@ -782,6 +782,13 @@ export async function auditTabOrder(page: Page, limit = 120): Promise<Violation[
   return out;
 }
 
+// Deliberate single-line ellipsis and line clamps on previews of user content are allowed: the
+// full text is one tap away and is exposed whole to assistive technology. Hard clipping is not, and
+// neither is a cut app title: it names the screen and has room to wrap.
+export const appTitle = (line: string) => /^text-truncated: .*<[^>]*\bdata-alpha-app-title\b/.test(line);
+/** The formatted findings a sweep fails on: everything but allowed truncation. */
+export const blocking = (lines: string[]) => lines.filter(line => !line.startsWith('text-truncated:') || appTitle(line));
+
 export function format(violations: Violation[]) {
   const seen = new Set<string>();
   return violations.filter(item => { const key = `${item.rule}|${item.target}|${item.detail || ''}`; if (seen.has(key)) return false; seen.add(key); return true; })
