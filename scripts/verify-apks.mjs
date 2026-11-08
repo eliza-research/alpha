@@ -23,7 +23,8 @@
  * App Links: each row records `appLinks` ({present, hosts}), the https autoVerify filters in
  * the packaged manifest. Default builds declare the configured production web host.
  * Every http/https VIEW filter in the merged manifest must be in an exact allowed set
- * (webViewFiltersAllowed below); an extra or missing filter fails verification.
+ * (webViewFiltersAllowed below; the staging return only in test-mocks debug APKs); an extra or
+ * missing filter fails verification.
  * --test-mocks: the separate artifacts/test-mocks/ build, which is never
  * distributable. This is APK-build evidence only; it does not install or run
  * anything.
@@ -76,13 +77,14 @@ const identity = JSON.parse(fs.readFileSync("app.config.json"));
 const cloudDeployment = JSON.parse(fs.readFileSync("config/cloud-deployment.json", "utf8"));
 const callbackHost = new URL(cloudDeployment.production.web).hostname;
 // The only web VIEW filters any APK may carry: the android/app/product.gradle overlay, plus the
-// staging sign-in return in the test-mocks overlay. Add a new app link here deliberately.
+// staging sign-in return in the test-mocks overlay, which is attached to debug variants only.
+// Add a new app link here deliberately.
 const mainActivity = `${identity.appId}.MainActivity`;
-const webViewFiltersAllowed = [
+const webViewFiltersAllowed = mode => [
   `${mainActivity} https://${callbackHost}/alphaphone/cloud-delegation*`,
   `${mainActivity} https://${callbackHost}/alphaphone/auth/callback`,
   `${mainActivity} https://${callbackHost}/alphaphone/gmail/callback`,
-  ...(testMocks ? [`${mainActivity} https://${new URL(cloudDeployment.staging.web).hostname}/alphaphone/auth/callback`] : []),
+  ...(testMocks && mode === "debug" ? [`${mainActivity} https://${new URL(cloudDeployment.staging.web).hostname}/alphaphone/auth/callback`] : []),
 ];
 const buildRecordFile = path.join(directory, "build-config.json");
 const buildRecord = fs.existsSync(buildRecordFile) ? JSON.parse(fs.readFileSync(buildRecordFile, "utf8")) : null;
@@ -124,7 +126,7 @@ for (const variant of ["standalone", "launcher"])
     problems.push(...requiredAppLinkProblems(tree, {
       host: callbackHost, path: '/alphaphone/auth/callback', activity: `${identity.appId}.MainActivity`,
     }));
-    problems.push(...webViewFilterProblems(tree, webViewFiltersAllowed));
+    problems.push(...webViewFilterProblems(tree, webViewFiltersAllowed(mode)));
     // Shared web bundle audit on the exact packaged payload.
     const payload = extractWebPayload(file);
     let flags;

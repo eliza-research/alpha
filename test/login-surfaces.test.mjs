@@ -334,7 +334,7 @@ test('secrets stay out of observations, transcripts and logs', () => {
   // The observation is identity-only: no field values, page text, usernames or origins.
   assert.doesNotMatch(context, /\b(value|password|username|text|url|origin|fields?)\??:/i);
   const adapter = read('apps/app/src/prototype/agent-adapter.ts');
-  assert.match(adapter, /sensitive: view === 'wallet' \|\| \(view === 'settings' && passwordSurfaceOpen\(shell\.vget\('settings'\)\)\)[^\n]*connectionController\.getSnapshot\(\)\.open,/, 'password pages and connection sheets (provider key, pairing) suspend observation');
+  like(adapter, /sensitive: view === 'wallet' \|\| \(view === 'settings' && passwordSurfaceOpen\(shell\.vget\('settings'\)\)\)[^\n]*connectionController\.getSnapshot\(\)\.open,/, 'password pages and connection sheets (provider key, pairing) suspend observation');
   for (const file of ['apps/app/src/passwords/password-manager.ts', 'apps/app/src/browser/password-provider.ts', 'apps/app/src/prototype/browser-adapter.ts']) {
     assert.doesNotMatch(read(file), /console\.(log|info|warn|error|debug)\(/, `${file} does not log`);
   }
@@ -395,7 +395,7 @@ test('website field origins come only from the engine\'s sourceOrigin, never fro
   assert.doesNotMatch(report, /origin|frame|location|getHost|URI\b|Uri\b/i, 'the parser never reads an address');
   const bind = strip(ruleSource.slice(ruleSource.indexOf('public static Decision bind('), ruleSource.indexOf('public static final class Binding')));
   assert.doesNotMatch(bind, /Report|message/, 'the decision reads only the engine source and the tab');
-  assert.match(bind, /if \(!origin\.equals\(top\)\)\s*return refuse\(engine\.mainFrame \? MISMATCH : FRAME\);/, 'cross-origin frames are denied');
+  like(bind, /if \(!origin\.equals\(top\)\)\s*return refuse\(engine\.mainFrame \? MISMATCH : FRAME\);/, 'cross-origin frames are denied');
   // Per-field origins are the binding's engine origin; the committed top-level URL fills only the host extra.
   like(code, /bundle\.putString\(extras\.fieldOrigin, origin\);/);
   like(code, /child\(structure\.newChild\(index\+\+\), parent, base \+ 1, current\.origin, false,/);
