@@ -186,7 +186,7 @@ export async function auditPage(page: Page, options: PageAuditOptions = {}): Pro
       for (const layer of stack.slice(stack.indexOf(el))) {
         const layerStyle = getComputedStyle(layer);
         if (layer.matches('img,video,canvas,picture,iframe') || (layer !== el && layer.matches('svg')) || layerStyle.backgroundImage !== 'none' || layerStyle.backdropFilter !== 'none' && layerStyle.backdropFilter) return null;
-        const color = rgba(layerStyle.backgroundColor); color[3] *= opacity(layer);
+        const color = rgba(layerStyle.backgroundColor).slice(); color[3] *= opacity(layer);
         background = over(background, color);
         if (background[3] >= .999) break;
       }
