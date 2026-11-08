@@ -61,7 +61,7 @@ test("stage-aosp gates the overlay behind --production, never with --development
   assert.match(source, /if \(production\) \{\n  const components = provisioningComponents\(tree, identity\.appId\);/);
 });
 
-test("stage-aosp publishes the default product only after every listener refusal, and a refused run leaves nothing to block a rerun", t => {
+test("stage-aosp publishes the default product only after every listener refusal, refuses the listener for production (P-78), and a refused run leaves nothing to block a rerun", t => {
   const root = path.resolve(import.meta.dirname, "..");
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), "alpha-stage-atomic-"));
   t.after(() => fs.rmSync(dir, { recursive: true, force: true }));
@@ -86,9 +86,9 @@ test("stage-aosp publishes the default product only after every listener refusal
   zip(listenerApk, { "classes.dex": "listener" });
   const hash = createHash("sha256").update(fs.readFileSync(apk)).digest("hex");
   const destination = path.join(dir, `artifacts/aosp/alphaphone-${hash.slice(0, 12)}`);
-  const stage = (extra, dump) => {
+  const stage = (extra, dump, mode = "--development") => {
     fs.writeFileSync(path.join(dir, "dump.txt"), dump);
-    return spawnSync(process.execPath, [path.join(root, "scripts/stage-aosp.mjs"), "--apk", apk, "--development", "--listener-apk", listenerApk, ...extra], { cwd: dir, encoding: "utf8",
+    return spawnSync(process.execPath, [path.join(root, "scripts/stage-aosp.mjs"), "--apk", apk, mode, "--listener-apk", listenerApk, ...extra], { cwd: dir, encoding: "utf8",
       env: { ...process.env, ANDROID_SDK_ROOT: path.join(dir, "sdk"), ANDROID_HOME: path.join(dir, "sdk"), JAVA_HOME: jdk, LISTENER_DUMP: path.join(dir, "dump.txt") } });
   };
   const leftovers = () => fs.existsSync(path.join(dir, "artifacts/aosp")) ? fs.readdirSync(path.join(dir, "artifacts/aosp")) : [];
@@ -111,4 +111,9 @@ test("stage-aosp publishes the default product only after every listener refusal
     assert.equal(fs.existsSync(destination), false);
     assert.deepEqual(leftovers(), []);
   }
+  // P-78: production refuses the listener outright, while development (above) admits it for staging.
+  const production = stage(["--descriptor", path.join(dir, "listener.json")], `package: ${PKG}.sense\n`, "--production");
+  assert.notEqual(production.status, 0);
+  assert.match(production.stderr, /Refusing --listener-apk for --production: wake listening is deferred \(P-78/);
+  assert.deepEqual(leftovers(), []);
 });

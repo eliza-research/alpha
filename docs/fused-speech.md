@@ -393,9 +393,9 @@ nothing maps them to the upstream names. Exact host asset paths and hashes are i
 
 The AOSP-image-only listener APK uses the same library: `ListeningService` installs the bundle with
 `VoiceAssets.install` and opens `NativeAsr` on the ASR slot. It packages its own copy of the staged
-engine (`.eliza/paradee-voice/native/jniLibs`). `stage-aosp --production` refuses a listener APK
-without the bundle manifest, without the Phonon-2 ASR file or whose engine is not the recorded bytes
-(`scripts/aosp-listener.mjs`). No listener APK with a voice bundle has been built, staged or booted.
+engine (`.eliza/paradee-voice/native/jniLibs`). `stage-aosp` warns about a listener APK without
+the bundle manifest, without the Phonon-2 ASR file or whose engine is not the recorded bytes
+(`scripts/aosp-listener.mjs`); production staging refuses any listener while P-78 defers wake listening. No listener APK with a voice bundle has been built, staged or booted.
 
 The listener only decides whether the user addressed Alpha: energy VAD (`SpeechGate`), batch
 Phonon-2 recognition of the utterance in RAM, then `WakePhrase`. It has no network permission and

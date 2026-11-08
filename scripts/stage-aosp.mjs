@@ -139,14 +139,19 @@ for (let i = 0; i < args.length; i++) {
   i++;
 }
 const development = args.includes("--development");
-// --production adds the provisioning overlay (default HOME, assistant role, Autofill
-// offer). It needs a reviewed descriptor and a distributable release, so it is
+// --production adds the provisioning overlay (default HOME, Autofill offer, and the assistant
+// role when the APK has an enabled one). It needs a reviewed descriptor and a distributable release, so it is
 // refused until a signed, PACKAGED, qualified release APK exists.
 const production = args.includes("--production");
 const cuttlefish = cuttlefishOptions({target:get('--target'), source:get('--aosp-source'), factory:get('--factory-image')});
 const physical = pixel10aOptions({target:cuttlefish ? null : get('--target'), development, production, source:get('--aosp-source'), factory:get('--factory-image')});
 if (get('--boot-animation') && !physical) throw new Error('--boot-animation belongs to --target pixel10a');
 if (production && development) throw new Error("--production and --development are exclusive");
+// P-78 defers wake listening, and AlphaSense's tile and consent would open a microphone whose wake
+// lands on the disabled AlphaAssistActivity, so no production image carries it while P-78 stands.
+// Development staging still takes it so the listener can be tested.
+if (production && (get("--listener-apk") || get("--listener-descriptor")))
+  throw new Error("Refusing --listener-apk for --production: wake listening is deferred (P-78, docs/decisions.md), so production images leave AlphaSense out. Stage the listener with --development.");
 // The product lock is checked before any source or APK is read: production never stages into an
 // unset product. Pixel 10a has its own production descriptor; the Cuttlefish product its own lock.
 if (production) {
@@ -163,7 +168,7 @@ const physicalSource = physical ? await verifyPixel10aSource({source:get('--aosp
 const vendorApi = physical ? pixel10aVendorApi({root:process.cwd(), source:get('--aosp-source')}) : null;
 if (physical && production && physicalSource.sourceLockSha256 !== JSON.parse(fs.readFileSync(PIXEL10A_PRODUCT, "utf8")).sourceLock?.sha256)
   throw new Error(`Refusing production staging: the verified source lock is not the one pinned in ${PIXEL10A_PRODUCT}.`);
-// The always-on listener is part of the AOSP MVP (issue #424): production images must include it.
+// The always-on listener is development-only while P-78 stands (refused for production above).
 const listenerApk = get("--listener-apk");
 const listenerDescriptor = get("--listener-descriptor");
 if (listenerDescriptor && !listenerApk) throw new Error("--listener-descriptor needs --listener-apk");
@@ -189,11 +194,6 @@ if (descriptor) {
   if (supplied.packageName !== identity.appId || supplied.moduleName !== identity.moduleName)
     throw new Error(`Descriptor does not belong to this product: packageName ${supplied.packageName} and moduleName ${supplied.moduleName} must be ${identity.appId} and ${identity.moduleName} (app.config.json).`);
 }
-// Checked after APK admission so input refusals are reported first.
-if (production && !listenerApk)
-  throw new Error("Production staging requires --listener-apk (the always-on listener built by ./gradlew :sense:assembleRelease).");
-if (production && !listenerDescriptor)
-  throw new Error("Production staging requires --listener-descriptor: an independently reviewed record of the listener's packageName, apkSha256 and certificateSha256.");
 const cameraOverrides = reviewedSourceOverrides({physicalSource, cuttlefish, source:get('--aosp-source'), appliedPatches});
 const cameraSource = get("--aosp-source") || !development
   ? verifySecureCameraSource(get("--aosp-source"), undefined, cameraOverrides)
@@ -287,7 +287,7 @@ if (production) {
   writeProvisioningOverlay(output, identity.appId, components);
   // The shared Pixel 10a composition writes the same overlay from products/pixel10a-alpha.json.
   if (!physical) writeAospCapabilityOverlay(output, identity.appId);
-  console.log(`Provisioning overlay: HOME ${components.home}, assistant ${identity.appId}, Autofill ${components.autofill}.`);
+  console.log(`Provisioning overlay: HOME ${components.home}, assistant ${components.assistant ? identity.appId : "none (P-78)"}, Autofill ${components.autofill}.`);
 }
 if (listenerApk) {
   stageListener({ root: process.cwd(), output, apk: listenerApk, dump: listener.dump, signer: listener.signer, launcherSigner: String(reviewed.certificateSha256 ?? "").toLowerCase(), appId: identity.appId });
