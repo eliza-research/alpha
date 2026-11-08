@@ -330,6 +330,7 @@ export function prepareClientFeatures({ root = projectRoot, projectVoice = true,
     ['inboxCleanupPatch', 'inbox-cleanup-client', 'plugins/plugin-inbox/src/mailbox/drafts-controller.ts'],
     ['crashErrorClassPatch', 'crash-error-class-client', 'plugins/plugin-native-system/src/crash-log.ts'],
     ['mapsHiddenFallbackPatch', 'maps-hidden-fallback-client', 'plugins/plugin-maps/src/client/maps-screen.ts'],
+    ['launcherObserverPatch', 'launcher-observer-client', 'plugins/plugin-native-system/src/client/launcher.ts'],
   ]) {
     const manifestFile = path.join(root, 'patches/eliza', prefix + '-manifest.json');
     if (!regularPath(manifestFile)) continue;
