@@ -181,9 +181,11 @@ before numbers are captured on-device in phase 0. This review doesn't claim them
 - Paired and Cloud routes upload in 55 s chunks, since those servers cap one request at
   60 s. There's no user-visible limit on any route.
 - Recording continues with the screen off, in a foreground service with a notification,
-  as Recorder apps do. As built, segments are transcribed while Notes is shown; segments
-  recorded with Notes hidden are transcribed when it is shown again, or at Done (spec
-  notes-view `shown`, AsrWhileHidden = FALSE). Native background transcription is open work.
+  as Recorder apps do.
+- **Accepted limitation (owner decision 2026-11-07):** transcription runs only while Notes
+  is shown. Audio keeps recording with the screen off or Notes hidden; those segments are
+  transcribed when Notes is shown again, or at Done (spec notes-view `shown`,
+  AsrWhileHidden = FALSE). Native background transcription is not part of this refresh.
 
 ### Data model
 - Add `folderId` to the note record. Folders are a new `notes-folders:v1:device` slot.
@@ -321,6 +323,13 @@ Final:
 - **N3:** One-column notes list.
 - **F2:** No Recents.
 - **A1:** Apps drawer is a 4-column icon grid.
+
+Owner decisions on the review (2026-11-07):
+- **Module ceiling 555 → 564.** The refresh adds a net nine Alpha-owned behavioural modules (the
+  Files, Photos, Notes and Apps ports), so `config/feature-parity.json` `ceiling.modules`
+  is raised once to the real count, 564, against its shrink-only rule. It shrinks again as
+  those modules move upstream.
+- **Notes transcription while shown.** Accepted as a limitation; see Unlimited recording.
 
 ## TLA+ models (written and checked 2026-11-06)
 Specs are in `design/view-refresh-2026-11/tla/{camera-session,photos-library,notes-view,files-browser}`,
