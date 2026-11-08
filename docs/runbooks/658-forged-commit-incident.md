@@ -184,7 +184,9 @@ gh api --method GET orgs/AlphaCompute/rulesets
 
 `read-branch-integrity.mjs` names the ruleset enforcing each rule, which is the evidence the issue
 asks for ("ruleset names now enforcing no-force-push and signed commits"). A ruleset in `evaluate`
-mode is reported separately and does not count.
+mode is reported separately and does not count. It also reads each enforcing ruleset's bypass
+actors: any bypass actor exits 1 unless `--allow-bypass` is passed, and a ruleset whose bypass list
+this account cannot read exits 2.
 
 ## Machine-check IOC checklist (step 3)
 
