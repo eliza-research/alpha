@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "baseCommit": "3cc7b939dc75cfb92375068711b97d6bbd8d25c3",
+  "baseCommit": "0f004fdb8ca80956517663da5994200b7efb4b8e",
   "status": "integrated-in-pin",
   "purpose": "Files agent operations are in the pinned SDK. The original proposed patch and its target digests are retained as historical source evidence.",
   "patches": [
