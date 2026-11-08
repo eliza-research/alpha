@@ -24,7 +24,7 @@ const scenarioNames = [
   'old-and-startup-ack-can-prepare-but-cannot-reconnect',
 ];
 
-function exactUpdateMembers(source) {
+export function exactUpdateMembers(source) {
   const start = source.indexOf(' static final long UPDATE_MAX_BYTES=');
   const end = source.lastIndexOf('}');
   const handOff = /^ private static Intent handOff\(Intent intent\)\{[^\n]*$/m.exec(source)?.[0];

@@ -1792,6 +1792,45 @@
         "maxSteps": 60,
         "maxVerifyDepth": 4
       }
+    },
+    {
+      "path": "specs/quint/native/NativeUpdateComposition.qnt",
+      "module": "NativeUpdateComposition",
+      "init": "init",
+      "step": "step",
+      "invariant": "safety",
+      "tests": [
+        "exactBarrierAndLeasePrecedeReconnectTest",
+        "refusedPreparationLeavesNoPauseTest",
+        "unconfirmedTombstoneDoesNotAuthorizeReconnectTest"
+      ],
+      "invariants": [
+        "DurablePauseHasExactBarrier",
+        "StopRequiresOwnedPause",
+        "CommitRequiresConfirmedStop",
+        "ResumeRequiresReleasedLease"
+      ],
+      "sources": [
+        "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaDevicePlugin.java",
+        "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaLocalAgentPlugin.java",
+        "vendor/eliza/plugins/plugin-native-agent/android/src/main/java/ai/eliza/plugins/agent/updater/RuntimeUpdatePause.java",
+        "vendor/eliza/plugins/plugin-native-agent/android/src/main/java/ai/eliza/plugins/agent/runtime/CredentialShutdownLease.java"
+      ],
+      "stateMapping": {
+        "state.activation/state.pause": "Imported activation and journal models share one exact observed UUID and installer session",
+        "startupAdmitted": "Actual journal-plus-activation start gate and native renderer pending readback",
+        "residentStartAdmitted": "Start gate combined with the actual service shutdown lease policy",
+        "resumeAudience": "Exact native terminal readback recipient while startup is admitted"
+      },
+      "abstractions": [
+        "One activation and one committed Android session with two synthetic renderer receipts. Source checkpoints use the actual updater, POSIX journal and exact shutdown lease under controlled Android and stop observation ports.",
+        "An observed confirmed stop is a macrostep. Session handoff retains the native reconnect receipt until exact settlement; a visible unconfirmed tombstone still retains the separate service lease. Independent journal and activation campaigns exercise additional branches."
+      ],
+      "bounds": {
+        "maxSamples": 1000,
+        "maxSteps": 80,
+        "maxVerifyDepth": 4
+      }
     }
   ]
 }

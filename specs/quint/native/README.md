@@ -505,3 +505,23 @@ resident-stop port and PackageInstaller port. The prepared renderer adapters
 separately check the mounted and startup request shapes. The durable journal,
 physical installation, installed WebView callback delivery and full
 cross-process recovery have separate evidence requirements.
+
+### Activation and durable pause composition
+
+`NativeUpdateComposition` imports the native activation and durable pause
+transition relations. A JVM campaign drives the real updater, pinned journal,
+and exact service-lease policy through one attempt. The test controls the
+installer port and resident stop observation, then reads the actual PAUSING
+and COMMITTING records, owner UUID, lease and renderer state. The source
+scenarios cover a draft refusal, exact canceled release, and directory-sync
+failure after a visible terminal rename. The third scenario requires a
+nonprivileged POSIX host that honors the injected directory read denial.
+
+A refused preparation leaves no pause. After an exact canceled release, the
+mounted initiator can receive reconnect while the startup-only bridge keeps
+Android confirmation ownership. After the ambiguous tombstone, renderer
+readback is idle and the journal gate admits startup. The exact resident
+shutdown lease still fences a launch, and neither a terminal cancellation nor
+reconnect authority publishes. Retrying that same empty journal leaves the
+lease held. The model covers these bounded schedules through source readback.
+Installed Android and physical filesystem recovery remain separate.
