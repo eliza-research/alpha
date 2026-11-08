@@ -19,6 +19,7 @@ Markdown that `test/docs-links.test.mjs` scans) select Repository verification o
 | Browser specs/configuration | Yes | Yes | No | No |
 | Renderer, including assets | Yes | Yes | Yes | No |
 | Android packaging/native sources | Yes | No | Yes | No |
+| Android files that browser specs read (`browserReadAndroid` in `scripts/ci/affected.mjs`) | Yes | Yes | Yes | No |
 | Shared source pin, dependencies, unknown paths | Yes | Yes | Yes | Yes |
 | Individual workflow | Yes | Its automatic lane | Its automatic lane | Its automatic lane |
 

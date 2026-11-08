@@ -3,7 +3,7 @@
 import hashlib,json,os,re,signal,subprocess,sys,uuid,zipfile
 from pathlib import Path
 from resident_absence import assert_no_resident
-from resident_crash_diagnostics import collect_crashes
+from resident_uid_crash_audit import collect_crashes
 from resident_native_source import verify_generated_native
 assert os.environ.get('GITHUB_ACTIONS')=='true' and os.environ.get('ALPHA_RESIDENT_DISPOSABLE_CI')=='1'
 serial=os.environ['ANDROID_SERIAL'];assert re.fullmatch(r'emulator-[0-9]+',serial)

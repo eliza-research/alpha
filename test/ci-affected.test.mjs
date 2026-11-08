@@ -71,3 +71,19 @@ test('docs read by node tests select verify; design and research notes select no
   assert.ok(named.size >= 5);
   for (const path of named) assert.equal(testReadReference(path), true, path);
 });
+
+test('Android files that browser specs read select the browser lane', async () => {
+  const {affected, browserReadAndroid} = await import('../scripts/ci/affected.mjs');
+  const read = new Set();
+  for (const file of readdirSync('test/browser', {recursive:true}).filter(name => /\.[cm]?[jt]s$/.test(name)))
+    for (const [, path] of readFileSync(join('test/browser', file), 'utf8').matchAll(/['"`](?:\.\.\/\.\.\/|\.\/)?(android\/[A-Za-z0-9_.\/-]+)['"`]/g)) read.add(path);
+  assert.ok(read.size >= 2);
+  assert.deepEqual([...browserReadAndroid].sort(), [...read].sort());
+  for (const path of read) {
+    assert.ok(existsSync(path), path);
+    const r = affected([path]);
+    assert.deepEqual([r.verify,r.browser,r.android,r.prepare], [true,true,true,false], path);
+  }
+  const r = affected(['android/app/src/main/AndroidManifest.xml']);
+  assert.deepEqual([r.verify,r.browser,r.android,r.prepare], [true,false,true,false]);
+});
