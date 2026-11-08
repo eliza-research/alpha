@@ -116,7 +116,7 @@ give each run its own `--output test-results/android-instrumentation/<batch>-<bu
 
 | Batch | Build pair | Arguments |
 | --- | --- | --- |
-| `h31-flagoff` | flag-off | `--classes ResidentAlwaysPresent,Assistant,Flow,ChatContinuity,AssistantResidentReuse,SettingsFlow,ResetPolicy,LauncherApps,PasswordBrowserFill,Accessibility,Rotation,CameraScan,PhotoEdit,PhotoFilter,PhotosBatch,FilesTree` |
+| `h31-flagoff` | flag-off | `--classes ResidentAlwaysPresent,Assistant,Flow,ChatContinuity,AssistantResidentReuse,SettingsFlow,ResetPolicy,LauncherApps,PasswordBrowserFill,Accessibility,Rotation,CameraScan,PhotoEdit,PhotoFilter,PhotosBatch,StorageCategories` |
 | `h31-home-role` | flag-off | `--variants launcher --home-role --classes SettingsRoles,LauncherHome` |
 | `h31-test-mocks` | test-mocks | `--test-mocks --classes AccessibilityViews,AccessibilityLifecycle,HostedProcessRestart,BrowserIsolatedReading,BrowserDownload,BrowserAutofill` |
 | `h31-test-mocks-home-role` | test-mocks | `--variants launcher --home-role --test-mocks --classes AccessibilityHomeRole` |
@@ -201,8 +201,8 @@ dispatched job. A cell is filled with the result file path and its status, never
 | Media | PhotoFilter | launcher | h31-flagoff | not run | not run | n/a |
 | Media | PhotosBatch | standalone | h31-flagoff | not run | not run | n/a |
 | Media | PhotosBatch | launcher | h31-flagoff | not run | not run | n/a |
-| Media | FilesTree | standalone | h31-flagoff | not run | not run | n/a |
-| Media | FilesTree | launcher | h31-flagoff | not run | not run | n/a |
+| Media | StorageCategories | standalone | h31-flagoff | not run | not run | n/a |
+| Media | StorageCategories | launcher | h31-flagoff | not run | not run | n/a |
 | Upgrade | from earlier installs that saved mock state | both | manual (pilot runbook procedure) | not run | not run | n/a |
 
 The accessibility classes need the screen-reader stand-in service the classes install themselves;
