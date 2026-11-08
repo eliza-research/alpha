@@ -660,12 +660,18 @@
     ]
   },
   {
+<<<<<<< HEAD
     "module": "NativeViewSubscription",
     "path": "specs/quint/application/NativeViewSubscription.qnt",
+=======
+    "path": "specs/quint/application/CanonicalNotesController.qnt",
+    "module": "CanonicalNotesController",
+>>>>>>> 06d54ead35 (Model current canonical Notes controller lifecycle)
     "init": "init",
     "step": "step",
     "invariant": "safety",
     "tests": [
+<<<<<<< HEAD
       "happyLifecycleTest",
       "closeBeforeRegistrationTest",
       "lateSubscriptionReplyTest",
@@ -688,6 +694,25 @@
       "One generated subscription and one owner/client equality class per lifecycle. Two delivered frames bound callback behavior.",
       "Cleanup counts represent attempted native calls, including failures. The native unsubscribe protocol is idempotent and may be requested twice after a late or mismatched reply.",
       "Native transport delivery and Binder identity remain platform obligations."
+=======
+      "coalescedReadTest",
+      "writeRetiresReadTest",
+      "staleReadTest",
+      "retiredReadTest",
+      "ownerLostWriteTest",
+      "wrongSessionIgnoredTest"
+    ],
+    "sources": [
+      "apps/app/src/prototype/canonical-notes-controller.ts",
+      ".eliza/client-features/plugins/plugin-notes/src/client/notes-controller.ts",
+      ".eliza/client-features/plugins/plugin-notes/src/client/notes-snapshot-state.ts",
+      ".eliza/client-features/plugins/plugin-notes/src/client/notes-api.ts"
+    ],
+    "abstractions": [
+      "Two opaque note identities, revisions0..2 and six request identities. All current controller state, retained transport calls and authenticated listener ownership have an explicit projection.",
+      "The source adapter controls valid read/POST envelopes and their completion order. Editor drafts, record mutation semantics, full UI and server behavior remain separate obligations.",
+      "Response publication plus finally cleanup and coalesced reload form a macrostep. Settled checkpoints compare all model fields; intermediate hook/microtask states and arbitrary reentrant hooks remain explicit refinement obligations."
+>>>>>>> 06d54ead35 (Model current canonical Notes controller lifecycle)
     ]
   }
 ]

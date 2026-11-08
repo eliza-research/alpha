@@ -41,10 +41,11 @@ source paths remain historical metadata when their implementations are removed.
 
 ## Next canonical Notes split
 
-The current canonical source adds three linked controllers that are absent from
-the retained-device Notes contract.
+The current canonical source adds three linked controllers. The first now has
+a current source-bound model. Editor and UI state remain absent from the
+retained-device Notes contract.
 
-- `CanonicalNotesController` owns an authority-bound snapshot, a coalesced read,
+- `CanonicalNotesController` is modeled and source-executed through thirteen bounded schedules. It owns an authority-bound snapshot, a coalesced read,
   an abortable read token, one writing operation, invalidation during either
   operation, monotonic accepted revisions and authenticated event subscription.
   An interrupted read and a later write can both still have outstanding transport
