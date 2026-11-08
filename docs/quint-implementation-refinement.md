@@ -92,6 +92,11 @@ component projections.
   The shell model distinguishes hidden chat from the input bar and increments
   context revisions when the context changes. Claimed navigation, sensitive
   subviews, draft recovery and arbitrary message interleavings remain open.
+- The vault coordinator has four additional source traces with 24 checkpoints.
+  They observe typed-draft clearing, generation changes, discarded reset review
+  and native cancellation after leaving. The model separates a pending native
+  operation from the cleared review. Only secret-presence Booleans enter these
+  receipts. Save, remove, transfer and origin-bound fill remain separate work.
 
 ## Reproduction
 
