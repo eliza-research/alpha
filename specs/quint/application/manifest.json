@@ -2022,5 +2022,35 @@
       "Actual hosted question review and shared text/digest rules, exact retained token readback, draft publication after acknowledgement and overlap refusal.",
       "One reviewed native question and bounded synthetic owner, composer and notice settlement. Physical DOM input and mounted panel/provider interactions are separate."
     ]
+  },
+  {
+    "path": "specs/quint/application/GoogleCalendarLinkPublication.qnt",
+    "module": "GoogleCalendarLinkPublication",
+    "init": "init",
+    "step": "step",
+    "invariant": "safety",
+    "tests": [
+      "staleSameIntentResultCannotReplaceLatestReviewTest",
+      "staleFinallyKeepsReplacementReadBusyTest",
+      "staleHostPermissionCannotStartHelperTest",
+      "retiredIntentCannotPublishLateResultTest",
+      "needsGrantKeepsCurrentRetainedReviewTest",
+      "hostRefusalEndsAuthorizationAfterVerifiedReturnTest"
+    ],
+    "invariants": [
+      "LinkOwnsBusy",
+      "SeparateAccountRead",
+      "Bounded",
+      "HelperOnce"
+    ],
+    "sources": [
+      "apps/app/src/runtime/google-connection-ui.tsx",
+      "apps/app/src/runtime/google-connection-return.ts",
+      "apps/app/src/runtime/modal-inert.ts"
+    ],
+    "abstractions": [
+      "Current mounted Google Calendar intent, separate account/link busy owners, verified account continuation, browser-host permission and exact current result publication.",
+      "Three Cloud bindings, four intents, six reads and five attempts. Chromium mounts real React and inert scope over controlled access, account, host, browser and link interfaces. Persistence, native access publication and provider effects remain separate."
+    ]
   }
 ]
