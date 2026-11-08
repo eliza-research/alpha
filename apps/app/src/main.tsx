@@ -40,14 +40,14 @@ import {installSharePanelAdapter} from './prototype/share-panel-adapter';
 import {installNotesShareAdapter} from './prototype/notes-share-adapter';
 import { installNotesDocumentAdapter } from './prototype/notes-document-adapter';
 import { installPrototypeMapsAdapter } from './prototype/maps-adapter';
-import { installNotificationsAdapter } from './prototype/notifications-adapter';
+import { installCanonicalNotificationTaps, installNotificationsAdapter } from './prototype/notifications-adapter';
 import { installSystemShade, shadeSurface } from './prototype/system-shade';
 import { installContextSelection } from './prototype/context-selection';
 import { installWorkflowAdapter } from './prototype/workflow-adapter';
 import { installAutomationsAdapter } from './prototype/automations-adapter';
 import { useEffect, useState, useSyncExternalStore } from 'react';
 import { StartupPermissions } from './startup-permissions';
-import { reopenStartupPermissions } from './startup-permission-flow';
+import { reopenStartupPermissions, startupPermissionsActive } from './startup-permission-flow';
 import { createRoot } from 'react-dom/client';
 import { Component, VIEWS, ORDER } from './prototype/model.js';
 import { installReminderAdapter } from './prototype/reminder-adapter';
@@ -130,6 +130,8 @@ if (!fixture) {
   installPrototypeDataAdapter(Component, VIEWS);
   installAgentCalendarAdapter(Component,VIEWS);
   installCanonicalCalendarDrafts(Component,VIEWS);
+  // Android notification taps are independent of the development stand-in shade.
+  if(isAndroid)installCanonicalNotificationTaps(Component);
   // Notice rows feed only the development stand-in shade; product builds read no notice list (#416).
   if(systemShade==='simulated')installNotificationsAdapter(Component);
   installContextSelection(Component);
@@ -295,7 +297,7 @@ function Phone() {
     else if(action==='resume'){delete document.documentElement.dataset.devBackground;shell.unlock();window.dispatchEvent(new Event('focus'));}
     if(['power','unlock','boot','background','resume'].includes(action))window.dispatchEvent(new Event('alpha:device-state'));
   }}/>}{testMocksEnabled && mock && <div className="mock-mode-banner" role="status"><span>Mock mode · simulated data and actions</span><button onClick={() => { void connectionController.offline().then(() => { const url = new URL(location.href); url.searchParams.delete('mode'); url.searchParams.delete('start'); location.assign(url.href); }); }}>Exit mock mode</button></div>}{startupPending ? <div className="alpha-startup-loading" role="status" aria-label="Loading Alpha"><span className="alpha-compute-mark"/></div> : <Component configureChatPull={(surface:{scale:number})=>setPullScale(surface.scale)} chatPullBinding={chatPullBinding} phoneSurface assistantSurface={assistantSurface} onCloseAssistant={closeAssistant} onReopenStartupAccess={!fixture && !assistantSurface ? reopenStartupPermissions : undefined} systemShell={launcherPresentation} systemShade={systemShade} nativeSystemChrome={isAndroid || !launcherPresentation} initial={testMocksEnabled && fixture ? query.get('start') || 'home' : 'home'} theme={initialTheme} ref={(value: any) => { shell = value; if (value && pendingNotice) queueMicrotask(() => { if (shell === value && value.live && pendingNotice) { value.toast(pendingNotice); pendingNotice = undefined; } }); }} />}
-{!fixture && <><ConnectionChooser /><GoogleConnectionsPanel />{!assistantSurface && <><HostedDigestPanel canComposeQuestion={questionTarget} composeQuestion={(draft,sessionId)=>{if(!questionTarget(sessionId))return false;shell.api(shell.S().view).composeContentQuestion(draft);return true;}} /><StartupPermissions active={(!!connection.cloudAccount || (!!connection.setupRevision && connection.providerStatus?.selected === true && connection.providerStatus.provider === 'cerebras')) && !(connection.busy && !connection.residentStarting) && !connection.signIn} /></>}</>}</>;
+{!fixture && <><ConnectionChooser /><GoogleConnectionsPanel />{!assistantSurface && <><HostedDigestPanel canComposeQuestion={questionTarget} composeQuestion={(draft,sessionId)=>{if(!questionTarget(sessionId))return false;shell.api(shell.S().view).composeContentQuestion(draft);return true;}} /><StartupPermissions active={startupPermissionsActive(connection)} /></>}</>}</>;
 }
 /** Android's locale and 24-hour setting; WebView Intl alone does not follow the latter. */
 async function applyDeviceLocale() {

@@ -128,10 +128,10 @@ test('a cancelled admission leaves the sign-in step and the agent to the caller 
 });
 
 test('a resident start ends with its operation in one update, so setup behind it never blinks',async()=>{
-  const work=stripTypeScriptTypes(between(ui,'async function work(','/** Start (or restart) the resident.'),{mode:'transform'});
+  const work=stripTypeScriptTypes(between(ui,'async function work(','/** Only an explicitly failed native start'),{mode:'transform'});
   for(const fail of [false,true]){
     const seen=[],state={busy:false,open:false,residentStarting:false,error:'',message:''};
-    const box={state,AbortController,active:null,cloud:{},testMocksEnabled:false,
+    const box={state,AbortController,active:null,cloud:{},testMocksEnabled:false,scheduleResidentAutoRetry:()=>{},
       update:patch=>{Object.assign(state,patch);seen.push({busy:state.busy,starting:state.residentStarting});},
       residentRecoveryReason:()=>null,errorMessage:error=>error.message,expired:()=>false,residentCloudFlow:()=>true,runQueuedResidentRebind:()=>{},runQueuedSignInReturn:()=>{}};
     vm.createContext(box);vm.runInContext('var operation=null,residentStartInBackground=false,signInReadinessOwner=null;\n'+work+';globalThis.run=work;',box);
@@ -143,14 +143,17 @@ test('a resident start ends with its operation in one update, so setup behind it
   }
 });
 
-test('access setup is not held behind a background resident start, only behind a foreground step',()=>{
+test('access setup is not held behind background work, only behind a foreground step',async()=>{
+  const {startupPermissionsActive}=await import('../apps/app/src/startup-permission-flow.ts');
   const main=readFileSync(new URL('../apps/app/src/main.tsx',import.meta.url),'utf8');
   const expression=/<StartupPermissions active=\{([^}]*)\} \/>/.exec(main)?.[1];
   assert.ok(expression,'StartupPermissions gate');
-  const active=new Function('connection','return '+expression);
+  const evaluate=new Function('connection','startupPermissionsActive','return '+expression);
+  const active=connection=>evaluate(connection,startupPermissionsActive);
   const signedIn={cloudAccount:{userId:'owner'},signIn:null};
   assert.equal(active({...signedIn,busy:true,residentStarting:true}),true,'the agent starting behind setup');
   assert.equal(active({...signedIn,busy:false}),true);
+  assert.equal(active({...signedIn,busy:true,backgroundWork:true}),true,'a background rebind keeps setup visible');
   assert.equal(active({...signedIn,busy:true,residentStarting:false}),false,'a foreground step such as checking a code');
   assert.equal(active({...signedIn,signIn:{step:'code'},busy:false}),false);
   assert.equal(active({cloudAccount:null,signIn:null,busy:false}),false);

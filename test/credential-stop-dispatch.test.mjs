@@ -17,6 +17,8 @@ test('actual credential mutation retains a reserved stop across dispatch failure
  const source=readFileSync(nativeSource('AlphaLocalAgentPlugin.java'),'utf8');
  const mutate=method(source,'static <T> T mutateCredentials(');
  const commit=method(source,'private static <T> T commitCredentials(');
+ const order=method(source,'private static void requireLockOrder(');
+ const retryRequired=method(source,'static boolean shutdownRetryRequired(');
  const directory=mkdtempSync(join(tmpdir(),'credential-dispatch-'));
  const file=(name,text)=>{const path=join(directory,name);writeFileSync(path,text);return path;};
  try{
@@ -29,7 +31,7 @@ public class MutationHarness {
  static class Context{} static class JSONObject{}
  static class Superseded extends Exception{}
  static final Object lifecycleLock=new Object();
- static long lifecycleEpoch,credentialMutationEpoch=-1,credentialShutdownRequest=-1;
+ static long lifecycleEpoch,credentialMutationEpoch=-1,credentialShutdownRequest=-1,uncertainCommitRequest=-1;
  static String startRequestId;static boolean startOwnsLaunch,accepting=true,stopping;
  static class AlphaCanonicalNotifications{static void forget(Context c){}}
  static class Owner{void invalidate(){}} static Owner INVOCATION_OWNER=new Owner();
@@ -46,10 +48,12 @@ public class MutationHarness {
   static boolean releaseCredentialShutdown(long id){return lease.release(id);}
   static JSONObject getLocalAgentBootState(Context c){return new JSONObject();}
  }
+ ${order}
  ${mutate}
  ${commit}
+ ${retryRequired}
  static void check(boolean b,String why){if(!b)throw new AssertionError(why);}
- static void reset(){lifecycleEpoch=0;credentialMutationEpoch=-1;credentialShutdownRequest=-1;ElizaAgentService.lease=new CredentialShutdownLease();ElizaAgentService.reserved=-1;ElizaAgentService.failDispatch=false;ElizaAgentService.commits=0;}
+ static void reset(){lifecycleEpoch=0;credentialMutationEpoch=-1;credentialShutdownRequest=-1;uncertainCommitRequest=-1;stopping=false;ElizaAgentService.lease=new CredentialShutdownLease();ElizaAgentService.reserved=-1;ElizaAgentService.failDispatch=false;ElizaAgentService.commits=0;}
  static CredentialMutation<String> mutation(boolean fail){return new CredentialMutation<String>(){
   public boolean requiresShutdown(){return true;}
   public String commit(){ElizaAgentService.commits++;if(fail)throw new IllegalStateException("uncertain write");return "saved";}
@@ -68,12 +72,23 @@ public class MutationHarness {
   check(ElizaAgentService.commits==0&&ElizaAgentService.lease.isReleased(ElizaAgentService.reserved),"precommit cancellation abandons known acknowledged request");
   reset();try{mutateCredentials(new Context(),()->{},mutation(true));throw new AssertionError("uncertain failure lost");}catch(IllegalStateException expected){}
   check(ElizaAgentService.commits==1&&!ElizaAgentService.lease.isReleased(ElizaAgentService.reserved),"uncertain commit keeps fence");pending();
+  // Commit throws -> start refused -> the owner's Retry reissues teardown -> start admitted.
+  reset();try{mutateCredentials(new Context(),()->{},mutation(true));throw new AssertionError("uncertain failure lost");}catch(IllegalStateException expected){}
+  credentialShutdownRequest=-1;stopping=false;// a refused start forgets the request (startAfterShutdown)
+  pending();check(shutdownRetryRequired(),"uncertain commit sends the next start through Retry");
+  long retry=ElizaAgentService.reserveCredentialShutdown();ElizaAgentService.retryCredentialShutdown(new Context(),retry);ElizaAgentService.abandonCredentialShutdown(retry);
+  check(ElizaAgentService.isCredentialShutdownConfirmed(retry),"retry stop confirmed");
+  uncertainCommitRequest=-1;ElizaAgentService.lease.beforeStart();check(!shutdownRetryRequired(),"start admitted after Retry");
+  // A later completed mutation supersedes the uncertain request without a Retry.
+  reset();try{mutateCredentials(new Context(),()->{},mutation(true));}catch(IllegalStateException expected){}
+  check(uncertainCommitRequest==ElizaAgentService.reserved,"uncertain request remembered");
+  mutateCredentials(new Context(),()->{},mutation(false));check(uncertainCommitRequest==-1&&ElizaAgentService.lease.isReleased(ElizaAgentService.reserved),"completed commit clears it");
   reset();long old=ElizaAgentService.lease.acquire(),newer=ElizaAgentService.lease.acquire();
   check(!ElizaAgentService.lease.abandon(old)&&!ElizaAgentService.lease.release(old),"old owner cannot release successor");
   check(ElizaAgentService.lease.isCurrent(newer),"new request remains current");
-  System.out.println("PASS exact mutation dispatch ownership: success, throw-after-reserve, late ACK, cancellation, uncertain commit, successor");
+  System.out.println("PASS exact mutation dispatch ownership: success, throw-after-reserve, late ACK, cancellation, uncertain commit, Retry, successor");
  }
 }`)];
-  assert.match(runJvm(sources,'ai.elizaresearch.alphaphone.MutationHarness'),/^PASS exact mutation dispatch ownership/);
+  assert.match(runJvm(sources,'ai.elizaresearch.alphaphone.MutationHarness'),/^PASS exact mutation dispatch ownership.*Retry/);
  }finally{rmSync(directory,{recursive:true,force:true});}
 });

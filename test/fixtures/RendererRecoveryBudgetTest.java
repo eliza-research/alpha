@@ -33,6 +33,11 @@ public final class RendererRecoveryBudgetTest {
   // Three losses spread beyond the window never reach the escape view.
   RendererRecoveryBudget spread=new RendererRecoveryBudget();
   for(int loss=0;loss<8;loss++)check(spread.onLoss(loss*61_000L,true)==NOW,"spread losses recover at once");
+  try{
+   RendererRecoveryBudget overflow=new RendererRecoveryBudget();overflow.onLoss(1,true);
+   var counter=RendererRecoveryBudget.class.getDeclaredField("lossesInWindow");counter.setAccessible(true);counter.setInt(overflow,Integer.MAX_VALUE);
+   check(overflow.onLoss(2,true)==ESCAPE,"a saturated window never wraps back to immediate recovery");
+  }catch(ReflectiveOperationException failure){throw new AssertionError(failure);}
   // Buttons resolve to stock Settings activities, with the documented fallbacks.
   Set<String> all=Set.of("android.settings.SETTINGS","android.settings.HOME_SETTINGS","android.settings.MANAGE_DEFAULT_APPS_SETTINGS");
   check("android.settings.SETTINGS".equals(RendererRecoveryBudget.settingsAction(all::contains)),"Open Android Settings uses ACTION_SETTINGS");

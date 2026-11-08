@@ -169,6 +169,8 @@ export interface ConnectionSnapshot {
   kind: 'starting' | 'recovering' | 'offline' | 'remote' | 'local' | 'resident' | 'cloud'; name: string;
   /** A resident start is in progress; the dialog may close and the start continues (P-43). */
   residentStarting?: boolean;
+  /** Connection work that keeps the foreground setup usable. */
+  backgroundWork?: boolean;
   residentRecoveryReason?: ResidentRecoveryReason;
   residentRecovery?: ResidentRecoveryView;
   session: VerifiedSession | null; agents: CloudAgent[];
@@ -831,9 +833,10 @@ let residentStartInBackground = false;
 async function work(message: string, action: (signal: AbortSignal) => Promise<void>, background = false, openOnError = false, preserveError = false) {
   if (operation) return;
   const controller = new AbortController(); signInReadinessOwner = null; operation = controller; residentStartInBackground = background;
-  update({ busy: true, ...(background ? {} : { open: true }), message, error: preserveError ? state.error : '' });
+  update({ busy: true, backgroundWork: background, ...(background ? {} : { open: true }), message, error: preserveError ? state.error : '' });
   try { await action(controller.signal); }
   catch (error) {
+    if(operation!==controller)return;
     const recovery=residentRecoveryReason(error);if(recovery&&!active)update({residentRecoveryReason:recovery});
     if(controller.signal.aborted&&(!state.open||error===controller.signal.reason)){update({error:'',message:''});return;}
     if(background&&!openOnError&&!state.open){update({error:errorMessage(error),message:''});return;}
@@ -846,7 +849,31 @@ async function work(message: string, action: (signal: AbortSignal) => Promise<vo
   }
   // A resident start ends with its operation, in one update: setup shown behind the start never
   // sees a still-busy connection that is no longer starting.
-  finally { if (operation === controller) { operation = null; residentStartInBackground = false; } update({ busy: false, residentStarting: false, ...(background&&!state.open?{message:''}:{}) }); runQueuedResidentRebind(); runQueuedSignInReturn(); }
+  finally { if (operation === controller) {
+    operation = null; residentStartInBackground = false;
+    update({ busy: false, backgroundWork: false, residentStarting: false, ...(background&&!state.open?{message:''}:{}) });
+    runQueuedResidentRebind(); runQueuedSignInReturn(); scheduleResidentAutoRetry();
+  } }
+}
+/** Only an explicitly failed native start is retried. Credential writes and uncertain enrollment
+ * have no retry classification; current epoch and recovery admission are checked again at firing. */
+const RESIDENT_AUTO_RETRY_MS = [3000, 10000, 30000, 60000];
+let residentAutoRetries = 0, residentAutoRetry: ReturnType<typeof setTimeout> | undefined;
+let residentAutoRetryEpoch: number | undefined;
+function residentAutoRetryEligible() {
+  return residentAlwaysPresent && isAndroid && !testMocksEnabled && !active && !operation &&
+    state.kind === 'recovering' && !state.residentRecoveryReason && residentAutoRetryEpoch === epoch;
+}
+function scheduleResidentAutoRetry() {
+  if (active) { residentAutoRetries = 0; residentAutoRetryEpoch = undefined; return; }
+  if (!residentAutoRetryEligible() || residentAutoRetry || residentAutoRetries >= RESIDENT_AUTO_RETRY_MS.length) return;
+  const ownerEpoch = epoch;
+  residentAutoRetry = setTimeout(() => {
+    residentAutoRetry = undefined;
+    if (epoch !== ownerEpoch || !residentAutoRetryEligible()) return;
+    residentAutoRetries++;
+    void ensureResident();
+  }, RESIDENT_AUTO_RETRY_MS[residentAutoRetries]);
 }
 /** Start (or restart) the resident. A failure leaves the `recovering` state with a Retry, never "no agent". */
 async function startResident(message = RESIDENT_STARTING, background = true) {
@@ -1246,6 +1273,7 @@ async function restoreOwnProviderCloudServices():Promise<void>{
 }
 /** `admitted`: the admission a sign-in just made for this start (residentSignedIn); otherwise it is read here. */
 async function connectResident(signal: AbortSignal, admitted?: ResidentAdmission) {
+  residentAutoRetryEpoch = undefined;
   // A new admission retires a network return still waiting from an earlier one; a sign-in's own
   // start keeps one lost during that sign-in (residentSignedIn retired the earlier one) while the
   // provider read below keeps the provider class.
@@ -1272,8 +1300,10 @@ async function connectResident(signal: AbortSignal, admitted?: ResidentAdmission
   if (!await localAgentPackaged()) throw new Error(RESIDENT_UNPACKAGED);
   signal.throwIfAborted();
   const client = new LocalAgentProtocol();
+  const startEpoch = epoch;
   const { session, name } = await client.connect(signal).catch(error => {
     residentStartFailure = errorMessage(error);
+    if(!signal.aborted && epoch === startEpoch && (error as {code?:unknown}|null)?.code === 'start-failed') residentAutoRetryEpoch = epoch;
     throw error;
   });
   residentStartFailure = '';
@@ -2486,7 +2516,7 @@ export const connectionController = {
   async startDevelopment(profile:DevelopmentProfile){if(!devSurfacesEnabled)return;await work('Starting development agent…',signal=>connectDevelopment(profile,signal));},
   async saveDevelopment(profile:DevelopmentProfile,reply:string){if(!devSurfacesEnabled)return;await work('Saving development reply…',async signal=>{await saveDevelopmentReply(profile,reply,signal);update({message:'Development reply saved.'});});},
   async reviewRecovery() {
-    if(operation||state.residentRecoveryReason!=='ipc-recovery-retention-limit'||state.session)return;
+    if(operation||document.hidden||state.residentRecoveryReason!=='ipc-recovery-retention-limit'||state.session)return;
     await work('Checking recovery…',async signal=>{
       update({residentRecovery:{step:'reviewing'}});
       try{const review=await reviewLocalRecovery();signal.throwIfAborted();update({message:'',residentRecovery:review.status==='reviewable'?{step:'review',review}:{step:'unavailable'}});}
@@ -2503,7 +2533,7 @@ export const connectionController = {
   },
   cancelRecoveryReview(){if(!operation)update({residentRecovery:undefined});},
   async confirmRecovery() {
-    if(operation||state.residentRecoveryReason!=='ipc-recovery-retention-limit'||state.residentRecovery?.step!=='review'||state.session)return;
+    if(operation||document.hidden||state.residentRecoveryReason!=='ipc-recovery-retention-limit'||state.residentRecovery?.step!=='review'||state.session)return;
     const review=state.residentRecovery.review;let archived=false;
     await work('Restarting Alpha…',async signal=>{
       update({residentRecovery:{step:'archiving'}});

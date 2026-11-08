@@ -50,6 +50,9 @@ private static final class ResidentAttachDiagnostic {
  private static volatile long credentialMutationEpoch=-1;
  private static long credentialShutdownRequest=-1;
  private static long credentialShutdownRetryEpoch=-1;
+ // The stop request of a commit that threw: its write may or may not have landed. Starts stay
+ // fenced, and the owner's Start/Retry reissues strict teardown (retryCredentialShutdown).
+ private static long uncertainCommitRequest=-1;
  private static String startRequestId;
  private static long startRequestEpoch;
  private static boolean startOwnsLaunch;
@@ -74,8 +77,13 @@ private static final class ResidentAttachDiagnostic {
    return read.call();
   }}
  }
+ /** Vault before lifecycle can deadlock against any writer; fail fast instead. */
+ private static void requireLockOrder(){
+  if(Thread.holdsLock(ai.eliza.plugins.securestore.nativeonly.JsonCredentialSlots.LOCK)&&!Thread.holdsLock(lifecycleLock))throw new IllegalStateException("lock order");
+ }
  /** Noncritical slots share the canonical lock order without changing credential authority. */
  static <T> T withCredentialSlotMutation(Runnable guard,java.util.concurrent.Callable<T> commit)throws Exception{
+  requireLockOrder();
   synchronized(lifecycleLock){synchronized(ai.eliza.plugins.securestore.nativeonly.JsonCredentialSlots.LOCK){
    guard.run();return commit.call();
   }}
@@ -191,7 +199,9 @@ private static final class ResidentAttachDiagnostic {
  private void rejectPending(PluginCall call,String message){synchronized(lifecycleLock){if(pending.remove(call))call.reject(message);}}
 
  private static final class Superseded extends Exception {}
- private static void clearEnrollment(){AlphaCanonicalNotifications.stop();rootToken=null;ownerToken=null;ownerIdentity=null;notificationAgent=null;expiresAt=0;}
+ // Owner, provider and account changes retire shade notices first (AlphaCanonicalNotifications.forget);
+ // start, cancel, 401 and destroy keep the same owner, so its posted notices stay.
+ private static void clearEnrollment(){AlphaCanonicalNotifications.suspendForRestart();rootToken=null;ownerToken=null;ownerIdentity=null;notificationAgent=null;expiresAt=0;}
  static long currentCredentialIntent(){return credentialIntents.current();}
  static long reserveCredentialIntent(){return credentialIntents.reserve();}
  static void requireCredentialIntent(long intent){credentialIntents.require(intent);}
@@ -201,6 +211,7 @@ private static final class ResidentAttachDiagnostic {
  }
  /** Slot classification/commit are atomic; observing shutdown must never hold the vault lock. */
  static <T> T mutateCredentials(Context context,Runnable assertOwner,CredentialMutation<T> mutation)throws Exception {
+  requireLockOrder();
   final long epoch;
   synchronized(lifecycleLock){
    assertOwner.run();
@@ -231,11 +242,16 @@ private static final class ResidentAttachDiagnostic {
     Thread.sleep(50);
    }
   }catch(Throwable failure){
-   // Only the commit follows commitAttempted, so a failure after it is an uncertain write.
+   // Only the commit follows commitAttempted. A failure after it may be a written slot or a refusal
+   // before any write (a changed or expired credential); both keep the fence until the owner retries.
    commitFailed=commitAttempted;throw failure;
   }finally{
    synchronized(lifecycleLock){
-    if(stopRequest>=0){if(!commitAttempted)ElizaAgentService.abandonCredentialShutdown(stopRequest);else if(!commitFailed)ElizaAgentService.releaseCredentialShutdown(stopRequest);}
+    if(stopRequest>=0){
+     if(!commitAttempted)ElizaAgentService.abandonCredentialShutdown(stopRequest);else if(!commitFailed)ElizaAgentService.releaseCredentialShutdown(stopRequest);
+     // This request superseded any earlier uncertain one in the lease.
+     uncertainCommitRequest=commitFailed?stopRequest:-1;
+    }
     if(credentialMutationEpoch==epoch)credentialMutationEpoch=-1;
    }
   }
@@ -489,21 +505,29 @@ private static final class ResidentAttachDiagnostic {
    provider=saved==null?null:new JSONObject(saved);
    cloudSaved=provider!=null&&("elizacloud".equals(provider.optString("provider"))||provider.has("cloudServices"))?new AlphaCredentialStore(context).readCredentialSlot("cloud:production"):null;
   }catch(Exception unreadable){saved=null;provider=null;cloudSaved=null;}
-  // Shared provider admission and native embedding order. Keep the verified
-  // product module independently of credential availability for Alpha identity.
-  if(!NativeProviderSlot.applyLaunchEnvironment(BuildConfig.ELIZA_RUNTIME_PROFILE,provider,cloudSaved,new File(context.getApplicationInfo().nativeLibraryDir),context.getFilesDir(),env,System.currentTimeMillis())){provider=null;saved=null;cloudSaved=null;}
-  if(google!=null&&google.isFile())env.put("ELIZA_NATIVE_GOOGLE_HOST_MODULE",google.getCanonicalPath());
+  // The Cloud Google binding is decided before the shared launch: a stripped, legacy or changed
+  // admission is not a lifecycle race, so the resident launches unbound instead (P-43).
+  java.util.Map<String,String> googleBinding=null;
   if(provider!=null&&("elizacloud".equals(provider.optString("provider"))||provider.has("cloudServices"))){
    if(google==null||!google.isFile())throw new java.io.IOException("Native Cloud routing module unavailable");
-   {
-    JSONObject binding=LocalAgentProviderAdmission.applyManagedGoogleEnvironment(saved,cloudSaved,env,System.currentTimeMillis());
+   try{
+    googleBinding=new java.util.HashMap<>();
+    JSONObject binding=LocalAgentProviderAdmission.applyManagedGoogleEnvironment(saved,cloudSaved,googleBinding,System.currentTimeMillis());
     if(binding!=null){
     JSONObject current=new AlphaCredentialStore(context).providerAdmissionSnapshot();
     if(!binding.getString("accountRef").equals(current.getString("accountRef"))||!binding.getString("sessionGeneration").equals(current.getString("sessionGeneration"))||!LocalAgentProviderAdmission.sameCloudCredential(cloudSaved,new AlphaCredentialStore(context).readCredentialSlot("cloud:production")))throw new SecurityException("Native Google provider changed");
-    env.put("ELIZA_NATIVE_GOOGLE_BINDING_JSON",binding.toString());
+    googleBinding.put("ELIZA_NATIVE_GOOGLE_BINDING_JSON",binding.toString());
     }
+   }catch(Exception unbindable){
+    android.util.Log.w("AlphaLocalAgent","provider-unbound "+unbindable.getClass().getSimpleName());
+    googleBinding=null;provider=null;saved=null;cloudSaved=null;
    }
   }
+  // Shared provider admission and native embedding order. Keep the verified
+  // product module independently of credential availability for Alpha identity.
+  if(!NativeProviderSlot.applyLaunchEnvironment(BuildConfig.ELIZA_RUNTIME_PROFILE,provider,cloudSaved,new File(context.getApplicationInfo().nativeLibraryDir),context.getFilesDir(),env,System.currentTimeMillis())){provider=null;saved=null;cloudSaved=null;googleBinding=null;}
+  if(google!=null&&google.isFile())env.put("ELIZA_NATIVE_GOOGLE_HOST_MODULE",google.getCanonicalPath());
+  if(googleBinding!=null)env.putAll(googleBinding);
   // The agent process has no /etc/localtime on Android and would run in UTC; calendar dates and
   // "tomorrow at 3pm" resolve in the process zone when no owner resolver is registered.
   env.put("TZ",java.util.TimeZone.getDefault().getID());
@@ -532,9 +556,7 @@ private static final class ResidentAttachDiagnostic {
   final long retryEpoch,retryIntent;
   synchronized(lifecycleLock){
    if(credentialShutdownRetryEpoch>=0){call.reject("Provider shutdown is already being checked; wait before retrying.");return true;}
-   // An ordinary refused stop also latches stopping, without a credential request.
-   // Only a new Start/Retry request enters this existing strict owner/absence recheck.
-   if((credentialShutdownRequest==-1&&!stopping)||(credentialShutdownRequest>=0&&ElizaAgentService.isCredentialShutdownConfirmed(credentialShutdownRequest)))return false;
+   if(!shutdownRetryRequired())return false;
    if(disposed||getActivity()==null||!getActivity().hasWindowFocus()){call.reject("Return to the app before retrying provider shutdown.");return true;}
    if(credentialMutationEpoch>=0){call.reject("Provider shutdown is already being checked; wait before retrying.");return true;}
    if(requestId!=null&&cancelledStarts.remove(requestId)){call.reject("Local startup cancelled");return true;}
@@ -563,7 +585,8 @@ private static final class ResidentAttachDiagnostic {
     synchronized(lifecycleLock){
      requireShutdownRetry(call,retryEpoch,retryIntent);
      if(credentialShutdownRequest!=stopRequest||!ElizaAgentService.isCredentialShutdownConfirmed(stopRequest))throw new Superseded();
-     credentialShutdownRequest=-1;credentialShutdownRetryEpoch=-1;stopping=false;accepting=true;pending.remove(call);
+     // The new confirmed stop superseded an uncertain commit's request in the lease.
+     credentialShutdownRequest=-1;uncertainCommitRequest=-1;credentialShutdownRetryEpoch=-1;stopping=false;accepting=true;pending.remove(call);
     }
     // Exact continuation epoch rejects cancellation/account changes between acknowledgment and start.
     startAfterShutdown(call,retryEpoch,retryIntent);
@@ -577,6 +600,13 @@ private static final class ResidentAttachDiagnostic {
   },()->{synchronized(lifecycleLock){if(credentialShutdownRetryEpoch==retryEpoch)credentialShutdownRetryEpoch=-1;if(pending.remove(call))call.reject("Local agent bridge is closed.");}});
   return true;
  }
+ /** Caller holds lifecycleLock. An ordinary refused stop also latches stopping, without a credential
+  * request; an uncertain commit leaves its stop fenced. Only a new Start/Retry request enters the
+  * strict owner/absence recheck. */
+ static boolean shutdownRetryRequired(){
+  if(uncertainCommitRequest>=0)return true;
+  return !((credentialShutdownRequest==-1&&!stopping)||(credentialShutdownRequest>=0&&ElizaAgentService.isCredentialShutdownConfirmed(credentialShutdownRequest)));
+ }
  /** Caller holds lifecycleLock. Never lets focus loss or another intent authorize this retry. */
  private void requireShutdownRetry(PluginCall call,long epoch,long intent)throws Superseded {
   if(disposed||!credentialIntents.isCurrent(intent)||epoch!=lifecycleEpoch||credentialShutdownRetryEpoch!=epoch||credentialMutationEpoch>=0||!pending.contains(call)
@@ -586,7 +616,8 @@ private static final class ResidentAttachDiagnostic {
   String requestId=call.getString("requestId");
   if(requestId!=null&&!requestId.matches("[a-f0-9-]{36}")){call.reject("Invalid startup request");return;}
   if(retryCredentialShutdown(call,requestId))return;
-  startAfterShutdown(call,-1,-1);
+  // Boot state reads take the service's processLock; never on the shared Capacitor thread.
+  PluginWorkers.submit(workers,()->startAfterShutdown(call,-1,-1),()->call.reject("Local agent bridge is closed."));
  }
  private void startAfterShutdown(PluginCall call,long continuationEpoch,long continuationIntent) {
   String requestId=call.getString("requestId");
@@ -652,12 +683,22 @@ private static final class ResidentAttachDiagnostic {
     return;
    }
    PluginWorkers.submit(workers,()->{
-    long deadline=android.os.SystemClock.elapsedRealtime()+90000;
+    long launched=android.os.SystemClock.elapsedRealtime(),deadline=launched+START_DEADLINE_MS;
     boolean ready=false;
     while(android.os.SystemClock.elapsedRealtime()<deadline){
-     try{if(rejectStartupRefusal(call,epoch,ElizaAgentService.getLocalAgentBootState(getContext())))return;String root=ElizaAgentService.localAgentToken();if(root==null||root.isEmpty())throw new IllegalStateException();authenticatedStatus(epoch,root);ready=true;break;}
+     long pause=1000;
+     try{
+      JSONObject boot=ElizaAgentService.getLocalAgentBootState(getContext());
+      if(rejectStartupRefusal(call,epoch,boot))return;
+      // A launch the service already reports as ended fails now, not at the deadline. The first
+      // seconds may still show the previous process's state.
+      if(android.os.SystemClock.elapsedRealtime()-launched>=3000&&startFailed(boot)){android.util.Log.w("AlphaLocalAgent","start-failed "+boot.optString("reason"));rejectStartFailed(call,epoch);return;}
+      // Once the request socket listens, readiness is close: poll it closely.
+      if(boot.optBoolean("socketListening"))pause=200;
+      String root=ElizaAgentService.localAgentToken();if(root==null||root.isEmpty())throw new IllegalStateException();authenticatedStatus(epoch,root);ready=true;break;
+     }
      catch(Superseded stale){rejectSuperseded(call);return;}
-     catch(Exception unavailable){try{Thread.sleep(1000);}catch(InterruptedException interrupted){Thread.currentThread().interrupt();break;}}
+     catch(Exception unavailable){try{Thread.sleep(pause);}catch(InterruptedException interrupted){Thread.currentThread().interrupt();break;}}
     }
     if(ready){
      // Never poll enrollment: a failed response may follow a committed pairing POST.
@@ -665,9 +706,26 @@ private static final class ResidentAttachDiagnostic {
      catch(Superseded stale){rejectSuperseded(call);return;}
      catch(Exception uncertain){rejectPending(call,"Local enrollment did not complete. Check runtime status before reconnecting.");return;}
     }
-    rejectPending(call,"Local agent startup did not complete. Check runtime status; no chat was sent.");
+    rejectStartFailed(call,epoch);
    },()->rejectPending(call,"Local agent bridge is closed."));
-  }catch(Exception error){synchronized(lifecycleLock){pending.remove(call);}call.reject("The on-device agent could not start. Try again or connect another agent.");}
+  }catch(Exception error){synchronized(lifecycleLock){pending.remove(call);}call.reject(START_FAILED);}
+ }
+ /** The service keeps a launch alive for its boot grace (ElizaAgentService.AGENT_BOOT_GRACE_MS,
+  * 120 s); the start call waits as long before it reports failure. */
+ private static final long START_DEADLINE_MS=120000;
+ static final String START_FAILED="Your agent couldn't start. Try again.";
+ /** A terminal boot state no retry within this launch can change; watchdog restarts are "restarting". */
+ static boolean startFailed(JSONObject boot){
+  if(!"dead".equals(boot.optString("state")))return false;
+  String reason=boot.optString("reason");
+  return reason.endsWith("-failed")||"fatal".equals(reason)||reason.startsWith("agent exited:")||reason.startsWith("missing-");
+ }
+ /** This launch ended or timed out: cancelStart no longer owns it. */
+ private void rejectStartFailed(PluginCall call,long epoch){
+  synchronized(lifecycleLock){
+   if(startRequestEpoch==epoch){startRequestId=null;startOwnsLaunch=false;}
+   if(pending.remove(call))call.reject(START_FAILED,"start-failed");
+  }
  }
  /** Only the current startup caller may retire a launch it created; reused services are never stopped here. */
  @PluginMethod public void cancelStart(PluginCall call) {
@@ -728,7 +786,8 @@ private static final class ResidentAttachDiagnostic {
   },()->rejectPending(call,"Recovery is unavailable right now. Your records were kept."));
  }
  @PluginMethod public void getStatus(PluginCall call) {
-  try{
+  // Boot state reads take the service's processLock, held across asset extraction.
+  PluginWorkers.submit(workers,()->{try{
    boolean packaged=runtimePackaged();
    for(int attempt=0;attempt<3;attempt++){
     final long observedEpoch;
@@ -746,7 +805,7 @@ private static final class ResidentAttachDiagnostic {
     }
    }
    call.reject("Local runtime changed while checking status; check again.");
-  }catch(Exception error){call.reject("Local runtime status unavailable.");}
+  }catch(Exception error){call.reject("Local runtime status unavailable.");}},()->call.reject("Local agent bridge is closed."));
  }
  /** Updater owns a service shutdown lease; no vault/lifecycle monitor is held during the wait. */
  static long pauseForUpdate(Context context){
