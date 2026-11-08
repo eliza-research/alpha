@@ -151,7 +151,10 @@ export function installPrototypeCameraAdapter(_Component: unknown, views: Record
   let duration = 0;
   let video: HTMLVideoElement | undefined, videoId = '';
   function closeVideo() { if (video) { video.pause(); video.removeAttribute('src'); video.load(); video.remove(); } video = undefined; videoId = ''; }
-  let captures: SavedPhoto[] = [];
+  // The grid keeps a bounded window of loaded pages; newest is the first page (plus captures since)
+  // and backs the last-capture thumbnail, so paging far back never evicts it.
+  let captures: SavedPhoto[] = [], newest: SavedPhoto[] = [];
+  const changeCaptures=(change:(rows:SavedPhoto[])=>SavedPhoto[])=>{captures=change(captures);newest=change(newest);};
   let photosApi: Bag | undefined, loaded = false, loading = false, next = '', libraryEpoch = 0;
   let libraryAccess:LibraryAccess|undefined,requestingLibraryAccess=false,libraryQuery='';
   const permittedLibrary=()=>!browserMode&&!!libraryAccess&&libraryAccess.scope!=='denied';
@@ -283,6 +286,7 @@ export function installPrototypeCameraAdapter(_Component: unknown, views: Record
       if (disposed || token !== libraryEpoch) return;
       const rows = result.items.map(normalize);
       captures = more ? [...captures, ...rows.filter(row => !captures.some(old => old.id === row.id))] : rows;
+      if (!more && !libraryQuery) newest = rows; // a search page is not the newest capture
       if(permittedLibrary())captures=captures.slice(-240);
       next = result.next; loaded = true; loading = false;
       photosApi?.set({ nativeLibraryError: '', nativeCaptureRevision: token });
@@ -320,8 +324,8 @@ export function installPrototypeCameraAdapter(_Component: unknown, views: Record
       const verified=receipt.outcomes.filter(row=>row.item),changed=verified.filter(row=>row.status!=='unchanged');
       const successful=new Set(verified.map(row=>'native-camera-'+row.id));
       ++libraryEpoch;++trashEpoch;albumKey='';++albumEpoch;
-      captures=captures.filter(row=>!successful.has(row.id));trash=trash.filter(row=>!successful.has(row.id));
-      for(const row of verified){const before=chosen.find(item=>nativeId(item.id)===row.id);const item={...before,...normalize(row.item!)};if(item.trashed)trash.unshift(item);else captures.unshift(item);}
+      changeCaptures(rows=>rows.filter(row=>!successful.has(row.id)));trash=trash.filter(row=>!successful.has(row.id));
+      for(const row of verified){const before=chosen.find(item=>nativeId(item.id)===row.id);const item={...before,...normalize(row.item!)};if(item.trashed)trash.unshift(item);else changeCaptures(rows=>[item,...rows]);}
       if(owner.isActive()&&selection===selectionAtStart){
         selection=undoItems?undefined:chosen.filter(row=>!successful.has(row.id));if(!selection?.length)selection=undefined;
         owner.set({nativeMultiSelection:Date.now(),nativeCaptureRevision:Date.now()});
@@ -394,7 +398,7 @@ export function installPrototypeCameraAdapter(_Component: unknown, views: Record
     try {
       const result = normalize(await library.setFavorite({id:nativeId(row.id),revision:row.mutationRevision,favorite:!row.favorite}));
       if (disposed) return;
-      const updated = {...row,...result}; captures = captures.map(item=>item.id===row.id?updated:item);
+      const updated = {...row,...result}; changeCaptures(rows=>rows.map(item=>item.id===row.id?updated:item));
       const stillSelected = owner.isActive() && owner.get('photos').open === row.id;
       if (stillSelected) preview = updated;
       owner.set({...(stillSelected ? {nativePhotoSelection:captureSelection(updated)} : {}),nativeCaptureRevision:Date.now()});
@@ -428,7 +432,7 @@ export function installPrototypeCameraAdapter(_Component: unknown, views: Record
       if(snapshot.items){const receipt=await nativeLibrary.deletePermittedTrash({items:snapshot.items});result={deletedIds:[],skippedIds:[],failedIds:[]};for(const item of snapshot.items){const outcome=receipt.outcomes.find(row=>row.id===item.id);if(outcome?.status==='deleted')result.deletedIds.push(item.id);else if(outcome?.status==='stale')result.skippedIds.push(item.id);else result.failedIds.push(item.id);}}
       else result=await library.deletePreparedTrash({confirmation:snapshot.confirmation});
       if(disposed)return;
-      ++libraryEpoch;++trashEpoch;const deleted=new Set(result.deletedIds.map(id=>'native-camera-'+id));trash=trash.filter(row=>!deleted.has(row.id));captures=captures.filter(row=>!deleted.has(row.id));preview=undefined;
+      ++libraryEpoch;++trashEpoch;const deleted=new Set(result.deletedIds.map(id=>'native-camera-'+id));trash=trash.filter(row=>!deleted.has(row.id));changeCaptures(rows=>rows.filter(row=>!deleted.has(row.id)));preview=undefined;
       const remaining=result.skippedIds.length+result.failedIds.length;
       selection=selection?.filter(row=>!deleted.has(row.id));if(!selection?.length)selection=undefined;owner.set({sheet:null,open:null,nativePhotoSelection:null,nativeTrashMutationStatus:remaining?`${result.deletedIds.length} deleted. ${remaining} changed or could not be deleted; review the remaining items.`:''});
       owner.toast(remaining?'Some items were not deleted.':`${result.deletedIds.length} ${result.deletedIds.length===1?'item':'items'} deleted forever`);
@@ -458,9 +462,9 @@ export function installPrototypeCameraAdapter(_Component: unknown, views: Record
     try {
       const result = normalize(await library.setTrashed({ id: nativeId(row.id), revision: row.mutationRevision, trashed: desired }));
       if (disposed) return;
-      ++libraryEpoch; ++trashEpoch; captures = captures.filter(item => item.id !== row.id); trash = trash.filter(item => item.id !== row.id);
+      ++libraryEpoch; ++trashEpoch; changeCaptures(rows => rows.filter(item => item.id !== row.id)); trash = trash.filter(item => item.id !== row.id);
       if (desired) trash.unshift({ ...row, ...result });
-      else captures.unshift({ ...row, ...result });
+      else { const restored = { ...row, ...result }; changeCaptures(rows => [restored, ...rows]); }
       preview = undefined; retirePhotoRead();
       owner.set({ open: null, nativePhotoSelection: null, sheet: null, sel: null, nativeCaptureRevision: Date.now() });
       owner.toast(desired ? 'Moved to Recently deleted' : 'Restored', desired ? { undo: () => { void changeTrash({ ...row, ...result }, false, owner); } } : undefined);
@@ -600,7 +604,7 @@ export function installPrototypeCameraAdapter(_Component: unknown, views: Record
     if (!id || !/^\d+$/.test(id)) throw new Error('Missing video identity');
     const item = normalize(await library.read({ id: 'v:' + id }));
     if (disposed) return;
-    captures = [item, ...captures.filter(row => row.id !== item.id)]; loaded = false;
+    changeCaptures(rows => [item, ...rows.filter(row => row.id !== item.id)]); loaded = false;
     api?.setView('photos', { nativeCaptureRevision: item.id });
     message('');
   }
@@ -627,7 +631,7 @@ export function installPrototypeCameraAdapter(_Component: unknown, views: Record
     if (!mediaId || !/^\d+$/.test(mediaId)) throw new Error('Missing MediaStore identity');
     const item: SavedPhoto = { id: 'native-camera-' + mediaId, image: 'data:image/jpeg;base64,' + photo.base64, width: photo.width, height: photo.height, date: Date.now(), revision: 'captured' };
     if (disposed) return item;
-    captures = [item, ...captures.filter(row => row.id !== item.id)];
+    changeCaptures(rows => [item, ...rows.filter(row => row.id !== item.id)]);
     loaded = false;
     if(showSaved)owner.setView('photos', { nativeCaptureRevision: item.id });
     else owner.set({nativeCaptureRevision:item.id});
@@ -698,7 +702,7 @@ export function installPrototypeCameraAdapter(_Component: unknown, views: Record
   async function keepScan(photo:Photo,operationId:string,signal:AbortSignal,owner:Bag):Promise<CameraKeepOutcome>{
     if(browserMode){
       const row=await importBrowserPhoto({original:new File([],'scan.jpg',{type:'image/jpeg'}),image:'data:image/jpeg;base64,'+photo.base64,width:photo.width,height:photo.height},signal);
-      captures=[normalize(row),...captures.filter(item=>nativeId(item.id)!==row.id)];loaded=false;owner.setView('photos',{nativeCaptureRevision:row.id});
+      changeCaptures(rows=>[normalize(row),...rows.filter(item=>nativeId(item.id)!==row.id)]);loaded=false;owner.setView('photos',{nativeCaptureRevision:row.id});
       return {status:'saved',id:row.id,message:'Photo kept in Photos in this browser.'};
     }
     const result=await library.keepCapture({dataBase64:photo.base64,operationId});
@@ -722,7 +726,7 @@ export function installPrototypeCameraAdapter(_Component: unknown, views: Record
     cancelScan();const owner=api,token=session.token();
     closeScan=openCameraImageImport(async(image,signal)=>{
       if(!session.current(token))throw Error('Camera closed.');const row=await importBrowserPhoto(image,signal);loaded=false;
-      if(session.current(token)){captures=[normalize(row),...captures.filter(item=>nativeId(item.id)!==row.id)];owner.setView('photos',{nativeCaptureRevision:row.id});message('');}
+      if(session.current(token)){changeCaptures(rows=>[normalize(row),...rows.filter(item=>nativeId(item.id)!==row.id)]);owner.setView('photos',{nativeCaptureRevision:row.id});message('');}
     },image=>{
       if(!session.current(token))return;
       closeScan=openScanReview(image,(text,id)=>owner.saveScannedNote?.(text,id)??Promise.resolve(false),draft=>{if(disposed||!active())return false;return owner.reviewScannedCalendarDraft?.(draft)??false;},'selected');
@@ -798,10 +802,11 @@ export function installPrototypeCameraAdapter(_Component: unknown, views: Record
     data.vfClick = (event: MouseEvent) => { if (event.detail === 0) void control(() => camera.setFocusPoint({ x: 0.5, y: 0.5 }), () => message('')); }; // Keyboard and accessibility activation has no pointer: focus the centre.
     data.modes = (data.modes || []).map((m: Bag) => ({ ...m, pick: () => { if (session.recording || session.recordingStarting || session.finalizing || session.capturing) return; const mode = m.label.toLowerCase(); if (['photo','video','scan'].includes(mode)){cancelScan();currentApi.set({ mode, rec: false, found: false });if(mode==='scan')message('Hold text steady, then tap Scan text. English recognition runs locally.');} } }));
     data.ask = () => { if(!askCameraFrame(currentApi))message(session.phase==='ready'?'Finish the current capture, then ask again.':'Start the camera to ask about what it sees.'); };
-    data.lastLabel=captures[0]?.kind==='video'?'Open last video':'Open last photo';
-    if (captures[0]) {
-      data.hasLast = true; data.noLast = false; data.lastBg = `url("${captures[0].image}") center / cover no-repeat`; data.lastTf = ''; data.lastFlt = '';
-      data.openLast = () => { currentApi.open('photos', {tab:'lib',album:null,open:captures[0].id,chrome:true,nativePhotoSelection:null}); };
+    const last=newest[0];
+    data.lastLabel=last?.kind==='video'?'Open last video':'Open last photo';
+    if (last) {
+      data.hasLast = true; data.noLast = false; data.lastBg = `url("${last.image}") center / cover no-repeat`; data.lastTf = ''; data.lastFlt = '';
+      data.openLast = () => { currentApi.open('photos', {tab:'lib',album:null,open:last.id,chrome:true,nativePhotoSelection:null}); };
     } else { data.hasLast = false; data.noLast = true; data.openLast = () => message('Take a photo first.'); }
     return data;
   };
@@ -822,7 +827,7 @@ export function installPrototypeCameraAdapter(_Component: unknown, views: Record
     data.libraryAccessLabel=libraryAccess?.scope==='full'?'All permitted photos and videos':libraryAccess?.scope==='selected'?'Selected photos and videos':libraryAccess?.scope==='partial'?`Photos: ${libraryAccess.images}; videos: ${libraryAccess.videos}`:'Only photos and videos saved by Alpha';
     data.libraryAccessBusy=requestingLibraryAccess;
     data.libraryAccessNeedsChoice=libraryAccess?.scope!=='full';data.libraryAccessButton='Choose photo access';
-    data.libraryAccessChoose=async()=>{if(requestingLibraryAccess)return;requestingLibraryAccess=true;currentApi.set({nativeLibraryAccessRevision:Date.now()});try{libraryAccess=await nativeLibrary.requestLibraryAccess();retirePhotoRead();captures=[];preview=undefined;next='';loaded=false;cancelEdit();closeVideo();currentApi.set({open:null,nativePhotoSelection:null});await refresh();}catch{currentApi.toast('Photo access could not open. You can review it in Android settings.');}finally{requestingLibraryAccess=false;currentApi.set({nativeLibraryAccessRevision:Date.now()});}};
+    data.libraryAccessChoose=async()=>{if(requestingLibraryAccess)return;requestingLibraryAccess=true;currentApi.set({nativeLibraryAccessRevision:Date.now()});try{libraryAccess=await nativeLibrary.requestLibraryAccess();retirePhotoRead();captures=[];newest=[];preview=undefined;next='';loaded=false;cancelEdit();closeVideo();currentApi.set({open:null,nativePhotoSelection:null});await refresh();}catch{currentApi.toast('Photo access could not open. You can review it in Android settings.');}finally{requestingLibraryAccess=false;currentApi.set({nativeLibraryAccessRevision:Date.now()});}};
     data.searchPlaceholder=permittedLibrary()?'Filename in permitted library':'People, places, days';
     data.copyRecovery=browserMode&&!!st.nativeCopyRecovery;data.openCopyRecovery=()=>void openCopyRecovery(currentApi);
     if (!trashLoaded && !trashLoading && !st.nativeTrashError && libraryAvailable()) queueMicrotask(() => { void loadTrash(currentApi); });
@@ -942,11 +947,11 @@ export function installPrototypeCameraAdapter(_Component: unknown, views: Record
   const schedule = () => { if (!queued && !disposed) { queued = true; requestAnimationFrame(sync); } };
   const observer = new MutationObserver(schedule); observer.observe(document.body, { childList: true, subtree: true });
   const resize = () => { if (session.phase === 'ready') mask(true); schedule(); };
-  const visibility = () => { if (document.hidden) { retirePhotoRead();watchLibrary(false);cancelEdit();closeVideo();if(permittedLibrary()){++libraryEpoch;captures=[];albumRows=[];trash=[];albumNext='';trashNext='';albumKey='';counts=undefined;++countsEpoch;countsBusy=false;++albumsEpoch;albumsBusy=false;albumsLoaded=false;customAlbums=[];++albumEpoch;++trashEpoch;preview=undefined;selection=undefined;next='';loaded=false;photosApi?.set({open:null,nativePhotoSelection:null,nativeCaptureRevision:Date.now()});}void stop(); } else { loaded = false; if (photosApi?.isActive()) void refresh(); schedule(); } };
+  const visibility = () => { if (document.hidden) { retirePhotoRead();watchLibrary(false);cancelEdit();closeVideo();if(permittedLibrary()){++libraryEpoch;captures=[];newest=[];albumRows=[];trash=[];albumNext='';trashNext='';albumKey='';counts=undefined;++countsEpoch;countsBusy=false;++albumsEpoch;albumsBusy=false;albumsLoaded=false;customAlbums=[];++albumEpoch;++trashEpoch;preview=undefined;selection=undefined;next='';loaded=false;photosApi?.set({open:null,nativePhotoSelection:null,nativeCaptureRevision:Date.now()});}void stop(); } else { loaded = false; if (photosApi?.isActive()) void refresh(); schedule(); } };
   let libraryChangeHandle:{remove():Promise<void>}|undefined;
   function invalidateLibrary(preserveViewer=false){
     retirePhotoRead();
-    ++libraryEpoch;captures=[];albumRows=[];trash=[];albumNext='';trashNext='';albumKey='';counts=undefined;++countsEpoch;countsBusy=false;++albumsEpoch;albumsBusy=false;albumsLoaded=false;customAlbums=[];++albumEpoch;++trashEpoch;selection=undefined;next='';loaded=false;
+    ++libraryEpoch;captures=[];newest=[];albumRows=[];trash=[];albumNext='';trashNext='';albumKey='';counts=undefined;++countsEpoch;countsBusy=false;++albumsEpoch;albumsBusy=false;albumsLoaded=false;customAlbums=[];++albumEpoch;++trashEpoch;selection=undefined;next='';loaded=false;
     if(!preserveViewer){preview=undefined;cancelEdit();closeVideo();photosApi?.set({open:null,nativePhotoSelection:null,nativeCaptureRevision:Date.now()});}
     else photosApi?.set({nativePhotoSelection:null,nativeCaptureRevision:Date.now()});
     if(photosApi?.isActive()&&!document.hidden)void refresh();
@@ -981,6 +986,6 @@ export function installPrototypeCameraAdapter(_Component: unknown, views: Record
   const resumed=()=>{void restartAfterResume(()=>({denied:session.denied,phase:session.phase,disposed}),()=>cameraAccess.checkPermissions()).then(restart=>{if(restart){session.rearm();schedule();}});};
   let resumeHandle:{remove():Promise<void>}|undefined;
   void DailyApps.addListener('appResumed',resumed).then(handle=>{if(disposed)void handle.remove();else resumeHandle=handle;}).catch(()=>{});
-  return () => { if(requestedPhoto===takeRequestedPhoto)requestedPhoto=undefined;window.clearTimeout(noticeTimer);noticeGeneration++;watchLibrary(false);deviceLibrary.dispose();captureQuestion=undefined;void libraryChangeHandle?.remove();hideAccess();void resumeHandle?.remove();window.removeEventListener('alpha:albums-document-changed',albumsChanged);if(scanApi&&prototype.api===scanApi)prototype.api=originalApi;disposed = true;cancelEdit();endHold();selection=undefined; clearInterval(timer); closeVideo(); observer.disconnect(); document.removeEventListener('visibilitychange', visibility); window.removeEventListener('pagehide', pageHide); window.removeEventListener('resize', resize); void stop(); style.remove(); captures = []; module.render = render; module.onLeave = leave; module.back = cameraBack; if (views.photos) { views.photos.render = photosRender; views.photos.back = photosBack; views.photos.onLeave = photosLeave; } };
+  return () => { if(requestedPhoto===takeRequestedPhoto)requestedPhoto=undefined;window.clearTimeout(noticeTimer);noticeGeneration++;watchLibrary(false);deviceLibrary.dispose();captureQuestion=undefined;void libraryChangeHandle?.remove();hideAccess();void resumeHandle?.remove();window.removeEventListener('alpha:albums-document-changed',albumsChanged);if(scanApi&&prototype.api===scanApi)prototype.api=originalApi;disposed = true;cancelEdit();endHold();selection=undefined; clearInterval(timer); closeVideo(); observer.disconnect(); document.removeEventListener('visibilitychange', visibility); window.removeEventListener('pagehide', pageHide); window.removeEventListener('resize', resize); void stop(); style.remove(); captures = []; newest = []; module.render = render; module.onLeave = leave; module.back = cameraBack; if (views.photos) { views.photos.render = photosRender; views.photos.back = photosBack; views.photos.onLeave = photosLeave; } };
 
 }

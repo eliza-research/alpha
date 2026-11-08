@@ -1585,7 +1585,7 @@ function brPos(name) {
   try {
     var el = document.querySelector('[data-bk="' + name + '"]'); var sc = document.querySelector("[data-screen]"); var box = document.querySelector("[data-bscroll]");
     if (!el || !sc) return null;
-    var k = sc.getBoundingClientRect().width / 412;
+    var k = sc.getBoundingClientRect().width / (sc.offsetWidth || 412);
     if (box) { var br = box.getBoundingClientRect(), er = el.getBoundingClientRect(); var over = er.bottom - (br.bottom - 150 * k); if (over > 0) box.scrollTop += over / k; if (er.top < br.top + 60 * k) box.scrollTop -= (br.top + 60 * k - er.top) / k; }
     var r = el.getBoundingClientRect(), s = sc.getBoundingClientRect();
     return { cx: (r.left - s.left) / k + Math.min(r.width / k / 2, 70) - 11, cy: (r.top - s.top) / k + r.height / k / 2 - 11 };
@@ -1943,7 +1943,7 @@ registerView("camera", {
     var lastLook = last ? phLook(last, "thumb") : null;
     var poster = camPoster(now);
 
-    function pt(e) { var sc = e.currentTarget.closest("[data-screen]"); var r = sc.getBoundingClientRect(); var s = r.width / 412 || 1; return { x: (e.clientX - r.left) / s, y: (e.clientY - r.top) / s }; }
+    function pt(e) { var sc = e.currentTarget.closest("[data-screen]"); var r = sc.getBoundingClientRect(); var s = r.width / (sc.offsetWidth || 412) || 1; return { x: (e.clientX - r.left) / s, y: (e.clientY - r.top) / s }; }
     return {
       bg: bg, vfBg: isScan ? "linear-gradient(135deg, var(--alpha-scan-viewfinder-1), var(--alpha-scan-viewfinder-2))" : "var(--alpha-gray-11)",
       drift: "transform: translate(" + dr[0] + "px, calc(-50% + " + dr[1] + "px))",
@@ -2766,12 +2766,12 @@ registerView("maps", {
 
     /* map pan (release-based) */
     var mapDown = function (e) {
-      var sc = e.currentTarget.closest ? e.currentTarget.closest("[data-screen]") : null; var r = (sc || e.currentTarget).getBoundingClientRect(); var k = r.width / 412 || 1;
-      MAPS_DRAG = { on: true, x: e.clientX, y: e.clientY, k: k, px: (e.clientX - r.left) / k, py: (e.clientY - r.top) / k, t: MAPS_DRAG.t };
+      var sc = e.currentTarget.closest ? e.currentTarget.closest("[data-screen]") : null; var w = (sc && sc.offsetWidth) || 412; var r = (sc || e.currentTarget).getBoundingClientRect(); var k = r.width / w || 1;
+      MAPS_DRAG = { on: true, x: e.clientX, y: e.clientY, k: k, w: w, px: (e.clientX - r.left) / k, py: (e.clientY - r.top) / k, t: MAPS_DRAG.t };
     };
     var mapUp = function (e) {
       var d = MAPS_DRAG; if (!d.on) return; d.on = false;
-      if (d.px < 30 || d.px > 382 || d.py < 90 || d.py > 872) return;
+      if (d.px < 30 || d.px > d.w - 30 || d.py < 90 || d.py > 872) return;
       var dx = (e.clientX - d.x) / d.k, dy = (e.clientY - d.y) / d.k;
       if (Math.abs(dx) + Math.abs(dy) < 12) return;
       d.t = Date.now(); var p0 = api.get("maps").pan || { x: 0, y: 0 }; api.set({ pan: { x: p0.x + dx, y: p0.y + dy } });
@@ -5375,8 +5375,9 @@ class Component extends DCLogic {
   }
 
   /* ---- gestures ---- */
-  scale(el) { var sc = el && el.closest ? el.closest("[data-screen]") : null; var r = (sc || el).getBoundingClientRect(); return { r: r, s: r.width / 412 || 1 }; }
-  gDown(e) { if (e.target.closest?.("[data-alpha-transcript]")) { this.g = null; return; } var o = this.scale(e.currentTarget); this.g = { x: (e.clientX - o.r.left) / o.s, y: (e.clientY - o.r.top) / o.s, cx: e.clientX, cy: e.clientY, s: o.s, pull: pullStart(e.target) }; }
+  // Canvas pixels: the [data-screen] layout width (412 in portrait, wider in landscape) at its drawn size.
+  scale(el) { var sc = el && el.closest ? el.closest("[data-screen]") : null; var r = (sc || el).getBoundingClientRect(), w = (sc && sc.offsetWidth) || 412; return { r: r, s: r.width / w || 1, w: w }; }
+  gDown(e) { if (e.target.closest?.("[data-alpha-transcript]")) { this.g = null; return; } var o = this.scale(e.currentTarget); this.g = { x: (e.clientX - o.r.left) / o.s, y: (e.clientY - o.r.top) / o.s, cx: e.clientX, cy: e.clientY, s: o.s, w: o.w, pull: pullStart(e.target) }; }
   gUp(e) { var g = this.g; this.g = null; if (!g || window.getSelection()?.isCollapsed === false) return; this.swipe(g, (e.clientX - g.cx) / g.s, (e.clientY - g.cy) / g.s); }
   swipe(g, dx, dy) {
     // Gesture zones (docs/gesture-zones.md) are the shared shell's (resolveMobileShellSwipe). The top
@@ -5384,6 +5385,7 @@ class Component extends DCLogic {
     // on empty Home asks Android for its shade (#417, @elizaos/capacitor-system/shade).
     var self = this, S = this.S();
     var action = resolveMobileShellSwipe({ screen: S.screen, shade: !!S.shade, view: S.view, chat: S.chat, launcher: this.props.systemShell !== false }, { x: g.x, y: g.y, onShadeControl: false }, dx, dy, {
+      canvasWidth: g.w,
       pullOpensShade: function (px, py, threshold) { return emptyHomeShadePull(self.pullContext(), g.pull, g.y, px, py, threshold); },
     });
     if (action === "unlock") return this.unlock();
@@ -5404,11 +5406,11 @@ class Component extends DCLogic {
       down: function (e) {
         var o = self.scale(e.currentTarget);
         var px = (e.clientX - o.r.left) / o.s, py = (e.clientY - o.r.top) / o.s;
-        if (!opts.capture && (px < 30 || px > 382 || py < 90 || py > 872)) { self.cg = null; return; }   // system gesture zones belong to the shell
+        if (!opts.capture && (px < 30 || px > o.w - 30 || py < 90 || py > 872)) { self.cg = null; return; }   // system gesture zones belong to the shell
         // A fresh pointer gesture is a deliberate action, not the previous swipe click.
         self.swallow = 0;
         if (opts.capture) e.currentTarget.setPointerCapture(e.pointerId);
-        e.stopPropagation(); self.cg = { x: e.clientX, y: e.clientY, s: o.s, g: { x: px, y: py, cx: e.clientX, cy: e.clientY, s: o.s } };
+        e.stopPropagation(); self.cg = { x: e.clientX, y: e.clientY, s: o.s, g: { x: px, y: py, cx: e.clientX, cy: e.clientY, s: o.s, w: o.w } };
       },
       up: function (e) {
         var c = self.cg; if (!c) return; e.stopPropagation(); self.cg = null;
