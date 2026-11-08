@@ -2088,7 +2088,9 @@
       "browserSetupDoesNotReserveNativeStateTest",
       "failedCancelReplyRemainsObservableTest"
     ],
-    "sources": ["apps/app/src/runtime/hosted-background.ts"],
+    "sources": [
+      "apps/app/src/runtime/hosted-background.ts"
+    ],
     "abstractions": [
       "Renderer native setup reservation, exact attempt and session cancellation, port reply settlement and external abort listener cleanup.",
       "Two attempt slots and two sessions. Held begin and configure replies expose retirement before each boundary. Cancellation microtasks are coalesced. Durable worker and inbox history are separate."
@@ -2159,6 +2161,40 @@
     "abstractions": [
       "Actual retained brief selection, scope, result replacement, clipping and observer publication.",
       "Two owners, seven result profiles and three observers. Exact caller generation and mounted Home rendering have separate evidence."
+    ]
+  },
+  {
+    "path": "specs/quint/application/CalendarPreservationConfirmation.qnt",
+    "module": "CalendarPreservationConfirmation",
+    "init": "init",
+    "step": "step",
+    "invariant": "safety",
+    "tests": [
+      "sameOwnerReplacementBeforeDispatchTest",
+      "reentryAndOldFinallyTest",
+      "committedMarkerSurvivesRetirementTest",
+      "currentExactMarkerPublishesTest",
+      "changedInventoryRequiresFreshReviewTest",
+      "pageHideRetiresHeldApprovalTest"
+    ],
+    "invariants": [
+      "ActiveReviewOwnsVisit",
+      "MarkerHasDispatch",
+      "PublishedHasCurrentReadback"
+    ],
+    "sources": [
+      "apps/app/src/prototype/agent-calendar-adapter.ts",
+      "apps/app/src/prototype/settings-adapter.ts",
+      "apps/app/src/prototype/model.js",
+      "apps/app/src/prototype/template.html",
+      "apps/app/src/runtime/agent-calendar.ts",
+      "apps/app/src/runtime/legacy-calendar-preservation.ts",
+      "apps/app/src/browser/calendar-store.ts",
+      "apps/app/src/browser/documents.ts"
+    ],
+    "abstractions": [
+      "Exact mounted Settings review, live port and pending confirmation, with separate marker capture, expected receipt, CAS commit and UI settlement.",
+      "Two owners, four port lifetimes and attempts, two real inventory equality classes. Chromium IndexedDB and closed record transport. Installed provider and arbitrary device loss are separate."
     ]
   }
 ]
