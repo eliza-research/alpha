@@ -12,7 +12,7 @@
   "toolSha256": "403a33cab0dff7ace6219b29e7ffef373319677a7d8be6641466dd16a6750b5b",
   "dependencyLockSha256": "944123c801157a7ba3676a886d0b28a54bef32735ae96da5c6dd0f206c88c8bf",
   "sourcePin": "99b49439ce9d0cb5607e9831b9f7f58d89525029",
-  "ledgerSha256": "dd98941363c552950b0a774fa44a5fa969b092bf4ca37003cdf16febcc3cbc67",
+  "ledgerSha256": "1b2ce8060d58143a77cacdbed363277678e776f0a494ae70475efd4b569e31b4",
   "method": "TypeScript syntax trees for JavaScript/TypeScript and JDK compiler trees for Java. Mutable fields, bindings, containers, state hooks, write sites and asynchronous registration calls are candidates for semantic review.",
   "limitations": [
     "Candidate extraction does not establish state-machine coverage or implementation refinement.",
@@ -24495,7 +24495,8 @@
       "path": "android/app/src/main/java/ai/elizaresearch/alphaphone/HostedDelivery.java",
       "sha256": "0beb42ca42f2bd53ea0b2e92b7d3e1282b41c13814e4e633a476939e5dbb6d8d",
       "allocatedModels": [
-        "NoticesAndCaches"
+        "NoticesAndCaches",
+        "NativeHostedInbox"
       ],
       "sourcePathClass": "other-source-path",
       "classification": "syntactic-candidates",
@@ -24765,7 +24766,8 @@
       "sha256": "94e88f01e325bbb9f9c60122033ddfe8cea3ebc5ac18f6b5e436d175a891e569",
       "allocatedModels": [
         "InboxDelivery",
-        "NativeHostedResultNotices"
+        "NativeHostedResultNotices",
+        "NativeHostedInbox"
       ],
       "sourcePathClass": "other-source-path",
       "classification": "syntactic-candidates",
@@ -24969,7 +24971,8 @@
       "sha256": "e3e142f1584b3125cb1aef338968ef2e11bd31e51f0673bd2e085181c4ac5591",
       "allocatedModels": [
         "NoticesAndCaches",
-        "NativeHostedResultNotices"
+        "NativeHostedResultNotices",
+        "NativeHostedInbox"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -26766,7 +26769,8 @@
       "path": "android/app/src/main/java/ai/elizaresearch/alphaphone/ResidentResultSession.java",
       "sha256": "5504657e2b34a86289e4fe16d3628ebded26489c45e718dfabd9580645973951",
       "allocatedModels": [
-        "ResidentRuntime"
+        "ResidentRuntime",
+        "NativeHostedInbox"
       ],
       "sourcePathClass": "other-source-path",
       "classification": "syntactic-candidates",
@@ -26846,7 +26850,8 @@
       "path": "android/app/src/main/java/ai/elizaresearch/alphaphone/ResidentResultTransport.java",
       "sha256": "2ce7d97cb08d244b7d246e111ef8e94973c5b2757a592d44888363c90d609543",
       "allocatedModels": [
-        "ResidentRuntime"
+        "ResidentRuntime",
+        "NativeHostedInbox"
       ],
       "sourcePathClass": "other-source-path",
       "classification": "syntactic-candidates",
@@ -30701,11 +30706,12 @@
     },
     {
       "path": "apps/app/src/browser/hosted-results.ts",
-      "sha256": "550a4fca341777981ebb06f82aa76c51aa6119cb014aed57557d09b1ad25e90b",
+      "sha256": "8f7dfcfbfcb91b7c1aaaf60bf8f62586d112fafb0e75ccfa1f5636ea37c4b7c0",
       "allocatedModels": [
         "NoticesAndCaches",
         "BrowserHostedResultNotice"
       ],
+      "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
       "classification": "syntactic-candidates",
       "owners": [
@@ -30728,20 +30734,20 @@
           "writes": 1
         },
         {
-          "owner": "BrowserHostedResults.consumeResult.ArrowFunction@36",
-          "line": 36,
+          "owner": "BrowserHostedResults.consumeResult.ArrowFunction@38",
+          "line": 41,
           "bindings": 1,
           "writes": 1
         },
         {
-          "owner": "BrowserHostedResults.setNotifications.ArrowFunction@39",
-          "line": 39,
+          "owner": "BrowserHostedResults.setNotifications.ArrowFunction@50",
+          "line": 50,
           "bindings": 1,
           "writes": 1
         },
         {
-          "owner": "BrowserHostedResults.action.ArrowFunction@42",
-          "line": 42,
+          "owner": "BrowserHostedResults.action.ArrowFunction@53",
+          "line": 53,
           "bindings": 1,
           "writes": 1
         }
@@ -218433,6 +218439,6 @@
   ],
   "detail": {
     "path": "test-results/quint-state-audit/details.json",
-    "sha256": "9d927f2fcb22a6264a8e1d6c77442556630ea122b1ac3e310cf45ef5d8e09185"
+    "sha256": "e79e7647c03ea89794ceca349c12344b53fdf6a3331aa8f5ac5cd7d56a662c34"
   }
 }

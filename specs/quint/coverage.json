@@ -7888,7 +7888,8 @@
       "path": "android/app/src/main/java/ai/elizaresearch/alphaphone/HostedDelivery.java",
       "sha256": "0beb42ca42f2bd53ea0b2e92b7d3e1282b41c13814e4e633a476939e5dbb6d8d",
       "models": [
-        "NoticesAndCaches"
+        "NoticesAndCaches",
+        "NativeHostedInbox"
       ],
       "scope": "application",
       "treatment": "state-and-transition-projection",
@@ -7945,7 +7946,8 @@
       "sha256": "94e88f01e325bbb9f9c60122033ddfe8cea3ebc5ac18f6b5e436d175a891e569",
       "models": [
         "InboxDelivery",
-        "NativeHostedResultNotices"
+        "NativeHostedResultNotices",
+        "NativeHostedInbox"
       ],
       "scope": "application",
       "treatment": "state-and-transition-projection",
@@ -8012,7 +8014,8 @@
       "path": "android/app/src/main/java/ai/elizaresearch/alphaphone/HostedResultNotices.java",
       "models": [
         "NoticesAndCaches",
-        "NativeHostedResultNotices"
+        "NativeHostedResultNotices",
+        "NativeHostedInbox"
       ],
       "scope": "application",
       "treatment": "state-and-transition-projection",
@@ -8639,7 +8642,8 @@
       "path": "android/app/src/main/java/ai/elizaresearch/alphaphone/ResidentResultSession.java",
       "sha256": "5504657e2b34a86289e4fe16d3628ebded26489c45e718dfabd9580645973951",
       "models": [
-        "ResidentRuntime"
+        "ResidentRuntime",
+        "NativeHostedInbox"
       ],
       "scope": "application",
       "treatment": "state-and-transition-projection",
@@ -8654,7 +8658,8 @@
       "path": "android/app/src/main/java/ai/elizaresearch/alphaphone/ResidentResultTransport.java",
       "sha256": "2ce7d97cb08d244b7d246e111ef8e94973c5b2757a592d44888363c90d609543",
       "models": [
-        "ResidentRuntime"
+        "ResidentRuntime",
+        "NativeHostedInbox"
       ],
       "scope": "application",
       "treatment": "state-and-transition-projection",
@@ -12468,13 +12473,14 @@
     },
     {
       "path": "apps/app/src/browser/hosted-results.ts",
-      "sha256": "550a4fca341777981ebb06f82aa76c51aa6119cb014aed57557d09b1ad25e90b",
       "models": [
         "NoticesAndCaches",
         "BrowserHostedResultNotice"
       ],
       "scope": "application",
       "treatment": "state-and-transition-projection",
+      "reviewStatus": "state-audit-required",
+      "sha256": "8f7dfcfbfcb91b7c1aaaf60bf8f62586d112fafb0e75ccfa1f5636ea37c4b7c0",
       "stateAnchors": [
         {
           "line": 21,

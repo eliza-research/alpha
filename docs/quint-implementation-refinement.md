@@ -508,3 +508,12 @@ and 110 checkpoints. The browser edit compares the captured binding and
 current owner before changing the exact pending row. A queued settlement
 can neither transfer to a same-scope replacement nor consume a later tap.
 The old pending token remains available to its owner in a new explicit call.
+
+The Android hosted inbox campaign checks 12 schedules and 133 checkpoints
+against the actual inbox, delivery, resident transport and local notice
+ledger. It covers the 100-entry retention cap, exact acknowledgement and
+deletion journals, failed notice writeback, and retirement while a request
+is held. A replay can acknowledge a result that aged out of the history
+index while its exact bytes remain in the pending-removal journal. The
+JVM fixture blocks real HTTP and HTTPS, and symbolic safety passed through
+four steps.
