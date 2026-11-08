@@ -605,10 +605,10 @@ button[aria-label$=" on or off"][aria-pressed]::before { content:""; position:ab
 .mail-addresses dl{display:grid;grid-template-columns:auto minmax(0,1fr);gap:8px 12px;margin:12px 0 0;font-size:13px;line-height:1.45}
 .mail-addresses dt{color:var(--mut)}.mail-addresses dd{margin:0;min-width:0;user-select:text}
 
-.calendar-request-review { background:var(--s2);padding:16px;border-radius:16px;display:flex;flex-direction:column;gap:8px;align-items:flex-start; }
-.calendar-request-review strong { font-size:15px;line-height:1.4; }
-.calendar-request-review p { margin:0;color:var(--mut);font-size:14px;line-height:1.4; }
-.calendar-request-review button { min-height:44px;padding:8px 16px;border-radius:22px;background:var(--acc);color:var(--alpha-white);font:inherit;font-weight:600; }
+.calendar-request-review, .workflow-run-card { background:var(--s2);padding:16px;border-radius:16px;display:flex;flex-direction:column;gap:8px;align-items:flex-start; }
+.calendar-request-review strong, .workflow-run-card strong { font-size:15px;line-height:1.4; }
+.calendar-request-review p, .workflow-run-card p { margin:0;color:var(--mut);font-size:14px;line-height:1.4; }
+.calendar-request-review button, .workflow-run-card button { min-height:44px;padding:8px 16px;border-radius:22px;background:var(--acc);color:var(--alpha-white);font:inherit;font-weight:600; }
 .calendar-approval-review h2 { font-family:'Public Sans',system-ui,sans-serif;font-size:22px;line-height:1.2;font-weight:600;margin:0 0 16px;letter-spacing:normal; }
 .calendar-approval-review p { font-size:15px;line-height:1.5;overflow-wrap:anywhere;white-space:pre-wrap; }
 .calendar-approval-review footer button { min-height:44px;font:inherit; }

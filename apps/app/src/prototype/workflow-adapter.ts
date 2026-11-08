@@ -105,6 +105,12 @@ export function installWorkflowAdapter(Component:any,views:Bag){
   if(receipt&&receipt.workflowId!==detail.id)return undefined;
   return receipt?{kind:'workflow-run' as const,id:receipt.id,revision:receipt.versionId}:{kind:'workflow' as const,id:detail.id,revision:detail.versionId};
  };
+ // A run card in chat opens that exact run: its workflow is read first, then the run's own receipt.
+ p.openWorkflowRun=function(workflowId:string,runId:string){
+  if(this!==owner)return;if(!connectionController.getWorkflowClient()){showAgentStatus(this);return;}
+  this.openView('workflows');
+  void open(workflowId).then(()=>{if(this!==owner||this.S().view!=='workflows'||detail?.id!==workflowId)return;const run=runs.find(r=>r.id===runId&&r.workflowId===workflowId);if(run)void read(run);else api?.toast('This run isn’t in the workflow’s history yet. Check again shortly.');});
+ };
  let tapBusy=false,tapRequested:{request:'event'|'user';current:()=>boolean}|null=null;
  // A tap this session cannot open: toasted once per token, and offered to the owner to dismiss so older taps can surface.
  let toastedTap:string|null=null,heldTap:{token:string;question:boolean}|null=null;

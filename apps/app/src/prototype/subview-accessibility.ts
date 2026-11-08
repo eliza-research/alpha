@@ -1,5 +1,6 @@
 import {createInlineModal} from '../runtime/inline-modal';
 import {currentSurfaceLayout} from '../runtime/canvas-geometry';
+import {workflowReplyText} from '../runtime/action-message-presentation';
 /** On a split canvas the open message, note or file sits beside its list, which stays usable. */
 const split=()=>currentSurfaceLayout().split;
 type Bag=Record<string,any>;
@@ -191,7 +192,7 @@ export function installReplyAnnouncer(Component: any) {
     const settled = !!was?.streaming && !after.some(message => message.streaming);
     const arrived = before.length > 0 && added.length === 1 && added[0] === last;
     if (!settled && !arrived) { if (!state.typing && !state.turnStatus) this.replyAnnounced = false; return; }
-    const text = String(last.text || last.card?.title || '').trim();
+    const text = workflowReplyText(String(last.text || last.card?.title || '')).text.trim();
     this.replyAnnouncedId = last.id; this.replyAnnounced = false;
     if (text) say(bounded(text));
   };
