@@ -118,12 +118,12 @@ test('Quint large-text trace agrees with the real layout policy', async () => {
 
 test('Quint draft-conflict trace agrees with real revisioned composer writes', async () => {
   const expected = modelTrace('AssistantConversation', 'draftConflictTest').at(-1);
-  const { replaceAssistantDraft } = await sourceModule('apps/app/src/runtime/assistant-draft-record.ts');
+  const { replaceDurableDraft } = await sourceModule('.eliza/client-features/packages/ui/src/state/durable-draft.ts');
   const original = { version: 1, binding: 'owner-one', revision: 'first', text: '' };
-  const saved = replaceAssistantDraft(original, original, 'owner-one', expected.savedDraft, () => 'second');
-  assert.throws(() => replaceAssistantDraft(saved, original, 'owner-one', expected.draft, () => 'third'), /changed in another view/);
+  const saved = replaceDurableDraft(original, original, 'owner-one', expected.savedDraft, {revision: () => 'second'});
+  assert.throws(() => replaceDurableDraft(saved, original, 'owner-one', expected.draft, {revision: () => 'third'}), /changed in another view/);
   assert.equal(saved.text, expected.savedDraft);
-  assert.throws(() => replaceAssistantDraft(saved, saved, 'owner-two', '', () => 'third'), /needs recovery/);
+  assert.throws(() => replaceDurableDraft(saved, saved, 'owner-two', '', {revision: () => 'third'}), /needs recovery/);
 });
 
 test('all 240 voice-deletion recovery evidence combinations agree with the real planner', async () => {
