@@ -1,7 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import {createHash} from 'node:crypto';
-import {prepareClientFeatures} from '../../../../scripts/prepare-client-features.mjs';
+import {CLIENT_FEATURE_PATCHES, prepareClientFeatures} from '../../../../scripts/prepare-client-features.mjs';
 
 const staged = '.eliza/client-features/';
 const digest = file => createHash('sha256').update(fs.readFileSync(file)).digest('hex');
@@ -24,16 +24,7 @@ export function serviceInputs(entries) {
   }
   for (const entry of ['specs/quint/refinement/services/source-inputs.mjs', 'package-lock.json', 'upstream.lock.json', staged + '.source.json', 'scripts/prepare-client-features.mjs', 'scripts/upstream-native-source.mjs', 'scripts/client-speech-patch.mjs']) found.add(entry);
   const accounted = new Set();
-  for (const [key, prefix] of [
-    ['filesListIdentityPatch', 'files-list-identity-client'],
-    ['filesStorageQueryPatch', 'files-storage-query-client'],
-    ['photosWindowPatch', 'photos-window-client'],
-    ['photosLibraryPresentationPatch', 'photos-library-presentation-client'],
-    ['calendarSemanticPatch', 'calendar-semantic-client'],
-    ['inboxConfirmationPatch', 'inbox-confirmation-client'],
-    ['inboxCleanupPatch', 'inbox-cleanup-client'],
-    ['crashErrorClassPatch', 'crash-error-class-client'],
-  ]) {
+  for (const [key, prefix] of CLIENT_FEATURE_PATCHES) {
     const receipt = provenance[key];
     if (!receipt) continue;
     const manifestPath = `patches/eliza/${prefix}-manifest.json`, patchPath = `patches/eliza/${prefix}.patch`;

@@ -311,6 +311,20 @@ export const CLIENT_FEATURE_PATHS = [
   // Framework-free resident Cloud binding controller (AP-04/P-22).
   'packages/auth/src/auth/cloud-resident-binding.ts',
 ];
+export const CLIENT_FEATURE_PATCHES = [
+  ['filesListIdentityPatch', 'files-list-identity-client', 'plugins/plugin-files/src/browser/files-browser-adapter.ts'],
+  ['filesStorageQueryPatch', 'files-storage-query-client', 'plugins/plugin-files/src/browser/storage-volume.ts'],
+  ['photosWindowPatch', 'photos-window-client', 'packages/ui/src/mobile-shell/photos-view.ts'],
+  ['photosLibraryPresentationPatch', 'photos-library-presentation-client', 'plugins/plugin-assistant/src/services/device-actions/photo-library-contract.ts'],
+  ['calendarSemanticPatch', 'calendar-semantic-client', 'packages/contracts/src/calendar-linked-sync.ts'],
+  ['inboxConfirmationPatch', 'inbox-confirmation-client', 'plugins/plugin-inbox/src/mailbox/review-controller.ts'],
+  ['inboxCleanupPatch', 'inbox-cleanup-client', 'plugins/plugin-inbox/src/mailbox/drafts-controller.ts'],
+  ['crashErrorClassPatch', 'crash-error-class-client', 'plugins/plugin-native-system/src/crash-log.ts'],
+  ['mapsHiddenFallbackPatch', 'maps-hidden-fallback-client', 'plugins/plugin-maps/src/client/maps-screen.ts'],
+  ['launcherObserverPatch', 'launcher-observer-client', 'plugins/plugin-native-system/src/client/launcher.ts'],
+  ['launcherLegacyViewKeyPatch', 'launcher-legacy-view-key-client', 'packages/ui/src/mobile-shell/view-registry.ts'],
+];
+
 /** Copy authenticated upstream source outside the immutable vendor checkout. With check, only
  * confirm the prepared copy is current and throw instead of rebuilding it. */
 export function prepareClientFeatures({ root = projectRoot, projectVoice = true, check = false } = {}) {
@@ -320,19 +334,7 @@ export function prepareClientFeatures({ root = projectRoot, projectVoice = true,
   const speechPatch=clientSpeechPatch(root,upstream);
   for(const [name,file] of speechPatch.files)source.set(name,file);
   const clientPatches = {};
-  for (const [key, prefix, name] of [
-    ['filesListIdentityPatch', 'files-list-identity-client', 'plugins/plugin-files/src/browser/files-browser-adapter.ts'],
-    ['filesStorageQueryPatch', 'files-storage-query-client', 'plugins/plugin-files/src/browser/storage-volume.ts'],
-    ['photosWindowPatch', 'photos-window-client', 'packages/ui/src/mobile-shell/photos-view.ts'],
-    ['photosLibraryPresentationPatch', 'photos-library-presentation-client', 'plugins/plugin-assistant/src/services/device-actions/photo-library-contract.ts'],
-    ['calendarSemanticPatch', 'calendar-semantic-client', 'packages/contracts/src/calendar-linked-sync.ts'],
-    ['inboxConfirmationPatch', 'inbox-confirmation-client', 'plugins/plugin-inbox/src/mailbox/review-controller.ts'],
-    ['inboxCleanupPatch', 'inbox-cleanup-client', 'plugins/plugin-inbox/src/mailbox/drafts-controller.ts'],
-    ['crashErrorClassPatch', 'crash-error-class-client', 'plugins/plugin-native-system/src/crash-log.ts'],
-    ['mapsHiddenFallbackPatch', 'maps-hidden-fallback-client', 'plugins/plugin-maps/src/client/maps-screen.ts'],
-    ['launcherObserverPatch', 'launcher-observer-client', 'plugins/plugin-native-system/src/client/launcher.ts'],
-    ['launcherLegacyViewKeyPatch', 'launcher-legacy-view-key-client', 'packages/ui/src/mobile-shell/view-registry.ts'],
-  ]) {
+  for (const [key, prefix, name] of CLIENT_FEATURE_PATCHES) {
     const manifestFile = path.join(root, 'patches/eliza', prefix + '-manifest.json');
     if (!regularPath(manifestFile)) continue;
     const manifestBytes = fs.readFileSync(manifestFile), manifest = JSON.parse(manifestBytes);
