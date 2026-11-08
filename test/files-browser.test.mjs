@@ -314,7 +314,7 @@ test('the production plugin exposes only the storage browser; a retired SAF tree
  assert.match(plugin,/new DocumentFolderTree\(getContext\(\),PREF,[^)]*\)\.forget\(\)/,'a tree an earlier version chose has its persisted grant released');
 });
 test('a watch whose unwatch lands before the storage worker registers leaves no observer registered',()=>{
- assert.match(runJvm([nativeSource('StorageWatchSlot.java'),fixture('StorageWatchSlotTest.java')],'ai.elizaresearch.alphaphone.StorageWatchSlotTest'),/^PASS storage watch slot/);
+ assert.match(runJvm([nativeSource('StorageBrowser.java'),fixture('android-stubs/android/webkit/MimeTypeMap.java'),fixture('StorageWatchSlotTest.java')],'ai.elizaresearch.alphaphone.StorageWatchSlotTest',{json:true}),/^PASS storage watch slot/);
  const plugin=readFileSync('android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaFilesPlugin.java','utf8');
  assert.match(plugin,/public void storageWatch\(PluginCall call\)\{long ticket=watch\.request\(\);storage\(call,b->\{/,'the request is taken on the plugin thread, before the worker runs');
  assert.match(plugin,/watch\.install\(ticket,\(\)->\{/,'observers are registered only through the slot');

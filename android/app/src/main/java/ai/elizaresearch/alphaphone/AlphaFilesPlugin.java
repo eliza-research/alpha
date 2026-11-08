@@ -34,7 +34,7 @@ public class AlphaFilesPlugin extends Plugin {
  private ContentResolver resolver(){return getContext().getContentResolver();}
  // ---- Storage browser (all-files access; API 29: legacy storage) ----
  private final ExecutorService storageWorker=Executors.newSingleThreadExecutor();
- private final StorageWatchSlot watch=new StorageWatchSlot();
+ private final StorageBrowser.WatchSlot watch=new StorageBrowser.WatchSlot();
  private final android.os.Handler main=new android.os.Handler(android.os.Looper.getMainLooper());
  private final Runnable changed=()->notifyListeners("storageChanged",new JSObject());
  private interface StorageWork {JSObject run(StorageBrowser browser)throws Exception;}

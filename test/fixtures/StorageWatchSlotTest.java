@@ -6,8 +6,8 @@ import java.util.concurrent.atomic.AtomicInteger;
 public final class StorageWatchSlotTest {
  private static void check(boolean value,String message){if(!value)throw new AssertionError(message);}
  public static void main(String[] args){
-  StorageWatchSlot slot=new StorageWatchSlot();AtomicInteger registered=new AtomicInteger(),stopped=new AtomicInteger();
-  StorageWatchSlot.Watch watch=stopped::incrementAndGet;
+  StorageBrowser.WatchSlot slot=new StorageBrowser.WatchSlot();AtomicInteger registered=new AtomicInteger(),stopped=new AtomicInteger();
+  StorageBrowser.WatchSlot.Watch watch=stopped::incrementAndGet;
   // storageWatch is requested; storageUnwatch lands before the worker registers.
   long late=slot.request();slot.clear();
   check(!slot.install(late,()->{registered.incrementAndGet();return watch;}),"an unwatched request registers nothing");

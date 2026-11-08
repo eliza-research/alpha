@@ -261,4 +261,25 @@ final class StorageBrowser {
  static boolean deleteRecursive(File file){File[] kids=file.isDirectory()?file.listFiles():null;if(kids!=null)for(File kid:kids)if(!deleteRecursive(kid))return false;return file.delete()||!file.exists();}
  static void write(File file,String text)throws IOException{try(OutputStream out=new FileOutputStream(file)){out.write(text.getBytes(StandardCharsets.UTF_8));out.flush();((FileOutputStream)out).getFD().sync();}}
  static String read(File file)throws IOException{if(file.length()>65536)throw new IOException("Record too large");try(InputStream in=new FileInputStream(file)){java.io.ByteArrayOutputStream out=new java.io.ByteArrayOutputStream();byte[] buffer=new byte[4096];int n;while((n=in.read(buffer))>0)out.write(buffer,0,n);return new String(out.toByteArray(),StandardCharsets.UTF_8);}}
+ /** The Files browser's one storage watch. A watch is requested on the plugin thread and its
+  * observers are registered later on the storage worker; an unwatch, a newer watch or teardown
+  * that lands in between makes that registration a no-op, so no observer outlives its request.
+  * Plain Java, checked on the host JVM. */
+ static final class WatchSlot {
+  interface Watch { void stop(); }
+  private long generation;
+  private Watch current;
+  /** A new watch request; it supersedes every earlier one. */
+  synchronized long request(){return ++generation;}
+  /** Registers through {@code start} only while {@code ticket} is the latest request; the
+   * previous watch stops first. Returns whether it registered. */
+  synchronized boolean install(long ticket,java.util.function.Supplier<Watch> start){
+   if(ticket!=generation)return false;
+   stopCurrent();current=start.get();return true;
+  }
+  /** Stops the current watch and voids every request not yet installed. */
+  synchronized void clear(){generation++;stopCurrent();}
+  synchronized boolean active(){return current!=null;}
+  private void stopCurrent(){Watch old=current;current=null;if(old!=null)old.stop();}
+ }
 }
