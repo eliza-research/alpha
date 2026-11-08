@@ -155,11 +155,9 @@ test('canonical failed save retains the owner draft until explicit discard and r
 });
 
 test('a checklist, pin and Back leave Alpha cards in the same canonical record',async({page})=>{
- const {foreign,errors}=await canonicalNotesFixture(page);await openCanonicalNotes(page);
- await page.getByRole('button',{name:'New note',exact:true}).click();
- await page.getByRole('textbox',{name:'Title',exact:true}).fill('Groceries');
- await page.getByRole('textbox',{name:'Note',exact:true}).fill('Oat milk\nLemons');
- await page.getByRole('button',{name:'Turn into checklist',exact:true}).click();
+ const note={id:'11111111-2222-4333-8444-555555555555',title:'Groceries',body:'',color:'yellow',createdAt:new Date().toISOString(),updatedAt:new Date().toISOString(),format:{kind:'list',data:{items:[{t:'Oat milk',done:false},{t:'Lemons',done:false}],pinned:false}}};
+ const {foreign,errors}=await canonicalNotesFixture(page,{notes:[note]});await openCanonicalNotes(page);
+ await page.getByRole('button',{name:'Open Groceries',exact:true}).click();
  await page.getByRole('button',{name:'Check Oat milk',exact:true}).click();
  await page.getByRole('button',{name:'More',exact:true}).click();await page.getByRole('dialog',{name:'Note actions'}).getByRole('button',{name:'Pin',exact:true}).click();
  await page.getByRole('button',{name:'Back to notes',exact:true}).click();
