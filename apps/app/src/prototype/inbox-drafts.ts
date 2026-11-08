@@ -122,6 +122,10 @@ export function inboxDrafts(publish:()=>void,toast:(text:string)=>void, provider
     if(!expected.earlierThanSent){const marked:Draft={...expected,earlierThanSent:true};try{const receipt=await inboxLocalStore.compareExchange(key,expected,marked);if(token!==epoch)return;if(receipt.status==='saved')saved=marked;}catch{}if(token!==epoch)return;}
    }
    if(removed)status=saved?.id===draftId?'Sent. The sent copy was removed from this device; an earlier saved version of this email is kept.':'Sent. The local copy of this email was removed from this device.';
+  }catch{
+   // A shelf write can fail or lose its reply after earlier copies were removed. The send already
+   // succeeded, so keep the remaining copies and retry cleanup only after another receipt check.
+   if(token===epoch)status='Sent. A local copy of this email could not be removed from this device.';
   }finally{if(token===epoch){busy=false;publish();}}
  }
  const slot=()=>`inbox-drafts:v1:${owner}`;

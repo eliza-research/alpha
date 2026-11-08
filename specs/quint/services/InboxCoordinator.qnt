@@ -33,7 +33,7 @@ module InboxCoordinator {
     copies:int -> Copies,kinds:int -> str,sourceId:int -> int,sourceContent:int -> int,
     sourceAttachment:int -> int,sourceSavedVersion:int -> int,network:int -> int,
     attachmentOwner:int,attachmentEpoch:int,attachmentPending:bool,
-    cleanupOwner:int,cleanupBefore:Copies,cleanupChecked:bool
+    cleanupOwner:int,cleanupBefore:Copies,cleanupChecked:bool,cleanupStage:str,cleanupEpoch:int,retainedWritable:int -> bool
   }
   var s: Coordinator
   action init = all {
@@ -44,7 +44,7 @@ module InboxCoordinator {
       sourceId:Map(1 -> 0,2 -> 0),sourceContent:Map(1 -> 0,2 -> 0),sourceAttachment:Map(1 -> 0,2 -> 0),
       sourceSavedVersion:Map(1 -> 0,2 -> 0),network:Map(1 -> 0,2 -> 0),
       attachmentOwner:0,attachmentEpoch:0,attachmentPending:false,
-      cleanupOwner:1,cleanupBefore:emptyCopies,cleanupChecked:false}
+      cleanupOwner:1,cleanupBefore:emptyCopies,cleanupChecked:false,cleanupStage:"idle",cleanupEpoch:0,retainedWritable:Map(1->true,2->true)}
   }
   action keepOperations = all {First::s' = First::s,Second::s' = Second::s}
   val operation = if (s.owner == 1) First::s else Second::s
@@ -52,6 +52,7 @@ module InboxCoordinator {
   val firstCopy = s.copies.get(1)
   val secondCopy = s.copies.get(2)
   val requests = s.network.get(s.owner)
+  val draftReady = s.cleanupStage=="idle" or s.cleanupOwner!=s.owner or s.cleanupEpoch!=s.epoch
   val phase = if (operation.phase == "committing") "review" else operation.phase
   def allowed(kind:str):bool = s.bound and s.known and s.read and
     (if (kind == "send") s.send else if (kind == "draft") s.drafts else s.mailbox)
@@ -88,7 +89,7 @@ module InboxCoordinator {
   action bind(owner:int):bool = all {
     owner.in(Set(1,2)),s.epoch<2,restartFor(owner),
     s'={...s,owner:owner,epoch:s.epoch+(if(s.bound)1 else 0),bound:true,known:false,read:true,
-      send:false,drafts:false,mailbox:false,busy:"idle",cleanupChecked:false}
+      send:false,drafts:false,mailbox:false,busy:"idle",cleanupChecked:false,retainedWritable:s.retainedWritable.set(owner,true)}
   }
   action unbind = all {
     s.bound,s.epoch<2,keepOperations,s'={...s,epoch:s.epoch+1,bound:false,known:false,read:false,send:false,drafts:false,mailbox:false,
@@ -104,7 +105,7 @@ module InboxCoordinator {
     else s'=s
   }
   action newDraft = all {
-    s.bound,s.read,not(s.attachmentPending),copy.currentId<2,keepOperations,
+    s.bound,s.read,draftReady,not(s.attachmentPending),copy.currentId<2,keepOperations,
     val priorId = if (copy.current!=0) copy.currentId else if (copy.retained!=0) copy.retainedId else copy.savedId
     val priorContent = if (copy.current!=0) copy.current else if (copy.retained!=0) copy.retained else copy.saved
     val priorAttachment = if (copy.current!=0) copy.attachment else if (copy.retained!=0) copy.retainedAttachment else copy.savedAttachment
@@ -115,21 +116,21 @@ module InboxCoordinator {
       attachment:0,retainedAttachment:0,earlier:false}),cleanupChecked:false}
   }
   action editDraft = all {
-    s.bound,copy.current!=0,copy.current<2,not(s.attachmentPending),keepOperations,
+    s.bound,draftReady,copy.current!=0,copy.current<2,not(s.attachmentPending),keepOperations,
     s'={...s,copies:s.copies.set(s.owner,{...copy,current:copy.current+1,retained:copy.current+1,
       retainedId:copy.currentId,retainedAttachment:copy.attachment}),cleanupChecked:false}
   }
   action saveDraft = all {
-    s.bound,copy.current!=0,copy.savedVersion<2,keepOperations,
+    s.bound,draftReady,copy.current!=0,copy.savedVersion<2,keepOperations,
     s'={...s,copies:s.copies.set(s.owner,{...copy,saved:copy.current,savedId:copy.currentId,
       savedVersion:copy.savedVersion+1,savedAttachment:copy.attachment,retained:0,retainedId:0}),cleanupChecked:false}
   }
   action selectAttachment = all {
-    s.bound,copy.current!=0,not(s.attachmentPending),keepOperations,
+    s.bound,draftReady,copy.current!=0,not(s.attachmentPending),keepOperations,
     s'={...s,attachmentPending:true,attachmentOwner:s.owner,attachmentEpoch:s.epoch}
   }
   action removeAttachment = all {
-    s.bound,copy.current!=0,not(s.attachmentPending),keepOperations,
+    s.bound,draftReady,copy.current!=0,not(s.attachmentPending),keepOperations,
     s'={...s,copies:s.copies.set(s.owner,{...copy,attachment:0,retained:copy.current,
       retainedId:copy.currentId,retainedAttachment:0}),cleanupChecked:false}
   }
@@ -185,7 +186,7 @@ module InboxCoordinator {
     s'={...s,withdrawOwner:0}
   }
   action regrant = all {s.bound,restoreFor(s.owner),s'={...s,known:true,read:true,send:true,drafts:true,mailbox:true}}
-  action restart = all {s.epoch<2,restartFor(s.owner),s'={...s,epoch:s.epoch+1,busy:"idle",copies:s.copies.set(s.owner,{...copy,current:0}),cleanupChecked:false}}
+  action restart = all {s.epoch<2,restartFor(s.owner),s'={...s,epoch:s.epoch+1,busy:"idle",copies:s.copies.set(s.owner,{...copy,current:0}),cleanupChecked:false,retainedWritable:s.retainedWritable.set(s.owner,true)}}
   action resumeDraft = all {
     s.bound,copy.retained!=0,keepOperations,
     s'={...s,copies:s.copies.set(s.owner,{...copy,currentId:copy.retainedId,current:copy.retained,
@@ -199,8 +200,87 @@ module InboxCoordinator {
       (copies.retained!=s.sourceContent.get(owner) or copies.retainedAttachment!=s.sourceAttachment.get(owner)))
   }
   def cleanupBlocked(owner:int):bool = copyBlocks(s.copies.get(owner),owner)
+  /// A failed set-aside can leave a shelf snapshot beside the unchanged active/saved copy.
+  action shelveSnapshot = all {
+    s.bound,draftReady,copy.current!=0,keepOperations,
+    s'={...s,copies:s.copies.set(s.owner,{...copy,shelfId:copy.currentId,shelf:copy.current,
+      shelfAttachment:copy.attachment}),cleanupChecked:false}
+  }
+  /// An edit that keeps the same content still writes the retained recovery record.
+  action retainDraft = all {
+    s.bound,draftReady,copy.current!=0,keepOperations,
+    s'={...s,copies:s.copies.set(s.owner,{...copy,retainedId:copy.currentId,retained:copy.current,
+      retainedAttachment:copy.attachment}),cleanupChecked:false}
+  }
+  val cleanupCurrent = s.cleanupOwner==s.owner and s.cleanupEpoch==s.epoch and s.bound
+  val cleanupCopy = s.copies.get(s.cleanupOwner)
+  val cleanupSource = s.sourceId.get(s.cleanupOwner)
+  action startCleanup = all {
+    s.bound,s.busy=="idle",s.cleanupStage=="idle",s.kinds.get(s.owner)=="send",
+    operation.phase=="observed",operation.outcome=="succeeded",operation.providerConfirmed,keepOperations,
+    s'={...s,cleanupOwner:s.owner,cleanupEpoch:s.epoch,cleanupBefore:copy,
+      cleanupChecked:cleanupBlocked(s.owner),cleanupStage:if(cleanupBlocked(s.owner))"idle" else "retained",
+      copies:if(cleanupBlocked(s.owner))s.copies else s.copies.set(s.owner,{...copy,
+        current:if(copy.currentId==s.sourceId.get(s.owner))0 else copy.current})}
+  }
+  /// Durable completion can precede its callback, including an intervening owner change.
+  action publishRetainedClear = all {
+    s.cleanupStage=="retained",cleanupCopy.retainedId==cleanupSource,cleanupCopy.retained!=0,keepOperations,
+    s'={...s,copies:s.copies.set(s.cleanupOwner,{...cleanupCopy,retained:0})}
+  }
+  action clearRetained(committed:bool,accepted:bool):bool = all {
+    s.cleanupStage=="retained",keepOperations,
+    { val present=cleanupCopy.retainedId==cleanupSource and cleanupCopy.retained!=0
+      all {
+        not(committed) or present,
+        not(accepted) or (s.retainedWritable.get(s.cleanupOwner) and (not(present) or committed)),
+        s'={...s,cleanupStage:if(accepted and cleanupCurrent)"shelf"
+          else if(accepted and not(cleanupCurrent) and s.cleanupBefore.retained!=0)"restore" else "idle",
+          copies:if(committed)s.copies.set(s.cleanupOwner,{...cleanupCopy,retained:0}) else s.copies,
+          retainedWritable:s.retainedWritable.set(s.cleanupOwner,accepted),cleanupChecked:false}
+      }
+    }
+  }
+  /// AssistantDraftController restores its own known clear when the binding retired before ack.
+  action restoreRetained(committed:bool):bool = all {
+    s.cleanupStage=="restore",keepOperations,
+    s'={...s,cleanupStage:"idle",copies:if(committed)s.copies.set(s.cleanupOwner,{...cleanupCopy,
+      retained:s.cleanupBefore.retained,retainedId:s.cleanupBefore.retainedId,
+      retainedAttachment:s.cleanupBefore.retainedAttachment}) else s.copies}
+  }
+  action clearShelf(committed:bool,accepted:bool):bool = all {
+    s.cleanupStage=="shelf",keepOperations,
+    { val present=cleanupCopy.shelfId==cleanupSource and cleanupCopy.shelf!=0
+      val exact=cleanupCopy.shelf==s.sourceContent.get(s.cleanupOwner) and cleanupCopy.shelfAttachment==s.sourceAttachment.get(s.cleanupOwner)
+      all {
+        not(committed) or (present and exact),
+        not(accepted) or not(present) or committed,
+        s'={...s,cleanupStage:if(accepted and cleanupCurrent)"saved" else "idle",
+          copies:if(committed)s.copies.set(s.cleanupOwner,{...cleanupCopy,shelf:0}) else s.copies,cleanupChecked:false}
+      }
+    }
+  }
+  action clearSaved(committed:bool,accepted:bool):bool = all {
+    s.cleanupStage=="saved",keepOperations,
+    { val present=cleanupCopy.savedId==cleanupSource and cleanupCopy.saved!=0
+      val exact=cleanupCopy.saved==s.sourceContent.get(s.cleanupOwner) and cleanupCopy.savedAttachment==s.sourceAttachment.get(s.cleanupOwner)
+      all {
+        not(committed) or present,
+        not(accepted) or not(present and (exact or cleanupCopy.savedVersion==s.sourceSavedVersion.get(s.cleanupOwner))) or committed,
+        s'={...s,cleanupStage:"idle",cleanupChecked:false,
+          copies:if(committed)s.copies.set(s.cleanupOwner,{...cleanupCopy,
+            saved:if(exact)0 else cleanupCopy.saved,
+            earlier:cleanupCopy.earlier or (not(exact) and cleanupCopy.savedVersion==s.sourceSavedVersion.get(s.cleanupOwner))}) else s.copies}
+      }
+    }
+  }
+  /// A second live composer can save while this instance awaits its compare-and-exchange.
+  action peerSave = all {
+    s.bound,copy.saved!=0,copy.savedVersion<2,keepOperations,
+    s'={...s,copies:s.copies.set(s.owner,{...copy,saved:2,savedVersion:copy.savedVersion+1}),cleanupChecked:false}
+  }
   action cleanup(outcome:str):bool = all {
-    s.bound,s.busy=="idle",s.kinds.get(s.owner)=="send",operation.phase=="observed",
+    s.bound,s.busy=="idle",s.cleanupStage=="idle",s.kinds.get(s.owner)=="send",operation.phase=="observed",
     operation.outcome=="succeeded",operation.providerConfirmed,outcome.in(Set("saved","retained-failed","saved-conflict")),keepOperations,
     val source=s.sourceId.get(s.owner)
     val removeCurrent=copy.currentId==source and copy.current==s.sourceContent.get(s.owner) and copy.attachment==s.sourceAttachment.get(s.owner)
@@ -223,6 +303,9 @@ module InboxCoordinator {
     prepare("send"),prepare("draft"),prepare("archive"),reviewed(true),reviewed(false),reloadReview,cancelReview,
     reserve,persisted(s.owner),persisted(1),persisted(2),storageRefused(s.owner),storageRefused(1),storageRefused(2),dispatched,result("succeeded"),result("rejected"),result("unknown"),lostReply,
     checkReceipt(true),checkReceipt(false),withdraw(true),withdraw(false),applyWithdrawal,regrant,restart,resumeDraft,lateResult,
+    shelveSnapshot,retainDraft,startCleanup,publishRetainedClear,restoreRetained(true),restoreRetained(false),clearRetained(false,false),clearRetained(true,false),clearRetained(true,true),clearRetained(false,true),
+    clearShelf(false,false),clearShelf(true,false),clearShelf(true,true),clearShelf(false,true),
+    clearSaved(false,false),clearSaved(true,false),clearSaved(true,true),clearSaved(false,true),peerSave,
     cleanup("saved"),cleanup("retained-failed"),cleanup("saved-conflict"),all{keepOperations,s'=s}
   }
   val AtMostOneNetworkRequest = Set(1,2).forall(owner=>s.network.get(owner)<=1)
@@ -233,10 +316,14 @@ module InboxCoordinator {
   val EditedCopiesPreserved = s.cleanupChecked and copyBlocks(s.cleanupBefore,s.cleanupOwner) implies s.copies.get(s.cleanupOwner)==s.cleanupBefore
   val CleanupRequiresFreshSuccess = s.cleanupChecked implies
     (if(s.cleanupOwner==1)First::s.providerConfirmed and First::s.outcome=="succeeded" else Second::s.providerConfirmed and Second::s.outcome=="succeeded")
+  val CleanupAfterKnownSend = s.cleanupStage!="idle" implies s.sourceId.get(s.cleanupOwner)!=0 and
+    (if(s.cleanupOwner==1)First::s.outcome=="succeeded" and First::s.dispatches==1 else Second::s.outcome=="succeeded" and Second::s.dispatches==1)
   val TypeOK = s.owner.in(Set(1,2)) and s.epoch.in(0.to(2)) and s.capabilityToken.in(0.to(2))
     and s.busy.in(Set("idle","prepare","commit","dispatch","reply")) and s.copies.keys()==Set(1,2)
+    and s.cleanupStage.in(Set("idle","retained","restore","shelf","saved")) and s.cleanupEpoch.in(0.to(2))
+    and s.cleanupOwner.in(Set(1,2)) and s.retainedWritable.keys()==Set(1,2)
   val safety = First::safety and Second::safety and TypeOK and AtMostOneNetworkRequest and EffectHasDurableIntent
-    and UnavailableCannotConfirm and CurrentComposerRequired and EditedCopiesPreserved and CleanupRequiresFreshSuccess
+    and UnavailableCannotConfirm and CurrentComposerRequired and EditedCopiesPreserved and CleanupRequiresFreshSuccess and CleanupAfterKnownSend
 
   run unavailableCapabilitiesRefuseConfirmationTest = init.then(bind(1)).then(regrant).then(newDraft)
     .then(prepare("send")).then(reviewed(true)).then(capabilities(0,1,0,false,false,false,false))
@@ -285,4 +372,19 @@ module InboxCoordinator {
     .then(prepare("send")).then(reviewed(true)).then(reserve).then(bind(2)).then(regrant)
     .then(storageRefused(1)).then(bind(1)).then(regrant)
     .expect(canConfirm and First::s.phase=="review" and requests==0 and safety)
+  run cleanupFailureKeepsLaterCopiesTest = init.then(bind(1)).then(regrant).then(newDraft).then(saveDraft)
+    .then(shelveSnapshot).then(retainDraft).then(prepare("send")).then(reviewed(true)).then(reserve)
+    .then(persisted(1)).then(dispatched).then(result("succeeded")).then(startCleanup)
+    .then(clearRetained(true,true)).then(clearShelf(false,false))
+    .expect(copy.current==0 and copy.retained==0 and copy.shelf==1 and copy.saved==1 and safety)
+  run lostCleanupReplyRecoversTest = init.then(bind(1)).then(regrant).then(newDraft).then(saveDraft)
+    .then(retainDraft).then(prepare("send")).then(reviewed(true)).then(reserve).then(persisted(1))
+    .then(dispatched).then(result("succeeded")).then(startCleanup).then(clearRetained(true,false))
+    .then(restart).then(checkReceipt(true)).then(startCleanup).then(clearRetained(false,true))
+    .then(clearShelf(false,true)).then(clearSaved(true,true)).expect(copy.saved==0 and requests==1 and safety)
+  run staleCleanupCannotTouchReplacementTest = init.then(bind(1)).then(regrant).then(newDraft).then(saveDraft)
+    .then(retainDraft).then(prepare("send")).then(reviewed(true)).then(reserve).then(persisted(1))
+    .then(dispatched).then(result("succeeded")).then(startCleanup).then(bind(2)).then(regrant)
+    .then(newDraft).then(clearRetained(true,true)).then(restoreRetained(true))
+    .expect(copy.current==1 and firstCopy.retained==1 and s.cleanupStage=="idle" and safety)
 }

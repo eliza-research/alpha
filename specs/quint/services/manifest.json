@@ -764,7 +764,10 @@
         "newDraftShelvesLatestCopyTest",
         "oldAccountCapabilityIgnoredTest",
         "oldInstanceCapabilityIgnoredTest",
-        "oldAccountCasRefusalRetainsReviewTest"
+        "oldAccountCasRefusalRetainsReviewTest",
+        "cleanupFailureKeepsLaterCopiesTest",
+        "lostCleanupReplyRecoversTest",
+        "staleCleanupCannotTouchReplacementTest"
       ],
       "invariants": [
         "AtMostOneNetworkRequest",
@@ -773,7 +776,8 @@
         "CurrentComposerRequired",
         "EditedCopiesPreserved",
         "CleanupRequiresFreshSuccess",
-        "TypeOK"
+        "TypeOK",
+        "CleanupAfterKnownSend"
       ],
       "bounds": {
         "maxSamples": 1000,
@@ -785,12 +789,14 @@
         "owner/epoch/known/capabilityToken": "current provider binding and capability callbacks fenced by captured account, binding epoch and latest read token",
         "copies/sourceContent/sourceAttachment": "finite identities and content-equivalence classes for open, saved, retained and shelved drafts and their reviewed source",
         "network/busy": "actual provider dispatch, separate from a pending local CAS",
-        "withdrawOwner": "deferred removal of undispatched reviews for a withdrawn grant"
+        "withdrawOwner": "deferred removal of undispatched reviews for a withdrawn grant",
+        "cleanupStage/cleanupEpoch/retainedWritable": "Ordered per-write cleanup, captured binding, local retained-controller failure and compensation after a known stale clear"
       },
       "abstractions": [
         "Two logical account/grant identities, two draft identities and content/attachment equivalence classes. Each retained operation instance issues at most one provider request in a trace.",
         "Current capability readback gates confirmation. Capability callbacks retain account, binding epoch and read token. Grant withdrawal during an already admitted run is deferred, so an in-flight request can remain uncertain and its receipt is retained.",
-        "Cleanup requires a provider-confirmed current send. Edited copies are preserved and an older saved version is marked. Atomic cleanup transitions summarize its own account-scoped persistence boundaries."
+        "Cleanup requires a provider-confirmed current send. Edited copies are preserved and an older saved version is marked. The compatibility cleanup action summarizes a complete pass; per-write actions expose retained, shelf and saved CAS completion, lost replies and stale-binding compensation.",
+        "The staged cleanup projection admits one cleanup invocation at a time. Its shelf represents one exact source draft. Arbitrary shelf collections and simultaneous independent cleanup invocations require further schedules."
       ]
     }
   ]

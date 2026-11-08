@@ -61,7 +61,7 @@ export function rebuildInboxDriver(expected) {
 export async function createInboxFixture() {
   const artifact = await bundle();
   const slots = new Map(), events = [], toasts = [], listeners = new Set(), pending = new Set();
-  let counter = 0, clock = 1000, storeGate, capabilityGate, prepareGate, dispatchGate, receiptGate, attachmentGate;
+  let counter = 0, clock = 1000, storeGate, storeResultGate, capabilityGate, prepareGate, dispatchGate, receiptGate, attachmentGate;
   let accountIndex = 1, sessionIndex = 1, connected = true, fixture;
   const capabilities = new Map([1, 2].map((owner) => [owner, {
     version: 1,
@@ -102,6 +102,7 @@ export async function createInboxFixture() {
       if (value === null) slots.delete(key);
       else slots.set(key, structuredClone(value));
       events.push(["cas-done", key, value?.phase ?? null]);
+      if (storeResultGate) await storeResultGate({kind: "cas", key, expected, value});
       return { status: "saved" };
     }),
     readRaw: async (key) => {
@@ -247,7 +248,7 @@ export async function createInboxFixture() {
       else capabilities.set(owner, { ...capabilities.get(owner), ...patch });
     },
     gates(value) {
-      ({ store: storeGate, capability: capabilityGate, prepare: prepareGate, dispatch: dispatchGate, receipt: receiptGate, attachment: attachmentGate } = value);
+      ({ store: storeGate, storeResult: storeResultGate, capability: capabilityGate, prepare: prepareGate, dispatch: dispatchGate, receipt: receiptGate, attachment: attachmentGate } = value);
     },
     switchOwner(owner) {
       accountIndex = owner;

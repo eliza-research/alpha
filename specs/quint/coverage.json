@@ -24091,7 +24091,7 @@
     },
     {
       "path": "apps/app/src/prototype/inbox-drafts.ts",
-      "sha256": "6a97d33b00bc96a856da50163bd25a887401f1ef13bf246c74e618e979b52680",
+      "sha256": "094210489665707524d3bc027dbf43513427483dfcfb76632e1bbf9b9d97fbb5",
       "models": [
         "InboxDelivery",
         "InboxCoordinator"

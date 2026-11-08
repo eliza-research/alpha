@@ -445,3 +445,5 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
   const result = await runInboxCoordinatorRefinement();
   console.log(JSON.stringify({ traces: result.receipts[0].traces, checkpoints: result.receipts[0].checkpoints }));
 }
+
+export {action, observe, step, setup, compose, review, startSend};

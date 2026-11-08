@@ -101,3 +101,40 @@ The current `InboxCoordinator` has 16 named scenarios. `InboxDelivery` retains
 its existing API and adds one reservation scenario, for 8 in total. Model-gate
 and bounded symbolic receipts are written under `test-results/quint-inbox/final`.
 Earlier receipts under `before-callback-fence` describe superseded model bytes.
+
+## Individual cleanup writes
+
+`inbox-cleanup.mjs` adds nine source schedules using the actual retained-draft
+controller, shelf and saved-copy CAS operations. Each write is held separately.
+The controlled store can refuse a write before commit or commit it and lose the
+reply. Reload uses the existing successful provider receipt and never dispatches
+mail again. Its receipt ID is `InboxCleanup` and shares `InboxCoordinator`.
+
+The model retains the complete-pass `cleanup` action for existing traces. New
+`startCleanup`, `clearRetained`, `clearShelf` and `clearSaved` actions expose
+individual persistence boundaries. `publishRetainedClear` separates durable
+commit from callback completion. When the binding retires between them, the
+actual `AssistantDraftController.consume` compensates its own known clear.
+`restoreRetained` records that account-scoped compensation. A second actual
+composer also saves while the first awaits saved-copy removal, and the old CAS
+preserves the newer revision.
+
+A source defect was reproduced at the shelf boundary. `settleSent` allowed a
+rejected shelf CAS to escape its asynchronous observer after a successful send.
+The local cleanup handler now retains remaining copies and reports an incomplete
+cleanup. A later matching receipt retries it. Individual committed writes remain
+committed.
+
+These schedules use one active cleanup invocation and one exact shelved source
+draft. Arbitrary shelf collections, simultaneous independent cleanups, forwarded
+source parts and provider-draft editing remain additional obligations.
+
+```sh
+node --test test/quint-inbox-cleanup.test.mjs
+```
+
+The cleanup follow-up passes all 19 current model scenarios, 1,000 sampled runs
+of 80 steps with seed 123, and Apalache 0.62.4 safety checking through four
+transitions. Both source runners pass together, with 27 schedules and 241
+observed checkpoints. The existing 26 cleanup tests and 2 saved/multiple-draft
+tests also pass. Current receipts are under `test-results/quint-inbox-cleanup/final`.
