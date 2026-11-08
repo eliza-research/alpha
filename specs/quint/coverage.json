@@ -56583,7 +56583,8 @@
     {
       "path": "scripts/core-state-patch.mjs",
       "models": [
-        "TaskServiceLifecycle"
+        "TaskServiceLifecycle",
+        "TaskSchedulerRuntime"
       ],
       "scope": "development-runtime",
       "treatment": "domain-contract-or-support",
@@ -138535,7 +138536,8 @@
         "SpeechResources",
         "StreamingPlayback",
         "VoiceSession",
-        "NativeListenerInput"
+        "NativeListenerInput",
+        "NativeSpeechGate"
       ],
       "scope": "shared-module-dependency",
       "treatment": "domain-contract-or-support",
@@ -201446,7 +201448,8 @@
         "CoreRuntimeRetirement",
         "CoreRuntimeShutdown",
         "CoreServiceLifecycle",
-        "TaskServiceLifecycle"
+        "TaskServiceLifecycle",
+        "TaskSchedulerRuntime"
       ],
       "scope": "shared-module-dependency",
       "treatment": "domain-contract-or-support",
@@ -201615,7 +201618,8 @@
         "CoreRuntimeRetirement",
         "CoreRuntimeShutdown",
         "CoreServiceLifecycle",
-        "TaskServiceLifecycle"
+        "TaskServiceLifecycle",
+        "TaskSchedulerRuntime"
       ],
       "scope": "shared-module-dependency",
       "treatment": "domain-contract-or-support",
@@ -626051,7 +626055,8 @@
       "models": [
         "TaskServiceLifecycle",
         "CanonicalNotesStore",
-        "CoreTurnControllers"
+        "CoreTurnControllers",
+        "TaskSchedulerRuntime"
       ],
       "sha256": "e8871fc3bcf947739b817ffa9a3e6f138abf1a24603932b604aacdfb0866da32"
     },
@@ -626087,7 +626092,8 @@
       "models": [
         "TaskServiceLifecycle",
         "CanonicalNotesStore",
-        "CoreTurnControllers"
+        "CoreTurnControllers",
+        "TaskSchedulerRuntime"
       ],
       "sha256": "d3b80ffb0dad32e3a17b50dbbb0d4c0dfb3f60b0f2a35f577be4612aa2f9db1e"
     },

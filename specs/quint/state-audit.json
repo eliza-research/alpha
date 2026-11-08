@@ -12,7 +12,7 @@
   "toolSha256": "403a33cab0dff7ace6219b29e7ffef373319677a7d8be6641466dd16a6750b5b",
   "dependencyLockSha256": "944123c801157a7ba3676a886d0b28a54bef32735ae96da5c6dd0f206c88c8bf",
   "sourcePin": "99b49439ce9d0cb5607e9831b9f7f58d89525029",
-  "ledgerSha256": "53914e6f5c9dc3327bdcfba6b02ebeb767a3413bf4c3875283474b83f7e63b86",
+  "ledgerSha256": "6ce4dc101a7bb096d30eef353e5bfa4df42302831b504ea484773e6a56c37848",
   "method": "TypeScript syntax trees for JavaScript/TypeScript and JDK compiler trees for Java. Mutable fields, bindings, containers, state hooks, write sites and asynchronous registration calls are candidates for semantic review.",
   "limitations": [
     "Candidate extraction does not establish state-machine coverage or implementation refinement.",
@@ -45414,7 +45414,8 @@
       "path": "scripts/core-state-patch.mjs",
       "sha256": "e8871fc3bcf947739b817ffa9a3e6f138abf1a24603932b604aacdfb0866da32",
       "allocatedModels": [
-        "TaskServiceLifecycle"
+        "TaskServiceLifecycle",
+        "TaskSchedulerRuntime"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -64703,7 +64704,8 @@
         "SpeechResources",
         "StreamingPlayback",
         "VoiceSession",
-        "NativeListenerInput"
+        "NativeListenerInput",
+        "NativeSpeechGate"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -83911,7 +83913,8 @@
         "CoreRuntimeRetirement",
         "CoreRuntimeShutdown",
         "CoreServiceLifecycle",
-        "TaskServiceLifecycle"
+        "TaskServiceLifecycle",
+        "TaskSchedulerRuntime"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -83955,7 +83958,8 @@
         "CoreRuntimeRetirement",
         "CoreRuntimeShutdown",
         "CoreServiceLifecycle",
-        "TaskServiceLifecycle"
+        "TaskServiceLifecycle",
+        "TaskSchedulerRuntime"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -218051,6 +218055,6 @@
   ],
   "detail": {
     "path": "test-results/quint-state-audit/details.json",
-    "sha256": "cc22ce720d9406a0fbca051580ce102d8e371f492db34f7b43a0737f8214816f"
+    "sha256": "7d19c7e37b19c24f9fe6b808e07b647e34900555db901983eb8d9554bc21cce0"
   }
 }

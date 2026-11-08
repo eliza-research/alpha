@@ -25,6 +25,7 @@ import {runCoreRuntimeShutdownRefinement} from './core-runtime/shutdown.mjs';
 import {runTurnControllerRefinement} from './core-runtime/turns.mjs';
 import {runCanonicalNotesRefinement} from './notes-store/index.mjs';
 import {runTaskServiceRefinement} from './task-service/index.mjs';
+import {runTaskSchedulerRuntimeRefinement} from './task-scheduler/runtime.mjs';
 
 export async function runServicesRefinement() {
   const receipts = [];
@@ -51,7 +52,7 @@ export async function runServicesRefinement() {
     {model: 'NativeCredentialMutation', obligation: 'Real shutdown, encryption and lock interleavings', reason: 'Actual credential-store classification, recheck, admission invalidation and preflight run against primitive storage/lifecycle ports. Those ports do not establish native shutdown or encrypted persistence.'},
     {model: 'PdfWorker', obligation: 'Kernel isolation, descriptor transfer, watchdog and memory kill', reason: 'Actual service request/render/cleanup/reply code executes against Android primitives. Host stubs cannot establish kernel or real PDF renderer behavior.', requires: ['IsolatedPdfInstrumentedTest on a disposable admitted installation']},
   ];
-  for (const check of [runInboxCoordinatorRefinement, runInboxCleanupRefinement, runInboxProviderDraftsRefinement, runWorkflowEngineRefinement, runWorkflowWakeupRefinement, runWorkflowTaskRefinement, runCanonicalNotesRefinement, runTaskServiceRefinement]) {
+  for (const check of [runInboxCoordinatorRefinement, runInboxCleanupRefinement, runInboxProviderDraftsRefinement, runWorkflowEngineRefinement, runWorkflowWakeupRefinement, runWorkflowTaskRefinement, runCanonicalNotesRefinement, runTaskServiceRefinement, runTaskSchedulerRuntimeRefinement]) {
     const result = await check();
     receipts.push(...result.receipts);
     obligations.push(...result.obligations);

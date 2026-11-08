@@ -91,9 +91,11 @@ npm run android:build:local
 npm run android:verify
 ```
 
-The default refinement command runs the application, services, native and
-composition campaigns. A subset can be selected with `--families=application`,
-`--families=services`, `--families=native` or `--families=composition`. Reports are
+The default refinement command runs the application, services, native,
+composition and translated core campaigns. Use `--families=legacy` for the
+translated source campaigns, or select `application`, `services`, `native`,
+or `composition`. The summary includes the full model registry and identifies
+models without a passing receipt from the selected campaigns. Reports are
 written to `test-results/quint-refinement/`. CI retains model and source trace
 evidence as artifacts.
 
@@ -162,6 +164,10 @@ real authority and SQLite journal. The semaphore campaign checks eight
 schedules and 69 checkpoints with actual abort dispatch, including reentrant
 release before cancellation. The serialisation campaign covers all 24
 invocation orders and 254 checkpoints with sampled arrival and outcome timing.
+The expanded scheduler campaign checks 125 additional checkpoints across 10
+schedules for batched agent queries, owner replacement, process disposal and
+shared timer ownership. The room handler queue compares both translated
+profiles against the real FIFO and writer tail.
 
 `NativeListenerInput` compares 20 real Java schedules and 108 checkpoints
 through capture, the speech gate, ASR, and wake callbacks. It covers an input
@@ -169,3 +175,5 @@ read that outlives its epoch across microphone privacy, the playback guard
 boundary, call and recording gates, ownership loss, and PCM cleanup. A
 separate regression exercises failed durable capture admission and checks that
 it leaves recognition fenced.
+The separate speech-gate campaign checks 11 segmentation schedules, including
+adaptive noise thresholds, circular pre-roll, utterance length and reset.
