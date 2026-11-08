@@ -165,7 +165,10 @@ export function HostedDigestPanel({composeQuestion,canComposeQuestion}:{composeQ
 	const refresh = (afterMutation=false,resultsOnly=false):Promise<void> => {
 		const b = binding.current;
 		if (!b || !canSyncResults() || (mutationBusy.current && !afterMutation)) return Promise.resolve();
-		if (refreshFlight.current) return refreshFlight.current.full||resultsOnly ? refreshFlight.current.promise : refreshFlight.current.promise.then(()=>refresh(afterMutation));
+		const flight = refreshFlight.current;
+		if (flight) return flight.full || resultsOnly ? flight.promise : flight.promise.then(() => {
+			if (binding.current === b) return refresh(afterMutation);
+		});
 		const controller = new AbortController();
 		const abort = () => controller.abort();
 		b.controller.signal.addEventListener("abort", abort, {once:true});
@@ -298,7 +301,14 @@ export function HostedDigestPanel({composeQuestion,canComposeQuestion}:{composeQ
 		// Foreground freshness only; Android background delivery is a separate transport. While the panel
 		// is closed only the inbox is read, once a minute; open, resume, mutation and reconnect refresh fully.
 		let ticks = 0;
-		const poll = setInterval(() => { const full = openRef.current; if (!full && ++ticks % 4) return; if (canSyncResults()) void (async()=>{if(isAndroid||(await hostedResultNative.status()).backgroundEnabled)await refresh(false,!full);})().catch(()=>{}); }, 15000);
+		const poll = setInterval(() => {
+			const full = openRef.current;
+			if ((!full && ++ticks % 4) || !canSyncResults()) return;
+			void (async () => {
+				const enabled = isAndroid || (await hostedResultNative.status()).backgroundEnabled;
+				if (enabled && !disposed) await refresh(false, !full);
+			})().catch(() => {});
+		}, 15000);
 		window.addEventListener("online", resume);
         let deviceFrame=0;const deviceResume=()=>{refreshFlight.current?.controller.abort();cancelAnimationFrame(deviceFrame);deviceFrame=requestAnimationFrame(resume);};
         window.addEventListener("alpha:device-state",deviceResume);
