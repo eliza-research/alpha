@@ -143,6 +143,8 @@ test('direct SMS and the handoff go through the shared SMS review',async()=>{
   model().nativeSend();await settle();assert.equal(sends.length,1);assert.equal(model().nativeNotice,'Select a SIM for this text.');
   model().nativeSims[1].pick();sims=[{id:3,slot:0,displayName:'SIM'}];model().nativeRefresh();await settle();
   model().nativeSend();await settle();assert.equal(sends.length,1,'a SIM that is no longer active is refused');assert.match(model().nativeNotice,/no longer active/);
+  owner.view='home';owner.componentDidUpdate();sims=null;owner.view='messages';owner.componentDidUpdate();await settle();
+  model().nativeOnRecipients({target:{value:'4155550100'}});model().nativeOnBody({target:{value:'hello'}});model().nativeSend();await settle();assert.equal(sends.length,1);assert.equal(model().nativeNotice,'Grant SIM access to select a SIM.','without SIM access the owner is asked for it, not told there is no SIM');
   owner.view='home';owner.componentDidUpdate();owner.componentWillUnmount();
  }finally{globalThis.document=priorDocument;delete globalThis.__smsReviewPort;rmSync(dir,{recursive:true,force:true});}
 });

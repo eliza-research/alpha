@@ -37,7 +37,7 @@ export function installSmsAdapter(Component:any,views:Bag){
   const status=session.state.status;if(!status){notice='Refresh Messages, then review the text again.';return;}
   /* The shared review normalizes and dedupes numbers and takes the only active SIM; a SIM that is no longer active is refused. */
   const checked=reviewSms({recipients:draftRecipients(),body,subscriptionId:sim?Number(sim):undefined},status,'direct');
-  if('problem' in checked){notice=smsProblemLabel(checked.problem,'direct',!!sim);return;}
+  if('problem' in checked){notice=checked.problem==='sim-unknown'&&!status.subscriptions?'Grant SIM access to select a SIM.':smsProblemLabel(checked.problem,'direct',!!sim);return;}
   if(!operationId||!smsReview){operationId=crypto.randomUUID();smsReview={...checked.review,subscriptionId:checked.review.subscriptionId as number};}
   const result=await client.sendSms(smsReview,operationId);if(!active||token!==lifecycle||draft!==draftRevision)return;receipt=result;notice=receiptLabel(result.status);
   /* Cancelled and denied prove nothing was sent: the next Send opens a new review. */
