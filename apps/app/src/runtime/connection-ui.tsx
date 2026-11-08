@@ -932,7 +932,7 @@ async function manageProviderKey(action:'edit'|'remove',key:LocalProviderKey,exp
 async function manageProviderKey(action:'edit'|'remove'|'reveal',key:LocalProviderKey,expectedRevision:string,external:AbortSignal,value?:string):Promise<void|LocalProviderReveal>{
  if(operation||sending)throw Error('Finish the current reply or change first.');
  external.throwIfAborted();
- const controller=new AbortController(),signal=anyAbortSignal([external,controller.signal]);operation=controller;providerStatusGeneration++;
+ const controller=new AbortController(),signal=anyAbortSignal([external,controller.signal]);signInReadinessOwner=null;operation=controller;providerStatusGeneration++;
  update({busy:true,backgroundWork:false,error:'',message:''});
  let changed:LocalProviderStatus|undefined;
  try{

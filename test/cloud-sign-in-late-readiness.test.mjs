@@ -2,14 +2,15 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {transformSync} from 'esbuild';
-const source=readFileSync(new URL('../apps/app/src/runtime/connection-ui.tsx',import.meta.url),'utf8');
+const source=readFileSync(process.env.ALPHA_READINESS_SOURCE||new URL('../apps/app/src/runtime/connection-ui.tsx',import.meta.url),'utf8');
 const between=(a,b)=>{const start=source.indexOf(a),end=source.indexOf(b,start+a.length);assert.ok(start>=0&&end>start);return source.slice(start,end);};
 const methods=between('async function inAppSignInMethods(','/** A failed or cancelled step');
 const begin=between('  async beginSignIn(','  /** Leaves the sign-in screen');
+const manage=between("async function manageProviderKey(action:'reveal'",'/** P-43: a startup path');
 // cloud-sign-in.ts imports the shared native sign-in contract; Node loads the TypeScript directly.
 const contract=await import('../apps/app/src/runtime/cloud-sign-in.ts');
 const factory=transformSync(`(()=>{
- let epoch=0,operation=null,signInReadinessOwner=null,googleSignInGeneration=0,inAppGoogle=false,inAppPhone=false,inAppEmail=true;
+ let epoch=0,operation=null,sending=null,signInReadinessOwner=null,googleSignInGeneration=0,providerStatusGeneration=0,inAppGoogle=false,inAppPhone=false,inAppEmail=true;
  let state={purpose:'agent',open:true,signIn:null,cloudAccount:null};let timeout,resolve,reject,count=0,signal,probeController;
  const cloudSignIn={status(){count++;return new Promise((yes,no)=>{resolve=yes;reject=no;});}};
  const SIGN_IN_READINESS_WAIT_MS=6000,setTimeout=fn=>(timeout=fn,1),clearTimeout=()=>{};
@@ -18,9 +19,15 @@ const factory=transformSync(`(()=>{
  const update=patch=>{state={...state,...patch};};
  const work=async(_,action)=>{const controller=new AbortController();probeController=controller;signal=controller.signal;signInReadinessOwner=null;operation=controller;try{await action(signal);}finally{operation=null;}};
  const ensureResident=async()=>{};class CloudSignInError extends Error{}
+ const anyAbortSignal=signals=>AbortSignal.any(signals);
+ const revealLocalProviderKey=async()=>({key:'text',revision:'fixture',shown:true,hidesAfterMs:30000});
+ const localProviderStatus=async()=>({mode:'cloud',revision:'fixture-next',keys:{text:{configured:true},voice:{configured:true}}});
+ const editLocalProviderKeys=localProviderStatus,removeLocalProviderKey=localProviderStatus;
+ const restartAfterProviderChange=async()=>{throw Error('Inactive Cloud key changes must not restart');};
  ${methods}
+ ${manage}
  const controller={${begin}};
- return {controller,timeout(){timeout();},resolve(value){resolve(value);},reject(){reject(Error('offline'));},read(){return {google:inAppGoogle,email:inAppEmail,phone:inAppPhone,count,chooser:state.signIn};},change(kind){if(kind==='abort')probeController.abort();if(kind==='epoch')epoch++;if(kind==='closed')state={...state,open:false};if(kind==='account')state={...state,cloudAccount:{}};if(kind==='environment')cloud=makeCloud('staging');if(kind==='chooser')state={...state,signIn:{step:'choose',environment:'production'}};if(kind==='step')state={...state,signIn:{step:'email',environment:'production'}};if(kind==='new-operation')signInReadinessOwner=null;}}
+ return {controller,manage:action=>manageProviderKey(action,'text','fixture',new AbortController().signal,'synthetic-key'),timeout(){timeout();},resolve(value){resolve(value);},reject(){reject(Error('offline'));},read(){return {google:inAppGoogle,email:inAppEmail,phone:inAppPhone,count,chooser:state.signIn};},change(kind){if(kind==='abort')probeController.abort();if(kind==='epoch')epoch++;if(kind==='closed')state={...state,open:false};if(kind==='account')state={...state,cloudAccount:{}};if(kind==='environment')cloud=makeCloud('staging');if(kind==='chooser')state={...state,signIn:{step:'choose',environment:'production'}};if(kind==='step')state={...state,signIn:{step:'email',environment:'production'}};if(kind==='new-operation')signInReadinessOwner=null;}}
 })`,{loader:'ts',format:'cjs'}).code.trim().replace(/;$/,'');
 const make=new Function('signInReadiness','return ('+factory+')()');
 const settle=()=>new Promise(resolve=>setImmediate(resolve));
@@ -43,7 +50,14 @@ test('immediate native readiness keeps the existing path and does not issue anot
 });
 test('new ordinary operations revoke late-readiness ownership at the actual work boundary',()=>{
  const assignments=[...source.matchAll(/(?<![.\w])operation\s*=\s*controller\s*;/g)];
- assert.equal(assignments.length,4,'all ordinary, plan-refresh, edit and device-request operation boundaries');
+ assert.equal(assignments.length,5,'all ordinary, provider-key, plan-refresh, edit and device-request operation boundaries');
  for(const assignment of assignments)assert.match(source.slice(Math.max(0,assignment.index-45),assignment.index),/signInReadinessOwner\s*=\s*null;\s*$/);
  assert.match(source,/const SIGN_IN_READINESS_WAIT_MS = 6000;/);
+});
+
+for(const action of ['reveal','edit','remove'])test(`an actual ${action} key operation retires an earlier late readiness result without replay`,async()=>{
+ const h=await waiting();await h.manage(action);
+ h.resolve({inApp:true,google:true,email:true});await settle();
+ assert.equal(h.read().google,false,'a finished owner operation cannot revive the prior readiness owner');
+ assert.equal(h.read().count,1,'the key operation does not issue another readiness probe');
 });
