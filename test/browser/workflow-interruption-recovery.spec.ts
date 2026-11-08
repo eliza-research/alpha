@@ -1,3 +1,4 @@
+import {openConnectionDiagnostics} from './helpers/connection-diagnostics';
 import {installWorkflowListFixture,newWorkflow,workflowCard} from './workflow-navigation';
 import {guardCalendarFixture as guardNoMedia} from './calendar-draft-readiness';
 import { returnToApps } from './app-navigation';
@@ -41,7 +42,7 @@ async function setup(page:Page){
      return inner.request(path,body,signal);});wrapped.set(binding.client,client);}
    return {...binding,client};};
  });
- await page.getByRole('button',{name:'Settings',exact:true}).click();await page.getByRole('button',{name:'Agent connection',exact:true}).click();await page.getByRole('button',{name:'Connect development profile'}).click();
+ await page.getByRole('button',{name:'Settings',exact:true}).click();await openConnectionDiagnostics(page);await page.getByRole('button',{name:'Connect development profile'}).click();
 }
 const rule=(page:Page,value:Rule)=>page.evaluate(value=>{(window as any).faults.rules.push(value);},value);
 const posts=(page:Page,suffix:string)=>page.evaluate(suffix=>(window as any).faults.calls.filter((call:any)=>call.method==='POST'&&call.path.endsWith(suffix)).map((call:any)=>call.body),suffix) as Promise<any[]>;

@@ -1,3 +1,4 @@
+import {openConnectionDiagnostics} from './helpers/connection-diagnostics';
 // Hosted/CLI behavior is test-mocks-only diagnostic coverage. Enter that explicit controller
 // route; the production sign-in button uses native email and never falls back to this route.
 import { test, expect, type Page } from '@playwright/test';
@@ -48,7 +49,7 @@ for(const scenario of ['decline','accepted-reload','lost-activation','quote-chan
     throw Error('Unexpected Cloud fixture route '+path);
    }};
   },scenario);
-  await page.goto('/');await page.getByRole('button',{name:'Settings',exact:true}).click();await page.getByRole('button',{name:'Agent connection',exact:true}).click();await page.locator('summary').filter({hasText:/^Development Cloud agent infrastructure$/}).click();
+  await page.goto('/');await page.getByRole('button',{name:'Settings',exact:true}).click();await openConnectionDiagnostics(page);await page.locator('summary').filter({hasText:/^Development Cloud agent infrastructure$/}).click();
   await preloadPageModules(page,setupModules);
   // Keep this trigger synchronous. Chromium may collect an inspector-awaited import Promise
   // even after its module has been preloaded; the retained namespace needs no new import.
@@ -97,7 +98,7 @@ for(const scenario of ['decline','accepted-reload','lost-activation','quote-chan
    await expect(page.getByText('Dedicated setup accepted',{exact:true})).toBeVisible();
    expect(await page.evaluate(()=>JSON.parse(localStorage.getItem('fixture.cloud.setup')!))).toMatchObject({activation:1,cutover:0});return;
   }
-  await page.reload();await preloadPageModules(page,setupModules);await page.getByRole('button',{name:'Settings',exact:true}).click();await page.getByRole('button',{name:'Agent connection',exact:true}).click();await page.locator('summary').filter({hasText:/^Development Cloud agent infrastructure$/}).click();await page.getByRole('button',{name:'Refresh agent status',exact:true}).click();
+  await page.reload();await preloadPageModules(page,setupModules);await page.getByRole('button',{name:'Settings',exact:true}).click();await openConnectionDiagnostics(page);await page.locator('summary').filter({hasText:/^Development Cloud agent infrastructure$/}).click();await page.getByRole('button',{name:'Refresh agent status',exact:true}).click();
   if(scenario==='stopped-resume'){await page.evaluate(()=>{const s=JSON.parse(localStorage.getItem('fixture.cloud.setup')!);s.stopped=true;s.quote=1;localStorage.setItem('fixture.cloud.setup',JSON.stringify(s));});await page.getByRole('button',{name:'Refresh agent status',exact:true}).click();await expect(page.getByRole('button',{name:'Start Dedicated',exact:true})).toBeEnabled();await page.getByRole('button',{name:'Start Dedicated',exact:true}).click();await page.getByRole('button',{name:'Check setup status',exact:true}).click();}
   await expect(page.getByRole('button',{name:'Continue setup',exact:true})).toBeVisible();
   expect(await page.evaluate(()=>JSON.parse(localStorage.getItem('fixture.cloud.setup')!))).toMatchObject({activation:scenario==='stopped-resume'?2:1,cutover:0});
@@ -150,7 +151,7 @@ for(const scenario of ['adopt-existing','owner-during-connect','organization-dur
     throw Error('Unexpected boundary fixture route '+path);
    }};
   },scenario);
-  await page.goto('/');await page.getByRole('button',{name:'Settings',exact:true}).click();await page.getByRole('button',{name:'Agent connection',exact:true}).click();await page.locator('summary').filter({hasText:/^Development Cloud agent infrastructure$/}).click();
+  await page.goto('/');await page.getByRole('button',{name:'Settings',exact:true}).click();await openConnectionDiagnostics(page);await page.locator('summary').filter({hasText:/^Development Cloud agent infrastructure$/}).click();
   await page.getByRole('button',{name:'Refresh agent status',exact:true}).click();
   if(scenario==='adopt-existing'){
    await page.getByRole('button',{name:'Start Dedicated',exact:true}).click();

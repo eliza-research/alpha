@@ -1,3 +1,4 @@
+import {openConnectionDiagnostics} from './helpers/connection-diagnostics';
 import {newWorkflow} from './workflow-navigation';
 import { returnToApps } from './app-navigation';
 import {test,expect,type Page} from '@playwright/test';
@@ -15,7 +16,7 @@ async function setup(page:Page){
    return {spec,specDigest:await workflowSha(spec),catalogRevision:body.catalogRevision,compilerRevision:body.compilerRevision,active:false};
   });return generate.apply(client,args);};
  });
- await page.getByRole('button',{name:'Settings',exact:true}).click();await page.getByRole('button',{name:'Agent connection',exact:true}).click();await page.getByRole('button',{name:'Connect development profile'}).click();await returnToApps(page);await page.getByRole('button',{name:'Workflows',exact:true}).click();await newWorkflow(page);await page.getByRole('textbox',{name:'Workflow name',exact:true}).fill('Retained original draft');await page.getByRole('button',{name:/Describe it to/}).click();
+ await page.getByRole('button',{name:'Settings',exact:true}).click();await openConnectionDiagnostics(page);await page.getByRole('button',{name:'Connect development profile'}).click();await returnToApps(page);await page.getByRole('button',{name:'Workflows',exact:true}).click();await newWorkflow(page);await page.getByRole('textbox',{name:'Workflow name',exact:true}).fill('Retained original draft');await page.getByRole('button',{name:/Describe it to/}).click();
 }
 const calls=(page:Page)=>page.evaluate(()=>(window as any).scopeFixture.calls.length);
 

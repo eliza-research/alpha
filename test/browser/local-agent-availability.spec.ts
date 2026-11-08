@@ -1,3 +1,4 @@
+import {openConnectionDiagnostics} from './helpers/connection-diagnostics';
 import { test, expect } from '@playwright/test';
 
 // Actual renderer/chooser and controller, synthetic native packaging boundary.
@@ -48,7 +49,7 @@ for (const mode of ['checking', 'unavailable', 'available'] as const) {
     await page.goto('/');
     // Initial native launch may open automatically; otherwise use the product control.
     if (!await page.locator('.alpha-connection-scrim').isVisible())
-      await page.getByRole('button', { name: 'Agent connection', exact: true }).click();
+      await openConnectionDiagnostics(page);
     await expect(page.locator('.alpha-connection-scrim')).toBeVisible();
     const chooser = page.locator('.alpha-connection');
     const start = chooser.getByRole('button', { name: 'Start local agent', exact: true });

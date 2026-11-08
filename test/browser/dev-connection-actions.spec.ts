@@ -1,11 +1,12 @@
+import {openConnectionDiagnostics} from './helpers/connection-diagnostics';
 import {openLegacyNotes} from './helpers/legacy-notes';
 import {guardCalendarFixture as guardNoMedia} from './calendar-draft-readiness';
 import { returnToApps } from './app-navigation';
 import {test,expect,type Page,type Locator} from '@playwright/test';
 test.beforeEach(async({context})=>guardNoMedia(context));
 const key='alpha.browser.execution.local.v1';
-async function open(page:Page){await page.getByRole('button',{name:'Settings',exact:true}).click();await page.getByRole('button',{name:'Agent connection',exact:true}).click();}
-async function setup(page:Page){await page.goto('/?mode=dev');await openLegacyNotes(page);await returnToApps(page);await open(page);await page.getByRole('button',{name:'Connect development profile'}).click();await page.getByRole('button',{name:'Agent connection',exact:true}).click();await page.getByText('Development device actions',{exact:true}).click();}
+async function open(page:Page){await page.getByRole('button',{name:'Settings',exact:true}).click();await openConnectionDiagnostics(page);}
+async function setup(page:Page){await page.goto('/?mode=dev');await openLegacyNotes(page);await returnToApps(page);await open(page);await page.getByRole('button',{name:'Connect development profile'}).click();await openConnectionDiagnostics(page);await page.getByText('Development device actions',{exact:true}).click();}
 async function queue(page:Page){await page.getByRole('button',{name:'Queue action for review'}).click();await expect(page.getByText('Action queued. Send a chat message to review it on the current screen.',{exact:true})).toBeVisible();}
 // A recovered card can appear before the first chat finishes saving its conversation.
 // Wait for this reply before injecting failures or confirming its action.

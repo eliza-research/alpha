@@ -1,10 +1,11 @@
+import {openConnectionDiagnostics} from './helpers/connection-diagnostics';
 import { returnToApps } from './app-navigation';
 import {test,expect,type Page} from '@playwright/test';
 // A synthetic agent in the page answers workflow routes. Interrupted runs carry upstream
 // plugin-workflow `reconciliation: {state:'outcome-unknown'}`; every request is recorded.
 async function setup(page:Page){
  await page.goto('/?mode=dev&workflows=agent');
- await page.getByRole('button',{name:'Settings',exact:true}).click();await page.getByRole('button',{name:'Agent connection',exact:true}).click();await page.getByRole('button',{name:'Connect development profile'}).click();
+ await page.getByRole('button',{name:'Settings',exact:true}).click();await openConnectionDiagnostics(page);await page.getByRole('button',{name:'Connect development profile'}).click();
  await page.evaluate(async()=>{
   const {WorkflowProtocol}=await import('/src/runtime/workflow-protocol.ts');const {connectionController:c}=await import('/src/runtime/connection-ui.tsx');
   const spec=(operations:string[])=>JSON.stringify({version:1,name:'x',description:'',trigger:{kind:'manual'},steps:operations.map((operation,i)=>({id:'s'+i,kind:i?'Write':'Read',operation}))});

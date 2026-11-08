@@ -1,3 +1,4 @@
+import {openConnectionDiagnostics} from './helpers/connection-diagnostics';
 import { returnToApps } from './app-navigation';
 import { test, expect } from '@playwright/test';
 
@@ -76,7 +77,7 @@ for (const mode of ['pending', 'wrong-owner', 'expired'] as const) {
     }, mode);
     await page.goto('/');
     await page.getByRole('button', { name: 'Settings', exact: true }).click();
-    await page.getByRole('button', { name: 'Agent connection', exact: true }).click();
+    await openConnectionDiagnostics(page);
     await page.getByText('Local development agent', { exact: true }).click();
     const local = page.locator('.alpha-connection details').filter({ has: page.getByText('Local development agent', { exact: true }) });
     await local.getByLabel('Local agent address').fill('http://127.0.0.1:47842');
@@ -103,7 +104,7 @@ for (const mode of ['pending', 'wrong-owner', 'expired'] as const) {
       expect({...afterNavigation,receipts:0}).toEqual({ posts: 1, decisions: 1, claims: 1, receipts: 0, automationLists: 1, journal: ['reserve', 'markApplying', 'finish'] });
       await returnToApps(page);
       await page.getByRole('button',{name:'Settings',exact:true}).click();
-      await page.getByRole('button',{name:'Agent connection',exact:true}).click();
+      await openConnectionDiagnostics(page);
       await page.getByText('Phone action history',{exact:true}).click();
       await page.getByRole('button',{name:'Sync recorded receipts',exact:true}).click();
       await expect(page.getByRole('button',{name:'Sync recorded receipts',exact:true})).toBeEnabled();

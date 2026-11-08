@@ -1,3 +1,4 @@
+import {openConnectionDiagnostics} from './helpers/connection-diagnostics';
 import {openLegacyNotes} from './helpers/legacy-notes';
 import {openBrowserCalendar} from './helpers/browser-calendar';
 /*
@@ -63,7 +64,7 @@ const ready=async(page:Page,withNotes=false)=>{await expect(page.getByRole('butt
 async function openDeviceActions(page:Page){
  await returnToApps(page);
  await page.getByRole('button',{name:'Settings',exact:true}).click();
- await page.getByRole('button',{name:'Agent connection',exact:true}).click();
+ await openConnectionDiagnostics(page);
  await page.getByText('Development device actions',{exact:true}).click();
 }
 async function queueAction(page:Page,operation:unknown){
@@ -101,7 +102,7 @@ test('Journey B: recorded note is read aloud, summarized, and becomes an event a
 
  // Development agent profile with the summary answer the reviewed recording question will receive.
  await page.getByRole('button',{name:'Settings',exact:true}).click();
- await page.getByRole('button',{name:'Agent connection',exact:true}).click();
+ await openConnectionDiagnostics(page);
  await page.getByRole('textbox',{name:'Scripted reply'}).fill(JSON.stringify({summary,actions:actionText.split('\n')}));
  await page.getByRole('button',{name:'Save development reply'}).click();
  await page.getByRole('button',{name:'Connect development profile'}).click();
@@ -343,7 +344,7 @@ test('Journey B: recorded note is read aloud, summarized, and becomes an event a
 test('Journey B: a calendar proposal for a changed source is refused, and leaving an open review saves nothing',async({page})=>{
  await page.goto('/?mode=dev');await ready(page);
  await page.getByRole('button',{name:'Settings',exact:true}).click();
- await page.getByRole('button',{name:'Agent connection',exact:true}).click();
+ await openConnectionDiagnostics(page);
  await page.getByRole('button',{name:'Connect development profile'}).click();
  await returnToApps(page);await openBrowserCalendar(page);await returnToApps(page);
  const hour=Math.ceil(Date.now()/3_600_000)*3_600_000;

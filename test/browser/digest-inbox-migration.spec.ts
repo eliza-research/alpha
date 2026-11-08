@@ -1,3 +1,4 @@
+import {openConnectionDiagnostics} from './helpers/connection-diagnostics';
 import {test,expect,type Page} from '@playwright/test';
 async function boot(page:Page){
  await page.addInitScript(()=>localStorage.setItem('alpha.connection.selection.v1',JSON.stringify({kind:'offline'})));
@@ -38,7 +39,7 @@ test('damaged inbox archive downloads each exact slot before a reviewed reset',a
  expect(await page.evaluate(async slot=>{const {browserDocuments}=await import('/src/browser/documents.ts'),row=await browserDocuments.read('alpha.browser.'+slot+'.document.v1');return {empty:JSON.parse(row!.raw!).value,legacy:localStorage.getItem('alpha.browser.'+slot)};},slot)).toEqual({empty:null,legacy:'{damaged index'});
 });
 test('scheduled digests exposes recovery for the selected development inbox',async({page})=>{
- await page.addInitScript(()=>localStorage.setItem('alpha.connection.selection.v1',JSON.stringify({kind:'offline'})));await page.goto('/?mode=dev');await page.getByRole('button',{name:'Settings',exact:true}).click();await page.getByRole('button',{name:'Agent connection',exact:true}).click();await page.getByRole('button',{name:'Connect development profile'}).click();await page.evaluate(()=>window.dispatchEvent(new Event('alpha:hosted-digests')));
+ await page.addInitScript(()=>localStorage.setItem('alpha.connection.selection.v1',JSON.stringify({kind:'offline'})));await page.goto('/?mode=dev');await page.getByRole('button',{name:'Settings',exact:true}).click();await openConnectionDiagnostics(page);await page.getByRole('button',{name:'Connect development profile'}).click();await page.evaluate(()=>window.dispatchEvent(new Event('alpha:hosted-digests')));
  const panel=page.getByRole('dialog',{name:'Scheduled digests',exact:true});await panel.getByRole('button',{name:'Digest inbox recovery',exact:true}).click();await expect(panel).toHaveCount(0);const recovery=page.getByRole('dialog',{name:'Development digest inbox recovery',exact:true});await expect(recovery).toBeVisible();await expect(recovery.getByText(/does not cancel or restart agent schedules/)).toBeVisible();await recovery.getByRole('button',{name:'Close recovery',exact:true}).click();await expect(recovery).toHaveCount(0);
 });
 

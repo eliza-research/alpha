@@ -1,3 +1,4 @@
+import {openConnectionDiagnostics} from './helpers/connection-diagnostics';
 import { test, expect } from '@playwright/test';
 import { installResidentAgentPlugin } from './helpers/resident-agent-plugin';
 // Real Settings Activity over the real connection controller and DeviceActions; only the Android
@@ -56,7 +57,7 @@ test('Activity presents recorded phone actions in plain language with reconcile 
     };
   });
   await page.goto('/');
-  if (!await page.locator('.alpha-connection-scrim').isVisible()) await page.getByRole('button', { name: 'Agent connection', exact: true }).click();
+  if (!await page.locator('.alpha-connection-scrim').isVisible()) await openConnectionDiagnostics(page);
   await page.locator('.alpha-connection').getByRole('button', { name: 'Start local agent', exact: true }).click();
   await expect(page.locator('.alpha-connection-scrim')).toHaveCount(0);
   await page.getByRole('button', { name: 'Settings', exact: true }).click();

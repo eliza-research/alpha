@@ -1,3 +1,4 @@
+import {openConnectionDiagnostics} from './helpers/connection-diagnostics';
 import { test, expect } from '@playwright/test';
 import { installResidentAgentPlugin } from './helpers/resident-agent-plugin';
 
@@ -66,7 +67,7 @@ for (const scenario of ['confirmed', 'incomplete-timeout'] as const) {
     });
     await page.goto('/');
     if (!await page.locator('.alpha-connection-scrim').isVisible())
-      await page.getByRole('button', { name: 'Agent connection', exact: true }).click();
+      await openConnectionDiagnostics(page);
     let chooser = page.locator('.alpha-connection');
     await chooser.getByRole('button', { name: 'Start local agent', exact: true }).click();
     await expect(page.locator('.alpha-connection-scrim')).toHaveCount(0);

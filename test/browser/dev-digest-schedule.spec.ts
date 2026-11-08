@@ -1,3 +1,4 @@
+import {openConnectionDiagnostics} from './helpers/connection-diagnostics';
 import {test,expect as baseExpect} from '@playwright/test';
 // After a load the digest panel fills from IndexedDB and its first tick; under machine load that has taken longer
 // than the 5s default, so expectations wait up to 15s (as in home-daily-overview). What is expected is unchanged.
@@ -12,7 +13,7 @@ test.describe.configure({timeout:90_000});
 test.use({contextOptions:{reducedMotion:'reduce'}});
 test('reviewed snapshot schedule delivers one retained result and survives reload',async({page})=>{
  await page.clock.install({time:new Date('2026-10-03T12:00:10Z')});
- await page.goto('/?mode=dev');await page.getByRole('button',{name:'Settings',exact:true}).click();await page.getByRole('button',{name:'Agent connection',exact:true}).click();await page.getByRole('button',{name:'Connect development profile'}).click();
+ await page.goto('/?mode=dev');await page.getByRole('button',{name:'Settings',exact:true}).click();await openConnectionDiagnostics(page);await page.getByRole('button',{name:'Connect development profile'}).click();
  await page.evaluate(async()=>window.dispatchEvent(new Event('alpha:hosted-digests')));const panel=page.getByRole('dialog',{name:'Scheduled digests',exact:true});await panel.getByText('Share a snapshot',{exact:true}).click();await panel.getByLabel('Label',{exact:true}).fill('Daily source');await panel.getByLabel('Snapshot text',{exact:true}).fill('Reviewed snapshot content');await panel.getByRole('button',{name:'Review snapshot',exact:true}).click();await panel.getByRole('button',{name:'Confirm',exact:true}).click();
  await panel.getByRole('combobox',{name:'Reviewed source',exact:true}).selectOption({index:1});await panel.getByLabel('Time zone',{exact:true}).fill('UTC');await panel.getByLabel('Morning',{exact:true}).fill('12:01');await panel.getByRole('button',{name:'Review morning schedule',exact:true}).click();await panel.getByRole('button',{name:'Confirm',exact:true}).click();
  await panel.getByRole('button',{name:'Pause result checks',exact:true}).click();await page.clock.runFor(60000);await expect.poll(()=>page.evaluate(async()=>(await (await import('/src/browser/development-digest-document.ts')).readDevelopmentDigests((await import('/src/browser/development-identity.ts')).developmentIdentity('local'))).results.length)).toBe(1);await panel.getByRole('button',{name:'Refresh',exact:true}).click();await expect(panel.getByText('Development reply. Edit this response in Agent connection.',{exact:true})).toBeVisible();
@@ -157,7 +158,7 @@ test('morning and evening at the same minute produce distinct source-backed resu
 
 test('reopening after a missed time shows one honest missed record and one notice, never a late brief',async({page})=>{
  await page.clock.install({time:new Date('2026-10-03T12:00:10Z')});
- await page.goto('/?mode=dev');await page.getByRole('button',{name:'Settings',exact:true}).click();await page.getByRole('button',{name:'Agent connection',exact:true}).click();await page.getByRole('button',{name:'Connect development profile'}).click();
+ await page.goto('/?mode=dev');await page.getByRole('button',{name:'Settings',exact:true}).click();await openConnectionDiagnostics(page);await page.getByRole('button',{name:'Connect development profile'}).click();
  await page.evaluate(async()=>window.dispatchEvent(new Event('alpha:hosted-digests')));const panel=page.getByRole('dialog',{name:'Scheduled digests',exact:true});
  await expect(panel).toContainText('Schedules run while this app is open. If scheduled times pass while it is not running, one is recorded below as missed and none is run later.');
  await panel.getByText('Share a snapshot',{exact:true}).click();await panel.getByLabel('Label',{exact:true}).fill('Daily source');await panel.getByLabel('Snapshot text',{exact:true}).fill('Reviewed snapshot content');await panel.getByRole('button',{name:'Review snapshot',exact:true}).click();await panel.getByRole('button',{name:'Confirm',exact:true}).click();
@@ -180,7 +181,7 @@ test.describe('device in another time zone',()=>{
  test.use({timezoneId:'Europe/Paris'});
  test('a schedule reviewed in one time zone says so when the device clock is in another',async({page})=>{
   await page.clock.install({time:new Date('2026-10-03T12:00:10Z')});
-  await page.goto('/?mode=dev');await page.getByRole('button',{name:'Settings',exact:true}).click();await page.getByRole('button',{name:'Agent connection',exact:true}).click();await page.getByRole('button',{name:'Connect development profile'}).click();
+  await page.goto('/?mode=dev');await page.getByRole('button',{name:'Settings',exact:true}).click();await openConnectionDiagnostics(page);await page.getByRole('button',{name:'Connect development profile'}).click();
   await seedLoops(page,[{template:'morning',localTime:'08:00',text:'Morning text'}],'America/New_York');await seedLoops(page,[{template:'evening',localTime:'18:00',text:'Evening text'}],'Europe/Paris');
   await page.evaluate(async()=>window.dispatchEvent(new Event('alpha:hosted-digests')));const schedules=page.getByRole('dialog',{name:'Scheduled digests',exact:true}).getByRole('region',{name:'Digest schedules',exact:true});
   await expect(schedules.getByRole('listitem').filter({hasText:'Morning at 08:00 (America/New_York)'})).toContainText('Runs at 08:00 America/New_York time, not this device’s current time zone (Europe/Paris). Review the schedule to change it.');

@@ -1,3 +1,4 @@
+import {openConnectionDiagnostics} from './helpers/connection-diagnostics';
 import { test, expect, type Page } from '@playwright/test';
 import { readFileSync, writeFileSync } from 'node:fs';
 import { installResidentAgentPlugin } from './helpers/resident-agent-plugin';
@@ -96,7 +97,7 @@ async function connect(page: Page, scenario: Scenario) {
   await page.goto('/');
   if (scenario === 'resident') {
     if (!await page.locator('.alpha-connection-scrim').isVisible())
-      await page.getByRole('button', { name: 'Agent connection', exact: true }).click();
+      await openConnectionDiagnostics(page);
     await page.locator('.alpha-connection').getByRole('button', { name: 'Start local agent', exact: true }).click();
   }
   if (scenario === 'remote') await expect(page.locator('.alpha-connection-scrim')).toHaveCount(0, { timeout: 15_000 });

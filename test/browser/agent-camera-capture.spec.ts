@@ -1,3 +1,4 @@
+import {openConnectionDiagnostics} from './helpers/connection-diagnostics';
 import {test,expect} from '@playwright/test';
 import {returnToApps} from './app-navigation';
 
@@ -50,7 +51,7 @@ for(const mode of ['capture','lost-ack','old-message','ask-first'] as const)test
  },mode);
  await page.goto('/');
  await page.getByRole('button',{name:'Settings',exact:true}).click();
- await page.getByRole('button',{name:'Agent connection',exact:true}).click();
+ await openConnectionDiagnostics(page);
  await page.getByText('Local development agent',{exact:true}).click();
  const local=page.locator('.alpha-connection details').filter({has:page.getByText('Local development agent',{exact:true})});
  await local.getByLabel('Local agent address').fill('http://127.0.0.1:47842');

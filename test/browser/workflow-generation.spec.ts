@@ -1,3 +1,4 @@
+import {openConnectionDiagnostics} from './helpers/connection-diagnostics';
 import {newWorkflow} from './workflow-navigation';
 import { returnToApps } from './app-navigation';
 import {test,expect,type Page} from '@playwright/test';
@@ -15,7 +16,7 @@ async function setup(page:Page,mode='normal'){
    return {spec:canonical,specDigest:await workflowSha(canonical),catalogRevision:body.catalogRevision,compilerRevision:body.compilerRevision,active:false};
   });return generate.apply(client,args);};
  },mode);
- await page.getByRole('button',{name:'Settings',exact:true}).click();await page.getByRole('button',{name:'Agent connection',exact:true}).click();await page.getByRole('button',{name:'Connect development profile'}).click();await returnToApps(page);await page.getByRole('button',{name:'Workflows',exact:true}).click();await newWorkflow(page);await page.getByRole('textbox',{name:'Workflow name',exact:true}).fill('Retained original draft');await page.getByRole('button',{name:/Describe it to/}).click();
+ await page.getByRole('button',{name:'Settings',exact:true}).click();await openConnectionDiagnostics(page);await page.getByRole('button',{name:'Connect development profile'}).click();await returnToApps(page);await page.getByRole('button',{name:'Workflows',exact:true}).click();await newWorkflow(page);await page.getByRole('textbox',{name:'Workflow name',exact:true}).fill('Retained original draft');await page.getByRole('button',{name:/Describe it to/}).click();
 }
 const counts=(page:Page)=>page.evaluate(async()=>{const data=(await (await import('/src/browser/development-execution-document.ts')).readExecutionPart({namespace:'local'} as any,'workflows',()=>({workflows:[],receipts:[],runs:[]})));return {workflows:data.workflows.length,runs:(data.runs||[]).length,calls:(window as any).generationFixture.calls.length};});
 test('generated draft requires review, local adoption and separate confirmed Save',async({page},info)=>{

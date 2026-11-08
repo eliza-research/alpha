@@ -1,3 +1,4 @@
+import {openConnectionDiagnostics} from './helpers/connection-diagnostics';
 import {openLegacyNotes} from './helpers/legacy-notes';
 /*
  * Journey A (docs/mvp-completion-plan.md "A. Boot, authenticate and keep a conversation"), browser build.
@@ -44,7 +45,7 @@ const agentDocument=(page:Page)=>page.evaluate(async key=>{
 },AGENT_KEY);
 async function openConnection(page:Page){
  await page.getByRole('button',{name:'Settings',exact:true}).click();
- await page.getByRole('button',{name:'Agent connection',exact:true}).click();
+ await openConnectionDiagnostics(page);
  await expect(page.getByRole('dialog',{name:'Development connections'})).toBeVisible();
 }
 
@@ -74,7 +75,7 @@ test('journey A: boot, connect, converse across apps, stop a reply, reload and r
  // 2. Connection choice: Settings -> Agent connection, save a scripted reply and connect the development profile.
  await page.getByRole('button',{name:'Settings',exact:true}).click();
  await expect(page.getByRole('button',{name:'Agent connection',exact:true})).toContainText('Offline');
- await page.getByRole('button',{name:'Agent connection',exact:true}).click();
+ await openConnectionDiagnostics(page);
  const dialog=page.getByRole('dialog',{name:'Development connections'});
  await expect(dialog).toBeVisible();
  await dialog.getByRole('textbox',{name:'Scripted reply'}).fill(REPLY);
@@ -214,7 +215,7 @@ test('journey A: a proposed phone action is declined from the conversation and n
  await dialog.getByRole('button',{name:'Save development reply'}).click();
  await dialog.getByRole('button',{name:'Connect development profile'}).click();
  await expect(dialog).toHaveCount(0);
- await page.getByRole('button',{name:'Agent connection',exact:true}).click();
+ await openConnectionDiagnostics(page);
  await dialog.getByText('Development device actions',{exact:true}).click();
  await dialog.getByRole('textbox',{name:'Action JSON'}).fill(JSON.stringify({type:'create_note',title:'Journey A declined note',body:'Must never be saved'}));
  await dialog.getByRole('button',{name:'Queue action for review'}).click();

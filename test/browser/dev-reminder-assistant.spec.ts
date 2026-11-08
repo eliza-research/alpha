@@ -1,3 +1,4 @@
+import {openConnectionDiagnostics} from './helpers/connection-diagnostics';
 import {presentDeviceRecordOperation} from '../../apps/app/src/runtime/device-record-presentation.ts';
 import { returnToApps } from './app-navigation';
 import { test, expect } from '@playwright/test';
@@ -75,8 +76,7 @@ for (const mode of ['create', 'read', 'update', 'complete', 'snooze', 'cancel', 
     }, mode);
     await page.clock.setFixedTime(new Date('2026-10-02T12:00:00Z'));
     await page.goto('/?mode=dev');
-    await page.getByRole('button', { name: 'Settings', exact: true }).click();
-    await page.getByRole('button', { name: 'Agent connection', exact: true }).click();
+    await openConnectionDiagnostics(page);
     await page.getByText('Local development agent', { exact: true }).click();
     const local = page.locator('.alpha-connection details').filter({ has: page.getByText('Local development agent', { exact: true }) });
     await local.getByLabel('Local agent address').fill('http://127.0.0.1:47842');
