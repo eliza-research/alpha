@@ -14,6 +14,8 @@ import {checkNativeNoteRecording} from './note-recording.mjs';
 import {checkNoteRecordingService} from './note-recording-service.mjs';
 import {checkVoiceDraft} from './voice-draft.mjs';
 import {checkNotePermission} from './note-bridge.mjs';
+import {checkCredentialLeasePolicies} from './credential-leases.mjs';
+import {checkRendererCoordinator} from './renderer-coordinator.mjs';
 
 export async function runNativeRefinement() {
   const models = ['VadSegmentation', 'RendererRecovery', 'ResidentScheduling'];
@@ -114,8 +116,10 @@ export async function runNativeRefinement() {
   for (const check of [checkNativeNoteRecording, checkNoteRecordingService, checkVoiceDraft, checkNotePermission]) {
     results.push(await check([fileURLToPath(import.meta.url)]));
   }
+  results.push(await checkCredentialLeasePolicies([fileURLToPath(import.meta.url)]));
+  results.push(await checkRendererCoordinator([fileURLToPath(import.meta.url)]));
   const obligations = [
-    {model: 'RendererRecovery', obligation: 'Activity lifecycle and visible escape behavior', reason: 'Current adapter projects the pure budget only.', requires: ['Android Activity/WebView harness']},
+    {model: 'RendererRecovery', obligation: 'Android lifecycle, task selection and HOME-role delivery', reason: 'Actual MainActivity recovery and handoff execute under controlled Android ports. Physical renderer death, background lifecycle and OS task delivery require platform checks.', requires: ['Android Activity/WebView harness']},
     {model: 'ResidentScheduling', obligation: 'Plugin lifecycle and OS broadcasts', reason: 'Current adapter proves the pure admission table and same-lock callbacks.', requires: ['Android service integration']},
     {model: 'VadSegmentation', obligation: 'PCM model output and capture pre-roll', reason: 'The gate consumes probabilities; capture/model execution is external.', requires: ['native capture integration']},
     {model: 'ResidentRuntime', obligation: 'Installed native service and retained recovery records', reason: 'Actual AlphaLocalAgentPlugin lifecycle and credential retirement execute under controlled Android, storage and service ports. Kernel/Binder behavior and encrypted persistence remain external.'},

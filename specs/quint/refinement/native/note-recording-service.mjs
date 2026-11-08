@@ -6,7 +6,7 @@ import {captureInputs,checkTraces} from '../check-traces.mjs';
 import {app,directory,javaTraces} from './java.mjs';
 import {noteRecordingPlatform} from './note-recording-platform.mjs';
 
-export const noteServiceScenarios=['old-owner','old-start','old-toggle','blank-open','discard-blank','discard-exact','current-stop','recreated','pause-resume','foreground-refused','fallback-old-owner','fallback-blank','fallback-current','fallback-pending'];
+export const noteServiceScenarios=['old-owner','old-start','old-toggle','blank-open','discard-blank','discard-exact','current-stop','recreated','pause-resume','foreground-refused','fallback-old-owner','fallback-blank','fallback-current','fallback-pending','same-id-stop','same-id-fallback','same-id-stopped-fallback'];
 export async function checkNoteRecordingService(extraSources=[]) {
  const platform=noteRecordingPlatform(),state=mkdtempSync(join(tmpdir(),'quint-note-service-state-'));
  const compiled=[app+'AlphaNoteRecorder.java',app+'AlphaNoteRecordingService.java',directory+'/NoteRecordingPorts.java',

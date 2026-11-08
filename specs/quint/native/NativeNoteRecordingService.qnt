@@ -19,6 +19,7 @@ module NativeNoteRecordingService {
   action recordingStops = all {
     s.recording != 0, s' = { ...s, phase: "stopped", staleStop: false }
   }
+  action recordingResumes = all {s.recording != 0, s' = { ...s, phase: "recording", staleStop: false }}
   action startService(ticket: int, accepted: bool): bool = all {
     ticket.in(Set(0, 1, 2)),
     val current = ticket != 0 and ticket == s.recording
@@ -41,7 +42,7 @@ module NativeNoteRecordingService {
   }
   action stopServiceWhen(ticket: int, admitted: bool): bool = if (not(admitted)) s' = s else all {
     ticket.in(Set(0, 1, 2)),
-    val stale = (ticket == 0 and s.recording != 0) or
+    val stale = s.phase.in(Set("recording", "paused")) or (ticket == 0 and s.recording != 0) or
       (s.foreground and ticket != 0 and ticket != s.owner) or
       (ticket != 0 and s.recording != 0 and ticket != s.recording)
     s' = { ...s, priorForeground: s.foreground, priorOwner: s.owner, staleStop: stale,
@@ -52,7 +53,7 @@ module NativeNoteRecordingService {
   action stopService(ticket: int): bool = stopServiceWhen(ticket, true)
   action destroy = s' = { ...s, foreground: false, owner: 0, staleStop: false }
   action step = any {
-    recordingStarts(1), recordingStarts(2), recordingCloses, recordingStops,
+    recordingStarts(1), recordingStarts(2), recordingCloses, recordingStops, recordingResumes,
     startService(0, true), startService(1, true), startService(2, true), startService(1, false),
     toggle(1, true), toggle(1, false), toggle(2, true), toggle(2, false),
     stopService(0), stopService(1), stopService(2), stopServiceWhen(1, false), destroy, s' = s
@@ -79,4 +80,7 @@ module NativeNoteRecordingService {
 
   run pendingStartRejectsFallbackStopTest = init.then(recordingStarts(1)).then(startService(1, true))
     .then(recordingStops).then(stopServiceWhen(1, false)).expect(safety and s.foreground and not(s.stopRequested))
+  run resumedRecordingRejectsLateCloseTest = init.then(recordingStarts(1)).then(startService(1, true))
+    .then(recordingStops).then(recordingResumes).then(startService(1, true)).then(stopService(1))
+    .expect(safety and s.foreground and s.phase == "recording")
 }

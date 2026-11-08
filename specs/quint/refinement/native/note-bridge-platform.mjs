@@ -7,7 +7,7 @@ export function noteBridgePlatform() {
  const base=noteRecordingPlatform();
  const files={...base.sources};
  files['android/content/Context.java']=files['android/content/Context.java'].replace('public class Context {','public class Context {\n  public static final String AUDIO_SERVICE="audio";\n  public Object getSystemService(String name){return ai.elizaresearch.alphaphone.NoteBridgePorts.audio;}');
- files['android/os/Handler.java']=files['android/os/Handler.java'].replace('public boolean post(Runnable task){task.run();return true;}','public boolean post(Runnable task){ai.elizaresearch.alphaphone.NoteBridgePorts.post(task);return true;}');
+ files['android/os/Handler.java']=files['android/os/Handler.java'].replace('public boolean post(Runnable task){ai.elizaresearch.alphaphone.NoteRecordingPorts.post(task);return true;}','public boolean post(Runnable task){ai.elizaresearch.alphaphone.NoteBridgePorts.post(task);return true;}');
  files['android/media/MediaRecorder.java']=files['android/media/MediaRecorder.java'].replace('    bytes();','    bytes();ai.elizaresearch.alphaphone.NoteBridgePorts.starts++;');
  Object.assign(files,{
   'ai/eliza/plugins/passwords/PasswordSurfaces.java':`package ai.eliza.plugins.passwords;

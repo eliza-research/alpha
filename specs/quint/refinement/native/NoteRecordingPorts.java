@@ -14,7 +14,10 @@ public final class NoteRecordingPorts {
  public static long now=100;
  public static boolean failJournal,failOpen,failStop,failJoin,failForeground,failConstructor;
  public static int journalWrites,stopServiceCalls,latestDeliveredStartId;
- public static boolean failServiceLaunch,newerStartPending;
+ public static boolean failServiceLaunch,newerStartPending,holdPosts;
+ public static final ArrayList<Runnable> posts=new ArrayList<>();
+ public static void post(Runnable task){if(holdPosts)posts.add(task);else task.run();}
+ public static void flushPosts(){holdPosts=false;ArrayList<Runnable> ready=new ArrayList<>(posts);posts.clear();for(Runnable task:ready)task.run();}
  public static final ArrayList<MediaRecorder> recorders=new ArrayList<>();
  public static final ArrayList<Intent> commands=new ArrayList<>();
  public static final Map<Runnable,Long> timers=new LinkedHashMap<>();

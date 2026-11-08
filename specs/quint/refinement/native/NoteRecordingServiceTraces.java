@@ -62,7 +62,16 @@ public final class NoteRecordingServiceTraces {
   String first=begin(1);
   if(mode.equals("foreground-refused")){start(first,false);System.out.println(trace.value);return;}
   start(first,true);
-  if(mode.equals("fallback-current")||mode.equals("fallback-pending")){
+  if(mode.startsWith("same-id-")){
+   recorder.stop(first);trace.step("recordingStops",observe());
+   boolean queued=!mode.equals("same-id-stop");
+   if(queued){NoteRecordingPorts.holdPosts=true;NoteRecordingPorts.failServiceLaunch=true;AlphaNoteRecordingService.recordingClosed(context,first);NoteRecordingPorts.failServiceLaunch=false;}
+   recorder.resume(first);trace.step("recordingResumes",observe());start(first,true);
+   if(mode.equals("same-id-stopped-fallback")){recorder.stop(first);trace.step("recordingStops",observe());}
+   if(queued){NoteRecordingPorts.flushPosts();trace.step("stopServiceWhen",observe(),1,!mode.equals("same-id-stopped-fallback"));}
+   else stop(first);
+   if(!service.shown||!recorder.owns(first))throw new AssertionError("Late close stopped the same recording after resume");
+  }else if(mode.equals("fallback-current")||mode.equals("fallback-pending")){
    recorder.stop(first);trace.step("recordingStops",observe());fallback(first,mode.equals("fallback-pending"));
   }else if(mode.equals("fallback-blank")){fallback("",false);if(!service.shown)throw new AssertionError("Blank fallback hid live recording");}
   else if(mode.equals("old-owner")||mode.equals("old-toggle")||mode.equals("old-start")||mode.equals("fallback-old-owner")){

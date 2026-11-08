@@ -38,7 +38,7 @@ public class SystemClock {public static long elapsedRealtime(){return ai.elizare
     'android/os/Handler.java':`package android.os;
 public class Handler {
   public Handler(Looper looper){}
-  public boolean post(Runnable task){task.run();return true;}
+  public boolean post(Runnable task){ai.elizaresearch.alphaphone.NoteRecordingPorts.post(task);return true;}
   public boolean postDelayed(Runnable task,long delay){ai.elizaresearch.alphaphone.NoteRecordingPorts.timers.put(task,ai.elizaresearch.alphaphone.NoteRecordingPorts.now+delay);return true;}
   public void removeCallbacks(Runnable task){ai.elizaresearch.alphaphone.NoteRecordingPorts.timers.remove(task);}
 }`,
@@ -162,7 +162,7 @@ public class Service extends android.content.Context {
   public void startForeground(int id,Notification value,int type){startForeground(id,value);}
   public void stopForeground(int flags){shown=false;}
   public void stopSelf(int id){stopped=true;}
-  public boolean stopSelfResult(int id){if(id!=ai.elizaresearch.alphaphone.NoteRecordingPorts.latestDeliveredStartId)throw new AssertionError("Wrong service start ID");if(ai.elizaresearch.alphaphone.NoteRecordingPorts.newerStartPending)return false;stopped=true;return true;}
+  public boolean stopSelfResult(int id){if(id!=ai.elizaresearch.alphaphone.NoteRecordingPorts.latestDeliveredStartId||ai.elizaresearch.alphaphone.NoteRecordingPorts.newerStartPending)return false;stopped=true;return true;}
 }`,
     'android/content/pm/ServiceInfo.java':'package android.content.pm;public class ServiceInfo {public static final int FOREGROUND_SERVICE_TYPE_MICROPHONE=128;}',
     'android/app/Notification.java':`package android.app;

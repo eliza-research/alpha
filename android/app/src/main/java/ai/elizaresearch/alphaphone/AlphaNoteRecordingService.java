@@ -31,7 +31,7 @@ public final class AlphaNoteRecordingService extends Service {
  private static volatile boolean foreground;
  private static volatile String foregroundRecording;
  private static volatile AlphaNoteRecordingService activeService;
- private int lastStartId;
+ private volatile int lastStartId;
  static final String EXTRA_RECORDING="recording";
 
  static void start(Context context,String recordingId){
@@ -43,7 +43,10 @@ public final class AlphaNoteRecordingService extends Service {
   try{context.startService(intent(context,ACTION_STOP,recordingId));}
   catch(RuntimeException backgroundRestricted){
    AlphaNoteRecordingService service=activeService;
-   if(service!=null)new android.os.Handler(android.os.Looper.getMainLooper()).post(()->service.stopClosedRecording(recordingId,service.lastStartId));
+   if(service!=null){
+    int startId=service.lastStartId;
+    new android.os.Handler(android.os.Looper.getMainLooper()).post(()->service.stopClosedRecording(recordingId,startId));
+   }
   }
  }
  /** The recording paused or resumed (in Alpha or from the notification): show its state. */
@@ -91,6 +94,8 @@ public final class AlphaNoteRecordingService extends Service {
  private void stopClosedRecording(String recording,int startId){
   if(activeService!=this)return;
   AlphaNoteRecorder recorder=AlphaNoteRecorder.get(this);
+  String state=recorder.status().optString("state");
+  if("recording".equals(state)||"paused".equals(state))return;
   if(recording==null||recording.isEmpty()){
    if(recorder.open())return;
   }else{
