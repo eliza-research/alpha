@@ -12,7 +12,7 @@
   "toolSha256": "403a33cab0dff7ace6219b29e7ffef373319677a7d8be6641466dd16a6750b5b",
   "dependencyLockSha256": "944123c801157a7ba3676a886d0b28a54bef32735ae96da5c6dd0f206c88c8bf",
   "sourcePin": "99b49439ce9d0cb5607e9831b9f7f58d89525029",
-  "ledgerSha256": "adf7cafe9b80ff6830d8713fb8f062536cbc7cc3ccb43d1c72fa463774dfda07",
+  "ledgerSha256": "53914e6f5c9dc3327bdcfba6b02ebeb767a3413bf4c3875283474b83f7e63b86",
   "method": "TypeScript syntax trees for JavaScript/TypeScript and JDK compiler trees for Java. Mutable fields, bindings, containers, state hooks, write sites and asynchronous registration calls are candidates for semantic review.",
   "limitations": [
     "Candidate extraction does not establish state-machine coverage or implementation refinement.",
@@ -63781,7 +63781,8 @@
         "ListenerLeaseProducer",
         "ListenerLeaseRecovery",
         "NativeIndicatorProvider",
-        "NativeListenerService"
+        "NativeListenerService",
+        "NativeListenerInput"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -63961,7 +63962,8 @@
         "AlwaysOnListener",
         "ListenerLeaseProducer",
         "ListenerLeaseRecovery",
-        "NativeListenerService"
+        "NativeListenerService",
+        "NativeListenerInput"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -64195,7 +64197,8 @@
         "ListenerLeaseProducer",
         "ListenerLeaseRecovery",
         "NativeListenerStore",
-        "NativeListenerService"
+        "NativeListenerService",
+        "NativeListenerInput"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -64330,7 +64333,8 @@
         "ListenerLeaseRecovery",
         "ResetRecovery",
         "NativeListenerStore",
-        "NativeListenerService"
+        "NativeListenerService",
+        "NativeListenerInput"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -64450,7 +64454,8 @@
         "ListenerLeaseProducer",
         "ListenerLeaseRecovery",
         "NativeListenerStore",
-        "NativeListenerService"
+        "NativeListenerService",
+        "NativeListenerInput"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -64486,7 +64491,8 @@
         "AlwaysOnListener",
         "ListenerLeaseProducer",
         "ListenerLeaseRecovery",
-        "NativeListenerService"
+        "NativeListenerService",
+        "NativeListenerInput"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -64696,7 +64702,8 @@
         "ListenerLeaseRecovery",
         "SpeechResources",
         "StreamingPlayback",
-        "VoiceSession"
+        "VoiceSession",
+        "NativeListenerInput"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -64779,7 +64786,8 @@
       "allocatedModels": [
         "AlwaysOnListener",
         "ListenerLeaseProducer",
-        "ListenerLeaseRecovery"
+        "ListenerLeaseRecovery",
+        "NativeListenerInput"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -218043,6 +218051,6 @@
   ],
   "detail": {
     "path": "test-results/quint-state-audit/details.json",
-    "sha256": "7d33cc574bfeb4c8843cb3c45398f7c298c79458eb91ba8077a40997bda5ae9a"
+    "sha256": "cc22ce720d9406a0fbca051580ce102d8e371f492db34f7b43a0737f8214816f"
   }
 }

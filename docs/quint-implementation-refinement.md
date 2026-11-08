@@ -114,12 +114,13 @@ capacity checks avoid hundreds of host-only fsync operations.
 
 ## Platform validation
 
-The refinement worktree's local Android build stops at the voice-input preflight.
-Qualified on-device voice outputs have not been staged into that isolated tree.
-APK verification reports missing APKs. Neither distribution variant is validated
-by those attempts. APK generation, installed emulator HOME behavior, full AOSP
-boot, real integrations and physical-device/user acceptance remain separate
-requirements.
+The initial local Android attempts stopped at input preflight. The current
+worktree staged the recorded voice outputs and verified their integrity with
+the exact pinned FFI checkout. Its voice admission record remains unqualified.
+The reviewed ARM64 embedding libraries and pinned model separately passed
+admission using the repository qualification receipt. APK generation, installed
+emulator HOME behavior, full AOSP boot, real integrations and physical-device
+acceptance each require their own evidence.
 
 ## Completeness
 
@@ -152,3 +153,19 @@ Task campaigns exercise the real runtime/store, controlled provider or worker
 ports and real SQL where applicable. Their finite schedules and the current
 source ledger leave explicit obligations for broader composition and device
 behavior.
+
+The translated core protocols also run against current source. The scheduler
+campaign compares 10 real daemon schedules and 89 checkpoints, including
+restart, stop, pending query ownership and a stopped-admission canary. The
+interaction campaign compares 12 schedules and 121 checkpoints across the
+real authority and SQLite journal. The semaphore campaign checks eight
+schedules and 69 checkpoints with actual abort dispatch, including reentrant
+release before cancellation. The serialisation campaign covers all 24
+invocation orders and 254 checkpoints with sampled arrival and outcome timing.
+
+`NativeListenerInput` compares 20 real Java schedules and 108 checkpoints
+through capture, the speech gate, ASR, and wake callbacks. It covers an input
+read that outlives its epoch across microphone privacy, the playback guard
+boundary, call and recording gates, ownership loss, and PCM cleanup. A
+separate regression exercises failed durable capture admission and checks that
+it leaves recognition fenced.

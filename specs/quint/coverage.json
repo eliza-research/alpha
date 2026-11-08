@@ -138050,7 +138050,8 @@
         "ListenerLeaseProducer",
         "ListenerLeaseRecovery",
         "NativeIndicatorProvider",
-        "NativeListenerService"
+        "NativeListenerService",
+        "NativeListenerInput"
       ],
       "scope": "shared-module-dependency",
       "treatment": "domain-contract-or-support",
@@ -138148,7 +138149,8 @@
         "AlwaysOnListener",
         "ListenerLeaseProducer",
         "ListenerLeaseRecovery",
-        "NativeListenerService"
+        "NativeListenerService",
+        "NativeListenerInput"
       ],
       "scope": "shared-module-dependency",
       "treatment": "domain-contract-or-support",
@@ -138223,7 +138225,8 @@
         "ListenerLeaseProducer",
         "ListenerLeaseRecovery",
         "NativeListenerStore",
-        "NativeListenerService"
+        "NativeListenerService",
+        "NativeListenerInput"
       ],
       "scope": "shared-module-dependency",
       "treatment": "domain-contract-or-support",
@@ -138317,7 +138320,8 @@
         "ListenerLeaseRecovery",
         "ResetRecovery",
         "NativeListenerStore",
-        "NativeListenerService"
+        "NativeListenerService",
+        "NativeListenerInput"
       ],
       "scope": "shared-module-dependency",
       "treatment": "domain-contract-or-support",
@@ -138378,7 +138382,8 @@
         "ListenerLeaseProducer",
         "ListenerLeaseRecovery",
         "NativeListenerStore",
-        "NativeListenerService"
+        "NativeListenerService",
+        "NativeListenerInput"
       ],
       "scope": "shared-module-dependency",
       "treatment": "domain-contract-or-support",
@@ -138401,7 +138406,8 @@
         "AlwaysOnListener",
         "ListenerLeaseProducer",
         "ListenerLeaseRecovery",
-        "NativeListenerService"
+        "NativeListenerService",
+        "NativeListenerInput"
       ],
       "scope": "shared-module-dependency",
       "treatment": "domain-contract-or-support",
@@ -138528,7 +138534,8 @@
         "ListenerLeaseRecovery",
         "SpeechResources",
         "StreamingPlayback",
-        "VoiceSession"
+        "VoiceSession",
+        "NativeListenerInput"
       ],
       "scope": "shared-module-dependency",
       "treatment": "domain-contract-or-support",
@@ -138574,7 +138581,8 @@
       "models": [
         "AlwaysOnListener",
         "ListenerLeaseProducer",
-        "ListenerLeaseRecovery"
+        "ListenerLeaseRecovery",
+        "NativeListenerInput"
       ],
       "scope": "shared-module-dependency",
       "treatment": "domain-contract-or-support",
@@ -625542,7 +625550,7 @@
         "SharedRecordingAdmission",
         "NativeLiveCapture"
       ],
-      "sha256": "88da7eea6a0dc289683b289ace9fdb9fcea83586350a2dc91661531c923b3885"
+      "sha256": "dd9bd1f03702fc6de58a1af67512cdcc5b4e2db1db815415659dc138f368f133"
     },
     {
       "path": "android/consumer-host.json",
@@ -626118,9 +626126,10 @@
     {
       "path": "patches/eliza/listener-service-cleanup.patch",
       "models": [
-        "NativeListenerService"
+        "NativeListenerService",
+        "NativeListenerInput"
       ],
-      "sha256": "7ff0f822c815d420d2a0d52d389277933699bf3418d58fa1e18b9138b21f0a21"
+      "sha256": "fab44bf6ca71b9cf872a8b4c830ca1e0b79740b064f1d81d1b5749e9379dfc8e"
     },
     {
       "path": "scripts/quint-lib.mjs",
@@ -626170,6 +626179,15 @@
         "Application"
       ],
       "sha256": "2fc3a4b95281d0d7fc69d351b276051089814aef42ba2833eade6d4796e822bf"
+    },
+    {
+      "path": "android/voice-host/qualified-voice-host.json",
+      "models": [
+        "NativeListenerInput",
+        "NativeSpeechWarmup",
+        "NativeRecognizerAvailability"
+      ],
+      "sha256": "bdf313e623ad6e58b7a9bcf0f03a20c542ed272615c00033e1c3179bb0a98eec"
     }
   ],
   "runtimeAssets": [
