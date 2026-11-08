@@ -5,8 +5,8 @@ import {fileURLToPath} from 'node:url';
 import {createServer} from 'vite';
 import {chromium} from '@playwright/test';
 import {sourcePaths} from '../../../../scripts/quint-lib.mjs';
-import {flagOffAndroid, fenceNetwork} from '../../../../test/browser/flag-off-android.ts';
-import {residentStub, setStub} from '../../../../test/browser/resident-stub.ts';
+import {buildSync} from 'esbuild';
+import {createRequire} from 'node:module';
 import {captureInputs, checkTraces} from '../check-traces.mjs';
 
 const root = resolve(fileURLToPath(new URL('../../../..', import.meta.url)));
@@ -16,7 +16,16 @@ const self = fileURLToPath(import.meta.url);
 export async function generateShellCoordinatorTraces(extraSources = []) {
   const sources = [...sourcePaths(), 'vite.config.ts', 'package.json', 'package-lock.json',
     'scripts/quint-lib.mjs', 'test/browser/flag-off-android.ts', 'test/browser/resident-stub.ts', self, ...extraSources];
+  const fixtureBuild = buildSync({absWorkingDir: root, stdin: {resolveDir: root, contents:
+    `export {flagOffAndroid, fenceNetwork} from './test/browser/flag-off-android.ts';
+     export {residentStub, setStub} from './test/browser/resident-stub.ts';`},
+    bundle: true, packages: 'external', platform: 'node', format: 'cjs', write: false, metafile: true});
+  sources.push(...Object.keys(fixtureBuild.metafile.inputs).filter(path => !path.startsWith('<')));
   const driverHashes = captureInputs(sources);
+  const fixtureModule = {exports: {}};
+  new Function('require', 'module', 'exports', fixtureBuild.outputFiles[0].text)(
+    createRequire(import.meta.url), fixtureModule, fixtureModule.exports);
+  const {flagOffAndroid, fenceNetwork, residentStub, setStub} = fixtureModule.exports;
   const transformed = new Set();
   const prior = process.env.ELIZA_DEV_ALLOW_TEST_MOCKS;
   let server, browser;
@@ -69,7 +78,7 @@ export async function generateShellCoordinatorTraces(extraSources = []) {
       page.on('pageerror', error => errors.push(error.message));
       await page.goto(origin + '/');
       await page.waitForFunction(() => window.quintShell?.live && window.quintActors?.connectionController.getSnapshot().session);
-      await page.waitForFunction(() => window.quintShell.notesStore && !window.quintShell.notesStorageFailed);
+      await page.waitForFunction(() => window.quintShell.notesSourceMode === 'canonical');
       const observations = [];
       const observe = async label => {
         const source = await page.evaluate(() => {

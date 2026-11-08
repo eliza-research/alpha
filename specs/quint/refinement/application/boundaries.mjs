@@ -91,9 +91,10 @@ export async function notificationCollection() {
 
 export async function developmentHost() {
   const source = 'scripts/cloud-resident-host.mjs';
-  captureSources([source, 'scripts/local-agent-source.mjs', 'scripts/native-view-policy.mjs',
+  const fixtureSources = ['test/fixtures/product-character-host.mjs', 'scripts/workflow-worker-artifact.mjs', 'scripts/native-google-host-artifact.mjs', 'scripts/agent-embeddings.mjs', 'scripts/copy-file-clone.mjs', 'vendor/eliza/packages/app/scripts/lib/immutable-workspace-source.mjs'];
+  captureSources([...fixtureSources, source, 'scripts/local-agent-source.mjs', 'scripts/native-view-policy.mjs',
     'scripts/cloud-sdk-authority.mjs', 'vendor/eliza/packages/agent/native-host/private-runtime-launch.mjs']);
-  const {createCloudResidentHost} = await import(new URL('../../../../scripts/cloud-resident-host.mjs', import.meta.url));
+  const {createCloudResidentHost} = await import(new URL('../../../../test/fixtures/product-character-host.mjs', import.meta.url));
   const directory = await mkdtemp(join(tmpdir(), 'alpha-refinement-host-'));
   const launches = [];
   const host = await createCloudResidentHost({source: resolve(root, 'vendor/eliza'), profile: directory, port: 48768,
@@ -109,9 +110,9 @@ export async function developmentHost() {
     await host.clear(); checkpoint(t, 'real host retires binding', [call('retireResident'), call('stopped'), call('signOut')], observe());
     assert.equal(launches.at(-1).options.env.ELIZAOS_CLOUD_API_KEY, undefined);
     await host.close(); checkpoint(t, 'close source host', call('close'), observe());
-    return checkTraces({model: 'DevelopmentHost', sources: [source, 'scripts/local-agent-source.mjs', 'scripts/native-view-policy.mjs',
+    return checkTraces({model: 'DevelopmentHost', sources: [...fixtureSources, source, 'scripts/local-agent-source.mjs', 'scripts/native-view-policy.mjs',
       'scripts/cloud-sdk-authority.mjs', 'vendor/eliza/packages/agent/native-host/private-runtime-launch.mjs'], traces: [t], scope: 'bounded-component', assumptions: [
-      'Actual private-profile and resident-host logic execute with a process-launch port. No network or real child starts.',
+      'Actual private-profile, resident-host and artifact verification logic execute through the existing product-character fixture, which relocates the product root to temporary verified synthetic artifacts. Process launch is controlled. No network or real child starts.',
       'Binding observation covers attachability, retirement and same-binding reuse. Browser credential claims, requests, failed stop and launcher shutdown schedules remain untested.']});
   } finally {await host.close(); await rm(directory, {recursive: true, force: true});}
 }

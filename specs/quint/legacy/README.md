@@ -190,3 +190,13 @@ to that specification. Interrupted or failed tool runs remain separate evidence
 and do not establish a completed finite-state check. Current implementation
 conformance is a separate obligation of the application, native and service
 refinement adapters.
+
+## Removed renderer protocols
+
+`FilesTree` and `ListFocus` retain the pre-reconciliation SAF tree and shared
+list-focus protocols from commit `796880e9eca39e13d69a38e2376e0907083bfaab`.
+Their source mappings are explicitly historical. Current main removed the tree
+adapter and focus helper, so their model checks do not establish current
+renderer refinement. `FilesPreview` covers the current storage-selection
+callback boundary. The full per-volume Files browser and current mutable-list
+identity protocols remain application refinement obligations.

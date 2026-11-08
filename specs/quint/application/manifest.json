@@ -275,14 +275,25 @@
       "apps/app/src/runtime/canvas-geometry.ts",
       "apps/app/src/runtime/text-scale.ts",
       "apps/app/src/prototype/home-cards.ts",
-      "apps/app/src/prototype/home-launcher.ts",
+      "apps/app/src/prototype/home-shell.ts",
       "apps/app/src/prototype/settings-adapter.ts",
       "apps/app/src/browser/display.ts",
-      "android/app/src/main/java/ai/elizaresearch/alphaphone/SystemShade.java"
+      "vendor/eliza/plugins/plugin-native-system/android/src/main/java/ai/eliza/plugins/system/SystemShade.java"
     ],
     "abstractions": [
       "Finite representative identities and contents. Exact source symbols and modeling limits are documented in the family README.",
-      "Model safety checks do not establish implementation refinement or device acceptance."
+      "Model safety checks do not establish implementation refinement or device acceptance.",
+      "The current source-bound adapter checks responsive geometry. Theme persistence, shared launcher state and native shade transitions remain separate current-source obligations. The removed launcher paths are recorded as historical provenance."
+    ],
+    "historicalSources": [
+      {
+        "path": "apps/app/src/prototype/home-launcher.ts",
+        "commit": "796880e9eca39e13d69a38e2376e0907083bfaab"
+      },
+      {
+        "path": "android/app/src/main/java/ai/elizaresearch/alphaphone/SystemShade.java",
+        "commit": "796880e9eca39e13d69a38e2376e0907083bfaab"
+      }
     ]
   },
   {
@@ -445,45 +456,6 @@
     ]
   },
   {
-    "path": "specs/quint/application/FilesTree.qnt",
-    "module": "FilesTree",
-    "init": "init",
-    "step": "step",
-    "invariant": "safety",
-    "tests": [
-      "partialBatchTest",
-      "staleRevisionTest",
-      "permissionLossMidBatchTest",
-      "hiddenPickerReturnTest",
-      "stalePickerReturnTest",
-      "folderCreationTest",
-      "recentInsertionKeepsFocusTest",
-      "removedRowClearsFocusTest"
-    ],
-    "sources": [
-      "apps/app/src/prototype/files-tree-adapter.ts",
-      "apps/app/src/prototype/files-index.ts",
-      "apps/app/src/prototype/context-selection.ts",
-      "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaFilesPlugin.java",
-      "android/app/src/main/java/ai/elizaresearch/alphaphone/SelectedDocumentAccess.java",
-      "apps/app/src/prototype/template.html",
-      "apps/app/src/prototype/dc-lite.js"
-    ],
-    "stateMapping": {
-      "granted/session/capabilities": "native persisted tree grant and bounded per-process entry map",
-      "selection/review/expected/pending/attempted/succeeded/failed": "current selection, revision-bound changeMany and per-item partial outcomes",
-      "picker/pickerEpoch/active/hidden": "view-generation-fenced system picker return, permitted while the document is hidden",
-      "folder/requestFolder/shown/cursor/listingPending": "single-flight tree listing, page cursor and deduplicated loadMore"
-    },
-    "abstractions": [
-      "Three representative entries (two files and one created folder), two folder identities, two sessions, revisions 0..2 and up to four applied effects.",
-      "Opaque entry and selection capabilities retain their role without provider paths or credentials. Tree access and separately selected document access remain distinct.",
-      "Provider failures and stale revisions are per-item; a committed item is not rolled back when a later item fails. Review is required before mutation, with an extra permanent-delete confirmation.",
-      "The model covers Alpha tree orchestration and native request admission. Document provider filesystem implementation and exact payload bytes remain implementation test boundaries.",
-      "Recent/tree presentation uses three representative row identities. Focus and activation target are independent of native file capabilities. Browser trace checks a Recent insertion without granting native tree authority."
-    ]
-  },
-  {
     "path": "specs/quint/application/CalendarPresentation.qnt",
     "module": "CalendarPresentation",
     "init": "init",
@@ -502,9 +474,9 @@
       "apps/app/src/prototype/model.js",
       "apps/app/src/prototype/calendar-adapter.ts",
       "apps/app/src/prototype/calendar-month-focus.ts",
-      "apps/app/src/prototype/calendar-views.ts",
+      "apps/app/src/runtime/agent-calendar-view.ts",
       "apps/app/src/prototype/calendar-days.ts",
-      "apps/app/src/prototype/google-calendar-view-adapter.ts",
+      "apps/app/src/prototype/calendar-form-draft-adapter.ts",
       "apps/app/src/runtime/google-calendar-selection.ts",
       "apps/app/src/runtime/calendar-form-draft.ts"
     ],
@@ -518,7 +490,18 @@
       "Two source identities (device event and Google event), two account identities, day/month offsets -1..1 and up to five read-generation changes.",
       "Date arithmetic, DST resolution, recurrence expansion and visual grid geometry remain pure implementation contracts; this model tracks transitions and retained identities across those calculations.",
       "Calendar writes are modeled in CalendarSync. This module tracks presentation/read/draft state and never gives a restored form provider authority.",
-      "Cached rows may remain while a broader/narrower range is loading. Committed-result freshness and owner isolation are checked independently of cache presentation."
+      "Cached rows may remain while a broader/narrower range is loading. Committed-result freshness and owner isolation are checked independently of cache presentation.",
+      "The current source-bound adapter checks creation-draft serialization. Current main removed per-account display visibility toggles. Canonical Calendar selection, revision, loading and mutation state need a separate current controller model."
+    ],
+    "historicalSources": [
+      {
+        "path": "apps/app/src/prototype/calendar-views.ts",
+        "commit": "796880e9eca39e13d69a38e2376e0907083bfaab"
+      },
+      {
+        "path": "apps/app/src/prototype/google-calendar-view-adapter.ts",
+        "commit": "796880e9eca39e13d69a38e2376e0907083bfaab"
+      }
     ]
   },
   {
@@ -625,44 +608,6 @@
     ]
   },
   {
-    "path": "specs/quint/application/ListFocus.qnt",
-    "module": "ListFocus",
-    "init": "init",
-    "step": "step",
-    "invariant": "safety",
-    "tests": [
-      "unmountedCaptureTest",
-      "keylessCaptureTest",
-      "otherOwnerCaptureTest",
-      "crossParentRestoreTest",
-      "removedItemTest",
-      "duplicateCandidateTest",
-      "movedFocusTest",
-      "hiddenRootTest",
-      "hiddenNodeTest",
-      "disabledCandidateTest",
-      "dialogTest",
-      "hiddenDocumentTest",
-      "disconnectedRootTest",
-      "newerCommitTest",
-      "navigationTest",
-      "discardedRenderTest",
-      "restoringCancelsUncommittedCaptureTest",
-      "twoCapturesLatestCommitTest"
-    ],
-    "sources": [
-      "apps/app/src/prototype/keyed-list-focus.ts",
-      "apps/app/src/prototype/subview-accessibility.ts",
-      "apps/app/src/prototype/template.html",
-      "apps/app/src/prototype/home-launcher.ts"
-    ],
-    "abstractions": [
-      "Two capture slots, two list-root identities and five DOM-node identities preserve capture versus commit, root-ref generations, FIFO microtasks, focusin cancellation, and all source restoration guards. Generations stop at eight instead of wrapping.",
-      "A source-executing JSDOM adapter observes the actual helper closure through a read-only getter and controls its queue/listener/geometry environment. Real Notes and Photos browser traces are separate bounded renderer evidence.",
-      "No unbounded event-loop liveness, native accessibility or universal implementation refinement is claimed."
-    ]
-  },
-  {
     "path": "specs/quint/application/RendererFailureUI.qnt",
     "module": "RendererFailureUI",
     "init": "init",
@@ -690,6 +635,28 @@
     "abstractions": [
       "Actual React and global listener coordination is projected with four error-class representatives, two dialogs and two reload requests. The existing native RendererRecovery model owns Android renderer-process recovery.",
       "Reload dispatch, JSDOM geometry, native logging and the test-only forced-error hook are explicit environment boundaries."
+    ]
+  },
+  {
+    "path": "specs/quint/application/FilesPreview.qnt",
+    "module": "FilesPreview",
+    "init": "init",
+    "step": "step",
+    "invariant": "safety",
+    "tests": [
+      "visiblePreviewTest",
+      "retiredVisiblePreviewTest",
+      "returnedViewRejectsOldPreviewTest"
+    ],
+    "sources": [
+      "apps/app/src/prototype/files-browser-adapter.ts",
+      "apps/app/src/runtime/files-storage.ts",
+      "apps/app/src/runtime/files-agent-contract.ts"
+    ],
+    "abstractions": [
+      "One outstanding storageSelect capability, three owner epochs, one representative selected identity. The caller keeps the document visible while awaiting selection.",
+      "Current source-bound traces cover open and late reply after leaving. Full Files browser load/filter/watch, provider mutation and underlying grant lifecycles remain separate obligations.",
+      "The released field records the source cleanup request for a stale selected capability. The controlled port acknowledges it in these traces. A native cleanup failure or durable grant revocation is outside this component model."
     ]
   },
   {

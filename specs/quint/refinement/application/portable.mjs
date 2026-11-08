@@ -80,7 +80,8 @@ export async function callbackLanding() {
 
 export async function preferences() {
   const source = 'apps/app/src/runtime/canvas-geometry.ts';
-  const {surfaceLayout, keyboardFreeHeight, canvasGeometry} = await sourceModule(source);
+  const module = await bundledSource(source);
+  const {surfaceLayout, keyboardFreeHeight, canvasGeometry} = module.exports;
   const traces = [];
   for (const sequence of [[], ['keyboard'], ['keyboard', 'rotate'], ['wide'], ['wide', 'largeText'], ['largeText', 'wide'], ['wide', 'largeText', 'normalText']]) {
     let width = 412, height = 915, editing = false, scale = 100;
@@ -102,7 +103,7 @@ export async function preferences() {
     }
     traces.push(t);
   }
-  return checkTraces({model: 'PreferencesAndPresentation', sources: [source], traces, scope: 'bounded-component',
+  return checkTraces({model: 'PreferencesAndPresentation', sources: module.sources, traces, scope: 'bounded-component',
     assumptions: ['Seven geometry sequences use actual layout and keyboard-height policies. Device dimensions and text preferences are controlled inputs.',
       'Theme persistence, DOM selection and native shade rendering are not checked by this geometry adapter.']});
 }
@@ -140,7 +141,8 @@ export async function browserSession() {
 
 export async function permanentVoiceDeletion() {
   const source = 'apps/app/src/runtime/permanent-voice-deletion.ts';
-  const {planInterruptedPermanentDeletion, leasedDeletionRow, sameDeletionRow, deletionLeaseDue} = await sourceModule(source);
+  const module = await bundledSource(source);
+  const {planInterruptedPermanentDeletion, leasedDeletionRow, sameDeletionRow, deletionLeaseDue} = module.exports;
   const rows = [];
   for (const note of ['original', 'deleted', 'changed']) for (const known of [false, true]) for (const owned of [false, true])
     for (const inTrash of [false, true]) for (const receipt of ['unknown', 'removed', 'restored', 'purged', 'unreadable']) for (const referenced of [false, true]) {
@@ -153,14 +155,15 @@ export async function permanentVoiceDeletion() {
   assert.equal(deletionLeaseDue(leased, 100), false);
   assert.equal(deletionLeaseDue(leased, leased.lease.until), true);
   return checkTraces({model: 'PermanentVoiceDeletionContract', modelPath: 'specs/quint/application/PermanentVoiceDeletion.qnt', id: 'PermanentVoiceDeletion',
-    sources: [source], traces: [trace('complete finite planner table', {rows: qset(rows)})], scope: 'complete-finite-helper',
+    sources: module.sources, traces: [trace('complete finite planner table', {rows: qset(rows)})], scope: 'complete-finite-helper',
     assumptions: ['All240 combinations of the planner input classes. Lease helpers also execute at the boundary.',
       'Stateful deletion effects, cross-view Web Locks and native worker coordination are not covered by the pure planner comparison.']});
 }
 
 export async function draftDispatch() {
   const source = 'apps/app/src/prototype/assistant-draft-controller.ts';
-  const {AssistantDraftController} = await sourceModule(source);
+  const module = await bundledSource(source);
+  const {AssistantDraftController} = module.exports;
   const traces = [];
   for (const finish of ['commit', 'release']) for (const newer of [false, true]) for (const failWrite of [false, true]) {
     let text = '', record = {version: 1, binding: 'one', revision: '1', text: 'A'}, fail = false;
@@ -184,7 +187,7 @@ export async function draftDispatch() {
     checkpoint(t, 'settle dispatch and its queued storage write', [call(finish), call(completion)], observe());
     traces.push(t);
   }
-  return checkTraces({model: 'DraftDispatch', sources: [source], traces, scope: 'bounded-component',
+  return checkTraces({model: 'DraftDispatch', sources: module.sources, traces, scope: 'bounded-component',
     assumptions: ['Eight real controller sequences cover commit/release, newer typing and failed writes.',
       'One conversation, serial storage completion. Cross-conversation and retained-instance reconstruction are additional obligations.']});
 }
