@@ -19,27 +19,33 @@ const native = registerPlugin<{canonicalPending():Promise<{token?:string;ownerId
  * system shade, so this runs on every Android build, independent of the simulated shade. */
 export function installCanonicalNotificationTaps(Component: any) {
  const p=Component.prototype, mount=p.componentDidMount, unmount=p.componentWillUnmount;
- p.componentDidMount=function(){mount?.call(this);this.alphaCanonicalLive=true;
-  this.alphaCanonicalTap=async()=>{
-   if(!Capacitor.isNativePlatform()||!this.alphaCanonicalLive||document.hidden||this.alphaCanonicalOpening||this.S().typing||this.S().recording||String(this.S().draft||'').trim())return;
+ p.componentDidMount=function(){
+  mount?.call(this);
+  const owner={live:true,opening:false,drainRequested:false,releaseCommit:undefined as (()=>void)|undefined};
+  const tapCurrent=async()=>{
+   if(!Capacitor.isNativePlatform()||!owner.live||document.hidden||owner.opening||this.S().typing||this.S().recording||String(this.S().draft||'').trim())return;
    const current=connectionController.getSnapshot(),session=current.session;if(!session||current.busy||current.open)return;
    const origin={view:this.S().view,revision:alphaClient.getState().context.revision,conversation:connectionController.getSelectedConversationId(),history:current.history};
-   this.alphaCanonicalOpening=true;this.alphaCanonicalDrainRequested=false;
+   owner.opening=true;owner.drainRequested=false;
    try{
-    const tap=await native.canonicalPending();
-    if(!tap.token||tap.ownerId!==session.ownerId||tap.agentId!==session.agentId||document.hidden||String(this.S().draft||'').trim()||connectionController.getSnapshot().session!==session)return;
-    const canCommit=()=>this.alphaCanonicalLive&&!document.hidden&&!this.S().typing&&!this.S().recording&&!String(this.S().draft||'').trim()&&connectionController.getSnapshot().session===session&&!connectionController.getSnapshot().open;
+    const tap=await native.canonicalPending(),token=tap.token;
+    if(!token||tap.ownerId!==session.ownerId||tap.agentId!==session.agentId)return;
+    const canCommit=()=>{
+     const snapshot=connectionController.getSnapshot();
+     return owner.live&&!document.hidden&&!this.S().typing&&!this.S().recording&&!String(this.S().draft||'').trim()&&snapshot.session===session&&!snapshot.open;
+    };
+    const canNavigate=()=>canCommit()&&!connectionController.getSnapshot().busy;
     const originCurrent=()=>canCommit()&&this.S().view===origin.view&&alphaClient.getState().context.revision===origin.revision&&connectionController.getSelectedConversationId()===origin.conversation&&connectionController.getSnapshot().history===origin.history;
-    if(!originCurrent())return;
-    // A chat tap with message coordinates restores that exact message; one without (Approval
-    // needed, scheduled tasks) or a route with no admitted view opens the current chat instead.
+    if(!canNavigate()||!originCurrent())return;
+    // Exact history restoration temporarily owns the connection's busy state.
+    // The origin guard stays usable inside that read, and navigation checks busy again after it.
     const exact=tap.view==='chat'&&!!tap.conversationId&&!!tap.messageId;
     if(exact){
      await connectionController.restoreHistory(tap.conversationId!,originCurrent);
      const after=connectionController.getSnapshot();
      if(after.session!==session||after.history?.conversationId!==tap.conversationId||!after.history?.messages.some(row=>row.id===tap.messageId)||document.hidden)return;
     }
-    if(!canCommit())return;
+    if(!canNavigate())return;
     const restored=connectionController.getSnapshot().history;
     const exactChat=()=>!!restored&&this.S().view===origin.view&&alphaClient.getState().context.revision===origin.revision&&connectionController.getSelectedConversationId()===tap.conversationId&&connectionController.getSnapshot().history===restored&&restored.conversationId===tap.conversationId&&restored.messages.some(row=>row.id===tap.messageId);
     if(exact&&!exactChat())return;
@@ -48,21 +54,38 @@ export function installCanonicalNotificationTaps(Component: any) {
     const mapped=tap.view&&tap.view!=='chat'?views[tap.view]:undefined;
     const targetView=mapped&&isMvpView(mapped)?mapped:undefined;
     if(targetView)this.openView(targetView);
-    this.setState(targetView?{}:{chat:'full'},()=>{
-     if(canCommit()&&(exact?exactChat():targetView?this.S().view===targetView:this.S().chat==='full'))void native.acknowledgeCanonical({token:tap.token!}).catch(()=>{});
+    await new Promise<void>(resolve=>{
+     owner.releaseCommit=resolve;
+     this.setState(targetView?{}:{chat:'full'},()=>{
+      try{
+       if(canNavigate()&&(exact?exactChat():targetView?this.S().view===targetView:this.S().chat==='full'))void native.acknowledgeCanonical({token}).catch(()=>{});
+      }catch{/* Native read status is unconfirmed. */}
+      finally{resolve();}
+     });
     });
    }catch{/* Native custody retains or retires the tap; never replay a read acknowledgement. */}
-   finally{this.alphaCanonicalOpening=false;if(this.alphaCanonicalDrainRequested&&this.alphaCanonicalLive)queueMicrotask(this.alphaCanonicalTap);}
+   finally{
+    owner.opening=false;owner.releaseCommit=undefined;
+    if(owner.drainRequested&&owner.live)queueMicrotask(tapCurrent);
+   }
   };
-  this.alphaCanonicalWake=()=>{this.alphaCanonicalDrainRequested=true;void this.alphaCanonicalTap();};
+  const wake=()=>{if(!owner.live)return;owner.drainRequested=true;void tapCurrent();};
+  this.alphaCanonicalTap=tapCurrent;this.alphaCanonicalWake=wake;
+  this.alphaCanonicalStop=()=>{owner.live=false;owner.releaseCommit?.();};
   if(Capacitor.isNativePlatform()){
-   this.alphaCanonicalListener=native.addListener('canonicalNotificationTap',this.alphaCanonicalWake);
-   this.alphaCanonicalUnsubscribe=connectionController.subscribe(()=>{if(!this.alphaCanonicalOpening)void this.alphaCanonicalTap();});
-   window.addEventListener('focus',this.alphaCanonicalWake);
-   void this.alphaCanonicalTap();
+   const listener=native.addListener('canonicalNotificationTap',wake).catch(()=>undefined);
+   const unsubscribe=connectionController.subscribe(()=>{if(!owner.opening)void tapCurrent();});
+   window.addEventListener('focus',wake);
+   this.alphaCanonicalStop=()=>{
+    if(!owner.live)return;
+    owner.live=false;owner.releaseCommit?.();
+    unsubscribe();window.removeEventListener('focus',wake);
+    void listener.then(handle=>handle?.remove()).catch(()=>{});
+   };
+   void tapCurrent();
   }
  };
- p.componentWillUnmount=function(){this.alphaCanonicalLive=false;this.alphaCanonicalUnsubscribe?.();if(this.alphaCanonicalListener)void this.alphaCanonicalListener.then((listener:{remove():Promise<void>})=>listener.remove());window.removeEventListener('focus',this.alphaCanonicalWake);unmount?.call(this);};
+ p.componentWillUnmount=function(){this.alphaCanonicalStop?.();unmount?.call(this);};
 }
 /** Active rows only. Android access and per-app opt-in are enforced natively. */
 export function installNotificationsAdapter(Component: any) {

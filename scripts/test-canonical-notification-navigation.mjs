@@ -17,17 +17,17 @@ const source=(await read('apps/app/src/prototype/notifications-adapter.ts')).rep
 }
 const tick=async()=>{for(let n=0;n<20;n++)await Promise.resolve();};
 function fixture({admitted=new Set(['calendar','notes','workflows'])}={}){
- let pending={},restoreHook,commitHook,selectedConversation;const navigation={revision:0};const acknowledgments=[],restores=[],views=[];
+ let pending={},readHook,restoreHook,commitHook,commitDelay,selectedConversation;const navigation={revision:0};const acknowledgments=[],restores=[],views=[];
  const session={ownerId:'owner',agentId:'agent',sessionId:'session'};
  const connection={session,busy:false,open:false,history:undefined};
  const state={draft:'',typing:false,recording:false,view:'home',chat:false,shade:false};
- const native={addListener:async()=>({remove:async()=>{}}),canonicalPending:async()=>({...pending}),acknowledgeCanonical:async({token})=>{if(token!==pending.token)throw Error('Changed tap');acknowledgments.push(token);pending={};return {ok:true};}};
+ const native={addListener:async()=>({remove:async()=>{}}),canonicalPending:async()=>{const current={...pending};if(readHook)await readHook();return current;},acknowledgeCanonical:async({token})=>{if(token!==pending.token)throw Error('Changed tap');acknowledgments.push(token);pending={};return {ok:true};}};
  const controller={getSnapshot:()=>connection,getSelectedConversationId:()=>selectedConversation,subscribe:()=>()=>{},restoreHistory:async(id,canCommit)=>{restores.push(id);if(restoreHook)await restoreHook();if(canCommit()){selectedConversation=id;connection.history={conversationId:id,messages:[{id:'message'}]};}}};
  const sandbox={alphaClient:{getState:()=>({context:navigation})},connectionController:controller,registerPlugin:()=>native,Capacitor:{isNativePlatform:()=>true},queueMicrotask,window:{addEventListener(){},removeEventListener(){},setInterval:()=>1,clearInterval(){}},document:{hidden:false,addEventListener(){},removeEventListener(){}},reviewContentQuestion(){},sensitiveReadingText:()=>false,noticeCurrent:()=>true,noticeExcerpt:()=>'',noticeReviewable:()=>true,isMvpView:view=>admitted.has(view)};
  vm.createContext(sandbox);vm.runInContext(stripTypeScriptTypes(source,{mode:'transform'}),sandbox);
  class Component{};Component.prototype.renderVals=()=>({});sandbox.install(Component);
- const shell=new Component();shell.S=()=>state;shell.setState=(patch,done)=>{Object.assign(state,patch);commitHook?.();done?.();};shell.openView=view=>{views.push(view);state.view=view;};shell.componentDidMount();
- return {shell,state,connection,navigation,acknowledgments,restores,views,select:id=>{selectedConversation=id;},commit:fn=>{commitHook=fn;},setTap:(extra={})=>{pending={token:'tap-a',ownerId:'owner',agentId:'agent',view:'chat',conversationId:'conversation',messageId:'message',...extra};},hook:fn=>{restoreHook=fn;}};
+ const shell=new Component();shell.S=()=>state;shell.setState=(patch,done)=>{Object.assign(state,patch);commitHook?.();if(commitDelay)commitDelay(done);else done?.();};shell.openView=view=>{views.push(view);state.view=view;};shell.componentDidMount();
+ return {shell,state,connection,navigation,acknowledgments,restores,views,select:id=>{selectedConversation=id;},commit:fn=>{commitHook=fn;},delayCommit:fn=>{commitDelay=fn;},holdRead:fn=>{readHook=fn;},setTap:(extra={})=>{pending={token:'tap-a',ownerId:'owner',agentId:'agent',view:'chat',conversationId:'conversation',messageId:'message',...extra};},hook:fn=>{restoreHook=fn;}};
 }
 {
  const f=fixture();await tick();f.setTap();await f.shell.alphaCanonicalTap();await tick();assert.equal(f.state.chat,'full');assert.deepEqual(f.acknowledgments,['tap-a']);assert.deepEqual(f.restores,['conversation']);
@@ -84,5 +84,29 @@ for(const change of ['view','conversation','dialog']){
 }
 {
  const f=fixture();await tick();f.shell.componentWillUnmount();f.setTap();await f.shell.alphaCanonicalTap();assert.equal(f.restores.length,0);assert.equal(f.acknowledgments.length,0);
+}
+{
+ const f=fixture();await tick();f.setTap({view:'notes'});let release;
+ f.holdRead(()=>new Promise(resolve=>{release=resolve;}));
+ const opening=f.shell.alphaCanonicalTap();await tick();f.connection.busy=true;release();await opening;
+ assert.deepEqual(f.views,[],'a connection operation started during readback owns navigation');
+ assert.deepEqual(f.acknowledgments,[]);
+}
+{
+ const f=fixture();await tick();f.setTap({view:'notes'});const callbacks=[];
+ f.delayCommit(callback=>callbacks.push(callback));
+ const opening=f.shell.alphaCanonicalTap();await tick();f.shell.alphaCanonicalWake();await tick();
+ const observed=[...f.views];f.delayCommit(undefined);callbacks.forEach(callback=>callback());await opening;await tick();
+ assert.deepEqual(observed,['notes'],'a new wake cannot reopen a tap before its renderer commit');
+ assert.deepEqual(f.acknowledgments,['tap-a']);
+}
+{
+ const f=fixture();await tick();f.setTap({view:'notes'});let release;
+ f.holdRead(()=>new Promise(resolve=>{release=resolve;}));
+ const old=f.shell.alphaCanonicalTap();await tick();f.shell.componentWillUnmount();
+ f.holdRead(undefined);f.setTap({token:'tap-b',view:'clock'});
+ f.shell.componentDidMount();await tick();release();await old;
+ assert.deepEqual(f.views,['calendar'],'a retired mount cannot publish into the reused component');
+ assert.deepEqual(f.acknowledgments,['tap-b']);
 }
 console.log('PASS canonical notification navigation: installed on every Android build, current owner, restored message, no draft/voice interruption, every admitted route opens and acknowledges, atomic token and next tap drain');
