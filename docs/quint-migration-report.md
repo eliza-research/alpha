@@ -284,3 +284,20 @@ remains a separate required gate.
 The integration independently passed the four typechecks, all 38 scenarios
 and 80 sampled traces of 40 transitions per model with unchanged inputs, recorded
 in `test-results/quint-view-refresh/integration-bounded.json`.
+
+### Expanded current-owner integration
+
+The later November 8 review expands the registry to 85 models and 782 scenarios.
+It preserves the 65-model receipt above for its frozen source and adds current
+canonical Notes, permission choices, native subscription cleanup, provider drafts,
+linked Calendar synchronization, workflow SQL lifecycle, core runtime retirement,
+recording admission and additive controller-composition contracts. SDK99 source
+ports retain the existing durable-dispatch, canonical Notes, resident failure and
+busy voice-input behavior where older replacements lost those contracts.
+
+The normal Android producer supplies an authenticated runtime-bundle input graph.
+The ledger includes its tracked sources and declared generated-source origins.
+Shared dependencies marked `state-audit-required` have a domain allocation and
+drift check while detailed field and transition correspondence remains unproved.
+Fresh expanded-model and source gates remain required before this integration is
+qualified.
