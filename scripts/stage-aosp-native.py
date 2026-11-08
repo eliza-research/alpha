@@ -5,6 +5,7 @@ import hashlib
 import importlib.util
 import json
 import sys
+import zipfile
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -24,7 +25,25 @@ CLOUD_OMITTED_MODEL = shared.CLOUD_OMITTED_MODEL
 REQUIRED_AGENT_ASSETS = shared.REQUIRED_AGENT_ASSETS
 
 
-def admission(root):
+def bun_identity(apk):
+    # The APK's own provenance names its Bun build; upstream still checks its hashes.
+    entry = 'assets/agent/android-agent-runtime-provenance.json'
+    with zipfile.ZipFile(apk) as archive:
+        if entry not in archive.namelist():
+            return 'linux-musl', 'stable'
+        provenance = shared.read_json(archive, entry)
+    if not isinstance(provenance, dict) or provenance.get('schema') != 'eliza.android_agent_runtime_provenance.v1':
+        raise ValueError('Unknown runtime provenance schema')
+    bun = provenance.get('bun', {})
+    if not isinstance(bun, dict):
+        raise ValueError('Invalid runtime Bun identity')
+    target, channel = bun.get('target', 'linux-musl'), bun.get('channel', 'stable')
+    if target not in ('linux-musl', 'android') or not isinstance(channel, str):
+        raise ValueError('Unsupported Bun target')
+    return target, channel
+
+
+def admission(root, apk):
     digest = lambda data: hashlib.sha256(data).hexdigest()
     lock_bytes = (root / 'upstream.lock.json').read_bytes()
     stamp = {
@@ -34,10 +53,15 @@ def admission(root):
         'copySha256': digest((root / 'scripts/copy-file-clone.mjs').read_bytes()),
         'base': json.loads(lock_bytes)['commit'], 'patches': [],
     }
+    bun_target, channel = bun_identity(apk)
+    bun_lock = json.loads((root / 'vendor/eliza/packages/app/scripts/lib/android-bun-artifacts.lock.json').read_text())
+    pins = bun_lock.get('targets', {}).get('android', {}) if bun_target == 'android' else bun_lock.get('channels', {})
+    if not isinstance(pins.get(channel), dict):
+        raise ValueError('No pinned ' + bun_target + ' Bun for channel: ' + str(channel))
     return {
         'schemaVersion': 1,
-        'bunTarget': 'linux-musl',
-        'bunPin': json.loads((root / 'vendor/eliza/packages/app/scripts/lib/android-bun-artifacts.lock.json').read_text())['channels']['stable'],
+        'bunTarget': bun_target,
+        'bunPin': pins[channel],
         'profileEntry': 'assets/agent/alpha-runtime-profile.json',
         'rendererFlagsEntry': 'assets/public/build-flags.json',
         'source': {'kind': 'exact-json', 'entry': 'assets/agent/alpha-source.json', 'commit': stamp['base'], 'commitField': 'base', 'expected': stamp},
@@ -47,7 +71,7 @@ def admission(root):
 
 
 def stage(apk, output, module, target='stallion', defer_soong=False):
-    report = shared.stage(apk, output, module, target, admission(ROOT))
+    report = shared.stage(apk, output, module, target, admission(ROOT, apk))
     if not defer_soong:
         finalize_soong(output, module, report)
     return report
