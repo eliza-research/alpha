@@ -95,7 +95,7 @@ test('J01 poster scan becomes exactly one reviewed Calendar event; suggestions a
  expect(await events(page)).toHaveLength(0);
  await page.reload();await ready(page);
  expect(await events(page)).toHaveLength(0);
- await expect(page.getByRole('button',{name:'Open Agent Calendar',exact:true})).toBeVisible();
+ await expect(page.getByRole('button',{name:'Calendar',exact:true})).toBeVisible();
 
  // 3. The scan draft carries a creationId, so Calendar retained the reviewed form across the
  //    reload: New event restores it through form recovery, still unsaved, and Save writes one event.

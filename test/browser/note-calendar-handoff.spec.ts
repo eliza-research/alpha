@@ -51,9 +51,16 @@ async function setup(page:Page){
 async function openCalendarItem(page:Page,name:string){
  await returnToApps(page);await openBrowserCalendar(page);
  const item=page.getByRole('button',{name:new RegExp(`^${name},`)}).first();
- // The hand-off picks the time, so look through the visible week for the saved day.
- const days=page.getByRole('button',{name:/^Day \d+$/});
- for(let i=0,n=await days.count();i<n&&!await item.isVisible();i++){await days.nth(i).click();await item.waitFor({timeout:500}).catch(()=>{});}
+ // The saved day can fall in the following week, so select its date explicitly.
+ const timestamp=(await events(page)).find(event=>event.title===name)?.begin
+  ?? (await reminders(page)).find(reminder=>reminder.title===name)?.at;
+ expect(timestamp).toBeGreaterThan(0);
+ const dateLabel=await page.evaluate(value=>{
+  const date=new Date(value);
+  return `${date.toLocaleDateString('en-US',{month:'long'})} ${date.getDate()}`;
+ },timestamp);
+ await button(page,'Month view').click();
+ await page.getByRole('dialog',{name:'Choose calendar date'}).getByRole('button',{name:new RegExp(` ${dateLabel}$`)}).click();
  await item.click();
 }
 /** Reload and open Older notes, where the linked recordings live, so links can name their note. */

@@ -39,7 +39,7 @@ async function begin(page: Page, external: string[], crossOriginReadable: boolea
   await page.route(url, route => route.request().resourceType() === 'fetch' && !crossOriginReadable ? route.abort() : route.fulfill({contentType: 'text/html', headers: crossOriginReadable ? {'access-control-allow-origin': '*'} : {}, body: html}));
   await page.goto('/?mode=dev');
   await button(page, 'Settings').click();
-  await button(page, 'Agent connection').click();
+  await button(page, 'Agent').click();
   await page.getByRole('textbox', {name: 'Scripted reply'}).fill(answer);
   await page.getByRole('button', {name: 'Save development reply'}).click();
   await expect(page.getByRole('status').filter({hasText: 'Development reply saved.'})).toBeVisible();
