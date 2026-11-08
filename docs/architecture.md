@@ -361,16 +361,12 @@ There is no automatic Eliza Cloud website sign-in fallback.
     Success is exactly `{code,state}` in the fragment; an error is exactly `{error,state}` (error
     from a fixed allowlist) in the query or fragment; anything else on the callback, including the
     parameterless hand-off from Cloud's fallback page, carries no result. The state is compared in
-    constant time before anything is burned: a mismatching return cannot complete a sign-in or burn
-    the record by itself. Anything that brings Alpha forward while Google is open (including such a
-    return, since Alpha's singleTask activity drops the Custom Tab) counts as closing the browser:
-    unless the matching return follows within 1.5 seconds, the attempt ends as browser-closed with
-    the record burned, and the owner starts again. The matching return burns the record before the
-    code goes to `POST /steward/auth/oauth/exchange`. A return without a result reports a retry
-    message but keeps the record until it expires or the owner starts again (or cancels).
-    Completing a return also requires the original live attempt and credential intent; a process
-    restart or closed browser therefore requires an explicit new sign-in and cannot revive old
-    credential authority.
+    constant time before anything is burned: a mismatching return is ignored and cannot cancel a
+    sign-in; the matching return burns the record before the code goes to
+    `POST /steward/auth/oauth/exchange`. A return without a result reports a retry message but keeps
+    the record until it expires or the owner starts again (or cancels). Completing a return also
+    requires the original live attempt and credential intent; a process restart or closed browser
+    therefore requires an explicit new sign-in and cannot revive old credential authority.
   - Every path then runs the shared tail. The Steward session goes to
     `POST /api/v1/app-auth/connect` (`mobile_pkce`, a second independent state and PKCE pair), then
     `POST /mobile/token`. Native writes an ack receipt and then the `eliza_mobile_` key to

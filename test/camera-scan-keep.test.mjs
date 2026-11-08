@@ -6,6 +6,7 @@ import vm from 'node:vm';
 import {resolve} from 'node:path';
 import {tsImport} from 'tsx/esm/api';
 const {createScanCapture}=await tsImport(new URL('../.eliza/client-features/plugins/plugin-native-camera/src/scan-document.ts',import.meta.url).href,{parentURL:import.meta.url});
+const {changeBatches,runBatches,favoriteTarget,patchRows,insertRows}=await tsImport(new URL('../.eliza/client-features/packages/ui/src/mobile-shell/photos-view.ts',import.meta.url).href,{parentURL:import.meta.url});
 const source=readFileSync(resolve(import.meta.dirname,'../apps/app/src/prototype/camera-adapter.ts'),'utf8');
 function declaration(signature){const start=source.indexOf(signature);assert.ok(start>=0,signature);let end=source.indexOf('{',start),depth=1;for(end++;depth;end++){if(source[end]==='{')depth++;if(source[end]==='}')depth--;}return source.slice(start,end);}
 function run(signature,name,sandbox){vm.createContext(sandbox);vm.runInContext(stripTypeScriptTypes(declaration(signature)+`\nglobalThis.${name}=${name};`,{mode:'strip'}),sandbox);return sandbox[name];}
@@ -37,6 +38,8 @@ function selectionChange(rejection){
  const owner={isActive:()=>true,set(){},toast:message=>toasts.push(message)};
  const sandbox={mutating:false,sharing:false,disposed:false,selection:[{id:'native-camera-1',mutationRevision:'r1'}],preview:undefined,
   closeVideo(){},retirePhotoRead(){},nativeId:id=>id.replace('native-camera-',''),refresh(){},loadTrash(){},loadCounts(){},loadCustomAlbums(){},Date,
+  document:{hidden:false},photoReadEpoch:0,libraryAccess:{scope:'all',images:true,videos:true},changeBatches,runBatches,favoriteTarget,patchRows,insertRows,BATCH:20,PERMITTED_BATCH:500,
+  libraryEpoch:0,trashEpoch:0,albumKey:'',albumEpoch:0,captures:[],trash:[],albumRows:[],selectionTab:undefined,staleLast(){},
   library:{changeMany:async()=>{throw rejection;}}};
  const changeSelection=run('async function changeSelection(','changeSelection',sandbox);
  return {toasts,done:changeSelection(owner,'trash')};
@@ -46,10 +49,11 @@ test('cancelling Android review of a selection change shows no toast',async()=>{
  await done;
  assert.deepEqual(toasts,[]);
 });
-test('any other selection change rejection still asks to reopen Photos',async()=>{
+// A rejection that is not the owner's cancel leaves the change unconfirmed (main's batch flow).
+test('any other selection change rejection says the change is unconfirmed',async()=>{
  for(const rejection of [Object.assign(new Error('stale'),{code:'LIBRARY_STALE'}),new Error('bridge closed')]){
   const {toasts,done}=selectionChange(rejection);
   await done;
-  assert.deepEqual(toasts,['Reopen Photos to check.']);
+  assert.deepEqual(toasts,["Couldn't confirm the change."]);
  }
 });

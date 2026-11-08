@@ -1,10 +1,8 @@
 package ai.eliza.auth.cloud;
 
-import java.nio.charset.StandardCharsets;
 import java.util.*;
-import org.json.JSONObject;
 
-/** Executes the exact browser-start, lifecycle and callback methods against controlled native activity/storage ports. */
+/** Executes the exact browser-start method against controlled native activity/storage ports. */
 class BrowserPluginBase { protected void handleOnPause() {} protected void handleOnResume() {} }
 public class CloudSignInBrowserTest extends BrowserPluginBase {
  static final long BROWSER_RETURN_GRACE_MS = 1500;
@@ -13,16 +11,14 @@ public class CloudSignInBrowserTest extends BrowserPluginBase {
  final Object lock = new Object(); boolean destroyed, pendingRetirementUnconfirmed, browserAvailable = true, verified = true, associated = true, acceptsHttps = true;
  final List<String> httpsHandlers = new ArrayList<>(List.of("example.browser")); String defaultHandler = "example.browser"; final List<String> via = new ArrayList<>();
  long intent; Attempt attempt; final ArrayDeque<Runnable> workers = new ArrayDeque<>(), ui = new ArrayDeque<>();
- final Map<String,String> slots = new HashMap<>(); final List<String> launched = new ArrayList<>(), posted = new ArrayList<>(), events = new ArrayList<>(); String failure, cancelledBrowserState;
+ final Map<String,String> slots = new HashMap<>(); final List<String> launched = new ArrayList<>(); String failure;
  static class SignInFailure extends Exception { final String code; SignInFailure(String code) { this.code=code; } }
  static class Attempt {
-  final CloudSignInEnvironment environment=TestRegistration.PRODUCTION; final boolean google=true; final Runnable credentialGuard;
-  boolean cancelled, browserLaunched, browserPaused, callbackReceived, returnHint, returnClaimed, busy; String browserState,pendingRecord; long expiresAt;
+  final CloudSignInEnvironment environment=TestRegistration.PRODUCTION; final Runnable credentialGuard;
+  boolean cancelled, browserLaunched, browserPaused, callbackReceived, returnHint, busy; String browserState,pendingRecord; long expiresAt;
   Attempt(Runnable guard) { credentialGuard=guard; }
  }
- static class Uri { static Uri parse(String value) { return new Uri(value); } final String value; Uri(String value) { this.value=value; } String getScheme(){return java.net.URI.create(value).getScheme();} public String toString(){return value;} }
- static class JSObject extends JSONObject { @Override public JSObject put(String k,Object v){super.put(k,v);return this;} }
- static class Response { final int status;final JSONObject data;Response(int s,JSONObject d){status=s;data=d;} }
+ static class Uri { static Uri parse(String value) { return new Uri(value); } final String value; Uri(String value) { this.value=value; } }
  static class CustomTabsIntent {
   final Intent intent=new Intent("browser");
   static final int SHARE_STATE_OFF=0;
@@ -45,7 +41,7 @@ public class CloudSignInBrowserTest extends BrowserPluginBase {
  CloudSignInConfig config(){return TestRegistration.base().googleSignInMode("browser").environment(TestRegistration.PRODUCTION).build();}
  Context getContext(){return new Context(this);}
  static class Context { final CloudSignInBrowserTest host; Context(CloudSignInBrowserTest host){this.host=host;} String getPackageName(){return "ai.example.signin";} PackageManager getPackageManager(){return new PackageManager(host);} }
- static class Intent { static final String ACTION_VIEW="VIEW",CATEGORY_BROWSABLE="BROWSABLE";String action,selected,category;Uri uri;Intent(String action){this.action=action;}Intent(String action,Uri uri){this.action=action;this.uri=uri;}Intent addCategory(String category){check(CATEGORY_BROWSABLE.equals(category),"browser page is browsable");this.category=category;return this;}Intent setPackage(String name){selected=name;return this;}Uri getData(){return uri;}void setData(Uri value){uri=value;} }
+ static class Intent { static final String ACTION_VIEW="VIEW",CATEGORY_BROWSABLE="BROWSABLE";String action,selected,category;Uri uri;Intent(String action){this.action=action;}Intent(String action,Uri uri){this.action=action;this.uri=uri;}Intent addCategory(String category){check(CATEGORY_BROWSABLE.equals(category),"browser page is browsable");this.category=category;return this;}Intent setPackage(String name){selected=name;return this;} }
  static class ServiceInfo { String packageName;boolean exported=true;ServiceInfo(String name){packageName=name;} }
  static class ActivityInfo { String packageName;ActivityInfo(String name){packageName=name;} }
  static class ResolveInfo { ServiceInfo serviceInfo;ActivityInfo activityInfo;ResolveInfo(String name){serviceInfo=new ServiceInfo(name);activityInfo=new ActivityInfo(name);} }
@@ -67,10 +63,6 @@ public class CloudSignInBrowserTest extends BrowserPluginBase {
  CloudCredentialSlots credentials(Runnable guard){return new CloudCredentialSlots(){
   public String read(String key){return slots.get(key);} public void write(String key,String value){guard.run();slots.put(key,value);} public void remove(String key){guard.run();slots.remove(key);}
  };}
- CloudCredentialSlots store(){return credentials(()->{if(destroyed)throw new IllegalStateException("closed");});}
- void notifyListeners(String event,JSObject value,boolean retained){events.add(event);}
- Response post(Attempt current,String path,JSONObject body,String bearer)throws Exception{posted.add(path);throw new SignInFailure("unavailable");}
- void completeOrRequireMfa(Attempt current,JSONObject session){throw new AssertionError("no session without an exchange");}
  void run(Runnable task){workers.add(task);}
  void end(Attempt owner,String code,boolean burn){owner.cancelled=true;if(attempt==owner)attempt=null;failure=code;if(burn&&intent==1)slots.remove(config().pendingSlot);}
  void drainWorkers(){while(!workers.isEmpty())workers.remove().run();}
@@ -78,7 +70,6 @@ public class CloudSignInBrowserTest extends BrowserPluginBase {
  Attempt owner(){long epoch=++intent;attempt=new Attempt(()->{if(epoch!=intent)throw new IllegalStateException("superseded");});return attempt;}
  /* ACTUAL_BROWSER_START */
  /* ACTUAL_BROWSER_LIFECYCLE */
- /* ACTUAL_CALLBACK */
  static void check(boolean value,String reason){if(!value)throw new AssertionError(reason);}
  public static void main(String[] args){
   CloudSignInBrowserTest good=new CloudSignInBrowserTest();Attempt owner=good.owner();good.startGoogleBrowser(owner);
@@ -131,14 +122,6 @@ public class CloudSignInBrowserTest extends BrowserPluginBase {
   check(closing.cancelled&&"browser-closed".equals(closed.failure),"manual browser return ends waiting state");
   CloudSignInBrowserTest newer=new CloudSignInBrowserTest();Attempt retired=newer.owner();retired.browserLaunched=true;newer.handleOnPause();newer.handleOnResume();Attempt successor=newer.owner();newer.main.drain();
   check(newer.attempt==successor&&!successor.cancelled&&newer.failure==null,"old resume timer cannot cancel new attempt");
-  // A foreign-state return brings Alpha forward (singleTask clears the Custom Tab) but cannot decide the
-  // attempt; the resume that follows ends it as browser-closed, and its pending record is burned.
-  CloudSignInBrowserTest foreign=new CloudSignInBrowserTest();Attempt open=foreign.owner();foreign.startGoogleBrowser(open);foreign.drainWorkers();foreign.drainUi();foreign.handleOnPause();
-  String otherState=CloudSignInFlow.Pending.create(open.environment,System.currentTimeMillis()).state;check(!otherState.equals(open.browserState),"distinct foreign state");
-  check(foreign.captureCallback(new Intent(Intent.ACTION_VIEW,Uri.parse(TestRegistration.PRODUCTION.callback()+"#code=foreign-code&state="+otherState))),"foreign return is a callback");foreign.drainWorkers();
-  check(!open.cancelled&&!open.callbackReceived&&foreign.failure==null&&foreign.slots.containsKey(foreign.config().pendingSlot),"foreign-state return alone neither ends the attempt nor burns the record");
-  foreign.handleOnResume();foreign.main.drain();
-  check(open.cancelled&&"browser-closed".equals(foreign.failure)&&!foreign.slots.containsKey(foreign.config().pendingSlot)&&foreign.posted.isEmpty()&&foreign.events.isEmpty(),"resume after a foreign-state return ends as browser-closed, burns the record and never exchanges");
   System.out.println("PASS browser Google start: native custody, readiness, cancellation and replacement");
  }
 }

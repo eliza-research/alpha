@@ -329,11 +329,6 @@ test("browser Google persists native proof before launching and rejects cancelle
       " @Override protected void handleOnPause()",
       " @Override protected void handleOnDestroy()",
     ),
-    ACTUAL_CALLBACK: between(
-      plugin,
-      " private boolean captureCallback(",
-      " /** Cancelled, ended or consumed",
-    ),
   });
   try {
     assert.match(

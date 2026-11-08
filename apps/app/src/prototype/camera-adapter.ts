@@ -465,9 +465,7 @@ export function installPrototypeCameraAdapter(_Component: unknown, views: Record
         if(verified.length||(!declined&&!unverified))owner.toast(message+(failed?` · ${failed} ${unverified?'not confirmed':'not changed'}`:''),undo.length?{undo:()=>{void changeSelection(owner,'restore',undo);}}:undefined);
       }
       if(unverified&&!verified.length&&owner.isActive())owner.toast("Couldn't confirm the change.");
-    // Cancelling Android's review dialog changed nothing, so the owner's own cancel gets no toast.
-    }catch(error){if(owner.isActive()&&(error as {code?:string})?.code!=='LIBRARY_DECLINED')owner.toast('Reopen Photos to check.');}
-    finally{mutating=false;if(!disposed){void refresh();void loadTrash(owner);void loadCounts(owner);void loadCustomAlbums(owner);owner.set({nativeMultiSelection:Date.now()});}}
+    }finally{mutating=false;if(!disposed){void refresh();void loadTrash(owner);void loadCounts(owner);void loadCustomAlbums(owner);owner.set({nativeMultiSelection:Date.now()});}}
   }
   // Browser-owned album storage reports damaged saved data by failing to read.
   // Albums then offers the exact-byte recovery dialog; saved media is unaffected.
