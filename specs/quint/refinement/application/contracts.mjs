@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import {checkTraces as check, qmap} from '../check-traces.mjs';
-import {bundledSource, sourceModule, sourceContext, memoryStore, trace, checkpoint, call, captureSources, boundInputs} from './support.mjs';
+import {bundledSource, sourceModule, sourceContext, memoryStore, deferred, tick, trace, checkpoint, call, captureSources, boundInputs} from './support.mjs';
 captureSources(['specs/quint/refinement/application/contracts.mjs']);
 const checkTraces = options => check(boundInputs({...options, sources: [...options.sources,
   'specs/quint/refinement/application/contracts.mjs', 'specs/quint/refinement/application/support.mjs']}));
@@ -17,7 +17,7 @@ export async function notesLifecycle() {
     let trash = policy.emptyNotesTrash();
     const observe = () => ({'s.live': notes.list.length > 0, 's.trash': trash.entries.length > 0,
       's.trashContent': trash.entries[0]?.note.body || ''});
-    const t = trace(`notes-delete-${restore ? 'restore' : 'expiry'}`, observe());
+    const t = trace(`notes-delete-${restore ? 'restore' : 'expiry'}`, observe(), call('initLegacy'));
     const target = await notes.target('note');
     trash = policy.addNotesTrashEntry(trash, {id: 'deletion', note: notes.list[0], target, index: 0, deletedAt: 1000});
     checkpoint(t, 'write-ahead trash policy retains exact note', call('prepareTrash'), observe());
@@ -37,26 +37,46 @@ export async function notesLifecycle() {
     }
     assert.ok(memory.getItem(NOTES_KEY)); traces.push(t);
   }
+  {
+    const {NotesController} = await sourceModule('.eliza/client-features/plugins/plugin-notes/src/client/notes-controller.ts');
+    const {NotesEditor} = await sourceModule('.eliza/client-features/plugins/plugin-notes/src/client/notes-editor.ts');
+    const reading = deferred(), writing = deferred();
+    let phase = 'ready', content = 'original', revision = 0;
+    const note = () => ({id: 'note', title: content, body: '', color: 'yellow', createdAt: '', updatedAt: ''});
+    const snapshot = () => ({notes: [note()], revision});
+    const client = {
+      async readState() { await reading.promise; return snapshot(); },
+      async interact(capability, params) {
+        assert.equal(capability, 'update-note');
+        assert.equal(params.expectedRevision, revision);
+        await writing.promise; content = params.content; revision++;
+        return {state: snapshot(), note: note(), target: {id: 'note', revision}};
+      },
+    };
+    const controller = new NotesController(client, () => true, {phase: value => {phase = value;}, snapshot() {}});
+    const editor = new NotesEditor(controller, {changed() {}, committed() {}, review() {}});
+    const t = trace('canonical controller and editor own one exact revision', {'s.mode': 'canonical'}, call('initCanonical'));
+    const readPending = controller.refresh(); await tick();
+    checkpoint(t, 'canonical read enters the real controller', call('canonicalRefresh'), {'s.canonical.phase': phase});
+    reading.resolve(); await readPending;
+    checkpoint(t, 'source snapshot publishes its exact revision', call('canonicalReadResult', 0, 1, 0, true), {'s.canonical.revision': controller.revision, 's.canonical.phase': phase});
+    editor.open('note');
+    checkpoint(t, 'editor opens the observed note', call('canonicalOpen'), {'s.canonical.draft': editor.draft !== null, 's.canonical.text': editor.draft.title});
+    editor.edit({title: '', body: 'edited'});
+    checkpoint(t, 'actual editor increments the draft version', call('canonicalEdit'), {'s.canonical.version': editor.draft.version, 's.canonical.text': editor.draft.body});
+    const saving = editor.save(); await tick();
+    checkpoint(t, 'save dispatches through the canonical controller', call('canonicalSave'), {'s.canonical.writing': controller.pending, 's.canonical.phase': phase});
+    writing.resolve(); assert.equal(await saving, true);
+    checkpoint(t, 'confirmed source response advances one revision', call('canonicalSaveResult', 0, 1, true), {'s.canonical.revision': controller.revision, 's.canonical.content': controller.viewNote('note').title, 's.canonical.version': editor.draft.version, 's.canonical.phase': phase});
+    controller.retire(); traces.push(t);
+  }
   return checkTraces({model: 'NotesLifecycle', sources: [...storeModule.sources, ...trashModule.sources], traces, scope: 'bounded-component', assumptions: [
-    'Actual NotesStore mutations and product Trash policy execute for deletion, reconstruction, restore and exact retention expiry.',
+    'Actual legacy NotesStore/Trash policy and canonical NotesController/NotesEditor execute deletion, reconstruction, expiry and one revision-bound read/edit/save.',
     'Trash persistence is an in-memory port. Secure-store draft merge, write-ahead crash boundaries, storage failure and lock UI remain separate obligations.']});
 }
 
 export async function calendarPresentation() {
-  const source = 'apps/app/src/runtime/google-calendar-selection.ts';
-  const prefs = await sourceModule(source), formModule = await bundledSource('apps/app/src/runtime/calendar-form-draft.ts');
-  const store = memoryStore(), connection = '33333333-3333-4333-8333-333333333333';
-  const accounts = [1, 2].map(n => ({environment: 'production', userId: `${n}1111111-1111-4111-8111-111111111111`, organizationId: '22222222-2222-4222-8222-222222222222'}));
-  const calendar = {id: `google:${connection}:calendar`, selected: true, primary: true};
-  const observe = () => ({'s.hidden': qmap(accounts.map((owner, index) => [index + 1, !prefs.googleCalendarVisible(prefs.readGoogleCalendarPrefs(owner, store), calendar)]))});
-  const t = trace('account-bound-display-preferences', observe());
-  assert.equal(prefs.setGoogleCalendarVisible(accounts[0], calendar.id, false, store), true);
-  checkpoint(t, 'hide first account calendar', call('hideGoogle'), observe());
-  checkpoint(t, 'read different account preference namespace', call('changeOwner'), observe());
-  assert.equal(prefs.setGoogleCalendarVisible(accounts[1], calendar.id, false, store), true);
-  checkpoint(t, 'second account preference is independent', call('hideGoogle'), observe());
-  assert.equal(prefs.setGoogleCalendarVisible(accounts[1], calendar.id, true, store), true);
-  checkpoint(t, 'show second account only', call('showGoogle'), observe());
+  const formModule = await bundledSource('apps/app/src/runtime/calendar-form-draft.ts');
   const form = {title: 'Meeting', notes: '', where: '', t: 12, d: 1, video: false, who: [], cal: 'alpha-reminders', repeat: 'none', alert: null, creationId: 'creation-one', off: 0};
   const anchor = new Date(2026, 10, 7), raw = formModule.exports.encodeCalendarForm(form, anchor);
   const restored = formModule.exports.decodeCalendarForm(raw, anchor).form;
@@ -65,9 +85,9 @@ export async function calendarPresentation() {
   const f = trace('creation-draft-retains-identity', {'s.openEvent': 0});
   checkpoint(f, 'encode source creation draft', [call('newForm'), call('saveDraft')], {'s.durableDraft': !!raw, 's.creationId': restored.creationId === form.creationId ? 1 : 0});
   checkpoint(f, 'decode without selected provider event', call('restoreDraft'), {'s.openEvent': restored.id === null ? 0 : 1, 's.creationId': restored.creationId === form.creationId ? 1 : 0});
-  return checkTraces({model: 'CalendarPresentation', sources: [source, ...formModule.sources], traces: [t, f], scope: 'bounded-component', assumptions: [
-    'Actual preference persistence and draft encoder/decoder are checked. IDs use stable equality classes.',
-    'Calendar rendering, range-generation races, provider results and submitted-time snapshots require the renderer adapter.']});
+  return checkTraces({model: 'CalendarPresentation', sources: formModule.sources, traces: [f], scope: 'bounded-component', assumptions: [
+    'Actual creation-draft encoding and decoding preserve their stable identity; no Calendar mutation runs.',
+    'Calendar rendering, account-scoped sync-destination preferences, range-generation races, provider results and submitted-time snapshots require their own adapters. The previous display-hiding preference was removed from the product.']});
 }
 
 export async function credentialVault() {
@@ -92,19 +112,19 @@ export async function credentialVault() {
 export async function permissionWalkthrough() {
   const flow = await sourceModule('apps/app/src/startup-permission-flow.ts');
   const source = 'apps/app/src/startup-permission-progress.ts';
-  const policy = sourceContext([source], ['readStartupPermissionProgress', 'writeStartupPermissionProgress'], flow);
+  const policy = await sourceModule(source);
   const store = memoryStore(), current = () => policy.readStartupPermissionProgress(store, true);
-  const t = trace('six-permission-progress-persistence', {'s.savedProgress': current().step});
+  const t = trace('seven-permission-progress-persistence', {'s.savedProgress': current().step});
   checkpoint(t, 'signed-in test fixture', call('signIn'), {'s.savedProgress': current().step});
-  for (let index = 0; index < 5; index++) {
-    policy.writeStartupPermissionProgress(store, {version: 3, status: 'pending', step: index + 1}, true);
+  for (let index = 0; index < flow.nativeStartupPermissionKeys.length - 1; index++) {
+    policy.writeStartupPermissionProgress(store, {version: 4, status: 'pending', step: index + 1}, true);
     checkpoint(t, 'write and read back next permission', [call('platformStatus', index, true), call('advance')], {'s.savedProgress': current().step});
   }
-  policy.writeStartupPermissionProgress(store, {version: 3, status: 'completed', step: 6}, true);
-  checkpoint(t, 'completed record after six platform grants', [call('platformStatus', 5, true), call('advance'), call('finish')], {'s.savedProgress': current().step, 's.completed': current().status === 'completed'});
+  policy.writeStartupPermissionProgress(store, {version: 4, status: 'completed', step: flow.nativeStartupPermissionKeys.length}, true);
+  checkpoint(t, 'completed record after all native platform grants', [call('platformStatus', flow.nativeStartupPermissionKeys.length - 1, true), call('advance'), call('finish')], {'s.savedProgress': current().step, 's.completed': current().status === 'completed'});
   const replay = new Map(store.values); store.values.clear(); for (const [key, value] of replay) store.values.set(key, value);
   checkpoint(t, 'new reader sees durable completion', call('restart'), {'s.savedProgress': current().step, 's.completed': current().status === 'completed'});
   return checkTraces({model: 'PermissionWalkthrough', sources: [source, 'apps/app/src/startup-permission-flow.ts'], traces: [t], scope: 'bounded-component', assumptions: [
-    'Checks actual six-step marker read/write validation and persistence. Platform grants are controlled fixture inputs.',
+    'Checks actual seven-step marker read/write validation and persistence. Platform grants are controlled fixture inputs.',
     'This is a progress-store projection; component allow/advance/finish gating, cancellation and pending prompt races need a React adapter.']});
 }

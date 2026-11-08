@@ -92,11 +92,12 @@ export async function notificationCollection() {
 export async function developmentHost() {
   const source = 'scripts/cloud-resident-host.mjs';
   captureSources([source, 'scripts/local-agent-source.mjs', 'scripts/native-view-policy.mjs',
-    'scripts/cloud-sdk-authority.mjs', 'vendor/eliza/packages/agent/native-host/private-runtime-launch.mjs']);
-  const {createCloudResidentHost} = await import(new URL('../../../../scripts/cloud-resident-host.mjs', import.meta.url));
+    'scripts/cloud-sdk-authority.mjs', 'vendor/eliza/packages/agent/native-host/private-runtime-launch.mjs',
+    'test/fixtures/product-character-host.mjs', 'scripts/native-google-host-artifact.mjs', 'scripts/workflow-worker-artifact.mjs']);
+  const {createCloudResidentHost} = await import(new URL('../../../../test/fixtures/product-character-host.mjs', import.meta.url));
   const directory = await mkdtemp(join(tmpdir(), 'alpha-refinement-host-'));
   const launches = [];
-  const host = await createCloudResidentHost({source: resolve(root, 'vendor/eliza'), profile: directory, port: 48768,
+  const host = await createCloudResidentHost({profile: directory, port: 48768,
     launch: async options => {const completion = deferred(); const child = {options, completion: completion.promise, async stop() {completion.resolve({code: 0});}}; launches.push(child); return child;},
     inherited: {PATH: process.env.PATH}});
   try {
@@ -111,7 +112,7 @@ export async function developmentHost() {
     await host.close(); checkpoint(t, 'close source host', call('close'), observe());
     return checkTraces({model: 'DevelopmentHost', sources: [source, 'scripts/local-agent-source.mjs', 'scripts/native-view-policy.mjs',
       'scripts/cloud-sdk-authority.mjs', 'vendor/eliza/packages/agent/native-host/private-runtime-launch.mjs'], traces: [t], scope: 'bounded-component', assumptions: [
-      'Actual private-profile and resident-host logic execute with a process-launch port. No network or real child starts.',
+      'Actual private-profile and resident-host logic execute through the existing product-character fixture with a relocated synthetic SDK/worker root and a process-launch port. All source and worker admission checks run; no network or real child starts.',
       'Binding observation covers attachability, retirement and same-binding reuse. Browser credential claims, requests, failed stop and launcher shutdown schedules remain untested.']});
   } finally {await host.close(); await rm(directory, {recursive: true, force: true});}
 }

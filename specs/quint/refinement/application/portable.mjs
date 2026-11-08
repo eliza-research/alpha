@@ -17,9 +17,10 @@ export async function startupPermissions() {
       async request() { requests++; grant = granted; }, async openSettings() { settings++; }};
     let flow = createStartupPermissionFlow(bridge, {key: 'camera', store});
     const t = trace(`prompt-${durable ? 'saved' : 'volatile'}-${granted}`, {'s.requests': requests});
+    if (!durable) checkpoint(t, 'storage is unavailable before the prompt', call('storageFails'), {'s.persistedAttempted': false});
     let status = await flow.enable();
-    checkpoint(t, 'first explicit request and authoritative readback', [call('enable'), call(durable ? 'prompt' : 'promptWithoutPersistence'), call('result', granted)],
-      {'s.requests': requests, 's.status': status, 's.durableAttempt': !!readStartupPermissionMemory(store).attempted.camera});
+    checkpoint(t, 'first explicit request and authoritative readback', [call('enable'), call('prompt'), call('result', granted)],
+      {'s.requests': requests, 's.status': status, 's.persistedAttempted': !!readStartupPermissionMemory(store).attempted.camera});
     flow = createStartupPermissionFlow(bridge, {key: 'camera', store});
     checkpoint(t, 'fresh instance reads retained marker', call('restart'),
       {'s.requests': requests, 's.attempted': !!readStartupPermissionMemory(store).attempted.camera});
@@ -27,9 +28,9 @@ export async function startupPermissions() {
     checkpoint(t, 'restart readback', call('check'), {'s.status': status});
     if (!granted) {
       status = await flow.enable();
-      const operations = [call('enable'), ...(!durable ? [call('promptWithoutPersistence')] : []), call('result', false)];
+      const operations = [call('enable'), ...(!durable ? [call('prompt')] : []), call('result', false)];
       checkpoint(t, 'repeat explicit request after restart', operations,
-        {'s.status': status, 's.requests': requests, 's.durableAttempt': !!readStartupPermissionMemory(store).attempted.camera});
+        {'s.status': status, 's.requests': requests, 's.persistedAttempted': !!readStartupPermissionMemory(store).attempted.camera});
       assert.equal(settings, durable ? 1 : 0);
     }
     traces.push(t);
@@ -107,7 +108,7 @@ export async function preferences() {
 }
 
 export async function browserSession() {
-  const source = 'apps/app/src/browser/browsing-session.ts';
+  const source = '.eliza/client-features/plugins/plugin-native-browser-surface/src/browsing-session.ts';
   const {browsingSnapshot, restoreBrowsing} = await sourceModule(source);
   const traces = [];
   for (const privateTab of [false, true]) {
@@ -119,7 +120,7 @@ export async function browserSession() {
     const saved = browsingSnapshot(state, id => ({url: `https://example.test/${id}`, title: id}));
     checkpoint(t, 'persist only normal tabs', call('snapshot'), {'s.saved': qset(saved.tabs.map(tab => Number(tab.id)))});
     const restored = restoreBrowsing(saved, {tabs: [{id: 'fresh'}], visits: []}, true);
-    checkpoint(t, 'reconstruct from snapshot', call('restart'), {'s.normal': qset(restored.tabs.map(tab => Number(tab.id))), 's.privateTabs': qset(restored.tabs.filter(tab => tab.priv).map(tab => Number(tab.id)))});
+    checkpoint(t, 'reconstruct from snapshot', call('restart'), {'s.normal': qset(restored.restored.map(tab => Number(tab.id))), 's.privateTabs': qset(restored.restored.filter(tab => tab.priv).map(tab => Number(tab.id)))});
     traces.push(t);
   }
   return checkTraces({model: 'BrowserSession', sources: [source], traces, scope: 'bounded-component',
@@ -153,22 +154,22 @@ export async function draftDispatch() {
   const traces = [];
   for (const finish of ['commit', 'release']) for (const newer of [false, true]) for (const failWrite of [false, true]) {
     let text = '', record = {version: 1, binding: 'one', revision: '1', text: 'A'}, fail = false;
-    const store = {async read() { return record; }, async save(expected, value) {
+    const store = {async read() { return record; }, async save(expected, value, _signal, options = {}) {
       if (fail) throw Error('Injected write failure');
       assert.deepEqual(expected, record);
-      return record = {...record, revision: String(Number(record.revision) + 1), text: value};
+      return record = {version: 1, binding: record.binding, revision: String(Number(record.revision) + 1), text: value, ...(options.sending ? {sending: true} : {})};
     }};
     const controller = new AssistantDraftController(async () => store, () => text, value => {text = value;}, () => {});
     await controller.open('one');
     const abstractText = value => value.replace('\n', '+');
-    const observe = () => ({'s.draft': abstractText(text), 's.savedOne': abstractText(record.text), 's.holding': controller.holding, 's.error': controller.state.error});
+    const observe = () => ({'s.draft': abstractText(text), 's.savedOne': abstractText(record.text), 's.holding': controller.holding, 's.error': controller.state.error, 's.markedOne': record.sending === true});
     const t = trace(`${finish}-${newer}-${failWrite}`, observe());
     await controller.hold('A'); checkpoint(t, 'hold actual controller draft', call('hold'), observe());
     text = ''; controller.edit(text); checkpoint(t, 'clear composer only', call('clearComposer'), observe());
     if (newer) {text = 'B'; controller.edit(text); checkpoint(t, 'newer typing while held', call('typeNew'), observe());}
     fail = failWrite;
     if (finish === 'commit') await controller.commit(); else {controller.release(); await tick(); await tick();}
-    const completion = failWrite && (finish === 'commit' || newer)
+    const completion = failWrite
       ? (finish === 'release' ? 'saveConflict' : 'saveFailed') : 'flush';
     checkpoint(t, 'settle dispatch and its queued storage write', [call(finish), call(completion)], observe());
     traces.push(t);

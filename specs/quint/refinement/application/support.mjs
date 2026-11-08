@@ -1,4 +1,4 @@
-import {readFileSync} from 'node:fs';
+import {readFileSync, readdirSync} from 'node:fs';
 import {resolve} from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {stripTypeScriptTypes} from '../../../../test/support/strip-types.mjs';
@@ -14,9 +14,11 @@ export function captureSources(paths) {
   }
 }
 captureSources(['specs/quint/refinement/application/support.mjs', 'specs/quint/refinement/check-traces.mjs',
-  'specs/quint/refinement/application/index.mjs', 'test/quint-application-refinement.test.mjs']);
+  'specs/quint/refinement/application/index.mjs', 'test/quint-application-refinement.test.mjs',
+  'test/support/strip-types.mjs', 'upstream.lock.json', 'scripts/prepare-client-features.mjs',
+  ...readdirSync(resolve(root, 'patches/eliza')).filter(name => /\.(patch|json)$/.test(name)).map(name => 'patches/eliza/' + name)]);
 export function boundInputs(options) {
-  const sources = [...new Set([...options.sources, 'specs/quint/refinement/application/index.mjs',
+  const sources = [...new Set([...options.sources, ...captured.keys(), 'specs/quint/refinement/application/index.mjs',
     'test/quint-application-refinement.test.mjs'])];
   for (const source of sources) {
     if (!captured.has(resolve(root, source))) throw Error(`Source was not captured before execution: ${source}`);
@@ -28,14 +30,13 @@ export const read = path => {
   return readFileSync(resolve(root, path), 'utf8');
 };
 export async function sourceModule(path) {
-  const code = stripTypeScriptTypes(read(path), {mode: 'strip'});
-  return import(`data:text/javascript;base64,${Buffer.from(code).toString('base64')}`);
+  return (await bundledSource(path, {'import.meta.env': '{}'})).exports;
 }
 export async function bundledSource(path, define = {}) {
   const built = buildSync({absWorkingDir: root, entryPoints: [path], bundle: true, write: false,
     platform: 'node', format: 'esm', metafile: true, define});
-  const sources = Object.keys(built.metafile.inputs).filter(path => !path.startsWith('node_modules/'));
-  captureSources(sources);
+  const sources = Object.keys(built.metafile.inputs).filter(path => !path.startsWith('node_modules/') && !path.startsWith('<'));
+  captureSources([path, ...sources]);
   return {exports: await import(`data:text/javascript;base64,${Buffer.from(built.outputFiles[0].contents).toString('base64')}`),
     sources};
 }

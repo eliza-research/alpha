@@ -16,10 +16,10 @@ establish general application refinement or discharge the returned obligations.
 | Adapter | Source contracts exercised |
 | --- | --- |
 | `clients.mjs` | Verified session replacement, asynchronous sends, proposals, consumed approvals, cancellation and automatic workflow navigation |
-| `portable.mjs` | Permission prompt persistence, browser snapshot/restore, layout policies, draft dispatch, complete 240-row permanent-deletion planner and delegation-return DOM execution |
+| `portable.mjs` | Permission prompt persistence, browser snapshot/restore, layout policies, shared durable draft dispatch with persisted sending markers, complete 240-row permanent-deletion planner and delegation-return DOM execution |
 | `storage.mjs` | Real document editor with controlled CAS, competing writers, persistence failure and the last-check legacy-write race |
-| `contracts.mjs` | Notes tombstone and Trash policy, Calendar preferences/draft encoding, development vault metadata and six-step progress records |
-| `surfaces.mjs` | Shell open/Back bodies, actual build/profile predicates, call timer retirement and Files picker ownership |
+| `contracts.mjs` | Legacy Notes tombstone/Trash policy, canonical Notes controller/editor, Calendar creation-draft encoding, development vault metadata and seven-step progress records |
+| `surfaces.mjs` | Shell open/Back bodies, actual build/profile predicates, call timer retirement and current Files storage-volume identity checks |
 | `boundaries.mjs` | Attachment review with real byte validation, browser notification policy/redaction and resident binding/retirement |
 
 Environmental ports isolate storage, transport, platform callbacks and process
@@ -32,12 +32,13 @@ observable execution.
 
 `StartupPermissions` separates the current flow's attempted flag from its
 durable marker. A failed best-effort write can permit another prompt after
-reconstruction. `NoRepeatedPromptAcrossRestart` retains the stronger diagnostic,
-and `failedAttemptPersistenceTest` demonstrates its failure under that condition.
+reconstruction. `NoRepeatedPrompt` is scoped to one flow lifetime. The source trace and
+`failedStorageRestartTest` retain the distinction between in-memory and persisted attempts.
 
 `DraftDispatch.saveConflict` represents a failed release write whose saved copy
 can still be read. The controller opens conflict review with its error flag
-clear. A failed clear after dispatch keeps the existing error outcome.
+clear. A failed clear after dispatch keeps the existing error outcome. The storage port preserves the
+shared controller's fourth-argument sending marker and clears it only on an unmarked save.
 
 `DurableStore.prepare` marks the editor's last legacy-data check. An external
 legacy write can occur before the independent document CAS completes. The next
@@ -52,6 +53,13 @@ The permanent-deletion decision table uses the existing secondary module
 `PermanentVoiceDeletion` through `coverageModel`. It checks all 240 finite input
 combinations of the pure planner. Stateful deletion effects, leases and native
 workers have separate obligations.
+
+The Calendar adapter covers creation-draft identity. The removed Google display-hiding
+preference is not simulated as a current product operation. Account-scoped sync-destination
+preferences remain a separate obligation. Files executes the actual BrowserStorageVolume
+path resolver, category queries and conditional move against controlled library CAS primitives.
+The three schedules exercise accepted, changed and missing identities. Full Files UI and
+native storage remain separate obligations.
 
 The aggregate report lists every model field absent from source observations
 and every model action absent from these traces. It also retains adapter-specific

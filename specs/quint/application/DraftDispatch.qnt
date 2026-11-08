@@ -29,6 +29,9 @@ module DraftDispatch {
       markedOne: s.markedOne and s.queuedBinding != 1, markedTwo: s.markedTwo and s.queuedBinding != 2, queuedBinding: 0 } }
   action saveFailed = all { s.queuedBinding != 0,
     s' = { ...s, queuedBinding: 0, failed: true, error: true } }
+  /// A failed release write offers the readable saved copy for conflict review.
+  action saveConflict = all { s.queuedBinding != 0,
+    s' = { ...s, queuedBinding: 0, failed: true, error: false } }
   action switchConversation = all { s.active != 2,
     s' = { ...s, active: 2, ready: true, failed: false, draft: s.savedTwo, automaticRestore: true } }
   action reopenHeldConversation = all { s.holding, s.heldBinding == s.active,
@@ -40,7 +43,7 @@ module DraftDispatch {
       automaticRestore: true, ready: true, failed: false } }
   action rejectedHold = all { s.failed or s.unsettled, s' = s }
   action step = any { storageFailed, hold, rejectedHold, clearComposer, typeNew, release, commit,
-    flush, saveFailed, switchConversation, reopenHeldConversation, restart, s' = s }
+    flush, saveFailed, saveConflict, switchConversation, reopenHeldConversation, restart, s' = s }
   val BoundQueue = s.queuedBinding.in(Set(0, 1, 2)) and s.active.in(Set(1, 2))
   val OneHeldSend = s.holding implies not(s.dispatched)
   val HeldTextNotAutomaticallyOffered = (s.holding and s.heldBinding == s.active and s.automaticRestore) implies s.draft != "A"

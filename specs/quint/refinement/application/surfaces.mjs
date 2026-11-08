@@ -1,7 +1,8 @@
 import assert from 'node:assert/strict';
+import {stripTypeScriptTypes} from '../../../../test/support/strip-types.mjs';
 import vm from 'node:vm';
-import {checkTraces as check} from '../check-traces.mjs';
-import {read, sourceContext, deferred, tick, trace, checkpoint, call, captureSources, boundInputs} from './support.mjs';
+import {checkTraces as check, qmap} from '../check-traces.mjs';
+import {read, sourceModule, sourceContext, deferred, tick, trace, checkpoint, call, captureSources, boundInputs} from './support.mjs';
 captureSources(['specs/quint/refinement/application/surfaces.mjs']);
 const checkTraces = options => check(boundInputs({...options, sources: [...options.sources,
   'specs/quint/refinement/application/surfaces.mjs', 'specs/quint/refinement/application/support.mjs']}));
@@ -9,9 +10,10 @@ const checkTraces = options => check(boundInputs({...options, sources: [...optio
 export async function shellNavigation() {
   const path = 'apps/app/src/prototype/model.js', source = read(path);
   const methods = source.slice(source.indexOf('  goHome(chat) {'), source.indexOf('  /* ---- Android', source.indexOf('  goHome(chat) {')));
+  const {navigateMobileShell} = await sourceModule('.eliza/client-features/packages/ui/src/mobile-shell/core.ts');
   const traces = [];
   for (const view of ['notes', 'calendar', 'files', 'browser', 'settings']) {
-    const context = vm.createContext({VIEWS: {[view]: {}}, isMvpView: value => value === view});
+    const context = vm.createContext({navigateMobileShell, VIEWS: {[view]: {}}, isMvpView: value => value === view});
     vm.runInContext(`class Shell {
       constructor(){this.state={view:null,chat:'input',shade:false,drawer:false,voice:'off'};this.props={};}
       S(){return this.state;} setState(patch){Object.assign(this.state,patch);} clear(){} leave(){}
@@ -36,8 +38,8 @@ export async function developmentSurfaces() {
   const traces = [];
   for (const enabled of [false, true]) {
     const environment = {DEV: true, VITE_ELIZA_DEV_ALLOW_TEST_MOCKS: enabled ? '1' : '', VITE_ELIZA_RUNTIME_PROFILE: 'native'};
-    const flags = read(paths[0]).replace(/export /g, '').replace(/: boolean/g, '').replaceAll('import.meta.env', 'environment');
-    const profile = read(paths[1]).replace(/^import.*$/gm, '').replace(/export /g, '')
+    const flags = stripTypeScriptTypes(read(paths[0]), {mode:'transform'}).replace(/export /g, '').replaceAll('import.meta.env', 'environment');
+    const profile = stripTypeScriptTypes(read(paths[1]), {mode:'transform'}).replace(/^import.*$/gm, '').replace(/export /g, '')
       .replaceAll('devSurfacesEnabled', 'profileEnabled').replace(/:boolean/g, '').replaceAll('import.meta.env', 'environment');
     const context = vm.createContext({environment, Capacitor: {isNativePlatform: () => false}, location: {search: '?mode=dev'}, URLSearchParams});
     vm.runInContext(`${flags}\n${profile}\nglobalThis.values={testMocksEnabled,devSurfacesEnabled,browserDevProfile};`, context);
@@ -77,30 +79,56 @@ export async function developmentDevice() {
 }
 
 export async function filesTree() {
-  const source = 'apps/app/src/prototype/files-tree-adapter.ts', traces = [];
-  for (const leave of [false, true]) {
-    let active = true;
-    const result = deferred(), accepted = [], forgotten = [], state = {}, document = {hidden: false};
-    const api = {ic: {folder: ''}, get: () => state, set: patch => Object.assign(state, patch), isActive: () => active, toast() {}};
-    const view = {render: () => ({locs: [{name: 'Documents'}]}), onLeave() {}};
-    const module = sourceContext([source], ['installFilesTreeAdapter'], {
-      document, window: {dispatchEvent() {}}, Capacitor: {isNativePlatform: () => false}, registerPlugin: () => ({}),
-      DailyApps: {perform: () => result.promise, async forgetSelected(input) {forgotten.push(input.selectionId);}},
-      filesIndex: {list: () => [], revokeTree() {}}, createInlineModal: () => ({}), FOLDER_CONTEXT_EVENT: 'folder',
-      createFolderRevisions: () => () => null, folderScope: () => null,
-    });
-    module.installFilesTreeAdapter({files: view}, async (_module, selected) => accepted.push(selected.selectionId), () => {});
-    const observe = () => ({'s.preview': accepted.length ? 1 : 0});
-    const t = trace(`picker-${leave ? 'retired' : 'current'}`, observe());
-    view.render(state, api).locs.find(row => row.name === 'Documents').go();
-    checkpoint(t, 'source opens system picker', call('pickFile'), observe());
-    if (leave) {active = false; view.onLeave(api); checkpoint(t, 'source retires picker owner', call('leave'), observe());}
-    result.resolve({status: 'selected', action: 'files', selectionId: 'owned-selected', name: 'Owned.txt', mimeType: 'text/plain'});
-    await tick(); await tick();
-    checkpoint(t, 'actual picker completion', call('pickerReply', 1), observe());
-    assert.deepEqual(forgotten, leave ? ['owned-selected'] : []); traces.push(t);
+  const source = 'apps/app/src/browser/storage-volume.ts';
+  const {BrowserStorageVolume} = await sourceModule(source);
+  const traces = [];
+  for (const change of ['none', 'changed', 'missing']) {
+    const folder = (id, name) => ({id: String(id), parentId: 'root', name, directory: true, revision: '0', size: 0, mimeType: ''});
+    const file = (id, parentId, mimeType) => ({id: String(id), parentId: String(parentId), name: 'fixture.dat', directory: false, revision: '0', size: 1, modifiedAt: 0, mimeType});
+    const rows = new Map([
+      ['10', folder(10, 'Download')], ['20', folder(20, 'Pictures')], ['30', folder(30, 'Documents')],
+      ['1', file(1, 20, 'image/png')], ['2', file(2, 10, 'text/plain')],
+    ]);
+    // The controlled library supplies identity-CAS primitives. Path resolution, category filtering,
+    // expected-identity checks and the transfer itself execute BrowserStorageVolume unchanged.
+    const library = {
+      async list({id = 'root'}) { return {folder: {id}, entries: [...rows.values()].filter(row => row.parentId === id).map(row => ({...row}))}; },
+      async move(input) {
+        const row = rows.get(input.id);
+        assert.equal(row.revision, input.expectedRevision);
+        rows.set(row.id, {...row, parentId: input.destinationId, revision: String(Number(row.revision) + 1)});
+      },
+      async rename(input) {
+        const row = rows.get(input.id);
+        assert.equal(row.revision, input.expectedRevision);
+        rows.set(row.id, {...row, name: input.name, revision: String(Number(row.revision) + 1)});
+      },
+      async usage() { return {bytes: 2, files: 2}; },
+    };
+    const volume = new BrowserStorageVolume(library);
+    const locations = () => qmap([1, 2, 3].map(id => [id, rows.has(String(id)) ? Number(rows.get(String(id)).parentId) : 0]));
+    const t = trace(`volume-reviewed-move-${change}`, {'s.locations': locations()});
+    const access = await volume.run('storageState', {});
+    checkpoint(t, 'actual browser volume reports its access', call('grantAccess'), {'s.access': access.access === 'granted'});
+    assert.deepEqual((await volume.category('downloads')).entries.map(row => row.path), ['Download/fixture.dat']);
+    assert.deepEqual((await volume.category('images')).entries.map(row => row.path), ['Pictures/fixture.dat']);
+    const reviewed = (await volume.identity(['Pictures/fixture.dat'])).identities;
+    assert.deepEqual(reviewed, [{size: 1, modified: 0}]);
+    checkpoint(t, 'actual volume captures the reviewed identity', call('proposeMove', 1, 30), {'s.review': {file: 1, from: 20, to: 30, revision: reviewed[0].modified}});
+    if (change === 'changed') {
+      rows.set('1', {...rows.get('1'), modifiedAt: 1, revision: '1'});
+      checkpoint(t, 'external library write changes the identity', call('externalEdit', 1), {'s.revisions': qmap([[1, 1], [2, 0], [3, 0]])});
+    }
+    if (change === 'missing') {
+      rows.delete('1');
+      checkpoint(t, 'external library removal changes the location', call('externalRemove', 1), {'s.locations': locations()});
+    }
+    const result = await volume.transfer(['Pictures/fixture.dat'], 'Documents', false, reviewed);
+    assert.equal(result.outcomes[0].status, change === 'none' ? 'moved' : change === 'changed' ? 'changed' : 'missing');
+    checkpoint(t, 'actual transfer preserves stale or missing sources', call(change === 'none' ? 'applyMove' : 'refuseMove'), {'s.locations': locations()});
+    traces.push(t);
   }
   return checkTraces({model: 'FilesTree', sources: [source], traces, scope: 'bounded-component', assumptions: [
-    'Actual picker completion and view-leave handlers execute. The external picker is a deferred capability port.',
-    'Tree enumeration, revisions, partial mutation batches, persistent Recent and native grant enforcement remain additional obligations.']});
+    'BrowserStorageVolume resolves paths, filters categories and conditionally transfers the exact reviewed identity against a controlled library CAS port.',
+    'Three one-file schedules cover accepted, changed and missing identities. Full view selection, collisions, Trash, partial batches, native volumes and access revocation remain separate obligations.']});
 }
