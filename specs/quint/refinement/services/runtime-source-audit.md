@@ -10,13 +10,23 @@ The Android build selects `packages/app/src/mobile-agent-entry.ts` in `packages/
 
 The workflow dependency producer is independently selected by `scripts/prepared-workflow-worker.mjs`. It invokes `packages/scripts/plugins/plugin-workflow/build-workflow-artifact.ts`. Its generated entrypoints include Smithers run/control, store, output snapshot, cancellation subtree, Effect, graph and scheduler libraries. These are separate from the first-party `smithers-runtime.ts` process/protocol wrapper. The current workflow fixtures replace that wrapper's execution and control ports.
 
-The authoritative Android consumed-source list is `plugins-manifest.json` → `bundleDependencies`, generated from the successful Bun build's entrypoint input metadata. No current pinned `475a8d59dc1811c2cde093613519906a5a3f6457` artifact was available in this worktree or the root agent's artifact search. Historical manifests cannot establish the current consumed-source closure.
+The Android `plugins-manifest.json` → `bundleDependencies` record is generated from successful Bun entrypoint metadata, but contains emitted npm package identities rather than the first-party source graph. Capturing the raw Bun metafile is required for first-party input inventory. The initial audit found no current pinned artifact and treated historical manifests only as clues. The isolated producer run described below subsequently established current bundle inputs.
 
 ## Static reachability evidence
 
 `test-results/quint-workflow-tasks/runtime-graph-audit.json` records a conservative source walk from eight explicit Android/runtime/workflow roots. The accompanying `runtime-graph-audit.mjs` uses Bun's TypeScript-aware import scanner, hashes every read source and follows relative imports plus explicitly recorded core, agent and assistant aliases.
 
 The observed walk contains 1,374 first-party files, 4,090 edges and 1,033 unresolved bare or computed import edges. These counts describe potential static reachability. They include re-exports and literal dynamic imports and do not account for dead-code elimination, runtime feature gates or all mobile builder substitutions. Class names in that evidence are candidates, not a determination that each class owns state. This walk must not replace a current authenticated bundle manifest or be labeled complete consumed-source coverage.
+
+## Current pinned producer evidence
+
+An isolated prepared checkout at `artifacts/quint-runtime-inventory-475a` passed the normal immutable-source preparation and frozen dependency installation. The product's `scripts/build-mobile-agent.mjs` ran with the reviewed Bun 1.4.2 revision and UUID adapter. Its upstream module-load smoke, product pre-provider smoke and final full-source reauthentication passed.
+
+The read-only observer `specs/quint/refinement/services/runtime-bundle-audit.mjs` preserves the real `Bun.build` options and result while saving the raw metafile. Its own inputs and the graph serializer are hashed before and after the run. Raw evidence remains in `test-results/quint-runtime-bundle`, and the portable audited graph is committed beside this report as `runtime-bundle-inputs.json`.
+
+The actual build parsed 9,988 inputs. It reports 4,338 unique first-party paths, of which 4,229 contribute emitted bytes. There are 4,090 tracked Git source paths and 248 generated first-party paths. The generated inputs remain explicitly separate from tracked vendor source. `runtime-bundle-inputs.json` records each input hash, contribution, direct resolved edge and external boundary, bound to the producer observation and raw metafile hashes. All 248 generated inputs have qualified origin mappings. There are 244 declared TypeScript output-path mappings and four additional source-map mappings. These mappings identify producer inputs and do not establish semantic equivalence or refinement.
+
+These are Android bundle inputs. Module inclusion does not establish feature activation, model coverage, provider behavior or implementation refinement. No Android staging, image boot or device acceptance is part of this reproduction.
 
 ## Connected state owners requiring further refinement
 
