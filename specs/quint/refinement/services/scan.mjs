@@ -38,6 +38,7 @@ export async function scanRefinement() {
   try {
     for (const mode of ['automatic', 'explicit', 'explicit-then-autosave', 'unverified']) {
       const context = await browser.newContext(), page = await context.newPage();
+      page.setDefaultTimeout(30000);
       await page.route('https://scan.refinement.invalid/**', route => route.fulfill({contentType: 'text/html', body: '<main class="os"></main>'}));
       await page.goto('https://scan.refinement.invalid/');
       await page.evaluate(() => { window.scanPorts = {indexed: 0, exports: 0, imageUrl: '', exportPdf: async () => { window.scanPorts.exports++; await new Promise(resolve => { window.releaseExport = resolve; }); return {status: window.exportOutcome, message: 'Export completed'}; }}; });

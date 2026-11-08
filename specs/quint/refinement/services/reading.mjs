@@ -25,7 +25,7 @@ export async function readingRefinement() {
   const browser = await chromium.launch({headless: true, ...(process.env.ALPHA_CHROMIUM_PATH ? {executablePath: process.env.ALPHA_CHROMIUM_PATH} : {}), args: ['--no-sandbox']});
   try {
     for (const retireDuringVerification of [false, true]) {
-      const page = await browser.newPage(); await page.route('https://reading.refinement.invalid/**', route => route.fulfill({contentType: 'text/html', body: '<main class="os"></main>'})); await page.goto('https://reading.refinement.invalid/');
+      const page = await browser.newPage(); page.setDefaultTimeout(30000); await page.route('https://reading.refinement.invalid/**', route => route.fulfill({contentType: 'text/html', body: '<main class="os"></main>'})); await page.goto('https://reading.refinement.invalid/');
       await page.addScriptTag({content: compiled.outputFiles[0].text});
       await page.evaluate(() => {
         window.currentSelection = true; window.composed = [];

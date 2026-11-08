@@ -12,12 +12,13 @@ import {checkVaultCoordinator} from './vault-coordinator.mjs';
 import {checkNotesCoordinator} from './notes-coordinator.mjs';
 import {listFocus} from './list-focus.mjs';
 import {checkRecoveryUI} from './recovery-ui.mjs';
+import {checkShellCoordinator} from './shell-coordinator.mjs';
 
 const adapters = [application, shellNavigation, startupPermissions, assistantConversation, notesLifecycle,
   browserSession, credentialVault, developmentSurfaces, filesAndSharing, preferences, durableStore,
   permissionWalkthrough, developmentDevice, permanentVoiceDeletion, developmentHost, filesTree,
   calendarPresentation, draftDispatch, notificationCollection, callbackLanding,
-  runStartupPermissionsCoordinatorRefinement, checkVaultCoordinator, checkNotesCoordinator, listFocus, checkRecoveryUI];
+  runStartupPermissionsCoordinatorRefinement, checkVaultCoordinator, checkNotesCoordinator, listFocus, checkRecoveryUI, checkShellCoordinator];
 
 /** Component traces, with remaining obligations kept explicit for the aggregate report. */
 export async function runApplicationRefinement() {
