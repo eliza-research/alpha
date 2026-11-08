@@ -13,9 +13,9 @@ const offline = () => localStorage.setItem('alpha.connection.selection.v1', JSON
 const VIEWS = ['Inbox', 'Calendar', 'Browser', 'Camera', 'Photos', 'Maps', 'Notes', 'Files', 'Workflows', 'Settings'] as const;
 const DRAFT = 'Lifecycle draft kept across every screen';
 
-async function start(page: Page) {
+async function start(page: Page, url = '/') {
   await page.addInitScript(offline);
-  await page.goto('/');
+  await page.goto(url);
   await expect(page.getByRole('button', { name: 'Settings', exact: true })).toBeVisible();
   await page.evaluate(() => document.fonts.ready);
 }
@@ -152,7 +152,7 @@ test.describe('a reload (the renderer restarted)', () => {
   test('the chosen text size survives, and Home comes back announced and in reading order', async ({ page }) => {
     // A reload plus three audited views: 5 s alone, past the 30 s default when run beside the 200% sweeps.
     test.setTimeout(90_000);
-    await start(page);
+    await start(page, '/?mode=dev');
     await page.getByRole('button', { name: 'Settings', exact: true }).click();
     const slider = page.getByRole('slider', { name: 'Text size', exact: true });
     await expect(slider).toBeVisible();

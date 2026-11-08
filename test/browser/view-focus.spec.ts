@@ -38,7 +38,7 @@ test('a screen change that drops focus moves it to the screen title, then to the
   // A name, not a stop: the title takes focus only from the script.
   await expect(title).toHaveAttribute('tabindex', '-1');
   await page.keyboard.press('Tab');
-  await expect(page.getByRole('button', { name: 'About', exact: true })).toBeFocused();
+  await expect(page.getByRole('button', { name: 'Display', exact: true })).toBeFocused();
   // HOME: the app retires with focus inside it.
   await show(page, 'home');
   await page.evaluate(() => window.dispatchEvent(new Event('launcher-home')));
@@ -71,15 +71,15 @@ test('rotation that rebuilds the focused layer gives focus back to the screen na
   await frames(page);
   expect(await focused(page)).toBe('body');
   await show(page, 'settings');
-  await page.getByRole('button', { name: 'About', exact: true }).focus();
+  await page.getByRole('button', { name: 'Display', exact: true }).focus();
   // The landscape layout replaces the row that held focus.
   await page.evaluate(() => { document.querySelector('[data-alpha-layer="app"] button:not([aria-label])')!.replaceWith(Object.assign(document.createElement('button'), { textContent: 'Display' })); });
   await page.setViewportSize({ width: 412, height: 915 });
   await expect.poll(() => focused(page)).toBe('Settings');
   // An app without a title row is named by its region.
   await page.evaluate(() => document.querySelector('[data-alpha-app-title]')!.remove());
-  await page.getByRole('button', { name: 'About', exact: true }).focus();
-  await show(page, 'home'); await show(page, 'settings');
+  await page.getByRole('button', { name: 'Display', exact: true }).focus();
+  await show(page, 'home'); await frames(page); await show(page, 'settings');
   await expect.poll(() => focused(page)).toBe('Settings');
   expect(await page.evaluate(() => document.activeElement?.getAttribute('data-alpha-layer'))).toBe('app');
 });

@@ -1,5 +1,6 @@
 import {test,expect} from '@playwright/test';
 import {deviceAppsStub} from './device-apps-stub';
+import {settled} from './helpers/settled';
 
 for (const height of [600, 915]) test(`Apps fills the screen and its last control clears the chat bar at ${height}px`, async ({page}) => {
   await page.setViewportSize({width: 412, height});
@@ -28,6 +29,7 @@ for (const height of [600, 915]) test(`Apps fills the screen and its last contro
   await expect(list.getByRole('button', {name: 'Open App 39'})).toBeAttached();
   expect(await list.evaluate(el => Math.abs(el.getBoundingClientRect().bottom - document.querySelector('[data-screen]')!.getBoundingClientRect().bottom))).toBeLessThanOrEqual(1);
 
+  const barTops=new Map<number,number>();
   for (const failedRead of [false, true]) {
     if (failedRead) {
       await page.evaluate(() => (window as any).failDrawerDraftRead());
@@ -42,6 +44,9 @@ for (const height of [600, 915]) test(`Apps fills the screen and its last contro
         const dock = document.querySelector('[data-alpha-layer="composer"]')!.getBoundingClientRect();
         return parseFloat(getComputedStyle(el).paddingBottom) >= screen.bottom - dock.top + 4;
       })).toBe(true);
+      await settled(page);
+      const barTop=(await page.locator('[data-alpha-input-bar]').boundingBox())!.y;
+      if(failedRead)expect(barTop).toBeCloseTo(barTops.get(inset)!,0);else barTops.set(inset,barTop);
       await list.evaluate(el => { el.scrollTop = el.scrollHeight; });
       const last = list.getByRole('button').last();
       await expect(last).toBeInViewport({ratio: 1});

@@ -103,13 +103,13 @@ test('transcript keeps the older reading anchor and follows only bottom or a new
  await page.getByRole('button',{name:'Expand chat',exact:true}).click();await page.locator('[data-alpha-layer="conversation"]').evaluate(element=>Promise.all(element.getAnimations().map(animation=>animation.finished.catch(()=>{}))));
  await transcript.evaluate(element=>element.scrollTop=0);const composer=page.getByRole('textbox',{name:'Message Alpha',exact:true});await composer.fill('A new user turn');await composer.press('Enter');await expect(agent(page)).toBeVisible();await expect.poll(()=>transcript.evaluate(element=>element.scrollHeight-element.clientHeight-element.scrollTop)).toBeLessThan(2);
 });
-test('Home shows clean Calendar and Workflows tiles with Inbox last',async({page},info)=>{
+test('Home shows populated cards with Inbox last',async({page},info)=>{
  await page.addInitScript(()=>localStorage.setItem('alpha.connection.selection.v1',JSON.stringify({kind:'offline'})));await page.goto('/?mode=dev');await installHomeCalendar(page);
  const home=page.getByRole('region',{name:'Home',exact:true});await expect(home.locator('[data-alpha-home-calendar]')).toHaveCount(0);
- await expect(home.getByRole('button',{name:'Open workflows',exact:true})).toBeVisible();
- const tiles=home.locator('[data-alpha-home-layout] > .scr').first().getByRole('button');await expect(tiles.nth(0)).toHaveAttribute('aria-label','Open workflows');await expect(tiles.nth(1)).toHaveAttribute('aria-label',/^Open Inbox(?:$|:)/);
+ await expect(home.locator('[data-alpha-home-workflows]')).toHaveCount(0);
+ const tiles=home.locator('[data-alpha-home-layout] > .scr').first().getByRole('button');await expect(tiles).toHaveCount(1);await expect(tiles.last()).toHaveAttribute('aria-label',/^Open Inbox(?:$|:)/);
  await page.screenshot({path:info.outputPath('home-clean-tiles.png'),animations:'disabled'});
- await installHomeCalendar(page,{title:'Synthetic Home calendar check',startAt:new Date(Date.now()+3600000).toISOString(),endAt:new Date(Date.now()+7200000).toISOString()});await expect(home.getByRole('button',{name:/^Open calendar event: Synthetic Home calendar check, \w{3}, \w{3} \d{1,2}, \d{1,2}:\d{2}/})).toContainText('Synthetic Home calendar check');expect(await page.evaluate(()=>(window as any).homeCalendarFixture.requests.every((r:any)=>r.method==='GET'))).toBe(true);await page.screenshot({path:info.outputPath('home-next-event.png'),animations:'disabled'});
+ await installHomeCalendar(page,{title:'Synthetic Home calendar check',startAt:new Date(Date.now()+3600000).toISOString(),endAt:new Date(Date.now()+7200000).toISOString()});await expect(home.getByRole('button',{name:/^Open calendar event: Synthetic Home calendar check, \w{3}, \w{3} \d{1,2}, \d{1,2}:\d{2}/})).toContainText('Synthetic Home calendar check');expect(await page.evaluate(()=>(window as any).homeCalendarFixture.requests.every((r:any)=>r.method==='GET'))).toBe(true);await expect(tiles).toHaveCount(2);await expect(tiles.last()).toHaveAttribute('aria-label',/^Open Inbox(?:$|:)/);await page.screenshot({path:info.outputPath('home-next-event.png'),animations:'disabled'});
 });
 
 test('chat brand Home preserves the existing conversation and unsent draft',async({page})=>{

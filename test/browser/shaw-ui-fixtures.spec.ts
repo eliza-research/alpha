@@ -32,7 +32,7 @@ async function emptyHome(page:Page){
   c.getCloudClient=()=>({client,sessionId:'fixture-cloud',credentialId:'fixture-credential'} as any);
   const snapshot={...c.getSnapshot(),cloudAccount:{environment:'production',userId:'fixture-owner',organizationId:'fixture-org',sessionId:'fixture-cloud',credentialId:'fixture-credential'}};c.getSnapshot=()=>snapshot as any;
   c.getWorkflowClient=()=>({sessionId:'fixture-agent',client:{list:async()=>[],lifecycleSupported:async()=>false}} as any);
-  c.getAutomationsClient=()=>({sessionId:'fixture-agent',request:async(path:string,method:string)=>{f.metadataReads++;if(method!=='GET'){f.writes++;throw Error('UI fixture forbids writes');}if(path==='/api/automations')return{automations:[]};if(path.includes('/scheduled-tasks'))return{tasks:[]};if(path.includes('/reminders'))return{reminders:[]};throw Error('Unexpected UI fixture metadata route');}});
+  c.getAutomationsClient=()=>({sessionId:'fixture-agent',request:async(path:string,method:string)=>{f.metadataReads++;if(method!=='GET'){f.writes++;throw Error('UI fixture forbids writes');}if(path==='/api/automations')return{automations:[]};if(path.includes('/scheduled-tasks'))return{tasks:[]};if(path.includes('/reminders'))return{reminders:[]};if(path==='/api/lifeops/definitions')return{definitions:[]};throw Error('Unexpected UI fixture metadata route');}});
   c.close();
  });
  await page.getByRole('button',{name:'Inbox',exact:true}).click();await expect.poll(()=>page.evaluate(()=>(window as any).emptyHomeFixture.mailReads)).toBeGreaterThan(0);await returnToApps(page);
@@ -44,9 +44,11 @@ for(const [orientation,viewport] of [['portrait',{width:412,height:915}],['lands
  test.use({viewport,hasTouch:true,isMobile:true});
  test.beforeEach(async({page})=>{await page.route(/^https?:\/\/(?!127\.0\.0\.1:|localhost:)/,route=>route.abort());});
  test('confirmed-empty Home collapses the rail and keeps every app entry',async({page},info)=>{await emptyHome(page);await capture(page,info,`home-confirmed-empty-${orientation}`);});
- test('unverified Home keeps recovery entries visible',async({page},info)=>{
+ test('unconnected Home keeps app entries without placeholder cards',async({page},info)=>{
   await page.addInitScript(()=>localStorage.setItem('alpha.connection.selection.v1',JSON.stringify({kind:'offline'})));await page.goto('/');
-  await expect(page.locator('[data-alpha-home-calendar]')).toBeVisible();await expect(page.locator('[data-alpha-home-inbox]')).toBeVisible();await expect(page.locator('[data-alpha-home-workflows]')).toBeVisible();await capture(page,info,`home-unverified-${orientation}`);
+  for(const name of ['Calendar','Inbox','Workflows'])await expect(page.getByRole('button',{name,exact:true})).toBeVisible();
+  for(const kind of ['calendar','inbox','workflows'])await expect(page.locator(`[data-alpha-home-${kind}]`)).toHaveCount(0);
+  await capture(page,info,`home-unconnected-${orientation}`);
  });
  test('permitted Photos uses an edge-to-edge grid without requesting access',async({page},info)=>{
   await photosBridge(page,'selected');

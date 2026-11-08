@@ -18,9 +18,10 @@ test('selected access shows one row that opens the system access sheet',async({p
 });
 test('Settings shows selected photo access and its choice control requests more access',async({page})=>{
  await photosBridge(page,'selected');
- await page.getByRole('button',{name:'Back to apps',exact:true}).click();await page.getByRole('button',{name:'Settings',exact:true}).click();await page.getByRole('button',{name:'Photos',exact:true}).click();
- await expect(page.getByText('Selected photos and videos',{exact:true})).toBeVisible();
- await page.getByRole('button',{name:'Choose photo access',exact:true}).click();await expect(page.getByText('All photos and videos',{exact:true})).toBeVisible();
+ await page.getByRole('button',{name:'Back to apps',exact:true}).click();await page.getByRole('button',{name:'Settings',exact:true}).click();
+ const access=page.getByRole('button',{name:'Photos access',exact:true});await expect(access).toContainText('Selected');
+ expect(await page.evaluate(()=>(window as any).mediaFixture.calls.filter((c:any)=>c.method==='requestLibraryAccess').length)).toBe(0);
+ await access.click();await expect(access).toContainText('All');
  expect(await page.evaluate(()=>(window as any).mediaFixture.calls.filter((c:any)=>c.method==='requestLibraryAccess').length)).toBe(1);
 });
 test('denied Photos keeps an explicit permission request and loads the library after approval',async({page})=>{

@@ -153,7 +153,7 @@ test('the alpha.assistant launch extra alone keeps Home', async ({ page }) => {
   // Only AlphaAssistActivity (DailyApps.surfaceInfo) opens the assistant surface.
   await nativeStub(page, { launchAssistant: true });
   await page.goto('/');
-  await expect(page.getByRole('button', { name: 'All apps', exact: true })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Apps', exact: true })).toBeVisible();
   await expect(page.locator('html')).not.toHaveClass(/alpha-assistant-surface/);
   await expect(page.getByRole('button', { name: 'Close assistant', exact: true })).toHaveCount(0);
 });

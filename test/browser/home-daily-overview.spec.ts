@@ -16,7 +16,7 @@ import {openBrowserCalendar,selectCalendarSource} from './helpers/browser-calend
 // Daily overview contract on Home (development lane). A card is drawn only when it has something to
 // show (docs/ui-refresh-2026-11): the next event or an overdue reminder, enabled workflows, unread
 // mail from a connected account, a retained brief. With none, Home shows the date line. Each card
-// keeps its source and read time in its accessible description, not as drawn text. Mail and digest data here is synthetic and injected
+// keeps its source and read time accessible; the Inbox also draws its account and read time. Mail and digest data here is synthetic and injected
 // through the same adapters a provider uses; nothing is sent, and Home itself never reads mail.
 // home-daily-overview.production.spec.ts covers the flag-off build.
 
@@ -82,7 +82,7 @@ test('events of an app calendar hidden in Calendar stay off Home until it is sho
 });
 
 test('a failed calendar read draws no card, and opening Calendar reads it again',async({page})=>{
- await page.addInitScript(offline);await page.goto('/');
+ await page.addInitScript(offline);await page.goto('/');await browserCalendarHome(page);
  const card=calendarCard(page);
  await page.evaluate(async()=>{
   const {BrowserCalendar}=await import('/src/browser/calendar.ts'),proto=BrowserCalendar.prototype as any;
@@ -102,7 +102,7 @@ test('a failed calendar read draws no card, and opening Calendar reads it again'
  await expect.poll(()=>page.evaluate(()=>(window as any).__calendarReads)).toBeGreaterThan(0);
  await returnToApps(page);
  await expect(card).toHaveCount(0);
- await expect(source).toHaveCount(0);
+ await expect(card.locator('[data-alpha-home-calendar-source]')).toHaveCount(0);
 });
 
 test('an overdue reminder stays on Home, marked overdue with its own source, and opens in Calendar',async({page,context},info)=>{
@@ -164,11 +164,12 @@ test('an overdue reminder stays on Home, marked overdue with its own source, and
 test('an upcoming reminder is attributed to the reminder store, not to a calendar',async({page,context})=>{
  test.slow(); // Chooses the browser calendar in Calendar after every load.
  await context.grantPermissions(['notifications']);
- await page.addInitScript(offline);await page.goto('/');
+ await page.addInitScript(offline);await page.goto('/');await browserCalendarHome(page);
  expect(await page.evaluate(async()=>{
   const {DailyApps}=await import('/src/daily.ts');
   return (await DailyApps.scheduleReminder({id:'overview-upcoming',title:'Synthetic upcoming reminder',body:'',at:Date.now()+3600000})).status;
  })).toBe('scheduled');
+ await page.reload();await browserCalendarHome(page);
  const card=calendarCard(page);
  await expect(card).toContainText('Synthetic upcoming reminder');
  await expect(card).toHaveAttribute('data-alpha-home-calendar-overdue','false');
@@ -305,7 +306,7 @@ test('Inbox card never reads mail from Home and shows the account and read time 
  await expect(card).not.toContainText('Synthetic body preview');await expect(card).not.toContainText('Synthetic read subject');
  const status=await card.getAttribute('aria-description');
  expect(times.map(time=>`Synthetic mailbox · Updated ${time}`)).toContain(status);
- await expect(card).not.toContainText(status!);
+ await expect(card).toContainText(status!);
  // Staying on Home does not refresh it.
  await page.getByRole('textbox',{name:'Ask Alpha',exact:true}).fill('Another unsent rerender');
  await page.getByRole('textbox',{name:'Ask Alpha',exact:true}).blur();

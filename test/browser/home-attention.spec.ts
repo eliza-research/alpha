@@ -14,7 +14,7 @@ test('the explicit development fixture reports unread email and opens Inbox', as
   await expect(page.locator('html')).toHaveAttribute('data-active-view','inbox');
 });
 
-test('a failed calendar read shows the retry state instead of neutral copy, then recovers', async ({ page }) => {
+test('a failed device-calendar read keeps Home empty and recovers in Calendar', async ({ page }) => {
   test.slow(); // Chooses the browser calendar in Calendar first.
   await page.goto('/');
   // Home's agenda reads the calendar chosen in Calendar (Agent Calendar by default); this case is
@@ -30,9 +30,8 @@ test('a failed calendar read shows the retry state instead of neutral copy, then
     proto.list = () => Promise.reject(Error('Calendar storage unavailable'));
     window.dispatchEvent(new Event('alpha:calendar-preferences'));
   });
-  await expect(card).toHaveAttribute('aria-label', 'Open your calendar');
-  await expect(card).toContainText('Calendar unavailable');
-  await expect(card).not.toContainText(/from this browser/);
+  await expect(card).toHaveCount(0);
+  await expect(page.getByRole('region',{name:'Home',exact:true})).not.toContainText('Calendar unavailable');
   await page.evaluate(async () => {
     const { BrowserCalendar } = await import('/src/browser/calendar.ts');
     (BrowserCalendar.prototype as any).list = (window as any).__calendarList;
@@ -41,20 +40,17 @@ test('a failed calendar read shows the retry state instead of neutral copy, then
   await expect(card).toHaveCount(0);
 });
 
-test('a failed Agent Calendar read shows the retry state and recovers only after retry', async ({ page }) => {
+test('a failed Agent Calendar read keeps Home empty and retries when Calendar opens', async ({ page }) => {
   await page.goto('/');await installHomeCalendar(page);
   const card = page.locator('[data-alpha-home-calendar]');
   await expect(card).toHaveCount(0);
   await refreshHomeCalendar(page,{fail:true});
-  await expect(card).toHaveAttribute('aria-label', 'Open Agent Calendar');
-  await expect(card).toContainText('Calendar unavailable');
-  await expect(card).not.toContainText(/Nothing planned|No upcoming/);
-  await expect(card).toHaveAttribute('aria-description','Calendar service unavailable. Open Calendar to retry.');
-  await expect(card).not.toContainText(/from this browser/);
+  await expect(card).toHaveCount(0);
+  await expect(page.getByRole('region',{name:'Home',exact:true})).not.toContainText('Calendar unavailable');
   await page.evaluate(()=>(window as any).homeCalendarFixture.fail=false);
-  // Opening Calendar from the failed card is the explicit retry: it reads the agent calendar again.
+  // Opening Calendar is the explicit retry and reads the agent calendar again.
   const before = await page.evaluate(()=>(window as any).homeCalendarFixture.requests.length);
-  await card.click();
+  await page.getByRole('button',{name:'Calendar',exact:true}).click();
   await expect(page.locator('html')).toHaveAttribute('data-active-view','calendar');
   await expect.poll(()=>page.evaluate(()=>(window as any).homeCalendarFixture.requests.length)).toBeGreaterThan(before);
   await returnToApps(page);

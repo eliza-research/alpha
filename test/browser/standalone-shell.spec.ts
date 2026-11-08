@@ -99,8 +99,8 @@ test('standalone Home scrolls to the screen edge without a simulated status-bar 
   await expect.poll(async()=>{const dock=await composer.boundingBox(),last=await lastApp.boundingBox();return dock!.y-(last!.y+last!.height);}).toBeGreaterThanOrEqual(6);
   await home.evaluate(node=>{node.scrollTop=0;});
   expect((await home.boundingBox())!.height).toBeGreaterThan(usable!.height-140);
-  const tile=await home.getByRole('button').first().boundingBox();
-  expect(tile!.y-bounds!.y).toBeLessThan(16);
+  const topPadding=await home.locator('[data-alpha-home-layout]').evaluate(element=>parseFloat(getComputedStyle(element).paddingTop));
+  expect(topPadding).toBeLessThan(16);
 
   await home.evaluate(node=>{node.scrollTop=80;});
   expect((await home.boundingBox())!.y).toBeCloseTo(usable!.y,1);
