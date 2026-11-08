@@ -37488,7 +37488,7 @@
     },
     {
       "path": "apps/app/src/startup-permissions.tsx",
-      "sha256": "f94a4bbd036a1f63cf7ad649831601c63d052f6e5e7a45a19dfc8378f57a74fc",
+      "sha256": "8630bbea2a516dc1ff3cfd7f6bd18c2cd9894901600c633df4d8e5e21b1209b7",
       "models": [
         "PermissionWalkthrough",
         "StartupPermissions"
@@ -37537,11 +37537,11 @@
           "text": "const [progressError, setProgressError] = useState(false);"
         },
         {
-          "line": 119,
+          "line": 127,
           "text": "let listener: PluginListenerHandle | undefined;"
         },
         {
-          "line": 168,
+          "line": 177,
           "text": "let value: StartupPermissionState | null;"
         }
       ]

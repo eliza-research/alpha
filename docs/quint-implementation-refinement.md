@@ -61,25 +61,37 @@ component projections.
   reserves each attempt before listener or Android effects. A process mutex and
   file lock serialize the main and recovery processes. Missing legacy budgets,
   failed durable writes and contended locks defer automatic effects. The real
-  coordinator passed 20 traces with 368 checkpoints and 48 direct assertions,
+  coordinator passed 20 traces with 368 checkpoints and 54 direct assertions,
   including two JVM processes competing for the last automatic slot. These
   receipts are included in the native aggregate. Android power-loss behavior,
   device approval and externally observed erasure remain platform obligations.
-- `AlphaCloudSignInPlugin.resumeAcknowledgements` finishes the saved-key
-  acknowledgement without the previous token held by an interrupted interactive
-  call. The model currently retains that token across restart. The recovered
-  state must preserve uncertainty about previous-session revocation.
+- `AlphaCloudSignInPlugin` now retires the exact pending record by compare-and-
+  exchange before exchange or successful cancellation. A stale callback cannot
+  adopt a new attempt, and queued cancellation still retires its captured record
+  when a newer email or phone attempt exists. Fifteen full-plugin schedules check
+  122 checkpoints. The model drops the unavailable previous-token capability on
+  restart. A new interactive attempt overlapping an earlier saved-key
+  acknowledgement requires additional orthogonal activation state.
 - Settings groups and rows now have stable semantic keys. The actual Chromium
   renderer preserves focused About identity when a delayed permission result
   inserts Finish setup. One source trace checks five checkpoints. Other mutable
   lists remain under review in the
   [focus identity audit](../specs/quint/refinement/application/focus-identity-audit.md).
-- The live permission walkthrough allows a held request from an earlier account
-  to advance after the account changes. Its owner-generation fence and completed
-  remount behavior are being refined against the real React coordinator.
-- Main chat integration uses `installAgentAdapter` and separate draft-recovery
-  state. The first `AlphaClient` and `AssistantDraftController` projections leave
-  that live coordinator work open.
+- The permission walkthrough now checks live credential identity and invalidates
+  its generation in a layout effect. A deferred passive effect cannot let a
+  request from a retired account or disabled surface advance setup. Twenty-eight
+  source traces check 174 checkpoints across all 19 modeled fields, including
+  failed storage, completed remounts and stale completion during a newer request.
+- The complete resident plugin rejects `stop` and `cancelStart` from a destroyed
+  bridge. Ten source schedules check 51 checkpoints, including another attached
+  surface and broadcast admission racing stop. Full stream, credential-mutation,
+  recovery and installed-service behavior retain additional obligations.
+- Main chat integration now has a mounted Chromium driver exercising the actual
+  shell, installed agent adapter and controller. It covers Back while a reply is
+  pending, same-view navigation, view retirement, visibility and page suspension.
+  The shell model distinguishes hidden chat from the input bar and increments
+  context revisions when the context changes. Claimed navigation, sensitive
+  subviews, draft recovery and arbitrary message interleavings remain open.
 
 ## Reproduction
 
