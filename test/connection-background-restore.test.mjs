@@ -8,10 +8,12 @@ import vm from 'node:vm';
 const source=await readFile(new URL('../apps/app/src/runtime/connection-ui.tsx',import.meta.url),'utf8');
 const begin=source.indexOf('async function work('),end=source.indexOf('\nfunction activate(',begin);
 assert.ok(begin>=0&&end>begin);
-const code=stripTypeScriptTypes(source.slice(begin,end),{mode:'transform'});
+const settlementStart=source.indexOf('let operationSettled:'),settlementEnd=source.indexOf('let startup:',settlementStart);
+assert.ok(settlementStart>=0&&settlementEnd>settlementStart);
+const code=stripTypeScriptTypes(source.slice(settlementStart,settlementEnd)+'\n'+source.slice(begin,end),{mode:'transform'});
 function fixture(){
  const state={open:false,busy:false,purpose:'agent',message:'',error:''},updates=[];
- const context=vm.createContext({residentRecoveryReason,testMocksEnabled:false,AbortController,state,signInReadinessOwner:null,operation:null,active:null,cloud:{},expired:()=>false,errorMessage:e=>e.message,residentCloudFlow:()=>false,runQueuedResidentRebind:()=>{},runQueuedSignInReturn:()=>{},update:next=>{Object.assign(state,next);updates.push({...state});}});
+ const context=vm.createContext({residentRecoveryReason,testMocksEnabled:false,AbortController,state,residentStartInBackground:false,signInReadinessOwner:null,operation:null,active:null,cloud:{},expired:()=>false,errorMessage:e=>e.message,residentCloudFlow:()=>false,runQueuedResidentRebind:()=>{},runQueuedSignInReturn:()=>{},update:next=>{Object.assign(state,next);updates.push({...state});}});
  vm.runInContext(code,context);return {state,updates,context,run:(...args)=>context.work(...args)};
 }
 test('background account restore never opens the chooser and clears its loading status',async()=>{
