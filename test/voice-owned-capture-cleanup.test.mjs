@@ -69,3 +69,12 @@ for(const fails of [false,true])test(`ordinary dictation preserves owned recorde
     assert.deepEqual(f.recordingCancels,[owned]);assert.equal(f.sends,0);
   }finally{f.close();}
 });
+
+test('Back dismisses failed retirement without claiming cleanup or allowing another capture',async()=>{
+ const f=await direct({failure:Error('Retirement unconfirmed')});try{
+  await assert.rejects(f.shell.stopVoiceConversation(),/Retirement unconfirmed/);await f.tick();
+  assert.equal(f.renderChat().state,'error');f.shell.back();assert.equal(f.renderChat(),null);
+  await f.shell.startVoice();assert.equal(f.getStopCalls(),1);assert.deepEqual(f.recordingCancels,[]);
+  assert.ok(f.shell.messages.some(message=>message.includes('Close the app before starting voice again')));
+ }finally{f.close();}
+});
