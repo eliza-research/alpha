@@ -17,7 +17,7 @@ async function openHome(page:Page,theme:string,size:{width:number;height:number}
  await installHomeCalendar(page,expected&&{title:expected.title,startAt:expected.startAt,endAt:expected.endAt,isAllDay:expected.isAllDay});
  const card=page.locator('[data-alpha-home-calendar]');
  if(expected){await expect(card).toBeVisible();await page.evaluate(()=>document.fonts.ready);await expect(card).toHaveAccessibleName(`Open calendar event: ${expected.title}, ${expected.day}, ${expected.footer}`);await expect(card.locator('.home-calendar-footer')).toHaveText(expected.footer);}
- else await expect(card).toHaveCount(0);
+ else {await expect(card).toBeVisible();await expect(card).toHaveAttribute('data-alpha-home-calendar-event','false');await expect(card).toContainText('Nothing planned');}
  return {card,expected};
 }
 

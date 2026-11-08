@@ -95,5 +95,5 @@ test('with only missed records the brief stays empty, and the attention items st
     { cursor: 2, runId: 'run-unavailable', completedAt: new Date(Date.now() - 1_800_000).toISOString(), status: 'unavailable', output: { status: 'unavailable', text: 'The source was not available.' }, error: null }]);
   await expect(home.getByRole('button', { name: /^Open Inbox: \d+ unread emails?$/ })).toHaveCount(1);
   await expect(home.locator('[data-alpha-home-brief]')).toContainText('No brief yet');
-  await expect(home).not.toContainText(/Latest brief|scheduled time was missed|Did not run/);
+  await expect(home).not.toContainText(/scheduled time was missed|Did not run/);
 });

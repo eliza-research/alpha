@@ -27,10 +27,10 @@ for(const theme of ['light','dark'])test(`Home shows actual workflow names and s
 
 const metadataReads=(page:Page)=>page.evaluate(()=>(window as any).workflowMetadataFixtureCalls.filter((call:any)=>call.path==='/api/automations').length);
 test('empty Home opens unified metadata honestly and rerenders do not refetch it',async({page})=>{
- await setup(page);await connect(page);await expect(tile(page)).toHaveCount(0);expect(await metadataReads(page)).toBe(0);
+ await setup(page);await connect(page);await expect(tile(page)).toBeVisible();await expect(tile(page)).not.toContainText(/First owner routine|Morning update|Second owner routine/);expect(await metadataReads(page)).toBe(0);
  await page.getByRole('textbox',{name:'Ask Alpha',exact:true}).fill('Unsent draft');await page.locator('[data-alpha-dock-guard]').click({position:{x:12,y:12}});expect(await metadataReads(page)).toBe(0);
- await page.getByRole('button',{name:'Workflows',exact:true}).click();await expect(page.locator('[data-alpha-subview="workflows-list"]').getByText('No workflows yet',{exact:true})).toBeVisible();
- await back(page);await expect(tile(page)).toHaveCount(0);await expect(page.getByRole('button',{name:'Workflows',exact:true})).toBeVisible();const calls=await metadataReads(page);expect(calls).toBe(1);
+ await page.getByRole('button',{name:'Workflows',exact:true}).click();await expect(page.locator('[data-alpha-subview="workflows-list"]').getByText('No workflows on this agent',{exact:true})).toBeVisible();
+ await back(page);await expect(tile(page)).toBeVisible();await expect(tile(page)).not.toContainText(/First owner routine|Morning update|Second owner routine/);await expect(page.getByRole('button',{name:'Workflows',exact:true})).toBeVisible();const calls=await metadataReads(page);expect(calls).toBe(1);
  await page.getByRole('textbox',{name:'Ask Alpha',exact:true}).fill('Still unsent');expect(await metadataReads(page)).toBe(calls);
 });
 test('Home retains the unified snapshot and a new list visit refreshes changed names',async({page})=>{
@@ -38,7 +38,7 @@ test('Home retains the unified snapshot and a new list visit refreshes changed n
  await tile(page).click();await expect(workflowCard(page,'Morning brief')).toBeVisible();await back(page);await expect(tile(page)).toContainText('Morning brief');
  await rows(page,[flow('morning','Morning update',false)]);const before=await metadataReads(page);await expect(tile(page)).toContainText('Morning brief');
  await tile(page).click();await expect(workflowCard(page,'Morning update')).toBeVisible();expect(await metadataReads(page)).toBe(before+1);
- await back(page);await expect(tile(page)).toHaveCount(0);await page.getByRole('button',{name:'Workflows',exact:true}).click();await expect(workflowCard(page,'Morning update')).toContainText('Paused');
+ await back(page);await expect(tile(page)).toBeVisible();await expect(tile(page)).not.toContainText(/First owner routine|Morning update|Second owner routine/);await page.getByRole('button',{name:'Workflows',exact:true}).click();await expect(workflowCard(page,'Morning update')).toContainText('Paused');
 });
 test('unified metadata loading and failure offer explicit refresh without running anything',async({page})=>{
  await setup(page);await connect(page);await expect.poll(()=>page.evaluate(()=>(window as any).homeWorkflowFixture.listCalls)).toBe(1);
@@ -50,9 +50,9 @@ test('unified metadata loading and failure offer explicit refresh without runnin
 test('disconnect retires names and a late old-account unified result cannot refill Home',async({page})=>{
  await setup(page);await rows(page,[flow('private','First owner routine')]);await connect(page);await expect(tile(page)).toContainText('First owner routine');
  await page.evaluate(()=>(window as any).homeWorkflowFixture.hold=true);await tile(page).click();await expect.poll(()=>page.evaluate(()=>typeof(window as any).homeWorkflowFixture.release)).toBe('function');
- await page.evaluate(async()=>{await(await import('/src/runtime/connection-ui.tsx')).connectionController.offline();});await back(page);await expect(tile(page)).toHaveCount(0);expect(await page.evaluate(async()=>(await import('/src/runtime/connection-ui.tsx')).connectionController.getSnapshot().session)).toBeNull();
+ await page.evaluate(async()=>{await(await import('/src/runtime/connection-ui.tsx')).connectionController.offline();});await back(page);await expect(tile(page)).toBeVisible();await expect(tile(page)).not.toContainText(/First owner routine|Morning update|Second owner routine/);expect(await page.evaluate(async()=>(await import('/src/runtime/connection-ui.tsx')).connectionController.getSnapshot().session)).toBeNull();
  await page.evaluate(()=>{const f=(window as any).homeWorkflowFixture;f.release();f.hold=false;f.rows=[{id:'second',name:'Second owner routine',active:false,description:'',versionId:'v2',steps:[]}];});
- await page.evaluate(()=>new Promise<void>(resolve=>requestAnimationFrame(()=>resolve())));await expect(tile(page)).toHaveCount(0);await connect(page);await page.getByRole('button',{name:'Workflows',exact:true}).click();await expect(workflowCard(page,'Second owner routine')).toContainText('Paused');await back(page);await expect(tile(page)).toHaveCount(0);
+ await page.evaluate(()=>new Promise<void>(resolve=>requestAnimationFrame(()=>resolve())));await expect(tile(page)).toBeVisible();await expect(tile(page)).not.toContainText(/First owner routine|Morning update|Second owner routine/);await connect(page);await page.getByRole('button',{name:'Workflows',exact:true}).click();await expect(workflowCard(page,'Second owner routine')).toContainText('Paused');await back(page);await expect(tile(page)).toBeVisible();await expect(tile(page)).not.toContainText(/First owner routine|Morning update|Second owner routine/);
 });
 test('leaving foreground retires unified metadata and resumes through one fresh list',async({page})=>{
  await setup(page);await rows(page,[flow('morning','Morning brief')]);await connect(page);await tile(page).click();await expect(workflowCard(page,'Morning brief')).toBeVisible();const before=await metadataReads(page);
