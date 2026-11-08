@@ -346,3 +346,17 @@ and successor evidence, and the difference between the journal's admission
 state and an in-process shutdown lease. A release failure after a rename can
 leave those states divergent. Installed PackageInstaller and power loss
 remain separate.
+
+The native update activation campaign checks eight JVM schedules and 84
+checkpoints. Registration, retirement, readiness, seal and terminal
+publication use exact bridge and activation identities. Mounted readiness
+can carry reconnect eligibility when the renderer has a prepared callback.
+Startup readiness still acknowledges the exact preparation without granting
+reconnect authority. A confirming eligible sibling retains its existing
+behavior. A fresh confirmation bridge can leave reconnect with the eligible
+initiator. An already published terminal never transfers that authority.
+
+The Agent Calendar mutation campaign checks 24 schedules and 134 checkpoints
+for create, update and delete admission, preserved drafts, exact arguments,
+deferred refresh and stale settlement after owner replacement. Provider
+effects, linked controls and event-return readback remain separate.

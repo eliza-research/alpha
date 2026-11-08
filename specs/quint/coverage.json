@@ -6517,16 +6517,18 @@
     },
     {
       "path": "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaDevicePlugin.java",
-      "sha256": "4c8492f0c93ecc955b854d040a3c2a1dc4aaa0c69eea9979f148675790e758e4",
       "models": [
         "Application",
         "AccessibleToastLifetime",
         "MountedUpdateAdmission",
         "StartupUpdateAdmission",
-        "RuntimeUpdatePause"
+        "RuntimeUpdatePause",
+        "NativeUpdateActivation"
       ],
       "scope": "application",
       "treatment": "state-and-transition-projection",
+      "reviewStatus": "state-audit-required",
+      "sha256": "ab0f876df284740215e69360ff5a260d175ea161303e4b9262d9fd9e797f7d0f",
       "stateAnchors": [
         {
           "line": 153,
@@ -6553,87 +6555,87 @@
           "text": "var installed=context.getPackageManager().getPackageInfo(context.getPackageName(),0);"
         },
         {
-          "line": 344,
+          "line": 354,
           "text": "private static final Object updateBarrier=new Object();"
         },
         {
-          "line": 345,
+          "line": 355,
           "text": "private static final java.util.Set<AlphaDevicePlugin> updateBridges=new java.util.HashSet<>();"
         },
         {
-          "line": 346,
+          "line": 356,
           "text": "private final String updateBridgeId=java.util.UUID.randomUUID().toString();"
         },
         {
-          "line": 347,
+          "line": 357,
           "text": "private static volatile UpdateActivation activation;"
         },
         {
-          "line": 397,
+          "line": 423,
           "text": "var record=UpdatePause.store().read();"
         },
         {
-          "line": 403,
+          "line": 429,
           "text": "var session=getContext().getPackageManager().getPackageInstaller().getSessionInfo(record.session);"
         },
         {
-          "line": 423,
+          "line": 449,
           "text": "try{var settled=UpdatePause.reconcile();if(settled!=null){settleUpdate(settled.id,BuildConfig.VERSION_CODE==settled.targetCode?\"installed\":\"canceled\");return true;}}catch(Exception unavailable){/* Unk"
         },
         {
-          "line": 430,
+          "line": 456,
           "text": "private final java.util.concurrent.ExecutorService updateWorker=java.util.concurrent.Executors.newSingleThreadExecutor();"
         },
         {
-          "line": 432,
+          "line": 458,
           "text": "private static volatile int updateSession;"
         },
         {
-          "line": 437,
+          "line": 463,
           "text": "private static volatile Intent updateConfirm;"
         },
         {
-          "line": 439,
+          "line": 465,
           "text": "private static volatile boolean updateDue;"
         },
         {
-          "line": 441,
+          "line": 467,
           "text": "private static volatile boolean updateOpen;"
         },
         {
-          "line": 443,
+          "line": 469,
           "text": "private static volatile long updateAsked;"
         },
         {
-          "line": 445,
+          "line": 471,
           "text": "private static volatile AlphaDevicePlugin updateOwner;"
         },
         {
-          "line": 447,
+          "line": 473,
           "text": "private final android.content.BroadcastReceiver updateStatus=new android.content.BroadcastReceiver(){"
         },
         {
-          "line": 486,
+          "line": 512,
           "text": "var current=getContext().getPackageManager().getPackageInstaller().getSessionInfo(id);"
         },
         {
-          "line": 498,
+          "line": 524,
           "text": "var record=UpdatePause.store().read();"
         },
         {
-          "line": 500,
+          "line": 526,
           "text": "var pending=getContext().getPackageManager().getPackageInstaller().getSessionInfo(record.session);"
         },
         {
-          "line": 530,
+          "line": 556,
           "text": "private static final java.util.concurrent.atomic.AtomicBoolean updating=new java.util.concurrent.atomic.AtomicBoolean();"
         },
         {
-          "line": 536,
+          "line": 562,
           "text": "private static final java.util.concurrent.atomic.AtomicInteger updatesCommitted=new java.util.concurrent.atomic.AtomicInteger();"
         },
         {
-          "line": 546,
+          "line": 572,
           "text": "private volatile javax.net.ssl.HttpsURLConnection updateActive;"
         }
       ]
@@ -8488,7 +8490,8 @@
       "path": "android/app/src/main/java/ai/elizaresearch/alphaphone/PluginWorkers.java",
       "sha256": "1348add936da232412999b23cfb48fbbc08a5243f2b4a8075626e7a855ac3007",
       "models": [
-        "Application"
+        "Application",
+        "NativeUpdateActivation"
       ],
       "scope": "application",
       "treatment": "state-and-transition-projection",
@@ -17593,7 +17596,8 @@
       "path": "apps/app/src/prototype/agent-calendar-adapter.ts",
       "models": [
         "CalendarPresentation",
-        "AgentCalendarRefresh"
+        "AgentCalendarRefresh",
+        "AgentCalendarMutation"
       ],
       "scope": "application",
       "treatment": "domain-contract-or-support",
@@ -37192,7 +37196,8 @@
       "models": [
         "CalendarPresentation",
         "CalendarSync",
-        "AgentCalendarRefresh"
+        "AgentCalendarRefresh",
+        "AgentCalendarMutation"
       ],
       "scope": "application",
       "treatment": "domain-contract-or-support",
@@ -37253,7 +37258,8 @@
       "models": [
         "CalendarPresentation",
         "CalendarSync",
-        "AgentCalendarRefresh"
+        "AgentCalendarRefresh",
+        "AgentCalendarMutation"
       ],
       "scope": "application",
       "treatment": "domain-contract-or-support",
@@ -487446,7 +487452,8 @@
         "ResidentRuntime",
         "ApplicationComposition",
         "NativeCredentialMutation",
-        "RuntimeUpdatePause"
+        "RuntimeUpdatePause",
+        "NativeUpdateActivation"
       ],
       "scope": "shared-module-dependency",
       "treatment": "domain-contract-or-support",
@@ -618302,7 +618309,7 @@
         "CalendarLinkedSync",
         "InboxProviderDrafts"
       ],
-      "sha256": "bf64f018bd519e02945bb754a8a7b2959fed43d30066e2aeee86063aaafee7a4"
+      "sha256": "b677f93cfc84a72d6b3ba70226f95748a999b3fab8221d7be64f4782b45e4df7"
     },
     {
       "path": "patches/eliza/calendar-semantic-client-manifest.json",
