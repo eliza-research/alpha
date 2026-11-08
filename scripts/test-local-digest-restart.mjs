@@ -58,7 +58,7 @@ if(process.env.ALPHA_DIGEST_CRASH_CHILD==='1'){
    assert.notEqual(next.id,saved.runId);
    const nextEntry=await until(async()=>(await engine.digestResults(owner,'next-reader')).entries.find(e=>e.runId===next.id));
    assert.equal(nextEntry.workflowId,saved.receipt.workflowId);
-   assert.ok(nextEntry.status==='overlap'||!['missed','unavailable'].includes(nextEntry.status),`next occurrence recorded ${nextEntry.status}`);
+   assert.ok(!['missed','unavailable'].includes(nextEntry.status),`next occurrence recorded ${nextEntry.status}`);
    assert.equal((await engine.getExecution(saved.runId)).reconciliation?.state,'outcome-unknown');
    const unknownEntries=(await engine.digestResults(owner,'next-reader')).entries.filter(e=>e.runId===saved.runId);assert.equal(unknownEntries.length,0);
    // A source that lapses while the agent is down: its occurrence fires at the next boot.
