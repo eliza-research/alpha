@@ -1,3 +1,4 @@
+import {holdDocumentsTransaction} from './helpers/calendar-storage-hold';
 import {openBrowserCalendar} from './helpers/browser-calendar';
 import {test,expect} from '@playwright/test';
 import {readFile} from 'node:fs/promises';
@@ -13,16 +14,9 @@ test('another tab changing the saved calendar invalidates the reset confirmation
 });
 test('closing recovery while a transaction holds storage cancels the queued reset',async({page})=>{
  const d=await open(page);
- await page.evaluate(async()=>{
-  const database=await new Promise<IDBDatabase>((resolve,reject)=>{const request=indexedDB.open('alpha.browser.documents.v1',1);request.onsuccess=()=>resolve(request.result);request.onerror=()=>reject(request.error);});
-  const transaction=database.transaction('documents','readwrite'),store=transaction.objectStore('documents');let holding=true;
-  (window as any).releaseRecovery=()=>{holding=false;};
-  (window as any).recoveryLock=new Promise<void>((resolve,reject)=>{transaction.oncomplete=()=>{database.close();resolve();};transaction.onabort=()=>{database.close();reject(transaction.error);};});
-  const keepAlive=()=>{const request=store.get('calendar-recovery-transaction');request.onsuccess=()=>{(window as any).recoveryEntered=true;if(holding)keepAlive();};};keepAlive();
- });
- await expect.poll(()=>page.evaluate(()=>(window as any).recoveryEntered)).toBe(true);
+ const hold=await holdDocumentsTransaction(page);
  await d.getByRole('button',{name:'Reset app calendar',exact:true}).click();await d.getByRole('button',{name:'Confirm calendar reset',exact:true}).click();await expect(d.getByRole('button',{name:'Confirm calendar reset'})).toBeDisabled();await d.getByRole('button',{name:'Close recovery',exact:true}).click();
- await page.evaluate(async()=>{(window as any).releaseRecovery();await (window as any).recoveryLock;});
+ await hold.release();
  expect(await page.evaluate(async()=>(await import('/src/browser/calendar-store.ts')).calendarDocument.readRaw())).toBe(raw);
 });
 test('failed transaction retains the original and does not claim success',async({page})=>{

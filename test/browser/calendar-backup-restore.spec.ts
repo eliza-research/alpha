@@ -1,3 +1,4 @@
+import {holdDocumentsTransaction} from './helpers/calendar-storage-hold';
 import {test,expect} from '@playwright/test';
 const backup={events:[{id:'saved',calendarId:'local',revision:'saved-revision',title:'Restored appointment',body:'Bring notes',location:'Library',begin:1800000000000,end:1800003600000,timeZone:'UTC',repeat:'weekly',alert:5}]};
 test.beforeEach(async({page})=>{await page.addInitScript(()=>{localStorage.setItem('alpha.connection.selection.v1',JSON.stringify({kind:'offline'}));if(!sessionStorage.getItem('restore-seeded')){localStorage.setItem('alpha.browser.calendar.v1','damaged original');sessionStorage.setItem('restore-seeded','1');}});await page.goto('/?tools=1');});
@@ -21,16 +22,9 @@ test('a newer document prevents an old restore approval from replacing it',async
 
 test('closing recovery while a transaction holds storage cancels the queued restore',async({page})=>{
  const d=await open(page);await choose(d,backup);
- await page.evaluate(async()=>{
-  const database=await new Promise<IDBDatabase>((resolve,reject)=>{const request=indexedDB.open('alpha.browser.documents.v1',1);request.onsuccess=()=>resolve(request.result);request.onerror=()=>reject(request.error);});
-  const transaction=database.transaction('documents','readwrite'),store=transaction.objectStore('documents');let holding=true;
-  (window as any).releaseRecovery=()=>{holding=false;};
-  (window as any).recoveryLock=new Promise<void>((resolve,reject)=>{transaction.oncomplete=()=>{database.close();resolve();};transaction.onabort=()=>{database.close();reject(transaction.error);};});
-  const keepAlive=()=>{const request=store.get('calendar-recovery-transaction');request.onsuccess=()=>{(window as any).recoveryEntered=true;if(holding)keepAlive();};};keepAlive();
- });
- await expect.poll(()=>page.evaluate(()=>(window as any).recoveryEntered)).toBe(true);
+ const hold=await holdDocumentsTransaction(page);
  await d.getByRole('button',{name:'Review calendar restore',exact:true}).click();await d.getByRole('button',{name:'Confirm calendar restore',exact:true}).click();await expect(d.getByRole('button',{name:'Confirm calendar restore'})).toBeDisabled();await d.getByRole('button',{name:'Close recovery',exact:true}).click();
- await page.evaluate(async()=>{(window as any).releaseRecovery();await (window as any).recoveryLock;});
+ await hold.release();
  expect(await page.evaluate(async()=>(await import('/src/browser/calendar-store.ts')).calendarDocument.readRaw())).toBe('damaged original');
 });
 
