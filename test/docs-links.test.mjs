@@ -81,6 +81,8 @@ test('an upstream-relative script path needs its upstream directory named in the
 const knownStale = new Map([
   // Dated snapshots stay as written; the removed speech toolchain is replaced by docs/fused-speech.md.
   ['docs/mvp-audit-2026-10-11.md|scripts/local-speech/requalify-runtime.py', 'dated audit snapshot; the earlier speech toolchain was removed for the fused libelizainference engine'],
+  ['docs/mvp-audit-2026-10-11.md|scripts/test-calendar-upgrade.mjs', 'dated audit snapshot; the shim became `node scripts/test-installed-upgrade.mjs calendar`'],
+  ['docs/mvp-audit-2026-10-11.md|scripts/test-reminder-upgrade.mjs', 'dated audit snapshot; the shim became `node scripts/test-installed-upgrade.mjs reminder`'],
 ]);
 
 test('every scripts/... path in README.md and docs/ exists in this repository or the pinned upstream', () => {

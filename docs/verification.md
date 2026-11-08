@@ -1426,7 +1426,7 @@ case is `AssistantResidentReuseInstrumentedTest`; it uses a synthetic runtime ob
 enrollment and streams, so a passing run is emulator-class evidence of surface ownership only,
 not of a live inference stream surviving, and never device acceptance.
 
-Native runner phases (MVP-18): `node scripts/test-reminder-upgrade.mjs` now also runs
+Native runner phases (MVP-18): `node scripts/test-installed-upgrade.mjs reminder` now also runs
 `WorkflowLegacyReminderUpgradeInstrumentedTest` on both distributions after the candidate verify
 phase, against the same upgraded data. Calendar and reminder upgrades admit the candidate app
 and instrumentation APK as one verified pair from `artifacts/apk-manifest.json` and

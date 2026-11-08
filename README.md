@@ -521,7 +521,7 @@ results. Inbox uses a closed synthetic provider transport in the test APK and ex
 These checks do not establish physical-device or real-provider acceptance.
 
 Installed Calendar and reminder upgrade acceptance uses
-`node scripts/test-calendar-upgrade.mjs` or `node scripts/test-reminder-upgrade.mjs`.
+`node scripts/test-installed-upgrade.mjs calendar` or `node scripts/test-installed-upgrade.mjs reminder`.
 Set `ANDROID_HOME` and the matching `ALPHA_CALENDAR_` or `ALPHA_REMINDER_` variables:
 `BASELINE_DIR` (absolute), `TEST_SERIAL`, `TEST_AVD`, and `TEST_ABI`. Baselines contain
 `standalone-debug.apk` and `launcher-debug.apk`; reminder baselines also require

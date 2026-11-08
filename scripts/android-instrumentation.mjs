@@ -205,7 +205,7 @@ export const CLASS_REGISTRY = {
   VoicePermissionDenied: { campaign: "node scripts/test-native-permissions.mjs voice APP.apk TEST.apk OUTPUT (RECORD_AUDIO revoked before the app starts)" },
   VoicePermissionRevoke: { campaign: "node scripts/test-native-permissions.mjs voice-revoke APP.apk TEST.apk OUTPUT (RECORD_AUDIO revoked while recording; the process is killed)" },
   LocalVoiceRecordingLimit: { campaign: "node scripts/test-native-permissions.mjs voice-limit APP.apk TEST.apk OUTPUT (RECORD_AUDIO granted before the app starts)" },
-  WorkflowLegacyReminderUpgrade: { campaign: "node scripts/test-installed-upgrade.mjs (installed-upgrade campaign; runs upgradedLegacyOneOffReminderIsIncludedInNativeDigest after the candidate verify phase)" },
+  WorkflowLegacyReminderUpgrade: { campaign: "node scripts/test-installed-upgrade.mjs reminder (installed-upgrade campaign; runs upgradedLegacyOneOffReminderIsIncludedInNativeDigest after the candidate verify phase)" },
   SettingsCrashLog: { campaign: "node scripts/test-native-restart.mjs crash-log APP.apk TEST.apk OUTPUT (the crash phase kills the process; readback in a new one)" },
   NativeVoiceLatency: { campaign: "node scripts/native-voice-latency-emulator.mjs --serial <owned emulator> --avd <name> --python <grpc venv python> --wav <speech.wav> --out <dir> (issue #395; injects speech into the virtual microphone while the harness runs)" },
   HomeCalendarCard: { campaign: "node scripts/test-calendar-regression.mjs --case=HomeCalendarCardInstrumentedTest (granted, then with calendar access revoked before the process starts)" },
@@ -589,7 +589,8 @@ export async function runLeased({ options, serial, adb, timing = {}, withSeconda
             for (const cls of secondary.filter(cls => !classes.some(row => row.variant === variant && row.class === cls)))
               record(cls, { started: 0, passed: 0, failed: [], ignored: [], status: "missing" }, { user: "secondary", note: `secondary user phase failed: ${error.message}` });
           }
-          // An unremoved user keeps this run's state on the emulator: stop, and keep the packages for recovery.
+          // An unremoved user keeps this run's state on the emulator (its packages were still uninstalled):
+          // stop further variants; remove the retained user by hand with the recovery command printed at the end of the run.
           if (!lifecycle.removed) break;
         }
         if (home && variant === "launcher") {

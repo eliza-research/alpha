@@ -6,14 +6,15 @@ import {execFileSync} from 'node:child_process';
 import {createHash} from 'node:crypto';
 import {verifyPinnedUpstream} from './pinned-upstream-source.mjs';
 
-/** Alpha's fixture policy and scenarios; shared upstream code owns APK lifecycle.
+/** Usage: node scripts/test-installed-upgrade.mjs <calendar|reminder> [--bridge | --baseline-process-runner]
+ * Alpha's fixture policy and scenarios; shared upstream code owns APK lifecycle.
  * The candidate app and instrumentation APK are admitted as one verified pair
  * (artifacts/apk-manifest.json from `npm run android:build`), and every companion class runs
  * only against that exact installed pair. Reminder upgrades also run
  * WorkflowLegacyReminderUpgradeInstrumentedTest after the candidate verify phase. Any failed,
  * skipped or missing phase is recorded with its name and fails the process.
  * Emulator-class evidence only: no live account, real integration or device acceptance. */
-export async function testInstalledUpgrade(kind){
+export async function testInstalledUpgrade(kind,options=process.argv.slice(3)){
  assert.ok(['calendar','reminder'].includes(kind));
  const repository=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..');
  verifyPinnedUpstream(repository);
@@ -33,8 +34,8 @@ export async function testInstalledUpgrade(kind){
  const adb=path.join(sdk,'platform-tools/adb'),aapt=path.join(sdk,'build-tools/36.0.0/aapt');
  const pkg=JSON.parse(fs.readFileSync(path.join(root,'app.config.json'),'utf8')).appId,testPkg=`${pkg}.test`;
  assert.equal(pkg,'ai.elizaresearch.alphaphone');
- const bridge=process.argv.includes('--bridge'),baselineProcessRunner=process.argv.includes('--baseline-process-runner');
- assert.ok(process.argv.slice(2).every(arg=>(kind==='calendar'&&arg==='--bridge')||(kind==='reminder'&&arg==='--baseline-process-runner')),'Unknown upgrade option');
+ const bridge=options.includes('--bridge'),baselineProcessRunner=options.includes('--baseline-process-runner');
+ assert.ok(options.every(arg=>(kind==='calendar'&&arg==='--bridge')||(kind==='reminder'&&arg==='--baseline-process-runner')),'Unknown upgrade option');
  const currentRunners=[pkg+'.WorkflowNoticeProcessRunner'];
  const cancellation=new AbortController(),cancel=()=>cancellation.abort();
  const call=(...args)=>execFileSync(adb,['-s',serial,...args],{encoding:'utf8',timeout:120000,maxBuffer:16*1024*1024}).trim();
@@ -106,4 +107,10 @@ export async function testInstalledUpgrade(kind){
   }
   console.log(output);
  }finally{process.removeListener('SIGINT',cancel);process.removeListener('SIGTERM',cancel);lease.release();}
+}
+
+if(process.argv[1]&&path.resolve(process.argv[1])===fileURLToPath(import.meta.url)){
+ const kind=process.argv[2];
+ if(!['calendar','reminder'].includes(kind)){console.error('Usage: node scripts/test-installed-upgrade.mjs <calendar|reminder> [--bridge | --baseline-process-runner]');process.exit(2);}
+ await testInstalledUpgrade(kind);
 }

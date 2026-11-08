@@ -535,7 +535,7 @@ test("round-9 registrations: new classes, campaigns and removed reasons", () => 
   // --classes SelectedDocument runs its ungated methods; only the restart phase stays with its campaign.
   assert.equal(parseInstrumentationArgs(["--classes", "SelectedDocument"]).classes[0], C("SelectedDocument"));
   assert.equal(CLASS_REGISTRY.SelectedDocument.args, undefined);
-  assert.equal(CLASS_REGISTRY.WorkflowLegacyReminderUpgrade.campaign.split(" ").slice(0, 2).join(" "), "node scripts/test-installed-upgrade.mjs");
+  assert.equal(CLASS_REGISTRY.WorkflowLegacyReminderUpgrade.campaign.split(" ").slice(0, 3).join(" "), "node scripts/test-installed-upgrade.mjs reminder");
   assert.throws(() => parseInstrumentationArgs(["--classes", "WorkflowLegacyReminderUpgrade"]), /test-installed-upgrade/);
   // SettingsCrashLog has its two-process runner now.
   assert.ok(!Object.hasOwn(NOT_RUN_BY_A_RUNNER, "SettingsCrashLog"));
