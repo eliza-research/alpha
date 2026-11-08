@@ -3,11 +3,11 @@
   "repository": "elizaOS/eliza",
   "base": "develop",
   "baseCommit": "cf178c5bd3bad3c604bb1c430e6fd55f3eb74957",
-  "head": "4dae580daa50fa6f0f9a220c6ac1fa0942879b02",
+  "head": "b23a23c2ef4f83d15591c6368c00f1e9547f7743",
   "recordedAt": "2026-11-08",
-  "command": "gh api repos/elizaOS/eliza/compare/develop...4dae580daa50fa6f0f9a220c6ac1fa0942879b02",
+  "command": "gh api repos/elizaOS/eliza/compare/develop...b23a23c2ef4f83d15591c6368c00f1e9547f7743",
   "status": "diverged",
-  "aheadBy": 34,
+  "aheadBy": 35,
   "behindBy": 7,
   "mergeBase": "13fc7b637406372f68f05814e76267d690f144fd",
   "pinOnlyCommits": [
@@ -134,6 +134,10 @@
     {
       "sha": "4dae580daa50fa6f0f9a220c6ac1fa0942879b02",
       "subject": "Include Apps grid and Photos public exports in UI build"
+    },
+    {
+      "sha": "b23a23c2ef4f83d15591c6368c00f1e9547f7743",
+      "subject": "Share native account checks without carrying messages across reset"
     }
   ],
   "pullRequests": []

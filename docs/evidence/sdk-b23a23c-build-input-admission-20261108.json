@@ -1,0 +1,41 @@
+{
+  "atUTC": "2026-11-08T03:15:35.871339+00:00",
+  "before": "4dae580daa50fa6f0f9a220c6ac1fa0942879b02",
+  "after": "b23a23c2ef4f83d15591c6368c00f1e9547f7743",
+  "changedFiles": [
+    "packages/agent/native-host/gateway.e2e.test.mjs",
+    "packages/agent/native-host/gateway.mjs",
+    "packages/cloud/sdk/native-host/cloud-services.mjs",
+    "packages/cloud/sdk/native-host/cloud-services.test.mjs",
+    "packages/host/native-host/gateway-bootstrap.mjs",
+    "packages/host/native-host/gateway-bootstrap.test.mjs"
+  ],
+  "byteIdenticalInputPaths": [
+    "packages/voice/src",
+    "plugins/plugin-local-inference",
+    "packages/auth/android",
+    "packages/app/scripts",
+    "plugins/plugin-assistant/src/services/device-actions",
+    "bun.lock",
+    "packages/agent/scripts/build-mobile-bundle.ts"
+  ],
+  "nativeRefusal": "retained",
+  "artifactEvidence": "Historical4dae runtime/notices/audit receipts retained; new preparation/staging/audit required",
+  "sourceAuthorization": "Original release owner independently reviewed source guard and published exact b23 branch",
+  "checks": {
+    "sourceGuard": "independently passed by release owner",
+    "publishedRef": "codex/alpha-cloud-sdk-b23a-20261108",
+    "reachability": "recorded GitHub compare:35ahead/7behind; no develop merge",
+    "clientPreparation": "passed",
+    "nativePatchPreparation": "passed",
+    "metadataTests": 21,
+    "typecheck": "passed",
+    "freshFullLockAudit": {
+      "findingsUnchanged": true,
+      "findings": 103,
+      "packages": 3675,
+      "exit": 1,
+      "note": "Existing unresolved full-lock advisories preserved; no new exceptions or expiry extensions. New packaged artifact audit still required."
+    }
+  }
+}
