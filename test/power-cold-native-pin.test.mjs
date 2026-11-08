@@ -16,6 +16,9 @@ const mutation=()=>between(' interface CredentialMutation<T>',' static boolean p
 const sdk=process.env.ANDROID_SDK_ROOT||process.env.ANDROID_HOME||(process.env.CI?'':join(homedir(),process.platform==='darwin'?'Library/Android/sdk':'Android/Sdk'));
 const androidJar=sdk?join(sdk,'platforms/android-36/android.jar'):'';
 
+// Main's powerAuthorizationChanged also retires Cloud speech authority and closes open provider reveals.
+const voiceStub=put=>put('ai/elizaresearch/alphaphone/AlphaVoiceCloudPlugin.java','package ai.elizaresearch.alphaphone;class AlphaVoiceCloudPlugin{static void retireProviderAuthority(){}}');
+const revealStub='static final java.util.Set<AlphaLocalAgentPlugin> instances=new java.util.HashSet<>();void closeProviderReveal(){}';
 function workspace(prefix){
  const dir=mkdtempSync(join(tmpdir(),prefix));
  const put=(name,text)=>{const file=join(dir,name);mkdirSync(dirname(file),{recursive:true});writeFileSync(file,text);};
@@ -35,7 +38,8 @@ test('actual pin refuses ABA, account, provider, permission and pending changes'
   put('ai/eliza/plugins/securestore/nativeonly/JsonCredentialSlots.java','package ai.eliza.plugins.securestore.nativeonly;public class JsonCredentialSlots{public static final Object LOCK=new Object();}');
   put('ai/elizaresearch/alphaphone/AlphaCredentialStore.java','package ai.elizaresearch.alphaphone;import org.json.JSONObject;public class AlphaCredentialStore{static JSONObject admission;AlphaCredentialStore(android.content.Context c){}JSONObject providerAdmissionSnapshot(){synchronized(ai.eliza.plugins.securestore.nativeonly.JsonCredentialSlots.LOCK){if(admission==null)throw new IllegalStateException();return admission;}}}');
   const prefix='package ai.elizaresearch.alphaphone;import android.content.Context;import org.json.JSONObject;public class AlphaLocalAgentPlugin{static final Object lifecycleLock=new Object();static boolean stopping;static long lifecycleEpoch,credentialMutationEpoch=-1,credentialShutdownRequest=-1;';
-  put('ai/elizaresearch/alphaphone/AlphaLocalAgentPlugin.java',prefix+policy()+`
+  voiceStub(put);
+  put('ai/elizaresearch/alphaphone/AlphaLocalAgentPlugin.java',prefix+revealStub+policy()+`
     static JSONObject admitted(String account,String generation){return new JSONObject().put("provider","elizacloud").put("environment","production").put("accountRef",account).put("sessionGeneration",generation);}
     static void check(boolean value){if(!value)throw new AssertionError();}
     public static void main(String[] args){
@@ -88,7 +92,8 @@ import java.io.File;import android.util.AtomicFile;public class JsonCredentialSl
  put('ai/elizaresearch/alphaphone/AlphaCanonicalNotifications.java','package ai.elizaresearch.alphaphone;class AlphaCanonicalNotifications{static void forget(android.content.Context c){}}');
  put('ai/elizaresearch/alphaphone/ElizaAgentService.java','package ai.elizaresearch.alphaphone;class ElizaAgentService{static long reserveCredentialShutdown(){return 1;}static void retryCredentialShutdown(android.content.Context c,long request){}static void abandonCredentialShutdown(long request){}static void releaseCredentialShutdown(long request){}static org.json.JSONObject getLocalAgentBootState(android.content.Context c){return new org.json.JSONObject();}static boolean isCredentialShutdownConfirmed(long request){return true;}}');
  const fields='package ai.elizaresearch.alphaphone;import android.content.Context;import org.json.JSONObject;class AlphaLocalAgentPlugin{static final Object lifecycleLock=new Object();static long lifecycleEpoch,credentialMutationEpoch=-1,credentialShutdownRequest=-1,uncertainCommitRequest=-1,startRequestEpoch,intent;static String startRequestId;static boolean startOwnsLaunch,accepting=true,stopping;static class Superseded extends Exception{}static final class Owner{void invalidate(){}}static final Owner INVOCATION_OWNER=new Owner();static void invalidateCalls(){}static void clearEnrollment(){}static boolean shutdownConfirmed(JSONObject state){return true;}static long currentCredentialIntent(){return intent;}static long reserveCredentialIntent(){return ++intent;}static void requireCredentialIntent(long value){if(value!=intent)throw new IllegalStateException();}static boolean providerAdmissionReadable(){return credentialMutationEpoch<0;}';
- put('ai/elizaresearch/alphaphone/AlphaLocalAgentPlugin.java',fields+policy()+mutation()+'}');
+ voiceStub(put);
+ put('ai/elizaresearch/alphaphone/AlphaLocalAgentPlugin.java',fields+revealStub+policy()+mutation()+'}');
  put('ai/elizaresearch/alphaphone/CommitTest.java',`package ai.elizaresearch.alphaphone;
 import org.json.JSONObject;public class CommitTest{
  static int checks;static void check(boolean b){checks++;if(!b)throw new AssertionError("check "+checks);}
