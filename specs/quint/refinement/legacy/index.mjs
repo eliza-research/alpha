@@ -7,6 +7,7 @@ import {checkInteractionSessionRefinement} from '../../legacy/core/check-interac
 import {runProviderExecutionRefinement} from '../../legacy/core/check-provider-execution-refinement.mjs';
 import {checkRoomHandlerQueueRefinement} from '../../legacy/core/check-room-handler-queue-refinement.mjs';
 import {checkRuntimeLifecycleRefinement} from '../../legacy/core/check-runtime-lifecycle-refinement.mjs';
+import {checkServiceLifecycleDesignRefinement} from '../../legacy/core/check-service-lifecycle-refinement.mjs';
 import {runSingleFlightRefinement} from '../../legacy/core/check-single-flight-refinement.mjs';
 import {checkTaskSchedulingRefinement} from '../../legacy/core/check-task-scheduling-refinement.mjs';
 import {runTaskSchedulerRefinement} from '../services/task-scheduler/index.mjs';
@@ -24,6 +25,16 @@ export async function runLegacyRefinement() {
     ['CoreProviderExecution', runProviderExecutionRefinement],
     ['CoreRoomHandlerQueue', () => checkRoomHandlerQueueRefinement(undefined, [driver])],
     ['CoreRuntimeLifecycle', () => checkRuntimeLifecycleRefinement([driver])],
+    ['CoreServiceLifecycleDesign', async () => {
+      const {receipts, mismatch} = await checkServiceLifecycleDesignRefinement([driver]);
+      return {receipts, obligations: [
+        {model: 'CoreServiceLifecycleDesign', obligation: 'Published instance with a failed send-handler setup',
+          reason: 'Actual startup retains the failed-class flag and returns the published service. The original StartEvent clears the flag.',
+          evidence: mismatch.receiptPath},
+        {model: 'CoreServiceLifecycleDesign', obligation: 'Service lifecycle beyond the original finite profiles',
+          reason: 'The selected schedules abstract the remaining eager retry budget, lookup ordering, stop-failure reports and temporal fairness.'},
+      ]};
+    }],
     ['CoreSingleFlightMemo', runSingleFlightRefinement],
     [null, () => checkTaskSchedulingRefinement(undefined, [driver])],
     ['CoreTaskScheduler', () => runTaskSchedulerRefinement([driver])],

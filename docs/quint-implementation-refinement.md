@@ -407,3 +407,11 @@ and releases its slot immediately. The canceled reply cannot navigate or
 erase a newer visit's attempt. Two Chromium regressions reproduce the old
 behavior and pass with the repair, alongside five existing Maps tests.
 The native Calendar provider still requires installed evidence.
+
+The original service lifecycle now compares seven real runtime schedules and
+42 checkpoints across its two profiles. It uses isolated PGlite and
+synthetic service hooks to hold concurrent start, teardown and withdrawal.
+A separate mismatch receipt observes a send-handler setup failure after
+publication. The runtime returns the published service and retains the
+class's failure flag, while the original model clears the flag. The
+passing projection and the mismatch use the original model transitions.
