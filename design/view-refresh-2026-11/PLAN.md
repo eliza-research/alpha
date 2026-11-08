@@ -19,8 +19,9 @@ Principles applied to every view:
    ask Alpha ("photos from last weekend", "my note about the term sheet", "the bank PDF"),
    and the view shows the result as a dismissible filter chip. The agent tools are
    read-only filters, so this adds no new side effects.
-4. **One model per flow.** Each view gets a TLA+ spec next to the existing ones in
-   `design/view-refresh-2026-11/tla/`. Each spec checks the as-built behaviour (with fix
+4. **One model per flow.** Each view gets a formal model. They were written in TLA+ and
+   are now Quint modules in `specs/quint/legacy/` (`CameraSession`, `PhotosLibrary`,
+   `NotesView`, `FilesBrowser`). Each model checks the as-built behaviour (with fix
    flags), then the fixed design. Implementation follows the checked design.
 
 ---
@@ -81,7 +82,7 @@ before numbers are captured on-device in phase 0. This review doesn't claim them
 - Dead UI: the focus ring, the model's scan-found sheet, `scanPages`, and the viewfinder
   gestures promised by its aria-label.
 
-### TLA+: `tla/camera-session/Spec.tla`
+### Model: `specs/quint/legacy/CameraSession.qnt` (written in TLA+, now Quint)
 - **Variables:** `view∈{away,camera}`, `vis∈{fg,bg}`, `chat∈{closed,open}` (modelled since the
   port: the chat keeps the session for a grace period, then releases it),
   `phase∈{off,starting,ready,error}`, `perm∈{unknown,granted,denied}`,
@@ -137,7 +138,7 @@ before numbers are captured on-device in phase 0. This review doesn't claim them
 - `photos_open{id}`, `photos_album_create{name, ids}` (reviewed), `photos_share{ids}`
   (opens the system share sheet), `photos_trash{ids}` (reviewed, undoable).
 
-### TLA+: `tla/photos-library/Spec.tla`
+### Model: `specs/quint/legacy/PhotosLibrary.qnt` (written in TLA+, now Quint)
 - **Variables:** `items` (id → {trashed, fav, albums, rev}), `window`, `tab`,
   `selection`, `viewer`, `filter`, `pending` ops, `access∈{none,partial,full}`,
   `storeEvents`.
@@ -199,7 +200,7 @@ before numbers are captured on-device in phase 0. This review doesn't claim them
 - The existing `create_note`, `notes_update`, `notes_delete` (to Trash) and `notes_query`
   stay. `notes_restore{noteId}` is added.
 
-### TLA+: extend `specs/notes-merge` into `tla/notes-view/Spec.tla`
+### Model: extend `specs/notes-merge` into `specs/quint/legacy/NotesView.qnt` (written in TLA+, now Quint)
 The existing merge/trash/draft spec covers storage. The new module adds:
 - **Variables:** `folders`, `noteFolder`, `rec∈{idle,recording,paused,finalizing}`,
   `audioBytes`, `asrCommitted`, `asrPending`, `filter`, `screen∈{list,editor,recorder,deleted}`.
@@ -266,7 +267,7 @@ A real file browser needs one of these:
   `files_trash{paths}` (reviewed, undoable), `files_folder_create{parent,name}` (reviewed).
 - The model's fixture `reply()` regexes are deleted.
 
-### TLA+: `tla/files-browser/Spec.tla`
+### Model: `specs/quint/legacy/FilesBrowser.qnt` (written in TLA+, now Quint)
 - **Variables:** `fs` (a tree of path → {kind, mime, trashed}), `cwd`, `root∈{category,storage,trash}`,
   `selection`, `clipboard/op`, `filter`, `access`.
 - **Actions:** Navigate, Up, OpenCategory, Select, Move, Copy, Rename, Trash,
@@ -295,7 +296,7 @@ A real file browser needs one of these:
 
 Implementation: filter `alpha:` keys out of `matching`, `pinned` and `count` in
 `home-launcher.ts:318-348`, not out of `snap.apps` (which Home is built from). Product
-views keep their Home placement. No TLA+ spec is needed beyond a unit test; the drawer is
+views keep their Home placement. No formal model is needed beyond a unit test; the drawer is
 a pure projection of `DeviceApps.list`.
 
 ---
@@ -322,12 +323,15 @@ Final:
 - **F2:** No Recents.
 - **A1:** Apps drawer is a 4-column icon grid.
 
-## TLA+ models (written and checked 2026-11-06)
-Specs are in `design/view-refresh-2026-11/tla/{camera-session,photos-library,notes-view,files-browser}`,
-run by `tla/check.sh <tla2tools.jar>`; results in `tla/results.md`.
-`Design.cfg` is the proposed design. Each `AsBuilt_*.cfg` turns off one fix, to show that
-today's code has the defect. Each `Ablate_*.cfg` turns off one design rule, to show the
-rule is needed.
+## Formal models (written and checked in TLA+ 2026-11-06, migrated to Quint 2026-11-07)
+The models are the Quint modules `specs/quint/legacy/{CameraSession,PhotosLibrary,NotesView,FilesBrowser}.qnt`,
+registered in `specs/quint/legacy/view-refresh.manifest.json` and checked by the repository
+Quint runner (`npm run quint:check`, `quint:compare`, `quint:temporal`). Each original TLA+
+configuration is one checker initializer: `checkerInit` is the proposed design (`Design.cfg`).
+Each as-built initializer (`AsBuilt_*`) turns off one fix, to show that today's code has the
+defect. Each ablation initializer (`Ablate_*`) turns off one design rule, to show the rule is
+needed. Results, including the TLA+ to Quint parity table and the historical TLC runs, are in
+`model-results.md`.
 
 Design changes the models found:
 - **Camera:** if the agent queues a photo during start and you then start recording, the
@@ -341,9 +345,9 @@ Design changes the models found:
 ## Phases after approval
 0. On the Pixel 10a, measure camera cold and warm first frame and shutter latency, and
    record the before numbers.
-1. Write the TLA+ specs. Run the as-built configuration to reproduce the bugs listed
-   above, then the fixed design. Specs and run logs go under
-   `design/view-refresh-2026-11/tla/`.
+1. Write the formal models. Run the as-built configuration to reproduce the bugs listed
+   above, then the fixed design. The models are in `specs/quint/legacy/` (migrated from
+   TLA+); results are in `design/view-refresh-2026-11/model-results.md`.
 2. Camera: the header cleanup and the native startup and shutter work (as a
    `patches/eliza` patch), then re-measure.
 3. Photos: the unified catalog, grid, selection, viewer and agent filter.

@@ -1,0 +1,1803 @@
+{
+ "models": [
+  {
+   "path": "specs/quint/legacy/CameraSession.qnt",
+   "module": "CameraSession",
+   "init": "checkerInit",
+   "step": "step",
+   "invariant": "safety",
+   "tests": [
+    "designDeniedTest",
+    "designCaptureTest",
+    "designAgentQueueTest",
+    "designChatGraceTest",
+    "asBuiltFocusTest",
+    "asBuiltLeaveTest",
+    "asBuiltLensTest",
+    "asBuiltAgentQueueTest",
+    "asBuiltChatGraceTest"
+   ],
+   "sources": [
+    "apps/app/src/prototype/camera-adapter.ts",
+    "apps/app/src/prototype/agent-adapter.ts"
+   ],
+   "abstractions": [
+    "Historical as-built/proposed design comparison of the view refresh (design/view-refresh-2026-11/PLAN.md), not a runtime conformance claim.",
+    "All original state variables are fields of s; the TLA+ CONSTANTS that differ between configurations are immutable fields of s chosen by one checker initializer per .cfg; record spreads preserve the original frame conditions.",
+    "Finite domains and numeric constants are unchanged from the original model configurations.",
+    "Persistent history booleans monitor the original action properties [][A => P]_vars without restricting transitions; the named action is expressed as its exact pre/post relation; TLC checks the equivalent invariants and always(history.X) temporal formulas.",
+    "step includes stuttering, matching [][Next]_vars; Fairness keeps the original WF/SF assumptions over the state projection s; Checked<P> = Fairness implies P.",
+    "TLA+ CASE in AgentCapture is translated as an ordered if/else chain (TLC evaluates the first true arm)."
+   ],
+   "constants": {
+    "MaxEpoch": 3,
+    "MaxMedia": 2
+   },
+   "invariants": [
+    "TypeOK",
+    "NoLostShutter",
+    "NoStuckCapture",
+    "NoOrphanRecording",
+    "LensSettingsValid",
+    "FlipNeverRejected",
+    "SavedIsShown",
+    "AgentFailsOnlyForCauseInvariant",
+    "ChatKeepsPreviewInvariant"
+   ],
+   "temporal": [
+    "CheckedTemporal"
+   ],
+   "temporalProperties": [
+    "AgentFailsOnlyForCause",
+    "OpenReachesPreviewOrError",
+    "AgentCaptureSettles",
+    "ChatKeepsPreview",
+    "ChatGraceReleases"
+   ],
+   "currentChecks": [
+    {
+     "invariant": "NoLostShutter",
+     "expected": "violation",
+     "init": "checkerAsBuiltFocusInit",
+     "step": "step",
+     "configuration": "AsBuilt_Focus"
+    },
+    {
+     "invariant": "NoStuckCapture",
+     "expected": "violation",
+     "init": "checkerAsBuiltLeaveInit",
+     "step": "step",
+     "configuration": "AsBuilt_Leave"
+    },
+    {
+     "invariant": "FlipNeverRejected",
+     "expected": "violation",
+     "init": "checkerAsBuiltLensInit",
+     "step": "step",
+     "configuration": "AsBuilt_Lens"
+    },
+    {
+     "invariant": "LensSettingsValid",
+     "expected": "violation",
+     "init": "checkerAsBuiltLensInit",
+     "step": "step",
+     "configuration": "AsBuilt_Lens"
+    },
+    {
+     "invariant": "AgentFailsOnlyForCauseInvariant",
+     "expected": "violation",
+     "init": "checkerAsBuiltAgentQueueInit",
+     "step": "step",
+     "configuration": "AsBuilt_AgentQueue"
+    },
+    {
+     "invariant": "ChatKeepsPreviewInvariant",
+     "expected": "violation",
+     "init": "checkerAsBuiltChatGraceInit",
+     "step": "step",
+     "configuration": "AsBuilt_ChatGrace"
+    }
+   ],
+   "currentTemporalChecks": [
+    {
+     "property": "CheckedAgentFailsOnlyForCause",
+     "expected": "violation",
+     "init": "checkerAsBuiltAgentQueueInit",
+     "step": "step",
+     "fairness": "Fairness",
+     "sourceProperty": "AgentFailsOnlyForCause",
+     "configuration": "AsBuilt_AgentQueue"
+    },
+    {
+     "property": "CheckedChatKeepsPreview",
+     "expected": "violation",
+     "init": "checkerAsBuiltChatGraceInit",
+     "step": "step",
+     "fairness": "Fairness",
+     "sourceProperty": "ChatKeepsPreview",
+     "configuration": "AsBuilt_ChatGrace"
+    }
+   ],
+   "legacySource": {
+    "path": "design/view-refresh-2026-11/tla/camera-session/Spec.tla",
+    "revision": "59badc34ca",
+    "sha256": "2148834fd33729502e83782163483a093f3e43a381812f4e6cb9163fd765f183",
+    "definitions": [
+     "TypeOK",
+     "Init",
+     "Room",
+     "Ready",
+     "Open",
+     "PermissionResult",
+     "FirstFrame",
+     "StartFail",
+     "Leave",
+     "Shutter",
+     "CaptureDone",
+     "RecStart",
+     "RecStop",
+     "Focus",
+     "FocusDone",
+     "Flip",
+     "SetFlash",
+     "SetZoom",
+     "AgentCapture",
+     "Release",
+     "ChatOpen",
+     "ChatGraceEnds",
+     "ChatClose",
+     "AgentRun",
+     "System",
+     "User",
+     "Next",
+     "Spec",
+     "NoLostShutter",
+     "NoStuckCapture",
+     "NoOrphanRecording",
+     "LensSettingsValid",
+     "FlipNeverRejected",
+     "SavedIsShown",
+     "AgentFailsOnlyForCause",
+     "ChatKeepsPreview",
+     "ChatGraceReleases",
+     "OpenReachesPreviewOrError",
+     "AgentCaptureSettles"
+    ],
+    "configurations": [
+     {
+      "name": "Design",
+      "cfg": "design/view-refresh-2026-11/tla/camera-session/Design.cfg",
+      "sha256": "fcfb3ff417f6e19d507ea9deb97157c3e3ee613124b3b5d5c91033d830eee35d",
+      "init": "checkerInit",
+      "tlaConstants": {
+       "FixFocus": "TRUE",
+       "FixLeave": "TRUE",
+       "FixLens": "TRUE",
+       "FixAgentQueue": "TRUE",
+       "FixChatGrace": "TRUE",
+       "MaxEpoch": "3",
+       "MaxMedia": "2"
+      },
+      "tlaInvariants": [
+       "TypeOK",
+       "NoLostShutter",
+       "NoStuckCapture",
+       "NoOrphanRecording",
+       "LensSettingsValid",
+       "FlipNeverRejected",
+       "SavedIsShown"
+      ],
+      "tlaProperties": [
+       "AgentFailsOnlyForCause",
+       "OpenReachesPreviewOrError",
+       "AgentCaptureSettles",
+       "ChatKeepsPreview",
+       "ChatGraceReleases"
+      ],
+      "quintInvariants": [
+       "TypeOK",
+       "NoLostShutter",
+       "NoStuckCapture",
+       "NoOrphanRecording",
+       "LensSettingsValid",
+       "FlipNeverRejected",
+       "SavedIsShown"
+      ],
+      "quintTemporal": [
+       "CheckedAgentFailsOnlyForCause",
+       "CheckedOpenReachesPreviewOrError",
+       "CheckedAgentCaptureSettles",
+       "CheckedChatKeepsPreview",
+       "CheckedChatGraceReleases"
+      ],
+      "expected": "every invariant and property holds"
+     },
+     {
+      "name": "AsBuilt_Focus",
+      "cfg": "design/view-refresh-2026-11/tla/camera-session/AsBuilt_Focus.cfg",
+      "sha256": "bbf9e5883c2b2be18697013a0fcd629cc34c196e9f9bd3da730a792523ee2a07",
+      "init": "checkerAsBuiltFocusInit",
+      "tlaConstants": {
+       "FixFocus": "FALSE",
+       "FixLeave": "TRUE",
+       "FixLens": "TRUE",
+       "FixAgentQueue": "TRUE",
+       "FixChatGrace": "TRUE",
+       "MaxEpoch": "3",
+       "MaxMedia": "2"
+      },
+      "tlaInvariants": [
+       "TypeOK",
+       "NoLostShutter",
+       "NoStuckCapture",
+       "NoOrphanRecording",
+       "LensSettingsValid",
+       "FlipNeverRejected",
+       "SavedIsShown"
+      ],
+      "tlaProperties": [
+       "AgentFailsOnlyForCause",
+       "OpenReachesPreviewOrError",
+       "AgentCaptureSettles",
+       "ChatKeepsPreview",
+       "ChatGraceReleases"
+      ],
+      "quintInvariants": [
+       "TypeOK",
+       "NoLostShutter",
+       "NoStuckCapture",
+       "NoOrphanRecording",
+       "LensSettingsValid",
+       "FlipNeverRejected",
+       "SavedIsShown"
+      ],
+      "quintTemporal": [
+       "CheckedAgentFailsOnlyForCause",
+       "CheckedOpenReachesPreviewOrError",
+       "CheckedAgentCaptureSettles",
+       "CheckedChatKeepsPreview",
+       "CheckedChatGraceReleases"
+      ],
+      "expected": [
+       "NoLostShutter"
+      ]
+     },
+     {
+      "name": "AsBuilt_Leave",
+      "cfg": "design/view-refresh-2026-11/tla/camera-session/AsBuilt_Leave.cfg",
+      "sha256": "4587846ac8528ea78e6f9b853400c9d863e6f3749a1e96056fd731c7ac99b293",
+      "init": "checkerAsBuiltLeaveInit",
+      "tlaConstants": {
+       "FixFocus": "TRUE",
+       "FixLeave": "FALSE",
+       "FixLens": "TRUE",
+       "FixAgentQueue": "TRUE",
+       "FixChatGrace": "TRUE",
+       "MaxEpoch": "3",
+       "MaxMedia": "2"
+      },
+      "tlaInvariants": [
+       "TypeOK",
+       "NoLostShutter",
+       "NoStuckCapture",
+       "NoOrphanRecording",
+       "LensSettingsValid",
+       "FlipNeverRejected",
+       "SavedIsShown"
+      ],
+      "tlaProperties": [
+       "AgentFailsOnlyForCause",
+       "OpenReachesPreviewOrError",
+       "AgentCaptureSettles",
+       "ChatKeepsPreview",
+       "ChatGraceReleases"
+      ],
+      "quintInvariants": [
+       "TypeOK",
+       "NoLostShutter",
+       "NoStuckCapture",
+       "NoOrphanRecording",
+       "LensSettingsValid",
+       "FlipNeverRejected",
+       "SavedIsShown"
+      ],
+      "quintTemporal": [
+       "CheckedAgentFailsOnlyForCause",
+       "CheckedOpenReachesPreviewOrError",
+       "CheckedAgentCaptureSettles",
+       "CheckedChatKeepsPreview",
+       "CheckedChatGraceReleases"
+      ],
+      "expected": [
+       "NoStuckCapture"
+      ]
+     },
+     {
+      "name": "AsBuilt_Lens",
+      "cfg": "design/view-refresh-2026-11/tla/camera-session/AsBuilt_Lens.cfg",
+      "sha256": "3c2836d60c54b1da245665223edd45377922c3791441f09a9f8f21df555347cb",
+      "init": "checkerAsBuiltLensInit",
+      "tlaConstants": {
+       "FixFocus": "TRUE",
+       "FixLeave": "TRUE",
+       "FixLens": "FALSE",
+       "FixAgentQueue": "TRUE",
+       "FixChatGrace": "TRUE",
+       "MaxEpoch": "3",
+       "MaxMedia": "2"
+      },
+      "tlaInvariants": [
+       "TypeOK",
+       "NoLostShutter",
+       "NoStuckCapture",
+       "NoOrphanRecording",
+       "LensSettingsValid",
+       "FlipNeverRejected",
+       "SavedIsShown"
+      ],
+      "tlaProperties": [
+       "AgentFailsOnlyForCause",
+       "OpenReachesPreviewOrError",
+       "AgentCaptureSettles",
+       "ChatKeepsPreview",
+       "ChatGraceReleases"
+      ],
+      "quintInvariants": [
+       "TypeOK",
+       "NoLostShutter",
+       "NoStuckCapture",
+       "NoOrphanRecording",
+       "LensSettingsValid",
+       "FlipNeverRejected",
+       "SavedIsShown"
+      ],
+      "quintTemporal": [
+       "CheckedAgentFailsOnlyForCause",
+       "CheckedOpenReachesPreviewOrError",
+       "CheckedAgentCaptureSettles",
+       "CheckedChatKeepsPreview",
+       "CheckedChatGraceReleases"
+      ],
+      "expected": [
+       "FlipNeverRejected",
+       "LensSettingsValid"
+      ]
+     },
+     {
+      "name": "AsBuilt_AgentQueue",
+      "cfg": "design/view-refresh-2026-11/tla/camera-session/AsBuilt_AgentQueue.cfg",
+      "sha256": "775759b3d1440888e74e423e58db41ed466ee9021486f1530730262df7e7bd7a",
+      "init": "checkerAsBuiltAgentQueueInit",
+      "tlaConstants": {
+       "FixFocus": "TRUE",
+       "FixLeave": "TRUE",
+       "FixLens": "TRUE",
+       "FixAgentQueue": "FALSE",
+       "FixChatGrace": "TRUE",
+       "MaxEpoch": "3",
+       "MaxMedia": "2"
+      },
+      "tlaInvariants": [
+       "TypeOK",
+       "NoLostShutter",
+       "NoStuckCapture",
+       "NoOrphanRecording",
+       "LensSettingsValid",
+       "FlipNeverRejected",
+       "SavedIsShown"
+      ],
+      "tlaProperties": [
+       "AgentFailsOnlyForCause",
+       "OpenReachesPreviewOrError",
+       "AgentCaptureSettles",
+       "ChatKeepsPreview",
+       "ChatGraceReleases"
+      ],
+      "quintInvariants": [
+       "TypeOK",
+       "NoLostShutter",
+       "NoStuckCapture",
+       "NoOrphanRecording",
+       "LensSettingsValid",
+       "FlipNeverRejected",
+       "SavedIsShown"
+      ],
+      "quintTemporal": [
+       "CheckedAgentFailsOnlyForCause",
+       "CheckedOpenReachesPreviewOrError",
+       "CheckedAgentCaptureSettles",
+       "CheckedChatKeepsPreview",
+       "CheckedChatGraceReleases"
+      ],
+      "expected": [
+       "AgentFailsOnlyForCauseInvariant",
+       "CheckedAgentFailsOnlyForCause"
+      ]
+     },
+     {
+      "name": "AsBuilt_ChatGrace",
+      "cfg": "design/view-refresh-2026-11/tla/camera-session/AsBuilt_ChatGrace.cfg",
+      "sha256": "9301c7b942440ddccf85bc2aa3f600ac864365c4f81692ccf7d87086ae39058f",
+      "init": "checkerAsBuiltChatGraceInit",
+      "tlaConstants": {
+       "FixFocus": "TRUE",
+       "FixLeave": "TRUE",
+       "FixLens": "TRUE",
+       "FixAgentQueue": "TRUE",
+       "FixChatGrace": "FALSE",
+       "MaxEpoch": "3",
+       "MaxMedia": "2"
+      },
+      "tlaInvariants": [
+       "TypeOK",
+       "NoLostShutter",
+       "NoStuckCapture",
+       "NoOrphanRecording",
+       "LensSettingsValid",
+       "FlipNeverRejected",
+       "SavedIsShown"
+      ],
+      "tlaProperties": [
+       "AgentFailsOnlyForCause",
+       "OpenReachesPreviewOrError",
+       "AgentCaptureSettles",
+       "ChatKeepsPreview",
+       "ChatGraceReleases"
+      ],
+      "quintInvariants": [
+       "TypeOK",
+       "NoLostShutter",
+       "NoStuckCapture",
+       "NoOrphanRecording",
+       "LensSettingsValid",
+       "FlipNeverRejected",
+       "SavedIsShown"
+      ],
+      "quintTemporal": [
+       "CheckedAgentFailsOnlyForCause",
+       "CheckedOpenReachesPreviewOrError",
+       "CheckedAgentCaptureSettles",
+       "CheckedChatKeepsPreview",
+       "CheckedChatGraceReleases"
+      ],
+      "expected": [
+       "ChatKeepsPreviewInvariant",
+       "CheckedChatKeepsPreview"
+      ]
+     }
+    ],
+    "note": "The TLA+ directory was removed after this migration; read it at the recorded revision."
+   },
+   "actionProperties": [
+    {
+     "property": "AgentFailsOnlyForCause",
+     "relation": "AgentFailsOnlyForCauseRelation",
+     "invariant": "AgentFailsOnlyForCauseInvariant"
+    },
+    {
+     "property": "ChatKeepsPreview",
+     "relation": "ChatKeepsPreviewRelation",
+     "invariant": "ChatKeepsPreviewInvariant"
+    }
+   ]
+  },
+  {
+   "path": "specs/quint/legacy/PhotosLibrary.qnt",
+   "module": "PhotosLibrary",
+   "init": "checkerInit",
+   "step": "step",
+   "invariant": "safety",
+   "tests": [
+    "designWindowTest",
+    "designSelectTrashUndoTest",
+    "designFavToggleTest",
+    "designPatchTest",
+    "designStaleReviewTest",
+    "designShareTest",
+    "designReplaceTest",
+    "asBuiltWindowTest",
+    "asBuiltPatchTest",
+    "asBuiltFavToggleTest",
+    "asBuiltCapTest"
+   ],
+   "sources": [
+    "apps/app/src/prototype/photo-library-adapter.ts",
+    "apps/app/src/runtime/photo-library.ts",
+    "apps/app/src/runtime/photos-view.ts"
+   ],
+   "abstractions": [
+    "Historical as-built/proposed design comparison of the view refresh (design/view-refresh-2026-11/PLAN.md), not a runtime conformance claim.",
+    "All original state variables are fields of s; the TLA+ CONSTANTS that differ between configurations are immutable fields of s chosen by one checker initializer per .cfg; record spreads preserve the original frame conditions.",
+    "Finite domains and numeric constants are unchanged from the original model configurations.",
+    "Persistent history booleans monitor the original action properties [][A => P]_vars without restricting transitions; the named action is expressed as its exact pre/post relation; TLC checks the equivalent invariants and always(history.X) temporal formulas.",
+    "step includes stuttering, matching [][Next]_vars; Fairness keeps the original WF/SF assumptions over the state projection s; Checked<P> = Fairness implies P.",
+    "RECURSIVE Take(S, n, newest) is the closed form {x in S : |{y in S : y newer (older) than x}| < n}, equal for distinct integer ids."
+   ],
+   "constants": {
+    "Ids": [
+     1,
+     2,
+     3
+    ],
+    "W": 2,
+    "Cap": 1,
+    "Budget": 2,
+    "MaxRev": 2
+   },
+   "invariants": [
+    "TypeOK",
+    "NewestNeverDropped",
+    "SelectionSubsetOfVisible",
+    "ViewerShowsExistingItem",
+    "NoSpuriousClear",
+    "FavoriteReversible",
+    "NoSelectionCap",
+    "DeleteForeverOnlyFromTrash",
+    "NoActionOnStaleRevInvariant",
+    "FilterIsReadOnlyInvariant",
+    "ShareChangesNothingInvariant"
+   ],
+   "temporal": [
+    "CheckedTemporal"
+   ],
+   "temporalProperties": [
+    "NoActionOnStaleRev",
+    "FilterIsReadOnly",
+    "ShareChangesNothing",
+    "ReviewSettles"
+   ],
+   "currentChecks": [
+    {
+     "invariant": "NewestNeverDropped",
+     "expected": "violation",
+     "init": "checkerAsBuiltWindowInit",
+     "step": "step",
+     "configuration": "AsBuilt_Window"
+    },
+    {
+     "invariant": "NoSpuriousClear",
+     "expected": "violation",
+     "init": "checkerAsBuiltPatchInit",
+     "step": "step",
+     "configuration": "AsBuilt_Patch"
+    },
+    {
+     "invariant": "FavoriteReversible",
+     "expected": "violation",
+     "init": "checkerAsBuiltFavToggleInit",
+     "step": "step",
+     "configuration": "AsBuilt_FavToggle"
+    },
+    {
+     "invariant": "NoSelectionCap",
+     "expected": "violation",
+     "init": "checkerAsBuiltCapInit",
+     "step": "step",
+     "configuration": "AsBuilt_Cap"
+    }
+   ],
+   "currentTemporalChecks": [],
+   "legacySource": {
+    "path": "design/view-refresh-2026-11/tla/photos-library/Spec.tla",
+    "revision": "59badc34ca",
+    "sha256": "62c77138ce80da19027d6b2d62c586a8aba9b0adb025d06f7e981ffa8e6da0ab",
+    "definitions": [
+     "MaxRev",
+     "NoReview",
+     "Live",
+     "InTrash",
+     "Matches",
+     "Pool",
+     "Take",
+     "Window",
+     "TypeOK",
+     "Init",
+     "Bump",
+     "Ghosts",
+     "SwitchTab",
+     "EnterSelect",
+     "Toggle",
+     "SelectAll",
+     "CancelSelect",
+     "BatchFavorite",
+     "BatchTrash",
+     "BatchRestore",
+     "DeleteForever",
+     "OpenViewer",
+     "Swipe",
+     "ViewerTrash",
+     "CloseViewer",
+     "Undo",
+     "StoreEvent",
+     "AgentFilter",
+     "AgentReview",
+     "ReviewCurrent",
+     "AgentShareReview",
+     "AgentApply",
+     "AgentOpen",
+     "EditReplace",
+     "AgentReject",
+     "Next",
+     "Spec",
+     "NewestNeverDropped",
+     "SelectionSubsetOfVisible",
+     "ViewerShowsExistingItem",
+     "NoSpuriousClear",
+     "FavoriteReversible",
+     "NoSelectionCap",
+     "DeleteForeverOnlyFromTrash",
+     "NoActionOnStaleRev",
+     "FilterIsReadOnly",
+     "ShareChangesNothing",
+     "ReviewSettles"
+    ],
+    "configurations": [
+     {
+      "name": "Design",
+      "cfg": "design/view-refresh-2026-11/tla/photos-library/Design.cfg",
+      "sha256": "80451422b405e9355cb1dc8d555521c3b7fe2fc6bcd097325168183b07279a2d",
+      "init": "checkerInit",
+      "tlaConstants": {
+       "Ids": "{1, 2, 3}",
+       "W": "2",
+       "Cap": "1",
+       "Budget": "2",
+       "FixWindow": "TRUE",
+       "FixPatch": "TRUE",
+       "FixFavToggle": "TRUE",
+       "FixNoCap": "TRUE"
+      },
+      "tlaInvariants": [
+       "TypeOK",
+       "NewestNeverDropped",
+       "SelectionSubsetOfVisible",
+       "ViewerShowsExistingItem",
+       "NoSpuriousClear",
+       "FavoriteReversible",
+       "NoSelectionCap",
+       "DeleteForeverOnlyFromTrash"
+      ],
+      "tlaProperties": [
+       "NoActionOnStaleRev",
+       "FilterIsReadOnly",
+       "ShareChangesNothing",
+       "ReviewSettles"
+      ],
+      "quintInvariants": [
+       "TypeOK",
+       "NewestNeverDropped",
+       "SelectionSubsetOfVisible",
+       "ViewerShowsExistingItem",
+       "NoSpuriousClear",
+       "FavoriteReversible",
+       "NoSelectionCap",
+       "DeleteForeverOnlyFromTrash"
+      ],
+      "quintTemporal": [
+       "CheckedNoActionOnStaleRev",
+       "CheckedFilterIsReadOnly",
+       "CheckedShareChangesNothing",
+       "CheckedReviewSettles"
+      ],
+      "expected": "every invariant and property holds"
+     },
+     {
+      "name": "AsBuilt_Window",
+      "cfg": "design/view-refresh-2026-11/tla/photos-library/AsBuilt_Window.cfg",
+      "sha256": "b171f76e480ea49c05bb029afaee9c26b1efa5f9f7b757622b32e9ddf7a22e0a",
+      "init": "checkerAsBuiltWindowInit",
+      "tlaConstants": {
+       "Ids": "{1, 2, 3}",
+       "W": "2",
+       "Cap": "1",
+       "Budget": "2",
+       "FixWindow": "FALSE",
+       "FixPatch": "TRUE",
+       "FixFavToggle": "TRUE",
+       "FixNoCap": "TRUE"
+      },
+      "tlaInvariants": [
+       "TypeOK",
+       "NewestNeverDropped",
+       "SelectionSubsetOfVisible",
+       "ViewerShowsExistingItem",
+       "NoSpuriousClear",
+       "FavoriteReversible",
+       "NoSelectionCap",
+       "DeleteForeverOnlyFromTrash"
+      ],
+      "tlaProperties": [
+       "NoActionOnStaleRev",
+       "FilterIsReadOnly",
+       "ShareChangesNothing",
+       "ReviewSettles"
+      ],
+      "quintInvariants": [
+       "TypeOK",
+       "NewestNeverDropped",
+       "SelectionSubsetOfVisible",
+       "ViewerShowsExistingItem",
+       "NoSpuriousClear",
+       "FavoriteReversible",
+       "NoSelectionCap",
+       "DeleteForeverOnlyFromTrash"
+      ],
+      "quintTemporal": [
+       "CheckedNoActionOnStaleRev",
+       "CheckedFilterIsReadOnly",
+       "CheckedShareChangesNothing",
+       "CheckedReviewSettles"
+      ],
+      "expected": [
+       "NewestNeverDropped"
+      ]
+     },
+     {
+      "name": "AsBuilt_Patch",
+      "cfg": "design/view-refresh-2026-11/tla/photos-library/AsBuilt_Patch.cfg",
+      "sha256": "52e0b225de7d725ca347689568bb1b2d4191b1b688706dc89e040f3683a720b6",
+      "init": "checkerAsBuiltPatchInit",
+      "tlaConstants": {
+       "Ids": "{1, 2, 3}",
+       "W": "2",
+       "Cap": "1",
+       "Budget": "2",
+       "FixWindow": "TRUE",
+       "FixPatch": "FALSE",
+       "FixFavToggle": "TRUE",
+       "FixNoCap": "TRUE"
+      },
+      "tlaInvariants": [
+       "TypeOK",
+       "NewestNeverDropped",
+       "SelectionSubsetOfVisible",
+       "ViewerShowsExistingItem",
+       "NoSpuriousClear",
+       "FavoriteReversible",
+       "NoSelectionCap",
+       "DeleteForeverOnlyFromTrash"
+      ],
+      "tlaProperties": [
+       "NoActionOnStaleRev",
+       "FilterIsReadOnly",
+       "ShareChangesNothing",
+       "ReviewSettles"
+      ],
+      "quintInvariants": [
+       "TypeOK",
+       "NewestNeverDropped",
+       "SelectionSubsetOfVisible",
+       "ViewerShowsExistingItem",
+       "NoSpuriousClear",
+       "FavoriteReversible",
+       "NoSelectionCap",
+       "DeleteForeverOnlyFromTrash"
+      ],
+      "quintTemporal": [
+       "CheckedNoActionOnStaleRev",
+       "CheckedFilterIsReadOnly",
+       "CheckedShareChangesNothing",
+       "CheckedReviewSettles"
+      ],
+      "expected": [
+       "NoSpuriousClear"
+      ]
+     },
+     {
+      "name": "AsBuilt_FavToggle",
+      "cfg": "design/view-refresh-2026-11/tla/photos-library/AsBuilt_FavToggle.cfg",
+      "sha256": "af487fce79643e194d96f308ab662db8bf6cd56fcb8e1d03c42a134fc760aaa8",
+      "init": "checkerAsBuiltFavToggleInit",
+      "tlaConstants": {
+       "Ids": "{1, 2, 3}",
+       "W": "2",
+       "Cap": "1",
+       "Budget": "2",
+       "FixWindow": "TRUE",
+       "FixPatch": "TRUE",
+       "FixFavToggle": "FALSE",
+       "FixNoCap": "TRUE"
+      },
+      "tlaInvariants": [
+       "TypeOK",
+       "NewestNeverDropped",
+       "SelectionSubsetOfVisible",
+       "ViewerShowsExistingItem",
+       "NoSpuriousClear",
+       "FavoriteReversible",
+       "NoSelectionCap",
+       "DeleteForeverOnlyFromTrash"
+      ],
+      "tlaProperties": [
+       "NoActionOnStaleRev",
+       "FilterIsReadOnly",
+       "ShareChangesNothing",
+       "ReviewSettles"
+      ],
+      "quintInvariants": [
+       "TypeOK",
+       "NewestNeverDropped",
+       "SelectionSubsetOfVisible",
+       "ViewerShowsExistingItem",
+       "NoSpuriousClear",
+       "FavoriteReversible",
+       "NoSelectionCap",
+       "DeleteForeverOnlyFromTrash"
+      ],
+      "quintTemporal": [
+       "CheckedNoActionOnStaleRev",
+       "CheckedFilterIsReadOnly",
+       "CheckedShareChangesNothing",
+       "CheckedReviewSettles"
+      ],
+      "expected": [
+       "FavoriteReversible"
+      ]
+     },
+     {
+      "name": "AsBuilt_Cap",
+      "cfg": "design/view-refresh-2026-11/tla/photos-library/AsBuilt_Cap.cfg",
+      "sha256": "21d35c4138d5e14456dd6da33635ee44fe473978731c4c6fcd7e92f3aefa70b1",
+      "init": "checkerAsBuiltCapInit",
+      "tlaConstants": {
+       "Ids": "{1, 2, 3}",
+       "W": "2",
+       "Cap": "1",
+       "Budget": "2",
+       "FixWindow": "TRUE",
+       "FixPatch": "TRUE",
+       "FixFavToggle": "TRUE",
+       "FixNoCap": "FALSE"
+      },
+      "tlaInvariants": [
+       "TypeOK",
+       "NewestNeverDropped",
+       "SelectionSubsetOfVisible",
+       "ViewerShowsExistingItem",
+       "NoSpuriousClear",
+       "FavoriteReversible",
+       "NoSelectionCap",
+       "DeleteForeverOnlyFromTrash"
+      ],
+      "tlaProperties": [
+       "NoActionOnStaleRev",
+       "FilterIsReadOnly",
+       "ShareChangesNothing",
+       "ReviewSettles"
+      ],
+      "quintInvariants": [
+       "TypeOK",
+       "NewestNeverDropped",
+       "SelectionSubsetOfVisible",
+       "ViewerShowsExistingItem",
+       "NoSpuriousClear",
+       "FavoriteReversible",
+       "NoSelectionCap",
+       "DeleteForeverOnlyFromTrash"
+      ],
+      "quintTemporal": [
+       "CheckedNoActionOnStaleRev",
+       "CheckedFilterIsReadOnly",
+       "CheckedShareChangesNothing",
+       "CheckedReviewSettles"
+      ],
+      "expected": [
+       "NoSelectionCap"
+      ]
+     }
+    ],
+    "note": "The TLA+ directory was removed after this migration; read it at the recorded revision."
+   },
+   "actionProperties": [
+    {
+     "property": "NoActionOnStaleRev",
+     "relation": "NoActionOnStaleRevRelation",
+     "invariant": "NoActionOnStaleRevInvariant"
+    },
+    {
+     "property": "FilterIsReadOnly",
+     "relation": "FilterIsReadOnlyRelation",
+     "invariant": "FilterIsReadOnlyInvariant"
+    },
+    {
+     "property": "ShareChangesNothing",
+     "relation": "ShareChangesNothingRelation",
+     "invariant": "ShareChangesNothingInvariant"
+    }
+   ]
+  },
+  {
+   "path": "specs/quint/legacy/NotesView.qnt",
+   "module": "NotesView",
+   "init": "checkerInit",
+   "step": "step",
+   "invariant": "safety",
+   "tests": [
+    "designLongRecordingTest",
+    "designHiddenCatchUpTest",
+    "designFolderTest",
+    "designRenameTest",
+    "designStaleReviewTest",
+    "asBuiltCapTest",
+    "asBuiltSegmentsTest",
+    "asBuiltStreamAsrTest",
+    "ablateRestoreFolderTest",
+    "asBuiltHiddenTest"
+   ],
+   "sources": [
+    "apps/app/src/prototype/voice-adapter.ts",
+    "apps/app/src/prototype/note-recorder.ts",
+    "apps/app/src/prototype/notes-trash-adapter.ts",
+    "apps/app/src/runtime/notes-folders.ts"
+   ],
+   "abstractions": [
+    "Historical as-built/proposed design comparison of the view refresh (design/view-refresh-2026-11/PLAN.md), not a runtime conformance claim.",
+    "All original state variables are fields of s; the TLA+ CONSTANTS that differ between configurations are immutable fields of s chosen by one checker initializer per .cfg; record spreads preserve the original frame conditions.",
+    "Finite domains and numeric constants are unchanged from the original model configurations.",
+    "Persistent history booleans monitor the original action properties [][A => P]_vars without restricting transitions; the named action is expressed as its exact pre/post relation; TLC checks the equivalent invariants and always(history.X) temporal formulas.",
+    "step includes stuttering, matching [][Next]_vars; Fairness keeps the original WF/SF assumptions over the state projection s; Checked<P> = Fairness implies P.",
+    "TLA+ model values become strings; Names, MaxSeg, CapSeg and Budget are immutable fields because Rename.cfg changes them."
+   ],
+   "constants": {
+    "Notes": [
+     "n1",
+     "n2"
+    ],
+    "Folders": [
+     "f1",
+     "f2"
+    ],
+    "None": "None",
+    "MaxRev": 2,
+    "perConfiguration": {
+     "Names": "{a, b} ({a, b, c} in Rename)",
+     "MaxSeg": "3 (1 in Rename)",
+     "CapSeg": 1,
+     "Budget": "2 (1 in Rename)"
+    }
+   },
+   "invariants": [
+    "TypeOK",
+    "NoLengthLimit",
+    "TranscriptPrefixOfAudio",
+    "FolderRefsValid",
+    "FolderNamesUnique",
+    "CrashKeepsAudioInvariant",
+    "RenameKeepsMembershipInvariant",
+    "AgentMoveOnlyReviewedInvariant"
+   ],
+   "temporal": [
+    "CheckedTemporal"
+   ],
+   "temporalProperties": [
+    "CrashKeepsAudio",
+    "AgentMoveOnlyReviewed",
+    "RenameKeepsMembership",
+    "TranscriptKeepsUp",
+    "AsrSettles",
+    "ReviewSettles"
+   ],
+   "currentChecks": [
+    {
+     "invariant": "NoLengthLimit",
+     "expected": "violation",
+     "init": "checkerAsBuiltCapInit",
+     "step": "step",
+     "configuration": "AsBuilt_Cap"
+    },
+    {
+     "invariant": "CrashKeepsAudioInvariant",
+     "expected": "violation",
+     "init": "checkerAsBuiltSegmentsInit",
+     "step": "step",
+     "configuration": "AsBuilt_Segments"
+    },
+    {
+     "invariant": "FolderRefsValid",
+     "expected": "violation",
+     "init": "checkerAblateRestoreFolderInit",
+     "step": "step",
+     "configuration": "Ablate_RestoreFolder"
+    },
+    {
+     "invariant": "safety",
+     "expected": "pass",
+     "init": "checkerRenameInit",
+     "step": "step",
+     "configuration": "Rename"
+    }
+   ],
+   "currentTemporalChecks": [
+    {
+     "property": "CheckedCrashKeepsAudio",
+     "expected": "violation",
+     "init": "checkerAsBuiltSegmentsInit",
+     "step": "step",
+     "fairness": "Fairness",
+     "sourceProperty": "CrashKeepsAudio",
+     "configuration": "AsBuilt_Segments"
+    },
+    {
+     "property": "CheckedTranscriptKeepsUp",
+     "expected": "violation",
+     "init": "checkerAsBuiltStreamAsrInit",
+     "step": "step",
+     "fairness": "Fairness",
+     "sourceProperty": "TranscriptKeepsUp",
+     "configuration": "AsBuilt_StreamAsr"
+    },
+    {
+     "property": "CheckedTranscriptKeepsUpHidden",
+     "expected": "violation",
+     "init": "checkerInit",
+     "step": "step",
+     "fairness": "Fairness",
+     "sourceProperty": "TranscriptKeepsUpHidden",
+     "configuration": "AsBuilt_Hidden"
+    },
+    {
+     "property": "CheckedTemporal",
+     "expected": "pass",
+     "init": "checkerRenameInit",
+     "step": "step",
+     "fairness": "Fairness",
+     "configuration": "Rename"
+    }
+   ],
+   "legacySource": {
+    "path": "design/view-refresh-2026-11/tla/notes-view/Spec.tla",
+    "revision": "59badc34ca",
+    "sha256": "e716d3cc9899d8665de6e7f50e1069a8d9fdc9c7c6893d4d666d602355d7c459",
+    "definitions": [
+     "MaxRev",
+     "NoReview",
+     "TypeOK",
+     "Init",
+     "NoteVars",
+     "RecVars",
+     "Bump",
+     "Record",
+     "Segment",
+     "Pause",
+     "Resume",
+     "Stop",
+     "StorageFull",
+     "ProcessDeath",
+     "AsrSegment",
+     "Hide",
+     "Show",
+     "MoveToFolder",
+     "DeleteFolder",
+     "RenameFolder",
+     "TrashNote",
+     "Restore",
+     "Expire",
+     "AgentProposeMove",
+     "ReviewCurrent",
+     "AgentApply",
+     "AgentReject",
+     "Next",
+     "Spec",
+     "NoLengthLimit",
+     "CrashKeepsAudio",
+     "TranscriptPrefixOfAudio",
+     "TranscriptKeepsUp",
+     "TranscriptKeepsUpHidden",
+     "FolderNamesUnique",
+     "RenameKeepsMembership",
+     "FolderRefsValid",
+     "AgentMoveOnlyReviewed",
+     "AsrSettles",
+     "ReviewSettles"
+    ],
+    "configurations": [
+     {
+      "name": "Design",
+      "cfg": "design/view-refresh-2026-11/tla/notes-view/Design.cfg",
+      "sha256": "4dfe8965b2f805288ab99cc889fa975c1435c0f1d256073844fac3c45f9be618",
+      "init": "checkerInit",
+      "tlaConstants": {
+       "Notes": "{n1, n2}",
+       "Folders": "{f1, f2}",
+       "Names": "{a, b}",
+       "None": "None",
+       "MaxSeg": "3",
+       "CapSeg": "1",
+       "Budget": "2",
+       "FixUnlimited": "TRUE",
+       "FixSegments": "TRUE",
+       "FixStreamAsr": "TRUE",
+       "FixRestoreFolder": "TRUE",
+       "AsrWhileHidden": "FALSE"
+      },
+      "tlaInvariants": [
+       "TypeOK",
+       "NoLengthLimit",
+       "TranscriptPrefixOfAudio",
+       "FolderRefsValid",
+       "FolderNamesUnique"
+      ],
+      "tlaProperties": [
+       "CrashKeepsAudio",
+       "AgentMoveOnlyReviewed",
+       "RenameKeepsMembership",
+       "TranscriptKeepsUp",
+       "AsrSettles",
+       "ReviewSettles"
+      ],
+      "quintInvariants": [
+       "TypeOK",
+       "NoLengthLimit",
+       "TranscriptPrefixOfAudio",
+       "FolderRefsValid",
+       "FolderNamesUnique"
+      ],
+      "quintTemporal": [
+       "CheckedCrashKeepsAudio",
+       "CheckedAgentMoveOnlyReviewed",
+       "CheckedRenameKeepsMembership",
+       "CheckedTranscriptKeepsUp",
+       "CheckedAsrSettles",
+       "CheckedReviewSettles"
+      ],
+      "expected": "every invariant and property holds"
+     },
+     {
+      "name": "AsBuilt_Cap",
+      "cfg": "design/view-refresh-2026-11/tla/notes-view/AsBuilt_Cap.cfg",
+      "sha256": "9bf79e40d385f05810b099bf76abd9c1a2c71cded210820e99ee47c1833ba67c",
+      "init": "checkerAsBuiltCapInit",
+      "tlaConstants": {
+       "Notes": "{n1, n2}",
+       "Folders": "{f1, f2}",
+       "Names": "{a, b}",
+       "None": "None",
+       "MaxSeg": "3",
+       "CapSeg": "1",
+       "Budget": "2",
+       "FixUnlimited": "FALSE",
+       "FixSegments": "TRUE",
+       "FixStreamAsr": "TRUE",
+       "FixRestoreFolder": "TRUE",
+       "AsrWhileHidden": "FALSE"
+      },
+      "tlaInvariants": [
+       "TypeOK",
+       "NoLengthLimit",
+       "TranscriptPrefixOfAudio",
+       "FolderRefsValid"
+      ],
+      "tlaProperties": [
+       "CrashKeepsAudio",
+       "AgentMoveOnlyReviewed",
+       "TranscriptKeepsUp",
+       "AsrSettles",
+       "ReviewSettles"
+      ],
+      "quintInvariants": [
+       "TypeOK",
+       "NoLengthLimit",
+       "TranscriptPrefixOfAudio",
+       "FolderRefsValid"
+      ],
+      "quintTemporal": [
+       "CheckedCrashKeepsAudio",
+       "CheckedAgentMoveOnlyReviewed",
+       "CheckedTranscriptKeepsUp",
+       "CheckedAsrSettles",
+       "CheckedReviewSettles"
+      ],
+      "expected": [
+       "NoLengthLimit"
+      ]
+     },
+     {
+      "name": "AsBuilt_Segments",
+      "cfg": "design/view-refresh-2026-11/tla/notes-view/AsBuilt_Segments.cfg",
+      "sha256": "cf6802325b374db1320080f8ab27ed0880926adc0a90c7bdf1cc2790190fa3be",
+      "init": "checkerAsBuiltSegmentsInit",
+      "tlaConstants": {
+       "Notes": "{n1, n2}",
+       "Folders": "{f1, f2}",
+       "Names": "{a, b}",
+       "None": "None",
+       "MaxSeg": "3",
+       "CapSeg": "1",
+       "Budget": "2",
+       "FixUnlimited": "TRUE",
+       "FixSegments": "FALSE",
+       "FixStreamAsr": "TRUE",
+       "FixRestoreFolder": "TRUE",
+       "AsrWhileHidden": "FALSE"
+      },
+      "tlaInvariants": [
+       "TypeOK",
+       "NoLengthLimit",
+       "TranscriptPrefixOfAudio",
+       "FolderRefsValid"
+      ],
+      "tlaProperties": [
+       "CrashKeepsAudio",
+       "AgentMoveOnlyReviewed",
+       "TranscriptKeepsUp",
+       "AsrSettles",
+       "ReviewSettles"
+      ],
+      "quintInvariants": [
+       "TypeOK",
+       "NoLengthLimit",
+       "TranscriptPrefixOfAudio",
+       "FolderRefsValid"
+      ],
+      "quintTemporal": [
+       "CheckedCrashKeepsAudio",
+       "CheckedAgentMoveOnlyReviewed",
+       "CheckedTranscriptKeepsUp",
+       "CheckedAsrSettles",
+       "CheckedReviewSettles"
+      ],
+      "expected": [
+       "CrashKeepsAudioInvariant",
+       "CheckedCrashKeepsAudio"
+      ]
+     },
+     {
+      "name": "AsBuilt_StreamAsr",
+      "cfg": "design/view-refresh-2026-11/tla/notes-view/AsBuilt_StreamAsr.cfg",
+      "sha256": "6c5cf8ddec47f1093c20e3c3266d98bd8fddb67424ab57c27fa9dd0d88fa9ca7",
+      "init": "checkerAsBuiltStreamAsrInit",
+      "tlaConstants": {
+       "Notes": "{n1, n2}",
+       "Folders": "{f1, f2}",
+       "Names": "{a, b}",
+       "None": "None",
+       "MaxSeg": "3",
+       "CapSeg": "1",
+       "Budget": "2",
+       "FixUnlimited": "TRUE",
+       "FixSegments": "TRUE",
+       "FixStreamAsr": "FALSE",
+       "FixRestoreFolder": "TRUE",
+       "AsrWhileHidden": "FALSE"
+      },
+      "tlaInvariants": [
+       "TypeOK",
+       "NoLengthLimit",
+       "TranscriptPrefixOfAudio",
+       "FolderRefsValid"
+      ],
+      "tlaProperties": [
+       "CrashKeepsAudio",
+       "AgentMoveOnlyReviewed",
+       "TranscriptKeepsUp",
+       "AsrSettles",
+       "ReviewSettles"
+      ],
+      "quintInvariants": [
+       "TypeOK",
+       "NoLengthLimit",
+       "TranscriptPrefixOfAudio",
+       "FolderRefsValid"
+      ],
+      "quintTemporal": [
+       "CheckedCrashKeepsAudio",
+       "CheckedAgentMoveOnlyReviewed",
+       "CheckedTranscriptKeepsUp",
+       "CheckedAsrSettles",
+       "CheckedReviewSettles"
+      ],
+      "expected": [
+       "CheckedTranscriptKeepsUp"
+      ]
+     },
+     {
+      "name": "AsBuilt_Hidden",
+      "cfg": "design/view-refresh-2026-11/tla/notes-view/AsBuilt_Hidden.cfg",
+      "sha256": "496bc31f0bb4cd993bddf27a222ea38c1c7fd3cca1753b637478ea8241c11fb0",
+      "init": "checkerInit",
+      "tlaConstants": {
+       "Notes": "{n1, n2}",
+       "Folders": "{f1, f2}",
+       "Names": "{a, b}",
+       "None": "None",
+       "MaxSeg": "3",
+       "CapSeg": "1",
+       "Budget": "2",
+       "FixUnlimited": "TRUE",
+       "FixSegments": "TRUE",
+       "FixStreamAsr": "TRUE",
+       "FixRestoreFolder": "TRUE",
+       "AsrWhileHidden": "FALSE"
+      },
+      "tlaInvariants": [
+       "TypeOK",
+       "NoLengthLimit",
+       "TranscriptPrefixOfAudio",
+       "FolderRefsValid",
+       "FolderNamesUnique"
+      ],
+      "tlaProperties": [
+       "CrashKeepsAudio",
+       "AgentMoveOnlyReviewed",
+       "RenameKeepsMembership",
+       "TranscriptKeepsUpHidden",
+       "AsrSettles",
+       "ReviewSettles"
+      ],
+      "quintInvariants": [
+       "TypeOK",
+       "NoLengthLimit",
+       "TranscriptPrefixOfAudio",
+       "FolderRefsValid",
+       "FolderNamesUnique"
+      ],
+      "quintTemporal": [
+       "CheckedCrashKeepsAudio",
+       "CheckedAgentMoveOnlyReviewed",
+       "CheckedRenameKeepsMembership",
+       "CheckedTranscriptKeepsUpHidden",
+       "CheckedAsrSettles",
+       "CheckedReviewSettles"
+      ],
+      "expected": [
+       "CheckedTranscriptKeepsUpHidden"
+      ]
+     },
+     {
+      "name": "Ablate_RestoreFolder",
+      "cfg": "design/view-refresh-2026-11/tla/notes-view/Ablate_RestoreFolder.cfg",
+      "sha256": "cc2a73bea88952e22ad14258948057c9f3bed0b2165972bf5a5ca9c743af3b83",
+      "init": "checkerAblateRestoreFolderInit",
+      "tlaConstants": {
+       "Notes": "{n1, n2}",
+       "Folders": "{f1, f2}",
+       "Names": "{a, b}",
+       "None": "None",
+       "MaxSeg": "3",
+       "CapSeg": "1",
+       "Budget": "2",
+       "FixUnlimited": "TRUE",
+       "FixSegments": "TRUE",
+       "FixStreamAsr": "TRUE",
+       "FixRestoreFolder": "FALSE",
+       "AsrWhileHidden": "FALSE"
+      },
+      "tlaInvariants": [
+       "TypeOK",
+       "NoLengthLimit",
+       "TranscriptPrefixOfAudio",
+       "FolderRefsValid"
+      ],
+      "tlaProperties": [
+       "CrashKeepsAudio",
+       "AgentMoveOnlyReviewed",
+       "TranscriptKeepsUp",
+       "AsrSettles",
+       "ReviewSettles"
+      ],
+      "quintInvariants": [
+       "TypeOK",
+       "NoLengthLimit",
+       "TranscriptPrefixOfAudio",
+       "FolderRefsValid"
+      ],
+      "quintTemporal": [
+       "CheckedCrashKeepsAudio",
+       "CheckedAgentMoveOnlyReviewed",
+       "CheckedTranscriptKeepsUp",
+       "CheckedAsrSettles",
+       "CheckedReviewSettles"
+      ],
+      "expected": [
+       "FolderRefsValid"
+      ]
+     },
+     {
+      "name": "Rename",
+      "cfg": "design/view-refresh-2026-11/tla/notes-view/Rename.cfg",
+      "sha256": "9e97eebdbd4be0915a610e23a607c5b0add9658a7ccd75d4f6dd4e9f0454e899",
+      "init": "checkerRenameInit",
+      "tlaConstants": {
+       "Notes": "{n1, n2}",
+       "Folders": "{f1, f2}",
+       "Names": "{a, b, c}",
+       "None": "None",
+       "MaxSeg": "1",
+       "CapSeg": "1",
+       "Budget": "1",
+       "FixUnlimited": "TRUE",
+       "FixSegments": "TRUE",
+       "FixStreamAsr": "TRUE",
+       "FixRestoreFolder": "TRUE",
+       "AsrWhileHidden": "FALSE"
+      },
+      "tlaInvariants": [
+       "TypeOK",
+       "NoLengthLimit",
+       "TranscriptPrefixOfAudio",
+       "FolderRefsValid",
+       "FolderNamesUnique"
+      ],
+      "tlaProperties": [
+       "CrashKeepsAudio",
+       "AgentMoveOnlyReviewed",
+       "RenameKeepsMembership",
+       "TranscriptKeepsUp",
+       "AsrSettles",
+       "ReviewSettles"
+      ],
+      "quintInvariants": [
+       "TypeOK",
+       "NoLengthLimit",
+       "TranscriptPrefixOfAudio",
+       "FolderRefsValid",
+       "FolderNamesUnique"
+      ],
+      "quintTemporal": [
+       "CheckedCrashKeepsAudio",
+       "CheckedAgentMoveOnlyReviewed",
+       "CheckedRenameKeepsMembership",
+       "CheckedTranscriptKeepsUp",
+       "CheckedAsrSettles",
+       "CheckedReviewSettles"
+      ],
+      "expected": "every invariant and property holds"
+     }
+    ],
+    "note": "The TLA+ directory was removed after this migration; read it at the recorded revision."
+   },
+   "actionProperties": [
+    {
+     "property": "CrashKeepsAudio",
+     "relation": "CrashKeepsAudioRelation",
+     "invariant": "CrashKeepsAudioInvariant"
+    },
+    {
+     "property": "RenameKeepsMembership",
+     "relation": "RenameKeepsMembershipRelation",
+     "invariant": "RenameKeepsMembershipInvariant"
+    },
+    {
+     "property": "AgentMoveOnlyReviewed",
+     "relation": "AgentMoveOnlyReviewedRelation",
+     "invariant": "AgentMoveOnlyReviewedInvariant"
+    }
+   ]
+  },
+  {
+   "path": "specs/quint/legacy/FilesBrowser.qnt",
+   "module": "FilesBrowser",
+   "init": "checkerInit",
+   "step": "step",
+   "invariant": "safety",
+   "tests": [
+    "designMoveKeepsBothTest",
+    "designTrashRestoreTest",
+    "designStaleSelectionTest",
+    "designIdentityRefusedTest",
+    "designAgentMoveTest",
+    "asBuiltCategoriesTest",
+    "ablateConflictTest",
+    "asBuiltIdentityTest"
+   ],
+   "sources": [
+    "apps/app/src/prototype/files-browser-adapter.ts",
+    "apps/app/src/runtime/files-agent-contract.ts",
+    "apps/app/src/runtime/files-storage.ts"
+   ],
+   "abstractions": [
+    "Historical as-built/proposed design comparison of the view refresh (design/view-refresh-2026-11/PLAN.md), not a runtime conformance claim.",
+    "All original state variables are fields of s; the TLA+ CONSTANTS that differ between configurations are immutable fields of s chosen by one checker initializer per .cfg; record spreads preserve the original frame conditions.",
+    "Finite domains and numeric constants are unchanged from the original model configurations.",
+    "Persistent history booleans monitor the original action properties [][A => P]_vars without restricting transitions; the named action is expressed as its exact pre/post relation; TLC checks the equivalent invariants and always(history.X) temporal formulas.",
+    "step includes stuttering, matching [][Next]_vars; Fairness keeps the original WF/SF assumptions over the state projection s; Checked<P> = Fairness implies P.",
+    "FreeName's CHOOSE over 1..3 is the smallest free name (TLC's CHOOSE order for an integer interval)."
+   ],
+   "constants": {
+    "Budget": 1,
+    "FilesSet": [
+     "photo",
+     "pdf",
+     "scan"
+    ],
+    "Dirs": [
+     "Download",
+     "DCIM/Camera",
+     "Documents"
+    ],
+    "Names": [
+     1,
+     2,
+     3
+    ]
+   },
+   "invariants": [
+    "TypeOK",
+    "CategoryIsQuery",
+    "NoOverwriteWithoutConfirm",
+    "NamesUniquePerDir",
+    "SelectionExists",
+    "TrashReversible",
+    "SelectionActsOnlyOnPresentInvariant",
+    "AgentMoveOnlyReviewedInvariant"
+   ],
+   "temporal": [
+    "CheckedTemporal"
+   ],
+   "temporalProperties": [
+    "AgentMoveOnlyReviewed",
+    "ListingsConverge",
+    "ReviewSettles",
+    "SelectionActsOnlyOnPresent"
+   ],
+   "currentChecks": [
+    {
+     "invariant": "CategoryIsQuery",
+     "expected": "violation",
+     "init": "checkerAsBuiltCategoriesInit",
+     "step": "step",
+     "configuration": "AsBuilt_Categories"
+    },
+    {
+     "invariant": "AgentMoveOnlyReviewedInvariant",
+     "expected": "violation",
+     "init": "checkerAsBuiltIdentityInit",
+     "step": "step",
+     "configuration": "AsBuilt_Identity"
+    },
+    {
+     "invariant": "NoOverwriteWithoutConfirm",
+     "expected": "violation",
+     "init": "checkerAblateConflictInit",
+     "step": "step",
+     "configuration": "Ablate_Conflict"
+    }
+   ],
+   "currentTemporalChecks": [
+    {
+     "property": "CheckedAgentMoveOnlyReviewed",
+     "expected": "violation",
+     "init": "checkerAsBuiltIdentityInit",
+     "step": "step",
+     "fairness": "Fairness",
+     "sourceProperty": "AgentMoveOnlyReviewed",
+     "configuration": "AsBuilt_Identity"
+    }
+   ],
+   "legacySource": {
+    "path": "design/view-refresh-2026-11/tla/files-browser/Spec.tla",
+    "revision": "59badc34ca",
+    "sha256": "bdb5535f587a1f9fb918d69bc7d8c57f745d3e4b2f2ec3b1acf44d1b5431467a",
+    "definitions": [
+     "FilesSet",
+     "Dirs",
+     "Gone",
+     "Trash",
+     "Kind",
+     "Home0",
+     "Names",
+     "NoReview",
+     "Present",
+     "NamesUniquePerDir",
+     "Category",
+     "Categories",
+     "Listing",
+     "TypeOK",
+     "Init",
+     "Navigate",
+     "Toggle",
+     "Clash",
+     "FreeName",
+     "MoveOne",
+     "MoveSel",
+     "TrashSel",
+     "Restore",
+     "EmptyTrash",
+     "External",
+     "Refresh",
+     "AgentPropose",
+     "Reviewed",
+     "AgentApply",
+     "AgentRefused",
+     "AgentReject",
+     "Next",
+     "Spec",
+     "CategoryIsQuery",
+     "NoOverwriteWithoutConfirm",
+     "SelectionExists",
+     "SelectionActsOnlyOnPresent",
+     "TrashReversible",
+     "AgentMoveOnlyReviewed",
+     "ListingsConverge",
+     "ReviewSettles"
+    ],
+    "configurations": [
+     {
+      "name": "Design",
+      "cfg": "design/view-refresh-2026-11/tla/files-browser/Design.cfg",
+      "sha256": "0328e62ccdd2d115197f91f0354eb729ff448db9fbb9751dd75f589d132bb9ad",
+      "init": "checkerInit",
+      "tlaConstants": {
+       "Budget": "1",
+       "FixCategories": "TRUE",
+       "FixConflict": "TRUE",
+       "FixIdentity": "TRUE"
+      },
+      "tlaInvariants": [
+       "TypeOK",
+       "CategoryIsQuery",
+       "NoOverwriteWithoutConfirm",
+       "NamesUniquePerDir",
+       "SelectionExists",
+       "TrashReversible"
+      ],
+      "tlaProperties": [
+       "AgentMoveOnlyReviewed",
+       "ListingsConverge",
+       "ReviewSettles",
+       "SelectionActsOnlyOnPresent"
+      ],
+      "quintInvariants": [
+       "TypeOK",
+       "CategoryIsQuery",
+       "NoOverwriteWithoutConfirm",
+       "NamesUniquePerDir",
+       "SelectionExists",
+       "TrashReversible"
+      ],
+      "quintTemporal": [
+       "CheckedAgentMoveOnlyReviewed",
+       "CheckedListingsConverge",
+       "CheckedReviewSettles",
+       "CheckedSelectionActsOnlyOnPresent"
+      ],
+      "expected": "every invariant and property holds"
+     },
+     {
+      "name": "AsBuilt_Categories",
+      "cfg": "design/view-refresh-2026-11/tla/files-browser/AsBuilt_Categories.cfg",
+      "sha256": "f4fa0f1c6687364dc0387d3dd4b9f02fa4fd7fb3572711cf3af85825d4ee6aab",
+      "init": "checkerAsBuiltCategoriesInit",
+      "tlaConstants": {
+       "Budget": "1",
+       "FixCategories": "FALSE",
+       "FixConflict": "TRUE",
+       "FixIdentity": "TRUE"
+      },
+      "tlaInvariants": [
+       "TypeOK",
+       "CategoryIsQuery",
+       "NoOverwriteWithoutConfirm",
+       "NamesUniquePerDir",
+       "SelectionExists",
+       "TrashReversible"
+      ],
+      "tlaProperties": [
+       "AgentMoveOnlyReviewed",
+       "ListingsConverge",
+       "ReviewSettles",
+       "SelectionActsOnlyOnPresent"
+      ],
+      "quintInvariants": [
+       "TypeOK",
+       "CategoryIsQuery",
+       "NoOverwriteWithoutConfirm",
+       "NamesUniquePerDir",
+       "SelectionExists",
+       "TrashReversible"
+      ],
+      "quintTemporal": [
+       "CheckedAgentMoveOnlyReviewed",
+       "CheckedListingsConverge",
+       "CheckedReviewSettles",
+       "CheckedSelectionActsOnlyOnPresent"
+      ],
+      "expected": [
+       "CategoryIsQuery"
+      ]
+     },
+     {
+      "name": "AsBuilt_Identity",
+      "cfg": "design/view-refresh-2026-11/tla/files-browser/AsBuilt_Identity.cfg",
+      "sha256": "81d0267c00e707b04593602f8c3dab4520845d9100352eaa2cf1b29fd27e83a3",
+      "init": "checkerAsBuiltIdentityInit",
+      "tlaConstants": {
+       "Budget": "1",
+       "FixCategories": "TRUE",
+       "FixConflict": "TRUE",
+       "FixIdentity": "FALSE"
+      },
+      "tlaInvariants": [
+       "TypeOK",
+       "CategoryIsQuery",
+       "NoOverwriteWithoutConfirm",
+       "NamesUniquePerDir",
+       "SelectionExists",
+       "TrashReversible"
+      ],
+      "tlaProperties": [
+       "AgentMoveOnlyReviewed",
+       "ListingsConverge",
+       "ReviewSettles",
+       "SelectionActsOnlyOnPresent"
+      ],
+      "quintInvariants": [
+       "TypeOK",
+       "CategoryIsQuery",
+       "NoOverwriteWithoutConfirm",
+       "NamesUniquePerDir",
+       "SelectionExists",
+       "TrashReversible"
+      ],
+      "quintTemporal": [
+       "CheckedAgentMoveOnlyReviewed",
+       "CheckedListingsConverge",
+       "CheckedReviewSettles",
+       "CheckedSelectionActsOnlyOnPresent"
+      ],
+      "expected": [
+       "AgentMoveOnlyReviewedInvariant",
+       "CheckedAgentMoveOnlyReviewed"
+      ]
+     },
+     {
+      "name": "Ablate_Conflict",
+      "cfg": "design/view-refresh-2026-11/tla/files-browser/Ablate_Conflict.cfg",
+      "sha256": "598c915eb49cbbcce85e48457a4f96c541a0d529d1269deda10a7301eb7da2dd",
+      "init": "checkerAblateConflictInit",
+      "tlaConstants": {
+       "Budget": "1",
+       "FixCategories": "TRUE",
+       "FixConflict": "FALSE",
+       "FixIdentity": "TRUE"
+      },
+      "tlaInvariants": [
+       "TypeOK",
+       "CategoryIsQuery",
+       "NoOverwriteWithoutConfirm",
+       "NamesUniquePerDir",
+       "SelectionExists",
+       "TrashReversible"
+      ],
+      "tlaProperties": [
+       "AgentMoveOnlyReviewed",
+       "ListingsConverge",
+       "ReviewSettles",
+       "SelectionActsOnlyOnPresent"
+      ],
+      "quintInvariants": [
+       "TypeOK",
+       "CategoryIsQuery",
+       "NoOverwriteWithoutConfirm",
+       "NamesUniquePerDir",
+       "SelectionExists",
+       "TrashReversible"
+      ],
+      "quintTemporal": [
+       "CheckedAgentMoveOnlyReviewed",
+       "CheckedListingsConverge",
+       "CheckedReviewSettles",
+       "CheckedSelectionActsOnlyOnPresent"
+      ],
+      "expected": [
+       "NoOverwriteWithoutConfirm"
+      ]
+     }
+    ],
+    "note": "The TLA+ directory was removed after this migration; read it at the recorded revision."
+   },
+   "actionProperties": [
+    {
+     "property": "SelectionActsOnlyOnPresent",
+     "relation": "SelectionActsOnlyOnPresentRelation",
+     "invariant": "SelectionActsOnlyOnPresentInvariant"
+    },
+    {
+     "property": "AgentMoveOnlyReviewed",
+     "relation": "AgentMoveOnlyReviewedRelation",
+     "invariant": "AgentMoveOnlyReviewedInvariant"
+    }
+   ]
+  }
+ ]
+}

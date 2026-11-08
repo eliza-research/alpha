@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';import vm from 'node:vm';import {stripTypeScriptTypes,createRequire} from 'node:module';
 const require=createRequire(import.meta.url);const {JSDOM}=require('jsdom');
-// The adapter's camera session (design/view-refresh-2026-11/tla/camera-session, Design.cfg) run against the real shared
+// The adapter's camera session (specs/quint/legacy/CameraSession.qnt, checkerInit = Design) run against the real shared
 // camera session (plugin-native-camera) with a synthetic camera bridge.
 const source=fs.readFileSync(new URL('../apps/app/src/prototype/camera-adapter.ts',import.meta.url),'utf8');
 const slice=(from,to)=>{const a=source.indexOf(from),b=source.indexOf(to,a);assert.ok(a>=0&&b>a,`camera-adapter.ts still has ${from} … ${to}`);return source.slice(a,b);};
