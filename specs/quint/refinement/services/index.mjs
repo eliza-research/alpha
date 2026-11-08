@@ -12,6 +12,7 @@ import {credentialRefinement} from './credentials.mjs';
 import {pdfRefinement} from './pdf.mjs';
 import {runSignInCoordinatorRefinement} from './sign-in-coordinator.mjs';
 import {runInboxCoordinatorRefinement} from './inbox-coordinator.mjs';
+import {runInboxCleanupRefinement} from './inbox-cleanup.mjs';
 import {checkCredentialCoordinator} from '../native/credential-coordinator.mjs';
 import {fileURLToPath} from 'node:url';
 
@@ -26,6 +27,8 @@ export async function runServicesRefinement() {
   receipts.push(await runSignInCoordinatorRefinement(undefined, [fileURLToPath(import.meta.url)]));
   const inboxCoordinator = await runInboxCoordinatorRefinement([fileURLToPath(import.meta.url)]);
   receipts.push(...inboxCoordinator.receipts);
+  const inboxCleanup = await runInboxCleanupRefinement([fileURLToPath(import.meta.url)]);
+  receipts.push(...inboxCleanup.receipts);
   const credential = await checkCredentialCoordinator([fileURLToPath(import.meta.url)], ['NativeCredentialMutation']);
   receipts.push(...credential.receipts);
   const obligations = [
@@ -45,6 +48,7 @@ export async function runServicesRefinement() {
     {model: 'PdfWorker', obligation: 'Kernel isolation, descriptor transfer, watchdog and memory kill', reason: 'Actual service request/render/cleanup/reply code executes against Android primitives. Host stubs cannot establish kernel or real PDF renderer behavior.', requires: ['IsolatedPdfInstrumentedTest on a disposable admitted installation']},
   ];
   obligations.push(...inboxCoordinator.obligations);
+  obligations.push(...inboxCleanup.obligations);
   obligations.push(...credential.obligations);
   return {receipts, obligations};
 }
