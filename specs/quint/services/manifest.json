@@ -1255,6 +1255,109 @@
         "One running service during initialization, one room owner, one diagnostic task and three ordinary callers.",
         "Full host shutdown, provider cancellation and dynamic plugin registration remain open."
       ]
+    },
+    {
+      "path": "specs/quint/services/TaskServiceLifecycle.qnt",
+      "module": "TaskServiceLifecycle",
+      "init": "init",
+      "step": "step",
+      "invariant": "safety",
+      "sources": [
+        "vendor/eliza/packages/core/src/services/task.ts",
+        "vendor/eliza/packages/core/src/services/task-scheduler.ts",
+        "vendor/eliza/packages/core/src/runtime.ts",
+        "vendor/eliza/plugins/plugin-sql/src/base.ts",
+        "vendor/eliza/plugins/plugin-sql/src/stores/task-wake.ts",
+        "patches/eliza/task-service-stop.patch",
+        "scripts/core-state-patch.mjs"
+      ],
+      "tests": [
+        "stoppedManualAdmissionTest",
+        "readFinishesAfterStopTest",
+        "stoppedTimerTest",
+        "overlappingOwnersTest",
+        "blockingTickTest",
+        "nonblockingTickTest",
+        "stopDrainsEveryOwnerTest",
+        "exclusiveManualInvocationsTest",
+        "emptyTimerDisarmsTest",
+        "failedTimerRearmsTest",
+        "orphanGraceTest",
+        "orphanQuarantineTest",
+        "failedQuarantineDoesNotInventPersistenceTest",
+        "orphanHealsNextTickTest",
+        "deletedRowKeepsExecutionOwnerTest",
+        "pendingOldReadCannotEnterRestartTest"
+      ],
+      "invariants": [
+        "CountedExecutionOwnership",
+        "NoTimerAfterStop",
+        "CurrentExecutionGeneration",
+        "StopCompletionIsQuiescent",
+        "TypeOK"
+      ],
+      "abstractions": [
+        "One persisted task, three invocation identities, two service generations and at most two failure-count classes.",
+        "Actual runtime/SQL source campaign observes task-row flags, tracked owners, one-shot timer, local mode, active tick and stop completion. External worker outcomes, clock and injected storage refusal are controlled.",
+        "Precise wake revisions/time arithmetic, multi-task ordering, multiple scheduler instances and daemon host ownership remain separate obligations."
+      ],
+      "bounds": {
+        "maxSamples": 1000,
+        "maxSteps": 80,
+        "seed": "123"
+      }
+    },
+    {
+      "path": "specs/quint/services/CanonicalNotesStore.qnt",
+      "module": "CanonicalNotesStore",
+      "init": "init",
+      "step": "step",
+      "invariant": "safety",
+      "sources": [
+        "vendor/eliza/plugins/plugin-notes/src/store.ts",
+        "vendor/eliza/plugins/plugin-notes/src/service.ts",
+        "vendor/eliza/plugins/plugin-notes/src/interact.ts",
+        "vendor/eliza/plugins/plugin-notes/src/types.ts",
+        "vendor/eliza/plugins/plugin-notes/src/validation.ts",
+        ".eliza/client-features/plugins/plugin-notes/src/client/notes-api.ts",
+        "patches/eliza/notes-state-runtime.patch"
+      ],
+      "tests": [
+        "canonicalReplayTest",
+        "tiedClockEditTest",
+        "backwardsClockEditTest",
+        "legacyTimestampFallbackTest",
+        "legacyTieUsesRawOrderTest",
+        "mixedLegacyEditTest",
+        "rawRestoreMembershipTest",
+        "lostAckPreservesStaleCacheTest",
+        "staleWriterRejectedTest",
+        "restartLoadsUnknownCommitTest",
+        "staleRevisionRejectedTest",
+        "projectionFailurePreservesDocumentTest",
+        "delayedReplyKeepsOwnCommitTest",
+        "firstEmptyClearAddsTrashTest",
+        "repeatEmptyClearPreservesRevisionTest",
+        "stoppedStoreCannotAdmitTest"
+      ],
+      "invariants": [
+        "TypeOK",
+        "RawMembershipDisjoint",
+        "VisibleContentUnique",
+        "ReplyIdentityPresent",
+        "ConfirmedRevisionBounded",
+        "NewerOrderWins"
+      ],
+      "abstractions": [
+        "Two plain physical notes and two content classes; collection revisions zero through eight; wall-clock values zero through two.",
+        "Raw Trash/active membership, visible representative, private logical revision and exact committed reply are distinct. Restore returns raw membership.",
+        "One serialized cache and controlled independent encrypted-port writer. Cryptographic storage, unlimited data, full authorization and filesystem crash recovery remain separate obligations."
+      ],
+      "bounds": {
+        "maxSamples": 1000,
+        "maxSteps": 80,
+        "seed": "123"
+      }
     }
   ]
 }

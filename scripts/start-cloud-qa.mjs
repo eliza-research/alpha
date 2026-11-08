@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import {coreRuntimeArguments} from './core-state-patch.mjs';
 /** Isolated development-only Cloud inference QA. Never used by the phone build or 5209. */
 import fs from 'node:fs';
 import path from 'node:path';
@@ -29,6 +30,7 @@ export function cloudQaConfiguration(env=process.env){
   authority:{ELIZA_DEV_SOURCE:'1',ELIZA_DEV_CLOUD_ENV_AUTHORITY:'staging-explicit',ELIZAOS_CLOUD_BASE_URL:CLOUD_SDK_BASES.staging,ELIZAOS_CLOUD_API_KEY:key,ELIZAOS_CLOUD_USE_INFERENCE:'true'}};
 }
 async function main(){
+ const root=path.resolve(HERE,'..');
  const qa=cloudQaConfiguration(),source=process.env.ALPHA_ELIZA_SOURCE?path.resolve(process.env.ALPHA_ELIZA_SOURCE):sourceDirectory(path.resolve(HERE,'..'));
  const entry=path.join(source,'packages/app/src/runtime/dev-server.ts');if(!fs.existsSync(entry))throw Error('Normal Eliza source entrypoint is missing.');
  fs.mkdirSync(qa.profile,{recursive:true,mode:0o700});fs.chmodSync(qa.profile,0o700);
@@ -38,7 +40,7 @@ async function main(){
  if(JSON.stringify(privateProfile.config.serviceRouting?.llmText)!==JSON.stringify(qa.route)||privateProfile.config.cloud?.enabled!==true)throw Error('QA profile routing differs from the requested staging Cloud route. Use a fresh profile or review its existing configuration.');
  const env=runtimeEnvironment({inherited:process.env,allow:['PATH','TMPDIR','LANG','SHELL','USER','LOGNAME','HOME'],settings:{},owned:{...qa.authority,ELIZA_HEADLESS:'1',ELIZA_DISTRIBUTION_PROFILE:'store',ELIZA_PLUGIN_SET:'lean-chat',ELIZA_REQUIRE_LOCAL_AUTH:'1',ELIZA_API_BIND:'127.0.0.1',ELIZA_API_PORT:String(qa.port),ELIZA_API_EXPOSE_PORT:'1',ELIZA_STATE_DIR:qa.profile,ELIZA_CONFIG_PATH:configPath,ELIZA_API_TOKEN:privateProfile.token,ELIZA_HOST_CONTEXT_REVISION:'cloud-qa:'+crypto.randomUUID(),ELIZA_NATIVE_VIEW_DECLARATIONS:nativeViewDeclarationsJson},remove:['CEREBRAS_API_KEY','OPENAI_API_KEY','ANTHROPIC_API_KEY']});
  const log=fs.openSync(path.join(qa.profile,'server.log'),'a',0o600);
- try{fs.fchmodSync(log,0o600);const running=await startPrivateRuntimeProcess({command:process.env.ALPHA_BUN||'bun',args:['--no-install','--conditions=eliza-source',entry],cwd:qa.profile,env,stdio:['ignore',log,log],async recordLaunch({pid,launchedAt}){
+ try{fs.fchmodSync(log,0o600);const running=await startPrivateRuntimeProcess({command:process.env.ALPHA_BUN||'bun',args:coreRuntimeArguments(root,source,['--no-install','--conditions=eliza-source',entry]),cwd:qa.profile,env:{...env,ALPHA_CORE_STATE_SOURCE:source},stdio:['ignore',log,log],async recordLaunch({pid,launchedAt}){
   const receipt={purpose:'isolated-staging-cloud-qa',pid,port:qa.port,profile:qa.profile,source,revision:execFileSync('git',['rev-parse','HEAD'],{cwd:source,encoding:'utf8'}).trim(),route:qa.route,environment:'staging',apiBase:CLOUD_SDK_BASES.staging,credentialLocation:'server-side owner-only file',identityVerified:false,modelCallsPerformedByLauncher:0,startedAt:new Date(launchedAt).toISOString()};
   await writePrivateRuntimeJson(path.join(qa.profile,'process.json'),receipt);console.log(JSON.stringify(receipt));
  }});const result=await running.completion;if(result.error)console.error(result.error.message);process.exitCode=result.error?1:result.code??1;}finally{fs.closeSync(log);}

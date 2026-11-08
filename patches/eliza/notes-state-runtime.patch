@@ -1,0 +1,127 @@
+--- a/plugins/plugin-notes/src/service.ts
++++ b/plugins/plugin-notes/src/service.ts
+@@ -17,0 +18 @@
++  NotesDocument,
+@@ -143 +144,6 @@
+-function distinctNotes(notes: readonly StickyNote[]): StickyNote[] {
++function distinctNotes(
++  notes: readonly StickyNote[],
++  noteRevisions: Record<string, number> = {},
++): StickyNote[] {
++  const revisionOf = (note: StickyNote) =>
++    Object.hasOwn(noteRevisions, note.id) ? noteRevisions[note.id] : 0;
+@@ -148 +154,7 @@
+-    if (!current || note.updatedAt > current.updatedAt) shown.set(key, note);
++    if (
++      !current ||
++      revisionOf(note) > revisionOf(current) ||
++      (revisionOf(note) === revisionOf(current) && note.updatedAt > current.updatedAt)
++    ) {
++      shown.set(key, note);
++    }
+@@ -150,0 +163,8 @@
++}
++
++function projectNotesSnapshot(document: NotesDocument): NotesSnapshot {
++  return {
++    revision: document.revision,
++    notes: distinctNotes(document.notes, document.noteRevisions),
++    trash: document.trash ?? [],
++  };
+@@ -274,2 +294 @@
+-    const snapshot = this.store.snapshot();
+-    return { ...snapshot, notes: distinctNotes(snapshot.notes) };
++    return this.store.snapshot(projectNotesSnapshot);
+@@ -405 +424 @@
+-          : draft.notes.find(
++          : distinctNotes(draft.notes, draft.noteRevisions).find(
+@@ -425,0 +445 @@
++      draft.noteRevisions = { ...draft.noteRevisions, [id]: draft.revision + 1 };
+@@ -427 +447 @@
+-    });
++    }, projectNotesSnapshot);
+@@ -472,0 +493 @@
++      draft.noteRevisions = { ...draft.noteRevisions, [id]: draft.revision + 1 };
+@@ -474 +495 @@
+-    });
++    }, projectNotesSnapshot);
+@@ -547,0 +569 @@
++      draft.noteRevisions = { ...draft.noteRevisions, [updated.id]: draft.revision + 1 };
+@@ -549 +571 @@
+-    });
++    }, projectNotesSnapshot);
+@@ -590 +612 @@
+-    });
++    }, projectNotesSnapshot);
+@@ -680 +702 @@
+-    });
++    }, projectNotesSnapshot);
+--- a/plugins/plugin-notes/src/store.ts
++++ b/plugins/plugin-notes/src/store.ts
+@@ -254,2 +254,4 @@
+-  snapshot(): NotesSnapshot {
+-    return snapshotFromDocument(this.requireReadyDocument());
++  snapshot(
++    project: (document: NotesDocument) => NotesSnapshot = snapshotFromDocument,
++  ): NotesSnapshot {
++    return project(cloneDocument(this.requireReadyDocument()));
+@@ -277,0 +280 @@
++    project: (document: NotesDocument) => NotesSnapshot = snapshotFromDocument,
+@@ -283,0 +287,13 @@
++      // Retire metadata only for records this mutation permanently removed.
++      // Unknown new metadata still reaches validation and is rejected.
++      const previousRevisions = current.noteRevisions;
++      if (draft.noteRevisions !== undefined && previousRevisions !== undefined) {
++        const remaining = new Set([
++          ...draft.notes.map(note => note.id),
++          ...(draft.trash ?? []).map(entry => entry.note.id),
++        ]);
++        draft.noteRevisions = Object.fromEntries(
++          Object.entries(draft.noteRevisions).filter(([id]) =>
++            remaining.has(id) || !Object.hasOwn(previousRevisions, id)),
++        );
++      }
+@@ -287 +303 @@
+-        return { value, snapshot: snapshotFromDocument(current) };
++        return { value, snapshot: project(cloneDocument(current)) };
+@@ -291,0 +308,3 @@
++      // Projection runs on a detached value before persistence. A throwing or
++      // mutating projector cannot change the committed document or its cache.
++      const snapshot = project(cloneDocument(next));
+@@ -294 +313 @@
+-      return { value, snapshot: snapshotFromDocument(next) };
++      return { value, snapshot };
+--- a/plugins/plugin-notes/src/types.ts
++++ b/plugins/plugin-notes/src/types.ts
+@@ -57,0 +58,2 @@
++  /** Private mutation order. Public snapshots omit it; legacy documents may lack it. */
++  noteRevisions?: Record<string, number>;
+--- a/plugins/plugin-notes/src/validation.ts
++++ b/plugins/plugin-notes/src/validation.ts
+@@ -501 +501 @@
+-    ["schemaVersion", "revision", "persistedAt", "notes", "trash"],
++    ["schemaVersion", "revision", "persistedAt", "notes", "trash", "noteRevisions"],
+@@ -546,0 +547,18 @@
++  const revision = parseRevision(record.revision);
++  let noteRevisions: Record<string, number> | undefined;
++  if (record.noteRevisions !== undefined) {
++    const revisions = requireRecord(record.noteRevisions, "noteRevisions");
++    noteRevisions = Object.fromEntries(
++      Object.entries(revisions).map(([id, value]) => {
++        if (
++          !allIds.has(id) ||
++          typeof value !== "number" ||
++          !Number.isSafeInteger(value) ||
++          value < 0 || value > revision
++        ) {
++          throw validationError("Invalid note mutation revision.", "noteRevisions");
++        }
++        return [id, value] as const;
++      }),
++    );
++  }
+@@ -549 +567 @@
+-    revision: parseRevision(record.revision),
++    revision,
+@@ -552,0 +571 @@
++    ...(noteRevisions === undefined ? {} : { noteRevisions }),

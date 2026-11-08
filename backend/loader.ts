@@ -3,6 +3,7 @@ import { resolve, join } from "node:path";
 import { createConsumerSourceResolver } from "../vendor/eliza/packages/app/scripts/lib/consumer-source-resolver.mjs";
 import { verifyPinnedUpstream } from "../scripts/pinned-upstream-source.mjs";
 import { randomBytes } from "node:crypto";
+import { coreStateBuildPlugin, coreStateBuildRecord, coreStateRequiredTargets } from "../scripts/core-state-patch.mjs";
 export async function loadPinnedRuntime() {
 	if (process.env.ELIZA_DEV_ALLOW_TEST_MOCKS !== "1") throw new Error("Development runtime is disabled");
 	// Authenticate on every build, before resolution, generated output or private state.
@@ -14,11 +15,13 @@ export async function loadPinnedRuntime() {
 			sourceRoot: root,
 			consumerRoots: [import.meta.dirname],
 		});
+	const core = coreStateBuildPlugin(resolve(import.meta.dirname, ".."), root);
 	const built = await Bun.build({
 		entrypoints: [resolve(import.meta.dirname, "runtime.ts")],
 		outdir: resolve(import.meta.dirname, ".generated"),
 		target: "bun",
-		plugins: [sourceResolver],
+		metafile: true,
+		plugins: [core.plugin, sourceResolver],
 	});
 	if (!built.success) {
 		for (const log of built.logs) console.error(log);
@@ -29,6 +32,7 @@ export async function loadPinnedRuntime() {
 		JSON.stringify(
 			{
 				commit: head,
+				coreState: coreStateBuildRecord(resolve(import.meta.dirname, ".."), core.transforms, coreStateRequiredTargets(Object.keys(built.metafile!.inputs))),
 				modules: Object.fromEntries([...resolvedSources].sort()),
 			},
 			null,

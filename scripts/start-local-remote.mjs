@@ -1,6 +1,7 @@
 #!/usr/bin/env node
+import {coreRuntimeArguments} from './core-state-patch.mjs';
 import {sourceDirectory, verifySource} from './local-agent-source.mjs';
-// Runs the real, unmodified Eliza app host with an isolated private profile.
+// Runs the pinned Eliza app host with authenticated runtime transforms with an isolated private profile.
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -14,6 +15,7 @@ import {agentTtsEnvironment} from './agent-tts.mjs';
 import {developmentCartesiaEnvironment} from './dev-cartesia.mjs';
 import {agentAsrEnvironment} from './agent-asr.mjs';
 import {nativeViewDeclarationsJson} from './native-view-policy.mjs';
+const root=path.resolve(import.meta.dirname,'..');
 const source = process.env.ALPHA_ELIZA_SOURCE ? path.resolve(process.env.ALPHA_ELIZA_SOURCE) : sourceDirectory(path.resolve(import.meta.dirname,'..'));
 // Upstream's own swap switches. Only both together are qualified, and only on verified pinned source.
 const swapFlags = ['ELIZA_SECRET_SWAP_ENABLED', 'ELIZA_PII_SWAP_ENABLED'].map(key => process.env[key]);
@@ -64,7 +66,7 @@ const log=fs.openSync(path.join(profile,'server.log'),'a',0o600);
 try {
  fs.fchmodSync(log,0o600);
  // The profile cwd cannot supply the workspace source condition.
- const running=await startPrivateRuntimeProcess({command:process.env.ALPHA_BUN||'bun',args:['--no-install','--conditions=eliza-source',entry],cwd:profile,env,stdio:['ignore',log,log],
+ const running=await startPrivateRuntimeProcess({command:process.env.ALPHA_BUN||'bun',args:coreRuntimeArguments(root,source,['--no-install','--conditions=eliza-source',entry]),cwd:profile,env:{...env,ALPHA_CORE_STATE_SOURCE:source},stdio:['ignore',log,log],
   async recordLaunch({pid,launchedAt}){
    const sourceManifest=path.join(source,'.alpha-runtime-source.json');
    const metadata={cartesiaConfigured:cartesiaEnvironment.ELIZA_SELF_HOSTED_VOICE_ENABLED==='1',localTtsConfigured:ttsEnvironment.ELIZA_PARADEE_ENABLED==='1',localAsrConfigured:asrEnvironment.ELIZA_ASR_ENABLED==='1',speechReadiness:'worker-initialization-required',egressRedactionRequested:redaction,sourceManifestSha256:fs.existsSync(sourceManifest)?crypto.createHash('sha256').update(fs.readFileSync(sourceManifest)).digest('hex'):null,pid,port,profile,source,revision:execFileSync('git',['rev-parse','HEAD'],{cwd:source,encoding:'utf8'}).trim(),startedAt:new Date(launchedAt).toISOString()};

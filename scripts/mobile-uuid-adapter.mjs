@@ -3,6 +3,8 @@ import path from 'node:path';
 import {createHash} from 'node:crypto';
 import {isDeepStrictEqual} from 'node:util';
 
+import {coreStateBuildRecord,CORE_STATE_TARGET,NOTES_STATE_TARGETS,TURN_STATE_TARGET} from './core-state-patch.mjs';
+
 export const MOBILE_BUILD_RECEIPT='alpha-mobile-build.json';
 export const MOBILE_UUID_POLICY='patches/eliza/mobile-uuid-build.json';
 export const MOBILE_BUILD_INPUTS=['scripts/build-mobile-agent.mjs','scripts/mobile-uuid-adapter.mjs','scripts/mobile-bundle-smoke.mjs'];
@@ -69,17 +71,17 @@ export function createMobileUuidAdapter(root,source){
  }}};
 }
 
-export function mobileBuildReceipt(root,source,bundle,transforms){
+export function mobileBuildReceipt(root,source,bundle,transforms,coreTransforms){
  const inputs=mobileBuildInputs(root,source),index=path.join(inputs.packageRoot,'dist-node/index.js');
  const expected=[{path:inputs.policy.package.root+'/dist-node/index.js',sourceSha256:inputs.policy.package.files['dist-node/index.js'],bridgeSha256:hash(uuidCommonJsBridge(readRegular(inputs.packageRoot,'dist-node/index.js').toString('utf8'),index))}];
  if(!isDeepStrictEqual(transforms,expected))throw Error('Mobile UUID producer must transform exactly the reviewed barrel');
- return {...inputs.identity,transforms,bundleSha256:hash(fs.readFileSync(bundle)),smoke:{uuidSemantics:true,messageTurnBeforeProvider:true}};
+ return {...inputs.identity,transforms,coreState:coreStateBuildRecord(root,coreTransforms,[CORE_STATE_TARGET,...NOTES_STATE_TARGETS,TURN_STATE_TARGET]),bundleSha256:hash(fs.readFileSync(bundle)),smoke:{uuidSemantics:true,messageTurnBeforeProvider:true}};
 }
 
 /** Reject stale producers even when the original upstream source stamp still matches. */
 export function verifyMobileBuildReceipt(root,source,agent=path.join(source,'packages/agent/dist-mobile')){
  const receipt=json(path.join(agent,MOBILE_BUILD_RECEIPT));
- const expected=mobileBuildReceipt(root,source,path.join(agent,'agent-bundle.js'),receipt.transforms);
+ const expected=mobileBuildReceipt(root,source,path.join(agent,'agent-bundle.js'),receipt.transforms,receipt.coreState?.transforms);
  if(!isDeepStrictEqual(receipt,expected))throw Error('Mobile build receipt differs from reviewed producer or bundle');
  return receipt;
 }
