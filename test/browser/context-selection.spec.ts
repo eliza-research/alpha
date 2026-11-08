@@ -321,11 +321,10 @@ test.describe('capture',()=>{
   await expect(page.getByRole('button',{name:'Ask Alpha about this photo',exact:true})).toHaveCount(0);
   await expect(page.getByRole('button',{name:/Captured photo/})).toHaveCount(1);
  });
- test('a typed library search is not treated as a capture and stays visibly unavailable',async({page})=>{
+ test('a typed library search is not treated as a capture and offers no Ask chip',async({page})=>{
   await photo(page,'ONLY');await page.getByRole('button',{name:'Photos',exact:true}).click();await expect(page.getByRole('button',{name:/Captured photo/}).first()).toBeVisible();
   await page.getByRole('button',{name:'Search photos',exact:true}).click();await page.keyboard.type('beach');
-  await page.getByRole('button',{name:/^Ask .*beach/}).click();
-  await expect(page.getByText('Content analysis is not connected. No photo or document content has been sent.',{exact:true})).toBeVisible();
+  await expect(page.getByRole('button',{name:/^Ask .*beach/})).toHaveCount(0);
   await expect(review(page)).toHaveCount(0);await expect(composer(page)).toHaveCount(0);
  });
 });
