@@ -25,6 +25,12 @@ test('only reviewable state offers restart readiness; incomplete states remain t
  for(const view of [undefined,{step:'reviewing'},{step:'archiving'},{step:'unavailable'},{step:'partial'}])assert.doesNotMatch(residentRecoveryCopy(reason,view),/ready to restart|data is safe/);
  for(const reason of ['ipc-recovery-required','runtime-identity-unavailable'])assert.doesNotMatch(residentRecoveryCopy(reason),/ready to restart|data is safe/);
 });
+test('a runtime identity refusal says to try again and never to reinstall or clear data',()=>{
+ for(const line of [residentRecoveryCopy('runtime-identity-unavailable'),residentRecoveryMessage('runtime-identity-unavailable')]){
+  assert.match(line,/try again/i);assert.doesNotMatch(line,/reinstall|clear/i);
+ }
+ assert.equal(residentRecoveryCopy('ipc-recovery-required'),'Restart your phone to try again.');
+});
 
 test('a dead resident behind a failed channel restarts once; a listening one is left alone',async()=>{
  let clock=0,reads=0,starts=0,boot={state:'dead',reason:'fatal'};

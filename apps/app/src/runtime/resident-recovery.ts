@@ -6,6 +6,7 @@ export function residentRecoveryReason(error:unknown):ResidentRecoveryReason|und
  return code==='ipc-recovery-retention-limit'||code==='ipc-recovery-required'||code==='runtime-identity-unavailable'?code:undefined;
 }
 export function residentRecoveryMessage(reason:ResidentRecoveryReason):string {
+ if(reason==='runtime-identity-unavailable')return 'Alpha couldn’t check its installed files. Open Settings › Agent connection to try again.';
  return reason==='ipc-recovery-retention-limit'?'Alpha needs a restart. Open Settings › Agent connection.':'Alpha couldn’t start. Open Settings › Agent connection for details.';
 }
 export const RESIDENT_RECOVERY_PENDING='Alpha couldn’t start. Open Settings › Agent connection.';
@@ -16,6 +17,8 @@ export function residentRecoveryCopy(reason:ResidentRecoveryReason,view?:Residen
  if(view?.step==='reviewing')return 'Checking restart…';
  if(view?.step==='archiving')return 'Restarting Alpha…';
  if(reason==='ipc-recovery-retention-limit')return view?.step==='review'?'Alpha is ready to restart.':'Alpha needs a restart.';
+ // Never suggests reinstalling: on Android that clears app data.
+ if(reason==='runtime-identity-unavailable')return 'Alpha couldn’t check its installed files. Try again. If this keeps happening, update Alpha. Your conversations and notes are kept.';
  return 'Restart your phone to try again.';
 }
 

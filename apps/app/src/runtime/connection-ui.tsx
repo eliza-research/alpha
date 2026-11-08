@@ -2685,6 +2685,12 @@ export const connectionController = {
     });
     if(archived)await connectionController.startLocal();
   },
+  /** Owner's Try again after a runtime identity refusal: native checks the installed files again on start. */
+  async retryStartup() {
+    if(operation||state.residentRecoveryReason!=='runtime-identity-unavailable'||state.session)return;
+    update({residentRecoveryReason:undefined,error:''});
+    await connectionController.startLocal();
+  },
   async restoreSavedSignIn() {
     if(!isAndroid||!residentCloudFlow()||residentEnvironment()!=='production'||(state.signIn&&state.signIn.environment!=='production')||operation||state.cloudAccount||!cloudSignIn?.restoreSavedSignIn)return;
     await work('Restoring saved sign-in…',async signal=>{
@@ -3886,6 +3892,7 @@ function ResidentRecoveryPanel({snapshot}:{snapshot:ConnectionSnapshot}) {
   return reason&&!snapshot.session&&<section aria-label="Restart Alpha">
     <p role="status">{residentRecoveryCopy(reason,recovery)}</p>
     {reason==='ipc-recovery-retention-limit'&&<button disabled={snapshot.busy} onClick={()=>void connectionController.restartRecovery()}>Restart Alpha</button>}
+    {reason==='runtime-identity-unavailable'&&<button disabled={snapshot.busy} onClick={()=>void connectionController.retryStartup()}>Try again</button>}
   </section>;
 }
 
