@@ -13,6 +13,7 @@ import {checkVaultCoordinator} from './vault-coordinator.mjs';
 import {checkNotesCoordinator} from './notes-coordinator.mjs';
 import {checkNativeViewSubscription} from './native-view-subscription.mjs';
 import {checkCanonicalNotesController} from './canonical-notes-controller.mjs';
+import {checkCanonicalNotesDraft} from './canonical-notes-draft.mjs';
 import {checkRecoveryUI} from './recovery-ui.mjs';
 import {fileURLToPath} from 'node:url';
 
@@ -36,6 +37,7 @@ export async function runApplicationRefinement() {
   receipts.push(await checkNotesCoordinator([fileURLToPath(import.meta.url), 'test/quint-application-refinement.test.mjs']));
   receipts.push(await checkNativeViewSubscription([fileURLToPath(import.meta.url), 'test/quint-application-refinement.test.mjs', 'specs/quint/refinement/model-state.mjs']));
   receipts.push(await checkCanonicalNotesController([fileURLToPath(import.meta.url), 'test/quint-application-refinement.test.mjs', 'specs/quint/refinement/model-state.mjs']));
+  receipts.push(await checkCanonicalNotesDraft([fileURLToPath(import.meta.url), 'test/quint-application-refinement.test.mjs', 'specs/quint/refinement/model-state.mjs']));
   receipts.push(await checkRecoveryUI([fileURLToPath(import.meta.url), 'test/quint-application-refinement.test.mjs']));
   for (const entry of (Array.isArray(manifest) ? manifest : manifest.models)) {
     const model = entry.module;

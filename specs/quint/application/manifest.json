@@ -714,5 +714,29 @@
       "Response publication plus finally cleanup and coalesced reload form a macrostep. Settled checkpoints compare all model fields; intermediate hook/microtask states and arbitrary reentrant hooks remain explicit refinement obligations."
 >>>>>>> 06d54ead35 (Model current canonical Notes controller lifecycle)
     ]
+  },
+  {
+    "path": "specs/quint/application/CanonicalNotesDraft.qnt",
+    "module": "CanonicalNotesDraft",
+    "init": "init",
+    "step": "step",
+    "invariant": "safety",
+    "tests": [
+      "newerEditSurvivesTest",
+      "closeDuringSaveTest",
+      "blankNewNoteTest",
+      "externalRevisionNeedsReviewTest",
+      "cleanRemovedNoteClosesTest"
+    ],
+    "sources": [
+      "apps/app/src/prototype/canonical-notes-editor.ts",
+      ".eliza/client-features/plugins/plugin-notes/src/client/notes-editor.ts",
+      ".eliza/client-features/plugins/plugin-notes/src/types.ts",
+      ".eliza/client-features/plugins/plugin-notes/src/note-authored.ts"
+    ],
+    "abstractions": [
+      "Two canonical records, five draft token identities, four versions and finite text/format classes. Current save snapshots and queued newer edits retain independent identity.",
+      "Delete/restore and UI selection continuations remain separate obligations. Captured save locals are observed through a read-only build-time WeakMap."
+    ]
   }
 ]

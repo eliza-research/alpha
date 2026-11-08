@@ -6,7 +6,7 @@ import {bundledSource, deferred, tick, captureSources, boundInputs, trace, check
 const driver = fileURLToPath(import.meta.url);
 const product = 'apps/app/src/prototype/canonical-notes-controller.ts';
 
-async function fixture(module) {
+export async function createCanonicalNotesFixture(module, hooks = {}) {
   let owner = true, bindingOwned = true, phase = 'none', failure = 'none', publishedCurrent = true, publishedMonotonic = true, lastRevision = -1;
   const requests = [], promises = new Map(), aborts = new Map(), listeners = new Set();
   const events = new EventTarget();
@@ -20,8 +20,8 @@ async function fixture(module) {
       requests.push(request); return task.promise;
     }};
   const controller = new module.exports.CanonicalNotesController(port, {
-    phase(value) {phase = value;}, failed(_error, operation) {failure = operation;},
-    snapshot(value) {publishedCurrent &&= controller.current; publishedMonotonic &&= value.revision >= lastRevision; lastRevision = value.revision;},
+    phase(value) {phase = value; hooks.phase?.(value);}, failed(error, operation) {failure = operation; hooks.failed?.(error, operation);},
+    snapshot(value) {publishedCurrent &&= controller.current; publishedMonotonic &&= value.revision >= lastRevision; lastRevision = value.revision; hooks.snapshot?.(value);},
   });
   const note = id => ({id: id === 1 ? 'note-one' : 'note-two', title: `Note ${id}`, body: 'Body', color: 'yellow', createdAt: '2026-11-08T00:00:00Z', updatedAt: '2026-11-08T00:00:00Z'});
   const idOf = note => note.id === 'note-one' ? 1 : 2;
@@ -60,7 +60,11 @@ async function fixture(module) {
     value.detail = {sessionId: same ? 'session-one' : 'other-session', ...(revision < 0 ? {} : {revision})};
     events.dispatchEvent(value);
   }
-  return {controller, observe, refresh, interact, reply, event, events, loseOwner() {owner = false;}, changeBinding() {bindingOwned = false; port.identity.ownerId = 'other-owner';},
+  return {controller, observe, refresh, interact, reply, event, events, requests,
+    async replyWith(id, envelope) {
+      const request = requests[id - 1]; assert.ok(request && !request.settled);
+      request.settled = true; request.task.resolve(envelope); await tick(); await tick();
+    }, loseOwner() {owner = false;}, changeBinding() {bindingOwned = false; port.identity.ownerId = 'other-owner';},
     cleanup() {controller.retire(); for (const request of requests) if (!request.settled) {request.settled = true; request.task.reject(Error('Fixture teardown'));}}};
 }
 
@@ -68,17 +72,21 @@ export async function checkCanonicalNotesController(extraSources = []) {
   captureSources([driver, ...extraSources]);
   const module = await bundledSource(product), traces = [];
   for (const scenario of ['read-coalesce', 'write-aborts-read', 'late-aborted-read', 'read-failure', 'write-failure', 'stale-read',
-    'invalidated-write', 'retire-read', 'retire-write', 'owner-read', 'owner-write', 'binding-read', 'events']) {
-    const f = await fixture(module), t = trace(scenario, f.observe());
+    'invalidated-write', 'retire-read', 'retire-write', 'owner-read', 'owner-write', 'binding-read', 'negative-before-first-read', 'events']) {
+    const f = await createCanonicalNotesFixture(module), t = trace(scenario, f.observe());
     const step = (label, action) => checkpoint(t, label, action, f.observe());
     try {
-      if (scenario === 'events') {
+      if (scenario === 'negative-before-first-read') {
+        f.controller.invalidate(-1); step('a direct negative revision starts the first read', call('invalidate', 0));
+        await f.reply(1, 1); step('first read accepted', call('readReply', 1, 1, qset([1]), true));
+      } else if (scenario === 'events') {
         f.controller.listen(f.events); step('attach actual authenticated event handler', call('listen'));
         f.controller.listen(f.events); step('reattach replaces the prior handler', call('listen'));
         f.event(false, 2); step('other-session event ignored', call('event', false, 2));
         f.event(true, -1); step('same-session event begins a read', call('event', true, -1));
         await f.reply(1, 1); step('read snapshot accepted', call('readReply', 1, 1, qset([1]), true));
         f.event(true, 1); step('already accepted revision needs no read', call('event', true, 1));
+        f.controller.invalidate(-1); step('a direct negative revision is older than the accepted snapshot', call('invalidate', 0));
         f.controller.retire(); step('retirement removes handler', call('retire'));
         f.event(true, 2); step('retired listener receives nothing', call('event', true, 2));
       } else {

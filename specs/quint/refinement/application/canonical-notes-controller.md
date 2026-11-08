@@ -24,7 +24,7 @@ compared. The adapter executes current response parsing and shape validation.
 Its successful POST uses the valid `get-notes` capability, exercising the
 controller's interaction serialization without inventing server mutations.
 
-Thirteen schedules cover read coalescing, invalidation during read/write, explicit
+Fourteen schedules cover read coalescing, invalidation during read/write, explicit
 refresh during write, duplicate-interaction refusal, write-time read abort in
 both completion orders, failed requests, older revisions, retirement, loss of
 current owner, changed bound identity while the port remains current, and
@@ -47,3 +47,8 @@ callbacks and promise microtasks inside that macrostep are not individually
 checked, and arbitrary reentrant user-provided hooks are outside this adapter.
 The application UI caller and editor join still need their own transition
 coverage.
+
+The model's `invalidate(-1)` means an absent revision or an invalid event
+payload after the event handler has normalized it. A raw negative safe integer passed directly to the
+controller uses the older-or-equal class zero. The source adapter checks that
+case both before and after an accepted snapshot.

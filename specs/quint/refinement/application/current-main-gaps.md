@@ -41,16 +41,16 @@ source paths remain historical metadata when their implementations are removed.
 
 ## Next canonical Notes split
 
-The current canonical source adds three linked controllers. The first now has
-a current source-bound model. Editor and UI state remain absent from the
+The current canonical source adds three linked controllers. The controller and draft/save core now have current source-bound models.
+Delete/restore continuations and UI state remain separate from the
 retained-device Notes contract.
 
-- `CanonicalNotesController` is modeled and source-executed through thirteen bounded schedules. It owns an authority-bound snapshot, a coalesced read,
+- `CanonicalNotesController` is modeled and source-executed through fourteen bounded schedules. It owns an authority-bound snapshot, a coalesced read,
   an abortable read token, one writing operation, invalidation during either
   operation, monotonic accepted revisions and authenticated event subscription.
   An interrupted read and a later write can both still have outstanding transport
   promises. Retiring the controller ends authority before those promises settle.
-- Shared `NotesEditor` owns a draft token, record identity, base revision, edit
+- Shared `NotesEditor` has a source-bound `CanonicalNotesDraft` model for open/begin/edit/save/reconcile/close and selection. Delete/restore continuations remain open. It owns a draft token, record identity, base revision, edit
   version, authored content/format, an active save and one queued edit version.
   A successful save updates only its captured draft token. Dirty external
   revisions require review, while clean drafts follow current snapshots. Empty
