@@ -101,19 +101,24 @@ function moveHomeAway(adb, home) {
 const mainPids = adb => adb(["shell", "pidof", PACKAGE], { allowFailure: true }).trim();
 
 const AGENT_RUNNING = /Detached agent health check passed|adopting it \(no relaunch\)|Agent health restored|Detached agent health restored/;
-const AGENT_REFUSED = /Private IPC recovery refused[^\n]*|Detached agent did not become healthy[^\n]*|Agent process exited early[^\n]*/;
+const AGENT_REFUSED = /Private IPC recovery refused[^\n]*/;
+// The service schedules a restart after these, so they fail the update only if it never recovers.
+const AGENT_RETRYING = /Detached agent did not become healthy[^\n]*|Agent process exited early[^\n]*/g;
 
 /** Start Alpha and wait for its on-device agent; logcat is read from the start time, never cleared. */
 export function restartAgent(adb, { sleep = pause, attempts = 150, intervalMs = 2000 } = {}) {
   const since = adb(["shell", "date", "+%s"]).trim();
   adb(["shell", "am", "start", "-W", "-n", MAIN_ACTIVITY]);
+  let retrying = null;
   for (let attempt = 0; attempt < attempts; attempt++) {
     const log = adb(["shell", "logcat", "-d", "-v", "epoch", "-T", `${since}.000`, "-s", "ElizaAgent:V"], { allowFailure: true });
     const refused = AGENT_REFUSED.exec(log)?.[0];
     if (refused) return { state: "refused", reason: refused.trim() };
     if (AGENT_RUNNING.test(log)) return { state: "running" };
+    retrying = log.match(AGENT_RETRYING)?.at(-1)?.trim() ?? retrying;
     sleep(intervalMs);
   }
+  if (retrying) return { state: "not-running", reason: retrying };
   if (!mainPids(adb)) return { state: "not-running", reason: "Alpha's main process is not running after the start" };
   if (/ElizaAgentService/.test(adb(["shell", "dumpsys", "activity", "services", PACKAGE], { allowFailure: true })))
     return { state: "not-running", reason: `the agent service did not report running within ${Math.round(attempts * intervalMs / 1000)}s` };

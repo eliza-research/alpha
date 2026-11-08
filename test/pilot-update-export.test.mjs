@@ -189,6 +189,12 @@ test("an agent that is refused or never reports running after the restart fails 
   const stalled = updateUnit({ adb: withService, apk: APK, before: BEFORE, home: planHome(withService), timing });
   assert.equal(stalled.passed, false);
   assert.equal(stalled.agentRestart.state, "not-running");
+  const retried = fakeUnit({ agentLog: "W ElizaAgent: Agent process exited early (pid=1 code=1 alive=10ms).\nI ElizaAgent: Agent health restored." });
+  assert.equal(updateUnit({ adb: retried.adb, apk: APK, before: BEFORE, home: planHome(retried.adb), timing }).passed, true, "a restart the service recovers from passes");
+  const crashing = fakeUnit({ agentLog: "W ElizaAgent: Agent process exited early (pid=1 code=1 alive=10ms)." });
+  const crashed = updateUnit({ adb: crashing.adb, apk: APK, before: BEFORE, home: planHome(crashing.adb), timing });
+  assert.equal(crashed.agentRestart.state, "not-running");
+  assert.equal(crashed.passed, false);
   const none = fakeUnit({ agentLog: "" });
   const cloud = updateUnit({ adb: none.adb, apk: APK, before: BEFORE, home: planHome(none.adb), timing });
   assert.equal(cloud.agentRestart.state, "not-verified", "no on-device agent is configured: recorded, not claimed");
