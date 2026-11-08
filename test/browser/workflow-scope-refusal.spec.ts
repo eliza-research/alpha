@@ -19,13 +19,14 @@ async function setup(page:Page){
 }
 const calls=(page:Page)=>page.evaluate(()=>(window as any).scopeFixture.calls.length);
 
-for(const [prompt,reason] of [['Call Maya every morning with my agenda','place or answer phone calls'],['Text Sam my calendar every evening','send text messages'],['Pay my rent on the first of the month','make payments or move money'],['Add everyone from my notes to my contacts','read or change Contacts'],['Run this python script every hour','run arbitrary code'],['Email the summary to the team','send email to recipients you have not named']] as const)
- test(`unsupported scope is refused before generation: ${reason}`,async({page})=>{
-  await setup(page);await page.getByRole('textbox',{name:'Workflow request',exact:true}).fill(prompt);await page.getByRole('button',{name:'Generate workflow draft',exact:true}).click();
-  const shown=page.locator('[role=status]').filter({hasText:'Workflows can’t '+reason});await expect(shown).toBeVisible();await expect(shown).toContainText('Nothing was sent to the agent');await expect(shown).toContainText('Read supplied text');
-  expect(await calls(page)).toBe(0);
-  await expect(page.getByRole('region',{name:'Generated draft',exact:true})).toHaveCount(0);await expect(page.getByRole('textbox',{name:'Workflow request',exact:true})).toHaveValue(prompt);await expect(page.getByRole('textbox',{name:'Workflow name',exact:true})).toHaveValue('Retained original draft');
- });
+// The node scope table (workflow-scope.test.mjs) covers every category; this checks the dev-build wiring once.
+test('unsupported scope is refused before generation',async({page})=>{
+ const prompt='Call Maya every morning with my agenda',reason='place or answer phone calls';
+ await setup(page);await page.getByRole('textbox',{name:'Workflow request',exact:true}).fill(prompt);await page.getByRole('button',{name:'Generate workflow draft',exact:true}).click();
+ const shown=page.locator('[role=status]').filter({hasText:'Workflows can’t '+reason});await expect(shown).toBeVisible();await expect(shown).toContainText('Nothing was sent to the agent');await expect(shown).toContainText('Read supplied text');
+ expect(await calls(page)).toBe(0);
+ await expect(page.getByRole('region',{name:'Generated draft',exact:true})).toHaveCount(0);await expect(page.getByRole('textbox',{name:'Workflow request',exact:true})).toHaveValue(prompt);await expect(page.getByRole('textbox',{name:'Workflow name',exact:true})).toHaveValue('Retained original draft');
+});
 
 test('a 422 clarification is shown and the draft and request are kept; a supported prompt still generates',async({page})=>{
  await setup(page);const prompt=page.getByRole('textbox',{name:'Workflow request',exact:true});
