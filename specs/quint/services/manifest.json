@@ -632,19 +632,23 @@
         "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaCredentialStore.java",
         "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaLocalAgentPlugin.java",
         "android/app/src/main/java/ai/elizaresearch/alphaphone/LocalAgentProviderAdmission.java",
-        "android/app/src/main/java/ai/elizaresearch/alphaphone/ResidentCredentialShutdownRetry.java"
+        "android/app/src/main/java/ai/elizaresearch/alphaphone/ResidentCredentialShutdownRetry.java",
+        "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaConnectionPlugin.java",
+        "android/app/src/main/java/ai/elizaresearch/alphaphone/SerialStorageTasks.java"
       ],
       "stateMapping": {
         "operation/phase/before/capturedProvider": "mutateSlotOnce classification and slot/provider snapshot reread",
         "requestedStop/acknowledgedStop/stopped": "exact strict resident shutdown before critical write",
         "ownerEpoch/capturedEpoch": "credential intent and lifecycle ownership recheck",
-        "oldSize/newSize/admissionInvalidated": "retained slot-cap shrink versus rejected growth after admission invalidation"
+        "oldSize/newSize/admissionInvalidated": "retained slot-cap shrink versus rejected growth after admission invalidation",
+        "committed/phase": "source selected-slot commit observation, followed by public success or failure reply"
       },
       "abstractions": [
         "Opaque credential contents and provider configurations are equality classes; providerRevision captures the full stored provider comparison.",
         "Current versus retained byte caps are scaled to two and three units, with four representing preflight overflow.",
         "The running resident is stopped only for matching bound critical changes. No-provider Cloud sign-in and ordinary slots may commit without stopping it.",
-        "Rollback restores only its captured provider revision. A newer provider revision makes it fail without overwriting it."
+        "Rollback restores only its captured provider revision. A newer provider revision makes it fail without overwriting it.",
+        "A same-generation rebind preserves runtime admission and avoids shutdown. Committed writes and later reported outcomes are separate transitions; provider removal updates presence for subsequent operations."
       ],
       "path": "specs/quint/services/NativeCredentialMutation.qnt",
       "module": "NativeCredentialMutation",
@@ -659,7 +663,13 @@
         "oversizedPreflightTest",
         "unchangedCredentialAdmissionTest",
         "unrelatedEnvironmentTest",
-        "unboundSignInTest"
+        "unboundSignInTest",
+        "failedWriteKeepsCredentialTest",
+        "committedWriteCanReportFailureTest",
+        "clearedProviderNeedsNoSecondStopTest",
+        "compareConflictKeepsCredentialTest",
+        "sameBindingDoesNotStopRuntimeTest",
+        "writeCheckpointCanPrecedeReportedFailureTest"
       ],
       "invariants": [
         "ShutdownBeforeCriticalWrite",

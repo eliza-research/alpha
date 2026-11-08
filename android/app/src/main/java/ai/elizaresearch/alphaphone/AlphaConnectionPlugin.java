@@ -164,7 +164,8 @@ public final class AlphaConnectionPlugin extends Plugin {
   });
  }
  private long credentialIntent(String name){
-  return "cloud:production".equals(name)||"cloud:staging".equals(name)?AlphaLocalAgentPlugin.reserveCredentialIntent():0;
+  if("cloud:production".equals(name)||"cloud:staging".equals(name))return AlphaLocalAgentPlugin.reserveCredentialIntent(foregroundLock,()->{if(destroyed)throw new IllegalStateException("Connection closed");});
+  synchronized(foregroundLock){if(destroyed)throw new IllegalStateException("Connection closed");return 0;}
  }
  private AlphaCredentialStore storage(long intent){
   return new AlphaCredentialStore(getContext(),()->{if(destroyed)throw new IllegalStateException("Connection closed");if(intent!=0)AlphaLocalAgentPlugin.requireCredentialIntent(intent);});
@@ -404,9 +405,8 @@ public final class AlphaConnectionPlugin extends Plugin {
   for(java.util.Map.Entry<String,Pending> entry:requests.entrySet())if(entry.getValue().returned())requests.remove(entry.getKey(),entry.getValue());
  }
  @Override protected void handleOnDestroy() {
-  destroyed=true;
+  synchronized(foregroundLock){destroyed=true;foregroundLock.notifyAll();}
   for (Pending pending : requests.values()) pending.cancel();
-  synchronized(foregroundLock){foregroundLock.notifyAll();}
   requests.clear();storageTasks.close();workers.shutdownNow(); super.handleOnDestroy();
  }
 }

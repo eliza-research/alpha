@@ -18,8 +18,10 @@ module NativeCredentialMutation {
     committed: false, admissionInvalidated: false, previousCredential: 1 }
   action begin(operation: str, replacement: int, bytes: int): bool = all {
     s.phase.in(Set("idle", "done", "conflict", "full", "failed")),
-    operation.in(Set("cloud", "provider", "ordinary", "rollback")),
+    operation.in(Set("cloud", "provider", "ordinary", "rollback", "rebind")),
     replacement.in(0.to(2)), bytes.in(1.to(4)),
+    operation != "rebind" or replacement != 0,
+    operation != "rebind" or s.providerPresent,
     val needsStop = operation.in(Set("provider", "rollback")) or
       operation == "cloud" and s.providerPresent and s.matchingEnvironment and replacement != s.credential
     s' = { ...s, phase: if (bytes > 3) "full" else "captured", operation: operation,
@@ -47,14 +49,29 @@ module NativeCredentialMutation {
     s' = { ...s, phase: "writing", admission: if (invalidates) false else s.admission,
       admissionInvalidated: invalidates }
   }
-  action write = all {
+  action writeResult(phase: str): bool = all {
     s.phase == "writing", s.newSize <= 2 or s.newSize <= s.oldSize,
-    not(s.operation.in(Set("provider", "rollback"))) or s.providerRevision < 4,
+    phase.in(Set("done", "failed", "written")),
+    not(s.operation.in(Set("provider", "rollback", "rebind"))) or s.providerRevision < 4,
     s.capturedEpoch == s.ownerEpoch, s.before == s.credential,
     s.capturedProvider == s.providerRevision,
-    s' = { ...s, phase: "done", credential: if (s.operation.in(Set("ordinary", "cloud"))) s.replacement else s.credential,
-      providerRevision: if (s.operation.in(Set("provider", "rollback"))) s.providerRevision + 1 else s.providerRevision,
+    s' = { ...s, phase: phase, credential: if (s.operation.in(Set("ordinary", "cloud"))) s.replacement else s.credential,
+      providerRevision: if (s.operation.in(Set("provider", "rollback", "rebind"))) s.providerRevision + 1 else s.providerRevision,
+      providerPresent: if (s.operation.in(Set("provider", "rollback", "rebind"))) s.replacement != 0 else s.providerPresent,
       oldSize: s.newSize, committed: true }
+  }
+  action write = writeResult("done")
+  action writeUnconfirmed = writeResult("failed")
+  action commitWrite = writeResult("written")
+  action reportWrite(confirmed: bool): bool = all {
+    s.phase == "written", s' = { ...s, phase: if (confirmed) "done" else "failed" }
+  }
+  action operationFailure = all {
+    s.phase.in(Set("captured", "stopping", "writing")),
+    s' = { ...s, phase: "failed", committed: false }
+  }
+  action compareConflict = all {
+    s.phase == "captured", s' = { ...s, phase: "conflict", committed: false }
   }
   /// A retained legacy value may shrink; over-cap growth is refused before slot bytes change.
   action capacityFailure = all {
@@ -81,8 +98,10 @@ module NativeCredentialMutation {
   action step = any {
     begin("cloud", 1, 1), begin("cloud", 2, 1), begin("cloud", 2, 3), begin("cloud", 2, 4),
     begin("provider", 2, 1), begin("ordinary", 2, 1), begin("rollback", 1, 1),
+    begin("rebind", 2, 1),
     retire, observeStop(true, true), observeStop(false, true), observeStop(true, false),
-    prepareCommit, write, capacityFailure, stale, shutdownTimeout, ownerChanged,
+    prepareCommit, write, writeUnconfirmed, commitWrite, reportWrite(true), reportWrite(false), operationFailure, compareConflict,
+    capacityFailure, stale, shutdownTimeout, ownerChanged,
     concurrentProvider, ordinarySize, otherEnvironment, unbound, s' = s
   }
   val ShutdownBeforeCriticalWrite = s.committed and s.requiresStop implies s.stopped and s.requestedStop == s.acknowledgedStop
@@ -109,4 +128,20 @@ module NativeCredentialMutation {
     .then(prepareCommit).then(write).expect(s.running and s.admission and safety)
   run unboundSignInTest = init.then(unbound).then(begin("cloud", 2, 1))
     .then(prepareCommit).then(write).expect(s.running and s.committed and safety)
+  run failedWriteKeepsCredentialTest = init.then(begin("cloud", 2, 1)).then(retire)
+    .then(observeStop(true, true)).then(prepareCommit).then(operationFailure)
+    .expect(s.credential == 1 and not(s.committed) and s.phase == "failed" and safety)
+  run committedWriteCanReportFailureTest = init.then(begin("cloud", 2, 1)).then(retire)
+    .then(observeStop(true, true)).then(prepareCommit).then(writeUnconfirmed)
+    .expect(s.credential == 2 and s.committed and s.phase == "failed" and safety)
+  run clearedProviderNeedsNoSecondStopTest = init.then(begin("provider", 0, 1)).then(retire)
+    .then(observeStop(true, true)).then(prepareCommit).then(write)
+    .then(begin("cloud", 2, 1)).expect(not(s.requiresStop or s.providerPresent) and safety)
+  run compareConflictKeepsCredentialTest = init.then(begin("cloud", 2, 1)).then(compareConflict)
+    .expect(s.credential == 1 and not(s.committed) and safety)
+  run sameBindingDoesNotStopRuntimeTest = init.then(begin("rebind", 2, 1)).then(prepareCommit).then(write)
+    .expect(s.running and s.admission and s.providerRevision == 2 and safety)
+  run writeCheckpointCanPrecedeReportedFailureTest = init.then(begin("cloud", 2, 1)).then(retire)
+    .then(observeStop(true, true)).then(prepareCommit).then(commitWrite).then(reportWrite(false))
+    .expect(s.committed and s.phase == "failed" and s.credential == 2 and safety)
 }

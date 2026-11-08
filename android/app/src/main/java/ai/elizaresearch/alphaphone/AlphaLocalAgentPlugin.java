@@ -108,6 +108,10 @@ public final class AlphaLocalAgentPlugin extends Plugin {
  private static final class Superseded extends Exception {}
  private static void clearEnrollment(){rootToken=null;ownerToken=null;ownerIdentity=null;expiresAt=0;}
  static long reserveCredentialIntent(){synchronized(lifecycleLock){return ++credentialIntentEpoch;}}
+ /** Check a bridge's owner only after acquiring lifecycle admission; teardown uses ownerLock. */
+ static long reserveCredentialIntent(Object ownerLock,Runnable assertOwner){
+  synchronized(lifecycleLock){synchronized(ownerLock){assertOwner.run();return ++credentialIntentEpoch;}}
+ }
  static void requireCredentialIntent(long intent){synchronized(lifecycleLock){if(intent!=credentialIntentEpoch)throw new IllegalStateException("Credential intent changed");}}
  interface CredentialMutation<T> {
   boolean requiresShutdown()throws Exception;
@@ -267,7 +271,8 @@ public final class AlphaLocalAgentPlugin extends Plugin {
   String key=call.getString("apiKey",""),model=call.getString("model",CEREBRAS_PROVIDER_MODEL);
   if(!validProviderToken(key,1024)||!model.matches("[A-Za-z0-9][A-Za-z0-9._/-]{0,127}")){call.reject("Enter a valid Cerebras key.");return;}
   if(!CEREBRAS_PROVIDER_MODEL.equals(model)){call.reject("Alpha Phone uses "+CEREBRAS_PROVIDER_MODEL+" on Cerebras.");return;}
-  final long configuration=reserveCredentialIntent();
+  final long configuration;
+  synchronized(lifecycleLock){if(disposed){call.reject("Local agent bridge is closed.");return;}configuration=reserveCredentialIntent();}
   PluginWorkers.submit(workers,()->{try{
    AlphaCredentialStore store=new AlphaCredentialStore(getContext(),()->{if(disposed)throw new IllegalStateException("Local agent bridge closed");requireCredentialIntent(configuration);});
    String failure=saveVerifiedProvider(store,key,model,AlphaLocalAgentPlugin::checkCerebrasKey);
@@ -277,7 +282,8 @@ public final class AlphaLocalAgentPlugin extends Plugin {
  }
  /** Deletes the provider slot and reads it back; resolves only when the slot is gone. */
  @PluginMethod public void clearProvider(PluginCall call) {
-  final long configuration=reserveCredentialIntent();
+  final long configuration;
+  synchronized(lifecycleLock){if(disposed){call.reject("Local agent bridge is closed.");return;}configuration=reserveCredentialIntent();}
   PluginWorkers.submit(workers,()->{try{
    call.resolve(clearProviderSlot(new AlphaCredentialStore(getContext(),()->{if(disposed)throw new IllegalStateException("Local agent bridge closed");requireCredentialIntent(configuration);})));
   }catch(Exception error){call.reject("The provider key could not be removed.");}},()->{call.reject("Local agent bridge is closed.");});
@@ -289,7 +295,8 @@ public final class AlphaLocalAgentPlugin extends Plugin {
   if(!runtimePackaged()){call.reject("On-device agent is unavailable in this version.");return;}
   String credentialId=call.getString("credentialId",""),model=call.getString("model","");
   if(!CLOUD_PROVIDER_MODEL.equals(model)){call.reject("Choose a supported Cloud model.");return;}
-  final long configuration=reserveCredentialIntent();
+  final long configuration;
+  synchronized(lifecycleLock){if(disposed){call.reject("Local agent bridge is closed.");return;}configuration=reserveCredentialIntent();}
   PluginWorkers.submit(workers,()->{try{
    AlphaCredentialStore store=new AlphaCredentialStore(getContext(),()->{if(disposed)throw new IllegalStateException("Local agent bridge closed");requireCredentialIntent(configuration);});
    bindCloudProvider(store,credentialId,model);store.assertCurrent();

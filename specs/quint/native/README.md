@@ -278,3 +278,11 @@ for its monitor, persists dispatch intent before provider calls and preserves
 uncertain receipts through restart. Selected-row projection and multi-row/provider
 boundaries are described in
 [deletion-coordinator-report.md](../refinement/native/deletion-coordinator-report.md).
+
+## Executed credential coordination
+
+The whole native credential campaign executes both bridge entry points and the
+credential store's real lifecycle coordinator, including strict shutdown,
+rebind, partial writes, concurrent owners and in-flight request/stream retirement.
+Its observation relation and platform boundaries are in
+[credential-coordinator-report.md](../refinement/native/credential-coordinator-report.md).
