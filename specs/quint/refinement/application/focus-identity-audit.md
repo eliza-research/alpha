@@ -23,7 +23,7 @@ The following table tracks source-backed mutable families and their remaining ob
 | Maps | saved rows, search results and pins | Provider place identity must survive asynchronous result replacement and sorting. |
 | Workflows | cards, management cards, approvals and builder steps | Workflow, run, approval and step identities must survive asynchronous refresh, insertion and deletion. |
 | AOSP communication | native message threads, Contacts groups and rows, Phone recents | Provider record identity must survive refresh. These need separate AOSP admission and device evidence. |
-| Launcher | favorites and application rows | Package/activity identity must survive installation, removal and sorting. |
+| Launcher | Home, favorites and application rows are keyed | Source-backed reordering and Favorites transfer now retain app/control identity. Native package installation, removal and profile-state schedules remain open. |
 | Conversation | messages and nested review/action rows | Message, proposal and review identity must survive streaming, history replacement and owner changes. |
 
 Camera zoom and mode options, fixed day/repeat choices, and other immutable option lists do not require a new identity solely because they use `sc-for`. The review above leaves the mutable families open. No application-wide focus guarantee is claimed.
@@ -73,3 +73,11 @@ Raw browser observations retain source hashes captured before execution, current
 Checklist items and voice action rows still lack durable per-row identities. Assigning array positions or editable text as keys would leave their reordering and replacement ambiguity unresolved. Their durable-ID migration remains open. Broader provider-revocation and cross-process list-replacement schedules also remain open. The existing Notes collection, media selection and provider authority models remain separate from this presentation change.
 
 The Notes/Photos validation passed all 44 cases in the selected Chromium accessibility suite, all 40 focused Node tests and TypeScript checking. The helper-disabled negative control failed at the intended cross-column focus assertion. No Android build or native accessibility acceptance was performed for this isolated UI change.
+
+## Launcher follow-up
+
+Home app buttons, launcher favorites and the remaining app inventory now key by the existing full app identity. Launcher controls additionally key their focus target by app identity and action, so a Favorite toggle can move between Favorites and All apps while remaining the same logical control. The drawer uses the existing list-focus helper without changing its protocol.
+
+The browser regression reproduces a focused Calendar control being replaced by another app when Calendar moves earlier in Favorites. With keyed rows, its DOM node survives and Enter opens Calendar. A second regression removes and restores the focused Calendar favorite through the actual toggle callback, checking its focus after each cross-parent transfer. Both traces retain source hashes and DOM observations. These browser-built-in cases do not establish Android package-install/profile behavior.
+
+Launcher validation passed both new focus cases, both existing launcher browser cases, all 45 launcher/helper Node tests and TypeScript checking. The final two source-observation traces also passed their before/after source-hash checks.

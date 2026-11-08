@@ -23687,9 +23687,10 @@
     },
     {
       "path": "apps/app/src/prototype/home-launcher.ts",
-      "sha256": "233448743035bafa679b6f9c491ea6eafaa266fbd12069f809ba403ec5547629",
+      "sha256": "1b4dff8ddc2662c7e2497b182e560d3a342614b5f0014dfedbef3c68e01d5367",
       "models": [
-        "PreferencesAndPresentation"
+        "PreferencesAndPresentation",
+        "ListFocus"
       ],
       "scope": "application",
       "treatment": "state-and-transition-projection",
@@ -31258,7 +31259,7 @@
     },
     {
       "path": "apps/app/src/prototype/template.html",
-      "sha256": "bbdc6d52e68ad5441e9b634dd15dc7a742a528f16db56f608ea3aaa20f107970",
+      "sha256": "13e1e074cca84618aa4592d2e474887a31d765178d75b7f624e225d6ab910bd0",
       "models": [
         "ShellNavigation",
         "PreferencesAndPresentation",

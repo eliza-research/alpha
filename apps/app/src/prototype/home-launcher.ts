@@ -1,4 +1,5 @@
 import type {DefaultApp, InstalledApp} from '../native';
+import {createKeyedListFocus} from './keyed-list-focus.ts';
 type Bag = Record<string, any>;
 
 type LaunchTarget = {packageName: string; activityName?: string; user?: string};
@@ -260,6 +261,7 @@ export function installHomeLauncher(Component: any, bridge: LauncherBridge, opti
   const p = Component.prototype, mount = p.componentDidMount, unmount = p.componentWillUnmount, render = p.renderVals;
   let owner: any = null;
   const builtinRows = new Map<string, Bag>();
+  const listFocus = createKeyedListFocus('data-launcher-focus');
   const launcherBridge: LauncherBridge = {...bridge,
     list: options => bridge.list(options),
     launch: target => { const app = builtinRows.get(appKey(target)); if (app) { app.open(); return Promise.resolve(); } return bridge.launch(target); },
@@ -295,6 +297,7 @@ export function installHomeLauncher(Component: any, bridge: LauncherBridge, opti
   };
   p.openAllApps = function () { this.setState({drawer: true, drawerQ: ''}); void launcher.load(); };
   p.renderVals = function () {
+    const snapshot = typeof document === 'undefined' ? null : listFocus.capture();
     const out = render.call(this), S = this.S(), self = this;
     builtinRows.clear();
     const builtins = (out.apps || []).map((app: Bag) => {
@@ -308,7 +311,7 @@ export function installHomeLauncher(Component: any, bridge: LauncherBridge, opti
     const row = (app: InstalledApp) => {
       const key = appKey(app), parts = details.get(key) || [], name = parts.length ? `${app.label} (${parts.join(', ')})` : app.label, favorite = snap.favorites.includes(key);
       return {
-        key, d: builtinRows.get(key)?.d || out.ic?.grid || '', label: app.label, sub: parts.join(' · '), hasSub: parts.length > 0, aria: `Open ${name}`, hasIcon: !!app.icon, noIcon: !app.icon, icon: app.icon || '',
+        key, openKey: key + ':open', favoriteKey: key + ':favorite', d: builtinRows.get(key)?.d || out.ic?.grid || '', label: app.label, sub: parts.join(' · '), hasSub: parts.length > 0, aria: `Open ${name}`, hasIcon: !!app.icon, noIcon: !app.icon, icon: app.icon || '',
         busy: snap.launching === key, disabled: !!snap.launching,
         open: () => void launcher.launch(app),
         favorite, favoriteAria: favorite ? `Remove ${name} from favorites` : `Add ${name} to favorites`, favoriteFill: favorite ? 'currentColor' : 'none', favoriteColor: favorite ? 'var(--fg)' : 'var(--mut)',
@@ -323,7 +326,7 @@ export function installHomeLauncher(Component: any, bridge: LauncherBridge, opti
     const rows = matching.filter(app => !pinnedKeys.has(appKey(app))).map(row);
     const favorites = pinned.map((app, index) => {
       const base = row(app), name = base.aria.slice('Open '.length);
-      return {...base, earlierAria: `Move ${name} earlier`, laterAria: `Move ${name} later`, first: index === 0, last: index === pinned.length - 1,
+      return {...base, earlierKey: base.key + ':earlier', laterKey: base.key + ':later', earlierAria: `Move ${name} earlier`, laterAria: `Move ${name} later`, first: index === 0, last: index === pinned.length - 1,
         earlier: () => launcher.moveFavorite(app, -1), later: () => launcher.moveFavorite(app, 1)};
     });
     const dial = snap.dial && !query.trim() ? {
@@ -340,6 +343,7 @@ export function installHomeLauncher(Component: any, bridge: LauncherBridge, opti
       return builtin ? {...builtin, hasIcon: false, noIcon: true} : {...row(app), badge: false};
     });
     return {...out, apps: homeApps, drawerOpen: !!S.drawer && !!out.isOn && !out.isView, launcher: {
+      listFocus: listFocus.ref(snapshot),
       open: () => self.openAllApps(), close: () => self.setState({drawer: false, drawerQ: ''}),
       query, onQuery: (event: any) => { launcher.clearError(); self.setState({drawerQ: event.target.value}); },
       rows, hasRows: rows.length > 0, favorites, hasFavorites: favorites.length > 0,

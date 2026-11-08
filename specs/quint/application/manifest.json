@@ -618,7 +618,8 @@
     "sources": [
       "apps/app/src/prototype/keyed-list-focus.ts",
       "apps/app/src/prototype/subview-accessibility.ts",
-      "apps/app/src/prototype/template.html"
+      "apps/app/src/prototype/template.html",
+      "apps/app/src/prototype/home-launcher.ts"
     ],
     "abstractions": [
       "Two capture slots, two list-root identities and five DOM-node identities preserve capture versus commit, root-ref generations, FIFO microtasks, focusin cancellation, and all source restoration guards. Generations stop at eight instead of wrapping.",
