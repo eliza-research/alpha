@@ -240,7 +240,9 @@ test('a record awaiting requalification stops the step before any build and name
   for (const name of f.names) f.stage(name);
   // Even reviewed bytes already staged are not admitted, and nothing is compiled or fetched.
   assert.throws(() => run(f.root, {build: () => assert.fail('must not build')}), error => error instanceof Stop && error.code === 3
-    && /must be requalified at cccccccccccc: the engine gitlink moved/.test(error.message) && error.message.includes(HUMAN_ACTION));
+    && /Embedding host requalification required at c{40}\. the engine gitlink moved/.test(error.message)
+    && error.message.includes('A reviewer must execute the ARM64 qualification')
+    && error.message.includes('node scripts/stage-embedding-host.mjs --receipt <QUALIFICATION.json>'));
   assert.equal(fs.existsSync(path.join(f.root, '.eliza')), false, 'nothing was fetched or built');
   f.write('upstream.lock.json', JSON.stringify({commit: 'd'.repeat(40)}));
   f.write('android/release-signer.json', JSON.stringify({signerSha256: 'unset'}));

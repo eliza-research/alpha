@@ -17,7 +17,8 @@ const version = ndkVersion(sharedSense);
 
 test('Sense packaging selects the same explicit NDK as the pinned voice consumer', () => {
   const consumer = read('vendor/eliza/plugins/plugin-local-inference/native/android/consumer.gradle');
-  assert.match(sense, /elizaSenseSourceDir = file\('..\/..\/vendor\/eliza\/packages\/app\/platforms\/android\/sense'\)/);
+  assert.match(sense, /commandLine 'node', 'scripts\/prepare-patched-native\.mjs'/);
+  assert.match(sense, /elizaSenseSourceDir = new File\(preparedSense\.root\.toString\(\), 'packages\/app\/platforms\/android\/sense'\)/);
   assert.match(sense, /apply from: new File\(elizaSenseSourceDir, 'consumer.gradle'\)/);
   assert.equal(ndkVersion(sense), undefined, 'the product must use the shared NDK selection without a second override');
   assert.ok(version, 'an implicit AGP NDK can leave shared libraries unstripped');

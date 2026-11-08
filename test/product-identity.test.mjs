@@ -6,6 +6,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import {tsImport} from 'tsx/esm/api';
+import ts from 'typescript-ast';
 
 import {hostIdentity, readHostDescriptor} from '../scripts/android-host.mjs';
 
@@ -23,26 +24,42 @@ function sources(dir, out = []) {
   return out;
 }
 
-const STORAGE_CALL = /\.(?:getItem|setItem|removeItem)\(\s*(?:(['"`])((?:(?!\1)[^\\$])*)|([A-Za-z_$][\w$]*)\s*[,)])/g;
+const STORAGE_METHODS = new Set(['getItem', 'setItem', 'removeItem']);
 const PREFIXES = ['alpha.', 'alphaphone:'];
 const FOREIGN = /milady|eliza:|senior/i;
 
 /** Literal localStorage keys under a source tree: direct string arguments and the string constants passed by name. */
 function literalStorageKeys(root) {
-  const files = sources(root).map(file => ({file, text: fs.readFileSync(file, 'utf8')}));
-  const names = new Set(), keys = [];
-  for (const {file, text} of files) {
-    for (const match of text.matchAll(STORAGE_CALL)) {
-      if (match[3]) names.add(match[3]);
-      // A template or concatenated key is checked by its literal prefix.
-      else if (match[2]) keys.push({file, key: match[2]});
+  const files = sources(root);
+  const program = ts.createProgram(files, {allowJs: true, jsx: ts.JsxEmit.Preserve, noLib: true, noResolve: true, types: []});
+  const checker = program.getTypeChecker();
+  const keys = [];
+  function prefix(expression, visited = new Set()) {
+    if (!expression || visited.has(expression)) return;
+    visited.add(expression);
+    if (ts.isStringLiteralLike(expression) || ts.isTemplateExpression(expression)) {
+      const key = ts.isStringLiteralLike(expression) ? expression.text : expression.head.text;
+      return {file: expression.getSourceFile().fileName, key};
+    }
+    if (ts.isBinaryExpression(expression) && expression.operatorToken.kind === ts.SyntaxKind.PlusToken)
+      return prefix(expression.left, visited);
+    if (ts.isIdentifier(expression)) {
+      let symbol = checker.getSymbolAtLocation(expression);
+      if (symbol && symbol.flags & ts.SymbolFlags.Alias) symbol = checker.getAliasedSymbol(symbol);
+      const declaration = symbol?.valueDeclaration;
+      if (declaration && ts.isVariableDeclaration(declaration)) return prefix(declaration.initializer, visited);
     }
   }
-  for (const {file, text} of files) {
-    for (const name of names) {
-      const declared = new RegExp(`(?:^|[\\s,;{(])${name.replace(/\$/g, '\\$')}\\s*=\\s*(['"])([^'"]+)\\1`, 'g');
-      for (const match of text.matchAll(declared)) keys.push({file, key: match[2]});
+  for (const file of files) {
+    function visit(node) {
+      if (ts.isCallExpression(node) && ts.isPropertyAccessExpression(node.expression)
+          && STORAGE_METHODS.has(node.expression.name.text)) {
+        const key = prefix(node.arguments[0]);
+        if (key) keys.push(key);
+      }
+      ts.forEachChild(node, visit);
     }
+    visit(program.getSourceFile(file));
   }
   return keys;
 }
