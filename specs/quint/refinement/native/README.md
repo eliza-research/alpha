@@ -45,7 +45,7 @@ contains them. Remaining campaigns are bounded component correspondence.
 | `MediaLifecycle` | `NativeReadEpoch`, `SelectedPhotoCopy.read`, `publish` | Epoch, readable scope/revision fence, exact copied bytes and publication guard. Catalog, editing, camera and video ownership remain open. |
 | `DeviceActions` | `SmsSendJournal.beginDispatch`, `endDispatch`, callbacks, reload, `existing` | SMS durable intent, multipart result, delivery evidence, failed writes and no automatic repeat. Other device-action domains remain open. |
 | `ApplicationComposition` | Owned by the root integration runner | Native component checks do not establish cross-domain implementation ordering. |
-| `NavigationProgress` | `usableNavigationFix`, `atStep` | Fix validity classes and sparse-projection cursor preservation. Actual navigation closure, reroute timers and native service remain open. |
+| `NavigationProgress` | `MapsScreenController`, `MapsController`, `BackgroundNavigation` | Actual maneuver, arrival, route and screen-off lifecycle. Android transport, physical GPS and arbitrary geometries remain separate. |
 | `ListenerLeaseRecovery` | `IndicatorLease`, `CrashLoopBreaker` | Visibility/attribution inputs, generation, renewal, expiry, death/revoke and finite historical crash records. Persistent latch/consent and capture remain open. |
 | `StreamingPlayback` | `StreamingSpeechPlayback` with its real queue/writer | Completion, partial writes, failed output, failed write, canceled opening, buffer release and terminal callback count. All possible thread schedules and native audio remain open. |
 | `ResidentScheduling` | `ResidentScheduleRearm.decide`, `admitAndStart` | Complete finite decision table and monitor ownership. Actual service/receiver integration remains open. |

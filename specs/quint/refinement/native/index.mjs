@@ -4,7 +4,7 @@ import {join} from 'node:path';
 import {checkTraces, captureInputs} from '../check-traces.mjs';
 import {app, sense, voice, directory, javaTraces, root} from './java.mjs';
 import {loadModels} from '../../../../scripts/quint-lib.mjs';
-import {captureRendererImplementation, voiceTraces, navigationTraces} from './renderer.mjs';
+import {captureRendererImplementation, voiceTraces} from './renderer.mjs';
 import {residentLifecycleTraces} from './local-agent.mjs';
 import {checkResetOrchestration} from './reset-orchestration.mjs';
 import {checkDeletionCoordinator} from './deletion-coordinator.mjs';
@@ -34,6 +34,7 @@ import {checkSpeechGate} from './speech-gate.mjs';
 import {checkSpeechOutputPreparation} from './speech-output-preparation.mjs';
 import {checkBatchCaptureCompletion} from './batch-capture-completion.mjs';
 import {checkReviewedCopies, reviewedCopiesObligations} from './reviewed-copies.mjs';
+import {checkNavigationProgress} from './navigation-progress.mjs';
 
 export async function runNativeRefinement() {
   const models = ['VadSegmentation', 'RendererRecovery', 'ResidentScheduling'];
@@ -108,15 +109,12 @@ export async function runNativeRefinement() {
       ]}));
   }
   const renderer = await captureRendererImplementation([fileURLToPath(import.meta.url)]);
-  for (const [model, generate] of [
-    ['VoiceSession', voiceTraces], ['NavigationProgress', navigationTraces],
-  ]) {
-    const modelTraces = await generate(renderer.implementation);
-    results.push(await checkTraces({model, id: `${model}-native`, scope: 'bounded-component', traces: modelTraces,
-      sources: renderer.sources, driverHashes: renderer.driverHashes,
-      assumptions: ['Actual TypeScript and its transitive shared implementation execute with controlled capture/reply/playback/timer inputs.',
-        'Voice traces bound two sentences and one submitted turn. Navigation projects fix admission and guidance helpers; the adapter closure and native service remain external.']}));
-  }
+  const modelTraces = await voiceTraces(renderer.implementation);
+  results.push(await checkTraces({model: 'VoiceSession', id: 'VoiceSession-native', scope: 'bounded-component', traces: modelTraces,
+    sources: renderer.sources, driverHashes: renderer.driverHashes,
+    assumptions: ['Actual TypeScript and its transitive shared implementation execute with controlled capture/reply/playback/timer inputs.',
+      'Voice traces bound two sentences and one submitted turn.']}));
+  results.push(await checkNavigationProgress([fileURLToPath(import.meta.url)]));
   const lifecycle = await residentLifecycleTraces([fileURLToPath(import.meta.url)]);
   results.push(await checkTraces({model: 'ResidentRuntime', id: 'ResidentRuntime-lifecycle-native', scope: 'bounded-component',
     ...lifecycle, assumptions: [
@@ -158,7 +156,7 @@ export async function runNativeRefinement() {
     {model: 'DeviceActions', obligation: 'AOSP image/role, Contacts, Reminders and Clock', reason: 'Only the real SMS journal executes in these traces. Carrier outcomes are fixture inputs.'},
     {model: 'ApplicationComposition', obligation: 'Cross-domain implementation orchestration', reason: 'Root integration driver owns this combined scope. Standalone native receipts do not establish composition.'},
     {model: 'ControllerComposition', obligation: 'Cross-controller implementation orchestration', reason: 'The dedicated composition campaign executes these shared-controller schedules. Standalone native receipts do not establish composition.'},
-    {model: 'NavigationProgress', obligation: 'Maneuver cursor, reroute timers and background service', reason: 'Fix admission and guidance helpers execute. The maps-adapter closure and Android service are outside the current projection.'},
+    {model: 'NavigationProgress', obligation: 'Physical location and installed background service', reason: 'The actual shared screen, route controller and background bridge run with controlled coordinates, route replies and native effects. Android service, physical GPS, unrestricted geometries and intermediate asynchronous cleanup remain external.'},
     {model: 'ListenerLeaseRecovery', obligation: 'Cross-component crash, consent and capture orchestration', reason: 'Lease and crash helpers execute here. NativeListenerStore and NativeListenerService supply separate persisted-settings and service-lifecycle projections.'},
     {model: 'NativeAsrPipe', obligation: 'Real provider transport and unbounded frame traffic', reason: 'Actual worker settlement and pipe state run with controlled provider responses. NativePipedCapture checks the controller join.'},
     {model: 'NativePipedCapture', obligation: 'Physical capture, installed provider delivery and unrestricted schedules', reason: 'Actual bridge/controller/pipe/capture run together with controlled ports. Frame-buffer behavior has a separate source projection.'},

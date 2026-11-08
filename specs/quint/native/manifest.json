@@ -514,43 +514,42 @@
         "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaNavigationService.java",
         "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaMapsTransportPlugin.java",
         "apps/app/src/maps/device-navigation.ts",
-        "apps/app/src/maps/agent-navigation.ts"
+        "apps/app/src/maps/agent-navigation.ts",
+        "apps/app/src/maps/screen.ts",
+        "apps/app/src/maps/state.ts"
       ],
       "stateMapping": {
-        "navStep/lastStep/nearSteps/displayedStep": "maps-adapter onNavFix while-loop and guidance.atStep",
-        "navSession/backgroundPending/nativeSession/nativeStops": "startGuidance, BackgroundNavigation, AlphaNavigationService.finish",
-        "rerouting/rerouteCleared/requestGeneration/retryTimer/retryAttempts/retryDelay": "rerouteFrom, controller subscription, scheduleRerouteRetry",
-        "bridgeRegistered/backgroundPending/backgroundRunning": "BackgroundNavigation.active during start and native completion, distinct from confirmed background continuation"
+        "navStep/displayedStep/follow": "MapsScreenController.onFix, stopFollowing, recenter and view",
+        "routePhase/pendingRoutes/abortedRequests/rerouteCleared": "MapsController.planRoute/leave and MapsScreenController.observe/rerouteFrom",
+        "navSession/watch/bridgeOwner/registered": "MapsScreenController.start/end/hidden and BackgroundNavigation.start/stop",
+        "startCommands/stopCommands/backgroundStops": "BackgroundNavigation exact session commands and MapsScreenController native-stop continuation"
       },
       "abstractions": [
-        "Three maneuvers and two route identities, exact 39/40 meter maneuver, 24/25 meter arrival and 30/31 meter accuracy boundary classes.",
-        "Precise position freshness uses exact 30000ms age and 5000ms future limits; GPS geometry is represented by distance classes.",
-        "Four session values and three reroute request generations. Retry attempts saturate at four, preserving the 10/20/40/60-second delay policy.",
-        "The source currently only sets follow=true at Start/recenter. The model preserves this behavior."
+        "Initial state is one verified route already planned. Three maneuvers and two route identities use representative real geometry around the 40m maneuver and 25m arrival boundaries. Accuracy and timestamp cutoffs are exact.",
+        "The actual shared screen and route controller handle explicit reroutes. Immediate route invalidation/loading and settled provider replies are observed at macrostep boundaries.",
+        "The actual shared background bridge uses controlled availability, listener, start/update/stop callbacks and exact synthetic native identities. Installed Android ownership and hardware location remain separate.",
+        "Five navigation sessions and three provider requests bound exploration. Reopening after full screen release and concurrent starts outside the visible Start control are external."
       ],
       "tests": [
-        "inaccurateArrivalRejectedTest",
         "sparseProjectionDoesNotSkipManeuverTest",
-        "exactFortyMeterBoundaryTest",
-        "oldReadyCannotCompleteRerouteTest",
-        "failureBackoffAndRecoveryTest",
-        "arrivalCancelsRetryAndBackgroundTest",
-        "oldSessionCannotStopSuccessorTest",
-        "staleLocationCannotMoveCursorTest",
-        "pendingNativeStartKeepsBridgeSessionTest",
-        "foregroundOnlyHiddenStopsTest",
-        "unusableFixDoesNotAdvanceTest"
+        "exactManeuverAndArrivalClassesTest",
+        "agedFixIsRetainedButCannotRerouteTest",
+        "rerouteFailureEndsGuidanceTest",
+        "retiredStartStopsOnlyItsOwnNativeIdTest",
+        "endingAllowsRouteReplyWithoutRevivingGuidanceTest",
+        "releaseAbortsOutstandingRouteTest",
+        "pendingBackgroundKeepsHiddenScreenTest",
+        "dragAndRecenterTest"
       ],
       "invariants": [
         "CursorRange",
-        "ManeuverRequiresProximity",
-        "ArrivalRequiresAccurateFix",
+        "ArrivalAccuracy",
         "ArrivalStopsResources",
-        "RerouteKeepsRoute",
-        "FailedRerouteKeepsRoute",
-        "BoundedBackoff",
+        "RerouteOwnsGuidance",
         "NativeSessionOwned",
-        "NativeStopOnce"
+        "RunningHasExactNativeStart",
+        "ReleasedHasNoGuidance",
+        "StoppedCommandsCannotTargetOwner"
       ],
       "sharedSources": [
         "plugins/plugin-maps/src/client/navigation-fix.ts",
@@ -559,7 +558,10 @@
         "plugins/plugin-maps/src/client/background-navigation.ts",
         "plugins/plugin-maps/src/client/route-distance.ts",
         "plugins/plugin-maps/src/client/device-navigation.ts",
-        "plugins/plugin-maps/src/client/agent-navigation.ts"
+        "plugins/plugin-maps/src/client/agent-navigation.ts",
+        "plugins/plugin-maps/src/client/maps-screen.ts",
+        "plugins/plugin-maps/src/client/state.ts",
+        "plugins/plugin-maps/src/client/saved-places.ts"
       ]
     },
     {

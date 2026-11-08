@@ -144,17 +144,15 @@ checks.
 
 ## Additional native protocol detail
 
-`NavigationProgress` adds the maneuver cursor and navigation retry state to the
-service-level route model. A sparse geometric projection cannot skip the next
-instruction. It advances only when the current maneuver is closer than 40 m.
-Arrival requires distance below 25 m and accuracy no worse than 30 m. Fresh
-navigation fixes require precise permission, accuracy at most 50 m, age at most
-30 seconds and a timestamp at most five seconds in the future. Failed reroutes
-retain the followed route and use 10, 20, 40 and then 60 second retries. The retry
-loop rechecks the latest fix, cancels on arrival and stops scheduling after route
-recovery. The controller must first leave ready/error before a new reroute result
-is accepted. Native Stop, task removal, late start and replacement-session
-callbacks retain separate session identities.
+`NavigationProgress` follows the current shared Maps screen, route controller and
+background-navigation owner. Maneuver guidance advances only inside 40 m, and
+arrival requires distance below 25 m and accuracy no worse than 30 m. A stored
+fix can age without another callback. Explicit reroute rechecks its freshness,
+and a provider error ends guidance. End retires guidance while allowing the
+already requested route to finish in directions. Release aborts that request.
+Late background replies clean up their exact session, including a second stop
+command after a retired native Start finally succeeds. Dragging disables follow
+until recentering or Start.
 
 `ListenerLeaseRecovery` models the actual lease and recovery mechanisms behind
 `AlwaysOnListener` policy inputs. Lease acquire, acknowledgement, monotonic expiry,

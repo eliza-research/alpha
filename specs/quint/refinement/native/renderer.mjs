@@ -11,8 +11,6 @@ export async function captureRendererImplementation(additionalSources = []) {
     absWorkingDir: root,
     stdin: {contents: `
       export {VoiceAssistantSession, splitSpokenSentences, ASSISTANT_TIMING_DEFAULTS} from './apps/app/src/runtime/voice-assistant.ts';
-      export {usableNavigationFix} from './.eliza/client-features/plugins/plugin-maps/src/client/navigation-fix.ts';
-      export {atStep} from './apps/app/src/maps/guidance.ts';
     `, resolveDir: root, sourcefile: 'quint-native-implementation.ts'},
     bundle: true, write: false, platform: 'node', format: 'esm', metafile: true,
   };
@@ -122,24 +120,6 @@ export async function voiceTraces(implementation) {
       }
     }
     traces.push(trace);
-  }
-  return traces;
-}
-
-export function navigationTraces({usableNavigationFix, atStep}) {
-  const traces = [];
-  for (const accuracy of [0, 30, 31, 50, 51]) for (const age of [-5001, -5000, 0, 30000, 30001]) for (const precise of [false, true]) {
-    const accepted = usableNavigationFix({coordinate: {latitude: 0, longitude: 0}, accuracyMeters: accuracy,
-      timestamp: 100000 - age, precision: precise ? 'precise' : 'approximate'}, 100000);
-    const steps = [{instruction: 'First'}, {instruction: 'Second'}, {instruction: 'Third'}];
-    const projection = {alongMeters: 100, maneuverAlongMeters: [0, 100, 200], remainingMeters: 100,
-      remainingSeconds: 100, next: {index: 2, step: steps[2], distanceMeters: 100}};
-    const actual = atStep(projection, steps, 0);
-    traces.push({name: `fix-${accuracy}-${age}-${precise}`, expect: {'s.fixReady': false}, steps: [
-      {action: action('start', 1), expect: {'s.fixReady': false}},
-      {action: action('measuredFix', 1, accuracy, precise, age, 100, 0, 100, 100, 100, 2),
-        expect: {'s.fixReady': accepted, 's.displayedStep': actual.next.index}},
-    ]});
   }
   return traces;
 }
