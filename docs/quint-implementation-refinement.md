@@ -199,9 +199,21 @@ degraded generation. A failed identity-cache read after width change leaves the
 new adapter column active while the previous provider and pin remain. This
 observed transition is an open source repair. Named vector spaces and concrete
 database recovery need separate source evidence.
+The PGlite source campaign also confirms the translated dimension model's
+provenance counterexample. A delayed unmarked vector is admitted under the
+adapter's new space before the runtime publishes its pin. A stale direct SQL
+update against the same row is blocked by the nonce trigger.
 
 The resident liveness campaign checks seven schedules and 38 checkpoints on
 the connection owner and actual rate limiter. It covers duplicate failures,
 delayed native status, a busy rebind, and restart completion after ownership
 changes. The reviewed retry action for an unavailable installed-file check is
 available again in the recovery panel and Settings.
+
+The current Maps guidance campaign checks explicit reroute, stale replies,
+foreground fallback and background ownership across 24 source schedules.
+When a pending native startup is refused after Maps hides, the patched shared
+controller releases its foreground location watch. The launcher observer
+campaign checks exact subscription retirement and timer cleanup. The browser
+journal retention campaign checks production count and age cutoffs, pending
+rows and replay claims against actual Calendar and Reminder source.

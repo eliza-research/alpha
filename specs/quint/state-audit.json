@@ -12,7 +12,7 @@
   "toolSha256": "403a33cab0dff7ace6219b29e7ffef373319677a7d8be6641466dd16a6750b5b",
   "dependencyLockSha256": "944123c801157a7ba3676a886d0b28a54bef32735ae96da5c6dd0f206c88c8bf",
   "sourcePin": "99b49439ce9d0cb5607e9831b9f7f58d89525029",
-  "ledgerSha256": "a7e6f880b5b8bbc2b7ef6ab70eb5ca72a47878aeae3d9f64199085427d5a7956",
+  "ledgerSha256": "4c138abc0de0c91d47c80c5b06978ed88a658eedd2dbe7f1ba107cf261c7c334",
   "method": "TypeScript syntax trees for JavaScript/TypeScript and JDK compiler trees for Java. Mutable fields, bindings, containers, state hooks, write sites and asynchronous registration calls are candidates for semantic review.",
   "limitations": [
     "Candidate extraction does not establish state-machine coverage or implementation refinement.",
@@ -29183,7 +29183,8 @@
       "path": "apps/app/src/browser/calendar-deletions.ts",
       "sha256": "168b052147eb37e274f5704236eb5579c1610a46ba9b1a7850b6673c5cf21f97",
       "allocatedModels": [
-        "CalendarSync"
+        "CalendarSync",
+        "BrowserJournalRetention"
       ],
       "sourcePathClass": "other-source-path",
       "classification": "syntactic-candidates",
@@ -29393,7 +29394,8 @@
       "sha256": "b318cabe391a8d06cda02d632850ce358e2ff5fdba25284077416b5e522a6075",
       "allocatedModels": [
         "CalendarSync",
-        "BrowserDeletionPoll"
+        "BrowserDeletionPoll",
+        "BrowserJournalRetention"
       ],
       "sourcePathClass": "other-source-path",
       "classification": "syntactic-candidates",
@@ -29484,7 +29486,8 @@
       "sha256": "349a1b5846168a1b4c2b804a5e4d81a346dabc16c64850c591ca0e83c0c2df31",
       "allocatedModels": [
         "CalendarSync",
-        "BrowserDeletionPoll"
+        "BrowserDeletionPoll",
+        "BrowserJournalRetention"
       ],
       "sourcePathClass": "other-source-path",
       "classification": "syntactic-candidates",
@@ -29737,7 +29740,8 @@
       "sha256": "c7af57fc06d6d4f86e29dae139e7bae0f228fa4ab07befadd4114c5319c07b5c",
       "allocatedModels": [
         "BrowserSession",
-        "BrowserDeletionPoll"
+        "BrowserDeletionPoll",
+        "BrowserJournalRetention"
       ],
       "sourcePathClass": "other-source-path",
       "classification": "syntactic-candidates",
@@ -30693,12 +30697,13 @@
     },
     {
       "path": "apps/app/src/browser/journal-retention.ts",
-      "sha256": "3bb7b88434b94b547dca500e9b09dc6a095f7b1d6fcef5e6f1c3620cbefeb487",
+      "sha256": "ebd423507e014dfb420aaffa9715ef84262de5dda8aa37b02b7496830efa0cb5",
       "allocatedModels": [
         "DeletionJournal",
         "DurableStore",
         "CalendarSync",
-        "BrowserDeletionPoll"
+        "BrowserDeletionPoll",
+        "BrowserJournalRetention"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -31211,7 +31216,8 @@
       "path": "apps/app/src/browser/reminder-deletions.ts",
       "sha256": "5ee15a9c2d962bf738e42beeb78d55e8abb9af194b75b0bf58efd2bfd0b544b2",
       "allocatedModels": [
-        "DeletionJournal"
+        "DeletionJournal",
+        "BrowserJournalRetention"
       ],
       "sourcePathClass": "other-source-path",
       "classification": "syntactic-candidates",
@@ -31246,7 +31252,8 @@
       "sha256": "b5062c308366b69aaeef05fbcb015369503d0afdd05e729407f2c6ccc845bf87",
       "allocatedModels": [
         "DeviceActions",
-        "BrowserDeletionPoll"
+        "BrowserDeletionPoll",
+        "BrowserJournalRetention"
       ],
       "sourcePathClass": "other-source-path",
       "classification": "syntactic-candidates",
@@ -32811,7 +32818,8 @@
       "path": "apps/app/src/maps/screen.ts",
       "sha256": "2a76f8a28e174becc55bc3fc82264ce1d046c081be2a2dacc569eaf53e5af5ba",
       "allocatedModels": [
-        "MapsNavigation"
+        "MapsNavigation",
+        "NavigationProgress"
       ],
       "sourcePathClass": "other-source-path",
       "classification": "syntactic-candidates",
@@ -32844,7 +32852,8 @@
       "path": "apps/app/src/maps/state.ts",
       "sha256": "4e83fc8aa70ea95c4f6831a9789fce9520106f6ce19fe04a5a6baac104d07e96",
       "allocatedModels": [
-        "MapsNavigation"
+        "MapsNavigation",
+        "NavigationProgress"
       ],
       "sourcePathClass": "other-source-path",
       "classification": "syntactic-candidates",
@@ -34728,7 +34737,8 @@
         "ShellNavigation",
         "PreferencesAndPresentation",
         "HomeFailureNotice",
-        "LauncherOwnership"
+        "LauncherOwnership",
+        "LauncherObserver"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -79949,7 +79959,8 @@
         "CoreRuntimeRetirement",
         "CoreRuntimeShutdown",
         "CoreServiceLifecycle",
-        "EmbeddingStoreIdentity"
+        "EmbeddingStoreIdentity",
+        "CoreEmbeddingDimension"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -212186,7 +212197,8 @@
         "DurableStore",
         "CoreServiceLifecycle",
         "CoreRuntimeShutdown",
-        "TaskServiceLifecycle"
+        "TaskServiceLifecycle",
+        "CoreEmbeddingDimension"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -212695,7 +212707,8 @@
       "sha256": "6732221e4bfb103841cd1c7932baaef5f2c3c7e9c85384e3593a5ecd142fea9b",
       "allocatedModels": [
         "AssistantConversation",
-        "ResidentRuntime"
+        "ResidentRuntime",
+        "CoreEmbeddingDimension"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -212921,7 +212934,8 @@
       "path": "vendor/eliza/plugins/plugin-sql/src/pglite/adapter.ts",
       "sha256": "cf2e58f0d7e4eb70514fcad151eb44af19970246a1904f0a4560eda60c786dfb",
       "allocatedModels": [
-        "Application"
+        "Application",
+        "CoreEmbeddingDimension"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -218168,6 +218182,6 @@
   ],
   "detail": {
     "path": "test-results/quint-state-audit/details.json",
-    "sha256": "1d81ee191963107f022c52d5ba0324676c63f38c80c2b833b7b58b8f7114442e"
+    "sha256": "d5800355b5f0dcc21f57be164f6952949aefab84d1e070245d1d79d692d5e757"
   }
 }

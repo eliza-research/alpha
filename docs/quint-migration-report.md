@@ -305,7 +305,7 @@ qualified.
 ## Current SDK source-owner inventory
 
 The integrated `99b4943` snapshot admits 5,680 source inputs, including 4,840
-shared inputs, and registers 133 Quint models. The syntax audit parses 5,625
+shared inputs, and registers 135 Quint models. The syntax audit parses 5,625
 JavaScript, TypeScript and Java files without syntax errors. The source-owner
 summary records 67,051 candidate bindings, 66,497 write sites, 8,297
 asynchronous registrations and 10,195
@@ -324,3 +324,7 @@ profiles. The product's four retained design models and 22 configurations have
 registered Quint translations. The original design files remain available for
 comparison. A tracked-file admission test checks that every TLA+ and TLC
 configuration path at the current product and upstream pins is represented.
+The nested native engine at `6337fd4c4bd071c17235986344d552d4036e177b`
+contains no tracked TLA+ or TLC configuration files and no further gitlinks.
+The source-tree scan also found no additional embedded TLA+ module headers,
+PlusCal blocks, or fenced TLA+ code.

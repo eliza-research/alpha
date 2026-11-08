@@ -9711,7 +9711,8 @@
       "path": "apps/app/src/browser/calendar-deletions.ts",
       "sha256": "168b052147eb37e274f5704236eb5579c1610a46ba9b1a7850b6673c5cf21f97",
       "models": [
-        "CalendarSync"
+        "CalendarSync",
+        "BrowserJournalRetention"
       ],
       "scope": "application",
       "treatment": "domain-contract-or-support",
@@ -10078,7 +10079,8 @@
       "sha256": "b318cabe391a8d06cda02d632850ce358e2ff5fdba25284077416b5e522a6075",
       "models": [
         "CalendarSync",
-        "BrowserDeletionPoll"
+        "BrowserDeletionPoll",
+        "BrowserJournalRetention"
       ],
       "scope": "application",
       "treatment": "state-and-transition-projection",
@@ -10268,7 +10270,8 @@
       "sha256": "349a1b5846168a1b4c2b804a5e4d81a346dabc16c64850c591ca0e83c0c2df31",
       "models": [
         "CalendarSync",
-        "BrowserDeletionPoll"
+        "BrowserDeletionPoll",
+        "BrowserJournalRetention"
       ],
       "scope": "application",
       "treatment": "state-and-transition-projection",
@@ -11103,7 +11106,8 @@
       "sha256": "c7af57fc06d6d4f86e29dae139e7bae0f228fa4ab07befadd4114c5319c07b5c",
       "models": [
         "BrowserSession",
-        "BrowserDeletionPoll"
+        "BrowserDeletionPoll",
+        "BrowserJournalRetention"
       ],
       "scope": "application",
       "treatment": "domain-contract-or-support",
@@ -12546,12 +12550,13 @@
         "DeletionJournal",
         "DurableStore",
         "CalendarSync",
-        "BrowserDeletionPoll"
+        "BrowserDeletionPoll",
+        "BrowserJournalRetention"
       ],
       "scope": "application",
       "treatment": "domain-contract-or-support",
       "reviewStatus": "state-audit-required",
-      "sha256": "3bb7b88434b94b547dca500e9b09dc6a095f7b1d6fcef5e6f1c3620cbefeb487",
+      "sha256": "ebd423507e014dfb420aaffa9715ef84262de5dda8aa37b02b7496830efa0cb5",
       "stateAnchors": []
     },
     {
@@ -13343,7 +13348,8 @@
       "path": "apps/app/src/browser/reminder-deletions.ts",
       "sha256": "5ee15a9c2d962bf738e42beeb78d55e8abb9af194b75b0bf58efd2bfd0b544b2",
       "models": [
-        "DeletionJournal"
+        "DeletionJournal",
+        "BrowserJournalRetention"
       ],
       "scope": "application",
       "treatment": "domain-contract-or-support",
@@ -13398,7 +13404,8 @@
       "sha256": "b5062c308366b69aaeef05fbcb015369503d0afdd05e729407f2c6ccc845bf87",
       "models": [
         "DeviceActions",
-        "BrowserDeletionPoll"
+        "BrowserDeletionPoll",
+        "BrowserJournalRetention"
       ],
       "scope": "application",
       "treatment": "state-and-transition-projection",
@@ -15462,7 +15469,8 @@
     {
       "path": "apps/app/src/maps/screen.ts",
       "models": [
-        "MapsNavigation"
+        "MapsNavigation",
+        "NavigationProgress"
       ],
       "scope": "application",
       "treatment": "domain-contract-or-support",
@@ -15488,7 +15496,8 @@
       "path": "apps/app/src/maps/state.ts",
       "sha256": "4e83fc8aa70ea95c4f6831a9789fce9520106f6ce19fe04a5a6baac104d07e96",
       "models": [
-        "MapsNavigation"
+        "MapsNavigation",
+        "NavigationProgress"
       ],
       "scope": "application",
       "treatment": "domain-contract-or-support",
@@ -23146,7 +23155,8 @@
         "ShellNavigation",
         "PreferencesAndPresentation",
         "HomeFailureNotice",
-        "LauncherOwnership"
+        "LauncherOwnership",
+        "LauncherObserver"
       ],
       "scope": "application",
       "treatment": "domain-contract-or-support",
@@ -179907,7 +179917,8 @@
         "CoreRuntimeRetirement",
         "CoreRuntimeShutdown",
         "CoreServiceLifecycle",
-        "EmbeddingStoreIdentity"
+        "EmbeddingStoreIdentity",
+        "CoreEmbeddingDimension"
       ],
       "scope": "shared-module-dependency",
       "treatment": "domain-contract-or-support",
@@ -593373,7 +593384,8 @@
         "DurableStore",
         "CoreServiceLifecycle",
         "CoreRuntimeShutdown",
-        "TaskServiceLifecycle"
+        "TaskServiceLifecycle",
+        "CoreEmbeddingDimension"
       ],
       "scope": "shared-module-dependency",
       "treatment": "domain-contract-or-support",
@@ -596596,7 +596608,8 @@
       "path": "vendor/eliza/plugins/plugin-sql/src/embedding-space.ts",
       "models": [
         "AssistantConversation",
-        "ResidentRuntime"
+        "ResidentRuntime",
+        "CoreEmbeddingDimension"
       ],
       "scope": "shared-module-dependency",
       "treatment": "domain-contract-or-support",
@@ -597220,7 +597233,8 @@
     {
       "path": "vendor/eliza/plugins/plugin-sql/src/pglite/adapter.ts",
       "models": [
-        "Application"
+        "Application",
+        "CoreEmbeddingDimension"
       ],
       "scope": "shared-module-dependency",
       "treatment": "domain-contract-or-support",
@@ -618310,7 +618324,7 @@
         "NativeLiveCapture",
         "NativeSpeechOutputPreparation"
       ],
-      "sha256": "f6d8d50107e76a497708013d687e6c536386071db79c7a9241a9669b2bc54b8d"
+      "sha256": "d1dfad15a9e4713e5c8999672bee80d76ceea69e8126b11025e57c4c84499e3d"
     },
     {
       "path": "android/consumer-host.json",
@@ -618347,7 +618361,7 @@
         "CalendarLinkedSync",
         "InboxProviderDrafts"
       ],
-      "sha256": "085b33f9ae8263c00a1aa5aeae44cad9789effe378f534f1329967097c20e504"
+      "sha256": "d955a43505190e6b5c81222ddbbaf3aeca1854a6d561e8ddb5b0117c4212388d"
     },
     {
       "path": "patches/eliza/calendar-semantic-client-manifest.json",
@@ -618460,7 +618474,7 @@
         "NativeCredentialMutation",
         "ApplicationComposition"
       ],
-      "sha256": "8ccfd85f31e0ecefc2f30ae90512216ec0932e5493ef6dae2b8e8f5f58670838"
+      "sha256": "6e696968cb4dd17b5e385b0ef483424a6c5654a1cdb0af7d4072a44cfdf96bf1"
     },
     {
       "path": "patches/eliza/inbox-cleanup-client-manifest.json",
@@ -618963,6 +618977,34 @@
         "CoreRoomHandlerQueue"
       ],
       "sha256": "343e39a3c756e3679b8a1e577352638119e0f17b1d0535023cbd1720fdddedde"
+    },
+    {
+      "path": "patches/eliza/launcher-observer-client.patch",
+      "models": [
+        "LauncherObserver"
+      ],
+      "sha256": "89791337625d141904830e8c9f29a8452e7ac81c2a18ba18c3e40bad69c7b71e"
+    },
+    {
+      "path": "patches/eliza/launcher-observer-client-manifest.json",
+      "models": [
+        "LauncherObserver"
+      ],
+      "sha256": "255d5aff1a3a617771c47bcd22b07f0bc3e18ad8033712c07fba769a21c70477"
+    },
+    {
+      "path": "patches/eliza/maps-hidden-fallback-client.patch",
+      "models": [
+        "NavigationProgress"
+      ],
+      "sha256": "bcd6b942067c875020402d68658ce95ed30fd299bfcb4338c72efb87999c6fcd"
+    },
+    {
+      "path": "patches/eliza/maps-hidden-fallback-client-manifest.json",
+      "models": [
+        "NavigationProgress"
+      ],
+      "sha256": "51e23a58827a271dd188784c6b8b3fb9f9e2fa817a778dbb79555b0c8527f8ca"
     }
   ],
   "runtimeAssets": [
