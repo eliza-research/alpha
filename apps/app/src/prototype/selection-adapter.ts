@@ -187,7 +187,7 @@ export function installSelectedDocumentAdapter(Component: {prototype: Bag}, view
   Component.prototype.filesAgent=installFilesBrowserAdapter(views.files as Parameters<typeof installFilesBrowserAdapter>[0],accept,clear,{
     storage:registerPlugin<FilesStoragePort<NativeResult>>('AlphaFiles'),
     createInlineModal,
-    menuFocus:()=>document.querySelector<HTMLElement>('[data-alpha-subview="files-folder"] button[aria-label="Sort and more"]'),
+    menuFocus:()=>document.querySelector<HTMLElement>('[data-alpha-subview="files-folder"] button[aria-label="New folder"], [data-alpha-subview="files-folder"] button[aria-label="Sort files"]'),
     forgetSelected:selectionId=>DailyApps.forgetSelected({selectionId}),
   });
   return accept;

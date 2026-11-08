@@ -4,8 +4,8 @@ for(const theme of ['light','dark'])test(`${theme} Files folder dialog owns keyb
  await page.goto(`/?mode=dev&theme=${theme}`);
  await page.getByRole('button',{name:'Files',exact:true}).click();
  await page.getByRole('button',{name:'Internal storage',exact:true}).click();
- const menu=page.getByRole('button',{name:'Sort and more',exact:true});
- await menu.click();await page.getByText('New folder',{exact:true}).click();
+ const menu=page.getByRole('button',{name:'New folder',exact:true});
+ await menu.click();
  const dialog=page.getByRole('dialog',{name:'New folder',exact:true}),input=dialog.getByRole('textbox',{name:'Name'});
  await expect(input).toBeFocused();
  await expect(menu).toHaveCount(0);
@@ -15,7 +15,7 @@ for(const theme of ['light','dark'])test(`${theme} Files folder dialog owns keyb
  await page.keyboard.press('Escape');await expect(dialog).toHaveCount(0);
  await expect(menu).toBeFocused();
  await expect(page.getByRole('button',{name:'Open Do not create',exact:true})).toHaveCount(0);
- await menu.click();await page.getByText('New folder',{exact:true}).click();
+ await menu.click();
  await input.fill('Reviewed folder');await dialog.getByRole('button',{name:'Create',exact:true}).click();
  await expect(dialog).toHaveCount(0);await expect(page.getByRole('button',{name:'Open Reviewed folder',exact:true})).toBeVisible();
  await expect(menu).toBeFocused();

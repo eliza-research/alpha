@@ -3,7 +3,7 @@ import {execFileSync} from 'node:child_process';
 test.beforeEach(async({page})=>{await page.addInitScript(()=>localStorage.setItem('alpha.connection.selection.v1',JSON.stringify({kind:'offline'})));await page.goto('/?mode=dev');});
 // Files browser (PLAN section 4): select mode from the folder menu; Delete moves to Trash; only a confirmed Empty deletes.
 async function openStorage(page:Page){await page.getByRole('button',{name:'Files',exact:true}).click();await page.getByRole('button',{name:'Internal storage',exact:true}).click();}
-async function startSelect(page:Page){await page.getByRole('button',{name:'Sort and more',exact:true}).click();await page.getByRole('button',{name:'Select',exact:true}).click();}
+async function startSelect(page:Page){await page.getByRole('button',{name:'Sort files',exact:true}).click();await page.getByRole('button',{name:'Select',exact:true}).click();}
 const zipJson=(path:string)=>JSON.parse(execFileSync('python3',['-c','import zipfile,json,sys; z=zipfile.ZipFile(sys.argv[1]); assert z.testzip() is None; print(json.dumps({n:z.read(n).decode() for n in z.namelist()}))',path],{encoding:'utf8'}));
 test('select, move together into a folder, delete to Trash, restore, and Empty only after confirming',async({page})=>{
  await page.evaluate(async()=>{const {registerPlugin}=await import('/src/platform-plugins.ts');const f=registerPlugin<any>('AlphaFiles');await f.importFile(new File(['Café\n'],'one.txt',{type:'text/plain'}));await f.importFile(new File(['two'],'two.txt',{type:'text/plain'}));await f.createFolder({id:'root',name:'Destination'});});
