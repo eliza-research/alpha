@@ -1713,5 +1713,46 @@
       "Actual owner/session and range refresh, held legacy preservation gate, independently settled feed/source/next reads, trailing same-query reads, and presentation freshness.",
       "Two owners, sessions and windows and eight epochs. Observe real abort and private active controller state. Calendar write deferral, provider replay, Maps return, linked selection and live transport have separate scope."
     ]
+  },
+  {
+    "path": "specs/quint/application/CanonicalNotificationTapAdmission.qnt",
+    "module": "CanonicalNotificationTapAdmission",
+    "init": "init",
+    "step": "step",
+    "invariant": "safety",
+    "tests": [
+      "pendingRenderCoalescesRepeatedWakeTest",
+      "busyAfterReadLeavesTapInNativeCustodyTest",
+      "retiredReadCannotActInNewMountTest",
+      "exactRestoreAllowsItsOwnBusyButRespectsUserNavigationTest",
+      "replacedNativeTokenCannotBeConsumedByOldCommitTest"
+    ],
+    "invariants": [
+      "exactLifetime",
+      "nativeOwnership",
+      "heldCommit"
+    ],
+    "sources": [
+      "apps/app/src/prototype/notifications-adapter.ts",
+      "apps/app/src/main.tsx",
+      "apps/app/src/runtime/connection-ui.tsx",
+      "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaCanonicalNotifications.java",
+      "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaNotificationsPlugin.java"
+    ],
+    "stateMapping": {
+      "generation/live/phase/drain": "Actual mount closure and renderer read, restore and commit activity",
+      "busy/protected/session/context/view/chat/exactHistory": "Active connection, user navigation and exact restoration eligibility",
+      "pending/captured/published/originSession/originContext/originView": "Exact synthetic native custody and captured renderer origin",
+      "reads/opens/attempts/acknowledged": "Observed renderer and controlled native port invocations"
+    },
+    "abstractions": [
+      "Two unique tokens and two mount generations. The synthetic native port captures and compare-and-clears exact tokens.",
+      "Installed foreground and expiry are separate. Protection reasons share one admission predicate."
+    ],
+    "bounds": {
+      "maxSamples": 1000,
+      "maxSteps": 80,
+      "maxVerifyDepth": 4
+    }
   }
 ]
