@@ -35,3 +35,31 @@ export function parseRecoveryArchive(value:unknown):RecoveryArchive {
  if(!v||!count(v.archivedCount)||!count(v.retainedCount)||!['archived','unavailable','partial'].includes(v.status||''))throw Error('Recovery could not be confirmed. Review again before restarting your agent.');
  return {status:v.status!,archivedCount:v.archivedCount,retainedCount:v.retainedCount};
 }
+
+export type ResidentBootStatus = {state?:string;reason?:string};
+/** Boot states where the resident this renderer was bound to is gone. Listening (busy or idle) and an owner's stop are not. */
+export function residentBootLost(status:ResidentBootStatus|undefined):boolean {
+ return !!status&&(status.state==='dead'||status.state==='restarting'||status.state==='booting');
+}
+/** One plain line for a native boot reason; raw codes never reach the owner. */
+export function residentBootMessage(reason:unknown):string {
+ const code=typeof reason==='string'?reason:'';
+ if(code.startsWith('agent startup blocked'))return 'Alpha couldn’t start your agent. Restart your phone to try again.';
+ if(code==='fatal')return 'Your agent stopped unexpectedly. Retry in Settings › Agent connection.';
+ if(code==='agent-update-deferred')return 'An agent update is waiting. Restart Alpha to finish it.';
+ return 'Your agent stopped. Retry in Settings › Agent connection.';
+}
+/**
+ * A rate-limited native boot-state read after a channel or request failure: one in flight, at most
+ * one per interval. It resolves the boot status only when the resident is gone, otherwise undefined.
+ */
+export function residentLivenessCheck(read:()=>Promise<ResidentBootStatus|undefined>,now:()=>number=Date.now,interval=10_000):()=>Promise<ResidentBootStatus|undefined> {
+ let inFlight=false,last=-Infinity;
+ return async()=>{
+  if(inFlight||now()-last<interval)return;
+  inFlight=true;last=now();
+  try{const status=await read();return residentBootLost(status)?status:undefined;}
+  catch{return;}
+  finally{inFlight=false;}
+ };
+}

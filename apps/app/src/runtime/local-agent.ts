@@ -57,6 +57,12 @@ export async function localAgentPackaged():Promise<boolean> {
   if(!Capacitor.isNativePlatform())return browserLocalAgentEnabled;
   try{return (await native.getStatus?.())?.packaged===true;}catch{return false;}
 }
+/** The native resident's boot state (dead, restarting, booting, listening); undefined off device. */
+export async function localAgentBootStatus():Promise<{state?:string;reason?:string}|undefined> {
+  if(!Capacitor.isNativePlatform()||!localAgentAvailable())return;
+  const status=await native.getStatus?.();
+  return status?{state:status.state,reason:status.reason}:undefined;
+}
 const unavailableBridge: LocalAgentBridge = {
   async start() { throw new Error('Your agent runs on your phone, not here. Open Alpha on your Android phone to use it.'); },
   async request() { throw new Error('Your agent runs on your phone, not here. Open Alpha on your Android phone to use it.'); },

@@ -9,7 +9,7 @@ import {AUTOMATIONS_COMMITTED_EVENT,automationsCommitted} from './automation-com
 import {OWNER_REMINDER_LIST,OWNER_REMINDER_READBACK,ownerReminderRoute,reminderReadPath,type ReminderNotificationBinding} from './owner-reminder-notification-protocol';
 import {CAMERA_CAPTURE_CAPABILITY} from '../../../../.eliza/client-features/plugins/plugin-assistant/src/services/device-actions/camera-contract.ts';
 import {sanitizeCloudInferenceFailure,type CloudInferenceFailure} from './crash-log';
-import {residentRecoveryReason,residentRecoveryMessage,residentRecoveryCopy,RESIDENT_RECOVERY_PENDING,type ResidentRecoveryReason,type ResidentRecoveryView} from './resident-recovery';
+import {residentRecoveryReason,residentRecoveryMessage,residentRecoveryCopy,residentBootMessage,residentLivenessCheck,RESIDENT_RECOVERY_PENDING,type ResidentRecoveryReason,type ResidentRecoveryView} from './resident-recovery';
 import {anyAbortSignal} from './abort-signal';
 import {CALENDAR_APPROVAL_READ_PATH,calendarApprovalFromList,calendarApprovalId} from './calendar-approval';
 import {readDevicePreferences} from '../browser/device-preferences';
@@ -47,7 +47,7 @@ import { PersonalProtocolError, type CloudPersonalProtocol, type PersonalView, t
 import { holdPhoneInert } from './modal-inert';
 import { pauseHostedBackground } from './hosted-background';
 import {developmentDeviceStore,developmentActionJournal} from './local-agent-storage';
-import { reviewLocalRecovery,archiveLocalRecovery,stopLocalAgent, configureLocalProvider, bindResidentCloudProvider, LocalCloudProviderStopUnconfirmed, LocalAgentProtocol, localAgentPackaged, browserLocalAgentEnabled, localProviderStatus, clearLocalProvider, clearLocalProviderIfCurrent, providerStatusLabel, LOCAL_PROVIDER_MODEL, type LocalProviderStatus } from './local-agent';
+import { reviewLocalRecovery,archiveLocalRecovery,stopLocalAgent,localAgentBootStatus, configureLocalProvider, bindResidentCloudProvider, LocalCloudProviderStopUnconfirmed, LocalAgentProtocol, localAgentPackaged, browserLocalAgentEnabled, localProviderStatus, clearLocalProvider, clearLocalProviderIfCurrent, providerStatusLabel, LOCAL_PROVIDER_MODEL, type LocalProviderStatus } from './local-agent';
 import { presentDeviceRecordOperation } from './device-record-presentation';
 import { succeededBrowserDestination, systemNoticeDisplayText, systemNoticeKind, type SystemNoticeKind } from './action-message-presentation';
 import type { MessagePage } from './remote-protocol';
@@ -392,7 +392,7 @@ async function flushConversationEvents(){
   const generation=epoch,controller=new AbortController();conversationEventRead=controller;conversationResync=false;
   const current=()=>{controller.signal.throwIfAborted();if(epoch!==generation||active!==selected||state.session!==session||conversationMemory.get(conversationKey(session))!==id)throw Error('Conversation event binding changed');};
   try{const result=await readConversation(selected,id,controller.signal,current);current();if(sending||operation){conversationResync=true;return;}deliverConversationMessages(selected,session,id,result.messages);}
-  catch{if(!controller.signal.aborted&&active===selected&&state.session===session)update({conversationEvents:'unavailable'});}
+  catch{if(!controller.signal.aborted&&active===selected&&state.session===session){update({conversationEvents:'unavailable'});checkResidentAlive(generation);}}
   finally{if(conversationEventRead===controller)conversationEventRead=undefined;}
 }
 function startConversationEvents(selected:Active,session:VerifiedSession){
@@ -406,7 +406,7 @@ function startConversationEvents(selected:Active,session:VerifiedSession){
     const row=message as Record<string,unknown>;
     if(row.role!=='assistant'||typeof row.id!=='string'||!row.id||row.id.length>128||typeof row.text!=='string')return;
     deliverConversationMessages(selected,session,event.conversationId,[row]);
-  },(status,resync)=>{if(!current())return;if(resync)conversationResync=true;update({conversationEvents:status});});
+  },(status,resync)=>{if(!current())return;if(resync)conversationResync=true;update({conversationEvents:status});if(status==='unavailable')checkResidentAlive(generation);});
 }
 /** Insert canonical delivery IDs around known history anchors without cancelling or replacing drafts/streams. */
 export function mergeConversationDelivery<T extends{id:string}>(current:T[],delivered:T[]):T[]{
@@ -820,12 +820,23 @@ function retire(name?: string) {
 let residentRestartEpoch = -1;
 /** The resident this connection used is gone (a new native process, or it refused its own session):
  * retire it as recovering and start it again once for that epoch. Nothing is resent. */
-function residentLost(generation: number) {
+function residentLost(generation: number, bootReason?: string) {
   if (generation !== epoch) return;
   retire(); update({ kind: 'recovering' });
   if (residentRestartEpoch === generation) return;
   residentRestartEpoch = generation;
-  if (operation) queueResidentRebind(); else void Promise.resolve().then(ensureResident);
+  if (operation) { queueResidentRebind(); return; }
+  // A restart that fails after a dead boot state names that reason in plain words, not the start's raw error.
+  void Promise.resolve().then(ensureResident).then(() => { if (bootReason !== undefined && !active && !state.residentRecoveryReason) update({ error: residentBootMessage(bootReason), errorKind: null }); });
+}
+let residentAlive: ReturnType<typeof residentLivenessCheck> | undefined;
+/** A channel or request failure on the resident: when native says it is no longer listening, retire
+ * the session and start it again, so Settings never reports a dead agent as running. A busy resident
+ * that is still listening is left alone. */
+function checkResidentAlive(generation: number) {
+  if (generation !== epoch || active?.kind !== 'resident') return;
+  residentAlive ??= residentLivenessCheck(localAgentBootStatus);
+  void residentAlive().then(status => { if (status && generation === epoch && active?.kind === 'resident') residentLost(generation, status.reason ?? ''); });
 }
 /** Test mocks only (the mock-mode exit and fixtures): where no resident runs, remember "offline". */
 function persistOffline(): string {
@@ -3419,6 +3430,8 @@ export const connectionController = {
       }
       // The native process this send used was replaced: the outcome stays unknown, the agent restarts.
       if (selected.kind === 'resident' && generation === epoch && selected === active && (error as { code?: unknown } | null)?.code === 'LOCAL_AGENT_EPOCH_CHANGED') residentLost(generation);
+      // Any other failure that was not a Stop: check whether the resident behind it is still listening.
+      else if (selected.kind === 'resident' && !signal.aborted) checkResidentAlive(generation);
       throw error;
     } finally { signal.removeEventListener('abort', cancel); if (sending === controller) { sending = null; /* Let the caller commit this reply before a deferred plan rebind. */ setTimeout(()=>{update({});runQueuedResidentRebind();},0); } }
   },
