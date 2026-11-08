@@ -190,6 +190,21 @@ for (const operation of ['page', 'validate']) {
  assert.equal(view.items.filter(row=>row.on).length,0);assert.match(view.status,/Library access changed in Android\./);
  library.dispose();
 }
+// 6b. A resume whose reload fails keeps the selection for the retry, which reads on as far as before.
+{
+ const {state,port}=fakePort(),{api}=fakeApi();state.rows=Array.from({length:30},(_,i)=>30-i);
+ const library=createDeviceLibrary(port,()=>true);
+ library.tile(api);library.album({},api);await tick();
+ library.album({},api).loadMore();await tick();
+ library.album({},api).items[27].tap();
+ const page=port.page;port.page=async()=>{port.page=page;throw Error('busy');};
+ state.version='v2';state.listeners.scopeChanged(await port.scope());await tick(10);
+ assert.match(library.album({},api).status,/could not be loaded/);
+ library.album({},api).loadMore();await tick(10);
+ const view=library.album({},api);
+ assert.equal(view.items.length,30);assert.deepEqual(view.items.filter(row=>row.on).map(row=>row.nativeMediaId),[item(3).id]);
+ library.dispose();
+}
 // 7. An approved agent read during a concurrent load or resume is not refused as "not allowed".
 {
  const {state,port}=fakePort(),{api}=fakeApi(),library=createDeviceLibrary(port,()=>true);

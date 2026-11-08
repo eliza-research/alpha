@@ -58,6 +58,8 @@ export function createDeviceLibrary(port: PhotoLibraryPort = nativePort, availab
   /** reloadOnOpen: the next visit must start from a fresh first page (Photos was left, or Android resumed or
    * changed access). watching is undefined after a resume: Android turned its observer off, so the next render asks again. */
   let reloadOnOpen = false, watching: boolean | undefined = false;
+  /** How many items the last completed load showed: a reload reads on no further than this, even after a failed attempt. */
+  let reach = 0;
   let api: Bag | undefined;
   const listeners: Promise<PluginListenerHandle>[] = [];
   const visible = () => !!api && api.isActive?.() !== false && api.get?.('photos')?.album === 'device';
@@ -84,7 +86,7 @@ export function createDeviceLibrary(port: PhotoLibraryPort = nativePort, availab
 
   async function load(more = false) {
     if (busy || disposed || !available()) return;
-    const token = ++epoch, loaded = catalog.items.length; busy = true; error = ''; refresh();
+    const token = ++epoch, loaded = Math.max(reach, catalog.items.length); busy = true; error = ''; refresh();
     try {
       const current = await readScope();
       if (token !== epoch) return;
@@ -109,6 +111,7 @@ export function createDeviceLibrary(port: PhotoLibraryPort = nativePort, availab
       const dropped = selection.reconcile(catalog);
       if (dropped.dropped || dropped.changed) status = 'Some selected items changed or left the library and were unselected.';
       if (review && !reviewCurrent(review, catalog)) { review = undefined; status = 'The reviewed items changed. Review them again.'; }
+      reach = catalog.items.length;
     } catch (failure) {
       if (token !== epoch) return;
       error = (failure as { code?: string })?.code === 'LIBRARY_DENIED' ? '' : 'The device library could not be loaded. Try again.';
