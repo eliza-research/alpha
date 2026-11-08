@@ -19,8 +19,8 @@ Principles applied to every view:
    ask Alpha ("photos from last weekend", "my note about the term sheet", "the bank PDF"),
    and the view shows the result as a dismissible filter chip. The agent tools are
    read-only filters, so this adds no new side effects.
-4. **One model per flow.** Each view gets a TLA+ spec next to the existing ones in
-   `design/view-refresh-2026-11/tla/`. Each spec checks the as-built behaviour (with fix
+4. **One model per flow.** Each view has a migrated Quint design model in
+   `specs/quint/legacy/`. Each spec checks the as-built behaviour (with fix
    flags), then the fixed design. Implementation follows the checked design.
 
 ---
@@ -81,7 +81,7 @@ before numbers are captured on-device in phase 0. This review doesn't claim them
 - Dead UI: the focus ring, the model's scan-found sheet, `scanPages`, and the viewfinder
   gestures promised by its aria-label.
 
-### TLA+: `tla/camera-session/Spec.tla`
+### Design model — `specs/quint/legacy/CameraSession.qnt`
 - **Variables:** `view∈{away,camera}`, `vis∈{fg,bg}`, `chat∈{closed,open}` (modelled since the
   port: the chat keeps the session for a grace period, then releases it),
   `phase∈{off,starting,ready,error}`, `perm∈{unknown,granted,denied}`,
@@ -137,7 +137,7 @@ before numbers are captured on-device in phase 0. This review doesn't claim them
 - `photos_open{id}`, `photos_album_create{name, ids}` (reviewed), `photos_share{ids}`
   (opens the system share sheet), `photos_trash{ids}` (reviewed, undoable).
 
-### TLA+: `tla/photos-library/Spec.tla`
+### Design model — `specs/quint/legacy/PhotosLibrary.qnt`
 - **Variables:** `items` (id → {trashed, fav, albums, rev}), `window`, `tab`,
   `selection`, `viewer`, `filter`, `pending` ops, `access∈{none,partial,full}`,
   `storeEvents`.
@@ -199,7 +199,7 @@ before numbers are captured on-device in phase 0. This review doesn't claim them
 - The existing `create_note`, `notes_update`, `notes_delete` (to Trash) and `notes_query`
   stay. `notes_restore{noteId}` is added.
 
-### TLA+: extend `specs/notes-merge` into `tla/notes-view/Spec.tla`
+### Design model — `specs/quint/legacy/NotesView.qnt`
 The existing merge/trash/draft spec covers storage. The new module adds:
 - **Variables:** `folders`, `noteFolder`, `rec∈{idle,recording,paused,finalizing}`,
   `audioBytes`, `asrCommitted`, `asrPending`, `filter`, `screen∈{list,editor,recorder,deleted}`.
@@ -266,7 +266,7 @@ A real file browser needs one of these:
   `files_trash{paths}` (reviewed, undoable), `files_folder_create{parent,name}` (reviewed).
 - The model's fixture `reply()` regexes are deleted.
 
-### TLA+: `tla/files-browser/Spec.tla`
+### Design model — `specs/quint/legacy/FilesBrowser.qnt`
 - **Variables:** `fs` (a tree of path → {kind, mime, trashed}), `cwd`, `root∈{category,storage,trash}`,
   `selection`, `clipboard/op`, `filter`, `access`.
 - **Actions:** Navigate, Up, OpenCategory, Select, Move, Copy, Rename, Trash,
@@ -322,12 +322,21 @@ Final:
 - **F2:** No Recents.
 - **A1:** Apps drawer is a 4-column icon grid.
 
-## TLA+ models (written and checked 2026-11-06)
-Specs are in `design/view-refresh-2026-11/tla/{camera-session,photos-library,notes-view,files-browser}`,
-run by `tla/check.sh <tla2tools.jar>`; results in `tla/results.md`.
-`Design.cfg` is the proposed design. Each `AsBuilt_*.cfg` turns off one fix, to show that
-today's code has the defect. Each `Ablate_*.cfg` turns off one design rule, to show the
-rule is needed.
+## Historical design models and Quint migration
+
+The four specifications authored on November 6 are translated to `CameraSession.qnt`,
+`PhotosLibrary.qnt`, `NotesView.qnt` and `FilesBrowser.qnt` in `specs/quint/legacy`.
+`view-refresh-configurations.json` retains every original configuration's constants,
+invariants, temporal properties and input hash. Run
+`node specs/quint/legacy/check-view-refresh.mjs --phase=compare` to check the finite
+configuration comparisons. The original results remain in `tla/results.md` as
+historical evidence. The scope outlines above include proposed behavior beyond the
+actual finite model variables and actions. The Quint declarations define the checked scope.
+
+`Design` selects the proposed design. Each `AsBuilt_*` configuration turns off one
+fix to reproduce the corresponding historical behavior. Each `Ablate_*`
+configuration removes a design rule. `Rename` checks the extra folder-name domain.
+These comparisons do not establish conformance of today's implementation.
 
 Design changes the models found:
 - **Camera:** if the agent queues a photo during start and you then start recording, the
@@ -341,9 +350,9 @@ Design changes the models found:
 ## Phases after approval
 0. On the Pixel 10a, measure camera cold and warm first frame and shutter latency, and
    record the before numbers.
-1. Write the TLA+ specs. Run the as-built configuration to reproduce the bugs listed
-   above, then the fixed design. Specs and run logs go under
-   `design/view-refresh-2026-11/tla/`.
+1. Run the migrated Quint configurations to reproduce the historical as-built
+   counterexamples, then check the proposed design. Models live in `specs/quint/legacy`;
+   fresh run logs go under `test-results/quint-view-refresh/`.
 2. Camera: the header cleanup and the native startup and shutter work (as a
    `patches/eliza` patch), then re-measure.
 3. Photos: the unified catalog, grid, selection, viewer and agent filter.

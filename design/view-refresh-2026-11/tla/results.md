@@ -1,6 +1,11 @@
-# View refresh TLA+ results (TLC 2026-11-06)
+# Historical view refresh TLA+ results (TLC 2026-11-06)
 
-Run: `design/view-refresh-2026-11/tla/check.sh <tla2tools.jar>` (writes <area>/results/, untracked).
+These results predate the Quint migration and retain their original counts and
+qualifications. The former TLA+ sources, configurations and shell runner have
+been replaced by the four Quint models and configuration records in
+`specs/quint/legacy`. Fresh checks use
+`node specs/quint/legacy/check-view-refresh.mjs --phase=compare` and write
+`test-results/quint-view-refresh/`.
 
 | Spec | Config | Result | Distinct states |
 |---|---|---|---|
