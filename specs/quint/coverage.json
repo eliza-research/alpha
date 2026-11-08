@@ -6723,7 +6723,8 @@
       "path": "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaImageCapability.java",
       "sha256": "19f7e496c590d1cefc0da7846fa8e9cb28786dbf820ade1d0af879060d463fc9",
       "models": [
-        "DeviceActions"
+        "DeviceActions",
+        "NativeSmsDispatch"
       ],
       "scope": "application",
       "treatment": "state-and-transition-projection",
@@ -7343,7 +7344,8 @@
       "path": "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaSmsSendReceiver.java",
       "sha256": "f3e08393001c257c46a448ea8a4c1e65d39ef6df672b42545a5928bace38f670",
       "models": [
-        "DeviceActions"
+        "DeviceActions",
+        "NativeSmsDispatch"
       ],
       "scope": "application",
       "treatment": "domain-contract-or-support",
@@ -7362,7 +7364,8 @@
     {
       "path": "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaTelephony.java",
       "models": [
-        "DeviceActions"
+        "DeviceActions",
+        "NativeSmsDispatch"
       ],
       "scope": "application",
       "treatment": "domain-contract-or-support",
@@ -7378,7 +7381,8 @@
       "path": "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaTelephonyPlugin.java",
       "sha256": "6b6b2f2d5137cda6987d8bd0e07f70f9f219abbfa74df0ebe9fbf55db505f424",
       "models": [
-        "DeviceActions"
+        "DeviceActions",
+        "NativeSmsDispatch"
       ],
       "scope": "application",
       "treatment": "state-and-transition-projection",
@@ -17642,7 +17646,7 @@
       "scope": "application",
       "treatment": "domain-contract-or-support",
       "reviewStatus": "state-audit-required",
-      "sha256": "289aa4172f0c36251db10928ef60aefbd2fd87f36a0d4c5c50097e177f2bc707",
+      "sha256": "4f1bcc63e6a663970aea7967ab790669fdb7fb2fd3a68711fc12eb1fdaf0e093",
       "stateAnchors": [
         {
           "line": 24,
@@ -17929,115 +17933,115 @@
           "text": "if(chosen.where&&origin)out.ev.goWhere=()=>{const now=port(),current=controller?.selection(chosen.canonicalEventKey);if(!now?.current()||mapBinding(now)!==origin.binding||current?.revision!==origin.re"
         },
         {
-          "line": 209,
+          "line": 210,
           "text": "const e=chosen.canonicalEvent,policy=eventEditorMutability(e),managed=managedGoogleSource(e),recurringEvent=!!(e.recurringEventId||e.recurrence?.length),sourceReadOnly=(cals as Bag[]).find(c=>c.id===c"
         },
         {
-          "line": 213,
+          "line": 214,
           "text": "if(state.form&&state.form.cal!=='alpha-reminders'&&out.f){const f=state.form;"
         },
         {
-          "line": 214,
+          "line": 215,
           "text": "const reminderSource=out.f.cals?.filter((c:Bag)=>c.domain==='reminders')??[];out.f.cals=[...cals.filter((c:Bag)=>c.writable).map(c=>({...c,on:f.cal===c.id,pick:()=>api.set({form:{...f,cal:c.id}})})),."
         },
         {
-          "line": 215,
+          "line": 216,
           "text": "const original=model?.feed?.events.find(e=>calendarEventKey(e)===f.canonicalEventKey),recurring=!!(original?.recurringEventId||original?.recurrence?.length),managedSeries=recurring&&managedGoogleSourc"
         },
         {
-          "line": 221,
+          "line": 222,
           "text": "const selectedSourceKey=controller?.sourceKeyForHandle(f.cal),selectedSource=controller?.state.calendars.find(c=>calendarSourceKey(c)===selectedSourceKey);"
         },
         {
-          "line": 222,
+          "line": 223,
           "text": "if(!f.id){const source=newEventSource(),key=source?calendarSourceKey(source):null,eventHandle=key===null?undefined:controller?.sourceHandle(key),reminders=out.f.cals.filter((choice:Bag)=>choice.domain"
         },
         {
-          "line": 226,
+          "line": 227,
           "text": "const saveOffReason=!model||!['ready','partial','unavailable'].includes(model.status)?'Calendar is still loading. Try again in a moment.':model.mutating?'Calendar is saving. Try again in a moment.':f."
         },
         {
-          "line": 228,
+          "line": 229,
           "text": "const draft=typedForm(f);if(f.id&&recurring&&draft.recurrence!==undefined&&f.recurrenceScope!=='series')throw Error('Choose Entire series to change how it repeats.');let saved:any;"
         },
         {
-          "line": 229,
+          "line": 230,
           "text": "if(f.id){const event=model?.feed?.events.find(e=>calendarEventKey(e)===f.canonicalEventKey);if(!event)throw Error('Refresh this event before saving');const timing=JSON.stringify(f.canonicalTiming)!==J"
         },
         {
-          "line": 232,
+          "line": 233,
           "text": "const shell=owner;if(f.origin&&saved.event)void rememberNoteOrigin('event',calendarEventKey(saved.event),f.origin).then(linked=>{if(!linked&&owner===shell&&shell?.live)api.toast('Event saved. The link"
         },
         {
-          "line": 233,
+          "line": 234,
           "text": "owner?.calendarFormCommitted?.(f);const latest=api.get('calendar').form;"
         },
         {
-          "line": 236,
+          "line": 237,
           "text": "if(saved.event){const policy=eventEditorMutability(saved.event),row=canonicalCalendarRow(saved.event,zone());api.set({form:{...latest,id:row.id,canonicalEventKey:calendarEventKey(saved.event),expected"
         },
         {
-          "line": 251,
+          "line": 252,
           "text": "{const inner=views.calendar.render;views.calendar.render=function(this:unknown,state:Bag,api:Bag){const out=inner.call(this,state,api);out.deepOpening=!!state.deepOpening&&!state.open||!!state.open&&s"
         },
         {
-          "line": 252,
+          "line": 253,
           "text": "p.renderVals=function(){const out=renderVals.call(this);"
         },
         {
-          "line": 257,
+          "line": 258,
           "text": "const now=Date.now(),hidden=new Set<string>();"
         },
         {
-          "line": 258,
+          "line": 259,
           "text": "const target=port(),model=target?.current()&&controller?.state.ownerKey===calendarOwnerKey(target)?controller.state:undefined;"
         },
         {
-          "line": 259,
+          "line": 260,
           "text": "const home=homeCalendarSelection(model,zone(),hidden,new Date(now)),event=home.event;"
         },
         {
-          "line": 260,
+          "line": 261,
           "text": "const syncedAt=Date.parse(model?.feed?.syncedAt??'');"
         },
         {
-          "line": 261,
+          "line": 262,
           "text": "const confirmedEmpty=home.verified&&!event&&Number.isFinite(syncedAt)&&syncedAt>0&&syncedAt<=now&&!homeReadIsStale(syncedAt,now);"
         },
         {
-          "line": 264,
+          "line": 265,
           "text": "const failed=!!model?.error||model?.status==='error'||model?.status==='unavailable',unverified=model?.status==='partial';"
         },
         {
-          "line": 267,
+          "line": 268,
           "text": "const source=event&&home.verified?'Agent Calendar':'';"
         },
         {
-          "line": 268,
+          "line": 269,
           "text": "let feed=failed||unverified?presentHomeAgendaFeed({status:model?.error?'error':model!.status,hasItem:!!event,feedState:model?.feed?.state??null,asOf:Date.parse(model?.feed?.syncedAt??'')||null,error:m"
         },
         {
-          "line": 273,
+          "line": 274,
           "text": "const provenance={origin:'',read:feed.read,description:feed.description};"
         },
         {
-          "line": 275,
+          "line": 276,
           "text": "const day=(at:string)=>{const d=new Date(at);return new Date(d.getUTCFullYear(),d.getUTCMonth(),d.getUTCDate()).getTime();};"
         },
         {
-          "line": 276,
+          "line": 277,
           "text": "const item=event?{title:String(event.title||''),begin:event.isAllDay?day(event.startAt):Date.parse(event.startAt),end:event.isAllDay?day(event.endAt):Date.parse(event.endAt),allDay:!!event.isAllDay,vi"
         },
         {
-          "line": 279,
+          "line": 280,
           "text": "if(out.homeCalendarOverdue===true&&out.homeAgendaInput){const input=out.homeAgendaInput as HomeAgendaCardInput;return{...out,...homeCalendarValues(presentHomeAgendaCard(overdueAgendaNext(input,out.hom"
         },
         {
-          "line": 282,
+          "line": 283,
           "text": "const local=out.homeAgendaInput as HomeAgendaCardInput|undefined;"
         },
         {
-          "line": 284,
+          "line": 285,
           "text": "if(out.homeAgendaReminder===true&&local?.item&&(!item||local.item.begin<item.begin)){const retry=feed.state==='error'||feed.state==='stale';"
         }
       ]
@@ -20649,7 +20653,7 @@
       "scope": "application",
       "treatment": "domain-contract-or-support",
       "reviewStatus": "state-audit-required",
-      "sha256": "b4a5ecb6027457270966a84aca1b0e4ef4e7cd34675af00d41d4a0cc0d615662",
+      "sha256": "5a2668bf545adb17841c0c68d09d7a998998f4cc45a0740ee792a120b891947a",
       "stateAnchors": [
         {
           "line": 8,
@@ -20692,27 +20696,27 @@
           "text": "const unchanged=()=>exact()&&JSON.stringify(this.vget('calendar').form??null)===snapshot;"
         },
         {
-          "line": 80,
+          "line": 83,
           "text": "const replacement=destinationChanged?.call(this,form,next)??next;"
         },
         {
-          "line": 83,
+          "line": 86,
           "text": "const text=encodeCanonicalCalendarDraft(form,this.canonicalDraftAnchor??new Date());"
         },
         {
-          "line": 91,
+          "line": 94,
           "text": "const origin=(form&&Reflect.get(form,reminderDraftOrigin)),retained=origin&&origins.get(origin);"
         },
         {
-          "line": 94,
+          "line": 97,
           "text": "const token=Object.freeze({});admissions.set(token,{origin,signature:submittedForm(form)});return token;"
         },
         {
-          "line": 99,
+          "line": 102,
           "text": "const submitted=admission&&admissions.get(admission);if(admission)admissions.delete(admission);"
         },
         {
-          "line": 100,
+          "line": 103,
           "text": "const retained=submitted&&origins.get(submitted.origin);"
         }
       ]
@@ -503802,7 +503806,8 @@
       "path": "vendor/eliza/plugins/plugin-native-messages/android/src/main/java/ai/eliza/plugins/messages/MmsStore.java",
       "models": [
         "DeviceActions",
-        "DurableStore"
+        "DurableStore",
+        "NativeSmsDispatch"
       ],
       "scope": "shared-module-dependency",
       "treatment": "domain-contract-or-support",
@@ -503938,7 +503943,8 @@
     {
       "path": "vendor/eliza/plugins/plugin-native-messages/android/src/main/java/ai/eliza/plugins/messages/SmsProviderReader.java",
       "models": [
-        "DeviceActions"
+        "DeviceActions",
+        "NativeSmsDispatch"
       ],
       "scope": "shared-module-dependency",
       "treatment": "domain-contract-or-support",
@@ -504015,7 +504021,8 @@
       "path": "vendor/eliza/plugins/plugin-native-messages/android/src/main/java/ai/eliza/plugins/messages/SmsSendJournal.java",
       "models": [
         "DeviceActions",
-        "DurableStore"
+        "DurableStore",
+        "NativeSmsDispatch"
       ],
       "scope": "shared-module-dependency",
       "treatment": "domain-contract-or-support",
@@ -504179,7 +504186,8 @@
     {
       "path": "vendor/eliza/plugins/plugin-native-messages/android/src/main/java/ai/eliza/plugins/messages/SmsTelephony.java",
       "models": [
-        "DeviceActions"
+        "DeviceActions",
+        "NativeSmsDispatch"
       ],
       "scope": "shared-module-dependency",
       "treatment": "domain-contract-or-support",
@@ -504207,7 +504215,8 @@
     {
       "path": "vendor/eliza/plugins/plugin-native-messages/android/src/main/java/ai/eliza/plugins/messages/SmsTelephonyConfiguration.java",
       "models": [
-        "DeviceActions"
+        "DeviceActions",
+        "NativeSmsDispatch"
       ],
       "scope": "shared-module-dependency",
       "treatment": "domain-contract-or-support",
@@ -504239,7 +504248,8 @@
     {
       "path": "vendor/eliza/plugins/plugin-native-messages/android/src/main/java/ai/eliza/plugins/messages/TelephonyPlugin.java",
       "models": [
-        "DeviceActions"
+        "DeviceActions",
+        "NativeSmsDispatch"
       ],
       "scope": "shared-module-dependency",
       "treatment": "domain-contract-or-support",
@@ -618297,7 +618307,8 @@
       "path": "android/app/src/launcher/AndroidManifest.xml",
       "models": [
         "Application",
-        "DeviceActions"
+        "DeviceActions",
+        "NativeSmsDispatch"
       ],
       "sha256": "a549ffbd77739527e6d2819fe80135558752090f20cd1a8718662be15e925e96"
     },
@@ -618347,18 +618358,20 @@
         "SharedRecordingAdmission",
         "NativeLiveCapture",
         "NativeSpeechOutputPreparation",
-        "GoogleBrowserReturnClaim"
+        "GoogleBrowserReturnClaim",
+        "NativeSmsDispatch"
       ],
-      "sha256": "bd36d75fe64d27708d1d71c414acee54609098877cbbba7532d090d61be6b771"
+      "sha256": "ad92c91314e318e146783ba676612838ce4c16d05c6a567d472e6c6dbc6cf760"
     },
     {
       "path": "android/consumer-host.json",
       "models": [
         "Application",
         "ResidentRuntime",
-        "AlwaysOnListener"
+        "AlwaysOnListener",
+        "NativeSmsDispatch"
       ],
-      "sha256": "1c1442779f253a7e7b7dfd3f930e4688616ccced3ed34be2897e88d97d5bb104"
+      "sha256": "0bce8e83df6cf39ec58ebda94cdd0976c2558f346e8c0988e4fa904f6578d7cd"
     },
     {
       "path": "patches/eliza/cloud-speech-native.patch",
@@ -619093,6 +619106,13 @@
         "NamedEmbeddingProvenance"
       ],
       "sha256": "8e874337cbcebe3e3fb69112db3b36c881ca0bc9737399818a06bb9fabf67f70"
+    },
+    {
+      "path": "patches/eliza/sms-reviewed-binding.patch",
+      "models": [
+        "NativeSmsDispatch"
+      ],
+      "sha256": "58ef065e979388b71a03198d7963be2ee61b8f149c1750f2b91ee26ddc73f20f"
     }
   ],
   "runtimeAssets": [

@@ -657,3 +657,22 @@ The authenticated product patch binds recovery to the original reviewed
 tuple, including pruned IDs, and preserves the one synthetic radio attempt.
 Both Android variants use the patched native module. Carrier behavior and
 installed Android role enforcement remain open.
+
+Mounted Calendar draft regressions preserve the last valid bytes after an
+invalid edit, clear the validation latch after explicit discard and keep a
+retained draft when Edit opens from either the same event or a different
+event. The current event detail stays usable. Explicit Resume or Discard
+owns the retained slot before a fresh edit can enter.
+
+The standard local Android build and APK verifier passed at `974423a956` for
+standalone and launcher. The checked set includes four packaged APKs and two
+built instrumentation APKs. Both release APKs are unsigned and the packaged
+voice host remains unqualified. This build covers the Clock and Google
+access-choice repairs at that revision.
+
+The historical `SignIn` replay checks three mounted schedules and 13
+checkpoints. It observes offered methods, a wrong email code followed by
+verified synthetic account admission, Back from a text challenge and Back
+from a held Google request. The current historical profile has a separate
+pre-chooser gate. That mismatch has its own receipt. Native authentication
+and external browser behavior remain outside the Chromium campaign.

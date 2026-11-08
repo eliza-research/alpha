@@ -12,7 +12,7 @@
   "toolSha256": "403a33cab0dff7ace6219b29e7ffef373319677a7d8be6641466dd16a6750b5b",
   "dependencyLockSha256": "944123c801157a7ba3676a886d0b28a54bef32735ae96da5c6dd0f206c88c8bf",
   "sourcePin": "99b49439ce9d0cb5607e9831b9f7f58d89525029",
-  "ledgerSha256": "42195eb164e20c754098b69587061d169fb62cb106494b8c99106ca69af6c933",
+  "ledgerSha256": "86504b6a3677e5f01615de8bb33fe5b23177b5dd736eedbac47aa937f20ecda0",
   "method": "TypeScript syntax trees for JavaScript/TypeScript and JDK compiler trees for Java. Mutable fields, bindings, containers, state hooks, write sites and asynchronous registration calls are candidates for semantic review.",
   "limitations": [
     "Candidate extraction does not establish state-machine coverage or implementation refinement.",
@@ -29,10 +29,10 @@
     "languageReview": 55,
     "parseErrors": 0,
     "candidates": 67112,
-    "writeSites": 66542,
-    "writeAssociations": 59721,
+    "writeSites": 66545,
+    "writeAssociations": 59724,
     "asynchronous": 8300,
-    "unassignedWrites": 10188
+    "unassignedWrites": 10189
   },
   "files": [
     {
@@ -19715,7 +19715,8 @@
       "path": "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaImageCapability.java",
       "sha256": "19f7e496c590d1cefc0da7846fa8e9cb28786dbf820ade1d0af879060d463fc9",
       "allocatedModels": [
-        "DeviceActions"
+        "DeviceActions",
+        "NativeSmsDispatch"
       ],
       "sourcePathClass": "other-source-path",
       "classification": "syntactic-candidates",
@@ -22276,7 +22277,8 @@
       "path": "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaSmsSendReceiver.java",
       "sha256": "f3e08393001c257c46a448ea8a4c1e65d39ef6df672b42545a5928bace38f670",
       "allocatedModels": [
-        "DeviceActions"
+        "DeviceActions",
+        "NativeSmsDispatch"
       ],
       "sourcePathClass": "other-source-path",
       "classification": "syntactic-candidates",
@@ -22352,7 +22354,8 @@
       "path": "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaTelephony.java",
       "sha256": "88f13e8e1fa657183566c5589b71508073889a3a853219ab8ae454760ab3fbb4",
       "allocatedModels": [
-        "DeviceActions"
+        "DeviceActions",
+        "NativeSmsDispatch"
       ],
       "sourcePathClass": "other-source-path",
       "classification": "syntactic-candidates",
@@ -22384,7 +22387,8 @@
       "path": "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaTelephonyPlugin.java",
       "sha256": "6b6b2f2d5137cda6987d8bd0e07f70f9f219abbfa74df0ebe9fbf55db505f424",
       "allocatedModels": [
-        "DeviceActions"
+        "DeviceActions",
+        "NativeSmsDispatch"
       ],
       "sourcePathClass": "other-source-path",
       "classification": "syntactic-candidates",
@@ -33340,7 +33344,7 @@
     },
     {
       "path": "apps/app/src/prototype/agent-calendar-adapter.ts",
-      "sha256": "289aa4172f0c36251db10928ef60aefbd2fd87f36a0d4c5c50097e177f2bc707",
+      "sha256": "4f1bcc63e6a663970aea7967ab790669fdb7fb2fd3a68711fc12eb1fdaf0e093",
       "allocatedModels": [
         "CalendarPresentation",
         "AgentCalendarRefresh",
@@ -33379,7 +33383,7 @@
           "owner": "installAgentCalendarAdapter.FunctionExpression@165",
           "line": 166,
           "bindings": 4,
-          "writes": 100
+          "writes": 102
         },
         {
           "owner": "installAgentCalendarAdapter.FunctionExpression@165.ArrowFunction@193",
@@ -33388,20 +33392,20 @@
           "writes": 0
         },
         {
-          "owner": "installAgentCalendarAdapter.FunctionExpression@165.ArrowFunction@227",
-          "line": 228,
+          "owner": "installAgentCalendarAdapter.FunctionExpression@165.ArrowFunction@228",
+          "line": 229,
           "bindings": 1,
           "writes": 2
         },
         {
-          "owner": "installAgentCalendarAdapter.FunctionExpression@251",
-          "line": 251,
+          "owner": "installAgentCalendarAdapter.FunctionExpression@252",
+          "line": 252,
           "bindings": 1,
           "writes": 1
         },
         {
-          "owner": "installAgentCalendarAdapter.FunctionExpression@252",
-          "line": 257,
+          "owner": "installAgentCalendarAdapter.FunctionExpression@253",
+          "line": 258,
           "bindings": 2,
           "writes": 3
         }
@@ -34235,7 +34239,7 @@
     },
     {
       "path": "apps/app/src/prototype/canonical-calendar-drafts.ts",
-      "sha256": "b4a5ecb6027457270966a84aca1b0e4ef4e7cd34675af00d41d4a0cc0d615662",
+      "sha256": "5a2668bf545adb17841c0c68d09d7a998998f4cc45a0740ee792a120b891947a",
       "allocatedModels": [
         "CalendarPresentation",
         "CanonicalCalendarDraft"
@@ -34257,15 +34261,15 @@
           "writes": 1
         },
         {
-          "owner": "installCanonicalCalendarDrafts.FunctionExpression@112",
-          "line": 113,
+          "owner": "installCanonicalCalendarDrafts.FunctionExpression@115",
+          "line": 116,
           "bindings": 2,
-          "writes": 20
+          "writes": 21
         }
       ],
       "parseErrors": [],
       "asynchronous": 5,
-      "unassignedWrites": 27
+      "unassignedWrites": 28
     },
     {
       "path": "apps/app/src/prototype/canonical-notes-controller.ts",
@@ -180938,7 +180942,8 @@
       "sha256": "39c9758dbcb3e9cee217c24db856ac563759ab367b8fc8fc4ed4a3b8cd453396",
       "allocatedModels": [
         "DeviceActions",
-        "DurableStore"
+        "DurableStore",
+        "NativeSmsDispatch"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -181491,7 +181496,8 @@
       "path": "vendor/eliza/plugins/plugin-native-messages/android/src/main/java/ai/eliza/plugins/messages/SmsProviderReader.java",
       "sha256": "b784ac35ca65bf8e64c81c1e8832d093f79c3f37214ed4d3e8f34a94801275d1",
       "allocatedModels": [
-        "DeviceActions"
+        "DeviceActions",
+        "NativeSmsDispatch"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -181675,7 +181681,8 @@
       "sha256": "5d5d8a7ef99b7b3305c630d2d968485f0b8b5d6d21f5071f970cc71c3913b2d2",
       "allocatedModels": [
         "DeviceActions",
-        "DurableStore"
+        "DurableStore",
+        "NativeSmsDispatch"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -182046,7 +182053,8 @@
       "path": "vendor/eliza/plugins/plugin-native-messages/android/src/main/java/ai/eliza/plugins/messages/SmsTelephony.java",
       "sha256": "0f18bc3a8db09ada6746b0c4dbe49f294528ae406dd69e4a1d7618b1203c8f89",
       "allocatedModels": [
-        "DeviceActions"
+        "DeviceActions",
+        "NativeSmsDispatch"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -182235,7 +182243,8 @@
       "path": "vendor/eliza/plugins/plugin-native-messages/android/src/main/java/ai/eliza/plugins/messages/SmsTelephonyConfiguration.java",
       "sha256": "aef3c4a4fd10be7120c7e6a1f1b39e3e66cd4c7debf7fed08613fbf2c16b15ce",
       "allocatedModels": [
-        "DeviceActions"
+        "DeviceActions",
+        "NativeSmsDispatch"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -182304,7 +182313,8 @@
       "path": "vendor/eliza/plugins/plugin-native-messages/android/src/main/java/ai/eliza/plugins/messages/TelephonyPlugin.java",
       "sha256": "f317d127515d4676ce262f7d94118057206acc6d7ee0ee0e0f5e4309d12e8a56",
       "allocatedModels": [
-        "DeviceActions"
+        "DeviceActions",
+        "NativeSmsDispatch"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -218509,6 +218519,6 @@
   ],
   "detail": {
     "path": "test-results/quint-state-audit/details.json",
-    "sha256": "3db8a63bad6a9d2015460b150110f6bcd4a97c27a81dd6d08c0d9679d3a01cd1"
+    "sha256": "e0191026d94691cf6da7463ecacd96c603381a61160e62060f8fa07ff4a1acca"
   }
 }
