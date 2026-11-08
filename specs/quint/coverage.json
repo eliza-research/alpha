@@ -7145,6 +7145,7 @@
       "sha256": "1b4c40b6c4583dbb7087a7979c1d3a5e3ef4bec83bcfe5d5d2393df8ffafe727",
       "models": [
         "DeviceActions",
+        "NativeNotePermission",
         "NativeNoteRecording",
         "NativeNoteRecordingService"
       ],
@@ -7158,6 +7159,7 @@
       "sha256": "20e21e04eafdd22ef95631e17ef376f5c907b42813e452474d95af99d66004e1",
       "models": [
         "DeviceActions",
+        "NativeNotePermission",
         "NativeNoteRecordingService"
       ],
       "scope": "application",
@@ -7333,9 +7335,10 @@
     },
     {
       "path": "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaVoiceCloudPlugin.java",
-      "sha256": "d8ee0638c8f60ad3b3e8bbadc8676ee5a6a51e3d9b4b231562a848e4e760e7ef",
+      "sha256": "b10a51d1aecdf5c3d5ac3383e14e9cbc8f26a0600050dac5865c6c31be2dcce0",
       "models": [
         "DeviceActions",
+        "NativeNotePermission",
         "SpeechResources",
         "StreamingPlayback",
         "VoiceSession"
