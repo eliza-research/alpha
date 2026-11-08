@@ -1709,6 +1709,53 @@
         "maxSteps": 80,
         "maxVerifyDepth": 8
       }
+    },
+    {
+      "path": "specs/quint/services/CombinedAgentLauncher.qnt",
+      "module": "CombinedAgentLauncher",
+      "init": "init",
+      "step": "step",
+      "invariant": "safety",
+      "tests": [
+        "busyPortDoesNotSpawnTest",
+        "validateOnlyExistingMarkerTest",
+        "coreRefusalFollowsPrivateLogTest",
+        "launchReceiptBeforeChildBootTest",
+        "launchErrorReceiptHasNoPidTest",
+        "metadataFailureLeavesChildUnsupervisedTest",
+        "signalExitPropagatesFailureTest"
+      ],
+      "invariants": [
+        "SpawnRequiresPreparedProfile",
+        "MetadataDescribesSpawn",
+        "ValidateDoesNotLaunch",
+        "ForwardingRequiresOwnedChild",
+        "ChildExitClosesLog"
+      ],
+      "sources": [
+        "scripts/start-combined-agent.mjs",
+        "scripts/combined-agent-source.mjs",
+        "scripts/host-speech-admission.mjs",
+        "scripts/agent-identity.mjs",
+        "scripts/agent-model.mjs",
+        "scripts/core-state-patch.mjs"
+      ],
+      "stateMapping": {
+        "checks/port": "Exact version calls and synthetic fixed-port probe completion",
+        "profile/marker/config/identity/token/logOpen": "Real private scratch files and launcher-owned log descriptor",
+        "core/spawnRequested/pid/metadata/metadataPid": "Resolved source overlay, actual returned synthetic child and process receipt",
+        "supervised/booted/childExited/childFailed/forwarded": "Actual handler installation, child IPC, signal forwarding and terminal child events",
+        "outcome/exitCode": "Observed source refusal or process result"
+      },
+      "abstractions": [
+        "One launcher process, one returned child, at most one forwarded signal, two synthetic core modes, finite version and profile refusals. The port probe is a synthetic availability check, separate from later child socket ownership.",
+        "Metadata records spawn, including a request with no PID. Failed metadata can leave a responsive child outside launcher supervision. ChildCustodyAfterLaunch is a separate observed expectation."
+      ],
+      "bounds": {
+        "maxSamples": 1000,
+        "maxSteps": 80,
+        "maxVerifyDepth": 12
+      }
     }
   ]
 }
