@@ -112,6 +112,23 @@ module CoreInteractionSession {
   val safety = Model::TypeOK and Model::AtMostOnce and Model::ExactlyOnceAuthority and Model::CompletedHasEffect
     and Model::NoCommitWhileRevoked and Model::NoLateCommit and Model::AmbiguousRetained and Model::ExecutorHasRecord
   temporal CheckedTemporal = Model::Fairness implies Model::EffectOnlyByCommitter and Model::EffectRecorded
+  // Source driver exposes the exact configured actions and normalizes tuple observations to lists.
+  val state = Model::s
+  val stateOwner = List(Model::s.owner._1, Model::s.owner._2)
+  val stateMine = Model::s.mine.keys().mapBy(client => {
+    val id = Model::s.mine.get(client)
+    List(id._1, id._2)
+  })
+  val authorizedEffects = Model::effectOnlyByCommitter
+  action claim(client: int): bool = Model::Claim(client)
+  action commit(client: int): bool = Model::Commit(client)
+  action execute(client: int): bool = Model::Execute(client)
+  action complete(client: int): bool = Model::Complete(client)
+  action crash(client: int): bool = Model::Crash(client)
+  action reconcile = Model::Reconcile
+  action revoke = Model::Revoke
+  action sweep = Model::DeleteExpired
+  action tick = Model::Tick
   run expiredClaimCannotCommitTest = init.then(Model::Claim(1)).then(Model::Tick).then(Model::Commit(1))
     .expect(Model::s.last.get(1) == "error" and Model::s.effects == 0 and safety)
   run mismatchedClaimCannotTakeOverTest = init.then(Model::Claim(1)).then(Model::Tick).then(Model::Claim(3))
@@ -129,6 +146,23 @@ module CoreInteractionSessionRetries {
   val safety = Model::TypeOK and Model::AtMostOnce and Model::ExactlyOnceAuthority and Model::CompletedHasEffect
     and Model::NoCommitWhileRevoked and Model::NoLateCommit and Model::AmbiguousRetained and Model::ExecutorHasRecord
   temporal CheckedTemporal = Model::Fairness implies Model::EffectOnlyByCommitter and Model::EffectRecorded
+  // Source driver exposes the exact configured actions and normalizes tuple observations to lists.
+  val state = Model::s
+  val stateOwner = List(Model::s.owner._1, Model::s.owner._2)
+  val stateMine = Model::s.mine.keys().mapBy(client => {
+    val id = Model::s.mine.get(client)
+    List(id._1, id._2)
+  })
+  val authorizedEffects = Model::effectOnlyByCommitter
+  action claim(client: int): bool = Model::Claim(client)
+  action commit(client: int): bool = Model::Commit(client)
+  action execute(client: int): bool = Model::Execute(client)
+  action complete(client: int): bool = Model::Complete(client)
+  action crash(client: int): bool = Model::Crash(client)
+  action reconcile = Model::Reconcile
+  action revoke = Model::Revoke
+  action sweep = Model::DeleteExpired
+  action tick = Model::Tick
   run resumedLeaseFencesOldOwnerTest = init.then(Model::Claim(1)).then(Model::Tick).then(Model::Tick)
     .then(Model::Claim(2)).then(Model::Commit(1)).then(Model::Commit(2))
     .expect(Model::s.last.get(1) == "error" and Model::s.last.get(2) == "resumed" and Model::s.owner == (2, 1) and safety)

@@ -114,3 +114,23 @@ remain outside this source campaign.
 ```sh
 node --test test/quint-core-approval-service.test.mjs
 ```
+
+## Interaction session source traces
+
+The interaction driver runs the pinned authority and SQLite store on a
+temporary journal with separate connections for each client. Twelve schedules
+compare 121 checkpoints across both original lease profiles. They cover
+lease takeover, stale commitments, response mismatch, revocation, replay,
+expiry, ambiguous commits across reopen, reconciliation and a sweep racing
+an old completion. A controlled clock and held continuations expose the
+actual claim, commitment and execution boundaries. A synthetic effect
+receipt makes the reconciliation input explicit.
+
+The schedules hold one valid preinstalled session and one replay key. They
+cover reopening the SQLite journal after interrupted clients. Provider
+effects, session creation negotiation, foreign bindings, OS power loss and
+arbitrary simultaneous database processes remain outside the campaign.
+
+```sh
+node --test test/quint-core-interaction-session.test.mjs
+```
