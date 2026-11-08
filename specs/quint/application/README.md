@@ -26,6 +26,7 @@ repository-wide allocation and source hashes are recorded in `../coverage.json`.
 | `FilesAndSharing` | `reviewFileEmail`, `reviewMailAttachment`, `mediaCopyIntent`, share adapters | One exact source, owner and draft identity, initially unchecked selection, reread before local insertion, cancellation and revoked grant. Send has its own Inbox model |
 | `PreferencesAndPresentation` | `keyboardFreeHeight`, `canvasGeometry`, `surfaceLayout`, `publishSurfaceLayout`, shell preferences | Representative portrait/wide geometry, keyboard exclusion, large-text fallback, preference readback, draft/selection continuity and one system shade |
 | `CallbackLanding` | Static delegation-return page | Query multiplicity, state shape, result exclusivity, size/description limits, early URL scrubbing and exact app-link exposure |
+| `ListFocus` | `createKeyedListFocus.capture`, committed ref callbacks, queued expiry and restoration | Two render captures, two root identities, five DOM nodes, FIFO microtasks, generation fencing, intentional focus movement and visibility/identity guards |
 
 ## Trace conformance
 

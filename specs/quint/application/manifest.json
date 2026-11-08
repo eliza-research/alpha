@@ -588,5 +588,42 @@
       "Query strings are finite validity classes for exact state shape, duplicates, size limits, result exclusivity and recognized keys.",
       "Parsing, URL scrubbing and validation are ordered internal stages. The model records only link exposure and explicit handoff, without invoking an external handler."
     ]
+  },
+  {
+    "path": "specs/quint/application/ListFocus.qnt",
+    "module": "ListFocus",
+    "init": "init",
+    "step": "step",
+    "invariant": "safety",
+    "tests": [
+      "unmountedCaptureTest",
+      "keylessCaptureTest",
+      "otherOwnerCaptureTest",
+      "crossParentRestoreTest",
+      "removedItemTest",
+      "duplicateCandidateTest",
+      "movedFocusTest",
+      "hiddenRootTest",
+      "hiddenNodeTest",
+      "disabledCandidateTest",
+      "dialogTest",
+      "hiddenDocumentTest",
+      "disconnectedRootTest",
+      "newerCommitTest",
+      "navigationTest",
+      "discardedRenderTest",
+      "restoringCancelsUncommittedCaptureTest",
+      "twoCapturesLatestCommitTest"
+    ],
+    "sources": [
+      "apps/app/src/prototype/keyed-list-focus.ts",
+      "apps/app/src/prototype/subview-accessibility.ts",
+      "apps/app/src/prototype/template.html"
+    ],
+    "abstractions": [
+      "Two capture slots, two list-root identities and five DOM-node identities preserve capture versus commit, root-ref generations, FIFO microtasks, focusin cancellation, and all source restoration guards. Generations stop at eight instead of wrapping.",
+      "A source-executing JSDOM adapter observes the actual helper closure through a read-only getter and controls its queue/listener/geometry environment. Real Notes and Photos browser traces are separate bounded renderer evidence.",
+      "No unbounded event-loop liveness, native accessibility or universal implementation refinement is claimed."
+    ]
   }
 ]

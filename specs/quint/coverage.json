@@ -24392,6 +24392,41 @@
       ]
     },
     {
+      "path": "apps/app/src/prototype/keyed-list-focus.ts",
+      "sha256": "ae78d853c5e77cd977d80b9250f502e7df33f52260071eee762ff78b48b23ff7",
+      "models": [
+        "ListFocus"
+      ],
+      "scope": "application",
+      "treatment": "state-and-transition-projection",
+      "stateAnchors": [
+        {
+          "line": 5,
+          "text": "let root: HTMLElement | null = null;"
+        },
+        {
+          "line": 6,
+          "text": "let revision = 0;"
+        },
+        {
+          "line": 16,
+          "text": "const snapshot = {root, key, element, moved: false, committed: false,"
+        },
+        {
+          "line": 21,
+          "text": "if (!snapshot.committed) { snapshot.moved = true; snapshot.release(); }"
+        },
+        {
+          "line": 30,
+          "text": "snapshot.committed = true;"
+        },
+        {
+          "line": 32,
+          "text": "snapshot.release();"
+        }
+      ]
+    },
+    {
       "path": "apps/app/src/prototype/local-ocr.ts",
       "sha256": "4c755657555a0360ebb10f829c2ee0d2602e7bca7c2b04e9a136320f07af5c05",
       "models": [
@@ -31128,39 +31163,40 @@
     },
     {
       "path": "apps/app/src/prototype/subview-accessibility.ts",
-      "sha256": "8256edec8566f6c604ea3741dcb4dca9a92e2fdc50b5f18f06ff5d54d66caeff",
+      "sha256": "8d1ba3bfc6b3c1e7ade5a08744af176745974d01bed37979c8f1af99a85f3fe7",
       "models": [
-        "ShellNavigation"
+        "ShellNavigation",
+        "ListFocus"
       ],
       "scope": "application",
       "treatment": "state-and-transition-projection",
       "stateAnchors": [
         {
-          "line": 28,
+          "line": 29,
           "text": "let output:Bag={};"
         },
         {
-          "line": 53,
+          "line": 54,
           "text": "let output:Bag={};"
         },
         {
-          "line": 64,
+          "line": 68,
           "text": "let output:Bag={};"
         },
         {
-          "line": 73,
+          "line": 77,
           "text": "let mounted:HTMLElement|null=null,previous:HTMLElement|null=null,scope:HTMLElement|null=null;"
         },
         {
-          "line": 87,
+          "line": 91,
           "text": "let target=opener;"
         },
         {
-          "line": 102,
+          "line": 106,
           "text": "let open=false,opener:HTMLElement|null=null;"
         },
         {
-          "line": 127,
+          "line": 131,
           "text": "let remembered:FocusTarget={element:null,scope:null};"
         }
       ]
@@ -31217,11 +31253,12 @@
     },
     {
       "path": "apps/app/src/prototype/template.html",
-      "sha256": "34ec1ea846ef84fcc532d799dc47e4b630d80e77b916616793b49ac532ae17d9",
+      "sha256": "bbdc6d52e68ad5441e9b634dd15dc7a742a528f16db56f608ea3aaa20f107970",
       "models": [
         "ShellNavigation",
         "PreferencesAndPresentation",
-        "HomeLayout"
+        "HomeLayout",
+        "ListFocus"
       ],
       "treatment": "stateless-presentation-contract",
       "scope": "application",
