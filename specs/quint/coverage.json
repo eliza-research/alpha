@@ -1891,7 +1891,6 @@
       "sha256": "e65a823b597b24c99e444af4c47de19c20110cf40a422540c5a03b7832094863",
       "models": [
         "DeviceActions",
-        "ListFocus",
         "ShellNavigation"
       ],
       "scope": "application",
@@ -2673,7 +2672,6 @@
       "sha256": "b7000331638d25cec293953ff47fab1d99e4c3a5de2d1259284b770179a38466",
       "models": [
         "DeviceActions",
-        "ListFocus",
         "PreferencesAndPresentation",
         "ShellNavigation"
       ],
@@ -2687,7 +2685,6 @@
       "sha256": "9fcb59dc7a6d33e89eede8b8334c6bf3c999124d9646eaf200a30c5f4f264ba9",
       "models": [
         "DeviceActions",
-        "ListFocus",
         "PreferencesAndPresentation",
         "ShellNavigation"
       ],
@@ -3921,7 +3918,6 @@
       "sha256": "b62dad703b5f496e504bd7bdbf165d324778b8351a387e73b750518f2e0e3f4f",
       "models": [
         "DeviceActions",
-        "ListFocus",
         "MediaLifecycle",
         "ShellNavigation"
       ],
@@ -6618,7 +6614,6 @@
       "sha256": "e03c7466141d2232ebd2a01caf7f7e237df4eaddd72ac454899abdaecb446727",
       "models": [
         "DeviceActions",
-        "ListFocus",
         "ShellNavigation"
       ],
       "scope": "application",
@@ -6631,7 +6626,6 @@
       "sha256": "9768af884706f9305726849243d4871cda146175d968159b9074e5cb2373a9fc",
       "models": [
         "DeviceActions",
-        "ListFocus",
         "ShellNavigation"
       ],
       "scope": "application",
@@ -6644,7 +6638,6 @@
       "sha256": "5569073a1d3863f5de5fcd312517c9e2171e058afc25cf5e8e9e4194d03b8d56",
       "models": [
         "DeviceActions",
-        "ListFocus",
         "ShellNavigation"
       ],
       "scope": "application",
@@ -6657,7 +6650,6 @@
       "sha256": "b7c43e748cebf2c8563ade0139d72f176b286a12764371371b9aa6d7eff78fdb",
       "models": [
         "DeviceActions",
-        "ListFocus",
         "ShellNavigation"
       ],
       "scope": "application",
@@ -6670,7 +6662,6 @@
       "sha256": "58a66fbc918ee6816c9d70dd6c164c372725125e8f9db21c2a814360a1f59e6d",
       "models": [
         "DeviceActions",
-        "ListFocus",
         "ShellNavigation"
       ],
       "scope": "application",
@@ -6683,7 +6674,6 @@
       "sha256": "513d6f968f119fc52f815849f744d372dcd3a75365e2764e1dbcd1994f626ef4",
       "models": [
         "DeviceActions",
-        "ListFocus",
         "ShellNavigation"
       ],
       "scope": "application",
@@ -6696,7 +6686,6 @@
       "sha256": "6b38cd35477d58730a1db3cc3077cca3ed9414c0a358eb8d97c6ab12eb90063f",
       "models": [
         "DeviceActions",
-        "ListFocus",
         "ShellNavigation"
       ],
       "scope": "application",
@@ -6709,7 +6698,6 @@
       "sha256": "a1377b6663e9ee215a370614d9c701ed864811f9a6ca5f0032bf2427f48c4710",
       "models": [
         "DeviceActions",
-        "ListFocus",
         "ShellNavigation"
       ],
       "scope": "application",
@@ -6722,7 +6710,6 @@
       "sha256": "c69655de5c784e1ce0d1c9eda5ee2bca8d3f4e02718b856c7af80753cf198fa8",
       "models": [
         "DeviceActions",
-        "ListFocus",
         "ShellNavigation"
       ],
       "scope": "application",
@@ -6735,7 +6722,6 @@
       "sha256": "d38582b40bc0e439c53d6d18d42b7a6a25f6b1fed6bfc4194a9be2ef283f2a58",
       "models": [
         "DeviceActions",
-        "ListFocus",
         "ServiceAuthorization",
         "ShellNavigation"
       ],
@@ -6749,7 +6735,6 @@
       "sha256": "0702b62328a01635a96bee7ff1eeb4164a52c695c9aa925b852b1b4a3373b04a",
       "models": [
         "DeviceActions",
-        "ListFocus",
         "ShellNavigation"
       ],
       "scope": "application",
@@ -6969,8 +6954,7 @@
       "sha256": "05b6f46f748c138b14898e41a5b36249a459548f58c06e7a318b6c477bc2418c",
       "models": [
         "DeviceActions",
-        "FilesAndSharing",
-        "FilesTree"
+        "FilesAndSharing"
       ],
       "scope": "application",
       "treatment": "domain-allocation",
@@ -8698,7 +8682,6 @@
       "models": [
         "DeviceActions",
         "FilesAndSharing",
-        "FilesTree",
         "MediaLifecycle"
       ],
       "scope": "application",
@@ -8814,7 +8797,6 @@
       "sha256": "debbe73f97c4c0a20b330207640dd1a75bb2d70e46da57ca9a76fcd2f5113347",
       "models": [
         "DeviceActions",
-        "ListFocus",
         "ShellNavigation"
       ],
       "scope": "application",
@@ -10505,8 +10487,7 @@
       "models": [
         "BrowserSession",
         "BrowserSiteState",
-        "FilesAndSharing",
-        "FilesTree"
+        "FilesAndSharing"
       ],
       "scope": "application",
       "treatment": "domain-allocation",
@@ -11521,8 +11502,7 @@
       "models": [
         "BrowserSession",
         "BrowserSiteState",
-        "FilesAndSharing",
-        "FilesTree"
+        "FilesAndSharing"
       ],
       "scope": "application",
       "treatment": "domain-allocation",
@@ -12493,7 +12473,6 @@
       "path": "apps/app/src/prototype/apps-drawer.tsx",
       "sha256": "d9b4b0a90df8c97726bc2a2f0dd5539cd691365af501b1a7e8364a4a11b2ecfa",
       "models": [
-        "ListFocus",
         "ShellNavigation"
       ],
       "scope": "application",
@@ -12750,7 +12729,7 @@
       "stateAnchors": [
         {
           "line": 9,
-          "text": "let owner:any,rows:Bag[]=[],status='Choose Contacts access to see this profile\u2019s address book.',readable=false,loading=false,more=false,limit=50,epoch=0,active="
+          "text": "let owner:any,rows:Bag[]=[],status='Choose Contacts access to see this profile’s address book.',readable=false,loading=false,more=false,limit=50,epoch=0,active="
         },
         {
           "line": 10,
@@ -12786,7 +12765,7 @@
       "path": "apps/app/src/prototype/context-selection.ts",
       "sha256": "3ef6fed4ad3fb1967cbc59deda8cfa61ee64d0c1fa8ae7480267187e4d79c31e",
       "models": [
-        "FilesTree",
+        "Application",
         "ShellNavigation"
       ],
       "scope": "application",
@@ -12832,7 +12811,6 @@
       "models": [
         "Application",
         "BrowserSession",
-        "FilesTree",
         "ShellNavigation"
       ],
       "scope": "application",
@@ -12858,7 +12836,7 @@
         "BrowserSession",
         "BrowserSiteState",
         "FilesAndSharing",
-        "FilesTree"
+        "FilesPreview"
       ],
       "scope": "application",
       "treatment": "domain-allocation",
@@ -12869,8 +12847,7 @@
       "path": "apps/app/src/prototype/files-index.ts",
       "sha256": "e5b03e34743a507ff35dba324012b8686b9f8d51f19d92c5a13ac50e1f086808",
       "models": [
-        "FilesAndSharing",
-        "FilesTree"
+        "FilesAndSharing"
       ],
       "scope": "application",
       "treatment": "domain-allocation",
@@ -12927,7 +12904,7 @@
       "path": "apps/app/src/prototype/home-shell.ts",
       "sha256": "580717a426fabe7a67d9a22d5933fef8473018eefefecee920a64743ee3e9010",
       "models": [
-        "ListFocus",
+        "PreferencesAndPresentation",
         "ShellNavigation"
       ],
       "scope": "application",
@@ -13425,7 +13402,7 @@
         },
         {
           "line": 21,
-          "text": "event.preventDefault();busy=true;const token=generation;status.textContent='Opening browser\u2026';"
+          "text": "event.preventDefault();busy=true;const token=generation;status.textContent='Opening browser…';"
         },
         {
           "line": 22,
@@ -13582,7 +13559,6 @@
       "path": "apps/app/src/prototype/subview-accessibility.ts",
       "sha256": "381757ffd423b6d59c4cefabc862cd7053919948f7e04b2c0fb1a8ce9f1af9b6",
       "models": [
-        "ListFocus",
         "ShellNavigation"
       ],
       "scope": "application",
@@ -13631,8 +13607,6 @@
       "sha256": "c43aa6217e8d18e23d7e31acaaf52f6a2341d2235dd2d7c58e94ba46e56de6fa",
       "models": [
         "BrowserSession",
-        "FilesTree",
-        "ListFocus",
         "PreferencesAndPresentation",
         "ShellNavigation"
       ],
@@ -13917,7 +13891,6 @@
       "sha256": "7add4fe7a51fa2e20f11e03e46c6c410e725e5b2926557df31ea4abe8a262283",
       "models": [
         "AssistantConversation",
-        "ListFocus",
         "ResidentRuntime",
         "ShellNavigation"
       ],
@@ -14854,7 +14827,7 @@
       "models": [
         "AssistantConversation",
         "FilesAndSharing",
-        "FilesTree",
+        "FilesPreview",
         "ResidentRuntime"
       ],
       "scope": "application",
@@ -14868,7 +14841,7 @@
       "models": [
         "AssistantConversation",
         "FilesAndSharing",
-        "FilesTree",
+        "FilesPreview",
         "ResidentRuntime"
       ],
       "scope": "application",
@@ -15901,7 +15874,6 @@
       "sha256": "0fec5bba181ab63f3b7f9d1aaee2213f246ce1deb755d614bb5d81ff4dc764a2",
       "models": [
         "AssistantConversation",
-        "ListFocus",
         "ResidentRuntime",
         "ShellNavigation"
       ],
@@ -16042,7 +16014,6 @@
       "sha256": "f39f62b9e062e2fd86376fce3f79fba4d191b51062fceab525f838874105db35",
       "models": [
         "AssistantConversation",
-        "ListFocus",
         "ResidentRuntime",
         "ShellNavigation"
       ],
@@ -16345,7 +16316,6 @@
       "sha256": "49834713d5ef8f40d62215fd0d4a4912e4a85af2e6b4019f2d84ae52e6f8f397",
       "models": [
         "AssistantConversation",
-        "ListFocus",
         "ResidentRuntime",
         "ShellNavigation"
       ],
@@ -16359,7 +16329,6 @@
       "sha256": "7e3ae6dc3704f6f2f0ad46606c7ac4b2fb294f35460a1ad22a7edcb635764e48",
       "models": [
         "AssistantConversation",
-        "ListFocus",
         "ResidentRuntime",
         "ShellNavigation"
       ],
@@ -18052,6 +18021,17 @@
       "stateAnchors": []
     },
     {
+      "path": "vendor/eliza/packages/core/src/types/trigger.ts",
+      "sha256": "cbd3a971db064585b3c309f4e22301c7e4cef81d55003d2eb417526f6fd38940",
+      "models": [
+        "WorkflowScheduleTasks"
+      ],
+      "scope": "shared-upstream",
+      "treatment": "domain-allocation",
+      "reviewStatus": "state-audit-required",
+      "stateAnchors": []
+    },
+    {
       "path": "vendor/eliza/packages/core/src/types/view-capability.ts",
       "sha256": "c227b3c0c332607ae24ab26ad02de2857336a38737e476582cfea24f15676d27",
       "models": [
@@ -18114,6 +18094,28 @@
       "sha256": "7e1f5257048d04ec772408e4cea6d0579bdaaf8d27f8bc43fe0a4b7221996c23",
       "models": [
         "Application"
+      ],
+      "scope": "shared-upstream",
+      "treatment": "domain-allocation",
+      "reviewStatus": "state-audit-required",
+      "stateAnchors": []
+    },
+    {
+      "path": "vendor/eliza/packages/core/src/utils/string-to-uuid.ts",
+      "sha256": "cf89f8bc25dc2fdce4b898d382868831d25ee659921aac8345c53237e5c7517e",
+      "models": [
+        "WorkflowScheduleTasks"
+      ],
+      "scope": "shared-upstream",
+      "treatment": "domain-allocation",
+      "reviewStatus": "state-audit-required",
+      "stateAnchors": []
+    },
+    {
+      "path": "vendor/eliza/packages/core/src/utils/uuid.ts",
+      "sha256": "1352edd775b6d8d86a6b9db61b2edeedcfcb79ce635b6c9c5918869c2809c159",
+      "models": [
+        "WorkflowScheduleTasks"
       ],
       "scope": "shared-upstream",
       "treatment": "domain-allocation",
@@ -18452,7 +18454,6 @@
       "path": "vendor/eliza/packages/ui/src/components/pages/InstalledAppsLauncher.tsx",
       "sha256": "10b6186df7b363812f36c03a2a75e1fafd2950fcc5421c20af6c9c99891a4e30",
       "models": [
-        "ListFocus",
         "ShellNavigation"
       ],
       "scope": "shared-upstream",
@@ -18699,7 +18700,6 @@
       "path": "vendor/eliza/packages/ui/src/mobile-shell/MobileAllAppsDrawer.tsx",
       "sha256": "a6fa69f0f903e1c9622316c3cef1c615b03c74f6f2bf59eb4ab42e68270c6edf",
       "models": [
-        "ListFocus",
         "ShellNavigation"
       ],
       "scope": "shared-upstream",
@@ -18711,7 +18711,6 @@
       "path": "vendor/eliza/packages/ui/src/mobile-shell/MobileApplication.tsx",
       "sha256": "f94924639f63379157ce90400e28b2dd790884551a6fd138faf42d3d38fc4fd0",
       "models": [
-        "ListFocus",
         "ShellNavigation"
       ],
       "scope": "shared-upstream",
@@ -18723,7 +18722,6 @@
       "path": "vendor/eliza/packages/ui/src/mobile-shell/MobileHomeScreen.tsx",
       "sha256": "79a8fc4046329ee457611d41cf90fe0e0aff6472e2b9da11ce38382bcd26432c",
       "models": [
-        "ListFocus",
         "ShellNavigation"
       ],
       "scope": "shared-upstream",
@@ -18735,7 +18733,6 @@
       "path": "vendor/eliza/packages/ui/src/mobile-shell/MobileViewHost.tsx",
       "sha256": "e562a7a662b21a10d9884ceab18116d88bfcf47b8c2bbd57a824dcb779c3f843",
       "models": [
-        "ListFocus",
         "ShellNavigation"
       ],
       "scope": "shared-upstream",
@@ -18747,7 +18744,6 @@
       "path": "vendor/eliza/packages/ui/src/mobile-shell/application-catalog.ts",
       "sha256": "75a5b47463e80bd104c502ec355282449f47d6f6da5d7cea98fa782610ec2ec0",
       "models": [
-        "ListFocus",
         "ShellNavigation"
       ],
       "scope": "shared-upstream",
@@ -18759,7 +18755,6 @@
       "path": "vendor/eliza/packages/ui/src/mobile-shell/core.ts",
       "sha256": "9089d726d3ad94a749b7ea203512ea4916295eb42a317dffb177b4ce217713c4",
       "models": [
-        "ListFocus",
         "ShellNavigation"
       ],
       "scope": "shared-upstream",
@@ -18771,7 +18766,6 @@
       "path": "vendor/eliza/packages/ui/src/mobile-shell/eliza-product.ts",
       "sha256": "abb672f59929d0b5764f73d3dad86ad7b2e429ca6cbe8734a0d171d95411c50f",
       "models": [
-        "ListFocus",
         "ShellNavigation"
       ],
       "scope": "shared-upstream",
@@ -18783,7 +18777,6 @@
       "path": "vendor/eliza/packages/ui/src/mobile-shell/feature-manifest.ts",
       "sha256": "23a6de19102b46eed396afe66a9492483f37bbade44cbffa1f60faa2d423f63c",
       "models": [
-        "ListFocus",
         "ShellNavigation"
       ],
       "scope": "shared-upstream",
@@ -18795,7 +18788,6 @@
       "path": "vendor/eliza/packages/ui/src/mobile-shell/gestures.ts",
       "sha256": "3d07e729283749a9bbed41ecb28a8a0442eabed7a377ec0f71bc832753c20598",
       "models": [
-        "ListFocus",
         "ShellNavigation"
       ],
       "scope": "shared-upstream",
@@ -18807,7 +18799,6 @@
       "path": "vendor/eliza/packages/ui/src/mobile-shell/index.ts",
       "sha256": "7352f1f06999afbc74f8855d7f900d9563b840fd6c49953b03bde46dba506e91",
       "models": [
-        "ListFocus",
         "ShellNavigation"
       ],
       "scope": "shared-upstream",
@@ -18819,7 +18810,6 @@
       "path": "vendor/eliza/packages/ui/src/mobile-shell/mobile-launcher.ts",
       "sha256": "8876a4f55785002632534382976566168da2f93002fb904e024e8f6e92c7e548",
       "models": [
-        "ListFocus",
         "ShellNavigation"
       ],
       "scope": "shared-upstream",
@@ -18831,7 +18821,6 @@
       "path": "vendor/eliza/packages/ui/src/mobile-shell/navigation.ts",
       "sha256": "872cf5d8e3d205c500da758f917c969466affe4102b2d33013a560583141d3b2",
       "models": [
-        "ListFocus",
         "ShellNavigation"
       ],
       "scope": "shared-upstream",
@@ -18843,7 +18832,6 @@
       "path": "vendor/eliza/packages/ui/src/mobile-shell/product-registration.ts",
       "sha256": "37670b26a60ff3ef122f5657c3a83ab8fa5ba982d4702d3afec0033d130814a5",
       "models": [
-        "ListFocus",
         "ShellNavigation"
       ],
       "scope": "shared-upstream",
@@ -18855,7 +18843,6 @@
       "path": "vendor/eliza/packages/ui/src/mobile-shell/view-id-migration.ts",
       "sha256": "3ee4300496d7442e165d122a4bb81dd5678e4ab731e5efe87a4e4d6fda84cf63",
       "models": [
-        "ListFocus",
         "ShellNavigation"
       ],
       "scope": "shared-upstream",
@@ -18867,7 +18854,6 @@
       "path": "vendor/eliza/packages/ui/src/mobile-shell/view-ids.ts",
       "sha256": "3ae1ff42b2043f81d67195df138f311e19bc8a522a309a71c3c19fa0ce010f70",
       "models": [
-        "ListFocus",
         "ShellNavigation"
       ],
       "scope": "shared-upstream",
@@ -18879,7 +18865,6 @@
       "path": "vendor/eliza/packages/ui/src/mobile-shell/view-policy.ts",
       "sha256": "bd42a3cbefa0c10c1dc6a51ea0f0910a662718db27d6f104a4c4cf5ac656267a",
       "models": [
-        "ListFocus",
         "ShellNavigation"
       ],
       "scope": "shared-upstream",
@@ -18891,7 +18876,6 @@
       "path": "vendor/eliza/packages/ui/src/mobile-shell/view-registry.ts",
       "sha256": "ef86e781ee0a9aa74fbcfad11f048657da36f8a753f005923299d6c6de10d209",
       "models": [
-        "ListFocus",
         "ShellNavigation"
       ],
       "scope": "shared-upstream",
@@ -19825,7 +19809,6 @@
       "models": [
         "CalendarLinkedSync",
         "CalendarPresentation",
-        "ListFocus",
         "ShellNavigation"
       ],
       "scope": "shared-upstream",
@@ -19989,8 +19972,7 @@
       "models": [
         "BrowserSession",
         "BrowserSiteState",
-        "FilesAndSharing",
-        "FilesTree"
+        "FilesAndSharing"
       ],
       "scope": "shared-upstream",
       "treatment": "domain-allocation",
@@ -20003,8 +19985,7 @@
       "models": [
         "BrowserSession",
         "BrowserSiteState",
-        "FilesAndSharing",
-        "FilesTree"
+        "FilesAndSharing"
       ],
       "scope": "shared-upstream",
       "treatment": "domain-allocation",
@@ -20017,8 +19998,7 @@
       "models": [
         "BrowserSession",
         "BrowserSiteState",
-        "FilesAndSharing",
-        "FilesTree"
+        "FilesAndSharing"
       ],
       "scope": "shared-upstream",
       "treatment": "domain-allocation",
@@ -20029,8 +20009,7 @@
       "path": "vendor/eliza/plugins/plugin-files/src/documents/local-ocr.ts",
       "sha256": "38b788b1fc106a270f83a25ec8f02f83a8a34248dc98c81d9ac375125c492a61",
       "models": [
-        "FilesAndSharing",
-        "FilesTree"
+        "FilesAndSharing"
       ],
       "scope": "shared-upstream",
       "treatment": "domain-allocation",
@@ -20042,7 +20021,6 @@
       "sha256": "d6ebe8c9bb58e6439724e19007e2d66753839acd5ae1efdaaaad8d5eaaa1f71f",
       "models": [
         "FilesAndSharing",
-        "FilesTree",
         "ScanDocument"
       ],
       "scope": "shared-upstream",
@@ -20055,7 +20033,6 @@
       "sha256": "5027ffdb207900381733ad4566d2fc04ef9a22e801e188f1df5db3f024301838",
       "models": [
         "FilesAndSharing",
-        "FilesTree",
         "ScanDocument"
       ],
       "scope": "shared-upstream",
@@ -20068,7 +20045,6 @@
       "sha256": "fc28f6c389e5bb88f3b0da773d20faa48257f35325b4b7264e5ac49858c74994",
       "models": [
         "FilesAndSharing",
-        "FilesTree",
         "ScanDocument"
       ],
       "scope": "shared-upstream",
@@ -20081,7 +20057,6 @@
       "sha256": "aa24ff41c97251516a5574fc511c9c1ec423fea9f3d2392b63afe902d9145568",
       "models": [
         "FilesAndSharing",
-        "FilesTree",
         "ScanDocument"
       ],
       "scope": "shared-upstream",
@@ -20094,7 +20069,6 @@
       "sha256": "489655bc057837ccc9ae428ec98aabf5baeccb03211f50907597df6e132b5dfd",
       "models": [
         "FilesAndSharing",
-        "FilesTree",
         "ScanDocument"
       ],
       "scope": "shared-upstream",
@@ -20107,7 +20081,6 @@
       "sha256": "47cff534d2df7d022a7ba93a85d47f82e1471d514ec45f6d11d148d91a062f34",
       "models": [
         "FilesAndSharing",
-        "FilesTree",
         "PdfWorker",
         "ScanDocument"
       ],
@@ -20121,7 +20094,6 @@
       "sha256": "5ce9560a39fff8a75c9e05ad81429ee8045a2a43cf78365a59c69f2a785ac0fe",
       "models": [
         "FilesAndSharing",
-        "FilesTree",
         "ScanDocument"
       ],
       "scope": "shared-upstream",
@@ -20133,8 +20105,7 @@
       "path": "vendor/eliza/plugins/plugin-files/src/documents/source-links.ts",
       "sha256": "b5c39d5fe4d023bd6281d0a577e0a519da4a2bf3500e5fd058037c0b3b10c1f7",
       "models": [
-        "FilesAndSharing",
-        "FilesTree"
+        "FilesAndSharing"
       ],
       "scope": "shared-upstream",
       "treatment": "domain-allocation",
@@ -20145,8 +20116,7 @@
       "path": "vendor/eliza/plugins/plugin-files/src/index.ts",
       "sha256": "6bb0d5e33523042b93ec79f58b39c36517b120846bdaf5b2b72e29a30b4e5f2f",
       "models": [
-        "FilesAndSharing",
-        "FilesTree"
+        "FilesAndSharing"
       ],
       "scope": "shared-upstream",
       "treatment": "domain-allocation",
@@ -20159,8 +20129,7 @@
       "models": [
         "BrowserSession",
         "BrowserSiteState",
-        "FilesAndSharing",
-        "FilesTree"
+        "FilesAndSharing"
       ],
       "scope": "shared-upstream",
       "treatment": "domain-allocation",
@@ -20172,7 +20141,6 @@
       "sha256": "eb90209701cb9faac521620b2260f85da5984bf514f50aa38667690e4af57914",
       "models": [
         "FilesAndSharing",
-        "FilesTree",
         "ScanDocument"
       ],
       "scope": "shared-upstream",
@@ -20184,8 +20152,7 @@
       "path": "vendor/eliza/plugins/plugin-files/test/source-links.test.mjs",
       "sha256": "038e1726fec8dd2e916ab5b8d6ac0df59debcf46e580ee13ee4ec18bc970dfa3",
       "models": [
-        "FilesAndSharing",
-        "FilesTree"
+        "FilesAndSharing"
       ],
       "scope": "shared-upstream",
       "treatment": "domain-allocation",
@@ -20723,6 +20690,7 @@
       "sha256": "23d29b041ee00f6d759d16c23ff223a867567f8e5de113dd2512f960bed0dda2",
       "models": [
         "AssistantConversation",
+        "NativeVoiceDraft",
         "ResidentRuntime",
         "SpeechResources",
         "StreamingPlayback",
@@ -22351,7 +22319,6 @@
       "sha256": "ce6eefb7abc3416eb68640eb37a9ecdc4c1117138260cf06f9c1fd254c1c32f4",
       "models": [
         "DeviceActions",
-        "ListFocus",
         "ShellNavigation"
       ],
       "scope": "shared-upstream",
@@ -22659,7 +22626,6 @@
       "path": "vendor/eliza/plugins/plugin-native-media/android/src/main/java/ai/eliza/plugins/media/PermittedMediaCatalog.java",
       "sha256": "e1ab1a24393b45b05025415e8809b3dd61b3e7f0d9bb757395123791bec1814a",
       "models": [
-        "ListFocus",
         "MediaLifecycle",
         "ShellNavigation"
       ],
@@ -24423,7 +24389,6 @@
       "path": "vendor/eliza/plugins/plugin-native-system/android/src/androidTest/java/ai/eliza/plugins/system/SystemLauncherAppsInstrumentedTest.java",
       "sha256": "7eafb14b5789e8a552b4de959c966b513536f7975d1e7ea64aa77ae758437906",
       "models": [
-        "ListFocus",
         "ShellNavigation"
       ],
       "scope": "shared-upstream",
@@ -24524,7 +24489,6 @@
       "path": "vendor/eliza/plugins/plugin-native-system/android/src/main/java/ai/eliza/plugins/system/SystemLauncherApps.java",
       "sha256": "efc6ae85566aa1209c549b9b3b20042ff450af95ef1ce59b0211749c77a6f64e",
       "models": [
-        "ListFocus",
         "ShellNavigation"
       ],
       "scope": "shared-upstream",
@@ -24690,7 +24654,6 @@
       "path": "vendor/eliza/plugins/plugin-native-system/src/client/launcher.ts",
       "sha256": "89625214c861f533e5c8526fd4f3b398e984e76e6136adae85d324877c82ab51",
       "models": [
-        "ListFocus",
         "ShellNavigation"
       ],
       "scope": "shared-upstream",
@@ -25278,6 +25241,7 @@
       "models": [
         "WorkflowEngineAdmission",
         "WorkflowExecution",
+        "WorkflowScheduleTasks",
         "WorkflowWakeups"
       ],
       "scope": "shared-upstream",
@@ -25326,7 +25290,6 @@
     {
       "path": "android/app/src/launcher/AndroidManifest.xml",
       "models": [
-        "ListFocus",
         "ShellNavigation"
       ],
       "sha256": "0ad991804533ef4dcadc8e368907a37e6056894863d2599a2e25d9e33312039d"
@@ -25478,14 +25441,15 @@
       "models": [
         "IdentitySession"
       ],
-      "sha256": "bd0e9c6ced4be7e25846eb11968968efca2c1ba7829cf10c063b7dd1ccf8b706"
+      "sha256": "10d700889136904589b8ad7b81c09848a927bd73a104b526643d73ad9cab4c49"
     },
     {
       "path": "patches/eliza/notes-recording-segments.patch",
       "models": [
+        "NativeVoiceDraft",
         "NotesLifecycle"
       ],
-      "sha256": "2cc3bceea14e43be09b72d14802e84c917df5b47f9fa547c11d31f11bb55574d"
+      "sha256": "95d81ef889e2c3e526f2b18fb638134855ebcc5508fb2a463b41c2753bee7ae9"
     },
     {
       "path": "patches/eliza/notes-recording-store.patch",
@@ -25586,9 +25550,7 @@
     "clientProjection": ".eliza/client-features/.source.json",
     "hostDescriptor": "android/consumer-host.json",
     "nativePatches": "patches/eliza/native-manifest.json",
-    "sharedSourceCount": 683,
-    "meaning": "Consumed shared sources are checked alongside product sources. Generated copies and effective patch hashes are bound by source-trace receipts.",
-    "modelSourceRegistry": "specs/quint/*/manifest.json",
-    "remainingDiscovery": "Independent prepared worker and AgentRuntime import-graph review remains open."
+    "sharedSourceCount": 686,
+    "meaning": "Consumed shared sources are checked alongside product sources. Generated copies and effective patch hashes are bound by source-trace receipts."
   }
 }

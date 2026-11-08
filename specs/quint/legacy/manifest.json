@@ -1064,9 +1064,6 @@
       "asBuiltChatGraceTest",
       "asBuiltLeaveQueueTest"
     ],
-    "sources": [
-      "apps/app/src/prototype/camera-adapter.ts"
-    ],
     "abstractions": [
       "Historical view-refresh design comparison authored on main before this migration. It is not implementation refinement evidence.",
       "Every source state variable is a field of s. Immutable config preserves each original TLC constant assignment; history is an observational extension for action properties.",
@@ -1206,7 +1203,15 @@
         "AgentCaptureSettles"
       ]
     },
-    "legacyConfigurations": "specs/quint/legacy/view-refresh-configurations.json"
+    "legacyConfigurations": "specs/quint/legacy/view-refresh-configurations.json",
+    "classification": "historical-design-comparison",
+    "historicalSources": {
+      "commit": "f2a0eb035da9c8ede24efe735d981a27dd403283",
+      "paths": [
+        "apps/app/src/prototype/camera-adapter.ts"
+      ]
+    },
+    "sources": []
   },
   {
     "path": "specs/quint/legacy/PhotosLibrary.qnt",
@@ -1225,12 +1230,6 @@
       "asBuiltPatchTest",
       "asBuiltFavoriteTest",
       "asBuiltCapTest"
-    ],
-    "sources": [
-      "apps/app/src/prototype/camera-adapter.ts",
-      "apps/app/src/prototype/photo-library-adapter.ts",
-      "apps/app/src/runtime/photos-view.ts",
-      "apps/app/src/runtime/photo-library.ts"
     ],
     "abstractions": [
       "Historical view-refresh design comparison authored on main before this migration. It is not implementation refinement evidence.",
@@ -1357,7 +1356,18 @@
         "ReviewSettles"
       ]
     },
-    "legacyConfigurations": "specs/quint/legacy/view-refresh-configurations.json"
+    "legacyConfigurations": "specs/quint/legacy/view-refresh-configurations.json",
+    "classification": "historical-design-comparison",
+    "historicalSources": {
+      "commit": "f2a0eb035da9c8ede24efe735d981a27dd403283",
+      "paths": [
+        "apps/app/src/prototype/camera-adapter.ts",
+        "apps/app/src/prototype/photo-library-adapter.ts",
+        "apps/app/src/runtime/photos-view.ts",
+        "apps/app/src/runtime/photo-library.ts"
+      ]
+    },
+    "sources": []
   },
   {
     "path": "specs/quint/legacy/NotesView.qnt",
@@ -1376,12 +1386,6 @@
       "asBuiltStreamAsrTest",
       "asBuiltHiddenTest",
       "ablateRestoreFolderTest"
-    ],
-    "sources": [
-      "apps/app/src/prototype/voice-adapter.ts",
-      "apps/app/src/prototype/canonical-notes-ui.ts",
-      "apps/app/src/prototype/note-recorder.ts",
-      "apps/app/src/runtime/note-recorder-driver.ts"
     ],
     "abstractions": [
       "Historical view-refresh design comparison authored on main before this migration. It is not implementation refinement evidence.",
@@ -1522,7 +1526,18 @@
         "ReviewSettles"
       ]
     },
-    "legacyConfigurations": "specs/quint/legacy/view-refresh-configurations.json"
+    "legacyConfigurations": "specs/quint/legacy/view-refresh-configurations.json",
+    "classification": "historical-design-comparison",
+    "historicalSources": {
+      "commit": "f2a0eb035da9c8ede24efe735d981a27dd403283",
+      "paths": [
+        "apps/app/src/prototype/voice-adapter.ts",
+        "apps/app/src/prototype/canonical-notes-ui.ts",
+        "apps/app/src/prototype/note-recorder.ts",
+        "apps/app/src/runtime/note-recorder-driver.ts"
+      ]
+    },
+    "sources": []
   },
   {
     "path": "specs/quint/legacy/FilesBrowser.qnt",
@@ -1539,11 +1554,6 @@
       "ablateConflictTest",
       "asBuiltIdentityTest",
       "ablateSelectedTargetTest"
-    ],
-    "sources": [
-      "apps/app/src/prototype/files-browser-adapter.ts",
-      "apps/app/src/runtime/files-storage.ts",
-      "apps/app/src/runtime/files-agent-contract.ts"
     ],
     "abstractions": [
       "Historical view-refresh design comparison authored on main before this migration. It is not implementation refinement evidence.",
@@ -1657,7 +1667,17 @@
         "ReviewSettles"
       ]
     },
-    "legacyConfigurations": "specs/quint/legacy/view-refresh-configurations.json"
+    "legacyConfigurations": "specs/quint/legacy/view-refresh-configurations.json",
+    "classification": "historical-design-comparison",
+    "historicalSources": {
+      "commit": "f2a0eb035da9c8ede24efe735d981a27dd403283",
+      "paths": [
+        "apps/app/src/prototype/files-browser-adapter.ts",
+        "apps/app/src/runtime/files-storage.ts",
+        "apps/app/src/runtime/files-agent-contract.ts"
+      ]
+    },
+    "sources": []
   },
   {
     "stateMapping": {
