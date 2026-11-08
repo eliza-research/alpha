@@ -71,11 +71,11 @@ test.describe('folder',()=>{
    const row=(await files.list({id:ids.scope})).entries.find((entry:any)=>entry.name==='alpha.txt');await files.delete({id:row.id,expectedRevision:row.revision,confirmPermanent:true});
   },{ids,change});
   await dialog.getByRole('button',{name:'Use in conversation',exact:true}).click();
-  await expect(page.getByText(/Nothing was added to your conversation\./)).toBeVisible();
+  await expect(page.getByText(change==='revoke'?'Folder access ended. Choose the folder again.':'This folder changed. Review it again.',{exact:true})).toBeVisible();
   await expect(dialog).toHaveCount(0);await expect(composer(page)).toHaveCount(0);
   if(change==='delete')await expect(page.getByRole('button',{name:'Open alpha.txt',exact:true})).toHaveCount(0);
   if(change==='add')await expect(page.getByRole('button',{name:'Open arrived later',exact:true})).toBeVisible();
-  if(change==='revoke'){await expect(page.getByText('Folder access ended. Choose the folder again. Nothing was added to your conversation.',{exact:true})).toBeVisible();await expect(page.getByRole('button',{name:'Open alpha.txt',exact:true})).toHaveCount(0);await expect.poll(()=>selectedObject(page)).toBeNull();}
+  if(change==='revoke'){await expect(page.getByRole('button',{name:'Open alpha.txt',exact:true})).toHaveCount(0);await expect.poll(()=>selectedObject(page)).toBeNull();}
  });
 });
 

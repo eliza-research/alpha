@@ -37,7 +37,7 @@ export function installFilesTreeAdapter(views:Bag,accept:(module:string,result:N
  let selectionEpoch=0;
  let listing:Listing|undefined,api:Bag|undefined,busy=false,status='',generation=0,selected:Entry|undefined,selectedCapability:string|undefined;
  // Native tree IDs are session capabilities; a new process cannot reopen them.
- const revokeTree=()=>{for(const id of filesIndex.revokeTree())void DailyApps.forgetSelected({selectionId:id}).catch(()=>{});};
+ const revokeTree=()=>{const open=filesIndex.open();for(const id of filesIndex.revokeTree()){if(id===open)filesIndex.setOpen(null);void DailyApps.forgetSelected({selectionId:id}).catch(()=>{});}};
  if(Capacitor.isNativePlatform())revokeTree();
  let selecting=false,picked=new Set<string>();
  const resetSelection=()=>{selecting=false;picked.clear();};
