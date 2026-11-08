@@ -29,7 +29,7 @@ function jsonJar() {
   throw new Error('The pinned org.json 20250517 jar is required for native refinement');
 }
 
-export function javaTraces(harness, sources, args = [], mainClass) {
+export function javaTraceCampaign(harness, sources, argumentSets, mainClass) {
   const temporary = mkdtempSync(join(tmpdir(), 'alpha-native-refinement-'));
   const jar = jsonJar();
   const run = (command, commandArgs) => {
@@ -39,8 +39,15 @@ export function javaTraces(harness, sources, args = [], mainClass) {
   };
   try {
     run(executable('javac'), ['-cp', jar, '-d', temporary, join(directory, 'Trace.java'), join(directory, harness), ...sources.map(path => resolve(root, path))]);
-    return JSON.parse(run(executable('java'), ['-cp', `${temporary}:${jar}`, mainClass || `ai.elizaresearch.alphaphone.${harness.replace(/\.java$/, '')}`, ...args]));
+    const java = executable('java');
+    const entry = mainClass || `ai.elizaresearch.alphaphone.${harness.replace(/\.java$/, '')}`;
+    return argumentSets.map(args => JSON.parse(run(java, ['-cp', `${temporary}:${jar}`, entry, ...args])));
   } finally {
     rmSync(temporary, {recursive: true, force: true});
   }
+}
+
+
+export function javaTraces(harness, sources, args = [], mainClass) {
+  return javaTraceCampaign(harness, sources, [args], mainClass)[0];
 }

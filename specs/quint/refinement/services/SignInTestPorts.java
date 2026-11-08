@@ -19,6 +19,7 @@ public final class SignInTestPorts {
   public static volatile int readsBeforePause;
   static int exchanges;
   static int codeSends;
+  static int codeVerifies;
   public static volatile boolean browserOpened;
   public static volatile int authorizations;
   static int issued;
@@ -119,7 +120,7 @@ public final class SignInTestPorts {
       }
       switch (path) {
         case "/api/v1/app-auth/mobile/config":
-          if (scenario.equals("cancel-then-phone")) {
+          if (scenario.equals("cancel-then-phone") || scenario.equals("phone-code-cap")) {
             result.put("success", true)
                 .put("clientId", AlphaCloudSignInPlugin.REGISTRATION.clientId)
                 .put("environment", "production")
@@ -136,6 +137,17 @@ public final class SignInTestPorts {
           codeSends++;
           code = 202;
           result.put("expiresAt", System.currentTimeMillis() + 600000);
+          break;
+        case "/steward/auth/email/code/verify":
+        case "/steward/auth/sms/verify":
+          codeVerifies++;
+          if (scenario.endsWith("code-cap") || codeVerifies == 1) code = 401;
+          else result.put("mfaRequired", true).put("mfa", new JSONObject()
+              .put("type", "totp").put("challengeId", "fixture-challenge")
+              .put("expiresAt", System.currentTimeMillis() + 300000));
+          break;
+        case "/steward/auth/mfa/totp/complete":
+          result.put("token", "steward_session_" + "x".repeat(32));
           break;
         case "/steward/auth/oauth/exchange":
           exchanges++;
