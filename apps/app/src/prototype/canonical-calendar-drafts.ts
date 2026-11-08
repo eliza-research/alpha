@@ -69,7 +69,10 @@ export function installCanonicalCalendarDrafts(Component:any,views:Bag){
    if(key)void this.canonicalDraft.open(JSON.stringify(['canonical-calendar-editor',key]));
   }
   if(form?.canonicalOwnerKey&&form.canonicalOwnerKey!==key){this.vset('calendar',{form:null});return;}
-  if(!key||form?.canonicalOwnerKey!==key)return;
+  if(!key||form?.canonicalOwnerKey!==key){
+   if(!form&&!this.canonicalDraftText)this.canonicalDraftInvalid=false;
+   return;
+  }
   const identity=form.creationId;
   if(this.canonicalDraftIdentity!==identity){this.canonicalDraftIdentity=identity;this.canonicalDraftAnchor=new Date();}
   const today=new Date(),anchor=this.canonicalDraftAnchor as Date,civil=(date:Date)=>Date.UTC(date.getFullYear(),date.getMonth(),date.getDate()),shift=(civil(anchor)-civil(today))/86400000;
