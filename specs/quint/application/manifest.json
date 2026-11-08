@@ -173,7 +173,9 @@
       "invalidKeyTest",
       "confirmedDamageResetTest",
       "backgroundPreventsResetTest",
-      "explicitTestBuildTransferTest"
+      "explicitTestBuildTransferTest",
+      "leaveRetiresResetReviewTest",
+      "nativeLockRefusesPendingResetTest"
     ],
     "sources": [
       "apps/app/src/passwords/password-manager.ts",
