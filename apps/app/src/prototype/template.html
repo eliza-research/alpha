@@ -2352,6 +2352,7 @@
         </div>
         </sc-if>
 
+        <sc-if value="{{notes.vo.playbackError}}"><p role="status" style="margin:6px 0;color:var(--mut);font-size:14px">{{notes.vo.playbackError}}</p></sc-if>
         <sc-if value="{{notes.vo.canAddTranscript}}">
           <button class="note-transcript-action" disabled="{{notes.vo.transcriptDisabled}}" onClick="{{notes.vo.addTranscript}}">Generate transcript</button>
         </sc-if>
@@ -2391,6 +2392,7 @@
         </sc-if>
 
         <div style="display: flex; flex-direction: column; gap: 4px; margin-top: 26px">
+          <sc-if value="{{notes.vo.savedTranscript}}"><p style="margin:0;white-space:pre-wrap;overflow-wrap:anywhere;line-height:1.5">{{notes.vo.savedTranscript}}</p></sc-if>
           <sc-for list="{{notes.vo.lines}}" as="l">
             <button onClick="{{l.seek}}" aria-label="Play from {{l.at}}" class="tap" style="display: flex; gap: 12px; align-items: flex-start; padding: 10px 8px; margin: 0 -8px; border-radius: 16px; text-align: left">
               <span style="width: 30px; height: 30px; border-radius: 15px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: 10.5px; font-weight: 700; white-space: nowrap; {{l.chip}}">{{l.ini}}<sc-if value="{{l.statusIcon}}"><svg class="i" viewBox="0 0 24 24" style="width:16px;height:16px"><path d="{{l.statusIcon}}"></path></svg></sc-if></span>
@@ -4153,7 +4155,7 @@
   <sc-if value="{{panelComposer}}">
   <sc-if value="{{messageComposeContext}}"><div style="display:flex;align-items:center;gap:8px;padding:6px 16px;font-size:13px;background:var(--s2);border-radius:14px"><span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{messageComposeContext}}</span><button class="tap" aria-label="Cancel reply or edit" onClick="{{cancelMessageContext}}" style="min-width:44px;min-height:44px;display:flex;align-items:center;justify-content:center"><svg class="i" viewBox="0 0 24 24" style="width:16px;height:16px"><path d="{{ic.x}}"></path></svg></button></div></sc-if>
 
-    <sc-if value="{{attachedTranscript}}"><div class="note-transcript-chip" role="group" aria-label="Attached transcript"><span>Transcript · {{attachedTranscript}}</span><button aria-label="Remove transcript" onClick="{{removeTranscript}}">×</button></div></sc-if>
+    <sc-if value="{{attachedTranscript}}"><div class="note-transcript-chip" role="group" aria-label="Attached transcript"><span class="note-transcript-chip-label"><small>Transcript</small><strong>{{attachedTranscript}}</strong></span><button type="button" aria-label="Remove transcript" onClick="{{removeTranscript}}"><i aria-hidden="true" class="note-transcript-remove-icon"></i></button></div></sc-if>
     <div class="alpha-chat-composer">
       <textarea disabled="{{draftOpening}}" onPointerDown="{{composerPointer}}" data-alpha-composer="true" rows="1" aria-label="Message {{name}}" placeholder="Message {{name}}" value="{{draft}}" onChange="{{onDraft}}" onKeyDown="{{onKey}}" style="flex-grow: 1; min-width: 0; height: 44px; min-height:44px; max-height:min(168px,28dvh); resize:none; overflow-y:auto; font-family:inherit; line-height:22px; padding-top:11px; padding-bottom:11px; box-sizing:border-box; border: 0; outline: 0; background: transparent; color: var(--fg); font-size: 16px"></textarea>
       <sc-if value="{{canStopReply}}"><button aria-label="Stop reply" onClick="{{stopReply}}" style="width: 44px; height: 44px; border-radius: 22px; flex-shrink: 0; background: var(--fg); color: var(--bg); display: flex; align-items: center; justify-content: center"><svg class="i" viewBox="0 0 24 24"><rect x="7" y="7" width="10" height="10" rx="2" fill="currentColor" stroke="none"></rect></svg></button></sc-if>
