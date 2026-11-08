@@ -2,7 +2,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {buildDiagnostics,diagnosticsText,DIAGNOSTICS_FORMAT} from '../apps/app/src/runtime/diagnostics-export.ts';
-import {sanitizeCrashEntries,errorClassOf,describeCrashEntry} from '../apps/app/src/runtime/crash-log.ts';
+import {sanitizeCrashEntries,errorClassOf,describeCrashEntry,recordRendererFailure} from '../apps/app/src/runtime/crash-log.ts';
 
 const now=Date.UTC(2026,9,8,12);
 const pin='45242af234e7f3d55c433f327798e7cb2130e06e';
@@ -76,6 +76,18 @@ test('crash entries keep classes only, are bounded and expire after 30 days',()=
  assert.equal(errorClassOf('a string with content'),'string');
  assert.deepEqual(describeCrashEntry({at:now,source:'exit',reason:'anr',process:':isolated_pdf'}),{title:'App process stopped: anr',detail:'Reported by Android · :isolated_pdf process'});
  assert.deepEqual(describeCrashEntry({at:now,source:'uncaught',errorClass:'java.lang.IllegalStateException',rootClass:'java.io.IOException',thread:'main'}),{title:'App crashed',detail:'java.lang.IllegalStateException · caused by java.io.IOException · main thread'});
+});
+
+test('failure classification and recording survive hostile error objects',async()=>{
+ const throwingName=new Error('synthetic private details');
+ Object.defineProperty(throwingName,'name',{get(){throw Error('name getter failed');}});
+ const symbolName=new Error('synthetic private details');
+ Object.defineProperty(symbolName,'name',{value:Symbol('private')});
+ const revoked=Proxy.revocable(new Error('synthetic private details'),{});revoked.revoke();
+ for(const error of [throwingName,symbolName,revoked.proxy]){
+  assert.equal(errorClassOf(error),'Error');
+  await assert.doesNotReject(recordRendererFailure('render',error));
+ }
 });
 
 test('plan diagnostics distinguish signed inactive plans from organization-credit presentation without exporting authority',()=>{

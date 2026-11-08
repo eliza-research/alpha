@@ -54,8 +54,10 @@ const processLabel=/^(main|other|:[A-Za-z0-9_]{1,40})$/;
 
 /** Error class only. A name that is not a plain identifier (it could be text) becomes "Error". */
 export function errorClassOf(error:unknown):string{
- if(error instanceof Error)return jsClass.test(error.name)?error.name:'Error';
- return error===null?'null':typeof error;
+ try{
+  if(error instanceof Error){const name=error.name;return typeof name==='string'&&jsClass.test(name)?name:'Error';}
+  return error===null?'null':typeof error;
+ }catch{return 'Error';}
 }
 
 /** Keeps only allowlisted fields with allowlisted shapes. Anything else is dropped, never copied. */
