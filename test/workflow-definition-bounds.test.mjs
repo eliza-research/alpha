@@ -22,7 +22,7 @@ const answer=async spec=>({spec,specDigest:await D.workflowSha(A.normalizePhoneS
 
 test('a generated candidate outside the reviewed bounds is rejected before it can be reviewed',()=>{
  const out=run(prelude+`
-const generate=(respond,operations=['supplied_text','compose_draft'],prompt='Draft an agenda')=>message(()=>new P.WorkflowProtocol(async path=>{if(path!=='/api/workflow/phone/generate')throw Error(path);return respond();}).generatePhone(prompt,catalog,operations,signal));
+const generate=(respond,operations=['supplied_text','compose_draft'],prompt='Draft an agenda',device)=>message(()=>new P.WorkflowProtocol(async path=>{if(path!=='/api/workflow/phone/generate')throw Error(path);return respond();}).generatePhone(prompt,catalog,operations,signal,undefined,device));
 out.valid=await generate(()=>answer(base));
 out.schedule=await generate(async()=>({...await answer(base),spec:{...base,trigger:{kind:'schedule',cron:'0 7 * * *'}}}));
 out.extraTriggerField=await generate(async()=>({...await answer(base),spec:{...base,trigger:{kind:'manual',cron:'0 7 * * *'}}}));
@@ -34,6 +34,10 @@ out.oversized=await generate(async()=>({...await answer(base),padding:'x'.repeat
 out.active=await generate(async()=>({...await answer(base),active:true}));
 out.wrongDigest=await generate(async()=>({...await answer(base),specDigest:'f'.repeat(64)}));
 out.wrongCompiler=await generate(async()=>({...await answer(base),compilerRevision:'k2'}));
+out.wrongCatalog=await generate(async()=>({...await answer(base),catalogRevision:'c2'}));
+const enrolled={installationId:'install-1',enrollmentId:'enroll-1'};
+out.enrolled=await generate(()=>answer({...base,device:enrolled}),undefined,undefined,enrolled);
+out.changedEnrollment=await generate(()=>answer({...base,device:{...enrolled,enrollmentId:'enroll-2'}}),undefined,undefined,enrolled);
 out.addedDevice=await generate(()=>answer({...base,device:{installationId:'install-1',enrollmentId:'enroll-1'}}));
 out.addedReadScope=await generate(()=>answer({...base,device:{installationId:'install-1',enrollmentId:'enroll-1'},steps:[{id:'a',kind:'Read',operation:'selected_notes',notes:[]},base.steps[1]]}),['selected_notes','compose_draft']);
 out.emptyPrompt=await generate(()=>answer(base),undefined,'   ');out.longPrompt=await generate(()=>answer(base),undefined,'x'.repeat(4001));
@@ -49,7 +53,10 @@ console.log(JSON.stringify(out));`);
  assert.equal(out.addedSchedule,'Error: Generated draft changed when this workflow runs');
  assert.equal(out.tooManySteps,'PhoneWorkflowSpecError: Add between 1 and 32 steps');
  assert.equal(out.oversized,'Error: Generated draft exceeds the response limit');
- for(const key of ['active','wrongDigest','wrongCompiler'])assert.equal(out[key],'Error: Agent validation changed the reviewed workflow',key);
+ for(const key of ['active','wrongDigest','wrongCompiler','wrongCatalog'])assert.equal(out[key],'Error: Agent validation changed the reviewed workflow',key);
+ // The draft must come back for the same enrollment the phone sent.
+ assert.equal(out.enrolled,'');
+ assert.equal(out.changedEnrollment,'Error: Generated draft changed the available device or operations');
  assert.match(out.addedDevice,/Generated draft changed the available device or operations|A verified phone enrollment is required|Invalid/);
  assert.notEqual(out.addedReadScope,'');
  assert.equal(out.emptyPrompt,'Error: Describe the workflow in 1–4000 characters');assert.equal(out.longPrompt,'Error: Describe the workflow in 1–4000 characters');
