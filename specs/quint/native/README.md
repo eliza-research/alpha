@@ -361,3 +361,17 @@ MediaRecorder and Handler are controlled primitive ports. Permission epochs,
 parent bridge cancellation barriers and physical Android media behavior remain
 separate obligations. The source, model, adapter and authenticated patch hashes
 are retained with each source trace.
+
+`NativeNotePermission` models the product Notes bridge's pending permission,
+queued start/resume, foreground/destruction, call activity and actual recording
+state. Both queued opening paths recheck call and lifecycle admission when they
+run. The source campaign executes the complete `AlphaVoiceCloudPlugin` against
+the actual segmented recorder. Twenty-two schedules include call entry during
+permission and queued work, host retirement, denied permission, existing-recording
+refusal, failed openings, stop/resume and discard/retry. Every model state field
+and non-environment action has source observations.
+
+This campaign supplies the shared parent lifecycle/permission interface as a
+controlled port. It covers one pending Notes request and two successful capture
+starts. Shared `LocalSpeechBridgePlugin` behavior, multiple simultaneous prompts,
+installed microphone enforcement and physical audio remain separate obligations.

@@ -78,6 +78,7 @@ public final class AlphaVoiceCloudPlugin extends LocalSpeechBridgePlugin {
  @PermissionCallback private void noteMicrophonePermission(PluginCall call){if(getPermissionState("microphone")!=PermissionState.GRANTED){call.reject("Microphone permission denied","permission-denied");return;}startNote(call);}
  private void startNote(PluginCall call){mainHandler().post(()->{
   if(destroyed()||!noteForeground){call.reject("Recording cancelled");return;}
+  if(callActive()){call.reject(CALL_MESSAGE,CALL_ACTIVE_CODE);return;}
   try{
    String folder=call.getData().isNull("folderId")?null:call.getString("folderId");
    JSObject status=noteRecorder().start(call.getString("ownerDigest"),folder);
@@ -90,7 +91,10 @@ public final class AlphaVoiceCloudPlugin extends LocalSpeechBridgePlugin {
  @PluginMethod public void pauseNoteRecording(PluginCall call){mainHandler().post(()->{try{call.resolve(noteRecorder().pause(noteRecordingId(call)));}catch(RuntimeException error){call.reject("Recording changed");}});}
  @PluginMethod public void resumeNoteRecording(PluginCall call){
   if(callActive()){call.reject(CALL_MESSAGE,CALL_ACTIVE_CODE);return;}
-  mainHandler().post(()->{try{String id=noteRecordingId(call);JSObject status=noteRecorder().resume(id);AlphaNoteRecordingService.start(getContext(),id);call.resolve(status);}
+  mainHandler().post(()->{
+  if(destroyed()||!noteForeground){call.reject("Recording cancelled");return;}
+  if(callActive()){call.reject(CALL_MESSAGE,CALL_ACTIVE_CODE);return;}
+  try{String id=noteRecordingId(call);JSObject status=noteRecorder().resume(id);AlphaNoteRecordingService.start(getContext(),id);call.resolve(status);}
   catch(IOException error){call.reject("storage".equals(error.getMessage())?"Storage is full":"Microphone could not start","storage".equals(error.getMessage())?"storage":"capture");}
   catch(RuntimeException error){call.reject("Recording changed");}});
  }

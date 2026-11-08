@@ -899,6 +899,35 @@
         "Two draft identities, three capture instances and two callbacks bound the source campaign.",
         "Physical media encoding, Android timer delivery and permission admission are external inputs."
       ]
+    },
+    {
+      "path": "specs/quint/native/NativeNotePermission.qnt",
+      "module": "NativeNotePermission",
+      "init": "init",
+      "step": "step",
+      "invariant": "safety",
+      "sources": [
+        "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaVoiceCloudPlugin.java",
+        "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaNoteRecorder.java",
+        "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaNoteRecordingService.java"
+      ],
+      "tests": [
+        "permissionReturningDuringCallTest",
+        "retiredResumeCannotOpenMicrophoneTest",
+        "queuedStartRetiredTest",
+        "explicitResumeWhileLiveTest",
+        "deniedPermissionKeepsCaptureClosedTest"
+      ],
+      "invariants": [
+        "AcceptedOnlyWhileLive",
+        "RefusalDoesNotStartCapture",
+        "OnePendingRequest",
+        "Bounded"
+      ],
+      "abstractions": [
+        "One pending request, two successful capture starts and serialized main queue delivery. Pause/resume/stop/discard operate on the current recording identity.",
+        "The complete product bridge note methods execute against controlled parent lifecycle/permission ports and the real segmented recorder. Shared parent bridge lifecycle and physical microphone permission enforcement remain separate obligations."
+      ]
     }
   ]
 }

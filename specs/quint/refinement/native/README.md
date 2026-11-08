@@ -70,3 +70,21 @@ effects, AOSP SystemUI visibility and physical audio evidence require their
 respective implementation/device tests. The returned obligation list names
 unexecuted model transitions separately so a passed projection cannot silently
 count as full application refinement.
+
+## Product Notes permission boundary
+
+`note-bridge.mjs` compiles the complete product `AlphaVoiceCloudPlugin` with real
+`AlphaNoteRecorder`, `AlphaNoteRecordingService` and staged `LocalVoiceRecording`.
+`NotePermissionTraces` observes the actual private foreground field, caller result,
+recording status, successful media starts and controlled pending callback queue.
+`note-bridge-platform.mjs` supplies the parent lifecycle and permission interface;
+unrelated speech transports throw if reached. The campaign is conditional on that
+interface and does not execute the shared parent's implementation.
+
+The queued start and resume methods previously admitted capture after a phone call
+began. Resume also admitted it after the product host paused or the parent retired.
+The product now rechecks those boundaries inside each queued opening callback.
+`NativeNotePermission` retains admission-time witnesses so later pause/call changes
+do not rewrite a previously valid start. Twenty-two real-source schedules cover
+all declared state fields and actions. Device microphone enforcement and concurrent
+permission requests remain explicit obligations.
