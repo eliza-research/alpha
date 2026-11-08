@@ -431,6 +431,14 @@ html.alpha-text-xl:not(.alpha-landscape) [data-alpha-camera="modes"] button{heig
 /* Browser menu rows grow with their label and wrap it; a fixed 50px row let large text spill
  * over the next row. The menu itself already scrolls. */
 [data-alpha-browser-menu]>button{height:auto!important;min-height:50px;flex-shrink:0;text-align:left}
+.alpha-camera-tools { position:absolute; top:min(601px,calc(100% - var(--alpha-dock-clearance,102px) - 217px)); right:16px; z-index:3; color:var(--alpha-white); }
+.alpha-camera-tools[open] { z-index:51; }
+.alpha-camera-tools summary { display:grid; place-items:center; width:44px; height:44px; border-radius:22px; list-style:none; background:rgba(0,0,0,.62); cursor:pointer; }
+.alpha-camera-tools summary::-webkit-details-marker { display:none; }
+.alpha-camera-tools > div { position:absolute; right:0; bottom:calc(100% + 8px); display:grid; width:max-content; padding:4px; border-radius:16px; background:var(--bg); color:var(--fg); }
+.alpha-camera-tools button { min-height:44px; padding:0 12px; text-align:start; font:inherit; }
+.alpha-landscape .alpha-camera-tools { top:auto; bottom:112px; right:calc(var(--alpha-camera-rail) + 16px); }
+
 /* The photo editor is a fixed portrait stack (preview, tools, filters). Where the screen is
  * shorter than the stack (landscape) it scrolls, so Rotate, Crop and the filters stay reachable. */
 [data-alpha-subview="photos-edit"]{overflow-y:auto;overscroll-behavior:contain}
