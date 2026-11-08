@@ -813,7 +813,7 @@ function retire(name?: string) {
   for(const request of appRequests)request.abort(new DOMException('The connection changed','AbortError'));
   epoch++;
   sending?.abort(new DOMException('The connection changed.', 'AbortError'));
-  sending = null;
+  sending = null; refusalRecheckPending = false;
   active = null;
   update({ phoneActionsAvailable:false, phoneCapabilityReason:'', session: null, kind: residentAlwaysPresent ? 'starting' : 'offline', name: name ?? (residentAlwaysPresent ? RESIDENT_NAME : 'Offline'), conversations: [], history: null, conversationDelivery:undefined,conversationEvents:'unavailable', historyError:'', historyPartial:false, replyNotice:'', actionHistory: [] });
   return retirement;
@@ -973,7 +973,7 @@ function activate(next: Active, session: VerifiedSession, name: string) {
   conversationMemory.clear();
   cancelStoppedReply();
   for(const request of appRequests)request.abort(new DOMException('The connection changed','AbortError'));
-  epoch++; sending?.abort(new DOMException('The connection changed.', 'AbortError')); sending = null; active = next;
+  epoch++; sending?.abort(new DOMException('The connection changed.', 'AbortError')); sending = null; refusalRecheckPending = false; active = next;
   update({ residentRecoveryReason:undefined,residentRecovery:undefined,phoneActionsAvailable:!!next.actions, conversations: [], history: null, conversationDelivery:undefined,conversationEvents:'unavailable', historyError: '', historyPartial:false, replyNotice:'', actionHistory: [], kind: next.kind, name, session, open: false, message: next.kind === 'resident' && state.inferenceOffline ? '' : 'Connected', error: '' });
   // Canonical app Calendar records currently belong to this resident transport only.
   // Read the existing allowed authenticated status route, never a native auth/status expansion.
