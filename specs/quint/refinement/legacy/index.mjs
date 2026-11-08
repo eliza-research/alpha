@@ -1,4 +1,5 @@
 import {fileURLToPath} from 'node:url';
+import {checkChatInputRefinement} from '../../legacy/chat-input/check-chat-input-refinement.mjs';
 import {checkActionSettlementRefinement} from '../../legacy/core/check-action-settlement-refinement.mjs';
 import {checkApprovalServiceRefinement} from '../../legacy/core/check-approval-service-refinement.mjs';
 import {checkEmbeddingSqlRefinement} from '../../legacy/core/check-embedding-sql-refinement.mjs';
@@ -16,6 +17,16 @@ import {checkTaskServiceRefinement} from '../../legacy/core/check-task-service-r
 import {runTaskSchedulerRefinement} from '../services/task-scheduler/index.mjs';
 
 const driver = fileURLToPath(import.meta.url);
+const chatInputDifferences = {
+  ChatInputCurrentOutsideTap: ['A mounted outside tap retires composer focus first',
+    'The original current design can open the underlying app on that first touch. The source preserves the current view and draft.'],
+  ChatInputCurrentBackOrder: ['Back after the IME dismisses lowers the raised composer',
+    'The original current design can leave the app at this step. The source leaves the app on a later Back.'],
+  ChatInputCurrentContentDrag: ['An upward Home content drag preserves the resting composer',
+    'The original current design can open the composer sheet from content. The mounted source accepts the dock gesture separately.'],
+  ChatInputCurrentDockGuard: ['The raised app composer owns the pointer scrim',
+    'The original current design guards the sheet. The mounted source also guards the raised dock input.'],
+};
 const pluginDifferences = {
   PluginLateStartConnector: ['Late service start can register a connector after unload',
     'The runtime stops the late instance but leaves its connector registered after ownership has been removed. The original design forbids that orphan.'],
@@ -28,6 +39,14 @@ const pluginDifferences = {
 export async function runLegacyRefinement() {
   const receipts = [], obligations = [];
   const campaigns = [
+    ['ChatInput', async () => {
+      const {receipts, mismatches} = await checkChatInputRefinement([driver]);
+      const obligations = mismatches.map(mismatch => {
+        const [obligation, reason] = chatInputDifferences[mismatch.id];
+        return {model: 'ChatInput', obligation, reason, evidence: mismatch.receiptPath};
+      });
+      return {receipts, obligations};
+    }],
     ['CoreActionSettlement', checkActionSettlementRefinement],
     ['CoreApprovalService', () => checkApprovalServiceRefinement(undefined, [driver])],
     ['CoreEmbeddingDimension', () => checkEmbeddingSqlRefinement([driver])],

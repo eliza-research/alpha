@@ -2,7 +2,7 @@
 // These aliases replay its exact actions while checking the invariants that the
 // original current profile expects to hold.
 module ChatInputCurrentComparison {
-  import ChatInput as Original from "../ChatInput"
+  import ChatInput as Original from "../../../specs/quint/legacy/ChatInput"
 
   val s = Original::s
   val CurrentGuarded = Original::Guarded

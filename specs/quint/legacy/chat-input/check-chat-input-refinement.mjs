@@ -12,7 +12,7 @@ import {captureInputs, checkTraces} from '../../refinement/check-traces.mjs';
 
 const model = 'ChatInput';
 const currentModel = 'ChatInputCurrentComparison';
-const currentPath = 'specs/quint/legacy/chat-input/ChatInputCurrentComparison.qnt';
+const currentPath = 'test/fixtures/quint/ChatInputCurrentComparison.qnt';
 const main = resolve(root, 'apps/app/src/main.tsx');
 const motion = resolve(root, 'apps/app/src/prototype/chat-overlay-motion-adapter.ts');
 const adapter = resolve(root, 'apps/app/src/prototype/agent-adapter.ts');
@@ -349,7 +349,7 @@ export async function checkChatInputRefinement(extraSources = []) {
     const mismatch = JSON.parse(readFileSync(resolve(root, out), 'utf8'));
     assert.equal(mismatch.results[0].kind, 'observation-mismatch');
     assert.ok(mismatch.driverInputsBound);
-    mismatches.push(mismatch);
+    mismatches.push({...mismatch, id, receiptPath: out});
   }
   return {receipts: [receipt], mismatches};
 }
