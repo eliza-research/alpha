@@ -501,6 +501,7 @@ export function installSettingsAdapter(Component: any, views: Bag) {
     out.persona = 'Voice & personality';
     const connection = connectionController.getSnapshot();
     const account = connection.cloudAccount;
+    out.settingsVersion=buildVersion==='Unavailable'?'Development preview':'Version '+buildVersion;
     out.accountEmail=account?(account.email||'Signed in'):'Not signed in';
     out.openAccount=()=>{activeSettingsCategory='settings-account';api.set({page:'settings-account'});};
     const serviceName = cloudServiceName(connectionController.getCloudClient()?.client.environment ?? account?.environment ?? connection.signIn?.environment ?? 'production');
@@ -898,9 +899,10 @@ export function installSettingsAdapter(Component: any, views: Bag) {
         ['Preferences', ['Display', 'Notifications']],
         ['Privacy', ['Privacy & data', 'Set up Alpha access', 'Review phone actions first']],
         ['Apps', ['Calendar', 'Scheduled digests', 'Password manager', 'Photos']],
-        ['Help', ['Agent connection', 'About']],
+        ['Help', ['About']],
       ] as const;
       rows.delete('Models');
+      rows.delete('Agent connection');
       settingsTop.groups = sections.map(([caption, names]) => {
         const selected = names.flatMap(name => {
           const row = rows.get(name);
@@ -910,7 +912,7 @@ export function installSettingsAdapter(Component: any, views: Bag) {
           return [{...row, label, lbl: label, ...(row.aria ? {aria: label} : {}),
             ...(name === 'Accounts' ? {go:()=>connectionController.residentPlanSettings()?api.set({page:'cloud-plan'}):connectionController.openCloudAccount()} : {}),
             ...(name === 'Connections' ? {go:()=>googleConnectionController.open(),...(!account?{sub:'Sign in to connect Google'}:{})} : {}),
-            ...(name === 'Agent connection' ? {hasVal:false, hasSub:false} : {})}];
+            ...(name === 'About' ? {hasVal:false, hasSub:false, sub:'', val:''} : {})}];
         });
         return {...group(selected), cap:caption, hasCap:true};
       }).filter(section => section.rows.length);
@@ -923,7 +925,7 @@ export function installSettingsAdapter(Component: any, views: Bag) {
     if(settingsTop){
       const detailGroups=settingsTop.groups;
       const categories=[['settings-account','Account',['Account']],['settings-general','General',['Preferences','Device']],['settings-privacy','Privacy',['Privacy']],['settings-apps','Apps',['Apps']],['settings-help','Help',['Help']]] as const;
-      settingsTop.groups=[group(categories.filter(([key])=>key!=='settings-account').map(([key,title])=>({kNav:true,label:title,lbl:title,chev:true,noAB:true,go:()=>{activeSettingsCategory=key;api.set({page:key});}})))];
+      settingsTop.groups=categories.filter(([key])=>key!=='settings-account').map(([key,title])=>group([{kNav:true,label:title,lbl:title,chev:true,noAB:true,go:()=>{activeSettingsCategory=key;api.set({page:key});}}]));
       const appSettingsRows=detailGroups.filter((section:Bag)=>section.cap==='Apps').flatMap((section:Bag)=>section.rows);
       const appCatalog=[['Browser','browser'],['Calendar','calendar'],['Camera','camera'],['Files','files'],['Inbox','inbox'],['Maps','maps'],['Notes','notes'],['Passwords','passwords'],['Photos','photos'],['Workflows','workflows']] as const;
       const existingAppRow=(id:string)=>appSettingsRows.find((row:Bag)=>row.label===(id==='calendar'?'Calendar':id==='photos'?'Photos':id==='passwords'?'Password manager':id==='workflows'?'Scheduled summaries':''));
@@ -948,6 +950,8 @@ export function installSettingsAdapter(Component: any, views: Bag) {
       out.stack.push({isTop:false,notTop:true,cls:'enter',z:4,title:names[appSettingsPage]||'App settings',hasTitle:true,backLabel:'Back to Apps',back:()=>{activeSettingsCategory='settings-apps';api.set({page:'settings-apps'});},hero:{},groups:rows.length?[group(rows)]:[group([info('Settings','No additional options')])]});
     }
     if(activeSettingsCategory&&!categoryPage)for(const page of out.stack)if(!page.isTop&&page.backLabel==='Back to Settings')page.backLabel='Back to '+categoryNames[activeSettingsCategory];
+    const settingsIcons:Record<string,string>={General:'settings',Privacy:'shield',Apps:'layout-grid',Help:'info',About:'info',Browser:'globe',Calendar:'calendar-days',Camera:'camera',Files:'folder',Inbox:'mail',Maps:'map-pin',Notes:'notebook-text',Passwords:'lock-keyhole',Photos:'images',Workflows:'workflow','Account & plan':'user-round','Google & email':'link','AI connection':'cpu',Display:'sun',Notifications:'bell','Privacy & data':'shield','App permissions':'fingerprint-pattern','Scheduled summaries':'clock'};
+    for(const page of out.stack)for(const section of page.groups||[])for(const row of section.rows||[])if(row.kNav){row.lucideIcon='/icons/lucide/'+(settingsIcons[row.label]||'sliders-horizontal')+'.svg';row.hasLucideIcon=true;row.hasIcon=false;row.hasTile=false;}
     // Stable identities keep focused controls attached while async groups change.
     for(const page of out.stack){
       const groups=new Map<string,number>();
