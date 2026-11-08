@@ -1,28 +1,28 @@
 import {test,expect} from '@playwright/test';
-import {readFileSync} from 'node:fs';
 import {fileURLToPath} from 'node:url';
-const source=readFileSync(new URL('../../apps/app/src/prototype/browser-adapter.ts',import.meta.url),'utf8');
-const handler=source.slice(source.indexOf('  async function openExternalBrowser()'),source.indexOf('  /** Remove renderer tabs'));
 // Load the same prepared shared module as the product adapter, through Vite's existing allowed root.
 const tabHostModule='/@fs'+fileURLToPath(new URL('../../.eliza/client-features/plugins/plugin-native-browser-surface/src/tab-host.ts',import.meta.url));
-// Actual adapter handler and actual DOM review; only native dispatch/presentation are stand-ins.
+// The adapter's handoff factory and the actual DOM review; only native dispatch/presentation are stand-ins.
+// browser-external-handoff.production.spec.ts drives the same handoff from the rendered Browser menu.
 async function fixture(page:any,priv=true){
  await page.addInitScript(()=>localStorage.setItem('alpha.connection.selection.v1',JSON.stringify({kind:'offline'})));await page.goto('/');
  await page.addScriptTag({type:'module',content:`import {BrowserTabSession} from ${JSON.stringify(tabHostModule)};window.handoffTabHost=BrowserTabSession;`});
- await page.evaluate(async({handler,priv})=>{
+ await page.evaluate(async(priv)=>{
   const {BrowserReviews}=await import('/src/browser/review.ts');
+  const {createExternalBrowserHandoff}=await import('/src/prototype/browser-external-handoff.ts');
   const tabs=new (window as any).handoffTabHost({session:'session'});
   await tabs.ensure('owned',priv,async()=>({}));
   tabs.annotate('owned',{committed:true,loading:false,error:'',url:'https://accounts.example/signin',navigation:'7'});
   const screen=document.createElement('div');screen.id='handoff-native-standin';screen.textContent='Native page stand-in';screen.style.cssText='position:fixed;left:0;top:0;width:100px;height:24px';document.body.append(screen);
   const state={cur:'owned',menu:true};
-  const env:any={sharing:false,confirming:false,disposed:false,lastGeometry:'',session:'session',calls:[],errors:[],updates:0,
-   state:()=>state,isPrivate:(id:string)=>tabs.isPrivate(id),tabs,
-   shell:{S:()=>({view:'browser'}),vset:(_view:string,patch:any)=>Object.assign(state,patch)},reviews:new BrowserReviews(),
-   report:(error:any)=>env.errors.push(error.message),update:async()=>{env.updates++;screen.hidden=env.confirming;},
-   Browser:{openExternalBrowser:async(input:any)=>{env.calls.push(input);if(env.unavailable)throw Error('No other installed browser can open this page.');}}};
-  env.open=Function('env',`with(env){${handler};return openExternalBrowser;}`)(env);(window as any).handoff=env;
- },{handler,priv});
+  const flags={sharing:false,confirming:false,lastGeometry:'',disposed:false};
+  const env:any={flags,calls:[],errors:[],updates:0,tabs};
+  env.open=createExternalBrowserHandoff({tabs,reviews:new BrowserReviews(),state:()=>state,isPrivate:(id:string)=>tabs.isPrivate(id),
+   shell:()=>({S:()=>({view:'browser'}),vset:(_view:string,patch:any)=>Object.assign(state,patch)}),
+   report:(error:any)=>env.errors.push(error.message),update:async()=>{env.updates++;screen.hidden=flags.confirming;},
+   Browser:{openExternalBrowser:async(input:any)=>{env.calls.push(input);if(env.unavailable)throw Error('No other installed browser can open this page.');}},flags});
+  (window as any).handoff=env;
+ },priv);
  expect(await page.evaluate(()=>(window as any).handoff.tabs.pageBinding('owned',{https:true}))).toEqual({id:'owned',url:'https://accounts.example/signin',navigation:'7',revision:0,private:priv});
 }
 test('private cancellation restores the native surface without handing off',async({page})=>{

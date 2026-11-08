@@ -14,6 +14,7 @@ import {webSourceOf} from './summary-source';
 import {browserCalendarScope} from './agent-calendar-adapter';
 import { connectionController, agentPendingText } from '../runtime/connection-ui';
 import { BrowserReviews } from '../browser/review';
+import { createExternalBrowserHandoff } from './browser-external-handoff';
 import { browserErrorMessage, PROFILE_UNSUPPORTED_MESSAGE, PROFILE_UNSUPPORTED_NATIVE_MESSAGE } from '../browser/browser-errors';
 const {tabs: MAX_TABS, history: MAX_HISTORY} = DEFAULT_BROWSING_LIMITS;
 type Bag = Record<string, any>;
@@ -276,26 +277,12 @@ export function installPrototypeBrowserAdapter(Component: any, views: Record<str
     shell.vset('browser',{menu:false,share:false});
     shell.api('browser').open('inbox',{compose:{subject:info.title||'Shared page',body:info.url}});
   }
-  async function openExternalBrowser() {
-    if (sharing || confirming || disposed || !shell) return;
-    const id = state()?.cur, page = tabs.pageBinding(id, {https: true});
-    if (!page) { report(new Error('Load an HTTPS page before opening another browser.')); return; }
-    sharing = true;
-    try {
-      const priv = isPrivate(id);
-      shell.vset('browser', {menu:false});
-      if (priv) {
-        confirming = true; lastGeometry = ''; await update();
-        const approved = await reviews.confirm('external-browser', 'Leave private browsing?', `Open in another browser?\n${page.url}\n\nIt may save this address and use its own sign-ins. Your Alpha sign-ins and private tabs aren't shared.`, 'Choose browser');
-        confirming = false;
-        if (!approved) return;
-      }
-      if (disposed || document.hidden || shell.S().view!=='browser' || !tabs.current(page, state()?.cur)) throw new Error('The page changed. Review it again before leaving Alpha.');
-      lastGeometry=''; await update();
-      await Browser.openExternalBrowser({...tabs.guard(page),privateConfirmed:priv});
-    } catch (error) { report(error); }
-    finally { sharing=false; confirming=false; lastGeometry=''; await update(); }
-  }
+  const openExternalBrowser = createExternalBrowserHandoff({tabs, reviews, shell: () => shell, Browser, state, isPrivate, update: () => update(), report, flags: {
+    get sharing() { return sharing; }, set sharing(value) { sharing = value; },
+    get confirming() { return confirming; }, set confirming(value) { confirming = value; },
+    get lastGeometry() { return lastGeometry; }, set lastGeometry(value) { lastGeometry = value; },
+    get disposed() { return disposed; },
+  }});
   /** Remove renderer tabs whose native WebView is already gone. A closed pop-up returns to its opener. */
   function forgetTabs(ids: string[]) {
     tabs.forget(ids); for (const id of ids) restored.delete(id);
