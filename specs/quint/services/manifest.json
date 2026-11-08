@@ -1037,6 +1037,49 @@
         "maxSteps": 80,
         "seed": "123"
       }
+    },
+    {
+      "path": "specs/quint/services/WorkflowWakeups.qnt",
+      "module": "WorkflowWakeups",
+      "init": "init",
+      "step": "step",
+      "invariant": "safety",
+      "sources": [
+        "vendor/eliza/plugins/plugin-workflow/src/services/embedded-workflow-service.ts"
+      ],
+      "tests": [
+        "timerWakeupTest",
+        "earlierTimerReplacesEventTimeoutTest",
+        "laterTimeoutKeepsEarlierTest",
+        "reopenedTimerIdentityTest",
+        "terminalWakeupDoesNotRestartTest",
+        "unknownClearsReservationTest",
+        "liveWorkerPollTest",
+        "stoppedCallbackIsInertTest",
+        "cancelledTimerCannotResumeTest",
+        "unarmedEventRequiresSignalTest",
+        "emptyTimerHistoryFallbackTest",
+        "farTimerIsBoundedTest",
+        "lateQueuedTypedNeverStartsTest",
+        "previouslyStartedTypedReconcilesTest"
+      ],
+      "invariants": [
+        "ProcessRequiresAdmission",
+        "TerminalCannotRun",
+        "StoppedCannotWake",
+        "WakeupHasPersistedRun",
+        "TypeOK"
+      ],
+      "abstractions": [
+        "One execution, two timer identities, three process invocations and bounded clock instants.",
+        "Actual per-execution host wake-up state is observed from its service reservation. Ordered timer history is an unobserved model map driven by source events.",
+        "Controlled platform clock and external process results. Installed process effects and task registration remain separate obligations."
+      ],
+      "bounds": {
+        "maxSamples": 1000,
+        "maxSteps": 80,
+        "seed": "123"
+      }
     }
   ]
 }
