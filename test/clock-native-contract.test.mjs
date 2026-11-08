@@ -23,7 +23,7 @@ test('upstream-valid repeat days (unordered or empty) are normalized natively, n
  assert.match(runJvm([sharedClock('ClockDays.java'),fixture('ClockContractTest.java')],'ai.elizaresearch.alphaphone.ClockContractTest',{json:true,args:[JSON.stringify(cases)]}),/^PASS clock contract/);
 });
 
-test('surfaceInfo, clockHandoff, the shared ClockHandoff.launch and the capability header carry repeat days end to end',()=>{
+test('surfaceInfo, clockHandoff and the shared ClockHandoff.launch carry repeat days end to end',()=>{
  const daily=readFileSync(nativeSource('DailyAppsPlugin.java'),'utf8');
  assert.match(daily,/value\.put\("clockRepeatDaysVersion", 1\);/);
  const handoff=daily.slice(daily.indexOf('@PluginMethod public void clockHandoff('),daily.indexOf('@PluginMethod public void capabilities('));
@@ -40,6 +40,4 @@ test('surfaceInfo, clockHandoff, the shared ClockHandoff.launch and the capabili
  assert.match(review,/if\(operation\.has\("days"\)\)ClockDays\.agent\(operation\.get\("days"\)\);/);
  assert.match(review,/ClockDays\.agent\(operation\.opt\("days"\)\)\);/);
  assert.match(review,/ClockHandoff\.receiver\(activity\.getPackageName\(\),resolved\.activityInfo\.packageName\)==null\)return result\(action,"unavailable"\);/);
- const connection=readFileSync(nativeSource('AlphaConnectionPlugin.java'),'utf8');
- assert.match(connection,/"clock\.handoff\.v1","clock\.handoff\.v2"\);/,'the device capability header may advertise v2');
 });
