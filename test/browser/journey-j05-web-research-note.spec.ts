@@ -21,7 +21,6 @@ import {openLegacyNotes} from './helpers/legacy-notes';
 import {test, expect, type Page} from '@playwright/test';
 import {returnToApps} from './app-navigation';
 
-test.describe.configure({mode: 'serial'});
 const url = 'https://public-fixture.test/harbour';
 const html = '<article><h1>Harbour report</h1><p>The ferry leaves at nine from pier four.</p><p>OMIT THIS: internal planning detail.</p></article>';
 const answer = 'The ferry leaves at nine.';

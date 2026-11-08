@@ -1,6 +1,7 @@
 import {openLegacyNotes} from './helpers/legacy-notes';
 import { test, expect } from '@playwright/test';
 import { readFile } from 'node:fs/promises';
+import { returnToApps } from './app-navigation';
 const views = ['Inbox', 'Calendar', 'Browser', 'Camera', 'Photos', 'Maps', 'Notes', 'Files', 'Workflows', 'Settings'];
 for (const theme of ['light', 'dark']) {
   for (const width of [360, 412, 1440]) {
@@ -9,8 +10,11 @@ for (const theme of ['light', 'dark']) {
       await page.setViewportSize({ width, height: 915 });
       const errors: string[] = [];
       page.on('pageerror', error => errors.push(error.message));
+      // One boot per test; Maps is reached through a fresh load to keep one reload case.
+      await page.goto(`/?theme=${theme}`);
       for (const name of views) {
-        await page.goto(`/?theme=${theme}`);
+        if (name === 'Maps') await page.goto(`/?theme=${theme}`);
+        else await returnToApps(page);
         for (const deferred of ['Phone', 'Messages', 'Contacts', 'Wallet']) await expect(page.getByRole('button', {name: deferred, exact: true})).toHaveCount(0);
         await page.getByRole('button', { name, exact: true }).click();
         await expect(page.locator('html')).toHaveAttribute('data-active-view', name.toLowerCase());
