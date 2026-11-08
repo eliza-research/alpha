@@ -92,10 +92,10 @@ public final class WorkflowApprovalNoticeInstrumentedTest {
    // The durable route is readable without the plugin instance (the process-death path reads the same ledgers).
    assertEquals(token,WorkflowNoticeTapsFactory.create(context).pending().getString("token"));
    assertFalse(call("Capacitor.Plugins.AlphaNotifications.consumeWorkflowTap({token:"+JSONObject.quote(token)+"})").has("error"));
-   assertNull("Opening the notice cancels it",active(manager,id));
+   awaitGone(manager,id,"Opening the notice cancels it");
    assertFalse(call("Capacitor.Plugins.AlphaHostedResults.withdrawWorkflowApprovalNotice({id:"+JSONObject.quote(id)+"})").has("error"));
    assertEquals("A decided approval is never reposted","withdrawn",call("Capacitor.Plugins.AlphaHostedResults.postWorkflowApprovalNotice("+input+")").getString("status"));
-   assertNull(active(manager,id));assertNull("Route released",WorkflowNoticeTapsFactory.create(context).token(id));
+   awaitGone(manager,id,"A decision withdraws the notice");assertNull("Route released",WorkflowNoticeTapsFactory.create(context).token(id));
   }finally{manager.cancel("alpha-workflow-"+id,0);store.removeCredentialSlot(WorkflowNoticeDelivery.APPROVAL_SLOT);}
  }
  /**
