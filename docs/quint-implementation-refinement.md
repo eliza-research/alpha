@@ -201,3 +201,13 @@ including the actual operation-settlement helper in their extracted source. The
 first focused run exposed this missing fixture dependency. Native App Link
 verification, real HTTPS services and Keystore durability remain platform
 obligations.
+
+### Model-input binding
+
+Source campaigns now capture all registered Quint definitions, transitive model
+imports and model-selection/invariant manifests before executing the source
+driver. The checker validates that complete captured set afterward. Changing a
+model or its selected safety predicate between observation and checking rejects
+the receipt. The regression harness exercises changed definition and changed
+manifest fingerprints as separate failures. Existing receipts must be refreshed
+against this strengthened checker before final aggregate admission.
