@@ -647,7 +647,10 @@
     ],
     "sources": [
       "apps/app/src/runtime/error-boundary.tsx",
-      "apps/app/src/runtime/crash-log.ts"
+      "apps/app/src/runtime/crash-log.ts",
+      "vendor/eliza/plugins/plugin-native-system/src/crash-log.ts",
+      "patches/eliza/crash-log-failure-classification.patch",
+      "patches/eliza/service-state-client-manifest.json"
     ],
     "abstractions": [
       "Actual React and global listener coordination is projected with four error-class representatives, two dialogs and two reload requests. The existing native RendererRecovery model owns Android renderer-process recovery.",

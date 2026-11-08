@@ -41,3 +41,20 @@ JSDOM observations do not establish browser top-layer behavior, native
 accessibility or installed WebView behavior. The native `RendererRecovery` model
 owns Android renderer-process recovery. Arbitrary browser event schedules and
 problem-log expiry remain separate obligations.
+
+
+## Current main port
+
+At upstream `475a8d59dc`, crash classification lives in the shared system plugin.
+Its throwing-name and revoked-proxy failures were reproduced through that source.
+The authenticated client patch retains the same class-only contract. The driver
+binds the original shared file, effective generated file, preparation receipt,
+patch and applicator before compilation. The Alpha recovery panel ownership fix
+is applied to the current product boundary, preserving the current renderer.
+
+The current-main Chromium campaign also passes the existing private-content case
+and both startup/render ordering cases. The test allows 30 seconds for the full
+post-reload development module graph and retains every recovery, focus and
+privacy assertion. Earlier runs hit the global 30-second limit and the default
+5-second post-reload assertion respectively. The final three-case run passes
+with one browser worker. These checks exercise the browser renderer.

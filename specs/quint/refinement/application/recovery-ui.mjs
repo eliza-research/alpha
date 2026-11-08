@@ -21,7 +21,12 @@ const ports={
 
 async function compile(extraSources){
   const sources=[boundary,'apps/app/src/runtime/crash-log.ts','apps/app/src/build-flags.ts',
-    'apps/app/src/platform-plugins.ts','package-lock.json',fileURLToPath(import.meta.url),...extraSources];
+    'apps/app/src/platform-plugins.ts','package-lock.json',fileURLToPath(import.meta.url),
+    '.eliza/client-features/plugins/plugin-native-system/src/crash-log.ts',
+    'vendor/eliza/plugins/plugin-native-system/src/crash-log.ts',
+    '.eliza/client-features/.source.json','scripts/prepare-client-features.mjs',
+    'scripts/client-service-patch.mjs','patches/eliza/service-state-client-manifest.json',
+    'patches/eliza/crash-log-failure-classification.patch',...extraSources];
   const driverHashes=captureInputs(sources);
   const output=await build({absWorkingDir:root,entryPoints:[boundary],bundle:true,write:false,
     format:'cjs',platform:'node',external:['react','react/jsx-runtime'],jsx:'automatic',metafile:true,

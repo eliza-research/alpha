@@ -10,6 +10,7 @@ const TARGETS = new Set([
   'plugins/plugin-inbox/src/mailbox/review-controller.ts',
   'plugins/plugin-inbox/src/mailbox/drafts-controller.ts',
   'plugins/plugin-native-camera/src/scan-document.ts',
+  'plugins/plugin-native-system/src/crash-log.ts',
 ]);
 const exactKeys = (value, keys) => value && typeof value === 'object' &&
   JSON.stringify(Object.keys(value).sort()) === JSON.stringify([...keys].sort());
@@ -24,7 +25,7 @@ function regular(filename, root) {
   if (!fs.lstatSync(filename).isFile()) throw Error('Nonregular client service patch');
 }
 
-/** Authenticated replacements of three reviewed shared state-controller files. */
+/** Authenticated replacements of reviewed shared state-controller files. */
 export function clientServicePatch(root, upstream) {
   root = path.resolve(root);
   const patchRoot = path.join(root, 'patches/eliza');

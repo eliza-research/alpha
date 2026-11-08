@@ -308,3 +308,13 @@ test('voice conversation rows name their path: live assistant or recorded-clip b
  ]}},now).voiceTiming.records;
  assert.deepEqual(records.map(r=>r.path),['live','live','batch',undefined,undefined]);
 });
+
+
+test('failure classification survives hostile error objects',()=>{
+ const throwingName=new Error('synthetic private details');
+ Object.defineProperty(throwingName,'name',{get(){throw Error('name getter failed');}});
+ const symbolName=new Error('synthetic private details');
+ Object.defineProperty(symbolName,'name',{value:Symbol('private')});
+ const revoked=Proxy.revocable(new Error('synthetic private details'),{});revoked.revoke();
+ for(const error of [throwingName,symbolName,revoked.proxy])assert.equal(errorClassOf(error),'Error');
+});

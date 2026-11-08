@@ -41,7 +41,7 @@ function takeOverFromOpenDialogs(): void {
 let shown = false;
 /** Plain DOM so recovery still works when React itself failed to mount. */
 export function showRecoveryScreen(kind: RendererFailureKind, error: unknown): void {
-  if (shown) return;
+  if (shown || document.querySelector('.alpha-recovery')) return;
   shown = true;
   // The failure class survives the reload in the local problem log (Settings > About).
   void recordRendererFailure(kind, error);
@@ -108,6 +108,8 @@ export class RootErrorBoundary extends Component<{ children: ReactNode }, { fail
   componentDidCatch(error: unknown, _info: ErrorInfo) { forced = false; void recordRendererFailure('render', error); /* Diagnostics exclude component stacks and messages. */ takeOverFromOpenDialogs(); }
   render() {
     if (!this.state.failed) return testMocksEnabled ? <ForcedFailure>{this.props.children}</ForcedFailure> : this.props.children;
+    // Startup recovery retains page ownership if a pending React mount also fails.
+    if (shown) return null;
     return <div className="alpha-recovery" role="alertdialog" aria-labelledby="alpha-recovery-title" style={{ position: 'fixed', inset: 0, zIndex: 2147483000, display: 'flex', overflow: 'auto', padding: 24, boxSizing: 'border-box', background: '#f7f7f7', color: '#171717', font: '16px/1.5 system-ui,sans-serif' }}>
       <div style={{ maxWidth: 380, width: '100%', margin: 'auto' }}>
         <h1 id="alpha-recovery-title">Alpha Phone needs to reload</h1>

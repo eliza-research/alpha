@@ -28,6 +28,17 @@
           "afterSha256": "41a05556f1b73cb9c38a0e3c93a1f9a1bf80ee0ab5894d34debc2118561857e7"
         }
       ]
+    },
+    {
+      "file": "crash-log-failure-classification.patch",
+      "sha256": "3f7f238fcaf9348a95cd7442a8a8da977334bf262a4ed8f099fab59c5fd63545",
+      "targets": [
+        {
+          "path": "plugins/plugin-native-system/src/crash-log.ts",
+          "beforeSha256": "1ee78e03512ae23c05ad6ac1ffff9d352e65c51266edad1b65817820116aa56e",
+          "afterSha256": "5b1490b94a1ac069c327641d5afdb452f46d669ed72dfb874d9178994dc0af77"
+        }
+      ]
     }
   ]
 }
