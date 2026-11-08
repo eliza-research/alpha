@@ -20,13 +20,13 @@ export const credentialScenarios = [
   'clear-then-cloud', 'observer-refused', 'reservation-race', 'absent-without-ack', 'ack-with-live-process',
 ];
 
-export function generateCredentialCoordinatorTraces(scenario) {
+export function generateCredentialCoordinatorTraces(scenario, extraSources = []) {
   const fixture = credentialCoordinatorPlatform();
   const sources = [...credentialCoordinatorSources,
     ...['CredentialCoordinatorPorts.java', 'CredentialCoordinatorTraces.java', 'CredentialResidentTraces.java',
       'ResidentTestPorts.java', 'resident-platform.mjs', 'resident-coordinator.mjs',
       'credential-coordinator-platform.mjs', 'Trace.java', 'java.mjs'].map(name => `${directory}/${name}`),
-    fileURLToPath(import.meta.url),
+    fileURLToPath(import.meta.url), ...extraSources,
   ];
   try {
     const driverHashes = captureInputs(sources);
@@ -47,10 +47,11 @@ export function generateCredentialCoordinatorTraces(scenario) {
   }
 }
 
-export async function checkCredentialCoordinator() {
-  const data = generateCredentialCoordinatorTraces();
+export async function checkCredentialCoordinator(extraSources = [], models = ['NativeCredentialMutation', 'ResidentRuntime']) {
+  const data = generateCredentialCoordinatorTraces(undefined, extraSources);
   const receipts = [];
   for (const [model, traces] of Object.entries(data.groups)) {
+    if (!models.includes(model)) continue;
     receipts.push(await checkTraces({model, id: `${model}-credential-coordinator`, scope: 'bounded-orchestration',
       traces, sources: data.sources, driverHashes: data.driverHashes, assumptions: [
         `Actual AlphaConnectionPlugin, AlphaCredentialStore and AlphaLocalAgentPlugin execute under external ports ${data.fixtureSha256}.`,
@@ -64,7 +65,7 @@ export async function checkCredentialCoordinator() {
       reason: 'The product plugins and store coordinator execute against controlled storage primitives and service replies.'},
     {model: 'ResidentRuntime', obligation: 'Kernel/Binder cancellation and arbitrary lifecycle schedules',
       reason: 'The source request and stream callbacks execute under a finite controlled schedule.'},
-  ]};
+  ].filter(item => models.includes(item.model))};
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {

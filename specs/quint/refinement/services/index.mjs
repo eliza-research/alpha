@@ -12,6 +12,7 @@ import {credentialRefinement} from './credentials.mjs';
 import {pdfRefinement} from './pdf.mjs';
 import {runSignInCoordinatorRefinement} from './sign-in-coordinator.mjs';
 import {runInboxCoordinatorRefinement} from './inbox-coordinator.mjs';
+import {checkCredentialCoordinator} from '../native/credential-coordinator.mjs';
 import {fileURLToPath} from 'node:url';
 
 export async function runServicesRefinement() {
@@ -25,6 +26,8 @@ export async function runServicesRefinement() {
   receipts.push(await runSignInCoordinatorRefinement(undefined, [fileURLToPath(import.meta.url)]));
   const inboxCoordinator = await runInboxCoordinatorRefinement([fileURLToPath(import.meta.url)]);
   receipts.push(...inboxCoordinator.receipts);
+  const credential = await checkCredentialCoordinator([fileURLToPath(import.meta.url)], ['NativeCredentialMutation']);
+  receipts.push(...credential.receipts);
   const obligations = [
     {model: 'IdentitySession', obligation: 'Native authorization, encrypted storage and wider concurrent activation', reason: 'Seventeen full-plugin schedules cover callback retirement, cancellation races, receipt/key commits, overlapping acknowledgement and newer attempts, previous-key revocation and restart. Native authorization timing, actual Keystore behavior and arbitrary overlapping attempts remain further obligations.'},
     {model: 'ServiceAuthorization', obligation: 'Managed-service dispatch authorization', reason: 'Entitlement refresh and admission views execute; exact route validation and server authorization still need their own dispatch trace adapter.'},
@@ -38,9 +41,10 @@ export async function runServicesRefinement() {
     {model: 'BrowserReadingState', obligation: 'Isolated world and speech-token consumption', reason: 'Actual capability probes and question-review DOM execute. Extraction-world authenticity, token expiry and native speech consumption need Android provider traces.'},
     {model: 'BrowserDownloads', obligation: 'Native transfer, capture and publication', reason: 'Real cookie-origin and history policy executes. Byte transfer, blob nonce/chunk handling and MediaStore completion require native BrowserDownloads execution.'},
     {model: 'ScanDocument', obligation: 'Full image/PDF conversion and arbitrary draft schedules', reason: 'Actual UI, IndexedDB draft storage and picker/export policy execute for four schedules. PDF conversion, OCR/correction and exhaustive multi-page schedules remain outside the bounded adapter.'},
-    {model: 'NativeCredentialMutation', obligation: 'Real shutdown, encryption and lock interleavings', reason: 'Actual credential-store classification, recheck, admission invalidation and preflight run against primitive storage/lifecycle ports. Those ports do not establish native shutdown or encrypted persistence.'},
+    {model: 'NativeCredentialMutation', obligation: 'Installed shutdown, encryption and wider lock interleavings', reason: 'The complete credential, connection and resident plugins execute against controlled storage/service ports, including strict shutdown, partial commits and destroyed-bridge reservation races. Installed process termination and encrypted persistence remain separate obligations.'},
     {model: 'PdfWorker', obligation: 'Kernel isolation, descriptor transfer, watchdog and memory kill', reason: 'Actual service request/render/cleanup/reply code executes against Android primitives. Host stubs cannot establish kernel or real PDF renderer behavior.', requires: ['IsolatedPdfInstrumentedTest on a disposable admitted installation']},
   ];
   obligations.push(...inboxCoordinator.obligations);
+  obligations.push(...credential.obligations);
   return {receipts, obligations};
 }

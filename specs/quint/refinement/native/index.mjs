@@ -8,6 +8,7 @@ import {residentLifecycleTraces} from './local-agent.mjs';
 import {checkResetOrchestration} from './reset-orchestration.mjs';
 import {checkResidentCoordinator} from './resident-coordinator.mjs';
 import {checkDeletionCoordinator} from './deletion-coordinator.mjs';
+import {checkCredentialCoordinator} from './credential-coordinator.mjs';
 
 export async function runNativeRefinement() {
   const models = ['VadSegmentation', 'RendererRecovery', 'ResidentScheduling'];
@@ -94,11 +95,13 @@ export async function runNativeRefinement() {
   results.push(...reset.receipts);
   results.push(await checkResidentCoordinator([fileURLToPath(import.meta.url)]));
   results.push(await checkDeletionCoordinator([fileURLToPath(import.meta.url)]));
+  const credential = await checkCredentialCoordinator([fileURLToPath(import.meta.url)], ['ResidentRuntime']);
+  results.push(...credential.receipts);
   const obligations = [
     {model: 'RendererRecovery', obligation: 'Activity lifecycle and visible escape behavior', reason: 'Current adapter projects the pure budget only.', requires: ['Android Activity/WebView harness']},
     {model: 'ResidentScheduling', obligation: 'Plugin lifecycle and OS broadcasts', reason: 'Current adapter proves the pure admission table and same-lock callbacks.', requires: ['Android service integration']},
     {model: 'VadSegmentation', obligation: 'PCM model output and capture pre-roll', reason: 'The gate consumes probabilities; capture/model execution is external.', requires: ['native capture integration']},
-    {model: 'ResidentRuntime', obligation: 'Broader credential/recovery/stream schedules and actual resident service', reason: 'Whole-plugin start, cancellation, stop, status, destruction and broadcast admission execute under controlled ports. Credential mutation, arbitrary streams, retained recovery combinations and the installed resident service remain separate obligations.'},
+    {model: 'ResidentRuntime', obligation: 'Broader recovery/stream schedules and actual resident service', reason: 'Whole-plugin start, cancellation, stop, status, destruction, credential mutation, request/stream retirement and broadcast admission execute under controlled ports. Arbitrary streams, retained recovery combinations and the installed resident service remain separate obligations.'},
     {model: 'VoiceSession', obligation: 'Dictation, semantic endpoints, review resume and full barge-in interleavings', reason: 'One-turn/two-sentence actual controller traces cover mute, stop and account retirement with controlled ports.'},
     {model: 'SpeechResources', obligation: 'Combined native microphone/engine/focus lifecycle', reason: 'Capture reservation, PCM queue and focus helpers execute independently. Explicit-stop tail and native pipe ownership remain separate.'},
     {model: 'AlwaysOnListener', obligation: 'Consent store, ListeningEpoch and ListeningService integration', reason: 'Pairwise policy and indicator-loss cases execute without microphone, Android permissions or physical visibility.'},
@@ -113,6 +116,7 @@ export async function runNativeRefinement() {
     {model: 'VoiceIpcAssembly', obligation: 'Deadline scheduling races and actual owner/binding admission', reason: 'Eight actual exchanges check return/cleanup. Static deadline scheduling and local assembly state need a deterministic observer seam.'},
     {model: 'ListenerLeaseProducer', obligation: 'Controller measurement and real SystemUI/Binder identity', reason: 'Actual lease delivery consumes fixture snapshots. Controller/view geometry and real identity checks remain external.'},
   ];
+  obligations.push(...credential.obligations);
   for (const model of new Set(results.map(receipt => receipt.model))) {
     const related = results.filter(receipt => receipt.model === model);
     const coveredActions = new Set(related.flatMap(receipt => Object.keys(receipt.actions)));
