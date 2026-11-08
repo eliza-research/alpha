@@ -48,17 +48,39 @@ if(process.env.ALPHA_DIGEST_CRASH_CHILD==='1'){
    const tasks=await state.runtime.getTasks({agentIds:[state.runtime.agentId],tags:['trigger']});
    const task=tasks.find(t=>t.metadata?.trigger?.workflowId===missed.workflowId);assert.ok(task);
    await state.runtime.updateTask(task.id,{metadata:{...task.metadata,updatedAt:missedAt,updateInterval:1,idempotencyKey:`${missed.workflowId}:${Math.floor(missedAt/60000)}`,trigger:{...task.metadata.trigger,nextRunAtMs:missedAt}}});
-   write('recovered',{sameRunId:true,resultCount:entries.length,duplicateAdmissionsSameRun:true,runId:run.id,reconciliation:run.reconciliation.state,finished:run.finished});
+   // A later occurrence of the interrupted loop. Its next daily occurrence is a day away, so the loop is
+   // moved to the current minute; the occurrence must get its own run and an explicit record, never the
+   // unknown run again. At the pin the unknown run stays unfinished, so the loop records overlap.
+   const nextAt=Math.floor(Date.now()/60000)*60000;
+   const edited=await engine.saveHostedDigest(owner,randomUUID(),{version:1,template:'morning',sourceId:saved.source.id,sourceRevision:saved.source.revision,timeZone:'UTC',localTime:new Date(nextAt).toISOString().slice(11,16),enabled:true},saved.receipt.workflowId,saved.receipt.versionId);
+   assert.equal(edited.workflowId,saved.receipt.workflowId);assert.notEqual(edited.versionId,saved.receipt.versionId);
+   const next=await engine.startWorkflow(saved.receipt.workflowId,{mode:'trigger',triggerData:{scheduledAtMs:nextAt,workflowVersionId:edited.versionId}});
+   assert.notEqual(next.id,saved.runId);
+   const nextEntry=await until(async()=>(await engine.digestResults(owner,'next-reader')).entries.find(e=>e.runId===next.id));
+   assert.equal(nextEntry.workflowId,saved.receipt.workflowId);
+   assert.ok(nextEntry.status==='overlap'||!['missed','unavailable'].includes(nextEntry.status),`next occurrence recorded ${nextEntry.status}`);
+   assert.equal((await engine.getExecution(saved.runId)).reconciliation?.state,'outcome-unknown');
+   const unknownEntries=(await engine.digestResults(owner,'next-reader')).entries.filter(e=>e.runId===saved.runId);assert.equal(unknownEntries.length,0);
+   // A source that lapses while the agent is down: its occurrence fires at the next boot.
+   const lapsing=await engine.saveDigestSource(owner,{id:randomUUID(),kind:'tasks',label:'Synthetic lapsing snapshot',text:'Synthetic task that must not be read after expiry.',observedAt:new Date().toISOString(),expiresAt:new Date(Date.now()+5000).toISOString(),confirmed:true});
+   const lapsedAt=Math.floor(Date.now()/60000)*60000,lapsed=await loop(lapsing,lapsedAt);
+   const lapsedTask=(await state.runtime.getTasks({agentIds:[state.runtime.agentId],tags:['trigger']})).find(t=>t.metadata?.trigger?.workflowId===lapsed.workflowId);assert.ok(lapsedTask);
+   await state.runtime.updateTask(lapsedTask.id,{metadata:{...lapsedTask.metadata,updatedAt:lapsedAt,updateInterval:1,idempotencyKey:`${lapsed.workflowId}:${Math.floor(lapsedAt/60000)}`,trigger:{...lapsedTask.metadata.trigger,nextRunAtMs:lapsedAt}}});
+   write('recovered',{sameRunId:true,resultCount:entries.length,duplicateAdmissionsSameRun:true,runId:run.id,reconciliation:run.reconciliation.state,finished:run.finished,nextOccurrence:{runId:next.id,status:nextEntry.status}});
    write('overdue',{receipt:missed,scheduledAt:missedAt,taskId:task.id});
+   write('lapsed',{receipt:lapsed,scheduledAt:lapsedAt,expiresAt:lapsing.expiresAt,taskId:lapsedTask.id});
   }else if(phase==='overdue'){
-   const saved=read('overdue');
+   const saved=read('overdue'),lapsed=read('lapsed');
+   await until(()=>Date.now()>Date.parse(lapsed.expiresAt));
    const {registerTriggerTaskWorker}=await load('packages/agent/src/triggers/runtime.ts');registerTriggerTaskWorker(state.runtime);
    if(!state.runtime.getService(ServiceType.TASK))await state.runtime.registerService(TaskService);
    const entries=await until(async()=>{const rows=(await engine.digestResults(owner,'overdue-reader')).entries.filter(e=>e.workflowId===saved.receipt.workflowId);return rows.length&&rows;});
+   const lapsedEntries=await until(async()=>{const rows=(await engine.digestResults(owner,'lapsed-reader')).entries.filter(e=>e.workflowId===lapsed.receipt.workflowId);return rows.length&&rows;});
+   assert.equal(lapsedEntries.length,1);assert.equal(lapsedEntries[0].status,'unavailable');assert.equal(lapsedEntries[0].scheduledAt,new Date(lapsed.scheduledAt).toISOString());
    assert.equal(entries.length,1);assert.equal(entries[0].status,'missed');assert.equal(entries[0].scheduledAt,new Date(saved.scheduledAt).toISOString());
    const task=await until(async()=>{const rows=await state.runtime.getTasks({agentIds:[state.runtime.agentId],tags:['trigger']});const t=rows.find(t=>t.id===saved.taskId);return t?.metadata?.trigger?.nextRunAtMs>Date.now()&&t;});
    const again=await engine.startWorkflow(saved.receipt.workflowId,{mode:'trigger',triggerData:{scheduledAtMs:saved.scheduledAt,workflowVersionId:saved.receipt.versionId}});assert.equal(again.id,entries[0].runId);
-   write('overdue-result',{status:entries[0].status,resultCount:1,nextOccurrenceFuture:true,duplicateAdmissionSameRun:true,runId:entries[0].runId,nextRunAtMs:task.metadata.trigger.nextRunAtMs});
+   write('overdue-result',{status:entries[0].status,resultCount:1,nextOccurrenceFuture:true,duplicateAdmissionSameRun:true,runId:entries[0].runId,nextRunAtMs:task.metadata.trigger.nextRunAtMs,lapsedStatus:lapsedEntries[0].status,lapsedRunId:lapsedEntries[0].runId});
   }else if(phase==='overdue-restart'){
    // A fourth independent runtime must read the committed receipt and future schedule.
    // Same-process repeated admission alone cannot establish restart persistence.
@@ -77,6 +99,8 @@ if(process.env.ALPHA_DIGEST_CRASH_CHILD==='1'){
    assert.ok(repeats.every(run=>run.id===previous.runId&&run.finished));
    const after=(await engine.digestResults(owner,'overdue-restart-reader')).entries.filter(e=>e.workflowId===saved.receipt.workflowId);
    assert.equal(after.length,1);assert.equal(after[0].runId,previous.runId);assert.equal(after[0].status,'missed');
+   const lapsed=read('lapsed'),lapsedAfter=retained.entries.filter(e=>e.workflowId===lapsed.receipt.workflowId);
+   assert.equal(lapsedAfter.length,1);assert.equal(lapsedAfter[0].runId,previous.lapsedRunId);assert.equal(lapsedAfter[0].status,'unavailable');
    write('overdue-restart-result',{sameMissedRunId:true,resultCount:after.length,futureSchedulePreserved:true,nextRunAtMs:task.metadata.trigger.nextRunAtMs,duplicateAdmissionsSameRun:true});
   }else throw Error('Unknown fixture phase');
  }finally{await state.cleanup();}
@@ -110,9 +134,11 @@ if(process.env.ALPHA_DIGEST_CRASH_CHILD==='1'){
   const killed=new Promise(resolve=>held.once('exit',(_,signal)=>resolve(signal)));killOwned(held);assert.equal(await killed,'SIGKILL');
   await finish(start('recover'));await finish(start('overdue'));await finish(start('overdue-restart'));
   const calls=fs.readFileSync(path.join(dir,'model-calls.jsonl'),'utf8').trim().split('\n').map(JSON.parse);
-  assert.equal(calls.filter(c=>c.phase==='admit').length,1);assert.equal(calls.filter(c=>c.phase==='recover').length,0);assert.equal(calls.filter(c=>c.phase==='overdue').length,0);assert.equal(calls.filter(c=>c.phase==='overdue-restart').length,0);
+  // The later occurrence of the interrupted loop makes one model call only if it ran instead of recording overlap.
+  const next=JSON.parse(fs.readFileSync(path.join(dir,'recovered.json'))).nextOccurrence;
+  assert.equal(calls.filter(c=>c.phase==='admit').length,1);assert.equal(calls.filter(c=>c.phase==='recover').length,next.status==='overlap'?0:1);assert.equal(calls.filter(c=>c.phase==='overdue').length,0);assert.equal(calls.filter(c=>c.phase==='overdue-restart').length,0);
   verify();
-  fs.writeFileSync(path.join(dir,'result.json'),JSON.stringify({evidenceClass:'host-runtime',notEvidenceFor:['Android','emulator','device','real inference'],upstreamCommit:commit,crashDuringInference:true,scope:'owned-process-group',preservedSameRun:true,unknownOutcomeNotReplayed:true,noFabricatedResult:true,overdueSkippedWithoutInference:true,missedReceiptSurvivesRestart:true,futureScheduleSurvivesRestart:true,modelAttempts:calls.length},null,2));
+  fs.writeFileSync(path.join(dir,'result.json'),JSON.stringify({evidenceClass:'host-runtime',notEvidenceFor:['Android','emulator','device','real inference'],upstreamCommit:commit,crashDuringInference:true,scope:'owned-process-group',preservedSameRun:true,unknownOutcomeNotReplayed:true,noFabricatedResult:true,overdueSkippedWithoutInference:true,missedReceiptSurvivesRestart:true,futureScheduleSurvivesRestart:true,sameLoopLaterOccurrence:next.status,lapsedSourceAtBootUnavailable:true,modelAttempts:calls.length,unchecked:['kill after admission commit before worker lease']},null,2));
   console.log(JSON.stringify({evidence:dir,result:JSON.parse(fs.readFileSync(path.join(dir,'result.json')))}));
  }finally{await Promise.all([...children].map(child=>new Promise(resolve=>{child.once('exit',resolve);killOwned(child);})));}
 }
