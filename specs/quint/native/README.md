@@ -156,6 +156,13 @@ until recentering or Start. A hidden watch whose pending background startup
 is refused releases immediately unless a permission prompt still owns the
 screen. A refusal from an older session cannot release its replacement.
 
+`NativeNavigationOwnership` follows the Java Maps bridge and foreground service.
+A renderer can retire only its session. Commands and notification Stop actions
+carry an internal authority that survives a reused public route ID. Delayed START
+commands meet the foreground-service boundary without replacing the current
+instruction or removing a successor. The JVM campaign controls Android delivery
+and rejection; installed task attribution and notification behavior remain separate.
+
 `ListenerLeaseRecovery` models the actual lease and recovery mechanisms behind
 `AlwaysOnListener` policy inputs. Lease acquire, acknowledgement, monotonic expiry,
 replacement, revoke, process death and boot identity are distinct transitions.

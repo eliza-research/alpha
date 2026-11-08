@@ -35,6 +35,7 @@ import {checkSpeechOutputPreparation} from './speech-output-preparation.mjs';
 import {checkBatchCaptureCompletion} from './batch-capture-completion.mjs';
 import {checkReviewedCopies, reviewedCopiesObligations} from './reviewed-copies.mjs';
 import {checkNavigationProgress} from './navigation-progress.mjs';
+import {checkNativeNavigationOwnership} from './navigation-service.mjs';
 
 export async function runNativeRefinement() {
   const models = ['VadSegmentation', 'RendererRecovery', 'ResidentScheduling'];
@@ -115,6 +116,7 @@ export async function runNativeRefinement() {
     assumptions: ['Actual TypeScript and its transitive shared implementation execute with controlled capture/reply/playback/timer inputs.',
       'Voice traces bound two sentences and one submitted turn.']}));
   results.push(await checkNavigationProgress([fileURLToPath(import.meta.url)]));
+  results.push(await checkNativeNavigationOwnership([fileURLToPath(import.meta.url)]));
   const lifecycle = await residentLifecycleTraces([fileURLToPath(import.meta.url)]);
   results.push(await checkTraces({model: 'ResidentRuntime', id: 'ResidentRuntime-lifecycle-native', scope: 'bounded-component',
     ...lifecycle, assumptions: [
@@ -156,7 +158,8 @@ export async function runNativeRefinement() {
     {model: 'DeviceActions', obligation: 'AOSP image/role, Contacts, Reminders and Clock', reason: 'Only the real SMS journal executes in these traces. Carrier outcomes are fixture inputs.'},
     {model: 'ApplicationComposition', obligation: 'Cross-domain implementation orchestration', reason: 'Root integration driver owns this combined scope. Standalone native receipts do not establish composition.'},
     {model: 'ControllerComposition', obligation: 'Cross-controller implementation orchestration', reason: 'The dedicated composition campaign executes these shared-controller schedules. Standalone native receipts do not establish composition.'},
-    {model: 'NavigationProgress', obligation: 'Physical location and installed background service', reason: 'The actual shared screen, route controller and background bridge run with controlled coordinates, route replies and native effects. Android service, physical GPS, unrestricted geometries and intermediate asynchronous cleanup remain external.'},
+    {model: 'NavigationProgress', obligation: 'Physical location and installed background service', reason: 'The actual shared screen, route controller and background bridge run with controlled coordinates, route replies and native effects. NativeNavigationOwnership covers the Java service separately. Physical GPS, unrestricted geometries and intermediate asynchronous cleanup remain external.'},
+    {model: 'NativeNavigationOwnership', obligation: 'Installed Android task, notification and service acceptance', reason: 'The full Java bridge and service execute controlled command and foreground outcomes. Actual Binder, task-root attribution, service restart and PendingIntent dispatch remain Android platform obligations.'},
     {model: 'ListenerLeaseRecovery', obligation: 'Cross-component crash, consent and capture orchestration', reason: 'Lease and crash helpers execute here. NativeListenerStore and NativeListenerService supply separate persisted-settings and service-lifecycle projections.'},
     {model: 'NativeAsrPipe', obligation: 'Real provider transport and unbounded frame traffic', reason: 'Actual worker settlement and pipe state run with controlled provider responses. NativePipedCapture checks the controller join.'},
     {model: 'NativePipedCapture', obligation: 'Physical capture, installed provider delivery and unrestricted schedules', reason: 'Actual bridge/controller/pipe/capture run together with controlled ports. Frame-buffer behavior has a separate source projection.'},
