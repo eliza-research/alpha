@@ -3,15 +3,15 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import vm from 'node:vm';
-import {stripTypeScriptTypes} from 'node:module';
+import {stripTypeScriptTypes} from './support/strip-types.mjs';
 const read=path=>readFileSync(new URL('../'+path,import.meta.url),'utf8');
 const model=read('apps/app/src/prototype/model.js'),dc=read('apps/app/src/prototype/dc-lite.js'),adapter=read('apps/app/src/prototype/agent-adapter.ts'),connection=read('apps/app/src/runtime/connection-ui.tsx');
 const slice=(source,start,end)=>{const a=source.indexOf(start),b=source.indexOf(end,a);assert.ok(a>=0&&b>a);return source.slice(a,b);};
 const base=slice(model,'var BASE = {','class Component extends DCLogic');
 const component=slice(model,'class Component extends DCLogic {','  componentDidMount()')+'}';
 const dcConstructor=slice(dc,'    constructor(p)','    render()');
-const callback=stripTypeScriptTypes('(function(){const session=connectionController.getSnapshot().session?.sessionId;'+slice(adapter,'      const history = connectionController.getSnapshot().history;','      syncStoppedReplyNotice(')+'})',{mode:'transform'});
-const merge=stripTypeScriptTypes(slice(connection,'export function mergeConversationDelivery','const actionReceipts =').replace('export ',''),{mode:'transform'});
+const callback=stripTypeScriptTypes('(function(){const session=connectionController.getSnapshot().session?.sessionId;'+slice(adapter,'      const history = connectionController.getSnapshot().history;','      syncStoppedReplyNotice(')+'})',{mode:'strip'});
+const merge=stripTypeScriptTypes(slice(connection,'export function mergeConversationDelivery','const actionReceipts =').replace('export ',''),{mode:'strip'});
 function fixture(){
  let snapshot={session:{sessionId:'owner-a'},history:null,conversationDelivery:null};const pending=[];
  const box={systemNoticeKind,collapseSystemNotices,structuredClone,QUICK_SETTINGS:{wifi:false},ALPHA_PRODUCT:{identity:{characterName:'Alpha'}},Date,connectionController:{getSnapshot:()=>snapshot,getSelectedConversationId:()=> 'room'},alphaClient:{disconnect(){}},cancelMessageContext(){}};

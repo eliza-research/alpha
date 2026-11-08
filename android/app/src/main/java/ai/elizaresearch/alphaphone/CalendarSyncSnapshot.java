@@ -86,9 +86,11 @@ final class CalendarSyncSnapshot {
   for(String field:new String[]{"rrule","rdate","exrule","exdate"}){String raw=row.getAsString(field);if(raw!=null&&!raw.isEmpty()){if(raw.contains("\r")||raw.contains("\n"))throw new UnsupportedOperationException("Review multiline recurrence before syncing");recurrence.put((allDay&&field.equals("exdate")?"EXDATE;VALUE=DATE":field.toUpperCase(java.util.Locale.ROOT))+":"+raw);}}
   org.json.JSONArray guests=new org.json.JSONArray();java.util.HashSet<String> emails=new java.util.HashSet<>();
   for(ContentValues guest:attendees){long relationship=number(guest,"attendeeRelationship");if(number(guest,"attendeeType")>2)throw new UnsupportedOperationException("Review unsupported Calendar guest types");if(relationship==2)continue;if(relationship!=0&&relationship!=1)throw new UnsupportedOperationException("Review Calendar guest roles before syncing");String email=guest.getAsString("attendeeEmail");if(email==null||!email.matches("[^\\s@,;<>]+@[^\\s@,;<>]+\\.[^\\s@,;<>]+")||!emails.add(email.toLowerCase(java.util.Locale.ROOT)))throw new UnsupportedOperationException("Review Calendar guest email addresses before syncing");guests.put(new org.json.JSONObject().put("email",email.toLowerCase(java.util.Locale.ROOT)).put("optional",number(guest,"attendeeType")==2));}
-  java.util.function.LongFunction<String> instant=value->java.time.Instant.ofEpochMilli(value).toString();
+  // Fixed milliseconds: Instant.toString drops ".000", so whole seconds would digest differently from the provider form.
+  java.util.function.LongFunction<String> instant=value->UTC.format(java.time.Instant.ofEpochMilli(value));
   return new org.json.JSONObject().put("title",text(row,"title")).put("description",text(row,"description")).put("location",text(row,"eventLocation")).put("startAt",allDay?instant.apply(begin).substring(0,10):instant.apply(begin)).put("endAt",allDay?instant.apply(end).substring(0,10):instant.apply(end)).put("timeZone",allDay?org.json.JSONObject.NULL:zone).put("isAllDay",allDay).put("attendees",guests).put("recurrence",recurrence);
  }
+ private static final java.time.format.DateTimeFormatter UTC=new java.time.format.DateTimeFormatterBuilder().appendInstant(3).toFormatter();
  private static final java.util.regex.Pattern DURATION=java.util.regex.Pattern.compile("([+-])?P(?:(\\d+)W|(?:(\\d+)D)?(?:T?(?:(\\d+)H)?(?:(\\d+)M)?(?:(\\d+)S)?)?)");
  /** RFC 2445 DURATION in milliseconds: sign, weeks or days, and H/M/S (CalendarProvider also writes them without T, as in P3600S). */
  static long duration(String value){

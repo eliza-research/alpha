@@ -1,8 +1,9 @@
+import vm from 'node:vm';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
-import {stripTypeScriptTypes} from 'node:module';
-import vm from 'node:vm';
+import {stripTypeScriptTypes} from './support/strip-types.mjs';
+// The Eliza Cloud page is a pure function in the settings-facts region of the adapter.
 const text=readFileSync(process.env.SETTINGS_SOURCE||'apps/app/src/prototype/settings-adapter.ts','utf8');
 const start=text.indexOf('        const plan=connectionController.residentPlanSettings();');
 const end=text.indexOf("        page.groups.push(group([{kNav:true,label:'Agent connection'",start);

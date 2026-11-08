@@ -39,7 +39,7 @@ async function begin(page: Page, external: string[], crossOriginReadable: boolea
   await page.route(url, route => route.request().resourceType() === 'fetch' && !crossOriginReadable ? route.abort() : route.fulfill({contentType: 'text/html', headers: crossOriginReadable ? {'access-control-allow-origin': '*'} : {}, body: html}));
   await page.goto('/?mode=dev');
   await button(page, 'Settings').click();
-  await button(page, 'Agent connection').click();
+  await button(page, 'Agent').click();
   await page.getByRole('textbox', {name: 'Scripted reply'}).fill(answer);
   await page.getByRole('button', {name: 'Save development reply'}).click();
   await expect(page.getByRole('status').filter({hasText: 'Development reply saved.'})).toBeVisible();
@@ -125,7 +125,7 @@ test('reviewed page excerpt, development agent answer and explicit Save leave ex
   await summary.getByRole('textbox', {name: 'Summary note text'}).fill('Ferry departs at nine from pier four.');
   await summary.getByRole('button', {name: 'Save reviewed note', exact: true}).click();
   await expect(summary).toHaveCount(0);
-  await expect(page.getByText('Summary note saved with its source.', {exact: true})).toBeVisible();
+  await expect(page.getByText('Summary saved.', {exact: true})).toBeVisible();
   expect(await notes(page)).toHaveLength(1);
   // The saved marker is not a second Save.
   await expect(page.getByRole('button', {name: /^Review summary note/})).toHaveCount(0);

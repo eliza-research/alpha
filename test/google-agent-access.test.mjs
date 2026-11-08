@@ -2,7 +2,7 @@
 // before any Cloud request; reads keep working and nothing is disconnected. Synthetic transports only.
 import test from 'node:test';import assert from 'node:assert/strict';
 import {spawnSync} from 'node:child_process';
-if(!process.versions.bun&&!process.execArgv.includes('tsx')){const child=spawnSync(process.execPath,['--conditions=eliza-source','--import','tsx',process.argv[1]],{stdio:'inherit',timeout:60000});if(child.error)throw child.error;process.exit(child.status??1);}
+if(!process.versions.bun&&!process.execArgv.some(arg=>arg==='--import=tsx'||arg==='tsx')){const child=spawnSync(process.execPath,['--conditions=eliza-source','--import','tsx',process.argv[1]],{stdio:'inherit',timeout:60000});if(child.error)throw child.error;process.exit(child.status??1);}
 const {createManagedGoogleAgentHost}=await import('../backend/managed-google-agent-host.ts');
 const credential={credentialReference:'private-reference',credentialId:'11111111-1111-4111-8111-111111111111',userId:'22222222-2222-4222-8222-222222222222',organizationId:'33333333-3333-4333-8333-333333333333'};
 const send={to:['owner@example.invalid'],subject:'Synthetic',bodyText:'Synthetic body'};

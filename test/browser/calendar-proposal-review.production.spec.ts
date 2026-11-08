@@ -183,7 +183,7 @@ test('Android: the proposal card states time zone, calendar and attendees, and A
   expect(state.journal.filter(m => ['reserve', 'markApplying', 'finish'].includes(m))).toEqual([]);
 
   await approve.dblclick();
-  const completed = page.getByText(`Created event “Venue booking call” — ${card[2]}.`, { exact: true });
+  const completed = page.getByRole('button', { name: `Message actions: Created event “Venue booking call” — ${card[2]}.`, exact: true });
   await expect(completed).toBeVisible({ timeout: 20_000 });
   await expect(completed).toHaveCount(1);
   await expect(page.locator('.alpha-action-review')).toHaveCount(0);

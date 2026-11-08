@@ -124,7 +124,7 @@ for (const mode of ['confirm','transcribed','zone','modal','unknown','receipt-lo
       expect(await page.evaluate(()=>({uploads:(window as any).recoveryFixture.cloudUploads,local:(window as any).recoveryFixture.localProbes,channel:(window as any).calendarSent.channelType}))).toEqual({uploads:1,local:0,channel:'VOICE_DM'});
     }
     else {await input.fill(mode==='show'?'Show my alarms':mode==='snooze'?'Snooze ringing alarms for ten minutes':mode==='dismiss'?'Dismiss the ringing alarm':'Set an alarm for 07:00; await my review.');await input.press('Enter');}
-    if(mode==='old-host'||mode==='browser'){await expect(page.getByText('Clock handoff is unavailable on this host. Open Clock from Calendar.',{exact:true})).toBeVisible();expect(await page.evaluate(()=>(window as any).recoveryFixture.effects)).toBe(0);await expect(page.getByText('clock handoff',{exact:true})).toHaveCount(0);return;}
+    if(mode==='old-host'||mode==='browser'){await expect(page.locator('[data-alpha-message-text]').filter({hasText:/^Clock handoff is unavailable on this host\. Open Clock from Calendar\.$/})).toBeVisible();expect(await page.evaluate(()=>(window as any).recoveryFixture.effects)).toBe(0);await expect(page.getByText('clock handoff',{exact:true})).toHaveCount(0);return;}
     if(mode!=='transcribed')await expect(page.getByText(/Pending phone actions are available for separate review/)).toBeVisible();
     await expect(page.getByText('clock handoff',{exact:true})).toBeVisible();
     expect(await page.evaluate(()=>(window as any).recoveryFixture.effects)).toBe(0);

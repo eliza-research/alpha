@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import vm from 'node:vm';
-import {stripTypeScriptTypes} from 'node:module';
+import {stripTypeScriptTypes} from './support/strip-types.mjs';
 
 // Issue #397: speech is on-device with no network and no Eliza Cloud session. Real renderer sources
 // evaluated with synthetic ports: routing and the speech bridge protocol only, not JNI or audio.
@@ -11,7 +11,7 @@ const offlineNetwork = () => {
   const refuse = name => (...args) => { attempts.push([name, String(args[0] ?? '')]); throw new TypeError('Network is offline'); };
   return {attempts, fetch: refuse('fetch'), XMLHttpRequest: class { constructor() { attempts.push(['xhr', '']); throw new TypeError('Network is offline'); } }, WebSocket: class { constructor(url) { attempts.push(['websocket', url]); throw new TypeError('Network is offline'); } }, navigator: {onLine: false}};
 };
-const strip = (path, keep) => stripTypeScriptTypes(fs.readFileSync(path, 'utf8').replace(/^import .*;\n/gm, '').replace(/^export /gm, ''), {mode: 'transform'}) + `\nglobalThis.api={${keep}};`;
+const strip = (path, keep) => stripTypeScriptTypes(fs.readFileSync(path, 'utf8').replace(/^import .*;\n/gm, '').replace(/^export /gm, ''), {mode: 'strip'}) + `\nglobalThis.api={${keep}};`;
 
 test('signed out and offline, every voice route request stays on this device', () => {
   const network = offlineNetwork(), bytes = new Map([['alphaphone:voice-route:v1', JSON.stringify({version: 1, route: 'cloud', disclosed: 'cloud-speech-uses-plan', chosenAt: 1})]]);
@@ -76,7 +76,7 @@ test('a call stopping speech surfaces an honest status', async () => {
   const network = offlineNetwork(), f = nativeSpeech();
   f.plugin.play = async ({playbackId}) => { setTimeout(() => { for (const callback of f.listeners.get('playbackStopped') ?? []) callback({playbackId, reason: 'call-active'}); }, 1); };
   const {speakLocalText} = playbackSource(f, network, undefined);
-  await assert.rejects(speakLocalText('Reply.', new AbortController().signal), /Speech stopped for a phone call\./);
+  await assert.rejects(speakLocalText('Reply.', new AbortController().signal), {message: /Speech stopped for a phone call\./, code: 'call-active', reason: 'call-active'});
   assert.deepEqual(network.attempts, []);
 });
 

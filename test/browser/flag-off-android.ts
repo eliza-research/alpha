@@ -1,4 +1,4 @@
-import {installNativeNavigationFixture} from './helpers/native-navigation-protocol';
+import {installNativeNavigationFixture} from './helpers/native-navigation-protocol.ts';
 // Production Android as the FLAG-OFF renderer sees it, for the *.production.spec.ts files that
 // need mail, an agent conversation, scheduled-digest results or device calendars together.
 //
@@ -434,8 +434,9 @@ export async function openYourAgent(page: Page) {
   const minimize = page.getByRole('button', { name: 'Minimize chat', exact: true });
   if (await minimize.isVisible()) await minimize.click();
   await button(page, 'Settings').click();
-  await page.getByRole('button', { name: 'Agent connection', exact: true }).click();
+  // Settings › Assistant › Agent (docs/ui-refresh-2026-11).
+  await page.getByRole('button', { name: 'Agent', exact: true }).click();
   const panel = page.getByRole('region', { name: 'Settings', exact: true });
-  await expect(panel.getByRole('heading', {name:'Agent connection',exact:true})).toBeVisible();
+  await expect(panel.getByRole('heading', {name:'Agent',exact:true})).toBeVisible();
   return panel;
 }

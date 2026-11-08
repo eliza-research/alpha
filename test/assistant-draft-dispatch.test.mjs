@@ -1,13 +1,66 @@
-import test from 'node:test';import assert from 'node:assert/strict';import {readFileSync} from 'node:fs';import {stripTypeScriptTypes} from 'node:module';
+import test from 'node:test';import assert from 'node:assert/strict';import {readFileSync} from 'node:fs';import {stripTypeScriptTypes} from './support/strip-types.mjs';
 // Alpha's composer contract, run against the shared controller exactly as the pin projects it
 // (apps/app/src/prototype/assistant-draft-controller.ts only re-exports it under Alpha's name).
-const code=stripTypeScriptTypes(readFileSync(new URL('../.eliza/client-features/packages/ui/src/state/durable-draft-controller.ts',import.meta.url),'utf8'),{mode:'transform'});
+const code=stripTypeScriptTypes(readFileSync(new URL('../.eliza/client-features/packages/ui/src/state/durable-draft-controller.ts',import.meta.url),'utf8'),{mode:'strip'});
 const {DurableDraftController:AssistantDraftController}=await import('data:text/javascript;base64,'+Buffer.from(code).toString('base64'));
 test('Alpha binds its draft controller name to the shared implementation',()=>{
  assert.match(readFileSync(new URL('../apps/app/src/prototype/assistant-draft-controller.ts',import.meta.url),'utf8'),/export \{DurableDraftController as AssistantDraftController\} from '\.\.\/\.\.\/\.\.\/\.\.\/\.eliza\/client-features\/packages\/ui\/src\/state\/durable-draft-controller\.ts';/);
 });
 const tick=()=>new Promise(resolve=>setImmediate(resolve));
 const record=(text,revision='1')=>({version:1,binding:'test',revision,text});
+for (const transition of ['session', 'history']) test(`the shell retires the old draft before a queued ${transition} repaint`, async () => {
+  const source = readFileSync(new URL('../apps/app/src/prototype/agent-adapter.ts', import.meta.url), 'utf8');
+  const start = source.indexOf('this.connectionUnsubscribe = connectionController.subscribe(() => {');
+  const end = source.indexOf('    // Canonical is the default;', start);
+  assert.ok(start >= 0 && end > start);
+  const stores = new Map([['old', record('Private old-owner words')], ['new', null]]);
+  let state = {draft: ''}, changed;
+  const updates = [], openings = [];
+  const controller = new AssistantDraftController(async key => ({
+    async read() { return stores.get(key); },
+    async save(expected, text) {
+      assert.equal(stores.get(key), expected);
+      const next = {...record(text), binding: key};
+      stores.set(key, next);
+      return next;
+    },
+  }), () => state.draft, text => { state = {...state, draft: text}; }, () => {});
+  await controller.open('old');
+  const abort = new AbortController();
+  const shell = {
+    live: true, connectionSession: 'old-session', startupDraft: null,
+    composerDraft: controller, draftBindingAbort: abort,
+    S: () => state,
+    setState: (patch, callback) => updates.push({patch, callback}),
+    refreshDraftBinding() { openings.push(controller.open('new')); },
+  };
+  shell.refreshDraftBinding = shell.refreshDraftBinding.bind(shell);
+  const session = {sessionId: transition === 'session' ? 'new-session' : 'old-session'};
+  const snapshot = {session, startupResolved: true, history: transition === 'history'
+    ? {sessionId: session.sessionId, conversationId: 'new-conversation', messages: [], automatic: false} : null};
+  const ports = {
+    connectionController: {subscribe: callback => { changed = callback; return () => {}; }, getSnapshot: () => snapshot},
+    alphaClient: {disconnect() {}}, cancelMessageContext() {}, clearMapsSelection() {},
+    syncStoppedReplyNotice() {}, syncCanonicalNotes() {}, context() {},
+    collapseSystemNotices: messages => messages, mergeConversationDelivery: messages => messages,
+  };
+  const install = new Function(...Object.keys(ports), stripTypeScriptTypes(source.slice(start, end), {mode: 'transform'}));
+  install.call(shell, ...Object.values(ports));
+  changed();
+  assert.equal(abort.signal.aborted, true);
+  assert.equal(controller.binding, undefined);
+  assert.equal(openings.length, 0, 'the new owner is not opened against old text before repaint');
+  for (const {patch, callback} of updates) {
+    state = {...state, ...(typeof patch === 'function' ? patch(state) : patch)};
+    controller.edit(state.draft);
+    callback?.();
+  }
+  await Promise.all(openings);
+  await tick();
+  assert.equal(stores.get('old').text, 'Private old-owner words');
+  assert.equal(stores.get('new'), null);
+  assert.equal(state.draft, '');
+});
 function fixture(messages){let text='',saved=null;const store={async read(){return saved;},async save(expected,value){assert.deepEqual(expected,saved);return saved=record(value,String(Number(saved?.revision||0)+1));}};const c=new AssistantDraftController(async()=>store,()=>text,value=>{text=value;},()=>{},messages);return {c,store,set:value=>{text=value;c.edit(value);},get:()=>text,saved:()=>saved,external:value=>{saved=record(value,'external');}};}
 test('opening quietly retries a transient read without losing restored draft text',async()=>{
  const f=fixture();f.external('Keep these words');const read=f.store.read;let attempts=0;
@@ -123,7 +176,7 @@ test('hold binds exact authored whitespace and preserves it through a failed dis
 });
 // The device slot keeps a message's saved copy marked as sending until its dispatch settles, so a
 // restart (or another window) never offers it again as a draft; the owner reviews it instead.
-const rowsCode=stripTypeScriptTypes(readFileSync(new URL('../.eliza/client-features/packages/ui/src/state/durable-draft.ts',import.meta.url),'utf8'),{mode:'transform'});
+const rowsCode=stripTypeScriptTypes(readFileSync(new URL('../.eliza/client-features/packages/ui/src/state/durable-draft.ts',import.meta.url),'utf8'),{mode:'strip'});
 const {compareExchangeDraftStore}=await import('data:text/javascript;base64,'+Buffer.from(rowsCode).toString('base64'));
 test('a restart during a send offers the message for review and never restores it as a draft',async()=>{
  let raw=null;const slot={async read(){return raw;},async compareExchange(expected,value){if(raw!==expected)return {status:'conflict'};raw=value;return {status:'saved'};}};

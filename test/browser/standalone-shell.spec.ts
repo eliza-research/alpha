@@ -99,8 +99,8 @@ test('standalone Home scrolls to the screen edge without a simulated status-bar 
   await expect.poll(async()=>{const dock=await composer.boundingBox(),last=await lastApp.boundingBox();return dock!.y-(last!.y+last!.height);}).toBeGreaterThanOrEqual(6);
   await home.evaluate(node=>{node.scrollTop=0;});
   expect((await home.boundingBox())!.height).toBeGreaterThan(usable!.height-140);
-  const tile=await home.getByRole('button').first().boundingBox();
-  expect(tile!.y-bounds!.y).toBeLessThan(16);
+  const topPadding=await home.locator('[data-alpha-home-layout]').evaluate(element=>parseFloat(getComputedStyle(element).paddingTop));
+  expect(topPadding).toBeLessThan(16);
 
   await home.evaluate(node=>{node.scrollTop=80;});
   expect((await home.boundingBox())!.y).toBeCloseTo(usable!.y,1);
@@ -226,7 +226,7 @@ for(const view of ['Settings','Notes','Files'])test(`${view} Back beside the hal
 test('half chat keeps keyboard-focused Settings controls above the sheet',async({page})=>{
  await page.setViewportSize({width:412,height:640});await page.goto('/');await page.getByRole('button',{name:'Settings',exact:true}).click();await page.getByRole('button',{name:'Open conversation',exact:true}).click();
  const panel=page.locator('[data-alpha-layer="conversation"]'),app=page.locator('[data-alpha-layer="app"]');await panel.evaluate(el=>Promise.all(el.getAnimations().map(animation=>animation.finished.catch(()=>{}))));
- const scroll=app.locator('[data-alpha-app-scroll="settings"]'),target=app.getByRole('button',{name:'Agent connection',exact:true});await scroll.evaluate(el=>el.scrollTop=0);await target.focus();await expect(target).toBeFocused();
+ const scroll=app.locator('[data-alpha-app-scroll="settings"]'),target=app.getByRole('button',{name:'Agent',exact:true});await scroll.evaluate(el=>el.scrollTop=0);await target.focus();await expect(target).toBeFocused();
  expect((await target.boundingBox())!.y+(await target.boundingBox())!.height).toBeLessThanOrEqual((await panel.boundingBox())!.y-8);await expect(page.getByRole('button',{name:'Expand chat',exact:true})).toBeVisible();
  await app.getByRole('button',{name:'Back to apps',exact:true}).press('Enter');await page.getByRole('button',{name:'Open conversation',exact:true}).click();const home=page.locator('[data-alpha-layer="home"]');await expect(home).not.toHaveAttribute('inert','');await expect(page.getByRole('button',{name:'Expand chat',exact:true})).toBeVisible();
 });

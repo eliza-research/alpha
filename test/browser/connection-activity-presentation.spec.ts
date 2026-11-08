@@ -60,20 +60,20 @@ test('Activity presents recorded phone actions in plain language with reconcile 
   if (!await page.locator('.alpha-connection-scrim').isVisible()) await openConnectionDiagnostics(page);
   await page.locator('.alpha-connection').getByRole('button', { name: 'Start local agent', exact: true }).click();
   await expect(page.locator('.alpha-connection-scrim')).toHaveCount(0);
-  await page.getByRole('button', { name: 'Settings', exact: true }).click();
-  await page.getByRole('button', { name: 'Privacy & data', exact: true }).click();
-  await page.getByRole('button', { name: 'Activity', exact: true }).click();
-  const app = page.locator('[data-alpha-layer="app"]');
-  await app.getByRole('button', { name: 'Load phone action history', exact: true }).click();
+  if (await page.locator('html').getAttribute('data-active-view') !== 'settings')
+    await page.getByRole('button', {name: 'Settings', exact: true}).click();
+  await openConnectionDiagnostics(page);
   const panel = page.locator('.alpha-connection');
-  // The uncertain action opens with its reconcile controls in the connection panel.
+  const history = panel.locator('details').filter({has: page.locator('summary').filter({hasText: 'Phone action history'})});
+  await history.locator('summary').click();
+  await history.getByRole('button', {name: 'Refresh actions', exact: true}).click();
+  // The uncertain action stays with its reconcile controls in the connection dialog.
   await expect(panel.getByText('Create note', { exact: true }).first()).toBeVisible();
   await expect(panel.getByRole('button', { name: 'I verified it happened', exact: true })).toBeVisible();
   await expect(panel.getByRole('button', { name: 'Reject proposal', exact: true })).toBeVisible();
   expect(await panel.innerText()).not.toContain('{"type"');
-  await page.getByRole('button', { name: 'Close connection settings' }).first().click();
-  await expect(app.getByText(/Create note · “Groceries” · Needs your review · this phone: applying/)).toBeVisible();
-  await expect(app.getByText(/Create note · “Call back” · Waiting for your review · not dispatched by this phone/)).toBeVisible();
+  await expect(panel.getByText(/Needs your review · this phone: applying/)).toBeVisible();
+  await expect(panel.getByText(/Waiting for your review · not dispatched by this phone/)).toBeVisible();
   const text = await page.locator('body').innerText();
   expect(text).not.toContain('{"type"');
   expect(text).not.toContain('"title"');

@@ -105,8 +105,8 @@ for (const [kind, text] of Object.entries(KINDS)) for (const frame of ['done', '
       // Agent connection no longer says the agent is ready.
       await page.evaluate(() => window.dispatchEvent(new Event('launcher-home')));
       await button(page, 'Settings').click();
-      await page.getByRole('button', { name: 'Agent connection', exact: true }).click();
-      await expect(page.getByRole('heading',{name:'Agent connection',exact:true})).toBeVisible();
+      await page.getByRole('button', { name: 'Agent', exact: true }).click();
+      await expect(page.getByRole('heading',{name:'Agent',exact:true})).toBeVisible();
       await expect(page.getByRole('region',{name:'Settings',exact:true})).not.toContainText('Connected');
     }
     // Exactly one stream request and no automatic resend of any kind.
@@ -176,7 +176,7 @@ test('without a network the composer stays silent, sends nothing, keeps the draf
   await page.evaluate(() => window.dispatchEvent(new Event('launcher-home')));
   // Readiness is retracted while offline.
   await button(page, 'Settings').click();
-  await page.getByRole('button', { name: 'Agent connection', exact: true }).click();
+  await page.getByRole('button', { name: 'Agent', exact: true }).click();
   await expect(page.getByRole('region',{name:'Settings',exact:true})).not.toContainText('Connected');
   await page.getByRole('button', { name: 'Back to Settings', exact: true }).click();
   await page.evaluate(() => window.dispatchEvent(new Event('launcher-home')));
@@ -216,7 +216,7 @@ test('a resident stream that fails after the turn was recorded says the reply co
   await connected(page);
   await stub(page, s => { s.stream = 'drop'; });
   await send(page, 'Dropped after recording');
-  await expect(page.getByText(UNKNOWN, { exact: true })).toHaveCount(1);
+  await expect(conversation(page).getByText(UNKNOWN, { exact: true })).toHaveCount(1);
   await expect(page.getByRole('button', { name: /^Check saved conversation/ })).toHaveCount(0);
   await expect(composer(page)).toHaveValue('');
   // The one re-read of a dropped stream reuses the same clientMessageId; nothing new is posted.

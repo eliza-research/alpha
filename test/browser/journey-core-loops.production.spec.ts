@@ -324,14 +324,14 @@ test('loop A on Android: the resident agent answers, the conversation follows ac
   // The connection names the agent and where it runs, and no credential is rendered anywhere.
   await page.evaluate(() => window.dispatchEvent(new Event('launcher-home')));
   await button(page, 'Settings').click();
-  await expect(page.getByRole('button', { name: 'Agent connection', exact: true })).toContainText('Alpha');
-  await page.getByRole('button', { name: 'Agent connection', exact: true }).click();
+  await expect(page.getByRole('button', { name: 'Agent', exact: true })).toContainText('Running');
+  await page.getByRole('button', { name: 'Agent', exact: true }).click();
   const account = page.getByRole('region', { name: 'Settings',exact:true });
   await expect(account).toContainText('Running on this device');
   await expect(account.getByText('Eliza Cloud',{exact:true})).toBeVisible();
   await account.getByRole('button',{name:'Back to Settings',exact:true}).click();
   await openCloudPlanFromSettings(page);
-  await expect(page.getByRole('button',{name:'Sign out of Eliza Cloud',exact:true})).toBeVisible();
+  await expect(page.getByRole('button',{name:'Sign out',exact:true})).toBeVisible();
   expect(await page.locator('body').innerText()).not.toContain('synthetic-cloud-key');
   await expectNoDevelopmentSurface(page);
   expect(await native(page, f => f.unexpected)).toEqual([]);
@@ -464,7 +464,7 @@ test('loops B, C and J04 in the web build: Agent Calendar requires a connection,
   await page.goto('/');
   await button(page, 'Maps').click();
   await expect(page.getByRole('region', {name: 'Map', exact: true})).toBeVisible();
-  await expect(page.getByRole('status')).toContainText('Add a location');
+  await expect(page.getByRole('region', {name: 'Maps', exact: true}).getByRole('status')).toContainText('Add a location');
   await expect(button(page, 'Directions')).toHaveCount(0);
   await expect(page.getByRole('region', {name: 'Maps'})).not.toContainText(/\d+ min|\d km/);
   // The independent browser alarm list remains a durable local feature.
@@ -541,10 +541,8 @@ test('loops E and J05 in the web build: page content requires review and no deve
   await expect(review).toHaveCount(0);
   await page.goto('/');
   await button(page, 'Settings').click();
-  await button(page, 'Password manager').click();
+  await expect(button(page, 'Passwords')).toHaveCount(0);
   const settings = page.locator('[data-settings-page]:not([inert])').last();
-  await expect(settings).toContainText(/Saved passwords\s*Available in the Android app/);
-  await expect(settings).toContainText('Native provider status is unavailable here');
   for (const name of ['Add development provider', 'Open development vault', 'Unlock passwords', 'Choose password provider']) await expect(button(page, name)).toHaveCount(0);
   await expect(page.getByText(/demo-only-password|Example sign-in/)).toHaveCount(0);
   await expectNoDevelopmentSurface(page);
@@ -658,7 +656,7 @@ async function openRetainedNativeNotes(page:Page){
   if(!f.slots[key])f.slots[key]=JSON.stringify({version:1,archive:{v1:null,v2:null,daily:null},currentRaw:JSON.stringify({version:2,collectionId:crypto.randomUUID(),records:[],deleted:[]})});
  });
  await selectLegacyNotes(page);
- await expect(page.getByRole('heading',{name:'Older notes',exact:true})).toBeVisible();
+ await expect(page.getByRole('heading',{name:'Previous notes',exact:true})).toBeVisible();
  await expect(page.getByText('Note text encrypted on this device',{exact:true})).toBeVisible();
 }
 
@@ -795,9 +793,9 @@ test('loop J05 on Android: a page navigation closes the open review, and an agen
   // The resident agent is reconnected (a new verified session) before the answer is saved.
   await page.evaluate(() => window.dispatchEvent(new Event('launcher-home')));
   await button(page, 'Settings').click();
-  await button(page, 'Agent connection').click();
+  await button(page, 'Agent').click();
   const account = page.getByRole('region', { name: 'Settings',exact:true });
-  await account.getByRole('button', { name: 'Reconnect agent', exact: true }).click();
+  await account.getByRole('button', { name: 'Restart agent', exact: true }).click();
   await expect(page.locator('.alpha-connection-scrim')).toHaveCount(0, { timeout: 30_000 });
   expect(await native(page, f => f.calls.filter((call: string) => call === 'Agent.start').length)).toBe(2);
   await button(page, 'Open conversation').click();

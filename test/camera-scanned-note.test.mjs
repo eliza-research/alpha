@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
-import {stripTypeScriptTypes} from 'node:module';
+import {stripTypeScriptTypes} from './support/strip-types.mjs';
 import vm from 'node:vm';
 const source=readFileSync(new URL('../apps/app/src/prototype/camera-adapter.ts',import.meta.url),'utf8'),start=source.indexOf("    if(key==='camera')value.saveScannedNote="),end=source.indexOf('\n    return value;',start);assert.ok(start>=0&&end>start);
 const canonicalSource=readFileSync(new URL('../apps/app/src/prototype/canonical-notes-ui.ts',import.meta.url),'utf8'),saveStart=canonicalSource.indexOf(' async saveCard('),saveEnd=canonicalSource.indexOf(' async discardDraftAndReload(',saveStart);assert.ok(saveStart>=0&&saveEnd>saveStart);

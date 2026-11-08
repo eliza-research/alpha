@@ -4,7 +4,7 @@ import {NoticeOwnerCoordinator,revalidateWorkflowApprovalNotice} from '../../../
 import {WorkflowIntentStore,workflowIntentKey} from '../runtime/workflow-intents';
 import {Capacitor} from '@capacitor/core';
 import {registerPlugin} from '../platform-plugins';
-import {resolveWorkflowTap,type WorkflowTapNative} from '../runtime/workflow-notice-taps';
+import {resolveWorkflowTap,type WorkflowTapNative} from '../runtime/workflow-device-contract';
 import { createWorkflowAuthoring } from './workflow-authoring';
 import { homeReadIsStale, presentHomeWorkflowFreshness } from './home-cards';
 import { alphaClient, type ActionProposal } from '../runtime/alpha-client';

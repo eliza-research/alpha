@@ -72,7 +72,7 @@ for(const mode of ['capture','lost-ack','old-message','ask-first'] as const)test
  if(mode==='capture'){
   await expect.poll(()=>page.evaluate(()=>(window as any).cameraRequestFixture.receipts.length)).toBe(1);
   const f=await page.evaluate(()=>(window as any).cameraRequestFixture);expect(f.captures).toBe(1);expect(f.receipts[0].outcome).toBe('applied');expect(f.receipts[0].result.mediaId).toBe('1792274767123123456789012');expect(JSON.stringify(f.receipts)).not.toContain('base64');
-  await expect(page.getByText('Photo saved in Photos.',{exact:true})).toHaveCount(1);
+  await expect(page.locator('[data-alpha-message-text]').filter({hasText:/^Photo saved in Photos\.$/})).toHaveCount(1);
   await expect(page.getByText('Take photo: Open Camera to take the requested photo.',{exact:true})).toHaveCount(0);
  }else{
   await expect(page.getByText('Opening Camera.',{exact:true}).first()).toBeVisible();

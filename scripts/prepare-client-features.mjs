@@ -220,6 +220,7 @@ export const CLIENT_FEATURE_PATHS = [
   'packages/voice/src/random-id.ts',
   'packages/core/src/speech.ts',
   'packages/core/src/utils/string-boundaries.ts',
+  'packages/core/src/utils/type-guards.ts',
   'packages/core/src/spoken-text.ts',
   'packages/core/src/utils/reasoning-tags.ts',
   'packages/core/src/utils/stage-directions.ts',
@@ -235,6 +236,8 @@ export const CLIENT_FEATURE_PATHS = [
   'packages/ui/src/components/chat/message-maps-parser.ts',
   'packages/ui/src/components/shell/dock-clearance.ts',
   'packages/ui/src/components/shell/responsive-layout.ts',
+  // Agent Maps cards in chat (maps-chat-markup.ts); an import-free parser leaf.
+  'packages/ui/src/components/chat/message-maps-parser.ts',
   'packages/ui/src/utils/automation-feed-filter.ts',
   'packages/ui/src/overview/daily-overview.ts',
   'packages/ui/src/overview/OverviewCards.tsx',
@@ -296,6 +299,8 @@ export const CLIENT_FEATURE_PATHS = [
   'plugins/plugin-notes/test/notes-trash-schedule.test.mjs',
   'plugins/plugin-notes/test/notes-trash-store.test.mjs',
   'packages/cloud/sdk/src/subscription-entitlement.ts',
+  'packages/cloud/sdk/native-host/subscription-grant.mjs',
+  'packages/cloud/sdk/native-host/subscription-grant.d.mts',
   'packages/ui/src/components/settings/cloud-subscription-summary.tsx',
   'packages/auth/src/auth/native-cloud-sign-in.ts',
   // Credential-bound account billing reader and its snapshot types (AP-03/#410).
@@ -311,8 +316,6 @@ export function prepareClientFeatures({ root = projectRoot, projectVoice = true 
   const sourceFiles = Object.fromEntries([...source].map(([name, file]) => [name, file.sha256]));
   const speechPatch=clientSpeechPatch(root,upstream);
   for(const [name,file] of speechPatch.files)source.set(name,file);
-
-
   if(projectVoice){
   // Upstream publishes every renderer type as a leaf entry (@elizaos/core/schema-types,
   // @elizaos/ui/api/transport, plugin-calendar auto-join-types); copied files stay byte-exact.

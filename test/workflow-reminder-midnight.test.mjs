@@ -1,12 +1,12 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
-import {stripTypeScriptTypes} from 'node:module';
+import {stripTypeScriptTypes} from './support/strip-types.mjs';
 
 // Execute the actual development request handler with an in-memory existing
 // proposal. No account, model, native bridge, or filesystem store is started.
 const source=readFileSync(new URL('../apps/app/src/browser/development-workflows.ts',import.meta.url),'utf8');
-const handler=stripTypeScriptTypes(source.slice(source.indexOf('async function workflowRequest(')),{mode:'transform'});
+const handler=stripTypeScriptTypes(source.slice(source.indexOf('async function workflowRequest(')),{mode:'strip'});
 test('a reminder read keeps its approved day when re-opened and completed after midnight',async()=>{
  const operation={type:'read_selected_reminders',window:'open_and_completed_today',day:'2026-10-29',timeZone:'UTC',maximumItems:2};
  const result={kind:'reminders',reminders:[{id:'r1',title:'Yesterday completed',dueAt:'2026-10-29T12:00:00.000Z',status:'completed',completedAt:'2026-10-29T23:59:00.000Z',revision:'a'.repeat(64)}]};

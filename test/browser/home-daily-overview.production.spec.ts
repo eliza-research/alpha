@@ -4,29 +4,20 @@ import {test,expect} from '@playwright/test';
 // present, and loading Home makes no request beyond the app's own origin.
 test.beforeEach(({}, info) => { test.skip(info.project.name !== 'production', 'Runs against the flag-off production build only'); });
 
-test('fresh Home shows unverified Agent Calendar state, no brief card, no fixture content and no outside request',async({page},info)=>{
+test('fresh Home shows the date line and no placeholder cards, no fixture content and no outside request',async({page},info)=>{
  const errors:string[]=[],outside:string[]=[];
  page.on('pageerror',error=>errors.push(error.message));
  page.on('request',request=>{const url=new URL(request.url());if(['http:','https:','ws:','wss:'].includes(url.protocol)&&!['127.0.0.1','localhost'].includes(url.hostname))outside.push(request.url());});
  await page.addInitScript(()=>localStorage.setItem('alpha.connection.selection.v1',JSON.stringify({kind:'offline'})));
  await page.goto('/');
  await expect(page.locator('html')).toHaveAttribute('data-connection-mode','live');
- const home=page.getByRole('region',{name:'Home',exact:true}),calendar=page.locator('[data-alpha-home-calendar]');
- await expect(calendar.locator('[data-overview-part="title"]')).toHaveText('Calendar');
- await expect(calendar).not.toContainText('Nothing planned');
- await expect(calendar).not.toContainText('No upcoming events');
- await expect(calendar.locator('[data-alpha-home-calendar-source]')).toHaveCount(0);
- await expect(calendar.locator('[data-alpha-home-calendar-origin]')).toHaveText('');
- // Neutral startup does not claim a successful Calendar read or show a freshness timestamp.
- await expect(calendar).not.toContainText(/Updated|Read at/);
- await expect(calendar).toHaveAttribute('data-overview-state','empty');
- await expect(calendar).toHaveAccessibleName('Open Agent Calendar');
- await expect(calendar).toHaveAttribute('data-alpha-home-calendar-overdue','false');
- await expect(home.locator('[data-alpha-home-brief]')).toHaveCount(0);
- const inbox=home.locator('[data-alpha-home-inbox]');
- await expect(inbox).toHaveAccessibleName('Connect email');
- await expect(inbox).toContainText('Connect email');
- await expect(inbox).not.toContainText(/unread|Read \d/);
+ const home=page.getByRole('region',{name:'Home',exact:true});
+ // Nothing to show on a fresh profile (docs/ui-refresh-2026-11): no cards, only the date line. Connect
+ // Google appears only once signed in to Eliza Cloud, which this offline profile is not.
+ await expect(home.locator('[data-alpha-home-date]')).toBeVisible();
+ await expect(home.getByRole('button',{name:'Connect Google',exact:true})).toHaveCount(0);
+ for(const card of ['[data-alpha-home-calendar]','[data-alpha-home-workflows]','[data-alpha-home-inbox]','[data-alpha-home-brief]'])await expect(home.locator(card)).toHaveCount(0);
+ await expect(home).not.toContainText(/No upcoming events|Set up Gmail|Connect email|Open to view|Loading/);
  await expect(home).not.toContainText(/Morning brief|Design review|7:02 AM|No brief yet/);
  await expect(home.getByText(/^(MC|JP|PN|\+2)$/)).toHaveCount(0);
  await page.waitForTimeout(1500);

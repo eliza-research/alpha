@@ -79,7 +79,7 @@ test('rotation that rebuilds the focused layer gives focus back to the screen na
   // An app without a title row is named by its region.
   await page.evaluate(() => document.querySelector('[data-alpha-app-title]')!.remove());
   await page.getByRole('button', { name: 'Display', exact: true }).focus();
-  await show(page, 'home'); await show(page, 'settings');
+  await show(page, 'home'); await frames(page); await show(page, 'settings');
   await expect.poll(() => focused(page)).toBe('Settings');
   expect(await page.evaluate(() => document.activeElement?.getAttribute('data-alpha-layer'))).toBe('app');
 });

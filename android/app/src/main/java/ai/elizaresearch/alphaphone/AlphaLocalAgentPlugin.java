@@ -815,11 +815,11 @@ private static final class ResidentAttachDiagnostic {
      // Never poll enrollment: a failed response may follow a committed pairing POST.
      try{enroll(epoch);resolveCurrent(call,epoch,new JSObject().put("state","ready"));return;}
      catch(Superseded stale){rejectSuperseded(call);return;}
-     catch(Exception uncertain){rejectPending(call,"Local enrollment did not complete. Check runtime status before reconnecting.");return;}
+     catch(Exception uncertain){rejectStartFailed(call,epoch);return;}
     }
     rejectStartFailed(call,epoch);
    },()->rejectPending(call,"Local agent bridge is closed."));
-  }catch(Exception error){synchronized(lifecycleLock){pending.remove(call);}call.reject(START_FAILED);}
+  }catch(Exception error){synchronized(lifecycleLock){pending.remove(call);}call.reject(START_FAILED,"start-failed");}
  }
  /** The service keeps a launch alive for its boot grace (ElizaAgentService.AGENT_BOOT_GRACE_MS,
   * 120 s); the start call waits as long before it reports failure. */
@@ -936,7 +936,7 @@ private static final class ResidentAttachDiagnostic {
    startRequestId=null;startOwnsLaunch=false;
    AlphaCanonicalNotifications.forget(getContext());invalidateCalls();++lifecycleEpoch;accepting=false;stopping=true;clearEnrollment();
    try{ElizaAgentService.stop(getContext());call.resolve(new JSObject().put("state","stopping"));}
-   catch(Exception unavailable){call.reject("Stop requested locally, but native shutdown could not be confirmed. Check runtime status.");}
+   catch(Exception unavailable){call.reject("Your agent may still be running. Try stopping it again.");}
   }
  }
  /** Native speech uses only the existing enrollment, bound to its exact token and runtime epoch. */

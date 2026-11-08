@@ -121,6 +121,17 @@ public final class AlphaDevicePlugin extends Plugin {
  }
  @PluginMethod public void openSettings(PluginCall call) {
   String page=call.getString("page","");
+  // The explicit Settings-home action is separate from the shared specific-page allowlist.
+  if("system".equals(page)){
+   android.app.Activity activity=getActivity();
+   if(activity==null){call.reject("This Android settings page is unavailable");return;}
+   activity.runOnUiThread(()->{
+    try{activity.startActivity(new Intent(Settings.ACTION_SETTINGS));}
+    catch(RuntimeException unavailable){call.reject("This Android settings page is unavailable");return;}
+    JSObject out=new JSObject();out.put("status","opened");out.put("page",page);out.put("specific",true);call.resolve(out);
+   });
+   return;
+  }
   if(SystemSettingsPages.actions(page)==null){call.reject("Unsupported settings page");return;}
   getActivity().runOnUiThread(()->{
    // The shared allowlist (SystemSettingsPages); "specific" is false when only the broader fallback opened.

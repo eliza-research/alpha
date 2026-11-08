@@ -1,12 +1,12 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
-import {stripTypeScriptTypes} from 'node:module';
+import {stripTypeScriptTypes} from './support/strip-types.mjs';
 import {randomUUID,webcrypto} from 'node:crypto';
 import vm from 'node:vm';
 
 const sdk='vendor/eliza/';
-const transform=path=>stripTypeScriptTypes(readFileSync(path,'utf8'),{mode:'transform'}).replace(/^import[\s\S]*?;\n/gm,'').replace(/^export /gm,'');
+const transform=path=>stripTypeScriptTypes(readFileSync(path,'utf8'),{mode:'strip'}).replace(/^import[\s\S]*?;\n/gm,'').replace(/^export /gm,'');
 const sources=[
  sdk+'packages/core/src/events.ts',
  sdk+'packages/core/src/views/view-interact-protocol.ts',
@@ -130,7 +130,7 @@ test('lost negative acknowledgment is settled once and never replayed',async()=>
 for(const view of ['calendar','settings'])for(const chat of ['sheet','full'])test(`actual adapter ${chat} overlay retains underlying ${view}`,async()=>{
  const adapter=readFileSync('apps/app/src/prototype/agent-adapter.ts','utf8');
  const start=adapter.indexOf('  function context(shell: Shell) {');
- const helper=stripTypeScriptTypes(adapter.slice(start,adapter.indexOf('  p.componentDidMount',start)),{mode:'transform'});
+ const helper=stripTypeScriptTypes(adapter.slice(start,adapter.indexOf('  p.componentDidMount',start)),{mode:'strip'});
  let observed;
  const alphaClient={setViewContext(value){observed=value;},getState(){return {context:observed};}};
  new Function('document','alphaClient','connectionController','currentClockTimeZone','passwordSurfaceOpen','updateBackAvailability','recoverPendingActions','shell',helper+';context(shell);')(

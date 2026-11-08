@@ -31,7 +31,11 @@ test('every retained MVP view has a live state and a populated state in the swee
     const title = view[0].toUpperCase() + view.slice(1);
     assert.match(liveBlock, new RegExp(`live\\('[^']*', \\['${title}'`), `live state opens ${title}`);
     assert.match(mockBlock, new RegExp(`'${view}'`), `fixture state opens ${view}`);
-    assert.match(mockBlock, new RegExp(`'${view}:[a-z]+'`), `fixture state opens a ${view} subview`);
+    if (view === 'settings') {
+      assert.ok(liveBlock.includes("live('Settings about', ['Settings', 'About'])"), 'the real Settings About page is swept');
+    } else {
+      assert.match(mockBlock, new RegExp(`'${view}:[a-z]+'`), `fixture state opens a ${view} subview`);
+    }
   }
   for (const surface of ["live('Home')", "live('Apps'", "live('Conversation'", "'shade'", "'sheet'", "'full'"])
     assert.ok(states.includes(surface), `${surface} is swept`);
@@ -69,7 +73,7 @@ test('every subview of a retained view is opened by a state that asserts it is t
     assert.ok(asserted.has(id), `a state opens and asserts the ${id} subview`);
   }
   // Menus, search fields, sheets and the Undo toast are states of their own.
-  for (const step of ["['New automation', 'Edit When step']", "['Add Read step']", "['Connections', 'Slack']", "['Browser', 'Menu']", "['New note', 'More']", "['Search email']", "['Menu', 'Share']", "['Share photo']", "['Sort and more']", "['Move file']", "['Delete file']"])
+  for (const step of ["['New automation', 'Edit When step']", "['Add Read step']", "['Browser', 'Menu']", "['New note', 'More']", "['Search email']", "['Menu', 'Share']", "['Share photo']", "['Sort and more']", "['Move file']", "['Delete file']"])
     assert.ok(states.includes(step), `${step} is swept`);
   // Notes has no search field (PLAN.md decision P2); its folders, ⋯ menu and Recently deleted are swept.
   for (const state of ["legacyNotes('Notes new folder', ['New folder'])", "legacyNotes('Notes note menu', ['New note', 'More'])", "'notes-trash'", "'notes-recorder'"])
@@ -119,7 +123,7 @@ test('the sweep applies every dimension and cannot be narrowed silently', () => 
   // The fixture lock screen and photos-empty viewer and the launcher presentation run at 100%
   // and 200% with names, focus, contrast and the dock rules (provider-connected states are in STATES).
   assert.match(sweep, /for \(const state of \[\.\.\.FIXTURE_STATES, \.\.\.LAUNCHER_STATES\]\) \{\s*for \(const scale of \[1, 2\]\)/);
-  for (const name of ["mock('lock')", "shows: 'photos-empty'", "launcher('Home')", "launcher('Apps'", "connected('Inbox'", "connected('Settings connections'", "name: 'connected Calendar with events'", "CONNECTED_STATES.push(calendarWithEvents)"])
+  for (const name of ["mock('lock')", "shows: 'photos-empty'", "launcher('Home')", "launcher('Apps'", "connected('Inbox'", "connected('Settings Google'", "name: 'connected Calendar with events'", "CONNECTED_STATES.push(calendarWithEvents)"])
     assert.ok(states.includes(name), `${name} is swept`);
   // Above 200%: the largest in-app size with the largest system font (300%), over every live and
   // launcher state, with the clipping, overlap, dock, name, tab-order and reading-order rules.
@@ -191,7 +195,7 @@ test('TalkBack reading order is checked in every lane, as Android checks it, acr
 
 test('provider-connected screens are swept, against a synthetic mailbox only', () => {
   const block = states.slice(states.indexOf('export const CONNECTED_STATES'), states.indexOf('export const DEVELOPMENT_STATES'));
-  for (const state of ["connected('Home'", "connected('Inbox')", "connected('Inbox sent (empty)'", "connected('Inbox search'", "connected('Inbox message'", "connected('Inbox long subject'", "connected('Inbox compose'", "connected('Settings',", "connected('Settings accounts'", "connected('Settings connections'"])
+  for (const state of ["connected('Home'", "connected('Inbox')", "connected('Inbox sent (empty)'", "connected('Inbox search'", "connected('Inbox message'", "connected('Inbox long subject'", "connected('Inbox compose'", "connected('Settings',", "connected('Settings Google'"])
     assert.ok(block.includes(state), `${state} is swept`);
   // Connected states other than a mailbox (MVP-48): an agent's calendar, a linked Google Calendar
   // account's sync review and a connected agent's conversation. None writes to a provider.

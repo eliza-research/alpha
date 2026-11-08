@@ -4,7 +4,7 @@ import { test, expect, type Page } from '@playwright/test';
 // device, package manager or permission prompt is involved; LauncherHomeInstrumentedTest covers
 // the real launcher APK holding HOME.
 
-type Stub = { apps?: unknown; failLaunch?: string[]; dial?: unknown; notifications?: { permissionGranted: boolean; appEnabled: boolean }; microphone?: string; assistant?: boolean; update?: {activationId:string;bridgeId:string;mounted?:boolean} };
+type Stub = { apps?: unknown; failLaunch?: string[]; dial?: unknown; notifications?: { permissionGranted: boolean; appEnabled: boolean }; microphone?: string; assistant?: boolean; launchAssistant?: boolean; update?: {activationId:string;bridgeId:string;mounted?:boolean} };
 
 async function nativeStub(page: Page, stub: Stub) {
   await page.addInitScript((stub: Stub) => {
@@ -40,11 +40,11 @@ async function nativeStub(page: Page, stub: Stub) {
         if (method === 'launchApp') { if ((stub.failLaunch || []).includes(options?.packageName)) throw Error('Activity not found'); return {}; }
         if (method === 'resolveDefaultApp') return stub.dial ?? { role: 'dial', available: false };
         if (method === 'getBuildInfo') return { launcher: true, version: 'stub' };
-        if (method === 'getLaunchInfo') return { assistant: stub.assistant === true };
+        if (method === 'getLaunchInfo') return { assistant: stub.launchAssistant === true };
         if (method === 'getLocaleInfo') return { locale: 'en-US', hour24: false };
         return {};
       }
-      if (plugin === 'DailyApps' && method === 'surfaceInfo') return { assistant: false, developmentBuild: true, topInset: 0, bottomInset: 0 };
+      if (plugin === 'DailyApps' && method === 'surfaceInfo') return { assistant: stub.assistant === true, developmentBuild: true, topInset: 0, bottomInset: 0 };
       if (plugin === 'AlphaNotifications' && method === 'status') return stub.notifications ?? { permissionGranted: true, appEnabled: true };
       if (plugin === 'AlphaVoiceCloud' && method === 'checkPermissions') return { microphone: stub.microphone ?? 'granted' };
       return {};
@@ -255,19 +255,19 @@ test('typing a search while the installed-app list is still loading still shows 
 test('required denied notification remains pending after cold start without repeating a prompt',async({page})=>{
  await nativeStub(page,{notifications:{permissionGranted:false,appEnabled:false},microphone:'granted'});
  await page.goto('/');const panel=page.locator('dialog.alpha-startup-permissions');await expect(panel).toHaveCount(0);
- await page.getByRole('button',{name:'Settings',exact:true}).click();await page.getByRole('button',{name:'Set up Alpha access',exact:true}).click();
+ await page.getByRole('button',{name:'Settings',exact:true}).click();await page.getByRole('button',{name:'Finish setup',exact:true}).click();
  await expect(panel.getByRole('heading',{name:'Notifications',exact:true})).toBeVisible();await panel.getByRole('button',{name:'Allow',exact:true}).click();
  await expect.poll(()=>calls(page,'DailyApps','requestPermissions')).toEqual([{permissions:['notifications']}]);
  await expect(panel.getByRole('button',{name:'Open Android settings',exact:true})).toBeVisible();
  await expect(panel.getByRole('button',{name:/Skip|Not now|Back/})).toHaveCount(0);
  await page.keyboard.press('Escape');await expect(panel).toBeVisible();await page.reload();
- await page.getByRole('button',{name:'Settings',exact:true}).click();await page.getByRole('button',{name:'Set up Alpha access',exact:true}).click();
+ await page.getByRole('button',{name:'Settings',exact:true}).click();await page.getByRole('button',{name:'Finish setup',exact:true}).click();
  await expect(panel.getByRole('button',{name:'Open Android settings',exact:true})).toBeVisible();
  expect(await calls(page,'DailyApps','requestPermissions')).toEqual([]);
  expect(await page.evaluate(()=>JSON.parse(localStorage.getItem('alpha:startup-permission-walkthrough:v1')!))).toEqual({version:4,status:'pending',step:0});
 });
 
-test('an Activity opened with the alpha.assistant extra renders chat and Close only', async ({ page }) => {
+test('the assistant Activity renders chat and Close only', async ({ page }) => {
   // Notifications are denied, so a normal start would show the startup permission panel.
   await nativeStub(page, { assistant: true, notifications: { permissionGranted: false, appEnabled: false } });
   await page.goto('/');
@@ -279,4 +279,13 @@ test('an Activity opened with the alpha.assistant extra renders chat and Close o
   await expect(page.getByRole('dialog', { name: 'Set up Alpha access', exact: true })).toHaveCount(0);
   await close.click();
   await expect.poll(() => calls(page, 'DailyApps', 'closeAssistant')).toHaveLength(1);
+});
+
+test('the alpha.assistant launch extra alone keeps Home', async ({ page }) => {
+  // Only AlphaAssistActivity (DailyApps.surfaceInfo) opens the assistant surface.
+  await nativeStub(page, { launchAssistant: true });
+  await page.goto('/');
+  await expect(page.getByRole('button', { name: 'Apps', exact: true })).toBeVisible();
+  await expect(page.locator('html')).not.toHaveClass(/alpha-assistant-surface/);
+  await expect(page.getByRole('button', { name: 'Close assistant', exact: true })).toHaveCount(0);
 });

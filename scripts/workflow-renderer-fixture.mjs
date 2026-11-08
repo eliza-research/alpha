@@ -5,7 +5,7 @@ import { NoticeOwnerCoordinator, revalidateWorkflowApprovalNotice } from '../.el
 // legacy workflow tests. No native plugin or production account is contacted.
 import vm from 'node:vm';
 import { readFileSync } from 'node:fs';
-import { stripTypeScriptTypes } from 'node:module';
+import { stripTypeScriptTypes } from '../test/support/strip-types.mjs';
 import { normalizePhoneSpec, assertPhoneCapabilities, describePhoneTrigger } from '../apps/app/src/runtime/phone-workflow-authoring.ts';
 import { WorkflowActivationRejected } from '../apps/app/src/runtime/workflow-protocol.ts';
 import { workflowSha, workflowBytes } from '../apps/app/src/runtime/workflow-device-contract.ts';

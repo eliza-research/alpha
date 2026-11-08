@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
-import {stripTypeScriptTypes} from 'node:module';
+import {stripTypeScriptTypes} from './support/strip-types.mjs';
 import {checkinDisplayText,systemNoticeKind,systemNoticeDisplayText} from '../apps/app/src/runtime/action-message-presentation.ts';
 
 const id='7204d731-7cfd-4708-a15d-d3f57c682855';

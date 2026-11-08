@@ -336,6 +336,8 @@ html:not(.alpha-landscape) .alpha-phone [data-alpha-layer="drawer"] { padding-bo
 .alpha-landscape .alpha-app-drawer [data-installed-apps-scroll] { padding-bottom:16px!important; scroll-padding-bottom:16px; }
 /* Under the resting half sheet Home keeps its layout and gains scroll range: what the sheet
  * covers beyond the reserve Home already leaves. */
+/* A taller dock (a status line, a long draft) adds scroll range below the grid; it never moves it. */
+html:not(.alpha-landscape) .alpha-phone [data-screen]:not([data-alpha-chat-half="true"]) [data-alpha-home-clearance] { height:max(0px,calc(var(--alpha-dock-clearance,102px) + 6px - var(--alpha-home-clearance) - 86px)); }
 html:not(.alpha-landscape) .alpha-phone [data-screen][data-alpha-chat-half="true"] [data-alpha-home-clearance] { height:max(0px,calc(var(--alpha-chat-clearance,0px) + 16px - var(--alpha-dock-reserve))); }
 html:not(.alpha-landscape) .alpha-phone [data-screen][data-alpha-chat-half="true"] [data-alpha-layer="home"] { scroll-padding-bottom:max(16px,calc(var(--alpha-chat-clearance,0px) + 16px - var(--alpha-dock-reserve)))!important; }
 /* An app's own scroller still passes under the dock, by design. Focus must not stay there: a
@@ -617,6 +619,13 @@ button[aria-label$=" on or off"][aria-pressed]::before { content:""; position:ab
 .calendar-request-review strong { font-size:15px;line-height:1.4; }
 .calendar-request-review p { margin:0;color:var(--mut);font-size:14px;line-height:1.4; }
 .calendar-request-review button { min-height:44px;padding:8px 16px;border-radius:22px;background:var(--acc);color:var(--alpha-white);font:inherit;font-weight:600; }
+.maps-chat-card { background:var(--s2);padding:16px;border-radius:16px;display:flex;flex-direction:column;gap:6px;overflow-wrap:anywhere; }
+.maps-chat-card strong { font-size:15px;line-height:1.4; }
+.maps-chat-card p { margin:0;font-size:14px;line-height:1.4; }
+.maps-chat-card small { color:var(--mut);font-size:12px;line-height:1.4; }
+.maps-chat-choice { display:flex;flex-wrap:wrap;gap:8px; }
+.maps-chat-choice button { min-height:44px;padding:8px 16px;border-radius:22px;background:var(--s2);color:var(--fg);font:inherit;font-weight:600; }
+.maps-chat-choice button:first-child { background:var(--acc);color:var(--alpha-white); }
 .calendar-approval-review h2 { font-family:'Public Sans',system-ui,sans-serif;font-size:22px;line-height:1.2;font-weight:600;margin:0 0 16px;letter-spacing:normal; }
 .calendar-approval-review p { font-size:15px;line-height:1.5;overflow-wrap:anywhere;white-space:pre-wrap; }
 .calendar-approval-review footer button { min-height:44px;font:inherit; }

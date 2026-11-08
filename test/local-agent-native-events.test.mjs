@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
-import {stripTypeScriptTypes} from 'node:module';
+import {stripTypeScriptTypes} from './support/strip-types.mjs';
 const source=readFileSync(new URL('../apps/app/src/runtime/local-agent-native-events.ts',import.meta.url),'utf8');
 const {subscribeNativeVoiceEvents}=await import('data:text/javascript;base64,'+Buffer.from(stripTypeScriptTypes(source)).toString('base64'));
 const tick=()=>new Promise(resolve=>setImmediate(resolve));

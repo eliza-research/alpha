@@ -19,7 +19,7 @@ const EMPTY: Record<View, RegExp> = {
   Notes: /Notes is unavailable for this agent connection\. Check Settings › Agent connection\./,
   Files: /Internal storage|Storage is unavailable/,
   Workflows: /Connect your remote agent in Settings\. Reminders on this phone stay available/,
-  Settings: /Not signed in/,
+  Settings: /\bSign in\b/,
   Reminders: /Connect to view Agent Calendar\./,
   Notifications: /No notifications/,
 };

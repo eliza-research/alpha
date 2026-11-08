@@ -1,0 +1,1032 @@
+[
+  {
+    "path": "specs/quint/legacy/SignIn.qnt",
+    "module": "SignIn",
+    "init": "checkerInit",
+    "step": "step",
+    "invariant": "safety",
+    "tests": [
+      "nativeGoogleTest",
+      "customTabTest",
+      "offlineSavedTest",
+      "offlineEmailResumesTest",
+      "currentSavedSignInTest",
+      "currentMissingGoogleTest",
+      "currentThreeTapEmailTest"
+    ],
+    "sources": [
+      "apps/app/src/runtime/connection-ui.tsx",
+      "apps/app/src/runtime/cloud-sign-in-ui.tsx"
+    ],
+    "abstractions": [
+      "Historical current/proposed design comparison at source ef9fbf7cd7, not a runtime conformance claim.",
+      "All original state variables are fields of s; immutable Design selects behavior; record spreads preserve the original frame conditions.",
+      "Finite domains and numeric constants are unchanged from the original model configuration.",
+      "Removed implementation links are retained as historicalSourceLinks at the original migration inventory revision. They are not current source owners; current behavior is mapped in the application/service/native families."
+    ],
+    "constants": {
+      "MaxDetours": 2,
+      "MaxFlips": 2,
+      "MaxTaps": 9
+    },
+    "invariants": [
+      "TypeOK",
+      "NoCloudWebPage",
+      "CodesStayInApp",
+      "NoManualRetry",
+      "SavedSignInNeverAsked",
+      "NoTabLeftBehind",
+      "TwoTaps",
+      "GoogleWhenPossible"
+    ],
+    "temporal": [
+      "CheckedTemporal"
+    ],
+    "temporalProperties": [
+      "ReachesHome"
+    ],
+    "currentChecks": [
+      {
+        "invariant": "NoCloudWebPage",
+        "expected": "pass",
+        "init": "checkerCurrentInit",
+        "step": "step"
+      },
+      {
+        "invariant": "CodesStayInApp",
+        "expected": "pass",
+        "init": "checkerCurrentInit",
+        "step": "step"
+      },
+      {
+        "invariant": "NoManualRetry",
+        "expected": "violation",
+        "init": "checkerCurrentInit",
+        "step": "step"
+      },
+      {
+        "invariant": "SavedSignInNeverAsked",
+        "expected": "violation",
+        "init": "checkerCurrentInit",
+        "step": "step"
+      },
+      {
+        "invariant": "NoTabLeftBehind",
+        "expected": "pass",
+        "init": "checkerCurrentInit",
+        "step": "step"
+      },
+      {
+        "invariant": "TwoTaps",
+        "expected": "violation",
+        "init": "checkerCurrentInit",
+        "step": "step"
+      },
+      {
+        "invariant": "GoogleWhenPossible",
+        "expected": "violation",
+        "init": "checkerCurrentInit",
+        "step": "step"
+      }
+    ],
+    "currentTemporalChecks": [
+      {
+        "property": "CheckedReachesHome",
+        "expected": "pass",
+        "init": "checkerCurrentInit",
+        "step": "step",
+        "fairness": "Fairness",
+        "sourceProperty": "ReachesHome"
+      }
+    ],
+    "legacySource": {
+      "path": "docs/flow-redesign-2026-11/tla/SignIn.tla",
+      "sha256": "8d6c2e4ae1bb538c9d235d322c07687063892949b7740cfc91bcacbfecba352a",
+      "definitions": [
+        "vars",
+        "Scopes",
+        "Screens",
+        "GoogleReady",
+        "NativeGoogle",
+        "LocalMethods",
+        "TypeOK",
+        "Init",
+        "Tap",
+        "Detour",
+        "Boot",
+        "Probe",
+        "AutoResume",
+        "GoogleReturn",
+        "KeyRejected",
+        "NetDrop",
+        "NetRecover",
+        "TapCloudSignIn",
+        "TapRetry",
+        "ChooseGoogle",
+        "NativeConsent",
+        "TabConsent",
+        "CloseBrowser",
+        "EnterAddress",
+        "EnterCode",
+        "WrongCode",
+        "Back",
+        "System",
+        "User",
+        "Mistake",
+        "Env",
+        "Done",
+        "Next",
+        "Spec",
+        "NoCloudWebPage",
+        "CodesStayInApp",
+        "NoManualRetry",
+        "SavedSignInNeverAsked",
+        "NoTabLeftBehind",
+        "TwoTaps",
+        "GoogleWhenPossible",
+        "ReachesHome"
+      ]
+    },
+    "historicalSourceLinks": {
+      "revision": "875f5a8550935c5ca1797cea4ea38e7c7759ca54",
+      "paths": [
+        "android/app/src/main/java/ai/elizaresearch/alphaphone/CloudSignInFlow.java"
+      ]
+    }
+  },
+  {
+    "path": "specs/quint/legacy/GoogleConnect.qnt",
+    "module": "GoogleConnect",
+    "init": "checkerInit",
+    "step": "step",
+    "invariant": "safety",
+    "tests": [
+      "nativeConsentTest",
+      "returnRefreshesTest",
+      "incrementalGrantTest",
+      "revokeAndDeclineTest",
+      "currentCloudPageTest",
+      "currentPickerTest",
+      "currentGrantShrinksTest",
+      "currentStaleInboxTest",
+      "currentTabAndTapCountTest"
+    ],
+    "sources": [
+      "apps/app/src/runtime/google-connection-ui.tsx",
+      "apps/app/src/runtime/cloud-protocol.ts"
+    ],
+    "abstractions": [
+      "Historical current/proposed design comparison at source ef9fbf7cd7, not a runtime conformance claim.",
+      "All original state variables are fields of s; immutable Design selects behavior; record spreads preserve the original frame conditions.",
+      "Finite domains and numeric constants are unchanged from the original model configuration.",
+      "Persistent history booleans monitor the original action properties without restricting transitions; TLC checks the equivalent invariants and temporal monitor formulas.",
+      "Removed implementation links are retained as historicalSourceLinks at the original migration inventory revision. They are not current source owners; current behavior is mapped in the application/service/native families."
+    ],
+    "constants": {
+      "MaxDetours": 2,
+      "MaxTaps": 9
+    },
+    "invariants": [
+      "TypeOK",
+      "NoCloudWebPage",
+      "NoTabLeftBehind",
+      "InboxFresh",
+      "OneGrantForBoth",
+      "ScopesNeverShrinkInvariant",
+      "TwoTapsToMailInvariant"
+    ],
+    "temporal": [
+      "CheckedTemporal"
+    ],
+    "temporalProperties": [
+      "TwoTapsToMail",
+      "ScopesNeverShrink",
+      "ReturnsToApp"
+    ],
+    "currentChecks": [
+      {
+        "invariant": "NoCloudWebPage",
+        "expected": "violation",
+        "init": "checkerCurrentInit",
+        "step": "step"
+      },
+      {
+        "invariant": "NoTabLeftBehind",
+        "expected": "violation",
+        "init": "checkerCurrentInit",
+        "step": "step"
+      },
+      {
+        "invariant": "InboxFresh",
+        "expected": "violation",
+        "init": "checkerCurrentInit",
+        "step": "step"
+      },
+      {
+        "invariant": "OneGrantForBoth",
+        "expected": "violation",
+        "init": "checkerCurrentInit",
+        "step": "step"
+      },
+      {
+        "invariant": "ScopesNeverShrinkInvariant",
+        "expected": "violation",
+        "init": "checkerCurrentInit",
+        "step": "step"
+      },
+      {
+        "invariant": "TwoTapsToMailInvariant",
+        "expected": "violation",
+        "init": "checkerCurrentInit",
+        "step": "step"
+      }
+    ],
+    "currentTemporalChecks": [
+      {
+        "property": "CheckedTwoTapsToMail",
+        "expected": "violation",
+        "init": "checkerCurrentInit",
+        "step": "step",
+        "fairness": "Fairness",
+        "sourceProperty": "TwoTapsToMail"
+      },
+      {
+        "property": "CheckedScopesNeverShrink",
+        "expected": "violation",
+        "init": "checkerCurrentInit",
+        "step": "step",
+        "fairness": "Fairness",
+        "sourceProperty": "ScopesNeverShrink"
+      },
+      {
+        "property": "CheckedReturnsToApp",
+        "expected": "violation",
+        "init": "checkerCurrentInit",
+        "step": "step",
+        "fairness": "Fairness",
+        "sourceProperty": "ReturnsToApp"
+      }
+    ],
+    "legacySource": {
+      "path": "docs/flow-redesign-2026-11/tla/GoogleConnect.tla",
+      "sha256": "37aa77c3f8a2809df78437265f6641ab715761bf7bf5788a6289386c353e4de6",
+      "definitions": [
+        "GmailRead",
+        "CalRead",
+        "AllScopes",
+        "vars",
+        "TypeOK",
+        "InboxFor",
+        "CalFor",
+        "Init",
+        "Tap",
+        "InApp",
+        "Request",
+        "Boxes",
+        "Grantable",
+        "TapConnect",
+        "PanelConnect",
+        "PanelPickCalendar",
+        "ManualRefresh",
+        "ClosePanel",
+        "Consent",
+        "Decline",
+        "SwitchBackToAlpha",
+        "CloseBrowserTab",
+        "SwitchApp",
+        "Return",
+        "Revoke",
+        "User",
+        "Next",
+        "Spec",
+        "NoCloudWebPage",
+        "NoTabLeftBehind",
+        "InboxFresh",
+        "OneGrantForBoth",
+        "ScopesNeverShrink",
+        "TwoTapsToMail",
+        "ReturnsToApp"
+      ]
+    },
+    "actionProperties": [
+      {
+        "property": "ScopesNeverShrink",
+        "relation": "ScopesNeverShrinkRelation",
+        "invariant": "ScopesNeverShrinkInvariant"
+      },
+      {
+        "property": "TwoTapsToMail",
+        "relation": "TwoTapsToMailRelation",
+        "invariant": "TwoTapsToMailInvariant"
+      }
+    ],
+    "historicalSourceLinks": {
+      "revision": "875f5a8550935c5ca1797cea4ea38e7c7759ca54",
+      "paths": [
+        "apps/app/src/runtime/google-connect-flow.ts"
+      ]
+    }
+  },
+  {
+    "path": "specs/quint/legacy/Calendar.qnt",
+    "module": "Calendar",
+    "init": "checkerInit",
+    "step": "step",
+    "invariant": "safety",
+    "tests": [
+      "createWhileOfflineTest",
+      "undoBeforeSendTest",
+      "expireThenDeleteTest",
+      "conflictKeepsGoogleTest",
+      "badEventIsolationTest",
+      "currentPickerRequiredTest",
+      "currentMalformedFeedTest",
+      "currentReadOnlyGoogleTest"
+    ],
+    "sources": [
+      "apps/app/src/prototype/calendar-adapter.ts"
+    ],
+    "abstractions": [
+      "Historical current/proposed design comparison at source ef9fbf7cd7, not a runtime conformance claim.",
+      "All original state variables are fields of s; immutable Design selects behavior; record spreads preserve the original frame conditions.",
+      "Finite domains and numeric constants are unchanged from the original model configuration.",
+      "Persistent history booleans monitor the original action properties without restricting transitions; TLC checks the equivalent invariants and temporal monitor formulas.",
+      "Removed implementation links are retained as historicalSourceLinks at the original migration inventory revision. They are not current source owners; current behavior is mapped in the application/service/native families."
+    ],
+    "constants": {
+      "MaxRemote": 1,
+      "MaxFlips": 1
+    },
+    "invariants": [
+      "TypeOK",
+      "AlwaysBack",
+      "GoogleVisibleWhenConnected",
+      "BadEventIsolated",
+      "EditableWhenWritable",
+      "SavedChangeVisible",
+      "UndoBeforeSendInvariant"
+    ],
+    "temporal": [
+      "CheckedTemporal"
+    ],
+    "temporalProperties": [
+      "UndoBeforeSend",
+      "OutboxDrains"
+    ],
+    "currentChecks": [
+      {
+        "invariant": "AlwaysBack",
+        "expected": "pass",
+        "init": "checkerCurrentInit",
+        "step": "step"
+      },
+      {
+        "invariant": "GoogleVisibleWhenConnected",
+        "expected": "violation",
+        "init": "checkerCurrentInit",
+        "step": "step"
+      },
+      {
+        "invariant": "BadEventIsolated",
+        "expected": "violation",
+        "init": "checkerCurrentInit",
+        "step": "step"
+      },
+      {
+        "invariant": "EditableWhenWritable",
+        "expected": "violation",
+        "init": "checkerCurrentInit",
+        "step": "step"
+      },
+      {
+        "invariant": "SavedChangeVisible",
+        "expected": "pass",
+        "init": "checkerCurrentInit",
+        "step": "step"
+      },
+      {
+        "invariant": "UndoBeforeSendInvariant",
+        "expected": "pass",
+        "init": "checkerCurrentInit",
+        "step": "step"
+      }
+    ],
+    "currentTemporalChecks": [
+      {
+        "property": "CheckedUndoBeforeSend",
+        "expected": "pass",
+        "init": "checkerCurrentInit",
+        "step": "step",
+        "fairness": "Fairness",
+        "sourceProperty": "UndoBeforeSend"
+      },
+      {
+        "property": "CheckedOutboxDrains",
+        "expected": "violation",
+        "init": "checkerCurrentInit",
+        "step": "step",
+        "fairness": "Fairness",
+        "sourceProperty": "OutboxDrains"
+      }
+    ],
+    "legacySource": {
+      "path": "docs/flow-redesign-2026-11/tla/Calendar.tla",
+      "sha256": "c3ed3c83841e921c6ea46e019e19dc691fdd66c557ac66fade2faa8fb9d3539a",
+      "definitions": [
+        "Ids",
+        "Fresh",
+        "TopViews",
+        "Views",
+        "vars",
+        "TypeOK",
+        "Init",
+        "GoogleShown",
+        "FeedFails",
+        "Displayed",
+        "Writable",
+        "Switch",
+        "OpenSearch",
+        "OpenEvent",
+        "Back",
+        "NewEvent",
+        "Edit",
+        "Save",
+        "Delete",
+        "UndoDelete",
+        "UndoExpires",
+        "Rsvp",
+        "Resolve",
+        "PickInSettings",
+        "Sync",
+        "RemoteChange",
+        "NetDrop",
+        "NetRecover",
+        "Nav",
+        "Act",
+        "World",
+        "Next",
+        "Spec",
+        "AlwaysBack",
+        "GoogleVisibleWhenConnected",
+        "BadEventIsolated",
+        "EditableWhenWritable",
+        "SavedChangeVisible",
+        "UndoBeforeSend",
+        "OutboxDrains"
+      ]
+    },
+    "actionProperties": [
+      {
+        "property": "UndoBeforeSend",
+        "relation": "UndoBeforeSendRelation",
+        "invariant": "UndoBeforeSendInvariant"
+      }
+    ],
+    "historicalSourceLinks": {
+      "revision": "875f5a8550935c5ca1797cea4ea38e7c7759ca54",
+      "paths": [
+        "apps/app/src/runtime/google-calendar.ts",
+        "apps/app/src/runtime/google-calendar-outbox.ts"
+      ]
+    }
+  },
+  {
+    "path": "specs/quint/legacy/Maps.qnt",
+    "module": "Maps",
+    "init": "checkerInit",
+    "step": "step",
+    "invariant": "safety",
+    "tests": [
+      "agentStartsMapsTest",
+      "navigationSurvivesAssistantTest",
+      "failedRerouteKeepsRouteTest",
+      "recoveryTest",
+      "currentProviderTalkTest",
+      "currentAssistantStopsGuidanceTest",
+      "currentRerouteLosesRouteTest"
+    ],
+    "sources": [
+      "apps/app/src/maps/cloud-provider.ts",
+      "apps/app/src/maps/agent-navigation.ts",
+      "apps/app/src/prototype/maps-adapter.ts"
+    ],
+    "abstractions": [
+      "Historical current/proposed design comparison at source ef9fbf7cd7, not a runtime conformance claim.",
+      "All original state variables are fields of s; immutable Design selects behavior; record spreads preserve the original frame conditions.",
+      "Finite domains and numeric constants are unchanged from the original model configuration.",
+      "Persistent history booleans monitor the original action properties without restricting transitions; TLC checks the equivalent invariants and temporal monitor formulas."
+    ],
+    "constants": {
+      "MaxFaults": 2,
+      "MaxAgent": 2
+    },
+    "invariants": [
+      "TypeOK",
+      "NoProviderTalk",
+      "AlwaysBack",
+      "HonestErrorsInvariant",
+      "AgentLandsInvariant",
+      "NavSurvivesAssistantInvariant",
+      "RouteKeptOnFailureInvariant"
+    ],
+    "temporal": [
+      "CheckedTemporal"
+    ],
+    "temporalProperties": [
+      "HonestErrors",
+      "AgentLands",
+      "NavSurvivesAssistant",
+      "RouteKeptOnFailure",
+      "SelfHealing",
+      "AgentServed"
+    ],
+    "currentChecks": [
+      {
+        "invariant": "NoProviderTalk",
+        "expected": "violation",
+        "init": "checkerCurrentInit",
+        "step": "step"
+      },
+      {
+        "invariant": "AlwaysBack",
+        "expected": "pass",
+        "init": "checkerCurrentInit",
+        "step": "step"
+      },
+      {
+        "invariant": "HonestErrorsInvariant",
+        "expected": "violation",
+        "init": "checkerCurrentInit",
+        "step": "step"
+      },
+      {
+        "invariant": "AgentLandsInvariant",
+        "expected": "pass",
+        "init": "checkerCurrentInit",
+        "step": "step"
+      },
+      {
+        "invariant": "NavSurvivesAssistantInvariant",
+        "expected": "violation",
+        "init": "checkerCurrentInit",
+        "step": "step"
+      },
+      {
+        "invariant": "RouteKeptOnFailureInvariant",
+        "expected": "violation",
+        "init": "checkerCurrentInit",
+        "step": "step"
+      }
+    ],
+    "currentTemporalChecks": [
+      {
+        "property": "CheckedHonestErrors",
+        "expected": "violation",
+        "init": "checkerCurrentInit",
+        "step": "step",
+        "fairness": "Fairness",
+        "sourceProperty": "HonestErrors"
+      },
+      {
+        "property": "CheckedAgentLands",
+        "expected": "pass",
+        "init": "checkerCurrentInit",
+        "step": "step",
+        "fairness": "Fairness",
+        "sourceProperty": "AgentLands"
+      },
+      {
+        "property": "CheckedNavSurvivesAssistant",
+        "expected": "violation",
+        "init": "checkerCurrentInit",
+        "step": "step",
+        "fairness": "Fairness",
+        "sourceProperty": "NavSurvivesAssistant"
+      },
+      {
+        "property": "CheckedRouteKeptOnFailure",
+        "expected": "violation",
+        "init": "checkerCurrentInit",
+        "step": "step",
+        "fairness": "Fairness",
+        "sourceProperty": "RouteKeptOnFailure"
+      },
+      {
+        "property": "CheckedSelfHealing",
+        "expected": "violation",
+        "init": "checkerCurrentInit",
+        "step": "step",
+        "fairness": "Fairness",
+        "sourceProperty": "SelfHealing"
+      },
+      {
+        "property": "CheckedAgentServed",
+        "expected": "violation",
+        "init": "checkerCurrentInit",
+        "step": "step",
+        "fairness": "Fairness",
+        "sourceProperty": "AgentServed"
+      }
+    ],
+    "legacySource": {
+      "path": "docs/flow-redesign-2026-11/tla/Maps.tla",
+      "sha256": "1c7ff06f5e67169f4bbdf5d3db180a35cff4be9fd41ca25647b6c72a24b6eb5e",
+      "definitions": [
+        "Screens",
+        "Causes",
+        "vars",
+        "TypeOK",
+        "ServiceUp",
+        "Cause",
+        "Shown",
+        "Init",
+        "Connect",
+        "Connected",
+        "OpenMaps",
+        "Search",
+        "PickPlace",
+        "Directions",
+        "Start",
+        "Arrive",
+        "Back",
+        "LeaveMaps",
+        "OffRoute",
+        "OpenAssistant",
+        "CloseAssistant",
+        "AgentAsks",
+        "AgentResult",
+        "Fault",
+        "Heal",
+        "Subscribe",
+        "Owner",
+        "Next",
+        "Spec",
+        "NoProviderTalk",
+        "HonestErrors",
+        "AlwaysBack",
+        "SelfHealing",
+        "AgentLands",
+        "AgentServed",
+        "NavSurvivesAssistant",
+        "RouteKeptOnFailure"
+      ]
+    },
+    "actionProperties": [
+      {
+        "property": "HonestErrors",
+        "relation": "HonestErrorsRelation",
+        "invariant": "HonestErrorsInvariant"
+      },
+      {
+        "property": "AgentLands",
+        "relation": "AgentLandsRelation",
+        "invariant": "AgentLandsInvariant"
+      },
+      {
+        "property": "NavSurvivesAssistant",
+        "relation": "NavSurvivesAssistantRelation",
+        "invariant": "NavSurvivesAssistantInvariant"
+      },
+      {
+        "property": "RouteKeptOnFailure",
+        "relation": "RouteKeptOnFailureRelation",
+        "invariant": "RouteKeptOnFailureInvariant"
+      }
+    ]
+  },
+  {
+    "path": "specs/quint/legacy/ChatInput.qnt",
+    "module": "ChatInput",
+    "init": "checkerInit",
+    "step": "step",
+    "invariant": "safety",
+    "tests": [
+      "outsideGuardTest",
+      "backOrderTest",
+      "currentLeakTest",
+      "currentStrayTest",
+      "currentBackTest",
+      "currentOneTouchTest"
+    ],
+    "sources": [
+      "apps/app/src/prototype/model.js",
+      "apps/app/src/prototype/chat-overlay-motion-adapter.ts"
+    ],
+    "abstractions": [
+      "Historical current/proposed design comparison at source ef9fbf7cd7, not a runtime conformance claim.",
+      "All original state variables are fields of s; immutable Design selects behavior; record spreads preserve the original frame conditions.",
+      "Finite domains and numeric constants are unchanged from the original model configuration."
+    ],
+    "constants": {},
+    "invariants": [
+      "TypeOK",
+      "NoLeak",
+      "NoStrayOpen",
+      "BackInOrder",
+      "DraftKept",
+      "FocusNeedsComposer",
+      "OneTouchDown"
+    ],
+    "temporal": [],
+    "temporalProperties": [],
+    "currentChecks": [
+      {
+        "invariant": "NoLeak",
+        "expected": "violation",
+        "init": "checkerCurrentInit",
+        "step": "step"
+      },
+      {
+        "invariant": "NoStrayOpen",
+        "expected": "violation",
+        "init": "checkerCurrentInit",
+        "step": "step"
+      },
+      {
+        "invariant": "BackInOrder",
+        "expected": "violation",
+        "init": "checkerCurrentInit",
+        "step": "step"
+      },
+      {
+        "invariant": "DraftKept",
+        "expected": "pass",
+        "init": "checkerCurrentInit",
+        "step": "step"
+      },
+      {
+        "invariant": "FocusNeedsComposer",
+        "expected": "pass",
+        "init": "checkerCurrentInit",
+        "step": "step"
+      },
+      {
+        "invariant": "OneTouchDown",
+        "expected": "violation",
+        "init": "checkerCurrentInit",
+        "step": "step"
+      }
+    ],
+    "currentTemporalChecks": [],
+    "legacySource": {
+      "path": "docs/ui-refresh-2026-11/tla/ChatInput.tla",
+      "sha256": "787b9d23980741f0dfc0b7852fe9ba8f5992c93b59d1c04e031cafc2d9f4ce32",
+      "definitions": [
+        "Views",
+        "Modes",
+        "Origins",
+        "Rest",
+        "vars",
+        "Raised",
+        "Guarded",
+        "TypeOK",
+        "Init",
+        "Ghosts",
+        "TapAlpha",
+        "TapType",
+        "FocusComposer",
+        "TypeText",
+        "Send",
+        "ImeHide",
+        "Activate",
+        "TapOutside",
+        "SwipeUp",
+        "GrabUp",
+        "GrabDown",
+        "LeaveView",
+        "Back",
+        "OpenView",
+        "Next",
+        "Spec",
+        "NoLeak",
+        "NoStrayOpen",
+        "BackInOrder",
+        "DraftKept",
+        "FocusNeedsComposer",
+        "OneTouchDown"
+      ]
+    }
+  },
+  {
+    "path": "specs/quint/legacy/HomeLayout.qnt",
+    "module": "HomeLayout",
+    "init": "checkerInit",
+    "step": "step",
+    "invariant": "safety",
+    "tests": [
+      "stableGridTest",
+      "dateLineTest",
+      "negativeGridDivisionTest",
+      "currentGridShiftTest",
+      "currentEmptyCardsTest"
+    ],
+    "sources": [
+      "apps/app/src/prototype/template.html",
+      "apps/app/src/prototype/phone.css",
+      "apps/app/src/runtime/dock-clearance.ts"
+    ],
+    "abstractions": [
+      "Historical current/proposed design comparison at source ef9fbf7cd7, not a runtime conformance claim.",
+      "All original state variables are fields of s; immutable Design selects behavior; record spreads preserve the original frame conditions.",
+      "Finite domains and numeric constants are unchanged from the original model configuration."
+    ],
+    "constants": {},
+    "invariants": [
+      "TypeOK",
+      "GridStable",
+      "CardsHaveContent",
+      "NoLoadingCards",
+      "TopNeverBlank",
+      "SetupOnlyWhenNeeded"
+    ],
+    "temporal": [],
+    "temporalProperties": [],
+    "currentChecks": [
+      {
+        "invariant": "GridStable",
+        "expected": "violation",
+        "init": "checkerCurrentInit",
+        "step": "step"
+      },
+      {
+        "invariant": "CardsHaveContent",
+        "expected": "violation",
+        "init": "checkerCurrentInit",
+        "step": "step"
+      },
+      {
+        "invariant": "NoLoadingCards",
+        "expected": "violation",
+        "init": "checkerCurrentInit",
+        "step": "step"
+      },
+      {
+        "invariant": "TopNeverBlank",
+        "expected": "pass",
+        "init": "checkerCurrentInit",
+        "step": "step"
+      },
+      {
+        "invariant": "SetupOnlyWhenNeeded",
+        "expected": "pass",
+        "init": "checkerCurrentInit",
+        "step": "step"
+      }
+    ],
+    "currentTemporalChecks": [],
+    "legacySource": {
+      "path": "docs/ui-refresh-2026-11/tla/HomeLayout.tla",
+      "sha256": "605ce2eb6654b8ba734feb47e21d60ec964679310e956a5d637097990824da34",
+      "definitions": [
+        "H",
+        "G",
+        "PadTop",
+        "Short",
+        "Tall",
+        "Fixed",
+        "CalStates",
+        "FlowStates",
+        "MailStates",
+        "Docks",
+        "vars",
+        "Google",
+        "Shown",
+        "DateLine",
+        "SetupLink",
+        "HasContent",
+        "Loading",
+        "Max",
+        "Clear",
+        "MeasuredRest",
+        "RowH",
+        "GridTop",
+        "TypeOK",
+        "Init",
+        "Source",
+        "Next",
+        "Spec",
+        "GridStable",
+        "CardsHaveContent",
+        "NoLoadingCards",
+        "TopNeverBlank",
+        "SetupOnlyWhenNeeded"
+      ]
+    }
+  },
+  {
+    "path": "specs/quint/legacy/SettingsNav.qnt",
+    "module": "SettingsNav",
+    "init": "checkerInit",
+    "step": "step",
+    "invariant": "safety",
+    "tests": [
+      "confirmDestructionTest",
+      "navigationTest",
+      "currentInfoRowsTest",
+      "currentUnconfirmedSignOutTest",
+      "currentMirrorPageTest"
+    ],
+    "sources": [
+      "apps/app/src/prototype/model.js",
+      "apps/app/src/prototype/settings-adapter.ts"
+    ],
+    "abstractions": [
+      "Historical current/proposed design comparison at source ef9fbf7cd7, not a runtime conformance claim.",
+      "All original state variables are fields of s; immutable Design selects behavior; record spreads preserve the original frame conditions.",
+      "Finite domains and numeric constants are unchanged from the original model configuration."
+    ],
+    "constants": {},
+    "invariants": [
+      "TypeOK",
+      "NoInfoRows",
+      "AtMostOneStatus",
+      "NoMirrorPages",
+      "NoEmptyPages",
+      "SingleEntry",
+      "ConfirmBeforeDestroy",
+      "Shallow"
+    ],
+    "temporal": [],
+    "temporalProperties": [],
+    "currentChecks": [
+      {
+        "invariant": "NoInfoRows",
+        "expected": "violation",
+        "init": "checkerCurrentInit",
+        "step": "step"
+      },
+      {
+        "invariant": "AtMostOneStatus",
+        "expected": "pass",
+        "init": "checkerCurrentInit",
+        "step": "step"
+      },
+      {
+        "invariant": "NoMirrorPages",
+        "expected": "violation",
+        "init": "checkerCurrentInit",
+        "step": "step"
+      },
+      {
+        "invariant": "NoEmptyPages",
+        "expected": "pass",
+        "init": "checkerCurrentInit",
+        "step": "step"
+      },
+      {
+        "invariant": "SingleEntry",
+        "expected": "violation",
+        "init": "checkerCurrentInit",
+        "step": "step"
+      },
+      {
+        "invariant": "ConfirmBeforeDestroy",
+        "expected": "violation",
+        "init": "checkerCurrentInit",
+        "step": "step"
+      },
+      {
+        "invariant": "Shallow",
+        "expected": "pass",
+        "init": "checkerCurrentInit",
+        "step": "step"
+      }
+    ],
+    "currentTemporalChecks": [],
+    "legacySource": {
+      "path": "docs/ui-refresh-2026-11/tla/SettingsNav.tla",
+      "sha256": "26748554948e2698750a2e903c54f4dcc7acff2614fffaefb21edb7547d20218",
+      "definitions": [
+        "R",
+        "Label",
+        "Kind",
+        "Target",
+        "CurTop",
+        "CurPage",
+        "PropTop",
+        "PropPage",
+        "Page",
+        "Pages",
+        "AllRows",
+        "vars",
+        "Here",
+        "TypeOK",
+        "Init",
+        "Open",
+        "Back",
+        "Destroy",
+        "Answer",
+        "Next",
+        "Spec",
+        "Controls",
+        "NoInfoRows",
+        "AtMostOneStatus",
+        "NoMirrorPages",
+        "NoEmptyPages",
+        "SingleEntry",
+        "ConfirmBeforeDestroy",
+        "Shallow"
+      ]
+    }
+  }
+]

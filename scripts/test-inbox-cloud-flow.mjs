@@ -11,7 +11,7 @@ import {test} from 'node:test';
 import {ServiceReadCache} from '../apps/app/src/runtime/service-read-cache.ts';
 import vm from 'node:vm';
 import {readFile} from 'node:fs/promises';
-import {stripTypeScriptTypes} from 'node:module';
+import {stripTypeScriptTypes} from '../test/support/strip-types.mjs';
 import {composerKind,composerContent,reviewBinding,reviewBindingRefusal, InboxOperation } from '../apps/app/src/runtime/inbox-operation.ts';
 import { reviewMailAttachment } from '../apps/app/src/runtime/inbox-attachment.ts';
 import { reviewMailContext, validateMailContext } from '../apps/app/src/runtime/reviewed-mail-context.ts';
@@ -50,7 +50,7 @@ const backgroundSelections=[];
 const controller={getCloudClient:()=>session?{client,sessionId:session,credentialId:'fixture-credential'}:null,getSnapshot:()=>({session:{sessionId:agent},cloudAccount:session?{environment:'production',userId:'fixture-owner',sessionId:session,credentialId:'fixture-credential'}:null}),subscribe:fn=>{listeners.add(fn);return()=>listeners.delete(fn);},rejectCloudSession:()=>false,open:()=>{}};
 class Shell{renderVals(){return {};}constructor(){this.st={q:null,compose:null};}componentDidMount(){}componentWillUnmount(){}vset(_,p){Object.assign(this.st,p);}}
 const views={inbox:{state:{}}};
-const strip=async(file,name)=>{let source=await readFile(new URL(`../apps/app/src/prototype/${file}`,import.meta.url),'utf8');source=source.replace(/^import .*;\n/gm,'').replace(/^export (?=(?:async )?function |const |let |interface |type )/gm,'')+`\n${[].concat(name).map(n=>`globalThis.${n}=${n};`).join('')}`;return '{'+stripTypeScriptTypes(source,{mode:'transform'})+'}';};
+const strip=async(file,name)=>{let source=await readFile(new URL(`../apps/app/src/prototype/${file}`,import.meta.url),'utf8');source=source.replace(/^import .*;\n/gm,'').replace(/^export (?=(?:async )?function |const |let |interface |type )/gm,'')+`\n${[].concat(name).map(n=>`globalThis.${n}=${n};`).join('')}`;return '{'+stripTypeScriptTypes(source,{mode:'strip'})+'}';};
 const windowFixture={addEventListener:(name,fn)=>events.push({name,fn}),removeEventListener:()=>{},dispatchEvent:event=>{events.push({dispatched:event.type,detail:event.detail});return true;},confirm:()=>confirmAnswer};
 class CustomEvent{constructor(type,init){this.type=type;this.detail=init?.detail;}}
 let latestDraftEdit=null;
@@ -179,7 +179,9 @@ console.log('PASS: Inbox auto-load, Refresh, provider paging, Sent folder, unrea
 
 // A new adapter instance represents a reload: restore only the current owner's retained inbox.
 // Deliberately cross local midnight: the retained timestamp is unchanged while its label includes the prior date.
-const restoreNow=new Date(2026,10,2,0,0,15).getTime(),cachedAt=restoreNow-30000,cachedReadLabel=whenLabel(cachedAt,restoreNow);
+// Today's 00:00:15 keeps the restored row inside the 30-day window later checks read on the real clock; yesterday's in the first 15 s of a day, so the row is never in the future.
+const restoreDay=new Date();if(Date.now()<new Date(restoreDay).setHours(0,0,15,0))restoreDay.setDate(restoreDay.getDate()-1);
+const restoreNow=restoreDay.setHours(0,0,15,0),cachedAt=restoreNow-30000,cachedReadLabel=whenLabel(cachedAt,restoreNow);
 assert.notEqual(cachedReadLabel,formatTime(new Date(cachedAt)),'prior-day label includes its date');
 const retainedMailbox={accounts:[{connectionId:'grant-a',label:'Fixture account',connected:true,grantedCapabilities:['google.gmail.triage']}],selected:'grant-a',spamTrashSearch:false,lists:[{key:'old-session-key',at:cachedAt,firstPageRevision:null,messages:[mail('retained-unread',{unread:true})],query:'in:inbox',cursor:null,revision:'old-revision',cursors:[],newerMail:false,status:'Retained inbox'}],bodies:[]};
 sandbox.serviceReadCache=async()=>({get:async key=>key==='gmail:mailbox'?{value:structuredClone(retainedMailbox)}:null,put:async()=>{},clear:async()=>{}});

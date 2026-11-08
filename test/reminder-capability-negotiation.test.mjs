@@ -1,13 +1,13 @@
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
-import {stripTypeScriptTypes} from 'node:module';
+import {stripTypeScriptTypes} from './support/strip-types.mjs';
 import {runInNewContext} from 'node:vm';
 import {spawnSync} from 'node:child_process';
 import test from 'node:test';
 
 // The product's standard node --test entry must load its real TypeScript client.
-if(!process.execArgv.some((arg,i)=>arg==='--import'&&process.execArgv[i+1]==='tsx')||!process.execArgv.includes('--experimental-transform-types')){
- const child=spawnSync(process.execPath,['--import','tsx','--experimental-transform-types',process.argv[1]],{stdio:'inherit',timeout:30000});
+if(!process.execArgv.some((arg,i)=>arg==='--import'&&process.execArgv[i+1]==='tsx')){
+ const child=spawnSync(process.execPath,['--import','tsx',process.argv[1]],{stdio:'inherit',timeout:30000});
  if(child.error)throw child.error;
  if(child.signal)throw Error(`Capability test stopped with ${child.signal}`);
  process.exit(child.status??1);

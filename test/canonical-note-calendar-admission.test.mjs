@@ -1,4 +1,4 @@
-import test from 'node:test';import assert from 'node:assert/strict';import {readFileSync} from 'node:fs';import {stripTypeScriptTypes} from 'node:module';
+import test from 'node:test';import assert from 'node:assert/strict';import {readFileSync} from 'node:fs';import {stripTypeScriptTypes} from './support/strip-types.mjs';
 const source=readFileSync('apps/app/src/prototype/canonical-notes-ui.ts','utf8');
 const start=source.indexOf(' private async scheduleDraft('),end=source.indexOf(' /** Speech recognition',start);assert.ok(start>=0&&end>start);
 const method=stripTypeScriptTypes('class Subject{'+source.slice(start,end)+'}',{mode:'transform'});

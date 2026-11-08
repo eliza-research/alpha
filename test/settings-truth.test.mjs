@@ -1,4 +1,4 @@
-import test from 'node:test';import assert from 'node:assert/strict';import {readFileSync} from 'node:fs';import {stripTypeScriptTypes} from 'node:module';
+import test from 'node:test';import assert from 'node:assert/strict';import {readFileSync} from 'node:fs';import {stripTypeScriptTypes} from './support/strip-types.mjs';
 // Dependency-free Settings wording, evaluated without the renderer.
 const source=readFileSync('apps/app/src/prototype/settings-adapter.ts','utf8');
 const region=source.slice(source.indexOf('// settings-facts:begin'),source.indexOf('// settings-facts:end'));
@@ -73,15 +73,18 @@ test('the automatic update check is due a day after the last answered check',()=
 });
 test('dead-end and negative Settings rows are gone from the adapter',()=>{
  for(const row of ["info('Other connectors'","info('Personality settings'","info('Runtime'","info('Display only'","info('Delivery timing'","'Last change'"])assert.ok(!source.includes(row),row);
- // Their notices stay as toasts only, so no state is kept for a row.
- assert.doesNotMatch(source,/gmailNotice|roleNotice/);
+ // The revised groups expose controls and diagnostics, without a device-facts summary page.
+ assert.doesNotMatch(source,/row\('(?:Security patch|Do Not Disturb|Delivery timing)'/);
 });
 test('the Google accounts sheet has no Gmail notification settings button: Android lists Gmail with Alpha\'s other channels',()=>{
  assert.doesNotMatch(readFileSync('apps/app/src/runtime/google-connection-ui.tsx','utf8'),/Gmail notification settings|gmailNotificationSettings/);
  assert.doesNotMatch(readFileSync('apps/app/src/runtime/gmail-background.ts','utf8'),/gmailNotificationSettings/);
 });
-test('Scheduled digests has one Settings entry, the top-level row',()=>{
- assert.equal((source.match(/label:'Scheduled digests'/g)??[]).length,1);
+test('scheduled summaries opens from the Workflows app settings',()=>{
+ assert.match(source,/\['Workflows','workflows'\]/);
+ const app=source.slice(source.indexOf("if(appSettingsPage==='workflows')"),source.indexOf('const permissions:Record',source.indexOf("if(appSettingsPage==='workflows')")));
+ assert.equal((app.match(/label:'Scheduled summaries'/g)??[]).length,1);
+ assert.match(app,/window\.dispatchEvent\(new Event\('alpha:hosted-digests'\)\)/);
  assert.doesNotMatch(source,/\bdigests\b *=|hosted\(\)\.available/);
 });
 test('prototype-only sheets (memory wipe, Wi-Fi password, forget network) never reach the renderer',()=>{
@@ -103,10 +106,12 @@ test('native system facts are read without new permissions and are omitted when 
  for(const permission of ['ACCESS_WIFI_STATE','CHANGE_WIFI_STATE','BLUETOOTH_CONNECT','READ_PHONE_STATE','WRITE_SECURE_SETTINGS','ACCESS_NOTIFICATION_POLICY'])assert.doesNotMatch(manifest,new RegExp(`<uses-permission[^>]*android\\.permission\\.${permission}"(?![^>]*tools:node="remove")`),permission);
 });
 
-test('Cloud privacy facts describe AI and speech without model-navigation claims',()=>{
- assert.deepEqual(m.cloudPrivacyRow('Leaves this device'),['Shared with Cloud','Messages and selected content when you use AI']);
- assert.deepEqual(m.cloudPrivacyRow('On-device model'),['Voice','Recordings for transcription and text for playback, when used']);
- assert.equal(m.cloudPrivacyRow('Manage Alpha permissions'),null);
+test('the grouped Privacy page retains permission review and action-review controls',()=>{
+ assert.match(source,/\['Privacy', \['Set up Alpha access', 'Review phone actions first'\]\]/);
+ assert.match(source,/'Set up Alpha access': 'App permissions'/);
+ assert.match(source,/name === 'Set up Alpha access'[^\n]+activeSettingsCategory='settings-privacy';api\.set\(\{page:'settings-permissions'\}\)/);
+ assert.match(source,/title:'App permissions',backLabel:'Back to Privacy'/);
+ assert.match(source,/if\(key==='settings-apps'\)/,'app permissions remain separate from the app catalog');
 });
 
 test('Cloud privacy hero includes speech while retaining native and offline/startup truth',async()=>{
@@ -135,17 +140,15 @@ test('production Settings refuses Developer routes and preserves real About diag
  assert.equal(m.settingsPage('character',false),null);
  assert.match(source,/rows: settingsNavigationRows\(group\.rows, developerTools\)/);
 });
-test('one Developer gate: a development server build opened with ?tools=1, never the product',()=>{
+test('one Developer gate requires a development-server build and tools=1',()=>{
  const profile=readFileSync('apps/app/src/browser/dev-profile.ts','utf8');
  assert.match(profile,/export const developerTools=devSurfacesEnabled&&new URLSearchParams\(location\.search\)\.get\('tools'\)==='1';/);
  assert.match(profile,/const devSurfacesEnabled:boolean=import\.meta\.env!==undefined&&import\.meta\.env\.DEV===true&&/);
- // Every developer-only Settings row reads the same gate, not a test-mocks or dev-surface flag alone.
- for(const row of ["if(developerTools&&!Capacitor.isNativePlatform())groups.push({...group([{kNav:true,label:'Calendar backups'","if(developerTools)page.groups.push(group([{kNav:true,label:'Try mock mode'","if(developerTools&&recovery.length)page.groups.push(group([info('Saved data needs recovery'","if(developerTools)agentRows.push(action('Details',","if(native&&developerTools&&state.page==='agent-recovery-details')"])assert.ok(source.includes(row),row);
- assert.doesNotMatch(source,/(testMocksEnabled|devSurfacesEnabled)[^;\n]{0,40}(Calendar backups|Try mock mode|Saved data needs recovery|Update channel)/);
+ assert.match(source,/if\(developerTools\)page\.groups\.push\(group\(\[\{kNav:true,label:'Try mock mode'/);
+ assert.match(source,/if\(developerTools&&recovery\.length\)/);
+ assert.match(source,/if\(native&&developerTools&&state\.page==='agent-recovery-details'\)/);
 });
-test('explicit developer surfaces retain Developer navigation and route',()=>{
- const rows=[{label:'Developer'},{label:'About'}];
- assert.equal(m.settingsNavigationRows(rows,true),rows);
+test('explicit developer surfaces retain the Developer route',()=>{
  assert.equal(m.settingsPage('developer',true),'developer');
 });
 

@@ -1,0 +1,1883 @@
+{
+  "schemaVersion": 1,
+  "recordedAt": "2026-11-07T21:29:03.108Z",
+  "sourceBaseline": "875f5a8550935c5ca1797cea4ea38e7c7759ca54",
+  "upstream": "b25d8aef2916385c571f4367e099809254fde0bb",
+  "interpretation": "Finite model verification and selected source conformance. Complete implementation refinement remains a separate obligation.",
+  "integrated": {
+    "passed": true,
+    "models": 58,
+    "scenarios": 396,
+    "phases": 174,
+    "seed": "20261107",
+    "maxSamples": 80,
+    "maxSteps": 40,
+    "canary": {
+      "detected": true,
+      "exitCode": 1
+    },
+    "sourceInventorySha256": "93dd3f2667ee2bc605b751bfd6c5f79aafe38a2efd7ede6b5a3922685bd003b3",
+    "checks": [
+      {
+        "model": "Application",
+        "phase": "typecheck",
+        "passed": true,
+        "exitCode": 0,
+        "modelSha256": "0d56e154f69d8e7339393ed6f2e08388394064acac846f5f8e29ff2bc1cce998"
+      },
+      {
+        "model": "Application",
+        "phase": "scenarios",
+        "passed": true,
+        "exitCode": 0,
+        "modelSha256": "0d56e154f69d8e7339393ed6f2e08388394064acac846f5f8e29ff2bc1cce998"
+      },
+      {
+        "model": "Application",
+        "phase": "simulation",
+        "passed": true,
+        "exitCode": 0,
+        "modelSha256": "0d56e154f69d8e7339393ed6f2e08388394064acac846f5f8e29ff2bc1cce998"
+      },
+      {
+        "model": "ShellNavigation",
+        "phase": "typecheck",
+        "passed": true,
+        "exitCode": 0,
+        "modelSha256": "650e306549de4c5a8bc73971061522abb7479f349d4ad0f081344f4ecccbd799"
+      },
+      {
+        "model": "ShellNavigation",
+        "phase": "scenarios",
+        "passed": true,
+        "exitCode": 0,
+        "modelSha256": "650e306549de4c5a8bc73971061522abb7479f349d4ad0f081344f4ecccbd799"
+      },
+      {
+        "model": "ShellNavigation",
+        "phase": "simulation",
+        "passed": true,
+        "exitCode": 0,
+        "modelSha256": "650e306549de4c5a8bc73971061522abb7479f349d4ad0f081344f4ecccbd799"
+      },
+      {
+        "model": "StartupPermissions",
+        "phase": "typecheck",
+        "passed": true,
+        "exitCode": 0,
+        "modelSha256": "63118b980fcd4363b0d98aaa874c0dea21b57f4b2e37139b6fdc7933ff574be5"
+      },
+      {
+        "model": "StartupPermissions",
+        "phase": "scenarios",
+        "passed": true,
+        "exitCode": 0,
+        "modelSha256": "63118b980fcd4363b0d98aaa874c0dea21b57f4b2e37139b6fdc7933ff574be5"
+      },
+      {
+        "model": "StartupPermissions",
+        "phase": "simulation",
+        "passed": true,
+        "exitCode": 0,
+        "modelSha256": "63118b980fcd4363b0d98aaa874c0dea21b57f4b2e37139b6fdc7933ff574be5"
+      },
+      {
+        "model": "AssistantConversation",
+        "phase": "typecheck",
+        "passed": true,
+        "exitCode": 0,
+        "modelSha256": "bc257c2d58d9d5ecb0c1bae2f1ee0fc7f08bb6a2d8cc1b611a073400625c9742"
+      },
+      {
+        "model": "AssistantConversation",
+        "phase": "scenarios",
+        "passed": true,
+        "exitCode": 0,
+        "modelSha256": "bc257c2d58d9d5ecb0c1bae2f1ee0fc7f08bb6a2d8cc1b611a073400625c9742"
+      },
+      {
+        "model": "AssistantConversation",
+        "phase": "simulation",
+        "passed": true,
+        "exitCode": 0,
+        "modelSha256": "bc257c2d58d9d5ecb0c1bae2f1ee0fc7f08bb6a2d8cc1b611a073400625c9742"
+      },
+      {
+        "model": "NotesLifecycle",
+        "phase": "typecheck",
+        "passed": true,
+        "exitCode": 0,
+        "modelSha256": "c5c04f500a05a3d789017c47a1af34255ed9328d935aeca2633ed7c24a209a75"
+      },
+      {
+        "model": "NotesLifecycle",
+        "phase": "scenarios",
+        "passed": true,
+        "exitCode": 0,
+        "modelSha256": "c5c04f500a05a3d789017c47a1af34255ed9328d935aeca2633ed7c24a209a75"
+      },
+      {
+        "model": "NotesLifecycle",
+        "phase": "simulation",
+        "passed": true,
+        "exitCode": 0,
+        "modelSha256": "c5c04f500a05a3d789017c47a1af34255ed9328d935aeca2633ed7c24a209a75"
+      },
+      {
+        "model": "BrowserSession",
+        "phase": "typecheck",
+        "passed": true,
+        "exitCode": 0,
+        "modelSha256": "a416ab2501f501d107a7a780292d836ad74d61c0742a25ab38469959b295341a"
+      },
+      {
+        "model": "BrowserSession",
+        "phase": "scenarios",
+        "passed": true,
+        "exitCode": 0,
+        "modelSha256": "a416ab2501f501d107a7a780292d836ad74d61c0742a25ab38469959b295341a"
+      },
+      {
+        "model": "BrowserSession",
+        "phase": "simulation",
+        "passed": true,
+        "exitCode": 0,
+        "modelSha256": "a416ab2501f501d107a7a780292d836ad74d61c0742a25ab38469959b295341a"
+      },
+      {
+        "model": "CredentialVault",
+        "phase": "typecheck",
+        "passed": true,
+        "exitCode": 0,
+        "modelSha256": "e33ee6fe62917b73889350250e6e29ef04f2b6b69602f5a48ae9364e887d192c"
+      },
+      {
+        "model": "CredentialVault",
+        "phase": "scenarios",
+        "passed": true,
+        "exitCode": 0,
+        "modelSha256": "e33ee6fe62917b73889350250e6e29ef04f2b6b69602f5a48ae9364e887d192c"
+      },
+      {
+        "model": "CredentialVault",
+        "phase": "simulation",
+        "passed": true,
+        "exitCode": 0,
+        "modelSha256": "e33ee6fe62917b73889350250e6e29ef04f2b6b69602f5a48ae9364e887d192c"
+      },
+      {
+        "model": "DevelopmentSurfaces",
+        "phase": "typecheck",
+        "passed": true,
+        "exitCode": 0,
+        "modelSha256": "8de5fe9a798a36f8e9692aa2507ec210ef695c0ada539c3816b9ff7b26d2e55e"
+      },
+      {
+        "model": "DevelopmentSurfaces",
+        "phase": "scenarios",
+        "passed": true,
+        "exitCode": 0,
+        "modelSha256": "8de5fe9a798a36f8e9692aa2507ec210ef695c0ada539c3816b9ff7b26d2e55e"
+      },
+      {
+        "model": "DevelopmentSurfaces",
+        "phase": "simulation",
+        "passed": true,
+        "exitCode": 0,
+        "modelSha256": "8de5fe9a798a36f8e9692aa2507ec210ef695c0ada539c3816b9ff7b26d2e55e"
+      },
+      {
+        "model": "FilesAndSharing",
+        "phase": "typecheck",
+        "passed": true,
+        "exitCode": 0,
+        "modelSha256": "83f21dc8069157bbeeddc736fbd5c9813557373381885e9dc81d336966ceb052"
+      },
+      {
+        "model": "FilesAndSharing",
+        "phase": "scenarios",
+        "passed": true,
+        "exitCode": 0,
+        "modelSha256": "83f21dc8069157bbeeddc736fbd5c9813557373381885e9dc81d336966ceb052"
+      },
+      {
+        "model": "FilesAndSharing",
+        "phase": "simulation",
+        "passed": true,
+        "exitCode": 0,
+        "modelSha256": "83f21dc8069157bbeeddc736fbd5c9813557373381885e9dc81d336966ceb052"
+      },
+      {
+        "model": "PreferencesAndPresentation",
+        "phase": "typecheck",
+        "passed": true,
+        "exitCode": 0,
+        "modelSha256": "d9e7d5f3f8778b8369f631a5e8d44fdfaf8fbc46e96f5993939249a18b8e435c"
+      },
+      {
+        "model": "PreferencesAndPresentation",
+        "phase": "scenarios",
+        "passed": true,
+        "exitCode": 0,
+        "modelSha256": "d9e7d5f3f8778b8369f631a5e8d44fdfaf8fbc46e96f5993939249a18b8e435c"
+      },
+      {
+        "model": "PreferencesAndPresentation",
+        "phase": "simulation",
+        "passed": true,
+        "exitCode": 0,
+        "modelSha256": "d9e7d5f3f8778b8369f631a5e8d44fdfaf8fbc46e96f5993939249a18b8e435c"
+      },
+      {
+        "model": "DurableStore",
+        "phase": "typecheck",
+        "passed": true,
+        "exitCode": 0,
+        "modelSha256": "f8a879f7b8ba92ee0febca06723e722103b1527eb0277d31826634cefc621c55"
+      },
+      {
+        "model": "DurableStore",
+        "phase": "scenarios",
+        "passed": true,
+        "exitCode": 0,
+        "modelSha256": "f8a879f7b8ba92ee0febca06723e722103b1527eb0277d31826634cefc621c55"
+      },
+      {
+        "model": "DurableStore",
+        "phase": "simulation",
+        "passed": true,
+        "exitCode": 0,
+        "modelSha256": "f8a879f7b8ba92ee0febca06723e722103b1527eb0277d31826634cefc621c55"
+      },
+      {
+        "model": "PermissionWalkthrough",
+        "phase": "typecheck",
+        "passed": true,
+        "exitCode": 0,
+        "modelSha256": "cbba2f4555695caa8a37b6bd8193d993bd708749495064afd50a7f575de94eec"
+      },
+      {
+        "model": "PermissionWalkthrough",
+        "phase": "scenarios",
+        "passed": true,
+        "exitCode": 0,
+        "modelSha256": "cbba2f4555695caa8a37b6bd8193d993bd708749495064afd50a7f575de94eec"
+      },
+      {
+        "model": "PermissionWalkthrough",
+        "phase": "simulation",
+        "passed": true,
+        "exitCode": 0,
+        "modelSha256": "cbba2f4555695caa8a37b6bd8193d993bd708749495064afd50a7f575de94eec"
+      },
+      {
+        "model": "DevelopmentDevice",
+        "phase": "typecheck",
+        "passed": true,
+        "exitCode": 0,
+        "modelSha256": "21a2de0503c260568bdd55664cfa1803f2649f780b74602a3e80ae755e02aa50"
+      },
+      {
+        "model": "DevelopmentDevice",
+        "phase": "scenarios",
+        "passed": true,
+        "exitCode": 0,
+        "modelSha256": "21a2de0503c260568bdd55664cfa1803f2649f780b74602a3e80ae755e02aa50"
+      },
+      {
+        "model": "DevelopmentDevice",
+        "phase": "simulation",
+        "passed": true,
+        "exitCode": 0,
+        "modelSha256": "21a2de0503c260568bdd55664cfa1803f2649f780b74602a3e80ae755e02aa50"
+      },
+      {
+        "model": "PermanentVoiceDeletion",
+        "phase": "typecheck",
+        "passed": true,
+        "exitCode": 0,
+        "modelSha256": "2c1c7a5b1b31c12632e3f4ec7e21c9a3213a0efb1ce06aa2864e2c6a9a1adc12"
+      },
+      {
+        "model": "PermanentVoiceDeletion",
+        "phase": "scenarios",
+        "passed": true,
+        "exitCode": 0,
+        "modelSha256": "2c1c7a5b1b31c12632e3f4ec7e21c9a3213a0efb1ce06aa2864e2c6a9a1adc12"
+      },
+      {
+        "model": "PermanentVoiceDeletion",
+        "phase": "simulation",
+        "passed": true,
+        "exitCode": 0,
+        "modelSha256": "2c1c7a5b1b31c12632e3f4ec7e21c9a3213a0efb1ce06aa2864e2c6a9a1adc12"
+      },
+      {
+        "model": "DevelopmentHost",
+        "phase": "typecheck",
+        "passed": true,
+        "exitCode": 0,
+        "modelSha256": "7937feb75f6b5aa419f1977b213c70d4148fc4e12dd82ee7d4fed75b47a4023c"
+      },
+      {
+        "model": "DevelopmentHost",
+        "phase": "scenarios",
+        "passed": true,
+        "exitCode": 0,
+        "modelSha256": "7937feb75f6b5aa419f1977b213c70d4148fc4e12dd82ee7d4fed75b47a4023c"
+      },
+      {
+        "model": "DevelopmentHost",
+        "phase": "simulation",
+        "passed": true,
+        "exitCode": 0,
+        "modelSha256": "7937feb75f6b5aa419f1977b213c70d4148fc4e12dd82ee7d4fed75b47a4023c"
+      },
+      {
+        "model": "FilesTree",
+        "phase": "typecheck",
+        "passed": true,
+        "exitCode": 0,
+        "modelSha256": "269f5dcecdb819730cda48cfb1a5408a5a9a46773c7d2bcd5dbef89869efe56d"
+      },
+      {
+        "model": "FilesTree",
+        "phase": "scenarios",
+        "passed": true,
+        "exitCode": 0,
+        "modelSha256": "269f5dcecdb819730cda48cfb1a5408a5a9a46773c7d2bcd5dbef89869efe56d"
+      },
+      {
+        "model": "FilesTree",
+        "phase": "simulation",
+        "passed": true,
+        "exitCode": 0,
+        "modelSha256": "269f5dcecdb819730cda48cfb1a5408a5a9a46773c7d2bcd5dbef89869efe56d"
+      },
+      {
+        "model": "CalendarPresentation",
+        "phase": "typecheck",
+        "passed": true,
+        "exitCode": 0,
+        "modelSha256": "78f927b07b6c4498e1be4a4e3b5fb6367259c80962e7c0e11802caa66fc210d1"
+      },
+      {
+        "model": "CalendarPresentation",
+        "phase": "scenarios",
+        "passed": true,
+        "exitCode": 0,
+        "modelSha256": "78f927b07b6c4498e1be4a4e3b5fb6367259c80962e7c0e11802caa66fc210d1"
+      },
+      {
+        "model": "CalendarPresentation",
+        "phase": "simulation",
+        "passed": true,
+        "exitCode": 0,
+        "modelSha256": "78f927b07b6c4498e1be4a4e3b5fb6367259c80962e7c0e11802caa66fc210d1"
+      },
+      {
+        "model": "DraftDispatch",
+        "phase": "typecheck",
+        "passed": true,
+        "exitCode": 0,
+        "modelSha256": "15a49b369aef076216a1ac898d9386db98859e5e64cf8648c66f4039eb26f3f0"
+      },
+      {
+        "model": "DraftDispatch",
+        "phase": "scenarios",
+        "passed": true,
+        "exitCode": 0,
+        "modelSha256": "15a49b369aef076216a1ac898d9386db98859e5e64cf8648c66f4039eb26f3f0"
+      },
+      {
+        "model": "DraftDispatch",
+        "phase": "simulation",
+        "passed": true,
+        "exitCode": 0,
+        "modelSha256": "15a49b369aef076216a1ac898d9386db98859e5e64cf8648c66f4039eb26f3f0"
+      },
+      {
+        "model": "NotificationCollection",
+        "phase": "typecheck",
+        "passed": true,
+        "exitCode": 0,
+        "modelSha256": "9778dd6a9c523c52c23e267e40387b7b8b0240076f2065ad66269588440dfa0a"
+      },
+      {
+        "model": "NotificationCollection",
+        "phase": "scenarios",
+        "passed": true,
+        "exitCode": 0,
+        "modelSha256": "9778dd6a9c523c52c23e267e40387b7b8b0240076f2065ad66269588440dfa0a"
+      },
+      {
+        "model": "NotificationCollection",
+        "phase": "simulation",
+        "passed": true,
+        "exitCode": 0,
+        "modelSha256": "9778dd6a9c523c52c23e267e40387b7b8b0240076f2065ad66269588440dfa0a"
+      },
+      {
+        "model": "CallbackLanding",
+        "phase": "typecheck",
+        "passed": true,
+        "exitCode": 0,
+        "modelSha256": "6d492cc4743615c9c1b3526605e6118b3adfbc648f726fc70041a61105e6fd00"
+      },
+      {
+        "model": "CallbackLanding",
+        "phase": "scenarios",
+        "passed": true,
+        "exitCode": 0,
+        "modelSha256": "6d492cc4743615c9c1b3526605e6118b3adfbc648f726fc70041a61105e6fd00"
+      },
+      {
+        "model": "CallbackLanding",
+        "phase": "simulation",
+        "passed": true,
+        "exitCode": 0,
+        "modelSha256": "6d492cc4743615c9c1b3526605e6118b3adfbc648f726fc70041a61105e6fd00"
+      },
+      {
+        "model": "IdentitySession",
+        "phase": "typecheck",
+        "passed": true,
+        "exitCode": 0,
+        "modelSha256": "b8a70378a34a6f6a3aa3f078a83646f302dfbba108f19741394b3636d4a89bd6"
+      },
+      {
+        "model": "IdentitySession",
+        "phase": "scenarios",
+        "passed": true,
+        "exitCode": 0,
+        "modelSha256": "b8a70378a34a6f6a3aa3f078a83646f302dfbba108f19741394b3636d4a89bd6"
+      },
+      {
+        "model": "IdentitySession",
+        "phase": "simulation",
+        "passed": true,
+        "exitCode": 0,
+        "modelSha256": "b8a70378a34a6f6a3aa3f078a83646f302dfbba108f19741394b3636d4a89bd6"
+      },
+      {
+        "model": "ServiceAuthorization",
+        "phase": "typecheck",
+        "passed": true,
+        "exitCode": 0,
+        "modelSha256": "eb7dc4ba9fb94c97c290cced81bea39c062b78bd4bd99f506cd4fc6b86fe908b"
+      },
+      {
+        "model": "ServiceAuthorization",
+        "phase": "scenarios",
+        "passed": true,
+        "exitCode": 0,
+        "modelSha256": "eb7dc4ba9fb94c97c290cced81bea39c062b78bd4bd99f506cd4fc6b86fe908b"
+      },
+      {
+        "model": "ServiceAuthorization",
+        "phase": "simulation",
+        "passed": true,
+        "exitCode": 0,
+        "modelSha256": "eb7dc4ba9fb94c97c290cced81bea39c062b78bd4bd99f506cd4fc6b86fe908b"
+      },
+      {
+        "model": "GoogleAccounts",
+        "phase": "typecheck",
+        "passed": true,
+        "exitCode": 0,
+        "modelSha256": "d55b53bf12226ab07ec3664901ee232ebc8dfb4020d35ca26fc268e66d7a217a"
+      },
+      {
+        "model": "GoogleAccounts",
+        "phase": "scenarios",
+        "passed": true,
+        "exitCode": 0,
+        "modelSha256": "d55b53bf12226ab07ec3664901ee232ebc8dfb4020d35ca26fc268e66d7a217a"
+      },
+      {
+        "model": "GoogleAccounts",
+        "phase": "simulation",
+        "passed": true,
+        "exitCode": 0,
+        "modelSha256": "d55b53bf12226ab07ec3664901ee232ebc8dfb4020d35ca26fc268e66d7a217a"
+      },
+      {
+        "model": "CalendarSync",
+        "phase": "typecheck",
+        "passed": true,
+        "exitCode": 0,
+        "modelSha256": "73bd465255129da2ebeb7eb39da2f0fcbac48b494275040689c28623ed379fd0"
+      },
+      {
+        "model": "CalendarSync",
+        "phase": "scenarios",
+        "passed": true,
+        "exitCode": 0,
+        "modelSha256": "73bd465255129da2ebeb7eb39da2f0fcbac48b494275040689c28623ed379fd0"
+      },
+      {
+        "model": "CalendarSync",
+        "phase": "simulation",
+        "passed": true,
+        "exitCode": 0,
+        "modelSha256": "73bd465255129da2ebeb7eb39da2f0fcbac48b494275040689c28623ed379fd0"
+      },
+      {
+        "model": "InboxDelivery",
+        "phase": "typecheck",
+        "passed": true,
+        "exitCode": 0,
+        "modelSha256": "8a3d063974ae94ae94c14f8959f04274328887a452a0c0b61260bc43608bd563"
+      },
+      {
+        "model": "InboxDelivery",
+        "phase": "scenarios",
+        "passed": true,
+        "exitCode": 0,
+        "modelSha256": "8a3d063974ae94ae94c14f8959f04274328887a452a0c0b61260bc43608bd563"
+      },
+      {
+        "model": "InboxDelivery",
+        "phase": "simulation",
+        "passed": true,
+        "exitCode": 0,
+        "modelSha256": "8a3d063974ae94ae94c14f8959f04274328887a452a0c0b61260bc43608bd563"
+      },
+      {
+        "model": "MapsNavigation",
+        "phase": "typecheck",
+        "passed": true,
+        "exitCode": 0,
+        "modelSha256": "93d2811f91af3e106ea65c76d864b5ba8d9befc436e967b6c4f8abd2018d2835"
+      },
+      {
+        "model": "MapsNavigation",
+        "phase": "scenarios",
+        "passed": true,
+        "exitCode": 0,
+        "modelSha256": "93d2811f91af3e106ea65c76d864b5ba8d9befc436e967b6c4f8abd2018d2835"
+      },
+      {
+        "model": "MapsNavigation",
+        "phase": "simulation",
+        "passed": true,
+        "exitCode": 0,
+        "modelSha256": "93d2811f91af3e106ea65c76d864b5ba8d9befc436e967b6c4f8abd2018d2835"
+      },
+      {
+        "model": "WorkflowExecution",
+        "phase": "typecheck",
+        "passed": true,
+        "exitCode": 0,
+        "modelSha256": "8503c84e1dc0a3961a2e52fd0b2b2e665025dac834a0bc57fd461a8a983c5027"
+      },
+      {
+        "model": "WorkflowExecution",
+        "phase": "scenarios",
+        "passed": true,
+        "exitCode": 0,
+        "modelSha256": "8503c84e1dc0a3961a2e52fd0b2b2e665025dac834a0bc57fd461a8a983c5027"
+      },
+      {
+        "model": "WorkflowExecution",
+        "phase": "simulation",
+        "passed": true,
+        "exitCode": 0,
+        "modelSha256": "8503c84e1dc0a3961a2e52fd0b2b2e665025dac834a0bc57fd461a8a983c5027"
+      },
+      {
+        "model": "NoticesAndCaches",
+        "phase": "typecheck",
+        "passed": true,
+        "exitCode": 0,
+        "modelSha256": "7621e4335a3ba2e8f6b917e57d51488539d8aac2982cbca1a49324f98784092a"
+      },
+      {
+        "model": "NoticesAndCaches",
+        "phase": "scenarios",
+        "passed": true,
+        "exitCode": 0,
+        "modelSha256": "7621e4335a3ba2e8f6b917e57d51488539d8aac2982cbca1a49324f98784092a"
+      },
+      {
+        "model": "NoticesAndCaches",
+        "phase": "simulation",
+        "passed": true,
+        "exitCode": 0,
+        "modelSha256": "7621e4335a3ba2e8f6b917e57d51488539d8aac2982cbca1a49324f98784092a"
+      },
+      {
+        "model": "BrowserSiteState",
+        "phase": "typecheck",
+        "passed": true,
+        "exitCode": 0,
+        "modelSha256": "89eeefd8c92172c22cc959de227280374c0997b2cea3ced8635770eceadf0946"
+      },
+      {
+        "model": "BrowserSiteState",
+        "phase": "scenarios",
+        "passed": true,
+        "exitCode": 0,
+        "modelSha256": "89eeefd8c92172c22cc959de227280374c0997b2cea3ced8635770eceadf0946"
+      },
+      {
+        "model": "BrowserSiteState",
+        "phase": "simulation",
+        "passed": true,
+        "exitCode": 0,
+        "modelSha256": "89eeefd8c92172c22cc959de227280374c0997b2cea3ced8635770eceadf0946"
+      },
+      {
+        "model": "BrowserReadingState",
+        "phase": "typecheck",
+        "passed": true,
+        "exitCode": 0,
+        "modelSha256": "068cee0c00bdc828feb7db3971af869a557aa6329490bacd21f93d410f5d24d8"
+      },
+      {
+        "model": "BrowserReadingState",
+        "phase": "scenarios",
+        "passed": true,
+        "exitCode": 0,
+        "modelSha256": "068cee0c00bdc828feb7db3971af869a557aa6329490bacd21f93d410f5d24d8"
+      },
+      {
+        "model": "BrowserReadingState",
+        "phase": "simulation",
+        "passed": true,
+        "exitCode": 0,
+        "modelSha256": "068cee0c00bdc828feb7db3971af869a557aa6329490bacd21f93d410f5d24d8"
+      },
+      {
+        "model": "BrowserDownloads",
+        "phase": "typecheck",
+        "passed": true,
+        "exitCode": 0,
+        "modelSha256": "5a2ca057cf96dd7c69bbf01c32ff42c70af7bc10508f7046259f1ebaa0380af4"
+      },
+      {
+        "model": "BrowserDownloads",
+        "phase": "scenarios",
+        "passed": true,
+        "exitCode": 0,
+        "modelSha256": "5a2ca057cf96dd7c69bbf01c32ff42c70af7bc10508f7046259f1ebaa0380af4"
+      },
+      {
+        "model": "BrowserDownloads",
+        "phase": "simulation",
+        "passed": true,
+        "exitCode": 0,
+        "modelSha256": "5a2ca057cf96dd7c69bbf01c32ff42c70af7bc10508f7046259f1ebaa0380af4"
+      },
+      {
+        "model": "ScanDocument",
+        "phase": "typecheck",
+        "passed": true,
+        "exitCode": 0,
+        "modelSha256": "16996acbd9bef3241f2becfa86ff4a4f6f3a20c5052db7f4330fd0c8ee1d24c9"
+      },
+      {
+        "model": "ScanDocument",
+        "phase": "scenarios",
+        "passed": true,
+        "exitCode": 0,
+        "modelSha256": "16996acbd9bef3241f2becfa86ff4a4f6f3a20c5052db7f4330fd0c8ee1d24c9"
+      },
+      {
+        "model": "ScanDocument",
+        "phase": "simulation",
+        "passed": true,
+        "exitCode": 0,
+        "modelSha256": "16996acbd9bef3241f2becfa86ff4a4f6f3a20c5052db7f4330fd0c8ee1d24c9"
+      },
+      {
+        "model": "NativeCredentialMutation",
+        "phase": "typecheck",
+        "passed": true,
+        "exitCode": 0,
+        "modelSha256": "a5d4c61221a57b76490018527bb409e15145accdd88a948469f6cc66d63f8f7a"
+      },
+      {
+        "model": "NativeCredentialMutation",
+        "phase": "scenarios",
+        "passed": true,
+        "exitCode": 0,
+        "modelSha256": "a5d4c61221a57b76490018527bb409e15145accdd88a948469f6cc66d63f8f7a"
+      },
+      {
+        "model": "NativeCredentialMutation",
+        "phase": "simulation",
+        "passed": true,
+        "exitCode": 0,
+        "modelSha256": "a5d4c61221a57b76490018527bb409e15145accdd88a948469f6cc66d63f8f7a"
+      },
+      {
+        "model": "PdfWorker",
+        "phase": "typecheck",
+        "passed": true,
+        "exitCode": 0,
+        "modelSha256": "7c5c1e292607f9889864a16b095c8844b906bfeae245064aa3efc9a627580561"
+      },
+      {
+        "model": "PdfWorker",
+        "phase": "scenarios",
+        "passed": true,
+        "exitCode": 0,
+        "modelSha256": "7c5c1e292607f9889864a16b095c8844b906bfeae245064aa3efc9a627580561"
+      },
+      {
+        "model": "PdfWorker",
+        "phase": "simulation",
+        "passed": true,
+        "exitCode": 0,
+        "modelSha256": "7c5c1e292607f9889864a16b095c8844b906bfeae245064aa3efc9a627580561"
+      },
+      {
+        "model": "ResidentRuntime",
+        "phase": "typecheck",
+        "passed": true,
+        "exitCode": 0,
+        "modelSha256": "7dcbfb079ccdabf1d5e0f246f88e0779ed87c082f834a1e521c88c679832f50b"
+      },
+      {
+        "model": "ResidentRuntime",
+        "phase": "scenarios",
+        "passed": true,
+        "exitCode": 0,
+        "modelSha256": "7dcbfb079ccdabf1d5e0f246f88e0779ed87c082f834a1e521c88c679832f50b"
+      },
+      {
+        "model": "ResidentRuntime",
+        "phase": "simulation",
+        "passed": true,
+        "exitCode": 0,
+        "modelSha256": "7dcbfb079ccdabf1d5e0f246f88e0779ed87c082f834a1e521c88c679832f50b"
+      },
+      {
+        "model": "VoiceSession",
+        "phase": "typecheck",
+        "passed": true,
+        "exitCode": 0,
+        "modelSha256": "f659c328f98b153b4f421af3e836e22068e22fb38fe21476b434b4579edbb75e"
+      },
+      {
+        "model": "VoiceSession",
+        "phase": "scenarios",
+        "passed": true,
+        "exitCode": 0,
+        "modelSha256": "f659c328f98b153b4f421af3e836e22068e22fb38fe21476b434b4579edbb75e"
+      },
+      {
+        "model": "VoiceSession",
+        "phase": "simulation",
+        "passed": true,
+        "exitCode": 0,
+        "modelSha256": "f659c328f98b153b4f421af3e836e22068e22fb38fe21476b434b4579edbb75e"
+      },
+      {
+        "model": "SpeechResources",
+        "phase": "typecheck",
+        "passed": true,
+        "exitCode": 0,
+        "modelSha256": "b66b60ca45c64d5c42cb139c5012a985aaa4499481f958b3e4ccb389b283a646"
+      },
+      {
+        "model": "SpeechResources",
+        "phase": "scenarios",
+        "passed": true,
+        "exitCode": 0,
+        "modelSha256": "b66b60ca45c64d5c42cb139c5012a985aaa4499481f958b3e4ccb389b283a646"
+      },
+      {
+        "model": "SpeechResources",
+        "phase": "simulation",
+        "passed": true,
+        "exitCode": 0,
+        "modelSha256": "b66b60ca45c64d5c42cb139c5012a985aaa4499481f958b3e4ccb389b283a646"
+      },
+      {
+        "model": "AlwaysOnListener",
+        "phase": "typecheck",
+        "passed": true,
+        "exitCode": 0,
+        "modelSha256": "30e6a7faeeec9fe69b7cf41f7a88e2970e1ed89fd427c09f71bb7b184d6744e4"
+      },
+      {
+        "model": "AlwaysOnListener",
+        "phase": "scenarios",
+        "passed": true,
+        "exitCode": 0,
+        "modelSha256": "30e6a7faeeec9fe69b7cf41f7a88e2970e1ed89fd427c09f71bb7b184d6744e4"
+      },
+      {
+        "model": "AlwaysOnListener",
+        "phase": "simulation",
+        "passed": true,
+        "exitCode": 0,
+        "modelSha256": "30e6a7faeeec9fe69b7cf41f7a88e2970e1ed89fd427c09f71bb7b184d6744e4"
+      },
+      {
+        "model": "ResetRecovery",
+        "phase": "typecheck",
+        "passed": true,
+        "exitCode": 0,
+        "modelSha256": "2e8480564b36086be7eded477170c64ff8a8b516310cafa8b6a287e7b57cc934"
+      },
+      {
+        "model": "ResetRecovery",
+        "phase": "scenarios",
+        "passed": true,
+        "exitCode": 0,
+        "modelSha256": "2e8480564b36086be7eded477170c64ff8a8b516310cafa8b6a287e7b57cc934"
+      },
+      {
+        "model": "ResetRecovery",
+        "phase": "simulation",
+        "passed": true,
+        "exitCode": 0,
+        "modelSha256": "2e8480564b36086be7eded477170c64ff8a8b516310cafa8b6a287e7b57cc934"
+      },
+      {
+        "model": "DeletionJournal",
+        "phase": "typecheck",
+        "passed": true,
+        "exitCode": 0,
+        "modelSha256": "b3223679ff4ba6b0b7c978336131113cff1b4f705abb9b15f11a5eb6791b2644"
+      },
+      {
+        "model": "DeletionJournal",
+        "phase": "scenarios",
+        "passed": true,
+        "exitCode": 0,
+        "modelSha256": "b3223679ff4ba6b0b7c978336131113cff1b4f705abb9b15f11a5eb6791b2644"
+      },
+      {
+        "model": "DeletionJournal",
+        "phase": "simulation",
+        "passed": true,
+        "exitCode": 0,
+        "modelSha256": "b3223679ff4ba6b0b7c978336131113cff1b4f705abb9b15f11a5eb6791b2644"
+      },
+      {
+        "model": "MediaLifecycle",
+        "phase": "typecheck",
+        "passed": true,
+        "exitCode": 0,
+        "modelSha256": "d24469b9057fd28851579e850b2b87e23d99cc1aa23a73ab009b834ca2b24181"
+      },
+      {
+        "model": "MediaLifecycle",
+        "phase": "scenarios",
+        "passed": true,
+        "exitCode": 0,
+        "modelSha256": "d24469b9057fd28851579e850b2b87e23d99cc1aa23a73ab009b834ca2b24181"
+      },
+      {
+        "model": "MediaLifecycle",
+        "phase": "simulation",
+        "passed": true,
+        "exitCode": 0,
+        "modelSha256": "d24469b9057fd28851579e850b2b87e23d99cc1aa23a73ab009b834ca2b24181"
+      },
+      {
+        "model": "DeviceActions",
+        "phase": "typecheck",
+        "passed": true,
+        "exitCode": 0,
+        "modelSha256": "e14156858e4b94f4bce466766761a84ede80cbef27429fab6dbb3c8de715bf5f"
+      },
+      {
+        "model": "DeviceActions",
+        "phase": "scenarios",
+        "passed": true,
+        "exitCode": 0,
+        "modelSha256": "e14156858e4b94f4bce466766761a84ede80cbef27429fab6dbb3c8de715bf5f"
+      },
+      {
+        "model": "DeviceActions",
+        "phase": "simulation",
+        "passed": true,
+        "exitCode": 0,
+        "modelSha256": "e14156858e4b94f4bce466766761a84ede80cbef27429fab6dbb3c8de715bf5f"
+      },
+      {
+        "model": "ApplicationComposition",
+        "phase": "typecheck",
+        "passed": true,
+        "exitCode": 0,
+        "modelSha256": "e96d97f95cfbf216c9e01860a103a4987b0c4b86466552aa1f4e37634a56fe50"
+      },
+      {
+        "model": "ApplicationComposition",
+        "phase": "scenarios",
+        "passed": true,
+        "exitCode": 0,
+        "modelSha256": "e96d97f95cfbf216c9e01860a103a4987b0c4b86466552aa1f4e37634a56fe50"
+      },
+      {
+        "model": "ApplicationComposition",
+        "phase": "simulation",
+        "passed": true,
+        "exitCode": 0,
+        "modelSha256": "e96d97f95cfbf216c9e01860a103a4987b0c4b86466552aa1f4e37634a56fe50"
+      },
+      {
+        "model": "NavigationProgress",
+        "phase": "typecheck",
+        "passed": true,
+        "exitCode": 0,
+        "modelSha256": "7e0136e9d20c5c646bbbd2e51fa892ca4bcfdbf01fc56e1bc84a1bb90250c907"
+      },
+      {
+        "model": "NavigationProgress",
+        "phase": "scenarios",
+        "passed": true,
+        "exitCode": 0,
+        "modelSha256": "7e0136e9d20c5c646bbbd2e51fa892ca4bcfdbf01fc56e1bc84a1bb90250c907"
+      },
+      {
+        "model": "NavigationProgress",
+        "phase": "simulation",
+        "passed": true,
+        "exitCode": 0,
+        "modelSha256": "7e0136e9d20c5c646bbbd2e51fa892ca4bcfdbf01fc56e1bc84a1bb90250c907"
+      },
+      {
+        "model": "ListenerLeaseRecovery",
+        "phase": "typecheck",
+        "passed": true,
+        "exitCode": 0,
+        "modelSha256": "f16874c95084870fee6e313478c43e9ccb7f0c8540507bbab705e9dc369f291f"
+      },
+      {
+        "model": "ListenerLeaseRecovery",
+        "phase": "scenarios",
+        "passed": true,
+        "exitCode": 0,
+        "modelSha256": "f16874c95084870fee6e313478c43e9ccb7f0c8540507bbab705e9dc369f291f"
+      },
+      {
+        "model": "ListenerLeaseRecovery",
+        "phase": "simulation",
+        "passed": true,
+        "exitCode": 0,
+        "modelSha256": "f16874c95084870fee6e313478c43e9ccb7f0c8540507bbab705e9dc369f291f"
+      },
+      {
+        "model": "StreamingPlayback",
+        "phase": "typecheck",
+        "passed": true,
+        "exitCode": 0,
+        "modelSha256": "1f7be667c3751d6d4b8512e9ca769b611f79f9a2148d4686007762d2d683ac9f"
+      },
+      {
+        "model": "StreamingPlayback",
+        "phase": "scenarios",
+        "passed": true,
+        "exitCode": 0,
+        "modelSha256": "1f7be667c3751d6d4b8512e9ca769b611f79f9a2148d4686007762d2d683ac9f"
+      },
+      {
+        "model": "StreamingPlayback",
+        "phase": "simulation",
+        "passed": true,
+        "exitCode": 0,
+        "modelSha256": "1f7be667c3751d6d4b8512e9ca769b611f79f9a2148d4686007762d2d683ac9f"
+      },
+      {
+        "model": "ResidentScheduling",
+        "phase": "typecheck",
+        "passed": true,
+        "exitCode": 0,
+        "modelSha256": "34be01963b079bd31bf8d3dffb362b416da1c7cacec06ec90b8e22a3a9322753"
+      },
+      {
+        "model": "ResidentScheduling",
+        "phase": "scenarios",
+        "passed": true,
+        "exitCode": 0,
+        "modelSha256": "34be01963b079bd31bf8d3dffb362b416da1c7cacec06ec90b8e22a3a9322753"
+      },
+      {
+        "model": "ResidentScheduling",
+        "phase": "simulation",
+        "passed": true,
+        "exitCode": 0,
+        "modelSha256": "34be01963b079bd31bf8d3dffb362b416da1c7cacec06ec90b8e22a3a9322753"
+      },
+      {
+        "model": "RendererRecovery",
+        "phase": "typecheck",
+        "passed": true,
+        "exitCode": 0,
+        "modelSha256": "e6c766e14f5dd94f6abc7453bc86df4200c330b141fecd6050972c0453aa6a69"
+      },
+      {
+        "model": "RendererRecovery",
+        "phase": "scenarios",
+        "passed": true,
+        "exitCode": 0,
+        "modelSha256": "e6c766e14f5dd94f6abc7453bc86df4200c330b141fecd6050972c0453aa6a69"
+      },
+      {
+        "model": "RendererRecovery",
+        "phase": "simulation",
+        "passed": true,
+        "exitCode": 0,
+        "modelSha256": "e6c766e14f5dd94f6abc7453bc86df4200c330b141fecd6050972c0453aa6a69"
+      },
+      {
+        "model": "VadSegmentation",
+        "phase": "typecheck",
+        "passed": true,
+        "exitCode": 0,
+        "modelSha256": "9e3a85009c49809533a4d00380ca74bb6490e31341f9a38fc2351ba2c769ecac"
+      },
+      {
+        "model": "VadSegmentation",
+        "phase": "scenarios",
+        "passed": true,
+        "exitCode": 0,
+        "modelSha256": "9e3a85009c49809533a4d00380ca74bb6490e31341f9a38fc2351ba2c769ecac"
+      },
+      {
+        "model": "VadSegmentation",
+        "phase": "simulation",
+        "passed": true,
+        "exitCode": 0,
+        "modelSha256": "9e3a85009c49809533a4d00380ca74bb6490e31341f9a38fc2351ba2c769ecac"
+      },
+      {
+        "model": "VoiceIpcAssembly",
+        "phase": "typecheck",
+        "passed": true,
+        "exitCode": 0,
+        "modelSha256": "ceb61433fd0e8a493289cd5caa3230dafdcde11e3ec6541d16afbe3d1b1e1061"
+      },
+      {
+        "model": "VoiceIpcAssembly",
+        "phase": "scenarios",
+        "passed": true,
+        "exitCode": 0,
+        "modelSha256": "ceb61433fd0e8a493289cd5caa3230dafdcde11e3ec6541d16afbe3d1b1e1061"
+      },
+      {
+        "model": "VoiceIpcAssembly",
+        "phase": "simulation",
+        "passed": true,
+        "exitCode": 0,
+        "modelSha256": "ceb61433fd0e8a493289cd5caa3230dafdcde11e3ec6541d16afbe3d1b1e1061"
+      },
+      {
+        "model": "ListenerLeaseProducer",
+        "phase": "typecheck",
+        "passed": true,
+        "exitCode": 0,
+        "modelSha256": "ea44cf2cc4a479ab08d9582b3f4cb3ef0a94e5b0c7baf88292e52f1747e4b332"
+      },
+      {
+        "model": "ListenerLeaseProducer",
+        "phase": "scenarios",
+        "passed": true,
+        "exitCode": 0,
+        "modelSha256": "ea44cf2cc4a479ab08d9582b3f4cb3ef0a94e5b0c7baf88292e52f1747e4b332"
+      },
+      {
+        "model": "ListenerLeaseProducer",
+        "phase": "simulation",
+        "passed": true,
+        "exitCode": 0,
+        "modelSha256": "ea44cf2cc4a479ab08d9582b3f4cb3ef0a94e5b0c7baf88292e52f1747e4b332"
+      },
+      {
+        "model": "SignIn",
+        "phase": "typecheck",
+        "passed": true,
+        "exitCode": 0,
+        "modelSha256": "364fcb97c6b4cfb52d0abece101288b6e1660a3d12746d2bb48ec82519dfdc3a"
+      },
+      {
+        "model": "SignIn",
+        "phase": "scenarios",
+        "passed": true,
+        "exitCode": 0,
+        "modelSha256": "364fcb97c6b4cfb52d0abece101288b6e1660a3d12746d2bb48ec82519dfdc3a"
+      },
+      {
+        "model": "SignIn",
+        "phase": "simulation",
+        "passed": true,
+        "exitCode": 0,
+        "modelSha256": "364fcb97c6b4cfb52d0abece101288b6e1660a3d12746d2bb48ec82519dfdc3a"
+      },
+      {
+        "model": "GoogleConnect",
+        "phase": "typecheck",
+        "passed": true,
+        "exitCode": 0,
+        "modelSha256": "c2ca972e037d8a9896c1e9893e76ac327a69ce861f21de2a2f573841f0c36f65"
+      },
+      {
+        "model": "GoogleConnect",
+        "phase": "scenarios",
+        "passed": true,
+        "exitCode": 0,
+        "modelSha256": "c2ca972e037d8a9896c1e9893e76ac327a69ce861f21de2a2f573841f0c36f65"
+      },
+      {
+        "model": "GoogleConnect",
+        "phase": "simulation",
+        "passed": true,
+        "exitCode": 0,
+        "modelSha256": "c2ca972e037d8a9896c1e9893e76ac327a69ce861f21de2a2f573841f0c36f65"
+      },
+      {
+        "model": "Calendar",
+        "phase": "typecheck",
+        "passed": true,
+        "exitCode": 0,
+        "modelSha256": "bebbde36bde9feb5293b4e72ce96a47f1fcd1ffdfaeaaf4a215ab5e8aaeee6bb"
+      },
+      {
+        "model": "Calendar",
+        "phase": "scenarios",
+        "passed": true,
+        "exitCode": 0,
+        "modelSha256": "bebbde36bde9feb5293b4e72ce96a47f1fcd1ffdfaeaaf4a215ab5e8aaeee6bb"
+      },
+      {
+        "model": "Calendar",
+        "phase": "simulation",
+        "passed": true,
+        "exitCode": 0,
+        "modelSha256": "bebbde36bde9feb5293b4e72ce96a47f1fcd1ffdfaeaaf4a215ab5e8aaeee6bb"
+      },
+      {
+        "model": "Maps",
+        "phase": "typecheck",
+        "passed": true,
+        "exitCode": 0,
+        "modelSha256": "c06ef54c74d0657f321aa46f0a75d23aa68b16f0eaeb1d58c1b683799c455bf4"
+      },
+      {
+        "model": "Maps",
+        "phase": "scenarios",
+        "passed": true,
+        "exitCode": 0,
+        "modelSha256": "c06ef54c74d0657f321aa46f0a75d23aa68b16f0eaeb1d58c1b683799c455bf4"
+      },
+      {
+        "model": "Maps",
+        "phase": "simulation",
+        "passed": true,
+        "exitCode": 0,
+        "modelSha256": "c06ef54c74d0657f321aa46f0a75d23aa68b16f0eaeb1d58c1b683799c455bf4"
+      },
+      {
+        "model": "ChatInput",
+        "phase": "typecheck",
+        "passed": true,
+        "exitCode": 0,
+        "modelSha256": "fa72569c0b89a19caa03cb7df6735a9cbee22d07786a5406aeb00e68952f4d49"
+      },
+      {
+        "model": "ChatInput",
+        "phase": "scenarios",
+        "passed": true,
+        "exitCode": 0,
+        "modelSha256": "fa72569c0b89a19caa03cb7df6735a9cbee22d07786a5406aeb00e68952f4d49"
+      },
+      {
+        "model": "ChatInput",
+        "phase": "simulation",
+        "passed": true,
+        "exitCode": 0,
+        "modelSha256": "fa72569c0b89a19caa03cb7df6735a9cbee22d07786a5406aeb00e68952f4d49"
+      },
+      {
+        "model": "HomeLayout",
+        "phase": "typecheck",
+        "passed": true,
+        "exitCode": 0,
+        "modelSha256": "1cfd954a2f30e31ebbc6128d19ec7f95f66e17205450b2900973df7204d8cf01"
+      },
+      {
+        "model": "HomeLayout",
+        "phase": "scenarios",
+        "passed": true,
+        "exitCode": 0,
+        "modelSha256": "1cfd954a2f30e31ebbc6128d19ec7f95f66e17205450b2900973df7204d8cf01"
+      },
+      {
+        "model": "HomeLayout",
+        "phase": "simulation",
+        "passed": true,
+        "exitCode": 0,
+        "modelSha256": "1cfd954a2f30e31ebbc6128d19ec7f95f66e17205450b2900973df7204d8cf01"
+      },
+      {
+        "model": "SettingsNav",
+        "phase": "typecheck",
+        "passed": true,
+        "exitCode": 0,
+        "modelSha256": "3813b0700fca337c3726d53d042314922548c76d58fc5a60d70dcd3a2e9b931c"
+      },
+      {
+        "model": "SettingsNav",
+        "phase": "scenarios",
+        "passed": true,
+        "exitCode": 0,
+        "modelSha256": "3813b0700fca337c3726d53d042314922548c76d58fc5a60d70dcd3a2e9b931c"
+      },
+      {
+        "model": "SettingsNav",
+        "phase": "simulation",
+        "passed": true,
+        "exitCode": 0,
+        "modelSha256": "3813b0700fca337c3726d53d042314922548c76d58fc5a60d70dcd3a2e9b931c"
+      }
+    ]
+  },
+  "runtimeSafety": {
+    "schemaVersion": 1,
+    "recordedAt": "2026-11-07T21:29:22.210Z",
+    "evidenceClass": "bounded symbolic safety",
+    "quintVersion": "0.33.1",
+    "apalacheVersion": "0.62.4",
+    "modelCount": 51,
+    "passed": true,
+    "models": [
+      {
+        "module": "AlwaysOnListener",
+        "path": "specs/quint/native/AlwaysOnListener.qnt",
+        "sha256": "30e6a7faeeec9fe69b7cf41f7a88e2970e1ed89fd427c09f71bb7b184d6744e4",
+        "receipt": "test-results/quint-native/proof-results.json",
+        "hashProvenance": "before/after checker invocation",
+        "steps": 4,
+        "passed": true
+      },
+      {
+        "module": "Application",
+        "path": "specs/quint/application/Application.qnt",
+        "sha256": "0d56e154f69d8e7339393ed6f2e08388394064acac846f5f8e29ff2bc1cce998",
+        "receipt": "test-results/quint/application-symbolic-final.json",
+        "hashProvenance": "before/after checker invocation",
+        "steps": 4,
+        "passed": true
+      },
+      {
+        "module": "ApplicationComposition",
+        "path": "specs/quint/native/ApplicationComposition.qnt",
+        "sha256": "e96d97f95cfbf216c9e01860a103a4987b0c4b86466552aa1f4e37634a56fe50",
+        "receipt": "test-results/quint-composition/validation-final.json",
+        "hashProvenance": "composition and six dependencies before/after every phase",
+        "steps": 4,
+        "passed": true
+      },
+      {
+        "module": "AssistantConversation",
+        "path": "specs/quint/application/AssistantConversation.qnt",
+        "sha256": "bc257c2d58d9d5ecb0c1bae2f1ee0fc7f08bb6a2d8cc1b611a073400625c9742",
+        "receipt": "test-results/quint/application-symbolic-final.json",
+        "hashProvenance": "before/after checker invocation",
+        "steps": 4,
+        "passed": true
+      },
+      {
+        "module": "BrowserDownloads",
+        "path": "specs/quint/services/BrowserDownloads.qnt",
+        "sha256": "5a2ca057cf96dd7c69bbf01c32ff42c70af7bc10508f7046259f1ebaa0380af4",
+        "receipt": "test-results/quint-services/results.json",
+        "hashProvenance": "captured during archival after direct CLI checking",
+        "steps": 4,
+        "passed": true
+      },
+      {
+        "module": "BrowserReadingState",
+        "path": "specs/quint/services/BrowserReadingState.qnt",
+        "sha256": "068cee0c00bdc828feb7db3971af869a557aa6329490bacd21f93d410f5d24d8",
+        "receipt": "test-results/quint-services/results.json",
+        "hashProvenance": "captured during archival after direct CLI checking",
+        "steps": 4,
+        "passed": true
+      },
+      {
+        "module": "BrowserSession",
+        "path": "specs/quint/application/BrowserSession.qnt",
+        "sha256": "a416ab2501f501d107a7a780292d836ad74d61c0742a25ab38469959b295341a",
+        "receipt": "test-results/quint/application-symbolic-final.json",
+        "hashProvenance": "before/after checker invocation",
+        "steps": 4,
+        "passed": true
+      },
+      {
+        "module": "BrowserSiteState",
+        "path": "specs/quint/services/BrowserSiteState.qnt",
+        "sha256": "89eeefd8c92172c22cc959de227280374c0997b2cea3ced8635770eceadf0946",
+        "receipt": "test-results/quint-services/results.json",
+        "hashProvenance": "captured during archival after direct CLI checking",
+        "steps": 4,
+        "passed": true
+      },
+      {
+        "module": "CalendarPresentation",
+        "path": "specs/quint/application/CalendarPresentation.qnt",
+        "sha256": "78f927b07b6c4498e1be4a4e3b5fb6367259c80962e7c0e11802caa66fc210d1",
+        "receipt": "test-results/quint/application-symbolic-final.json",
+        "hashProvenance": "before/after checker invocation",
+        "steps": 4,
+        "passed": true
+      },
+      {
+        "module": "CalendarSync",
+        "path": "specs/quint/services/CalendarSync.qnt",
+        "sha256": "73bd465255129da2ebeb7eb39da2f0fcbac48b494275040689c28623ed379fd0",
+        "receipt": "test-results/quint-native/producer-validation.json",
+        "hashProvenance": "model before/after each phase, sources before model batch and after all batches",
+        "steps": 4,
+        "passed": true
+      },
+      {
+        "module": "CallbackLanding",
+        "path": "specs/quint/application/CallbackLanding.qnt",
+        "sha256": "6d492cc4743615c9c1b3526605e6118b3adfbc648f726fc70041a61105e6fd00",
+        "receipt": "test-results/quint/callback-symbolic.json",
+        "hashProvenance": "before/after checker invocation",
+        "steps": 4,
+        "passed": true
+      },
+      {
+        "module": "CredentialVault",
+        "path": "specs/quint/application/CredentialVault.qnt",
+        "sha256": "e33ee6fe62917b73889350250e6e29ef04f2b6b69602f5a48ae9364e887d192c",
+        "receipt": "test-results/quint/application-symbolic-final.json",
+        "hashProvenance": "before/after checker invocation",
+        "steps": 4,
+        "passed": true
+      },
+      {
+        "module": "DeletionJournal",
+        "path": "specs/quint/native/DeletionJournal.qnt",
+        "sha256": "b3223679ff4ba6b0b7c978336131113cff1b4f705abb9b15f11a5eb6791b2644",
+        "receipt": "test-results/quint-native/proof-results.json",
+        "hashProvenance": "before/after checker invocation",
+        "steps": 4,
+        "passed": true
+      },
+      {
+        "module": "DevelopmentDevice",
+        "path": "specs/quint/application/DevelopmentDevice.qnt",
+        "sha256": "21a2de0503c260568bdd55664cfa1803f2649f780b74602a3e80ae755e02aa50",
+        "receipt": "test-results/quint/application-symbolic-final.json",
+        "hashProvenance": "before/after checker invocation",
+        "steps": 4,
+        "passed": true
+      },
+      {
+        "module": "DevelopmentHost",
+        "path": "specs/quint/application/DevelopmentHost.qnt",
+        "sha256": "7937feb75f6b5aa419f1977b213c70d4148fc4e12dd82ee7d4fed75b47a4023c",
+        "receipt": "test-results/quint/application-symbolic-final.json",
+        "hashProvenance": "before/after checker invocation",
+        "steps": 4,
+        "passed": true
+      },
+      {
+        "module": "DevelopmentSurfaces",
+        "path": "specs/quint/application/DevelopmentSurfaces.qnt",
+        "sha256": "8de5fe9a798a36f8e9692aa2507ec210ef695c0ada539c3816b9ff7b26d2e55e",
+        "receipt": "test-results/quint/application-symbolic-final.json",
+        "hashProvenance": "before/after checker invocation",
+        "steps": 4,
+        "passed": true
+      },
+      {
+        "module": "DeviceActions",
+        "path": "specs/quint/native/DeviceActions.qnt",
+        "sha256": "e14156858e4b94f4bce466766761a84ede80cbef27429fab6dbb3c8de715bf5f",
+        "receipt": "test-results/quint-native/proof-results.json",
+        "hashProvenance": "before/after checker invocation",
+        "steps": 4,
+        "passed": true
+      },
+      {
+        "module": "DraftDispatch",
+        "path": "specs/quint/application/DraftDispatch.qnt",
+        "sha256": "15a49b369aef076216a1ac898d9386db98859e5e64cf8648c66f4039eb26f3f0",
+        "receipt": "test-results/quint/application-symbolic-final.json",
+        "hashProvenance": "before/after checker invocation",
+        "steps": 4,
+        "passed": true
+      },
+      {
+        "module": "DurableStore",
+        "path": "specs/quint/application/DurableStore.qnt",
+        "sha256": "f8a879f7b8ba92ee0febca06723e722103b1527eb0277d31826634cefc621c55",
+        "receipt": "test-results/quint/application-symbolic-final.json",
+        "hashProvenance": "before/after checker invocation",
+        "steps": 4,
+        "passed": true
+      },
+      {
+        "module": "FilesAndSharing",
+        "path": "specs/quint/application/FilesAndSharing.qnt",
+        "sha256": "83f21dc8069157bbeeddc736fbd5c9813557373381885e9dc81d336966ceb052",
+        "receipt": "test-results/quint/application-symbolic-final.json",
+        "hashProvenance": "before/after checker invocation",
+        "steps": 4,
+        "passed": true
+      },
+      {
+        "module": "FilesTree",
+        "path": "specs/quint/application/FilesTree.qnt",
+        "sha256": "269f5dcecdb819730cda48cfb1a5408a5a9a46773c7d2bcd5dbef89869efe56d",
+        "receipt": "test-results/quint/application-symbolic-final.json",
+        "hashProvenance": "before/after checker invocation",
+        "steps": 4,
+        "passed": true
+      },
+      {
+        "module": "GoogleAccounts",
+        "path": "specs/quint/services/GoogleAccounts.qnt",
+        "sha256": "d55b53bf12226ab07ec3664901ee232ebc8dfb4020d35ca26fc268e66d7a217a",
+        "receipt": "test-results/quint-services/results.json",
+        "hashProvenance": "captured during archival after direct CLI checking",
+        "steps": 4,
+        "passed": true
+      },
+      {
+        "module": "IdentitySession",
+        "path": "specs/quint/services/IdentitySession.qnt",
+        "sha256": "b8a70378a34a6f6a3aa3f078a83646f302dfbba108f19741394b3636d4a89bd6",
+        "receipt": "test-results/quint-services/results.json",
+        "hashProvenance": "captured during archival after direct CLI checking",
+        "steps": 4,
+        "passed": true
+      },
+      {
+        "module": "InboxDelivery",
+        "path": "specs/quint/services/InboxDelivery.qnt",
+        "sha256": "8a3d063974ae94ae94c14f8959f04274328887a452a0c0b61260bc43608bd563",
+        "receipt": "test-results/quint-native/producer-validation.json",
+        "hashProvenance": "model before/after each phase, sources before model batch and after all batches",
+        "steps": 4,
+        "passed": true
+      },
+      {
+        "module": "ListenerLeaseProducer",
+        "path": "specs/quint/native/ListenerLeaseProducer.qnt",
+        "sha256": "ea44cf2cc4a479ab08d9582b3f4cb3ef0a94e5b0c7baf88292e52f1747e4b332",
+        "receipt": "test-results/quint-native/producer-validation.json",
+        "hashProvenance": "model before/after each phase, sources before model batch and after all batches",
+        "steps": 4,
+        "passed": true
+      },
+      {
+        "module": "ListenerLeaseRecovery",
+        "path": "specs/quint/native/ListenerLeaseRecovery.qnt",
+        "sha256": "f16874c95084870fee6e313478c43e9ccb7f0c8540507bbab705e9dc369f291f",
+        "receipt": "test-results/quint-native/proof-results.json",
+        "hashProvenance": "before/after checker invocation",
+        "steps": 4,
+        "passed": true
+      },
+      {
+        "module": "MapsNavigation",
+        "path": "specs/quint/services/MapsNavigation.qnt",
+        "sha256": "93d2811f91af3e106ea65c76d864b5ba8d9befc436e967b6c4f8abd2018d2835",
+        "receipt": "test-results/quint-services/results.json",
+        "hashProvenance": "captured during archival after direct CLI checking",
+        "steps": 4,
+        "passed": true
+      },
+      {
+        "module": "MediaLifecycle",
+        "path": "specs/quint/native/MediaLifecycle.qnt",
+        "sha256": "d24469b9057fd28851579e850b2b87e23d99cc1aa23a73ab009b834ca2b24181",
+        "receipt": "test-results/quint-native/proof-results.json",
+        "hashProvenance": "before/after checker invocation",
+        "steps": 4,
+        "passed": true
+      },
+      {
+        "module": "NativeCredentialMutation",
+        "path": "specs/quint/services/NativeCredentialMutation.qnt",
+        "sha256": "a5d4c61221a57b76490018527bb409e15145accdd88a948469f6cc66d63f8f7a",
+        "receipt": "test-results/quint-services/results.json",
+        "hashProvenance": "captured during archival after direct CLI checking",
+        "steps": 4,
+        "passed": true
+      },
+      {
+        "module": "NavigationProgress",
+        "path": "specs/quint/native/NavigationProgress.qnt",
+        "sha256": "7e0136e9d20c5c646bbbd2e51fa892ca4bcfdbf01fc56e1bc84a1bb90250c907",
+        "receipt": "test-results/quint-native/proof-results.json",
+        "hashProvenance": "before/after checker invocation",
+        "steps": 4,
+        "passed": true
+      },
+      {
+        "module": "NotesLifecycle",
+        "path": "specs/quint/application/NotesLifecycle.qnt",
+        "sha256": "c5c04f500a05a3d789017c47a1af34255ed9328d935aeca2633ed7c24a209a75",
+        "receipt": "test-results/quint/application-symbolic-final.json",
+        "hashProvenance": "before/after checker invocation",
+        "steps": 4,
+        "passed": true
+      },
+      {
+        "module": "NoticesAndCaches",
+        "path": "specs/quint/services/NoticesAndCaches.qnt",
+        "sha256": "7621e4335a3ba2e8f6b917e57d51488539d8aac2982cbca1a49324f98784092a",
+        "receipt": "test-results/quint-services/results.json",
+        "hashProvenance": "captured during archival after direct CLI checking",
+        "steps": 4,
+        "passed": true
+      },
+      {
+        "module": "NotificationCollection",
+        "path": "specs/quint/application/NotificationCollection.qnt",
+        "sha256": "9778dd6a9c523c52c23e267e40387b7b8b0240076f2065ad66269588440dfa0a",
+        "receipt": "test-results/quint/application-symbolic-final.json",
+        "hashProvenance": "before/after checker invocation",
+        "steps": 4,
+        "passed": true
+      },
+      {
+        "module": "PdfWorker",
+        "path": "specs/quint/services/PdfWorker.qnt",
+        "sha256": "7c5c1e292607f9889864a16b095c8844b906bfeae245064aa3efc9a627580561",
+        "receipt": "test-results/quint-services/results.json",
+        "hashProvenance": "captured during archival after direct CLI checking",
+        "steps": 4,
+        "passed": true
+      },
+      {
+        "module": "PermanentVoiceDeletion",
+        "path": "specs/quint/application/PermanentVoiceDeletion.qnt",
+        "sha256": "2c1c7a5b1b31c12632e3f4ec7e21c9a3213a0efb1ce06aa2864e2c6a9a1adc12",
+        "receipt": "test-results/quint/application-symbolic-final.json",
+        "hashProvenance": "before/after checker invocation",
+        "steps": 4,
+        "passed": true
+      },
+      {
+        "module": "PermissionWalkthrough",
+        "path": "specs/quint/application/PermissionWalkthrough.qnt",
+        "sha256": "cbba2f4555695caa8a37b6bd8193d993bd708749495064afd50a7f575de94eec",
+        "receipt": "test-results/quint/application-symbolic-final.json",
+        "hashProvenance": "before/after checker invocation",
+        "steps": 4,
+        "passed": true
+      },
+      {
+        "module": "PreferencesAndPresentation",
+        "path": "specs/quint/application/PreferencesAndPresentation.qnt",
+        "sha256": "d9e7d5f3f8778b8369f631a5e8d44fdfaf8fbc46e96f5993939249a18b8e435c",
+        "receipt": "test-results/quint/application-symbolic-final.json",
+        "hashProvenance": "before/after checker invocation",
+        "steps": 4,
+        "passed": true
+      },
+      {
+        "module": "RendererRecovery",
+        "path": "specs/quint/native/RendererRecovery.qnt",
+        "sha256": "e6c766e14f5dd94f6abc7453bc86df4200c330b141fecd6050972c0453aa6a69",
+        "receipt": "test-results/quint-native/recovery-vad-supplemental.json",
+        "hashProvenance": "before/after model validation batch",
+        "steps": 4,
+        "passed": true
+      },
+      {
+        "module": "ResetRecovery",
+        "path": "specs/quint/native/ResetRecovery.qnt",
+        "sha256": "2e8480564b36086be7eded477170c64ff8a8b516310cafa8b6a287e7b57cc934",
+        "receipt": "test-results/quint-native/proof-results.json",
+        "hashProvenance": "before/after checker invocation",
+        "steps": 4,
+        "passed": true
+      },
+      {
+        "module": "ResidentRuntime",
+        "path": "specs/quint/native/ResidentRuntime.qnt",
+        "sha256": "7dcbfb079ccdabf1d5e0f246f88e0779ed87c082f834a1e521c88c679832f50b",
+        "receipt": "test-results/quint-native/proof-results.json",
+        "hashProvenance": "before/after checker invocation",
+        "steps": 4,
+        "passed": true
+      },
+      {
+        "module": "ResidentScheduling",
+        "path": "specs/quint/native/ResidentScheduling.qnt",
+        "sha256": "34be01963b079bd31bf8d3dffb362b416da1c7cacec06ec90b8e22a3a9322753",
+        "receipt": "test-results/quint-native/proof-results.json",
+        "hashProvenance": "before/after checker invocation",
+        "steps": 4,
+        "passed": true
+      },
+      {
+        "module": "ScanDocument",
+        "path": "specs/quint/services/ScanDocument.qnt",
+        "sha256": "16996acbd9bef3241f2becfa86ff4a4f6f3a20c5052db7f4330fd0c8ee1d24c9",
+        "receipt": "test-results/quint-services/results.json",
+        "hashProvenance": "captured during archival after direct CLI checking",
+        "steps": 4,
+        "passed": true
+      },
+      {
+        "module": "ServiceAuthorization",
+        "path": "specs/quint/services/ServiceAuthorization.qnt",
+        "sha256": "eb7dc4ba9fb94c97c290cced81bea39c062b78bd4bd99f506cd4fc6b86fe908b",
+        "receipt": "test-results/quint-services/results.json",
+        "hashProvenance": "captured during archival after direct CLI checking",
+        "steps": 4,
+        "passed": true
+      },
+      {
+        "module": "ShellNavigation",
+        "path": "specs/quint/application/ShellNavigation.qnt",
+        "sha256": "650e306549de4c5a8bc73971061522abb7479f349d4ad0f081344f4ecccbd799",
+        "receipt": "test-results/quint/application-symbolic-final.json",
+        "hashProvenance": "before/after checker invocation",
+        "steps": 4,
+        "passed": true
+      },
+      {
+        "module": "SpeechResources",
+        "path": "specs/quint/native/SpeechResources.qnt",
+        "sha256": "b66b60ca45c64d5c42cb139c5012a985aaa4499481f958b3e4ccb389b283a646",
+        "receipt": "test-results/quint-native/proof-results.json",
+        "hashProvenance": "before/after checker invocation",
+        "steps": 4,
+        "passed": true
+      },
+      {
+        "module": "StartupPermissions",
+        "path": "specs/quint/application/StartupPermissions.qnt",
+        "sha256": "63118b980fcd4363b0d98aaa874c0dea21b57f4b2e37139b6fdc7933ff574be5",
+        "receipt": "test-results/quint/application-symbolic-final.json",
+        "hashProvenance": "before/after checker invocation",
+        "steps": 4,
+        "passed": true
+      },
+      {
+        "module": "StreamingPlayback",
+        "path": "specs/quint/native/StreamingPlayback.qnt",
+        "sha256": "1f7be667c3751d6d4b8512e9ca769b611f79f9a2148d4686007762d2d683ac9f",
+        "receipt": "test-results/quint-native/proof-results.json",
+        "hashProvenance": "before/after checker invocation",
+        "steps": 4,
+        "passed": true
+      },
+      {
+        "module": "VadSegmentation",
+        "path": "specs/quint/native/VadSegmentation.qnt",
+        "sha256": "9e3a85009c49809533a4d00380ca74bb6490e31341f9a38fc2351ba2c769ecac",
+        "receipt": "test-results/quint-native/recovery-vad-supplemental.json",
+        "hashProvenance": "before/after model validation batch",
+        "steps": 4,
+        "passed": true
+      },
+      {
+        "module": "VoiceIpcAssembly",
+        "path": "specs/quint/native/VoiceIpcAssembly.qnt",
+        "sha256": "ceb61433fd0e8a493289cd5caa3230dafdcde11e3ec6541d16afbe3d1b1e1061",
+        "receipt": "test-results/quint-native/VoiceIpcAssembly.cas-correction.json",
+        "hashProvenance": "before/after corrected-model validation",
+        "steps": 4,
+        "passed": true
+      },
+      {
+        "module": "VoiceSession",
+        "path": "specs/quint/native/VoiceSession.qnt",
+        "sha256": "f659c328f98b153b4f421af3e836e22068e22fb38fe21476b434b4579edbb75e",
+        "receipt": "test-results/quint-native/proof-results.json",
+        "hashProvenance": "before/after checker invocation",
+        "steps": 4,
+        "passed": true
+      },
+      {
+        "module": "WorkflowExecution",
+        "path": "specs/quint/services/WorkflowExecution.qnt",
+        "sha256": "8503c84e1dc0a3961a2e52fd0b2b2e665025dac834a0bc57fd461a8a983c5027",
+        "receipt": "test-results/quint-services/results.json",
+        "hashProvenance": "captured during archival after direct CLI checking",
+        "steps": 4,
+        "passed": true
+      }
+    ]
+  },
+  "legacy": {
+    "quintVersion": "0.33.1",
+    "apalacheVersion": "0.62.4",
+    "evidence": "Finite-state checks of the migrated proposed transition graphs with declared fairness. Per-property comparison aliases are definitional extensions.",
+    "models": [
+      {
+        "module": "SignIn",
+        "currentModelSha256": "364fcb97c6b4cfb52d0abece101288b6e1660a3d12746d2bb48ec82519dfdc3a",
+        "distinctStates": 10173,
+        "historicalDistinctStates": 10173,
+        "safety": "passed",
+        "temporalProperties": [
+          "ReachesHome"
+        ],
+        "temporal": "passed",
+        "tests": 7,
+        "log": "test-results/quint-legacy/SignIn.log",
+        "logSha256": "367ccb17ab614be69be1679bd8f82daad90bb22d106319314ad073d2f449d688"
+      },
+      {
+        "module": "GoogleConnect",
+        "currentModelSha256": "c2ca972e037d8a9896c1e9893e76ac327a69ce861f21de2a2f573841f0c36f65",
+        "distinctStates": 498,
+        "historicalDistinctStates": 498,
+        "safety": "passed",
+        "temporalProperties": [
+          "TwoTapsToMail",
+          "ScopesNeverShrink",
+          "ReturnsToApp"
+        ],
+        "temporal": "passed",
+        "tests": 9,
+        "log": "test-results/quint-legacy/GoogleConnect.log",
+        "logSha256": "d50954a0c0dff092295721e9c18ec4b562e0186358cfc985ce62ed0f5a734171"
+      },
+      {
+        "module": "Calendar",
+        "currentModelSha256": "bebbde36bde9feb5293b4e72ce96a47f1fcd1ffdfaeaaf4a215ab5e8aaeee6bb",
+        "distinctStates": 687728,
+        "historicalDistinctStates": 687728,
+        "safety": "passed",
+        "temporalProperties": [
+          "UndoBeforeSend",
+          "OutboxDrains"
+        ],
+        "temporal": "passed",
+        "tests": 8,
+        "log": "test-results/quint-legacy/Calendar-optimized.log",
+        "logSha256": "0609a214b13a80ea0ca5d14a3df8e6ce58455b5d3acda1c135d1aebe53be92a9"
+      },
+      {
+        "module": "Maps",
+        "currentModelSha256": "c06ef54c74d0657f321aa46f0a75d23aa68b16f0eaeb1d58c1b683799c455bf4",
+        "distinctStates": 12316,
+        "historicalDistinctStates": 12316,
+        "safety": "passed",
+        "temporalProperties": [
+          "HonestErrors",
+          "AgentLands",
+          "NavSurvivesAssistant",
+          "RouteKeptOnFailure",
+          "SelfHealing",
+          "AgentServed"
+        ],
+        "temporal": "passed",
+        "tests": 7,
+        "log": "test-results/quint-legacy/Maps.log",
+        "logSha256": "8b58623dba35b5b6987b84e38faffe3ed51cc32f3b16bebddafb2b3363d55f12"
+      },
+      {
+        "module": "ChatInput",
+        "currentModelSha256": "fa72569c0b89a19caa03cb7df6735a9cbee22d07786a5406aeb00e68952f4d49",
+        "distinctStates": 38,
+        "historicalDistinctStates": 38,
+        "safety": "passed",
+        "temporalProperties": [],
+        "temporal": "none declared",
+        "tests": 6
+      },
+      {
+        "module": "HomeLayout",
+        "currentModelSha256": "1cfd954a2f30e31ebbc6128d19ec7f95f66e17205450b2900973df7204d8cf01",
+        "distinctStates": 900,
+        "historicalDistinctStates": 900,
+        "safety": "passed",
+        "temporalProperties": [],
+        "temporal": "none declared",
+        "tests": 5,
+        "log": "test-results/quint-legacy/HomeLayout.log",
+        "logSha256": "716f7e3371464a10686d7f03be1f5c106b2d898c6b209c998a4331f50b4d217b"
+      },
+      {
+        "module": "SettingsNav",
+        "currentModelSha256": "3813b0700fca337c3726d53d042314922548c76d58fc5a60d70dcd3a2e9b931c",
+        "distinctStates": 16,
+        "historicalDistinctStates": 16,
+        "safety": "passed",
+        "temporalProperties": [],
+        "temporal": "none declared",
+        "tests": 5,
+        "log": "test-results/quint-legacy/SettingsNav.log",
+        "logSha256": "123bbea9976cc362ca15a4a18100c51cff8441c8211ede768d5309738915bdd1"
+      }
+    ],
+    "supplemental": [
+      {
+        "model": "FilesTree",
+        "depth": 4,
+        "exitCode": 0,
+        "elapsedSeconds": 36.07,
+        "command": [
+          "node_modules/.bin/quint",
+          "verify",
+          "specs/quint/application/FilesTree.qnt",
+          "--backend=apalache",
+          "--server-endpoint=127.0.0.1:8844",
+          "--init=init",
+          "--step=step",
+          "--invariant=safety",
+          "--max-steps=4",
+          "--verbosity=1"
+        ]
+      },
+      {
+        "model": "CalendarPresentation",
+        "depth": 4,
+        "exitCode": 0,
+        "elapsedSeconds": 15,
+        "command": [
+          "node_modules/.bin/quint",
+          "verify",
+          "specs/quint/application/CalendarPresentation.qnt",
+          "--backend=apalache",
+          "--server-endpoint=127.0.0.1:8844",
+          "--init=init",
+          "--step=step",
+          "--invariant=safety",
+          "--max-steps=4",
+          "--verbosity=1"
+        ]
+      },
+      {
+        "model": "NotificationCollection",
+        "depth": 4,
+        "exitCode": 0,
+        "elapsedSeconds": 14.43,
+        "command": [
+          "node_modules/.bin/quint",
+          "verify",
+          "specs/quint/application/NotificationCollection.qnt",
+          "--backend=apalache",
+          "--server-endpoint=127.0.0.1:8844",
+          "--init=init",
+          "--step=step",
+          "--invariant=safety",
+          "--max-steps=4",
+          "--verbosity=1"
+        ]
+      }
+    ],
+    "calendarCompiledInput": {
+      "test-results/quint-legacy/Calendar-optimized-generated.tla": "cb6e8401b69f702caf65e2157780baf0c684fcf1d6d0103abfb69449a64452db",
+      "test-results/quint-legacy/Calendar-optimized-generated.cfg": "01016d1efb373a7ece9d6466cd3eab7b361c9eac685ebb4e7e7937550d7f1182",
+      "test-results/quint-legacy/Calendar-optimized-source.qnt": "849cd7e9c008bfecac9da6d7e18e88d9cab546d6ca021c6b6f950d2f0c634d03"
+    }
+  },
+  "limitations": [
+    "Twelve original service receipts recorded model hashes during archival after checking. Per-model provenance is retained in runtimeSafety.",
+    "The full historical-current temporal comparison matrix was not rerun.",
+    "Repository verification recorded 1916 passed,32 failed,5 skipped before final expansion. Targeted audit/JDK reruns passed afterward.",
+    "Android build commands stopped before Gradle due mismatched staged native-library hashes. No new APK or device acceptance was established."
+  ]
+}

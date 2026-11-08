@@ -7,7 +7,7 @@ async function stubAgent(page: import('@playwright/test').Page, cloud = false) {
   await installResidentAgentPlugin(page);
   await page.addInitScript((cloud: boolean) => {
     const w = window as any; w.androidBridge = {};
-    const f = w.providerFixture = { saved: null as null | { model: string }, configures: [] as any[], leases: [] as string[], cancelled: [] as string[], clears: 0, stops: 0, reject: '' };
+    const f = w.providerFixture = { statusReads: 0, saved: null as null | { model: string }, configures: [] as any[], leases: [] as string[], cancelled: [] as string[], clears: 0, stops: 0, reject: '' };
     const methods = (names: string[]) => names.map(name => ({ name, rtype: name==='addListener'?'callback':'promise' }));
     const agent = w.residentAgent = w.createResidentAgentPlugin({ owner: () => 'provider-owner', agentId: 'provider-agent' });
     // Eliza Cloud reports the same Qwen model with its Cerebras vendor prefix.
@@ -44,7 +44,7 @@ async function stubAgent(page: import('@playwright/test').Page, cloud = false) {
               : null;
             return { status: body ? 200 : 404, body: JSON.stringify(body ?? {}) };
           }
-          if (method === 'providerStatus') return status();
+          if (method === 'providerStatus') { f.statusReads++; return status(); }
           // Native reserves a cancellable request lease before each key check.
           if (method === 'prepareProviderConfiguration') { const requestId = 'provider-lease-' + (f.leases.length + 1); f.leases.push(requestId); return { requestId }; }
           if (method === 'cancelProviderConfiguration') { f.cancelled.push(input.requestId); return {}; }
@@ -82,7 +82,7 @@ test('provider status, pinned model, verified save and confirmed key removal', a
   // (the receipt is a toast, not a message left in the closed sheet).
   await expect(page.locator('.alpha-connection-scrim')).toHaveCount(0);
   await page.getByRole('button', { name: 'Settings', exact: true }).click();
-  const agentConnection = page.getByRole('button', { name: 'Agent connection', exact: true });
+  const agentConnection = page.getByRole('button', { name: 'Agent', exact: true });
   await expect(agentConnection).toContainText('Provider fixture');
   await agentConnection.click();
   await chooser.getByText('Model provider', { exact: true }).click();
@@ -122,16 +122,16 @@ test('the chooser names the Eliza Cloud model as Settings does', async ({ page }
   await expect(chooser.getByText('Configured · Cloud · qwen-3.8-27b (Cerebras)', { exact: true })).toBeVisible();
 });
 
-for(const cloud of [false,true])test(`native Models shows on-device voice and actual provider admission: ${cloud?'configured':'unconfigured'}`,async({page})=>{
+for(const cloud of [false,true])test(`native AI provider shows actual provider admission: ${cloud?'configured':'unconfigured'}`,async({page})=>{
  const errors:string[]=[];page.on('pageerror',error=>errors.push(error.message));
  await stubAgent(page,cloud);await page.goto('/');
  await page.locator('.alpha-connection').getByRole('button',{name:'Start local agent',exact:true}).click();
  await expect(page.locator('.alpha-connection-scrim')).toHaveCount(0);
- await page.getByRole('button',{name:'Settings',exact:true}).click();await page.getByRole('button',{name:'Models',exact:true}).click();
- await expect(page.getByText('Conversation uses the selected agent. Voice runs on this device.',{exact:true})).toBeVisible();
- await expect(page.getByText('On this device',{exact:true}).first()).toBeVisible();
- await expect(page.getByText(cloud?'Eliza Cloud':'Not configured',{exact:true})).toBeVisible();
- if(cloud)await expect(page.getByText('Eliza Cloud · qwen-3.8-27b (Cerebras)',{exact:true})).toBeVisible();
+ await page.getByRole('button',{name:'Settings',exact:true}).click();await page.getByRole('button',{name:'AI provider',exact:true}).click();
+ const provider=page.getByRole('dialog',{name:'AI provider',exact:true});await expect(provider).toBeVisible();
+ await expect(provider.getByRole('button',{name:'Cloud',exact:true})).toHaveAttribute('aria-pressed',String(cloud));
+ await expect(provider.getByRole('button',{name:'Own API keys',exact:true})).toHaveAttribute('aria-pressed','false');
+ expect(await page.evaluate(()=>(window as any).providerFixture.statusReads)).toBeGreaterThan(0);
  expect(await page.evaluate(()=>(window as any).providerFixture.configures)).toEqual([]);
  expect(await page.evaluate(()=>(window as any).residentAgent.state.unexpected)).toEqual([]);expect(errors).toEqual([]);
 });

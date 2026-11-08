@@ -117,7 +117,7 @@ test('build admission rejects a resident Cloud SDK base that disagrees with the 
 test('every authority change gives renderer and native credentials a new namespace',async()=>{
  const file='apps/app/src/runtime/cloud-deployment.generated.ts';
  const load=async config=>{
-  const {stripTypeScriptTypes}=await import('node:module');
+  const {stripTypeScriptTypes}=await import('./support/strip-types.mjs');
   return import('data:text/javascript;base64,'+Buffer.from(stripTypeScriptTypes(deploymentOutputs(config)[file])).toString('base64'));
  };
  const original=await load(defaults);
@@ -166,7 +166,7 @@ test('custom deployment reaches native inference configuration and Google transp
 });
 
 test('configured service names reach the renderer without changing credential authority',async()=>{
- const {stripTypeScriptTypes}=await import('node:module');
+ const {stripTypeScriptTypes}=await import('./support/strip-types.mjs');
  const load=async config=>import('data:text/javascript;base64,'+Buffer.from(stripTypeScriptTypes(deploymentOutputs(config)['apps/app/src/runtime/cloud-deployment.generated.ts'])).toString('base64'));
  const original=await load(defaults),config=structuredClone(defaults);
  config.production.name='Independent Service';config.staging.name='Independent Preview';

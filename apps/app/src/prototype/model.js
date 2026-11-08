@@ -2347,6 +2347,8 @@ registerView("photos", {
         notDeleted: true,
         favIcon: cur.fav ? "fill: currentColor" : "", favLabel: cur.fav ? "Remove from favorites" : "Add to favorites",
         viewerLabel: (cur.kind === "video" ? "Video" : "Photo") + ", " + phDayLabel(cur.ts, now) + " " + phTime(cur.ts),
+        hasPrevItem: idx > 0, hasNextItem: idx >= 0 && idx < seq.length - 1,
+        prevItem: function () { go(-1); }, nextItem: function () { go(1); },
         askLabel: "Ask Alpha about this " + (cur.kind === "video" ? "video" : "photo"),
         editLabel: cur.kind === "video" ? "Edit video" : "Edit photo", shareLabel: cur.kind === "video" ? "Share video" : "Share photo", infoLabel: cur.kind === "video" ? "Video info" : "Photo info", deleteLabel: cur.kind === "video" ? "Delete video" : "Delete photo",
         vid: cur.kind === "video", playBtn: cur.kind === "video" && !st.playing, playing: !!st.playing,

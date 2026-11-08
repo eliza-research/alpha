@@ -12,7 +12,7 @@ import {formatBytes} from '../.eliza/client-features/packages/ui/src/mobile-shel
 import assert from 'node:assert/strict';
 import vm from 'node:vm';
 import {readFile} from 'node:fs/promises';
-import {stripTypeScriptTypes} from 'node:module';
+import {stripTypeScriptTypes} from '../test/support/strip-types.mjs';
 import { InboxOperation, composerKind, composerContent, reviewBinding, reviewBindingRefusal, reviewOpaqueAttachment, checkOutgoingAttachments, outgoingAttachmentLimits, attachmentBytes } from '../apps/app/src/runtime/inbox-operation.ts';
 import { reviewMailAttachment } from '../apps/app/src/runtime/inbox-attachment.ts';
 import { reviewMailContext, validateMailContext } from '../apps/app/src/runtime/reviewed-mail-context.ts';

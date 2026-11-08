@@ -156,6 +156,8 @@ function compile(root, manifest, toolchain, output, {offline, remap}) {
 /** `build` is the compile step; tests replace it, the command line never does. */
 export function run(root, {status = false, offline = false, candidate = false, build = compile} = {}) {
   const manifest = readJson(path.join(root, QUALIFIED_HOST));
+  if (manifest.requalification?.required === true)
+    throw new Stop(3, `Embedding host requalification required at ${manifest.requalification.atPin}. ${manifest.requalification.reason}\nBuild a candidate from the current pinned source with node scripts/prepare-embedding-host.mjs --fork <verified current engine checkout> --output <new candidate directory> --abi arm64-v8a --build --remap-build-path. A reviewer must execute the ARM64 qualification and record its evidence before replacing ${QUALIFIED_HOST} through node scripts/stage-embedding-host.mjs --receipt <QUALIFICATION.json>.`);
   const toolchain = readJson(path.join(root, BUILD_TOOLCHAIN));
   const workspace = path.join(root, WORKSPACE);
   if (candidate) {

@@ -16,7 +16,7 @@ const browser=await chromium.launch({headless:true});try{
   await page.evaluate(async()=>{const m=await import('/src/runtime/browser-notes-document.ts');if(!await m.browserNotesPort.read())await m.openBrowserNotes();});
   // Unconnected agent Notes offers the retained source as a direct "Previous notes" control
   // below Alpha's Notes list (canonical-notes-ui.ts).
-  await page.getByRole('button',{name:'Notes',exact:true}).click();await page.getByRole('region',{name:'Notes',exact:true}).getByRole('button',{name:'Previous notes',exact:true}).click();await page.getByRole('heading',{name:'Older notes',exact:true}).waitFor();
+  await page.getByRole('button',{name:'Notes',exact:true}).click();await page.getByRole('region',{name:'Notes',exact:true}).getByRole('button',{name:'Previous notes',exact:true}).click();await page.getByRole('heading',{name:'Previous notes',exact:true}).waitFor();
  };
  await page.goto(url);await openOlder();
  const count=()=>page.evaluate(async ()=>(JSON.parse((await (await import('/src/runtime/browser-notes-document.ts')).readBrowserNotesRaw())||'{"records":[]}').records).length);const initial=await count();

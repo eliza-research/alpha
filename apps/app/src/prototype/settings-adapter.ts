@@ -532,10 +532,10 @@ export function installSettingsAdapter(Component: any, views: Bag) {
     const inferenceModel=residentProvider?.configured&&residentProvider.model?modelLabel(residentProvider.provider==='elizacloud'?serviceName:'Cerebras',residentProvider.model):'Not reported by agent';
     const cloudLabel = account ? account.email||`Account ${account.userId.slice(0, 8)}` : 'Not signed in';
     const manage = (page: string) => () => void device.openSettings({ page }).then(opened => { const notice = broaderPageNotice(page, opened); if (notice) api.toast(notice); }, () => api.toast('This Android settings page is unavailable.'));
-    const info = (label: string, val: string): Bag => ({ kInfo: true, label, val, hasVal: true, noAB: true });
+    const info = (label: string, val: string, id = label): Bag => ({ id, kInfo: true, label, val, hasVal: true, noAB: true });
     const note = (label: string, sub: string): Bag => ({ kInfo: true, label, val: '', hasVal: false, hasSub: true, sub, noAB: true });
     const nav = (label: string, page: string): Bag => ({ kNav: true, label, lbl: label, chev: true, noAB: true, go: manage(page) });
-    const group = (rows: Bag[]) => ({ css: 'background:var(--s2);padding:4px 0', rows });
+    const group = (rows: Bag[], id?: string) => ({ ...(id ? {id} : {}), css: 'background:var(--s2);padding:4px 0', rows });
     const run = async (task:()=>Promise<void>)=>{if(notificationBusy)return;notificationBusy=true;changed();const current=owner;try{await task();if(owner===current)await refresh();}catch{if(owner===current)api.toast('Notification settings changed or are unavailable. Refresh and try again.');}finally{notificationBusy=false;if(owner===current)changed();}};
     // Speech follows the explicit production runtime profile; developer routes stay separate.
     const speechRows = (): Bag[] => [
@@ -545,7 +545,7 @@ export function installSettingsAdapter(Component: any, views: Bag) {
         : []),
       ...(wakeListeningStopUnconfirmed() ? [note('Wake listening', 'Could not confirm listening is off. Turn it off in Android settings.')] : []),
     ];
-    const action = (label: string, go: () => void): Bag => ({ kNav:true, label, lbl:label, chev:true, noAB:true, go });
+    const action = (label: string, go: () => void, id = label): Bag => ({ id, kNav:true, label, lbl:label, chev:true, noAB:true, go });
     const listenerRows = (): Bag[] => {
       if (!externalVoiceInvocationEnabled) return [];
       if (!listener.available) return [info('Wake word', 'Not available')];
@@ -674,8 +674,8 @@ export function installSettingsAdapter(Component: any, views: Bag) {
           // Install update only for the version the last manifest offers this install, and an explicit check. No error or "up to date" claim.
           const update=parseUpdateManifest(savedUpdate().manifest,{versionCode:facts.appVersionCode,launcher,signerSha256:facts.appSigner});
           page.groups.push(group([
-            ...(update?[{...action(updateBusy==='install'?'Downloading update…':'Install update',()=>void updateAction('install',()=>device.installUpdate({apkUrl:update.apkUrl,sha256:update.sha256,sizeBytes:update.sizeBytes,versionCode:update.versionCode}).catch(()=>{/* Quiet: the row stays and the next tap retries. */}))),val:update.versionName?versionLabel(update.versionName,update.versionCode):String(update.versionCode),hasVal:true,sub:update.notes,hasSub:!!update.notes,busy:!!updateBusy}]:[]),
-            {...action(updateBusy==='check'?'Checking for updates…':'Check for updates',()=>void updateAction('check',()=>checkForUpdate(true))),busy:!!updateBusy}]));
+            ...(update?[{...action(updateBusy==='install'?'Downloading update…':'Install update',()=>void updateAction('install',()=>device.installUpdate({apkUrl:update.apkUrl,sha256:update.sha256,sizeBytes:update.sizeBytes,versionCode:update.versionCode}).catch(()=>{/* Quiet: the row stays and the next tap retries. */}))),val:update.versionName?versionLabel(update.versionName,update.versionCode):String(update.versionCode),hasVal:true,sub:update.notes,hasSub:!!update.notes,busy:!!updateBusy,id:'update-install'}]:[]),
+            {...action(updateBusy==='check'?'Checking for updates…':'Check for updates',()=>void updateAction('check',()=>checkForUpdate(true)),'update-check'),busy:!!updateBusy}]));
         }
         page.groups.push(group([{kNav:true,label:'Scheduled digests',lbl:'Scheduled digests',chev:true,noAB:true,go:()=>window.dispatchEvent(new Event('alpha:hosted-digests'))}]));
         // Every Alpha Phone signs in to Eliza Cloud and holds a plan: account, plan and sign-in expiry.
@@ -731,7 +731,7 @@ export function installSettingsAdapter(Component: any, views: Bag) {
             const historyRows=[info('Conversation history','Load from this agent only. Restoring replaces the visible chat and draft; it does not run past actions.')];
             if(!connection.busy){
               historyRows.push(action('New conversation',()=>void connectionController.newConversation()),action('Load conversations',()=>void connectionController.listHistory()));
-              for(const item of connection.conversations)historyRows.push(action(`Restore conversation: ${item.title}`,()=>void connectionController.restoreHistory(item.id)));
+              for(const item of connection.conversations)historyRows.push(action(`Restore conversation: ${item.title}`,()=>void connectionController.restoreHistory(item.id),`conversation:${item.id}`));
             }
             if(connection.historyError){historyRows.push(info('History',connection.historyError));if(!connection.busy)historyRows.push(action('Retry saved conversation',()=>void connectionController.retrySavedHistory()));}
             groups.push(group(historyRows));
@@ -740,13 +740,13 @@ export function installSettingsAdapter(Component: any, views: Bag) {
             const refreshRows=connection.busy?[info('Phone action history','Please wait…')]:[action('Refresh actions',()=>void connectionController.actionHistory()),action('Sync recorded receipts',()=>void connectionController.actionHistory(true))];
             groups.push(group(refreshRows));
             for(const item of connection.actionHistory){
-              const rows=[info(item.title,item.outcome+(item.timestamp?` · ${item.timestamp}`:''))];
-              if(item.detail)rows.push(info('Details',item.detail));
+              const rows=[info(item.title,item.outcome+(item.timestamp?` · ${item.timestamp}`:''),`action:${item.id}:status`)];
+              if(item.detail)rows.push(info('Details',item.detail,`action:${item.id}:detail`));
               if(!connection.busy){
-                if(item.state==='pending')rows.push(action('Reject proposal',()=>void connectionController.rejectAction(item.id)));
-                if(['executing','reconciliation_required'].includes(item.state))rows.push(info('Review','After checking this phone, confirm whether this exact action happened.'),action('I verified it happened',()=>void connectionController.reconcileAction(item.id,'applied')),action('I verified it did not happen',()=>void connectionController.reconcileAction(item.id,'not_applied')));
+                if(item.state==='pending')rows.push(action('Reject proposal',()=>void connectionController.rejectAction(item.id),`action:${item.id}:reject`));
+                if(['executing','reconciliation_required'].includes(item.state))rows.push(info('Review','After checking this phone, confirm whether this exact action happened.'),action('I verified it happened',()=>void connectionController.reconcileAction(item.id,'applied'),`action:${item.id}:applied`),action('I verified it did not happen',()=>void connectionController.reconcileAction(item.id,'not_applied'),`action:${item.id}:not-applied`));
               }
-              groups.push(group(rows));
+              groups.push(group(rows,`agent-action:${item.id}`));
             }
           }
           out.stack.push({isTop:false,notTop:true,cls:'enter',z:4,title:'Connection help',hasTitle:true,backLabel:'Back to Settings',back:()=>api.set({page:null}),hero:{},groups});
@@ -758,7 +758,7 @@ export function installSettingsAdapter(Component: any, views: Bag) {
         if(developerTools)page.groups.push(group([{kNav:true,label:'Try mock mode',lbl:'Try mock mode',chev:true,noAB:true,go:()=>connectionController.mock()}]));
         if(developerTools&&recovery.length)page.groups.push(group([info('Saved data needs recovery','Back up before resetting'),...recovery.map(name=>({kNav:true,label:recoveryActions[name].label,lbl:recoveryActions[name].label,chev:true,noAB:true,go:()=>recoveryActions[name].open()}))]));
         if(state.page==='problems'){
-          const rows=crashLog?[...crashLog.entries].reverse().map(entry=>{const line=describeCrashEntry(entry);return {kLog:true,time:new Date(entry.at).toLocaleString(),text:`${line.title} · ${line.detail}`};}):[];
+          const rows=crashLog?[...crashLog.entries].reverse().map(entry=>{const line=describeCrashEntry(entry);return {id:`problem:${JSON.stringify([entry.at,entry.source,line.title,line.detail])}`,kLog:true,time:new Date(entry.at).toLocaleString(),text:`${line.title} · ${line.detail}`};}):[];
           out.stack.push({isTop:false,notTop:true,cls:'enter',z:4,title:'Problem log',hasTitle:true,backLabel:'Back to Settings',back:()=>api.set({page:null}),hero:{},groups:[
             group([info('Kept on this device','Failure classes only, 30 days, no content'),...(crashLog&&!crashLog.exitHistory&&native?[info('Android exit history','Needs Android 11 or newer')]:[])]),
             group(crashLog?(rows.length?rows:[info('No problems recorded','')]):[info('Problem log unavailable','Try again later')]),
@@ -768,7 +768,7 @@ export function installSettingsAdapter(Component: any, views: Bag) {
         if(state.page==='licenses'){
           const query=typeof state.licenseQuery==='string'?state.licenseQuery:'';
           const matches=licenses.items.map((item,index)=>({item,index})).filter(({item})=>(item.name+' '+item.version+' '+item.license).toLowerCase().includes(query.trim().toLowerCase()));
-          const rows=matches.map(({item,index})=>({...action(item.name,()=>api.set({page:'license-detail',licenseIndex:index})),lbl:item.name+' '+item.version,sub:item.version+' · '+item.license,hasSub:true,licenseComponent:true}));
+          const rows=matches.map(({item,index})=>({...action(item.name,()=>api.set({page:'license-detail',licenseIndex:index}),`license:${JSON.stringify([item.name,item.version,item.source])}`),lbl:item.name+' '+item.version,sub:item.version+' · '+item.license,hasSub:true,licenseComponent:true}));
           out.stack.push({isTop:false,notTop:true,cls:'enter',z:4,title:'Open source licenses',hasTitle:true,backLabel:'Back to About',back:()=>api.set({page:'about'}),hero:{},groups:licenses.status==='ready'?[group([{kLicenseSearch:true,value:query,change:(event:Event)=>api.set({licenseQuery:(event.target as HTMLInputElement).value})}]),group(rows.length?rows:[info('No matching components','Try another name or license')])]:[group([info(licenses.status==='unavailable'?'License notices unavailable':'Loading license notices…',licenses.status==='unavailable'?'Reinstall or update the app to restore them':'')])]});
         }
         if(state.page==='license-detail'){
@@ -823,7 +823,7 @@ export function installSettingsAdapter(Component: any, views: Bag) {
       } else if (page.title === 'Developer') {
         page.groups = [group([info('App version', facts.appVersion || buildVersion), info('Agent memory', connection.session?'Usage not reported by agent':'Not connected')]), group([problemsRow(), diagnosticsRow()]), group([nav('Android developer settings', 'developer')])];
       } else if (page.title === 'Notifications') {
-        const custom = (label:string,go:()=>void):Bag=>({kNav:true,label,lbl:label,chev:true,noAB:true,busy:notificationBusy,hasVal:notificationBusy,val:'Working…',go:()=>{if(!notificationBusy)go();}});
+        const custom = (label:string,go:()=>void,id=label):Bag=>({id,kNav:true,label,lbl:label,chev:true,noAB:true,busy:notificationBusy,hasVal:notificationBusy,val:'Working…',go:()=>{if(!notificationBusy)go();}});
         const policy = (changes:Bag)=>void run(async()=>{await notifications.setNotificationPolicy({expectedRevision:cross.revision,...changes});if(changes.history===false)history=[];});
         const selected:Bag[]=cross.apps||[];
         const showCrossAppNotifications = Capacitor.isNativePlatform() || devSurfacesEnabled;
@@ -837,19 +837,19 @@ export function installSettingsAdapter(Component: any, views: Bag) {
             void run(async()=>{const next=await notifications.notificationApps();choices=next.apps;});
           }));
           if(cross.paused)crossRows.push(custom('Resume selected-app collection',()=>void run(async()=>{if(window.confirm('Resume collection of notifications from your selected apps?'))await notifications.resumeCrossApp({expectedRevision:cross.revision});})));
-          for(const app of selected)crossRows.push(info(app.label,app.available===false?'App changed: remove and select again':app.preview?'Current title and text allowed':'Content hidden'),custom(`Remove ${app.label}`,()=>policy({apps:selected.filter(a=>a.packageName!==app.packageName).map(({packageName,preview})=>({packageName,preview}))})),custom(`${app.preview?'Hide':'Allow'} previews: ${app.label}`,()=>{
+          for(const app of selected)crossRows.push(info(app.label,app.available===false?'App changed: remove and select again':app.preview?'Current title and text allowed':'Content hidden',`notification-app:${app.packageName}:status`),custom(`Remove ${app.label}`,()=>policy({apps:selected.filter(a=>a.packageName!==app.packageName).map(({packageName,preview})=>({packageName,preview}))}),`notification-app:${app.packageName}:remove`),custom(`${app.preview?'Hide':'Allow'} previews: ${app.label}`,()=>{
             if(Capacitor.isNativePlatform()&&!app.preview&&!window.confirm(`Allow current notification titles and text from ${app.label} while unlocked? They stay on this phone and are not stored in history or sent to the agent.`))return;
             policy({apps:selected.map(a=>({packageName:a.packageName,preview:a.packageName===app.packageName?!app.preview:a.preview}))});
-          }));
-          for(const app of choices||[])if(!selected.some(a=>a.packageName===app.packageName))crossRows.push(custom(`Select ${app.label} (${app.packageName})`,()=>policy({apps:[...selected.map(({packageName,preview})=>({packageName,preview})),{packageName:app.packageName,preview:false}]})));
+          },`notification-app:${app.packageName}:preview`));
+          for(const app of choices||[])if(!selected.some(a=>a.packageName===app.packageName))crossRows.push(custom(`Select ${app.label} (${app.packageName})`,()=>policy({apps:[...selected.map(({packageName,preview})=>({packageName,preview})),{packageName:app.packageName,preview:false}]}),`notification-app:${app.packageName}:select`));
           crossRows.push(info('Local metadata history',cross.historyUnavailable?'Unavailable; clear local history to reset':cross.history?'On · 100 events, 24 hours · no message text':'Off'),custom(cross.history?'Turn off local metadata history':'Enable local metadata history',()=>{
             if(Capacitor.isNativePlatform()&&!cross.history&&!window.confirm('Keep up to 100 redacted notification events for 24 hours in encrypted storage on this phone? Only selected app identity, event times and status are saved. No title or message text is stored.'))return;
             policy({history:!cross.history});
           }),custom('View local metadata history',()=>{if(notificationBusy)return;notificationBusy=true;const current=owner;void notifications.notificationHistory().then(result=>{if(owner===current){history=result.items;owner?.vset('settings',{notificationChanged:Date.now()});}}).catch(()=>api.toast('Local notification history is unavailable.')).finally(()=>{notificationBusy=false;});}),custom('Clear local metadata history',()=>{if(window.confirm('Permanently clear local notification metadata history?'))void run(async()=>{await notifications.clearNotificationHistory();history=[];});}));
-          if(history!==null){if(!history.length)crossRows.push(info('History','No retained events'));for(const row of history)crossRows.push(info(row.appLabel,`${row.state} · ${new Date(row.at).toLocaleString()} · no action available`));}
+          if(history!==null){if(!history.length)crossRows.push(info('History','No retained events'));for(const row of history)crossRows.push(info(row.appLabel,`${row.state} · ${new Date(row.at).toLocaleString()} · no action available`,`notice:${row.id??JSON.stringify([row.packageName,row.at,row.state])}`));}
         }
         page.groups = [group(Capacitor.isNativePlatform()?[info('Alpha notifications',topValues.Notifications),info('Do Not Disturb',interruptionLabels[delivery.interruption]||'Not available'),nav('Manage Alpha notifications','notifications')]:[{kTog:true,label:'Allow alerts',aria:'Allow alerts',on:delivery.appEnabled===true,track:delivery.appEnabled?'background:var(--acc)':'background:var(--line)',kx:delivery.appEnabled?20:0,toggle:()=>void run(async()=>{await notifications.setAlertPreferences({appEnabled:delivery.appEnabled!==true});})}]),
-          ...(Capacitor.isNativePlatform()?(delivery.channels||[]).map((channel:Bag)=>group([{kNav:true,label:channel.name,lbl:channel.name,chev:true,noAB:true,go:()=>void notifications.openChannelSettings({id:channel.id})}])):[]),...(crossRows.length?[group(crossRows)]:[])];
+          ...(Capacitor.isNativePlatform()?(delivery.channels||[]).map((channel:Bag)=>group([{id:`notification-channel:${channel.id}`,kNav:true,label:channel.name,lbl:channel.name,chev:true,noAB:true,go:()=>void notifications.openChannelSettings({id:channel.id})}],`notification-channel:${channel.id}`)):[]),...(crossRows.length?[group(crossRows)]:[])];
       } else if (page.title === 'Privacy & data') {
         if (cloudRuntimeEnabled) page.groups = page.groups.map((g: Bag) => ({ ...g, rows: g.rows.map((row: Bag) => {
           const fact = cloudPrivacyRow(row.label);
@@ -997,10 +997,10 @@ export function installSettingsAdapter(Component: any, views: Bag) {
     for(const page of out.stack){
       const groups=new Map<string,number>();
       for(const section of page.groups||[]){
-        const name=String(section.id??section.cap??section.rows?.[0]?.label??section.rows?.[0]?.lbl??'group');
+        const name=String(section.id??section.cap??section.rows?.[0]?.id??section.rows?.[0]?.label??section.rows?.[0]?.lbl??'group');
         const occurrence=groups.get(name)??0;groups.set(name,occurrence+1);section.id=JSON.stringify([page.title||'Settings',name,occurrence]);
         const rows=new Map<string,number>();
-        section.rows=(section.rows||[]).map((row:Bag)=>{if(row.kNav&&row.hasVal&&String(row.val||'').length>24)row={...row,sub:[...new Set([row.hasSub?row.sub:'',row.val].filter(Boolean))].join(' · '),hasSub:true,hasVal:false};const identity=String(row.id??row.aria??row.label??row.lbl??row.time??'')+String(row.text??'');const n=rows.get(identity)??0;rows.set(identity,n+1);return {...row,id:JSON.stringify([identity,n])};});
+        section.rows=(section.rows||[]).map((row:Bag)=>{if(row.kNav&&row.hasVal&&String(row.val||'').length>24)row={...row,sub:[...new Set([row.hasSub?row.sub:'',row.val].filter(Boolean))].join(' · '),hasSub:true,hasVal:false};const identity=row.id??JSON.stringify([row.aria??row.label??row.lbl??row.time??'',row.text??'']);const n=rows.get(identity)??0;rows.set(identity,n+1);return {...row,id:JSON.stringify([identity,n])};});
       }
     }
     if(!Capacitor.isNativePlatform()) {

@@ -1,16 +1,16 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
-import {stripTypeScriptTypes} from 'node:module';
+import {stripTypeScriptTypes} from './support/strip-types.mjs';
 import vm from 'node:vm';
 import {prepareGoogleWorkspaceReturn,watchGoogleWorkspaceReturn,sameGoogleWorkspaceBinding} from '../apps/app/src/runtime/google-workspace-return.ts';
 import {watchGoogleConnectionReturn,sameGoogleConnectionReturnBinding} from '../apps/app/src/runtime/google-connection-return.ts';
 
 const ui=readFileSync(process.env.ALPHA_GOOGLE_RETURN_UI_SOURCE||'apps/app/src/runtime/google-connection-ui.tsx','utf8');
-const accountsSource=stripTypeScriptTypes(readFileSync('apps/app/src/runtime/google-accounts.ts','utf8'),{mode:'transform'}).replace(/^import[^;]+;\n/gm,'').replace(/^export /gm,'');
+const accountsSource=stripTypeScriptTypes(readFileSync('apps/app/src/runtime/google-accounts.ts','utf8'),{mode:'strip'}).replace(/^import[^;]+;\n/gm,'').replace(/^export /gm,'');
 const createGoogleAccounts=vm.runInNewContext(accountsSource+';createGoogleAccounts',{DOMException,Event});
-const loadCode=stripTypeScriptTypes(ui.slice(ui.indexOf(' async function load()'),ui.indexOf('\n useEffect(()=>{if(!open)return;void load();')),{mode:'transform'});
-const connectCode=stripTypeScriptTypes(ui.slice(ui.indexOf(' async function connect('),ui.indexOf(' async function disconnect(')),{mode:'transform'});
+const loadCode=stripTypeScriptTypes(ui.slice(ui.indexOf(' async function load()'),ui.indexOf('\n useEffect(()=>{if(!open)return;void load();')),{mode:'strip'});
+const connectCode=stripTypeScriptTypes(ui.slice(ui.indexOf(' async function connect('),ui.indexOf(' async function disconnect(')),{mode:'strip'});
 function deferred(){let resolve;const promise=new Promise(r=>{resolve=r;});return {promise,resolve};}
 function fixture({heldStatus=false,heldOpen=false,heldRetry=false,panelClosed=false,accountRows}={}){
  let foreground=true,panelOpen=!panelClosed,revision=0,nativeListener,removed=0,visibility,focus;
@@ -96,7 +96,7 @@ function mountActualLifecycle(){
  const start=ui.indexOf(' useEffect(()=>{\n  if(!open||!binding)return;');
  if(start<0)return null;
  const prefix=' useEffect(()=>{',end=ui.indexOf('\n },[open,identity,cloud?.client]);',start);
- const body=stripTypeScriptTypes('(function(){'+ui.slice(start+prefix.length,end)+'\n})',{mode:'transform'});
+ const body=stripTypeScriptTypes('(function(){'+ui.slice(start+prefix.length,end)+'\n})',{mode:'strip'});
  const document=Object.assign(new EventTarget(),{hidden:false}),window=new EventTarget(),registration=deferred();let nativeCallback,removed=0,revision=0;
  const binding={client:{},environment:'production',userId:'owner',organizationId:'tenant',sessionId:'session',credentialId:'credential'},active={current:new AbortController()},returnWatch={current:null};
  const mount=vm.runInNewContext(body,{open:true,binding,watchGoogleConnectionReturn,currentGoogleConnectionReturnBinding:()=>binding,document,window,isAndroid:true,DailyApps:{addListener(name,callback){assert.equal(name,'appResumed');nativeCallback=callback;return registration.promise;}},returnWatch,active,setRevision:update=>{revision=update(revision);}});

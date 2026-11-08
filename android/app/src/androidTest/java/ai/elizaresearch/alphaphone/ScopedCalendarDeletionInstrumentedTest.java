@@ -13,6 +13,7 @@ import androidx.test.platform.app.InstrumentationRegistry;
 import ai.eliza.plugins.calendar.CalendarEventGuard;
 import java.util.UUID;
 import org.json.JSONObject;
+import org.junit.Assume;
 import org.junit.Test;
 import static org.junit.Assert.*;
 
@@ -22,8 +23,8 @@ public final class ScopedCalendarDeletionInstrumentedTest {
  @Test public void localRecurrenceUndoAndExpiryPreserveOtherOccurrences()throws Exception{for(int attempt=0;attempt<10;attempt++)try{exercise(false);}catch(AssertionError failure){throw new AssertionError("Local recurrence iteration "+attempt,failure);}}
  @Test public void syntheticSyncedRecurrenceUsesAppDeletionAndExactReadback()throws Exception{exercise(true);}
  private void exercise(boolean synced)throws Exception{
-  assertTrue("Explicit disposable Calendar deletion fixture required","1".equals(InstrumentationRegistry.getArguments().getString("scopedCalendarDeletion")));
-  assertTrue("Never mutate providers as user 0",Process.myUid()/100000>0);
+  Assume.assumeTrue("Explicit disposable Calendar deletion fixture required","1".equals(InstrumentationRegistry.getArguments().getString("scopedCalendarDeletion")));
+  Assume.assumeTrue("Never mutate providers as user 0",Process.myUid()/100000>0);
   Context context=InstrumentationRegistry.getInstrumentation().getTargetContext();ContentResolver resolver=context.getContentResolver();
   for(String permission:new String[]{Manifest.permission.READ_CALENDAR,Manifest.permission.WRITE_CALENDAR})assertEquals(PackageManager.PERMISSION_GRANTED,context.checkSelfPermission(permission));
   AlphaCredentialStore encrypted=new AlphaCredentialStore(context);assertNull("Fresh deletion journal required",encrypted.readCredentialSlot(NativeDeletionCoordinator.JOURNAL));

@@ -5,7 +5,7 @@
 // or device run. The browser specs in test/browser/native-cloud-subscription.spec.ts exercise the
 // composed flow with synthetic ports.
 import test from 'node:test';
-import {stripTypeScriptTypes} from 'node:module';
+import {stripTypeScriptTypes} from './support/strip-types.mjs';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {DENYLIST, RETIRED_NO_AGENT_TEXT, RETIRED_REMOTE_AGENT_TEXT} from '../scripts/audit-production-bundle.mjs';
@@ -162,7 +162,7 @@ test('a chat turn without Cloud inference gets an honest answer with the plan ac
   assert.match(adapter, /if\(card\.planAction\)\{\n\s+if\(card\.planAction==='plan'\)connectionController\.openPlan\(\);\n\s+else if\(card\.planAction==='funding'\)connectionController\.openFunding\(\);/);
   assert.doesNotMatch(adapter, /title:'Set up AI'|connectionSetup/);
   const cards=adapter.slice(adapter.indexOf('function selectedCloudName('),adapter.indexOf('/** Context notices for proposals'));
-  const renderCard=new Function('cloudServiceName','connectionController',stripTypeScriptTypes(cards,{mode:'transform'})+';return planActionCard;')(
+  const renderCard=new Function('cloudServiceName','connectionController',stripTypeScriptTypes(cards,{mode:'strip'})+';return planActionCard;')(
     environment=>environment==='staging'?'Nebula':'Other service',
     {getCloudEnvironment:()=>null,getSnapshot:()=>({signIn:{environment:'staging'}})});
   assert.equal(renderCard('sign-in').title,'Sign in with Nebula');
@@ -175,7 +175,7 @@ test('a chat turn without Cloud inference gets an honest answer with the plan ac
   assert.ok(renderCard('funding').sub.includes('Nebula subscription'));
   assert.equal(renderCard('unknown'),undefined);
 
-  assert.match(adapter, /const planCard=planActionCard\(\(e as \{planAction\?:unknown\}\)\.planAction\);/);
+  assert.match(adapter, /const planCard=planActionCard\(\(e as \{planAction\?:unknown\}\)\.planAction\)\?\?managePlan;/);
 });
 
 test('the plan surface is a notice beside the running agent, not a gate', () => {

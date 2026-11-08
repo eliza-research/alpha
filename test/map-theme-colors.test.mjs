@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
-import {stripTypeScriptTypes} from 'node:module';
+import {stripTypeScriptTypes} from './support/strip-types.mjs';
 
 // Extract the actual standalone resolver without importing MapLibre or the SDK.
 const mapPlaneUrl=new URL('../apps/app/src/maps/map-plane.ts',import.meta.url);

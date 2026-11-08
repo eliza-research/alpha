@@ -1,14 +1,14 @@
 {
   "schemaVersion": 2,
   "description": "On-device voice host: libelizainference (llama.cpp/ggml; Paradee-8M TTS with native misaki G2P and eSpeak NG out-of-lexicon fallback, Phonon-2 parakeet-tdt ASR with batch and streaming decode, Silero VAD) through the shared paradee-voice Java API (ai.eliza.voice) and RegisterNatives JNI. The only on-device speech engine; llama.cpp-based, no other neural runtime. These are the exact bytes scripts/android-stage-voice-models.mjs may stage; component evidence is recorded separately from installed-app, hardware audio and user acceptance.",
-  "pin": "47982b8f49d16d520990e14e07cdeb5c6931df81",
-  "forkPin": "0d9fd4b9db239bbf851068f98c99f4263f8c05c5",
+  "pin": "99b49439ce9d0cb5607e9831b9f7f58d89525029",
+  "forkPin": "6337fd4c4bd071c17235986344d552d4036e177b",
   "identity": "ai.elizaresearch.alphaphone",
   "provider": "libelizainference-paradee",
   "qualified": false,
   "nativeOutput": ".eliza/paradee-voice/native",
   "bundle": {
-    "format": "eliza-paradee-voice-v1",
+    "format": "eliza-paradee-voice-v2",
     "assetRoot": "assets/paradee-voice/v1",
     "deviceDirectory": "filesDir/paradee-voice-v1",
     "install": "APK assets copied to private storage with SHA-256 verification; Phonon b5x3t7 model is 208,932,352 bytes. No network installation."
@@ -28,8 +28,8 @@
       "libraries": [
         {
           "name": "libelizainference.so",
-          "sha256": "c1679c25c28f1ba5a7757aa821265135f3c8f09657a16804ae744761f262eb1e",
-          "bytes": 8066120
+          "sha256": "49b01a184f8ace69c42b3f1ad8c1816faeeb8dd004b8c7990796592932818c17",
+          "bytes": 10018448
         },
         {
           "name": "libc++_shared.so",
@@ -42,7 +42,7 @@
       "asrSupported": true,
       "alignment16KiB": true,
       "asrStreamExports": 6,
-      "componentBuild": "Fresh NDK 28.2.13676358 / CMake 4.0.3 independent clean engine checkout; preparation receipt retained with native-c95a evidence."
+      "componentBuild": "Upstream paradee-voice builder (scripts/build-pinned-voice.mjs) at pin 3f869454f5 with engine 6337fd4c4b, NDK 28.2.13676358, 2026-11-06 on Linux x86_64 with hash-verified cached models (every model byte identical to the b3eb2bf63b build); not reproduced on a second host. Pins 86a0d19473, c35106fb14 and b25d8aef29 keep the same engine gitlink and change no plugin-local-inference or builder source, so these bytes are carried unchanged."
     },
     {
       "abi": "x86_64",
@@ -50,8 +50,8 @@
       "libraries": [
         {
           "name": "libelizainference.so",
-          "sha256": "fe1f563e5cd02b86ba547d2f6971822303a8338b11374818393432a002f80581",
-          "bytes": 8694208
+          "sha256": "128b61f3e76f46144d08dfb2e1329e01a99b02705ce17c3b37b86d630cb247ba",
+          "bytes": 10832176
         },
         {
           "name": "libc++_shared.so",
@@ -64,7 +64,7 @@
       "asrSupported": true,
       "alignment16KiB": true,
       "asrStreamExports": 6,
-      "componentBuild": "Fresh NDK 28.2.13676358 / CMake 4.0.3 independent clean engine checkout; preparation receipt retained with native-c95a evidence."
+      "componentBuild": "Upstream paradee-voice builder (scripts/build-pinned-voice.mjs) at pin 3f869454f5 with engine 6337fd4c4b, NDK 28.2.13676358, 2026-11-06 on Linux x86_64 with hash-verified cached models (every model byte identical to the b3eb2bf63b build); not reproduced on a second host. Pins 86a0d19473, c35106fb14 and b25d8aef29 keep the same engine gitlink and change no plugin-local-inference or builder source, so these bytes are carried unchanged."
     }
   ],
   "components": [
@@ -107,94 +107,19 @@
   "models": [
     {
       "name": "Paradee-8M v1.2 (F32 GGUF)",
-      "path": "tts/paradee/paradee-8m-v1_2.gguf",
       "role": "tts-model",
+      "license": "Apache-2.0",
+      "source": "llama.cpp tools/paradee/convert_paradee_pt_to_gguf.py --version 1.2 --outtype f32 from the sahilmahendrakar/Paradee-8M-v1.2 files pinned in tools/paradee/pins.json",
+      "path": "tts/paradee/paradee-8m-v1_2.gguf",
       "sha256": "4b2819180a9e3b096fb71a93d6a719794246ee230f7faa857edcc0bee2a1529e",
-      "bytes": 31276064,
-      "license": "Apache-2.0",
-      "source": "Expected source input declared by upstream plugins/plugin-local-inference/native/android/inputs.json at 89714cd4b8 (llama.cpp tools/paradee/convert_paradee_pt_to_gguf.py --version 1.2 --outtype f32 from the sahilmahendrakar/Paradee-8M-v1.2 files pinned in tools/paradee/pins.json, llama.cpp fork d960f633); not downloaded, staged or device-qualified in this source sync."
-    },
-    {
-      "name": "misaki English (US) lexicon",
-      "path": "tts/paradee/misaki-en-us.lex",
-      "role": "g2p-lexicon",
-      "sha256": "fbf09090cff0a41f3f579bf03ab9fc42710b04d7284767b10467a5f182c23925",
-      "bytes": 12947790,
-      "license": "Apache-2.0",
-      "source": "Converted by llama.cpp tools/misaki-g2p/convert_misaki_lexicon.py from github.com/hexgrad/misaki@fba1236595f2d2bf21d414ba6e57d25256afada3 us_gold/us_silver; byte-identical to the fork pin"
-    },
-    {
-      "name": "eSpeak NG 1.52.0 English data: phontab",
-      "path": "tts/paradee/espeak-ng-data/phontab",
-      "role": "g2p-data",
-      "sha256": "1b40690667e1e9aa1ba5e5234773c799e7e72ea751426e5150423d53c3f24fa2",
-      "bytes": 58652,
-      "license": "GPL-3.0-or-later",
-      "source": "https://github.com/espeak-ng/espeak-ng/archive/refs/tags/1.52.0.tar.gz (sha256 bb4338102ff3b49a81423da8a1a158b420124b055b60fa76cfb4b18677130a23)"
-    },
-    {
-      "name": "eSpeak NG 1.52.0 English data: phonindex",
-      "path": "tts/paradee/espeak-ng-data/phonindex",
-      "role": "g2p-data",
-      "sha256": "384e5fa6f714ba5356c58008249b78699c31c1ad044b243068d263fb806b7d73",
-      "bytes": 43316,
-      "license": "GPL-3.0-or-later",
-      "source": "https://github.com/espeak-ng/espeak-ng/archive/refs/tags/1.52.0.tar.gz (sha256 bb4338102ff3b49a81423da8a1a158b420124b055b60fa76cfb4b18677130a23)"
-    },
-    {
-      "name": "eSpeak NG 1.52.0 English data: phondata",
-      "path": "tts/paradee/espeak-ng-data/phondata",
-      "role": "g2p-data",
-      "sha256": "a0b643b155cb6b12628d9e7865b57d9fca0d35844614f2594a5e009c80c80bb4",
-      "bytes": 554740,
-      "license": "GPL-3.0-or-later",
-      "source": "https://github.com/espeak-ng/espeak-ng/archive/refs/tags/1.52.0.tar.gz (sha256 bb4338102ff3b49a81423da8a1a158b420124b055b60fa76cfb4b18677130a23)"
-    },
-    {
-      "name": "eSpeak NG 1.52.0 English data: intonations",
-      "path": "tts/paradee/espeak-ng-data/intonations",
-      "role": "g2p-data",
-      "sha256": "031a105bf6bb2ebcd73a2c579ccfb42469b27266db0078af65ae298fd3588b21",
-      "bytes": 2312,
-      "license": "GPL-3.0-or-later",
-      "source": "https://github.com/espeak-ng/espeak-ng/archive/refs/tags/1.52.0.tar.gz (sha256 bb4338102ff3b49a81423da8a1a158b420124b055b60fa76cfb4b18677130a23)"
-    },
-    {
-      "name": "eSpeak NG 1.52.0 English data: en_dict",
-      "path": "tts/paradee/espeak-ng-data/en_dict",
-      "role": "g2p-data",
-      "sha256": "1053f74a34af38abb6fbd64b7838dacbc655a687c48ce1bb663d364a127b05de",
-      "bytes": 168204,
-      "license": "GPL-3.0-or-later",
-      "source": "https://github.com/espeak-ng/espeak-ng/archive/refs/tags/1.52.0.tar.gz (sha256 bb4338102ff3b49a81423da8a1a158b420124b055b60fa76cfb4b18677130a23)"
-    },
-    {
-      "name": "eSpeak NG 1.52.0 English data: lang/gmw/en",
-      "path": "tts/paradee/espeak-ng-data/lang/gmw/en",
-      "role": "g2p-data",
-      "sha256": "4605d5330801de3641c6e366d15f129ea1f5ffbce8722642aba01ace07ab9c83",
-      "bytes": 140,
-      "license": "GPL-3.0-or-later",
-      "source": "https://github.com/espeak-ng/espeak-ng/archive/refs/tags/1.52.0.tar.gz (sha256 bb4338102ff3b49a81423da8a1a158b420124b055b60fa76cfb4b18677130a23)"
-    },
-    {
-      "name": "eSpeak NG 1.52.0 English data: lang/gmw/en-US",
-      "path": "tts/paradee/espeak-ng-data/lang/gmw/en-US",
-      "role": "g2p-data",
-      "sha256": "41534c2a22df5dd4f1052ff9e1a33a3ea7bff5a26b5c02bdad5ba8ddb7524704",
-      "bytes": 257,
-      "license": "GPL-3.0-or-later",
-      "source": "https://github.com/espeak-ng/espeak-ng/archive/refs/tags/1.52.0.tar.gz (sha256 bb4338102ff3b49a81423da8a1a158b420124b055b60fa76cfb4b18677130a23)"
+      "bytes": 31276064
     },
     {
       "name": "Phonon-2 (Parakeet-TDT 0.6B, five-value GGUF; ASR slot model)",
-      "path": "asr/phonon-2-fv5.gguf",
       "role": "asr-model",
       "backend": "parakeet",
-      "sha256": "c0f6ad42f0a5b481904416077dde0a1a78e5b8642295fdf2356ace822588c3df",
-      "bytes": 208932352,
       "license": "CC-BY-4.0",
-      "attribution": "Phonon-2 by Fermion Research, CC-BY-4.0, derived from NVIDIA parakeet-tdt-0.6b-v3 (CC-BY-4.0). Fermion's NOTICE ships as notices/Phonon-2-NOTICE.txt and in the GGUF as parakeet.notice.",
+      "attribution": "Phonon-2 by Fermion Research, CC-BY-4.0, derived from NVIDIA parakeet-tdt-0.6b-v3 (CC-BY-4.0). Fermion's NOTICE ships as notices/phonon-2/NOTICE (and in the GGUF as parakeet.notice).",
       "licenseFlags": [
         "Training audio listed in the Phonon-2 NOTICE includes CHiME-6 (CC-BY-SA-4.0) and SPGISpeech (Kensho terms). Flagged for review, not a build blocker."
       ],
@@ -202,1182 +127,1442 @@
       "noticeFiles": [
         "licenses/Phonon-2-NOTICE.txt",
         "licenses/Phonon-2-LICENSE-WEIGHTS-CC-BY-4.0.txt"
-      ]
+      ],
+      "path": "asr/phonon-2-fv5.gguf",
+      "sha256": "c0f6ad42f0a5b481904416077dde0a1a78e5b8642295fdf2356ace822588c3df",
+      "bytes": 208932352
     },
     {
-      "name": "Silero VAD v5 (GGUF)",
-      "path": "vad/silero-vad-v5.gguf",
-      "role": "vad-model",
-      "sha256": "d348cd6d87ea53dcd3e6680698c88be326082e27dae899adef653d090bee4995",
-      "bytes": 620736,
-      "license": "MIT",
-      "source": "https://huggingface.co/elizaos/eliza-1 (revision 1e4c73713e11f7ff42bc2a686cc5b178c8cac14f), vad/silero-vad-v5.gguf",
-      "url": "https://huggingface.co/elizaos/eliza-1/resolve/1e4c73713e11f7ff42bc2a686cc5b178c8cac14f/bundles/e2b/vad/silero-vad-v5.gguf"
+      "name": "Delibes notice LICENSE",
+      "role": "notice",
+      "license": "see file",
+      "source": "Upstream paradee-voice builder (Delibes-8M-esES release notices)",
+      "path": "notices/delibes/LICENSE",
+      "sha256": "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4",
+      "bytes": 11357
+    },
+    {
+      "name": "Delibes notice NOTICE.md",
+      "role": "notice",
+      "license": "see file",
+      "source": "Upstream paradee-voice builder (Delibes-8M-esES release notices)",
+      "path": "notices/delibes/NOTICE.md",
+      "sha256": "8d673dcc2e649eec908bf6638490a53b67ab93f2ba2832a02b70d47e66bf88f7",
+      "bytes": 2053
+    },
+    {
+      "name": "Delibes notice third_party/TATOEBA.md",
+      "role": "notice",
+      "license": "see file",
+      "source": "Upstream paradee-voice builder (Delibes-8M-esES release notices)",
+      "path": "notices/delibes/third_party/TATOEBA.md",
+      "sha256": "27d6dd608f53acdc8cfc569339587438f9c7e63e5241fab3e9fe5cbde7c7ad39",
+      "bytes": 1033
+    },
+    {
+      "name": "Delibes notice third_party/kokoro/LICENSE",
+      "role": "notice",
+      "license": "see file",
+      "source": "Upstream paradee-voice builder (Delibes-8M-esES release notices)",
+      "path": "notices/delibes/third_party/kokoro/LICENSE",
+      "sha256": "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4",
+      "bytes": 11357
+    },
+    {
+      "name": "Delibes notice third_party/paradee/LICENSE",
+      "role": "notice",
+      "license": "see file",
+      "source": "Upstream paradee-voice builder (Delibes-8M-esES release notices)",
+      "path": "notices/delibes/third_party/paradee/LICENSE",
+      "sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30",
+      "bytes": 11358
     },
     {
       "name": "eSpeak-NG-NOTICE.txt",
-      "path": "notices/eSpeak-NG-NOTICE.txt",
       "role": "notice",
-      "sha256": "46300c2f2b561c9d295bb73936da519f3718339a5b7b554599fa66ae8f227707",
-      "bytes": 1295,
       "license": "GPL-3.0-or-later",
-      "source": "Notice shipped with the voice bundle by packages/app/scripts/paradee-voice/build-native.ts"
+      "source": "Notice shipped with the voice bundle by packages/app/scripts/paradee-voice/build-native.ts",
+      "path": "notices/eSpeak-NG-NOTICE.txt",
+      "sha256": "46300c2f2b561c9d295bb73936da519f3718339a5b7b554599fa66ae8f227707",
+      "bytes": 1295
     },
     {
       "name": "espeak-ng-COPYING",
-      "path": "notices/espeak-ng-COPYING",
       "role": "notice",
-      "sha256": "8ceb4b9ee5adedde47b31e975c1d90c73ad27b6b165a1dcd80c7c545eb65b903",
-      "bytes": 35147,
       "license": "GPL-3.0-or-later",
-      "source": "Notice shipped with the voice bundle by packages/app/scripts/paradee-voice/build-native.ts"
+      "source": "Notice shipped with the voice bundle by packages/app/scripts/paradee-voice/build-native.ts",
+      "path": "notices/espeak-ng-COPYING",
+      "sha256": "8ceb4b9ee5adedde47b31e975c1d90c73ad27b6b165a1dcd80c7c545eb65b903",
+      "bytes": 35147
     },
     {
       "name": "misaki-Apache-2.0.txt",
-      "path": "notices/misaki-Apache-2.0.txt",
       "role": "notice",
-      "sha256": "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4",
-      "bytes": 11357,
       "license": "Apache-2.0",
-      "source": "Notice shipped with the voice bundle by packages/app/scripts/paradee-voice/build-native.ts"
+      "source": "Notice shipped with the voice bundle by packages/app/scripts/paradee-voice/build-native.ts",
+      "path": "notices/misaki-Apache-2.0.txt",
+      "sha256": "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4",
+      "bytes": 11357
     },
     {
       "name": "misaki-NOTICE.txt",
-      "path": "notices/misaki-NOTICE.txt",
       "role": "notice",
-      "sha256": "5322c2d07903ac2cc255d5b731343fa266e082cb281371bb6ee6656233f08320",
-      "bytes": 961,
       "license": "Apache-2.0",
-      "source": "Notice shipped with the voice bundle by packages/app/scripts/paradee-voice/build-native.ts"
-    },
-    {
-      "name": "spaCy-MIT.txt",
-      "path": "notices/spaCy-MIT.txt",
-      "role": "notice",
-      "sha256": "3f4378e67708fecacd3e27651c8bc0f977cf20789e19da0d81a2840e7cf573a2",
-      "bytes": 1128,
-      "license": "MIT",
-      "source": "Notice shipped with the voice bundle by packages/app/scripts/paradee-voice/build-native.ts"
-    },
-    {
-      "name": "Phonon-2-NOTICE.txt",
-      "path": "notices/Phonon-2-NOTICE.txt",
-      "role": "notice",
-      "sha256": "00624a5043e7ce74029317b024132ca5286116d6fbf3191d226374bc8273789f",
-      "bytes": 2741,
-      "license": "CC-BY-4.0",
-      "source": "FermionResearch/Phonon-2@7e153e4054c0a10db6d47d6fff5c062d4c77c154 NOTICE (pinned in the mobile-voice@1.1.0 catalog row and tools/parakeet/pins.json)"
+      "source": "Notice shipped with the voice bundle by packages/app/scripts/paradee-voice/build-native.ts",
+      "path": "notices/misaki-NOTICE.txt",
+      "sha256": "5322c2d07903ac2cc255d5b731343fa266e082cb281371bb6ee6656233f08320",
+      "bytes": 961
     },
     {
       "name": "Phonon-2-LICENSE-WEIGHTS-CC-BY-4.0.txt",
-      "path": "notices/Phonon-2-LICENSE-WEIGHTS-CC-BY-4.0.txt",
       "role": "notice",
-      "sha256": "9ba9550ad48438d0836ddab3da480b3b69ffa0aac7b7878b5a0039e7ab429411",
-      "bytes": 18657,
       "license": "CC-BY-4.0",
-      "source": "FermionResearch/Phonon-2@7e153e4054c0a10db6d47d6fff5c062d4c77c154 LICENSE-WEIGHTS-CC-BY-4.0.txt"
+      "source": "FermionResearch/Phonon-2@7e153e4054c0a10db6d47d6fff5c062d4c77c154 LICENSE-WEIGHTS-CC-BY-4.0.txt",
+      "path": "notices/phonon-2/LICENSE-WEIGHTS-CC-BY-4.0.txt",
+      "sha256": "9ba9550ad48438d0836ddab3da480b3b69ffa0aac7b7878b5a0039e7ab429411",
+      "bytes": 18657
+    },
+    {
+      "name": "Phonon-2-NOTICE.txt",
+      "role": "notice",
+      "license": "CC-BY-4.0",
+      "source": "FermionResearch/Phonon-2@7e153e4054c0a10db6d47d6fff5c062d4c77c154 NOTICE (pinned in the mobile-voice@1.1.0 catalog row and tools/parakeet/pins.json)",
+      "path": "notices/phonon-2/NOTICE",
+      "sha256": "00624a5043e7ce74029317b024132ca5286116d6fbf3191d226374bc8273789f",
+      "bytes": 2741
+    },
+    {
+      "name": "spaCy-MIT.txt",
+      "role": "notice",
+      "license": "MIT",
+      "source": "Notice shipped with the voice bundle by packages/app/scripts/paradee-voice/build-native.ts",
+      "path": "notices/spaCy-MIT.txt",
+      "sha256": "3f4378e67708fecacd3e27651c8bc0f977cf20789e19da0d81a2840e7cf573a2",
+      "bytes": 1128
+    },
+    {
+      "name": "Delibes-8M-esES (F32 GGUF)",
+      "role": "tts-model",
+      "license": "Apache-2.0",
+      "source": "Converted to GGUF by llama.cpp tools/paradee from the lapislabsai/Delibes-8M-esES release pinned in tools/paradee/pins.json (\"delibes\"); upstream voice bundle input",
+      "path": "tts/paradee/delibes-8m-eses.gguf",
+      "sha256": "3b635dc24a8952254066daad77ff64aa08368a8b5a689abf4be05bdf2b0afe51",
+      "bytes": 31275328
+    },
+    {
+      "name": "eSpeak NG 1.52.0 English data: en_dict",
+      "role": "g2p-data",
+      "license": "GPL-3.0-or-later",
+      "source": "https://github.com/espeak-ng/espeak-ng/archive/refs/tags/1.52.0.tar.gz (sha256 bb4338102ff3b49a81423da8a1a158b420124b055b60fa76cfb4b18677130a23)",
+      "path": "tts/paradee/espeak-ng-data/en_dict",
+      "sha256": "1053f74a34af38abb6fbd64b7838dacbc655a687c48ce1bb663d364a127b05de",
+      "bytes": 168204
+    },
+    {
+      "name": "eSpeak NG data es_dict",
+      "role": "g2p-data",
+      "license": "GPL-3.0-or-later",
+      "source": "Upstream paradee-voice builder from espeak-ng 1.52.0",
+      "path": "tts/paradee/espeak-ng-data/es_dict",
+      "sha256": "e7c6347e407d5c14f283eeada18b86c6d560b03b62f53659473109bbff096757",
+      "bytes": 49285
+    },
+    {
+      "name": "eSpeak NG 1.52.0 English data: intonations",
+      "role": "g2p-data",
+      "license": "GPL-3.0-or-later",
+      "source": "https://github.com/espeak-ng/espeak-ng/archive/refs/tags/1.52.0.tar.gz (sha256 bb4338102ff3b49a81423da8a1a158b420124b055b60fa76cfb4b18677130a23)",
+      "path": "tts/paradee/espeak-ng-data/intonations",
+      "sha256": "031a105bf6bb2ebcd73a2c579ccfb42469b27266db0078af65ae298fd3588b21",
+      "bytes": 2312
+    },
+    {
+      "name": "eSpeak NG 1.52.0 English data: lang/gmw/en",
+      "role": "g2p-data",
+      "license": "GPL-3.0-or-later",
+      "source": "https://github.com/espeak-ng/espeak-ng/archive/refs/tags/1.52.0.tar.gz (sha256 bb4338102ff3b49a81423da8a1a158b420124b055b60fa76cfb4b18677130a23)",
+      "path": "tts/paradee/espeak-ng-data/lang/gmw/en",
+      "sha256": "4605d5330801de3641c6e366d15f129ea1f5ffbce8722642aba01ace07ab9c83",
+      "bytes": 140
+    },
+    {
+      "name": "eSpeak NG 1.52.0 English data: lang/gmw/en-US",
+      "role": "g2p-data",
+      "license": "GPL-3.0-or-later",
+      "source": "https://github.com/espeak-ng/espeak-ng/archive/refs/tags/1.52.0.tar.gz (sha256 bb4338102ff3b49a81423da8a1a158b420124b055b60fa76cfb4b18677130a23)",
+      "path": "tts/paradee/espeak-ng-data/lang/gmw/en-US",
+      "sha256": "41534c2a22df5dd4f1052ff9e1a33a3ea7bff5a26b5c02bdad5ba8ddb7524704",
+      "bytes": 257
+    },
+    {
+      "name": "eSpeak NG data es",
+      "role": "g2p-data",
+      "license": "GPL-3.0-or-later",
+      "source": "Upstream paradee-voice builder from espeak-ng 1.52.0",
+      "path": "tts/paradee/espeak-ng-data/lang/roa/es",
+      "sha256": "966aa015ea5646d79f0ca4807cf5da7339aabd3782b55cfa5eb0d8c3fc8fc588",
+      "bytes": 63
+    },
+    {
+      "name": "eSpeak NG 1.52.0 English data: phondata",
+      "role": "g2p-data",
+      "license": "GPL-3.0-or-later",
+      "source": "https://github.com/espeak-ng/espeak-ng/archive/refs/tags/1.52.0.tar.gz (sha256 bb4338102ff3b49a81423da8a1a158b420124b055b60fa76cfb4b18677130a23)",
+      "path": "tts/paradee/espeak-ng-data/phondata",
+      "sha256": "a0b643b155cb6b12628d9e7865b57d9fca0d35844614f2594a5e009c80c80bb4",
+      "bytes": 554740
+    },
+    {
+      "name": "eSpeak NG 1.52.0 English data: phonindex",
+      "role": "g2p-data",
+      "license": "GPL-3.0-or-later",
+      "source": "https://github.com/espeak-ng/espeak-ng/archive/refs/tags/1.52.0.tar.gz (sha256 bb4338102ff3b49a81423da8a1a158b420124b055b60fa76cfb4b18677130a23)",
+      "path": "tts/paradee/espeak-ng-data/phonindex",
+      "sha256": "384e5fa6f714ba5356c58008249b78699c31c1ad044b243068d263fb806b7d73",
+      "bytes": 43316
+    },
+    {
+      "name": "eSpeak NG 1.52.0 English data: phontab",
+      "role": "g2p-data",
+      "license": "GPL-3.0-or-later",
+      "source": "https://github.com/espeak-ng/espeak-ng/archive/refs/tags/1.52.0.tar.gz (sha256 bb4338102ff3b49a81423da8a1a158b420124b055b60fa76cfb4b18677130a23)",
+      "path": "tts/paradee/espeak-ng-data/phontab",
+      "sha256": "1b40690667e1e9aa1ba5e5234773c799e7e72ea751426e5150423d53c3f24fa2",
+      "bytes": 58652
+    },
+    {
+      "name": "misaki English (US) lexicon",
+      "role": "g2p-lexicon",
+      "license": "Apache-2.0",
+      "source": "Converted by llama.cpp tools/misaki-g2p/convert_misaki_lexicon.py from github.com/hexgrad/misaki@fba1236595f2d2bf21d414ba6e57d25256afada3 us_gold/us_silver; byte-identical to the fork pin",
+      "path": "tts/paradee/misaki-en-us.lex",
+      "sha256": "fbf09090cff0a41f3f579bf03ab9fc42710b04d7284767b10467a5f182c23925",
+      "bytes": 12947790
+    },
+    {
+      "name": "Silero VAD v5 (GGUF)",
+      "role": "vad-model",
+      "license": "MIT",
+      "source": "https://huggingface.co/elizaos/eliza-1 (revision 1e4c73713e11f7ff42bc2a686cc5b178c8cac14f), vad/silero-vad-v5.gguf",
+      "url": "https://huggingface.co/elizaos/eliza-1/resolve/1e4c73713e11f7ff42bc2a686cc5b178c8cac14f/bundles/e2b/vad/silero-vad-v5.gguf",
+      "path": "vad/silero-vad-v5.gguf",
+      "sha256": "d348cd6d87ea53dcd3e6680698c88be326082e27dae899adef653d090bee4995",
+      "bytes": 620736
     }
   ],
   "evidence": {
     "deviceExecuted": true,
     "emulatorDeviceExecuted": true,
     "userAccepted": false,
-    "scope": "Pinned component corpora and full Alpha JNI embedding only; not physical capture/playback or product acceptance.",
+    "scope": "Component qualification of engine 6337fd4c4b (libelizainference sha256 49b01a18... arm64-v8a, 128b61f3... x86_64, as listed above) with the upstream qualify app (ai.eliza.voicequalify, AsrWerTest and ParadeeRoundTripTest) built from pin b25d8aef29 on 2026-11-07. Pixel 10a, arm64-v8a, Android API 37: ASR WER 1.94% over 101 LibriSpeech test-clean utterances (limit 6%, silence transcribed empty), ASR RTF 0.042; Paradee round trip WER 4.77% over 230 sentences (limit 8%), TTS RTF 0.055. x86_64 emulator (sdk_gphone64_x86_64, API 35, swiftshader): ASR WER 2.13% over 101 utterances (limit 6%, silence empty); round trip WER 4.90% over 230 sentences (limit 8%). Every transcript matches the b3eb2bf63b runs word for word on both ABIs. Component evidence only: not installed-app audio, live microphone, hardware playback or user acceptance. The historical qualification receipt binds the recorded qualify app and engine bytes to source b25d8aef2916385c571f4367e099809254fde0bb. The current SDK 99b49439ce9d0cb5607e9831b9f7f58d89525029 and explicit speech bridge patches have changed Java control flow and have not been requalified or accepted. The historical results do not qualify the current application, microphone capture, or hardware playback.",
     "records": [
-      "docs/evidence/native-c95a/asr-pixel.json",
-      "docs/evidence/native-c95a/roundtrip-pixel.json",
-      "docs/evidence/native-c95a/asr-emulator.json",
-      "docs/evidence/native-c95a/roundtrip-emulator.json",
-      "docs/evidence/native-c95a/embedding-pixel.json",
-      "docs/evidence/native-c95a/embedding-emulator.json"
+      "docs/evidence/voice-engine-6337fd4c/qualify/asr-wer.json",
+      "docs/evidence/voice-engine-6337fd4c/qualify/paradee-roundtrip.json",
+      "docs/evidence/voice-engine-6337fd4c/qualify-x86_64/asr-wer.json",
+      "docs/evidence/voice-engine-6337fd4c/qualify-x86_64/paradee-roundtrip.json",
+      "docs/evidence/voice-engine-6337fd4c/qualify-receipt.json"
     ]
   },
-  "acceptance": "Current component corpora passed on Pixel ARM64 and API35 x86_64. qualified remains false pending streaming/cancellation in the installed app, physical capture/playback, workflows and user acceptance.",
+  "acceptance": "Engine 6337fd4c4b passed component qualification on both ABIs (Pixel 10a arm64 and x86_64 API 35 emulator, 2026-11-07) with the qualify app built from b25d8aef29. On 2026-11-07 the owner accepted on-device speech on that evidence (P-82). That acceptance was recorded at pin 4e91de4cc7 with the statement that only the engine gitlink carried over from b25d8aef29; in fact the shared speech Java and the builder changed between b25d8aef29 and 4e91de4cc7, and changed again at 3a6d22670e. The changed code: ParadeeVoice (a per-request cancel path around every non-streaming native synthesis call, which the round-trip qualification calls), OnDeviceRecognizer (live recognizer session), ElizaInferencePlugin, LocalSpeechBridgePlugin (speech-output warm-up and its fenced close sites), the new SpeechLeadTrim, SpeechOutputWarmup and FirstWriteSpeechOutput, consumer.gradle, voice-product-inputs.mjs, build-native.ts (language selection) and the stream-contract StreamContract.java. The library bytes are unchanged and their component evidence stands, but the bridge under acceptance changed and was not requalified, so qualified is false until the owner re-accepts the changed bridge or it is requalified and accepted. This was never a measured spoken turn on versionCode 40, a same-day A/B, an AOSP image test or pilot acceptance. The current source selection is SDK 99b49439ce9d0cb5607e9831b9f7f58d89525029 with the explicit patches recorded in sourceAdmission.sourceIntegration. Its changed bridge has not been accepted; qualified and userAccepted remain false.",
   "sourceAdmission": {
-    "record": "docs/evidence/native-c95a/embedding-QUALIFICATION.json",
-    "engineBuildRecord": "docs/evidence/native-c95a/voice-build-record.json",
-    "priorFork": "6003a10368d8a6d5fb1f70fe9c63a70866e8bcff",
+    "engineBuildRecord": "docs/evidence/voice-engine-6337fd4c/voice-build-record.json",
+    "priorFork": "b3eb2bf63b3c02cd37ee09d442911ace99975b38",
     "nativeInputsUnchanged": false,
     "nativeQualificationTransferred": false,
+    "historicalSourceAdmission": {
+      "record": "docs/evidence/native-c95a/embedding-QUALIFICATION.json",
+      "engineBuildRecord": "docs/evidence/native-c95a/voice-build-record.json",
+      "priorFork": "6003a10368d8a6d5fb1f70fe9c63a70866e8bcff",
+      "nativeInputsUnchanged": false,
+      "nativeQualificationTransferred": false,
+      "developComparison": {
+        "builtAt": "04658de1b942510e0d37efc777c154530f5c0ef1",
+        "admittedAt": "4b928290d388e8f9866b6c404a1b186c7bfe7f70",
+        "unchangedPaths": [
+          "packages/app/scripts/paradee-voice",
+          "packages/app/scripts/stage-elizavoice-lib.ts",
+          "packages/app/platforms/android/app/src/main/elizavoice-jni",
+          "plugins/plugin-local-inference/native/llama.cpp",
+          "plugins/plugin-local-inference/native/android/inputs.json"
+        ],
+        "note": "Reuse of recorded native bytes after exact source comparison; Android consumer.gradle changed its optional ABI selection and is not claimed byte-identical. No new device acceptance.",
+        "evidence": "docs/evidence/merge-build-native-source-2026-10-26.json"
+      },
+      "priorDevelopComparison": {
+        "builtAt": "c95a37be8d56fb672825df7e9e9a742b59567bbb",
+        "admittedAt": "04658de1b942510e0d37efc777c154530f5c0ef1",
+        "unchangedPaths": [
+          "plugins/plugin-local-inference/native",
+          "packages/app/scripts/paradee-voice",
+          "packages/app/scripts/stage-elizavoice-lib.ts",
+          "packages/app/platforms/android/app/src/main/elizavoice-jni",
+          "packages/app/platforms/android/app/src/main/java/ai/elizaos/app/ElizaVoiceNative.java"
+        ],
+        "note": "Exact source trees unchanged; original build and component qualification receipts retained. No new device acceptance."
+      },
+      "currentDevelopComparison": {
+        "from": "6497825b38cbe41b3677c0a445341fec900f0dd2",
+        "admittedAt": "fd5511ca1dacdccfadd93879bddff2038ebe8665",
+        "unchangedPaths": [
+          "packages/app/scripts/paradee-voice/build-native.ts",
+          "packages/app/scripts/stage-elizavoice-lib.ts",
+          "packages/app/platforms/android/app/src/main/elizavoice-jni",
+          "plugins/plugin-local-inference/native/llama.cpp",
+          "plugins/plugin-local-inference/native/android/inputs.json",
+          "packages/app/platforms/android/app/src/main/java/ai/elizaos/app/ElizaVoiceNative.java"
+        ],
+        "note": "Recorded engine, model and JNI build inputs are unchanged. The optional Capacitor transcription transport and its contract tests now use the admitted native Phonon session exclusively. Native bytes and prior component evidence are retained; device and user acceptance are not extended."
+      },
+      "currentSourceComparison": {
+        "priorAdmittedAt": "641c179ce8214c864a7ea3dee23dae2d2bd2a682",
+        "comparisonBase": "5d1af326e596fea5893d095db882bdb858a4a774",
+        "comparedAt": "0594fc72da4450a84a986ad12e730e3faa902018",
+        "admitted": false,
+        "requalificationRequired": true,
+        "unchangedPaths": [
+          "packages/app/platforms/android/app/src/main/elizavoice-jni",
+          "packages/app/platforms/android/app/src/main/elizavoice-jni/CMakeLists.txt",
+          "packages/app/platforms/android/app/src/main/elizavoice-jni/elizavoice-jni.cpp",
+          "packages/app/platforms/android/app/src/main/java/ai/elizaos/app/ElizaVoiceNative.java",
+          "packages/app/scripts/build-helpers/arm64-simd.ts",
+          "packages/app/scripts/build-helpers/verify-fused-symbols.ts",
+          "packages/app/scripts/lib/android-bun-artifacts.lock.json",
+          "packages/app/scripts/paradee-voice",
+          "packages/app/scripts/paradee-voice/build-native.ts",
+          "packages/app/scripts/stage-elizavoice-lib.ts",
+          "packages/auth/android/build.gradle",
+          "packages/auth/android/src/main/java/ai/eliza/auth/cloud/CloudSignInConfig.java",
+          "packages/auth/android/src/main/java/ai/eliza/auth/cloud/CloudSignInFlow.java",
+          "packages/auth/android/src/main/java/ai/eliza/auth/cloud/CloudSignInPlugin.java",
+          "packages/auth/android/src/main/java/ai/eliza/auth/cloud/CloudSignInReadiness.java",
+          "packages/auth/android/src/main/java/ai/eliza/auth/cloud/CloudSignInRoutes.java",
+          "plugins/plugin-local-inference/native",
+          "plugins/plugin-local-inference/native/android/consumer.gradle",
+          "plugins/plugin-local-inference/native/android/inputs.json",
+          "plugins/plugin-local-inference/native/llama.cpp",
+          "plugins/plugin-native-agent/android"
+        ],
+        "changedPaths": [],
+        "absentPreviouslyListedPaths": [
+          "packages/voice/src/cloud-speech-chunks.ts",
+          "packages/voice/src/native-cloud-speech.ts",
+          "plugins/plugin-local-inference/native/android/speech-bridge/src/main/java/ai/eliza/voice/CloudSpeechTimings.java",
+          "plugins/plugin-local-inference/native/android/speech-bridge/src/main/java/ai/eliza/voice/CloudSpeechWire.java",
+          "plugins/plugin-local-inference/native/android/speech-bridge/src/main/java/ai/eliza/voice/SpeechStreamBridgePlugin.java"
+        ],
+        "consumerLifecycleChanges": [],
+        "evidence": "docs/evidence/sdk-0594fc72da-build-input-admission-20261106.json",
+        "note": "Source-only move from 5d1af326e5 to the develop head 0594fc72da: the SDK delta is two Cloud files, and every listed native build input, the b3eb2bf6 engine gitlink and bun.lock are unchanged. The voice record keeps its historical pin, compiled hashes and qualified=false; no APK or device qualification transfers."
+      },
+      "sourceComparisonHistory": [
+        {
+          "priorAdmittedAt": "fd5511ca1dacdccfadd93879bddff2038ebe8665",
+          "admittedAt": "41d99bb4c86cb61bfa07d5e49b07603dbbe1080b",
+          "unchangedPaths": [
+            "plugins/plugin-local-inference/native",
+            "packages/app/scripts/paradee-voice",
+            "packages/app/scripts/stage-elizavoice-lib.ts",
+            "packages/app/platforms/android/app/src/main/elizavoice-jni",
+            "packages/app/platforms/android/app/src/main/java/ai/elizaos/app/ElizaVoiceNative.java",
+            "packages/app/scripts/lib/android-bun-artifacts.lock.json"
+          ],
+          "evidence": "docs/evidence/voice-source-admission-41d99-20261027.json",
+          "note": "Current source admission from exact identical input Git objects. Original engine-build/component records, ABI/model digests and qualified=false remain unchanged. No binary, emulator, physical or user qualification is transferred."
+        },
+        {
+          "priorAdmittedAt": "41d99bb4c86cb61bfa07d5e49b07603dbbe1080b",
+          "admittedAt": "18cc0cf2ee9f332afe8b6dffecc8f9b2fbcf8d47",
+          "unchangedPaths": [
+            "plugins/plugin-local-inference/native",
+            "packages/app/scripts/paradee-voice",
+            "packages/app/scripts/stage-elizavoice-lib.ts",
+            "packages/app/platforms/android/app/src/main/elizavoice-jni",
+            "packages/app/platforms/android/app/src/main/java/ai/elizaos/app/ElizaVoiceNative.java",
+            "packages/app/scripts/lib/android-bun-artifacts.lock.json"
+          ],
+          "evidence": "docs/evidence/voice-source-admission-18cc0-20261027.json",
+          "note": "Current source admission from exact identical input Git objects. Prior fd551-to-41 comparison and its evidence remain preserved. Original engine-build/component records, ABI/model digests and qualified=false remain unchanged. No binary, emulator, physical or user qualification is transferred."
+        },
+        {
+          "priorAdmittedAt": "18cc0cf2ee9f332afe8b6dffecc8f9b2fbcf8d47",
+          "admittedAt": "f983d68173f12b89af22f93502d81234c7112b7d",
+          "unchangedPaths": [
+            "plugins/plugin-local-inference/native",
+            "packages/app/scripts/paradee-voice",
+            "packages/app/scripts/stage-elizavoice-lib.ts",
+            "packages/app/platforms/android/app/src/main/elizavoice-jni",
+            "packages/app/platforms/android/app/src/main/java/ai/elizaos/app/ElizaVoiceNative.java",
+            "packages/app/scripts/lib/android-bun-artifacts.lock.json"
+          ],
+          "evidence": "docs/evidence/voice-source-admission-f983d-20261027.json",
+          "note": "Current source admission from exact identical native input Git objects after a type-only ContextObject annotation. Prior fd551-to-41 and 41-to-18 comparisons and evidence remain preserved. All original binary/model/ABI/build/component evidence and qualified=false remain unchanged; no native or device qualification transferred."
+        },
+        {
+          "priorAdmittedAt": "f983d68173f12b89af22f93502d81234c7112b7d",
+          "admittedAt": "8cc623855ce49cab68f9ed321b206abcad4d5c0b",
+          "unchangedPaths": [
+            "plugins/plugin-local-inference/native",
+            "packages/app/scripts/paradee-voice",
+            "packages/app/scripts/stage-elizavoice-lib.ts",
+            "packages/app/platforms/android/app/src/main/elizavoice-jni",
+            "packages/app/platforms/android/app/src/main/java/ai/elizaos/app/ElizaVoiceNative.java",
+            "packages/app/scripts/lib/android-bun-artifacts.lock.json"
+          ],
+          "evidence": "docs/evidence/voice-source-admission-8cc62-20261027.json",
+          "note": "Exact identical native input Git objects for Calendar promoted read-schema source correction. Historical engine/build/component records and qualified=false remain unchanged. No binary, emulator, physical or user qualification is transferred."
+        },
+        {
+          "priorAdmittedAt": "8cc623855ce49cab68f9ed321b206abcad4d5c0b",
+          "admittedAt": "a2e66801f4828c290e9f45849cb40ff6bfd1adc9",
+          "unchangedPaths": [
+            "plugins/plugin-local-inference/native/llama.cpp",
+            "plugins/plugin-local-inference/native/android/inputs.json",
+            "packages/app/scripts/paradee-voice",
+            "packages/app/scripts/stage-elizavoice-lib.ts",
+            "packages/app/platforms/android/app/src/main/elizavoice-jni",
+            "packages/app/platforms/android/app/src/main/java/ai/elizaos/app/ElizaVoiceNative.java",
+            "packages/app/scripts/lib/android-bun-artifacts.lock.json"
+          ],
+          "changedConsumerPaths": [
+            "packages/app/platforms/android/app/build.gradle",
+            "packages/app/platforms/android/app/src/main/AndroidManifest.xml",
+            "packages/app/platforms/android/app/src/main/java/ai/elizaos/app/ElizaAgentService.java",
+            "packages/app/platforms/android/runtime-abis.gradle",
+            "packages/app/platforms/android/settings.gradle",
+            "packages/app/platforms/android/voice-assets/build.gradle",
+            "packages/app/scripts/mobile/android/gradle-patches.ts",
+            "packages/app/scripts/mobile/artifact-inspection/android-audit.ts",
+            "plugins/plugin-local-inference/native/android/README.md",
+            "plugins/plugin-local-inference/native/android/consumer.gradle",
+            "plugins/plugin-local-inference/native/android/src/main/java/ai/eliza/voice/VoiceAssets.java",
+            "plugins/plugin-local-inference/native/android/src/main/java/ai/eliza/voice/VoiceBundleAssets.java",
+            "plugins/plugin-local-inference/native/android/test/assets/VoiceBundleAssetsTest.java",
+            "plugins/plugin-local-inference/native/android/test/voice-assets.node.mjs",
+            "plugins/plugin-native-system/README.md",
+            "plugins/plugin-native-system/android/src/main/java/ai/eliza/plugins/system/SenseInvocation.java",
+            "plugins/plugin-native-system/android/src/main/java/ai/eliza/plugins/system/SenseListenerClient.java",
+            "plugins/plugin-native-system/android/src/main/java/ai/eliza/plugins/system/SensePlugin.java",
+            "plugins/plugin-native-system/src/sense.ts",
+            "plugins/plugin-native-system/test/SenseInvocationTest.java",
+            "plugins/plugin-native-system/test/sense-client-stubs.json",
+            "plugins/plugin-native-system/test/sense.test.mjs"
+          ],
+          "evidence": "docs/evidence/voice-source-admission-final-a2-20261027.json",
+          "note": "Only the listed engine/model/JNI/Bun input Git objects are unchanged. Broader inference and native-system trees changed for assets, ABI packaging and protected Power entry. Current consumer/native compilation and exact APK/image acceptance remain required; historical binary records and qualified=false are not transferred."
+        },
+        {
+          "priorAdmittedAt": "a2e66801f4828c290e9f45849cb40ff6bfd1adc9",
+          "admittedAt": "ea0899fd7f19b2bf3552127d6566c15e23b4c303",
+          "unchangedPaths": [
+            "plugins/plugin-local-inference/native/llama.cpp",
+            "plugins/plugin-local-inference/native/android/inputs.json",
+            "packages/app/scripts/paradee-voice",
+            "packages/app/scripts/stage-elizavoice-lib.ts",
+            "packages/app/platforms/android/app/src/main/elizavoice-jni",
+            "packages/app/platforms/android/app/src/main/java/ai/elizaos/app/ElizaVoiceNative.java",
+            "packages/app/scripts/lib/android-bun-artifacts.lock.json",
+            "plugins/plugin-local-inference/native",
+            "plugins/plugin-native-system/android",
+            "packages/app/platforms/android"
+          ],
+          "evidence": "docs/evidence/voice-source-admission-final-ea-20261028.json",
+          "note": "Only Calendar schema/diagnostic source changes from A2; listed native input objects remain identical to A2. The earlier 8cc-to-A2 consumer/Power changes still require fresh compilation and exact artifact/image acceptance. Historical binary/model/ABI records and qualified=false remain unchanged."
+        },
+        {
+          "priorAdmittedAt": "ea0899fd7f19b2bf3552127d6566c15e23b4c303",
+          "admittedAt": "de16c240f8ef77779edd3aa411e407018d2be209",
+          "unchangedPaths": [
+            "plugins/plugin-local-inference/native/llama.cpp",
+            "plugins/plugin-local-inference/native/android/inputs.json",
+            "packages/app/scripts/paradee-voice",
+            "packages/app/scripts/stage-elizavoice-lib.ts",
+            "packages/app/platforms/android/app/src/main/elizavoice-jni",
+            "packages/app/platforms/android/app/src/main/java/ai/elizaos/app/ElizaVoiceNative.java",
+            "packages/app/scripts/lib/android-bun-artifacts.lock.json",
+            "plugins/plugin-local-inference/native",
+            "plugins/plugin-native-system/android",
+            "packages/app/platforms/android",
+            "plugins/plugin-native-action-journal/android",
+            "plugins/plugin-native-calendar/android",
+            "plugins/plugin-native-media/android",
+            "plugins/plugin-native-notifications/android",
+            "plugins/plugin-native-reminders/android",
+            "plugins/plugin-native-secure-store/android",
+            "packages/core",
+            "plugins/plugin-workflow",
+            "packages/agent",
+            "packages/contracts/src/lifeops/workflows.ts",
+            "packages/host",
+            "plugins/plugin-pdf",
+            "LICENSE",
+            "package.json",
+            "bun.lock"
+          ],
+          "evidence": "docs/evidence/source-clean-coherent-final-20261028.json",
+          "note": "Only shared Calendar/Assistant/Notes/Cloud source changed from EA. Compared native/model/JNI/Bun/Core/workflow inputs are exact EA objects. Earlier native consumer/Power changes still need current compilation and exact artifact acceptance. Historical binary/model/ABI facts and false qualification flags are retained; no hardware/voice acceptance transfers."
+        },
+        {
+          "priorAdmittedAt": "de16c240f8ef77779edd3aa411e407018d2be209",
+          "admittedAt": "2f664cc6dc223cf12002120576357114f8cb9763",
+          "unchangedPaths": [
+            "plugins/plugin-local-inference/native/llama.cpp",
+            "plugins/plugin-local-inference/native/android/inputs.json",
+            "packages/app/scripts/paradee-voice",
+            "packages/app/scripts/stage-elizavoice-lib.ts",
+            "packages/app/platforms/android/app/src/main/elizavoice-jni",
+            "packages/app/platforms/android/app/src/main/java/ai/elizaos/app/ElizaVoiceNative.java",
+            "packages/app/scripts/lib/android-bun-artifacts.lock.json",
+            "plugins/plugin-local-inference/native",
+            "plugins/plugin-native-system/android",
+            "packages/app/platforms/android",
+            "plugins/plugin-native-action-journal/android",
+            "plugins/plugin-native-calendar/android",
+            "plugins/plugin-native-media/android",
+            "plugins/plugin-native-notifications/android",
+            "plugins/plugin-native-reminders/android",
+            "plugins/plugin-native-secure-store/android",
+            "packages/core",
+            "plugins/plugin-workflow",
+            "packages/agent",
+            "packages/contracts/src/lifeops/workflows.ts",
+            "packages/host",
+            "plugins/plugin-pdf",
+            "LICENSE",
+            "package.json",
+            "bun.lock"
+          ],
+          "evidence": "docs/evidence/notes-restore-guidance-20261028.json",
+          "note": "One Assistant tool description changed; recorded native qualification remains unchanged. Source-only binding, not hardware or model acceptance."
+        },
+        {
+          "priorAdmittedAt": "2f664cc6dc223cf12002120576357114f8cb9763",
+          "admittedAt": "6f91e22e6bfabdef67138b91c61ebf2929dad775",
+          "unchangedPaths": [
+            "plugins/plugin-local-inference/native/llama.cpp",
+            "plugins/plugin-local-inference/native/android/inputs.json",
+            "packages/app/scripts/paradee-voice",
+            "packages/app/scripts/stage-elizavoice-lib.ts",
+            "packages/app/platforms/android/app/src/main/elizavoice-jni",
+            "packages/app/platforms/android/app/src/main/java/ai/elizaos/app/ElizaVoiceNative.java",
+            "packages/app/scripts/lib/android-bun-artifacts.lock.json",
+            "plugins/plugin-local-inference/native",
+            "plugins/plugin-native-system/android",
+            "packages/app/platforms/android",
+            "plugins/plugin-native-action-journal/android",
+            "plugins/plugin-native-calendar/android",
+            "plugins/plugin-native-media/android",
+            "plugins/plugin-native-notifications/android",
+            "plugins/plugin-native-reminders/android",
+            "plugins/plugin-native-secure-store/android",
+            "plugins/plugin-workflow",
+            "packages/contracts/src/lifeops/workflows.ts",
+            "packages/host",
+            "plugins/plugin-pdf",
+            "LICENSE",
+            "package.json",
+            "bun.lock"
+          ],
+          "changedPaths": [
+            "packages/agent/test/calendar-read-failure-transport.test.ts",
+            "packages/contracts/src/calendar.ts",
+            "packages/core/src/runtime/planner-types.ts",
+            "plugins/plugin-assistant/src/runtime/calendar-read-coverage.test.ts",
+            "plugins/plugin-assistant/src/runtime/evaluator.ts",
+            "plugins/plugin-assistant/src/runtime/planner-loop.ts"
+          ],
+          "evidence": "docs/evidence/v17-diagnostic-source-binding-20261028.json",
+          "note": "Exact native and dependency input objects retained. Agent/core diagnostic code and tests changed; no runtime, native component or user qualification transferred."
+        },
+        {
+          "priorAdmittedAt": "6f91e22e6bfabdef67138b91c61ebf2929dad775",
+          "admittedAt": "96c560ec9c57c6f98cafc523c1ddbb9cea8a3379",
+          "unchangedPaths": [
+            "plugins/plugin-local-inference/native/llama.cpp",
+            "plugins/plugin-local-inference/native/android/inputs.json",
+            "packages/app/scripts/paradee-voice",
+            "packages/app/scripts/stage-elizavoice-lib.ts",
+            "packages/app/platforms/android/app/src/main/elizavoice-jni",
+            "packages/app/platforms/android/app/src/main/java/ai/elizaos/app/ElizaVoiceNative.java",
+            "packages/app/scripts/lib/android-bun-artifacts.lock.json",
+            "plugins/plugin-local-inference/native",
+            "plugins/plugin-native-system/android",
+            "plugins/plugin-native-action-journal/android",
+            "plugins/plugin-native-calendar/android",
+            "plugins/plugin-native-media/android",
+            "plugins/plugin-native-notifications/android",
+            "plugins/plugin-native-reminders/android",
+            "plugins/plugin-native-secure-store/android",
+            "plugins/plugin-workflow",
+            "packages/contracts/src/lifeops/workflows.ts",
+            "packages/host",
+            "plugins/plugin-pdf",
+            "LICENSE",
+            "package.json",
+            "bun.lock"
+          ],
+          "changedPaths": [
+            "packages/app/platforms/android/app/src/main/java/ai/elizaos/app/ElizaReminderMessagingService.java",
+            "packages/app/platforms/android/app/src/main/java/ai/elizaos/app/NativeNotificationChannels.java",
+            "packages/app/platforms/android/app/src/main/java/ai/elizaos/app/NativeNotificationProjector.java",
+            "plugins/plugin-personal-assistant/src/lifeops/domains/reminder-read-receipts.test.ts",
+            "plugins/plugin-personal-assistant/src/lifeops/domains/reminders-service.ts"
+          ],
+          "evidence": "docs/evidence/v17-notification-source-binding-20261028.json",
+          "note": "Exact engine, model and dependency input objects retained. Android notification Java and reminder service code changed; fresh compile and runtime qualification required. No prior native or device acceptance transferred."
+        },
+        {
+          "priorAdmittedAt": "96c560ec9c57c6f98cafc523c1ddbb9cea8a3379",
+          "admittedAt": "e40497d5d0111d557aef022eb01d4f03023c9fc8",
+          "unchangedPaths": [
+            "plugins/plugin-local-inference/native/llama.cpp",
+            "plugins/plugin-local-inference/native/android/inputs.json",
+            "packages/app/scripts/paradee-voice",
+            "packages/app/scripts/stage-elizavoice-lib.ts",
+            "packages/app/platforms/android/app/src/main/elizavoice-jni",
+            "packages/app/platforms/android/app/src/main/java/ai/elizaos/app/ElizaVoiceNative.java",
+            "packages/app/scripts/lib/android-bun-artifacts.lock.json",
+            "plugins/plugin-local-inference/native",
+            "plugins/plugin-native-system/android",
+            "plugins/plugin-native-action-journal/android",
+            "plugins/plugin-native-calendar/android",
+            "plugins/plugin-native-media/android",
+            "plugins/plugin-native-notifications/android",
+            "plugins/plugin-native-reminders/android",
+            "plugins/plugin-native-secure-store/android",
+            "plugins/plugin-workflow",
+            "packages/contracts/src/lifeops/workflows.ts",
+            "packages/host",
+            "plugins/plugin-pdf",
+            "LICENSE",
+            "package.json",
+            "bun.lock"
+          ],
+          "changedPaths": [
+            "packages/app/platforms/android/app/src/main/java/ai/elizaos/app/NativeNotificationProjector.java"
+          ],
+          "evidence": "docs/evidence/v17-notification-lint-source-binding-20261028.json",
+          "note": "Exact engine, model and dependency input objects retained. Only the NotificationCompat builder visibility constant changed; fresh normal native compile/lint is required. No prior native or device acceptance transferred."
+        },
+        {
+          "priorAdmittedAt": "e40497d5d0111d557aef022eb01d4f03023c9fc8",
+          "admittedAt": "5794c8c0d18914b3564d5c6716e28c2a3587f5ed",
+          "unchangedPaths": [
+            "plugins/plugin-local-inference/native",
+            "packages/app/scripts/paradee-voice",
+            "packages/app/scripts/stage-elizavoice-lib.ts",
+            "packages/app/scripts/build-helpers/arm64-simd.ts",
+            "packages/app/scripts/build-helpers/verify-fused-symbols.ts",
+            "packages/app/platforms/android/app/src/main/elizavoice-jni",
+            "packages/app/platforms/android/app/src/main/java/ai/elizaos/app/ElizaVoiceNative.java",
+            "packages/app/scripts/lib/android-bun-artifacts.lock.json"
+          ],
+          "evidence": "docs/evidence/sdk5794-build-input-admission-20261028.json",
+          "note": "All listed engine/model/JNI/Bun build-input objects and modes are identical. SDK runtime model matching and durable reminder receipts changed and need current build/runtime validation. Historical component/device/user evidence and qualified=false are unchanged; no qualification transfers."
+        },
+        {
+          "priorAdmittedAt": "5794c8c0d18914b3564d5c6716e28c2a3587f5ed",
+          "admittedAt": "6c1a31f2331581e2bd148d7792c20f25276c0da7",
+          "unchangedPaths": [
+            "plugins/plugin-local-inference/native/llama.cpp",
+            "plugins/plugin-local-inference/native/android/inputs.json",
+            "plugins/plugin-local-inference/native/android/consumer.gradle",
+            "packages/app/scripts/paradee-voice/build-native.ts",
+            "packages/app/scripts/stage-elizavoice-lib.ts",
+            "packages/app/scripts/build-helpers/arm64-simd.ts",
+            "packages/app/scripts/build-helpers/verify-fused-symbols.ts",
+            "packages/app/platforms/android/app/src/main/elizavoice-jni",
+            "packages/app/platforms/android/app/src/main/java/ai/elizaos/app/ElizaVoiceNative.java",
+            "packages/app/scripts/lib/android-bun-artifacts.lock.json"
+          ],
+          "changedPaths": [
+            "plugins/plugin-local-inference/native",
+            "packages/app/scripts/paradee-voice"
+          ],
+          "evidence": "docs/evidence/sdk6c1a-build-input-admission-20261028.json",
+          "note": "Native engine, model, JNI and Bun build inputs are byte-identical, so the recorded native libraries and model bytes stay admitted. The shared ai.eliza.voice Java API compiled into the APK changed (streamed playback, audio focus, live capture and latency probes) and needs a fresh APK build and on-device voice validation. Historical component/device/user evidence and qualified=false are unchanged; no qualification transfers."
+        },
+        {
+          "priorAdmittedAt": "6c1a31f2331581e2bd148d7792c20f25276c0da7",
+          "admittedAt": "756ba00966bb57e1e0590871f8a639df7e54d95e",
+          "unchangedPaths": [
+            "plugins/plugin-local-inference/native/llama.cpp",
+            "plugins/plugin-local-inference/native/android/inputs.json",
+            "plugins/plugin-local-inference/native/android/consumer.gradle",
+            "packages/app/scripts/paradee-voice/build-native.ts",
+            "packages/app/scripts/stage-elizavoice-lib.ts",
+            "packages/app/scripts/build-helpers/arm64-simd.ts",
+            "packages/app/scripts/build-helpers/verify-fused-symbols.ts",
+            "packages/app/platforms/android/app/src/main/elizavoice-jni",
+            "packages/app/platforms/android/app/src/main/java/ai/elizaos/app/ElizaVoiceNative.java",
+            "packages/app/scripts/lib/android-bun-artifacts.lock.json",
+            "plugins/plugin-local-inference/native"
+          ],
+          "changedPaths": [
+            "packages/app/scripts/paradee-voice"
+          ],
+          "evidence": "docs/evidence/sdk-develop-756ba009-build-input-admission-20261028.json",
+          "note": "Moving from the SDK join to elizaOS/eliza develop changes no native engine, model, JNI, Bun or ai.eliza.voice Java input; only a paradee-voice contract test changed. The recorded native libraries and model bytes stay admitted. The prior comparison's requirement for a fresh APK build and on-device voice validation is still open. Historical component/device/user evidence and qualified=false are unchanged; no qualification transfers."
+        },
+        {
+          "priorAdmittedAt": "1f2a922f86e2a1f3d6cd62e097145492bd49ebfc",
+          "comparedAt": "fbc2d23d4bae0c7086ea529c019e5a47fb7b8352",
+          "admitted": false,
+          "requalificationRequired": true,
+          "unchangedPaths": [
+            "packages/app/scripts/build-helpers/arm64-simd.ts",
+            "packages/app/scripts/build-helpers/verify-fused-symbols.ts",
+            "packages/app/scripts/lib/android-bun-artifacts.lock.json"
+          ],
+          "changedPaths": [
+            "plugins/plugin-local-inference/native/llama.cpp",
+            "plugins/plugin-local-inference/native/android/inputs.json",
+            "plugins/plugin-local-inference/native/android/consumer.gradle",
+            "packages/app/scripts/paradee-voice/build-native.ts",
+            "packages/app/scripts/stage-elizavoice-lib.ts",
+            "packages/app/platforms/android/app/src/main/elizavoice-jni",
+            "packages/app/platforms/android/app/src/main/java/ai/elizaos/app/ElizaVoiceNative.java",
+            "plugins/plugin-local-inference/native",
+            "packages/app/scripts/paradee-voice"
+          ],
+          "evidence": "docs/evidence/develop-fbc2d23d-build-input-admission-20261029.json",
+          "note": "Moving to develop fbc2d23d4b changes the native engine inputs: the llama.cpp fork moves from 0d9fd4b9 to 13d0ccbf, upstream inputs.json pins Paradee-8M v1.2 (the tts-model row above now names those source-declared bytes) and adds an enabled Spanish voice, and the JNI, ElizaVoiceNative and ai.eliza.voice Java sources changed. The recorded libelizainference libraries (forkPin 0d9fd4b9) are not admitted at this pin and are kept only as the historical record. A fresh engine build for both ABIs, a fresh record of library and model bytes, a fresh APK and on-device voice validation are required before a distribution build. Historical component/device/user evidence and qualified=false are unchanged; no qualification transfers."
+        },
+        {
+          "priorAdmittedAt": "fbc2d23d4bae0c7086ea529c019e5a47fb7b8352",
+          "comparedAt": "0db04d25367889fd0b939f9e5f31d38338a37f94",
+          "admitted": false,
+          "requalificationRequired": true,
+          "unchangedPaths": [
+            "packages/app/scripts/build-helpers/arm64-simd.ts",
+            "packages/app/scripts/build-helpers/verify-fused-symbols.ts",
+            "packages/app/scripts/lib/android-bun-artifacts.lock.json",
+            "plugins/plugin-local-inference/native/llama.cpp",
+            "plugins/plugin-local-inference/native/android/inputs.json",
+            "plugins/plugin-local-inference/native/android/consumer.gradle",
+            "packages/app/scripts/paradee-voice/build-native.ts",
+            "packages/app/scripts/stage-elizavoice-lib.ts",
+            "packages/app/platforms/android/app/src/main/elizavoice-jni",
+            "packages/app/platforms/android/app/src/main/java/ai/elizaos/app/ElizaVoiceNative.java",
+            "plugins/plugin-local-inference/native",
+            "packages/app/scripts/paradee-voice"
+          ],
+          "changedPaths": [],
+          "evidence": "docs/evidence/local-qa-main441-og-sdk-combination-20261029.json",
+          "note": "Local browser QA source-only binding. Native input entries equal frozen fbc2, which already changed the engine/model/JNI inputs and does not admit recorded old0d9 libraries. All native requalification, model/ABI/APK/device holds and qualified=false remain. No native or historical runtime proof transfers."
+        },
+        {
+          "priorAdmittedAt": "0db04d25367889fd0b939f9e5f31d38338a37f94",
+          "comparedAt": "1e95a588bd680f18a7b7c1232b1c96145a43f7ee",
+          "admitted": false,
+          "requalificationRequired": true,
+          "unchangedPaths": [
+            "packages/app/scripts/build-helpers/arm64-simd.ts",
+            "packages/app/scripts/build-helpers/verify-fused-symbols.ts",
+            "packages/app/scripts/lib/android-bun-artifacts.lock.json",
+            "plugins/plugin-local-inference/native/llama.cpp",
+            "plugins/plugin-local-inference/native/android/inputs.json",
+            "plugins/plugin-local-inference/native/android/consumer.gradle",
+            "packages/app/scripts/paradee-voice/build-native.ts",
+            "packages/app/scripts/stage-elizavoice-lib.ts",
+            "packages/app/platforms/android/app/src/main/elizavoice-jni",
+            "packages/app/platforms/android/app/src/main/java/ai/elizaos/app/ElizaVoiceNative.java",
+            "plugins/plugin-local-inference/native",
+            "packages/app/scripts/paradee-voice"
+          ],
+          "changedPaths": [],
+          "evidence": "docs/evidence/local-qa-browser-grounding-sdk-20261029.json",
+          "note": "Browser safety source-only binding. Native engine/model/JNI entries equal preserved0db; inherited fbc2 engine/model requalification remains required. Old0d9 libraries are not admitted. No APK/device qualification transfer."
+        },
+        {
+          "priorAdmittedAt": "1e95a588bd680f18a7b7c1232b1c96145a43f7ee",
+          "comparedAt": "d5f3af8f10ba41cf41fb723d9374305ad2b3e106",
+          "admitted": false,
+          "requalificationRequired": true,
+          "unchangedPaths": [
+            "packages/app/scripts/build-helpers/arm64-simd.ts",
+            "packages/app/scripts/build-helpers/verify-fused-symbols.ts",
+            "packages/app/scripts/lib/android-bun-artifacts.lock.json",
+            "plugins/plugin-local-inference/native/llama.cpp",
+            "plugins/plugin-local-inference/native/android/inputs.json",
+            "plugins/plugin-local-inference/native/android/consumer.gradle",
+            "packages/app/scripts/paradee-voice/build-native.ts",
+            "packages/app/scripts/stage-elizavoice-lib.ts",
+            "packages/app/platforms/android/app/src/main/elizavoice-jni",
+            "packages/app/platforms/android/app/src/main/java/ai/elizaos/app/ElizaVoiceNative.java",
+            "plugins/plugin-local-inference/native",
+            "packages/app/scripts/paradee-voice"
+          ],
+          "changedPaths": [],
+          "evidence": "docs/evidence/local-qa-browser-grounding-final-sdk-20261029.json",
+          "note": "Test-only SDK successor. All production SDK bytes including native engine/model/JNI unchanged from1e95; inherited native false/requalification-required remains. Historical component, old0d9 library and APK/device proof do not transfer."
+        },
+        {
+          "priorAdmittedAt": "d5f3af8f10ba41cf41fb723d9374305ad2b3e106",
+          "comparedAt": "1d09118cfd33cf21d3532119e28d34fd566f3d3e",
+          "admitted": false,
+          "requalificationRequired": true,
+          "unchangedPaths": [
+            "packages/app/scripts/build-helpers/arm64-simd.ts",
+            "packages/app/scripts/build-helpers/verify-fused-symbols.ts",
+            "packages/app/scripts/lib/android-bun-artifacts.lock.json",
+            "plugins/plugin-local-inference/native/llama.cpp",
+            "plugins/plugin-local-inference/native/android/inputs.json",
+            "plugins/plugin-local-inference/native/android/consumer.gradle",
+            "packages/app/scripts/paradee-voice/build-native.ts",
+            "packages/app/scripts/stage-elizavoice-lib.ts",
+            "packages/app/platforms/android/app/src/main/elizavoice-jni",
+            "packages/app/platforms/android/app/src/main/java/ai/elizaos/app/ElizaVoiceNative.java",
+            "plugins/plugin-local-inference/native",
+            "packages/app/scripts/paradee-voice"
+          ],
+          "changedPaths": [],
+          "evidence": "docs/evidence/future-calendar-day-sdk-20261029.json",
+          "note": "Future Calendar day/diagnostic TypeScript source-only binding. Recorded native engine/model/JNI/Bun and staging input entries equal preserved D5. Existing native false/requalification-required, Cloud-only selected profile and offline holds remain; no component/APK/device qualification transfers."
+        },
+        {
+          "priorAdmittedAt": "1d09118cfd33cf21d3532119e28d34fd566f3d3e",
+          "comparedAt": "210bc893b3dda55daba72d914bd851155f954f86",
+          "admitted": false,
+          "requalificationRequired": true,
+          "unchangedPaths": [
+            "packages/app/scripts/build-helpers/arm64-simd.ts",
+            "packages/app/scripts/build-helpers/verify-fused-symbols.ts",
+            "packages/app/scripts/lib/android-bun-artifacts.lock.json",
+            "plugins/plugin-local-inference/native/llama.cpp",
+            "plugins/plugin-local-inference/native/android/inputs.json",
+            "plugins/plugin-local-inference/native/android/consumer.gradle",
+            "packages/app/scripts/paradee-voice/build-native.ts",
+            "packages/app/scripts/stage-elizavoice-lib.ts",
+            "packages/app/platforms/android/app/src/main/elizavoice-jni",
+            "packages/app/platforms/android/app/src/main/java/ai/elizaos/app/ElizaVoiceNative.java",
+            "plugins/plugin-local-inference/native",
+            "packages/app/scripts/paradee-voice"
+          ],
+          "changedPaths": [],
+          "evidence": "docs/evidence/calendar-full-cloud-sdk-repair-union-20261029.json",
+          "note": "Internal Calendar reply repair and tests only; native inputs unchanged from1d. Historical engine/model/JNI qualification does not transfer. Current Cloud-only Android omits GGUF/libelizainference/libelizavoicejni; its current Java/Bun/worker/Google/APK and retained continuity gates remain open."
+        },
+        {
+          "priorAdmittedAt": "210bc893b3dda55daba72d914bd851155f954f86",
+          "comparedAt": "7854f43ff93082452c8aca5c4bf56aff0e0015bf",
+          "admitted": false,
+          "requalificationRequired": true,
+          "unchangedPaths": [
+            "packages/app/scripts/build-helpers/arm64-simd.ts",
+            "packages/app/scripts/build-helpers/verify-fused-symbols.ts",
+            "packages/app/scripts/lib/android-bun-artifacts.lock.json",
+            "plugins/plugin-local-inference/native/llama.cpp",
+            "plugins/plugin-local-inference/native/android/inputs.json",
+            "plugins/plugin-local-inference/native/android/consumer.gradle",
+            "packages/app/scripts/paradee-voice/build-native.ts",
+            "packages/app/scripts/stage-elizavoice-lib.ts",
+            "packages/app/platforms/android/app/src/main/elizavoice-jni",
+            "packages/app/platforms/android/app/src/main/java/ai/elizaos/app/ElizaVoiceNative.java",
+            "plugins/plugin-local-inference/native",
+            "packages/app/scripts/paradee-voice"
+          ],
+          "changedPaths": [],
+          "evidence": "docs/evidence/calendar-post-replay-source-fixes-20261029.json",
+          "note": "Calendar source dispatch and default-duration policy only; native source input entries unchanged from210. No historical engine/model qualification transfer. Cloud-only Android current Java/Bun/worker/Google/APK and in-place continuity remain open; offline13d/model/bothABI qualification stays separate."
+        },
+        {
+          "priorAdmittedAt": "7854f43ff93082452c8aca5c4bf56aff0e0015bf",
+          "comparedAt": "2a8a5928e881ecbfb777fc2a2655230b66fc422e",
+          "admitted": false,
+          "requalificationRequired": true,
+          "unchangedPaths": [
+            "packages/app/scripts/build-helpers/arm64-simd.ts",
+            "packages/app/scripts/build-helpers/verify-fused-symbols.ts",
+            "packages/app/scripts/lib/android-bun-artifacts.lock.json",
+            "plugins/plugin-local-inference/native/android/inputs.json",
+            "plugins/plugin-local-inference/native/android/consumer.gradle",
+            "packages/app/scripts/paradee-voice/build-native.ts",
+            "packages/app/scripts/stage-elizavoice-lib.ts",
+            "packages/app/platforms/android/app/src/main/elizavoice-jni",
+            "packages/app/platforms/android/app/src/main/java/ai/elizaos/app/ElizaVoiceNative.java",
+            "packages/app/scripts/paradee-voice"
+          ],
+          "changedPaths": [
+            "plugins/plugin-local-inference/native/android/speech-bridge/src/main/java/ai/eliza/voice/LocalSpeechBridgePlugin.java",
+            "plugins/plugin-local-inference/native/android/speech-bridge/test/failure-settlement.test.mjs",
+            "plugins/plugin-local-inference/native/llama.cpp"
+          ],
+          "evidence": "docs/evidence/voice-host-published-source-binding-20261029.json",
+          "note": "Published source binding only. The native engine gitlink and shared speech bridge changed; no binary compatibility or historical native qualification is asserted. Recorded native libraries remain historical and unqualified. Fresh engine/native Java/APK/device qualification is required for packaged local voice. The explicit Cloud-only absent-runtime path remains not-packaged and qualified:false; the verifier is unchanged."
+        },
+        {
+          "priorAdmittedAt": "2a8a5928e881ecbfb777fc2a2655230b66fc422e",
+          "comparedAt": "0fde8e0a288bc2dc94bac78d4c431c6a0d6056b7",
+          "admitted": false,
+          "requalificationRequired": true,
+          "unchangedPaths": [
+            "plugins/plugin-local-inference/native",
+            "packages/app/scripts/paradee-voice",
+            "packages/app/scripts/stage-elizavoice-lib.ts",
+            "packages/app/platforms/android/app/src/main/elizavoice-jni",
+            "packages/app/platforms/android/app/src/main/java/ai/elizaos/app/ElizaVoiceNative.java",
+            "packages/app/scripts/lib/android-bun-artifacts.lock.json"
+          ],
+          "changedPaths": [],
+          "evidence": "docs/evidence/voice-grounding-sdk-binding-20261030.json",
+          "note": "Source binding only: native engine/model/JNI/Bun input entries are unchanged from2a8. Host voice duplicate-cue handling and reply-grounding schema changed and require fresh runtime artifacts/owning checks. Historical native binaries remain unqualified; no APK/device/user proof transfers."
+        },
+        {
+          "priorAdmittedAt": "0fde8e0a288bc2dc94bac78d4c431c6a0d6056b7",
+          "comparedAt": "9af104a1c7c7021493db575899baee666ea0ff6a",
+          "admitted": false,
+          "requalificationRequired": true,
+          "unchangedPaths": [
+            "plugins/plugin-local-inference/native",
+            "packages/app/scripts/paradee-voice",
+            "packages/app/scripts/stage-elizavoice-lib.ts",
+            "packages/app/platforms/android/app/src/main/elizavoice-jni",
+            "packages/app/platforms/android/app/src/main/java/ai/elizaos/app/ElizaVoiceNative.java",
+            "packages/app/scripts/lib/android-bun-artifacts.lock.json"
+          ],
+          "changedPaths": [],
+          "evidence": "docs/evidence/voice-grounding-sdk-binding-20261030.json",
+          "note": "Source binding only for the focused multi-cue speech repair. Native engine/model/JNI/Bun inputs remain unchanged; historical native qualification is not transferred. New host voice speech-prefix behavior requires regenerated runtime artifacts and exact-pin acceptance; qualified/admitted remain false."
+        },
+        {
+          "priorAdmittedAt": "9af104a1c7c7021493db575899baee666ea0ff6a",
+          "comparedAt": "89714cd4b8d89824ef435c69362523c8b5e37f60",
+          "admitted": false,
+          "requalificationRequired": true,
+          "unchangedPaths": [
+            "plugins/plugin-local-inference/native/android/consumer.gradle",
+            "packages/app/scripts/paradee-voice/build-native.ts",
+            "packages/app/scripts/stage-elizavoice-lib.ts",
+            "packages/app/scripts/build-helpers/arm64-simd.ts",
+            "packages/app/scripts/build-helpers/verify-fused-symbols.ts",
+            "packages/app/platforms/android/app/src/main/elizavoice-jni",
+            "packages/app/platforms/android/app/src/main/java/ai/elizaos/app/ElizaVoiceNative.java",
+            "packages/app/scripts/lib/android-bun-artifacts.lock.json",
+            "packages/app/scripts/paradee-voice"
+          ],
+          "changedPaths": [
+            "plugins/plugin-local-inference/native/llama.cpp",
+            "plugins/plugin-local-inference/native/android/inputs.json",
+            "plugins/plugin-local-inference/native"
+          ],
+          "evidence": "docs/evidence/sdk-89714cd4b8-build-input-admission-20261030.json",
+          "note": "Moving from 9af104a1c7 to 89714cd4b8 changes the native voice inputs (plugins/plugin-local-inference/native/llama.cpp, plugins/plugin-local-inference/native/android/inputs.json, plugins/plugin-local-inference/native). The llama.cpp fork gitlink moves from 6973dc6c to d960f633. The model row now names the source-declared bytes: tts/paradee/paradee-8m-v1_2.gguf sha256 a43118932f7e -> 4b2819180a9e (same size). The recorded libelizainference libraries (forkPin 0d9fd4b9) and model bytes are not admitted at this pin: a fresh engine build for both ABIs, a fresh byte record, APK and on-device voice validation are required. Nothing was built, staged or run; qualified/admitted remain false."
+        },
+        {
+          "priorAdmittedAt": "89714cd4b8d89824ef435c69362523c8b5e37f60",
+          "comparedAt": "641c179ce8214c864a7ea3dee23dae2d2bd2a682",
+          "admitted": false,
+          "requalificationRequired": true,
+          "unchangedPaths": [
+            "plugins/plugin-local-inference/native/llama.cpp",
+            "plugins/plugin-local-inference/native/android/inputs.json",
+            "packages/app/scripts/paradee-voice/build-native.ts",
+            "packages/app/scripts/stage-elizavoice-lib.ts",
+            "packages/app/scripts/build-helpers/arm64-simd.ts",
+            "packages/app/scripts/build-helpers/verify-fused-symbols.ts",
+            "packages/app/platforms/android/app/src/main/elizavoice-jni",
+            "packages/app/platforms/android/app/src/main/java/ai/elizaos/app/ElizaVoiceNative.java",
+            "packages/app/scripts/lib/android-bun-artifacts.lock.json",
+            "packages/app/scripts/paradee-voice"
+          ],
+          "changedPaths": [
+            "plugins/plugin-local-inference/native/android/consumer.gradle",
+            "plugins/plugin-local-inference/native"
+          ],
+          "evidence": "docs/evidence/sdk-641c179ce8-build-input-admission-20261030.json",
+          "note": "Moving from 89714cd4b8 to 641c179ce8 changes the native voice inputs (plugins/plugin-local-inference/native/android/consumer.gradle, plugins/plugin-local-inference/native). The recorded libelizainference libraries (forkPin 0d9fd4b9) and model bytes are not admitted at this pin: a fresh engine build for both ABIs, a fresh byte record, APK and on-device voice validation are required. Nothing was built, staged or run; qualified/admitted remain false."
+        },
+        {
+          "priorAdmittedAt": "641c179ce8214c864a7ea3dee23dae2d2bd2a682",
+          "comparedAt": "6cd75d68202db3322dbec9d36d200902f08849c4",
+          "admitted": false,
+          "requalificationRequired": true,
+          "unchangedPaths": [
+            "plugins/plugin-local-inference/native/llama.cpp",
+            "plugins/plugin-local-inference/native/android/inputs.json",
+            "plugins/plugin-local-inference/native/android/consumer.gradle",
+            "packages/app/scripts/paradee-voice/build-native.ts",
+            "packages/app/scripts/stage-elizavoice-lib.ts",
+            "packages/app/scripts/build-helpers/arm64-simd.ts",
+            "packages/app/scripts/build-helpers/verify-fused-symbols.ts",
+            "packages/app/platforms/android/app/src/main/elizavoice-jni",
+            "packages/app/platforms/android/app/src/main/java/ai/elizaos/app/ElizaVoiceNative.java",
+            "packages/app/scripts/lib/android-bun-artifacts.lock.json",
+            "plugins/plugin-local-inference/native",
+            "packages/app/scripts/paradee-voice"
+          ],
+          "changedPaths": [
+            "plugins/plugin-native-agent/android/src/main/java/ai/eliza/plugins/agent/runtime/NativeProviderAdmission.java",
+            "plugins/plugin-native-agent/android/src/main/java/ai/eliza/plugins/agent/runtime/NativeProviderSlot.java"
+          ],
+          "evidence": "docs/evidence/sdk-6cd75d6820-build-input-admission-20261101.json",
+          "note": "Reviewed repair separates Google service credentials from own inference, makes Cloud sign-out retain direct startup, and projects direct routing before boot. Native-agent admission changed; compilation and native requalification remain required. No historic qualification transfers.",
+          "comparisonBase": "d5f0e2aea48a7ce578cdb16f9808f4d26f006ba2"
+        },
+        {
+          "priorAdmittedAt": "641c179ce8214c864a7ea3dee23dae2d2bd2a682",
+          "comparedAt": "4573a187b0dc44c0b0dd111a0b0720aaa13d6bc4",
+          "admitted": false,
+          "requalificationRequired": true,
+          "unchangedPaths": [
+            "plugins/plugin-local-inference/native/llama.cpp",
+            "plugins/plugin-local-inference/native/android/inputs.json",
+            "plugins/plugin-local-inference/native/android/consumer.gradle",
+            "packages/app/scripts/paradee-voice/build-native.ts",
+            "packages/app/scripts/stage-elizavoice-lib.ts",
+            "packages/app/scripts/build-helpers/arm64-simd.ts",
+            "packages/app/scripts/build-helpers/verify-fused-symbols.ts",
+            "packages/app/platforms/android/app/src/main/elizavoice-jni",
+            "packages/app/platforms/android/app/src/main/java/ai/elizaos/app/ElizaVoiceNative.java",
+            "packages/app/scripts/lib/android-bun-artifacts.lock.json",
+            "plugins/plugin-local-inference/native",
+            "packages/app/scripts/paradee-voice"
+          ],
+          "changedPaths": [
+            "plugins/plugin-native-agent/android/src/main/java/ai/eliza/plugins/agent/runtime/NativeProviderSlot.java"
+          ],
+          "evidence": "docs/evidence/sdk-4573a187b0-build-input-admission-20261101.json",
+          "note": "The native engine, model, JNI, Bun artifact manifest and local-inference build input Git objects are identical between these SDK revisions. The only change within the compared Android inputs is NativeProviderSlot.java: direct provider configuration now verifies the optional Cartesia credential after persistence. The consumer needs fresh compilation and runtime validation. The recorded libraries were built at the historical 0d9fd4b9 engine fork, while both compared SDK revisions pin d960f633; that existing native requalification requirement remains. No recorded binary, component, emulator, device or user qualification transfers.",
+          "comparisonBase": "6cd75d68202db3322dbec9d36d200902f08849c4"
+        },
+        {
+          "priorAdmittedAt": "641c179ce8214c864a7ea3dee23dae2d2bd2a682",
+          "comparedAt": "9ba8ec567376cae10e60d1b19cd17d4f827bfe33",
+          "admitted": false,
+          "requalificationRequired": true,
+          "unchangedPaths": [
+            "plugins/plugin-local-inference/native/android/inputs.json",
+            "plugins/plugin-local-inference/native/android/consumer.gradle",
+            "packages/app/scripts/paradee-voice/build-native.ts",
+            "packages/app/scripts/stage-elizavoice-lib.ts",
+            "packages/app/scripts/build-helpers/arm64-simd.ts",
+            "packages/app/scripts/build-helpers/verify-fused-symbols.ts",
+            "packages/app/scripts/lib/android-bun-artifacts.lock.json"
+          ],
+          "changedPaths": [
+            "packages/app/platforms/android/app/src/main/elizavoice-jni/elizavoice-jni.cpp",
+            "packages/app/platforms/android/app/src/main/java/ai/elizaos/app/ElizaVoiceNative.java",
+            "packages/app/scripts/paradee-voice/stream-contract/StreamContract.java",
+            "packages/app/scripts/paradee-voice/stream-contract/VoiceNative.java",
+            "plugins/plugin-local-inference/native/android/README.md",
+            "plugins/plugin-local-inference/native/android/src/main/java/ai/eliza/voice/ParadeeVoice.java",
+            "plugins/plugin-local-inference/native/android/src/main/java/ai/eliza/voice/VoiceNative.java",
+            "plugins/plugin-local-inference/native/llama.cpp"
+          ],
+          "evidence": "docs/evidence/sdk-9ba8ec5673-build-input-admission-20261101.json",
+          "note": "elizaOS/eliza #38470 adds a caller-set Paradee speed range (libelizainference ABI 21): it moves the native engine gitlink plugins/plugin-local-inference/native/llama.cpp from d960f633 to b3eb2bf6 and changes the elizavoice JNI, ElizaVoiceNative, the shared ai.eliza.voice ParadeeVoice/VoiceNative and the paradee-voice stream contract. Model inputs (inputs.json), consumer.gradle, build-native.ts, stage-elizavoice-lib.ts and the Bun artifact lock are unchanged, and no consumer Android module changed. The recorded engine, embedding host and voice bytes are not admitted at this pin; fresh native builds for both ABIs and on-device requalification remain required. No historic qualification transfers.",
+          "comparisonBase": "4573a187b0dc44c0b0dd111a0b0720aaa13d6bc4"
+        },
+        {
+          "priorAdmittedAt": "641c179ce8214c864a7ea3dee23dae2d2bd2a682",
+          "comparedAt": "7e8b5d3eb1c05ee6ea72a1a2d5ce5b966c404e9c",
+          "admitted": false,
+          "requalificationRequired": true,
+          "unchangedPaths": [
+            "plugins/plugin-local-inference/native/llama.cpp",
+            "plugins/plugin-local-inference/native/android/inputs.json",
+            "plugins/plugin-local-inference/native/android/consumer.gradle",
+            "packages/app/scripts/paradee-voice/build-native.ts",
+            "packages/app/scripts/stage-elizavoice-lib.ts",
+            "packages/app/scripts/build-helpers/arm64-simd.ts",
+            "packages/app/scripts/build-helpers/verify-fused-symbols.ts",
+            "packages/app/platforms/android/app/src/main/elizavoice-jni",
+            "packages/app/platforms/android/app/src/main/java/ai/elizaos/app/ElizaVoiceNative.java",
+            "packages/app/scripts/lib/android-bun-artifacts.lock.json",
+            "plugins/plugin-local-inference/native",
+            "packages/app/scripts/paradee-voice"
+          ],
+          "changedPaths": [],
+          "evidence": "docs/evidence/sdk-7e8b5d3eb1-build-input-admission-20261101.json",
+          "note": "The native engine gitlink (b3eb2bf6), model inputs, JNI, shared voice Java, Bun artifact manifest and every consumer Android module are identical between these SDK revisions; the changes are Cloud server admission, Cartesia settings, native-app account lifetime and streaming speech transport. The recorded engine, embedding host and voice bytes remain unadmitted from the earlier b3eb2bf6 move; fresh native builds and on-device requalification are still required. No historic qualification transfers.",
+          "comparisonBase": "9ba8ec567376cae10e60d1b19cd17d4f827bfe33"
+        },
+        {
+          "priorAdmittedAt": "641c179ce8214c864a7ea3dee23dae2d2bd2a682",
+          "comparedAt": "5e0feca4ee65c7dc81b18fd0fb866e1ede28325e",
+          "admitted": false,
+          "requalificationRequired": true,
+          "unchangedPaths": [
+            "packages/app/platforms/android/app/src/main/elizavoice-jni",
+            "packages/app/platforms/android/app/src/main/elizavoice-jni/CMakeLists.txt",
+            "packages/app/platforms/android/app/src/main/elizavoice-jni/elizavoice-jni.cpp",
+            "packages/app/platforms/android/app/src/main/java/ai/elizaos/app/ElizaVoiceNative.java",
+            "packages/app/scripts/build-helpers/arm64-simd.ts",
+            "packages/app/scripts/build-helpers/verify-fused-symbols.ts",
+            "packages/app/scripts/lib/android-bun-artifacts.lock.json",
+            "packages/app/scripts/paradee-voice",
+            "packages/app/scripts/paradee-voice/build-native.ts",
+            "packages/app/scripts/stage-elizavoice-lib.ts",
+            "packages/auth/android/build.gradle",
+            "packages/auth/android/src/main/java/ai/eliza/auth/cloud/CloudSignInConfig.java",
+            "packages/auth/android/src/main/java/ai/eliza/auth/cloud/CloudSignInFlow.java",
+            "packages/auth/android/src/main/java/ai/eliza/auth/cloud/CloudSignInPlugin.java",
+            "packages/auth/android/src/main/java/ai/eliza/auth/cloud/CloudSignInReadiness.java",
+            "packages/auth/android/src/main/java/ai/eliza/auth/cloud/CloudSignInRoutes.java",
+            "packages/voice/src/cloud-speech-chunks.ts",
+            "packages/voice/src/native-cloud-speech.ts",
+            "plugins/plugin-local-inference/native",
+            "plugins/plugin-local-inference/native/android/consumer.gradle",
+            "plugins/plugin-local-inference/native/android/inputs.json",
+            "plugins/plugin-local-inference/native/android/speech-bridge/src/main/java/ai/eliza/voice/CloudSpeechTimings.java",
+            "plugins/plugin-local-inference/native/android/speech-bridge/src/main/java/ai/eliza/voice/CloudSpeechWire.java",
+            "plugins/plugin-local-inference/native/android/speech-bridge/src/main/java/ai/eliza/voice/SpeechStreamBridgePlugin.java",
+            "plugins/plugin-local-inference/native/llama.cpp"
+          ],
+          "changedPaths": [],
+          "evidence": "docs/evidence/sdk-5e0feca4ee-build-input-admission-20261101.json",
+          "note": "Source-only comparison from 7e8b5d3eb1 to the corrected reconciled SDK 5e0feca4ee (draft elizaOS/eliza #38516). Listed native sources, patch targets, mobile UUID builder and bun.lock are unchanged. This does not admit recorded artifacts or transfer historical qualification. Normal checks, fresh native builds and device qualification remain pending; none ran for this proposal.",
+          "comparisonBase": "7e8b5d3eb1c05ee6ea72a1a2d5ce5b966c404e9c"
+        },
+        {
+          "priorAdmittedAt": "641c179ce8214c864a7ea3dee23dae2d2bd2a682",
+          "comparedAt": "9950213832d6bb6965121a517e268ce898ef0100",
+          "admitted": false,
+          "requalificationRequired": true,
+          "unchangedPaths": [
+            "packages/app/platforms/android/app/src/main/elizavoice-jni",
+            "packages/app/platforms/android/app/src/main/elizavoice-jni/CMakeLists.txt",
+            "packages/app/platforms/android/app/src/main/elizavoice-jni/elizavoice-jni.cpp",
+            "packages/app/platforms/android/app/src/main/java/ai/elizaos/app/ElizaVoiceNative.java",
+            "packages/app/scripts/build-helpers/arm64-simd.ts",
+            "packages/app/scripts/build-helpers/verify-fused-symbols.ts",
+            "packages/app/scripts/lib/android-bun-artifacts.lock.json",
+            "packages/app/scripts/paradee-voice",
+            "packages/app/scripts/paradee-voice/build-native.ts",
+            "packages/app/scripts/stage-elizavoice-lib.ts",
+            "packages/auth/android/build.gradle",
+            "packages/auth/android/src/main/java/ai/eliza/auth/cloud/CloudSignInConfig.java",
+            "packages/auth/android/src/main/java/ai/eliza/auth/cloud/CloudSignInFlow.java",
+            "packages/auth/android/src/main/java/ai/eliza/auth/cloud/CloudSignInPlugin.java",
+            "packages/auth/android/src/main/java/ai/eliza/auth/cloud/CloudSignInReadiness.java",
+            "packages/auth/android/src/main/java/ai/eliza/auth/cloud/CloudSignInRoutes.java",
+            "packages/voice/src/cloud-speech-chunks.ts",
+            "packages/voice/src/native-cloud-speech.ts",
+            "plugins/plugin-local-inference/native",
+            "plugins/plugin-local-inference/native/android/consumer.gradle",
+            "plugins/plugin-local-inference/native/android/inputs.json",
+            "plugins/plugin-local-inference/native/android/speech-bridge/src/main/java/ai/eliza/voice/CloudSpeechTimings.java",
+            "plugins/plugin-local-inference/native/android/speech-bridge/src/main/java/ai/eliza/voice/CloudSpeechWire.java",
+            "plugins/plugin-local-inference/native/android/speech-bridge/src/main/java/ai/eliza/voice/SpeechStreamBridgePlugin.java",
+            "plugins/plugin-local-inference/native/llama.cpp"
+          ],
+          "changedPaths": [],
+          "evidence": "docs/evidence/sdk-9950213832-build-input-admission-20261101.json",
+          "note": "Source-only repin from published SDK 5e0feca4ee to its direct child 9950213832: a ProviderCacheEntry type marker, test property guard and formatting correction. No native inputs changed. The earlier native requalification requirement remains; no runtime or build acceptance transfers.",
+          "comparisonBase": "5e0feca4ee65c7dc81b18fd0fb866e1ede28325e"
+        },
+        {
+          "priorAdmittedAt": "641c179ce8214c864a7ea3dee23dae2d2bd2a682",
+          "comparisonBase": "d38e4ec7fad5952fdf4f40d4c809240d639792ac",
+          "comparedAt": "c3442ded79de62b883cf0a84d2614734596ac9ad",
+          "admitted": false,
+          "requalificationRequired": true,
+          "unchangedPaths": [
+            "packages/app/platforms/android/app/src/main/elizavoice-jni",
+            "packages/app/platforms/android/app/src/main/elizavoice-jni/CMakeLists.txt",
+            "packages/app/platforms/android/app/src/main/elizavoice-jni/elizavoice-jni.cpp",
+            "packages/app/platforms/android/app/src/main/java/ai/elizaos/app/ElizaVoiceNative.java",
+            "packages/app/scripts/build-helpers/arm64-simd.ts",
+            "packages/app/scripts/build-helpers/verify-fused-symbols.ts",
+            "packages/app/scripts/lib/android-bun-artifacts.lock.json",
+            "packages/app/scripts/paradee-voice",
+            "packages/app/scripts/paradee-voice/build-native.ts",
+            "packages/auth/android/build.gradle",
+            "packages/auth/android/src/main/java/ai/eliza/auth/cloud/CloudSignInConfig.java",
+            "packages/auth/android/src/main/java/ai/eliza/auth/cloud/CloudSignInFlow.java",
+            "packages/auth/android/src/main/java/ai/eliza/auth/cloud/CloudSignInPlugin.java",
+            "packages/auth/android/src/main/java/ai/eliza/auth/cloud/CloudSignInReadiness.java",
+            "packages/auth/android/src/main/java/ai/eliza/auth/cloud/CloudSignInRoutes.java",
+            "plugins/plugin-local-inference/native",
+            "plugins/plugin-local-inference/native/android/consumer.gradle",
+            "plugins/plugin-local-inference/native/android/inputs.json",
+            "plugins/plugin-local-inference/native/llama.cpp"
+          ],
+          "changedPaths": [],
+          "absentPreviouslyListedPaths": [
+            "packages/voice/src/cloud-speech-chunks.ts",
+            "packages/voice/src/native-cloud-speech.ts",
+            "plugins/plugin-local-inference/native/android/speech-bridge/src/main/java/ai/eliza/voice/CloudSpeechTimings.java",
+            "plugins/plugin-local-inference/native/android/speech-bridge/src/main/java/ai/eliza/voice/CloudSpeechWire.java",
+            "plugins/plugin-local-inference/native/android/speech-bridge/src/main/java/ai/eliza/voice/SpeechStreamBridgePlugin.java"
+          ],
+          "consumerLifecycleChanges": [],
+          "evidence": "docs/evidence/sdk-c3442ded79-dev-input-reuse-20261102.json",
+          "note": "Source-only the reviewed paired-session protection for POST /api/cloud/warm; compiled native tuples remain unchanged. Exact runtime/test delta leaves nativecc8 and build inputs unchanged. Historical0d9/ABI19 compiled libraries remain unqualified; fresh Android builds and device acceptance remain required. No new native qualification."
+        },
+        {
+          "priorAdmittedAt": "641c179ce8214c864a7ea3dee23dae2d2bd2a682",
+          "comparisonBase": "c3442ded79de62b883cf0a84d2614734596ac9ad",
+          "comparedAt": "47982b8f49d16d520990e14e07cdeb5c6931df81",
+          "admitted": false,
+          "requalificationRequired": true,
+          "unchangedPaths": [
+            "packages/app/platforms/android/app/src/main/elizavoice-jni",
+            "packages/app/platforms/android/app/src/main/elizavoice-jni/CMakeLists.txt",
+            "packages/app/platforms/android/app/src/main/elizavoice-jni/elizavoice-jni.cpp",
+            "packages/app/platforms/android/app/src/main/java/ai/elizaos/app/ElizaVoiceNative.java",
+            "packages/app/scripts/build-helpers/arm64-simd.ts",
+            "packages/app/scripts/build-helpers/verify-fused-symbols.ts",
+            "packages/app/scripts/lib/android-bun-artifacts.lock.json",
+            "packages/app/scripts/paradee-voice",
+            "packages/app/scripts/paradee-voice/build-native.ts",
+            "packages/auth/android/build.gradle",
+            "packages/auth/android/src/main/java/ai/eliza/auth/cloud/CloudSignInConfig.java",
+            "packages/auth/android/src/main/java/ai/eliza/auth/cloud/CloudSignInFlow.java",
+            "packages/auth/android/src/main/java/ai/eliza/auth/cloud/CloudSignInPlugin.java",
+            "packages/auth/android/src/main/java/ai/eliza/auth/cloud/CloudSignInReadiness.java",
+            "packages/auth/android/src/main/java/ai/eliza/auth/cloud/CloudSignInRoutes.java",
+            "plugins/plugin-local-inference/native",
+            "plugins/plugin-local-inference/native/android/consumer.gradle",
+            "plugins/plugin-local-inference/native/android/inputs.json",
+            "plugins/plugin-local-inference/native/llama.cpp"
+          ],
+          "changedPaths": [],
+          "absentPreviouslyListedPaths": [
+            "packages/voice/src/cloud-speech-chunks.ts",
+            "packages/voice/src/native-cloud-speech.ts",
+            "plugins/plugin-local-inference/native/android/speech-bridge/src/main/java/ai/eliza/voice/CloudSpeechTimings.java",
+            "plugins/plugin-local-inference/native/android/speech-bridge/src/main/java/ai/eliza/voice/CloudSpeechWire.java",
+            "plugins/plugin-local-inference/native/android/speech-bridge/src/main/java/ai/eliza/voice/SpeechStreamBridgePlugin.java"
+          ],
+          "consumerLifecycleChanges": [],
+          "evidence": "docs/evidence/sdk-47982b8f49-calendar-source-reuse-20261102.json",
+          "note": "Calendar-only source change; native and producer inputs are unchanged. Historical compiled pins, hashes, qualified=false and nativeQualificationTransferred=false remain unchanged. No APK or device qualification transfers."
+        },
+        {
+          "priorAdmittedAt": "641c179ce8214c864a7ea3dee23dae2d2bd2a682",
+          "comparisonBase": "951197ae394aa1d5f3b5e8c8aa6b2caf037768b2",
+          "comparedAt": "018a2b9537d3fd985ceb958ab9ae53c15cde5f07",
+          "admitted": false,
+          "requalificationRequired": true,
+          "unchangedPaths": [
+            "packages/app/platforms/android/app/src/main/elizavoice-jni",
+            "packages/app/platforms/android/app/src/main/elizavoice-jni/CMakeLists.txt",
+            "packages/app/platforms/android/app/src/main/elizavoice-jni/elizavoice-jni.cpp",
+            "packages/app/platforms/android/app/src/main/java/ai/elizaos/app/ElizaVoiceNative.java",
+            "packages/app/scripts/build-helpers/arm64-simd.ts",
+            "packages/app/scripts/build-helpers/verify-fused-symbols.ts",
+            "packages/app/scripts/lib/android-bun-artifacts.lock.json",
+            "packages/app/scripts/paradee-voice",
+            "packages/app/scripts/paradee-voice/build-native.ts",
+            "packages/auth/android/build.gradle",
+            "packages/auth/android/src/main/java/ai/eliza/auth/cloud/CloudSignInConfig.java",
+            "packages/auth/android/src/main/java/ai/eliza/auth/cloud/CloudSignInFlow.java",
+            "packages/auth/android/src/main/java/ai/eliza/auth/cloud/CloudSignInPlugin.java",
+            "packages/auth/android/src/main/java/ai/eliza/auth/cloud/CloudSignInReadiness.java",
+            "packages/auth/android/src/main/java/ai/eliza/auth/cloud/CloudSignInRoutes.java",
+            "plugins/plugin-local-inference/native/android/consumer.gradle",
+            "plugins/plugin-local-inference/native/android/inputs.json",
+            "plugins/plugin-native-agent/android"
+          ],
+          "changedPaths": [
+            "packages/app/scripts/stage-elizavoice-lib.ts",
+            "plugins/plugin-local-inference/native",
+            "plugins/plugin-local-inference/native/llama.cpp"
+          ],
+          "absentPreviouslyListedPaths": [
+            "packages/voice/src/cloud-speech-chunks.ts",
+            "packages/voice/src/native-cloud-speech.ts",
+            "plugins/plugin-local-inference/native/android/speech-bridge/src/main/java/ai/eliza/voice/CloudSpeechTimings.java",
+            "plugins/plugin-local-inference/native/android/speech-bridge/src/main/java/ai/eliza/voice/CloudSpeechWire.java",
+            "plugins/plugin-local-inference/native/android/speech-bridge/src/main/java/ai/eliza/voice/SpeechStreamBridgePlugin.java"
+          ],
+          "consumerLifecycleChanges": [],
+          "evidence": "docs/evidence/sdk-018a2b9537-build-input-admission-20261105.json",
+          "note": "elizaOS/eliza #38761 returns the engine gitlink from cc8c979 to the fork main tip b3eb2bf6, dropping one Metal-only CMake commit, and reformats stage-elizavoice-lib.ts. The voice record keeps its historical pin, compiled hashes and qualified=false; no APK or device qualification transfers."
+        },
+        {
+          "priorAdmittedAt": "641c179ce8214c864a7ea3dee23dae2d2bd2a682",
+          "comparisonBase": "018a2b9537d3fd985ceb958ab9ae53c15cde5f07",
+          "comparedAt": "5d1af326e596fea5893d095db882bdb858a4a774",
+          "admitted": false,
+          "requalificationRequired": true,
+          "unchangedPaths": [
+            "packages/app/platforms/android/app/src/main/elizavoice-jni",
+            "packages/app/platforms/android/app/src/main/elizavoice-jni/CMakeLists.txt",
+            "packages/app/platforms/android/app/src/main/elizavoice-jni/elizavoice-jni.cpp",
+            "packages/app/platforms/android/app/src/main/java/ai/elizaos/app/ElizaVoiceNative.java",
+            "packages/app/scripts/build-helpers/arm64-simd.ts",
+            "packages/app/scripts/build-helpers/verify-fused-symbols.ts",
+            "packages/app/scripts/lib/android-bun-artifacts.lock.json",
+            "packages/app/scripts/paradee-voice",
+            "packages/app/scripts/paradee-voice/build-native.ts",
+            "packages/app/scripts/stage-elizavoice-lib.ts",
+            "packages/auth/android/build.gradle",
+            "packages/auth/android/src/main/java/ai/eliza/auth/cloud/CloudSignInConfig.java",
+            "packages/auth/android/src/main/java/ai/eliza/auth/cloud/CloudSignInFlow.java",
+            "packages/auth/android/src/main/java/ai/eliza/auth/cloud/CloudSignInPlugin.java",
+            "packages/auth/android/src/main/java/ai/eliza/auth/cloud/CloudSignInReadiness.java",
+            "packages/auth/android/src/main/java/ai/eliza/auth/cloud/CloudSignInRoutes.java",
+            "plugins/plugin-local-inference/native",
+            "plugins/plugin-local-inference/native/android/consumer.gradle",
+            "plugins/plugin-local-inference/native/android/inputs.json",
+            "plugins/plugin-local-inference/native/llama.cpp",
+            "plugins/plugin-native-agent/android"
+          ],
+          "changedPaths": [],
+          "absentPreviouslyListedPaths": [
+            "packages/voice/src/cloud-speech-chunks.ts",
+            "packages/voice/src/native-cloud-speech.ts",
+            "plugins/plugin-local-inference/native/android/speech-bridge/src/main/java/ai/eliza/voice/CloudSpeechTimings.java",
+            "plugins/plugin-local-inference/native/android/speech-bridge/src/main/java/ai/eliza/voice/CloudSpeechWire.java",
+            "plugins/plugin-local-inference/native/android/speech-bridge/src/main/java/ai/eliza/voice/SpeechStreamBridgePlugin.java"
+          ],
+          "consumerLifecycleChanges": [],
+          "evidence": "docs/evidence/sdk-5d1af326e5-build-input-admission-20261106.json",
+          "note": "Source-only move from 018a2b9537 to the develop head 5d1af326e5: every listed native build input, the b3eb2bf6 engine gitlink and bun.lock are unchanged. The voice record keeps its historical pin, compiled hashes and qualified=false; no APK or device qualification transfers."
+        }
+      ],
+      "consumerSourceComparisonHistory": [
+        {
+          "from": "41d99bb4c86cb61bfa07d5e49b07603dbbe1080b",
+          "admittedAt": "5c4050856860750908a91b408a2786830e68e91a",
+          "unchangedPaths": [
+            "packages/app/scripts/paradee-voice/build-native.ts",
+            "packages/app/scripts/stage-elizavoice-lib.ts",
+            "packages/app/platforms/android/app/src/main/elizavoice-jni",
+            "plugins/plugin-local-inference/native/llama.cpp",
+            "plugins/plugin-local-inference/native/android/inputs.json",
+            "packages/app/platforms/android/app/src/main/java/ai/elizaos/app/ElizaVoiceNative.java",
+            "packages/app/scripts/lib/android-bun-artifacts.lock.json"
+          ],
+          "changedConsumerPaths": [
+            "plugins/plugin-local-inference/native/android/consumer.gradle",
+            "plugins/plugin-local-inference/native/android/src/main/java/ai/eliza/voice/VoiceBundleAssets.java",
+            "packages/app/platforms/android/app/src/main/java/ai/elizaos/app/ElizaAgentService.java"
+          ],
+          "note": "Recorded engine, model and JNI bytes are unchanged. The shared asset installer, host readiness and ABI packaging changed and require fresh consumer builds. Historical broad native-tree comparison remains scoped to 41d99; it is not extended to this source. No device or user acceptance transferred."
+        }
+      ],
+      "priorSourceComparison": {
+        "priorAdmittedAt": "756ba00966bb57e1e0590871f8a639df7e54d95e",
+        "admittedAt": "1f2a922f86e2a1f3d6cd62e097145492bd49ebfc",
+        "unchangedPaths": [
+          "plugins/plugin-local-inference/native/llama.cpp",
+          "plugins/plugin-local-inference/native/android/inputs.json",
+          "plugins/plugin-local-inference/native/android/consumer.gradle",
+          "packages/app/scripts/paradee-voice/build-native.ts",
+          "packages/app/scripts/stage-elizavoice-lib.ts",
+          "packages/app/scripts/build-helpers/arm64-simd.ts",
+          "packages/app/scripts/build-helpers/verify-fused-symbols.ts",
+          "packages/app/platforms/android/app/src/main/elizavoice-jni",
+          "packages/app/platforms/android/app/src/main/java/ai/elizaos/app/ElizaVoiceNative.java",
+          "packages/app/scripts/lib/android-bun-artifacts.lock.json",
+          "plugins/plugin-local-inference/native",
+          "packages/app/scripts/paradee-voice"
+        ],
+        "changedPaths": [],
+        "evidence": "docs/evidence/develop-1f2a922f-build-input-admission-20261028.json",
+        "note": "Every recorded native engine, model, JNI, Bun and paradee-voice input (including the whole plugins/plugin-local-inference/native tree) is byte-identical between develop 756ba00966 and 1f2a922f86, and vendor/eliza/bun.lock is unchanged. No ai.eliza.voice Java source changed. The recorded native libraries and model bytes stay admitted. The earlier requirement for a fresh APK build and on-device voice validation of the 6c1a31f233 Java API is still open; historical component/device/user evidence and qualified=false are unchanged, and no qualification transfers."
+      }
+    },
+    "sourceIntegration": {
+      "priorPin": "ae1a9dda6712cd20fa249982afef1ef0abd28a3c",
+      "admittedAt": "99b49439ce9d0cb5607e9831b9f7f58d89525029",
+      "engineCommit": "6337fd4c4bd071c17235986344d552d4036e177b",
+      "nativePatchManifest": "patches/eliza/native-manifest.json",
+      "speechPatches": [
+        {
+          "file": "cloud-speech-native.patch",
+          "sha256": "692b290a787c409f91673f708760b744b4a4e57de23824bf5915a8cc3daa7fb1",
+          "module": "plugins/plugin-local-inference/native/android",
+          "targets": [
+            {
+              "path": "plugins/plugin-local-inference/native/android/speech-bridge/src/main/java/ai/eliza/voice/SpeechStreamBridgePlugin.java",
+              "beforeSha256": null,
+              "afterSha256": "e99581e3743771e07c776850ef7a6b1d7d9f9140ee811f487031529f9a4a5dcd"
+            },
+            {
+              "path": "plugins/plugin-local-inference/native/android/speech-bridge/src/main/java/ai/eliza/voice/CloudSpeechTimings.java",
+              "beforeSha256": null,
+              "afterSha256": "e38e0413662e7f00cf01557174046c47783f8fddf49b2bf8fe58a677c6dd099b"
+            },
+            {
+              "path": "plugins/plugin-local-inference/native/android/speech-bridge/src/main/java/ai/eliza/voice/CloudSpeechWire.java",
+              "beforeSha256": null,
+              "afterSha256": "acdf3de5cc7061f6fe18c080066d88ba0aaccfb70fe5b04d90ab943872b90608"
+            }
+          ]
+        },
+        {
+          "file": "local-speech-streaming.patch",
+          "sha256": "b8a1def64c501210dd95356edc60ef9abb3dd1b7140064df233afe867335fa19",
+          "module": "plugins/plugin-local-inference/native/android",
+          "targets": [
+            {
+              "path": "plugins/plugin-local-inference/native/android/speech-bridge/src/main/java/ai/eliza/voice/LocalSpeechBridgePlugin.java",
+              "beforeSha256": "8422e7d80cec830aba661d648372ae11bae817be7ff92e8e3b6d7bf02b889b1e",
+              "afterSha256": "81e255b0d2ff5b1dbd2fe225f63e9d6f5269fdf747c78e1f90e4e9321451fd6f"
+            },
+            {
+              "path": "plugins/plugin-local-inference/native/android/speech-bridge/src/main/java/ai/eliza/voice/SpeechOutputWarmup.java",
+              "beforeSha256": null,
+              "afterSha256": "656d61f63c8df66fa79cf5eb974fdc91cf33ea01da22fd943ca397dbe6aaadcd"
+            },
+            {
+              "path": "plugins/plugin-local-inference/native/android/speech-bridge/src/main/java/ai/eliza/voice/SpeechLeadTrim.java",
+              "beforeSha256": null,
+              "afterSha256": "61307f004f443ef3f002aa4c019d83de59944e7165117f48569893312fd6eba0"
+            },
+            {
+              "path": "plugins/plugin-local-inference/native/android/speech-bridge/src/main/java/ai/eliza/voice/FirstWriteSpeechOutput.java",
+              "beforeSha256": null,
+              "afterSha256": "6f3ffd2fee75b33cbc473b538ad0cde3192ec1770c74402fa2e1a04c673e83c2"
+            }
+          ]
+        }
+      ],
+      "nativeInputsUnchanged": false,
+      "nativeQualificationTransferred": false,
+      "note": "The SDK pin retains the recorded engine and JNI source. The selected speech bridge includes the hash-bound cloud bridge and additive local warm-up, lead-in trim and first-write marker. SDK99 protected-surface admission and retirement remain in place. JVM/source checks do not transfer historical device or user qualification to this changed bridge."
+    },
+    "sourceIntegrationHistory": [
+      {
+        "priorPin": "b25d8aef2916385c571f4367e099809254fde0bb",
+        "admittedAt": "94c8ca4976751f2ad0854943064fa39aa54a9d70",
+        "unchangedBuildInputs": [
+          "plugins/plugin-local-inference/native/llama.cpp",
+          "plugins/plugin-local-inference/native/android/inputs.json",
+          "packages/app/scripts/paradee-voice/build-native.ts"
+        ],
+        "note": "Recorded engine and model bytes are reused after exact source comparison. Shared Java source changed and requires a fresh consumer build. Component runs remain at their recorded b25d8aef pin. No APK, installed-app, or user acceptance is transferred."
+      },
+      {
+        "priorPin": "94c8ca4976751f2ad0854943064fa39aa54a9d70",
+        "admittedAt": "ae1a9dda6712cd20fa249982afef1ef0abd28a3c",
+        "changedPaths": [
+          "packages/os/scripts/android/sense-systemui.mjs",
+          "packages/os/scripts/android/sense.test.mjs"
+        ],
+        "nativeInputsUnchanged": true,
+        "note": "Only the OS SystemUI overlay staging helper and its test changed. Original engine/model byte provenance and b25d8aef component qualification remain historical. No new APK, installed-app, or user acceptance is claimed."
+      }
+    ],
     "developComparison": {
-      "builtAt": "04658de1b942510e0d37efc777c154530f5c0ef1",
-      "admittedAt": "4b928290d388e8f9866b6c404a1b186c7bfe7f70",
-      "unchangedPaths": [
-        "packages/app/scripts/paradee-voice",
-        "packages/app/scripts/stage-elizavoice-lib.ts",
-        "packages/app/platforms/android/app/src/main/elizavoice-jni",
-        "plugins/plugin-local-inference/native/llama.cpp",
-        "plugins/plugin-local-inference/native/android/inputs.json"
-      ],
-      "note": "Reuse of recorded native bytes after exact source comparison; Android consumer.gradle changed its optional ABI selection and is not claimed byte-identical. No new device acceptance.",
-      "evidence": "docs/evidence/merge-build-native-source-2026-10-26.json"
-    },
-    "priorDevelopComparison": {
-      "builtAt": "c95a37be8d56fb672825df7e9e9a742b59567bbb",
-      "admittedAt": "04658de1b942510e0d37efc777c154530f5c0ef1",
-      "unchangedPaths": [
-        "plugins/plugin-local-inference/native",
-        "packages/app/scripts/paradee-voice",
-        "packages/app/scripts/stage-elizavoice-lib.ts",
-        "packages/app/platforms/android/app/src/main/elizavoice-jni",
-        "packages/app/platforms/android/app/src/main/java/ai/elizaos/app/ElizaVoiceNative.java"
-      ],
-      "note": "Exact source trees unchanged; original build and component qualification receipts retained. No new device acceptance."
-    },
-    "currentDevelopComparison": {
-      "from": "6497825b38cbe41b3677c0a445341fec900f0dd2",
-      "admittedAt": "fd5511ca1dacdccfadd93879bddff2038ebe8665",
-      "unchangedPaths": [
+      "qualifiedAt": "b25d8aef2916385c571f4367e099809254fde0bb",
+      "admittedAt": "99b49439ce9d0cb5607e9831b9f7f58d89525029",
+      "command": "git diff --name-only b25d8aef2916385c571f4367e099809254fde0bb 99b49439ce9d0cb5607e9831b9f7f58d89525029 -- plugins/plugin-local-inference/native packages/app/scripts/paradee-voice packages/app/scripts/stage-elizavoice-lib.ts packages/app/platforms/android/app/src/main/elizavoice-jni packages/app/platforms/android/app/src/main/java/ai/elizaos/app/ElizaVoiceNative.java",
+      "changedPaths": [
         "packages/app/scripts/paradee-voice/build-native.ts",
-        "packages/app/scripts/stage-elizavoice-lib.ts",
-        "packages/app/platforms/android/app/src/main/elizavoice-jni",
-        "plugins/plugin-local-inference/native/llama.cpp",
-        "plugins/plugin-local-inference/native/android/inputs.json",
-        "packages/app/platforms/android/app/src/main/java/ai/elizaos/app/ElizaVoiceNative.java"
-      ],
-      "note": "Recorded engine, model and JNI build inputs are unchanged. The optional Capacitor transcription transport and its contract tests now use the admitted native Phonon session exclusively. Native bytes and prior component evidence are retained; device and user acceptance are not extended."
-    },
-    "currentSourceComparison": {
-      "priorAdmittedAt": "641c179ce8214c864a7ea3dee23dae2d2bd2a682",
-      "comparisonBase": "5d1af326e596fea5893d095db882bdb858a4a774",
-      "comparedAt": "0594fc72da4450a84a986ad12e730e3faa902018",
-      "admitted": false,
-      "requalificationRequired": true,
-      "unchangedPaths": [
-        "packages/app/platforms/android/app/src/main/elizavoice-jni",
-        "packages/app/platforms/android/app/src/main/elizavoice-jni/CMakeLists.txt",
-        "packages/app/platforms/android/app/src/main/elizavoice-jni/elizavoice-jni.cpp",
-        "packages/app/platforms/android/app/src/main/java/ai/elizaos/app/ElizaVoiceNative.java",
-        "packages/app/scripts/build-helpers/arm64-simd.ts",
-        "packages/app/scripts/build-helpers/verify-fused-symbols.ts",
-        "packages/app/scripts/lib/android-bun-artifacts.lock.json",
-        "packages/app/scripts/paradee-voice",
-        "packages/app/scripts/paradee-voice/build-native.ts",
-        "packages/app/scripts/stage-elizavoice-lib.ts",
-        "packages/auth/android/build.gradle",
-        "packages/auth/android/src/main/java/ai/eliza/auth/cloud/CloudSignInConfig.java",
-        "packages/auth/android/src/main/java/ai/eliza/auth/cloud/CloudSignInFlow.java",
-        "packages/auth/android/src/main/java/ai/eliza/auth/cloud/CloudSignInPlugin.java",
-        "packages/auth/android/src/main/java/ai/eliza/auth/cloud/CloudSignInReadiness.java",
-        "packages/auth/android/src/main/java/ai/eliza/auth/cloud/CloudSignInRoutes.java",
-        "plugins/plugin-local-inference/native",
+        "packages/app/scripts/paradee-voice/speech-pipeline-contract.test.mjs",
+        "packages/app/scripts/paradee-voice/speech-pipeline/OnDeviceRecognizerSessionTest.java",
+        "packages/app/scripts/paradee-voice/speech-pipeline/android-api/android/content/Intent.java",
+        "packages/app/scripts/paradee-voice/speech-pipeline/android-api/android/os/ParcelFileDescriptor.java",
+        "packages/app/scripts/paradee-voice/speech-pipeline/android-api/android/speech/SpeechRecognizer.java",
+        "packages/app/scripts/paradee-voice/stream-contract/StreamContract.java",
+        "plugins/plugin-local-inference/native/android/README.md",
         "plugins/plugin-local-inference/native/android/consumer.gradle",
-        "plugins/plugin-local-inference/native/android/inputs.json",
-        "plugins/plugin-local-inference/native/llama.cpp",
-        "plugins/plugin-native-agent/android"
+        "plugins/plugin-local-inference/native/android/speech-bridge/src/main/java/ai/eliza/voice/LocalSpeechBridgePlugin.java",
+        "plugins/plugin-local-inference/native/android/src/main/java/ai/eliza/voice/OnDeviceRecognizer.java",
+        "plugins/plugin-local-inference/native/android/src/main/java/ai/eliza/voice/ParadeeVoice.java",
+        "plugins/plugin-local-inference/native/android/test/voice-assets.node.mjs",
+        "plugins/plugin-local-inference/native/android/voice-product-inputs.mjs"
       ],
-      "changedPaths": [],
-      "absentPreviouslyListedPaths": [
-        "packages/voice/src/cloud-speech-chunks.ts",
-        "packages/voice/src/native-cloud-speech.ts",
-        "plugins/plugin-local-inference/native/android/speech-bridge/src/main/java/ai/eliza/voice/CloudSpeechTimings.java",
-        "plugins/plugin-local-inference/native/android/speech-bridge/src/main/java/ai/eliza/voice/CloudSpeechWire.java",
-        "plugins/plugin-local-inference/native/android/speech-bridge/src/main/java/ai/eliza/voice/SpeechStreamBridgePlugin.java"
+      "explicitSpeechPatchFiles": [
+        "patches/eliza/cloud-speech-native.patch",
+        "patches/eliza/local-speech-streaming.patch"
       ],
-      "consumerLifecycleChanges": [],
-      "evidence": "docs/evidence/sdk-0594fc72da-build-input-admission-20261106.json",
-      "note": "Source-only move from 5d1af326e5 to the develop head 0594fc72da: the SDK delta is two Cloud files, and every listed native build input, the b3eb2bf6 engine gitlink and bun.lock are unchanged. The voice record keeps its historical pin, compiled hashes and qualified=false; no APK or device qualification transfers."
-    },
-    "sourceComparisonHistory": [
-      {
-        "priorAdmittedAt": "fd5511ca1dacdccfadd93879bddff2038ebe8665",
-        "admittedAt": "41d99bb4c86cb61bfa07d5e49b07603dbbe1080b",
-        "unchangedPaths": [
-          "plugins/plugin-local-inference/native",
-          "packages/app/scripts/paradee-voice",
-          "packages/app/scripts/stage-elizavoice-lib.ts",
-          "packages/app/platforms/android/app/src/main/elizavoice-jni",
-          "packages/app/platforms/android/app/src/main/java/ai/elizaos/app/ElizaVoiceNative.java",
-          "packages/app/scripts/lib/android-bun-artifacts.lock.json"
-        ],
-        "evidence": "docs/evidence/voice-source-admission-41d99-20261027.json",
-        "note": "Current source admission from exact identical input Git objects. Original engine-build/component records, ABI/model digests and qualified=false remain unchanged. No binary, emulator, physical or user qualification is transferred."
-      },
-      {
-        "priorAdmittedAt": "41d99bb4c86cb61bfa07d5e49b07603dbbe1080b",
-        "admittedAt": "18cc0cf2ee9f332afe8b6dffecc8f9b2fbcf8d47",
-        "unchangedPaths": [
-          "plugins/plugin-local-inference/native",
-          "packages/app/scripts/paradee-voice",
-          "packages/app/scripts/stage-elizavoice-lib.ts",
-          "packages/app/platforms/android/app/src/main/elizavoice-jni",
-          "packages/app/platforms/android/app/src/main/java/ai/elizaos/app/ElizaVoiceNative.java",
-          "packages/app/scripts/lib/android-bun-artifacts.lock.json"
-        ],
-        "evidence": "docs/evidence/voice-source-admission-18cc0-20261027.json",
-        "note": "Current source admission from exact identical input Git objects. Prior fd551-to-41 comparison and its evidence remain preserved. Original engine-build/component records, ABI/model digests and qualified=false remain unchanged. No binary, emulator, physical or user qualification is transferred."
-      },
-      {
-        "priorAdmittedAt": "18cc0cf2ee9f332afe8b6dffecc8f9b2fbcf8d47",
-        "admittedAt": "f983d68173f12b89af22f93502d81234c7112b7d",
-        "unchangedPaths": [
-          "plugins/plugin-local-inference/native",
-          "packages/app/scripts/paradee-voice",
-          "packages/app/scripts/stage-elizavoice-lib.ts",
-          "packages/app/platforms/android/app/src/main/elizavoice-jni",
-          "packages/app/platforms/android/app/src/main/java/ai/elizaos/app/ElizaVoiceNative.java",
-          "packages/app/scripts/lib/android-bun-artifacts.lock.json"
-        ],
-        "evidence": "docs/evidence/voice-source-admission-f983d-20261027.json",
-        "note": "Current source admission from exact identical native input Git objects after a type-only ContextObject annotation. Prior fd551-to-41 and 41-to-18 comparisons and evidence remain preserved. All original binary/model/ABI/build/component evidence and qualified=false remain unchanged; no native or device qualification transferred."
-      },
-      {
-        "priorAdmittedAt": "f983d68173f12b89af22f93502d81234c7112b7d",
-        "admittedAt": "8cc623855ce49cab68f9ed321b206abcad4d5c0b",
-        "unchangedPaths": [
-          "plugins/plugin-local-inference/native",
-          "packages/app/scripts/paradee-voice",
-          "packages/app/scripts/stage-elizavoice-lib.ts",
-          "packages/app/platforms/android/app/src/main/elizavoice-jni",
-          "packages/app/platforms/android/app/src/main/java/ai/elizaos/app/ElizaVoiceNative.java",
-          "packages/app/scripts/lib/android-bun-artifacts.lock.json"
-        ],
-        "evidence": "docs/evidence/voice-source-admission-8cc62-20261027.json",
-        "note": "Exact identical native input Git objects for Calendar promoted read-schema source correction. Historical engine/build/component records and qualified=false remain unchanged. No binary, emulator, physical or user qualification is transferred."
-      },
-      {
-        "priorAdmittedAt": "8cc623855ce49cab68f9ed321b206abcad4d5c0b",
-        "admittedAt": "a2e66801f4828c290e9f45849cb40ff6bfd1adc9",
-        "unchangedPaths": [
-          "plugins/plugin-local-inference/native/llama.cpp",
-          "plugins/plugin-local-inference/native/android/inputs.json",
-          "packages/app/scripts/paradee-voice",
-          "packages/app/scripts/stage-elizavoice-lib.ts",
-          "packages/app/platforms/android/app/src/main/elizavoice-jni",
-          "packages/app/platforms/android/app/src/main/java/ai/elizaos/app/ElizaVoiceNative.java",
-          "packages/app/scripts/lib/android-bun-artifacts.lock.json"
-        ],
-        "changedConsumerPaths": [
-          "packages/app/platforms/android/app/build.gradle",
-          "packages/app/platforms/android/app/src/main/AndroidManifest.xml",
-          "packages/app/platforms/android/app/src/main/java/ai/elizaos/app/ElizaAgentService.java",
-          "packages/app/platforms/android/runtime-abis.gradle",
-          "packages/app/platforms/android/settings.gradle",
-          "packages/app/platforms/android/voice-assets/build.gradle",
-          "packages/app/scripts/mobile/android/gradle-patches.ts",
-          "packages/app/scripts/mobile/artifact-inspection/android-audit.ts",
-          "plugins/plugin-local-inference/native/android/README.md",
-          "plugins/plugin-local-inference/native/android/consumer.gradle",
-          "plugins/plugin-local-inference/native/android/src/main/java/ai/eliza/voice/VoiceAssets.java",
-          "plugins/plugin-local-inference/native/android/src/main/java/ai/eliza/voice/VoiceBundleAssets.java",
-          "plugins/plugin-local-inference/native/android/test/assets/VoiceBundleAssetsTest.java",
-          "plugins/plugin-local-inference/native/android/test/voice-assets.node.mjs",
-          "plugins/plugin-native-system/README.md",
-          "plugins/plugin-native-system/android/src/main/java/ai/eliza/plugins/system/SenseInvocation.java",
-          "plugins/plugin-native-system/android/src/main/java/ai/eliza/plugins/system/SenseListenerClient.java",
-          "plugins/plugin-native-system/android/src/main/java/ai/eliza/plugins/system/SensePlugin.java",
-          "plugins/plugin-native-system/src/sense.ts",
-          "plugins/plugin-native-system/test/SenseInvocationTest.java",
-          "plugins/plugin-native-system/test/sense-client-stubs.json",
-          "plugins/plugin-native-system/test/sense.test.mjs"
-        ],
-        "evidence": "docs/evidence/voice-source-admission-final-a2-20261027.json",
-        "note": "Only the listed engine/model/JNI/Bun input Git objects are unchanged. Broader inference and native-system trees changed for assets, ABI packaging and protected Power entry. Current consumer/native compilation and exact APK/image acceptance remain required; historical binary records and qualified=false are not transferred."
-      },
-      {
-        "priorAdmittedAt": "a2e66801f4828c290e9f45849cb40ff6bfd1adc9",
-        "admittedAt": "ea0899fd7f19b2bf3552127d6566c15e23b4c303",
-        "unchangedPaths": [
-          "plugins/plugin-local-inference/native/llama.cpp",
-          "plugins/plugin-local-inference/native/android/inputs.json",
-          "packages/app/scripts/paradee-voice",
-          "packages/app/scripts/stage-elizavoice-lib.ts",
-          "packages/app/platforms/android/app/src/main/elizavoice-jni",
-          "packages/app/platforms/android/app/src/main/java/ai/elizaos/app/ElizaVoiceNative.java",
-          "packages/app/scripts/lib/android-bun-artifacts.lock.json",
-          "plugins/plugin-local-inference/native",
-          "plugins/plugin-native-system/android",
-          "packages/app/platforms/android"
-        ],
-        "evidence": "docs/evidence/voice-source-admission-final-ea-20261028.json",
-        "note": "Only Calendar schema/diagnostic source changes from A2; listed native input objects remain identical to A2. The earlier 8cc-to-A2 consumer/Power changes still require fresh compilation and exact artifact/image acceptance. Historical binary/model/ABI records and qualified=false remain unchanged."
-      },
-      {
-        "priorAdmittedAt": "ea0899fd7f19b2bf3552127d6566c15e23b4c303",
-        "admittedAt": "de16c240f8ef77779edd3aa411e407018d2be209",
-        "unchangedPaths": [
-          "plugins/plugin-local-inference/native/llama.cpp",
-          "plugins/plugin-local-inference/native/android/inputs.json",
-          "packages/app/scripts/paradee-voice",
-          "packages/app/scripts/stage-elizavoice-lib.ts",
-          "packages/app/platforms/android/app/src/main/elizavoice-jni",
-          "packages/app/platforms/android/app/src/main/java/ai/elizaos/app/ElizaVoiceNative.java",
-          "packages/app/scripts/lib/android-bun-artifacts.lock.json",
-          "plugins/plugin-local-inference/native",
-          "plugins/plugin-native-system/android",
-          "packages/app/platforms/android",
-          "plugins/plugin-native-action-journal/android",
-          "plugins/plugin-native-calendar/android",
-          "plugins/plugin-native-media/android",
-          "plugins/plugin-native-notifications/android",
-          "plugins/plugin-native-reminders/android",
-          "plugins/plugin-native-secure-store/android",
-          "packages/core",
-          "plugins/plugin-workflow",
-          "packages/agent",
-          "packages/contracts/src/lifeops/workflows.ts",
-          "packages/host",
-          "plugins/plugin-pdf",
-          "LICENSE",
-          "package.json",
-          "bun.lock"
-        ],
-        "evidence": "docs/evidence/source-clean-coherent-final-20261028.json",
-        "note": "Only shared Calendar/Assistant/Notes/Cloud source changed from EA. Compared native/model/JNI/Bun/Core/workflow inputs are exact EA objects. Earlier native consumer/Power changes still need current compilation and exact artifact acceptance. Historical binary/model/ABI facts and false qualification flags are retained; no hardware/voice acceptance transfers."
-      },
-      {
-        "priorAdmittedAt": "de16c240f8ef77779edd3aa411e407018d2be209",
-        "admittedAt": "2f664cc6dc223cf12002120576357114f8cb9763",
-        "unchangedPaths": [
-          "plugins/plugin-local-inference/native/llama.cpp",
-          "plugins/plugin-local-inference/native/android/inputs.json",
-          "packages/app/scripts/paradee-voice",
-          "packages/app/scripts/stage-elizavoice-lib.ts",
-          "packages/app/platforms/android/app/src/main/elizavoice-jni",
-          "packages/app/platforms/android/app/src/main/java/ai/elizaos/app/ElizaVoiceNative.java",
-          "packages/app/scripts/lib/android-bun-artifacts.lock.json",
-          "plugins/plugin-local-inference/native",
-          "plugins/plugin-native-system/android",
-          "packages/app/platforms/android",
-          "plugins/plugin-native-action-journal/android",
-          "plugins/plugin-native-calendar/android",
-          "plugins/plugin-native-media/android",
-          "plugins/plugin-native-notifications/android",
-          "plugins/plugin-native-reminders/android",
-          "plugins/plugin-native-secure-store/android",
-          "packages/core",
-          "plugins/plugin-workflow",
-          "packages/agent",
-          "packages/contracts/src/lifeops/workflows.ts",
-          "packages/host",
-          "plugins/plugin-pdf",
-          "LICENSE",
-          "package.json",
-          "bun.lock"
-        ],
-        "evidence": "docs/evidence/notes-restore-guidance-20261028.json",
-        "note": "One Assistant tool description changed; recorded native qualification remains unchanged. Source-only binding, not hardware or model acceptance."
-      },
-      {
-        "priorAdmittedAt": "2f664cc6dc223cf12002120576357114f8cb9763",
-        "admittedAt": "6f91e22e6bfabdef67138b91c61ebf2929dad775",
-        "unchangedPaths": [
-          "plugins/plugin-local-inference/native/llama.cpp",
-          "plugins/plugin-local-inference/native/android/inputs.json",
-          "packages/app/scripts/paradee-voice",
-          "packages/app/scripts/stage-elizavoice-lib.ts",
-          "packages/app/platforms/android/app/src/main/elizavoice-jni",
-          "packages/app/platforms/android/app/src/main/java/ai/elizaos/app/ElizaVoiceNative.java",
-          "packages/app/scripts/lib/android-bun-artifacts.lock.json",
-          "plugins/plugin-local-inference/native",
-          "plugins/plugin-native-system/android",
-          "packages/app/platforms/android",
-          "plugins/plugin-native-action-journal/android",
-          "plugins/plugin-native-calendar/android",
-          "plugins/plugin-native-media/android",
-          "plugins/plugin-native-notifications/android",
-          "plugins/plugin-native-reminders/android",
-          "plugins/plugin-native-secure-store/android",
-          "plugins/plugin-workflow",
-          "packages/contracts/src/lifeops/workflows.ts",
-          "packages/host",
-          "plugins/plugin-pdf",
-          "LICENSE",
-          "package.json",
-          "bun.lock"
-        ],
-        "changedPaths": [
-          "packages/agent/test/calendar-read-failure-transport.test.ts",
-          "packages/contracts/src/calendar.ts",
-          "packages/core/src/runtime/planner-types.ts",
-          "plugins/plugin-assistant/src/runtime/calendar-read-coverage.test.ts",
-          "plugins/plugin-assistant/src/runtime/evaluator.ts",
-          "plugins/plugin-assistant/src/runtime/planner-loop.ts"
-        ],
-        "evidence": "docs/evidence/v17-diagnostic-source-binding-20261028.json",
-        "note": "Exact native and dependency input objects retained. Agent/core diagnostic code and tests changed; no runtime, native component or user qualification transferred."
-      },
-      {
-        "priorAdmittedAt": "6f91e22e6bfabdef67138b91c61ebf2929dad775",
-        "admittedAt": "96c560ec9c57c6f98cafc523c1ddbb9cea8a3379",
-        "unchangedPaths": [
-          "plugins/plugin-local-inference/native/llama.cpp",
-          "plugins/plugin-local-inference/native/android/inputs.json",
-          "packages/app/scripts/paradee-voice",
-          "packages/app/scripts/stage-elizavoice-lib.ts",
-          "packages/app/platforms/android/app/src/main/elizavoice-jni",
-          "packages/app/platforms/android/app/src/main/java/ai/elizaos/app/ElizaVoiceNative.java",
-          "packages/app/scripts/lib/android-bun-artifacts.lock.json",
-          "plugins/plugin-local-inference/native",
-          "plugins/plugin-native-system/android",
-          "plugins/plugin-native-action-journal/android",
-          "plugins/plugin-native-calendar/android",
-          "plugins/plugin-native-media/android",
-          "plugins/plugin-native-notifications/android",
-          "plugins/plugin-native-reminders/android",
-          "plugins/plugin-native-secure-store/android",
-          "plugins/plugin-workflow",
-          "packages/contracts/src/lifeops/workflows.ts",
-          "packages/host",
-          "plugins/plugin-pdf",
-          "LICENSE",
-          "package.json",
-          "bun.lock"
-        ],
-        "changedPaths": [
-          "packages/app/platforms/android/app/src/main/java/ai/elizaos/app/ElizaReminderMessagingService.java",
-          "packages/app/platforms/android/app/src/main/java/ai/elizaos/app/NativeNotificationChannels.java",
-          "packages/app/platforms/android/app/src/main/java/ai/elizaos/app/NativeNotificationProjector.java",
-          "plugins/plugin-personal-assistant/src/lifeops/domains/reminder-read-receipts.test.ts",
-          "plugins/plugin-personal-assistant/src/lifeops/domains/reminders-service.ts"
-        ],
-        "evidence": "docs/evidence/v17-notification-source-binding-20261028.json",
-        "note": "Exact engine, model and dependency input objects retained. Android notification Java and reminder service code changed; fresh compile and runtime qualification required. No prior native or device acceptance transferred."
-      },
-      {
-        "priorAdmittedAt": "96c560ec9c57c6f98cafc523c1ddbb9cea8a3379",
-        "admittedAt": "e40497d5d0111d557aef022eb01d4f03023c9fc8",
-        "unchangedPaths": [
-          "plugins/plugin-local-inference/native/llama.cpp",
-          "plugins/plugin-local-inference/native/android/inputs.json",
-          "packages/app/scripts/paradee-voice",
-          "packages/app/scripts/stage-elizavoice-lib.ts",
-          "packages/app/platforms/android/app/src/main/elizavoice-jni",
-          "packages/app/platforms/android/app/src/main/java/ai/elizaos/app/ElizaVoiceNative.java",
-          "packages/app/scripts/lib/android-bun-artifacts.lock.json",
-          "plugins/plugin-local-inference/native",
-          "plugins/plugin-native-system/android",
-          "plugins/plugin-native-action-journal/android",
-          "plugins/plugin-native-calendar/android",
-          "plugins/plugin-native-media/android",
-          "plugins/plugin-native-notifications/android",
-          "plugins/plugin-native-reminders/android",
-          "plugins/plugin-native-secure-store/android",
-          "plugins/plugin-workflow",
-          "packages/contracts/src/lifeops/workflows.ts",
-          "packages/host",
-          "plugins/plugin-pdf",
-          "LICENSE",
-          "package.json",
-          "bun.lock"
-        ],
-        "changedPaths": [
-          "packages/app/platforms/android/app/src/main/java/ai/elizaos/app/NativeNotificationProjector.java"
-        ],
-        "evidence": "docs/evidence/v17-notification-lint-source-binding-20261028.json",
-        "note": "Exact engine, model and dependency input objects retained. Only the NotificationCompat builder visibility constant changed; fresh normal native compile/lint is required. No prior native or device acceptance transferred."
-      },
-      {
-        "priorAdmittedAt": "e40497d5d0111d557aef022eb01d4f03023c9fc8",
-        "admittedAt": "5794c8c0d18914b3564d5c6716e28c2a3587f5ed",
-        "unchangedPaths": [
-          "plugins/plugin-local-inference/native",
-          "packages/app/scripts/paradee-voice",
-          "packages/app/scripts/stage-elizavoice-lib.ts",
-          "packages/app/scripts/build-helpers/arm64-simd.ts",
-          "packages/app/scripts/build-helpers/verify-fused-symbols.ts",
-          "packages/app/platforms/android/app/src/main/elizavoice-jni",
-          "packages/app/platforms/android/app/src/main/java/ai/elizaos/app/ElizaVoiceNative.java",
-          "packages/app/scripts/lib/android-bun-artifacts.lock.json"
-        ],
-        "evidence": "docs/evidence/sdk5794-build-input-admission-20261028.json",
-        "note": "All listed engine/model/JNI/Bun build-input objects and modes are identical. SDK runtime model matching and durable reminder receipts changed and need current build/runtime validation. Historical component/device/user evidence and qualified=false are unchanged; no qualification transfers."
-      },
-      {
-        "priorAdmittedAt": "5794c8c0d18914b3564d5c6716e28c2a3587f5ed",
-        "admittedAt": "6c1a31f2331581e2bd148d7792c20f25276c0da7",
-        "unchangedPaths": [
-          "plugins/plugin-local-inference/native/llama.cpp",
-          "plugins/plugin-local-inference/native/android/inputs.json",
-          "plugins/plugin-local-inference/native/android/consumer.gradle",
-          "packages/app/scripts/paradee-voice/build-native.ts",
-          "packages/app/scripts/stage-elizavoice-lib.ts",
-          "packages/app/scripts/build-helpers/arm64-simd.ts",
-          "packages/app/scripts/build-helpers/verify-fused-symbols.ts",
-          "packages/app/platforms/android/app/src/main/elizavoice-jni",
-          "packages/app/platforms/android/app/src/main/java/ai/elizaos/app/ElizaVoiceNative.java",
-          "packages/app/scripts/lib/android-bun-artifacts.lock.json"
-        ],
-        "changedPaths": [
-          "plugins/plugin-local-inference/native",
-          "packages/app/scripts/paradee-voice"
-        ],
-        "evidence": "docs/evidence/sdk6c1a-build-input-admission-20261028.json",
-        "note": "Native engine, model, JNI and Bun build inputs are byte-identical, so the recorded native libraries and model bytes stay admitted. The shared ai.eliza.voice Java API compiled into the APK changed (streamed playback, audio focus, live capture and latency probes) and needs a fresh APK build and on-device voice validation. Historical component/device/user evidence and qualified=false are unchanged; no qualification transfers."
-      },
-      {
-        "priorAdmittedAt": "6c1a31f2331581e2bd148d7792c20f25276c0da7",
-        "admittedAt": "756ba00966bb57e1e0590871f8a639df7e54d95e",
-        "unchangedPaths": [
-          "plugins/plugin-local-inference/native/llama.cpp",
-          "plugins/plugin-local-inference/native/android/inputs.json",
-          "plugins/plugin-local-inference/native/android/consumer.gradle",
-          "packages/app/scripts/paradee-voice/build-native.ts",
-          "packages/app/scripts/stage-elizavoice-lib.ts",
-          "packages/app/scripts/build-helpers/arm64-simd.ts",
-          "packages/app/scripts/build-helpers/verify-fused-symbols.ts",
-          "packages/app/platforms/android/app/src/main/elizavoice-jni",
-          "packages/app/platforms/android/app/src/main/java/ai/elizaos/app/ElizaVoiceNative.java",
-          "packages/app/scripts/lib/android-bun-artifacts.lock.json",
-          "plugins/plugin-local-inference/native"
-        ],
-        "changedPaths": [
-          "packages/app/scripts/paradee-voice"
-        ],
-        "evidence": "docs/evidence/sdk-develop-756ba009-build-input-admission-20261028.json",
-        "note": "Moving from the SDK join to elizaOS/eliza develop changes no native engine, model, JNI, Bun or ai.eliza.voice Java input; only a paradee-voice contract test changed. The recorded native libraries and model bytes stay admitted. The prior comparison's requirement for a fresh APK build and on-device voice validation is still open. Historical component/device/user evidence and qualified=false are unchanged; no qualification transfers."
-      },
-      {
-        "priorAdmittedAt": "1f2a922f86e2a1f3d6cd62e097145492bd49ebfc",
-        "comparedAt": "fbc2d23d4bae0c7086ea529c019e5a47fb7b8352",
-        "admitted": false,
-        "requalificationRequired": true,
-        "unchangedPaths": [
-          "packages/app/scripts/build-helpers/arm64-simd.ts",
-          "packages/app/scripts/build-helpers/verify-fused-symbols.ts",
-          "packages/app/scripts/lib/android-bun-artifacts.lock.json"
-        ],
-        "changedPaths": [
-          "plugins/plugin-local-inference/native/llama.cpp",
-          "plugins/plugin-local-inference/native/android/inputs.json",
-          "plugins/plugin-local-inference/native/android/consumer.gradle",
-          "packages/app/scripts/paradee-voice/build-native.ts",
-          "packages/app/scripts/stage-elizavoice-lib.ts",
-          "packages/app/platforms/android/app/src/main/elizavoice-jni",
-          "packages/app/platforms/android/app/src/main/java/ai/elizaos/app/ElizaVoiceNative.java",
-          "plugins/plugin-local-inference/native",
-          "packages/app/scripts/paradee-voice"
-        ],
-        "evidence": "docs/evidence/develop-fbc2d23d-build-input-admission-20261029.json",
-        "note": "Moving to develop fbc2d23d4b changes the native engine inputs: the llama.cpp fork moves from 0d9fd4b9 to 13d0ccbf, upstream inputs.json pins Paradee-8M v1.2 (the tts-model row above now names those source-declared bytes) and adds an enabled Spanish voice, and the JNI, ElizaVoiceNative and ai.eliza.voice Java sources changed. The recorded libelizainference libraries (forkPin 0d9fd4b9) are not admitted at this pin and are kept only as the historical record. A fresh engine build for both ABIs, a fresh record of library and model bytes, a fresh APK and on-device voice validation are required before a distribution build. Historical component/device/user evidence and qualified=false are unchanged; no qualification transfers."
-      },
-      {
-        "priorAdmittedAt": "fbc2d23d4bae0c7086ea529c019e5a47fb7b8352",
-        "comparedAt": "0db04d25367889fd0b939f9e5f31d38338a37f94",
-        "admitted": false,
-        "requalificationRequired": true,
-        "unchangedPaths": [
-          "packages/app/scripts/build-helpers/arm64-simd.ts",
-          "packages/app/scripts/build-helpers/verify-fused-symbols.ts",
-          "packages/app/scripts/lib/android-bun-artifacts.lock.json",
-          "plugins/plugin-local-inference/native/llama.cpp",
-          "plugins/plugin-local-inference/native/android/inputs.json",
-          "plugins/plugin-local-inference/native/android/consumer.gradle",
-          "packages/app/scripts/paradee-voice/build-native.ts",
-          "packages/app/scripts/stage-elizavoice-lib.ts",
-          "packages/app/platforms/android/app/src/main/elizavoice-jni",
-          "packages/app/platforms/android/app/src/main/java/ai/elizaos/app/ElizaVoiceNative.java",
-          "plugins/plugin-local-inference/native",
-          "packages/app/scripts/paradee-voice"
-        ],
-        "changedPaths": [],
-        "evidence": "docs/evidence/local-qa-main441-og-sdk-combination-20261029.json",
-        "note": "Local browser QA source-only binding. Native input entries equal frozen fbc2, which already changed the engine/model/JNI inputs and does not admit recorded old0d9 libraries. All native requalification, model/ABI/APK/device holds and qualified=false remain. No native or historical runtime proof transfers."
-      },
-      {
-        "priorAdmittedAt": "0db04d25367889fd0b939f9e5f31d38338a37f94",
-        "comparedAt": "1e95a588bd680f18a7b7c1232b1c96145a43f7ee",
-        "admitted": false,
-        "requalificationRequired": true,
-        "unchangedPaths": [
-          "packages/app/scripts/build-helpers/arm64-simd.ts",
-          "packages/app/scripts/build-helpers/verify-fused-symbols.ts",
-          "packages/app/scripts/lib/android-bun-artifacts.lock.json",
-          "plugins/plugin-local-inference/native/llama.cpp",
-          "plugins/plugin-local-inference/native/android/inputs.json",
-          "plugins/plugin-local-inference/native/android/consumer.gradle",
-          "packages/app/scripts/paradee-voice/build-native.ts",
-          "packages/app/scripts/stage-elizavoice-lib.ts",
-          "packages/app/platforms/android/app/src/main/elizavoice-jni",
-          "packages/app/platforms/android/app/src/main/java/ai/elizaos/app/ElizaVoiceNative.java",
-          "plugins/plugin-local-inference/native",
-          "packages/app/scripts/paradee-voice"
-        ],
-        "changedPaths": [],
-        "evidence": "docs/evidence/local-qa-browser-grounding-sdk-20261029.json",
-        "note": "Browser safety source-only binding. Native engine/model/JNI entries equal preserved0db; inherited fbc2 engine/model requalification remains required. Old0d9 libraries are not admitted. No APK/device qualification transfer."
-      },
-      {
-        "priorAdmittedAt": "1e95a588bd680f18a7b7c1232b1c96145a43f7ee",
-        "comparedAt": "d5f3af8f10ba41cf41fb723d9374305ad2b3e106",
-        "admitted": false,
-        "requalificationRequired": true,
-        "unchangedPaths": [
-          "packages/app/scripts/build-helpers/arm64-simd.ts",
-          "packages/app/scripts/build-helpers/verify-fused-symbols.ts",
-          "packages/app/scripts/lib/android-bun-artifacts.lock.json",
-          "plugins/plugin-local-inference/native/llama.cpp",
-          "plugins/plugin-local-inference/native/android/inputs.json",
-          "plugins/plugin-local-inference/native/android/consumer.gradle",
-          "packages/app/scripts/paradee-voice/build-native.ts",
-          "packages/app/scripts/stage-elizavoice-lib.ts",
-          "packages/app/platforms/android/app/src/main/elizavoice-jni",
-          "packages/app/platforms/android/app/src/main/java/ai/elizaos/app/ElizaVoiceNative.java",
-          "plugins/plugin-local-inference/native",
-          "packages/app/scripts/paradee-voice"
-        ],
-        "changedPaths": [],
-        "evidence": "docs/evidence/local-qa-browser-grounding-final-sdk-20261029.json",
-        "note": "Test-only SDK successor. All production SDK bytes including native engine/model/JNI unchanged from1e95; inherited native false/requalification-required remains. Historical component, old0d9 library and APK/device proof do not transfer."
-      },
-      {
-        "priorAdmittedAt": "d5f3af8f10ba41cf41fb723d9374305ad2b3e106",
-        "comparedAt": "1d09118cfd33cf21d3532119e28d34fd566f3d3e",
-        "admitted": false,
-        "requalificationRequired": true,
-        "unchangedPaths": [
-          "packages/app/scripts/build-helpers/arm64-simd.ts",
-          "packages/app/scripts/build-helpers/verify-fused-symbols.ts",
-          "packages/app/scripts/lib/android-bun-artifacts.lock.json",
-          "plugins/plugin-local-inference/native/llama.cpp",
-          "plugins/plugin-local-inference/native/android/inputs.json",
-          "plugins/plugin-local-inference/native/android/consumer.gradle",
-          "packages/app/scripts/paradee-voice/build-native.ts",
-          "packages/app/scripts/stage-elizavoice-lib.ts",
-          "packages/app/platforms/android/app/src/main/elizavoice-jni",
-          "packages/app/platforms/android/app/src/main/java/ai/elizaos/app/ElizaVoiceNative.java",
-          "plugins/plugin-local-inference/native",
-          "packages/app/scripts/paradee-voice"
-        ],
-        "changedPaths": [],
-        "evidence": "docs/evidence/future-calendar-day-sdk-20261029.json",
-        "note": "Future Calendar day/diagnostic TypeScript source-only binding. Recorded native engine/model/JNI/Bun and staging input entries equal preserved D5. Existing native false/requalification-required, Cloud-only selected profile and offline holds remain; no component/APK/device qualification transfers."
-      },
-      {
-        "priorAdmittedAt": "1d09118cfd33cf21d3532119e28d34fd566f3d3e",
-        "comparedAt": "210bc893b3dda55daba72d914bd851155f954f86",
-        "admitted": false,
-        "requalificationRequired": true,
-        "unchangedPaths": [
-          "packages/app/scripts/build-helpers/arm64-simd.ts",
-          "packages/app/scripts/build-helpers/verify-fused-symbols.ts",
-          "packages/app/scripts/lib/android-bun-artifacts.lock.json",
-          "plugins/plugin-local-inference/native/llama.cpp",
-          "plugins/plugin-local-inference/native/android/inputs.json",
-          "plugins/plugin-local-inference/native/android/consumer.gradle",
-          "packages/app/scripts/paradee-voice/build-native.ts",
-          "packages/app/scripts/stage-elizavoice-lib.ts",
-          "packages/app/platforms/android/app/src/main/elizavoice-jni",
-          "packages/app/platforms/android/app/src/main/java/ai/elizaos/app/ElizaVoiceNative.java",
-          "plugins/plugin-local-inference/native",
-          "packages/app/scripts/paradee-voice"
-        ],
-        "changedPaths": [],
-        "evidence": "docs/evidence/calendar-full-cloud-sdk-repair-union-20261029.json",
-        "note": "Internal Calendar reply repair and tests only; native inputs unchanged from1d. Historical engine/model/JNI qualification does not transfer. Current Cloud-only Android omits GGUF/libelizainference/libelizavoicejni; its current Java/Bun/worker/Google/APK and retained continuity gates remain open."
-      },
-      {
-        "priorAdmittedAt": "210bc893b3dda55daba72d914bd851155f954f86",
-        "comparedAt": "7854f43ff93082452c8aca5c4bf56aff0e0015bf",
-        "admitted": false,
-        "requalificationRequired": true,
-        "unchangedPaths": [
-          "packages/app/scripts/build-helpers/arm64-simd.ts",
-          "packages/app/scripts/build-helpers/verify-fused-symbols.ts",
-          "packages/app/scripts/lib/android-bun-artifacts.lock.json",
-          "plugins/plugin-local-inference/native/llama.cpp",
-          "plugins/plugin-local-inference/native/android/inputs.json",
-          "plugins/plugin-local-inference/native/android/consumer.gradle",
-          "packages/app/scripts/paradee-voice/build-native.ts",
-          "packages/app/scripts/stage-elizavoice-lib.ts",
-          "packages/app/platforms/android/app/src/main/elizavoice-jni",
-          "packages/app/platforms/android/app/src/main/java/ai/elizaos/app/ElizaVoiceNative.java",
-          "plugins/plugin-local-inference/native",
-          "packages/app/scripts/paradee-voice"
-        ],
-        "changedPaths": [],
-        "evidence": "docs/evidence/calendar-post-replay-source-fixes-20261029.json",
-        "note": "Calendar source dispatch and default-duration policy only; native source input entries unchanged from210. No historical engine/model qualification transfer. Cloud-only Android current Java/Bun/worker/Google/APK and in-place continuity remain open; offline13d/model/bothABI qualification stays separate."
-      },
-      {
-        "priorAdmittedAt": "7854f43ff93082452c8aca5c4bf56aff0e0015bf",
-        "comparedAt": "2a8a5928e881ecbfb777fc2a2655230b66fc422e",
-        "admitted": false,
-        "requalificationRequired": true,
-        "unchangedPaths": [
-          "packages/app/scripts/build-helpers/arm64-simd.ts",
-          "packages/app/scripts/build-helpers/verify-fused-symbols.ts",
-          "packages/app/scripts/lib/android-bun-artifacts.lock.json",
-          "plugins/plugin-local-inference/native/android/inputs.json",
-          "plugins/plugin-local-inference/native/android/consumer.gradle",
-          "packages/app/scripts/paradee-voice/build-native.ts",
-          "packages/app/scripts/stage-elizavoice-lib.ts",
-          "packages/app/platforms/android/app/src/main/elizavoice-jni",
-          "packages/app/platforms/android/app/src/main/java/ai/elizaos/app/ElizaVoiceNative.java",
-          "packages/app/scripts/paradee-voice"
-        ],
-        "changedPaths": [
-          "plugins/plugin-local-inference/native/android/speech-bridge/src/main/java/ai/eliza/voice/LocalSpeechBridgePlugin.java",
-          "plugins/plugin-local-inference/native/android/speech-bridge/test/failure-settlement.test.mjs",
-          "plugins/plugin-local-inference/native/llama.cpp"
-        ],
-        "evidence": "docs/evidence/voice-host-published-source-binding-20261029.json",
-        "note": "Published source binding only. The native engine gitlink and shared speech bridge changed; no binary compatibility or historical native qualification is asserted. Recorded native libraries remain historical and unqualified. Fresh engine/native Java/APK/device qualification is required for packaged local voice. The explicit Cloud-only absent-runtime path remains not-packaged and qualified:false; the verifier is unchanged."
-      },
-      {
-        "priorAdmittedAt": "2a8a5928e881ecbfb777fc2a2655230b66fc422e",
-        "comparedAt": "0fde8e0a288bc2dc94bac78d4c431c6a0d6056b7",
-        "admitted": false,
-        "requalificationRequired": true,
-        "unchangedPaths": [
-          "plugins/plugin-local-inference/native",
-          "packages/app/scripts/paradee-voice",
-          "packages/app/scripts/stage-elizavoice-lib.ts",
-          "packages/app/platforms/android/app/src/main/elizavoice-jni",
-          "packages/app/platforms/android/app/src/main/java/ai/elizaos/app/ElizaVoiceNative.java",
-          "packages/app/scripts/lib/android-bun-artifacts.lock.json"
-        ],
-        "changedPaths": [],
-        "evidence": "docs/evidence/voice-grounding-sdk-binding-20261030.json",
-        "note": "Source binding only: native engine/model/JNI/Bun input entries are unchanged from2a8. Host voice duplicate-cue handling and reply-grounding schema changed and require fresh runtime artifacts/owning checks. Historical native binaries remain unqualified; no APK/device/user proof transfers."
-      },
-      {
-        "priorAdmittedAt": "0fde8e0a288bc2dc94bac78d4c431c6a0d6056b7",
-        "comparedAt": "9af104a1c7c7021493db575899baee666ea0ff6a",
-        "admitted": false,
-        "requalificationRequired": true,
-        "unchangedPaths": [
-          "plugins/plugin-local-inference/native",
-          "packages/app/scripts/paradee-voice",
-          "packages/app/scripts/stage-elizavoice-lib.ts",
-          "packages/app/platforms/android/app/src/main/elizavoice-jni",
-          "packages/app/platforms/android/app/src/main/java/ai/elizaos/app/ElizaVoiceNative.java",
-          "packages/app/scripts/lib/android-bun-artifacts.lock.json"
-        ],
-        "changedPaths": [],
-        "evidence": "docs/evidence/voice-grounding-sdk-binding-20261030.json",
-        "note": "Source binding only for the focused multi-cue speech repair. Native engine/model/JNI/Bun inputs remain unchanged; historical native qualification is not transferred. New host voice speech-prefix behavior requires regenerated runtime artifacts and exact-pin acceptance; qualified/admitted remain false."
-      },
-      {
-        "priorAdmittedAt": "9af104a1c7c7021493db575899baee666ea0ff6a",
-        "comparedAt": "89714cd4b8d89824ef435c69362523c8b5e37f60",
-        "admitted": false,
-        "requalificationRequired": true,
-        "unchangedPaths": [
-          "plugins/plugin-local-inference/native/android/consumer.gradle",
-          "packages/app/scripts/paradee-voice/build-native.ts",
-          "packages/app/scripts/stage-elizavoice-lib.ts",
-          "packages/app/scripts/build-helpers/arm64-simd.ts",
-          "packages/app/scripts/build-helpers/verify-fused-symbols.ts",
-          "packages/app/platforms/android/app/src/main/elizavoice-jni",
-          "packages/app/platforms/android/app/src/main/java/ai/elizaos/app/ElizaVoiceNative.java",
-          "packages/app/scripts/lib/android-bun-artifacts.lock.json",
-          "packages/app/scripts/paradee-voice"
-        ],
-        "changedPaths": [
-          "plugins/plugin-local-inference/native/llama.cpp",
-          "plugins/plugin-local-inference/native/android/inputs.json",
-          "plugins/plugin-local-inference/native"
-        ],
-        "evidence": "docs/evidence/sdk-89714cd4b8-build-input-admission-20261030.json",
-        "note": "Moving from 9af104a1c7 to 89714cd4b8 changes the native voice inputs (plugins/plugin-local-inference/native/llama.cpp, plugins/plugin-local-inference/native/android/inputs.json, plugins/plugin-local-inference/native). The llama.cpp fork gitlink moves from 6973dc6c to d960f633. The model row now names the source-declared bytes: tts/paradee/paradee-8m-v1_2.gguf sha256 a43118932f7e -> 4b2819180a9e (same size). The recorded libelizainference libraries (forkPin 0d9fd4b9) and model bytes are not admitted at this pin: a fresh engine build for both ABIs, a fresh byte record, APK and on-device voice validation are required. Nothing was built, staged or run; qualified/admitted remain false."
-      },
-      {
-        "priorAdmittedAt": "89714cd4b8d89824ef435c69362523c8b5e37f60",
-        "comparedAt": "641c179ce8214c864a7ea3dee23dae2d2bd2a682",
-        "admitted": false,
-        "requalificationRequired": true,
-        "unchangedPaths": [
-          "plugins/plugin-local-inference/native/llama.cpp",
-          "plugins/plugin-local-inference/native/android/inputs.json",
-          "packages/app/scripts/paradee-voice/build-native.ts",
-          "packages/app/scripts/stage-elizavoice-lib.ts",
-          "packages/app/scripts/build-helpers/arm64-simd.ts",
-          "packages/app/scripts/build-helpers/verify-fused-symbols.ts",
-          "packages/app/platforms/android/app/src/main/elizavoice-jni",
-          "packages/app/platforms/android/app/src/main/java/ai/elizaos/app/ElizaVoiceNative.java",
-          "packages/app/scripts/lib/android-bun-artifacts.lock.json",
-          "packages/app/scripts/paradee-voice"
-        ],
-        "changedPaths": [
-          "plugins/plugin-local-inference/native/android/consumer.gradle",
-          "plugins/plugin-local-inference/native"
-        ],
-        "evidence": "docs/evidence/sdk-641c179ce8-build-input-admission-20261030.json",
-        "note": "Moving from 89714cd4b8 to 641c179ce8 changes the native voice inputs (plugins/plugin-local-inference/native/android/consumer.gradle, plugins/plugin-local-inference/native). The recorded libelizainference libraries (forkPin 0d9fd4b9) and model bytes are not admitted at this pin: a fresh engine build for both ABIs, a fresh byte record, APK and on-device voice validation are required. Nothing was built, staged or run; qualified/admitted remain false."
-      },
-      {
-        "priorAdmittedAt": "641c179ce8214c864a7ea3dee23dae2d2bd2a682",
-        "comparedAt": "6cd75d68202db3322dbec9d36d200902f08849c4",
-        "admitted": false,
-        "requalificationRequired": true,
-        "unchangedPaths": [
-          "plugins/plugin-local-inference/native/llama.cpp",
-          "plugins/plugin-local-inference/native/android/inputs.json",
-          "plugins/plugin-local-inference/native/android/consumer.gradle",
-          "packages/app/scripts/paradee-voice/build-native.ts",
-          "packages/app/scripts/stage-elizavoice-lib.ts",
-          "packages/app/scripts/build-helpers/arm64-simd.ts",
-          "packages/app/scripts/build-helpers/verify-fused-symbols.ts",
-          "packages/app/platforms/android/app/src/main/elizavoice-jni",
-          "packages/app/platforms/android/app/src/main/java/ai/elizaos/app/ElizaVoiceNative.java",
-          "packages/app/scripts/lib/android-bun-artifacts.lock.json",
-          "plugins/plugin-local-inference/native",
-          "packages/app/scripts/paradee-voice"
-        ],
-        "changedPaths": [
-          "plugins/plugin-native-agent/android/src/main/java/ai/eliza/plugins/agent/runtime/NativeProviderAdmission.java",
-          "plugins/plugin-native-agent/android/src/main/java/ai/eliza/plugins/agent/runtime/NativeProviderSlot.java"
-        ],
-        "evidence": "docs/evidence/sdk-6cd75d6820-build-input-admission-20261101.json",
-        "note": "Reviewed repair separates Google service credentials from own inference, makes Cloud sign-out retain direct startup, and projects direct routing before boot. Native-agent admission changed; compilation and native requalification remain required. No historic qualification transfers.",
-        "comparisonBase": "d5f0e2aea48a7ce578cdb16f9808f4d26f006ba2"
-      },
-      {
-        "priorAdmittedAt": "641c179ce8214c864a7ea3dee23dae2d2bd2a682",
-        "comparedAt": "4573a187b0dc44c0b0dd111a0b0720aaa13d6bc4",
-        "admitted": false,
-        "requalificationRequired": true,
-        "unchangedPaths": [
-          "plugins/plugin-local-inference/native/llama.cpp",
-          "plugins/plugin-local-inference/native/android/inputs.json",
-          "plugins/plugin-local-inference/native/android/consumer.gradle",
-          "packages/app/scripts/paradee-voice/build-native.ts",
-          "packages/app/scripts/stage-elizavoice-lib.ts",
-          "packages/app/scripts/build-helpers/arm64-simd.ts",
-          "packages/app/scripts/build-helpers/verify-fused-symbols.ts",
-          "packages/app/platforms/android/app/src/main/elizavoice-jni",
-          "packages/app/platforms/android/app/src/main/java/ai/elizaos/app/ElizaVoiceNative.java",
-          "packages/app/scripts/lib/android-bun-artifacts.lock.json",
-          "plugins/plugin-local-inference/native",
-          "packages/app/scripts/paradee-voice"
-        ],
-        "changedPaths": [
-          "plugins/plugin-native-agent/android/src/main/java/ai/eliza/plugins/agent/runtime/NativeProviderSlot.java"
-        ],
-        "evidence": "docs/evidence/sdk-4573a187b0-build-input-admission-20261101.json",
-        "note": "The native engine, model, JNI, Bun artifact manifest and local-inference build input Git objects are identical between these SDK revisions. The only change within the compared Android inputs is NativeProviderSlot.java: direct provider configuration now verifies the optional Cartesia credential after persistence. The consumer needs fresh compilation and runtime validation. The recorded libraries were built at the historical 0d9fd4b9 engine fork, while both compared SDK revisions pin d960f633; that existing native requalification requirement remains. No recorded binary, component, emulator, device or user qualification transfers.",
-        "comparisonBase": "6cd75d68202db3322dbec9d36d200902f08849c4"
-      },
-      {
-        "priorAdmittedAt": "641c179ce8214c864a7ea3dee23dae2d2bd2a682",
-        "comparedAt": "9ba8ec567376cae10e60d1b19cd17d4f827bfe33",
-        "admitted": false,
-        "requalificationRequired": true,
-        "unchangedPaths": [
-          "plugins/plugin-local-inference/native/android/inputs.json",
-          "plugins/plugin-local-inference/native/android/consumer.gradle",
-          "packages/app/scripts/paradee-voice/build-native.ts",
-          "packages/app/scripts/stage-elizavoice-lib.ts",
-          "packages/app/scripts/build-helpers/arm64-simd.ts",
-          "packages/app/scripts/build-helpers/verify-fused-symbols.ts",
-          "packages/app/scripts/lib/android-bun-artifacts.lock.json"
-        ],
-        "changedPaths": [
-          "packages/app/platforms/android/app/src/main/elizavoice-jni/elizavoice-jni.cpp",
-          "packages/app/platforms/android/app/src/main/java/ai/elizaos/app/ElizaVoiceNative.java",
-          "packages/app/scripts/paradee-voice/stream-contract/StreamContract.java",
-          "packages/app/scripts/paradee-voice/stream-contract/VoiceNative.java",
-          "plugins/plugin-local-inference/native/android/README.md",
-          "plugins/plugin-local-inference/native/android/src/main/java/ai/eliza/voice/ParadeeVoice.java",
-          "plugins/plugin-local-inference/native/android/src/main/java/ai/eliza/voice/VoiceNative.java",
-          "plugins/plugin-local-inference/native/llama.cpp"
-        ],
-        "evidence": "docs/evidence/sdk-9ba8ec5673-build-input-admission-20261101.json",
-        "note": "elizaOS/eliza #38470 adds a caller-set Paradee speed range (libelizainference ABI 21): it moves the native engine gitlink plugins/plugin-local-inference/native/llama.cpp from d960f633 to b3eb2bf6 and changes the elizavoice JNI, ElizaVoiceNative, the shared ai.eliza.voice ParadeeVoice/VoiceNative and the paradee-voice stream contract. Model inputs (inputs.json), consumer.gradle, build-native.ts, stage-elizavoice-lib.ts and the Bun artifact lock are unchanged, and no consumer Android module changed. The recorded engine, embedding host and voice bytes are not admitted at this pin; fresh native builds for both ABIs and on-device requalification remain required. No historic qualification transfers.",
-        "comparisonBase": "4573a187b0dc44c0b0dd111a0b0720aaa13d6bc4"
-      },
-      {
-        "priorAdmittedAt": "641c179ce8214c864a7ea3dee23dae2d2bd2a682",
-        "comparedAt": "7e8b5d3eb1c05ee6ea72a1a2d5ce5b966c404e9c",
-        "admitted": false,
-        "requalificationRequired": true,
-        "unchangedPaths": [
-          "plugins/plugin-local-inference/native/llama.cpp",
-          "plugins/plugin-local-inference/native/android/inputs.json",
-          "plugins/plugin-local-inference/native/android/consumer.gradle",
-          "packages/app/scripts/paradee-voice/build-native.ts",
-          "packages/app/scripts/stage-elizavoice-lib.ts",
-          "packages/app/scripts/build-helpers/arm64-simd.ts",
-          "packages/app/scripts/build-helpers/verify-fused-symbols.ts",
-          "packages/app/platforms/android/app/src/main/elizavoice-jni",
-          "packages/app/platforms/android/app/src/main/java/ai/elizaos/app/ElizaVoiceNative.java",
-          "packages/app/scripts/lib/android-bun-artifacts.lock.json",
-          "plugins/plugin-local-inference/native",
-          "packages/app/scripts/paradee-voice"
-        ],
-        "changedPaths": [],
-        "evidence": "docs/evidence/sdk-7e8b5d3eb1-build-input-admission-20261101.json",
-        "note": "The native engine gitlink (b3eb2bf6), model inputs, JNI, shared voice Java, Bun artifact manifest and every consumer Android module are identical between these SDK revisions; the changes are Cloud server admission, Cartesia settings, native-app account lifetime and streaming speech transport. The recorded engine, embedding host and voice bytes remain unadmitted from the earlier b3eb2bf6 move; fresh native builds and on-device requalification are still required. No historic qualification transfers.",
-        "comparisonBase": "9ba8ec567376cae10e60d1b19cd17d4f827bfe33"
-      },
-      {
-        "priorAdmittedAt": "641c179ce8214c864a7ea3dee23dae2d2bd2a682",
-        "comparedAt": "5e0feca4ee65c7dc81b18fd0fb866e1ede28325e",
-        "admitted": false,
-        "requalificationRequired": true,
-        "unchangedPaths": [
-          "packages/app/platforms/android/app/src/main/elizavoice-jni",
-          "packages/app/platforms/android/app/src/main/elizavoice-jni/CMakeLists.txt",
-          "packages/app/platforms/android/app/src/main/elizavoice-jni/elizavoice-jni.cpp",
-          "packages/app/platforms/android/app/src/main/java/ai/elizaos/app/ElizaVoiceNative.java",
-          "packages/app/scripts/build-helpers/arm64-simd.ts",
-          "packages/app/scripts/build-helpers/verify-fused-symbols.ts",
-          "packages/app/scripts/lib/android-bun-artifacts.lock.json",
-          "packages/app/scripts/paradee-voice",
-          "packages/app/scripts/paradee-voice/build-native.ts",
-          "packages/app/scripts/stage-elizavoice-lib.ts",
-          "packages/auth/android/build.gradle",
-          "packages/auth/android/src/main/java/ai/eliza/auth/cloud/CloudSignInConfig.java",
-          "packages/auth/android/src/main/java/ai/eliza/auth/cloud/CloudSignInFlow.java",
-          "packages/auth/android/src/main/java/ai/eliza/auth/cloud/CloudSignInPlugin.java",
-          "packages/auth/android/src/main/java/ai/eliza/auth/cloud/CloudSignInReadiness.java",
-          "packages/auth/android/src/main/java/ai/eliza/auth/cloud/CloudSignInRoutes.java",
-          "packages/voice/src/cloud-speech-chunks.ts",
-          "packages/voice/src/native-cloud-speech.ts",
-          "plugins/plugin-local-inference/native",
-          "plugins/plugin-local-inference/native/android/consumer.gradle",
-          "plugins/plugin-local-inference/native/android/inputs.json",
-          "plugins/plugin-local-inference/native/android/speech-bridge/src/main/java/ai/eliza/voice/CloudSpeechTimings.java",
-          "plugins/plugin-local-inference/native/android/speech-bridge/src/main/java/ai/eliza/voice/CloudSpeechWire.java",
-          "plugins/plugin-local-inference/native/android/speech-bridge/src/main/java/ai/eliza/voice/SpeechStreamBridgePlugin.java",
-          "plugins/plugin-local-inference/native/llama.cpp"
-        ],
-        "changedPaths": [],
-        "evidence": "docs/evidence/sdk-5e0feca4ee-build-input-admission-20261101.json",
-        "note": "Source-only comparison from 7e8b5d3eb1 to the corrected reconciled SDK 5e0feca4ee (draft elizaOS/eliza #38516). Listed native sources, patch targets, mobile UUID builder and bun.lock are unchanged. This does not admit recorded artifacts or transfer historical qualification. Normal checks, fresh native builds and device qualification remain pending; none ran for this proposal.",
-        "comparisonBase": "7e8b5d3eb1c05ee6ea72a1a2d5ce5b966c404e9c"
-      },
-      {
-        "priorAdmittedAt": "641c179ce8214c864a7ea3dee23dae2d2bd2a682",
-        "comparedAt": "9950213832d6bb6965121a517e268ce898ef0100",
-        "admitted": false,
-        "requalificationRequired": true,
-        "unchangedPaths": [
-          "packages/app/platforms/android/app/src/main/elizavoice-jni",
-          "packages/app/platforms/android/app/src/main/elizavoice-jni/CMakeLists.txt",
-          "packages/app/platforms/android/app/src/main/elizavoice-jni/elizavoice-jni.cpp",
-          "packages/app/platforms/android/app/src/main/java/ai/elizaos/app/ElizaVoiceNative.java",
-          "packages/app/scripts/build-helpers/arm64-simd.ts",
-          "packages/app/scripts/build-helpers/verify-fused-symbols.ts",
-          "packages/app/scripts/lib/android-bun-artifacts.lock.json",
-          "packages/app/scripts/paradee-voice",
-          "packages/app/scripts/paradee-voice/build-native.ts",
-          "packages/app/scripts/stage-elizavoice-lib.ts",
-          "packages/auth/android/build.gradle",
-          "packages/auth/android/src/main/java/ai/eliza/auth/cloud/CloudSignInConfig.java",
-          "packages/auth/android/src/main/java/ai/eliza/auth/cloud/CloudSignInFlow.java",
-          "packages/auth/android/src/main/java/ai/eliza/auth/cloud/CloudSignInPlugin.java",
-          "packages/auth/android/src/main/java/ai/eliza/auth/cloud/CloudSignInReadiness.java",
-          "packages/auth/android/src/main/java/ai/eliza/auth/cloud/CloudSignInRoutes.java",
-          "packages/voice/src/cloud-speech-chunks.ts",
-          "packages/voice/src/native-cloud-speech.ts",
-          "plugins/plugin-local-inference/native",
-          "plugins/plugin-local-inference/native/android/consumer.gradle",
-          "plugins/plugin-local-inference/native/android/inputs.json",
-          "plugins/plugin-local-inference/native/android/speech-bridge/src/main/java/ai/eliza/voice/CloudSpeechTimings.java",
-          "plugins/plugin-local-inference/native/android/speech-bridge/src/main/java/ai/eliza/voice/CloudSpeechWire.java",
-          "plugins/plugin-local-inference/native/android/speech-bridge/src/main/java/ai/eliza/voice/SpeechStreamBridgePlugin.java",
-          "plugins/plugin-local-inference/native/llama.cpp"
-        ],
-        "changedPaths": [],
-        "evidence": "docs/evidence/sdk-9950213832-build-input-admission-20261101.json",
-        "note": "Source-only repin from published SDK 5e0feca4ee to its direct child 9950213832: a ProviderCacheEntry type marker, test property guard and formatting correction. No native inputs changed. The earlier native requalification requirement remains; no runtime or build acceptance transfers.",
-        "comparisonBase": "5e0feca4ee65c7dc81b18fd0fb866e1ede28325e"
-      },
-      {
-        "priorAdmittedAt": "641c179ce8214c864a7ea3dee23dae2d2bd2a682",
-        "comparisonBase": "d38e4ec7fad5952fdf4f40d4c809240d639792ac",
-        "comparedAt": "c3442ded79de62b883cf0a84d2614734596ac9ad",
-        "admitted": false,
-        "requalificationRequired": true,
-        "unchangedPaths": [
-          "packages/app/platforms/android/app/src/main/elizavoice-jni",
-          "packages/app/platforms/android/app/src/main/elizavoice-jni/CMakeLists.txt",
-          "packages/app/platforms/android/app/src/main/elizavoice-jni/elizavoice-jni.cpp",
-          "packages/app/platforms/android/app/src/main/java/ai/elizaos/app/ElizaVoiceNative.java",
-          "packages/app/scripts/build-helpers/arm64-simd.ts",
-          "packages/app/scripts/build-helpers/verify-fused-symbols.ts",
-          "packages/app/scripts/lib/android-bun-artifacts.lock.json",
-          "packages/app/scripts/paradee-voice",
-          "packages/app/scripts/paradee-voice/build-native.ts",
-          "packages/auth/android/build.gradle",
-          "packages/auth/android/src/main/java/ai/eliza/auth/cloud/CloudSignInConfig.java",
-          "packages/auth/android/src/main/java/ai/eliza/auth/cloud/CloudSignInFlow.java",
-          "packages/auth/android/src/main/java/ai/eliza/auth/cloud/CloudSignInPlugin.java",
-          "packages/auth/android/src/main/java/ai/eliza/auth/cloud/CloudSignInReadiness.java",
-          "packages/auth/android/src/main/java/ai/eliza/auth/cloud/CloudSignInRoutes.java",
-          "plugins/plugin-local-inference/native",
-          "plugins/plugin-local-inference/native/android/consumer.gradle",
-          "plugins/plugin-local-inference/native/android/inputs.json",
-          "plugins/plugin-local-inference/native/llama.cpp"
-        ],
-        "changedPaths": [],
-        "absentPreviouslyListedPaths": [
-          "packages/voice/src/cloud-speech-chunks.ts",
-          "packages/voice/src/native-cloud-speech.ts",
-          "plugins/plugin-local-inference/native/android/speech-bridge/src/main/java/ai/eliza/voice/CloudSpeechTimings.java",
-          "plugins/plugin-local-inference/native/android/speech-bridge/src/main/java/ai/eliza/voice/CloudSpeechWire.java",
-          "plugins/plugin-local-inference/native/android/speech-bridge/src/main/java/ai/eliza/voice/SpeechStreamBridgePlugin.java"
-        ],
-        "consumerLifecycleChanges": [],
-        "evidence": "docs/evidence/sdk-c3442ded79-dev-input-reuse-20261102.json",
-        "note": "Source-only the reviewed paired-session protection for POST /api/cloud/warm; compiled native tuples remain unchanged. Exact runtime/test delta leaves nativecc8 and build inputs unchanged. Historical0d9/ABI19 compiled libraries remain unqualified; fresh Android builds and device acceptance remain required. No new native qualification."
-      },
-      {
-        "priorAdmittedAt": "641c179ce8214c864a7ea3dee23dae2d2bd2a682",
-        "comparisonBase": "c3442ded79de62b883cf0a84d2614734596ac9ad",
-        "comparedAt": "47982b8f49d16d520990e14e07cdeb5c6931df81",
-        "admitted": false,
-        "requalificationRequired": true,
-        "unchangedPaths": [
-          "packages/app/platforms/android/app/src/main/elizavoice-jni",
-          "packages/app/platforms/android/app/src/main/elizavoice-jni/CMakeLists.txt",
-          "packages/app/platforms/android/app/src/main/elizavoice-jni/elizavoice-jni.cpp",
-          "packages/app/platforms/android/app/src/main/java/ai/elizaos/app/ElizaVoiceNative.java",
-          "packages/app/scripts/build-helpers/arm64-simd.ts",
-          "packages/app/scripts/build-helpers/verify-fused-symbols.ts",
-          "packages/app/scripts/lib/android-bun-artifacts.lock.json",
-          "packages/app/scripts/paradee-voice",
-          "packages/app/scripts/paradee-voice/build-native.ts",
-          "packages/auth/android/build.gradle",
-          "packages/auth/android/src/main/java/ai/eliza/auth/cloud/CloudSignInConfig.java",
-          "packages/auth/android/src/main/java/ai/eliza/auth/cloud/CloudSignInFlow.java",
-          "packages/auth/android/src/main/java/ai/eliza/auth/cloud/CloudSignInPlugin.java",
-          "packages/auth/android/src/main/java/ai/eliza/auth/cloud/CloudSignInReadiness.java",
-          "packages/auth/android/src/main/java/ai/eliza/auth/cloud/CloudSignInRoutes.java",
-          "plugins/plugin-local-inference/native",
-          "plugins/plugin-local-inference/native/android/consumer.gradle",
-          "plugins/plugin-local-inference/native/android/inputs.json",
-          "plugins/plugin-local-inference/native/llama.cpp"
-        ],
-        "changedPaths": [],
-        "absentPreviouslyListedPaths": [
-          "packages/voice/src/cloud-speech-chunks.ts",
-          "packages/voice/src/native-cloud-speech.ts",
-          "plugins/plugin-local-inference/native/android/speech-bridge/src/main/java/ai/eliza/voice/CloudSpeechTimings.java",
-          "plugins/plugin-local-inference/native/android/speech-bridge/src/main/java/ai/eliza/voice/CloudSpeechWire.java",
-          "plugins/plugin-local-inference/native/android/speech-bridge/src/main/java/ai/eliza/voice/SpeechStreamBridgePlugin.java"
-        ],
-        "consumerLifecycleChanges": [],
-        "evidence": "docs/evidence/sdk-47982b8f49-calendar-source-reuse-20261102.json",
-        "note": "Calendar-only source change; native and producer inputs are unchanged. Historical compiled pins, hashes, qualified=false and nativeQualificationTransferred=false remain unchanged. No APK or device qualification transfers."
-      },
-      {
-        "priorAdmittedAt": "641c179ce8214c864a7ea3dee23dae2d2bd2a682",
-        "comparisonBase": "951197ae394aa1d5f3b5e8c8aa6b2caf037768b2",
-        "comparedAt": "018a2b9537d3fd985ceb958ab9ae53c15cde5f07",
-        "admitted": false,
-        "requalificationRequired": true,
-        "unchangedPaths": [
-          "packages/app/platforms/android/app/src/main/elizavoice-jni",
-          "packages/app/platforms/android/app/src/main/elizavoice-jni/CMakeLists.txt",
-          "packages/app/platforms/android/app/src/main/elizavoice-jni/elizavoice-jni.cpp",
-          "packages/app/platforms/android/app/src/main/java/ai/elizaos/app/ElizaVoiceNative.java",
-          "packages/app/scripts/build-helpers/arm64-simd.ts",
-          "packages/app/scripts/build-helpers/verify-fused-symbols.ts",
-          "packages/app/scripts/lib/android-bun-artifacts.lock.json",
-          "packages/app/scripts/paradee-voice",
-          "packages/app/scripts/paradee-voice/build-native.ts",
-          "packages/auth/android/build.gradle",
-          "packages/auth/android/src/main/java/ai/eliza/auth/cloud/CloudSignInConfig.java",
-          "packages/auth/android/src/main/java/ai/eliza/auth/cloud/CloudSignInFlow.java",
-          "packages/auth/android/src/main/java/ai/eliza/auth/cloud/CloudSignInPlugin.java",
-          "packages/auth/android/src/main/java/ai/eliza/auth/cloud/CloudSignInReadiness.java",
-          "packages/auth/android/src/main/java/ai/eliza/auth/cloud/CloudSignInRoutes.java",
-          "plugins/plugin-local-inference/native/android/consumer.gradle",
-          "plugins/plugin-local-inference/native/android/inputs.json",
-          "plugins/plugin-native-agent/android"
-        ],
-        "changedPaths": [
-          "packages/app/scripts/stage-elizavoice-lib.ts",
-          "plugins/plugin-local-inference/native",
-          "plugins/plugin-local-inference/native/llama.cpp"
-        ],
-        "absentPreviouslyListedPaths": [
-          "packages/voice/src/cloud-speech-chunks.ts",
-          "packages/voice/src/native-cloud-speech.ts",
-          "plugins/plugin-local-inference/native/android/speech-bridge/src/main/java/ai/eliza/voice/CloudSpeechTimings.java",
-          "plugins/plugin-local-inference/native/android/speech-bridge/src/main/java/ai/eliza/voice/CloudSpeechWire.java",
-          "plugins/plugin-local-inference/native/android/speech-bridge/src/main/java/ai/eliza/voice/SpeechStreamBridgePlugin.java"
-        ],
-        "consumerLifecycleChanges": [],
-        "evidence": "docs/evidence/sdk-018a2b9537-build-input-admission-20261105.json",
-        "note": "elizaOS/eliza #38761 returns the engine gitlink from cc8c979 to the fork main tip b3eb2bf6, dropping one Metal-only CMake commit, and reformats stage-elizavoice-lib.ts. The voice record keeps its historical pin, compiled hashes and qualified=false; no APK or device qualification transfers."
-      },
-      {
-        "priorAdmittedAt": "641c179ce8214c864a7ea3dee23dae2d2bd2a682",
-        "comparisonBase": "018a2b9537d3fd985ceb958ab9ae53c15cde5f07",
-        "comparedAt": "5d1af326e596fea5893d095db882bdb858a4a774",
-        "admitted": false,
-        "requalificationRequired": true,
-        "unchangedPaths": [
-          "packages/app/platforms/android/app/src/main/elizavoice-jni",
-          "packages/app/platforms/android/app/src/main/elizavoice-jni/CMakeLists.txt",
-          "packages/app/platforms/android/app/src/main/elizavoice-jni/elizavoice-jni.cpp",
-          "packages/app/platforms/android/app/src/main/java/ai/elizaos/app/ElizaVoiceNative.java",
-          "packages/app/scripts/build-helpers/arm64-simd.ts",
-          "packages/app/scripts/build-helpers/verify-fused-symbols.ts",
-          "packages/app/scripts/lib/android-bun-artifacts.lock.json",
-          "packages/app/scripts/paradee-voice",
-          "packages/app/scripts/paradee-voice/build-native.ts",
-          "packages/app/scripts/stage-elizavoice-lib.ts",
-          "packages/auth/android/build.gradle",
-          "packages/auth/android/src/main/java/ai/eliza/auth/cloud/CloudSignInConfig.java",
-          "packages/auth/android/src/main/java/ai/eliza/auth/cloud/CloudSignInFlow.java",
-          "packages/auth/android/src/main/java/ai/eliza/auth/cloud/CloudSignInPlugin.java",
-          "packages/auth/android/src/main/java/ai/eliza/auth/cloud/CloudSignInReadiness.java",
-          "packages/auth/android/src/main/java/ai/eliza/auth/cloud/CloudSignInRoutes.java",
-          "plugins/plugin-local-inference/native",
-          "plugins/plugin-local-inference/native/android/consumer.gradle",
-          "plugins/plugin-local-inference/native/android/inputs.json",
-          "plugins/plugin-local-inference/native/llama.cpp",
-          "plugins/plugin-native-agent/android"
-        ],
-        "changedPaths": [],
-        "absentPreviouslyListedPaths": [
-          "packages/voice/src/cloud-speech-chunks.ts",
-          "packages/voice/src/native-cloud-speech.ts",
-          "plugins/plugin-local-inference/native/android/speech-bridge/src/main/java/ai/eliza/voice/CloudSpeechTimings.java",
-          "plugins/plugin-local-inference/native/android/speech-bridge/src/main/java/ai/eliza/voice/CloudSpeechWire.java",
-          "plugins/plugin-local-inference/native/android/speech-bridge/src/main/java/ai/eliza/voice/SpeechStreamBridgePlugin.java"
-        ],
-        "consumerLifecycleChanges": [],
-        "evidence": "docs/evidence/sdk-5d1af326e5-build-input-admission-20261106.json",
-        "note": "Source-only move from 018a2b9537 to the develop head 5d1af326e5: every listed native build input, the b3eb2bf6 engine gitlink and bun.lock are unchanged. The voice record keeps its historical pin, compiled hashes and qualified=false; no APK or device qualification transfers."
-      }
-    ],
-    "consumerSourceComparisonHistory": [
-      {
-        "from": "41d99bb4c86cb61bfa07d5e49b07603dbbe1080b",
-        "admittedAt": "5c4050856860750908a91b408a2786830e68e91a",
-        "unchangedPaths": [
-          "packages/app/scripts/paradee-voice/build-native.ts",
-          "packages/app/scripts/stage-elizavoice-lib.ts",
-          "packages/app/platforms/android/app/src/main/elizavoice-jni",
-          "plugins/plugin-local-inference/native/llama.cpp",
-          "plugins/plugin-local-inference/native/android/inputs.json",
-          "packages/app/platforms/android/app/src/main/java/ai/elizaos/app/ElizaVoiceNative.java",
-          "packages/app/scripts/lib/android-bun-artifacts.lock.json"
-        ],
-        "changedConsumerPaths": [
-          "plugins/plugin-local-inference/native/android/consumer.gradle",
-          "plugins/plugin-local-inference/native/android/src/main/java/ai/eliza/voice/VoiceBundleAssets.java",
-          "packages/app/platforms/android/app/src/main/java/ai/elizaos/app/ElizaAgentService.java"
-        ],
-        "note": "Recorded engine, model and JNI bytes are unchanged. The shared asset installer, host readiness and ABI packaging changed and require fresh consumer builds. Historical broad native-tree comparison remains scoped to 41d99; it is not extended to this source. No device or user acceptance transferred."
-      }
-    ],
-    "priorSourceComparison": {
-      "priorAdmittedAt": "756ba00966bb57e1e0590871f8a639df7e54d95e",
-      "admittedAt": "1f2a922f86e2a1f3d6cd62e097145492bd49ebfc",
-      "unchangedPaths": [
-        "plugins/plugin-local-inference/native/llama.cpp",
-        "plugins/plugin-local-inference/native/android/inputs.json",
-        "plugins/plugin-local-inference/native/android/consumer.gradle",
-        "packages/app/scripts/paradee-voice/build-native.ts",
-        "packages/app/scripts/stage-elizavoice-lib.ts",
-        "packages/app/scripts/build-helpers/arm64-simd.ts",
-        "packages/app/scripts/build-helpers/verify-fused-symbols.ts",
-        "packages/app/platforms/android/app/src/main/elizavoice-jni",
-        "packages/app/platforms/android/app/src/main/java/ai/elizaos/app/ElizaVoiceNative.java",
-        "packages/app/scripts/lib/android-bun-artifacts.lock.json",
-        "plugins/plugin-local-inference/native",
-        "packages/app/scripts/paradee-voice"
-      ],
-      "changedPaths": [],
-      "evidence": "docs/evidence/develop-1f2a922f-build-input-admission-20261028.json",
-      "note": "Every recorded native engine, model, JNI, Bun and paradee-voice input (including the whole plugins/plugin-local-inference/native tree) is byte-identical between develop 756ba00966 and 1f2a922f86, and vendor/eliza/bun.lock is unchanged. No ai.eliza.voice Java source changed. The recorded native libraries and model bytes stay admitted. The earlier requirement for a fresh APK build and on-device voice validation of the 6c1a31f233 Java API is still open; historical component/device/user evidence and qualified=false are unchanged, and no qualification transfers."
+      "note": "Historical component measurements retain their original qualify APK and source identity. Current shared Java, producer and explicit bridge changes require current-source qualification and owner acceptance. Neither is claimed."
     }
   }
 }

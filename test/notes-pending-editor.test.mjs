@@ -1,21 +1,21 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
-import {stripTypeScriptTypes} from 'node:module';
+import {stripTypeScriptTypes} from './support/strip-types.mjs';
 import {fileURLToPath} from 'node:url';
 const sdk=process.env.ALPHA_NOTES_TEST_SDK??fileURLToPath(new URL('../.eliza/client-features/plugins/plugin-notes/src/client',import.meta.url));
 // Use Node's normal test entry without a TS loader; transform the exact prepared modules.
 const moduleUrl=code=>'data:text/javascript;base64,'+Buffer.from(code).toString('base64');
-const contract=moduleUrl(stripTypeScriptTypes(readFileSync(sdk+'/notes-contract.ts','utf8'),{mode:'transform'}));
-const store=moduleUrl(stripTypeScriptTypes(readFileSync(sdk+'/notes-store.ts','utf8'),{mode:'transform'}).replaceAll('./notes-contract.ts',contract));
-const documentStore=moduleUrl(stripTypeScriptTypes(readFileSync(sdk+'/notes-document-store.ts','utf8'),{mode:'transform'}).replaceAll('./notes-store.ts',store).replaceAll('./notes-contract.ts',contract));
+const contract=moduleUrl(stripTypeScriptTypes(readFileSync(sdk+'/notes-contract.ts','utf8'),{mode:'strip'}));
+const store=moduleUrl(stripTypeScriptTypes(readFileSync(sdk+'/notes-store.ts','utf8'),{mode:'strip'}).replaceAll('./notes-contract.ts',contract));
+const documentStore=moduleUrl(stripTypeScriptTypes(readFileSync(sdk+'/notes-document-store.ts','utf8'),{mode:'strip'}).replaceAll('./notes-store.ts',store).replaceAll('./notes-contract.ts',contract));
 const {DocumentNotesStore,NotesDocumentConflict}=await import(documentStore);
 const {NotesCommitUncertain}=await import(store);
 const source=readFileSync(new URL('../apps/app/src/prototype/agent-adapter.ts',import.meta.url),'utf8');
 const start=source.indexOf('  p.vset = function (key: string'),end=source.indexOf('  p.api = function',start);
 assert.ok(start>=0&&end>start);
 const assignment=stripTypeScriptTypes(source.slice(start,end),{mode:'transform'});
-const makeEditor=new Function('originalSet','stampNoteChanges','context','failedNotesStatus','keepNotesDraft','resumeNotesDraft','NotesCommitUncertain','NotesStorageFull','isStorageFull',`const p={};${assignment};return p.vset;`);
+const makeEditor=new Function('originalSet','stampNoteChanges','context','failedNotesStatus','keepNotesDraft','releaseNoteAudio','NotesCommitUncertain','NotesStorageFull','isStorageFull',`const p={};${assignment};return p.vset;`);
 async function fixture(){
  let saved,revision=0,blocked=false,refuse=0;
  const started=Promise.withResolvers(),gate=Promise.withResolvers();

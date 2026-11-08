@@ -202,6 +202,9 @@ function enrichSettledAssistant(message:Shell,card:Shell|undefined,binding?:{con
   if(!card||!['plan','retry','sign-in'].includes(card.planAction)||message.card!=null||message.from!=='agent'||!binding||message.messageBinding?.conversationId!==binding.conversationId||JSON.stringify(message.messageBinding?.session)!==JSON.stringify(binding.session))return message;
   return {...message,card};
 }
+/** Failure kinds upstream raises before any model output (credits, provider access, no provider,
+ * throttling). Their streamed text is upstream's own failure prose, so Alpha's message replaces it. */
+const REFUSED_BEFORE_OUTPUT=new Set(['insufficient_credits','missing_capability','no_provider','provider_issue','rate_limited']);
 /** Context notices for proposals that exist but are not reviewable on this screen. */
 function replyNotices(reply:unknown):string[]{
   const notices=reply&&typeof reply==='object'?(reply as {notices?:unknown}).notices:undefined;
@@ -622,7 +625,7 @@ export function installAgentAdapter(Component: Shell, views: Shell) {
     // An open shade never keeps a switch state Android may have changed while the owner was away.
     this.stopTileWatch = watchReturnToApp(() => { if (this.live && this.S().shade) this.refreshTileFacts(); });
     this.dialogBackObserver = new MutationObserver(() => updateBackAvailability(this));
-    this.dialogBackObserver.observe(document.body, {subtree:true, childList:true, attributes:true, attributeFilter:['open']});
+    this.dialogBackObserver.observe(document.body, {subtree:true, childList:true, attributes:true, attributeFilter:['open','inert']});
     // A refused send puts its text back with no line under the composer (owner, 2026-11-03).
     this.composerDraft=new AssistantDraftController(assistantDraftStore,()=>String(this.S().draft||''),(text,expected,current)=>new Promise<void>(resolve=>{if(!this.live||current&&!current()){resolve();return;}this.setState((previous:Shell)=>{if(current&&!current()||expected!==undefined&&String(previous.draft||'')!==expected)return null;if(this.startupDraft!==null)this.startupDraft=undefined;this.reviewedSourceDraft=null;return {draft:text};},resolve);}),()=>{if(this.live)this.setState({});},{notSent:''});
     this.refreshDraftBinding=()=>{this.draftBindingAbort?.abort();if(residentAlwaysPresent&&!connectionController.getSnapshot().session){this.draftBindingTask=Promise.resolve();return;}const controller=this.draftBindingAbort=new AbortController();this.draftBindingTask=connectionController.assistantDraftBinding(controller.signal).then(async key=>{if(!this.live||controller.signal.aborted)return;const review=await firstSendReview(this,key,controller.signal);if(!this.live||controller.signal.aborted)return;await this.composerDraft.open(review.open??key);if(review.moved&&this.composerDraft.binding===key)settleFirstSendSlot(this,review.moved,key,String(this.S().draft||''),()=>this.live&&this.composerDraft.binding===key);}).catch(()=>{if(this.live&&!controller.signal.aborted)this.composerDraft.unavailable();});};
@@ -1239,14 +1242,16 @@ export function installAgentAdapter(Component: Shell, views: Shell) {
       };
     }
     if(key==='notes'){api.set=(patch:Shell)=>this.vset('notes',patch);api.storageReady=()=>!this.notesStorageFailed&&!this.notesPending; }
-    api.say = () => this.toast('Connect the underlying account or select real content before requesting this action.');
+    api.say = () => this.toast('Not available yet. Nothing was sent.');
     // Open the real conversation without sending a prompt or uploading content.
     // Keep the current view/selection so a subsequent user message is scoped.
     api.sendReviewedMail = async (text:string, expected:{sessionId:string;agentId:string;ownerId:string;origin:string}) => {
       const current=connectionController.getSnapshot().session;
       if(!current||JSON.stringify(current)!==JSON.stringify(expected)||document.hidden||connectionController.getSnapshot().open||document.documentElement.dataset.connectionMode==='mock')throw new Error('Agent changed. Review this message again.');
       if(this.S().typing)throw new Error('Wait for the current agent reply before sharing this email.');
-      context(this);await this.send(text,expected);
+      // send() would return without sending while the composer holds or edits a message.
+      if(this.messageEditTarget||this.draftSendPending||this.composerDraft?.holding){this.toast('Finish or cancel the message you are editing first.');return false;}
+      context(this);await this.send(text,expected);return true;
     };
     api.openReviewedWebSource=(url:string,signal:AbortSignal)=>this.browserNavigateApproved(url,signal);
     api.composeContentQuestion=(draft:string,source?:Source)=>{
@@ -1260,6 +1265,20 @@ export function installAgentAdapter(Component: Shell, views: Shell) {
     };
     return api;
   };
+  /** "Check Cloud again": check now, show Checking… on the card, then whether AI replies are back. */
+  async function recheckCloudFromCard(shell:Shell,message:Shell){
+    if(connectionController.recheckPlanNow()==='busy'){shell.toast('Already checking…');return;}
+    const mark=(card:Shell)=>shell.live&&shell.setState((previous:Shell)=>({msgs:previous.msgs.map((m:Shell)=>m.id===message.id&&m.card?{...m,card:{...m.card,...card}}:m)}));
+    mark({checking:true,title:'Checking…'});
+    const ready=()=>['cloud','direct'].includes(String(connectionController.getSnapshot().residentInference));
+    const available=await new Promise<boolean>(resolve=>{
+      let stop=()=>{};const timer=setTimeout(()=>{stop();resolve(ready());},10_000);
+      stop=connectionController.subscribe(()=>{if(ready()){clearTimeout(timer);stop();resolve(true);}});
+      if(ready()){clearTimeout(timer);stop();resolve(true);}
+    });
+    const cloud=selectedCloudName();
+    mark(available?{checking:false,done:true,title:'AI replies are back',sub:`${cloud} is reachable.`}:{checking:false,title:`Check ${cloud} again`,sub:`${cloud} is still unavailable. Try again later.`});
+  }
   function cancelMessageContext(shell:Shell){if(shell.messageEditTarget)messageReviews.cancel('edit-message-'+shell.messageEditTarget.messageId);shell.messageEditTarget=undefined;shell.messageReplyTarget=undefined;}
   function messageTarget(message:Shell):ConversationMessageTarget|undefined {
     if(!message.messageBinding||message.streaming||message.interrupted||message.card)return;
@@ -1283,7 +1302,7 @@ export function installAgentAdapter(Component: Shell, views: Shell) {
     unsubscribe=connectionController.subscribe(()=>{if(typedSendBinding()!==binding)retire();});
     const restore=()=>{
       const now=shell.S(),active=document.activeElement,selected=connectionController.getSnapshot();
-      const current=eligible&&shell.live&&!document.hidden&&!selected.open&&!selected.busy&&typedSendBinding()===binding&&now.view===before.view&&now.screen===before.screen
+      const current=eligible&&shell.live&&!document.hidden&&!selected.open&&(!selected.busy||selected.backgroundWork===true)&&typedSendBinding()===binding&&now.view===before.view&&now.screen===before.screen
         &&(active===origin||active===previousFocus||active===document.body)&&!document.querySelector('[data-alpha-chat-recorder],[data-alpha-pill-voice]');
       retire();
       if(!current)return;
@@ -1313,6 +1332,7 @@ export function installAgentAdapter(Component: Shell, views: Shell) {
       if(this.startupDraft!==null&&!connection.startupResolved&&!connection.session){
         this.startupDraft=!current||this.startupDraft===current?event.target.value:undefined;
       }else this.startupDraft=null;
+      this.unsentNotice='';
       onDraft(event);
     };
     out.composerPointer=(event:PointerEvent)=>event.stopPropagation();
@@ -1465,10 +1485,17 @@ export function installAgentAdapter(Component: Shell, views: Shell) {
         current();retainReadReply(this,completed.proposal,identity,reply.userMessageId);
         await completeReadReply(this,completed.receipt);current();
       }
+      // A pending action this screen cannot review is shown as on the typed path; the turn stays open.
+      let pendingNotice=false;
+      for(const notice of replyNotices(reply)){
+        if(delivered&&alphaClient.getState().context.view==='camera'&&notice==='Take photo: '+CAMERA_CONTEXT_NOTICE)continue;
+        pendingNotice=true;this.agentSay(notice,{type:'generic',icon:'info',title:'Phone action not shown here',sub:notice,systemNotice:true,done:true},undefined,belongs);
+      }
       for(const receipt of reply.completedActions||[])if(!(reply.completedReads||[]).some(read=>read.receipt.proposalId===receipt.proposalId))this.agentSay(receipt.summary,undefined,{id:`device-receipt:${receipt.proposalId}`,deviceReceipt:true});
       const completedActions=reply.completedActions;
       if(completedActions?.length)this.setState({},()=>{if(this.live&&connectionController.voiceConversationCurrent(binding,false))for(const receipt of completedActions)publishCommittedDeviceChanges(receipt,alphaClient,binding.session);});
-      return {requestId:turnId,conversationId:identity.conversationId,userMessageId:reply.userMessageId,assistantMessageId:reply.messageId,text:reply.text,complete:!reply.proposals?.length,...(reply.proposals?.length?{reviewRequired:true}:{}),...(awaiting?.length?{awaitingUserInput:{proposalId:awaiting[0].id,digest:awaiting[0].readReply!.digest}}:{})};
+      const review=!!reply.proposals?.length||pendingNotice;
+      return {requestId:turnId,conversationId:identity.conversationId,userMessageId:reply.userMessageId,assistantMessageId:reply.messageId,text:reply.text,complete:!review,...(review?{reviewRequired:true}:{}),...(awaiting?.length?{awaitingUserInput:{proposalId:awaiting[0].id,digest:awaiting[0].readReply!.digest}}:{})};
     }catch(error){
       input.navigation?.finish(false);
       if(streamed&&this.live)this.setState((previous:Shell)=>this.voiceSendTurnId===turnId&&connectionController.voiceConversationCurrent(binding,false)?{msgs:previous.msgs.map((m:Shell)=>m.id===streamId?{...m,streaming:false,interrupted:true}:m)}:null);
@@ -1504,7 +1531,7 @@ export function installAgentAdapter(Component: Shell, views: Shell) {
     const sourceDraft=fromComposer&&this.reviewedSourceDraft?.draft===text?sourceOf(this.reviewedSourceDraft.source):undefined;
     context(this);
     const revision=alphaClient.getState().context.revision,connection=connectionController.getSnapshot(),sessionId=connection.session?.sessionId,conversationId=connection.history?.conversationId;
-    const current=()=>{const selected=connectionController.getSnapshot();return this.live&&!document.hidden&&!selected.busy&&!selected.open&&!document.querySelector('[data-alpha-chat-recorder],[data-alpha-pill-voice]')&&selected.session?.sessionId===sessionId&&selected.history?.conversationId===conversationId&&alphaClient.getState().context.revision===revision;};
+    const current=()=>{const selected=connectionController.getSnapshot();return this.live&&!document.hidden&&(!selected.busy||selected.backgroundWork===true)&&!selected.open&&!document.querySelector('[data-alpha-chat-recorder],[data-alpha-pill-voice]')&&selected.session?.sessionId===sessionId&&selected.history?.conversationId===conversationId&&alphaClient.getState().context.revision===revision;};
     const heldText=String(s.draft||'');let heldKey:string|undefined;
     if(fromComposer){
       this.draftSendPending=true;
@@ -1517,7 +1544,10 @@ export function installAgentAdapter(Component: Shell, views: Shell) {
     const attempt:SendAttempt=this.sendAttempt={transportCalled:false,preDispatch:false,streamed:false};
     const userId=crypto.randomUUID(),streamedId=crypto.randomUUID();let streamed=false;
     const replaceStream=(value:string,streaming=true)=>this.setState((previous:Shell)=>({msgs:previous.msgs.map((message:Shell)=>message.id===streamedId?{...message,text:value,streaming}:message)}));
-    this.setState({ msgs: [...s.msgs, { id: userId, from: 'user', text }], ...(fromComposer?{draft:''}:{}), typing: true, chat: s.chat === 'full' ? 'full' : 'sheet', shade: false },focusAfterCommit);
+    let streamFrame=0,latestStream:string|undefined;
+    const flushStream=()=>{if(streamFrame){cancelAnimationFrame(streamFrame);streamFrame=0;}if(latestStream!==undefined){const value=latestStream;latestStream=undefined;if(this.live)replaceStream(value);}};
+    // Functional: a reply or delivery that landed while the draft was being held is kept.
+    this.setState((previous:Shell)=>({ msgs: [...previous.msgs, { id: userId, from: 'user', text }], ...(fromComposer?{draft:''}:{}), typing: true, chat: previous.chat === 'full' ? 'full' : 'sheet', shade: false }),focusAfterCommit);
     let navigation:ReturnType<typeof connectionController.captureViewNavigation>|undefined,readyNavigation:readonly unknown[]|undefined;
     const deliverNavigation=(results:readonly unknown[]|undefined)=>deliverChatNavigation(this,navigation,results);
     try {
@@ -1537,10 +1567,15 @@ export function installAgentAdapter(Component: Shell, views: Shell) {
       try{reply = await alphaClient.send(text,value=>{
         attempt.streamed=true;
         if(!this.live)return;
-        if(streamed)replaceStream(value);
+        if(streamed){
+          // One render per frame; a hidden page only keeps the text, and settlement flushes it.
+          latestStream=value;
+          if(!streamFrame&&!document.hidden)streamFrame=requestAnimationFrame(()=>{streamFrame=0;if(this.live)flushStream();});
+        }
         else{streamed=true;this.setState((previous:Shell)=>({turnStatus:'',msgs:[...previous.msgs,{id:streamedId,from:'agent',text:value,card:null,streaming:true}]}));}
       },replyTarget,results=>{readyNavigation=results;});}
-      finally{localTurnStatus.removeEventListener('label',showStatus);}
+      // Before settlement, stop, or failure renders: a late frame must not overwrite the final text.
+      finally{localTurnStatus.removeEventListener('label',showStatus);flushStream();}
       // Only the composer's own send holds its draft; a prompt from elsewhere never settles it.
       if(fromComposer)await this.composerDraft?.commit();
       if (!this.live||!sameChat()) return;
@@ -1596,19 +1631,20 @@ export function installAgentAdapter(Component: Shell, views: Shell) {
         const reconciling=!!connectionController.getSnapshot().replyNotice&&e instanceof AlphaClientError&&e.code==='cancelled';
         // The owner changed mid-turn: say it was interrupted, but never show the previous agent's partial
         // reply or offer a history check that could only read a different agent.
-        if(this.live&&!sameChat())this.setState((previous:Shell)=>({...(!opened?{chat:previous.chat==='full'?'full':'sheet'}:{}),msgs:[...(previous.msgs||[]),{id:crypto.randomUUID(),from:'agent',text:message+' Your message may have reached the previous agent connection. Check its saved conversations before sending it again.',card:null,interrupted:true}]}));
+        if(this.live&&!sameChat())this.setState((previous:Shell)=>({...(!opened?{chat:previous.chat==='full'?'full':'sheet'}:{}),msgs:[...(previous.msgs||[]),{id:crypto.randomUUID(),from:'agent',text:message+' It may already have been sent, so check before sending it again.',card:null,interrupted:true}]}));
         else if(this.live&&e instanceof AlphaClientError&&typeof (e as {failureKind?:unknown}).failureKind==='string'){
           // The agent recorded the turn and reported why it failed: say so and offer the next step.
           // Nothing is resent, so no history check is offered.
           // A provider-less turn of the on-device agent (no plan, offline, signed out) carries the
           // honest in-conversation answer and its plan action (Redeem / Choose a plan, Sign in, Check again).
-          const planCard=planActionCard((e as {planAction?:unknown}).planAction);
-          if(streamed)this.setState((previous:Shell)=>({msgs:previous.msgs.map((item:Shell)=>item.id===streamedId?{...item,streaming:false,interrupted:true,text:`${item.text}\n\n${message}`,...(planCard?{card:planCard}:{})}:item)}));
+          const failureKind=(e as {failureKind?:unknown}).failureKind as string,limit=(e as {serviceLimit?:unknown}).serviceLimit;
+          // A plan or billing refusal offers Cloud's plan page on the same bubble; nothing is bought or upgraded here.
+          const managePlan=(limit==='billing-refused'||limit==='subscription-required'||limit==='allowance-exhausted')&&connectionController.getSnapshot().kind==='resident'?{type:'generic',icon:'info',title:limit==='subscription-required'?`Manage plan in ${selectedCloudName()}`:`Manage billing in ${selectedCloudName()}`,sub:'Opens in your browser. Nothing is purchased here.',managePlan:true}:undefined;
+          const planCard=planActionCard((e as {planAction?:unknown}).planAction)??managePlan;
+          // These refusals come before any model output: the streamed text is upstream's failure prose, not a reply.
+          const beforeOutput=limit!==undefined||REFUSED_BEFORE_OUTPUT.has(failureKind);
+          if(streamed)this.setState((previous:Shell)=>({msgs:previous.msgs.map((item:Shell)=>item.id===streamedId?{...item,streaming:false,interrupted:true,text:beforeOutput?message:`${item.text}\n\n${message}`,...(planCard?{card:planCard}:{})}:item)}));
           else this.setState((previous:Shell)=>({chat:previous.chat==='full'?'full':'sheet',msgs:[...(previous.msgs||[]),{id:crypto.randomUUID(),from:'agent',text:message,card:planCard??null,interrupted:true}]}));
-          const limit=(e as {serviceLimit?:unknown}).serviceLimit;
-          // A plan or billing refusal offers Cloud's plan page only; nothing is bought or upgraded here.
-          // A billing refusal that already carries the subscription / membership code card says nothing more.
-          if((limit==='billing-refused'&&!planCard||limit==='subscription-required'||limit==='allowance-exhausted')&&connectionController.getSnapshot().kind==='resident')this.agentSay(limit==='subscription-required'?`Your ${selectedCloudName()} plan needs attention before your agent can answer.`:`Your ${selectedCloudName()} billing needs attention before your agent can answer.`,{type:'generic',icon:'info',title:limit==='subscription-required'?`Manage plan in ${selectedCloudName()}`:`Manage billing in ${selectedCloudName()}`,sub:`Opens ${selectedCloudName()} billing in your browser. Nothing is sent or purchased.`,managePlan:true});
         }
         else if(this.live&&reconciling){if(streamed)this.setState((previous:Shell)=>({msgs:previous.msgs.map((item:Shell)=>item.id===streamedId?{...item,streaming:false,interrupted:true,text:`${item.text}\n\nStopped.`}:item)}));}
         else if (this.live) {
@@ -1665,12 +1701,12 @@ export function installAgentAdapter(Component: Shell, views: Shell) {
       if(card.planAction==='plan')connectionController.openPlan();
       else if(card.planAction==='funding')connectionController.openFunding();
       else if(card.planAction==='sign-in')void connectionController.residentCloudLogin();
-      else connectionController.recheckPlanOnReturn();
+      else if(!card.checking)void recheckCloudFromCard(this,message);
       return;
     }
     if(card.checkReply&&!card.done){
       const session=connectionController.getSnapshot().session;
-      if(!session||session.sessionId!==card.checkReply.sessionId){this.toast('The agent changed. Open its saved conversations in Settings instead. Nothing was sent.');return;}
+      if(!session||session.sessionId!==card.checkReply.sessionId){this.toast('This conversation changed. Nothing was sent.');return;}
       if(this.S().typing){this.toast('Wait for the current reply before checking. Nothing was sent.');return;}
       let id:unknown;
       try{id=JSON.parse(await connectionController.assistantDraftBinding(new AbortController().signal)).at(-1);}catch{id=null;}
@@ -1688,8 +1724,16 @@ export function installAgentAdapter(Component: Shell, views: Shell) {
       if(recording&&(!recordingNote?.audio||await recordingRevision(recordingNote)!==recording.revision||!current())){this.toast('Recording changed or is unavailable. Ask about its current transcript again.');return;}
       this.closeSummaryReview?.();
       this.closeSummaryReview=reviewSummaryNote({text:review.text,source:review.source,current,save:async(fields)=>{
-        if(!current()||this.notesStorageFailed||this.notesPending)return false;
         const update=(title:string,sub:string)=>{if(this.live)this.setState({msgs:this.S().msgs.map((m:Shell)=>m.id===message.id?{...m,card:{...m.card,done:true,title,sub}}:m)});};
+        // The agent's Notes: saved as a new note. Its record does not carry the source link.
+        const canonical=this.notesSourceMode!=='legacy'&&!recording?this.canonicalNotesUi:null;
+        if(canonical?.current){
+          if(!current())return false;
+          update('Saving summary note','Inspect Notes before retrying if this is interrupted.');
+          const saved=await canonical.saveCard(fields.title?fields.title+(fields.body?'\n'+fields.body:''):fields.body,this.api('notes'));
+          update(saved?'Summary note saved':'Check Notes before retrying',saved?'Saved in Notes':'Save is unconfirmed.');return saved;
+        }
+        if(!current()||this.notesStorageFailed||this.notesPending)return false;
         update('Saving summary note','Inspect Notes before retrying if this is interrupted.');
         try{
           const existing=this.vget('notes').list;

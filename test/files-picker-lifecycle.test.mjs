@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import vm from 'node:vm';
-import {stripTypeScriptTypes} from 'node:module';
+import {stripTypeScriptTypes} from './support/strip-types.mjs';
 const source=stripTypeScriptTypes(fs.readFileSync('.eliza/client-features/plugins/plugin-files/src/browser/files-browser-adapter.ts','utf8').replace(/^import[\s\S]*?;\n/gm,'').replace(/^export /gm,''),{mode:'transform'});
 const rules=stripTypeScriptTypes(fs.readFileSync('.eliza/client-features/plugins/plugin-files/src/browser/storage-model.ts','utf8').replace(/^export /gm,''),{mode:'transform'});
 async function harness(){

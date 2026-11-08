@@ -258,19 +258,19 @@ test('a mail context switched, deleted or changed during its review cannot send 
 
 
 test('calendar source discovery coalesces per owner, retries failures and fences old sources',async()=>{
- const {stripTypeScriptTypes}=await import('node:module');const vm=await import('node:vm');
+ const {stripTypeScriptTypes}=await import('./support/strip-types.mjs');const vm=await import('node:vm');
  const core=readFileSync(new URL('../vendor/eliza/packages/core/src/runtime/single-flight-memo.ts',import.meta.url),'utf8').replace(/^export /gm,'');
- const SingleFlightMemo=vm.runInNewContext(stripTypeScriptTypes(core,{mode:'transform'})+';SingleFlightMemo');
+ const SingleFlightMemo=vm.runInNewContext(stripTypeScriptTypes(core,{mode:'strip'})+';SingleFlightMemo');
  const ui=readFileSync(new URL('../apps/app/src/runtime/connection-ui.tsx',import.meta.url),'utf8');
  const source=ui.slice(ui.indexOf('type CalendarAgendaSourceObservation='),ui.indexOf('async function deviceCapabilities'));
  const deferred=()=>{let resolve,reject;const promise=new Promise((yes,no)=>{resolve=yes;reject=no;});return {promise,resolve,reject};};
  const window=new EventTarget();let calls=0;const queue=[];
  const contract=readFileSync(new URL('../.eliza/client-features/plugins/plugin-assistant/src/services/device-actions/calendar-contract.ts',import.meta.url),'utf8').replace(/^export /gm,'');
- const {calendarSource,calendarTarget}=vm.runInNewContext(stripTypeScriptTypes(contract,{mode:'transform'})+';({calendarSource,calendarTarget})');
+ const {calendarSource,calendarTarget}=vm.runInNewContext(stripTypeScriptTypes(contract,{mode:'strip'})+';({calendarSource,calendarTarget})');
  const context=(id,revision)=>({view:'calendar',sensitive:false,revision:1,selectedObject:{kind:'calendar-source',id,revision,accountId:id,sourceRevision:revision}});
  const one='1'.repeat(64),two='2'.repeat(64),oldRevision='3'.repeat(64),newRevision='4'.repeat(64),ownerRevision='5'.repeat(64);
  const sandbox={SingleFlightMemo,calendarSource,calendarTarget,window,Capacitor:{isNativePlatform:()=>false},registerPlugin:()=>({prepareAgentSource(){calls++;return queue.shift();}})};
- const {calendarAgendaObservation:read}=vm.runInNewContext(stripTypeScriptTypes(source,{mode:'transform'})+';({calendarAgendaObservation})',sandbox);
+ const {calendarAgendaObservation:read}=vm.runInNewContext(stripTypeScriptTypes(source,{mode:'strip'})+';({calendarAgendaObservation})',sandbox);
  const owner={supportsCalendarAgenda:true},first=deferred();queue.push(first.promise);
  const a=read(owner,context('local',one)),b=read(owner,context('local',one));await Promise.resolve();assert.equal(calls,1);first.resolve({sourceId:'local',sourceRevision:one});await Promise.all([a,b]);
  queue.push(Promise.reject(Error('unavailable')));const failOwner={supportsCalendarAgenda:true};assert.equal(await read(failOwner,context('local',two)),undefined);

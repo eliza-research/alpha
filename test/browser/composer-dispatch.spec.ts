@@ -141,7 +141,7 @@ test('a failure after dispatch says the reply could not finish and never resends
   await expect.poll(() => savedDraft(page), { timeout: 15_000 }).toBe('Was this delivered?');
   const key = await bindingKey(page);
   await composer(page).press('Enter');
-  await expect(page.getByText('Sorry, I couldn’t finish that reply.', { exact: true })).toBeVisible();
+  await expect(page.locator('[data-alpha-message-text]').filter({hasText:/^Sorry, I couldn’t finish that reply\.$/})).toBeVisible();
   await expect(page.getByRole('button', { name: /^Check saved conversation/ })).toHaveCount(0);
   // The message may have been received, so it is not offered again as a draft.
   await expect(composer(page)).toHaveValue('');

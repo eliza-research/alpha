@@ -1,12 +1,12 @@
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
-import {stripTypeScriptTypes} from 'node:module';
+import {stripTypeScriptTypes} from './support/strip-types.mjs';
 import test from 'node:test';
 const connection=readFileSync('apps/app/src/runtime/connection-ui.tsx','utf8');
-const pendingCode=stripTypeScriptTypes(connection.slice(connection.indexOf('export function residentPendingText('),connection.indexOf('/** The send/voice refusal')).replace(/^export /gm,''),{mode:'transform'});
+const pendingCode=stripTypeScriptTypes(connection.slice(connection.indexOf('export function residentPendingText('),connection.indexOf('/** The send/voice refusal')).replace(/^export /gm,''),{mode:'strip'});
 const pending=(state,residentAlwaysPresent=false)=>new Function('state','residentAlwaysPresent','RESIDENT_RECOVERY_PENDING','PENDING_FALLBACK',pendingCode+';return {agentPendingText,agentAvailabilityNotice};')(state,residentAlwaysPresent,'Review agent recovery.','Unavailable.');
 const source=readFileSync('apps/app/src/prototype/canonical-notes-ui.ts','utf8');
-const code=stripTypeScriptTypes(source.replace(/^import .*;\n/gm,'').replace(/^export /gm,''),{mode:'transform'});
+const code=stripTypeScriptTypes(source.replace(/^import .*;\n/gm,'').replace(/^export /gm,''),{mode:'strip'});
 /** The restored module over Alpha's own Notes view: host imports are stubs, the binding is real. */
 function notesFixture({kind='offline',resident=false,status='',ready=false}={}){
  const reason=pending({kind},resident),calls=[],toasts=[];
@@ -38,9 +38,25 @@ test('an available private Mac canonical Notes binding keeps its normal create p
 });
 test('actual Notes binding accepts the existing app-record port independently of phone-only session labels',async()=>{
  const adapter=readFileSync('apps/app/src/prototype/agent-adapter.ts','utf8'),a=adapter.indexOf('  function canonicalNotesKey('),b=adapter.indexOf('  async function previousNotesObservation(',a);assert(a>=0&&b>a);
- const bindCode=stripTypeScriptTypes(adapter.slice(a,b),{mode:'transform'}),port={identity:{ownerId:'mac-owner',agentId:'mac-agent',sessionId:'mac-session',origin:'http://localhost:5229'},sessionId:'mac-session',scope:'owner',current:()=>true};let selected=port,starts=0,bindings=0;
+ const bindCode=stripTypeScriptTypes(adapter.slice(a,b),{mode:'strip'}),port={identity:{ownerId:'mac-owner',agentId:'mac-agent',sessionId:'mac-session',origin:'http://localhost:5229'},sessionId:'mac-session',scope:'owner',current:()=>true};let selected=port,starts=0,bindings=0;
  class Binding{current=true;constructor(actual){assert.equal(actual,port);bindings++;}refresh(){starts++;return Promise.resolve();}retire(){}}
  const updates=[],sync=new Function('connectionController','CanonicalNotesUi','originalSet','context','window','agentAvailabilityNotice',bindCode+';return syncCanonicalNotes;')({getAppRecordClient:()=>selected},Binding,function(_key,patch){updates.push(patch);},()=>{}, {},pending({kind:'cloud'}).agentAvailabilityNotice);
  const shell={live:true,notesSourceMode:'canonical',setState(){}};sync(shell);await shell.notesReady;assert.equal(bindings,1);assert.equal(starts,1);assert.equal(shell.canonicalNotesUi.current,true);sync(shell);assert.equal(bindings,1);
  selected=null;sync(shell);await shell.notesReady;assert.match(updates.at(-1).storageStatus,/unavailable for this agent connection/);assert.equal(bindings,1);
+});
+test('Review event from an agent note goes through Calendar admission with its note link; refusal opens nothing',async()=>{
+ const origin={version:2,noteId:'n1',revision:'c'.repeat(64)};
+ for(const admitted of [true,false]){
+  const toasts=[],opened=[],reviewed=[];
+  class Controller{current=true;pending=false;revision=1;snapshot={notes:[],trash:[],revision:1};constructor(_port,hooks){this.hooks=hooks;}listen(){}refresh(){return Promise.resolve(this.snapshot);}hasViewNote(){return true;}viewNote(id){return {id,title:'Venue plan'};}retire(){this.current=false;}}
+  class Editor{draft=null;constructor(_controller,hooks){this.hooks=hooks;}open(id){this.draft={id,token:'t',version:0,title:'Venue plan',body:''};this.hooks.changed();}close(){this.draft=null;}}
+  const module=new Function('parseNoteFormat','projectNoteForModel','noteScheduleDraft','agentPendingText','agentAvailabilityNotice','DailyApps','CanonicalNotesController','CanonicalNotesEditor','window',code+';return {installCanonicalNotesView,CanonicalNotesUi};')(x=>x,x=>x,async()=>({status:'ready',draft:{title:'',notes:'Book the venue',origin}}),()=>'',()=>'',{},Controller,Editor,{});
+  class Shell{live=true;notesSourceMode='canonical';vget(){return {};}reviewScannedCalendarDraft(draft){reviewed.push(draft);return admitted;}api(){return{toast:x=>toasts.push(x),isActive:()=>true,get:()=>({}),open:(...args)=>opened.push(args),set:()=>true,notesSourceOptions:[]};}}
+  const shell=new Shell();shell.canonicalNotesUi=new module.CanonicalNotesUi({},{paint(){},review(){}});shell.canonicalNotesUi.editor.open('n1');
+  const views={notes:{render:()=>({ed:{}})}};module.installCanonicalNotesView(Shell,views);
+  views.notes.render({},shell.api('notes')).ed.draftEvent();await new Promise(resolve=>setTimeout(resolve,0));
+  assert.equal(reviewed.length,1);assert.deepEqual(reviewed[0].origin,origin);assert.equal(reviewed[0].notes,'Book the venue');assert.equal(reviewed[0].alert,null);
+  assert.deepEqual(opened,[],'Calendar admission opens Calendar itself');
+  assert.match(toasts[0],admitted?/Nothing is on your calendar yet/:/can't open this event yet/);
+ }
 });

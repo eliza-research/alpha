@@ -74,7 +74,7 @@ for (const mode of ['checking', 'unavailable', 'available'] as const) {
       await expect(provider.getByLabel('Cerebras API key')).toHaveValue('');
       await provider.getByRole('button', { name: 'Close AI provider settings', exact: true }).click();
       await page.getByRole('button', { name: 'Settings', exact: true }).click();
-      await page.getByRole('button', { name: 'Agent connection', exact: true }).click({ timeout: 5000 });
+      await openConnectionDiagnostics(page);
     }
     await chooser.locator('summary').filter({ hasText: /^Remote agent$/ }).click();
     await expect(chooser.getByLabel('Agent HTTPS address')).toBeEditable();

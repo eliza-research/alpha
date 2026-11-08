@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
-import {stripTypeScriptTypes} from 'node:module';
+import {stripTypeScriptTypes} from './support/strip-types.mjs';
 import vm from 'node:vm';
 
 const source=readFileSync('.eliza/client-features/packages/ui/src/voice/voice-session-client-core.ts','utf8');
@@ -9,7 +9,7 @@ const start=source.indexOf('  function handleServerFrame('),end=source.indexOf('
 assert(start>0&&end>start);
 const terminal=source.match(/const NON_RECOVERABLE_SERVER_ERROR_CODES[\s\S]*?\n\]\);/)?.[0];
 assert(terminal);
-const js=stripTypeScriptTypes(terminal+'\n'+source.slice(start,end),{mode:'transform'});
+const js=stripTypeScriptTypes(terminal+'\n'+source.slice(start,end),{mode:'strip'});
 function fixture(){
  const errors=[];let stops=0,recoveries=0;const socket={};
  const context=vm.createContext({ArrayBuffer,Uint8Array,Set,Error,ws:socket,state:{phase:'listening',traceId:'turn'},options:{},parseServerControl:JSON.parse,isLifecycleCurrent:()=>true,applyServerEvent:state=>state,setState(){},mark(){},emitError:error=>errors.push(error.message),stop:async()=>{stops++},requestRecovery:()=>{recoveries++}});

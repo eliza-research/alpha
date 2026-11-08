@@ -212,7 +212,8 @@ export class CanonicalNotesUi {
   const id=this.editor.draft?.id;this.reviewPending=false;this.failure=null;this.editor.close();
   try{await this.controller.refresh();if(id&&this.controller.hasViewNote(id))this.editor.open(id);}catch{this.needsReview();}
  }
- /** A reviewed Calendar event or reminder draft from the open record. Nothing is written until Save in Calendar; the saved record keeps the draft's canonical origin link. */
+ /** A reviewed Calendar event or reminder draft from the open record. Nothing is written until Save in Calendar; the saved record keeps the draft's canonical origin link.
+  * An event goes through Calendar's own admission, which binds it to Agent Calendar's owner and source or opens the device draft. */
  private async scheduleDraft(id:string,kind:NoteScheduleKind,api:Bag):Promise<void>{
   if(this.editor.draft?.version&&!await this.leave(id))return;
   const note=this.controller.viewNote(id);if(!note||!api.isActive()||this.open!==id)return;

@@ -6,7 +6,7 @@ import {test,before,after} from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import vm from 'node:vm';
-import {stripTypeScriptTypes} from 'node:module';
+import {stripTypeScriptTypes} from './support/strip-types.mjs';
 import {createServer} from 'vite';
 import {fileURLToPath} from 'node:url';
 
@@ -107,7 +107,7 @@ async function regional({testMocks,devSurfaces,baseUrl,native=false,developmentB
   registerPlugin:()=>({request:async()=>{throw Error('native transport not expected');},cancel:async()=>{}}),
   configureMapsProvider:config=>configured.push(config),
   fetch:async url=>{fetched.push(String(url));throw Error('offline');},URL,TextDecoder,Uint8Array,JSON,Error,Number,Array,Object,crypto,atob};
- vm.runInNewContext(stripTypeScriptTypes(source,{mode:'transform'})+'\nglobalThis.result={regionalDataset,regionalDiagnostics,initializeRegionalMaps};',context);
+ vm.runInNewContext(stripTypeScriptTypes(source,{mode:'strip'})+'\nglobalThis.result={regionalDataset,regionalDiagnostics,initializeRegionalMaps};',context);
  // The upstream provider runs in this realm and uses the global fetch.
  const realFetch=globalThis.fetch;globalThis.fetch=context.fetch;
  try{await context.result.initializeRegionalMaps();}finally{globalThis.fetch=realFetch;}

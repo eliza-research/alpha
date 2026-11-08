@@ -11,7 +11,7 @@ async function setup(page:Page,html:boolean|string=true,extraUrls:string[]=[]){
  },{html,extraUrls});
 }
 async function openMail(page:Page){await page.getByRole('button',{name:'Inbox',exact:true}).click();await page.getByText('Image fixture',{exact:true}).click();}
-async function imageSetting(page:Page){await page.evaluate(()=>window.dispatchEvent(new Event('launcher-home')));await page.getByRole('button',{name:'Settings',exact:true}).click();await page.getByRole('button',{name:'Connections',exact:true}).click();return page.getByRole('button',{name:'Automatically load email images',exact:true});}
+async function imageSetting(page:Page){await page.evaluate(()=>window.dispatchEvent(new Event('launcher-home')));await page.getByRole('button',{name:'Settings',exact:true}).click();return page.getByRole('button',{name:'Load images in email',exact:true});}
 test('HTML email loads images by default, keeps inline links isolated, and saved opt-out survives reload',async({page})=>{
  let imageRequests=0;
  await page.route('https://images.invalid/**',route=>{imageRequests++;return route.fulfill({contentType:'image/png',body:Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aH1sAAAAASUVORK5CYII=','base64')});});

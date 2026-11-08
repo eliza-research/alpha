@@ -1,13 +1,14 @@
 import assert from 'node:assert/strict';
 import vm from 'node:vm';
 import {readFile} from 'node:fs/promises';
-import {stripTypeScriptTypes} from 'node:module';
+import {stripTypeScriptTypes} from '../test/support/strip-types.mjs';
 const read=path=>readFile(new URL('../'+path,import.meta.url),'utf8');
 const source=(await read('apps/app/src/prototype/notifications-adapter.ts')).replace(/^import .*;\n/gm,'').replaceAll('export function','function')+'\nglobalThis.install=installCanonicalNotificationTaps;';
 // main.tsx's own install statements, run with the real shade policy for each build shape.
 {
  const shade=(await read('.eliza/client-features/plugins/plugin-native-system/src/client/shade.ts')).replace(/^export /gm,'');
  const installs=(await read('apps/app/src/main.tsx')).split('\n').filter(line=>/install(?:CanonicalNotificationTaps|NotificationsAdapter)\(Component\)/.test(line)).join('\n');
+ assert.equal(installs.split('\n').length,2);
  const decide=(isAndroid,devSurfacesEnabled)=>{const installed=[];vm.runInNewContext(stripTypeScriptTypes(shade,{mode:'transform'})+'\nconst systemShade=shadeSurface({native:isAndroid,simulated:devSurfacesEnabled});\n'+installs,{isAndroid,devSurfacesEnabled,Component:{},installCanonicalNotificationTaps:()=>installed.push('taps'),installNotificationsAdapter:()=>installed.push('notices')});return installed;};
  assert.deepEqual(decide(true,false),['taps']);
  assert.deepEqual(decide(true,true),['taps']);

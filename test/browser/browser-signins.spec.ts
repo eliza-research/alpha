@@ -117,6 +117,24 @@ test('native pop-up tabs, window closes and notices reach the rendered browser',
  await expect(page.getByRole('button',{name:'Tabs',exact:true})).toHaveText('1');
 });
 
+test('a pop-up that closes itself returns to its opener, and a pop-up past the tab cap is refused',async({page})=>{
+ await page.evaluate(async()=>{const {registerPlugin}=await import('/src/platform-plugins.ts');await registerPlugin<any>('AlphaBrowser').addListener('stateChanged',(e:any)=>{(window as any).browserSession=e.session;(window as any).openerId=e.id;});});
+ await openBrowser(page);await navigate(page,'first');
+ await page.getByRole('button',{name:'Tabs',exact:true}).click();await page.getByRole('button',{name:'New tab',exact:true}).click();await navigate(page,'opener');
+ const emit=(name:string,data:any)=>page.evaluate(async({name,data})=>{const {registerPlugin}=await import('/src/platform-plugins.ts');await (registerPlugin<any>('AlphaBrowser') as any).notifyListeners(name,{session:(window as any).browserSession,...data});},{name,data});
+ const tabCount=page.getByRole('button',{name:'Tabs',exact:true});
+ await emit('tabOpened',{id:'pPopup1',opener:await page.evaluate(()=>(window as any).openerId),private:false});
+ await expect(tabCount).toHaveText('3');
+ // The opener is the second tab, so falling back to the first tab would show the wrong page.
+ await emit('tabClosed',{id:'pPopup1'});
+ await expect(tabCount).toHaveText('2');await expect(heading(page,'opener')).toBeVisible();
+ for(let i=2;i<=7;i++)await emit('tabOpened',{id:'pPopup'+i,private:false});
+ await expect(tabCount).toHaveText('8');
+ await emit('tabOpened',{id:'pPopup8',private:false});
+ await expect(page.getByText('Close a tab before opening another.',{exact:true})).toBeVisible();
+ await expect(tabCount).toHaveText('8');
+});
+
 
 test('a restored tab keeps its committed address while a reload is interrupted',async({page})=>{
  // Each case cold-starts the app again; under a parallel run that can exceed the default budget.

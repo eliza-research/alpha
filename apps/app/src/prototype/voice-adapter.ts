@@ -52,7 +52,7 @@ const voice = registerPlugin<{
   cancel(options: { requestId: string }): Promise<unknown>;
   addListener(event: 'recordingStopped', callback: (clip: Clip) => void): Promise<PluginListenerHandle>;
 }>('DevelopmentAgent');
-const deviceVoice = registerPlugin<typeof voice & {getRecordingMetrics(input:{recordingId:string}):Promise<{recordingId:string;peak:number;rms?:number}>}>('AlphaVoiceCloud');
+const deviceVoice = registerPlugin<typeof voice & {warmSpeechOutput():Promise<void>;getRecordingMetrics(input:{recordingId:string}):Promise<{recordingId:string;peak:number;rms?:number}>}>('AlphaVoiceCloud');
 const appSettings = registerPlugin<{ openSettings(input: { page: 'privacy' }): Promise<unknown> }>('AlphaDevice');
 
 type SavedAudio = { audioId: string; noteId: string; durationMs: number; transcript: string };
@@ -255,7 +255,7 @@ export function installPrototypeVoiceAdapter(Component: any, views: Record<strin
     if (route === 'manual') { cloudMode = false; deviceOnly = true; driver = deviceVoice; }
     if (route === 'device') { cloudMode = false; deviceOnly = true; driver = deviceVoice; if (!onDeviceVoice) error = 'On-device speech is unavailable. Retry local speech or use the keyboard.'; }
     if (preparedLocal) { onDeviceReady = true; cloudMode = false; deviceOnly = true; driver = deviceVoice; }
-    else if (onDeviceVoice) {
+    else if (onDeviceVoice && (!chat || chat.mode === 'dictation')) {
       preparingLocal = true;
       const local = onDeviceVoice, token = generation, controller = new AbortController(); readiness = controller;
       void stopping.then(() => {
@@ -553,7 +553,7 @@ export function installPrototypeVoiceAdapter(Component: any, views: Record<strin
       const networkSpeech = !deviceOnly&&(provider.residentInference==='direct'||cloudRuntimeEnabled || testMocksEnabled);
       const local = networkSpeech ? null : createOnDeviceVoice();
       if(!networkSpeech&&(!local||!await local.ready(controller.signal)))throw Error('On-device speech is unavailable. Retry local speech or use the keyboard.');
-      current();
+      current();if(local)onDeviceReady=true;
       const cloudDriver = networkSpeech ? createCloudVoice() : null;
       let streamingCloud=cloudDriver&&provider.residentInference!=='direct'&&nativeCloudStreamingAvailable()?createCloudStreamingSpeech({
         environment:connectionController.getCloudEnvironment()!,credentialId:connectionController.getCloudClient()!.credentialId!,assertCurrent:current,
@@ -810,7 +810,7 @@ export function installPrototypeVoiceAdapter(Component: any, views: Record<strin
     const phase=conversationState.phase,live=phase==='listening',seconds=live?(Date.now()-started)/1000:(clip?.durationMs||0)/1000;
     const messages:Record<string,string>={idle:'Voice conversation stopped.',starting:'Connecting to voice…',listening:'Listening…',transcribing:'Transcribing…',thinking:'Thinking…','awaiting-user-input':'Microphone off. Review the Notes request in this conversation.','preparing-speech':'Thinking…',speaking:'Speaking…',error:error||'Voice stopped. Check history before starting again.'};
     const settings=phase==='error'&&conversationDenied&&Capacitor.isNativePlatform();
-    const recover=()=>{if(!owned()||mediaUnconfirmed)return;if(settings){void appSettings.openSettings({page:'privacy'}).catch(()=>{});return;}if(cloudConnectRequired){cleanup();connectionController.openCloudAccount();}else if(!connectionController.getSnapshot().session){cleanup();connectionController.open();}else if((phase==='error'&&!conversationReviewRequired)||phase==='idle'){quietRetries=0;void beginConversation();}else cancelChat(false,true);};
+    const recover=()=>{if(!owned()||mediaUnconfirmed)return;if(settings){void appSettings.openSettings({page:'privacy'}).catch(()=>chat?.shell.toast('Android app settings are unavailable. Allow the microphone for Alpha in Settings, then try again.'));return;}if(cloudConnectRequired){cleanup();connectionController.openCloudAccount();}else if(!connectionController.getSnapshot().session){cleanup();connectionController.open();}else if((phase==='error'&&!conversationReviewRequired)||phase==='idle'){quietRetries=0;void beginConversation();}else cancelChat(false,true);};
     const unavailable=phase==='error'&&(conversationState.error as {code?:unknown})?.code==='voice-http-503';
     const visibleError=unavailable?'Voice is unavailable right now. Try again later or use the keyboard.':error;
     const awaiting=phase==='awaiting-user-input'||conversationReviewRequired;

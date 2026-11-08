@@ -48,6 +48,7 @@ async function workflowAgent(page: Page) {
       if (method === 'GET' && ['/api/lifeops/calendar/feed', '/api/lifeops/calendar/calendars', '/api/lifeops/calendar/next-context'].includes(path.split('?')[0])) return { status: 503, data: { error: 'Calendar unavailable in this workflow fixture' } };
       if (path === '/api/lifeops/reminders') return ok({ reminders: [] });
       if (path === '/api/lifeops/scheduled-tasks?ownerVisibleOnly=1') return ok({ tasks: [] });
+      if (method === 'GET' && path === '/api/lifeops/definitions') return ok({ definitions: [] });
       if (path === '/api/workflow/removed-workflows') return ok({ workflows: [] });
       if (path === '/api/workflow/workflows') return ok({ workflows: state.flows });
       if (path === '/api/workflow/phone/catalog') return ok({ specVersion: 1, generationProtocol: 1, catalogRevision: 'fixture-v1', compilerRevision: 'fixture-v1', maximumSteps: 32, maximumSpecBytes: 65536, triggers: [{ kind: 'manual', available: true }], palette: [{ kind: 'Read', operations: ['supplied_text', 'selected_notes', 'calendar_range'].map(id => ({ id, available: true })) }, { kind: 'Write', operations: ['compose_draft', 'model_draft', 'save_note'].map(id => ({ id, available: true })) }] });
@@ -80,6 +81,8 @@ async function workflowAgent(page: Page) {
         if (rest === '') return ok({ execution: r });
         if (rest === '/cancel') { Object.assign(r, { status: 'cancelled', finished: true, stoppedAt: at(5) }); return ok({ execution: r }); }
         if (rest === '/approvals') return ok(receipt(r.finished));
+        // These legacy approval fixtures have no typed phone specification to review.
+        if (method === 'GET' && rest === '/phone-review') return { status: 404, data: {} };
         const decision = /^\/approvals\/([^/]+)\/(\d+)$/.exec(rest);
         if (decision) {
           const a = state.approvals.find((row: any) => row.nodeId === decodeURIComponent(decision[1]) && row.iteration === Number(decision[2]));
@@ -132,7 +135,7 @@ test('the list shows only the agent’s workflows; detail, Run with its receipt,
   await expect(runStatus(page)).toHaveText('Paused on this agent');
   // Run needs a second tap; the first sends nothing.
   await button(page, 'Run now').click();
-  await expect(runStatus(page)).toHaveText('Tap Run now again to confirm');
+  await expect(runStatus(page)).toHaveText('Tap Run now again to start it.');
   expect(await posts(page, '/run')).toEqual([]);
   await button(page, 'Run now').click();
   await expect.poll(() => posts(page, '/run').then(rows => rows.length)).toBe(1);
@@ -141,8 +144,8 @@ test('the list shows only the agent’s workflows; detail, Run with its receipt,
   expect(sent.body.submissionId).toMatch(/^[0-9a-f-]{36}$/);
   // The receipt is the agent's execution: its status and output.
   await expect(page.getByText('Synthetic agenda: two meetings before noon.', { exact: true })).toBeVisible();
-  await page.locator('details[aria-label="Workflow execution details"]').filter({has:page.getByText('Terminal execution reported by agent', {exact:true})}).locator('summary').click();
-  await expect(page.getByText('Terminal execution reported by agent', { exact: true })).toBeVisible();
+  await page.locator('details[aria-label="Workflow execution details"]').filter({has:page.getByText('Finished', {exact:true})}).locator('summary').click();
+  await expect(page.getByText('Finished', { exact: true })).toBeVisible();
   await button(page, 'Back to Agenda digest').click();
   await expect(button(page, 'finished execution')).toBeVisible();
 
@@ -197,9 +200,9 @@ test('an approval waits for a second confirmation to approve or deny, and a runn
   await openFlow(page, 'Long running watch');
   await button(page, 'running execution').click();
   await button(page, 'Cancel execution').click();
-  await expect(button(page, 'Confirm execution cancellation')).toBeVisible();
+  await expect(button(page, 'Confirm cancellation')).toBeVisible();
   expect(await posts(page, '/cancel')).toEqual([]);
-  await button(page, 'Confirm execution cancellation').click();
+  await button(page, 'Confirm cancellation').click();
   await expect.poll(() => posts(page, '/cancel').then(rows => rows.length)).toBe(1);
   await button(page, 'Back to Long running watch').click();
   await expect(button(page, 'cancelled execution')).toBeVisible();
@@ -230,7 +233,7 @@ test('a lost Run request stays outcome unknown until the owner sends the same su
   expect(await agent(page, s => s.gets)).toContain(`/api/workflow/workflows/agenda/submissions/${lost.body.submissionId}`);
   await expect(runStatus(page)).toHaveText('The agent has no run for your earlier request. Run now sends that same request again');
   await button(page, 'Run now').click();
-  await expect(runStatus(page)).toHaveText('Tap Run now again to send your earlier request once more');
+  await expect(runStatus(page)).toHaveText('Your earlier run may not have arrived. Tap Run now again to resend it. It can only start once.');
   expect(await posts(page, '/run')).toHaveLength(1);
   await button(page, 'Run now').click();
   await expect.poll(() => posts(page, '/run').then(rows => rows.length)).toBe(2);

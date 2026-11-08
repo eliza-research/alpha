@@ -4,8 +4,8 @@
 // Cloud account, a real code, staging or a device.
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-if (!process.execArgv.includes('--experimental-transform-types')) {
-  const child = spawnSync(process.execPath, ['--import', 'tsx', '--experimental-transform-types', process.argv[1]], { stdio: 'inherit' });
+if (!process.execArgv.some(arg => arg === '--import=tsx' || arg === 'tsx')) {
+  const child = spawnSync(process.execPath, ['--import', 'tsx', process.argv[1]], { stdio: 'inherit' });
   process.exit(child.status ?? 1);
 }
 const { CloudProtocol, CloudProtocolError, planManagementUrl } = await import('../apps/app/src/runtime/cloud-protocol.ts');
@@ -62,6 +62,8 @@ const refused = async (promise, code) => assert.rejects(promise, error => error 
 {
  const revoked=client(()=>({status:200,data:{...granted.data,replayed:true,grant:{...granted.data.grant,revoked:true}}}));
  await refused(revoked.cloud.redeemSubscriptionCode(CODE,'submission-revoked',signal()),'ended');
+ const expired=client(()=>({status:200,data:{...granted.data,replayed:true,grant:{...granted.data.grant,endsAt:'2000-01-01T00:00:00.000Z'}}}));
+ await refused(expired.cloud.redeemSubscriptionCode(CODE,'submission-expired',signal()),'ended');
  const paid=client(()=>({status:200,data:{...granted.data,grant:{...granted.data.grant,paidPlanTakesPrecedence:true},entitlement:{...granted.data.entitlement,effectiveUntil:iso(paidEndsAt)}}}));
  const result=await paid.cloud.redeemSubscriptionCode(CODE,'submission-paid',signal());
  assert.equal(result.planEndsAt,paidEndsAt);

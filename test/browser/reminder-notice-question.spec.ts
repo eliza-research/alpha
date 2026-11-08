@@ -92,7 +92,7 @@ for(const mode of ['compose','cancel','source-changed','owner-changed'] as const
     return {};
    }};
   },'ready');
- await page.goto('/');await page.getByRole('button',{name:'Settings',exact:true}).click();await page.getByRole('button',{name:/Agent connection/}).click();await page.getByRole('button',{name:'Start local agent',exact:true}).click();await expect(page.locator('.alpha-connection-scrim')).toHaveCount(0);
+ await page.goto('/');await page.getByRole('button',{name:'Settings',exact:true}).click();await page.getByRole('button',{name:'Agent',exact:true}).click();await page.getByRole('button',{name:'Start local agent',exact:true}).click();await expect(page.locator('.alpha-connection-scrim')).toHaveCount(0);
  await page.evaluate(()=>{const f=(window as any).deliveryFixture,target={sourceId:'local-source',sourceRevision:'a'.repeat(64),reminderId:'reminder',occurrenceId:'one',revision:'b'.repeat(64),timingVersion:2};f.reminder={id:'reminder',title:'Reviewable reminder',body:'Public meeting plan',at:Date.now(),dueAt:Date.now(),alertMinutes:0,status:'posted',occurrenceId:'one',target};f.reminderTap={token:'ask-token',target,retained:true,question:true};document.dispatchEvent(new Event('visibilitychange'));});
  const review=page.getByRole('dialog',{name:'Ask about selected content'});await expect(review).toBeVisible();await expect(review.getByRole('textbox',{name:'Content excerpt'})).toHaveValue('Reviewable reminder\nPublic meeting plan');
  if(mode==='compose')await page.screenshot({path:testInfo.outputPath('question-review.png')});

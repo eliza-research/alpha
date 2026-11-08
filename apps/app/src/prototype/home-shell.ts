@@ -217,7 +217,7 @@ export function installHomeShell(Component: any, views: Record<string, Bag>, bri
       tiles, covered: !!out.homeHidden,
       onFocusCapture: out.focusAppContent, 'data-alpha-layer': 'home',
       style: {inset: '44px 0 0', zIndex: 10, scrollPaddingBottom: 110},
-      layoutProps: {'data-alpha-home-layout': ''}, cardsProps: {className: 'scr', hidden: hideCards, style: hideCards ? {display: 'none'} : undefined}, gridProps, clearanceProps: {'data-alpha-home-clearance': ''},
+      layoutProps: {'data-alpha-home-layout': ''}, cardsProps: {className: 'scr home-card-row', hidden: hideCards, style: hideCards ? {display: 'none'} : undefined}, gridProps, clearanceProps: {'data-alpha-home-clearance': ''},
     });
     const homeEditStyle = createElement('style', null, HOME_EDIT_CSS);
     const appInfo = options.appInfo;

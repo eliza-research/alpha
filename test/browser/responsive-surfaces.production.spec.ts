@@ -56,7 +56,7 @@ test('the canvas keeps its own density and takes its arrangement from measured s
   // A small phone turned sideways is not shrunk: 44px controls stay 44px.
   await expect.poll(() => geometry(page)).toEqual({ scale: 1, landscape: true, wide: false });
   await expectTarget(page, page.getByRole('button', { name: 'Back to apps', exact: true }));
-  await expectTarget(page, page.getByRole('button', { name: 'Display', exact: true }));
+  await expectTarget(page, page.getByRole('button', { name: 'About', exact: true }));
   // A tablet is never drawn as a magnified phone, in either orientation.
   await resize(page, TABLET_LANDSCAPE);
   await expect.poll(() => geometry(page)).toEqual({ scale: 1, landscape: true, wide: true });
@@ -82,7 +82,7 @@ test('the canvas keeps its own density and takes its arrangement from measured s
 
 test('Settings keeps a readable column, 44px rows and the focused row through every size', async ({ page }) => {
   await open(page, 'Settings');
-  const row = page.getByRole('button', { name: 'Display', exact: true });
+  const row = page.getByRole('button', { name: 'About', exact: true });
   await row.focus();
   const original = await row.elementHandle();
   for (const viewport of MATRIX) {
@@ -94,7 +94,7 @@ test('Settings keeps a readable column, 44px rows and the focused row through ev
     await page.screenshot({ animations: 'disabled', path: test.info().outputPath(`settings-${viewport.width}x${viewport.height}.png`) });
   }
   await row.press('Enter');
-  await expect(page.getByRole('heading', { name: 'Display', exact: true })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'About', exact: true })).toBeVisible();
 });
 
 test('a Calendar event draft keeps its text, caret and field through resizing, in a bounded form', async ({ page }) => {
@@ -261,7 +261,6 @@ const inert = (locator: Locator) => locator.evaluate(element => !!element.closes
 
 test('the Settings Theme choice is a 44px target at every size', async ({ page }) => {
   await open(page, 'Settings');
-  await page.getByRole('button', { name: 'Display', exact: true }).click();
   for (const viewport of [PORTRAIT, SMALL_LANDSCAPE, TABLET_LANDSCAPE]) {
     await resize(page, viewport);
     for (const name of ['Theme: Light', 'Theme: Dark']) await expectTarget(page, page.getByRole('button', { name, exact: true }));

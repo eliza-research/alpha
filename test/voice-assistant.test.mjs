@@ -241,7 +241,7 @@ test('semantic endpoint races: resumed speech aborts the call and drops a late c
   assert.equal(h.log.sends.length, 0, 'a superseded call is ignored');
   await h.clock.advance(longGapMs);
   assert.deepEqual(h.log.sends.map(send => send.text), ['set a timer for ten minutes']);
-  assert.deepEqual(h.log.endpoints, [{by: 'gap', semantic: 'incomplete', latencyMs: 300}], 'no reported latency: the client round trip');
+  assert.deepEqual(h.log.endpoints, [{by: 'gap', semantic: 'incomplete', latencyMs: shortGapMs}], 'no reported latency: the client round trip');
 });
 
 test('closed input during inference ignores stale speech; normal drain reopens once and Stop drops a later reply', async () => {
@@ -675,4 +675,39 @@ test('the capture source policy picks the echo-cancelled source only for full du
   const capture = fs.readFileSync(upstreamVoiceSource('LiveVoiceCapture.java'), 'utf8');
   assert.match(capture, /LiveCaptureSource\.select\(echoCancel,AcousticEchoCanceler\.isAvailable\(\)/);
   assert.match(capture, /if\(frames\.length\(\)>0\|\|edges\.length\(\)>0\)sink\.frames/, 'the stop flushes the last frames read before it');
+});
+
+test('a confirmed voice reply plays its sentences once after the request settles', async () => {
+  const h = harness();
+  await h.session.start();
+  await h.say('what should I cook tonight');
+  await h.clock.advance(ASSISTANT_TIMING_DEFAULTS.longGapMs);
+  assert.equal(h.log.sends.length, 1);
+  assert.equal(h.replies[0].input.onText, undefined, 'partial text cannot enter playback');
+  await flush();
+  assert.equal(h.speeches.length, 0, 'the pending reply is silent');
+  h.answer(0, 'How about a simple pasta with garlic and lemon? It takes twenty minutes and uses pantry staples.');
+  await flush();
+  assert.deepEqual(h.speeches.map(s => s.input.text), ['How about a simple pasta with garlic and lemon?']);
+  h.speeches[0].input.onStarted();
+  h.speeches[0].done.resolve();
+  await flush();
+  assert.deepEqual(h.speeches.map(s => s.input.text), ['How about a simple pasta with garlic and lemon?', 'It takes twenty minutes and uses pantry staples.']);
+  h.speeches[1].done.resolve();
+  await flush();
+  assert.equal(h.phase(), 'listening');
+});
+
+test('a voice reply with an unconfirmed request or conversation never reaches playback', async () => {
+  for (const extra of [{requestId: 'other-request'}, {conversationId: 'other-conversation'}, {userMessageId: ''}, {assistantMessageId: ''}, {complete: false}]) {
+    const h = harness();
+    await h.session.start();
+    await h.say('tell me something');
+    await h.clock.advance(ASSISTANT_TIMING_DEFAULTS.longGapMs);
+    h.answer(0, 'This text must stay silent.', extra);
+    await flush();
+    assert.equal(h.speeches.length, 0, JSON.stringify(extra));
+    assert.equal(h.phase(), 'error');
+    await h.session.stop();
+  }
 });

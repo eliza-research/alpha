@@ -75,7 +75,7 @@ test('a Cloud 429 never shows the limit text, the last transcript or Try voice a
 test('a 503 while Cloud voice warms is waited out the same way',async t=>{
  const {runs,view,fail,clock}=await voice(t);
  await fail(Object.assign(Error('PRIVATE'),{code:'voice-http-503'}));
- const waiting=view();assert.notEqual(waiting.model.state,'error');assert.doesNotMatch(waiting.text,SLOP);assert.equal(waiting.model.voiceDetails,false);
+ const waiting=view();assert.notEqual(waiting.model.state,'error');assert.doesNotMatch(waiting.text,SLOP);assert.ok(!waiting.model.voiceDetails);
  await clock.advance(2_000);assert.equal(runs.length,2);assert.equal(view().model.state,'listening');
 });
 
@@ -205,4 +205,27 @@ test('Try voice again after a terminal error starts the quiet waits over',async 
  await fail(limited());
  assert.notEqual(view().model.state,'error');assert.deepEqual(f.shell.messages,[],'a quiet wait, not the pause line');
  await clock.advance(3_000);assert.equal(runs.length,5);assert.equal(view().model.state,'listening');
+});
+
+test('a call, lost audio focus, an ended session and no speech each say what stopped voice',async t=>{
+ for(const [label,error,expected] of [
+  ['call code',Object.assign(Error('call'),{code:'call-active'}),'Voice paused for a call. Start again after the call.'],
+  ['call reason',Object.assign(Error('call'),{code:'call-active',reason:'call-active'}),'Voice paused for a call. Start again after the call.'],
+  ['call reason only',Object.assign(Error('call'),{reason:'call-active'}),'Voice paused for a call. Start again after the call.'],
+  ['audio focus',Object.assign(Error('focus'),{code:'audio-focus-lost'}),'Voice stopped because another app took the audio.'],
+  ['expired',Object.assign(Error('expired'),{code:'expired'}),'Voice session ended. Start again.'],
+  ['no speech',Object.assign(Error('silence'),{code:'no-speech'}),'No speech heard. Nothing was sent.'],
+  ['denied',Object.assign(Error('denied'),{code:'permission-denied'}),/^Microphone access is off\. Open app settings to allow it\./],
+  ['unknown',Error('PRIVATE'),'Voice stopped. Check your connection and conversation history before trying again.'],
+ ]){
+  await t.test(label,async t=>{
+   const {runs,view,fail,clock}=await voice(t);
+   await fail(error);
+   const shown=view();
+   assert.equal(shown.model.state,'error');assert.equal(shown.model.lines.length,1);
+   if(expected instanceof RegExp)assert.match(shown.model.lines[0].t,expected);else assert.equal(shown.model.lines[0].t,expected);
+   assert.doesNotMatch(shown.model.lines[0].t,/switch to the keyboard/);
+   await clock.advance(30_000);assert.equal(runs.length,1,'not retried');
+  });
+ }
 });

@@ -12,7 +12,7 @@ import java.nio.charset.StandardCharsets;
 import static org.junit.Assert.*;
 /** Production refusal and preservation; positive SAF migration is an explicit test-mocks fixture only. */
 public final class NotesDocumentInstrumentedTest {
- private void until(String expression)throws Exception{long end=SystemClock.elapsedRealtime()+20000;while(SystemClock.elapsedRealtime()<end){if("true".equals(NotesSecureFixture.evaluate("Boolean("+expression+")")))return;SystemClock.sleep(100);}fail("Notes document flow timed out: "+expression+"; state="+NotesSecureFixture.evaluate("JSON.stringify({view:document.documentElement.dataset.activeView,storage:document.documentElement.dataset.notesStorageState,importDisabled:document.querySelector('button[aria-label=\"Import text note\"]')?.disabled,exportDisabled:document.querySelector('button[aria-label=\"Export text file\"]')?.disabled,cancellationNotice:document.body.textContent.includes('Document selection cancelled.'),observedCancellationNotice:window.__notesCancelNoticeSeen===true,observedReceipt:window.__notesReceiptSeen===true,documentHidden:document.hidden})"));}
+ private void until(String expression)throws Exception{long end=SystemClock.elapsedRealtime()+20000;while(SystemClock.elapsedRealtime()<end){if("true".equals(NotesSecureFixture.evaluate("Boolean("+expression+")")))return;SystemClock.sleep(100);}fail("Notes document flow timed out: "+expression+"; state="+NotesSecureFixture.evaluate("JSON.stringify({view:document.documentElement.dataset.activeView,storage:document.documentElement.dataset.notesStorageState,importDisabled:document.querySelector('button[aria-label=\"Import text note\"]')?.disabled,shareDisabled:document.querySelector('button[aria-label=\"Share note\"]'))?.disabled,cancellationNotice:document.body.textContent.includes('Document selection cancelled.'),observedCancellationNotice:window.__notesCancelNoticeSeen===true,observedReceipt:window.__notesReceiptSeen===true,documentHidden:document.hidden})"));}
  /**
   * A receipt is a notice that leaves the screen after 1.9 seconds. Reading the page for it afterwards
   * races its lifetime: one read of the WebView while the app returns from the system picker can take
@@ -53,6 +53,8 @@ public final class NotesDocumentInstrumentedTest {
   }
   throw new AssertionError("Requested document picker did not become the resumed accessible Android surface; polls="+polls+" nullRoots="+nullRoots+" sawDocumentsResumed="+sawResumed+" sawDocumentsAccessible="+sawExposed+" lastResumed="+lastResumed+" lastRoot="+lastRoot+" observedResumed="+surfaces);
  }
+ /** The shared Share panel names its destinations by text only. */
+ private void shareTo(String destination)throws Exception{String q="[...document.querySelectorAll('dialog.alpha-share-panel button')].find(b=>b.textContent.trim()==="+JSONObject.quote(destination)+"&&b.getClientRects().length&&!b.disabled)";until(q);NotesSecureFixture.evaluate("("+q+").click()");}
  private void cancelPicker(String readyControl)throws Exception{
   // JS click completion precedes the asynchronous native launch. Prove the picker
   // is foreground before asking the shared helper to send actual paired Back.
@@ -119,11 +121,11 @@ public final class NotesDocumentInstrumentedTest {
    click("Import text note");cancelPicker("Import text note");assertEquals(initial,NotesSecureFixture.evaluate("JSON.stringify(__notesEnvelope)"));
    click("Import text note");picker.selectDocument(name);until("document.querySelector('textarea[aria-label=Note]')?.value==="+JSONObject.quote(text.replace("\r\n","\n")));
    JSONArray imported=new JSONArray(NotesSecureFixture.evaluate("__notesEnvelope.records.filter(n=>n.body==="+JSONObject.quote(text)+").map(n=>n.id)"));assertEquals(1,imported.length());created.add(imported.getString(0));
-   title(outName);click("Share note");click("Export text file");cancelPicker("Export text file");
+   title(outName);click("Share note");shareTo("Save locally");cancelPicker("Share note");
    assertTrue("Cancelled export retains exact note",NotesSecureFixture.evaluate("__notesEnvelope.records.some(n=>n.body==="+JSONObject.quote(text)+")").equals("true"));
    until("!document.body.textContent.includes('Export saved and exact bytes verified.')");observeReceipt("Export saved and exact bytes verified.");
-   click("Export text file");awaitDocumentPicker();exportStarted=System.currentTimeMillis()/1000;java.nio.file.Files.write(exportJournal.toPath(),new JSONObject().put("name",outName+".txt").put("expectedText",text).put("createdAfter",exportStarted).toString().getBytes(StandardCharsets.UTF_8));nativeSave();awaitReceipt();output=selectExport(outName+".txt",exportStarted,text);
-   click("Close share");click("Back to notes");click("Import text note");picker.selectDocument(outName+".txt");until("document.querySelector('textarea[aria-label=Note]')?.value==="+JSONObject.quote(text.replace("\r\n","\n")));
+   click("Share note");shareTo("Save locally");awaitDocumentPicker();exportStarted=System.currentTimeMillis()/1000;java.nio.file.Files.write(exportJournal.toPath(),new JSONObject().put("name",outName+".txt").put("expectedText",text).put("createdAfter",exportStarted).toString().getBytes(StandardCharsets.UTF_8));nativeSave();awaitReceipt();output=selectExport(outName+".txt",exportStarted,text);
+   click("Back to notes");click("Import text note");picker.selectDocument(outName+".txt");until("document.querySelector('textarea[aria-label=Note]')?.value==="+JSONObject.quote(text.replace("\r\n","\n")));
    JSONArray all=new JSONArray(NotesSecureFixture.evaluate("__notesEnvelope.records.filter(n=>n.body==="+JSONObject.quote(text)+").map(n=>n.id)"));assertEquals("Import always creates a new note",2,all.length());for(int i=0;i<all.length();i++)created.add(all.getString(i));
    scenario.recreate();AppNavigation.liveMode();NotesSecureFixture.evaluate(AppNavigation.request("Notes"));until("window.__alphaTestNavigation?.status==='complete'");assertEquals("2",NotesSecureFixture.evaluate("__notesEnvelope.records.filter(n=>n.body==="+JSONObject.quote(text)+").length"));
    if(retainNotes){JSONObject record=new JSONObject().put("body",text).put("title",outName).put("pid",android.os.Process.myPid());java.nio.file.Files.write(new java.io.File(context.getNoBackupFilesDir(),"notes-document-restart-"+suffix+".json").toPath(),record.toString().getBytes(StandardCharsets.UTF_8));}completed=true;

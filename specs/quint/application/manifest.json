@@ -1,0 +1,594 @@
+[
+  {
+    "path": "specs/quint/application/Application.qnt",
+    "module": "Application",
+    "init": "init",
+    "step": "step",
+    "invariant": "safety",
+    "tests": [
+      "reviewedEffectTest",
+      "ownerSwitchTest",
+      "resetDuringVoiceTest",
+      "uncertainEffectTest"
+    ],
+    "sources": [
+      "apps/app/src/main.tsx",
+      "apps/app/src/runtime/alpha-client.ts",
+      "apps/app/src/platform-plugins.ts",
+      "apps/app/src/runtime/connection-ui.tsx"
+    ],
+    "abstractions": [
+      "Finite representative identities and contents. Exact source symbols and modeling limits are documented in the family README.",
+      "Model safety checks do not establish implementation refinement or device acceptance."
+    ]
+  },
+  {
+    "path": "specs/quint/application/ShellNavigation.qnt",
+    "module": "ShellNavigation",
+    "init": "init",
+    "step": "step",
+    "invariant": "safety",
+    "tests": [
+      "backOrderTest",
+      "staleNavigationTest",
+      "deliveryTest"
+    ],
+    "sources": [
+      "apps/app/src/prototype/model.js",
+      "apps/app/src/runtime/view-navigation.ts",
+      "apps/app/src/prototype/subview-accessibility.ts",
+      "apps/app/src/runtime/inline-modal.ts",
+      "apps/app/src/runtime/modal-inert.ts"
+    ],
+    "abstractions": [
+      "Finite representative identities and contents. Exact source symbols and modeling limits are documented in the family README.",
+      "Model safety checks do not establish implementation refinement or device acceptance."
+    ]
+  },
+  {
+    "path": "specs/quint/application/StartupPermissions.qnt",
+    "module": "StartupPermissions",
+    "init": "init",
+    "step": "step",
+    "invariant": "safety",
+    "tests": [
+      "denialRestartTest",
+      "resumeWhilePromptTest",
+      "failedProgressTest",
+      "upgradeTest",
+      "failedStorageRestartTest"
+    ],
+    "sources": [
+      "apps/app/src/startup-permission-flow.ts",
+      "apps/app/src/startup-permission-progress.ts",
+      "apps/app/src/startup-permissions.tsx",
+      "apps/app/src/startup-browser-permissions.ts",
+      "apps/app/src/runtime/aosp-image.ts"
+    ],
+    "abstractions": [
+      "Finite representative identities and contents. Exact source symbols and modeling limits are documented in the family README.",
+      "Model safety checks do not establish implementation refinement or device acceptance."
+    ]
+  },
+  {
+    "path": "specs/quint/application/AssistantConversation.qnt",
+    "module": "AssistantConversation",
+    "init": "init",
+    "step": "step",
+    "invariant": "safety",
+    "tests": [
+      "reviewedSendTest",
+      "unknownNoReplayTest",
+      "lateReplyTest",
+      "workflowNavigationTest",
+      "sensitiveStopsWorkflowTest",
+      "draftConflictTest"
+    ],
+    "sources": [
+      "apps/app/src/runtime/alpha-client.ts",
+      "apps/app/src/runtime/assistant-draft-record.ts",
+      "apps/app/src/runtime/assistant-draft-store.ts",
+      "apps/app/src/runtime/conversation-selection.ts",
+      "apps/app/src/prototype/agent-adapter.ts"
+    ],
+    "abstractions": [
+      "Finite representative identities and contents. Exact source symbols and modeling limits are documented in the family README.",
+      "Model safety checks do not establish implementation refinement or device acceptance."
+    ]
+  },
+  {
+    "path": "specs/quint/application/NotesLifecycle.qnt",
+    "module": "NotesLifecycle",
+    "init": "init",
+    "step": "step",
+    "invariant": "safety",
+    "tests": [
+      "failedSaveKeepsDraftTest",
+      "deletionRestartRestoreTest",
+      "expiryTest",
+      "concurrentEditTest",
+      "canonicalDirtyRefreshKeepsDraftTest",
+      "canonicalCleanRefreshFollowsSnapshotTest",
+      "canonicalInvalidationsCoalesceTest",
+      "canonicalWriteRetiresOlderReadTest",
+      "canonicalTypingDuringSaveQueuesOnlyNewEditTest",
+      "canonicalUnknownWriteRetainsDraftTest",
+      "canonicalExplicitRetryRemainsAvailableTest",
+      "canonicalQueueBeforeNewEditDoesNotReplayTest",
+      "canonicalReadFailureRecoversTest",
+      "canonicalForeignReadCannotPublishTest",
+      "canonicalRetiredOwnerCannotPublishTest",
+      "canonicalFolderRenameKeepsMembershipTest",
+      "canonicalDeletedFolderIsUnfiledTest",
+      "canonicalNewFolderNeverAdoptsOldReferenceTest",
+      "canonicalFolderCasRejectsStaleWriteTest",
+      "canonicalMissingCleanSelectionClosesTest",
+      "canonicalDiscardIsExplicitTest"
+    ],
+    "sources": [
+      "apps/app/src/runtime/notes-store.ts",
+      "apps/app/src/runtime/notes-trash.ts",
+      "apps/app/src/runtime/notes-trash-policy.ts",
+      "apps/app/src/runtime/notes-secure-store.ts",
+      "apps/app/src/prototype/notes-document-adapter.ts",
+      "apps/app/src/browser/domain-document.ts",
+      "apps/app/src/prototype/canonical-notes-controller.ts",
+      "apps/app/src/prototype/canonical-notes-editor.ts",
+      "apps/app/src/prototype/canonical-notes-ui.ts",
+      "apps/app/src/prototype/notes-folders-adapter.ts",
+      "apps/app/src/runtime/notes-folders.ts",
+      "apps/app/src/runtime/notes-folders-model.ts"
+    ],
+    "abstractions": [
+      "Legacy mode preserves the existing one-note local Trash/CAS compatibility contract. Canonical mode represents one existing record, one editor draft, one initial folder and one newly allocated folder identity.",
+      "Canonical source identities, revisions and edit generations are bounded. Content values stand for authored text and rich metadata. Folder-document revisions represent exact compare-and-exchange document identity, not a stored revision field.",
+      "Canonical refresh, owner retirement, dirty-draft preservation, queued edits and uncertain mutation outcomes are explicit. An uncertain response forbids automatic follow-up; explicit user retries retain the current public API behavior.",
+      "Native/provider/transport correctness and complete implementation refinement require separate evidence."
+    ],
+    "sharedSources": [
+      "plugins/plugin-notes/src/client/notes-controller.ts",
+      "plugins/plugin-notes/src/client/notes-editor.ts",
+      "plugins/plugin-notes/src/client/notes-snapshot-state.ts"
+    ]
+  },
+  {
+    "path": "specs/quint/application/BrowserSession.qnt",
+    "module": "BrowserSession",
+    "init": "init",
+    "step": "step",
+    "invariant": "safety",
+    "tests": [
+      "privateRestartTest",
+      "lateRestoreTest",
+      "normalHistoryTest"
+    ],
+    "sources": [
+      "apps/app/src/browser/browser-surface.ts",
+      "apps/app/src/prototype/browser-adapter.ts",
+      "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaBrowserPlugin.java"
+    ],
+    "abstractions": [
+      "Finite representative identities and contents. Exact source symbols and modeling limits are documented in the family README.",
+      "Model safety checks do not establish implementation refinement or device acceptance.",
+      "Normal/private persistence normalization is owned by the shared browser-surface package. Alpha browser-surface and browser-adapter enforce navigation and current-page presentation. The finite model abstracts exact URL validation and storage serialization."
+    ],
+    "sharedSources": [
+      "plugins/plugin-native-browser-surface/src/browsing-session.ts",
+      "plugins/plugin-native-browser-surface/android/src/main/java/ai/eliza/plugins/browsersurface/BrowserSessionStore.java"
+    ]
+  },
+  {
+    "path": "specs/quint/application/CredentialVault.qnt",
+    "module": "CredentialVault",
+    "init": "init",
+    "step": "step",
+    "invariant": "safety",
+    "tests": [
+      "backgroundClearsTest",
+      "originChangeTest",
+      "exactFillTest",
+      "invalidKeyTest",
+      "confirmedDamageResetTest",
+      "backgroundPreventsResetTest",
+      "explicitTestBuildTransferTest"
+    ],
+    "sources": [
+      "apps/app/src/passwords/password-manager.ts",
+      "apps/app/src/passwords/dev-vault.ts",
+      "apps/app/src/browser/password-provider.ts",
+      "android/app/src/main/java/ai/elizaresearch/alphaphone/PasswordProviderSupport.java"
+    ],
+    "abstractions": [
+      "Finite representative identities and contents. Exact source symbols and modeling limits are documented in the family README.",
+      "Model safety checks do not establish implementation refinement or device acceptance."
+    ]
+  },
+  {
+    "path": "specs/quint/application/DevelopmentSurfaces.qnt",
+    "module": "DevelopmentSurfaces",
+    "init": "init",
+    "step": "step",
+    "invariant": "safety",
+    "tests": [
+      "craftedProductionQueryTest",
+      "devSimulationTest"
+    ],
+    "sources": [
+      "apps/app/src/build-flags.ts",
+      "apps/app/src/runtime/mock-admission.ts",
+      "apps/app/src/browser/dev-profile.ts",
+      "apps/app/src/browser/device-controls.tsx",
+      "apps/app/src/runtime/development-transport.ts"
+    ],
+    "abstractions": [
+      "Finite representative identities and contents. Exact source symbols and modeling limits are documented in the family README.",
+      "Model safety checks do not establish implementation refinement or device acceptance."
+    ]
+  },
+  {
+    "path": "specs/quint/application/FilesAndSharing.qnt",
+    "module": "FilesAndSharing",
+    "init": "init",
+    "step": "step",
+    "invariant": "safety",
+    "tests": [
+      "exactCopyTest",
+      "changedSourceTest",
+      "changedOwnerTest",
+      "revokedReadTest"
+    ],
+    "sources": [
+      "apps/app/src/prototype/file-email-review.ts",
+      "apps/app/src/runtime/media-copy-intent.ts",
+      "apps/app/src/runtime/inbox-attachment.ts",
+      "apps/app/src/prototype/share-panel-adapter.ts",
+      "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaMailAttachmentsPlugin.java"
+    ],
+    "abstractions": [
+      "Finite representative identities and contents. Exact source symbols and modeling limits are documented in the family README.",
+      "Model safety checks do not establish implementation refinement or device acceptance."
+    ]
+  },
+  {
+    "path": "specs/quint/application/PreferencesAndPresentation.qnt",
+    "module": "PreferencesAndPresentation",
+    "init": "init",
+    "step": "step",
+    "invariant": "safety",
+    "tests": [
+      "keyboardNotRotationTest",
+      "rotationPreservesDraftTest",
+      "largeTextTest",
+      "preferenceReadbackTest"
+    ],
+    "sources": [
+      "apps/app/src/runtime/canvas-geometry.ts",
+      "apps/app/src/runtime/text-scale.ts",
+      "apps/app/src/prototype/home-cards.ts",
+      "apps/app/src/prototype/home-shell.ts",
+      "apps/app/src/prototype/settings-adapter.ts",
+      "apps/app/src/browser/display.ts",
+      "apps/app/src/prototype/system-shade.ts"
+    ],
+    "abstractions": [
+      "Finite representative identities and contents. Exact source symbols and modeling limits are documented in the family README.",
+      "Model safety checks do not establish implementation refinement or device acceptance.",
+      "Keyboard-free layout uses the shared responsive-layout algorithm through canvas-geometry. Home shell and system-shade integration remain Alpha-owned; the model covers layout choices and state retention, not pixel geometry or all launcher editing behavior."
+    ],
+    "sharedSources": [
+      "packages/ui/src/components/shell/responsive-layout.ts",
+      "plugins/plugin-native-system/android/src/main/java/ai/eliza/plugins/system/SystemShade.java"
+    ]
+  },
+  {
+    "path": "specs/quint/application/DurableStore.qnt",
+    "module": "DurableStore",
+    "init": "init",
+    "step": "step",
+    "invariant": "safety",
+    "tests": [
+      "competingWriterTest",
+      "corruptRecoveryTest",
+      "staleRecoveryTest",
+      "failedWriteRetainsDraftTest"
+    ],
+    "sources": [
+      "apps/app/src/browser/domain-document.ts",
+      "apps/app/src/browser/json-domain-document.ts",
+      "apps/app/src/browser/documents.ts",
+      "apps/app/src/browser/preference-documents.ts",
+      "apps/app/src/runtime/notes-secure-store.ts"
+    ],
+    "abstractions": [
+      "One document with finite content identities, non-reused revision classes, explicit corrupt metadata and legacy-write fencing.",
+      "Encryption and storage-engine transactional correctness are environment contracts."
+    ]
+  },
+  {
+    "path": "specs/quint/application/PermissionWalkthrough.qnt",
+    "module": "PermissionWalkthrough",
+    "init": "init",
+    "step": "step",
+    "invariant": "safety",
+    "tests": [
+      "orderedProgressTest",
+      "deniedPermissionCannotAdvanceTest",
+      "revokedBeforeFinishTest",
+      "failedProgressWriteTest",
+      "legacyCompletionTest",
+      "failedAttemptWriteRestartTest"
+    ],
+    "sources": [
+      "apps/app/src/startup-permissions.tsx",
+      "apps/app/src/startup-permission-progress.ts",
+      "apps/app/src/startup-permission-flow.ts"
+    ],
+    "abstractions": [
+      "Seven permission state machines share one serial UI action and a durable versioned walkthrough. Attempts are retained in memory for the current flow and across restart only when the best-effort write succeeds.",
+      "Platform readiness is external input. Completed installation records grant no platform access."
+    ]
+  },
+  {
+    "path": "specs/quint/application/DevelopmentDevice.qnt",
+    "module": "DevelopmentDevice",
+    "init": "init",
+    "step": "step",
+    "invariant": "safety",
+    "tests": [
+      "screenedCallTest",
+      "staleCallTimerTest",
+      "missedCallTest",
+      "notificationTest",
+      "simulatedPaymentTest",
+      "productionInertTest"
+    ],
+    "sources": [
+      "apps/app/src/prototype/model.js",
+      "apps/app/src/browser/device.ts",
+      "apps/app/src/browser/incoming-simulation.ts",
+      "apps/app/src/browser/simulated-messages.ts",
+      "apps/app/src/browser/location-simulation.ts"
+    ],
+    "abstractions": [
+      "Finite representative operation and payload identities. See application README for source contract and evidence."
+    ]
+  },
+  {
+    "path": "specs/quint/application/PermanentVoiceDeletion.qnt",
+    "module": "PermanentVoiceDeletion",
+    "init": "init",
+    "step": "step",
+    "invariant": "safety",
+    "tests": [
+      "finishInterruptedDeletionTest",
+      "rollbackRecordingTest",
+      "purgedRecordingCommitsNoteTest",
+      "sharedAudioReviewTest",
+      "liveRendererLeaseTest",
+      "changedNoteReviewTest",
+      "recoveryPlanCasesTest"
+    ],
+    "sources": [
+      "apps/app/src/runtime/permanent-voice-deletion.ts",
+      "apps/app/src/runtime/note-audio-deletions.ts",
+      "apps/app/src/runtime/note-audio-lock.ts",
+      "android/app/src/main/java/ai/elizaresearch/alphaphone/NotesDeletionLease.java"
+    ],
+    "abstractions": [
+      "Finite representative operation and payload identities. See application README for source contract and evidence."
+    ]
+  },
+  {
+    "path": "specs/quint/application/DevelopmentHost.qnt",
+    "module": "DevelopmentHost",
+    "init": "init",
+    "step": "step",
+    "invariant": "safety",
+    "sources": [
+      "scripts/browser-cloud-dev-bridge.ts",
+      "scripts/cloud-resident-host.mjs",
+      "scripts/dev-agent.mjs",
+      "scripts/dev-cloud.mjs",
+      "scripts/dev-local.mjs",
+      "scripts/start-local-agent.mjs",
+      "scripts/start-local-voice-agent.mjs",
+      "scripts/start-local-remote.mjs",
+      "scripts/cloud-email-code.ts"
+    ],
+    "tests": [
+      "claimedSignInTest",
+      "replacementAbortsRequestsTest",
+      "failedRetirementStopsReplacementTest",
+      "expiryStopsInferenceTest",
+      "childrenStopTogetherTest"
+    ],
+    "abstractions": [
+      "One private profile, two credentials and requests, serial resident replacement, immutable deployment choice.",
+      "The runtime launchers are developer infrastructure with local/private process and storage boundaries."
+    ]
+  },
+  {
+    "path": "specs/quint/application/FilesTree.qnt",
+    "module": "FilesTree",
+    "init": "init",
+    "step": "step",
+    "invariant": "safety",
+    "tests": [
+      "categoriesTest",
+      "collisionKeepsBothTest",
+      "trashRestoreCollisionTest",
+      "staleReviewedIdentityTest",
+      "missingSelectionTest",
+      "revokedReviewTest",
+      "permanentTrashReviewTest",
+      "selectionRefreshTest"
+    ],
+    "sources": [
+      "apps/app/src/prototype/files-browser-adapter.ts",
+      "apps/app/src/runtime/files-storage.ts",
+      "apps/app/src/runtime/files-agent-contract.ts",
+      "apps/app/src/browser/storage-volume.ts",
+      "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaFilesPlugin.java",
+      "android/app/src/main/java/ai/elizaresearch/alphaphone/StorageBrowser.java",
+      "android/app/src/main/java/ai/elizaresearch/alphaphone/StorageCatalog.java"
+    ],
+    "stateMapping": {
+      "locations/origins/names": "Volume-relative paths and recorded Trash origins; name clashes keep both entries",
+      "selected/folder/stale": "Folder selection and the delayed storageChanged refresh that removes missing selections",
+      "review/revisions": "Agent FilesIdentity size/modified checks in reviewed storage transfers",
+      "access": "Current storage permission admission, rechecked by the native bridge"
+    },
+    "abstractions": [
+      "Three files, three folders and three names model the current volume browser, categories, Trash and reviewed agent transfers. The previous SAF-tree listing model is superseded.",
+      "The transition structure follows design/view-refresh-2026-11/tla/files-browser with category, name-conflict and reviewed-identity fixes enabled. Grant withdrawal is additionally modeled.",
+      "Multi-volume traversal, recursive byte copying, per-item batch failures, MIME parsing and the 30-day Trash timer remain covered by their implementation tests. This model does not represent document-picker or persistent SAF-tree access.",
+      "Opaque identity revisions represent the native size/modified pair. Matching that pair is the current implementation guard, not a cryptographic assertion about file contents."
+    ]
+  },
+  {
+    "path": "specs/quint/application/CalendarPresentation.qnt",
+    "module": "CalendarPresentation",
+    "init": "init",
+    "step": "step",
+    "invariant": "safety",
+    "tests": [
+      "overlayBackOrderTest",
+      "staleRangeReplyTest",
+      "accountPreferenceIsolationTest",
+      "scheduleReturnTest",
+      "draftClockAndIdentityTest",
+      "failedSaveRetainsFormTest",
+      "editsAfterSubmitPreserveSnapshotTest"
+    ],
+    "sources": [
+      "apps/app/src/prototype/model.js",
+      "apps/app/src/prototype/calendar-adapter.ts",
+      "apps/app/src/prototype/calendar-month-focus.ts",
+      "apps/app/src/prototype/calendar-days.ts",
+      "apps/app/src/runtime/google-calendar-selection.ts",
+      "apps/app/src/runtime/calendar-form-draft.ts",
+      "apps/app/src/prototype/agent-calendar-adapter.ts",
+      "apps/app/src/runtime/agent-calendar.ts",
+      "apps/app/src/runtime/agent-calendar-view.ts",
+      "apps/app/src/runtime/home-calendar-selection.ts"
+    ],
+    "stateMapping": {
+      "view/day/month/search/menu/deleteSheet/chat/openEvent/openDay": "Calendar persistent view choice and transient Back ordering",
+      "generation/desiredRange/requestRange/requestGeneration/loading": "single-flight desired-range loading and stale result rejection",
+      "owner/hidden/googleRowsOwner/localAccess/googleAccess": "owner-scoped Google preferences and separately permitted local/source rows",
+      "form/formDay/creationId/durableDraft/submittedTimeValid": "civil-date draft recovery, retained creation identity and immutable save snapshot"
+    },
+    "abstractions": [
+      "Two source identities (device event and Google event), two account identities, day/month offsets -1..1 and up to five read-generation changes.",
+      "Date arithmetic, DST resolution, recurrence expansion and visual grid geometry remain pure implementation contracts; this model tracks transitions and retained identities across those calculations.",
+      "Calendar writes are modeled in CalendarSync. This module tracks presentation/read/draft state and never gives a restored form provider authority.",
+      "Cached rows may remain while a broader/narrower range is loading. Committed-result freshness and owner isolation are checked independently of cache presentation.",
+      "The removed direct Google view adapter is superseded by the canonical AgentCalendar controller and presentation adapter. The older Android/browser-local Calendar adapter remains an explicitly selected source. This model abstracts their common owner/range/form guards and does not equate their provider data models."
+    ]
+  },
+  {
+    "path": "specs/quint/application/DraftDispatch.qnt",
+    "module": "DraftDispatch",
+    "init": "init",
+    "step": "step",
+    "invariant": "safety",
+    "tests": [
+      "retainedUntilDispatchTest",
+      "newTypingSurvivesCommitTest",
+      "unsentTextRestoredTest",
+      "retiredBindingCommitTest",
+      "unavailableStorageRefusesHoldTest",
+      "reopeningDoesNotOfferHeldTextTest",
+      "failedClearKeepsRecoveryTest",
+      "restartHeldSendRequiresReviewTest"
+    ],
+    "sources": [
+      "apps/app/src/prototype/assistant-draft-controller.ts",
+      "apps/app/src/runtime/assistant-draft-record.ts",
+      "apps/app/src/runtime/assistant-draft-store.ts",
+      "vendor/eliza/packages/ui/src/state/durable-draft-controller.ts"
+    ],
+    "abstractions": [
+      "Hold requires a durable matching saved draft. Per-binding sending markers survive process restart and require review, while confirmed non-dispatch unmarks the original binding.",
+      "Atomic hold abstracts the serialized marking write and its current-binding check. Storage failure, ownership changes and unsettled recovery retain source regression coverage."
+    ]
+  },
+  {
+    "path": "specs/quint/application/NotificationCollection.qnt",
+    "module": "NotificationCollection",
+    "init": "init",
+    "step": "step",
+    "invariant": "safety",
+    "tests": [
+      "collectionOptInTest",
+      "policyChangeFencesReadTest",
+      "policyChangeFencesHistoryTest",
+      "lockRedactsTest",
+      "secretNeverOpensTest",
+      "packageReplacementTest",
+      "historyExpiresTest",
+      "ownNotificationGateIndependentTest",
+      "nativeLockDropsRowsTest",
+      "browserLockRedactsRowsTest",
+      "changedPackageRequiresRemovalTest",
+      "foreignIntentCannotOpenTest",
+      "ongoingCannotDismissTest"
+    ],
+    "sources": [
+      "apps/app/src/browser/notification-store.ts",
+      "apps/app/src/browser/notifications.ts",
+      "apps/app/src/prototype/notifications-adapter.ts",
+      "android/app/src/main/java/ai/elizaresearch/alphaphone/NotificationAccess.java",
+      "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaNotificationListener.java",
+      "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaNotificationsPlugin.java",
+      "vendor/eliza/plugins/plugin-native-notifications/android/src/main/java/ai/eliza/plugins/notifications/NotificationMirror.java",
+      "vendor/eliza/plugins/plugin-native-notifications/android/src/main/java/ai/eliza/plugins/notifications/NotificationMirrorPolicy.java"
+    ],
+    "stateMapping": {
+      "enabled/paused/access/connected/selected/preview/historyEnabled": "independent collection, system permission, app selection, preview and history authority",
+      "policyRevision/epoch/readEpoch/rowEpoch/queuedEpoch": "reviewed policy updates, callback invalidation and exact displayed/action revision",
+      "signature/selectedSignature/sameUser/ownPackage/uidMatches": "pinned native package certificate, user and notification UID admission",
+      "native/locked/rowPresent/rowText": "native locked-row removal and browser locked metadata redaction",
+      "historyCount/historyAge/historySignature": "bounded 24-hour metadata history with signature pruning, storage errors and explicit clear",
+      "appEnabled/channelEnabled": "Alpha own-notification gates, independent of external collection"
+    },
+    "abstractions": [
+      "One representative external package and notification, signatures/revisions 0..2, policy epochs 0..4, two retained metadata rows and two time buckets representing the 24-hour boundary.",
+      "Persisted history is modeled only as metadata count, age and package signature. Its schema contains no title, message body, PendingIntent or provider key. Encryption and exact byte limits remain pinned implementation contracts.",
+      "The native branch drops all locked rows; the browser branch can show a redacted app label while locked. Native package replacement requires removal before selection can pin its new signature.",
+      "External notification posts are environmental events. The browser synthetic injection UI is admitted only by DevelopmentSurfaces; this specification performs no external actions."
+    ]
+  },
+  {
+    "path": "specs/quint/application/CallbackLanding.qnt",
+    "module": "CallbackLanding",
+    "init": "init",
+    "step": "step",
+    "invariant": "safety",
+    "tests": [
+      "validCodeTest",
+      "errorReturnTest",
+      "duplicateStateTest",
+      "wrongStateShapeTest",
+      "conflictingResultsTest",
+      "unsolicitedDescriptionTest",
+      "oversizedCodeTest",
+      "unknownParameterTest"
+    ],
+    "sources": [
+      "apps/app/public/delegation-return.html"
+    ],
+    "invariants": [
+      "TypeOK",
+      "QueryRemovedBeforeLink",
+      "OnlyValidReturnsExposed",
+      "InvalidReturnsHaveNoLink",
+      "OutputMatchesAcceptedKind",
+      "ErrorDetailsNotForwarded"
+    ],
+    "abstractions": [
+      "Query strings are finite validity classes for exact state shape, duplicates, size limits, result exclusivity and recognized keys.",
+      "Parsing, URL scrubbing and validation are ordered internal stages. The model records only link exposure and explicit handoff, without invoking an external handler."
+    ]
+  }
+]

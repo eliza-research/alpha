@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
-import {stripTypeScriptTypes} from 'node:module';
+import {stripTypeScriptTypes} from './support/strip-types.mjs';
 import vm from 'node:vm';
 const source=readFileSync(new URL('../apps/app/src/prototype/canonical-notes-ui.ts',import.meta.url),'utf8');
 const helper=source.slice(source.indexOf('function voiceAudio('),source.indexOf('function domainOf('));

@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
-import {stripTypeScriptTypes} from 'node:module';
+import {stripTypeScriptTypes} from './support/strip-types.mjs';
 import {loadBrowserModule} from './fixtures/browser-source.mjs';
 // A turn the agent recorded but could not finish: the sent bubble keeps the agent's user row
 // identity (one bubble after the conversation re-read), and a turn that failed after its action
@@ -82,4 +82,24 @@ test('after the identity is adopted a conversation re-read merges onto the sent 
  assert.equal(unadopted.filter(item=>item.from==='user'&&item.text===text).length,1);assert.equal(unadopted.find(item=>item.text===text).id,server);
  // A confirmed bubble with the same words is a separate message and is never replaced.
  assert.equal(merge([...sent.slice(0,1),{id:'kept',from:'user',text,messageBinding:binding}],delivered).filter(item=>item.from==='user'&&item.text===text).length,2);
+});
+
+test('a streamed Cloud billing refusal shows only Alpha\'s message, with the manage card on the same bubble',()=>{
+ const body=between(adapter,'          const failureKind=(e as {failureKind?:unknown})','\n        }\n        else if(this.live&&reconciling)');
+ const refused=adapter.match(/const REFUSED_BEFORE_OUTPUT=(new Set\([^)]*\));/)[1];
+ const run=(e,streamedText)=>{
+  let msgs=[{id:'user',from:'user',text:'hi'},...(streamedText===undefined?[]:[{id:'streamed',from:'agent',text:streamedText,streaming:true}])],said=0;
+  const shell={setState(update){const next=update({msgs,chat:'sheet'});msgs=next.msgs;},agentSay(){said++;}};
+  new Function('e','message','streamed','streamedId','planActionCard','connectionController','selectedCloudName','REFUSED_BEFORE_OUTPUT',ts(body)).call(shell,e,e.message,streamedText!==undefined,'streamed',()=>undefined,{getSnapshot:()=>({kind:'resident'})},()=>'Eliza Cloud',eval(refused));
+  return {msgs,said};
+ };
+ const upstream='The configured AI provider is out of credits or quota. Add credits or increase its quota, then try again.';
+ const refusal=Object.assign(new Error('Eliza Cloud declined this AI request.'),{failureKind:'insufficient_credits',serviceLimit:'billing-refused'});
+ const {msgs,said}=run(refusal,upstream);
+ assert.equal(msgs.length,2);assert.equal(msgs[1].text,'Eliza Cloud declined this AI request.','upstream failure prose is replaced, not appended');
+ assert.equal(msgs[1].card.managePlan,true);assert.equal(msgs[1].card.sub,'Opens in your browser. Nothing is purchased here.');
+ assert.equal(said,0,'no second bubble restates the refusal');
+ // A failure after real model output keeps the partial reply and appends the reason.
+ const late=run(Object.assign(new Error('The reply was cut off.'),{failureKind:'reply_generation_error'}),'Here is the first part');
+ assert.equal(late.msgs[1].text,'Here is the first part\n\nThe reply was cut off.');assert.equal(late.msgs[1].card,undefined);
 });

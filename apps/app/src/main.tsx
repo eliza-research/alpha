@@ -364,24 +364,22 @@ async function mountPhone() {
     })();
     await nativeAppUpdateGate;
   }
-  // Android owns its system bars; browser defaults to the standalone app.
-  launcherPresentation = isAndroid
-    ? await System.getBuildInfo().then(info => info.launcher === true).catch(() => false)
-    : devSurfacesEnabled && query.get('shell') === 'launcher';
   if (isAndroid) {
-    // AlphaAssistActivity (surfaceInfo) or an Activity opened with the 'alpha.assistant' extra.
-    const [surface, launch] = await Promise.all([
-      DailyApps.surfaceInfo().then(info => info.assistant === true).catch(() => false),
-      System.getLaunchInfo().then(info => info.assistant === true).catch(() => false),
-    ]);
-    assistantSurface = surface || launch;
     const refreshImage=async()=>{const image=await DeviceApps.platformCapabilities().catch(()=>({aospImage:false,contacts:false}));const admitted=image.aospImage===true&&image.contacts===true;admitImageContacts(admitted);const index=ORDER.indexOf('contacts');if(admitted&&index<0)ORDER.push('contacts');else if(!admitted&&index>=0)ORDER.splice(index,1);if(!admitted&&shell?.S().view==='contacts')shell.goHome();};
-    await refreshImage();
-    await applyDeviceLocale();
+    // One round of independent host reads before the first render. The assistant surface is
+    // AlphaAssistActivity only (surfaceInfo is class-gated natively), never a launch extra.
+    [launcherPresentation, assistantSurface] = await Promise.all([
+      System.getBuildInfo().then(info => info.launcher === true).catch(() => false),
+      DailyApps.surfaceInfo().then(info => info.assistant === true).catch(() => false),
+      refreshImage(),
+      applyDeviceLocale(),
+    ]);
     document.addEventListener('visibilitychange', () => { if (!document.hidden) void refreshImage().then(()=>applyDeviceLocale()).then(() => shell?.setState({ localeRevision: Date.now() })); });
-  } else if (devSurfacesEnabled && query.get('surface') === 'assistant') {
+  } else {
+    // The browser defaults to the standalone app; Android reads its launcher role above.
+    launcherPresentation = devSurfacesEnabled && query.get('shell') === 'launcher';
     // Development server only: preview the ACTION_ASSIST surface without an Android host.
-    assistantSurface = true;
+    if (devSurfacesEnabled && query.get('surface') === 'assistant') assistantSurface = true;
   }
   document.documentElement.classList.toggle('alpha-assistant-surface', assistantSurface);
   document.documentElement.classList.toggle('standalone-app', !launcherPresentation);

@@ -1,13 +1,13 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
-import {stripTypeScriptTypes} from 'node:module';
+import {stripTypeScriptTypes} from './support/strip-types.mjs';
 import vm from 'node:vm';
 const source=readFileSync('apps/app/src/runtime/connection-ui.tsx','utf8');
 const start=source.indexOf('let ownCloudServiceRestore:');
 const end=source.indexOf('/** `admitted`:',start);
 assert.ok(start>=0&&end>start);
-const code=stripTypeScriptTypes(source.slice(start,end),{mode:'transform'});
+const code=stripTypeScriptTypes(source.slice(start,end),{mode:'strip'});
 function fixture({credential={credentialId:'cloud-A',credentialReference:'ref-A'},verify}={}){
  const calls=[],selected={},session={};
  const box={active:selected,state:{session,providerStatus:{selected:true,provider:'cerebras'}},epoch:1,appRequests:new Set(),AbortController,DOMException,setTimeout,clearTimeout,service:null,
@@ -65,7 +65,7 @@ test('a delayed absent credential read cannot clear a newly adopted service',asy
 
 test('foreground own-mode checks never refresh a prior Cloud inference plan, and recovery blocks all checks',()=>{
  const start=source.indexOf('  recheckPlanOnReturn('),end=source.indexOf('  /**',start);
- const method=stripTypeScriptTypes('const controller={'+source.slice(start,end)+'};globalThis.check=controller.recheckPlanOnReturn;',{mode:'transform'});
+ const method=stripTypeScriptTypes('const controller={'+source.slice(start,end)+'};globalThis.check=controller.recheckPlanOnReturn;',{mode:'strip'});
  let services=0;const box={residentCloudFlow:()=>true,operation:null,sending:null,state:{busy:false,session:{}},Date,planManagementReturn:false,lastPlanRecheck:0,PLAN_RECHECK_INTERVAL_MS:1,ownProviderSelected:()=>true,restoreOwnProviderCloudServices:()=>{services++;},ownCloudServiceRestore:null,networkLostUnder:null,planCheckScope:()=>'scope',residentBinding:'cloud',entitlementRefresher:{refreshNow(){throw Error('Old Cloud plan must not be used');}}};
  vm.createContext(box);vm.runInContext(method,box);box.check();assert.equal(services,1);box.state.residentRecoveryReason='blocked';box.planManagementReturn=true;box.check();assert.equal(services,1);
 });
@@ -76,7 +76,7 @@ test('foreground own-mode checks never refresh a prior Cloud inference plan, and
 const returnCode=stripTypeScriptTypes([
  ...source.match(/^(function planCheckScope\(|let networkLostUnder\b|let planRecheck\b).*$/gm),
  'globalThis.controller={'+source.slice(source.indexOf('  recheckPlanOnReturn('),source.indexOf('  /**',source.indexOf('  recheckPlanOnReturn(')))+source.slice(source.indexOf('  networkChanged('),source.indexOf('  openCloudAccount('))+'};',
-].join('\n'),{mode:'transform'});
+].join('\n'),{mode:'strip'});
 function returning(options){
  const restore=fixture(options),{box}=restore;
  Object.assign(box,{residentCloudFlow:()=>true,operation:null,sending:null,Date,planManagementReturn:false,lastPlanRecheck:-Infinity,PLAN_RECHECK_INTERVAL_MS:60000,residentBinding:'unbound',update:patch=>{Object.assign(box.state,patch);},retractReadiness(){}});

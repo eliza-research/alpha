@@ -1,7 +1,7 @@
 import {build} from "esbuild";
 import {createRealtimeVoiceTiming} from '../vendor/eliza/packages/voice/src/realtime-voice-timing.ts';
 import {validateUuid} from '../vendor/eliza/packages/core/src/utils/uuid.ts';
-import test from 'node:test';import assert from 'node:assert/strict';import {readFileSync} from 'node:fs';import {stripTypeScriptTypes} from 'node:module';import vm from 'node:vm';
+import test from 'node:test';import assert from 'node:assert/strict';import {readFileSync} from 'node:fs';import {stripTypeScriptTypes} from './support/strip-types.mjs';import vm from 'node:vm';
 import {applyServerEvent,loopToListening,INITIAL_VOICE_SESSION_STATE} from '../vendor/eliza/packages/ui/src/voice/voice-session-state.ts';
 // Match the SDK reducer ordering plus pending/audio eligibility and terminal tombstones.
 // The real SDK accepts global interruption only for pending work, owned audio, or a local ACK.
@@ -30,7 +30,7 @@ const sdkOptions=options=>{
   },
  };
 };
-const source=stripTypeScriptTypes((readFileSync('apps/app/src/runtime/development-cartesia-flag.ts','utf8')+readFileSync('apps/app/src/runtime/development-cartesia-conversation.ts','utf8')).replace(/^import .*;\n/gm,'').replace(/^export \{.*\} from .*;\n/gm,'').replace("await import('@elizaos/ui/voice/voice-session-client')","await loadClient()").replace(/^export /gm,''),{mode:'transform'});
+const source=stripTypeScriptTypes((readFileSync('apps/app/src/runtime/development-cartesia-flag.ts','utf8')+readFileSync('apps/app/src/runtime/development-cartesia-conversation.ts','utf8')).replace(/^import .*;\n/gm,'').replace(/^export \{.*\} from .*;\n/gm,'').replace("await import('@elizaos/ui/voice/voice-session-client')","await loadClient()").replace(/^export /gm,''),{mode:'strip'});
 const binding={conversationId:'conversation',session:{agentId:'agent'}};
 async function setup({revoked=true,alreadyRetired=false,cloudRealtime=false,attestation={},askBefore=true,clientFactory}={}){
  let current=true,options,sdk,stops=0,history=0,manualMuted=false;const calls=[],errors=[],performed=[],notices=[];const preferenceWindow=new EventTarget();

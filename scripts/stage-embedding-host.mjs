@@ -70,6 +70,8 @@ export function verifyEmbeddingHost(productRoot,{allowAbsentRuntime=false,requir
 
  const manifest=JSON.parse(fs.readFileSync(path.join(productRoot,'android/embedding-host/qualified-host.json'),'utf8'));
  // Set by a pin move that changed a native build input or the engine gitlink; a new --receipt replaces the record.
+ // The explicit developer lane stays non-distributable, so pending requalification never admits a release.
+ if(manifest.requalification?.required===true&&allowAbsentRuntime)return {status:'requalification-pending',distributable:false};
  if(manifest.requalification?.required===true)throw Error('Embedding host requalification required at '+String(manifest.requalification.atPin).slice(0,12)+': '+manifest.requalification.reason);
  if(!/^[a-f0-9]{64}$/.test(manifest.qualificationReceiptSha256)||manifest.jniIdentityRelocated!==true)throw Error('Embedding host qualification missing or changed');
  verifyEmbeddingInputs(productRoot,manifest,{requireProducerInputs});
@@ -86,7 +88,12 @@ export function verifyEmbeddingHost(productRoot,{allowAbsentRuntime=false,requir
 }
 if(process.argv[1]&&path.resolve(process.argv[1])===fileURLToPath(import.meta.url)){
  const args=process.argv.slice(2);
- if(args[0]==='--verify'&&(args.length===1||args.length===2&&args[1]==='--allow-unpackaged-runtime')){const result=verifyEmbeddingHost(root,{allowAbsentRuntime:args.includes('--allow-unpackaged-runtime')});console.log(result.status==='not-packaged'?'No resident embedding host packaged; developer APK only.':'Qualified ARM64 embedding host and BGE384 bytes verified. No device execution claimed.');}
+ if(args[0]==='--verify'&&(args.length===1||args.length===2&&args[1]==='--allow-unpackaged-runtime')){
+  const result=verifyEmbeddingHost(root,{allowAbsentRuntime:args.includes('--allow-unpackaged-runtime')});
+  if(result.status==='not-packaged')console.log('No resident embedding host packaged; developer APK only.');
+  else if(result.status==='requalification-pending')console.log('Embedding host requalification pending; non-distributable developer APK only.');
+  else console.log('Qualified ARM64 embedding host and BGE384 bytes verified. No device execution claimed.');
+ }
  else if(args[0]==='--receipt'&&(args.length===2||args.length===4&&args[2]==='--library-root')){
   const libraryRoot=args.length===4?args[3]:undefined;
   const receipt=JSON.parse(fs.readFileSync(args[1],'utf8'));

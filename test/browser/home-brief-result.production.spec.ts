@@ -213,10 +213,11 @@ test('a verified empty Agent Calendar does not substitute device events', async 
   expect(await harness(page, f => f.unexpected)).toEqual([]);
 });
 
-for (const mode of ['stale-empty', 'future-empty'] as const) test(`an ${mode} Calendar read keeps the Home entry visible`, async ({page}) => {
+for (const mode of ['stale-empty', 'future-empty'] as const) test(`an ${mode} Calendar read withholds the unverified empty card`, async ({page}) => {
   await canonicalHome(page, mode);
-  await expect(calendarCard(page)).toBeVisible();
-  await expect(calendarCard(page)).not.toContainText(/Device-only event|Private device calendar/);
+  await expect(calendarCard(page)).toHaveCount(0);
+  await expect(home(page).locator('[data-alpha-home-date]')).toBeVisible();
+  await expect(home(page)).not.toContainText(/Device-only event|Private device calendar/);
   expect(await harness(page, f => f.calendar.requests)).toBe(0);
   expect(await harness(page, f => f.unexpected)).toEqual([]);
 });
@@ -227,8 +228,8 @@ test('Calendar settings retain canonical Home authority even when native device 
   await expect(card).toContainText('Agent calendar meeting');
   const before = await harness(page, f => f.calendar.lists);
   await button(page, 'Settings').click();
-  await button(page, 'Calendar').click();
-  const settings = page.locator('[data-settings-page="Calendar"]');
+  await button(page, 'Calendars').click();
+  const settings = page.locator('[data-settings-page="Calendars"]');
   // The current product has one Calendar; native rows remain covered by native/retained-source tests.
   await expect(settings.getByRole('button', {name:'Android calendars',exact:true})).toHaveCount(0);
   await expect(settings.getByRole('button', {name:'Agent Calendar',exact:true})).toHaveCount(0);
@@ -241,10 +242,10 @@ test('Calendar settings retain canonical Home authority even when native device 
 
 test('an event from another agent is not presented as this agent’s next event or as a verified empty calendar', async ({ page }) => {
   await canonicalHome(page, 'wrong-owner');
-  // A refused read is a failure with retry, never a verified empty calendar.
-  await expect(calendarCard(page)).toContainText('Calendar unavailable');
-  await expect(calendarCard(page).locator('[data-alpha-home-calendar-source]')).toHaveText('Open Calendar to retry');
-  await expect(calendarCard(page)).toHaveAttribute('aria-description', /another agent.*Open Calendar to retry\.$/);
-  await expect(calendarCard(page)).not.toContainText(/Agent calendar meeting|Device-only event|No upcoming events/);
+  // The invalid source yields no event card and never falls back to another calendar.
+  await expect(calendarCard(page)).toHaveCount(0);
+  await expect(home(page).locator('[data-alpha-home-date]')).toBeVisible();
+  await page.getByRole('button',{name:'Calendar',exact:true}).click();
+  await expect(page.getByRole('region',{name:'Calendar',exact:true})).toContainText(/another agent|Calendar unavailable/);
   expect(await harness(page, f => f.unexpected)).toEqual([]);
 });

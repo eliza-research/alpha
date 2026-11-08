@@ -1,6 +1,6 @@
 import fs from 'node:fs';
 import vm from 'node:vm';
-import {stripTypeScriptTypes} from 'node:module';
+import {stripTypeScriptTypes} from './support/strip-types.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {build} from 'esbuild';

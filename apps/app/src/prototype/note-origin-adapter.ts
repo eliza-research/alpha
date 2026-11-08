@@ -20,7 +20,7 @@ async function change(update:(index:NoteOriginIndex)=>NoteOriginIndex){
 }
 /** Reads the saved links once. A failed read shows no links; it never invents one. */
 export function loadNoteOrigins(){return loading??=readNoteOrigins().then(index=>{cache=index;for(const listener of listeners)listener();},()=>{loading=null;});}
-/** Reminders and in-app (browser) events are linked by their ids. Device calendar row ids are
+/** Reminders and in-app (browser) events are linked by their ids, Agent Calendar events by their canonical event key. Device calendar row ids are
  * provider-assigned and can be reused after a deletion, so a native event is linked by the
  * creationId Alpha saved it with, which the pinned calendar reader returns on events this app
  * created (elizaOS/eliza#35912). That id is a link, not proof of ownership: another app with
@@ -69,12 +69,12 @@ export function installNoteOriginAdapter(Component:Bag,views:Bag){
   if(origin.version===2)return canonicalOrigin(out,origin,api,openId);
   // The title is the note's current one. A link whose note is gone names no note at all.
   const known=olderNotesOpen(),live=known?resolveNoteOrigin(origin as NoteOrigin,olderNotes(api)):undefined,name=live?.status==='found'?noteOriginTitle(live.note):'';
-  out.ev.hasOrigin=true;out.ev.originLabel=!known?'From a voice note in Older notes':name?`From note: ${name}`:'From a note that is no longer in Notes';out.ev.originOpenLabel=name?`Open note ${name}`:'Open note';
+  out.ev.hasOrigin=true;out.ev.originLabel=!known?'From a voice note in Previous notes':name?`From note: ${name}`:'From a note that is no longer in Notes';out.ev.originOpenLabel=name?`Open note ${name}`:'Open note';
   out.ev.openOrigin=async()=>{
    if(opening)return;opening=true;
    try{
     const gone=()=>api.toast('The note this came from was deleted or replaced. Nothing was opened.');
-    if(!await openOlderNotes()){if(api.isActive()&&!document.hidden)api.toast('Older notes could not be opened. Nothing was changed.');return;}
+    if(!await openOlderNotes()){if(api.isActive()&&!document.hidden)api.toast('Previous notes could not be opened. Nothing was changed.');return;}
     if(!api.isActive()||document.hidden||api.get('calendar').open!==openId)return;
     const found=resolveNoteOrigin(origin as NoteOrigin,olderNotes(api));
     if(found.status!=='found'){gone();return;}

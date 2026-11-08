@@ -66,6 +66,7 @@ the required evidence rather than treating a successful APK build as acceptance.
 - [Working PRD](docs/prd.md)
 - [Detailed implementation plan](docs/implementation-plan.md)
 - [Architecture and upstream ownership](docs/architecture.md)
+- [Quint application-state models](specs/quint/README.md) and [migration report](docs/quint-migration-report.md)
 - [Requirements and open decisions](docs/decisions.md)
 - [Verification gates and evidence](docs/verification.md)
 - [Source/design provenance](docs/sources.md)
@@ -137,6 +138,8 @@ Select it explicitly with `--runtime-profile=cloud` for runtime staging and Andr
 builds (`agent:stage-android` and `android:build`). Renderer, native and packaged
 runtime admission must agree on the profile; test mocks and unpackaged runtimes
 are rejected. The default remains `native` with its existing qualification gates.
+Use the default `native` profile for on-device speech with Cloud text inference
+([measurements](docs/on-device-speech-2026-11-05.md)).
 The Talk button is the explicit voice start; it opens the voice surface and starts
 the microphone without a second Start Cloud voice button. The active surface keeps
 the Cloud upload and plan-usage disclosure visible. Account and conversation binding,
@@ -278,11 +281,17 @@ file flows, dialog accessibility, disclosed adapter fixtures and reference desig
 states. Reports/screenshots are in `test-results/browser-report` and
 `test-results/browser`. Browser CI runs independently of Android qualification.
 
-Use Node 24.15.0, the prepared source's pinned Bun version (currently 1.4.2), and JDK 21.
-`agent:prepare` checks Bun against the upstream `packageManager` before installing dependencies.
+Use Node 26.13.0 (`.nvmrc`), the prepared source's pinned Bun version (currently 1.4.2), and JDK 21.
+Node and Bun have separate jobs. Node and npm drive this repository's own tooling: Vite, Playwright,
+the `node --test` suite, Capacitor and the build scripts. Bun is the runtime of the Eliza agent that
+ships on the phone (`libeliza_bun.so`) and the tool upstream Eliza uses to build that agent bundle,
+so it is needed only to prepare or run the agent (`agent:prepare`, the local agent scripts).
+`agent:prepare` checks Bun against the upstream `packageManager` before installing dependencies,
+and `agent:stage-android` refuses to bundle with any other Bun (Bun 1.3.14 dropped modules from
+the mobile bundle, so every chat turn failed).
 Put that Bun version first on `PATH` for the build scripts; `ALPHA_BUN` may also select
-its absolute executable for preparation and nested tools. An older Bun can emit incompatible
-plugin imports during the runtime build. Native builds require Android SDK platform 36 and
+its absolute executable for preparation and nested tools.
+Native builds require Android SDK platform 36 and
 build-tools 36.0.0. Set `JAVA_HOME` and `ANDROID_HOME` on Linux; the scripts also
 recognize the usual macOS Homebrew JDK/Android SDK locations. The Gradle 8.13
 wrapper is hash-pinned. No Eliza root dependency installation or package

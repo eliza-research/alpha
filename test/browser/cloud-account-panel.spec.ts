@@ -3,7 +3,7 @@
 import {seedCompletedAccessSetup} from './flag-off-android';
 import {test,expect,type Page} from '@playwright/test';
 async function openInbox(page:Page){await page.locator('button[data-mobile-shell-tile][aria-label="Inbox"]').click();await page.getByRole('button',{name:'Connect Eliza Cloud',exact:true}).click();}
-// Signed out, an explicit account entry (Inbox Connect Eliza Cloud, Settings Eliza Cloud account & plan) is Alpha's
+// Signed out, an explicit account entry (Inbox Connect Eliza Cloud, Settings Eliza Cloud) is Alpha's
 // sign-in screen (explicitSignedOutCloudEntry); signed in, it is the approved Subscription sheet (H-37).
 const signInDialog=(page:Page)=>page.getByRole('dialog',{name:'Welcome to Alpha.',exact:true});
 const membershipSheet=(page:Page)=>page.getByRole('dialog',{name:'Subscription',exact:true});

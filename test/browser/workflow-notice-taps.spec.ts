@@ -15,7 +15,7 @@ for(const scenario of ['lookup-unavailable','lookup-unavailable-navigation','ask
    const agent=w.residentAgent=w.createResidentAgentPlugin({owner:()=>f.owner||'fixture-owner',agentId:'fixture-agent', providerStatus: {provider: 'elizacloud', configured: false}});
    if(scenario.startsWith('lookup-unavailable')){
     f.lookupUnavailable=true;f.lookupFailures=0;f.noticeToasts=[];
-    new MutationObserver(()=>{const shown=document.body?.innerText.match(/Workflow notifications? (?:retained|could not be checked)[^\n]*/)?.[0];if(shown&&!f.noticeToasts.includes(shown))f.noticeToasts.push(shown);}).observe(document,{subtree:true,childList:true,characterData:true});
+    new MutationObserver(()=>{const shown=document.body?.innerText.match(/Couldn’t check workflow notifications\. Try again\.|This notice belongs to a different agent connection\.|This run is no longer available\. Check Workflows\./)?.[0];if(shown&&!f.noticeToasts.includes(shown))f.noticeToasts.push(shown);}).observe(document,{subtree:true,childList:true,characterData:true});
    }
    const methods=(names:string[])=>names.map(name=>({name,rtype:'promise'}));
    w.Capacitor={PluginHeaders:[
@@ -94,7 +94,7 @@ for(const scenario of ['lookup-unavailable','lookup-unavailable-navigation','ask
  // One scenario fails the first owner-change withdrawal, which the next connection change repeats.
  await page.addInitScript(fault=>{(window as any).__ownerWithdrawalFault=fault;},scenario==='reconnect');
 
- await page.goto('/');await page.getByRole('button',{name:'Settings',exact:true}).click();await page.getByRole('button',{name:/Agent connection/}).click();await page.getByRole('button',{name:'Start local agent',exact:true}).click();await expect(page.locator('.alpha-connection-scrim')).toHaveCount(0);
+ await page.goto('/');await page.getByRole('button',{name:'Settings',exact:true}).click();await page.getByRole('button',{name:'Agent',exact:true}).click();await page.getByRole('button',{name:'Start local agent',exact:true}).click();await expect(page.locator('.alpha-connection-scrim')).toHaveCount(0);
  if(scenario==='builder-race'){await page.evaluate(()=>window.dispatchEvent(new Event('launcher-home')));await page.getByRole('button',{name:'Workflows',exact:true}).click();}
  await page.evaluate(async(scenario)=>{
   const {connectionController:c}=await import('/src/runtime/connection-ui.tsx');const s=c.getSnapshot().session!,b=c.getWorkflowClient()!,f=(window as any).deliveryFixture;
@@ -124,7 +124,7 @@ for(const scenario of ['lookup-unavailable','lookup-unavailable-navigation','ask
    await page.getByRole('button',{name:'Workflows',exact:true}).click();
    await page.getByRole('button',{name:/^Saved workflow notification/}).click();
   }else await page.evaluate(()=>{const f=(window as any).deliveryFixture;document.dispatchEvent(new Event('visibilitychange'));f.holdLookup=false;f.lookupRelease();});
-  const message='Workflow notifications could not be checked. Try again when Alpha is active.';
+  const message='Couldn’t check workflow notifications. Try again.';
   await expect(page.getByText(message,{exact:true})).toBeVisible();
   expect(await page.evaluate(()=>(window as any).deliveryFixture.noticeToasts)).toEqual([message]);
   expect(await page.evaluate(()=>(window as any).deliveryFixture.taps.map((tap:any)=>tap.runId))).toEqual(['run1','run2']);
@@ -183,7 +183,7 @@ for(const scenario of ['lookup-unavailable','lookup-unavailable-navigation','ask
   await expect(page.getByText('Verified retained result run1',{exact:true})).toHaveCount(0);
   expect(await page.evaluate(()=>(window as any).deliveryFixture.consumed?.length||0)).toBe(0);
   if(scenario==='reconnect'){
-   await page.getByRole('button',{name:/Agent connection/}).click();await page.getByRole('button',{name:'Start local agent',exact:true}).click();await expect(page.locator('.alpha-connection-scrim')).toHaveCount(0);
+   await page.getByRole('button',{name:'Agent',exact:true}).click();await page.getByRole('button',{name:'Start local agent',exact:true}).click();await expect(page.locator('.alpha-connection-scrim')).toHaveCount(0);
    await expect(page.getByText('Verified retained result run1',{exact:true})).toBeVisible();
   }
  }else if(scenario==='owner-change'){
@@ -191,13 +191,13 @@ for(const scenario of ['lookup-unavailable','lookup-unavailable-navigation','ask
   await expect.poll(()=>page.evaluate(()=>Boolean((window as any).deliveryFixture.release))).toBe(true);
   await page.evaluate(async()=>{const {connectionController:c}=await import('/src/runtime/connection-ui.tsx');await c.offline();const w=window as any,f=w.deliveryFixture;f.release();f.hold=false;f.owner='next-owner';
    // The toast is transient; record every notice text shown from here on.
-   w.__noticeToasts=[];new MutationObserver(()=>{const shown=document.body.innerText.match(/Workflow notification saved\.[^\n]*/)?.[0];if(shown&&!w.__noticeToasts.includes(shown))w.__noticeToasts.push(shown);}).observe(document.body,{subtree:true,childList:true,characterData:true});});
+   w.__noticeToasts=[];new MutationObserver(()=>{const shown=document.body.innerText.match(/This notice belongs to a different agent connection\.|This run is no longer available\. Check Workflows\./)?.[0];if(shown&&!w.__noticeToasts.includes(shown))w.__noticeToasts.push(shown);}).observe(document.body,{subtree:true,childList:true,characterData:true});});
   // Going offline suspends prior-owner notices before another owner may connect.
   await expect.poll(()=>page.evaluate(()=>(window as any).deliveryFixture.ownerWithdrawals)).toEqual([{owner:null},ownerFence('fixture-owner'),{owner:null}]);
-  await page.getByRole('button',{name:/Agent connection/}).click();await page.getByRole('button',{name:'Start local agent',exact:true}).click();await expect(page.locator('.alpha-connection-scrim')).toHaveCount(0);
+  await page.getByRole('button',{name:'Agent',exact:true}).click();await page.getByRole('button',{name:'Start local agent',exact:true}).click();await expect(page.locator('.alpha-connection-scrim')).toHaveCount(0);
   expect(await page.evaluate(async()=>(await import('/src/runtime/connection-ui.tsx')).connectionController.getSnapshot().session?.ownerId)).toBe('next-owner');
   // The first owner's retained tap never opens under the next owner, and nothing is consumed.
-  await expect.poll(()=>page.evaluate(()=>(window as any).__noticeToasts)).toEqual(['Workflow notification saved. Connect its original agent to open it.']);
+  await expect.poll(()=>page.evaluate(()=>(window as any).__noticeToasts)).toEqual(['This notice belongs to a different agent connection.']);
   await expect(page.getByText('Verified retained result run1',{exact:true})).toHaveCount(0);
   expect(await page.evaluate(()=>({taps:(window as any).deliveryFixture.taps.length,consumed:(window as any).deliveryFixture.consumed?.length||0}))).toEqual({taps:2,consumed:0});
  }else if(scenario==='navigation-race'){
@@ -206,7 +206,7 @@ for(const scenario of ['lookup-unavailable','lookup-unavailable-navigation','ask
   await page.evaluate(()=>(window as any).deliveryFixture.release());
   await expect(page.getByText('Verified retained result run1',{exact:true})).toHaveCount(0);
  }else{
-  await expect(page.getByText(/Workflow notification saved\./)).toBeVisible();
+  await expect(page.getByText(/This notice belongs to a different agent connection\.|This run is no longer available\. Check Workflows\./)).toBeVisible();
   expect(await page.evaluate(()=>(window as any).deliveryFixture.taps.length)).toBe(2);
   expect(await page.evaluate(()=>(window as any).deliveryFixture.consumed?.length||0)).toBe(0);
  }

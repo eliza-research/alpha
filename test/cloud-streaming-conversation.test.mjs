@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import vm from 'node:vm';
-import {stripTypeScriptTypes} from 'node:module';
+import {stripTypeScriptTypes} from './support/strip-types.mjs';
 import {cloudVoiceViewFixture} from './fixtures/cloud-voice-view.mjs';
 import {voiceFakeClock} from './fixtures/shared-batch-voice.mjs';
 

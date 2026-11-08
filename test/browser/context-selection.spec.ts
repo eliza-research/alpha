@@ -164,10 +164,14 @@ test.describe('mail',()=>{
    // An open app shows the dock's Type control; it opens the composer's textbox.
    await page.getByRole('group',{name:'Assistant controls'}).getByRole('button',{name:'Type',exact:true}).click();
    await chatComposer().fill(typed);
+   // The raised bar takes the first touch outside it and lowers to the pill; the draft stays
+   // (docs/ui-refresh-2026-11), so the next touch reaches Review.
+   await page.mouse.click(206,300);
+   await expect(page.getByRole('group',{name:'Assistant controls'}).getByRole('button',{name:'Type',exact:true})).toBeVisible();
   });
   await sharing.getByRole('button',{name:'Send reviewed email to agent',exact:true}).click();
   await expect.poll(()=>sent(page)).toHaveLength(1);
-  await expect(page.getByText('Shared email summary',{exact:true})).toBeVisible();
+  await expect(page.locator('[data-alpha-message-text]').filter({hasText:/^Shared email summary$/})).toBeVisible();
   await expect(chatComposer()).toHaveValue(typed);
   await page.waitForTimeout(500);
   await expect(chatComposer()).toHaveValue(typed);
@@ -208,7 +212,7 @@ test.describe('mail',()=>{
 test('Settings pages publish only their section slug; the root and other views publish none',async({page})=>{
  await offline(page);await page.goto('/');
  await page.getByRole('button',{name:'Settings',exact:true}).click();expect(await selectedObject(page)).toBeNull();
- await page.getByRole('button',{name:'Display',exact:true}).click();await expect.poll(()=>selectedObject(page)).toEqual({kind:'settings',id:'display'});
+ await page.getByRole('button',{name:'About',exact:true}).click();await expect.poll(()=>selectedObject(page)).toEqual({kind:'settings',id:'about'});
 });
 
 test.describe('capture',()=>{

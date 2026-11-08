@@ -6,7 +6,7 @@
  * and 409 downgrade run on top of it.
  */
 import {readFileSync} from 'node:fs';
-import {stripTypeScriptTypes} from 'node:module';
+import {stripTypeScriptTypes} from '../support/strip-types.mjs';
 import vm from 'node:vm';
 const file=new URL('../../apps/app/src/runtime/workflow-presentation.ts',import.meta.url);
 const probeMarker='/** Probe installed bridge code';
@@ -15,7 +15,7 @@ export function installWorkflowDeviceBindings(sandbox){
  const text=readFileSync(file,'utf8');
  const end=text.indexOf(probeMarker);
  if(end<0)throw new Error('workflow-presentation.ts no longer marks the native bridge probe');
- const source=stripTypeScriptTypes(text.slice(0,end).replace(/^import .*;\n/gm,'').replace(/export /g,''),{mode:'transform'});
+ const source=stripTypeScriptTypes(text.slice(0,end).replace(/^import .*;\n/gm,'').replace(/export /g,''),{mode:'strip'});
  vm.runInContext(source+';globalThis.workflowDeviceProtocol=workflowDeviceProtocol;globalThis.registerWorkflowDevice=registerWorkflowDevice;',vm.isContext(sandbox)?sandbox:vm.createContext(sandbox));
  return sandbox;
 }

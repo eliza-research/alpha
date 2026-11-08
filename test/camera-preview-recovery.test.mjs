@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
-import fs from 'node:fs';import vm from 'node:vm';import {stripTypeScriptTypes,createRequire} from 'node:module';
+import fs from 'node:fs';import vm from 'node:vm';import {createRequire} from 'node:module';
+import {stripTypeScriptTypes} from './support/strip-types.mjs';
 const require=createRequire(import.meta.url);const {JSDOM}=require('jsdom');
 // The adapter's camera session (design/view-refresh-2026-11/tla/camera-session, Design.cfg) run against the real shared
 // camera session (plugin-native-camera) with a synthetic camera bridge.

@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import vm from 'node:vm';
-import {stripTypeScriptTypes} from 'node:module';
+import {stripTypeScriptTypes} from './support/strip-types.mjs';
 const source=fs.readFileSync('apps/app/src/browser/voice.ts','utf8');
 const start=source.indexOf(' private savedSpeech?'),end=source.indexOf(' private clip(',start);
 assert(start>=0&&end>start);

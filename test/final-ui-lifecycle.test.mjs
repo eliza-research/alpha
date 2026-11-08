@@ -1,4 +1,4 @@
-import test from 'node:test';import assert from 'node:assert/strict';import {readFileSync} from 'node:fs';import {stripTypeScriptTypes} from 'node:module';import vm from 'node:vm';import {JSDOM} from 'jsdom';
+import test from 'node:test';import assert from 'node:assert/strict';import {readFileSync} from 'node:fs';import {stripTypeScriptTypes} from './support/strip-types.mjs';import vm from 'node:vm';import {JSDOM} from 'jsdom';
 const read=p=>readFileSync('apps/app/src/'+p,'utf8');
 const ts=s=>stripTypeScriptTypes(s,{mode:'transform'}).replace(/^export /gm,'');
 const between=(s,a,b)=>{const x=s.indexOf(a),y=s.indexOf(b,x);assert.ok(x>=0&&y>x,a);return s.slice(x,y);};

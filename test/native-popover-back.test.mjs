@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
-import {stripTypeScriptTypes} from 'node:module';
+import {stripTypeScriptTypes} from './support/strip-types.mjs';
 import vm from 'node:vm';
 const source=readFileSync('apps/app/src/prototype/agent-adapter.ts','utf8');
 const begin=source.indexOf('this.backHandler = (event: Event) => {'),end=source.indexOf("window.addEventListener('alpha-back', this.backHandler)",begin);

@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import vm from 'node:vm';
-import { stripTypeScriptTypes } from 'node:module';
+import { stripTypeScriptTypes } from '../test/support/strip-types.mjs';
 import { usableNavigationFix } from '../apps/app/src/maps/navigation-fix.ts';
 import { MapsController } from '../.eliza/client-features/plugins/plugin-maps/src/client/state.ts';
 import { SavedPlaces } from '../.eliza/client-features/plugins/plugin-maps/src/client/saved-places.ts';
@@ -14,7 +14,7 @@ import { MapsScreenController } from '../apps/app/src/maps/screen.ts';
 const ORIGIN = {latitude: 43.73, longitude: 7.42};
 const END = {latitude: 43.74, longitude: 7.42};
 const OFF_ROUTE = {latitude: 43.735, longitude: 7.43};
-const source = stripTypeScriptTypes(fs.readFileSync(new URL('../apps/app/src/prototype/maps-adapter.ts', import.meta.url), 'utf8').replace(/^import .*;\n/gm, '').replaceAll('export function ', 'function '), {mode: 'transform'});
+const source = stripTypeScriptTypes(fs.readFileSync(new URL('../apps/app/src/prototype/maps-adapter.ts', import.meta.url), 'utf8').replace(/^import .*;\n/gm, '').replace(/^export /gm, ''), {mode: 'strip'});
 
 // Execute the actual adapter/render callbacks with the real shared screen and domain controllers.
 // Only device, DOM and provider boundaries are fixtures: this does not establish physical GPS acceptance.

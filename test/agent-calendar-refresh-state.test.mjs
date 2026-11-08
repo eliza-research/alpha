@@ -1,15 +1,15 @@
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
-import {stripTypeScriptTypes} from 'node:module';
+import {stripTypeScriptTypes} from './support/strip-types.mjs';
 import test from 'node:test';
 // Entire real controller, with only its external client/editor imports replaced.
 // Reads and accepted writes use injected synthetic ports; zero provider/native I/O.
 const text=readFileSync('apps/app/src/runtime/agent-calendar.ts','utf8');
-const code=stripTypeScriptTypes(text.replace(/^import .*;\n/gm,'').replace(/^export /gm,''),{mode:'transform'});
+const code=stripTypeScriptTypes(text.replace(/^import .*;\n/gm,'').replace(/^export /gm,''),{mode:'strip'});
 const unexpected=()=>{throw Error('Unexpected editor/default client dependency');};
 const {AgentCalendar}=new Function('agentCalendarClient','eventEditorMutability','cancellationModeForEditorEvent',code+';return {AgentCalendar};')(unexpected,unexpected,unexpected);
 const view=readFileSync('apps/app/src/runtime/agent-calendar-view.ts','utf8');
-const homeCode=stripTypeScriptTypes(view.slice(view.indexOf('export function canonicalHomeCalendar(')).replace(/^export /,''),{mode:'transform'});
+const homeCode=stripTypeScriptTypes(view.slice(view.indexOf('export function canonicalHomeCalendar(')).replace(/^export /,''),{mode:'strip'});
 const home=new Function(homeCode+';return canonicalHomeCalendar;')();
 const defer=()=>{let resolve;const promise=new Promise(r=>resolve=r);return{promise,resolve};};
 const flush=async()=>{for(let i=0;i<30;i++)await Promise.resolve();};

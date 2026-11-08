@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
-import {stripTypeScriptTypes} from 'node:module';
+import {stripTypeScriptTypes} from '../test/support/strip-types.mjs';
 import vm from 'node:vm';
 import {DeviceActions} from '../apps/app/src/runtime/device-actions.ts';
 import {validateCameraCaptureResult} from '../.eliza/client-features/plugins/plugin-assistant/src/services/device-actions/camera-contract.ts';
@@ -58,7 +58,7 @@ function continuationFixture(){
  const session={sessionId:'session'},selected={actions},attempt={controller:new AbortController()};
  const state={session},pending={messageId:'message-one',selected,session,generation:7,conversationId:'conversation',client:{deliveredContext:()=>context},attempt,expiresAt:Date.now()+30000};
  const scope=vm.createContext({requestedCameraContinuation:pending,navigationContext:()=>context,document:{hidden:false},epoch:7,active:selected,state,conversationMemory:new Map([['key','conversation']]),conversationKey:()=> 'key',readDevicePreferences:async()=>({askBeforeAgentActions:false}),Date});
- vm.runInContext(stripTypeScriptTypes('globalThis.controller={'+controllerSource.slice(start,end)+'};',{mode:'transform'}),scope);
+ vm.runInContext(stripTypeScriptTypes('globalThis.controller={'+controllerSource.slice(start,end)+'};',{mode:'strip'}),scope);
  return {scope,context,pending,session,state,attempt,camera,run:(message='message-one')=>scope.controller.continueRequestedCamera(message,signal())};
 }
 const continued=continuationFixture();assert.equal((await continued.run())[0].status,'succeeded');assert.equal(continued.camera.calls,1);assert.equal((await continued.run()).length,0);assert.equal(continued.camera.calls,1);

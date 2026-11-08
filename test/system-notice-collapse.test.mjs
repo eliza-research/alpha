@@ -1,12 +1,12 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
-import {stripTypeScriptTypes} from 'node:module';
+import {stripTypeScriptTypes} from './support/strip-types.mjs';
 import {build} from 'esbuild';
 // Upstream's escalation service posts "Eliza needs attention" into client chat for any repeated
 // error (a Notes state the resident could not read at start produced one per boot), and history
 // replays every stored copy. Alpha shows at most the latest notice, only while it can be true.
-const ts=source=>stripTypeScriptTypes(source,{mode:'transform'});
+const ts=source=>stripTypeScriptTypes(source,{mode:'strip'});
 const bundle=await build({entryPoints:['apps/app/src/runtime/action-message-presentation.ts'],bundle:true,platform:'node',format:'esm',write:false});
 const notices=await import('data:text/javascript;base64,'+Buffer.from(bundle.outputFiles[0].text).toString('base64'));
 const {systemNoticeText}=await import('data:text/javascript;base64,'+Buffer.from(ts(fs.readFileSync('vendor/eliza/packages/core/src/types/system-notice.ts','utf8'))).toString('base64'));

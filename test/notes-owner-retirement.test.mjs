@@ -4,7 +4,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import vm from 'node:vm';
 import {fileURLToPath} from 'node:url';
-import {stripTypeScriptTypes} from 'node:module';
+import {stripTypeScriptTypes} from './support/strip-types.mjs';
 import {transformSync} from 'esbuild';
 const root=process.env.ALPHA_NOTES_BASE_ROOT??fileURLToPath(new URL('..',import.meta.url));
 const changed=process.env.ALPHA_NOTES_CANDIDATE_ROOT??root;

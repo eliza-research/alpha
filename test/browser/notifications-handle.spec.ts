@@ -93,6 +93,7 @@ test.describe('launcher', () => {
     // Home content scrolls independently. The dock is the explicit chat entry.
     await drag(page, { x: 206, y: 600 }, -260);
     await expect(page.locator('[data-screen]')).toHaveAttribute('data-alpha-chat-half', 'false');
+    await expect(page.locator('[data-alpha-layer="conversation"]')).toHaveAttribute('aria-hidden', 'true');
     await page.getByRole('button', { name: 'Open conversation', exact: true }).click();
     await expect(page.locator('[data-alpha-transcript]')).toBeVisible();
     await drag(page, { x: 206, y: 300 }, 260);
@@ -206,7 +207,8 @@ test.describe('launcher Home taller than the screen (landscape)', () => {
     // Empty Home, clear of every control and below the status bar, where vertical touch would scroll Home.
     const start = await page.evaluate(() => {
       const screen = document.querySelector('[data-screen]')!.getBoundingClientRect();
-      for (let y = screen.top + 90; y < screen.bottom; y += 4) for (let x = screen.left + 12; x < screen.right; x += 12) {
+      // Below Android's 44px status band in canvas pixels (the canvas is scaled to the screen).
+      for (let y = screen.top + Math.ceil(60 * screen.width / 412); y < screen.bottom; y += 4) for (let x = screen.left + 12; x < screen.right; x += 12) {
         const hit = document.elementFromPoint(x, y);
         if (hit?.closest('[data-alpha-layer="home"]') && !hit.closest('button,.scr')) return { x, y };
       }

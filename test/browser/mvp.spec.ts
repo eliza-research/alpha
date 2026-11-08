@@ -138,7 +138,9 @@ test('Notes rejects invalid text and cancels an empty file selection without cre
 });
 test('Scheduled digests traps focus, closes on native Back, and restores the triggering control',async({page})=>{
   await page.goto('/');await page.getByRole('button',{name:'Settings',exact:true}).click();
-  const trigger=page.getByRole('button',{name:'Scheduled digests',exact:true});
+  await page.getByRole('button',{name:'Apps',exact:true}).click();
+  await page.getByRole('button',{name:'Workflows',exact:true}).click();
+  const trigger=page.getByRole('button',{name:'Scheduled summaries',exact:true});
   await trigger.focus();await trigger.press('Enter');
   const dialog=page.getByRole('dialog',{name:'Scheduled digests',exact:true});
   await expect(dialog).toBeVisible();await expect(dialog).toBeFocused();
@@ -167,7 +169,7 @@ test('Unsigned recorder opens without a sign-in step and a refused microphone sh
 });
 test('Display theme survives reload and mock preview does not overwrite it',async({page})=>{
   await page.goto('/');await page.getByRole('button',{name:'Settings',exact:true}).click();
-  await page.getByRole('button',{name:'Display',exact:true}).click();
+  
   await page.getByRole('button',{name:'Theme: Dark',exact:true}).click();
   await expect.poll(()=>page.evaluate(()=>localStorage.getItem('alpha.appearance.v1'))).toBe('dark');
   await page.reload();
@@ -181,7 +183,7 @@ test('Display theme survives reload and mock preview does not overwrite it',asyn
 test('MVP mock account and privacy journeys exclude Contacts controls', async ({page}) => {
   const errors:string[]=[];page.on('pageerror',e=>errors.push(e.message));
   await page.goto('/?mode=mock&start=settings:privacy');
-  await expect(page.getByRole('button',{name:'Microphone',exact:true})).toBeVisible();
+  await expect(page.getByRole('button',{name:'Leaves this device',exact:true})).toBeVisible();
   await expect(page.getByRole('button',{name:'Contacts',exact:true})).toHaveCount(0);
   await page.getByRole('button',{name:'Microphone',exact:true}).click();
   await expect(page.getByRole('button',{name:'Alpha microphone',exact:true})).toBeVisible();
@@ -206,17 +208,20 @@ test('MVP mock account and privacy journeys exclude Contacts controls', async ({
 test('MVP mock digest and fallback advertise only retained views', async ({page}) => {
   await page.goto('/?mode=mock');
   const attention=page.getByRole('button',{name:'1 item needs your attention',exact:true});
-  await expect(attention).toHaveText('JP');
+  await expect(attention).toContainText('JP');
+  await expect(attention).toContainText('2 unread');
+  await expect(attention).toContainText('Maya Chen');
+  await expect(attention).toContainText('Priya Nair');
   await expect(attention).not.toContainText(/MC|PN/);
   await attention.click();
-  await expect(page.getByText('1 item needs your attention.',{exact:true})).toBeVisible();
+  await expect(page.locator('[data-alpha-message-text]').filter({hasText:/^1 item needs your attention\.$/})).toBeVisible();
   await page.goto('/?mode=mock&start=sheet');
   const composer=page.getByRole('textbox',{name:'Message Alpha',exact:true});
   await composer.fill('zzzzzz unknown request');await composer.press('Enter');
-  await expect(page.getByText(/I can't do that yet. Try opening Inbox/)).toBeVisible();
+  await expect(page.locator('[data-alpha-message-text]').filter({hasText:/I can't do that yet. Try opening Inbox/})).toBeVisible();
   await expect(page.getByText(/I can message, call|navigate, pay/)).toHaveCount(0);
   await composer.fill('catch me up');await composer.press('Enter');
-  await expect(page.getByText('1 item needs your attention.',{exact:true})).toBeVisible();
+  await expect(page.locator('[data-alpha-message-text]').filter({hasText:/^1 item needs your attention\.$/})).toBeVisible();
   await expect(page.getByRole('button',{name:/Still on for 3|Sent you the photos from Saturday/})).toHaveCount(0);
   await page.getByRole('button',{name:/JP Jordan Park Revised term sheet attached/}).click();
   await expect(page.getByRole('heading',{name:'Revised term sheet',exact:true})).toBeVisible();

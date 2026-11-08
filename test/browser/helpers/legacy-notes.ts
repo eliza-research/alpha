@@ -8,7 +8,7 @@ export async function openLegacyNotes(page:Page){
   if(!await m.browserNotesPort.read())await m.openBrowserNotes();
  });
  await selectLegacyNotes(page);
- await expect(page.getByRole('heading',{name:'Older notes',exact:true})).toBeVisible();
+ await expect(page.getByRole('heading',{name:'Previous notes',exact:true})).toBeVisible();
  await expect(page.getByRole('button',{name:'New note',exact:true})).toBeEnabled();
  await expect(page.getByText('Previous notes need a recovery review. Nothing was moved or changed.',{exact:true})).toHaveCount(0);
 }

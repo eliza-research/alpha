@@ -144,7 +144,7 @@ test('Cloud startup diagnostics keep bounded stages and status without carrying 
 
 test('Cloud startup diagnostics tolerate absent, outdated, and stalled native bridges',async()=>{
  const {readFileSync}=await import('node:fs');
- const {stripTypeScriptTypes}=await import('node:module');
+ const {stripTypeScriptTypes}=await import('./support/strip-types.mjs');
  const vm=await import('node:vm');
  const source=readFileSync(new URL('../apps/app/src/runtime/cloud-voice.ts',import.meta.url),'utf8');
  const start=source.indexOf('export async function readNativeCloudStreamTiming');
@@ -284,7 +284,7 @@ test('Cloud inference failures share one finite problem-log and Android export p
 });
 
 test('status inference read rejects retired resident sessions before recording',async()=>{
- const {readFileSync}=await import('node:fs');const {stripTypeScriptTypes}=await import('node:module');const vm=await import('node:vm');const {sanitizeCloudInferenceFailure}=await import('../apps/app/src/runtime/crash-log.ts');
+ const {readFileSync}=await import('node:fs');const {stripTypeScriptTypes}=await import('./support/strip-types.mjs');const vm=await import('node:vm');const {sanitizeCloudInferenceFailure}=await import('../apps/app/src/runtime/crash-log.ts');
  const source=readFileSync(new URL('../apps/app/src/runtime/connection-ui.tsx',import.meta.url),'utf8');const method=source.slice(source.indexOf('  async readResidentDiagnostics('),source.indexOf('  voiceTurnFailureMessage(')).trim().replace(/,$/,'');const code=stripTypeScriptTypes('async function '+method.slice('async '.length),{mode:'strip'});
  let release,calls=0;const pending=new Promise(resolve=>{release=resolve;});const context={active:{kind:'resident',remote:{request:async(path,body,signal)=>{calls++;assert.equal(path,'/api/status');assert.equal(body,undefined);assert.ok(signal instanceof AbortSignal);return pending;}}},state:{session:{sessionId:'resident'}},epoch:1,lastNativeVoiceInference:undefined,sanitizeCloudInferenceFailure,sanitizeNativeInferenceTiming,DOMException};
  const read=vm.runInNewContext('('+code+')',context),signal=new AbortController().signal;const result=read(signal);context.epoch=2;release({cloudInferenceFailure:{version:1,at:Date.now(),stage:'text',reason:'unknown',strictTools:[],schemaKeywords:[],schemaScanTruncated:false,prompt:secrets[0]}});await assert.rejects(result,{name:'AbortError'});assert.equal(calls,1);
@@ -297,7 +297,7 @@ test('status inference read rejects retired resident sessions before recording',
 });
 
 test('explicit inference refresh is isolated and abortable without unrelated capability reads',async()=>{
- const {readFileSync}=await import('node:fs');const {stripTypeScriptTypes}=await import('node:module');const vm=await import('node:vm');
+ const {readFileSync}=await import('node:fs');const {stripTypeScriptTypes}=await import('./support/strip-types.mjs');const vm=await import('node:vm');
  const source=readFileSync(new URL('../apps/app/src/prototype/settings-adapter.ts',import.meta.url),'utf8');const body=source.slice(source.indexOf('  async function refreshResidentDiagnostics(){'),source.indexOf('  async function refreshCapabilities(')).trim();const code=stripTypeScriptTypes(body,{mode:'strip'});
  let reads=0,records=0;const context={inferenceAbort:null,owner:{},AbortController,setTimeout:callback=>{queueMicrotask(callback);return 1;},clearTimeout:()=>{},connectionController:{readResidentDiagnostics:signal=>{reads++;return new Promise((_,reject)=>signal.addEventListener('abort',()=>reject(signal.reason),{once:true}));}},recordCloudInferenceFailure:()=>{records++;return true;},readCrashLog:()=>{throw Error('Unexpected log read after cancellation');},changed:()=>{throw Error('Unexpected update after cancellation');}};
  await vm.runInNewContext('('+code+')',context)();assert.equal(reads,1);assert.equal(records,0);assert.equal(context.inferenceAbort,null);
@@ -305,7 +305,7 @@ test('explicit inference refresh is isolated and abortable without unrelated cap
 });
 
 test('diagnostics export uses one status observation and drops timing after a resident session changes',async()=>{
- const {readFileSync}=await import('node:fs');const {stripTypeScriptTypes}=await import('node:module');const vm=await import('node:vm');
+ const {readFileSync}=await import('node:fs');const {stripTypeScriptTypes}=await import('./support/strip-types.mjs');const vm=await import('node:vm');
  const source=readFileSync(new URL('../apps/app/src/prototype/settings-adapter.ts',import.meta.url),'utf8');const body=source.slice(source.indexOf('  async function exportDiagnostics(api: Bag) {'),source.indexOf('  async function clearProblems(')).trim();
  const id='1b0c7a52-6d5e-4e0f-9a43-5c1d2e3f4a51';
  const voiceTiming={format:'alpha-voice-timing-v1',records:[{version:1,id,recordedAt:now,route:'local-agent',cold:false,entry:'conversation',marks:{send:0}}]};
@@ -318,7 +318,7 @@ test('diagnostics export uses one status observation and drops timing after a re
 });
 
 test('confirmed clear cancels an outstanding inference refresh before it can append',async()=>{
- const {readFileSync}=await import('node:fs');const {stripTypeScriptTypes}=await import('node:module');const vm=await import('node:vm');
+ const {readFileSync}=await import('node:fs');const {stripTypeScriptTypes}=await import('./support/strip-types.mjs');const vm=await import('node:vm');
  const source=readFileSync(new URL('../apps/app/src/prototype/settings-adapter.ts',import.meta.url),'utf8');
  const refresh=source.slice(source.indexOf('  async function refreshResidentDiagnostics(){'),source.indexOf('  async function refreshCapabilities(')).trim();
  const clear=source.slice(source.indexOf('  async function clearProblems(api: Bag) {'),source.indexOf('  async function refresh()')).trim();

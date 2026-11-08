@@ -6,7 +6,7 @@ export function openRetainedDataNotice(heading:string,signal?:AbortSignal){
  const dialog=current=document.createElement('dialog'),previous=document.activeElement as HTMLElement|null;
  dialog.setAttribute('aria-label',heading);dialog.style.cssText='box-sizing:border-box;width:min(400px,94vw);max-height:85dvh;overflow:auto;padding:24px;border:0;border-radius:20px;background:var(--bg,#fff);color:var(--fg,#111);font:16px/1.5 system-ui';
  const title=document.createElement('h2');title.textContent=heading;
- const text=document.createElement('p');text.textContent='Saved data and recoverable drafts are kept in Alpha. Notes can resume unsaved edits after you free space by deleting unneeded notes or emptying Trash. Conflicting drafts are retained. App-data import, export and backup are unavailable. To erase all local Alpha data, use Reset Alpha data in Android Alpha Settings; this cannot be undone.';
+ const text=document.createElement('p');text.textContent='Saved data and recoverable drafts are kept in Alpha. Conflicting drafts are retained. App-data import, export and backup are unavailable. To erase all local Alpha data, use Reset Alpha data in Android Alpha Settings; this cannot be undone.';
  const close=document.createElement('button');close.textContent='Close';close.style.cssText='min-height:44px;padding:10px;font:inherit';
  const dispose=()=>{signal?.removeEventListener('abort',dispose);window.removeEventListener('pagehide',dispose);window.removeEventListener('alpha-back',back,true);document.removeEventListener('visibilitychange',hidden);dialog.remove();if(current===dialog)current=undefined;previous?.focus();};
  const back=(event:Event)=>{event.preventDefault();event.stopImmediatePropagation();dispose();},hidden=()=>{if(document.hidden)dispose();};

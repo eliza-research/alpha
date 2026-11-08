@@ -36,22 +36,23 @@ for(const theme of ['light','dark'])test(`Home Inbox uses cached unread subjects
 });
 
 test('Home Inbox distinguishes complete empty results from partial loaded results',async({page})=>{
- await fixture(page);await page.evaluate(()=>{const f=(window as any).homeInboxFixture;f.rows=[];f.more=true;});await page.getByRole('button',{name:'Inbox',exact:true}).click();await expect(page.getByText('Your Inbox is empty',{exact:true})).toBeVisible();await returnToApps(page);await expect(tile(page)).toContainText('Recent email');await expect(tile(page)).not.toContainText('No unread');
+ await fixture(page);await page.evaluate(()=>{const f=(window as any).homeInboxFixture;f.rows=[];f.more=true;});await page.getByRole('button',{name:'Inbox',exact:true}).click();await expect(page.getByText('Your Inbox is empty',{exact:true})).toBeVisible();await returnToApps(page);await expect(tile(page)).toHaveCount(0);await expect(page.getByRole('region',{name:'Home',exact:true})).not.toContainText('No unread');
  await page.evaluate(()=>{(window as any).homeInboxFixture.more=false;});await page.getByRole('button',{name:'Inbox',exact:true}).click();await page.getByRole('button',{name:'Refresh inbox',exact:true}).click();await expect(page.getByText('Your Inbox is empty',{exact:true})).toBeVisible();await returnToApps(page);await expect(tile(page)).toHaveCount(0);await expect(page.getByRole('button',{name:'Inbox',exact:true})).toBeVisible();
 });
 
-test('Home Inbox points to Connections before a connection and never reads mail',async({page})=>{
- await page.addInitScript(()=>{localStorage.setItem('alpha.connection.selection.v1',JSON.stringify({kind:'offline'}));localStorage.setItem('alpha.startup-permissions.v1',JSON.stringify({dismissed:true,attempted:{}}));});await page.goto('/');await expect(tile(page)).toHaveAccessibleName('Connect email');await expect(tile(page).locator('[data-overview-part="count"]')).toHaveText('');await expect(tile(page)).not.toContainText('View email accounts');await expect(tile(page)).not.toContainText('No unread');
- await tile(page).click();await expect(page.getByRole('heading',{name:'Connections',exact:true})).toBeVisible();
+test('Home hides unconnected Inbox and retains Google setup in Settings',async({page})=>{
+ await page.addInitScript(()=>{localStorage.setItem('alpha.connection.selection.v1',JSON.stringify({kind:'offline'}));localStorage.setItem('alpha.startup-permissions.v1',JSON.stringify({dismissed:true,attempted:{}}));});await page.goto('/');
+ await expect(tile(page)).toHaveCount(0);await expect(page.locator('[data-alpha-home-date]')).toBeVisible();
+ await page.getByRole('button',{name:'Settings',exact:true}).click();await expect(page.getByRole('button',{name:'Google',exact:true})).toBeVisible();
 });
 
 test('Home Inbox retains failure and retires cached subjects on owner change',async({page})=>{
- await fixture(page);await load(page);await page.getByRole('button',{name:'Inbox',exact:true}).click();await expect(page.getByRole('button',{name:/Unread, Synthetic sender A/})).toBeVisible();await page.evaluate(()=>(window as any).homeInboxFixture.fail=true);await page.getByRole('button',{name:'Refresh inbox',exact:true}).click();await expect(page.getByRole('button',{name:'Retry',exact:true})).toBeVisible();await returnToApps(page);await expect(tile(page)).toContainText('Open to retry');await expect(tile(page)).not.toContainText('No unread');
- await page.evaluate(async()=>{(window as any).homeInboxFixture.owner='b';(await import('/src/runtime/connection-ui.tsx')).connectionController.close();});await expect(tile(page)).not.toContainText('Synthetic quarterly planning subject');await expect(tile(page)).not.toContainText('2 unread');
+ await fixture(page);await load(page);await page.getByRole('button',{name:'Inbox',exact:true}).click();await expect(page.getByRole('button',{name:/Unread, Synthetic sender A/})).toBeVisible();await page.evaluate(()=>(window as any).homeInboxFixture.fail=true);await page.getByRole('button',{name:'Refresh inbox',exact:true}).click();await expect(page.getByRole('button',{name:'Retry',exact:true})).toBeVisible();await returnToApps(page);await expect(tile(page)).toContainText('Open to retry');await expect(page.getByRole('region',{name:'Home',exact:true})).not.toContainText('No unread');
+ await page.evaluate(async()=>{(window as any).homeInboxFixture.owner='b';(await import('/src/runtime/connection-ui.tsx')).connectionController.close();});await expect(page.getByRole('region',{name:'Home',exact:true})).not.toContainText('Synthetic quarterly planning subject');await expect(page.getByRole('region',{name:'Home',exact:true})).not.toContainText('2 unread');
 });
 
 test('Home Inbox does not publish a cancelled delayed load as empty or fetched',async({page})=>{
- await fixture(page);await page.evaluate(()=>(window as any).homeInboxFixture.hold=true);await page.getByRole('button',{name:'Inbox',exact:true}).click();await expect.poll(()=>page.evaluate(()=>typeof(window as any).homeInboxFixture.release)).toBe('function');await returnToApps(page);await expect(tile(page)).toContainText('Open to load email');await expect(tile(page)).not.toContainText('No unread');await page.evaluate(()=>(window as any).homeInboxFixture.release());await expect(tile(page).locator('[data-alpha-home-inbox-subjects]')).toHaveCount(0);expect(await page.evaluate(()=>(window as any).homeInboxFixture.reads)).toBe(1);
+ await fixture(page);await page.evaluate(()=>(window as any).homeInboxFixture.hold=true);await page.getByRole('button',{name:'Inbox',exact:true}).click();await expect.poll(()=>page.evaluate(()=>typeof(window as any).homeInboxFixture.release)).toBe('function');await returnToApps(page);await expect(tile(page)).toHaveCount(0);await expect(page.getByRole('region',{name:'Home',exact:true})).not.toContainText('No unread');await page.evaluate(()=>(window as any).homeInboxFixture.release());await expect(tile(page).locator('[data-alpha-home-inbox-subjects]')).toHaveCount(0);expect(await page.evaluate(()=>(window as any).homeInboxFixture.reads)).toBe(1);
 });
 
 for(const scenario of ['recent','expired','owner-change-during-restore'] as const)test(`Home restores only its own saved Inbox while one background header read is pending: ${scenario}`,async({page})=>{
@@ -82,15 +83,15 @@ for(const scenario of ['recent','expired','owner-change-during-restore'] as cons
  });
  await page.evaluate(()=>new Promise<void>(resolve=>requestAnimationFrame(()=>requestAnimationFrame(()=>resolve()))));
  if(scenario!=='recent'){
-  await expect(tile(page)).not.toContainText('Synthetic quarterly planning subject');
-  await expect(tile(page)).not.toContainText('2 unread');
-  await expect(tile(page)).not.toContainText('No unread');
+  await expect(page.getByRole('region',{name:'Home',exact:true})).not.toContainText('Synthetic quarterly planning subject');
+  await expect(page.getByRole('region',{name:'Home',exact:true})).not.toContainText('2 unread');
+  await expect(page.getByRole('region',{name:'Home',exact:true})).not.toContainText('No unread');
  }else{
   await expect(tile(page)).toContainText('Synthetic quarterly planning subject');
   await expect(tile(page)).toContainText('2 unread');
   await page.evaluate(async()=>{(window as any).homeInboxFixture.owner='b';(await import('/src/runtime/connection-ui.tsx')).connectionController.close();});
-  await expect(tile(page)).not.toContainText('Synthetic quarterly planning subject');
-  await expect(tile(page)).not.toContainText('2 unread');
+  await expect(page.getByRole('region',{name:'Home',exact:true})).not.toContainText('Synthetic quarterly planning subject');
+  await expect(page.getByRole('region',{name:'Home',exact:true})).not.toContainText('2 unread');
  }
  await expect.poll(()=>page.evaluate(()=>(window as any).homeInboxFixture.reads)).toBeGreaterThan(0);
  expect(await page.evaluate(()=>(window as any).homeInboxFixture.bodyReads??0)).toBe(0);
@@ -138,7 +139,7 @@ for(const failOld of [false,true])test(`Home retires another owner's delayed ${f
   // The real warmup awaits this same response; its synchronous acceptance/catch runs before this continuation.
   await new Promise<void>(resolve=>queueMicrotask(resolve));});
  await expect.poll(()=>page.evaluate(()=>(window as any).homeInboxFixture.aborted)).toContain('a');
- await expect(tile(page)).not.toContainText('Synthetic quarterly planning subject');await expect(tile(page)).toContainText('Owner B current summary');
+ await expect(page.getByRole('region',{name:'Home',exact:true})).not.toContainText('Synthetic quarterly planning subject');await expect(tile(page)).toContainText('Owner B current summary');
  expect(await page.evaluate(()=>(window as any).homeInboxFixture.bodyReads??0)).toBe(0);
 });
 
@@ -149,7 +150,7 @@ for(const policy of ['ambiguous','revoked-choice','no-read-grant'] as const)test
   if(policy==='revoked-choice'){const {saveGmailAccountChoice}=await import('/src/runtime/gmail-account-selection.ts');saveGmailAccountChoice((await import('/src/runtime/connection-ui.tsx')).connectionController.getSnapshot().cloudAccount,'missing-grant');}
  },policy);await notifyHomeOwner(page);
  await expect.poll(()=>page.evaluate(()=>(window as any).homeInboxFixture.accountReads)).toBe(1);
- await expect(tile(page)).not.toContainText('No unread');await expect(tile(page)).not.toContainText('Synthetic quarterly planning subject');
+ await expect(page.getByRole('region',{name:'Home',exact:true})).not.toContainText('No unread');await expect(page.getByRole('region',{name:'Home',exact:true})).not.toContainText('Synthetic quarterly planning subject');
  expect(await page.evaluate(()=>(window as any).homeInboxFixture.reads)).toBe(0);
 });
 
@@ -173,7 +174,7 @@ for(const bindingChange of ['no-organization','new-credential'] as const)test(`H
  await expect(tile(page)).toContainText('Synthetic quarterly planning subject');
  if(bindingChange==='new-credential'){
   await page.evaluate(()=>{const f=(window as any).homeInboxFixture;f.credential='replacement-credential';f.rows=f.rows.map((m:any)=>({...m,subject:'New credential headers'}));});await notifyHomeOwner(page);
-  await expect(tile(page)).toContainText('New credential headers');await expect(tile(page)).not.toContainText('Synthetic quarterly planning subject');
+  await expect(tile(page)).toContainText('New credential headers');await expect(page.getByRole('region',{name:'Home',exact:true})).not.toContainText('Synthetic quarterly planning subject');
  }
  expect(await page.evaluate(()=>(window as any).homeInboxFixture.bodyReads??0)).toBe(0);
 });
@@ -182,7 +183,7 @@ test('a foreground metadata recheck withdraws a revoked read grant without fetch
  await fixture(page);await notifyHomeOwner(page);await expect(tile(page)).toContainText('Synthetic quarterly planning subject');
  await page.evaluate(()=>{const f=(window as any).homeInboxFixture;f.accounts=[{connectionId:'grant-a',label:'Revoked mailbox',connected:true,grantedCapabilities:[]}];const now=Date.now;Date.now=()=>now()+61000;document.dispatchEvent(new Event('visibilitychange'));});
  await expect.poll(()=>page.evaluate(()=>(window as any).homeInboxFixture.accountReads)).toBe(2);
- await expect(tile(page)).not.toContainText('Synthetic quarterly planning subject');await expect(tile(page)).not.toContainText('No unread');
+ await expect(page.getByRole('region',{name:'Home',exact:true})).not.toContainText('Synthetic quarterly planning subject');await expect(page.getByRole('region',{name:'Home',exact:true})).not.toContainText('No unread');
  expect(await page.evaluate(()=>(window as any).homeInboxFixture.reads)).toBe(1);
  expect(await page.evaluate(()=>(window as any).homeInboxFixture.bodyReads??0)).toBe(0);
 });

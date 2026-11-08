@@ -1,3 +1,4 @@
+import {openConnectionDiagnostics} from './helpers/connection-diagnostics';
 import { expect, type Page } from '@playwright/test';
 import {openCanonicalCalendarForm} from './helpers/canonical-calendar';
 import {openLegacyNotes,openLegacyAttachment} from './helpers/legacy-notes';
@@ -97,6 +98,8 @@ export const LIVE_STATES: State[] = [
   live('Settings display', ['Settings', 'General', 'Display']),
   live('Settings privacy', ['Settings', 'Privacy']),
   live('Settings about', ['Settings', 'About']),
+  live('Settings problem log', ['Settings', 'About', 'Problem log']),
+  live('Settings licenses', ['Settings', 'About', 'Open source licenses']),
   live('Settings scheduled summaries', ['Settings', 'Apps', 'Workflows', 'Scheduled summaries']),
   live('Settings app permissions', ['Settings', 'Privacy', 'App permissions']),
   // The remaining Settings pages, and each app's open menu, search field and editor.
@@ -141,7 +144,7 @@ export const MOCK_STATES: State[] = [
   'notes', 'notes:editor', 'notes:voice',
   'files', 'files:folder', 'files:preview',
   'workflows', 'workflows:flow', 'workflows:run', 'workflows:failed', 'workflows:new',
-  'settings', 'settings:accounts', 'settings:adding', 'settings:privacy',
+  'settings',
 ].map(start => mock(start, [], SUBVIEW[start])).concat([
   // Subviews, menus, sheets and search fields one or two taps inside a view.
   mock('inbox', ['Search email']),
@@ -167,14 +170,13 @@ export const MOCK_STATES: State[] = [
   // Deleting a fixture file shows the toast with Undo over the folder.
   mock('files:preview', ['Delete file']),
   mock('workflows:flow', ['Change'], 'workflows-builder'),
-  // The builder's trigger and step sheets, and the Settings connection sheet.
+  // The builder's trigger and step sheets. (Settings' Connections page and its per-service sheets
+  // were removed; the Google accounts panel is swept live as 'Settings Google'.)
   mock('workflows', ['New automation', 'Edit When step'], 'workflows-builder'),
   mock('workflows:new', ['Add Read step'], 'workflows-builder'),
-  mock('settings', ['Connections', 'Slack']),
-  mock('settings', ['Character']),
-  mock('settings', ['Connections']),
-  mock('settings', ['Notifications']),
-  mock('settings:accounts', ['you@gmail.example']),
+  mock('settings', ['About']),
+  // Calendars exists only in the live Settings adapter. Its accessibility audits
+  // remain in the live Settings calendars state above, rather than a nonexistent mock page.
 ]);
 
 /**
@@ -245,8 +247,7 @@ export const CONNECTED_STATES: State[] = [
   connected('Inbox long subject', [/^Unread, Synthetic Sender C/], { shows: 'inbox-detail' }),
   connected('Inbox compose', ['Compose'], { shows: 'inbox-composing' }),
   connected('Settings', ['Settings'], { home: true }),
-  connected('Settings accounts', ['Settings', 'Accounts'], { home: true }),
-  connected('Settings connections', ['Settings', 'Connections'], { home: true }),
+  connected('Settings Google', ['Settings', 'Google'], { home: true }),
 ];
 
 /** Live states that exist only behind the one Developer gate: the development server opened with ?tools=1. */
@@ -397,7 +398,7 @@ export const LAUNCHER_STATES: State[] = [
   launcher('Files', ['Files']),
   launcher('Workflows', ['Workflows']),
   launcher('Settings', ['Settings']),
-  launcher('Settings display', ['Settings', 'Display']),
+  launcher('Settings about', ['Settings', 'About']),
 ];
 
 /** A seeded local calendar (browser store), so the Calendar view has events to audit. */
@@ -463,7 +464,7 @@ const developmentAgent = (name: string, conversation: boolean): State => ({
   open: async (page, theme) => {
     await page.goto(`/?mode=dev&theme=${theme || 'light'}`);
     await page.getByRole('button', { name: 'Settings', exact: true }).click();
-    await page.getByRole('button', { name: 'Agent connection', exact: true }).click();
+    await openConnectionDiagnostics(page);
     await page.getByRole('button', { name: 'Connect development profile', exact: true }).click();
     await expect(page.getByRole('dialog', { name: 'Development connections', exact: true })).toHaveCount(0);
     await expect.poll(() => page.evaluate(async () => !!(await import('/src/runtime/connection-ui.tsx' as string)).connectionController.getSnapshot().session), { timeout: 15_000 }).toBe(true);

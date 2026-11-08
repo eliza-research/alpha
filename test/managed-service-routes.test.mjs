@@ -1,5 +1,5 @@
 import {readFileSync} from 'node:fs';
-import {stripTypeScriptTypes} from 'node:module';
+import {stripTypeScriptTypes} from './support/strip-types.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 const {managedServiceRequest:allowed,mapsRequestIdentity}=await import('../apps/app/src/runtime/managed-service-routes.ts');

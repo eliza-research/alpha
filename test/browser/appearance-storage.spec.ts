@@ -3,7 +3,7 @@ const key='alpha.appearance.v1';
 const theme=(page:Page)=>page.locator('.os').evaluate(el=>getComputedStyle(el).getPropertyValue('--bg').trim());
 async function choose(page:Page,name:'System'|'Light'|'Dark'){
  await page.getByRole('button',{name:'Settings',exact:true}).click();
- await page.getByRole('button',{name:'Display',exact:true}).click();
+ // Theme sits on Settings' top level (docs/ui-refresh-2026-11).
  await page.getByRole('button',{name:'Theme: '+name,exact:true}).click();
 }
 test.beforeEach(async({context})=>context.addInitScript(()=>localStorage.setItem('alpha.connection.selection.v1',JSON.stringify({kind:'offline'}))));

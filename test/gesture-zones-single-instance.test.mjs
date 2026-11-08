@@ -21,6 +21,7 @@ test('Android\'s shade is the only shade: the swipe handler asks Android, never 
   assert.doesNotMatch(swipe, /shade: true/, 'no swipe sets a panel open directly');
   assert.doesNotMatch(swipe, /this\.openShade\(\)/, 'no swipe opens the development stand-in directly');
   assert.doesNotMatch(swipe, /g\.y < 90/, 'the top-edge band is not a gesture zone of Alpha');
+  assert.doesNotMatch(swipe, /raise-assistant[^;]*chat: "sheet"/, 'only the dock opens the chat: a swipe up on Home content opens nothing');
   assert.match(model, /pull: pullStart\(e\.target\)/);
   // The development stand-in opens only in a build that has it.
   assert.match(model, /openShade\(\) \{\s*var S = this\.S\(\);\s*if \(!this\.simulatedShade\(\) \|\| S\.screen !== "home" \|\| S\.shade\) return;/);

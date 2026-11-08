@@ -25,6 +25,7 @@ test('Photos QA emits only fixed debug enum markers; exception payloads and rele
  static class PhotosPlugin {
  ${declaration(base,'public enum Diagnostic ')}
  }
+ static class PhotosPlugin extends PermittedPhotosPlugin {}
  ${declaration(source,'static void qaMarker(PhotosPlugin.Diagnostic marker)')}
  static void diagnostic(PhotosPlugin.Diagnostic marker){qaMarker(marker);}
  static void diagnosticReadFailure(Exception failure){qaMarker(PhotosPlugin.Diagnostic.readFailure(failure));}

@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import vm from 'node:vm';
-import {stripTypeScriptTypes} from 'node:module';
+import {stripTypeScriptTypes} from './support/strip-types.mjs';
 import {cloudVoiceViewFixture} from './fixtures/cloud-voice-view.mjs';
 import {voiceFakeClock} from './fixtures/shared-batch-voice.mjs';
 
@@ -253,6 +253,7 @@ test('on-device live voice: the model acknowledgement plays through on-device sp
  const f=onDeviceLiveFixture();
  try{
   const input=await liveTurn(f,1300);
+  assert.equal(f.speechWarmups,1,'the native speech output is warmed before the turn');
   progress(input);await f.clock.flush();progress(input);await f.clock.flush();
   assert.deepEqual(f.s.spoken(),[ACK]);
   f.releaseReply();await f.clock.flush();
@@ -402,6 +403,7 @@ test('on-device batch: the model acknowledgement plays through on-device speech 
  try{
   await f.shell.startVoice();await f.clock.flush();await f.clock.advance(700);f.peak=0;await f.clock.advance(1200);
   assert.equal(f.sends,1);assert.equal(f.activeRecording,null,'the clip capture is retired before any cue');
+  assert.equal(f.speechWarmups,1,'the native speech output is warmed before the turn');
   const input=f.sendInputs[0];
   progress(input);await f.clock.flush();progress(input);progress(input,{label:'Different later words.'});await f.clock.flush();
   assert.deepEqual(f.s.spoken(),[ACK]);

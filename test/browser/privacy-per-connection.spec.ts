@@ -44,7 +44,7 @@ async function nativeStub(page: Page, scenario: Scenario, options: { strayKeyInS
         { name: 'AlphaConnection', methods: methods(['secureRead', 'secureWrite','secureCompareExchange', 'secureRemove', 'request', 'cancel', 'addListener', 'removeListener', 'pauseNotificationCollection']) },
         { name: 'AlphaActionJournal', methods: methods(['list']) },
         { name: 'ElizaSystem', methods: methods(['getBuildInfo']) },
-        { name: 'AlphaDevice', methods: methods(['snapshot']) },
+        { name: 'AlphaDevice', methods: methods(['snapshot','openSettings']) },
       ],
       nativeCallback: agent.nativeCallback,
       nativePromise: async (plugin: string, method: string, input: any) => {
@@ -57,7 +57,7 @@ async function nativeStub(page: Page, scenario: Scenario, options: { strayKeyInS
           if (method === 'getStatus') return respond({ packaged: true, state: 'stopped', serviceActive: false, socketListening: false });
           if (method === 'start') return respond({ state: 'ready' });
           if (method === 'stop') return respond({ state: 'stopping' });
-          if (method === 'providerStatus') return respond({ provider: provider.name, configured: true, model: provider.model, ...(strayKeyInStatus ? { apiKey: provider.key, key: provider.key } : {}) });
+          if (method === 'providerStatus') return respond({ provider: provider.name, configured: true, selected: provider.name === 'cerebras', voiceConfigured: false, model: provider.model, ...(strayKeyInStatus ? { apiKey: provider.key, key: provider.key } : {}) });
           if (method === 'request') {
             let body: any;
             if (input.path === '/api/auth/me') body = { identity: { kind: 'owner', id: 'fixture-owner' }, access: { role: 'OWNER', mode: 'session' } };
@@ -85,6 +85,7 @@ async function nativeStub(page: Page, scenario: Scenario, options: { strayKeyInS
           if (['cancel', 'addListener', 'removeListener', 'pauseNotificationCollection'].includes(method)) return respond({});
         }
         if (plugin === 'AlphaActionJournal' && method === 'list') return respond({ entries: [] });
+        if (plugin === 'AlphaDevice' && method === 'openSettings') return respond({ status: 'opened', page: input.page });
         if (plugin === 'AlphaDevice' && method === 'snapshot') return respond({ permissions: { Location: !!locationAccess }, locationAccess: locationAccess ?? 'none' });
         if (plugin === 'ElizaSystem' && method === 'getBuildInfo') return respond({ launcher: false, version: 'fixture' });
         f.unexpected.push(plugin + '.' + method); throw Error('Unexpected native operation');
@@ -104,9 +105,11 @@ async function connect(page: Page, scenario: Scenario) {
   await expect(page.locator('.alpha-connection-scrim')).toHaveCount(0);
 }
 async function openSettings(page: Page, tab: string) {
-  await page.getByRole('button', { name: 'Settings', exact: true }).click();
+  if (await page.locator('html').getAttribute('data-active-view') !== 'settings')
+    await page.getByRole('button', { name: 'Settings', exact: true }).click();
   await expect(page.locator('html')).toHaveAttribute('data-active-view', 'settings');
-  await page.getByRole('button', { name: tab, exact: true }).click();
+  const path=tab==='AI provider'?['Account','AI connection']:tab==='App permissions'?['Privacy','App permissions']:[tab];
+  for(const name of path)await page.getByRole('button', { name, exact: true }).filter({visible:true}).click();
 }
 async function rendererDump(page: Page) {
   return page.evaluate(() => {
@@ -115,121 +118,107 @@ async function rendererDump(page: Page) {
   });
 }
 
-const cases: Array<{ scenario: Scenario; redaction: string; model: string }> = [
-  { scenario: 'resident', redaction: REDACTION.resident, model: 'Cerebras · qwen-3.8-27b' },
-  { scenario: 'remote', redaction: REDACTION.agent, model: 'Not reported by agent' },
-  { scenario: 'offline', redaction: REDACTION.offline, model: 'Not reported by agent' },
-];
-for (const { scenario, redaction, model } of cases) test(`Privacy, Models and About report the ${scenario} connection honestly`, async ({ page }) => {
+async function privacyContract(page: Page) {
+  return page.evaluate(async () => {
+    const {egressPrivacy} = await import('/src/prototype/native-adapter.ts');
+    const {connectionController} = await import('/src/runtime/connection-ui.tsx');
+    return egressPrivacy(connectionController.getSnapshot()).sub;
+  });
+}
+async function openAgent(page: Page) {
+  if (await page.locator('html').getAttribute('data-active-view') !== 'settings')
+    await page.getByRole('button', {name: 'Settings', exact: true}).click();
+  await openConnectionDiagnostics(page);
+  return page.locator('.alpha-connection');
+}
+async function assertNoInventedActivity(page: Page) {
+  const text = await page.locator('body').innerText();
+  for (const claim of forbidden) expect(text).not.toMatch(claim);
+  for (const row of fixtureActivity) expect(text).not.toMatch(row);
+}
+
+for (const scenario of ['resident', 'remote', 'offline'] as const) test(`current Settings and privacy contract reflect the ${scenario} connection`, async ({page}) => {
   await nativeStub(page, scenario);
   await connect(page, scenario);
-  await openSettings(page, 'Privacy & data');
-  await expect(page.getByText(redaction, { exact: true })).toBeVisible();
-  let text = await page.locator('body').innerText();
-  for (const claim of forbidden) expect(text).not.toMatch(claim);
-  for (const other of Object.values(REDACTION)) if (other !== redaction) expect(text).not.toContain(other);
-  for (const row of fixtureActivity) expect(text).not.toMatch(row);
-
-  await page.getByRole('button', { name: 'Back to Settings', exact: true }).click();
-  await page.getByRole('button', { name: 'Models', exact: true }).click();
-  await expect(page.locator('.st-page, body').getByText(model, { exact: true }).first()).toBeVisible();
-  text = await page.locator('body').innerText();
-  if (scenario !== 'resident') expect(text).not.toContain('Cerebras · ');
-
-  await page.getByRole('button', { name: 'Back to Settings', exact: true }).click();
-  await page.getByRole('button', { name: 'About', exact: true }).click();
-  await expect(page.getByText(model, { exact: true }).first()).toBeVisible();
+  expect(await privacyContract(page)).toBe(REDACTION[scenario === 'remote' ? 'agent' : scenario]);
+  await openSettings(page, 'AI provider');
+  const provider = page.getByRole('dialog', {name: 'AI connection', exact: true});
+  // This dialog reports the phone's saved provider independently of a remote/offline selection.
+  await expect(provider.getByRole('button', {name: 'Own API keys', exact: true})).toHaveAttribute('aria-pressed', 'true');
+  await expect(provider.getByText('Text connected · Voice off', {exact: true})).toBeVisible();
+  await assertNoInventedActivity(page);
+  await provider.getByRole('button', {name: 'Close AI connection settings', exact: true}).click();
+  // The slim Settings design delegates provider state to its dialog and exposes no old pages.
+  for (const name of ['Privacy & data', 'Models', 'Activity']) await expect(page.getByRole('button', {name, exact: true})).toHaveCount(0);
+  await page.getByRole('button', {name: 'About', exact: true}).click();
+  await expect(page.getByRole('button', {name: 'Export diagnostics', exact: true})).toBeVisible();
+  await assertNoInventedActivity(page);
   const fixture = await page.evaluate(() => (window as any).privacyFixture);
   expect(fixture.unexpected.filter((name: string) => name.startsWith('Agent.'))).toEqual([]);
 });
 
-test('the Eliza Cloud route names Qwen on Cerebras with one label in Models and About', async ({ page }) => {
-  await nativeStub(page, 'resident', { providerStatus: { provider: 'elizacloud', model: 'cerebras/qwen-3.8-27b' } });
+test('the Cloud provider selection does not present a raw provider path', async ({page}) => {
+  await nativeStub(page, 'resident', {providerStatus: {provider: 'elizacloud', model: 'cerebras/qwen-3.8-27b'}});
   await connect(page, 'resident');
-  const label = 'Eliza Cloud · qwen-3.8-27b (Cerebras)';
-  await openSettings(page, 'Models');
-  await expect(page.getByText(label, { exact: true }).first()).toBeVisible();
-  await page.getByRole('button', { name: 'Back to Settings', exact: true }).click();
-  await page.getByRole('button', { name: 'About', exact: true }).click();
-  await expect(page.getByText(label, { exact: true }).first()).toBeVisible();
-  // The raw provider path is never shown.
+  await openSettings(page, 'AI provider');
+  const provider = page.getByRole('dialog', {name: 'AI connection', exact: true});
+  await expect(provider.getByRole('button', {name: 'Cloud', exact: true})).toHaveAttribute('aria-pressed', 'true');
   expect(await page.locator('body').innerText()).not.toContain('cerebras/');
 });
 
-test('provider key never reaches renderer state, bridge payloads or test output', async ({ page }, info) => {
-  // Defence in depth: even a bridge that returned extra fields must not surface the key.
-  await nativeStub(page, 'resident', { strayKeyInStatus: true });
+test('provider key never reaches current Settings, bridge payloads or test output', async ({page}, info) => {
+  await nativeStub(page, 'resident', {strayKeyInStatus: true});
   await connect(page, 'resident');
   const console: string[] = [];
   page.on('console', message => console.push(message.text()));
-  await openSettings(page, 'Models');
-  await expect(page.getByText('Cerebras · qwen-3.8-27b', { exact: true }).first()).toBeVisible();
-  for (const tab of ['About', 'Privacy & data']) {
-    await page.getByRole('button', { name: 'Back to Settings', exact: true }).click();
-    await page.getByRole('button', { name: tab, exact: true }).click();
-  }
-  await expect(page.getByText(REDACTION.resident, { exact: true })).toBeVisible();
+  await openSettings(page, 'AI provider');
+  await expect(page.getByText('Text connected · Voice off', {exact: true})).toBeVisible();
+  await page.getByRole('button', {name: 'Close AI connection settings', exact: true}).click();
+  await page.getByRole('button', {name: 'About', exact: true}).click();
+  expect(await privacyContract(page)).toBe(REDACTION.resident);
   const statusCalls = await page.evaluate(() => (window as any).privacyFixture.calls.filter((call: any) => call.plugin === 'Agent' && call.method === 'providerStatus').length);
   expect(statusCalls).toBeGreaterThan(0);
   const dump = await rendererDump(page) + '\n' + console.join('\n');
   const output = info.outputPath('renderer-dump.txt');
   writeFileSync(output, dump);
-  // "grep" the written test output, not just the in-memory string.
   expect(readFileSync(output, 'utf8').includes(SYNTHETIC_KEY)).toBe(false);
   expect(dump).not.toContain('synthetic-provider-key');
 });
 
-test('Activity shows an empty connect state and no Workflow runs row', async ({ page }) => {
-  await page.goto('/');
-  await openSettings(page, 'Privacy & data');
-  await expect(page.getByText(REDACTION.offline, { exact: true })).toBeVisible();
-  await page.getByRole('button', { name: 'Activity', exact: true }).click();
-  await expect(page.getByText('Connect your remote agent to see activity', { exact: true })).toBeVisible();
-  const text = await page.locator('body').innerText();
-  for (const row of fixtureActivity) expect(text).not.toMatch(row);
-  await expect(page.locator('html')).toHaveAttribute('data-active-view', 'settings');
-  await expect(page.getByRole('button', { name: 'Workflow runs', exact: true })).toHaveCount(0);
-});
-
-test('Privacy & data has no Workflow runs row: runs live in the Workflows app', async ({ page }) => {
-  await page.goto('/');
-  await openSettings(page, 'Privacy & data');
-  await expect(page.getByRole('button', { name: 'Activity', exact: true })).toBeVisible();
-  await expect(page.getByRole('button', { name: 'Workflow runs', exact: true })).toHaveCount(0);
+test('offline Agent has no invented action history and Settings has no Workflow runs row', async ({page}) => {
+  await nativeStub(page, 'offline');
+  await connect(page, 'offline');
+  await page.getByRole('button', {name: 'Settings', exact: true}).click();
+  await expect(page.getByRole('button', {name: 'Workflow runs', exact: true})).toHaveCount(0);
+  const panel = await openAgent(page);
+  await expect(panel.getByRole('button', {name: 'Refresh actions', exact: true})).toHaveCount(0);
+  await assertNoInventedActivity(page);
+  expect(await privacyContract(page)).toBe(REDACTION.offline);
 });
 
 const proposalReads = (page: Page) => page.evaluate(() => (window as any).privacyFixture.calls.filter((call: any) => call.plugin === 'Agent' && call.input?.path === '/api/client-devices/proposals').length);
-for (const proposals of [true, false]) test(`resident Activity shows history only after an explicit ${proposals ? 'successful' : 'failed'} read`, async ({ page }) => {
-  await nativeStub(page, 'resident', { proposals });
+for (const proposals of [true, false]) test(`Agent reads action history only after an explicit ${proposals ? 'successful' : 'failed'} refresh`, async ({page}) => {
+  await nativeStub(page, 'resident', {proposals});
   await connect(page, 'resident');
-  await openSettings(page, 'Privacy & data');
-  await page.getByRole('button', { name: 'Activity', exact: true }).click();
-  const app = page.locator('[data-alpha-layer="app"]');
-  // Opening Activity must not pop the connection panel or claim an unread history is empty.
-  const unread = app.getByText('Phone action history', { exact: true });
-  await expect(unread).toBeVisible();
-  await expect(page.locator('.alpha-connection-scrim')).toHaveCount(0);
-  expect(await app.innerText()).not.toContain('No phone actions recorded');
+  const panel = await openAgent(page);
+  const history = panel.locator('details').filter({has: page.locator('summary').filter({hasText: 'Phone action history'})});
+  await history.locator('summary').click();
+  expect(await panel.innerText()).not.toContain('No phone actions recorded');
   const before = await proposalReads(page);
-  await app.getByRole('button', { name: 'Load phone action history', exact: true }).click();
-  await expect(page.locator('.alpha-connection-scrim')).toHaveCount(1);
+  await history.getByRole('button', {name: 'Refresh actions', exact: true}).click();
   await expect.poll(() => proposalReads(page)).toBeGreaterThan(before);
-  if (!proposals) await expect(page.locator('.alpha-connection').getByText(/request failed/i)).toBeVisible();
-  await page.getByRole('button', { name: 'Close connection settings' }).first().click();
-  await expect(page.locator('.alpha-connection-scrim')).toHaveCount(0);
-  if (proposals) await expect(app.getByText('No phone actions recorded', { exact: true })).toBeVisible();
-  else { await expect(unread).toBeVisible(); await expect(app.getByRole('button', { name: 'Load phone action history', exact: true })).toBeVisible(); expect(await app.innerText()).not.toContain('No phone actions recorded'); }
-  const text = await page.locator('body').innerText();
-  for (const row of fixtureActivity) expect(text).not.toMatch(row);
-  expect(text).not.toContain('Connect your remote agent to see activity');
+  if (!proposals) await expect(panel.getByText(/request failed/i)).toBeVisible();
+  await assertNoInventedActivity(page);
+  expect(await page.evaluate(async () => (await import('/src/runtime/connection-ui.tsx')).connectionController.getSnapshot().actionHistory)).toEqual([]);
   expect(await page.evaluate(() => (window as any).residentAgent.state.unexpected)).toEqual([]);
 });
 
-for (const locationAccess of ['approximate', 'precise'] as const) test(`Privacy shows the native ${locationAccess} location grant without losing connection disclosure`, async ({ page }) => {
-  await nativeStub(page, 'offline', { locationAccess });
+for (const locationAccess of ['approximate', 'precise'] as const) test(`App permissions delegates the native ${locationAccess} location grant to Android`, async ({page}) => {
+  await nativeStub(page, 'offline', {locationAccess});
   await connect(page, 'offline');
-  await openSettings(page, 'Privacy & data');
-  await expect(page.getByText(locationAccess === 'precise' ? 'Precise location allowed' : 'Approximate location allowed', { exact: true })).toBeVisible();
-  await expect(page.getByText(REDACTION.offline, { exact: true })).toBeVisible();
-  await expect(page.getByRole('button', { name: 'Activity', exact: true })).toBeVisible();
+  await openSettings(page, 'App permissions');
+  await expect(page.getByRole('button',{name:'Location',exact:true})).toBeVisible();
+  await page.getByRole('button',{name:'Location',exact:true}).click();
+  await expect.poll(() => page.evaluate(() => (window as any).privacyFixture.calls.filter((call: any) => call.plugin === 'AlphaDevice' && call.method === 'openSettings').map((call: any) => call.input))).toEqual([{page: 'privacy'}]);
+  expect(await privacyContract(page)).toBe(REDACTION.offline);
 });

@@ -5,7 +5,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import vm from 'node:vm';
 import {readFile} from 'node:fs/promises';
-import {stripTypeScriptTypes} from 'node:module';
+import {stripTypeScriptTypes} from '../test/support/strip-types.mjs';
 import {InboxOperation, checkOutgoingAttachments, outgoingAttachmentLimits, attachmentBytes, composerKind, composerContent, reviewBinding, reviewBindingRefusal} from '../apps/app/src/runtime/inbox-operation.ts';
 import {reviewMailAttachment} from '../apps/app/src/runtime/inbox-attachment.ts';
 import {classifyGmailFailure} from '../apps/app/src/runtime/gmail-mailbox.ts';
@@ -17,7 +17,7 @@ import {createMailDraftsController} from '../.eliza/client-features/plugins/plug
 const strip = async (file, name) => {
   let source = await readFile(new URL(`../apps/app/src/prototype/${file}`, import.meta.url), 'utf8');
   source = source.replace(/^import .*;\n/gm, '').replace(/^export (?=(?:async )?function |const |let |interface |type )/gm, '') + `\nglobalThis.${name}=${name};`;
-  return '{' + stripTypeScriptTypes(source, {mode: 'transform'}) + '}';
+  return '{' + stripTypeScriptTypes(source, {mode: 'strip'}) + '}';
 };
 const sources = [await strip('inbox-provider-controls.ts', 'inboxProviderControls'), await strip('inbox-drafts.ts', 'inboxDrafts')];
 const digest = async text => Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(text))), b => b.toString(16).padStart(2, '0')).join('');

@@ -1,0 +1,128 @@
+{
+ "coldStartGridTops": [
+  -1,
+  487
+ ],
+ "homeFocused": {
+  "view": "home",
+  "pill": false,
+  "bar": true,
+  "guard": "auto",
+  "focused": true,
+  "chatOpen": false,
+  "ime": 578,
+  "grid": 487
+ },
+ "homeAfterFirstTap": {
+  "view": "home",
+  "pill": false,
+  "bar": true,
+  "guard": "none",
+  "focused": false,
+  "chatOpen": false,
+  "ime": 915,
+  "grid": 487
+ },
+ "homeAfterSecondTap": {
+  "view": "calendar",
+  "pill": true,
+  "bar": false,
+  "guard": "none",
+  "focused": false,
+  "chatOpen": false,
+  "ime": 915,
+  "grid": 487
+ },
+ "gridAfterKeyboard": 487,
+ "gridBeforeKeyboard": 487,
+ "afterImeBack": {
+  "view": "home",
+  "pill": false,
+  "bar": true,
+  "guard": "none",
+  "focused": false,
+  "chatOpen": false,
+  "ime": 915,
+  "grid": 487
+ },
+ "afterImeBackTap": {
+  "view": "calendar",
+  "pill": true,
+  "bar": false,
+  "guard": "none",
+  "focused": false,
+  "chatOpen": false,
+  "ime": 915,
+  "grid": 487
+ },
+ "notes": {
+  "view": "notes",
+  "pill": true,
+  "bar": false,
+  "guard": "none",
+  "focused": false,
+  "chatOpen": false,
+  "ime": 915,
+  "grid": 487
+ },
+ "notesRaised": {
+  "view": "notes",
+  "pill": false,
+  "bar": true,
+  "guard": "auto",
+  "focused": true,
+  "chatOpen": false,
+  "ime": 578,
+  "grid": 487
+ },
+ "notesAfterOutsideTap": {
+  "view": "notes",
+  "pill": true,
+  "bar": false,
+  "guard": "none",
+  "focused": false,
+  "chatOpen": false,
+  "ime": 915,
+  "grid": 487
+ },
+ "notesBack1": {
+  "view": "notes",
+  "pill": false,
+  "bar": true,
+  "guard": "auto",
+  "focused": false,
+  "chatOpen": false,
+  "ime": 915,
+  "grid": 487
+ },
+ "notesBack2": {
+  "view": "notes",
+  "pill": true,
+  "bar": false,
+  "guard": "none",
+  "focused": false,
+  "chatOpen": false,
+  "ime": 915,
+  "grid": 487
+ },
+ "swipeOnContent": {
+  "view": "home",
+  "pill": false,
+  "bar": true,
+  "guard": "none",
+  "focused": false,
+  "chatOpen": false,
+  "ime": 915,
+  "grid": 487
+ },
+ "swipeOnBar": {
+  "view": "home",
+  "pill": false,
+  "bar": false,
+  "guard": "none",
+  "focused": false,
+  "chatOpen": true,
+  "ime": 915,
+  "grid": 487
+ }
+}

@@ -74,7 +74,8 @@ test('journey A: boot, connect, converse across apps, stop a reply, reload and r
 
  // 2. Connection choice: Settings -> Agent connection, save a scripted reply and connect the development profile.
  await page.getByRole('button',{name:'Settings',exact:true}).click();
- await expect(page.getByRole('button',{name:'Agent connection',exact:true})).toContainText('Offline');
+ await expect(page.getByRole('button',{name:'Agent connection',exact:true})).toHaveCount(0);
+ await expect.poll(()=>page.evaluate(async()=>(await import('/src/runtime/connection-ui.tsx')).connectionController.getSnapshot().session)).toBeNull();
  await openConnectionDiagnostics(page);
  const dialog=page.getByRole('dialog',{name:'Development connections'});
  await expect(dialog).toBeVisible();
@@ -83,7 +84,7 @@ test('journey A: boot, connect, converse across apps, stop a reply, reload and r
  await expect(page.getByRole('status').filter({hasText:'Development reply saved.'})).toBeVisible();
  await dialog.getByRole('button',{name:'Connect development profile'}).click();
  await expect(dialog).toHaveCount(0);
- await expect(page.getByRole('button',{name:'Agent connection',exact:true})).toContainText('On-device agent · development');
+ await expect.poll(()=>page.evaluate(async()=>{const state=(await import('/src/runtime/connection-ui.tsx')).connectionController.getSnapshot();return {kind:state.kind,connected:!!state.session,selection:JSON.parse(localStorage.getItem('alpha.connection.selection.v1')||'null')?.kind};})).toEqual({kind:'resident',connected:true,selection:'development'});
  await returnToApps(page);
 
  // 3. Typed conversation from Home.

@@ -129,7 +129,7 @@
         "apps/app/src/prototype/agent-adapter.ts",
         "apps/app/src/prototype/assistant-draft-controller.ts",
         "test/browser/assistant-draft-recovery.spec.ts",
-        "test/browser/assistant-draft-dispatch.spec.ts",
+        "test/browser/composer-dispatch.spec.ts",
         "test/browser/chat-continuity.spec.ts",
         "test/browser/compact-viewport.spec.ts",
         "android/app/src/androidTest/java/ai/elizaresearch/alphaphone/ChatContinuityInstrumentedTest.java"

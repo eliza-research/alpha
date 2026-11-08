@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
-import {stripTypeScriptTypes} from 'node:module';
+import {stripTypeScriptTypes} from './support/strip-types.mjs';
 import vm from 'node:vm';
 
 // Owner report 2026-10-30: after a verified email code the app held "Checking your code…" and an
@@ -10,9 +10,9 @@ import vm from 'node:vm';
 // it shown as starting, and the earlier failure rules (P-43, a refused key) still hold.
 const ui=readFileSync(new URL('../apps/app/src/runtime/connection-ui.tsx',import.meta.url),'utf8');
 const between=(text,start,end)=>{const from=text.indexOf(start),to=text.indexOf(end,from);assert.ok(from>=0&&to>from,start);return text.slice(from,to);};
-const residentSignedIn=stripTypeScriptTypes(between(ui,'async function residentSignedIn(','/** The key is stored;'),{mode:'transform'});
-const signedIn=stripTypeScriptTypes(between(ui,'async function signedIn(','/** The development hosted-agent client.'),{mode:'transform'});
-const showPostSignInSetup=stripTypeScriptTypes(between(ui,'function showPostSignInSetup(','/**\n * A verified sign-in on the resident flow'),{mode:'transform'});
+const residentSignedIn=stripTypeScriptTypes(between(ui,'async function residentSignedIn(','/** The key is stored;'),{mode:'strip'});
+const signedIn=stripTypeScriptTypes(between(ui,'async function signedIn(','/** The development hosted-agent client.'),{mode:'strip'});
+const showPostSignInSetup=stripTypeScriptTypes(between(ui,'function showPostSignInSetup(','/**\n * A verified sign-in on the resident flow'),{mode:'strip'});
 const ISSUED='11111111-1111-4111-8111-111111111111';
 const COMMITTED={credentialId:ISSUED,credentialReference:'browser-cloud-reference:33333333-3333-4333-8333-333333333333',userId:'owner',organizationId:'organization'};
 
@@ -155,6 +155,7 @@ test('access setup is not held behind background work, only behind a foreground 
   assert.equal(active({...signedIn,busy:false}),true);
   assert.equal(active({...signedIn,busy:true,backgroundWork:true}),true,'a background rebind keeps setup visible');
   assert.equal(active({...signedIn,busy:true,residentStarting:false}),false,'a foreground step such as checking a code');
+  assert.equal(active({...signedIn,busy:true,backgroundWork:true}),true,'a background rebind of the resident');
   assert.equal(active({...signedIn,signIn:{step:'code'},busy:false}),false);
   assert.equal(active({cloudAccount:null,signIn:null,busy:false}),false);
   // Own Cerebras keys open setup only after the sign-in page saved them (setupRevision), not on a passive status read.
@@ -165,17 +166,19 @@ test('access setup is not held behind background work, only behind a foreground 
   assert.equal(active({...ownKeys,setupRevision:1,providerStatus:{selected:false,provider:'elizacloud'}}),false);
 });
 
-test('Settings says the agent and its AI are starting instead of "Not available"',()=>{
+test('Settings reports agent lifecycle separately from the available AI route',()=>{
   const settings=readFileSync(new URL('../apps/app/src/prototype/settings-adapter.ts',import.meta.url),'utf8');
-  const line=/const agentRows=\[(info\('Agent'.*?\)),(info\('AI'.*?\))\];/.exec(settings);
-  assert.ok(line,'agent connection rows');
-  const rows=connection=>new Function('connection','serviceName','info','return ['+line[1]+','+line[2]+']')(connection,'Eliza Cloud',(label,value)=>value);
-  assert.deepEqual(rows({session:null,kind:'starting',cloudAccount:{userId:'owner'},residentInference:null}),['Starting…','Starting…']);
-  assert.deepEqual(rows({session:{},kind:'resident',cloudAccount:{userId:'owner'},residentInference:'cloud'}),['Running on this device','Eliza Cloud']);
-  assert.deepEqual(rows({session:{},kind:'resident',cloudAccount:{userId:'owner'},residentInference:'unavailable'}),['Running on this device','Not available']);
-  assert.deepEqual(rows({session:null,kind:'recovering',cloudAccount:{userId:'owner'},residentInference:null}),['Not running','Not available']);
-  assert.deepEqual(rows({session:null,kind:'starting',cloudAccount:{userId:'owner'},residentInference:null,residentRecoveryReason:'startup-refused'}),['Needs attention','Not available']);
-  assert.deepEqual(rows({session:null,kind:'starting',cloudAccount:null,residentInference:null}),['Starting…','Sign in required']);
+  const rows=/const agentRows=(\[info\('Agent'[^\n]+);/.exec(settings)?.[1];
+  assert.ok(rows,'the current Connection help status rows are present');
+  const render=connection=>new Function('connection','serviceName','info',`return ${rows};`)(connection,'Eliza Cloud',(label,value)=>[label,value]);
+  const values=connection=>render(connection).map(row=>row[1]);
+  assert.deepEqual(values({session:null,kind:'starting',cloudAccount:{userId:'owner'},residentInference:null}),['Starting…','Starting…']);
+  assert.deepEqual(values({session:{},kind:'resident',cloudAccount:{userId:'owner'},residentInference:'cloud'}),['Running on this device','Eliza Cloud']);
+  assert.deepEqual(values({session:{},kind:'resident',cloudAccount:{userId:'owner'},residentInference:'direct'}),['Running on this device','Cerebras · own API key']);
+  for(const residentInference of ['unknown','unavailable'])assert.deepEqual(values({session:{},kind:'resident',cloudAccount:{userId:'owner'},residentInference}),['Running on this device','Not available']);
+  assert.deepEqual(values({session:null,kind:'recovering',cloudAccount:{userId:'owner'},residentInference:null}),['Not running','Not available']);
+  assert.deepEqual(values({session:null,kind:'starting',cloudAccount:{userId:'owner'},residentInference:null,residentRecoveryReason:'startup-refused'}),['Needs attention','Not available']);
+  assert.deepEqual(values({session:null,kind:'starting',cloudAccount:null,residentInference:null}),['Starting…','Sign in required']);
 });
 
 test('the agent panel shows a calm starting state while a signed-in agent starts',()=>{

@@ -2393,7 +2393,7 @@ export const connectionController = {
     if(state.residentPlanNotice==='offline'&&!account){const recent=readPlanAdmission();return {signedIn:false,offline:true,account:null,plan:recent?`${recent.planName} · offline`:'Offline',status:recent?.status??null,endsAt:state.planEndsAt??null,allowance:null,limit:null,keyExpiresAt:null,keyExpiring:false,inference};}
     // The plan allowance Cloud reports and the latest Cloud limit with its remaining wait (#410, P-26).
     const summary=account?subscriptionSummary(view,{lastLimit:state.lastServiceLimit??null,lastLimitAt:state.lastServiceLimit?.observedAt??null,serviceName}):null;
-    return {signedIn:!!account,offline:false,inference,account:account?(account.email||`Account ${account.userId.slice(0,8)}`):null,
+    return {signedIn:!!account,offline:false,inference,offerRedeem:!!account,account:account?(account.email||`Account ${account.userId.slice(0,8)}`):null,
       plan:plan?.headline??(account?'Checking plan…':'Not signed in'),
       status:view?.kind==='active'?view.status:view?.kind==='inactive'?view.status:null,
       endsAt:state.planEndsAt??null,allowance:summary?.allowance??null,limit:summary?.limit??null,keyExpiresAt:expiresAt,keyExpiring:expiresAt!==null&&expiresAt-Date.now()<=CLOUD_KEY_EXPIRY_WARNING_MS};
@@ -2949,6 +2949,14 @@ export const connectionController = {
     // account and plan are read again; the agent is rebound or restarted only when that changes.
     if(!state.session||residentBinding!=='cloud'){void recheckResidentPlan();return;}
     entitlementRefresher?.refreshNow();
+  },
+  /** The owner asked to check Cloud again (the chat card): lifts only the once-a-minute limit.
+   * Other work in progress still defers the check, and the caller says so. */
+  recheckPlanNow():'started'|'busy' {
+    const previous=planManagementReturn;planManagementReturn=true;
+    connectionController.recheckPlanOnReturn();
+    if(!planManagementReturn)return 'started';
+    planManagementReturn=previous;return 'busy';
   },
   /**
    * A Cloud limit seen outside a chat turn (a Cloud speech 429, cloud-voice.ts) becomes the account

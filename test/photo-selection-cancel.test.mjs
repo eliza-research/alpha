@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
-import {stripTypeScriptTypes} from 'node:module';
+import {stripTypeScriptTypes} from './support/strip-types.mjs';
 import vm from 'node:vm';
 import {changeBatches,runBatches} from '../.eliza/client-features/packages/ui/src/mobile-shell/photos-view.ts';
 const source=readFileSync('apps/app/src/prototype/camera-adapter.ts','utf8');

@@ -168,11 +168,11 @@ test('Settings retains unknown, expired, inactive and credit-funded admission st
   const start = ui.indexOf('  residentPlanSettings(){');
   const end = ui.indexOf('\n  },', start);
   assert.ok(start >= 0 && end > start, 'actual Settings summary method located');
-  const summarize = new Function('state', 'residentCloudFlow', 'describeSubscription', 'subscriptionSummary', 'readPlanAdmission', 'CLOUD_KEY_EXPIRY_WARNING_MS', 'cloudServiceName', 'cloud',
+  const summarize = new Function('state', 'residentCloudFlow', 'describeSubscription', 'subscriptionSummary', 'readPlanAdmission', 'CLOUD_KEY_EXPIRY_WARNING_MS', 'cloudServiceName', 'cloud', 'planAdmission',
     `return ({${ui.slice(start, end + 5)}}).residentPlanSettings();`);
   const account = {email:'qa@example.invalid', userId:USER};
   const snapshot = {cloudAccount:account, residentPlanNotice:'needs-plan', residentInference:'unavailable'};
-  const read = overrides => summarize({...snapshot, ...overrides}, () => true, describeSubscription, subscriptionSummary, () => null, 86400000, () => 'Nebula', {environment:'production'});
+  const read = overrides => summarize({...snapshot, ...overrides}, () => true, describeSubscription, subscriptionSummary, () => null, 86400000, () => 'Nebula', {environment:'production'}, planAdmission);
   for (const reason of ['outage', 'not-published', 'invalid']) {
     const result = read({residentSubscription:{kind:'unavailable', reason}});
     assert.equal(result.plan, 'Plan status unavailable', reason);

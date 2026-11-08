@@ -1,12 +1,12 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
-import {stripTypeScriptTypes} from 'node:module';
+import {stripTypeScriptTypes} from './support/strip-types.mjs';
 import vm from 'node:vm';
 import {installWorkflowDeviceBindings} from './fixtures/workflow-device-bindings.mjs';
 const file=process.env.CONTROLLER_SOURCE||'apps/app/src/runtime/connection-ui.tsx';
 const text=readFileSync(file,'utf8');
-const source=stripTypeScriptTypes(text.slice(text.indexOf('async function connectResident('),text.indexOf('async function connectCloud(')),{mode:'transform'});
+const source=stripTypeScriptTypes(text.slice(text.indexOf('async function connectResident('),text.indexOf('async function connectCloud(')),{mode:'strip'});
 for(const purpose of ['plan','cloud-account','agent'])test(`resident completion retains the explicit ${purpose} surface and refusal`,async()=>{
  let ready;const connection=new Promise(resolve=>ready=resolve);const state={purpose:'agent',open:false};let restored=0;
  const admission={binding:'unbound',notice:{open:true,error:'Eliza Cloud returned plan status for a different account. Sign in again.'}};
