@@ -9,7 +9,7 @@ import {beginNoticeAction,noticeActionBlocked} from './notice-action';
 import {calendarAlerts} from './calendar-alerts';
 import {editCalendarResponse,calendarResponses} from './calendar-response';
 import {openCalendarMeeting} from './calendar-meeting';
-import {calendarRecord,calendarRange,remapCalendarExclusions,replaceCalendarRecord,type CalendarRecord} from './calendar-records';
+import {calendarRecord,calendarRange,remapCalendarExclusions,onceCalendarSeries,replaceCalendarRecord,type CalendarRecord} from './calendar-records';
 import { editCalendarEvent } from './calendar-editor';
 import { calendarInstant,calendarWall } from './calendar-time';
 import { BrowserReviews } from './review';
@@ -18,6 +18,7 @@ import { validateCalendarResult,validateCalendarOperation, type CalendarFields, 
 import { WebPlugin } from '@capacitor/core';
 import { revision } from './revision';
 import {calendarDocument,initialCalendarState as initial,prepareCalendarSource,type BrowserCalendarState as State} from './calendar-store';
+import {retireJournal,trimDeletionJournal,settleExpiredDeletions} from './journal-retention';
 type EventRow=CalendarRecord;
 const source={id:'local',name:'App calendar',account:'Alpha Phone',local:true,writable:true};
 const matches=(row:EventRow,expected:Partial<EventRow>|undefined)=>!!expected&&(!expected.revision||expected.revision===row.revision)&&(['title','body','location','begin','end'] as const).every(k=>row[k]===expected[k]);
@@ -66,6 +67,7 @@ export class BrowserCalendar extends WebPlugin {
         if(operation.type==='calendar_delete'){
           if(!deletionOwner||!browserDeletionOwnerCurrent(deletionOwner))return {status:'cancelled'};
           if(current.deleteClaims?.[input.operationId])return {status:'unknown'};
+          trimDeletionJournal(current);
           if(Object.keys(current.deleteClaims||{}).length>=500)throw Error('Action deletion history requires review.');
           if(!input.journalIdentity)throw Error('Deletion journal identity missing.');
           const deletion=stageCalendarDeletion(current,before!,'event',deletionOwner,input.operationId);current.deletions![input.operationId].journalBinding={...input.journalIdentity,operationHash};(current.deleteClaims??={})[input.operationId]=binding;return {status:'queued',deletion};
@@ -79,7 +81,7 @@ export class BrowserCalendar extends WebPlugin {
           result={version:1,kind:operation.type,sourceId:'local',eventId:before!.id,revision:before!.revision};
           result.fields=fields(before!);
         }
-        (current.receipts??={})[input.operationId]={binding,result};return {status:'applied',result};
+        retireJournal(current.receipts,()=>true);(current.receipts??={})[input.operationId]={binding,result,at:Date.now()};return {status:'applied',result};
       },ticket.controller.signal);
     } catch(error){if(ticket.controller.signal.aborted&&error===ticket.controller.signal.reason)return {status:'cancelled'};throw error;} finally {if(this.active.get(input.operationId)===ticket)this.active.delete(input.operationId);}
   }
@@ -92,7 +94,7 @@ export class BrowserCalendar extends WebPlugin {
     try {
       await prepareCalendarSource();
       const raw=await calendarDocument.readRaw(ticket.controller.signal);if(raw===null)return {status:'unknown'};
-      const data:State=JSON.parse(raw),snapshot=JSON.stringify(data);
+      const data:State=JSON.parse(raw);
       calendarSource({sourceId:source.id,sourceRevision:data.sourceRevision});
       if(!Array.isArray(data.events))throw Error('The local Calendar needs recovery.');
       const prior=data.receipts?.[input.operationId];
@@ -112,14 +114,10 @@ export class BrowserCalendar extends WebPlugin {
       const row=candidates[0],result=validateCalendarResult(operation,{version:1,kind:operation.type,window,event:row?{title:row.title,start:new Date(row.begin).toISOString(),end:new Date(row.end).toISOString(),allDay:!!row.allDay,timing:row.allDay&&at(row)<now?'ongoing':'upcoming',timeZone}:null});
       const approved=await this.reviews.confirm(input.operationId,'Share next Calendar event?',`Read ${source.name} from ${formatDeviceRecordDateTime(window.start,timeZone)} to ${formatDeviceRecordDateTime(window.end,timeZone)} (end excluded). Share only the next event title and times, or a complete no-events result for this thirty-local-day window. Other calendars, descriptions, locations and attendees are excluded.`);
       if(!approved||ticket.cancelled||document.hidden)return {status:'cancelled'};
+      // A read has no outcome to recover, so it is not journaled and never writes the document.
       if(Intl.DateTimeFormat().resolvedOptions().timeZone!==timeZone||await calendarDocument.readRaw(ticket.controller.signal)!==raw)return {status:'conflict'};
-      return await calendarDocument.edit(initial,current=>{
-        if(ticket.cancelled||document.hidden||Intl.DateTimeFormat().resolvedOptions().timeZone!==timeZone)return {status:'cancelled'};
-        const prior=current.receipts?.[input.operationId];if(prior)return prior.binding===binding?{status:'applied',result:validateCalendarResult(operation,prior.result)}:{status:'conflict'};
-        if(JSON.stringify(current)!==snapshot)return {status:'conflict'};
-        if(Object.keys(current.receipts||{}).length>=1000)return {status:'unknown'};
-        (current.receipts??={})[input.operationId]={binding,result};return {status:'applied',result};
-      },ticket.controller.signal);
+      if(ticket.cancelled||document.hidden)return {status:'cancelled'};
+      return {status:'applied',result};
     }catch(error){if(ticket.controller.signal.aborted&&error===ticket.controller.signal.reason)return {status:'cancelled'};throw error;}
     finally{if(this.active.get(input.operationId)===ticket)this.active.delete(input.operationId);}
   }
@@ -140,7 +138,7 @@ export class BrowserCalendar extends WebPlugin {
     if(!row||row.revision!==input.revision)throw Error('This event changed. Reopen it before editing.');
     if(input.people!==undefined&&(!Array.isArray(input.people)||input.people.length>1000||input.people.some(p=>!p||typeof p.id!=='string'||!p.id||p.id.length>128||typeof p.name!=='string'||p.name.length>300)))throw Error('Review the attendee list.');
     return editCalendarEvent({...row,...(row.seriesId?{repeat:'none' as const}:{})},async(next,current,signal)=>{
-      await calendarDocument.edit(initial,data=>{if(!current())throw Error('Editing cancelled.');const before=calendarRecord(data.events,input.id);if(!before||before.revision!==input.revision)throw Error('This event changed. Reopen it before editing.');if((next.who?.length||0)>100)throw Error('Choose at most 100 attendees.');const updated={...before,...next,revision:revision()};if(updated.responses)updated.responses=Object.fromEntries(Object.entries(updated.responses).filter(([person])=>updated.who?.includes(person)));if(!before.seriesId&&before.repeat&&before.repeat!=='none')updated.excluded=remapCalendarExclusions(data.events,before,updated);replaceCalendarRecord(data.events,updated);},signal);
+      await calendarDocument.edit(initial,data=>{if(!current())throw Error('Editing cancelled.');const before=calendarRecord(data.events,input.id);if(!before||before.revision!==input.revision)throw Error('This event changed. Reopen it before editing.');if((next.who?.length||0)>100)throw Error('Choose at most 100 attendees.');const updated={...before,...next,revision:revision()};if(updated.responses)updated.responses=Object.fromEntries(Object.entries(updated.responses).filter(([person])=>updated.who?.includes(person)));if(!before.seriesId&&before.repeat&&before.repeat!=='none'){if(updated.repeat==='none')onceCalendarSeries(data.events,updated);else updated.excluded=remapCalendarExclusions(data.events,before,updated);}replaceCalendarRecord(data.events,updated);},signal);
     },input.people,{id:input.id,revision:input.revision});
   }
   async editSeries(input:{id:string;revision:string;people?:{id:string;name:string}[]}){
@@ -248,7 +246,8 @@ export class BrowserCalendar extends WebPlugin {
         const receipts=data.creations??={};const previous=receipts[input.creationId!];
         if(previous){if(previous.binding!==binding)throw Error('Calendar creation identity changed');return previous.result;}
         if(Object.values(receipts).some(row=>!row.acknowledged)&&input.separateCreation!==true)return {status:'pending-creation'};
-        if(Object.keys(receipts).length>=1000)throw Error('Calendar creation receipt storage full');
+        retireJournal(receipts,row=>row.acknowledged);
+        if(Object.values(receipts).filter(row=>!row.acknowledged).length>=1000)throw Error('Calendar creation receipt storage full');
       }
       const old=input.id?calendarRecord(data.events,input.id):undefined;
       if(input.id&&(!old||!matches(old,input.expected)))return {status:'conflict'};
@@ -258,7 +257,7 @@ export class BrowserCalendar extends WebPlugin {
       if(row.responses)row.responses=Object.fromEntries(Object.entries(row.responses).filter(([person])=>row.who?.includes(person)));
       replaceCalendarRecord(data.events,row);
       const result={status:'saved' as const,id:row.repeat&&row.repeat!=='none'?calendarRange([row],{begin:row.begin,end:row.begin+8*86400000}).events[0].id:row.id,calendarId:'local',creationId:input.creationId||''};
-      if(!input.id)data.creations![input.creationId!]={binding,result,acknowledged:false};
+      if(!input.id)data.creations![input.creationId!]={binding,result,acknowledged:false,at:Date.now()};
       return result;
     });
   }
@@ -274,14 +273,7 @@ export class BrowserCalendar extends WebPlugin {
     return calendarDocument.edit(initial,data=>{const row=calendarRecord(data.events,input.id);if(!row||row.calendarId!==input.calendarId||row.revision!==input.revision||!matches(row,input.expected))return {status:'conflict'};const deletion=stageCalendarDeletion(data,row,'event','manual:'+data.sourceRevision);return {status:'queued',deletion};});}
   async deletionReceipt(id:string){const data=await calendarDocument.read(initial);return data.deletions?.[id]||null;}
   async pendingDeletions(){const data=await calendarDocument.read(initial),clock=rendererDeletionClock();return Object.values(data.deletions||{}).filter(e=>!e.acknowledged&&['queued','paused','unknown','dispatching'].includes(e.phase)&&browserDeletionOwnerVisible(e.owner)).map(e=>({...e,kind:'calendar',window:e.phase==='queued'?deletionWindow(e.deadline,clock):undefined}));}
-  async settleDeletions(){
-    // Undo polling runs every 500ms. Only an expired queued deletion may change the
-    // document; any other edit would replace the receipt held by recovery and editors.
-    const raw=await calendarDocument.readRaw();if(raw===null)return;
-    const data:State=JSON.parse(raw),clock=rendererDeletionClock();
-    if(!Object.values(data.deletions||{}).some(entry=>entry.phase==='queued'&&deletionWindow(entry.deadline,clock)==='expired'))return;
-    await calendarDocument.edit(initial,data=>settleCalendarDeletions(data,browserDeletionOwnerCurrent));
-  }
+  async settleDeletions(){await settleExpiredDeletions(calendarDocument,initial,data=>settleCalendarDeletions(data,browserDeletionOwnerCurrent));}
   async dismissDeletion(id:string){return calendarDocument.edit(initial,data=>{const entry=data.deletions?.[id];if(!entry||!browserDeletionOwnerVisible(entry.owner)||!['unknown','dispatching'].includes(entry.phase))throw Error('Uncertain deletion is unavailable.');entry.acknowledged=true;return {status:'acknowledged'};});}
   async undoDeletion(id:string){return calendarDocument.edit(initial,data=>undoCalendarDeletion(data,id,browserDeletionOwnerVisible));}
   async readWorkflowRange(input:{calendarIds:string[];start:string;end:string;timeZone?:string;maximumEvents:number}) {

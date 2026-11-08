@@ -1,6 +1,7 @@
 import type {CalendarResponse} from './calendar-response';
 import {calendarInstant,calendarWall} from './calendar-time';
 import {expandCalendarSeries,type CalendarRepeat} from './calendar-recurrence';
+import {revision} from './revision';
 export type CalendarRecord={id:string;calendarId:string;title:string;body:string;location:string;begin:number;end:number;revision:string;allDay?:boolean;timeZone?:string;repeat?:CalendarRepeat;who?:string[];attendeeOptions?:Record<string,{optional:boolean}>;responses?:Record<string,CalendarResponse>;video?:boolean;alert?:number|null;seriesId?:string;occurrenceBegin?:number;excluded?:number[]};
 export function calendarRecord(rows:CalendarRecord[],id:string):CalendarRecord|undefined{
  const direct=rows.find(row=>row.id===id);if(direct)return direct;
@@ -23,6 +24,11 @@ export function replaceCalendarRecord(rows:CalendarRecord[],record:CalendarRecor
 export function deleteCalendarRecord(rows:CalendarRecord[],record:CalendarRecord,newRevision:string){
  if(record.seriesId){const series=rows.find(row=>row.id===record.seriesId);if(!series)throw Error('Calendar series changed.');series.excluded=[...new Set([...(series.excluded||[]),record.occurrenceBegin!])];series.revision=newRevision;}
  return rows.filter(row=>row.id!==record.id&&(record.seriesId||row.seriesId!==record.id));
+}
+/** A series changed to Once drops its deleted dates. Its edited dates are kept as separate events. */
+export function onceCalendarSeries(rows:CalendarRecord[],series:CalendarRecord){
+ delete series.excluded;
+ rows.forEach((row,index)=>{if(row.seriesId!==series.id)return;const {seriesId:_seriesId,occurrenceBegin:_occurrenceBegin,...event}=row;rows[index]={...event,revision:revision()};});
 }
 
 /** Keep deleted dates and edited occurrences excluded when a whole series moves. */
