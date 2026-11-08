@@ -30,7 +30,10 @@
         "stopRetainsProviderConfigurationTest",
         "unconfirmedStopKeepsProcessUnknownTest",
         "ownedCancellationRetiresLateStartupTest",
-        "attachedCancellationPreservesServiceTest"
+        "attachedCancellationPreservesServiceTest",
+        "nativeAdmissionAdvancesEpochTest",
+        "unownedReenrollmentCancellationTest",
+        "lastSurfaceRetiresEnrollmentTest"
       ],
       "invariants": [
         "TypeOK",
@@ -44,7 +47,8 @@
         "One resident process, three epoch advances and two runtime profiles.",
         "Payload provenance, credential parsing, identity validation and IPC acknowledgement are environment results.",
         "One retained record represents durable history.",
-        "Ordinary stop retires enrollment and voice admission before process shutdown is confirmed. Provider configuration persists. Owned and attached startup requests have distinct cancellation effects."
+        "Ordinary stop retires enrollment and voice admission before process shutdown is confirmed. Provider configuration persists. Owned and attached startup requests have distinct cancellation effects.",
+        "The native coordinator advances an epoch at full start admission, including unowned reenrollment of an existing service. Attached starts preserve the epoch. Last-surface destruction retires enrollment while the service can remain alive."
       ]
     },
     {

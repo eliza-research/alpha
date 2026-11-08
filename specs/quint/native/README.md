@@ -8,7 +8,7 @@ working source. The source lists, named invariants, scenarios and bounds are in
 
 | Model | Source symbols inspected | State represented |
 | --- | --- | --- |
-| `ResidentRuntime` | `LocalAgentProviderAdmission.bindCloudProvider`, `applyProviderEnvironment`, `providerStatus`, `ResidentCredentialShutdownRetry.await`, `ResidentScheduleRearm.decide`, renderer `residentRecoveryReason` | Local resident lifecycle, source admission, exact credential generation, uncertain unbind, retained recovery records, reset fence |
+| `ResidentRuntime` | `AlphaLocalAgentPlugin.start`, `cancelStart`, `stop`, `getStatus`, `handleOnDestroy`, `startResidentIfAdmissible`, `LocalAgentProviderAdmission.bindCloudProvider`, `applyProviderEnvironment`, `providerStatus`, `ResidentCredentialShutdownRetry.await`, `ResidentScheduleRearm.decide`, renderer `residentRecoveryReason` | Local resident lifecycle, source admission, exact credential generation, uncertain unbind, retained recovery records, reset fence |
 | `VoiceSession` | `VoiceAssistantSession.start`, `stop`, `setMuted`, `speechStarted`, `schedule`, `submit`, `respond`, `resume`, `playSentence`, `createNativeLiveDictation`, `createCloudVoice` | Session/turn/utterance generations, semantic and long-gap endpointing, capture, mute, barge-in, completed-sentence accounting, separately reviewed read response and local dictation |
 | `SpeechResources` | `LiveCaptureAdmission.begin`, `attach`, `stop`, `cancelAll`, `SpeechAudioFocusPolicy.changed`, `stopsCapture`, `SpeechPcmQueue.offer`, `take`, `close` | Capture reservation and late startup, one capture owner, transient focus/duck/loss, bounded PCM queue and canceled stream |
 | `AlwaysOnListener` | `ListenerPolicy.decide`, `holdsMicrophone`, `processesAudio`, `latchesIndicatorLoss`, `IndicatorLease.renew`, `verdict`, `ListeningEpoch.current`, `ListenerStore` consent generation | Consent, visibility, unlock, call/privacy, SystemUI lease, explained pause, sticky indicator loss and queued recognition invalidation |
@@ -263,3 +263,10 @@ markers retain their authority, while missing or corrupt budgets require explici
 recovery. Explicit retry preserves a readable same-window count. The reset source
 adapter and two-process file-lock regressions are documented in
 [reset-orchestration-report.md](../refinement/native/reset-orchestration-report.md).
+
+## Executed resident coordinator
+
+The native whole-plugin campaign covers owned, attached and unowned starts, exact
+epoch retirement, disposed-surface calls and system-broadcast exclusion. Its
+source relation and remaining obligations are documented in
+[resident-coordinator-report.md](../refinement/native/resident-coordinator-report.md).

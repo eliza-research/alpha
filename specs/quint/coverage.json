@@ -10405,7 +10405,7 @@
     },
     {
       "path": "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaLocalAgentPlugin.java",
-      "sha256": "0ca52854df120a50fc9b328d008605590997677f7d4b605d9da6798d3884640a",
+      "sha256": "72ff447832c51c36b28ce8d52a778e5cc0a839d2453eaa34aa5c5c20be44ab87",
       "models": [
         "NativeCredentialMutation",
         "ResidentRuntime",
@@ -10695,207 +10695,207 @@
           "text": "try{enroll(epoch);resolveCurrent(call,epoch,new JSObject().put(\"state\",\"ready\"));return;}"
         },
         {
-          "line": 615,
+          "line": 616,
           "text": "private boolean rejectStartupRefusal(PluginCall call,long epoch,JSONObject status) throws Superseded {"
         },
         {
-          "line": 619,
+          "line": 620,
           "text": "synchronized(lifecycleLock){requireCurrent(epoch);if(pending.remove(call))call.reject(message,reason);return true;}"
         },
         {
-          "line": 621,
+          "line": 622,
           "text": "private static boolean shutdownConfirmed(JSONObject status){"
         },
         {
-          "line": 627,
+          "line": 628,
           "text": "private void ipcRecovery(PluginCall call,boolean archive){"
         },
         {
-          "line": 630,
+          "line": 631,
           "text": "final long epoch,intent;"
         },
         {
-          "line": 634,
+          "line": 635,
           "text": "epoch=lifecycleEpoch;intent=credentialIntentEpoch;pending.add(call);"
         },
         {
-          "line": 640,
+          "line": 641,
           "text": "if(disposed||epoch!=lifecycleEpoch||intent!=credentialIntentEpoch||!pending.contains(call)||getActivity()==null||!getActivity().hasWindowFocus()||stopping||cred"
         },
         {
-          "line": 659,
+          "line": 660,
           "text": "// Native socket observation must never delay stop's epoch invalidation."
         },
         {
-          "line": 682,
+          "line": 684,
           "text": "/** Native speech uses only the existing enrollment, bound to its exact token and runtime epoch. */"
         },
         {
-          "line": 684,
+          "line": 686,
           "text": "final String root,token,owner;final long epoch;"
         },
         {
-          "line": 686,
+          "line": 688,
           "text": "captureResultSession(expectedOwner);root=rootToken;token=ownerToken;owner=ownerIdentity;epoch=lifecycleEpoch;"
         },
         {
-          "line": 688,
+          "line": 690,
           "text": "final NativeVoiceBinding binding=new NativeVoiceBinding(epoch,root,token,owner);"
         },
         {
-          "line": 689,
+          "line": 691,
           "text": "final java.util.concurrent.atomic.AtomicBoolean cancelled=new java.util.concurrent.atomic.AtomicBoolean();"
         },
         {
-          "line": 733,
+          "line": 735,
           "text": "private static JSONObject raw(String path,String method,String body,String token,JSONObject supplied,int timeoutMs) throws Exception {"
         },
         {
-          "line": 743,
+          "line": 745,
           "text": "private static JSONObject json(String path,String method,JSONObject body,String token) throws Exception {"
         },
         {
-          "line": 748,
+          "line": 750,
           "text": "private void requireEnrollmentRoot(long epoch,String root) throws Exception {"
         },
         {
-          "line": 749,
+          "line": 751,
           "text": "requireCurrent(epoch);"
         },
         {
-          "line": 752,
+          "line": 754,
           "text": "private JSONObject enrollmentJson(long epoch,String path,String method,JSONObject body,String token,String root) throws Exception {"
         },
         {
-          "line": 753,
+          "line": 755,
           "text": "requireEnrollmentRoot(epoch,root);"
         },
         {
-          "line": 755,
+          "line": 757,
           "text": "JSONObject result=json(path,method,body,token);requireEnrollmentRoot(epoch,root);return result;"
         },
         {
-          "line": 757,
+          "line": 759,
           "text": "private JSONObject authenticatedStatus(long epoch,String root) throws Exception {"
         },
         {
-          "line": 758,
+          "line": 760,
           "text": "JSONObject status=enrollmentJson(epoch,\"/api/auth/status\",\"GET\",null,root,root);"
         },
         {
-          "line": 763,
+          "line": 765,
           "text": "private String enroll(long epoch) throws Exception {"
         },
         {
-          "line": 765,
+          "line": 767,
           "text": "requireCurrent(epoch);"
-        },
-        {
-          "line": 768,
-          "text": "synchronized(lifecycleLock){requireEnrollmentRoot(epoch,root);if(root.equals(rootToken)&&ownerToken!=null&&expiresAt>System.currentTimeMillis()+30000)return own"
-        },
-        {
-          "line": 769,
-          "text": "JSONObject status=authenticatedStatus(epoch,root);"
         },
         {
           "line": 770,
-          "text": "JSONObject code=enrollmentJson(epoch,\"/api/auth/pair-code\",\"GET\",null,root,root);"
+          "text": "synchronized(lifecycleLock){requireEnrollmentRoot(epoch,root);if(root.equals(rootToken)&&ownerToken!=null&&expiresAt>System.currentTimeMillis()+30000)return own"
         },
         {
           "line": 771,
-          "text": "JSONObject paired=enrollmentJson(epoch,\"/api/auth/pair\",\"POST\",new JSONObject().put(\"code\",code.getString(\"code\")).put(\"instanceId\",status.getString(\"instanceId"
+          "text": "JSONObject status=authenticatedStatus(epoch,root);"
+        },
+        {
+          "line": 772,
+          "text": "JSONObject code=enrollmentJson(epoch,\"/api/auth/pair-code\",\"GET\",null,root,root);"
         },
         {
           "line": 773,
+          "text": "JSONObject paired=enrollmentJson(epoch,\"/api/auth/pair\",\"POST\",new JSONObject().put(\"code\",code.getString(\"code\")).put(\"instanceId\",status.getString(\"instanceId"
+        },
+        {
+          "line": 775,
           "text": "String token=paired.getString(\"token\");JSONObject who=enrollmentJson(epoch,\"/api/auth/me\",\"GET\",null,token,root);"
         },
         {
-          "line": 776,
+          "line": 778,
           "text": "synchronized(lifecycleLock){requireEnrollmentRoot(epoch,root);rootToken=root;ownerToken=token;ownerIdentity=paired.getString(\"identityId\");expiresAt=expiry;retu"
         },
         {
-          "line": 787,
+          "line": 789,
           "text": "final long epoch;"
         },
         {
-          "line": 788,
+          "line": 790,
           "text": "try{synchronized(lifecycleLock){epoch=admittedEpoch();pending.add(call);}}catch(Superseded stale){call.reject(\"Local agent is stopped or unavailable.\",\"LOCAL_AG"
         },
         {
-          "line": 790,
-          "text": "requireOwned(call,epoch);"
-        },
-        {
-          "line": 791,
-          "text": "String token=enroll(epoch);"
-        },
-        {
           "line": 792,
-          "text": "synchronized(lifecycleLock){requireCurrent(epoch);if(expectedOwner!=null&&!expectedOwner.equals(ownerIdentity)){resolveCurrent(call,epoch,new JSObject().put(\"st"
+          "text": "requireOwned(call,epoch);"
         },
         {
           "line": 793,
-          "text": "requireOwned(call,epoch);"
+          "text": "String token=enroll(epoch);"
+        },
+        {
+          "line": 794,
+          "text": "synchronized(lifecycleLock){requireCurrent(epoch);if(expectedOwner!=null&&!expectedOwner.equals(ownerIdentity)){resolveCurrent(call,epoch,new JSObject().put(\"st"
         },
         {
           "line": 795,
+          "text": "requireOwned(call,epoch);"
+        },
+        {
+          "line": 797,
           "text": "requireCurrent(epoch);"
         },
         {
-          "line": 796,
+          "line": 798,
           "text": "if(result.getInt(\"status\")==401)synchronized(lifecycleLock){requireCurrent(epoch);clearEnrollment();}"
         },
         {
-          "line": 798,
+          "line": 800,
           "text": "resolveCurrent(call,epoch,new JSObject(result.toString()));"
         },
         {
-          "line": 811,
+          "line": 813,
           "text": "final long epoch;final var handle=new ElizaAgentService.LocalStreamHandle();"
         },
         {
-          "line": 812,
+          "line": 814,
           "text": "try{synchronized(lifecycleLock){epoch=admittedEpoch();if(streams.size()>=2||streams.containsKey(id))throw new IllegalStateException();streams.put(id,handle);str"
         },
         {
-          "line": 817,
+          "line": 819,
           "text": "String token=enroll(epoch);JSONObject headers=new JSONObject().put(\"Authorization\",\"Bearer \"+token).put(\"Accept\",\"text/event-stream\").put(\"Content-Type\",\"applic"
         },
         {
-          "line": 819,
+          "line": 821,
           "text": "synchronized(lifecycleLock){requireCurrent(epoch);if(!owner.equals(ownerIdentity)||streams.get(id)!=handle)throw new Superseded();}"
         },
         {
-          "line": 821,
+          "line": 823,
           "text": "ElizaAgentService.requestLocalAgentStream(input.toString(),event->{synchronized(lifecycleLock){try{requireCurrent(epoch);if(streams.get(id)!=handle)return;JSONO"
         },
         {
-          "line": 831,
+          "line": 833,
           "text": "String key=\"voice-\"+id;final long epoch;final var handle=new ElizaAgentService.LocalStreamHandle();"
         },
         {
-          "line": 832,
+          "line": 834,
           "text": "try{synchronized(lifecycleLock){epoch=admittedEpoch();if(streams.keySet().stream().anyMatch(value->value.startsWith(\"voice-\")))throw new IllegalStateException()"
         },
         {
-          "line": 836,
+          "line": 838,
           "text": "enroll(epoch);final String admittedRoot;"
         },
         {
-          "line": 837,
+          "line": 839,
           "text": "synchronized(lifecycleLock){requireCurrent(epoch);admittedRoot=rootToken;if(!VoiceEventAdmission.current(admittedRoot,rootToken,ElizaAgentService.localAgentToke"
         },
         {
-          "line": 840,
+          "line": 842,
           "text": "requireCurrent(epoch);if(streams.get(key)!=handle)return;"
         },
         {
-          "line": 856,
+          "line": 858,
           "text": "* calls and streams. The shared runtime, its epoch and the owner enrollment stay valid for"
         },
         {
-          "line": 857,
+          "line": 859,
           "text": "* other surfaces. When the last surface goes away (the app is closed or recreated) the epoch"
         }
       ]

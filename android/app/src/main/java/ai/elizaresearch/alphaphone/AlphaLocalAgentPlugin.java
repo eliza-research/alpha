@@ -590,6 +590,7 @@ public final class AlphaLocalAgentPlugin extends Plugin {
   String requestId=call.getString("requestId","");
   if(!requestId.matches("[a-f0-9-]{36}")){call.reject("Invalid startup request");return;}
   synchronized(lifecycleLock){
+   if(disposed){call.reject("Local agent bridge is closed.");return;}
    // A start that attached owns no launch: its cancellation retires nothing.
    if(attachedStarts.remove(requestId)){call.resolve();return;}
    if(requestId.equals(startRequestId)&&startRequestEpoch==lifecycleEpoch){
@@ -673,6 +674,7 @@ public final class AlphaLocalAgentPlugin extends Plugin {
  }
  @PluginMethod public void stop(PluginCall call) {
   synchronized(lifecycleLock){
+   if(disposed){call.reject("Local agent bridge is closed.");return;}
    startRequestId=null;startOwnsLaunch=false;
    invalidateCalls();++lifecycleEpoch;accepting=false;stopping=true;clearEnrollment();
    try{ElizaAgentService.stop(getContext());call.resolve(new JSObject().put("state","stopping"));}
