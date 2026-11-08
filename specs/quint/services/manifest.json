@@ -977,6 +977,66 @@
         "maxSteps": 80,
         "seed": "123"
       }
+    },
+    {
+      "path": "specs/quint/services/WorkflowEngineAdmission.qnt",
+      "module": "WorkflowEngineAdmission",
+      "init": "init",
+      "step": "step",
+      "invariant": "safety",
+      "sources": [
+        "vendor/eliza/plugins/plugin-workflow/src/services/embedded-workflow-service.ts",
+        "vendor/eliza/plugins/plugin-workflow/src/services/workflow-dispatch.ts",
+        "vendor/eliza/plugins/plugin-workflow/src/services/phone-workflow-spec.ts",
+        "vendor/eliza/plugins/plugin-workflow/src/db/schema.ts",
+        "vendor/eliza/packages/core/src/services/trigger-scheduling.ts"
+      ],
+      "tests": [
+        "durableAdmissionTest",
+        "mismatchedSubmissionTest",
+        "staleVersionRejectedTest",
+        "oldReceiptSurvivesVersionTest",
+        "pausedTriggerRejectedTest",
+        "missedOccurrenceNoWorkerTest",
+        "overlapNoWorkerTest",
+        "cancellationTerminalWinnerTest",
+        "cancellationBeforeProcessTest",
+        "unknownOutcomeRestartTest",
+        "unsupportedApprovalRejectedTest",
+        "unsupportedApprovalCanBeDeniedTest",
+        "approvalDigestRejectedTest",
+        "committedUnknownApprovalReplayTest",
+        "otherOwnerDecisionRejectedTest",
+        "conflictingNativeTerminalFailsClosedTest"
+      ],
+      "invariants": [
+        "DurableBeforeProcess",
+        "ManualReceiptMatchesRun",
+        "NoProcessForUnadmittedRun",
+        "TerminalNotRunning",
+        "RecordedDecisionHasCanonicalReceipt",
+        "TypeOK"
+      ],
+      "stateMapping": {
+        "runs/receipt/owner/payload/runVersion": "Actual tenant-scoped execution and manual-submission rows for one bound identity, with finite input/owner/version equality classes",
+        "status/finished/cancelRequested/reconciliation": "Persisted WorkflowExecution snapshot read by actual service",
+        "workerActive/workerStarts/workerApproval": "Controlled process port liveness and invocation-local event snapshot. Private workerApproval remains an explicit unobserved field",
+        "approval/supported/digest/decisionOwner/recordedApproval": "Actual approvalReceipts canonical readback versus SQL execution.approvals projection",
+        "version/active/removed/otherActive": "Actual stored definition and optional competing unfinished run at schedule admission",
+        "controls": "Actual cancel/approval process command invocations"
+      },
+      "abstractions": [
+        "One workflow, one bound target submission/occurrence, one optional pre-existing run, two owner/version/input equivalence classes and at most two process invocations.",
+        "Actual PostgreSQL-compatible SQL and Drizzle queries run in single-process PGlite. Multi-host locking, deployment migrations and installed process supervision remain separate obligations.",
+        "Worker result/control and canonical Smithers approval-store ports are controlled. No real external workflow effect, hosted grant, provider or device action is performed.",
+        "Actual compiler and cron admission classify selected ready/missed/overlap schedules. Finite disposition inputs do not prove all time zones or clock instants.",
+        "Canonical approval is authoritative. A committed decision may survive a failed host transaction while the execution projection stays pending."
+      ],
+      "bounds": {
+        "maxSamples": 1000,
+        "maxSteps": 80,
+        "seed": "123"
+      }
     }
   ]
 }
