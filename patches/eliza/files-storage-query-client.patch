@@ -1,0 +1,38 @@
+--- a/plugins/plugin-files/src/browser/storage-volume.ts
++++ b/plugins/plugin-files/src/browser/storage-volume.ts
+@@ -205,2 +205,23 @@
+-  async query(): Promise<{ entries: StorageEntry[] }> {
+-    return { entries: await this.walk() };
++  /** Visible folders under the requested path, bounded like the file walk. */
++  private async walkFolders(under: string): Promise<StorageEntry[]> {
++    const start = validPath(under, true);
++    let id: string;
++    try { id = await this.folderId(start); }
++    catch (error) { if (error instanceof Missing) return []; throw error; }
++    const out: StorageEntry[] = [], queue: [string, string][] = [[id, start]];
++    for (let visited = 0; queue.length && visited < WALK_MAX; visited++) {
++      const [folder, path] = queue.shift()!;
++      for (const entry of await this.visible(folder)) {
++        if (!entry.directory) continue;
++        const child = joinPath(path, entry.name);
++        queue.push([entry.id, child]);
++        out.push(this.row(child, entry, (await this.visible(entry.id)).length));
++        if (out.length >= WALK_MAX) return out;
++      }
++    }
++    return out;
++  }
++  async query(input: { folders?: boolean; folder?: string } = {}): Promise<{ entries: StorageEntry[] }> {
++    return { entries: input.folders === true
++      ? await this.walkFolders(typeof input.folder === "string" ? input.folder : "")
++      : await this.walk() };
+@@ -699,2 +720,4 @@
+-        case "storageCategory":
+-          return { status: "ready", ...(await this.category(input.category)) };
++        case "storageCategory": {
++          const { entries } = await this.category(input.category);
++          return { status: "ready", ...(input.countOnly === true ? { count: entries.length } : { entries }) };
++        }
+@@ -702 +725 @@
+-          return { status: "ready", ...(await this.query()) };
++          return { status: "ready", ...(await this.query(input)) };

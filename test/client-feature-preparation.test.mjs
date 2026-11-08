@@ -113,6 +113,10 @@ assert.equal(stamp.baseCommit,JSON.parse(fs.readFileSync('upstream.lock.json','u
   ['inboxConfirmationPatch','plugins/plugin-inbox/src/mailbox/review-controller.ts'],
   ['inboxCleanupPatch','plugins/plugin-inbox/src/mailbox/drafts-controller.ts'],
   ['crashErrorClassPatch','plugins/plugin-native-system/src/crash-log.ts'],
+  ['filesListIdentityPatch','plugins/plugin-files/src/browser/files-browser-adapter.ts'],
+  ['filesStorageQueryPatch','plugins/plugin-files/src/browser/storage-volume.ts'],
+  ['photosWindowPatch','packages/ui/src/mobile-shell/photos-view.ts'],
+  ['photosLibraryPresentationPatch','plugins/plugin-assistant/src/services/device-actions/photo-library-contract.ts'],
  ]){
   assert.equal(stamp[key].beforeSha256,stamp.sourceFiles[file]);
   assert.equal(stamp[key].afterSha256,stamp.files[file]);
@@ -158,6 +162,10 @@ for(const [receipt,prefix,file] of [
  ['inboxConfirmationPatch','inbox-confirmation-client','plugins/plugin-inbox/src/mailbox/review-controller.ts'],
  ['inboxCleanupPatch','inbox-cleanup-client','plugins/plugin-inbox/src/mailbox/drafts-controller.ts'],
  ['crashErrorClassPatch','crash-error-class-client','plugins/plugin-native-system/src/crash-log.ts'],
+ ['filesListIdentityPatch','files-list-identity-client','plugins/plugin-files/src/browser/files-browser-adapter.ts'],
+ ['filesStorageQueryPatch','files-storage-query-client','plugins/plugin-files/src/browser/storage-volume.ts'],
+ ['photosWindowPatch','photos-window-client','packages/ui/src/mobile-shell/photos-view.ts'],
+ ['photosLibraryPresentationPatch','photos-library-presentation-client','plugins/plugin-assistant/src/services/device-actions/photo-library-contract.ts'],
 ])test(`${prefix} requires its exact source, patch and target`,()=>fixture(({root,vendor,git})=>{
  const before='export const value = 1;\n',after='export const value = 2;\n';
  const digest=value=>createHash('sha256').update(value).digest('hex');

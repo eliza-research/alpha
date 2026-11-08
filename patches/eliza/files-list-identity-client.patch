@@ -1,66 +1,31 @@
 --- a/plugins/plugin-files/src/browser/files-browser-adapter.ts
 +++ b/plugins/plugin-files/src/browser/files-browser-adapter.ts
-@@ -1010,7 +1010,7 @@
-           .filter(Boolean)
-           .join(" · ");
-     return {
+@@ -59 +59 @@
+-  storageCategory(input: { category: FilesCategory }): Promise<
++  storageCategory(input: { category: FilesCategory; countOnly?: boolean }): Promise<
+@@ -351 +351 @@
+-          const value = await storage.storageCategory({ category: id });
++          const value = await storage.storageCategory({ category: id, countOnly: true });
+@@ -875 +875 @@
+-          summary: "Files needs all-files access. Nothing was changed.",
++          summary: "Files needs storage access. Nothing was changed.",
+@@ -911 +911 @@
+-                "Opened the share sheet. Nothing is sent until you pick an app.",
++                "Opened the share sheet.",
+@@ -1013 +1013 @@
 -      id: entry.path,
 +      id: JSON.stringify([place.kind === "folder" ? place.volume || "primary" : "primary", entry.path]),
-       name: entry.name,
-       sub: meta,
-       d: iconFor(entry),
-@@ -1106,6 +1106,7 @@
-       allFiles: () => go(rootFolder),
-       allFilesIcon: ICONS.folder,
-       cats: CATEGORIES.map(({ id, label }) => ({
+@@ -1108,0 +1109 @@
 +        id,
-         name: label,
-         d: ICONS[id],
-         count: counts[id] === undefined ? "" : String(counts[id]),
-@@ -1113,6 +1114,7 @@
-         go: () => go({ kind: "category", category: id }),
-       })),
-       vols: volumes.map((volume) => ({
+@@ -1115,0 +1117 @@
 +        id: volume.id,
-         name: volume.name,
-         free: formatFree(volume),
-         barW:
-@@ -1255,6 +1257,7 @@
-         crumbs:
-           at.kind === "folder"
-             ? breadcrumbs(at.path, volumeName).map((crumb, index, all) => ({
+@@ -1257,0 +1260 @@
 +                id: JSON.stringify([at.volume || "primary", crumb.path]),
-                 label: crumb.label,
-                 last: index === all.length - 1,
-                 notLast: index < all.length - 1,
-@@ -1281,12 +1284,14 @@
-         moreD: ICONS.more,
-         menuRows: [
-           ...(["name", "date", "size"] as SortMode[]).map((mode) => ({
+@@ -1283,0 +1287 @@
 +            id: "sort:" + mode,
-             label: SORT_LABELS[mode] + (sort === mode ? " · " + (mode === "name" ? (state.sortReverse ? "Z–A" : "A–Z") : mode === "date" ? (state.sortReverse ? "Oldest first" : "Newest first") : (state.sortReverse ? "Smallest first" : "Largest first")) : ""),
-             d: ICONS.sort,
-             on: sort === mode,
-             go: () => currentApi.set({ menu: false, sort: mode, sortReverse: sort === mode ? !state.sortReverse : false }),
-           })),
-           {
+@@ -1289,0 +1294 @@
 +            id: "reverse-order",
-             label: "Reverse order",
-             d: ICONS.sort,
-             on: state.sortReverse === true,
-@@ -1295,6 +1300,7 @@
-           ...(listed && items.length
-             ? [
-                 {
+@@ -1297,0 +1303 @@
 +                  id: "select",
-                   label: "Select",
-                   d: ICONS.check,
-                   on: false,
-@@ -1458,6 +1464,7 @@
-                       ),
-                   )
-                   .map((f) => ({
+@@ -1460,0 +1467 @@
 +                    id: JSON.stringify([d.volume || "primary", f.path]),
-                     name: f.name,
-                     label: "Open " + f.name,
-                     d: ICONS.folder,

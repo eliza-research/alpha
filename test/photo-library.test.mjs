@@ -182,7 +182,9 @@ test('agent operations: search/inspect/select read locally; every change or shar
  assert.throws(()=>m.validateLibraryOperation({type:'photo_library_review',action:'trash',items:[{id:'lib:i:1:1',revision:'1:2:3'}]}),/Invalid reviewed item/);
  assert.throws(()=>m.validateLibraryOperation({type:'photo_library_review',action:'restore',items:[{id:'lib:i:1:1',revision:'rev-ab12-3'}]}),/Unsupported/);
  assert.equal(m.REVIEWED_LIBRARY_ACTIONS.includes('restore'),false,'restore is not offered: trashed rows are never paged');
- assert.match(m.describeLibraryOperation({type:'photo_library_review',action:'delete',items:[{id:'lib:i:1:1',revision:'rev-ab12-3'}]}).description,/You confirm it there and then in Android/);
+ const review={type:'photo_library_review',action:'delete',items:[{id:'lib:i:1:1',revision:'rev-ab12-3'}]};
+ assert.deepEqual(m.describeLibraryOperation(review),{title:m.reviewText('delete',1).title,description:m.reviewText('delete',1).detail});
+ assert.equal(m.describeLibraryOperation({type:'photo_library_select',ids:['lib:i:1:1']}).description,'');
  // Results: exact shape, opaque revisions only.
  const search={type:'photo_library_search',limit:2};
  assert.throws(()=>m.validateLibraryResult(search,{kind:'photo_library_search',scope:'full',more:false,items:[{id:'lib:i:1:1',revision:'1:2:3',kind:'image',takenAt:1,width:1,height:1}]}),/Invalid library result item/);

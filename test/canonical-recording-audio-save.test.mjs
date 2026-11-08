@@ -41,3 +41,15 @@ test('a delayed Stop does not recreate or attach audio to a voice note already i
  assert.equal(await save.call(f.ui,'recording-1','',2500,null,()=>true,f.intent()),false);
  assert.equal(f.created.length,0);assert.equal(f.claims,0);assert.equal(f.retained.length,0);assert.deepEqual(f.opened,[]);
 });
+
+test('a transcribed recording survives a lost create response and a fresh controller without a second note',async()=>{
+ const f=fixture(),interact=f.ui.controller.interact;let claims=0,refreshes=0;
+ f.ui.controller.interact=async(...args)=>{await interact(...args);throw Error('Response lost after save');};
+ assert.equal(await save.call(f.ui,'recording-1','Hello',2500,null,()=>true,{pending:false,claim:async()=>{claims++;return true;}}),false);
+ assert.equal(f.notes.length,1);
+ const recovered={...f.ui,controller:{...f.ui.controller,refresh:async()=>{refreshes++;},interact}};
+ assert.equal(await save.call(recovered,'recording-1','Hello',2500,null,()=>true,{pending:true,claim:async()=>assert.fail('saved recording claimed twice')}),true);
+ assert.equal(refreshes,1);assert.equal(claims,1);assert.equal(f.notes.length,1);
+ assert.equal(await save.call(recovered,'recording-1','Different text',2500,null,()=>true,{pending:true,claim:async()=>assert.fail('conflicting recording claimed')}),false);
+ assert.equal(f.notes.length,1);assert.equal(f.notes[0].body,'\nHello');
+});

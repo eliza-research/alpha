@@ -1,0 +1,22 @@
+--- a/packages/ui/src/mobile-shell/photos-view.ts
++++ b/packages/ui/src/mobile-shell/photos-view.ts
+@@ -97 +97 @@
+-  list: (options: { before?: string }) => Promise<{ items: T[]; next: string }>,
++  list: (options: { before?: string; thumbnails?: boolean }) => Promise<{ items: T[]; next: string }>,
+@@ -111 +111,4 @@
+-    const result = await list(cursor ? { before: cursor } : {});
++    const result = await list({
++      ...(cursor ? { before: cursor } : {}),
++      ...(options.more || !rows.length ? {} : { thumbnails: false }),
++    });
+@@ -116,0 +120,10 @@
++}
++
++/** Reuse pixels only when every content revision still matches the reloaded row. */
++export function keepThumbnails<T extends ViewRow & { image?: string; contentRevision?: string }>(rows: readonly T[], before: readonly T[]): T[] {
++  const held = new Map(before.filter(row => row.image).map(row => [row.id, row] as const));
++  return rows.map(row => {
++    const old = held.get(row.id);
++    return !row.image && old && old.revision === row.revision && old.mutationRevision === row.mutationRevision && old.contentRevision === row.contentRevision
++      ? { ...row, image: old.image } : row;
++  });

@@ -1,11 +1,13 @@
 import test from 'node:test';import assert from 'node:assert/strict';import {readFileSync} from 'node:fs';
 import {fixture,runJvm,jsonJarSkip} from './fixtures/jvm-tools.mjs';
+import {preparePatchedNative} from '../scripts/prepare-patched-native.mjs';
+import path from 'node:path';
 // Files browser rules (design/view-refresh-2026-11/PLAN.md section 4; spec files-browser Design.cfg).
 const storage=await import('../.eliza/client-features/plugins/plugin-files/src/browser/storage-model.ts');
 const {BrowserStorageVolume}=await import('../.eliza/client-features/plugins/plugin-files/src/browser/storage-volume.ts');
 const contract=await import('../.eliza/client-features/plugins/plugin-files/src/browser/files-agent-contract.ts');
 const TRASH_FOLDER='.Trash-alpha';
-const nativeStorage='vendor/eliza/plugins/plugin-native-filesystem/android/src/main/java/ai/eliza/plugins/filesystem/browser';
+const nativeStorage=path.join(preparePatchedNative().root,'plugins/plugin-native-filesystem/android/src/main/java/ai/eliza/plugins/filesystem/browser');
 /** The browser file library's contract (plugin-files): unique names per folder, a move or
  * rename into a used name is refused, delete only removes an empty folder. */
 function library(){
@@ -199,8 +201,8 @@ test('category counts and folder groups cover the whole category, not only the l
 test('a folder watch also follows MediaStore, so provider writes (downloads, camera) refresh the open folder (ListingsConverge)',()=>{
  const plugin=readFileSync('android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaFilesPlugin.java','utf8');
  const watch=plugin.slice(plugin.indexOf('public void storageWatch'),plugin.indexOf('public void storageUnwatch'));
- assert.match(watch,/\n  mediaObserver=new android\.database\.ContentObserver/,'the MediaStore observer is registered for every watch, folders included');
- assert.doesNotMatch(watch,/if\(category!=null\|\|path==null\)\{mediaObserver/);
+ assert.match(watch,/android\.database\.ContentObserver media=new android\.database\.ContentObserver/,'the MediaStore observer is registered for every watch, folders included');
+ assert.doesNotMatch(watch,/if\(category!=null\|\|path==null\)\{/);
  assert.match(watch,/"downloads"\.equals\(category\)\?new java\.io\.File\(primaryBrowser\(\)\.root,StorageCatalog\.DOWNLOAD_FOLDER\)/,'Downloads watches the Download folder too');
 });
 test('every Browse category id has a native answer on Android; Downloads is the Download folder',()=>{
@@ -296,4 +298,40 @@ test('the Files agent contract carries opaque reviewed identities and refuses un
  assert.match(plugin,/b\.trash\(paths,System\.currentTimeMillis\(\),reviewed\)/);
  assert.match(plugin,/public void storageReviewedIdentities\(PluginCall call\)/);
  assert.match(plugin,/reviewed!=null&&!filesReviewVisible\(\)/);
+});
+
+test('the browser volume answers the folder filter with folders, as Android walks them (files_filter kind folder)',async()=>{
+ const v=await fresh();await v.createFolder('Documents','Taxes');await v.createFolder('Documents/Taxes','2025');await v.add('Documents','a.pdf');
+ const all=(await v.run('storageQuery',{folders:true})).entries;
+ assert.ok(all.every(e=>e.directory),'only folders');
+ assert.ok(['DCIM/Camera','Documents/Taxes','Documents/Taxes/2025'].every(p=>all.some(e=>e.path===p)));
+ const under=(await v.run('storageQuery',{folders:true,folder:'Documents'})).entries.map(e=>e.path).sort();
+ assert.deepEqual(under,['Documents/Taxes','Documents/Taxes/2025']);
+ assert.equal((await v.run('storageQuery',{folders:true,folder:'Documents'})).entries.find(e=>e.path==='Documents/Taxes').children,1);
+ const shown=all.filter(e=>storage.filterMatches({kind:'folder',text:'taxes'},e));
+ assert.deepEqual(shown.map(e=>e.path),['Documents/Taxes'],'the renderer\'s filter now has folders to match');
+ assert.deepEqual((await v.run('storageQuery',{folders:true,folder:'Nope'})).entries,[]);
+ assert.ok((await v.run('storageQuery',{})).entries.every(e=>!e.directory),'without folders the query is the file walk');
+});
+
+
+test('Browse requests count-only category summaries from the shared storage adapter',async()=>{
+ const adapter=readFileSync('.eliza/client-features/plugins/plugin-files/src/browser/files-browser-adapter.ts','utf8');
+ const counts=adapter.slice(adapter.indexOf('async function loadCounts'),adapter.indexOf('async function reload'));
+ assert.match(counts,/storageCategory\(\{ category: id, countOnly: true \}\)/);
+ const v=await fresh();await v.add('DCIM/Camera','one.jpg','x');await v.add('DCIM/Camera','two.jpg','y');
+ assert.deepEqual(await v.run('storageCategory',{category:'images',countOnly:true}),{status:'ready',count:2});
+ assert.equal((await v.run('storageCategory',{category:'images'})).entries.length,2);
+ assert.match(adapter,/Files needs storage access\. Nothing was changed\./);
+ assert.match(adapter,/'Opened the share sheet\.'|"Opened the share sheet\."/);
+});
+
+
+test('a superseded storage watch neither registers nor publishes an observer',{skip:jsonJarSkip},()=>{
+ assert.match(runJvm([`${nativeStorage}/StorageBrowser.java`,fixture('android-stubs/android/webkit/MimeTypeMap.java'),fixture('StorageWatchSlotTest.java')],'ai.eliza.plugins.filesystem.browser.StorageWatchSlotTest',{json:true}),/^PASS storage watch slot/);
+ const plugin=readFileSync('android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaFilesPlugin.java','utf8');
+ assert.match(plugin,/public void storageWatch\(PluginCall call\)\{long ticket=watch\.request\(\);storage\(call,b->\{/);
+ assert.match(plugin,/watch\.install\(ticket,\(\)->\{/);
+ assert.match(plugin,/private void stopWatching\(\)\{watch\.clear\(\);\}/);
+ assert.match(plugin,/watch\.isCurrent\(ticket\)/,'queued callbacks recheck their current owner');
 });

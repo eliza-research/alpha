@@ -10,8 +10,8 @@ const photo=(n,image='')=>({id:'native-camera-'+n,date:n,image,revision:'r1'});
 function fixture(rows){
  const requests=[],updates=[],state={open:null,album:null,tab:'lib'};
  const owner={get:()=>state,isActive:()=>true,set:value=>updates.push(value)};
- const context={libraryEpoch:1,photoReadEpoch:1,disposed:false,document:{hidden:false},photosApi:owner,captures:rows,thumbnailPlan,batches,LIBRARY_LIMITS:{thumbnailsKept:240},thumbFetching:new Set(),nativeId:id=>id.replace(/^native-camera-/,''),Date,library:{thumbnails:input=>new Promise((resolve,reject)=>requests.push({input,resolve,reject}))}};
- vm.createContext(context);vm.runInContext(stripTypeScriptTypes(declaration('async function settleThumbnails('),{mode:'transform'}),context);
+ const context={libraryEpoch:1,photoReadEpoch:1,disposed:false,document:{hidden:false},photosApi:owner,captures:rows,thumbnailPlan,batches,LIBRARY_LIMITS:{thumbnailsKept:240},thumbFetching:new Set(),coverIds:new Set(),nativeId:id=>id.replace(/^native-camera-/,''),Date,queueMicrotask,browserMode:false,library:{thumbnails:input=>new Promise((resolve,reject)=>requests.push({input,resolve,reject}))}};
+ vm.createContext(context);vm.runInContext(stripTypeScriptTypes([declaration('async function settleThumbnails('),declaration('function keepCovers('),declaration('async function loadCoverThumbnails(')].join('\n'),{mode:'transform'}),context);
  return {context,requests,updates,state,owner,settle:(from,to)=>context.settleThumbnails(context.captures,from,to)};
 }
 test('library refresh keeps rows beyond the previous 240-row reload cap',async()=>{
@@ -67,4 +67,28 @@ test('catalog replacement cannot receive pixels from the previous row',async()=>
  assert.equal(f.context.thumbFetching.size,0);assert.equal(f.updates.length,1);
  const retry=f.settle(0,1);f.requests[1].resolve({items:[{id:'1',image:'new pixels'}]});await retry;
  assert.equal(f.context.captures[0].image,'new pixels');
+});
+
+
+test('album covers retain pixels through a deep scroll and reload missing pixels only in the active album view',async()=>{
+ const f=fixture(Array.from({length:600},(_,i)=>photo(i,'pixels-'+i)));
+ f.state.tab='alb';f.context.keepCovers([f.context.captures[0],f.context.captures[3]]);
+ f.state.tab='lib';await f.settle(500,520);
+ assert.equal(f.context.captures[0].image,'pixels-0');assert.equal(f.context.captures[3].image,'pixels-3');assert.equal(f.context.captures[1].image,'');
+ f.state.tab='alb';f.context.keepCovers([f.context.captures[1]]);await new Promise(setImmediate);
+ assert.deepEqual(Array.from(f.requests[0].input.ids),['1']);f.requests[0].resolve({items:[{id:'1',image:'cover pixels'},{id:'2',image:'unrequested'}]});await new Promise(setImmediate);
+ assert.equal(f.context.captures[1].image,'cover pixels');assert.equal(f.context.captures[2].image,'');
+});
+for(const reason of ['catalog','hidden','departed','read-retired','disposed','viewer','left-albums'])test(`album cover response cannot publish after ${reason}`,async()=>{
+ const f=fixture([photo(1)]);f.state.tab='alb';f.context.keepCovers(f.context.captures);await new Promise(setImmediate);
+ assert.equal(f.requests.length,1);
+ if(reason==='catalog')f.context.libraryEpoch++;
+ if(reason==='hidden')f.context.document.hidden=true;
+ if(reason==='departed')f.owner.isActive=()=>false;
+ if(reason==='read-retired')f.context.photoReadEpoch++;
+ if(reason==='disposed')f.context.disposed=true;
+ if(reason==='viewer')f.state.open=photo(1).id;
+ if(reason==='left-albums')f.state.tab='lib';
+ f.requests[0].resolve({items:[{id:'1',image:'stale pixels'}]});await new Promise(setImmediate);
+ assert.equal(f.context.captures[0].image,'');assert.equal(f.context.thumbFetching.size,0);
 });

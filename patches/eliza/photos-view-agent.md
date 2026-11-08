@@ -1,5 +1,13 @@
 # photos-view-agent.patch
 
+Current integration uses the shared Photos contracts in SDK
+`99b49439ce9d0cb5607e9831b9f7f58d89525029`. Library cards receive their concise
+presentation through the reviewed `photos-library-presentation-client.patch`,
+whose base and output hashes are checked by `prepare-client-features.mjs`.
+The proposal below records the earlier SDK and is retained as historical input.
+
+## Historical proposal
+
 Status: proposed upstream. No build uses this patch. It is not listed in
 `native-manifest.json` (which admits Android sources only), and `prepare-client-features`
 admits no TypeScript patch to these files. It takes effect only after it is merged upstream

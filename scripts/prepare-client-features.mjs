@@ -322,6 +322,9 @@ export function prepareClientFeatures({ root = projectRoot, projectVoice = true,
   const clientPatches = {};
   for (const [key, prefix, name] of [
     ['filesListIdentityPatch', 'files-list-identity-client', 'plugins/plugin-files/src/browser/files-browser-adapter.ts'],
+    ['filesStorageQueryPatch', 'files-storage-query-client', 'plugins/plugin-files/src/browser/storage-volume.ts'],
+    ['photosWindowPatch', 'photos-window-client', 'packages/ui/src/mobile-shell/photos-view.ts'],
+    ['photosLibraryPresentationPatch', 'photos-library-presentation-client', 'plugins/plugin-assistant/src/services/device-actions/photo-library-contract.ts'],
     ['calendarSemanticPatch', 'calendar-semantic-client', 'packages/contracts/src/calendar-linked-sync.ts'],
     ['inboxConfirmationPatch', 'inbox-confirmation-client', 'plugins/plugin-inbox/src/mailbox/review-controller.ts'],
     ['inboxCleanupPatch', 'inbox-cleanup-client', 'plugins/plugin-inbox/src/mailbox/drafts-controller.ts'],
