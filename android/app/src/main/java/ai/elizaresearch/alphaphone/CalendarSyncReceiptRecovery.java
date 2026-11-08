@@ -29,7 +29,7 @@ final class CalendarSyncReceiptRecovery {
    }
    terminal.add(id);
   }
-  terminal.sort(java.util.Comparator.<String,Boolean>comparing(id->!operations.getJSONObject(id).optBoolean("acknowledged")).thenComparingLong(id->operations.getJSONObject(id).optLong("createdAt")));
+  terminal.sort(java.util.Comparator.<String,Boolean>comparing(id->!operations.optJSONObject(id).optBoolean("acknowledged")).thenComparingLong(id->operations.optJSONObject(id).optLong("createdAt")));
   for(String id:terminal){if(operations.length()<64)break;operations.remove(id);}
  }
 }
