@@ -58,8 +58,9 @@ test('Maps keeps the OpenStreetMap copyright credit visible beside Cloud results
 
 const REFUSALS: (Refusal & { text: RegExp })[] = [
   { status: 503, code: 'maps_allowance_unconfigured', text: /^Cloud Maps is not available yet\.$/ },
-  { status: 503, code: 'maps_not_configured', text: /^Cloud Maps is not available yet\.$/ },
   { status: 403, code: 'subscription_required', text: /needs an active Cloud subscription/ },
+  // Not next to maps_allowance_unconfigured: the same message would already be on screen.
+  { status: 503, code: 'maps_not_configured', text: /^Cloud Maps is not available yet\.$/ },
   { status: 422, code: 'unsupported_region', text: /outside Cloud Maps coverage/ },
   { status: 429, code: 'rate_limited', retryAfterSeconds: 42, text: /Try again in about 42 seconds/ },
   { status: 429, code: 'allowance_exhausted', text: /used your Maps allowance/ },
