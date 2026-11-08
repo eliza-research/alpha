@@ -5,6 +5,7 @@ module IdentityComponent {
   export IdentitySession.init
   export IdentitySession.safety
   export IdentitySession.begin
+  export IdentitySession.beginWork
   export IdentitySession.callback
   export IdentitySession.codeVerified
   export IdentitySession.exchanged
@@ -175,8 +176,7 @@ module ApplicationComposition {
   // Precommit sign-in keeps the prior account and resident available. A newly
   // committed key becomes active only after acknowledgement finishes.
   val accountReady = Identity::s.owner != 0 and
-    ((Identity::s.phase == "authenticated" and Identity::s.key) or
-      (Identity::s.oldKey and not(Identity::s.key))) and
+    Identity::s.activation.owner == Identity::s.owner and Identity::s.activation.acknowledged and
     not(Reset::s.marker) and not(Resident::s.resetPending)
   val OwnerAgreement = Identity::s.owner == 0 or
     (Identity::s.owner == Calendar::s.owner and Identity::s.owner == Inbox::s.owner)
@@ -194,6 +194,10 @@ module ApplicationComposition {
     host.foreground, not(Reset::s.marker), not(Resident::s.resetPending),
     Identity::begin(method), keepVoice, keepResident,
     keepCalendar, keepInbox, keepReset, keepHost
+  }
+  action beginIdentityWork = all {
+    not(Reset::s.marker), Identity::beginWork,
+    keepVoice, keepResident, keepCalendar, keepInbox, keepReset, keepHost
   }
   action acceptIdentityKey = all {
     not(Reset::s.marker), not(Resident::s.resetPending), Identity::writeKey,
@@ -617,10 +621,7 @@ module ApplicationComposition {
   action restartApplication = all {
     Calendar::s.instance < 2,
     not(Resident::s.phase.in(Set("ready", "starting"))) or Resident::s.epoch < 3,
-    if (Identity::s.phase.in(Set("activation-pending", "acknowledging")) and Identity::s.receipt and Identity::s.key)
-      Identity::restart
-    else if (Identity::s.phase.in(Set("code", "mfa", "exchange", "minted", "receipt-saved")) and not(Identity::s.key))
-      Identity::cancel else keepIdentity,
+    Identity::restart,
     if (Voice::s.session < 2) Voice::stop else keepVoice,
     if (Resident::s.phase.in(Set("ready", "starting"))) Resident::crash(false) else keepResident,
     Calendar::restart, Inbox::restart,
@@ -645,7 +646,7 @@ module ApplicationComposition {
   }
   action step = any {
     calendarPermissionLost, calendarRestorePermission, inboxWithdrawRead, inboxRestoreGrants,
-    beginSignIn("google"),
+    beginSignIn("google"), beginIdentityWork,
     beginSignIn("email"),
     beginSignIn("phone"),
     {
@@ -865,7 +866,7 @@ module ApplicationComposition {
     .then(startVoice).then(voiceSegment(0)).then(voiceSubmit)
     .then(calendarEnqueue("update")).then(calendarClaim).then(calendarCheck)
     .then(inboxPrepare).then(inboxReview)
-    .then(beginSignIn("google")).then(identityCallback(2)).then(identityExchanged)
+    .then(beginSignIn("google")).then(releaseIdentitySession).then(beginIdentityWork).then(identityCallback(2)).then(identityExchanged)
     .then(saveIdentityReceipt).then(acceptIdentityKey).then(acknowledgeIdentity(true))
     .then(revokePreviousIdentity(false)).then(releaseIdentitySession)
     .then(voiceReply(0, 1)).then(bindingReply(1))
@@ -902,14 +903,14 @@ module ApplicationComposition {
   run uncoordinatedIdentityChangeDetectedTest = init.then(beginSignIn("google")).then(identityCallback(1))
     .then(identityExchanged).then(saveIdentityReceipt).then(acceptIdentityKey).then(acknowledgeIdentity(true))
     .then(startResident).then(residentStarted(1)).then(beginBinding).then(bindingReply(1)).then(startVoice)
-    .then(beginSignIn("google")).then(identityCallback(2)).then(identityExchanged).then(saveIdentityReceipt)
+    .then(beginSignIn("google")).then(releaseIdentitySession).then(beginIdentityWork).then(identityCallback(2)).then(identityExchanged).then(saveIdentityReceipt)
     .then(all {Identity::writeKey, keepVoice, keepResident, keepCalendar, keepInbox, keepReset, keepHost})
     .then(check(not(VoiceAccountBound) and not(safety)))
 
   run signedInSetup = init.then(beginSignIn("google")).then(identityCallback(1))
     .then(identityExchanged).then(saveIdentityReceipt).then(acceptIdentityKey).then(acknowledgeIdentity(true))
   run readySetup = signedInSetup.then(startResident).then(residentStarted(1))
-    .then(beginBinding).then(bindingReply(1))
+    .then(beginBinding).then(bindingReply(1)).then(releaseIdentitySession)
 
   run mfaAndAcknowledgementRecoveryTest = init.then(beginSignIn("phone")).then(identityWrongCode)
     .then(verifyCode(true)).then(verifyMfa).then(identityExchanged).then(saveIdentityReceipt)
@@ -988,7 +989,7 @@ module ApplicationComposition {
   run restoredGrantCannotReviveRetiredCalendarTest = replacementSetup.then(calendarPermissionLost)
     .then(calendarRestorePermission).then(calendarDispatch.fail())
   run restoredGrantCannotReviveRetiredInboxTest = signedInSetup.then(inboxPrepare).then(inboxReview)
-    .then(inboxConfirm).then(beginSignIn("google")).then(identityCallback(2))
+    .then(inboxConfirm).then(beginSignIn("google")).then(releaseIdentitySession).then(beginIdentityWork).then(identityCallback(2))
     .then(identityExchanged).then(saveIdentityReceipt).then(acceptIdentityKey)
     .then(acknowledgeIdentity(true)).then(revokePreviousIdentity(false)).then(releaseIdentitySession)
     .then(inboxRestoreGrants).then(inboxReply.fail())
@@ -1010,5 +1011,16 @@ module ApplicationComposition {
     .then(check(safety and accountReady and credentialPresent and Identity::s.owner == 1
       and Voice::s.phase == "listening" and Resident::s.provider == "cloud"))
     .then(verifyCode(true)).then(check(safety and accountReady and Identity::s.phase == "mfa"))
+
+  run heldAcknowledgementPreservesNewAttemptTest = init.then(beginSignIn("google")).then(identityCallback(1))
+    .then(identityExchanged).then(saveIdentityReceipt).then(acceptIdentityKey).then(cancelSignIn)
+    .then(beginSignIn("google"))
+    .then(check(safety and Identity::s.pendingWrite and Identity::s.activation.receipt and not(accountReady)))
+    .then(acknowledgeIdentity(true))
+    .then(check(safety and accountReady and Identity::s.phase == "starting" and Identity::s.attemptOwner == 2))
+    .then(releaseIdentitySession).then(beginIdentityWork)
+    .then(check(safety and Identity::s.pending and Identity::s.owner == 1))
+    .then(restartApplication)
+    .then(check(safety and accountReady and Identity::s.pending and Identity::s.owner == 1))
 
 }

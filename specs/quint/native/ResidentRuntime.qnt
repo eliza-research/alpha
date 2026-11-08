@@ -26,10 +26,32 @@ module ResidentRuntime {
     s.phase == "stopped", s.packaged, s.sourceValid, not(s.resetPending),
     s' = {phase: "starting", localProcess: true, inferenceAccepted: false, ownedStart: true, ...s}
   }
+  // Native bridge admission advances its epoch, including reenrollment of a live service.
+  action admitStart(ownsLaunch: bool): bool = all {
+    s.phase.in(Set("stopped", "ready", "starting")), s.epoch < 3,
+    s.packaged, s.sourceValid, not(s.resetPending),
+    s' = { ...s, phase: "starting", epoch: s.epoch + 1, localProcess: true,
+      pending: false, bindingEpoch: -1, inferenceAccepted: false,
+      ownedStart: ownsLaunch, attachedStart: false }
+  }
+  action observeResident = all {
+    s.phase == "stopped", not(s.resetPending),
+    s' = { ...s, phase: "ready", localProcess: true, ownedStart: false }
+  }
+  action cancelUnownedStart = all {
+    s.phase == "starting", not(s.ownedStart), s.epoch < 3,
+    s' = { ...s, phase: "ready", epoch: s.epoch + 1, pending: false,
+      bindingEpoch: -1, inferenceAccepted: false, attachedStart: false }
+  }
+  action retireLastSurface = all {
+    s.epoch < 3,
+    s' = { ...s, epoch: s.epoch + 1, pending: false,
+      bindingEpoch: -1, inferenceAccepted: false, attachedStart: false }
+  }
   action attachStart = all { s.localProcess, s.phase.in(Set("starting", "ready")),
     s' = { ...s, attachedStart: true } }
   action cancelAttachedStart = all { s.attachedStart, s' = { ...s, attachedStart: false } }
-  action requestStop = all { s.phase.in(Set("starting", "ready", "stopping")), s.epoch < 3,
+  action requestStop = all { s.phase.in(Set("stopped", "starting", "ready", "stopping")), s.epoch < 3,
     s' = { ...s, phase: "stopping", epoch: s.epoch + 1, pending: false,
       bindingEpoch: -1, inferenceAccepted: false, ownedStart: false, attachedStart: false } }
   action cancelOwnedStart = all { s.ownedStart, requestStop }
@@ -92,7 +114,8 @@ module ResidentRuntime {
     nondet ticket = Set(-1, 0, 1, 2, 3).oneOf()
     nondet flag = Set(false, true).oneOf()
     nondet profile = Set("native", "cloud").oneOf()
-    any { chooseProfile(profile), invalidatePackage, start, attachStart, cancelAttachedStart,
+    any { chooseProfile(profile), invalidatePackage, start, admitStart(flag), observeResident,
+      cancelUnownedStart, retireLastSurface, attachStart, cancelAttachedStart,
       requestStop, cancelOwnedStart, shutdownConfirmed, shutdownUnconfirmed, started(ticket),
       beginBinding, bindingResult(ticket, flag), inference, clearBinding(flag),
       replaceCredential, revokeCredential, crash(flag), archiveReview(flag), requestReset, s' = s }
@@ -137,4 +160,10 @@ module ResidentRuntime {
     .then(shutdownConfirmed).then(check(not(s.localProcess)))
   run attachedCancellationPreservesServiceTest = init.then(start).then(started(0)).then(attachStart)
     .then(cancelAttachedStart).then(check(safety and s.phase == "ready" and s.localProcess and s.ownedStart))
+  run nativeAdmissionAdvancesEpochTest = init.then(admitStart(true)).then(started(0))
+    .then(check(s.phase == "starting")).then(started(1)).then(check(safety and s.phase == "ready"))
+  run unownedReenrollmentCancellationTest = init.then(observeResident).then(admitStart(false))
+    .then(cancelUnownedStart).then(started(1)).then(check(safety and s.phase == "ready" and s.localProcess and s.epoch == 2))
+  run lastSurfaceRetiresEnrollmentTest = init.then(admitStart(true)).then(started(1)).then(beginBinding)
+    .then(retireLastSurface).then(bindingResult(1, true)).then(check(safety and not(s.pending) and s.localProcess))
 }

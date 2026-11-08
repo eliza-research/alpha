@@ -29,7 +29,10 @@
         "stopRetainsProviderConfigurationTest",
         "unconfirmedStopKeepsProcessUnknownTest",
         "ownedCancellationRetiresLateStartupTest",
-        "attachedCancellationPreservesServiceTest"
+        "attachedCancellationPreservesServiceTest",
+        "nativeAdmissionAdvancesEpochTest",
+        "unownedReenrollmentCancellationTest",
+        "lastSurfaceRetiresEnrollmentTest"
       ],
       "invariants": [
         "TypeOK",
@@ -42,7 +45,9 @@
       "abstractions": [
         "One resident process, three epoch advances and two runtime profiles.",
         "Payload provenance, credential parsing, identity validation and IPC acknowledgement are environment results.",
-        "One retained record represents durable history."
+        "One retained record represents durable history.",
+        "Ordinary stop retires enrollment and voice admission before process shutdown is confirmed. Provider configuration persists. Owned and attached startup requests have distinct cancellation effects.",
+        "The native coordinator advances an epoch at full start admission, including unowned reenrollment of an existing service. Attached starts preserve the epoch. Last-surface destruction retires enrollment while the service can remain alive."
       ]
     },
     {
@@ -194,29 +199,51 @@
         "android/sense/src/main/java/ai/elizaresearch/alphaphone/sense/ListenerControlProvider.java"
       ],
       "tests": [
+        "prepared",
         "successfulResetTest",
         "failedListenerRetainsDataTest",
         "staleDeviceCredentialRejectedTest",
         "boundedLaunchRecoveryTest",
-        "failedPersistenceDoesNotAuthorizeTest"
+        "failedPersistenceDoesNotAuthorizeTest",
+        "authorizationPrecedesMarkerTest",
+        "failedReservationDispatchesNothingTest",
+        "writeAheadReservationSurvivesCrashTest",
+        "missingLegacyBudgetDefersTest",
+        "explicitRetryPreservesExhaustedBudgetTest",
+        "oneReservationOwnerTest",
+        "windowResetOccursAtCommitTest",
+        "erasedRequestCannotRestoreTest",
+        "acceptedClearMayNeedRetryTest",
+        "committedReservationFailureConsumesSlotTest"
       ],
       "invariants": [
         "FreshAuthentication",
         "PendingBlocksInitialization",
         "ListenerBeforeAndroid",
         "DispatchIsNotCompletion",
-        "BoundedAutomaticAttempts"
+        "BoundedAutomaticAttempts",
+        "DurableReservationBeforeEffects",
+        "AutomaticReservationAdmitted"
       ],
       "abstractions": [
-        "Three automatic attempts per abstract time window and five authentication generation identities.",
-        "Listener acknowledgement and Android dispatch are environment results; observed erasure is a separate action.",
-        "Files, fsync and Binder calls are abstracted at their documented completion/failure boundaries."
+        "Three-or-more admitted attempts share the exhausted class. Raw source counters are retained in source-trace evidence; explicit retries preserve a readable same-window count.",
+        "Five authentication generation identities. Authorization, budget initialization, marker commit, attempt reservation, listener result, Android result and process exit are separate transitions.",
+        "Legacy pending markers remain recognized. Missing or corrupt budgets block automatic effects until a durable explicit retry reservation.",
+        "One lock owner is represented by attemptStage; contention refuses another admission until the active attempt finishes or the process exits. Actual two-process FileChannel locking is regression-tested.",
+        "Android dispatch acceptance and externally observed package erasure remain separate. AtomicFile/fsync and real Binder/package deletion require platform evidence."
       ],
       "sharedSources": [
         "plugins/plugin-native-system/android/src/main/java/ai/eliza/plugins/system/reset/ResetAuthorization.java",
         "packages/auth/android/src/main/java/ai/eliza/auth/cloud/CloudKeyRevocation.java",
         "packages/app/platforms/android/sense/src/main/java/ai/eliza/sense/ListenerStore.java"
-      ]
+      ],
+      "stateMapping": {
+        "review/confirmed/authGeneration/authReady": "ResetAuthorization begin, confirm, authenticate and retire; authorization is consumed before persistence",
+        "marker/budgetPresent/failures/budgetReadable": "AlphaDataReset record, failureState and durable write-ahead attempt reservation; failures is the saturated admitted-attempt count",
+        "attemptStage/reserved/explicitRetry": "Cross-process file lock and automaticAttempt/retry admission before listener/Android callbacks",
+        "processInitialized/startupAdmitted/recoveryVisible": "Current process differs from new-process startup admission; AlphaApplication attachBaseContext and recovery/exit callbacks",
+        "dispatched/clearAccepted/erased": "Current attempt acceptance is separate from historical accepted-clear evidence and external erasure; a surviving marker may be retried after restart."
+      }
     },
     {
       "path": "specs/quint/native/DeletionJournal.qnt",
@@ -398,14 +425,18 @@
       ],
       "tests": [
         "signInAndVoiceTest",
+        "replacementSetup",
         "accountReplacementRetiresPendingWorkTest",
         "retiredCalendarDispatchRejectedTest",
         "retiredInboxConfirmRejectedTest",
+        "resetSetup",
         "resetCalendarCompletionRejectedTest",
         "resetInboxReplyRejectedTest",
         "resetDuringDispatchedEffectsTest",
         "backgroundRetiresVoiceGenerationTest",
         "uncoordinatedIdentityChangeDetectedTest",
+        "signedInSetup",
+        "readySetup",
         "mfaAndAcknowledgementRecoveryTest",
         "cancelledAttemptCanRetryTest",
         "precommitStorageFailureTest",
@@ -427,14 +458,17 @@
         "ordinaryStopRetiresVoiceBeforeRestartTest",
         "attachedStartCancellationPreservesVoiceTest",
         "ownedStartupCancellationFencesReplyTest",
-        "pendingReplacementPreservesAccountTest"
+        "pendingReplacementPreservesAccountTest",
+        "heldAcknowledgementPreservesNewAttemptTest"
       ],
       "abstractions": [
         "Actual imported domain transitions run together with explicit frames for every unaffected component.",
         "Host state contains foreground status and the identity/epoch captured when voice starts; it does not duplicate component state.",
         "Two account identities and the existing finite component bounds. Expected-rejection scenarios execute imported guards, and a test-only uncoordinated transition must violate cross-domain safety.",
         "Coordinated account/reset/lifecycle boundary actions specify the product integration contract. Full implementation refinement and every possible component interleaving remain separate evidence.",
-        "MFA, acknowledgement recovery, grant restoration, cancellation and process restart use imported transitions. Each Calendar and Inbox projection retains one durable operation through account retirement."
+        "MFA, acknowledgement recovery, grant restoration, cancellation and process restart use imported transitions. Each Calendar and Inbox projection retains one durable operation through account retirement.",
+        "A pending replacement attempt preserves the active old account. Voice ownership follows committed ownerEpoch, separately from the pending attempt epoch.",
+        "A committed activation and a new interactive sign-in can overlap. Account readiness follows the acknowledged activation owning the stored key. Queued replacement work has a separate beginIdentityWork boundary, and readySetup explicitly includes prior transient-session cleanup."
       ]
     },
     {
