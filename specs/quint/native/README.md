@@ -586,3 +586,18 @@ Execution uses Android JSON when available and a verified Maven JSON fallback
 for these bounded schedules. The evidence covers one reminder, UTC daily
 recurrence and the observed failure windows. Installed alarms, other recurrence
 rules, and general Android notification or reboot behavior are separate.
+
+### Native Clock review and handoff
+
+`NativeClockReview` tracks the product Clock dialog, the exact journal-bound
+approval token and the one handoff to a resolved external Clock. The durable
+marker consumes the token before launch. A missing receipt or an ambiguous
+Activity error never authorizes an automatic second launch. A successful
+launch reports only `opened`. Android DeskClock owns alarm scheduling, ringing
+and manual acknowledgement.
+
+The as-built source traces preserve two divergences. A late callback from an
+abandoned dialog can remove its successor's claim. A caller can also supply a
+well-shaped `opened` result to the outer journal before a native Clock receipt
+exists. The JVM executes the relevant product bridge methods and the pinned
+journal and handoff classes over controlled ports.

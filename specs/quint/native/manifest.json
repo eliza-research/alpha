@@ -2068,6 +2068,55 @@
         "maxSteps": 80,
         "maxVerifyDepth": 4
       }
+    },
+    {
+      "path": "specs/quint/native/NativeClockReview.qnt",
+      "module": "NativeClockReview",
+      "init": "init",
+      "step": "step",
+      "invariant": "safety",
+      "tests": [
+        "staleDialogCanStrandReplacementAsBuiltTest",
+        "fabricatedOpenedOuterReceiptAsBuiltTest",
+        "approvalTokenIsOneUseTest",
+        "uncertainEffectNeverReplaysTest",
+        "expiryAfterDispatchMarkerStillPreventsHandoffTest",
+        "retiredSurfaceCannotUseSealedHandoffTest",
+        "cancelledApprovalIsNeverASecondEffectTest"
+      ],
+      "invariants": [
+        "OneExternalHandoff",
+        "DispatchConsumesApproval",
+        "ClaimNeedsLiveDialog",
+        "NoRingReceipt"
+      ],
+      "sources": [
+        "android/app/src/main/java/ai/elizaresearch/alphaphone/ClockAgentReview.java",
+        "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaActionJournalPlugin.java",
+        "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaActionJournal.java",
+        "android/app/src/main/java/ai/elizaresearch/alphaphone/PluginWorkers.java",
+        "vendor/eliza/plugins/plugin-native-action-journal/android/src/main/java/ai/eliza/plugins/actionjournal/ActionJournal.java",
+        "vendor/eliza/plugins/plugin-native-action-journal/android/src/main/java/ai/eliza/plugins/actionjournal/ActionJournalConfiguration.java",
+        "vendor/eliza/plugins/plugin-native-action-journal/android/src/main/java/ai/eliza/plugins/actionjournal/ActionJournalPlugin.java",
+        "vendor/eliza/plugins/plugin-native-system/android/src/main/java/ai/eliza/plugins/system/clock/ClockHandoff.java",
+        "vendor/eliza/plugins/plugin-native-system/android/src/main/java/ai/eliza/plugins/system/clock/ClockDays.java"
+      ],
+      "stateMapping": {
+        "operation/outerPhase/outerStatus/outerClaim": "Exact retained Clock operation and outer ActionJournal entry/result",
+        "phase/token/issued/receipt": "Durable clockReview marker, exact UUID equality class and nested outcome",
+        "openOwner/visible/retired/dialogReplies": "Actual ClockAgentReview claim, controlled AlertDialog callbacks and originating bridge results",
+        "expired/confirming/attempts/deliveries/outcome": "Controlled expiry, held post-mark UI work, external activity port and current call result"
+      },
+      "abstractions": [
+        "One reviewed journal entry, two exact plugin objects, one dialog per actor and one external handoff. A handoff receipt proves only an activity delivery attempt outcome.",
+        "The as-built source admits a stale abandoned dialog callback that strands a replacement and a fabricated outer opened receipt before a Clock result exists. Both divergences have named traces.",
+        "Synthetic Android resolver/dialog, storage, keyguard and wall time. Installed AOSP DeskClock owns ringing, stopping and snoozing."
+      ],
+      "bounds": {
+        "maxSamples": 1000,
+        "maxSteps": 80,
+        "maxVerifyDepth": 4
+      }
     }
   ]
 }
