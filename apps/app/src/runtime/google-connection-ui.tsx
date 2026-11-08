@@ -48,7 +48,9 @@ export function GoogleConnectionsPanel(){
  const connection=useSyncExternalStore(connectionController.subscribe,connectionController.getSnapshot);
  const [background,setBackground]=useState('');
  useEffect(()=>{if(!open)return;let alive=true;const read=()=>void gmailBackgroundStatus().then(value=>{if(alive)setBackground(gmailBackgroundMessage(value));});read();window.addEventListener(GMAIL_BACKGROUND_CHANGED,read);return()=>{alive=false;window.removeEventListener(GMAIL_BACKGROUND_CHANGED,read);};},[open]);
- const [accounts,setAccounts]=useState<GmailAccount[]>([]),[busy,setBusy]=useState(false),[notice,setNotice]=useState(''),[confirm,setConfirm]=useState<GmailAccount|null>(null),[revision,setRevision]=useState(0);
+ const [accounts,setAccounts]=useState<GmailAccount[]>([]),[accountBusy,setBusy]=useState(false),[notice,setNotice]=useState(''),[confirm,setConfirm]=useState<GmailAccount|null>(null),[revision,setRevision]=useState(0);
+ const [linkBusy,setLinkBusy]=useState(false);
+ const busy=accountBusy||linkBusy;
  const [access,setAccess]=useState(googleAgentAccess);
  // The Calendar intent waiting on the owner's Allow Calendar changes tap; rows are the readback to link, if any.
  const [choice,setChoice]=useState<{calendar:GoogleCalendarIntent;rows:GmailAccount[]|null}|null>(null);
@@ -65,7 +67,13 @@ export function GoogleConnectionsPanel(){
  const identity=JSON.stringify([connection.cloudAccount,cloud?.sessionId,cloud?.credentialId]);
  const binding:GoogleConnectionReturnBinding|null=cloud&&key?{client:cloud.client,...key,sessionId:cloud.sessionId,credentialId:cloud.credentialId}:null;
  const calendarIntent=useSyncExternalStore(googleConnectionController.subscribe,googleConnectionController.calendar),linking=useRef<AbortController|null>(null);
- useEffect(()=>()=>linking.current?.abort(),[open,identity,calendarIntent]);
+ useEffect(()=>()=>{
+  const previous=linking.current;
+  if(!previous)return;
+  linking.current=null;
+  previous.abort();
+  setLinkBusy(false);
+ },[open,identity,calendarIntent,cloud?.client]);
  const verifiedAccounts=useRef<{binding:GoogleConnectionReturnBinding;rows:GmailAccount[]}|null>(null);
  function accountRead(){
   const read=verifiedAccounts.current;
@@ -230,18 +238,27 @@ export function GoogleConnectionsPanel(){
  }
  async function linkCalendar(calendar:GoogleCalendarIntent,rows:GmailAccount[]){
   if(linking.current&&!linking.current.signal.aborted)return;const abort=linking.current=new AbortController();
-  const current=()=>!abort.signal.aborted&&googleConnectionController.calendar()===calendar&&sameGoogleConnectionReturnBinding(binding,currentGoogleConnectionReturnBinding())&&calendar.current();
-  setBusy(true);setNotice('Connecting Calendar with Google…');
+  const current=()=>linking.current===abort&&!abort.signal.aborted&&googleConnectionController.calendar()===calendar&&sameGoogleConnectionReturnBinding(binding,currentGoogleConnectionReturnBinding())&&calendar.current();
+  setLinkBusy(true);setNotice('Connecting Calendar with Google…');
   try{
    if(!await calendarChangesAllowed(calendar,rows)||!current())return;
    // Browser Cloud stage: its host admits Calendar writes only after this confirmed intent, before any control write.
-   if(browserCloudResidentEnabled&&rows.some(calendarWrite)&&!(cloud&&await browserCalendarWrites(cloud.credentialId,true))){calendar.authorizing=false;if(current())setNotice('Calendar sync is not available on this host yet, so Calendar is not synced. Calendar keeps working.');return;}
+   if(browserCloudResidentEnabled&&rows.some(calendarWrite)){
+    const allowed=cloud&&await browserCalendarWrites(cloud.credentialId,true);
+    if(!current())return;
+    if(!allowed){
+     calendar.authorizing=false;
+     setNotice('Calendar sync is not available on this host yet, so Calendar is not synced. Calendar keeps working.');
+     return;
+    }
+   }
    const result=await linkGoogleCalendar({calendar:calendar.calendar,current,canChange:calendar.canChange},rows,abort.signal);
+   if(!current())return;
    // A link that read nothing (no write grant) keeps the review; any other result replaces it, even with none.
    if(result.outcome!=='needs-grant'){calendar.authorizing=false;calendar.review=result.review;}
-   if(current())setNotice(result.message);
+   setNotice(result.message);
   }
-  finally{if(linking.current===abort){linking.current=null;setBusy(false);}}
+  finally{if(linking.current===abort){linking.current=null;setLinkBusy(false);}}
  }
  if(!open)return null;
  const connected=accounts.filter(account=>account.connected);

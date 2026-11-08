@@ -271,7 +271,7 @@ test('retention precedes a failed revoke; a stale pause request or no captured r
  f.calendar.retire();
 });
 
-const panel=(rows,options)=>mountGoogleAccountPanel(rows,options,{cloudServiceName,connectionReturn,workspaceReturn,gmailGrants,calendarLink});
+const panel=(rows,options,link=calendarLink)=>mountGoogleAccountPanel(rows,options,{cloudServiceName,connectionReturn,workspaceReturn,gmailGrants,calendarLink:link});
 
 test('the Calendar intent asks Google once for Gmail read plus Calendar read and write, then links after the readback',async()=>{
  const f=await agent(),p=await panel([]);
@@ -476,4 +476,77 @@ test('a Cloud account change during the link stops before the next control write
   await p.act(()=>p.button('Sync Calendar with Google').click());await p.until(()=>p.button('Sync Calendar with Google')?.disabled===false);
   assert.deepEqual(operations(f),['select']);assert.doesNotMatch(p.status(),/syncs with/);
  }finally{await p.close();f.calendar.retire();}
+});
+
+async function heldLinkPanel(options = {}) {
+  const links = [];
+  const p = await panel([account(OWNER, WRITE)], {...options, observeAdmission: true}, {
+    ...calendarLink,
+    linkGoogleCalendar(scope, rows, signal) {
+      const task = {...deferred(), scope, rows, signal};
+      links.push(task);
+      return task.promise;
+    },
+  });
+  await p.act(() => p.controller.openCalendar({calendar: {}, current: () => true, canChange: () => true}));
+  const clickLink = () => p.act(() => {
+    const button = p.button('Sync Calendar with Google');
+    assert.ok(button && !button.disabled);
+    button.click();
+  });
+  return {p, links, clickLink, close: async () => {
+    await p.act(() => p.controller.close());
+    await p.act(() => {
+      for (const task of links) task.resolve({outcome: 'not-linked', message: 'Fixture retired'});
+    });
+    await p.close();
+  }};
+}
+
+test('a retired Calendar link cannot overwrite the replacement Cloud review in the same intent', async () => {
+  const f = await heldLinkPanel();
+  try {
+    const intent = f.p.controller.calendar();
+    await f.clickLink();
+    await f.p.act(f.p.replaceCloud);
+    assert.equal(f.links[0].signal.aborted, true);
+    assert.equal(f.p.controller.calendar(), intent);
+    await f.clickLink();
+    const current = {binding: 'current', control: {revision: 2}, sources: [], visibleLocalEventIds: []};
+    await f.p.act(() => f.links[1].resolve({outcome: 'synced', message: 'Current owner synced', review: current}));
+    assert.equal(intent.review, current);
+    const retired = {...current, binding: 'retired', control: {revision: 1}};
+    await f.p.act(() => f.links[0].resolve({outcome: 'unconfirmed', message: 'Retired link result', review: retired}));
+    assert.equal(f.p.status(), 'Current owner synced');
+    assert.equal(intent.review, current, 'the retained review keeps the replacement result identity');
+  } finally {await f.close();}
+});
+
+test('a retired Calendar link cannot clear the replacement account read busy state', async () => {
+  const f = await heldLinkPanel(), currentList = deferred();
+  try {
+    await f.clickLink();
+    f.p.onList = () => currentList.promise;
+    await f.p.act(f.p.replaceCloud);
+    assert.equal(f.links[0].signal.aborted, true);
+    assert.equal(f.p.inspectAdmission().busy, true);
+    await f.p.act(() => f.links[0].resolve({outcome: 'not-linked', message: 'Retired link result'}));
+    assert.equal(f.p.inspectAdmission().busy, true);
+    assert.equal(f.p.button('Check Google connections').disabled, true);
+    await f.p.act(() => currentList.resolve([account(OWNER, WRITE)]));
+    assert.equal(f.p.inspectAdmission().busy, false);
+  } finally {
+    currentList.resolve([account(OWNER, WRITE)]);
+    await f.close();
+  }
+});
+
+test('a retired Calendar host permission result cannot start the link helper', async () => {
+  const f = await heldLinkPanel({browser: true});
+  try {
+    f.p.onPolicy = f.p.changeCloud;
+    await f.clickLink();
+    assert.equal(f.p.policy.length, 1);
+    assert.equal(f.links.length, 0);
+  } finally {await f.close();}
 });
