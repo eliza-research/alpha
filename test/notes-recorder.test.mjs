@@ -3,6 +3,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
+import {nativeSource,fixture,runJvm,jsonJarSkip} from './fixtures/jvm-tools.mjs';
 
 const {NoteRecorderSession, formatRecordingClock, noteRecorderError} = await import('../apps/app/src/prototype/note-recorder.ts');
 const read = path => readFileSync(new URL(`../${path}`, import.meta.url), 'utf8');
@@ -491,4 +492,8 @@ test('the browser recorder finishes bounded segments as it records, as the nativ
   assert.match(voice, /this\.noteCapture\.start\(\{unlimited:true,segmentMs:NOTE_SEGMENT_MS,onSegment:/);
   assert.match(voice, /if\(!note\.segments\.length\)note\.segments=\[\{segmentId:clip\.recordingId/, 'the whole clip is one segment only when no segment was written');
   assert.match(read('apps/app/src/browser/audio-capture.ts'), /if\(part\)await Promise\.race\(\[part\.flushed,/, 'the last segment arrives before stop resolves');
+});
+test('Notes 5: the native recorder journal recovers finished segments, their text and binding after process death (host JVM)',{skip:jsonJarSkip},()=>{
+ const stubs=['android/content/Context','android/os/Build','android/os/Handler','android/os/Looper','android/os/SystemClock','android/util/AtomicFile','android/media/MediaRecorder','android/media/MediaFormat','android/media/MediaCodec','android/media/MediaExtractor','android/media/MediaMuxer','com/getcapacitor/JSObject','com/getcapacitor/JSArray'].map(name=>fixture('note-recorder-jvm/'+name+'.java'));
+ assert.match(runJvm([...stubs,nativeSource('AlphaNoteRecorder.java'),fixture('NoteRecorderJournalTest.java')],'ai.elizaresearch.alphaphone.NoteRecorderJournalTest',{json:true}),/^PASS note recorder journal/);
 });
