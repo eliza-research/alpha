@@ -9,13 +9,22 @@ import androidx.test.ext.junit.runners.AndroidJUnit4;
 import androidx.test.platform.app.InstrumentationRegistry;
 import java.util.*;
 import org.json.JSONObject;
+import org.junit.Assume;
+import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import static org.junit.Assert.*;
 
-/** Real CalendarProvider creation through the product form, with disposable records. */
+/** Real CalendarProvider creation through the product form, with disposable records. Most methods
+ * set the device time zone, which every user shares; the close() restore cannot run if the process
+ * dies, so scripts/test-calendar-regression.mjs records and restores it around the class. */
 @RunWith(AndroidJUnit4.class)
 public class CalendarFlowInstrumentedTest {
+ @Before public void gate()throws Exception{
+  Assume.assumeTrue("Explicit Calendar flow fixture: it changes the device time zone", "1".equals(InstrumentationRegistry.getArguments().getString("calendarFlow")));
+  assertTrue("Never mutate CalendarProvider as user 0: disposable secondary user required",android.os.Process.myUid()/100000>0);
+  AppNavigation.assumeNoRequiredSignIn("Calendar flow");
+ }
  private String eval(String script)throws Exception{return WebViewTestDriver.evaluate(script);}
  private void until(String script)throws Exception{
   for(int i=0;i<150;i++){if("true".equals(eval("Boolean("+script+")")))return;SystemClock.sleep(100);}fail("Calendar condition missing: "+script);
@@ -23,20 +32,7 @@ public class CalendarFlowInstrumentedTest {
  private void click(String label)throws Exception{
   String q="[...document.querySelectorAll('button')].find(e=>e.getAttribute('aria-label')==="+JSONObject.quote(label)+")";until(q);eval("("+q+").click()");
  }
- private void tapVisibleEvent(String title)throws Exception {
-  String node="[...document.querySelectorAll('button')].find(b=>b.getAttribute('aria-label')?.startsWith("+JSONObject.quote(title+",")+"))";
-  until(node);eval("("+node+").scrollIntoView({block:'center',behavior:'instant'})");
-  String check="(()=>{const e="+node+",r=e.getBoundingClientRect(),p=e.closest('.scr').getBoundingClientRect();const top=Math.max(r.top,p.top,0),bottom=Math.min(r.bottom,p.bottom,innerHeight);return bottom>top+8&&(r.height>p.height||(r.top>=p.top&&r.bottom<=p.bottom))&&e.contains(document.elementFromPoint(r.x+r.width/2,(top+bottom)/2))})()";
-  until(check);
-  JSONObject point=new JSONObject(eval("(()=>{const e=("+node+"),r=e.getBoundingClientRect(),p=e.closest('.scr').getBoundingClientRect();return {x:r.x+r.width/2,y:(Math.max(r.top,p.top,0)+Math.min(r.bottom,p.bottom,innerHeight))/2,width:innerWidth}})()"));
-  float[] xy=new float[2];
-  WebViewTestDriver.withActivity(MainActivity.class,activity->{android.webkit.WebView web=activity.getBridge().getWebView();int[] location=new int[2];web.getLocationOnScreen(location);float scale=(float)(web.getWidth()/point.optDouble("width"));xy[0]=location[0]+(float)point.optDouble("x")*scale;xy[1]=location[1]+(float)point.optDouble("y")*scale;});
-  long down=SystemClock.uptimeMillis();
-  for(int action:new int[]{android.view.MotionEvent.ACTION_DOWN,android.view.MotionEvent.ACTION_UP}){
-   android.view.MotionEvent event=android.view.MotionEvent.obtain(down,SystemClock.uptimeMillis(),action,xy[0],xy[1],0);event.setSource(android.view.InputDevice.SOURCE_TOUCHSCREEN);
-   try{assertTrue("Android accepted calendar event touch",InstrumentationRegistry.getInstrumentation().getUiAutomation().injectInputEvent(event,true));}finally{event.recycle();}
-  }
- }
+ private void tapVisibleEvent(String title)throws Exception{CalendarUiTestDriver.tapVisibleEvent(title);}
  private List<Long> ids(ContentResolver resolver,String title){
   List<Long> ids=new ArrayList<>();
   try(Cursor c=resolver.query(CalendarContract.Events.CONTENT_URI,new String[]{CalendarContract.Events._ID},CalendarContract.Events.TITLE+"=? AND "+CalendarContract.Events.DELETED+"=0",new String[]{title},null)){if(c!=null)while(c.moveToNext())ids.add(c.getLong(0));}return ids;

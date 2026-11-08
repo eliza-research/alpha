@@ -31,8 +31,8 @@ public final class BrowserContinuityInstrumentedTest {
   host("document.querySelector('input[aria-label=Address]').dispatchEvent(new KeyboardEvent('keydown',{key:'Enter',bubbles:true}))");
  }
  private void page(String url)throws Exception{
-  for(int i=0;i<300;i++){if("true".equals(browser.child("location.href==="+JSONObject.quote(url)+" && document.readyState==='complete' && document.title==='Example Domain' && typeof Capacitor==='undefined'")))return;SystemClock.sleep(100);}fail("Actual isolated HTTPS document not restored; "+browser.diagnostics());
-  ready("document.querySelector('[role=img][aria-label=\"Secure connection\"]')");
+  for(int i=0;i<300;i++){if("true".equals(browser.child("location.href==="+JSONObject.quote(url)+" && document.readyState==='complete' && document.title==='Example Domain' && typeof Capacitor==='undefined'"))){ready("document.querySelector('[role=img][aria-label=\"Secure connection\"]')");return;}SystemClock.sleep(100);}
+  fail("Actual isolated HTTPS document not restored; "+browser.diagnostics());
  }
  private int savedTabs(android.content.Context context,int expected)throws Exception{
   int count=0;for(int i=0;i<100;i++){count=AlphaBrowserStores.session(context).read().getJSONArray("tabs").length();if(count==expected)break;SystemClock.sleep(100);}return count;
@@ -41,6 +41,7 @@ public final class BrowserContinuityInstrumentedTest {
  private static java.util.HashSet<String> ephemeralOnly(java.util.Collection<String> names){java.util.HashSet<String> out=new java.util.HashSet<>();for(String name:names)if(AlphaBrowserPlugin.ephemeralProfile(name))out.add(name);return out;}
  private void saved(BrowserBookmarkStore store,String url,boolean expected)throws Exception{for(int i=0;i<150;i++){if(store.read().contains(url)==expected)return;SystemClock.sleep(100);}fail("Native encrypted bookmark commit did not match UI action");}
  @Test public void tabsSurviveAppNavigationAndBookmarksSurviveActivityRecreation()throws Exception{
+  AppNavigation.assumeNoRequiredSignIn("Browser continuity");
   String token=UUID.randomUUID().toString(),one="https://example.com/?alpha_continuity="+token+"-one",two="https://example.com/?alpha_continuity="+token+"-two",three="https://example.com/?alpha_continuity="+token+"-three";
   android.content.Context context=InstrumentationRegistry.getInstrumentation().getTargetContext();BrowserBookmarkStore store=AlphaBrowserStores.bookmarks(context);
   try(BoundedActivityScenario<MainActivity> scenario=BoundedActivityScenario.launch(MainActivity.class)){
@@ -162,6 +163,7 @@ public final class BrowserContinuityInstrumentedTest {
    String owned=fixture.getString("url",null);if(owned!=null&&store.read().contains(owned))store.change(owned,false);
    AlphaBrowserStores.session(context).clear();assertTrue(fixture.edit().clear().commit());return;
   }
+  AppNavigation.assumeNoRequiredSignIn("Browser bookmark restart");
   if("prepare".equals(phase)){
    assertFalse("Clean previous owned fixture first",fixture.contains("url"));String url="https://example.com/?alpha_bookmark_restart="+UUID.randomUUID();
    assertTrue(fixture.edit().putString("url",url).putInt("pid",android.os.Process.myPid()).commit());

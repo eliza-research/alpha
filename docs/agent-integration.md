@@ -216,8 +216,8 @@ failure and cleanup, and never weaken seccomp or SELinux to obtain a pass.
   path, and a completed enrollment is attached to. This is kept as an accepted limit, and the
   host JVM contract asserts it (merged with `0fd9c5b8`). It is class S only.
 - Direct Cerebras key (A-20): a flag-off build still admits `configureProvider` with a direct
-  Cerebras key, because `ResidentAgentInstrumentedTest` configures the resident agent through
-  it. The Cloud branch is limited to `cerebras` and `qwen-3.8-27b` and its environment drops
+  Cerebras key, because the pinned upstream `NativeProviderSlot.directProviderAllowed` admits it
+  in every build. The Cloud branch is limited to `cerebras` and `qwen-3.8-27b` and its environment drops
   every direct-provider variable (`LocalAgentProviderAdmissionTest`, host JVM). Whether the
   direct key stays is [A-20](decisions.md#new-decision-items).
 - Account replacement (AP-03): a Cloud sign-in as a second account revokes the first

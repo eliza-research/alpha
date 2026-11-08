@@ -2,7 +2,13 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {exercise} from './fixtures/isolated-native-campaign.mjs';
 test('Calendar runner records complete raw evidence and cleans only its fixture installation',()=>{
- const r=exercise('pass');assert.equal(r.code,0,r.stderr);assert.equal(r.record.passed,true);assert.equal(r.record.result.variants[0].instrumentation.totalTests,1);assert.ok(r.commands.find(a=>a.includes('instrument')).includes('-r'));assert.equal(r.commands.filter(a=>a[0]==='uninstall').length,2);assert.equal(r.state.created,false);assert.equal(r.state.user,'0');
+ const r=exercise('pass');assert.equal(r.code,0,r.stderr);assert.equal(r.record.passed,true);
+ // The admitted test-mocks pair is installed, never the mutable Gradle outputs; an unchanged clock is left alone.
+ const installs=r.commands.filter(a=>a[0]==='install').map(a=>a.at(-1));
+ assert.equal(installs.length,2);assert.ok(installs.every(file=>file.includes('/artifacts/test-mocks/')),installs.join(' '));
+ assert.equal(r.record.build,'test-mocks');assert.deepEqual(r.record.apks.map(row=>row.role),['app','test']);
+ assert.deepEqual(r.record.deviceClock,{timeZone:'UTC',autoTimeZone:'1'});assert.equal(r.record.deviceClockRestored,false);
+ assert.ok(!r.commands.some(a=>a.includes('set-timezone')||a.includes('put')));assert.equal(r.record.result.variants[0].instrumentation.totalTests,1);assert.ok(r.commands.find(a=>a.includes('instrument')).includes('-r'));assert.equal(r.commands.filter(a=>a[0]==='uninstall').length,2);assert.equal(r.state.created,false);assert.equal(r.state.user,'0');
 });
 for(const mode of ['summary-only','missing-start','wrong-class','wrong-terminal','duplicate','skipped'])test(`Calendar runner rejects ${mode} evidence`,()=>{const r=exercise(mode);assert.notEqual(r.code,0);assert.equal(r.record.passed,false);assert.ok(r.log.includes('OK (1 test)'));});
 test('Calendar transport failure requires stopping both owned packages before cleanup',()=>{
@@ -78,4 +84,17 @@ test('Home calendar card runs its granted case, then its access-off case with bo
  assert.ok(permissions.length===4&&!permissions.some(a=>a[2]==='grant'),'no grant reaches the revoked case');
  assert.ok(revoked.commands.findIndex(a=>a.includes('revoke'))<revoked.commands.indexOf(denied),'revoked before the process starts');
  assert.ok(permissions.every(a=>a[a.indexOf('--user')+1]==='10'));
+});
+
+test('Calendar runner refuses a test APK that verify-apks did not record for the app before leasing the device',()=>{
+ const r=exercise('pair-mismatch');assert.notEqual(r.code,0);assert.match(r.stderr,/does not match the instrumentation APK recorded/);
+ assert.equal(r.evidence,false);assert.deepEqual(r.commands,[],'no device command runs');
+});
+test('Calendar runner puts the device time zone back after CalendarFlow dies before its own restore',()=>{
+ const r=exercise('timezone-killed','calendar-flow');assert.notEqual(r.code,0);assert.equal(r.record.passed,false);
+ assert.equal(r.record.testClass,'CalendarFlowInstrumentedTest');assert.deepEqual(r.record.deviceClock,{timeZone:'UTC',autoTimeZone:'1'});
+ assert.equal(r.record.deviceClockRestored,true);assert.equal(r.state.timeZone,'UTC');assert.equal(r.state.autoTimeZone,'1');
+ const instrument=r.commands.findIndex(a=>a.includes('instrument')),zone=r.commands.findIndex(a=>a.includes('set-timezone'));
+ assert.ok(instrument>=0&&zone>instrument,'restored after the class');assert.deepEqual(r.commands[zone].slice(-1),['UTC']);
+ assert.ok(r.commands[instrument].includes('calendarFlow'));
 });
