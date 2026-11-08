@@ -43,10 +43,12 @@ for (const route of ['native', 'renderer'] as const) test(`a digest result from 
   const foreign = await fenceNetwork(page);
   await flagOffAndroid(page, { digests: route });
   await residentHome(page);
-  // The first sync finds no result: there is no card and no placeholder brief.
+  // The first sync finds no result; the widget retains an honest empty state.
   await expect.poll(() => harness(page, f => f.digests.syncs + f.digests.pages), { timeout: 30_000 }).toBeGreaterThan(0);
-  await expect(brief(page)).toHaveCount(0);
-  await expect(home(page)).not.toContainText(/Morning brief|No brief yet|Latest brief/);
+  await expect(brief(page)).toBeVisible();
+  await expect(brief(page).locator('.home-brief-title')).toHaveText('Your brief');
+  await expect(brief(page).locator('.home-brief-status')).toHaveText('No brief yet');
+  await expect(brief(page)).toHaveAccessibleName('Open your brief');
 
   // 1. A run finishes. Its summary is the typed-steps text; the step payload is source material.
   const now = Date.now(), ranAt = now - 2 * 3_600_000;
@@ -138,7 +140,7 @@ for (const route of ['native', 'renderer'] as const) test(`a digest result from 
   expect(foreign).toEqual([]);
 });
 
-test('with only occurrences that did not run, Home shows no brief card', async ({ page }) => {
+test('with only occurrences that did not run, Home keeps its empty brief widget', async ({ page }) => {
   test.setTimeout(120_000);
   await flagOffAndroid(page, { digests: 'native' });
   await residentHome(page);
@@ -147,17 +149,21 @@ test('with only occurrences that did not run, Home shows no brief card', async (
   await deliver(page, [
     result(1, 'run-missed', now - 3_600_000, { status: 'missed', output: { status: 'missed', text: 'The scheduled time was missed. No backlog was executed.' } }),
     result(2, 'run-unavailable', now - 1_800_000, { status: 'unavailable', output: { status: 'unavailable', text: 'The source was not available.' } })]);
-  // Proof that the records arrived: the list shows them. Home still has no brief.
+  // The list proves the records arrived. Home still has no completed brief.
   await button(page, 'Settings').click();
-  await button(page, 'Scheduled digests').click();
+  await button(page, 'Apps').click();
+  await button(page, 'Workflows').click();
+  await button(page, 'Scheduled summaries').click();
   const list = page.getByRole('dialog', { name: 'Scheduled digests', exact: true });
   await expect(list.locator('#hosted-result-run-missed')).toContainText('Missed — not run', { timeout: 20_000 });
   await expect(list.locator('#hosted-result-run-unavailable')).toContainText('Not run — source unavailable');
   await button(page, 'Close scheduled digests').click();
   await page.evaluate(() => window.dispatchEvent(new Event('launcher-home')));
   await expect(page.locator('html')).toHaveAttribute('data-active-view', 'home');
-  await expect(brief(page)).toHaveCount(0);
-  await expect(home(page)).not.toContainText(/scheduled time was missed|Did not run|Latest brief/);
+  await expect(brief(page)).toBeVisible();
+  await expect(brief(page).locator('.home-brief-title')).toHaveText('Your brief');
+  await expect(brief(page).locator('.home-brief-status')).toHaveText('No brief yet');
+  await expect(brief(page)).not.toContainText(/scheduled time was missed|Did not run/);
   expect(await harness(page, f => f.unexpected)).toEqual([]);
 });
 
@@ -206,15 +212,18 @@ test('Home renders the canonical agent event without borrowing device names or i
 
 test('a verified empty Agent Calendar does not substitute device events', async ({ page }) => {
   await canonicalHome(page, 'empty');
-  await expect(calendarCard(page)).toHaveCount(0);
+  await expect(calendarCard(page)).toHaveAttribute('data-alpha-home-calendar-event', 'false');
+  await expect(calendarCard(page).locator('.home-calendar-title')).toHaveText('Nothing planned');
+  await expect(calendarCard(page)).not.toContainText(/Device-only event|Private device calendar/);
   expect(await harness(page, f => f.calendar.requests)).toBe(0);
   expect(await harness(page, f => f.unexpected)).toEqual([]);
 });
 
-for (const mode of ['stale-empty', 'future-empty'] as const) test(`an ${mode} Calendar read withholds the unverified empty card`, async ({page}) => {
+for (const mode of ['stale-empty', 'future-empty'] as const) test(`a ${mode} Calendar read keeps the visible calendar unverified`, async ({page}) => {
   await canonicalHome(page, mode);
-  await expect(calendarCard(page)).toHaveCount(0);
-  await expect(home(page).locator('[data-alpha-home-date]')).toBeVisible();
+  await expect(calendarCard(page)).toHaveAttribute('data-alpha-home-calendar-event', 'false');
+  await expect(calendarCard(page).locator('.home-calendar-title')).toHaveText('Calendar has not been verified');
+  await expect(calendarCard(page)).toContainText('Open Calendar to retry');
   await expect(home(page)).not.toContainText(/Device-only event|Private device calendar/);
   expect(await harness(page, f => f.calendar.requests)).toBe(0);
   expect(await harness(page, f => f.unexpected)).toEqual([]);
@@ -226,8 +235,10 @@ test('Calendar settings retain canonical Home authority even when native device 
   await expect(card).toContainText('Agent calendar meeting');
   const before = await harness(page, f => f.calendar.lists);
   await button(page, 'Settings').click();
-  await button(page, 'Calendars').click();
-  const settings = page.locator('[data-settings-page="Calendars"]');
+  await button(page, 'Apps').click();
+  await button(page, 'Calendar').click();
+  const settings = page.locator('[data-settings-page]:not([inert])').last();
+  await expect(settings.getByRole('heading', {name:'Calendar',exact:true})).toBeVisible();
   // The current product has one Calendar; native rows remain covered by native/retained-source tests.
   await expect(settings.getByRole('button', {name:'Android calendars',exact:true})).toHaveCount(0);
   await expect(settings.getByRole('button', {name:'Agent Calendar',exact:true})).toHaveCount(0);
@@ -240,9 +251,10 @@ test('Calendar settings retain canonical Home authority even when native device 
 
 test('an event from another agent is not presented as this agent’s next event or as a verified empty calendar', async ({ page }) => {
   await canonicalHome(page, 'wrong-owner');
-  // The invalid source yields no event card and never falls back to another calendar.
-  await expect(calendarCard(page)).toHaveCount(0);
-  await expect(home(page).locator('[data-alpha-home-date]')).toBeVisible();
+  // The invalid source leaves a visible failure and never borrows another calendar.
+  await expect(calendarCard(page)).toHaveAttribute('data-alpha-home-calendar-event', 'false');
+  await expect(calendarCard(page).locator('.home-calendar-title')).toHaveText('Calendar unavailable');
+  await expect(calendarCard(page)).not.toContainText(/Nothing planned|Device-only event|Private device calendar/);
   await page.getByRole('button',{name:'Calendar',exact:true}).click();
   await expect(page.getByRole('region',{name:'Calendar',exact:true})).toContainText(/another agent|Calendar unavailable/);
   expect(await harness(page, f => f.unexpected)).toEqual([]);

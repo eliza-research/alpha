@@ -24,7 +24,9 @@ const calendar = (page: Page, name: string) => panel(page).getByRole('checkbox',
 async function openDigests(page: Page) {
   await residentHome(page);
   await button(page, 'Settings').click();
-  await button(page, 'Scheduled digests').click();
+  await button(page, 'Apps').click();
+  await button(page, 'Workflows').click();
+  await button(page, 'Scheduled summaries').click();
   await expect(panel(page).getByRole('status')).toHaveText('Synced with this agent.');
 }
 /** Selected phone sources > Choose calendars > Personal (+ reminders) > Review source consent. */
