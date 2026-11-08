@@ -65,7 +65,7 @@ test('Files browses real storage: categories, Internal storage and Trash, with n
  await documents.click();await expect(page.getByRole('heading',{name:'Documents',exact:true})).toBeVisible();expect(chooser).toBe(false);
  await page.getByRole('button',{name:'Back',exact:true}).click();
  await page.getByRole('button',{name:'Internal storage',exact:true}).click();
- await page.getByRole('button',{name:'Sort and more',exact:true}).click();await page.getByText('New folder',{exact:true}).click();
+ await page.getByRole('button',{name:'New folder',exact:true}).click();
  await page.getByRole('textbox',{name:'Name'}).fill('Taxes');await page.getByRole('button',{name:'Create',exact:true}).click();
  await expect(page.getByRole('button',{name:'Open Taxes',exact:true})).toBeVisible();
  expect(errors).toEqual([]);

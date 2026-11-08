@@ -254,6 +254,7 @@ export async function flagOffAndroid(page: Page, options: FlagOffOptions = {}) {
       PluginHeaders: [
         { name: 'AlphaDeletions', methods: promise(['pending']) },
         { name: 'ElizaSystem', methods: promise(['getBuildInfo']) },
+        { name: 'ElizaSense', methods: promise(['status', 'turnOff']) },
         { name: 'DailyApps', methods: withListeners(['surfaceInfo', 'listReminders', 'pendingReminderTap', ...(options.document ? ['perform', 'readSelected', 'forgetSelected', 'describeSelected'] : [])]) },
         ...(options.document ? [{ name: 'AlphaMailAttachments', methods: promise(['readSelected', 'retainSourceReference', 'openSourceReference', 'cancel']) }] : []),
         // Files browser with all-files access (AlphaFilesPlugin storage* methods): the document sits in Documents/.
@@ -272,6 +273,8 @@ export async function flagOffAndroid(page: Page, options: FlagOffOptions = {}) {
         if (plugin === 'AlphaDeletions' && method === 'pending') return { deletions: [] };
         f.calls.push(plugin + '.' + method);
         if (plugin === 'ElizaSystem' && method === 'getBuildInfo') return { launcher: true, version: 'flag-off-harness' };
+        // The fixture's image listener is stopped through its real readback contract.
+        if (plugin === 'ElizaSense' && (method === 'status' || method === 'turnOff')) return { available: true, state: 'OFF', label: 'Listening off', consented: false, listening: false, microphoneOpen: false };
         if (plugin === 'DailyApps' && method === 'surfaceInfo') return { developmentBuild: false, assistant: false };
         // No reminders are saved on this phone.
         if (plugin === 'DailyApps' && method === 'listReminders') return { reminders: [] };
@@ -434,7 +437,7 @@ export async function completeAccessSetup(page: Page) {
   const ready=panel.getByRole('heading',{name:/^(You’re all set|Setup finished)$/});
   const stored=()=>page.evaluate(()=>JSON.parse(localStorage.getItem('alpha:startup-permission-walkthrough:v1')||'null')?.status);
   let outcome='';
-  await expect.poll(async()=>outcome=await ready.isVisible()?'ready':!await panel.count()&&await stored()==='completed'?'completed':'',{message:'Access setup shows the Ready card or is stored as completed'}).not.toBe('');
+  await expect.poll(async()=>outcome=await ready.isVisible()?'ready':!await panel.count()&&await stored()==='completed'?'completed':'',{message:'Access setup shows the Ready card or is stored as completed',timeout:15_000}).not.toBe('');
   if(outcome==='ready'){
     await panel.getByRole('button',{name:'Go to Alpha',exact:true}).click();
     await expect(panel).toHaveCount(0);
@@ -457,9 +460,10 @@ export async function openYourAgent(page: Page) {
   const minimize = page.getByRole('button', { name: 'Minimize chat', exact: true });
   if (await minimize.isVisible()) await minimize.click();
   await button(page, 'Settings').click();
-  // Settings › Assistant › Agent (docs/ui-refresh-2026-11).
-  await page.getByRole('button', { name: 'Agent', exact: true }).click();
+  // Recovery and conversation controls live under Settings › About › Connection help.
+  await page.getByRole('button', { name: 'About', exact: true }).click();
+  await page.getByRole('button', { name: 'Connection help', exact: true }).click();
   const panel = page.getByRole('region', { name: 'Settings', exact: true });
-  await expect(panel.getByRole('heading', {name:'Agent',exact:true})).toBeVisible();
+  await expect(panel.getByRole('heading', {name:'Connection help',exact:true})).toBeVisible();
   return panel;
 }

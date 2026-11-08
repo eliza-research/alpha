@@ -36,6 +36,8 @@ async function android(page: Page, options: AndroidOptions) {
     w.Capacitor = { PluginHeaders: [
         { name: 'AlphaDeletions', methods: methods(['pending']) },
       { name: 'ElizaSystem', methods: methods(['getBuildInfo']) },
+      { name: 'ElizaSense', methods: methods(['status', 'turnOff']) },
+      { name: 'DailyApps', methods: methods(['surfaceInfo', 'listReminders', 'pendingReminderTap']) },
       { name: 'Agent', methods: resident.methods(['getStatus', 'start', 'stop', 'configureCloudProvider', 'clearProvider', 'providerStatus', 'request']) },
       { name: 'AlphaConnection', methods: methods(['secureRead', 'secureWrite', 'secureRemove', 'secureCompareExchange', 'request', 'cancel', 'openExternal']) },
       { name: 'AlphaNotifications', methods: methods(['status', 'crossAppStatus', 'addListener', 'removeListener']) },
@@ -48,6 +50,8 @@ async function android(page: Page, options: AndroidOptions) {
       w.nativeCalls.push({ plugin, method, slot: input?.slot, url: input?.url, http: input?.method, authorization: input?.headers?.Authorization, path: input?.path });
       if (plugin === 'AlphaHostedResults') return {};
       if (plugin === 'ElizaSystem' && method === 'getBuildInfo') return { launcher: false, version: 'connection-boundaries' };
+      if (plugin === 'ElizaSense' && (method === 'status' || method === 'turnOff')) return { available: true, state: 'OFF', label: 'Listening off', consented: false, listening: false, microphoneOpen: false };
+      if (plugin === 'DailyApps') return method === 'listReminders' ? { reminders: [] } : method === 'surfaceInfo' ? { assistant: false, developmentBuild: false, topInset: 0, bottomInset: 0 } : {};
       if (plugin === 'AlphaNotifications') return { permissionGranted: true, appEnabled: true };
       if (plugin === 'AlphaVoiceCloud') return { microphone: 'granted' };
       if (plugin === 'AlphaHostedResults' && method === 'disableBackground') return {};
@@ -183,7 +187,7 @@ test('production Android without a packaged agent says so and does not advertise
   await expect(alert).toHaveText('This developer build does not include the on-device agent.');
   await expect(alert).not.toContainText(/remote agent|pair/i);
   await expect(dialog.getByText('Not running', { exact: true }).last()).toBeVisible();
-  await expect(dialog.getByRole('button', { name: 'Start agent', exact: true })).toBeVisible();
+  await expect(dialog.getByRole('button', { name: 'Retry', exact: true })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Use local apps without AI', exact: true })).toHaveCount(0);
   expect((await nativeCalls(page)).filter(call => call.plugin === 'Agent').map(call => call.method)).not.toContain('start');
 });
@@ -201,7 +205,7 @@ for (const [start, text] of [['reject', 'Local agent failed to start.'], ['start
     await expect(dialog.getByText('Not running', { exact: true }).last()).toBeVisible();
     await expect(dialog.getByText(text,{exact:true})).toContainText(text);
     await expect(dialog.getByText(text,{exact:true})).not.toContainText(/pair/i);
-    await expect(dialog.getByRole('button', { name: 'Start agent', exact: true })).toBeEnabled();
+    await expect(dialog.getByRole('button', { name: 'Retry', exact: true })).toBeEnabled();
     await expect(dialog.getByRole('button', { name: 'Use local apps without AI', exact: true })).toHaveCount(0);
     const calls = await nativeCalls(page);
     // The resident is the only selection, and no conversation was created or read.
@@ -209,7 +213,7 @@ for (const [start, text] of [['reject', 'Local agent failed to start.'], ['start
     expect(calls.filter(call => call.path?.startsWith('/api/conversations'))).toEqual([]);
     // Retry starts once more, on the owner's tap; it fails the same way.
     const starts = calls.filter(call => call.plugin === 'Agent' && call.method === 'start').length;
-    await dialog.getByRole('button', { name: 'Start agent', exact: true }).click();
+    await dialog.getByRole('button', { name: 'Retry', exact: true }).click();
     // P-43 may run one scheduled recovery while this explicit retry settles.
     await expect.poll(async () => (await nativeCalls(page)).filter(call => call.plugin === 'Agent' && call.method === 'start').length).toBeGreaterThan(starts);
     expect((await nativeCalls(page)).filter(call => call.plugin === 'Agent' && call.method === 'start').length).toBeLessThanOrEqual(starts + 2);
@@ -230,11 +234,11 @@ for (const mode of ['revoked', 'unsupported', 'failed', 'refused-in-body', 'not-
     await expect.poll(async () => (await nativeCalls(page)).filter(call => call.plugin === 'Agent').map(call => call.method), {timeout:30_000}).toContain('start');
     await page.getByRole('button', { name: 'Settings', exact: true }).click();
     await openCloudPlanFromSettings(page);
-    await expect(page.getByRole('button', { name: 'Sign out', exact: true })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Sign out of Eliza Cloud', exact: true })).toBeVisible();
     const before = (await nativeCalls(page)).length;
     if (mode === 'cancelled') await page.evaluate(() => { (window as any).holdStop = true; });
     page.once('dialog', dialog => void dialog.accept());
-    await page.getByRole('button', { name: 'Sign out', exact: true }).click();
+    await page.getByRole('button', { name: 'Sign out of Eliza Cloud', exact: true }).click();
     if (mode === 'cancelled') {
       // Cancel while Cloud AI is still being unbound: sign-out still removes the local key.
       await page.waitForFunction(() => typeof (window as any).releaseStop === 'function');
@@ -245,9 +249,9 @@ for (const mode of ['revoked', 'unsupported', 'failed', 'refused-in-body', 'not-
     // the completed sign-out receipt or turn an unconfirmed revocation into success.
     await expect(page.getByRole('alert').filter({hasText:'Eliza Cloud sign-in is unavailable.'})).toBeVisible();
     const status = page.locator('.alpha-connection').getByRole('status').filter({ hasText: /Signed out|sign-in token was removed/ });
-    if (mode === 'revoked') await expect(status).toContainText('Signed out of Eliza Cloud.');
+    if (mode === 'revoked') await expect(status).toContainText('Signed out.');
     else {
-      await expect(status).toContainText('Signed out here. Eliza Cloud did not confirm revoking this sign-in.');
+      await expect(status).toContainText('Signed out here. Cloud could not confirm ending this session. Review your signed-in devices in your Cloud account.');
       await expect(page.getByText(/was revoked/)).toHaveCount(0);
     }
     const calls = await nativeCalls(page);
@@ -477,7 +481,7 @@ test('passive deletion failures stay quiet; known pending failures preserve sett
   await expect(notice).toContainText('Pending deletion status is unavailable');
   await page.getByRole('button', { name: 'Settings', exact: true }).click();
   await openCloudPlanFromSettings(page);
-  const signout = page.getByRole('button', { name: 'Sign out', exact: true });
+  const signout = page.getByRole('button', { name: 'Sign out of Eliza Cloud', exact: true });
   // Force geometric overlap without forcing the click: informational text must not consume it.
   await signout.evaluate(button => {
     const banner = document.querySelector<HTMLElement>('.alpha-deletion-undo')!, rect = button.getBoundingClientRect();
@@ -485,7 +489,7 @@ test('passive deletion failures stay quiet; known pending failures preserve sett
   });
   page.once('dialog', dialog => void dialog.accept());
   await signout.click();
-  await expect(page.locator('.alpha-connection').getByRole('status')).toContainText('Signed out of Eliza Cloud.');
+  await expect(page.locator('.alpha-connection').getByRole('status')).toContainText('Signed out.');
   await expect(notice).toHaveCount(0);
 });
 
