@@ -183,3 +183,26 @@ test('one 2.5 s bound covers the native mute and the final it releases: an unans
  const noFinal=await closeWith({answerAt:300});
  assert.deepEqual([noFinal.at,noFinal.settled],[2500,'Cloud speech did not confirm the mute in time.'],'the bound runs from the close, not from the mute answer');
 });
+
+test('a speech start inside the close window does not swallow the next capture\'s speech start',async()=>{
+ const f=fixture(),capture=await f.speech.listen(f.handlers);let answer;
+ f.emit({type:'speech-start'});f.emit({type:'speech-end',text:'first turn',final:true});
+ f.port.setCloudSpeechMuted=input=>{f.mutes.push(input.muted);return input.muted?new Promise(resolve=>answer=resolve):Promise.resolve();};
+ const closing=capture.close();await Promise.resolve();assert.equal(typeof answer,'function','the mute is deferred');
+ f.emit({type:'speech-start'});answer();await closing;
+ assert.deepEqual(f.events,['start','end','first turn','start']);
+ const next=[],reopened={...f.handlers,onSpeechStart:()=>next.push('start'),onSpeechEnd:()=>next.push('end'),onSegment:t=>next.push(t)};
+ await f.speech.listen(reopened);
+ f.emit({type:'speech-start'});f.emit({type:'speech-end',text:'follow-up question',final:true});
+ assert.deepEqual(next,['start','end','follow-up question'],'the follow-up opens its own segment');
+ await f.speech.stop();
+});
+
+test('a native error keeps its code and the retry facts it carries',async()=>{
+ const f=fixture(),failures=[];await f.speech.listen({...f.handlers,onEnd:error=>failures.push(error)});
+ f.emit({type:'error',code:'voice-http-429',data:{retryAfterSeconds:42,limitCode:'rate_limited'}});await Promise.resolve();
+ assert.equal(failures.length,1);assert.equal(failures[0].code,'voice-http-429');assert.deepEqual({...failures[0].data},{retryAfterSeconds:42,limitCode:'rate_limited'});
+ const g=fixture(),plain=[];await g.speech.listen({...g.handlers,onEnd:error=>plain.push(error)});
+ g.emit({type:'error',code:'paused',data:'not an object'});await Promise.resolve();
+ assert.equal(plain[0].code,'paused');assert.equal('data' in plain[0],false);
+});

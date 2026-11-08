@@ -129,14 +129,21 @@ public final class AlphaVoiceCloudPlugin extends LocalSpeechBridgePlugin {
  }
  /** A 429's retry facts only (CloudVoiceLimit): the body is read bounded and never forwarded. */
  private static CloudVoiceLimit limitOf(HttpURLConnection c){
-  String code=null,retryAt=null,resetAt=null;Number seconds=null;
+  String body=null;
   try(InputStream in=c.getErrorStream()){
-   if(in!=null){ByteArrayOutputStream out=new ByteArrayOutputStream();byte[] b=new byte[4096];int n;while((n=in.read(b))!=-1){if(out.size()+n>16384)throw new IOException();out.write(b,0,n);}
-    JSONObject body=new JSONObject(new String(out.toByteArray(),StandardCharsets.UTF_8));JSONObject error=body.optJSONObject("error");JSONObject row=error!=null?error:body;
-    code=jsonText(row,"code");retryAt=jsonText(row,"retryAt");resetAt=jsonText(row,"resetAt");
-    Object value=row.opt("retryAfterSeconds");if(value instanceof Number)seconds=(Number)value;}
-  }catch(Exception ignored){/* A body that is absent, oversized or not JSON leaves only Retry-After. */}
-  return CloudVoiceLimit.read(c.getHeaderField("Retry-After"),code,seconds,retryAt,resetAt,System.currentTimeMillis());
+   if(in!=null){ByteArrayOutputStream out=new ByteArrayOutputStream();byte[] b=new byte[4096];int n;while((n=in.read(b))!=-1){if(out.size()+n>16384)throw new IOException();out.write(b,0,n);}body=new String(out.toByteArray(),StandardCharsets.UTF_8);}
+  }catch(Exception ignored){/* A body that is absent or oversized leaves only Retry-After. */}
+  return limitOf(c.getHeaderField("Retry-After"),body);
+ }
+ /** The one 429 reader for the batch and streaming routes: `Retry-After` and an already bounded body. */
+ static CloudVoiceLimit limitOf(String retryAfter,String body){
+  String code=null,retryAt=null,resetAt=null;Number seconds=null;
+  if(body!=null)try{
+   JSONObject parsed=new JSONObject(body);JSONObject error=parsed.optJSONObject("error");JSONObject row=error!=null?error:parsed;
+   code=jsonText(row,"code");retryAt=jsonText(row,"retryAt");resetAt=jsonText(row,"resetAt");
+   Object value=row.opt("retryAfterSeconds");if(value instanceof Number)seconds=(Number)value;
+  }catch(Exception ignored){/* A body that is not JSON leaves only Retry-After. */}
+  return CloudVoiceLimit.read(retryAfter,code,seconds,retryAt,resetAt,System.currentTimeMillis());
  }
  /** A string member only: JSON null or a number is absent, never coerced to text ("null"). */
  private static String jsonText(JSONObject row,String key){Object value=row.opt(key);return value instanceof String?(String)value:null;}
@@ -268,6 +275,8 @@ public final class AlphaVoiceCloudPlugin extends LocalSpeechBridgePlugin {
    });
   }
   @Override protected boolean launch(PluginCall call,Runnable action){return LateLaunch.ask(call,action);}
+  /** Streaming and batch requests expose only the same sanitized retry facts. */
+  @Override protected JSObject limitData(int status,String retryAfter,String body){return status==429?AlphaVoiceCloudPlugin.limitData(limitOf(retryAfter,body)):null;}
  }
 
 }
