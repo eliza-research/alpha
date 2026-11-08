@@ -70,7 +70,15 @@ test('audio playback refuses a foreign or deleted native handle before starting 
 
 test('a retained canonical attachment restores the playback control after the canonical projection disables it',()=>{
  const begin=source.indexOf('      vo.hasPlayback = true;'),end=source.indexOf('      vo.lines =',begin);assert.ok(begin>=0&&end>begin);
- let played=0;const vo={hasPlayback:false};const context=vm.createContext({vo,savedPlaying:undefined,current:{ic:{stop:'stop',play:'play'}},selected:{id:'saved-note',audio:{audioId:'saved-audio'}},currentNoteReading:()=>null,stopSpeaking(){},playSaved:async()=>{played++;}});
+ let played=0;const vo={hasPlayback:false};const context=vm.createContext({vo,React:{createElement:(type,props)=>({type,props})},VoiceActivity:'VoiceActivity',savedPlaybackReady:false,savedPlaying:undefined,current:{ic:{stop:'stop',play:'play'}},selected:{id:'saved-note',audio:{audioId:'saved-audio'}},currentNoteReading:()=>null,stopSpeaking(){},playSaved:async()=>{played++;}});
  vm.runInContext(stripTypeScriptTypes(source.slice(begin,end),{mode:'transform'}),context);
- assert.equal(vo.hasPlayback,true);assert.equal(vo.playLabel,'Play recording');assert.equal(played,0);vo.play();assert.equal(played,1);
+ assert.equal(vo.hasPlayback,true);assert.equal(vo.activity.props.phase,'idle');assert.equal(vo.playLabel,'Play recording');assert.equal(played,0);vo.play();assert.equal(played,1);
+});
+
+test('the saved-note synth shows pending start, confirmed playback and idle for another note',()=>{
+ const begin=source.indexOf('      vo.hasPlayback = true;'),end=source.indexOf('      vo.lines =',begin);
+ for(const [playing,ready,phase] of [['saved-audio',false,'connecting'],['saved-audio',true,'speaking'],['other',true,'idle']]){
+  const vo={};const context=vm.createContext({vo,React:{createElement:(type,props)=>({type,props})},VoiceActivity:'VoiceActivity',savedPlaybackReady:ready,savedPlaying:playing,current:{ic:{stop:'stop',play:'play'}},selected:{id:'saved-note',audio:{audioId:'saved-audio'}},currentNoteReading:()=>null,stopSpeaking(){},playSaved(){}});
+  vm.runInContext(stripTypeScriptTypes(source.slice(begin,end),{mode:'transform'}),context);assert.equal(vo.activity.props.phase,phase);
+ }
 });

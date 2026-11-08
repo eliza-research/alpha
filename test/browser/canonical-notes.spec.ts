@@ -73,7 +73,7 @@ test('canonical Notes UI creates, edits, trashes and restores the same committed
  expect(foreign).toEqual([]);expect(errors).toEqual([]);
 });
 
-test('Stop saves canonical audio locally and Add transcript later uses its retained recording only on request',async({page})=>{
+test('Stop saves canonical audio locally and Generate transcript later uses its retained recording only on request',async({page})=>{
  const {foreign,errors}=await canonicalNotesFixture(page);await openCanonicalNotes(page);
  let uploads=0;
  await page.route('**/__alpha-browser-cloud',async route=>{
@@ -117,11 +117,11 @@ test('Stop saves canonical audio locally and Add transcript later uses its retai
   return registerPlugin<any>('AlphaNoteAudio').describe({audioId});
  },saved.format.data.audio.audioId);
  expect(retained.audioId).toBe(saved.format.data.audio.audioId);expect(retained.noteId).toBe(saved.id);
- await expect(page.getByRole('button',{name:'Add transcript',exact:true})).toBeVisible();
- await page.getByRole('button',{name:'Add transcript',exact:true}).click();
+ await expect(page.getByRole('button',{name:'Generate transcript',exact:true})).toBeVisible();
+ await page.getByRole('button',{name:'Generate transcript',exact:true}).click();
  await expect.poll(()=>snapshot(page).then((state:any)=>state.notes[0].body)).toBe('\nA closed Notes fixture.');
  expect(uploads).toBe(1);
- await expect(page.getByRole('button',{name:'Add transcript',exact:true})).toHaveCount(0);
+ await expect(page.getByRole('button',{name:'Generate transcript',exact:true})).toHaveCount(0);
  await expect(page.getByRole('button',{name:'Play recording',exact:true})).toBeVisible();
  const after=(await snapshot(page)).notes[0];expect(after.id).toBe(saved.id);expect(after.format.data.audio).toEqual(saved.format.data.audio);
 

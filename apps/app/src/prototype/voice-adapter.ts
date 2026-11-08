@@ -131,14 +131,16 @@ export function installPrototypeVoiceAdapter(Component: any, views: Record<strin
   let failure: VoiceFailure | '' = '';
   let recognized: { text: string; provenance: TranscriptProvenance } | undefined;
   let savedStarting:Promise<void>|undefined;
+  let savedPlaybackReady = false;
   let savedPlaying: string | undefined, savedPosition = 0, savedEpoch = 0, savedTick: ReturnType<typeof setInterval> | undefined;
-  const stopSaved = () => { const owned = savedPlaying !== undefined; ++savedEpoch; savedPlaying = undefined; savedPosition = 0; if (savedTick) clearInterval(savedTick); savedTick = undefined; if (owned) {const pending=savedStarting;stopping=stopping.then(async()=>{try{await pending;}catch{}await noteAudio.stop();}).catch(failure=>{mediaUnconfirmed=failure;throw failure;});void stopping.catch(()=>{});} };
+  const stopSaved = () => { savedPlaybackReady=false;const owned = savedPlaying !== undefined; ++savedEpoch; savedPlaying = undefined; savedPosition = 0; if (savedTick) clearInterval(savedTick); savedTick = undefined; if (owned) {const pending=savedStarting;stopping=stopping.then(async()=>{try{await pending;}catch{}await noteAudio.stop();}).catch(failure=>{mediaUnconfirmed=failure;throw failure;});void stopping.catch(()=>{});} };
   async function playSaved(note: Bag) {
     if (savedPlaying === note.audio.audioId) { stopSaved(); refresh(); return; }
     stopSaved(); const epoch = savedEpoch; savedPlaying = note.audio.audioId; refresh();
     try {
       await stopping;if(epoch!==savedEpoch)return;const retained=await noteAudio.describe({audioId:note.audio.audioId});if(epoch!==savedEpoch)return;if(retained.audioId!==note.audio.audioId||retained.noteId!==note.id||retained.deletedAt!==undefined)throw Error('Recording is not available for this note');const pending=savedStarting=noteAudio.play({ audioId: note.audio.audioId });try{await pending;}finally{if(savedStarting===pending)savedStarting=undefined;}
       if (epoch !== savedEpoch) return;
+      savedPlaybackReady=true;refresh();
       savedTick = setInterval(() => { void noteAudio.state().then(value => { if (epoch !== savedEpoch) return; if (!value.playing || value.audioId !== savedPlaying) { stopSaved(); refresh(); return; } savedPosition = value.positionMs; refresh(); }).catch(() => { if (epoch === savedEpoch) { stopSaved(); refresh(); } }); }, 250);
     } catch { if (epoch === savedEpoch) { stopSaved(); api?.toast('This recording is unavailable. The note is kept.'); refresh(); } }
   }
@@ -1127,7 +1129,7 @@ export function installPrototypeVoiceAdapter(Component: any, views: Record<strin
       vo.canAddTranscript=!vo.canReviewTranscript;
       vo.transcriptBusy=addingTranscript;
       vo.transcriptDisabled=addingTranscript||!!current.canonicalNotes?.dirty||!!current.canonicalNotes?.pending;
-      vo.transcriptLabel=addingTranscript?'Adding transcript…':'Add transcript';
+      vo.transcriptLabel=addingTranscript?'Generating transcript…':'Generate transcript';
       vo.cancelTranscript=cancelSavedTranscription;
       vo.addTranscript=async()=>{
         if(savedTranscription||vo.canReviewTranscript||current.canonicalNotes?.dirty||noteRecorder.open||stage!=='closed')return;
@@ -1155,7 +1157,7 @@ export function installPrototypeVoiceAdapter(Component: any, views: Record<strin
             },
           },controller.signal);
           if(!okay)current.toast('The transcript save needs review. Your recording is kept.');
-        }catch(failure){if(!controller.signal.aborted)current.toast(cloudVoiceFailure(failure,{recording:true})||(failure instanceof Error&&'code' in failure&&failure.code==='no-speech'?failure.message:'Couldn’t add the transcript. Your recording is kept.'));}
+        }catch(failure){if(!controller.signal.aborted)current.toast(cloudVoiceFailure(failure,{recording:true})||(failure instanceof Error&&'code' in failure&&failure.code==='no-speech'?failure.message:'Couldn’t generate the transcript. Your recording is kept.'));}
         finally{controller.signal.removeEventListener('abort',cancel);unsubscribe();document.removeEventListener('visibilitychange',changed);if(driver&&requestId)await driver.cancel({requestId}).catch(()=>{});if(savedTranscription===task)savedTranscription=undefined;if(current.isActive()&&current.voiceNoteActive())current.setView('notes',{noteTranscriptRevision:Date.now()});}
       };
       vo.reviewTranscript=()=>{
@@ -1201,6 +1203,7 @@ export function installPrototypeVoiceAdapter(Component: any, views: Record<strin
         });
       } : undefined;
       vo.hasPlayback = true;
+      vo.activity=React.createElement(VoiceActivity,{phase:savedPlaying===selected.audio.audioId?(savedPlaybackReady?'speaking':'connecting'):'idle',theme:current.theme==='dark'?'dark':'light'});
       vo.playLabel = savedPlaying ? 'Stop recording playback' : 'Play recording';
       vo.playIcon = savedPlaying ? current.ic.stop : current.ic.play;
       vo.play = () => { if (currentNoteReading()?.noteId === selected.id) stopSpeaking(); void playSaved(selected); };
