@@ -64,9 +64,9 @@ class MicrophonePreflight(unittest.TestCase):
         global SCRATCH, WAV
         SCRATCH = Path(tempfile.mkdtemp(prefix='alpha-mic-preflight-'))
         WAV = SCRATCH / 'phrase.wav'
-        # 1.5 s of mono 16 kHz silence: with the helper's 0.5 s padding on each side, 125 packets.
+        # 1 s of mono 16 kHz silence: with the helper's 0.5 s gap and 0.5 s padding on each side, 125 packets.
         with wave.open(str(WAV), 'wb') as wav:
-            wav.setnchannels(1); wav.setsampwidth(2); wav.setframerate(16000); wav.writeframes(bytes(48000))
+            wav.setnchannels(1); wav.setsampwidth(2); wav.setframerate(16000); wav.writeframes(bytes(32000))
         cls.temp = tempfile.TemporaryDirectory(dir=SCRATCH, prefix='mic-preflight-proto-')
         include = Path(grpc_tools.__file__).parent / '_proto'
         assert protoc.main(['grpc_tools.protoc', '-I' + str(proto.parent), '-I' + str(include),
