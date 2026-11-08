@@ -87,3 +87,21 @@ test('a saved Calendar row from another account is neither resumed nor exported'
   assert.equal(f.recoveries.length, 0);
   assert.equal(f.raw('B'), original);
 }));
+
+test('an earlier binding cannot discard a newer Calendar draft after the same account reopens', () => withDraft(async f => {
+  await f.bind('A');
+  await f.edit('A', 'Earlier A');
+  await f.closeForm();
+  const stale = f.render().discardFormDraft;
+  await f.bind('B');
+  await f.bind('A');
+  await f.edit('A', 'New A');
+  await f.closeForm();
+  const current = f.raw('A');
+  stale();
+  await f.settle();
+  assert.equal(f.raw('A'), current);
+  assert.equal(f.observe().resumeOffered, true);
+  await f.discard();
+  assert.equal(f.saved('A').title, '');
+}));

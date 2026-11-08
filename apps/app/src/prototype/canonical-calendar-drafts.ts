@@ -10,10 +10,11 @@ const submittedForm=(form:Bag)=>{const fields=snapshotCalendarForm(form);delete 
 /** Same existing transactional draft primitive, bound to canonical owner+agent+origin. */
 export function installCanonicalCalendarDrafts(Component:any,views:Bag){
  const p=Component.prototype,mount=p.componentDidMount,update=p.componentDidUpdate,unmount=p.componentWillUnmount,render=views.calendar.render,committed=p.calendarFormCommitted,destinationChanged=p.calendarFormDestinationChanged,admitted=p.calendarFormAdmitted;
- const origins=new WeakMap<object,{owner:Bag;ownerKey:string;identity:string;text:string}>();
+ const origins=new WeakMap<object,{owner:Bag;ownerKey:string;binding:object;identity:string;text:string}>();
  const admissions=new WeakMap<object,{origin:object;signature:string}>();
  let owner:Bag|undefined;
- const ownsDraft=(shell:Bag,key:string)=>owner===shell&&shell.live&&shell.agentCalendar?.state.ownerKey===key&&shell.canonicalDraftOwner===key;
+ const ownsDraft=(shell:Bag,key:string,binding:object|undefined)=>!!binding&&owner===shell&&shell.live&&
+  shell.agentCalendar?.state.ownerKey===key&&shell.canonicalDraftOwner===key&&shell.canonicalDraftBinding===binding;
  p.flushCalendarForAppUpdate=async function(current:()=>boolean){
   const exact=()=>current()&&!this.calendarSaving&&!this.agentCalendar?.state.mutating&&
    !this.calendarFormValidationError&&!this.calendarEditFormValidationError&&!this.canonicalDraftInvalid;
@@ -28,7 +29,7 @@ export function installCanonicalCalendarDrafts(Component:any,views:Bag){
   await Promise.all([this.canonicalDraft,this.calendarEditDraft,this.calendarDraft].map(draft=>draft.flush(unchanged)));
  };
  p.componentDidMount=function(){
-  mount.call(this);owner=this;this.canonicalDraftText='';
+  mount.call(this);owner=this;this.canonicalDraftText='';this.canonicalDraftOwner=null;this.canonicalDraftBinding=undefined;
   this.canonicalDraft=new AssistantDraftController(async binding=>{
    const key=JSON.parse(binding)[1] as string,store=await assistantDraftStore(binding);
    let foreign=false;
@@ -62,7 +63,7 @@ export function installCanonicalCalendarDrafts(Component:any,views:Bag){
   if(key!==(this.canonicalDraftOwner??null)){
    this.canonicalDraft.retire(false);
    this.canonicalDraftRecovery?.abort();
-   this.canonicalDraftRecovery=undefined;this.canonicalDraftOwner=key;
+   this.canonicalDraftRecovery=undefined;this.canonicalDraftOwner=key;this.canonicalDraftBinding=key?Object.freeze({}):undefined;
    this.canonicalDraftText='';this.canonicalDraftIdentity=undefined;this.canonicalDraftAnchor=undefined;
    this.canonicalDraftSuppressed=undefined;this.canonicalDraftInvalid=false;
    if(key)void this.canonicalDraft.open(JSON.stringify(['canonical-calendar-editor',key]));
@@ -80,15 +81,16 @@ export function installCanonicalCalendarDrafts(Component:any,views:Bag){
   if(!form?.canonicalOwnerKey||form.id||form.canonicalEventKey||replacement?.cal!=='alpha-reminders')return replacement;
   try{
    const text=encodeCanonicalCalendarDraft(form,this.canonicalDraftAnchor??new Date());
-   if(this.agentCalendar?.state.ownerKey!==form.canonicalOwnerKey||this.canonicalDraftOwner!==form.canonicalOwnerKey||this.canonicalDraftText!==text||encodeCanonicalCalendarDraft(this.vget('calendar').form,this.canonicalDraftAnchor??new Date())!==text)return replacement;
-   const origin=Object.freeze({});origins.set(origin,{owner:this,ownerKey:form.canonicalOwnerKey,identity:form.creationId,text});
+   const binding=this.canonicalDraftBinding;
+   if(!ownsDraft(this,form.canonicalOwnerKey,binding)||this.canonicalDraftText!==text||encodeCanonicalCalendarDraft(this.vget('calendar').form,this.canonicalDraftAnchor??new Date())!==text)return replacement;
+   const origin=Object.freeze({});origins.set(origin,{owner:this,ownerKey:form.canonicalOwnerKey,binding,identity:form.creationId,text});
    return {...replacement,[reminderDraftOrigin]:origin};
   }catch{return replacement;}
  };
  p.calendarFormAdmitted=function(form:Bag){
   const origin=(form&&Reflect.get(form,reminderDraftOrigin)),retained=origin&&origins.get(origin);
   if(!retained)return admitted?.call(this,form);
-  if(retained.owner!==this||form.id||form.alphaReminderId||form.reminderEditTarget||form.cal!=='alpha-reminders'||form.creationId!==retained.identity||this.agentCalendar?.state.ownerKey!==retained.ownerKey||this.canonicalDraftOwner!==retained.ownerKey||this.canonicalDraftText!==retained.text)return;
+  if(retained.owner!==this||form.id||form.alphaReminderId||form.reminderEditTarget||form.cal!=='alpha-reminders'||form.creationId!==retained.identity||!ownsDraft(this,retained.ownerKey,retained.binding)||this.canonicalDraftText!==retained.text)return;
   const token=Object.freeze({});admissions.set(token,{origin,signature:submittedForm(form)});return token;
  };
  p.calendarFormCommitted=function(form:Bag,admission?:object){
@@ -97,22 +99,22 @@ export function installCanonicalCalendarDrafts(Component:any,views:Bag){
    const submitted=admission&&admissions.get(admission);if(admission)admissions.delete(admission);
    const retained=submitted&&origins.get(submitted.origin);
    if(!submitted||!retained||form?.id||form?.alphaReminderId||form?.reminderEditTarget||(form&&Reflect.get(form,reminderDraftOrigin))!==submitted.origin||retained.owner!==this||form.creationId!==retained.identity||form.cal!=='alpha-reminders'||submittedForm(form)!==submitted.signature)return;
-   const exact=()=>{const visible=this.vget('calendar').form;return ownsDraft(this,retained.ownerKey)&&this.canonicalDraftText===retained.text&&(!visible||Reflect.get(visible,reminderDraftOrigin)===submitted.origin&&submittedForm(visible)===submitted.signature);};
+   const exact=()=>{const visible=this.vget('calendar').form;return ownsDraft(this,retained.ownerKey,retained.binding)&&this.canonicalDraftText===retained.text&&(!visible||Reflect.get(visible,reminderDraftOrigin)===submitted.origin&&submittedForm(visible)===submitted.signature);};
    if(!exact())return;
    this.canonicalDraftSuppressed=retained.text;
-   void this.canonicalDraft.consume(retained.text,exact).then(()=>origins.delete(submitted.origin)).catch(()=>{if(ownsDraft(this,retained.ownerKey))this.toast('Saved. Discard the leftover draft before saving again.');});return;
+   void this.canonicalDraft.consume(retained.text,exact).then(()=>origins.delete(submitted.origin)).catch(()=>{if(ownsDraft(this,retained.ownerKey,retained.binding))this.toast('Saved. Discard the leftover draft before saving again.');});return;
   }
-  const key=form.canonicalOwnerKey;
-  if(!ownsDraft(this,key))return;
-  try{const text=encodeCanonicalCalendarDraft(form,this.canonicalDraftAnchor??new Date());this.canonicalDraftSuppressed=text;void this.canonicalDraft.consume(text,()=>ownsDraft(this,key)&&this.canonicalDraftText===text).catch(()=>{if(ownsDraft(this,key))this.toast('Saved. Discard the leftover draft before saving again.');});}catch{this.toast('Saved. Discard the leftover draft before saving again.');}
+  const key=form.canonicalOwnerKey,binding=this.canonicalDraftBinding;
+  if(!ownsDraft(this,key,binding))return;
+  try{const text=encodeCanonicalCalendarDraft(form,this.canonicalDraftAnchor??new Date());this.canonicalDraftSuppressed=text;void this.canonicalDraft.consume(text,()=>ownsDraft(this,key,binding)&&this.canonicalDraftText===text).catch(()=>{if(ownsDraft(this,key,binding))this.toast('Saved. Discard the leftover draft before saving again.');});}catch{this.toast('Saved. Discard the leftover draft before saving again.');}
  };
  p.componentWillUnmount=function(){this.canonicalDraft?.retire(false);this.canonicalDraftRecovery?.abort();if(owner===this)owner=undefined;unmount.call(this);};
  views.calendar.render=function(state:Bag,api:Bag){
-  const shell=owner,controller=shell?.canonicalDraft,key=shell?.agentCalendar?.state.ownerKey;
+  const shell=owner,controller=shell?.canonicalDraft,key=shell?.agentCalendar?.state.ownerKey,binding=shell?.canonicalDraftBinding;
   if(state.form?.canonicalOwnerKey&&state.form.canonicalOwnerKey!==key)state={...state,form:null};
   const out=render(state,api);
   if(!shell||!controller||!key||shell.canonicalDraftOwner!==key||state.form&&!state.form.canonicalOwnerKey||state.calendarAuthority==='android-native'||browserCalendarScope(shell))return out;
-  const current=()=>ownsDraft(shell,key);
+  const current=()=>ownsDraft(shell,key,binding);
   const active=!!state.form?.canonicalOwnerKey,draft=controller.state;
   out.formDraftAvailable=!state.form&&!!shell.canonicalDraftText;out.canDiscardFormDraft=out.formDraftAvailable;out.formDraftBusy=draft.opening||draft.consuming;out.formDraftStatus=active?(shell.canonicalDraftInvalid?'Check this draft.':draft.message.replace('before sending','before saving')):'';out.formDraftConflict=active&&draft.conflict;out.formDraftError=active&&draft.error;out.formDraftListError=!state.form&&draft.error;
   const restore=(saved=false)=>{if(!current())return;try{shell.canonicalDraftRestoring=true;if(saved)controller.restoreSaved();else{const restored=decodeCanonicalCalendarDraft(shell.canonicalDraftText);if(restored.form.canonicalOwnerKey!==key)throw Error('This draft belongs to another account');shell.canonicalDraftAnchor=new Date();api.set({form:restored.form,open:null});}}catch{api.toast('This draft belongs to another account. Open it to review.');}finally{shell.canonicalDraftRestoring=false;}};
