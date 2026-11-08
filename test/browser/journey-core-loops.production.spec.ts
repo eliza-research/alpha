@@ -464,7 +464,7 @@ test('loops B, C and J04 in the web build: Agent Calendar requires a connection,
   await page.goto('/');
   await button(page, 'Maps').click();
   await expect(page.getByRole('region', {name: 'Map', exact: true})).toBeVisible();
-  await expect(page.getByRole('status')).toContainText('Add a location');
+  await expect(page.getByRole('region', {name: 'Maps', exact: true}).getByRole('status')).toContainText('Add a location');
   await expect(button(page, 'Directions')).toHaveCount(0);
   await expect(page.getByRole('region', {name: 'Maps'})).not.toContainText(/\d+ min|\d km/);
   // The independent browser alarm list remains a durable local feature.

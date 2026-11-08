@@ -216,7 +216,7 @@ test('a resident stream that fails after the turn was recorded says the reply co
   await connected(page);
   await stub(page, s => { s.stream = 'drop'; });
   await send(page, 'Dropped after recording');
-  await expect(page.getByText(UNKNOWN, { exact: true })).toHaveCount(1);
+  await expect(conversation(page).getByText(UNKNOWN, { exact: true })).toHaveCount(1);
   await expect(page.getByRole('button', { name: /^Check saved conversation/ })).toHaveCount(0);
   await expect(composer(page)).toHaveValue('');
   // The one re-read of a dropped stream reuses the same clientMessageId; nothing new is posted.
