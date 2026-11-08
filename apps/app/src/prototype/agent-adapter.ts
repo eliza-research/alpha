@@ -541,19 +541,15 @@ export function installAgentAdapter(Component: Shell, views: Shell) {
     }
     if(view==='messages')providerSelection=shell.smsSelection?.();
     if(view==='calendar')providerSelection=shell.calendarSelection?.();
-    if (view === 'contacts' || view==='calendar'&&!providerSelection) {
+    // Contacts emit no selection: native rows stay in the contacts adapter and no operation takes a contact.
+    if (view==='calendar'&&!providerSelection) {
       const state = shell.vget(view);
-      const record = (view === 'calendar' ? state.events : state.list)?.find((row: Shell) => row.id === state.open);
+      const record = state.events?.find((row: Shell) => row.id === state.open);
       // Only native-backed rows have authority; fixture records never become
       // agent targets. Content stays local; only identity/revision is sent.
-      if (record && (view === 'contacts' || record.alphaReminderId)) {
-        const id = String(record.alphaCalendarId || record.alphaReminderId || record.id), key = `${view}:${id}`;
-        shell.entityRevisions ||= new Map();
-        const signature = JSON.stringify(record), previous = shell.entityRevisions.get(key);
-        const revision = previous?.signature === signature ? previous.revision : (previous?.revision || 0) + 1;
-        shell.entityRevisions.set(key, { signature, revision });
-        providerSelection = { kind: view === 'contacts' ? 'contact' : record.alphaCalendarId ? 'calendar-event' : 'reminder', id, revision: String(revision) };
-        if(record.alphaReminderId){const target=shell.reminderTargets?.get(id);providerSelection=target?{kind:'reminder',id:target.reminderId,revision:target.revision,accountId:target.sourceId,sourceRevision:target.sourceRevision,occurrenceId:target.occurrenceId,...(target.timingVersion===2?{timingVersion:2}: {})}:undefined;}
+      if (record?.alphaReminderId) {
+        const target=shell.reminderTargets?.get(String(record.alphaCalendarId || record.alphaReminderId));
+        providerSelection=target?{kind:'reminder',id:target.reminderId,revision:target.revision,accountId:target.sourceId,sourceRevision:target.sourceRevision,occurrenceId:target.occurrenceId,...(target.timingVersion===2?{timingVersion:2}: {})}:undefined;
       }
     }
     if(view==='calendar'&&shell.clockSelection?.())providerSelection=shell.clockSelection();
