@@ -3,9 +3,9 @@
 // host JVM, not Android, so this is not device or Settings evidence.
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {spawnSync} from 'node:child_process';
+import {execFileSync,spawnSync} from 'node:child_process';
 import {createHash,randomUUID} from 'node:crypto';
-import {mkdtempSync,rmSync,writeFileSync} from 'node:fs';
+import {mkdirSync,mkdtempSync,rmSync,symlinkSync,writeFileSync} from 'node:fs';
 import {tmpdir} from 'node:os';
 import {join} from 'node:path';
 if(!process.execArgv.includes('tsx')){const child=spawnSync(process.execPath,['--import','tsx',process.argv[1]],{stdio:'inherit',timeout:120000});if(child.error)throw child.error;process.exit(child.status??1);}
@@ -66,6 +66,31 @@ test('the saved switches are off unless the file holds version 1 booleans',()=>{
   }
   writeFileSync(file,'{"version":1,"gmailChanges":true,"calendarEdits":false}');
   assert.deepEqual(savedGoogleAgentAccess(file),{gmailChanges:true,calendarEdits:false});
+ }finally{rmSync(dir,{recursive:true,force:true});}
+});
+
+test('linked and nonregular access files are refused without a blocking read',()=>{
+ const dir=mkdtempSync(join(tmpdir(),'alpha-google-access-types-'));
+ try{
+  const off={gmailChanges:false,calendarEdits:false},enabled='{"version":1,"gmailChanges":true,"calendarEdits":true}';
+  const parent=join(dir,'real'),real=join(parent,'access.json');
+  mkdirSync(parent);writeFileSync(real,enabled);
+  const leaf=join(dir,'linked.json'),linkedParent=join(dir,'linked-parent'),directory=join(dir,'directory');
+  symlinkSync(real,leaf);symlinkSync(parent,linkedParent);mkdirSync(directory);
+  assert.deepEqual(savedGoogleAgentAccess(leaf),off);
+  assert.deepEqual(savedGoogleAgentAccess(join(linkedParent,'access.json')),off);
+  assert.deepEqual(savedGoogleAgentAccess(directory),off);
+  assert.deepEqual(savedGoogleAgentAccess(real),{gmailChanges:true,calendarEdits:true});
+  const absent=join(dir,'absent.json');
+  for(const suffix of ['.tmp','.bak'])writeFileSync(absent+suffix,enabled);
+  assert.deepEqual(savedGoogleAgentAccess(absent),off,'only the canonical record can admit access');
+  const pipe=join(dir,'pipe');execFileSync('mkfifo',[pipe]);
+  const read=spawnSync(process.execPath,['--import','tsx','--input-type=module','-e',
+   'import {savedGoogleAgentAccess} from "./backend/native-google-agent-host.ts"; console.log(JSON.stringify(savedGoogleAgentAccess()));'],
+   {env:{...process.env,ALPHA_GOOGLE_AGENT_ACCESS_FILE:pipe},encoding:'utf8',timeout:10000});
+  assert.ifError(read.error);
+  assert.equal(read.status,0,read.stderr);
+  assert.deepEqual(JSON.parse(read.stdout),off);
  }finally{rmSync(dir,{recursive:true,force:true});}
 });
 
