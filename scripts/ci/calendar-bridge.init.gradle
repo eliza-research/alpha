@@ -1,4 +1,6 @@
-// Source-only CI proposal. Explicit --init-script only; no install/global hook/finalizer.
+// Applied only through --init-script by scripts/ci/calendar-bridge.py in the android.yml build job
+// (an input to the required Android check); no install, global hook or finalizer. It qualifies the
+// Calendar bridge against a controlled JVM host on the runner, not on a device.
 import groovy.json.JsonOutput
 import org.gradle.api.tasks.compile.JavaCompile
 import java.nio.file.*

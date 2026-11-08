@@ -47,7 +47,7 @@ public final class VoiceNoteReadAloudInstrumentedTest {
    assertEquals("Stop ends the reading","\"playbackStopped\"",WebViewTestDriver.evaluate("window.__readAloud.state"));
    assertEquals("Playback had started before the stop","true",WebViewTestDriver.evaluate("window.__readAloud.started===true"));
    assertNull(app.getSystemService(ConnectivityManager.class).getActiveNetwork());
-   evidence.put("pass",true).put("execution","android-process-cpu").put("physicalSpeakerVerified",false);
+   evidence.put("pass",true).put("physicalSpeakerVerified",false);
   } finally { try(Writer out=new FileWriter(new File(folder,"note-read-aloud.json"))){out.write(evidence.toString(2));} }
  }
 }
