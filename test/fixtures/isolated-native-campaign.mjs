@@ -22,6 +22,15 @@ export function exercise(mode,kind='calendar',extraArguments=[]){
   const manifest={'standalone-debug.apk':hash(apk),'standalone-androidTest.apk':hash(cameraTest)};
   for(const kind of ['debug','androidTest']){const name='launcher-'+kind+'.apk';fs.copyFileSync(kind==='debug'?apk:cameraTest,path.join(root,'artifacts',name));manifest[name]=hash(path.join(root,'artifacts',name));}
   fs.writeFileSync(path.join(root,'artifacts/apk-manifest.json'),JSON.stringify(manifest));
+  // The workflow campaign reads a flag-off archive and, for its owner-fixture cases, a separate test-mocks archive.
+  const mocksArchive=path.join(root,'mocks-archive');
+  if(kind==='workflow'){
+   fs.writeFileSync(path.join(root,'artifacts/archive-source.json'),JSON.stringify({kind:'developer-archive',testMocks:false}));
+   fs.mkdirSync(mocksArchive);const mocks={};
+   for(const name of ['standalone-debug.apk','standalone-androidTest.apk','launcher-debug.apk','launcher-androidTest.apk']){fs.writeFileSync(path.join(mocksArchive,name),'test-mocks '+name);mocks[name]=hash(path.join(mocksArchive,name));}
+   fs.writeFileSync(path.join(mocksArchive,'apk-manifest.json'),JSON.stringify(mocks));
+   fs.writeFileSync(path.join(mocksArchive,'archive-source.json'),JSON.stringify({kind:'developer-archive',testMocks:mode!=='mislabelled-mocks-archive'}));
+  }
   const jdk=path.join(root,'jdk');fs.mkdirSync(jdk);fs.writeFileSync(path.join(jdk,'release'),'JAVA_VERSION="21.0.1"');
   if(mode==='archive-pin')fs.writeFileSync(cameraTest,'changed');
   if(mode==='companion-pin'){const file=path.join(root,'artifacts/calendar-external/ws.xsoh.etar_57.apk');fs.mkdirSync(path.dirname(file),{recursive:true});fs.writeFileSync(file,'unreviewed APK');}
@@ -115,7 +124,7 @@ else if(a.includes('instrument')){
 else{console.error('Unexpected command '+JSON.stringify(a));process.exit(1);}
 `,{mode:0o700});
   const testClass=mode==='companion-pin'?'CalendarExternalEditorInstrumentedTest':selectedClass;
-  const run=spawnSync(process.execPath,[restartCampaign?path.resolve('scripts/test-native-restart.mjs'):scripts[kind]??scripts.calendar,...(kind==='workflow'?extraArguments:permissionCampaign||restartCampaign?[kind,apk,cameraTest,path.join(root,'output')]:reminderCampaign?[apk,cameraTest,path.join(root,'output')]:[`--case=${['agent','options','home-card','home-card-revoked'].includes(kind)?testClass+'#'+selectedMethod:testClass}`,'--variant=standalone',...(mode==='companion-pin'?['--external']:[])])],{cwd:root,env:{...process.env,ALPHA_CALENDAR_TEST_ROOT:root,ALPHA_CALENDAR_TEST_SERIAL:'emulator-5580',ALPHA_CALENDAR_TEST_AVD:'calendar-fixture',ALPHA_CALENDAR_TEST_ABI:'x86_64',ANDROID_HOME:root,ANDROID_SDK_ROOT:root,JAVA_HOME:jdk,ANDROID_SERIAL:'emulator-5580',ALPHA_TEST_HOME_PACKAGE:homePackage,ALPHA_NATIVE_TEST_AVD:'calendar-fixture',ALPHA_NATIVE_TEST_ABI:'x86_64',ALPHA_BUILD_ARCHIVE:path.join(root,'artifacts'),ALPHA_CAMPAIGN_OUTPUT:path.join(root,'test-results/workflow'),ALPHA_WORKFLOW_TEST_AVD:'calendar-fixture',ALPHA_WORKFLOW_TEST_ABI:'x86_64',ELIZA_DEVICE_LEASE_DIR:path.join(root,'leases')},encoding:'utf8',timeout:kind==='workflow'?360000:120000});
+  const run=spawnSync(process.execPath,[restartCampaign?path.resolve('scripts/test-native-restart.mjs'):scripts[kind]??scripts.calendar,...(kind==='workflow'?extraArguments:permissionCampaign||restartCampaign?[kind,apk,cameraTest,path.join(root,'output')]:reminderCampaign?[apk,cameraTest,path.join(root,'output')]:[`--case=${['agent','options','home-card','home-card-revoked'].includes(kind)?testClass+'#'+selectedMethod:testClass}`,'--variant=standalone',...(mode==='companion-pin'?['--external']:[])])],{cwd:root,env:{...process.env,ALPHA_CALENDAR_TEST_ROOT:root,ALPHA_CALENDAR_TEST_SERIAL:'emulator-5580',ALPHA_CALENDAR_TEST_AVD:'calendar-fixture',ALPHA_CALENDAR_TEST_ABI:'x86_64',ANDROID_HOME:root,ANDROID_SDK_ROOT:root,JAVA_HOME:jdk,ANDROID_SERIAL:'emulator-5580',ALPHA_TEST_HOME_PACKAGE:homePackage,ALPHA_NATIVE_TEST_AVD:'calendar-fixture',ALPHA_NATIVE_TEST_ABI:'x86_64',ALPHA_BUILD_ARCHIVE:path.join(root,'artifacts'),ALPHA_TEST_MOCKS_ARCHIVE:kind==='workflow'&&mode!=='no-mocks-archive'?mocksArchive:'',ALPHA_CAMPAIGN_OUTPUT:path.join(root,'test-results/workflow'),ALPHA_WORKFLOW_TEST_AVD:'calendar-fixture',ALPHA_WORKFLOW_TEST_ABI:'x86_64',ELIZA_DEVICE_LEASE_DIR:path.join(root,'leases')},encoding:'utf8',timeout:kind==='workflow'?360000:120000});
   // Source authentication alone can exceed the old whole-fixture deadline.
   // Surface process failures before reading output that may never have been created.
   assert.ifError(run.error);

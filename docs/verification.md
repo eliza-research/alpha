@@ -196,7 +196,11 @@ instrumentation APKs plus their filename-to-SHA256 `apk-manifest.json`:
 `node scripts/developer-archive.mjs [--test-mocks] test-results/<new>` copies it from a
 developer build that verify-apks recorded in `artifacts/` (it admits each APK against
 `artifacts/apk-manifest.json` and writes `archive-source.json` saying it is a developer
-archive). Evidence is written to a new `ALPHA_CAMPAIGN_OUTPUT` directory beneath
+archive). `ALPHA_BUILD_ARCHIVE` must be a flag-off archive; the cases that restore a synthetic
+owner (`WorkflowApprovalNoticeProcessDeathInstrumentedTest`'s pending and definitive signed-out
+methods) also need `ALPHA_TEST_MOCKS_ARCHIVE`, a `--test-mocks` archive, and run a
+`workflowOwnerPhase=prepare` pass of the same method first. A selection that needs a missing or
+mislabelled archive is refused before the emulator is touched. Evidence is written to a new `ALPHA_CAMPAIGN_OUTPUT` directory beneath
 `test-results/`. `--variant=standalone|launcher` and `--phase=workflow|approval-notice`
 run part of the campaign after a failure stopped it; such a report carries `selection`
 and `selectionPassed`, and its `passed` stays false.

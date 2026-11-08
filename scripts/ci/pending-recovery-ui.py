@@ -49,6 +49,8 @@ for relative,digest in frozen.items():
   assert Path(relative).is_file() and h(Path(relative).read_bytes())==digest
 
 PHASES=[('reminder-no-alert','ReminderTimingInstrumentedTest','noAlertBridgeWithoutPermissionRestoresAndCompletesWithoutDelivery','reminderTiming','none'),('reminder-alert-timing','ReminderTimingInstrumentedTest','numericLeadDueTimeStaleTargetsAndLegacyReceiptsRemainBound','reminderTiming','numeric'),('pending-storage','ReminderDeletionStorageInstrumentedTest','reminderDeletionSlotUsesEncryptedCompareExchange','pendingActionStorageFixture','1'),('calendar-recovery','CalendarCreationRecoveryInstrumentedTest','committedMarkerRecoveryAndMissingMarkerNeverReplay','calendarCreationRecovery','1'),('audio-fence','NoteAudioInstrumentedTest','optInRetiredDeletionCannotArriveAfterReloadAndRestore','audioFence','true'),('reminder-edit','ReminderAgentInstrumentedTest','selectedCrudPersistsExactReceiptsAndRejectsChangedBindings','reminderAgent','1'),('reminder-v2-transport','ConnectionInstrumentedTest','encryptedCredentialsAndHttpSurviveRecreationWithCancellationAndRedirectRejection','reminderTransport','v2'),('cloud-callback-cold','CloudDelegationCallbackInstrumentedTest','coldCallbackSurvivesRecreationAndOnlyMatchingClear','cloudDelegationNative','1'),('cloud-callback-warm','CloudDelegationCallbackInstrumentedTest','warmCallbackRejectsMalformedLinksAndRetainsLatestOnRecreation','cloudDelegationNative','1'),('workflow-notice-tap','WorkflowNoticeTapInstrumentedTest','twoOpaqueNoticesRetainColdWarmAndFailedCaptureRoutes','workflowNoticeTap','1'),('workflow-notice-process-death','WorkflowNoticeProcessDeathInstrumentedTest','originalNoticeLaunchesAbsentMainAfterOrdinaryProcessDeath','workflowNoticeProcessDeath','1'),('workflow-approval-process-death','WorkflowNoticeProcessDeathInstrumentedTest','approvalNoticeOpensOnlyItsApprovalAfterProcessDeath','workflowNoticeProcessDeath','approval'),('enabled-view-transport','ConnectionInstrumentedTest','enabledViewProfileHttpPreservesAuthenticationAndConditionalRevision','enabledViewTransport','1'),('reminder-tap-lifecycle','ReminderTapLifecycleInstrumentedTest','staleDismissDuplicateCaptureAndConsumedCapacityRemainExact','reminderTapLifecycle','1'),('reminder-tap-process-death','ReminderTapProcessDeathInstrumentedTest','capturedReminderTapSurvivesMainDeathWithoutAnotherNotificationIntent','reminderTapProcessDeath','1'),('native-slot-isolation','ConnectionInstrumentedTest','reservedNativeSlotsRejectEveryPublicStorageOperation','nativeSlotIsolation','1'),('clock-agent-review','ClockAgentReviewInstrumentedTest','journalBoundOwnerReviewManualSelectionCancellationAndRecreation','clockAgentReview','1')]
+# These run under WorkflowNoticeOwnerFixture: a prepare run in the same user restores its owner first.
+OWNER_PREPARED=('workflow-notice-process-death','workflow-approval-process-death')
 for _,cls,_,_,_ in PHASES:
  relative='android/app/src/androidTest/java/ai/elizaresearch/alphaphone/'+cls+'.java'
  assert relative in frozen and h(Path(relative).read_bytes())==frozen[relative]
@@ -110,6 +112,14 @@ for variant in ['standalone','launcher']:
     admit_display(run,user,name,record=display_record)
     for pkg,kind in [(APP,'debug'),(TEST,'androidTest')]:installed(pkg,user,manifest[variant+'-'+kind+'.apk'])
     owned(run,user,name,user);assert_no_resident(run)
+    if phase in OWNER_PREPARED:
+     # The same method under the standard runner in this user restores the synthetic owner (test-mocks
+     # archive) and posts one approval through main first; no force-stop, which would clear that notice.
+     try:prepared=run('shell','am','instrument','--user',user,'-w','-r','-e','class',APP+'.'+cls+'#'+method,'-e',opt,value,'-e','workflowOwnerPhase','prepare',TEST+'/androidx.test.runner.AndroidJUnitRunner',timeout=300)
+     except (subprocess.CalledProcessError,subprocess.TimeoutExpired) as error:
+      safe=lambda v:(v.decode(errors='replace') if isinstance(v,bytes) else v or '')[:1024*1024]
+      (out/(variant+'-'+phase+'-prepare-failure.txt')).write_text(safe(error.stdout)+'\nSTDERR\n'+safe(error.stderr));raise
+     (out/(variant+'-'+phase+'-prepare.txt')).write_text(prepared);terminal(prepared,APP+'.'+cls,method)
     runner=APP+'.WorkflowNoticeProcessRunner' if phase in ('workflow-notice-process-death','workflow-approval-process-death','reminder-tap-process-death') else 'androidx.test.runner.AndroidJUnitRunner'
     try:text=run('shell','am','instrument','--user',user,'-w','-r','-e','class',APP+'.'+cls+'#'+method,'-e',opt,value,TEST+'/'+runner,timeout=300)
     except (subprocess.CalledProcessError,subprocess.TimeoutExpired) as error:

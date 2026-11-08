@@ -2,16 +2,11 @@ package ai.elizaresearch.alphaphone;
 
 import android.app.*;
 import android.content.*;
-import android.os.Build;
 import android.os.SystemClock;
 import android.service.notification.StatusBarNotification;
-import android.system.Os;
-import android.system.OsConstants;
 import androidx.test.platform.app.InstrumentationRegistry;
 import org.json.JSONObject;
 import org.junit.Test;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.util.*;
 import static org.junit.Assert.*;
 
@@ -20,7 +15,9 @@ import static org.junit.Assert.*;
  * Test-mocks restores an explicitly synthetic loopback owner through real initialize; the initial post uses the actual main-process bridge, and the repeated succeeded request
  * inspects the same ledger from this helper process; the tap is captured by the restarted main's
  * own AlphaNotifications plugin. Synthetic route: no real account, review or device action.
- * Exact workflow review remains outside this native capture test. */
+ * Exact workflow review remains outside this native capture test. All three methods run in
+ * scripts/android-workflow-native.mjs phase approval-notice-recovery: the first two on the test-mocks
+ * archive after a standard-runner prepare run in the same user, the last on the flag-off archive. */
 public final class WorkflowApprovalNoticeProcessDeathInstrumentedTest {
  private static final String APP="ai.elizaresearch.alphaphone";
  private static List<StatusBarNotification> approvals(NotificationManager manager){
@@ -49,6 +46,8 @@ public final class WorkflowApprovalNoticeProcessDeathInstrumentedTest {
  }
  @Test public void pendingApprovalNoticeSurvivesProcessDeathAndOpensItsExactApprovalOnce()throws Exception {
   org.junit.Assume.assumeTrue("Explicit isolated process-death campaign","1".equals(InstrumentationRegistry.getArguments().getString("workflowApprovalNoticeProcessDeath")));
+  // A flag-off build skips here, before the prepared-ledger assertions it can never satisfy.
+  org.junit.Assume.assumeTrue("Synthetic restore requires test-mocks build",BuildConfig.ELIZA_DEV_ALLOW_TEST_MOCKS);
   if(WorkflowNoticeOwnerFixture.preparing()){WorkflowNoticeOwnerFixture.prepare();return;}
   assertEquals(APP+":workflowNoticeTest",Application.getProcessName());assertTrue("Owned secondary user required",android.os.Process.myUid()/100000>0);
   Context context=InstrumentationRegistry.getInstrumentation().getTargetContext();AlphaCredentialStore store=new AlphaCredentialStore(context);
@@ -73,27 +72,13 @@ public final class WorkflowApprovalNoticeProcessDeathInstrumentedTest {
    StatusBarNotification original=notice(manager,id);PendingIntent pending=original.getNotification().contentIntent;assertNotNull(pending);
    assertFalse("Redacted: no route identity in the notice",original.getNotification().extras.toString().contains(run)||original.getNotification().extras.toString().contains("fixture-flow"));
    assertFalse(taps.pending().has("token"));
-   // Remove only this package's tasks before ordinary death, preventing foreground task recovery.
-   for(ActivityManager.AppTask task:context.getSystemService(ActivityManager.class).getAppTasks()){
-    ActivityManager.RecentTaskInfo info=task.getTaskInfo();assertNotNull(info.baseIntent.getComponent());assertEquals(APP,info.baseIntent.getComponent().getPackageName());task.finishAndRemoveTask();
-   }
-   long taskEnd=SystemClock.elapsedRealtime()+10000;
-   while(!context.getSystemService(ActivityManager.class).getAppTasks().isEmpty()&&SystemClock.elapsedRealtime()<taskEnd)SystemClock.sleep(50);
-   assertTrue("Main tasks still active",context.getSystemService(ActivityManager.class).getAppTasks().isEmpty());
    int verifiedBeforeDeath=fixture.verified.get(),agentsBeforeDeath=fixture.agents.get();
-   before.exact();Os.kill(before.pid,OsConstants.SIGKILL);
-   long deathEnd=SystemClock.elapsedRealtime()+10000;
-   while((Files.exists(Path.of("/proc/"+before.pid))||!WorkflowNoticeProcessDeathInstrumentedTest.mainPids(context).isEmpty())&&SystemClock.elapsedRealtime()<deathEnd)SystemClock.sleep(50);
-   assertFalse("Original process did not die",Files.exists(Path.of("/proc/"+before.pid)));
-   assertTrue("Main restarted before notification tap",WorkflowNoticeProcessDeathInstrumentedTest.mainPids(context).isEmpty());
+   WorkflowNoticeProcessDeathInstrumentedTest.killMainWithoutTasks(context,before);
    // The pending notice and both ledgers survive the death unchanged.
    assertEquals(prepared,store.readCredentialSlot(WorkflowNoticeTaps.SLOT));assertEquals(receipt,store.readCredentialSlot(WorkflowNoticeDelivery.APPROVAL_SLOT));
    StatusBarNotification retained=notice(manager,id);assertEquals(original.getKey(),retained.getKey());assertEquals(original.getPostTime(),retained.getPostTime());assertEquals(pending,retained.getNotification().contentIntent);
-   // The only launch after proven absence: the original OS-owned PendingIntent, once. Android's shade
-   // sends a tapped notice with the sender's activity-start allowance; the same is stated here.
-   ActivityOptions options=ActivityOptions.makeBasic();
-   if(Build.VERSION.SDK_INT>=34)options.setPendingIntentBackgroundActivityStartMode(ActivityOptions.MODE_BACKGROUND_ACTIVITY_START_ALLOWED);
-   pending.send(context,0,null,null,null,null,options.toBundle());
+   // The only launch after proven absence: the original OS-owned PendingIntent, once, as the shade sends it.
+   WorkflowNoticeProcessDeathInstrumentedTest.sendOriginalTap(context,pending);
    WorkflowNoticeProcessDeathInstrumentedTest.Identity after=WorkflowNoticeProcessDeathInstrumentedTest.awaitMain(context);assertTrue(before.pid!=after.pid||!before.start.equals(after.start));
    fixture.awaitOwner(true,verifiedBeforeDeath+1,agentsBeforeDeath+1);
    JSONObject captured=null;long captureEnd=SystemClock.elapsedRealtime()+15000;
@@ -133,11 +118,7 @@ public final class WorkflowApprovalNoticeProcessDeathInstrumentedTest {
    Intent launch=context.getPackageManager().getLaunchIntentForPackage(APP);assertNotNull(launch);context.startActivity(launch);
    WorkflowNoticeProcessDeathInstrumentedTest.Identity before=WorkflowNoticeProcessDeathInstrumentedTest.awaitMain(context);fixture.awaitOwner(true);
    PendingIntent original=notice(manager,id).getNotification().contentIntent;long end;
-   for(ActivityManager.AppTask task:context.getSystemService(ActivityManager.class).getAppTasks()){assertEquals(APP,task.getTaskInfo().baseIntent.getComponent().getPackageName());task.finishAndRemoveTask();}
-   end=SystemClock.elapsedRealtime()+10000;while(!context.getSystemService(ActivityManager.class).getAppTasks().isEmpty()&&SystemClock.elapsedRealtime()<end)SystemClock.sleep(50);assertTrue(context.getSystemService(ActivityManager.class).getAppTasks().isEmpty());
-   before.exact();Os.kill(before.pid,OsConstants.SIGKILL);end=SystemClock.elapsedRealtime()+10000;
-   while((Files.exists(Path.of("/proc/"+before.pid))||!WorkflowNoticeProcessDeathInstrumentedTest.mainPids(context).isEmpty())&&SystemClock.elapsedRealtime()<end)SystemClock.sleep(50);
-   assertFalse(Files.exists(Path.of("/proc/"+before.pid)));assertTrue(WorkflowNoticeProcessDeathInstrumentedTest.mainPids(context).isEmpty());
+   WorkflowNoticeProcessDeathInstrumentedTest.killMainWithoutTasks(context,before);
    store.removeCredentialSlot("remote:"+fixture.origin);
    int authBefore=fixture.verified.get();context.startActivity(launch);WorkflowNoticeProcessDeathInstrumentedTest.Identity after=WorkflowNoticeProcessDeathInstrumentedTest.awaitMain(context);assertTrue(before.pid!=after.pid||!before.start.equals(after.start));fixture.awaitOwner(false);
    end=SystemClock.elapsedRealtime()+10000;while(!approvals(manager).isEmpty()&&SystemClock.elapsedRealtime()<end)SystemClock.sleep(50);assertTrue("Signed-out startup withdraws OS approval",approvals(manager).isEmpty());
