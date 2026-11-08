@@ -11,9 +11,10 @@ or `photos.view.v1`, so `runtime/connection-ui.tsx` does not yet offer them. Add
 negotiated list (and to `config/alpha-product.json` `features.capabilities`) in the pin bump that
 brings this patch.
 
-Base: elizaOS/eliza `0594fc72da4450a84a986ad12e730e3faa902018` (the pin in
+Base: elizaOS/eliza `475a8d59dc1811c2cde093613519906a5a3f6457` (the pin in
 `upstream.lock.json`). Apply from the eliza repo root with `git apply`. Written and tested at
-`0594fc72da` on 2026-11-06.
+`0594fc72da` on 2026-11-06; every file it touches is byte-identical at `475a8d59dc`, so the
+regenerated patch is unchanged. Re-tested at `475a8d59dc` on 2026-11-07 (see below).
 
 ## What it adds
 
@@ -34,8 +35,9 @@ only when both `photos.library.v1` and `photos.view.v1` were negotiated.
   depends only on `photo-library-contract.ts`): types, `PHOTOS_VIEW_CAPABILITY`,
   `PHOTOS_VIEW_TYPES`, `PHOTOS_VIEW_DIRECT_TYPES`, `PHOTOS_FILTER_ALBUMS`,
   `isPhotosViewOperation`, `photosViewCapabilityAvailable`, `validatePhotosViewOperation`,
-  `describePhotosViewOperation` (owner-facing text names the app through an `appName` argument,
-  like `describeLibraryOperation`), `photosViewContextAllowed` and `validatePhotosViewResult`.
+  `describePhotosViewOperation` (the review card is the change itself: "Open photo",
+  "Create album “Trip”" · "2 items", "Share 3 items" · "Android share sheet"; it takes an
+  `appName` argument like `describeLibraryOperation`, though no text needs it), `photosViewContextAllowed` and `validatePhotosViewResult`.
   Validation is the same as the earlier phone implementation: unknown fields are rejected;
   `from`/`to` are non-negative safe integers (ms) with `from <= to`; `text` is at most
   `LIBRARY_LIMITS.query` (80) characters with no control characters; `album` is one of the four
@@ -81,6 +83,14 @@ At the pin the `photo_library_*` operations exist only in the phone-side coordin
 no agent tool, `contract.ts` branch or route capability for them. This patch does not add
 those. The agent therefore has library ids only when the phone has supplied them; the tool
 descriptions say to use only ids the phone returned and never guess them.
+
+## Re-tested at `475a8d59dc` (2026-11-07)
+
+`git apply --check` passes on the new pin. In a scratch `git archive` export of the new pin
+(same layout and third-party packages as below), Bun 1.3.14: `photos-view-contract.test.ts`,
+`client-coordinator.test.ts` and `photo-library-contract.test.ts` 59 pass, 0 fail; the whole
+`device-actions/` folder 97 pass, 2 fail (the same two missing-module failures as below).
+`tsc` and Biome were not re-run at this pin.
 
 ## How it was tested (2026-11-06, at `0594fc72da`)
 

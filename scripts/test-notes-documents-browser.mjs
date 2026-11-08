@@ -1,6 +1,6 @@
 /** Rendered UI/storage flow with a disclosed synthetic document boundary. */
 import assert from 'node:assert/strict';import {createRequire} from 'node:module';import path from 'node:path';
-const require=createRequire(path.join(process.env.ALPHA_BROWSER_MODULES,'__notes.cjs')),{chromium}=require('playwright');
+const require=createRequire(path.join(process.env.ALPHA_BROWSER_MODULES,'__notes.cjs')),{chromium}=require('playwright'),{expect}=require('@playwright/test');
 const url=process.env.ALPHA_NOTES_TEST_URL||'http://127.0.0.1:5298';if(new URL(url).hostname!=='127.0.0.1')throw Error('Local Vite only');
 const browser=await chromium.launch({headless:true});try{
  const page=await browser.newPage({viewport:{width:412,height:915}});await page.addInitScript(()=>{
@@ -18,7 +18,7 @@ const browser=await chromium.launch({headless:true});try{
  };
  await page.goto(url);await openOlder();
  const count=()=>page.evaluate(async ()=>(JSON.parse((await (await import('/src/runtime/browser-notes-document.ts')).readBrowserNotesRaw())||'{"records":[]}').records).length);const initial=await count();
- await page.getByRole('button',{name:'Import text note',exact:true}).click();await page.getByRole('textbox',{name:'Note',exact:true}).waitFor();assert.equal(await count(),initial+1);assert.equal(await page.getByRole('textbox',{name:'Note',exact:true}).inputValue(),'Exact 🧪 text\nline two\n');
+ await page.getByRole('button',{name:'Import text note',exact:true}).click();await page.getByRole('textbox',{name:'Note',exact:true}).waitFor();await expect.poll(count).toBe(initial+1);assert.equal(await page.getByRole('textbox',{name:'Note',exact:true}).inputValue(),'Exact 🧪 text\nline two\n');
  await page.getByRole('button',{name:'Share note',exact:true}).click();await page.getByRole('button',{name:'Save locally',exact:true}).click();await page.waitForFunction(()=>window.documentsFixture.exports.length===1);assert.deepEqual(await page.evaluate(()=>window.documentsFixture.exports[0]),{title:'Owned fixture',text:'Owned fixture\n\nExact 🧪 text\r\nline two\n'});
  assert.equal(await page.getByRole('dialog',{name:'Share',exact:true}).count(),0);await page.getByRole('button',{name:'Back to notes',exact:true}).click();await page.evaluate(()=>window.documentsFixture.status='cancelled');await page.getByRole('button',{name:'Import text note',exact:true}).click();await page.waitForFunction(()=>window.documentsFixture.imports===2);assert.equal(await count(),initial+1);
  await page.reload();await openOlder();await page.getByRole('button',{name:'Open Owned fixture',exact:true}).click();assert.equal(await page.getByRole('textbox',{name:'Note',exact:true}).inputValue(),'Exact 🧪 text\nline two\n');

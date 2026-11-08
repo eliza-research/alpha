@@ -113,9 +113,9 @@ export function describePhotosViewOperation(op: PhotosViewOperation): { title: s
         op.from !== undefined || op.to !== undefined ? 'In the requested dates' : '',
       ].filter(Boolean).join(' · ') || 'Everything',
     };
-  if (op.type === 'photos_open') return { title: libraryKindOf(op.id) === 'video' ? 'Open video' : 'Open photo', description: 'In Photos. Nothing is changed or shared.' };
-  if (op.type === 'photos_album_create') return { title: `Create album ${quoted(op.name)}`, description: `${items(op.ids.length)}. You confirm it in Photos.` };
-  return { title: `Share ${items(op.ids.length)}`, description: `You confirm it in Photos, then pick where it goes in Android's share sheet. Nothing leaves ${APP_NAME} before that.` };
+  if (op.type === 'photos_open') return { title: libraryKindOf(op.id) === 'video' ? 'Open video' : 'Open photo', description: '' };
+  if (op.type === 'photos_album_create') return { title: `Create album ${quoted(op.name)}`, description: items(op.ids.length) };
+  return { title: `Share ${items(op.ids.length)}`, description: 'Android share sheet' };
 }
 
 /** Where a proposal may be reviewed or run: Photos, open on the unlocked phone. */

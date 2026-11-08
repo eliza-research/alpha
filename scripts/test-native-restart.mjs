@@ -14,14 +14,6 @@ const cases = {
 		scope:
 			"Persisted text zoom and real glyph geometry; distinct PID asserted by native test",
 	},
-	tree: {
-		testClass: "FilesTreeRestartInstrumentedTest",
-		method: "processPhase",
-		gate: "treePhase",
-		restore: "verify",
-		scope:
-			"Real persisted SAF folder grant, list, preview and scoped write; distinct PID asserted by native test",
-	},
 	bookmark: {
 		testClass: "BrowserContinuityInstrumentedTest",
 		method: "bookmarkProcessRestartPhase",

@@ -2346,7 +2346,7 @@ registerView("photos", {
         chromeOp: st.chrome ? 1 : 0, chromePE: st.chrome ? "auto" : "none",
         notDeleted: true,
         favIcon: cur.fav ? "fill: currentColor" : "", favLabel: cur.fav ? "Remove from favorites" : "Add to favorites",
-        viewerLabel: (cur.kind === "video" ? "Video" : "Photo") + ". Tap to show or hide controls, swipe to browse",
+        viewerLabel: (cur.kind === "video" ? "Video" : "Photo") + ", " + phDayLabel(cur.ts, now) + " " + phTime(cur.ts),
         askLabel: "Ask Alpha about this " + (cur.kind === "video" ? "video" : "photo"),
         editLabel: cur.kind === "video" ? "Edit video" : "Edit photo", shareLabel: cur.kind === "video" ? "Share video" : "Share photo", infoLabel: cur.kind === "video" ? "Video info" : "Photo info", deleteLabel: cur.kind === "video" ? "Delete video" : "Delete photo",
         vid: cur.kind === "video", playBtn: cur.kind === "video" && !st.playing, playing: !!st.playing,
@@ -3718,7 +3718,7 @@ registerView("files", {
       top: !st.folder, searching: st.q !== null && st.q !== undefined, notSearching: st.q === null || st.q === undefined,
       q: st.q || "", onQ: function (e) { api.set({ q: e.target.value }); }, search: function () { api.set({ q: "" }); }, endSearch: function () { api.set({ q: null }); },
       hasQuery: !!q, noQuery: !q, results: results, noResults: !!q && results.length === 0,
-      locs: locs, recent: [], noRecent: false,
+      locs: locs, recent: [],
       // Fixture browse (mock mode only): the fixture folders stand in for categories; Trash is an empty folder.
       browse: { ready: true, cats: locs.map(function (l) { return { name: l.name, d: l.d, count: l.sub.split(" ")[0], label: l.name, go: l.go }; }), vols: [], trashD: IC.trash, trashCount: "", openTrash: function () { api.set({ folder: "Trash", q: null }); } },
       storageText: copy("files").storageText || "Storage usage unavailable",

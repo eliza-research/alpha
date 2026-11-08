@@ -222,8 +222,19 @@
   */
  public final class OwnedPhotoEdits {
    private final Context context;
-@@ -30,12 +33,37 @@
+@@ -28,20 +31,59 @@
+     String revision(String id) throws Exception;
+   }
    private final SourceAccess sourceAccess;
++  /**
++   * Opens the original for Replace's truncating write. The default asks the ContentResolver; a
++   * host test may wrap the stream to inject a failed write.
++   */
++  public interface ReplaceOutput {
++    OutputStream open(ContentResolver resolver, Uri target) throws IOException;
++  }
++  private static final ReplaceOutput RESOLVER_OUTPUT = (r, target) -> r.openOutputStream(target, "wt");
++  private final ReplaceOutput replaceOutput;
    private volatile Session active;
    private static final int MAX_EDGE = 2048;
 +  /** A replaced original keeps up to this many pixels (16 MP); larger originals are reduced. */
@@ -262,7 +273,18 @@
    }
    public OwnedPhotoEdits(Context c, OwnedMediaConfig config) {
      this(c, config, null);
-@@ -134,8 +162,11 @@
+   }
+   public OwnedPhotoEdits(Context c, OwnedMediaConfig config, SourceAccess sourceAccess) {
++    this(c, config, sourceAccess, null);
++  }
++  public OwnedPhotoEdits(Context c, OwnedMediaConfig config, SourceAccess sourceAccess,
++      ReplaceOutput replaceOutput) {
+     this.sourceAccess = sourceAccess;
++    this.replaceOutput = replaceOutput == null ? RESOLVER_OUTPUT : replaceOutput;
+     context = c;
+     this.config = config;
+     resolver = c.getContentResolver();
+@@ -134,8 +176,11 @@
      s.pixels = pixels;
      active = s;
      try {
@@ -275,7 +297,7 @@
      } catch (Exception error) {
        close();
        throw error;
-@@ -148,32 +179,35 @@
+@@ -148,32 +193,35 @@
      current(s);
      return s;
    }
@@ -318,7 +340,7 @@
          geometry.recycle();
        throw e;
      }
-@@ -226,6 +260,8 @@
+@@ -226,6 +274,8 @@
      if (record == null)
        return receipt("not-started", token, null);
      JSONObject saved = new JSONObject(record);
@@ -327,7 +349,7 @@
      boolean published = saved.optString("status").equals("saved");
      String savedId = saved.optString("id", null);
      if (published && savedId != null)
-@@ -272,7 +308,8 @@
+@@ -272,7 +322,8 @@
      String existing = journal.getString(token, null);
      if (existing != null) {
        JSONObject previous = new JSONObject(existing);
@@ -337,7 +359,7 @@
            || !previous.optString("filter", "none").equals(filter))
          throw new IllegalArgumentException("This save identity already has a different edit");
        return result(token);
-@@ -329,6 +366,268 @@
+@@ -329,6 +380,419 @@
          bitmap.recycle();
      }
    }
@@ -397,12 +419,18 @@
 +   * revision and SHA-256 must still be the reviewed ones before decoding and again just before the
 +   * write, else the answer is {@code stale} and nothing is written. The edit is applied to the
 +   * full-resolution original (up to {@link #REPLACE_PIXELS}), encoded in its own format to a
-+   * private file, and only then copied over the original with a truncating write. JPEG capture
++   * private file, and only then copied over the original with a truncating write. Before that write
++   * the original's bytes are kept in a private backup named in the journal; a write that fails is
++   * undone from it, and a write that was interrupted (the process died) is settled from it by the
++   * next {@link #result}: the edited bytes count as saved, a partial prefix of this edit is restored,
++   * and other bytes are left alone for inspection. The backup
++   * is removed only once the original holds either the edit or its own bytes again. JPEG capture
 +   * metadata is kept; orientation is normal because the rotation is in the pixels. The receipt is
 +   * {@code {status: "saved", id, replaced: true, revision?}} with the original's id and, once
 +   * MediaStore has rescanned it, its new revision. The journal records the phases, so a later
-+   * {@link #result} reports {@code failed} (nothing written), {@code stale}, {@code unknown} (the
-+   * write began but was not confirmed) or {@code saved}. Android's consent, when needed, is the
++   * {@link #result} reports {@code failed} (the original is unchanged), {@code stale},
++   * {@code unknown} (the original could not be restored yet; the backup is kept and the next
++   * {@link #result} tries again) or {@code saved}. Android's consent, when needed, is the
 +   * caller's ({@link #replaceConsent}).
 +   */
 +  public JSObject replace(String token, int rotation, boolean crop, String filter)
@@ -447,30 +475,45 @@
 +      full = decodeFull(snapshot);
 +      edited = transform(s, full, rotation, crop, filter);
 +      staged = stage(edited, s.mime, snapshot);
-+      snapshot = null;
 +      if (s.cancelled || active != s)
 +        throw new IllegalArgumentException("Photo editor closed");
 +      if (!unchanged(s))
 +        return replaceStale(token, record);
-+      record.put("status", "writing");
-+      if (!journal.edit().putString(token, record.toString()).commit())
++      // A durable copy of the original before it is truncated, named in the journal first.
++      File kept = backup(token);
++      writeDurably(snapshot, kept);
++      snapshot = null;
++      File encoded = editBackup(token);
++      try (InputStream input = new FileInputStream(staged)) {
++        writeDurably(input, encoded);
++      }
++      record.put("backup", kept.getName())
++          .put("editBackup", encoded.getName())
++          .put("original", hex(s.digest))
++          .put("edited", hex(fileDigest(staged)))
++          .put("status", "writing");
++      if (!journal.edit().putString(token, record.toString()).commit()) {
++        kept.delete();
++        encoded.delete();
 +        throw new IOException("Save receipt could not be persisted");
++      }
 +      Uri target = source(s.id);
-+      try (InputStream input = new FileInputStream(staged);
-+          OutputStream output = resolver.openOutputStream(target, "wt")) {
-+        if (output == null)
-+          throw new IOException("Original could not be opened for writing");
-+        opened = true;
-+        byte[] chunk = new byte[65536];
-+        int n;
-+        while ((n = input.read(chunk)) != -1) output.write(chunk, 0, n);
-+        output.flush();
-+        if (output instanceof FileOutputStream)
-+          ((FileOutputStream) output).getFD().sync();
++      opened = true;
++      try {
++        copyOver(staged, target);
++      } catch (Exception writeFailed) {
++        // Put the original back from the backup; only then is this a plain failure. A write
++        // that completed before the error (a failed close) is the saved edit.
++        if (!settleReplace(token, record).equals("saved"))
++          throw writeFailed;
 +      }
 +      // The original is written; a receipt write failure must not turn that into a failure.
++      // Without the receipt the backup stays, and the next result settles the edit as saved.
 +      record.put("status", "saved");
-+      journal.edit().putString(token, record.toString()).commit();
++      if (journal.edit().putString(token, record.toString()).commit()) {
++        kept.delete();
++        encoded.delete();
++      }
 +      String revision = settled(s);
 +      if (revision != null) {
 +        record.put("revision", revision);
@@ -482,6 +525,10 @@
 +    } catch (Exception failure) {
 +      // Before the original was opened for writing nothing was written to it.
 +      if (!opened && !"stale".equals(record.optString("status"))) {
++        backup(token).delete();
++        editBackup(token).delete();
++        record.remove("backup");
++        record.remove("editBackup");
 +        record.put("status", "failed");
 +        journal.edit().putString(token, record.toString()).commit();
 +      }
@@ -494,6 +541,127 @@
 +      if (staged != null)
 +        staged.delete();
 +    }
++  }
++  /** The private backup a Replace keeps of its original until the write is settled. */
++  private File backup(String token) {
++    return new File(new File(context.getFilesDir(), "photo-replace-backups"), token + ".original");
++  }
++  /** The exact encoded edit, retained so recovery can recognize its own interrupted write. */
++  private File editBackup(String token) {
++    return new File(new File(context.getFilesDir(), "photo-replace-backups"), token + ".edited");
++  }
++  private static void writeDurably(byte[] bytes, File file) throws IOException {
++    try (InputStream input = new ByteArrayInputStream(bytes)) {
++      writeDurably(input, file);
++    }
++  }
++  private static void writeDurably(InputStream input, File file) throws IOException {
++    File parent = file.getParentFile();
++    if (parent != null && !parent.isDirectory() && !parent.mkdirs())
++      throw new IOException("Original could not be kept");
++    try (FileOutputStream output = new FileOutputStream(file)) {
++      byte[] chunk = new byte[65536];
++      int n;
++      while ((n = input.read(chunk)) != -1) output.write(chunk, 0, n);
++      output.flush();
++      output.getFD().sync();
++    }
++  }
++  /** Copies {@code from} over {@code target} with a truncating, synced write. */
++  private void copyOver(File from, Uri target) throws IOException {
++    try (InputStream input = new FileInputStream(from);
++        OutputStream output = replaceOutput.open(resolver, target)) {
++      if (output == null)
++        throw new IOException("Original could not be opened for writing");
++      byte[] chunk = new byte[65536];
++      int n;
++      while ((n = input.read(chunk)) != -1) output.write(chunk, 0, n);
++      output.flush();
++      if (output instanceof FileOutputStream)
++        ((FileOutputStream) output).getFD().sync();
++    }
++  }
++  private static byte[] fileDigest(File file) throws Exception {
++    java.security.MessageDigest hash = java.security.MessageDigest.getInstance("SHA-256");
++    try (InputStream input = new FileInputStream(file)) {
++      byte[] buffer = new byte[65536];
++      int n;
++      while ((n = input.read(buffer)) != -1) hash.update(buffer, 0, n);
++    }
++    return hash.digest();
++  }
++  private static String hex(byte[] bytes) {
++    StringBuilder out = new StringBuilder(bytes.length * 2);
++    for (byte b : bytes) out.append(String.format(java.util.Locale.ROOT, "%02x", b & 0xff));
++    return out.toString();
++  }
++  /**
++   * Settles a Replace whose write did not finish, from the original's current bytes: the edit
++   * counts as {@code saved}; the original's own bytes as {@code failed}. Only a prefix of the
++   * retained encoded edit can be restored automatically. Different bytes may be a later external
++   * edit and remain untouched. Old records without the encoded edit also remain unresolved.
++   * Until settled, the record stays {@code writing} and both private files are kept.
++   */
++  private String settleReplace(String token, JSONObject record) throws Exception {
++    String name = record.optString("backup", "");
++    File kept = name.isEmpty() ? null : backup(token);
++    if (kept == null || !kept.getName().equals(name) || !kept.isFile()
++        || record.optString("original").isEmpty())
++      return "writing";
++    String id = record.getString("id"), now;
++    try {
++      now = hex(digest(id));
++    } catch (Exception unreadable) {
++      now = "";
++    }
++    String status;
++    if (now.equals(record.optString("edited")))
++      status = "saved";
++    else if (now.equals(record.optString("original")))
++      status = "failed";
++    else {
++      try {
++        File encoded = editBackup(token);
++        if (!encoded.getName().equals(record.optString("editBackup")) || !encoded.isFile()
++            || !hex(fileDigest(encoded)).equals(record.optString("edited"))
++            || !hex(fileDigest(kept)).equals(record.optString("original")))
++          return "writing";
++        Uri target = source(id);
++        // A previous restore may itself have stopped after a prefix of the original.
++        if (!writtenPrefix(target, encoded) && !writtenPrefix(target, kept)) return "writing";
++        copyOver(kept, target);
++        if (!hex(digest(id)).equals(record.optString("original")))
++          return "writing";
++      } catch (Exception notRestored) {
++        return "writing";
++      }
++      status = "failed";
++    }
++    record.put("status", status);
++    record.remove("backup");
++    if (!journal.edit().putString(token, record.toString()).commit()) {
++      record.put("status", "writing").put("backup", name);
++      return "writing";
++    }
++    kept.delete();
++    editBackup(token).delete();
++    return status;
++  }
++  private boolean writtenPrefix(Uri target, File bytes) throws IOException {
++    try (InputStream current = resolver.openInputStream(target);
++        InputStream expected = new FileInputStream(bytes)) {
++      return current != null && writtenPrefix(current, expected);
++    }
++  }
++  /** An interrupted truncating write contains an exact prefix of the bytes this operation wrote. */
++  static boolean writtenPrefix(InputStream current, InputStream encoded) throws IOException {
++    BufferedInputStream actual = new BufferedInputStream(current);
++    BufferedInputStream expected = new BufferedInputStream(encoded);
++    int value;
++    while ((value = actual.read()) != -1) {
++      if (value != expected.read()) return false;
++    }
++    return true;
 +  }
 +  private JSObject replaceStale(String token, JSONObject record) throws Exception {
 +    record.put("status", "stale");
@@ -517,6 +685,11 @@
 +      case "stale":
 +        return receipt("stale", token, null);
 +      case "writing": {
++        String settled = settleReplace(token, record);
++        if (settled.equals("saved"))
++          return replaced(token, record.getString("id"), null);
++        if (settled.equals("failed"))
++          return receipt("failed", token, null);
 +        JSObject unknown = receipt("unknown", token, null);
 +        unknown.put("message", "Replacing the original was not confirmed. Inspect Photos.");
 +        return unknown;
@@ -608,15 +781,64 @@
      if (s != null && (token == null || s.token.equals(token)))
 --- a/plugins/plugin-native-media/android/src/main/java/ai/eliza/plugins/media/PermittedMediaCatalog.java
 +++ b/plugins/plugin-native-media/android/src/main/java/ai/eliza/plugins/media/PermittedMediaCatalog.java
-@@ -71,6 +71,7 @@
+@@ -71,17 +71,51 @@
    };
    private static final class Page {
      final String snapshot, query, kind;
-+    /** Index of the volume the next page continues in. */
-     final int bucket;
-     final long before, until;
-     Page(String snapshot, String query, String kind, int bucket, long before) {
-@@ -246,6 +247,9 @@
+-    final int bucket;
+-    final long before, until;
+-    Page(String snapshot, String query, String kind, int bucket, long before) {
++    /** The last listed item's catalog key: capture time, source (volume x type) and _id. */
++    final long shot, id;
++    final int source;
++    final long until;
++    Page(String snapshot, String query, String kind, long shot, int source, long id) {
+       this.snapshot = snapshot;
+       this.query = query;
+       this.kind = kind;
+-      this.bucket = bucket;
+-      this.before = before;
++      this.shot = shot;
++      this.source = source;
++      this.id = id;
+       until = SystemClock.elapsedRealtime() + 120000;
+     }
+   }
++  /**
++   * The catalog's sort time in SQL: DATE_TAKEN, or date_added (seconds) when it is unset. It must
++   * equal {@link #shot(Cursor)}, which computes the same value for a listed row.
++   */
++  static final String SHOT = "ifnull(nullif(datetaken,0),date_added*1000)";
++  private static long shot(Cursor row) {
++    int taken = row.getColumnIndexOrThrow(MediaStore.MediaColumns.DATE_TAKEN);
++    long value = row.isNull(taken) ? 0 : row.getLong(taken);
++    return value != 0 ? value : row.getLong(3) * 1000;
++  }
++  /** Catalog order of merged rows {shot, source, _id, item}: newest first, then source, then _id desc. */
++  static final java.util.Comparator<Object[]> CATALOG_ORDER = (a, b) -> {
++    int byShot = Long.compare((Long) b[0], (Long) a[0]);
++    if (byShot != 0) return byShot;
++    int bySource = Integer.compare((Integer) a[1], (Integer) b[1]);
++    return bySource != 0 ? bySource : Long.compare((Long) b[2], (Long) a[2]);
++  };
++  /**
++   * Rows of {@code source} that come after the key (shot, source, id) in catalog order: newest
++   * capture time first, then source index, then _id descending. {@code args} receives the values.
++   */
++  static String after(int source, long shot, int lastSource, long id, List<String> args) {
++    args.add(Long.toString(shot));
++    if (source < lastSource)
++      return " AND " + SHOT + "<?";
++    if (source > lastSource)
++      return " AND " + SHOT + "<=?";
++    args.add(Long.toString(shot));
++    args.add(Long.toString(id));
++    return " AND (" + SHOT + "<? OR (" + SHOT + "=? AND _id<?))";
++  }
+   private boolean observing;
+   public PermittedMediaCatalog(Context context, Runnable changed) {
+     this(context, true, changed);
+@@ -246,6 +280,9 @@
          Build.VERSION.SDK_INT >= 30 ? FIELDS : java.util.Arrays.copyOf(FIELDS, 8)));
      if (video)
        result.add(MediaStore.Video.VideoColumns.DURATION);
@@ -626,7 +848,7 @@
      return result.toArray(new String[0]);
    }
    private String revision(Cursor row, String volume) {
-@@ -277,6 +281,7 @@
+@@ -277,6 +314,7 @@
      result.put("identity",
          version(volume) + ":" + row.getLong(3)
              + (Build.VERSION.SDK_INT >= 30 ? ":" + row.getLong(8) : ""));
@@ -634,7 +856,23 @@
      return result;
    }
    public Uri uri(MediaLibraryKey key) {
-@@ -351,8 +356,8 @@
+@@ -303,6 +341,15 @@
+       main.removeCallbacks(timeout);
+     }
+   }
++  /** A listed item's grid thumbnail again (the client drops thumbnails of rows far off screen). */
++  public String thumbnailOf(String id, int size) throws Exception {
++    MediaLibraryKey key = MediaLibraryKey.parse(id);
++    if (!readable(key.video))
++      throw new SecurityException("Media access was revoked");
++    if (!volumes().contains(key.volume))
++      throw new IllegalArgumentException("Media volume unavailable");
++    return thumbnail(key, size);
++  }
+   private boolean readable(boolean video) {
+     return !"denied".equals(access().getString(video ? "videos" : "images"));
+   }
+@@ -351,8 +398,8 @@
        long from, long to, int limit) throws Exception {
      if (from < 0 || to < from || limit < 1 || limit > PAGE_SIZE)
        throw new IllegalArgumentException("Invalid bounded media query");
@@ -645,13 +883,12 @@
        throw new IllegalArgumentException("Unsupported media filter");
      String pageKind = kind + ":" + filter + ":" + from + ":" + to + ":" + limit;
      if (search == null || search.length() > 128 || search.indexOf('\0') >= 0 || kind == null
-@@ -360,15 +365,10 @@
+@@ -360,89 +407,93 @@
        throw new IllegalArgumentException("Invalid photo query");
      List<String> volumes = volumes();
      String snapshot = snapshot(volumes);
 -    int bucketIndex = 0;
-+    int volumeIndex = 0;
-     long before = Long.MAX_VALUE;
+-    long before = Long.MAX_VALUE;
 -    List<MediaLibraryKey> buckets = new ArrayList<>();
 -    for (String volume : volumes) {
 -      if (readable(false) && !kind.equals("video"))
@@ -661,24 +898,27 @@
 -    }
 +    boolean images = readable(false) && !kind.equals("video");
 +    boolean videos = readable(true) && !kind.equals("image");
++    Page last = null;
      if (cursor != null && !cursor.isEmpty()) {
-       Page page;
+-      Page page;
        synchronized (pages) {
-@@ -378,70 +378,83 @@
-           || !page.snapshot.equals(snapshot) || !page.query.equals(search)
-           || !page.kind.equals(pageKind))
+-        page = pages.remove(cursor);
++        last = pages.remove(cursor);
+       }
+-      if (page == null || page.until < SystemClock.elapsedRealtime()
+-          || !page.snapshot.equals(snapshot) || !page.query.equals(search)
+-          || !page.kind.equals(pageKind))
++      if (last == null || last.until < SystemClock.elapsedRealtime()
++          || !last.snapshot.equals(snapshot) || !last.query.equals(search)
++          || !last.kind.equals(pageKind))
          throw new IllegalStateException("Photo page expired; refresh Photos");
 -      bucketIndex = page.bucket;
-+      volumeIndex = page.bucket;
-       before = page.before;
+-      before = page.before;
      }
      JSArray items = new JSArray();
      String next = "";
      long thumbnailUntil = SystemClock.elapsedRealtime() + 3000;
-+    // One newest-first catalog: images and videos share a volume's _id sequence, so both typed
-+    // collections are read below the same cursor and merged, instead of every image before any
-+    // video. The cursor is (volume, last _id), so favorite or restore never reorders a page.
-   outer:
+-  outer:
 -    for (; bucketIndex < buckets.size(); bucketIndex++, before = Long.MAX_VALUE) {
 -      MediaLibraryKey bucket = buckets.get(bucketIndex);
 -      String volume = bucket.volume;
@@ -699,26 +939,27 @@
 -      if (to < Long.MAX_VALUE) {
 -        where += " AND date_added<=?";
 -        values.add(Long.toString(to / 1000));
--      }
--      if (!search.isBlank()) {
--        where += " AND instr(lower(" + MediaStore.MediaColumns.DISPLAY_NAME + "),lower(?))>0";
--        values.add(search.trim());
-+    for (; volumeIndex < volumes.size(); volumeIndex++, before = Long.MAX_VALUE) {
++    // One newest-first catalog across every volume and both typed collections: each source
++    // (volume x images/videos) is read below the previous page's last key, and the sources are
++    // merged on (capture time desc, source, _id desc). The cursor is that key, so a later page never
++    // inserts rows above ones already listed, and favorite or restore never reorders a page.
++    List<Object[]> merged = new ArrayList<>();
++    for (int volumeIndex = 0; volumeIndex < volumes.size(); volumeIndex++) {
 +      String volume = volumes.get(volumeIndex);
-+      int want = limit + 1 - items.length();
-+      List<Object[]> merged = new ArrayList<>();
 +      for (boolean video : new boolean[] {false, true}) {
 +        if (video ? !videos : !images)
 +          continue;
++        int source = volumeIndex * 2 + (video ? 1 : 0);
 +        Bundle args = new Bundle();
 +        List<String> values = new ArrayList<>();
-+        values.add(Long.toString(before));
-+        String where = "is_pending=0 AND _id<?"
++        String where = "is_pending=0"
 +            + (Build.VERSION.SDK_INT >= 30
 +                    ? " AND is_trashed=" + (filter.equals("trash") ? "1" : "0")
 +                    : "")
 +            + (filter.equals("favorites") ? " AND is_favorite=1" : "")
 +            + OwnedMediaSelection.folderSelection(filter);
++        if (last != null)
++          where += after(source, last.shot, last.source, last.id, values);
 +        if (Build.VERSION.SDK_INT >= 30)
 +          args.putInt(MediaStore.QUERY_ARG_MATCH_TRASHED,
 +              filter.equals("trash") ? MediaStore.MATCH_ONLY : MediaStore.MATCH_EXCLUDE);
@@ -737,16 +978,32 @@
 +        args.putString(ContentResolver.QUERY_ARG_SQL_SELECTION, where);
 +        args.putStringArray(
 +            ContentResolver.QUERY_ARG_SQL_SELECTION_ARGS, values.toArray(new String[0]));
-+        args.putStringArray(ContentResolver.QUERY_ARG_SORT_COLUMNS, new String[] {"_id"});
-+        args.putInt(ContentResolver.QUERY_ARG_SORT_DIRECTION,
-+            ContentResolver.QUERY_SORT_DIRECTION_DESCENDING);
-+        args.putInt(ContentResolver.QUERY_ARG_LIMIT, want);
++        args.putString(ContentResolver.QUERY_ARG_SQL_SORT_ORDER, SHOT + " DESC, _id DESC");
++        args.putInt(ContentResolver.QUERY_ARG_LIMIT, limit + 1);
 +        try (Cursor rows = query(volume, video, args)) {
 +          if (rows == null)
 +            throw new IllegalStateException("Media provider unavailable");
 +          while (rows.moveToNext())
-+            merged.add(new Object[] {rows.getLong(0), metadata(rows, volume, video)});
++            merged.add(new Object[] {shot(rows), source, rows.getLong(0), metadata(rows, volume, video)});
 +        }
+       }
+-      if (!search.isBlank()) {
+-        where += " AND instr(lower(" + MediaStore.MediaColumns.DISPLAY_NAME + "),lower(?))>0";
+-        values.add(search.trim());
++    }
++    merged.sort(CATALOG_ORDER);
++    for (Object[] row : merged) {
++      if (items.length() == limit) {
++        // The key of the last listed row; the next page continues strictly after it.
++        Object[] key = merged.get(limit - 1);
++        next = UUID.randomUUID().toString();
++        synchronized (pages) {
++          pages.entrySet().removeIf(
++              entry -> entry.getValue().until < SystemClock.elapsedRealtime());
++          while (pages.size() >= 32) pages.remove(pages.keySet().iterator().next());
++          pages.put(next, new Page(snapshot, search, pageKind, (Long) key[0], (Integer) key[1], (Long) key[2]));
++        }
++        break;
        }
 -      args.putString(ContentResolver.QUERY_ARG_SQL_SELECTION, where);
 -      args.putStringArray(
@@ -768,16 +1025,7 @@
 -              pages.put(next, new Page(snapshot, search, pageKind, bucketIndex, before));
 -            }
 -            break outer;
-+      merged.sort((a, b) -> Long.compare((Long) b[0], (Long) a[0]));
-+      for (Object[] row : merged) {
-+        if (items.length() == limit) {
-+          next = UUID.randomUUID().toString();
-+          synchronized (pages) {
-+            pages.entrySet().removeIf(
-+                entry -> entry.getValue().until < SystemClock.elapsedRealtime());
-+            while (pages.size() >= 32) pages.remove(pages.keySet().iterator().next());
-+            pages.put(next, new Page(snapshot, search, pageKind, volumeIndex, before));
-           }
+-          }
 -          JSObject item = metadata(rows, volume, bucket.video);
 -          before = rows.getLong(0);
 -          if (thumbnails && SystemClock.elapsedRealtime() < thumbnailUntil) {
@@ -786,23 +1034,21 @@
 -            } catch (Exception unavailable) {
 -              item.put("image", "");
 -            }
-+          break outer;
-+        }
-+        JSObject item = (JSObject) row[1];
-+        before = (Long) row[0];
-+        if (thumbnails && SystemClock.elapsedRealtime() < thumbnailUntil) {
-+          try {
-+            item.put("image", thumbnail(MediaLibraryKey.parse(item.getString("id")), 240));
-+          } catch (Exception unavailable) {
-+            item.put("image", "");
-           }
+-          }
 -          items.put(item);
++      JSObject item = (JSObject) row[3];
++      if (thumbnails && SystemClock.elapsedRealtime() < thumbnailUntil) {
++        try {
++          item.put("image", thumbnail(MediaLibraryKey.parse(item.getString("id")), 240));
++        } catch (Exception unavailable) {
++          item.put("image", "");
          }
-+        items.put(item);
        }
++      items.put(item);
      }
      current(snapshot, volumes);
-@@ -564,7 +577,7 @@
+     JSObject result = new JSObject();
+@@ -564,7 +615,7 @@
      List<String> volumes = volumes();
      String snapshot = snapshot(volumes);
      long until = SystemClock.elapsedRealtime() + 3000;
@@ -811,7 +1057,7 @@
      for (String volume : volumes)
        for (boolean video : new boolean[] {false, true}) {
          if (!readable(video))
-@@ -574,8 +587,8 @@
+@@ -574,8 +625,8 @@
          if (Build.VERSION.SDK_INT >= 30)
            args.putInt(MediaStore.QUERY_ARG_MATCH_TRASHED, MediaStore.MATCH_INCLUDE);
          String[] projection = Build.VERSION.SDK_INT >= 30
@@ -822,7 +1068,7 @@
          try (Cursor rows = query(volume, video, args, projection)) {
            if (rows == null)
              throw new IllegalStateException("Media provider unavailable");
-@@ -590,6 +603,11 @@
+@@ -590,6 +641,11 @@
                videos++;
              if (Build.VERSION.SDK_INT >= 30 && rows.getInt(0) == 1)
                favorites++;
@@ -834,7 +1080,7 @@
            }
          }
        }
-@@ -597,6 +615,8 @@
+@@ -597,6 +653,8 @@
      JSObject result = new JSObject();
      result.put("favorites", favorites);
      result.put("videos", videos);
@@ -882,7 +1128,40 @@
      } catch (RuntimeException unavailable) {
        request.call.reject("Photos closed before dispatch. Review the selection again.");
      }
-@@ -201,6 +210,47 @@
+@@ -132,9 +141,11 @@
+   private void request(PluginCall call, List<String> ids, List<String> revisions, boolean favorite,
+       boolean desired, boolean batch, boolean permanent) {
+     Request request = new Request(call, ids, revisions, favorite, desired, batch, permanent);
+-    if (closed || Build.VERSION.SDK_INT < 30 || ids.isEmpty() || ids.size() > 20
++    // A favorite, trash or restore is one request of up to REVIEWED_BATCH; a permanent removal stays at REVIEWED.
++    int max = batch && !permanent ? PhotoLibraryAccess.REVIEWED_BATCH : PhotoLibraryAccess.REVIEWED;
++    if (closed || Build.VERSION.SDK_INT < 30 || ids.isEmpty() || ids.size() > max
+         || new HashSet<>(ids).size() != ids.size() || ids.size() != revisions.size()) {
+-      call.reject("Select 1–20 distinct permitted items.");
++      call.reject("Select 1–" + max + " distinct permitted items.");
+       return;
+     }
+     if (!pending.compareAndSet(null, request)) {
+@@ -150,11 +161,14 @@
+             || permanent && !Boolean.TRUE.equals(row.getBoolean("trashed")))
+           throw new IllegalStateException();
+         uris.add(catalog.uri(MediaLibraryKey.parse(ids.get(i))));
+-        names.append(i + 1)
+-            .append(". ")
+-            .append(row.getString("name").replaceAll("[\\p{Cntrl}]", " "))
+-            .append('\n');
++        if (i < PhotoLibraryAccess.REVIEWED)
++          names.append(i + 1)
++              .append(". ")
++              .append(row.getString("name").replaceAll("[\\p{Cntrl}]", " "))
++              .append('\n');
+       }
++      if (ids.size() > PhotoLibraryAccess.REVIEWED)
++        names.append("+ ").append(ids.size() - PhotoLibraryAccess.REVIEWED).append(" more\n");
+       android.app.PendingIntent grant =
+           MediaStore.createWriteRequest(bridge.getContext().getContentResolver(), uris);
+       bridge.getActivity().runOnUiThread(() -> {
+@@ -201,6 +215,47 @@
      }
    }
    /**
@@ -932,19 +1211,24 @@
     */
 --- a/plugins/plugin-native-media/android/src/main/java/ai/eliza/plugins/media/PhotoLibraryAccess.java
 +++ b/plugins/plugin-native-media/android/src/main/java/ai/eliza/plugins/media/PhotoLibraryAccess.java
-@@ -26,8 +26,10 @@
+@@ -26,8 +26,15 @@
    public static final int PAGE = 24;
    /** Validation reads at most this many named items in one call. */
    public static final int VALIDATE = 200;
 -  /** Reviewed changes, shares and permanent removals name at most this many items. */
 +  /** Reviewed changes and permanent removals name at most this many items. */
    public static final int REVIEWED = 20;
++  /**
++   * A favorite, trash or restore over permitted items is one Android write request of at most this
++   * many items, behind one confirmation, so a large selection is not one consent per 20 items.
++   */
++  public static final int REVIEWED_BATCH = 500;
 +  /** One share names at most this many items; it changes nothing, so its bound is wider. */
 +  public static final int SHARE = 100;
  
    private PhotoLibraryAccess() {}
  
-@@ -80,17 +82,17 @@
+@@ -80,17 +87,17 @@
  
    /**
     * Which permitted listing the Photos grid's {@code album} parameter reads, as
@@ -967,7 +1251,7 @@
      };
    }
  
-@@ -153,14 +155,16 @@
+@@ -153,14 +160,16 @@
    }
  
    /**
@@ -1043,7 +1327,7 @@
    @PluginMethod
    public void editResult(PluginCall call) {
      if (VideoCopyEdits.isVideoOperation(call.getString("operationId"))) {
-@@ -451,16 +484,19 @@
+@@ -451,22 +484,59 @@
            call.resolve(albums.list(album.substring(7), call.getString("before", "")));
            return;
          }
@@ -1065,7 +1349,47 @@
        } catch (Exception failure) {
          call.reject("Saved media could not be loaded");
        }
-@@ -545,7 +581,7 @@
+     });
+   }
+ 
++  /**
++   * Grid thumbnails (240 px JPEG data URLs) for up to {@link OwnedMediaLibrary#PAGE} listed items,
++   * read again when the grid returns to rows whose thumbnails it dropped to bound memory. An item
++   * that is gone or unreadable answers an empty image.
++   */
++  @PluginMethod
++  public void thumbnails(PluginCall call) {
++    submit(call, () -> {
++      try {
++        JSArray ids = call.getArray("ids");
++        if (ids == null || ids.length() < 1 || ids.length() > OwnedMediaLibrary.PAGE)
++          throw new IllegalArgumentException();
++        JSArray items = new JSArray();
++        for (int i = 0; i < ids.length(); i++) {
++          String id = ids.getString(i);
++          JSObject item = new JSObject();
++          item.put("id", id);
++          try {
++            item.put("image", PhotoLibraryAccess.permitted(id) ? permitted.thumbnailOf(id, 240)
++                                                               : owned.preview(id, 240));
++          } catch (Exception unavailable) {
++            item.put("image", "");
++          }
++          items.put(item);
++        }
++        JSObject result = new JSObject();
++        result.put("items", items);
++        call.resolve(result);
++      } catch (Exception invalid) {
++        call.reject("Select 1-" + OwnedMediaLibrary.PAGE + " listed items.");
++      }
++    });
++  }
++
+   @PluginMethod
+   public void read(PluginCall call) {
+     diagnostic(Diagnostic.READ_INVOKED);
+@@ -545,7 +615,7 @@
      submit(call, () -> {
        try {
          JSArray items = call.getArray("items");
@@ -1074,3 +1398,14 @@
            throw new IllegalArgumentException();
          ArrayList<Uri> uris = new ArrayList<>();
          Set<String> unique = new HashSet<>();
+@@ -635,7 +705,9 @@
+         String operation = call.getString("operation", "");
+         boolean[] change = PhotoLibraryAccess.batchChange(operation);
+         JSArray items = call.getArray("items");
+-        List<PhotoLibraryAccess.Reviewed> reviewed = PhotoLibraryAccess.reviewed(items, PhotoLibraryAccess.REVIEWED);
++        // Owned items are changed in batches of OwnedMediaLibrary.BATCH (checked there); permitted
++        // items in one reviewed Android request of up to REVIEWED_BATCH.
++        List<PhotoLibraryAccess.Reviewed> reviewed = PhotoLibraryAccess.reviewed(items, PhotoLibraryAccess.REVIEWED_BATCH);
+         if (PhotoLibraryAccess.anyPermitted(reviewed)) {
+           mediaReview.request(call, PhotoLibraryAccess.ids(reviewed), PhotoLibraryAccess.revisions(reviewed),
+               change[0], change[1], true);

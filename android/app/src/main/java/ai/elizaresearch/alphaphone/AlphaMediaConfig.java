@@ -12,9 +12,9 @@ import ai.eliza.plugins.media.OwnedMediaConfig;
  */
 final class AlphaMediaConfig {
  static final OwnedMediaConfig MEDIA=OwnedMediaConfig.builder("alpha")
-   // Kept scan pages join camera captures in DCIM/Camera (design decision C2). A keep still unresolved
-   // from an older install is looked up there, so it may be written once more instead of found in Pictures/.
-   .edits("Pictures/Alpha Phone/Edits/","Alpha-edit-").captures("DCIM/Camera/","SCAN_")
+   // Kept scan pages join camera captures in DCIM/Camera (design decision C2). A keep reserved by an
+   // older install under Pictures/ is still found and resolved there (patches/eliza/owned-captures-legacy-path.patch).
+   .edits("Pictures/Alpha Phone/Edits/","Alpha-edit-").captures("DCIM/Camera/","SCAN_").legacyCaptures("Pictures/")
    .videoEdits("Movies/Alpha Phone/Edits/","Alpha-video-edit-").build();
  /** Same-origin path of video playback capabilities served to the renderer. */
  static final String PLAYBACK_PATH="/_alpha_owned_video/";

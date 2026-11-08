@@ -6,7 +6,7 @@
   "patches": [
     {
       "file": "files-browser-agent.patch",
-      "sha256": "ad13d7b44c30b3908b84a6b98c26fe8a89127b912078b3bcab4cd088bca9eca8",
+      "sha256": "59cc38de3fbb81de31cbe95f4f968d038f0a6341edb52c6adf2e324839aade0a",
       "targets": [
         {
           "path": "plugins/plugin-assistant/src/services/device-actions/action.ts",
@@ -16,7 +16,7 @@
         {
           "path": "plugins/plugin-assistant/src/services/device-actions/client-coordinator.ts",
           "beforeSha256": "742edde5d9c3f08276ba78f5ede90387c26ca41f57a88d612aa75ac9248e0cbb",
-          "afterSha256": "c115b907b433dcc17f621fc54737158cc4a5be8e0de0bb05f607000b57c59ede"
+          "afterSha256": "936b25e7eae28524a458cd78b64612b139fdfa67fd131afca1fdb110ddc91f6c"
         },
         {
           "path": "plugins/plugin-assistant/src/services/device-actions/contract.ts",
@@ -31,12 +31,12 @@
         {
           "path": "plugins/plugin-assistant/src/services/device-actions/files-browser-contract.ts",
           "beforeSha256": null,
-          "afterSha256": "f460d552021aab750a5dab8756066bc7b7ab3daa5f0de0245e771eca57c61b1a"
+          "afterSha256": "9fbc267062e09638329182726404034737ea3caa0680063a5ba11515163f526f"
         },
         {
           "path": "plugins/plugin-assistant/src/services/device-actions/files-browser-contract.test.ts",
           "beforeSha256": null,
-          "afterSha256": "a555978e9b988c122836ce6b880ee96c24fa9a589f55eead100aa46a39f99364"
+          "afterSha256": "aafc8d5f611928a2740466b11d5af7f902f36bdf1d2ef7450bd406674e54efab"
         }
       ]
     }

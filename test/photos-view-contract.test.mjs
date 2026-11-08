@@ -54,10 +54,12 @@ test('review text is short and names Photos',()=>{
   const d=m.describePhotosViewOperation;
   assert.deepEqual(d({type:'photos_filter'}),{title:'Filter Photos',description:'Everything'});
   assert.deepEqual(d({type:'photos_filter',kind:'video',favorite:true,album:'camera',text:'beach',from:1}),{title:'Filter Photos',description:'Videos · Favorites · In Camera · “beach” · In the requested dates'});
-  assert.deepEqual(d({type:'photos_open',id:id(1)}),{title:'Open photo',description:'In Photos. Nothing is changed or shared.'});
+  assert.deepEqual(d({type:'photos_open',id:id(1)}),{title:'Open photo',description:''});
   assert.equal(d({type:'photos_open',id:id(1,'v')}).title,'Open video');
-  assert.deepEqual(d({type:'photos_album_create',name:'Trip',ids:[id(1),id(2)]}),{title:'Create album “Trip”',description:'2 items. You confirm it in Photos.'});
-  assert.deepEqual(d({type:'photos_share',ids:[id(1)]}),{title:'Share 1 item',description:"You confirm it in Photos, then pick where it goes in Android's share sheet. Nothing leaves Alpha before that."});
+  assert.deepEqual(d({type:'photos_album_create',name:'Trip',ids:[id(1),id(2)]}),{title:'Create album “Trip”',description:'2 items'});
+  assert.deepEqual(d({type:'photos_share',ids:[id(1)]}),{title:'Share 1 item',description:'Android share sheet'});
+  // The review card is the change itself: no privacy or process narration (PLAN principle 1).
+  for(const op of [{type:'photos_open',id:id(1)},{type:'photos_album_create',name:'Trip',ids:[id(1)]},{type:'photos_share',ids:[id(1),id(2)]}])assert.doesNotMatch(d(op).description,/Nothing|confirm|leaves|Photos\./);
 });
 
 test('results are validated exactly',()=>{
@@ -81,5 +83,5 @@ test('review only in Photos on the unlocked phone',()=>{
 
 test('the mirror keeps the upstream rules: same constants and messages as the proposed patch',()=>{
   const patch=readFileSync(new URL('../patches/eliza/photos-view-agent.patch',import.meta.url),'utf8');
-  for(const text of ['"photos.view.v1"','/^custom:[A-Za-z0-9_-]{1,80}$/','PHOTOS_SHARE_MAX = 100','Choose an album name between 1 and 80 characters','Invalid album items','Invalid share items','Invalid filter text','In Photos. Nothing is changed or shared.','You confirm it in Photos.',"then pick where it goes in Android's share sheet. Nothing leaves ${appName} before that."])assert.ok(patch.includes(text),text);
+  for(const text of ['"photos.view.v1"','/^custom:[A-Za-z0-9_-]{1,80}$/','PHOTOS_SHARE_MAX = 100','Choose an album name between 1 and 80 characters','Invalid album items','Invalid share items','Invalid filter text','description: "Android share sheet"','description: items(op.ids.length),'])assert.ok(patch.includes(text),text);
 });

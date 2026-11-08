@@ -24,7 +24,9 @@ test('manifest declares the media permissions Android needs per API level, legac
  assert.doesNotMatch(manifest,/ACCESS_MEDIA_LOCATION/);
  assert.equal(manifest.match(/MANAGE_EXTERNAL_STORAGE/g)?.length,1);
  assert.doesNotMatch(readFileSync('android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaPhotoLibraryPlugin.java','utf8'),/MANAGE_EXTERNAL_STORAGE|isExternalStorageManager/);
- assert.match(manifest,/WRITE_EXTERNAL_STORAGE" tools:node="remove"/);
+ // Write access exists only as Files' Android 10 legacy storage (test/files-legacy-storage.test.mjs); Photos never asks for it.
+ assert.match(manifest,/WRITE_EXTERNAL_STORAGE" android:maxSdkVersion="29" tools:replace="android:maxSdkVersion"/);
+ assert.doesNotMatch(readFileSync('android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaPhotoLibraryPlugin.java','utf8'),/WRITE_EXTERNAL_STORAGE/);
  assert.match(readFileSync('android/app/src/main/java/ai/elizaresearch/alphaphone/MainActivity.java','utf8'),/registerPlugin\(AlphaPhotoLibraryPlugin\.class\);/);
 });
 

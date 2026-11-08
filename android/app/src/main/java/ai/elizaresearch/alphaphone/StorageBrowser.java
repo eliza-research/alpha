@@ -113,13 +113,28 @@ final class StorageBrowser {
  }
 
  static final class Outcome{final String path,status,to;Outcome(String path,String status,String to){this.path=path;this.status=status;this.to=to;}}
+ /** What a reviewed agent move or trash binds for one path: size in bytes (0 for a folder) and
+  * modified time in ms, as the listing rows report them (spec files-browser, FixIdentity). */
+ static final class Identity{final long size,modified;Identity(long size,long modified){this.size=size;this.modified=modified;}
+  static Identity of(File file){return new Identity(file.isDirectory()?0:file.length(),file.lastModified());}
+  boolean matches(File file){Identity now=of(file);return now.size==size&&now.modified==modified;}}
+ /** Each path's identity, or null where it is missing or invalid. */
+ List<Identity> identities(List<String> paths)throws IOException{
+  List<Identity> out=new ArrayList<>();
+  for(String path:paths){File file;try{file=resolve(path,false);}catch(IllegalArgumentException e){out.add(null);continue;}out.add(file.exists()?Identity.of(file):null);}
+  return out;
+ }
  /** Move or copy each path into dest. A clash keeps both (spec MoveOne with FixConflict). */
- List<Outcome> transfer(List<String> paths,String dest,boolean copy)throws IOException{
+ List<Outcome> transfer(List<String> paths,String dest,boolean copy)throws IOException{return transfer(paths,dest,copy,null);}
+ /** With {@code expect} (one identity per path), a path whose identity differs is left alone ("changed"). */
+ List<Outcome> transfer(List<String> paths,String dest,boolean copy,List<Identity> expect)throws IOException{
+  if(expect!=null&&expect.size()!=paths.size())throw new IllegalArgumentException("Identity count");
   File target=resolve(dest,true);if(!target.isDirectory())throw new java.io.FileNotFoundException("Destination missing");
-  List<Outcome> out=new ArrayList<>();
-  for(String path:paths){
+  List<Outcome> out=new ArrayList<>();int index=-1;
+  for(String path:paths){index++;
    File source;try{source=resolve(path,false);}catch(IllegalArgumentException e){out.add(new Outcome(path,"invalid",null));continue;}
    if(!source.exists()){out.add(new Outcome(path,"missing",null));continue;}
+   if(expect!=null&&!expect.get(index).matches(source)){out.add(new Outcome(path,"changed",null));continue;}
    if(!copy&&source.getParentFile()!=null&&source.getParentFile().getCanonicalPath().equals(target.getCanonicalPath())){out.add(new Outcome(path,"unchanged",path));continue;}
    String sourcePath=source.getCanonicalPath(),targetPath=target.getCanonicalPath();
    if(source.isDirectory()&&(targetPath.equals(sourcePath)||targetPath.startsWith(sourcePath+File.separator))){out.add(new Outcome(path,"invalid",null));continue;}
@@ -155,11 +170,15 @@ final class StorageBrowser {
   return trash;
  }
  /** Move to trash with the origin folder recorded first, so a crash never loses the way back. */
- List<Outcome> trash(List<String> paths,long now)throws IOException{
-  File trash=trashRoot();List<Outcome> out=new ArrayList<>();
-  for(String path:paths){
+ List<Outcome> trash(List<String> paths,long now)throws IOException{return trash(paths,now,null);}
+ /** With {@code expect} (one identity per path), a path whose identity differs is left alone ("changed"). */
+ List<Outcome> trash(List<String> paths,long now,List<Identity> expect)throws IOException{
+  if(expect!=null&&expect.size()!=paths.size())throw new IllegalArgumentException("Identity count");
+  File trash=trashRoot();List<Outcome> out=new ArrayList<>();int index=-1;
+  for(String path:paths){index++;
    File source;try{source=resolve(path,false);}catch(IllegalArgumentException e){out.add(new Outcome(path,"invalid",null));continue;}
    if(!source.exists()){out.add(new Outcome(path,"missing",null));continue;}
+   if(expect!=null&&!expect.get(index).matches(source)){out.add(new Outcome(path,"changed",null));continue;}
    String id=UUID.randomUUID().toString();File info=new File(trash,"info/"+id+".json"),target=new File(trash,"files/"+id);
    try{
     JSONObject record=new JSONObject();record.put("name",source.getName());record.put("origin",relative(source.getParentFile()));record.put("deletedAt",now);

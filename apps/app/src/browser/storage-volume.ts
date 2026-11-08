@@ -123,14 +123,39 @@ export class BrowserStorageVolume {
       await this.library.forgetSelected({selectionId: imported.selectionId}).catch(() => {});
     } finally { await this.library.forgetSelected({selectionId: selected.selectionId}).catch(() => {}); }
   }
-  async transfer(paths: string[], dest: string, copy: boolean): Promise<{outcomes: {path: string; status: string; to?: string}[]}> {
-    if (!Array.isArray(paths) || !paths.length || paths.length > BATCH_MAX || new Set(paths).size !== paths.length) throw Error('Invalid selection');
-    const target = validPath(dest, true), targetId = await this.folderId(target), outcomes = [];
+  /** Size and modified time, as StorageEntry reports them; what an agent review binds. */
+  private identityOf(row: Row) { const e = this.row('', row); return {size: e.size, modified: e.modified}; }
+  async identity(paths: string[]): Promise<{identities: {size: number; modified: number; missing?: boolean}[]}> {
+    if (!Array.isArray(paths) || !paths.length || paths.length > BATCH_MAX) throw Error('Invalid selection');
+    const identities = [];
     for (const raw of paths) {
+      let row: Row | undefined;
+      try { row = await this.entry(validPath(raw)); } catch { row = undefined; }
+      identities.push(row ? this.identityOf(row) : {size: 0, modified: 0, missing: true});
+    }
+    return {identities};
+  }
+  /** With `expect`, a path whose identity differs from the reviewed one is left alone ("changed"). */
+  private differs(row: Row, expect: {size: number; modified: number}[] | undefined, index: number): boolean {
+    if (!expect) return false;
+    const want = expect[index], now = this.identityOf(row);
+    return !want || want.size !== now.size || want.modified !== now.modified;
+  }
+  private static expected(expect: unknown, count: number): {size: number; modified: number}[] | undefined {
+    if (expect === undefined) return undefined;
+    if (!Array.isArray(expect) || expect.length !== count || expect.some(e => !e || !Number.isSafeInteger(e.size) || !Number.isSafeInteger(e.modified))) throw Error('Invalid selection');
+    return expect;
+  }
+  async transfer(paths: string[], dest: string, copy: boolean, expectInput?: unknown): Promise<{outcomes: {path: string; status: string; to?: string}[]}> {
+    if (!Array.isArray(paths) || !paths.length || paths.length > BATCH_MAX || new Set(paths).size !== paths.length) throw Error('Invalid selection');
+    const expect = BrowserStorageVolume.expected(expectInput, paths.length);
+    const target = validPath(dest, true), targetId = await this.folderId(target), outcomes = [];
+    for (const [index, raw] of paths.entries()) {
       let path: string;
       try { path = validPath(raw); } catch { outcomes.push({path: String(raw), status: 'invalid'}); continue; }
       const row = await this.entry(path);
       if (!row) { outcomes.push({path, status: 'missing'}); continue; }
+      if (this.differs(row, expect, index)) { outcomes.push({path, status: 'changed'}); continue; }
       if (!copy && parentOf(path) === target) { outcomes.push({path, status: 'unchanged', to: path}); continue; }
       if (row.directory && within(target, path)) { outcomes.push({path, status: 'invalid'}); continue; }
       const name = freeName(row.name, (await this.children(targetId)).map(e => e.name), row.directory);
@@ -147,14 +172,16 @@ export class BrowserStorageVolume {
   private async trashId(): Promise<string> { return this.folderId(TRASH_FOLDER, true); }
   private async existingTrashId(): Promise<string | undefined> { try { return await this.folderId(TRASH_FOLDER); } catch (error) { if (error instanceof Missing) return undefined; throw error; } }
   /** The origin is recorded before anything moves, so an interrupted trash never loses the way back. */
-  async trash(paths: string[]): Promise<{outcomes: {path: string; status: string; to?: string}[]}> {
+  async trash(paths: string[], expectInput?: unknown): Promise<{outcomes: {path: string; status: string; to?: string}[]}> {
     if (!Array.isArray(paths) || !paths.length || paths.length > BATCH_MAX || new Set(paths).size !== paths.length) throw Error('Invalid selection');
+    const expect = BrowserStorageVolume.expected(expectInput, paths.length);
     const trashId = await this.trashId(), outcomes = [];
-    for (const raw of paths) {
+    for (const [index, raw] of paths.entries()) {
       let path: string;
       try { path = validPath(raw); } catch { outcomes.push({path: String(raw), status: 'invalid'}); continue; }
       const row = await this.entry(path);
       if (!row) { outcomes.push({path, status: 'missing'}); continue; }
+      if (this.differs(row, expect, index)) { outcomes.push({path, status: 'changed'}); continue; }
       const id = crypto.randomUUID(), records = this.records();
       records[id] = {name: row.name, origin: parentOf(path), deletedAt: this.now(), directory: row.directory, mimeType: row.directory ? '' : row.mimeType, size: row.directory ? 0 : row.size};
       this.save(records);
@@ -257,10 +284,11 @@ export class BrowserStorageVolume {
         case 'storageList': return {status: 'ready', ...await this.list(input.path ?? '')};
         case 'storageCategory': return {status: 'ready', ...await this.category(input.category)};
         case 'storageQuery': return {status: 'ready', ...await this.query()};
-        case 'storageTransfer': return {status: 'ready', ...await this.transfer(input.paths, input.dest ?? '', input.copy === true)};
+        case 'storageTransfer': return {status: 'ready', ...await this.transfer(input.paths, input.dest ?? '', input.copy === true, input.expect)};
+        case 'storageIdentity': return {status: 'ready', ...await this.identity(input.paths)};
         case 'storageRename': return {status: 'ready', ...await this.rename(input.path, input.name)};
         case 'storageCreateFolder': return {status: 'ready', ...await this.createFolder(input.parent ?? '', input.name)};
-        case 'storageTrash': return {status: 'ready', ...await this.trash(input.paths)};
+        case 'storageTrash': return {status: 'ready', ...await this.trash(input.paths, input.expect)};
         case 'storageTrashList': return {status: 'ready', ...await this.trashList()};
         case 'storageRestore': return {status: 'ready', ...await this.restore(input.ids)};
         case 'storageEmptyTrash': return {...await this.emptyTrash(input.ids, input.confirmed === true)};
