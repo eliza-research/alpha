@@ -102,7 +102,6 @@
     }
   ],
   "resident": {
-    "description": "Advisories for the resident runtime's npm packages at the pinned upstream commit, from the npm bulk advisory endpoint. Regenerate with: node scripts/dependency-audit.mjs --resident --write. Dispositions live in docs/dependency-audit.dispositions.json under \"resident\".",
     "upstreamCommit": "4dae580daa50fa6f0f9a220c6ac1fa0942879b02",
     "input": "vendor/eliza/bun.lock",
     "auditedOn": "2026-11-08",
@@ -1567,7 +1566,6 @@
           "url": "https://github.com/advisories/GHSA-mrhx-c7xc-m3w5"
         }
       }
-    ],
-    "inputEquivalenceEvidence": "docs/evidence/full-lock-input-equivalence-4dae-20261108.json"
+    ]
   }
 }
