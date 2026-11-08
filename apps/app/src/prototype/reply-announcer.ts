@@ -9,6 +9,7 @@
  * arrives together with its text is not announced reliably. A voice conversation speaks its own
  * replies, so nothing is written while one is active. Focus never moves.
  */
+import { workflowReplyText } from '../runtime/action-message-presentation';
 type Shell = any;
 const REPLYING = 'Alpha is replying';
 const LIMIT = 600;
@@ -54,7 +55,7 @@ export function installReplyAnnouncer(Component: any) {
     const settled = !!was?.streaming && !after.some(message => message.streaming);
     const arrived = before.length > 0 && added.length === 1 && added[0] === last;
     if (!settled && !arrived) { if (!state.typing && !state.turnStatus) this.replyAnnounced = false; return; }
-    const text = String(last.text || last.card?.title || '').trim();
+    const text = workflowReplyText(String(last.text || last.card?.title || '')).text.trim();
     this.replyAnnouncedId = last.id; this.replyAnnounced = false;
     if (text) say(bounded(text));
   };
