@@ -52,7 +52,7 @@ const voice = registerPlugin<{
   cancel(options: { requestId: string }): Promise<unknown>;
   addListener(event: 'recordingStopped', callback: (clip: Clip) => void): Promise<PluginListenerHandle>;
 }>('DevelopmentAgent');
-const deviceVoice = registerPlugin<typeof voice & {getRecordingMetrics(input:{recordingId:string}):Promise<{recordingId:string;peak:number;rms?:number}>}>('AlphaVoiceCloud');
+const deviceVoice = registerPlugin<typeof voice & {warmSpeechOutput():Promise<void>;getRecordingMetrics(input:{recordingId:string}):Promise<{recordingId:string;peak:number;rms?:number}>}>('AlphaVoiceCloud');
 const appSettings = registerPlugin<{ openSettings(input: { page: 'privacy' }): Promise<unknown> }>('AlphaDevice');
 
 type SavedAudio = { audioId: string; noteId: string; durationMs: number; transcript: string };
@@ -560,12 +560,15 @@ export function installPrototypeVoiceAdapter(Component: any, views: Record<strin
       // what it heard, and the held start with it.
       type CueTurn={signal:AbortSignal;settled?:boolean};
       let cueSpeech:{captureRetired:(()=>boolean)|null;speak(text:string,signal:AbortSignal,turn:CueTurn):Promise<void>}|undefined;
-      const sendTurn=async(input:{turnId:string;text:string;voiceTurnSignal:any;signal:AbortSignal})=>{
+      const sendTurn=async(input:{turnId:string;text:string;voiceTurnSignal:any;signal:AbortSignal;onText?:(text:string)=>void})=>{
         const cueTurn:CueTurn={signal:input.signal};try{
         input.signal.throwIfAborted();current();
         // VOICE_SEND_POLICY: 'auto-send' sends this transcript now; 'review' waits for Send or Discard.
         const sent=await sendVoiceEntry({policy:voiceSendPolicy(),transcript:input.text,review:text=>reviewConversationTurn(text,input.signal,current),send:async text=>{
-          current();const turn={...conversationPrepared!};conversationReplyWatch=new Set((chat.shell.S().msgs||[]).map((m:Bag)=>String(m.id)));
+          current();
+          // On-device speech: wake the speech output while the reply is produced (advisory; a call skips it).
+          if(local&&!streamingCloud)try{void Promise.resolve(deviceVoice.warmSpeechOutput()).catch(()=>{});}catch{/* Advisory: a host without the warm-up keeps working. */}
+          const turn={...conversationPrepared!};conversationReplyWatch=new Set((chat.shell.S().msgs||[]).map((m:Bag)=>String(m.id)));
           const cue=cueSpeech;const ack=cue?createBatchProgressAcknowledgment({turnId:input.turnId,conversationId:turn.binding.conversationId,ownerId:turn.binding.session.ownerId,signal:input.signal,assertCurrent:current,captureRetired:cue.captureRetired,speak:async(label,signal)=>{const pending=Promise.resolve().then(()=>cue.speak(label,signal,cueTurn));const owned=pending.catch(failure=>{if((failure as {code?:string})?.code!=='speech-cleanup-unconfirmed')return;mediaUnconfirmed=failure;stopping=Promise.reject(failure);void stopping.catch(()=>{});throw failure;});conversationSpeech=owned;try{await owned;}finally{if(conversationSpeech===owned)conversationSpeech=undefined;}}}):undefined;
           const retireAck=()=>{try{current();}catch{void ack?.stop().catch(()=>{});}};
           const unsubscribeAck=ack?connectionController.subscribe(retireAck):()=>{};
