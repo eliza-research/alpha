@@ -6,6 +6,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
+import {createHash} from 'node:crypto';
 import {buildAndroidConsumer} from '../vendor/eliza/packages/app/scripts/mobile/android/build-consumer.mjs';
 import {SIGNING_ENV, buildEnv, consumerBuildOptions, parseBuildArgs} from '../scripts/build-android.mjs';
 
@@ -69,7 +70,8 @@ test('a distribution build assembles the four APKs and instrumentation, lints an
  assert.deepEqual(f.seen[0].apks, ['launcher-debug.apk', 'launcher-release-unsigned.apk', 'standalone-debug.apk', 'standalone-release-unsigned.apk']);
  const {createdAt, ...record} = f.seen[0].record;
  assert.ok(!Number.isNaN(Date.parse(createdAt)));
- assert.deepEqual(record, {testMocks: false, runtimeProfile: 'native', mapsConfigured: false, signingRequested: false, versionOverride: {code: null, name: null}});
+ const updateChannel={kind:'public',manifestUrlSha256:createHash('sha256').update(JSON.parse(fs.readFileSync('app.config.json','utf8')).updateManifestUrl).digest('hex')};
+ assert.deepEqual(record, {testMocks: false, runtimeProfile: 'native', updateChannel, mapsConfigured: false, signingRequested: false, versionOverride: {code: null, name: null}});
  assert.deepEqual(f.result.files.map(file => path.basename(file)), ['standalone-debug.apk', 'standalone-release-unsigned.apk', 'launcher-debug.apk', 'launcher-release-unsigned.apk']);
 });
 

@@ -28,6 +28,7 @@ class CloudSigningInputTest(unittest.TestCase):
             "sdkCommit": "b" * 40,
             "versionCode": 44,
             "unsignedApkSHA256": {},
+            "updateChannel": {"kind": "public", "manifestUrlSha256": "c" * 64},
         }
         self.apk_bytes = {}
         rows = []
@@ -69,6 +70,8 @@ class CloudSigningInputTest(unittest.TestCase):
             "versionOverride": {"code": "44"},
         }
         self.producer = {"source": self.pin["alphaCommit"], "versionCode": 44, "runtimeProfile": "cloud"}
+        for record in [self.verification, self.build, self.producer, *rows]:
+            record["updateChannel"] = copy.deepcopy(self.pin["updateChannel"])
 
     def write_archive(self, entries_update=None, duplicate=None, special=None):
         verification = json.dumps(self.verification).encode()
@@ -111,10 +114,30 @@ class CloudSigningInputTest(unittest.TestCase):
             "source": "a" * 40,
             "sdk": "b" * 40,
             "versionCode": 44,
+            "updateChannel": self.pin["updateChannel"],
             "unsignedApkSHA256": self.pin["unsignedApkSHA256"],
             "inputVerified": True,
             "signed": False,
         })
+
+    def test_channel_substitution_is_refused_at_each_evidence_boundary(self):
+        for boundary in [self.verification, self.build, self.producer, *self.verification["results"]]:
+            original = boundary["updateChannel"]
+            boundary["updateChannel"] = {"kind": "private-qa", "manifestUrlSha256": "d" * 64}
+            self.write_archive()
+            with self.assertRaises(ValueError):
+                ADMISSION.admit(self.archive, self.pin)
+            boundary["updateChannel"] = original
+
+    def test_private_channel_needs_its_reviewed_baseline_purpose(self):
+        channel = {"kind": "private-qa", "manifestUrlSha256": "d" * 64}
+        for record in [self.pin, self.verification, self.build, self.producer, *self.verification["results"]]:
+            record["updateChannel"] = copy.deepcopy(channel)
+        self.write_archive()
+        with self.assertRaises(ValueError):
+            ADMISSION.admit(self.archive, self.pin)
+        self.pin["purpose"] = "private-update-qa-baseline"
+        self.assertEqual(ADMISSION.admit(self.archive, self.pin)["updateChannel"], channel)
 
     def test_rejects_changed_archive_or_reviewed_pins(self):
         self.write_archive()

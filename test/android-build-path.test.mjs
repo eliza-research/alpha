@@ -92,7 +92,7 @@ test('preflight rejects an unpinned checkout and android:build stops before sync
   f.write('upstream.lock.json', JSON.stringify({commit: 'f'.repeat(40)}));
   assert.match(checkoutProblems(f.root)[0], /vendor\/eliza is at .*pins f{40}\. Run: git submodule update --init vendor\/eliza/);
   // The real entry point exits with status 2 and the guidance, without starting the build.
-  for (const file of ['android-abis.mjs', 'embedding-native-contract.mjs', 'paradee-runtime.mjs', 'voice-host.mjs', 'build-android.mjs', 'android-build-preflight.mjs', 'mobile-uuid-adapter.mjs', 'stage-embedding-host.mjs', 'build-embedding-host.mjs', 'toolchain.mjs', 'copy-file-clone.mjs'])
+  for (const file of ['android-abis.mjs', 'embedding-native-contract.mjs', 'paradee-runtime.mjs', 'voice-host.mjs', 'build-android.mjs', 'update-channel.mjs', 'android-build-preflight.mjs', 'mobile-uuid-adapter.mjs', 'stage-embedding-host.mjs', 'build-embedding-host.mjs', 'toolchain.mjs', 'copy-file-clone.mjs'])
     f.write('scripts/' + file, read('scripts/' + file));
   // build-android.mjs reads the release-signing environment names from the host descriptor.
   f.write('android/consumer-host.json', read('android/consumer-host.json'));

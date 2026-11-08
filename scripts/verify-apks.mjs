@@ -31,6 +31,7 @@ import {renderSensePermissions} from "../vendor/eliza/packages/os/scripts/androi
 import path from "node:path";
 import { execFileSync } from "node:child_process";
 import { createHash } from "node:crypto";
+import {apkUpdateChannel,validateUpdateChannel} from './update-channel.mjs';
 import {
   auditBundle, distributionProblems, extractWebPayload, parseXmlTree, readBuildFlags, signerDigest, validateApk, verifyOwnerRouteTable,
 } from "./apk.mjs";
@@ -85,6 +86,9 @@ const identity = JSON.parse(fs.readFileSync("app.config.json"));
 const callbackHost = new URL(JSON.parse(fs.readFileSync("config/cloud-deployment.json", "utf8")).production.web).hostname;
 const buildRecordFile = path.join(directory, "build-config.json");
 const buildRecord = fs.existsSync(buildRecordFile) ? JSON.parse(fs.readFileSync(buildRecordFile, "utf8")) : null;
+const updateChannel=validateUpdateChannel(buildRecord?.updateChannel);
+if(updateChannel.kind==='public'&&updateChannel.manifestUrlSha256!==createHash('sha256').update(identity.updateManifestUrl).digest('hex'))throw Error('Public update channel differs from source configuration');
+if(updateChannel.kind==='private-qa'&&(runtimeProfile!=='cloud'||testMocks||allowUnpackaged))throw Error('Private update QA requires the complete Cloud profile');
 if((buildRecord?.runtimeProfile||"native")!==runtimeProfile)throw Error("Build runtime profile differs from verification");
 if((buildRecord?.localEmbeddings===true)!==localEmbeddings)throw Error("Build local-embedding capability differs from verification");
 if(localEmbeddings)verifyEmbeddingHost(process.cwd(),{requireProducerInputs:true});
@@ -145,6 +149,10 @@ for (const variant of ["standalone", "launcher"])
     if (d.debuggable !== (mode === "debug"))
       throw new Error(`Wrong debug flag: ${file}`);
     const { facts, problems } = distributionProblems(d, { mode, testMocks });
+    try{
+      const compiled=apkUpdateChannel(parseXmlTree(d.xml));
+      if(compiled.kind!==updateChannel.kind||compiled.manifestUrlSha256!==updateChannel.manifestUrlSha256)problems.push('Compiled APK update channel differs from build evidence');
+    }catch{problems.push('Compiled APK update channel could not be verified');}
     problems.push(...requiredAppLinkProblems(parseXmlTree(d.xml), {
       host: callbackHost, path: '/alphaphone/auth/callback', activity: `${identity.appId}.MainActivity`,
     }));
@@ -196,6 +204,7 @@ for (const variant of ["standalone", "launcher"])
       ...record,
       variant,
       mode,
+      updateChannel,
       versionCode: facts.versionCode,
       versionName: facts.versionName,
       signed,
@@ -279,7 +288,7 @@ for (const row of release) {
     row.releaseAdmission.blockers.length === 0 && row.releaseAdmission.failures.length === 0 &&
     runtime.distributable === true && row.runtimeNotices === true &&
     speechQualified &&
-    row.licenceBlockers.length === 0;
+    row.licenceBlockers.length === 0 && updateChannel.kind==='public';
 }
 for (const row of results.filter(row => row.mode === "debug")) {
   row.runtime = runtimePackaging.find(entry => entry.apk === row.file).runtime;
@@ -342,6 +351,7 @@ fs.writeFileSync(
       mapsConfigured: buildRecord ? buildRecord.mapsConfigured : Boolean(process.env.VITE_MAPS_BASE_URL),
       allowUnpackagedRuntime: allowUnpackaged,
       runtimeProfile,
+      updateChannel,
       ...(localEmbeddings ? {localEmbeddings:true} : {}),
       version: { code: versionCode, name: versionName },
       signing: {
@@ -367,7 +377,7 @@ fs.writeFileSync(
 console.log(JSON.stringify(results, null, 2));
 const undistributable = release.filter(row => !row.distributable);
 if (undistributable.length)
-  console.warn(`Not distributable: ${undistributable.map(row => `${row.file} (${[row.runtime !== "PACKAGED" && "no packaged runtime", testMocks && "test-mocks build", !row.runtimeNotices && "notices lack the packaged runtime (run node scripts/generate-licenses.mjs --packaged-runtime after staging)", ...(runtimeProfile === "cloud" ? cloudVoiceBlockers(row, "cartesia") : [!row.voiceHost.packaged && "no on-device voice packaged", row.voiceHost.packaged && !row.voiceHost.qualified && "on-device voice not qualified (no recorded device acceptance)"]), ...row.releaseAdmission.blockers, ...row.licenceBlockers].filter(Boolean).join(", ")})`).join("; ")}`);
+  console.warn(`Not distributable: ${undistributable.map(row => `${row.file} (${[row.runtime !== "PACKAGED" && "no packaged runtime", testMocks && "test-mocks build", updateChannel.kind === "private-qa" && "private QA update channel", !row.runtimeNotices && "notices lack the packaged runtime (run node scripts/generate-licenses.mjs --packaged-runtime after staging)", ...(runtimeProfile === "cloud" ? cloudVoiceBlockers(row, "cartesia") : [!row.voiceHost.packaged && "no on-device voice packaged", row.voiceHost.packaged && !row.voiceHost.qualified && "on-device voice not qualified (no recorded device acceptance)"]), ...row.releaseAdmission.blockers, ...row.licenceBlockers].filter(Boolean).join(", ")})`).join("; ")}`);
 console.warn(`Listener (${listener.record}): ${listener.blockers.join("; ")}.`);
 // Licence flags are warnings: recorded per APK above, printed once here, never a failure.
 for (const line of flagLines) console.warn(line);

@@ -41,6 +41,44 @@ if (appLinkHost && appLinkHost != cloudWebHost)
 def updateManifestUrl = new groovy.json.JsonSlurper().parse(file('../../app.config.json')).updateManifestUrl
 if (!(updateManifestUrl instanceof String) || new URI(updateManifestUrl).scheme != 'https' || !new URI(updateManifestUrl).host)
  throw new GradleException('app.config.json updateManifestUrl must be an HTTPS URL')
+// An explicitly declared, private test artifact can use an expiring capability.
+// Never put that capability in source, Gradle arguments, diagnostics or build records.
+def updateChannel = System.getenv('ALPHA_UPDATE_CHANNEL') ?: 'public'
+def privateUpdateFile = System.getenv('ALPHA_PRIVATE_UPDATE_MANIFEST_FILE')
+def privateUpdateDigest = System.getenv('ALPHA_PRIVATE_UPDATE_MANIFEST_SHA256')
+if (!(updateChannel in ['public','private-qa']) || updateChannel == 'public' && (privateUpdateFile || privateUpdateDigest))
+ throw new GradleException('Update channel input refused')
+if (updateChannel == 'private-qa') {
+ try {
+  if (runtimeProfile != 'cloud' || unpackagedRuntime || testMocksRaw?.toString() == '1' || !privateUpdateFile || !(privateUpdateDigest ==~ /[a-f0-9]{64}/)) throw new Exception()
+  def input = java.nio.file.Paths.get(privateUpdateFile)
+  def noFollow = java.nio.file.LinkOption.NOFOLLOW_LINKS
+  if (!input.isAbsolute() || java.nio.file.Files.isSymbolicLink(input)) throw new Exception()
+  if (input.toRealPath().startsWith(file('../..').toPath().toRealPath())) throw new Exception()
+  def before = java.nio.file.Files.readAttributes(input, java.nio.file.attribute.BasicFileAttributes, noFollow)
+  def mode = java.nio.file.Files.getAttribute(input, 'unix:mode', noFollow) as int
+  def uid = java.nio.file.Files.getAttribute(input, 'unix:uid', noFollow) as long
+  if (!before.isRegularFile() || before.size() < 1 || before.size() > 2048 || (mode & 07777) != 0600 || uid != new com.sun.security.auth.module.UnixSystem().getUid()) throw new Exception()
+  byte[] bytes
+  java.nio.channels.FileChannel.open(input, java.nio.file.StandardOpenOption.READ, noFollow).withCloseable { channel ->
+   def buffer = java.nio.ByteBuffer.allocate(2049)
+   while (buffer.hasRemaining() && channel.read(buffer) > 0) {}
+   bytes = java.util.Arrays.copyOf(buffer.array(), buffer.position())
+  }
+  def after = java.nio.file.Files.readAttributes(input, java.nio.file.attribute.BasicFileAttributes, noFollow)
+  if (!after.isRegularFile() || before.fileKey() != after.fileKey() || before.size() != after.size() || before.lastModifiedTime() != after.lastModifiedTime() || bytes.length > 2048 || bytes.any { (it & 255) < 33 || (it & 255) > 126 }) throw new Exception()
+  if (java.security.MessageDigest.getInstance('SHA-256').digest(bytes).encodeHex().toString() != privateUpdateDigest) throw new Exception()
+  def candidate = new String(bytes, java.nio.charset.StandardCharsets.US_ASCII)
+  def uri = new URI(candidate)
+  if (uri.scheme != 'https' || uri.rawAuthority != 'storage.googleapis.com' || uri.fragment != null || !(uri.rawPath ==~ /\/alpha-aosp-lab-20261024-private-apks\/update-qa\/[a-f0-9]{32}\/alpha-update\.json/) || !uri.rawQuery) throw new Exception()
+  def pairs = uri.rawQuery.split('&').collect { it.split('=',2) }
+  def query = pairs.collectEntries { [(java.net.URLDecoder.decode(it[0],'UTF-8')):it.length == 2 ? java.net.URLDecoder.decode(it[1],'UTF-8') : ''] }
+  if (query.size() != pairs.size()) throw new Exception()
+  if (query['X-Goog-Algorithm'] != 'GOOG4-RSA-SHA256' || !(query['X-Goog-Expires'] ==~ /[0-9]+/) || new BigInteger(query['X-Goog-Expires']) < 300 || new BigInteger(query['X-Goog-Expires']) > 86400) throw new Exception()
+  updateManifestUrl = candidate
+ } catch (Exception ignored) { throw new GradleException('Update channel input refused') }
+}
+def updateManifestSha256 = java.security.MessageDigest.getInstance('SHA-256').digest(updateManifestUrl.getBytes('UTF-8')).encodeHex().toString()
 def appLinksManifest = 'build/generated/app-links/AndroidManifest.xml'
 if (appLinkHost) {
  file(appLinksManifest).parentFile.mkdirs()
@@ -67,6 +105,8 @@ android {
  defaultConfig {
   manifestPlaceholders.put('appLinkHost', appLinkHost)
   manifestPlaceholders.put('stagingCloudWebHost', stagingCloudWebHost)
+  manifestPlaceholders.put('alphaUpdateChannel', updateChannel)
+  manifestPlaceholders.put('alphaUpdateManifestSha256', 'sha256:' + updateManifestSha256)
   buildConfigField 'String', 'ELIZA_RUNTIME_PROFILE', "\"${runtimeProfile}\""
   // The verified App Link host this build declares (ELIZAOS_APP_LINK_HOST), or "" when none.
   buildConfigField 'String', 'ELIZAOS_APP_LINK_HOST', "\"${appLinkHost}\""

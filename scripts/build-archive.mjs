@@ -14,6 +14,7 @@ import assert from 'node:assert/strict';
 import {execFileSync} from 'node:child_process';
 import {archiveWebPayload} from './apk.mjs';
 import {parseBuildArgs,buildEnv as androidBuildEnv} from './build-android.mjs';
+import {readUpdateChannel} from './update-channel.mjs';
 const cli=process.argv.slice(2);
 const buildArgs=cli.filter(arg=>arg==='--test-mocks'||arg==='--runtime-profile=cloud'||arg==='--local-embeddings');
 const options=parseBuildArgs(buildArgs);
@@ -25,6 +26,10 @@ const sourceDir=testMocks?'artifacts/test-mocks':'artifacts';
 // Distribution archives are always flag-off; build-android also strips these.
 const buildEnv=androidBuildEnv(process.env,options);
 const verifyEnv=androidBuildEnv(process.env,{testMocks:false,runtimeProfile});
+// Source tests construct their own synthetic channel inputs. The real private
+// capability is used only by the native build and its digest-bound verifier.
+for(const name of ['ALPHA_UPDATE_CHANNEL','ALPHA_PRIVATE_UPDATE_MANIFEST_FILE','ALPHA_PRIVATE_UPDATE_MANIFEST_SHA256'])delete verifyEnv[name];
+const updateChannel=readUpdateChannel(buildEnv,JSON.parse(fs.readFileSync('app.config.json','utf8')).updateManifestUrl);
 assert.ok(destination && path.resolve(destination).startsWith(path.resolve('test-results')+path.sep), 'Use a new archive beneath test-results');
 assert.ok(!fs.existsSync(destination), 'Archive already exists; preserve earlier evidence');
 fs.mkdirSync(destination,{recursive:true});
@@ -47,7 +52,7 @@ try{execFileSync('npm',['run','android:sync'],{stdio:['ignore',capacitorStageLog
 finally{fs.closeSync(capacitorStageLog);}
 const before=snapshot();
 fs.writeFileSync(path.join(destination,'inputs-before.json'),JSON.stringify(before,null,2));
-fs.writeFileSync(path.join(destination,'configuration.json'),JSON.stringify({testMocks,runtimeProfile,...(localEmbeddings?{localEmbeddings:true}:{}),mapsConfigured:Boolean(process.env.VITE_MAPS_BASE_URL),startedAt:new Date().toISOString()},null,2));
+fs.writeFileSync(path.join(destination,'configuration.json'),JSON.stringify({testMocks,runtimeProfile,updateChannel,...(localEmbeddings?{localEmbeddings:true}:{}),mapsConfigured:Boolean(process.env.VITE_MAPS_BASE_URL),startedAt:new Date().toISOString()},null,2));
 for(const command of ['verify','android:build']){
  const log=fs.openSync(path.join(destination,command.replace(':','-')+'.log'),'wx');
  const extra=command==='android:build'&&buildArgs.length?['--',...buildArgs]:[];

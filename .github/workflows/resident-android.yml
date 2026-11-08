@@ -406,7 +406,9 @@ jobs:
                   digest = hashlib.sha256(target.read_bytes()).hexdigest()
                   assert digest == hashlib.sha256(file.read_bytes()).hexdigest(), 'Evidence changed during retention'
                   files[str(relative)] = {'bytes': info.st_size, 'sha256': digest}
-          (out / 'manifest.json').write_text(json.dumps({'source': os.environ['GITHUB_SHA'], 'runtimeProfile': 'cloud', **({'localEmbeddings': True} if os.environ.get('ALPHA_LOCAL_EMBEDDINGS') == '1' else {}), 'versionCode': int(os.environ['ELIZAOS_VERSION_CODE']), 'bytes': total, 'files': files}, indent=2) + '\n')
+          channel = json.loads((out / 'artifacts/build-config.json').read_text())['updateChannel']
+          assert channel['kind'] == 'public', 'Private QA artifacts require private delivery, not this hosted archive'
+          (out / 'manifest.json').write_text(json.dumps({'source': os.environ['GITHUB_SHA'], 'runtimeProfile': 'cloud', 'updateChannel': channel, **({'localEmbeddings': True} if os.environ.get('ALPHA_LOCAL_EMBEDDINGS') == '1' else {}), 'versionCode': int(os.environ['ELIZAOS_VERSION_CODE']), 'bytes': total, 'files': files}, indent=2) + '\n')
           PYCODE
       - name: Build and anchor private endpoint helper
         if: env.ALPHA_RUNTIME_PROFILE == 'native'

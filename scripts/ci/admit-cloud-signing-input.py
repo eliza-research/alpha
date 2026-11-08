@@ -33,6 +33,13 @@ def admit(archive, pin, stage=None):
     for field in ("alphaCommit", "sdkCommit"):
         require(isinstance(pin.get(field), str) and COMMIT.fullmatch(pin[field]), f"Invalid {field} pin")
     require(type(pin.get("versionCode")) is int and pin["versionCode"] > 0, "Invalid version pin")
+    channel = pin.get("updateChannel")
+    require(isinstance(channel, dict) and set(channel) == {"kind", "manifestUrlSha256"}
+            and channel["kind"] in ("public", "private-qa")
+            and isinstance(channel["manifestUrlSha256"], str)
+            and SHA.fullmatch(channel["manifestUrlSha256"]), "Invalid reviewed update channel")
+    require((channel["kind"] == "private-qa") == (pin.get("purpose") == "private-update-qa-baseline"),
+            "Private update channel requires the explicit QA baseline purpose")
     apks = pin["unsignedApkSHA256"]
     require(set(apks) == set(VARIANTS), "Exactly two variant pins are required")
     for value in (pin["archiveSHA256"], pin["producerManifestSHA256"], *apks.values()):
@@ -74,6 +81,7 @@ def admit(archive, pin, stage=None):
                         private["versionCode"] == pin["versionCode"] and
                         private["unsignedApkSHA256"] == apks and cloud_only(private),
                         "Private producer identity differs from the reviewed build")
+                require(private.get("updateChannel") == channel, "Private producer update channel differs")
                 for check in ("productSourceGuard", "sdkSourceGuard", "normalPreparation",
                               "combinedVerification", "packagedDependencyAudit", "apkArchive"):
                     require(private["checks"][check] == "passed", f"Private build did not pass {check}")
@@ -84,6 +92,7 @@ def admit(archive, pin, stage=None):
             require(producer["source"] == pin["alphaCommit"] and producer["versionCode"] == pin["versionCode"]
                     and cloud_only(producer),
                     "Producer source, version or Cloud profile differs")
+            require(producer.get("updateChannel") == channel, "Producer update channel differs")
             apk_manifest = data("apk-verification.json")
             require(apk_manifest == data("producer-evidence/artifacts/apk-manifest.json"),
                     "Producer and archive APK verification records differ")
@@ -92,11 +101,13 @@ def admit(archive, pin, stage=None):
                 require(producer["files"][name] == {"bytes": len(value), "sha256": digest(value)},
                         f"Producer evidence does not bind {name}")
             verified = json.loads(apk_manifest)
+            require(verified.get("updateChannel") == channel, "Verified update channel differs")
             require(verified["upstream"]["commit"] == pin["sdkCommit"], "Verified SDK commit differs")
             require(cloud_only(verified) and verified["testMocks"] is False
                     and verified.get("allowUnpackagedRuntime") is False,
                     "APK verification is outside the reviewed Cloud profile")
             config = json.loads(build)
+            require(config.get("updateChannel") == channel, "Build update channel differs")
             require(cloud_only(config) and config["testMocks"] is False and config["signingRequested"] is False
                     and config["versionOverride"]["code"] == str(pin["versionCode"]),
                     "Build flags or version differ from reviewed unsigned Cloud profile")
@@ -107,6 +118,7 @@ def admit(archive, pin, stage=None):
             admitted = {}
             for row in rows:
                 variant = row["variant"]
+                require(row.get("updateChannel") == channel, "APK update channel differs")
                 name = f"{variant}-release-unsigned.apk"
                 require(row["file"] == f"artifacts/{name}" and row["packageName"] == PACKAGE
                         and row["versionCode"] == pin["versionCode"] and row["signed"] is False
@@ -134,7 +146,7 @@ def admit(archive, pin, stage=None):
                         require(hashlib.file_digest(target, "sha256").hexdigest() == admitted[variant],
                                 f"Staged {variant} APK bytes differ")
     return {"source": pin["alphaCommit"], "sdk": pin["sdkCommit"], "versionCode": pin["versionCode"],
-            "unsignedApkSHA256": admitted, "inputVerified": True, "signed": False}
+            "updateChannel": channel, "unsignedApkSHA256": admitted, "inputVerified": True, "signed": False}
 
 
 if __name__ == "__main__":

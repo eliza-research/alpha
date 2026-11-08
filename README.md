@@ -111,6 +111,21 @@ bundle. This qualification does not publish a release or replace owner acceptanc
 
 ## Explicit Cloud QA profile — October 18
 
+For a private Settings updater baseline, declare `ALPHA_UPDATE_CHANNEL=private-qa`,
+`ALPHA_PRIVATE_UPDATE_MANIFEST_FILE` and `ALPHA_PRIVATE_UPDATE_MANIFEST_SHA256`.
+The file must be an absolute path outside the checkout, owned by the build user
+with mode 0600, containing only the exact URL bytes without a newline. The digest
+is SHA-256 of those bytes. Only the reviewed Google Storage `update-qa` manifest
+path and a five-minute to one-day signed URL are accepted. Never commit or log
+that URL. The normal build uses the unchanged public URL in `app.config.json`.
+
+Private QA requires the complete Cloud profile. Android metadata, build and
+producer evidence, and the reviewed signing plan bind the channel and URL digest;
+the plan also names `purpose: private-update-qa-baseline`. These artifacts are
+never public-distribution candidates. TLS, package, signer, APK hash and version
+checks remain unchanged. Input admission is not an update, retention or device
+acceptance result.
+
 The owner-approved `cloud` runtime profile supersedes the local-speech-only wording
 above for this explicit QA configuration. It keeps the genuine Bun/PGlite resident
 agent, history and approvals on the phone, uses authenticated Eliza Cloud for
