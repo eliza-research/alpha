@@ -364,3 +364,9 @@ test("Contacts generic permission requests remain image and foreground gated",()
   assert.match(base,/public void requestPermissions\(PluginCall call\) \{\n    if \(!foreground\(\)\) \{/);assert.match(base,/launch\(call, \(\) -> requestPermissionForAlias\("contacts", call, "permissionResult"\)\)/);
   assert.match(base,/launch\(call, \(\) -> startActivityForResult\(call, intent, "editorResult"\)\)/);assert.match(base,/catch \(IllegalStateException gone\) \{\n      call\.reject\(closedMessage\(\)\);/);
 });
+
+test("an attachments instance's teardown removes only its own viewer copies", async () => {
+  // Main surface and assistant each register AlphaMailAttachments over one cache folder.
+  const { nativeSource, fixture, runJvm } = await import("./fixtures/jvm-tools.mjs");
+  assert.match(runJvm([nativeSource("ReviewedCopies.java"), fixture("ReviewedCopiesTest.java")], "ai.elizaresearch.alphaphone.ReviewedCopiesTest"), /^PASS reviewed copies/);
+});
