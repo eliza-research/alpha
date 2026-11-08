@@ -70,19 +70,19 @@ test('every subview of a retained view is opened by a state that asserts it is t
     assert.ok(asserted.has(id), `a state opens and asserts the ${id} subview`);
   }
   // Menus, search fields, sheets and the Undo toast are states of their own.
-  for (const step of ["['New automation', 'Edit When step']", "['Add Read step']", "['Browser', 'Menu']", "['New note', 'More']", "['Search email']", "['Menu', 'Share']", "['Share photo']", "['Sort and more']", "['Move file']", "['Delete file']"])
+  for (const step of ["['New automation', 'Edit When step']", "['Add Read step']", "['Browser', 'Menu']", "['New note', 'More']", "['Search email']", "['Menu', 'Share']", "['Share photo']", "['Sort files']", "['Move file']", "['Delete file']"])
     assert.ok(states.includes(step), `${step} is swept`);
-  // Notes has no search field (PLAN.md decision P2); its folders, ⋯ menu and Recently deleted are swept.
-  for (const state of ["legacyNotes('Notes new folder', ['New folder'])", "legacyNotes('Notes note menu', ['New note', 'More'])", "'notes-trash'", "'notes-recorder'"])
+  // Previous notes recovers retained records; the current layout keeps its menu and Recently deleted.
+  for (const state of ["name:'live Notes retained records'", "legacyNotes('Notes note menu', ['New note', 'More'])", "'notes-trash'", "'notes-recorder'"])
     assert.ok(states.includes(state), `${state} is swept`);
   assert.match(states, /const legacyNotes = [\s\S]*?await openLegacyNotes\(page\);[\s\S]*?await press\(page, steps\)/, 'retained Notes states select their source before opening controls');
 
   // Follow the shipped grouped navigation, including its nested pages. Character,
-  // Models and Agent connection were retired from the owner's Settings design.
+  // Models and the flat Agent connection row were retired from the owner's Settings design.
   for (const steps of [
     ['Settings', 'General'], ['Settings', 'General', 'Display'],
     ['Settings', 'General', 'Notifications'], ['Settings', 'Privacy'],
-    ['Settings', 'Privacy', 'App permissions'], ['Settings', 'About'],
+    ['Settings', 'Privacy', 'App permissions'], ['Settings', 'About'], ['Settings', 'About', 'Connection help'],
     ['Settings', 'Apps'], ['Settings', 'Apps', 'Calendar'],
     ['Settings', 'Apps', 'Passwords'],
     ['Settings', 'Apps', 'Workflows', 'Scheduled summaries'],
@@ -98,7 +98,7 @@ test('the sweep applies every dimension and cannot be narrowed silently', () => 
   // Round 10: every lane also applies the dock and toast rules (nothing on Home under the
   // composer, an app's content scrollable clear of it, no toast under a dialog).
   assert.match(sweep, /auditPage\(page, \{ contrast: true, targetSize: 24, clipping: true, overlap: true, dock: true \}\)/);
-  assert.match(sweep, /auditTabOrder\(page\)/);
+  assert.match(sweep, /auditTabOrder\(page(?:, state\.name==='live Settings licenses'\?await exposedTabStopBudget\(page\):undefined)?\)/);
   assert.doesNotMatch(sweep, /auditPage\(page, \{[^}]*overlap: true \}\)/, 'no lane of the sweep runs without the dock rules');
   assert.doesNotMatch(production, /auditPage\(page, \{[^}]*overlap: true \}\)/, 'no lane of the production sweep runs without the dock rules');
   assert.match(sweep, /setTextScale\(page, 2\)/);
@@ -106,9 +106,9 @@ test('the sweep applies every dimension and cannot be narrowed silently', () => 
   // mid-word, a control on or cut by another box): the round-7 Home defect was not a clipping defect.
   assert.match(sweep, /setTextScale\(page, 2\);[\s\S]{0,400}auditPage\(page, \{ clipping: true, overlap: true, dock: true \}\)/);
   // At 200% the tab order is walked too (a stop left under the composer is a focus-obscured finding).
-  assert.match(sweep, /200% text is not clipped[\s\S]*?auditTabOrder\(page\)[\s\S]*?test\.describe\('landscape'/);
+  assert.match(sweep, /200% text is not clipped[\s\S]*?auditTabOrder\(page(?:, state\.name==='live Settings licenses'\?await exposedTabStopBudget\(page\):undefined)?\)[\s\S]*?test\.describe\('landscape'/);
   // Landscape and 200% text together is a lane of its own.
-  assert.match(sweep, /landscape at 200% text keeps every control on screen[\s\S]*?toHaveClass\(\/alpha-landscape\/\);\s*await setTextScale\(page, 2\);[\s\S]{0,200}auditPage\(page, \{ clipping: true, overlap: true, dock: true \}\), \.\.\.await auditTree\(page\), \.\.\.await auditTabOrder\(page\)/);
+  assert.match(sweep, /landscape at 200% text keeps every control on screen[\s\S]*?toHaveClass\(\/alpha-landscape\/\);\s*await setTextScale\(page, 2\);[\s\S]{0,200}auditPage\(page, \{ clipping: true, overlap: true, dock: true \}\), \.\.\.await auditTree\(page\), \.\.\.await auditTabOrder\(page(?:, state\.name==='live Settings licenses'\?await exposedTabStopBudget\(page\):undefined)?\)/);
   assert.match(sweep, /viewport: \{ width: 915, height: 412 \}/);
   for (const spec of [sweep, production]) assert.match(spec, /toHaveClass\(\/alpha-landscape\/\)/, 'the landscape lane asserts the landscape layout is active');
   // Only deliberate truncation is tolerated.
@@ -123,7 +123,7 @@ test('the sweep applies every dimension and cannot be narrowed silently', () => 
     assert.ok(states.includes(name), `${name} is swept`);
   // Above 200%: the largest in-app size with the largest system font (300%), over every live and
   // launcher state, with the clipping, overlap, dock, name, tab-order and reading-order rules.
-  assert.match(sweep, /for \(const state of \[\.\.\.LIVE_STATES, \.\.\.BROWSER_APP_STATES, \.\.\.LAUNCHER_STATES\]\) \{\s*test\(`300% text[\s\S]{0,400}setTextScale\(page, 3\);\s*const found = blocking\(format\(\[\.\.\.await auditPage\(page, \{ clipping: true, overlap: true, dock: true \}\), \.\.\.await auditTree\(page\), \.\.\.await auditTabOrder\(page\), \.\.\.await auditReadingOrder\(page\)\]\)\);/);
+  assert.match(sweep, /for \(const state of \[\.\.\.LIVE_STATES, \.\.\.BROWSER_APP_STATES, \.\.\.LAUNCHER_STATES\]\) \{\s*test\(`300% text[\s\S]{0,400}setTextScale\(page, 3\);\s*const found = blocking\(format\(\[\.\.\.await auditPage\(page, \{ clipping: true, overlap: true, dock: true \}\), \.\.\.await auditTree\(page\), \.\.\.await auditTabOrder\(page(?:, state\.name==='live Settings licenses'\?await exposedTabStopBudget\(page\):undefined)?\), \.\.\.await auditReadingOrder\(page\)\]\)\);/);
   // The 300% defects open when the lane was added (#701) run as expected failures; the list only shrinks.
   const open300 = sweep.match(/const OPEN_AT_300 = new Set\(\[([^\]]*)\]\);/)?.[1];
   assert.ok(open300 !== undefined, 'the open 300% defects are listed in one place');

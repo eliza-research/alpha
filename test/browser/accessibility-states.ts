@@ -46,6 +46,15 @@ const live = (name: string, steps: string[] = [], shows?: string): State => ({
     await showing(page, shows);
   },
 });
+/** The shared Files browser is exercised over the development browser's own storage port. */
+export async function openFilesStorage(page:Page,theme='light') {
+  await page.addInitScript(offline);
+  await page.goto(`/?theme=${theme}`);
+  await page.getByRole('button',{name:'Files',exact:true}).click();
+  await page.getByRole('button',{name:'Internal storage',exact:true}).click();
+  await expect(page.getByRole('button',{name:'Sort files',exact:true})).toBeVisible();
+}
+
 /** Legacy-only controls remain covered through the explicit Older notes source. */
 const legacyNotes = (name: string, steps: string[], shows?: string): State => ({
   name: `live ${name}`, shows,
@@ -166,10 +175,10 @@ export const MOCK_STATES: State[] = [
   mock('photos:viewer', ['Photo info']),
   mock('photos:viewer', ['Share photo']),
   mock('photos', ['Select photos']),
-  mock('notes', ['New folder']),
+  // Earlier folder-creation controls were retired; the live retained-record state above covers recovery.
   mock('notes', ['Open The case for on-device agents'], 'notes-link'),
   mock('notes:editor', ['Share note']),
-  mock('files:folder', ['Sort and more']),
+  {name:'live Files sort',open:async(page,theme)=>{await openFilesStorage(page,theme);await press(page,['Sort files']);await settle(page);}},
   mock('files:preview', ['Rename']),
   mock('files:preview', ['Move file']),
   mock('files:preview', ['Share file']),
@@ -253,7 +262,7 @@ export const CONNECTED_STATES: State[] = [
   connected('Inbox long subject', [/^Unread, Synthetic Sender C/], { shows: 'inbox-detail' }),
   connected('Inbox compose', ['Compose'], { shows: 'inbox-composing' }),
   connected('Settings', ['Settings'], { home: true }),
-  connected('Settings Google', ['Settings', 'Google'], { home: true }),
+  connected('Settings Google', ['Settings', 'Account', 'Google & email'], { home: true }),
 ];
 
 /** Live states that exist only behind the one Developer gate: the development server opened with ?tools=1. */
@@ -264,7 +273,7 @@ export const DEVELOPMENT_STATES: State[] = [
       await page.addInitScript(offline);
       await page.goto(theme ? `/?theme=${theme}&tools=1` : '/?tools=1');
       await expect(page.getByRole('button', { name: 'Settings', exact: true })).toBeVisible();
-      await press(page, ['Settings', 'Developer']);
+      await press(page, ['Settings', 'General', 'Developer']);
       await settle(page);
     },
   },

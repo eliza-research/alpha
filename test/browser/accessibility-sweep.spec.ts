@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { auditPage, auditReadingOrder, auditTabOrder, auditTree, format } from './accessibility-audit';
+import { auditPage, auditReadingOrder, auditTabOrder, auditTree, exposedTabStopBudget, format } from './accessibility-audit';
 import { BROWSER_APP_STATES, CONNECTED_STATES, DEVELOPMENT_STATES, FAILURE_STATES, FIXTURE_STATES, LAUNCHER_STATES, LIVE_STATES, MOCK_STATES, setTextScale } from './accessibility-states';
 import { settled } from './helpers/settled';
 
@@ -29,7 +29,7 @@ for (const theme of ['light', 'dark'] as const) {
       const found = format([
         ...await auditTree(page),
         ...await auditPage(page, { contrast: true, targetSize: 24, clipping: true, overlap: true, dock: true }),
-        ...await auditTabOrder(page),
+        ...await auditTabOrder(page, state.name==='live Settings licenses'?await exposedTabStopBudget(page):undefined),
         // Reading order does not depend on the theme; it is read once, in the light one.
         ...theme === 'light' ? await auditReadingOrder(page) : [],
       ]);
@@ -53,7 +53,7 @@ for (const state of STATES) {
     const tree = format(await auditTree(page));
     expect(tree, tree.join('\n')).toEqual([]);
     // The tab order survives it as well, and no stop is left partly under the composer.
-    const focus = format(await auditTabOrder(page));
+    const focus = format(await auditTabOrder(page, state.name==='live Settings licenses'?await exposedTabStopBudget(page):undefined));
     expect(focus, focus.join('\n')).toEqual([]);
     // So does TalkBack's reading order: the round 8 emulator failure was this check at 200% text.
     const order = format(await auditReadingOrder(page));
@@ -75,7 +75,7 @@ for (const state of [...LIVE_STATES, ...BROWSER_APP_STATES, ...LAUNCHER_STATES])
     test.setTimeout(LARGE_TEXT_TIMEOUT);
     await state.open(page, 'light');
     await setTextScale(page, 3);
-    const found = blocking(format([...await auditPage(page, { clipping: true, overlap: true, dock: true }), ...await auditTree(page), ...await auditTabOrder(page), ...await auditReadingOrder(page)]));
+    const found = blocking(format([...await auditPage(page, { clipping: true, overlap: true, dock: true }), ...await auditTree(page), ...await auditTabOrder(page, state.name==='live Settings licenses'?await exposedTabStopBudget(page):undefined), ...await auditReadingOrder(page)]));
     if (OPEN_AT_300.has(state.name)) expect(found, `${state.name} now passes at 300%: remove it from OPEN_AT_300 (issue #701)`).not.toEqual([]);
     else expect(found, found.join('\n')).toEqual([]);
   });
@@ -102,7 +102,7 @@ test.describe('landscape', () => {
       await state.open(page, 'light');
       // The landscape layout is what is being checked, not a scaled-down portrait canvas.
       await expect(page.locator('html')).toHaveClass(/alpha-landscape/);
-      const found = blocking(format([...await auditPage(page, { clipping: true, overlap: true, dock: true }), ...await auditTree(page), ...await auditTabOrder(page), ...await auditReadingOrder(page)]));
+      const found = blocking(format([...await auditPage(page, { clipping: true, overlap: true, dock: true }), ...await auditTree(page), ...await auditTabOrder(page, state.name==='live Settings licenses'?await exposedTabStopBudget(page):undefined), ...await auditReadingOrder(page)]));
       expect(blocking(found), blocking(found).join('\n')).toEqual([]);
     });
   }
@@ -113,7 +113,7 @@ test.describe('landscape', () => {
       await state.open(page, 'light');
       await expect(page.locator('html')).toHaveClass(/alpha-landscape/);
       await setTextScale(page, 2);
-      const found = blocking(format([...await auditPage(page, { clipping: true, overlap: true, dock: true }), ...await auditTree(page), ...await auditTabOrder(page), ...await auditReadingOrder(page)]));
+      const found = blocking(format([...await auditPage(page, { clipping: true, overlap: true, dock: true }), ...await auditTree(page), ...await auditTabOrder(page, state.name==='live Settings licenses'?await exposedTabStopBudget(page):undefined), ...await auditReadingOrder(page)]));
       expect(found, found.join('\n')).toEqual([]);
     });
   }
@@ -136,7 +136,7 @@ for (const state of [...FIXTURE_STATES, ...LAUNCHER_STATES]) {
       const found = blocking(format([
         ...await auditTree(page),
         ...await auditPage(page, scale === 1 ? { contrast: true, targetSize: 24, clipping: true, overlap: true, dock: true } : { clipping: true, overlap: true, dock: true }),
-        ...await auditTabOrder(page),
+        ...await auditTabOrder(page, state.name==='live Settings licenses'?await exposedTabStopBudget(page):undefined),
         ...await auditReadingOrder(page),
       ]));
       expect(found, found.join('\n')).toEqual([]);

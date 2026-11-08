@@ -1,7 +1,7 @@
 import {installHomeCalendar} from './helpers/home-calendar';
 import { test, expect, type Locator, type Page } from '@playwright/test';
 import {openLegacyAttachment,openLegacyNotes} from './helpers/legacy-notes';
-import { LAUNCHER_STATES, setTextScale } from './accessibility-states';
+import { LAUNCHER_STATES, openFilesStorage, setTextScale } from './accessibility-states';
 import {canonicalNotesFixture,openCanonicalNotes} from './helpers/canonical-notes';
 import {openOwnedPhotoViewer} from './helpers/owned-photo';
 import { auditPage, auditTabOrder, format } from './accessibility-audit';
@@ -167,14 +167,14 @@ test.describe('menus and sheets over a scrim own focus', () => {
     ['photos:viewer', ['Photo info'], 'Photo info', 'Close info', 'Photo info'],
     ['photos:viewer', ['Share photo'], 'Share photo', 'Close share', 'Share photo'],
     ['notes:editor', ['Share note'], 'Share', 'Cancel', 'Share note'],
-    ['files:folder', ['Sort and more'], 'Sort and more', 'Close menu', 'Sort and more'],
+    ['files-storage', ['Sort files'], 'Sort and more', 'Close menu', 'Sort files'],
     ['files:preview', ['Move file'], 'Move to', 'Close move', 'Move file'],
     ['files:preview', ['Share file'], 'Share file', 'Close share', 'Share file'],
     ['workflows:new', ['Add Read step'], 'Step editor', 'Close', null],
     // Settings > Google (live: the panel is not mounted in mock mode). The Google accounts panel
     // has no scrim button; its Close button is the pointer dismissal, and Escape returns focus to
     // the Google row.
-    ['live', ['Settings', 'Google'], 'Google accounts', 'Close Google accounts', 'Google'],
+    ['live', ['Settings', 'Account', 'Google & email'], 'Google accounts', 'Close Google accounts', 'Google & email'],
   ] as const;
   for (const [start, steps, name, scrim, opener] of POPUPS) {
     test(`${start} > ${steps.join(' > ')}: focus enters, stays, and returns on Escape`, async ({ page }) => {
@@ -186,7 +186,8 @@ test.describe('menus and sheets over a scrim own focus', () => {
         await page.getByRole('button',{name:'New note',exact:true}).click();
         await page.getByRole('textbox',{name:'Title',exact:true}).fill('Owned share focus note');
         await page.getByRole('textbox',{name:'Note',exact:true}).fill('Exact locally created content.');
-      }else if(ownedInfo)await openOwnedPhotoViewer(page);
+      }else if(start==='files-storage')await openFilesStorage(page);
+      else if(ownedInfo)await openOwnedPhotoViewer(page);
       else if (start === 'live') { await page.addInitScript(offline); await page.goto('/'); }
       else await page.goto(`/?mode=mock&start=${start}`);
       for (const step of steps.slice(0, -1)) await page.getByRole('button', { name: step, exact: true }).first().click();
@@ -498,12 +499,14 @@ test.describe('landscape Home', () => {
 test.describe('keyboard focus and the floating dock', () => {
   // Large-text layouts re-measure every rule after the text grows: explicit, as other sweeps run beside them.
   test.describe.configure({ timeout: 60_000 });
-  for (const scale of [1, 2]) test(`every Settings row that takes focus is wholly above the dock at ${scale * 100}% text`, async ({ page }) => {
+  for (const scale of [1, 2]) test(`every app Settings row that takes focus is wholly above the dock at ${scale * 100}% text`, async ({ page }) => {
     await page.addInitScript(offline);
     await page.goto('/');
+    await page.setViewportSize({width:412,height:520});
     await page.getByRole('button', { name: 'Settings', exact: true }).click();
+    await page.getByRole('button', { name: 'Apps', exact: true }).click();
     await expect(page.getByRole('group', { name: 'Assistant controls', exact: true })).toHaveCount(1);
-    const scroller = page.locator('[data-alpha-app-scroll="settings"]');
+    const scroller = page.locator('[data-settings-page]:not([inert])').last().locator('[data-alpha-app-scroll="settings"]');
     await expect(scroller).toBeVisible();
     if (scale !== 1) await setTextScale(page, scale);
     // The page is long enough to pass under the dock, so some row would take focus there.
@@ -553,17 +556,18 @@ test.describe('keyboard focus and the floating dock', () => {
 test.describe('screen titles with a large system font', () => {
   // Large-text layouts re-measure every rule after the text grows: explicit, as other sweeps run beside them.
   test.describe.configure({ timeout: 60_000 });
-  for (const title of [{ name: 'Photos', steps: ['Photos'], url: '/' }, { name: 'Passwords', steps: ['Settings', 'Passwords'], url: '/?mode=dev' }]) {
+  for (const title of [{ name: 'Photos', steps: ['Photos'], url: '/' }, { name: 'Password manager', steps: ['Settings', 'Apps', 'Passwords'], url: '/?mode=dev' }]) {
     test(`"${title.name}" is shown whole at 200% text`, async ({ page }) => {
       await page.addInitScript(offline);
       await page.goto(title.url);
       for (const step of title.steps) await page.getByRole('button', { name: step, exact: true }).first().click();
       const heading = page.locator('[data-alpha-app-header] [data-alpha-app-title]').filter({ hasText: title.name }).filter({ visible: true }).first();
       await expect(heading).toBeVisible();
-      // At the largest in-app size the header is still one 52px row.
+      // The current header remains one row at the largest in-app text size.
+      const headerHeight=await heading.evaluate(el=>Math.round(el.closest('[data-alpha-app-header]')!.getBoundingClientRect().height));
       await setTextScale(page, 1.5);
       await expect(page.locator('html')).not.toHaveClass(/alpha-text-xl/);
-      expect(await heading.evaluate(el => Math.round(el.closest('[data-alpha-app-header]')!.getBoundingClientRect().height))).toBe(52);
+      expect(await heading.evaluate(el => Math.round(el.closest('[data-alpha-app-header]')!.getBoundingClientRect().height))).toBe(headerHeight);
       await setTextScale(page, 2);
       await expect(page.locator('html')).toHaveClass(/alpha-text-xl/);
       const measured = await heading.evaluate(el => {

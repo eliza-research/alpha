@@ -635,6 +635,14 @@ export async function auditReadingOrder(page: Page): Promise<Violation[]> {
  * that cycles through part of the page leaves the rest unreachable by keyboard. While a menu
  * or sheet is open over a scrim, no stop may sit under the scrim or the panel.
  */
+/** Enough steps to walk the current finite page inventory and pass through the browser edge. */
+export async function exposedTabStopBudget(page: Page): Promise<number> {
+  return page.locator('button,a[href],input:not([type=hidden]),select,textarea,summary,[tabindex]').evaluateAll(elements =>
+    elements.filter(element => !element.matches(':disabled,[tabindex="-1"]')
+      && !element.closest('[inert],[aria-hidden="true"]')
+      && element.getClientRects().length > 0 && getComputedStyle(element).visibility === 'visible').length + 8);
+}
+
 export async function auditTabOrder(page: Page, limit = 120): Promise<Violation[]> {
   const read = () => page.evaluate(() => {
     const el = document.activeElement;

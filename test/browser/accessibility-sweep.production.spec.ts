@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { auditPage, auditReadingOrder, auditTabOrder, auditTree, format } from './accessibility-audit';
+import { auditPage, auditReadingOrder, auditTabOrder, auditTree, exposedTabStopBudget, format } from './accessibility-audit';
 import { LIVE_STATES, type State } from './accessibility-states';
 
 import {flagOffAndroid, residentHome, fenceNetwork} from './flag-off-android';
@@ -45,19 +45,12 @@ const PRODUCTION_APPS_STATE: State = {
 };
 const STATES = [...LIVE_STATES, PRODUCTION_APPS_STATE];
 const blocking = (lines: string[]) => lines.filter(line => !line.startsWith('text-truncated:'));
-async function licenseTabLimit(page: import('@playwright/test').Page, state: State) {
-  if (state.name !== 'live Settings licenses') return undefined;
-  return page.locator('button,a[href],input:not([type=hidden]),select,textarea,summary,[tabindex]').evaluateAll(elements =>
-    elements.filter(element => !element.matches(':disabled,[tabindex="-1"]')
-      && !element.closest('[inert],[aria-hidden="true"]')
-      && element.getClientRects().length > 0 && getComputedStyle(element).visibility === 'visible').length + 8);
-}
 
 for (const state of STATES) {
   test(`production names, roles, focus, contrast and clipping: ${state.name}`, async ({ page }) => {
     await state.open(page);
     // Walk every exposed component row in the license inventory, with room for the browser edge.
-    const tabLimit=await licenseTabLimit(page,state);
+    const tabLimit=state.name==='live Settings licenses'?await exposedTabStopBudget(page):undefined;
     if(tabLimit)test.setTimeout(90_000);
     const found = blocking(format([
       ...await auditTree(page),
@@ -75,7 +68,7 @@ test.describe('landscape', () => {
     test(`production landscape keeps every control on screen: ${state.name}`, async ({ page }) => {
       await state.open(page);
       await expect(page.locator('html')).toHaveClass(/alpha-landscape/);
-      const tabLimit=await licenseTabLimit(page,state);
+      const tabLimit=state.name==='live Settings licenses'?await exposedTabStopBudget(page):undefined;
       if(tabLimit)test.setTimeout(90_000);
       const found = blocking(format([...await auditPage(page, { clipping: true, overlap: true, dock: true }), ...await auditTree(page), ...await auditTabOrder(page,tabLimit), ...await auditReadingOrder(page)]));
       expect(found, found.join('\n')).toEqual([]);

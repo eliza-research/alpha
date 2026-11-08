@@ -56,9 +56,14 @@ test('developer-only Settings rows appear only with ?tools=1 on the development 
  await open('?tools=1');
  await page.getByRole('button',{name:'General',exact:true}).click();
  for (const name of ['Developer', 'Try mock mode']) await expect(page.getByRole('button', {name, exact:true})).toBeVisible();
+ await page.getByRole('button',{name:'Developer',exact:true}).click();
+ await expect(page.getByRole('heading',{name:'Developer',exact:true})).toBeVisible();
+ await expect(page.getByRole('button',{name:'Problem log',exact:true})).toBeVisible();
+ await expect(page.getByRole('button',{name:'Export diagnostics',exact:true})).toBeVisible();
+ await page.getByRole('button',{name:'Back to General',exact:true}).click();
  await page.getByRole('button',{name:'Back to Settings',exact:true}).click();
  await page.getByRole('button', {name:'About', exact:true}).click();
- await expect(page.getByText('Update channel (development)', {exact:true})).toBeVisible();
+ await expect(page.getByText('Update channel (development)', {exact:true})).toHaveCount(0);
  await page.getByRole('button', {name:'Back to Settings', exact:true}).click();
  await page.getByRole('button',{name:'Apps',exact:true}).click();
  await page.getByRole('button', {name:'Calendar', exact:true}).click();
@@ -66,18 +71,18 @@ test('developer-only Settings rows appear only with ?tools=1 on the development 
 });
 
 
-test('development Problem log restores focus to About', async ({page}) => {
+test('development license list restores focus to About', async ({page}) => {
  await page.addInitScript(() => localStorage.setItem('alpha.connection.selection.v1', JSON.stringify({kind:'offline'})));
  await page.goto('/?mode=dev');
  await page.getByRole('button', {name:'Settings', exact:true}).click();
  const about=page.getByRole('button', {name:'About', exact:true});
  await about.focus();await about.press('Enter');
- const problems=page.getByRole('button', {name:'Problem log', exact:true});
- await problems.focus();await problems.press('Enter');
+ const licenses=page.getByRole('button', {name:'Open source licenses', exact:true});
+ await licenses.focus();await licenses.press('Enter');
  const parent=page.getByRole('button', {name:'Back to About', exact:true});
  await expect(parent).toBeFocused();
  await expect(page.getByRole('button', {name:'Back to Settings', exact:true})).toHaveCount(0);
- await parent.press('Enter');await expect(problems).toBeFocused();
+ await parent.press('Enter');await expect(licenses).toBeFocused();
  await page.getByRole('button', {name:'Back to Settings', exact:true}).press('Enter');
  await expect(about).toBeFocused();
 });
