@@ -161,6 +161,22 @@ export function HostedDigestPanel({composeQuestion,canComposeQuestion}:{composeQ
         const node=document.getElementById('hosted-result-'+tap.runId);if(!node)return;node.scrollIntoView({block:'nearest'});node.focus();
         void hostedResultNative.consumeResult({token:tap.token}).then(()=>setTap(current=>current?.token===tap.token?null:current)).catch(()=>{});
     },[open,tap,results]);
+    // Android: a result shown here withdraws its notice, and a result arriving while this panel is on screen posts silently.
+    const withdrawn=useRef(new Set<string>()),showingScope=useRef<string|null>(null);
+    useEffect(()=>{
+        const b=binding.current;
+        if(!isAndroid||!open||!b||!canSyncResults()||b.sessionId!==connection.session?.sessionId)return;
+        const runIds=results.map(result=>result.runId).filter(run=>!withdrawn.current.has(b.notices.scope+':'+run));if(!runIds.length)return;
+        for(const run of runIds)withdrawn.current.add(b.notices.scope+':'+run);
+        void hostedResultNative.withdrawResult?.({scope:b.notices.scope,runIds}).catch(()=>{for(const run of runIds)withdrawn.current.delete(b.notices.scope+':'+run);});
+    },[open,results]);
+    useEffect(()=>{
+        if(!isAndroid)return;
+        const report=()=>{const b=binding.current,scope=open&&b&&!document.hidden?b.notices.scope:null;if(scope===showingScope.current)return;showingScope.current=scope;void hostedResultNative.setResultsShowing?.({scope}).catch(()=>{});};
+        report();document.addEventListener('visibilitychange',report);
+        return()=>document.removeEventListener('visibilitychange',report);
+    },[open,results]);
+    useEffect(()=>()=>{if(isAndroid&&showingScope.current)void hostedResultNative.setResultsShowing?.({scope:null}).catch(()=>{});},[]);
 	// resultsOnly: the closed-panel poll reads only the inbox (results and notices for Home and taps).
 	const refresh = (afterMutation=false,resultsOnly=false):Promise<void> => {
 		const b = binding.current;

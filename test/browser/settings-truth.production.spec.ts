@@ -31,7 +31,7 @@ async function nativeStub(page:Page,fixture:Fixture={}){
    snapshot:{readAt:now,model:'Stub phone',manufacturer:'Stub maker',appVersion:'0.1.0',appVersionCode:7,appUpdatedAt:Date.UTC(2026,8,1),androidRelease:'16',build:'stub-build',securityPatch:'2026-09-05',
     permissions:{Microphone:true,Location:false,Camera:false,Calendar:true},locationAccess:'denied',batteryPercent:64,charging:false,powerSave:false,
     wifiActive:true,cellularActive:false,wifiEnabled:true,bluetoothEnabled:false,airplaneMode:false,locationEnabled:true,mobileDataEnabled:true,interruptionFilter:'all',adaptiveBrightness:true,textScalePercent:100,...snapshot} as Record<string,unknown>,
-   status:{permissionGranted:true,appEnabled:true,interruption:'all',scope:'alpha-phone',channels:[{id:'c-reminders',name:'Reminders',importance:4,blocked:false,groupBlocked:false},{id:'c-results',name:'Scheduled digest results',importance:3,blocked:false,groupBlocked:false}]} as Record<string,any>,
+   status:{permissionGranted:true,appEnabled:true,interruption:'all',scope:'alpha-phone',channels:[{id:'c-reminders',name:'Reminders',importance:4,blocked:false,groupBlocked:false},{id:'c-results',name:'Daily briefs',importance:3,blocked:false,groupBlocked:false}]} as Record<string,any>,
    cross:{revision:'r1',enabled:false,paused:false,accessGranted:false,connected:false,history:true,apps:[]} as Record<string,unknown>,
    history:[{appLabel:'Stub Mail',state:'posted',at:now-60_000}] as unknown[],
    items:[] as unknown[],openFails:false,unspecific:[] as string[],unavailable:[] as string[],torch:true,shadeOutcome:'opened' as string,provider:provider??{provider:'elizacloud',configured:false},
@@ -225,7 +225,7 @@ test('every Settings page shows native facts or an honest handoff, with no fixtu
  const shown:Record<string,RegExp[]>={
   'Wi-Fi':[/On · connected/],'Bluetooth':[/Bluetooth\s*Off/],'Mobile data':[/Mobile data\s*On/,/Airplane mode\s*Off/],'Display':[/Adaptive brightness on/],
   'Sound & vibration':[/Media\s*40%/,/Ring\s*100%/,/Alarm\s*0%/,/Do Not Disturb\s*Off/],
-  'Notifications':[/Reminders\s*Channel allowed/,/Scheduled digest results\s*Channel allowed/],'Battery':[/64%/,/On battery/,/Battery saver\s*Off/],
+  'Notifications':[/Reminders\s*Channel allowed/,/Daily briefs\s*Channel allowed/],'Battery':[/64%/,/On battery/,/Battery saver\s*Off/],
   'Privacy & data':[/Device location\s*On/,/Microphone\s*Allowed for Alpha/,/Camera\s*Not allowed/],
   'About':[/Stub phone/,/Alpha Phone\s*0\.1\.0 \(7\)/,/Installed or last updated/,/Android\s*16/,/Security patch\s*2026-09-05/,/AI model\s*Not reported/],
   'Connections':[/Manage Google accounts/],'Models':[/Inference model\s*Not reported/],
@@ -342,7 +342,7 @@ test('notification denial and re-enable are read back from Android, and local hi
  await expect(row).toContainText('Some channels blocked');
  await row.click();
  await expect(current(page)).toContainText(/Reminders\s*Channel blocked/);
- await expect(current(page)).toContainText(/Scheduled digest results\s*Channel allowed/);
+ await expect(current(page)).toContainText(/Daily briefs\s*Channel allowed/);
  await current(page).getByRole('button',{name:'Manage Reminders',exact:true}).click();
  await expect.poll(()=>page.evaluate(()=>(window as any).truth.calls.filter((c:any)=>c.method==='openChannelSettings').map((c:any)=>c.input.id))).toEqual(['c-reminders']);
  // Opening Android's page changes nothing here until Android reports the change.
@@ -366,7 +366,7 @@ test('notification denial and re-enable are read back from Android, and local hi
  await page.evaluate(()=>{const channels=(window as any).truth.state.status.channels;channels[0].importance=2;channels[1].groupBlocked=true;});
  await resume(page);
  await expect(current(page)).toContainText(/Reminders\s*Silent channel/);
- await expect(current(page)).toContainText(/Scheduled digest results\s*Channel group blocked/);
+ await expect(current(page)).toContainText(/Daily briefs\s*Channel group blocked/);
  await expect(current(page)).toContainText(/Do Not Disturb\s*Interruptions suppressed/);
  // Android cannot be read: the state is unavailable, never "allowed".
  await page.evaluate(()=>{const truth=(window as any).truth,original=(window as any).Capacitor.nativePromise;(window as any).Capacitor.nativePromise=async(plugin:string,method:string,input:unknown)=>{if(plugin==='AlphaNotifications'&&method==='status'){truth.calls.push({plugin,method,input});throw Error('Notification delivery settings could not be read');}return original(plugin,method,input);};});
