@@ -6,7 +6,7 @@ import type {HostedNativeSelection} from './hosted-digests';
 export interface SourceRenewalTap {token:string;question:boolean;selection:HostedNativeSelection;expiresAt:number}
 export function renewalMatches(tap:SourceRenewalTap,selection:HostedNativeSelection,expiresAt:string){return tap.expiresAt===Date.parse(expiresAt)&&['provider','ownerId','agentId','installationId','enrollmentId','sourceId','revision'].every(field=>tap.selection[field as keyof HostedNativeSelection]===selection[field as keyof HostedNativeSelection]);}
 export function reviewSourceRenewalQuestion(o:{tap:SourceRenewalTap;signal:AbortSignal;current:()=>boolean;recheck:()=>Promise<Partial<SourceRenewalTap>>;settle:(discard:boolean)=>Promise<void>;compose:(text:string)=>boolean;report:(text:string)=>void;closed:()=>void}){
- const text='Scheduled brief source expires soon. Renew it in Alpha Phone to keep your brief reading it.';
+ const text='A brief source expires soon. Renew it to keep your brief updated.';
  const current=()=>o.current()&&!alphaClient.getState().context.sensitive;
  if(!o.tap.question||!current()||!noticeReviewable({source:'own',id:o.tap.selection.sourceId,revision:o.tap.selection.revision,title:'Scheduled source renewal',text})||sensitiveReadingText(text))return;
  let composing=false,ended=false,interrupted=false;
