@@ -18,15 +18,16 @@ const committed = JSON.parse(fs.readFileSync(path.join(ROOT, VOICE_HOST), 'utf8'
 test('the committed record satisfies the schema, model inventory and ASR slot', () => {
   assert.deepEqual(voiceHostProblems(committed), []);
   const record = committed;
-  // P-82 accepted engine 6337fd4c with the speech Java at b25d8aef29. That Java changed by this pin
-  // and has been neither requalified nor re-accepted, so the record is not qualified.
-  assert.equal(record.qualified, false, 'the changed speech bridge is not requalified or re-accepted');
+  // P-82 accepted engine 6337fd4c with the speech Java at b25d8aef29. That Java changed by this pin;
+  // it was requalified here on both ABIs and the owner re-accepted it (P-83), so the record qualifies.
+  assert.equal(record.qualified, true, 'requalified at this pin and re-accepted (P-83)');
   assert.equal(record.evidence.deviceExecuted, true);
-  assert.equal(record.evidence.userAccepted, false);
+  assert.equal(record.evidence.userAccepted, true);
+  assert.match(record.acceptance, /P-83/, 'the acceptance names the re-acceptance decision');
   assert.equal(record.sourceAdmission.developComparison.qualifiedAt, 'b25d8aef2916385c571f4367e099809254fde0bb');
   assert.ok(record.sourceAdmission.developComparison.changedPaths.some(file => file.endsWith('/ai/eliza/voice/ParadeeVoice.java')), 'the qualify path\'s changed Java is named');
   assert.ok(record.evidence.records.includes('docs/evidence/voice-engine-6337fd4c/qualify-receipt.json'));
-  // Requalified at this pin on both ABIs; the owner has not re-accepted, so qualified stays false.
+  // Requalified at this pin on both ABIs (the evidence the re-acceptance rests on).
   assert.equal(record.evidence.emulatorDeviceExecuted, true);
   for (const file of ['qualify/asr-wer.json', 'qualify/paradee-roundtrip.json', 'qualify-x86_64/asr-wer.json', 'qualify-x86_64/paradee-roundtrip.json', 'qualify-receipt.json']) {
     const record_ = `docs/evidence/voice-engine-6337fd4c-4787d51a14/${file}`;
