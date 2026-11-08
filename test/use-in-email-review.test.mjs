@@ -94,6 +94,16 @@ test('a destination that changed after the review opened is refused and shown ag
   assert.deepEqual(plain(t.inserted), [{ text: t.reply.text, append: false }]);
 });
 
+test('after a Cloud account change, confirming again inserts into the refreshed destination', async () => {
+  const t = await boot();
+  t.row('reply-1').useInEmail(); t.world.cloud = 'cloud-2'; t.inbox.revision = 2;
+  t.render().emailUse.confirm();
+  assert.equal(t.inserted.length, 0); assert.match(t.render().emailUse.notice, /Cloud account changed.*Nothing was added/);
+  t.render().emailUse.confirm();
+  assert.deepEqual(plain(t.inserted), [{ text: t.reply.text, append: false }]);
+  assert.equal(t.render().emailUseOpen, false);
+});
+
 test('a blocked destination cannot be confirmed', async () => {
   const t = await boot(); t.inbox.ready = false;
   t.row('reply-1').useInEmail();
