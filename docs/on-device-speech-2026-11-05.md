@@ -167,6 +167,21 @@ The current bridge includes Java changes after `b25d8aef29`, including speech wa
 leading-silence trimming and first-write output handling. The current voice record keeps
 `qualified: false` and `userAccepted: false` while those changed inputs await qualification.
 
+### Historical component rerun at 4787d51a14 (November 7–8)
+
+The upstream qualify app was rebuilt from prepared source at `4787d51a14` and run on the
+Pixel 10a and x86_64 emulator. The receipt records installed APK readback and distinct JNI
+library hashes. The engine libraries retained their recorded `6337fd4c4b` hashes. All 101 ASR
+and 230 round-trip transcripts on each ABI match the earlier component runs.
+[Component records and source-bound receipt](evidence/voice-engine-6337fd4c-4787d51a14/qualify-receipt.json)
+
+The exercised `VoiceAssets`, `NativeAsr` and `ParadeeVoice` sources match SDK `99b49439ce`.
+The run did not exercise the Alpha application, live recognizer session, microphone,
+`LocalSpeechBridgePlugin`, warmup, lead trimming or first-write output. Those components keep
+their current qualification and owner-acceptance requirements. The earlier branch's build and
+device-check limitations remain a historical record of that branch.
+[Historical branch device check](evidence/on-device-speech-2026-11-07/v829-device-check.json)
+
 ### Streamed reply speech
 
 Alpha forwards frame metadata to the shared voice session. A sentence can be spoken early only

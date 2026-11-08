@@ -37,6 +37,25 @@ test('the committed record satisfies the schema, model inventory and ASR slot', 
   assert.equal(record.models.some(row => row.role !== 'notice' && /kokoro|\.on{2}x|\.bin$/i.test(row.path)), false, 'no Kokoro, other-runtime model or voice preset');
 });
 
+test('historical component requalification retains its original source and pending current acceptance', () => {
+  const base = 'docs/evidence/voice-engine-6337fd4c-4787d51a14';
+  const receipt = JSON.parse(fs.readFileSync(path.join(ROOT, base, 'qualify-receipt.json'), 'utf8'));
+  assert.equal(receipt.qualifyApp.sourcePin, '4787d51a142c63c98371c832997184c53f7218d3');
+  for (const file of ['qualify/asr-wer.json', 'qualify/paradee-roundtrip.json', 'qualify-x86_64/asr-wer.json', 'qualify-x86_64/paradee-roundtrip.json', 'qualify-receipt.json']) {
+    assert.ok(committed.evidence.records.includes(`${base}/${file}`));
+    assert.ok(fs.existsSync(path.join(ROOT, base, file)));
+  }
+  for (const abi of committed.abis) {
+    const engine = abi.libraries.find(row => row.name === 'libelizainference.so');
+    const measured = receipt.engine.librariesReadFromApk.find(row => row.path === `lib/${abi.abi}/libelizainference.so`);
+    assert.equal(measured.sha256, engine.sha256);
+    assert.equal(measured.bytes, engine.bytes);
+  }
+  assert.equal(committed.qualified, false);
+  assert.equal(committed.evidence.userAccepted, false);
+  assert.equal(committed.sourceAdmission.nativeQualificationTransferred, false);
+});
+
 test('only a voice record for the current SDK can admit the native profile', () => {
   const {commit}=JSON.parse(fs.readFileSync(path.join(ROOT,'upstream.lock.json'),'utf8'));
   if (committed.pin===commit) {
