@@ -2077,8 +2077,11 @@
       "invariant": "safety",
       "tests": [
         "staleDialogPreservesExactReplacementTest",
-        "fabricatedOpenedOuterReceiptAsBuiltTest",
+        "fabricatedOuterReceiptCannotCommitTest",
+        "exactLegacyTerminalReplayRemainsIdempotentTest",
+        "incorrectNestedBindingCannotProduceNewReceiptTest",
         "approvalTokenIsOneUseTest",
+        "showNeedsExactTokenWithoutDialogTest",
         "uncertainEffectNeverReplaysTest",
         "expiryAfterDispatchMarkerStillPreventsHandoffTest",
         "retiredSurfaceCannotUseSealedHandoffTest",
@@ -2088,7 +2091,8 @@
         "OneExternalHandoff",
         "DispatchConsumesApproval",
         "ClaimNeedsLiveDialog",
-        "NoRingReceipt"
+        "NoRingReceipt",
+        "TypedReceiptHasProducer"
       ],
       "sources": [
         "android/app/src/main/java/ai/elizaresearch/alphaphone/ClockAgentReview.java",
@@ -2102,14 +2106,14 @@
         "vendor/eliza/plugins/plugin-native-system/android/src/main/java/ai/eliza/plugins/system/clock/ClockDays.java"
       ],
       "stateMapping": {
-        "operation/outerPhase/outerStatus/outerClaim": "Exact retained Clock operation and outer ActionJournal entry/result",
-        "phase/token/issued/receipt": "Durable clockReview marker, exact UUID equality class and nested outcome",
+        "operation/outerPhase/outerStatus/outerClaim": "Exact retained Clock operation and outer ActionJournal entry/result; controlled legacy replay input",
+        "phase/token/issued/receipt": "Durable clockReview marker, attempt/operation binding, exact UUID equality class and nested outcome",
         "openOwner/visible/retired/dialogReplies": "Actual ClockAgentReview claim, controlled AlertDialog callbacks and originating bridge results",
         "expired/confirming/attempts/deliveries/outcome": "Controlled expiry, held post-mark UI work, external activity port and current call result"
       },
       "abstractions": [
         "One reviewed journal entry, two exact plugin objects, one dialog per actor and one external handoff. A handoff receipt proves only an activity delivery attempt outcome.",
-        "A retired dialog callback leaves its successor claim intact. The remaining as-built outer journal accepts a fabricated opened result before a native Clock result exists.",
+        "A retired dialog callback leaves its successor claim intact. New typed Clock receipts require a structurally matching native result for the exact durable attempt. Conservative unknown and exact legacy terminal replays are retained.",
         "Synthetic Android resolver/dialog, storage, keyguard and wall time. Installed AOSP DeskClock owns ringing, stopping and snoozing."
       ],
       "bounds": {

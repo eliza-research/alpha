@@ -46,7 +46,9 @@ export async function checkNativeClockReview(extraSources = []) {
     assert.equal(driverHashes[join(root,'vendor/eliza',path)],upstream.read(path).get(path).sha256);
   }
   const traces=clockReviewSourceTraces([
-    'late-dialog','late-dialog-negative','late-dialog-cancel','fabricated-outer','approved-once','review-storage-and-foreground-retry',
+    'late-dialog','late-dialog-negative','late-dialog-cancel','fabricated-outer','legacy-exact-replay',
+    'mismatched-attempt-receipt','mismatched-operation-receipt','bare-failed-without-receipt',
+    'absent-unknown-without-receipt','typed-unknown-without-receipt','approved-once','review-storage-and-foreground-retry',
     'approval-committed-before-failure-report','cancel-current-review','show-lost-mark','show-self',
     'show-missing','show-denied','show-unknown-before','snooze-manual','dismiss-manual',
     'effect-before-refused-receipt','terminal-receipt-before-refusal','expire-after-consume',
@@ -60,6 +62,7 @@ export async function checkNativeClockReview(extraSources = []) {
   const receipt=await checkTraces({model,sources,driverHashes,traces,scope:'bounded-orchestration',assumptions:[
     'The exact native Clock review class, product Clock journal methods, shared journal and Clock handoff builder execute against controlled Android dialog and activity ports.',
     'A successful synthetic delivery is an external Clock activity handoff. This model has no alarm creation, ringing, snooze or stop acknowledgement.',
+    'A retained legacy terminal row and mismatched nested attempt/hash are seeded as storage inputs. New typed outcomes require the exact durable producer, while typed and bare unknown remain conservative outcomes.',
   ]});
   return {receipt,obligations:[
     {model,obligation:'Installed dialog delivery and DeskClock behavior',

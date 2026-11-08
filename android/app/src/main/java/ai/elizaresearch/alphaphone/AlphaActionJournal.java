@@ -47,6 +47,15 @@ final class AlphaActionJournal {
      if(clock.length()!=3||!"clock-handoff".equals(clock.optString("kind"))||!operation.optString("action").equals(clock.optString("action"))||!Set.of("opened","unavailable","denied","failed","unknown").contains(outcome))throw new IllegalArgumentException();
      String expected="opened".equals(outcome)?"succeeded":"unknown".equals(outcome)?"unknown":"failed";
      if(!expected.equals(status))throw new IllegalArgumentException();
+     // Unknown is also a conservative renderer fallback. Preserve exact legacy terminal
+     // replays, whose summary and result remain subject to ActionJournal's idempotence check.
+     boolean replay="terminal".equals(entry.optString("phase"))&&status.equals(entry.optString("status"))&&sameJson(result,entry.optJSONObject("result"));
+     if(!"unknown".equals(outcome)&&!replay){
+      JSONObject review=entry.optJSONObject("clockReview");
+      if(review==null||!Set.of("finished","cancelled").contains(review.optString("phase"))
+       ||!entry.getString("attemptId").equals(review.optString("attemptId"))||!entry.getString("operationHash").equals(review.optString("operationHash"))
+       ||!sameJson(clock,review.optJSONObject("result")))throw new IllegalArgumentException("Clock result does not match the native receipt");
+     }
     }
    }else if("maps_read_selected".equals(type)){
     if(result.length()!=(result.has("mapsResult")?2:1)||!entry.getString("operationId").equals(result.optString("operationId")))throw new IllegalArgumentException();

@@ -44,6 +44,7 @@ public final class ClockReviewTraces {
   PluginCall confirmation;
   Runnable queued;
   int confirming;
+  boolean legacy;
   String outcome="none";
 
   Fixture(String name,String action)throws Exception{
@@ -123,9 +124,13 @@ public final class ClockReviewTraces {
     if(plugin.activity.destroyed)retired.put(actor);
    }
    JSONObject result=clock.optJSONObject("result"), outerResult=outer.optJSONObject("result");
-   String claim=outerResult==null?"none":outerResult.has("clockResult")?outerResult.getJSONObject("clockResult").getString("status"):"bare-unknown";
-   return Trace.fields("operation",action,"outerPhase",outer.getString("phase"),"outerStatus",outer.optString("status","none"),"outerClaim",claim,
-    "phase",clock.optString("phase","none"),"token",token,"issued",tokens.size(),"openOwner",openOwner(),
+   String claim=outerResult==null?(outer.getString("phase").equals("terminal")?"null-"+outer.getString("status"):"none")
+    :outerResult.has("clockResult")?outerResult.getJSONObject("clockResult").getString("status"):"bare-"+outer.getString("status");
+   boolean bound=clock.optString("attemptId").equals(outer.getString("attemptId")) &&
+    clock.optString("operationHash").equals(outer.getString("operationHash"));
+   return Trace.fields("operation",action,"outerPhase",outer.getString("phase"),"outerStatus",outer.optString("status","none"),
+    "outerClaim",claim,"legacy",legacy,"phase",clock.optString("phase","none"),"token",token,"issued",tokens.size(),
+    "openOwner",openOwner(),"bound",bound,
     "visible",visible,"retired",retired,"dialogReplies",dialogReplies,"expired",now>=EXPIRES,
     "confirming",confirming,"attempts",first.activity.attempted+second.activity.attempted,
     "deliveries",first.activity.delivered.size()+second.activity.delivered.size(),
@@ -239,11 +244,33 @@ public final class ClockReviewTraces {
    point("dispatch",port,saved);
   }
 
+  JSONObject typedResult(String status){
+   return new JSONObject().put("operationId",OP)
+    .put("clockResult",new JSONObject().put("kind","clock-handoff").put("action",action).put("status",status));
+  }
+
+  void seedLegacy()throws Exception{
+   // The original source could persist this shape before any nested marker existed.
+   JSONObject saved=entry().put("phase","terminal").put("status","succeeded").put("summary","Synthetic receipt")
+    .put("result",typedResult("opened")).put("finishedAt",now);
+   slots.put(journal.entrySlot(SCOPE,ID),saved.toString());legacy=true;
+   point("seedLegacy");
+  }
+
+  void corruptBinding(String field)throws Exception{
+   JSONObject saved=entry();
+   saved.getJSONObject("clockReview").put(field,"synthetic-stale-binding");
+   slots.put(journal.entrySlot(SCOPE,ID),saved.toString());
+   point("corruptBinding");
+  }
+
   void finish(int actor,String claimed)throws Exception{
-   String status=claimed.equals("opened")?"succeeded":claimed.equals("unknown")?"unknown":"failed";
-   JSONObject result=new JSONObject().put("operationId",OP);
-   if(!claimed.equals("bare-unknown"))result.put("clockResult",new JSONObject().put("kind","clock-handoff").put("action",action).put("status",claimed));
-   var call=new PluginCall(callData().put("status",claimed.equals("bare-unknown")?"unknown":status).put("summary","Synthetic receipt").put("result",result));
+   String status=claimed.equals("opened")||claimed.equals("bare-succeeded")?"succeeded":
+    Set.of("unknown","bare-unknown","null-unknown").contains(claimed)?"unknown":"failed";
+   JSONObject input=callData().put("status",status).put("summary","Synthetic receipt");
+   if(!claimed.equals("null-unknown"))
+    input.put("result",claimed.startsWith("bare-")?new JSONObject().put("operationId",OP):typedResult(claimed));
+   var call=new PluginCall(input);
    plugin(actor).finish(call);call.await();drain(actor);
    outcome=call.rejection!=null?"rejected":call.result.getJSONObject("entry").getString("status");
    point("finish",actor,claimed);
@@ -277,9 +304,38 @@ public final class ClockReviewTraces {
     f.confirm(2,1,"complete","complete",true);f.dispatch("opened","complete");
     break;
    case "fabricated-outer":
-    f.finish(1,"ringing");f.finish(1,"opened");
-    check(f.entry().getString("status").equals("succeeded") && f.clock().isEmpty() && f.first.activity.attempted==0,
-     "As built, structurally valid opened can finish without native dispatch");
+    for(String claim:java.util.List.of("ringing","opened","unavailable","denied","failed","bare-succeeded")){
+     f.finish(1,claim);
+     check(f.outcome.equals("rejected") && f.entry().getString("phase").equals("applying") &&
+      f.clock().isEmpty() && f.first.activity.attempted==0,"Fabricated typed outcomes cannot terminalize");
+    }
+    f.finish(1,"bare-unknown");
+    break;
+   case "legacy-exact-replay":
+    f.seedLegacy();f.finish(1,"opened");f.finish(2,"opened");
+    PluginCall differentSummary=new PluginCall(f.callData().put("status","succeeded")
+     .put("summary","Changed summary").put("result",f.typedResult("opened")));
+    f.second.finish(differentSummary);differentSummary.await();f.drain(2);
+    check(differentSummary.rejection!=null,"Legacy compatibility does not bypass exact summary");
+    f.stutter("Legacy terminal replay still refuses a different summary");
+    f.finish(2,"denied");
+    check(f.entry().getString("status").equals("succeeded") && f.first.activity.attempted==0,
+     "Exact legacy terminal replay is readback only");
+    break;
+   case "mismatched-attempt-receipt","mismatched-operation-receipt":
+    approved(f,1);f.confirm(1,1,"complete","complete",true);f.dispatch("opened","complete");
+    f.corruptBinding(mode.equals("mismatched-attempt-receipt")?"attemptId":"operationHash");
+    f.finish(1,"opened");check(f.outcome.equals("rejected"),"Wrong durable producer binding cannot settle");
+    f.finish(1,"unknown");
+    break;
+   case "bare-failed-without-receipt":
+    f.finish(1,"bare-failed");f.finish(2,"bare-failed");
+    break;
+   case "absent-unknown-without-receipt":
+    f.finish(1,"null-unknown");f.finish(2,"null-unknown");
+    break;
+   case "typed-unknown-without-receipt":
+    f.finish(1,"unknown");f.finish(2,"unknown");
     break;
    case "approved-once":
     f.confirm(1,0,"complete","complete",false);

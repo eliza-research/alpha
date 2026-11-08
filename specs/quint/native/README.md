@@ -598,6 +598,9 @@ and manual acknowledgement.
 
 A dialog callback now settles only its captured claim. The as-built source
 trace demonstrated that a retired callback could strand its replacement.
-The outer journal still accepts a well-shaped `opened` result before a native
-Clock receipt exists. The JVM executes the relevant product bridge methods
-and the pinned journal and handoff classes over controlled ports.
+A new typed outcome also requires the exact stored native result for the
+current attempt and operation. Unknown remains a conservative result,
+and exact legacy terminal readback remains idempotent. The as-built traces
+retain the original fabricated-`opened` acceptance. The JVM executes the
+product bridge methods and pinned journal and handoff classes over
+controlled ports.

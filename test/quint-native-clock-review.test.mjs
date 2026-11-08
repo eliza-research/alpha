@@ -5,6 +5,6 @@ import {checkNativeClockReview} from '../specs/quint/refinement/native/clock-rev
 test('native Clock review and journal settlement refine the product handoff source', async () => {
   const {receipt} = await checkNativeClockReview();
   assert.equal(receipt.passed, true);
-  assert.equal(receipt.traces, 21);
-  assert.equal(receipt.observedFields.length, 17);
+  assert.equal(receipt.traces, 27);
+  assert.equal(receipt.observedFields.length, 19);
 });

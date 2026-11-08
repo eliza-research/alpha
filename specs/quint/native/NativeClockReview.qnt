@@ -2,8 +2,8 @@
 // Activity handoff to a synthetic external Clock, with no alarm-side receipt.
 module NativeClockReview {
   type State = {
-    operation: str, outerPhase: str, outerStatus: str, outerClaim: str,
-    phase: str, token: int, issued: int, openOwner: int,
+    operation: str, outerPhase: str, outerStatus: str, outerClaim: str, legacy: bool,
+    phase: str, token: int, issued: int, openOwner: int, bound: bool,
     visible: Set[int], retired: Set[int], dialogReplies: int -> str,
     expired: bool, confirming: int, attempts: int, deliveries: int,
     receipt: str, outcome: str
@@ -14,24 +14,26 @@ module NativeClockReview {
   val operations = Set("set","show","snooze","dismiss")
   val results = Set("opened","unavailable","denied","failed","unknown")
   val faults = Set("complete","before","after")
+  val finishInputs = results.union(Set("bare-unknown","bare-failed","bare-succeeded","null-unknown","ringing"))
 
   action initWith(operation: str): bool = all {
     operations.contains(operation),
-    s' = {operation:operation,outerPhase:"applying",outerStatus:"none",outerClaim:"none",
-      phase:"none",token:0,issued:0,openOwner:0,visible:Set(),retired:Set(),
+    s' = {operation:operation,outerPhase:"applying",outerStatus:"none",outerClaim:"none",legacy:false,
+      phase:"none",token:0,issued:0,openOwner:0,bound:false,visible:Set(),retired:Set(),
       dialogReplies:actors.mapBy(_actor=>"none"),expired:false,confirming:0,
       attempts:0,deliveries:0,receipt:"none",outcome:"none"}
   }
-  action init = initWith("set")
+  action init = any { initWith("set"), initWith("show"), initWith("snooze"), initWith("dismiss") }
 
   pure def reply(state: State): str = if (state.receipt=="none") "unknown" else state.receipt
   pure def approval(state: State): State =
-    { ...state, phase:"approved",token:state.issued+1,issued:state.issued+1 }
-  pure def failed(state: State): State = { ...state, phase:"cancelled",receipt:"failed" }
+    { ...state, phase:"approved",bound:true,token:state.issued+1,issued:state.issued+1 }
+  pure def failed(state: State): State = { ...state, phase:"cancelled",bound:state.bound or state.phase=="none",receipt:"failed" }
   pure def hide(state: State, actor: int): State =
     { ...state, visible:state.visible.exclude(Set(actor)) }
   def eligible(actor: int): bool =
-    s.outerPhase=="applying" and not(s.retired.contains(actor)) and not(s.expired)
+    s.outerPhase=="applying" and not(s.retired.contains(actor)) and not(s.expired) and
+      (s.phase=="none" or s.bound)
 
   action review(actor: int, admission: str, saved: str): bool = all {
     actors.contains(actor), s.confirming==0, faults.contains(saved),
@@ -44,7 +46,7 @@ module NativeClockReview {
     } else if (s.openOwner!=0) s' = { ...s,outcome:reply(s) }
     else if (s.phase=="none" and saved=="before") s' = { ...s,outcome:"rejected" }
     else {
-      val prepared={ ...s,phase:"reviewing" }
+      val prepared={ ...s,phase:"reviewing",bound:true }
       if ((s.phase=="none" and saved=="after") or admission!="complete")
         s' = { ...prepared,outcome:"rejected" }
       else all {
@@ -133,12 +135,28 @@ module NativeClockReview {
     }
   }
 
-  // The as-built product ResultPolicy checks result shape but does not compare
-  // the Clock-specific producer entry. Keep this counterexample separate.
+  // A seed represents an old durable terminal row, not a new source result.
+  action seedLegacy: bool = all {
+    s.outerPhase=="applying", s.phase=="none", s.attempts==0,
+    s' = { ...s,outerPhase:"terminal",outerStatus:"succeeded",outerClaim:"opened",legacy:true }
+  }
+
+  // The fixture can supply historical bytes with an inconsistent nested binding.
+  action corruptBinding: bool = all {
+    s.outerPhase=="applying", s.phase=="finished", s.bound,
+    s' = { ...s,bound:false }
+  }
+
+  def exactReceipt(claimed: str): bool =
+    s.phase.in(Set("finished","cancelled")) and s.bound and s.receipt==claimed
+
   action finish(actor: int, claimed: str): bool = all {
-    actors.contains(actor), s.confirming==0, claimed.in(results.union(Set("bare-unknown","ringing"))),
-    val status=if (claimed=="opened") "succeeded" else if (claimed.in(Set("unknown","bare-unknown"))) "unknown" else "failed"
-    if (s.retired.contains(actor) or claimed=="ringing" or (s.outerPhase=="terminal" and claimed!=s.outerClaim))
+    actors.contains(actor), s.confirming==0, finishInputs.contains(claimed),
+    val status=if (claimed=="opened") "succeeded"
+      else if (claimed.in(Set("unknown","bare-unknown","null-unknown"))) "unknown" else "failed"
+    val needsReceipt=results.contains(claimed) and claimed!="unknown" and s.outerPhase!="terminal"
+    if (s.retired.contains(actor) or claimed.in(Set("ringing","bare-succeeded")) or
+      (s.outerPhase=="terminal" and claimed!=s.outerClaim) or (needsReceipt and not(exactReceipt(claimed))))
       s' = { ...s,outcome:"rejected" }
     else s' = { ...s,outerPhase:"terminal",outerStatus:status,outerClaim:claimed,outcome:status }
   }
@@ -147,7 +165,8 @@ module NativeClockReview {
   val DispatchConsumesApproval = s.phase.in(Set("dispatching","finished")) implies s.token==0
   val ClaimNeedsLiveDialog = s.openOwner==0 or (s.visible.contains(s.openOwner) and not(s.retired.contains(s.openOwner)))
   val NoRingReceipt = s.receipt!="ringing" and s.outerClaim!="ringing"
-  val safety = OneExternalHandoff and DispatchConsumesApproval and ClaimNeedsLiveDialog and NoRingReceipt
+  val TypedReceiptHasProducer = not(results.contains(s.outerClaim)) or s.outerClaim=="unknown" or s.legacy or exactReceipt(s.outerClaim)
+  val safety = OneExternalHandoff and DispatchConsumesApproval and ClaimNeedsLiveDialog and NoRingReceipt and TypedReceiptHasProducer
 
   action step = any {
     nondet actor=actors.oneOf()
@@ -173,24 +192,40 @@ module NativeClockReview {
     nondet saved=faults.oneOf()
     dispatch(port,saved),
     nondet actor=actors.oneOf()
-    nondet outcome=results.union(Set("bare-unknown","ringing")).oneOf()
+    nondet outcome=finishInputs.oneOf()
     finish(actor,outcome),
+    seedLegacy, corruptBinding,
     s'=s
   }
 
-  action opened = init.then(review(1,"complete","complete")).then(answer(1,"positive","complete"))
+  action opened = initWith("set").then(review(1,"complete","complete")).then(answer(1,"positive","complete"))
   action sealed = opened.then(confirm(1,1,"complete","complete"))
 
-  run staleDialogPreservesExactReplacementTest = init.then(review(1,"complete","complete"))
+  run staleDialogPreservesExactReplacementTest = initWith("set").then(review(1,"complete","complete"))
     .then(retire(1)).then(review(2,"complete","complete")).then(answer(1,"positive","complete"))
     .expect(s.openOwner==2 and s.visible==Set(2) and s.phase=="reviewing")
     .then(answer(2,"positive","complete")).expect(s.phase=="approved" and s.outcome=="approved")
     .then(confirm(2,1,"complete","complete")).then(dispatch("opened","complete"))
     .expect(s.deliveries==1 and s.outcome=="opened")
 
-  run fabricatedOpenedOuterReceiptAsBuiltTest = init.then(finish(1,"ringing"))
+  run fabricatedOuterReceiptCannotCommitTest = initWith("set").then(finish(1,"ringing"))
     .expect(s.outcome=="rejected")
-    .then(finish(1,"opened")).expect(s.outerStatus=="succeeded" and s.attempts==0 and s.phase=="none")
+    .then(finish(1,"opened")).expect(s.outerPhase=="applying" and s.outcome=="rejected" and s.attempts==0)
+    .then(finish(1,"bare-unknown")).expect(s.outerStatus=="unknown" and s.outerClaim=="bare-unknown")
+
+  run exactLegacyTerminalReplayRemainsIdempotentTest = initWith("set").then(seedLegacy)
+    .then(finish(1,"opened")).expect(s.legacy and s.outcome=="succeeded" and s.attempts==0)
+    .then(finish(2,"denied")).expect(s.outcome=="rejected")
+
+  run incorrectNestedBindingCannotProduceNewReceiptTest = sealed.then(dispatch("opened","complete"))
+    .then(corruptBinding).then(finish(1,"opened")).expect(s.outcome=="rejected" and s.outerPhase=="applying")
+    .then(finish(1,"unknown")).expect(s.outerStatus=="unknown" and s.attempts==1)
+
+  run showNeedsExactTokenWithoutDialogTest = initWith("show").then(review(1,"complete","complete"))
+    .expect(s.phase=="approved" and s.visible==Set() and s.attempts==0)
+    .then(confirm(1,0,"complete","complete")).expect(s.outcome=="rejected")
+    .then(confirm(1,1,"complete","complete")).then(dispatch("opened","complete"))
+    .expect(s.receipt=="opened" and s.deliveries==1)
 
   run approvalTokenIsOneUseTest = sealed.then(dispatch("opened","complete"))
     .then(confirm(1,1,"complete","complete")).expect(s.attempts==1 and s.deliveries==1 and s.outcome=="opened")
