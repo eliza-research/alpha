@@ -259,3 +259,25 @@ set and failure list. Three work identities, two drain callers and three
 recorded failures bound the state space. A completed drain can be followed by
 new work. Runtime shutdown admission and the release of individual resources
 remain separate source obligations.
+
+### Shared service startup and teardown
+
+`CoreServiceLifecycle` executes the pinned lifecycle class with the real
+retirement tracker. Seventeen source schedules pass 82 checkpoints, observing
+all 23 state fields. Six model scenarios, 1,000 samples of 80 steps and symbolic
+safety through four transitions pass. The schedules cover concurrent callers,
+registration ordering, partial failure, retry, initialization, observer
+failure, shutdown during startup and single-flight teardown.
+
+Source observations preserve two important outcomes. One implementation can
+reject the shared load promise before another implementation makes an ensure
+call succeed. A send-handler exception can leave the already published service
+registered. These outcomes are represented explicitly. Their broader consumer
+contracts need review before changing that behavior.
+
+The projection has two service implementations and three callers with fixed
+registration during each schedule. The adapter observes the actual host maps,
+sets, stop-operation WeakMap, returned promises and retirement counters. Hook
+settlement through class-map cleanup is one declared asynchronous transition.
+Eager retry timers, missing static methods, dynamic registration, reentrant
+observers and the complete AgentRuntime shutdown coordinator remain open.

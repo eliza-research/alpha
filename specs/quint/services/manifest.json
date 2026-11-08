@@ -1155,6 +1155,36 @@
         "A rejected operation and an explicitly recorded retirement failure are separate source events. Draining does not reject merely because one run promise rejected.",
         "The class tracks work that it receives. Admission of new work after runtime shutdown belongs to RuntimeServiceLifecycle and AgentRuntime."
       ]
+    },
+    {
+      "module": "CoreServiceLifecycle",
+      "path": "specs/quint/services/CoreServiceLifecycle.qnt",
+      "init": "init",
+      "step": "step",
+      "invariant": "safety",
+      "tests": [
+        "concurrentStartTest",
+        "partialFailureTest",
+        "lateStartTest",
+        "stopSingleFlightTest",
+        "observerFailureTest",
+        "initializationFastPathTest"
+      ],
+      "sources": [
+        "vendor/eliza/packages/core/src/runtime/service-lifecycle.ts",
+        "vendor/eliza/packages/core/src/runtime/retirement.ts",
+        "vendor/eliza/packages/core/src/errors.ts",
+        "vendor/eliza/packages/core/src/types/events.ts"
+      ],
+      "stateMapping": {
+        "registries": "Actual class and service maps, failed class set, registration status and WeakMap stop identities",
+        "hookResults/results": "Controlled service hook promises and actual lifecycle returned promise settlements",
+        "generation/retirementFailures": "Real RuntimeRetirement tracker"
+      },
+      "abstractions": [
+        "Two implementations and three callers with fixed registration during each schedule.",
+        "Settlements include the microtask sequence through class-map cleanup. Eager timers, dynamic registration and reentrant observers remain separate obligations."
+      ]
     }
   ]
 }
