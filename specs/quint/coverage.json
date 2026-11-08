@@ -15984,7 +15984,7 @@
     },
     {
       "path": "apps/app/src/prototype/agent-adapter.ts",
-      "sha256": "e30a794290f6fdeaf691dd11bef897e8823d710f9cad2c5c0abc01e730584257",
+      "sha256": "a253a0b6f19885599de1686883c1a04f1d8dc1374e8fb82931f659b2d799ad9f",
       "models": [
         "Application",
         "AssistantConversation"
@@ -17002,7 +17002,7 @@
         },
         {
           "line": 1237,
-          "text": "const current=eligible&&shell.live&&!document.hidden&&!selected.open&&!selected.busy&&typedSendBinding()===binding&&now.view===before.view&&now.screen===before.screen"
+          "text": "const current=eligible&&shell.live&&!document.hidden&&!selected.open&&(!selected.busy||selected.backgroundWork===true)&&typedSendBinding()===binding&&now.view===before.view&&now.screen===before.screen"
         },
         {
           "line": 1241,
@@ -17262,7 +17262,7 @@
         },
         {
           "line": 1467,
-          "text": "const current=()=>{const selected=connectionController.getSnapshot();return this.live&&!document.hidden&&!selected.busy&&!selected.open&&!document.querySelector('[data-alpha-chat-recorder],[data-alpha"
+          "text": "const current=()=>{const selected=connectionController.getSnapshot();return this.live&&!document.hidden&&(!selected.busy||selected.backgroundWork===true)&&!selected.open&&!document.querySelector('[dat"
         },
         {
           "line": 1468,
@@ -37645,7 +37645,7 @@
     },
     {
       "path": "apps/app/src/prototype/template.html",
-      "sha256": "4a6d478b9f6033db508172af46dd2a04c11d7823d3aff57a33d84919a92bb22e",
+      "sha256": "9ac4a09c82cdaa685d5b7d7cd963e56ab5318202261be9b53f36148c13984604",
       "models": [
         "ShellNavigation",
         "PreferencesAndPresentation",
@@ -37790,7 +37790,7 @@
     },
     {
       "path": "apps/app/src/prototype/voice-adapter.ts",
-      "sha256": "86f3fc5eeded818bcf2916eacce72e4c73c859f49b0ab963533d7b26d8974432",
+      "sha256": "47ccde1a5add2303803a8d0e964ec4c45287dc97a7153ad6a885a8ee4655e342",
       "models": [
         "VoiceSession"
       ],
@@ -49034,7 +49034,7 @@
     },
     {
       "path": "apps/app/src/runtime/hosted-digest-ui.tsx",
-      "sha256": "d6fbbf7419eeb7e822ff5a49f2a108153557853ea6dcde808a7b59094eea7844",
+      "sha256": "7c8dfc7057a1b056b3f38975fda3d461863c4753ca22e459c67e488aab66edad",
       "models": [
         "NoticesAndCaches"
       ],
@@ -49326,159 +49326,163 @@
           "text": "const first = items[0], last = items.at(-1);"
         },
         {
-          "line": 333,
+          "line": 323,
+          "text": "const modal = panel.current;"
+        },
+        {
+          "line": 336,
           "text": "const renewalSources=useRef(sources);renewalSources.current=sources;"
         },
         {
-          "line": 334,
+          "line": 337,
           "text": "const renewalFlight=resolveTap;"
         },
         {
-          "line": 335,
+          "line": 338,
           "text": "const renewalStart=useRef(startRenewal);renewalStart.current=startRenewal;"
         },
         {
-          "line": 337,
+          "line": 340,
           "text": "const checkRenewal=()=>renewalFlight.current(async()=>{"
         },
         {
-          "line": 338,
+          "line": 341,
           "text": "const b=binding.current;if(!isAndroid||!b||!canSyncResults()||questionBusy.current||questionClose.current)return;"
         },
         {
-          "line": 341,
+          "line": 344,
           "text": "let tapped=false;"
         },
         {
-          "line": 342,
+          "line": 345,
           "text": "try{const tap=await nativeSources.pendingSourceRenewal();if(!tap.token||!tap.selection||typeof tap.expiresAt!=='number'||binding.current!==b||!b.notices.current()||!canSyncResults())return;tapped=true"
         },
         {
-          "line": 343,
+          "line": 346,
           "text": "const current=()=>mounted.current&&binding.current===b&&b.notices.current()&&canSyncResults()&&!connectionController.getSnapshot().open&&renewalSources.current.some(source=>!source.revoked&&source.liv"
         },
         {
-          "line": 349,
+          "line": 352,
           "text": "useEffect(()=>{if(!isAndroid)return;const listener=nativeSources.addListener('renewSource',()=>{void checkRenewal();}).catch(()=>null);void checkRenewal();return()=>{void listener.then(l=>l?.remove())"
         },
         {
-          "line": 352,
+          "line": 355,
           "text": "useEffect(()=>{if(!isAndroid)return;for(const source of sources){if(source.live?.provider!=='native')continue;const bound=loops.some(l=>!l.removed&&l.spec.enabled&&l.spec.sourceId===source.id);if(boun"
         },
         {
-          "line": 353,
+          "line": 356,
           "text": "function clearRenewal(id:string){const selection=renewalSources.current.find(source=>source.id===id)?.live;if(selection?.provider==='native')void nativeSources.clearSourceRenewal({selection}).catch(()"
         },
         {
-          "line": 355,
+          "line": 358,
           "text": "const source=sources.find(s=>s.id===id);if(!source)return;setRenewing(id);setReview(null);setSourceId('');"
         },
         {
-          "line": 356,
+          "line": 359,
           "text": "const bound=loops.find(l=>!l.removed&&l.spec.sourceId===id);if(bound)setZone(bound.spec.timeZone);"
         },
         {
-          "line": 361,
+          "line": 364,
           "text": "const renewalLoops=(id:string|null)=>id?loops.filter(l=>!l.removed&&l.spec.enabled&&l.spec.sourceId===id).map(l=>({id:l.id,expectedVersionId:l.versionId,mutationId:crypto.randomUUID(),spec:{version:1,"
         },
         {
-          "line": 362,
+          "line": 365,
           "text": "const renewalNote=(id:string|null)=>{const moved=renewalLoops(id);return moved.length?`\\nRenewal: ${moved.map(l=>l.spec.template+' at '+l.spec.localTime).join(', ')} ${moved.length===1?'moves':'move'}"
         },
         {
-          "line": 364,
+          "line": 367,
           "text": "const missedOffers=available?missedRunNowOffers(binding.current?.sessionId===connection.session?.sessionId?results:[],loops,sources):new Map<string,MissedRunNow>();"
         },
         {
-          "line": 371,
+          "line": 374,
           "text": "const b = binding.current;"
         },
         {
-          "line": 381,
+          "line": 384,
           "text": "let body=value.body;"
         },
         {
-          "line": 383,
+          "line": 386,
           "text": "const grant=await nativeSources.nativeSourceConsent({sessionId:b.sessionId,...value.nativeConsent,confirmed:true});"
         },
         {
-          "line": 388,
+          "line": 391,
           "text": "const source=sources.find(source=>source.id===body.id);"
         },
         {
-          "line": 392,
+          "line": 395,
           "text": "const saved=await b.client.mutate(value.path, body, b.controller.signal);"
         },
         {
-          "line": 395,
+          "line": 398,
           "text": "const source=(saved as {source?:{id?:unknown;revision?:unknown}}).source;"
         },
         {
-          "line": 397,
+          "line": 400,
           "text": "for(const loop of value.rebind){if(binding.current!==b)return;await b.client.mutate('loops',{spec:{...loop.spec,sourceId:source.id,sourceRevision:source.revision},mutationId:loop.mutationId,confirmed:"
         },
         {
-          "line": 403,
+          "line": 406,
           "text": "if(value.missedRunId&&binding.current===b){const id=value.missedRunId;setRanMissed(prior=>new Set([...prior,id]));}"
         },
         {
-          "line": 425,
+          "line": 428,
           "text": "async function loadNativeCalendars(){const b=binding.current;if(!b||busy)return;setBusy(true);try{const permission=await nativeCalendars.requestWorkflowReadAccess();if(permission.status!=='granted')th"
         },
         {
-          "line": 427,
+          "line": 430,
           "text": "const b=binding.current;if(!b||busy)return;"
         },
         {
-          "line": 432,
+          "line": 435,
           "text": "let expectedBinding:Record<string,unknown>;try{expectedBinding=await nativeSources.nativeSourceIdentity({sessionId:b.sessionId});if(binding.current!==b)return;}catch{setMessage('Reconnect the current "
         },
         {
-          "line": 434,
+          "line": 437,
           "text": "const sourceId=crypto.randomUUID(),reviewedAt=Date.now(),observedAt=new Date(reviewedAt).toISOString(),expiresAt=reviewedAt+hours*3600000;"
         },
         {
-          "line": 435,
+          "line": 438,
           "text": "const scope={calendars:selectedCalendars.map(id=>({id,revision:calendarChoices.find(calendar=>calendar.id===id)!.sourceRevision})),reminders:selectedReminders,timeZone:zone,window:'owner_day_and_overd"
         },
         {
-          "line": 436,
+          "line": 439,
           "text": "const renews=renewing&&sources.find(s=>s.id===renewing)?.live?.provider==='native'?renewing:null,rebind=renewalLoops(renews);"
         },
         {
-          "line": 454,
+          "line": 457,
           "text": "const old = loops.find((l) => !l.removed && l.spec.template === template),"
         },
         {
-          "line": 471,
+          "line": 474,
           "text": "const spec = {"
         },
         {
-          "line": 491,
+          "line": 494,
           "text": "const liveBinding = binding.current;"
         },
         {
-          "line": 492,
+          "line": 495,
           "text": "const now=Date.now(),renewals=digestRenewals(sources,loops,now);"
         },
         {
-          "line": 494,
+          "line": 497,
           "text": "const deviceZone=(()=>{try{return Intl.DateTimeFormat().resolvedOptions().timeZone;}catch{return '';}})();"
         },
         {
-          "line": 566,
+          "line": 569,
           "text": "{liveBinding && <HostedLiveSourcePicker key={liveBinding.sessionId} client={liveBinding.client} scope={liveBinding.notices.scope} signal={liveBinding.controller.signal} current={() => binding.current "
         },
         {
-          "line": 628,
+          "line": 631,
           "text": "const reviewedAt = Date.now(),"
         },
         {
-          "line": 633,
+          "line": 636,
           "text": "const renews=renewing&&!sources.find(s=>s.id===renewing)?.live?renewing:null;"
         },
         {
-          "line": 670,
+          "line": 673,
           "text": "{features.dossier&&sources.find(s=>s.id===sourceId)?.live?.provider==='native'&&<button disabled={busy} onClick={()=>{const source=sources.find(s=>s.id===sourceId)!;setReview({path:'dossier',body:{sou"
         }
       ]
@@ -49675,7 +49679,7 @@
     },
     {
       "path": "apps/app/src/runtime/inline-modal.ts",
-      "sha256": "0602548c451c34d940e839e6fc814ff61d8302d0a7319bb704477760a723a4f7",
+      "sha256": "1ec946afba824ecb587744a480dfd65ba751b52c7bbcd742a459f4f2cd1a38b8",
       "models": [
         "ShellNavigation"
       ],
@@ -49687,8 +49691,76 @@
           "text": "let mounted:HTMLElement|null=null, dispose:(()=>void)|undefined;"
         },
         {
+          "line": 6,
+          "text": "const ref=(container:HTMLElement|null):void=>{"
+        },
+        {
+          "line": 10,
+          "text": "const dialog=container.matches('[role=\"dialog\"]')?container:container.querySelector<HTMLElement>('[role=\"dialog\"]');"
+        },
+        {
+          "line": 12,
+          "text": "const previous=returnFocus?.()||(document.activeElement instanceof HTMLElement?document.activeElement:null);"
+        },
+        {
+          "line": 13,
+          "text": "const releases:Array<()=>void>=[],backgrounds:HTMLElement[]=[];"
+        },
+        {
           "line": 14,
           "text": "let branch:HTMLElement=container;"
+        },
+        {
+          "line": 15,
+          "text": "const phone=container.closest<HTMLElement>('.os');"
+        },
+        {
+          "line": 18,
+          "text": "for(const sibling of branch.parentElement.children)if(sibling!==branch&&sibling instanceof HTMLElement&&!sibling.inert&&!sibling.matches('[data-alpha-toast]'))backgrounds.push(sibling);"
+        },
+        {
+          "line": 21,
+          "text": "const ownsFocus=()=>container.isConnected&&!container.closest('[inert]')&&!document.querySelector('dialog[open]');"
+        },
+        {
+          "line": 22,
+          "text": "const controls=()=>Array.from(dialog.querySelectorAll<HTMLElement>('button,input,textarea,select,a[href],[tabindex]')).filter(element=>!element.matches(':disabled,[tabindex=\"-1\"]')&&!element.closest('"
+        },
+        {
+          "line": 23,
+          "text": "const focus=()=>{(controls()[0]||dialog).focus({preventScroll:true});};"
+        },
+        {
+          "line": 25,
+          "text": "const key=(event:KeyboardEvent)=>{"
+        },
+        {
+          "line": 29,
+          "text": "const items=controls(),first=items[0],last=items.at(-1),active=document.activeElement;"
+        },
+        {
+          "line": 34,
+          "text": "const back=(event:Event)=>{if(!ownsFocus())return;event.preventDefault();event.stopImmediatePropagation();close();};"
+        },
+        {
+          "line": 35,
+          "text": "const contain=()=>{if(ownsFocus()&&!dialog.contains(document.activeElement))focus();};"
+        },
+        {
+          "line": 41,
+          "text": "const observer=new MutationObserver(contain);"
+        },
+        {
+          "line": 44,
+          "text": "for(const sibling of backgrounds){"
+        },
+        {
+          "line": 45,
+          "text": "const hidden=sibling.getAttribute('aria-hidden'),release=holdPhoneInert(sibling);"
+        },
+        {
+          "line": 56,
+          "text": "const target=previous?.isConnected?previous:returnFocus?.();"
         }
       ]
     },
