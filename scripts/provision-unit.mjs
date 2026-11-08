@@ -23,6 +23,7 @@
 import { spawnSync, execFileSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import fs from "node:fs";
+import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { signerDigest } from "./apk.mjs";
@@ -130,13 +131,31 @@ export function packageFacts(dumpsys) {
     lastUpdateTime: /lastUpdateTime=([^\n]+)/.exec(dumpsys)?.[1]?.trim() ?? null, userId: field("(?:userId|appId)") };
 }
 
+/** SHA-256 of one APK entry, extracted to a scratch file so no size limit applies. Null when it cannot be read. */
+function entrySha256(apk, name) {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "alpha-entry-"));
+  try {
+    const file = path.join(dir, "entry");
+    const fd = fs.openSync(file, "w");
+    let status;
+    try { status = spawnSync("unzip", ["-p", apk, name], { stdio: ["ignore", fd, "ignore"] }).status; } finally { fs.closeSync(fd); }
+    if (status !== 0) return null;
+    const hash = createHash("sha256");
+    const chunk = Buffer.alloc(1 << 20);
+    const input = fs.openSync(file, "r");
+    try { for (let read; (read = fs.readSync(input, chunk, 0, chunk.length, null)) > 0;) hash.update(chunk.subarray(0, read)); } finally { fs.closeSync(input); }
+    return hash.digest("hex");
+  } finally { fs.rmSync(dir, { recursive: true, force: true }); }
+}
+
+/** The resident runtime an APK packages. A packaged runtime whose bundle cannot be hashed throws: a unit record never carries a null identity. */
 export function apkRuntimeIdentity(apk) {
-  const entry = name => spawnSync("unzip", ["-p", apk, name], { maxBuffer: 1 << 26 });
-  const stamp = entry("assets/agent/alpha-source.json");
+  const stamp = spawnSync("unzip", ["-p", apk, "assets/agent/alpha-source.json"], { maxBuffer: 1 << 20 });
   if (stamp.status !== 0 || !stamp.stdout.length) return { runtime: "NOT_PACKAGED" };
   const source = JSON.parse(stamp.stdout.toString("utf8"));
-  const bundle = entry("assets/agent/agent-bundle.js");
-  return { runtime: "PACKAGED", base: source.base, patches: source.patches, agentBundleSha256: bundle.status === 0 ? sha256(bundle.stdout) : null };
+  const agentBundleSha256 = entrySha256(apk, "assets/agent/agent-bundle.js");
+  if (!agentBundleSha256) throw new Error(`${apk} stamps a packaged runtime but assets/agent/agent-bundle.js cannot be read`);
+  return { runtime: "PACKAGED", base: source.base, patches: source.patches, agentBundleSha256 };
 }
 
 export function adbFor(serial) {

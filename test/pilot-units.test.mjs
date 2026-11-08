@@ -1,11 +1,12 @@
 // Pilot provisioning/update policy on synthetic inputs; not emulator or device evidence.
 import test from "node:test";
 import assert from "node:assert/strict";
+import { execFileSync } from "node:child_process";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { createHash } from "node:crypto";
-import { admitUnitApk, apkContradictions, apkFacts, packageFacts, parseUnitArgs, requireConsistentApk } from "../scripts/provision-unit.mjs";
+import { admitUnitApk, apkContradictions, apkFacts, apkRuntimeIdentity, packageFacts, parseUnitArgs, requireConsistentApk } from "../scripts/provision-unit.mjs";
 import { releaseBlockers } from "../scripts/release-blockers.mjs";
 import { CAMPAIGNS, candidateManifest, parseQualifyArgs, readCampaigns, recordCandidate, releaseDistribution, verdict } from "../scripts/qualify-head.mjs";
 import { compareDomains, DOMAIN_SCRIPT, parseDomainInventory, readbackInventory, unitApkMismatch, updateAdmission } from "../scripts/pilot-update.mjs";
@@ -89,6 +90,21 @@ test("a pilot or acceptance unit never gets a non-distributable release, and eve
   assert.deepEqual([rehearsal.rehearsal, rehearsal.distributable], [true, false]);
   // A debug row can never be passed off as the release.
   assert.throws(() => admitUnitApk(build(t, { mode: "debug", signed: true, distributable: true }), { variant: "launcher", build: "release" }, { descriptor: descriptor() }), /no launcher release APK/);
+});
+
+test("the packaged agent bundle is hashed whatever its size, and an unreadable bundle fails provisioning", t => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "alpha-runtime-"));
+  t.after(() => fs.rmSync(dir, { recursive: true, force: true }));
+  fs.mkdirSync(path.join(dir, "assets/agent"), { recursive: true });
+  fs.writeFileSync(path.join(dir, "assets/agent/alpha-source.json"), JSON.stringify({ base: "b".repeat(40), patches: [] }));
+  const zip = (name, ...entries) => { execFileSync("zip", ["-q", name, ...entries], { cwd: dir }); return path.join(dir, name); };
+  // Larger than the 64 MiB a buffered read used to allow.
+  const bundle = Buffer.alloc((1 << 26) + 4096, "x");
+  fs.writeFileSync(path.join(dir, "assets/agent/agent-bundle.js"), bundle);
+  assert.deepEqual(apkRuntimeIdentity(zip("big.apk", "assets/agent/alpha-source.json", "assets/agent/agent-bundle.js")),
+    { runtime: "PACKAGED", base: "b".repeat(40), patches: [], agentBundleSha256: sha(bundle) });
+  assert.throws(() => apkRuntimeIdentity(zip("no-bundle.apk", "assets/agent/alpha-source.json")), /agent-bundle\.js cannot be read/);
+  assert.deepEqual(apkRuntimeIdentity(zip("no-runtime.apk", "assets/agent/agent-bundle.js")), { runtime: "NOT_PACKAGED" });
 });
 
 test("an admitted APK whose own contents contradict its manifest row is refused before any device is touched", t => {
