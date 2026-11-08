@@ -336,4 +336,132 @@ public class BrowserFlowInstrumentedTest {
   }
  }
 
+ /** Same-document fixture origin. Every request to it is answered in memory by the tab's own client
+  * wrapper below; nothing reaches the network and TLS is never bypassed for a real host. */
+ private static final String SAME="https://same-document.invalid/";
+ private static String sameDocumentPage(String path){
+  if(path.equals("/head"))return "<!doctype html><head><script>history.replaceState(null,'','/replaced')</script><title>Replaced fixture</title></head><body><p>Address replaced before first paint.</p></body>";
+  return "<!doctype html><title>Same-document fixture</title><p>Same-document navigation fixture.</p><a id='frag' href='#section'>Section</a><form id='signin' onsubmit='return false'><input id='user' name='username' autocomplete='username'></form><section id='section' style='margin-top:1500px'>Section</section>";
+ }
+ private static Object field(Class<?> type,Object owner,String name)throws ReflectiveOperationException{java.lang.reflect.Field f=type.getDeclaredField(name);f.setAccessible(true);return f.get(owner);}
+ /** The presented native tab of AlphaBrowser, or null. Main thread only. */
+ private static Object presentedTabObject(MainActivity main)throws ReflectiveOperationException{
+  Object plugin=main.getBridge().getPlugin("AlphaBrowser").getInstance();
+  Class<?> host=ai.eliza.plugins.browsersurface.BrowserTabHostPlugin.class;
+  Object id=field(host,plugin,"presentedId");
+  return id==null?null:((Map<?,?>)field(host,plugin,"tabs")).get(id);
+ }
+ /** The presented tab's native state: recorded and engine address, committed, loading, error, shown,
+  * the Autofill flag and the eligibility the host would compute now. */
+ private JSONObject tabState()throws Exception{
+  AtomicReference<JSONObject> out=new AtomicReference<>(new JSONObject());
+  WebViewTestDriver.withActivity(MainActivity.class,main->{try{
+   Object tab=presentedTabObject(main);if(tab==null)return;Class<?> type=tab.getClass();
+   WebView web=(WebView)field(type,tab,"web");
+   java.lang.reflect.Method eligible=ai.eliza.plugins.browsersurface.BrowserTabHostPlugin.class.getDeclaredMethod("canAutofill",type);eligible.setAccessible(true);
+   JSONObject state=new JSONObject();
+   state.put("url",field(type,tab,"url"));state.put("engineUrl",String.valueOf(web.getUrl()));state.put("committed",field(type,tab,"committed"));state.put("loading",field(type,tab,"loading"));
+   state.put("error",field(type,tab,"error"));state.put("shown",web.isShown());state.put("autofillEnabled",field(type,tab,"autofillEnabled"));
+   state.put("eligible",eligible.invoke(main.getBridge().getPlugin("AlphaBrowser").getInstance(),tab));
+   out.set(state);
+  }catch(Exception error){throw new AssertionError(error);}});
+  return out.get();
+ }
+ /** The presented tab settles on {@code url}: recorded and engine address agree, committed, not loading,
+  * no error, shown, and the page itself is at that address. */
+ private JSONObject settled(String url,String step)throws Exception{
+  JSONObject state=new JSONObject();
+  for(int i=0;i<100;i++){
+   state=tabState();
+   if(url.equals(state.optString("url"))&&url.equals(state.optString("engineUrl"))&&state.optBoolean("committed")&&!state.optBoolean("loading")&&state.optString("error").isEmpty()&&state.optBoolean("shown")
+    &&JSONObject.quote(url).equals(child("location.href")))return state;
+   SystemClock.sleep(100);
+  }
+  fail(step+": tab did not settle on "+url+"; state="+state+"; "+diagnostics());return state;
+ }
+ /** Opens Browser and loads the in-memory fixture at {@code path} in the presented tab. */
+ private void openSameDocument(String path)throws Exception{
+  until("document.documentElement.dataset.activeView");host(AppNavigation.request("Browser"));until(AppNavigation.selected("Browser"));AppNavigation.declineStartupAccess();
+  // The first address only creates the tab; it fails offline, before the fixture client exists.
+  address(SAME+"start");until("!document.querySelector('input[aria-label=Address]')");
+  for(int i=0;i<50&&presentedTab()==null;i++)SystemClock.sleep(100);
+  assertNotNull("The fixture tab is presented",presentedTab());
+  WebViewTestDriver.withActivity(MainActivity.class,main->{try{
+   Object tab=presentedTabObject(main);WebView web=(WebView)field(tab.getClass(),tab,"web");android.webkit.WebViewClient original=web.getWebViewClient();
+   web.setWebViewClient(new android.webkit.WebViewClient(){
+    @Override public android.webkit.WebResourceResponse shouldInterceptRequest(WebView v,android.webkit.WebResourceRequest r){
+     original.shouldInterceptRequest(v,r);android.net.Uri uri=r.getUrl();boolean fixture=r.isForMainFrame()&&"https".equals(uri.getScheme())&&"same-document.invalid".equals(uri.getHost());
+     byte[] body=(fixture?sameDocumentPage(uri.getPath()):"Fixture route refused").getBytes(java.nio.charset.StandardCharsets.UTF_8);
+     return new android.webkit.WebResourceResponse("text/html","UTF-8",fixture?200:403,fixture?"OK":"Forbidden",Collections.emptyMap(),new java.io.ByteArrayInputStream(body));
+    }
+    @Override public boolean shouldOverrideUrlLoading(WebView v,android.webkit.WebResourceRequest r){return original.shouldOverrideUrlLoading(v,r);}
+    @Override public void onPageStarted(WebView v,String url,android.graphics.Bitmap icon){original.onPageStarted(v,url,icon);}
+    @Override public void onPageCommitVisible(WebView v,String url){original.onPageCommitVisible(v,url);}
+    @Override public void onPageFinished(WebView v,String url){original.onPageFinished(v,url);}
+    @Override public void doUpdateVisitedHistory(WebView v,String url,boolean reload){original.doUpdateVisitedHistory(v,url,reload);}
+    @Override public void onReceivedError(WebView v,android.webkit.WebResourceRequest r,android.webkit.WebResourceError e){original.onReceivedError(v,r,e);}
+    @Override public void onReceivedHttpError(WebView v,android.webkit.WebResourceRequest r,android.webkit.WebResourceResponse e){original.onReceivedHttpError(v,r,e);}
+    @Override public void onReceivedSslError(WebView v,android.webkit.SslErrorHandler h,android.net.http.SslError e){original.onReceivedSslError(v,h,e);}
+    @Override public void onReceivedHttpAuthRequest(WebView v,android.webkit.HttpAuthHandler h,String host,String realm){original.onReceivedHttpAuthRequest(v,h,host,realm);}
+    @Override public boolean onRenderProcessGone(WebView v,android.webkit.RenderProcessGoneDetail d){return original.onRenderProcessGone(v,d);}
+   });
+  }catch(ReflectiveOperationException error){throw new AssertionError(error);}});
+  address(SAME+path.substring(1));
+ }
+ /** pushState records a new entry without a load; Back and Forward then move within the same document. */
+ @Test public void sameDocumentPushStateThenBackAndForward()throws Exception{
+  try(BoundedActivityScenario<MainActivity> scenario=BoundedActivityScenario.launch(MainActivity.class)){
+   openSameDocument("/");settled(SAME,"Fixture page");
+   assertEquals("Fixture page has no native bridge","true",child("typeof Capacitor==='undefined' && typeof androidBridge==='undefined'"));
+   child("history.pushState({step:1},'','/pushed');true");settled(SAME+"pushed","After pushState");
+   click("Previous page");settled(SAME,"Back across pushState");
+   assertEquals("Back stays in the same document","true",child("history.state===null && !!document.getElementById('frag')"));
+   click("Next page");settled(SAME+"pushed","Forward across pushState");
+   assertEquals("Forward restores the pushed state","1",child("history.state&&history.state.step"));
+   click("Tabs");click("Close tab");
+  }
+ }
+ /** A fragment link changes the address without a load; Share then offers that exact address. */
+ @Test public void sameDocumentFragmentThenShare()throws Exception{
+  try(BoundedActivityScenario<MainActivity> scenario=BoundedActivityScenario.launch(MainActivity.class)){
+   openSameDocument("/");settled(SAME,"Fixture page");
+   child("document.getElementById('frag').click();true");settled(SAME+"#section","After fragment link");
+   android.app.Instrumentation instrumentation=androidx.test.platform.app.InstrumentationRegistry.getInstrumentation();AtomicReference<android.content.Intent> chooser=new AtomicReference<>();
+   // Intercepts only the share chooser and answers it as cancelled: no sheet opens, nothing is sent.
+   android.app.Instrumentation.ActivityMonitor monitor=new android.app.Instrumentation.ActivityMonitor(){@Override public android.app.Instrumentation.ActivityResult onStartActivity(android.content.Intent intent){
+    if(!android.content.Intent.ACTION_CHOOSER.equals(intent.getAction()))return null;chooser.compareAndSet(null,new android.content.Intent(intent));return new android.app.Instrumentation.ActivityResult(Activity.RESULT_CANCELED,null);}};
+   instrumentation.addMonitor(monitor);
+   try{
+    click("Menu");click("Share");
+    for(int i=0;i<100&&chooser.get()==null;i++)SystemClock.sleep(100);
+    assertNotNull("Share opens for the fragment address; state="+tabState(),chooser.get());
+    android.content.Intent send=chooser.get().getParcelableExtra(android.content.Intent.EXTRA_INTENT);
+    assertNotNull("Share chooser carries the page",send);
+    assertEquals("Share offers the address after the fragment link",SAME+"#section",send.getStringExtra(android.content.Intent.EXTRA_TEXT));
+   }finally{instrumentation.removeMonitor(monitor);}
+   settled(SAME+"#section","After share");
+   click("Tabs");click("Close tab");
+  }
+ }
+ /** A head script replaces the address before first paint; the tab records the replaced address. */
+ @Test public void sameDocumentReplaceStateBeforeFirstPaint()throws Exception{
+  try(BoundedActivityScenario<MainActivity> scenario=BoundedActivityScenario.launch(MainActivity.class)){
+   openSameDocument("/head");settled(SAME+"replaced","Head replaceState");
+   assertEquals("The replaced page is the fixture document","\"Replaced fixture\"",child("document.title"));
+   click("Tabs");click("Close tab");
+  }
+ }
+ /** A sign-in page that moves from its username to its password step with pushState stays eligible
+  * for Autofill on its new address, as it was on the first. */
+ @Test public void sameDocumentPushStateBetweenSignInFieldsKeepsAutofillEligibility()throws Exception{
+  try(BoundedActivityScenario<MainActivity> scenario=BoundedActivityScenario.launch(MainActivity.class)){
+   openSameDocument("/");
+   JSONObject first=settled(SAME,"Username step");
+   assertTrue("The committed HTTPS username step is Autofill eligible; state="+first,first.optBoolean("eligible")&&first.optBoolean("autofillEnabled"));
+   child("history.pushState({},'','/password');document.getElementById('signin').innerHTML=\"<input id='password' name='password' type='password' autocomplete='current-password'>\";true");
+   JSONObject second=settled(SAME+"password","Password step");
+   assertTrue("The password step is Autofill eligible on its new address; state="+second,second.optBoolean("eligible")&&second.optBoolean("autofillEnabled"));
+   click("Tabs");click("Close tab");
+  }
+ }
 }
