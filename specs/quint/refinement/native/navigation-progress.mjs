@@ -11,6 +11,8 @@ const prepared='.eliza/client-features';
 const preparedManifest=prepared+'/.source.json';
 const maps=prepared+'/plugins/plugin-maps/src/client';
 const adapter='apps/app/src/prototype/maps-adapter.ts';
+const fallbackPatch='patches/eliza/maps-hidden-fallback-client.patch';
+const fallbackManifest='patches/eliza/maps-hidden-fallback-client-manifest.json';
 const position=(east,north=0)=>({latitude:north/6371000*180/Math.PI,longitude:east/6371000*180/Math.PI});
 const destination=position(500);
 const labels=['First','Second','Arrive'];
@@ -35,11 +37,19 @@ async function captureImplementation(additionalSources=[]){
  const discover=await build(options);
  const inputs=Object.keys(discover.metafile.inputs).filter(path=>existsSync(resolve(path)));
  const sources=[...inputs,modelPath,adapter,'upstream.lock.json',preparedManifest,'package-lock.json',
+  'scripts/prepare-client-features.mjs',fallbackPatch,fallbackManifest,
   fileURLToPath(import.meta.url),...additionalSources];
  const driverHashes=captureInputs(sources);
  const manifest=JSON.parse(readFileSync(preparedManifest,'utf8'));
  const pin=JSON.parse(readFileSync('upstream.lock.json','utf8')).commit;
  if(manifest.baseCommit!==pin)throw Error('Maps source is from a different prepared pin');
+ const patch=JSON.parse(readFileSync(fallbackManifest,'utf8'));
+ const provenance=manifest.mapsHiddenFallbackPatch;
+ const hash=path=>createHash('sha256').update(readFileSync(path)).digest('hex');
+ if(!provenance||provenance.baseCommit!==pin||provenance.path!==patch.path||
+    provenance.manifestSha256!==hash(fallbackManifest)||patch.patchSha256!==hash(fallbackPatch)||
+    manifest.sourceFiles[patch.path]!==patch.beforeSha256||manifest.files[patch.path]!==patch.afterSha256)
+  throw Error('Prepare the authenticated Maps hidden-fallback patch before checking navigation');
  for(const path of inputs.filter(path=>path.startsWith(prepared+'/'))){
   const expected=manifest.files[relative(prepared,path)];
   if(createHash('sha256').update(readFileSync(path)).digest('hex')!==expected)throw Error('Unauthenticated Maps input '+path);
@@ -203,6 +213,9 @@ export const navigationProgressScenarios={
  'hidden-pending-background':[['start',true],['hide'],['available',1,true],['backgroundAck',1,true],['backgroundStopped',1,'unavailable']],
  'hidden-availability-refusal':[['start',true],['hide'],['available',1,false]],
  'hidden-start-refusal':[['start',true],['available',1,true],['hide'],['backgroundAck',1,false]],
+ 'hidden-permission-refusal':[['start',true],['holdPermission',true],['hide'],['available',1,false]],
+ 'stale-start-refusal':[['start',true],['available',1,true],['end'],['start',true],['available',3,true],
+  ['backgroundAck',3,true],['hide'],['backgroundAck',1,false]],
  'foreground-only-hidden':[['start',true],['available',1,false],['hide']],
  'permission-keeps-screen':[['start',false],['holdPermission',true],['hide'],['show'],['holdPermission',false],['hide']],
  'late-native-ack':[['start',true],['available',1,true],['end'],['start',true],['available',3,true],['backgroundAck',3,true],['backgroundAck',1,true],['backgroundStopped',1,'notification']],

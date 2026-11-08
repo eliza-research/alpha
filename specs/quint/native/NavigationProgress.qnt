@@ -34,6 +34,10 @@ module NavigationProgress {
   pure def release(state: Navigation): Navigation = endGuidance({...state,
     releases: state.releases + 1, selected: false, routePhase: "none", route: 0,
     abortedRequests: if (state.selected) state.abortedRequests.union(Set(state.routeRequests)) else state.abortedRequests})
+  pure def refusedBackground(state: Navigation): Navigation = {
+    val stopped = stopBridge(state)
+    if (state.foreground or state.permission) stopped else release(stopped)
+  }
   pure def requestUpdate(state: Navigation): Navigation = {...state,
     updateCommands: state.updateCommands.append(state.bridgeOwner),
     pendingUpdates: state.pendingUpdates.set(state.bridgeOwner, state.pendingUpdates.get(state.bridgeOwner) + 1)}
@@ -64,7 +68,7 @@ module NavigationProgress {
     id.in(s.pendingAvailability),
     val answered = {...s, pendingAvailability: s.pendingAvailability.exclude(Set(id))}
     s' = if (id != s.bridgeOwner) answered
-      else if (not(allowed)) stopBridge(answered)
+      else if (not(allowed)) refusedBackground(answered)
       else {...answered, bridgeStage: "starting", registered: s.registered.union(Set(id)),
         pendingStarts: s.pendingStarts.union(Set(id)), startCommands: s.startCommands.append(id)}
   }
@@ -73,7 +77,7 @@ module NavigationProgress {
     val answered = {...s, pendingStarts: s.pendingStarts.exclude(Set(id))}
     s' = if (id != s.bridgeOwner)
       (if (accepted) {...answered, stopCommands: s.stopCommands.append(id)} else answered)
-      else if (not(accepted)) stopBridge(answered)
+      else if (not(accepted)) refusedBackground(answered)
       else {
         val running = {...answered, bridgeStage: "running", backgroundRunning: true, bridgeDirty: false}
         if (s.bridgeDirty) requestUpdate(running) else running
@@ -140,7 +144,7 @@ module NavigationProgress {
     s' = if ((s.navigating and s.bridgeOwner != 0) or s.permission) hidden else release(hidden)
   }
   action show = s' = {...s, foreground: true}
-  action holdPermission(value: bool): bool = s' = {...s, permission: value}
+  action holdPermission(value: bool): bool = all {s.foreground, s' = {...s, permission: value}}
   action stopFollowing = s' = if (s.navigating) {...s, follow: false} else s
   action recenter = all {s.navigating, s' = {...s, follow: true}}
   action step = any {
@@ -165,10 +169,12 @@ module NavigationProgress {
   val RunningHasExactNativeStart = s.backgroundRunning implies s.bridgeStage == "running" and
     s.startCommands.indices().exists(i => s.startCommands.nth(i) == s.bridgeOwner)
   val ReleasedHasNoGuidance = not(s.selected) implies not(s.navigating) and s.navRoute == 0 and s.watch == 0
+  val HiddenWatchHasPermissionOrBridge = not(s.foreground) and s.watch != 0 implies
+    s.permission or s.bridgeOwner != 0
   val StoppedCommandsCannotTargetOwner = s.bridgeOwner != 0 implies
     not(s.stopCommands.indices().exists(i => s.stopCommands.nth(i) == s.bridgeOwner))
   val safety = CursorRange and ArrivalAccuracy and ArrivalStopsResources and RerouteOwnsGuidance and NativeSessionOwned and
-    RunningHasExactNativeStart and ReleasedHasNoGuidance and StoppedCommandsCannotTargetOwner
+    RunningHasExactNativeStart and ReleasedHasNoGuidance and HiddenWatchHasPermissionOrBridge and StoppedCommandsCannotTargetOwner
 
   run sparseProjectionDoesNotSkipManeuverTest = init.then(start(false))
     .then(fix(1, 30, true, 0, "past", "changed")).expect(safety and s.navStep == 0 and s.displayedStep == 0)
@@ -195,4 +201,10 @@ module NavigationProgress {
     .then(available(1, true)).then(backgroundAck(1, true)).expect(safety and s.backgroundRunning and s.releases == 0)
   run dragAndRecenterTest = init.then(start(false)).then(stopFollowing).expect(not(s.follow))
     .then(recenter).expect(safety and s.follow)
+  run hiddenAvailabilityRefusalReleasesWatchTest = init.then(start(true)).then(hide)
+    .then(available(1, false)).expect(safety and s.watch == 0 and not(s.navigating) and s.releases == 1)
+  run hiddenNativeRefusalReleasesWatchTest = init.then(start(true)).then(available(1, true)).then(hide)
+    .then(backgroundAck(1, false)).expect(safety and s.watch == 0 and s.releases == 1)
+  run hiddenPermissionSurvivesBackgroundRefusalTest = init.then(start(true)).then(holdPermission(true))
+    .then(hide).then(available(1, false)).expect(safety and s.watch == 1 and s.releases == 0)
 }

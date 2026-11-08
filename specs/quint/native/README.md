@@ -152,7 +152,9 @@ and a provider error ends guidance. End retires guidance while allowing the
 already requested route to finish in directions. Release aborts that request.
 Late background replies clean up their exact session, including a second stop
 command after a retired native Start finally succeeds. Dragging disables follow
-until recentering or Start.
+until recentering or Start. A hidden watch whose pending background startup
+is refused releases immediately unless a permission prompt still owns the
+screen. A refusal from an older session cannot release its replacement.
 
 `ListenerLeaseRecovery` models the actual lease and recovery mechanisms behind
 `AlwaysOnListener` policy inputs. Lease acquire, acknowledgement, monotonic expiry,

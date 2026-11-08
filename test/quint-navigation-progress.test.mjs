@@ -11,11 +11,20 @@ test('current Maps guidance follows cursor, reroute and exact background ownersh
  assert.equal(receipt.invariant,'safety');
  for(const action of ['start','fix','reroute','routeResult','available','backgroundAck','backgroundStopped','updateResult'])
   assert.ok(receipt.actions[action]>0,action);
- // Captures the existing late-refusal gap before the separate hidden-fallback repair.
+ // Availability and native-start refusal both retire a hidden foreground-only watch.
  for(const name of ['hidden-availability-refusal','hidden-start-refusal']){
   const trace=receipt.traceInputs.find(trace=>trace.name===name),after=trace.steps.at(-1).expect;
   assert.equal(after['s.foreground'],false);
   assert.equal(after['s.backgroundRunning'],false);
-  assert.equal(after['s.watch'],1);
+  assert.equal(after['s.watch'],0);
+  assert.equal(after['s.navigating'],false);
+  assert.equal(after['s.releases'],1);
+  assert.deepEqual(after['s.stopCommands'],[1]);
  }
+ const after=name=>receipt.traceInputs.find(trace=>trace.name===name).steps.at(-1).expect;
+ assert.equal(after('hidden-permission-refusal')['s.watch'],1);
+ assert.equal(after('hidden-permission-refusal')['s.releases'],0);
+ assert.equal(after('stale-start-refusal')['s.watch'],3);
+ assert.equal(after('stale-start-refusal')['s.bridgeOwner'],3);
+ assert.equal(after('stale-start-refusal')['s.releases'],0);
 });

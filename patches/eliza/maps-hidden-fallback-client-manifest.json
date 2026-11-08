@@ -1,0 +1,8 @@
+{
+  "schema": 1,
+  "baseCommit": "99b49439ce9d0cb5607e9831b9f7f58d89525029",
+  "path": "plugins/plugin-maps/src/client/maps-screen.ts",
+  "beforeSha256": "f95910eac3111d6d3d35274447a4ffb61b12f419918f845568e396a0aa7cdb04",
+  "afterSha256": "f85af5fcbb561c638a9ab6f3460e3c7222ffe7dcb645fe7fd9fbba3d210066cb",
+  "patchSha256": "bcd6b942067c875020402d68658ce95ed30fd299bfcb4338c72efb87999c6fcd"
+}

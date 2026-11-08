@@ -516,7 +516,9 @@
         "apps/app/src/maps/device-navigation.ts",
         "apps/app/src/maps/agent-navigation.ts",
         "apps/app/src/maps/screen.ts",
-        "apps/app/src/maps/state.ts"
+        "apps/app/src/maps/state.ts",
+        "patches/eliza/maps-hidden-fallback-client.patch",
+        "patches/eliza/maps-hidden-fallback-client-manifest.json"
       ],
       "stateMapping": {
         "navStep/displayedStep/follow": "MapsScreenController.onFix, stopFollowing, recenter and view",
@@ -528,7 +530,8 @@
         "Initial state is one verified route already planned. Three maneuvers and two route identities use representative real geometry around the 40m maneuver and 25m arrival boundaries. Accuracy and timestamp cutoffs are exact.",
         "The actual shared screen and route controller handle explicit reroutes. Immediate route invalidation/loading and settled provider replies are observed at macrostep boundaries.",
         "The actual shared background bridge uses controlled availability, listener, start/update/stop callbacks and exact synthetic native identities. Installed Android ownership and hardware location remain separate.",
-        "Five navigation sessions and three provider requests bound exploration. Reopening after full screen release and concurrent starts outside the visible Start control are external."
+        "Five navigation sessions and three provider requests bound exploration. Reopening after full screen release and concurrent starts outside the visible Start control are external.",
+        "A pending permission prompt can retain a hidden watch. This projection changes the controlled permission state while visible and models late background refusal through the exact live session."
       ],
       "tests": [
         "sparseProjectionDoesNotSkipManeuverTest",
@@ -539,7 +542,10 @@
         "endingAllowsRouteReplyWithoutRevivingGuidanceTest",
         "releaseAbortsOutstandingRouteTest",
         "pendingBackgroundKeepsHiddenScreenTest",
-        "dragAndRecenterTest"
+        "dragAndRecenterTest",
+        "hiddenAvailabilityRefusalReleasesWatchTest",
+        "hiddenNativeRefusalReleasesWatchTest",
+        "hiddenPermissionSurvivesBackgroundRefusalTest"
       ],
       "invariants": [
         "CursorRange",
@@ -549,7 +555,8 @@
         "NativeSessionOwned",
         "RunningHasExactNativeStart",
         "ReleasedHasNoGuidance",
-        "StoppedCommandsCannotTargetOwner"
+        "StoppedCommandsCannotTargetOwner",
+        "HiddenWatchHasPermissionOrBridge"
       ],
       "sharedSources": [
         "plugins/plugin-maps/src/client/navigation-fix.ts",
