@@ -28,18 +28,17 @@ test('host asset manifest matches the current shared worker pins: Paradee, optio
  // No package script names the retired Kokoro or Whisper speech paths.
  assert.doesNotMatch(readFileSync(new URL('../package.json',import.meta.url),'utf8'),/kokoro|whisper/i);
 });
-test('frozen local-speech source retains its reviewed engine and explicitly refuses a newer unqualified pin',()=>{
+test('reviewed engine source keeps current embedding and voice qualification separate',()=>{
  const source=readFileSync(new URL('../scripts/combined-agent-source.mjs',import.meta.url),'utf8');
- const reviewed='b3eb2bf63b3c02cd37ee09d442911ace99975b38';
+ const reviewed='6337fd4c4bd071c17235986344d552d4036e177b';
  assert.ok(source.includes("'plugins/plugin-local-inference/native/llama.cpp':'"+reviewed+"'"));
  const actual=execFileSync('git',['-C','vendor/eliza','ls-tree','HEAD','plugins/plugin-local-inference/native/llama.cpp'],{encoding:'utf8'}).match(/^160000 commit ([a-f0-9]{40})\t/)[1];
- if(actual!==reviewed){
-  assert.ok(!source.includes("'plugins/plugin-local-inference/native/llama.cpp':'"+actual+"'"),'a pin move cannot qualify the local speech source');
-  const qualification=JSON.parse(readFileSync(new URL('../android/embedding-host/qualified-host.json',import.meta.url),'utf8'));
-  const pin=JSON.parse(readFileSync(new URL('../upstream.lock.json',import.meta.url),'utf8')).commit;
-  assert.equal(qualification.requalification?.required,true);assert.equal(qualification.requalification.atPin,pin);
-  assert.ok(qualification.requalification.reason.includes(actual.slice(0,8)),'the refusal names the current unqualified engine');
- }
+ assert.equal(actual,reviewed);
+ const qualification=JSON.parse(readFileSync(new URL('../android/embedding-host/qualified-host.json',import.meta.url),'utf8'));
+ const pin=JSON.parse(readFileSync(new URL('../upstream.lock.json',import.meta.url),'utf8')).commit;
+ assert.equal(qualification.requalification?.required,true);assert.equal(qualification.requalification.atPin,pin);
+ const voice=JSON.parse(readFileSync(new URL('../android/voice-host/qualified-voice-host.json',import.meta.url),'utf8'));
+ assert.equal(voice.qualified,false);assert.equal(voice.evidence.userAccepted,false);
 });
 
 // The reviewed source uses the qualified fused-speech engine at 6337fd4c.
@@ -48,8 +47,7 @@ test('source snapshots accept only the reviewed 6337 engine and reject old or fo
  const git=(...args)=>execFileSync('git',['-c','core.hooksPath=/dev/null','-c','user.name=Admission fixture','-c','user.email=fixture@example.invalid','-C',root,...args],{encoding:'utf8'}).trim();
  git('init');git('commit','--allow-empty','-m','Fixture');
  const engine='plugins/plugin-local-inference/native/llama.cpp';mkdirSync(join(root,engine),{recursive:true});
- const actual=execFileSync('git',['-C','vendor/eliza','ls-tree','HEAD',engine],{encoding:'utf8'}).match(/^160000 commit ([a-f0-9]{40})\t/)[1];
- for(const pin of new Set(['cc8c979157e1f577448d8b8c6ff598b7cfc3d661','1'.repeat(40),...(actual==='b3eb2bf63b3c02cd37ee09d442911ace99975b38'?[]:[actual])])){
+ for(const pin of new Set(['cc8c979157e1f577448d8b8c6ff598b7cfc3d661','1'.repeat(40),'b3eb2bf63b3c02cd37ee09d442911ace99975b38'])){
   git('update-index','--add','--cacheinfo','160000,'+pin+','+engine);
   assert.throws(()=>sourceManifest(root),/Unqualified source gitlink identity/);
  }

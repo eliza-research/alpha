@@ -152,7 +152,7 @@ public class StopReissueHarness {
  }
  static final Object lifecycleLock=new Object();
  static long lifecycleEpoch,credentialMutationEpoch=-1,credentialShutdownRequest=-1;
- static boolean accepting=true,stopping;static String startRequestId;static boolean startOwnsLaunch;
+ static boolean accepting=true,stopping;boolean disposed;static String startRequestId;static boolean startOwnsLaunch;
  Context getContext(){return new Context();}void invalidateCalls(){}void clearEnrollment(){}boolean runtimePackaged(){return true;}
  static boolean shutdownConfirmed(JSObject status){return !ElizaAgentService.siblingAlive;}
  ${reissue}
