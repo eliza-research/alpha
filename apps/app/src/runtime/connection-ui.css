@@ -49,7 +49,7 @@ body:has([data-alpha-layer="app"]:not([inert]) [data-settings-page]) .alpha-plan
 .alpha-connection .alpha-btn--quiet{color:var(--connection-mut,#666)}
 .alpha-connection button[aria-busy=true]{opacity:1;cursor:progress}
 .alpha-connection input:disabled{opacity:.5;cursor:default}
-.alpha-connection input::placeholder{color:var(--connection-mut,#6b6b6b);opacity:.8}
+.alpha-connection :is(input,textarea)::placeholder{color:var(--connection-mut,#6b6b6b);opacity:1}
 .alpha-connection input[aria-invalid=true]{border-color:var(--connection-danger,#a32121)}
 .alpha-form-actions{display:flex;flex-direction:column;gap:8px;margin-top:20px}
 
@@ -84,7 +84,7 @@ body:has([data-alpha-layer="app"]:not([inert]) [data-settings-page]) .alpha-plan
 .alpha-auth-waiting{display:flex;justify-content:center;margin:0 0 4px}
 .alpha-spinner{display:block;width:28px;height:28px;border-radius:50%;border:3px solid var(--connection-line,#e3e3e3);border-top-color:var(--connection-acc,#0000ff);animation:alpha-spin .9s linear infinite}
 @keyframes alpha-spin{to{transform:rotate(360deg)}}
-@media(prefers-reduced-motion:reduce){.alpha-spinner{animation-duration:2.4s}}
+@media(prefers-reduced-motion:reduce){.alpha-spinner{animation:none!important}}
 .alpha-own-keys-note{font-size:13px}
 .alpha-own-keys .alpha-form-actions{margin-top:8px}
 .alpha-connection .alpha-auth-notice{border-top:1px solid var(--connection-line,#dedede);padding-top:16px;margin-top:28px;font-size:12px;line-height:1.6;color:var(--connection-mut,#666);background:none;border-radius:0}

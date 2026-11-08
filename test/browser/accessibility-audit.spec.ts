@@ -39,6 +39,29 @@ test('hidden focus, broken references, small targets and low contrast are report
   expect(format(await auditPage(page, { contrast: true, targetSize: 24 }))).toEqual([]);
 });
 
+test('faint placeholders and a choice shown only by colour are reported', async ({ page }) => {
+  // The Home composer before the fix (the UA placeholder grey on --s2), a sign-in field whose
+  // placeholder was faded to .8, and calendar repeat chips told apart by colour alone.
+  await load(page, `<style>#faded::placeholder{color:#6b6b6b;opacity:.8}</style>
+    <textarea aria-label="Ask Alpha" placeholder="Ask Alpha" style="background:#f3f3f3;border:0;height:44px"></textarea>
+    <input id="faded" aria-label="Phone" placeholder="+14155550100" style="height:44px">
+    <div><button style="background:#f3f3f3;height:44px">Once</button><button style="background:#00f;color:#fff;height:44px">Daily</button><button style="background:#f3f3f3;height:44px">Weekly</button></div>`);
+  const found = format(await auditPage(page, { placeholder: true, selection: true }));
+  expect(rules(found)).toEqual(['placeholder-contrast', 'selection-by-colour']);
+  expect(found.filter(line => line.startsWith('placeholder-contrast'))).toHaveLength(2);
+  expect(found.find(line => line.startsWith('selection-by-colour'))).toContain('Daily');
+
+  // --mut on --s2 and on white, a filled field (its placeholder is not drawn), the chips exposing
+  // aria-pressed, and a primary action beside one secondary action (emphasis, not a choice).
+  await load(page, `<style>:is(input,textarea)::placeholder{color:#6b6b6b;opacity:1}#filled::placeholder{color:#ccc}</style>
+    <textarea aria-label="Ask Alpha" placeholder="Ask Alpha" style="background:#f3f3f3;border:0;height:44px"></textarea>
+    <input aria-label="Phone" placeholder="+14155550100" style="height:44px">
+    <input id="filled" aria-label="Name" placeholder="faint" value="Filled" style="height:44px;color:#000">
+    <div><button aria-pressed="false" style="background:#f3f3f3;height:44px">Once</button><button aria-pressed="true" style="background:#00f;color:#fff;height:44px">Daily</button><button aria-pressed="false" style="background:#f3f3f3;height:44px">Weekly</button></div>
+    <div><button style="background:#f3f3f3;height:44px">Cancel</button><button style="background:#000;color:#fff;height:44px">Save</button></div>`);
+  expect(format(await auditPage(page, { placeholder: true, selection: true }))).toEqual([]);
+});
+
 test('text printed over text, stacked or cut controls and labels split mid-word are reported', async ({ page }) => {
   await page.setViewportSize({ width: 400, height: 400 });
   // The round-7 Home card at 200% text: a title too tall for its fixed box, printed over the time

@@ -38,6 +38,19 @@ for (const theme of ['light', 'dark'] as const) {
   }
 }
 
+// Placeholders are read as text, and a choice must be exposed, not only coloured (accessibility-audit.ts
+// rules 5b and 5c), on the screens with the primary field and the most single-choice rows. The
+// calendar form's calendar, repeat and alert chips expose aria-pressed since alpha-prototype-2-P07.
+for (const theme of ['light', 'dark'] as const) {
+  for (const state of LIVE_STATES.filter(item => item.name === 'live Home' || item.name === 'live Calendar new event')) {
+    test(`placeholders and selection state: ${state.name} (${theme})`, async ({ page }) => {
+      await state.open(page, theme);
+      const found = format(await auditPage(page, { placeholder: true, selection: true }));
+      expect(found, found.join('\n')).toEqual([]);
+    });
+  }
+}
+
 for (const state of STATES) {
   test(`200% text is not clipped and does not overlap: ${state.name}`, async ({ page }, info) => {
     test.setTimeout(LARGE_TEXT_TIMEOUT);

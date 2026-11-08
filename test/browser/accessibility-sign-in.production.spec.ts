@@ -89,7 +89,7 @@ for (const scale of [1, 2]) {
     }
     const found = blocking(format([
       ...await auditTree(page),
-      ...await auditPage(page, scale === 1 ? { contrast: true, targetSize: 24, clipping: true, overlap: true } : { clipping: true, overlap: true }),
+      ...await auditPage(page, scale === 1 ? { contrast: true, targetSize: 24, clipping: true, overlap: true, placeholder: true, selection: true } : { clipping: true, overlap: true }),
       ...await auditReadingOrder(page),
       ...await auditTabOrder(page),
     ]));
