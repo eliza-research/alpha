@@ -24887,14 +24887,16 @@
     },
     {
       "path": "apps/app/src/prototype/maps-adapter.ts",
-      "sha256": "5080b2f0eab4f3d58b5a16e4806bddeeb428315aa8ade7c8ca2c2e3676b1e631",
       "models": [
         "Maps",
         "MapsNavigation",
-        "NavigationProgress"
+        "NavigationProgress",
+        "MapsEventReturn"
       ],
       "scope": "application",
       "treatment": "state-and-transition-projection",
+      "reviewStatus": "state-audit-required",
+      "sha256": "1942271d410d024562da43dc2d653c7b143a8df37c6e23487f8a819b30d38b49",
       "stateAnchors": [
         {
           "line": 27,
@@ -24973,191 +24975,171 @@
           "text": "const cloud=cloudMapsCoverage();"
         },
         {
-          "line": 95,
-          "text": "let returningToEvent=false;"
-        },
-        {
           "line": 96,
           "text": "const calendarPlugin=registerPlugin<{list(input:{begin:number;end:number}):Promise<{status:string;events?:unknown[]}>}>('AlphaCalendar');"
         },
         {
-          "line": 101,
+          "line": 112,
           "text": "let outcome:'found'|'missing'|'permission'|'unknown'='unknown';"
         },
         {
-          "line": 102,
-          "text": "try{if(origin.version===2){const abort=new AbortController(),cancel=()=>{if(document.hidden||!currentApi.isActive())abort.abort();};document.addEventListener('visibilitychange',cancel);window.addEvent"
-        },
-        {
-          "line": 107,
+          "line": 126,
           "text": "const stack=(api?.S.stack||[]).slice(0,-1);"
         },
         {
-          "line": 123,
+          "line": 149,
           "text": "const handoff=pendingHandoff={query:st.query};"
         },
         {
-          "line": 127,
+          "line": 153,
           "text": "const fromEvent=!!currentApi.get('maps').fromEvent;"
         },
         {
-          "line": 131,
+          "line": 157,
           "text": "const view = screen.view();"
         },
         {
-          "line": 134,
+          "line": 160,
           "text": "const data = original.render({ ...st, query: null, place: null, directions: null, nav: false, saved: [], pan: null }, currentApi);"
         },
         {
-          "line": 139,
+          "line": 165,
           "text": "const route = directionsOpen ? mapsController?.snapshot().route : undefined;"
         },
         {
-          "line": 140,
+          "line": 166,
           "text": "const text = (route?.phase === 'ready' && route.value?.attribution) || cloudMapsCoverage()?.attribution || '';"
         },
         {
-          "line": 144,
+          "line": 170,
           "text": "const status = view.status, region = regionalMap(), raster=cloudMapsBasemap(), basemap = region || raster || globalBasemap, globalMap = !region&&!raster;"
         },
         {
-          "line": 147,
+          "line": 173,
           "text": "const cloudFailure = cloudMapsDiagnostics();"
         },
         {
-          "line": 148,
+          "line": 174,
           "text": "const statusText = !regionalMapsConfigured && cloudFailure.error === 'unconfigured' &&"
         },
         {
-          "line": 151,
+          "line": 177,
           "text": "const directionsOpen = view.mode === 'directions' || view.mode === 'origin' || view.mode === 'navigation';"
         },
         {
-          "line": 152,
+          "line": 178,
           "text": "const isPlace = view.mode === 'place', isResults = view.mode === 'results' || view.mode === 'origin', isNav = view.mode === 'navigation';"
         },
         {
-          "line": 153,
+          "line": 179,
           "text": "const sheetHeight = directionsOpen ? 300+(view.directions?.routes.length??0)*50 : isPlace ? 400 : 520;"
         },
         {
-          "line": 162,
+          "line": 188,
           "text": "mapObserver?.disconnect();plane?.destroy();mapFailed=false;mapCopyright='';planeElement=element;planeBasemap=basemap;const generation=++mapGeneration;delete element.dataset.mapReady;delete element.dat"
         },
         {
-          "line": 163,
+          "line": 189,
           "text": "const current=()=>generation===mapGeneration&&planeElement===element&&!disposed&&!!api?.isActive();"
         },
         {
-          "line": 198,
+          "line": 224,
           "text": "const place = view.place;"
         },
         {
-          "line": 219,
+          "line": 245,
           "text": "const directions = view.directions;"
         },
         {
-          "line": 226,
+          "line": 252,
           "text": "const nav = view.navigation;"
         },
         {
-          "line": 228,
+          "line": 254,
           "text": "modes:data.nativeModeMetadata.map((reference:{mode:'drive'|'walk'|'bike'|'transit';label:string;d:string})=>{const mode:TravelMode=reference.mode==='bike'?'bicycle':reference.mode;const on=!!direction"
         },
         {
-          "line": 238,
+          "line": 264,
           "text": "const eventOrigin=mapsEventReturnOffered(st.fromEvent,currentApi.S.stack,isNav);"
         },
         {
-          "line": 246,
+          "line": 272,
           "text": "let shell: Bag | undefined;"
         },
         {
-          "line": 247,
+          "line": 273,
           "text": "const renderVals=Component.prototype.renderVals;"
         },
         {
-          "line": 252,
+          "line": 278,
           "text": "const surface = screen.surface(async () => {"
         },
         {
-          "line": 253,
+          "line": 279,
           "text": "const showable=()=>{"
         },
         {
-          "line": 254,
+          "line": 280,
           "text": "const value=shell?.S?.();"
         },
         {
-          "line": 266,
+          "line": 292,
           "text": "const agentNavigation=bindAgentNavigation({"
         },
         {
-          "line": 269,
+          "line": 295,
           "text": "installation:()=>{const coverage=cloudMapsCoverage();return coverage&&{providerId:coverage.providerId,attribution:coverage.attribution};},"
         },
         {
-          "line": 274,
+          "line": 300,
           "text": "const stopCoverage=keepCloudMapsCoverage({"
         },
         {
-          "line": 282,
+          "line": 308,
           "text": "const retireShare=()=>screen.retireShare();"
         },
         {
-          "line": 283,
+          "line": 309,
           "text": "const shareEvents=['launcher-home','alpha:device-state','alpha:dev-incoming-call'];for(const event of shareEvents)window.addEventListener(event,retireShare);"
         },
         {
-          "line": 284,
-          "text": "const visibility = () => { if(document.hidden)screen.hidden();else screen.refresh(); };"
-        },
-        {
-          "line": 285,
-          "text": "const pagehide=()=>screen.release();window.addEventListener('pagehide', pagehide); document.addEventListener('visibilitychange', visibility);"
-        },
-        {
-          "line": 286,
-          "text": "return () => { disposed = true; stopCoverage(); agentNavigation.dispose(); shell=undefined; for(const event of shareEvents)window.removeEventListener(event,retireShare); screen.dispose(); window.remov"
-        },
-        {
-          "line": 292,
+          "line": 328,
           "text": "const p=Component.prototype,render=p.renderVals;"
         },
         {
-          "line": 293,
+          "line": 329,
           "text": "const answered=new WeakMap<object,Set<string>>();"
         },
         {
-          "line": 294,
+          "line": 330,
           "text": "const answers=(shell:Bag)=>{let value=answered.get(shell);if(!value){value=new Set();answered.set(shell,value);}return value;};"
         },
         {
-          "line": 296,
+          "line": 332,
           "text": "const snapshot=connectionController.getSnapshot(),done=answers(shell);"
         },
         {
-          "line": 303,
+          "line": 339,
           "text": "const out=render.call(this),msgs=out.msgs||[],done=answers(this);"
         },
         {
-          "line": 306,
+          "line": 342,
           "text": "const source=String(message.displayText??message.text??''),parsed=mapsChatText(source);"
         },
         {
-          "line": 309,
+          "line": 345,
           "text": "const choice=parsed.choice,id=choice?String(message.id)+':'+choice.id:'',snapshot=connectionController.getSnapshot(),session=snapshot.session,conversation=connectionController.getSelectedConversationI"
         },
         {
-          "line": 310,
+          "line": 346,
           "text": "const saved=this.S().msgs?.find((row:Bag)=>row.id===message.id),savedText=saved?String(saved.displayText??saved.text??''):undefined;"
         },
         {
-          "line": 311,
+          "line": 347,
           "text": "const current=()=>{const latest=this.S().msgs?.at(-1);return !!session&&connectionController.getSnapshot().session===session&&connectionController.getSelectedConversationId()===conversation&&latest?.i"
         },
         {
-          "line": 312,
+          "line": 348,
           "text": "const open=!!choice&&index===msgs.length-1&&!done.has(id)&&current();"
         }
       ]
@@ -43754,7 +43736,8 @@
       "sha256": "2391c7630dd40c995cb8749e1a0cc7c878d927d72e557a3f44d1b0d9321c59df",
       "models": [
         "MapsNavigation",
-        "AgentCalendarEventReturn"
+        "AgentCalendarEventReturn",
+        "MapsEventReturn"
       ],
       "scope": "application",
       "treatment": "domain-contract-or-support",

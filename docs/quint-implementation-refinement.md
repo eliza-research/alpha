@@ -399,3 +399,11 @@ It observes owner withdrawal, interrupted claim and terminal writes, and
 exact readback without a second post. Bounded symbolic safety passed through
 eight steps. Installed notification delivery, approval suspension, and
 canonical tap consumption retain separate evidence.
+
+The mounted Maps event-return campaign checks 18 schedules and 129
+checkpoints. A visit owns its exact origin, pending Calendar read and
+navigation result. Leaving, hiding, or receiving pagehide retires the read
+and releases its slot immediately. The canceled reply cannot navigate or
+erase a newer visit's attempt. Two Chromium regressions reproduce the old
+behavior and pass with the repair, alongside five existing Maps tests.
+The native Calendar provider still requires installed evidence.
