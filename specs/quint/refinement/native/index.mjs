@@ -39,6 +39,7 @@ import {checkNativeNavigationOwnership} from './navigation-service.mjs';
 import {checkGoogleBrowserReturnClaim} from './google-browser-return-claim.mjs';
 import {checkRuntimeUpdatePause} from './runtime-update-pause.mjs';
 import {runNativeUpdateActivationRefinement} from './update-barrier.mjs';
+import {checkCanonicalNotificationTap} from './canonical-notification-tap.mjs';
 
 export async function runNativeRefinement() {
   const models = ['VadSegmentation', 'RendererRecovery', 'ResidentScheduling'];
@@ -150,9 +151,12 @@ export async function runNativeRefinement() {
   results.push(updatePause.receipt);
   const updateActivation = await runNativeUpdateActivationRefinement(nativeInputs);
   results.push(...updateActivation.receipts);
+  const notificationTap = await checkCanonicalNotificationTap(nativeInputs);
+  results.push(notificationTap.receipt);
   const obligations = [
     ...updatePause.obligations,
     ...updateActivation.obligations,
+    ...notificationTap.obligations,
     {model: 'GoogleBrowserReturnClaim', obligation: 'Installed callback delivery and durable credential custody',
       reason: 'The authenticated Java claim and grace functions execute under controlled queues, storage and HTTPS. Installed lifecycle, secure-store durability and intra-worker schedules remain separate.'},
     ...reviewedCopiesObligations,
