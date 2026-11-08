@@ -3,6 +3,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
 import {LISTENER_RECORD,listenerApkRow,listenerManifestSection,listenerRecordProblems,readListenerRecord} from '../scripts/listener-qualification.mjs';
 
@@ -34,6 +35,28 @@ test('the schema refuses unearned qualification and distribution',()=>{
  assert.match(claim({packageName:'ai.elizaresearch.alphaphone'}).join('\n'),/packageName/);
  assert.match(claim({gates:{...record.gates,G3:'skipped'}}).join('\n'),/gate G3/);
  assert.match(claim({evidence:{...record.evidence,apkBuild:{...record.evidence.apkBuild,record:'docs/evidence/missing.json'}}}).join('\n'),/committed evidence file/);
+});
+
+test('the APK build record must be a regular file inside the given root',()=>{
+ const apkRecord=file=>listenerRecordProblems({...record,evidence:{...record.evidence,apkBuild:{...record.evidence.apkBuild,record:file}}},undefined,root).join('\n');
+ for(const file of [undefined,'',' ','docs/evidence','../alphaphone/'+record.evidence.apkBuild.record,'docs/../'+record.evidence.apkBuild.record,path.join(root,record.evidence.apkBuild.record)])
+  assert.match(apkRecord(file),/committed evidence file/,String(file));
+ assert.equal(apkRecord(record.evidence.apkBuild.record),'');
+ const other=fs.mkdtempSync(path.join(os.tmpdir(),'listener-root-'));
+ assert.match(listenerRecordProblems(record,undefined,other).join('\n'),/committed evidence file/,'resolved under the root passed in, not the module root');
+});
+
+test('image or device evidence captured from fixtures is refused',()=>{
+ const dir=fs.mkdtempSync(path.join(os.tmpdir(),'listener-root-'));
+ const write=(file,value)=>{fs.mkdirSync(path.dirname(path.join(dir,file)),{recursive:true});fs.writeFileSync(path.join(dir,file),JSON.stringify(value));};
+ write(record.evidence.apkBuild.record,{});
+ write('docs/evidence/listener/fixture.json',{schema:'alpha-listener-evidence-v1',captureSource:'fixtures'});
+ write('docs/evidence/listener/device.json',{schema:'alpha-listener-evidence-v1',captureSource:'adb'});
+ assert.deepEqual(listenerRecordProblems(record,undefined,dir),[]);
+ const claim=(name,file)=>listenerRecordProblems({...record,evidence:{...record.evidence,[name]:{recorded:true,record:file}}},undefined,dir).join('\n');
+ assert.match(claim('deviceAcceptance','docs/evidence/listener/fixture.json'),/deviceAcceptance\.record is fixture evidence/);
+ assert.match(claim('aospImage','docs/evidence/listener/fixture.json'),/aospImage\.record is fixture evidence/);
+ assert.equal(claim('deviceAcceptance','docs/evidence/listener/device.json'),'');
 });
 
 test('listener APK rows are APK-build evidence only and never distributable while unqualified',()=>{

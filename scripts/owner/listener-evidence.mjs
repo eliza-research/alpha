@@ -8,6 +8,7 @@
  *     --gates G2,G3,G4,G5,G6 --label "<scenario>" --out NEW_FILE.json \
  *     [--attest ATTEST.json] [--samples N --interval-min M] [--logcat-lines N]
  *   node scripts/owner/listener-evidence.mjs --fixtures CAPTURES.json --class device --gates ... --out NEW_FILE.json
+ *     (test data: evidence class `fixture`, earns no gate and has no candidate record)
  *
  * It runs only against the one device the operator names with --serial, and only the read-only
  * commands in READ_ONLY (getprop, pm list, dumpsys, settings get, device_config get, cmd role
@@ -40,6 +41,10 @@ export const PIXEL_10A_DEVICE = "stallion";
 export const CAPTURE_GATES = ["G2", "G3", "G4", "G5", "G6"];
 export const INDICATOR_EXEMPT_ROLES = ["AMBIENT_AUDIO", "UI", "AUDIO", "NOTIFICATION", "TEXT", "VISUAL"].map(name => `android.app.role.SYSTEM_${name}_INTELLIGENCE`);
 const SENSE_TAG = "SenseListener";
+/** A capture whose adb command failed is stored as this prefix and the error text. */
+export const CAPTURE_FAILED = "__error__";
+export const captureFailed = text => typeof text === "string" && text.startsWith(CAPTURE_FAILED);
+const SAMPLE_KEYS = ["dumpsys.battery", "dumpsys.thermal", "dumpsys.power", "dumpsys.audio"];
 const roleKey = role => `role.${role.split(".").pop()}`;
 
 /** Every command this script may send, as adb argument vectors after `-s SERIAL`. */
@@ -242,16 +247,25 @@ const check = (id, ok, detail) => ({ id, ok: ok === true, detail });
 
 /**
  * Evidence from captured command output. `captures` maps plan keys to stdout (one snapshot) and
- * `samples` is a list of {at, battery, thermal, power, listenerRecording} for G6.
+ * `samples` is a list of {at, battery, thermal, power, listenerRecording, errors} for G6, `errors`
+ * naming the sample's failed captures. A check that reads a failed capture fails.
  * `verifyListener` is scripts/aosp-listener.mjs verifyAospListener (injected so tests need no checkout).
+ * `captureSource` is "adb" or "fixtures"; fixture evidence has class `fixture` and earns nothing.
  */
-export function buildEvidence({ captures, samples = [], appId, user = "0", gates, evidenceClass, label = null, attest = null, verifyListener = null, capturedAt = new Date().toISOString(), serial = null, record = null, evidenceFile = null }) {
-  const pkg = `${appId}.sense`, c = key => captures[key] ?? "";
+export function buildEvidence({ captures, samples = [], appId, user = "0", gates, evidenceClass, label = null, attest = null, verifyListener = null, capturedAt = new Date().toISOString(), serial = null, record = null, evidenceFile = null, captureSource = "adb" }) {
+  const fromFixtures = captureSource === "fixtures";
+  if (fromFixtures) evidenceClass = "fixture";
+  const failed = Object.keys(captures).filter(key => captureFailed(captures[key]));
+  const pkg = `${appId}.sense`, c = key => failed.includes(key) ? null : captures[key] ?? "";
+  const captured = (keys, id, ok, detail) => {
+    const bad = keys.filter(key => failed.includes(key));
+    return bad.length ? check(id, false, `capture failed: ${bad.join(", ")}`) : check(id, ok, detail);
+  };
   const uid = packageUid(c("dumpsys.listenerPackage"));
   const device = { fingerprint: trim(c("prop.fingerprint")), product: trim(c("prop.device")), hardware: trim(c("prop.hardware")), buildType: trim(c("prop.buildType")),
     verifiedBootState: trim(c("prop.verifiedBoot")), virtual: trim(c("prop.qemu")) === "1" || /^(cutf|ranchu|goldfish|vsoc)/.test(trim(c("prop.hardware"))) || /^vsoc|^cf_/.test(trim(c("prop.device"))) };
   const physicalPixel10a = !device.virtual && device.product === PIXEL_10A_DEVICE;
-  const classProblem = evidenceClass === "device" && !physicalPixel10a ? `--class device needs a physical Pixel 10a (ro.product.device ${PIXEL_10A_DEVICE}); this is ${device.product || "unknown"}${device.virtual ? " (virtual)" : ""}` : null;
+  const classProblem = fromFixtures ? "fixture captures are test data and never earn gates" : evidenceClass === "device" && !physicalPixel10a ? `--class device needs a physical Pixel 10a (ro.product.device ${PIXEL_10A_DEVICE}); this is ${device.product || "unknown"}${device.virtual ? " (virtual)" : ""}` : null;
   const audio = audioFacts(c("dumpsys.audio"), { pkg, uid });
   const appops = appopsFacts(c("dumpsys.appops"));
   const notifications = listenerNotifications(c("dumpsys.notification"), pkg);
@@ -269,49 +283,51 @@ export function buildEvidence({ captures, samples = [], appId, user = "0", gates
     catch (failure) { error = failure.message; }
     result.G2 = { checks: [
       check("G2.verifyAospListener", verified !== null && !error, error ?? (verified ? "scripts/verify-aosp-listener.mjs checks passed" : "verifier not run")),
-      check("G2.hotwordAttributionProperty", trim(c("prop.hotwordRequired")) === "true", `ro.hotword.detection_service_required=${trim(c("prop.hotwordRequired")) || "unset"}`),
-      check("G2.micIconsNotDisabled", !/^false$/i.test(trim(c("deviceConfig.micIcons"))), `privacy/camera_mic_icons_enabled=${trim(c("deviceConfig.micIcons")) || "default"}`),
-      check("G2.indicatorExemptRolesEmpty", Object.values(roles).every(v => !v), Object.entries(roles).filter(([, v]) => v).map(([r, v]) => `${r}=${v}`).join(", ") || "all six empty"),
-      check("G2.verifiedBoot", ["green", "yellow"].includes(device.verifiedBootState), `ro.boot.verifiedbootstate=${device.verifiedBootState || "unset"}`),
+      captured(["prop.hotwordRequired"], "G2.hotwordAttributionProperty", trim(c("prop.hotwordRequired")) === "true", `ro.hotword.detection_service_required=${trim(c("prop.hotwordRequired")) || "unset"}`),
+      captured(["deviceConfig.micIcons"], "G2.micIconsNotDisabled", !/^false$/i.test(trim(c("deviceConfig.micIcons"))), `privacy/camera_mic_icons_enabled=${trim(c("deviceConfig.micIcons")) || "default"}`),
+      captured(INDICATOR_EXEMPT_ROLES.map(roleKey), "G2.indicatorExemptRolesEmpty", Object.values(roles).every(v => !v), Object.entries(roles).filter(([, v]) => v).map(([r, v]) => `${r}=${v}`).join(", ") || "all six empty"),
+      captured(["prop.verifiedBoot"], "G2.verifiedBoot", ["green", "yellow"].includes(device.verifiedBootState), `ro.boot.verifiedbootstate=${device.verifiedBootState || "unset"}`),
     ], facts: verified,
     // G1 (image build) is not captured here, but whether the booted image enforces the privapp
     // allowlist is observable: unset means DISABLE at the pinned frameworks/base (RoSystemProperties).
     g1Observation: { privappPermissions: trim(c("prop.privappPermissions")) || null, enforced: /^enforce$/i.test(trim(c("prop.privappPermissions"))) } };
   }
   if (gates.includes("G3")) result.G3 = { checks: [
-    check("G3.listenerRecordingObserved", audio.listenerRecording && !audio.silenced, audio.listenerRecording ? `listener UID ${uid} recording${audio.silenced ? " (silenced)" : ""}` : "no listener recording configuration (set up the LISTENING state before capturing)"),
-    check("G3.hotwordSource", audio.hotwordSource, "listener capture uses AUDIO_SOURCE_HOTWORD"),
-    check("G3.appopsRecordAudioRunning", appops.recordAudioRunning, "RECORD_AUDIO op running for the listener (attribution under detection_service_required)"),
-    check("G3.listenerNotificationPosted", notifications.some(t => /listening-indicator/.test(t)), `${notifications.length} listener notification line(s); channel listening-indicator expected`),
-    check("G3.lockScreenNotificationsOn", facts.lockScreenNotifications !== "0", `lock_screen_show_notifications=${facts.lockScreenNotifications || "default"}`),
-    check("G3.noListenerCrash", logcat.listenerCrashes === 0, `${logcat.listenerCrashes} listener crash line(s) in logcat`),
+    captured(["dumpsys.audio", "dumpsys.listenerPackage"], "G3.listenerRecordingObserved", audio.listenerRecording && !audio.silenced, audio.listenerRecording ? `listener UID ${uid} recording${audio.silenced ? " (silenced)" : ""}` : "no listener recording configuration (set up the LISTENING state before capturing)"),
+    captured(["dumpsys.audio", "dumpsys.listenerPackage"], "G3.hotwordSource", audio.hotwordSource, "listener capture uses AUDIO_SOURCE_HOTWORD"),
+    captured(["dumpsys.appops"], "G3.appopsRecordAudioRunning", appops.recordAudioRunning, "RECORD_AUDIO op running for the listener (attribution under detection_service_required)"),
+    captured(["dumpsys.notification"], "G3.listenerNotificationPosted", notifications.some(t => /listening-indicator/.test(t)), `${notifications.length} listener notification line(s); channel listening-indicator expected`),
+    captured(["settings.lockScreenNotifications"], "G3.lockScreenNotificationsOn", facts.lockScreenNotifications !== "0", `lock_screen_show_notifications=${facts.lockScreenNotifications || "default"}`),
+    captured(["logcat"], "G3.noListenerCrash", logcat.listenerCrashes === 0, `${logcat.listenerCrashes} listener crash line(s) in logcat`),
   ] };
   if (gates.includes("G4")) {
     const activity = activityFacts(c("dumpsys.activities"));
     const longPress = trim(c("settings.powerLongPress")), chord = trim(c("settings.powerVolumeUpChord"));
     result.G4 = { checks: [
-      check("G4.longPressPowerIsAssistant", longPress === "5" || longPress === "null" || longPress === "", `power_button_long_press=${longPress || "null"} (null means the overlay default config_longPressOnPowerBehavior=5; confirm by pressing)`),
-      check("G4.powerVolumeUpIsPowerMenu", chord === "2" || chord === "null" || chord === "", `key_chord_power_volume_up=${chord || "null"} (2 = power menu)`),
-      check("G4.assistantRoleIsAlpha", trim(c("role.assistant")).split(/\s+/).includes(appId), `ASSISTANT role holder: ${trim(c("role.assistant")) || "none"}`),
-      check("G4.emergencyGestureNotDisabled", trim(c("settings.emergencyGesture")) !== "0", `emergency_gesture_enabled=${trim(c("settings.emergencyGesture")) || "default"}`),
-      check("G4.cameraDoubleTapNotDisabled", trim(c("settings.cameraDoubleTapDisabled")) !== "1", `camera_double_tap_power_gesture_disabled=${trim(c("settings.cameraDoubleTapDisabled")) || "default"}`),
-      check("G4.assistLaunchLogged", logcat.assistLaunches > 0, `${logcat.assistLaunches} AlphaAssistActivity launch line(s) in logcat (press-and-hold power before capturing)`),
+      captured(["settings.powerLongPress"], "G4.longPressPowerIsAssistant", longPress === "5" || longPress === "null" || longPress === "", `power_button_long_press=${longPress || "null"} (null means the overlay default config_longPressOnPowerBehavior=5; confirm by pressing)`),
+      captured(["settings.powerVolumeUpChord"], "G4.powerVolumeUpIsPowerMenu", chord === "2" || chord === "null" || chord === "", `key_chord_power_volume_up=${chord || "null"} (2 = power menu)`),
+      captured(["role.assistant"], "G4.assistantRoleIsAlpha", trim(c("role.assistant")).split(/\s+/).includes(appId), `ASSISTANT role holder: ${trim(c("role.assistant")) || "none"}`),
+      captured(["settings.emergencyGesture"], "G4.emergencyGestureNotDisabled", trim(c("settings.emergencyGesture")) !== "0", `emergency_gesture_enabled=${trim(c("settings.emergencyGesture")) || "default"}`),
+      captured(["settings.cameraDoubleTapDisabled"], "G4.cameraDoubleTapNotDisabled", trim(c("settings.cameraDoubleTapDisabled")) !== "1", `camera_double_tap_power_gesture_disabled=${trim(c("settings.cameraDoubleTapDisabled")) || "default"}`),
+      captured(["logcat"], "G4.assistLaunchLogged", logcat.assistLaunches > 0, `${logcat.assistLaunches} AlphaAssistActivity launch line(s) in logcat (press-and-hold power before capturing)`),
     ], facts: { activity } };
   }
   if (gates.includes("G5")) result.G5 = { checks: [
-    check("G5.snapshotCaptured", Boolean(c("dumpsys.audio")), `audio mode ${audio.mode ?? "unknown"}, current user ${facts.currentUser || "unknown"}, listener recording ${audio.listenerRecording}`),
+    captured(["dumpsys.audio"], "G5.snapshotCaptured", audio.mode !== null, `audio mode ${audio.mode ?? "unknown"}, current user ${facts.currentUser || "unknown"}, listener recording ${audio.listenerRecording}`),
   ], facts: { users: userFacts(c("pm.users")) } };
   if (gates.includes("G6")) {
-    const all = samples.length ? samples : [{ at: capturedAt, battery: batteryFacts(c("dumpsys.battery")), thermal: thermalFacts(c("dumpsys.thermal")), power: powerFacts(c("dumpsys.power")), listenerRecording: audio.listenerRecording }];
+    const all = samples.length ? samples : [{ at: capturedAt, battery: batteryFacts(c("dumpsys.battery")), thermal: thermalFacts(c("dumpsys.thermal")), power: powerFacts(c("dumpsys.power")), listenerRecording: audio.listenerRecording, errors: SAMPLE_KEYS.filter(key => failed.includes(key)) }];
     const first = all[0], last = all[all.length - 1];
     const hours = (Date.parse(last.at) - Date.parse(first.at)) / 3_600_000;
     const drop = first.battery.level - last.battery.level;
     const plugged = all.some(s => s.battery.acPowered || s.battery.usbPowered || s.battery.wirelessPowered);
     const worst = all.reduce((a, s) => Math.max(a, s.thermal.status ?? 0), 0);
+    const sampleFailures = [...new Set(all.flatMap(s => s.errors ?? []))];
+    const sampled = (id, ok, detail) => sampleFailures.length ? check(id, false, `capture failed: ${sampleFailures.join(", ")}`) : check(id, ok, detail);
     result.G6 = { checks: [
-      check("G6.unpluggedThroughout", !plugged, plugged ? "charging during the run (use wireless debugging or capture before/after unplugged)" : "on battery for every sample"),
-      check("G6.listeningThroughout", all.every(s => s.listenerRecording), `${all.filter(s => s.listenerRecording).length}/${all.length} samples with the listener recording`),
-      check("G6.thermalBelowSevere", worst < 3, `worst thermal status ${worst} (3 = SEVERE)`),
+      sampled("G6.unpluggedThroughout", !plugged, plugged ? "charging during the run (use wireless debugging or capture before/after unplugged)" : "on battery for every sample"),
+      sampled("G6.listeningThroughout", all.every(s => s.listenerRecording), `${all.filter(s => s.listenerRecording).length}/${all.length} samples with the listener recording`),
+      sampled("G6.thermalBelowSevere", worst < 3, `worst thermal status ${worst} (3 = SEVERE)`),
       check("G6.twentyFourHourSpan", hours >= 24, `run span ${hours.toFixed(2)} h over ${all.length} sample(s)`),
     ], facts: { samples: all.length, spanHours: Number(hours.toFixed(3)), batteryDropPercent: drop, drainPercentPerHour: hours > 0 ? Number((drop / hours).toFixed(3)) : null, worstThermalStatus: worst,
       maxSkinC: all.reduce((a, s) => Math.max(a, s.thermal.maxSkinC ?? -Infinity), -Infinity), batterystats: lines(c("dumpsys.batterystats")).filter(t => /Estimated power use|Uid u0a|cpu:|wake|audio/i.test(t)).map(t => t.trim()).slice(0, 60), series: all } };
@@ -330,10 +346,11 @@ export function buildEvidence({ captures, samples = [], appId, user = "0", gates
     result[gate].status = result[gate].earned ? "passed" : "open";
   }
   return {
-    schema: SCHEMA, capturedAt, label, evidenceClass, classProblem, user, serialSha256: serial ? createHash("sha256").update(serial).digest("hex") : null,
+    schema: SCHEMA, capturedAt, label, captureSource, evidenceClass, classProblem, user,
+    serialSha256: !fromFixtures && serial ? createHash("sha256").update(serial).digest("hex") : null, captureFailed: failed,
     reviewer, operator: attest?.operator ?? null, device: { ...device, physicalPixel10a }, packageName: pkg, gates: result,
     facts: { ...facts, logcatLines: logcat.lines, audioLines: audio.lines, appopsLines: appops.lines },
-    candidateRecord: record ? candidateRecord(record, result, { evidenceClass, classProblem, label, evidenceFile }) : null,
+    candidateRecord: record && !fromFixtures ? candidateRecord(record, result, { evidenceClass, classProblem, label, evidenceFile }) : null,
     note: "Read-only capture. Not image-build (G1), SystemUI compilation or release evidence. A named reviewer copies earned gates into android/sense/qualified-listener.json; qualified/distributable are never set here.",
   };
 }
@@ -409,13 +426,17 @@ async function main(argv) {
     const { execFileSync } = await import("node:child_process");
     const { androidEnv } = await import("../toolchain.mjs");
     const env = androidEnv(), adb = path.join(env.ANDROID_HOME, "platform-tools/adb");
-    const run = (...argv) => { assertReadOnly(argv); try { return execFileSync(adb, ["-s", opts.serial, ...argv], { encoding: "utf8", env, timeout: 30_000, maxBuffer: 64 << 20 }); } catch (error) { return `__error__ ${error.message.split("\n")[0]}`; } };
+    const run = (...argv) => { assertReadOnly(argv); try { return execFileSync(adb, ["-s", opts.serial, ...argv], { encoding: "utf8", env, timeout: 30_000, maxBuffer: 64 << 20 }); } catch (error) { return `${CAPTURE_FAILED} ${error.message.split("\n")[0]}`; } };
     captures = Object.fromEntries(Object.entries(plan).map(([key, args]) => [key, run(...args)]));
     if (upstream) verifyListener = (user, id) => upstream((...argv) => { assertReadOnly(argv); return execFileSync(adb, ["-s", opts.serial, ...argv], { encoding: "utf8", env, timeout: 30_000, maxBuffer: 64 << 20 }); }, user, id);
     if (opts.gates.includes("G6")) {
       const pkg = `${appId}.sense`, uid = packageUid(captures["dumpsys.listenerPackage"]);
-      const sampleOnce = () => ({ at: new Date().toISOString(), battery: batteryFacts(run(...plan["dumpsys.battery"])), thermal: thermalFacts(run(...plan["dumpsys.thermal"])),
-        power: powerFacts(run(...plan["dumpsys.power"])), listenerRecording: audioFacts(run(...plan["dumpsys.audio"]), { pkg, uid }).listenerRecording });
+      const sampleOnce = () => {
+        const at = new Date().toISOString(), out = Object.fromEntries(SAMPLE_KEYS.map(key => [key, run(...plan[key])]));
+        const ok = key => captureFailed(out[key]) ? null : out[key];
+        return { at, battery: batteryFacts(ok("dumpsys.battery")), thermal: thermalFacts(ok("dumpsys.thermal")), power: powerFacts(ok("dumpsys.power")),
+          listenerRecording: audioFacts(ok("dumpsys.audio"), { pkg, uid }).listenerRecording, errors: SAMPLE_KEYS.filter(key => captureFailed(out[key])) };
+      };
       samples.push(sampleOnce());
       for (let n = 1; n < opts.samples; n++) {
         await new Promise(resolve => setTimeout(resolve, opts.intervalMin * 60_000));
@@ -425,13 +446,15 @@ async function main(argv) {
     }
   }
   const out = path.resolve(opts.out);
-  const evidence = buildEvidence({ captures, samples, appId, user: opts.user, gates: opts.gates, evidenceClass: opts.evidenceClass, label: opts.label ?? null, attest, verifyListener, serial: opts.serial ?? null, record, evidenceFile: path.relative(ROOT, out) });
+  const evidence = buildEvidence({ captures, samples, appId, user: opts.user, gates: opts.gates, evidenceClass: opts.evidenceClass, label: opts.label ?? null, attest, verifyListener, serial: opts.serial ?? null, record, evidenceFile: path.relative(ROOT, out), captureSource: opts.fixtures ? "fixtures" : "adb" });
   fs.mkdirSync(path.dirname(out), { recursive: true });
   fs.writeFileSync(out, `${JSON.stringify(evidence, null, 2)}\n`, { flag: "wx" });
   console.log(`Wrote ${opts.out} (${evidence.evidenceClass}${evidence.classProblem ? `; ${evidence.classProblem}` : ""})`);
+  if (opts.fixtures) console.log("  Fixture evidence never earns gates and has no candidate record.");
+  if (evidence.captureFailed.length) console.log(`  capture failed: ${evidence.captureFailed.join(", ")}`);
   for (const [gate, value] of Object.entries(evidence.gates))
     console.log(`  ${gate} ${value.status.padEnd(6)} automated ${value.checks.filter(x => x.ok).length}/${value.checks.length}, manual ${value.manual.filter(x => x.result === "pass").length}/${value.manual.length}${value.classAllowed ? "" : " (evidence class cannot earn this gate)"}`);
-  if (evidence.candidateRecord.problems.length) console.log(`  candidate record problems: ${evidence.candidateRecord.problems.join("; ")}`);
+  if (evidence.candidateRecord?.problems.length) console.log(`  candidate record problems: ${evidence.candidateRecord.problems.join("; ")}`);
 }
 
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) main(process.argv.slice(2)).catch(error => { console.error(error.message); process.exitCode = 2; });
