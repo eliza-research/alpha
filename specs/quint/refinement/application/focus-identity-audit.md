@@ -20,7 +20,7 @@ The following table tracks source-backed mutable families and their remaining ob
 | Files | Recent, results, folder items and destination rows | File, Recent, location, menu and destination rows now carry stable identities. Legacy duplicate metadata and broader listing replacement/revocation schedules remain follow-up coverage. |
 | Browser | `browser.tabCards`, saved-library and suggestion rows | Tab cards now retain source `tab.id`, and saved-library rows retain their canonical URL identity. Search and suggestion rows remain in the broader review. |
 | Photos | Groups, assets, albums and related choices are keyed | The cross-parent helper covers a retained asset moving between groups. Broader provider-revocation and replacement schedules remain open. |
-| Maps | saved rows, search results and pins | Provider place identity must survive asynchronous result replacement and sorting. |
+| Maps | Saved rows/chips, provider results and fixture pins are keyed | Provider insertion and saved-row removal traces pass. Broader provider replacement, revocation and native schedules remain open. |
 | Workflows | cards, management cards, approvals and builder steps | Workflow, run, approval and step identities must survive asynchronous refresh, insertion and deletion. |
 | AOSP communication | native message threads, Contacts groups and rows, Phone recents | Provider record identity must survive refresh. These need separate AOSP admission and device evidence. |
 | Launcher | Home, favorites and application rows are keyed | Source-backed reordering and Favorites transfer now retain app/control identity. Native package installation, removal and profile-state schedules remain open. |
@@ -81,3 +81,9 @@ Home app buttons, launcher favorites and the remaining app inventory now key by 
 The browser regression reproduces a focused Calendar control being replaced by another app when Calendar moves earlier in Favorites. With keyed rows, its DOM node survives and Enter opens Calendar. A second regression removes and restores the focused Calendar favorite through the actual toggle callback, checking its focus after each cross-parent transfer. Both traces retain source hashes and DOM observations. These browser-built-in cases do not establish Android package-install/profile behavior.
 
 Launcher validation passed both new focus cases, both existing launcher browser cases, all 45 launcher/helper Node tests and TypeScript checking. The final two source-observation traces also passed their before/after source-hash checks.
+
+## Maps follow-up
+
+Five Maps loops now retain source identities. Saved places use their durable saved ID, provider results use the provider/place-ID tuple, and the two namespaces remain distinct when origin results combine them. Fixture pins, saved chips, results and category choices retain their source IDs as well.
+
+A real Maps-controller browser trace reproduces focus retargeting when a synthetic provider inserts a preceding result. The fix keeps the original DOM node and opens the originally focused place. A second trace deletes another saved place through the actual controller/store and verifies the retained focused saved row and selection. Both traces retain source hashes and DOM observations. Both browser cases, thirteen Maps/source unit tests and TypeScript checking passed. Provider network behavior and native acceptance remain outside these two controlled browser schedules.

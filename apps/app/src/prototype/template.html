@@ -2167,7 +2167,7 @@
     <sc-for list="{{maps.labels}}" as="lb">
       <span data-alpha-map-label style="position: absolute; left: {{lb.l}}px; top: {{lb.top}}px; white-space: nowrap; pointer-events: none; transition: left .6s cubic-bezier(.19,1,.22,1), top .6s cubic-bezier(.19,1,.22,1); {{lb.css}}">{{lb.t}}</span>
     </sc-for>
-    <sc-for list="{{maps.pins}}" as="pn">
+    <sc-for list="{{maps.pins}}" key="{{pn.id}}" as="pn">
       <button aria-label="{{pn.name}}" onClick="{{pn.tap}}" style="position: absolute; left: {{pn.l}}px; top: {{pn.t}}px; width: {{pn.sz}}px; height: {{pn.sz}}px; margin: {{pn.off}}px 0 0 {{pn.off}}px; border-radius: 50%; display: flex; align-items: center; justify-content: center; transition: left .6s cubic-bezier(.19,1,.22,1), top .6s cubic-bezier(.19,1,.22,1); {{pn.css}}"><svg class="i" viewBox="0 0 24 24" style="width: {{pn.isz}}px; height: {{pn.isz}}px"><path d="{{pn.d}}"></path></svg></button>
     </sc-for>
     <div style="position: absolute; left: {{maps.meL}}px; top: {{maps.meT}}px; width: 0; height: 0; pointer-events: none; transition: left {{maps.meTr}}, top {{maps.meTr}}; {{maps.meCss}}">
@@ -2202,7 +2202,7 @@
   </sc-if>
   <sc-if value="{{maps.isBase}}">
     <div class="scr" style="position: absolute; left: 0; right: 0; top: 116px; display: flex; gap: 8px; overflow-x: auto; padding: 0 12px 10px; touch-action: pan-x; z-index: 3">
-      <sc-for list="{{maps.chips}}" as="c">
+      <sc-for list="{{maps.chips}}" key="{{c.id}}" as="c">
         <button class="tap" onClick="{{c.go}}" style="flex-shrink: 0; height: 44px; padding: 0 16px 0 12px; border-radius: 22px; background: var(--bg); box-shadow: 0 4px 14px var(--shc), 0 0 0 1px var(--line); display: flex; align-items: center; gap: 8px; font-size: 14px; font-weight: 600"><svg class="i" viewBox="0 0 24 24" style="width: 18px; height: 18px"><path d="{{c.d}}"></path></svg>{{c.label}}</button>
       </sc-for>
     </div>
@@ -2225,19 +2225,19 @@
       <div class="scr" style="flex-grow: 1; overflow-y: auto; padding: 0 0 120px; touch-action: pan-y">
         <sc-if value="{{maps.emptyQ}}">
           <div class="scr" style="display: flex; gap: 8px; overflow-x: auto; padding: 4px 20px 14px; touch-action: pan-x">
-            <sc-for list="{{maps.cats}}" as="c">
+            <sc-for list="{{maps.cats}}" key="{{c.id}}" as="c">
               <button class="tap" onClick="{{c.go}}" style="flex-shrink: 0; height: 44px; padding: 0 16px 0 12px; border-radius: 22px; background: var(--s2); display: flex; align-items: center; gap: 8px; font-size: 14px; font-weight: 600"><svg class="i" viewBox="0 0 24 24" style="width: 18px; height: 18px"><path d="{{c.d}}"></path></svg>{{c.label}}</button>
             </sc-for>
           </div>
-          <sc-for list="{{maps.savedRows}}" as="r">
-            <button class="tap" onClick="{{r.go}}" style="width: 100%; display: flex; align-items: center; gap: 14px; padding: 10px 20px">
+          <sc-for list="{{maps.savedRows}}" key="{{r.id}}" as="r">
+            <button data-alpha-map-row="{{r.id}}" class="tap" onClick="{{r.go}}" style="width: 100%; display: flex; align-items: center; gap: 14px; padding: 10px 20px">
               <span style="width: 42px; height: 42px; border-radius: 21px; background: var(--s2); display: flex; align-items: center; justify-content: center; flex-shrink: 0"><svg class="i" viewBox="0 0 24 24" style="width: 20px; height: 20px"><path d="{{r.d}}"></path></svg></span>
               <div style="min-width: 0; text-align: left"><div style="font-size: 16px; font-weight: 600">{{r.name}}</div><div style="font-size: 13px; color: var(--mut); margin-top: 2px">{{r.sub}}</div></div>
             </button>
           </sc-for>
         </sc-if>
-        <sc-for list="{{maps.results}}" as="r">
-          <button class="tap" onClick="{{r.go}}" style="width: 100%; display: flex; align-items: center; gap: 14px; padding: 10px 20px">
+        <sc-for list="{{maps.results}}" key="{{r.id}}" as="r">
+          <button data-alpha-map-row="{{r.id}}" class="tap" onClick="{{r.go}}" style="width: 100%; display: flex; align-items: center; gap: 14px; padding: 10px 20px">
             <span style="width: 42px; height: 42px; border-radius: 21px; background: var(--s2); display: flex; align-items: center; justify-content: center; flex-shrink: 0"><svg class="i" viewBox="0 0 24 24" style="width: 20px; height: 20px"><path d="{{r.d}}"></path></svg></span>
             <div style="min-width: 0; text-align: left"><div style="font-size: 16px; font-weight: 600">{{r.name}}</div><div style="font-size: 13px; color: var(--mut); margin-top: 2px">{{r.sub}}</div></div>
           </button>

@@ -393,13 +393,13 @@ export function installPrototypeMapsAdapter(Component: { prototype: Bag }, views
       focusQ: () => { if (!searching) { selected = undefined; searching = true; invalidate(); } },
       qKey: (event: KeyboardEvent) => { if (event.key === 'Enter') { event.preventDefault(); submit(); (event.target as HTMLInputElement).blur(); } },
       clearQ: () => { ++searchIntent;query = ''; selected = undefined; searching = true; message = ''; void ensure().search(''); invalidate(); },
-      chips: saved.map(item => ({ label: item.label, d: PIN, go: () => showSaved(item) })),
+      chips: saved.map(item => ({ id: 'saved:' + item.id, label: item.label, d: PIN, go: () => showSaved(item) })),
       cats: data.cats.map((category: Bag) => ({ ...category, go: () => { query = category.label; submit(); } })),
-      savedRows: saved.map(item => ({ name: item.label, sub: coordLabel(item.coordinate), d: PIN, go: () => showSaved(item) })),
+      savedRows: saved.map(item => ({ id: 'saved:' + item.id, name: item.label, sub: coordLabel(item.coordinate), d: PIN, go: () => showSaved(item) })),
       results: choosingOrigin
-        ? [...savedOrigins.map(item => ({ name: item.label, sub: 'Saved place', d: PIN, go: () => chooseOrigin(item) })),
-           ...snapshot.originSearch.value.map(item => ({ name: item.name, sub: item.address || coordLabel(item.coordinate), d: PIN, go: () => chooseOrigin(item) }))]
-        : snapshot.search.value.map(item => ({ name: item.name, sub: item.address || coordLabel(item.coordinate), d: PIN, go: () => showPlace(item) })),
+        ? [...savedOrigins.map(item => ({ id: 'saved:' + item.id, name: item.label, sub: 'Saved place', d: PIN, go: () => chooseOrigin(item) })),
+           ...snapshot.originSearch.value.map(item => ({ id: 'provider:' + JSON.stringify([item.providerId, item.id]), name: item.name, sub: item.address || coordLabel(item.coordinate), d: PIN, go: () => chooseOrigin(item) }))]
+        : snapshot.search.value.map(item => ({ id: 'provider:' + JSON.stringify([item.providerId, item.id]), name: item.name, sub: item.address || coordLabel(item.coordinate), d: PIN, go: () => showPlace(item) })),
       hasResults: choosingOrigin ? savedOrigins.length + snapshot.originSearch.value.length > 0 : snapshot.search.value.length > 0,
       noResults: choosingOrigin ? snapshot.originSearch.phase === 'empty' && !savedOrigins.length : snapshot.search.phase === 'empty', emptyQ: !choosingOrigin && !query.trim(),
       recenter: () => { if (navigating) { follow = true; invalidate(); } else locate(); }, recBottom: isPlace ? 414 : searching ? 534 : 124, recCss: '',
