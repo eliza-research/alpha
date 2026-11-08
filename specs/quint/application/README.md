@@ -32,6 +32,7 @@ repository-wide allocation and source hashes are recorded in `../coverage.json`.
 | `CanonicalCalendarDraft` | Canonical Calendar editor and shared durable draft | Bound slot ownership, stale reads/writes, held clears, same-account replacement and recovery |
 | `AgentCalendarRefresh` | Current Agent Calendar read controller | Range and session fencing, coalesced readback, legacy gate and next-event freshness |
 | `AgentCalendarMutation` | Current Agent Calendar write controller | Edit admission, preservation and owner checks, exact dispatch and deferred refresh |
+| `AgentCalendarSyncControl` | Current Agent Calendar linked control client | Captured review, selected source version, current draft and owner fence, exact control dispatch and linked-event read |
 | `AgentCalendarEventReturn` | Canonical Calendar selection, origin and exact readback | Captured event and source revisions, independent reads, same-epoch re-selection and owner fencing |
 | `MapsEventReturn` | Maps renderer and Calendar origin helpers | Visit-owned attempts, visible pagehide and leave retirement, exact Calendar navigation and notices |
 | `GoogleConsentAdmission` | Mounted Google connections panel and shared Gmail grant rules | Verified account readback, preserved Gmail tier, stale permission continuation and revoke readback |

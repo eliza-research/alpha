@@ -1865,5 +1865,34 @@
       "Actual browser owner-reminder passive list admission, exact owner binding, abort, five-second cache and 24-read budget.",
       "One held transport, two synthetic owners and one canonical reminder row per reply. Explicit mark-read, reconciliation and mounted browser consumption are separate."
     ]
+  },
+  {
+    "path": "specs/quint/application/AgentCalendarSyncControl.qnt",
+    "module": "AgentCalendarSyncControl",
+    "init": "init",
+    "step": "step",
+    "invariant": "safety",
+    "tests": [
+      "resumeRevalidatesExactSourceVersionTest",
+      "draftFenceWithdrawnWhileSourceReadsTest",
+      "selectSendsCapturedRevisionAndExactDestinationTest",
+      "retiredReviewCannotAdmitNewScopeTest",
+      "listCancelsIndependentlyOfControlMutationTest"
+    ],
+    "invariants": [
+      "ActiveOwnsEpoch",
+      "DispatchMatchesReview",
+      "ExactSending",
+      "Bounded"
+    ],
+    "sources": [
+      "apps/app/src/runtime/agent-calendar.ts",
+      "apps/app/src/runtime/agent-calendar-client.ts",
+      ".eliza/client-features/plugins/plugin-calendar/src/api/calendar-api.ts"
+    ],
+    "abstractions": [
+      "Current renderer review, selection, resume, pause, recovery and linked event readback. Capture the exact owner/session/scope, control revision and selected source version, and observe draft and preservation fences.",
+      "Two owner/session/scope classes, two destinations, eight epochs and seven attempts. Calendar settings modal, Google grant/link orchestration, provider idempotency and remote effects remain separate."
+    ]
   }
 ]
