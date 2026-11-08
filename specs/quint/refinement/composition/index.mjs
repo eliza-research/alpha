@@ -1,3 +1,4 @@
+import {runControllerCompositionRefinement} from './controllers.mjs';
 import {createServer} from 'vite';
 import {sourcePaths, filesWithin, relativePath} from '../../../../scripts/quint-lib.mjs';
 import {chromium} from '@playwright/test';
@@ -13,12 +14,12 @@ const accounts = [
   {token: 'quint-owner-b', userId: '3c5e7a90-1b2d-4f6e-8a0c-2e4f6a8b0c1d', email: 'b@example.invalid', balance: 7},
 ];
 
-export async function runCompositionRefinement() {
+async function runIdentityCompositionRefinement(extraSources = []) {
   const sources = [...sourcePaths(), 'vite.config.ts', 'package.json', 'package-lock.json',
     'scripts/quint-lib.mjs', 'test/browser/flag-off-android.ts', 'test/browser/resident-stub.ts', 'test/browser/helpers/native-navigation-protocol.ts', 'upstream.lock.json',
     ...filesWithin(resolve(root, '.eliza/client-features'), path => /\.(?:ts|tsx|js|json|css|html)$/.test(path)).map(relativePath),
     ...filesWithin(resolve(root, 'patches/eliza')).map(relativePath), 'scripts/prepare-client-features.mjs',
-    fileURLToPath(import.meta.url)];
+    fileURLToPath(import.meta.url), ...extraSources];
   const driverHashes = captureInputs(sources);
   const prior = process.env.ELIZA_DEV_ALLOW_TEST_MOCKS;
   let server, browser;
@@ -123,6 +124,15 @@ export async function runCompositionRefinement() {
     await browser?.close();
     await server?.close();
   }
+}
+
+export async function runCompositionRefinement(extraSources = []) {
+  const identity = await runIdentityCompositionRefinement(extraSources);
+  const controllers = await runControllerCompositionRefinement(extraSources);
+  return {
+    receipts: [...identity.receipts, ...controllers.receipts],
+    obligations: [...identity.obligations, ...controllers.obligations],
+  };
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) console.log(JSON.stringify(await runCompositionRefinement(), null, 2));
