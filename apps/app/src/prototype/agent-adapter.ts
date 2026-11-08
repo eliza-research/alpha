@@ -1239,8 +1239,8 @@ export function installAgentAdapter(Component: Shell, views: Shell) {
     if(key==='notes'){
       const owner=previousNotesOwnerKey(),available=this.previousNotesProbeKey===JSON.stringify([owner,this.notesSourceEpoch])&&(this.previousNotesAvailability==='present'||this.previousNotesAvailability==='unavailable');
       api.notesSourceOptions=[{id:'canonical',label:'Notes',selected:this.notesSourceMode!=='legacy',choose:()=>void selectNotesSource(this,'canonical')}];
-      if(this.notesSourceMode==='legacy'||available)api.notesSourceOptions.push({id:'legacy',label:'Previous notes',selected:this.notesSourceMode==='legacy',choose:()=>{
-        if(this.live&&!document.hidden&&!this.pageSuspended&&this.S().view==='notes'&&previousNotesOwnerKey()===owner)void selectNotesSource(this,'legacy');
+      api.notesSourceOptions.push({id:'legacy',label:'Previous notes',selected:this.notesSourceMode==='legacy',available:this.notesSourceMode==='legacy'||available,choose:()=>{
+        if(this.live&&!document.hidden&&!this.pageSuspended&&previousNotesOwnerKey()===owner)void selectNotesSource(this,'legacy');
       }});
     }
     if(key==='workflows'&&!isAndroid){

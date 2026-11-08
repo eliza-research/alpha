@@ -32,3 +32,11 @@ test('agent Notes waiting for a connection use Alpha\'s Notes view without retai
 test('an explicitly selected retained source keeps Previous notes naming and its return action',()=>{
  const f=fixture();installCanonicalProjection(f);const out=f.view.render(f.state,{...f.api,notesSourceOptions:[{id:'canonical',choose:f.choose},{id:'legacy',selected:true,choose(){}}]});assert.equal(out.notesTitle,'Previous notes');assert.equal(out.primaryNotes,false);assert.equal(out.returnToNotesAction,f.choose);assert.equal(out.olderNotesAction,undefined);assert.equal(out.canCreate,true);assert.deepEqual(f.state,f.before);
 });
+
+test('retained-data availability hides the previous-notes entry without removing its internal route',()=>{
+ const f=fixture();installCanonicalProjection(f);
+ const sources=[{id:'canonical',choose:f.choose},{id:'legacy',available:false,choose:f.choose}];
+ const out=f.view.render(f.state,{...f.api,notesSourceMode:'canonical',notesSourceOptions:sources});
+ assert.equal(out.olderNotesAction,null);assert.equal(out.listActions,false);
+ assert.equal(sources.find(source=>source.id==='legacy').choose,f.choose);
+});
