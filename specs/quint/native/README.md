@@ -619,8 +619,11 @@ and a successful sent callback. A multipart provider status cannot identify
 delivery for an individual part. Carrier delivery and Android role or
 PendingIntent enforcement remain installed-platform obligations.
 
-The as-built cross-dialog trace submits the first reviewed tuple once. The
-second dialog holds a different tuple with the same operation ID, and its
-positive recovery reads the first tuple by ID alone. The model preserves the
-conflicting receipt and separately verifies exact retry. The recovery branch
-is in the pinned shared TelephonyPlugin used by Alpha's product subclass.
+Two concurrent reviews can share an operation ID before either decides. The
+as-built replay in commit `d35e4bf839` shows the second dialog receiving a
+conflicting tuple's receipt after a single radio call. The staged shared
+TelephonyPlugin now revalidates the saved binding during positive recovery.
+An exact retry returns the original receipt and a conflicting retry is
+rejected. After capacity pruning, a late exact review reports `expired`,
+while a conflicting review reports `invalid`. The source replay drives
+both outcomes through the retained dialog, then reloads the tombstone.

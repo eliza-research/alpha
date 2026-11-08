@@ -69,10 +69,20 @@ public final class SmsDispatchTraces {
 
   String[] numbers(){return Arrays.copyOf(TO,recipients);}
 
-  SmsSendJournal.Record readDisk()throws Exception{
+  String durableLedger(){
    String encrypted=context.slots.get(SLOT);
-   if(encrypted==null)return null;
-   String ledger=new JSONObject(encrypted).getString("journal");
+   return encrypted==null?"":new JSONObject(encrypted).getString("journal");
+  }
+
+  int tombstoneBinding(){
+   String prefix="t1|"+OP+"|";
+   return durableLedger().lines().filter(line->line.startsWith(prefix)).findFirst()
+    .map(line->Objects.requireNonNull(bindings.get(line.substring(prefix.length())))).orElse(0);
+  }
+
+  SmsSendJournal.Record readDisk()throws Exception{
+   String ledger=durableLedger();
+   if(ledger.isEmpty())return null;
    check(!ledger.contains(BODY[1])&&!ledger.contains(BODY[2]),"Durable SMS journal contains only body hashes");
    SmsSendJournal fresh=new SmsSendJournal(new SmsSendJournal.Storage(){
     public String read(){return ledger;}
@@ -216,7 +226,8 @@ public final class SmsDispatchTraces {
     switch((int)row.get(Sms.TYPE)){case 4 -> outbox.put(recipient);case 2 -> sentRows.put(recipient);case 5 -> failedRows.put(recipient);default -> throw new AssertionError();}
    }
    return Trace.fields("recipients",recipients,"parts",parts,"reply",reply,"replyBinding",replyBinding,
-    "memory",record(readMemory()),"disk",record(readDisk()),"attempts",context.radio.attempts,"accepted",context.radio.accepted.size(),
+    "memory",record(readMemory()),"disk",record(readDisk()),"tombstoneBinding",tombstoneBinding(),
+    "attempts",context.radio.attempts,"accepted",context.radio.accepted.size(),
     "reviews",reviews,"foreground",foreground,"closed",closed,"listener",listener,"events",events,
     "image",context.admitted,"send",context.send,"phone",context.phone,"read",context.read,"locked",context.lock.locked,
     "role",context.role,"sim",context.subscriptions.revision,"process",process,"boot",context.boot,"old",old,
@@ -324,6 +335,14 @@ public final class SmsDispatchTraces {
 
   void age()throws Exception{now+=SmsSendJournal.MAX_OPEN_MS+1;old=true;point("age");}
 
+  void prune()throws Exception{
+   SmsSendJournal journal=SmsTelephony.journal(context,config);
+   for(int i=0;i<SmsSendJournal.MAX_RECORDS;i++)
+    journal.decide("synthetic-filler-"+i,numbers(),BODY[1],SUB,"cancelled",now,context.boot);
+   check(readMemory()==null&&readDisk()==null&&tombstoneBinding()==1,"Actual capacity pruning retains exact durable binding");
+   point("prune");
+  }
+
   void refuseProviderInsert(boolean refuse)throws Exception{
    context.provider.refuseInsert=refuse;
    point("refuseOutbox",refuse);
@@ -349,9 +368,19 @@ public final class SmsDispatchTraces {
     case "cross-dialog-binding":
      f.request(1,1,"complete");f.request(2,2,"complete");
      f.approve(1,"complete");f.approve(2,"complete");
-     check(f.reply.equals("submitted")&&f.replyBinding==1&&f.context.radio.attempts==1,
-      "As built, another reviewed tuple receives the first tuple's receipt without a second send");
+     check(f.reply.equals("invalid")&&f.replyBinding==0&&f.binding(f.readDisk())==1&&f.context.radio.attempts==1,
+      "Conflicting reviewed tuple cannot receive the retained receipt or repeat radio dispatch");
      f.request(2,2,"complete");
+     break;
+    case "pruned-exact-dialog":
+    case "pruned-conflicting-dialog":
+     int lateBinding=mode.equals("pruned-exact-dialog")?1:2;
+     String refusal=lateBinding==1?"expired":"invalid";
+     f.request(1,1,"complete");f.request(2,lateBinding,"complete");
+     f.approve(1,"complete");f.age();f.prune();f.approve(2,"complete");
+     check(f.reply.equals(refusal)&&f.replyBinding==0&&f.context.radio.attempts==1,
+      "Retired Send reports the same binding-specific refusal as fresh admission");
+     f.restart(false);f.request(2,lateBinding,"complete");f.readback(1);
      break;
     case "exact-dialog-replay":
      f.request(1,1,"complete");f.request(1,1,"complete");f.request(2,1,"complete");

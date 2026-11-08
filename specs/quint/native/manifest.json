@@ -2129,7 +2129,8 @@
       "step": "step",
       "invariant": "safety",
       "tests": [
-        "conflictingReviewReturnsForeignReceiptAsBuiltTest",
+        "conflictingReviewCannotClaimAnotherReceiptTest",
+        "lateReviewUsesTombstoneBindingTest",
         "exactSecondReviewUsesFirstReceiptWithoutRadioTest",
         "simChangeAfterFirstRecipientIsUnknownTest",
         "callbackMemoryDoesNotImplyDurableEvidenceTest",
@@ -2140,6 +2141,7 @@
       "invariants": [
         "OneRadioCallPerRecipient",
         "RadioNeedsDurableIntent",
+        "TombstoneRetiresLiveRecord",
         "DeliveryNeedsSentAndReport",
         "ProviderRowsHaveOnePhase"
       ],
@@ -2149,6 +2151,9 @@
         "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaSmsSendReceiver.java",
         "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaImageCapability.java",
         "android/app/src/launcher/AndroidManifest.xml",
+        "android/consumer-host.json",
+        "patches/eliza/native-manifest.json",
+        "patches/eliza/sms-reviewed-binding.patch",
         "vendor/eliza/plugins/plugin-native-messages/android/src/main/java/ai/eliza/plugins/messages/TelephonyPlugin.java",
         "vendor/eliza/plugins/plugin-native-messages/android/src/main/java/ai/eliza/plugins/messages/SmsTelephony.java",
         "vendor/eliza/plugins/plugin-native-messages/android/src/main/java/ai/eliza/plugins/messages/SmsTelephonyConfiguration.java",
@@ -2159,14 +2164,14 @@
       "stateMapping": {
         "reviews/foreground/closed/listener/events": "Exact review calls, saved SIM/tuple, Activity lifecycle and latest native callback publisher",
         "recipients/parts/attempts/accepted": "Synthetic exact reviewed radio handoff prefix and per-part PendingIntent identity",
-        "memory/disk/boot/process": "Real live and durable SmsSendJournal records and reconstruction after process or boot boundaries",
+        "memory/disk/tombstoneBinding/boot/process": "Real live and durable SmsSendJournal records, pruned binding tombstone and reconstruction after process or boot boundaries",
         "role/outbox/sentRows/failedRows/candidate/providerStatus": "Actual outgoing provider inserts/updates and controlled unique provider readback",
         "image/send/phone/read/locked/sim/refuseOutbox/old": "Controlled platform admission, permission, SIM and time classes",
         "reply/replyBinding": "Actual native send/read/decision response and retained tuple equality class"
       },
       "abstractions": [
         "One operation ID, two reviewed payloads and bridge actors, one or two recipients with one or two parts each. The existing journal model covers wider ID retirement and capacity.",
-        "The as-built positive exception handler can return a conflicting tuple receipt from a sibling review. This source divergence is preserved; the journal still prevents a duplicate dispatch.",
+        "Successful pruning of the fixed ID retains its binding. Wider tombstone compaction, pruning write faults and capacity are separate from this retained-receipt boundary.",
         "Controlled AOSP admission, radio, provider, storage and Activity ports. Installed carrier or permission behavior, legacy journal file migration, MMS and larger interleavings remain separate."
       ],
       "bounds": {

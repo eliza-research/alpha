@@ -7,7 +7,7 @@ module NativeSmsDispatch {
   }
   type Review = {binding: int, sim: int}
   type State = {
-    recipients: int, parts: int, reply: str, replyBinding: int, memory: Record, disk: Record,
+    recipients: int, parts: int, reply: str, replyBinding: int, memory: Record, disk: Record, tombstoneBinding: int,
     attempts: int, accepted: int, reviews: int -> Review, foreground: Set[int], closed: Set[int], listener: int, events: int,
     image: bool, send: bool, phone: bool, read: bool, locked: bool, role: bool, sim: int,
     process: int, boot: int, old: bool, candidate: str, providerStatus: str, refuseOutbox: bool,
@@ -21,7 +21,7 @@ module NativeSmsDispatch {
 
   action initWith(recipients: int, parts: int, role: bool): bool = all {
     recipients.in(1.to(2)), parts.in(1.to(2)),
-    s' = {recipients:recipients,parts:parts,reply:"none",replyBinding:0,memory:noRecord,disk:noRecord,attempts:0,accepted:0,
+    s' = {recipients:recipients,parts:parts,reply:"none",replyBinding:0,memory:noRecord,disk:noRecord,tombstoneBinding:0,attempts:0,accepted:0,
       reviews:actors.mapBy(_actor=>noReview),foreground:actors,closed:Set(),listener:2,events:0,
       image:true,send:true,phone:true,read:true,locked:false,role:role,sim:1,process:1,boot:1,old:false,
       candidate:"none",providerStatus:"none",refuseOutbox:false,outbox:Set(),sentRows:Set(),failedRows:Set()}
@@ -50,9 +50,13 @@ module NativeSmsDispatch {
     { ...state,memory:wire,disk:wire }
   }
   pure def decide(state: State, binding: int, outcome: str): State =
-    if (state.memory.binding!=0) response(state,"unavailable",0)
+    if (state.memory.binding!=0 or state.tombstoneBinding!=0) response(state,"unavailable",0)
     else response(saved(state,{ ...noRecord,binding:binding,decision:outcome,boot:state.boot }),outcome,binding)
   pure def receipt(state: State): State = response(state,state.memory.status,state.memory.binding)
+  pure def retained(state: State, binding: int): State =
+    if (state.tombstoneBinding!=0) response(state,if (state.tombstoneBinding==binding) "expired" else "invalid",0)
+    else if (state.memory.binding==binding) receipt(state) else response(state,"invalid",0)
+  pure def hasRetainedId(state: State): bool = state.memory.binding!=0 or state.tombstoneBinding!=0
 
   action access(kind: str, allowed: bool): bool = all {
     kind.in(Set("image","send","phone","read","locked","role")),
@@ -63,12 +67,17 @@ module NativeSmsDispatch {
   action simAt(value: int): bool = all { value.in(0.to(3)), s' = { ...s,sim:value } }
   action refuseOutbox(value: bool): bool = s' = { ...s,refuseOutbox:value }
   action age = all { s.memory.binding!=0, s' = { ...s,old:true } }
+  // A successful journal capacity write retires the fixed ID into an exact-binding tombstone.
+  action prune = all {
+    s.old, s.memory.binding!=0, s.memory.binding==s.disk.binding, not(s.memory.dispatching),
+    s' = { ...s,memory:noRecord,disk:noRecord,tombstoneBinding:s.memory.binding }
+  }
 
   action request(actor: int, binding: int, mode: str): bool = all {
     actors.contains(actor), binding.in(1.to(2)), mode.in(Set("complete","long-number","divide-refused","empty-parts")),
     if (not(current(s,actor))) s' = response(s,"unavailable",0)
     else if (mode=="long-number") s' = response(s,"invalid",0)
-    else if (s.memory.binding!=0) s' = if (binding==s.memory.binding) receipt(s) else response(s,"invalid",0)
+    else if (hasRetainedId(s)) s' = retained(s,binding)
     else if (s.reviews.get(actor).binding!=0) s' = response(s,"busy",0)
     else if (not(permitted(s,actor)) or mode=="divide-refused") s' = decide(s,binding,"denied")
     else if (mode=="empty-parts") s' = response(s,"too-long",0)
@@ -101,8 +110,7 @@ module NativeSmsDispatch {
       review.binding!=0,
       val state={ ...s,reviews:s.reviews.set(actor,noReview) }
       if (not(permitted(s,actor))) s' = decide(state,review.binding,"denied")
-      // As built the positive exception recovery compares the ID alone.
-      else if (s.memory.binding!=0) s' = receipt(state)
+      else if (hasRetainedId(state)) s' = retained(state,review.binding)
       else if (review.sim!=s.sim or mode=="begin-before") s' = decide(state,review.binding,"denied")
       else {
         val starting=project({ ...noRecord,binding:review.binding,dispatching:true,boot:s.boot },s.recipients*s.parts)
@@ -216,13 +224,15 @@ module NativeSmsDispatch {
   }
 
   val OneRadioCallPerRecipient = s.accepted<=s.attempts and s.attempts<=s.recipients
-  val RadioNeedsDurableIntent = s.attempts==0 or (s.disk.binding!=0 and s.disk.decision=="none")
+  val RadioNeedsDurableIntent = s.attempts==0 or s.tombstoneBinding!=0 or (s.disk.binding!=0 and s.disk.decision=="none")
+  val TombstoneRetiresLiveRecord = s.tombstoneBinding==0 or (s.memory.binding==0 and s.disk.binding==0)
   pure def evidence(record: Record): bool =
     record.sent.intersect(record.failed).size()==0 and record.delivered.union(record.deliveryFailed).subseteq(record.sent.intersect(record.reported))
   val DeliveryNeedsSentAndReport = evidence(s.memory) and evidence(s.disk) and
     (s.parts==1 or s.memory.delivered.union(s.disk.delivered).union(s.memory.deliveryFailed).union(s.disk.deliveryFailed).size()==0)
   val ProviderRowsHaveOnePhase = s.outbox.intersect(s.sentRows.union(s.failedRows)).size()==0 and s.sentRows.intersect(s.failedRows).size()==0
-  val safety = OneRadioCallPerRecipient and RadioNeedsDurableIntent and DeliveryNeedsSentAndReport and ProviderRowsHaveOnePhase
+  val safety = OneRadioCallPerRecipient and RadioNeedsDurableIntent and TombstoneRetiresLiveRecord
+    and DeliveryNeedsSentAndReport and ProviderRowsHaveOnePhase
 
   action step = any {
     nondet kind=Set("image","send","phone","read","locked","role").oneOf()
@@ -230,7 +240,7 @@ module NativeSmsDispatch {
     access(kind,allowed),
     nondet sim=0.to(3).oneOf()
     simAt(sim),
-    refuseOutbox(true),refuseOutbox(false),age,
+    refuseOutbox(true),refuseOutbox(false),age,prune,
     nondet actor=actors.oneOf()
     nondet binding=1.to(2).oneOf()
     nondet mode=Set("complete","long-number","divide-refused","empty-parts").oneOf()
@@ -262,9 +272,15 @@ module NativeSmsDispatch {
   action reviewed=initWith(1,1,false).then(request(1,1,"complete"))
   action sent=reviewed.then(approve(1,"complete"))
 
-  run conflictingReviewReturnsForeignReceiptAsBuiltTest = reviewed.then(request(2,2,"complete"))
+  run conflictingReviewCannotClaimAnotherReceiptTest = reviewed.then(request(2,2,"complete"))
     .then(approve(1,"complete")).then(approve(2,"complete"))
-    .expect(s.reply=="submitted" and s.replyBinding==1 and s.attempts==1)
+    .expect(s.reply=="invalid" and s.replyBinding==0 and s.memory.binding==1 and s.attempts==1)
+
+  run lateReviewUsesTombstoneBindingTest = reviewed.then(request(2,1,"complete"))
+    .then(approve(1,"complete")).then(age).then(prune).then(approve(2,"complete"))
+    .expect(s.reply=="expired" and s.replyBinding==0 and s.attempts==1)
+    .then(restart(false)).then(request(1,2,"complete"))
+    .expect(s.reply=="invalid" and s.tombstoneBinding==1 and s.attempts==1)
 
   run exactSecondReviewUsesFirstReceiptWithoutRadioTest = reviewed.then(request(2,1,"complete"))
     .then(approve(1,"complete")).then(approve(2,"complete"))

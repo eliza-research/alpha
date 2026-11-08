@@ -323,6 +323,18 @@
           "afterSha256": "5e30a5d8bb04ad83b1369c0fc6ac8c95e00ecacde199d92f80eec1f487fc1894"
         }
       ]
+    },
+    {
+      "file": "sms-reviewed-binding.patch",
+      "sha256": "58ef065e979388b71a03198d7963be2ee61b8f149c1750f2b91ee26ddc73f20f",
+      "module": "plugins/plugin-native-messages/android",
+      "targets": [
+        {
+          "path": "plugins/plugin-native-messages/android/src/main/java/ai/eliza/plugins/messages/TelephonyPlugin.java",
+          "beforeSha256": "f317d127515d4676ce262f7d94118057206acc6d7ee0ee0e0f5e4309d12e8a56",
+          "afterSha256": "a444403bdaf56dc7b7d002559025454e11a5526a58282eb4e67d76dcb2d08ff5"
+        }
+      ]
     }
   ],
   "modules": [
@@ -335,6 +347,7 @@
     "plugins/plugin-native-camera/android",
     "plugins/plugin-native-filesystem/android",
     "plugins/plugin-native-media/android",
+    "plugins/plugin-native-messages/android",
     "plugins/plugin-native-notifications/android",
     "plugins/plugin-native-reminders/android",
     "plugins/plugin-native-secure-store/android",

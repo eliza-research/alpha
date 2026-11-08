@@ -116,6 +116,10 @@ test('the host links its native-only secure store transitively and keeps fixture
  assert.deepEqual(profile.modules.filter(module => !module.relocateBuild).map(module => module.name).sort(),
   ['local-speech', 'notification-fixture', 'private-peer-fixture', 'sense', 'sense-speech', 'video-fixture']);
  for (const name of ['capacitor-android', 'local-speech', 'eliza-system', 'eliza-contacts', 'elizaos-capacitor-secure-store']) assert.ok(linked.includes(name), name);
+ const messages = profile.modules.find(module => module.name === 'eliza-messages');
+ assert.equal(messages.directory, fs.realpathSync(path.join(staging, 'plugins/plugin-native-messages/android')));
+ assert.equal(messages.relocateBuild, true);
+ assert.equal(messages.appDependency, true, 'both app flavors link the authenticated native messages module');
  assert.deepEqual(profile.sourceSets.main, {java: [
   fs.realpathSync(path.join(staging, 'plugins/plugin-native-filesystem/android/src/main/java')),
  ]}, 'the generated host compiles the authenticated shared Files storage patch');
