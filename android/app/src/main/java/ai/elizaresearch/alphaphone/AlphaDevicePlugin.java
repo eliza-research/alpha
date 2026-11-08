@@ -275,7 +275,7 @@ public final class AlphaDevicePlugin extends Plugin {
   }
   static void stop()throws Exception {
    shutdownRequest=AlphaLocalAgentPlugin.pauseForUpdate(context);
-   ai.elizaos.app.ElizaAgentService.retryCredentialShutdown(context,shutdownRequest);
+   ElizaAgentService.retryCredentialShutdown(context,shutdownRequest);
    long deadline=System.nanoTime()+java.util.concurrent.TimeUnit.SECONDS.toNanos(20);
    while(!AlphaLocalAgentPlugin.updateShutdownConfirmed(context,shutdownRequest)){
     if(System.nanoTime()>=deadline)throw new java.io.IOException("Update shutdown unconfirmed");
