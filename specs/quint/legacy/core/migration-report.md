@@ -393,3 +393,19 @@ simulation and bounded safety relation also allows explicit stuttering.
 
 Runtime source conformance, the remaining 12 translations and complete
 repository and Android validation are tracked separately from this checkpoint.
+
+## Configuration execution
+
+The finite TLC phase compiles Quint’s exact `rawStep` action, which retains
+the source `Next` relation. Each generated configuration explicitly selects the
+original deadlock setting. The bounded checks use `step`, which includes
+stuttering as permitted by the source temporal specification. For fair profiles,
+the temporal check uses a fairness implication over the same transition
+relation. `SingleFlightMemo.safety` records its original symmetry operator
+while the generated runner explores the unreduced graph.
+
+The profile checker validates all constant assignments, invariant and property
+lists, deadlock and symmetry metadata, and original Git blob hashes before
+running. Results distinguish type checking, scenarios, simulation, bounded
+symbolic checking and a complete finite TLC exploration. Generated TLA is
+backend output and lives only in test results.

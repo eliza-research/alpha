@@ -1,0 +1,347 @@
+[
+  {
+    "path": "specs/quint/legacy/CoreActionSettlement.qnt",
+    "module": "CoreActionSettlement",
+    "init": "init",
+    "step": "step",
+    "invariant": "safety",
+    "tests": [
+      "orderedLateDeliveryTest"
+    ],
+    "temporal": [
+      "CheckedTemporal"
+    ],
+    "configurations": [
+      {
+        "name": "late",
+        "module": "CoreActionSettlement",
+        "init": "init",
+        "step": "step",
+        "rawStep": "rawStep",
+        "invariant": "safety",
+        "temporal": "CheckedTemporal",
+        "tests": [
+          "orderedLateDeliveryTest"
+        ],
+        "invariants": [
+          "TypeOK",
+          "DeliveredInEmissionOrder",
+          "DeliveredOnlyEmitted",
+          "NoneAfterFailure",
+          "NoneOnReplyFailure",
+          "NoneWhilePending"
+        ],
+        "properties": [
+          "SettleReturns",
+          "AllDelivered"
+        ],
+        "checkDeadlock": true,
+        "constantAssignments": [
+          "InHandler = 3",
+          "Late = 3",
+          "Outcomes = {\"ok\"}",
+          "MayDeny = FALSE"
+        ]
+      },
+      {
+        "name": "outcomes",
+        "module": "CoreActionSettlementOutcomes",
+        "init": "init",
+        "step": "step",
+        "rawStep": "rawStep",
+        "invariant": "safety",
+        "temporal": "CheckedTemporal",
+        "tests": [
+          "denialTest",
+          "replyFailureDropsCallbacksTest",
+          "failedHandlerDropsCallbacksTest"
+        ],
+        "invariants": [
+          "TypeOK",
+          "DeliveredInEmissionOrder",
+          "DeliveredOnlyEmitted",
+          "NoneAfterFailure",
+          "NoneOnReplyFailure",
+          "NoneWhilePending"
+        ],
+        "properties": [
+          "SettleReturns",
+          "AllDelivered"
+        ],
+        "checkDeadlock": true,
+        "constantAssignments": [
+          "InHandler = 2",
+          "Late = 1",
+          "Outcomes = {\"ok\", \"replyFailure\", \"invalid\", \"throw\"}",
+          "MayDeny = TRUE"
+        ]
+      }
+    ],
+    "sources": [],
+    "upstreamSources": [
+      {
+        "path": "packages/core/tla/ActionSettlement.tla",
+        "revision": "4787d51a142c63c98371c832997184c53f7218d3",
+        "sha256": "8a5aff37e3def1f0ea382471243a1dc504ca35e57203a13c59bbbf116da210e8"
+      }
+    ],
+    "classification": "upstream-design-conversion",
+    "abstractions": [
+      "The ten source state variables form one record. Receive is a frame-preserving update, and nondeterministic admission and return outcomes remain explicit.",
+      "This is a literal upstream design translation. Source-executing implementation refinement is separately recorded."
+    ]
+  },
+  {
+    "path": "specs/quint/legacy/CoreApprovalService.qnt",
+    "module": "CoreApprovalService",
+    "init": "init",
+    "step": "step",
+    "invariant": "safety",
+    "tests": [
+      "selectionFailureSettlesTest",
+      "timeoutFailureSettlesTest"
+    ],
+    "temporal": [
+      "CheckedTemporal"
+    ],
+    "configurations": [
+      {
+        "name": "failures",
+        "module": "CoreApprovalService",
+        "init": "init",
+        "step": "step",
+        "rawStep": "rawStep",
+        "invariant": "safety",
+        "temporal": "CheckedTemporal",
+        "tests": [
+          "selectionFailureSettlesTest",
+          "timeoutFailureSettlesTest"
+        ],
+        "invariants": [
+          "TypeOK",
+          "AtMostOneCallback",
+          "ResultAgrees",
+          "SingleOwner"
+        ],
+        "properties": [
+          "SettlesOnce",
+          "CallerSettles"
+        ],
+        "checkDeadlock": true,
+        "constantAssignments": [
+          "Selectors = {s1, s2}",
+          "CanFail = TRUE"
+        ]
+      },
+      {
+        "name": "race",
+        "module": "CoreApprovalServiceRace",
+        "init": "init",
+        "step": "step",
+        "rawStep": "rawStep",
+        "invariant": "safety",
+        "temporal": "CheckedTemporal",
+        "tests": [
+          "timerWinsSelectionRaceTest",
+          "stopCannotStealCallbackTest"
+        ],
+        "invariants": [
+          "TypeOK",
+          "AtMostOneCallback",
+          "ResultAgrees",
+          "SingleOwner"
+        ],
+        "properties": [
+          "SettlesOnce",
+          "CallerSettles"
+        ],
+        "checkDeadlock": true,
+        "constantAssignments": [
+          "Selectors = {s1, s2}",
+          "CanFail = FALSE"
+        ]
+      }
+    ],
+    "sources": [],
+    "upstreamSources": [
+      {
+        "path": "packages/core/tla/ApprovalService.tla",
+        "revision": "4787d51a142c63c98371c832997184c53f7218d3",
+        "sha256": "5b954c7878a07a32753ae2743e9e3057b007bcdc541f94646566fdd875b8bf26"
+      }
+    ],
+    "classification": "upstream-design-conversion",
+    "abstractions": [
+      "Two selector model values are distinct integer identities. A monotonic monitor checks the exact SettlesOnce transition predicate without excluding transitions.",
+      "This is a literal upstream design translation. Source-executing implementation refinement is separately recorded."
+    ]
+  },
+  {
+    "path": "specs/quint/legacy/CoreInteractionSession.qnt",
+    "module": "CoreInteractionSession",
+    "init": "init",
+    "step": "step",
+    "invariant": "safety",
+    "tests": [
+      "expiredClaimCannotCommitTest",
+      "mismatchedClaimCannotTakeOverTest",
+      "reconciledCrashIsReplayableTest"
+    ],
+    "temporal": [
+      "CheckedTemporal"
+    ],
+    "configurations": [
+      {
+        "name": "leases",
+        "module": "CoreInteractionSession",
+        "init": "init",
+        "step": "step",
+        "rawStep": "rawStep",
+        "invariant": "safety",
+        "temporal": "CheckedTemporal",
+        "tests": [
+          "expiredClaimCannotCommitTest",
+          "mismatchedClaimCannotTakeOverTest",
+          "reconciledCrashIsReplayableTest"
+        ],
+        "invariants": [
+          "TypeOK",
+          "AtMostOnce",
+          "ExactlyOnceAuthority",
+          "CompletedHasEffect",
+          "NoCommitWhileRevoked",
+          "NoLateCommit",
+          "AmbiguousRetained",
+          "ExecutorHasRecord"
+        ],
+        "properties": [
+          "EffectOnlyByCommitter",
+          "EffectRecorded"
+        ],
+        "checkDeadlock": true,
+        "constantAssignments": [
+          "Clients = {c1, c2, c3}",
+          "Mismatched = {c3}",
+          "MaxRuns = 2",
+          "MaxTime = 4",
+          "Expiry = 3",
+          "Ttl = 1",
+          "None = None"
+        ]
+      },
+      {
+        "name": "retries",
+        "module": "CoreInteractionSessionRetries",
+        "init": "init",
+        "step": "step",
+        "rawStep": "rawStep",
+        "invariant": "safety",
+        "temporal": "CheckedTemporal",
+        "tests": [
+          "resumedLeaseFencesOldOwnerTest",
+          "expiredCommittedSessionStaysForReviewTest"
+        ],
+        "invariants": [
+          "TypeOK",
+          "AtMostOnce",
+          "ExactlyOnceAuthority",
+          "CompletedHasEffect",
+          "NoCommitWhileRevoked",
+          "NoLateCommit",
+          "AmbiguousRetained",
+          "ExecutorHasRecord"
+        ],
+        "properties": [
+          "EffectOnlyByCommitter",
+          "EffectRecorded"
+        ],
+        "checkDeadlock": true,
+        "constantAssignments": [
+          "Clients = {c1, c2}",
+          "Mismatched = {}",
+          "MaxRuns = 3",
+          "MaxTime = 5",
+          "Expiry = 4",
+          "Ttl = 2",
+          "None = None"
+        ]
+      }
+    ],
+    "sources": [],
+    "upstreamSources": [
+      {
+        "path": "packages/core/tla/InteractionSession.tla",
+        "revision": "4787d51a142c63c98371c832997184c53f7218d3",
+        "sha256": "a204e853f4e417a640fcfd0a6e72876da7986ddcc29a8b1ee9f067e9e97bbf56"
+      }
+    ],
+    "classification": "upstream-design-conversion",
+    "abstractions": [
+      "Client model values are distinct integer identities. Claim IDs remain pairs. The source None model value is represented by distinct typed sentinels in claim and digest domains, which are never compared to each other.",
+      "The source field run is named runs because run is a Quint keyword. The exact EffectOnlyByCommitter transition predicate is observed by a monotonic monitor.",
+      "This is a literal upstream design translation. Source-executing implementation refinement is separately recorded."
+    ]
+  },
+  {
+    "path": "specs/quint/legacy/CoreInteractiveTask.qnt",
+    "module": "CoreInteractiveTask",
+    "init": "init",
+    "step": "step",
+    "invariant": "safety",
+    "tests": [
+      "retractDispatchedOriginTest",
+      "reconcileUnknownBeforeResumeTest",
+      "revokeCompletedTaskTest"
+    ],
+    "temporal": [
+      "CheckedTemporal"
+    ],
+    "configurations": [
+      {
+        "name": "reducer",
+        "module": "CoreInteractiveTask",
+        "init": "init",
+        "step": "step",
+        "rawStep": "rawStep",
+        "invariant": "safety",
+        "temporal": "CheckedTemporal",
+        "tests": [
+          "retractDispatchedOriginTest",
+          "reconcileUnknownBeforeResumeTest",
+          "revokeCompletedTaskTest"
+        ],
+        "invariants": [
+          "TypeOK",
+          "AtMostOneUnresolved",
+          "WaitingIffDispatched",
+          "BlockedHasUnknown",
+          "RevokedIsNotRunning",
+          "PreparedIsFenced",
+          "ObservedOriginIsAllowed",
+          "ScopeComesFromGrant",
+          "EndedIsSettled"
+        ],
+        "properties": [
+          "OutcomesAreFinal",
+          "RevocationIsFinal"
+        ],
+        "checkDeadlock": false,
+        "constantAssignments": []
+      }
+    ],
+    "sources": [],
+    "upstreamSources": [
+      {
+        "path": "packages/core/tla/InteractiveTask.tla",
+        "revision": "4787d51a142c63c98371c832997184c53f7218d3",
+        "sha256": "e6d161bddb5fbb06bfba9e02bb9ba9a8e77029ee0f9328387120866968edb60c"
+      }
+    ],
+    "classification": "upstream-design-conversion",
+    "abstractions": [
+      "Source reducer state and nondeterministic event partitions are retained. Two monotonic monitors observe the exact OutcomesAreFinal and RevocationIsFinal transition predicates.",
+      "The upstream configuration deliberately disables TLC deadlock detection.",
+      "This is a literal upstream design translation. Source-executing implementation refinement is separately recorded."
+    ]
+  }
+]
