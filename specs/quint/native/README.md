@@ -564,3 +564,25 @@ Two scopes, three tracked rows, a seeded historical suffix and held
 synthetic IPC requests bound the model and source schedules. Actual server
 cursor behavior, encrypted storage and WorkManager execution are separate
 boundaries.
+
+### Android reminder delivery
+
+`NativeReminderDelivery` follows the product receiver and the pinned reminder
+engine through an inexact alarm, private notification, exact occurrence action,
+and restore. The model distinguishes alarm custody, the visible notice, the
+durable reminder, and a reviewed creation receipt. It tracks a boot marker's
+durable value separately from its in-process value after a failed commit.
+
+The Android effect can precede the saved posted phase. A refused commit
+quarantines the current envelope and can leave a visible notice against a
+scheduled record. The tap then resolves as unretained after process restart.
+If the posted bytes reached disk before the failure report, restart can recover
+the exact route. A reviewed receipt also survives unknown Android effects.
+Exact operation replay returns the stored receipt without arming again.
+
+The host runs the actual Java engine, store, envelope, tap and receiver over
+controlled Android ports. The checked JSON compile API comes from Android.
+Execution uses Android JSON when available and a verified Maven JSON fallback
+for these bounded schedules. The evidence covers one reminder, UTC daily
+recurrence and the observed failure windows. Installed alarms, other recurrence
+rules, and general Android notification or reboot behavior are separate.

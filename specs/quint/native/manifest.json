@@ -2015,6 +2015,59 @@
         "maxSteps": 80,
         "maxVerifyDepth": 4
       }
+    },
+    {
+      "path": "specs/quint/native/NativeReminderDelivery.qnt",
+      "module": "NativeReminderDelivery",
+      "init": "init",
+      "step": "step",
+      "invariant": "safety",
+      "tests": [
+        "oldAndEarlyAlarmsDoNotPostTest",
+        "permissionGrantNeedsExplicitRescheduleTest",
+        "visibleBeforeDurableSaveIsUnretainedTest",
+        "postedBytesSurviveAmbiguousSaveTest",
+        "restoreMarkerWaitsForPostedPermissionTest",
+        "failedBootMarkerRetryWaitsForProcessRestartTest",
+        "snoozeRetainsOccurrenceAndDoneRetiresItTest",
+        "doneAloneAdvancesDailyCivilOccurrenceTest",
+        "uncertainOperationReplayDoesNotArmTest"
+      ],
+      "invariants": [
+        "NoEarlyPublication",
+        "IssuedIdentities",
+        "ReceiptNeedsDurableRow",
+        "BootMarkerIsObservedBoot"
+      ],
+      "sources": [
+        "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaReminders.java",
+        "android/app/src/main/java/ai/elizaresearch/alphaphone/ReminderReceiver.java",
+        "android/app/src/main/AndroidManifest.xml",
+        "vendor/eliza/plugins/plugin-native-reminders/android/src/main/java/ai/eliza/plugins/reminders/ReminderEngine.java",
+        "vendor/eliza/plugins/plugin-native-reminders/android/src/main/java/ai/eliza/plugins/reminders/ReminderConfiguration.java",
+        "vendor/eliza/plugins/plugin-native-reminders/android/src/main/java/ai/eliza/plugins/reminders/ReminderStore.java",
+        "vendor/eliza/plugins/plugin-native-reminders/android/src/main/java/ai/eliza/plugins/reminders/ReminderEnvelope.java",
+        "vendor/eliza/plugins/plugin-native-reminders/android/src/main/java/ai/eliza/plugins/reminders/ReminderReceiver.java",
+        "vendor/eliza/plugins/plugin-native-reminders/android/src/main/java/ai/eliza/plugins/reminders/ReminderTaps.java",
+        "vendor/eliza/plugins/plugin-native-reminders/android/src/main/java/ai/eliza/plugins/reminders/SecureStringStore.java"
+      ],
+      "stateMapping": {
+        "now/permission/boot/restoredBoot/markerView/process/quarantined": "Controlled wall time, effective notice permission, actual boot marker durability and per-engine envelope quarantine",
+        "status/occurrence/issued/repeat/silent/legacy/at/due/postedAt/snoozed/history/skipped": "Durable reminder and exact occurrence/decision progression",
+        "alarm/alarmAt/arms": "Current inexact Android alarm and scheduling effects at the controlled system port",
+        "visible/visibleAt/noticeDeadline/posts/routeRetained": "Private notification custody, exact persisted tap route and visible-before-record failure",
+        "receipt/outcome": "Reviewed durable create phase and source response"
+      },
+      "abstractions": [
+        "One reminder, four observed occurrence classes and bounded wall seconds. The source daily recurrence is UTC and the model uses the exact 600-second snooze and one-second inexact-arm floor.",
+        "Controlled Android AlarmManager, notification and persistence ports preserve independent durable bytes, in-process memory, exact Intent identity and quarantine.",
+        "The reviewed operation campaign covers creation and exact replay. Browser, deletion review, notification tap queue, other recurrence kinds and installed delivery are separate."
+      ],
+      "bounds": {
+        "maxSamples": 1000,
+        "maxSteps": 80,
+        "maxVerifyDepth": 4
+      }
     }
   ]
 }
