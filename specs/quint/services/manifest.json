@@ -1080,6 +1080,51 @@
         "maxSteps": 80,
         "seed": "123"
       }
+    },
+    {
+      "path": "specs/quint/services/WorkflowScheduleTasks.qnt",
+      "module": "WorkflowScheduleTasks",
+      "init": "init",
+      "step": "step",
+      "invariant": "safety",
+      "sources": [
+        "vendor/eliza/plugins/plugin-workflow/src/services/embedded-workflow-service.ts",
+        "vendor/eliza/packages/core/src/utils/string-to-uuid.ts",
+        "vendor/eliza/packages/core/src/utils/uuid.ts",
+        "vendor/eliza/packages/core/src/types/trigger.ts"
+      ],
+      "tests": [
+        "activationTaskTest",
+        "beforeWriteFailureTest",
+        "lostCreateReceiptTest",
+        "staleCreateRemovedTest",
+        "staleCreatePreservesSuccessorTest",
+        "lateTaskAfterCompletedCleanupTest",
+        "pausePreservesUnrelatedTriggerTest",
+        "removalCleansAllTriggersTest",
+        "restoreWaitsForCleanupTest",
+        "cleanupThenRestoreTest",
+        "staleActivationRejectedTest",
+        "malformedScheduleRejectedTest"
+      ],
+      "invariants": [
+        "RemovedInactive",
+        "MarkerBelongsToRemovedWorkflow",
+        "RecordedTaskVersion",
+        "RetiredTaskCannotReappear",
+        "TypeOK"
+      ],
+      "abstractions": [
+        "One workflow, four version identities, three unique task slots, one pending creation and selected second-host source operations.",
+        "Definition commits and external task writes are independent. Failed writes can leave either missing or already-persisted tasks.",
+        "Task-store operations are controlled. Current-row readback retires only the task created by that invocation. Installed dispatch and task-store guarantees are separate obligations.",
+        "A completed cleanup marker does not prove cross-store quiescence: an older in-flight create whose retirement fails can leave a stale task until startup cleanup."
+      ],
+      "bounds": {
+        "maxSamples": 1000,
+        "maxSteps": 80,
+        "seed": "123"
+      }
     }
   ]
 }

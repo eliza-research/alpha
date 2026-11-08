@@ -22,8 +22,9 @@ async function bundleEngine() {
       export {agentProcessStartedAtMs,computeNextCronRunAtMs,isMissedScheduledOccurrence,recordsMissedScheduledOccurrences,MISSED_SCHEDULED_OCCURRENCE_TEXT} from ${JSON.stringify(resolve(root, 'vendor/eliza/packages/core/src/services/trigger-scheduling.ts'))};
       export class Service {constructor(runtime){this.runtime=runtime;}}
       export const logger={info(){},warn(){},error(){}};
-      export const ModelType={TEXT_LARGE:'TEXT_LARGE'};export const TRIGGER_SCHEMA_VERSION=1;
-      export const stringToUuid=value=>{throw Error('Task arming is outside this fixture '+value);};`,
+      export const ModelType={TEXT_LARGE:'TEXT_LARGE'};
+      export {TRIGGER_SCHEMA_VERSION} from ${JSON.stringify(resolve(root, 'vendor/eliza/packages/core/src/types/trigger.ts'))};
+      export {stringToUuid} from ${JSON.stringify(resolve(root, 'vendor/eliza/packages/core/src/utils/string-to-uuid.ts'))};`,
     'smithers-runtime': `
       export const runSmithersWorkflow=(input)=>globalThis.__workflowEnginePorts.run(input);
       export const controlSmithersRun=(...input)=>globalThis.__workflowEnginePorts.control(...input);

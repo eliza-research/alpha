@@ -17,3 +17,15 @@ The bounded schedules exercise these behaviors.
 The evidence is bounded to one execution, two timer identities and three process invocations. Stop during an active worker, in-progress resume admission, multiple runs, schedule-task registration and the external trigger dispatcher remain separate obligations. Installed process leases and side-effect idempotency are also outside this host callback model.
 
 Source discovery, exact compiled-byte checks and before-driver provenance use the shared workflow engine harness. No product source is changed by these fixtures.
+
+## Persistent task registration
+
+`WorkflowScheduleTasks` covers the independent SQL-definition and runtime-task commits through the actual activation, deactivation, removal, restoration and startup methods. The fixture executes core `stringToUuid` for the persisted deterministic trigger identity. Task read/create/delete remain controlled persistence ports.
+
+The source schedules include failure before and after task creation, failure before and after deletion, inactive cleanup on startup, exact-version task reuse, stale creation versus another host's pause, stale creation versus a newer activation, preservation of unrelated event triggers on pause, removal of every workflow trigger, and restoration only after confirmed cleanup. The second host is a separate actual `EmbeddedWorkflowService` using the same SQL and task ports.
+
+Typed task metadata binds its reviewed version. Generic tasks have no equivalent field, so the generic schedule projects only its task count. The model's generic task-version value and its schedule-validity class remain unobserved fields. Their absence is an explicit refinement gap.
+
+A successful definition commit does not establish successful task registration. A reported task-store failure can leave a missing task or an already-created task. The model retains both possibilities. Schedule existence also does not authorize a run. Durable run admission is covered separately by `WorkflowEngineAdmission`.
+
+A completed cleanup marker records the last cleanup transaction. The source campaign also holds an older host task creation until after removal cleanup, then rejects retirement of that late task. The marker remains complete while the stale task is still present. Startup removes it later. The model deliberately retains this current behavior and does not assert that the marker alone proves task-store quiescence. Durable run admission still rejects a removed workflow.
