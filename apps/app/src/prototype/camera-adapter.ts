@@ -428,12 +428,12 @@ export function installPrototypeCameraAdapter(_Component: unknown, views: Record
     const native:'favorite'|'unfavorite'|'trash'|'restore'=operation==='favorite'?(favoriteTarget(chosen)?'favorite':'unfavorite'):operation;
     mutating=true;closeVideo();preview=undefined;retirePhotoRead();
     owner.set({open:null,nativePhotoSelection:null,nativeMultiSelection:Date.now()});
-    const verified:SavedPhoto[]=[],changed:SavedPhoto[]=[];let failed=0,unverified=false;
+    const verified:SavedPhoto[]=[],changed:SavedPhoto[]=[];let failed=0,unverified=false,declined=false;
     try{
       for(const batch of batches(chosen,BATCH)){
         if(disposed)return;
         let receipt;try{receipt=await library.changeMany({operation:native,items:batch.map(row=>({id:nativeId(row.id),revision:row.mutationRevision||''}))});}
-        catch{unverified=true;failed+=batch.length;continue;}
+        catch(error){if((error as {code?:unknown}|null)?.code==='LIBRARY_DECLINED'){declined=true;break;}unverified=true;failed+=batch.length;continue;}
         for(const outcome of receipt.outcomes){if(!outcome.item){failed++;continue;}const before=batch.find(item=>nativeId(item.id)===outcome.id);const item={...before,...normalize(outcome.item)} as SavedPhoto;verified.push(item);if(outcome.status!=='unchanged')changed.push(item);}
         failed+=Math.max(0,batch.length-receipt.outcomes.length);
       }
@@ -448,7 +448,7 @@ export function installPrototypeCameraAdapter(_Component: unknown, views: Record
         owner.set({nativeMultiSelection:Date.now(),nativeCaptureRevision:Date.now()});
         const n=verified.length,message=operation==='favorite'?(native==='favorite'?`Added ${n} to Favorites`:`Removed ${n} from Favorites`):operation==='trash'?`${n} moved to Recently deleted`:`${n} restored`;
         const undo=operation==='trash'?changed.filter(row=>row.trashed):[];
-        owner.toast(message+(failed?` · ${failed} not changed`:''),undo.length?{undo:()=>{void changeSelection(owner,'restore',undo);}}:undefined);
+        if(verified.length||!declined)owner.toast(message+(failed?` · ${failed} not changed`:''),undo.length?{undo:()=>{void changeSelection(owner,'restore',undo);}}:undefined);
       }
       if(unverified&&!verified.length&&owner.isActive())owner.toast('Nothing changed. Try again.');
     }finally{mutating=false;if(!disposed){void refresh();void loadTrash(owner);void loadCounts(owner);void loadCustomAlbums(owner);owner.set({nativeMultiSelection:Date.now()});}}

@@ -115,3 +115,33 @@ for(const destination of ['share','save'])for(const retirement of ['back','home-
  expect(await page.evaluate(()=>(window as any).mediaHandoffCalls)).toBe(0);expect(downloads).toEqual([]);
  await page.evaluate(()=>{(window as any).restoreMediaFetch();});
 });
+
+test('declining a large selection stops after one confirmation and preserves every photo',async({page})=>{
+ await page.evaluate(async()=>{
+  const {importBrowserPhoto,browserPhotoLibrary}=await import('/src/prototype/browser-camera.ts');
+  const canvas=document.createElement('canvas');canvas.width=16;canvas.height=12;
+  const image=canvas.toDataURL('image/jpeg');
+  for(let index=0;index<42;index++)await importBrowserPhoto({original:new File([],'source.jpg'),image,width:16,height:12},new AbortController().signal);
+  (window as any).declinedPhotoBatches=[];
+  browserPhotoLibrary.changeMany=async input=>{
+   (window as any).declinedPhotoBatches.push(input.items.length);
+   throw Object.assign(new Error('Photo change cancelled.'),{code:'LIBRARY_DECLINED'});
+  };
+ });
+ await page.getByRole('button',{name:'Photos',exact:true}).click();
+ const grid=page.locator('[data-alpha-app-scroll="photos"]').first();
+ await grid.hover();await page.mouse.wheel(0,5000);
+ await expect(page.getByRole('region',{name:'Today',exact:true}).getByText('45',{exact:true})).toHaveCount(1);
+ await page.getByRole('button',{name:'Select photos',exact:true}).click();
+ await page.getByRole('button',{name:'Select all',exact:true}).click();
+ await expect(page.getByRole('heading',{name:'45 selected',exact:true})).toBeVisible();
+ await page.getByRole('button',{name:'Delete selected',exact:true}).click();
+ await expect(page.getByRole('button',{name:'Select photos',exact:true})).toBeVisible();
+ const result=await page.evaluate(async()=>{
+  const {browserPhotoLibrary}=await import('/src/prototype/browser-camera.ts');
+  return {calls:(window as any).declinedPhotoBatches,summary:await browserPhotoLibrary.summary()};
+ });
+ expect(result.calls).toEqual([20]);
+ expect(result.summary).toMatchObject({camera:45,trash:0});
+ await expect(page.getByText('0 moved to Recently deleted',{exact:true})).toHaveCount(0);
+});
