@@ -1101,7 +1101,7 @@ export function installPrototypeVoiceAdapter(Component: any, views: Record<strin
     api = current;
     if(savedTranscription&&!savedTranscription.current())queueMicrotask(cancelSavedTranscription);
     // Folders remain stored for continuity; this Notes surface is one complete list.
-    if (state.folder && state.folder !== 'deleted') queueMicrotask(() => current.setView('notes', { folder: null }));
+    if (state.folder && state.folder !== 'deleted' || state.menu === 'move') queueMicrotask(() => current.setView('notes', { folder: state.folder === 'deleted' ? 'deleted' : null, menu: null }));
     if (noteDestination && !noteDestination.current()) queueMicrotask(() => noteRecorder.recheckOwner());
     // `record` (the notes:rec deep link, or an agent reply) opens the Notes recorder once.
     if (state.record && !recordRequested) {
