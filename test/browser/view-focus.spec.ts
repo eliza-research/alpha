@@ -108,3 +108,34 @@ test('an inline modal surface opening over dropped focus takes it, and HOME give
   });
   await expect.poll(() => focused(page)).toBe('Home');
 });
+
+test('a resize cannot narrow a pending screen change', async ({ page }) => {
+  await load(page);
+  await page.evaluate(async () => {
+    const composer = document.querySelector<HTMLTextAreaElement>('[data-alpha-layer="composer"] textarea')!;
+    composer.focus();
+    composer.blur();
+    const app = document.querySelector<HTMLElement>('[data-alpha-layer="app"]')!;
+    app.hidden = false;
+    app.inert = false;
+    app.removeAttribute('aria-hidden');
+    document.documentElement.dataset.activeView = 'settings';
+    // Deliver the view mutation before the resize, in the same frame.
+    await Promise.resolve();
+    window.dispatchEvent(new Event('resize'));
+  });
+  await expect(page.getByRole('heading', { name: 'Settings', exact: true })).toBeFocused();
+});
+
+test('an old uninstaller cannot clear a replacement focus observer', async ({ page }) => {
+  await load(page);
+  const retained = await page.evaluate(() => {
+    const { installViewFocus } = (window as any).viewFocus;
+    const old = installViewFocus();
+    old();
+    const current = installViewFocus();
+    old();
+    return installViewFocus() === current;
+  });
+  expect(retained).toBe(true);
+});
