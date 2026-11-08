@@ -1879,6 +1879,49 @@
         "maxSteps": 60,
         "maxVerifyDepth": 8
       }
+    },
+    {
+      "path": "specs/quint/native/NativeUpdateStaging.qnt",
+      "module": "NativeUpdateStaging",
+      "init": "init",
+      "step": "step",
+      "invariant": "safety",
+      "tests": [
+        "failedRefreshRetainsOldOfferTest",
+        "replacementDoesNotChangeCapturedTupleTest",
+        "lateEofCanVerifyExactBytesTest",
+        "busyPeerCannotSweepOwnedFileTest",
+        "retiredOwnerClosesAndCleansTest",
+        "failedCacheDeleteLeavesUnownedFileTest",
+        "failedAbandonKeepsUncommittedCopyTest"
+      ],
+      "invariants": [
+        "CacheCustody",
+        "NoUnverifiedStaging",
+        "CleanupBound",
+        "ConnectionCustody"
+      ],
+      "sources": [
+        "apps/app/src/prototype/settings-adapter.ts",
+        "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaDevicePlugin.java",
+        "android/app/src/main/java/ai/elizaresearch/alphaphone/PluginWorkers.java",
+        "vendor/eliza/plugins/plugin-native-agent/android/src/main/java/ai/eliza/plugins/agent/connection/ConnectionTransport.java"
+      ],
+      "stateMapping": {
+        "clock/checkedAt/cached/storedAt/stored/checking": "Actual Settings clock, retained manifest and check promise",
+        "owner/target/phase/file/bytes/connected": "Process guard, exact reviewed tuple, active bridge connection and real cache-file bytes",
+        "session/stagedBytes/created/abandoned": "Synthetic PackageInstaller custody and actual staged output bytes",
+        "outcome/fetches": "Observed tap settlement class and controlled HTTPS opens"
+      },
+      "abstractions": [
+        "Two reviewed tuples and one installed identity, three bridge classes, four byte positions and up to two admitted attempts. Native source checks terminate at the activation boundary.",
+        "Actual renderer review and cache share the selected tuple with the JVM. Native response limits and soft expiry run through controlled inputs. Independent durable pause and install-session behavior remain separate."
+      ],
+      "bounds": {
+        "maxSamples": 1000,
+        "maxSteps": 80,
+        "maxVerifyDepth": 4
+      }
     }
   ]
 }

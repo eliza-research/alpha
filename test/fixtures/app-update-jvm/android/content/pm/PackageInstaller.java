@@ -22,6 +22,8 @@ public class PackageInstaller {
  public boolean validating;
  /** Runs while a session's bytes reach the disk, to destroy a bridge at that moment. */
  public Runnable staging=()->{};
+ /** Optional synthetic installer sink for verifying the actual staged bytes. */
+ public java.util.function.IntFunction<java.io.OutputStream> stagedOutput=id->java.io.OutputStream.nullOutputStream();
  /** Runs as the status PendingIntent is made, past the worker's last check and ahead of its taking ownership. */
  public Runnable sending=()->{};
  /** Runs inside commit, once the session has its owner, to hold or fail it there. */
@@ -58,7 +60,7 @@ public class PackageInstaller {
   private final int id;Session(int id){this.id=id;}
   public java.io.OutputStream openWrite(String name,long offset,long length){
    phase("write");
-   return new java.io.FilterOutputStream(java.io.OutputStream.nullOutputStream()){@Override public void close(){phase("stream");}};
+   return new java.io.FilterOutputStream(stagedOutput.apply(id)){@Override public void close(){phase("stream");}};
   }
   public void fsync(java.io.OutputStream out){phase("fsync");staging.run();}
   /** setClientProgress, a two-way call: Android holds the value before it returns, and reads it times 0.8, as a seal leaves it. Only this and a seal move an unsealed session here: a stream from openWrite never does, and no write saves it, so a boot reads 0. */

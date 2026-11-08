@@ -525,3 +525,21 @@ shutdown lease still fences a launch, and neither a terminal cancellation nor
 reconnect authority publishes. Retrying that same empty journal leaves the
 lease held. The model covers these bounded schedules through source readback.
 Installed Android and physical filesystem recovery remain separate.
+
+### APK offer and pre-activation staging
+
+`NativeUpdateStaging` follows the Settings manifest cache and the native
+download before the update activation barrier. The JVM serves synthetic
+responses through the pinned bounded transport. Exact Settings review selects
+the tuple that the same source driver passes to the installer. Readback covers
+the partial cache file, verified SHA-256, archive admission and exact bytes
+copied to the synthetic installer sink. Each staged attempt ends at a refused
+preparation. Installed session delivery remains a separate boundary.
+
+The one-day clock controls a refresh. A failed check retains an otherwise
+compatible cached offer, and an answered withdrawal removes it. A late
+non-EOF read is rejected before its bytes are written. A late EOF can finish
+verification if all exact bytes were already read. The process guard protects
+the active cache file from peer taps and sweeps. An unsuccessful file deletion
+can leave an orphan for a later idle bridge to sweep. A refused Android
+abandonment can likewise leave the copied uncommitted session listed.
