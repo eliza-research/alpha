@@ -1,6 +1,6 @@
 {
-  "pin": "d38e4ec7fad5952fdf4f40d4c809240d639792ac",
-  "forkPin": "cc8c979157e1f577448d8b8c6ff598b7cfc3d661",
+  "pin": "99b49439ce9d0cb5607e9831b9f7f58d89525029",
+  "forkPin": "6337fd4c4bd071c17235986344d552d4036e177b",
   "identity": "ai.elizaresearch.alphaphone",
   "abi": "arm64-v8a",
   "model": {
@@ -11,8 +11,8 @@
   "libraries": [
     {
       "name": "libelizainference.so",
-      "sha256": "bc575c8267dfff9041d9607ce84e8cce37a3db799c6a9f4628c4359418b8bdba",
-      "bytes": 10002168,
+      "sha256": "49b01a184f8ace69c42b3f1ad8c1816faeeb8dd004b8c7990796592932818c17",
+      "bytes": 10018448,
       "alignment16KiB": true
     },
     {
@@ -28,13 +28,13 @@
       "alignment16KiB": true
     }
   ],
-  "qualificationReceiptSha256": "feaa7710254e08518b90dee29d7b99c3efde8a17db456bc89136231e510a5412",
+  "qualificationReceiptSha256": "23a121b1eff8cbefde1b21ac8e30fc1959ed227c793f3d797aef6281685d7ba8",
   "jniIdentityRelocated": true,
   "inputs": [
     {
       "path": "packages/app/scripts/stage-elizavoice-lib.ts",
-      "sourceSha256": "7c36788b0886de46bde06f84a50c54a3ace7f2aa59468f811864e47134be4309",
-      "generatedSha256": "7c36788b0886de46bde06f84a50c54a3ace7f2aa59468f811864e47134be4309"
+      "sourceSha256": "d2ac610e20857120b23d0393510517b203b189e53f1c6038c90328bd8ccef022",
+      "generatedSha256": "d2ac610e20857120b23d0393510517b203b189e53f1c6038c90328bd8ccef022"
     },
     {
       "path": "packages/app/scripts/build-helpers/arm64-simd.ts",
@@ -65,7 +65,7 @@
   "producerInputs": [
     {
       "path": "package.json",
-      "sha256": "fd04e2ad8574cd0055627138466b8eec77404863e2bc546a866bace10c6d732b"
+      "sha256": "d0c735b8ea487c192a9f6839a64db6c6185ec753f177836d96f73b86abf35f6a"
     },
     {
       "path": "packages/agent/package.json",
@@ -73,7 +73,7 @@
     },
     {
       "path": "packages/app/package.json",
-      "sha256": "1ee43697b88c28dd2e95a64c7113c936fe13dc923482305a904f073e52bfe23a"
+      "sha256": "c7529a8a353ca9c58e6f2165070b12805be01d613f5643202fd29287785c51f3"
     },
     {
       "path": "packages/app/scripts/aosp/compile-libllama-paths.ts",
@@ -100,6 +100,10 @@
       "sha256": "b5291bb3c31f2b284691ff7c465de31c7564ea1c1c22e726309661e64a47aee2"
     },
     {
+      "path": "packages/app/scripts/build-helpers/elizavoice-build-flags.ts",
+      "sha256": "bf275292872cfd81225464085d332785433e30e5be3b8957033868d0e0477b1c"
+    },
+    {
       "path": "packages/app/scripts/build-helpers/omnivoice-merged.ts",
       "sha256": "4192c42fd54940ff0039bbb452aadb6e39cb286b732baaaf76513411c7adc4fe"
     },
@@ -113,18 +117,12 @@
     },
     {
       "path": "packages/app/scripts/stage-elizavoice-lib.ts",
-      "sha256": "7c36788b0886de46bde06f84a50c54a3ace7f2aa59468f811864e47134be4309"
+      "sha256": "d2ac610e20857120b23d0393510517b203b189e53f1c6038c90328bd8ccef022"
     }
   ],
   "jniBinding": {
     "mode": "registered",
     "className": "ai/elizaresearch/alphaphone/ElizaVoiceNative",
     "subset": "full"
-  },
-  "requalification": {
-    "required": true,
-    "atPin": "99b49439ce9d0cb5607e9831b9f7f58d89525029",
-    "reason": "elizaOS/eliza #38761 moves the native engine gitlink plugins/plugin-local-inference/native/llama.cpp from cc8c9791 to the fork main tip b3eb2bf6 and reformats stage-elizavoice-lib.ts. The fork delta is one Metal-only CMake commit and the producer arguments are unchanged, but no rebuild has compared the bytes, so the reviewed ARM64 embedding host (engine cc8c9791, SDK d38e4ec7) needs a new reviewed receipt. The pin then moved to 5d1af326e5 and 0594fc72da, which keep the engine gitlink at b3eb2bf6 with no further embedding build input change (docs/evidence/sdk-5d1af326e5-build-input-admission-20261106.json, docs/evidence/sdk-0594fc72da-build-input-admission-20261106.json), so the earlier statement still holds: nothing was built or run at this pin. The 3c76d07819 Maps/Cloud integration has no delta from 0594fc72da under plugins/plugin-local-inference/native or packages/app/scripts/paradee-voice. This carries the refusal forward; it does not qualify native bytes. The 3a2e43de28 restored-source candidate retains identical native inference input trees. Native bytes still require the recorded qualification. The 475a8d59dc Maps admission-message change leaves native inference inputs identical; the existing refusal remains. SDK 9237023aee uses engine gitlink 6337fd4c and changes the native producer inputs. These bytes still require Shaw\u2019s qualification. The current Cloud-only integration at SDK 4dae580daa retains engine 6337fd4c and the existing native refusal. No local speech or embedding bytes were rebuilt or requalified for this pin; the original qualification pin, engine, receipt and library hashes remain historical. SDK b23a23c2ef changes only native-host JavaScript account-check composition and tests; native source trees are identical to4dae. The existing native engine6337 refusal remains; no local model or embedding qualification is claimed. SDK eb92e44e93 composes reviewed shared Apps focus and Photos batching/recovery; local inference engine and producer inputs are unchanged. Existing native refusal remains; this is not local speech or embedding qualification. SDK db96bb0a03 composes local Own-key custody, mode selection and Java speech retirement guards. The native engine and model producer inputs are unchanged. The existing native requalification refusal remains; no speech or embedding artifact or device qualification transfers. SDK99b changes Files browser UI and adds an owned recording-window helper; it retains engine6337fd4c and does not requalify the historical embedding host built against cc8c9791. The refusal remains active, and on-device model qualification stays with Shaw.",
-    "evidence": "docs/evidence/sdk-018a2b9537-build-input-admission-20261105.json"
   }
 }
