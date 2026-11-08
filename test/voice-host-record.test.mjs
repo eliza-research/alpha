@@ -26,6 +26,13 @@ test('the committed record satisfies the schema, model inventory and ASR slot', 
   assert.equal(record.sourceAdmission.developComparison.qualifiedAt, 'b25d8aef2916385c571f4367e099809254fde0bb');
   assert.ok(record.sourceAdmission.developComparison.changedPaths.some(file => file.endsWith('/ai/eliza/voice/ParadeeVoice.java')), 'the qualify path\'s changed Java is named');
   assert.ok(record.evidence.records.includes('docs/evidence/voice-engine-6337fd4c/qualify-receipt.json'));
+  // Requalified at this pin on both ABIs; the owner has not re-accepted, so qualified stays false.
+  assert.equal(record.evidence.emulatorDeviceExecuted, true);
+  for (const file of ['qualify/asr-wer.json', 'qualify/paradee-roundtrip.json', 'qualify-x86_64/asr-wer.json', 'qualify-x86_64/paradee-roundtrip.json', 'qualify-receipt.json']) {
+    const record_ = `docs/evidence/voice-engine-6337fd4c-4787d51a14/${file}`;
+    assert.ok(record.evidence.records.includes(record_), record_);
+    assert.ok(fs.existsSync(path.join(ROOT, record_)), record_);
+  }
   assert.equal(record.provider, 'libelizainference-paradee');
   assert.deepEqual(record.abis.map(row => row.abi), ['arm64-v8a', 'x86_64']);
   const slot = JSON.parse(fs.readFileSync(path.join(ROOT, VOICE_ASR_SLOT), 'utf8'));

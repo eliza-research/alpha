@@ -32,8 +32,37 @@ from confirmed model text of a reply the stream has proven direct; see [streamed
   describes the live pipeline, which real turns do not yet take (see Live route).
 - Not done: the live route in a distributable build and an AOSP image with this APK. The voice record
   is not qualified at this pin: the owner accepted component evidence on November 7 (P-82), but the
-  shared speech Java changed after the qualified source (`b25d8aef29`) and has been neither requalified
-  nor re-accepted.
+  shared speech Java changed after the qualified source (`b25d8aef29`). It was requalified at the pin on
+  both ABIs on November 7 and 8 (below) and awaits the owner's re-acceptance.
+
+## November 8: requalification at 4787d51a14 and the #829 build
+
+- **Requalified.** The upstream qualify app was rebuilt from the prepared source at `4787d51a14`, so it
+  runs the changed `ParadeeVoice` (per-request cancel path), `NativeAsr` and `VoiceAssets`, with engine
+  `6337fd4c4b` (both `libelizainference.so` hashes equal the voice record). Installed APK hashes were
+  read back on each device; stale reports were deleted first
+  ([records and receipt](evidence/voice-engine-6337fd4c-4787d51a14)).
+
+  | | ASR WER (limit 6%) | Round-trip WER (limit 8%) | ASR / TTS RTF |
+  | --- | --- | --- | --- |
+  | Pixel 10a arm64, API 37 | 1.94% | 4.77% | 0.042 / 0.055 |
+  | x86_64 emulator, API 35 | 2.13% | 4.90% | 0.775 / 0.117 |
+
+  Every transcript is identical to the `b25d8aef29` runs on both ABIs. The emulator's slower ASR came
+  from other heavy jobs on the host. The record now names these runs; `qualified` and `userAccepted`
+  stay false until the owner re-accepts. This is component evidence: the qualify app does not call the
+  speech bridge, the warm-up and lead-trim classes, the live recognizer session or the voice session.
+- **No speech-capable Alpha APK from this branch.** `npm run android:build:local` stops at
+  `agent:build-embedding-host` (the embedding host record requires requalification at this pin and its
+  reviewed libraries are not on this host). The developer lane cannot carry local speech either: with the
+  voice outputs staged, `:app:verifyParadeeAppLinkage` needs the engine in `android/app/src/main/jniLibs`,
+  and that file makes the embedding check refuse on the pending requalification. The developer APKs
+  (versionCode 43, all four variants `NOT_PACKAGED`, bundle audit passed) therefore have no resident
+  runtime and no speech, so they were not installed on the phone and no typed turns ran at this pin
+  ([device check](evidence/on-device-speech-2026-11-07/v829-device-check.json)). The phone keeps
+  versionCode 40.
+- The build also found a missing `android.os.Bundle` import in `KeptCaptureLegacyPathInstrumentedTest`
+  (also on main), which stopped `assembleStandaloneDebugAndroidTest`; it is fixed here.
 
 ## Live route
 
