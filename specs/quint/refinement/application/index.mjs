@@ -45,6 +45,7 @@ import {checkBrowserOwnerReminderAction} from './browser-owner-reminder-action.m
 import {checkBrowserHostedResultNotice} from './browser-hosted-result-notice.mjs';
 import {checkHostedNoticeQuestion} from './hosted-notice-question.mjs';
 import {checkRendererHostedInbox} from './renderer-hosted-inbox.mjs';
+import {checkRendererDigestQueue} from './renderer-digest-queue.mjs';
 import {checkHomeFailureNotice} from './home-failure-notice.mjs';
 import {checkHomeGesture} from './home-gesture.mjs';
 import {checkDrawerInteraction} from './drawer-interaction.mjs';
@@ -64,7 +65,7 @@ const adapters = [application, shellNavigation, startupPermissions, assistantCon
   browserSession, credentialVault, developmentSurfaces, filesAndSharing, preferences, durableStore,
   permissionWalkthrough, developmentDevice, permanentVoiceDeletion, developmentHost, filesTree,
   calendarPresentation, draftDispatch, notificationCollection, callbackLanding,
-  checkBrowserHostedResultNotice, checkHostedNoticeQuestion, checkRendererHostedInbox,
+  checkBrowserHostedResultNotice, checkHostedNoticeQuestion, checkRendererHostedInbox, checkRendererDigestQueue,
   runStartupPermissionsCoordinatorRefinement, checkVaultCoordinator, checkNotesCoordinator, listFocus, checkRecoveryUI, checkShellCoordinator, checkNativeViewSubscription, filesPreview, runPermissionChoicesRefinement, checkCanonicalNotesController, checkCanonicalNotesDraft,
   checkCanonicalNotesFeedback, checkCanonicalNotesMutation, checkCanonicalNotesView, checkCanonicalCalendarDraft, checkAgentCalendarRefresh, checkAgentCalendarMutation, checkAgentCalendarEventReturn, checkMapsEventReturn, checkAgentCalendarSyncControl, checkGoogleCalendarLinkFlow, checkGoogleCalendarDisconnect, checkGoogleCalendarLinkPublication, checkFilesBrowserController, checkFilesFilter, checkPhotosWindow, checkPhotosTrash, checkGoogleConsentAdmission, checkGoogleAccessPublication, checkBrowserDeletionPoll, checkBrowserJournalRetention, checkBrowserReminderOrphan, checkBrowserOwnerReminderRead, checkBrowserOwnerReminderAction, checkHomeFailureNotice, checkHomeGesture, checkDrawerInteraction, checkLauncherOwnership, checkLauncherObserver, checkLauncherFavorites, checkAccessibleToastLifetime, checkModalToastForwarding, checkScreenFocusOwnership, checkDockClearanceOwnership, checkMountedUpdateAdmission, checkStartupUpdateAdmission, checkCanonicalNotificationTapAdmission, checkResidentLiveness];
 

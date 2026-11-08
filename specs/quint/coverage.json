@@ -41311,7 +41311,8 @@
       "sha256": "320ef175dac4dfd94d648999969cf47b363b5205693f71164a63d7d7ef3533b0",
       "models": [
         "InboxDelivery",
-        "RendererHostedInbox"
+        "RendererHostedInbox",
+        "RendererDigestQueue"
       ],
       "scope": "application",
       "treatment": "domain-contract-or-support",

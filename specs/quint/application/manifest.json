@@ -2074,5 +2074,25 @@
       "Actual browser and Android renderer-fallback inbox, ordered result/index/notice writes, replay, pending-removal recovery and exact provider acknowledgement.",
       "Two result identities, one row per provider page and one in-flight sync. Real storage, capacity and same-scope queue interleavings are separate."
     ]
+  },
+  {
+    "path": "specs/quint/application/RendererDigestQueue.qnt",
+    "module": "RendererDigestQueue",
+    "init": "init",
+    "step": "step",
+    "invariant": "safety",
+    "tests": [
+      "abortedQueueEntryDoesNotDispatchTest",
+      "fallbackRunsIndependentlyOfTheWebScopeTest",
+      "failedPredecessorReleasesTheScopeTest"
+    ],
+    "sources": [
+      "apps/app/src/runtime/digest-inbox.ts",
+      ".eliza/client-features/plugins/plugin-workflow/src/client/hosted-digests.ts"
+    ],
+    "abstractions": [
+      "Exact scope queue ownership across actual inbox instances, cancellation, refusal, release, and FIFO admission.",
+      "Four callers, two exact effective scopes and one empty provider page per dispatch. Durable result retention has a separate model."
+    ]
   }
 ]
