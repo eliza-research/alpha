@@ -12,14 +12,13 @@ test('the version row shows only what the build and Android report',()=>{
  for(const code of [0,-1,1.5,'7',null,NaN])assert.equal(m.versionLabel('0.1.0',code),'0.1.0');
  for(const version of ['',undefined,null,7])assert.equal(m.versionLabel(version,7),'Unavailable');
 });
-test('About shows only the install time Android recorded and never claims the app is current',()=>{
+test('recorded install-time formatting stays truthful and About never claims the app is current',()=>{
  const format=at=>'day '+at;
  assert.deepEqual(m.installedRows(1760000000000,format),[['Installed or last updated','day 1760000000000']]);
  for(const at of [undefined,null,0,-5,'1760000000000',1.5])assert.deepEqual(m.installedRows(at,format),[]);
- // The OS update-channel check is registered off; only the Developer gate (both About pages)
- // shows its state, and the production bundle audit denies the row.
+ // The old OS update-channel switch remains off; the clean About page has no status row.
  assert.match(readFileSync('apps/app/src/build-flags.ts','utf8'),/export const updateChannelCheckEnabled = false as boolean;/);
- assert.equal((source.match(/\.\.\.\(developerTools\?\[info\('Update channel \(development\)',updateChannelCheckEnabled\?'Read-only check on · never downloads or installs':'Off'\)\]:\[\]\)/g)??[]).length,2);
+ assert.equal((source.match(/\.\.\.\(developerTools\?\[info\('Update channel \(development\)',updateChannelCheckEnabled\?'Read-only check on · never downloads or installs':'Off'\)\]:\[\]\)/g)??[]).length,0);
  assert.match(readFileSync('scripts/audit-production-bundle.mjs','utf8'),/'Update channel \(development\)'/);
  // Nothing claims the app is current or that an update failed; Software update has no notice text at all.
  assert.doesNotMatch(source,/Up to date|Update available|Update failed/);

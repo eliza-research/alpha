@@ -2,7 +2,7 @@ import { externalVoiceInvocationEnabled } from '../runtime/voice-entry-policy';
 import {residentRecoveryCopy} from '../runtime/resident-recovery';
 import {cloudServiceName} from '../runtime/cloud-protocol';
 import {browserDevProfile as devProfileQuery,developerTools} from '../browser/dev-profile';
-import {cloudRuntimeEnabled,testMocksEnabled,devSurfacesEnabled,updateChannelCheckEnabled} from '../build-flags';
+import {cloudRuntimeEnabled,testMocksEnabled,devSurfacesEnabled} from '../build-flags';
 import {openCalendarRecovery} from '../browser/calendar-recovery';
 import {openNotificationRecovery} from '../browser/notification-recovery';
 import {openAlertSoundRecovery,openDevicePreferencesRecovery,openDeviceRolesRecovery} from '../browser/preference-recovery';
@@ -485,7 +485,7 @@ export function installSettingsAdapter(Component: any, views: Bag) {
   const categoryNames:Record<string,string>={'settings-account':'Account','settings-general':'General','settings-privacy':'Privacy','settings-help':'Help','settings-apps':'Apps'};
   let activeSettingsCategory:string|null=null;
   const settingsBack = definition.back;
-  const settingsParents: Record<string,string> = {history:'agent-connection',problems:'about',licenses:'about','password-entry':'password-provider'};
+  const settingsParents: Record<string,string> = {history:'agent-connection',problems:'about',licenses:'about','password-entry':'password-provider','settings-permissions':'settings-privacy'};
   definition.back = (state:Bag,api:Bag) => {
     if(!state.sheet&&((typeof state.page==='string'&&Object.hasOwn(categoryNames,state.page))||(!state.page&&activeSettingsCategory))){activeSettingsCategory=null;api.set({page:null});return true;}
     if(!state.sheet&&settingsParents[state.page]){api.set({page:settingsParents[state.page]});return true;}
@@ -494,9 +494,10 @@ export function installSettingsAdapter(Component: any, views: Bag) {
   };
   definition.render = (state: Bag, api: Bag) => {
     settingsApi = api;
+    const permissionsPage=state.page==='settings-permissions';
     const appSettingsPage=typeof state.page==='string'&&state.page.startsWith('app-settings-')?state.page.slice(13):null;
     const categoryPage=typeof state.page==='string'&&Object.hasOwn(categoryNames,state.page)?state.page:!state.page?activeSettingsCategory:null;
-    const out = render({ ...state, page: categoryPage||appSettingsPage?null:settingsPage(state.page, developerTools), acct: null, adding: false, sheet: ['conn', 'voice', 'wipe', 'wifiPw', 'forget'].includes(state.sheet?.kind) ? null : state.sheet }, api);
+    const out = render({ ...state, page: categoryPage||appSettingsPage||permissionsPage?null:settingsPage(state.page, developerTools), acct: null, adding: false, sheet: ['conn', 'voice', 'wipe', 'wifiPw', 'forget'].includes(state.sheet?.kind) ? null : state.sheet }, api);
     // Prototype personality values are mock-only until the agent reports them.
     out.persona = 'Voice & personality';
     const connection = connectionController.getSnapshot();
@@ -772,12 +773,9 @@ export function installSettingsAdapter(Component: any, views: Bag) {
         page.hero = { ...page.hero, big: percent, sub: typeof facts.charging === 'boolean' ? facts.charging ? 'Charging' : 'On battery' : 'Battery reading unavailable', hasMeter: typeof facts.batteryPercent === 'number', meter: facts.batteryPercent ?? 0 };
         page.groups = [group([info('Battery saver', typeof facts.powerSave === 'boolean' ? facts.powerSave ? 'On' : 'Off' : 'Unavailable'), nav('Manage battery in Android', 'battery')])];
       } else if (page.title === 'About') {
-        page.hero = { ...page.hero, big: facts.model || 'This phone', sub: facts.manufacturer || 'Device information unavailable' };
-        page.groups = [group([
-          info('Alpha Phone', versionLabel(facts.appVersion || buildVersion, facts.appVersionCode)), ...installedRows(facts.appUpdatedAt).map(([label, val]) => info(label, val)), ...(developerTools?[info('Update channel (development)',updateChannelCheckEnabled?'Read-only check on · never downloads or installs':'Off')]:[]), info('Android', facts.androidRelease || 'Unavailable'),
-          info('Build', facts.build || 'Unavailable'), info('Security patch', facts.securityPatch || 'Unavailable'),
-          info('Agent execution', runtimeLocation), info('Agent', target), info('Inference model', inferenceModel),
-        ]), group([problemsRow(), diagnosticsRow()]), group([nav('Android device information', 'about')]), group([licensesRow()])];
+        const native=Capacitor.isNativePlatform();
+        page.hero={kAlpha:true,version:native?versionLabel(facts.appVersion||buildVersion,facts.appVersionCode):buildVersion==='Unavailable'?'Development preview':'Version '+buildVersion};
+        page.groups=[...(native&&facts.androidRelease?[group([info('Android version',facts.androidRelease)])]:[]),group([licensesRow()])];
       } else if (page.title === 'Wi-Fi') {
         page.hasHdrTog = false; page.hdrTog = null;
         page.hero = { ...page.hero, big: wifiValue, sub: 'Wi-Fi transport · network names stay in Android settings' };
@@ -911,6 +909,7 @@ export function installSettingsAdapter(Component: any, views: Bag) {
           const label = labels[name] || name;
           return [{...row, label, lbl: label, ...(row.aria ? {aria: label} : {}),
             ...(name === 'Accounts' ? {go:()=>connectionController.residentPlanSettings()?api.set({page:'cloud-plan'}):connectionController.openCloudAccount()} : {}),
+            ...(name === 'Set up Alpha access' ? {go:()=>{activeSettingsCategory='settings-privacy';api.set({page:'settings-permissions'});}} : {}),
             ...(name === 'Connections' ? {go:()=>googleConnectionController.open(),...(!account?{sub:'Sign in to connect Google'}:{})} : {}),
             ...(name === 'About' ? {hasVal:false, hasSub:false, sub:'', val:''} : {})}];
         });
@@ -949,7 +948,19 @@ export function installSettingsAdapter(Component: any, views: Bag) {
       if(appSettingsPage==='browser')rows.push(info('Website permissions','Managed per website'));
       out.stack.push({isTop:false,notTop:true,cls:'enter',z:4,title:names[appSettingsPage]||'App settings',hasTitle:true,backLabel:'Back to Apps',back:()=>{activeSettingsCategory='settings-apps';api.set({page:'settings-apps'});},hero:{},groups:rows.length?[group(rows)]:[group([info('Settings','No additional options')])]});
     }
+    if(permissionsPage){
+      const native=Capacitor.isNativePlatform();
+      const status=(label:string)=>native?(typeof facts.permissions?.[label]==='boolean'?(facts.permissions[label]?'Allowed':'Not allowed'):'Not checked'):({granted:'Allowed',prompt:'Ask when used',denied:'Blocked',unknown:'Managed by your browser'} as Bag)[facts.permissionStates?.[label]]||'Managed by your browser';
+      const rows=['Camera','Microphone','Location',...(native?['Calendar']:[])].map(label=>native?{...action(label,manage('privacy')),val:status(label),hasVal:true}:info(label,status(label)));
+      const photos=native?(photoAccess?.scope==='full'?'All photos and videos':photoAccess?.scope==='selected'?'Selected photos and videos':photoAccess?.scope==='partial'?'Limited access':photoAccess?.scope==='denied'?'Saved by Alpha only':'Not checked'):'Photos you choose';
+      rows.push(native?{...action('Photos',()=>void photoLibrary.openLibrarySettings().catch(()=>api.toast('Photo settings could not open.'))),val:photos,hasVal:true}:info('Photos',photos));
+      rows.push(info('Files','Files and folders you choose'));
+      rows.push({...action('Notifications',()=>api.set({page:'notifications'})),val:typeof delivery.appEnabled==='boolean'?(delivery.appEnabled&&delivery.permissionGranted?'Allowed':'Off'):'Not checked',hasVal:true});
+      out.stack.push({isTop:false,notTop:true,cls:'enter',z:4,title:'App permissions',backLabel:'Back to Privacy',back:()=>api.set({page:'settings-privacy'}),hero:{},groups:[group(rows),group([note('Access stays as you chose it',native?'Select a permission to manage it in system settings.':'Camera, microphone and location access are managed in your browser’s site settings. Alpha asks for access when you use a feature.')])]});
+    }
     if(activeSettingsCategory&&!categoryPage)for(const page of out.stack)if(!page.isTop&&page.backLabel==='Back to Settings')page.backLabel='Back to '+categoryNames[activeSettingsCategory];
+    const nestedParents:Record<string,[string,string]>={licenses:['about','About'],problems:['about','About'],history:['agent-connection','Connection help']};
+    if(nestedParents[state.page]){const [parent,label]=nestedParents[state.page];const page=out.stack[out.stack.length-1];if(page&&!page.isTop){page.backLabel='Back to '+label;page.back=()=>api.set({page:parent});}}
     const settingsIcons:Record<string,string>={General:'settings',Privacy:'shield',Apps:'layout-grid',Help:'info',About:'info',Browser:'globe',Calendar:'calendar-days',Camera:'camera',Files:'folder',Inbox:'mail',Maps:'map-pin',Notes:'notebook-text',Passwords:'lock-keyhole',Photos:'images',Workflows:'workflow','Account & plan':'user-round','Google & email':'link','AI connection':'cpu',Display:'sun',Notifications:'bell','Privacy & data':'shield','App permissions':'fingerprint-pattern','Scheduled summaries':'clock'};
     for(const page of out.stack)for(const section of page.groups||[])for(const row of section.rows||[])if(row.kNav){row.lucideIcon='/icons/lucide/'+(settingsIcons[row.label]||'sliders-horizontal')+'.svg';row.hasLucideIcon=true;row.hasIcon=false;row.hasTile=false;}
     // Stable identities keep focused controls attached while async groups change.
@@ -963,9 +974,6 @@ export function installSettingsAdapter(Component: any, views: Bag) {
       }
     }
     if(!Capacitor.isNativePlatform()) {
-      for(const page of out.stack){
-        if(page.title==='About')page.groups=[group([info('Alpha Phone',buildVersion),...(developerTools?[info('Update channel (development)',updateChannelCheckEnabled?'Read-only check on · never downloads or installs':'Off')]:[]),...(developerTools?[info('Runs',runtimeLocation),info('AI model',inferenceModel)]:[]),info('Storage','App storage')]),group([problemsRow(),diagnosticsRow()]),group([licensesRow()])];
-      }
       const browserLabels=(value:any):any=>{if(typeof value==='string')return value.replaceAll('Manage brightness in Android','Brightness').replaceAll('Manage sound in Android','Sound settings').replaceAll('Manage in Android','App settings').replaceAll('Device accounts in Android','System accounts').replaceAll('Wi-Fi transport · network names stay in Android settings','Network names stay in system settings').replaceAll('in Android','in system settings').replaceAll('Android settings','System settings').replaceAll('Android Calendar','App calendar').replaceAll('Android device information','System information').replaceAll('Android developer settings','App development settings').replaceAll('On this phone','In this app').replaceAll('on this phone','in this app').replaceAll('Android access not granted','Development event access off').replaceAll('Waiting for Android listener','Waiting for local events').replaceAll('Selected apps connected','Selected development apps connected').replaceAll('Native setting unavailable','Managed by your system');if(Array.isArray(value))return value.map(browserLabels);if(value&&typeof value==='object')return Object.fromEntries(Object.entries(value).map(([k,v])=>[k,browserLabels(v)]));return value;};
       return browserLabels(out);
     }

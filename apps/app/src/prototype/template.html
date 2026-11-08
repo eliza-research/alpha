@@ -3772,6 +3772,13 @@
           </button>
         </sc-if>
 
+        <sc-if value="{{p.hero.kAlpha}}">
+          <div style="padding:22px 24px 30px;display:flex;flex-direction:column;align-items:center;gap:10px;text-align:center">
+            <span class="alpha-mark-fill" style="width:64px;height:64px;border-radius:32px;background:var(--acc);color:var(--alpha-white);display:flex;align-items:center;justify-content:center"><span class="alpha-compute-mark" aria-hidden="true"></span></span>
+            <div class="serif" style="font-size:28px;line-height:1.15">Alpha Phone</div>
+            <div style="font-size:13px;line-height:1.4;color:var(--mut)">{{p.hero.version}}</div>
+          </div>
+        </sc-if>
         <sc-if value="{{p.hero.kBig}}">
           <div style="padding: 4px 24px 22px; display: flex; flex-direction: column; align-items: flex-start">
             <sc-if value="{{p.hero.hasIcon}}">

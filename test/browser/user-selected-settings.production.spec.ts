@@ -3,7 +3,15 @@ import {test,expect} from '@playwright/test';
 for(const viewport of [{width:390,height:844},{width:1280,height:900}]){
  test(`selected Settings navigation and preferences persist at ${viewport.width}`,async({page})=>{
   await page.setViewportSize(viewport);
-  await page.addInitScript(()=>localStorage.setItem('alpha.connection.selection.v1',JSON.stringify({kind:'offline'})));
+  await page.addInitScript(()=>{
+   localStorage.setItem('alpha.connection.selection.v1',JSON.stringify({kind:'offline'}));
+   localStorage.setItem('alpha:startup-permission-walkthrough:v1',JSON.stringify({version:1,status:'completed',step:4}));
+   (window as any).permissionPrompts=0;
+   const refuse=async()=>{(window as any).permissionPrompts++;throw Error('Unexpected permission request');};
+   if(navigator.mediaDevices)navigator.mediaDevices.getUserMedia=refuse;
+   if(navigator.geolocation)navigator.geolocation.getCurrentPosition=()=>{(window as any).permissionPrompts++;};
+   if(window.Notification)Notification.requestPermission=refuse;
+  });
   const open=async()=>{await page.goto('/');await page.getByRole('button',{name:'Settings',exact:true}).click();};
   const panel=(name:string)=>page.locator(`[data-settings-page="${name}"]:not([inert])`);
   await open();
@@ -13,6 +21,24 @@ for(const viewport of [{width:390,height:844},{width:1280,height:900}]){
   await root.getByRole('button',{name:'Account',exact:true}).click();
   await expect(panel('Account')).toBeVisible();
   await expect(panel('Account').getByRole('textbox')).toHaveCount(0);
+  await page.getByRole('button',{name:'Back to Settings',exact:true}).click();
+  const progress=await page.evaluate(()=>localStorage.getItem('alpha:startup-permission-walkthrough:v1'));
+  await root.getByRole('button',{name:'Privacy',exact:true}).click();
+  await panel('Privacy').getByRole('button',{name:'App permissions',exact:true}).click();
+  await expect(panel('App permissions')).toBeVisible();
+  await expect(page.locator('.alpha-startup-permissions')).toHaveCount(0);
+  await expect(panel('App permissions').getByText('Camera',{exact:true})).toBeVisible();
+  expect(await page.evaluate(()=>localStorage.getItem('alpha:startup-permission-walkthrough:v1'))).toBe(progress);
+  expect(await page.evaluate(()=>(window as any).permissionPrompts)).toBe(0);
+  await page.getByRole('button',{name:'Back to Privacy',exact:true}).click();
+  await page.getByRole('button',{name:'Back to Settings',exact:true}).click();
+  await root.getByRole('button',{name:'Help',exact:true}).click();
+  await panel('Help').getByRole('button',{name:'About',exact:true}).click();
+  await panel('About').getByRole('button',{name:'Open source licenses',exact:true}).click();
+  await page.getByRole('button',{name:'Back to About',exact:true}).click();
+  await expect(panel('About').getByText('Alpha Phone',{exact:true})).toBeVisible();
+  await page.getByRole('button',{name:'Back to Help',exact:true}).click();
+  await expect(panel('Help')).toBeVisible();
   await page.getByRole('button',{name:'Back to Settings',exact:true}).click();
   await root.getByRole('button',{name:'General',exact:true}).click();
   await panel('General').getByRole('button',{name:'Display',exact:true}).click();
