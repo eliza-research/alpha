@@ -4,7 +4,7 @@ import {checkBrowserJournalRetention} from '../specs/quint/refinement/applicatio
 
 test('browser retention and Calendar/Reminder mutation checkpoints match the exact-bound model', async () => {
   const {receipt, obligations} = await checkBrowserJournalRetention();
-  assert.equal(receipt.traces, 15);
+  assert.equal(receipt.traces, 16);
   assert.equal(receipt.driverInputsBound, true);
   assert.ok(receipt.actions.appendReceipt > 0 && receipt.actions.appendDeletion > 0);
   assert.ok(obligations.length > 0);

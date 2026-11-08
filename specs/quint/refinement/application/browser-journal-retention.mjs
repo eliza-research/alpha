@@ -128,7 +128,7 @@ const initialCalendar = () => ({sourceRevision, events: []});
 const initialReminder = () => ({sourceRevision, reminders: []});
 
 async function calendarCreationTrace(modules, resetDocuments) {
-  resetDocuments();
+  const {documents} = resetDocuments();
   const {BrowserCalendar, calendarDocument: store} = modules, calendar = new BrowserCalendar();
   const pendingId = '00000000-0000-4000-8000-000000000001';
   const firstId = '00000000-0000-4000-8000-000000000002';
@@ -143,6 +143,16 @@ async function calendarCreationTrace(modules, resetDocuments) {
   trace.record('Calendar save trims and appends an unacknowledged receipt', [action('retireReceipts'), action('appendReceipt', trace.id(firstId), false)], after);
   assert.equal(Object.values(after.creations).filter(value => value.acknowledged).length, 200);
   assert.equal(Object.hasOwn(after.creations, pendingId), true);
+  const writes = documents.writes, inherited = Object.getOwnPropertyDescriptor(Object.prototype, 'acknowledged');
+  try {
+    await assert.rejects(calendar.acknowledgeCreation({creationId: '__proto__'}), /Creation receipt unavailable/);
+    assert.deepEqual(Object.getOwnPropertyDescriptor(Object.prototype, 'acknowledged'), inherited);
+    assert.equal(documents.writes, writes);
+  } finally {
+    if (inherited) Object.defineProperty(Object.prototype, 'acknowledged', inherited);
+    else delete Object.prototype.acknowledged;
+  }
+  trace.record('an inherited key cannot acknowledge an absent creation', {...action('acknowledge', trace.id('__proto__')), reject: true}, await read(store));
   assert.equal((await calendar.acknowledgeCreation({creationId: pendingId})).status, 'acknowledged');
   trace.record('acknowledgement changes definiteness without changing its original date', action('acknowledge', trace.id(pendingId)), await read(store));
   assert.equal((await calendar.save(calendarInput(nextId))).status, 'saved');
@@ -155,19 +165,39 @@ async function calendarCreationTrace(modules, resetDocuments) {
 
 async function reminderReceiptTrace(modules, resetDocuments) {
   const {documents} = resetDocuments(), {BrowserDaily, reminderDocument: store} = modules;
-  const daily = new BrowserDaily({}), id = 'new-reminder';
+  const daily = new BrowserDaily({}), id = '__proto__';
+  await daily.scheduleReminder({id: 'reviewed', title: 'Reviewed reminder', at: wall + day});
   await store.edit(initialReminder, data => {data.receipts = Object.fromEntries(list(200).map(index => [`legacy-${index}`, {binding: 'older', result: {}}]));});
-  const trace = recorder('Reminder write can append the 201st definite receipt', await read(store));
-  const at = wall + day, request = {operationId: id, bindingHash: revision,
-    operation: {type: 'reminder_create', fields: {title: 'Reviewed reminder', body: '', schedule: {at, dueAt: at, alertMinutes: null, recurrence: null}}}};
+  const trace = recorder('Reminder can append the 201st definite receipt for a prototype-shaped identity', await read(store));
+  const request = {operationId: id, bindingHash: revision,
+    operation: {type: 'reminder_update', target: await daily.selectedReminder({id: 'reviewed'}), fields: {title: 'Updated reminder', body: ''}}};
   assert.equal((await daily.operateReminder(request)).status, 'succeeded');
   const after = await read(store);
   trace.record('Reminder mutation trims before appending its timed receipt', [action('retireReceipts'), action('appendReceipt', trace.id(id), true)], after);
   assert.equal(Object.keys(after.receipts).length, 201);
+  assert.equal(Object.hasOwn(after.receipts, id), true);
   const writes = documents.writes;
   assert.equal((await daily.reminderOperationReceipt(request)).status, 'succeeded');
   assert.equal(documents.writes, writes);
   trace.record('receipt recovery reads without evicting or adding rows', null, await read(store));
+  return trace.trace;
+}
+
+async function calendarAgentReceiptTrace(modules, resetDocuments) {
+  const {documents} = resetDocuments(), {BrowserCalendar, calendarDocument: store} = modules, calendar = new BrowserCalendar();
+  await store.edit(initialCalendar, data => {data.receipts = {earlier: {binding: 'legacy', result: {}}};});
+  const trace = recorder('Calendar agent receipt persists an own prototype-shaped identity', await read(store));
+  const id = '__proto__', request = {operationId: id, operation: {type: 'calendar_create', source: {sourceId: 'local', sourceRevision},
+    fields: {title: 'Reviewed event', description: '', location: '', start: new Date(wall + day).toISOString(),
+      end: new Date(wall + day + hour).toISOString(), timeZone: 'UTC'}}};
+  const response = await calendar.executeAgent(request), after = await read(store);
+  assert.equal(response.status, 'applied');
+  assert.equal(Object.hasOwn(after.receipts, id), true);
+  trace.record('Calendar persists the result by exact operation key', [action('retireReceipts'), action('appendReceipt', trace.id(id), true)], after);
+  const writes = documents.writes;
+  assert.deepEqual(await calendar.executeAgent(request), response);
+  assert.equal(documents.writes, writes);
+  trace.record('receipt replay returns the original result without a second create', null, await read(store));
   return trace.trace;
 }
 
@@ -185,10 +215,10 @@ async function deletionStageTrace(modules, resetDocuments, kind) {
     });
     rows.push(['unknown-owner', deletion('unknown-owner', 'unknown', 0)]);
     data.deletions = Object.fromEntries(rows);
-    data.deleteClaims = Object.fromEntries(['constructor', 'unknown-owner', 'previous-127', '__proto__', 'toString'].map(key => [key, 'prior-review']));
+    data.deleteClaims = Object.fromEntries(['constructor', 'unknown-owner', 'previous-127', 'toString'].map(key => [key, 'prior-review']));
   });
   const trace = recorder(`${kind} staging trims settled history and preserves a retained replay claim`, await read(store));
-  const id = 'new-queued', journalIdentity = {scope: 'fixture-scope', proposalId: 'fixture-proposal'};
+  const id = '__proto__', journalIdentity = {scope: 'fixture-scope', proposalId: 'fixture-proposal'};
   const request = {operationId: id, operation: {type: 'calendar_delete', target: {sourceId: 'local', sourceRevision, eventId: calendarRow.id, revision}}, journalIdentity};
   const target = calendar ? null : await client.selectedReminder({id: 'reviewed'});
   const stage = () => calendar ? client.executeAgent(request) : client.stageDeletion(target, 'agent:test', id, 'review-binding');
@@ -198,6 +228,7 @@ async function deletionStageTrace(modules, resetDocuments, kind) {
   trace.record('actual stage retires settled rows and adds the paired queued claim',
     [action('trimDeletions'), action('appendDeletion', trace.id(id), staged.deadline.createdElapsed, true)], after);
   assert.deepEqual(Object.keys(after.deleteClaims), ['unknown-owner', 'previous-127', id]);
+  assert.equal(Object.hasOwn(after.deletions, id), true);
   assert.equal(Object.values(after.deletions).filter(value => terminal.includes(value.phase)).length, 127);
   const writes = documents.writes;
   if (calendar) assert.deepEqual(await stage(), {status: 'unknown'});
@@ -221,6 +252,7 @@ export async function checkBrowserJournalRetention(extraSources = []) {
     Object.defineProperty(Date, 'now', {...date, value: () => wall});
     Object.defineProperty(performance, 'now', {configurable: true, value: () => 3});
     traces.push(await calendarCreationTrace(modules, resetDocuments));
+    traces.push(await calendarAgentReceiptTrace(modules, resetDocuments));
     traces.push(await reminderReceiptTrace(modules, resetDocuments));
     for (const kind of ['Calendar', 'Reminder']) traces.push(await deletionStageTrace(modules, resetDocuments, kind));
   } finally {
@@ -237,6 +269,10 @@ export async function checkBrowserJournalRetention(extraSources = []) {
     'Real retain/trim functions execute directly. Real BrowserCalendar, BrowserDaily and BrowserDomainDocument also execute over a controlled document/review/notification port; source binding covers the journal owner files, selected contracts and fixture.',
     'The write checkpoints combine trim and append where the caller commits them together. Deletion settlement, polling, actual providers, malformed documents and arbitrary browser transaction schedules are separate obligations.',
   ]});
-  return {receipt, obligations: [{model, obligation: 'Arbitrary input histories and installed document concurrency',
-    reason: 'The model binds fixed timestamp classes and concrete cutoff neighborhoods. Real Web Locks/IndexedDB, corruption, replay across journal loss and settlement are separate projections.'}]};
+  return {receipt, obligations: [
+    {model, obligation: 'Arbitrary input histories and installed document concurrency',
+      reason: 'The model binds fixed timestamp classes and concrete cutoff neighborhoods. Real Web Locks/IndexedDB, corruption, replay across journal loss and settlement are separate projections.'},
+    {model, obligation: 'Review recovery of legacy orphaned Reminder markers',
+      reason: 'An older build could persist a prototype-shaped pendingDeletion marker without a deletion record. New writes persist both, but previously orphaned markers require an explicit reviewed recovery path.'},
+  ]};
 }
