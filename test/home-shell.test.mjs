@@ -115,6 +115,11 @@ test('with the drawer closed, Home toasts a failed launch and a failed app read 
     await shell.launcher.launch(shell.launcher.snapshot().apps.find(app=>app.packageName==='com.android.settings'));
     assert.equal(shell.launcher.snapshot().status,'failed');
     assert.deepEqual(toasts,['Settings could not be opened. Work apps are paused.']);
+    // A background read that fails while another app is open does not toast over it.
+    listing='ok';await shell.launcher.refresh();toasts.length=0;home.setState({view:'inbox'});listing='fail';
+    await shell.launcher.refresh();
+    assert.equal(shell.launcher.snapshot().status,'failed');
+    assert.deepEqual(toasts,[]);
   } finally { home.componentWillUnmount(); if(previous===undefined)delete globalThis.document;else globalThis.document=previous; }
 });
 

@@ -24,7 +24,7 @@ export function installHomeShell(Component: any, views: Record<string, Bag>, bri
   let owner: any = null, seenError: string | null = null, seenStatus = 'idle', seenApps: unknown = null, launchReported = false;
   // The drawer shows launch and inventory failures itself; with it closed, Home reports them as a
   // toast, once per new failure. A failed read keeps only the product views, so pinned apps leave Home;
-  // the read that follows a failed launch is not reported again, since the launch toast explains it.
+  // it is reported only while Home is showing, and not after a failed launch, whose toast explains it.
   const report = () => {
     if (!owner) return;
     const state = shell.launcher.snapshot(), error = state.launchError, read = state.apps !== seenApps;
@@ -34,7 +34,7 @@ export function installHomeShell(Component: any, views: Record<string, Bag>, bri
     if (read) launchReported = false;
     if (owner.S().drawer) return;
     if (fresh) { owner.toast(error); launchReported = true; }
-    else if (failed && !afterLaunch) {
+    else if (failed && !afterLaunch && !owner.S().view) {
       const shown = new Set(state.apps.map(appKey));
       if (state.favorites.some(key => !shown.has(key))) owner.toast("Apps couldn't load. Open All apps to try again.");
     }
