@@ -37,16 +37,16 @@ test('Settings row identity survives asynchronous insertion and nested Back reta
  const first=normalize({stack:[{title:'Settings',groups:[{cap:'Account',rows:[{label:'Google'},{label:'About'}]}]}]});
  const second=normalize({stack:[{title:'Settings',groups:[{cap:'Account',rows:[{label:'Finish setup'},{label:'Google'},{label:'About'}]}]}]});
  assert.equal(first.stack[0].groups[0].id,second.stack[0].groups[0].id);assert.equal(first.stack[0].groups[0].rows[1].id,second.stack[0].groups[0].rows[2].id);
- const back=between(s,'  const categoryNames:','  definition.render =');const calls=[],definition={back:()=>false};vm.runInNewContext(ts(back),{definition,PASSWORD_PAGES:['password-provider','password-entry'],leavePasswordManager:()=>calls.push('leave')});
- assert.equal(definition.back({page:'password-entry'},{set:p=>calls.push(p.page)}),true);assert.deepEqual(calls,['password-provider']);
+ const back=between(s,'  const categoryNames:','  definition.render =');const calls=[],definition={back:()=>false};vm.runInNewContext(ts(back),{definition,PASSWORD_PAGES:['password-provider','password-entry'],leavePasswordManager:()=>calls.push('leave-manager'),leavePasswordEntry:()=>calls.push('leave-entry')});
+ assert.equal(definition.back({page:'password-entry'},{set:p=>calls.push(p.page)}),true);assert.deepEqual(calls,['leave-entry','password-provider']);
 });
 test('keyboard hide and background retire composer focus without changing the draft',()=>{
  const s=read('prototype/chat-overlay-motion-adapter.ts'),body=between(s,'\t\tconst free = keyboardFreeHeight();','\n\t};\n\tp.componentDidUpdate');
  let height=800,hidden=false,blurs=0;const listeners=new Map(),active={matches:()=>true,blur(){blurs++;}};
- const shell={chatInputFocused:true,dockGuardPress:{pointer:1},draft:'Keep this draft'};class Element{}Object.setPrototypeOf(active,Element.prototype);
+ const shell={chatInputFocused:true,chatScrimPress:{pointer:1},draft:'Keep this draft'};class Element{}Object.setPrototypeOf(active,Element.prototype);
  const window={innerWidth:400,get innerHeight(){return height;},visualViewport:{get height(){return height;},addEventListener:(type,fn)=>listeners.set('vv'+type,fn)},addEventListener(){}};
  const document={get hidden(){return hidden;},activeElement:active,documentElement:{clientWidth:400,get clientHeight(){return height;}},addEventListener:(type,fn)=>listeners.set(type,fn)};
  vm.runInNewContext('(function(){'+ts(body)+'}).call(shell)',{shell,window,document,HTMLElement:Element,keyboardFreeHeight:()=>{let max=0;return(_w,h,editing)=>{if(!editing)max=h;return max||h;};},isEditing:()=>true});
  height=500;shell.dockKeyboardWatch();height=800;shell.dockKeyboardWatch();assert.equal(blurs,1);
- hidden=true;shell.dockHiddenWatch();assert.equal(shell.chatInputFocused,false);assert.equal(shell.dockGuardPress,undefined);assert.equal(shell.draft,'Keep this draft');
+ hidden=true;shell.dockHiddenWatch();assert.equal(shell.chatInputFocused,false);assert.equal(shell.chatScrimPress,undefined);assert.equal(shell.draft,'Keep this draft');
 });

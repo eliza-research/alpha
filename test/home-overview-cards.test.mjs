@@ -34,20 +34,20 @@ test('agenda card keeps the installed selectors for an event, an overdue reminde
   out.error=html(c.homeAgendaCard({...base,homeCalendarTitle:'Calendar unavailable',homeCalendarHasEvent:false,homeCalendarHasMeta:true,homeCalendarSource:'Open Calendar to retry',homeCalendarDescription:'Calendar could not be read. Open Calendar to retry.',homeCalendarVideo:false}));
   assert.match(out.event,/^<button type="button" data-overview-part="card" class="home-calendar-card" data-overview-card="agenda"/);
   for(const attribute of ['data-alpha-home-calendar=""','data-alpha-home-calendar-event="true"','data-alpha-home-calendar-meta="true"','data-alpha-home-calendar-overdue="false"','data-alpha-home-calendar-next="false"','aria-label="Open calendar event: Design review"','aria-description="Work. Read 3:04 PM from calendars on this device"'])assert.ok(out.event.includes(attribute),attribute);
-  assert.match(out.event,/class="home-calendar-time">Wed, Oct 7<\/span><span data-overview-part="origin" class="home-calendar-origin" data-alpha-home-calendar-origin=""></);
+  assert.match(out.event,/class="home-calendar-time">Wed, Oct 7<\/span><span data-overview-part="origin" class="home-calendar-origin" data-alpha-home-calendar-origin="">Work<\/span>/);
   assert.match(out.event,/class="serif home-calendar-title">Design review</);
   assert.match(out.event,/class="home-calendar-footer">4:00 PM – 5:00 PM</);
   assert.match(out.event,/<svg width="16" height="16" viewBox="0 0 24 24"><path d="M1 1"><\/path><\/svg>/);
   assert.match(out.event,/style="flex-shrink:0;scroll-snap-align:start;border-radius:30px;background:var\(--acc\);color:#ffffff;padding:22px;box-sizing:border-box"/);
   assert.ok(out.overdue.includes('data-alpha-home-calendar-overdue="true"')&&out.overdue.includes('data-alpha-home-calendar-next="true"'));
   assert.match(out.overdue,/class="home-calendar-meta home-calendar-next" data-alpha-home-calendar-next-line=""><span data-overview-part="nextText" class="home-calendar-next-text">Next: Design review 4:00 PM<\/span>/);
-  assert.doesNotMatch(out.overdue,/data-overview-part="nextSource"/, 'the compact Next line has no separate source label');
+  assert.match(out.overdue,/data-overview-part="nextSource" class="home-calendar-source" data-alpha-home-calendar-next-source="">Work<\/span>/, 'the next item identifies its calendar');
   assert.match(out.overdue,/aria-description="Overdue reminder saved on this device\. Next: Design review, 4:00 PM\. Work\. Read 3:04 PM from calendars on this device"/, 'the next item keeps its own source and read time');
   assert.doesNotMatch(out.overdue,/<svg/,'no video icon without a meeting link');
   assert.ok(out.empty.includes('data-alpha-home-calendar-event="false"')&&out.empty.includes('data-alpha-home-calendar-meta="false"'));
   assert.doesNotMatch(out.empty,/class="home-calendar-meta|class="home-calendar-footer|aria-description/);
   assert.match(out.error,/aria-description="Calendar could not be read\. Open Calendar to retry\."/);
-  assert.doesNotMatch(out.error,/data-overview-part="source"/, 'the compact card exposes recovery through its description');
+  assert.match(out.error,/data-overview-part="source" class="home-calendar-source" data-alpha-home-calendar-source="">Open Calendar to retry<\/span>/, 'the recovery action is visible and described');
   assert.doesNotMatch(out.error,/class="home-calendar-footer/);
 });
 
@@ -61,7 +61,7 @@ test('a calendar read from an earlier day is presented as stale on the agenda ca
   assert.match(out.provenance.description,/today's changes may be missing\. Open Calendar to refresh\.$/);
   assert.ok(out.card.includes('data-alpha-home-calendar-stale="true"')&&out.card.includes('data-overview-state="stale"'));
   assert.match(out.card,/aria-description="Calendar not updated since Tue, Oct 6 9:05 PM; today&#x27;s changes may be missing\. Open Calendar to refresh\."/);
-  assert.doesNotMatch(out.card,/data-overview-part="source"/);
+  assert.match(out.card,/data-overview-part="source" class="home-calendar-source" data-alpha-home-calendar-source="">Not updated since Tue, Oct 6 9:05 PM<\/span>/);
 });
 
 test('brief card keeps an empty shell and renders retained data with its failure state', () => {

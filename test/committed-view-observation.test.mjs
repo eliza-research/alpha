@@ -133,8 +133,8 @@ for(const view of ['calendar','settings'])for(const chat of ['sheet','full'])tes
  const helper=stripTypeScriptTypes(adapter.slice(start,adapter.indexOf('  p.componentDidMount',start)),{mode:'strip'});
  let observed;
  const alphaClient={setViewContext(value){observed=value;},getState(){return {context:observed};}};
- new Function('document','alphaClient','connectionController','currentClockTimeZone','passwordSurfaceOpen','updateBackAvailability','recoverPendingActions','shell',helper+';context(shell);')(
-  {hidden:false,documentElement:{dataset:{}}},alphaClient,{getSnapshot:()=>({open:false})},()=> 'UTC',()=>false,()=>{},()=>{},
+ new Function('document','alphaClient','connectionController','currentClockTimeZone','passwordSurfaceOpen','updateBackAvailability','recoverPendingActions','syncPreviousNotesAvailability','shell',helper+';context(shell);')(
+  {hidden:false,documentElement:{dataset:{}}},alphaClient,{getSnapshot:()=>({open:false})},()=> 'UTC',()=>false,()=>{},()=>{},shell=>assert.notEqual(shell.S().view,'notes'),
   {S:()=>({view,chat}),vget:()=>({}),calendarSelection:()=>undefined,clockSelection:()=>undefined});
  assert.equal(observed.view,view);assert.equal(observed.sensitive,false);
  const f=fixture('unchanged',observed);try{assert.equal(await f.client.observeCommittedView(),true);await f.settled;assert.equal(f.calls[0].path,`/api/views/${view}/navigate`);assert.equal(f.history,1);}finally{f.close();}

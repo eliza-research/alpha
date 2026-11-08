@@ -726,7 +726,8 @@ export function installSettingsAdapter(Component: any, views: Bag) {
           out.stack.push({isTop:false,notTop:true,cls:'enter',z:4,title:'Restart details',hasTitle:true,backLabel:'Back to Agent connection',back:()=>api.set({page:'agent-connection'}),hero:{},groups:[group(rows)]});
         }
         if(native&&!testMocksEnabled&&state.page==='agent-connection'){
-          const agentRows=[info('Agent',connection.session?'Running on this device':connection.residentRecoveryReason?(connection.residentRecoveryReason==='ipc-recovery-retention-limit'?'Restart needed':'Needs attention'):connection.kind==='recovering'?'Not running':'Starting…'),info('AI',connection.residentInference==='direct'?'Cerebras · own API key':connection.residentInference==='cloud'?serviceName:!connection.cloudAccount&&connection.residentPlanNotice!=='offline'?'Sign in required':!connection.session&&connection.kind==='starting'&&!connection.residentRecoveryReason?'Starting…':'Not available')];
+          const agentStatus = connection.session ? (connection.kind==='resident'?'Running on this device':runtimeLocation) : connection.residentRecoveryReason ? (connection.residentRecoveryReason==='ipc-recovery-retention-limit'?'Restart needed':'Needs attention') : connection.kind==='recovering'?'Not running':'Starting…';
+          const agentRows=[info('Agent',agentStatus),info('AI',connection.residentInference==='direct'?'Cerebras · own API key':connection.residentInference==='cloud'?serviceName:!connection.cloudAccount&&connection.residentPlanNotice!=='offline'?'Sign in required':!connection.session&&connection.kind==='starting'&&!connection.residentRecoveryReason?'Starting…':'Not available')];
           if(connection.message)agentRows.push(info('Status',connection.message));
           if(connection.error)agentRows.push(info('Connection problem',connection.error));
           if(connection.residentRecoveryReason&&!connection.session){
