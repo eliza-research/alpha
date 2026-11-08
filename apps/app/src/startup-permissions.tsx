@@ -88,6 +88,9 @@ export function StartupPermissions({active:enabled = true}: {active?: boolean} =
   const [canSkip, setCanSkip] = useState(false);
   const [checkNotice, setCheckNotice] = useState('');
   const alive = useRef(false), actionPending = useRef(false), sequence = useRef(0);
+  const credentialId = connection.cloudAccount?.credentialId;
+  const environment = connection.cloudAccount?.environment;
+  const setupRevision = connection.setupRevision;
   const dialog = useRef<HTMLDialogElement>(null);
   const key = target ?? keys[progress?.step ?? 0];
   const state = states[key];
@@ -103,11 +106,21 @@ export function StartupPermissions({active:enabled = true}: {active?: boolean} =
     return true;
   };
   const changed = () => window.dispatchEvent(new Event('alpha:permissions-changed'));
+  const contextCurrent = () => {
+    const current = connectionController.getSnapshot();
+    return alive.current && current.cloudAccount?.credentialId === credentialId
+      && current.cloudAccount?.environment === environment && current.setupRevision === setupRevision;
+  };
+  function invalidatePending() {
+    ++sequence.current;
+    actionPending.current = false;
+    setBusy(false);
+  }
 
-  useEffect(() => { if (!enabled) ++sequence.current; }, [enabled, connection.cloudAccount?.credentialId]);
+  useLayoutEffect(invalidatePending, [enabled, credentialId, environment, setupRevision]);
   useEffect(() => {
     if (!connection.setupRevision) return;
-    ++sequence.current;setReopened(false);setTarget(null);targetRef.current=null;setReview(false);reviewRef.current=false;
+    invalidatePending();setReopened(false);setTarget(null);targetRef.current=null;setReview(false);reviewRef.current=false;
     const resume=progressError?progressRef.current:savedProgress(native);setReady(showWalkthroughCompletion({accountCreated: connection.accountCreated, resumed: !!resume}));setActive(!!resume);if(resume)writeProgress(resume);
   }, [connection.setupRevision]);
   useEffect(() => {
@@ -131,7 +144,7 @@ export function StartupPermissions({active:enabled = true}: {active?: boolean} =
     const reopen = (event: Event) => {
       const selected = (event as CustomEvent<{permission?: unknown}>).detail?.permission;
       if (selected !== undefined && (typeof selected !== 'string' || !keys.includes(selected as PermissionKey))) return;
-      ++sequence.current;
+      invalidatePending();
       targetRef.current = typeof selected === 'string' && keys.includes(selected as PermissionKey) ? selected as PermissionKey : null;
       setTarget(targetRef.current);
       const resume=savedProgress(native);reviewRef.current=resume===null;setReview(reviewRef.current);
@@ -169,24 +182,25 @@ export function StartupPermissions({active:enabled = true}: {active?: boolean} =
   useEffect(() => {if (visible) dialog.current?.querySelector<HTMLHeadingElement>('h2')?.focus({preventScroll: true});}, [key, visible, ready]);
 
   function advance(choice: Progress['choices'][number]) {
+    if (!contextCurrent()) return;
     if (target) {setActive(false); return;}
     const current = progress ?? {version: 3 as const, step: 0, choices: []};
     if (current.step + 1 < keys.length) writeProgress({version: 3, step: current.step + 1, choices: [...current.choices, choice]});
     else {writeProgress(null, [...current.choices, choice]);setActive(false);setReady(true);}
   }
   function skip() {
-    if (!canSkip) return;
-    ++sequence.current;flows[key].cancel();actionPending.current=false;setBusy(false);
+    if (!canSkip || !contextCurrent()) return;
+    invalidatePending();flows[key].cancel();
     advance('skipped');
   }
   /** Leaves a review at any step. Completed setup stays completed; a pending request is retired, not granted. */
   function close() {
     if (!reviewRef.current) return;
-    ++sequence.current;flows[targetRef.current ?? keys[progressRef.current?.step ?? 0]].cancel();actionPending.current=false;setBusy(false);
+    invalidatePending();flows[targetRef.current ?? keys[progressRef.current?.step ?? 0]].cancel();
     setActive(false);setReady(false);setReopened(false);setTarget(null);targetRef.current=null;progressRef.current=null;setProgress(null);
   }
   async function allow() {
-    if (actionPending.current) return;
+    if (actionPending.current || !contextCurrent()) return;
     if (target && !native && state === 'ready') {advance('continued'); return;}
     actionPending.current = true; setBusy(true);setCheckNotice('');
     const ticket = sequence.current;
@@ -194,16 +208,16 @@ export function StartupPermissions({active:enabled = true}: {active?: boolean} =
       let value: StartupPermissionState | null;
       if (target && native && state === 'ready') {await (key === 'files' ? files.storageRequestAccess({settings: true}) : device.openSettings({page: key === 'notifications' ? 'notifications' : 'privacy'})); value = await flows[key].refresh();}
       else value = state === 'unavailable' || (!native && state === 'settings') ? await flows[key].refresh() : await flows[key].enable();
-      if (alive.current && ticket === sequence.current && value !== null) {
+      if (contextCurrent() && ticket === sequence.current && value !== null) {
         setStates(previous => ({...previous, [key]: value})); changed();
         if (value === 'ready' && !target) advance(state === 'ready' ? 'continued' : 'allowed');
         else if (!native && value !== 'ready') setCheckNotice(value === 'settings' ? 'Access is still off. Change it using the site controls.' : 'This browser could not confirm access.');
       }
-    } catch {if (alive.current && ticket === sequence.current) setStates(previous => ({...previous, [key]: 'unavailable'}));}
-    finally {if (ticket === sequence.current) {actionPending.current = false; if (alive.current) setBusy(false);}}
+    } catch {if (contextCurrent() && ticket === sequence.current) setStates(previous => ({...previous, [key]: 'unavailable'}));}
+    finally {if (contextCurrent() && ticket === sequence.current) {actionPending.current = false; setBusy(false);}}
   }
   function finish() {
-    if(actionPending.current)return;
+    if(actionPending.current || !contextCurrent())return;
     // Completing the walkthrough records choices, never permission authority.
     // Each feature still checks current OS/browser access when it is used.
     writeStartupPermissionMemory({dismissed:true});setActive(false);setReady(false);

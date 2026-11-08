@@ -1,14 +1,15 @@
 import assert from 'node:assert/strict';
 import {JSDOM} from 'jsdom';
 import {checkTraces as check, qset} from '../check-traces.mjs';
-import {sourceModule, memoryStore, read, trace, checkpoint, call, tick, captureSources, boundInputs} from './support.mjs';
+import {sourceModule, bundledSource, memoryStore, read, trace, checkpoint, call, tick, captureSources, boundInputs} from './support.mjs';
 captureSources(['specs/quint/refinement/application/portable.mjs']);
 const checkTraces = options => check(boundInputs({...options, sources: [...options.sources,
   'specs/quint/refinement/application/portable.mjs', 'specs/quint/refinement/application/support.mjs']}));
 
 export async function startupPermissions() {
   const source = 'apps/app/src/startup-permission-flow.ts';
-  const {createStartupPermissionFlow, readStartupPermissionMemory} = await sourceModule(source);
+  const module = await bundledSource(source);
+  const {createStartupPermissionFlow, readStartupPermissionMemory} = module.exports;
   const traces = [];
   for (const durable of [true, false]) for (const granted of [true, false]) {
     const store = memoryStore({failWrites: !durable});
@@ -34,7 +35,7 @@ export async function startupPermissions() {
     }
     traces.push(t);
   }
-  return checkTraces({model: 'StartupPermissions', sources: [source], traces, scope: 'bounded-component',
+  return checkTraces({model: 'StartupPermissions', sources: module.sources, traces, scope: 'bounded-component',
     assumptions: ['One camera permission and two flow instances. Platform status/request are controlled ports.',
       'Checks persistent versus volatile attempt storage. Other permission kinds and walkthrough rendering have separate adapters.']});
 }

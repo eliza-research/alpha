@@ -321,25 +321,48 @@
     "step": "step",
     "invariant": "safety",
     "tests": [
-      "orderedProgressTest",
-      "deniedPermissionCannotAdvanceTest",
-      "revokedBeforeFinishTest",
-      "failedProgressWriteTest",
-      "legacyCompletionTest",
+      "sevenPermissionProgressTest",
+      "browserFourProgressTest",
+      "failedProgressAdvancesTest",
+      "failedCompletionResumesTest",
+      "legacyReviewPreservesCompletionTest",
       "ownerChangeRetiresPendingTest",
       "staleCompletionKeepsNewPendingTest",
-      "completedRemountTest"
+      "skippedRequestCannotAdvanceNextTest",
+      "completedRemountTest",
+      "cancelledFlowRecheckTest",
+      "nativeDisclosureTest",
+      "directProviderProgressTest"
     ],
     "sources": [
       "apps/app/src/startup-permissions.tsx",
       "apps/app/src/startup-permission-progress.ts",
-      "apps/app/src/startup-permission-flow.ts"
+      "apps/app/src/startup-permission-flow.ts",
+      "apps/app/src/startup-browser-permissions.ts",
+      ".eliza/client-features/packages/ui/src/components/permissions/permission-walkthrough.ts"
     ],
     "abstractions": [
-      "Six permission state machines share one serial UI action and a durable versioned walkthrough.",
-      "Platform readiness is external input. Completed installation records grant no platform access.",
-      "Coordinator generations are bounded to six. Pending native calls retain their original generation after UI invalidation. Actual React traces cover all state fields across finite owner, callback, storage and remount schedules.",
-      "The no-repeat invariant assumes permission-attempt marker writes succeed. Best-effort attempt-storage failure is modeled separately by StartupPermissions."
+      "Seven Android permissions and four browser permissions use the current React coordinator and staged shared permission-flow/progress implementation.",
+      "Progress and reviewed/skipped choices are installation UI intent. Failed or dropped writes leave the current session usable and do not grant platform access.",
+      "Generations are bounded to twelve. Actual native calls, shared flow ownership and current UI ownership are distinct. Cancellation can retire a flow before its platform call returns.",
+      "All36 state fields plus derived visibility, busy state, displayed permission and button disabled state are checked against committed React/DOM observations in finite schedules.",
+      "Permission-attempt marker writes succeed in these coordinator traces. StartupPermissions separately models best-effort attempt-marker failures.",
+      "The accountCreated/setupRevision input is retained across remount. Current source can show its completion popup again on remount; this model preserves that behavior.",
+      "Native and browser profiles have independent initializer actions. Native safety uses init, browser safety uses browserInit."
+    ],
+    "profiles": [
+      {
+        "name": "native",
+        "init": "init",
+        "step": "step",
+        "invariant": "safety"
+      },
+      {
+        "name": "browser",
+        "init": "browserInit",
+        "step": "step",
+        "invariant": "safety"
+      }
     ]
   },
   {
