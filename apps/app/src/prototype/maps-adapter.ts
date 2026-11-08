@@ -92,15 +92,34 @@ export function installPrototypeMapsAdapter(Component: { prototype: Bag }, views
   });
   // Explicit return to the event whose location opened Maps. It checks that exact event still exists,
   // restores Calendar on it and pops the cross-app stack. It never sets a Maps query.
-  let returningToEvent=false;
+  let returningToEvent: {raw: unknown; abort: AbortController} | undefined;
   const calendarPlugin=registerPlugin<{list(input:{begin:number;end:number}):Promise<{status:string;events?:unknown[]}>}>('AlphaCalendar');
-  async function returnToEvent(currentApi:Bag,origin:MapsEventOrigin,raw:unknown){
-    if(returningToEvent)return;returningToEvent=true;
+  const returnIsCurrent = (currentApi: Bag, raw: unknown) =>
+    !disposed && !document.hidden && !shell?.pageSuspended && currentApi.isActive()
+      && currentApi.get('maps').fromEvent === raw && !!mapsEventReturnOffered(raw, api?.S.stack, screen.isNavigating());
+  const retireEventReturn = () => {
+    const previous = returningToEvent;
+    returningToEvent = undefined;
+    previous?.abort.abort();
+  };
+  async function returnToEvent(currentApi: Bag, origin: MapsEventOrigin, raw: unknown) {
+    if (!returnIsCurrent(currentApi, raw) || returningToEvent?.raw === raw) return;
+    retireEventReturn();
+    const attempt = {raw, abort: new AbortController()};
+    returningToEvent = attempt;
     try{
       // Only a ready read without the event withdraws the control; a refused or failed read keeps it.
       let outcome:'found'|'missing'|'permission'|'unknown'='unknown';
-      try{if(origin.version===2){const abort=new AbortController(),cancel=()=>{if(document.hidden||!currentApi.isActive())abort.abort();};document.addEventListener('visibilitychange',cancel);window.addEventListener('pagehide',cancel);try{outcome=await currentApi.checkCanonicalCalendarReturn?.(origin,abort.signal)??'unknown';}finally{document.removeEventListener('visibilitychange',cancel);window.removeEventListener('pagehide',cancel);}}else{const result=await calendarPlugin.list({begin:origin.begin-1,end:origin.begin+1});outcome=result.status==='ready'?(mapsEventStillThere(origin,result.events)?'found':'missing'):result.status==='permission-required'?'permission':'unknown';}}catch{/* A thrown read says nothing about the event. */}
-      if(disposed||document.hidden||!currentApi.isActive()||currentApi.get('maps').fromEvent!==raw||!mapsEventReturnOffered(raw,api?.S.stack,screen.isNavigating()))return;
+      try{
+        if (origin.version === 2) {
+          outcome = await currentApi.checkCanonicalCalendarReturn?.(origin, attempt.abort.signal) ?? 'unknown';
+        } else {
+          const result = await calendarPlugin.list({begin: origin.begin - 1, end: origin.begin + 1});
+          outcome = result.status === 'ready' ? (mapsEventStillThere(origin, result.events) ? 'found' : 'missing') :
+            result.status === 'permission-required' ? 'permission' : 'unknown';
+        }
+      } catch { /* A thrown read says nothing about the event. */ }
+      if (returningToEvent !== attempt || !returnIsCurrent(currentApi, raw)) return;
       if(outcome==='permission'){currentApi.toast('Allow Calendar access to check this event.');return;}
       if(outcome==='unknown'){currentApi.toast("Can't check this event. Try again.");return;}
       if(outcome==='missing'){currentApi.set({fromEvent:null});currentApi.toast('That event was deleted or moved.');return;}
@@ -110,9 +129,16 @@ export function installPrototypeMapsAdapter(Component: { prototype: Bag }, views
       screen.unwind();
       currentApi.setView('calendar',{...(origin.version===2?{calendarAuthority:'canonical'}:{}),open:origin.rowId,openDay:origin.day,day:origin.day,month:null,form:null});
       currentApi.open('calendar',{keepState:true});currentApi.shell({stack});
-    }finally{returningToEvent=false;}
+    } finally {
+      if (returningToEvent === attempt) returningToEvent = undefined;
+    }
   }
-  module.back = () => screen.back(); module.onLeave = () => screen.release(); module.ongoing = () => null;
+  module.back = () => screen.back();
+  module.onLeave = () => {
+    retireEventReturn();
+    screen.release();
+  };
+  module.ongoing = () => null;
   module.reply = () => null;
   module.suggestions = () => mapsConnected() ? ['Help me with this place', 'Explain Maps coverage'] : ['Help me with Maps', 'Explain location permissions'];
   module.render = (st: Bag, currentApi: Bag) => {
@@ -281,9 +307,19 @@ export function installPrototypeMapsAdapter(Component: { prototype: Bag }, views
   // Screen-off navigation keeps its voice; everything else retires shared and spoken output.
   const retireShare=()=>screen.retireShare();
   const shareEvents=['launcher-home','alpha:device-state','alpha:dev-incoming-call'];for(const event of shareEvents)window.addEventListener(event,retireShare);
-  const visibility = () => { if(document.hidden)screen.hidden();else screen.refresh(); };
-  const pagehide=()=>screen.release();window.addEventListener('pagehide', pagehide); document.addEventListener('visibilitychange', visibility);
-  return () => { disposed = true; stopCoverage(); agentNavigation.dispose(); shell=undefined; for(const event of shareEvents)window.removeEventListener(event,retireShare); screen.dispose(); window.removeEventListener('pagehide', pagehide); document.removeEventListener('visibilitychange', visibility); Object.assign(module, original); };
+  const visibility = () => {
+    if (document.hidden) {
+      retireEventReturn();
+      screen.hidden();
+    } else screen.refresh();
+  };
+  const pagehide = () => {
+    retireEventReturn();
+    screen.release();
+  };
+  window.addEventListener('pagehide', pagehide);
+  document.addEventListener('visibilitychange', visibility);
+  return () => { disposed = true; retireEventReturn(); stopCoverage(); agentNavigation.dispose(); shell=undefined; for(const event of shareEvents)window.removeEventListener(event,retireShare); screen.dispose(); window.removeEventListener('pagehide', pagehide); document.removeEventListener('visibilitychange', visibility); Object.assign(module, original); };
 }
 
 /** Presentation only: stored messages, model context and copied source text remain unchanged.
