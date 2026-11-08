@@ -199,9 +199,10 @@ adapter column before reading the identity cache. A failed read left the
 previous provider and pin active against the new width. The authenticated
 repair validates the identity before resizing and holds generated vectors
 until the adapter and cache confirm their writes. A retry reads back a
-durable identity after a lost acknowledgement. Same-width provider
-replacement, independent runtime owners, process restarts and named vector
-spaces have separate evidence requirements.
+durable identity after a lost acknowledgement. The campaign also checks
+same-width model refusal and operator acknowledgement. Independent runtime
+owners, process restarts and named vector spaces have separate evidence
+requirements.
 The PGlite source campaign also confirms the translated dimension model's
 provenance counterexample. A delayed unmarked vector is admitted under the
 adapter's new space before the runtime publishes its pin. A stale direct SQL
@@ -265,3 +266,20 @@ checkpoints. It tracks opening order, region ownership, forwarded Undo and
 exact observer cleanup. Chromium also exercised dialogs opened in reverse
 document order, close and reopen, Undo, and replacement cleanup. Browser
 focus supplies a fallback when installation starts with existing dialogs.
+
+The separate fact-write scope model checks six real PGlite schedules and 67
+checkpoints. It covers the exact recent-row cutoff, independent runtime
+owners, room isolation, refused writes, and a replay that adds no duplicate
+evidence. Ambiguous commits and concurrent metadata hits remain separate.
+
+The Apps drawer campaign checks 22 schedules and 134 checkpoints in the
+actual mounted renderer. It tracks pointer-owned presses, menus across
+inventory replacement, focus restoration and synthetic App Info outcomes.
+A removed app's menu and armed press retire before the same component can
+return.
+
+The screen focus campaign checks six schedules and 77 checkpoints against
+the authenticated shared helper and Alpha installer. It checks view changes,
+resize priority, delayed titles, focus owners and the animation-frame retry
+budget. The closed-over resize element is checked through behavior. All six
+focused Chromium tests passed against the current source.

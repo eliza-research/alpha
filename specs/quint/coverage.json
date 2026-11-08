@@ -14703,7 +14703,8 @@
       "models": [
         "Application",
         "AccessibleToastLifetime",
-        "ModalToastForwarding"
+        "ModalToastForwarding",
+        "ScreenFocusOwnership"
       ],
       "scope": "application",
       "treatment": "state-and-transition-projection",
@@ -23096,12 +23097,13 @@
         "HomeFailureNotice",
         "LauncherOwnership",
         "LauncherObserver",
-        "HomeGesture"
+        "HomeGesture",
+        "DrawerInteraction"
       ],
       "scope": "application",
       "treatment": "domain-contract-or-support",
       "reviewStatus": "state-audit-required",
-      "sha256": "d0ca94b914f166cd6ee5b10909be191c617f0fecf6503aae7755cc168727bff3",
+      "sha256": "88000bf57ccc84ed5e762d5e87fa43513f1d1f9da3d1733a5b55fde3d227d64a",
       "stateAnchors": []
     },
     {
@@ -46243,11 +46245,13 @@
     {
       "path": "apps/app/src/runtime/view-focus.ts",
       "models": [
-        "ShellNavigation"
+        "ShellNavigation",
+        "ScreenFocusOwnership"
       ],
       "scope": "application",
       "treatment": "domain-contract-or-support",
-      "sha256": "49834713d5ef8f40d62215fd0d4a4912e4a85af2e6b4019f2d84ae52e6f8f397",
+      "reviewStatus": "state-audit-required",
+      "sha256": "e86fbe8b0ce4331af464255341553b011349a47c0338578255a0306f2b2b85c2",
       "stateAnchors": [
         {
           "line": 24,
@@ -176408,7 +176412,8 @@
         "CoreRuntimeShutdown",
         "CoreServiceLifecycle",
         "TaskServiceLifecycle",
-        "EmbeddingStoreIdentity"
+        "EmbeddingStoreIdentity",
+        "FactWriteScope"
       ],
       "scope": "shared-module-dependency",
       "treatment": "domain-contract-or-support",
@@ -179566,7 +179571,8 @@
         "WorkflowExecution",
         "CoreRuntimeRetirement",
         "CoreRuntimeShutdown",
-        "CoreServiceLifecycle"
+        "CoreServiceLifecycle",
+        "FactWriteScope"
       ],
       "scope": "shared-module-dependency",
       "treatment": "domain-contract-or-support",
@@ -180442,7 +180448,8 @@
         "WorkflowExecution",
         "CoreRuntimeRetirement",
         "CoreRuntimeShutdown",
-        "CoreServiceLifecycle"
+        "CoreServiceLifecycle",
+        "FactWriteScope"
       ],
       "scope": "shared-module-dependency",
       "treatment": "domain-contract-or-support",
@@ -210167,7 +210174,8 @@
       "models": [
         "Application",
         "DraftDispatch",
-        "ShellNavigation"
+        "ShellNavigation",
+        "ScreenFocusOwnership"
       ],
       "scope": "shared-module-dependency",
       "treatment": "domain-contract-or-support",
@@ -593327,7 +593335,8 @@
         "CoreRuntimeShutdown",
         "TaskServiceLifecycle",
         "CoreEmbeddingDimension",
-        "EmbeddingStoreIdentity"
+        "EmbeddingStoreIdentity",
+        "FactWriteScope"
       ],
       "scope": "shared-module-dependency",
       "treatment": "domain-contract-or-support",
@@ -618304,7 +618313,7 @@
         "CalendarLinkedSync",
         "InboxProviderDrafts"
       ],
-      "sha256": "7c150515d12a9c1feca228474466c5e371616e68347ba3a476988f2cccc6f62b"
+      "sha256": "bf64f018bd519e02945bb754a8a7b2959fed43d30066e2aeee86063aaafee7a4"
     },
     {
       "path": "patches/eliza/calendar-semantic-client-manifest.json",
@@ -618973,6 +618982,34 @@
         "EmbeddingStoreIdentity"
       ],
       "sha256": "358327f35c37bd5862ec6dcaa7657c4db545a548e4d5de63cf8efd8120f01d1e"
+    },
+    {
+      "path": "patches/eliza/screen-focus-priority-client.patch",
+      "models": [
+        "ScreenFocusOwnership"
+      ],
+      "sha256": "5139d258e7394790655fede433e653679d7dadb1869406b927967ee5fb4a9d5b"
+    },
+    {
+      "path": "patches/eliza/screen-focus-priority-client-manifest.json",
+      "models": [
+        "ScreenFocusOwnership"
+      ],
+      "sha256": "1e951a364ba3bff1815a2f56dc1ee553b619c864f15088d4c642d672911baa60"
+    },
+    {
+      "path": "patches/eliza/launcher-drawer-ownership-client.patch",
+      "models": [
+        "DrawerInteraction"
+      ],
+      "sha256": "943d65727a7b61c94bf5b593688926161208cbf418a44741ce6dea9436f628dc"
+    },
+    {
+      "path": "patches/eliza/launcher-drawer-ownership-client-manifest.json",
+      "models": [
+        "DrawerInteraction"
+      ],
+      "sha256": "304cadaca8d4ea77033ffeba4d687930ac39561beb5a2b0202d1e9efb5a0e97d"
     }
   ],
   "runtimeAssets": [

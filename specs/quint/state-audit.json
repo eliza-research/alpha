@@ -12,7 +12,7 @@
   "toolSha256": "403a33cab0dff7ace6219b29e7ffef373319677a7d8be6641466dd16a6750b5b",
   "dependencyLockSha256": "944123c801157a7ba3676a886d0b28a54bef32735ae96da5c6dd0f206c88c8bf",
   "sourcePin": "99b49439ce9d0cb5607e9831b9f7f58d89525029",
-  "ledgerSha256": "98d72a87b0f48742832059f9c00c190d41081d9c2b0654a1a5cd24d549c755de",
+  "ledgerSha256": "d17a459e97c1ba4244a801fbca38d37904fefb30a1e30525da02b8b3cb74bab4",
   "method": "TypeScript syntax trees for JavaScript/TypeScript and JDK compiler trees for Java. Mutable fields, bindings, containers, state hooks, write sites and asynchronous registration calls are candidates for semantic review.",
   "limitations": [
     "Candidate extraction does not establish state-machine coverage or implementation refinement.",
@@ -32497,7 +32497,8 @@
       "allocatedModels": [
         "Application",
         "AccessibleToastLifetime",
-        "ModalToastForwarding"
+        "ModalToastForwarding",
+        "ScreenFocusOwnership"
       ],
       "sourcePathClass": "other-source-path",
       "classification": "syntactic-candidates",
@@ -34771,14 +34772,15 @@
     },
     {
       "path": "apps/app/src/prototype/home-shell.ts",
-      "sha256": "d0ca94b914f166cd6ee5b10909be191c617f0fecf6503aae7755cc168727bff3",
+      "sha256": "88000bf57ccc84ed5e762d5e87fa43513f1d1f9da3d1733a5b55fde3d227d64a",
       "allocatedModels": [
         "ShellNavigation",
         "PreferencesAndPresentation",
         "HomeFailureNotice",
         "LauncherOwnership",
         "LauncherObserver",
-        "HomeGesture"
+        "HomeGesture",
+        "DrawerInteraction"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -44569,10 +44571,12 @@
     },
     {
       "path": "apps/app/src/runtime/view-focus.ts",
-      "sha256": "49834713d5ef8f40d62215fd0d4a4912e4a85af2e6b4019f2d84ae52e6f8f397",
+      "sha256": "e86fbe8b0ce4331af464255341553b011349a47c0338578255a0306f2b2b85c2",
       "allocatedModels": [
-        "ShellNavigation"
+        "ShellNavigation",
+        "ScreenFocusOwnership"
       ],
+      "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
       "classification": "syntactic-candidates",
       "owners": [
@@ -79010,7 +79014,8 @@
         "CoreRuntimeShutdown",
         "CoreServiceLifecycle",
         "TaskServiceLifecycle",
-        "EmbeddingStoreIdentity"
+        "EmbeddingStoreIdentity",
+        "FactWriteScope"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -79911,7 +79916,8 @@
         "WorkflowExecution",
         "CoreRuntimeRetirement",
         "CoreRuntimeShutdown",
-        "CoreServiceLifecycle"
+        "CoreServiceLifecycle",
+        "FactWriteScope"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -80128,7 +80134,8 @@
         "WorkflowExecution",
         "CoreRuntimeRetirement",
         "CoreRuntimeShutdown",
-        "CoreServiceLifecycle"
+        "CoreServiceLifecycle",
+        "FactWriteScope"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -90289,7 +90296,8 @@
       "allocatedModels": [
         "Application",
         "DraftDispatch",
-        "ShellNavigation"
+        "ShellNavigation",
+        "ScreenFocusOwnership"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -212252,7 +212260,8 @@
         "CoreRuntimeShutdown",
         "TaskServiceLifecycle",
         "CoreEmbeddingDimension",
-        "EmbeddingStoreIdentity"
+        "EmbeddingStoreIdentity",
+        "FactWriteScope"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -218236,6 +218245,6 @@
   ],
   "detail": {
     "path": "test-results/quint-state-audit/details.json",
-    "sha256": "4adc5adb5e5164249fa302750a86b4c925942a78f62a19492d0b452bf08fed95"
+    "sha256": "d78ed53d328b830bd9e45f4394d39bdd7e2b4c8211b002c3f0583b06741dd106"
   }
 }
