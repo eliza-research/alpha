@@ -14,6 +14,7 @@ import {
 const lockText = fs.readFileSync(LOCK, 'utf8');
 const lock = JSON.parse(lockText);
 const snapshot = JSON.parse(fs.readFileSync(SNAPSHOT, 'utf8'));
+const legacyUuidLocation = snapshot.findings.find(finding => finding.package === 'uuid').installed[0].location;
 const dispositions = JSON.parse(fs.readFileSync(DISPOSITIONS, 'utf8'));
 const clone = value => JSON.parse(JSON.stringify(value));
 const today = snapshot.auditedOn;
@@ -84,7 +85,7 @@ test('a recorded fix cannot regress in the lockfile', () => {
 });
 
 test('npm audit output is normalised to advisory ids and exact dependency paths', () => {
-  assert.deepEqual(dependencyPaths(lock, 'node_modules/uuid'), ['@capacitor/cli > xcode > uuid']);
+  assert.deepEqual(dependencyPaths(lock, legacyUuidLocation), ['@capacitor/cli > xcode > uuid']);
   assert.deepEqual(dependencyPaths(lock, 'node_modules/source-map-js'), [
     '@vitejs/plugin-react > vite > postcss > source-map-js',
     'jsdom > @asamuzakjp/dom-selector > css-tree > source-map-js',
@@ -95,7 +96,7 @@ test('npm audit output is normalised to advisory ids and exact dependency paths'
   ]);
   const advisory = {source: 1, name: 'uuid', title: 't', url: 'https://github.com/advisories/GHSA-w5hq-g745-h8pq', severity: 'moderate', range: '<11.1.1'};
   const report = {vulnerabilities: {
-    uuid: {name: 'uuid', severity: 'moderate', isDirect: false, via: [advisory], effects: ['xcode'], range: '<11.1.1', nodes: ['node_modules/uuid'], fixAvailable: {name: '@capacitor/cli', version: '8.4.3', isSemVerMajor: true}},
+    uuid: {name: 'uuid', severity: 'moderate', isDirect: false, via: [advisory], effects: ['xcode'], range: '<11.1.1', nodes: [legacyUuidLocation], fixAvailable: {name: '@capacitor/cli', version: '8.4.3', isSemVerMajor: true}},
     xcode: {name: 'xcode', severity: 'moderate', isDirect: false, via: ['uuid'], effects: [], range: '>=0.9.2', nodes: ['node_modules/xcode'], fixAvailable: true},
   }};
   const normalised = normalizeAudit(report, lock, lockText);
@@ -122,7 +123,7 @@ test('a network run fails on an advisory published after the snapshot (the sched
   // A fabricated `npm audit --json` report: the reviewed uuid chain plus one advisory nobody has seen.
   const reviewed = {source: 1, name: 'uuid', title: 'uuid buffer bounds', url: 'https://github.com/advisories/GHSA-w5hq-g745-h8pq', severity: 'moderate', range: '<11.1.1'};
   const report = {vulnerabilities: {
-    uuid: {name: 'uuid', severity: 'moderate', isDirect: false, via: [reviewed], effects: ['xcode'], range: '<11.1.1', nodes: ['node_modules/uuid'], fixAvailable: false},
+    uuid: {name: 'uuid', severity: 'moderate', isDirect: false, via: [reviewed], effects: ['xcode'], range: '<11.1.1', nodes: [legacyUuidLocation], fixAvailable: false},
     xcode: {name: 'xcode', severity: 'moderate', isDirect: false, via: ['uuid'], effects: ['@capacitor/cli'], range: '*', nodes: ['node_modules/xcode'], fixAvailable: false},
     '@capacitor/cli': {name: '@capacitor/cli', severity: 'moderate', isDirect: true, via: ['xcode'], effects: [], range: '*', nodes: ['node_modules/@capacitor/cli'], fixAvailable: false},
   }};

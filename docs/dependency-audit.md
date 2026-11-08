@@ -1,5 +1,21 @@
 # Dependency and artifact supply chain
 
+## Quint source-test dependencies and current root audit (2026-11-08)
+
+The source-driven runtime campaigns add exact development dependencies for the
+real shared runtime and SQL adapter. A fresh root audit exposed two recently
+published advisories in the existing Capacitor CLI dependency chain. Updating
+the compatible `rimraf` release to 6.1.4 selects `glob` 14.0.4 and `minimatch`
+11.0.5, which include the published fixes. The root snapshot records these
+versions and the retained development-only UUID disposition.
+[Glob advisory](https://github.com/advisories/GHSA-3g3m-2fjr-6pw4),
+[minimatch advisory](https://github.com/advisories/GHSA-g3hv-75wg-m249).
+
+The SQL source tests use UUID 14.0.2 directly. Capacitor's `xcode` dependency
+retains a separate UUID 7.0.3 installation under its own package directory.
+The audit-path test resolves that recorded installation from the snapshot.
+The pinned upstream checkout and its separate resident audit are preserved.
+
 ## Reviewed native Android APK npm closure (2026-10-25)
 
 The exact signed ARM64 APK `d3f1fd7792071e0ac76484e437e9a15cd1aa082e75f236ea8c4e4b8e5bdd5e10`
