@@ -4,14 +4,15 @@ import {mkdtempSync,rmSync,mkdirSync,writeFileSync,readFileSync} from 'node:fs';
 import {tmpdir} from 'node:os';
 import {join,resolve,dirname} from 'node:path';
 import {execFileSync} from 'node:child_process';
+import {javaBinary} from './fixtures/jvm-tools.mjs';
+import {preparePatchedNative} from '../scripts/prepare-patched-native.mjs';
 const root=resolve(import.meta.dirname,'..');
 // Alpha's registration (AlphaDataReset, AlphaApplication) compiled with the shared coordinator from the
 // reviewed pin (plugin-native-system reset.DataReset); Android and Alpha's other startup classes are stand-ins.
-const upstreamReset=resolve(root,'vendor/eliza/plugins/plugin-native-system/android/src/main/java/ai/eliza/plugins/system/reset');
+const upstreamReset=resolve(preparePatchedNative({root}).root,'plugins/plugin-native-system/android/src/main/java/ai/eliza/plugins/system/reset');
 test('pending reset retries, shows bounded recovery instead of a launcher restart loop, before startup callbacks; accepted, refused and failed dispatch never resumes old runtime',()=>{
  const dir=mkdtempSync(join(tmpdir(),'alpha-reset-startup-')),sources=[];
  const put=(name,body)=>{const path=join(dir,name);mkdirSync(dirname(path),{recursive:true});writeFileSync(path,body);sources.push(path);};
- const bin=name=>process.env.JAVA_HOME?join(process.env.JAVA_HOME,'bin',name):name;
  try{
   // The shared Cloud reset step (ai.eliza.auth.cloud.CloudKeyRevocation, tested upstream) as a recording stand-in.
   put('ai/eliza/auth/cloud/CloudSignInConfig.java',`package ai.eliza.auth.cloud; public final class CloudSignInConfig {}`);
@@ -43,8 +44,7 @@ class NativeDigestHost {NativeDigestHost(android.content.Context c){NativeSource
 class NativeOwnerReminderHost {NativeOwnerReminderHost(android.content.Context c){NativeSourceHost.started++;}void read(){}}
 class NativeSourceHost {static int started;static void configure(Runnable r){started++;}static void configureOwnerReminderContext(Runnable r){started++;}}
 class NativeDeletionCoordinator {static NativeDeletionCoordinator get(android.content.Context c){return new NativeDeletionCoordinator();}void start(){NativeSourceHost.started++;}}
-class AlphaCloudSignInPlugin {static ai.eliza.auth.cloud.CloudSignInConfig REGISTRATION=new ai.eliza.auth.cloud.CloudSignInConfig();}
-class AlphaCredentialStore {static String readSlotBeforeAttach(android.content.Context c,String slot)throws Exception{throw new AssertionError("the stand-in step reads no slot");}}
+class ResetBeforeDispatch {static final ai.eliza.plugins.system.reset.DataReset.BeforeDispatch STEP=ai.eliza.auth.cloud.CloudKeyRevocation.<android.content.Context>resetStep(()->null,(c,slot)->{throw new AssertionError("the stand-in step reads no slot");})::run;}
 class AlphaNoteAudioPlugin {static void scheduleTrashBackstop(android.content.Context c){NativeSourceHost.started++;}}
 class AlphaLocalAgentPlugin {static String invocationOwner(android.content.Context c){return "no-provider";}}
 final class BuildConfig {static final String ELIZA_SOURCE_COMMIT="fixture",FLAVOR="launcher",BUILD_TYPE="debug";static final boolean ELIZA_SOURCE_DIRTY=false;}
@@ -81,13 +81,13 @@ public class ResetStartupTest {
   java.io.File failures=new java.io.File(android.content.Context.data,"reset-alpha.failures");check(failures.delete()||true);
   android.content.Context.recoveries=0;SenseListenerClient.calls=0;int clears=android.app.ActivityManager.calls;
   for(int relaunch=0;relaunch<25;relaunch++){try{new AlphaApplication().attachBaseContext(app);throw new AssertionError("Unacknowledged reset resumed on relaunch "+relaunch);}catch(android.os.Process.Exit stopped){}}
-  check(android.content.Context.recoveries==25);check(SenseListenerClient.calls==DataReset.AUTOMATIC_ATTEMPTS);
+  check(android.content.Context.recoveries==25);check(SenseListenerClient.calls==0);
   check(android.app.ActivityManager.calls==clears);check(AlphaDataReset.RESET.pending(app));check(NativeSourceHost.started==0);
   // The recovery process neither stops itself nor starts Alpha's runtime.
   android.app.Application.process="fixture.alpha:reset_recovery";AlphaApplication recovery=new AlphaApplication();recovery.attachBaseContext(app);recovery.onCreate();
   check(NativeSourceHost.started==0);check(AlphaDevicePlugin.UpdatePause.configured==1);check(android.content.Context.recoveries==25);android.app.Application.process="fixture.alpha";
   // A user's Try again is always a fresh attempt; still fail-closed while unacknowledged.
-  check(AlphaDataReset.RESET.attempt(app,System.currentTimeMillis())==DataReset.Outcome.LISTENER_UNACKNOWLEDGED);check(SenseListenerClient.calls==DataReset.AUTOMATIC_ATTEMPTS+1);check(android.app.ActivityManager.calls==clears);check(AlphaDataReset.RESET.pending(app));
+  check(AlphaDataReset.RESET.attempt(app,System.currentTimeMillis())==DataReset.Outcome.LISTENER_UNACKNOWLEDGED);check(SenseListenerClient.calls==1);check(android.app.ActivityManager.calls==clears);check(AlphaDataReset.RESET.pending(app));
   // Window policy: budget returns after the window or a clock change; unreadable state defers automatic attempts.
   long t=1_000_000;check(DataReset.automaticAttemptAllowed(new long[]{0,0},t));check(!DataReset.automaticAttemptAllowed(new long[]{DataReset.AUTOMATIC_ATTEMPTS,t},t+1));
   check(DataReset.automaticAttemptAllowed(new long[]{DataReset.AUTOMATIC_ATTEMPTS,t},t+DataReset.AUTOMATIC_WINDOW_MS));check(DataReset.automaticAttemptAllowed(new long[]{DataReset.AUTOMATIC_ATTEMPTS,t},t-1));
@@ -113,8 +113,11 @@ public class ResetStartupTest {
   android.os.Build.VERSION.SDK_INT=36;android.app.ActivityManager.startsFail=false;android.app.ActivityManager.starts=java.util.List.of(new android.app.ApplicationStartInfo(123,android.app.ApplicationStartInfo.START_REASON_JOB));
   int shown=android.content.Context.recoveries;try{AlphaDataReset.RESET.dispatchAndExit(app);throw new AssertionError();}catch(android.os.Process.Exit stopped){}check(android.content.Context.recoveries==shown+1);
   android.app.ActivityManager.starts=new java.util.ArrayList<>();
-  // A new confirmation starts a fresh budget, so the interactive attempt is never silently deferred.
-  AlphaDataReset.RESET.record(app);check(!failures.exists());check(DataReset.automaticAttemptAllowed(AlphaDataReset.RESET.failureState(app),System.currentTimeMillis()));
+  // Repeating confirmation cannot reset a pending request's durable budget.
+  long reserved=AlphaDataReset.RESET.failureState(app)[0];AlphaDataReset.RESET.record(app);check(AlphaDataReset.RESET.failureState(app)[0]==reserved);
+  // A newly confirmed request persists its budget after the prior marker is cleared.
+  check(new java.io.File(android.content.Context.data,"reset-alpha.pending").delete());
+  AlphaDataReset.RESET.record(app);check(java.nio.file.Files.readString(failures.toPath()).equals("0:0"));check(DataReset.automaticAttemptAllowed(AlphaDataReset.RESET.failureState(app),System.currentTimeMillis()));
   // Interrupted between acknowledgement and dispatch: the listener acknowledges, Android refuses; the next launch completes.
   SenseListenerClient.resetSaved=true;android.app.ActivityManager.mode=2;try{new AlphaApplication().attachBaseContext(app);throw new AssertionError();}catch(android.os.Process.Exit stopped){}check(AlphaDataReset.RESET.pending(app));
   android.app.ActivityManager.mode=0;int recoveriesBefore=android.content.Context.recoveries;
@@ -132,8 +135,8 @@ public class ResetStartupTest {
  }
 }`);
   const sibling=join(dir,'other-app');mkdirSync(sibling);writeFileSync(join(sibling,'keep'),'x');
-  execFileSync(bin('javac'),['--release','17','-d',join(dir,'classes'),...sources,...['DataReset','DataResetCopy'].map(name=>join(upstreamReset,`${name}.java`)),...['AlphaDataReset','AlphaApplication'].map(name=>join(root,`android/app/src/main/java/ai/elizaresearch/alphaphone/${name}.java`))],{timeout:60000});
-  assert.match(execFileSync(bin('java'),['-cp',join(dir,'classes'),'ai.elizaresearch.alphaphone.ResetStartupTest',join(dir,'private-fixture'),sibling],{encoding:'utf8',timeout:60000}),/PASS reset startup/);
+  execFileSync(javaBinary('javac'),['--release','17','-d',join(dir,'classes'),...sources,...['DataReset','DataResetCopy'].map(name=>join(upstreamReset,`${name}.java`)),...['AlphaDataReset','AlphaApplication'].map(name=>join(root,`android/app/src/main/java/ai/elizaresearch/alphaphone/${name}.java`))],{timeout:60000});
+  assert.match(execFileSync(javaBinary('java'),['-cp',join(dir,'classes'),'ai.elizaresearch.alphaphone.ResetStartupTest',join(dir,'private-fixture'),sibling],{encoding:'utf8',timeout:60000}),/PASS reset startup/);
  }finally{rmSync(dir,{recursive:true,force:true});}
 });
 

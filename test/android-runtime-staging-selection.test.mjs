@@ -5,6 +5,7 @@ import path from 'node:path';
 import os from 'node:os';
 import {createHash} from 'node:crypto';
 import {runtimeStagingSelection} from '../scripts/stage-local-agent-runtime.mjs';
+import {assertBefore} from './fixtures/assert-order.mjs';
 function fixture(){
  const root=fs.mkdtempSync(path.join(os.tmpdir(),'android-stage-selection-'));
  const source=path.join(root,'source'),archive=path.join(root,'reviewed.zip');
@@ -47,7 +48,7 @@ test('the actual agent:stage-android entry uses selected environment and explici
  assert.ok(pkg.scripts['android:build:local'].includes('npm run agent:stage-android'));
  assert.ok(script.includes('const env=selection.env;'));
  assert.ok(script.includes('bunTarget:${JSON.stringify(selection.bunTarget)}'));
- assert.ok(script.indexOf('const selection=runtimeStagingSelection(source,process.env);')<script.indexOf("'scripts/build-mobile-agent.mjs'"));
+ assertBefore(script,'const selection=runtimeStagingSelection(source,process.env);',"'scripts/build-mobile-agent.mjs'");
  assert.ok(script.includes('verifyMobileBuildReceipt(root,source)'));
  assert.ok(!script.includes("preparedSourceEnv(process.env,{ELIZA_ANDROID_TARGET_ABIS:'arm64-v8a,x86_64'})"));
 });

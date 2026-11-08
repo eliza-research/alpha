@@ -64,9 +64,13 @@ export function parseBuildArgs(argv) {
   return options;
 }
 
-/** Child environment for a build: the flag is set only for --test-mocks. */
+/**
+ * Child environment for a build: the flag is set only for --test-mocks, and a test-mocks build
+ * never receives the release-signing variables, so its releases are never signed with the release key.
+ */
 export function buildEnv(base, { testMocks, runtimeProfile = "native" }) {
   const env = { ...base };
+  if (testMocks) for (const name of SIGNING_ENV) delete env[name];
   for (const name of FLAG_ENV_NAMES) delete env[name];
   delete env.ELIZA_LOCAL_EMBEDDINGS;
   delete env.ORG_GRADLE_PROJECT_ELIZA_LOCAL_EMBEDDINGS;
@@ -147,9 +151,10 @@ export function readReleaseSigner(root = process.cwd()) {
  * Release admission against the descriptor. `failures` stop verification (a signed
  * release with a different certificate or a non-advancing versionCode); `blockers`
  * keep an otherwise valid release distributable:false (unsigned, signer unset,
- * an unsigned build that does not advance the recorded versionCode).
+ * an unsigned build that does not advance the recorded versionCode). A test-mocks
+ * release is never distributable: its only failure is being signed with the release key.
  */
-export function releaseAdmission({ signed, signerSha256, versionCode }, descriptor) {
+export function releaseAdmission({ signed, signerSha256, versionCode }, descriptor, { testMocks = false } = {}) {
   validateReleaseSigner(descriptor);
   const failures = [];
   const blockers = [];
@@ -162,7 +167,9 @@ export function releaseAdmission({ signed, signerSha256, versionCode }, descript
     const message = `versionCode ${versionCode} is not greater than the last recorded release ${last}`;
     (signed ? failures : blockers).push(message);
   }
-  return { failures, blockers, signerMatches: signed && descriptor.signerSha256 !== "unset" && signerSha256 === descriptor.signerSha256 };
+  const signerMatches = signed && descriptor.signerSha256 !== "unset" && signerSha256 === descriptor.signerSha256;
+  if (testMocks) return { failures: signerMatches ? ["test-mocks APK signed with the release key"] : [], blockers: [...blockers, ...failures], signerMatches };
+  return { failures, blockers, signerMatches };
 }
 
 /**
@@ -232,7 +239,8 @@ export function consumerBuildOptions(options, env, root, updateChannel = readUpd
         runtimeProfile: options.runtimeProfile || "native",
         updateChannel,
         ...(options.localEmbeddings ? {localEmbeddings:true} : {}),
-        mapsConfigured: Boolean(env.VITE_MAPS_BASE_URL),
+        // The renderer reads VITE_MAPS_BASE_URL only in test-mocks builds; every other build uses Cloud Maps.
+        mapsProvider: options.testMocks && env.VITE_MAPS_BASE_URL ? "regional-gateway" : "cloud",
         signingRequested: signingRequested(env),
         versionOverride: { code: env.ELIZAOS_VERSION_CODE ?? null, name: env.ELIZAOS_VERSION_NAME ?? null },
       },

@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {stripTypeScriptTypes} from './support/strip-types.mjs';
 import vm from 'node:vm';
-const source=stripTypeScriptTypes(readFileSync('apps/app/src/runtime/native-reading-voice.ts','utf8').replace(/^import .*;\n/gm,'').replace(/^export /gm,''),{mode:'transform'});
+const source=stripTypeScriptTypes(readFileSync('apps/app/src/runtime/native-reading-voice.ts','utf8').replace(/^import .*;\n/gm,'').replace(/^export /gm,''),{mode:'strip'});
 function fixture({cloud}){
  const f={onDevice:0,synthesized:0};
  const resident={sessionId:'s1',agentId:'a1'};

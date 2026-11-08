@@ -44,13 +44,7 @@ export function startupLocationAccess(value: unknown) {
   return {granted, enabled, description};
 }
 
-/** Connected identity alone does not establish Gmail or Calendar permission. */
-export function startupGoogleAccess(accounts: readonly {connected: boolean; connectionId?: string | null; grantedCapabilities: readonly string[]}[]) {
-  const connected = accounts.filter(account => account.connected === true && !!account.connectionId);
-  return {gmail: connected.some(account => account.grantedCapabilities.includes('google.gmail.triage')), calendar: connected.some(account => account.grantedCapabilities.includes('google.calendar.read'))};
-}
-
-/** Installed names: the "Not now" dismissal and which OS prompts were already shown. */
+/** Installed names: which OS prompts were already shown, and the Settings reopen event. */
 export const STARTUP_PERMISSIONS_KEY = 'alpha.startup-permissions.v1';
 export const STARTUP_PERMISSIONS_REOPEN = 'alpha:startup-permissions-reopen';
 export type StartupPermissionMemory = WalkthroughMemory;
@@ -82,4 +76,12 @@ export function reopenStartupPermissions(store: Store | null = defaultStore()) {
 export function createStartupPermissionFlow(bridge: StartupPermissionBridge, options: {key?: string; store?: Store | null} = {}) {
   const store = options.store === undefined ? defaultStore() : options.store;
   return createPermissionStepFlow(bridge, {attemptKey: options.key, memory: memory(store)});
+}
+
+/**
+ * A returning sign-in on completed setup opens no Ready card. A connection error or an unconfirmed
+ * revocation of the earlier sign-in that arrives after it opens the card, so the owner still sees it.
+ */
+export function lateReadyNotice(input: {silent: boolean; error?: string; message?: string}): boolean {
+  return input.silent && (!!input.error || !!input.message?.includes('did not confirm revoking'));
 }

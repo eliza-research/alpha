@@ -1,11 +1,13 @@
-import {test,expect} from '@playwright/test';
+import {test,expect,type Page} from '@playwright/test';
 import {fenceNetwork} from './flag-off-android';
 import {photosBridge} from './helpers/photos-bridge';
+// Waits until Home or the optional prompt is shown before deciding, so a late prompt is not missed.
+const dismissPrompt=async(page:Page)=>{const skip=page.getByRole('button',{name:'Not now',exact:true});await expect(skip.or(page.getByRole('button',{name:'Photos',exact:true})).filter({visible:true}).first()).toBeVisible();if(await skip.isVisible())await skip.click();};
 // Flag-off bundled renderer/CSS with a closed native boundary; no Android/MediaStore acceptance claim.
 for(const slow of [false,true])test(`native Photos grid opens and stays open ${slow?'delayed read':'immediate read'}`,async({page})=>{
  const errors:string[]=[];page.on('pageerror',e=>errors.push(e.message));
  await fenceNetwork(page);await photosBridge(page,'full',false,true);
- const skip=page.getByRole('button',{name:'Not now',exact:true});if(await skip.isVisible())await skip.click();
+ await dismissPrompt(page);
  await page.getByRole('button',{name:'Photos',exact:true}).click();
  await expect(page.getByRole('button',{name:/^Photo, /})).toHaveCount(1);
  if(slow)await page.evaluate(()=>{const c=(window as any).Capacitor,original=c.nativePromise;c.nativePromise=async(p:string,m:string,i:any)=>{if(p==='AlphaPhotos'&&m==='read')await new Promise(r=>setTimeout(r,250));return original(p,m,i);};});

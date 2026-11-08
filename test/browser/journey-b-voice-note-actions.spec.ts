@@ -33,7 +33,7 @@ import {openBrowserCalendar} from './helpers/browser-calendar';
  * Native-only / not provable here:
  *  - A physically spoken note, real speech recognition quality and audible playback/read-aloud.
  *  - OS notification delivery, snooze from the notification and reboot survival of the reminder
- *    (the browser reports "Scheduled · approximate delivery").
+ *    (the browser reports "Scheduled. Alerts may arrive a few minutes late.").
  *  - Android Calendar provider accounts, attendees and provider-side read-back.
  *  - A real agent deciding to propose these actions.
  *
@@ -273,7 +273,7 @@ test('Journey B: recorded note is read aloud, summarized, and becomes an event a
  expect(recordedActions.journal.map((j:any)=>[j.record.operation.type,j.phase,j.status])).toEqual([['create_reminder','terminal','succeeded'],['calendar_create','terminal','succeeded']]);
  expect(recordedActions.proposals[1].receipt.result).toMatchObject({kind:'calendar_create',sourceId:'local',eventId:(await events(page)).find(e=>e.title==='Venue booking call').id});
  await openDeviceActions(page);
- await page.getByRole('button',{name:'Sync recorded receipts'}).click();
+ await page.getByRole('button',{name:'Check with agent'}).click();
  const connection=page.getByRole('dialog',{name:'Development connections'});
  await expect(connection.getByText(/Create event · “Venue booking call” · Completed · this phone: succeeded/)).toHaveCount(1);
  await expect(connection.getByText(/Create reminder · .*Email the caterer.* · Completed · this phone: succeeded/)).toHaveCount(1);

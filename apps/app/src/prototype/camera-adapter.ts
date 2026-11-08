@@ -1130,6 +1130,7 @@ export function installPrototypeCameraAdapter(_Component: unknown, views: Record
     data.showZoom = !recordingBusy && stops.length > 1;
     data.zooms = stops.map(([ratio, label]) => ({ label, aria: `Zoom ${label.replace('×', '')}x`, css: Math.abs(ratio - zoomRatio) < 1e-3 ? ZOOM_ON : ZOOM_OFF, pick: () => { void control(() => camera.setZoom({ zoom: ratio }), () => { zoomRatio = ratio; currentApi.set({ nativeZoom: ratio }); }); } }));
     data.vfUp = (event: PointerEvent) => { const bounds = document.querySelector(finder)?.getBoundingClientRect(); focusAt((event.clientX - (bounds?.left ?? 0)) / (bounds?.width || window.innerWidth), (event.clientY - (bounds?.top ?? 0)) / (bounds?.height || window.innerHeight)); };
+    data.vfClick = (event: MouseEvent) => { if (event.detail === 0) focusAt(0.5, 0.5); };
     data.showModes = !recordingBusy;
     data.modes = (data.modes || []).map((m: Bag) => ({ ...m, pick: () => { if (recordingBusy || session.capturing) return; const mode = m.label.toLowerCase(); if (mode === 'photo' || mode === 'video') { if (currentApi.get('camera').mode !== mode) {pendingShot=undefined;bindMode(mode);} currentApi.set({ mode, rec: false }); } } }));
     const last = lastCapture;

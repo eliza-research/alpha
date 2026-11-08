@@ -7,6 +7,7 @@ import {tmpdir} from 'node:os';
 import {join,resolve} from 'node:path';
 import {execFileSync} from 'node:child_process';
 import {preparePatchedNative} from '../scripts/prepare-patched-native.mjs';
+import {javaBinary} from './fixtures/jvm-tools.mjs';
 
 // Alpha's registration of the shared native Eliza Cloud sign-in client (elizaOS/eliza
 // packages/auth/android; its policy, plugin methods and contract vectors are tested there). These
@@ -16,7 +17,6 @@ import {preparePatchedNative} from '../scripts/prepare-patched-native.mjs';
 const root=resolve(import.meta.dirname,'..');
 const read=file=>readFileSync(join(root,file),'utf8');
 const between=(text,start,end)=>{const from=text.indexOf(start),to=text.indexOf(end,from+start.length);assert.ok(from>=0&&to>from,`${start} … ${end} located`);return text.slice(from,to);};
-const java=process.env.JAVA_HOME||(process.platform==='darwin'?'/opt/homebrew/opt/openjdk@21/libexec/openjdk.jdk/Contents/Home':'');const binary=name=>java?join(java,'bin',name):name;
 const native='android/app/src/main/java/ai/elizaresearch/alphaphone/';
 const patched=preparePatchedNative({root});
 const shared=patched.root.slice(root.length+1)+'/packages/auth/android/src/main/java/ai/eliza/auth/cloud/';
@@ -68,8 +68,8 @@ test('Alpha callback contract vectors through the shared native parser',()=>{
  try{
   writeFileSync(join(temporary,'vectors.tsv'),lines.map(line=>line.join('\t')).join('\n')+'\n');
   const sources=['CloudSignInConfig.java','CloudSignInEnvironment.java','CloudSignInFlow.java'].map(file=>join(root,shared,file)).concat(join(root,'vendor/eliza/packages/auth/android/test/ai/eliza/auth/cloud/CloudSignInContractTest.java'));
-  execFileSync(binary('javac'),['--release','11','-d',temporary,...sources],{timeout:60000});
-  assert.match(execFileSync(binary('java'),['-cp',temporary,'ai.eliza.auth.cloud.CloudSignInContractTest',join(temporary,'vectors.tsv'),contract.callbackPath,contract.hosts.production,contract.hosts.staging],{encoding:'utf8',timeout:60000}),new RegExp(`^PASS callback contract \\(${lines.length} vectors\\)`));
+  execFileSync(javaBinary('javac'),['--release','11','-d',temporary,...sources],{timeout:60000});
+  assert.match(execFileSync(javaBinary('java'),['-cp',temporary,'ai.eliza.auth.cloud.CloudSignInContractTest',join(temporary,'vectors.tsv'),contract.callbackPath,contract.hosts.production,contract.hosts.staging],{encoding:'utf8',timeout:60000}),new RegExp(`^PASS callback contract \\(${lines.length} vectors\\)`));
  }finally{rmSync(temporary,{recursive:true,force:true});}
 });
 

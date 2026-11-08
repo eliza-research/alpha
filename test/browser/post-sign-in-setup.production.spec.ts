@@ -7,12 +7,10 @@ import { flagOffAndroid, button, fenceNetwork, openYourAgent } from './flag-off-
 import { residentStub, stub, setStub } from './resident-stub';
 import { recordStartupFrames, expectNoHomeBeforePrompt, startupLoading } from './helpers/startup-frames';
 
-test.beforeEach(({}, testInfo) => { test.skip(testInfo.project.name !== 'production', 'Production bundle only'); });
-
 const account = { token: 'post-sign-in-key', userId: '9f1dc45a-4011-4e44-947a-30d999d24fa5', email: 'new-owner@example.invalid', balance: 5 };
 const STEPS = ['Notifications', 'Microphone', 'Camera', 'Location', 'Calendar', 'Photos', 'Files'];
 /** Starting-state copy the owner reported: none of it may show while the agent merely starts. */
-const STARTING_SLOP = ['AI is off', 'Checking your code', 'Checking code', 'Eliza Cloud credits', 'Manage billing', 'AI is not ready yet'];
+const STARTING_SLOP = ['AI is off', 'Checking your code', 'Checking code', 'Eliza Cloud credits', 'Manage billing', 'AI connection isn’t confirmed yet'];
 const starts = (page: Page) => stub(page, s => s.order.filter((entry: string) => entry === 'Agent.start').length) as Promise<number>;
 async function shot(page: Page, info: TestInfo, name: string) { await page.evaluate(() => document.fonts.ready); await page.screenshot({ path: info.outputPath(name + '.png'), animations: 'disabled' }); }
 
@@ -96,7 +94,7 @@ test('APK path: a verified email code goes straight to the seven access steps wh
   const starting = await page.locator('body').innerText();
   for (const text of STARTING_SLOP) expect(starting).not.toContain(text);
   for (const name of STEPS) { await expect(setup.getByRole('heading', { name, exact: true })).toBeVisible(); await setup.getByRole('button', { name: 'Allow', exact: true }).click(); }
-  await expect(setup.getByRole('heading', { name: 'You’re all set', exact: true })).toBeVisible();
+  await expect(setup.getByRole('heading', { name: 'Setup finished', exact: true })).toBeVisible();
   await shot(page, info, '04-all-set-agent-starting');
   for (const text of STARTING_SLOP) expect(await setup.innerText()).not.toContain(text);
   await setup.getByRole('button', { name: 'Go to Alpha', exact: true }).click();

@@ -11,7 +11,7 @@ test.beforeEach(async({page})=>{
    const stream=canvas.captureStream(20);state.streams.push(stream);return stream;
   };
  });
- await page.goto('/');await page.getByRole('button',{name:'Camera',exact:true}).click();await expect.poll(()=>page.locator('[aria-label^="Viewfinder."] video').evaluate((v:HTMLVideoElement)=>v.readyState)).toBeGreaterThanOrEqual(2);
+ await page.goto('/');await page.getByRole('button',{name:'Camera',exact:true}).click();await expect.poll(()=>page.locator('[data-alpha-camera="viewfinder"] video').evaluate((v:HTMLVideoElement)=>v.readyState)).toBeGreaterThanOrEqual(2);
 });
 for(const clearedMime of [false,true])test(`video records microphone audio, saves exactly once and decodes after reload (cleared MIME: ${clearedMime})`,async({page})=>{
  if(clearedMime)await page.evaluate(()=>{const Native=MediaRecorder;(window as any).MediaRecorder=class extends Native{get mimeType(){return this.state==='inactive'?'':super.mimeType;}};});

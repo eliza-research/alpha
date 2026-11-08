@@ -4,7 +4,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import {
-  acceptanceStatus, apkFfmpegEntries, apkManifestSummary, buildPacket, bundleProbe, flagCounts, formatPacket, newestSnapshot, reviewRows, sbomSummary, sourceChain, SOURCE_MARKERS,
+  acceptanceStatus, apkFfmpegEntries, distributionBlockers, apkManifestSummary, buildPacket, bundleProbe, flagCounts, formatPacket, newestSnapshot, reviewRows, sbomSummary, sourceChain, SOURCE_MARKERS,
 } from '../scripts/owner/licence-review.mjs';
 
 const entries = [
@@ -99,4 +99,18 @@ test('owner acceptance covers the exact @metamask/sdk version only', () => {
   assert.deepEqual(acceptanceStatus(bumped)[0].foundVersions, ['0.34.0']);
   assert.equal(acceptanceStatus([])[0].status, 'not-present');
   assert.match(formatPacket({disclaimer: 'd', acceptance: acceptanceStatus(bumped)}), /re-decide/);
+});
+
+test('shipped Bun with no recorded written source offer is a distribution blocker', () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'licence-review-offer-'));
+  const bun = [{name: 'Bun JavaScript runtime (libeliza_bun.so)', version: '1.4.2', license: 'license unverified', flags: ['copyleft-weak', 'unverified'], text: 'LGPL'}];
+  assert.deepEqual(distributionBlockers(entries, root), [], 'no Bun shipped, nothing to offer');
+  assert.deepEqual(distributionBlockers(bun, root), ['written source offer for Bun LGPL components not recorded (config/source-offer.json)']);
+  assert.match(formatPacket({disclaimer: 'd', blockers: distributionBlockers(bun, root)}), /Distribution blockers:\n  written source offer for Bun LGPL components not recorded/);
+  fs.mkdirSync(path.join(root, 'config'));
+  fs.writeFileSync(path.join(root, 'config/source-offer.json'), JSON.stringify({offer: 'Example written offer text.'}));
+  assert.deepEqual(distributionBlockers(bun, root), []);
+  fs.writeFileSync(path.join(root, 'config/source-offer.json'), '{}');
+  assert.match(distributionBlockers(bun, root)[0], /not recorded: config\/source-offer\.json has no "offer" text/);
+  fs.rmSync(root, {recursive: true, force: true});
 });

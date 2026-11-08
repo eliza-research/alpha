@@ -11,7 +11,8 @@ export class BrowserMailAttachments extends WebPlugin {
  private url?:string;
  private cleanup?:()=>void;
  constructor(private files:BrowserFiles){super();window.addEventListener('pagehide',()=>this.clear());document.addEventListener('visibilitychange',()=>{if(document.hidden)this.clear();});}
- async readSelected(input:{selectionId:string}){const generation=this.generation,file=await this.files.attachment(input),review=await reviewMailAttachment(file);if(generation!==this.generation)throw new DOMException('Cancelled','AbortError');return {...file,...review,sourceReferenceVersion:1 as const};}
+ /** Rejects with code `too-large` past 5 MiB, as the native plugin does. */
+ async readSelected(input:{selectionId:string}){const generation=this.generation,file=await this.files.attachment(input).catch(error=>{throw String(error?.message)==='Choose a file up to 5 MiB.'?Object.assign(error,{code:'too-large'}):error;}),review=await reviewMailAttachment(file);if(generation!==this.generation)throw new DOMException('Cancelled','AbortError');return {...file,...review,sourceReferenceVersion:1 as const};}
  async retainSourceReference(input:{selectionId:string;sha256:string}){const file=await this.readSelected(input);if(file.sha256!==input.sha256)throw Error('Source changed.');return {reference:await this.files.sourceReference(input)};}
  async openSourceReference(input:{reference:string;sha256:string;size:number;mimeType:string}){
   const generation=this.generation,selected=await this.files.selectSourceReference(input.reference);
@@ -33,8 +34,8 @@ export class BrowserMailAttachments extends WebPlugin {
    const review=await check(input);if(!input.reviewed||review.sha256!==input.sha256||generation!==this.generation)throw Error('Review this attachment again.');controller.signal.throwIfAborted();
    const bytes=Uint8Array.from(atob(input.dataBase64),c=>c.charCodeAt(0));started=true;
    const selected=await this.files.importFile(new File([bytes],input.name,{type:input.mimeType}),'root',controller.signal);selectionId=selected.selectionId;
-   const retained=await this.files.attachment({selectionId}),checked=await check(retained);controller.signal.throwIfAborted();if(checked.sha256!==review.sha256||checked.size!==review.size)throw Error('Saved bytes did not match.');
-   return {status:'saved',message:'Saved in Files. Exact bytes verified.'};
+   const retained=await this.files.attachment({selectionId}),checked=await check(retained);controller.signal.throwIfAborted();if(checked.sha256!==review.sha256||checked.size!==review.size)throw Error("The saved copy didn't match.");
+   return {status:'saved',message:'Saved in Files.'};
   }catch(error){if(!started)throw error;return {status:'unverified',message:'Save not confirmed. Inspect Files before trying again; a copy may already exist.'};}
   finally{if(selectionId)await this.files.forgetSelected({selectionId}).catch(()=>{});if(this.saveController===controller)this.saveController=undefined;}
  }

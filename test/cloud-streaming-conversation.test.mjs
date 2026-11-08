@@ -5,6 +5,8 @@ import vm from 'node:vm';
 import {stripTypeScriptTypes} from './support/strip-types.mjs';
 import {cloudVoiceViewFixture} from './fixtures/cloud-voice-view.mjs';
 import {voiceFakeClock} from './fixtures/shared-batch-voice.mjs';
+import {tsImport} from 'tsx/esm/api';
+const {buildVoiceTurnSignal}=await tsImport(new URL('../.eliza/client-features/packages/voice/src/respond-gate.ts',import.meta.url).href,{parentURL:import.meta.url});
 
 function fixture(streamError,{speak}={}){
  const clock=voiceFakeClock(),f=cloudVoiceViewFixture({cloudProfile:true,clock});
@@ -102,8 +104,8 @@ test('a refused streaming start shows what the batch route shows for the same re
   assert.deepEqual(streaming,batch,`${status} ${JSON.stringify(data??{})}`);
  }
  const text=async status=>{const f=fixture(Object.assign(Error('refused'),{code:'voice-http-'+status}));try{await f.shell.startVoice();await f.clock.flush();return f.renderChat()?.lines?.[0]?.t;}finally{f.close();await f.clock.flush();}};
- assert.equal(await text(401),'Sign in to Cloud again in Settings, then retry voice.');
- assert.match(await text(402),/declined cloud voice for your account's billing/);
+ assert.equal(await text(401),'Eliza Cloud sign-in expired. Sign in again in Settings, then retry voice.');
+ assert.match(await text(402),/declined voice for billing\. Check your account in Settings\./);
 });
 
 test('a speech failure after a finished sentence keeps the whole reply and reports nothing heard',async()=>{

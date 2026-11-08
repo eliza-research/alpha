@@ -116,7 +116,7 @@ test('the connection controller has no local-apps-only mode and migrates old sel
 
 test('no startup path ends claiming "starting" with nothing starting', () => {
   // Every startup outcome is settled: the resident starts, or the state is `recovering` with Retry.
-  assert.match(ui, /\}\)\(\)\.then\(settleResidentAfterStartup\)(\.finally\(\(\)=>update\(\{startupResolved:true(?:,automaticRestore:false)?\}\)\))?;/);
+  assert.match(ui, /\}\)\(\)\.then\(settleResidentAfterStartup\)(\.finally\(\(\)=>\{update\(\{startupResolved:true(?:,automaticRestore:false)?\}\);runQueuedSignInReturn\(\);\}\))?;/);
   assert.match(ui, /async function settleResidentAfterStartup\(\) \{[\s\S]{0,600}await ensureResident\(\);[\s\S]{0,80}update\(\{ kind: 'recovering' \}\);/);
   // A rebind that fails to reconnect leaves the agent recovering (Retry), never "no agent".
   assert.match(between(ui, 'function queueResidentRebind(', 'function runQueuedResidentRebind('), /catch \(error\) \{ if \(residentAlwaysPresent && !active\) update\(\{ kind: 'recovering' \}\); throw error; \}/);
@@ -148,12 +148,17 @@ test('a chat turn without Cloud inference gets an honest answer with the plan ac
   const failure = between(ui, 'function replyFailure(', '\n}\n');
   assert.match(failure, /if\(kind==='no_provider'&&selected\.kind==='resident'&&residentCloudFlow\(\)\)\{[\s\S]*inferenceUnavailableReply\(notice,signedIn\)[\s\S]*planAction:/);
   const reply = between(ui, 'export function inferenceUnavailableReply(', '\n}\n');
-  const renderReply = new Function('cloudServiceName', 'cloud',
+  const state = {residentSubscription: null};
+  const renderReply = new Function('cloudServiceName', 'cloud', 'state',
     reply.replace(/^export /, '').replace(/notice: ConnectionSnapshot\['residentPlanNotice'\], signedIn: boolean\): string/, 'notice, signedIn)')
-      + '\n}; return inferenceUnavailableReply;')(() => 'Nebula', {environment:'production'});
+      + '\n}; return inferenceUnavailableReply;')(() => 'Nebula', {environment:'production'}, state);
   const replies = [renderReply('offline', true), renderReply(null, false), renderReply(null, true)].join('\n');
-  for (const text of ['Check your Nebula account in Settings', "can't reach Nebula", 'Sign in with Nebula', 'Local apps keep working'])
+  for (const text of ["Nebula couldn't confirm your plan right now", "can't reach Nebula", 'Sign in with Nebula', 'Local apps keep working'])
     assert.ok(replies.includes(text), text);
+  // A verified account without a plan is told so; nothing claims a purchase either way.
+  state.residentSubscription = {kind: 'inactive'};
+  assert.equal(renderReply(null, true), "I'm running on this device, but AI replies need a Nebula plan. Local apps keep working.");
+  assert.doesNotMatch(replies, /Nothing was purchased/);
   assert.doesNotMatch(reply, /no agent|without AI|credit|top.?up|upgrade|needs? (?:an? )?Eliza Cloud (?:account with a )?plan|on-device speech|Nothing was sent to Cloud/i);
   // Workflow text generation fails honestly instead of using the plan answer as generated text.
   const client = read('apps/app/src/runtime/alpha-client.ts');
@@ -178,6 +183,33 @@ test('a chat turn without Cloud inference gets an honest answer with the plan ac
   assert.match(adapter, /const planCard=planActionCard\(\(e as \{planAction\?:unknown\}\)\.planAction\)\?\?managePlan;/);
 });
 
+test('a plan or billing refusal in chat is one agent bubble carrying one Manage card', () => {
+  const adapter = read('apps/app/src/prototype/agent-adapter.ts');
+  // Run the adapter's own failure branch with a recorded state; nothing else is posted afterwards.
+  const branch = between(adapter, '          const failureKind=(e as {failureKind?:unknown})', '        }\n        else if(this.live&&reconciling)');
+  const run = (failure, {streamed = false, kind = 'resident', planCard} = {}) => {
+    const state = {chat: 'closed', msgs: streamed ? [{id: 'streamed', from: 'agent', text: 'Partial', streaming: true}] : []};
+    const self = {setState: update => Object.assign(state, typeof update === 'function' ? update(state) : update), agentSay: () => { throw new Error('a second bubble'); }};
+    new Function('e', 'message', 'streamed', 'streamedId', 'planActionCard', 'connectionController', 'selectedCloudName', 'crypto', 'REFUSED_BEFORE_OUTPUT',
+      stripTypeScriptTypes(branch, {mode:'strip'})).call(self, failure, 'Refusal text.', streamed, 'streamed', () => planCard,
+      {getSnapshot: () => ({kind})}, () => 'Nebula', {randomUUID: () => 'bubble'}, new Set(['insufficient_credits']));
+    return state.msgs;
+  };
+  const [bubble, ...rest] = run({serviceLimit: 'allowance-exhausted'});
+  assert.equal(rest.length, 0);
+  assert.equal(bubble.text, 'Refusal text.');assert.equal(bubble.interrupted, true);
+  assert.deepEqual(bubble.card, {type: 'generic', icon: 'info', title: 'Manage billing in Nebula', sub: 'Opens in your browser. Nothing is purchased here.', managePlan: true});
+  const [streamedBubble, ...more] = run({serviceLimit: 'subscription-required'}, {streamed: true});
+  assert.equal(more.length, 0);assert.equal(streamedBubble.interrupted, true);assert.equal(streamedBubble.streaming, false);
+  // A plan refusal comes before any model output, so the streamed text is replaced, not kept.
+  assert.equal(streamedBubble.text, 'Refusal text.');assert.equal(streamedBubble.card.title, 'Manage plan in Nebula');
+  // A plan action card already on the refusal is the only card; other connections and failures get none.
+  const planCard = {title: 'Check subscription or enter a membership code', planAction: 'funding'};
+  assert.equal(run({serviceLimit: 'billing-refused'}, {planCard})[0].card, planCard);
+  assert.equal(run({serviceLimit: 'billing-refused'}, {kind: 'remote'})[0].card, null);
+  assert.equal(run({serviceLimit: 'rate-limited'})[0].card, null);
+});
+
 test('the plan surface is a notice beside the running agent, not a gate', () => {
   const chooser = ui.slice(ui.indexOf('export function ConnectionChooser'));
   assert.match(chooser, /if \(!visible\) \{\n\s+\/\/ Never a gate: the agent is running\./);
@@ -197,10 +229,12 @@ test('the plan surface is a notice beside the running agent, not a gate', () => 
   // Plan and the post-redemption screen keep the resident plan headline, needs-plan notice, Check plan
   // again and Approve this phone again (the panel carries the sheet's controls itself).
   assert.ok(chooser.includes("if((fundingRequired||snapshot.purpose==='plan'&&!residentCloudFlow())&&snapshot.cloudAccount)return <div className=\"alpha-connection-scrim\" data-alpha-billing-overlay=\"true\" data-alpha-membership-sheet=\"true\">"), 'the resident plan panel stays reachable');
-  for (const control of ['>Approve this phone again<', '>Check plan again<', '{residentPlan.headline}', '{NEEDS_PLAN_NOTICE}', '{residentMembershipVisible&&membershipControls}']) assert.ok(resident.includes(control), control);
+  for (const control of ['>Approve this phone again<', '>Check plan again<', '{residentPlan.headline}', '{residentMembershipVisible&&membershipControls}']) assert.ok(resident.includes(control), control);
   // The component owns plan presentation while it is visible; the host's summary and actions are suppressed.
   assert.match(resident, /!residentMembershipVisible&&<section aria-label=\{`\$\{serviceName\} plan`\}/);
-  assert.match(resident, /residentNeedsPlan&&!residentMembershipVisible&&<p role="status">\{NEEDS_PLAN_NOTICE\}/);
+  // Inside the panel the plan headline already states plan state; the closable notice is outside Settings only.
+  assert.doesNotMatch(resident, /\{NEEDS_PLAN_NOTICE\}/);
+  assert.ok(chooser.includes('<p role="status">{NEEDS_PLAN_NOTICE}</p>'));
   assert.doesNotMatch(resident, /cloneElement|planShownByHost/);
 });
 

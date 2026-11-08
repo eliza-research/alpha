@@ -19,6 +19,12 @@ local-hour conversion. Initial nonexistent civil times are rejected. See the
 [range and text-size contracts](calendar-range-and-text-size.md) for limits and
 native verification commands.
 
+On Android the Calendar view reads through the shared `list` with Alpha's configuration:
+at most 2,000 instances per range, `truncated` when the provider held more, and
+`creationId` on events this app saved through its timed creation journal. A "From note"
+link is keyed by that `creationId`; an event without one (another app's event, or an
+all-day, zoned or repeating save from the option journal) shows no note link.
+
 A late save or deletion must not close a newer event, a new unsaved form, or a
 screen reached through Home. Refreshing provider data remains independent of
 that navigation guard. Existing complex events use the explicit external-editor
@@ -181,7 +187,7 @@ The native implementation must meet these boundaries before Settings enables it:
 - Return a complete event/source revision covering the fields and child rows that a write depends on. Keep source generation distinct from display changes so a rename cannot generate duplicate Google creates. Never reuse another source or agent's checkpoint.
 - Preserve raw recurrence/exclusion/exception metadata, all-day civil dates, timezone/duration, attendee identity/optional/response fields and reminders. Apply only semantics the native model can represent; preserve and report unsupported data instead of flattening it.
 - Apply Google changes with native source/event/child-row compare-and-swap assertions and provider readback. Preserve unedited fields and local alerts. Stage deletions through Alpha's existing authenticated-owner Undo coordinator; do not call an immediate-delete path.
-- Retain the shared reconciliation journal, stable create key, exact Google ETag, uncertain-outcome readback and explicit conflict handling. No automatic retry of a provider write and no approval inferred from a successful read.
+- Retain the shared reconciliation journal, stable create key, exact Google ETag, uncertain-outcome readback and explicit conflict handling. An aborted push leaves the row dirty, so the next pass repeats the provider write; the deterministic event id, readback and If-Match ETag make that repeat safe (often an update rather than a second create). No approval is inferred from a successful read.
 
 Qualify the real bridge through the normal native producer and an authorized disposable fixture first. Source/JVM tests, four APK builds, installed source identity, Google write/readback and physical-device acceptance are separate receipts. The retained Seeker publication/install hold is not waived by a browser test or USB connection. No audio, account reset, unlock or phone install is implied by this contract.
 

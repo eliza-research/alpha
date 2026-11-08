@@ -1,7 +1,7 @@
 import {test,expect} from '@playwright/test';
 import {writeFile} from 'node:fs/promises';
-// Opt-in provider measurement using the actual paired agent and Cloud route.
-test('paired Cloud TTS measures three identical phrases without a model or recording',async({page},info)=>{
+// Opt-in provider measurement using the actual local agent and Cloud route.
+test('Cloud TTS measures three identical phrases without a model or recording',async({page},info)=>{
  test.skip(process.env.ALPHA_LIVE_CLOUD_VOICE_QA!=='1','Requires explicit live Cloud speech opt-in');test.setTimeout(120000);
  const receipt:any={startedAt:new Date().toISOString(),text:'Hello. Welcome back to Alpha.',calls:[],responses:[]},requests=new Map();
  page.on('request',request=>{try{if(request.url().endsWith('/__alpha-local-agent')&&JSON.parse(request.postData()||'{}').path==='/api/tts/cloud')requests.set(request,Date.now());}catch{}});

@@ -9,8 +9,9 @@
  * the release identities (android/release-signer.json, android/aosp/pixel10a-product.json,
  * android/aosp/pixel10a-ota-channel.json), the recorded last release or a distributable build in
  * this checkout's artifacts/apk-manifest.json, the voice host and listener qualification records,
- * the embedding host toolchain, the Pixel 10a distribution gates, the update channel drills and the
- * owner's per-view approvals in docs/app-qa-checklist.json.
+ * the embedding host toolchain, the Pixel 10a distribution gates, the update channel drills, the
+ * owner's release key custody decision in docs/decisions.md and the owner's per-view approvals in
+ * docs/app-qa-checklist.json.
  * Each such step is `done`, `open` or `not needed`; every other step is `external` (recorded
  * outside this repository) and prints its Verify line. Reads files only, prints no secret (signing
  * variables are reported by name) and always exits 0, like `npm run android:build:inputs`.
@@ -71,6 +72,12 @@ function gate(root, name) {
  * "not needed". `env` is consulted for variable names only.
  */
 export const CHECKS = Object.freeze({
+  // The owner's custody choice is a dated P- entry in docs/decisions.md that names H-01.
+  "H-01": root => {
+    const entry = /^- \*\*(P-\d\d)\*\* — [^\n]*\bH-01\b/m.exec(fs.readFileSync(path.join(root, "docs/decisions.md"), "utf8"));
+    return entry ? { state: "done", detail: `release key custody recorded as ${entry[1]} in docs/decisions.md` }
+      : { state: "open", detail: "docs/decisions.md records no P- entry for H-01" };
+  },
   "H-09": root => {
     const signer = readJson(root, "android/release-signer.json");
     const product = readJson(root, "android/aosp/pixel10a-product.json");

@@ -4,6 +4,8 @@ import {mailSenderImage} from '../apps/app/src/runtime/mail-sender-image.ts';
 import {decodeMailPreview} from '../apps/app/src/runtime/mail-preview.ts';
 import {readGmailAccountChoice,saveGmailAccountChoice} from '../apps/app/src/runtime/gmail-account-selection.ts';
 import {GmailReadAhead} from '../apps/app/src/runtime/gmail-read-ahead.ts';
+import {formatMonthDay,weekdayName} from '../apps/app/src/prototype/locale-time.ts';
+import {formatBytes} from '../.eliza/client-features/packages/ui/src/mobile-shell/photos-view.ts';
 import {homeReadIsStale,presentHomeInboxCard} from '../apps/app/src/prototype/home-cards.ts';
 // Real Inbox adapter lifecycle with an account-bound provider fixture, no real mail.
 import assert from 'node:assert/strict';
@@ -55,7 +57,7 @@ const windowFixture={addEventListener:(name,fn)=>events.push({name,fn}),removeEv
 class CustomEvent{constructor(type,init){this.type=type;this.detail=init?.detail;}}
 let latestDraftEdit=null;
 const inboxUnsaved=()=>({ready:Promise.resolve(),available:false,conflict:false,error:false,status:'',peek:()=>null,edit(record){latestDraftEdit=structuredClone(record);},clear:async()=>{},retire(){},resume(){}});
-const sandbox={...mailboxList,createMailReviewController,createMailDraftsController,reviewMailAttachment,cloudServiceName,linkifyMailText,linkTextMismatch,React,MailFolderPicker,mailSenderImage,serviceReadCache:async()=>null,decodeMailPreview,cachedDevicePreferences:()=>({autoLoadMailImages:true}),initializeDevicePreferences:()=>{},configureGmailBackground:async selection=>{backgroundSelections.push(selection);},withdrawGmailBackground:async()=>{},pendingGmailNotice:async()=>null,consumeGmailNotice:async()=>{},onGmailNotice:async()=>({remove:async()=>{}}),prepareMailHtml:()=>{throw Error("HTML uses the rendered browser test");},readGmailAccountChoice:()=> 'grant-a',saveGmailAccountChoice,GmailReadAhead,URL,presentHomeInboxStatus,inboxUnsaved,InboxOperation,composerKind,composerContent,reviewBinding,reviewBindingRefusal,safeMailLink,reviewOpaqueAttachment,checkOutgoingAttachments,outgoingAttachmentLimits, attachmentBytes,reviewMailAttachment,reviewMailContext,validateMailContext,...mailbox,...googleAccounts,...grants,Event,googleConnectionController:{open(){throw Error('Explicit Google authorization not exercised by this read fixture');}},registerPlugin:()=>({cancel:async()=>{}}),crypto:globalThis.crypto,TextEncoder,structuredClone,secureConnectionStore:{read:async key=>slots.get(key)??null,compareExchange:async(key,prior,next)=>{if(JSON.stringify(slots.get(key)??null)!==JSON.stringify(prior))return {status:'conflict'};if(next===null)slots.delete(key);else slots.set(key,next);return {status:'saved'};}},connectionController:controller,DailyApps:{addListener:async()=>({remove:async()=>{}})},openConnectionBrowser:async(url,signal)=>{handoffs.push(url);if(!oauthUrl)throw new Error('No automatic OAuth');if(handoff)await new Promise((resolve,reject)=>{handoff.resolve=resolve;signal.addEventListener('abort',()=>reject(signal.reason),{once:true});});},queueMicrotask,setTimeout,AbortController,DOMException,Date,console,window:windowFixture,CustomEvent,document:{addEventListener(){},removeEventListener(){},documentElement:{dataset:{connectionMode:'live'}}}};
+const sandbox={...mailboxList,formatMonthDay,formatTime,weekdayName,formatBytes,createMailReviewController,createMailDraftsController,reviewMailAttachment,cloudServiceName,linkifyMailText,linkTextMismatch,React,MailFolderPicker,mailSenderImage,serviceReadCache:async()=>null,decodeMailPreview,cachedDevicePreferences:()=>({autoLoadMailImages:true}),initializeDevicePreferences:()=>{},configureGmailBackground:async selection=>{backgroundSelections.push(selection);},withdrawGmailBackground:async()=>{},pendingGmailNotice:async()=>null,consumeGmailNotice:async()=>{},onGmailNotice:async()=>({remove:async()=>{}}),prepareMailHtml:()=>{throw Error("HTML uses the rendered browser test");},readGmailAccountChoice:()=> 'grant-a',saveGmailAccountChoice,GmailReadAhead,URL,presentHomeInboxStatus,inboxUnsaved,InboxOperation,composerKind,composerContent,reviewBinding,reviewBindingRefusal,safeMailLink,reviewOpaqueAttachment,checkOutgoingAttachments,outgoingAttachmentLimits, attachmentBytes,reviewMailAttachment,reviewMailContext,validateMailContext,...mailbox,...googleAccounts,...grants,Event,googleConnectionController:{open(){throw Error('Explicit Google authorization not exercised by this read fixture');}},registerPlugin:()=>({cancel:async()=>{}}),crypto:globalThis.crypto,TextEncoder,structuredClone,secureConnectionStore:{read:async key=>slots.get(key)??null,compareExchange:async(key,prior,next)=>{if(JSON.stringify(slots.get(key)??null)!==JSON.stringify(prior))return {status:'conflict'};if(next===null)slots.delete(key);else slots.set(key,next);return {status:'saved'};}},connectionController:controller,DailyApps:{addListener:async()=>({remove:async()=>{}})},openConnectionBrowser:async(url,signal)=>{handoffs.push(url);if(!oauthUrl)throw new Error('No automatic OAuth');if(handoff)await new Promise((resolve,reject)=>{handoff.resolve=resolve;signal.addEventListener('abort',()=>reject(signal.reason),{once:true});});},queueMicrotask,setTimeout,AbortController,DOMException,Date,console,window:windowFixture,CustomEvent,document:{addEventListener(){},removeEventListener(){},documentElement:{dataset:{connectionMode:'live'}}}};
 sandbox.inboxLocalStore=sandbox.secureConnectionStore;vm.createContext(sandbox);
 for(const [file,name] of [['inbox-provider-controls.ts','inboxProviderControls'],['inbox-drafts.ts','inboxDrafts'],['inbox-cloud-adapter.ts',['installInboxCloudAdapter','inboxAttention','openInbox','linkifyMailText','linkTextMismatch']]])vm.runInContext(await strip(file,name),sandbox);
 // Home's mail card is the shared overview presenter, read when Home renders.
@@ -88,7 +90,7 @@ assert.deepEqual(local(render().rows.map(r=>r.subj)),['Fixture mail-1','Fixture 
 assert.equal(render().hasMore,false,'last page has no Load more');
 const beforeWarm=searches.length;views.inbox.onLeave();render();await tick();assert.equal(render().rows.length,3,'warm reopen restores only the same account list');assert.equal(render().cachedListShown,true);assert.equal(searches.length,beforeWarm,'warm reopen spends zero account or page requests');
 assert.equal(shell.renderVals().homeInboxCount,'1 unread','complete paging removes the lower-bound qualifier');const homeSearches=searches.length;for(let i=0;i<5;i++)shell.renderVals();assert.equal(searches.length,homeSearches,'Home rerenders never fetch mail');
-render();[...swipes.values()].at(-1)(-120,4);await tick();assert.match(toasts.at(-1),/Enable Gmail changes in Settings/,'swipe without the grant changes nothing');
+render();[...swipes.values()].at(-1)(-120,4);await tick();assert.match(toasts.at(-1),/doesn’t allow archiving\. See Settings → Connections → Manage Google accounts\.$/,'swipe without the grant changes nothing');
 const refreshed=clock(19);
 chip('Refresh').pick();await tick();assert.deepEqual(searches.filter(s=>!s.pageToken).at(-1),{query:'in:inbox',size:25,pageToken:null},'Refresh restarts from the first page');
 assert.match(shell.renderVals().homeInboxStatus,new RegExp(`Updated ${refreshed.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')}$`),'a completed refresh moves the read time');
@@ -134,7 +136,7 @@ views.inbox.back(shell.st,api);composed.c.discard();render().c.confirmDiscard();
 assert.deepEqual(local(views.inbox.suggestions(shell.st)),['Help me write an email'],'no unwired inbox automation chips (organize-inbox removed)');
 assert.equal(render().composing,false,'discarded shared draft is gone');
 shell.st.compose={subject:'Photo',body:'',attach:['photo-1']};render();await tick();render();await tick();
-assert.equal(render().c.subject,'Photo');assert.deepEqual(local(render().c.atts),[],'prototype item ids are never turned into attachments');assert.match(render().c.status,/not attached automatically/);
+assert.equal(render().c.subject,'Photo');assert.deepEqual(local(render().c.atts),[],'prototype item ids are never turned into attachments');assert.match(render().c.status,/Shared items aren't attached/);
 views.inbox.back(shell.st,api);render().c.discard();render().c.confirmDiscard();await tick();
 shell.st.compose={to:'second@example.invalid',subject:'Second share',body:'Earlier shared text'};render();await tick();render();await tick();assert.equal(render().c.subject,'Second share');
 const secondShare=local(latestDraftEdit);assert.deepEqual(secondShare.draft.to,['second@example.invalid']);assert.equal(secondShare.draft.body,'Earlier shared text');
@@ -266,5 +268,40 @@ for(const purgeFailure of ['reject','exhausted-cas'])await test(`a fresh Home sh
   assert.equal(reads.length,beforeBodies,'fresh Home never reads a body');
  }finally{
   fresh.componentWillUnmount();sandbox.serviceReadCache=previousCache;controller.getCloudClient=previousClient;delayAccounts=false;failNext=null;
+ }
+});
+
+// An expired Cloud key while changing read state signs out the session captured before the request.
+await test('read state with an expired Cloud key rejects the captured session and asks for sign-in',async()=>{
+ class ReadShell{constructor(){this.st={q:null,compose:null};}renderVals(){return {};}componentDidMount(){}componentWillUnmount(){}vset(_,patch){Object.assign(this.st,patch);}}
+ const readViews={inbox:{state:{}}};sandbox.installInboxCloudAdapter(ReadShell,readViews);
+ const rejected=[],prepares=[],previousClient=controller.getCloudClient,previousReject=controller.rejectCloudSession,previousCache=sandbox.serviceReadCache;
+ let expire=null;
+ const readClient={...client,
+  gmailInboxCapabilities:async()=>({readState:true}),
+  gmailRead:async(_grant,id)=>({message:mail(id),bodyText:'Read-state body',historyId:'history-'+id}),
+  gmailPrepareOperation:async(_grant,_request,proposal)=>{prepares.push(proposal.kind);throw expire;},
+ };
+ pages['in:inbox']=[[mail('read-1'),mail('read-2')]];sandbox.serviceReadCache=async()=>null;
+ controller.getCloudClient=()=>session?{client:readClient,sessionId:session,credentialId:'fixture-credential'}:null;
+ controller.rejectCloudSession=(sessionId,error)=>{rejected.push([sessionId,error]);return error?.status===401||error?.code==='expired';};
+ const shellR=new ReadShell(),readApi={...api,get:()=>shellR.st,set:patch=>shellR.vset('inbox',patch),isActive:()=>true},inbox=()=>readViews.inbox.render(shellR.st,readApi);
+ inboxActive=true;connected=true;readGrant=true;delayAccounts=false;delay=false;failNext=null;
+ try{
+  shellR.componentDidMount();inbox();await tick();for(const fn of listeners)fn();await tick();
+  inbox().rows[0].open();await tick();await tick();
+  assert.equal(inbox().d?.canToggleRead,true,'the fixture account can change read state');
+  for(const error of [new CloudProtocolError('http',401),new CloudProtocolError('expired')]){
+   expire=error;const toastsBefore=toasts.length,rejectedBefore=rejected.length;
+   inbox().d.toggleRead();await tick();
+   assert.equal(prepares.at(-1),'mark-unread','one explicit change was sent');
+   assert.deepEqual(rejected.slice(rejectedBefore).map(([id,e])=>[id,e===error]),[[session,true]],'the captured session is rejected with the request error');
+   assert.deepEqual(toasts.slice(toastsBefore),['Cloud sign-in expired. Sign in again to update read state.'],'the sign-in message replaces the generic receipt message');
+  }
+  expire=new CloudProtocolError('http',503);const toastsBefore=toasts.length;
+  inbox().d.toggleRead();await tick();
+  assert.equal(toasts.length,toastsBefore+1);assert.doesNotMatch(toasts.at(-1),/sign-in expired/,'an unavailable Cloud keeps the classified message');
+ }finally{
+  shellR.componentWillUnmount();controller.getCloudClient=previousClient;controller.rejectCloudSession=previousReject;sandbox.serviceReadCache=previousCache;
  }
 });

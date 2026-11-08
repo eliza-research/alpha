@@ -57,7 +57,7 @@ test('browser restores an existing host Cloud account, uses canonical voice and 
   const account=page.getByRole('dialog',{name:'Subscription',exact:true});await expect(account.getByRole('region',{name:'Subscription',exact:true}).getByText('owned@example.invalid',{exact:true})).toBeVisible();await page.screenshot({path:info.outputPath('existing-cloud-account.png'),animations:'disabled'});
   // Signed in, the account dialog is the Subscription sheet; its footer signs out.
   await account.getByRole('button',{name:'Sign out of Eliza Cloud',exact:true}).click();
-  await expect(page.getByRole('status').filter({hasText:'This sign-in was revoked.'})).toBeVisible();
+  await expect(page.getByRole('status').filter({hasText:'Signed out of Eliza Cloud.'})).toBeVisible();
   // Reload only after sign-out has removed the host credential, not its earlier in-memory detach.
   await expect.poll(async()=>{
    try{return JSON.parse(await readFile(join(deploymentProfile,'credentials.json'),'utf8'));}

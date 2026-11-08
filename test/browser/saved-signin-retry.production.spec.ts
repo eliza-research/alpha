@@ -12,7 +12,6 @@ import {installResidentAgentPlugin} from './helpers/resident-agent-plugin';
 //
 // Flag-off production bundle with the Android bridge stubbed. The stub is not the native plugins,
 // the keystore or Eliza Cloud; the Android run is test-native-restart.mjs inbox on an emulator.
-test.beforeEach(({}, testInfo) => { test.skip(testInfo.project.name !== 'production', 'Production bundle only'); });
 type Mode = 'offline' | 'rejected' | 'funded';
 type Call = { plugin: string; method: string; path?: string; url?: string; slot?: string };
 
@@ -105,7 +104,7 @@ test('a kept sign-in Cloud rejects is reported as no longer valid in the sign-in
   await boot(page, 'rejected');
   // Every Alpha Phone needs an Eliza Cloud account: the sign-in dialog opens and cannot be dismissed.
   const dialog = page.locator('[role="main"].alpha-cloud-sign-in');
-  await expect(dialog.getByText('Your Cloud sign-in has expired. Sign in with Cloud again.', { exact: true })).toBeVisible();
+  await expect(dialog.getByText('Sign in to Eliza Cloud again to turn AI back on.', { exact: true })).toBeVisible();
   await expect(dialog.getByRole('button', { name: 'Retry saved connection', exact: true })).toHaveCount(0);
   await expect(dialog.getByRole('button', { name: 'Email me a code', exact: true })).toBeEnabled();
   await expect(dialog.getByRole('button', { name: 'Close connection settings', exact: true })).toHaveCount(0);

@@ -20,7 +20,15 @@ const USER = '22222222-2222-4222-8222-222222222222';
 test('Alpha binds its product name, the phone and the deployment name into the shared copy', () => {
   const rate = readServiceLimit({code: 'http', status: 429, data: {error: 'rate_limited', retryAfterSeconds: 42}}, NOW);
   assert.equal(serviceLimitMessage(rate, NOW), 'The AI request rate limit was reached. Try again in about 42 seconds. Alpha Phone did not retry your message.');
-  assert.match(serviceLimitMessage(readServiceLimit({status: 402, data: {}}, NOW), NOW, 'Eliza Cloud'), /^Eliza Cloud declined this AI request for your account's billing\. Check your account in Settings\. Alpha Phone did not retry your message, and nothing is purchased automatically\./);
+  // Plan refusals say the reason once; the purchase reassurance sits on the Manage card beside them.
+  assert.equal(serviceLimitMessage(readServiceLimit({status: 402, data: {}}, NOW), NOW, 'Eliza Cloud'), "Eliza Cloud declined this AI request for your account's billing. Alpha Phone did not retry your message. Local apps keep working.");
+  assert.match(serviceLimitMessage({kind: 'billing-refused', retryAfterMs: null, resetsAt: NOW + 3600000}, NOW, 'Eliza Cloud'), /^Eliza Cloud declined this AI request for your account's billing\. Eliza Cloud reports your plan allowance resets .+\. Alpha Phone did not retry your message\. Local apps keep working\.$/);
+  assert.equal(serviceLimitMessage({kind: 'allowance-exhausted', retryAfterMs: 45 * 60000, resetsAt: null}, NOW), "Your plan's AI allowance for this period is used up. It resets in about 45 minutes. Local apps keep working.");
+  assert.match(serviceLimitMessage({kind: 'allowance-exhausted', retryAfterMs: null, resetsAt: NOW + 86400000}, NOW), /^Your plan's AI allowance for this period is used up\. It resets .+\. Local apps keep working\.$/);
+  assert.equal(serviceLimitMessage({kind: 'allowance-exhausted', retryAfterMs: null, resetsAt: NOW - 1}, NOW), "Your plan's AI allowance for this period is used up. Local apps keep working.");
+  assert.equal(serviceLimitMessage({kind: 'subscription-required', retryAfterMs: null, resetsAt: null}, NOW, 'Eliza Cloud'), 'AI needs an active Eliza Cloud plan. Local apps keep working.');
+  for (const kind of ['allowance-exhausted', 'subscription-required', 'billing-refused'])
+    assert.doesNotMatch(serviceLimitMessage({kind, retryAfterMs: null, resetsAt: null}, NOW), /purchased/i, kind);
   const none = describeSubscription({kind: 'inactive', planName: null, status: 'none', source: 'entitlement'}, 'Eliza Cloud');
   assert.equal(none.detail, 'Alpha Phone needs an active Eliza Cloud plan. Redeem a subscription code or choose a plan in Eliza Cloud. Nothing is purchased automatically, and your data on this phone is kept.');
   const creditDescription=describeSubscription({kind: 'credits', source: 'billing-limits'}, 'Eliza Cloud');
@@ -83,7 +91,7 @@ test('the subscription sheet leads with the plan and reports its allowance and l
   assert.match(none, /Choose a monthly plan or enter a membership code to ask Alpha\./);
   // After Cloud declined a turn for billing the sheet says so, above the same two actions.
   const refused = render({balance: 'funded', refused: true, plan: {kind: 'credits', source: 'billing-limits'}});
-  assert.match(refused, /Eliza Cloud declined your last AI request for billing\. Check your subscription or enter a membership code, then send again\./);
+  assert.match(refused, /Your last request was declined for billing\./);
   assert.match(refused, />Choose a monthly plan</);
   assert.match(refused, />Enter membership code</);
   // A lapsed limit is not shown.

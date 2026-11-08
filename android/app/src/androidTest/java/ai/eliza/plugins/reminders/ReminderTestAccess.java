@@ -1,9 +1,17 @@
 package ai.eliza.plugins.reminders;
 
+import android.app.NotificationManager;
+import android.app.PendingIntent;
 import android.content.Context;
+import android.content.Intent;
 import android.content.SharedPreferences;
+import android.net.Uri;
 import ai.elizaresearch.alphaphone.AlphaReminders;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.HashMap;
 import java.util.IdentityHashMap;
+import java.util.UUID;
 import org.json.JSONArray;
 import org.json.JSONObject;
 import org.json.JSONException;
@@ -14,9 +22,32 @@ public final class ReminderTestAccess {
  private static final IdentityHashMap<Context,ReminderStore> isolated = new IdentityHashMap<>();
  public static synchronized void isolate(Context context) {
   if(isolated.containsKey(context))throw new IllegalStateException("Fixture already registered");
-  isolated.put(context,new ReminderStore(AlphaReminders.CONFIGURATION,AlphaReminders.STORAGE.create(context)));
+  isolated.put(context,new ReminderStore(fixtureConfiguration(),new Recording()));
  }
- public static synchronized void release(Context context) { isolated.remove(context); }
+ public static synchronized void release(Context context) {
+  ReminderStore store=isolated.remove(context);if(store==null)return;
+  NotificationManager manager=context.getSystemService(NotificationManager.class);
+  manager.deleteNotificationChannel(store.configuration.channelId);manager.deleteNotificationChannel(store.configuration.dueChannelId());
+ }
+ /** Production preference names, which the caller's ContextWrapper isolates, with a fixture-only
+  * tap slot, channels, actions and URIs, so an isolated store never writes a production route. */
+ static ReminderConfiguration fixtureConfiguration(){
+  ReminderConfiguration p=AlphaReminders.CONFIGURATION;String id="fixture_"+UUID.randomUUID().toString().replace("-","");
+  return new ReminderConfiguration(p.envelopeName,p.legacyName,id+"_taps",id+"_channel",p.channelName,p.channelDescription,p.publicTitle,id+".remind",id+".decide",id+".open","fixture:"+id+"/alarm/","fixture:"+id+"/decision/","fixture:"+id+"/tap/",p.idExtra,p.occurrenceExtra,p.decisionExtra,id+":",ReminderDeletionJournalFixture.Receiver.class,android.app.Activity.class,p.questionActionLabel);
+ }
+ /** In-memory stand-in for encrypted slots that records each write. */
+ static final class Recording implements SecureStringStore {
+  final HashMap<String,String> slots=new HashMap<>();final ArrayList<String> written=new ArrayList<>();
+  public String identity(){return "isolated-reminder-fixture";}
+  public synchronized String read(String key){return slots.get(key);}
+  public synchronized void write(String key,String value){written.add(key);slots.put(key,value);}
+  synchronized int writes(){return written.size();}
+ }
+ /** The store's alarm PendingIntent (same request code and intent) if it exists; never creates one. */
+ static PendingIntent alarm(Context c,ReminderConfiguration config,String id,String occurrence){
+  Intent intent=new Intent(c,config.receiverClass).setAction(config.remindAction).setData(Uri.parse(config.alarmUriPrefix+id+(occurrence==null?"":"/"+occurrence)));
+  return PendingIntent.getBroadcast(c,0,intent,PendingIntent.FLAG_NO_CREATE|PendingIntent.FLAG_IMMUTABLE);
+ }
  private static synchronized ReminderStore store(Context context) {
   ReminderStore value=isolated.get(context);
   return value==null?AlphaReminders.engine(context).store:value;
@@ -42,10 +73,20 @@ public final class ReminderTestAccess {
  public static void deliver(Context c,String id,String occurrence){store(c).deliver(c,id,occurrence);}
  public static final class Envelope {
   private final ReminderEnvelope delegate;
-  public final JSONObject value;
-  public Envelope(Context c){delegate=new ReminderEnvelope(c,store(c));value=delegate.value;}
+  private final ReminderStore store;
+  public Envelope(Context c){store=store(c);delegate=new ReminderEnvelope(c,store);}
+  /** A copy of the committed envelope; never the store's cached object. */
+  public JSONObject snapshot()throws JSONException{synchronized(store){return new JSONObject(delegate.value.toString());}}
   public SharedPreferences records(){return delegate.records();}
-  public void save(){delegate.save();}
+ }
+ /** Remove fixture rows and operation receipts in one store transaction under the store lock. */
+ public static void removeFixture(Context c,Collection<String> ids,Collection<String> operations)throws JSONException{
+  ReminderStore store=store(c);
+  synchronized(store){
+   ReminderEnvelope envelope=new ReminderEnvelope(c,store);envelope.begin();
+   try{JSONObject active=envelope.active();for(String id:ids)active.getJSONObject("records").remove(id);for(String op:operations)active.getJSONObject("operations").remove(op);envelope.commit();}
+   catch(RuntimeException|JSONException failure){envelope.abort();throw failure;}
+  }
  }
  public static final class Taps {
   public static final String SLOT=AlphaReminders.CONFIGURATION.tapSlot;

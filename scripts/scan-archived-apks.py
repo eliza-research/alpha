@@ -26,7 +26,10 @@ descriptors = [
     for name in inputs if name.startswith(prefix) and name.endswith(".java")
 ]
 key_path = Path.home() / ".config/alphaphone/cerebras-key"
-metadata = key_path.lstat()
+try:
+    metadata = key_path.lstat()
+except FileNotFoundError:
+    raise SystemExit("No provider key at ~/.config/alphaphone/cerebras-key; this scan checks archives for that key and needs it locally")
 if not stat.S_ISREG(metadata.st_mode) or metadata.st_uid != os.getuid() or metadata.st_mode & 0o077:
     raise SystemExit("Provider key must be a private owner-owned regular file")
 secret = key_path.read_text().strip()

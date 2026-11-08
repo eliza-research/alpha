@@ -10,8 +10,6 @@ import { test, expect, type Page } from '@playwright/test';
 import { flagOffAndroid, harness, button, fenceNetwork, expectNoDevelopmentSurface, residentHome, openYourAgent, completeAccessSetup } from './flag-off-android';
 import { residentStub, stub, setStub, enterNativeEmailCode, type StubAccount } from './resident-stub';
 
-test.beforeEach(({}, testInfo) => { test.skip(testInfo.project.name !== 'production', 'Production bundle only'); });
-
 const A: StubAccount = { token: 'account-a-key', userId: '9f1dc45a-4011-4e44-947a-30d999d24fa5', email: 'owner-a@example.invalid', balance: 5, inbox: 'mail-a@example.invalid' };
 const B: StubAccount = { token: 'account-b-key', userId: '3c5e7a90-1b2d-4f6e-8a0c-2e4f6a8b0c1d', email: 'owner-b@example.invalid', balance: 7, inbox: 'mail-b@example.invalid' };
 const PERSONAL_A = 'alpha.cloud.personal-setup.v1:' + JSON.stringify(['production', A.userId, null]);
@@ -133,7 +131,7 @@ test('a second sign-in over a saved key uses the native replacement result witho
   // The resident starts again with AI off; Your agent says the saved sign-in is no longer valid.
   await expect.poll(() => harness(page, f => f.calls.includes('Agent.start')), { timeout: 30_000 }).toBe(true);
   welcome = await openYourAgent(page);
-  await expect(welcome.getByText('Your Cloud sign-in has expired. Sign in with Cloud again.', { exact: true })).toBeVisible({ timeout: 30_000 });
+  await expect(welcome.getByText('Sign in to Eliza Cloud again to turn AI back on.', { exact: true })).toBeVisible({ timeout: 30_000 });
   await expect(welcome).not.toContainText(/pair/i);
   await enterNativeEmailCode(page);
   await expect(page.locator('[role="main"].alpha-cloud-sign-in')).toHaveCount(0, { timeout: 30_000 });

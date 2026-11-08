@@ -253,7 +253,7 @@ export class ViewNavigationClient {
 		results: readonly unknown[] | undefined,
 		attempt: NavigationAttempt,
 		navigate: (view: string, current: () => void) => Promise<boolean>,
-	): Promise<{ status: "none" | "delivered" | "unknown"; label?: string }> {
+	): Promise<{ status: "none" | "delivered" | "unknown" | "unavailable"; label?: string }> {
 		const views = results?.filter(
 			(result) => findViewActionHandoff([result])?.navigationPrepared === true,
 		);
@@ -264,17 +264,20 @@ export class ViewNavigationClient {
 		// install's view availability; an unavailable view is refused before any claim.
 		const binding = handoff.navigationBinding,
 			target = alphaViewKey(handoff.viewId);
+		if (binding.clientId !== this.clientId)
+			throw new AlphaClientError(
+				"proposal-unavailable",
+				"That screen is not available.",
+			);
+		// A view this phone does not map is reported, not thrown: the agent's reply already
+		// stands, and nothing is claimed or acknowledged for it.
 		if (
-			binding.clientId !== this.clientId ||
 			handoff.subview ||
 			!target ||
 			(handoff.viewPath &&
 				!alphaViewPaths(handoff.viewId).includes(handoff.viewPath))
 		)
-			throw new AlphaClientError(
-				"proposal-unavailable",
-				"That screen is not available.",
-			);
+			return { status: "unavailable" };
 		const selected = views
 				?.slice()
 				.reverse()

@@ -2,7 +2,7 @@
 
 Updated 2026-10-12. The [implementation plan](implementation-plan.md) is the active
 work order and the [32 approved TODOs](owner-approved-mvp-plan-2026-10-12.md) are the
-checklists. The [earlier plan](https://github.com/AlphaCompute/alphaphone/blob/f3ccefd382bd40b29b06117c97da366c1e9b75a7/docs/mvp-completion-plan.md)
+checklists. The [earlier plan](https://github.com/eliza-research/alphaphone/blob/f3ccefd382bd40b29b06117c97da366c1e9b75a7/docs/mvp-completion-plan.md)
 preserves historical evidence and superseded requirements. None of the journeys
 below is accepted merely because its policy is now approved.
 

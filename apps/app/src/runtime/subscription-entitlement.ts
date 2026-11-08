@@ -11,6 +11,7 @@ import {
   allowanceText as sharedAllowanceText,
   describeSubscription as sharedDescribeSubscription,
   redeemFailureMessage as sharedRedeemFailureMessage,
+  retryDuration,
   serviceLimitMessage as sharedServiceLimitMessage,
   subscriptionSummary as sharedSubscriptionSummary,
   type PlanAllowance,
@@ -21,6 +22,7 @@ import {
   type SubscriptionView,
 } from '../../../../.eliza/client-features/packages/cloud/sdk/src/subscription-entitlement.ts';
 
+import { formatMonthDay, formatTime } from '../prototype/locale-time.ts';
 export * from '../../../../.eliza/client-features/packages/cloud/sdk/src/subscription-entitlement.ts';
 
 /** Alpha's names in shared copy; the service name is the configured deployment's. */
@@ -39,8 +41,34 @@ export function describeSubscription(view: SubscriptionView | null | undefined, 
 export function allowanceText(allowance: PlanAllowance | null, now: number = Date.now(), serviceName = 'Cloud'): string {
   return sharedAllowanceText(allowance, now, alphaSubscriptionCopy(serviceName));
 }
+/** The shared reset time format (month, day, hour, minute). */
+function clock(at: number): string {
+  // Device locale and 12/24-hour choice, as every displayed time in Alpha.
+  try {
+    const date = new Date(at);
+    return `${formatMonthDay(date)}, ${formatTime(date)}`;
+  } catch {
+    return new Date(at).toISOString();
+  }
+}
+/**
+ * Plan refusals in chat say the reason once. The purchase reassurance sits on the Manage card and
+ * in the Settings plan detail, beside the plan action; plan, sign-in and Cloud stay distinct (P-43).
+ */
 export function serviceLimitMessage(limit: ServiceLimit | null, now: number = Date.now(), serviceName = 'Cloud'): string {
-  return sharedServiceLimitMessage(limit, now, alphaSubscriptionCopy(serviceName));
+  const copy = alphaSubscriptionCopy(serviceName);
+  if (limit?.kind === 'allowance-exhausted') {
+    const reset = limit.resetsAt != null && limit.resetsAt > now
+      ? ` It resets ${clock(limit.resetsAt)}.`
+      : limit.retryAfterMs != null ? ` It resets in ${retryDuration(limit.retryAfterMs)}.` : '';
+    return `Your plan's AI allowance for this period is used up.${reset} Local apps keep working.`;
+  }
+  if (limit?.kind === 'subscription-required') return `AI needs an active ${serviceName} plan. Local apps keep working.`;
+  if (limit?.kind === 'billing-refused') {
+    const reset = limit.resetsAt != null && limit.resetsAt > now ? ` ${serviceName} reports your plan allowance resets ${clock(limit.resetsAt)}.` : '';
+    return `${serviceName} declined this AI request for your account's billing.${reset} ${copy.productName} did not retry your message. Local apps keep working.`;
+  }
+  return sharedServiceLimitMessage(limit, now, copy);
 }
 export function redeemFailureMessage(error: unknown, serviceName = 'Cloud'): string {
   return sharedRedeemFailureMessage(error, alphaSubscriptionCopy(serviceName));

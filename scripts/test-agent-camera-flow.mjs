@@ -13,7 +13,7 @@ const request=source.slice(source.indexOf('  /** An agent capture asked for whil
 const queue=source.slice(source.indexOf('  const waiters = new Set'),source.indexOf('  /** Set when the native size'));
 const receiptPath=source.slice(source.indexOf('/** A saved still'),source.indexOf('/** The chat sheet may cover Camera')).replace(/^export /gm,'');
 // The capture lock is the shared camera session's (plugin-native-camera), run as-is.
-const shared=stripTypeScriptTypes(['host-ports','session'].map(name=>readFileSync(`.eliza/client-features/plugins/plugin-native-camera/src/${name}.ts`,'utf8')).join('\n').replace(/^import[^;]*;$/gm,'').replace(/^export /gm,''),{mode:'transform'});
+const shared=stripTypeScriptTypes(['host-ports','session'].map(name=>readFileSync(`.eliza/client-features/plugins/plugin-native-camera/src/${name}.ts`,'utf8')).join('\n').replace(/^import[^;]*;$/gm,'').replace(/^export /gm,''),{mode:'strip'});
 function cameraFixture(browser=false){
  let calls=0,mode='ok',release;
  const camera={startPreview:async()=>{},stopPreview:async()=>{},async capturePhoto(options){calls++;assert.equal(options.saveToGallery,true);if(mode==='hold')await new Promise(resolve=>{release=resolve});if(mode==='fail')throw Error('write unavailable');return {path:mode==='invalid'?'file:///tmp/45':browser?'browser-photo:///1792274767123123456789012':'content://media/external/images/media/45',format:'jpeg',base64:'jpeg-fixture',width:1280,height:720}}};

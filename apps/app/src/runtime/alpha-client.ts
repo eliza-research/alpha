@@ -77,7 +77,8 @@ export interface ConversationMessageTarget {
   text: string;
   from: 'user' | 'agent';
 }
-export type VoiceTurnSignal = import('@elizaos/voice/turn').VoiceTurnSignal;
+/** A committed voice turn omits the text end-of-turn score (voice-adapter.ts `turnSignal`). */
+export type VoiceTurnSignal = Omit<import('@elizaos/voice/turn').VoiceTurnSignal,'endOfTurnProbability'>&{endOfTurnProbability?:number};
 export type ChatChannel = 'DM' | 'VOICE_DM';
 export interface VoiceConversationBinding { conversationId:string;session:VerifiedSession;connectionEpoch:number }
 export interface ReadReplyBinding extends VoiceConversationBinding {cloudAccount:string}
@@ -87,6 +88,8 @@ export interface VoiceNavigationContinuation {
  finish(delivered:boolean):ContextEnvelope|undefined;
 }
 export interface AgentReply {
+  /** A voice turn the agent chose not to answer: `text` is empty and no reply was written. */
+  ignored?: true;
   messageId?: string;
   userMessageId?: string;
   messageBinding?: { conversationId: string; session: VerifiedSession };
@@ -305,7 +308,7 @@ export class AlphaClient {
           reject(
             new AlphaClientError(
               "cancelled",
-              "Request cancelled. A dispatched action may still need status reconciliation.",
+              "Request cancelled. Check whether the action already happened.",
             ),
           );
         controller.signal.addEventListener("abort", abortListener, {
@@ -427,6 +430,7 @@ export class AlphaClient {
       this.proposals = next;
       return {
         text: result.text,
+        ...(result.ignored===true?{ignored:true as const}:{}),
         ...(completedReads.length?{completedReads}:{}),
         ...(completedActions.length?{completedActions}:{}),
         ...(result.messageId?{messageId:result.messageId}:{}),

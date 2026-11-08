@@ -23,22 +23,13 @@ function load(store, f = {account: true, dev: false}) {
   return {...box.api, events, f};
 }
 
-test('production keeps speech local regardless of account, legacy preferences or requested fallback', () => {
+test('production keeps speech local regardless of account or requested fallback', () => {
   for (const account of [true, false]) for (const dev of [true, false]) {
     const v=load(storage(), {account,dev});
     for(const requested of ['default','device','manual','agent']) assert.equal(v.selectVoiceRoute(requested),'device');
-    assert.equal(v.chooseVoiceRoute('cloud'),false);
-    assert.equal(v.chooseVoiceRoute('cloud',{disclosed:'cloud-speech-uses-plan'}),false);
-    assert.equal(v.chooseVoiceRoute('device'),true);assert.equal(v.cloudVoiceAvailable(),false);assert.equal(v.voiceRoutePreference(),'device');
-    assert.equal(v.selectVoiceRoute(),'device','legacy preference cannot silently override current production policy');
-    assert.match(v.cloudSpeechDisclosure(),/counts toward your plan allowance/);
+    assert.equal(v.selectVoiceRoute(),'device');
   }
 });
-
-test('legacy preference persistence detects dropped or unavailable storage', () => {
-  for(const store of [{getItem:()=>null,setItem(){}},{getItem(){throw Error('blocked');},setItem(){throw Error('blocked');}}]) {
-    const v=load(store);assert.equal(v.chooseVoiceRoute('cloud',{disclosed:'cloud-speech-uses-plan'}),false);assert.equal(v.selectVoiceRoute(),'device');
-  }
 
 test('the voice send policy defaults to auto-send and only test-mocks builds can exercise review', () => {
   const production = load(storage());
@@ -53,11 +44,9 @@ test('the voice send policy defaults to auto-send and only test-mocks builds can
   assert.equal(mocks.voiceSendPolicy(), 'auto-send', 'an unknown policy falls back to the constant');
 });
 
-});
-
-test('spoken replies have no preference: only the route is stored, and an old Read replies aloud value is not read', () => {
-  const store = storage(), v = load(store);
-  assert.deepEqual({...v.voicePreferenceKeys()}, {route: 'alphaphone:voice-route:v1', event: 'alpha:voice-preferences'});
+test('spoken replies and the route have no stored preference: old values are not read', () => {
+  const store = storage();
+  store.bytes.set('alphaphone:voice-route:v1', JSON.stringify({version: 1, route: 'cloud', disclosed: 'cloud-speech-uses-plan', chosenAt: 1}));
   assert.doesNotMatch(fs.readFileSync('apps/app/src/runtime/voice-selection.ts', 'utf8'), /speak-replies|speakReplies/);
   store.bytes.set('alphaphone:speak-replies:v1', '{"version":1,"enabled":true}');
   const reloaded = load(store);
@@ -69,21 +58,20 @@ test('explicit production Cloud profile never silently selects local speech or e
   for(const account of [true,false]) {
     const v=load(storage(),{cloud:true,account,dev:false});
     for(const route of ['default','device','agent','manual'])assert.equal(v.selectVoiceRoute(route),'cloud');
-    assert.equal(v.cloudVoiceAvailable(),account);assert.equal(v.voiceRoutePreference(),'cloud');
     assert.equal(v.setVoiceSendPolicyForTests('review'),false);
   }
 });
 
-test('own-provider voice availability follows the selected optional Cartesia key',()=>{
- for(const voice of [false,true]){
-  const v=load(storage(),{account:false,dev:false,own:true,voice});
-  assert.equal(v.cloudVoiceAvailable(),voice,'no Cloud account or plan substitutes for the own voice selection');
- }
-});
-
-test('explicit own keys choose the resident network voice route without a Cloud account',()=>{
+test('own keys with a Cartesia key choose the resident network voice route without a Cloud account',()=>{
  const v=load(storage(),{direct:true,voice:true,account:false});
  assert.equal(v.selectVoiceRoute('default'),'cloud');assert.equal(v.selectVoiceRoute('agent'),'cloud');assert.equal(v.selectVoiceRoute('device'),'device');
- assert.equal(v.cloudVoiceAvailable(),true);assert.match(v.cloudSpeechDisclosure(),/own API key/);assert.doesNotMatch(v.cloudSpeechDisclosure(),/Cloud account/);
- const off=load(storage(),{direct:true,voice:false,account:false});assert.equal(off.cloudVoiceAvailable(),false);assert.equal(off.selectVoiceRoute('default'),'cloud');
+});
+
+test('own keys without a Cartesia key keep voice on this phone',()=>{
+ for(const account of [true,false]){
+  const v=load(storage(),{direct:true,voice:false,account});
+  for(const requested of ['default','agent','device'])assert.equal(v.selectVoiceRoute(requested),'device');
+ }
+ const cloud=load(storage(),{direct:true,voice:false,account:true,cloud:true});
+ assert.equal(cloud.selectVoiceRoute('default'),'cloud','a Cloud-runtime build has no on-device route to fall back to');
 });

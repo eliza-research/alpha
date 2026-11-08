@@ -1,5 +1,5 @@
 import {seedCompletedAccessSetup} from './flag-off-android';
-import {completeAccessSetup} from './flag-off-android';
+import {completeAccessSetup,expectNoDevelopmentSurface,fenceNetwork} from './flag-off-android';
 import { test, expect, type Page } from '@playwright/test';
 import { installResidentAgentPlugin } from './helpers/resident-agent-plugin';
 
@@ -13,7 +13,6 @@ import { installResidentAgentPlugin } from './helpers/resident-agent-plugin';
 // native encrypted journal, Eliza Cloud, Google or delivery.
 const AGENT = '6f1d3c3e-8c55-4c1b-9d1f-2b6f0b0d3a11';
 type Wire = { requestId: string; digest: string; proposal: string };
-test.beforeEach(({}, testInfo) => { test.skip(testInfo.project.name !== 'production', 'Production bundle only'); });
 const button = (page: Page, name: string) => name==='Inbox'
   ? page.getByRole('button', { name, exact: true }).and(page.locator('[data-mobile-shell-tile]'))
   : page.getByRole('button', { name, exact: true });
@@ -170,8 +169,10 @@ async function connected(page: Page) {
 
 test('Android: the send review shows Cc and Bcc, an edit after review is reviewed again, and only the last reviewed request is dispatched, byte for byte', async ({ page }) => {
   test.setTimeout(120_000);
+  const foreign = await fenceNetwork(page);
   await androidWithMailbox(page);
   await connected(page);
+  await expectNoDevelopmentSurface(page);
   await button(page, 'Inbox').click();
   await expect(button(page, 'Synthetic sender, Harbour schedule')).toBeVisible({ timeout: 30_000 });
   await button(page, 'Compose').click();
@@ -212,13 +213,15 @@ test('Android: the send review shows Cc and Bcc, an edit after review is reviewe
   expect(JSON.parse(state.dispatches[0].proposal)).toEqual({ kind: 'send', mode: 'compose', to: ['friend@example.invalid'], cc: ['carol@example.invalid'], bcc: ['audit@example.invalid'], subject: 'Flag-off reviewed send', bodyText: 'Second body', attachments: [] });
   expect(state.sent).toEqual(['Flag-off reviewed send | Second body']);
   expect(state.unexpected).toEqual([]);
+  expect(foreign).toEqual([]);
 });
 
 test('Android: Home withholds the old count until a changed account is reverified', async ({ page }) => {
   test.setTimeout(120_000);
-  // Keep a non-empty attention card: a fresh mailbox with zero unread now collapses.
+  const foreign = await fenceNetwork(page);
   await androidWithMailbox(page, true);
   await connected(page);
+  await expectNoDevelopmentSurface(page);
   await button(page, 'Inbox').click();
   await expect(button(page, 'Unread, Synthetic sender, Harbour schedule')).toBeVisible({ timeout: 30_000 });
   await button(page, 'Back to apps').click();
@@ -254,6 +257,7 @@ test('Android: Home withholds the old count until a changed account is reverifie
   await card.click();
   await expect(button(page, 'Unread, Synthetic sender, Harbour schedule')).toBeVisible({ timeout: 30_000 });
   expect((await fixture(page)).unexpected).toEqual([]);
+  expect(foreign).toEqual([]);
 });
 
 // UI progress only: this feature fixture does not manufacture OS/provider grants.

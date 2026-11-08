@@ -5,7 +5,6 @@
  * upstream; Alpha supplies only its brand name and existing import names.
  */
 import {
-  assertClockHandoffObservation,
   assertClockHandoffTimeZone,
   buildClockHandoffRequest,
   clockHandoffFormDays,
@@ -26,7 +25,6 @@ export const clockDays = clockHandoffFormDays;
 export const isClockOperation = isClockHandoffOperation;
 /** Handoffs only; an explicit empty repeat is dispatched as a one-time alarm. */
 export const validateClockOperation = validateClockHandoffDispatch;
-export const assertClockObservation = assertClockHandoffObservation;
 export const validateClockOutcome = validateClockHandoffResult;
 /** Bind a native dispatcher reply ({status}) to its typed handoff receipt. */
 export const validateClockResult = clockHandoffReceipt;

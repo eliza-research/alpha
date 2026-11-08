@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {stripTypeScriptTypes} from './support/strip-types.mjs';
 import vm from 'node:vm';
+import {deferred} from './fixtures/wait-for.mjs';
 const source=readFileSync(process.env.ALPHA_RESTORE_SOURCE||'apps/app/src/runtime/connection-ui.tsx','utf8');
 const part=(start,end)=>{const a=source.indexOf(start),b=source.indexOf(end,a);assert.ok(a>=0&&b>a);return source.slice(a,b);};
 const code=stripTypeScriptTypes([
@@ -25,17 +26,17 @@ function fixture(){
  return {box,state,memory,writes,get choice(){return choice;},set choice(value){choice=value;},get createCount(){return createCount;}};
 }
 test('native automatic restore awaits the second asynchronous selection read',async()=>{
- const f=fixture();f.choice={id:'saved',revision:'native'};f.box.conversationList=async()=>[{id:'saved'}];let reads=0,release;
- f.box.captureConversationChoice=async()=>{reads++;if(reads===2)await new Promise(resolve=>release=resolve);return structuredClone(f.choice);};
+ const f=fixture();f.choice={id:'saved',revision:'native'};f.box.conversationList=async()=>[{id:'saved'}];let reads=0,release;const reached=deferred();
+ f.box.captureConversationChoice=async()=>{reads++;if(reads===2){const gate=new Promise(resolve=>release=resolve);reached.resolve();await gate;}return structuredClone(f.choice);};
  const pending=f.box.restoreConversationHistory('saved',new AbortController().signal,true,true);
- while(!release)await Promise.resolve();
+ await Promise.race([reached.promise,pending.then(()=>{throw Error('restore finished without the second read');})]);
  assert.equal(f.state.history.conversationId,'manual-visible');release();await pending;
  assert.equal(f.state.history.conversationId,'saved');assert.equal(reads,2);assert.equal(f.memory.get('owner-key'),'saved');
 });
 test('a newer manual choice during missing-conversation lookup prevents fallback creation',async()=>{
- const f=fixture();let release;f.box.conversationList=()=>new Promise(resolve=>release=resolve);
+ const f=fixture();let release;const reached=deferred();f.box.conversationList=()=>{const list=new Promise(resolve=>release=resolve);reached.resolve();return list;};
  const pending=f.box.restoreSavedHistory(new AbortController().signal);
- while(!release)await Promise.resolve();f.choice={id:'manual-newer',revision:'r2'};release([]);await pending;
+ await Promise.race([reached.promise,pending.then(()=>{throw Error('restore finished without the conversation lookup');})]);f.choice={id:'manual-newer',revision:'r2'};release([]);await pending;
  assert.equal(f.choice.id,'manual-newer');assert.equal(f.createCount,0);assert.equal(f.state.history.conversationId,'manual-visible');assert.equal(f.memory.size,0);assert.match(f.state.historyError,/could not be restored/);
 });
 test('failed fallback compare-and-set cannot publish a new in-memory conversation',async()=>{
@@ -62,5 +63,24 @@ test('explicit restoration still reports a failed restart-selection save',async(
  const f=fixture();f.choice={id:'saved',revision:'r1'};f.box.conversationList=async()=>[{id:'saved'}];
  f.box.selectConversation=async()=>{throw Error('Storage unavailable');};
  await f.box.restoreConversationHistory('saved',new AbortController().signal,false,false);
- assert.match(f.state.message,/restart selection could not be saved/);assert.equal(f.state.history.conversationId,'saved');
+ assert.match(f.state.message,/It may not reopen after a restart/);assert.equal(f.state.history.conversationId,'saved');
+});
+test('a restored failure row shows Alpha copy instead of the agent\'s saved failure prose',async()=>{
+ const {systemNoticeKind,systemNoticeDisplayText}=await import('../apps/app/src/runtime/action-message-presentation.ts');
+ const {isCalendarReadFailureCode}=await import('../.eliza/client-features/packages/contracts/src/calendar.ts');
+ const box={systemNoticeKind,systemNoticeDisplayText,isCalendarReadFailureCode,restoredText:text=>text,Error};
+ vm.runInNewContext(stripTypeScriptTypes([part('export const RESTORED_FAILURES','/** A completed Calendar read').replace(/^export /,''),part('/** A display bound','function restoredMessages('),part('function restoredMessages(','/** Eliza Cloud'),part('function calendarRefusalKept(','/** The error a failed reply')].join('\n'),{mode:'strip'})+';globalThis.restoredMessages=restoredMessages;',box);
+ const prose='Connect an LLM provider to start chatting. Open Settings → Providers, or choose Eliza Cloud during first-run setup.';
+ const rows=box.restoredMessages([
+  {id:'u1',role:'user',text:'Hello'},
+  {id:'a1',role:'assistant',text:prose,failureKind:'provider_issue'},
+  {id:'a2',role:'assistant',text:'Heard part',failureKind:'interrupted',interrupted:true},
+  {id:'a3',role:'assistant',text:'A normal reply.'},
+  {id:'a4',role:'assistant',text:'I couldn\'t confirm that Calendar request.',failureKind:'reply_generation_error',terminalFailure:{kind:'reply_generation_error',transient:false,code:'CALENDAR_READ_RECEIPT_MISMATCH'}},
+ ]);
+ assert.deepEqual(JSON.parse(JSON.stringify(rows[1])),{id:'a1',from:'agent',text:'This reply couldn’t be completed.',unfinished:true,failureKind:'provider_issue'});
+ assert.ok(!JSON.stringify(rows).includes('Settings → Providers'));
+ assert.equal(rows[2].text,'Heard part');assert.equal(rows[2].unfinished,true);
+ assert.equal(rows[3].text,'A normal reply.');assert.equal(rows[3].unfinished,undefined);
+ assert.equal(rows[4].text,'I couldn\'t confirm that Calendar request.','a Calendar refusal keeps its answer');assert.equal(rows[4].unfinished,undefined);
 });

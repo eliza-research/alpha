@@ -5,6 +5,7 @@ import {renderToStaticMarkup} from 'react-dom/server';
 import {transformSync} from 'esbuild';
 import {JSDOM} from 'jsdom';
 import {readFileSync} from 'node:fs';
+import {assertBefore} from './fixtures/assert-order.mjs';
 const source=readFileSync(new URL('../apps/app/src/runtime/connection-ui.tsx',import.meta.url),'utf8');
 const panelSource=readFileSync(new URL('../apps/app/src/runtime/cloud-sign-in-ui.tsx',import.meta.url),'utf8');
 const between=(text,start,end)=>{const a=text.indexOf(start),b=text.indexOf(end,a);assert.ok(a>=0&&b>a);return text.slice(a,b);};

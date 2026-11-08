@@ -31,7 +31,7 @@ for(const outcome of ['complete','cancel','failure'] as const){
    await expect(conversation.getByText('Authoritative final reply',{exact:true})).toHaveCount(1);
    await expect(conversation.getByText('First streamed text',{exact:true})).toHaveCount(0);
   }else {
-   const reason=outcome==='cancel'?'Request cancelled. A dispatched action may still need status reconciliation.':'Sorry, I couldn’t finish that reply.';
+   const reason=outcome==='cancel'?'Request cancelled. Check whether the action already happened.':'Sorry, I couldn’t finish that reply.';
    await expect(conversation.getByText('First streamed text',{exact:false})).toContainText(reason);
    await expect(page.getByRole('button',{name:/^Check saved conversation/})).toHaveCount(0);
   }

@@ -6,6 +6,7 @@ import {join,resolve} from 'node:path';
 import {spawnSync} from 'node:child_process';
 import {createServer} from 'node:net';
 import {createCloudResidentHost} from './fixtures/product-character-host.mjs';
+import {assertBefore} from './fixtures/assert-order.mjs';
 test('Cloud host retires old processes, strips direct-provider keys and never persists Cloud credentials',async()=>{
  const profile=await fs.mkdtemp(join(tmpdir(),'alpha-cloud-resident-')),events=[],launches=[];let rejectStop=false;
  const launch=async options=>{let done;const completion=new Promise(resolve=>done=resolve);const id=launches.length;launches.push(options);events.push('start'+id);return {completion,async stop(){events.push('stop'+id);if(rejectStop)throw Error('stop failed');done({code:0});}};};
@@ -161,7 +162,8 @@ test('Gmail read broker follows the retained owner through Direct selection and 
   assert.equal(launches.at(-1).env.CEREBRAS_API_KEY,'synthetic-direct-key');assert.equal(launches.at(-1).env.ELIZAOS_CLOUD_API_KEY,undefined);assert.equal(launches.at(-1).env.ELIZAOS_CLOUD_USE_INFERENCE,'false');
   await host.bind({token:'synthetic-cloud-b',credentialId:'owner-b',reference:'ref-b'});assertRead(launches.at(-1),47873);
   assert.deepEqual(bindings,['owner-a','owner-a','owner-b']);assert.equal(host.status('owner-a').attachable,false);
-  assert.ok(events.indexOf('close:47871')<events.indexOf('broker:47872'));assert.ok(events.indexOf('close:47872')<events.indexOf('broker:47873'));
+  assert.ok(events.includes('close:47871'),'owner-a read broker closed');assert.ok(events.includes('close:47872'),'direct-provider read broker closed');
+  assertBefore(events,'close:47871','broker:47872');assertBefore(events,'close:47872','broker:47873');
   await host.clear();assert.equal(launches.at(-1).env.ELIZA_MANAGED_GMAIL_READ_BROKER,'');assert.equal(launches.at(-1).env.ELIZA_MANAGED_CALENDAR_READ_BROKER,'');
   for(const key of ['ELIZA_MANAGED_GMAIL_SEND_BROKER','ELIZA_MANAGED_GMAIL_OPERATION_BROKER'])assert.equal(launches.at(-1).env[key],undefined,key);
  }finally{await host.close();await fs.rm(profile,{recursive:true,force:true});}

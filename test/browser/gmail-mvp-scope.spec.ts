@@ -88,7 +88,7 @@ for(const scenario of ['connected','empty','error','restored'] as const)test(`Sh
  await page.evaluate(scenario=>{const f=(window as any).gm;if(scenario==='empty')f.accounts=[];if(scenario==='error')f.accountFailure=true;f.accountGate=null;f.releaseAccounts();},scenario);
  if(scenario==='empty'){
   await expect(page.getByRole('button',{name:'Connect Gmail',exact:true})).toBeVisible();
-  await expect(page.getByText('Shared content is ready for a new email. Connect Gmail to continue; nothing has been sent.',{exact:true})).toBeVisible();
+  await expect(page.getByText('Shared content is ready for a new email. Connect Gmail to continue.',{exact:true})).toBeVisible();
   await page.evaluate(()=>{const f=(window as any).gm;f.accounts=f.originalAccounts;window.dispatchEvent(new Event('alpha:google-accounts-changed'));});
  }else if(scenario==='error'){
   await expect(page.getByRole('button',{name:'Retry',exact:true})).toBeVisible();
@@ -309,7 +309,7 @@ test('From switcher returns the email to its account when the other account alre
  await page.getByRole('textbox',{name:'Subject',exact:true}).fill('Stays subject');
  await page.getByRole('textbox',{name:'Message',exact:true}).fill('Stays body');
  await page.getByRole('button',{name:'From account',exact:true}).click();
- await expect(page.getByText(/already has a local draft, so this email stays with first@example\.test/).first()).toBeVisible();
+ await expect(page.getByText(/already has a draft\. This email stays with first@example\.test/).first()).toBeVisible();
  await expect(page.getByRole('button',{name:'From account',exact:true})).toContainText('From first@example.test');
  await expect(page.getByRole('textbox',{name:'Subject',exact:true})).toHaveValue('Stays subject');
  await expect(page.getByRole('textbox',{name:'Message',exact:true})).toHaveValue('Stays body');

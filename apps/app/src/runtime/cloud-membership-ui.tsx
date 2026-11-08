@@ -4,7 +4,7 @@ export type MembershipBalance='checking'|'zero'|'funded'|'member'|'unavailable';
 /** A plan is needed before the account can use Cloud inference. */
 export const FUNDING_NEEDED='Choose a monthly plan or enter a membership code to ask Alpha.';
 /** Cloud declined a turn for this account's billing: the chat's one answer, beside this sheet. */
-export function fundingRefusedReply(serviceName:string):string {return `${serviceName} declined this AI request for your account’s billing. Check your subscription or enter a membership code, then send again. Nothing was retried or purchased.`;}
+export function fundingRefusedReply(serviceName:string):string {return `${serviceName} declined this request for billing. Check your subscription or enter a membership code, then send again.`;}
 import {alphaSubscriptionCopy,type ServiceLimit,type SubscriptionView} from './subscription-entitlement';
 import {useCloudSubscriptionSummary} from '../../../../.eliza/client-features/packages/ui/src/components/settings/cloud-subscription-summary.tsx';
 function endLabel(endsAt:number):string {
@@ -57,7 +57,7 @@ export function CloudMembershipControls({balance,busy,error,connectionError,noti
     {active&&summary.allowance&&<div className="alpha-membership-usage-fact"><dt>Included usage</dt><dd className="alpha-membership-allowance">{summary.allowance}</dd></div>}
     {summary.limit&&<div className="alpha-membership-limit-fact"><dt>AI requests</dt><dd role="status">{summary.limit}</dd></div>}
    </dl>
-   <p className="alpha-membership-support" role="status">{refused?`${serviceName} declined your last AI request for billing. Check your subscription or enter a membership code, then send again.`:checking?'Checking your subscription…':noPlan?FUNDING_NEEDED:!active?'Subscription details could not be refreshed. Check again or manage your subscription.':plan.status==='past_due'?`Update your payment details in ${serviceName} to keep your subscription active.`:plan.refreshFailed?'Subscription status could not be refreshed. Check again.':''}</p>
+   <p className="alpha-membership-support" role="status">{refused?'Your last request was declined for billing.':checking?'Checking your subscription…':noPlan?FUNDING_NEEDED:!active?'Subscription details could not be refreshed. Check again or manage your subscription.':plan.status==='past_due'?`Update your payment details in ${serviceName} to keep your subscription active.`:plan.refreshFailed?'Subscription status could not be refreshed. Check again.':''}</p>
    <div className="alpha-membership-main-actions"><button type="button" className="alpha-membership-primary" disabled={disabled} onClick={onManagePlan}>{noPlan?'Choose a monthly plan':'Manage subscription'}</button>{!showCode&&<button type="button" className="alpha-membership-secondary" aria-expanded={false} aria-controls={codeEntryId} disabled={disabled} onClick={()=>setCodeVisible(true)}>Enter membership code</button>}</div>
    {showCode&&<div id={codeEntryId} className="alpha-membership-code-entry"><form aria-label="Redeem a membership code" onSubmit={event=>void redeem(event)}>
      <label>Membership code<input ref={code} name="membership-code" value={codeValue} onChange={event=>setCodeValue(event.target.value)} placeholder="Enter code" autoComplete="one-time-code" autoCapitalize="characters" autoCorrect="off" spellCheck={false} data-autofill-ignore="true" maxLength={64} disabled={disabled} required aria-invalid={!!error||!!submissionError||undefined} aria-describedby={error||submissionError?errorId:undefined}/></label>

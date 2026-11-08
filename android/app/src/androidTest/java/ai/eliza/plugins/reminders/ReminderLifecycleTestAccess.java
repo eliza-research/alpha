@@ -5,14 +5,14 @@ import ai.elizaresearch.alphaphone.AlphaReminders;
 import org.json.JSONException;
 import org.json.JSONObject;
 
-/** Instrumentation-only access to patch 0040 internals (refusals, boot re-post, due channel, to-dos). */
+/** Instrumentation-only access to the upstream reminder lifecycle internals (refusals, boot re-post, due channel, to-dos). */
 public final class ReminderLifecycleTestAccess {
  private ReminderLifecycleTestAccess() {}
  private static ReminderStore store(Context c){return AlphaReminders.engine(c).store;}
- /** A separate store whose preferences the caller has already isolated in a ContextWrapper. */
+ /** A separate store whose preferences the caller has already isolated in a ContextWrapper; taps, channels and alarms use fixture names. */
  public static final class Isolated {
   private final ReminderStore store;
-  public Isolated(Context c){store=new ReminderStore(AlphaReminders.CONFIGURATION,AlphaReminders.STORAGE.create(c));}
+  public Isolated(Context c){store=new ReminderStore(ReminderTestAccess.fixtureConfiguration(),new ReminderTestAccess.Recording());}
   public JSONObject schedule(Context c,String id,String title,long at)throws JSONException{return store.schedule(c,id,title,"",at);}
   public JSONObject saveTodo(Context c,String id,String title)throws JSONException{return store.saveTodo(c,id,title,"");}
   public JSONObject read(Context c,String id)throws JSONException{return store.read(c,id);}

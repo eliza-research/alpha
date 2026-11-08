@@ -64,7 +64,7 @@ test('unavailable handoff and unrecognized publisher never claim enablement or o
  await expect(provider(page)).toContainText('Another provider selected');
  await page.evaluate(()=>{(window as any).passwordFixture.fail=true;});
  await provider(page).click();
- await expect(page.getByText('Password provider setup is unavailable. No provider change is confirmed.',{exact:true})).toBeVisible();
+ await expect(page.getByText('Password provider setup is unavailable.',{exact:true})).toBeVisible();
 });
 test('a browser offers no Android password provider and simulates no installation',async({page})=>{
  await page.goto('/');await page.getByRole('button',{name:'Settings',exact:true}).click();
@@ -117,7 +117,7 @@ test('unexpected resolved handoff status never reports opened',async({page})=>{
  await nativeFixture(page);
  await page.evaluate(()=>{(window as any).passwordFixture.unexpected=true;});
  await provider(page).click();
- await expect(page.getByText('Password provider setup is unavailable. No provider change is confirmed.',{exact:true})).toBeVisible();
+ await expect(page.getByText('Password provider setup is unavailable.',{exact:true})).toBeVisible();
  await expect(page.getByText(/Opened provider setup/)).toHaveCount(0);
  await expect(provider(page)).toContainText('No provider selected');
 });

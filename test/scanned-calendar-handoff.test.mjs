@@ -8,13 +8,13 @@ import * as reminderJournal from '../.eliza/client-features/plugins/plugin-assis
 
 // Execute the complete adapter with only its platform/service dependencies
 // replaced. No Calendar write API is supplied: handoff must only open a form.
-const code=stripTypeScriptTypes(readFileSync('apps/app/src/prototype/agent-calendar-adapter.ts','utf8').replace(/^import .*;\n/gm,'').replace(/^export /gm,''),{mode:'transform'});
+const code=stripTypeScriptTypes(readFileSync('apps/app/src/prototype/agent-calendar-adapter.ts','utf8').replace(/^import .*;\n/gm,'').replace(/^export /gm,''),{mode:'strip'});
 function fixture({status='ready',sources=1,authority='canonical',platform='web',form=null,provider='eliza',recordPort=null,pendingText=()=> 'Synthetic pending',testMocks=false,calendars=null,empty=false,events=[],error=null,row=e=>({id:e.id,title:e.title}),created=null,remembered=null}={}){
  const state={status,ownerKey:'owner-A',error,feed:{events},calendars:calendars??Array.from({length:sources},(_,i)=>({summary:`Source ${i}`,provider,side:'owner',grantId:provider==='eliza'?'eliza-calendar':'google-grant',calendarId:provider==='eliza'&&i===0?'primary':String(i),includeInFeed:true,accessRole:'owner'}))};
  const refreshes=[],creates=[],updates=[],listeners={};let published;
  class Calendar{state=state;subscribe(fn){published=fn;return()=>{};}refresh(window){refreshes.push(window);}create(sourceKey,input){creates.push({sourceKey,input});return {outcome:'created',event:created};}update(eventKey,providerVersion,input){updates.push({eventKey,providerVersion,input});return {outcome:'updated',event:null};}invalidateNext(){state.nextFresh=false;if(state.next?.event&&Date.parse(state.next.event.endAt)<=Date.now())state.next=null;}retire(){}selection(){}sourceHandle(key){return 'handle:'+key;}sourceKeyForHandle(handle){return handle.slice('handle:'.length);}}
  const connection={subscribe:()=>()=>{},getAppRecordClient:()=>recordPort};
- const install=new Function('AgentCalendar','Capacitor','connectionController','calendarSourceKey','presentCalendarIntervals','calendarFormCreate','getZonedDateParts','addDaysToLocalDate','calendarOwnerKey','agentPendingText','testMocksEnabled','canonicalCalendarRow','calendarRange','calendarEventKey','eventEditorMutability','calendarFormPatch','rememberNoteOrigin',code+';return installAgentCalendarAdapter;')(Calendar,{getPlatform:()=>platform},connection,c=>c.calendarId,()=>{},draft=>draft,()=>({}),()=>({}),()=>state.ownerKey,pendingText,testMocks,row,records=>({events:records}),event=>event.id,()=>({kind:'editable',providerVersion:'version-1'}),draft=>draft,async(...args)=>{remembered?.push(args);return true;});
+ const install=new Function('AgentCalendar','Capacitor','connectionController','calendarSourceKey','presentCalendarIntervals','calendarFormCreate','getZonedDateParts','addDaysToLocalDate','calendarOwnerKey','agentPendingText','testMocksEnabled','canonicalCalendarRow','calendarRange','calendarEventKey','eventEditorMutability','calendarFormPatch','rememberNoteOrigin','calendarFormMinutes',code+';return installAgentCalendarAdapter;')(Calendar,{getPlatform:()=>platform},connection,c=>c.calendarId,()=>{},draft=>draft,()=>({}),()=>({}),()=>state.ownerKey,pendingText,testMocks,row,records=>({events:records}),event=>event.id,()=>({kind:'editable',providerVersion:'version-1'}),draft=>draft,async(...args)=>{remembered?.push(args);return true;},hours=>Math.round(Number(hours)*60));
 
  const opened=[];const calendar={calendarAuthority:authority,form};
  class Shell{live=true;componentDidMount(){}componentWillUnmount(){}vget(){return calendar;}vset(_view,patch){Object.assign(calendar,patch);}openView(...args){opened.push(args);}setState(){}}
@@ -61,14 +61,14 @@ test('Calendar is read again on return to the foreground and when the next event
  document.hidden=true;f.listeners.visibilitychange();assert.equal(f.refreshes.length,1,'nothing is read in the background');
  document.hidden=false;f.listeners.visibilitychange();assert.equal(f.refreshes.length,2);
  f.state.next={event:{endAt:'2026-10-27T09:30:00Z'}};f.publish();f.publish();
- t.mock.timers.tick(30*60_000-1);assert.equal(f.refreshes.length,2);
- t.mock.timers.tick(1);assert.equal(f.refreshes.length,3,'one read when the Home card event ends');
+ t.mock.timers.tick(30*60_000+999);assert.equal(f.refreshes.length,2,'the agent may still count the event until its end');
+ t.mock.timers.tick(1);assert.equal(f.refreshes.length,3,'one read a second after the Home card event ends');
  f.state.next={event:{endAt:'2026-10-27T09:00:00Z'}};f.publish();t.mock.timers.tick(24*3600_000);assert.equal(f.refreshes.length,3,'an ended event arms nothing');
  const listener=f.listeners.visibilitychange;globalThis.window={removeEventListener(){}};try{f.shell.componentWillUnmount();}finally{delete globalThis.window;}assert.equal(f.listeners.visibilitychange,undefined);listener();assert.equal(f.refreshes.length,3);
 });
 test('event end while hidden invalidates the card and waits for one foreground read',async t=>{
  t.mock.timers.enable({apis:['setTimeout','Date'],now:Date.parse('2026-10-27T09:00:00Z')});
- const f=fixture();f.state.next={event:{endAt:'2026-10-27T09:01:00Z'}};f.state.nextFresh=true;f.publish();document.hidden=true;t.mock.timers.tick(60_000);
+ const f=fixture();f.state.next={event:{endAt:'2026-10-27T09:01:00Z'}};f.state.nextFresh=true;f.publish();document.hidden=true;t.mock.timers.tick(61_000);
  assert.equal(f.refreshes.length,1);assert.equal(f.state.next,null);assert.equal(f.state.nextFresh,false);document.hidden=false;f.listeners.visibilitychange();assert.equal(f.refreshes.length,2);
  globalThis.window={removeEventListener(){}};try{f.shell.componentWillUnmount();}finally{delete globalThis.window;}
 });
@@ -177,7 +177,7 @@ function actualDomainFixture({withReminder=true,platform='android',calendars=[go
  class Shell{live=true;componentDidMount(){}componentWillUnmount(){this.live=false;}vget(){return calendar;}vset(_,patch){Object.assign(calendar,patch);}setState(){}openView(){}goHome(){}back(){}toast(){}calendarFormDestinationChanged(original,next){calls.destinationChanges.push({original,next});return next;}}
  const views={calendar:{state:{},render:st=>({f:st.form?{cals:(st.canonicalCalendars??[]).map(c=>({...c,pick:()=>{}})),repeats:[],alerts:[]}:null})}};
  const connection={getSnapshot:()=>({open:true}),subscribe:()=>()=>{},getAppRecordClient:()=>({current:()=>true,identity:{origin:'http://localhost',ownerId:'owner',agentId:'agent'}})};
- const context={Shell,views,AgentCalendar:Canonical,Capacitor:cap,connectionController:connection,calendarSourceKey:source=>source.calendarId,presentCalendarIntervals:()=>{},calendarFormCreate:form=>form,getZonedDateParts:()=>({year:2026,month:10,day:31}),addDaysToLocalDate:value=>value,calendarOwnerKey:()=>state.ownerKey,agentPendingText:()=>'',testMocksEnabled:platform==='web',canonicalCalendarRow:event=>({id:event.id,title:event.title}),calendarRange:records=>({events:records}),
+ const context={Shell,views,AgentCalendar:Canonical,Capacitor:cap,connectionController:connection,calendarSourceKey:source=>source.calendarId,presentCalendarIntervals:()=>{},calendarFormCreate:form=>form,calendarFormMinutes:hours=>Math.round(Number(hours)*60),getZonedDateParts:()=>({year:2026,month:10,day:31}),addDaysToLocalDate:value=>value,calendarOwnerKey:()=>state.ownerKey,agentPendingText:()=>'',testMocksEnabled:platform==='web',canonicalCalendarRow:event=>({id:event.id,title:event.title}),calendarRange:records=>({events:records}),
   overdueReminders:reminderJournal.overdueReminders,undatedTodos:reminderJournal.undatedTodos,isUndatedReminder:reminderJournal.isUndatedReminder,dueOf:reminderJournal.reminderDueAt,
   reminderCreations:async()=>({}),reconcileReminderCreations:async()=>0,reconcileReminderDeletions:async()=>0,alphaClient:{getState:()=>({context:{sensitive:false}})},
   DailyApps:{surfaceInfo:async()=>({reminderTodoVersion:1}),listReminders:async()=>({reminders:[]}),addListener:async()=>({remove(){}}),scheduleReminder:async()=>{calls.nativeSchedules++;throw Error('No native scheduling in this composition test');}},
@@ -322,7 +322,7 @@ test('Calendar refusals show owner text without an "Error: " prefix',async()=>{
 });
 // Legacy rows count civil days. The zone is fixed per process, so each case runs in its own child.
 const legacyDays=readFileSync('apps/app/src/prototype/agent-calendar-adapter.ts','utf8');
-const legacyDayCode=stripTypeScriptTypes(legacyDays.slice(legacyDays.indexOf('const DAY=86400000;'),legacyDays.indexOf('export const nativeCalendarScope')).replace(/^export /gm,''),{mode:'transform'});
+const legacyDayCode=stripTypeScriptTypes(legacyDays.slice(legacyDays.indexOf('const DAY=86400000;'),legacyDays.indexOf('export const nativeCalendarScope')).replace(/^export /gm,''),{mode:'strip'});
 const inZone=(zone,expression)=>JSON.parse(execFileSync(process.execPath,['-e',`const legacyDayOffset=new Function(${JSON.stringify(legacyDayCode+';return legacyDayOffset;')})();console.log(JSON.stringify(${expression}))`],{env:{...process.env,TZ:zone},encoding:'utf8'}));
 test('legacy rows keep their day across a spring DST change and for UTC-midnight all-day records',()=>{
  // New York, viewed on 1 March: an event at 09:00 on 10 March (after the 8 March change) is nine days ahead.

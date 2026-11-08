@@ -205,7 +205,7 @@ test('a foreground Calendar refresh is waited out, and cancelling the wait sends
  d.onCalendars=()=>{d.onCalendars=null;d.heldFeed=held;void d.calendar.refresh({});};
  const deferredLink=d.link();await flush();assert.equal(d.calendar.state.status,'ready');assert.deepEqual(d.attempts,[]);
  held.resolve();assert.equal((await deferredLink).outcome,'synced');assert.deepEqual(operations(d),['select','resume']);d.calendar.retire();
- const g=await agent(),abort=new AbortController();g.heldFeed=deferred();void g.calendar.refresh({});
+ const g=await agent(),abort=new AbortController();g.heldFeed=deferred();void g.calendar.refresh({timeZone:'UTC'});
  const waiting=g.link(undefined,abort.signal);await flush();abort.abort();
  assert.equal((await waiting).outcome,'not-linked');g.heldFeed.resolve();await flush();assert.deepEqual(g.attempts,[]);
  f.calendar.retire();g.calendar.retire();

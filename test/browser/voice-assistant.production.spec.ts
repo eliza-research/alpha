@@ -26,7 +26,7 @@ test('explicit Stop drains playback, keeps only the played sentence and a restar
  expect(await live(page,f=>f.spoken)).toEqual(['You have two meetings today.']);
  await page.evaluate(()=>(window as any).live.finishPlayback());
  await expect.poll(()=>live(page,f=>f.spoken.length)).toBe(2);
- await expect(button(page,'Stop voice conversation')).toBeVisible();await expect(button(page,'Stop speaking')).toHaveCount(0);
+ await expect(button(page,'Stop voice conversation')).toBeVisible();await expect(button(page,'Stop speaking')).toBeVisible();
  const stoppedBefore=await live(page,f=>f.stopped),capturesBefore=await live(page,f=>f.captures.length);
  // Busy input is closed during reply playback. Stop is explicit; a deferred native cleanup
  // proves the next capture cannot start before the previous playback has actually drained.
@@ -74,7 +74,7 @@ test('explicit Stop drains playback, keeps only the played sentence and a restar
  await clean(page,foreign);
 });
 
-test('Mute controls capture and Stop retires playback without a separate interruption button',async({page})=>{
+test('Mute controls capture, Stop speaking shows while speaking and Stop retires playback',async({page})=>{
  const foreign=await setup(page);
  await page.evaluate(()=>{(window as any).flagOff.replies.push('Here is a long answer about the weather this week.');});
  await button(page,'Talk').click();
@@ -89,7 +89,7 @@ test('Mute controls capture and Stop retires playback without a separate interru
  await expect.poll(()=>live(page,f=>f.captures.length)).toBe(2);
  await say(page,'How is the weather');
  await expect(voice(page)).toHaveAttribute('data-voice-state','speaking');
- await expect(button(page,'Stop speaking')).toHaveCount(0);
+ await expect(button(page,'Stop speaking')).toBeVisible();
  await button(page,'Stop voice conversation').click();
  await expect(voice(page)).toHaveCount(0);
  await expect.poll(()=>live(page,f=>f.stopped)).toBeGreaterThan(0);
@@ -112,9 +112,14 @@ test('without an echo canceller, speech during playback never interrupts',async(
  await say(page,'When does the library close');
  await expect(voice(page)).toHaveAttribute('data-voice-state','speaking');
  const stopped=await live(page,f=>f.stopped);
+ // Busy hold: submission closed the capture, so the reply's own audio (heard without an echo
+ // canceller) has no open microphone to reach, and nothing new is routed.
+ expect(await live(page,f=>f.active)).toBeNull();
+ const routed=await live(page,f=>f.routes.length);
  await say(page,'closes at six tonight');
  await page.waitForTimeout(1600);
  expect(await live(page,f=>f.stopped)).toBe(stopped);
+ expect(await live(page,f=>f.routes.length)).toBe(routed);
  await expect(voice(page)).toHaveAttribute('data-voice-state','speaking');
  expect(await posts(page)).toEqual(['When does the library close']);
  await button(page,'Stop voice conversation').click();

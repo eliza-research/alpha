@@ -2,7 +2,7 @@ import {test,expect,type Page} from '@playwright/test';
 test.beforeEach(async({page})=>{await page.addInitScript(()=>localStorage.setItem('alpha.connection.selection.v1',JSON.stringify({kind:'offline'})));});
 async function openSyntheticCamera(page:Page){
  await page.addInitScript(()=>{const canvas=document.createElement('canvas');canvas.width=320;canvas.height=240;const paint=()=>{canvas.getContext('2d')!.fillRect(0,0,320,240);};paint();setInterval(paint,50);(window as any).cameraAudioRequests=0;Object.defineProperty(navigator,'mediaDevices',{value:{getUserMedia:async(input:MediaStreamConstraints)=>{if(input?.audio){(window as any).cameraAudioRequests++;throw Error('No microphone in this UI test');}return canvas.captureStream(10);}}});});
- await page.goto('/');await page.getByRole('button',{name:'Camera',exact:true}).click();await expect.poll(()=>page.locator('[aria-label^="Viewfinder."] video').evaluate((v:HTMLVideoElement)=>v.readyState)).toBeGreaterThanOrEqual(2);
+ await page.goto('/');await page.getByRole('button',{name:'Camera',exact:true}).click();await expect.poll(()=>page.locator('[data-alpha-camera="viewfinder"] video').evaluate((v:HTMLVideoElement)=>v.readyState)).toBeGreaterThanOrEqual(2);
 }
 test('empty scan starts with capture and import instead of disabled export buttons',async({page},info)=>{
  await page.goto('/');await page.evaluate(async()=>(await import('/src/prototype/scan-document.ts')).openScanDocument());

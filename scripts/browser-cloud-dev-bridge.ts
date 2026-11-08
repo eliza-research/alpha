@@ -66,7 +66,7 @@ export function createBrowserCloudDevHandler(options:{profile:string;request?:ty
  async function canonical(env:Environment,route:string,signal:AbortSignal,init:RequestInit={},credential?:Credential){const headers=new Headers(init.headers);headers.set('Accept','application/json');headers.set('User-Agent','AlphaPhone-Browser-Cloud/1');if(credential)headers.set('Authorization','Bearer '+await keyFor(credential));const result=await fetchCloud(authorities[env]+route,{...init,headers,redirect:'error',signal});signal.throwIfAborted();return result;}
  // Browser-host sign-in: email stays in app; Google uses canonical hosted OAuth, not Android App Links. The same Steward and mobile App Auth contracts as AlphaCloudSignInPlugin; the Steward
  // session, PKCE material and the minted key stay in this process and the private profile file.
- type SignInAttempt={controller:AbortController;id:string;environment:Environment;email:string;verifier:string;expiresAt:number;resendAt:number;busy:boolean;failed:number;mfa?:{type:string;challengeId:string}};
+ type SignInAttempt={controller:AbortController;id:string;environment:Environment;email:string;verifier:string;expiresAt:number;resendAt:number;busy:boolean;failed:number;mfa?:{type:string;challengeId:string};phase?:'committing'|'committed'|'failed';outcome?:{status:'authenticated';environment:Environment;expiresAt:number;accountCreated:boolean|null}};
  let signIn:SignInAttempt|null=null;
  // One code send per 30 seconds minimum, across addresses; honor longer server deadlines.
  let lastEmailSendAt=0,emailSendAllowedAt=0;const MAX_VERIFY_ATTEMPTS=5;
@@ -179,7 +179,10 @@ export function createBrowserCloudDevHandler(options:{profile:string;request?:ty
    const result=await boundedServiceJson(response);bounded.throwIfAborted();
    return {success:true,version:1,service:parseCloudServiceInfo(result)};
   }
-  if(data.operation==='signInCancel'){const google=await cancelGoogleAttempt();if('status'in google&&google.status==='authenticated')return google;signIn?.controller.abort();signIn=null;await serial(async()=>{});return {};}
+  if(data.operation==='signInCancel'){const google=await cancelGoogleAttempt();if('status'in google&&google.status==='authenticated')return google;const attempt=signIn;
+   // A commit already past its cancellation check cannot be withdrawn: wait and report it.
+   if(attempt?.phase){await serial(async()=>{});return attempt.outcome??{status:'unavailable'};}
+   attempt?.controller.abort();signIn=null;await serial(async()=>{});return {status:'cancelled'};}
   if(data.operation==='signInStatus')return {active:!!signIn||!!googleAttempt,inApp:true,google:await browserGoogleAvailable(environment(data.environment??options.environment??'production'),AbortSignal.any([signal,AbortSignal.timeout(10000)])).catch(()=>false),email:true};
   if(data.operation==='signInCancelGoogle'){return cancelGoogleAttempt(data.attemptId);}
   if(data.operation==='signInGoogleReturn'){

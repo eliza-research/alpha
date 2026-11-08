@@ -23,9 +23,10 @@ const say=between(adapter,'  p.agentSay = function','  p.reply = function');
 const plan=between(adapter,'function planActionCard(','/** Context notices');
 const notices=between(adapter,'function replyNotices(','/** Decline one pending proposal');
 const merge=between(connection,'export function mergeConversationDelivery','const actionReceipts =').replace('export ','');
-const history=between(connection,'function restoredMessages(','/** Eliza Cloud\'s API');
+const history=between(connection,'/** A display bound, not a protocol limit','/** Eliza Cloud\'s API');
+const failureKind=between(connection,'function failureKindOf(','/** The error a failed reply');
 const delivery=between(adapter,'      const delivery=connectionController.getSnapshot().conversationDelivery;','      syncStoppedReplyNotice');
-const compiled=ts(`${plan}\n${notices}\n${merge}\n${history}\nfunction methods(){const p={};\n${voice}\n${send}\n${say}\np.receiveCanonicalDelivery=function(){const session=connectionController.getSnapshot().session?.sessionId;\n${delivery}\n};return p;}globalThis.methods=methods();globalThis.projectHistory=restoredMessages;`);
+const compiled=ts(`${plan}\n${notices}\n${merge}\n${history}\n${failureKind}\nfunction methods(){const p={};\n${voice}\n${send}\n${say}\np.receiveCanonicalDelivery=function(){const session=connectionController.getSnapshot().session?.sessionId;\n${delivery}\n};return p;}globalThis.methods=methods();globalThis.projectHistory=restoredMessages;`);
 const USER='03160f61-656a-4ceb-8495-8d7bd3eaf220',REPLY='b714dcf4-46d3-443d-8ff9-998942438767';
 const ROOM='a954925f-5698-4639-b1ea-6d1bb760a142';
 const RECEIPT={proposalId:'device-operation-1',summary:'The reviewed operation was applied.'};
@@ -203,4 +204,17 @@ test('batch progress callback is exact turn/room/owner-bound and never a stored 
 test('aborted selected voice request removes progress listener without another send',async()=>{
  const f=fixture(),abort=new AbortController(),cues=[];const {task}=await f.start('voice',{signal:abort.signal,onProgress:value=>cues.push(value)});abort.abort();f.resolve();await assert.rejects(task);
  f.box.batchVoiceProgressEvents.dispatchEvent(new CustomEvent('progress',{detail:{turnId:'turn-1',conversationId:f.binding.conversationId,ownerId:f.binding.session.ownerId,kind:'thinking',label:'Checking'}}));assert.equal(cues.length,0);assert.equal(f.sent.length,1);
+});
+test('voice: a turn the agent chose not to answer keeps the user row and settles with nothing to say',async()=>{
+ const f=fixture(),{task}=await f.start('voice');f.stream();f.resolve({ignored:true,text:'',messageId:undefined});
+ const result=await task;
+ assert.deepEqual(Array.from(f.shell.state.msgs,row=>row.id),[USER]);
+ assert.equal(f.shell.state.msgs[0].messageBinding.conversationId,ROOM);
+ assert.equal(result.text,'');assert.equal(result.complete,true);assert.equal(result.userMessageId,USER);
+ assert.equal(result.assistantMessageId,'turn-1','the turn names no stored reply');
+ assert.equal(f.shell.state.typing,false);assert.equal(f.sent.length,1);
+});
+test('voice: an ignored turn without a saved user message is not confirmed',async()=>{
+ const f=fixture(),{task}=await f.start('voice');f.resolve({ignored:true,text:'',messageId:undefined,userMessageId:undefined});
+ await assert.rejects(task,/could not be matched/);
 });

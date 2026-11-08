@@ -31,11 +31,13 @@ export function cloudVoiceViewFixture(options={}){
  load('../../../.eliza/client-features/packages/voice/src/realtime-voice-timing.ts',box,['createRealtimeVoiceTiming']);
  load('runtime/voice-timing.ts',box,['beginVoiceTurn','markVoiceTiming','abandonVoiceTurn','finishVoiceTurn','sendVoiceEntry','observeVoiceStartup','runVoiceStartupPreparation','voiceStartupTiming']);
  load('local-speech-playback.ts',box,['playOwnedSpeech']);
+ // The real read-aloud refusal; the on-device planner stays a stub.
+ load('runtime/local-speech-text.ts',box,['screenSpeechText']);
  load('runtime/cloud-voice.ts',box,['cloudVoiceFailure','createCloudVoice']);
  // Legacy fixtures exercise batch compatibility; streaming scenarios opt in explicitly.
  box.nativeCloudStreamingAvailable=()=>false;
  vm.runInNewContext('{'+stripTypeScriptTypes(fs.readFileSync('.eliza/client-features/packages/voice/src/cloud-speech-chunks.ts','utf8').replaceAll('export async function','async function').replaceAll('export function','function').replaceAll('export const','const').replaceAll('export type','type'))+';globalThis.speakCloudSpeechChunks=speakCloudSpeechChunks;}',box);
- load('prototype/local-speech-playback.ts',box,['installLocalSpeechPlayback','stopLocalSpeechPlayback','currentNoteReading','stopSpeaking','speakNote']);
+ load('prototype/local-speech-playback.ts',box,['installLocalSpeechPlayback','stopLocalSpeechPlayback','currentNoteReading','stopSpeaking','speakNote','readNoteAloud']);
  load('runtime/voice-states.ts',box,['voiceFailure','transcriptProvenance','deniedSettingsChoice','DENIED_SETTINGS_LABEL']);
  // Issue #395 native stage bridge: a no-op outside the phone.
  box.installNativeVoiceTurnMarks=()=>{};

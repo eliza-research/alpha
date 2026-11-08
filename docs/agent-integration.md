@@ -140,7 +140,8 @@ runtime, follow [local agent setup](local-agent-development.md).
 
 `bun run backend/test-runtime.ts` is separate live acceptance: it uses a private
 fixture for real model turns, new-process history, cancellation and proposal-only
-actions. Note and reminder review is a simulation: it never writes a note or schedules a notification. View navigation can open only a registered local view after review. `scripts/test-dev-agent.mjs` exercises the host protocol and checks that proposals are marked simulated. Neither proves Android UI execution. Local ASR's
+navigation and reminder actions. It no longer checks a note proposal: its development
+`create_note` action is not in the resident. Note and reminder review is a simulation: it never writes a note or schedules a notification. View navigation can open only a registered local view after review. `scripts/test-dev-agent.mjs` exercises the host protocol and checks that proposals are marked simulated. Neither proves Android UI execution. Local ASR's
 host-only and HTTP checks were in the retired `test-local-asr.mjs` (Whisper era, deleted on
 2026-10-14); the current ASR route contract is checked against the pinned upstream workers.
 
@@ -159,8 +160,8 @@ Native arithmetic workflow acceptance (`WorkflowInstrumentedTest`, opt-in argume
 other aggregate smoke runners were removed on October 8 at the owner's request, so
 there is no current repository runner for this case. A re-run needs an owned
 disposable emulator, a matching archived app/test APK pair, an OWNER session from
-ordinary pairing and the exact inactive arithmetic-only fixture created and inspected
-with `scripts/test-real-workflow.mjs`. The class no longer exists, so a re-run first needs a new instrumented test. A direct run does not repeat the wrapper's host-side
+ordinary pairing and an inactive arithmetic-only fixture. The class and its fixture
+helper no longer exist, so a re-run first needs a new instrumented test. A direct run does not repeat the wrapper's host-side
 list/detail and source checks, so record it as a different result from the archived
 runs. Keep the fixture free from concurrent edits. Never pass session credentials as
 arguments, and never reuse a historical workflow UUID as proof of current admission.
@@ -215,11 +216,13 @@ failure and cleanup, and never weaken seccomp or SELinux to obtain a pass.
   enrollment completes do not share the pending pairing; the second takes the ordinary start
   path, and a completed enrollment is attached to. This is kept as an accepted limit, and the
   host JVM contract asserts it (merged with `0fd9c5b8`). It is class S only.
-- Direct Cerebras key (A-20): a flag-off build still admits `configureProvider` with a direct
-  Cerebras key, because `ResidentAgentInstrumentedTest` configures the resident agent through
-  it. The Cloud branch is limited to `cerebras` and `qwen-3.8-27b` and its environment drops
-  every direct-provider variable (`LocalAgentProviderAdmissionTest`, host JVM). Whether the
-  direct key stays is [A-20](decisions.md#new-decision-items).
+- Owner-provided keys: production builds admit `configureProvider` with a direct Cerebras key
+  and an optional Cartesia key, offered at sign-in (`offerOwnKeys` and `OwnKeyForm` in
+  `connection-ui.tsx`, e15f0b7359), and `ResidentAgentInstrumentedTest` configures the resident
+  agent through the same call. The Cloud branch is limited to `cerebras` and `qwen-3.8-27b` and its
+  environment drops every direct-provider variable (`LocalAgentProviderAdmissionTest`, host JVM).
+  A-20 was decided as [P-26](decisions.md#october-12-owner-decisions) (subscription billing); no
+  owner decision records the owner-provided key path, which P-43 and P-68 describe as absent.
 - Account replacement (AP-03): a Cloud sign-in as a second account revokes the first
   account's key once, before the new key is stored, unless Cloud hands back the same key
   (`cloud-account-replacement.production.spec.ts`, `scripts/test-cloud-protocol.mjs`). The

@@ -1,5 +1,5 @@
 import {test} from 'node:test';
-import {execFileSync} from 'node:child_process';
+import {runChildSuite} from './fixtures/child-suite.mjs';
 test('HTML email rendering isolates untrusted content and remote images',()=>{
- execFileSync(process.execPath,['scripts/test-mail-html.mjs'],{stdio:'pipe',timeout:30000});
+ runChildSuite('test-mail-html.mjs',{timeout:30000});
 });

@@ -1,5 +1,5 @@
 package ai.elizaresearch.alphaphone;
-import android.content.*;import android.database.Cursor;import android.net.Uri;import java.util.*;
+import android.content.*;import android.database.Cursor;import android.net.Uri;import java.nio.file.*;import java.util.*;
 public final class CalendarSyncSnapshotTest {
  static final String GENERATION="00000000-0000-4000-8000-000000000001";
  static Map<String,Object> row(Object...pairs){Map<String,Object> out=new HashMap<>();for(int i=0;i<pairs.length;i+=2)out.put((String)pairs[i],pairs[i+1]);return out;}
@@ -29,7 +29,14 @@ public final class CalendarSyncSnapshotTest {
   }
   public void applyBatch(String authority,ArrayList<ContentProviderOperation> operations){throw new AssertionError("Snapshots must not dispatch");}
  }
- static CalendarSyncSnapshot read(Provider p)throws Exception{return CalendarSyncSnapshot.read(p,7,42,"Alpha Phone","alpha-phone-local",GENERATION);}
+ /** The SQLite stand-in: CalendarSyncSnapshot's family and child selections run as SQL. */
+ static final class Sqlite extends SqliteCalendarProvider {
+  Sqlite(Path directory){super(directory,EVENTS_SCHEMA);insert("calendars","_id",7L,"account_name","Alpha Phone","account_type","LOCAL","name","alpha-phone-local","calendar_access_level",700L,"ownerAccount","Alpha Phone","cal_sync1",GENERATION);}
+  public void applyBatch(String authority,ArrayList<ContentProviderOperation> operations){throw new AssertionError("Snapshots must not dispatch");}
+ }
+ static List<Long> ids(List<ContentValues> rows){List<Long> ids=new ArrayList<>();for(ContentValues row:rows)ids.add(row.getAsLong("_id"));return ids;}
+ static CalendarSyncSnapshot read(ContentResolver p,long eventId)throws Exception{return CalendarSyncSnapshot.read(p,7,eventId,"Alpha Phone","alpha-phone-local",GENERATION);}
+ static CalendarSyncSnapshot read(ContentResolver p)throws Exception{return read(p,42);}
  public static void main(String[] ignored)throws Exception{
   Provider p=new Provider();CalendarSyncSnapshot initial=read(p);check(!initial.missing&&!initial.deleted&&p.instances==0);
   check(initial.revision.equals(read(p).revision));p.source.put("calendar_displayName","Renamed display");check(initial.sourceRevision.equals(read(p).sourceRevision));
@@ -51,6 +58,28 @@ public final class CalendarSyncSnapshotTest {
   check(CalendarSyncSnapshot.duration("P3600S")==3600000L&&CalendarSyncSnapshot.duration("PT1H")==3600000L&&CalendarSyncSnapshot.duration("P1D")==86400000L&&CalendarSyncSnapshot.duration("P1W")==604800000L&&CalendarSyncSnapshot.duration("P1DT2H30M")==95400000L&&CalendarSyncSnapshot.duration("-PT15M")==-900000L);
   for(String garbage:new String[]{null,"","P","PT","P1DT","1H","P1H2D","PT1.5H","P1W2D","P99999999999999999999D","P"+"9".repeat(129)+"S","one hour"}){try{CalendarSyncSnapshot.duration(garbage);throw new AssertionError("Accepted "+garbage);}catch(UnsupportedOperationException expected){}}
   weekly.events.get(0).put("duration","an hour");try{read(weekly).semantic();throw new AssertionError("Accepted an unparsable duration");}catch(UnsupportedOperationException expected){}check(read(weekly).revision!=null);
-  System.out.println("PASS exact owned Calendar sync snapshots, tombstones and atomic assertions");
+  Path directory=Files.createTempDirectory("calendar-sync-snapshot-");
+  try{
+   // Another calendar's row naming the same parent, and its child rows, stay outside the family.
+   Sqlite sql=new Sqlite(directory);sql.insert("calendars","_id",8L,"account_name","Alpha Phone","account_type","LOCAL","name","other-local","calendar_access_level",700L,"ownerAccount","Alpha Phone");
+   sql.insert("events","_id",42L,"calendar_id",7L,"title","Series","dtstart",0L,"duration","P1D","eventTimezone","UTC","allDay",1L,"rrule","FREQ=DAILY","deleted",0L);
+   sql.insert("events","_id",43L,"calendar_id",7L,"original_id",42L,"originalInstanceTime",86400000L,"dtstart",86400000L,"dtend",172800000L,"allDay",1L,"deleted",0L);
+   sql.insert("events","_id",44L,"calendar_id",8L,"original_id",42L,"originalInstanceTime",86400000L,"dtstart",86400000L,"dtend",172800000L,"allDay",1L,"deleted",0L);
+   sql.insert("events","_id",45L,"calendar_id",7L,"title","Unrelated","dtstart",0L,"dtend",3600000L,"eventTimezone","UTC","allDay",0L,"deleted",0L);
+   sql.insert("attendees","_id",8L,"event_id",42L,"attendeeEmail","fixture@example.invalid","attendeeStatus",1L);sql.insert("attendees","_id",9L,"event_id",44L,"attendeeEmail","foreign@example.invalid","attendeeStatus",1L);
+   sql.insert("reminders","_id",10L,"event_id",43L,"minutes",15L,"method",1L);sql.insert("reminders","_id",11L,"event_id",44L,"minutes",30L,"method",1L);
+   sql.insert("properties","_id",12L,"event_id",45L,"name","meeting","value","unrelated");
+   CalendarSyncSnapshot family=read(sql);
+   check(ids(family.family).equals(List.of(42L,43L))&&ids(family.attendees).equals(List.of(8L))&&ids(family.reminders).equals(List.of(10L))&&family.properties.isEmpty());
+   // Each compare-and-swap assertion selects exactly the rows it expects in the same SQL.
+   for(ContentProviderOperation op:family.assertions())check(sql.count(op.uri,op.selection,op.args)==op.count);
+   // A timed event with zero milliseconds in a zone west of UTC. Its semantic form is printed for
+   // the renderer digest test (test/native-calendar-sync-port.test.mjs).
+   long start=java.time.Instant.parse("2026-10-15T19:00:00Z").toEpochMilli();
+   sql.insert("events","_id",50L,"calendar_id",7L,"title","Synthetic timed event","description","","eventLocation","","dtstart",start,"dtend",start+3600000L,"eventTimezone","America/New_York","allDay",0L,"deleted",0L);
+   org.json.JSONObject timedRow=read(sql,50).semantic();check(timedRow.getString("startAt").equals("2026-10-15T19:00:00.000Z"));
+   System.out.println("PASS exact owned Calendar sync snapshots, tombstones and atomic assertions");
+   System.out.println(timedRow);
+  }finally{try(var files=Files.walk(directory)){files.sorted(Comparator.reverseOrder()).forEach(path->path.toFile().delete());}}
  }
 }

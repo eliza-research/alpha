@@ -131,8 +131,12 @@ export class BrowserCloudSignIn extends WebPlugin {
   return outcome;
  }
  async cancel(){
-  if(this.googleAttemptId){await this.cancelGoogleSignIn();return;}
-  await this.signIn({operation:'signInCancel'}).catch(()=>{});
+  if(this.googleAttemptId)return this.cancelGoogleSignIn();
+  // A sign-in already committed when Cancel arrived is reported as signed in, not cancelled.
+  const outcome=await this.signIn({operation:'signInCancel'});
+  if(outcome.status==='authenticated')return outcome;
+  if(outcome.status!=='cancelled'||Object.keys(outcome).some(key=>key!=='status'))throw Object.assign(Error('Cloud sign-in cancellation is unconfirmed'),{code:'unavailable'});
+  return outcome;
  }
  async status(input?:{environment:CloudEnvironment}){return this.signIn({operation:'signInStatus',...(input?{environment:input.environment}:{})});}
 }

@@ -19,7 +19,8 @@ import org.junit.runner.RunWith;
 import static org.junit.Assert.*;
 
 /** Disposable secondary user only. All outgoing Clock intents are intercepted, never delivered.
- * This proves owner review/selection handoff and replay refusal, not real alarm completion. */
+ * This proves owner review/selection handoff, show without a second review, replay refusal and
+ * re-review after recreation, not real alarm completion. */
 @RunWith(AndroidJUnit4.class)
 public final class ClockAgentReviewInstrumentedTest {
  private final String scope=ReminderTestAccess.digest("clock-review-fixture-"+UUID.randomUUID());
@@ -38,7 +39,7 @@ public final class ClockAgentReviewInstrumentedTest {
  }
  private AccessibilityNodeInfo find(AccessibilityNodeInfo node,String label){if(node==null)return null;if(node.isVisibleToUser()&&label.equalsIgnoreCase(node.getText()==null?"":node.getText().toString()))return node;for(int i=0;i<node.getChildCount();i++){AccessibilityNodeInfo found=find(node.getChild(i),label);if(found!=null)return found;}return null;}
  private void button(String label)throws Exception{long end=SystemClock.elapsedRealtime()+15000;while(SystemClock.elapsedRealtime()<end){AccessibilityNodeInfo node=find(InstrumentationRegistry.getInstrumentation().getUiAutomation().getRootInActiveWindow(),label);if(node!=null&&node.isEnabled()&&node.isClickable()){assertTrue(node.performAction(AccessibilityNodeInfo.ACTION_CLICK));return;}SystemClock.sleep(100);}fail("Missing native owner review control");}
- private void visible()throws Exception{long end=SystemClock.elapsedRealtime()+15000;while(SystemClock.elapsedRealtime()<end){if(find(InstrumentationRegistry.getInstrumentation().getUiAutomation().getRootInActiveWindow(),"Review agent Clock handoff")!=null)return;SystemClock.sleep(100);}fail("Native owner review not visible");}
+ private void visible()throws Exception{long end=SystemClock.elapsedRealtime()+15000;while(SystemClock.elapsedRealtime()<end){if(find(InstrumentationRegistry.getInstrumentation().getUiAutomation().getRootInActiveWindow(),"Open Clock?")!=null)return;SystemClock.sleep(100);}fail("Native owner review not visible");}
  @Test public void journalBoundOwnerReviewManualSelectionCancellationAndRecreation()throws Exception{
   org.junit.Assume.assumeTrue("Owned intercepted Clock review opt in","1".equals(InstrumentationRegistry.getArguments().getString("clockAgentReview")));
   assertTrue("Fresh secondary user required",android.os.Process.myUid()/100000>0);
@@ -52,18 +53,23 @@ public final class ClockAgentReviewInstrumentedTest {
     JSONObject op=operation(action),key=reserve(op);int before=sent.size();
     // A caller cannot bypass the native gesture with an invented nonce.
     assertTrue(bridge("confirmClock",new JSONObject(key.toString()).put("reviewToken","invented")).getBoolean("rejected"));assertEquals(before,sent.size());
-    begin("reviewClock",new JSONObject(key.toString()).put("operation",op));visible();assertEquals(before,sent.size());button("Continue to Clock");JSONObject approved=result();assertTrue(approved.has("reviewToken"));assertEquals(before,sent.size());
+    // Show changes no alarm: the approved card is its review, so no native dialog opens.
+    JSONObject approved;if("show".equals(action)){approved=bridge("reviewClock",new JSONObject(key.toString()).put("operation",op));assertNull(find(instrumentation.getUiAutomation().getRootInActiveWindow(),"Open Clock?"));}
+    else{begin("reviewClock",new JSONObject(key.toString()).put("operation",op));visible();assertEquals(before,sent.size());button("Continue to Clock");approved=result();}
+    assertTrue(approved.has("reviewToken"));assertEquals(before,sent.size());
     JSONObject confirmation=new JSONObject(key.toString()).put("reviewToken",approved.getString("reviewToken"));assertEquals("opened",bridge("confirmClock",confirmation).getJSONObject("result").getString("status"));assertEquals(before+1,sent.size());
     assertEquals("set".equals(action)?AlarmClock.ACTION_SET_ALARM:AlarmClock.ACTION_SHOW_ALARMS,sent.get(before).getAction());assertFalse(sent.get(before).hasExtra(AlarmClock.EXTRA_ALARM_SNOOZE_DURATION));
     assertEquals("opened",bridge("confirmClock",confirmation).getJSONObject("result").getString("status"));assertEquals(before+1,sent.size());
    }
    for(String outcome:new String[]{"denied","unavailable"}){
-    JSONObject op=operation("show"),key=reserve(op);int before=sent.size();begin("reviewClock",new JSONObject(key.toString()).put("operation",op));visible();button("Continue to Clock");String token=result().getString("reviewToken");deliveryFailure.set(outcome);
+    JSONObject op=operation("show"),key=reserve(op);int before=sent.size();String token=bridge("reviewClock",new JSONObject(key.toString()).put("operation",op)).getString("reviewToken");deliveryFailure.set(outcome);
     assertEquals(outcome,bridge("confirmClock",new JSONObject(key.toString()).put("reviewToken",token)).getJSONObject("result").getString("status"));deliveryFailure.set("");assertEquals(before,sent.size());
    }
    JSONObject op=operation("dismiss"),cancelled=reserve(op);int before=sent.size();begin("reviewClock",new JSONObject(cancelled.toString()).put("operation",op));visible();button("Cancel");assertEquals("failed",result().getJSONObject("result").getString("status"));assertEquals("failed",bridge("reviewClock",new JSONObject(cancelled.toString()).put("operation",op)).getJSONObject("result").getString("status"));assertEquals(before,sent.size());
    JSONObject retired=reserve(op);begin("reviewClock",new JSONObject(retired.toString()).put("operation",op));visible();button("Continue to Clock");String nonce=result().getString("reviewToken");bridge("cancelClock",retired);assertEquals("failed",bridge("confirmClock",new JSONObject(retired.toString()).put("reviewToken",nonce)).getJSONObject("result").getString("status"));assertEquals(before,sent.size());
-   JSONObject recreated=reserve(op);begin("reviewClock",new JSONObject(recreated.toString()).put("operation",op));visible();scenario.recreate();AppNavigation.liveMode();assertEquals("unknown",bridge("reviewClock",new JSONObject(recreated.toString()).put("operation",op)).getJSONObject("result").getString("status"));assertEquals(before,sent.size());
+   JSONObject recreated=reserve(op);begin("reviewClock",new JSONObject(recreated.toString()).put("operation",op));visible();scenario.recreate();AppNavigation.liveMode();
+   // The closed review sent nothing, so it is offered again rather than reported as unknown.
+   begin("reviewClock",new JSONObject(recreated.toString()).put("operation",op));visible();button("Cancel");assertEquals("failed",result().getJSONObject("result").getString("status"));assertEquals(before,sent.size());
   }finally{
    instrumentation.removeMonitor(monitor);AlphaCredentialStore store=new AlphaCredentialStore(context);for(String id:proposals)store.removeCredentialSlot("action-journal:v1:"+scope+":entry:"+id);store.removeCredentialSlot("action-journal:v1:"+scope+":index");
   }

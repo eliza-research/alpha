@@ -126,7 +126,7 @@ async function noLeaks(page:Page,observed:Awaited<ReturnType<typeof fixture>>){
 /** First-run setup after own keys ends on "You’re all set" without a false AI warning (#772 regression). */
 async function ownKeySetupReady(page:Page){
  const setup=page.locator('dialog.alpha-startup-permissions');
- if(await setup.count())await expect(setup).not.toContainText('AI is not ready yet');
+ if(await setup.count())await expect(setup).not.toContainText('AI connection isn’t confirmed yet');
  await completeAccessSetup(page);
 }
 
@@ -140,7 +140,7 @@ test('Cloud is the default; explicit own-key save and return to Cloud preserve e
  await expect(page.locator('.alpha-cloud-sign-in')).toHaveCount(0);
  await enterKeys(page);
  await expect(dialog(page).getByRole('button',{name:'Own API keys',exact:true})).toHaveAttribute('aria-pressed','true');
- await expect(dialog(page)).toContainText('Cerebras receives your prompts; Cartesia, if added, receives voice recordings and reply text.');await expect(dialog(page)).not.toContainText(/selected context|Android Keystore|model list|Switching is manual/);
+ await expect(dialog(page)).toContainText('Cerebras receives your prompts. Cartesia, if added, is used for voice and receives recordings and reply text; without it voice stays on this phone.');await expect(dialog(page)).not.toContainText(/selected context|Android Keystore|model list|Switching is manual/);
  await page.screenshot({path:info.outputPath('own-provider-form.png'),animations:'disabled'});
  await dialog(page).getByRole('button',{name:'Cancel',exact:true}).click();
  expect(await page.evaluate(()=>(window as any).ownProvider.events)).toEqual([]);
@@ -204,7 +204,7 @@ test('opening AI provider during a reply stops it as a sensitive screen; the swi
  await page.getByRole('button',{name:'Minimize chat',exact:true}).click();
  await page.getByRole('button',{name:'AI connection',exact:true}).click();
  await expect(dialog(page)).toBeVisible();
- const stoppedNotice='The agent may still finish this reply. Alpha Phone will check once and show it here if it does.';
+ const stoppedNotice='This reply may still finish. It will appear here if it does.';
  const retainedNotice=page.locator('[data-alpha-message-id="stopped-reply-notice"]');
  await expect(retainedNotice).toHaveCount(1);await expect(retainedNotice).toHaveText(stoppedNotice);
  // The second text node is the intentional clipped screen-reader announcer, not a duplicate bubble.
@@ -424,7 +424,7 @@ test('own keys chosen on a fresh phone continue into first-run access setup',asy
  await expect(welcome).toHaveCount(0);
  // Setup used to require a Cloud account, so an owner who skipped Cloud never saw it.
  await expect(page.locator('dialog.alpha-startup-permissions')).toBeVisible({timeout:15_000});
- await expect(page.locator('dialog.alpha-startup-permissions')).not.toContainText('AI is not ready yet');
+ await expect(page.locator('dialog.alpha-startup-permissions')).not.toContainText('AI connection isn’t confirmed yet');
  await page.screenshot({path:info.outputPath('own-keys-access-setup.png'),animations:'disabled'});
  expect(observed.errors).toEqual([]);expect(observed.foreign).toEqual([]);
 });

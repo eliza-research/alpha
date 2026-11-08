@@ -3,6 +3,10 @@ on:
   push:
     branches: [main, develop]
   pull_request:
+  # Daily full chromium and production run of main, so a red baseline has a dated first
+  # failure. Main pushes still skip the browser lanes (docs/ci-cost-policy.md).
+  schedule:
+    - cron: '23 7 * * *'
   workflow_dispatch:
     inputs:
       cross_browser:
@@ -13,7 +17,8 @@ permissions:
   contents: read
 concurrency:
   # Superseded PR runs are cancelled; each main push keeps its own run (see android.yml).
-  group: browser-${{ github.event_name == 'push' && github.sha || github.ref }}
+  # The event name keeps a dispatch on main from cancelling the scheduled run.
+  group: browser-${{ github.event_name }}-${{ github.event_name == 'push' && github.sha || github.ref }}
   cancel-in-progress: ${{ github.event_name != 'push' }}
 jobs:
   changes:
@@ -36,6 +41,7 @@ jobs:
         with:
           bun-version: "1.4.2"
       - run: npm ci
+      - run: npm ci --prefix backend
       - name: Install browser for source-refinement checks
         run: npx playwright install --with-deps chromium
       - uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6.0.1
@@ -55,6 +61,9 @@ jobs:
           echo "ALPHA_BUN=$ALPHA_BUN" >> "$GITHUB_ENV"
           echo "ALPHA_CLOUD_COLLECTOR_SOURCE=$prepared_source" >> "$GITHUB_ENV"
       - run: npm run verify
+        env:
+          ALPHA_REQUIRE_PREPARED_SDK: '1'
+          ALPHA_ELIZA_SOURCE: ${{ env.ALPHA_CLOUD_COLLECTOR_SOURCE }}
       - name: Retain Quint model and implementation evidence
         if: always()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
@@ -120,11 +129,13 @@ jobs:
           ELIZA_DEV_ALLOW_TEST_MOCKS: '1'
           ALPHA_CI_BROWSER_SPECS: ${{ needs.changes.outputs.browser_specs }}
         run: node scripts/ci/run-browser.mjs --shard=${{ matrix.shard }}/${{ needs.changes.outputs.browser_total }}
-      - name: Exercise synthetic local-agent speech profile
+      # Every case in these files needs the local-agent bridge profile. The bridge answers the
+      # reminder spec's storage route itself, so the unreachable synthetic agent origin is enough.
+      - name: Exercise synthetic local-agent speech profile and host reminder recovery
         if: matrix.shard == 1 && needs.changes.outputs.browser_speech == 'true'
         run: |
           node --input-type=module -e "import fs from 'node:fs'; fs.writeFileSync(process.env.RUNNER_TEMP + '/alpha-synthetic-owner-token', 'a'.repeat(64), {mode: 0o600});"
-          PLAYWRIGHT_HTML_OUTPUT_DIR=test-results/browser-agent-profile-report ELIZA_DEV_ALLOW_TEST_MOCKS=1 VITE_LOCAL_AGENT=1 ALPHA_LOCAL_AGENT_TOKEN_FILE="$RUNNER_TEMP/alpha-synthetic-owner-token" ALPHA_LOCAL_AGENT_ORIGIN=http://127.0.0.1:1 npm run test:browser -- test/browser/browser-agent-tts.spec.ts test/browser/browser-host-disclosure.spec.ts --grep 'local agent TTS|prepared agent audio|connected browser host' --output=test-results/browser-agent-profile
+          PLAYWRIGHT_HTML_OUTPUT_DIR=test-results/browser-agent-profile-report ELIZA_DEV_ALLOW_TEST_MOCKS=1 VITE_LOCAL_AGENT=1 ALPHA_LOCAL_AGENT_TOKEN_FILE="$RUNNER_TEMP/alpha-synthetic-owner-token" ALPHA_LOCAL_AGENT_ORIGIN=http://127.0.0.1:1 npm run test:browser -- test/browser/browser-agent-tts.spec.ts test/browser/browser-host-disclosure.spec.ts test/browser/host-reminder-recovery.spec.ts --output=test-results/browser-agent-profile
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: failure()
         with:
@@ -177,9 +188,9 @@ jobs:
             test-results/browser/
             test-results/browser-report/
           retention-days: 3
-  # Stable required check for the dynamically named shard matrix. The ruleset in
-  # docs/ci-cost-policy.md requires this job and Repository verification. Pushes
-  # to main deliberately skip the browser lanes (they already ran on the PR).
+  # Stable aggregate for the dynamically named shard matrix. docs/ci-cost-policy.md
+  # proposes requiring it; no ruleset is installed (P-57). Pushes to main skip the
+  # browser lanes (they already ran on the PR); the daily schedule runs them on main.
   result:
     name: Browser MVP result
     needs: [changes, verify, browser, production]

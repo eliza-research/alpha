@@ -127,8 +127,8 @@ for(const cloud of [false,true])test(`native AI provider shows actual provider a
  await stubAgent(page,cloud);await page.goto('/');
  await page.locator('.alpha-connection').getByRole('button',{name:'Start local agent',exact:true}).click();
  await expect(page.locator('.alpha-connection-scrim')).toHaveCount(0);
- await page.getByRole('button',{name:'Settings',exact:true}).click();await page.getByRole('button',{name:'AI provider',exact:true}).click();
- const provider=page.getByRole('dialog',{name:'AI provider',exact:true});await expect(provider).toBeVisible();
+ await page.getByRole('button',{name:'Settings',exact:true}).click();await page.getByRole('button',{name:'Account',exact:true}).click();await page.getByRole('button',{name:'AI connection',exact:true}).click();
+ const provider=page.getByRole('dialog',{name:'AI connection',exact:true});await expect(provider).toBeVisible();
  await expect(provider.getByRole('button',{name:'Cloud',exact:true})).toHaveAttribute('aria-pressed',String(cloud));
  await expect(provider.getByRole('button',{name:'Own API keys',exact:true})).toHaveAttribute('aria-pressed','false');
  expect(await page.evaluate(()=>(window as any).providerFixture.statusReads)).toBeGreaterThan(0);

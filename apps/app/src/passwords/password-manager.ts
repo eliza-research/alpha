@@ -105,7 +105,7 @@ async function refresh() {
   notify();
 }
 
-async function run(name: string, task: (vault: PasswordsClient) => Promise<void>) {
+async function run(name: string, task: (vault: PasswordsClient) => Promise<void>, fail?: (message: string) => void) {
   const vault = await resolveClient();
   if (!vault || busy) return;
   busy = name; notice = ''; notify();
@@ -115,6 +115,7 @@ async function run(name: string, task: (vault: PasswordsClient) => Promise<void>
     if (failure.code === 'locked') expired('Locked.');
     else if (failure.code === 'key-invalidated') { damaged = true; locked(failure.message); }
     else if (draft && (name === 'save' || name === 'remove')) draft.error = failure.message;
+    else if (fail) fail(failure.message);
     else notice = failure.message;
     // Transfer can stop after changing the selected file or vault. Never lose
     // this warning when the generic vault mapper replaces native error text.
@@ -122,6 +123,9 @@ async function run(name: string, task: (vault: PasswordsClient) => Promise<void>
     else if (name === 'import') notice = 'Import did not complete. Check saved passwords before trying again.';
   } finally { busy = ''; notify(); }
 }
+
+/** Leaving New or Edit password for the list forgets the typed password; the list stays unlocked. */
+export function leavePasswordEntry() { clearSecrets(); }
 
 /** Leaving the password pages, unmounting or backgrounding locks and forgets everything. */
 export function leavePasswordManager() {
@@ -232,24 +236,25 @@ export function passwordManagerGroups(helpers: Helpers): Bag[] {
   }
   if (status) {
     const selection = { 'this-app': 'Alpha Phone passwords', other: 'Another provider', none: 'None selected', unknown: 'Not checked' }[status.autofill.selected];
+    const fill = browserFillText();
     groups.push(captioned(helpers, 'Autofill', [
-      helpers.info('Browser autofill', browserFillText()),
+      { ...helpers.info('Browser autofill', fill.state), hasSub: true, sub: fill.caption },
       helpers.info('Autofill service', status.autofill.supported === false ? 'Unavailable for this device or user' : selection),
-      ...(status.autofill.supported === false ? [] : [nav(busy === 'autofill' ? 'Opening…' : 'Set as autofill service', () => void run('autofill', async v => {
-        const result = await v.openAutofillSettings();
-        helpers.toast(result.destination === 'autofill-picker' ? 'Confirm Alpha Phone passwords in Android, then return here.' : 'Opened Android settings. Search for autofill to choose a provider.');
-      }), { sub: 'Android asks you to confirm' })]),
+      // Android's confirmation finishes at once for the selected service, so it is offered only to select Alpha.
+      ...(status.autofill.supported === false || status.autofill.selected === 'this-app' ? [] : [nav(busy === 'autofill' ? 'Opening…' : 'Set as autofill service', () => void run('autofill', async v => {
+        await v.openAutofillSettings();
+      }), { sub: 'Confirm in Android, or search there for autofill' })]),
       nav('Refresh autofill status', () => void refresh()),
     ]));
   }
   return groups;
 }
 
-function browserFillText() {
-  if (!browserFill) return 'Unavailable in this browser. Use Show or Copy for website passwords.';
+function browserFillText(): { state: string; caption: string } {
+  if (!browserFill) return { state: 'Unavailable', caption: 'Use Show or Copy for website passwords.' };
   return browserFill.available
-    ? 'Supported by this WebView for the site shown in Alpha\'s browser, never for another site embedded in the page. Filling depends on your autofill service.'
-    : 'Off: this Android System WebView cannot report which site owns a sign-in field. Update Android System WebView, or use Show or Copy.';
+    ? { state: 'On', caption: 'Fills the site shown, not sites embedded in it.' }
+    : { state: 'Off', caption: 'Update Android System WebView to use it.' };
 }
 
 /** The add/edit page, or null when no entry is open. */
@@ -284,8 +289,8 @@ export function passwordEntryPage(helpers: Helpers, back: () => void): Bag | nul
   if (current.id) {
     const id = current.id;
     groups.push(helpers.group([
-      nav('Show password', () => void run('reveal', async v => { await v.reveal(id); }), { sub: 'Shown by Android, hidden after 30 s' }),
-      nav('Copy password', () => void run('copy', async v => { const r = await v.copy(id); helpers.toast(`Copied. We try to clear it after ${Math.round(r.clearsAfterMs / 1000)} s, or when you return to the app.`); })),
+      nav('Show password', () => void run('reveal', async v => { await v.reveal(id); }, message => helpers.toast(message)), { sub: 'Shown by Android, hidden after 30 s' }),
+      nav('Copy password', () => void run('copy', async v => { const r = await v.copy(id); helpers.toast(`Copied. Alpha tries to clear it in ${Math.round(r.clearsAfterMs / 1000)} s.`); }, message => helpers.toast(message))),
     ]));
   }
   const actions: Bag[] = [];

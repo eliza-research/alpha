@@ -41,6 +41,7 @@ import {
  type DigestStorage,
 } from "./hosted-digests";
 import { DailyApps } from "../daily";
+import { formatDateTime } from "../prototype/locale-time";
 type Pending = {
 	path: "sources" | "loops" | "sources/revoke" | "dossier";
 	body: Record<string, unknown>;
@@ -367,7 +368,7 @@ export function HostedDigestPanel({composeQuestion,canComposeQuestion}:{composeQ
     const missedOffers=available?missedRunNowOffers(binding.current?.sessionId===connection.session?.sessionId?results:[],loops,sources):new Map<string,MissedRunNow>();
     function reviewMissedRunNow(offer:MissedRunNow){
      setMessage('');
-     setReview({path:'dossier',body:{sourceId:offer.sourceId,sourceRevision:offer.sourceRevision,mutationId:offer.mutationId,confirmed:true},missedRunId:offer.runId,summary:`Run the missed ${new Date(offer.scheduledAt).toLocaleString()} morning digest now?\nThis starts one new, separate run that reads ${offer.sourceLabel} as they are now and sends them to this agent’s configured text model. The missed occurrence stays recorded as missed and nothing from that time is replayed. Confirming this again later returns the same run, not another one. Your schedule and next digest do not change. Model usage is billed by this agent.`});
+     setReview({path:'dossier',body:{sourceId:offer.sourceId,sourceRevision:offer.sourceRevision,mutationId:offer.mutationId,confirmed:true},missedRunId:offer.runId,summary:`Run the missed ${formatDateTime(new Date(offer.scheduledAt))} morning digest now?\nThis starts one new, separate run that reads ${offer.sourceLabel} as they are now and sends them to this agent’s configured text model. The missed occurrence stays recorded as missed and nothing from that time is replayed. Confirming this again later returns the same run, not another one. Your schedule and next digest do not change. Model usage is billed by this agent.`});
      requestAnimationFrame(()=>document.getElementById('hosted-digest-review')?.focus());
     }
 	async function submit(value: Pending) {
@@ -437,7 +438,7 @@ export function HostedDigestPanel({composeQuestion,canComposeQuestion}:{composeQ
   const sourceId=crypto.randomUUID(),reviewedAt=Date.now(),observedAt=new Date(reviewedAt).toISOString(),expiresAt=reviewedAt+hours*3600000;
   const scope={calendars:selectedCalendars.map(id=>({id,revision:calendarChoices.find(calendar=>calendar.id===id)!.sourceRevision})),reminders:selectedReminders,timeZone:zone,window:'owner_day_and_overdue_reminders',maximumItems:200,modelEgress:true};
   const renews=renewing&&sources.find(s=>s.id===renewing)?.live?.provider==='native'?renewing:null,rebind=renewalLoops(renews);
-  setReview({path:'sources',body:{id:sourceId,kind:'tasks',label:nativeLabel.trim(),observedAt,expiresAt:new Date(expiresAt).toISOString(),confirmed:true},nativeConsent:{sourceId,scope,expiresAt,expectedBinding},...(renews?{renews,rebind}:{}),summary:`Allow ${connection.name||'your on-device agent'} to read the selected sources on this phone until ${new Date(expiresAt).toLocaleString()}?\nCalendars: ${calendarChoices.filter(c=>selectedCalendars.includes(c.id)).map(c=>c.name+' ('+c.account+')').join(', ')||'none'}. Reminders: ${selectedReminders?'open reminders due today and overdue'+(features.nativeEvening?'; evening briefs also list reminders completed today':''):'excluded'}.\nThe brief uses only event titles and times for the local day in ${zone}, plus selected reminders’ titles, due times and status. At most 200 items; overflow fails. Calendar descriptions, attendees, locations and reminder bodies are excluded.\nThese fields may be sent to this agent’s configured text model. The agent may read these sources while Alpha is in the background or the phone is locked. Each recurring brief is a separately reviewed schedule. ${features.sourcePause?'Schedules pause when this source expires':'Schedules can no longer read it after it expires'}; renew it here. You can revoke the source here. Briefs are saved privately with this agent; phone notifications follow your current result-notification setting. No app writes, inbox reads, messages or voice are authorized.${renewalNote(renews)}`});
+  setReview({path:'sources',body:{id:sourceId,kind:'tasks',label:nativeLabel.trim(),observedAt,expiresAt:new Date(expiresAt).toISOString(),confirmed:true},nativeConsent:{sourceId,scope,expiresAt,expectedBinding},...(renews?{renews,rebind}:{}),summary:`Allow ${connection.name||'your on-device agent'} to read the selected sources on this phone until ${formatDateTime(new Date(expiresAt))}?\nCalendars: ${calendarChoices.filter(c=>selectedCalendars.includes(c.id)).map(c=>c.name+' ('+c.account+')').join(', ')||'none'}. Reminders: ${selectedReminders?'open reminders due today and overdue'+(features.nativeEvening?'; evening briefs also list reminders completed today':''):'excluded'}.\nThe brief uses only event titles and times for the local day in ${zone}, plus selected reminders’ titles, due times and status. At most 200 items; overflow fails. Calendar descriptions, attendees, locations and reminder bodies are excluded.\nThese fields may be sent to this agent’s configured text model. The agent may read these sources while Alpha is in the background or the phone is locked. Each recurring brief is a separately reviewed schedule. ${features.sourcePause?'Schedules pause when this source expires':'Schedules can no longer read it after it expires'}; renew it here. You can revoke the source here. Briefs are saved privately with this agent; phone notifications follow your current result-notification setting. No app writes, inbox reads, messages or voice are authorized.${renewalNote(renews)}`});
  }
 	function schedule(template: DigestTemplate, enabled = true) {
 		try {
@@ -537,7 +538,7 @@ export function HostedDigestPanel({composeQuestion,canComposeQuestion}:{composeQ
                 {renewals.length>0&&<section aria-label="Source renewal">
                     <h2>Source renewal</h2>
                     {renewals.map(r=><p key={r.source.id}>
-                        {r.state==='expiring'?`${r.source.label} expires ${new Date(r.source.expiresAt).toLocaleString()}. Renew it to keep ${r.loops.length===1?'its schedule':'its '+r.loops.length+' schedules'} running.`:features.sourcePause?`${r.source.label}: Source ${r.state}. ${r.loops.length===1?'Its schedule is':'Its '+r.loops.length+' schedules are'} paused until you ${r.state==='revoked'?'review a new source for '+(r.loops.length===1?'it':'them'):'renew it'}. No failure briefs are created.`:`${r.source.label}: Source ${r.state}. ${r.loops.length===1?'Its schedule':'Its '+r.loops.length+' schedules'} cannot read it until you ${r.state==='revoked'?'review a new source':'renew it'}. This agent records each missed run as unavailable.`}{' '}
+                        {r.state==='expiring'?`${r.source.label} expires ${formatDateTime(new Date(r.source.expiresAt))}. Renew it to keep ${r.loops.length===1?'its schedule':'its '+r.loops.length+' schedules'} running.`:features.sourcePause?`${r.source.label}: Source ${r.state}. ${r.loops.length===1?'Its schedule is':'Its '+r.loops.length+' schedules are'} paused until you ${r.state==='revoked'?'review a new source for '+(r.loops.length===1?'it':'them'):'renew it'}. No failure briefs are created.`:`${r.source.label}: Source ${r.state}. ${r.loops.length===1?'Its schedule':'Its '+r.loops.length+' schedules'} cannot read it until you ${r.state==='revoked'?'review a new source':'renew it'}. This agent records each missed run as unavailable.`}{' '}
                         {!r.source.revoked&&<button disabled={busy||!!pending} onClick={()=>startRenewal(r.source.id)}>Renew {r.source.label}</button>}
                         {renewing===r.source.id&&<span> Renewal in progress.</span>}
                     </p>)}
@@ -665,7 +666,7 @@ export function HostedDigestPanel({composeQuestion,canComposeQuestion}:{composeQ
 										.map((s) => (
 											<option value={s.id} key={s.id}>
 												{s.label} · expires{" "}
-												{new Date(s.expiresAt).toLocaleString()}
+												{formatDateTime(new Date(s.expiresAt))}
 											</option>
 										))}
 								</select>
@@ -745,12 +746,12 @@ export function HostedDigestPanel({composeQuestion,canComposeQuestion}:{composeQ
 						<article className="alpha-connection-agent" key={result.runId} id={"hosted-result-"+result.runId} tabIndex={-1}>
                             {focusedRun===result.runId&&<span>Opened from notification</span>}
 							<strong>
-								{new Date(result.scheduledAt).toLocaleString()} ·{" "}
+								{formatDateTime(new Date(result.scheduledAt))} ·{" "}
 								{digestStatusLabel(result.status)}
 							</strong>
 							<span>
-								{result.source.type==='live_selected_native_read'?'Phone sources read':result.source.type==='live_selected_google_read'?'Connected sources read':'Snapshot observed'} {new Date(String(result.source.observedAt)).toLocaleString()}; {result.source.type==='live_selected_native_read'?'permission expires':'expires'}{" "}
-								{new Date(String(result.source.expiresAt)).toLocaleString()}
+								{result.source.type==='live_selected_native_read'?'Phone sources read':result.source.type==='live_selected_google_read'?'Connected sources read':'Snapshot observed'} {formatDateTime(new Date(String(result.source.observedAt)))}; {result.source.type==='live_selected_native_read'?'permission expires':'expires'}{" "}
+								{formatDateTime(new Date(String(result.source.expiresAt)))}
 							</span>
 							<pre
 								style={{
@@ -763,7 +764,7 @@ export function HostedDigestPanel({composeQuestion,canComposeQuestion}:{composeQ
 								{digestSummaryText(result)}
 							</pre>
                             {/* A readable run summary; the raw agent output is a developer surface, never product UI. */}
-                            {digestRan(result)&&result.source.type!=='live_selected_native_read'&&<details><summary>Execution details</summary><p>Started {new Date(result.startedAt).toLocaleString()}. Finished {new Date(result.completedAt).toLocaleString()}.</p>{devSurfacesEnabled&&<pre style={{whiteSpace:'pre-wrap',overflowWrap:'anywhere',font:'inherit',width:'100%'}}>{JSON.stringify(result.output,null,2)}</pre>}</details>}
+                            {digestRan(result)&&result.source.type!=='live_selected_native_read'&&<details><summary>Execution details</summary><p>Started {formatDateTime(new Date(result.startedAt))}. Finished {formatDateTime(new Date(result.completedAt))}.</p>{devSurfacesEnabled&&<pre style={{whiteSpace:'pre-wrap',overflowWrap:'anywhere',font:'inherit',width:'100%'}}>{JSON.stringify(result.output,null,2)}</pre>}</details>}
                             {missedOffers.has(result.runId)&&!ranMissed.has(result.runId)&&<button disabled={busy||!!pending||!!review} aria-label="Review Run now for this missed digest" onClick={()=>reviewMissedRunNow(missedOffers.get(result.runId)!)}>Run now</button>}
 						</article>
 					))}

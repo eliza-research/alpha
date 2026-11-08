@@ -209,7 +209,7 @@ test.describe('permission loss and offline', () => {
     });
     await start(page);
     await openFromHome(page, 'Camera');
-    await expect(page.locator('[aria-label^="Viewfinder."] video')).toBeVisible();
+    await expect(page.locator('[data-alpha-camera="viewfinder"] video')).toBeVisible();
     await pressHome(page);
     await page.evaluate(() => { (window as any).cameraAllowed = false; });
     await openFromHome(page, 'Camera');

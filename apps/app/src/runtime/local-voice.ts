@@ -5,7 +5,7 @@ import { Capacitor } from '@capacitor/core';
 import { connectionController } from './connection-ui';
 import { createNativeSpeechRequests } from '../../../../.eliza/client-features/packages/voice/src/native-speech-request.ts';
 const native = registerPlugin<{
-  /** `ready` is recognition readiness; `playback`, when reported, is read-aloud readiness on its own. */
+  /** `ready` is full speech readiness (recognition and playback prepared together); native reports no separate `playback` today, so read-aloud waits for it. */
   localSpeechStatus(input: { requestId: string }): Promise<{ ready: boolean; playback?: boolean; execution: string }>;
   transcribeLocalRecording(input: { recordingId: string; requestId: string }): Promise<LocalTranscript>;
   releaseLocalSpeech(): Promise<void>;
@@ -58,11 +58,15 @@ export function createOnDeviceVoice() {
     async playbackReady(signal: AbortSignal) { return operation(signal, async (requestId, interrupted) => { const result = await Promise.race([native.localSpeechStatus({ requestId }), interrupted]); return (result.ready === true || result.playback === true) && result.execution === (Capacitor.isNativePlatform()?'device':'browser'); }); },
     async transcribe(recordingId: string, signal: AbortSignal) { return operation(signal, async (requestId, interrupted) => {
       const result = await Promise.race([native.transcribeLocalRecording({ recordingId, requestId }), interrupted]);
-      if (result.execution !== (Capacitor.isNativePlatform()?'device':'browser') || result.local !== true || typeof result.text !== 'string' || !result.text.trim()) throw new Error('No usable on-device transcript');
+      if (result.execution !== (Capacitor.isNativePlatform()?'device':'browser') || result.local !== true || typeof result.text !== 'string') throw new Error('No usable on-device transcript');
+      if (!result.text.trim()) throw Object.assign(new Error('No speech was detected.'), { code: 'no-speech' });
       return result;
     }); },
-    async speak(text: string, signal: AbortSignal, onStarted?:()=>void, strictDrain=false, options?:{queue?:boolean;assertCurrent?:()=>void}) {
-      const chunks = planLocalSpeech(text);
+    /** `conversation`: a spoken reply. Only a likely secret is refused (code 'speech-refused');
+     * text with nothing left to say resolves as a silent sentence. */
+    async speak(text: string, signal: AbortSignal, onStarted?:()=>void, strictDrain=false, options?:{queue?:boolean;assertCurrent?:()=>void;conversation?:boolean}) {
+      const chunks = planLocalSpeech(text, { mode: options?.conversation ? 'conversation' : 'listen' });
+      if (!chunks.length) { signal.throwIfAborted(); onStarted?.(); return; }
       return operation(signal, async (_requestId, interrupted, ownedSignal) => {
         let started=false;
         for (const chunk of chunks) {

@@ -327,7 +327,7 @@ test.describe('in-app Eliza Cloud sign-in on the production Android composition'
   await noHandOff(page);
  });
 
- test('a second verification step is completed in Alpha',async({page})=>{
+ test('a second verification step is completed in Alpha',async({page},info)=>{
   await boot(page,{...await entitlements(),signIn:'mfa'});
   await agent(page,'unavailable');
   await readySignIn(page);
@@ -336,6 +336,8 @@ test.describe('in-app Eliza Cloud sign-in on the production Android composition'
   await dialog.getByLabel('Six-digit code').fill('123456');await dialog.getByRole('button',{name:'Verify',exact:true}).click();
   await expect(dialog.getByRole('form',{name:'Enter your verification code'})).toBeVisible();
   await expect(dialog.getByText('Enter your authenticator code.',{exact:true})).toBeVisible();
+  await expectButtonSystem(page);
+  await page.evaluate(()=>document.fonts.ready);await page.screenshot({path:info.outputPath('08-mfa.png'),animations:'disabled'});
   expect((await fixture(page)).saved).toBe(false);
   await dialog.getByLabel('Six-digit code').fill('654321');await dialog.getByRole('button',{name:'Verify',exact:true}).click();
   await agent(page,'cloud');
@@ -480,15 +482,4 @@ test('Google waiting: one heading, a way to reopen the Google page, and Back',as
  await expect(dialog.getByRole('heading',{name:'Finish in your browser.',exact:true})).toBeVisible();
  await dialog.getByRole('button',{name:'Back',exact:true}).click();
  await expect(dialog.getByRole('button',{name:'Continue with Google',exact:true})).toBeEnabled();
-});
-test('authenticator second step keeps the code form and its error at the field',async({page},info)=>{
- await boot(page,{...await entitlements(),signIn:'mfa'});await agent(page,'unavailable');await readySignIn(page);
- const dialog=signInDialog(page);
- await dialog.getByRole('textbox',{name:'Email',exact:true}).fill('synthetic-signin@example.invalid');
- await dialog.getByRole('button',{name:'Email me a code',exact:true}).click();
- await dialog.getByLabel('Six-digit code').fill('123456');await dialog.getByRole('button',{name:'Verify',exact:true}).click();
- await expect(dialog.getByRole('form',{name:'Enter your verification code'})).toBeVisible();
- await expect(dialog.getByText('Enter your authenticator code.',{exact:true})).toBeVisible();
- await expectButtonSystem(page);
- await page.evaluate(()=>document.fonts.ready);await page.screenshot({path:info.outputPath('08-mfa.png'),animations:'disabled'});
 });

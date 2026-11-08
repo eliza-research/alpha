@@ -34,7 +34,7 @@ async function finish({kind='handler_error',limit=null,effectApplied=false,resid
  const selected={kind:resident?'resident':'remote',actions:{async pendingReview(){events.lists++;return[{proposalId:'saved-action',proposal:null,notice}];},
    async performRequested(){events.effects++;throw Error('failed turns must never execute');}}};
  const env={state,selected,isAndroid:false,AlphaClientError:ClientError,REPLY_FAILURES:replyLabels,
-   RATE_LIMITED:'The AI request rate limit was reached.',cloud:{environment:'production'},
+   cloud:{environment:'production'},
    connectionController:{recheckPlanAfterRefusal(){events.planRecheck++;}},
    update(patch){Object.assign(state,patch);},refreshMembershipBalance(){events.refresh++;return Promise.resolve();},
    fundingRefusedReply:()=> 'Billing refused. Check your subscription; nothing was purchased.',
@@ -103,7 +103,8 @@ function visibleFailureAndNotice(r){
 }
 for(const kind of ['handler_error','fatal_error','unknown_failure'])test(`${kind}: failure remains interrupted while unsupported notice is visible once`,async()=>{
  const r=await finish({kind});noEffects(r);const view=visibleFailureAndNotice(r);
- assert.match(view.failures()[0].text,/Sorry, I couldn’t finish that reply/);
+ // A known kind says what happened (handler_error: part may be done); an unknown kind stays generic.
+ assert.match(view.failures()[0].text,kind==='handler_error'?/Part of it may already be done/:/Sorry, I couldn’t finish that reply/);
  assert.doesNotMatch(view.failures()[0].text,/Pending phone actions are available|succeeded|created/i);
  assert.equal(r.error.planAction,undefined);assert.equal(r.error.userMessageId,userMessageId);
  assert.equal(r.state.lastServiceLimit.kind,'prior-limit','failure never clears existing limit');
@@ -127,14 +128,14 @@ test('billing refusal keeps its funding action, visible failure and once-only no
  assert.equal(view.failures()[0].card.planAction,'funding');assert.equal(r.error.serviceLimit,'billing-refused');
  assert.equal(r.state.fundingRefused,true);assert.equal(r.state.membershipDismissed,false);assert.equal(r.events.refresh,1);
 });
-test('provider-less resident keeps its retry card and notice without sending again',async()=>{
+test('provider-less resident keeps its provider check card and notice without sending again',async()=>{
  const r=await finish({kind:'no_provider',resident:true,account:true});noEffects(r);const view=visibleFailureAndNotice(r);
- assert.equal(r.error.planAction,'retry');assert.equal(view.failures()[0].card.planAction,'retry');
+ assert.equal(r.error.planAction,'provider');assert.equal(view.failures()[0].card.planAction,'provider');
  assert.equal(r.error.failureKind,'no_provider');assert.equal(r.events.posts,1);
 });
 for(const kind of ['handler_error','provider_issue','insufficient_credits'])test(`${kind}: applied-effect failure and notice never claim nothing happened`,async()=>{
  const r=await finish({kind,effectApplied:true,account:true,limit:kind==='insufficient_credits'?{kind:'billing-refused'}:null});noEffects(r);
- const view=visibleFailureAndNotice(r);assert.match(view.failures()[0].text,/requested action went through/);
+ const view=visibleFailureAndNotice(r);assert.match(view.failures()[0].text,/That went through/);
  assert.doesNotMatch(JSON.stringify(view.state),/Nothing has been approved or performed automatically/);
  if(kind==='insufficient_credits'){assert.equal(r.error.planAction,'funding');assert.equal(r.state.fundingRefused,true);}
 });

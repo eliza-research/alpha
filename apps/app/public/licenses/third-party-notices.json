@@ -879,7 +879,7 @@
     "version": "pinned upstream runtime when present in the APK payload",
     "license": "license unverified",
     "source": "scripts/stage-local-agent-runtime.mjs",
-    "text": "The on-device agent payload (Bun runtime and the bundled elizaOS agent with its dependencies) is staged from pinned upstream source and may be included in standard Android builds. These notices were generated without the staged runtime, so its Bun and dependency notices are not listed. A PACKAGED distribution build regenerates them after staging with node scripts/generate-licenses.mjs --packaged-runtime (resident-android.yml); an APK built without that step does not carry them.",
+    "text": "This build does not include the on-device agent runtime (Bun and the bundled elizaOS agent), so no agent notices are listed.",
     "flags": [
       "unverified"
     ],

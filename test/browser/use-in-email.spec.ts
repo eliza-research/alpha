@@ -61,39 +61,13 @@ for(const theme of ['light','dark'])test(`reviewed reply fills the selected emai
  expect(await page.evaluate(()=>(window as any).useInEmail.writes)).toBe(0);
 });
 
-test('an edited draft is never overwritten: a stale review is refused, then appends only after re-review',async({page})=>{
- await setup(page);await say(page,first);await openReview(page,first);
- await review(page).getByRole('button',{name:'Insert into draft',exact:true}).click();await expect(body(page)).toHaveValue(first);
- await body(page).fill('My own opening line.');
- await say(page,second);await expect(reply(page,second)).toBeVisible();await openReview(page,second);
- const dialog=review(page);
- await expect(dialog.locator('[data-alpha-email-use-destination]')).toHaveText('Your open reply draft · Re: Planning session · to sender@example.invalid');
- await expect(dialog.locator('[data-alpha-email-use-effect]')).toContainText('nothing is replaced');
- const add=dialog.getByRole('button',{name:'Add below existing text',exact:true});await expect(add).toBeVisible();
- // The draft changes underneath the open review (for example another edit path): the insert is refused.
- await page.evaluate(()=>{const area=document.querySelector<HTMLTextAreaElement>('textarea[aria-label="Message"]')!;Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype,'value')!.set!.call(area,'My own opening line. Edited again.');area.dispatchEvent(new Event('input',{bubbles:true}));});
- await add.click();
- await expect(dialog.getByRole('status')).toContainText('changed since you opened this review');await expect(dialog.getByRole('status')).toContainText('Nothing was added');
- // The composer is behind the modal review (inert), so it is read directly.
- await expect(page.locator('textarea[aria-label="Message"]')).toHaveValue('My own opening line. Edited again.');
- // The refreshed review names the current draft; confirming it appends below the user's text.
- await add.click();await expect(dialog).toHaveCount(0);
- await expect(body(page)).toHaveValue('My own opening line. Edited again.\n\n'+second);
- await expect(page.getByText(/Agent suggestion added below your text\./)).toBeVisible();
- expect(await page.evaluate(()=>(window as any).useInEmail.writes)).toBe(0);
-});
-
-test('outside Inbox, and for a reply from another agent session, nothing is offered or inserted',async({page})=>{
+// The edited-draft and outside-Inbox cases run on the production bundle in use-in-email.production.spec.ts.
+test('a reply from another agent session is not inserted',async({page})=>{
  await setup(page);await say(page,first);await openReview(page,first);
  // The agent changes while the review is open: the review closes and no draft is created.
  await page.evaluate(async()=>{const {connectionController:c}=await import('/src/runtime/connection-ui.tsx');const now=c.getSnapshot();const next={...now,session:{...now.session,sessionId:'another-agent-session'}} as any;c.getSnapshot=()=>next;});
  await review(page).getByRole('button',{name:'Insert into draft',exact:true}).click();
  await expect(review(page)).toHaveCount(0);await expect(body(page)).toHaveCount(0);
- // Over another app the same reply has no email action.
- await page.evaluate(()=>(window as any).useInEmail.shell.openView('notes',{}));
- await say(page,second);await expect(reply(page,second)).toBeVisible();await reply(page,second).click();
- await expect(menu(page).getByRole('menuitem',{name:'Copy',exact:true})).toBeVisible();
- await expect(menu(page).getByRole('menuitem',{name:'Use in email',exact:true})).toHaveCount(0);
  expect(await page.evaluate(()=>(window as any).useInEmail.writes)).toBe(0);
 });
 

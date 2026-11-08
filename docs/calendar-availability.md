@@ -61,7 +61,7 @@ the renderer rejects any provider row that has a field other than `start`, `end`
 | Executor and provider boundary | `apps/app/src/runtime/calendar-availability.ts` |
 | Review dialogs | `apps/app/src/prototype/calendar-availability-review.ts` |
 | Android provider read | Upstream `SelectedCalendarReader.availabilitySources` and `readAvailability` (`vendor/eliza/plugins/plugin-native-calendar/android/src/main/java/ai/eliza/plugins/calendar/read/SelectedCalendarReader.java`, elizaOS/eliza#35911, at the pin); the time-zone check is Alpha's `CalendarZones.java`, and Alpha's `CalendarSyncFreshness.java` refuses a selection with any non-`LOCAL` calendar before the upstream read |
-| Android bridge methods | `availabilitySources` and `readAvailability` in `AlphaCalendarPlugin.java` |
+| Android bridge methods | `availabilitySources` and `readAvailability` in `AlphaCalendarPlugin.java`; the provider part of `readAvailability` (source identity, freshness, upstream read, in that order) is `CalendarSyncFreshness.readAvailability` |
 | Android journal policy | `CalendarAvailabilityJournalResult.java`, called from `AlphaActionJournal.java` |
 | Browser provider read | `apps/app/src/browser/calendar.ts` |
 | Contract and result computation | `vendor/eliza/packages/contracts/src/device-reviews.ts` (pinned, unchanged) |
@@ -75,7 +75,7 @@ the renderer rejects any provider row that has a field other than `start`, `end`
 - `test/calendar-availability-reader.test.mjs` compiles the pinned upstream reader
   (`SelectedCalendarReader`), Alpha's `CalendarZones`, `CalendarSyncFreshness` and the journal policy for the JVM and
   runs `test/fixtures/CalendarAvailabilityReaderTest.java`. The reader's exact projection,
-  selection and sort order are executed by the `sqlite3` shell over tables that use
+  selection and sort order are executed by the `sqlite3` shell (`test/fixtures/SqliteCalendarProvider.java`) over tables that use
   CalendarProvider's column names, in five time zones from UTC-11 to UTC+14. The rows
   then go through the renderer parser and the shared contract computation
   (`scripts/test-calendar-availability-provider-rows.ts`). This checks the reader's SQL
@@ -106,8 +106,14 @@ the renderer rejects any provider row that has a field other than `start`, `end`
   each reply until it expires. The notices are not de-duplicated.
 - The other foreground reviews (`notes_search`, `notes_named`, `calendar_named`,
   `reminder_named`) are not negotiated by the phone. Their results would also need a
-  journal bound of their own before they are.
+  journal bound of their own before they are. Alpha has no executor for `notes_search`
+  or `notes_named`; the unused ones were removed.
 - No real agent has produced or consumed an availability receipt against this build.
+- The pinned reader does not check `calendar_access_level` when it reads a selection. Only the
+  offered list leaves out calendars with no access, so a forged selection that names such a
+  calendar with its current revision would be read. The check belongs in the upstream
+  `SelectedCalendarReader.readAvailability` (an upstream follow-up); the test proves only that
+  calendars the owner did not choose are not read.
 - The provider read lives in the Alpha app because the pinned shared calendar readers do
   not return availability. Moving it into the shared calendar plugin needs an upstream
   change.

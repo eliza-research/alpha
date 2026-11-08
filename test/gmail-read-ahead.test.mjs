@@ -1,5 +1,5 @@
 import {test} from 'node:test';
-import {execFileSync} from 'node:child_process';
+import {runChildSuite} from './fixtures/child-suite.mjs';
 test('Gmail read-ahead obeys account, request and lifetime boundaries',()=>{
- execFileSync(process.execPath,['--import=tsx','scripts/test-gmail-read-ahead.ts'],{stdio:'pipe',timeout:30000});
+ runChildSuite('test-gmail-read-ahead.ts',{flags:['--import=tsx'],timeout:30000});
 });

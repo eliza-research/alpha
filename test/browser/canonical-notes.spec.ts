@@ -144,7 +144,7 @@ test('canonical failed save retains the owner draft until explicit discard and r
  await page.getByRole('button',{name:'Back to notes',exact:true}).click();
  await expect(page.getByRole('textbox',{name:'Note',exact:true})).toHaveValue('Keep this unsaved owner text');
  expect((await snapshot(page)).notes[0].body).toBe('\nCommitted original');
- await expect(page.getByText('Your draft is kept here. Reload the current notes to discard it.',{exact:true})).toBeVisible();
+ await expect(page.getByText('Your draft is shown here until you reload or the connection changes. Reload the current notes to discard it.',{exact:true})).toBeVisible();
  await expect(page.getByRole('button',{name:'Discard draft and reload',exact:true})).toBeVisible();
  const attempts=await page.evaluate(()=>(window as any).canonicalNotesFixture.requests.filter((r:any)=>r.method==='POST').length);
  await page.evaluate(()=>(window as any).canonicalNotesFixture.fail=false);
@@ -351,7 +351,7 @@ test('a later read failure and recovery cannot clear accepted-write uncertainty 
  const writes=await page.evaluate(()=>(window as any).canonicalNotesFixture.requests.filter((r:any)=>r.method==='POST').length);
  await page.evaluate(()=>{const f=(window as any).canonicalNotesFixture;f.failAfterApplied=false;f.failReads=true;});
  await refreshCanonicalRead(page);
- await expect(page.getByText('Your draft is kept here. Reload the current notes to discard it.',{exact:true})).toBeVisible();
+ await expect(page.getByText('Your draft is shown here until you reload or the connection changes. Reload the current notes to discard it.',{exact:true})).toBeVisible();
  const acceptedReadsBeforeRecovery=await page.evaluate(()=>(window as any).canonicalNotesFixture.acceptedReads.length);
  await page.evaluate(()=>(window as any).canonicalNotesFixture.failReads=false);
  await refreshCanonicalRead(page);

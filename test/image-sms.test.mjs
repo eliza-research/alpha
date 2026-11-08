@@ -20,7 +20,7 @@ test('SMS review completion cannot mutate a later visit and transport errors kee
   const views={messages:{}};installSmsAdapter(Component,views);const owner=new Component();owner.componentDidMount();await tick();
   const compose=()=>{let model=views.messages.render();model.nativeOnRecipients({target:{value:'+15555550100'}});model.nativeOnBody({target:{value:'hello'}});model=views.messages.render();model.nativeSims[0].pick();views.messages.render().nativeSend();};
   compose();await tick();owner.view='home';owner.componentDidUpdate();owner.view='messages';owner.componentDidUpdate();await tick();pending[0].resolve({status:'sent'});await tick();assert.equal(views.messages.render().nativeNotice,'');assert.equal(views.messages.render().nativeBody,'');
-  compose();await tick();pending[1].reject(Error('transport lost'));await tick();assert.match(views.messages.render().nativeNotice,/unknown/);views.messages.render().nativeSend();await tick();assert.equal(calls[1].operationId,calls[2].operationId,'same uncertain operation is queried, never assigned a fresh replay ID');pending[2].resolve({status:'unknown'});await tick();owner.componentWillUnmount();
+  compose();await tick();pending[1].reject(Error('transport lost'));await tick();assert.match(views.messages.render().nativeNotice,/This text may have sent/);views.messages.render().nativeSend();await tick();assert.equal(calls[1].operationId,calls[2].operationId,'same uncertain operation is queried, never assigned a fresh replay ID');pending[2].resolve({status:'unknown'});await tick();owner.componentWillUnmount();
  }finally{globalThis.document=priorDocument;delete globalThis.__smsFixturePort;rmSync(dir,{recursive:true,force:true});}
 });
 
@@ -38,9 +38,53 @@ test('holding the SMS role, an opened conversation is marked read through the ne
 
 test('old observer cleanup finishes before a new visit enables observation',async()=>{let release;const calls=[];let attempt=0;const f=fake({observeMessages:async()=>{const id=++attempt;calls.push('start'+id);if(id===1)await new Promise(r=>release=r);return async()=>{calls.push('stop'+id);};}}),s=createSmsSession(f.client,true,()=>{});s.setActive(true);await tick();s.setActive(false);s.setActive(true);await tick();assert.deepEqual(calls,['start1']);release();await tick();await tick();assert.deepEqual(calls,['start1','stop1','start2']);s.setActive(false);await tick();});
 
+test('Cancel, denial and native refusals let Send review again; Back and the picture picker keep the draft',async()=>{
+ const {mkdtempSync,rmSync,writeFileSync}=await import('node:fs');const {join,resolve}=await import('node:path');const {tmpdir}=await import('node:os');const {pathToFileURL}=await import('node:url');
+ const {build}=await import('esbuild');const dir=mkdtempSync(join(tmpdir(),'sms-retry-'));const priorDocument=globalThis.document,priorWindow=globalThis.window;const pending=[],calls=[],inputs=[];let visibility;
+ globalThis.document={hidden:false,addEventListener(type,listener){if(type==='visibilitychange')visibility=listener;},removeEventListener(){},createElement(){const input={files:[],value:'',click(){inputs.push(input);}};return input;}};
+ globalThis.window={addEventListener(){},removeEventListener(){}};
+ globalThis.__smsRetryPort={smsSendHistory:async()=>[],status:async()=>({permissions:{sms:'granted',sendSms:'granted',phoneState:'granted'},mmsSend:true,subscriptions:[{id:3,slot:0,displayName:'SIM'}]}),threadPage:async()=>({rows:[{id:'thread:1',addresses:['+15555550100']}],next:null}),messagePage:async()=>({rows:[],next:null}),observeMessages:async()=>async()=>{},sendSms:(review,operationId)=>{calls.push({...review,operationId});return new Promise((resolve,reject)=>pending.push({resolve,reject}));}};
+ const refusal=(message,code)=>Object.assign(Error(message),{code});
+ try{
+  const result=await build({entryPoints:[resolve('apps/app/src/prototype/sms-adapter.ts')],bundle:true,format:'esm',platform:'node',write:false,plugins:[{name:'native-fixture',setup(builder){builder.onResolve({filter:/platform-plugins|aosp-image|aosp-telephony|native-adapter$/},args=>({path:args.path,namespace:'fixture'}));builder.onLoad({filter:/.*/,namespace:'fixture'},args=>({contents:args.path.includes('aosp-telephony')?'export const MMS_MAX_ATTACHMENTS=5;export const reviewMms=()=>({problem:"mms-unavailable"});export const createAospTelephony=()=>globalThis.__smsRetryPort;export const registerTelephonyProfile=()=>()=>{};':args.path.includes('platform-plugins')?'export const registerPlugin=()=>globalThis.__smsRetryPort;':args.path.includes('aosp-image')?'export const aospImage=true;':'export const watchReturnToApp=()=>()=>{};'}));}}]});
+  const filename=join(dir,'adapter.mjs');writeFileSync(filename,result.outputFiles[0].text);const {installSmsAdapter}=await import(pathToFileURL(filename));
+  class Component{view='messages';S(){return {view:this.view}}setState(){}}
+  let shellBack=0;const views={messages:{back:()=>{shellBack++;return false;}}};installSmsAdapter(Component,views);const owner=new Component();owner.componentDidMount();await tick();await tick();
+  const model=()=>views.messages.render();
+  model().nativeOnRecipients({target:{value:'+15555550100'}});model().nativeOnBody({target:{value:'hello'}});model().nativeSims[0].pick();
+  const send=async()=>{model().nativeSend();await tick();await tick();};
+  await send();pending[0].resolve({status:'cancelled'});await tick();await tick();
+  await send();assert.equal(calls.length,2,'Send after Cancel opens a new review');assert.notEqual(calls[1].operationId,calls[0].operationId,'a cancelled review is not replayed');
+  pending[1].resolve({status:'denied'});await tick();await tick();
+  await send();assert.notEqual(calls[2].operationId,calls[1].operationId,'after a denial and a new grant, Send reviews again');
+  pending[2].reject(refusal('This text is too long to send as SMS. Shorten it and review again.','too-long'));await tick();await tick();
+  assert.equal(model().nativeNotice,'This text is too long to send as SMS. Shorten it and review again.','a definite refusal shows native\'s reason');
+  await send();assert.notEqual(calls[3].operationId,calls[2].operationId,'a refused request holds no record to keep');
+  pending[3].reject(refusal('This request is too old to read back. Nothing was sent again.','expired'));await tick();await tick();
+  assert.equal(model().nativeNotice,'This request is too old to read back. Nothing was sent again.');
+  await send();assert.equal(calls[4].operationId,calls[3].operationId,'an expired request keeps its ID');
+  pending[4].reject(Error('bridge closed'));await tick();await tick();assert.match(model().nativeNotice,/This text may have sent/);
+  await send();assert.equal(calls[5].operationId,calls[4].operationId,'an unknown outcome keeps its ID');pending[5].resolve({status:'unknown'});await tick();await tick();
+
+  assert.equal(views.messages.back({},{}),false);assert.equal(shellBack,1,'Back on the list is the shell\'s');
+  model().nativeThreads[0].open();await tick();assert.equal(model().nativeInThread,true);
+  assert.equal(views.messages.back({},{}),true,'Back in a conversation stays in Messages');assert.equal(shellBack,1);
+  assert.equal(model().nativeInThread,false);assert.equal(model().nativeBody,'hello');assert.equal(model().nativeRecipients,'+15555550100');
+
+  model().nativeAttach();globalThis.document.hidden=true;visibility();
+  assert.equal(model().nativeBody,'hello','the chooser hiding the page keeps the draft');
+  inputs[0].files=[{type:'image/jpeg',size:3,arrayBuffer:async()=>new Uint8Array([1,2,3]).buffer}];await inputs[0].onchange();
+  globalThis.document.hidden=false;visibility();
+  assert.deepEqual(model().nativeAttachments.map(row=>row.label),['picture-1.jpg · 1 KB']);assert.equal(model().nativeBody,'hello');assert.equal(model().nativeRecipients,'+15555550100');
+  globalThis.document.hidden=true;visibility();assert.equal(model().nativeBody,'','without a picker, leaving still clears the draft');assert.equal(model().nativeAttachments.length,0);
+  globalThis.document.hidden=false;visibility();owner.view='home';owner.componentDidUpdate();owner.componentWillUnmount();
+ }finally{globalThis.document=priorDocument;globalThis.window=priorWindow;delete globalThis.__smsRetryPort;rmSync(dir,{recursive:true,force:true});}
+});
+
 test('a reviewed MMS carries the picked pictures, keeps its operation ID when uncertain and reads back only its reviewed content',async()=>{
  const {mkdtempSync,rmSync,writeFileSync}=await import('node:fs');const {join,resolve}=await import('node:path');const {tmpdir}=await import('node:os');const {pathToFileURL}=await import('node:url');
- const {build}=await import('esbuild');const dir=mkdtempSync(join(tmpdir(),'mms-adapter-'));const priorDocument=globalThis.document;const pending=[],calls=[],reads=[],inputs=[];let mmsUpdated;
+ const {build}=await import('esbuild');const dir=mkdtempSync(join(tmpdir(),'mms-adapter-'));const priorDocument=globalThis.document,priorWindow=globalThis.window;const pending=[],calls=[],reads=[],inputs=[];let mmsUpdated;
+ globalThis.window={addEventListener(){},removeEventListener(){}};
  globalThis.document={hidden:false,addEventListener(){},removeEventListener(){},createElement(){const input={files:[],value:'',click(){inputs.push(input);}};return input;}};
  const file=(type,bytes)=>({type,size:bytes.length,arrayBuffer:async()=>new Uint8Array(bytes).buffer});
  globalThis.__mmsFixture={
@@ -64,7 +108,7 @@ test('a reviewed MMS carries the picked pictures, keeps its operation ID when un
   assert.deepEqual(model().nativeAttachments.map(row=>row.label),['picture-1.jpg · 1 KB','picture-2.png · 1 KB']);
   model().nativeSendMms();await tick();await tick();assert.equal(calls.length,1);
   assert.deepEqual(calls[0].review.recipients,['+15555550100','+15555550101']);assert.deepEqual(calls[0].review.attachments.map(a=>[a.name,a.contentType,[...a.bytes]]),[['picture-1.jpg','image/jpeg',[1,2,3]],['picture-2.png','image/png',[4,5]]]);
-  pending[0].reject(Error('transport lost'));await tick();await tick();assert.match(model().nativeNotice,/MMS outcome is unknown/);
+  pending[0].reject(Error('transport lost'));await tick();await tick();assert.match(model().nativeNotice,/This MMS may have sent/);
   model().nativeSendMms();await tick();await tick();assert.equal(calls[1].operationId,calls[0].operationId,'an uncertain MMS is never given a fresh ID');
   pending[1].resolve({status:'submitted'});await tick();await tick();assert.match(model().nativeNotice,/submitted/);
   mmsUpdated('someone-else');await tick();assert.equal(reads.length,0,'another operation is not read');
@@ -73,5 +117,5 @@ test('a reviewed MMS carries the picked pictures, keeps its operation ID when un
   pending[2].resolve({status:'cancelled'});await tick();await tick();assert.match(model().nativeNotice,/Cancelled — MMS not sent/);
   model().nativeClear();assert.equal(model().nativeAttachments.length,0);
   owner.view='home';owner.componentDidUpdate();owner.componentWillUnmount();
- }finally{globalThis.document=priorDocument;delete globalThis.__mmsFixture;rmSync(dir,{recursive:true,force:true});}
+ }finally{globalThis.document=priorDocument;globalThis.window=priorWindow;delete globalThis.__mmsFixture;rmSync(dir,{recursive:true,force:true});}
 });

@@ -35,7 +35,7 @@ serving it. CI no longer builds a second unused flag-off bundle in that job. The
 separate test-mocks bundle still receives its own audit.
 
 Repository verification runs once in parallel with Chromium's six shards and
-Android, instead of four times per event. Browser shards remain parallel; a failing matrix cancels siblings to limit wasted minutes.
+Android, instead of four times per event. Browser shards remain parallel; a failing Chromium shard does not cancel its siblings (`fail-fast: false`), while the opt-in cross-browser matrix does.
 On October 8 the owner requested removal of all smoke tests and checks. The aggregate
 smoke runners, their emulator CI jobs, the provider diagnostic job and smoke-only APK bundles
 are removed. Two emulator jobs remain, `native` and `recovery-ui` in
@@ -51,9 +51,22 @@ required check, and a change to it selects Repository verification only.
 Main pushes run affected repository verification, including the production bundle
 audit, and the affected Android foundation build of both variants, so a merge that
 breaks packaging is visible on the exact main commit. They do not repeat PR browser
-shards. Each main push runs in its own concurrency group, so a later push neither
-cancels it nor drops it while queued; PR runs still cancel superseded runs. Resident
-push and nightly runs use their own groups too and never cancel a dispatched run. The repository ruleset requires PRs.
+shards. Instead `browser.yml` runs once a day on `main` on a schedule: every Chromium
+shard, the production surface and Repository verification, so a red browser baseline
+has a dated first failing commit. That is one full browser run per day. The product
+owner triages a red scheduled run; GitHub emails only the user who last edited the
+cron line, so the owner watches the Browser MVP runs filtered to `event:schedule`.
+Each main push runs in its own concurrency group, so a later push neither
+cancels it nor drops it while queued; PR runs still cancel superseded runs. The
+scheduled run has its own group too, so a dispatch on `main` does not cancel it. Resident
+push and nightly runs use their own groups too and never cancel a dispatched run. No
+ruleset or required check is installed on `main` (decision P-57), so nothing yet blocks
+a merge with a red check.
+
+Repository verification exports `ALPHA_BUN` and `ALPHA_CLOUD_COLLECTOR_SOURCE` after
+preparing the pinned SDK and runs `npm run verify` with `ALPHA_REQUIRE_PREPARED_SDK=1`,
+so the prepared-SDK tests fail there instead of skipping. The Android foundation's
+manual verification lane prepares the same way.
 
 Round 10 added no job, step or network access to any run. Gradle dependency verification
 (`android/gradle/verification-metadata.xml`) is enforced by the Gradle build the Android
@@ -192,8 +205,10 @@ also has push-to-main and nightly triggers that stay inert unless the repository
 variable `ELIZA_RESIDENT_QUALIFICATION` is `push` or `nightly`; set it only for a
 period that needs PACKAGED release qualification on every main commit or daily. Preparation remains automatic for changes
 to shared/build inputs. The Bun seccomp reproduction is a diagnostic, not a routine
-gate. The only schedule is that opt-in resident trigger; there are no hidden
-branch-specific automatic diagnostic runs.
+gate. The other schedules are the daily `main` browser run, the weekly dependency
+advisory audit and the weekly digest process recovery run, which stays inert unless
+`DIGEST_RESTART_AUTOMATIC` is `true`; there are no hidden branch-specific automatic
+diagnostic runs.
 
 ```sh
 # Use the reviewed branch/ref. Native resident dispatch retains its qualification campaigns.
@@ -288,13 +303,13 @@ Removed automatic duplication includes 587 Android main pushes, 578 full browser
 main pushes, 267 resident pushes and 53 diagnostic pushes in that history.
 Browser main pushes now retain only repository verification when needed.
 
-[Browser run 37504530726](https://github.com/AlphaCompute/alphaphone/actions/runs/37504530726)
+[Browser run 37504530726](https://github.com/eliza-research/alphaphone/actions/runs/37504530726)
 used 186.8 Linux runner-minutes and 10.2 macOS runner-minutes (197.0 total). Its
 first Chromium shard spent 9.2 minutes repeating `npm run verify` before 43 minutes
 of browser tests. The other two shards also repeated verification. Moving this
 check to one parallel job avoids two copies, plus the Android copy.
-[Android run 37504530731](https://github.com/AlphaCompute/alphaphone/actions/runs/37504530731)
-used 95.4 runner-minutes; [resident run 37504530771](https://github.com/AlphaCompute/alphaphone/actions/runs/37504530771)
+[Android run 37504530731](https://github.com/eliza-research/alphaphone/actions/runs/37504530731)
+used 95.4 runner-minutes; [resident run 37504530771](https://github.com/eliza-research/alphaphone/actions/runs/37504530771)
 used 84.8. Their emulator failures predate this CI-policy change.
 
 For an affected renderer PR followed by a merge, applying this policy to those

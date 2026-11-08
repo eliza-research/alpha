@@ -40,8 +40,8 @@ final class AppNavigation {
   // The panel opens only once both permission reads return, which took more than three seconds
   // on a loaded emulator; a build that already has both grants waits this out once.
   for(int i=0;i<150;i++){
-   // Already answered in this app data (the product remembers "Not now"): the panel will not open again.
-   if("true".equals(WebViewTestDriver.evaluate("(()=>{try{return JSON.parse(localStorage.getItem('alpha.startup-permissions.v1')||'null')?.dismissed===true}catch{return false}})()")))return;
+   // Already completed in this app data, with its Ready card gone: the panel will not open again.
+   if("true".equals(WebViewTestDriver.evaluate("(()=>{try{return JSON.parse(localStorage.getItem('alpha:startup-permission-walkthrough:v1')||'null')?.status==='completed'&&!document.querySelector('dialog.alpha-startup-permissions[open]')}catch{return false}})()")))return;
    if("true".equals(WebViewTestDriver.evaluate("(()=>{const b=[...document.querySelectorAll('dialog.alpha-startup-permissions[open] button')].find(b=>b.textContent.trim()==='Not now');if(!b)return false;b.click();return true})()")))return;
    android.os.SystemClock.sleep(100);
   }

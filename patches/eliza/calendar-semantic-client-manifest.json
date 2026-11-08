@@ -1,0 +1,8 @@
+{
+  "schema": 1,
+  "baseCommit": "99b49439ce9d0cb5607e9831b9f7f58d89525029",
+  "path": "packages/contracts/src/calendar-linked-sync.ts",
+  "beforeSha256": "686e9e3c0db7651a3612b1940c95bcb9fac89155a4faafcfb6ab67bd0fbe41bb",
+  "afterSha256": "cb6042bb885b48d8001fb528a1bcb2708da112869f30ab884f5ab84bd501c787",
+  "patchSha256": "8a5169032401dbc9a2f0df8c657e661d45b294036cdd77c190ebedfb95994d6f"
+}

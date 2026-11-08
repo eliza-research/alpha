@@ -191,14 +191,19 @@ test("exact native verify/connect/token/ack chain keeps failures explicit and cu
       " @PluginMethod public void cancel(",
       " /** Post-authentication consent",
     ).replace("@PluginMethod ", ""),
+    ACTUAL_START_CODE: between(
+      plugin,
+      " @PluginMethod public void startEmail(",
+      " /** Check registration and tenant SMS policy",
+    ).replaceAll("@PluginMethod ", ""),
     ACTUAL_CALLBACK: between(
       plugin,
       " private boolean captureCallback(",
-      " /** Cancelled, ended or consumed",
+      " /** Retire only the captured record",
     ),
     ACTUAL_BURN: between(
       plugin,
-      " private void burnUnclaimedPending()",
+      " private void burnUnclaimedPending(Attempt owner)",
       " // ── Email code and MFA:",
     ),
     ACTUAL_VERIFY:
@@ -232,6 +237,16 @@ test("exact native verify/connect/token/ack chain keeps failures explicit and cu
       " private boolean acknowledge(",
       " /** A key stored before",
     ),
+    ACTUAL_RESUME_ACKS: between(
+      plugin,
+      " private void resumeAcknowledgements()",
+      " // ── Outcomes and transport",
+    ),
+    ACTUAL_DESTROY: between(
+      plugin,
+      " @Override protected void handleOnDestroy()",
+      " private void run(Runnable task)",
+    ),
     ACTUAL_OUTCOMES: between(
       plugin,
       " private void finish(",
@@ -249,7 +264,7 @@ test("exact native verify/connect/token/ack chain keeps failures explicit and cu
         [...pure, ...support, file],
         "ai.eliza.auth.cloud.CloudSignInChainTest",
       ),
-      /^PASS native sign-in chain \(38 scenarios; no browser facilities\)/,
+      /^PASS native sign-in chain \(59 scenarios; no browser facilities\)/,
     );
   } finally {
     rmSync(directory, { recursive: true, force: true });
@@ -410,7 +425,7 @@ test("the plugin owns every secret, compares state before burning and logs only 
   const capture = between(
     plugin,
     "private boolean captureCallback(",
-    "private void burnUnclaimedPending()",
+    "private void burnUnclaimedPending(Attempt owner)",
   );
   assert.ok(
     capture.indexOf("intent.setData(null)") > 0 &&
@@ -424,10 +439,10 @@ test("the plugin owns every secret, compares state before burning and logs only 
   assert.doesNotMatch(noResult, /\.remove\(|burnUnclaimedPending/);
   assert.ok(
     capture.indexOf("!pending.sameState(received)) return;") <
-      capture.indexOf(".remove(config().pendingSlot)"),
+      capture.indexOf(".compareExchange(config().pendingSlot, pendingRaw, null)"),
   );
   assert.ok(
-    capture.indexOf(".remove(config().pendingSlot)") <
+    capture.indexOf(".compareExchange(config().pendingSlot, pendingRaw, null)") <
       capture.indexOf('"/steward/auth/oauth/exchange"'),
   );
   // Tail: Android authorization before connect; receipt, key, ack; the Steward session is revoked.

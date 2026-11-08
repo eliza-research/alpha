@@ -228,7 +228,7 @@ test('browser navigation, tabs, private tab, reviewed reading and password manag
     const settings = page.getByRole('region', {name: 'Settings'});
     await expect(settings.getByRole('heading', {name: 'Passwords', exact: true})).toBeVisible();
     await expect(settings).toContainText(/Vault\s*Locked/);
-    await expect(settings).toContainText('Unavailable in this browser. Use Show or Copy for website passwords.');
+    await expect(settings).toContainText(/Browser autofill\s*Use Show or Copy for website passwords\.\s*Unavailable/);
     await expect(settings).toContainText(/Autofill service\s*None selected/);
     await expect(settings.getByRole('button', {name: 'Add development provider', exact: true})).toBeVisible();
     await expect(settings.getByRole('button', {name: 'Password provider', exact: true})).toContainText('No provider selected');

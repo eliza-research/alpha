@@ -1,9 +1,9 @@
 import {openCloudPlanFromSettings} from './helpers/cloud-plan-settings';
 import { cloudStorageSlot } from '../../apps/app/src/runtime/cloud-deployment.generated';
 import {seedCompletedAccessSetup} from './flag-off-android';
-import { test, expect, type Page, type Route } from '@playwright/test';
+import { test, expect, type Page } from '@playwright/test';
 import {installResidentAgentPlugin} from './helpers/resident-agent-plugin';
-import { openYourAgent, completeAccessSetup } from './flag-off-android';
+import { openYourAgent, completeAccessSetup, fenceNetwork } from './flag-off-android';
 // Flag-off production bundle only. Android cases stub the Capacitor bridge in a desktop browser and
 // saved remote selections must never reconnect. Nothing here contacts
 // Eliza Cloud, a deployed agent, an Android device or the native AlphaConnection plugin; those
@@ -13,20 +13,6 @@ const SELECTION = 'alpha.connection.selection.v1', CLOUD_SERVICE = 'alpha.connec
 const origin = 'https://agent.example.test';
 const owner = '0f1b6c2e-8f43-4c8a-9a52-5b7e0e1a1f11', agent = '7d4e0c1a-2b3c-4d5e-8f60-718293a4b5c6';
 const token = 'synthetic-machine-session';
-
-test.beforeEach(({}, testInfo) => { test.skip(testInfo.project.name !== 'production', 'Production bundle only'); });
-
-/** Aborts and records every request that leaves the preview server. */
-async function fenceNetwork(page: Page, serve?: (route: Route) => Promise<unknown> | unknown) {
-  const foreign: string[] = [];
-  await page.route('**/*', route => {
-    const url = new URL(route.request().url());
-    if (url.hostname === '127.0.0.1') return route.continue();
-    if (serve && url.origin === origin) return serve(route);
-    foreign.push(`${route.request().method()} ${url.origin}${url.pathname}`); return route.abort();
-  });
-  return foreign;
-}
 
 type RevokeMode = 'revoked' | 'unsupported' | 'failed' | 'refused-in-body' | 'not-revoked-status' | 'no-content' | 'unauthorized' | 'server-error' | 'cancelled';
 interface NativeCall { plugin: string; method: string; slot?: string; url?: string; http?: string; authorization?: string; path?: string }
@@ -259,9 +245,9 @@ for (const mode of ['revoked', 'unsupported', 'failed', 'refused-in-body', 'not-
     // the completed sign-out receipt or turn an unconfirmed revocation into success.
     await expect(page.getByRole('alert').filter({hasText:'Eliza Cloud sign-in is unavailable.'})).toBeVisible();
     const status = page.locator('.alpha-connection').getByRole('status').filter({ hasText: /Signed out|sign-in token was removed/ });
-    if (mode === 'revoked') await expect(status).toContainText('Signed out of Eliza Cloud. This sign-in was revoked.');
+    if (mode === 'revoked') await expect(status).toContainText('Signed out of Eliza Cloud.');
     else {
-      await expect(status).toContainText('The sign-in token was removed here; Eliza Cloud did not confirm revoking it.');
+      await expect(status).toContainText('Signed out here. Eliza Cloud did not confirm revoking this sign-in.');
       await expect(page.getByText(/was revoked/)).toHaveCount(0);
     }
     const calls = await nativeCalls(page);
@@ -279,7 +265,7 @@ for (const mode of ['revoked', 'unsupported', 'failed', 'refused-in-body', 'not-
     expect(await secureValues(page)).not.toHaveProperty('cloud:production');
     await expect(page.getByRole('main', { name: 'Welcome to Alpha.', exact: true }).getByRole('button', { name: 'Try again', exact: true })).toBeVisible();
     // P-43: sign-out unbinds inference only; the resident restarted and the outcome says so.
-    if (mode !== 'cancelled') await expect(status).toContainText('Your agent is running. Sign in to Cloud to turn AI back on.');
+    if (mode !== 'cancelled') await expect(status).toContainText('Your agent is running. Sign in to Eliza Cloud to turn AI back on.');
     await expect.poll(async () => (await nativeCalls(page)).slice(before).filter(call => call.plugin === 'Agent' && call.method === 'start').length).toBeGreaterThan(0);
     await page.reload();
     // Signed out after a restart: the sign-in dialog opens by itself while the resident runs.
@@ -499,7 +485,7 @@ test('passive deletion failures stay quiet; known pending failures preserve sett
   });
   page.once('dialog', dialog => void dialog.accept());
   await signout.click();
-  await expect(page.locator('.alpha-connection').getByRole('status')).toContainText('Signed out of Eliza Cloud. This sign-in was revoked.');
+  await expect(page.locator('.alpha-connection').getByRole('status')).toContainText('Signed out of Eliza Cloud.');
   await expect(notice).toHaveCount(0);
 });
 

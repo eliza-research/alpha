@@ -28,6 +28,8 @@ export const DENYLIST = Object.freeze([
   'alpha-dev-tools', 'Development connections', 'Development card', 'Device controls',
   'Browser development device', 'Development reply', '__alpha-local-agent', '__alpha-browser-cloud',
   'emulator development agent', 'Simulate Clock request',
+  // The development agent's missing-provider reply (REPLY_FAILURES, test mocks only).
+  'Set one up on the agent',
   'Maya Chen', 'Jordan Park', 'Priya Nair', 'Alex Kim', 'you@gmail.example', 'Ritual Coffee',
   'news.example', 'Design review at', 'Unlock for details',
   'Development vault secret', 'synthetic-dev-',

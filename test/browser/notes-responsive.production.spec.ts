@@ -3,7 +3,6 @@ import { test, expect } from '@playwright/test';
 
 // Production renderer in a touch viewport. This does not qualify Android rotation or TalkBack.
 test.use({ hasTouch: true, isMobile: true, viewport: { width: 915, height: 412 } });
-test.beforeEach(({}, info) => test.skip(info.project.name !== 'production', 'Production bundle only'));
 
 test('Notes keeps a readable column and preserves the same draft, caret and scroll through resizing', async ({ page }) => {
   await page.addInitScript(() => localStorage.setItem('alpha.connection.selection.v1', JSON.stringify({ kind: 'offline', localApps: true })));

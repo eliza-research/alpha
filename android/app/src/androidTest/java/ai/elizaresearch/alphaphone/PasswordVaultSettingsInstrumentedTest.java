@@ -126,9 +126,9 @@ public class PasswordVaultSettingsInstrumentedTest {
    press("Lock passwords");
    until(control("Unlock passwords") + "&&!" + control("Open " + typedName), "Lock hides the list");
 
-   // Inactivity: the vault locks after its unlock window (60 s in this product) without input.
+   // Expiry: the vault locks when its unlock window ends, whatever the input.
    unlock();
-   until(control("Unlock passwords") + "&&document.body.innerText.includes('Locked after inactivity.')", "The vault locks after inactivity", 900);
+   until(control("Unlock passwords") + "&&document.body.innerText.includes('Locked after the unlock time ended.')", "The vault locks when the unlock window ends", 900);
 
    // Leaving Passwords locks it.
    unlock();

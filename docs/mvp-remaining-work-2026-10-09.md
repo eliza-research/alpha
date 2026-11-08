@@ -14,7 +14,7 @@ The 53 stable inventory IDs remain for traceability. The owner has resolved the
 [approved backlog](owner-approved-mvp-plan-2026-10-12.md). “Current” paragraphs below
 are historical source/evidence observations, not acceptance or policy. Updated
 “Remaining” paragraphs control over those observations. The
-[previous inventory](https://github.com/AlphaCompute/alphaphone/blob/f3ccefd382bd40b29b06117c97da366c1e9b75a7/docs/mvp-remaining-work-2026-10-09.md)
+[previous inventory](https://github.com/eliza-research/alphaphone/blob/f3ccefd382bd40b29b06117c97da366c1e9b75a7/docs/mvp-remaining-work-2026-10-09.md)
 preserves earlier counts and planning. The upstream pin moved from `13c9857598` to `bc71e21f3b` on
 2026-10-13 (branch `claude/mvp-final`, merged with main the same day); nothing has run on an
 emulator or a device at the new pin.

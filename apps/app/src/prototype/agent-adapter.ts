@@ -69,7 +69,7 @@ import { DailyApps } from '../daily';
 import { isAndroid } from '../native';
 import { registerPlugin } from '../platform-plugins';
 import { SystemBars, SystemBarsStyle } from '@capacitor/core';
-import {mergeConversationDelivery, connectionController, STOPPED_REPLY_NOTICE, STOPPED_CANCELLED_NOTICE, STOPPED_CONFIRMED_NOTICE, RESIDENT_STARTING_NOTICE, RESIDENT_RECOVERING_NOTICE, NO_AGENT_SEND, NO_AGENT_VOICE, residentAlwaysPresent, agentPendingText, agentAvailabilityNotice } from '../runtime/connection-ui';
+import {mergeConversationDelivery, connectionController, STOPPED_REPLY_NOTICE, STOPPED_CANCELLED_NOTICE, STOPPED_CONFIRMED_NOTICE, STOPPED_UNCHECKED_NOTICE, RESIDENT_STARTING_NOTICE, RESIDENT_RECOVERING_NOTICE, NO_AGENT_SEND, NO_AGENT_VOICE, residentAlwaysPresent, agentPendingText, agentAvailabilityNotice } from '../runtime/connection-ui';
 import { broaderPageNotice, honestTiles, handoffGate, watchReturnToApp, tileFactsFromSnapshot, tileSettingsPages, type TileFacts, type TileKey } from './native-adapter';
 const alphaDevice = registerPlugin<{ snapshot(): Promise<Record<string, unknown>>; openSettings(input: { page: string }): Promise<{ status: string; specific?: boolean }> }>('AlphaDevice');
 const elizaSystem = registerPlugin<{ setFlashlight(input: { enabled: boolean }): Promise<{ available: boolean; enabled: boolean }> }>('ElizaSystem');
@@ -193,13 +193,15 @@ function planActionCard(action:unknown):Shell|undefined{
   if(action==='plan')return {type:'generic',icon:'info',title:'Redeem code or choose a plan',sub:`Opens ${selectedCloudName()} account & plan. Nothing is purchased automatically.`,planAction:'plan'};
   if(action==='sign-in')return {type:'generic',icon:'info',title:`Sign in with ${selectedCloudName()}`,sub:'Connects AI to your plan. Your agent keeps running on this phone.',planAction:'sign-in'};
   if(action==='retry')return {type:'generic',icon:'info',title:`Check ${selectedCloudName()} again`,sub:'AI replies return when Cloud is reachable.',planAction:'retry'};
+  // AI was believed connected yet the agent answered without it: check what this phone has bound.
+  if(action==='provider')return {type:'generic',icon:'info',title:`Check ${selectedCloudName()} again`,sub:'Checks whether AI is connected to your agent. Nothing is resent.',planAction:'provider'};
   // Cloud declined a turn for billing: open the account's subscription controls.
   if(action==='funding')return {type:'generic',icon:'info',title:'Check subscription or enter a membership code',sub:`Opens your ${selectedCloudName()} subscription. Nothing is purchased automatically.`,planAction:'funding'};
   return undefined;
 }
 /** A saved row keeps its authoritative content and any richer card; only a missing final plan control is enriched. */
 function enrichSettledAssistant(message:Shell,card:Shell|undefined,binding?:{conversationId:string;session:unknown}):Shell {
-  if(!card||!['plan','retry','sign-in'].includes(card.planAction)||message.card!=null||message.from!=='agent'||!binding||message.messageBinding?.conversationId!==binding.conversationId||JSON.stringify(message.messageBinding?.session)!==JSON.stringify(binding.session))return message;
+  if(!card||!['plan','retry','sign-in','provider'].includes(card.planAction)||message.card!=null||message.from!=='agent'||!binding||message.messageBinding?.conversationId!==binding.conversationId||JSON.stringify(message.messageBinding?.session)!==JSON.stringify(binding.session))return message;
   return {...message,card};
 }
 /** Failure kinds upstream raises before any model output (credits, provider access, no provider,
@@ -451,7 +453,7 @@ export function installAgentAdapter(Component: Shell, views: Shell) {
     if(!shell.live)return;
     const pending=notice===STOPPED_REPLY_NOTICE||notice===STOPPED_CANCELLED_NOTICE,sessionId=snapshot.session?.sessionId;
     // Without a notice: a restored conversation already shows the outcome; otherwise say why the check ended.
-    const text=notice||(replaced?'':snapshot.message===STOPPED_CONFIRMED_NOTICE?STOPPED_CONFIRMED_NOTICE:'The stopped reply was not checked because another message was sent. Load this conversation from Agent connection to see whether it finished.');
+    const text=notice||(replaced?'':snapshot.message===STOPPED_CONFIRMED_NOTICE?STOPPED_CONFIRMED_NOTICE:STOPPED_UNCHECKED_NOTICE);
     // A check that already reported its result keeps that statement (and its offer) when a later send clears the notice.
     const reported=!notice&&!replaced&&!!before&&before!==STOPPED_REPLY_NOTICE&&before!==STOPPED_CANCELLED_NOTICE;
     shell.setState((previous:Shell)=>{
@@ -482,6 +484,7 @@ export function installAgentAdapter(Component: Shell, views: Shell) {
       const chat=shell.S().chat;
       return continuation?continuation.apply(view,check,commit):commit(chat==='sheet'||chat==='full'?chat:undefined);
     });
+    if(delivered.status==='unavailable'&&shell.live)shell.agentSay('That screen is not on this phone.',{type:'generic',icon:'info',title:'Screen not on this phone',sub:'That screen is not on this phone.',systemNotice:true,done:true});
     if(delivered.status==='unknown')shell.toast('Could not confirm the screen change. Check your screen.');
     return delivered.status==='delivered';
   }
@@ -497,7 +500,7 @@ export function installAgentAdapter(Component: Shell, views: Shell) {
     if(!port){shell.notesReady=Promise.resolve();originalSet.call(shell,'notes',{list:[],open:null,trash:[],trashOpen:false,storageStatus:agentAvailabilityNotice(undefined,'Notes is unavailable for this agent connection. Check Settings › Agent connection.')});return;}
     let binding:CanonicalNotesUi;
     const paint=()=>{if(shell.live&&shell.canonicalNotesUi===binding)shell.setState({},()=>context(shell));};
-    binding=new CanonicalNotesUi(port,{paint,review:paint,committed:()=>paint()});
+    binding=new CanonicalNotesUi(port,{paint,review:paint,committed:()=>paint(),dropped:title=>{if(shell.live)shell.toast(`Your unsaved edit to “${title}” was lost when the agent connection changed.`);}});
     shell.canonicalNotesUi=binding;
     shell.notesReady=binding.refresh().catch(()=>{if(shell.canonicalNotesUi===binding)paint();});
   }
@@ -1469,6 +1472,16 @@ export function installAgentAdapter(Component: Shell, views: Shell) {
       finally{batchVoiceProgressEvents.removeEventListener('progress',progress);batchVoiceReplyEvents.removeEventListener('reply',replyStarted);}
       input.onReplyStarted?.();
       current();const identity=reply.messageBinding;
+      // The agent chose not to answer: the user turn keeps its saved identity, nothing is spoken and
+      // the voice session listens again. No reply was written, so the session's reply id is this
+      // turn's own request id, which names no message.
+      if(reply.ignored&&!reply.proposals?.length&&!reply.completedActions?.length&&!reply.completedReads?.length){
+        if(!reply.userMessageId||!identity||identity.conversationId!==binding.conversationId||JSON.stringify(identity.session)!==JSON.stringify(binding.session))throw Error('The voice reply could not be matched to this conversation. Check history before speaking again.');
+        const userMessageId=reply.userMessageId;
+        await new Promise<void>(resolve=>this.setState((previous:Shell)=>belongs()?(()=>{const delivered=previous.msgs.some((m:Shell)=>m.id===userMessageId);return {msgs:previous.msgs.filter((m:Shell)=>m.id!==streamId&&!(m.id===userId&&delivered)).map((m:Shell)=>m.id===userId?{...m,id:userMessageId,messageBinding:identity}:m)};})():null,resolve));current();
+        input.navigation?.finish(false);
+        return {requestId:turnId,conversationId:identity.conversationId,userMessageId,assistantMessageId:turnId,text:'',complete:true};
+      }
       if(!reply.messageId||!reply.userMessageId||!identity||identity.conversationId!==binding.conversationId||JSON.stringify(identity.session)!==JSON.stringify(binding.session)||!reply.text.trim())throw Error('The voice reply could not be matched to this conversation. Check history before speaking again.');
       await new Promise<void>(resolve=>this.setState((previous:Shell)=>belongs()?(()=>{const delivered=(id?:string)=>!!id&&previous.msgs.some((m:Shell)=>m.id===id);const kept=previous.msgs.filter((m:Shell)=>m.id!==streamId&&!(m.id===userId&&delivered(reply.userMessageId))).map((m:Shell)=>m.id===userId?{...m,id:reply.userMessageId,messageBinding:identity}:m);return {msgs:delivered(reply.messageId)?kept.map((m:Shell)=>m.id===reply.messageId?enrichSettledAssistant(m,planActionCard(reply.planAction),identity):m):[...kept,{id:reply.messageId,from:'agent',text:reply.text,messageBinding:identity,streaming:false,card:planActionCard(reply.planAction)??null}]};})():null,resolve));current();
       const delivered=await deliverChatNavigation(this,navigation,reply.actionResults,current,input.navigation);
@@ -1583,11 +1596,18 @@ export function installAgentAdapter(Component: Shell, views: Shell) {
       const planCard=planActionCard(reply.planAction);
       const settlementCurrent=()=>this.live&&sameChat()&&JSON.stringify(connectionController.getSnapshot().session)===JSON.stringify(sourceSession)&&(!identity||connectionController.getSelectedConversationId()===identity.conversationId);
       if(!settlementCurrent())return;
+      // The agent chose not to reply: no empty bubble, the sent message keeps its saved identity.
+      if(reply.ignored&&!reply.proposals?.length&&!reply.completedActions?.length&&!reply.completedReads?.length){
+        await new Promise<void>(resolve=>this.setState((previous:Shell)=>settlementCurrent()?(()=>{const saved=!!reply.userMessageId&&previous.msgs.some((m:Shell)=>m.id===reply.userMessageId);return {msgs:previous.msgs.filter((m:Shell)=>m.id!==streamedId&&!(m.id===userId&&saved)).map((m:Shell)=>m.id===userId&&reply.userMessageId&&identity?{...m,id:reply.userMessageId,messageBinding:identity}:m)};})():null,resolve));
+        if(this.messageReplyTarget===replyTarget)this.messageReplyTarget=undefined;
+        this.toast('Your agent chose not to reply.');
+        return;
+      }
       // A conversation delivery can land the saved reply before this rename; keep its content and enrich only a missing plan control.
       if(streamed)this.setState((previous:Shell)=>settlementCurrent()?{msgs:reply.messageId&&previous.msgs.some((m:Shell)=>m.id===reply.messageId)?previous.msgs.filter((m:Shell)=>m.id!==streamedId).map((m:Shell)=>m.id===reply.messageId?enrichSettledAssistant(m,planCard,identity):m):previous.msgs.map((m:Shell)=>m.id===streamedId?{...m,id:reply.messageId||m.id,messageBinding:reply.messageId?identity:undefined,text:reply.text,streaming:false,...(planCard?{card:planCard}:{})}:m)}:null);else this.agentSay(reply.text,planCard,reply.messageId&&identity?{id:reply.messageId,messageBinding:identity}:undefined,settlementCurrent);
       if(reply.userMessageId&&identity)await new Promise<void>(resolve=>this.setState((previous:Shell)=>settlementCurrent()?{msgs:previous.msgs.map((m:Shell)=>m.id===userId?{...m,id:reply.userMessageId,messageBinding:identity}:m)}:null,resolve));
       if(this.messageReplyTarget===replyTarget)this.messageReplyTarget=undefined;
-      let cameraOpened=false;
+      let cameraOpened=false,cameraReceipts=0;
       if(sourceDraft&&sourceSession&&JSON.stringify(sourceSession)===JSON.stringify(connectionController.getSnapshot().session))this.agentSay('Review this answer before saving it with its source.',{type:'generic',icon:'note',title:'Review summary note',sub:sourceDraft.name,sourceSummary:{source:sourceDraft,text:reply.text,session:sourceSession}});
       for (const proposal of reply.proposals || []) {retainReadReply(this,proposal,identity,reply.userMessageId);this.agentSay(proposal.description,proposalCard(proposal));}
       for(const completed of reply.completedReads||[]){
@@ -1599,11 +1619,14 @@ export function installAgentAdapter(Component: Shell, views: Shell) {
         cameraOpened=delivered&&alphaClient.getState().context.view==='camera';
         if(delivered&&reply.userMessageId){
           const results=await connectionController.continueRequestedCamera(reply.userMessageId,new AbortController().signal);
+          cameraReceipts=results.length;
           for(const result of results)if(this.live)this.agentSay(result.summary,undefined,{id:`device-receipt:${result.proposalId}`,deviceReceipt:true});
         }
       }catch(error){if(this.live)this.toast(error instanceof Error?error.message:'Could not confirm the screen change. Check your screen.');}
+      // The camera notice is dropped only when the photo was taken (a receipt) or its review card is shown on Camera.
+      const cameraReview=cameraOpened&&alphaClient.getState().context.view==='camera'&&this.S().msgs.some((m:Shell)=>m.card?.proposalId&&!m.card.done);
       for(const notice of replyNotices(reply)){
-        if(cameraOpened&&alphaClient.getState().context.view==='camera'&&notice==='Take photo: '+CAMERA_CONTEXT_NOTICE)continue;
+        if((cameraReceipts>0||cameraReview)&&notice==='Take photo: '+CAMERA_CONTEXT_NOTICE)continue;
         this.agentSay(notice,{type:'generic',icon:'info',title:'Phone action not shown here',sub:notice,systemNotice:true,done:true});
       }
       for(const receipt of reply.completedActions||[])if(!(reply.completedReads||[]).some(read=>read.receipt.proposalId===receipt.proposalId))this.agentSay(receipt.summary,undefined,{id:`device-receipt:${receipt.proposalId}`,deviceReceipt:true});
@@ -1701,6 +1724,7 @@ export function installAgentAdapter(Component: Shell, views: Shell) {
       if(card.planAction==='plan')connectionController.openPlan();
       else if(card.planAction==='funding')connectionController.openFunding();
       else if(card.planAction==='sign-in')void connectionController.residentCloudLogin();
+      else if(card.planAction==='provider')void connectionController.recheckResidentProvider(String(message.id));
       else if(!card.checking)void recheckCloudFromCard(this,message);
       return;
     }

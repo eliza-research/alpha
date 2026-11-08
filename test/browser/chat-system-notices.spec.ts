@@ -3,11 +3,14 @@ import { test, expect, type Page } from '@playwright/test';
 // Upstream escalation notices in a restored and a live conversation. Real composer, shell adapter
 // and connection controller; only the Android IPC boundary and a remote agent are in-page
 // fixtures. Nothing leaves the page and no model is called. This is browser source evidence, not
-// emulator or device acceptance.
+// emulator or device acceptance. The collapse rules are pinned in test/system-notice-collapse.test.mjs;
+// chat-system-notices.production.spec.ts proves this case on the resident agent.
 const REMOTE = 'https://agent.example.test';
 const UPSTREAM_RUNTIME = 'Eliza needs attention. Check the connected host\'s diagnostics before trying again.';
-const ALPHA_RUNTIME = 'Part of your agent stopped working, so this reply may not arrive. Nothing was resent. Send your message again in a moment.';
-const ALPHA_BACKGROUND = 'Part of your agent stopped working. Chat can still answer, but some features may not work until it recovers.';
+const UPSTREAM_MODEL = 'Eliza cannot respond yet. Configure a model provider on the connected host in Settings.';
+const ALPHA_MODEL = 'Your agent cannot reply yet. Choose an AI provider in Settings, then send your message again.';
+const ALPHA_RUNTIME = 'Part of your agent stopped working. Send your message again in a moment.';
+const ALPHA_BACKGROUND = 'Part of your agent stopped working. Some features may not work until it recovers.';
 type Row = { role: 'user' | 'assistant'; text: string };
 
 async function remoteAgent(page: Page, rows: Row[]) {
@@ -73,29 +76,6 @@ async function connected(page: Page, rows: Row[]) {
 }
 const notice: Row = { role: 'assistant', text: UPSTREAM_RUNTIME };
 
-test('four replayed escalation notices followed by a working reply show no notice', async ({ page }) => {
-  test.setTimeout(90_000);
-  await connected(page, [notice, notice, { role: 'user', text: 'Hello agent' }, notice, notice, { role: 'assistant', text: 'Hello back' }]);
-  await expect(conversation(page).getByText('Hello back', { exact: true })).toHaveCount(1, { timeout: 20_000 });
-  await expect(conversation(page).getByText(UPSTREAM_RUNTIME, { exact: true })).toHaveCount(0);
-  await expect(conversation(page).getByText(ALPHA_RUNTIME, { exact: true })).toHaveCount(0);
-  await expect(conversation(page).getByText(ALPHA_BACKGROUND, { exact: true })).toHaveCount(0);
-});
-
-test('boot-time notices after a working reply show one calm notice, never worded as a failed send', async ({ page }) => {
-  test.setTimeout(90_000);
-  await connected(page, [{ role: 'user', text: 'Hello agent' }, { role: 'assistant', text: 'Hello back' }, notice, notice, notice, notice]);
-  await expect(conversation(page).getByText('Hello back', { exact: true })).toHaveCount(1, { timeout: 20_000 });
-  await expect(conversation(page).getByText(ALPHA_BACKGROUND, { exact: true })).toHaveCount(1);
-  await composer(page).fill('Next question');
-  await composer(page).press('Enter');
-  await expect.poll(() => fixture(page, f => f.posts), { timeout: 15_000 }).toBe(1);
-  await expect(conversation(page).getByText(ALPHA_RUNTIME, { exact: true })).toHaveCount(0);
-  await fixture(page, f => f.release('Answer.'));
-  await expect(conversation(page).getByText('Answer.', { exact: true })).toHaveCount(1, { timeout: 15_000 });
-  await expect(conversation(page).getByText(ALPHA_BACKGROUND, { exact: true })).toHaveCount(0);
-});
-
 test('notices after an unanswered message collapse to one owner-facing notice, which a later reply retires', async ({ page }) => {
   test.setTimeout(90_000);
   await connected(page, [{ role: 'user', text: 'Hello agent' }, { role: 'assistant', text: 'Hello back' }, { role: 'user', text: 'Still there?' }, notice, notice, notice, notice]);
@@ -108,4 +88,14 @@ test('notices after an unanswered message collapse to one owner-facing notice, w
   await fixture(page, f => f.release('Here now.'));
   await expect(conversation(page).getByText('Here now.', { exact: true })).toHaveCount(1, { timeout: 15_000 });
   await expect(conversation(page).getByText(ALPHA_RUNTIME, { exact: true })).toHaveCount(0);
+});
+
+test('a combined notice after an unanswered message gives one send-again step', async ({ page }) => {
+  test.setTimeout(90_000);
+  await connected(page, [{ role: 'user', text: 'Hello agent' }, { role: 'assistant', text: `${UPSTREAM_MODEL}\n---\n${UPSTREAM_RUNTIME}` }]);
+  await expect(conversation(page).getByText('Hello agent', { exact: true })).toHaveCount(1, { timeout: 20_000 });
+  await expect(conversation(page)).toContainText(ALPHA_MODEL);
+  await expect(conversation(page)).toContainText(ALPHA_BACKGROUND);
+  await expect(conversation(page)).not.toContainText(ALPHA_RUNTIME);
+  expect((await conversation(page).innerText()).match(/send your message again/gi)?.length).toBe(1);
 });

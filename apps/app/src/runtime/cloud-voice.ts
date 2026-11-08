@@ -3,7 +3,7 @@ import {browserCloudResidentEnabled} from './browser-cloud-resident';
 import {developmentCartesiaVoiceEnabled} from './development-cartesia-flag';
 import {developmentCloudVoiceEnabled} from './development-cloud-voice';
 import {markTtsPlaybackStarted,markTtsPlaybackEnded} from '../../../../.eliza/client-features/packages/ui/src/voice/tts-playback-activity.ts';
-import { playOwnedSpeech } from '../local-speech-playback';
+import { playOwnedSpeech, confirmSpeechRetirement } from '../local-speech-playback';
 import { registerPlugin } from '../platform-plugins';
 import { Capacitor, type PluginListenerHandle } from '@capacitor/core';
 import { connectionController } from './connection-ui';
@@ -25,31 +25,36 @@ export function cloudVoiceServiceLimit(error: unknown, now: number = Date.now())
 function voiceLimitMessage(limit: ServiceLimit, now: number, recording: boolean): string {
   const name = serviceNameNow(), kept = recording ? ' Your recording is kept.' : '';
   const resets = limit.resetsAt != null && limit.resetsAt > now ? new Date(limit.resetsAt).toLocaleString(undefined, { weekday: 'short', hour: 'numeric', minute: '2-digit' }) : null;
-  if (limit.kind === 'allowance-exhausted') return `Your ${name} plan's voice allowance is used up.${resets ? ` It resets ${resets}.` : limit.retryAfterMs != null ? ` It resets in ${retryDuration(limit.retryAfterMs)}.` : ''}${kept} Nothing is purchased automatically.`;
+  if (limit.kind === 'allowance-exhausted') return `Your ${name} plan's voice allowance is used up.${resets ? ` It resets ${resets}.` : limit.retryAfterMs != null ? ` It resets in ${retryDuration(limit.retryAfterMs)}.` : ''}${kept}`;
   if (limit.kind === 'subscription-required') return `${name} voice needs an active ${name} plan. Manage your plan in Settings.${kept}`;
-  if (limit.kind === 'billing-refused') return `${name} declined cloud voice for your account's billing. Check your account in Settings, then retry.${kept}`;
+  if (limit.kind === 'billing-refused') return billingRefused(name, kept);
   const wait = limit.retryAfterMs != null ? `Try again in ${retryDuration(limit.retryAfterMs)}.` : resets ? `Try again after ${resets}.` : 'Wait a moment, then try again.';
   return `${name} voice reached your plan's request limit. ${wait}${kept}`;
 }
 function serviceNameNow(): string {
   try { const environment = connectionController.getCloudEnvironment(); return environment ? cloudServiceName(environment) : 'Cloud'; } catch { return 'Cloud'; }
 }
+function billingRefused(name: string, kept: string): string { return `${name} declined voice for billing. Check your account in Settings.${kept}`; }
 
 /** Native status codes retain recovery meaning without exposing a provider response body.
- * `recording`: the caller keeps the recorded clip for an explicit retry (Notes, Transcribe). */
-export function cloudVoiceFailure(error: unknown, context: { recording?: boolean } = {}): string | null {
+ * `recording`: the caller keeps the recorded clip for an explicit retry (Notes, Transcribe).
+ * `conversation`: a chat voice turn, whose spoken message is gone when it was not sent. */
+export function cloudVoiceFailure(error: unknown, context: { recording?: boolean; conversation?: boolean } = {}): string | null {
   const direct=connectionController.getSnapshot().residentInference==='direct';
   const code = error && typeof error === 'object' && 'code' in error ? error.code : undefined;
-  if(direct&&typeof code==='string'&&/^voice-http-[45][0-9]{2}$/.test(code))return `Cartesia could not complete voice (${code.slice(-3)}). Check your own key or provider allowance; nothing was retried.`;
+  if(direct&&typeof code==='string'&&/^voice-http-[45][0-9]{2}$/.test(code))return code.startsWith('voice-http-4')?'Cartesia refused voice. Check your key and Cartesia plan.':'Cartesia isn’t responding. Try again later.';
   if(developmentCloudVoiceEnabled&&!browserCloudResidentEnabled&&(code==='voice-http-401'||code==='voice-http-403'))return 'The developer agent’s Cloud speech authorization was refused. Check its server-side Cloud configuration, then retry.';
-  if (code === 'voice-http-401' || code === 'voice-http-403') return 'Sign in to Cloud again in Settings, then retry voice.';
-  if (code === 'voice-http-402') return 'Cloud declined cloud voice for your account\'s billing. Check your account in Settings, then retry.';
+  const name = serviceNameNow(), kept = context.recording === true ? ' Your recording is kept.' : '', after = kept || (context.conversation === true ? ' Your message was not sent. Say it again.' : '');
+  if (code === 'voice-http-401') return `${name} sign-in expired. Sign in again in Settings, then retry voice.`;
+  if (code === 'voice-http-403') return `${name} refused voice for this account. Check your account in Settings.`;
+  if (code === 'voice-http-402') return billingRefused(name, kept);
   if (code === 'voice-http-429') { const now = Date.now(), limit = cloudVoiceServiceLimit(error, now); if (limit) return voiceLimitMessage(limit, now, context.recording === true); }
-  if (typeof code === 'string' && /^voice-http-[45][0-9]{2}$/.test(code)) return `Cloud voice could not complete this request (${code.slice(-3)}). Try again later.`;
+  if (typeof code === 'string' && /^voice-http-[45][0-9]{2}$/.test(code)) return `${name} voice couldn’t complete this request. Try again later.`;
   if (code === 'voice-stt-decode') return 'This recording could not be prepared for transcription. Choose Record again.';
-  if (code === 'voice-stt-connect') return 'Cloud voice could not use your saved account. Sign in again in Settings. Your recording is kept.';
-  if (code === 'voice-stt-upload') return 'The recording upload could not be confirmed. Your recording is kept. Check your connection before trying again.';
-  if (code === 'voice-stt-response') return 'Cloud voice returned no usable transcript. Your recording is kept. Try again later.';
+  if (code === 'voice-stt-connect') return `${name} voice could not use your saved account. Sign in again in Settings.${after}`;
+  if (code === 'voice-tts-connect') return `${name} voice could not use your saved account. Sign in again in Settings.`;
+  if (code === 'voice-stt-upload') return `The recording upload could not be confirmed. Check your connection.${after}`;
+  if (code === 'voice-stt-response') return `${name} voice returned no usable transcript.${after || ' Try again later.'}`;
   return null;
 }
 
@@ -148,10 +153,10 @@ export function createCloudVoice(readAloudRoute:'cloud'|'direct'='cloud') {
 }
 
 // Maps steps and workflow speech share the same speaker. A replacement waits for
-// the preceding owned cleanup, including a failure to confirm that cleanup.
+// the preceding owned cleanup; an unconfirmed cleanup must be confirmed by a native stop.
 let appSpeechRetirement:Promise<void>=Promise.resolve();
 export async function speakCloudText(text:string,signal:AbortSignal,onStarted?:()=>void,queue=false,assertCurrent?:()=>void){
-  if(developmentCloudVoiceEnabled){const previous=appSpeechRetirement;const pending=(async()=>{await previous;signal.throwIfAborted();assertCurrent?.();await createCloudVoice().speak(text,signal,onStarted,queue,assertCurrent);})();appSpeechRetirement=pending.catch(error=>{if(error?.code==='speech-cleanup-unconfirmed')throw error;});void appSpeechRetirement.catch(()=>{});await pending;return;}
+  if(developmentCloudVoiceEnabled){const previous=appSpeechRetirement;const pending=(async()=>{await confirmSpeechRetirement(previous);signal.throwIfAborted();assertCurrent?.();await createCloudVoice().speak(text,signal,onStarted,queue,assertCurrent);})();appSpeechRetirement=pending.catch(error=>{if(error?.code==='speech-cleanup-unconfirmed')throw error;});void appSpeechRetirement.catch(()=>{});await pending;return;}
 
   const ownSnapshot=connectionController.getSnapshot(),own=ownSnapshot.residentInference==='direct';
   const environment=connectionController.getCloudEnvironment(),binding=connectionController.getCloudClient(),sessionId=binding?.sessionId,credentialId=binding?.credentialId;
@@ -165,7 +170,7 @@ export async function speakCloudText(text:string,signal:AbortSignal,onStarted?:(
   const interrupted=new Promise<never>((_,reject)=>{owned.signal.addEventListener('abort',()=>{if(!admitted)reject(owned.signal.reason);},{once:true});});void interrupted.catch(()=>{});
   const changed=()=>{try{current();}catch(error){owned.abort(error);}},unsubscribe=connectionController.subscribe(changed);
   document.addEventListener('visibilitychange',changed);signal.addEventListener('abort',cancel,{once:true});window.addEventListener('alpha:device-state',retire);window.addEventListener('pagehide',retire);if(signal.aborted)cancel();changed();
-  const pending=(async()=>{await previous;current();admitted=true;let marked=false;try{await voice.speak(text,owned.signal,()=>{current();marked=true;markTtsPlaybackStarted();onStarted?.();},queue,current);current();}catch(error){const recovery=cloudVoiceFailure(error);if(recovery)throw Object.assign(new Error(recovery,{cause:error}),{code:(error as {code?:string}).code});throw error;}finally{if(marked)markTtsPlaybackEnded();}})();
+  const pending=(async()=>{await confirmSpeechRetirement(previous);current();admitted=true;let marked=false;try{await voice.speak(text,owned.signal,()=>{current();marked=true;markTtsPlaybackStarted();onStarted?.();},queue,current);current();}catch(error){const recovery=cloudVoiceFailure(error);if(recovery)throw Object.assign(new Error(recovery,{cause:error}),{code:(error as {code?:string}).code});throw error;}finally{if(marked)markTtsPlaybackEnded();}})();
   appSpeechRetirement=pending.catch(error=>{if(error?.code==='speech-cleanup-unconfirmed')throw error;});void appSpeechRetirement.catch(()=>{});
   try{await Promise.race([pending,interrupted]);}finally{unsubscribe();document.removeEventListener('visibilitychange',changed);signal.removeEventListener('abort',cancel);window.removeEventListener('alpha:device-state',retire);window.removeEventListener('pagehide',retire);}
 }

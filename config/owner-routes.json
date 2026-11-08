@@ -4,7 +4,7 @@
   "groups": {
     "records": {
       "prefixes": ["/api/notes/state", "/api/views/notes/interact", "/api/lifeops/calendar"],
-      "id": "^[A-Za-z0-9][A-Za-z0-9._:@+-]{0,511}$",
+      "id": "^[A-Za-z0-9][A-Za-z0-9._:@+_-]{0,511}$",
       "routes": [
         {"methods": ["GET"], "paths": ["/api/notes/state"]},
         {"methods": ["POST"], "paths": ["/api/views/notes/interact"]},

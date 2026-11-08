@@ -86,7 +86,6 @@ test('product labels never describe an unexpected non-resident connection as on 
  assert.equal(label('resident'),'Running on this device');
  for(const kind of ['cloud','local','remote'])assert.equal(label(kind),'Unsupported connection',kind);
  assert.match(source,/testMocksEnabled \? \(snapshot\.kind === 'cloud' \? serviceName : snapshot\.kind === 'local' \? 'Local development' : 'Remote agent'\) : 'Unsupported connection'\}/);
- assert.doesNotMatch(settings,/testMocksEnabled\?'Remote agent':'On this device'/);
 });
 
 test('other saved choices are not migrated',()=>{

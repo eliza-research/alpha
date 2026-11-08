@@ -17,8 +17,6 @@ import {newWorkflow} from './workflow-navigation';
 import { test, expect, type Page } from '@playwright/test';
 import { button, expectNoDevelopmentSurface, fenceNetwork, flagOffAndroid, harness, residentHome } from './flag-off-android';
 
-test.beforeEach(({}, testInfo) => { test.skip(testInfo.project.name !== 'production', 'Production bundle only'); });
-
 /** The resident agent's workflow routes, answered over the Agent.request bridge. */
 async function workflowAgent(page: Page) {
   await page.addInitScript(() => {

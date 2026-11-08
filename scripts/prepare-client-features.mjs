@@ -1,4 +1,6 @@
 import { createHash } from 'node:crypto';
+import { execFileSync } from 'node:child_process';
+import os from 'node:os';
 import { upstreamNativeSource } from './upstream-native-source.mjs';
 import { clientSpeechPatch } from './client-speech-patch.mjs';
 import fs from 'node:fs';
@@ -236,7 +238,7 @@ export const CLIENT_FEATURE_PATHS = [
   'packages/ui/src/components/chat/message-maps-parser.ts',
   'packages/ui/src/components/shell/dock-clearance.ts',
   'packages/ui/src/components/shell/responsive-layout.ts',
-  // Agent Maps cards in chat (maps-chat-markup.ts); an import-free parser leaf.
+  // Agent Maps cards in chat (prototype/maps-chat-adapter.ts); an import-free parser leaf.
   'packages/ui/src/components/chat/message-maps-parser.ts',
   'packages/ui/src/utils/automation-feed-filter.ts',
   'packages/ui/src/overview/daily-overview.ts',
@@ -309,13 +311,45 @@ export const CLIENT_FEATURE_PATHS = [
   // Framework-free resident Cloud binding controller (AP-04/P-22).
   'packages/auth/src/auth/cloud-resident-binding.ts',
 ];
-/** Copy authenticated upstream source outside the immutable vendor checkout. */
-export function prepareClientFeatures({ root = projectRoot, projectVoice = true } = {}) {
+/** Copy authenticated upstream source outside the immutable vendor checkout. With check, only
+ * confirm the prepared copy is current and throw instead of rebuilding it. */
+export function prepareClientFeatures({ root = projectRoot, projectVoice = true, check = false } = {}) {
   const upstream = upstreamNativeSource(root);
   const source = new Map(CLIENT_FEATURE_PATHS.flatMap(prefix => [...upstream.read(prefix)]));
   const sourceFiles = Object.fromEntries([...source].map(([name, file]) => [name, file.sha256]));
   const speechPatch=clientSpeechPatch(root,upstream);
   for(const [name,file] of speechPatch.files)source.set(name,file);
+  const clientPatches = {};
+  for (const [key, prefix, name] of [
+    ['calendarSemanticPatch', 'calendar-semantic-client', 'packages/contracts/src/calendar-linked-sync.ts'],
+  ]) {
+    const manifestFile = path.join(root, 'patches/eliza', prefix + '-manifest.json');
+    if (!regularPath(manifestFile)) continue;
+    const manifestBytes = fs.readFileSync(manifestFile), manifest = JSON.parse(manifestBytes);
+    const patchFile = path.join(root, 'patches/eliza', prefix + '.patch');
+    if (manifest.schema !== 1 || manifest.baseCommit !== upstream.pin || manifest.path !== name ||
+        !source.has(name) || manifest.beforeSha256 !== source.get(name).sha256 ||
+        !/^[a-f0-9]{64}$/.test(manifest.afterSha256) || !regularPath(patchFile))
+      throw Error(prefix + ' patch source mismatch');
+    const patchBytes = fs.readFileSync(patchFile);
+    const headers = patchBytes.toString().split('\n').filter(line => line.startsWith('--- ') || line.startsWith('+++ '));
+    if (hash(patchBytes) !== manifest.patchSha256 ||
+        JSON.stringify(headers) !== JSON.stringify(['--- a/' + name, '+++ b/' + name]))
+      throw Error(prefix + ' patch digest or target mismatch');
+    const temporary = fs.mkdtempSync(path.join(os.tmpdir(), 'alpha-client-patch-'));
+    try {
+      const target = path.join(temporary, name);
+      fs.mkdirSync(path.dirname(target), {recursive:true});
+      fs.writeFileSync(target, source.get(name).bytes);
+      execFileSync('patch', ['--batch', '--fuzz=0', '--forward', '-p1', '--input', patchFile], {cwd:temporary, stdio:'pipe', timeout:30000});
+      const bytes = fs.readFileSync(target);
+      if (hash(bytes) !== manifest.afterSha256) throw Error(prefix + ' patch output mismatch');
+      source.set(name, {bytes, mode:source.get(name).mode, sha256:manifest.afterSha256});
+      clientPatches[key] = {...manifest, manifestSha256:hash(manifestBytes)};
+    } finally { fs.rmSync(temporary, {recursive:true, force:true}); }
+  }
+
+
   if(projectVoice){
   // Upstream publishes every renderer type as a leaf entry (@elizaos/core/schema-types,
   // @elizaos/ui/api/transport, plugin-calendar auto-join-types); copied files stay byte-exact.
@@ -377,7 +411,7 @@ export function prepareClientFeatures({ root = projectRoot, projectVoice = true 
   project('alpha-voice-core-protocol.ts','export {ElizaError} from "./packages/core/src/errors";\nexport {redactTrailingArgs} from "./packages/core/src/security/log-redaction";\nexport {parseViewInteractionClientId, AGENT_SURFACE_CAPABILITY_IDS} from "./packages/core/src/views/view-interact-protocol";\nexport {findViewActionHandoff, type ViewActionHandoff} from "./packages/core/src/views/view-action-handoff";\nexport type {PermissionState} from "./packages/core/src/types/permissions";\n');
   }
   const files = Object.fromEntries([...source].map(([name, file]) => [name, file.sha256]));
-  const provenance = { baseCommit: upstream.pin, sourceFiles, projectionVersion:projectVoice?12:0, ...(speechPatch.receipt?{speechPatch:speechPatch.receipt}:{}), files };
+  const provenance = { baseCommit: upstream.pin, sourceFiles, projectionVersion:projectVoice?12:0, ...(speechPatch.receipt?{speechPatch:speechPatch.receipt}:{}), ...clientPatches, files };
   const parent = path.join(root, '.eliza'), destination = path.join(parent, 'client-features');
   regularPath(parent, true);
   const exists = regularPath(destination, true), stamp = path.join(destination, '.source.json');
@@ -385,8 +419,9 @@ export function prepareClientFeatures({ root = projectRoot, projectVoice = true 
     if (!regularPath(stamp)) throw Error('Refusing to replace an unrecognized client feature directory.');
     const previous = JSON.parse(fs.readFileSync(stamp));
     const actual = inventory(destination); delete actual['.source.json'];
-    if (previous.baseCommit === upstream.pin && previous.projectionVersion === provenance.projectionVersion && JSON.stringify(previous.speechPatch ?? null) === JSON.stringify(provenance.speechPatch ?? null) && matches(previous.files || {}, files) && matches(actual, files)) return destination;
+    if (previous.baseCommit === upstream.pin && previous.projectionVersion === provenance.projectionVersion && JSON.stringify(previous.speechPatch ?? null) === JSON.stringify(provenance.speechPatch ?? null) && JSON.stringify(previous.calendarSemanticPatch ?? null) === JSON.stringify(provenance.calendarSemanticPatch ?? null) && matches(previous.files || {}, files) && matches(actual, files)) return destination;
   }
+  if (check) throw Error('Client feature source is missing or stale: run npm run upstream:prepare-client');
   fs.mkdirSync(parent, { recursive: true });
   const temporary = fs.mkdtempSync(path.join(parent, 'client-features-stage-'));
   try {
@@ -402,6 +437,8 @@ export function prepareClientFeatures({ root = projectRoot, projectVoice = true 
     return destination;
   } finally { fs.rmSync(temporary, { force: true, recursive: true }); }
 }
+/** Check-only: the prepared copy's path when current; never writes the shared tree. */
+export const checkClientFeatures = (options = {}) => prepareClientFeatures({ ...options, check: true });
 
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
   console.log(`Client feature source prepared: ${prepareClientFeatures()}`);

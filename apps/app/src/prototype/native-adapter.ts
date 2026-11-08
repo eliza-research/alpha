@@ -4,7 +4,7 @@ import { cloudRuntimeEnabled, testMocksEnabled } from '../build-flags';
 import { Capacitor } from '@capacitor/core';
 import { DailyApps, type Action, type NativeResult } from '../daily';
 import { registerPlugin } from '../platform-plugins';
-import { connectionController, agentAvailabilityNotice, type ConnectionSnapshot } from '../runtime/connection-ui';
+import { connectionController, agentAvailabilityNotice, agentPendingText, type ConnectionSnapshot } from '../runtime/connection-ui';
 import { modelLabel } from '../runtime/local-agent';
 import { askAboutCapture } from './camera-adapter';
 import { broaderPageNotice, handoffGate, switchValue, SYSTEM_TILE_SETTINGS_PAGES, tileAccessibleName, tileFactsFromSystemFacts, tileStateText, type SystemTileFacts, type SystemTileKey } from '@elizaos/capacitor-system/settings';
@@ -36,7 +36,7 @@ export function egressPrivacy(connection: Pick<ConnectionSnapshot, 'kind' | 'ses
   }
   if (connection.session && connection.kind === 'resident' && native)
     return { big: 'Identifier swap only', sub: 'Secret and contact identifiers are swapped before hosted inference; names and free text are not covered' };
-  if (connection.session || connection.cloudAccount) return { big: 'Not reported', sub: 'Depends on the selected agent; not reported' };
+  if (connection.session || connection.cloudAccount) return { big: 'Not reported', sub: 'Depends on your agent' };
   // P-43: no session means the resident is starting or recovering, never "no agent".
   if (connection.kind === 'recovering') return { big: 'Agent not running', sub: 'No hosted inference requests until your agent is running and AI is set up' };
   if (connection.kind === 'starting') return { big: 'Agent starting', sub: 'No hosted inference requests until your agent is running and AI is set up' };
@@ -293,8 +293,8 @@ export function installPrototypeNativeAdapters(
     return labels[state] ?? state;
   }
   function activityValue(connection: ConnectionSnapshot) {
-    if (!connection.session) return 'Not connected';
-    if (!connection.phoneActionsAvailable) return 'Not reported by agent';
+    if (!connection.session) return agentPendingText(connection, 'Not connected');
+    if (!connection.phoneActionsAvailable) return 'Not reported';
     return connection.actionHistory.length ? connection.actionHistory.length + ' recorded' : 'Review';
   }
   /** Runs after every later settings adapter so fixture or placeholder facts cannot reappear. */
@@ -307,7 +307,7 @@ export function installPrototypeNativeAdapters(
     for (const page of out.stack) {
       if (!page || !Array.isArray(page.groups)) continue;
       if ((page.title === 'Models' || page.title === 'About') && model)
-        for (const group of page.groups) for (const row of group.rows || []) if (row.label === 'Inference model') { row.val = model; row.hasVal = true; }
+        for (const group of page.groups) for (const row of group.rows || []) if (row.label === 'Inference model' || row.label === 'AI model') { row.val = model; row.hasVal = true; }
       if (st.page === 'privacy' && st.log && page.title === 'Activity') {
         const sessionId = connection.session?.sessionId ?? null;
         // Reading history is an explicit step. Progress and errors appear in the connection panel;
@@ -336,7 +336,7 @@ export function installPrototypeNativeAdapters(
         const groups: Bag[] = !connection.session
           ? [{ rows: [...(connection.kind==='starting'?[]:[info(connection.kind === 'recovering' ? agentAvailabilityNotice(connection) : (testMocksEnabled ? 'Connect your remote agent to see activity' : 'Activity appears on the phone that runs your agent'), '')]), nav('Your agent', () => connectionController.open())] }]
           : !connection.phoneActionsAvailable
-            ? [{ rows: [info('Phone action history', 'Not reported by agent')] }]
+            ? [{ rows: [info('Phone action history', 'Not reported')] }]
             : connection.actionHistory.length
               ? [...connection.actionHistory.map(entry => ({ rows: entryRows(entry) })), { rows: [load('Refresh phone action history')] }]
               : actionHistoryRead === sessionId

@@ -285,7 +285,7 @@ test(`browser batch: ${failing===ACK?'an ack whose Cloud speech request fails is
   t.f.releaseReply();for(let i=0;i<10;i++)await t.clock.flush();
   assert.deepEqual(t.texts(),[ACK,REPLY]);
   if(failing===ACK)assert.notEqual(t.f.renderChat()?.state,'error');
-  else{assert.equal(t.f.renderChat()?.state,'error');assert.match(t.f.renderChat()?.lines?.[0]?.t,/\(502\)/);}
+  else{assert.equal(t.f.renderChat()?.state,'error');assert.match(t.f.renderChat()?.lines?.[0]?.t,/voice couldn’t complete this request\. Try again later\.$/);}
  }finally{await closeBatch(t);}
 });
 
@@ -1270,11 +1270,10 @@ async function lateCut({ack,fullDuplex,where,words,firstAudio}){
  }finally{await closeLive(f);}
 }
 for(const ack of [true,false])for(const fullDuplex of [true,false])for(const where of ack?['the ack','its tail']:['its tail'])for(const words of ack?[ECHO,CORRECTION]:[CORRECTION])for(const firstAudio of [300,550,1000]){
- // Keep every ACK/duplex/timing/word combination; all callbacks originate on the closed handle.
- const cut=false; // The capture is closed before send: neither a timer nor a stale final can cut this reply.
- const correction=false; // Both correction and echo here come from the retired capture.
- test(`closed busy capture, delayed final audio: ${ack?'with the ack':'with no ack'}${fullDuplex?'':', without echo cancellation'}: ${words===ECHO?'the ack\'s echo':'a correction'} starting ${ack?'in '+where:'as it would in the ack\'s tail'}, the turn answered 300 ms later, the reply's first audio ${firstAudio} ms after the answer: ${cut?'cut before its first audio':'first audio plays'}, ${correction||cut?'the reply is not played out':'the reply plays out'}, ${correction?'the correction is sent':'nothing is sent'}`,async()=>{
-  assert.deepEqual(await lateCut({ack,fullDuplex,where,words,firstAudio}),{cutBeforeFirstAudio:cut,replyPlayedOut:!cut&&!correction,sent:correction?[CORRECTION]:[]});
+ // Every ACK/duplex/timing/word combination has one outcome: the capture is closed before send, so
+ // neither a timer nor a stale final (echo or correction, both from the retired capture) cuts the reply.
+ test(`closed busy capture, delayed final audio: ${ack?'with the ack':'with no ack'}${fullDuplex?'':', without echo cancellation'}: ${words===ECHO?'the ack\'s echo':'a correction'} starting ${ack?'in '+where:'as it would in the ack\'s tail'}, the turn answered 300 ms later, the reply's first audio ${firstAudio} ms after the answer: first audio plays, the reply plays out, nothing is sent`,async()=>{
+  assert.deepEqual(await lateCut({ack,fullDuplex,where,words,firstAudio}),{cutBeforeFirstAudio:false,replyPlayedOut:true,sent:[]});
  });
 }
 // At Mute the retired handle reports speech and a delayed final; the manual flag stays off through reply drain.
@@ -1292,9 +1291,9 @@ async function muteCut({ack,fullDuplex,words,finalAt}){
  }finally{await closeLive(f);}
 }
 for(const ack of [true,false])for(const fullDuplex of [true,false])for(const words of ack?[ECHO,CORRECTION]:[CORRECTION])for(const finalAt of [300,550,1000]){
- const cut=false,correction=false; // Mute during a hold cannot revive the retired capture or submit its final.
- test(`closed busy capture at Mute, delayed final: ${ack?'with the ack':'with no ack'}${fullDuplex?'':', without echo cancellation'}: ${words===CORRECTION?'a correction':'the ack\'s echo'} reported on the closed handle at Mute while the turn is pending, its final ${finalAt} ms after Mute: ${cut?'the turn is cut by time before the final':'the turn waits for the final'}; ${correction?'the correction is sent':cut?'nothing is sent and the turn is lost':'the reply is spoken'}`,async()=>{
-  assert.deepEqual(await muteCut({ack,fullDuplex,words,finalAt}),{cutBeforeFinal:cut,aborted:cut||correction,replied:!cut&&!correction,sent:correction?[CORRECTION]:[]});
+ // Mute during a hold cannot revive the retired capture or submit its final, at any final delay.
+ test(`closed busy capture at Mute, delayed final: ${ack?'with the ack':'with no ack'}${fullDuplex?'':', without echo cancellation'}: ${words===CORRECTION?'a correction':'the ack\'s echo'} reported on the closed handle at Mute while the turn is pending, its final ${finalAt} ms after Mute: the turn waits for the final; the reply is spoken`,async()=>{
+  assert.deepEqual(await muteCut({ack,fullDuplex,words,finalAt}),{cutBeforeFinal:false,aborted:false,replied:true,sent:[]});
  });
 }
 
@@ -1333,9 +1332,7 @@ test('the ack is folded into the voice adapter: no cue module, and only the clip
 // once, also with nothing heard (idle); nothing reopens either way. The closed capture still
 // hears the socket's end (the bridge keeps the last listen as its lifecycle observer), so a
 // transport, expiry, protocol or owner failure during the hold ends the turn at once, also while
-// the ack is refused. A refusal alone, on a healthy socket, stays silence. These rows need a
-// projected shared session with the hold; the pinned one predates it.
-const busyHold={}; // Mandatory paired tests: the suite prerequisite rejects a legacy projection.
+// the ack is refused. A refusal alone, on a healthy socket, stays silence.
 const holdFaults=[
  ['a transport failure',f=>f.n.fail('connection-lost'),'error'],
  ['expiry',f=>f.n.fail('expired'),'error'],
@@ -1349,7 +1346,7 @@ const holdStages=[
  ['before the final reply',async(f,input)=>{progress(input);await f.clock.flush();f.n.audioStart();f.n.complete();await f.clock.flush();assert.deepEqual(f.n.spoken,[ACK]);}],
 ];
 for(const [stage,before] of holdStages)for(const [fault,act,ended] of holdFaults)
-test(`busy hold over the speech socket: ${fault} after the capture's confirmed close, ${stage}, ends the turn and the conversation at once`,busyHold,async()=>{
+test(`busy hold over the speech socket: ${fault} after the capture's confirmed close, ${stage}, ends the turn and the conversation at once`,async()=>{
  const f=socketFixture(),n=f.n,seen=watchReply(f);
  try{
   const input=await socketTurn(f);
@@ -1365,7 +1362,7 @@ test(`busy hold over the speech socket: ${fault} after the capture's confirmed c
  }finally{await closeSocket(f);}
 });
 
-test('busy hold over the speech socket: an ack refused on a healthy socket is silence; the reply plays and the capture reopens once after it',busyHold,async()=>{
+test('busy hold over the speech socket: an ack refused on a healthy socket is silence; the reply plays and the capture reopens once after it',async()=>{
  const f=socketFixture(),n=f.n,seen=watchReply(f);n.refuse=text=>text===ACK;
  try{
   const input=await socketTurn(f);
@@ -1380,7 +1377,7 @@ test('busy hold over the speech socket: an ack refused on a healthy socket is si
  }finally{await closeSocket(f);}
 });
 
-test('busy hold over the speech socket: a deferred close sends nothing, so no ack plays, until the native mute confirmed it',busyHold,async()=>{
+test('busy hold over the speech socket: a deferred close sends nothing, so no ack plays, until the native mute confirmed it',async()=>{
  const f=socketFixture(),n=f.n;let confirm;n.closeMute=()=>new Promise(resolve=>confirm=resolve);
  try{
   await f.shell.startVoice();await f.clock.flush();
@@ -1395,7 +1392,7 @@ test('busy hold over the speech socket: a deferred close sends nothing, so no ac
  }finally{await closeSocket(f);}
 });
 
-test('busy hold over the speech socket: a close the native mute refuses ends the conversation; nothing is sent, spoken or reopened',busyHold,async()=>{
+test('busy hold over the speech socket: a close the native mute refuses ends the conversation; nothing is sent, spoken or reopened',async()=>{
  const f=socketFixture(),n=f.n;n.closeMute=async()=>{throw Error('Voice is closed');};
  try{
   await f.shell.startVoice();await f.clock.flush();
@@ -1408,7 +1405,7 @@ test('busy hold over the speech socket: a close the native mute refuses ends the
 
 // The bridge's one 2.5 s close bound covers the native mute too: a mute it never answers rejects
 // the close, which ends the conversation with the microphone error; nothing is sent or reopened.
-test('busy hold over the speech socket: a close the native mute does not answer ends the conversation at the bridge bound; nothing is sent, spoken or reopened',busyHold,async()=>{
+test('busy hold over the speech socket: a close the native mute does not answer ends the conversation at the bridge bound; nothing is sent, spoken or reopened',async()=>{
  const f=socketFixture(),n=f.n;n.closeMute=()=>new Promise(()=>{});
  try{
   await f.shell.startVoice();await f.clock.flush();
@@ -1424,7 +1421,7 @@ test('busy hold over the speech socket: a close the native mute does not answer 
 // Mute mid-speech finalizes the utterance; the turn is submitted after the gap. A Mute close that
 // fails before that (at once), or a socket end once the Mute close is confirmed, ends the
 // conversation instead of sending a turn the closed or dead input cannot answer.
-test('busy hold over the speech socket: Mute mid-speech, the final arrives, the native mute refuses and the socket fails before the gap: nothing is sent',busyHold,async()=>{
+test('busy hold over the speech socket: Mute mid-speech, the final arrives, the native mute refuses and the socket fails before the gap: nothing is sent',async()=>{
  const f=socketFixture(),n=f.n;let refuse;n.closeMute=()=>new Promise((_,reject)=>refuse=reject);
  try{
   await f.shell.startVoice();await f.clock.flush();
@@ -1439,7 +1436,7 @@ test('busy hold over the speech socket: Mute mid-speech, the final arrives, the 
 });
 
 for(const [fault,code] of [['a transport failure','connection-lost'],['expiry','expired']])
-test(`busy hold over the speech socket: Mute mid-speech, the mute confirmed with the final in, then ${fault} before the gap: nothing is sent`,busyHold,async()=>{
+test(`busy hold over the speech socket: Mute mid-speech, the mute confirmed with the final in, then ${fault} before the gap: nothing is sent`,async()=>{
  const f=socketFixture(),n=f.n;
  try{
   await f.shell.startVoice();await f.clock.flush();
@@ -1453,7 +1450,7 @@ test(`busy hold over the speech socket: Mute mid-speech, the mute confirmed with
  }finally{await closeSocket(f);}
 });
 
-test('busy hold on-device: Mute mid-speech, the final arrives, the Mute close rejects before the gap: nothing is sent, spoken or reopened',busyHold,async()=>{
+test('busy hold on-device: Mute mid-speech, the final arrives, the Mute close rejects before the gap: nothing is sent, spoken or reopened',async()=>{
  const f=onDeviceLiveFixture();let reject,closes=0,listens=0;
  f.box.nativeAssistantListener=()=>async input=>{listens++;f.s.handlers=input;return {fullDuplex:true,close:()=>{closes++;return closes===1?new Promise((_,no)=>reject=no):Promise.resolve();},cancel:async()=>{}};};
  try{
@@ -1576,7 +1573,7 @@ for(const [how,closeMute,boundMs,unmuteAtMs] of [
  ['never answers',()=>new Promise(()=>{}),2500],
  ['never answers, Unmute pressed while it is pending,',()=>new Promise(()=>{}),2500,1000],
 ])
-test(`busy hold over the speech socket: an idle Mute whose native mute ${how} ends the conversation once; the socket stops once, nothing reopens or is sent`,busyHold,async()=>{
+test(`busy hold over the speech socket: an idle Mute whose native mute ${how} ends the conversation once; the socket stops once, nothing reopens or is sent`,async()=>{
  const f=socketFixture(),n=f.n;
  try{
   await f.shell.startVoice();await f.clock.flush();n.closeMute=closeMute;
@@ -1597,7 +1594,7 @@ test(`busy hold over the speech socket: an idle Mute whose native mute ${how} en
  }finally{await closeSocket(f);}
 });
 
-test('busy hold over the speech socket: an idle Mute the native mute confirms stays quiet; Unmute reopens the socket capture and the next turn is sent',busyHold,async()=>{
+test('busy hold over the speech socket: an idle Mute the native mute confirms stays quiet; Unmute reopens the socket capture and the next turn is sent',async()=>{
  const f=socketFixture(),n=f.n;let confirm;n.closeMute=()=>new Promise(resolve=>confirm=resolve);
  try{
   await f.shell.startVoice();await f.clock.flush();
@@ -1610,7 +1607,7 @@ test('busy hold over the speech socket: an idle Mute the native mute confirms st
  }finally{await closeSocket(f);}
 });
 
-test('busy hold over the speech socket: Mute while the capture reopens after the reply, its native mute refused: the conversation ends once; nothing reopens or is sent again',busyHold,async()=>{
+test('busy hold over the speech socket: Mute while the capture reopens after the reply, its native mute refused: the conversation ends once; nothing reopens or is sent again',async()=>{
  const f=socketFixture(),n=f.n;
  try{
   await socketTurn(f);
@@ -1627,7 +1624,7 @@ test('busy hold over the speech socket: Mute while the capture reopens after the
  }finally{await closeSocket(f);}
 });
 
-test('busy hold over the speech socket: Stop while an idle Mute waits for the native mute retires the socket at once and resolves at the bridge bound with no error',busyHold,async()=>{
+test('busy hold over the speech socket: Stop while an idle Mute waits for the native mute retires the socket at once and resolves at the bridge bound with no error',async()=>{
  const f=socketFixture(),n=f.n;n.closeMute=()=>new Promise(()=>{});
  try{
   await f.shell.startVoice();await f.clock.flush();
@@ -1641,7 +1638,7 @@ test('busy hold over the speech socket: Stop while an idle Mute waits for the na
  }finally{await closeSocket(f);}
 });
 
-test('busy hold on-device: an idle Mute whose close rejects ends the conversation once; Unmute reopens nothing and nothing is sent',busyHold,async()=>{
+test('busy hold on-device: an idle Mute whose close rejects ends the conversation once; Unmute reopens nothing and nothing is sent',async()=>{
  const f=onDeviceLiveFixture();let reject,closes=0,cancels=0,listens=0;
  f.box.nativeAssistantListener=()=>async input=>{listens++;f.s.handlers=input;return {fullDuplex:true,close:()=>{closes++;return new Promise((_,no)=>reject=no);},cancel:async()=>{cancels++;}};};
  try{

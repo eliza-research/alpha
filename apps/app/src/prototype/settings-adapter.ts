@@ -8,12 +8,12 @@ import {openNotificationRecovery} from '../browser/notification-recovery';
 import {openAlertSoundRecovery,openDevicePreferencesRecovery,openDeviceRolesRecovery} from '../browser/preference-recovery';
 import {notificationDocument} from '../browser/notification-store';
 import {alertSoundDocument,deviceRolesDocument} from '../browser/preference-documents';
-import {cachedDevicePreferences,initializeDevicePreferences,editDevicePreferences,readDevicePreferences} from '../browser/device-preferences';
+import {cachedDevicePreferences,devicePreferencesStatus,initializeDevicePreferences,editDevicePreferences,readDevicePreferences} from '../browser/device-preferences';
 import { registerPlugin } from '../platform-plugins';
 import { broaderPageNotice, switchValue } from './native-adapter';
 import { Capacitor } from '@capacitor/core';
 import { DailyApps } from '../daily';
-import { connectionController } from '../runtime/connection-ui';
+import { agentPendingText, connectionController } from '../runtime/connection-ui';
 import {googleConnectionController} from '../runtime/google-connection-ui';
 import {GOOGLE_ACCOUNTS_CHANGED,googleDisconnectConfirmation,googleDisconnectMessage} from '../runtime/google-accounts';
 import { browserLocalAgentEnabled, modelLabel } from '../runtime/local-agent';
@@ -31,7 +31,7 @@ import { readNativeCloudStreamTiming } from '../runtime/cloud-voice';
 import { listenerStatus, openListenerSettings, pauseListener, turnOffListener, wakeListeningStopUnconfirmed, type ListenerStatus } from '../runtime/always-on-listener';
 import { reviewDataReset, type DataResetPlugin } from '@elizaos/capacitor-system/reset';
 import { androidRoleLabel, parseRoleStatuses } from '@elizaos/capacitor-system/settings';
-import { leavePasswordManager, passwordEntryPage, passwordManagerGroups, passwordManagerLifecycle, refreshPasswordManager, PASSWORD_PAGES } from '../passwords/password-manager';
+import { leavePasswordEntry, leavePasswordManager, passwordEntryPage, passwordManagerGroups, passwordManagerLifecycle, refreshPasswordManager, PASSWORD_PAGES } from '../passwords/password-manager';
 
 type Bag = Record<string, any>;
 type PhotoAccess = {scope:'full'|'partial'|'selected'|'denied';images:string;videos:string};
@@ -70,6 +70,8 @@ async function loadLicenses(changed: () => void) {
   } catch { licenses = { status: 'unavailable', items: [] }; }
   changed();
 }
+/** Native reset results that only echo the owner's own cancel (DataResetCopy); nothing else is hidden. */
+const RESET_CANCEL_TEXTS = new Set(['Reset review closed. Nothing reset.', 'Nothing reset.', 'Reset cancelled. Nothing reset.']);
 type RecoveryDomain = 'notifications' | 'device settings' | 'device roles' | 'alert sound history';
 const recoveryActions: Record<RecoveryDomain, { label: string; open: () => void }> = {
   notifications: { label: 'Recover notification data', open: openNotificationRecovery },
@@ -238,6 +240,12 @@ function checkForUpdate(force: boolean): Promise<void> | undefined {
 export function installSettingsAdapter(Component: any, views: Bag) {
   const definition = views.settings, render = definition.render, p = Component.prototype;
   const mount = p.componentDidMount, unmount = p.componentWillUnmount, openView = p.openView, update = p.componentDidUpdate;
+  // Android Back on New or Edit password returns to the unlocked list, like the page's own Back.
+  const back = definition.back;
+  definition.back = (st: Bag, api: Bag) => {
+    if (st.page === 'password-entry' && !st.sheet) { leavePasswordEntry(); api.set({ page: 'password-provider' }); return true; }
+    return back?.(st, api) ?? false;
+  };
   let owner: any, facts: Bag = {}, controls: Bag = {}, delivery: Bag = {}, generation = 0,scaleGeneration=0, cross:Bag={}, choices:Bag[]|null=null, history:Bag[]|null=null, notificationBusy=false;
   let passwordOpening=false,photoAccessBusy=false;
   let photoAccess:PhotoAccess|null=null;
@@ -249,7 +257,7 @@ export function installSettingsAdapter(Component: any, views: Bag) {
   let crashLog: CrashLog | null = null, crashBusy = false, diagnosticsBusy = false;
   let updateBusy: '' | 'check' | 'install' = '';
   let gmail = 'Not checked';
-  let inferenceProvider = 'Not reported by agent';
+  let inferenceProvider = 'Not reported';
   // The AOSP image's always-on listener (#424): status, Pause and Turn off only. Turning listening on
   // or resuming happens in the listener's own consent screen, never here.
   let listener: ListenerStatus = { available: false }, listenerBusy = false, listenerSequence = 0;
@@ -282,12 +290,12 @@ export function installSettingsAdapter(Component: any, views: Bag) {
     capabilityAbort?.abort();
     // Hidden Settings must not turn a Home cache restore or account switch into remote discovery.
     if(!enteringSettings&&owner?.S?.().view!=='settings'){
-      capabilityAbort=null;gmailAccounts=[];gmail='Not checked';inferenceProvider='Not reported by agent';return;
+      capabilityAbort=null;gmailAccounts=[];gmail='Not checked';inferenceProvider='Not reported';return;
     }
     const abort = capabilityAbort = new AbortController();
     const cloud = connectionController.getCloudClient(), instance = owner;
     gmail = cloud ? 'Checking authorization…' : 'Cloud sign-in required'; gmailAccounts = [];
-    inferenceProvider = 'Not reported by agent';
+    inferenceProvider = 'Not reported';
     changed();
     const timeout = setTimeout(() => { abort.abort(); if (owner === instance && capabilityAbort === abort) { if (gmail === 'Checking authorization…') gmail = 'Authorization not verified'; changed(); } }, 10000);
     try {
@@ -306,7 +314,7 @@ export function installSettingsAdapter(Component: any, views: Bag) {
             const status = await agent.request('/api/status', undefined, abort.signal);
             if (abort.signal.aborted || owner !== instance || capabilityAbort !== abort || connectionController.getBrowserSpeechAgent() !== agent) return;
             // This field reports the provider, not a specific model or a Cloud account.
-            inferenceProvider = status.state === 'running' && status.model === 'cerebras' ? 'Cerebras' : 'Not reported by agent';
+            inferenceProvider = status.state === 'running' && status.model === 'cerebras' ? 'Cerebras' : 'Not reported';
           } catch { /* Keep unverified runtime information explicitly unknown. */ }
         })(),
         (async () => {
@@ -392,7 +400,6 @@ export function installSettingsAdapter(Component: any, views: Bag) {
       if (native) {
         const result = await device.shareDiagnostics({ text });
         if (result?.status !== 'opened') throw Error('Share unconfirmed');
-        if (owner === instance) api.toast('Choose where to share the diagnostics. They contain no notes, keys or account IDs.');
       } else {
         const url = URL.createObjectURL(new Blob([text], { type: 'application/json' }));
         const link = document.createElement('a'); link.href = url; link.download = diagnosticsFileName(report); link.hidden = true;
@@ -525,11 +532,13 @@ export function installSettingsAdapter(Component: any, views: Bag) {
     out.accountEmail=account?(account.email||'Signed in'):'Not signed in';
     out.openAccount=()=>{activeSettingsCategory='settings-account';api.set({page:'settings-account'});};
     const serviceName = cloudServiceName(connectionController.getCloudClient()?.client.environment ?? account?.environment ?? connection.signIn?.environment ?? 'production');
-    const target = connection.session ? connection.name : 'Not connected';
-    const runtimeLocation=!connection.session?'Not connected':connection.kind==='resident'?(Capacitor.isNativePlatform()?'On this device':'On this computer · development'):testMocksEnabled?'Remote agent':'Unsupported connection';
+    // The always-present resident is starting or recovering, never "not connected" (P-43).
+    const pending = agentPendingText(connection, 'Not connected');
+    const target = connection.session ? connection.name : pending;
+    const runtimeLocation=!connection.session?pending:connection.kind==='resident'?(Capacitor.isNativePlatform()?'On this device':'On this computer · development'):testMocksEnabled?'Remote agent':'Unsupported connection';
     // About and Models read the model the resident reports the same way, so the two pages agree.
     const residentProvider=connection.kind==='resident'&&connection.session?connection.providerStatus:null;
-    const inferenceModel=residentProvider?.configured&&residentProvider.model?modelLabel(residentProvider.provider==='elizacloud'?serviceName:'Cerebras',residentProvider.model):'Not reported by agent';
+    const inferenceModel=residentProvider?.configured&&residentProvider.model?modelLabel(residentProvider.provider==='elizacloud'?serviceName:'Cerebras',residentProvider.model):'Not reported';
     const cloudLabel = account ? account.email||`Account ${account.userId.slice(0, 8)}` : 'Not signed in';
     const manage = (page: string) => () => void device.openSettings({ page }).then(opened => { const notice = broaderPageNotice(page, opened); if (notice) api.toast(notice); }, () => api.toast('This Android settings page is unavailable.'));
     const info = (label: string, val: string, id = label): Bag => ({ id, kInfo: true, label, val, hasVal: true, noAB: true });
@@ -539,7 +548,7 @@ export function installSettingsAdapter(Component: any, views: Bag) {
     const run = async (task:()=>Promise<void>)=>{if(notificationBusy)return;notificationBusy=true;changed();const current=owner;try{await task();if(owner===current)await refresh();}catch{if(owner===current)api.toast('Notification settings changed or are unavailable. Refresh and try again.');}finally{notificationBusy=false;if(owner===current)changed();}};
     // Speech follows the explicit production runtime profile; developer routes stay separate.
     const speechRows = (): Bag[] => [
-      info('Speech', connection.residentInference==='direct'?(connection.providerStatus?.voiceConfigured?'Cartesia · own API key':'Off · add a Cartesia key'):developmentCartesiaVoiceEnabled?'Cartesia · development':cloudRuntimeEnabled?`${serviceName} · Cartesia output (uses your plan)`:testMocksEnabled?`${serviceName} (counts toward your plan)`:'On this device'),
+      info('Speech', connection.residentInference==='direct'&&connection.providerStatus?.voiceConfigured?'Cartesia · own API key':connection.residentInference==='direct'&&(cloudRuntimeEnabled||testMocksEnabled)?'Off · add a Cartesia key':developmentCartesiaVoiceEnabled?'Cartesia · development':cloudRuntimeEnabled?`${serviceName} · Cartesia output (uses your plan)`:testMocksEnabled?`${serviceName} (counts toward your plan)`:'On this device'),
       ...(cloudRuntimeEnabled&&!developmentCartesiaVoiceEnabled&&connection.residentInference!=='direct'
         ? [note('Voice privacy', `Microphone audio and reply text go to ${serviceName}.`)]
         : []),
@@ -586,8 +595,8 @@ export function installSettingsAdapter(Component: any, views: Bag) {
         const selection:Bag={proton:provider.installation==='installed'?'Proton Pass selected':provider.installation==='disabled'?'Proton Pass selected · app disabled':'Provider package selected · publisher not verified',other:'Another provider selected',none:'No provider selected',unknown:'Selection unavailable'};
         const passwordAction=(label:string,kind:string):Bag=>({kNav:true,label,lbl:passwordOpening?'Opening…':label,chev:true,noAB:true,go:async()=>{
           if(passwordOpening)return;passwordOpening=true;const instance=owner;changed();
-          try{const result=await device.openPasswordProvider({action:kind});if(result?.status!=='opened')throw Error('Unconfirmed provider handoff');if(owner===instance&&result.destination!=='development')api.toast(result.destination==='system-settings'?'Opened Android settings. Search for passwords or autofill, then choose your provider.':'Opened provider setup. Complete or cancel there; no change is confirmed yet.');}
-          catch{if(owner===instance)api.toast('Password provider setup is unavailable. No provider change is confirmed.');}
+          try{const result=await device.openPasswordProvider({action:kind});if(result?.status!=='opened')throw Error('Unconfirmed provider handoff');}
+          catch{if(owner===instance)api.toast('Password provider setup is unavailable.');}
           finally{passwordOpening=false;if(owner===instance){changed();void refresh();}}
         }});
         const passwordGroup=group(browserDevProfile?[
@@ -602,7 +611,7 @@ export function installSettingsAdapter(Component: any, views: Bag) {
           native?info('Autofill',provider.support==='available'?'Available on this device':provider.support==='unavailable'?'Unavailable for this device or user':'Availability not checked'):note('Autofill','Use your browser’s password settings'),
           note('Vault','Confirm unlock, saved passwords and filling in your provider.'),
           note('Compatibility','Proton may show a browser warning. Check the website address before filling.'),
-          ...(native?[passwordAction('Choose password provider in Android','settings'),...(provider.installation==='installed'?[passwordAction('Open Proton Pass','open')]:provider.installation==='absent'?[passwordAction('Get Proton Pass from Proton','install')]:[]),{kNav:true,label:'Refresh password provider status',lbl:'Refresh password provider status',chev:true,noAB:true,go:()=>void refresh()}]:[]),
+          ...(native?[{...passwordAction('Choose password provider in Android','settings'),hasSub:true,sub:'In Android, search for passwords or autofill'},...(provider.installation==='installed'?[passwordAction('Open Proton Pass','open')]:provider.installation==='absent'?[passwordAction('Get Proton Pass from Proton','install')]:[]),{kNav:true,label:'Refresh password provider status',lbl:'Refresh password provider status',chev:true,noAB:true,go:()=>void refresh()}]:[]),
         ]);
         if(native){
           const photoAction=(label:string,go:()=>void):Bag=>({kNav:true,label,lbl:label,chev:true,noAB:true,go});
@@ -650,14 +659,18 @@ export function installSettingsAdapter(Component: any, views: Bag) {
 
         }
         // calendar-settings:end
+        // Only performRequested reads this preference: canonical Notes writes and in-app navigation are
+        // not reviewed (docs/decisions.md, November 6). Unreadable preferences never draw as Off.
+        const preferences=devicePreferencesStatus();
         page.groups.push(group([{
           kTog:true,label:'Review phone actions first',aria:'Review phone actions first',hasSub:true,
-          sub:'Ask before Alpha creates notes, opens apps or uses your camera and photos.',
-          on:cachedDevicePreferences()?.askBeforeAgentActions===true,
-          track:cachedDevicePreferences()?.askBeforeAgentActions?'background:var(--acc)':'background:var(--line)',
-          kx:cachedDevicePreferences()?.askBeforeAgentActions?20:0,
-          toggle:async()=>{const saved=cachedDevicePreferences();if(!saved)return;try{await editDevicePreferences(value=>{value.askBeforeAgentActions=!saved.askBeforeAgentActions;});changed();}catch{api.toast('Could not save action preference. Try again.');}}
-        }]));
+          sub:preferences==='loading'?'Loading…':preferences==='unavailable'?'Unavailable. Alpha asks before every action.':'Covers opening websites, browser controls, taking photos and choosing photos. Notes Alpha writes and screens it opens are not reviewed; deleted notes stay in Trash for 3 days. Calendar changes are handled separately.',
+          on:preferences!=='ready'||cachedDevicePreferences()?.askBeforeAgentActions!==false,
+          track:preferences!=='ready'||cachedDevicePreferences()?.askBeforeAgentActions!==false?'background:var(--acc)':'background:var(--line)',
+          kx:preferences!=='ready'||cachedDevicePreferences()?.askBeforeAgentActions!==false?20:0,
+          dis:preferences!=='ready',
+          toggle:async()=>{const saved=cachedDevicePreferences();if(!saved){if(devicePreferencesStatus()==='unavailable')api.toast('Action preference couldn’t be read. Alpha asks before every action until it is fixed.');return;}try{await editDevicePreferences(value=>{value.askBeforeAgentActions=!saved.askBeforeAgentActions;});changed();}catch{api.toast('Could not save action preference. Try again.');}}
+        },...(preferences==='unavailable'?[{kNav:true,label:'Recover device settings',lbl:'Recover device settings',hasSub:true,sub:'Back up before resetting',chev:true,noAB:true,go:()=>openDevicePreferencesRecovery()}]:[])]));
         page.groups.push(group([{kNav:true,label:'Password manager',lbl:'Password manager',chev:true,noAB:true,go:()=>api.set({page:'password-provider'})}]));
         if(PASSWORD_PAGES.includes(state.page)){
           const helpers={info,group,toast:(message:string)=>api.toast(message),set:(patch:Bag)=>api.set(patch),ic:api.ic||{}};
@@ -709,7 +722,7 @@ export function installSettingsAdapter(Component: any, views: Bag) {
           const rows:Bag[]=[info('Status',reason?residentRecoveryCopy(reason,recovery):connection.session?'Alpha is running.':'Restart status is unavailable.')];
           if(reason)rows.push(info('Reason',reason));
           if(recovery)rows.push(info('Stage',recovery.step));
-          if(recovery?.step==='review')rows.push(info('Startup records to keep',String(recovery.review.retainedCount)));
+          if(recovery?.step==='review')rows.push(info('Saved items to keep',String(recovery.review.retainedCount)));
           out.stack.push({isTop:false,notTop:true,cls:'enter',z:4,title:'Restart details',hasTitle:true,backLabel:'Back to Agent connection',back:()=>api.set({page:'agent-connection'}),hero:{},groups:[group(rows)]});
         }
         if(native&&!testMocksEnabled&&state.page==='agent-connection'){
@@ -720,6 +733,9 @@ export function installSettingsAdapter(Component: any, views: Bag) {
             agentRows.push(info('Status',residentRecoveryCopy(connection.residentRecoveryReason,connection.residentRecovery)));
             if(connection.residentRecoveryReason==='ipc-recovery-retention-limit'&&!connection.busy)
               agentRows.push(action('Restart Alpha',()=>void connectionController.restartRecovery()));
+            // The Status row says to restart the phone. No Retry: these refusals exist to stop repeated starts.
+            else if(connection.residentRecoveryReason!=='ipc-recovery-retention-limit')
+              agentRows.push({...diagnosticsRow(),sub:'If Alpha still can’t start. Contains no notes, keys or account IDs.'});
             if(developerTools)agentRows.push(action('Details',()=>api.set({page:'agent-recovery-details'})));
           }else if(!connection.busy)agentRows.push(action(connection.session?'Reconnect agent':'Retry',()=>void connectionController.startLocal()));
           if(connection.busy){
@@ -728,7 +744,7 @@ export function installSettingsAdapter(Component: any, views: Bag) {
           }
           const groups:Bag[]=[group(agentRows)];
           if(connection.session){
-            const historyRows=[info('Conversation history','Load from this agent only. Restoring replaces the visible chat and draft; it does not run past actions.')];
+            const historyRows=[info('Conversation history','Restoring replaces this chat and draft. Past actions don’t run again.')];
             if(!connection.busy){
               historyRows.push(action('New conversation',()=>void connectionController.newConversation()),action('Load conversations',()=>void connectionController.listHistory()));
               for(const item of connection.conversations)historyRows.push(action(`Restore conversation: ${item.title}`,()=>void connectionController.restoreHistory(item.id),`conversation:${item.id}`));
@@ -737,7 +753,7 @@ export function installSettingsAdapter(Component: any, views: Bag) {
             groups.push(group(historyRows));
           }
           if(connection.session&&connection.phoneActionsAvailable){
-            const refreshRows=connection.busy?[info('Phone action history','Please wait…')]:[action('Refresh actions',()=>void connectionController.actionHistory()),action('Sync recorded receipts',()=>void connectionController.actionHistory(true))];
+            const refreshRows=connection.busy?[info('Phone action history','Please wait…')]:[action('Refresh actions',()=>void connectionController.actionHistory()),action('Check with agent',()=>void connectionController.actionHistory(true))];
             groups.push(group(refreshRows));
             for(const item of connection.actionHistory){
               const rows=[info(item.title,item.outcome+(item.timestamp?` · ${item.timestamp}`:''),`action:${item.id}:status`)];
@@ -753,14 +769,16 @@ export function installSettingsAdapter(Component: any, views: Bag) {
         }
         if(native)page.groups.push(group([{kNav:true,label:'Reset Alpha data',lbl:'Reset Alpha data',sub:'Erase local Alpha data · device unlock required',hasSub:true,chev:true,noAB:true,go:async()=>{
           // Shared native review (@elizaos/capacitor-system/reset): only cancelled or unavailable reach here.
-          api.toast((await reviewDataReset(registerPlugin<DataResetPlugin>('AlphaReset'))).message);
+          // A plain cancel needs no toast; an expired review or missing authentication still says so.
+          const result=await reviewDataReset(registerPlugin<DataResetPlugin>('AlphaReset'));
+          if(result.status!=='cancelled'||!RESET_CANCEL_TEXTS.has(result.message))api.toast(result.message);
         }}]));
         if(developerTools)page.groups.push(group([{kNav:true,label:'Try mock mode',lbl:'Try mock mode',chev:true,noAB:true,go:()=>connectionController.mock()}]));
         if(developerTools&&recovery.length)page.groups.push(group([info('Saved data needs recovery','Back up before resetting'),...recovery.map(name=>({kNav:true,label:recoveryActions[name].label,lbl:recoveryActions[name].label,chev:true,noAB:true,go:()=>recoveryActions[name].open()}))]));
         if(state.page==='problems'){
           const rows=crashLog?[...crashLog.entries].reverse().map(entry=>{const line=describeCrashEntry(entry);return {id:`problem:${JSON.stringify([entry.at,entry.source,line.title,line.detail])}`,kLog:true,time:new Date(entry.at).toLocaleString(),text:`${line.title} · ${line.detail}`};}):[];
           out.stack.push({isTop:false,notTop:true,cls:'enter',z:4,title:'Problem log',hasTitle:true,backLabel:'Back to Settings',back:()=>api.set({page:null}),hero:{},groups:[
-            group([info('Kept on this device','Failure classes only, 30 days, no content'),...(crashLog&&!crashLog.exitHistory&&native?[info('Android exit history','Needs Android 11 or newer')]:[])]),
+            group([info('Kept on this device','Error types only, kept 30 days, no content'),...(crashLog&&!crashLog.exitHistory&&native?[info('Android exit history','Needs Android 11 or newer')]:[])]),
             group(crashLog?(rows.length?rows:[info('No problems recorded','')]):[info('Problem log unavailable','Try again later')]),
             group([diagnosticsRow(),...(crashLog?.entries.length?[{kNav:true,label:'Clear problem log',lbl:crashBusy?'Clearing…':'Clear problem log',chev:true,noAB:true,go:()=>void clearProblems(api)}]:[])]),
           ]});
@@ -807,7 +825,7 @@ export function installSettingsAdapter(Component: any, views: Bag) {
         page.groups=[...(native&&facts.androidRelease?[group([info('Android version',facts.androidRelease)])]:[]),group([licensesRow()])];
       } else if (page.title === 'Wi-Fi') {
         page.hasHdrTog = false; page.hdrTog = null;
-        page.hero = { ...page.hero, big: wifiValue, sub: 'Wi-Fi transport · network names stay in Android settings' };
+        page.hero = { ...page.hero, big: wifiValue, sub: 'Manage networks in Android' };
         page.groups = [group([nav('Manage Wi-Fi networks', 'wifi')])];
       } else if (page.title === 'Bluetooth') {
         page.hasHdrTog = false; page.hdrTog = null;
@@ -819,18 +837,18 @@ export function installSettingsAdapter(Component: any, views: Bag) {
       } else if (page.title === 'Models') {
         const native=Capacitor.isNativePlatform();
         page.hero = { ...page.hero, big: target, sub: native&&connection.residentInference==='direct'?'Cerebras · own key':cloudRuntimeEnabled?'':native?'Conversation uses the selected agent. Voice runs on this device.':developmentCartesiaVoiceEnabled?'Direct Cerebras and Cartesia · development':`Conversation uses the selected agent. Voice uses ${serviceName}.` };
-        page.groups = [group([info('Connection', runtimeLocation), ...(native?[info('Inference provider',residentProvider?residentProvider.configured?(residentProvider.provider==='elizacloud'?serviceName:'Cerebras'):'Not configured':'Status unavailable')]:browserLocalAgentEnabled ? [info('Inference provider', inferenceProvider)] : []), info('Inference model', inferenceModel), info('Voice', native&&connection.residentInference==='direct'?(connection.providerStatus?.voiceConfigured?'Cartesia · own API key':'Off · add a Cartesia key'):cloudRuntimeEnabled?(account?`${serviceName} · Cartesia output`:'Cloud sign-in required'):native?'On this device':developmentCartesiaVoiceEnabled?'Cartesia · development':account ? serviceName : 'Sign-in required'), { kNav:true, label:`${serviceName} account`, lbl:`${serviceName} account`, chev:true, noAB:true, go:()=>connectionController.openCloudAccount() }])];
+        page.groups = [group([info('Connection', runtimeLocation), ...(native?[info('Inference provider',residentProvider?residentProvider.configured?(residentProvider.provider==='elizacloud'?serviceName:'Cerebras'):'Not configured':'Status unavailable')]:browserLocalAgentEnabled ? [info('Inference provider', inferenceProvider)] : []), info('Inference model', inferenceModel), info('Voice', native&&connection.residentInference==='direct'&&connection.providerStatus?.voiceConfigured?'Cartesia · own API key':connection.residentInference==='direct'&&(cloudRuntimeEnabled||testMocksEnabled)?'Off · add a Cartesia key':cloudRuntimeEnabled?(account?`${serviceName} · Cartesia output`:'Cloud sign-in required'):native?'On this device':developmentCartesiaVoiceEnabled?'Cartesia · development':account ? serviceName : 'Sign-in required'), { kNav:true, label:`${serviceName} account`, lbl:`${serviceName} account`, chev:true, noAB:true, go:()=>connectionController.openCloudAccount() }])];
       } else if (page.title === 'Developer') {
-        page.groups = [group([info('App version', facts.appVersion || buildVersion), info('Agent memory', connection.session?'Usage not reported by agent':'Not connected')]), group([problemsRow(), diagnosticsRow()]), group([nav('Android developer settings', 'developer')])];
+        page.groups = [group([info('App version', facts.appVersion || buildVersion), info('Agent memory', connection.session?'Usage not reported by agent':pending)]), group([problemsRow(), diagnosticsRow()]), group([nav('Android developer settings', 'developer')])];
       } else if (page.title === 'Notifications') {
         const custom = (label:string,go:()=>void,id=label):Bag=>({id,kNav:true,label,lbl:label,chev:true,noAB:true,busy:notificationBusy,hasVal:notificationBusy,val:'Working…',go:()=>{if(!notificationBusy)go();}});
         const policy = (changes:Bag)=>void run(async()=>{await notifications.setNotificationPolicy({expectedRevision:cross.revision,...changes});if(changes.history===false)history=[];});
         const selected:Bag[]=cross.apps||[];
         const showCrossAppNotifications = Capacitor.isNativePlatform() || devSurfacesEnabled;
-        const crossRows:Bag[]=showCrossAppNotifications ? [info('Other apps',typeof cross.accessGranted!=='boolean'?'Unavailable':!cross.enabled?'Collection off':cross.paused?(testMocksEnabled?'Paused after mock mode':'Paused · resume to collect'):!cross.accessGranted?'Android access not granted':!cross.connected?'Waiting for Android listener':'Selected apps connected'),info('Notification privacy',Capacitor.isNativePlatform()?'Android grants broad access. Alpha reads only selected apps; previews and history are separate choices.':(devSurfacesEnabled?'Preview events are stored in this app. ':'Notification events are stored in this app. ')+'Previews and metadata history are separate choices.'),info('Agent access','Notification content is not sent to your agent')] : [];
+        const crossRows:Bag[]=showCrossAppNotifications ? [info('Other apps',typeof cross.accessGranted!=='boolean'?'Unavailable':!cross.enabled?'Collection off':cross.paused?(testMocksEnabled?'Paused after mock mode':'Paused · resume to collect'):!cross.accessGranted?'Android access not granted':!cross.connected?'Waiting for Android listener':'Selected apps connected'),info('Notification privacy',!devSurfacesEnabled?'Alpha reads only the apps you select. Collected events feed only the local history below.':Capacitor.isNativePlatform()?'Android grants broad access. Alpha reads only selected apps; previews and history are separate choices.':'Preview events are stored in this app. Previews and history are separate choices.'),info('Agent access','Notification content is not sent to your agent')] : [];
         if(showCrossAppNotifications && cross.revision){
           crossRows.push(custom(cross.enabled?'Turn off other-app collection':'Enable selected-app collection',()=>{
-            if(Capacitor.isNativePlatform()&&!cross.enabled&&!window.confirm('Enable collection for your selected apps? Android grants broad notification access. Alpha filters to your selection before reading text. Previews and local metadata history remain separate choices.'))return;
+            if(Capacitor.isNativePlatform()&&!cross.enabled&&!window.confirm('Collect notifications from your selected apps? Android grants broad access, but Alpha reads only these apps. Previews and history stay off until you turn them on.'))return;
             policy({enabled:!cross.enabled});
           }),custom(Capacitor.isNativePlatform()?'Manage notification access in Android':'Manage development notification access',()=>void run(async()=>{await notifications.openNotificationAccess();})),custom(choices?'Hide app choices':'Choose notification apps',()=>{
             if(choices){choices=null;owner?.vset('settings',{notificationChanged:Date.now()});return;}

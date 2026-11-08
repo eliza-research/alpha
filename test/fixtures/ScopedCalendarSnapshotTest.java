@@ -21,7 +21,30 @@ public final class ScopedCalendarSnapshotTest {
   }
   public void applyBatch(String authority,ArrayList<ContentProviderOperation> operations){check(dispatched==null);dispatched=operations;}
  }
+ /** The SQLite stand-in: the family, child and Instances selections run as SQL. */
+ static final class Sqlite extends ai.elizaresearch.alphaphone.SqliteCalendarProvider {
+  Sqlite(java.nio.file.Path directory){super(directory,EVENTS_SCHEMA);}
+  public void applyBatch(String authority,ArrayList<ContentProviderOperation> operations){throw new AssertionError("Reads must not dispatch");}
+ }
+ /** Another calendar's exception row names the owned series; neither it nor its child rows join the family. */
+ static void foreignException(java.nio.file.Path directory)throws Exception{
+  Sqlite sql=new Sqlite(directory);
+  sql.insert("calendars","_id",7L,"account_name","synthetic","account_type","com.fixture","name","fixture","calendar_access_level",700L,"ownerAccount","owner@invalid");
+  sql.insert("calendars","_id",8L,"account_name","synthetic","account_type","com.fixture","name","other","calendar_access_level",700L,"ownerAccount","owner@invalid");
+  sql.insert("events","_id",42L,"calendar_id",7L,"title","Series","description","Private","eventLocation","Desk","dtstart",FIRST,"duration","PT1H","eventTimezone","UTC","allDay",0L,"rrule","FREQ=DAILY","deleted",0L,"eventStatus",1L,"organizer","owner@invalid","_sync_id","owned-synthetic");
+  sql.insert("events","_id",44L,"calendar_id",8L,"title","Foreign","dtstart",NEXT,"dtend",NEXT+3600000,"eventTimezone","UTC","allDay",0L,"original_id",42L,"originalInstanceTime",NEXT,"deleted",0L,"eventStatus",1L);
+  sql.insert("attendees","_id",1L,"event_id",42L,"attendeeEmail","guest@invalid");sql.insert("attendees","_id",2L,"event_id",44L,"attendeeEmail","foreign@invalid");sql.insert("reminders","_id",3L,"event_id",44L,"minutes",10L,"method",1L);
+  sql.insert("instances","event_id",42L,"begin",FIRST,"end",FIRST+3600000);sql.insert("instances","event_id",42L,"begin",NEXT,"end",NEXT+3600000);
+  for(long begin:new long[]{FIRST,NEXT})for(String scope:new String[]{"occurrence","series"}){
+   var deletion=CalendarEventGuard.selectScopedDeletion(sql,42,7,scope,begin,begin+3600000);check(deletion.eventId==42&&deletion.selectedEventId==42);
+   // Each compare-and-swap assertion selects exactly the rows it expects in the same SQL.
+   for(ContentProviderOperation op:deletion.assertions())check(sql.count(op.uri,op.selection,op.args)==op.count);
+   check(deletion.assertions().stream().anyMatch(op->op.uri.value.equals("events")&&op.count==1)&&deletion.assertions().stream().anyMatch(op->op.uri.value.equals("attendees")&&op.count==1)&&deletion.assertions().stream().anyMatch(op->op.uri.value.equals("reminders")&&op.count==0));
+  }
+ }
  public static void main(String[] args)throws Exception{
+  java.nio.file.Path directory=java.nio.file.Files.createTempDirectory("scoped-calendar-snapshot-");
+  try{foreignException(directory);}finally{try(var files=java.nio.file.Files.walk(directory)){files.sorted(Comparator.reverseOrder()).forEach(path->path.toFile().delete());}}
   Provider provider=new Provider();var first=CalendarEventGuard.selectScopedDeletion(provider,42,7,null,FIRST,FIRST+3600000);var next=CalendarEventGuard.selectScopedDeletion(provider,42,7,null,NEXT,NEXT+3600000);check(first.scope.equals("occurrence")&&next.originalInstanceTime==NEXT&&!first.revision.equals(next.revision));
   refuses(()->CalendarEventGuard.selectScopedDeletion(provider,42,7,"event",FIRST,FIRST+3600000));refuses(()->CalendarEventGuard.readScopedDeletion(provider,42,7,"occurrence",FIRST,42,NEXT,NEXT+3600000));
   provider.attendees.add(row("_id",1L,"event_id",42L,"attendeeEmail","guest@invalid"));var guest=CalendarEventGuard.selectScopedDeletion(provider,42,7,null,FIRST,FIRST+3600000);check(!guest.revision.equals(first.revision));provider.attendees.get(0).put("attendeeEmail","changed@invalid");check(!guest.revision.equals(CalendarEventGuard.selectScopedDeletion(provider,42,7,null,FIRST,FIRST+3600000).revision));

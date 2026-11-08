@@ -5,6 +5,8 @@ import {fileURLToPath} from 'node:url';
 import {CLOUD_SDK_BASES,cloudSdkBases} from './cloud-sdk-authority.mjs';
 
 const root=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..');
+/** Reviewed credential namespaces, oldest first. The last is the one installed phones hold now. */
+export const STORAGE_NAMESPACES=['897efc6f09b9d4db345c61226d8301a9f1257ad98f0491e8591f63d4f4515874'];
 /** Deployment-owned public authorities, never credentials or values supplied by a login response. */
 export function validateCloudDeployment(input){
  if(!input||typeof input!=='object'||Object.keys(input).sort().join(',')!=='production,staging')throw Error('Expected production and staging Cloud configuration');
@@ -26,9 +28,13 @@ export function validateCloudDeployment(input){
  if(input.production.api===input.staging.api)throw Error('Cloud environments must use distinct API origins');
  return input;
 }
+/** Both environments feed one namespace, so a staging-only change also moves production credentials. */
+export function storageFingerprint(config){
+ return createHash('sha256').update(JSON.stringify(['production','staging'].map(env=>[...['api','web','services','tenant'].map(key=>config[env][key]),config[env].entitlementAudience??'cloud-subscription']))).digest('hex');
+}
 export function deploymentOutputs(config){
  validateCloudDeployment(config);
- const fingerprint=createHash('sha256').update(JSON.stringify(['production','staging'].map(env=>[...['api','web','services','tenant'].map(key=>config[env][key]),config[env].entitlementAudience??'cloud-subscription']))).digest('hex');
+ const fingerprint=storageFingerprint(config);
  const java=['package ai.elizaresearch.alphaphone;','','/** Generated from config/cloud-deployment.json. Run node scripts/cloud-deployment.mjs. */','final class CloudDeployment {',' private CloudDeployment() {}'];
  const ts=['// Generated from config/cloud-deployment.json. Run node scripts/cloud-deployment.mjs.'];
  for(const env of ['production','staging']){
@@ -44,13 +50,14 @@ export function deploymentOutputs(config){
   'export function cloudStorageSlot(name:string):string { return name.startsWith("cloud:") || name.startsWith("cloud-signin:") || name === "local-agent-provider:v1" ? cloudStorageNamespace + name : name; }');
  return {'apps/app/src/runtime/cloud-deployment.generated.ts':ts.join('\n')+'\n','android/app/src/main/java/ai/elizaresearch/alphaphone/CloudDeployment.java':java.join('\n')+'\n'};
 }
-export function checkCloudDeployment(directory=root,sdkBases=CLOUD_SDK_BASES){
+export function checkCloudDeployment(directory=root,sdkBases=CLOUD_SDK_BASES,namespaces=STORAGE_NAMESPACES){
  const config=JSON.parse(fs.readFileSync(path.join(directory,'config/cloud-deployment.json'),'utf8'));
  const outputs=deploymentOutputs(config);
  for(const [name,contents] of Object.entries(outputs)){
   const file=path.join(directory,name);
   if(!fs.existsSync(file)||fs.readFileSync(file,'utf8')!==contents)throw Error('Stale Cloud deployment output: '+name+'; run node scripts/cloud-deployment.mjs');
  }
+ if(storageFingerprint(config)!==namespaces.at(-1))throw Error('Cloud storage namespace would change: every installed phone loses its production credential; add a tested migration (LegacyCloudRecovery) and append the new namespace to STORAGE_NAMESPACES in scripts/cloud-deployment.mjs');
  // The resident agent's inference base (ELIZAOS_CLOUD_BASE_URL) must be the configured API, never a second authority.
  if(JSON.stringify(sdkBases)!==JSON.stringify(cloudSdkBases(config)))throw Error('Cloud SDK bases (scripts/cloud-sdk-authority.mjs) disagree with config/cloud-deployment.json');
 }

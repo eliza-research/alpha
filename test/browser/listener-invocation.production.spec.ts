@@ -13,7 +13,8 @@ async function setup(page:Page,options:Options={}){
   const events:Array<{event:string;callback:(value:any)=>void}>=[];
   const header=(name:string)=>c.PluginHeaders.find((p:any)=>p.name===name);
   header('AlphaVoiceCloud').methods=[...['checkPermissions','localSpeechStatus','liveCaptureStatus','startLiveCapture','stopLiveCapture','synthesizeLocal','play','stopPlayback','cancel','releaseLocalSpeech','cancelRecording'].map(name=>({name,rtype:'promise'})),{name:'addListener',rtype:'callback'},{name:'removeListener',rtype:'callback'}];
-  c.PluginHeaders.push({name:'ElizaSense',methods:['status','pause','turnOff','openSettings','bindInvocationSession','takeInvocation','claimProtectedPowerLaunch','discardProtectedPowerLaunch','discardProtectedPowerInvocation'].map(name=>({name,rtype:'promise'}))});
+  // turnOn, resume and start are declared so that a call to any of them reaches the stub and is recorded.
+  c.PluginHeaders.push({name:'ElizaSense',methods:['status','pause','turnOff','openSettings','turnOn','resume','start','bindInvocationSession','takeInvocation','claimProtectedPowerLaunch','discardProtectedPowerLaunch','discardProtectedPowerInvocation'].map(name=>({name,rtype:'promise'}))});
   const callback=c.nativeCallback;c.nativeCallback=(plugin:string,method:string,input:any,fn:any)=>{if(plugin==='AlphaVoiceCloud'&&method==='addListener'){events.push({event:input.eventName,callback:fn});return String(events.length);}return callback(plugin,method,input,fn);};
   c.nativePromise=async(plugin:string,method:string,input:any)=>{
    if(plugin==='DailyApps'&&method==='surfaceInfo')return {developmentBuild:false,assistant:options.assistant===true};
@@ -100,7 +101,8 @@ test('startup stops a previously active image listener and Settings exposes no d
  await button(page,'Settings').click();
  for(const name of ['Listening','Always-on listening','Wake word','Wake assistant'])await expect(page.getByText(name,{exact:true})).toHaveCount(0);
  for(const name of ['Pause listening','Turn off listening','Listening settings'])await expect(button(page,name)).toHaveCount(0);
- expect(await live(page,f=>f.listenerCalls.filter((method:string)=>method!=='turnOff'))).toEqual([]);
+ // Startup only stops the listener; an earlier status read is the one other call allowed.
+ const calls=await live(page,f=>f.listenerCalls as string[]);expect(calls[0]==='status'?calls.slice(1):calls).toEqual(['turnOff']);
  expect(await live(page,f=>f.captures)).toEqual([]);expect(foreign).toEqual([]);
 });
 

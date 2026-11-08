@@ -50,7 +50,7 @@ test('required native access keeps focused, reachable controls at narrow widths 
   if(name==='Photos')await expect(panel.getByText('Selected photos and videos only',{exact:true})).toBeVisible();
   await panel.getByRole('button',{name:'Continue',exact:true}).click();
  }
- await expect(panel.getByRole('heading',{name:'You’re all set',exact:true})).toBeFocused();await panel.getByRole('button',{name:'Go to Alpha',exact:true}).click();await expect(panel).toHaveCount(0);
+ await expect(panel.getByRole('heading',{name:'Setup finished',exact:true})).toBeFocused();await panel.getByRole('button',{name:'Go to Alpha',exact:true}).click();await expect(panel).toHaveCount(0);
  expect(await page.evaluate(()=>(window as any).access.calls.filter((c:any)=>['requestPermissions','requestAccess','openSettings','list','sync'].includes(c.method)))).toEqual([]);
  await page.reload();await expect.poll(()=>page.evaluate(()=>typeof(window as any).access.reopen)).toBe('function');await page.evaluate(()=>(window as any).access.signin());await expect(panel).toHaveCount(0);
 });

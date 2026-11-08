@@ -5,8 +5,6 @@ import { flagOffAndroid, harness, button, fenceNetwork, expectNoDevelopmentSurfa
 import { residentStub, stub, setStub, enterNativeEmailCode, type StubAccount } from './resident-stub';
 import { recordStartupFrames, expectNoHomeBeforePrompt, startupLoading } from './helpers/startup-frames';
 
-test.beforeEach(({}, testInfo) => { test.skip(testInfo.project.name !== 'production', 'Production bundle only'); });
-
 const id = '9f1dc45a-4011-4e44-947a-30d999d24fa5';
 const account: StubAccount = { token: 'first-run-key', userId: id, email: 'new-owner@example.invalid', balance: 5 };
 const WAITING = 'Checking code…';
@@ -136,7 +134,7 @@ test('first run: native email sign-in, credits, provider binding, then the resid
     await expect(access.getByRole('button',{name:/Skip|Not now|Back/})).toHaveCount(0);
     await access.getByRole('button',{name:'Allow',exact:true}).click();
   }
-  await expect(access.getByRole('heading',{name:'You’re all set',exact:true})).toBeVisible();
+  await expect(access.getByRole('heading',{name:/^(You’re all set|Setup finished)$/})).toBeVisible();
   expect(await page.evaluate(()=>(window as any).firstRunAccess.requests)).toEqual(['notifications','microphone','camera','location','calendar','photos','files']);
   await access.getByRole('button',{name:'Go to Alpha',exact:true}).click();
   await expect(page.getByRole('dialog')).toHaveCount(0, { timeout: 30_000 });
@@ -190,9 +188,8 @@ test('first run: Cancel while verifying the email code keeps no key and the resi
   await expect(page.getByText(WAITING, { exact: true })).toBeVisible();
   await expect.poll(() => stub(page, s => s.order.includes('native sign-in verifyEmail'))).toBe(true);
   await page.getByRole('button', { name: 'Back', exact: true }).click();
-  const polls = await stub(page, s => s.polls);
-  await page.waitForTimeout(2000);
-  expect(await stub(page, s => s.polls)).toBe(polls);
+  // Back cancels the native attempt, which ends the held verify; nothing is stored afterwards.
+  await expect.poll(() => stub(page, s => s.order.includes('native sign-in cancel'))).toBe(true);
   await nothingLeft(page, welcome, true);
   expect(foreign).toEqual([]);
 });

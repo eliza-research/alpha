@@ -78,7 +78,7 @@ function fixture(t) {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), "alpha-human-actions-"));
   t.after(() => fs.rmSync(dir, { recursive: true, force: true }));
   for (const file of [CHECKLIST, "android/release-signer.json", "android/aosp/pixel10a-product.json", "android/aosp/pixel10a-ota-channel.json", "android/aosp/pixel10a-qualification-gates.json",
-    "android/voice-host/qualified-voice-host.json", "android/sense/qualified-listener.json", "android/embedding-host/build-toolchain.json", "docs/app-qa-checklist.json"]) {
+    "android/voice-host/qualified-voice-host.json", "android/sense/qualified-listener.json", "android/embedding-host/build-toolchain.json", "docs/app-qa-checklist.json", "docs/decisions.md"]) {
     fs.mkdirSync(path.dirname(path.join(dir, file)), { recursive: true });
     fs.copyFileSync(path.join(root, file), path.join(dir, file));
   }
@@ -100,6 +100,9 @@ function fixture(t) {
   edit("android/sense/qualified-listener.json", value => { value.qualified = false; });
   edit("android/embedding-host/build-toolchain.json", value => { value.remapBuildPath = true; });
   edit("docs/app-qa-checklist.json", value => { for (const item of value.items) item.userApproval = "Pending"; });
+  // No custody decision yet: the P- entries that name H-01 are dropped.
+  const decisions = path.join(dir, "docs/decisions.md");
+  fs.writeFileSync(decisions, fs.readFileSync(decisions, "utf8").split("\n").filter(line => !/^- \*\*P-\d\d\*\* — .*\bH-01\b/.test(line)).join("\n"));
   return { dir, edit };
 }
 
@@ -110,8 +113,8 @@ test("recorded states follow the records: unset digests, missing releases, gates
   assert.equal(before["H-09"].state, "open");
   assert.match(before["H-09"].detail, /13 of 13 release digests unset/);
   assert.equal(before["H-10"].state, "open");
-  assert.equal(before["H-01"].state, "external");
-  assert.match(before["H-01"].detail, /^verify: /);
+  assert.equal(before["H-01"].state, "open");
+  assert.match(before["H-01"].detail, /no P- entry for H-01/);
   for (const id of ["H-18", "H-20", "H-22", "H-23", "H-24", "H-25", "H-34"]) assert.equal(before[id].state, "open", id);
 
   // Signing variables are reported by name; a value never appears.
@@ -139,8 +142,10 @@ test("recorded states follow the records: unset digests, missing releases, gates
   edit("android/aosp/pixel10a-qualification-gates.json", value => { for (const name of ["cuttlefishBoot", "physicalDevice", "signedUpdateRecovery", "userAcceptance"]) value.gates[name].status = "passed"; });
   edit("android/voice-host/qualified-voice-host.json", value => { value.qualified = true; });
   edit("android/sense/qualified-listener.json", value => { value.qualified = true; });
+  fs.copyFileSync(path.join(root, "docs/decisions.md"), path.join(dir, "docs/decisions.md"));
   const after = state();
-  for (const id of ["H-09", "H-10", "H-18", "H-20", "H-22", "H-23", "H-24", "H-25", "H-34"]) assert.equal(after[id].state, "done", `${id}: ${after[id].detail}`);
+  assert.match(after["H-01"].detail, /recorded as P-58/);
+  for (const id of ["H-01", "H-09", "H-10", "H-18", "H-20", "H-22", "H-23", "H-24", "H-25", "H-34"]) assert.equal(after[id].state, "done", `${id}: ${after[id].detail}`);
   assert.equal(after["H-19"].state, "not needed");
   edit("android/embedding-host/build-toolchain.json", value => { value.remapBuildPath = false; });
   assert.equal(state()["H-19"].state, "open");

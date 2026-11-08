@@ -9,6 +9,7 @@ import {AVD,FUSED_SPEECH_CLASSES,READING_CLASSES,READING_TEST_MOCKS_CLASSES,SERI
 import {CANONICAL_TEST,asrPackaged,candidateProblems,packageSpeechRun} from '../scripts/ci/speech-candidate.mjs';
 import {CLASS_REGISTRY,DEFAULT_CLASSES,parseInstrumentationArgs} from '../scripts/android-instrumentation.mjs';
 import {affected} from '../scripts/ci/affected.mjs';
+import {assertBefore} from './fixtures/assert-order.mjs';
 
 const read=file=>fs.readFileSync(file,'utf8');
 const WORKFLOW='.github/workflows/android-emulator.yml';
@@ -66,7 +67,7 @@ test('every emulator job uploads its result directory, also after a failure',()=
   assert.match(uploads[0],/\n            test-results\/emulator-suite\/\n/,name);
   assert.match(uploads[0],/name: [a-z0-9_-]+-\$\{\{ github\.sha \}\}-\$\{\{ github\.run_id \}\}-\$\{\{ github\.run_attempt \}\}/,`${name} artifact is named by commit and run`);
   // The emulator step comes before the upload and is not allowed to fail quietly.
-  assert.ok(job[name].indexOf('android-emulator-runner@')<job[name].indexOf('actions/upload-artifact@'),name);
+  assertBefore(job[name],'android-emulator-runner@','actions/upload-artifact@',name);
   assert.doesNotMatch(job[name],/continue-on-error/,name);
  }
  for(const name of ['instrumentation','browser-reading'])assert.match(job[name],/\n            test-results\/android-instrumentation\/\n/,name);
@@ -126,7 +127,7 @@ test('the build job refuses the speech suite until hosted Paradee staging exists
  // The fused-speech suite needs staged Paradee outputs and a same-engine embedding host; the hosted job cannot
  // produce that pair yet, so it refuses instead of building an APK that only proves speech is unavailable.
  assert.match(build,/- name: Refuse the fused-speech suite until hosted voice staging exists\n        if: inputs\.suite == 'fused-speech' \|\| inputs\.suite == 'all'\n        run: \|\n          echo "::error::[^\n]*"\n          exit 1\n/);
- assert.ok(build.indexOf('Refuse the fused-speech suite')<build.indexOf('npm run android:build'),'before any build');
+ assertBefore(build,'Refuse the fused-speech suite','npm run android:build','before any build');
  // No other speech runtime is built, acquired or recorded, and nothing here admits anything by a person's review.
  assert.doesNotMatch(workflow,/scripts\/local-speech|requalify-runtime|browser-speech|--reviewer|android-voice-lexicon|kokoro/i);
  // The instrumentation APKs are built (no --skip-instrumentation) and the flag-off pair stays flag-off.
@@ -141,7 +142,7 @@ test('the build job refuses the speech suite until hosted Paradee staging exists
  // The speech job checks the APK it was handed against that record before booting anything.
  const speech=job['fused-speech'];
  assert.ok(speech.indexOf('node scripts/ci/speech-candidate.mjs check artifacts/standalone-debug.apk')>0);
- assert.ok(speech.indexOf('speech-candidate.mjs check')<speech.indexOf('android-emulator-runner@'));
+ assertBefore(speech,'speech-candidate.mjs check','android-emulator-runner@');
  assert.match(speech,/node scripts\/ci\/speech-candidate\.mjs package test-results\/android-instrumentation\/ci-fused-speech test-results\/fused-speech-x86_64/);
 });
 
@@ -287,14 +288,14 @@ test('speech suite: networking is proven off before the speech classes, and only
 const sha=file=>createHash('sha256').update(fs.readFileSync(file)).digest('hex');
 const bytesSha=bytes=>createHash('sha256').update(bytes).digest('hex');
 test('speech candidate check refuses an APK whose voice bundle or x86_64 engine is not the recorded bytes',()=>{
- const model=Buffer.from('paradee'),lexicon=Buffer.from('misaki'),vad=Buffer.from('silero'),engine=Buffer.from('engine'),asr=Buffer.from('asr');
+ const model=Buffer.from('paradee'),lexicon=Buffer.from('misaki'),vad=Buffer.from('silero'),engine=Buffer.from('engine'),stl=Buffer.from('libc++'),asr=Buffer.from('asr');
  const row=(file,role,bytes)=>({path:file,role,sha256:bytesSha(bytes),bytes:bytes.length});
  const host={models:[row('tts/paradee/paradee-8m-v1_0.gguf','tts-model',model),row('tts/paradee/misaki-en-us.lex','g2p-lexicon',lexicon),row('vad/silero-vad-v5.gguf','vad-model',vad),
   row('asr/phonon-2-fv5.gguf','asr-model',asr)],
-  abis:[{abi:'x86_64',libraries:[{name:'libelizainference.so',sha256:bytesSha(engine),bytes:engine.length}]}]};
+  abis:[{abi:'x86_64',libraries:[{name:'libelizainference.so',sha256:bytesSha(engine),bytes:engine.length},{name:'libc++_shared.so',sha256:bytesSha(stl),bytes:stl.length}]}]};
  const apk=(change=()=>{},withAsr=false)=>{
   const listed=host.models.filter(entry=>withAsr||!entry.path.startsWith('asr/'));
-  const files={'lib/x86_64/libelizainference.so':engine,'lib/x86_64/libparadeevoicejni.so':Buffer.from('jni'),
+  const files={'lib/x86_64/libelizainference.so':engine,'lib/x86_64/libc++_shared.so':stl,'lib/x86_64/libparadeevoicejni.so':Buffer.from('jni'),
    'assets/paradee-voice/v1/manifest.json':Buffer.from(JSON.stringify({format:'eliza-paradee-voice-v2',files:listed.map(({path:file,sha256,bytes})=>({path:file,sha256,bytes}))}))};
   for(const entry of listed)files[`assets/paradee-voice/v1/${entry.path}`]={'tts/paradee/paradee-8m-v1_0.gguf':model,'tts/paradee/misaki-en-us.lex':lexicon,'vad/silero-vad-v5.gguf':vad,'asr/phonon-2-fv5.gguf':asr}[entry.path];
   change(files);return {names:Object.keys(files),read:entry=>files[entry]??null};
@@ -306,7 +307,11 @@ test('speech candidate check refuses an APK whose voice bundle or x86_64 engine 
  assert.equal(asrPackaged(apk(()=>{},true)),true);
  assert.equal(asrPackaged(apk(files=>{files['assets/paradee-voice/v1/manifest.json']=Buffer.from('not json');})),false);
  const cases=[[files=>{delete files['assets/paradee-voice/v1/manifest.json'];},/carries no on-device voice bundle/],[files=>{files['assets/paradee-voice/v1/vad/silero-vad-v5.gguf']=Buffer.from('other');},/vad\/silero-vad-v5\.gguf is not a recorded voice file/],
-  [files=>{files['lib/x86_64/libelizainference.so']=Buffer.from('rebuilt');},/lib\/x86_64\/libelizainference\.so differs from the recorded engine/],[files=>{delete files['lib/x86_64/libparadeevoicejni.so'];},/libparadeevoicejni\.so is not packaged/]];
+  [files=>{files['lib/x86_64/libelizainference.so']=Buffer.from('rebuilt');},/lib\/x86_64\/libelizainference\.so differs from the recorded engine/],[files=>{delete files['lib/x86_64/libparadeevoicejni.so'];},/libparadeevoicejni\.so is not packaged/],
+  [files=>{files['lib/x86_64/libc++_shared.so']=Buffer.from('other');},/lib\/x86_64\/libc\+\+_shared\.so differs from the recorded library/],
+  // A manifest listing a subset (here without the VAD model) or nothing at all is refused; only the ASR slot may be absent.
+  [files=>{const manifest=JSON.parse(files['assets/paradee-voice/v1/manifest.json']);manifest.files=manifest.files.filter(row=>!row.path.startsWith('vad/'));delete files['assets/paradee-voice/v1/vad/silero-vad-v5.gguf'];files['assets/paradee-voice/v1/manifest.json']=Buffer.from(JSON.stringify(manifest));},/vad\/silero-vad-v5\.gguf is recorded but not packaged/],
+  [files=>{files['assets/paradee-voice/v1/manifest.json']=Buffer.from(JSON.stringify({format:'eliza-paradee-voice-v2',files:[]}));},/tts\/paradee\/paradee-8m-v1_0\.gguf is recorded but not packaged/]];
  for(const [change,expected] of cases)assert.match(candidateProblems(apk(change),host).join('; '),expected);
  assert.match(candidateProblems(apk(),{...host,abis:[]}).join('; '),/x86_64 has no recorded engine/);
  // The committed record is not qualified, so a passing emulator run never qualifies it by itself.

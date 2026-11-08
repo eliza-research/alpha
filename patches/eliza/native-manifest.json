@@ -4,7 +4,7 @@
   "patches": [
     {
       "file": "google-browser-sign-in.patch",
-      "sha256": "70e1e2b28e25e70822b01ea20f273f01471102fb1b4775dff47c48059624322b",
+      "sha256": "8ccfd85f31e0ecefc2f30ae90512216ec0932e5493ef6dae2b8e8f5f58670838",
       "module": "packages/auth/android",
       "targets": [
         {
@@ -25,7 +25,7 @@
         {
           "path": "packages/auth/android/src/main/java/ai/eliza/auth/cloud/CloudSignInPlugin.java",
           "beforeSha256": "0c2ba91faf22459538bd852cb305507ac2b17982afbe6bdc6e8465526a1ba1d4",
-          "afterSha256": "adfbaf5e99254ea49071d57d921054036a9e82ed0f3aa382f0676e762f98eb6e"
+          "afterSha256": "4c8a465e0e20103a7c9d47255ecad15aef020711f417ac6a32d4cf4fe7869c2f"
         },
         {
           "path": "packages/auth/android/src/main/java/ai/eliza/auth/cloud/CloudSignInReadiness.java",
@@ -36,6 +36,11 @@
           "path": "packages/auth/android/src/main/java/ai/eliza/auth/cloud/CloudSignInRoutes.java",
           "beforeSha256": "2212e5fb65109ecef6ae1cb2fb6a8fd172de2f38c3cd5bf133cfda8c8e408556",
           "afterSha256": "60861474e28f99fddacac70d382612e762a6c7526f2c455ecee1dd5f2128d825"
+        },
+        {
+          "path": "packages/auth/android/src/main/java/ai/eliza/auth/cloud/CloudCredentialSlots.java",
+          "beforeSha256": "c7bf0d9ee0c11374c735ede10db5b0d50a657943442721b4cd1eedc7ce5323f2",
+          "afterSha256": "220433aa80f8979243c5d310fd55835a2b1df80f23bf82b4accb3c630f7760d5"
         }
       ]
     },
@@ -185,6 +190,28 @@
           "path": "plugins/plugin-native-media/android/src/main/java/ai/eliza/plugins/media/OwnedMediaConfig.java",
           "beforeSha256": "8044c67413198a22881a8695888d52aaafcc648543e21d06aa4e88e1d74e78fc",
           "afterSha256": "e424f82ed28593e4db227e65f16e95754934d0c17a1b43ddd1af8a4f434d5fbd"
+        }
+      ]
+    },
+    {
+      "file": "reset-admission.patch",
+      "sha256": "c8c86881dab9de36a2cfb11b66b84b064752538b23132c094222caf7bb38148e",
+      "module": "plugins/plugin-native-system/android",
+      "targets": [
+        {
+          "path": "plugins/plugin-native-system/android/src/main/java/ai/eliza/plugins/system/reset/DataReset.java",
+          "beforeSha256": "96c3f4525587ee42658cafe8b84d0e4650925c52b3a78475d13a6ec5a1fb243d",
+          "afterSha256": "a04bb72775a0620a39e9d8d11595774ce61b66faec847c4a310cd609be3ab3c3"
+        },
+        {
+          "path": "plugins/plugin-native-system/android/src/main/java/ai/eliza/plugins/system/reset/DataResetRecoveryActivity.java",
+          "beforeSha256": "6c5283f95f4743ac527a7114677365c3d685b7ebe5dcc5766110f1a444decb89",
+          "afterSha256": "6f05320165918e89d40704d558e63edfb5cecbe9c9ea63ecd26cc072a6475923"
+        },
+        {
+          "path": "plugins/plugin-native-system/android/src/main/java/ai/eliza/plugins/system/reset/DataResetCopy.java",
+          "beforeSha256": "388e0c1f34864a4e3f906c1654d98c2c5ada87472e29fb04fd534a52f33dff5b",
+          "afterSha256": "a01868c6e43d1b484879330ccc54725abd0c2119b3158c97a2dddcc9577bf67b"
         }
       ]
     }

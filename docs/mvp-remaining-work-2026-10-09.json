@@ -2,7 +2,7 @@
   "schema": 2,
   "title": "Alpha Phone remaining MVP work after PR 373 integration review",
   "date": "2026-10-09",
-  "pull_request": "https://github.com/AlphaCompute/alphaphone/pull/373",
+  "pull_request": "https://github.com/eliza-research/alphaphone/pull/373",
   "reviewed_pr_head": "44c9d57ce38b3b29f5b104a2f6efc103fdd914c3",
   "integrated_main": "06ca5d62e09e8898fc9242db5e6a70f5be374510",
   "reviewed_upstream_pin": "0d40aa6e6e1b5192311ca916515003c8a4473c0c",
@@ -1668,7 +1668,7 @@
       ]
     }
   ],
-  "review_record": "https://github.com/AlphaCompute/alphaphone/pull/373",
+  "review_record": "https://github.com/eliza-research/alphaphone/pull/373",
   "policy_reconciliation_2026_10_12": {
     "source": "Owner answers to all 32 decision issues",
     "plan": "docs/owner-approved-mvp-plan-2026-10-12.md",

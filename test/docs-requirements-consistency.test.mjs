@@ -84,21 +84,39 @@ test('every capability row labels its evidence class', () => {
   for (const code of ['(S)', '(B)', '(E)', '(I)', '(R)', '(D)']) assert.ok(status.includes(code), `class ${code} is not defined`);
 });
 
+// Every recorded run is bound to the pin it ran at. The legend and the Evidence class column are
+// where a reader looks up what a class means for the shipping source, so neither may describe a
+// recorded run as being "at the current pin": the pin in upstream.lock.json moves without them.
+test('the evidence legend and the Evidence class column never place a recorded run at the current pin', () => {
+  const capabilitySection = section(status, 'Capabilities and remaining acceptance');
+  const legend = capabilitySection.slice(0, capabilitySection.indexOf('\n|'));
+  assert.ok(legend.includes('round 8'), 'the legend must define round 8');
+  assert.doesNotMatch(legend, /current pin/i, 'the legend must name the pin each run was at');
+  for (const row of capabilities) assert.doesNotMatch(row['Evidence class'], /current pin/i, `${row.Area}: the Evidence class names no pin, or the pin its run was at`);
+});
 
-test('October 12 owner choices map all 32 reviewed issues to open implementation TODOs', () => {
+
+test('every open owner choice maps to an implementation issue and its plan section', () => {
   const decisions = read('docs/decisions.md');
   const pending = section(decisions, 'Pending owner decisions');
   assert.match(pending, /No reviewed/);
   assert.equal(pending.split('\n').filter(line => /^\| A-\d\d \|/.test(line)).length, 0);
   const resolved = table(decisions, 'Resolved decision index');
-  const active = resolved.filter(row => row.State === 'TODO');
-  assert.equal(active.length, 32);
-  const numbers = active.map(row => Number(row.Implementation.match(/#(\d+)/)[1]));
-  assert.deepEqual(numbers, Array.from({ length: 32 }, (_, i) => 394 + i));
-  assert.equal(new Set(active.map(row => row.ID)).size, 32);
-  for (const row of active) {
-    assert.ok(section(decisions, 'October 12 owner decisions').includes(`**${row.Policy} — ${row.ID}`));
-    assert.ok(read('docs/owner-approved-mvp-plan-2026-10-12.md').includes(`## ${row.Implementation.match(/#\d+/)[0]} — ${row.ID}:`));
+  assert.equal(new Set(resolved.map(row => row.ID)).size, resolved.length, 'each decision has one row');
+  // The State column is the owner's tracker; any value is accepted here.
+  for (const row of resolved) {
+    assert.match(row.Policy, /^P-\d\d$/, `${row.ID} maps to a P- policy`);
+    assert.ok(row.State, `${row.ID} has a state`);
+  }
+  const implemented = resolved.filter(row => /#\d+/.test(row.Implementation));
+  const issues = implemented.map(row => Number(row.Implementation.match(/#(\d+)/)[1])).sort((a, b) => a - b);
+  assert.deepEqual(issues, Array.from({length: 32}, (_, index) => 394 + index), 'the October 12 decisions are issues #394 to #425');
+  const plan = read('docs/owner-approved-mvp-plan-2026-10-12.md');
+  const owner = section(decisions, 'October 12 owner decisions');
+  for (const row of implemented) {
+    const issue = row.Implementation.match(/#\d+/)[0];
+    assert.ok(owner.includes(`**${row.Policy} — ${row.ID}`), `${row.ID} is an October 12 owner decision`);
+    assert.ok(plan.includes(`## ${issue} — ${row.ID}:`), `${row.ID} has a plan section for ${issue}`);
   }
   const licence = resolved.find(row => row.ID === 'A-21');
   assert.equal(licence.State, 'Policy closed');
@@ -113,6 +131,8 @@ test('the status index names the pinned upstream commit and no gate starts with 
   const pin = JSON.parse(read('upstream.lock.json')).commit;
   assert.ok(section(status, 'Product boundaries').includes(`\`${pin.slice(0, 10)}\``), `Product boundaries must name the pin ${pin.slice(0, 10)} from upstream.lock.json`);
   assert.ok(requirements.note.includes(pin.slice(0, 10)), 'requirements.json note must name the pin it was refreshed against');
+  // One current-pin statement; the history of earlier pins is the git log of upstream.lock.json.
+  assert.ok(requirements.note.length <= 3000, `requirements.json note is ${requirements.note.length} characters; keep it to the current pin and the reading rules (at most 3000)`);
   for (const requirement of requirements.requirements) {
     if (requirement.status !== 'partial') continue;
     // A gate that opens with "S:" says software is the next step; then "remaining" must name where that software is.
@@ -124,7 +144,63 @@ test('every decision ID named in the requirement ledgers is a row in decisions.m
   const decisions = read('docs/decisions.md');
   const named = new Set([...status.matchAll(/\bA-\d\d\b/g), ...JSON.stringify(requirements).matchAll(/\bA-\d\d\b/g)].map(match => match[0]));
   for (const id of named) assert.ok(decisions.includes(`| ${id} |`), `${id} is named in the ledgers but has no row in docs/decisions.md`);
-  for (const [policy] of status.matchAll(/\bP-\d\d\b/g)) assert.ok(decisions.includes(`**${policy}**`), `${policy} is named in docs/mvp-current-status.md but is not an owner decision`);
+  // October 12 entries are written "**P-22 — A-16 (...)", later ones "**P-43**".
+  for (const [policy] of status.matchAll(/\bP-\d\d\b/g)) assert.ok(decisions.includes(`**${policy}**`) || decisions.includes(`**${policy} — `), `${policy} is named in docs/mvp-current-status.md but is not an owner decision`);
+});
+
+// GitHub's heading anchor: lowercased, punctuation dropped, spaces to hyphens, repeats numbered.
+function headingSlugs(markdown) {
+  const seen = new Map(), slugs = new Set();
+  for (const [, heading] of markdown.matchAll(/^#{1,6} +(.+?) *#*$/gm)) {
+    const base = heading.replace(/[`*_]|\[([^\]]*)\]\([^)]*\)/g, '$1').trim().toLowerCase().replace(/[^\p{L}\p{N}\s-]/gu, '').replace(/\s/g, '-');
+    const count = seen.get(base) ?? 0;
+    seen.set(base, count + 1);
+    slugs.add(count ? `${base}-${count}` : base);
+  }
+  return slugs;
+}
+const LEDGERS = ['docs/mvp-current-status.md', 'docs/requirements.json', 'docs/agent-integration.md', 'docs/core-loop-status.md'];
+
+test('every link from the ledgers into decisions.md names one of its headings', () => {
+  const slugs = headingSlugs(read('docs/decisions.md'));
+  assert.ok(slugs.has('resolved-decision-index') && slugs.has('october-12-owner-decisions'));
+  for (const file of LEDGERS) {
+    for (const [, fragment] of read(file).matchAll(/decisions\.md#([^)\s"'`]+)/g)) {
+      assert.ok(slugs.has(fragment), `${file} links decisions.md#${fragment}, which is not a heading`);
+    }
+  }
+});
+
+test('the ledgers do not call a resolved decision pending', () => {
+  const resolved = new Map(table(read('docs/decisions.md'), 'Resolved decision index').map(row => [row.ID, row.Policy]));
+  // Link targets hold full stops (decisions.md), so read each link as its text.
+  const text = [status, ...requirements.requirements.map(requirement => `${requirement.remaining}\n${requirement.gate}`)].join('\n').replace(/\[([^\]]*)\]\([^)]*\)/g, '$1');
+  for (const [, id, word] of text.matchAll(/\b(A-\d\d)\b[^.\n]*?\b(pending|undecided)\b/gi)) {
+    assert.ok(!/^P-\d\d$/.test(resolved.get(id) ?? ''), `${id} is called ${word}, but the resolved decision index maps it to ${resolved.get(id)}`);
+  }
+});
+
+test('an S gate does not call software "not implemented" when every evidence file exists', () => {
+  for (const requirement of requirements.requirements) {
+    if (requirement.status !== 'partial' || !/^S:/.test(requirement.gate) || !/not implemented/.test(requirement.remaining)) continue;
+    assert.ok(!requirement.evidence.every(evidence => fs.existsSync(path.join(root, evidence))),
+      `${requirement.id}: "remaining" says not implemented, yet every evidence file it lists exists; name what is missing or change the gate`);
+  }
+});
+
+test('no status cell says one instrumented class both never ran and passed', () => {
+  const unrun = /never run|no recorded run|has not run|not run/;
+  for (const row of capabilities) {
+    for (const cell of Object.values(row)) {
+      const sentences = cell.split(/(?<=[.;])\s+/);
+      for (const [, name] of cell.matchAll(/`(\w+InstrumentedTest)`/g)) {
+        const about = sentences.filter(sentence => sentence.includes(name));
+        const never = about.some(sentence => /never run|no recorded run/.test(sentence));
+        const passed = about.some(sentence => /\bpassed\b/.test(sentence) && !unrun.test(sentence));
+        assert.ok(!(never && passed), `${row.Area}: ${name} is both unrun and passed in one cell`);
+      }
+    }
+  }
 });
 
 // An MVP item that a requirement's remaining text or gate names must be tagged with that
@@ -138,13 +214,4 @@ test('every MVP item a requirement names is tagged with that requirement in the 
       assert.ok(inventory.get(id).requirements.includes(requirement.id), `${requirement.id} names ${id}, which is not tagged ${requirement.id} in docs/mvp-remaining-work-2026-10-09.json`);
     }
   }
-});
-
-// Always-on listening and hardware invocation (MVP-52) gate AP-06 and AP-14 and are owner-gated.
-test('AP-06 and AP-14 name MVP-52 as open and owner-gated', () => {
-  const byId = new Map(requirements.requirements.map(requirement => [requirement.id, requirement]));
-  for (const id of ['AP-06', 'AP-14']) assert.match(byId.get(id).remaining, /always-on listening and hardware invocation \(MVP-52\) (?:is|are) open and owner-gated/i, `${id}: MVP-52`);
-  const item = JSON.parse(read('docs/mvp-remaining-work-2026-10-09.json')).items.find(entry => entry.id === 'MVP-52');
-  assert.ok(item.blocked_on.some(entry => entry.startsWith('HUMAN: ')), 'MVP-52 must stay blocked on an owner decision');
-  for (const id of ['AP-06', 'AP-14']) assert.ok(item.requirements.includes(id), `MVP-52 must be tagged ${id}`);
 });

@@ -59,6 +59,9 @@ export interface ResidentStubOptions {
   offered?: string[];
   /** What native DailyApps.surfaceInfo reports for Clock repeat days (absent: not reported). */
   clockRepeatDaysVersion?: number;
+  /** Conversations carry a room, so Stop reaches upstream's turn abort route; the agent answers
+   * that no turn was running (`aborted: false`), so the reply may still finish. */
+  abortRoute?: boolean;
 }
 
 export async function residentStub(page: Page, options: ResidentStubOptions = {}) {
@@ -80,6 +83,11 @@ export async function residentStub(page: Page, options: ResidentStubOptions = {}
       ...kept,
       // Per page load: the stream mode and a held reply do not survive a restart.
       stream: null as any, release: null as null | (() => void), recoveries: [] as string[], capabilities: '',
+      // Off by default: holdNextChunk() opens the next reply's stream and holds its chunk until releaseChunk().
+      chunkHeld: false, heldChunk: null as null | (() => void),
+      // Per page load: conversation reads (the recent window, not older pages), list reads and turn
+      // aborts. holdReads holds both reads until heldRead() / heldList().
+      reads: 0, lists: 0, aborts: 0, holdReads: false, heldRead: null as null | (() => void), heldList: null as null | (() => void),
       // Cloud's answer to the next code redemption: 'ok' grants Plus; 'invalid' is Cloud's one answer
       // for unknown, expired, disabled and used-up codes (400 invalid_subscription_code).
       redeem: 'ok' as 'ok' | 'invalid', redeemed: [] as Array<{ code: string; idempotencyKey: string }>,
@@ -87,6 +95,9 @@ export async function residentStub(page: Page, options: ResidentStubOptions = {}
     };
     const persist = () => sessionStorage.setItem('resident-stub', JSON.stringify({ order: s.order, cloud: s.cloud, bodies: s.bodies, opened: s.opened, accounts: s.accounts, login: s.login, nextToken: s.nextToken, polls: s.polls, start: s.start, held: s.held }));
     s.persist = persist; persist();
+    s.holdNextChunk = () => { s.chunkHeld = true; };
+    // Emits the held chunk even after the owner pressed Stop, as a late chunk from the agent.
+    s.releaseChunk = () => { const next = s.heldChunk; s.heldChunk = null; next?.(); };
     const emit = (streamId: string, event: unknown) => f.emit('Agent', 'alphaAgentStream', { streamId, event });
     const data = (streamId: string, value: unknown) => emit(streamId, { type: 'chunk', dataBase64: btoa('data: ' + JSON.stringify(value) + '\n\n') });
     // This stub keeps the resident agent's conversations itself (the harness's store is private to it),
@@ -94,12 +105,19 @@ export async function residentStub(page: Page, options: ResidentStubOptions = {}
     let agent: { conversations: { id: string; title: string }[]; history: Record<string, any[]> } = { conversations: [], history: {} };
     try { agent = JSON.parse(sessionStorage.getItem('resident-stub-agent') || 'null') ?? agent; } catch { /* first load */ }
     const record = (conversation: string, row: any) => { agent.history[conversation].push(row); sessionStorage.setItem('resident-stub-agent', JSON.stringify(agent)); };
-    const conversations = (method: string, path: string, body: any): { status: number; data: unknown } | null => {
+    const room = 'c0ffee00-1111-4222-8333-444455556666';
+    const conversations = async (method: string, path: string, body: any): Promise<{ status: number; data: unknown } | null> => {
       if (path === '/api/conversations' && method === 'POST') { const row = { id: 'resident-chat-' + (agent.conversations.length + 1), title: String(body.title || 'Alpha Phone') }; agent.conversations.push(row); agent.history[row.id] = []; sessionStorage.setItem('resident-stub-agent', JSON.stringify(agent)); return { status: 200, data: { conversation: row } }; }
-      if (path === '/api/conversations') return { status: 200, data: { conversations: agent.conversations } };
+      if (path === '/api/conversations') {
+        s.lists++; if (s.holdReads) await new Promise<void>(resolve => { s.heldList = resolve; });
+        return { status: 200, data: { conversations: options.abortRoute ? agent.conversations.map(row => ({ ...row, roomId: room })) : agent.conversations } };
+      }
       const read = /^\/api\/conversations\/([^/]+)\/messages$/.exec(path.split('?')[0]);
-      if (read && method === 'GET') return { status: 200, data: { messages: (agent.history[read[1]] || []).slice(-200) } };
-      if (/^\/api\/turns\/[^/]+\/abort$/.test(path)) return { status: 404, data: {} };
+      if (read && method === 'GET') {
+        if (!new URLSearchParams(path.split('?')[1] ?? '').has('before')) { s.reads++; if (s.holdReads) await new Promise<void>(resolve => { s.heldRead = resolve; }); }
+        return { status: 200, data: { messages: (agent.history[read[1]] || []).slice(-200) } };
+      }
+      if (/^\/api\/turns\/[^/]+\/abort$/.test(path)) { s.aborts++; return options.abortRoute && path.includes(room) ? { status: 200, data: { aborted: false, roomId: room } } : { status: 404, data: {} }; }
       // The renderer's one non-streaming re-read of a dropped stream, under the same clientMessageId.
       // Upstream answers it from the durable outcome; this runtime is unavailable for it.
       if (/^\/api\/conversations\/[^/]+\/messages$/.test(path) && method === 'POST') { s.recoveries.push(body.clientMessageId); return { status: 503, data: {} }; }
@@ -149,7 +167,7 @@ export async function residentStub(page: Page, options: ResidentStubOptions = {}
       if (plugin === 'Agent' && method === 'request' && input.path === '/api/client-devices/register' && options.offered) { const registered = await base(plugin, method, input); return { ...registered, body: JSON.stringify({ ...JSON.parse(registered.body), capabilities: options.offered }) }; }
       if (plugin === 'DailyApps' && method === 'surfaceInfo' && options.clockRepeatDaysVersion !== undefined) { f.calls.push('DailyApps.surfaceInfo'); return { developmentBuild: false, assistant: false, clockRepeatDaysVersion: options.clockRepeatDaysVersion }; }
       if (plugin === 'Agent' && method === 'request') {
-        const answer = conversations(input.method || 'GET', input.path, input.body ? JSON.parse(input.body) : {});
+        const answer = await conversations(input.method || 'GET', input.path, input.body ? JSON.parse(input.body) : {});
         // Anything else reaches the harness, which records it as unexpected.
         if (answer) { f.calls.push('Agent.request'); return { status: answer.status, body: JSON.stringify(answer.data) }; }
       }
@@ -226,7 +244,8 @@ export async function residentStub(page: Page, options: ResidentStubOptions = {}
           const reply = f.replies.shift() ?? (mode === 'hold' ? 'Held reply ' : 'Resident reply ') + f.streams;
           const finish = () => { s.release = null; s.held = null; persist(); record(conversation, { id: crypto.randomUUID(), role: 'assistant', text: reply, timestamp: Date.now() + 1 }); data(streamId, { type: 'token', text: reply }); data(streamId, { type: 'done', fullText: reply, agentName: 'Alpha' }); emit(streamId, { type: 'complete' }); };
           if (mode === 'hold') { s.held = { conversation, reply }; persist(); }
-          setTimeout(() => { emit(streamId, { type: 'response', status: 200, headers: { 'content-type': 'text/event-stream' } }); if (mode === 'hold') s.release = finish; else finish(); }, 0);
+          const holdChunk = !mode && s.chunkHeld; if (holdChunk) s.chunkHeld = false;
+          setTimeout(() => { emit(streamId, { type: 'response', status: 200, headers: { 'content-type': 'text/event-stream' } }); if (mode === 'hold') s.release = finish; else if (holdChunk) s.heldChunk = finish; else finish(); }, 0);
           return { streamId };
         }
         if (mode === 'busy' || mode === 'expired') { setTimeout(() => { emit(streamId, { type: 'response', status: mode === 'busy' ? 429 : 401, headers: { 'content-type': 'application/json' } }); emit(streamId, { type: 'complete' }); }, 0); return { streamId }; }

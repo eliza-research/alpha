@@ -28,7 +28,7 @@ test('the adapter resumes only through that decision',()=>{
  assert.match(source,/import \{cameraAccessDenied,restartAfterResume,type CameraAccessKind as AccessKind\} from '\.\.\/\.\.\/\.\.\/\.\.\/\.eliza\/client-features\/plugins\/plugin-native-camera\/src\/host-ports\.ts';/);
  assert.doesNotMatch(source,/async function restartAfterResume\(/,'no second copy of the shared rule');
  assert.match(source,/const resumed=\(\)=>\{void restartAfterResume\(\(\)=>\(\{denied:session\.denied,phase:session\.phase,disposed\}\),\(\)=>cameraAccess\.checkPermissions\(\)\)\.then\(restart=>\{if\(restart\)\{session\.rearm\(\);schedule\(\);\}\}\);\};/);
- assert.doesNotMatch(source,/const resumed=\(\)=>\{if\(denied==='camera'/);
+ assert.match(source,/DailyApps\.addListener\('appResumed',resumed\)/,'the decision is registered for app resume');
 });
 test('the camera lifecycle is the shared session, not an adapter copy',()=>{
  assert.match(source,/import \{createCameraSession\} from '\.\.\/\.\.\/\.\.\/\.\.\/\.eliza\/client-features\/plugins\/plugin-native-camera\/src\/session\.ts';/);

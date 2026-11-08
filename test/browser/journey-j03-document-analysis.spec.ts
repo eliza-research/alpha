@@ -93,7 +93,7 @@ test('J03: an Inbox attachment is saved to Files, analysed, and kept as a review
  expect(await files(page)).toEqual([]);
  const saveToFiles=attachment.getByRole('button',{name:'Save to Files',exact:true});
  await saveToFiles.click();
- await expect(attachment.getByRole('status')).toHaveText('Saved in Files. Exact bytes verified.');
+ await expect(attachment.getByRole('status')).toHaveText('Saved in Files.');
  await expect(saveToFiles).toBeDisabled();
  await attachment.getByRole('button',{name:'Done',exact:true}).click();
  await expect(attachment).toHaveCount(0);

@@ -38,7 +38,8 @@ const srcDirectory = fileURLToPath(new URL('./apps/app/src/', import.meta.url));
 
 /** Production CSP. Dev serve stays relaxed for HMR and the local agent bridge. */
 export function productionContentSecurityPolicy(testMocks: boolean): string {
-  const connect = ["'self'", 'https:', ...(testMocks ? ['http://10.0.2.2:*', 'http://127.0.0.1:*', 'http://localhost:*'] : [])];
+  // data: and blob: only resolve bytes already in the renderer (saved photos, captures).
+  const connect = ["'self'", 'data:', 'blob:', 'https:', ...(testMocks ? ['http://10.0.2.2:*', 'http://127.0.0.1:*', 'http://localhost:*'] : [])];
   return [
     "default-src 'self'",
     "script-src 'self' 'wasm-unsafe-eval'",
@@ -158,7 +159,6 @@ export default defineConfig({
     fileURLToPath(new URL('./apps/app', import.meta.url)),
     // Vite emits worklet URLs using real paths when this prepared tree is shared by a worktree.
     realpathSync(fileURLToPath(new URL('./.eliza/client-features', import.meta.url))),
-    fileURLToPath(new URL('./.eliza/patched', import.meta.url)),
     fileURLToPath(new URL('./node_modules', import.meta.url)),
     fileURLToPath(new URL('./config/owner-routes.json', import.meta.url)),
     fileURLToPath(new URL('./config/alpha-product.json', import.meta.url)),

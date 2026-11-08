@@ -19,7 +19,6 @@ function declaration(source, signature) {
 
 test('delayed provider results cannot cross a lifecycle or permission boundary',()=>{
  const root=resolve(import.meta.dirname,'..'),dir=mkdtempSync(join(tmpdir(),'alpha-native-epoch-'));
- const java=name=>process.env.JAVA_HOME?join(process.env.JAVA_HOME,'bin',name):name;
  try{
   execFileSync(java('javac'),['--release','11','-d',dir,join(root,'android/app/src/main/java/ai/elizaresearch/alphaphone/NativeReadEpoch.java'),join(root,'test/fixtures/NativeReadEpochTest.java')],{timeout:60000});
   assert.match(execFileSync(java('java'),['-cp',dir,'ai.elizaresearch.alphaphone.NativeReadEpochTest'],{encoding:'utf8',timeout:15000}),/PASS native read publication fences/);

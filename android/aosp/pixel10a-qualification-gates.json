@@ -21,7 +21,7 @@
       "status": "passed",
       "evidence": [
         {
-          "ref": "https://github.com/AlphaCompute/alphaphone/actions/runs/39918054977",
+          "ref": "https://github.com/eliza-research/alphaphone/actions/runs/39918054977",
           "level": "release",
           "summary": "Alpha 3f25885d / Eliza f931082e: standalone and launcher, debug and unsigned release, verified by verify-apks with the packaged Cloud runtime."
         }
@@ -43,6 +43,7 @@
     "physicalDevice": {
       "requirement": "The release image on a physical Pixel 10a completes the per-unit checks in docs/pilot-acceptance-runbook.md (Execute on every unit, Performance and stability).",
       "status": "development",
+      "verifiedBootState": "orange",
       "evidence": [
         {
           "ref": "docs/pixel10a-code6-boot-evidence.json",
@@ -50,7 +51,7 @@
           "summary": "October 19 unlocked, development-signed Cloud image at Alpha e240ddab: archive admission, flash and initial boot only."
         }
       ],
-      "scope": "Device functions only. Not update, recovery or user acceptance."
+      "scope": "Device functions only. Not update, recovery or user acceptance. verifiedBootState is the unit's ro.boot.verifiedbootstate: P-70 pilot units are bootloader-unlocked (orange) and give pilot-level evidence only, so the gate cannot pass on an orange unit."
     },
     "signedUpdateRecovery": {
       "requirement": "Release-signed image and OTA with every update and recovery drill in android/aosp/pixel10a-ota-channel.json passed.",
@@ -63,6 +64,16 @@
       "status": "not run",
       "evidence": [],
       "scope": "User acceptance only. It follows, and does not replace, every other gate."
+    }
+  },
+  "alphaGates": {
+    "description": "Alpha gates beside the shared six, checked by scripts/pixel10a-gates.mjs with the same status and evidence rules.",
+    "unattendedUpdate": {
+      "requirement": "A narrowly privileged on-device update client applies signed channel packages through update_engine without a person (P-75), with its ADR, privapp allowlist and SELinux domain reviewed, on the release image on a physical Pixel 10a.",
+      "status": "not run",
+      "client": "unset",
+      "evidence": [],
+      "scope": "Unattended field updates only. No such client exists in Alpha or at the pin; host-driven sideload drills (signedUpdateRecovery) never stand in for it."
     }
   }
 }

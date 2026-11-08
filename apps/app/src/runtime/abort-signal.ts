@@ -27,7 +27,7 @@ export async function runProviderConfiguration<T>(signal:AbortSignal,ports:{prep
  const cancel=()=>{
   if(cancellation)return;
   try{cancellation=ports.cancel(requestId);}catch(error){cancellation=Promise.reject(error);}
-  void cancellation.then(()=>rejectCancelled(signal.reason??new DOMException('Cancelled','AbortError')),()=>rejectCancelled(new Error('Provider cancellation could not be confirmed. Check the saved provider before trying again.')));
+  void cancellation.then(()=>rejectCancelled(signal.reason??new DOMException('Cancelled','AbortError')),()=>rejectCancelled(new Error('Couldn’t confirm the AI provider change was cancelled. Check AI provider in Settings before trying again.')));
  };
  signal.addEventListener('abort',cancel,{once:true});
  try{
@@ -38,7 +38,7 @@ export async function runProviderConfiguration<T>(signal:AbortSignal,ports:{prep
  }catch(error){
   // A rejected request may not have reached native begin (for example invalid input).
   // Release its reserved lease as well; an already-finished native request is a no-op.
-  try{await (cancellation??ports.cancel(requestId));}catch{throw new Error('Provider cancellation could not be confirmed. Check the saved provider before trying again.');}
+  try{await (cancellation??ports.cancel(requestId));}catch{throw new Error('Couldn’t confirm the AI provider change was cancelled. Check AI provider in Settings before trying again.');}
   throw error;
  }finally{signal.removeEventListener('abort',cancel);}
 }

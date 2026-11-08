@@ -21,7 +21,8 @@ release keys exist) and its versionCode exceeds that file's last recorded releas
 release with another certificate or a non-advancing versionCode fails verification.
 The committed notices carry only the umbrella runtime entry, so a staged runtime in a
 development checkout never makes them stale. `node scripts/generate-licenses.mjs --packaged-runtime`
-adds Bun (with its JavaScriptCore LGPL notice and source offer) and every npm package bundled
+adds Bun (with its JavaScriptCore LGPL notice, its corresponding-source addresses and the written
+offer recorded in `config/source-offer.json`, if any) and every npm package bundled
 into the staged agent and workflow worker; the resident workflow runs it after staging, and an
 APK built without that step does not carry those notices, and `verify-apks` never marks such a
 release distributable. `--check` lists the staged runtime's

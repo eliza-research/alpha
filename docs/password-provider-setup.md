@@ -28,7 +28,7 @@ top-level-origin extra in `AlphaBrowserPlugin.CredentialWebView`, and the render
 | Generate | Native `SecureRandom`, 16/20/32 characters, every character class present, ambiguous glyphs excluded. The value is stored directly and never returned to the renderer. |
 | Show and copy | Native only. Show opens a FLAG_SECURE dialog that hides after 30 s or when Alpha stops. Copy marks the clip sensitive and attempts to clear it after 45 s. If Android hides clipboard ownership, clearing waits until Alpha resumes. A replaced or unidentifiable clip is never deleted. |
 | Damaged vault | If the key is lost or permanently invalidated (for example, the screen lock was removed), the vault is reported as undecryptable. The only action is "Delete saved passwords and start over": two taps and a fresh unlock, and native code refuses it while the vault is still readable. |
-| Set as autofill service | Opens Android's own confirmation (`Settings.ACTION_REQUEST_SET_AUTOFILL_SERVICE` for Alpha's package, falling back to Settings). The status row reports only what `AutofillManager#getAutofillServiceComponentName` reads back on refresh or resume. Opening the screen is never treated as selection. |
+| Set as autofill service | Opens Android's own confirmation (`Settings.ACTION_REQUEST_SET_AUTOFILL_SERVICE` for Alpha's package, falling back to Settings). The status row reports only what `AutofillManager#getAutofillServiceComponentName` reads back on refresh or resume. Opening the screen is never treated as selection. Not offered while Alpha is the selected service, where Android would close the confirmation at once. |
 | Fill | Native app fields through Android Autofill. Website fields in Alpha's browser only with an engine-attested per-field origin (see Browser fill below); without it they are refused. HTTP-auth prompts are filled only for an engine-authenticated challenge origin (`BrowserHttpAuthOrigin.bind`); Android WebView reports none, so the prompt says fill is off and manual entry is used. |
 | Save | "Save password?" is offered by Android after a sign-in; Alpha's prompt names the site or app and username, and writes only after Save and a fresh unlock. Save and Fill close their own grants after completion. Same binding and username updates the existing entry. |
 | Export | None in this version. Any future export must require explicit confirmation and a fresh authentication. |
@@ -63,11 +63,13 @@ Fill rules (implemented in the shared `PasswordFormPolicy`, tested on a JVM):
 
 ### Export and import
 
-Alpha registers the shared `ElizaPasswordTransfer` plugin from the reviewed upstream
-pin. Export uses Android's document picker, requires fresh authentication after the
-picker returns, and asks for confirmation before writing an unencrypted CSV. The
-native implementation streams bounded rows rather than building a second full vault
-copy. A failed export warns that the selected file may still contain passwords.
+Developer tooling only. `MainActivity` registers the shared `ElizaPasswordTransfer`
+plugin only in builds with `ELIZA_DEV_ALLOW_TEST_MOCKS`, and the renderer has no transfer
+client otherwise, so release builds have no export or import (see the table above).
+The rest of this section describes that developer build. Export uses Android's document
+picker, requires fresh authentication after the picker returns, and asks for confirmation
+before writing an unencrypted CSV. The native implementation streams bounded rows rather
+than building a second full vault copy. A failed export warns that the selected file may still contain passwords.
 
 Import reads a user-picked CSV, reviews every admitted HTTPS origin, and adds entries
 atomically without replacing saved website/username pairs. Invalid origins, app bindings,
@@ -150,10 +152,10 @@ them. Alpha's browser supplies that contract itself, from the WebView engine:
 - Nothing in this path logs, stores or forwards a value, and nothing reaches the renderer bridge or
   the agent. `AlphaBrowser.loginFillStatus` reports only whether the WebView supports it.
 - When `WEB_MESSAGE_LISTENER` or `JS_INJECTION_IN_FRAME_AND_WORLD` is unsupported, or setup fails,
-  the tab keeps the WebView's own structure; the integrated vault refuses it, and Settings says
-  "Off: this Android System WebView cannot report which site owns a sign-in field". When
-  supported, Settings says only that the WebView supports it; filling depends on the selected
-  service and is not device-qualified.
+  the tab keeps the WebView's own structure; the integrated vault refuses it, and Settings shows
+  Browser autofill "Off" with "Update Android System WebView to use it." When supported, it shows
+  "On" with "Fills the site shown, not sites embedded in it."; filling still depends on the
+  selected service and is not device-qualified.
 - Chromium's own Autofill code may still call the framework for the excluded WebView (empty
   requests, its own commit on form submission, keyboard inline suggestions tied to the WebView).
   How that interacts with the attested fields must be checked on a device.

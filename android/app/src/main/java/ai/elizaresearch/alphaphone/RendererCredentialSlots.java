@@ -32,6 +32,8 @@ final class RendererCredentialSlots {
  /** Cloud sign-in credentials: renderer writes and removals reserve a credential intent (AlphaLocalAgentPlugin). */
  private static final String[] CREDENTIAL_SLOTS = { "cloud:production", "cloud:staging" };
  static final SecureSlotPolicy POLICY = new SecureSlotPolicy(Arrays.asList(NATIVE_NAMESPACES), Arrays.asList(COMPARE_EXCHANGE), Arrays.asList(CREDENTIAL_SLOTS));
+ /** The native-only namespaces, for the device isolation campaign. */
+ static java.util.List<String> nativeNamespaces() { return java.util.Collections.unmodifiableList(Arrays.asList(NATIVE_NAMESPACES)); }
  static String requireAllowed(String slot) { return POLICY.requireRendererSlot(slot); }
  static boolean compareExchangeAllowed(String slot) { return POLICY.compareExchangeAllowed(slot); }
  static boolean credentialSlot(String slot) { return POLICY.credentialSlot(slot); }

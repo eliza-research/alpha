@@ -35,14 +35,14 @@ Rules for every step:
 
 | Step | Action | Who | State on 2026-10-27 |
 | --- | --- | --- | --- |
-| [H-01](#h-01-choose-release-key-custody) | Choose release key custody | Owner | Open |
+| [H-01](#h-01-choose-release-key-custody) | Choose release key custody | Owner | Closed 2026-10-29 by P-58 |
 | [H-02](#h-02-confirm-or-replace-the-subscription-catalog) | Confirm or replace the subscription catalog | Owner | Open: server values only |
 | [H-03](#h-03-select-the-plan-request-limits) | Select the plan request limits | Owner | Open |
 | [H-04](#h-04-select-the-maps-request-allowance) | Select the Maps request allowance | Owner | Open |
 | [H-05](#h-05-choose-maps-coverage-and-its-operator) | Choose Maps coverage and its operator | Owner | Open |
 | [H-06](#h-06-decide-whether-the-resident-runtime-may-ship-metamasksdk) | Decide on `@metamask/sdk` in the resident runtime | Owner | Moot after repin (confirm with a staged runtime) |
 | [H-07](#h-07-name-the-pilot-roles-and-cohort) | Name the pilot roles and cohort | Owner | Open |
-| [H-08](#h-08-run-the-release-key-ceremony) | Run the release key ceremony | Custodian and witness | Open |
+| [H-08](#h-08-run-the-release-key-ceremony) | Run the release key ceremony | Owner (custodian and witness) | Open |
 | [H-09](#h-09-enroll-the-public-release-identities) | Enroll the public release identities | Release owner | Open: every digest unset |
 | [H-10](#h-10-build-and-sign-the-distributable-release-apks) | Build and sign the distributable release APKs | Release owner | Open |
 | [H-11](#h-11-keep-alphas-app-auth-registration-active) | Keep Alpha's App Auth registration active | Cloud operator | Observed active (both environments) |
@@ -90,17 +90,20 @@ These are the values approved policy deliberately leaves open. None reopens a de
 ### H-01 Choose release key custody
 
 - Who: Shaw for Alpha Compute.
-- Do: choose where the release keys live after the offline ceremony: encrypted key files used in
-  an ephemeral signing job, an HSM, or a managed key service with a PKCS#11 interface. P-16
-  requires managed or hardware-backed signing distinct from developer keys; it does not name the
-  service. Name the ceremony custodian and witness and the two places the encrypted backups are
-  kept.
-- Seam: both signing tools accept either form. APKs: `scripts/sign-release-apks.mjs` (`--keys-dir`
+- Do: closed on 2026-10-29 by [P-58](decisions.md#october-29-owner-decisions): release keys are
+  GitHub Actions secrets used by a CI signing job for the release APKs and the Pixel 10a image and
+  OTA, amending P-16's managed or hardware-backed requirement; they stay distinct from developer
+  keys. The owner is the ceremony custodian and witness (a distinct witness is still recommended),
+  and the certificates name the organization Alpha Compute. The CI signing job does not exist yet:
+  no workflow under `.github/workflows` runs either signing tool. Adding it, limited to a reviewed
+  trigger and environment, is an owner and security action tracked as open under AP-14.
+- Seam: both signing tools accept key files or a token. APKs: `scripts/sign-release-apks.mjs` (`--keys-dir`
   or `--pkcs11-config` with `--key-label`) or Gradle's `ELIZAOS_KEYSTORE_*`. Image and OTA:
   `scripts/sign-aosp-release.mjs` (key files, or the four managed options `--pkcs11-config`,
   `--avb-signing-helper`, `--payload-signer` and `--payload-signer-signature-size`). The key list
   is `android/signing/alpha-key-manifest.json`.
-- Verify: the choice is recorded in decisions.md; nothing in the repository holds key material.
+- Verify: `npm run human:status` shows H-01 done (decisions.md records P-58); nothing in the
+  repository holds key material.
 - Unblocks: H-08 and every release-signed step (#400, AP-02, AP-14).
 
 ### H-02 Confirm or replace the subscription catalog
@@ -182,14 +185,15 @@ These are the values approved policy deliberately leaves open. None reopens a de
 
 ### H-08 Run the release key ceremony
 
-- Who: the custodian and witness from H-01.
-- Do: follow the offline ceremony in `vendor/eliza/packages/os/android/signing/README.md` with
-  Alpha's key list:
-  `node vendor/eliza/packages/os/scripts/android/generate-release-keys.ts --manifest android/signing/alpha-key-manifest.json --output /media/USB1/<new directory> --passphrase-file /dev/shm/ceremony/pass --organization "<legal entity>"`.
+- Who: the owner, as custodian and witness (P-58); a distinct witness is still recommended.
+- Do: run the ceremony locally, following `vendor/eliza/packages/os/android/signing/README.md`
+  with Alpha's key list:
+  `node vendor/eliza/packages/os/scripts/android/generate-release-keys.ts --manifest android/signing/alpha-key-manifest.json --output /media/USB1/<new directory> --passphrase-file /dev/shm/ceremony/pass --organization "Alpha Compute"`.
   It writes the eleven image keys and the Alpha application key `alphaphone_app` (standalone,
   launcher and Sense listener APKs share it), encrypted, with a public `fingerprints.json`. Make
-  both backups; import keys into the HSM or service when H-01 chose one, keeping the offline
-  backup authoritative.
+  both backups, then upload the keys the CI signing job needs as GitHub Actions secrets with
+  `gh secret set`, from the owner's own machine. No agent generates, sees or uploads a key, and
+  no key material, passphrase or PIN goes into this repository.
 - Seam: `android/signing/alpha-key-manifest.json`; upstream refuses an output inside any Git
   working tree.
 - Verify: every private file ends in `.enc`, and both people sign the printed `fingerprints.json`.
@@ -216,11 +220,13 @@ These are the values approved policy deliberately leaves open. None reopens a de
 
 ### H-10 Build and sign the distributable release APKs
 
-- Who: release owner, on the release build host.
+- Who: release owner. Under P-58 the release APKs are signed by the CI signing job with the
+  GitHub Actions secrets from H-08; that job does not exist yet (H-01), and until it does no
+  release is signed.
 - Do: stage the inputs `npm run android:build:inputs` lists as a person's (H-18, and H-19 when
   reported), then build with `ELIZAOS_VERSION_CODE` above the last recorded release,
   `ELIZAOS_VERSION_NAME` and `ELIZAOS_APP_LINK_HOST=eliza.app` set: `npm run android:build:local`.
-  Sign either in Gradle (`ELIZAOS_KEYSTORE_PATH`, `ELIZAOS_KEYSTORE_PASSWORD`,
+  The signing job signs either in Gradle (`ELIZAOS_KEYSTORE_PATH`, `ELIZAOS_KEYSTORE_PASSWORD`,
   `ELIZAOS_KEY_ALIAS`, `ELIZAOS_KEY_PASSWORD` for a keystore holding the `alphaphone_app` key) or,
   with those unset, afterwards with `node scripts/sign-release-apks.mjs --keys-dir /dev/shm/keys`
   (the ceremony layout the upstream `decrypt-release-keys.ts` writes into tmpfs for one job, for
@@ -357,11 +363,24 @@ staging values.
   periodic security assessment; until then use Testing status with listed test users, whose
   refresh tokens expire after seven days. Use of Gmail data must follow Google's API Services User
   Data Policy.
+  For live Google data through Cloud delegation ("Use live Google data"), also host the return
+  page `apps/app/public/delegation-return.html` on an HTTPS origin the Cloud operator owns: publish
+  this exact file and compare its SHA-256 with the file in the release commit after each deploy.
+  Then set the six managed delegation keys on the control plane (`ELIZA_CLOUD_DELEGATION_APP_ID`,
+  `ELIZA_CLOUD_DELEGATION_CLIENT_ID`, `ELIZA_CLOUD_DELEGATION_CLIENT_SECRET`,
+  `ELIZA_CLOUD_DELEGATION_REDIRECT_URI` as the hosted page's exact URL,
+  `ELIZA_CLOUD_DELEGATION_SITE_URL` and `ELIZA_CLOUD_DELEGATION_API_URL`; the three URLs must be
+  HTTPS with no query or fragment) and add each pilot agent's agent, owner and organization IDs
+  to `ELIZA_CLOUD_DELEGATION_AGENT_ALLOWLIST`. This repository names no host for the page.
+  Without these, starting live Google data fails; with a redirect to a host that lacks the page,
+  the user is left on an error page after consent.
 - Seam: Alpha requests capabilities, never raw scopes, through
   `/api/v1/eliza/google/connect/initiate` (`apps/app/src/runtime/cloud-protocol.ts`). Inbox read
   state stays unavailable until the deployed `inbox-v1/capabilities` advertises `readState`. The
-  probe lists these routes as needing an account.
-- Verify: the runbook's Gmail OAuth row with the H-27 account. A live send with the owner's
+  probe lists these routes as needing an account. Cloud injects the delegation keys only into
+  allowlisted agents (`packages/cloud/shared/src/lib/services/managed-cloud-owner-config.ts`).
+- Verify: the hosted delegation-return.html matches the release commit's SHA-256, and the
+  runbook's Gmail OAuth row passes with the H-27 account. A live send with the owner's
   account succeeded through a development host on October 16
   ([record](evidence/gmail-prompt-send-20261016.json)); that is not device or production evidence.
 - Unblocks: AP-09 real-integration and device acceptance.
@@ -429,7 +448,7 @@ distinct gates are recorded in `android/aosp/pixel10a-qualification-gates.json`
 
 - Who: release owner.
 - Do: `node scripts/sign-aosp-release.mjs --target-files <zip> --target-files-sha256 <hex> --keys-dir <dir> --releasetools <otatools/bin> --apk-manifest <apk-manifest.json> --out <new dir>`,
-  adding the managed options when H-01 chose a token. The signing job requires mode 0600 for
+  in the CI signing job with key files from the GitHub Actions secrets (P-58). The signing job requires mode 0600 for
   every file it reads from the key directory, public certificates and `avb_pkmd.bin` included,
   while the upstream `decrypt-release-keys.ts` writes the public files with the default mode: run
   `chmod 600` on the decrypted files before signing, and wipe the directory afterwards. Keep the
@@ -453,9 +472,11 @@ distinct gates are recorded in `android/aosp/pixel10a-qualification-gates.json`
 ### H-24 Install the release image on Pixel 10a units
 
 - Who: device operator, with the unit owner's consent to each flash or reset.
-- Do: flash the signed image, enroll `avb_pkmd.bin` with `fastboot flash avb_custom_key`, decide
-  the bootloader lock with the release owner, and check boot, enforcing SELinux and Alpha HOME.
-  Record the `physicalDevice` gate with the per-unit checks of the runbook.
+- Do: flash the signed image, enroll `avb_pkmd.bin` with `fastboot flash avb_custom_key`, and
+  check boot, enforcing SELinux and Alpha HOME. Pilot units stay bootloader-unlocked (P-70):
+  verified boot shows orange, so their results are pilot-level evidence only and never stand in
+  for a locked release. Record the `physicalDevice` gate with the per-unit checks of the runbook
+  and the unit's `verifiedBootState`; the gate cannot pass on an orange unit.
 - Seam: [pilot runbook](pilot-acceptance-runbook.md).
 - Verify: `npm run human:status` shows the gate passed.
 - Unblocks: H-25 and H-32.
@@ -466,7 +487,9 @@ distinct gates are recorded in `android/aosp/pixel10a-qualification-gates.json`
 - Do: on a Pixel 10a run the signed update, interrupted update, compatible rollback and stock
   recovery drills with the update and recovery tools the staging guide names, then record each
   result in the channel's `drills` and the `signedUpdateRecovery` gate. For APK-only updates,
-  `scripts/pilot-update.mjs` checks an in-place update; a lower versionCode is refused.
+  `scripts/pilot-update.mjs` checks an in-place update; a lower versionCode is refused. Field
+  updates are unattended (P-75), through a privileged on-device update client that does not
+  exist yet; host-driven drills do not stand in for it, and its `unattendedUpdate` gate stays open.
 - Seam: `android/aosp/pixel10a-ota-channel.json` (`drills`, `downgradeAllowed: false`) and the
   [Pixel 10a staging guide](pixel10a-staging.md).
 - Verify: `npm run human:status` shows every drill passed.

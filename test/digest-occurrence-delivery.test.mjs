@@ -63,8 +63,7 @@ test('each occurrence is retained and delivered once across a lost acknowledgeme
  const out=run(prelude+`
 const rows=[row(1,'run-morning','finished','2026-10-06T06:00:00.000Z'),row(2,'run-evening','finished','2026-10-06T18:00:00.000Z',{loop:'evening'}),row(3,'run-missed','missed','2026-10-07T06:00:00.000Z')];
 const s=server(rows),storage=memory(),delivered=[];let failNotice='run-evening';
-// The notice ledger is idempotent per run (browser hostedResultsDocument, native HostedResultNotices).
-const visible=new Set(),publish=async result=>{if(failNotice===result.runId){failNotice='';throw Error('notice channel unavailable');}delivered.push(result.runId);visible.add(result.runId);};
+const publish=async result=>{if(failNotice===result.runId){failNotice='';throw Error('notice channel unavailable');}delivered.push(result.runId);};
 const inbox=()=>new d.DigestInbox(storage,'scope',publish);
 // 1. The acknowledgement is lost after the local commit.
 s.failNextAck();out.firstError=await inbox().sync(s.client,signal).then(()=>'',error=>error.message);
@@ -73,16 +72,16 @@ out.afterLostAck={retained:(await inbox().history()).map(r=>r.runId),delivered:[
 out.second=(await inbox().sync(s.client,signal)).map(r=>[r.runId,r.status]);out.afterReconnect=[...delivered];
 // 3. Further syncs, including two overlapping ones from two surfaces, deliver nothing more.
 await Promise.all([inbox().sync(s.client,signal),inbox().sync(s.client,signal)]);await inbox().sync(s.client,signal);
-out.final={delivered:[...delivered],visible:[...visible].sort(),acked:[...s.acks.values()],index:storage.slots.get('scope')};
+out.final={delivered:[...delivered],acked:[...s.acks.values()],index:storage.slots.get('scope')};
 // 4. A later occurrence is its own record and its own single delivery.
 s.push(row(4,'run-next','finished','2026-10-08T06:00:00.000Z'));await inbox().sync(s.client,signal);await inbox().sync(s.client,signal);
 out.next={delivered:[...delivered],history:(await inbox().history()).map(r=>r.runId)};
-// 5. A crash after the notice posted but before that fact was saved may publish again; the ledger keeps one notice.
+// 5. A crash after the notice posted but before that fact was saved may publish again; history keeps one record.
 const crash=memory();let dropped=false;const flaky={...crash,write:async(slot,value)=>{if(slot==='scope'&&!dropped&&Array.isArray(value.pendingNotices)&&value.ids?.length===1&&value.pendingNotices.length===0){dropped=true;throw Error('process killed');}return crash.write(slot,value);}};
-const one=server([row(1,'run-solo','finished','2026-10-06T06:00:00.000Z')]),published=[],ledger=new Set(),post=async result=>{published.push(result.runId);ledger.add(result.runId);};
+const one=server([row(1,'run-solo','finished','2026-10-06T06:00:00.000Z')]),published=[],post=async result=>{published.push(result.runId);};
 out.crashError=await new d.DigestInbox(flaky,'scope',post).sync(one.client,signal).then(()=>'',error=>error.message);
 await new d.DigestInbox(crash,'scope',post).sync(one.client,signal);
-out.crash={published,visible:[...ledger],history:(await new d.DigestInbox(crash,'scope',post).history()).map(r=>r.runId)};
+out.crash={published,history:(await new d.DigestInbox(crash,'scope',post).history()).map(r=>r.runId)};
 // 6. The same run ID arriving with different content is refused, not shown.
 const changed=server([row(1,'run-solo','finished','2026-10-06T06:00:00.000Z')]);const tampered=server([{...row(1,'run-solo','finished','2026-10-06T06:00:00.000Z'),output:'Different brief'}]);
 const fresh=memory();await new d.DigestInbox(fresh,'scope').sync(changed.client,signal);fresh.slots.get('scope').clientId='reader2';
@@ -94,12 +93,11 @@ console.log(JSON.stringify(out));`);
  assert.deepEqual(out.second,[['run-morning','finished'],['run-evening','finished'],['run-missed','missed']]);
  assert.deepEqual(out.afterReconnect,['run-morning','run-missed','run-evening']);
  assert.deepEqual(out.final.delivered,['run-morning','run-missed','run-evening']);
- assert.deepEqual(out.final.visible,['run-evening','run-missed','run-morning']);
  assert.deepEqual(out.final.acked,[3]);
  assert.deepEqual(out.final.index.ids,['run-morning','run-evening','run-missed']);assert.deepEqual(out.final.index.pendingNotices,[]);assert.deepEqual(out.final.index.pendingRemoval,[]);
  assert.deepEqual(out.next,{delivered:['run-morning','run-missed','run-evening','run-next'],history:['run-morning','run-evening','run-missed','run-next']});
  assert.equal(out.crashError,'process killed');
- assert.deepEqual(out.crash,{published:['run-solo','run-solo'],visible:['run-solo'],history:['run-solo']});
+ assert.deepEqual(out.crash,{published:['run-solo','run-solo'],history:['run-solo']});
  assert.equal(out.tampered,'Saved digest result changed');
 });
 

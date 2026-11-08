@@ -5,6 +5,8 @@ import { Capacitor } from '@capacitor/core';
 import { reviewContentQuestion } from '../browser/content-question';
 import { sensitiveReadingText } from '../../../../.eliza/client-features/plugins/plugin-native-browser-surface/src/page-reading.ts';
 import { noticeCurrent, noticeExcerpt, noticeReviewable } from './context-selection';
+import { isMvpView } from './mvp-features';
+import { formatTime } from './locale-time';
 const opaque=/^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/;
 /** Agent-context identity for one of Alpha Phone's own notifications. Other apps' and
  * hosted rows are never selectable; titles and text stay on the phone. */
@@ -29,21 +31,25 @@ export function installCanonicalNotificationTaps(Component: any) {
     const canCommit=()=>this.alphaCanonicalLive&&!document.hidden&&!this.S().typing&&!this.S().recording&&!String(this.S().draft||'').trim()&&connectionController.getSnapshot().session===session&&!connectionController.getSnapshot().open;
     const originCurrent=()=>canCommit()&&this.S().view===origin.view&&alphaClient.getState().context.revision===origin.revision&&connectionController.getSelectedConversationId()===origin.conversation&&connectionController.getSnapshot().history===origin.history;
     if(!originCurrent())return;
-    if(tap.view==='chat'){
-     if(!tap.conversationId||!tap.messageId)return;
-     await connectionController.restoreHistory(tap.conversationId,originCurrent);
+    // A chat tap with message coordinates restores that exact message; one without (Approval
+    // needed, scheduled tasks) or a route with no admitted view opens the current chat instead.
+    const exact=tap.view==='chat'&&!!tap.conversationId&&!!tap.messageId;
+    if(exact){
+     await connectionController.restoreHistory(tap.conversationId!,originCurrent);
      const after=connectionController.getSnapshot();
-     if(after.session!==session||after.history?.conversationId!==tap.conversationId||!after.history.messages.some(row=>row.id===tap.messageId)||document.hidden)return;
+     if(after.session!==session||after.history?.conversationId!==tap.conversationId||!after.history?.messages.some(row=>row.id===tap.messageId)||document.hidden)return;
     }
     if(!canCommit())return;
     const restored=connectionController.getSnapshot().history;
     const exactChat=()=>!!restored&&this.S().view===origin.view&&alphaClient.getState().context.revision===origin.revision&&connectionController.getSelectedConversationId()===tap.conversationId&&connectionController.getSnapshot().history===restored&&restored.conversationId===tap.conversationId&&restored.messages.some(row=>row.id===tap.messageId);
-    if(tap.view==='chat'&&!exactChat())return;
-    const views:Record<string,string>={calendar:'calendar',notes:'notes',automations:'workflows'};
-    const targetView=tap.view!=='chat'&&tap.view?views[tap.view]:undefined;
-    if(tap.view!=='chat'){if(!targetView)return;this.openView(targetView);}
-    this.setState(tap.view==='chat'?{chat:'full'}:{},()=>{
-     if(canCommit()&&(tap.view==='chat'?exactChat():!!targetView&&this.S().view===targetView))void native.acknowledgeCanonical({token:tap.token!}).catch(()=>{});
+    if(exact&&!exactChat())return;
+    // Clock and device reminders live in Calendar.
+    const views:Record<string,string>={calendar:'calendar',notes:'notes',automations:'workflows',clock:'calendar',reminders:'calendar','apps/tasks':'calendar'};
+    const mapped=tap.view&&tap.view!=='chat'?views[tap.view]:undefined;
+    const targetView=mapped&&isMvpView(mapped)?mapped:undefined;
+    if(targetView)this.openView(targetView);
+    this.setState(targetView?{}:{chat:'full'},()=>{
+     if(canCommit()&&(exact?exactChat():targetView?this.S().view===targetView:this.S().chat==='full'))void native.acknowledgeCanonical({token:tap.token!}).catch(()=>{});
     });
    }catch{/* Native custody retains or retires the tap; never replay a read acknowledgement. */}
    finally{this.alphaCanonicalOpening=false;if(this.alphaCanonicalDrainRequested&&this.alphaCanonicalLive)queueMicrotask(this.alphaCanonicalTap);}
@@ -113,7 +119,7 @@ export function installNotificationsAdapter(Component: any) {
      }catch{if(self.alphaNoticesLive)self.toast('This notification could not be checked. Nothing was added to your conversation.');}
     })();}});
    };
-   return {canAsk:noticeReviewable(n),ask,askLabel:'Ask Alpha about this '+(n.appLabel||'Alpha Phone')+' notification',id:n.id,d:out.ic.bell,who:n.source==='external'?n.appLabel:n.title||'Alpha Phone',text:n.source==='external'&&n.title!==n.appLabel?[n.title,n.text].filter(Boolean).join(' · '):n.text,time:new Date(n.at).toLocaleTimeString([],{hour:'numeric',minute:'2-digit'}),tx:0,op:1,down:(event:unknown)=>{select();return swipe.down(event);},up:(event:unknown)=>{window.setTimeout(()=>self.publishAlphaNoticeSelection(),0);return swipe.up(event);},open:()=>{if(this.swallowed())return;if(!n.canOpen){this.toast('This notification has no available action.');return;}void action(()=>native.open({id:n.id,revision:n.revision,source:n.source}));}};
+   return {canAsk:noticeReviewable(n),ask,askLabel:'Ask Alpha about this '+(n.appLabel||'Alpha Phone')+' notification',id:n.id,d:out.ic.bell,who:n.source==='external'?n.appLabel:n.title||'Alpha Phone',text:n.source==='external'&&n.title!==n.appLabel?[n.title,n.text].filter(Boolean).join(' · '):n.text,time:formatTime(new Date(n.at)),tx:0,op:1,down:(event:unknown)=>{select();return swipe.down(event);},up:(event:unknown)=>{window.setTimeout(()=>self.publishAlphaNoticeSelection(),0);return swipe.up(event);},open:()=>{if(this.swallowed())return;if(!n.canOpen){this.toast('This notification has no available action.');return;}void action(()=>native.open({id:n.id,revision:n.revision,source:n.source}));}};
   });
   return {...out,shadeN,clearAll:()=>{const items=(this.alphaNotices||[]).filter((n:Notice)=>n.clearable).map((n:Notice)=>({id:n.id,revision:n.revision,source:n.source}));void action(async()=>{const result=await native.clear({items});if(result.outcomes.some(row=>row.status==='unavailable'))self.toast('Some notifications changed. Review the refreshed list.');});}};
  };

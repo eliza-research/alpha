@@ -47,7 +47,9 @@ test('Reset Alpha data records the reset, revokes Cloud keys best effort within 
  const record=authenticated.indexOf('reset.record(context);'),notice=authenticated.indexOf('showProgress(text);'),dispatch=authenticated.indexOf('reset.dispatchAfterBeforeDispatch(context, DataReset.INTERACTIVE_DEADLINE_MS');
  assert.ok(record>0&&notice>record&&dispatch>notice,'recorded before any network request, with a blocking notice over the revocation window');
  const registration=readFileSync(resolve(import.meta.dirname,'../android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaDataReset.java'),'utf8');
- assert.ok(registration.includes('.beforeDispatch(ai.eliza.auth.cloud.CloudKeyRevocation.resetStep(()->AlphaCloudSignInPlugin.REGISTRATION,AlphaCredentialStore::readSlotBeforeAttach)::run)'),'the live and startup paths use the shared bounded revocation step over only the deployments this build admits');
+ assert.ok(registration.includes('.beforeDispatch(ResetBeforeDispatch.STEP)'),'the live and startup paths run the same before-dispatch step');
+ const steps=readFileSync(resolve(import.meta.dirname,'../android/app/src/main/java/ai/elizaresearch/alphaphone/ResetBeforeDispatch.java'),'utf8');
+ assert.ok(steps.includes('CloudKeyRevocation.resetStep(()->AlphaCloudSignInPlugin.REGISTRATION,AlphaCredentialStore::readSlotBeforeAttach,transport)')&&steps.includes('create(CloudKeyRevocation::revoke)'),'the shared bounded revocation step over only the deployments this build admits');
  const shared=readFileSync(resolve(import.meta.dirname,'../vendor/eliza/packages/auth/android/src/main/java/ai/eliza/auth/cloud/CloudKeyRevocation.java'),'utf8');
  assert.match(shared,/transport\.revoke\(config, environment, token\)/,'revocation goes through the shared exact self-revocation policy');
  assert.match(shared,/Math\.min\(timeoutMs, RESET_BUDGET_CAP_MS\)/,'bounded by the caller budget and the 8 s cap');

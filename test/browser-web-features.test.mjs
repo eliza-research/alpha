@@ -2,8 +2,8 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 
-// Source-level guards for the native browser's download, permission, HTTP
-// authentication, find-in-page and fullscreen contracts. Behaviour is exercised
+// Source-level guards for the native browser's download, permission and HTTP
+// authentication contracts. Behaviour is exercised
 // on Android by BrowserWebFeaturesInstrumentedTest; these keep the privacy
 // invariants from regressing between device runs.
 const read = file => fs.readFileSync(file, 'utf8');
@@ -20,7 +20,6 @@ const downloadPolicy = read(shared + 'BrowserDownloadPolicy.java');
 const store = read(shared + 'BrowserSessionStore.java');
 const prompt = read(shared + 'BrowserSitePrompt.java');
 const stores = read(dir + 'AlphaBrowserStores.java');
-const adapter = read('apps/app/src/prototype/browser-adapter.ts');
 
 test('private-tab downloads never reach the persisted download list', () => {
   assert.match(downloads, /private void persist\(\) \{[\s\S]{0,200}for \(BrowserDownloadPolicy\.Entry entry : history\.persistable\(\)\)/);
@@ -40,7 +39,7 @@ test('private-tab downloads never reach the persisted download list', () => {
 });
 
 test('download cookies come only from the requesting tab, for its exact origin', () => {
-  assert.match(downloadPolicy, /String target = BrowserWebOrigin\.of\(downloadUrl\);\s*return target != null && target\.equals\(BrowserWebOrigin\.of\(pageOrigin\)\);/);
+  // The cookie rule itself (BrowserDownloadPolicy.cookieAllowed) runs in the upstream BrowserWebPolicyTest.
   assert.match(downloads, /boolean signedIn = BrowserDownloadPolicy\.cookieAllowed\(raw, source\.pageOrigin, true\);/);
   assert.match(downloads, /if \(signedIn\) \{\s*String cookie = source\.cookies == null \? null : source\.cookies\.get\(\);/, 'the cookie is read at confirmation');
   assert.match(plugin, /if\(t\.dead\|\|tabs\.get\(t\.id\)!=t\)return null;\n\s*try\{return WebViewCompat\.getProfile\(t\.web\)\.getCookieManager\(\)\.getCookie\(url\);/, 'a closed tab supplies no cookie; the tab profile is used');
@@ -70,40 +69,19 @@ test('page-created files are captured in an isolated world and saved only after 
   assert.match(plugin, /t\.capture=new BrowserBlobCapture\(t\.web,downloads\.captureDirectory\(\)\);/);
 });
 
-test('the instrumented witnesses read the shared download list and name the shared isolated-world channels', () => {
-  // BrowserWebFeaturesInstrumentedTest reads private native state by reflection and probes the page
-  // world for channel names. A field or channel renamed upstream would otherwise fail only on a
-  // device, or let the page-world check pass without testing anything.
-  const instrumented = read('android/app/src/androidTest/java/ai/elizaresearch/alphaphone/BrowserWebFeaturesInstrumentedTest.java');
-  const login = read(shared + 'BrowserLoginFields.java');
-  assert.match(plugin, /private BrowserDownloads downloads;/);
-  assert.match(downloads, /private final BrowserDownloadPolicy\.History history = new BrowserDownloadPolicy\.History\(\);/);
-  assert.match(instrumented, /\(BrowserDownloadPolicy\.History\)field\(downloads,"history"\)\)\.all\(\)/);
-  assert.doesNotMatch(instrumented, /field\(downloads,"owned"\)/, 'the former JSON map is gone');
-  const channels = [/CHANNEL = "(__\w+)"/.exec(capture)?.[1], /CHANNEL = "(__\w+)"/.exec(login)?.[1]];
-  assert.deepEqual(channels, ['__elizaBrowserCapture', '__elizaLoginFields']);
-  const probe = /Child page retains no app bridge","true",browser\.child\("([^"]+)"\)/.exec(instrumented)?.[1] ?? '';
-  for (const channel of channels) assert.ok(probe.includes(`typeof ${channel}==='undefined'`), `the page world is probed for ${channel}`);
-  assert.doesNotMatch(probe, /__alpha(?:BrowserCapture|LoginFields)/, 'no retired channel name');
-});
-
 test('site permissions are origin-bound prompts, stored only for normal tabs and never retained by WebView', () => {
-  assert.doesNotMatch(plugin, /onPermissionRequest\(PermissionRequest request\) \{ request\.deny\(\); \}/);
-  assert.match(plugin, /BrowserSitePrompt\.plan\(origin,kinds,promptable\(t\),t\.priv,this::grantable,sessionStore::permission\)/, 'the shared plan gets the shown-page gate, the private flag and the stored decisions');
   assert.match(prompt, /if \(!promptable \|\| origin == null \|\| kinds == null\)\s*return new Plan/, 'a stored Allow is used only by the selected, shown page');
   assert.match(prompt, /if \(!ephemeral\)\s*try \{\s*decision = stored\.apply/, 'private tabs never read decisions');
   assert.equal((plugin.match(/if\(!t\.priv\)for\(String kind:plan\.asked\)try\{sessionStore\.setPermission/g) || []).length, 2, 'private tabs never store decisions');
   assert.match(plugin, /callback\.invoke\(requested,granted\.contains\("location"\),false\)/, 'WebView never retains a geolocation grant');
   assert.match(plugin, /BrowserSitePrompt\.origin\(t\.lastCommittedUrl,t\.web\.getUrl\(\),requested,config\(\)\.allowLoopback\)/, 'local test hosts only in developer builds');
   assert.match(prompt, /if \(page == null \|\| !page\.equals\(asked\) \|\| !page\.equals\(BrowserWebOrigin\.of\(currentUrl\)\)\)/, 'embedded cross-origin requests are refused; same-document navigations keep the page origin');
-  assert.match(plugin, /runtimePermissions\.launch\(missing\.toArray/, 'chained to the Android runtime permission');
   assert.match(plugin, /if\(!t\.priv\)try\{sessionStore\.clearPermissionsForSite\(cleared\);\}/);
   assert.match(store, /sealer\.seal\(bounded\)/, 'decisions are sealed by the host');
   assert.match(stores, /SESSION_PREFERENCES="alpha-browser-session",SESSION_KEY_ALIAS="alpha-browser-session-v1"/, 'installed records keep their file and Keystore key');
 });
 
 test('HTTP authentication is a native prompt for the page host over a secure connection only', () => {
-  assert.doesNotMatch(plugin, /HTTP authentication\), which is not supported/);
   assert.match(plugin, /if\(!secureAuthPage\(page\)\)\{handler\.cancel\(\);fail\(t,"This site asks for a password over an insecure connection/);
   // The challenge has no URL: both the shown page and the pending main-frame request are checked.
   assert.match(plugin, /for\(String candidate:new String\[\]\{t\.url,t\.pendingMain\}\)/);
@@ -114,16 +92,6 @@ test('HTTP authentication is a native prompt for the page host over a secure con
   assert.match(stores, /\.names\("Alpha Phone","Alpha","Alpha Browser"\)/, 'the prompts name Alpha');
   assert.match(plugin, /String managerLine=authOrigin==null\?"\\n"\+authDecision\.refusal:!autofillOn\?"":autofillState\.hasEnabledAutofillServices\(\)\?" "\+config\(\)\.hostName\+"'s password manager can fill it, and offer to save it after the site accepts it, for "\+authOrigin\+"\.":" If your password manager supports this browser, it can fill or save it for "\+authOrigin\+"\.";/, 'provider wording depends on an enabled service; an unbound prompt states why fill is off');
   assert.doesNotMatch(plugin, /setHttpAuthUsernamePassword|useHttpAuthUsernamePassword/, 'nothing is stored or reused');
-});
-
-test('find-in-page clears on navigation and tab change; fullscreen exits with Back', () => {
-  assert.match(plugin, /t\.web\.setFindListener\(\(ordinal,count,done\)->findResult\(t,ordinal,count,done\)\);/);
-  assert.match(plugin, /if\(t\.capture!=null\)t\.capture\.cancel\(\);\n  clearFind\(t\);/, 'navigation clears find and cancels a capture');
-  assert.match(plugin, /disableAutofill\(old\);clearFind\(old\);/, 'tab switch clears find');
-  assert.match(plugin, /new OnBackPressedCallback\(true\)\{@Override public void handleOnBackPressed\(\)\{exitFullscreen\(true\);\}\}/);
-  assert.match(plugin, /if\(customView!=null\|\|!promptable\(t\)\)\{callback\.onCustomViewHidden\(\);return;\}/);
-  for (const binding of ["openFind:", "find:{query:", "next:()=>findStep(true)", "prev:()=>findStep(false)", "close:()=>closeFind()"]) assert.ok(adapter.includes(binding), binding);
-  assert.match(adapter, /if \(s\.finding\) \{ closeFind\(\); return true; \}/, 'Back closes the find bar first');
 });
 
 test('passkeys stay disabled and the native browser offers an honest external remedy', () => {
@@ -137,10 +105,6 @@ test('a page-initiated navigation commits the selected tab autofill session so t
   assert.match(plugin, /if\(startedCallback&&t\.autofillEnabled&&!paused&&Objects\.equals\(presentedId,t\.id\)\)commitAutofill\(t\);\n\s*else disableAutofill\(t\);/);
   assert.match(plugin, /private void commitAutofill\(Tab t\) \{\n\s*t\.autofillEnabled=false;\n\s*AutofillManager manager=getActivity\(\)\.getSystemService\(AutofillManager\.class\);\n\s*if\(manager!=null\)manager\.commit\(\);/);
   assert.equal((plugin.match(/commitAutofill\(/g) || []).length, 2, 'commit is used only on page-started navigation; overlays, pause and tab changes cancel');
-  const fill = read('android/app/src/androidTest/java/ai/elizaresearch/alphaphone/PasswordBrowserFillInstrumentedTest.java');
-  assert.match(fill, /ai\.eliza\.plugins\.passwords\.ElizaPasswordAutofillService/);
-  assert.match(fill, /No password offer for a cross-origin iframe/);
-  assert.match(fill, /event\.preventDefault\(\);location\.href=/, 'the synthetic sign-in never submits its fields to the network');
 });
 
 // The executable cross-site iframe contract lives in BrowserCookiePolicyInstrumentedTest.

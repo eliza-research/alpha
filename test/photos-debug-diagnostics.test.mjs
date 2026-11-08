@@ -42,8 +42,7 @@ test('Photos QA emits only fixed debug enum markers; exception payloads and rele
  System.out.println("PASS fixed debug markers, failure categories, no exception payload, release silence");
  }}
  `);
-  const bin=name=>process.env.JAVA_HOME?join(process.env.JAVA_HOME,'bin',name):name;
-  execFileSync(bin('javac'),['--release','11','-d',dir,join(dir,'android/util/Log.java'),join(dir,'PhotosDiagnosticHarness.java')]);
-  assert.match(execFileSync(bin('java'),['-cp',dir,'PhotosDiagnosticHarness'],{encoding:'utf8'}),/PASS fixed debug markers/);
+  execFileSync(javaBinary('javac'),['--release','11','-d',dir,join(dir,'android/util/Log.java'),join(dir,'PhotosDiagnosticHarness.java')]);
+  assert.match(execFileSync(javaBinary('java'),['-cp',dir,'PhotosDiagnosticHarness'],{encoding:'utf8'}),/PASS fixed debug markers/);
  }finally{rmSync(dir,{recursive:true,force:true});}
 });

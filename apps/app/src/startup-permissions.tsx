@@ -3,7 +3,7 @@ import React, {useEffect, useLayoutEffect, useRef, useState, useSyncExternalStor
 import {registerPlugin} from './platform-plugins';
 import {connectionController} from './runtime/connection-ui';
 import {googleConnectionController} from './runtime/google-connection-ui';
-import {readStartupPermissionMemory,writeStartupPermissionMemory,startupPhotoAccess,startupLocationAccess,startupFilesAccess,STARTUP_PERMISSIONS_REOPEN} from './startup-permission-flow';
+import {startupPhotoAccess,startupLocationAccess,startupFilesAccess,lateReadyNotice,STARTUP_PERMISSIONS_REOPEN} from './startup-permission-flow';
 import {iconStyle} from './icon-style';
 import {browserStartupPermission} from './startup-browser-permissions';
 import {createStartupPermissionFlow, startupPermissionKeys, nativeStartupPermissionKeys, type NativeStartupPermissionKey as PermissionKey, type StartupPermissionState} from './startup-permission-flow';
@@ -33,7 +33,6 @@ const details = {
   files: {title: 'Files', icon: 'folder'},
 };
 const progressKey = 'alpha:startup-permission-progress:v1';
-const dismissedKey = 'alpha:startup-permissions-dismissed:v1';
 type Progress = {version: 3; step: number; choices: ('allowed' | 'continued' | 'skipped')[]};
 function savedProgress(native = false): Progress | null {
   const keys: readonly PermissionKey[] = native ? nativeStartupPermissionKeys : startupPermissionKeys;
@@ -58,6 +57,8 @@ export function StartupPermissions({active:enabled = true}: {active?: boolean} =
   const googleOpen = useSyncExternalStore(googleConnectionController.subscribe,googleConnectionController.getSnapshot);
   const [reopened,setReopened] = useState(false);
   const [ready,setReady] = useState(false);
+  // Setup ran for a sign-in but showed nothing (completed install, no new account).
+  const [silent,setSilent] = useState(false);
   const locationDescription=useRef(''),photoDescription=useRef('');
   const native = Capacitor.getPlatform() === 'android';
   const keys: readonly PermissionKey[] = native ? nativeStartupPermissionKeys : startupPermissionKeys;
@@ -87,7 +88,9 @@ export function StartupPermissions({active:enabled = true}: {active?: boolean} =
   const [progressError, setProgressError] = useState(false);
   const [canSkip, setCanSkip] = useState(false);
   const [checkNotice, setCheckNotice] = useState('');
-  const alive = useRef(false), actionPending = useRef(false), sequence = useRef(0);
+  // sequence retires results; action owns the busy lease, so a retired result still releases it.
+  const alive = useRef(false), actionPending = useRef(false), sequence = useRef(0), action = useRef(0);
+  const finalChoices = useRef<Progress['choices']>([]);
   const dialog = useRef<HTMLDialogElement>(null);
   const key = target ?? keys[progress?.step ?? 0];
   const state = states[key];
@@ -100,25 +103,28 @@ export function StartupPermissions({active:enabled = true}: {active?: boolean} =
     // Browser storage may be blocked. Keep the current session usable without
     // claiming durable storage or treating a reviewed step as an OS grant.
     progressRef.current = value; setProgress(value);
-    return true;
   };
-  const changed = () => window.dispatchEvent(new Event('alpha:permissions-changed'));
 
   useEffect(() => { if (!enabled) ++sequence.current; }, [enabled, connection.cloudAccount?.credentialId]);
   useEffect(() => {
     if (!connection.setupRevision) return;
+    // Sign-in retires any in-flight request; its late answer advances nothing and cannot hold Checking.
+    if (actionPending.current) {flows[targetRef.current ?? keys[progressRef.current?.step ?? 0]].cancel();actionPending.current=false;setBusy(false);}
     ++sequence.current;setReopened(false);setTarget(null);targetRef.current=null;setReview(false);reviewRef.current=false;
-    const resume=progressError?progressRef.current:savedProgress(native);setReady(showWalkthroughCompletion({accountCreated: connection.accountCreated, resumed: !!resume}));setActive(!!resume);if(resume)writeProgress(resume);
+    const resume=progressError?progressRef.current:savedProgress(native),shown=showWalkthroughCompletion({accountCreated: connection.accountCreated, resumed: !!resume});
+    setReady(shown);setActive(!!resume);setSilent(!shown&&!resume);
+    // Completed setup drops a review's step, so the persist effect cannot write it over the completed marker.
+    if(resume)writeProgress(resume);else{progressRef.current=null;setProgress(null);}
   }, [connection.setupRevision]);
+  useEffect(() => {if (lateReadyNotice({silent, error: connection.error, message: connection.message})) {setSilent(false);setReady(true);}}, [silent, connection.error, connection.message]);
+  // Only notices from the sign-in that opened setup: its operation ending closes the window.
+  useEffect(() => {if (!connection.busy) setSilent(false);}, [connection.busy]);
   useEffect(() => {
     alive.current = true; let disposed = false;
     const refresh = async () => {
-      const results = await Promise.all(keys.map(async key => {const value = await flows[key].refresh(); if (!disposed && value !== null) setStates(previous => ({...previous, [key]: value})); return value;}));
-      if (!disposed && results.some(value => value !== null)) {
-        // Access can change independently of the walkthrough. Refresh status,
-        // but never reopen reviewed steps or undo an explicit skip.
-        changed();
-      }
+      // Access can change independently of the walkthrough. Refresh status,
+      // but never reopen reviewed steps or undo an explicit skip.
+      await Promise.all(keys.map(async key => {const value = await flows[key].refresh(); if (!disposed && value !== null) setStates(previous => ({...previous, [key]: value}));}));
     };
     void refresh();
     const resume = () => {if (!document.hidden && !actionPending.current) void refresh();};
@@ -135,13 +141,13 @@ export function StartupPermissions({active:enabled = true}: {active?: boolean} =
       targetRef.current = typeof selected === 'string' && keys.includes(selected as PermissionKey) ? selected as PermissionKey : null;
       setTarget(targetRef.current);
       const resume=savedProgress(native);reviewRef.current=resume===null;setReview(reviewRef.current);
-      if (!selected) {if(!writeProgress(resume??{version:3 as const,step:0,choices:[]}))return;}
-      setReopened(true);setReady(false);
+      if (!selected) writeProgress(resume??{version:3 as const,step:0,choices:[]});
+      setReopened(true);setReady(false);setSilent(false);
       setActive(true);
       void Promise.all(keys.map(async key => {const value = await flows[key].refresh(); if (alive.current && value !== null) setStates(previous => ({...previous, [key]: value}));}));
     };
-    window.addEventListener('alpha:setup-permissions', reopen);window.addEventListener(STARTUP_PERMISSIONS_REOPEN,reopen);
-    return () => {window.removeEventListener('alpha:setup-permissions', reopen);window.removeEventListener(STARTUP_PERMISSIONS_REOPEN,reopen);};
+    window.addEventListener(STARTUP_PERMISSIONS_REOPEN,reopen);
+    return () => window.removeEventListener(STARTUP_PERMISSIONS_REOPEN,reopen);
   }, [flows]);
   useLayoutEffect(() => {
     const panel = dialog.current;
@@ -152,10 +158,10 @@ export function StartupPermissions({active:enabled = true}: {active?: boolean} =
     if (!visible) return;
     const panel = dialog.current, phone = document.querySelector<HTMLElement>('.os');
     if (panel && phone) {const theme = getComputedStyle(phone); for (const token of ['bg', 'fg', 's2', 'line', 'mut', 'acc']) panel.style.setProperty(`--connection-${token}`, theme.getPropertyValue(token==='acc'?'--acct':`--${token}`));}
-    const back = (event: Event) => {event.preventDefault(); event.stopImmediatePropagation(); if (reviewRef.current) close();};
+    const back = (event: Event) => {event.preventDefault(); event.stopImmediatePropagation(); if (reviewRef.current) close(); else if (ready) finish();};
     window.addEventListener('alpha-back', back, true);
     return () => window.removeEventListener('alpha-back', back, true);
-  }, [visible]);
+  }, [visible, ready, reopened, progressError]);
 
   useEffect(() => {if (visible && !target && progress) writeProgress(progress);}, [visible, target, progress]);
 
@@ -172,7 +178,7 @@ export function StartupPermissions({active:enabled = true}: {active?: boolean} =
     if (target) {setActive(false); return;}
     const current = progress ?? {version: 3 as const, step: 0, choices: []};
     if (current.step + 1 < keys.length) writeProgress({version: 3, step: current.step + 1, choices: [...current.choices, choice]});
-    else {writeProgress(null, [...current.choices, choice]);setActive(false);setReady(true);}
+    else {finalChoices.current=[...current.choices, choice];writeProgress(null, finalChoices.current);setActive(false);setReady(true);}
   }
   function skip() {
     if (!canSkip) return;
@@ -189,38 +195,43 @@ export function StartupPermissions({active:enabled = true}: {active?: boolean} =
     if (actionPending.current) return;
     if (target && !native && state === 'ready') {advance('continued'); return;}
     actionPending.current = true; setBusy(true);setCheckNotice('');
-    const ticket = sequence.current;
+    const ticket = sequence.current, id = ++action.current;
     try {
       let value: StartupPermissionState | null;
       if (target && native && state === 'ready') {await (key === 'files' ? files.storageRequestAccess({settings: true}) : device.openSettings({page: key === 'notifications' ? 'notifications' : 'privacy'})); value = await flows[key].refresh();}
       else value = state === 'unavailable' || (!native && state === 'settings') ? await flows[key].refresh() : await flows[key].enable();
       if (alive.current && ticket === sequence.current && value !== null) {
-        setStates(previous => ({...previous, [key]: value})); changed();
+        setStates(previous => ({...previous, [key]: value}));
         if (value === 'ready' && !target) advance(state === 'ready' ? 'continued' : 'allowed');
         else if (!native && value !== 'ready') setCheckNotice(value === 'settings' ? 'Access is still off. Change it using the site controls.' : 'This browser could not confirm access.');
-      }
+      } else if (alive.current && value !== null) setStates(previous => ({...previous, [key]: value})); // Retired: show current access, never advance.
     } catch {if (alive.current && ticket === sequence.current) setStates(previous => ({...previous, [key]: 'unavailable'}));}
-    finally {if (ticket === sequence.current) {actionPending.current = false; if (alive.current) setBusy(false);}}
+    finally {if (id === action.current) {actionPending.current = false; if (alive.current) setBusy(false);}}
   }
   function finish() {
     if(actionPending.current)return;
     // Completing the walkthrough records choices, never permission authority.
     // Each feature still checks current OS/browser access when it is used.
-    writeStartupPermissionMemory({dismissed:true});setActive(false);setReady(false);
-    try{sessionStorage.setItem(dismissedKey,'1');}catch{}
+    // A failed completion write is retried here; the session continues either way.
+    if(progressError&&!reviewRef.current)writeProgress(null,finalChoices.current);
+    setActive(false);setReady(false);
     if(!reopened)window.dispatchEvent(new Event('launcher-home'));
   }
   if (!visible) return null;
-  if(ready)return <dialog ref={dialog} className="alpha-startup-permissions" aria-label="You’re all set" onCancel={event=>{event.preventDefault();close();}}><div className="alpha-permission-content">
-    <span className="alpha-permission-icon" aria-hidden="true"><span style={iconStyle('check')}/></span><h2 className="serif" tabIndex={-1}>You’re all set</h2>
-    {/* A missing plan is known at admission. Setup does not wait for the agent to start, so this notice does not either. */}
-    {(connection.residentPlanNotice==='needs-plan'||connection.residentInference&&connection.residentInference!=='cloud'&&connection.residentInference!=='direct')&&<p role="status" className="alpha-permission-status">{connection.residentPlanNotice==='needs-plan'?'AI needs an active Cloud plan. Manage it in Settings.':'AI is not ready yet. Check your connection in Settings.'}</p>}
+  if(ready){
+    // A missing plan is known at admission. Setup does not wait for the agent to start, so this notice does not either.
+    const aiNotice=connection.residentPlanNotice==='needs-plan'?'AI needs an active Cloud plan. Manage it in Settings.':connection.residentInference==='unknown'?'AI connection isn’t confirmed yet.':connection.residentInference==='unavailable'?'AI is off. Sign in or choose a plan in Settings.':'';
+    const revokeNotice=connection.previousSignInUnconfirmed&&connection.message?connection.message:'';
+    const title=(connection.residentInference==='cloud'||connection.residentInference==='direct')&&!aiNotice&&!connection.error&&!revokeNotice&&!progressError?'You’re all set':'Setup finished';
+    return <dialog ref={dialog} className="alpha-startup-permissions" aria-label={title} onCancel={event=>{event.preventDefault();if(reviewRef.current)close();else finish();}}><div className="alpha-permission-content">
+    <span className="alpha-permission-icon" aria-hidden="true"><span style={iconStyle('check')}/></span><h2 className="serif" tabIndex={-1}>{title}</h2>
+    {aiNotice&&<p role="status" className="alpha-permission-status">{aiNotice}</p>}
     {connection.error&&<p role="alert" className="alpha-permission-status">{connection.error}</p>}
-    {connection.message?.includes('did not confirm revoking')&&<p role="status" className="alpha-permission-status">{connection.message}</p>}
+    {revokeNotice&&<p role="status" className="alpha-permission-status">{revokeNotice}</p>}
     {connection.accountCreated&&<p role="status" className="alpha-permission-status">Account created{connection.cloudAccount?.email?`: ${connection.cloudAccount.email}`:''}.</p>}
-    {progressError&&<p role="alert" className="alpha-permission-status">Setup progress could not be saved. Try again.</p>}
+    {progressError&&<p role="alert" className="alpha-permission-status">Could not save setup. Go to Alpha to try again.</p>}
     <div className="alpha-permission-actions"><button type="button" className="alpha-permission-primary" disabled={busy} onClick={()=>void finish()}>{busy?'Checking…':'Go to Alpha'}</button></div>
-  </div></dialog>;
+  </div></dialog>;}
   const info = details[key];
   const primary = busy ? 'Checking…' : target && native && (state === 'ready' || state === 'settings') ? 'Open Android settings' : target && !native && state === 'ready' ? 'Done' : state === 'ready' ? 'Continue' : state === 'settings' ? native ? 'Open Android settings' : 'Check access' : state === 'unavailable' ? 'Try again' : 'Allow';
   return <dialog ref={dialog} className="alpha-startup-permissions" aria-labelledby="alpha-permission-title" onCancel={event => {event.preventDefault(); close();}}>
@@ -228,9 +239,9 @@ export function StartupPermissions({active:enabled = true}: {active?: boolean} =
       <span className="alpha-permission-icon" aria-hidden="true"><span style={iconStyle(info.icon)}/></span>
       <h2 id="alpha-permission-title" className="serif" tabIndex={-1}>{info.title}</h2>
       {state === 'ready' && <p className="alpha-permission-status" role="status">{native&&key==='location'?locationDescription.current:native&&key==='photos'?photoDescription.current:'Allowed.'}</p>}
-      {state === 'settings' && !checkNotice && <p className="alpha-permission-status" role="status">{native ? 'Off. Turn it on in Android settings.' : 'Off. Turn it on in your browser’s site settings.'}</p>}
+      {state === 'settings' && !checkNotice && <p className="alpha-permission-status" role="status">{native ? 'Off.' : 'Off. Turn it on in your browser’s site settings.'}</p>}
       {state === 'unavailable' && !checkNotice && <p className="alpha-permission-status" role="status">{native ? 'Could not check. Open Android app settings.' : 'Could not check. Open your browser’s site settings.'}</p>}
-      {progressError && <p className="alpha-permission-status" role="alert">Setup progress could not be saved. Try again.</p>}
+      {progressError && <p className="alpha-permission-status" role="alert">Setup progress could not be saved.</p>}
       {checkNotice && <p className="alpha-permission-status" role="status">{checkNotice}</p>}
       <div className="alpha-permission-actions"><button className="alpha-permission-primary" type="button" disabled={busy || state === 'checking'} onClick={() => void allow()}>{state === 'checking' ? 'Checking…' : primary}</button>{canSkip && (!target || busy) && <button className="alpha-permission-skip" type="button" onClick={skip}>Skip for now</button>}{target && !( !native && state === 'ready') && <button className="alpha-permission-skip" type="button" disabled={busy} onClick={() => advance('continued')}>Done</button>}{review && !target && <button className="alpha-permission-skip" type="button" onClick={close}>Close</button>}</div>
     </div>

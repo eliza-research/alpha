@@ -9,8 +9,6 @@ import { flagOffAndroid, fenceNetwork, expectNoDevelopmentSurface } from './flag
 import { residentStub, type StubAccount } from './resident-stub';
 import { ASSISTANT_GROUP, auditPage, auditReadingOrder, auditTabOrder, auditTree, format } from './accessibility-audit';
 
-test.beforeEach(({}, testInfo) => { test.skip(testInfo.project.name !== 'production', 'Production bundle only'); });
-
 const account: StubAccount = { token: 'accessibility-sign-in-key', userId: '9f1dc45a-4011-4e44-947a-30d999d24fa5', email: 'owner@example.invalid', balance: 5 };
 const blocking = (lines: string[]) => lines.filter(line => !line.startsWith('text-truncated:'));
 

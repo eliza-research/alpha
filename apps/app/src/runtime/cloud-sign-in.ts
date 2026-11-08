@@ -56,6 +56,8 @@ export type CloudSignInError = NativeCloudSignInError;
  * carries the next step (a Try again button, Resend under the code), Alpha states only the fact. */
 export function signInFailureMessage(code: CloudSignInFailureCode, serviceName: string): string {
   if (code === 'invalid-code') return 'That code didn’t work.';
+  if (code === 'app-link-unverified') return 'Sign-in didn’t finish. Start again.';
+  if (code === 'activation-pending') return `${serviceName} hasn’t confirmed this phone yet. Sign in again or reopen Alpha.`;
   const message = nativeCloudSignInFailureMessage(code, { serviceName, productName: 'Alpha' });
   return message === `${serviceName} sign-in is unavailable right now. Try again.` ? `${serviceName} sign-in is unavailable.` : message;
 }

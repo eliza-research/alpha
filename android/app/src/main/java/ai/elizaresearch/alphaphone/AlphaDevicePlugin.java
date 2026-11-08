@@ -50,7 +50,7 @@ public final class AlphaDevicePlugin extends Plugin {
  static int effectiveTextZoom(Context context,int percent){float scale=context.getResources().getConfiguration().fontScale;if(!Float.isFinite(scale)||scale<=0)scale=1;return Math.max(1,Math.round(percent*scale));}
  static void applyTextScale(MainActivity activity){activity.getBridge().getWebView().getSettings().setTextZoom(effectiveTextZoom(activity,textScalePercent(activity)));}
  @PluginMethod public void setTextScale(PluginCall call){
-  Integer percent=call.getInt("percent");if(percent==null||percent<75||percent>150){call.reject("Text size must be between75 and150 percent");return;}
+  Integer percent=call.getInt("percent");if(percent==null||percent<75||percent>150){call.reject("Text size must be 75 to 150 percent.");return;}
   getActivity().runOnUiThread(()->{
    if(!(getActivity() instanceof MainActivity)||getActivity().isFinishing()||getActivity().isDestroyed()){call.reject("Alpha view is unavailable");return;}
    if(!getContext().getSharedPreferences("alpha-appearance",Context.MODE_PRIVATE).edit().putInt("text-scale-percent",percent).commit()){call.reject("Text size could not be saved");return;}
@@ -87,16 +87,18 @@ public final class AlphaDevicePlugin extends Plugin {
   SystemFacts.fact(facts,"appSigner",()->appSigner(context));
   for(java.util.Map.Entry<String,Object> fact:facts.entrySet())out.put(fact.getKey(),fact.getValue());
  }
+ /** As HOME, an outside screen gets its own task, as stock launchers do, so HOME does not clear it. Never for a result start. */
+ private static Intent handOff(Intent intent){return BuildConfig.IS_LAUNCHER?intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK):intent;}
  @PluginMethod public void openPasswordProvider(PluginCall call) {
   String action=call.getString("action","");
   getActivity().runOnUiThread(()->{
    try {
     Intent target=PasswordProviderSupport.intent(getContext(),action);
     String destination=Settings.ACTION_REQUEST_SET_AUTOFILL_SERVICE.equals(target.getAction())?"provider-picker":"external";
-    try { getActivity().startActivity(target); }
+    try { getActivity().startActivity(handOff(target)); }
     catch(android.content.ActivityNotFoundException missing) {
      if(!"settings".equals(action)||!Settings.ACTION_REQUEST_SET_AUTOFILL_SERVICE.equals(target.getAction()))throw missing;
-     getActivity().startActivity(new Intent(Settings.ACTION_SETTINGS));destination="system-settings";
+     getActivity().startActivity(handOff(new Intent(Settings.ACTION_SETTINGS)));destination="system-settings";
     }
     if(Settings.ACTION_SETTINGS.equals(target.getAction()))destination="system-settings";
     JSObject out=new JSObject();out.put("status","opened");out.put("destination",destination);call.resolve(out);
@@ -135,7 +137,7 @@ public final class AlphaDevicePlugin extends Plugin {
   if(SystemSettingsPages.actions(page)==null){call.reject("Unsupported settings page");return;}
   getActivity().runOnUiThread(()->{
    // The shared allowlist (SystemSettingsPages); "specific" is false when only the broader fallback opened.
-   int opened=SystemSettingsPages.open(page,getContext().getPackageName(),intent->getActivity().startActivity(intent));
+   int opened=SystemSettingsPages.open(page,getContext().getPackageName(),intent->getActivity().startActivity(handOff(intent)));
    if(opened<0){call.reject("This Android settings page is unavailable");return;}
    JSObject out=new JSObject();out.put("status","opened");out.put("page",page);out.put("specific",opened==0);call.resolve(out);
   });
@@ -577,7 +579,7 @@ public final class AlphaDevicePlugin extends Plugin {
  @PluginMethod public void installUpdate(PluginCall call){
   if(!getContext().getPackageManager().canRequestPackageInstalls()){
    getActivity().runOnUiThread(()->{
-    try{getActivity().startActivity(new Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES,android.net.Uri.parse("package:"+getContext().getPackageName())));call.resolve();}
+    try{getActivity().startActivity(handOff(new Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES,android.net.Uri.parse("package:"+getContext().getPackageName()))));call.resolve();}
     catch(RuntimeException unavailable){call.reject("Update unavailable");}
    });
    return;

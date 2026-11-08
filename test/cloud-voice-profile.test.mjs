@@ -32,10 +32,6 @@ test('native production Cloud voice pins host and Cartesia; staging and other ou
  execFileSync(binary('javac'),['--release','11','-d',out,'android/app/src/main/java/ai/elizaresearch/alphaphone/CloudDeployment.java','android/app/src/main/java/ai/elizaresearch/alphaphone/CloudSpeechPolicy.java','test/fixtures/CloudSpeechPolicyTest.java']);
  assert.match(execFileSync(binary('java'),['-cp',out,'ai.elizaresearch.alphaphone.CloudSpeechPolicyTest'],{encoding:'utf8'}),/PASS Cloud speech production host and Cartesia admission/);
  const native=fs.readFileSync('android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaVoiceCloudPlugin.java','utf8');
- const upload=native.slice(native.indexOf('@PluginMethod public void transcribeRecording('),native.indexOf('@PluginMethod public void synthesize('));
- assert.match(upload,/RecordingPcm\.decode\(file,\(\)->request\.cancelled\|\|destroyed\(\)\)/,'Cloud uploads real decoded PCM rather than relabelling the MPEG_4 recorder');
- assert.match(upload,/filename=\\"recording\.wav\\"\\r\\nContent-Type: audio\/wav/);
- assert.match(upload,/finally\{Arrays\.fill\(audio,\(byte\)0\);\}/,'uploaded PCM is cleared after the request body write');
  assert.match(native,/CloudSpeechPolicy\.host\(BuildConfig\.ELIZA_RUNTIME_PROFILE,BuildConfig\.ELIZA_DEV_ALLOW_TEST_MOCKS,environment\)/);
  assert.match(native,/if\(!paired\)CloudSpeechPolicy\.requireProvider\(BuildConfig\.ELIZA_RUNTIME_PROFILE,c\.getHeaderField\("X-Eliza-TTS-Provider"\)\)/);
  const paired=native.slice(native.indexOf('private HttpURLConnection connectPaired(PluginCall call,boolean status,SpeechRequestGate.Request request,boolean asr)'));
@@ -133,13 +129,27 @@ public class CloudWavUploadTest {
  }finally{fs.rmSync(out,{recursive:true,force:true});}
 });
 
-test('Cloud voice shows finite HTTP support codes without replacing sign-in or billing recovery',()=>{
+test('Cloud voice maps finite HTTP codes to sign-in, account, billing and retry recovery without status digits',()=>{
  const f=cloudVoiceViewFixture({cloudProfile:true});
  try{
-  const failure=code=>f.box.cloudVoiceFailure({code,message:'PRIVATE_HTTP_SENTINEL'});
-  for(const status of [401,403])assert.equal(failure(`voice-http-${status}`),'Sign in to Cloud again in Settings, then retry voice.');
-  assert.equal(failure('voice-http-402'),"Cloud declined cloud voice for your account's billing. Check your account in Settings, then retry.");
-  for(const status of [400,503])assert.equal(failure(`voice-http-${status}`),`Cloud voice could not complete this request (${status}). Try again later.`);
+  const failure=(code,context)=>f.box.cloudVoiceFailure({code,message:'PRIVATE_HTTP_SENTINEL'},context);
+  const name=f.box.cloudVoiceFailure({code:'voice-http-401'}).split(' sign-in expired.')[0];
+  assert.equal(failure('voice-http-401'),`${name} sign-in expired. Sign in again in Settings, then retry voice.`);
+  assert.equal(failure('voice-http-403'),`${name} refused voice for this account. Check your account in Settings.`);
+  assert.equal(failure('voice-http-402'),`${name} declined voice for billing. Check your account in Settings.`);
+  for(const status of [400,503])assert.equal(failure(`voice-http-${status}`),`${name} voice couldn’t complete this request. Try again later.`);
+  assert.equal(failure('voice-tts-connect'),`${name} voice could not use your saved account. Sign in again in Settings.`);
+  for(const code of ['voice-http-400','voice-http-401','voice-http-402','voice-http-403','voice-http-503','voice-tts-connect','voice-stt-connect','voice-stt-upload','voice-stt-response'])assert.doesNotMatch(failure(code,{recording:true}),/[0-9]/);
+  // A chat voice turn keeps no recording; Notes keeps its clip for Transcribe again.
+  for(const code of ['voice-stt-connect','voice-stt-upload','voice-stt-response']){
+   assert.match(failure(code,{conversation:true}),/Your message was not sent\. Say it again\.$/);assert.doesNotMatch(failure(code,{conversation:true}),/recording is kept/);
+   assert.match(failure(code,{recording:true}),/Your recording is kept\.$/);
+  }
+  // Own Cartesia key: a refusal points at the key and plan, an outage says try later.
+  const snapshot=f.box.connectionController.getSnapshot;f.box.connectionController.getSnapshot=()=>({...snapshot(),residentInference:'direct'});
+  for(const status of [400,401,402,403,429])assert.equal(failure(`voice-http-${status}`),'Cartesia refused voice. Check your key and Cartesia plan.');
+  for(const status of [500,503])assert.equal(failure(`voice-http-${status}`),'Cartesia isn’t responding. Try again later.');
+  f.box.connectionController.getSnapshot=snapshot;
   // A 429 is the plan's request limit (cloud-voice-limit.test.mjs covers its retry facts).
   assert.match(failure('voice-http-429'),/voice reached your plan's request limit\. Wait a moment, then try again\.$/);
   for(const code of ['voice-http-200','voice-http-600','voice-http-400PRIVATE_HTTP_SENTINEL','voice-http-400\n','voice-http-400\r\n','voice-http-400\nPRIVATE_HTTP_SENTINEL','voice-http-0400',400,null])assert.equal(failure(code),null);

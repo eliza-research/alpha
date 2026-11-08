@@ -81,7 +81,7 @@ async function hosts(page:Page){
 async function shot(page:Page,info:TestInfo,name:string){await page.evaluate(()=>document.fonts.ready);await page.screenshot({path:info.outputPath(name+'.png'),animations:'disabled'});}
 const snapshot=(page:Page)=>page.evaluate(async()=>{const s=(await import('/src/runtime/connection-ui.tsx')).connectionController.getSnapshot();return {busy:s.busy,open:s.open,session:!!s.session,kind:s.kind,message:s.message,inference:s.residentInference??null,account:s.cloudAccount?.userId??null};});
 /** Starting-state copy the owner reported: none of it may show while the agent merely starts. */
-const STARTING_SLOP=['AI is off','Checking your code','Checking code','Eliza Cloud credits','Manage billing','AI is not ready yet'];
+const STARTING_SLOP=['AI is off','Checking your code','Checking code','Eliza Cloud credits','Manage billing','AI connection isn’t confirmed yet'];
 
 test('a verified email code goes straight to access setup while the agent restarts behind it',async({page},info)=>{
  test.setTimeout(120_000);
@@ -132,7 +132,7 @@ test('a verified email code goes straight to access setup while the agent restar
  await expect(page.locator('.alpha-connection-scrim')).toHaveCount(0);
  expect(await snapshot(page)).toMatchObject({session:false,kind:'starting',inference:null,account:USER});
  for(const name of ['Notifications','Microphone','Camera','Location']){await expect(setup.getByRole('heading',{name,exact:true})).toBeVisible();await setup.getByRole('button',{name:'Allow',exact:true}).click();}
- await expect(setup.getByRole('heading',{name:'You’re all set',exact:true})).toBeVisible();
+ await expect(setup.getByRole('heading',{name:'Setup finished',exact:true})).toBeVisible();
  await expect(setup.getByText('Account created: new-owner@example.invalid.',{exact:true})).toBeVisible();
  await shot(page,info,'04-all-set-agent-starting');
  for(const text of STARTING_SLOP)expect(await setup.innerText()).not.toContain(text);

@@ -125,7 +125,7 @@ for (const mode of ['confirm','transcribed','zone','modal','unknown','receipt-lo
     }
     else {await input.fill(mode==='show'?'Show my alarms':mode==='snooze'?'Snooze ringing alarms for ten minutes':mode==='dismiss'?'Dismiss the ringing alarm':'Set an alarm for 07:00; await my review.');await input.press('Enter');}
     if(mode==='old-host'||mode==='browser'){await expect(page.locator('[data-alpha-message-text]').filter({hasText:/^Clock handoff is unavailable on this host\. Open Clock from Calendar\.$/})).toBeVisible();expect(await page.evaluate(()=>(window as any).recoveryFixture.effects)).toBe(0);await expect(page.getByText('clock handoff',{exact:true})).toHaveCount(0);return;}
-    if(mode!=='transcribed')await expect(page.getByText(/Pending phone actions are available for separate review/)).toBeVisible();
+    if(mode!=='transcribed')await expect(page.getByText(/Review the action below\./)).toBeVisible();
     await expect(page.getByText('clock handoff',{exact:true})).toBeVisible();
     expect(await page.evaluate(()=>(window as any).recoveryFixture.effects)).toBe(0);
     if(mode==='zone')await page.evaluate(()=>{const original=Intl.DateTimeFormat.prototype.resolvedOptions;Intl.DateTimeFormat.prototype.resolvedOptions=function(){return {...original.call(this),timeZone:'Pacific/Honolulu'};};});
@@ -200,7 +200,7 @@ for (const mode of ['confirm','transcribed','zone','modal','unknown','receipt-lo
       const again=page.getByRole('textbox',{name:'Ask Alpha',exact:true});await again.fill('Repeat this same request');await again.press('Enter');
       // Let the reply settle, then keep the review card in the expanded chat.
       // A newly opening sheet can scroll its inner text between pointer down/up.
-      await expect(page.getByText(/Pending phone actions are available for separate review/)).toBeVisible();
+      await expect(page.getByText(/Review the action below\./)).toBeVisible();
       await page.getByRole('button',{name:'Expand chat',exact:true}).click();
       await page.getByRole('button',{name:/^clock handoff /}).click();
       await expect(page.getByText(/already has a device journal entry/).first()).toBeVisible();expect(await page.evaluate(()=>(window as any).recoveryFixture.effects)).toBe(1);

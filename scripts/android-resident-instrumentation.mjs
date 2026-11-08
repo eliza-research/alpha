@@ -31,7 +31,8 @@ const fixtureName = `alpha-resident-${runId}`;
 const created = adb(['shell', 'pm', 'create-user', fixtureName]);
 const user = /^Success: created user id ([1-9]\d*)$/.exec(created)?.[1];
 if (!user) throw Error('Could not create fixture user: ' + created);
-let result = {runId, user, test, passed: false};
+// apkSha256 binds this record to the installed app APK (scripts/qualify-head.mjs CAMPAIGNS).
+let result = {runId, user, test, apkSha256: sha(fs.readFileSync(apk)), passed: false};
 try {
   adb(['shell', 'am', 'start-user', '-w', user]);
   adb(['install', '--user', user, '-r', '-t', apk]);

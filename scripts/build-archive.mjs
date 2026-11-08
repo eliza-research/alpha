@@ -52,7 +52,7 @@ try{execFileSync('npm',['run','android:sync'],{stdio:['ignore',capacitorStageLog
 finally{fs.closeSync(capacitorStageLog);}
 const before=snapshot();
 fs.writeFileSync(path.join(destination,'inputs-before.json'),JSON.stringify(before,null,2));
-fs.writeFileSync(path.join(destination,'configuration.json'),JSON.stringify({testMocks,runtimeProfile,updateChannel,...(localEmbeddings?{localEmbeddings:true}:{}),mapsConfigured:Boolean(process.env.VITE_MAPS_BASE_URL),startedAt:new Date().toISOString()},null,2));
+fs.writeFileSync(path.join(destination,'configuration.json'),JSON.stringify({testMocks,runtimeProfile,updateChannel,...(localEmbeddings?{localEmbeddings:true}:{}),mapsConfigured:Boolean(process.env.VITE_MAPS_BASE_URL),mapsProvider:testMocks&&process.env.VITE_MAPS_BASE_URL?'regional-gateway':'cloud',startedAt:new Date().toISOString()},null,2));
 for(const command of ['verify','android:build']){
  const log=fs.openSync(path.join(destination,command.replace(':','-')+'.log'),'wx');
  const extra=command==='android:build'&&buildArgs.length?['--',...buildArgs]:[];

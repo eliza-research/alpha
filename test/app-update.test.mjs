@@ -33,6 +33,8 @@ test('the update flow runs one attempt per process, fences a session Android sti
  try{
   // The plugin's own members in a class of its name, with only the deadline shortened to seconds; the stubs state what Android and Capacitor do.
   const members=join(dir,'AlphaDevicePlugin.java');
+  // The update flow opens the unknown-sources page through the plugin's own hand-off helper.
+  const handOff=/ private static Intent handOff\(Intent intent\)\{[^\n]*/.exec(plugin)?.[0];assert.ok(handOff,'AlphaDevicePlugin.handOff');
   writeFileSync(members,`package ai.elizaresearch.alphaphone;
 import android.content.Context;
 import android.content.Intent;
@@ -43,6 +45,7 @@ import android.provider.Settings;
 import com.getcapacitor.*;
 final class AlphaDevicePlugin extends Plugin {
  private final java.util.concurrent.ExecutorService diagnosticsWorker=java.util.concurrent.Executors.newSingleThreadExecutor();
+${handOff}
 ${plugin.slice(start,end).replace(deadline,'UPDATE_DEADLINE_NANOS=java.util.concurrent.TimeUnit.SECONDS.toNanos(3)')}}
 `);
   assert.match(runJvm([members,join(root,'vendor/eliza/plugins/plugin-native-agent/android/src/main/java/ai/eliza/plugins/agent/updater/RuntimeUpdatePause.java'),nativeSource('PluginWorkers.java'),...javaFiles(fixture('app-update-jvm')),fixture('UpdateFlowTest.java')],'ai.elizaresearch.alphaphone.UpdateFlowTest'),/^PASS update flow/);

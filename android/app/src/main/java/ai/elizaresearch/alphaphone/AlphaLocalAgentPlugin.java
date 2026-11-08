@@ -426,9 +426,12 @@ private static final class ResidentAttachDiagnostic {
    String applied=bindCloudProvider(store,credentialId,model);store.assertCurrent();
    call.resolve(new JSObject().put("configured",true).put("bindingGuard",store.providerBindingGuard(applied)));
   }catch(Exception unavailable){
-   String code="NATIVE_CLOUD_ADMISSION_UNAVAILABLE";
-   if(unavailable instanceof LocalAgentProviderAdmission.CloudBindingFailure){LocalAgentProviderAdmission.CloudBindingFailure failure=(LocalAgentProviderAdmission.CloudBindingFailure)unavailable;code="NATIVE_CLOUD_ADMISSION_"+failure.stage.toUpperCase(java.util.Locale.ROOT).replace('-','_');android.util.Log.w("AlphaCloudAdmission",failure.diagnostic.toString());}
-   call.reject("Cloud account changed or is unavailable. Sign in again before starting the local agent.",code);
+   String code="NATIVE_CLOUD_ADMISSION_UNAVAILABLE";JSObject data=null;
+   if(unavailable instanceof LocalAgentProviderAdmission.CloudBindingFailure){LocalAgentProviderAdmission.CloudBindingFailure failure=(LocalAgentProviderAdmission.CloudBindingFailure)unavailable;code="NATIVE_CLOUD_ADMISSION_"+failure.stage.toUpperCase(java.util.Locale.ROOT).replace('-','_');android.util.Log.w("AlphaCloudAdmission",failure.diagnostic.toString());
+    // The renderer tells a transient identity read (0 = transport, 408, 429, 5xx) from a refused key.
+    if("identity-read".equals(failure.stage))data=new JSObject().put("stage","identity-read").put("httpStatus",failure.diagnostic.optInt("httpStatus",0));}
+   if(data!=null)call.reject("Cloud account changed or is unavailable. Sign in again before starting the local agent.",code,data);
+   else call.reject("Cloud account changed or is unavailable. Sign in again before starting the local agent.",code);
   }},()->{call.reject("Local agent bridge is closed.");});
  }
  /** Preserve the previous selection when admission loses its account, without replacing a newer selection. */
@@ -596,7 +599,10 @@ private static final class ResidentAttachDiagnostic {
   catch(java.io.FileNotFoundException absent) { /* Older payloads do not contain a workflow worker. */ }
   if(workerIndex!=null){
    String root=env.get("AGENT_ROOT");if(root==null){workerIndex.close();throw new java.io.IOException("Agent resource directory unavailable");}
-   java.io.File worker=WorkflowWorkerAssets.install(new java.io.File(root),workerIndex,path->context.getAssets().open("agent/workflow-worker/"+path));
+   String packageStamp;
+   try{packageStamp=BuildConfig.VERSION_CODE+"/"+context.getPackageManager().getPackageInfo(context.getPackageName(),0).lastUpdateTime;}
+   catch(android.content.pm.PackageManager.NameNotFoundException unknown){packageStamp=null;}
+   java.io.File worker=WorkflowWorkerAssets.install(new java.io.File(root),workerIndex,path->context.getAssets().open("agent/workflow-worker/"+path),packageStamp);
    WorkflowWorkerAssets.configureEnvironment(worker,env);
    nativeHostResources=worker;
   }
@@ -680,13 +686,7 @@ private static final class ResidentAttachDiagnostic {
     final long stopRequest;
     synchronized(lifecycleLock){
      requireShutdownRetry(call,retryEpoch,retryIntent);
-     credentialShutdownRequest=-2;
-     stopRequest=ElizaAgentService.reserveCredentialShutdown();
-     credentialShutdownRequest=stopRequest;
-     // Retain the exact request even if Android dispatch throws. Retry commits nothing;
-     // abandonment keeps starts fenced until this request's actual stop ACK.
-     try{ElizaAgentService.retryCredentialShutdown(getContext(),stopRequest);}
-     finally{ElizaAgentService.abandonCredentialShutdown(stopRequest);}
+     stopRequest=reissueCredentialShutdownLocked();
     }
     ResidentCredentialShutdownRetry.await(
      ()->{synchronized(lifecycleLock){requireShutdownRetry(call,retryEpoch,retryIntent);}},
@@ -717,6 +717,17 @@ private static final class ResidentAttachDiagnostic {
  static boolean shutdownRetryRequired(){
   if(uncertainCommitRequest>=0)return true;
   return !((credentialShutdownRequest==-1&&!stopping)||(credentialShutdownRequest>=0&&ElizaAgentService.isCredentialShutdownConfirmed(credentialShutdownRequest)));
+ }
+ /** Caller holds lifecycleLock. Sends a fresh strict stop for a retained credential shutdown.
+  * Retain the exact request even if Android dispatch throws. It commits nothing; abandonment
+  * keeps starts fenced until this request's actual stop ACK. */
+ private long reissueCredentialShutdownLocked() {
+  credentialShutdownRequest=-2;
+  final long stopRequest=ElizaAgentService.reserveCredentialShutdown();
+  credentialShutdownRequest=stopRequest;
+  try{ElizaAgentService.retryCredentialShutdown(getContext(),stopRequest);}
+  finally{ElizaAgentService.abandonCredentialShutdown(stopRequest);}
+  return stopRequest;
  }
  /** Caller holds lifecycleLock. Never lets focus loss or another intent authorize this retry. */
  private void requireShutdownRetry(PluginCall call,long epoch,long intent)throws Superseded {
@@ -843,6 +854,7 @@ private static final class ResidentAttachDiagnostic {
   String requestId=call.getString("requestId","");
   if(!requestId.matches("[a-f0-9-]{36}")){call.reject("Invalid startup request");return;}
   synchronized(lifecycleLock){
+   if(disposed){call.reject("Local agent bridge is closed.");return;}
    // A start that attached owns no launch: its cancellation retires nothing.
    if(attachedStarts.remove(requestId)){call.resolve();return;}
    if(requestId.equals(startRequestId)&&startRequestEpoch==lifecycleEpoch){
@@ -933,9 +945,15 @@ private static final class ResidentAttachDiagnostic {
  static void releaseUpdateShutdown(long request){ElizaAgentService.releaseCredentialShutdown(request);}
  @PluginMethod public void stop(PluginCall call) {
   synchronized(lifecycleLock){
+   if(disposed){call.reject("Local agent bridge is closed.");return;}
    startRequestId=null;startOwnsLaunch=false;
    AlphaCanonicalNotifications.forget(getContext());invalidateCalls();++lifecycleEpoch;accepting=false;stopping=true;clearEnrollment();
-   try{ElizaAgentService.stop(getContext());call.resolve(new JSObject().put("state","stopping"));}
+   // A retained, unconfirmed credential stop reports stopped only on its own ACK. Reissue the strict
+   // stop so that ACK can arrive once whatever refused it has exited; nothing launches here. A
+   // credential write in flight still owns its request. A Retry in flight is superseded above.
+   boolean strict=credentialShutdownRequest>=0&&credentialMutationEpoch<0
+     &&!ElizaAgentService.isCredentialShutdownConfirmed(credentialShutdownRequest);
+   try{if(strict)reissueCredentialShutdownLocked();else ElizaAgentService.stop(getContext());call.resolve(new JSObject().put("state","stopping"));}
    catch(Exception unavailable){call.reject("Your agent may still be running. Try stopping it again.");}
   }
  }

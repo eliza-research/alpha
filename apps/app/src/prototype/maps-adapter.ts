@@ -14,12 +14,13 @@ import { initializeRegionalMaps, regionalMap, regionalDiagnostics, regionalMapsC
 import { initializeCloudMaps, cloudMapsCoverage, cloudMapsDiagnostics, cloudMapsBasemap } from '../maps/cloud-maps';
 import { describeMapsDisclosure, insideCloudCoverage } from '../maps/cloud-provider';
 import { NativeMapsLocation, locationPermissionGranted } from '../maps/native-location';
-import { bindAgentNavigation, residentMapsNavigationPort } from '../maps/agent-navigation';
+import { bindAgentNavigation, keepCloudMapsCoverage, residentMapsNavigationPort } from '../maps/agent-navigation';
 import { publishMapsSelection, clearMapsSelection } from '../maps/agent-context';
 import { MapsController } from '../maps/state';
 import { mapsConnection, onMapsConnectionChange } from '../maps/runtime';
 import { MapsScreenController, type MapsScreenView } from '../maps/screen';
 import { connectionController } from '../runtime/connection-ui';
+import { cloudServiceName } from '../runtime/cloud-protocol';
 import type { Coordinate, TravelMode } from '../maps/contracts';
 
 type Bag = Record<string, any>;
@@ -42,15 +43,18 @@ export function installPrototypeMapsAdapter(Component: { prototype: Bag }, views
   let planeBasemap:MapBasemap|undefined, plane: MapPlane | undefined, planeElement: HTMLElement | undefined;
   let mapGeneration=0,mapFailed=false,mapObserver:MutationObserver|undefined;
   let mapCopyright='';
-  let pendingHandoff: {query:string}|undefined;
+  let pendingHandoff: {query:string}|undefined, mapsController:MapsController|undefined;
   const active=()=>!disposed&&!document.hidden&&!!api?.isActive();
   const dropPlane=()=>{++mapGeneration;mapObserver?.disconnect();mapObserver=undefined;mapFailed=false;mapCopyright='';plane?.destroy();plane=undefined;planeElement=undefined;planeBasemap=undefined;};
   const navigationVoice=new NavigationVoice(error=>screen.notify((error instanceof Error?error.message+' ':'')+'Voice guidance paused. Tap Enable voice guidance to retry.'));
   const background=new BackgroundNavigation(registerPlugin<NavigationBridge>('AlphaMapsTransport'),()=>Capacitor.isNativePlatform());
+  // A Cloud read already made or under way for this account is not repeated: a second read would
+  // uninstall the provider an open Maps search is using. An account change retires it first (cloud-maps.ts).
+  const readCloudMaps = () => { const read = cloudMapsDiagnostics(); return read.configured && !read.error ? Promise.resolve() : initializeCloudMaps(); };
   const screen: MapsScreenController = new MapsScreenController({
     connection: mapsConnection,
     onConnectionChange: onMapsConnectionChange,
-    initialize: () => regionalMapsConfigured ? initializeRegionalMaps() : initializeCloudMaps(),
+    initialize: () => regionalMapsConfigured ? initializeRegionalMaps() : readCloudMaps(),
     diagnostics: () => regionalMapsConfigured ? regionalDiagnostics() : cloudMapsDiagnostics(),
     coverage: () => {
       const region=regionalMap();
@@ -59,7 +63,7 @@ export function installPrototypeMapsAdapter(Component: { prototype: Bag }, views
       return cloud&&{name:cloud.regions.map(item=>item.name).join(', '),mapRestricted:false,contains:point=>insideCloudCoverage(cloud,point)};
     },
     attribution: () => regionalMap()?.attribution || cloudMapsCoverage()?.attribution || '',
-    createController: (config, provider) => new MapsController(config, provider),
+    createController: (config, provider) => (mapsController = new MapsController(config, provider)),
     navigationLocation: new NativeMapsLocation(),
     agentLocation: new NativeMapsLocation(),
     locationGranted: locationPermissionGranted,
@@ -97,9 +101,9 @@ export function installPrototypeMapsAdapter(Component: { prototype: Bag }, views
       let outcome:'found'|'missing'|'permission'|'unknown'='unknown';
       try{if(origin.version===2){const abort=new AbortController(),cancel=()=>{if(document.hidden||!currentApi.isActive())abort.abort();};document.addEventListener('visibilitychange',cancel);window.addEventListener('pagehide',cancel);try{outcome=await currentApi.checkCanonicalCalendarReturn?.(origin,abort.signal)??'unknown';}finally{document.removeEventListener('visibilitychange',cancel);window.removeEventListener('pagehide',cancel);}}else{const result=await calendarPlugin.list({begin:origin.begin-1,end:origin.begin+1});outcome=result.status==='ready'?(mapsEventStillThere(origin,result.events)?'found':'missing'):result.status==='permission-required'?'permission':'unknown';}}catch{/* A thrown read says nothing about the event. */}
       if(disposed||document.hidden||!currentApi.isActive()||currentApi.get('maps').fromEvent!==raw||!mapsEventReturnOffered(raw,api?.S.stack,screen.isNavigating()))return;
-      if(outcome==='permission'){currentApi.toast('Calendar access is needed to check this event. Allow calendar access, then try again.');return;}
-      if(outcome==='unknown'){currentApi.toast('The event could not be checked. Maps stays open; try again.');return;}
-      if(outcome==='missing'){currentApi.set({fromEvent:null});currentApi.toast('That event was deleted or moved. Maps stays open; nothing else changed.');return;}
+      if(outcome==='permission'){currentApi.toast('Allow Calendar access to check this event.');return;}
+      if(outcome==='unknown'){currentApi.toast("Can't check this event. Try again.");return;}
+      if(outcome==='missing'){currentApi.set({fromEvent:null});currentApi.toast('That event was deleted or moved.');return;}
       const stack=(api?.S.stack||[]).slice(0,-1);
       // Unwind this visit's Maps layers (route, place, results, search text) as system Back would, so
       // nothing of the hand-off is left to show or replay when Maps is opened again.
@@ -131,6 +135,11 @@ export function installPrototypeMapsAdapter(Component: { prototype: Bag }, views
     bind(data, view, st, currentApi);
     return data;
   };
+  function cloudCredit(directionsOpen: boolean) {
+    const route = directionsOpen ? mapsController?.snapshot().route : undefined;
+    const text = (route?.phase === 'ready' && route.value?.attribution) || cloudMapsCoverage()?.attribution || '';
+    return text.length > 200 ? `${text.slice(0, 199)}…` : text;
+  }
   function bind(data: Bag, view: MapsScreenView, st: Bag, currentApi: Bag) {
     const status = view.status, region = regionalMap(), raster=cloudMapsBasemap(), basemap = region || raster || globalBasemap, globalMap = !region&&!raster;
     // Alpha's Cloud provider is operator-owned. Translate only the generic setup
@@ -260,12 +269,21 @@ export function installPrototypeMapsAdapter(Component: { prototype: Bag }, views
     installation:()=>{const coverage=cloudMapsCoverage();return coverage&&{providerId:coverage.providerId,attribution:coverage.attribution};},
     connection:mapsConnection,onChange:onMapsConnectionChange,surface,port:residentMapsNavigationPort,
   });
+  // Coverage is read once the account is bound and the resident is ready, so the agent can navigate
+  // before Maps is opened. A new account gets coverage only; its routes still need a new search.
+  const stopCoverage=keepCloudMapsCoverage({
+    enabled:()=>!regionalMapsConfigured&&!shell?.props?.assistantSurface&&!document.documentElement.classList.contains('alpha-assistant-surface'),
+    ready:()=>!!connectionController.getSnapshot().session,
+    account:()=>connectionController.getCloudClient(),
+    initialize:readCloudMaps,
+    onChange:listener=>connectionController.subscribe(listener),
+  });
   // Screen-off navigation keeps its voice; everything else retires shared and spoken output.
   const retireShare=()=>screen.retireShare();
   const shareEvents=['launcher-home','alpha:device-state','alpha:dev-incoming-call'];for(const event of shareEvents)window.addEventListener(event,retireShare);
   const visibility = () => { if(document.hidden)screen.hidden();else screen.refresh(); };
   const pagehide=()=>screen.release();window.addEventListener('pagehide', pagehide); document.addEventListener('visibilitychange', visibility);
-  return () => { disposed = true; agentNavigation.dispose(); shell=undefined; for(const event of shareEvents)window.removeEventListener(event,retireShare); screen.dispose(); window.removeEventListener('pagehide', pagehide); document.removeEventListener('visibilitychange', visibility); Object.assign(module, original); };
+  return () => { disposed = true; stopCoverage(); agentNavigation.dispose(); shell=undefined; for(const event of shareEvents)window.removeEventListener(event,retireShare); screen.dispose(); window.removeEventListener('pagehide', pagehide); document.removeEventListener('visibilitychange', visibility); Object.assign(module, original); };
 }
 
 /** Presentation only: stored messages, model context and copied source text remain unchanged.

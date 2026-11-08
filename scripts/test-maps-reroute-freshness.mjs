@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import vm from 'node:vm';
 import { stripTypeScriptTypes } from '../test/support/strip-types.mjs';
-import { usableNavigationFix } from '../apps/app/src/maps/navigation-fix.ts';
+import { usableNavigationFix } from '../.eliza/client-features/plugins/plugin-maps/src/client/navigation-fix.ts';
 import { MapsController } from '../.eliza/client-features/plugins/plugin-maps/src/client/state.ts';
 import { SavedPlaces } from '../.eliza/client-features/plugins/plugin-maps/src/client/saved-places.ts';
 import { MapsFailure, coordinate, failure } from '../.eliza/client-features/plugins/plugin-maps/src/client/contracts.ts';
@@ -35,13 +35,13 @@ async function fixture() {
  class Voice { enabled=true; pause(){} update(){} toggle(){this.enabled=!this.enabled;} }
  const storage = {getItem:()=>null,setItem:noop};
  const context = vm.createContext({console,queueMicrotask, setTimeout, clearTimeout, AbortController,
-  MapsScreenController, shareMap:async()=>'closed', MapPlane:class{update(){} destroy(){}}, insideCloudCoverage:()=>true, describeMapsDisclosure:()=>'', DailyApps:{}, mapsEventStillThere:()=>false, connectionController:{getSnapshot:()=>({open:false})},
+  MapsScreenController, shareMap:async()=>'closed', insideCloudCoverage:()=>true, describeMapsDisclosure:()=>'', DailyApps:{}, mapsEventStillThere:()=>false, connectionController:{getSnapshot:()=>({open:false})},
   initializeRegionalMaps:async()=>{}, regionalDiagnostics:()=>({}),
   MapsController:class extends MapsController { constructor(c,p){super(c,p,new SavedPlaces('freshness',storage),new Location());} },
   locationPermissionGranted:async()=>true,NativeMapsLocation:Location,BackgroundNavigation:Background,NavigationVoice:Voice,registerPlugin:()=>({}),Capacitor:{isNativePlatform:()=>false},isAndroid:false,
   regionalMapsConfigured:false,initializeCloudMaps:async()=>{},regionalMap:()=>undefined,cloudMapsCoverage:()=>undefined,cloudMapsBasemap:()=>undefined,cloudMapsDiagnostics:()=>({}),globalBasemap:{attribution:'Fixture'},
   mapsConnection:()=>({config,provider}),onMapsConnectionChange:()=>noop,
-  bindAgentNavigation:options=>{surface=options.surface;return {dispose:noop,registered:()=>true};},residentMapsNavigationPort:{relay:false},
+  bindAgentNavigation:options=>{surface=options.surface;return {dispose:noop,registered:()=>true};},residentMapsNavigationPort:{relay:false},keepCloudMapsCoverage:()=>noop,
   publishMapsSelection:noop,clearMapsSelection:noop,mapsEventReturnOffered:()=>undefined,
   window:{addEventListener:noop,removeEventListener:noop},document:{hidden:false,addEventListener:noop,removeEventListener:noop},
  });

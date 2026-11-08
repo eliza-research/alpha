@@ -133,7 +133,11 @@ test('a PACKAGED runtime lists Bun with its LGPL notice and every bundled agent 
   assert.match(bun.text, /JavaScriptCore/);
   assert.match(bun.text, /LGPL/);
   assert.match(bun.text, /Corresponding source/);
-  assert.match(bun.text, /Source offer/);
+  assert.match(bun.text, /GNU Lesser General Public License/);
+  assert.match(bun.text, /relink/);
+  assert.match(bun.text, /complete corresponding source of these LGPL components is available/);
+  assert.match(bun.text, /https:\/\/github\.com\/oven-sh\/WebKit/);
+  assert.doesNotMatch(bun.text, /distributor must|npm run|node scripts/);
   assert.equal(bun.license, UNVERIFIED);
   assert.deepEqual(finishEntry(bun).flags, ['copyleft-weak', 'unverified'], 'statically linked LGPL JavaScriptCore is flagged');
   assert.match(finishEntry(bun).obligations[0].note, /user must be able to replace the library.*Corresponding source: https:\/\/github\.com\/oven-sh\/bun\/tree\/b{40}/);
@@ -161,6 +165,21 @@ test('a PACKAGED runtime lists Bun with its LGPL notice and every bundled agent 
     if (previousSource === undefined) delete process.env.ALPHA_LOCAL_AGENT_SOURCE_DIR;
     else process.env.ALPHA_LOCAL_AGENT_SOURCE_DIR = previousSource;
   }
+});
+
+test('a recorded written source offer ships in the Bun notice; a malformed record fails generation', t => {
+  const { root, agent, source } = stagedRuntime(t);
+  const offerFile = path.join(root, 'config/source-offer.json');
+  fs.mkdirSync(path.dirname(offerFile), { recursive: true });
+  fs.writeFileSync(offerFile, JSON.stringify({ offer: 'Example written offer text.' }));
+  const errors = [];
+  const bun = runtimeEntries(root, templates, errors, { agentDir: agent, sourceDir: source }).find(entry => entry.name === BUN_ENTRY);
+  assert.deepEqual(errors, []);
+  assert.match(bun.text, /available at those addresses\.\n\nExample written offer text\.\n\nOther statically linked/);
+  fs.writeFileSync(offerFile, JSON.stringify({ offer: ' ' }));
+  const malformed = [];
+  runtimeEntries(root, templates, malformed, { agentDir: agent, sourceDir: source });
+  assert.match(malformed.join('\n'), /config\/source-offer\.json has no "offer" text/);
 });
 
 test('copyleft, unknown, undeclared and text-less runtime packages are listed and flagged, never an error', t => {
@@ -260,6 +279,8 @@ test('runtime enumeration follows explicit modes independently of current checko
   const committed = collectNotices(ROOT, {packagedRuntime: false});
   assert.equal(committed.entries.some(isBun), false);
   assert.ok(committed.entries.some(entry => entry.name === 'On-device elizaOS agent runtime payload'));
+  // Settings shows these entries to the phone owner: no release to-dos or build commands.
+  for (const entry of committed.entries) assert.doesNotMatch(entry.text, /distributor must|npm run|node scripts\//, entry.name);
   const packaged = collectNotices(ROOT, { packagedRuntime: true });
   if (packagedRuntimePresent(ROOT)) assert.ok(packaged.entries.some(isBun));
   else assert.ok(packaged.errors.some(error => /--packaged-runtime needs a staged runtime/.test(error)), 'refuses without a staged runtime');

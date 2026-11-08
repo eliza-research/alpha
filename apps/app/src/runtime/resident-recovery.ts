@@ -16,7 +16,7 @@ export function residentRecoveryCopy(reason:ResidentRecoveryReason,view?:Residen
  if(view?.step==='reviewing')return 'Checking restart…';
  if(view?.step==='archiving')return 'Restarting Alpha…';
  if(reason==='ipc-recovery-retention-limit')return view?.step==='review'?'Alpha is ready to restart.':'Alpha needs a restart.';
- return 'Alpha couldn’t start. Check the details in Settings.';
+ return 'Restart your phone to try again.';
 }
 
 export type RecoveryReview = {status:'reviewable';retainedCount:number;reviewToken:string}|{status:'unavailable';retainedCount:number};

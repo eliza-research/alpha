@@ -33,5 +33,5 @@ test('unverifiable source can be explicitly omitted without blocking the reviewe
 });
 
 test('older document bridges retain fingerprint-only summary saving',async({page})=>{
- await setup(page,true);await page.getByText('Review summary note',{exact:true}).click();const review=page.getByRole('dialog',{name:'Save reviewed summary note'});await expect(review).toContainText('requires choosing matching file bytes');await review.getByRole('button',{name:'Save reviewed note',exact:true}).click();await expect(review).toHaveCount(0);const saved=await notes(page);expect(saved).toHaveLength(1);expect(saved[0].documentSource.sha256).toBe(createHash('sha256').update(contents).digest('hex'));expect(saved[0].documentSource.reference).toBeUndefined();
+ await setup(page,true);await page.getByText('Review summary note',{exact:true}).click();const review=page.getByRole('dialog',{name:'Save reviewed summary note'});await expect(review).toContainText('To reopen it, choose the same file again.');await review.getByRole('button',{name:'Save reviewed note',exact:true}).click();await expect(review).toHaveCount(0);const saved=await notes(page);expect(saved).toHaveLength(1);expect(saved[0].documentSource.sha256).toBe(createHash('sha256').update(contents).digest('hex'));expect(saved[0].documentSource.reference).toBeUndefined();
 });

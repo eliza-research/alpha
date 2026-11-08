@@ -13,9 +13,9 @@ test('browser camera persists a real encoded frame, releases capture and restore
 
  });
  await page.goto('/');await page.getByRole('button',{name:'Camera',exact:true}).click();
- const video=page.locator('[aria-label^="Viewfinder."] video');await expect(video).toBeVisible();
+ const video=page.locator('[data-alpha-camera="viewfinder"] video');await expect(video).toBeVisible();
  await expect.poll(()=>video.evaluate((v:HTMLVideoElement)=>v.readyState)).toBeGreaterThanOrEqual(2);
- await page.evaluate(()=>{(window as any).cameraTracks=(document.querySelector('[aria-label^="Viewfinder."] video') as HTMLVideoElement).srcObject;});
+ await page.evaluate(()=>{(window as any).cameraTracks=(document.querySelector('[data-alpha-camera="viewfinder"] video') as HTMLVideoElement).srcObject;});
  await page.evaluate(()=>{const add=IDBObjectStore.prototype.add;(window as any).restorePhotoWrites=()=>{IDBObjectStore.prototype.add=add;};IDBObjectStore.prototype.add=function(value,key){if(this.name==='photos')throw new DOMException('Synthetic full storage','QuotaExceededError');return add.call(this,value,key);};});
  await page.getByRole('button',{name:'Take photo',exact:true}).click();
  await expect(page.getByText('Photo not saved. Try again.',{exact:true})).toBeVisible();
@@ -77,7 +77,7 @@ test('browser camera permission denial retries explicitly without a saved photo'
  await recovery.getByRole('button',{name:'Try again',exact:true}).click();
  await expect.poll(()=>page.evaluate(()=>(window as any).cameraAttempts)).toBe(3);
  await expect(recovery).toBeVisible();
- await expect(page.locator('[aria-label^="Viewfinder."] video')).toHaveCount(0);
+ await expect(page.locator('[data-alpha-camera="viewfinder"] video')).toHaveCount(0);
  await page.evaluate(()=>window.dispatchEvent(new Event('alpha-back',{cancelable:true})));
  await page.getByRole('button',{name:'Photos',exact:true}).click();
  await expect(page.getByRole('button',{name:/^Photo, /})).toHaveCount(0);
@@ -98,5 +98,5 @@ test('leaving Camera while permission is pending stops a late stream without reo
  await expect(page.getByRole('button',{name:'Camera',exact:true})).toBeVisible();
  await page.evaluate(()=>(window as any).releaseCamera());
  await expect.poll(()=>page.evaluate(()=>(window as any).lateCameraStream.getTracks().every((t:MediaStreamTrack)=>t.readyState==='ended'))).toBe(true);
- await expect(page.locator('[aria-label^="Viewfinder."] video')).toHaveCount(0);
+ await expect(page.locator('[data-alpha-camera="viewfinder"] video')).toHaveCount(0);
 });

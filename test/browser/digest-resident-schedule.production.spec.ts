@@ -13,8 +13,6 @@
 import { test, expect, type Page } from '@playwright/test';
 import { flagOffAndroid, harness, button, fenceNetwork, expectNoDevelopmentSurface, residentHome } from './flag-off-android';
 
-test.beforeEach(({}, testInfo) => { test.skip(testInfo.project.name !== 'production', 'Production bundle only'); });
-
 const SNAPSHOT = 'Pick up the parcel\nCall the plumber about the sink';
 const panel = (page: Page) => page.getByRole('dialog', { name: 'Scheduled digests', exact: true });
 const posts = (page: Page) => harness(page, f => f.digests.posts) as Promise<{ path: string; body: any }[]>;

@@ -25,4 +25,4 @@ Detail and execution receipt routes remain owner-scoped and readable. Typed `WOR
 
 The shared implementation is consumed through [upstream.lock.json](../upstream.lock.json); see [agent integration](agent-integration.md) for the product boundary. These adapter checks are not live-provider, native process-death, HOME-role, AOSP or device acceptance.
 
-The [historical validation record](https://github.com/AlphaCompute/alphaphone/blob/1de85a13ecd1d7658fa2453c9c2b8ed5b82646c6/docs/workflow-lifecycle-validation.md) preserves the earlier host and Android campaign details and APK identities. Those results apply only to their recorded builds; the removed aggregate runners do not qualify the current pin.
+The [historical validation record](https://github.com/eliza-research/alphaphone/blob/1de85a13ecd1d7658fa2453c9c2b8ed5b82646c6/docs/workflow-lifecycle-validation.md) preserves the earlier host and Android campaign details and APK identities. Those results apply only to their recorded builds; the removed aggregate runners do not qualify the current pin.

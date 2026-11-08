@@ -7,7 +7,7 @@ import fs from 'node:fs';
 const deployment=JSON.parse(fs.readFileSync(new URL('../config/cloud-deployment.json',import.meta.url),'utf8'));
 // Uses the pinned resident's actual installed provider SDK. Fetch is intercepted;
 // this verifies routing only and never performs inference or uses a credential.
-test('resident SDK appends chat completions to the versioned Cloud base',{skip:!process.env.ALPHA_ELIZA_SOURCE},async()=>{
+test('resident SDK appends chat completions to the versioned Cloud base',{skip:process.env.ALPHA_ELIZA_SOURCE?false:'Set ALPHA_ELIZA_SOURCE to a prepared SDK tree (npm run agent:prepare); browser.yml verify sets it'},async()=>{
  const modules=resolve(process.env.ALPHA_ELIZA_SOURCE,'plugins/plugin-elizacloud/node_modules');
  const {createOpenAI}=await import(pathToFileURL(resolve(modules,'@ai-sdk/openai/dist/index.mjs')).href);
  const {generateText}=await import(pathToFileURL(resolve(modules,'ai/dist/index.mjs')).href);

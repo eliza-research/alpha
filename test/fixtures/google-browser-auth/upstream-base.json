@@ -1,0 +1,11 @@
+{
+  "baseCommit": "0594fc72da4450a84a986ad12e730e3faa902018",
+  "note": "sha256 of each upstream packages/auth/android/test file this overlay replaces, at the pin it was forked from; null means upstream has no such file.",
+  "files": {
+    "native-sign-in.test.mjs": "17bc2934a095c5b50143263cb74cd5bdcdc0f22de4cbd5236f0ca51908588988",
+    "ai/eliza/auth/cloud/CloudSignInFlowTest.java": "78679ee46d48fefb37be5e742c11e3bd89d6a407ab82b5d14a555c49352aefa4",
+    "ai/eliza/auth/cloud/CloudSignInChainTest.java.txt": "83ea4f51855aae6f30378c61f7757bd162cfee0f1a31ec36da12a1b0bf68afdc",
+    "ai/eliza/auth/cloud/CloudSignInReadinessTest.java.txt": "a902c97b7d7840b2ddeb2b490e7c18b86a36aa3642bba33e5adc3d6198c1d0b3",
+    "ai/eliza/auth/cloud/CloudSignInBrowserTest.java.txt": null
+  }
+}

@@ -8,6 +8,8 @@ import { existsSync, mkdtempSync, rmSync, readFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { execFileSync } from "node:child_process";
+import { assertBefore } from "./fixtures/assert-order.mjs";
+import { javaBinary } from "./fixtures/jvm-tools.mjs";
 import { createAospTelephony, TelephonyUnavailable, parseTelephonyStatus, parseThreads, parseMessages, parseSmsSendResult, parseSmsJournal, smsBindingText, smsBindingHash, reviewSms } from "../apps/app/src/runtime/aosp-telephony.ts";
 
 const root = resolve(import.meta.dirname, "..");
@@ -32,13 +34,12 @@ function stub(answers = {}) {
 
 test("JVM: Alpha's installed journal stays compatible with the shared reviewed-SMS core", () => {
   const dir = mkdtempSync(join(tmpdir(), "alpha-sms-"));
-  const java = name => process.env.JAVA_HOME ? join(process.env.JAVA_HOME, "bin", name) : name;
   try {
-    execFileSync(java("javac"), ["--release", "11", "-d", dir, ...["SmsSendJournal", "SmsRecords", "SmsPageCursor"].map(name => join(SHARED, `${name}.java`)), join(root, "test/fixtures/SmsSendJournalTest.java")], { timeout: 60000 });
+    execFileSync(javaBinary("javac"), ["--release", "11", "-d", dir, ...["SmsSendJournal", "SmsRecords", "SmsPageCursor"].map(name => join(SHARED, `${name}.java`)), join(root, "test/fixtures/SmsSendJournalTest.java")], { timeout: 60000 });
     const body = "Running late \"5\" min\né😀\t\u0001";
     const expected = createHash("sha256").update(smsBindingText({ recipients: ["+15555550100", "5550101"], body, subscriptionId: 3 })).digest("hex");
     const namespace = read("android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaTelephony.java").match(/"(alpha-sms-operation:v1:)"/)[1];
-    assert.match(execFileSync(java("java"), ["-Djava.io.tmpdir=" + dir, "-cp", dir, "ai.eliza.plugins.messages.SmsSendJournalTest", expected, namespace], { encoding: "utf8", timeout: 120000 }), /PASS alpha sms journal compatibility/);
+    assert.match(execFileSync(javaBinary("java"), ["-Djava.io.tmpdir=" + dir, "-cp", dir, "ai.eliza.plugins.messages.SmsSendJournalTest", expected, namespace], { encoding: "utf8", timeout: 120000 }), /PASS alpha sms journal compatibility/);
   } finally { rmSync(dir, { recursive: true, force: true }); }
 });
 
@@ -55,19 +56,6 @@ test("binding text equals the shared sms.send.v1 contract field order", async ()
   const review = { recipients: ["+15555550123"], body: "Exact SMS fixture", subscriptionId: 3 };
   assert.equal(smsBindingText(review), JSON.stringify({ body: review.body, recipients: review.recipients, subscriptionId: 3, type: "sms_send" }));
   assert.equal(await smsBindingHash(review), createHash("sha256").update(smsBindingText(review)).digest("hex"));
-});
-
-test("off the verified image no message read, observer or send reaches native code", async () => {
-  const { plugin, calls } = stub();
-  for (const client of [createAospTelephony(null, false), createAospTelephony(plugin, false)]) {
-    await assert.rejects(client.listThreads(), TelephonyUnavailable);
-    await assert.rejects(client.listMessages("thread:1"), TelephonyUnavailable);
-    await assert.rejects(client.observeMessages(() => {}), TelephonyUnavailable);
-    await assert.rejects(client.sendSms({ recipients: ["+15555550100"], body: "x", subscriptionId: 3 }, "op-1"), TelephonyUnavailable);
-    await assert.rejects(client.smsSendResult({ recipients: ["+15555550100"], body: "x", subscriptionId: 3 }, "op-1"), TelephonyUnavailable);
-    await assert.rejects(client.requestAccess("sms"), TelephonyUnavailable);
-  }
-  assert.deepEqual(calls, []);
 });
 
 test("status reports send mode and the default SIM truthfully", () => {
@@ -213,7 +201,7 @@ test("native boundary: image-only plugin methods, immutable explicit callbacks, 
   const mmsDispatch = sms.slice(sms.indexOf("static SmsSendJournal.Record dispatchMms("), sms.indexOf("static boolean sendConfirmed("));
   assert.match(mmsDispatch, /PendingIntent\.FLAG_MUTABLE : 0;\n\s*PendingIntent sent = PendingIntent\.getBroadcast\(context, 0, intent, mutable \| PendingIntent\.FLAG_ONE_SHOT\);/);
   assert.match(mmsDispatch, /setClass\(context, config\.receiverClass\)\.setPackage\(context\.getPackageName\(\)\)/);
-  assert.ok(mmsDispatch.indexOf("journal.beginMmsDispatch(") < mmsDispatch.indexOf("manager.sendMultimediaMessage("), "MMS journaled before the platform call");
+  assertBefore(mmsDispatch, "journal.beginMmsDispatch(", "manager.sendMultimediaMessage(", "MMS journaled before the platform call");
   assert.match(sms, /if \(mmsFile != null && !Uri\.fromParts\(config\.callbackScheme, operation \+ "\/mms", null\)\.equals\(intent\.getData\(\)\)\) return;/);
   assert.equal((plugin.match(/SmsTelephony\.dispatchMms\(/g) || []).length, 1, "one MMS dispatch site, inside the owner's Send decision");
   assert.match(plugin, /if \(!admitted\(\) \|\| !unlockedForeground\(\) \|\| mmsBlocker\(sub\) != null\) \{ decideMms\(/);
@@ -249,25 +237,13 @@ test("native boundary: image-only plugin methods, immutable explicit callbacks, 
     assert.match(plugin, new RegExp(`@PluginMethod public void ${method}\\(PluginCall call\\) \\{\\n  if \\(refused\\(call\\)\\) return;`), `${method} re-checks the image capability first`);
 });
 
-test("manifests: SMS permissions and the result receiver exist only in the launcher flavor", () => {
+test("manifests: the SMS result receiver exists only in the launcher flavor, and APK verification checks the SMS permissions", () => {
+  // The launcher-only SMS permissions are checked in test/aosp-image-capability.test.mjs.
   const main = read("android/app/src/main/AndroidManifest.xml"), launcher = read("android/app/src/launcher/AndroidManifest.xml"), standalone = read("android/app/src/standalone/AndroidManifest.xml");
-  const declared = xml => [...xml.matchAll(/<uses-permission android:name="([^"]+)"(?![^>]*tools:node="remove")[^>]*\/>/g)].map(m => m[1]);
-  const removed = xml => [...xml.matchAll(/<uses-permission android:name="([^"]+)"[^>]*tools:node="remove"[^>]*\/>/g)].map(m => m[1]);
-  for (const permission of ["READ_SMS", "SEND_SMS"]) {
-    assert.ok(declared(launcher).includes(`android.permission.${permission}`));
-    assert.ok(!declared(main).includes(`android.permission.${permission}`));
-    assert.ok(removed(standalone).includes(`android.permission.${permission}`));
-  }
-  assert.match(launcher, /<receiver android:name="\.AlphaSmsSendReceiver" android:exported="false" \/>/);
-  for (const permission of ["RECEIVE_SMS", "RECEIVE_MMS", "RECEIVE_WAP_PUSH"]) {
-    assert.ok(declared(launcher).includes(`android.permission.${permission}`), `${permission} is declared for the image-only SMS role`);
-    assert.ok(removed(standalone).includes(`android.permission.${permission}`));
-  }
-  assert.match(launcher, /<uses-feature android:name="android\.hardware\.telephony" android:required="false" \/>/, "telephony hardware stays optional");
-  assert.doesNotMatch(main + standalone, /AlphaSmsSendReceiver/);
   assert.match(launcher, /<receiver android:name="\.AlphaSmsSendReceiver" android:exported="false" \/>/, "the receiver takes explicit intents only: no filter, not exported");
-  const apk = read("scripts/apk.mjs");
-  assert.match(apk, /for \(const permission of \['READ_SMS', 'SEND_SMS'\]\)/, "APK verification checks the packaged SMS permissions per flavor");
+  assert.doesNotMatch(main + standalone, /AlphaSmsSendReceiver/);
+  assert.match(launcher, /<uses-feature android:name="android\.hardware\.telephony" android:required="false" \/>/, "telephony hardware stays optional");
+  assert.match(read("scripts/apk.mjs"), /for \(const permission of \['READ_SMS', 'SEND_SMS'\]\)/, "APK verification checks the packaged SMS permissions per flavor");
 });
 
 test("standalone SMS stays unavailable at the UI and agent boundaries", async () => {

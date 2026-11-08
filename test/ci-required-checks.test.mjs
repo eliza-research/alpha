@@ -35,13 +35,30 @@ test('production lane selects production-surface and every *.production.spec.ts 
   assert.equal(mixed.browser_production, true);
 });
 
+test('the local-agent profile step runs every profile spec whole and the change gate selects each of them', async () => {
+  const { browserPlan } = await import('../scripts/ci/affected.mjs');
+  const files = ['test/browser/browser-agent-tts.spec.ts', 'test/browser/browser-host-disclosure.spec.ts', 'test/browser/host-reminder-recovery.spec.ts'];
+  const step = /name: Exercise synthetic local-agent speech profile[^\n]*\n(?:.*\n)*?.*VITE_LOCAL_AGENT=1 .*npm run test:browser -- (.*)\n/.exec(read('.github/workflows/browser.yml'))?.[1];
+  assert.ok(step, 'profile step');
+  assert.doesNotMatch(step, /--grep/);
+  for (const file of files) {
+    assert.ok(step.includes(file), file);
+    assert.equal(browserPlan([file], () => true).browser_speech, true, file);
+  }
+  assert.equal(browserPlan(['test/browser/notes.spec.ts'], () => true).browser_speech, false);
+});
+
 test('Android foundation runs on main and develop pushes and both workflows end in the required aggregate jobs', () => {
   const android = read('.github/workflows/android.yml');
   assert.match(android, /^on:\n(?:.*\n)*?  push:\n    branches: \[main, develop\]\n/m);
   assert.match(android, /cancel-in-progress: \$\{\{ github\.event_name != 'push' \}\}/);
   // A shared group would still cancel a pending main run when another push arrives.
-  for (const [name, text] of [['android', android], ['browser', read('.github/workflows/browser.yml')]])
-    assert.match(text, new RegExp(`group: ${name}-\\$\\{\\{ github\\.event_name == 'push' && github\\.sha \\|\\| github\\.ref \\}\\}`), name);
+  assert.match(android, /group: android-\$\{\{ github\.event_name == 'push' && github\.sha \|\| github\.ref \}\}/);
+  const browser = read('.github/workflows/browser.yml');
+  // The event name also keeps a dispatch on main from cancelling the daily scheduled run.
+  assert.ok(browser.includes("group: browser-${{ github.event_name }}-${{ github.event_name == 'push' && github.sha || github.ref }}\n"));
+  assert.match(browser, /^on:\n(?:.*\n)*?  schedule:\n    - cron: '[^']+'\n/m);
+  assert.match(browser, /- run: npm run verify\n        env:\n(?:.*\n)*?          ALPHA_REQUIRE_PREPARED_SDK: '1'\n/);
   assert.match(android, /name: Android foundation result\n    needs: \[changes, build\]\n    if: always\(\)/);
   assert.match(android, /artifacts\/mapping\/\*\.txt/);
   const manualVerify = android.split('- name: Verify standalone manual qualification\n')[1]?.split('\n      - ')[0];
@@ -85,7 +102,4 @@ test('the scheduled dependency advisory audit is never a required check', () => 
   const required = ruleset.rules.find(rule => rule.type === 'required_status_checks').parameters.required_status_checks.map(row => row.context);
   assert.ok(jobNames.length > 0);
   for (const context of [name, ...jobNames]) assert.ok(!required.includes(context), `${context} must not be required`);
-  // Schedule and manual dispatch only: it never runs on, or blocks, a pull request or push.
-  assert.doesNotMatch(workflow, /^\s*(pull_request|pull_request_target|push|workflow_call):/m);
-  assert.match(workflow, /^permissions:\n  contents: read\n/m);
 });

@@ -1,7 +1,7 @@
 import {localDraftRow} from './inbox-draft-navigation';
 import {test,expect,type Page} from '@playwright/test';
 const dialog=(page:Page)=>page.getByRole('dialog',{name:'Use selected file in email',exact:true});
-async function setup(page:Page,reviewFile=true){
+async function setup(page:Page,reviewFile=true,openInbox=true){
  await page.addInitScript(()=>localStorage.setItem('alpha.connection.selection.v1',JSON.stringify({kind:'offline'})));
  await page.goto('/');
  await page.evaluate(async()=>{
@@ -20,6 +20,7 @@ async function setup(page:Page,reviewFile=true){
   const original=Component.prototype.renderVals;Component.prototype.renderVals=function(){f.shell=this;return original.call(this);};
   const files=registerPlugin<any>('AlphaFiles');if(!(await files.list({})).entries.length)await files.importFile(new File(['Café\nExact bytes'],'selected.txt',{type:'text/plain'}));
  });
+ if(!openInbox)return;
  await page.getByRole('button',{name:'Inbox',exact:true}).click();
  await expect(page.getByRole('button',{name:'Compose',exact:true})).toBeEnabled();
  if(!reviewFile)return;
@@ -72,5 +73,21 @@ test('the same selected bytes cannot be attached twice',async({page})=>{
  await page.getByRole('button',{name:'Use in email',exact:true}).click();await dialog(page).getByRole('checkbox').check();
  await dialog(page).getByRole('button',{name:'Insert attachment into draft'}).click();
  await expect(dialog(page).getByRole('status')).toContainText('already attached');
+ expect(await page.evaluate(()=>(window as any).fileEmail.writes)).toBe(0);
+});
+test('Files before Inbox asks to open Inbox once when a Gmail account was chosen',async({page})=>{
+ await setup(page,false,false);
+ await expect.poll(()=>page.evaluate(()=>!!(window as any).fileEmail.shell)).toBe(true);
+ await page.evaluate(async()=>{
+  const {connectionController:c}=await import('/src/runtime/connection-ui.tsx');
+  const {saveGmailAccountChoice}=await import('/src/runtime/gmail-account-selection.ts');
+  saveGmailAccountChoice(c.getSnapshot().cloudAccount,'file-grant');
+  (window as any).fileEmail.shell.openView('files',{});
+ });
+ await page.getByText('App files',{exact:true}).first().click();
+ await page.getByRole('button',{name:'Open selected.txt',exact:true}).click();
+ await page.getByRole('button',{name:'Use in email',exact:true}).click();
+ await expect(dialog(page).getByRole('status')).toHaveText('Open Inbox once to load your Gmail account.');
+ await expect(dialog(page).getByRole('checkbox')).toBeDisabled();
  expect(await page.evaluate(()=>(window as any).fileEmail.writes)).toBe(0);
 });

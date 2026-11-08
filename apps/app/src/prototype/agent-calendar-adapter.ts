@@ -10,7 +10,7 @@ import {connectionController,agentPendingText} from '../runtime/connection-ui';
 import {legacyCalendarPreservation} from '../runtime/legacy-calendar-preservation';
 import {AgentCalendar,calendarOwnerKey,calendarEventKey,calendarSourceKey,type CalendarPreservation} from '../runtime/agent-calendar';
 import type {AppRecordPort} from '../runtime/app-record-route-policy';
-import {canonicalCalendarRow,calendarFormCreate,calendarFormPatch,type CanonicalCalendarForm} from '../runtime/agent-calendar-view';
+import {canonicalCalendarRow,calendarFormCreate,calendarFormMinutes,calendarFormPatch,type CanonicalCalendarForm} from '../runtime/agent-calendar-view';
 import {agentReminderLead,homeCalendarValues,homeReadIsStale,overdueAgendaNext,presentHomeAgendaCard,presentHomeAgendaFeed,type HomeAgendaCardInput} from './home-cards';
 import {getZonedDateParts,addDaysToLocalDate} from '../../../../.eliza/client-features/plugins/plugin-calendar/src/internal/time';
 import {eventEditorMutability} from '../../../../.eliza/client-features/plugins/plugin-calendar/src/components/event-editor-policy';
@@ -80,7 +80,7 @@ export function installAgentCalendarAdapter(Component:any,views:Bag,preservation
  const refresh=(force=false)=>{if(!owner?.live||!controller)return;const target=port(),window=range(owner.S?.()?.view==='calendar'?owner.vget('calendar'):{}),key=JSON.stringify([target?.identity,target?.scope,window]);if(!force&&requestKey===key)return;requestKey=key;void controller.refresh(window);};
  // One end-time wake plus foreground events; no polling or background reads.
  const readNext=()=>{if(!owner?.live||!controller)return;controller.invalidateNext();if(document.hidden)return;refresh(true);};
- const watchNextEnd=()=>{clearTimeout(nextEnded);const end=Date.parse(controller?.state.next?.event?.endAt??'');if(end>Date.now())nextEnded=setTimeout(readNext,Math.min(end-Date.now(),2147483647));};
+ const watchNextEnd=()=>{clearTimeout(nextEnded);const end=Date.parse(controller?.state.next?.event?.endAt??'');if(end>Date.now())nextEnded=setTimeout(readNext,Math.min(end-Date.now()+1000,2147483647));};
  const resumed=()=>{if(!document.hidden&&owner?.live){readNext();}};
  p.componentDidMount=function(){mount.call(this);owner=this;
   // The read-only "Previously connected calendars" source is gone: Google calendars are part of the one Calendar.
@@ -153,7 +153,7 @@ export function installAgentCalendarAdapter(Component:any,views:Bag,preservation
   let allDayRange=f.canonicalAllDay;
   if(f.allDay&&(!allDayRange||f.off!==f.canonicalTiming?.[0])){const days=allDayRange?Math.max(1,Math.round((Date.parse(allDayRange.endDateExclusive)-Date.parse(allDayRange.startDate))/86400000)):1,end=addDaysToLocalDate(day,days),ymd=(d:Bag)=>`${d.year}-${String(d.month).padStart(2,'0')}-${String(d.day).padStart(2,'0')}`;allDayRange={startDate:ymd(day),endDateExclusive:ymd(end)};}
   const attendees=(f.who??[]).map((id:string)=>{const contact=owner!.api('calendar').person(id);if(!contact?.email)throw Error('Add an email address for each guest.');return{email:contact.email};});
-  return{ownerKey:f.canonicalOwnerKey,operationKey:f.creationId,sourceKey,date:day,startMinutes:Number(f.t)*60,durationMinutes:Number(f.d)*60,timeZone:f.zone||zone(),title:String(f.title).trim(),notes:f.notes||'',location:f.where||'',...(f.allDay?{allDay:allDayRange}:{}),...(f.repeat==='preserve'?{}:f.id||f.repeat!=='none'?{recurrence:rules[f.repeat]}:{}),...(f.recurrenceScope?{recurrenceScope:f.recurrenceScope}:{}),...(attendees.length?{attendees}:{})};
+  return{ownerKey:f.canonicalOwnerKey,operationKey:f.creationId,sourceKey,date:day,startMinutes:calendarFormMinutes(f.t),durationMinutes:calendarFormMinutes(f.d),timeZone:f.zone||zone(),title:String(f.title).trim(),notes:f.notes||'',location:f.where||'',...(f.allDay?{allDay:allDayRange}:{}),...(f.repeat==='preserve'?{}:f.id||f.repeat!=='none'?{recurrence:rules[f.repeat]}:{}),...(f.recurrenceScope?{recurrenceScope:f.recurrenceScope}:{}),...(attendees.length?{attendees}:{})};
  }
  const choices=(state:Bag,api:Bag)=>{const model=controller?.state;
   const chooseAuthority=(authority:string)=>{if(state.form){api.toast('The current draft is kept. Finish it or return to its source before switching.');return;}api.set({calendarAuthority:authority,open:null});};

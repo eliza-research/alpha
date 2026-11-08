@@ -19,8 +19,6 @@ import { test, expect, type Page } from '@playwright/test';
 import { createHash } from 'node:crypto';
 import { flagOffAndroid, harness, button, fenceNetwork, expectNoDevelopmentSurface, residentHome, type FlagOffDocument } from './flag-off-android';
 
-test.beforeEach(({}, testInfo) => { test.skip(testInfo.project.name !== 'production', 'Production bundle only'); });
-
 const contents = 'Public fact: twelve raised beds.\nPRIVATE OMIT: do not send this line.';
 const excerpt = 'Public fact: twelve raised beds.';
 const answer = 'The report says there are twelve raised beds.';

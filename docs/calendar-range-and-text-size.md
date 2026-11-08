@@ -14,15 +14,20 @@ Android documents [WebSettings.setTextZoom](https://developer.android.com/refere
 
 ## Completeness and recovery
 
-The 2,000-instance bound belongs to this product, not to the shared calendar plugin: the
-shared `list` returns every instance in the range and always reports `truncated:false`.
-`AlphaCalendarPlugin` overrides `list` and reads through `CalendarRangeReader`, which
-returns the first 2,000 non-deleted instances by start and reports `truncated` when the
-provider held at least one more (exactly 2,000 is a complete result). Between the adoption
-of the shared plugin (`ab780d04`) and round 8 that override did not exist, the Android read
-was unbounded and the warning below could not appear; the truncation fixture's first run
-(round 7) failed for that reason. `test/calendar-range-reader.test.mjs` runs the reader on
-the JVM; the fixture has not been rerun since the fix.
+The 2,000-instance bound is this product's read policy. `AlphaCalendarPlugin.CONFIGURATION`
+sets `maximumReadEvents` to 2,000, and the shared `list` then returns the first 2,000
+non-deleted instances by start and reports `truncated` when the provider held at least one
+more (exactly 2,000 is a complete result). The bound is not journal identity, so changing it
+is not a storage migration. The shared `list` also returns `creationId` on events this app
+saved through its timed creation journal, which is what the Calendar view keys the
+"From note" link by. Until this change Alpha overrode `list` with its own reader
+(`CalendarRangeReader`), whose rows had no `creationId`, so on Android an event saved from a
+note never showed its note link. Events saved through the option journal (all-day, zoned or
+repeating saves) are stored under `alphaphone://calendar-creation/options/`, which the pinned
+shared reader does not return as a `creationId`; those events still show no note link.
+`test/calendar-range-reader.test.mjs` runs the pinned shared reader with Alpha's configuration
+on the JVM against a stand-in provider. It is not a device run; the truncation fixture and a
+"From note" check on the emulator have not been rerun since this change.
 
 Truncated provider results retain an incomplete-results warning and explicit retry;
 unreturned dates cannot say “Free all day.” The truncation fixture creates 2,001

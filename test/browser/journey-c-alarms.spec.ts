@@ -142,7 +142,7 @@ test('journey C: agent-proposed alarm is reviewed, saved once, survives reload, 
  await openConnectionDiagnostics(page);
  const connection=page.getByRole('dialog',{name:'Development connections'});
  await connection.getByText('Development device actions',{exact:true}).click();
- await connection.getByRole('button',{name:'Sync recorded receipts'}).click();
+ await connection.getByRole('button',{name:'Check with agent'}).click();
  await expect(connection.getByText('completed',{exact:true})).toHaveCount(2);
  state=await actions(page);
  expect(state.proposals.map((p:any)=>[p.payload.operation.action,p.state,p.receipt.result.status])).toEqual([['set','completed','opened'],['show','completed','opened']]);

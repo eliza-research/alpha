@@ -267,6 +267,20 @@ test('unreadable email image preferences fail closed without overwriting recover
  expect(await page.evaluate(()=>localStorage.getItem('alpha.browser.device.v1'))).toBe('{damaged settings');
 });
 
+test('an unreadable action preference shows Unavailable, explains the tap and offers recovery',async({page})=>{
+ await nativeStub(page);
+ await page.addInitScript(()=>localStorage.setItem('alpha.browser.device.v1','{damaged settings'));
+ await openSettings(page);
+ await expect(current(page)).toContainText(/Review phone actions first\s*Unavailable\. Alpha asks before every action\./);
+ await expect(current(page)).not.toContainText('Covers opening websites');
+ await current(page).getByRole('button',{name:'Review phone actions first',exact:true}).click();
+ await expect(page.getByText('Action preference couldn’t be read. Alpha asks before every action until it is fixed.',{exact:true})).toBeVisible();
+ await current(page).getByRole('button',{name:'Recover device settings',exact:true}).click();
+ await expect(page.getByRole('dialog',{name:'Device settings recovery'})).toBeVisible();
+ expect(await page.evaluate(()=>localStorage.getItem('alpha.browser.device.v1'))).toBe('{damaged settings');
+});
+
+
 test('notification state is read back from Android, and local history stays available',async({page})=>{
  page.on('dialog',dialog=>void dialog.dismiss());
  await nativeStub(page);

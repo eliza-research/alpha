@@ -3,7 +3,7 @@
 import {existsSync,readdirSync,mkdtempSync,rmSync} from 'node:fs';
 import {homedir,tmpdir} from 'node:os';
 import {join,resolve} from 'node:path';
-import {execFileSync} from 'node:child_process';
+import {execFileSync,spawnSync} from 'node:child_process';
 import {preparePatchedNative} from '../../scripts/prepare-patched-native.mjs';
 
 export const root=resolve(import.meta.dirname,'../..');
@@ -25,16 +25,33 @@ export const javaBinary=name=>{const home=javaHome();return home?join(home,'bin'
 const cache=join(homedir(),'.gradle/caches/modules-2/files-2.1/org.json/json/20250517');
 const cached=existsSync(cache)?readdirSync(cache).flatMap(hash=>readdirSync(join(cache,hash)).filter(name=>name==='json-20250517.jar').map(name=>join(cache,hash,name)))[0]:undefined;
 export const jsonJar=process.env.ALPHA_JSON_JAR||cached;
+/** One timeout for every host javac and java run. */
+export const jvmTimeout=120000;
+
+const runs=command=>{const result=spawnSync(command,['-version'],{stdio:'ignore',timeout:30000});return !result.error&&result.status===0;};
+const tools={
+ json:()=>jsonJar?false:'Set ALPHA_JSON_JAR or install the pinned Gradle JSON test dependency',
+ javac:()=>runs(javaBinary('javac'))?false:'No javac: set JAVA_HOME or put a JDK on PATH',
+ sqlite3:()=>runs('sqlite3')?false:'No sqlite3 on PATH',
+};
+/** Skip reason for the first missing tool ('json', 'javac', 'sqlite3'), or false. Takes names or one
+ * array of names. On CI a missing tool is a failure, never a skip: the test runs and fails where the
+ * tool is needed. */
+export function jvmSkip(...names){
+ if(process.env.CI)return false;
+ for(const name of names.flat()){const reason=tools[name]();if(reason)return reason;}
+ return false;
+}
 /** Skip reason when org.json is missing. On CI a missing jar is a failure, never a skip. */
-export const jsonJarSkip=jsonJar||process.env.CI?false:'Set ALPHA_JSON_JAR or install the pinned Gradle JSON test dependency';
+export const jsonJarSkip=jvmSkip('json');
 
 /** Compiles the sources (plus org.json when needed) and returns the main class's stdout for the given stdin. */
 export function runJvm(sources,mainClass,{json=false,args=[],input}={}){
  const temporary=mkdtempSync(join(tmpdir(),'alpha-jvm-'));
  try{
   const classpath=json?['-cp',jsonJar]:[];
-  execFileSync(javaBinary('javac'),['--release','11',...classpath,'-d',temporary,...sources],{timeout:120000});
-  return execFileSync(javaBinary('java'),['-cp',json?temporary+':'+jsonJar:temporary,mainClass,...args],{encoding:'utf8',timeout:120000,input});
+  execFileSync(javaBinary('javac'),['--release','11',...classpath,'-d',temporary,...sources],{timeout:jvmTimeout});
+  return execFileSync(javaBinary('java'),['-cp',json?temporary+':'+jsonJar:temporary,mainClass,...args],{encoding:'utf8',timeout:jvmTimeout,input});
  }finally{rmSync(temporary,{recursive:true,force:true});}
 }
 

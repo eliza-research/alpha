@@ -9,7 +9,7 @@ reviewed SHA-256 hashes, and refuses the retired consumer patch and its patch
 slot. A pin move that changes any of these bytes fails that test until the new
 source is reviewed and its hash recorded.
 
-The bytes admitted at the current pin were last changed upstream by:
+The bytes admitted at the pin in `upstream.lock.json` were last changed upstream by:
 
 - `ElizaAgentService`: 6dfbe99e96 (elizaOS/eliza #38158: problem-log
   exit-reason collection; fallback inference startup stays behind packaged

@@ -128,7 +128,7 @@ export function installPrototypeBrowserAdapter(Component: any, views: Record<str
     const unsubscribe=connectionController.subscribe(()=>{try{valid();}catch{stopReading();}});
     try {
       shell.vset('browser',{menu:false});await new Promise(resolve=>setTimeout(resolve,150));valid();lastGeometry='';await update();
-      if(!await voice.ready(controller.signal))throw new Error('The selected agent is not ready for speech.');valid();
+      if(!await voice.ready(controller.signal))throw new Error('Your agent isn’t ready for speech.');valid();
       const result=await Browser.reviewReading({session,id,url:info.url,navigation:info.navigation,...binding});valid();
       await voice.speak(result.readingToken,controller.signal);valid();
     }catch(error){if(!controller.signal.aborted)report(error);}finally{unsubscribe();if(reading===controller){reading=undefined;void Browser.cancelReading({session}).catch(()=>{});}}

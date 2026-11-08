@@ -5,7 +5,7 @@ import os from 'node:os';
 import path from 'node:path';
 import {execFileSync} from 'node:child_process';
 import {createHash} from 'node:crypto';
-import {pixel10aOptions, pixel10aVendorApi, writePixel10aProduct} from '../scripts/aosp-pixel10a.mjs';
+import {pixel10aVendorApi, writePixel10aProduct} from '../scripts/aosp-pixel10a.mjs';
 
 function assertSingleProductRegistration(output) {
   const staged = fs.readdirSync(output, {recursive:true});
@@ -21,25 +21,22 @@ function assertSingleProductRegistration(output) {
   }
 }
 
-test('physical target requires explicit development or production and exact source/factory inputs', () => {
-  const options = {target:'pixel10a', development:true, source:'/source', factory:'/factory'};
-  assert.equal(pixel10aOptions(options), true);
-  assert.equal(pixel10aOptions({...options, development:false, production:true}), true);
-  assert.equal(pixel10aOptions({development:true, target:null}), false);
-  assert.equal(pixel10aOptions({production:true}), false);
-  for (const change of [{target:'stallion'}, {development:false}, {production:true}, {source:null}, {factory:null}]) assert.throws(() => pixel10aOptions({...options, ...change}));
-  assert.throws(() => pixel10aOptions({factory:'/factory'}));
-});
-
-test('physical overlay installs ARM64 JNI and development product without boot claims', t => {
-  const temporary = fs.mkdtempSync(path.join(os.tmpdir(), 'alpha-pixel-stage-'));
-  t.after(() => fs.rmSync(temporary, {recursive:true, force:true}));
+// A staged overlay as stage-aosp leaves it before the Pixel step: an ARM64 launcher APK, its
+// Android.bp import and an existing product.mk.
+function pixelOverlay(temporary, product) {
   const apk = path.join(temporary, 'input.apk'), output = path.join(temporary, 'overlay');
   fs.mkdirSync(output);
   execFileSync('python3', ['-c', "import zipfile,sys; z=zipfile.ZipFile(sys.argv[1],'w'); z.writestr('lib/arm64-v8a/libcamera.so',b'\\x7fELF\\x02\\x01'+bytes(12)+b'\\xb7\\x00'+bytes(44)); z.close()", apk]);
   fs.writeFileSync(path.join(output, 'Android.bp'), '// Generated from a hash- and signer-verified downstream launcher.\nandroid_app_import {\n    name: "AlphaPhone",\n    apk: "Launcher.apk",\n    presigned: true,\n    preprocessed: true,\n    product_specific: true,\n    dex_preopt: { enabled: false },\n}\n');
   fs.copyFileSync(apk,path.join(output,'Launcher.apk'));
-  fs.writeFileSync(path.join(output, 'product.mk'), '# existing camera, clock and image capability\n');
+  fs.writeFileSync(path.join(output, 'product.mk'), product);
+  return {apk, output};
+}
+
+test('physical overlay installs ARM64 JNI and development product without boot claims', t => {
+  const temporary = fs.mkdtempSync(path.join(os.tmpdir(), 'alpha-pixel-stage-'));
+  t.after(() => fs.rmSync(temporary, {recursive:true, force:true}));
+  const {apk, output} = pixelOverlay(temporary, '# existing camera, clock and image capability\n');
   writePixel10aProduct({root:process.cwd(), output, apk, identity:{moduleName:'AlphaPhone'}, launcher:{schemaVersion:1,brand:'alphaphone',moduleName:'AlphaPhone',packageName:'ai.elizaresearch.alphaphone',apkSha256:createHash('sha256').update(fs.readFileSync(apk)).digest('hex'),certificateSha256:'b'.repeat(64)}, sourceEvidence:{fixture:true}});
   assertSingleProductRegistration(output);
   const product = fs.readFileSync(path.join(output, 'product.mk'), 'utf8');
@@ -56,12 +53,7 @@ test('physical overlay installs ARM64 JNI and development product without boot c
 test('production physical overlay sets no board AVB variables and records no build, signing or acceptance', t => {
   const temporary = fs.mkdtempSync(path.join(os.tmpdir(), 'alpha-pixel-production-'));
   t.after(() => fs.rmSync(temporary, {recursive:true, force:true}));
-  const apk = path.join(temporary, 'input.apk'), output = path.join(temporary, 'overlay');
-  fs.mkdirSync(output);
-  execFileSync('python3', ['-c', "import zipfile,sys; z=zipfile.ZipFile(sys.argv[1],'w'); z.writestr('lib/arm64-v8a/libcamera.so',b'\\x7fELF\\x02\\x01'+bytes(12)+b'\\xb7\\x00'+bytes(44)); z.close()", apk]);
-  fs.writeFileSync(path.join(output, 'Android.bp'), '// Generated from a hash- and signer-verified downstream launcher.\nandroid_app_import {\n    name: "AlphaPhone",\n    apk: "Launcher.apk",\n    presigned: true,\n    preprocessed: true,\n    product_specific: true,\n    dex_preopt: { enabled: false },\n}\n');
-  fs.copyFileSync(apk,path.join(output,'Launcher.apk'));
-  fs.writeFileSync(path.join(output, 'product.mk'), '# existing\n');
+  const {apk, output} = pixelOverlay(temporary, '# existing\n');
   writePixel10aProduct({root:process.cwd(), output, apk, identity:{moduleName:'AlphaPhone'}, launcher:{schemaVersion:1,brand:'alphaphone',moduleName:'AlphaPhone',packageName:'ai.elizaresearch.alphaphone',apkSha256:createHash('sha256').update(fs.readFileSync(apk)).digest('hex'),certificateSha256:'b'.repeat(64)}, sourceEvidence:{fixture:true}, production:true});
   assertSingleProductRegistration(output);
   const productMk = fs.readFileSync(path.join(output, 'product.mk'), 'utf8');

@@ -70,8 +70,8 @@ for(const mode of ['recover','stale','read-failure','draft-race','navigation-rac
  }
  if(mode==='dismiss-stale'){
   const dismiss=page.getByRole('button',{name:'Dismiss saved reminder link',exact:true});await expect(dismiss).toBeVisible();
-  page.once('dialog',d=>void d.dismiss());await dismiss.click();expect(await page.evaluate(()=>(window as any).reminderTapFixture.pending.token)).toBe('original-token');
-  page.once('dialog',d=>void d.accept());await dismiss.click();await expect.poll(()=>page.evaluate(()=>(window as any).reminderTapFixture.pending.token)).toBe('older-valid-token');
+  // Dismiss clears only the saved link, so it acts without a confirm.
+  await dismiss.click();await expect.poll(()=>page.evaluate(()=>(window as any).reminderTapFixture.pending.token)).toBe('older-valid-token');
   await expect(page.getByRole('heading',{name:'Original notification reminder',exact:true})).toHaveCount(0);
   await page.getByRole('button',{name:'Open saved reminder notification',exact:true}).click();await expect(page.getByRole('heading',{name:'Original notification reminder',exact:true})).toBeVisible();
   await expect.poll(()=>page.evaluate(()=>(window as any).reminderTapFixture.consumed)).toEqual(['older-valid-token']);expect(errors).toEqual([]);return;

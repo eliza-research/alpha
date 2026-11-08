@@ -67,7 +67,9 @@ public class ConnectionInstrumentedTest {
   org.junit.Assume.assumeTrue("Owned native credential isolation campaign", "1".equals(InstrumentationRegistry.getArguments().getString("nativeSlotIsolation")));
   assertTrue("Fresh secondary user required",android.os.Process.myUid()/100000>0);
   AlphaCredentialStore nativeStore=new AlphaCredentialStore(InstrumentationRegistry.getInstrumentation().getTargetContext());
-  String[] slots={"resident-results:v1:fixture","local-agent-provider:v99:fixture","workflow-notice-taps:v99:fixture","workflow-notice-delivery:v99:fixture","workflow-notice-owner","workflow-notice-owner:v1:fixture","workflow-approval-notices","workflow-approval-notices:v1:fixture","action-journal:v1:fixture:entry:id","hosted-background:v99:fixture","hosted-digests:v1:fixture:run","hosted-notices:v99:fixture","note-audio-metadata:v1:fixture","reminder-taps:v99:fixture"};
+  // One bare and one versioned slot per native-only namespace; test/native-secure-slots.test.mjs pins the list.
+  java.util.List<String> slots=new java.util.ArrayList<>();
+  for(String namespace:RendererCredentialSlots.nativeNamespaces()){slots.add(namespace);slots.add(namespace+":v1:fixture");}
   java.util.List<String> ownedSlots=new java.util.ArrayList<>();
   String retained="{\"authority\":\"native-only-fixture\"}",forged="{\"authority\":\"renderer-forgery\"}";
   try(BoundedActivityScenario<MainActivity> activity=BoundedActivityScenario.launch(MainActivity.class)) {

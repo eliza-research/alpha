@@ -31,3 +31,27 @@ export async function openBrowserCalendar(page: Page) {
   await expect(page.getByRole('button', {name: 'Calendar', exact: true})).toBeVisible();
   await selectCalendarSource(page, 'Browser calendar (development)');
 }
+
+/** What a Home calendar card titles itself while its calendar cannot be read. */
+export const calendarUnavailable = 'Calendar unavailable';
+
+/** Makes every browser-calendar read reject, then asks Home to read its calendar again. */
+export async function failBrowserCalendarReads(page: Page) {
+  await page.evaluate(async () => {
+    const {BrowserCalendar} = await import('/src/browser/calendar.ts'), proto = BrowserCalendar.prototype as any;
+    (window as any).__calendarList = proto.list;
+    proto.list = () => Promise.reject(Error('Calendar storage unavailable'));
+    window.dispatchEvent(new Event('alpha:calendar-preferences'));
+  });
+}
+
+/** Lets browser-calendar reads work again, counting them in `window.__calendarReads`. Home is asked
+ * to read again only with `notify`; without it the next read must come from somewhere else. */
+export async function restoreBrowserCalendarReads(page: Page, {notify}: {notify: boolean}) {
+  await page.evaluate(async notify => {
+    const {BrowserCalendar} = await import('/src/browser/calendar.ts'), proto = BrowserCalendar.prototype as any, list = (window as any).__calendarList;
+    (window as any).__calendarReads = 0;
+    proto.list = function (...args: unknown[]) { (window as any).__calendarReads++; return list.apply(this, args); };
+    if (notify) window.dispatchEvent(new Event('alpha:calendar-preferences'));
+  }, notify);
+}

@@ -25,7 +25,21 @@ final class SourceRenewalNotices {
  }
  synchronized String arm(JSONObject input,long expiresAt,long now)throws Exception{JSONObject chosen=selection(input),row=new JSONObject().put("selection",chosen).put("expiresAt",expiresAt);valid(row,now);String key=HostedResultNotices.hash(new JSONArray().put(chosen.getString("ownerId")).put(chosen.getString("agentId")).put(chosen.getString("installationId")).put(chosen.getString("enrollmentId")).put(chosen.getString("sourceId")).put(chosen.getString("revision")).put(expiresAt).toString());JSONObject rows=rows();List<String> keys=new ArrayList<>();rows.keys().forEachRemaining(keys::add);for(String old:keys){JSONObject previous=rows.getJSONObject(old);if(old.equals(key))continue;boolean stale=false;try{valid(previous,now);}catch(RenewalStale changed){stale=true;}catch(RenewalUnverifiable unknown){/* Keep it until it can be checked. */}if(stale||chosen.getString("sourceId").equals(previous.getJSONObject("selection").getString("sourceId"))){rows.remove(old);poster.cancel(old);}}if(!rows.has(key)){if(rows.length()>=200)throw new IllegalStateException("Too many renewal notices");rows.put(key,row.put("phase","armed"));}else if("dispatching".equals(rows.getJSONObject(key).optString("phase")))rows.getJSONObject(key).put("phase","armed");save(rows);return key;}
  // A row left in dispatching was interrupted mid-post; posting by tag is idempotent, so it posts again.
- synchronized void post(String key,long now)throws Exception{JSONObject rows=rows(),row=rows.optJSONObject(key);if(row==null)return;try{valid(row,now);}catch(RenewalStale stale){rows.remove(key);save(rows);poster.cancel(key);return;}String phase=row.optString("phase");if(!"armed".equals(phase)&&!"dispatching".equals(phase))return;row.put("phase","dispatching");save(rows);try{valid(row,now);poster.post(key,row.getLong("expiresAt"),now);}catch(Exception failed){row.put("phase","armed");save(rows);throw failed;}row.put("phase","posted");save(rows);}
+ synchronized void post(String key,long now)throws Exception {
+  JSONObject rows=rows(),row=rows.optJSONObject(key);if(row==null)return;
+  try{valid(row,now);}catch(RenewalStale stale){rows.remove(key);save(rows);poster.cancel(key);return;}
+  String phase=row.optString("phase");if(!"armed".equals(phase)&&!"dispatching".equals(phase))return;
+  row.put("phase","dispatching");save(rows);
+  try {
+   valid(row,now);
+   poster.post(key,row.getLong("expiresAt"),now);
+  }catch(RenewalStale stale){
+   rows.remove(key);save(rows);poster.cancel(key);return;
+  }catch(Exception failed){
+   row.put("phase","armed");save(rows);throw failed;
+  }
+  row.put("phase","posted");save(rows);
+ }
  synchronized void capture(String key,boolean question,long now)throws Exception{JSONObject rows=rows(),row=rows.optJSONObject(key);if(row==null||!"posted".equals(row.optString("phase")))return;try{valid(row,now);}catch(RenewalStale stale){rows.remove(key);save(rows);poster.cancel(key);return;}List<String> keys=new ArrayList<>();rows.keys().forEachRemaining(keys::add);for(String other:keys)rows.getJSONObject(other).remove("pending");row.put("pending",new JSONObject().put("token",UUID.randomUUID().toString()).put("question",question));save(rows);}
  synchronized JSONObject pending(long now)throws Exception{JSONObject rows=rows();List<String> keys=new ArrayList<>();rows.keys().forEachRemaining(keys::add);for(String key:keys){JSONObject row=rows.getJSONObject(key);if(!row.has("pending"))continue;try{valid(row,now);}catch(RenewalStale stale){rows.remove(key);save(rows);poster.cancel(key);continue;}return new JSONObject(row.getJSONObject("pending").toString()).put("selection",row.getJSONObject("selection")).put("expiresAt",row.getLong("expiresAt"));}return new JSONObject();}
  synchronized void settle(String token,boolean discard,long now)throws Exception{JSONObject rows=rows();for(Iterator<String> it=rows.keys();it.hasNext();){String key=it.next();JSONObject row=rows.getJSONObject(key),pending=row.optJSONObject("pending");if(pending==null||!token.equals(pending.optString("token")))continue;try{valid(row,now);}catch(RenewalStale stale){rows.remove(key);save(rows);poster.cancel(key);throw stale;}if(discard&&!pending.optBoolean("question"))throw new SecurityException("Renewal purpose changed");row.remove("pending");save(rows);return;}throw new SecurityException("Renewal tap changed");}

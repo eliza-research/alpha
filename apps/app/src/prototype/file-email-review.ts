@@ -15,7 +15,7 @@ export function reviewFileEmail(options: {
  const content=document.createElement('div');content.className='note-source-content';
  const title=document.createElement('h2');title.textContent='Use selected file in email';
  const destination=document.createElement('p'),details=document.createElement('p'),policy=document.createElement('p'),status=document.createElement('p');status.setAttribute('role','status');
- policy.textContent='Attach a copy to a local draft only. Review recipients, message and attachments before the separate Send step. Save locally to keep the exact copy for restart.'+(options.sourceNote?' '+options.sourceNote:'');
+ policy.textContent='Adds a copy to your draft. Nothing sends until you tap Send.'+(options.sourceNote?' '+options.sourceNote:'');
  const label=document.createElement('label'),check=document.createElement('input');check.type='checkbox';check.disabled=true;label.style.cssText='display:flex;align-items:center;gap:8px;min-height:44px';label.append(check,document.createTextNode('Attach this file'));
  const footer=document.createElement('footer'),cancel=document.createElement('button'),confirm=document.createElement('button');cancel.textContent='Cancel';confirm.textContent='Insert attachment into draft';confirm.disabled=true;
  content.append(title,destination,details,label,policy,status);footer.append(cancel,confirm);dialog.append(content,footer);
@@ -39,7 +39,7 @@ export function reviewFileEmail(options: {
   void (async()=>{try{
    const fresh=await checked();
    if(fresh.sha256!==file!.sha256||fresh.size!==file!.size||fresh.name!==file!.name||fresh.mimeType!==file!.mimeType)throw Error('The file changed since review. Cancel and select it again. Nothing was added.');
-   if(!current()||!options.insert(file!,target!.token))throw Error('The account, draft or attachment selection changed, or this file is already attached. Cancel and review again. Nothing was added.');
+   if(!current()||!options.insert(file!,target!.token))throw Error('Not added. Something changed, or this file is already attached.');
    close();options.inserted();
   }catch(error){if(!ended)status.textContent=error instanceof Error?error.message:'File unavailable. Nothing was added.';}})();
  };

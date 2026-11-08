@@ -3,7 +3,7 @@ import test from 'node:test';import assert from 'node:assert/strict';import {rea
 const source=readFileSync('apps/app/src/prototype/settings-adapter.ts','utf8');
 const region=source.slice(source.indexOf('// settings-facts:begin'),source.indexOf('// settings-facts:end'));
 assert.ok(region.length>100,'settings-facts region is present');
-const m=await import('data:text/javascript;base64,'+Buffer.from(stripTypeScriptTypes(region,{mode:'transform'})).toString('base64'));
+const m=await import('data:text/javascript;base64,'+Buffer.from(stripTypeScriptTypes(region,{mode:'strip'})).toString('base64'));
 const java=readFileSync('android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaDevicePlugin.java','utf8');
 
 test('the version row shows only what the build and Android report',()=>{
@@ -117,7 +117,7 @@ test('the grouped Privacy page retains permission review and action-review contr
 test('Cloud privacy hero includes speech while retaining native and offline/startup truth',async()=>{
  const nativeSource=readFileSync('apps/app/src/prototype/native-adapter.ts','utf8');
  const wording=nativeSource.slice(nativeSource.indexOf('export function egressPrivacy('),nativeSource.indexOf('/** Only a verified resident session'));
- const load=async cloud=>import('data:text/javascript;base64,'+Buffer.from(`const cloudRuntimeEnabled=${cloud};const testMocksEnabled=false;const Capacitor={isNativePlatform:()=>true};const cloudServiceName=environment=>environment==='staging'?'Nebula':'Cloud Test';`+stripTypeScriptTypes(wording,{mode:'transform'})).toString('base64'));
+ const load=async cloud=>import('data:text/javascript;base64,'+Buffer.from(`const cloudRuntimeEnabled=${cloud};const testMocksEnabled=false;const Capacitor={isNativePlatform:()=>true};const cloudServiceName=environment=>environment==='staging'?'Nebula':'Cloud Test';`+stripTypeScriptTypes(wording,{mode:'strip'})).toString('base64'));
  const cloud=await load(true),native=await load(false);
  const connected={kind:'resident',session:{sessionId:'qa'},cloudAccount:{environment:'staging'}};
  for(const isNative of [true,false]){

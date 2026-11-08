@@ -53,10 +53,10 @@ test('Review event from an agent note goes through Calendar admission with its n
   const module=new Function('parseNoteFormat','projectNoteForModel','noteScheduleDraft','agentPendingText','agentAvailabilityNotice','DailyApps','CanonicalNotesController','CanonicalNotesEditor','window',code+';return {installCanonicalNotesView,CanonicalNotesUi};')(x=>x,x=>x,async()=>({status:'ready',draft:{title:'',notes:'Book the venue',origin}}),()=>'',()=>'',{},Controller,Editor,{});
   class Shell{live=true;notesSourceMode='canonical';vget(){return {};}reviewScannedCalendarDraft(draft){reviewed.push(draft);return admitted;}api(){return{toast:x=>toasts.push(x),isActive:()=>true,get:()=>({}),open:(...args)=>opened.push(args),set:()=>true,notesSourceOptions:[]};}}
   const shell=new Shell();shell.canonicalNotesUi=new module.CanonicalNotesUi({},{paint(){},review(){}});shell.canonicalNotesUi.editor.open('n1');
-  const views={notes:{render:()=>({ed:{}})}};module.installCanonicalNotesView(Shell,views);
-  views.notes.render({},shell.api('notes')).ed.draftEvent();await new Promise(resolve=>setTimeout(resolve,0));
+  const views={notes:{render:()=>({vo:{}})}};module.installCanonicalNotesView(Shell,views);
+  views.notes.render({},shell.api('notes')).vo.toEvent();await new Promise(resolve=>setTimeout(resolve,0));
   assert.equal(reviewed.length,1);assert.deepEqual(reviewed[0].origin,origin);assert.equal(reviewed[0].notes,'Book the venue');assert.equal(reviewed[0].alert,null);
   assert.deepEqual(opened,[],'Calendar admission opens Calendar itself');
-  assert.match(toasts[0],admitted?/Nothing is on your calendar yet/:/can't open this event yet/);
+  assert.match(toasts[0],admitted?/^Review the time, then Save\.$/:/can't open this event yet/);
  }
 });

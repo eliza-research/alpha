@@ -37,7 +37,7 @@ import path from 'node:path';
 import {brotliDecompressSync} from 'node:zlib';
 import {fileURLToPath} from 'node:url';
 import {
-  COMMERCIAL_FONT, HELD_OUTSIDE_REPOSITORY, NO_FONT_LICENCE, UNKNOWN, UNVERIFIED, canonicalId, classifyLicence, flagSummary, licenceFlagLines, obligationNote,
+  COMMERCIAL_FONT, HELD_OUTSIDE_REPOSITORY, NO_FONT_LICENCE, UNKNOWN, UNVERIFIED, canonicalId, classifyLicence, flagSummary, licenceFlagLines, obligationNote, readSourceOffer,
 } from './licence-policy.mjs';
 
 export {COMMERCIAL_FONT, HELD_OUTSIDE_REPOSITORY, NO_FONT_LICENCE, UNKNOWN, UNVERIFIED};
@@ -709,7 +709,7 @@ function runtimePackageEntry(dir, bundle, templates, errors) {
   return {name: manifest.name, version: manifest.version, source: `https://www.npmjs.com/package/${manifest.name}/v/${manifest.version}`, ...notice, _bundles: [bundle]};
 }
 
-function bunEntry(provenance, templates) {
+function bunEntry(provenance, templates, offer) {
   const {version, revision} = provenance.bun ?? {};
   return {name: BUN_ENTRY, version: `${version} (oven-sh/bun ${revision})`, license: UNVERIFIED,
     source: `https://github.com/oven-sh/bun/tree/${revision}`, _flags: ['copyleft-weak'],
@@ -719,7 +719,9 @@ function bunEntry(provenance, templates) {
       templates.mit,
       'Bun statically links JavaScriptCore from WebKit (Oven fork, https://github.com/oven-sh/WebKit). JavaScriptCore is licensed under the GNU Lesser General Public License, version 2 or later (LGPL-2.0-or-later and LGPL-2.1-or-later portions), with BSD-licensed portions. Under the LGPL you may obtain, modify and relink the corresponding JavaScriptCore source.',
       `Corresponding source: Bun ${revision} at https://github.com/oven-sh/bun/tree/${revision}; its pinned WebKit revision is recorded in that tree (cmake/tools/SetupWebKit.cmake) and is available at https://github.com/oven-sh/WebKit.`,
-      'Source offer: before distribution the distributor must confirm a written offer, valid for at least three years, to provide the complete corresponding source of these LGPL components on request. Other statically linked Bun dependencies (for example BoringSSL, libuv, zlib, mimalloc, c-ares, libdeflate, lol-html, zstd, brotli and libarchive) are listed in Bun\'s LICENSE.md at that revision.',
+      'The complete corresponding source of these LGPL components is available at those addresses.',
+      ...(offer ? [offer] : []),
+      'Other statically linked Bun dependencies (for example BoringSSL, libuv, zlib, mimalloc, c-ares, libdeflate, lol-html, zstd, brotli and libarchive) are listed in Bun\'s LICENSE.md at that revision.',
     ].join('\n\n')};
 }
 
@@ -732,7 +734,9 @@ export function runtimeEntries(root, templates, errors, {agentDir = path.join(ro
   if (!packagedRuntimePresent(root, agentDir)) return [];
   const provenance = JSON.parse(fs.readFileSync(path.join(agentDir, 'android-agent-runtime-provenance.json'), 'utf8'));
   if (!provenance.bun?.version || !provenance.bun?.revision) errors.push(`${agentDir}/android-agent-runtime-provenance.json: no Bun version and revision`);
-  const entries = [bunEntry(provenance, templates)];
+  let offer = null;
+  try { offer = readSourceOffer(root); } catch (error) { errors.push(error.message); }
+  const entries = [bunEntry(provenance, templates, offer)];
   if (!sourceDir) {
     try {
       const base = JSON.parse(fs.readFileSync(path.join(agentDir, 'alpha-source.json'), 'utf8')).base;
@@ -811,7 +815,7 @@ function payloadEntries(packaged) {
       source: 'scripts/stage-local-agent-runtime.mjs',
       text: packaged
         ? 'The staged on-device agent payload is present. Bun and every npm package bundled into the agent and the workflow worker are listed as separate entries. The remaining payload files (musl loader, libstdc++ and libgcc_s runtime libraries, PGlite WebAssembly and data, PostgreSQL extensions and models) are not enumerated here.'
-        : 'The on-device agent payload (Bun runtime and the bundled elizaOS agent with its dependencies) is staged from pinned upstream source and may be included in standard Android builds. These notices were generated without the staged runtime, so its Bun and dependency notices are not listed. A PACKAGED distribution build regenerates them after staging with node scripts/generate-licenses.mjs --packaged-runtime (resident-android.yml); an APK built without that step does not carry them.'},
+        : 'This build does not include the on-device agent runtime (Bun and the bundled elizaOS agent), so no agent notices are listed.'},
   ];
 }
 
@@ -1001,7 +1005,7 @@ async function main(argv) {
     const staged = collectNotices(ROOT, {packagedRuntime: true});
     summarize(staged.entries, 'Staged runtime (not in the committed notices; use --packaged-runtime for a distribution)');
     for (const error of staged.errors) console.warn(`Staged runtime notice problem: ${error}`);
-  }
+  } else console.log('These notices list no on-device agent runtime. A PACKAGED distribution regenerates them after staging with node scripts/generate-licenses.mjs --packaged-runtime (resident-android.yml).');
   // Flags are warnings. Only broken input (errors) stops generation.
   for (const line of flagLines) console.warn(line);
   for (const warning of warnings) console.warn(`LICENCE NOTE ${warning}`);

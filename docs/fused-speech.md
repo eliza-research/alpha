@@ -154,7 +154,7 @@ nothing is downloaded.
 | `tts/paradee/paradee-8m-v1_2.gguf` | Paradee-8M v1.2 F32 (converted from the pinned PyTorch files) | 32 MB | Apache-2.0 |
 | `tts/paradee/misaki-en-us.lex` | misaki US lexicon (converted from the pinned misaki data) | 12.9 MB | Apache-2.0 |
 | `tts/paradee/espeak-ng-data/*` (7 files) | eSpeak NG English data for out-of-lexicon words | 0.8 MB | GPL-3.0-or-later (flagged) |
-| `asr/phonon-2-fv5.gguf` | The ASR slot: Phonon-2 (Parakeet-TDT 0.6B, five-value weights, `general.architecture=parakeet-tdt`) | 331 MB | CC-BY-4.0 (attribution and NOTICE shipped; training-data terms flagged) |
+| `asr/phonon-2-fv5.gguf` | The ASR slot: Phonon-2 (Parakeet-TDT 0.6B, five-value weights, `general.architecture=parakeet-tdt`) | 209 MB | CC-BY-4.0 (attribution and NOTICE shipped; training-data terms flagged) |
 | `vad/silero-vad-v5.gguf` | Silero VAD v5 | 0.6 MB | MIT |
 | `notices/*` | eSpeak NG, misaki, spaCy and Phonon-2 (Fermion NOTICE, CC-BY-4.0 text) notices | small | as named |
 
@@ -164,8 +164,9 @@ engine libraries were built from fork `0d9fd4b9` and are not admitted at this pi
 build, a fresh byte record, a fresh APK and on-device validation are required
 (`docs/evidence/develop-fbc2d23d-build-input-admission-20261029.json`).
 
-The Phonon-2 GGUF (330,632,256 bytes, sha256 `dc552eb7…`) replaces the Qwen3-ASR pair
-(about 1 GB), so the bundle is about 380 MB. It ships in the APK assets with the verified first-run
+The Phonon-2 GGUF (208,932,352 bytes, sha256 `c0f6ad42…`) replaces the Qwen3-ASR pair
+(about 1 GB), so the bundle is about 255 MB (254,675,849 bytes in
+`android/voice-host/qualified-voice-host.json`). It ships in the APK assets with the verified first-run
 copy above; there is no network install path. It is converted locally by
 `tools/parakeet/convert_phonon2_to_gguf.py --verify` from `FermionResearch/Phonon-2@7e153e40`
 (byte-reproducible; the upstream `mobile-voice@1.1.0` catalog row is `unpublished`, so nothing is
@@ -210,7 +211,8 @@ recording a clip on the device:
    with a 320 ms pre-roll. Only segment audio is forwarded; nothing is written to storage. The
    assistant asks for `echoCancel`: the communication source with the platform
    `AcousticEchoCanceler` (and `NoiseSuppressor`) when the device has one (`LiveCaptureSource`), so
-   the microphone can stay open while the reply plays. Transcribe keeps the recognition source.
+   the reply's echo is suppressed on the open capture; the assistant still holds the capture closed
+   while Alpha replies (step 7). Transcribe keeps the recognition source.
    Stopping flushes the frames of an open segment that were read before the stop.
 2. **Native transport.** On a bridge advertising `nativeTransport`, the app process forwards
    PCM and VAD directly over owner-bound resident IPC; the renderer receives only levels,
@@ -270,16 +272,17 @@ recording a clip on the device:
    reply. Each conversation turn's timing record keeps its path as the
    live ASR mode (`live.mode`: `batch` for the recorded-clip loop, `stream` from the live route), and
    the diagnostics export names it `path: live | batch`.
-7. **Barge-in and heard content.** Speech that starts while a reply is pending or playing is
-   tentative. Before playback it interrupts once the VAD segment has stayed open for 700 ms (longer
-   than the gate's hangover, so a blip never confirms by time) or its transcript passes the
-   disfluency and echo gate; during playback only the transcript gate confirms, since residual echo
-   can hold the VAD open for a whole sentence. The gate is upstream `shouldRespondToVoiceTurn`,
-   applied against every sentence of the reply that has started playing. A cough or the reply's own echo leaves the reply running. While a reply plays, voice
-   interrupts only over a capture whose platform echo canceller is attached and enabled
-   (`echoCancelled` from `startLiveCapture`); otherwise speech during playback is ignored. The voice
-   view offers only Mute and Stop voice conversation. Interrupting cancels that request or playback (generation ids drop
-   its late callbacks) and the speech becomes the next turn; the earlier turn is never resent.
+7. **Busy hold, Stop speaking and heard content.** Sending a turn closes the capture, and input
+   stays closed while the agent is busy with that turn: the request, any owner-review pause and the
+   reply until its playback settled (the shared `VoiceAssistantSession` busy hold). Speech never
+   interrupts a busy turn. While Alpha speaks, the voice view offers **Stop speaking** next to Mute
+   and Stop voice conversation; Stop speaking calls `interruptSpeech()`, which cancels the reply
+   request and playback (generation ids drop its late callbacks) and, once playback has stopped,
+   reopens the microphone for the next turn unless Mute keeps it closed; the earlier turn is never
+   resent. After a reply that was not stopped, the capture
+   reopens unless Mute, Stop or a binding change keeps it closed. The upstream tentative-speech
+   paths (`bargeInConfirmMs`, 700 ms) act only on a capture left open while a reply is pending or
+   playing, which the hold does not leave.
    Replies play one sentence at a time and only sentences whose playback completed count as heard:
    the conversation view keeps that text and marks the rest
    "(Interrupted. The rest of this reply was not played.)".
@@ -301,8 +304,8 @@ recording a clip on the device:
    reply the agent
    completes after the user interrupted it while it was still being generated has no message id
    in the voice session, is not trimmed and appears in full after a reload; a partially played
-   sentence is never claimed as heard. The 700 ms hold and the sentence-by-sentence synthesis gap
-   are engineering defaults to tune on a device.
+   sentence is never claimed as heard. The sentence-by-sentence synthesis gap is an engineering
+   default to tune on a device.
 
 Interim text: the agent publishes ephemeral `voice-transcript` events (`speech-start`, `partial`
 with the full running text, `final`, `error`) on its WebSocket event stream. `live-voice.ts`
@@ -321,7 +324,7 @@ final) and appears in the diagnostics export. Evidence: class S (node tests
 `test/live-voice.test.mjs`, `test/voice-assistant.test.mjs` and `test/voice-turn-routes.test.mjs`, the Playwright specs
 `test/browser/live-voice.spec.ts` with a stub agent and `test/browser/voice-assistant.production.spec.ts`
 on the flag-off renderer with synthetic native ports) and Gradle compilation; not run on an emulator
-or a device. Echo, barge-in timing, lock, calls and Bluetooth need device acceptance.
+or a device. Echo, Stop speaking timing, lock, calls and Bluetooth need device acceptance.
 
 ## Records
 

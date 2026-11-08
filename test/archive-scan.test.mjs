@@ -33,3 +33,19 @@ for (const mode of ['signed', 'unsigned', 'signed-test-class']) test(`archive sc
   assert.equal(releases.length, 2);
   assert.ok(releases.every(row => row.androidTestClassesAbsent === (mode !== 'signed-test-class')));
 });
+
+test('archive scan without a local provider key stops with a plain reason', t => {
+  fs.mkdirSync(path.join(root, 'test-results'), {recursive:true});
+  const dir = fs.mkdtempSync(path.join(root, 'test-results/archive-scan-'));
+  t.after(() => fs.rmSync(dir, {recursive:true, force:true}));
+  const fixtureHome = path.join(dir, 'fixture-home');
+  fs.mkdirSync(fixtureHome);
+  fs.writeFileSync(path.join(dir, 'inputs-before.json'), JSON.stringify({files:{}}));
+  fs.writeFileSync(path.join(dir, 'apk-manifest.json'), '{}');
+  const runner = 'import runpy,sys; from pathlib import Path; fixture_home=Path(sys.argv[1]); archive=sys.argv[2]; script=sys.argv[3]; Path.home=classmethod(lambda cls: fixture_home); sys.argv=[script,archive]; runpy.run_path(script,run_name="__main__")';
+  const result = spawnSync('python3', ['-c', runner, fixtureHome, dir, path.join(root,'scripts/scan-archived-apks.py')], {encoding:'utf8'});
+  assert.equal(result.status, 1);
+  assert.match(result.stderr, /^No provider key at ~\/\.config\/alphaphone\/cerebras-key; this scan checks archives for that key and needs it locally$/m);
+  assert.doesNotMatch(result.stderr, /Traceback/);
+  assert.equal(fs.existsSync(path.join(dir, 'static-secret-scan.json')), false);
+});
