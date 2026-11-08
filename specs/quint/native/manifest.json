@@ -1831,6 +1831,54 @@
         "maxSteps": 80,
         "maxVerifyDepth": 4
       }
+    },
+    {
+      "path": "specs/quint/native/WorkflowNoticeDelivery.qnt",
+      "module": "WorkflowNoticeDelivery",
+      "init": "init",
+      "step": "step",
+      "invariant": "safety",
+      "sources": [
+        "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaNotificationsPlugin.java",
+        "android/app/src/main/java/ai/elizaresearch/alphaphone/WorkflowNoticeDelivery.java",
+        "android/app/src/main/java/ai/elizaresearch/alphaphone/WorkflowNoticeTaps.java",
+        "android/app/src/main/java/ai/elizaresearch/alphaphone/WorkflowNoticeTapsFactory.java",
+        "android/app/src/main/java/ai/elizaresearch/alphaphone/WorkflowNoticePoster.java"
+      ],
+      "tests": [
+        "durableClaimPrecedesAcknowledgedPostTest",
+        "foregroundLossPreservesOnlyPreparedRouteTest",
+        "uncertainClaimNeverRepostsTest",
+        "lateExactActiveReadReconcilesWithoutRepostTest",
+        "lostTerminalWriteCanBeRecoveredByExactReadTest",
+        "explicitOwnerRejectsStaleQueuedRouteTest",
+        "withdrawalWriteFaultKeepsOwnerFenceTest"
+      ],
+      "invariants": [
+        "AtMostOneManagerPost",
+        "PostedNoticeHasExactDurableClaim",
+        "ConfirmedReplyHasSucceededReceipt"
+      ],
+      "abstractions": [
+        "One ordinary workflow notice operation ID and route token, two owner and binding classes, three content classes, and a separate legacy ownerless mode.",
+        "Foreground checks at worker admission and after the exact route write. A replacement bridge generation preserves durable routes and delivery receipts.",
+        "Route claim, delivery claim, manager observation and terminal ledger reply have separate interruption boundaries. A write can commit and lose its reply.",
+        "Synthetic notification permission and active-list evidence. A confirmed delivery is retained even after OS dismissal. Approval quiet posting and tap custody are separate."
+      ],
+      "sharedSources": [
+        "plugins/plugin-native-notifications/android/src/capacitor/java/ai/eliza/plugins/notifications/NotificationsHostPlugin.java",
+        "plugins/plugin-native-notifications/android/src/main/java/ai/eliza/plugins/notifications/NoticeDelivery.java",
+        "plugins/plugin-native-notifications/android/src/main/java/ai/eliza/plugins/notifications/NoticeOwner.java",
+        "plugins/plugin-native-notifications/android/src/main/java/ai/eliza/plugins/notifications/NoticeRoutes.java",
+        "plugins/plugin-native-notifications/android/src/main/java/ai/eliza/plugins/notifications/NoticeCoordinator.java",
+        "plugins/plugin-native-notifications/android/src/main/java/ai/eliza/plugins/notifications/HostNoticePoster.java",
+        "plugins/plugin-native-notifications/android/src/main/java/ai/eliza/plugins/notifications/ForegroundNoticeGate.java"
+      ],
+      "bounds": {
+        "maxSamples": 1000,
+        "maxSteps": 60,
+        "maxVerifyDepth": 8
+      }
     }
   ]
 }
