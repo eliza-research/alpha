@@ -76,7 +76,7 @@ index 1d7091624f..272b839a87 100644
   public enum ReturnKind { SUCCESS, ERROR, RETURN }
   /** A return to this environment's callback. SUCCESS sets code and state, ERROR sets error and state, RETURN sets neither. */
 diff --git a/packages/auth/android/src/main/java/ai/eliza/auth/cloud/CloudSignInPlugin.java b/packages/auth/android/src/main/java/ai/eliza/auth/cloud/CloudSignInPlugin.java
-index 4b5990b840..f288aedcdf 100644
+index 4b5990b840..67258cfa70 100644
 --- a/packages/auth/android/src/main/java/ai/eliza/auth/cloud/CloudSignInPlugin.java
 +++ b/packages/auth/android/src/main/java/ai/eliza/auth/cloud/CloudSignInPlugin.java
 @@ -2,9 +2,18 @@ package ai.eliza.auth.cloud;
@@ -141,7 +141,7 @@ index 4b5990b840..f288aedcdf 100644
  
   /** Thrown with a stable, non-secret code the renderer maps to copy. */
   public static final class SignInFailure extends Exception {
-@@ -67,8 +81,11 @@ public abstract class CloudSignInPlugin extends Plugin {
+@@ -67,8 +81,13 @@ public abstract class CloudSignInPlugin extends Plugin {
    final boolean google;
    /** Renderer correlation only; never account or credential authority. */
    final String requestId;
@@ -151,11 +151,13 @@ index 4b5990b840..f288aedcdf 100644
 +  volatile Runnable credentialGuard;
 +  /** A parameterless return arrived: only a hint, since any app can send one. */
 +  volatile boolean cancelled, callbackReceived, browserLaunched, browserPaused, returnHint;
++  /** A return for this attempt is being read: the browser-closed grace check leaves it to the worker. */
++  boolean returnClaimed;
 +  String browserState;
    volatile HttpURLConnection connection;
    volatile android.os.CancellationSignal googleCancellation;
    String googleVerifier, googleChallengeId;
-@@ -97,6 +114,8 @@ public abstract class CloudSignInPlugin extends Plugin {
+@@ -97,6 +116,8 @@ public abstract class CloudSignInPlugin extends Plugin {
   private final Map<String, CloudSignInReadiness.Result> readiness = new HashMap<>();
   private final Map<String, List<PluginCall>> probing = new HashMap<>();
   private Attempt attempt;
@@ -164,7 +166,7 @@ index 4b5990b840..f288aedcdf 100644
   /** Global code-send cooldown, including any longer deadline supplied by Cloud. */
   private long lastEmailSendAt, emailSendAllowedAt;
   private volatile boolean destroyed;
-@@ -155,6 +174,22 @@ public abstract class CloudSignInPlugin extends Plugin {
+@@ -155,6 +176,22 @@ public abstract class CloudSignInPlugin extends Plugin {
    probe(config().defaultEnvironment(), null, false);
   }
   @Override protected void handleOnNewIntent(Intent intent) { super.handleOnNewIntent(intent); captureCallback(intent); }
@@ -179,7 +181,7 @@ index 4b5990b840..f288aedcdf 100644
 +  if (current == null || !current.browserPaused) return;
 +  main.postDelayed(() -> {
 +   synchronized (lock) {
-+    if (attempt != current || current.cancelled || current.callbackReceived || current.returnHint) return;
++    if (attempt != current || current.cancelled || current.callbackReceived || current.returnHint || current.returnClaimed) return;
 +    end(current, "browser-closed", true);
 +   }
 +  }, BROWSER_RETURN_GRACE_MS);
@@ -187,7 +189,7 @@ index 4b5990b840..f288aedcdf 100644
   @Override protected void handleOnDestroy() {
    destroyed = true;
    synchronized (lock) { if (attempt != null) attempt.cancel(); attempt = null; }
-@@ -230,14 +265,14 @@ public abstract class CloudSignInPlugin extends Plugin {
+@@ -230,14 +267,14 @@ public abstract class CloudSignInPlugin extends Plugin {
   /** Cloud refused this app's native sign-in: invalidate the readiness cache. */
   private void forgetReadiness(CloudSignInEnvironment environment) {
    synchronized (lock) { readiness.remove(environment.name); }
@@ -205,7 +207,7 @@ index 4b5990b840..f288aedcdf 100644
    catch (Exception ignored) { /* Kept in memory. */ }
   }
   /** The readiness observations (CloudSignInReadiness). Every read is short, fixed and fail-safe. */
-@@ -261,12 +296,131 @@ public abstract class CloudSignInPlugin extends Plugin {
+@@ -261,12 +298,131 @@ public abstract class CloudSignInPlugin extends Plugin {
    if (emailOffered) try { emailRoute = CloudSignInReadiness.emailRoutePresent(probePost(environment, CloudEmailCode.SEND_PATH)); } catch (Exception unavailable) { /* Other methods remain independent. */ }
    // Native Google verifies an ID token and does not require a browser return.
    boolean googleReady = Boolean.TRUE.equals(providers.data.opt("googleNative"));
@@ -337,7 +339,7 @@ index 4b5990b840..f288aedcdf 100644
   /** Optional caller identity scopes retained events to the interactive request that began them. */
   private static String callerRequestId(PluginCall call) throws SignInFailure {
    if (!call.getData().has("requestId")) return null;
-@@ -289,6 +443,7 @@ public abstract class CloudSignInPlugin extends Plugin {
+@@ -289,6 +445,7 @@ public abstract class CloudSignInPlugin extends Plugin {
     next = new Attempt(environment, true, requestId, reserveCredentialCommit());
     attempt = next; next.waiting = call;
    }
@@ -345,7 +347,7 @@ index 4b5990b840..f288aedcdf 100644
    next.googleVerifier = CloudSignInFlow.newVerifier();
    next.googleCancellation = new android.os.CancellationSignal();
    next.busy = true;
-@@ -353,9 +508,10 @@ public abstract class CloudSignInPlugin extends Plugin {
+@@ -353,9 +510,10 @@ public abstract class CloudSignInPlugin extends Plugin {
   /**
    * Strict App Link capture under the shared callback contract. Only this environment's exact
    * callback is considered, and the intent's data is cleared so a relaunch never replays it.
@@ -359,17 +361,37 @@ index 4b5990b840..f288aedcdf 100644
    * - SUCCESS or ERROR: the state is compared (constant time) before anything is burned. A state that
    *   does not match the pending record is ignored and leaves the attempt alone, so another app's
    *   intent cannot cancel a sign-in. A match burns the record before any network request.
-@@ -380,25 +536,42 @@ public abstract class CloudSignInPlugin extends Plugin {
+@@ -373,6 +531,17 @@ public abstract class CloudSignInPlugin extends Plugin {
+   intent.setData(null);
+   final CloudSignInEnvironment returned = environment;
+   final CloudSignInFlow.Callback received = callback;
++  // Claimed here, before the worker reads storage, so the browser-closed grace check cannot end a
++  // return that is about to be consumed. Only a bare RETURN or this attempt's own state (kept in
++  // memory, compared in constant time) claims; another app's App Link leaves the grace check alone.
++  final Attempt claimed;
++  synchronized (lock) {
++   claimed = attempt != null && attempt.google && attempt.browserLaunched && attempt.environment == returned && !attempt.callbackReceived
++    && (received.kind == CloudSignInFlow.ReturnKind.RETURN || received.state != null && attempt.browserState != null
++     && java.security.MessageDigest.isEqual(received.state.getBytes(StandardCharsets.US_ASCII), attempt.browserState.getBytes(StandardCharsets.US_ASCII)))
++    ? attempt : null;
++   if (claimed != null) claimed.returnClaimed = true;
++  }
+   run(() -> {
+    CloudSignInFlow.Pending pending = null;
+    CloudCredentialSlots store = null;
+@@ -380,25 +549,44 @@ public abstract class CloudSignInPlugin extends Plugin {
     catch (Exception storage) { /* Treated as no pending record. */ }
     long now = System.currentTimeMillis();
     final Attempt waiting;
 -   synchronized (lock) { waiting = attempt != null && attempt.google && attempt.environment == returned && !attempt.callbackReceived ? attempt : null; }
 +   synchronized (lock) { waiting = attempt != null && attempt.google && attempt.browserLaunched && attempt.environment == returned && !attempt.callbackReceived ? attempt : null; }
     if (received.kind == CloudSignInFlow.ReturnKind.RETURN) {
-     if (pending == null || pending.environment != returned || pending.expired(now)) return;
+-    if (pending == null || pending.environment != returned || pending.expired(now)) return;
 -    if (waiting != null) { synchronized (lock) { waiting.callbackReceived = true; } end(waiting, "app-link-unverified", false); }
 -    else notifyListeners("signInIncomplete", new JSObject().put("code", "app-link-unverified"), true);
++    if (pending == null || pending.environment != returned || pending.expired(now)) { releaseClaim(claimed); return; }
 +    if (waiting == null) {
++     releaseClaim(claimed);
 +     synchronized (lock) { if (pending.state.equals(cancelledBrowserState)) return; }
 +     notifyListeners("signInIncomplete", new JSObject().put("code", "app-link-unverified"), true);
 +     return;
@@ -384,22 +406,24 @@ index 4b5990b840..f288aedcdf 100644
      return;
     }
     // Not this device's request (unknown, foreign or duplicate): ignored, nothing burned or ended.
-    if (pending == null || pending.environment != returned || !pending.sameState(received)) return;
+-   if (pending == null || pending.environment != returned || !pending.sameState(received)) return;
 -   // The matching return: single use, burned before any network request, whatever the outcome.
 -   try { if (store != null) store.remove(config().pendingSlot); } catch (Exception storage) { /* Expires on its own. */ }
++   if (pending == null || pending.environment != returned || !pending.sameState(received)) { releaseClaim(claimed); return; }
     Attempt owner = waiting;
 -   if (owner != null) synchronized (lock) { owner.callbackReceived = true; }
 -   else {
 -    // Legacy browser input carries no live credential intent. It cannot acquire fresh
 -    // authority after a sign-out or process restart; begin a new explicit native sign-in.
 +   if (owner == null) {
++    releaseClaim(claimed);
 +    // A return queued behind the owner's own cancel is not news to the owner.
 +    synchronized (lock) { if (pending.state.equals(cancelledBrowserState)) return; }
 +    // A return after process death has no live credential intent and cannot authorize a write.
      notifyListeners("signInIncomplete", new JSObject().put("code", "app-link-unverified"), true);
      return;
     }
-+   if (!pending.state.equals(owner.browserState)) return;
++   if (!pending.state.equals(owner.browserState)) { releaseClaim(claimed); return; }
 +   // State and the original live credential intent must both match before consuming the code.
 +   try {
 +    credentials(() -> {
@@ -411,7 +435,7 @@ index 4b5990b840..f288aedcdf 100644
     if (pending.expired(now)) { end(owner, "expired", false); return; }
     owner.expiresAt = pending.expiresAt;
     owner.callbackReceived = true;
-@@ -411,7 +584,8 @@ public abstract class CloudSignInPlugin extends Plugin {
+@@ -411,12 +599,27 @@ public abstract class CloudSignInPlugin extends Plugin {
       .put("tenantId", returned.tenant).put("codeVerifier", pending.verifier);
      Response exchanged = post(owner, "/steward/auth/oauth/exchange", body, null);
      if (exchanged.status != 200) throw new SignInFailure(CloudSignInFlow.failureForStatus("exchange", exchanged.status));
@@ -421,7 +445,26 @@ index 4b5990b840..f288aedcdf 100644
     } catch (SignInFailure failure) { end(owner, failure.code, false); }
     catch (Exception unexpected) { end(owner, "unavailable", false); }
    });
-@@ -445,15 +619,17 @@ public abstract class CloudSignInPlugin extends Plugin {
+   return true;
+  }
++ /**
++  * A claimed return the worker could not consume (no readable pending record, or not this attempt's):
++  * the claim is released, and an attempt whose owner already came back from the browser ends as
++  * browser-closed instead of waiting forever.
++  */
++ private void releaseClaim(Attempt claimed) {
++  if (claimed == null) return;
++  synchronized (lock) {
++   if (!claimed.returnClaimed) return;
++   claimed.returnClaimed = false;
++   if (attempt != claimed || !claimed.browserPaused || claimed.cancelled || claimed.callbackReceived || claimed.returnHint) return;
++   end(claimed, "browser-closed", true);
++  }
++ }
+  /** Cancelled, ended or consumed: the pending record is never reused. */
+  private void burnUnclaimedPending() {
+   run(() -> { try { store().remove(config().pendingSlot); } catch (Exception ignored) { /* Absent or unreadable. */ } });
+@@ -445,15 +648,17 @@ public abstract class CloudSignInPlugin extends Plugin {
    try { requestId = callerRequestId(call); }
    catch (SignInFailure invalid) { call.reject("Invalid sign-in request", "invalid-request"); return; }
    if (!CloudSignInFlow.validEmail(email)) { call.reject("Enter a valid email address", "invalid-email"); return; }
@@ -442,7 +485,7 @@ index 4b5990b840..f288aedcdf 100644
     current.email = email; current.emailVerifier = CloudSignInFlow.newVerifier(); current.busy = true; attempt = current;
     lastEmailSendAt = now;
    }
-@@ -467,11 +643,15 @@ public abstract class CloudSignInPlugin extends Plugin {
+@@ -467,11 +672,15 @@ public abstract class CloudSignInPlugin extends Plugin {
      if (sent.status != 200 && sent.status != 202) throw new SignInFailure(CloudSignInFlow.failureForStatus("send", sent.status));
      synchronized (lock) {
       if (attempt != current || current.cancelled) throw new SignInFailure("cancelled");
@@ -460,7 +503,7 @@ index 4b5990b840..f288aedcdf 100644
    });
   }
   @PluginMethod public void startPhone(PluginCall call) {
-@@ -483,15 +663,16 @@ public abstract class CloudSignInPlugin extends Plugin {
+@@ -483,15 +692,16 @@ public abstract class CloudSignInPlugin extends Plugin {
    try { requestId = callerRequestId(call); }
    catch (SignInFailure invalid) { call.reject("Invalid sign-in request", "invalid-request"); return; }
    if (!CloudSmsCode.validPhone(phone)) { call.reject("Enter a phone number with country code", "invalid-phone"); return; }
@@ -480,7 +523,7 @@ index 4b5990b840..f288aedcdf 100644
     current.phone = phone; current.busy = true; attempt = current;
     lastEmailSendAt = now;
    }
-@@ -504,13 +685,25 @@ public abstract class CloudSignInPlugin extends Plugin {
+@@ -504,13 +714,25 @@ public abstract class CloudSignInPlugin extends Plugin {
      long now = System.currentTimeMillis(), expiresAt = CloudEmailCode.expiresAt(data.opt("expiresAt"), now);
      synchronized (lock) {
       if (attempt != current || current.cancelled) throw new SignInFailure("cancelled");
@@ -508,7 +551,7 @@ index 4b5990b840..f288aedcdf 100644
   /** Check registration and tenant SMS policy before sending a real code. No website alias or captcha bypass. */
   private void requirePhoneAvailable(Attempt current) throws Exception {
    CloudSignInEnvironment environment = current.environment;
-@@ -590,6 +783,7 @@ public abstract class CloudSignInPlugin extends Plugin {
+@@ -590,6 +812,7 @@ public abstract class CloudSignInPlugin extends Plugin {
    synchronized (lock) {
     if (requestId != null && (attempt == null || !requestId.equals(attempt.requestId))) { call.resolve(); return; }
     current = attempt; attempt = null;
@@ -516,7 +559,7 @@ index 4b5990b840..f288aedcdf 100644
    }
    if (current != null) { current.cancel(); PluginCall waiting; synchronized (lock) { waiting = current.waiting; current.waiting = null; } if (waiting != null) waiting.reject("cancelled", "cancelled"); }
    // The explicit cancel burns a pending Google record.
-@@ -732,7 +926,12 @@ public abstract class CloudSignInPlugin extends Plugin {
+@@ -732,7 +955,12 @@ public abstract class CloudSignInPlugin extends Plugin {
      .put("attemptId", current.id).put("credentialId", saved.getString("credentialId"))
      .put("accountCreated", created instanceof Boolean ? created : JSONObject.NULL);
     if (current.requestId != null) outcome.put("requestId", current.requestId);
@@ -530,7 +573,7 @@ index 4b5990b840..f288aedcdf 100644
     finish(current, outcome);
    } finally {
     // The Steward session is not needed past this point: revoke it, best effort, never stored.
-@@ -740,6 +939,15 @@ public abstract class CloudSignInPlugin extends Plugin {
+@@ -740,6 +968,15 @@ public abstract class CloudSignInPlugin extends Plugin {
     catch (Exception ignored) { /* Best effort; the session expires on its own. */ }
    }
   }
@@ -546,7 +589,7 @@ index 4b5990b840..f288aedcdf 100644
   /** The saved key for this environment that the new one replaces, or null when none (or the same key). */
   private static String previousToken(CloudCredentialSlots store, String slot, String issued) {
    try {
-@@ -821,7 +1029,7 @@ public abstract class CloudSignInPlugin extends Plugin {
+@@ -821,7 +1058,7 @@ public abstract class CloudSignInPlugin extends Plugin {
   private void end(Attempt current, String code, boolean burn) {
    PluginCall waiting;
    synchronized (lock) { current.cancel(); waiting = current.waiting; current.waiting = null; if (attempt == current) attempt = null; }

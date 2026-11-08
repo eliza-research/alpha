@@ -1,12 +1,13 @@
 package ai.eliza.auth.cloud;
 
 import java.util.*;
+import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import org.json.JSONObject;
 
 /** Executes the exact injected CloudSignInPlugin methods with synthetic HTTPS/store/bridge facades.
  * No browser, real account, secret, mailbox or device is used. */
-class ChainPluginBase { protected void handleOnDestroy(){} }
+class ChainPluginBase { protected void handleOnDestroy(){} protected void handleOnPause(){} protected void handleOnResume(){} }
 public class CloudSignInChainTest extends ChainPluginBase {
  final Object lock=new Object(); boolean destroyed,defer; Attempt attempt; String mode="valid";
  final ArrayDeque<Runnable> queued=new ArrayDeque<>();
@@ -46,7 +47,7 @@ public class CloudSignInChainTest extends ChainPluginBase {
   final CloudSignInEnvironment environment=TestRegistration.PRODUCTION;
   final String id=UUID.randomUUID().toString();final String requestId;Runnable credentialGuard=()->{};Attempt(){this(null);}Attempt(String requestId){this.requestId=requestId;}
   Attempt(CloudSignInEnvironment environment,boolean google,String requestId,Runnable credentialGuard){this.requestId=requestId;this.google=google;this.credentialGuard=credentialGuard;expiresAt=0;}String email="owner@example.invalid",emailVerifier=CloudSignInFlow.newVerifier(),mfaType,mfaChallenge,phone;
-  long expiresAt=System.currentTimeMillis()+60000,resendAt;boolean google,busy,cancelled,callbackReceived,browserLaunched,returnHint;String browserState;int failedVerifies;PluginCall waiting;
+  long expiresAt=System.currentTimeMillis()+60000,resendAt;boolean google,busy,cancelled,callbackReceived,browserLaunched,browserPaused,returnHint,returnClaimed;String browserState;int failedVerifies;PluginCall waiting;
   void cancel(){cancelled=true;}
  }
  static class Response { final int status;final JSONObject data;final String retryAfter=null;Response(int s,JSONObject d){status=s;data=d;} }
@@ -134,6 +135,7 @@ public class CloudSignInChainTest extends ChainPluginBase {
  /* ACTUAL_CANCEL */
  /* ACTUAL_START_CODE */
  /* ACTUAL_CALLBACK */
+ /* ACTUAL_BROWSER_LIFECYCLE */
  /* ACTUAL_BURN */
  /* ACTUAL_VERIFY */
  /* ACTUAL_RELEASE */
@@ -324,6 +326,28 @@ public class CloudSignInChainTest extends ChainPluginBase {
   if(success)check(call.result!=null&&"authenticated".equals(call.result.optString("status")),"a SUCCESS after a return still exchanges");
   else check("app-link-unverified".equals(call.error)&&host.attempt==null&&slots.containsKey(host.config().pendingSlot)&&host.requests==0,"a lone return ends after the grace and burns nothing");
  }
+ /**
+  * The owner came back from the browser and its grace check fires while the return's worker is still
+  * queued. Its own return is claimed first and still exchanges; another app's state does not claim;
+  * a claimed return with no readable pending record ends as browser-closed instead of hanging.
+  */
+ static void graceRace(String mode)throws Exception{
+  slots.clear();events.clear();notifications.clear();CloudSignInChainTest host=new CloudSignInChainTest();host.defer=true;
+  CloudSignInFlow.Pending pending=CloudSignInFlow.Pending.create(TestRegistration.PRODUCTION,System.currentTimeMillis());
+  slots.put(host.config().pendingSlot,mode.equals("unreadable")?"not-a-pending-record":pending.serialize());
+  Attempt owner=new Attempt(REQUEST);owner.google=true;owner.browserLaunched=true;owner.browserState=pending.state;owner.credentialGuard=host.reserveCredentialCommit();host.attempt=owner;
+  PluginCall call=new PluginCall();owner.waiting=call;
+  host.handleOnPause();host.handleOnResume();
+  String state=mode.equals("foreign")?CloudSignInFlow.newState():pending.state;
+  host.captureCallback(new Intent(TestRegistration.PRODUCTION.callback()+"#code=fixture-code&state="+state));
+  check(owner.returnClaimed!=mode.equals("foreign"),"only the owner's own state claims the return: "+mode);
+  host.main.drain();
+  if(mode.equals("foreign"))check("browser-closed".equals(call.error)&&host.attempt==null,"a foreign App Link leaves the grace check to end the attempt");
+  else check(host.attempt==owner&&!owner.cancelled&&call.error==null,"the grace check leaves a claimed return to its worker: "+mode);
+  while(!host.queued.isEmpty())host.queued.remove().run();
+  if(mode.equals("own"))check(call.result!=null&&"authenticated".equals(call.result.optString("status"))&&!slots.containsKey(host.config().pendingSlot),"a claimed return still exchanges after the grace check");
+  else check(call.result==null&&"browser-closed".equals(call.error)&&host.attempt==null&&!owner.returnClaimed&&host.requests==0,"an unconsumable return ends as browser-closed: "+mode);
+ }
  /** A return already queued when its owner cancels says nothing afterwards. */
  static void queuedBehindCancel(boolean success)throws Exception{
   slots.clear();events.clear();notifications.clear();CloudSignInChainTest host=new CloudSignInChainTest();host.defer=true;
@@ -457,10 +481,10 @@ public class CloudSignInChainTest extends ChainPluginBase {
   for(String mode:List.of("stale","malformed","matching","legacy","queued","queued-completed"))scopedCancel(mode);
   for(String mode:List.of("send-refused","send-offline","send-ok"))resend(mode,false);
   resend("send-refused",true);resend("send-ok",true);
-  returnHint(true);returnHint(false);queuedBehindCancel(true);queuedBehindCancel(false);
+  returnHint(true);returnHint(false);graceRace("own");graceRace("foreign");graceRace("unreadable");queuedBehindCancel(true);queuedBehindCancel(false);
   revocationRetry(false);revocationRetry(true);
   admission();sendCooldown();wrongCodeCap();busyGuard();destroyMidVerify();
   for(String mode:List.of("valid","other-key","expired","wrong-ack"))resumeAcks(mode);
-  System.out.println("PASS native sign-in chain (59 scenarios; no browser facilities)");
+  System.out.println("PASS native sign-in chain (62 scenarios; no browser facilities)");
  }
 }
