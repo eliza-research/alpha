@@ -6290,7 +6290,8 @@
       "path": "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaCanonicalNotifications.java",
       "models": [
         "NoticesAndCaches",
-        "CanonicalNotificationTapAdmission"
+        "CanonicalNotificationTapAdmission",
+        "CanonicalNotificationTap"
       ],
       "scope": "application",
       "treatment": "domain-contract-or-support",
@@ -7243,7 +7244,8 @@
       "models": [
         "NoticesAndCaches",
         "NotificationCollection",
-        "CanonicalNotificationTapAdmission"
+        "CanonicalNotificationTapAdmission",
+        "CanonicalNotificationTap"
       ],
       "scope": "application",
       "treatment": "state-and-transition-projection",
@@ -8152,7 +8154,8 @@
       "sha256": "f35ee61299955a4f3a6d12fc160c4376176229fbb87c6dc9c727b3e33407ec67",
       "models": [
         "Application",
-        "RendererRecovery"
+        "RendererRecovery",
+        "CanonicalNotificationTap"
       ],
       "scope": "application",
       "treatment": "state-and-transition-projection",
@@ -130636,6 +130639,17 @@
           "text": "bool register_natives(JNIEnv* env, jclass cls, const JNINativeMethod* methods, size_t count) {"
         }
       ]
+    },
+    {
+      "path": "vendor/eliza/packages/app/platforms/android/app/src/main/java/ai/elizaos/app/NativeNotificationRoute.java",
+      "models": [
+        "CanonicalNotificationTap"
+      ],
+      "scope": "shared-upstream",
+      "treatment": "domain-contract-or-support",
+      "reviewStatus": "state-audit-required",
+      "sha256": "66017ed3c170b7a0ce6e3f79c88f5c699a1dacd991574cdc8482358bc07debc0",
+      "stateAnchors": []
     },
     {
       "path": "vendor/eliza/packages/app/platforms/android/sense/src/main/java/ai/eliza/sense/AssistantInvocation.java",
@@ -504433,7 +504447,8 @@
       "models": [
         "DeviceActions",
         "NoticesAndCaches",
-        "NotificationCollection"
+        "NotificationCollection",
+        "CanonicalNotificationTap"
       ],
       "scope": "shared-module-dependency",
       "treatment": "domain-contract-or-support",
@@ -619022,7 +619037,7 @@
     "apps/app/index.html"
   ],
   "sharedSourceDiscovery": {
-    "sharedSourceCount": 4840,
+    "sharedSourceCount": 4841,
     "producer": "specs/quint/refinement/services/runtime-bundle-inputs.json",
     "sourcePin": "99b49439ce9d0cb5607e9831b9f7f58d89525029",
     "meaning": "Authenticated source identities and domain allocations. Runtime activation and implementation refinement require separate evidence."

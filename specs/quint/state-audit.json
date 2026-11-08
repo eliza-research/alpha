@@ -12,7 +12,7 @@
   "toolSha256": "403a33cab0dff7ace6219b29e7ffef373319677a7d8be6641466dd16a6750b5b",
   "dependencyLockSha256": "944123c801157a7ba3676a886d0b28a54bef32735ae96da5c6dd0f206c88c8bf",
   "sourcePin": "99b49439ce9d0cb5607e9831b9f7f58d89525029",
-  "ledgerSha256": "413f1af66dad7823f247c79baf4a9ebe3c9c0f62f6d077129230b7597a2b6544",
+  "ledgerSha256": "99b353d3ab708607ce3bf486e4be5bddf63793f8fa586d1100733c892a41bfd7",
   "method": "TypeScript syntax trees for JavaScript/TypeScript and JDK compiler trees for Java. Mutable fields, bindings, containers, state hooks, write sites and asynchronous registration calls are candidates for semantic review.",
   "limitations": [
     "Candidate extraction does not establish state-machine coverage or implementation refinement.",
@@ -22,15 +22,15 @@
     "The ledger supplies pinned source bytes. Effective client/native/runtime patch outputs require their separately authenticated source mappings."
   ],
   "counts": {
-    "files": 5680,
+    "files": 5681,
     "testSupportFiles": 287,
     "testSupportCandidates": 11480,
-    "parsedFiles": 5625,
+    "parsedFiles": 5626,
     "languageReview": 55,
     "parseErrors": 0,
-    "candidates": 67091,
-    "writeSites": 66530,
-    "writeAssociations": 59709,
+    "candidates": 67100,
+    "writeSites": 66533,
+    "writeAssociations": 59712,
     "asynchronous": 8302,
     "unassignedWrites": 10188
   },
@@ -17262,7 +17262,8 @@
       "sha256": "262567aed2d17f0c6e6f0614a4167cfa5ded9d098ead6fd46cfa7c589deae5c0",
       "allocatedModels": [
         "NoticesAndCaches",
-        "CanonicalNotificationTapAdmission"
+        "CanonicalNotificationTapAdmission",
+        "CanonicalNotificationTap"
       ],
       "sourcePathClass": "other-source-path",
       "classification": "syntactic-candidates",
@@ -22043,7 +22044,8 @@
       "allocatedModels": [
         "NoticesAndCaches",
         "NotificationCollection",
-        "CanonicalNotificationTapAdmission"
+        "CanonicalNotificationTapAdmission",
+        "CanonicalNotificationTap"
       ],
       "sourcePathClass": "other-source-path",
       "classification": "syntactic-candidates",
@@ -25398,7 +25400,8 @@
       "sha256": "f35ee61299955a4f3a6d12fc160c4376176229fbb87c6dc9c727b3e33407ec67",
       "allocatedModels": [
         "Application",
-        "RendererRecovery"
+        "RendererRecovery",
+        "CanonicalNotificationTap"
       ],
       "sourcePathClass": "other-source-path",
       "classification": "syntactic-candidates",
@@ -63729,6 +63732,39 @@
       "sourcePathClass": "other-source-path",
       "classification": "language-review-required",
       "owners": [],
+      "parseErrors": [],
+      "asynchronous": 0,
+      "unassignedWrites": 0
+    },
+    {
+      "path": "vendor/eliza/packages/app/platforms/android/app/src/main/java/ai/elizaos/app/NativeNotificationRoute.java",
+      "sha256": "66017ed3c170b7a0ce6e3f79c88f5c699a1dacd991574cdc8482358bc07debc0",
+      "allocatedModels": [
+        "CanonicalNotificationTap"
+      ],
+      "sourceReview": "state-audit-required",
+      "sourcePathClass": "other-source-path",
+      "classification": "syntactic-candidates",
+      "owners": [
+        {
+          "owner": "NativeNotificationRoute.view@6",
+          "line": 6,
+          "bindings": 1,
+          "writes": 0
+        },
+        {
+          "owner": "NativeNotificationRoute.uri@21",
+          "line": 21,
+          "bindings": 7,
+          "writes": 3
+        },
+        {
+          "owner": "NativeNotificationRoute.uuid@35",
+          "line": 35,
+          "bindings": 1,
+          "writes": 0
+        }
+      ],
       "parseErrors": [],
       "asynchronous": 0,
       "unassignedWrites": 0
@@ -183232,7 +183268,8 @@
       "allocatedModels": [
         "DeviceActions",
         "NoticesAndCaches",
-        "NotificationCollection"
+        "NotificationCollection",
+        "CanonicalNotificationTap"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -218335,6 +218372,6 @@
   ],
   "detail": {
     "path": "test-results/quint-state-audit/details.json",
-    "sha256": "0132f4c6d66b8d732f2b3330542ea6ce1e7fed931ae7fe841d9156995a85a0ba"
+    "sha256": "d5ce1200ff7e2ff9503831b14de6cd33d7823ed3b85e516589fa8e76128122cc"
   }
 }

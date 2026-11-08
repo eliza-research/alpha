@@ -360,3 +360,10 @@ The Agent Calendar mutation campaign checks 24 schedules and 134 checkpoints
 for create, update and delete admission, preserved drafts, exact arguments,
 deferred refresh and stale settlement after owner replacement. Provider
 effects, linked controls and event-return readback remain separate.
+
+The separate native canonical tap campaign checks nine JVM schedules and
+173 checkpoints. It covers latest waiting and verified slots, owner and
+agent identity, expiry, foreground checks, and the exact compare-and-clear
+before acknowledging the resident read. An ambiguous acknowledgement
+cannot retry the consumed token or erase its successor. Installed ingress
+and the real resident read effect remain separate.
