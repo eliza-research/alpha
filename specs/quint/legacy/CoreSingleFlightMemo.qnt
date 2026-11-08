@@ -81,6 +81,16 @@ module CoreSingleFlightMemo {
   action rawStep = M::Next
   action step = M::Step
   val safety = M::Safety
+  val observed = M::s
+  action ReadShared(r) = M::ReadShared(r)
+  action ReadFetch(r) = M::ReadFetch(r)
+  action FetchRead(f) = M::FetchRead(f)
+  action FetchResolve(f) = M::FetchResolve(f)
+  action FetchReject(f) = M::FetchReject(f)
+  action Serve(r) = M::Serve(r)
+  action Expire = M::Expire
+  action Commit(w) = M::Commit(w)
+  action Invalidate(w) = M::Invalidate(w)
   temporal CheckedTemporal = M::Fairness implies M::ReaderFinishes
   run readerSharesFetchTest = init.then(M::ReadFetch("r1")).then(M::ReadShared("r2")).then(M::FetchRead(1))
     .then(M::FetchResolve(1)).then(M::Serve("r1")).then(M::Serve("r2")).expect(safety and M::s.nfetch == 1)
@@ -94,6 +104,16 @@ module CoreSingleFlightMemoSafety {
   action rawStep = M::Next
   action step = M::Step
   val safety = M::Safety
+  val observed = M::s
+  action ReadShared(r) = M::ReadShared(r)
+  action ReadFetch(r) = M::ReadFetch(r)
+  action FetchRead(f) = M::FetchRead(f)
+  action FetchResolve(f) = M::FetchResolve(f)
+  action FetchReject(f) = M::FetchReject(f)
+  action Serve(r) = M::Serve(r)
+  action Expire = M::Expire
+  action Commit(w) = M::Commit(w)
+  action Invalidate(w) = M::Invalidate(w)
   pure val Symmetry = M::Symmetry
   run invalidationFencesNewReaderTest = init.then(M::ReadFetch("r1")).then(M::FetchRead(1))
     .then(M::Commit("w1")).then(M::Invalidate("w1")).then(M::ReadFetch("r2")).then(M::ReadShared("r3"))

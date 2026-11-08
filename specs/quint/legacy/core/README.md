@@ -82,3 +82,17 @@ Controlled provider promises and a host stop flag make cancellation ordering
 reproducible. The adapter covers one keyed identity, one provider and at most
 three callers. Authorization, cache publication, pre-aborted admission and
 complete runtime shutdown composition remain distinct source obligations.
+
+### Read memo source correspondence
+
+`node --test test/quint-single-flight-refinement.test.mjs` runs actual room and
+message reads, memo replacement and runtime room mutation wrappers. Both
+configured profiles pass nine schedules and 72 checkpoints. Observations cover
+all 11 original state fields and distinguish a database commit from the
+mutation caller's acknowledgement and cache invalidation. A late rejection
+keeps the replacement memo entry. A complete message read replaces an
+insufficient finite window.
+
+The controlled adapter supplies versioned database results and write
+acknowledgements. Physical database isolation, multi-key eviction, TTL
+scheduling and other mutation wrappers remain separate source obligations.
