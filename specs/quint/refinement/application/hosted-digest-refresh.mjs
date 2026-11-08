@@ -35,7 +35,10 @@ const ports = {
     getWorkflowClient:()=>globalThis.hostedDigestRefreshPorts.workflow(), getCloudEnvironment:()=> 'production'};
     export const agentPendingText=()=> 'No fixture session';`,
   './cloud-protocol': 'export const cloudServiceName=()=> "Fixture Cloud";',
-  './native-connection': 'export const secureConnectionStore={read:async()=>null};',
+  './native-connection': `export const secureConnectionStore={
+    read:(...args)=>globalThis.hostedDigestRefreshPorts.read(...args),
+    write:(...args)=>globalThis.hostedDigestRefreshPorts.write(...args),
+    remove:(...args)=>globalThis.hostedDigestRefreshPorts.remove(...args)};`,
   './device-actions': 'export const actionScope=async input=>JSON.parse(input)[1];',
   '../daily': 'export const DailyApps={addListener:async()=>({remove(){}})};',
   '../browser/digest-storage': 'export const browserDigestStore=()=>{throw Error("Unused development storage")};',
@@ -59,7 +62,7 @@ async function compile(extraSources) {
         return {loader: 'tsx', contents: source.replace(marker, `${marker}
           globalThis.inspectHostedDigestRefresh=()=>({session:connection.session?.sessionId??'',
             binding:binding.current?.sessionId??'', open, available, message, results:results.map(row=>row.runId),
-            full:refreshFlight.current?.full??null});`)};
+            full:refreshFlight.current?.full??null, busy, pending:pending?.phase??'', pendingSummary:pending?.summary??''});`)};
       });
     }}]});
   const sources = [...new Set([driver, fixture, implementation, ...extraSources,
