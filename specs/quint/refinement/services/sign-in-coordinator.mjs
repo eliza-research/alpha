@@ -7,6 +7,7 @@ const defaultScenarios = [
   'retry', 'precommit-cancel', 'postcommit-cancel', 'ack-restart',
   'burn-failure', 'cold-burn-failure', 'cancel-burn-failure',
   'cancel-replacement', 'unowned-cancel-replacement', 'cancel-during-callback-read', 'receipt-failure',
+  'stale-read-replacement', 'cancel-then-email', 'cancel-then-phone', 'callback-cas-lost',
 ];
 
 export async function runSignInCoordinatorRefinement(scenarios = defaultScenarios) {

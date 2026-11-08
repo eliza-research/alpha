@@ -289,12 +289,166 @@ public final class SignInCoordinatorTraces {
       plugin.cancel(cancelled);
       release(read);
       drain(plugin);
-      if (SignInTestPorts.exchanges != 0) throw new AssertionError("Cancelled return became a cold exchange");
-      if (cancelled.result == null || cancelled.rejection != null) throw new AssertionError("Cancellation did not finish");
-      trace.step("cancel", observed(1).put("s.pending", SignInTestPorts.values.containsKey(SignInTestPorts.PENDING)));
+      if (SignInTestPorts.exchanges != 0)
+        throw new AssertionError("Cancelled return became a cold exchange");
+      if (cancelled.result == null || cancelled.rejection != null)
+        throw new AssertionError("Cancellation did not finish");
+      trace.step("cancel",
+          observed(1).put("s.pending", SignInTestPorts.values.containsKey(SignInTestPorts.PENDING)));
     } finally {
       for (SignInTestPorts.Event event : SignInTestPorts.events) release(event);
       plugin.handleOnDestroy();
+    }
+    System.out.println(new JSONArray().put(trace.value));
+  }
+  static AlphaCloudSignInPlugin startPending(Trace trace) throws Exception {
+    AlphaCloudSignInPlugin plugin = new AlphaCloudSignInPlugin();
+    plugin.startGoogle(new PluginCall(new JSObject().put("environment", "production")));
+    SignInTestPorts.Event stored = SignInTestPorts.next("write:" + SignInTestPorts.PENDING);
+    trace.step("begin", Trace.fields("pending", true), "google");
+    release(stored);
+    drain(plugin);
+    return plugin;
+  }
+  static void staleReadThenReplacement() throws Exception {
+    Trace trace = new Trace("a held old callback cannot adopt the new Google attempt", observed(1));
+    AlphaCloudSignInPlugin plugin = startPending(trace);
+    SignInTestPorts.Event exchange = null;
+    try {
+      String oldRaw = SignInTestPorts.values.get(SignInTestPorts.PENDING);
+      CloudSignInFlow.Pending oldPending = CloudSignInFlow.Pending.parse(oldRaw, false);
+      SignInTestPorts.pauseReadSlot = SignInTestPorts.PENDING;
+      plugin.handleOnNewIntent(new Intent(Intent.ACTION_VIEW,
+          Uri.parse(oldPending.environment.callback() + "#code=fixture&state=" + oldPending.state)));
+      SignInTestPorts.Event read = SignInTestPorts.next("read:" + SignInTestPorts.PENDING);
+      PluginCall cancelled = new PluginCall(new JSObject());
+      plugin.cancel(cancelled);
+      PluginCall nextCall = new PluginCall(new JSObject().put("environment", "production"));
+      plugin.startGoogle(nextCall);
+      Object replacement = Trace.read(plugin, "attempt");
+      String newRaw = (String) Trace.read(replacement, "pendingRecord");
+      if (oldRaw.equals(newRaw))
+        throw new AssertionError("Replacement did not get its own record");
+      release(read);
+      drain(plugin);
+      if (SignInTestPorts.exchanges != 0 || Trace.read(plugin, "attempt") != replacement
+          || Boolean.TRUE.equals(Trace.read(replacement, "callbackReceived"))
+          || Boolean.TRUE.equals(Trace.read(replacement, "cancelled")))
+        throw new AssertionError("Old callback was accepted as the replacement");
+      if (!newRaw.equals(SignInTestPorts.values.get(SignInTestPorts.PENDING)) || cancelled.result == null
+          || nextCall.rejection != null)
+        throw new AssertionError("Replacement persistence or old cancellation failed");
+      trace.macro("cancelled old callback is fenced from the newly admitted attempt",
+          Trace.fields("pending", true), Trace.action("cancel"), Trace.action("begin", "google"));
+      trace.step("callback", Trace.fields("pending", true), 1);
+      CloudSignInFlow.Pending current = CloudSignInFlow.Pending.parse(newRaw, false);
+      plugin.handleOnNewIntent(new Intent(Intent.ACTION_VIEW,
+          Uri.parse(current.environment.callback() + "#code=fixture&state=" + current.state)));
+      exchange = SignInTestPorts.next("http:/steward/auth/oauth/exchange");
+      if (SignInTestPorts.exchanges != 1 || Trace.read(plugin, "attempt") != replacement)
+        throw new AssertionError("Current replacement callback did not progress");
+      trace.step("callback",
+          Trace.fields("pending", SignInTestPorts.values.containsKey(SignInTestPorts.PENDING)), 2);
+    } finally {
+      plugin.handleOnDestroy();
+      if (exchange != null)
+        release(exchange);
+      for (SignInTestPorts.Event event : SignInTestPorts.events) release(event);
+    }
+    System.out.println(new JSONArray().put(trace.value));
+  }
+  static void cancelThenCodeAttempt(boolean phone) throws Exception {
+    Trace trace =
+        new Trace("queued cancellation retires its Google record before a new code attempt", observed(1));
+    AlphaCloudSignInPlugin plugin = startPending(trace);
+    CountDownLatch entered = new CountDownLatch(1);
+    CountDownLatch resume = new CountDownLatch(1);
+    try {
+      String oldRaw = SignInTestPorts.values.get(SignInTestPorts.PENDING);
+      CloudSignInFlow.Pending oldPending = CloudSignInFlow.Pending.parse(oldRaw, false);
+      ((ExecutorService) Trace.read(plugin, "worker")).submit(() -> {
+        entered.countDown();
+        try {
+          resume.await();
+        } catch (InterruptedException stopped) {
+          Thread.currentThread().interrupt();
+        }
+      });
+      if (!entered.await(5, TimeUnit.SECONDS))
+        throw new AssertionError("Worker did not pause");
+      PluginCall cancelled = new PluginCall(new JSObject());
+      plugin.cancel(cancelled);
+      PluginCall codeCall = new PluginCall(new JSObject()
+              .put("environment", "production")
+              .put(phone ? "phone" : "email", phone ? "+12025550123" : "fixture@example.test"));
+      if (phone)
+        plugin.startPhone(codeCall);
+      else
+        plugin.startEmail(codeCall);
+      Object replacement = Trace.read(plugin, "attempt");
+      resume.countDown();
+      drain(plugin);
+      if (cancelled.result == null || cancelled.rejection != null
+          || SignInTestPorts.values.containsKey(SignInTestPorts.PENDING))
+        throw new AssertionError("Reported cancellation left the old Google record durable");
+      if (codeCall.result == null || codeCall.rejection != null || SignInTestPorts.codeSends != 1
+          || Trace.read(plugin, "attempt") != replacement
+          || Boolean.TRUE.equals(Trace.read(replacement, "cancelled")))
+        throw new AssertionError("New code attempt did not survive old cancellation");
+      trace.macro("retirement is not skipped when a later code attempt is active",
+          Trace.fields("pending", false), Trace.action("cancel"),
+          Trace.action("begin", phone ? "phone" : "email"));
+      plugin.handleOnDestroy();
+      plugin = new AlphaCloudSignInPlugin();
+      plugin.handleOnNewIntent(new Intent(Intent.ACTION_VIEW,
+          Uri.parse(oldPending.environment.callback() + "#code=fixture&state=" + oldPending.state)));
+      drain(plugin);
+      if (SignInTestPorts.exchanges != 0)
+        throw new AssertionError("Old Google return survived confirmed cancellation and restart");
+      trace.stutter(
+          "restart does not recover an already retired Google record", Trace.fields("pending", false));
+    } finally {
+      resume.countDown();
+      plugin.handleOnDestroy();
+      for (SignInTestPorts.Event event : SignInTestPorts.events) release(event);
+    }
+    System.out.println(new JSONArray().put(trace.value));
+  }
+  static void lostCallbackCas() throws Exception {
+    Trace trace = new Trace(
+        "callback CAS conflict preserves the foreign record without a storage failure", observed(1));
+    AlphaCloudSignInPlugin first = startPending(trace);
+    AlphaCloudSignInPlugin replacement = new AlphaCloudSignInPlugin();
+    try {
+      CloudSignInFlow.Pending oldPending =
+          CloudSignInFlow.Pending.parse(SignInTestPorts.values.get(SignInTestPorts.PENDING), false);
+      first.handleOnNewIntent(new Intent(Intent.ACTION_VIEW,
+          Uri.parse(oldPending.environment.callback() + "#code=fixture&state=" + oldPending.state)));
+      SignInTestPorts.Event compare = SignInTestPorts.next("cas:" + SignInTestPorts.PENDING);
+      replacement.startGoogle(new PluginCall(new JSObject().put("environment", "production")));
+      SignInTestPorts.Event newWrite = SignInTestPorts.next("write:" + SignInTestPorts.PENDING);
+      String newRaw = SignInTestPorts.values.get(SignInTestPorts.PENDING);
+      release(newWrite);
+      drain(replacement);
+      release(compare);
+      drain(first);
+      // An old active Attempt must also reject the replacement's matching callback.
+      CloudSignInFlow.Pending newPending = CloudSignInFlow.Pending.parse(newRaw, false);
+      first.handleOnNewIntent(new Intent(Intent.ACTION_VIEW,
+          Uri.parse(newPending.environment.callback() + "#code=fixture&state=" + newPending.state)));
+      drain(first);
+      if (!newRaw.equals(SignInTestPorts.values.get(SignInTestPorts.PENDING))
+          || SignInTestPorts.exchanges != 0
+          || Boolean.TRUE.equals(Trace.read(first, "pendingRetirementUnconfirmed"))
+          || SignInTestPorts.outcomes.stream().anyMatch(value -> "storage".equals(value.optString("code"))))
+        throw new AssertionError(
+            "Ownership loss was treated as storage failure or consumed the foreign record");
+      trace.stutter("ownership conflict leaves the pending record and exchanges nothing",
+          Trace.fields("pending", true));
+    } finally {
+      first.handleOnDestroy();
+      replacement.handleOnDestroy();
+      for (SignInTestPorts.Event event : SignInTestPorts.events) release(event);
     }
     System.out.println(new JSONArray().put(trace.value));
   }
@@ -343,6 +497,18 @@ public final class SignInCoordinatorTraces {
     }
     if (scenario.equals("cancel-during-callback-read")) {
       cancellationDuringCallbackRead();
+      return;
+    }
+    if (scenario.equals("stale-read-replacement")) {
+      staleReadThenReplacement();
+      return;
+    }
+    if (scenario.equals("cancel-then-email") || scenario.equals("cancel-then-phone")) {
+      cancelThenCodeAttempt(scenario.equals("cancel-then-phone"));
+      return;
+    }
+    if (scenario.equals("callback-cas-lost")) {
+      lostCallbackCas();
       return;
     }
     if (scenario.equals("receipt-failure")) {

@@ -15,6 +15,7 @@ public final class SignInTestPorts {
   static final BlockingQueue<Event> events = new LinkedBlockingQueue<>();
   public static volatile String failSlot, failRemoveSlot, pauseReadSlot;
   static int exchanges;
+  static int codeSends;
   public static volatile boolean browserOpened;
   public static volatile int authorizations;
   static int issued;
@@ -109,7 +110,23 @@ public final class SignInTestPorts {
       code = 200;
       switch (path) {
         case "/api/v1/app-auth/mobile/config":
-          code = 404;
+          if (scenario.equals("cancel-then-phone")) {
+            result.put("success", true)
+                .put("clientId", CloudSignInFlow.CLIENT_ID)
+                .put("environment", "production")
+                .put("redirectUri", CloudSignInFlow.Environment.PRODUCTION.callback())
+                .put("codeChallengeMethod", "S256");
+          } else
+            code = 404;
+          break;
+        case "/steward/auth/providers":
+          result.put("sms", true).put("captcha", new JSONObject().put("enabled", false));
+          break;
+        case "/steward/auth/email/code/send":
+        case "/steward/auth/sms/send":
+          codeSends++;
+          code = 202;
+          result.put("expiresAt", System.currentTimeMillis() + 600000);
           break;
         case "/steward/auth/oauth/exchange":
           exchanges++;

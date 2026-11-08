@@ -9386,7 +9386,7 @@
     },
     {
       "path": "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaCloudSignInPlugin.java",
-      "sha256": "c5c12a4fba9f3977a0833380520005fa2addb332950df5d938f65fb2e9abd7a0",
+      "sha256": "763ec1c34fc46910cb37c44a3c73272d3b0307ad546c967d2f16c011e7f745f7",
       "models": [
         "IdentitySession"
       ],

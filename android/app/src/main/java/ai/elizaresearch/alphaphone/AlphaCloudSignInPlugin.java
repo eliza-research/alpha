@@ -395,7 +395,13 @@ public final class AlphaCloudSignInPlugin extends Plugin {
    catch (Exception storage) { /* Treated as no pending record. */ }
    long now = System.currentTimeMillis();
    final Attempt waiting;
-   synchronized (lock) { waiting = attempt != null && attempt.google && attempt.environment == returned && !attempt.callbackReceived ? attempt : null; }
+   synchronized (lock) {
+    if (pendingRetirementUnconfirmed) return;
+    waiting = attempt;
+    // A queued return belongs only to the attempt that persisted these exact bytes.
+    if (waiting != null && (!waiting.google || waiting.environment != returned || waiting.callbackReceived
+      || !java.util.Objects.equals(waiting.pendingRecord, pendingRaw))) return;
+   }
    if (received.kind == CloudSignInFlow.ReturnKind.RETURN) {
     if (pending == null || pending.environment != returned || pending.expired(now)) return;
     if (waiting != null) { synchronized (lock) { waiting.callbackReceived = true; } end(waiting, "app-link-unverified", false); }
@@ -406,25 +412,30 @@ public final class AlphaCloudSignInPlugin extends Plugin {
    if (pending == null || pending.environment != returned || !pending.sameState(received)) return;
    // The matching return: single use, burned before any network request, whatever the outcome.
    try {
-    if (!store.compareExchangeCredentialSlot(PENDING_SLOT, pendingRaw, null)) throw new IllegalStateException("Pending sign-in changed");
+    // A different record won ownership. This return cannot retire or fail that attempt.
+    if (!store.compareExchangeCredentialSlot(PENDING_SLOT, pendingRaw, null)) return;
    } catch (Exception storage) {
-    synchronized (lock) { pendingRetirementUnconfirmed = true; }
+    synchronized (lock) {
+     if (pendingRetirementUnconfirmed || attempt != waiting) return;
+     pendingRetirementUnconfirmed = true;
+    }
     if (waiting != null) end(waiting, "storage", false);
     else notifyListeners("signInIncomplete", new JSObject().put("code", "storage"), true);
     return;
    }
-   Attempt owner = waiting;
-   if (owner != null) synchronized (lock) { owner.callbackReceived = true; }
-   else {
-    // A cold start (process death in the browser) or a step that already ended: complete into storage
-    // and announce it (signInCompleted) unless another sign-in has started meanwhile.
-    owner = new Attempt(returned, true);
-    owner.pendingRecord = pendingRaw;
-    synchronized (lock) { if (attempt != null || pendingRetirementUnconfirmed) return; attempt = owner; }
+   final Attempt owner;
+   synchronized (lock) {
+    if (pendingRetirementUnconfirmed || attempt != waiting || waiting != null && waiting.cancelled) return;
+    if (waiting == null) {
+     // A cold return may claim only the still-unowned slot after its durable burn.
+     owner = new Attempt(returned, true);
+     owner.pendingRecord = pendingRaw;
+     attempt = owner;
+    } else owner = waiting;
+    owner.callbackReceived = true;
    }
    if (pending.expired(now)) { end(owner, "expired", false); return; }
    owner.expiresAt = pending.expiresAt;
-   owner.callbackReceived = true;
    if (received.kind == CloudSignInFlow.ReturnKind.ERROR) {
     end(owner, "mfa_required".equals(received.error) ? "mfa-browser" : "app_link_unverified".equals(received.error) ? "app-link-unverified" : "provider-refused", false);
     return;
@@ -597,7 +608,6 @@ public final class AlphaCloudSignInPlugin extends Plugin {
   // Report durable cancellation only after the exact pending record has been retired.
   try { worker.execute(() -> {
    try {
-    synchronized (lock) { if (attempt != null) { call.resolve(); return; } }
     if (pending != null) store().compareExchangeCredentialSlot(PENDING_SLOT, pending, null);
     synchronized (lock) { if (attempt == null) pendingRetirementUnconfirmed = false; }
     call.resolve();

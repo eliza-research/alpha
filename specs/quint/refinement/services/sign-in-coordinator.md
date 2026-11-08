@@ -12,12 +12,14 @@ node --test test/quint-signin-refinement.test.mjs
 node --import=tsx specs/quint/refinement/services/sign-in-coordinator.mjs
 ```
 
-The adapter remains separate from the fourteen-model aggregate. Its eleven schedules
+The adapter remains separate from the fourteen-model aggregate. Its fifteen schedules
 cover initial successful sign-in, successful replacement, retryable acknowledgement,
 pre-commit cancellation, post-commit cancellation, acknowledgement after restart,
 failed callback retirement with and without a waiting renderer, failed cancellation
 followed by restart, owned cancellation racing with replacement, cancellation
-without an active attempt racing with replacement, cancellation during callback consumption, and failed receipt persistence.
+without an active attempt racing with replacement, cancellation during callback consumption,
+failed receipt persistence, stale callback reads followed by a new Google attempt,
+queued cancellation followed by email or phone, and callback ownership conflicts.
 Several schedules cover more than one of these transitions.
 
 ## Implementation and model mapping
@@ -52,9 +54,12 @@ settles.
 Cancellation captures the exact pending record at call admission. An owned Google
 attempt already has its serialized record. With no owned record, cancellation
 performs one bounded encrypted-slot read before queuing retirement. The worker
-uses the existing `AlphaCredentialStore.compareExchangeCredentialSlot` API, so a
-new record cannot be adopted or removed by an old queued cancellation. This API
-uses `JsonCredentialSlots.LOCK` in the actual store. Its cross-instance guarantee
+always retires that captured record through the existing
+`AlphaCredentialStore.compareExchangeCredentialSlot` API, including when a new
+email or phone attempt is active. A new record cannot be adopted or removed by an old queued cancellation. A callback
+can attach only to the active attempt with the same serialized pending record.
+A failed compare-and-exchange is ownership loss and leaves newer attempts alone.
+This API uses `JsonCredentialSlots.LOCK` in the actual store. Its cross-instance guarantee
 is process-local, as specified by the application architecture.
 
 ## Scope and remaining obligations
@@ -71,9 +76,9 @@ Keystore, process termination, cross-process writers and provider responses rema
 separate integration obligations. No real credentials or network calls are used.
 
 The native authorization routine executes with a controlled affirmative dialog
-result. Arbitrary authorization timing, negative authorization, email/MFA schedules,
+result. Arbitrary authorization timing, negative authorization, email/phone verification and MFA schedules,
 acknowledged-but-failed receipt cleanup, expiry and all combinations of concurrent
-callbacks remain outside these eleven schedules. The existing finite model limits
+callbacks remain outside these fifteen schedules. The existing finite model limits
 attempts to two and acknowledgement rounds to three. The source fixture exercises
-a full successful initial sign-in before every replacement flow, so its stored
+a full successful initial sign-in before every credential-replacement flow, so its stored
 credential is produced by the implementation.
