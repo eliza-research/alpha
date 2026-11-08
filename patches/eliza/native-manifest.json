@@ -160,6 +160,30 @@
           "afterSha256": "e424f82ed28593e4db227e65f16e95754934d0c17a1b43ddd1af8a4f434d5fbd"
         }
       ]
+    },
+    {
+      "file": "reset-durable-admission.patch",
+      "sha256": "c514308b67f63d4e4eafa3fee63c6a8482a9bb46e9d5687deb09ca6200309db1",
+      "module": "plugins/plugin-native-system/android",
+      "targets": [
+        {
+          "path": "plugins/plugin-native-system/android/src/main/java/ai/eliza/plugins/system/reset/DataReset.java",
+          "beforeSha256": "96c3f4525587ee42658cafe8b84d0e4650925c52b3a78475d13a6ec5a1fb243d",
+          "afterSha256": "d52ef2f124b683476c42ba15806de5cc0cb8ce70b7ff3507929aa922c6fa7279"
+        }
+      ]
+    },
+    {
+      "file": "deletion-owner-dispatch.patch",
+      "sha256": "73c27d1b4b3d0f94cd03e7d167f408f4af0d17044758b79f5fb8233a0baae6fd",
+      "module": "plugins/plugin-native-action-journal/android",
+      "targets": [
+        {
+          "path": "plugins/plugin-native-action-journal/android/src/main/java/ai/eliza/plugins/actionjournal/deletion/DeferredDeletionCoordinator.java",
+          "beforeSha256": "875a275d95e47318bfa3fec6e98dc9bce1569e26a2902cd817a86f37185d18e8",
+          "afterSha256": "fe829258c9a4c1d17185bc29071dab59a0af2927e8106e703c1adf7a157b327c"
+        }
+      ]
     }
   ],
   "modules": [

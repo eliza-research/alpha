@@ -7,9 +7,13 @@ import {fileURLToPath} from 'node:url';
 import {runInNewContext} from 'node:vm';
 import {captureInputs, checkTraces} from '../check-traces.mjs';
 import {app, directory, javaTraces, root} from './java.mjs';
+import {preparePatchedNative} from '../../../../scripts/prepare-patched-native.mjs';
 
 const fixturePath = 'test/reset-startup.test.mjs';
-const productSources = ['AlphaDataReset.java', 'AlphaApplication.java', 'ResetAuthorization.java'].map(name => app + name);
+const staged = preparePatchedNative();
+const sharedReset = join(staged.root, 'plugins/plugin-native-system/android/src/main/java/ai/eliza/plugins/system/reset');
+const productSources = ['AlphaDataReset.java', 'AlphaApplication.java'].map(name => app + name).concat(['DataReset.java', 'DataResetCopy.java', 'ResetAuthorization.java'].map(name => join(sharedReset, name)));
+const patchInputs = ['patches/eliza/native-manifest.json', 'patches/eliza/reset-durable-admission.patch', 'scripts/prepare-patched-native.mjs', join(staged.root, '.source.json')];
 
 /** Read literal Android ports from the existing fixture without executing its tests. */
 function existingPorts() {
@@ -25,7 +29,8 @@ function existingPorts() {
       ports.set(name, content);
     }
   }
-  assert.equal(ports.size, 13);
+  assert.ok(ports.size >= 13);
+  for (const [name, content] of ports) ports.set(name, content.replaceAll("ai.elizaresearch.alphaphone.ResetStartupTest.started();", "ai.elizaresearch.alphaphone.ResetTraceHooks.initialized();"));
   return ports;
 }
 
@@ -36,8 +41,8 @@ function portsWithObservers() {
     assert.ok(value?.includes(before), `Fixture contract changed in ${path}`);
     ports.set(path, value.replace(before, after));
   };
-  change('ai/elizaresearch/alphaphone/Dependencies.java', 'calls++;return resetSaved;',
-    'calls++;ResetTraceHooks.listenerResult(resetSaved);return resetSaved;');
+  change('ai/eliza/plugins/system/SenseListenerClient.java', 'calls++;return resetSaved;',
+    'calls++;ai.elizaresearch.alphaphone.ResetTraceHooks.listenerResult(resetSaved);return resetSaved;');
   change('android/content/Context.java', 'recoveries++;', 'recoveries++;ai.elizaresearch.alphaphone.ResetTraceHooks.visibleRecovery();');
   change('android/os/Process.java', 'throw new Exit();', 'ai.elizaresearch.alphaphone.ResetTraceHooks.event("process-exit","");throw new Exit();');
   change('android/app/ActivityManager.java', 'public boolean clearApplicationUserData(){calls++;if(mode==2)throw new SecurityException("fixture refusal");return mode==0;}',
@@ -74,7 +79,7 @@ public class AtomicFile {
 
 export async function generateResetOrchestrationTraces(extraSources = []) {
   const temporary = mkdtempSync(join(tmpdir(), 'alpha-reset-refinement-'));
-  const inputs = [...productSources, fixturePath, fileURLToPath(import.meta.url),
+  const inputs = [...productSources, ...patchInputs, fixturePath, fileURLToPath(import.meta.url),
     join(directory, 'ResetOrchestrationTraces.java'), join(directory, 'ResetTraceHooks.java'),
     join(directory, 'ResetAdmissionRegression.java'),
     join(directory, 'Trace.java'), join(directory, 'java.mjs'), ...extraSources];
@@ -107,7 +112,7 @@ export async function checkResetOrchestration(extraSources = []) {
     try {
       const receipt = await checkTraces({model: 'ResetRecovery', id, traces: [trace], sources: generated.sources,
         driverHashes: generated.driverHashes, scope: 'bounded-orchestration', assumptions: [
-          'Actual unmodified AlphaDataReset, AlphaApplication and ResetAuthorization execute with observed external Android/storage ports.',
+          'Actual product reset registration/Application and authenticated shared DataReset/ResetAuthorization execute with observed external Android/storage ports.',
           'Every port callback and durable write records all selected source fields. Raw failure count is retained; the model projection saturates it at three.',
           'Fixture AtomicFile commits through atomic rename. Physical power-loss durability, real device credentials and actual package erasure are not established.',
           'Authentication, budget, marker, reservation, callback, recovery and process-exit boundaries are checked separately.',

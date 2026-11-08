@@ -24,7 +24,7 @@ final class RendererRecoveryBudget {
  /** Counts one renderer loss at elapsed-realtime now and says how the activity recovers. */
  synchronized Action onLoss(long now,boolean home){
   if(!started||now-windowStart>WINDOW_MS||now<windowStart){started=true;windowStart=now;lossesInWindow=0;}
-  lossesInWindow++;
+  if(lossesInWindow<BUDGET+1)lossesInWindow++;
   if(lossesInWindow<=BUDGET)return Action.RECREATE_NOW;
   return home?Action.SHOW_ESCAPE:Action.RECREATE_AFTER_BACKOFF;
  }

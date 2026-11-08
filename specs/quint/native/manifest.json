@@ -649,12 +649,17 @@
         "started/windowStart/losses": "RendererRecoveryBudget private started,windowStart,lossesInWindow; count4 denotes4or more",
         "decision/delay/home": "RendererRecoveryBudget.onLoss, delay; MainActivity.showsHome",
         "recovering/rendererAlive/pending/activity/finishing/destroyed/escape": "MainActivity.onRenderProcessGone, postDelayed callback, showRendererEscape and explicit Reload",
-        "availableSettings/externalTarget": "settingsAction,homeChoiceAction stock handler preference and failed launch"
+        "availableSettings/externalTarget": "settingsAction,homeChoiceAction stock handler preference and failed launch",
+        "bridgeAvailable/recreateRequested": "MainActivity onCreate missing-WebView fallback, posted recreate request, subsequent Android destroy/create callbacks",
+        "unackedFrontStarts/handoffUnreliable": "MainActivity process-wide handoff counters, onNewIntent acknowledgement and onResume owner acknowledgement",
+        "task/taskHomes": "MainActivity taskKinds map of per-task home kind and current weak Activity owner; exact-owner finishing cleanup"
       },
       "abstractions": [
         "Loss count saturates at four because every further loss has the same within-window policy.",
         "The exact 60,000 ms boundary and backwards-time cases use finite timestamps. Six activity generations cover queued callback and manual reload races.",
-        "Additional budgetInit check admits all finite counter states to exercise every budget decision without requiring long reset/recreate prefixes."
+        "Additional budgetInit check admits all finite counter states to exercise every budget decision without requiring long reset/recreate prefixes.",
+        "MainActivity requests recreation before Android supplies destruction and successor creation. The budget persists across Activity recreation within one process; a new process starts a new budget.",
+        "The selected page owner and finite fronting counters are modeled. Detailed simultaneous view trees of fallback independent activities remain outside this bounded projection."
       ],
       "invariants": [
         "TypeOK",
@@ -662,7 +667,10 @@
         "DelayMatchesDecision",
         "EscapeRequiresBudget",
         "PendingOwnedByActivity",
-        "StockSettingsOnly"
+        "StockSettingsOnly",
+        "HandoffBounded",
+        "NoLiveViewWithoutBridge",
+        "TaskKindsBounded"
       ],
       "tests": [
         "threeImmediateThenBackoffTest",
@@ -672,7 +680,15 @@
         "duplicateAndForeignCallbacksDoNotSpendBudgetTest",
         "delayedCallbackCannotReviveClosedActivityTest",
         "oldCallbackCannotRecreateSuccessorTest",
-        "settingsFallbacksTest"
+        "settingsFallbacksTest",
+        "asynchronousRecreationTest",
+        "noWebViewFallbackTest",
+        "configurationRecreationRetainsBudgetTest",
+        "unansweredFrontingStopsHandoffTest",
+        "failedFrontStartStopsHandoffTest",
+        "resumedOwnerAcknowledgesHandoffTest",
+        "homeTaskSurvivesIndependentPageTest",
+        "finishedTaskIdReuseStartsFreshTest"
       ],
       "additionalProofInit": "budgetInit"
     },

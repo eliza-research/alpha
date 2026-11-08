@@ -3,13 +3,15 @@ import {createHash} from 'node:crypto';
 import {app,directory,javaTraces} from './java.mjs';
 import {captureInputs,checkTraces} from '../check-traces.mjs';
 import {deletionPlatform} from './deletion-platform.mjs';
-export const deletionSources=['NativeDeletionCoordinator.java','DeferredDeletionJournal.java','DeletionDeadline.java',
-  'NativeOwnerReminderHost.java','HostedInbox.java','HostedResultNotices.java','NoticeOwner.java','HostedStorageFault.java'].map(name=>app+name);
+import {preparePatchedNative} from '../../../../scripts/prepare-patched-native.mjs';
+const stage=preparePatchedNative();
+const shared=stage.root+'/plugins/plugin-native-action-journal/android/src/main/java/ai/eliza/plugins/actionjournal/deletion/';
+export const deletionSources=['NativeDeletionCoordinator.java','NativeOwnerReminderHost.java','HostedInbox.java','HostedResultNotices.java','HostedStorageFault.java','NativeDeviceEnrollmentKey.java'].map(name=>app+name).concat(['DeferredDeletionCoordinator.java','DeferredDeletionJournal.java','DeletionDeadline.java'].map(name=>shared+name),stage.root+'/plugins/plugin-native-notifications/android/src/main/java/ai/eliza/plugins/notifications/NoticeOwner.java');
 export const deletionScenarios=['deleted','conflict','permission','unknown','undo','reboot','open','claim-refused',
   'claim-committed-error','outcome-refused','outcome-committed-error','restart','stale-owner','stale-stage','multiple-rows','reminder-open','reminder-undo','reminder-retired','reminder-effects','stage-refused','stage-committed-error','stage-schedule-error'];
 export function generateDeletionCoordinatorTraces(scenario,extraSources=[]){
  const platform=deletionPlatform();
- const sources=[...deletionSources,`${directory}/DeletionTestPorts.java`,`${directory}/DeletionCoordinatorTraces.java`,
+ const sources=[...deletionSources,'patches/eliza/native-manifest.json','patches/eliza/deletion-owner-dispatch.patch','scripts/prepare-patched-native.mjs',stage.root+'/.source.json',`${directory}/DeletionTestPorts.java`,`${directory}/DeletionCoordinatorTraces.java`,
   `${directory}/Trace.java`,`${directory}/java.mjs`,`${directory}/deletion-platform.mjs`,fileURLToPath(import.meta.url),...extraSources];
  try{
   const driverHashes=captureInputs(sources);

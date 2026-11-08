@@ -1,0 +1,11 @@
+--- a/plugins/plugin-native-action-journal/android/src/main/java/ai/eliza/plugins/actionjournal/deletion/DeferredDeletionCoordinator.java
++++ b/plugins/plugin-native-action-journal/android/src/main/java/ai/eliza/plugins/actionjournal/deletion/DeferredDeletionCoordinator.java
+@@ -250,7 +250,7 @@
+  private boolean admitted(JSONObject owner, JSONObject agent) throws Exception {
+   if (!agentKind(owner)) return DeferredDeletionJournal.same(owner, manualOwner());
+   if (agent == null) throw new SecurityException("Deletion owner unavailable");
+-  return DeferredDeletionJournal.same(owner, agent);
++  return DeferredDeletionJournal.same(owner, agent) && stageOwnerCurrent(agent);
+  }
+ 
+  private boolean undoAllowed(JSONObject owner, JSONObject agent) throws Exception {
