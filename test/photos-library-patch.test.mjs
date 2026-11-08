@@ -51,16 +51,25 @@ public class CatalogOrderCheck{static void check(boolean ok,String what){if(!ok)
   rows.sort(PermittedMediaCatalog.CATALOG_ORDER);
   StringBuilder order=new StringBuilder();for(Object[] r:rows)order.append(r[3]).append(',');
   check(order.toString().equals("internal-today-later-id,internal-today,sd-card-today,video,old-high-id,"),"order "+order);
-  java.util.List<String> v=new java.util.ArrayList<>();
-  check(PermittedMediaCatalog.after(0,5000,2,1,v).equals(" AND "+PermittedMediaCatalog.SHOT+"<?")&&v.equals(java.util.List.of("5000")),"an earlier source continues below the time");
-  v.clear();check(PermittedMediaCatalog.after(3,5000,2,1,v).equals(" AND "+PermittedMediaCatalog.SHOT+"<=?")&&v.equals(java.util.List.of("5000")),"a later source keeps rows at the same time");
-  v.clear();check(PermittedMediaCatalog.after(2,5000,2,1,v).equals(" AND ("+PermittedMediaCatalog.SHOT+"<? OR ("+PermittedMediaCatalog.SHOT+"=? AND _id<?))")&&v.equals(java.util.List.of("5000","5000","1")),"the same source continues below the _id");
   check(PermittedMediaCatalog.SHOT.equals("ifnull(nullif(datetaken,0),date_added*1000)"),"capture time, else date added");
-  System.out.println("ok");
+  // One page key per line for the SQLite run below: the WHERE suffix, then each arg, tab-separated.
+  for(int[] k:new int[][]{{0,2},{3,2},{2,2}}){java.util.List<String> bound=new java.util.ArrayList<>();String where=PermittedMediaCatalog.after(k[0],5000,k[1],3,bound);
+   System.out.println(where+"\\t"+String.join("\\t",bound));}
  }}`);
  const sources=path.dirname(path.join(media,'x'));const javaRoot=path.resolve(sources,'../../../..');
  execFileSync('javac',['-proc:none','-nowarn','-implicit:class','-d',path.join(work,'out'),'-cp',androidJar,'-sourcepath',javaRoot+path.delimiter+path.join(work,'stub'),path.join(work,'stub/ai/eliza/plugins/media/CatalogOrderCheck.java'),path.join(media,'PermittedMediaCatalog.java')],{timeout:120000,stdio:'pipe'});
- assert.equal(execFileSync('java',['-cp',path.join(work,'out')+path.delimiter+androidJar,'ai.eliza.plugins.media.CatalogOrderCheck'],{encoding:'utf8',timeout:60000}).trim(),'ok');
+ const keys=execFileSync('java',['-cp',path.join(work,'out')+path.delimiter+androidJar,'ai.eliza.plugins.media.CatalogOrderCheck'],{encoding:'utf8',timeout:60000}).trimEnd().split('\n').map(line=>{const [where,...args]=line.split('\t');return {where,args};});
+ // Android binds every selection arg as TEXT. Run each page key on a real SQLite table with the
+ // args bound as strings: SHOT has no column affinity, so an uncast "?" would match every row.
+ const {DatabaseSync}=await import('node:sqlite');const db=new DatabaseSync(':memory:');
+ db.exec('CREATE TABLE files(_id INTEGER PRIMARY KEY, datetaken INTEGER, date_added INTEGER)');
+ // shot 6000, 5000 (_id 2, 3, 4), 4000 via date_added, 1000.
+ db.exec('INSERT INTO files VALUES (1,6000,0),(2,5000,0),(3,5000,0),(4,5000,0),(5,0,4),(6,1000,0)');
+ const page=key=>db.prepare('SELECT _id FROM files WHERE 1=1'+key.where+' ORDER BY _id').all(...key.args).map(row=>row._id);
+ assert.deepEqual(keys.map(key=>key.args.every(arg=>typeof arg==='string')),[true,true,true]);
+ assert.deepEqual(page(keys[0]),[5,6],'an earlier source continues below the time');
+ assert.deepEqual(page(keys[1]),[2,3,4,5,6],'a later source keeps rows at the same time');
+ assert.deepEqual(page(keys[2]),[2,5,6],'the same source continues below the _id');
 });
 
 test('Photos grid thumbnails can be read again by id, so off-screen rows drop theirs',{skip:!ready&&'vendor/eliza not checked out'},async()=>{
@@ -194,7 +203,7 @@ public final class PhotoRecoveryCheck {
   Case(File root,String name,byte[] current,boolean retainEdit) throws Exception {
    retainedEdit=retainEdit;
    directory=new File(root,name); check(directory.mkdirs(),"create case");
-   target=new File(directory,"published-photo"); Files.write(target.toPath(),current);
+   target=new File(directory,"published-photo"); if(current!=null) Files.write(target.toPath(),current);
    File backups=new File(directory,"photo-replace-backups"); check(backups.mkdir(),"create backups");
    original=new File(backups,TOKEN+".original"); Files.write(original.toPath(),ORIGINAL);
    edited=new File(backups,TOKEN+".edited");
@@ -204,6 +213,10 @@ public final class PhotoRecoveryCheck {
    if(retainEdit) record.put("editBackup",edited.getName());
    context=new Context(directory,target);
    saveRecord();
+   for(String[] orphan:ORPHANS){
+    File file=new File(backups,orphan[0]); Files.write(file.toPath(),ORIGINAL);
+    if(!orphan[1].isEmpty()) context.preferences.values.put(orphan[0].substring(0,orphan[0].lastIndexOf('.')),new JSONObject().put("replace",true).put("status",orphan[1]).put("original",orphan[2].equals("verified")?hash(ORIGINAL):hash(EDITED)).put("edited",hash(ORIGINAL)).toString());
+   }
    OwnedMediaConfig config=OwnedMediaConfig.builder("fixture").edits("Pictures/Fixture/","edit_").captures("DCIM/Fixture/","capture_").build();
    recovery=new OwnedPhotoEdits(context,config,new OwnedPhotoEdits.SourceAccess() {
     public boolean accepts(String id) { return id.equals("1"); }
@@ -212,9 +225,14 @@ public final class PhotoRecoveryCheck {
    });
   }
   void saveRecord() { context.preferences.values.put(TOKEN,record.toString()); }
+  static final String[][] ORPHANS={{"aaaaaaaa-0000-4000-8000-000000000001.original","incomplete","verified"},{"aaaaaaaa-0000-4000-8000-000000000002.original","saved","verified"},{"aaaaaaaa-0000-4000-8000-000000000003.edited","failed","verified"},{"aaaaaaaa-0000-4000-8000-000000000004.original","writing","verified"},{"aaaaaaaa-0000-4000-8000-000000000005.original","","verified"},{"aaaaaaaa-0000-4000-8000-000000000006.original","saved","tampered"}};
+  void expectSwept() {
+   File backups=new File(directory,"photo-replace-backups");
+   for(String[] orphan:ORPHANS){boolean terminal=orphan[1].equals("saved")||orphan[1].equals("failed");check(new File(backups,orphan[0]).exists()!= (terminal&&orphan[2].equals("verified")),directory.getName()+" sweep "+orphan[0]);}
+  }
   void expect(String status,byte[] expected,int writes,boolean keepBackups) throws Exception {
    String actualStatus=recovery.result(TOKEN).getString("status");
-   check(Arrays.equals(expected,Files.readAllBytes(target.toPath())),directory.getName()+" preserved bytes");
+   check(expected==null?!target.exists():Arrays.equals(expected,Files.readAllBytes(target.toPath())),directory.getName()+" preserved bytes");
    check(status.equals(actualStatus),directory.getName()+" result");
    check(context.getContentResolver().writes==writes,directory.getName()+" write count");
    check(original.exists()==keepBackups,directory.getName()+" original backup");
@@ -228,7 +246,8 @@ public final class PhotoRecoveryCheck {
  public static void main(String[] args) throws Exception {
   File root=new File(args[0]); check(root.mkdir(),"create data directory");
   byte[] external=bytes("a later external photo edit");
-  new Case(root,"external",external,true).expect("unknown",external,0,true);
+  Case externalCase=new Case(root,"external",external,true);externalCase.expectSwept();externalCase.expect("unknown",external,0,true);
+  new Case(root,"unreadable-or-absent",null,true).expect("unknown",null,0,true);
   new Case(root,"complete",EDITED,true).expect("saved",EDITED,0,false);
   new Case(root,"unchanged",ORIGINAL,true).expect("failed",ORIGINAL,0,false);
   new Case(root,"prefix",Arrays.copyOf(EDITED,9),true).expect("failed",ORIGINAL,1,false);
@@ -262,4 +281,101 @@ public final class PhotoRecoveryCheck {
  const classpath=jsonJar+path.delimiter+androidJar;
  execFileSync(javaBinary('javac'),['-proc:none','-nowarn','-implicit:none','-d',path.join(work,'out'),'-cp',classpath,...sources],{timeout:120000,stdio:'pipe'});
  assert.equal(execFileSync(javaBinary('java'),['-cp',path.join(work,'out')+path.delimiter+classpath,'ai.eliza.plugins.media.PhotoRecoveryCheck',path.join(work,'data')],{encoding:'utf8',timeout:60000}).trim(),'ok');
+});
+
+test('Photos 8: list skips thumbnail decoding when asked (thumbnails:false), owned and permitted alike',{skip:!ready&&'vendor/eliza not checked out'},async()=>{
+ const plugin=await source('PhotosPlugin'),owned=await source('OwnedMediaLibrary');
+ const list=method(plugin,'public void list(');
+ assert.match(list,/boolean thumbnails = call\.getBoolean\("thumbnails", true\);/);
+ assert.match(list,/permitted\.list\(call\.getString\("before", ""\), "", listing\[0\], thumbnails, listing\[1\],/);
+ assert.match(list,/owned\.list\(call\.getString\("before", ""\), trashed, album, limit, thumbnails\)/);
+ assert.match(method(owned,'public JSObject list(String before, boolean trashed, String album, int limit, boolean thumbnails)'),/if \(thumbnails\) putPreview\(item, key\(rows\), 240\);/);
+});
+
+test('retired folder grants keep their recovery identity until release is confirmed', {skip:!ready&&'vendor/eliza not checked out'}, async t => {
+ const tree=await source('DocumentFolderTree');
+ const forget=method(tree,'public JSObject forget()')+'\n  }';
+ const adopt=method(tree,'public JSObject adopt(')+'\n  }';
+ const work=fs.mkdtempSync(path.join(os.tmpdir(),'alpha-folder-retirement-'));
+ t.after(()=>fs.rmSync(work,{recursive:true,force:true}));
+ // Execute the actual two methods with controlled preference and Android grant boundaries.
+ const java=`import java.util.*;
+import java.util.concurrent.*;
+public final class FolderRetirementCheck {
+ static final String KEY="root";
+ static final int GRANTS=3;
+ final SharedPreferences preferences=new SharedPreferences();
+ final Resolver grants=new Resolver();
+ final Session session=new Session();
+ Uri tree;
+ static final class Uri {
+  final String value; Uri(String value){this.value=value;}
+  static Uri parse(String value){return new Uri(value);}
+  String getScheme(){return "content";}
+  public String toString(){return value;}
+  public boolean equals(Object other){return other instanceof Uri&&value.equals(((Uri)other).value);}
+  public int hashCode(){return value.hashCode();}
+ }
+ static final class UriPermission {
+  final Uri uri; UriPermission(String value){uri=Uri.parse(value);}
+  Uri getUri(){return uri;} boolean isReadPermission(){return true;} boolean isWritePermission(){return true;}
+ }
+ static final class Intent {static final int FLAG_GRANT_READ_URI_PERMISSION=1,FLAG_GRANT_WRITE_URI_PERMISSION=2;}
+ static final class DocumentsContract {static boolean isTreeUri(Uri value){return true;}}
+ static final class Session {void clear(){}}
+ static final class JSObject extends HashMap<String,String> {}
+ static JSObject result(String status,String message){JSObject value=new JSObject();value.put("status",status);return value;}
+ static final class SharedPreferences {
+  volatile String value="old"; boolean failCommit;
+  String getString(String key,String fallback){return value==null?fallback:value;}
+  Editor edit(){return new Editor();}
+  final class Editor {
+   String pending; Editor putString(String key,String value){pending=value;return this;}
+   Editor remove(String key){pending=null;return this;}
+   boolean commit(){if(failCommit)return false;value=pending;return true;}
+  }
+ }
+ final class Resolver {
+  final List<UriPermission> values=new ArrayList<>(List.of(new UriPermission("old"),new UriPermission("document")));
+  boolean failRelease,ignoreRelease; Runnable duringRelease;
+  List<UriPermission> getPersistedUriPermissions(){return new ArrayList<>(values);}
+  void releasePersistableUriPermission(Uri uri,int flags){
+   if(failRelease)throw new SecurityException("unconfirmed");
+   if(!ignoreRelease)values.removeIf(value->value.uri.equals(uri));
+   if(duringRelease!=null)duringRelease.run();
+  }
+  void takePersistableUriPermission(Uri uri,int flags){values.add(new UriPermission(uri.value));}
+ }
+ SharedPreferences store(){return preferences;} Resolver resolver(){return grants;}
+ Object root(){return null;} JSObject list(Object value){return result("ready","");}
+ void release(String value){grants.values.removeIf(item->item.uri.value.equals(value));}
+ ${adopt}
+ ${forget}
+ static void check(boolean value,String why){if(!value)throw new AssertionError(why);}
+ static boolean has(FolderRetirementCheck value,String uri){return value.grants.values.stream().anyMatch(item->item.uri.value.equals(uri));}
+ public static void main(String[] args)throws Exception {
+  FolderRetirementCheck failed=new FolderRetirementCheck();failed.grants.failRelease=true;
+  try{failed.forget();throw new AssertionError("release succeeded");}catch(SecurityException expected){}
+  check("old".equals(failed.preferences.value)&&has(failed,"old"),"failed release retains recovery identity");
+  failed.grants.failRelease=false;failed.grants.ignoreRelease=true;
+  check("failed".equals(failed.forget().get("status"))&&"old".equals(failed.preferences.value),"readback refuses unconfirmed release");
+  failed.grants.ignoreRelease=false;failed.preferences.failCommit=true;
+  check("failed".equals(failed.forget().get("status"))&&!has(failed,"old")&&"old".equals(failed.preferences.value),"failed preference commit stays retryable");
+  failed.preferences.failCommit=false;
+  check("forgotten".equals(failed.forget().get("status"))&&failed.preferences.value==null&&has(failed,"document"),"retry clears an absent old grant and keeps selected documents");
+  FolderRetirementCheck stale=new FolderRetirementCheck();stale.tree=Uri.parse("old");stale.preferences.value="new";
+  check("failed".equals(stale.forget().get("status"))&&"new".equals(stale.preferences.value)&&has(stale,"old"),"stale instance preserves a newer selection");
+  FolderRetirementCheck changed=new FolderRetirementCheck();changed.grants.duringRelease=()->changed.preferences.value="new";
+  check("failed".equals(changed.forget().get("status"))&&"new".equals(changed.preferences.value),"owner recheck preserves an external update");
+  FolderRetirementCheck concurrent=new FolderRetirementCheck();CountDownLatch started=new CountDownLatch(1);List<Throwable> errors=new ArrayList<>();
+  Thread next=new Thread(()->{started.countDown();try{concurrent.adopt(Uri.parse("new"),3);}catch(Throwable error){errors.add(error);}});
+  concurrent.grants.duringRelease=()->{next.start();try{check(started.await(5,TimeUnit.SECONDS),"adopt thread starts");}catch(InterruptedException e){throw new AssertionError(e);}};
+  check("forgotten".equals(concurrent.forget().get("status")),"old selection retired");next.join(5000);
+  check(!next.isAlive()&&errors.isEmpty()&&"new".equals(concurrent.preferences.value)&&has(concurrent,"new"),"new adoption is serialized after retirement");
+  System.out.println("ok");
+ }
+}`;
+ const file=path.join(work,'FolderRetirementCheck.java');fs.writeFileSync(file,java);
+ execFileSync(javaBinary('javac'),['-d',work,file],{timeout:120000,stdio:'pipe'});
+ assert.equal(execFileSync(javaBinary('java'),['-cp',work,'FolderRetirementCheck'],{encoding:'utf8',timeout:60000}).trim(),'ok');
 });

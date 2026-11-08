@@ -112,13 +112,13 @@
     },
     {
       "file": "photos-library.patch",
-      "sha256": "dcea7430f7ceca88ab0d35e80648d7bc65798956c91d6dce6009fe63cb7f5579",
+      "sha256": "08c64206da09c9dade81304bb49398133d06a9ec080a8dc257f149a5de24a44d",
       "module": "plugins/plugin-native-media/android",
       "targets": [
         {
           "path": "plugins/plugin-native-media/android/src/main/java/ai/eliza/plugins/media/OwnedMediaLibrary.java",
           "beforeSha256": "c9e797b91f47bb36ed2d6f503ecb9b26c7da5bf18411a49c86ae7d559c9eda0c",
-          "afterSha256": "5e40d710350d933465842c9126c4ad87d1958b317df904875aabb11b45d7db9c"
+          "afterSha256": "91287704e2a47bd8e73e68ff5b9c97377d4ea8c56ccc7328d65c24d913ef2018"
         },
         {
           "path": "plugins/plugin-native-media/android/src/main/java/ai/eliza/plugins/media/OwnedMediaSelection.java",
@@ -126,9 +126,14 @@
           "afterSha256": "28d23cbf9229a5918840d5189653c171df6119f9ec5ff0eabbdcc76aa7699712"
         },
         {
+          "path": "plugins/plugin-native-media/android/src/main/java/ai/eliza/plugins/media/OwnedPhotoEdits.java",
+          "beforeSha256": "16f26b53d91b2a65fb82786f6c7d90824d1cb2bc86bb81833d6a77e212368c0c",
+          "afterSha256": "49ff895246e3994b91a32c83792a96ce969039117470f7f530e3d2af3c113276"
+        },
+        {
           "path": "plugins/plugin-native-media/android/src/main/java/ai/eliza/plugins/media/PermittedMediaCatalog.java",
           "beforeSha256": "f03983b15814b42b321771e57d1b0d483135b853ea12bf52c6720df3578f79fc",
-          "afterSha256": "383bc23a23f0e99b5d7c1ad67512359560b38478cc52896f1b76bf30bf8ad0b4"
+          "afterSha256": "c7559b557959f346cd2ab175995beb703bb1fe3ba1839cf60eb0f228d7076d18"
         },
         {
           "path": "plugins/plugin-native-media/android/src/main/java/ai/eliza/plugins/media/PermittedMediaReview.java",
@@ -143,12 +148,17 @@
         {
           "path": "plugins/plugin-native-media/android/src/main/java/ai/eliza/plugins/media/PhotosPlugin.java",
           "beforeSha256": "c03c1bf28f3d4017b707b43103092d428e2b9a4c966b2c7aef85b44c6a62fab6",
-          "afterSha256": "619d734d76afa1563bbf23af605db6d26b9b625b4130304af8def509ea95064e"
+          "afterSha256": "1a886f89a25a0f296da1feb51b364d511e7722dbfcc216f8cf6c64fc25cbc4ad"
         },
         {
           "path": "plugins/plugin-native-media/android/src/main/java/ai/eliza/plugins/media/PermittedPhotosPlugin.java",
           "beforeSha256": "e7a1b45cb1eedefccf3b4911d524ee5dd8f14a278fb2ab66cae7ad3562b36ea4",
           "afterSha256": "8a758b9e69b004f0704603fae518b59bce67faf58bac5998fff02790f9d0810c"
+        },
+        {
+          "path": "plugins/plugin-native-media/android/src/main/java/ai/eliza/plugins/media/DocumentFolderTree.java",
+          "beforeSha256": "5f595cf16813e5386eee8bb8762aa3f7ee8d8c27b0ec21b89caaba8a4c8c13e8",
+          "afterSha256": "3dfe65ad1de40ec28136e44fbd2f30734988e0d3b829bc8ea79eece4bee5dc54"
         }
       ]
     },
@@ -226,6 +236,23 @@
           "afterSha256": "7d888b5b449c1cf18daaf43fadbc3647902ed302285759482f432dc25f5d2c2d"
         }
       ]
+    },
+    {
+      "file": "files-storage-view.patch",
+      "sha256": "4c7f0d061a4de632ad45faac794713c250be0c2a4237968b48bcfcd19e17b7fb",
+      "module": "plugins/plugin-native-filesystem/android",
+      "targets": [
+        {
+          "path": "plugins/plugin-native-filesystem/android/src/main/java/ai/eliza/plugins/filesystem/browser/StorageBrowser.java",
+          "beforeSha256": "d640248ed2ba35c6369716d2ebdb7ecac247af5b9418f5ca561edc46963d5032",
+          "afterSha256": "700caa666c898308739c1ec88a09bf1dba3416ff231894c8afdcadfdee8e524c"
+        },
+        {
+          "path": "plugins/plugin-native-filesystem/android/src/main/java/ai/eliza/plugins/filesystem/browser/StorageCatalog.java",
+          "beforeSha256": "e83be6eabeacd40b5f2405a24ab5de66efddbe0a91203f3c99ba6f16df88359c",
+          "afterSha256": "411d4dbf8fc4a37d5eec249a416b338692fa953eef9cddfa03e2723c9583a274"
+        }
+      ]
     }
   ],
   "modules": [
@@ -235,6 +262,7 @@
     "plugins/plugin-native-action-journal/android",
     "plugins/plugin-native-calendar/android",
     "plugins/plugin-native-camera/android",
+    "plugins/plugin-native-filesystem/android",
     "plugins/plugin-native-media/android",
     "plugins/plugin-native-notifications/android",
     "plugins/plugin-native-reminders/android",

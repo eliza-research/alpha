@@ -3,6 +3,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
+import {nativeSource,fixture,runJvm,jsonJarSkip} from './fixtures/jvm-tools.mjs';
 
 const {NoteRecorderSession, formatRecordingClock, noteRecorderError} = await import('../apps/app/src/prototype/note-recorder.ts');
 const read = path => readFileSync(new URL(`../${path}`, import.meta.url), 'utf8');
@@ -597,4 +598,9 @@ test('audio-first recording never starts automatic transcription even with a loc
  const recorder=new NoteRecorderSession(driver,async()=>{calls++;return async()=> 'unexpected';},()=>{},{pollMs:60000,automaticTranscription:false});
  await recorder.begin();driver.segment();await new Promise(resolve=>setImmediate(resolve));assert.equal(calls,0);
  assert.equal(await recorder.finishAudio(async()=>true),true);assert.equal(calls,0);assert.equal(driver.state.saves.length,1);
+});
+
+test('the native recorder retains finished audio and uncertain recovery records across restart', {skip:jsonJarSkip}, () => {
+ const stubs=['android/content/Context','android/os/Build','android/os/Handler','android/os/Looper','android/os/SystemClock','android/util/AtomicFile','android/media/MediaRecorder','android/media/MediaFormat','android/media/MediaCodec','android/media/MediaExtractor','android/media/MediaMuxer','com/getcapacitor/JSObject','com/getcapacitor/JSArray'].map(name=>fixture('note-recorder-jvm/'+name+'.java'));
+ assert.match(runJvm([...stubs,nativeSource('AlphaNoteRecorder.java'),fixture('NoteRecorderJournalTest.java')],'ai.elizaresearch.alphaphone.NoteRecorderJournalTest',{json:true}),/^PASS note recorder journal/);
 });

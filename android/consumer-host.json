@@ -101,7 +101,7 @@
     ],
     "sourceSets": {
       "main": {
-        "java": [{ "root": "upstream", "path": "plugins/plugin-native-filesystem/android/src/main/java" }]
+        "java": [{ "root": "patchedNative", "path": "plugins/plugin-native-filesystem/android/src/main/java" }]
       }
     },
     "generatedSources": [{ "sourceSet": "main", "kind": "java", "path": "generated/local-agent/java" }],

@@ -108,7 +108,7 @@ test('test mocks reach debug variants only and product admission runs before eve
 });
 
 test('the host links its native-only secure store transitively and keeps fixture modules separate', t => {
- const {profile} = generate(t);
+ const {profile, staging} = generate(t);
  const linked = profile.modules.filter(module => module.appDependency).map(module => module.name);
  const separate = profile.modules.filter(module => !module.appDependency).map(module => module.name).sort();
  assert.deepEqual(separate, ['elizaos-capacitor-secure-store-nativeonly', 'notification-fixture', 'sense', 'sense-speech', 'video-fixture']);
@@ -117,8 +117,8 @@ test('the host links its native-only secure store transitively and keeps fixture
   ['local-speech', 'notification-fixture', 'sense', 'sense-speech', 'video-fixture']);
  for (const name of ['capacitor-android', 'local-speech', 'eliza-system', 'eliza-contacts', 'elizaos-capacitor-secure-store']) assert.ok(linked.includes(name), name);
  assert.deepEqual(profile.sourceSets.main, {java: [
-  fs.realpathSync(path.join(ROOT, 'vendor/eliza/plugins/plugin-native-filesystem/android/src/main/java')),
- ]}, 'only the shared Files storage implementation extends the main source set');
+  fs.realpathSync(path.join(staging, 'plugins/plugin-native-filesystem/android/src/main/java')),
+ ]}, 'the generated host compiles the authenticated shared Files storage patch');
  assert.deepEqual(profile.dependencies.find(dependency => dependency.coordinate.startsWith('androidx.webkit:webkit:')).coordinate, `androidx.webkit:webkit:${profile.toolchain.versions.androidxWebkitVersion}`);
 });
 
