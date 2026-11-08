@@ -4,5 +4,5 @@
   "path": "plugins/plugin-native-system/src/crash-log.ts",
   "beforeSha256": "1ee78e03512ae23c05ad6ac1ffff9d352e65c51266edad1b65817820116aa56e",
   "afterSha256": "5b1490b94a1ac069c327641d5afdb452f46d669ed72dfb874d9178994dc0af77",
-  "patchSha256": "581d8c6459bce3058937c27627261eb45571aa444874fbbdbae1dd8b931c0b15"
+  "patchSha256": "4a3a423c4e79f9880f25b6d927b05cf23f90f42abc7235632b462afe63011e40"
 }

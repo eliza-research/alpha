@@ -1,9 +1,6 @@
 --- a/plugins/plugin-native-system/src/crash-log.ts
 +++ b/plugins/plugin-native-system/src/crash-log.ts
-@@ -73,9 +73,15 @@
- 
- /** Error class only. A name that is not a plain identifier (it could be text) becomes "Error". */
- export function errorClassOf(error: unknown): string {
+@@ -76,3 +76,9 @@
 -  if (error instanceof Error)
 -    return JS_CLASS.test(error.name) ? error.name : "Error";
 -  return error === null ? "null" : typeof error;
@@ -16,6 +13,3 @@
 +  } catch {
 +    return "Error";
 +  }
- }
- 
- /** One native entry with allowlisted fields and shapes, or null. Anything else is dropped, never copied. */
