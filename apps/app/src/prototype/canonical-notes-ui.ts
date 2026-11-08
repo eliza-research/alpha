@@ -5,7 +5,7 @@ import type {AppRecordPort} from '../runtime/app-record-route-policy';
 import {agentPendingText,agentAvailabilityNotice} from '../runtime/connection-ui';
 import {DailyApps} from '../daily';
 import {CanonicalNotesController,type NotesPhase} from './canonical-notes-controller';
-import {CanonicalNotesEditor} from './canonical-notes-editor';
+import {NotesEditor as CanonicalNotesEditor} from '../../../../.eliza/client-features/plugins/plugin-notes/src/client/notes-editor.ts';
 type Bag=Record<string,any>;
 const UNAVAILABLE='Notes is unavailable for this agent connection. Check Settings › Agent connection.';
 /** Device-local handles (a recording, a picked document, a web source) belong to Older notes adapters, never to an agent record's view. */

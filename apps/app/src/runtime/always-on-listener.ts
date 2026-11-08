@@ -1,9 +1,8 @@
 import { externalVoiceInvocationEnabled } from './voice-entry-policy';
 import { Capacitor } from '@capacitor/core';
-import {Sense,createSenseInvocationController} from '@elizaos/capacitor-system/sense';
-import { parseAssistantInvocation, parseListenerStatus, type AssistantInvocation, type ListenerStatus } from './always-on-listener-status';
+import {Sense,createSenseInvocationController,parseAssistantInvocation,parseListenerStatus,type AssistantInvocation,type ListenerStatus} from '@elizaos/capacitor-system/sense';
 
-export type { AssistantInvocation, ListenerState, ListenerStatus } from './always-on-listener-status';
+export type { AssistantInvocation, ListenerState, ListenerStatus } from '@elizaos/capacitor-system/sense';
 
 const listener = Sense;
 

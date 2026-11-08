@@ -1,6 +1,6 @@
 import {Capacitor} from '@capacitor/core';
 import {DailyApps} from '../daily';
-import {scannedLinks} from './scan-links';
+import {scannedLinks} from '../../../../.eliza/client-features/plugins/plugin-files/src/documents/scan-links.ts';
 
 /** Only an explicit click on a displayed, current URL may leave the scan. */
 export function createScanLinkReview(current:()=>string,active:()=>boolean){
