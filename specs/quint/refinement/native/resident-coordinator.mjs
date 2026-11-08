@@ -10,7 +10,7 @@ export const residentSources = [
     'PluginWorkers.java','ResidentCredentialShutdownRetry.java','ResidentRecoveryReview.java',
     'ResidentScheduleRearm.java','NativeVoiceBinding.java','VoiceEventAdmission.java',
     'InvocationOwnerCache.java','NativeNotificationSession.java','NativeNotificationDiagnostics.java',
-    'HostedInbox.java','HostedResultNotices.java','HostedStorageFault.java','PreparedViewNavigation.java'].map(name=>app+name),
+    'HostedInbox.java','HostedResultNotices.java','HostedStorageFault.java','PreparedViewNavigation.java','GoogleAgentAccessFile.java'].map(name=>app+name),
   ...['ResidentAttachment.java','NativeProviderAdmission.java','NativeProviderSlot.java',
     'CredentialRequestFence.java','CredentialIntentFence.java','NativeRuntimeEmbeddings.java'].map(name=>sharedRuntime+name),
   'vendor/eliza/plugins/plugin-local-inference/native/android/src/main/java/ai/eliza/voice/BufferedStreamExchange.java',
