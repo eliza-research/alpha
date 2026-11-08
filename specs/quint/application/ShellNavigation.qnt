@@ -121,6 +121,7 @@ module ShellNavigation {
     .expect(not(s.replyVisible or s.pending or s.contextSensitive) and safety)
   run suspendedRetiresSendTest = init.then(send).then(pageHide).then(reply(1)).then(pageShow)
     .expect(not(s.replyVisible or s.pending or s.contextSensitive) and safety)
-  run suspendedClaimRefusedTest = init.then(pageHide).then(capture.fail()).then(pageShow)
+  run suspendedClaimRefusedTest = init.then(pageHide).then(capture.fail())
+  run resumedClaimTest = init.then(pageHide).then(pageShow)
     .then(capture).then(claim).then(acknowledge).expect(s.claim == "delivered" and safety)
 }

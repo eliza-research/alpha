@@ -40,7 +40,8 @@
       "changedViewRetiresSendTest",
       "hiddenRetiresSendTest",
       "suspendedRetiresSendTest",
-      "suspendedClaimRefusedTest"
+      "suspendedClaimRefusedTest",
+      "resumedClaimTest"
     ],
     "sources": [
       "apps/app/src/prototype/model.js",
