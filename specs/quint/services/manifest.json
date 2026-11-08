@@ -1399,6 +1399,47 @@
         "maxSteps": 80,
         "seed": "123"
       }
+    },
+    {
+      "path": "specs/quint/services/TaskSchedulerRuntime.qnt",
+      "module": "TaskSchedulerRuntime",
+      "init": "init",
+      "step": "step",
+      "invariant": "safety",
+      "sources": [
+        "vendor/eliza/packages/core/src/services/task-scheduler.ts",
+        "vendor/eliza/packages/core/src/services/task.ts",
+        "patches/eliza/task-service-stop.patch",
+        "scripts/core-state-patch.mjs"
+      ],
+      "tests": [
+        "mixedScopeBatchesInOrderTest",
+        "changedRegistrationRetiresQueuedGroupTest",
+        "restartSkipsDetachedBusyServiceTest",
+        "oldProcessDisposalKeepsReplacementTest",
+        "disposedQueuedProcessNeverEntersTest",
+        "stoppingDaemonKeepsProcessTimerTest"
+      ],
+      "invariants": [
+        "SharedTimerOwned",
+        "AttachedTickCurrent",
+        "BusyOwnersExact",
+        "CurrentRegistrationsOwnAgents",
+        "DeliveredRowsInCohort",
+        "NoStaleDispatch",
+        "ProcessOwnerPreserved",
+        "RetiredProcessCannotStart"
+      ],
+      "abstractions": [
+        "Two agent IDs, three TaskService identities, two adapter identities, three in-flight slots, up to five scheduler mutations and six registration generations.",
+        "Six task row classes cover valid agent IDs, missing and foreign ownership. Per-owner report/process counts saturate at forty.",
+        "Two process names with three instance identities. Transient empty-tick attachment and microtask settlement are projected at stable boundaries. Current shared daemon is opt-in."
+      ],
+      "bounds": {
+        "maxSamples": 500,
+        "maxSteps": 40,
+        "seed": "123"
+      }
     }
   ]
 }

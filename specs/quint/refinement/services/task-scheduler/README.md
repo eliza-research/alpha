@@ -63,3 +63,33 @@ original `Next` and fairness continue to use the union of those branches.
 The current Quint bytes pass typechecking, the three original named scenarios,
 and 500 TypeScript simulation traces by 40 steps for each profile with seed 123.
 The earlier exhaustive results are evidence for the pre-witness translation.
+
+## Expanded current runtime model
+
+`TaskSchedulerRuntime` covers the batching and process-task state beyond the
+single-agent design. Two agent queues share one adapter request. The captured
+registration cohort, DB row order, per-agent grouping, report counts and
+active/detached `runTick` owners are represented independently. The source
+campaign exercises absent agents, missing and foreign row owners, a known
+agent outside the query, changed registrations before both DB completion and
+later dispatch, and stop/restart while an old service remains busy. DB refusal
+and worker refusal have separate diagnostics and retry behavior.
+
+The process registry models two names and three actual task instances. A
+queued callback can be aborted before entry. A disposer withdraws its exact
+entry and aborts its signal synchronously, then drains its own active promise.
+A same-name successor can register while the retired run drains. Repeating an
+old disposer preserves the successor. Registered process tasks keep the
+shared interval alive after daemon stop, and a process callback can start
+while a DB tick is attached.
+
+`runTaskSchedulerRuntimeRefinement(extraSources = [])` compares 10 actual
+source traces, 125 checkpoints and 24 observed expressions, including a
+negative duplicate-name admission check. The trace uses exact source maps,
+timer handles, attached promises, TaskService group arguments and external
+worker calls. It checks source-assigned safety at every checkpoint. Internal
+queued groups are confirmed at their actual dispatch boundary. Transient
+no-query attachments are projected at stable checkpoints. The six declared
+Quint scenarios and 500 by 40 TypeScript simulations pass. These checks use
+a controlled host, with SDK daemon enablement, real-time timer behavior and
+external provider effects outside their scope.
