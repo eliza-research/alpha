@@ -7,6 +7,7 @@ const source=fs.readFileSync(new URL('../apps/app/src/prototype/camera-adapter.t
 const slice=(from,to)=>{const a=source.indexOf(from),b=source.indexOf(to,a);assert.ok(a>=0&&b>a,`camera-adapter.ts still has ${from} … ${to}`);return source.slice(a,b);};
 const helpers=slice('const ZOOM_STOPS','/** Install after native').replace(/^export /gm,'');
 const scanWords=slice('const SCAN_REQUEST','const browserMode').replace(/^export /gm,'');
+const lastTile=slice('  let lastCapture:', '  let accessPanel:');
 const session=slice('  let requestedCaptureHolds=0;','  function askCameraFrame(');
 const syncCamera=source.match(/  const syncCamera = [^\n]+\n/)[0];
 const sessionSource=fs.readFileSync(new URL('../.eliza/client-features/plugins/plugin-native-camera/src/session.ts',import.meta.url),'utf8');
@@ -36,11 +37,11 @@ function fixture({permission=false,failing=true,navigateAfterPhoto=false,receipt
   mask:enable=>calls.masked=enable,Capacitor:{isPluginAvailable:()=>true},validateCameraCaptureResult:value=>value,systemPickerActive:()=>false,device:{openSettings:async()=>({status:'opened'})},
   openScanReview:()=>{calls.scans++;return ()=>{};},createScanCapture:()=>({keep:async()=>undefined,close(){}}),ScanKeepError:Error,importBrowserPhoto:async()=>({}),browserCamera:{flashAvailable:()=>false},view:()=>view,calls,navigateAfterPhoto});
  const prelude=`let accessPanel,disposed=false,direction='back',flash=false,duration=0,loaded=true,captures=[],closeQuestion,closeScan,scanRequest;
-  let lens={minZoom:1,maxZoom:1,hasFlash:false,zoom:1,flash:false},zoomRatio=1,lastCapture;let requestedPhoto;
+  let lens={minZoom:1,maxZoom:1,hasFlash:false,zoom:1,flash:false},zoomRatio=1;let requestedPhoto;
   const browserMode=false,libraryAvailable=()=>true,normalize=row=>({...row,id:'native-camera-'+row.id}),nativeId=id=>id.replace(/^native-camera-/,''),cancelScan=()=>{};function schedule(){}
   const finder='[data-alpha-camera="viewfinder"]';let state={said:'',mode:'photo'};
   const api={S:{get chat(){return view().chat;}},isActive:()=>view().active,set:patch=>Object.assign(state,patch),get:()=>state,setView:name=>{calls.views.push(name);if(navigateAfterPhoto&&name==='photos')view().active=false;},shell:patch=>{view().chat=patch.chat;}};`;
- vm.runInContext(shared+stripTypeScriptTypes(prelude+helpers+scanWords+session+syncCamera+`;globalThis.testCamera={bindMode,modeSettled:()=>modeChange,start,stop,control,capture,record,focusAt,takeRequestedPhoto,zoomStops,lensFromReceipt,photoReceiptPath,cameraScanRequested,scanRequest:()=>scanRequest(),active,installViewPresence,syncCamera,CHAT_GRACE_MS,
+ vm.runInContext(shared+stripTypeScriptTypes(prelude+helpers+scanWords+lastTile+session+syncCamera+`;globalThis.testCamera={bindMode,modeSettled:()=>modeChange,start,stop,control,capture,record,focusAt,takeRequestedPhoto,zoomStops,lensFromReceipt,photoReceiptPath,cameraScanRequested,scanRequest:()=>scanRequest(),active,installViewPresence,syncCamera,CHAT_GRACE_MS,
   flip:()=>flipLens(api),
   setFlash:on=>{flash=on;},setZoom:z=>{zoomRatio=z;},mode:m=>{state.mode=m;},
   state:()=>({phase:session.phase,denied:session.denied,said:state.said,capturing:session.capturing,recording:session.recording,flash,zoomRatio,lens,last:lastCapture,fl:state.fl})};
@@ -79,7 +80,7 @@ function fixture({permission=false,failing=true,navigateAfterPhoto=false,receipt
 {
  const f=fixture({failing:false});await f.api.start();await settle();
  assert.deepEqual(JSON.parse(JSON.stringify(f.api.state().lens)),{minZoom:0.5,maxZoom:10,hasFlash:true,zoom:1,flash:false});
- assert.deepEqual(JSON.parse(JSON.stringify(f.calls.list)),[{limit:1}],'The last-capture tile reads one library row after ready');
+ assert.deepEqual(JSON.parse(JSON.stringify(f.calls.list)),[{album:'camera',limit:1}],'The last-capture tile reads the newest Camera-album row after ready');
  assert.deepEqual(JSON.parse(JSON.stringify(f.api.zoomStops({minZoom:0.5,maxZoom:10}))).map(s=>s[1]),['.5','1×','2','5']);
  assert.deepEqual(JSON.parse(JSON.stringify(f.api.zoomStops({minZoom:1,maxZoom:4}))).map(s=>s[1]),['1×','2']);
  assert.deepEqual(JSON.parse(JSON.stringify(f.api.zoomStops({minZoom:1,maxZoom:1}))),[],'A fixed lens shows no chips');
