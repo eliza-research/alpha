@@ -730,3 +730,10 @@ timeout readback. Android events and durable preference failures are
 controlled. The standard build and APK verifier passed both variants at
 `39d801b512`, including the SMS repair and earlier Calendar changes. Those
 APK results are independent of installed-device and carrier behavior.
+
+The historical Camera replay checks four mounted schedules and 27
+checkpoints with synthetic browser media. It covers first frame, zoom and
+lens, chat grace and release, and actual scan review. Capture settlement,
+historical agent queuing and native resume remain explicit obligations.
+All registered historical designs now have bounded source replays in the
+branch. The selected projections and unsupported actions remain separate.
