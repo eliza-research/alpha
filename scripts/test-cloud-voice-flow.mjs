@@ -39,29 +39,60 @@ try {
   await until(() => f.render().noteRecorder?.phase === 'recording');
   assert.equal(f.render().noteRecorder.doneLabel, 'Stop recording');
   assert.equal(f.uploads, 0);
-  assert.equal(await f.notesRecorderControl.stop(), 'retained');
-  assert.equal(recording.state, 'stopped');
-  assert.equal(f.render().noteRecorder.transcribeLabel, 'Transcribe with Eliza Cloud');
-  assert.equal(f.uploads, 0);
-  assert.equal(f.shell.notes.list.length, 0);
-
+  // Production Stop saves audio locally. A failed local commit keeps the stopped recording.
   f.shell.failPersistence = true;
-  f.render().noteRecorder.transcribe();
-  await until(() => f.render().noteRecorder?.phase === 'stopped' && f.render().noteRecorder.error);
-  assert.equal(f.uploads, 1);
-  assert.equal(f.transcribeInput.recordingId, segmentId);
-  assert.equal(f.render().noteRecorder.transcript, 'Synthetic Cloud transcript');
-  assert.equal(f.render().noteRecorder.doneLabel, 'Done');
+  assert.equal(await f.notesRecorderControl.stop(), 'failed');
+  assert.equal(recording.state, 'stopped');
+  assert.equal(f.render().noteRecorder.phase, 'stopped');
+  assert.equal(f.render().noteRecorder.doneLabel, 'Save recording');
+  assert.equal(f.render().noteRecorder.transcribe, undefined);
+  assert.equal(f.uploads, 0);
+  assert.equal(f.localFactories, 0);
   assert.equal(f.shell.notes.list.length, 0);
 
   f.shell.failPersistence = false;
   f.render().noteRecorder.done();
   await until(() => f.shell.notes.list.length === 1);
-  assert.equal(f.shell.notes.list[0].body, 'Synthetic Cloud transcript');
-  assert.equal(f.shell.notes.list[0].audio.transcript, 'Synthetic Cloud transcript');
-  assert.equal(f.uploads, 1, 'Retrying a local save must send no additional audio');
+  assert.equal(f.shell.notes.list[0].body, '');
+  assert.equal(f.shell.notes.list[0].audio.transcript, '');
+  assert.equal(f.shell.notes.list[0].audio.audioId, recordingId);
+  assert.equal(recording.state, 'idle', 'Confirmed local save releases the recorder journal');
+  assert.equal(f.uploads, 0, 'Stop and local retries never authorize Cloud transcription');
   assert.equal(f.sends, 0);
 } finally {
   f.close();
 }
-console.log('PASS Notes Cloud transcription requires a named choice after Stop and retries only local save.');
+// Keep the explicit remote-transcription contract covered separately from the audio-only renderer.
+// This is the actual session and actual Cloud driver, not a removed recorder UI control.
+const consentFixture = cloudVoiceViewFixture({cloudProfile:true,noteRecording});
+let consent;
+try {
+  consent = new consentFixture.box.NoteRecorderSession(consentFixture.box.createNoteRecorderDriver(), async () => {
+    const route = await consentFixture.box.noteSegmentTranscriber(new AbortController().signal, 'cloud');
+    assert.ok(route);
+    return route.transcribe;
+  }, () => {}, {pollMs:60_000,remoteTranscription:()=>true,owner:()=>({identity:'explicit-transcription-fixture',folderId:null,current:()=>true})});
+  await consent.begin();
+  assert.equal(consentFixture.uploads, 0);
+  assert.equal(await consent.finish(async () => assert.fail('Stop must precede remote transcription'), true, true), false);
+  assert.equal(await consent.stop(), true);
+  assert.equal(consent.needsTranscriptionConsent, true);
+  assert.equal(await consent.finish(async () => assert.fail('Remote consent is required')), false);
+  assert.equal(consentFixture.uploads, 0);
+  assert.equal(await consent.finish(async () => false, true, true), false, 'Failed local persistence retains the approved transcript');
+  assert.equal(consentFixture.uploads, 1);
+  assert.equal(consentFixture.transcribeInput.recordingId, segmentId);
+  assert.equal(consentFixture.transcribeInput.credentialId, 'cloud-credential');
+  assert.equal(consent.transcript(), 'Synthetic Cloud transcript');
+  assert.equal(consent.phase, 'stopped');
+  let saved;
+  assert.equal(await consent.finish(async (audio, transcript) => {saved={audio,transcript};return true;}), true);
+  assert.equal(saved.transcript, 'Synthetic Cloud transcript');
+  assert.equal(saved.audio.transcript, 'Synthetic Cloud transcript');
+  assert.equal(consentFixture.uploads, 1, 'Retrying a local save must send no additional audio');
+  assert.equal(consentFixture.sends, 0);
+} finally {
+  consent?.close();
+  consentFixture.close();
+}
+console.log('PASS Notes Stop saves audio locally; explicit Cloud transcription still requires consent after Stop and retries only local save.');
