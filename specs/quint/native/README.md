@@ -465,3 +465,8 @@ through exact threshold boundaries, a full 727-sample production pre-roll, input
 post-onset pass-through and callback/write faults. Its symbolic run uses short representative
 chunks and a three-sample pre-roll. The production-sized scenario executes the actual helper
 and compares exact retained and returned sample classes.
+
+`BatchCaptureCompletion` follows the renderer's recorded conversation capture. It models
+early callbacks keyed by native draft identity, start acknowledgment, sampling, explicit
+stop, cancellation and cleanup uncertainty. A call event prevents selection of that draft
+for transcription, even when it arrives before the native start acknowledgment.

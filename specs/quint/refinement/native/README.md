@@ -253,3 +253,9 @@ and lead size from the authenticated stage and observes retained samples, caller
 returned array identity, report-before-write order, and write/delegate results. It checks
 the current production-sized buffer and controlled quiet, threshold, NaN and infinity
 classes. Real audio hardware and arbitrary PCM histories remain outside this campaign.
+
+`batch-capture-completion.mjs` executes the exact renderer capture helper with a read-only
+observer and controlled Capacitor replies. The held-start schedules observe the early
+callback map, exact acknowledgment and terminal outputs before the shared conversation
+loop consumes them. The existing voice-call tests exercise the full renderer and shared
+loop together with the same external port boundary.

@@ -1511,6 +1511,34 @@
         "Exact representative PCM bit classes at the staged threshold and adjacent Float values, including NaN and both infinities. The source campaign includes the current 727-sample pre-roll and bounded write outcomes.",
         "Model checking uses a three-sample pre-roll with small representative chunks and a single serialized writer. Physical output timing and unrestricted PCM histories remain external."
       ]
+    },
+    {
+      "path": "specs/quint/native/BatchCaptureCompletion.qnt",
+      "module": "BatchCaptureCompletion",
+      "init": "init",
+      "step": "step",
+      "invariant": "safety",
+      "sources": [
+        "apps/app/src/prototype/voice-adapter.ts",
+        "apps/app/src/runtime/cloud-voice.ts"
+      ],
+      "tests": [
+        "earlyCallSurvivesForeignCallbackTest",
+        "lateAckAfterAbortCannotPublishTest",
+        "successfulCallbackUsesExactFinishedDraftTest",
+        "failedCleanupKeepsAdmissionUnconfirmedTest"
+      ],
+      "invariants": [
+        "PollOwnsLiveRecording",
+        "EarlyCallbacksDoNotPublish",
+        "CallDoesNotPublish",
+        "PublishedOwnsExactDraft",
+        "CleanupFailureIsVisible"
+      ],
+      "abstractions": [
+        "One held start and two distinguishable native draft identities. The exact renderer capture closure executes against controlled plugin, timer and cancellation inputs.",
+        "The model starts after listener installation. Checkpoints settle native promises for each scheduled effect; concurrent detach/cleanup, installed transport and physical audio remain external."
+      ]
     }
   ]
 }
