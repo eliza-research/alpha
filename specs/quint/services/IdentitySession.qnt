@@ -8,14 +8,14 @@ module IdentitySession {
     ackTries: 0, oldKey: false, revoked: false, steward: false, running: false }
   type Session = {
     phase: str, method: str, epoch: int, owner: int, ownerEpoch: int, attemptOwner: int,
-    pending: bool, pendingWrite: bool, cleanupOwner: int, activation: Activation, consumed: Set[int], wrongCodes: int, cooldown: bool,
+    pending: bool, liveIntent: bool, pendingWrite: bool, cleanupOwner: int, activation: Activation, consumed: Set[int], wrongCodes: int, cooldown: bool,
     receipt: bool, key: bool, acknowledged: bool, ackTries: int,
     oldKey: bool, revoked: bool, steward: bool, callbackAccepted: bool, cancelRequested: bool
   }
   var s: Session
   action init = s' = {
     phase: "idle", method: "none", epoch: 0, owner: 0, ownerEpoch: 0, attemptOwner: 0,
-    pending: false, pendingWrite: false, cleanupOwner: 0, activation: noActivation, consumed: Set(), wrongCodes: 0, cooldown: false,
+    pending: false, liveIntent: false, pendingWrite: false, cleanupOwner: 0, activation: noActivation, consumed: Set(), wrongCodes: 0, cooldown: false,
     receipt: false, key: false, acknowledged: false, ackTries: 0,
     oldKey: false, revoked: false, steward: false, callbackAccepted: false, cancelRequested: false
   }
@@ -29,7 +29,7 @@ module IdentitySession {
     not(s.cooldown),
     s' = { ...s, phase: if (workerBusy) "starting" else if (method == "google") "browser" else "code",
       cleanupOwner: if (s.steward and not(s.activation.running)) s.attemptOwner else s.cleanupOwner,
-      method: method, epoch: s.epoch + 1, attemptOwner: s.epoch + 1,
+      method: method, epoch: s.epoch + 1, attemptOwner: s.epoch + 1, liveIntent: true,
       pending: method == "google" and not(workerBusy),
       pendingWrite: method == "google" and workerBusy,
       wrongCodes: 0, cooldown: method != "google",
@@ -45,7 +45,7 @@ module IdentitySession {
   /// Wrong-state callbacks do not burn the encrypted pending record.
   action callback(token: int): bool = all {
     s.phase == "browser", s.pending, not(s.activation.running), s.cleanupOwner == 0,
-    if (token == s.epoch)
+    if (s.liveIntent and token == s.epoch)
       s' = { ...s, phase: "exchange", pending: false,
         consumed: s.consumed.union(Set(token)), callbackAccepted: true }
     else s' = s
@@ -60,7 +60,7 @@ module IdentitySession {
     s.phase == "browser", s.pending,
     s' = { ...s, phase: "cancelled", cancelRequested: true, callbackAccepted: false }
   }
-  /// A process restart can find an unretired record; successful burn is still required.
+  /// Reloading an unretired record does not mint a new in-memory credential intent.
   action restorePending = all {
     s.pending, s.phase.in(Set("failed", "cancelled")),
     s' = { ...s, phase: "browser", cancelRequested: false }
@@ -97,13 +97,13 @@ module IdentitySession {
         acknowledged: false, ackTries: 0, oldKey: s.oldKey, revoked: false,
         steward: s.steward, running: true } }
   }
-  action ack(success: bool): bool = all {
+  action ackWithReceipt(success: bool, retained: bool): bool = all {
     s.activation.phase == "acknowledging", s.activation.receipt,
     s.owner == s.activation.owner, s.activation.ackTries < 3,
     val phase = if (success) { if (s.activation.oldKey) "revoking-previous" else "authenticated" }
       else if (s.activation.ackTries == 2) "activation-pending" else "acknowledging"
     val current = s.key and s.attemptOwner == s.activation.owner
-    val updated = { ...s.activation, phase: phase, acknowledged: success, receipt: not(success),
+    val updated = { ...s.activation, phase: phase, acknowledged: success, receipt: not(success) or retained,
       ackTries: s.activation.ackTries + 1,
       running: s.activation.steward or phase == "acknowledging" or phase == "revoking-previous" }
     s' = { ...s, activation: updated,
@@ -112,11 +112,12 @@ module IdentitySession {
       receipt: if (current) updated.receipt else s.receipt,
       ackTries: if (current) updated.ackTries else s.ackTries }
   }
+  action ack(success: bool): bool = ackWithReceipt(success, false)
   /// Restart keeps durable pending work, restores the stored owner, and drops transient revocation capability.
   action restart = if (s.owner == 0) {
     s' = { ...s, phase: if (s.pending) "browser" else "idle",
       attemptOwner: if (s.pending) s.attemptOwner else 0,
-      pendingWrite: false, cleanupOwner: 0, key: false, receipt: false,
+      pendingWrite: false, liveIntent: false, cleanupOwner: 0, key: false, receipt: false,
       acknowledged: false, ackTries: 0, oldKey: false, revoked: false,
       steward: false, callbackAccepted: false, cancelRequested: false, activation: noActivation }
   } else all {
@@ -126,9 +127,9 @@ module IdentitySession {
     val recovered = { ...s.activation, phase: phase, ackTries: 0, oldKey: false,
       revoked: false, steward: false, running: s.activation.receipt }
     s' = if (s.pending) { ...s, phase: "browser", activation: recovered,
-      pendingWrite: false, cleanupOwner: 0, steward: false, callbackAccepted: false, cancelRequested: false }
+      pendingWrite: false, liveIntent: false, cleanupOwner: 0, steward: false, callbackAccepted: false, cancelRequested: false }
     else { ...s, activation: recovered, phase: phase, attemptOwner: s.owner,
-      pendingWrite: false, cleanupOwner: 0, key: true, receipt: recovered.receipt,
+      pendingWrite: false, liveIntent: false, cleanupOwner: 0, key: true, receipt: recovered.receipt,
       acknowledged: recovered.acknowledged, ackTries: 0, oldKey: false, revoked: false,
       steward: false, callbackAccepted: false }
   }
@@ -146,8 +147,8 @@ module IdentitySession {
   /// Key persistence is the commit point. Cancelling the UI cannot stop activation.
   action cancel = all {
     not(s.phase.in(Set("idle", "authenticated"))),
-    if (s.key) s' = { ...s, cancelRequested: true }
-    else s' = { ...s, phase: "cancelled", pending: false, pendingWrite: false, cancelRequested: true,
+    if (s.key) s' = { ...s, cancelRequested: true, liveIntent: false }
+    else s' = { ...s, phase: "cancelled", pending: false, liveIntent: false, pendingWrite: false, cancelRequested: true,
       consumed: if (s.method == "google") s.consumed.union(Set(s.epoch)) else s.consumed }
   }
   /// complete() publishes authentication before its finally block drops the transient session.
@@ -160,19 +161,19 @@ module IdentitySession {
   }
   action expire = all {
     s.pending,
-    s' = { ...s, phase: "expired", pending: false,
+    s' = { ...s, phase: "expired", pending: false, liveIntent: false,
       consumed: s.consumed.union(Set(s.epoch)) }
   }
   action signOut = all {
     s.owner != 0,
     s' = { ...s, owner: 0, key: false, acknowledged: false, receipt: false,
-      phase: "idle", pending: false, pendingWrite: false, cleanupOwner: 0, steward: false, activation: noActivation }
+      phase: "idle", pending: false, liveIntent: false, pendingWrite: false, cleanupOwner: 0, steward: false, activation: noActivation }
   }
   action step = any {
     begin("google"), begin("email"), begin("phone"), beginWork, callback(0), callback(s.epoch),
     browserClosed, callbackBurnFailed, cancelBurnFailed, restorePending, wrongCode, codeVerified(false), codeVerified(true), mfaVerified,
     exchanged, writeReceipt, storageFailure, writeKey, ack(false), ack(true),
-    restart, revokePrevious(false), revokePrevious(true), cooldownElapsed,
+    ackWithReceipt(true, true), restart, revokePrevious(false), revokePrevious(true), cooldownElapsed,
     cancel, releaseSteward, expire, signOut, s' = s
   }
   val KeyBeforeAck = s.acknowledged implies (s.key and s.owner == s.attemptOwner)
@@ -235,7 +236,6 @@ module IdentitySession {
     .then(ack(true)).expect(s.phase == "starting" and s.activation.acknowledged and not(s.activation.receipt) and safety)
     .then(releaseSteward).then(beginWork)
     .expect(s.phase == "browser" and s.pending and s.owner == 1 and not(s.key or s.receipt) and safety)
-    .then(restart).expect(s.pending and s.owner == 1 and s.activation.acknowledged and safety)
     .then(callback(2)).then(exchanged).then(writeReceipt).then(writeKey).then(ack(true))
     .then(revokePrevious(true)).then(releaseSteward).expect(s.owner == 2 and safety)
   run queuedReplacementCancellationPreservesActivationTest = init.then(begin("google")).then(callback(1))
@@ -262,9 +262,15 @@ module IdentitySession {
     .then(exchanged).then(writeReceipt).then(writeKey).then(ack(false)).then(ack(false)).then(ack(false))
     .then(releaseSteward).then(begin("google")).then(restart)
     .expect(s.pending and s.activation.running and safety).then(callback(2).fail())
-  run resumedAckRestoresPendingCallbackTest = init.then(begin("google")).then(callback(1))
+  run resumedAckKeepsColdCallbackRefusedTest = init.then(begin("google")).then(callback(1))
     .then(exchanged).then(writeReceipt).then(writeKey).then(ack(false)).then(ack(false)).then(ack(false))
     .then(releaseSteward).then(begin("google")).then(restart).then(ack(true)).then(callback(2))
-    .expect(s.phase == "exchange" and s.activation.acknowledged and safety)
+    .expect(s.phase == "browser" and s.pending and not(s.liveIntent or s.callbackAccepted) and s.activation.acknowledged and safety)
 
+  run coldReturnCannotAcquireCredentialIntentTest = init.then(begin("google")).then(restart)
+    .then(callback(1)).expect(s.pending and not(s.liveIntent or s.callbackAccepted or s.key) and safety)
+  run cancelledAcknowledgmentRetainsRecoveryReceiptTest = init.then(begin("google")).then(callback(1))
+    .then(exchanged).then(writeReceipt).then(writeKey).then(cancel).then(ackWithReceipt(true, true))
+    .expect(s.key and s.acknowledged and s.receipt and safety)
+    .then(restart).then(ack(true)).expect(s.key and not(s.receipt) and safety)
 }
