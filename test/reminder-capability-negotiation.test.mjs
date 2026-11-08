@@ -24,9 +24,9 @@ const offered=['reminders.create.v1','reminders.local-record.v2','calendar.creat
 
 // Execute the production function, with platform/foreign-domain ports supplied.
 // This is capability and client-boundary proof, not Android or model acceptance.
-async function capabilities(platform,offers=offered){
+async function capabilities(platform,offers=offered,plugins=[]){
  const negotiate=runInNewContext(stripTypeScriptTypes(negotiateSource,{mode:'strip'})+';deviceCapabilities',{
-  Capacitor:{getPlatform:()=>platform,isNativePlatform:()=>platform!=='web',isPluginAvailable:()=>false},
+  Capacitor:{getPlatform:()=>platform,isNativePlatform:()=>platform!=='web',isPluginAvailable:name=>plugins.includes(name)},
   CAMERA_CAPTURE_CAPABILITY:'camera.capture-photo.v1',SMS_SEND_CAPABILITY:'sms.send.v1',
   CALENDAR_AVAILABILITY_CAPABILITY:'calendar.availability-read.v1',
   availabilityNegotiated:()=>false,foregroundExecutor:undefined,aospImage:false,
@@ -35,6 +35,14 @@ async function capabilities(platform,offers=offered){
  });
  return (await negotiate(offers)).split(',');
 }
+
+test('the device photo library is offered only by a native client with the Photos plugin when the agent offers it',async()=>{
+ const photos=['photos.library.v1'];
+ assert.ok((await capabilities('android',photos,['AlphaPhotoLibrary'])).includes('photos.library.v1'));
+ assert.equal((await capabilities('android',photos)).includes('photos.library.v1'),false,'no native plugin');
+ assert.equal((await capabilities('web',photos,['AlphaPhotoLibrary'])).includes('photos.library.v1'),false,'browser');
+ assert.equal((await capabilities('android',[],['AlphaPhotoLibrary'])).includes('photos.library.v1'),false,'agent did not offer it');
+});
 
 test('normal browser declines device reminder creation and retains existing record capabilities',async()=>{
  const caps=await capabilities('web');

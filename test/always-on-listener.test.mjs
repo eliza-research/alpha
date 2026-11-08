@@ -13,7 +13,9 @@ test('Alpha public components still compile against the common listener and pres
  assert.equal(product.sense.componentPackage,'ai.elizaresearch.alphaphone.sense');assert.equal(product.sense.storageName,'listener-settings');assert.deepEqual(product.sense.wakeNames,['alpha']);
  const temp=fs.mkdtempSync(path.join(os.tmpdir(),'alpha-sense-compat-'));
  try {
-  const config='package ai.eliza.sense; public final class BuildConfig { public static final String APPLICATION_ID="ai.elizaresearch.alphaphone.sense", SENSE_HOST_PACKAGE="ai.elizaresearch.alphaphone", SENSE_ASSIST_ACTIVITY="ai.elizaresearch.alphaphone.AlphaAssistActivity", SENSE_APP_NAME="Alpha", SENSE_WAKE_LABEL="Alpha", SENSE_WAKE_NAMES="alpha", SENSE_COMPONENT_PACKAGE="ai.elizaresearch.alphaphone.sense", SENSE_STORAGE_NAME="listener-settings"; }';
+  // Same fields consumer.gradle derives from the product profile.
+  const sense=product.sense,host='ai.elizaresearch.alphaphone';
+  const config=`package ai.eliza.sense; public final class BuildConfig { public static final String APPLICATION_ID=${JSON.stringify(`${host}.sense`)}, SENSE_HOST_PACKAGE=${JSON.stringify(host)}, SENSE_ASSIST_ACTIVITY=${JSON.stringify(sense.assistActivity)}, SENSE_APP_NAME=${JSON.stringify(sense.appName)}, SENSE_WAKE_LABEL=${JSON.stringify(sense.wakeNames[0])}, SENSE_WAKE_NAMES=${JSON.stringify(sense.wakeNames.join(','))}, SENSE_COMPONENT_PACKAGE=${JSON.stringify(sense.componentPackage)}, SENSE_STORAGE_NAME=${JSON.stringify(sense.storageName)}; }`;
   fs.writeFileSync(path.join(temp,'BuildConfig.java'),config);
   fs.writeFileSync(path.join(temp,'R.java'),'package ai.eliza.sense; public final class R { public static final class drawable { public static final int ic_listening=1; }}');
   fs.writeFileSync(path.join(temp,'NativeAsr.java'),'package ai.eliza.voice; public interface NativeAsr extends AutoCloseable { String transcribe(float[] samples); void cancel(); void close(); }');

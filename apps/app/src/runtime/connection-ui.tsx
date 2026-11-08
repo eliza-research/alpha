@@ -488,6 +488,8 @@ async function deviceCapabilities(offered:unknown):Promise<string>{
   // Browser chat reminders use the runtime scheduler; do not offer a second device-creation lifecycle.
   for(const capability of [...(!Capacitor.isNativePlatform()?['calendar.agenda-read.v1']:[]),'notes.query.v1',...(Capacitor.isNativePlatform()?['reminders.create.v1']:[]),'calendar.create.v1',...(android||!Capacitor.isNativePlatform()?['calendar.next-read.v1']:[]),'maps.selected-read.v1'])if(agent.includes(capability))capabilities.push(capability);
   if(availabilityNegotiated(agent))capabilities.push(CALENDAR_AVAILABILITY_CAPABILITY);
+  // The device photo library is offered only where the native Photos plugin exists and the agent offers it.
+  if(agent.includes('photos.library.v1')&&Capacitor.isNativePlatform()&&Capacitor.isPluginAvailable('AlphaPhotoLibrary'))capabilities.push('photos.library.v1');
   if((android||!Capacitor.isNativePlatform())&&typeof foregroundExecutor==='function'&&agent.includes('calendar.named-read.v1'))capabilities.push('calendar.named-read.v1');
   // One shared external-handoff policy for every brand: never clock.alarms.v1 (P-17).
   capabilities.push(...clockHandoffCapabilities({offered:agent,handler:android,repeatDays:android&&agent.includes('clock.handoff.v2')&&await clockRepeatDaysSupported()}));
