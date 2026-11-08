@@ -6,7 +6,7 @@ import {runNativeRefinement} from '../specs/quint/refinement/native/index.mjs';
 test('native source transitions refine their finite Quint projections', {timeout: 600000}, async () => {
   const results = await runNativeRefinement();
   const manifest = JSON.parse(readFileSync(new URL('../specs/quint/native/manifest.json', import.meta.url)));
-  const expected = [...manifest.models.map(model => model.module).filter(model => model !== 'ApplicationComposition'),
+  const expected = [...manifest.models.map(model => model.module).filter(model => !['ApplicationComposition', 'ControllerComposition'].includes(model)),
     'NativeCredentialMutation'].sort();
   assert.deepEqual([...new Set(results.receipts.map(result => result.model))].sort(), expected);
   for (const result of results.receipts) {
@@ -14,5 +14,7 @@ test('native source transitions refine their finite Quint projections', {timeout
     assert.equal(result.driverInputsBound, true, `${result.model} driver inputs`);
     assert.equal(result.passed, true, result.model);
   }
-  assert.ok(results.obligations.some(item => item.model === 'ApplicationComposition'));
+  for (const model of ['ApplicationComposition', 'ControllerComposition']) {
+    assert.ok(results.obligations.some(item => item.model === model), model);
+  }
 });
