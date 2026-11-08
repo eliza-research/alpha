@@ -2187,8 +2187,10 @@
       "step": "step",
       "invariant": "safety",
       "tests": [
-        "conflictingAttachmentReceivesForeignReceiptAsBuiltTest",
-        "mmsCanReturnSmsWireReceiptAsBuiltTest",
+        "conflictingAttachmentCannotClaimAnotherReceiptTest",
+        "mmsCannotClaimSmsWireReceiptTest",
+        "retiredMmsRetainsExactBindingTest",
+        "retainedIdRejectsDifferentBodyRecipientsAndSimTest",
         "stagedSmsRejectsMmsReceiptTest",
         "exactMmsReviewRetriesOnceTest",
         "invalidAttachmentDoesNotOpenReviewTest",
@@ -2202,7 +2204,9 @@
         "DurableHandoffBinding",
         "PduHeldForAcceptedMms",
         "MmsNeverClaimsDelivery",
-        "OutboxOnlyForMms"
+        "OutboxOnlyForMms",
+        "TombstoneRetiresRecord",
+        "ApprovedReceiptMatchesReview"
       ],
       "sources": [
         "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaTelephony.java",
@@ -2223,15 +2227,15 @@
       ],
       "stateMapping": {
         "reviewA/reviewB/groupRecipients": "Two exact native review calls, captured SIM class and reviewed recipient count",
-        "reply/replyKind/replyBinding": "Wire status, typed SMS/MMS result and exact retained binding class",
-        "memory/disk/boot/process": "Actual shared live/durable journal and process or boot reconstruction",
+        "reply/replyKind/replyBinding/positiveBinding": "Wire status, typed SMS/MMS result and exact retained and approved binding classes",
+        "memory/disk/tombstoneBinding/boot/process": "Actual shared live/durable journal, capacity tombstone and process or boot reconstruction",
         "smsAttempts/mmsAttempts/mmsAccepted/files": "Controlled radio boundary and actual temporary PDU retention",
         "mmsBox/deletedMms/events": "Outgoing MMS provider state, partial-row rollback and newest bridge callback publication",
         "role/carrier/size/sim/provider/locked": "Controlled device admission and failure classes"
       },
       "abstractions": [
         "One ID shared across SMS and MMS, two bridge instances and two exact MMS attachment variants. The SMS competitor is a one-part message.",
-        "The as-built MMS positive exception handler can resolve a conflicting MMS or an SMS wire receipt. Both scenarios preserve single dispatch.",
+        "Successful capacity pruning is observed for a settled MMS. Tombstone compaction and pruning write faults are outside this retained-receipt boundary.",
         "PDU encoding, staged file and journal execute real code with synthetic Android radio, provider and preview ports. Installed URI grants, provider semantics, platform scheduling, and carrier behavior remain separate."
       ],
       "bounds": {

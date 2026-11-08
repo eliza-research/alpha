@@ -20,17 +20,19 @@ const paths=[...extracted,...compiled].map(name=>shared+name+'.java');
 const launcherManifest='android/app/src/launcher/AndroidManifest.xml';
 const harness='MmsDispatchTraces.java';
 const scenarios=[
-  'mms-attachment-conflict','sms-first-mms-receives-sms','mms-first-sms-rejected','exact-review','group-carrier-confirm',
+  'mms-attachment-conflict','sms-first-mms-receives-sms','mms-first-sms-rejected','exact-review',
+  'preflight-revalidates-reviewed-tuple','pruned-exact-review','pruned-conflicting-review','group-carrier-confirm',
   'preview-invalid-size-and-cancel','carrier-changed-after-review','sim-changed-after-review','begin-refusal-cleans-pdu',
   'part-refusal-cleans-outbox','radio-refusal-before-handoff','uncertain-radio-handoff','interrupted-durable-dispatch',
   'role-loss-before-callback','volatile-callback-evidence','committed-callback-refusal','boot-without-receipt',
 ];
 
-async function campaign(scenarios, extraSources, check) {
+async function campaign(scenarios, extraSources, check, {pinnedProbe=false} = {}) {
   const temporary=mkdtempSync(join(tmpdir(),'quint-mms-dispatch-'));
   try {
     const staged=prepareNativeFixture(root,temporary);
-    const read=name=>readFileSync(join(staged.root,shared+name+'.java'),'utf8');
+    const sourceRoot=pinnedProbe?join(root,'vendor/eliza'):staged.root;
+    const read=name=>readFileSync(join(sourceRoot,shared+name+'.java'),'utf8');
     const files=Object.entries(mmsPlatform(...extracted.map(read))).map(([path,contents])=>{
       const target=join(temporary,'driver',path);
       mkdirSync(dirname(target),{recursive:true});writeFileSync(target,contents);return target;
@@ -50,22 +52,21 @@ async function campaign(scenarios, extraSources, check) {
       assert.equal(driverHashes[join(root,'vendor/eliza',path)],pinned.get(path).sha256);
       assert.equal(driverHashes[join(staged.root,path)],staged.files[path]);
     }
-    const tail=source=>source.split(' // ---- Reviewed native MMS')[1];
-    assert.ok(tail(read('TelephonyPlugin')));
-    assert.equal(tail(read('TelephonyPlugin')),tail(pinned.get(shared+'TelephonyPlugin.java').bytes.toString('utf8')));
+    const patchTarget=shared+'TelephonyPlugin.java';
+    assert.notEqual(staged.files[patchTarget],pinned.get(patchTarget).sha256);
     const host=JSON.parse(readFileSync(join(root,'android/consumer-host.json'),'utf8'));
     assert.deepEqual(host.profile.modules.find(module=>module.name==='eliza-messages'),{
       name:'eliza-messages',source:{root:'patchedNative',path:'plugins/plugin-native-messages/android'},relocateBuild:true,
     });
     assert.match(readFileSync(join(root,launcherManifest),'utf8'),/<receiver\s+android:name="\.AlphaSmsSendReceiver"\s+android:exported="false"/);
-    const complete=compiled.map(name=>join(staged.root,shared+name+'.java'));
+    const complete=compiled.map(name=>join(sourceRoot,shared+name+'.java'));
     const traces=javaTraceCampaign(harness,[...product,...complete,...files],scenarios.map(name=>[name]),'ai.eliza.plugins.messages.MmsDispatchTraces');
     return await check({model,sources,driverHashes,generatedSources,traces});
   } finally {rmSync(temporary,{recursive:true,force:true});}
 }
 
-export function mmsSourceProbe(selected=scenarios) {
-  return campaign(selected,[],({traces})=>traces);
+export function mmsSourceProbe(selected, options) {
+  return campaign(selected,[],({traces})=>traces,options);
 }
 
 export function checkNativeMmsDispatch(extraSources=[]) {
@@ -75,8 +76,6 @@ export function checkNativeMmsDispatch(extraSources=[]) {
       'One installed ID shared by two reviews. Synthetic Android telephony, provider, preview, and credential storage ports. Temporary PDU custody uses real file operations.',
     ]});
     return {receipt,obligations:[
-      {model,obligation:'Bind positive MMS recovery to the exact reviewed tuple',
-        reason:'The as-built native catch returns an operation record by ID, including a conflicting attachment or a same-ID SMS receipt.'},
       {model,obligation:'Installed MMS effect and callback authority',
         reason:'Installed provider/role checks, URI grants, Android delivery and carrier response remain platform obligations.'},
     ]};

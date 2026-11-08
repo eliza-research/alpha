@@ -5,7 +5,7 @@ module NativeMmsDispatch {
   type Review = { binding: int, sim: bool }
   type State = {
     groupRecipients: bool, reviewA: Review, reviewB: Review,
-    reply: str, replyKind: str, replyBinding: int, memory: Record, disk: Record,
+    reply: str, replyKind: str, replyBinding: int, positiveBinding: int, memory: Record, disk: Record, tombstoneBinding: int,
     smsAttempts: int, mmsAttempts: int, mmsAccepted: int,
     files: int, mmsBox: int, deletedMms: int, events: int,
     role: bool, carrier: bool, size: bool, sim: bool, provider: bool, locked: bool, process: int, boot: int
@@ -16,8 +16,8 @@ module NativeMmsDispatch {
   val noRecord = {binding:0,status:"none",dispatching:false,boot:0,row:false}
 
   action initWith(groupRecipients: bool): bool = s' = {
-    groupRecipients:groupRecipients,reviewA:noReview,reviewB:noReview,reply:"none",replyKind:"none",replyBinding:0,
-    memory:noRecord,disk:noRecord,smsAttempts:0,mmsAttempts:0,mmsAccepted:0,files:0,mmsBox:0,deletedMms:0,events:0,
+    groupRecipients:groupRecipients,reviewA:noReview,reviewB:noReview,reply:"none",replyKind:"none",replyBinding:0,positiveBinding:0,
+    memory:noRecord,disk:noRecord,tombstoneBinding:0,smsAttempts:0,mmsAttempts:0,mmsAccepted:0,files:0,mmsBox:0,deletedMms:0,events:0,
     role:true,carrier:true,size:true,sim:true,provider:true,locked:false,process:1,boot:1
   }
   action init = {
@@ -27,17 +27,21 @@ module NativeMmsDispatch {
 
   pure def isMms(binding: int): bool = binding.in(Set(1,2))
   pure def wireKind(binding: int): str = if (isMms(binding)) "mms-send" else "sms-send"
-  pure def reject(state: State, status: str): State = { ...state,reply:status,replyKind:"none",replyBinding:0 }
+  pure def reject(state: State, status: str): State = { ...state,reply:status,replyKind:"none",replyBinding:0,positiveBinding:0 }
   pure def receipt(state: State): State = {
-    ...state,reply:state.memory.status,replyKind:wireKind(state.memory.binding),replyBinding:state.memory.binding
+    ...state,reply:state.memory.status,replyKind:wireKind(state.memory.binding),replyBinding:state.memory.binding,positiveBinding:0
   }
   pure def reviewOf(state: State, actor: int): Review = if (actor==1) state.reviewA else state.reviewB
   pure def reviewed(state: State, actor: int, review: Review): State =
     if (actor==1) { ...state,reviewA:review } else { ...state,reviewB:review }
   pure def blocked(state: State, binding: int): bool =
     state.locked or (isMms(binding) and not(state.role and state.carrier))
+  pure def retained(state: State): bool = state.memory.binding!=0 or state.tombstoneBinding!=0
+  pure def existing(state: State, binding: int): State =
+    if (state.tombstoneBinding!=0) reject(state,if (state.tombstoneBinding==binding) "expired" else "invalid")
+    else if (state.memory.binding==binding) receipt(state) else reject(state,"invalid")
   pure def decide(state: State, binding: int, outcome: str): State =
-    if (state.memory.binding!=0) reject(state,"unavailable")
+    if (retained(state)) reject(state,"unavailable")
     else {
       val record={ ...noRecord,binding:binding,status:outcome,boot:state.boot }
       receipt({ ...state,memory:record,disk:record })
@@ -47,11 +51,19 @@ module NativeMmsDispatch {
     actors.contains(actor), binding.in(1.to(3)), input=="valid" or (input=="bad-bytes" and isMms(binding)),
     s' = if (s.locked) reject(s,"unavailable")
       else if (input=="bad-bytes") reject(s,"invalid")
-      else if (s.memory.binding!=0) (if (s.memory.binding==binding) receipt(s) else reject(s,"invalid"))
+      else if (retained(s)) existing(s,binding)
       else if (reviewOf(s,actor).binding!=0) reject(s,"busy")
       else if (blocked(s,binding)) decide(s,binding,"denied")
       else if (isMms(binding) and not(s.size)) reject(s,"too-large")
       else reject(reviewed(s,actor,{binding:binding,sim:s.sim}),"pending")
+  }
+  action preflightConflict(actor: int, changedField: str): bool = all {
+    actors.contains(actor), changedField.in(Set("body","recipients","sim")), s.memory.binding!=0, not(s.locked),
+    s'=reject(s,"invalid")
+  }
+  action prune = all {
+    isMms(s.memory.binding), s.memory==s.disk, s.memory.status.in(Set("sent","failed")), s.files==0,
+    s'={ ...s,memory:noRecord,disk:noRecord,tombstoneBinding:s.memory.binding }
   }
   action cancel(actor: int, exact: bool): bool = all {
     actors.contains(actor), not(s.locked), reviewOf(s,actor).binding!=0,
@@ -66,11 +78,10 @@ module NativeMmsDispatch {
     val mms=isMms(binding)
     all {
       binding!=0,
-      mode=="complete" or (mms and s.memory.binding==0 and not(blocked(s,binding)) and review.sim==s.sim and (mode!="end-before" or s.provider)),
+      mode=="complete" or (mms and not(retained(s)) and not(blocked(s,binding)) and review.sim==s.sim and (mode!="end-before" or s.provider)),
       val state=reviewed(s,actor,noReview)
-      // The positive dispatch exception reads by ID for MMS; the staged SMS branch checks binding.
-      s' = if (blocked(s,binding)) decide(state,binding,"denied")
-        else if (s.memory.binding!=0) (if (mms or s.memory.binding==binding) receipt(state) else reject(state,"invalid"))
+      val outcome=if (blocked(s,binding)) decide(state,binding,"denied")
+        else if (retained(s)) existing(state,binding)
         else if (review.sim!=s.sim or mode=="begin-before") decide(state,binding,"denied")
         else {
           val row=if (mms) s.provider else s.role
@@ -83,6 +94,7 @@ module NativeMmsDispatch {
             files:if (mms and submitted) 1 else 0,mmsBox:if (mms and row) 4 else 0,
             deletedMms:if (mms and not(row)) 1 else 0 })
         }
+      s'={ ...outcome,positiveBinding:binding }
     }
   }
 
@@ -131,18 +143,27 @@ module NativeMmsDispatch {
 
   val OneKindOwnsDispatch = s.smsAttempts<=2 and s.mmsAccepted<=s.mmsAttempts and s.mmsAttempts<=1
     and (s.smsAttempts==0 or s.mmsAttempts==0)
-  val DurableHandoffBinding = (s.mmsAttempts==0 or isMms(s.disk.binding)) and (s.smsAttempts==0 or s.disk.binding==3)
+  val DurableHandoffBinding = (s.mmsAttempts==0 or isMms(s.disk.binding) or isMms(s.tombstoneBinding))
+    and (s.smsAttempts==0 or s.disk.binding==3)
   val PduHeldForAcceptedMms = s.files==0 or (s.files==1 and s.mmsAccepted==1 and isMms(s.disk.binding))
   val MmsNeverClaimsDelivery = (not(isMms(s.memory.binding)) or s.memory.status!="delivered")
     and (not(isMms(s.disk.binding)) or s.disk.status!="delivered") and (s.replyKind!="mms-send" or s.reply!="delivered")
-  val OutboxOnlyForMms = s.mmsBox==0 or (isMms(s.disk.binding) and s.disk.row)
-  val safety = OneKindOwnsDispatch and DurableHandoffBinding and PduHeldForAcceptedMms and MmsNeverClaimsDelivery and OutboxOnlyForMms
+  val OutboxOnlyForMms = s.mmsBox==0 or isMms(s.tombstoneBinding) or (isMms(s.disk.binding) and s.disk.row)
+  val TombstoneRetiresRecord = s.tombstoneBinding==0 or (s.memory.binding==0 and s.disk.binding==0)
+  val ApprovedReceiptMatchesReview = s.positiveBinding==0 or s.replyBinding==0
+    or (s.replyBinding==s.positiveBinding and s.replyKind==wireKind(s.positiveBinding))
+  val safety = OneKindOwnsDispatch and DurableHandoffBinding and PduHeldForAcceptedMms and MmsNeverClaimsDelivery
+    and OutboxOnlyForMms and TombstoneRetiresRecord and ApprovedReceiptMatchesReview
 
   action step = any {
     nondet actor=actors.oneOf()
     nondet binding=1.to(3).oneOf()
     nondet input=Set("valid","bad-bytes").oneOf()
     request(actor,binding,input),
+    nondet actor=actors.oneOf()
+    nondet changedField=Set("body","recipients","sim").oneOf()
+    preflightConflict(actor,changedField),
+    prune,
     nondet actor=actors.oneOf()
     nondet exact=Bool.oneOf()
     cancel(actor,exact),
@@ -164,15 +185,25 @@ module NativeMmsDispatch {
   action reviewedA = initWith(false).then(request(1,1,"valid"))
   action handedA = reviewedA.then(approve(1,"complete"))
 
-  run conflictingAttachmentReceivesForeignReceiptAsBuiltTest = reviewedA.then(request(2,2,"valid"))
+  run conflictingAttachmentCannotClaimAnotherReceiptTest = reviewedA.then(request(2,2,"valid"))
     .then(approve(1,"complete")).then(approve(2,"complete"))
-    .expect(s.replyBinding==1 and s.replyKind=="mms-send" and s.mmsAttempts==1 and s.files==1)
+    .expect(s.reply=="invalid" and s.replyBinding==0 and s.mmsAttempts==1 and s.files==1)
     .then(request(2,2,"valid")).expect(s.reply=="invalid")
 
-  run mmsCanReturnSmsWireReceiptAsBuiltTest = initWith(false).then(request(1,3,"valid")).then(request(2,1,"valid"))
+  run mmsCannotClaimSmsWireReceiptTest = initWith(false).then(request(1,3,"valid")).then(request(2,1,"valid"))
     .then(approve(1,"complete")).then(approve(2,"complete"))
-    .expect(s.replyKind=="sms-send" and s.replyBinding==3 and s.smsAttempts==1 and s.mmsAttempts==0 and s.files==0)
+    .expect(s.reply=="invalid" and s.replyBinding==0 and s.smsAttempts==1 and s.mmsAttempts==0 and s.files==0)
     .then(readback(2,true)).expect(s.reply=="not-found")
+
+  run retiredMmsRetainsExactBindingTest = reviewedA.then(request(2,1,"valid")).then(approve(1,"complete"))
+    .then(callback("complete",true)).then(prune).then(approve(2,"complete"))
+    .expect(s.reply=="expired" and s.tombstoneBinding==1 and s.files==0 and s.mmsAttempts==1)
+    .then(restart(false)).then(request(2,2,"valid")).expect(s.reply=="invalid")
+
+  run retainedIdRejectsDifferentBodyRecipientsAndSimTest = handedA
+    .then(preflightConflict(2,"body")).expect(s.reply=="invalid")
+    .then(preflightConflict(2,"recipients")).expect(s.reply=="invalid")
+    .then(preflightConflict(2,"sim")).expect(s.reply=="invalid" and s.mmsAttempts==1 and s.memory.binding==1)
 
   run stagedSmsRejectsMmsReceiptTest = reviewedA.then(request(2,3,"valid")).then(approve(1,"complete"))
     .then(approve(2,"complete")).expect(s.reply=="invalid" and s.mmsAttempts==1 and s.smsAttempts==0)

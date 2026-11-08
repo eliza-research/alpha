@@ -52,7 +52,7 @@ public final class MmsDispatchTraces {
   final Map<String,Integer> bindings=new HashMap<>();
   final String[] to;
   String reply="none",replyKind="none";
-  int replyBinding;
+  int replyBinding, positiveBinding;
   int process=1;
 
   Fixture(String name,boolean groupRecipients)throws Exception{
@@ -142,7 +142,7 @@ public final class MmsDispatchTraces {
   }
 
   void classify(PluginCall call){
-   replyBinding=0;replyKind="none";
+   replyBinding=0;replyKind="none";positiveBinding=0;
    if(!call.answered){reply="pending";return;}
    if(call.rejection!=null){reply=call.rejection;return;}
    if(!call.result.has("status")){reply="ok";return;}
@@ -154,7 +154,7 @@ public final class MmsDispatchTraces {
    replyBinding=bindings.get(call.result.getString("bindingHash"));
   }
 
-  void request(int actor,int binding,String input)throws Exception{
+  JSObject message(int binding,String input)throws Exception{
    JSArray recipients=new JSArray();for(String recipient:to)recipients.put(recipient);
    JSObject data=new JSObject();
    data.put("operationId",OP).put("recipients",recipients).put("subscriptionId",SUB).put("body",BODY);
@@ -165,8 +165,12 @@ public final class MmsDispatchTraces {
      .put("sha256",exact.sha256).put("data",Base64.getEncoder().encodeToString(input.equals("bad-bytes")?IMAGES[3-binding]:bytes));
     data.put("attachments",new JSArray().put(attachment));
    }
+   return data;
+  }
+
+  void request(int actor,int binding,String input)throws Exception{
    int count=plugins[actor].activity.dialogs.size();
-   PluginCall call=new PluginCall(data);
+   PluginCall call=new PluginCall(message(binding,input));
    if(group(binding))plugins[actor].sendMms(call);else plugins[actor].sendSms(call);
    drain();
    if(plugins[actor].activity.dialogs.size()>count){
@@ -190,7 +194,37 @@ public final class MmsDispatchTraces {
    Looper.runMain(()->dialog(actor).clickSend());
    drain();context.radio.mode="complete";
    check(faults.isEmpty(),"Injected storage refusal reached intended boundary");
-   classify(reviewCalls[actor]);point("approve",actor,mode);
+   classify(reviewCalls[actor]);positiveBinding=reviews[actor];point("approve",actor,mode);
+  }
+
+  void preflightConflict(int actor,String field)throws Exception{
+   JSObject data=message(1,"valid");
+   switch(field){
+    case "body" -> data.put("body","A different synthetic body");
+    case "recipients" -> data.put("recipients",new JSArray().put("+15555550102"));
+    case "sim" -> data.put("subscriptionId",SUB+1);
+    default -> throw new AssertionError(field);
+   }
+   PluginCall call=new PluginCall(data);
+   int dialogs=plugins[actor].activity.dialogs.size();
+   plugins[actor].sendMms(call);drain();classify(call);
+   check(reply.equals("invalid")&&replyBinding==0&&plugins[actor].activity.dialogs.size()==dialogs,
+    "MMS preflight checks the exact reviewed "+field);
+   point("preflightConflict",actor,field);
+  }
+
+  int tombstoneBinding(){
+   String prefix="t1|"+OP+"|";
+   return disk().lines().filter(line->line.startsWith(prefix)).findFirst()
+    .map(line->Objects.requireNonNull(bindings.get(line.substring(prefix.length())))).orElse(0);
+  }
+
+  void prune()throws Exception{
+   SmsSendJournal journal=SmsTelephony.journal(context,config);
+   for(int i=0;i<SmsSendJournal.MAX_RECORDS;i++)
+    journal.decide("synthetic-filler-"+i,to,BODY,SUB,"cancelled",NOW,context.boot);
+   check(readMemory()==null&&readDisk()==null&&tombstoneBinding()==1,"Capacity retires the exact durable MMS binding");
+   point("prune");
   }
 
   void cancel(int actor,boolean exact)throws Exception{
@@ -241,7 +275,7 @@ public final class MmsDispatchTraces {
    }
    ((Map<?,?>)sharedField("JOURNALS").get(null)).clear();sharedField("listener").set(null,null);
    context.dynamicReceivers.clear();if(reboot)context.boot++;
-   load();process++;reply="none";replyKind="none";replyBinding=0;
+   load();process++;reply="none";replyKind="none";replyBinding=0;positiveBinding=0;
    point("restart",reboot);
   }
 
@@ -255,7 +289,8 @@ public final class MmsDispatchTraces {
    int mmsBox=context.provider.mms.isEmpty()?0:(int)context.provider.mms.values().iterator().next().get(Telephony.Mms.MESSAGE_BOX);
    int events=plugins[1].notices.size()+plugins[2].notices.size();
    return Trace.fields("groupRecipients",to.length==2,"reviewA",review(review1,1),"reviewB",review(review2,2),"reply",reply,
-    "replyKind",replyKind,"replyBinding",replyBinding,"memory",record(readMemory()),"disk",record(readDisk()),
+    "replyKind",replyKind,"replyBinding",replyBinding,"positiveBinding",positiveBinding,
+    "memory",record(readMemory()),"disk",record(readDisk()),"tombstoneBinding",tombstoneBinding(),
     "smsAttempts",context.radio.attempts,"mmsAttempts",context.radio.mmsAttempts,"mmsAccepted",context.radio.multimedia.size(),
     "files",files(),"mmsBox",mmsBox,"deletedMms",context.provider.deletedMms,"events",events,
     "role",context.role,"carrier",context.radio.carrierEnabled,"size",context.radio.carrierLimit>1,
@@ -281,14 +316,16 @@ public final class MmsDispatchTraces {
    switch(mode){
     case "mms-attachment-conflict":
      f.request(1,1,"valid");f.request(2,2,"valid");f.approve(1,"complete");f.approve(2,"complete");
-     check(f.reply.equals("submitted")&&f.replyKind.equals("mms-send")&&f.replyBinding==1&&
-      f.context.radio.mmsAttempts==1&&f.files()==1,"As built, changed attachment receives other binding's receipt without a second handoff");
+     check(f.reply.equals("invalid")&&f.replyKind.equals("none")&&f.replyBinding==0&&
+      f.context.radio.mmsAttempts==1&&f.files()==1&&f.binding(f.readDisk())==1,
+      "Conflicting MMS approval must reject: "+f.reply+"/"+f.replyKind+"/"+f.replyBinding);
      f.request(2,2,"valid");
      break;
     case "sms-first-mms-receives-sms":
      f.request(1,3,"valid");f.request(2,1,"valid");f.approve(1,"complete");f.approve(2,"complete");
-     check(f.reply.equals("submitted")&&f.replyKind.equals("sms-send")&&f.replyBinding==3&&
-      f.context.radio.attempts==1&&f.context.radio.mmsAttempts==0&&f.files()==0,"As built, MMS positive recovery returns an SMS wire receipt");
+     check(f.reply.equals("invalid")&&f.replyKind.equals("none")&&f.replyBinding==0&&
+      f.context.radio.attempts==1&&f.context.radio.mmsAttempts==0&&f.files()==0&&f.binding(f.readDisk())==3,
+      "Cross-kind MMS approval must reject: "+f.reply+"/"+f.replyKind+"/"+f.replyBinding);
      f.request(2,1,"valid");f.readback(2,true);f.readback(1,false);
      break;
     case "mms-first-sms-rejected":
@@ -299,6 +336,21 @@ public final class MmsDispatchTraces {
      break;
     case "exact-review":
      f.request(1,1,"valid");f.request(2,1,"valid");f.approve(1,"complete");f.approve(2,"complete");f.request(2,1,"valid");
+     break;
+    case "preflight-revalidates-reviewed-tuple":
+     f.request(1,1,"valid");f.approve(1,"complete");
+     f.preflightConflict(2,"body");f.preflightConflict(2,"recipients");f.preflightConflict(2,"sim");f.request(2,2,"valid");
+     check(f.context.radio.mmsAttempts==1&&f.files()==1&&f.binding(f.readDisk())==1,"Preflight preserves the original accepted MMS");
+     break;
+    case "pruned-exact-review":
+    case "pruned-conflicting-review":
+     int lateBinding=mode.equals("pruned-exact-review")?1:2;
+     String refusal=lateBinding==1?"expired":"invalid";
+     f.request(1,1,"valid");f.request(2,lateBinding,"valid");f.approve(1,"complete");f.callback("complete",true);
+     f.prune();f.approve(2,"complete");
+     check(f.reply.equals(refusal)&&f.replyBinding==0&&f.context.radio.mmsAttempts==1&&f.files()==0,
+      "A pruned late MMS approval reports the exact tombstone refusal and clears its PDU");
+     f.restart(false);f.request(2,lateBinding,"valid");f.readback(1,true);
      break;
     case "group-carrier-confirm":
      f.request(1,1,"valid");f.approve(1,"complete");f.callback("bad-uri",true);f.callback("foreign-kind",true);

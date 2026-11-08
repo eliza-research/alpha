@@ -638,9 +638,14 @@ rollback after partial storage, and uncertain radio or durable callback
 outcomes. The Android role, bitmap decoder, provider and carrier are controlled
 ports in this campaign.
 
-The as-built MMS positive recovery returns a row by operation ID after
-dispatch admission rejects a reused ID. Two reviews with different attachment
-bytes can return the first binding. If SMS owns the ID, the second MMS
-review can return a typed SMS receipt. Fresh admission and typed MMS readback
-reject the conflicting ID, and the staged SMS positive recovery rejects
-the reverse collision. Each replay observes only the original handoff.
+The as-built replay in commit `96addfb521` records the MMS positive recovery
+returning a row by operation ID after dispatch rejects a reused ID. That
+could return a receipt for another attachment or an SMS wire receipt. Each
+schedule still makes only the original radio handoff.
+
+The authenticated shared patch requires the exact MMS binding and record
+kind for recovery. It returns the prior receipt for the exact reviewed
+tuple. The source replay rejects changed body, recipients, SIM or attachment
+bytes, including an ID retained by SMS. It also checks that a pruned exact
+review reports `expired` and a conflicting review reports `invalid`, with
+the newly staged PDU cleaned in both cases.
