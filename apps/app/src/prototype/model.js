@@ -1834,7 +1834,7 @@ registerView("browser", {
     /* tabs */
     var tabCards = st.tabs.map(function (x) {
       var p = brPage(x.hist[x.pos]); var on = x.id === st.cur;
-      return { title: p.title, host: p.host || "New tab", css: on ? "box-shadow:inset 0 0 0 2px var(--acc)" : "", prev: "background:" + imgBg({ news: "news", enclave: "enclave", book: "nopa" }[p.kind] || "-", p.tile), aria: "Switch to " + p.title, closeAria: "Close " + p.title,
+      return { id: x.id, title: p.title, host: p.host || "New tab", css: on ? "box-shadow:inset 0 0 0 2px var(--acc)" : "", prev: "background:" + imgBg({ news: "news", enclave: "enclave", book: "nopa" }[p.kind] || "-", p.tile), aria: "Switch to " + p.title, closeAria: "Close " + p.title,
         pick: function () { set({ cur: x.id, tabsOpen: false }); },
         close: function () {
           var s = api.get("browser"); var rest = s.tabs.filter(function (y) { return y.id !== x.id; });
@@ -1846,7 +1846,7 @@ registerView("browser", {
     /* library */
     var libRows = (st.lib === "history" ? st.visits : st.marks).map(function (u) {
       var p = brPage(u);
-      return { title: p.title, host: p.host + p.path, ini: (p.host || "?").charAt(0).toUpperCase(), css: "background:" + (p.tile && p.tile.indexOf("var") < 0 ? p.tile + ";color:#fff" : "var(--s3)"), go: link(u),
+      return { id: u, title: p.title, host: p.host + p.path, ini: (p.host || "?").charAt(0).toUpperCase(), css: "background:" + (p.tile && p.tile.indexOf("var") < 0 ? p.tile + ";color:#fff" : "var(--s3)"), go: link(u),
         canRemove: st.lib !== "history", removeAria: "Remove bookmark " + p.title, remove: function () { var s = api.get("browser"); set({ marks: s.marks.filter(function (x) { return x !== u; }) }); } };
     });
 

@@ -8,7 +8,7 @@ The Chromium regression executes the real renderer and Settings adapter. A sourc
 
 ## Remaining mutable-list review
 
-A structural scan of the shared template found 144 `sc-for` loops enclosing interactive controls, including nested enclosing loops. Two now declare a semantic key. This count includes static option lists. It does not establish that every remaining loop can reorder or that every loop has a demonstrated defect.
+A structural scan of the shared template found 144 `sc-for` loops enclosing interactive controls, including nested enclosing loops. The initial Settings fix added semantic keys to two of those loops. This count includes static option lists. It does not establish that every remaining loop can reorder or that every loop has a demonstrated defect.
 
 The following source-backed mutable families still use positional rendering. They need stable source identities and focused-node schedules before they can receive the same guarantee.
 
@@ -18,7 +18,7 @@ The following source-backed mutable families still use positional rendering. The
 | Calendar | search, day-column events, agenda, schedule and month rows | Provider event and occurrence IDs survive refresh. Nested day and event loops need identities at both levels. |
 | Notes | `notes.colL`, `notes.colR`, trash and pending audio-deletion rows | Note IDs survive save, sort, deletion, undo and restoration. Column rebalancing can move the selected item between parents. |
 | Files | Recent, results, folder items and destination rows | `files-tree-adapter` already exposes Recent IDs. Folder and selection identities must survive listing replacement and revocation. |
-| Browser | `browser.tabCards`, saved-library and suggestion rows | Tab source state has a stable `tab.id`, but the rendered `tabCards` projection omits it. Closing an earlier tab can retarget the focused tab control. |
+| Browser | `browser.tabCards`, saved-library and suggestion rows | Tab cards now retain source `tab.id`, and saved-library rows retain their canonical URL identity. Search and suggestion rows remain in the broader review. |
 | Photos | groups, group items, albums and album items | Library asset and album identities must survive provider refresh, deletion and changed permissions. Nested group keys alone do not preserve items moved between groups. |
 | Maps | saved rows, search results and pins | Provider place identity must survive asynchronous result replacement and sorting. |
 | Workflows | cards, management cards, approvals and builder steps | Workflow, run, approval and step identities must survive asynchronous refresh, insertion and deletion. |
@@ -37,3 +37,13 @@ The renderer and all listed bindings are in the shared template. The most immedi
 - All six `ShellNavigation` scenarios passed. Seed `20261107` completed 1,000 simulations of 80 steps without a safety violation.
 - Apalache 0.62.4 completed bounded symbolic safety checking through depth 4 without a violation. This is a bounded result, not an unbounded refinement proof.
 - No Android build or device accessibility acceptance was run for this focused change.
+
+## Browser tab and library follow-up
+
+Tab cards now carry their source tab ID through both live and fixture projections. Saved-library rows use their canonical URL, and the recovery row has a separate fixed identity. The template keys both collections explicitly.
+
+The tab regression creates three real renderer tabs, focuses the middle one, runs the preceding tab's actual close handler without moving focus, and activates the retained control. Its source trace checks the focused identity and resulting active tab against `BrowserSession`. A separate browser test removes an earlier bookmark and verifies that the retained focused link still opens its original URL.
+
+The model represents three normal tabs and one private tab. It also models closing a selected or preceding tab and clearing focus when its row is removed. Remaining search and suggestion collections are outside these two tests.
+
+Browser validation passed both focused Chromium cases and seven existing navigation cases. The source-helper receipt contains two traces and eight checkpoints, including retained order and saved active-tab selection. The rendered tab-focus receipt contains one trace and nine checkpoints. Seven model scenarios, 1,000 seeded 80-step simulations, and bounded symbolic safety checking through depth 4 passed. Blank/invalid URL filtering remains outside the persistence-eligible snapshot abstraction.

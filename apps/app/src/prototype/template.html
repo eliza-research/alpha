@@ -1608,7 +1608,7 @@
       </div>
       <div class="scr" style="flex-grow: 1; overflow-y: auto; padding: 6px 16px 140px; touch-action: pan-y">
         <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px">
-          <sc-for list="{{browser.tabCards}}" as="c">
+          <sc-for list="{{browser.tabCards}}" as="c" key="{{c.id}}">
             <div style="position: relative; border-radius: 22px; background: var(--s2); overflow: hidden; padding: 6px; {{c.css}}">
               <button onClick="{{c.pick}}" aria-label="{{c.aria}}" style="display: block; width: 100%; text-align: left">
                 <div style="height: 150px; border-radius: 16px; border: 1px solid var(--line); box-sizing: border-box; {{c.prev}}"></div>
@@ -1635,7 +1635,7 @@
         </div>
       </div>
       <div class="scr" style="flex-grow: 1; overflow-y: auto; padding: 8px 0 140px; touch-action: pan-y">
-        <sc-for list="{{browser.libRows}}" as="lr">
+        <sc-for list="{{browser.libRows}}" as="lr" key="{{lr.id}}">
           <div style="display: flex; align-items: center; padding: 0 10px 0 0">
             <button class="tap" onClick="{{lr.go}}" aria-label="{{lr.title}}" style="flex-grow: 1; min-width: 0; display: flex; align-items: center; gap: 14px; padding: 8px 12px 8px 20px; text-align: left">
               <span class="serif" style="width: 40px; height: 40px; border-radius: 20px; display: flex; align-items: center; justify-content: center; font-size: 18px; flex-shrink: 0; white-space: nowrap; {{lr.css}}">{{lr.ini}}</span>

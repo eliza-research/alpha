@@ -112,19 +112,19 @@ export async function browserSession() {
   const traces = [];
   for (const privateTab of [false, true]) {
     const state = {tabs: [{id: '1'}], visits: [], cur: '1'};
-    const t = trace(`snapshot-${privateTab ? 'private' : 'normal'}`, {'s.normal': qset(state.tabs.map(tab => Number(tab.id)))});
+    const t = trace(`snapshot-${privateTab ? 'private' : 'normal'}`, {'s.normal': qset(state.tabs.map(tab => Number(tab.id))), 's.order': state.tabs.map(tab => Number(tab.id)), 's.active': Number(state.cur)});
     state.tabs.push({id: privateTab ? '3' : '2', ...(privateTab ? {priv: true} : {})}); state.cur = privateTab ? '3' : '2';
     checkpoint(t, 'open tab', call(privateTab ? 'privateTab' : 'normalTab'),
-      {'s.normal': qset(state.tabs.filter(tab => !tab.priv).map(tab => Number(tab.id))), 's.privateTabs': qset(state.tabs.filter(tab => tab.priv).map(tab => Number(tab.id)))});
+      {'s.normal': qset(state.tabs.filter(tab => !tab.priv).map(tab => Number(tab.id))), 's.privateTabs': qset(state.tabs.filter(tab => tab.priv).map(tab => Number(tab.id))), 's.order': state.tabs.map(tab => Number(tab.id)), 's.active': Number(state.cur)});
     const saved = browsingSnapshot(state, id => ({url: `https://example.test/${id}`, title: id}));
-    checkpoint(t, 'persist only normal tabs', call('snapshot'), {'s.saved': qset(saved.tabs.map(tab => Number(tab.id)))});
+    checkpoint(t, 'persist only normal tabs', call('snapshot'), {'s.saved': qset(saved.tabs.map(tab => Number(tab.id))), 's.savedOrder': saved.tabs.map(tab => Number(tab.id)), 's.savedActive': saved.cur ? Number(saved.cur) : 0});
     const restored = restoreBrowsing(saved, {tabs: [{id: 'fresh'}], visits: []}, true);
-    checkpoint(t, 'reconstruct from snapshot', call('restart'), {'s.normal': qset(restored.tabs.map(tab => Number(tab.id))), 's.privateTabs': qset(restored.tabs.filter(tab => tab.priv).map(tab => Number(tab.id)))});
+    checkpoint(t, 'reconstruct from snapshot', call('restart'), {'s.normal': qset(restored.tabs.map(tab => Number(tab.id))), 's.privateTabs': qset(restored.tabs.filter(tab => tab.priv).map(tab => Number(tab.id))), 's.order': restored.tabs.map(tab => Number(tab.id)), 's.active': Number(restored.cur)});
     traces.push(t);
   }
   return checkTraces({model: 'BrowserSession', sources: [source], traces, scope: 'bounded-component',
     assumptions: ['Persistence projection executes real snapshot and restore helpers for normal/private tabs.',
-      'WebView navigation callbacks, late-restore admission and native encrypted persistence remain outside this helper adapter.']});
+      'Supplied page metadata has valid persistence-eligible URLs. Blank-tab filtering, WebView navigation callbacks, late-restore admission and native encrypted persistence remain outside this helper adapter.']});
 }
 
 export async function permanentVoiceDeletion() {
