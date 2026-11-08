@@ -7,13 +7,12 @@ import {build} from 'esbuild';
 import {captureInputs} from '../../check-traces.mjs';
 
 /** Compile the real shared classes and bind exact input bytes before evaluating them. */
-export async function loadCoreRuntime(extraSources = []) {
+async function loadCoreSource(contents, extraSources) {
   const compiled = new Map();
   const root = process.cwd();
   const result = await build({
     stdin: {
-      contents: `export {RuntimeRetirement} from './vendor/eliza/packages/core/src/runtime/retirement.ts';
-        export {RuntimeServiceLifecycle} from './vendor/eliza/packages/core/src/runtime/service-lifecycle.ts';`,
+      contents,
       resolveDir: root,
       sourcefile: 'core-runtime-entry.ts',
     },
@@ -35,4 +34,19 @@ export async function loadCoreRuntime(extraSources = []) {
   for (const [path, digest] of compiled) assert.equal(driverHashes[resolve(path)], digest, 'Core source changed during compilation');
   const module = await import('data:text/javascript;base64,' + Buffer.from(result.outputFiles[0].text).toString('base64'));
   return {...module, sources, driverHashes};
+}
+
+export function loadCoreRuntime(extraSources = []) {
+  return loadCoreSource(`
+    export {RuntimeRetirement} from './vendor/eliza/packages/core/src/runtime/retirement.ts';
+    export {RuntimeServiceLifecycle} from './vendor/eliza/packages/core/src/runtime/service-lifecycle.ts';
+  `, extraSources);
+}
+
+export function loadAgentRuntime(extraSources = []) {
+  return loadCoreSource(`
+    export {AgentRuntime} from './vendor/eliza/packages/core/src/runtime.ts';
+    export {trackPostDeliveryTask, pendingPostDeliveryTaskCount}
+      from './vendor/eliza/packages/core/src/services/post-delivery-task-tracker.ts';
+  `, extraSources);
 }

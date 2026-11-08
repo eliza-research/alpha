@@ -1185,6 +1185,38 @@
         "Two implementations and three callers with fixed registration during each schedule.",
         "Settlements include the microtask sequence through class-map cleanup. Eager timers, dynamic registration and reentrant observers remain separate obligations."
       ]
+    },
+    {
+      "module": "CoreRuntimeShutdown",
+      "path": "specs/quint/services/CoreRuntimeShutdown.qnt",
+      "init": "init",
+      "step": "step",
+      "invariant": "safety",
+      "tests": [
+        "ordinaryWaitsForPostTest",
+        "strictWaitsAfterFastTest",
+        "stopHookFailureTest",
+        "preparationFailureTest",
+        "roomTimeoutRetryTest",
+        "stickyStrictFailureTest"
+      ],
+      "sources": [
+        "vendor/eliza/packages/core/src/runtime.ts",
+        "vendor/eliza/packages/core/src/runtime/retirement.ts",
+        "vendor/eliza/packages/core/src/runtime/service-lifecycle.ts",
+        "vendor/eliza/packages/core/src/runtime/room-handler-queue.ts",
+        "vendor/eliza/packages/core/src/runtime/turn-controller.ts",
+        "vendor/eliza/packages/core/src/services/post-delivery-task-tracker.ts"
+      ],
+      "stateMapping": {
+        "stop ownership": "Actual stopPromise, strictStopPromise, stopController and stopped flag",
+        "retirement": "Original service stop promise, generation and recorded failures",
+        "queues and handlers": "Actual room queue, turn controller, post-delivery tracker and host registries"
+      },
+      "abstractions": [
+        "One running service during initialization, one room owner, one diagnostic task and three ordinary callers.",
+        "Full host shutdown, provider cancellation and dynamic plugin registration remain open."
+      ]
     }
   ]
 }

@@ -281,3 +281,21 @@ sets, stop-operation WeakMap, returned promises and retirement counters. Hook
 settlement through class-map cleanup is one declared asynchronous transition.
 Eager retry timers, missing static methods, dynamic registration, reentrant
 observers and the complete AgentRuntime shutdown coordinator remain open.
+
+### Shared runtime shutdown
+
+`CoreRuntimeShutdown` runs the actual shared `AgentRuntime`, service lifecycle,
+retirement tracker, room queue, turn controller and post-delivery tracker.
+Thirteen source schedules pass 64 checkpoints and observe all 19 fields. Six
+model scenarios, 1,000 samples of 80 steps and symbolic safety through four
+transitions pass. The source scenarios cover concurrent and reentrant callers,
+preparation and teardown failures, room cancellation, diagnostic draining,
+fast-stop timeout, ordinary retry and retained strict-stop identity.
+
+The fixture registers one service through the runtime API and starts it through
+the actual initialization helper. It exercises shutdown during initialization.
+The runtime retains its service array after clearing the per-class and promise
+registries. A completed strict-stop promise remains settled if a later direct
+post-delivery caller creates more work. The model preserves both observations.
+Completed initialization, dynamic plugins, provider cancellation and the product
+host's complete shutdown remain additional composition obligations.
