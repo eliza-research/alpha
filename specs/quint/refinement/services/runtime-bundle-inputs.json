@@ -5,15 +5,118 @@
   "producer": {
     "script": "scripts/build-mobile-agent.mjs",
     "observer": "specs/quint/refinement/services/runtime-bundle-audit.mjs",
+    "inputHashes": {
+      "specs/quint/refinement/services/runtime-bundle-audit.mjs": "ec158ce9212e0e32f304ef8b4adcf894870215c7e47983430d062b73fbec3d62",
+      "specs/quint/refinement/services/runtime-bundle-graph.mjs": "1434a50f98b533fb6abd1178a1de0995214435b5dbf466ed118190deeebeaa77",
+      "upstream.lock.json": "62682bc4e49ea7c2f187a3b688f65289b4092c0438fd1cc210b5892ab306ee9d",
+      "patches/eliza/mobile-uuid-build.json": "bf31b0a89b756b5deb7281bd3f56baccba25ccea0337fba04ae2ddf9d31a011b",
+      "scripts/build-mobile-agent.mjs": "a806e8eada974f400afe18e00e5cf275d3519ab00462615076e3d4124639a288",
+      "scripts/mobile-uuid-adapter.mjs": "f996483dd07f780dcabadda99bc169f1f370ac9191b7667dac8ddbad905adf10",
+      "scripts/mobile-bundle-smoke.mjs": "2e4f7ef05ae6f09285c2a6141876c14b5f30539c926a46864bf8862ae8d3b7bd",
+      "scripts/local-agent-source.mjs": "321abaf05f9e8cbf6e4ba642ec7ebf45a6c693331a637210610a1f7723662daa",
+      "scripts/core-state-patch.mjs": "e8871fc3bcf947739b817ffa9a3e6f138abf1a24603932b604aacdfb0866da32",
+      "scripts/core-state-preload.mjs": "c5368c9075aa8c7660bee01338185fbe673c9b8dd6889dd1ab01d195efa17c10",
+      "scripts/combined-agent-source.mjs": "a2f4d279f3f98ff078f3aedd6b9dc2dc5c3396ecdc7fb7f09b0da7e0c085062e",
+      "patches/eliza/core-state-manifest.json": "c49942d8b8f83232e3d5d8220f42c41ca21028306520600e7f959e4d12944650",
+      "patches/eliza/task-service-stop.patch": "d3b80ffb0dad32e3a17b50dbbb0d4c0dfb3f60b0f2a35f577be4612aa2f9db1e",
+      "patches/eliza/notes-state-runtime.patch": "5f62c6742a0c8f85f47aec6a629a1454d7cc74c5060d75a72b5c3d77a43dda18",
+      "patches/eliza/turn-controller-isolation.patch": "d587459e0123599d17f886fcc855eb90ce7ec20b286a42ce47a02a1ab1bd110b"
+    },
+    "coreState": {
+      "version": 1,
+      "baseCommit": "99b49439ce9d0cb5607e9831b9f7f58d89525029",
+      "manifestSha256": "c49942d8b8f83232e3d5d8220f42c41ca21028306520600e7f959e4d12944650",
+      "inputHashes": {
+        "scripts/core-state-patch.mjs": "e8871fc3bcf947739b817ffa9a3e6f138abf1a24603932b604aacdfb0866da32",
+        "scripts/core-state-preload.mjs": "c5368c9075aa8c7660bee01338185fbe673c9b8dd6889dd1ab01d195efa17c10",
+        "scripts/combined-agent-source.mjs": "a2f4d279f3f98ff078f3aedd6b9dc2dc5c3396ecdc7fb7f09b0da7e0c085062e",
+        "patches/eliza/core-state-manifest.json": "c49942d8b8f83232e3d5d8220f42c41ca21028306520600e7f959e4d12944650",
+        "patches/eliza/task-service-stop.patch": "d3b80ffb0dad32e3a17b50dbbb0d4c0dfb3f60b0f2a35f577be4612aa2f9db1e",
+        "patches/eliza/notes-state-runtime.patch": "5f62c6742a0c8f85f47aec6a629a1454d7cc74c5060d75a72b5c3d77a43dda18",
+        "patches/eliza/turn-controller-isolation.patch": "d587459e0123599d17f886fcc855eb90ce7ec20b286a42ce47a02a1ab1bd110b"
+      },
+      "patches": [
+        {
+          "file": "task-service-stop.patch",
+          "sha256": "d3b80ffb0dad32e3a17b50dbbb0d4c0dfb3f60b0f2a35f577be4612aa2f9db1e"
+        },
+        {
+          "file": "notes-state-runtime.patch",
+          "sha256": "5f62c6742a0c8f85f47aec6a629a1454d7cc74c5060d75a72b5c3d77a43dda18"
+        },
+        {
+          "file": "turn-controller-isolation.patch",
+          "sha256": "d587459e0123599d17f886fcc855eb90ce7ec20b286a42ce47a02a1ab1bd110b"
+        }
+      ],
+      "files": {
+        "packages/core/src/services/task.ts": {
+          "beforeSha256": "c72514809e0f6a3a5c592ed3d0d0015319ca4dbfb8fd9e949fa06c1982c35fc3",
+          "afterSha256": "24b1b783a903cb4c8d284dd3f375f18a3fe720c65f0430bada7cebb236cf1f3f"
+        },
+        "plugins/plugin-notes/src/service.ts": {
+          "beforeSha256": "2f41aa310c64b2747017ebd4b69386ee087337ed752a1b722f86d93fc4bc8e8b",
+          "afterSha256": "e2bd7c43e7d0841788d9efd7056a2b6e01d431687004f18f7f523c4f7cb76346"
+        },
+        "plugins/plugin-notes/src/store.ts": {
+          "beforeSha256": "e0078a48cdd9f91a850121972cec6bb27deaaadd856bb05e047368cb58aa709e",
+          "afterSha256": "e9e33bf24ba4622d7bbdb2964b8e55920f0dbf6c906900e61ccfffc42b84ec5c"
+        },
+        "plugins/plugin-notes/src/types.ts": {
+          "beforeSha256": "366a583d1b4fe3a49161df9654671e60ec79701b3e17730464465e978f703a45",
+          "afterSha256": "2acf6a0332c0880844bdb948a87c49eb6b8a29ce5566ea695dbc5a411daae23c"
+        },
+        "plugins/plugin-notes/src/validation.ts": {
+          "beforeSha256": "3b2d9d3c8e61390f3b283270a55f9e09ca527d6d4767e0b9ff778a6f3cbdc384",
+          "afterSha256": "af7030186a7e4483c2674af9c30514e8a5c5587303c7a734b4943db44375f85a"
+        },
+        "packages/core/src/runtime/turn-controller.ts": {
+          "beforeSha256": "c04907565ac8c7f483b2e4c6db29d6bf007f85f7a15fdae447bd2c1f82fed46b",
+          "afterSha256": "a69049036ad8848609ac9113090dd16dd45517a5ab03d62d506e1c17156f8111"
+        }
+      },
+      "transforms": [
+        {
+          "path": "packages/core/src/runtime/turn-controller.ts",
+          "sourceSha256": "c04907565ac8c7f483b2e4c6db29d6bf007f85f7a15fdae447bd2c1f82fed46b",
+          "outputSha256": "a69049036ad8848609ac9113090dd16dd45517a5ab03d62d506e1c17156f8111"
+        },
+        {
+          "path": "packages/core/src/services/task.ts",
+          "sourceSha256": "c72514809e0f6a3a5c592ed3d0d0015319ca4dbfb8fd9e949fa06c1982c35fc3",
+          "outputSha256": "24b1b783a903cb4c8d284dd3f375f18a3fe720c65f0430bada7cebb236cf1f3f"
+        },
+        {
+          "path": "plugins/plugin-notes/src/service.ts",
+          "sourceSha256": "2f41aa310c64b2747017ebd4b69386ee087337ed752a1b722f86d93fc4bc8e8b",
+          "outputSha256": "e2bd7c43e7d0841788d9efd7056a2b6e01d431687004f18f7f523c4f7cb76346"
+        },
+        {
+          "path": "plugins/plugin-notes/src/store.ts",
+          "sourceSha256": "e0078a48cdd9f91a850121972cec6bb27deaaadd856bb05e047368cb58aa709e",
+          "outputSha256": "e9e33bf24ba4622d7bbdb2964b8e55920f0dbf6c906900e61ccfffc42b84ec5c"
+        },
+        {
+          "path": "plugins/plugin-notes/src/types.ts",
+          "sourceSha256": "366a583d1b4fe3a49161df9654671e60ec79701b3e17730464465e978f703a45",
+          "outputSha256": "2acf6a0332c0880844bdb948a87c49eb6b8a29ce5566ea695dbc5a411daae23c"
+        },
+        {
+          "path": "plugins/plugin-notes/src/validation.ts",
+          "sourceSha256": "3b2d9d3c8e61390f3b283270a55f9e09ca527d6d4767e0b9ff778a6f3cbdc384",
+          "outputSha256": "af7030186a7e4483c2674af9c30514e8a5c5587303c7a734b4943db44375f85a"
+        }
+      ]
+    },
     "bun": {
       "version": "1.4.2",
       "revision": "744846f844374847c902b5e7fd59b4342a51ef99"
     },
-    "bundleSha256": "00138d72843d18fe7575faf08480980c54a8479433573c0f0f9a064792064e92",
+    "bundleSha256": "0991cdc444d8d0eababb4653452e1462613886a0b2d8dbed144cf28d6ed939da",
     "sourceTreeVerifiedBeforeAndAfter": true,
     "inputHashesUnchanged": true,
-    "rawMetafileSha256": "f06db244daaa694b3cfa88609f9bc56cbb2da9e9e7d2244458980f51e432776f",
-    "producerObservationSha256": "54bfe7d3950ac2bf41bf479cb0f1eb7d3177b68a4f626a079422a51e4f113f65"
+    "rawMetafileSha256": "bfe25e2f4d3415d88e89ac6dbf3fb696f59f8c0ca3aac96d77e9487560739f92",
+    "producerObservationSha256": "2c20cdca125fe37f595e1fb47753fb8a7b73ed61201e2848008afba24a7f93a6"
   },
   "counts": {
     "parsed": 9988,
@@ -33,6 +136,7 @@
     "unmapped": 0
   },
   "limitations": [
+    "sha256 binds raw pinned source. effectiveSourceSha256, when present, binds authenticated post-patch source before compiler transformation, not emitted JavaScript.",
     "Parsed inputs with zero emitted contribution are marked separately.",
     "Generated-source maps and declared compiler output paths identify producer inputs and do not establish semantic equivalence or refinement.",
     "Compiled module inclusion does not establish runtime activation, model coverage or implementation refinement.",
@@ -28522,7 +28626,9 @@
     },
     "packages/core/src/runtime/turn-controller.ts": {
       "sha256": "c04907565ac8c7f483b2e4c6db29d6bf007f85f7a15fdae447bd2c1f82fed46b",
-      "bytesInOutput": 2635,
+      "effectiveSourceSha256": "a69049036ad8848609ac9113090dd16dd45517a5ab03d62d506e1c17156f8111",
+      "transformation": "authenticated-core-state",
+      "bytesInOutput": 2632,
       "tracked": true,
       "gitObject": "bdab54949a48d4a8c41d4aa80d137a333ec1ff1d",
       "imports": [
@@ -29637,7 +29743,9 @@
     },
     "packages/core/src/services/task.ts": {
       "sha256": "c72514809e0f6a3a5c592ed3d0d0015319ca4dbfb8fd9e949fa06c1982c35fc3",
-      "bytesInOutput": 19562,
+      "effectiveSourceSha256": "24b1b783a903cb4c8d284dd3f375f18a3fe720c65f0430bada7cebb236cf1f3f",
+      "transformation": "authenticated-core-state",
+      "bytesInOutput": 20067,
       "tracked": true,
       "gitObject": "42de38cefd54bb91c8e2a52ee84d9014889f0324",
       "imports": [
@@ -96404,7 +96512,7 @@
     },
     "plugins/plugin-local-inference/src/services/voice/wake-word.ts": {
       "sha256": "d29607d0602c1712a59e3060da29d39554987e8c35a30003c5ddd035c2a36a24",
-      "bytesInOutput": 6743,
+      "bytesInOutput": 6694,
       "tracked": true,
       "gitObject": "1a0c32165c499612ac599f2b1778b52bcff83ab8",
       "imports": [
@@ -99478,7 +99586,9 @@
     },
     "plugins/plugin-notes/src/service.ts": {
       "sha256": "2f41aa310c64b2747017ebd4b69386ee087337ed752a1b722f86d93fc4bc8e8b",
-      "bytesInOutput": 14802,
+      "effectiveSourceSha256": "e2bd7c43e7d0841788d9efd7056a2b6e01d431687004f18f7f523c4f7cb76346",
+      "transformation": "authenticated-core-state",
+      "bytesInOutput": 15449,
       "tracked": true,
       "gitObject": "4c99826f4422a8f8ea5380f266bc30419a751281",
       "imports": [
@@ -99526,7 +99636,9 @@
     },
     "plugins/plugin-notes/src/store.ts": {
       "sha256": "e0078a48cdd9f91a850121972cec6bb27deaaadd856bb05e047368cb58aa709e",
-      "bytesInOutput": 10437,
+      "effectiveSourceSha256": "e9e33bf24ba4622d7bbdb2964b8e55920f0dbf6c906900e61ccfffc42b84ec5c",
+      "transformation": "authenticated-core-state",
+      "bytesInOutput": 10868,
       "tracked": true,
       "gitObject": "d3f3431932122f3c58be9a4e9b1aa04711136e3e",
       "imports": [
@@ -99576,6 +99688,8 @@
     },
     "plugins/plugin-notes/src/types.ts": {
       "sha256": "366a583d1b4fe3a49161df9654671e60ec79701b3e17730464465e978f703a45",
+      "effectiveSourceSha256": "2acf6a0332c0880844bdb948a87c49eb6b8a29ce5566ea695dbc5a411daae23c",
+      "transformation": "authenticated-core-state",
       "bytesInOutput": 1220,
       "tracked": true,
       "gitObject": "b18af5e28d4bd03e084df339dfb9afb2dcbf211e",
@@ -99589,7 +99703,9 @@
     },
     "plugins/plugin-notes/src/validation.ts": {
       "sha256": "3b2d9d3c8e61390f3b283270a55f9e09ca527d6d4767e0b9ff778a6f3cbdc384",
-      "bytesInOutput": 13590,
+      "effectiveSourceSha256": "af7030186a7e4483c2674af9c30514e8a5c5587303c7a734b4943db44375f85a",
+      "transformation": "authenticated-core-state",
+      "bytesInOutput": 14045,
       "tracked": true,
       "gitObject": "b428a314c934e8f8d5e399db2dfd1da7aa390801",
       "imports": [
@@ -119933,7 +120049,7 @@
     },
     "plugins/plugin-vision/src/vision-worker-manager.ts": {
       "sha256": "227585cb5446d878cc936fb22ccae10c222f76637e389a30b57c5a2d1863b971",
-      "bytesInOutput": 8871,
+      "bytesInOutput": 8822,
       "tracked": true,
       "gitObject": "963484a67214e88aff052f9cd81f4d0d6fa806d1",
       "imports": [

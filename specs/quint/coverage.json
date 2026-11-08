@@ -17,7 +17,13 @@
     "scripts/dev-local.mjs",
     "scripts/start-local-agent.mjs",
     "scripts/start-local-voice-agent.mjs",
-    "scripts/start-local-remote.mjs"
+    "scripts/start-local-remote.mjs",
+    "scripts/core-state-patch.mjs",
+    "scripts/core-state-preload.mjs",
+    "scripts/start-reviewed-workflow-agent.mjs",
+    "scripts/start-cloud-qa.mjs",
+    "scripts/start-combined-agent.mjs",
+    "scripts/native-google-host-artifact.mjs"
   ],
   "excludedDirectories": [
     ".cxx",
@@ -56435,38 +56441,14 @@
     },
     {
       "path": "backend/loader.ts",
-      "sha256": "6e19d0445e05790f0ed3276b445e06e5990816a61748ac3b1c92651b00eec012",
       "models": [
         "ResidentRuntime"
       ],
       "scope": "application",
       "treatment": "domain-contract-or-support",
-      "stateAnchors": [
-        {
-          "line": 9,
-          "text": "const { directory: root, commit: head } = verifyPinnedUpstream("
-        },
-        {
-          "line": 12,
-          "text": "const { plugin: sourceResolver, resolvedSources } ="
-        },
-        {
-          "line": 17,
-          "text": "const built = await Bun.build({"
-        },
-        {
-          "line": 24,
-          "text": "for (const log of built.logs) console.error(log);"
-        },
-        {
-          "line": 38,
-          "text": "const state ="
-        },
-        {
-          "line": 41,
-          "text": "const saltFile = join(state, \"secret-salt\");"
-        }
-      ]
+      "reviewStatus": "state-audit-required",
+      "sha256": "183bf250d4f6b6db5a4e672bb60993ebaebef62dfa0eee21bc0d5e1dc76f2150",
+      "stateAnchors": []
     },
     {
       "path": "backend/managed-google-agent-broker.ts",
@@ -58184,183 +58166,37 @@
     },
     {
       "path": "scripts/cloud-resident-host.mjs",
-      "sha256": "76e861b66488af74cd6454ff303b3baab928c492e09653637f0a7d09ae437e13",
       "models": [
         "DevelopmentHost",
         "ResidentRuntime"
       ],
       "scope": "development-runtime",
       "treatment": "state-and-transition-projection",
-      "stateAnchors": [
-        {
-          "line": 12,
-          "text": "export const CLOUD_MODEL='cerebras/qwen-3.8-27b';"
-        },
-        {
-          "line": 17,
-          "text": "const root=path.resolve(import.meta.dirname,'..');"
-        },
-        {
-          "line": 18,
-          "text": "const commit=JSON.parse(fs.readFileSync(path.join(root,'upstream.lock.json'),'utf8')).commit;"
-        },
-        {
-          "line": 22,
-          "text": "const worker=workerArtifactDirectory(root,inherited);"
-        },
-        {
-          "line": 25,
-          "text": "const nativeHostEnvironment={ELIZA_SMTHRS_RUNTIME_DIR:worker,ELIZA_NATIVE_GOOGLE_HOST_MODULE:path.join(worker,'google-host.mjs')};"
-        },
-        {
-          "line": 28,
-          "text": "const st=fs.lstatSync(profile);if(!st.isDirectory()||st.isSymbolicLink()||(st.mode&0o077)||st.uid!==process.getuid?.())throw Error('Private resident directory required');"
-        },
-        {
-          "line": 29,
-          "text": "const tokenPath=path.join(profile,'owner-token'),configPath=path.join(profile,'eliza.json');"
-        },
-        {
-          "line": 30,
-          "text": "const privateProfile=await preparePrivateRuntimeProfile({tokenPath,configPath,createToken:()=>randomBytes(32).toString('hex'),initialConfig:{cloud:{enabled:true},serviceRouting:{llmText:{backend:'eliz"
-        },
-        {
-          "line": 31,
-          "text": "const route=privateProfile.config.serviceRouting?.llmText;"
-        },
-        {
-          "line": 36,
-          "text": "const vaultPath=path.join(profile,'vault-passphrase');"
-        },
-        {
-          "line": 37,
-          "text": "try{const fd=fs.openSync(vaultPath,'wx',0o600);try{fs.writeFileSync(fd,randomBytes(32).toString('hex'));}finally{fs.closeSync(fd);}}catch(error){if(error.code!=='EEXIST')throw error;}"
-        },
-        {
-          "line": 38,
-          "text": "const vaultFd=fs.openSync(vaultPath,fs.constants.O_RDONLY|fs.constants.O_NOFOLLOW|fs.constants.O_NONBLOCK);let vaultPassphrase;"
-        },
-        {
-          "line": 39,
-          "text": "try{const stat=fs.fstatSync(vaultFd);if(!stat.isFile()||stat.nlink!==1||(stat.mode&0o077)||stat.uid!==process.getuid?.()||stat.size!==64)throw Error('Private vault passphrase required');vaultPassphras"
-        },
-        {
-          "line": 40,
-          "text": "const providerKeys=createProviderKeySession();"
-        },
-        {
-          "line": 41,
-          "text": "let direct=null,cloudCredential=null,runningDirectRevision=null;"
-        },
-        {
-          "line": 42,
-          "text": "let googleHost=null,running=null,bound=null,queue=Promise.resolve(),expiry,closed=false,retiring=false;"
-        },
-        {
-          "line": 43,
-          "text": "const serial=run=>{const next=queue.then(run,run);queue=next.catch(()=>{});return next;};"
-        },
-        {
-          "line": 45,
-          "text": "clearTimeout(expiry);retiring=true;const old=running,oldGoogle=googleHost,failures=[];"
-        },
-        {
-          "line": 46,
-          "text": "// Revoke the read broker even when child retirement fails. Never let an old"
-        },
-        {
-          "line": 58,
-          "text": "const settings={...(environment==='staging'?{ELIZA_DEV_SOURCE:'1',ELIZA_DEV_CLOUD_ENV_AUTHORITY:'staging-explicit'}:{}),ELIZA_PGLITE_AUTO_RESET:'0',ELIZA_VAULT_PASSPHRASE:vaultPassphrase,ELIZAOS_CLOUD"
-        },
-        {
-          "line": 60,
-          "text": "if(direct){Object.assign(settings,localEmbeddingEnvironment(inherited),{ELIZA_DISABLE_LOCAL_EMBEDDINGS:'false',ELIZA_LOCAL_EMBEDDING_ENABLED:'1',...(direct.apiKey?{CEREBRAS_API_KEY:direct.apiKey}:{}),"
-        },
-        {
-          "line": 62,
-          "text": "const launchConfigPath=path.join(profile,'provider-launch.json');"
-        },
-        {
-          "line": 65,
-          "text": "let log;"
-        },
-        {
-          "line": 68,
-          "text": "const env=runtimeEnvironment({inherited:preparedSourceEnv(inherited),allow:['PATH','TMPDIR','LANG','SHELL','USER','LOGNAME','HOME'],settings,owned:{...nativeHostEnvironment,ELIZA_MANAGED_CALENDAR_READ"
-        },
-        {
-          "line": 71,
-          "text": "}catch(error){const failedGoogle=googleHost;if(failedGoogle){try{await failedGoogle.close();if(googleHost===failedGoogle)googleHost=null;}catch(cleanup){retiring=true;throw new AggregateError([error,c"
-        },
-        {
-          "line": 73,
-          "text": "const current=running;runningDirectRevision=direct?.revision??null;bound=credential?{credentialId:credential.credentialId,reference:credential.reference,expiresAt:credential.expiresAt}:null;"
-        },
-        {
-          "line": 74,
-          "text": "const finished=()=>serial(async()=>{if(running!==current)return;retiring=true;running=null;bound=null;clearTimeout(expiry);const endedGoogle=googleHost;if(endedGoogle)await endedGoogle.close();if(goog"
-        },
-        {
-          "line": 76,
-          "text": "if(credential?.expiresAt){const expire=()=>{const remaining=credential.expiresAt-Date.now();if(remaining<=0){if(bound?.credentialId!==credential.credentialId||bound?.reference!==credential.reference)r"
-        },
-        {
-          "line": 83,
-          "text": "const current=running,deadline=Date.now()+110000;"
-        },
-        {
-          "line": 85,
-          "text": "try{const response=await request(`http://127.0.0.1:${port}/api/agents`,{headers:{Authorization:'Bearer '+privateProfile.token},redirect:'error',signal:AbortSignal.any([signal,AbortSignal.timeout(2000)"
-        },
-        {
-          "line": 91,
-          "text": "const response=await request('https://api.cerebras.ai/v1/models',{headers:{Authorization:'Bearer '+apiKey,Accept:'application/json'},redirect:'error',signal:AbortSignal.any([signal,AbortSignal.timeout"
-        },
-        {
-          "line": 92,
-          "text": "signal.throwIfAborted();const body=await response.text();signal.throwIfAborted();if(!response.ok||body.length>262144)throw Error('Cerebras did not confirm the key. Nothing was saved.');let data;try{da"
-        },
-        {
-          "line": 97,
-          "text": "const allowed=operation==='edit'?['expectedRevision','textKey','voiceKey']:operation==='select'?['expectedRevision','mode']:['expectedRevision','key'];"
-        },
-        {
-          "line": 108,
-          "text": "const restart=operation==='select'||providerKeys.status().mode==='own';"
-        },
-        {
-          "line": 113,
-          "text": "const editProviderKeys=(input,signal=new AbortController().signal)=>serial(()=>applyProvider('edit',input,signal));"
-        },
-        {
-          "line": 114,
-          "text": "const selectProvider=(input,signal=new AbortController().signal)=>serial(()=>applyProvider('select',input,signal));"
-        },
-        {
-          "line": 115,
-          "text": "const removeProviderKey=(input,signal=new AbortController().signal)=>serial(()=>applyProvider('remove',input,signal));"
-        },
-        {
-          "line": 116,
-          "text": "const invalidateProviderRequests=()=>{if(closed)return;providerKeys.invalidate();direct=providerKeys.launchKeys();};"
-        },
-        {
-          "line": 117,
-          "text": "return {bind:credential=>{if(cloudCredential?.credentialId!==credential?.credentialId||cloudCredential?.reference!==credential?.reference)invalidateProviderRequests();return serial(async()=>{const res"
-        },
-        {
-          "line": 121,
-          "text": "selectOwn:(input,signal=new AbortController().signal)=>{const expectedRevision=providerKeys.status().revision;return serial(async()=>{"
-        },
-        {
-          "line": 123,
-          "text": "const edit={expectedRevision,textKey:input.apiKey,...(Object.hasOwn(input,'cartesiaKey')?{voiceKey:input.cartesiaKey}:{})};"
-        },
-        {
-          "line": 127,
-          "text": "selectCloud:(signal=new AbortController().signal)=>{const expectedRevision=providerKeys.status().revision;return selectProvider({mode:'cloud',expectedRevision},signal);},"
-        }
-      ]
+      "reviewStatus": "state-audit-required",
+      "sha256": "32cef11237df7302c43cc5790f5382c855116b68a3b600cbbf77d83c132246a5",
+      "stateAnchors": []
+    },
+    {
+      "path": "scripts/core-state-patch.mjs",
+      "models": [
+        "TaskServiceLifecycle"
+      ],
+      "scope": "development-runtime",
+      "treatment": "domain-contract-or-support",
+      "reviewStatus": "state-audit-required",
+      "sha256": "e8871fc3bcf947739b817ffa9a3e6f138abf1a24603932b604aacdfb0866da32",
+      "stateAnchors": []
+    },
+    {
+      "path": "scripts/core-state-preload.mjs",
+      "models": [
+        "Application"
+      ],
+      "scope": "development-runtime",
+      "treatment": "domain-contract-or-support",
+      "reviewStatus": "state-audit-required",
+      "sha256": "c5368c9075aa8c7660bee01338185fbe673c9b8dd6889dd1ab01d195efa17c10",
+      "stateAnchors": []
     },
     {
       "path": "scripts/dev-agent.mjs",
@@ -58719,6 +58555,39 @@
       ]
     },
     {
+      "path": "scripts/native-google-host-artifact.mjs",
+      "models": [
+        "Application"
+      ],
+      "scope": "development-runtime",
+      "treatment": "domain-contract-or-support",
+      "reviewStatus": "state-audit-required",
+      "sha256": "65793e1ceacbc8b49c2733072d34827a20fc3082fe4fc1b8a4e351007c680b42",
+      "stateAnchors": []
+    },
+    {
+      "path": "scripts/start-cloud-qa.mjs",
+      "models": [
+        "Application"
+      ],
+      "scope": "development-runtime",
+      "treatment": "domain-contract-or-support",
+      "reviewStatus": "state-audit-required",
+      "sha256": "fae29d4bd3b1de0e056e356b68b273a588b1ef6756c9ac11a95c1e9e922840ea",
+      "stateAnchors": []
+    },
+    {
+      "path": "scripts/start-combined-agent.mjs",
+      "models": [
+        "Application"
+      ],
+      "scope": "development-runtime",
+      "treatment": "domain-contract-or-support",
+      "reviewStatus": "state-audit-required",
+      "sha256": "ec24f6c9e8a50f99e2a1702a86b9ad13b759850a412265b412f4258690f5375e",
+      "stateAnchors": []
+    },
+    {
       "path": "scripts/start-local-agent.mjs",
       "sha256": "5d2648ea8dc55c128a150903845f5996334d4daf29b7c57afb38f1f50f40ab90",
       "models": [
@@ -58731,203 +58600,38 @@
     },
     {
       "path": "scripts/start-local-remote.mjs",
-      "sha256": "16c59a1b03b9c05ceb27801e4d160e23eaadd1958804c06592f1a8f640a5fbea",
       "models": [
         "Application",
         "DevelopmentHost"
       ],
       "scope": "development-runtime",
       "treatment": "state-and-transition-projection",
-      "stateAnchors": [
-        {
-          "line": 17,
-          "text": "const source = process.env.ALPHA_ELIZA_SOURCE ? path.resolve(process.env.ALPHA_ELIZA_SOURCE) : sourceDirectory(path.resolve(import.meta.dirname,'..'));"
-        },
-        {
-          "line": 19,
-          "text": "const swapFlags = ['ELIZA_SECRET_SWAP_ENABLED', 'ELIZA_PII_SWAP_ENABLED'].map(key => process.env[key]);"
-        },
-        {
-          "line": 20,
-          "text": "for (const value of swapFlags) if (value !== undefined && !['true', 'false'].includes(value)) throw new Error('ELIZA_SECRET_SWAP_ENABLED and ELIZA_PII_SWAP_ENABLED must be true or false');"
-        },
-        {
-          "line": 22,
-          "text": "const redaction = swapFlags[0] === 'true' ? 'all' : 'off';"
-        },
-        {
-          "line": 24,
-          "text": "const lock=JSON.parse(fs.readFileSync(new URL('../upstream.lock.json',import.meta.url),'utf8'));"
-        },
-        {
-          "line": 27,
-          "text": "const profile = path.resolve(process.env.ALPHA_REMOTE_PROFILE || path.join(os.homedir(), '.local/share/alphaphone/local-remote'));"
-        },
-        {
-          "line": 28,
-          "text": "const port = Number(process.env.ALPHA_REMOTE_PORT || 47839);"
-        },
-        {
-          "line": 30,
-          "text": "const freshProfile=freshAgentProfile(profile);"
-        },
-        {
-          "line": 31,
-          "text": "const keyPath = path.join(os.homedir(), '.config/alphaphone/cerebras-key');"
-        },
-        {
-          "line": 32,
-          "text": "let providerKey = process.env.CEREBRAS_API_KEY;"
-        },
-        {
-          "line": 37,
-          "text": "const tokenPath = path.join(profile, 'owner-token');"
-        },
-        {
-          "line": 39,
-          "text": "const entry = path.join(source,'packages/app/src/runtime/dev-server.ts');"
-        },
-        {
-          "line": 41,
-          "text": "const config = path.join(profile,'eliza.json');"
-        },
-        {
-          "line": 42,
-          "text": "const privateProfile=await preparePrivateRuntimeProfile({tokenPath,configPath:config,"
-        },
-        {
-          "line": 46,
-          "text": "const savedConfig=await prepareAgentIdentityConfig(config,privateProfile.config,{freshProfile});"
-        },
-        {
-          "line": 47,
-          "text": "const modelEnvironment=agentModelEnvironment(savedConfig);"
-        },
-        {
-          "line": 50,
-          "text": "const asrEnvironment = agentAsrEnvironment();"
-        },
-        {
-          "line": 51,
-          "text": "const ttsEnvironment = agentTtsEnvironment();"
-        },
-        {
-          "line": 52,
-          "text": "const cartesiaEnvironment = developmentCartesiaEnvironment();"
-        },
-        {
-          "line": 54,
-          "text": "const lock=JSON.parse(fs.readFileSync(new URL('../upstream.lock.json',import.meta.url),'utf8'));"
-        },
-        {
-          "line": 57,
-          "text": "const env=runtimeEnvironment({"
-        },
-        {
-          "line": 63,
-          "text": "const log=fs.openSync(path.join(profile,'server.log'),'a',0o600);"
-        },
-        {
-          "line": 67,
-          "text": "const running=await startPrivateRuntimeProcess({command:process.env.ALPHA_BUN||'bun',args:['--no-install','--conditions=eliza-source',entry],cwd:profile,env,stdio:['ignore',log,log],"
-        },
-        {
-          "line": 69,
-          "text": "const sourceManifest=path.join(source,'.alpha-runtime-source.json');"
-        },
-        {
-          "line": 70,
-          "text": "const metadata={cartesiaConfigured:cartesiaEnvironment.ELIZA_SELF_HOSTED_VOICE_ENABLED==='1',localTtsConfigured:ttsEnvironment.ELIZA_PARADEE_ENABLED==='1',localAsrConfigured:asrEnvironment.ELIZA_ASR_E"
-        },
-        {
-          "line": 75,
-          "text": "const result=await running.completion;"
-        }
-      ]
+      "reviewStatus": "state-audit-required",
+      "sha256": "833b3542ff0abdf8a40894c20ccbbf98fd8e922c5c2ebcf55fab48de29ba07e6",
+      "stateAnchors": []
     },
     {
       "path": "scripts/start-local-voice-agent.mjs",
-      "sha256": "17a7d676e6ebf2ace369dc30000230be157ddb54c9144d31024fc572ae3d6ed7",
       "models": [
         "DevelopmentHost",
         "VoiceSession"
       ],
       "scope": "development-runtime",
       "treatment": "domain-contract-or-support",
-      "stateAnchors": [
-        {
-          "line": 18,
-          "text": "const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');"
-        },
-        {
-          "line": 19,
-          "text": "const {values:options} = parseArgs({options:{source:{type:'string'}, profile:{type:'string'}, port:{type:'string'}, bun:{type:'string'}}, strict:true});"
-        },
-        {
-          "line": 20,
-          "text": "const source = path.resolve(options.source || sourceDirectory(root));"
-        },
-        {
-          "line": 25,
-          "text": "const profile = path.resolve(options.profile || path.join(os.homedir(), '.local/share/alphaphone/local-voice'));"
-        },
-        {
-          "line": 26,
-          "text": "const port = Number(options.port || 47844);"
-        },
-        {
-          "line": 28,
-          "text": "const freshProfile=freshAgentProfile(profile);"
-        },
-        {
-          "line": 29,
-          "text": "const keyPath = path.join(os.homedir(), '.config/alphaphone/cerebras-key');"
-        },
-        {
-          "line": 33,
-          "text": "const tokenPath = path.join(profile, 'owner-token');"
-        },
-        {
-          "line": 36,
-          "text": "const entry = path.join(source,'packages/app/src/runtime/dev-server.ts');"
-        },
-        {
-          "line": 38,
-          "text": "const config = path.join(profile,'eliza.json');"
-        },
-        {
-          "line": 40,
-          "text": "const savedConfig=await prepareAgentIdentityConfig(config,JSON.parse(fs.readFileSync(config,'utf8')),{freshProfile}), modelEnvironment=agentModelEnvironment(savedConfig);"
-        },
-        {
-          "line": 42,
-          "text": "const log = fs.openSync(path.join(profile,'server.log'), 'a', 0o600);"
-        },
-        {
-          "line": 44,
-          "text": "const baseEnv = Object.fromEntries(['PATH','TMPDIR','LANG','SHELL','USER','LOGNAME','HOME'].filter(key=>process.env[key]).map(key=>[key,process.env[key]]));"
-        },
-        {
-          "line": 45,
-          "text": "const env = {...baseEnv, ...AGENT_CHARACTER_ENVIRONMENT, ELIZA_HEADLESS:'1', ELIZA_REQUIRE_LOCAL_AUTH:'1', ELIZA_API_BIND:'127.0.0.1', ELIZA_ALLOWED_HOSTS:'10.0.2.2', ELIZA_API_PORT:String(port), ELIZ"
-        },
-        {
-          "line": 49,
-          "text": "for (const key of ['ELIZAOS_CLOUD_API_KEY','OPENAI_API_KEY','ANTHROPIC_API_KEY']) delete env[key];"
-        },
-        {
-          "line": 50,
-          "text": "const child = spawn(options.bun || 'bun', ['--conditions=eliza-source', entry], {cwd:profile, env, stdio:['ignore',log,log]});"
-        },
-        {
-          "line": 51,
-          "text": "const metadata = {pid:child.pid, port, profile, source, revision:execFileSync('git',['rev-parse','HEAD'],{cwd:source,encoding:'utf8'}).trim(), startedAt:new Date().toISOString()};"
-        },
-        {
-          "line": 54,
-          "text": "for (const signal of ['SIGINT','SIGTERM']) process.on(signal,()=>child.kill(signal));"
-        }
-      ]
+      "reviewStatus": "state-audit-required",
+      "sha256": "95879c3f9d60ca898e7d56724c00b2a734b68f03d616700d37c4361cfb7aeb8a",
+      "stateAnchors": []
+    },
+    {
+      "path": "scripts/start-reviewed-workflow-agent.mjs",
+      "models": [
+        "Application"
+      ],
+      "scope": "development-runtime",
+      "treatment": "domain-contract-or-support",
+      "reviewStatus": "state-audit-required",
+      "sha256": "52b6ae41e1a758b2b15f4e5dbec31e888c04cb11262c7e40445c6289e515babd",
+      "stateAnchors": []
     },
     {
       "path": "vendor/eliza/packages/agent/scripts/mobile-stubs/argon2.ts",
@@ -139913,7 +139617,8 @@
       "models": [
         "AlwaysOnListener",
         "ListenerLeaseProducer",
-        "ListenerLeaseRecovery"
+        "ListenerLeaseRecovery",
+        "NativeListenerStore"
       ],
       "scope": "shared-module-dependency",
       "treatment": "domain-contract-or-support",
@@ -139939,7 +139644,9 @@
       "models": [
         "AlwaysOnListener",
         "ListenerLeaseProducer",
-        "ListenerLeaseRecovery"
+        "ListenerLeaseRecovery",
+        "NativeIndicatorProvider",
+        "NativeListenerService"
       ],
       "scope": "shared-module-dependency",
       "treatment": "domain-contract-or-support",
@@ -140013,7 +139720,8 @@
       "models": [
         "AlwaysOnListener",
         "ListenerLeaseProducer",
-        "ListenerLeaseRecovery"
+        "ListenerLeaseRecovery",
+        "NativeIndicatorProvider"
       ],
       "scope": "shared-module-dependency",
       "treatment": "domain-contract-or-support",
@@ -140035,7 +139743,8 @@
       "models": [
         "AlwaysOnListener",
         "ListenerLeaseProducer",
-        "ListenerLeaseRecovery"
+        "ListenerLeaseRecovery",
+        "NativeListenerService"
       ],
       "scope": "shared-module-dependency",
       "treatment": "domain-contract-or-support",
@@ -140108,7 +139817,9 @@
       "models": [
         "AlwaysOnListener",
         "ListenerLeaseProducer",
-        "ListenerLeaseRecovery"
+        "ListenerLeaseRecovery",
+        "NativeListenerStore",
+        "NativeListenerService"
       ],
       "scope": "shared-module-dependency",
       "treatment": "domain-contract-or-support",
@@ -140200,7 +139911,9 @@
         "DurableStore",
         "ListenerLeaseProducer",
         "ListenerLeaseRecovery",
-        "ResetRecovery"
+        "ResetRecovery",
+        "NativeListenerStore",
+        "NativeListenerService"
       ],
       "scope": "shared-module-dependency",
       "treatment": "domain-contract-or-support",
@@ -140259,7 +139972,9 @@
       "models": [
         "AlwaysOnListener",
         "ListenerLeaseProducer",
-        "ListenerLeaseRecovery"
+        "ListenerLeaseRecovery",
+        "NativeListenerStore",
+        "NativeListenerService"
       ],
       "scope": "shared-module-dependency",
       "treatment": "domain-contract-or-support",
@@ -140281,7 +139996,8 @@
       "models": [
         "AlwaysOnListener",
         "ListenerLeaseProducer",
-        "ListenerLeaseRecovery"
+        "ListenerLeaseRecovery",
+        "NativeListenerService"
       ],
       "scope": "shared-module-dependency",
       "treatment": "domain-contract-or-support",
@@ -185591,7 +185307,8 @@
         "WorkflowExecution",
         "CoreRuntimeRetirement",
         "CoreRuntimeShutdown",
-        "CoreServiceLifecycle"
+        "CoreServiceLifecycle",
+        "TaskServiceLifecycle"
       ],
       "scope": "shared-module-dependency",
       "treatment": "domain-contract-or-support",
@@ -195343,7 +195060,8 @@
       "path": "vendor/eliza/packages/core/src/runtime/turn-aborted-error.ts",
       "models": [
         "AssistantConversation",
-        "ResidentRuntime"
+        "ResidentRuntime",
+        "CoreTurnControllers"
       ],
       "scope": "shared-module-dependency",
       "treatment": "domain-contract-or-support",
@@ -195358,7 +195076,8 @@
         "WorkflowExecution",
         "CoreRuntimeRetirement",
         "CoreRuntimeShutdown",
-        "CoreServiceLifecycle"
+        "CoreServiceLifecycle",
+        "CoreTurnControllers"
       ],
       "scope": "shared-module-dependency",
       "treatment": "domain-contract-or-support",
@@ -203314,7 +203033,8 @@
         "WorkflowExecution",
         "CoreRuntimeRetirement",
         "CoreRuntimeShutdown",
-        "CoreServiceLifecycle"
+        "CoreServiceLifecycle",
+        "TaskServiceLifecycle"
       ],
       "scope": "shared-module-dependency",
       "treatment": "domain-contract-or-support",
@@ -203482,7 +203202,8 @@
         "WorkflowExecution",
         "CoreRuntimeRetirement",
         "CoreRuntimeShutdown",
-        "CoreServiceLifecycle"
+        "CoreServiceLifecycle",
+        "TaskServiceLifecycle"
       ],
       "scope": "shared-module-dependency",
       "treatment": "domain-contract-or-support",
@@ -460226,7 +459947,8 @@
         "PermanentVoiceDeletion",
         "StreamingPlayback",
         "SharedRecordingAdmission",
-        "NativeLiveCapture"
+        "NativeLiveCapture",
+        "NativePipedCapture"
       ],
       "scope": "shared-module-dependency",
       "treatment": "domain-contract-or-support",
@@ -460638,7 +460360,8 @@
         "ResidentRuntime",
         "SpeechResources",
         "StreamingPlayback",
-        "VoiceSession"
+        "VoiceSession",
+        "NativePipedCapture"
       ],
       "scope": "shared-module-dependency",
       "treatment": "domain-contract-or-support",
@@ -460696,7 +460419,8 @@
         "ResidentRuntime",
         "SpeechResources",
         "StreamingPlayback",
-        "VoiceSession"
+        "VoiceSession",
+        "NativeCaptureFrames"
       ],
       "scope": "shared-module-dependency",
       "treatment": "domain-contract-or-support",
@@ -460736,7 +460460,9 @@
         "ResidentRuntime",
         "SpeechResources",
         "StreamingPlayback",
-        "VoiceSession"
+        "VoiceSession",
+        "NativeAsrPipe",
+        "NativePipedCapture"
       ],
       "scope": "shared-module-dependency",
       "treatment": "domain-contract-or-support",
@@ -460773,7 +460499,8 @@
         "SpeechResources",
         "StreamingPlayback",
         "VadSegmentation",
-        "VoiceSession"
+        "VoiceSession",
+        "NativeCaptureFrames"
       ],
       "scope": "shared-module-dependency",
       "treatment": "domain-contract-or-support",
@@ -460812,7 +460539,9 @@
         "SpeechResources",
         "StreamingPlayback",
         "VadSegmentation",
-        "VoiceSession"
+        "VoiceSession",
+        "NativePipedCapture",
+        "NativeCaptureFrames"
       ],
       "scope": "shared-module-dependency",
       "treatment": "domain-contract-or-support",
@@ -521524,7 +521253,8 @@
     {
       "path": "vendor/eliza/plugins/plugin-notes/src/interact.ts",
       "models": [
-        "NotesLifecycle"
+        "NotesLifecycle",
+        "CanonicalNotesStore"
       ],
       "scope": "shared-module-dependency",
       "treatment": "domain-contract-or-support",
@@ -522212,7 +521942,8 @@
     {
       "path": "vendor/eliza/plugins/plugin-notes/src/service.ts",
       "models": [
-        "NotesLifecycle"
+        "NotesLifecycle",
+        "CanonicalNotesStore"
       ],
       "scope": "shared-module-dependency",
       "treatment": "domain-contract-or-support",
@@ -522553,7 +522284,8 @@
       "path": "vendor/eliza/plugins/plugin-notes/src/store.ts",
       "models": [
         "DurableStore",
-        "NotesLifecycle"
+        "NotesLifecycle",
+        "CanonicalNotesStore"
       ],
       "scope": "shared-module-dependency",
       "treatment": "domain-contract-or-support",
@@ -522737,7 +522469,8 @@
     {
       "path": "vendor/eliza/plugins/plugin-notes/src/types.ts",
       "models": [
-        "NotesLifecycle"
+        "NotesLifecycle",
+        "CanonicalNotesStore"
       ],
       "scope": "shared-module-dependency",
       "treatment": "domain-contract-or-support",
@@ -522769,7 +522502,8 @@
     {
       "path": "vendor/eliza/plugins/plugin-notes/src/validation.ts",
       "models": [
-        "NotesLifecycle"
+        "NotesLifecycle",
+        "CanonicalNotesStore"
       ],
       "scope": "shared-module-dependency",
       "treatment": "domain-contract-or-support",
@@ -602464,7 +602198,8 @@
       "models": [
         "DurableStore",
         "CoreServiceLifecycle",
-        "CoreRuntimeShutdown"
+        "CoreRuntimeShutdown",
+        "TaskServiceLifecycle"
       ],
       "scope": "shared-module-dependency",
       "treatment": "domain-contract-or-support",
@@ -611403,7 +611138,8 @@
     {
       "path": "vendor/eliza/plugins/plugin-sql/src/stores/task-wake.ts",
       "models": [
-        "DurableStore"
+        "DurableStore",
+        "TaskServiceLifecycle"
       ],
       "scope": "shared-module-dependency",
       "treatment": "domain-contract-or-support",
@@ -627399,7 +627135,7 @@
         "SharedRecordingAdmission",
         "NativeLiveCapture"
       ],
-      "sha256": "0f88905cd5616d2c33c1885f00254bc2958bb5fd39301a33d67f75ef886080c7"
+      "sha256": "f7e1621713a3567c293c0540ffe1e534aea04dd803772496b2046c42aeff2b30"
     },
     {
       "path": "android/consumer-host.json",
@@ -627597,7 +627333,9 @@
         "SpeechResources",
         "StreamingPlayback",
         "VoiceSession",
-        "MediaLifecycle"
+        "MediaLifecycle",
+        "SharedRecordingAdmission",
+        "NativeLiveCapture"
       ],
       "sha256": "52ccde026068ea0ced6da8e842e138e0edd83c7ce7e9955c51a7bceb405ae68d"
     },
@@ -627731,7 +627469,7 @@
         "SharedRecordingAdmission",
         "NativeLiveCapture"
       ],
-      "sha256": "e664d0e111e2feb9efb322be3e0122db5b8995cea428139b0b0b2295007c7674"
+      "sha256": "f0ea56c6f9d031b3bdc96a49b56ff49f42fcac5b207ed7bfcea44edd29396070"
     },
     {
       "path": "scripts/upstream-native-source.mjs",
@@ -627812,7 +627550,8 @@
       "models": [
         "NativeLiveCapture",
         "SharedRecordingAdmission",
-        "VoiceSession"
+        "VoiceSession",
+        "NativeCaptureFrames"
       ],
       "sha256": "92f193e7e940c0fefc350e20935d239ec15f8849d437823a22dfc53a001a7ebc"
     },
@@ -627824,7 +627563,7 @@
         "CoreServiceLifecycle",
         "ApplicationComposition"
       ],
-      "sha256": "5b00e6aaa414c2711f6e3f4c766798d9c2e9b28d13ff6a0bcf8deb34561feef5"
+      "sha256": "902ea6830d1cc30ef5aedad76640b5b74ba3232e82f043c315781f2b0f495de3"
     },
     {
       "path": "specs/quint/refinement/services/runtime-bundle-audit.mjs",
@@ -627833,7 +627572,7 @@
         "CoreRuntimeShutdown",
         "CoreServiceLifecycle"
       ],
-      "sha256": "4d5b1365d98c0f9841045508c2f61c3d36e3fa0dd642118fae98d71f2d952d57"
+      "sha256": "ec158ce9212e0e32f304ef8b4adcf894870215c7e47983430d062b73fbec3d62"
     },
     {
       "path": "specs/quint/refinement/services/runtime-bundle-graph.mjs",
@@ -627842,7 +627581,7 @@
         "CoreRuntimeShutdown",
         "CoreServiceLifecycle"
       ],
-      "sha256": "d7a464acb957d5dfe3aa4d021ed3749600a4090231c150c931fe940219b52b13"
+      "sha256": "1434a50f98b533fb6abd1178a1de0995214435b5dbf466ed118190deeebeaa77"
     },
     {
       "path": "scripts/build-mobile-agent.mjs",
@@ -627851,10 +627590,157 @@
         "ResidentRuntime",
         "CoreRuntimeShutdown"
       ],
-      "sha256": "a6825146e54d8521218ccdcd24ea73f7b984809d7da8490b9febea6c61a0f934"
+      "sha256": "a806e8eada974f400afe18e00e5cf275d3519ab00462615076e3d4124639a288"
+    },
+    {
+      "path": "upstream.lock.json",
+      "models": [
+        "TaskServiceLifecycle",
+        "CanonicalNotesStore",
+        "CoreTurnControllers"
+      ],
+      "sha256": "62682bc4e49ea7c2f187a3b688f65289b4092c0438fd1cc210b5892ab306ee9d"
+    },
+    {
+      "path": "scripts/mobile-uuid-adapter.mjs",
+      "models": [
+        "TaskServiceLifecycle",
+        "CanonicalNotesStore",
+        "CoreTurnControllers"
+      ],
+      "sha256": "f996483dd07f780dcabadda99bc169f1f370ac9191b7667dac8ddbad905adf10"
+    },
+    {
+      "path": "scripts/mobile-bundle-smoke.mjs",
+      "models": [
+        "TaskServiceLifecycle",
+        "CanonicalNotesStore",
+        "CoreTurnControllers"
+      ],
+      "sha256": "2e4f7ef05ae6f09285c2a6141876c14b5f30539c926a46864bf8862ae8d3b7bd"
+    },
+    {
+      "path": "scripts/local-agent-source.mjs",
+      "models": [
+        "TaskServiceLifecycle",
+        "CanonicalNotesStore",
+        "CoreTurnControllers"
+      ],
+      "sha256": "321abaf05f9e8cbf6e4ba642ec7ebf45a6c693331a637210610a1f7723662daa"
+    },
+    {
+      "path": "scripts/core-state-patch.mjs",
+      "models": [
+        "TaskServiceLifecycle",
+        "CanonicalNotesStore",
+        "CoreTurnControllers"
+      ],
+      "sha256": "e8871fc3bcf947739b817ffa9a3e6f138abf1a24603932b604aacdfb0866da32"
+    },
+    {
+      "path": "scripts/core-state-preload.mjs",
+      "models": [
+        "TaskServiceLifecycle",
+        "CanonicalNotesStore",
+        "CoreTurnControllers"
+      ],
+      "sha256": "c5368c9075aa8c7660bee01338185fbe673c9b8dd6889dd1ab01d195efa17c10"
+    },
+    {
+      "path": "scripts/combined-agent-source.mjs",
+      "models": [
+        "TaskServiceLifecycle",
+        "CanonicalNotesStore",
+        "CoreTurnControllers"
+      ],
+      "sha256": "a2f4d279f3f98ff078f3aedd6b9dc2dc5c3396ecdc7fb7f09b0da7e0c085062e"
+    },
+    {
+      "path": "patches/eliza/core-state-manifest.json",
+      "models": [
+        "TaskServiceLifecycle",
+        "CanonicalNotesStore",
+        "CoreTurnControllers"
+      ],
+      "sha256": "c49942d8b8f83232e3d5d8220f42c41ca21028306520600e7f959e4d12944650"
+    },
+    {
+      "path": "patches/eliza/task-service-stop.patch",
+      "models": [
+        "TaskServiceLifecycle",
+        "CanonicalNotesStore",
+        "CoreTurnControllers"
+      ],
+      "sha256": "d3b80ffb0dad32e3a17b50dbbb0d4c0dfb3f60b0f2a35f577be4612aa2f9db1e"
+    },
+    {
+      "path": "patches/eliza/notes-state-runtime.patch",
+      "models": [
+        "TaskServiceLifecycle",
+        "CanonicalNotesStore",
+        "CoreTurnControllers"
+      ],
+      "sha256": "5f62c6742a0c8f85f47aec6a629a1454d7cc74c5060d75a72b5c3d77a43dda18"
+    },
+    {
+      "path": "patches/eliza/turn-controller-isolation.patch",
+      "models": [
+        "TaskServiceLifecycle",
+        "CanonicalNotesStore",
+        "CoreTurnControllers"
+      ],
+      "sha256": "d587459e0123599d17f886fcc855eb90ce7ec20b286a42ce47a02a1ab1bd110b"
+    },
+    {
+      "path": "patches/eliza/speech-pipe-settlement.patch",
+      "models": [
+        "NativeAsrPipe"
+      ],
+      "sha256": "482fccdf0cc427722e22ba2c68e16dbbd1856ef7f68cdea73b0d4617777e7bb0"
+    },
+    {
+      "path": "patches/eliza/indicator-provider-generation.patch",
+      "models": [
+        "NativeIndicatorProvider"
+      ],
+      "sha256": "930773aa46cb0cc44157feb8daf70cd16df4349eba69582c0a96d6e3f7ab64b1"
+    },
+    {
+      "path": "patches/eliza/listener-service-cleanup.patch",
+      "models": [
+        "NativeListenerService"
+      ],
+      "sha256": "7ff0f822c815d420d2a0d52d389277933699bf3418d58fa1e18b9138b21f0a21"
+    },
+    {
+      "path": "scripts/quint-lib.mjs",
+      "models": [
+        "Application"
+      ],
+      "sha256": "3679abbb390ba5d37cf15f015949004142142fb4c29aabb19c2579e1cc3070b8"
+    },
+    {
+      "path": "specs/quint/legacy/core/source-inventory.json",
+      "models": [
+        "Application"
+      ],
+      "sha256": "6e33623b1912a8147b1ae60c5c3757f36b8f08b99b4d21b056f3a5b222b74560"
+    },
+    {
+      "path": "specs/quint/legacy/core/check-configurations.mjs",
+      "models": [
+        "Application"
+      ],
+      "sha256": "7e326a366edc6489239b314459f0f02b7cd6b1f80d62815fcc8027d5f872a56f"
     }
   ],
   "runtimeAssets": [
     "apps/app/index.html"
-  ]
+  ],
+  "sharedSourceDiscovery": {
+    "sharedSourceCount": 4839,
+    "producer": "specs/quint/refinement/services/runtime-bundle-inputs.json",
+    "sourcePin": "99b49439ce9d0cb5607e9831b9f7f58d89525029",
+    "meaning": "Authenticated source identities and domain allocations. Runtime activation and implementation refinement require separate evidence."
+  }
 }

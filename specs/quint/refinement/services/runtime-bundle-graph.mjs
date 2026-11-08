@@ -2,6 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import {createHash} from 'node:crypto';
 import {createRequire} from 'node:module';
+import {verifyCoreStateBuildRecord,coreStateRequiredTargets} from '../../../../scripts/core-state-patch.mjs';
 
 const hash = file => createHash('sha256').update(fs.readFileSync(file)).digest('hex');
 const relative = (root, file) => path.relative(root, file).split(path.sep).join('/');
@@ -13,6 +14,7 @@ export function writeRuntimeBundleGraph(root, source, observationPath, outputPat
     throw Error('A successful, stable single-entry producer observation is required');
   }
   const build = observation.builds[0];
+  verifyCoreStateBuildRecord(root, observation.coreState, coreStateRequiredTargets(build.firstParty.map(file => file.path)));
   if (hash(build.rawMetafile) !== build.rawMetafileSha256) throw Error('Raw mobile build metafile changed');
   const metadata = JSON.parse(fs.readFileSync(build.rawMetafile, 'utf8'));
   const byInput = new Map(build.firstParty.map(file => [file.input, file.path]));
@@ -84,19 +86,25 @@ export function writeRuntimeBundleGraph(root, source, observationPath, outputPat
       return {target: target ?? imported.path, kind: imported.kind,
         scope: target ? 'first-party' : imported.external ? 'external' : metadata.inputs[imported.path] ? 'bundled-dependency' : 'virtual-or-unresolved'};
     });
-    files[file.path] = {sha256: file.sha256, bytesInOutput: file.bytesInOutput, tracked: file.tracked,
+    const transform = observation.coreState.transforms.find(row => row.path === file.path);
+    if (transform && (file.sha256 !== transform.sourceSha256 || file.effectiveSourceSha256 !== transform.outputSha256)) throw Error('Core graph transformation differs from producer receipt');
+    if (!transform && file.effectiveSourceSha256) throw Error('Unexpected effective-source transformation');
+    files[file.path] = {sha256: file.sha256,
+      ...(transform ? {effectiveSourceSha256: file.effectiveSourceSha256, transformation: file.transformation} : {}), bytesInOutput: file.bytesInOutput, tracked: file.tracked,
       ...(file.gitObject ? {gitObject: file.gitObject} : {}), ...(generatedSource ? {generatedSource} : {}), imports};
   }
   const generated = build.firstParty.length - tracked;
   const graph = {
     schema: 1, classification: 'observed-product-android-bundle-inputs', sourcePin: observation.sourcePin,
     producer: {script: 'scripts/build-mobile-agent.mjs', observer: relative(root, path.join(root, 'specs/quint/refinement/services/runtime-bundle-audit.mjs')),
-      bun: observation.bun, bundleSha256: observation.bundleSha256, sourceTreeVerifiedBeforeAndAfter: true,
+      inputHashes: Object.fromEntries(Object.entries(observation.inputHashesBefore).map(([file, digest]) => [relative(root, file), digest])),
+      coreState: observation.coreState, bun: observation.bun, bundleSha256: observation.bundleSha256, sourceTreeVerifiedBeforeAndAfter: true,
       inputHashesUnchanged: true, rawMetafileSha256: build.rawMetafileSha256, producerObservationSha256: hash(observationPath)},
     counts: {parsed: build.parsedInputs, firstParty: build.firstParty.length, emitted, tracked, generated,
       trackedEmitted, generatedEmitted: emitted - trackedEmitted, firstPartyEdges, boundaryEdges},
     generatedMappingCounts: {generated, declaredOutput, sourceMapped, unmapped},
-    limitations: ['Parsed inputs with zero emitted contribution are marked separately.',
+    limitations: ['sha256 binds raw pinned source. effectiveSourceSha256, when present, binds authenticated post-patch source before compiler transformation, not emitted JavaScript.',
+      'Parsed inputs with zero emitted contribution are marked separately.',
       'Generated-source maps and declared compiler output paths identify producer inputs and do not establish semantic equivalence or refinement.',
       'Compiled module inclusion does not establish runtime activation, model coverage or implementation refinement.',
       'External imports, runtime-computed imports and provider deployments remain contract boundaries.'],

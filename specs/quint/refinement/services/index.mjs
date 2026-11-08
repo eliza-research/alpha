@@ -22,16 +22,20 @@ import {googleAccountsLifecycleRefinement} from './google-accounts-lifecycle.mjs
 import {runCoreRetirementRefinement} from './core-runtime/retirement.mjs';
 import {runCoreServiceLifecycleRefinement} from './core-runtime/lifecycle.mjs';
 import {runCoreRuntimeShutdownRefinement} from './core-runtime/shutdown.mjs';
+import {runTurnControllerRefinement} from './core-runtime/turns.mjs';
+import {runCanonicalNotesRefinement} from './notes-store/index.mjs';
+import {runTaskServiceRefinement} from './task-service/index.mjs';
 
 export async function runServicesRefinement() {
   const receipts = [];
   for (const check of [authorizationRefinement, googleAccountsRefinement, googleAccountsLifecycleRefinement, calendarRefinement, calendarLinkedRefinement,
     inboxRefinement, mapsRefinement, cacheRefinement, workflowRefinement, policyRefinement,
-    readingRefinement, scanRefinement, credentialRefinement, pdfRefinement, runSignInCoordinatorRefinement, runCoreRetirementRefinement, runCoreServiceLifecycleRefinement, runCoreRuntimeShutdownRefinement]) {
+    readingRefinement, scanRefinement, credentialRefinement, pdfRefinement, runSignInCoordinatorRefinement, runCoreRetirementRefinement, runCoreServiceLifecycleRefinement, runCoreRuntimeShutdownRefinement, runTurnControllerRefinement]) {
     const result = await check();
     receipts.push(...(Array.isArray(result) ? result : [result]));
   }
   const obligations = [
+    {model: 'CoreTurnControllers', obligation: 'Detached callbacks, reentrant observers and provider composition', reason: 'The source campaign checks lookup, cancellation and closure in two registries. Arbitrary reentrant observers and detached callbacks require separate source schedules.'},
     {model: 'IdentitySession', obligation: 'Installed sign-in integration and physical storage', reason: 'The patched shared sign-in coordinator executes callback claim, credential/receipt commit, acknowledgement, cancellation and replacement under controlled ports. App Link trust, real HTTPS, Keystore durability and process recreation remain external.'},
     {model: 'ServiceAuthorization', obligation: 'Managed-service dispatch authorization', reason: 'Entitlement refresh and admission views execute; exact route validation and server authorization still need their own dispatch trace adapter.'},
     {model: 'GoogleAccounts', obligation: 'Account-list consumers and native return delivery', reason: 'Connect/disconnect orchestration executes with controlled browser return and retirement ports; Inbox/Calendar cache consumers and installed App Link delivery remain separate.'},
@@ -47,7 +51,7 @@ export async function runServicesRefinement() {
     {model: 'NativeCredentialMutation', obligation: 'Real shutdown, encryption and lock interleavings', reason: 'Actual credential-store classification, recheck, admission invalidation and preflight run against primitive storage/lifecycle ports. Those ports do not establish native shutdown or encrypted persistence.'},
     {model: 'PdfWorker', obligation: 'Kernel isolation, descriptor transfer, watchdog and memory kill', reason: 'Actual service request/render/cleanup/reply code executes against Android primitives. Host stubs cannot establish kernel or real PDF renderer behavior.', requires: ['IsolatedPdfInstrumentedTest on a disposable admitted installation']},
   ];
-  for (const check of [runInboxCoordinatorRefinement, runInboxCleanupRefinement, runInboxProviderDraftsRefinement, runWorkflowEngineRefinement, runWorkflowWakeupRefinement, runWorkflowTaskRefinement]) {
+  for (const check of [runInboxCoordinatorRefinement, runInboxCleanupRefinement, runInboxProviderDraftsRefinement, runWorkflowEngineRefinement, runWorkflowWakeupRefinement, runWorkflowTaskRefinement, runCanonicalNotesRefinement, runTaskServiceRefinement]) {
     const result = await check();
     receipts.push(...result.receipts);
     obligations.push(...result.obligations);

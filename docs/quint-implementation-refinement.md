@@ -129,3 +129,26 @@ permitted interleavings remains open. Provider responses, Android execution,
 physical audio, durable power-loss behavior and actual reset erasure require
 additional contract or integration evidence. The source ledger's file coverage
 does not discharge those obligations.
+
+## Current SDK refinement checkpoint
+
+The follow-up uses shared SDK `99b49439ce9d0cb5607e9831b9f7f58d89525029`.
+The authenticated Android mobile producer passed module-load and pre-provider
+smokes. It parsed 9,988 inputs, including 4,338 first-party inputs, 4,090 tracked
+inputs and 248 generated inputs with origin mappings. The graph binds the six
+Task, Notes and turn-controller source transforms to the producer receipt.
+
+`CoreTurnControllers` checks 17 schedules and 105 checkpoints across two real
+registries, observing all 17 model fields. The current SDK adds closure, so a
+closed registry starts later handlers with an aborted signal. Reclosing changes
+the reason for future starts while retaining the first reason of an already
+aborted turn. The actual source tests use controlled handlers to check both
+cooperative rejection and noncooperative completion.
+
+The native port checks capture frame buffering, piped capture, ASR pipe
+settlement, indicator ownership, listener persistence and listener teardown.
+The six focused campaigns pass 131 schedules and 817 checkpoints. The Notes and
+Task campaigns exercise the real runtime/store, controlled provider or worker
+ports and real SQL where applicable. Their finite schedules and the current
+source ledger leave explicit obligations for broader composition and device
+behavior.

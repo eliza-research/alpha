@@ -1358,6 +1358,47 @@
         "maxSteps": 80,
         "seed": "123"
       }
+    },
+    {
+      "path": "specs/quint/services/CoreTurnControllers.qnt",
+      "module": "CoreTurnControllers",
+      "init": "init",
+      "step": "step",
+      "invariant": "safety",
+      "tests": [
+        "separateRegistriesTest",
+        "sameRoomSelfExclusionTest",
+        "newestSignalTest",
+        "abortAllIncludesSelfTest",
+        "cancelledWorkCanReturnTest",
+        "cancellationReasonRetainedTest",
+        "observerRemovalTest",
+        "closedTurnStartsAbortedTest",
+        "reclosePreservesEarlierReasonTest"
+      ],
+      "sources": [
+        "vendor/eliza/packages/core/src/runtime/turn-controller.ts",
+        "vendor/eliza/packages/core/src/runtime/turn-aborted-error.ts",
+        "patches/eliza/turn-controller-isolation.patch",
+        "patches/eliza/core-state-manifest.json"
+      ],
+      "stateMapping": {
+        "active/results/registry/room/order/roomOrder": "Actual registry maps, controller identities and returned handler promises",
+        "aborted/reasons": "Actual AbortSignal state and TurnAbortedError reason",
+        "listening/events": "Registered lifecycle observers and delivered event order",
+        "signal/queryRegistry/queryRoom/abortable": "Queries through public lookup and admission APIs within real asynchronous contexts",
+        "changed/abortedRooms": "Public per-room and runtime cancellation results",
+        "closedReason": "Actual registry close reason and inherited cancellation on later turn start"
+      },
+      "abstractions": [
+        "Two registries, two rooms and three one-use turn identities. Controlled handlers may return or reject after cancellation.",
+        "Wall-clock timestamps and duration values are omitted. Arbitrary reentrant listeners, detached callbacks after turn settlement and provider cooperation remain separate obligations."
+      ],
+      "bounds": {
+        "maxSamples": 1000,
+        "maxSteps": 80,
+        "seed": "123"
+      }
     }
   ]
 }

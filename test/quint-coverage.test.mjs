@@ -24,9 +24,9 @@ test('runner records unexpected exceptions as failures and labels coverage evide
   };
   try {
     for (const path of [...sourceRoots, 'scripts']) mkdirSync(join(root, path), { recursive: true });
-    for (const name of ['check-quint.mjs', 'quint-lib.mjs']) copyFileSync(join(repositoryRoot, 'scripts', name), join(root, 'scripts', name));
+    for (const name of ['check-quint.mjs', 'quint-lib.mjs', 'core-state-patch.mjs']) copyFileSync(join(repositoryRoot, 'scripts', name), join(root, 'scripts', name));
     const fixtureSources = [...runtimeScriptPaths, ...runtimeAssetPaths];
-    for (const path of fixtureSources) write(path, '');
+    for (const path of fixtureSources) if (path !== 'scripts/core-state-patch.mjs') write(path, '');
     const model = { module: 'Fixture', path: 'specs/quint/application/Fixture.qnt', init: 'init', step: 'step', invariant: 'safety', tests: ['exampleTest'], currentChecks: [null] };
     write(model.path, 'module Fixture { run exampleTest = true }');
     for (const family of ['application', 'services', 'native', 'legacy']) {
@@ -34,7 +34,7 @@ test('runner records unexpected exceptions as failures and labels coverage evide
     }
     write('specs/quint/coverage.json', JSON.stringify({
       upstream: { commit: 'fixture' },
-      files: fixtureSources.map(path => ({ path, sha256: sha256(''), models: ['Fixture'], treatment: 'test fixture', scope: 'test support' })),
+      files: fixtureSources.map(path => ({ path, sha256: sha256(readFileSync(join(root, path))), models: ['Fixture'], treatment: 'test fixture', scope: 'test support' })),
     }));
     write('upstream.lock.json', JSON.stringify({ commit: 'fixture' }));
     write('package-lock.json', '{}');
@@ -100,7 +100,7 @@ test('source discovery follows consumed shared modules and rejects a stale clien
   try {
     for (const path of sourceRoots) mkdirSync(join(root, path), {recursive: true});
     mkdirSync(join(root, 'scripts'), {recursive: true});
-    copyFileSync(join(repositoryRoot, 'scripts/quint-lib.mjs'), join(root, 'scripts/quint-lib.mjs'));
+    for (const name of ['quint-lib.mjs', 'core-state-patch.mjs']) copyFileSync(join(repositoryRoot, 'scripts', name), join(root, 'scripts', name));
     write('upstream.lock.json', {commit: 'fixture', appSource: 'packages/app'});
     write('.eliza/client-features/.source.json', {baseCommit: 'fixture', sourceFiles: {'packages/ui/src/state.ts': 'fixture'}});
     write('android/consumer-host.json', {profile: {modules: [{source: {root: 'upstream', path: 'plugins/fixture/android'}}]}, residentHost: {helpers: ['packages/runtime/Owner.java']}});
