@@ -12,7 +12,7 @@
   "toolSha256": "403a33cab0dff7ace6219b29e7ffef373319677a7d8be6641466dd16a6750b5b",
   "dependencyLockSha256": "944123c801157a7ba3676a886d0b28a54bef32735ae96da5c6dd0f206c88c8bf",
   "sourcePin": "99b49439ce9d0cb5607e9831b9f7f58d89525029",
-  "ledgerSha256": "6ce4dc101a7bb096d30eef353e5bfa4df42302831b504ea484773e6a56c37848",
+  "ledgerSha256": "85a1c14bc61c0e66d290823f490df697981f68ff829f3339b2fe7f59e81776f8",
   "method": "TypeScript syntax trees for JavaScript/TypeScript and JDK compiler trees for Java. Mutable fields, bindings, containers, state hooks, write sites and asynchronous registration calls are candidates for semantic review.",
   "limitations": [
     "Candidate extraction does not establish state-machine coverage or implementation refinement.",
@@ -22,17 +22,17 @@
     "The ledger supplies pinned source bytes. Effective client/native/runtime patch outputs require their separately authenticated source mappings."
   ],
   "counts": {
-    "files": 5679,
+    "files": 5680,
     "testSupportFiles": 287,
     "testSupportCandidates": 11480,
-    "parsedFiles": 5624,
+    "parsedFiles": 5625,
     "languageReview": 55,
     "parseErrors": 0,
-    "candidates": 67016,
-    "writeSites": 66438,
-    "writeAssociations": 59612,
+    "candidates": 67035,
+    "writeSites": 66493,
+    "writeAssociations": 59665,
     "asynchronous": 8296,
-    "unassignedWrites": 10193
+    "unassignedWrites": 10195
   },
   "files": [
     {
@@ -29375,7 +29375,8 @@
       "path": "apps/app/src/browser/calendar-store.ts",
       "sha256": "b318cabe391a8d06cda02d632850ce358e2ff5fdba25284077416b5e522a6075",
       "allocatedModels": [
-        "CalendarSync"
+        "CalendarSync",
+        "BrowserDeletionPoll"
       ],
       "sourcePathClass": "other-source-path",
       "classification": "syntactic-candidates",
@@ -29465,7 +29466,8 @@
       "path": "apps/app/src/browser/calendar.ts",
       "sha256": "349a1b5846168a1b4c2b804a5e4d81a346dabc16c64850c591ca0e83c0c2df31",
       "allocatedModels": [
-        "CalendarSync"
+        "CalendarSync",
+        "BrowserDeletionPoll"
       ],
       "sourcePathClass": "other-source-path",
       "classification": "syntactic-candidates",
@@ -29717,7 +29719,8 @@
       "path": "apps/app/src/browser/daily.ts",
       "sha256": "c7af57fc06d6d4f86e29dae139e7bae0f228fa4ab07befadd4114c5319c07b5c",
       "allocatedModels": [
-        "BrowserSession"
+        "BrowserSession",
+        "BrowserDeletionPoll"
       ],
       "sourcePathClass": "other-source-path",
       "classification": "syntactic-candidates",
@@ -30673,11 +30676,12 @@
     },
     {
       "path": "apps/app/src/browser/journal-retention.ts",
-      "sha256": "589955aae6326d26b3acac5c1b9600dfea79c3c26fda77d71dfdca687090e503",
+      "sha256": "3bb7b88434b94b547dca500e9b09dc6a095f7b1d6fcef5e6f1c3620cbefeb487",
       "allocatedModels": [
         "DeletionJournal",
         "DurableStore",
-        "CalendarSync"
+        "CalendarSync",
+        "BrowserDeletionPoll"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -31224,7 +31228,8 @@
       "path": "apps/app/src/browser/reminder-store.ts",
       "sha256": "b5062c308366b69aaeef05fbcb015369503d0afdd05e729407f2c6ccc845bf87",
       "allocatedModels": [
-        "DeviceActions"
+        "DeviceActions",
+        "BrowserDeletionPoll"
       ],
       "sourcePathClass": "other-source-path",
       "classification": "syntactic-candidates",
@@ -34701,35 +34706,42 @@
     },
     {
       "path": "apps/app/src/prototype/home-shell.ts",
-      "sha256": "ae31285bff701a115d4d7b361dfce985adbf802fd3abdef68e2e2d9ff16c74fc",
+      "sha256": "db624735d90036440679278ec1b0d99770fdf9c946aa326f9dff3101d6d0bb27",
       "allocatedModels": [
         "ShellNavigation",
         "PreferencesAndPresentation"
       ],
+      "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
       "classification": "syntactic-candidates",
       "owners": [
         {
           "owner": "installHomeShell",
           "line": 50,
-          "bindings": 6,
-          "writes": 26
+          "bindings": 10,
+          "writes": 31
+        },
+        {
+          "owner": "installHomeShell.reportHomeFailure",
+          "line": 66,
+          "bindings": 1,
+          "writes": 0
         },
         {
           "owner": "installHomeShell.place",
-          "line": 90,
+          "line": 107,
           "bindings": 1,
           "writes": 1
         },
         {
-          "owner": "installHomeShell.FunctionExpression@130.tile",
-          "line": 142,
+          "owner": "installHomeShell.FunctionExpression@147.tile",
+          "line": 159,
           "bindings": 1,
           "writes": 2
         },
         {
-          "owner": "installHomeShell.FunctionExpression@130.ArrowFunction@238",
-          "line": 239,
+          "owner": "installHomeShell.FunctionExpression@147.ArrowFunction@255",
+          "line": 256,
           "bindings": 1,
           "writes": 2
         }
@@ -39260,7 +39272,8 @@
       "allocatedModels": [
         "ShellNavigation",
         "FilesTree",
-        "FilesBrowserController"
+        "FilesBrowserController",
+        "FilesFilter"
       ],
       "sourcePathClass": "other-source-path",
       "classification": "syntactic-candidates",
@@ -39710,161 +39723,162 @@
     },
     {
       "path": "apps/app/src/prototype/voice-adapter.ts",
-      "sha256": "5947fa2371b75dffda0fc5fd3c14fa34427b973e1d3360abaf0667500d80c73b",
+      "sha256": "2fc5a031eb6e00f97a6c73db2ce08ac8edab97ca4f066575c42a126d6746d68c",
       "allocatedModels": [
         "VoiceSession",
         "ControllerComposition"
       ],
+      "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
       "classification": "syntactic-candidates",
       "owners": [
         {
           "owner": "installPrototypeVoiceAdapter",
-          "line": 81,
+          "line": 84,
           "bindings": 79,
           "writes": 316
         },
         {
-          "owner": "installPrototypeVoiceAdapter.FunctionExpression@86",
-          "line": 87,
+          "owner": "installPrototypeVoiceAdapter.FunctionExpression@89",
+          "line": 90,
           "bindings": 1,
           "writes": 10
         },
         {
           "owner": "installPrototypeVoiceAdapter.cleanup",
-          "line": 239,
+          "line": 242,
           "bindings": 1,
           "writes": 1
         },
         {
           "owner": "installPrototypeVoiceAdapter.enter",
-          "line": 263,
+          "line": 266,
           "bindings": 2,
           "writes": 0
         },
         {
           "owner": "installPrototypeVoiceAdapter.start",
-          "line": 331,
-          "bindings": 1,
-          "writes": 1
+          "line": 323,
+          "bindings": 3,
+          "writes": 4
         },
         {
           "owner": "installPrototypeVoiceAdapter.listen",
-          "line": 387,
+          "line": 396,
           "bindings": 1,
           "writes": 0
         },
         {
           "owner": "installPrototypeVoiceAdapter.chatCurrent",
-          "line": 403,
+          "line": 412,
           "bindings": 1,
           "writes": 2
         },
         {
           "owner": "installPrototypeVoiceAdapter.navigationContinuation",
-          "line": 411,
+          "line": 420,
           "bindings": 2,
           "writes": 4
         },
         {
           "owner": "installPrototypeVoiceAdapter.navigationContinuation.apply",
-          "line": 416,
+          "line": 425,
           "bindings": 1,
           "writes": 1
         },
         {
           "owner": "installPrototypeVoiceAdapter.cancelChat",
-          "line": 431,
+          "line": 440,
           "bindings": 1,
           "writes": 2
         },
         {
           "owner": "installPrototypeVoiceAdapter.captureConversationAudio",
-          "line": 460,
-          "bindings": 10,
+          "line": 469,
+          "bindings": 11,
           "writes": 21
         },
         {
           "owner": "installPrototypeVoiceAdapter.beginConversation",
-          "line": 519,
+          "line": 534,
           "bindings": 8,
           "writes": 14
         },
         {
           "owner": "installPrototypeVoiceAdapter.beginConversation.sendTurn",
-          "line": 586,
+          "line": 601,
           "bindings": 1,
           "writes": 1
         },
         {
           "owner": "installPrototypeVoiceAdapter.beginConversation.sendTurn.send",
-          "line": 598,
+          "line": 613,
           "bindings": 1,
           "writes": 1
         },
         {
           "owner": "installPrototypeVoiceAdapter.beginConversation.speak",
-          "line": 673,
+          "line": 690,
           "bindings": 2,
           "writes": 2
         },
         {
           "owner": "installPrototypeVoiceAdapter.beginConversation.listen",
-          "line": 687,
+          "line": 704,
           "bindings": 5,
           "writes": 14
         },
         {
           "owner": "installPrototypeVoiceAdapter.beginConversation.transcribe",
-          "line": 779,
+          "line": 796,
           "bindings": 2,
           "writes": 1
         },
         {
           "owner": "installPrototypeVoiceAdapter.conversationRecorderView",
-          "line": 837,
+          "line": 854,
           "bindings": 2,
           "writes": 3
         },
         {
           "owner": "installPrototypeVoiceAdapter.restoreDeletion",
-          "line": 887,
+          "line": 904,
           "bindings": 1,
           "writes": 1
         },
         {
-          "owner": "installPrototypeVoiceAdapter.restoreDeletion.ArrowFunction@888",
-          "line": 911,
+          "owner": "installPrototypeVoiceAdapter.restoreDeletion.ArrowFunction@905",
+          "line": 928,
           "bindings": 1,
           "writes": 1
         },
         {
           "owner": "installPrototypeVoiceAdapter.deleteVoiceNote",
-          "line": 931,
+          "line": 948,
           "bindings": 2,
           "writes": 5
         },
         {
-          "owner": "installPrototypeVoiceAdapter.ArrowFunction@1128",
-          "line": 1144,
+          "owner": "installPrototypeVoiceAdapter.ArrowFunction@1145",
+          "line": 1161,
           "bindings": 4,
           "writes": 45
         },
         {
-          "owner": "installPrototypeVoiceAdapter.ArrowFunction@1128.ArrowFunction@1160",
-          "line": 1162,
+          "owner": "installPrototypeVoiceAdapter.ArrowFunction@1145.ArrowFunction@1177",
+          "line": 1179,
           "bindings": 3,
           "writes": 3
         },
         {
           "owner": "installPrototypeVoiceAdapter.recorderView",
-          "line": 1280,
+          "line": 1297,
           "bindings": 1,
           "writes": 7
         },
         {
-          "owner": "installPrototypeVoiceAdapter.FunctionExpression@1315",
-          "line": 1316,
+          "owner": "installPrototypeVoiceAdapter.FunctionExpression@1332",
+          "line": 1333,
           "bindings": 3,
           "writes": 40
         }
@@ -41323,10 +41337,11 @@
     },
     {
       "path": "apps/app/src/runtime/cloud-voice.ts",
-      "sha256": "1c5830fc67776bb5cf1806935886abfbf01965e3a973c934e09f934f9eec47f0",
+      "sha256": "f02adef4716231d29e4b29adf15cbf1e5124c787be8b76ae75970ed19d1c71a3",
       "allocatedModels": [
         "VoiceSession"
       ],
+      "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
       "classification": "syntactic-candidates",
       "owners": [
@@ -41338,25 +41353,25 @@
         },
         {
           "owner": "createCloudVoice.speak",
-          "line": 145,
+          "line": 146,
           "bindings": 2,
           "writes": 3
         },
         {
           "owner": "<module>",
-          "line": 157,
+          "line": 158,
           "bindings": 1,
           "writes": 2
         },
         {
           "owner": "speakCloudText",
-          "line": 163,
+          "line": 164,
           "bindings": 3,
           "writes": 4
         },
         {
-          "owner": "speakCloudText.ArrowFunction@173",
-          "line": 173,
+          "owner": "speakCloudText.ArrowFunction@174",
+          "line": 174,
           "bindings": 1,
           "writes": 1
         }
@@ -42294,7 +42309,8 @@
         "GoogleAccounts",
         "InboxDelivery",
         "InboxCoordinator",
-        "InboxProviderDrafts"
+        "InboxProviderDrafts",
+        "GoogleConsentAdmission"
       ],
       "sourcePathClass": "other-source-path",
       "classification": "syntactic-candidates",
@@ -42334,7 +42350,8 @@
       "path": "apps/app/src/runtime/google-accounts.ts",
       "sha256": "85d5c17894e2507fcd7c91ef5340474f97711e5befdcb24cf8d222027870e8a8",
       "allocatedModels": [
-        "GoogleAccounts"
+        "GoogleAccounts",
+        "GoogleConsentAdmission"
       ],
       "sourcePathClass": "other-source-path",
       "classification": "syntactic-candidates",
@@ -42384,7 +42401,8 @@
       "path": "apps/app/src/runtime/google-agent-access.ts",
       "sha256": "1aeb223979c21b8ca5670fcc16472776683a8176fcdf233b794d8cd5fabb5081",
       "allocatedModels": [
-        "ServiceAuthorization"
+        "ServiceAuthorization",
+        "GoogleConsentAdmission"
       ],
       "sourcePathClass": "other-source-path",
       "classification": "syntactic-candidates",
@@ -42440,7 +42458,8 @@
       "sha256": "9ec86c56543aa8cc0ebf1a08fed1f05a4eed08721a56b2ab164c56aad0615f03",
       "allocatedModels": [
         "IdentitySession",
-        "GoogleAccounts"
+        "GoogleAccounts",
+        "GoogleConsentAdmission"
       ],
       "sourcePathClass": "other-source-path",
       "classification": "syntactic-candidates",
@@ -42458,11 +42477,13 @@
     },
     {
       "path": "apps/app/src/runtime/google-connection-ui.tsx",
-      "sha256": "9d96886c5c42a5e9e801fb27497fa6df4532c6242fe289ceedbb3c612a00c5a4",
+      "sha256": "602d15e789f19680bd46d02ade16ecc3629af155345d02159643f03b52566bd3",
       "allocatedModels": [
         "GoogleAccounts",
-        "GoogleConnect"
+        "GoogleConnect",
+        "GoogleConsentAdmission"
       ],
+      "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
       "classification": "syntactic-candidates",
       "owners": [
@@ -42474,31 +42495,31 @@
         },
         {
           "owner": "GoogleConnectionsPanel",
-          "line": 46,
-          "bindings": 23,
-          "writes": 22
+          "line": 49,
+          "bindings": 24,
+          "writes": 26
         },
         {
-          "owner": "GoogleConnectionsPanel.ArrowFunction@47",
-          "line": 47,
+          "owner": "GoogleConnectionsPanel.ArrowFunction@50",
+          "line": 50,
           "bindings": 1,
           "writes": 1
         },
         {
           "owner": "GoogleConnectionsPanel.load",
-          "line": 77,
+          "line": 85,
           "bindings": 1,
           "writes": 1
         },
         {
           "owner": "GoogleConnectionsPanel.connect",
-          "line": 141,
+          "line": 152,
           "bindings": 3,
           "writes": 5
         },
         {
           "owner": "GoogleConnectionsPanel.disconnect",
-          "line": 173,
+          "line": 185,
           "bindings": 2,
           "writes": 1
         }
@@ -45412,7 +45433,7 @@
     },
     {
       "path": "scripts/core-state-patch.mjs",
-      "sha256": "e8871fc3bcf947739b817ffa9a3e6f138abf1a24603932b604aacdfb0866da32",
+      "sha256": "c70dfa41066e58cd79f2eb4cb1bace70e4ec8cb684856c72d092e117776fcb92",
       "allocatedModels": [
         "TaskServiceLifecycle",
         "TaskSchedulerRuntime"
@@ -45423,31 +45444,31 @@
       "owners": [
         {
           "owner": "<module>",
-          "line": 12,
+          "line": 13,
           "bindings": 3,
           "writes": 0
         },
         {
           "owner": "readRegular",
-          "line": 29,
+          "line": 31,
           "bindings": 1,
           "writes": 1
         },
         {
           "owner": "coreStateReceipt",
-          "line": 44,
+          "line": 46,
           "bindings": 2,
           "writes": 2
         },
         {
           "owner": "coreStatePatch",
-          "line": 91,
+          "line": 93,
           "bindings": 1,
           "writes": 1
         },
         {
           "owner": "coreStateBuildPlugin",
-          "line": 109,
+          "line": 111,
           "bindings": 2,
           "writes": 1
         }
@@ -81064,7 +81085,8 @@
         "WorkflowExecution",
         "CoreRuntimeRetirement",
         "CoreRuntimeShutdown",
-        "CoreServiceLifecycle"
+        "CoreServiceLifecycle",
+        "CoreRoomHandlerQueue"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -90111,6 +90133,63 @@
       "parseErrors": [],
       "asynchronous": 0,
       "unassignedWrites": 0
+    },
+    {
+      "path": "vendor/eliza/packages/os/scripts/android/apk-release-record.mjs",
+      "sha256": "30d94bb5af54094e10a62388f55b12cf968bbcd0b39f6a99b49d30c64c86a12d",
+      "allocatedModels": [
+        "PilotApkUpdate"
+      ],
+      "sourceReview": "state-audit-required",
+      "sourcePathClass": "other-source-path",
+      "classification": "syntactic-candidates",
+      "owners": [
+        {
+          "owner": "cloudVoiceBlockers",
+          "line": 70,
+          "bindings": 1,
+          "writes": 6
+        },
+        {
+          "owner": "apkReleaseBlockers",
+          "line": 123,
+          "bindings": 2,
+          "writes": 17
+        },
+        {
+          "owner": "apkUpdateAdmission",
+          "line": 214,
+          "bindings": 1,
+          "writes": 2
+        },
+        {
+          "owner": "parseDomainInventory",
+          "line": 241,
+          "bindings": 1,
+          "writes": 2
+        },
+        {
+          "owner": "compareDomains",
+          "line": 255,
+          "bindings": 1,
+          "writes": 4
+        },
+        {
+          "owner": "parseIntegrityExport",
+          "line": 325,
+          "bindings": 3,
+          "writes": 4
+        },
+        {
+          "owner": "inPlaceUpdateFailures",
+          "line": 367,
+          "bindings": 1,
+          "writes": 6
+        }
+      ],
+      "parseErrors": [],
+      "asynchronous": 0,
+      "unassignedWrites": 2
     },
     {
       "path": "vendor/eliza/packages/ui/src/accessibility/screen-focus.ts",
@@ -151163,7 +151242,8 @@
         "StreamingPlayback",
         "SharedRecordingAdmission",
         "NativeLiveCapture",
-        "NativePipedCapture"
+        "NativePipedCapture",
+        "NativeSpeechOutputPreparation"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -152867,7 +152947,8 @@
         "ResidentRuntime",
         "SpeechResources",
         "StreamingPlayback",
-        "VoiceSession"
+        "VoiceSession",
+        "NativeSpeechOutputPreparation"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -153953,7 +154034,8 @@
         "ResidentRuntime",
         "SpeechResources",
         "StreamingPlayback",
-        "VoiceSession"
+        "VoiceSession",
+        "NativeSpeechOutputPreparation"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -154143,7 +154225,8 @@
         "ResidentRuntime",
         "SpeechResources",
         "StreamingPlayback",
-        "VoiceSession"
+        "VoiceSession",
+        "NativeSpeechOutputPreparation"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -154475,7 +154558,8 @@
         "ResidentRuntime",
         "SpeechResources",
         "StreamingPlayback",
-        "VoiceSession"
+        "VoiceSession",
+        "NativeSpeechOutputPreparation"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -218055,6 +218139,6 @@
   ],
   "detail": {
     "path": "test-results/quint-state-audit/details.json",
-    "sha256": "7d19c7e37b19c24f9fe6b808e07b647e34900555db901983eb8d9554bc21cce0"
+    "sha256": "309ae95acb513a9b22a42939249a66c38e1a3531d48fd390f886415b76ca9a3e"
   }
 }

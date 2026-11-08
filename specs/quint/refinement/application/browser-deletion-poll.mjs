@@ -95,7 +95,7 @@ async function scenario(modules, resetDocuments, kind, name, drive) {
   }
 }
 
-export async function runBrowserDeletionPollRefinement(extraSources = []) {
+export async function checkBrowserDeletionPoll(extraSources = []) {
   const inputs = [...sources, ...extraSources], driverHashes = captureInputs(inputs);
   const globalNames = ['window', 'document', 'HTMLElement', 'HTMLDialogElement', 'Event', 'CustomEvent',
     'localStorage', 'getComputedStyle', 'BroadcastChannel', '__alphaTest'];
@@ -129,7 +129,7 @@ export async function runBrowserDeletionPollRefinement(extraSources = []) {
       'A controlled document port holds entry into the serialized edit, compares raw bytes and records CAS revisions. Each case begins with one queued owned row and two one-use pollers.',
       'Owner changes, corrupt data, partial device effects and native Calendar writes are separate projections.',
     ]});
-  return {receipts: [receipt], obligations: [
+  return {receipt, obligations: [
     {model, obligation: 'Multiple rows, ownership changes and installed Web Locks behavior',
       reason: 'The source schedules check one queued deletion and overlapping renderer polls under a controlled serialized document port.'},
   ]};

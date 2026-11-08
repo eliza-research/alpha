@@ -11,29 +11,31 @@
       "upstream.lock.json": "62682bc4e49ea7c2f187a3b688f65289b4092c0438fd1cc210b5892ab306ee9d",
       "patches/eliza/mobile-uuid-build.json": "bf31b0a89b756b5deb7281bd3f56baccba25ccea0337fba04ae2ddf9d31a011b",
       "scripts/build-mobile-agent.mjs": "a806e8eada974f400afe18e00e5cf275d3519ab00462615076e3d4124639a288",
-      "scripts/mobile-uuid-adapter.mjs": "f996483dd07f780dcabadda99bc169f1f370ac9191b7667dac8ddbad905adf10",
+      "scripts/mobile-uuid-adapter.mjs": "0cfd5cdb4060105597c4c86bd5ff781ac91011a4dbe6723eab4a7bd2601810c9",
       "scripts/mobile-bundle-smoke.mjs": "2e4f7ef05ae6f09285c2a6141876c14b5f30539c926a46864bf8862ae8d3b7bd",
       "scripts/local-agent-source.mjs": "321abaf05f9e8cbf6e4ba642ec7ebf45a6c693331a637210610a1f7723662daa",
-      "scripts/core-state-patch.mjs": "e8871fc3bcf947739b817ffa9a3e6f138abf1a24603932b604aacdfb0866da32",
+      "scripts/core-state-patch.mjs": "c70dfa41066e58cd79f2eb4cb1bace70e4ec8cb684856c72d092e117776fcb92",
       "scripts/core-state-preload.mjs": "c5368c9075aa8c7660bee01338185fbe673c9b8dd6889dd1ab01d195efa17c10",
       "scripts/combined-agent-source.mjs": "a2f4d279f3f98ff078f3aedd6b9dc2dc5c3396ecdc7fb7f09b0da7e0c085062e",
-      "patches/eliza/core-state-manifest.json": "c49942d8b8f83232e3d5d8220f42c41ca21028306520600e7f959e4d12944650",
+      "patches/eliza/core-state-manifest.json": "6d846f843633bd2a81de1bc78bcf4f52ce129cdb3890531eab37446d898b01f3",
       "patches/eliza/task-service-stop.patch": "d3b80ffb0dad32e3a17b50dbbb0d4c0dfb3f60b0f2a35f577be4612aa2f9db1e",
       "patches/eliza/notes-state-runtime.patch": "5f62c6742a0c8f85f47aec6a629a1454d7cc74c5060d75a72b5c3d77a43dda18",
-      "patches/eliza/turn-controller-isolation.patch": "d587459e0123599d17f886fcc855eb90ce7ec20b286a42ce47a02a1ab1bd110b"
+      "patches/eliza/turn-controller-isolation.patch": "d587459e0123599d17f886fcc855eb90ce7ec20b286a42ce47a02a1ab1bd110b",
+      "patches/eliza/room-queue-admission.patch": "343e39a3c756e3679b8a1e577352638119e0f17b1d0535023cbd1720fdddedde"
     },
     "coreState": {
       "version": 1,
       "baseCommit": "99b49439ce9d0cb5607e9831b9f7f58d89525029",
-      "manifestSha256": "c49942d8b8f83232e3d5d8220f42c41ca21028306520600e7f959e4d12944650",
+      "manifestSha256": "6d846f843633bd2a81de1bc78bcf4f52ce129cdb3890531eab37446d898b01f3",
       "inputHashes": {
-        "scripts/core-state-patch.mjs": "e8871fc3bcf947739b817ffa9a3e6f138abf1a24603932b604aacdfb0866da32",
+        "scripts/core-state-patch.mjs": "c70dfa41066e58cd79f2eb4cb1bace70e4ec8cb684856c72d092e117776fcb92",
         "scripts/core-state-preload.mjs": "c5368c9075aa8c7660bee01338185fbe673c9b8dd6889dd1ab01d195efa17c10",
         "scripts/combined-agent-source.mjs": "a2f4d279f3f98ff078f3aedd6b9dc2dc5c3396ecdc7fb7f09b0da7e0c085062e",
-        "patches/eliza/core-state-manifest.json": "c49942d8b8f83232e3d5d8220f42c41ca21028306520600e7f959e4d12944650",
+        "patches/eliza/core-state-manifest.json": "6d846f843633bd2a81de1bc78bcf4f52ce129cdb3890531eab37446d898b01f3",
         "patches/eliza/task-service-stop.patch": "d3b80ffb0dad32e3a17b50dbbb0d4c0dfb3f60b0f2a35f577be4612aa2f9db1e",
         "patches/eliza/notes-state-runtime.patch": "5f62c6742a0c8f85f47aec6a629a1454d7cc74c5060d75a72b5c3d77a43dda18",
-        "patches/eliza/turn-controller-isolation.patch": "d587459e0123599d17f886fcc855eb90ce7ec20b286a42ce47a02a1ab1bd110b"
+        "patches/eliza/turn-controller-isolation.patch": "d587459e0123599d17f886fcc855eb90ce7ec20b286a42ce47a02a1ab1bd110b",
+        "patches/eliza/room-queue-admission.patch": "343e39a3c756e3679b8a1e577352638119e0f17b1d0535023cbd1720fdddedde"
       },
       "patches": [
         {
@@ -47,6 +49,10 @@
         {
           "file": "turn-controller-isolation.patch",
           "sha256": "d587459e0123599d17f886fcc855eb90ce7ec20b286a42ce47a02a1ab1bd110b"
+        },
+        {
+          "file": "room-queue-admission.patch",
+          "sha256": "343e39a3c756e3679b8a1e577352638119e0f17b1d0535023cbd1720fdddedde"
         }
       ],
       "files": {
@@ -73,9 +79,18 @@
         "packages/core/src/runtime/turn-controller.ts": {
           "beforeSha256": "c04907565ac8c7f483b2e4c6db29d6bf007f85f7a15fdae447bd2c1f82fed46b",
           "afterSha256": "a69049036ad8848609ac9113090dd16dd45517a5ab03d62d506e1c17156f8111"
+        },
+        "packages/core/src/runtime/room-handler-queue.ts": {
+          "beforeSha256": "f5a31f3276827e90448df4198ae559135d32604132d2775948df9d5b2e496fac",
+          "afterSha256": "cd8f23f09c191aa9ebe3048e688a46a4a81b730405351a1cf809f4c8e214fce1"
         }
       },
       "transforms": [
+        {
+          "path": "packages/core/src/runtime/room-handler-queue.ts",
+          "sourceSha256": "f5a31f3276827e90448df4198ae559135d32604132d2775948df9d5b2e496fac",
+          "outputSha256": "cd8f23f09c191aa9ebe3048e688a46a4a81b730405351a1cf809f4c8e214fce1"
+        },
         {
           "path": "packages/core/src/runtime/turn-controller.ts",
           "sourceSha256": "c04907565ac8c7f483b2e4c6db29d6bf007f85f7a15fdae447bd2c1f82fed46b",
@@ -112,11 +127,11 @@
       "version": "1.4.2",
       "revision": "744846f844374847c902b5e7fd59b4342a51ef99"
     },
-    "bundleSha256": "0991cdc444d8d0eababb4653452e1462613886a0b2d8dbed144cf28d6ed939da",
+    "bundleSha256": "2da4294c68889e1c76acfc28965e7623aafdac23d9e0726cfb809cdaefde0b21",
     "sourceTreeVerifiedBeforeAndAfter": true,
     "inputHashesUnchanged": true,
-    "rawMetafileSha256": "bfe25e2f4d3415d88e89ac6dbf3fb696f59f8c0ca3aac96d77e9487560739f92",
-    "producerObservationSha256": "2c20cdca125fe37f595e1fb47753fb8a7b73ed61201e2848008afba24a7f93a6"
+    "rawMetafileSha256": "2beb865b65e7ef6a84e5613a2f13ea15bd111fbe7bb3edbe3e45b9ea164149ad",
+    "producerObservationSha256": "297374dccf942c42e73461c1a20481cac82b3736224aa3808a3bd199807c05a3"
   },
   "counts": {
     "parsed": 9988,
@@ -28352,7 +28367,9 @@
     },
     "packages/core/src/runtime/room-handler-queue.ts": {
       "sha256": "f5a31f3276827e90448df4198ae559135d32604132d2775948df9d5b2e496fac",
-      "bytesInOutput": 10701,
+      "effectiveSourceSha256": "cd8f23f09c191aa9ebe3048e688a46a4a81b730405351a1cf809f4c8e214fce1",
+      "transformation": "authenticated-core-state",
+      "bytesInOutput": 10733,
       "tracked": true,
       "gitObject": "ae31cebc5e01ace928b394e32b9775b3e34fa8bf",
       "imports": [
@@ -96512,7 +96529,7 @@
     },
     "plugins/plugin-local-inference/src/services/voice/wake-word.ts": {
       "sha256": "d29607d0602c1712a59e3060da29d39554987e8c35a30003c5ddd035c2a36a24",
-      "bytesInOutput": 6694,
+      "bytesInOutput": 6729,
       "tracked": true,
       "gitObject": "1a0c32165c499612ac599f2b1778b52bcff83ab8",
       "imports": [
@@ -120049,7 +120066,7 @@
     },
     "plugins/plugin-vision/src/vision-worker-manager.ts": {
       "sha256": "227585cb5446d878cc936fb22ccae10c222f76637e389a30b57c5a2d1863b971",
-      "bytesInOutput": 8822,
+      "bytesInOutput": 8857,
       "tracked": true,
       "gitObject": "963484a67214e88aff052f9cd81f4d0d6fa806d1",
       "imports": [

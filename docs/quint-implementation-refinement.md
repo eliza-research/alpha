@@ -120,9 +120,12 @@ The initial local Android attempts stopped at input preflight. The current
 worktree staged the recorded voice outputs and verified their integrity with
 the exact pinned FFI checkout. Its voice admission record remains unqualified.
 The reviewed ARM64 embedding libraries and pinned model separately passed
-admission using the repository qualification receipt. APK generation, installed
-emulator HOME behavior, full AOSP boot, real integrations and physical-device
-acceptance each require their own evidence.
+admission using the repository qualification receipt. The local build and APK
+verifier passed on commit `839325d966` for the standalone and launcher debug
+and unsigned release APKs. Both unsigned releases report
+`distributable: false`. The build also generated both instrumentation APKs.
+Installed emulator HOME behavior, full AOSP boot, real integrations and
+physical-device acceptance each require their own evidence.
 
 ## Completeness
 
@@ -138,8 +141,9 @@ does not discharge those obligations.
 The follow-up uses shared SDK `99b49439ce9d0cb5607e9831b9f7f58d89525029`.
 The authenticated Android mobile producer passed module-load and pre-provider
 smokes. It parsed 9,988 inputs, including 4,338 first-party inputs, 4,090 tracked
-inputs and 248 generated inputs with origin mappings. The graph binds the six
-Task, Notes and turn-controller source transforms to the producer receipt.
+inputs and 248 generated inputs with origin mappings. The graph binds seven
+Task, Notes, turn-controller and room-queue source transforms to the producer
+receipt.
 
 `CoreTurnControllers` checks 17 schedules and 105 checkpoints across two real
 registries, observing all 17 model fields. The current SDK adds closure, so a
@@ -167,7 +171,9 @@ invocation orders and 254 checkpoints with sampled arrival and outcome timing.
 The expanded scheduler campaign checks 125 additional checkpoints across 10
 schedules for batched agent queries, owner replacement, process disposal and
 shared timer ownership. The room handler queue compares both translated
-profiles against the real FIFO and writer tail.
+profiles against the real FIFO and writer tail across six schedules and 112
+checkpoints. The authenticated patch reserves capacity before publishing queue
+telemetry, including synchronous listener reentry.
 
 `NativeListenerInput` compares 20 real Java schedules and 108 checkpoints
 through capture, the speech gate, ASR, and wake callbacks. It covers an input
@@ -177,3 +183,11 @@ separate regression exercises failed durable capture admission and checks that
 it leaves recognition fenced.
 The separate speech-gate campaign checks 11 segmentation schedules, including
 adaptive noise thresholds, circular pre-roll, utterance length and reset.
+
+The Files filter and Google consent campaigns compare 17 and 16 source
+schedules respectively. The browser deletion poll checks six Calendar and
+Reminder schedules. It reproduces the old duplicate CAS revision and checks
+that competing polls preserve the first committed revision. The pilot APK
+update campaign uses scripted ADB and an actual temporary rotation journal to
+compare 12 schedules and 149 checkpoints, including uncertainty after an
+ambiguous install reply.

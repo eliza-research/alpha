@@ -10118,7 +10118,8 @@
       "path": "apps/app/src/browser/calendar-store.ts",
       "sha256": "b318cabe391a8d06cda02d632850ce358e2ff5fdba25284077416b5e522a6075",
       "models": [
-        "CalendarSync"
+        "CalendarSync",
+        "BrowserDeletionPoll"
       ],
       "scope": "application",
       "treatment": "state-and-transition-projection",
@@ -10307,7 +10308,8 @@
       "path": "apps/app/src/browser/calendar.ts",
       "sha256": "349a1b5846168a1b4c2b804a5e4d81a346dabc16c64850c591ca0e83c0c2df31",
       "models": [
-        "CalendarSync"
+        "CalendarSync",
+        "BrowserDeletionPoll"
       ],
       "scope": "application",
       "treatment": "state-and-transition-projection",
@@ -11141,7 +11143,8 @@
       "path": "apps/app/src/browser/daily.ts",
       "sha256": "c7af57fc06d6d4f86e29dae139e7bae0f228fa4ab07befadd4114c5319c07b5c",
       "models": [
-        "BrowserSession"
+        "BrowserSession",
+        "BrowserDeletionPoll"
       ],
       "scope": "application",
       "treatment": "domain-contract-or-support",
@@ -12583,42 +12586,14 @@
       "models": [
         "DeletionJournal",
         "DurableStore",
-        "CalendarSync"
+        "CalendarSync",
+        "BrowserDeletionPoll"
       ],
       "scope": "application",
       "treatment": "domain-contract-or-support",
       "reviewStatus": "state-audit-required",
-      "sha256": "589955aae6326d26b3acac5c1b9600dfea79c3c26fda77d71dfdca687090e503",
-      "stateAnchors": [
-        {
-          "line": 4,
-          "text": "const KEEP=200,AGE=30*86400000,SETTLED=127;"
-        },
-        {
-          "line": 9,
-          "text": "const done=Object.entries(rows).filter(([,row])=>definite(row)).sort(([,a],[,b])=>(a.at??0)-(b.at??0));"
-        },
-        {
-          "line": 15,
-          "text": "const terminal=Object.values(data.deletions||{}).filter(e=>['deleted','undone','conflict'].includes(e.phase)).sort((a,b)=>a.deadline.createdElapsed-b.deadline.createdElapsed);"
-        },
-        {
-          "line": 16,
-          "text": "for(const entry of terminal.slice(0,Math.max(0,terminal.length-SETTLED)))delete data.deletions![entry.id];"
-        },
-        {
-          "line": 17,
-          "text": "for(const id of Object.keys(data.deleteClaims||{}))if(!data.deletions?.[id])delete data.deleteClaims![id];"
-        },
-        {
-          "line": 22,
-          "text": "const raw=await document.readRaw();if(raw===null)return;"
-        },
-        {
-          "line": 23,
-          "text": "const data:T=JSON.parse(raw),clock=rendererDeletionClock();"
-        }
-      ]
+      "sha256": "3bb7b88434b94b547dca500e9b09dc6a095f7b1d6fcef5e6f1c3620cbefeb487",
+      "stateAnchors": []
     },
     {
       "path": "apps/app/src/browser/json-domain-document.ts",
@@ -13463,7 +13438,8 @@
       "path": "apps/app/src/browser/reminder-store.ts",
       "sha256": "b5062c308366b69aaeef05fbcb015369503d0afdd05e729407f2c6ccc845bf87",
       "models": [
-        "DeviceActions"
+        "DeviceActions",
+        "BrowserDeletionPoll"
       ],
       "scope": "application",
       "treatment": "state-and-transition-projection",
@@ -23213,277 +23189,9 @@
       ],
       "scope": "application",
       "treatment": "domain-contract-or-support",
-      "sha256": "ae31285bff701a115d4d7b361dfce985adbf802fd3abdef68e2e2d9ff16c74fc",
-      "stateAnchors": [
-        {
-          "line": 13,
-          "text": "const glyph = (url: string, size: number): CSSProperties => {"
-        },
-        {
-          "line": 14,
-          "text": "const mask = `url(\"${url}\") center / contain no-repeat`;"
-        },
-        {
-          "line": 17,
-          "text": "const HOME_EDIT_CSS = `"
-        },
-        {
-          "line": 50,
-          "text": "const p = Component.prototype, mount = p.componentDidMount, unmount = p.componentWillUnmount, render = p.renderVals;"
-        },
-        {
-          "line": 51,
-          "text": "const back = p.back, goHome = p.goHome, openView = p.openView;"
-        },
-        {
-          "line": 52,
-          "text": "let owner: any = null;"
-        },
-        {
-          "line": 53,
-          "text": "const shell = createMobileShellLauncher({"
-        },
-        {
-          "line": 59,
-          "text": "const {launcher} = shell, prefix = ALPHA_PRODUCT.storage.launcherBuiltinPrefix;"
-        },
-        {
-          "line": 60,
-          "text": "const icon = (id: string) => mobileShellIconUrl(ALPHA_PRODUCT, id);"
-        },
-        {
-          "line": 61,
-          "text": "const grid = icon(ALPHA_PRODUCT.icons.allApps);"
-        },
-        {
-          "line": 64,
-          "text": "const inventory = options.appInventory;"
-        },
-        {
-          "line": 65,
-          "text": "const glyphs = {app: grid, phone: icon('phone'), search: icon('search'), close: icon('x'), plus: icon('plus'), info: icon('info')};"
-        },
-        {
-          "line": 66,
-          "text": "const rerender = () => owner?.setState({launcherRevision: Date.now()});"
-        },
-        {
-          "line": 68,
-          "text": "const addSheet = createInlineModal(() => owner?.setState({homeAdd: false}));"
-        },
-        {
-          "line": 69,
-          "text": "const installedApp = (key: string) => launcher.snapshot().apps.find(app => appKey(app) === key);"
-        },
-        {
-          "line": 72,
-          "text": "let press: {key: string; x: number; y: number; timer: ReturnType<typeof setTimeout>} | null = null;"
-        },
-        {
-          "line": 73,
-          "text": "let drag: {key: string; x: number; y: number; scale: number; tile: HTMLElement; moved: boolean} | null = null;"
-        },
-        {
-          "line": 74,
-          "text": "let swallow = '';"
-        },
-        {
-          "line": 75,
-          "text": "const endPress = () => { if (press) clearTimeout(press.timer); press = null; };"
-        },
-        {
-          "line": 76,
-          "text": "const endDrag = () => { if (drag) { drag.tile.style.transform = ''; drag.tile.style.zIndex = ''; drag.tile.removeAttribute('data-alpha-home-dragging'); } drag = null; };"
-        },
-        {
-          "line": 77,
-          "text": "const tileOf = (target: EventTarget | null) => (target as Element | null)?.closest?.('[data-mobile-shell-tile]') as HTMLElement | null;"
-        },
-        {
-          "line": 78,
-          "text": "const keyOf = (tile: Element | null) => tile?.querySelector('[data-alpha-home-key]')?.getAttribute('data-alpha-home-key') || '';"
-        },
-        {
-          "line": 79,
-          "text": "const focusTile = (key: string) => requestAnimationFrame(() => (document.querySelector(`[data-alpha-home-key=\"${CSS.escape(key)}\"]`)?.closest('[data-mobile-shell-tile]') as HTMLElement | null)?.focus("
-        },
-        {
-          "line": 80,
-          "text": "const closeEdit = (self: any) => {"
-        },
-        {
-          "line": 82,
-          "text": "const S = self.S();"
-        },
-        {
-          "line": 86,
-          "text": "const place = (key: string, target: string) => {"
-        },
-        {
-          "line": 87,
-          "text": "const keys = shell.homeEntries().map(entry => entry.key), from = keys.indexOf(key), to = keys.indexOf(target), app = installedApp(key);"
-        },
-        {
-          "line": 90,
-          "text": "for (let step = 0; step < Math.abs(to - from); step++) launcher.moveFavorite(app, to > from ? 1 : -1);"
-        },
-        {
-          "line": 93,
-          "text": "const remove = (key: string) => { const app = installedApp(key); if (app && launcher.isFavorite(app)) { launcher.clearError(); launcher.toggleFavorite(app); } };"
-        },
-        {
-          "line": 95,
-          "text": "let stop: (() => void) | undefined;"
-        },
-        {
-          "line": 99,
-          "text": "const result = mount?.apply(this, args);"
-        },
-        {
-          "line": 109,
-          "text": "const openMenu = (S: Bag) => S.drawerMenu && appsDrawerEntries(launcher.snapshot(), prefix, String(S.drawerQ || '')).some(entry => entry.key === S.drawerMenu) ? S.drawerMenu as string : null;"
-        },
-        {
-          "line": 114,
-          "text": "const S = this.S();"
-        },
-        {
-          "line": 117,
-          "text": "const above = (S.voice && S.voice !== 'off') || S.chat === 'full' || S.chat === 'sheet' || !!this.props?.assistantSurface;"
-        },
-        {
-          "line": 123,
-          "text": "p.goHome = function (...args: any[]) { const result = goHome?.apply(this, args); closeEdit(this); return result; };"
-        },
-        {
-          "line": 131,
-          "text": "const out = render.call(this), S = this.S(), self = this;"
-        },
-        {
-          "line": 133,
-          "text": "const snapshot = launcher.snapshot();"
-        },
-        {
-          "line": 134,
-          "text": "const showDrawer = !!inventory && !out.assistantSurface;"
-        },
-        {
-          "line": 135,
-          "text": "const drawerOpen = showDrawer && !!S.drawer && !!out.isOn && !out.isView;"
-        },
-        {
-          "line": 136,
-          "text": "const editing = !!inventory && !!S.homeEdit && !!out.isOn && !out.isView && !drawerOpen && !out.assistantSurface;"
-        },
-        {
-          "line": 137,
-          "text": "const face = (key: string, tile: {image?: string; glyphUrl?: string; badge?: boolean}) => createElement('span', {'data-mobile-shell-tile-face': '', 'data-alpha-home-key': key},"
-        },
-        {
-          "line": 141,
-          "text": "const tile = (entry: MobileHomeEntry): MobileHomeTile => {"
-        },
-        {
-          "line": 142,
-          "text": "let base: Omit<MobileHomeTile, 'face'>;"
-        },
-        {
-          "line": 145,
-          "text": "const key = alphaViews.hostKey(entry.view), definition = views[key] || {};"
-        },
-        {
-          "line": 146,
-          "text": "const badge = typeof definition.badge === 'function' && ['phone', 'messages', 'inbox'].includes(key) ? !!definition.badge(self.vget(key)) : false;"
-        },
-        {
-          "line": 153,
-          "text": "const appsTile = {key: 'alpha:apps-drawer', label: 'Apps', glyphUrl: grid, iconId: ALPHA_PRODUCT.icons.allApps, onOpen: () => self.openAllApps(), dialog: true};"
-        },
-        {
-          "line": 154,
-          "text": "const tiles = out.assistantSurface ? [] : [...shell.homeEntries().map(tile), ...(editing || !showDrawer ? [] : [appsTile])];"
-        },
-        {
-          "line": 155,
-          "text": "const gridProps: Bag = {"
-        },
-        {
-          "line": 159,
-          "text": "const target = tileOf(event.target), key = keyOf(target);"
-        },
-        {
-          "line": 165,
-          "text": "const box = target.getBoundingClientRect();"
-        },
-        {
-          "line": 171,
-          "text": "const dx = (event.clientX - drag.x) / drag.scale, dy = (event.clientY - drag.y) / drag.scale;"
-        },
-        {
-          "line": 183,
-          "text": "const done = drag; endDrag();"
-        },
-        {
-          "line": 186,
-          "text": "const over = document.elementsFromPoint(event.clientX, event.clientY).map(node => keyOf(tileOf(node))).find(key => key && key !== done.key);"
-        },
-        {
-          "line": 192,
-          "text": "const key = keyOf(tileOf(event.target));"
-        },
-        {
-          "line": 198,
-          "text": "const target = tileOf(event.target), key = keyOf(target);"
-        },
-        {
-          "line": 200,
-          "text": "const held = swallow === key; swallow = '';"
-        },
-        {
-          "line": 206,
-          "text": "const key = keyOf(tileOf(event.target));"
-        },
-        {
-          "line": 208,
-          "text": "const step = event.key === 'ArrowLeft' || event.key === 'ArrowUp' ? -1 : event.key === 'ArrowRight' || event.key === 'ArrowDown' ? 1 : 0;"
-        },
-        {
-          "line": 210,
-          "text": "const app = step && installedApp(key);"
-        },
-        {
-          "line": 215,
-          "text": "const hideCards = out.homeHasOverviewCards === false;"
-        },
-        {
-          "line": 216,
-          "text": "const homeShell = createElement(MobileHomeScreen, {"
-        },
-        {
-          "line": 222,
-          "text": "const homeEditStyle = createElement('style', null, HOME_EDIT_CSS);"
-        },
-        {
-          "line": 223,
-          "text": "const appInfo = options.appInfo;"
-        },
-        {
-          "line": 224,
-          "text": "const allAppsDrawer = showDrawer ? createElement(InstalledAppsGridDrawer, {"
-        },
-        {
-          "line": 239,
-          "text": "const target: {packageName: string; activityName?: string; user?: string} = {packageName: app.packageName};"
-        },
-        {
-          "line": 251,
-          "text": "const hidden = editing ? snapshot.apps.filter(app => app.packageName.startsWith(prefix) && !snapshot.favorites.includes(appKey(app))).map(app => {"
-        },
-        {
-          "line": 252,
-          "text": "const view = alphaViews.fromLauncherKey(appKey(app)), url = view && alphaViews.iconUrl(view);"
-        }
-      ]
+      "reviewStatus": "state-audit-required",
+      "sha256": "db624735d90036440679278ec1b0d99770fdf9c946aa326f9dff3101d6d0bb27",
+      "stateAnchors": []
     },
     {
       "path": "apps/app/src/prototype/inbox-cloud-adapter.ts",
@@ -35047,7 +34755,8 @@
       "models": [
         "ShellNavigation",
         "FilesTree",
-        "FilesBrowserController"
+        "FilesBrowserController",
+        "FilesFilter"
       ],
       "scope": "application",
       "treatment": "state-and-transition-projection",
@@ -37166,1435 +36875,15 @@
     },
     {
       "path": "apps/app/src/prototype/voice-adapter.ts",
-      "sha256": "5947fa2371b75dffda0fc5fd3c14fa34427b973e1d3360abaf0667500d80c73b",
       "models": [
         "VoiceSession",
         "ControllerComposition"
       ],
       "scope": "application",
       "treatment": "state-and-transition-projection",
-      "stateAnchors": [
-        {
-          "line": 44,
-          "text": "const voiceServiceName = () => connectionController.getSnapshot().residentInference==='direct'?'Cartesia':cloudServiceName(connectionController.getCloudEnvironment() ?? connectionController.getSnapsho"
-        },
-        {
-          "line": 46,
-          "text": "const noteSpeechDisclosure = () => connectionController.getSnapshot().residentInference==='direct' ? 'Cartesia speech sends this note’s text using your own API key and provider allowance.' : cloudRunt"
-        },
-        {
-          "line": 49,
-          "text": "const voice = registerPlugin<{"
-        },
-        {
-          "line": 57,
-          "text": "const deviceVoice = registerPlugin<typeof voice & {warmSpeechOutput():Promise<void>;getRecordingMetrics(input:{recordingId:string}):Promise<{recordingId:string;peak:number;rms?:number}>}>('AlphaVoiceC"
-        },
-        {
-          "line": 58,
-          "text": "const appSettings = registerPlugin<{ openSettings(input: { page: 'privacy' }): Promise<unknown> }>('AlphaDevice');"
-        },
-        {
-          "line": 61,
-          "text": "const noteAudio = registerPlugin<{"
-        },
-        {
-          "line": 74,
-          "text": "const body = note.kind === 'list' ? (note.items || []).map((item: Bag) => String(item?.t || '').trim()).filter(Boolean).join('. ') : String(note.body || '');"
-        },
-        {
-          "line": 81,
-          "text": "const notes = views.notes, render = notes.render, back = notes.back, leave = notes.onLeave;"
-        },
-        {
-          "line": 82,
-          "text": "let closeTranscriptQuestion:(()=>void)|undefined;"
-        },
-        {
-          "line": 83,
-          "text": "let savedTranscription:{noteId:string;controller:AbortController;current:()=>boolean}|undefined;"
-        },
-        {
-          "line": 84,
-          "text": "const cancelSavedTranscription=()=>{savedTranscription?.controller.abort();};"
-        },
-        {
-          "line": 85,
-          "text": "const originalApi = Component.prototype.api;"
-        },
-        {
-          "line": 87,
-          "text": "const value = originalApi.call(this, key);"
-        },
-        {
-          "line": 99,
-          "text": "const target=await this.notesStore.target(note.id);"
-        },
-        {
-          "line": 108,
-          "text": "value.deleteVoiceNoteForever=(noteId:string)=>{const note=refusedVoice;if(note&&note.id===noteId)void deleteVoiceNote(value,note,true);};"
-        },
-        {
-          "line": 121,
-          "text": "let deletionBusy=false,noteHandoffBusy=false;"
-        },
-        {
-          "line": 122,
-          "text": "let deletionRefresh:Promise<void>|null=null;"
-        },
-        {
-          "line": 127,
-          "text": "const sessionDeletions=new Set<string>();"
-        },
-        {
-          "line": 129,
-          "text": "let refusedVoice:Bag|null=null;"
-        },
-        {
-          "line": 130,
-          "text": "let api: Bag | undefined, stage = 'closed', generation = 0, busy = false;"
-        },
-        {
-          "line": 131,
-          "text": "let clip: Clip | undefined, recordingId: string | undefined, started = 0;"
-        },
-        {
-          "line": 132,
-          "text": "let error = '', draft = '', requestId: string | undefined;"
-        },
-        {
-          "line": 134,
-          "text": "let failure: VoiceFailure | '' = '';"
-        },
-        {
-          "line": 135,
-          "text": "let recognized: { text: string; provenance: TranscriptProvenance } | undefined;"
-        },
-        {
-          "line": 136,
-          "text": "let savedStarting:Promise<void>|undefined;"
-        },
-        {
-          "line": 137,
-          "text": "let savedPlaybackReady = false;"
-        },
-        {
-          "line": 138,
-          "text": "let savedPlaying: string | undefined, savedPosition = 0, savedEpoch = 0, savedTick: ReturnType<typeof setInterval> | undefined;"
-        },
-        {
-          "line": 139,
-          "text": "const stopSaved = () => { savedPlaybackReady=false;const owned = savedPlaying !== undefined; ++savedEpoch; savedPlaying = undefined; savedPosition = 0; if (savedTick) clearInterval(savedTick); savedTi"
-        },
-        {
-          "line": 142,
-          "text": "stopSaved(); const epoch = savedEpoch; savedPlaying = note.audio.audioId; refresh();"
-        },
-        {
-          "line": 144,
-          "text": "await stopping;if(epoch!==savedEpoch)return;const retained=await noteAudio.describe({audioId:note.audio.audioId});if(epoch!==savedEpoch)return;if(retained.audioId!==note.audio.audioId||retained.noteId"
-        },
-        {
-          "line": 150,
-          "text": "let listener: PluginListenerHandle | undefined, tick: ReturnType<typeof setInterval> | undefined;"
-        },
-        {
-          "line": 151,
-          "text": "let stopping = Promise.resolve();"
-        },
-        {
-          "line": 153,
-          "text": "let startingCapture:ReturnType<Driver['startRecording']>|undefined;"
-        },
-        {
-          "line": 154,
-          "text": "let driver: Driver = voice, cloudMode = false, cloudConnectRequired = false, deviceOnly = false;"
-        },
-        {
-          "line": 155,
-          "text": "let pairedVoice: ReturnType<typeof createPairedVoice> = null, pairedReady = false, pairedAsrReady = false;"
-        },
-        {
-          "line": 156,
-          "text": "let selectedRoute: 'device' | 'agent' | 'manual' = 'device', preparingPaired = false;"
-        },
-        {
-          "line": 157,
-          "text": "let onDeviceVoice: ReturnType<typeof createOnDeviceVoice> = null, onDeviceReady = false, preparingLocal = false;"
-        },
-        {
-          "line": 159,
-          "text": "let liveDictation: NativeLiveDictation | undefined;"
-        },
-        {
-          "line": 160,
-          "text": "let transcription: AbortController | undefined;"
-        },
-        {
-          "line": 161,
-          "text": "let readiness: AbortController | undefined;"
-        },
-        {
-          "line": 162,
-          "text": "let playback: AbortController | undefined, playing = false;"
-        },
-        {
-          "line": 164,
-          "text": "let chatDestination:ChatDestination|undefined;"
-        },
-        {
-          "line": 165,
-          "text": "let ownedNavigation:{chat:ChatDestination;view:string;detent:string;applying:boolean;turnId:string;context?:import('../runtime/alpha-client').ContextEnvelope}|undefined;"
-        },
-        {
-          "line": 166,
-          "text": "let conversationVoice:Pick<BatchVoiceConversation<Clip>,'start'|'stop'|'recheck'|'resume'>|Awaited<ReturnType<typeof developmentCartesiaConversation>>|undefined;"
-        },
-        {
-          "line": 167,
-          "text": "let conversationState:BatchVoiceState & {progressText?:string}={phase:'idle'};"
-        },
-        {
-          "line": 168,
-          "text": "let conversationReviewRequired=false;"
-        },
-        {
-          "line": 170,
-          "text": "let conversationDenied=false;"
-        },
-        {
-          "line": 171,
-          "text": "let conversationSpeech:Promise<void>|undefined;"
-        },
-        {
-          "line": 172,
-          "text": "let notesSpeech:Promise<void>|undefined;"
-        },
-        {
-          "line": 173,
-          "text": "let conversationPrepared:{binding:import('../runtime/alpha-client').VoiceConversationBinding;context:import('../runtime/alpha-client').ContextEnvelope}|undefined;"
-        },
-        {
-          "line": 174,
-          "text": "let conversationLevels:number[]=[];"
-        },
-        {
-          "line": 177,
-          "text": "let conversationLive:VoiceAssistantSession|undefined;"
-        },
-        {
-          "line": 184,
-          "text": "let liveCapture:{speaking:boolean;release(drop?:boolean):void}|undefined;"
-        },
-        {
-          "line": 185,
-          "text": "let conversationInterim='';"
-        },
-        {
-          "line": 186,
-          "text": "let conversationInterimKnownMessages=new Set<string>();"
-        },
-        {
-          "line": 187,
-          "text": "let assistantState:AssistantState={phase:'idle'};"
-        },
-        {
-          "line": 188,
-          "text": "let conversationLastTranscript='',conversationLastReply='';"
-        },
-        {
-          "line": 190,
-          "text": "let quietRetries=0,quietRetry:ReturnType<typeof setTimeout>|undefined;"
-        },
-        {
-          "line": 192,
-          "text": "let conversationReview:{text:string;settle:(text:string|null)=>void}|undefined;"
-        },
-        {
-          "line": 194,
-          "text": "let conversationReplyWatch:Set<string>|undefined;"
-        },
-        {
-          "line": 197,
-          "text": "const warmRoutes=new Set<string>();let timedRecording:string|undefined;"
-        },
-        {
-          "line": 198,
-          "text": "const timingRoute=()=>conversationLive?(cloudMode?'eliza-cloud':'local-agent'):cloudMode?'eliza-cloud':onDeviceReady?(Capacitor.isNativePlatform()?'on-device':'browser'):pairedAsrReady?'paired-agent':"
-        },
-        {
-          "line": 199,
-          "text": "const recordingEnded=(id:string|undefined,entry:'conversation'|'notes')=>{"
-        },
-        {
-          "line": 201,
-          "text": "const route=timingRoute(),cold=!warmRoutes.has(route);warmRoutes.add(route);"
-        },
-        {
-          "line": 206,
-          "text": "const batchRecordingEnded=(id:string|undefined)=>{if(!id||timedRecording===id)return;recordingEnded(id,'conversation');recordLiveVoiceTiming({mode:'batch',partials:0});};"
-        },
-        {
-          "line": 208,
-          "text": "let mediaUnconfirmed:unknown;"
-        },
-        {
-          "line": 209,
-          "text": "let retirement:{shell:any;phase:'stopping'|'error';returnChat:string;view:string|null;binding:string;panelChat:string;promise:Promise<void>;approval?:AbortController;proposalId?:string}|undefined;"
-        },
-        {
-          "line": 210,
-          "text": "const refresh = () => chatDestination ? chatDestination.shell.setState({}) : api?.setView('notes', { nativeVoiceRevision: Date.now() });"
-        },
-        {
-          "line": 211,
-          "text": "const stopClock = () => { if (tick) clearInterval(tick); tick = undefined; };"
-        },
-        {
-          "line": 217,
-          "text": "const previousConversation=conversationVoice;"
-        },
-        {
-          "line": 223,
-          "text": "const hadCapture=!!recordingId||!!startingCapture||!!clip;"
-        },
-        {
-          "line": 224,
-          "text": "const previousChat=chatDestination;const chatShell=previousChat?.shell,previousSpeech=conversationSpeech,previousNotesSpeech=notesSpeech;conversationVoice=undefined;conversationPrepared=undefined;"
-        },
-        {
-          "line": 227,
-          "text": "const conversationStopped=previousConversation?.stop();"
-        },
-        {
-          "line": 234,
-          "text": "const previous = driver;"
-        },
-        {
-          "line": 235,
-          "text": "const pendingStart=startingCapture;"
-        },
-        {
-          "line": 239,
-          "text": "const held:NonNullable<typeof retirement>={shell:chatShell,phase:'stopping',returnChat:previousChat!.chat,view:previousChat!.view,binding:previousChat!.binding,panelChat:chatShell.S().chat,promise:sto"
-        },
-        {
-          "line": 247,
-          "text": "const directCartesia = !!chat && chat.mode !== 'dictation' && (connectionController.getSnapshot().residentInference==='direct'&&connectionController.getSnapshot().providerStatus?.voiceConfigured===tru"
-        },
-        {
-          "line": 248,
-          "text": "const selected = chat && chat.mode!=='dictation' && (testMocksEnabled || directCartesia && preference === 'default') ? 'cloud' : selectVoiceRoute(preference), route = selected === 'cloud' ? 'agent' : "
-        },
-        {
-          "line": 249,
-          "text": "const previousChat=chatDestination;"
-        },
-        {
-          "line": 263,
-          "text": "const local = onDeviceVoice, token = generation, controller = new AbortController(); readiness = controller;"
-        },
-        {
-          "line": 270,
-          "text": "const live = !!ready && chat?.mode === 'dictation' && await nativeLiveVoiceReady(controller.signal).catch(() => false);"
-        },
-        {
-          "line": 283,
-          "text": "const token = generation, controller = new AbortController(); readiness = controller;"
-        },
-        {
-          "line": 284,
-          "text": "const selected = pairedVoice;"
-        },
-        {
-          "line": 288,
-          "text": "try { const ready = await selected.ready(controller.signal); if (token === generation && !controller.signal.aborted) { pairedReady = ready; refresh(); } } catch { /* TTS and ASR are separate capabilit"
-        },
-        {
-          "line": 290,
-          "text": "try { const ready = await selected.transcriptionReady(controller.signal); if (token === generation && !controller.signal.aborted) { pairedAsrReady = ready; refresh(); } } catch { /* Manual recording r"
-        },
-        {
-          "line": 298,
-          "text": "let reprepare = false;"
-        },
-        {
-          "line": 300,
-          "text": "const chat = chatDestination, route = selectedRoute;"
-        },
-        {
-          "line": 305,
-          "text": "busy = true; error = ''; failure = ''; const token = generation; refresh();"
-        },
-        {
-          "line": 308,
-          "text": "const kind = voiceFailure(reason, { transcribing: stage === 'transcribing', browser: !Capacitor.isNativePlatform(), cloud: cloudMode, serviceName: voiceServiceName() });"
-        },
-        {
-          "line": 320,
-          "text": "const handle = await driver.addListener('recordingStopped', value => {"
-        },
-        {
-          "line": 329,
-          "text": "const capture=liveDictation?liveDictation.startRecording():onDeviceReady?deviceVoice.startRecording({maxDurationMs:29000}):(driver as typeof voice).startRecording();"
-        },
-        {
-          "line": 331,
-          "text": "let result:Awaited<typeof capture>;"
-        },
-        {
-          "line": 346,
-          "text": "const { shell, chat, draft:previousDraft } = chatDestination;"
-        },
-        {
-          "line": 347,
-          "text": "const text=previousDraft?[previousDraft,draft].join('\\n'):draft;"
-        },
-        {
-          "line": 362,
-          "text": "const value = await driver.stopRecording(); if (token !== generation) return;"
-        },
-        {
-          "line": 375,
-          "text": "const result = liveDictation ? await liveDictation.transcribe(clip.recordingId, transcription.signal) : onDeviceReady && onDeviceVoice ? await onDeviceVoice.transcribe(clip.recordingId, transcription."
-        },
-        {
-          "line": 385,
-          "text": "const speaker = onDeviceReady ? onDeviceVoice : cloudMode && 'speak' in driver ? driver : pairedReady ? pairedVoice : null;"
-        },
-        {
-          "line": 387,
-          "text": "const token = generation, controller = new AbortController();"
-        },
-        {
-          "line": 389,
-          "text": "const pending=notesSpeech=onDeviceReady&&onDeviceVoice?onDeviceVoice.speak(draft,controller.signal,undefined,true):speaker.speak(draft, controller.signal);"
-        },
-        {
-          "line": 394,
-          "text": "const composerBinding = () => JSON.stringify(["
-        },
-        {
-          "line": 402,
-          "text": "const chat=chatDestination;if(!chat)return false;const state=chat.shell.S(),view=state.view||'home',owned=ownedNavigation?.chat===chat?ownedNavigation:undefined;"
-        },
-        {
-          "line": 403,
-          "text": "let contextCurrent=!conversationPrepared||chat.shell.voiceConversationCurrent(conversationPrepared);"
-        },
-        {
-          "line": 405,
-          "text": "if(!contextCurrent&&owned&&view===owned.view&&conversationPrepared){try{const actual=chat.shell.voiceConversationContext(conversationPrepared.binding);contextCurrent=actual.view===owned.view&&(owned.c"
-        },
-        {
-          "line": 411,
-          "text": "let held:typeof ownedNavigation,attempted=false;"
-        },
-        {
-          "line": 416,
-          "text": "let pending:Promise<boolean>;try{pending=commit(held.detent,value=>{if(chat.shell.voiceSendTurnId!==turnId||ownedNavigation!==held||token!==generation||chatDestination!==chat)throw Error('Voice naviga"
-        },
-        {
-          "line": 417,
-          "text": "const switched=await pending;"
-        },
-        {
-          "line": 426,
-          "text": "try{const next=chat.shell.voiceConversationContext(conversationPrepared!.binding);if(next.view!==held.view||JSON.stringify(next)!==JSON.stringify(held.context))throw Error('Voice navigation changed.')"
-        },
-        {
-          "line": 431,
-          "text": "const chat=chatDestination;if(!chat){if(retirement)retirement.returnChat=keyboard?'input':retirement.returnChat;return;}if(preserveChat)chat.chat=chat.shell.S().chat;if(!keyboard){chat.shell.pendingAc"
-        },
-        {
-          "line": 435,
-          "text": "const opener=chat.opener?.isConnected?chat.opener:document.querySelector<HTMLElement>('[data-alpha-composer], [data-alpha-layer=\"pill\"] button[aria-label=\"Talk\"]');"
-        },
-        {
-          "line": 444,
-          "text": "const held=retirement;if(!held||held.shell!==shell||held.phase!=='error')return false;"
-        },
-        {
-          "line": 449,
-          "text": "for (const method of ['openView', 'goHome', 'back']) {"
-        },
-        {
-          "line": 450,
-          "text": "const original = Component.prototype[method];"
-        },
-        {
-          "line": 454,
-          "text": "const owned=ownedNavigation;const ownEffect=owned?.applying&&owned.chat.shell===this&&(method==='goHome'?owned.view==='home':method==='openView'&&args[0]===owned.view);"
-        },
-        {
-          "line": 460,
-          "text": "let active=true,recording=false,id:string|undefined,ended:Clip|undefined,problem:unknown,endId:string|undefined,handle:PluginListenerHandle|undefined,poll:ReturnType<typeof setTimeout>|undefined,cance"
-        },
-        {
-          "line": 461,
-          "text": "const check=()=>{input.signal.throwIfAborted();current();};"
-        },
-        {
-          "line": 462,
-          "text": "const detach=async()=>{if(poll)clearTimeout(poll);poll=undefined;if(handle){const previous=handle;handle=undefined;await previous.remove();}};"
-        },
-        {
-          "line": 463,
-          "text": "const cancel=()=>{if(cancelling)return cancelling;active=false;recording=false;input.signal.removeEventListener('abort',aborted);cancelling=(async()=>{try{await detach();}finally{try{await selected.ca"
-        },
-        {
-          "line": 464,
-          "text": "const aborted=()=>{recording=false;if(poll)clearTimeout(poll);void selected.cancelRecording().catch(()=>{});};"
-        },
-        {
-          "line": 474,
-          "text": "const pending=selected.startRecording();startingCapture=pending;"
-        },
-        {
-          "line": 475,
-          "text": "let result:Awaited<typeof pending>;try{result=await pending;}finally{if(startingCapture===pending)startingCapture=undefined;}"
-        },
-        {
-          "line": 478,
-          "text": "const sample=async()=>{"
-        },
-        {
-          "line": 480,
-          "text": "try{check();const value=await selected.getRecordingMetrics(id!);check();if(!active||!recording)return;conversationLevels=[...conversationLevels.slice(-43),value.peak];input.onActivity(value);refresh()"
-        },
-        {
-          "line": 485,
-          "text": "stop:async()=>{check();recording=false;batchRecordingEnded(id);await detach();check();if(problem)throw problem;const value=ended??await selected.stopRecording();check();if(value.recordingId!==id||!Num"
-        },
-        {
-          "line": 493,
-          "text": "const done=()=>{signal.removeEventListener('abort',aborted);if(conversationReview===held){conversationReview=undefined;refresh();}};"
-        },
-        {
-          "line": 494,
-          "text": "const aborted=()=>{done();reject(signal.reason??new DOMException('Voice review changed','AbortError'));};"
-        },
-        {
-          "line": 495,
-          "text": "const held={text,settle:(value:string|null)=>{try{current();}catch(error){done();reject(error);return;}done();resolve(value);}};"
-        },
-        {
-          "line": 505,
-          "text": "const code=(failure as {code?:unknown})?.code,limit=code==='voice-http-429'?cloudVoiceServiceLimit(failure):null;"
-        },
-        {
-          "line": 509,
-          "text": "const wait=limit?.retryAfterMs??2000;stopClock();"
-        },
-        {
-          "line": 510,
-          "text": "const pause=()=>{cancelChat(false,true);};"
-        },
-        {
-          "line": 519,
-          "text": "const chat=chatDestination;if(!chat||!chatCurrent())return;"
-        },
-        {
-          "line": 520,
-          "text": "const provider=connectionController.getSnapshot();"
-        },
-        {
-          "line": 522,
-          "text": "const token=generation;"
-        },
-        {
-          "line": 524,
-          "text": "const controller=new AbortController();readiness=controller;conversationReviewRequired=false;conversationDenied=false;conversationState={phase:'starting'};error='';refresh();"
-        },
-        {
-          "line": 525,
-          "text": "const current=()=>{controller.signal.throwIfAborted();if(token!==generation||chatDestination!==chat||!chatCurrent())throw new DOMException('Voice conversation changed','AbortError');};"
-        },
-        {
-          "line": 526,
-          "text": "const ownBrowserVoice=ownBrowserVoiceActive();"
-        },
-        {
-          "line": 527,
-          "text": "const browserRealtime=!deviceOnly&&(ownBrowserVoice||developmentCloudRealtimeVoiceEnabled||(cloudMode&&developmentCartesiaVoiceEnabled&&!developmentCloudVoiceEnabled));"
-        },
-        {
-          "line": 528,
-          "text": "const browserStartup=browserRealtime?observeVoiceStartup(controller.signal,ownBrowserVoice?'direct-cartesia':'cloud-cartesia'):undefined;"
-        },
-        {
-          "line": 530,
-          "text": "const nativeCloudStartup=!deviceOnly&&cloudRuntimeEnabled&&provider.residentInference!=='direct'&&connectionController.getCloudEnvironment()==='production'&&nativeCloudStreamingAvailable();"
-        },
-        {
-          "line": 531,
-          "text": "const prepare=async(mark?:(stage:VoiceStartupStage)=>void)=>{"
-        },
-        {
-          "line": 532,
-          "text": "current();const binding=await chat.shell.prepareVoiceConversation(controller.signal,mark);current();conversationPrepared=binding;current();"
-        },
-        {
-          "line": 534,
-          "text": "const previous=conversationVoice;conversationVoice=undefined;"
-        },
-        {
-          "line": 542,
-          "text": "const prepared=nativeCloudStartup?await runVoiceStartupPreparation(controller,prepare).catch(failure=>{"
-        },
-        {
-          "line": 553,
-          "text": "const direct=await developmentCartesiaConversation({binding:prepared.binding,assertCurrent:current,getUiContext:()=>{current();const context=chat.shell.voiceConversationContext(prepared.binding);const"
-        },
-        {
-          "line": 556,
-          "text": "const networkSpeech = !deviceOnly&&(provider.residentInference==='direct'&&provider.providerStatus?.voiceConfigured===true||cloudRuntimeEnabled || testMocksEnabled);"
-        },
-        {
-          "line": 557,
-          "text": "const local = networkSpeech ? null : createOnDeviceVoice();"
-        },
-        {
-          "line": 560,
-          "text": "const cloudDriver = networkSpeech ? createCloudVoice() : null;"
-        },
-        {
-          "line": 561,
-          "text": "let streamingCloud=cloudDriver&&provider.residentInference!=='direct'&&nativeCloudStreamingAvailable()?createCloudStreamingSpeech({"
-        },
-        {
-          "line": 565,
-          "text": "const selected = cloudDriver ?? {"
-        },
-        {
-          "line": 573,
-          "text": "let batchCaptureRetired=false;"
-        },
-        {
-          "line": 584,
-          "text": "let cueSpeech:{captureRetired:(()=>boolean)|null;speak(text:string,signal:AbortSignal,turn:CueTurn):Promise<void>}|undefined;"
-        },
-        {
-          "line": 585,
-          "text": "const sendTurn=async(input:{turnId:string;text:string;voiceTurnSignal:any;signal:AbortSignal;onText?:(text:string,frame?:AssistantTextFrame)=>void})=>{"
-        },
-        {
-          "line": 586,
-          "text": "const cueTurn:CueTurn={signal:input.signal};try{"
-        },
-        {
-          "line": 589,
-          "text": "const sent=await sendVoiceEntry({policy:voiceSendPolicy(),transcript:input.text,review:text=>reviewConversationTurn(text,input.signal,current),send:async text=>{"
-        },
-        {
-          "line": 592,
-          "text": "const turn={...conversationPrepared!};conversationReplyWatch=new Set((chat.shell.S().msgs||[]).map((m:Bag)=>String(m.id)));"
-        },
-        {
-          "line": 593,
-          "text": "const cue=cueSpeech;const ack=cue?createBatchProgressAcknowledgment({turnId:input.turnId,conversationId:turn.binding.conversationId,ownerId:turn.binding.session.ownerId,signal:input.signal,assertCurre"
-        },
-        {
-          "line": 594,
-          "text": "const retireAck=()=>{try{current();}catch{void ack?.stop().catch(()=>{});}};"
-        },
-        {
-          "line": 595,
-          "text": "const unsubscribeAck=ack?connectionController.subscribe(retireAck):()=>{};"
-        },
-        {
-          "line": 598,
-          "text": "const early=input.onText;let earlyChain:Promise<void>=Promise.resolve();"
-        },
-        {
-          "line": 599,
-          "text": "const onText=early&&((value:string,frame:AssistantTextFrame)=>{if(!ack){early(value,frame);return;}earlyChain=earlyChain.then(()=>ack.idle()).then(()=>{if(!input.signal.aborted)early(value,frame);}).c"
-        },
-        {
-          "line": 601,
-          "text": "const reply=await chat.shell.sendVoiceTurn({...input,text,...turn,onText,assertCurrent:current,onProgress:ack?.progress,onReplyStarted:ack?.replyStarted,navigation:navigationContinuation(chat,token,in"
-        },
-        {
-          "line": 606,
-          "text": "const result=sent.result;input.signal.throwIfAborted();current();"
-        },
-        {
-          "line": 609,
-          "text": "const spoken=typeof result.text==='string'?workflowReplyText(result.text).text:result.text;return spoken===result.text?result:{...result,text:spoken};"
-        },
-        {
-          "line": 612,
-          "text": "const voiceStopped=(value:BatchVoiceState)=>{"
-        },
-        {
-          "line": 613,
-          "text": "const failure=value.error as {code?:unknown;reason?:unknown}|undefined,code=failure?.code;"
-        },
-        {
-          "line": 614,
-          "text": "const denied=voiceFailure(value.error,{transcribing:false,browser:!Capacitor.isNativePlatform()});"
-        },
-        {
-          "line": 634,
-          "text": "const binding=prepared.binding;"
-        },
-        {
-          "line": 635,
-          "text": "const residentRequest=()=>{const resident=connectionController.getResidentLiveVoice();return resident&&connectionController.voiceConversationCurrent(binding,false)?resident.request:null;};"
-        },
-        {
-          "line": 638,
-          "text": "const semanticEndpoint=streamingCloud?undefined:createEndpointChain({local:residentEndpoint(residentRequest),clef:clefEndpointStage()})!;"
-        },
-        {
-          "line": 639,
-          "text": "const recordedReplies=new Set<string>();"
-        },
-        {
-          "line": 640,
-          "text": "const heardReporter=createHeardReporter({"
-        },
-        {
-          "line": 645,
-          "text": "const recordedReply=async(turnId:string)=>{"
-        },
-        {
-          "line": 646,
-          "text": "for(const delay of [500,1000,2000,4000,8000]){"
-        },
-        {
-          "line": 649,
-          "text": "const found=await connectionController.voiceReplyForTurn(binding,turnId,AbortSignal.timeout(10000)).catch(()=>undefined);"
-        },
-        {
-          "line": 654,
-          "text": "const timingTurns=new Map<string,string>();"
-        },
-        {
-          "line": 667,
-          "text": "const CUE_TAIL_MS=1500;"
-        },
-        {
-          "line": 668,
-          "text": "let cueHeard:{text:string;settledAt?:number;turn:CueTurn}|undefined;"
-        },
-        {
-          "line": 669,
-          "text": "const cueAge=(heard:{settledAt?:number})=>heard.settledAt===undefined?0:Math.max(0,Date.now()-heard.settledAt);"
-        },
-        {
-          "line": 670,
-          "text": "const pending=(turn:CueTurn)=>!turn.settled&&!turn.signal.aborted;"
-        },
-        {
-          "line": 673,
-          "text": "const heard:{text:string;settledAt?:number;turn:CueTurn}={text,turn};let audible=false;"
-        },
-        {
-          "line": 674,
-          "text": "const started=()=>{audible=true;cueHeard=heard;};"
-        },
-        {
-          "line": 678,
-          "text": "const listen=streamingCloud?streamingCloud.listen:nativeAssistantListener({onLatency:recordLiveVoiceTiming,onInterim:text=>{if(token!==generation||chatDestination!==chat)return;conversationInterim=tex"
-        },
-        {
-          "line": 679,
-          "text": "const assistant:VoiceAssistantSession=new VoiceAssistantSession({"
-        },
-        {
-          "line": 687,
-          "text": "const results:boolean[]=[];let heldAt:number|undefined,handed=false,ignoring=false;"
-        },
-        {
-          "line": 688,
-          "text": "const own={speaking:false,fullDuplex:false,release:(drop?:boolean)=>{"
-        },
-        {
-          "line": 689,
-          "text": "const at=heldAt;heldAt=undefined;"
-        },
-        {
-          "line": 708,
-          "text": "const opened=await listen({...handlers,"
-        },
-        {
-          "line": 709,
-          "text": "onSpeechStart:at=>{own.speaking=true;const heard=cueHeard&&pending(cueHeard.turn)&&cueAge(cueHeard)<=CUE_TAIL_MS?cueHeard:undefined;if(!heard)handlers.onSpeechStart(at);else if(heard.settledAt===undef"
-        },
-        {
-          "line": 722,
-          "text": "turnSignal:text=>{const signal=buildVoiceTurnSignal(text);return signal.agentShouldSpeak?{nextSpeaker:'agent',agentShouldSpeak:true,source:`${signal.source}+committed`}:signal;},"
-        },
-        {
-          "line": 725,
-          "text": "speakable:text=>{const spoken=toSpeakableText(workflowReplyText(text).text);if(!streamingCloud)screenConversationSpeech(spoken);return spoken;},"
-        },
-        {
-          "line": 726,
-          "text": "speak:async input=>{input.signal.throwIfAborted();current();const started=()=>{current();input.onStarted();};const pending=streamingCloud?streamingCloud.speak(input.text,input.signal,started):local!.s"
-        },
-        {
-          "line": 733,
-          "text": "const timing=timingTurns.get(heard.turnId);timingTurns.delete(heard.turnId);"
-        },
-        {
-          "line": 738,
-          "text": "const reply=heard.replyId?Promise.resolve({id:heard.replyId,text:''}):recordedReply(heard.turnId);"
-        },
-        {
-          "line": 741,
-          "text": "const note=heard.heard?'(Interrupted. The rest of this reply was not played.)':'(Interrupted before this reply was played.)';"
-        },
-        {
-          "line": 744,
-          "text": "onTurn:(event,turnId,detail)=>{if(token!==generation)return;if(event==='submitted'){recordingEnded(`live:${turnId}`,'conversation');markVoiceTiming('transcript-ready');if(detail)recordEndpointVoiceTim"
-        },
-        {
-          "line": 773,
-          "text": "const conversation:BatchVoiceConversation<Clip>=new BatchVoiceConversation<Clip>({"
-        },
-        {
-          "line": 775,
-          "text": "capture:async input=>{current();batchCaptureRetired=false;conversationPrepared={...conversationPrepared!,context:chat.shell.voiceConversationContext(prepared.binding)};current();const capture=await ca"
-        },
-        {
-          "line": 778,
-          "text": "const request=crypto.randomUUID();requestId=request;"
-        },
-        {
-          "line": 779,
-          "text": "let interrupt!:(error:unknown)=>void;const cancelled=new Promise<never>((_,reject)=>interrupt=reject);"
-        },
-        {
-          "line": 780,
-          "text": "const abort=()=>{void (cloudDriver??deviceVoice).cancel({requestId:request}).catch(()=>{});interrupt(signal.reason??new DOMException('Transcription cancelled','AbortError'));};signal.addEventListener("
-        },
-        {
-          "line": 781,
-          "text": "try{current();const result=await Promise.race([local?local.transcribe(value.recordingId,signal):cloudDriver!.transcribeRecording({recordingId:value.recordingId,requestId:request}),cancelled]);signal.t"
-        },
-        {
-          "line": 785,
-          "text": "speak:async input=>{input.signal.throwIfAborted();current();const started=()=>{current();markVoiceTiming('first-audio');input.onStarted();};const pending=local?local.speak(input.text,input.signal,star"
-        },
-        {
-          "line": 789,
-          "text": "if(value.phase==='idle'&&conversationState.phase!=='idle'){const held=conversationState;void conversation.stop().catch(()=>{}).then(()=>{if(token===generation&&chatDestination===chat&&conversationVoic"
-        },
-        {
-          "line": 792,
-          "text": "}catch(failure){if(token!==generation||controller.signal.aborted)return;if(quietVoiceRetry(failure,chat,token))return;conversationState={phase:'error',error:failure};browserStartup?.finish('failed');c"
-        },
-        {
-          "line": 797,
-          "text": "const pause=conversationState.awaitingUserInput;"
-        },
-        {
-          "line": 803,
-          "text": "const binding=composerBinding(),pause=conversationState.awaitingUserInput;"
-        },
-        {
-          "line": 805,
-          "text": "const reading=stopLocalSpeechPlayback();stopSaved();await Promise.all([stopping,Promise.resolve(reading)]);signal.throwIfAborted();"
-        },
-        {
-          "line": 816,
-          "text": "const state=this.S(),chat:ChatDestination={mode:'dictation',shell:this,view:state.view||null,chat:state.chat,draft:String(state.draft||''),reply:this.messageReplyTarget,edit:this.messageEditTarget,bin"
-        },
-        {
-          "line": 817,
-          "text": "const readingStopped=stopLocalSpeechPlayback();enter(undefined,!Capacitor.isNativePlatform()&&connectionController.getSnapshot().residentInference==='direct'?'agent':'device',chat);"
-        },
-        {
-          "line": 819,
-          "text": "const token=generation;this.setState({chat:state.chat==='full'?'full':'sheet',voice:'off'},()=>{if(token!==generation||chatDestination!==chat)return;document.querySelector<HTMLElement>('[data-alpha-ch"
-        },
-        {
-          "line": 828,
-          "text": "const state=this.S();"
-        },
-        {
-          "line": 829,
-          "text": "const chat:ChatDestination={shell:this,view:state.view||null,chat:state.chat,draft:String(state.draft||''),reply:this.messageReplyTarget,edit:this.messageEditTarget,binding:composerBinding(),...(typeo"
-        },
-        {
-          "line": 830,
-          "text": "const readingStopped=stopLocalSpeechPlayback();"
-        },
-        {
-          "line": 831,
-          "text": "enter(undefined,'default',chat);stopping=Promise.all([stopping,Promise.resolve(readingStopped)]).then(()=>{}).catch(failure=>{mediaUnconfirmed=failure;throw failure;});void stopping.catch(()=>{});conv"
-        },
-        {
-          "line": 835,
-          "text": "const token=generation,chat=chatDestination,owned=()=>token===generation&&chatDestination===chat&&chatCurrent();"
-        },
-        {
-          "line": 836,
-          "text": "const phase=conversationState.phase,live=phase==='listening',seconds=live?(Date.now()-started)/1000:(clip?.durationMs||0)/1000;"
-        },
-        {
-          "line": 837,
-          "text": "const messages:Record<string,string>={idle:'Voice conversation stopped.',starting:'Connecting to voice…',listening:'Listening…',transcribing:'Transcribing…',thinking:'Thinking…','awaiting-user-input':"
-        },
-        {
-          "line": 838,
-          "text": "const settings=phase==='error'&&conversationDenied&&Capacitor.isNativePlatform();"
-        },
-        {
-          "line": 839,
-          "text": "const recover=()=>{if(!owned()||mediaUnconfirmed)return;if(settings){void appSettings.openSettings({page:'privacy'}).catch(()=>chat?.shell.toast('Android app settings are unavailable. Allow the microp"
-        },
-        {
-          "line": 840,
-          "text": "const unavailable=phase==='error'&&(conversationState.error as {code?:unknown})?.code==='voice-http-503';"
-        },
-        {
-          "line": 841,
-          "text": "const visibleError=unavailable?'Voice is unavailable right now. Try again later or use the keyboard.':error;"
-        },
-        {
-          "line": 842,
-          "text": "const awaiting=phase==='awaiting-user-input'||conversationReviewRequired;"
-        },
-        {
-          "line": 843,
-          "text": "const progressText=!awaiting&&!error&&(phase==='thinking'||phase==='speaking')?(conversationState.progressText||''):'';"
-        },
-        {
-          "line": 844,
-          "text": "const reviewing=conversationReview,reviewOwned=()=>owned()&&conversationReview===reviewing;"
-        },
-        {
-          "line": 849,
-          "text": "const direct=(ownBrowserVoiceActive()||developmentCartesiaVoiceEnabled||developmentCloudRealtimeVoiceEnabled)&&conversationVoice&&'setMicrophoneMuted' in conversationVoice?conversationVoice:undefined;"
-        },
-        {
-          "line": 851,
-          "text": "const assistant=conversationLive&&conversationVoice===conversationLive?conversationLive:undefined;"
-        },
-        {
-          "line": 854,
-          "text": "const held=assistantState.inputHeld===true&&!assistant?.muted;"
-        },
-        {
-          "line": 855,
-          "text": "const assistantControls=assistant&&phase!=='error'?{canMute:phase!=='awaiting-user-input',muteAutomatically:held,muted:assistant.muted||held?'true':'false',muteLabel:held?'Microphone paused while Alph"
-        },
-        {
-          "line": 856,
-          "text": "const extra=assistant?assistantControls:direct?{canMute:true,muteAutomatically:direct.microphoneAutomaticallyMuted,muteLabel:direct.microphoneAutomaticallyMuted?'Microphone paused while Alpha responds"
-        },
-        {
-          "line": 864,
-          "text": "let sharedRecordingEffects:NotesRecordingEffects|undefined;"
-        },
-        {
-          "line": 866,
-          "text": "const recordingEffects=()=>sharedRecordingEffects??=createNotesRecordingEffects({recordings:noteAudio,journal:audioDeletionJournal,savedNotes,now:()=>Date.now()});"
-        },
-        {
-          "line": 867,
-          "text": "const deletionReceipt=(row:AudioDeletion,status:'removed'|'restored')=>recordingEffects().confirmReceipt(row,status);"
-        },
-        {
-          "line": 868,
-          "text": "const eraseForever=(row:AudioDeletion)=>recordingEffects().eraseForever(row);"
-        },
-        {
-          "line": 869,
-          "text": "const trashRow=(entry:NotesTrashEntry):AudioDeletion=>{"
-        },
-        {
-          "line": 887,
-          "text": "if(deletionBusy)return false;deletionBusy=true;let done=false;"
-        },
-        {
-          "line": 890,
-          "text": "const trashEntry=(await readNotesTrash()).entries.find(entry=>entry.id===row.id);"
-        },
-        {
-          "line": 892,
-          "text": "const state=await audioDeletionNoteState(row);"
-        },
-        {
-          "line": 896,
-          "text": "const stored=(await pendingAudioDeletions())[row.id];if(stored&&sameDeletionRow(stored,row))row=stored;"
-        },
-        {
-          "line": 898,
-          "text": "const metadata=await noteAudio.describe({audioId:row.audioId});"
-        },
-        {
-          "line": 903,
-          "text": "const restored=await noteAudio.describe({audioId:row.audioId});"
-        },
-        {
-          "line": 908,
-          "text": "const list=current.get('notes').list;"
-        },
-        {
-          "line": 911,
-          "text": "const next=list.slice();next.splice(Math.min(Math.max(0,index),next.length),0,structuredClone(row.note));"
-        },
-        {
-          "line": 931,
-          "text": "let row:AudioDeletion|undefined,refusedFull=false;"
-        },
-        {
-          "line": 932,
-          "text": "const active=()=>current.voiceNoteActive()&&current.isActive()&&!document.hidden&&!connectionController.getSnapshot().open&&current.get('notes').open===reviewed.id;"
-        },
-        {
-          "line": 935,
-          "text": "const prior=Object.values(await pendingAudioDeletions()).find(x=>x.note.id===reviewed.id);"
-        },
-        {
-          "line": 937,
-          "text": "const target=await current.reviewAudioDeletion(reviewed);"
-        },
-        {
-          "line": 939,
-          "text": "const metadata=await noteAudio.describe({audioId:reviewed.audio.audioId});"
-        },
-        {
-          "line": 946,
-          "text": "const index=Math.max(0,(current.get('notes').list||[]).findIndex((n:Bag)=>n.id===reviewed.id));"
-        },
-        {
-          "line": 958,
-          "text": "const saved=(await savedNotes()).find(n=>n.id===reviewed.id);"
-        },
-        {
-          "line": 962,
-          "text": "const stale=(await readNotesTrash()).entries.filter(entry=>entry.note.id===reviewed.id).map(entry=>entry.id);"
-        },
-        {
-          "line": 967,
-          "text": "const authorized=()=>{if(!active())throw Error('Review changed');};"
-        },
-        {
-          "line": 973,
-          "text": "const retained=await noteAudio.describe({audioId:row.audioId});"
-        },
-        {
-          "line": 975,
-          "text": "const dispatched=leasedDeletionRow({...row,audioRequested:true as const},Date.now());await changeAudioDeletion(row,false,dispatched);row=dispatched;"
-        },
-        {
-          "line": 979,
-          "text": "const result=await noteAudio.describe({audioId:row.audioId});"
-        },
-        {
-          "line": 1001,
-          "text": "const running=deletionRefresh;"
-        },
-        {
-          "line": 1009,
-          "text": "await withAudioDeletionLock(async()=>{const rows=Object.values(await pendingAudioDeletions());"
-        },
-        {
-          "line": 1010,
-          "text": "for(const row of rows){try{"
-        },
-        {
-          "line": 1014,
-          "text": "const startedHere=sessionDeletions.has(row.id);"
-        },
-        {
-          "line": 1015,
-          "text": "const retired=await recordingEffects().reconcile(row,{startedHere,claimedElsewhere:()=>deletionClaimedElsewhere(row.id),commitDeletion:settled=>current.commitAudioNoteDeletion(settled,()=>{})});"
-        },
-        {
-          "line": 1026,
-          "text": "let noteProvenance: TranscriptProvenance | undefined, noteRecorderAdopted = false;"
-        },
-        {
-          "line": 1027,
-          "text": "let noteDestination: {"
-        },
-        {
-          "line": 1034,
-          "text": "const targetApi = api;"
-        },
-        {
-          "line": 1036,
-          "text": "const canonical = targetApi.canonicalNotes;"
-        },
-        {
-          "line": 1037,
-          "text": "const storage = targetApi.voiceNoteStorage();"
-        },
-        {
-          "line": 1038,
-          "text": "const port = canonical ? connectionController.getAppRecordClient() : null;"
-        },
-        {
-          "line": 1041,
-          "text": "const route = selectVoiceRoute('default');"
-        },
-        {
-          "line": 1042,
-          "text": "const state = connectionController.getSnapshot(), cloud = state.cloudAccount;"
-        },
-        {
-          "line": 1043,
-          "text": "const identity = JSON.stringify(["
-        },
-        {
-          "line": 1048,
-          "text": "const connection = composerBinding(), providerRevision = state.providerStatus?.revision;"
-        },
-        {
-          "line": 1049,
-          "text": "const current = () => {"
-        },
-        {
-          "line": 1050,
-          "text": "const latest = targetApi.voiceNoteStorage();"
-        },
-        {
-          "line": 1055,
-          "text": "const notes = targetApi.get('notes');"
-        },
-        {
-          "line": 1056,
-          "text": "const folderId = typeof notes.folder==='string' && (notes.folders||[]).some((f:Bag)=>f.id===notes.folder) ? notes.folder : null;"
-        },
-        {
-          "line": 1063,
-          "text": "const noteRemoteTranscription = () => noteDestination?.route === 'cloud' || noteDestination?.route === 'agent' && !browserDevProfile;"
-        },
-        {
-          "line": 1064,
-          "text": "const noteRecorder = new NoteRecorderSession(createNoteRecorderDriver(), async () => null,"
-        },
-        {
-          "line": 1067,
-          "text": "const persistNoteRecording = async (saved: SavedNoteAudio, transcript: string, intent?: CanonicalNoteSaveIntent) => {"
-        },
-        {
-          "line": 1068,
-          "text": "const destination = noteDestination;"
-        },
-        {
-          "line": 1070,
-          "text": "const owner = destination.api, folderId = noteRecorder.folderId;"
-        },
-        {
-          "line": 1074,
-          "text": "const latest = owner.get('notes').list || [];"
-        },
-        {
-          "line": 1076,
-          "text": "const existing = latest.find((n: Bag) => n.id === saved.noteId);"
-        },
-        {
-          "line": 1078,
-          "text": "const note = { id: saved.noteId, kind: 'voice', title: 'Voice note', body: transcript, audio: saved, transcription: transcript ? noteProvenance ?? { route: 'manual' } : { route: 'manual' }, dur: saved"
-        },
-        {
-          "line": 1081,
-          "text": "const finishNoteRecording = () => noteRecorder.finishAudio(persistNoteRecording, !!noteDestination?.canonical);"
-        },
-        {
-          "line": 1096,
-          "text": "const noteRecorderVisibility = () => { if (noteRecorder.open) noteRecorder.visibilityChanged(); };"
-        },
-        {
-          "line": 1099,
-          "text": "const r = noteRecorder, finishing = r.phase === 'finishing' || r.phase === 'starting', recording = r.phase === 'recording';"
-        },
-        {
-          "line": 1100,
-          "text": "const save = () => { if (r.phase !== 'finishing' && r.phase !== 'starting') void finishNoteRecording(); };"
-        },
-        {
-          "line": 1101,
-          "text": "const canDiscard = () => r.phase !== 'finishing' && !r.canonicalSavePending;"
-        },
-        {
-          "line": 1102,
-          "text": "const peaks = r.levels.length ? r.levels : [];"
-        },
-        {
-          "line": 1103,
-          "text": "const levels = Array.from({ length: 44 }, (_, i) => { const peak = peaks[peaks.length - 44 + i]; return { h: peak === undefined ? 4 : Math.max(4, Math.round(Math.sqrt(peak) * 92)), o: recording ? 1 : "
-        },
-        {
-          "line": 1126,
-          "text": "const startNoteRecorder = () => { cancelSavedTranscription();if (stage !== 'closed') cleanup(); stopLocalSpeechPlayback(); stopSaved(); void noteRecorder.begin().catch(() => { /* The recorder shows th"
-        },
-        {
-          "line": 1127,
-          "text": "let recordRequested = false;"
-        },
-        {
-          "line": 1142,
-          "text": "const selected = (current.get('notes').list || []).find((n: Bag) => n.id === state.open);"
-        },
-        {
-          "line": 1144,
-          "text": "const result = render({ ...state, folder: state.folder === 'deleted' ? 'deleted' : null, folderSheet: null, record: false, rec: null, ...(selected?.audio ? { playing: false, pos: savedPosition / 1000 "
-        },
-        {
-          "line": 1148,
-          "text": "for (const card of [...(result.colL || []), ...(result.colR || [])]) if ((current.get('notes').list || []).some((n: Bag) => n.id === card.id && n.audio)) card.bars = card.bars.map(() => 4);"
-        },
-        {
-          "line": 1150,
-          "text": "const vo = result.vo;"
-        },
-        {
-          "line": 1154,
-          "text": "const addingTranscript=savedTranscription?.noteId===selected.id;"
-        },
-        {
-          "line": 1162,
-          "text": "const source=current.voiceNoteStorage(),binding=composerBinding(),snapshot=JSON.stringify(selected),controller=new AbortController();"
-        },
-        {
-          "line": 1163,
-          "text": "const active=()=>{const next=current.voiceNoteStorage();return current.voiceNoteActive()&&current.isActive()&&!document.hidden&&!connectionController.getSnapshot().open&&(!current.canonicalNotes||curr"
-        },
-        {
-          "line": 1165,
-          "text": "const task={noteId:selected.id,controller,current:active};savedTranscription=task;"
-        },
-        {
-          "line": 1166,
-          "text": "let driver:ReturnType<typeof createCloudVoice>|undefined,requestId:string|undefined;"
-        },
-        {
-          "line": 1167,
-          "text": "const cancel=()=>{if(driver&&requestId)void driver.cancel({requestId}).catch(()=>{});};"
-        },
-        {
-          "line": 1169,
-          "text": "const changed=()=>{if(!active())controller.abort();};"
-        },
-        {
-          "line": 1170,
-          "text": "const unsubscribe=connectionController.subscribe(changed);document.addEventListener('visibilitychange',changed);"
-        },
-        {
-          "line": 1174,
-          "text": "const okay=await addSavedNoteTranscript({audioId:selected.audio.audioId,noteId:selected.id,durationMs:selected.audio.durationMs},{current:active,"
-        },
-        {
-          "line": 1176,
-          "text": "transcribe:async(offsetMs,signal)=>{signal.throwIfAborted();requestId=crypto.randomUUID();const result=await driver!.transcribeRecording({recordingId:selected.audio.audioId,savedNoteId:selected.id,sav"
-        },
-        {
-          "line": 1179,
-          "text": "const patch={body:text,lines:[{s:'me',at:0,t:text}]};"
-        },
-        {
-          "line": 1181,
-          "text": "const list=current.get('notes').list.map((note:Bag)=>note.id===selected.id?{...note,...patch,modifiedAt:Date.now()}:note);"
-        },
-        {
-          "line": 1191,
-          "text": "const snapshot=JSON.stringify(selected),active=()=>current.voiceNoteActive()&&current.isActive()&&!document.hidden&&!connectionController.getSnapshot().open&&current.get('notes').open===selected.id&&J"
-        },
-        {
-          "line": 1197,
-          "text": "const draftFromNote=async(kind:'reminder'|'event')=>{"
-        },
-        {
-          "line": 1199,
-          "text": "const reviewed=()=>{const note=current.get('notes').list.find((n:Bag)=>n.id===selected.id);return current.isActive()&&!document.hidden&&current.get('notes').open===selected.id&&JSON.stringify(note)==="
-        },
-        {
-          "line": 1200,
-          "text": "const note=reviewed();if(!note)return;"
-        },
-        {
-          "line": 1201,
-          "text": "const actionText=(note.actions||[]).filter((a:Bag)=>!a.done).map((a:Bag)=>String(a.t||'')).join('\\n');"
-        },
-        {
-          "line": 1206,
-          "text": "const origin=noteOriginFor(note,await voiceNoteContentRevision(note));"
-        },
-        {
-          "line": 1208,
-          "text": "const shared={id:null,title:'',off:1,t:9,d:1,where:'',video:false,who:[],repeat:'none',notes:actionText,...(origin?{origin}:{})};"
-        },
-        {
-          "line": 1219,
-          "text": "const voText = noteSpeechText(selected), voReading = currentNoteReading()?.noteId === selected.id;"
-        },
-        {
-          "line": 1240,
-          "text": "const reviewed=structuredClone(selected);"
-        },
-        {
-          "line": 1246,
-          "text": "const readNote = (current.get('notes').list || []).find((item: Bag) => item.id === state.open);"
-        },
-        {
-          "line": 1247,
-          "text": "const readText = noteSpeechText(readNote), activeReading = currentNoteReading();"
-        },
-        {
-          "line": 1250,
-          "text": "const stale = activeReading;"
-        },
-        {
-          "line": 1251,
-          "text": "void Promise.resolve().then(() => { const now = currentNoteReading(); if (now && now.noteId === stale.noteId && now.text === stale.text) stopSpeaking(); });"
-        },
-        {
-          "line": 1254,
-          "text": "const note = readNote, text = readText, mine = !!note && currentNoteReading()?.noteId === note.id;"
-        },
-        {
-          "line": 1255,
-          "text": "const ed = result.ed, onBody = ed.onBody, onTitle = ed.onTitle;"
-        },
-        {
-          "line": 1256,
-          "text": "const editing = (handler: unknown) => typeof handler === 'function' ? (...args: unknown[]) => { if (currentNoteReading()?.noteId === note?.id) stopSpeaking(); return (handler as (...a: unknown[]) => u"
-        },
-        {
-          "line": 1258,
-          "text": "const live = mine && currentNoteReading()?.noteId === note.id;"
-        },
-        {
-          "line": 1277,
-          "text": "const token=generation,chat=chatDestination;"
-        },
-        {
-          "line": 1278,
-          "text": "const owned=()=>token===generation&&chatDestination===chat&&(!chat||chatCurrent());"
-        },
-        {
-          "line": 1279,
-          "text": "const seconds = stage === 'recording' ? (Date.now() - started) / 1000 : (clip?.durationMs || 0) / 1000;"
-        },
-        {
-          "line": 1280,
-          "text": "const labels: Bag = { ready: 'Start recording', starting: 'Starting microphone', recording: 'Stop recording', recorded: onDeviceReady ? 'Transcribe on this phone' : pairedAsrReady ? 'Transcribe with a"
-        },
-        {
-          "line": 1290,
-          "text": "const canType = !cloudMode && stage === 'recorded' && !!clip && !busy && (failure === 'no-speech' || failure === 'local-agent' || failure === 'recognition');"
-        },
-        {
-          "line": 1292,
-          "text": "const settingsChoice = deniedSettingsChoice({ failure, stage, busy, native: Capacitor.isNativePlatform() });"
-        },
-        {
-          "line": 1293,
-          "text": "const openSettings = () => { void appSettings.openSettings({ page: 'privacy' }).catch(() => api?.toast('Android app settings are unavailable. Allow the microphone for Alpha in Settings, then try again"
-        },
-        {
-          "line": 1300,
-          "text": "recordOnly: () => { if(!owned())return;const chat = chatDestination; enter(undefined, 'manual',chat); refresh(); },"
-        },
-        {
-          "line": 1303,
-          "text": "changeRoute: () => { if (!owned()||stage !== 'ready' || busy) return; if (settingsChoice) { openSettings(); return; } const chat = chatDestination; enter(undefined, selectedRoute === 'device' ? 'agent"
-        },
-        {
-          "line": 1311,
-          "text": "stop: () => { if(owned())void primary(); }, discard: () => {if(owned())chatDestination?cancelChat():cleanup();}, keyboard:()=>{if(owned())cancelChat(true);}, toggle: () => { if(!owned())return;if ((on"
-        },
-        {
-          "line": 1314,
-          "text": "const originalVals=Component.prototype.renderVals;"
-        },
-        {
-          "line": 1316,
-          "text": "const out=originalVals.call(this),retiring=retirement?.shell===this,active=retiring||chatDestination?.shell===this&&stage!=='closed'&&chatCurrent();"
-        },
-        {
-          "line": 1318,
-          "text": "const heldRetirement=retirement,hold=(cancelApproval=true)=>{if(!heldRetirement||retirement!==heldRetirement||heldRetirement.shell!==this)return;if(cancelApproval&&heldRetirement.approval&&this.pendin"
-        },
-        {
-          "line": 1319,
-          "text": "const awaiting=active&&!retiring&&chatDestination?.mode!=='dictation'&&(conversationState.phase==='awaiting-user-input'||conversationReviewRequired);"
-        },
-        {
-          "line": 1321,
-          "text": "const recorder=out.chatRecorder;"
-        },
-        {
-          "line": 1323,
-          "text": "const conversation=retiring||chatDestination?.mode!=='dictation';"
-        },
-        {
-          "line": 1330,
-          "text": "const controllable=!!recorder.canMute&&!retiring&&!recorder.review&&!awaiting&&['listening','transcribing','thinking','preparing-speech','speaking'].includes(recorder.state);"
-        },
-        {
-          "line": 1332,
-          "text": "if(!controllable){const capturing=!retiring&&recorder.state==='listening',unconfirmed=retiring||!!conversationVoice&&['error','starting','connecting','idle'].includes(recorder.state);recorder.canMute="
-        },
-        {
-          "line": 1340,
-          "text": "const phase=recorder.muted==='true'&&!recorder.muteAutomatically?'paused':recorder.state==='starting'?'connecting':recorder.state==='preparing-speech'?'thinking':recorder.state==='awaiting-user-input'"
-        },
-        {
-          "line": 1343,
-          "text": "const pillVoice=active&&this.S().chat==='hidden'&&(retiring?retirement?.panelChat==='hidden':chatDestination?.chat==='hidden')&&!out.legacyChatRecorder;"
-        },
-        {
-          "line": 1352,
-          "text": "const updated=Component.prototype.componentDidUpdate;"
-        },
-        {
-          "line": 1357,
-          "text": "const watch=conversationReplyWatch;"
-        },
-        {
-          "line": 1360,
-          "text": "const immersive = notes.immersive;"
-        },
-        {
-          "line": 1363,
-          "text": "const noteReadingChanged=()=>{if(api)api.setView('notes',{noteReadingRevision:Date.now()});};"
-        },
-        {
-          "line": 1366,
-          "text": "const visibility = () => {"
-        },
-        {
-          "line": 1376,
-          "text": "const pagehide = () => { if (stage !== 'closed') cleanup(true,true,'page-hidden'); };"
-        },
-        {
-          "line": 1377,
-          "text": "const binding = composerBinding;"
-        },
-        {
-          "line": 1378,
-          "text": "let account = binding();"
-        },
-        {
-          "line": 1379,
-          "text": "const unsubscribe = connectionController.subscribe(() => {"
-        },
-        {
-          "line": 1381,
-          "text": "const next = binding();"
-        },
-        {
-          "line": 1385,
-          "text": "const noteRouteChanged = () => noteRecorder.recheckOwner();"
-        },
-        {
-          "line": 1389,
-          "text": "const unmount = Component.prototype.componentWillUnmount;"
-        },
-        {
-          "line": 1393,
-          "text": "function ownBrowserVoiceActive(){const state=connectionController.getSnapshot();return !Capacitor.isNativePlatform()&&state.residentInference==='direct'&&state.providerStatus?.voiceConfigured===true;}"
-        }
-      ]
+      "reviewStatus": "state-audit-required",
+      "sha256": "2fc5a031eb6e00f97a6c73db2ce08ac8edab97ca4f066575c42a126d6746d68c",
+      "stateAnchors": []
     },
     {
       "path": "apps/app/src/prototype/workflow-adapter.ts",
@@ -42773,182 +41062,14 @@
     },
     {
       "path": "apps/app/src/runtime/cloud-voice.ts",
-      "sha256": "1c5830fc67776bb5cf1806935886abfbf01965e3a973c934e09f934f9eec47f0",
       "models": [
         "VoiceSession"
       ],
       "scope": "application",
       "treatment": "state-and-transition-projection",
-      "stateAnchors": [
-        {
-          "line": 21,
-          "text": "const facts = cloudVoiceLimitOf(error);"
-        },
-        {
-          "line": 26,
-          "text": "const name = serviceNameNow(), kept = recording ? ' Your recording is kept.' : '';"
-        },
-        {
-          "line": 27,
-          "text": "const resets = limit.resetsAt != null && limit.resetsAt > now ? new Date(limit.resetsAt).toLocaleString(undefined, { weekday: 'short', hour: 'numeric', minute: '2-digit' }) : null;"
-        },
-        {
-          "line": 31,
-          "text": "const wait = limit.retryAfterMs != null ? `Try again in ${retryDuration(limit.retryAfterMs)}.` : resets ? `Try again after ${resets}.` : 'Wait a moment, then try again.';"
-        },
-        {
-          "line": 35,
-          "text": "try { const environment = connectionController.getCloudEnvironment(); return environment ? cloudServiceName(environment) : 'Cloud'; } catch { return 'Cloud'; }"
-        },
-        {
-          "line": 43,
-          "text": "const direct=connectionController.getSnapshot().residentInference==='direct';"
-        },
-        {
-          "line": 44,
-          "text": "const code = error && typeof error === 'object' && 'code' in error ? error.code : undefined;"
-        },
-        {
-          "line": 47,
-          "text": "const name = serviceNameNow(), kept = context.recording === true ? ' Your recording is kept.' : '', after = kept || (context.conversation === true ? ' Your message was not sent. Say it again.' : '');"
-        },
-        {
-          "line": 51,
-          "text": "if (code === 'voice-http-429') { const now = Date.now(), limit = cloudVoiceServiceLimit(error, now); if (limit) return voiceLimitMessage(limit, now, context.recording === true); }"
-        },
-        {
-          "line": 62,
-          "text": "const streamingNative = registerPlugin<CloudStreamPort & {cloudStreamTiming(): Promise<unknown>}>('AlphaCloudSpeechStream');"
-        },
-        {
-          "line": 68,
-          "text": "let timer: ReturnType<typeof setTimeout> | undefined;"
-        },
-        {
-          "line": 85,
-          "text": "const native = registerPlugin<{"
-        },
-        {
-          "line": 106,
-          "text": "const selected=connectionController.getSnapshot(),own=selected.residentInference==='direct',nativeOwn=own&&Capacitor.isNativePlatform();"
-        },
-        {
-          "line": 107,
-          "text": "const ownSession=selected.session,revision=selected.providerStatus?.revision;"
-        },
-        {
-          "line": 109,
-          "text": "const directReadAloud=(readAloudRoute==='direct'||own)&&(developmentCartesiaVoiceEnabled||own);"
-        },
-        {
-          "line": 111,
-          "text": "const developerSpeech=!nativeOwn&&(developmentCloudVoiceEnabled||directReadAloud);"
-        },
-        {
-          "line": 112,
-          "text": "const environment = connectionController.getCloudEnvironment();"
-        },
-        {
-          "line": 113,
-          "text": "const binding = connectionController.getCloudClient();"
-        },
-        {
-          "line": 114,
-          "text": "const sessionId = binding?.sessionId, credentialId = binding?.credentialId;"
-        },
-        {
-          "line": 115,
-          "text": "const agent=developerSpeech?connectionController.getBrowserSpeechAgent():null,agentSession=agent?.session;"
-        },
-        {
-          "line": 118,
-          "text": "const check = () => {"
-        },
-        {
-          "line": 119,
-          "text": "if(own){const now=connectionController.getSnapshot();if(now.residentInference!=='direct'||now.session!==ownSession||now.providerStatus?.revision!==revision||!now.providerStatus?.voiceConfigured)throw "
-        },
-        {
-          "line": 126,
-          "text": "const noteLimit = (error: unknown) => { if (!own&&!developerSpeech) { try { connectionController.noteCloudServiceLimit(cloudVoiceServiceLimit(error), sessionId); } catch { /* Advisory only. */ } } thr"
-        },
-        {
-          "line": 129,
-          "text": "async startRecording() { check(); const result = await native.startRecording(); check(); return result; },"
-        },
-        {
-          "line": 130,
-          "text": "async getRecordingMetrics(recordingId:string){check();const value=await native.getRecordingMetrics({recordingId});check();if(value.recordingId!==recordingId||!Number.isFinite(value.peak)||value.peak<0"
-        },
-        {
-          "line": 131,
-          "text": "async stopRecording() { check(); const result = await native.stopRecording(); check(); return result; },"
-        },
-        {
-          "line": 133,
-          "text": "check(); const result = await (nativeOwn?native.transcribeOwnRecording({...input,providerRevision:revision!}):developerSpeech?native.transcribeDevelopmentCloudRecording({...input,...(own?{route:'direc"
-        },
-        {
-          "line": 145,
-          "text": "check();signal.throwIfAborted();const owned=new AbortController(),cancel=()=>owned.abort(signal.reason),current=()=>{check();assertCurrent?.();if(document.hidden||connectionController.getSnapshot().op"
-        },
-        {
-          "line": 146,
-          "text": "const changed=()=>{try{current();}catch(error){owned.abort(error);}};"
-        },
-        {
-          "line": 147,
-          "text": "const unsubscribe=connectionController.subscribe(changed);document.addEventListener('visibilitychange',changed);signal.addEventListener('abort',cancel,{once:true});if(signal.aborted)cancel();"
-        },
-        {
-          "line": 148,
-          "text": "let marked=false;"
-        },
-        {
-          "line": 157,
-          "text": "let appSpeechRetirement:Promise<void>=Promise.resolve();"
-        },
-        {
-          "line": 159,
-          "text": "if(developmentCloudVoiceEnabled){const previous=appSpeechRetirement;const pending=(async()=>{await confirmSpeechRetirement(previous);signal.throwIfAborted();assertCurrent?.();await createCloudVoice()."
-        },
-        {
-          "line": 161,
-          "text": "const ownSnapshot=connectionController.getSnapshot(),own=ownSnapshot.residentInference==='direct';"
-        },
-        {
-          "line": 162,
-          "text": "const environment=connectionController.getCloudEnvironment(),binding=connectionController.getCloudClient(),sessionId=binding?.sessionId,credentialId=binding?.credentialId;"
-        },
-        {
-          "line": 163,
-          "text": "const owned=new AbortController(),cancel=()=>owned.abort(signal.reason),retire=()=>owned.abort(new DOMException('Voice review changed','AbortError'));"
-        },
-        {
-          "line": 165,
-          "text": "const current=()=>{owned.signal.throwIfAborted();assertCurrent?.();if(environment!==connectionController.getCloudEnvironment()||sessionId!==connectionController.getCloudClient()?.sessionId||credential"
-        },
-        {
-          "line": 168,
-          "text": "const voice=createCloudVoice(),previous=appSpeechRetirement;"
-        },
-        {
-          "line": 169,
-          "text": "let admitted=false;"
-        },
-        {
-          "line": 170,
-          "text": "const interrupted=new Promise<never>((_,reject)=>{owned.signal.addEventListener('abort',()=>{if(!admitted)reject(owned.signal.reason);},{once:true});});void interrupted.catch(()=>{});"
-        },
-        {
-          "line": 171,
-          "text": "const changed=()=>{try{current();}catch(error){owned.abort(error);}},unsubscribe=connectionController.subscribe(changed);"
-        },
-        {
-          "line": 173,
-          "text": "const pending=(async()=>{await confirmSpeechRetirement(previous);current();admitted=true;let marked=false;try{await voice.speak(text,owned.signal,()=>{current();marked=true;markTtsPlaybackStarted();on"
-        }
-      ]
+      "reviewStatus": "state-audit-required",
+      "sha256": "f02adef4716231d29e4b29adf15cbf1e5124c787be8b76ae75970ed19d1c71a3",
+      "stateAnchors": []
     },
     {
       "path": "apps/app/src/runtime/connection-ui.tsx",
@@ -47981,7 +46102,8 @@
         "GoogleAccounts",
         "InboxDelivery",
         "InboxCoordinator",
-        "InboxProviderDrafts"
+        "InboxProviderDrafts",
+        "GoogleConsentAdmission"
       ],
       "scope": "application",
       "treatment": "domain-contract-or-support",
@@ -48017,7 +46139,8 @@
       "path": "apps/app/src/runtime/google-accounts.ts",
       "sha256": "85d5c17894e2507fcd7c91ef5340474f97711e5befdcb24cf8d222027870e8a8",
       "models": [
-        "GoogleAccounts"
+        "GoogleAccounts",
+        "GoogleConsentAdmission"
       ],
       "scope": "application",
       "treatment": "domain-contract-or-support",
@@ -48331,7 +46454,8 @@
     {
       "path": "apps/app/src/runtime/google-agent-access.ts",
       "models": [
-        "ServiceAuthorization"
+        "ServiceAuthorization",
+        "GoogleConsentAdmission"
       ],
       "scope": "application",
       "treatment": "domain-contract-or-support",
@@ -48446,7 +46570,8 @@
       "path": "apps/app/src/runtime/google-connection-return.ts",
       "models": [
         "IdentitySession",
-        "GoogleAccounts"
+        "GoogleAccounts",
+        "GoogleConsentAdmission"
       ],
       "scope": "application",
       "treatment": "domain-contract-or-support",
@@ -48484,303 +46609,16 @@
     },
     {
       "path": "apps/app/src/runtime/google-connection-ui.tsx",
-      "sha256": "9d96886c5c42a5e9e801fb27497fa6df4532c6242fe289ceedbb3c612a00c5a4",
       "models": [
         "GoogleAccounts",
-        "GoogleConnect"
+        "GoogleConnect",
+        "GoogleConsentAdmission"
       ],
       "scope": "application",
       "treatment": "state-and-transition-projection",
-      "stateAnchors": [
-        {
-          "line": 21,
-          "text": "let opened=false,calendarIntent:GoogleCalendarIntent|null=null;const listeners=new Set<()=>void>();"
-        },
-        {
-          "line": 23,
-          "text": "export const googleConnectionController={open(){opened=true;for(const listener of listeners)listener();},openCalendar(scope:CanonicalCalendarSyncSettings){calendarIntent={...scope,authorizing:false,re"
-        },
-        {
-          "line": 24,
-          "text": "export function googleCalendarAccountKey(){const account=connectionController.getSnapshot().cloudAccount;return account?.organizationId?{environment:account.environment,userId:account.userId,organizat"
-        },
-        {
-          "line": 26,
-          "text": "const cloud=connectionController.getCloudClient(),key=googleCalendarAccountKey();"
-        },
-        {
-          "line": 31,
-          "text": "const b=currentGoogleConnectionReturnBinding();"
-        },
-        {
-          "line": 35,
-          "text": "const calendarWrite=(account:GmailAccount)=>account.connected&&account.grantedCapabilities.includes('google.calendar.write');"
-        },
-        {
-          "line": 40,
-          "text": "const call=browserResidentCall as unknown as (operation:'residentGoogleCalendarAccess',credentialId:string,calendarEdits:boolean)=>Promise<{calendarEdits?:unknown}|null>;"
-        },
-        {
-          "line": 44,
-          "text": "const open=useSyncExternalStore(googleConnectionController.subscribe,googleConnectionController.getSnapshot);"
-        },
-        {
-          "line": 45,
-          "text": "const connection=useSyncExternalStore(connectionController.subscribe,connectionController.getSnapshot);"
-        },
-        {
-          "line": 46,
-          "text": "const [background,setBackground]=useState('');"
-        },
-        {
-          "line": 47,
-          "text": "useEffect(()=>{if(!open)return;let alive=true;const read=()=>void gmailBackgroundStatus().then(value=>{if(alive)setBackground(gmailBackgroundMessage(value));});read();window.addEventListener(GMAIL_BAC"
-        },
-        {
-          "line": 48,
-          "text": "const [accounts,setAccounts]=useState<GmailAccount[]>([]),[busy,setBusy]=useState(false),[notice,setNotice]=useState(''),[confirm,setConfirm]=useState<GmailAccount|null>(null),[revision,setRevision]=u"
-        },
-        {
-          "line": 49,
-          "text": "const [access,setAccess]=useState(googleAgentAccess);"
-        },
-        {
-          "line": 51,
-          "text": "const [choice,setChoice]=useState<{calendar:GoogleCalendarIntent;rows:GmailAccount[]|null}|null>(null);"
-        },
-        {
-          "line": 53,
-          "text": "useEffect(()=>{const sync=()=>{setAccess(googleAgentAccess());void publishGoogleAgentAccess();};sync();window.addEventListener('alpha:device-settings',sync);return()=>window.removeEventListener('alpha"
-        },
-        {
-          "line": 54,
-          "text": "const returnedWorkspaceOwner=useRef<GoogleWorkspaceBinding|null>(null);"
-        },
-        {
-          "line": 55,
-          "text": "const returnedWorkspace=useRef<{result:'connected'|'denied'|'failed';connectionId?:string}|null>(null);"
-        },
-        {
-          "line": 57,
-          "text": "const disconnectNotice=useRef<{binding:GoogleConnectionReturnBinding;message:string}|null>(null);"
-        },
-        {
-          "line": 58,
-          "text": "const returnWatch=useRef<ReturnType<typeof watchGoogleConnectionReturn>|null>(null);"
-        },
-        {
-          "line": 59,
-          "text": "const active=useRef<AbortController|null>(null),panel=useRef<HTMLDivElement>(null);"
-        },
-        {
-          "line": 60,
-          "text": "const cloud=connectionController.getCloudClient(),key=googleCalendarAccountKey();"
-        },
-        {
-          "line": 61,
-          "text": "const serviceName=cloudServiceName(cloud?.client.environment ?? connection.cloudAccount?.environment ?? 'production');"
-        },
-        {
-          "line": 62,
-          "text": "const identity=JSON.stringify([connection.cloudAccount,cloud?.sessionId,cloud?.credentialId]);"
-        },
-        {
-          "line": 63,
-          "text": "const binding:GoogleConnectionReturnBinding|null=cloud&&key?{client:cloud.client,...key,sessionId:cloud.sessionId,credentialId:cloud.credentialId}:null;"
-        },
-        {
-          "line": 64,
-          "text": "const calendarIntent=useSyncExternalStore(googleConnectionController.subscribe,googleConnectionController.calendar),linking=useRef<AbortController|null>(null);"
-        },
-        {
-          "line": 67,
-          "text": "const returned=sameGoogleWorkspaceBinding(returnedWorkspaceOwner.current??{environment:'production',userId:'',organizationId:'',sessionId:'',credentialId:''},currentWorkspaceBinding())?returnedWorkspa"
-        },
-        {
-          "line": 69,
-          "text": "const requiredConnectionId=returned?.result==='connected'?returned.connectionId:undefined;"
-        },
-        {
-          "line": 70,
-          "text": "active.current?.abort();const abort=active.current=new AbortController();setAccounts([]);setConfirm(null);"
-        },
-        {
-          "line": 72,
-          "text": "const current=()=>!abort.signal.aborted&&active.current===abort&&googleConnectionController.getSnapshot()&&sameGoogleConnectionReturnBinding(binding,currentGoogleConnectionReturnBinding());"
-        },
-        {
-          "line": 76,
-          "text": "const accountsClient=createGoogleAccounts(cloud,()=>connectionController.getCloudClient());"
-        },
-        {
-          "line": 77,
-          "text": "let rows=await accountsClient.list(abort.signal);"
-        },
-        {
-          "line": 80,
-          "text": "const returnedGrantVisible=()=>rows.some(row=>row.connected&&row.connectionId===requiredConnectionId);"
-        },
-        {
-          "line": 84,
-          "text": "const done=()=>{clearTimeout(timer);abort.signal.removeEventListener('abort',done);resolve();};"
-        },
-        {
-          "line": 85,
-          "text": "const timer=setTimeout(done,350);"
-        },
-        {
-          "line": 96,
-          "text": "const kept=disconnectNotice.current;disconnectNotice.current=null;"
-        },
-        {
-          "line": 99,
-          "text": "const calendar=googleConnectionController.calendar();"
-        },
-        {
-          "line": 108,
-          "text": "const watcher=watchGoogleConnectionReturn({binding,current:currentGoogleConnectionReturnBinding,foreground:()=>!document.hidden,refresh:()=>setRevision(value=>value+1),"
-        },
-        {
-          "line": 117,
-          "text": "const port=googleWorkspaceReturnPort,owner=currentWorkspaceBinding();"
-        },
-        {
-          "line": 119,
-          "text": "const watcher=watchGoogleWorkspaceReturn(port,owner,currentWorkspaceBinding,result=>{"
-        },
-        {
-          "line": 124,
-          "text": "useEffect(()=>{if(!open)return;const accountsChanged=()=>setRevision(value=>value+1);window.addEventListener(GOOGLE_ACCOUNTS_CHANGED,accountsChanged);return()=>window.removeEventListener(GOOGLE_ACCOUN"
-        },
-        {
-          "line": 127,
-          "text": "const element=panel.current,previous=document.activeElement,phone=document.querySelector<HTMLElement>('.os');"
-        },
-        {
-          "line": 128,
-          "text": "const releaseInert=holdPhoneInert(phone);"
-        },
-        {
-          "line": 129,
-          "text": "if(phone&&element){const theme=getComputedStyle(phone);for(const token of ['bg','fg','s2','line','mut','acc'])element.style.setProperty(`--connection-${token}`,theme.getPropertyValue(token==='acc'?'--"
-        },
-        {
-          "line": 131,
-          "text": "const back=(event:Event)=>{if(document.querySelector('dialog[open]'))return;event.preventDefault();event.stopImmediatePropagation();active.current?.abort();googleConnectionController.close();};"
-        },
-        {
-          "line": 132,
-          "text": "const keydown=(event:KeyboardEvent)=>{if(event.key==='Escape'){back(event);return;}if(event.key==='Tab'&&element){const items=[...element.querySelectorAll<HTMLElement>('button:not(:disabled),input:not"
-        },
-        {
-          "line": 140,
-          "text": "const watcher=returnWatch.current;if(!watcher)return;"
-        },
-        {
-          "line": 141,
-          "text": "active.current?.abort();const abort=active.current=new AbortController();let cancelReturn:(()=>void)|undefined;let returnState:string|undefined;let phase:'native-return'|'cloud'|'browser'='native-retu"
-        },
-        {
-          "line": 142,
-          "text": "const current=()=>!abort.signal.aborted&&active.current===abort&&returnWatch.current===watcher&&watcher.isCurrent()&&googleConnectionController.getSnapshot()&&sameGoogleConnectionReturnBinding(binding"
-        },
-        {
-          "line": 146,
-          "text": "const owner=currentWorkspaceBinding();"
-        },
-        {
-          "line": 147,
-          "text": "const offer=owner?await prepareGoogleWorkspaceReturn(googleWorkspaceReturnPort,owner,currentWorkspaceBinding):undefined;"
-        },
-        {
-          "line": 150,
-          "text": "const accountsClient=createGoogleAccounts(cloud,()=>connectionController.getCloudClient());"
-        },
-        {
-          "line": 151,
-          "text": "const authorization=offer?await accountsClient.connectWithReturn(abort.signal,offer.redirectUrl,calendarPermission,permission):{authUrl:await accountsClient.connect(abort.signal,calendarPermission,per"
-        },
-        {
-          "line": 153,
-          "text": "const url=authorization.authUrl;"
-        },
-        {
-          "line": 164,
-          "text": "const on=!(access[kind]&&granted);"
-        },
-        {
-          "line": 170,
-          "text": "async function disconnect(account:GmailAccount){if(!cloud||!key||!account.connectionId)return;active.current?.abort();const abort=active.current=new AbortController();setBusy(true);setConfirm(null);"
-        },
-        {
-          "line": 171,
-          "text": "const current=()=>!abort.signal.aborted&&active.current===abort&&googleConnectionController.getSnapshot()&&sameGoogleConnectionReturnBinding(binding,currentGoogleConnectionReturnBinding());"
-        },
-        {
-          "line": 173,
-          "text": "const calendar=googleConnectionController.calendar(),lifecycle=calendar?googleCalendarDisconnectLifecycle(calendar,()=>calendar.review,()=>{const b=currentGoogleConnectionReturnBinding();return b?JSON"
-        },
-        {
-          "line": 174,
-          "text": "const before=new Set(calendar?.retained.keys()??[]);"
-        },
-        {
-          "line": 176,
-          "text": "const result=await createGoogleAccounts(cloud,()=>connectionController.getCloudClient(),undefined,lifecycle).disconnect(account.connectionId,abort.signal),pause=result.calendarLifecycle.calendarPause;"
-        },
-        {
-          "line": 181,
-          "text": "if(calendar&&pause!=='unknown')for(const [pauseKey,context] of calendar.retained)if(context.connectionId===account.connectionId&&(pause==='confirmed'||!before.has(pauseKey)))calendar.retained.delete(p"
-        },
-        {
-          "line": 182,
-          "text": "const message=googleDisconnectMessage(result.outcome,account.label)+(pause==='confirmed'?' Calendar sync is paused; saved events are kept.':pause==='unknown'?' Calendar sync pause was not confirmed. R"
-        },
-        {
-          "line": 189,
-          "text": "const current=()=>googleConnectionController.calendar()===calendar&&sameGoogleConnectionReturnBinding(binding,currentGoogleConnectionReturnBinding())&&calendar.current()&&calendar.canChange();"
-        },
-        {
-          "line": 196,
-          "text": "const choice=await captureGoogleCalendarAccess(),saved=choice?.calendarEdits;if(choice&&saved===true)return persistCalendarChanges(calendar,choice);"
-        },
-        {
-          "line": 203,
-          "text": "const choice=await captureGoogleCalendarAccess();"
-        },
-        {
-          "line": 210,
-          "text": "const connected=accounts.filter(account=>account.connected);"
-        },
-        {
-          "line": 213,
-          "text": "const gmail=connected.some(account=>gmailGrantTier(account)==='modify')?'modify':connected.some(account=>account.grantedCapabilities.includes('google.gmail.send'))?'send':'read';"
-        },
-        {
-          "line": 217,
-          "text": "if(linking.current&&!linking.current.signal.aborted)return;const abort=linking.current=new AbortController();"
-        },
-        {
-          "line": 218,
-          "text": "const current=()=>!abort.signal.aborted&&googleConnectionController.calendar()===calendar&&sameGoogleConnectionReturnBinding(binding,currentGoogleConnectionReturnBinding())&&calendar.current();"
-        },
-        {
-          "line": 224,
-          "text": "const result=await linkGoogleCalendar({calendar:calendar.calendar,current,canChange:calendar.canChange},rows,abort.signal);"
-        },
-        {
-          "line": 232,
-          "text": "const connected=accounts.filter(account=>account.connected);"
-        },
-        {
-          "line": 233,
-          "text": "const gmailGranted=connected.some(account=>account.grantedCapabilities.includes('google.gmail.send')),calendarGranted=connected.some(calendarWrite);"
-        },
-        {
-          "line": 234,
-          "text": "const icon={width:20,height:20,display:'inline-block',background:'currentColor',mask:'url(/icons/lucide/x.svg) center / contain no-repeat',WebkitMask:'url(/icons/lucide/x.svg) center / contain no-repe"
-        }
-      ]
+      "reviewStatus": "state-audit-required",
+      "sha256": "602d15e789f19680bd46d02ade16ecc3629af155345d02159643f03b52566bd3",
+      "stateAnchors": []
     },
     {
       "path": "apps/app/src/runtime/google-workspace-return.ts",
@@ -56589,7 +54427,7 @@
       "scope": "development-runtime",
       "treatment": "domain-contract-or-support",
       "reviewStatus": "state-audit-required",
-      "sha256": "e8871fc3bcf947739b817ffa9a3e6f138abf1a24603932b604aacdfb0866da32",
+      "sha256": "c70dfa41066e58cd79f2eb4cb1bace70e4ec8cb684856c72d092e117776fcb92",
       "stateAnchors": []
     },
     {
@@ -191931,7 +189769,8 @@
         "WorkflowExecution",
         "CoreRuntimeRetirement",
         "CoreRuntimeShutdown",
-        "CoreServiceLifecycle"
+        "CoreServiceLifecycle",
+        "CoreRoomHandlerQueue"
       ],
       "scope": "shared-module-dependency",
       "treatment": "domain-contract-or-support",
@@ -217460,6 +215299,17 @@
           "text": "public static final int MIN_VISIBLE_PERCENT=90;"
         }
       ]
+    },
+    {
+      "path": "vendor/eliza/packages/os/scripts/android/apk-release-record.mjs",
+      "models": [
+        "PilotApkUpdate"
+      ],
+      "scope": "shared-upstream",
+      "treatment": "domain-contract-or-support",
+      "reviewStatus": "state-audit-required",
+      "sha256": "30d94bb5af54094e10a62388f55b12cf968bbcd0b39f6a99b49d30c64c86a12d",
+      "stateAnchors": []
     },
     {
       "path": "vendor/eliza/packages/ui/src/accessibility/screen-focus.ts",
@@ -458364,7 +456214,8 @@
         "StreamingPlayback",
         "SharedRecordingAdmission",
         "NativeLiveCapture",
-        "NativePipedCapture"
+        "NativePipedCapture",
+        "NativeSpeechOutputPreparation"
       ],
       "scope": "shared-module-dependency",
       "treatment": "domain-contract-or-support",
@@ -459057,7 +456908,8 @@
         "ResidentRuntime",
         "SpeechResources",
         "StreamingPlayback",
-        "VoiceSession"
+        "VoiceSession",
+        "NativeSpeechOutputPreparation"
       ],
       "scope": "shared-module-dependency",
       "treatment": "domain-contract-or-support",
@@ -459589,7 +457441,8 @@
         "ResidentRuntime",
         "SpeechResources",
         "StreamingPlayback",
-        "VoiceSession"
+        "VoiceSession",
+        "NativeSpeechOutputPreparation"
       ],
       "scope": "shared-module-dependency",
       "treatment": "domain-contract-or-support",
@@ -459681,7 +457534,8 @@
         "ResidentRuntime",
         "SpeechResources",
         "StreamingPlayback",
-        "VoiceSession"
+        "VoiceSession",
+        "NativeSpeechOutputPreparation"
       ],
       "scope": "shared-module-dependency",
       "treatment": "domain-contract-or-support",
@@ -459868,7 +457722,8 @@
         "ResidentRuntime",
         "SpeechResources",
         "StreamingPlayback",
-        "VoiceSession"
+        "VoiceSession",
+        "NativeSpeechOutputPreparation"
       ],
       "scope": "shared-module-dependency",
       "treatment": "domain-contract-or-support",
@@ -625552,9 +623407,10 @@
         "NativeNotePermission",
         "ControllerComposition",
         "SharedRecordingAdmission",
-        "NativeLiveCapture"
+        "NativeLiveCapture",
+        "NativeSpeechOutputPreparation"
       ],
-      "sha256": "dd9bd1f03702fc6de58a1af67512cdcc5b4e2db1db815415659dc138f368f133"
+      "sha256": "f6d8d50107e76a497708013d687e6c536386071db79c7a9241a9669b2bc54b8d"
     },
     {
       "path": "android/consumer-host.json",
@@ -625681,9 +623537,10 @@
         "FilesTree",
         "ListFocus",
         "FilesPreview",
-        "FilesBrowserController"
+        "FilesBrowserController",
+        "FilesFilter"
       ],
-      "sha256": "c928f8bf2fd87dde85a3d0b31d4b33e50659673d41c1a05c462500c4d684d61d"
+      "sha256": "6c4c54929fc0de243ae881a9b6d1aa4349201911de6dfad12e21b908bd847cd2"
     },
     {
       "path": "patches/eliza/files-list-identity-client.patch",
@@ -625691,9 +623548,10 @@
         "FilesTree",
         "ListFocus",
         "FilesPreview",
-        "FilesBrowserController"
+        "FilesBrowserController",
+        "FilesFilter"
       ],
-      "sha256": "c5a27cd4ce8cb1063d2f66457dd1a38e62f160661b5c9594b7481f68951c4b2b"
+      "sha256": "d39919145f4824f317e99ce32b9a98fb153bd4ec08cd6b2ab109cb459dcd08a5"
     },
     {
       "path": "patches/eliza/google-browser-sign-in.patch",
@@ -625757,9 +623615,10 @@
         "MediaLifecycle",
         "SharedRecordingAdmission",
         "NativeLiveCapture",
-        "NativeSpeechWarmup"
+        "NativeSpeechWarmup",
+        "NativeSpeechOutputPreparation"
       ],
-      "sha256": "52ccde026068ea0ced6da8e842e138e0edd83c7ce7e9955c51a7bceb405ae68d"
+      "sha256": "257d852292311f4b0887d082f799904508868e412739c453e8a1574cf34756ac"
     },
     {
       "path": "patches/eliza/mobile-uuid-build.json",
@@ -625784,7 +623643,7 @@
         "NativeVoiceDraft",
         "SharedRecordingAdmission"
       ],
-      "sha256": "95d81ef889e2c3e526f2b18fb638134855ebcc5508fb2a463b41c2753bee7ae9"
+      "sha256": "85594aa49afa1de1d8b95948572c401e3290d7d4e7b6058bda12481e11d63580"
     },
     {
       "path": "patches/eliza/notes-recording-store.patch",
@@ -625985,7 +623844,7 @@
         "CoreServiceLifecycle",
         "ApplicationComposition"
       ],
-      "sha256": "902ea6830d1cc30ef5aedad76640b5b74ba3232e82f043c315781f2b0f495de3"
+      "sha256": "d0d8f092bb6cbc9c4e8941841f7e0a8d8fa72cb9bcc010f5f5397f5ebef38a4f"
     },
     {
       "path": "specs/quint/refinement/services/runtime-bundle-audit.mjs",
@@ -626030,7 +623889,7 @@
         "CanonicalNotesStore",
         "CoreTurnControllers"
       ],
-      "sha256": "f996483dd07f780dcabadda99bc169f1f370ac9191b7667dac8ddbad905adf10"
+      "sha256": "0cfd5cdb4060105597c4c86bd5ff781ac91011a4dbe6723eab4a7bd2601810c9"
     },
     {
       "path": "scripts/mobile-bundle-smoke.mjs",
@@ -626058,7 +623917,7 @@
         "CoreTurnControllers",
         "TaskSchedulerRuntime"
       ],
-      "sha256": "e8871fc3bcf947739b817ffa9a3e6f138abf1a24603932b604aacdfb0866da32"
+      "sha256": "c70dfa41066e58cd79f2eb4cb1bace70e4ec8cb684856c72d092e117776fcb92"
     },
     {
       "path": "scripts/core-state-preload.mjs",
@@ -626085,7 +623944,7 @@
         "CanonicalNotesStore",
         "CoreTurnControllers"
       ],
-      "sha256": "c49942d8b8f83232e3d5d8220f42c41ca21028306520600e7f959e4d12944650"
+      "sha256": "6d846f843633bd2a81de1bc78bcf4f52ce129cdb3890531eab37446d898b01f3"
     },
     {
       "path": "patches/eliza/task-service-stop.patch",
@@ -626193,14 +624052,24 @@
         "NativeSpeechWarmup",
         "NativeRecognizerAvailability"
       ],
-      "sha256": "bdf313e623ad6e58b7a9bcf0f03a20c542ed272615c00033e1c3179bb0a98eec"
+      "sha256": "1ac7f32ef47c6c1dbf17887862f48c6a56dbbec03a6292b36bb051815c46eaad"
+    },
+    {
+      "path": "patches/eliza/room-queue-admission.patch",
+      "models": [
+        "TaskServiceLifecycle",
+        "CanonicalNotesStore",
+        "CoreTurnControllers",
+        "CoreRoomHandlerQueue"
+      ],
+      "sha256": "343e39a3c756e3679b8a1e577352638119e0f17b1d0535023cbd1720fdddedde"
     }
   ],
   "runtimeAssets": [
     "apps/app/index.html"
   ],
   "sharedSourceDiscovery": {
-    "sharedSourceCount": 4839,
+    "sharedSourceCount": 4840,
     "producer": "specs/quint/refinement/services/runtime-bundle-inputs.json",
     "sourcePin": "99b49439ce9d0cb5607e9831b9f7f58d89525029",
     "meaning": "Authenticated source identities and domain allocations. Runtime activation and implementation refinement require separate evidence."
