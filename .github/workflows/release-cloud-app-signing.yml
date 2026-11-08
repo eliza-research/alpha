@@ -1,0 +1,212 @@
+name: Protected Cloud APK signing
+run-name: Cloud APK signing reviewed workflow ${{ inputs.workflow_commit }}
+
+on:
+  workflow_dispatch:
+    inputs:
+      workflow_commit:
+        description: Exact reviewed workflow commit on Alpha main
+        required: true
+        type: string
+      signing_plan:
+        description: Reviewed producer and private delivery plan as JSON
+        required: true
+        type: string
+
+permissions: {}
+
+concurrency:
+  group: release-signing
+  cancel-in-progress: false
+
+jobs:
+  admit:
+    if: github.repository == 'eliza-research/alphaphone' && github.ref == 'refs/heads/main' && inputs.workflow_commit == github.sha
+    permissions:
+      actions: read
+      contents: read
+    uses: ./.github/workflows/verify-cloud-signing-input.yml
+    with:
+      signing_plan: ${{ inputs.signing_plan }}
+
+  sign:
+    needs: admit
+    if: needs.admit.result == 'success' && needs.admit.outputs.plan_sha256 != '' && inputs.workflow_commit == github.sha
+    runs-on: ubuntu-24.04
+    environment: release
+    timeout-minutes: 30
+    permissions:
+      actions: read
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.sha }}
+          submodules: true
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .nvmrc
+      - uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6.0.1
+        with:
+          distribution: temurin
+          java-version: '21'
+      - uses: android-actions/setup-android@9fc6c4e9069bf8d3d10b2204b1fb8f6ef7065407 # v3.2.2
+        with:
+          packages: platforms;android-36 build-tools;36.0.0
+          log-accepted-android-sdk-licenses: false
+      - name: Reverify and stage the admitted APKs and delivery recipient
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SIGNING_PLAN: ${{ inputs.signing_plan }}
+          EXPECTED_PLAN: ${{ needs.admit.outputs.plan_sha256 }}
+          RECIPIENT_PUBLIC_CERTIFICATE: ${{ vars.ALPHA_SIGNED_APK_RECIPIENT_CERT_PEM }}
+          ALPHA_PRIVATE_STORAGE_TOKEN: ${{ secrets.ALPHA_PRIVATE_APK_STORAGE_TOKEN }}
+        run: |
+          set -euo pipefail
+          umask 077
+          test "$(printf '%s' "$SIGNING_PLAN" | sha256sum | cut -d ' ' -f 1)" = "$EXPECTED_PLAN"
+          work=$(mktemp -d "$RUNNER_TEMP/alpha-protected-cloud.XXXXXX")
+          printf '%s' "$SIGNING_PLAN" > "$work/pins.json"
+          if jq -e '.privateStorage != null' "$work/pins.json" >/dev/null; then
+            python3 -B scripts/ci/private-apk-storage.py validate "$work/pins.json"
+          else
+            jq -e '
+              .encryptedArtifactApproved == true and
+              (.recipientCertificateSHA256 | type == "string" and test("^[0-9a-f]{64}$"))
+            ' "$work/pins.json" >/dev/null
+            printf '%s\n' "$RECIPIENT_PUBLIC_CERTIFICATE" > "$work/recipient.pem"
+            actual_recipient=$(openssl x509 -in "$work/recipient.pem" -outform DER | sha256sum | cut -d ' ' -f 1)
+            test "$actual_recipient" = "$(jq -r .recipientCertificateSHA256 "$work/pins.json")"
+            openssl x509 -in "$work/recipient.pem" -noout -checkend 0
+          fi
+          bash scripts/ci/verify-cloud-signing-input.sh --stage "$work/unsigned"
+          for variant in standalone launcher; do
+            "$ANDROID_HOME/build-tools/36.0.0/zipalign" -c -P 16 4 "$work/unsigned/$variant-release-unsigned.apk"
+          done
+          ALPHA_ADMITTED_APK_DIR="$work/unsigned" node --input-type=module <<'NODE'
+          import fs from 'node:fs';
+          import path from 'node:path';
+          import { execFileSync } from 'node:child_process';
+          import { manifestFacts } from './scripts/apk.mjs';
+          const directory = process.env.ALPHA_ADMITTED_APK_DIR;
+          const plan = JSON.parse(fs.readFileSync(path.join(directory, '..', 'pins.json'), 'utf8'));
+          const identity = JSON.parse(fs.readFileSync('app.config.json', 'utf8'));
+          const aapt = path.join(process.env.ANDROID_HOME, 'build-tools', '36.0.0', 'aapt');
+          for (const variant of ['standalone', 'launcher']) {
+            const apk = path.join(directory, variant + '-release-unsigned.apk');
+            const badging = execFileSync(aapt, ['dump', 'badging', apk], { encoding: 'utf8' });
+            const xml = execFileSync(aapt, ['dump', 'xmltree', apk, 'AndroidManifest.xml'], { encoding: 'utf8' });
+            const facts = manifestFacts(xml, badging);
+            if (facts.packageName !== identity.appId || facts.versionCode !== plan.versionCode ||
+                xml.includes('android.intent.category.HOME') !== (variant === 'launcher'))
+              throw new Error('The ' + variant + ' APK manifest differs from the reviewed release plan');
+          }
+          NODE
+          if jq -e '.rotation != null' "$work/pins.json" >/dev/null; then
+            jq -e '
+              (.rotation.lineageBase64 | type == "string" and length > 0 and length <= 90000) and
+              (.rotation.lineageSHA256 | type == "string" and test("^[0-9a-f]{64}$"))
+            ' "$work/pins.json" >/dev/null
+            jq -r .rotation.lineageBase64 "$work/pins.json" | base64 --decode > "$work/rotation.lineage"
+            export ALPHA_ROTATION_WORK="$work"
+            node --input-type=module <<'NODE'
+          import fs from 'node:fs';
+          import path from 'node:path';
+          import { createHash } from 'node:crypto';
+          import { execFileSync } from 'node:child_process';
+          import { approvedSigningRotation } from './scripts/sign-release-apks.mjs';
+          const read = file => JSON.parse(fs.readFileSync(file, 'utf8'));
+          const work = process.env.ALPHA_ROTATION_WORK;
+          const plan = read(path.join(work, 'pins.json'));
+          const descriptor = read('android/release-signer.json');
+          const lineage = path.join(work, 'rotation.lineage');
+          const variants = ['standalone', 'launcher'];
+          const targets = variants.map(variant => ({input: path.join(work, 'unsigned', variant + '-release-unsigned.apk')}));
+          const approval = await approvedSigningRotation(descriptor, lineage, targets);
+          if (approval.lineageSha256 !== plan.rotation.lineageSHA256 || approval.versionCode !== plan.versionCode ||
+              variants.some(v => approval.unsignedApkSHA256[v] !== plan.unsignedApkSHA256[v]))
+            throw new Error('Rotation record differs from the admitted release plan');
+          const buildTools = path.join(process.env.ANDROID_HOME, 'build-tools/36.0.0');
+          const digest = file => createHash('sha256').update(fs.readFileSync(file)).digest('hex');
+          const jar = path.join(buildTools, 'lib/apksigner.jar');
+          if (digest(path.join(buildTools, 'apksigner')) !== approval.apksignerSha256 ||
+              digest(jar) !== approval.verifierJarSha256) throw new Error('Rotation tool differs from reviewed pins');
+          execFileSync(path.join(process.env.JAVA_HOME, 'bin/java'), [
+            '-cp', jar, 'scripts/owner/VerifyApkRotation.java', '--reviewed-lineage', lineage,
+            approval.lineageSha256, approval.previousSignerSha256, descriptor.signerSha256,
+          ], { stdio: 'inherit', env: { PATH: process.env.PATH, JAVA_HOME: process.env.JAVA_HOME } });
+          NODE
+          fi
+          echo "ALPHA_PROTECTED_WORK=$work" >> "$GITHUB_ENV"
+      - name: Sign exact APKs with the protected app signer
+        env:
+          ALPHA_APP_RELEASE_KEYSTORE_B64: ${{ secrets.ALPHA_APP_RELEASE_KEYSTORE_B64 }}
+          ALPHA_APP_RELEASE_KEYSTORE_PASSWORD: ${{ secrets.ALPHA_APP_RELEASE_KEYSTORE_PASSWORD }}
+        run: |
+          set -euo pipefail
+          set +x
+          umask 077
+          ulimit -c 0
+          for variant in standalone launcher; do
+            digest=$(jq -r --arg variant "$variant" '.unsignedApkSHA256[$variant]' "$ALPHA_PROTECTED_WORK/pins.json")
+            printf '%s  %s\n' "$digest" "$ALPHA_PROTECTED_WORK/unsigned/$variant-release-unsigned.apk" | sha256sum --check --strict
+          done
+          test "$(stat -f -c %T /dev/shm)" = tmpfs
+          key_directory=$(mktemp -d /dev/shm/alpha-app-signing.XXXXXX)
+          trap 'rm -rf -- "$key_directory"' EXIT
+          trap 'exit 1' HUP INT TERM
+          keystore="$key_directory/app.p12"
+          printf '%s' "$ALPHA_APP_RELEASE_KEYSTORE_B64" | base64 --decode > "$keystore"
+          unset ALPHA_APP_RELEASE_KEYSTORE_B64
+          expected=$(node -p 'require("./android/release-signer.json").signerSha256')
+          actual=$(keytool -exportcert -storetype PKCS12 -keystore "$keystore" -alias alpha-release             -storepass:env ALPHA_APP_RELEASE_KEYSTORE_PASSWORD | sha256sum | cut -d ' ' -f 1)
+          test "$actual" = "$expected"
+          mkdir -m 700 "$ALPHA_PROTECTED_WORK/signed"
+          rotation=()
+          if [[ -f "$ALPHA_PROTECTED_WORK/rotation.lineage" ]]; then
+            rotation=(--rotation-lineage "$ALPHA_PROTECTED_WORK/rotation.lineage")
+          fi
+          for variant in standalone launcher; do
+            node scripts/sign-release-apks.mjs --keystore "$keystore" --key-label alpha-release "${rotation[@]}" --apk "$ALPHA_PROTECTED_WORK/unsigned/$variant-release-unsigned.apk"               --out "$ALPHA_PROTECTED_WORK/signed/$variant-release.apk"
+          done
+      - name: Verify signed outputs and deliver privately
+        env:
+          ALPHA_PRIVATE_STORAGE_TOKEN: ${{ secrets.ALPHA_PRIVATE_APK_STORAGE_TOKEN }}
+        run: |
+          set -euo pipefail
+          umask 077
+          work="$ALPHA_PROTECTED_WORK"
+          expected=$(node -p 'require("./android/release-signer.json").signerSha256')
+          for variant in standalone launcher; do
+            apk="$work/signed/$variant-release.apk"
+            "$ANDROID_HOME/build-tools/36.0.0/zipalign" -c -P 16 4 "$apk"
+            result=$("$ANDROID_HOME/build-tools/36.0.0/apksigner" verify --print-certs               --min-sdk-version 29 --max-sdk-version 37 "$apk")
+            actual=$(printf '%s\n' "$result" | sed -n 's/^Signer #1 certificate SHA-256 digest: //p')
+            test "$actual" = "$expected"
+            test "$(printf '%s\n' "$result" | grep -cE '^Signer #[0-9]+ certificate SHA-256 digest: ')" -eq 1
+          done
+          (cd "$work/signed" && sha256sum standalone-release.apk launcher-release.apk > signed.sha256)
+          cp "$work/pins.json" "$work/signed/signing-plan.json"
+          printf '%s\n' "$expected" > "$work/signed/production-signer.sha256"
+          rotation=()
+          if [[ -f "$work/rotation.lineage" ]]; then
+            cp "$work/rotation.lineage" "$work/signed/rotation.lineage"
+            rotation=(rotation.lineage)
+          fi
+          tar -C "$work/signed" -cf "$work/bundle.tar" standalone-release.apk launcher-release.apk             signed.sha256 signing-plan.json production-signer.sha256 "${rotation[@]}"
+          mkdir -m 700 "$work/delivery"
+          if jq -e '.privateStorage != null' "$work/pins.json" >/dev/null; then
+            python3 -B scripts/ci/private-apk-storage.py upload "$work/pins.json" "$work/bundle.tar" > "$work/delivery/private-storage-receipt.json"
+          else
+            python3 -B scripts/ci/seal-signed-apks.py "$work/bundle.tar"             "$(sha256sum "$work/bundle.tar" | cut -d ' ' -f 1)" "$work/recipient.pem"             "$(jq -r .recipientCertificateSHA256 "$work/pins.json")" "$work/delivery/signed-apks.cms"             > "$work/delivery/envelope.json"
+          fi
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: private-cloud-apk-delivery-${{ github.run_id }}-${{ github.run_attempt }}
+          retention-days: 1
+          if-no-files-found: error
+          path: |
+            ${{ env.ALPHA_PROTECTED_WORK }}/delivery/signed-apks.cms
+            ${{ env.ALPHA_PROTECTED_WORK }}/delivery/envelope.json
+            ${{ env.ALPHA_PROTECTED_WORK }}/delivery/private-storage-receipt.json

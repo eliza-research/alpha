@@ -1,0 +1,45 @@
+#!/usr/bin/env bash
+set -euo pipefail
+umask 077
+test "$GITHUB_REF" = refs/heads/main
+test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+directory=$(mktemp -d "$RUNNER_TEMP/alpha-cloud-input.XXXXXX")
+printf '%s' "$SIGNING_PLAN" > "$directory/pins.json"
+unset SIGNING_PLAN
+source=$(jq -er '.alphaCommit | select(type == "string" and test("^[0-9a-f]{40}$"))' "$directory/pins.json")
+gh api "repos/$GITHUB_REPOSITORY/compare/$source...$GITHUB_SHA" |
+  jq -e --arg source "$source" '
+    (.status == "ahead" or .status == "identical") and
+    .merge_base_commit.sha == $source' >/dev/null
+if jq -e '.privateStorage != null' "$directory/pins.json" >/dev/null; then
+  python3 -B scripts/ci/private-apk-storage.py validate "$directory/pins.json"
+  # The unprotected job validates the plan only. The protected job repeats this
+  # and checks actual archive bytes before the step referencing signing secrets.
+  if [[ "${1:-}" == --stage ]]; then
+    python3 -B scripts/ci/private-apk-storage.py download "$directory/pins.json" "$directory/producer.zip"
+    python3 -B scripts/ci/admit-cloud-signing-input.py "$directory/producer.zip" "$directory/pins.json" "$@"
+  fi
+else
+run=$(jq -er '.producerRunId | select(type == "string" and test("^[1-9][0-9]{0,15}$"))' "$directory/pins.json")
+artifact=$(jq -er '.artifactId | select(type == "string" and test("^[1-9][0-9]{0,15}$"))' "$directory/pins.json")
+size=$(jq -er '.archiveBytes | select(type == "number" and floor == . and . > 0 and . <= 1500000000)' "$directory/pins.json")
+digest=$(jq -er '.archiveSHA256 | select(type == "string" and test("^[0-9a-f]{64}$"))' "$directory/pins.json")
+gh api "repos/$GITHUB_REPOSITORY/actions/runs/$run" |
+  jq -e --arg source "$source" --arg repo "$GITHUB_REPOSITORY" '
+    .status == "completed" and .conclusion == "success" and
+    .head_sha == $source and .head_repository.full_name == $repo and
+    .path == ".github/workflows/resident-android.yml" and
+    .event == "workflow_dispatch"' >/dev/null
+gh api "repos/$GITHUB_REPOSITORY/actions/artifacts/$artifact" |
+  jq -e --arg source "$source" --arg run "$run" --arg digest "sha256:$digest" --argjson size "$size" '
+    .expired == false and (.workflow_run.id | tostring) == $run and
+    .workflow_run.head_sha == $source and .digest == $digest and
+    .size_in_bytes == $size and
+    .name == ("resident-cloud-archive-" + $source + "-" + $run)' >/dev/null
+gh api "repos/$GITHUB_REPOSITORY/actions/artifacts/$artifact/zip" > "$directory/producer.zip"
+unset GH_TOKEN
+test "$(wc -c < "$directory/producer.zip")" -eq "$size"
+python3 -B scripts/ci/admit-cloud-signing-input.py "$directory/producer.zip" "$directory/pins.json" "$@"
+fi
+plan_sha=$(sha256sum "$directory/pins.json" | cut -d ' ' -f 1)
+echo "plan_sha256=$plan_sha" >> "$GITHUB_OUTPUT"
