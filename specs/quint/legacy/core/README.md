@@ -152,3 +152,19 @@ awaited from its own queue remain outside the campaign.
 ```sh
 node --test test/quint-core-task-scheduling.test.mjs
 ```
+
+## Room handler queue source comparison
+
+Run `node specs/quint/legacy/core/check-room-handler-queue-refinement.mjs`
+to replay four schedules and 72 checkpoints on the pinned shared
+`RoomHandlerQueue`. The traces exercise both original profiles. They read the
+actual FIFO, lease admission flag, room release and writer tail at the
+corresponding mutation seams. The driver observes lexical acquisition,
+reverse release, callback failure, saturation, partial cancellation and
+already-admitted work draining after closure.
+
+Synchronous telemetry reentry is outside these four schedules. On the
+unmodified current pin, an `enqueued` listener can synchronously call
+`runWith` again before the outer item reserves its slot. With both pending
+limits set to one, both calls are admitted, and `pendingFor` reports two.
+This is an open source counterexample to the model's capacity invariant.

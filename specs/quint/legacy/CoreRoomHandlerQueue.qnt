@@ -143,6 +143,17 @@ module CoreRoomHandlerQueue {
   action rawStep = M::Next
   action step = M::Step
   val safety = M::Safety
+  val state = M::s
+  action start(t, rooms) = M::Start(t, rooms)
+  action admit(t) = M::Admit(t)
+  action grant(r) = M::Grant(r)
+  action cancel(t, r) = M::CancelAt(t, r)
+  action startRelease(t) = M::StartRelease(t)
+  action beginWrite(t, r) = M::BeginWrite(t, r)
+  action endWrite(t, r) = M::EndWrite(t, r)
+  action stopWrites(t) = M::StopWrites(t)
+  action release(t) = M::Release(t)
+  action close = M::Close
   temporal CheckedTemporal = M::Fairness implies (M::NoAdmissionAfterClose and M::FreedByOwner and M::WaiterServed and M::TurnFinishes)
   run writesDelayReleaseTest = init.then(M::Start("t1", Set(1, 2))).then(M::Admit("t1")).then(M::Grant(1))
     .then(M::Admit("t1")).then(M::Grant(2)).then(M::BeginWrite("t1", 2)).then(M::StartRelease("t1"))
@@ -160,6 +171,17 @@ module CoreRoomHandlerQueueCycle {
   action rawStep = M::Next
   action step = M::Step
   val safety = M::Safety
+  val state = M::s
+  action start(t, rooms) = M::Start(t, rooms)
+  action admit(t) = M::Admit(t)
+  action grant(r) = M::Grant(r)
+  action cancel(t, r) = M::CancelAt(t, r)
+  action startRelease(t) = M::StartRelease(t)
+  action beginWrite(t, r) = M::BeginWrite(t, r)
+  action endWrite(t, r) = M::EndWrite(t, r)
+  action stopWrites(t) = M::StopWrites(t)
+  action release(t) = M::Release(t)
+  action close = M::Close
   temporal CheckedTemporal = M::Fairness implies (M::NoAdmissionAfterClose and M::FreedByOwner and M::WaiterServed and M::TurnFinishes)
   run cancelledWaiterUnwindsTest = init.then(M::Start("t1", Set(2))).then(M::Admit("t1")).then(M::Grant(2))
     .then(M::Start("t2", Set(2, 1))).then(M::Admit("t2")).then(M::Grant(1)).then(M::Admit("t2"))
