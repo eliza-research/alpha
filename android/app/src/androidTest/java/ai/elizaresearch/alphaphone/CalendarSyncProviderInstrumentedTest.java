@@ -22,7 +22,7 @@ import org.junit.runner.RunWith;
 @RunWith(AndroidJUnit4.class)
 public final class CalendarSyncProviderInstrumentedTest {
  @Before public void requireDisposableProviderFixture(){
-  assertTrue("Explicit disposable Calendar sync fixture required","1".equals(InstrumentationRegistry.getArguments().getString("calendarSyncProvider")));
+  org.junit.Assume.assumeTrue("Explicit disposable Calendar sync fixture required","1".equals(InstrumentationRegistry.getArguments().getString("calendarSyncProvider")));
   assertTrue("Never mutate CalendarProvider as user 0",android.os.Process.myUid()/100000>0);
   Context context=InstrumentationRegistry.getInstrumentation().getTargetContext();for(String permission:new String[]{Manifest.permission.READ_CALENDAR,Manifest.permission.WRITE_CALENDAR})assertEquals(android.content.pm.PackageManager.PERMISSION_GRANTED,context.checkSelfPermission(permission));
  }
