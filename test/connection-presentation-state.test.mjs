@@ -111,7 +111,7 @@ function preflightFixture(balance, options = {}) {
     AlphaClientError: class AlphaClientError extends Error {constructor(code, message) {super(message); this.code = code;}},
     residentCloudFlow: () => true, residentAlwaysPresent: true,
     residentStartInBackground: false, pendingBillingReview: null,
-    operation: null, requestedCameraContinuation: undefined, clientObservationSession: undefined,
+    operation: null, providerStatusGeneration: 0, requestedCameraContinuation: undefined, clientObservationSession: undefined,
     NO_AGENT_SEND: 'No selected session', NO_AGENT_VOICE: 'No selected session',
     noSessionError: () => Error('No selected session'),
     phoneContextMessage: (text, context) => ({text, context}),
@@ -882,13 +882,14 @@ const providerSwitchSource=stripTypeScriptTypes([
 function providerSwitchFixture(){
  const events=[];
  const context=vm.createContext({AbortController,DOMException,
-  operation:null,sending:null,providerStatusGeneration:0,epoch:1,active:null,state:{session:null},appRequests:new Set(),actionReceipts:new Map(),conversationMemory:new Map(),
+  operation:null,sending:null,providerStatusGeneration:0,epoch:1,active:null,state:{session:null,open:true,purpose:'provider',signIn:null,cloudAccount:{userId:'fixture-owner'},providerStatus:{mode:'own',revision:'fixture-own',keys:{text:{configured:true},voice:{configured:true}}}},appRequests:new Set(),actionReceipts:new Map(),conversationMemory:new Map(),
   testMocksEnabled:false,residentAlwaysPresent:true,RESIDENT_NAME:'Alpha',isAndroid:true,browserCloudResidentEnabled:false,OWN_KEYS_NOT_SET_UP:'Own API keys could not be set up.',LOCAL_PROVIDER_MODEL:'model',
   signInReadinessOwner:null,OWN_KEY_BUSY:'Alpha is busy. Try again in a moment.',OWN_KEY_CHECKING:'Checking key…',connectionToast(){},
   clearClientObservationSupport(){},retireConversationEvents(){},retireReadReplies(){},pauseHostedBackground:async()=>{},retireClockReviews:async()=>{},cancelStoppedReply(){},
-  secureConnectionStore:{remove:async()=>{}},update(){},showPostSignInSetup(){},
+  secureConnectionStore:{remove:async()=>{}},update:patch=>Object.assign(context.state,patch),showPostSignInSetup(){},
   work:async(label,run)=>{events.push(label);await run(new AbortController().signal);},
-  configureLocalProvider:async()=>{events.push('check key');},clearLocalProvider:async()=>{events.push('clear own keys');return {configured:false};},
+  configureLocalProvider:async()=>{events.push('check key');},clearLocalProvider:async()=>{throw Error('Provider selection must not remove saved keys');},
+  selectLocalProvider:async input=>{assert.equal(input.mode,'cloud');assert.equal(input.expectedRevision,'fixture-own');events.push('select Cloud with saved keys retained');return {mode:'cloud',provider:'elizacloud',selected:true,configured:true,revision:'fixture-cloud',keys:{text:{configured:true},voice:{configured:true}}};},
   localProviderStatus:async()=>({provider:'cerebras',selected:true,configured:true}),connectResident:async()=>{events.push('restart agent');},
  });
  vm.runInContext(providerSwitchSource,context);
@@ -896,7 +897,7 @@ function providerSwitchFixture(){
 }
 test('a provider switch during a streaming reply leaves the reply running; once it settles the switch works as before',async()=>{
  const switches={configureLocal:[f=>f.controller.configureLocal('synthetic-cerebras-key','model'),['Checking key…','check key','restart agent']],
-  selectCloudProvider:[f=>f.controller.selectCloudProvider(),['Switching to Cloud…','clear own keys','restart agent']]};
+  selectCloudProvider:[f=>f.controller.selectCloudProvider(),['Switching to Cloud…','select Cloud with saved keys retained','restart agent']]};
  for(const [name,[run,idle]] of Object.entries(switches)){
   const f=providerSwitchFixture(),reply=new AbortController();
   f.context.sending=reply;await run(f);

@@ -51,7 +51,8 @@ public final class CloudSpeechStartupBudgetTest {
  }
  static final Handler main=new Handler();
  static Session session;
- static boolean destroyed,foreground=true;
+ static boolean destroyed,foreground=true,protectedSurface;
+ static boolean sensitiveSurfaceActive(){return protectedSurface;}
  static long authority=1;
  static long authorityEpoch(){return authority;}
  static void fail(Session own,String code){own.failure=code;own.closed.set(true);main.removeCallbacks(own.deadline);}
@@ -64,7 +65,7 @@ public final class CloudSpeechStartupBudgetTest {
   ${ownership}
  }
  static Session start(){
-  SystemClock.now=0;authority=1;main.pending=null;
+  SystemClock.now=0;authority=1;protectedSurface=false;main.pending=null;
   session=new Session();session.scheduleStartupDeadline();
   if(main.when!=12_000)throw new AssertionError("credential and HTTP bound changed");
   return session;
@@ -100,6 +101,10 @@ public final class CloudSpeechStartupBudgetTest {
   refused(start(),9474,0);
   Session stopped=start();stopped.closed.set(true);refused(stopped,9474,60_000);
   Session changed=start();authority++;refused(changed,9474,60_000);
+  Session protectedStart=start();protectedSurface=true;refused(protectedStart,9474,60_000);
+  Session protectedRelay=start();mint(protectedRelay,9474,60_000);protectedSurface=true;
+  try{protectedRelay.check();throw new AssertionError("protected surface admitted relay work");}
+  catch(IOException expected){}
   java.lang.System.out.println("PASS separately bounded relay startup");
  }
 }`),/^PASS separately bounded relay startup/);

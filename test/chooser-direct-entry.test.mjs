@@ -76,10 +76,10 @@ test('Cancel delegates in-flight readiness to the existing abort operation, with
  // The cancelled operation unwinds when cancel() aborts it, as work() releases it in the app.
  const make=new Function('active','readiness','connectionController','state','productionCloudSignInRequired','update',transformSync('let operation=active;const signInReadinessOwner=readiness;const ownProviderSelected=()=>false,isAndroid=false,browserCloudResidentEnabled=false;'+entry+'const target={'+code.replace('connectionController.cancel();','connectionController.cancel();operation=null;')+'};',{loader:'ts'}).code+';return target;');
  const run=(active,signIn=null,required=false,rest={},readiness=null)=>make(active,readiness,{cancel(){aborted++;},close(){closed++;}},{signIn,...rest},()=>required,v=>changes.push(v)).cancelSignIn();
- await run({});assert.equal(aborted,1);assert.deepEqual(changes,[{signIn:null,message:'',error:''}]);
+ await run({});assert.equal(aborted,1);assert.deepEqual(changes,[{signIn:null,providerSignInSelection:undefined,message:'',error:''}]);
  changes=[];await run({}, {step:'code',environment:'production'});assert.equal(aborted,2);assert.deepEqual(changes,[{signIn:{step:'choose',environment:'production'},message:'',error:''}]);
  changes=[];await run(null,{step:'choose',environment:'production'},true);assert.equal(aborted,2);assert.deepEqual(changes,[],'required idle chooser remains usable');
- await run(null);assert.equal(aborted,3);assert.deepEqual(changes,[{signIn:null,message:'',error:''}]);
+ await run(null);assert.equal(aborted,3);assert.deepEqual(changes,[{signIn:null,providerSignInSelection:undefined,message:'',error:''}]);
  await run(null,null,false,{open:true,purpose:'cloud-account',cloudAccount:null});assert.equal(closed,1,'idle explicit signed-out account entry returns to the app');
  await run({},null,false,{open:true,purpose:'cloud-account',cloudAccount:null});assert.equal(closed,1,'in-flight work is cancelled without dismissing its entry');
  // Back during the readiness probe (not an attempt the owner started) still closes an entry the owner opened.
@@ -96,41 +96,38 @@ async function inDom(run){
  const {createRoot}=await import('react-dom/client');const root=createRoot(dom.window.document.getElementById('root'));
  const document=dom.window.document,button=name=>[...document.querySelectorAll('button')].find(item=>item.textContent===name);
  const cancelled=[];
- const [OwnKeyForm,OwnProviderChoice]=new Function('React','useRef','useState','useEffect','Capacitor','browserCloudResidentEnabled','connectionController','OWN_KEY_CHECKING',ownSource+';return [OwnKeyForm,OwnProviderChoice];')(React,React.useRef,React.useState,React.useEffect,{isNativePlatform:()=>true},false,{cancel(){cancelled.push('cancel check');}},'Checking key…');
+ const [OwnKeyForm,OwnProviderChoice]=new Function('React','useRef','useState','useEffect','Capacitor','browserCloudResidentEnabled','connectionController','OWN_KEY_CHECKING',ownSource+';return [OwnKeyForm,OwnProviderChoice];')(React,React.useRef,React.useState,React.useEffect,{isNativePlatform:()=>true},false,{cancel(){cancelled.push('cancel check');},cancelProviderSelection(){}},'Checking key…');
  try{await run({document,window:dom.window,root,button,OwnKeyForm,OwnProviderChoice,cancelled});}
  finally{await act(()=>root.unmount());dom.window.close();for(const [key,value] of Object.entries(previous)){if(value)Object.defineProperty(globalThis,key,value);else delete globalThis[key];}}
 }
-test('Settings provider switch waits for a streaming reply, keeps Cancel, and switches once the reply settles',async()=>inDom(async({document,root,button,OwnProviderChoice,cancelled})=>{
- const calls=[],own={provider:'cerebras',selected:true,configured:true,voiceConfigured:false};
- const show=props=>act(async()=>{root.render(React.createElement(OwnProviderChoice,{heading:false,busy:false,saving:false,status:own,statusUnavailable:false,signedIn:true,error:'',onSave:async(key,voice)=>{calls.push(['save',key,voice]);},onCloud:async()=>{calls.push(['cloud']);},onDismissError(){},onRetryStatus(){},...props}));});
+test('Settings provider commits wait for a streaming reply, retain keys, and keep form Cancel usable',async()=>inDom(async({document,root,button,OwnProviderChoice,cancelled})=>{
+ const calls=[],own={provider:'cerebras',selected:true,configured:true,voiceConfigured:false},cloud={provider:'elizacloud',selected:true,configured:true};
+ const show=props=>act(async()=>{root.render(React.createElement(OwnProviderChoice,{heading:false,busy:false,saving:false,status:own,statusUnavailable:false,signedIn:true,error:'',onSave:async(key,voice)=>{calls.push(['save',key,voice]);},onCloud:async()=>{calls.push(['cloud']);},onOwn:async()=>{calls.push(['own']);},onDismissError(){},onRetryStatus(){},...props}));});
  const field=()=>document.querySelector('input[type="password"]');
  await show({replying:true});
- assert.equal(button('Cloud').disabled,false);assert.equal(button('Own API keys').disabled,false);
- await act(async()=>button('Cloud').click());
- assert.equal(button('Switch to Cloud').disabled,true,'Switch to Cloud waits for the reply');assert.equal(button('Cancel').disabled,false);
- await act(async()=>button('Switch to Cloud').click());
- await act(async()=>button('Cancel').click());assert.equal(button('Switch to Cloud'),undefined);
- await act(async()=>button('Change keys').click());
- assert.equal(button('Save and use own keys').disabled,true,'Save waits for the reply');assert.equal(field().disabled,false);
+ assert.equal(button('Cloud').disabled,true);assert.equal(button('Own API keys').disabled,true);
+ await act(async()=>button('Cloud').click());await act(async()=>button('Own API keys').click());
+ assert.deepEqual(calls,[],'neither selected mode changes while the reply streams');
+ assert.equal(button('Switch to Cloud'),undefined,'selection no longer offers destructive key removal');
+ await show({replying:false});await act(async()=>button('Cloud').click());
+ assert.deepEqual(calls,[['cloud']],'idle Cloud selection commits directly without removing keys');
+ // A first Own-key form opened before a reply remains editable, but its commit waits.
+ await show({status:cloud,replying:false});await act(async()=>button('Own API keys').click());
+ await show({status:cloud,replying:true});
+ assert.equal(button('Save and use own keys').disabled,true);assert.equal(field().disabled,false);
  field().value='synthetic-cerebras-key';await act(async()=>button('Save and use own keys').click());
  assert.equal(field().value,'synthetic-cerebras-key','a waiting save neither runs nor clears the key');
  assert.equal(button('Cancel').disabled,false);await act(async()=>button('Cancel').click());
- assert.equal(field(),null,'Cancel closes the key form during a reply');
- assert.deepEqual(calls,[],'nothing switched while the reply streamed');
- // The reply settles: the same view switches as it does idle.
- await show({replying:false});
- await act(async()=>button('Change keys').click());
+ assert.equal(field(),null);assert.deepEqual(calls,[['cloud']],'Cancel never dispatches another selection or save');
+ await show({status:cloud,replying:false});await act(async()=>button('Own API keys').click());
  field().value='synthetic-cerebras-key';assert.equal(button('Save and use own keys').disabled,false);
  await act(async()=>button('Save and use own keys').click());
- await act(async()=>button('Cancel').click());
- await act(async()=>button('Cloud').click());assert.equal(button('Switch to Cloud').disabled,false);
- await act(async()=>button('Switch to Cloud').click());
- assert.deepEqual(calls,[['save','synthetic-cerebras-key',undefined],['cloud']]);
- // A key check still offers its Cancel, which stops the check.
- await act(async()=>button('Change keys').click());await show({busy:true,saving:true});
+ assert.deepEqual(calls,[['cloud'],['save','synthetic-cerebras-key',undefined]]);
+ // A key check still offers its Cancel, which stops the check without replaying a save.
+ await show({status:cloud,busy:true,saving:true});
  assert.equal(button('Checking key…').disabled,true);assert.equal(button('Cancel').disabled,false);
- await act(async()=>button('Cancel').click());
- assert.deepEqual(cancelled,['cancel check']);
+ await act(async()=>button('Cancel').click());assert.deepEqual(cancelled,['cancel check']);
+ assert.deepEqual(calls,[['cloud'],['save','synthetic-cerebras-key',undefined]]);
 }));
 test('the welcome own-key save waits for a reply in flight; Back to Cloud stays usable',async()=>inDom(async({root,button,OwnKeyForm})=>{
  const calls=[];

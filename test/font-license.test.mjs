@@ -170,17 +170,22 @@ test('the bundle audit prints licence flags and the font check as flag lines, ne
   assert.match(swapped.stderr, new RegExp(`^${UNRESOLVED_FONT_LICENCE_BLOCKS_DISTRIBUTION ? 'RELEASE BLOCKER' : 'LICENCE FLAG \\(reported, not blocking\\)'} unresolved-font-licence: Denton typeface \\(denton-300\\.woff2\\) has no recorded licence`, 'm'));
 });
 
-test('verify-apks records licence flags and the font check, and only an unresolved font can withhold distributable', () => {
+test('verify-apks records licence flags and keeps font blockers and private QA out of distribution', () => {
   const source = fs.readFileSync(path.join(ROOT, 'scripts/verify-apks.mjs'), 'utf8');
   // The font check is recorded in full; only its `blockers` (empty while the constant is false) reach `distributable`.
   assert.match(source, /fontCheck = fontLicenceCheck\(payload\.public\);/);
   assert.match(source, /const licenceBlockers = fontCheck\.blockers;/);
   assert.match(source, /fontLicenceCheck: \{ check: fontCheck\.check, status: fontCheck\.status, blocksDistribution: fontCheck\.blocksDistribution, items: fontCheck\.items, resolved: fontCheck\.resolved \},/);
-  assert.match(source, /row\.runtimeNotices === true &&\n\s+speechQualified &&\n\s+row\.licenceBlockers\.length === 0;/);
+  assert.match(source, /row\.runtimeNotices === true &&\n\s+speechQualified &&\n\s+row\.licenceBlockers\.length === 0 && updateChannel\.kind==='public';/);
   // Flags are recorded per APK and printed; they are not part of the distributable expression or of any failure.
   assert.match(source, /licenceFlags = licenceFlagRecords\(entries\);/);
   assert.match(source, /for \(const line of flagLines\) console\.warn\(line\);/);
   const distributable = /row\.distributable = ([\s\S]*?);\n/.exec(source)[1];
+  const admits = new Function('testMocks', 'row', 'runtime', 'speechQualified', 'updateChannel', `return ${distributable};`);
+  const row = {signed:true,releaseAdmission:{signerMatches:true,blockers:[],failures:[]},runtimeNotices:true,licenceBlockers:[]};
+  assert.equal(admits(false,row,{distributable:true},true,{kind:'public'}),true);
+  assert.equal(admits(false,row,{distributable:true},true,{kind:'private-qa'}),false,'private QA is never distributable');
+  assert.equal(admits(false,{...row,licenceBlockers:['unresolved-font-licence']},{distributable:true},true,{kind:'public'}),false);
   assert.doesNotMatch(distributable, /licenceFlags|fontLicenceCheck/);
   assert.doesNotMatch(source, /problems\.push\([^)]*licence/i);
   assert.doesNotMatch(source, /failures\.push\([^)]*licence/i);

@@ -283,6 +283,8 @@ test('the Files agent contract carries opaque reviewed identities and refuses un
   assert.equal(contract.filesContextAllowed(validated,{view:'files'}),true);
  }
  const adapter=readFileSync('.eliza/client-features/plugins/plugin-files/src/browser/files-browser-adapter.ts','utf8');
+ // The current runner owns the identity fence directly, before opening Files or refreshing storage.
+ assert.match(adapter,/if\s*\(\s*\(op\.type === "files_move" \|\| op\.type === "files_trash"\) &&\s*\(!op\.reviewed \|\| !reviewingPrimary\(\)\)\s*\)\s*return reviewRequired;\s*if \(!api\)/);
  assert.match(adapter,/if \(!reviewingPrimary\(\) \|\| !op\.reviewed\) return reviewRequired/);
  assert.match(adapter,/paths: op\.paths,[\s\S]*reviewed: op\.reviewed,[\s\S]*volume: "primary"/);
  assert.match(adapter,/storage\.storageTransfer\(\{[\s\S]*\.\.\.selection,[\s\S]*copy: false/);
