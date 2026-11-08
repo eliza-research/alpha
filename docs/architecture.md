@@ -593,12 +593,14 @@ notes today, so the plugin stays as the product's binding to the shared store.
 
 Selected documents, attachments and PDFs follow the same split. `plugin-native-media` owns the
 selected-document registry and its bridge contract (`SelectedDocuments`,
-`SelectedDocumentCalls`), the folder tree (`DocumentFolderTree`), the temporary viewer copy
-(`ReviewedFileHandoff`), verified export (`DocumentExport`, `DocumentDestinations`) and isolated
+`SelectedDocumentCalls`), the folder tree (`DocumentFolderTree`), viewer URI admission and grant
+revocation (`ReviewedFileHandoff`), verified export (`DocumentExport`, `DocumentDestinations`) and isolated
 PDF rendering (`IsolatedPdfRenderService`, `IsolatedPdfViewerActivity`, `PdfPageLimits`).
 Alpha keeps the installed identities: `DailyApps` method names and the `selected-documents`
 registry, `AlphaFiles`' `alpha-files-tree`, the `<package>.mailattachments` provider and its
-`mail-attachments` cache path, and the `.IsolatedPdfService` (`:isolated_pdf`) and
+`mail-attachments` cache path. `ReviewedCopies` owns concurrent temporary copies for Alpha's
+main and assistant bridges. Each can revoke its own grants, and the process's first sweep can
+remove abandoned files without deleting a live peer copy. Alpha also owns the `.IsolatedPdfService` (`:isolated_pdf`) and
 `.AlphaMailPdfActivity` components, which are thin subclasses that only add Alpha's colours,
 messages and the development-only watchdog fixture.
 
