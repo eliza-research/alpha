@@ -1094,10 +1094,13 @@ function rebindResident() {
 /** A native sign-in return that arrived while another step was running; handled once it ends. */
 let queuedSignInReturn: unknown = null;
 /** A return without a sign-in result that arrived during a step or before startup settled. */
-let queuedSignInIncomplete: { restarted: boolean; code?: 'storage' } | null = null;
+let queuedSignInIncomplete: { restarted: boolean; code?: 'storage'; epoch?: number; signIn?: typeof state.signIn } | null = null;
 function runQueuedSignInReturn() {
   if (queuedSignInReturn !== null && !operation) { const value = queuedSignInReturn; queuedSignInReturn = null; void connectionController.signInReturned(value); }
-  if (queuedSignInIncomplete && !operation && state.startupResolved) { const { restarted, code } = queuedSignInIncomplete; queuedSignInIncomplete = null; showSignInIncomplete(restarted, code); }
+  if (queuedSignInIncomplete && !operation && state.startupResolved) {
+    const notice = queuedSignInIncomplete; queuedSignInIncomplete = null;
+    if (notice.epoch === undefined || notice.epoch === epoch && notice.signIn === state.signIn) showSignInIncomplete(notice.restarted, notice.code);
+  }
 }
 function showSignInIncomplete(restarted: boolean, code?: 'storage') {
   update({ open: true, signIn: state.signIn ? { step: 'choose', environment: state.signIn.environment } : state.signIn, message: '', error: code === 'storage' ? signInFailureMessage(code) : restarted ? 'Alpha restarted before your sign-in finished. Sign in again.' : signInFailureMessage('app-link-unverified') });
@@ -3057,7 +3060,11 @@ export const connectionController = {
     if (code !== 'app-link-unverified' && code !== 'storage') return;
     // Retained across a process restart, the event can land while startup runs; it waits for startup
     // to settle so the start does not clear it, and then says the restart is why.
-    if (operation || !state.startupResolved) { queuedSignInIncomplete = { restarted: queuedSignInIncomplete?.restarted || !state.startupResolved, ...(code === 'storage' ? {code} : {}) }; return; }
+    if (operation || !state.startupResolved) {
+      queuedSignInIncomplete = { restarted: queuedSignInIncomplete?.restarted || !state.startupResolved,
+        ...(state.startupResolved ? {epoch, signIn: state.signIn} : {}), ...(code === 'storage' ? {code} : {}) };
+      return;
+    }
     showSignInIncomplete(false, code === 'storage' ? code : undefined);
   },
   /**
