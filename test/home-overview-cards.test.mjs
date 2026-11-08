@@ -60,12 +60,12 @@ test('a calendar read from an earlier day is presented as stale on the agenda ca
   assert.match(out.card,/data-alpha-home-calendar-source="">Not updated since /);
 });
 
-test('brief card renders only a retained brief, with its failure state and installed selectors', () => {
+test('brief card keeps an empty shell and renders retained data with its failure state', () => {
   const out={};
-  out.none=html(c.homeBriefCard({homeBriefHas:false,homeBriefTitle:'x'}));
+  out.none=html(c.homeBriefCard({homeBriefHas:false,homeBriefTitle:'STALE_TITLE',homeBriefStatus:'STALE_STATUS',homeBriefFailed:true,homeBriefLabel:'STALE_LABEL'}));
   out.ran=html(c.homeBriefCard({homeBriefHas:true,homeBriefTitle:'Two meetings today.',homeBriefStatus:'Alpha · Ran 7:02 AM',homeBriefFailed:false,homeBriefLabel:'Open scheduled digests. Latest brief from Alpha, ran 7:02 AM: Two meetings today.',goBrief:()=>{}}));
   out.failed=html(c.homeBriefCard({homeBriefHas:true,homeBriefTitle:'Source expired',homeBriefStatus:'Alpha · Failed 7:00 AM',homeBriefFailed:true,homeBriefLabel:'Open scheduled digests.'}));
-  assert.equal(out.none,null);
+  assert.match(out.none,/Your brief/);assert.match(out.none,/No brief yet/);assert.doesNotMatch(out.none,/STALE_TITLE|STALE_STATUS|STALE_LABEL|Ran [0-9]|Two meetings today/);assert.match(out.none,/data-alpha-home-brief-failed="false"/);
   assert.match(out.ran,/^<button type="button" data-overview-part="card" class="home-brief-card" data-overview-card="brief"/);
   for(const attribute of ['data-alpha-home-brief=""','data-alpha-home-brief-failed="false"','aria-haspopup="dialog"','aria-label="Open scheduled digests. Latest brief from Alpha, ran 7:02 AM: Two meetings today."'])assert.ok(out.ran.includes(attribute),attribute);
   assert.match(out.ran,/class="home-brief-head"><span data-overview-part="heading">Latest brief<\/span>/);
@@ -144,7 +144,7 @@ test('the Home agenda values come from the shared card model for an event, an ov
   assert.deepEqual([none.homeCalendarTitle,none.homeCalendarTime,none.homeCalendarLabel,none.homeCalendarHasEvent,none.homeCalendarHasMeta],['Calendar has not been verified','Wed, Oct 7','Open Agent Calendar',false,false]);
 });
 
-test('Home suppresses only confirmed empty cards and keeps a retained brief', () => {
+test('Home keeps all widgets visible for confirmed empty sources and retained briefs', () => {
   class Shell {
     renderVals() { return this.values; }
   }
@@ -153,8 +153,8 @@ test('Home suppresses only confirmed empty cards and keeps a retained brief', ()
   const empty = {homeCalendarConfirmedEmpty: true, homeInboxConfirmedEmpty: true, homeWorkflowConfirmedEmpty: true};
   shell.values = empty;
   let rendered = shell.renderVals();
-  assert.deepEqual([rendered.homeAgendaCard, rendered.homeAttentionCard, rendered.homeShowWorkflow, rendered.homeHasOverviewCards],
-    [null, null, false, false]);
+  assert.ok(rendered.homeAgendaCard);assert.ok(rendered.homeAttentionCard);assert.ok(rendered.homeBriefCard);assert.equal(rendered.homeShowWorkflow,true);assert.equal(rendered.homeHasOverviewCards,true);
+  assert.match(html(rendered.homeBriefCard),/No brief yet/);
   shell.values = {...empty, homeBriefHas: true, homeBriefTitle: 'Follow up on the failed run', homeBriefFailed: true};
   rendered = shell.renderVals();
   assert.equal(rendered.homeHasOverviewCards, true);

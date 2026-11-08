@@ -10,14 +10,15 @@ test('Settings Back restores a replaced uniquely named control',()=>{
  top.innerHTML='<button aria-label="First">First</button><button aria-label="Google">Google</button>';child.remove();f(root);
  assert.equal(document.activeElement.getAttribute('aria-label'),'Google');assert.equal(top.inert,false);dom.window.close();
 });
-test('Home draws only populated cards and offers Google only on a known disconnected owner',()=>{
+test('Home keeps widget shells visible without inventing data or reading a provider',()=>{
  const s=read('prototype/data-adapter.ts'),body=between(s,'export function installHomeCardVisibility(','/** Neutral Home');let values={},opens=0;
  class Shell{renderVals(){return values;}}
  vm.runInNewContext(ts(body)+';installHomeCardVisibility(Shell,()=>opens())',{Shell,Date,formatFullDate:()=> 'Saturday, November 7',opens:()=>opens++});const shell=new Shell();
- for(const connected of [undefined,true,false]){values={homeGoogleConnected:connected};const out=shell.renderVals();assert.equal(out.homeShowDate,true);assert.equal(out.homeShowSetup,connected===false);assert.equal(out.homeShowCalendar,false);}
- for(const key of ['homeCalendarHasEvent','homeWorkflowHasRows','homeInboxHasRows','homeBriefHas']){values={[key]:true,homeGoogleConnected:false};assert.equal(shell.renderVals().homeShowDate,false);assert.equal(shell.renderVals().homeShowSetup,false);}
- values={homeGoogleConnected:false};shell.renderVals().connectGoogle();assert.equal(opens,1);
+ for(const connected of [undefined,true,false]){values={homeGoogleConnected:connected};const out=shell.renderVals();assert.equal(out.homeShowDate,false);assert.equal(out.homeShowSetup,false);assert.equal(out.homeShowCalendar,true);assert.equal(out.homeShowInbox,true);assert.equal(out.homeShowWorkflows,true);assert.equal(out.homeCalendarHasEvent,undefined);assert.equal(out.homeInboxHasRows,undefined);}
+ for(const key of ['homeCalendarHasEvent','homeWorkflowHasRows','homeInboxHasRows','homeBriefHas']){values={[key]:true,homeGoogleConnected:false};const out=shell.renderVals();assert.equal(out[key],true);assert.equal(out.homeShowDate,false);assert.equal(out.homeShowSetup,false);}
+ assert.equal(opens,0);shell.renderVals().connectGoogle();assert.equal(opens,1);
 });
+
 function announcer(){const dom=new JSDOM('<body><input id="composer"></body>'),document=dom.window.document;let hidden=false;Object.defineProperty(document,'hidden',{get:()=>hidden});let frame=0;const frames=new Map();
  const s=read('prototype/subview-accessibility.ts'),body=s.slice(s.indexOf('type ReplyShell ='));
  class Shell{state={screen:'home',msgs:[{id:'u1',from:'user',text:'Hi'}]};connectionSession='one';live=true;voice=false;S(){return this.state;}voiceConversationActive(){return this.voice;}componentDidMount(){}componentDidUpdate(){}componentWillUnmount(){} }

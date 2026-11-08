@@ -201,20 +201,15 @@ export function setHomeSources(next: Partial<typeof homeSources>) {
   window.dispatchEvent(new Event(HOME_SOURCES_CHANGED));
 }
 
-/** Which Home cards are drawn (docs/ui-refresh-2026-11, specs/quint/legacy/HomeLayout.qnt). A card is drawn only
- * when it has something to show: the next event or an overdue reminder, an enabled workflow,
- * unread mail from a connected account, a retained brief. With none, Home shows the date, and a
- * Connect Google button while Google is known to be disconnected. Installed outermost, after
- * every adapter that writes the card values. */
+/** Keep Home widgets available with their real loading, setup and empty states.
+ * Provider adapters retain authority over their content; visibility performs no reads. */
 export function installHomeCardVisibility(Component: any, openGoogle: () => void) {
   const p = Component.prototype, render = p.renderVals;
   p.renderVals = function () {
     const out = render.call(this);
-    const calendar = !!out.homeCalendarHasEvent, workflows = !!out.homeWorkflowHasRows, inbox = !!out.homeInboxHasRows, brief = !!out.homeBriefHas;
-    const none = !calendar && !workflows && !inbox && !brief;
-    return {...out, homeShowCalendar: calendar, homeShowWorkflows: workflows, homeShowInbox: inbox, homeShowDate: none,
-      homeShowSetup: none && out.homeGoogleConnected === false,
-      homeDateLabel: none ? formatFullDate(new Date()) : '',
+    return {...out, homeShowCalendar: true, homeShowWorkflows: true, homeShowInbox: true, homeShowDate: false,
+      homeShowSetup: false,
+      homeDateLabel: '',
       connectGoogle: openGoogle};
   };
 }
@@ -225,7 +220,7 @@ const NEUTRAL_HOME = {
   homeCalendarSource: '', homeCalendarOrigin: '', homeCalendarDescription: '', homeCalendarOverdue: false, homeCalendarStale: false, homeCalendarNext: '', homeCalendarNextSource: '', homeCalendarHasNext: false, homeCalendarVideo: false, homeCalendarPeople: [] as Bag[],
   homeWorkflowFreshness: '', homeWorkflowDescription: '',
   homeBriefHas: false, homeBriefTitle: '', homeBriefStatus: '', homeBriefLabel: '', homeBriefFailed: false, homeInboxDescription: '',
-  homeWorkflowLabel: 'Open workflows', homeWorkflowTitle: 'No brief yet', homeWorkflowTime: 'Workflows', homeWorkflowSource: '',
+  homeWorkflowLabel: 'Open workflows', homeWorkflowTitle: 'Open to view', homeWorkflowTime: 'Workflows', homeWorkflowSource: '',
 };
 
 /** Call in both fixture and production before mounting. Fixture builds keep the
