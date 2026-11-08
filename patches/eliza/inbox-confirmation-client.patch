@@ -1,0 +1,24 @@
+--- a/plugins/plugin-inbox/src/mailbox/review-controller.ts
++++ b/plugins/plugin-inbox/src/mailbox/review-controller.ts
+@@ -687,6 +687,11 @@
+             toast(reviewBindingRefusal.absent);
+             return;
+           }
++          const record = operation?.snapshot();
++          if (!record || !gmailInboxAllows(caps, record.proposal.kind as GmailMailboxAction)) {
++            toast("Reconnect Gmail, then try again.");
++            return;
++          }
+           // The composer is read in the same turn as the comparison inside confirm(), before any await.
+           void run((owned) =>
+             owned.confirm(
+@@ -701,7 +706,8 @@
+           !absent &&
+           !!record &&
+           record.phase === "review" &&
+-          receiptState === "prepared",
++          receiptState === "prepared" &&
++          gmailInboxAllows(caps, record.proposal.kind as GmailMailboxAction),
+         check: () => void run((owned) => owned.refresh()),
+         reload: () => void run((owned) => owned.reloadReview()),
+         canReload: record?.phase === "preparing",

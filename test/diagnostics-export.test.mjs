@@ -339,3 +339,13 @@ test('voice conversation rows name their path: live assistant or recorded-clip b
  ]}},now).voiceTiming.records;
  assert.deepEqual(records.map(r=>r.path),['live','live','batch',undefined,undefined]);
 });
+
+
+test('error classification tolerates hostile names and revoked proxies',()=>{
+ const named=new Error('private text');Object.defineProperty(named,'name',{get(){throw Error('private getter');}});
+ assert.equal(errorClassOf(named),'Error');
+ const coercion=new Error();coercion.name={toString(){throw Error('private coercion');}};
+ assert.equal(errorClassOf(coercion),'Error');
+ const {proxy,revoke}=Proxy.revocable({},{});revoke();
+ assert.equal(errorClassOf(proxy),'Error');
+});

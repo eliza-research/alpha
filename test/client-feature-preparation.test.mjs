@@ -1,4 +1,5 @@
 import test from 'node:test';
+import {createHash} from 'node:crypto';
 import {buildSync} from 'esbuild';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
@@ -108,6 +109,15 @@ assert.equal(stamp.baseCommit,JSON.parse(fs.readFileSync('upstream.lock.json','u
  const calendarPath='packages/contracts/src/calendar-linked-sync.ts';
  assert.equal(stamp.calendarSemanticPatch.beforeSha256,stamp.sourceFiles[calendarPath]);
  assert.equal(stamp.calendarSemanticPatch.afterSha256,stamp.files[calendarPath]);
+ for(const [key,file] of [
+  ['inboxConfirmationPatch','plugins/plugin-inbox/src/mailbox/review-controller.ts'],
+  ['inboxCleanupPatch','plugins/plugin-inbox/src/mailbox/drafts-controller.ts'],
+  ['crashErrorClassPatch','plugins/plugin-native-system/src/crash-log.ts'],
+ ]){
+  assert.equal(stamp[key].beforeSha256,stamp.sourceFiles[file]);
+  assert.equal(stamp[key].afterSha256,stamp.files[file]);
+  assert.notEqual(stamp.sourceFiles[file],stamp.files[file],file+' carries its reviewed patch');
+ }
  const calendarBundle=buildSync({entryPoints:[path.join(source,calendarPath)],bundle:true,write:false,platform:'browser',format:'esm',metafile:true});
  assert.equal(Object.keys(calendarBundle.metafile.inputs).length,1,'shared Calendar reconciliation has no Node, SQL, or runtime dependency');
  const voiceFiles=['packages/ui/src/voice/voice-session-client-core.ts','packages/ui/src/voice/voice-session-status.ts','packages/core/src/logging.ts','packages/core/src/view-interaction.ts','packages/host/src/voice/ui-context.ts'];
@@ -142,3 +152,33 @@ assert.equal(stamp.baseCommit,JSON.parse(fs.readFileSync('upstream.lock.json','u
  assert.equal(Object.keys(bundle.metafile.inputs).some(file=>/csrf-client|steward|persistence|core\/src\/logger|api\//.test(file)),false);
 
 });
+
+
+for(const [receipt,prefix,file] of [
+ ['inboxConfirmationPatch','inbox-confirmation-client','plugins/plugin-inbox/src/mailbox/review-controller.ts'],
+ ['inboxCleanupPatch','inbox-cleanup-client','plugins/plugin-inbox/src/mailbox/drafts-controller.ts'],
+ ['crashErrorClassPatch','crash-error-class-client','plugins/plugin-native-system/src/crash-log.ts'],
+])test(`${prefix} requires its exact source, patch and target`,()=>fixture(({root,vendor,git})=>{
+ const before='export const value = 1;\n',after='export const value = 2;\n';
+ const digest=value=>createHash('sha256').update(value).digest('hex');
+ const sourceFile=path.join(vendor,file);fs.mkdirSync(path.dirname(sourceFile),{recursive:true});fs.writeFileSync(sourceFile,before);
+ git(['add','.']);git(['-c','user.name=Source fixture','-c','user.email=fixture@example.invalid','commit','--allow-empty','-qm','Target']);
+ const commit=git(['rev-parse','HEAD']);fs.writeFileSync(path.join(root,'upstream.lock.json'),JSON.stringify({commit}));
+ const patch=`--- a/${file}\n+++ b/${file}\n@@ -1 +1 @@\n-export const value = 1;\n+export const value = 2;\n`;
+ const patchRoot=path.join(root,'patches/eliza');fs.mkdirSync(patchRoot,{recursive:true});
+ const patchFile=path.join(patchRoot,prefix+'.patch'),manifestFile=path.join(patchRoot,prefix+'-manifest.json');
+ const manifest={schema:1,baseCommit:commit,path:file,beforeSha256:digest(before),afterSha256:digest(after),patchSha256:digest(patch)};
+ const write=value=>fs.writeFileSync(manifestFile,JSON.stringify(value));
+ fs.writeFileSync(patchFile,patch);write(manifest);
+ const projected=prepareClientFeatures({root,projectVoice:false});
+ assert.equal(fs.readFileSync(path.join(projected,file),'utf8'),after);
+ const stamp=fs.readFileSync(path.join(projected,'.source.json'));
+ assert.equal(JSON.parse(stamp)[receipt].afterSha256,digest(after));
+ write({...manifest,beforeSha256:'0'.repeat(64)});
+ assert.throws(()=>prepareClientFeatures({root,projectVoice:false}),/patch source mismatch/);
+ write({...manifest,path:'unreviewed.ts'});
+ assert.throws(()=>prepareClientFeatures({root,projectVoice:false}),/patch source mismatch/);
+ write(manifest);fs.appendFileSync(patchFile,'changed');
+ assert.throws(()=>prepareClientFeatures({root,projectVoice:false}),/patch digest or target mismatch/);
+ assert.deepEqual(fs.readFileSync(path.join(projected,'.source.json')),stamp,'refused patches preserve the prior authenticated cache');
+}));

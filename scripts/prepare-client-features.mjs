@@ -322,6 +322,9 @@ export function prepareClientFeatures({ root = projectRoot, projectVoice = true,
   const clientPatches = {};
   for (const [key, prefix, name] of [
     ['calendarSemanticPatch', 'calendar-semantic-client', 'packages/contracts/src/calendar-linked-sync.ts'],
+    ['inboxConfirmationPatch', 'inbox-confirmation-client', 'plugins/plugin-inbox/src/mailbox/review-controller.ts'],
+    ['inboxCleanupPatch', 'inbox-cleanup-client', 'plugins/plugin-inbox/src/mailbox/drafts-controller.ts'],
+    ['crashErrorClassPatch', 'crash-error-class-client', 'plugins/plugin-native-system/src/crash-log.ts'],
   ]) {
     const manifestFile = path.join(root, 'patches/eliza', prefix + '-manifest.json');
     if (!regularPath(manifestFile)) continue;
@@ -419,7 +422,7 @@ export function prepareClientFeatures({ root = projectRoot, projectVoice = true,
     if (!regularPath(stamp)) throw Error('Refusing to replace an unrecognized client feature directory.');
     const previous = JSON.parse(fs.readFileSync(stamp));
     const actual = inventory(destination); delete actual['.source.json'];
-    if (previous.baseCommit === upstream.pin && previous.projectionVersion === provenance.projectionVersion && JSON.stringify(previous.speechPatch ?? null) === JSON.stringify(provenance.speechPatch ?? null) && JSON.stringify(previous.calendarSemanticPatch ?? null) === JSON.stringify(provenance.calendarSemanticPatch ?? null) && matches(previous.files || {}, files) && matches(actual, files)) return destination;
+    if (previous.baseCommit === upstream.pin && previous.projectionVersion === provenance.projectionVersion && JSON.stringify(previous.speechPatch ?? null) === JSON.stringify(provenance.speechPatch ?? null) && Object.entries(clientPatches).every(([key, value]) => JSON.stringify(previous[key] ?? null) === JSON.stringify(value)) && matches(previous.files || {}, files) && matches(actual, files)) return destination;
   }
   if (check) throw Error('Client feature source is missing or stale: run npm run upstream:prepare-client');
   fs.mkdirSync(parent, { recursive: true });

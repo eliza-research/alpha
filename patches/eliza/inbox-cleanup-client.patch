@@ -1,0 +1,13 @@
+--- a/plugins/plugin-inbox/src/mailbox/drafts-controller.ts
++++ b/plugins/plugin-inbox/src/mailbox/drafts-controller.ts
+@@ -515,6 +515,10 @@
+           saved?.id === draftId
+             ? "Sent. The sent copy was removed from this device; an earlier saved version of this email is kept."
+             : "Sent. The local copy of this email was removed from this device.";
++    } catch {
++      // The send succeeded. Keep remaining copies if a cleanup write fails or loses its reply.
++      if (token === epoch)
++        status = "Sent. A local copy of this email could not be removed from this device.";
+     } finally {
+       if (token === epoch) {
+         busy = false;
