@@ -38,7 +38,7 @@ export async function checkSharedRecording(extraSources=[]){
  try{
   const driverHashes=captureInputs(sources);
   const traces=javaTraces('SharedRecordingTraces.java',compiled,[state,'campaign',...sharedRecordingScenarios]);
-  return await checkTraces({model:'SharedRecordingAdmission',sources,driverHashes,traces,scope:'bounded-orchestration',assumptions:[
+  return await checkTraces({model:'SharedRecordingAdmission',sources,driverHashes,generatedSources:platform.paths,traces,scope:'bounded-orchestration',assumptions:[
    'The complete staged LocalSpeechBridgePlugin executes public draft recording methods, private permission callback, host lifecycle callbacks and cancellation worker barrier. SpeechRequestGate, LocalVoiceRecording and the serial ThreadPoolExecutor execute their actual implementation.',
    'Two recording requests, two cancellation waiters and two successful starts bound the campaign. Exact permission epochs and waiter ownership are observed. Record and cancel main-queue tasks execute through their actual captured closures.',
    'Audio mode and permission state are primitive platform inputs. Live capture, physical audio output, inference and latency environment are explicitly unexercised ports.',

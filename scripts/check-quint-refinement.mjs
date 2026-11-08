@@ -3,6 +3,7 @@ import {dirname, join, resolve, basename} from 'node:path';
 import {pathToFileURL} from 'node:url';
 import {tsImport} from 'tsx/esm/api';
 import {repositoryRoot, loadModels, sha256} from './quint-lib.mjs';
+import {verifyRefinementReceiptInputs} from '../specs/quint/refinement/check-traces.mjs';
 import {modelStateInventory, unobservedStateFields} from '../specs/quint/refinement/model-state.mjs';
 
 const args = process.argv.slice(2);
@@ -20,7 +21,7 @@ for (const arg of args) if (!arg.startsWith('--families=') && !arg.startsWith('-
 for (const family of requested) if (!families.includes(family)) throw Error(`Unknown family ${family}`);
 const models = loadModels();
 const reportingInputs = ['scripts/check-quint-refinement.mjs', 'specs/quint/refinement/model-state.mjs',
-  'specs/quint/refinement/legacy/index.mjs', 'package-lock.json'];
+  'specs/quint/refinement/legacy/index.mjs', 'specs/quint/refinement/check-traces.mjs', 'package-lock.json'];
 const report = {schemaVersion: 1, startedAt: new Date().toISOString(), evidence: 'implementation trace refinement with explicit projections',
   reportingInputHashes: Object.fromEntries(reportingInputs.map(path => [path, sha256(readFileSync(join(repositoryRoot, path)))])),
   modelCount: models.length, families: [], models: [], obligations: [], checksPassed: false, completeApplicationRefinement: false};
@@ -60,8 +61,7 @@ for (const model of models) {
   const currentHash = sha256(readFileSync(join(repositoryRoot, model.path)));
   const current = receipts.filter(receipt => receipt.passed && receipt.inputsUnchanged && receipt.driverInputsBound &&
     receipt.sourceHashesAfter?.[join(repositoryRoot, model.path)] === currentHash &&
-    Object.entries(receipt.sourceHashesAfter).every(([path, expected]) =>
-      existsSync(path) && sha256(readFileSync(path)) === expected));
+    verifyRefinementReceiptInputs(receipt));
   const inventory = modelStateInventory(join(repositoryRoot, model.path), model.module);
   const entry = {model: model.module, family: model.family, modelSha256: currentHash,
     status: current.length ? 'trace-checked' : 'unverified',

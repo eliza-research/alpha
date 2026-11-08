@@ -15,7 +15,7 @@ export async function checkListenerService(extraSources=[]){
  try{
   const driverHashes=captureInputs(sources);
   const traces=javaTraces('ListenerServiceTraces.java',inputs,[state,'campaign',...listenerServiceScenarios],'ai.eliza.sense.ListenerServiceTraces');
-  return await checkTraces({model:'NativeListenerService',sources,driverHashes,traces,scope:'bounded-orchestration',assumptions:[
+  return await checkTraces({model:'NativeListenerService',sources,driverHashes,generatedSources:platform.paths,traces,scope:'bounded-orchestration',assumptions:[
    'Actual shared Listener, ListeningService, ListenerStore, ListeningEpoch and lease policy execute together. Android framework, AudioRecord, notifications and ASR allocation are controlled ports.',
    'One service instance and two AudioRecord allocations bound lifecycle traces. Initial state has explicit process consent and a fresh visible lease. Pending ASR allocation is independently released before or after destruction.',
    'Unconfirmed AudioRecord release retains the owned handle and durable open marker. Tests observe physical recording separately from resource ownership and do not claim successful release when the port throws.',

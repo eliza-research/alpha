@@ -27,7 +27,7 @@ export async function checkLiveCapture(extraSources=[]){
  try{
   const driverHashes=captureInputs(sources);
   const traces=javaTraces('LiveCaptureTraces.java',compiled,[state,'campaign',...liveCaptureScenarios]);
-  return await checkTraces({model:'NativeLiveCapture',sources,driverHashes,traces,scope:'bounded-orchestration',assumptions:[
+  return await checkTraces({model:'NativeLiveCapture',sources,driverHashes,generatedSources:platform.paths,traces,scope:'bounded-orchestration',assumptions:[
    'The complete shared parent, LiveCaptureController, LiveVoiceCapture and LiveCaptureResource execute. Primitive Android audio and VAD inputs are controlled ports.',
    'Two capture reservations and source instances bound the campaign. Native constructor suspension separates initial admission, late physical opening, publication and cleanup.',
    'This campaign executes non-piped capture. The actual LiveSegmentPipe class compiles but owner-bound provider warmup and transcript forwarding require additional schedules.',

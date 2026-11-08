@@ -17,7 +17,7 @@ export async function checkIndicatorProvider(extraSources=[]){
  try{
   const driverHashes=captureInputs(sources);
   const traces=javaTraces('IndicatorProviderTraces.java',inputs,['campaign',...indicatorProviderScenarios],'ai.eliza.sense.IndicatorProviderTraces');
-  return await checkTraces({model:'NativeIndicatorProvider',sources,driverHashes,traces,scope:'bounded-orchestration',assumptions:[
+  return await checkTraces({model:'NativeIndicatorProvider',sources,driverHashes,generatedSources:platform.paths,traces,scope:'bounded-orchestration',assumptions:[
    'Actual IndicatorLeaseProvider and IndicatorLease execute. Android caller identity, Binder death registration and the Listener convergence target are controlled primitive ports.',
    'Three lease generations and three token identities bound the state space. Report classes cover visible, hidden, chip-hidden, explained pauses and unknown display. Full attribution/clock policy has its own ListenerLeaseRecovery evidence.',
    'The separate held-monitor race regression executes two competing public calls32 times and checks the real lease generation against the actual linked death callback. No runtime-source observer is inserted.',

@@ -35,7 +35,7 @@ export async function checkNotePermission(extraSources=[]){
  try{
   const driverHashes=captureInputs(sources);
   const traces=javaTraces('NotePermissionTraces.java',compiled,[state,'campaign',...notePermissionScenarios]);
-  return await checkTraces({model:'NativeNotePermission',sources,driverHashes,traces,scope:'bounded-orchestration',assumptions:[
+  return await checkTraces({model:'NativeNotePermission',sources,driverHashes,generatedSources:platform.paths,traces,scope:'bounded-orchestration',assumptions:[
    'The complete AlphaVoiceCloudPlugin executes its Notes recording methods, private permission callback, and product lifecycle overrides. The real AlphaNoteRecorder and staged shared LocalVoiceRecording execute under primitive Android ports.',
    'The shared parent lifecycle/permission interface is a controlled port. This receipt establishes the product Notes methods conditionally on those inputs; it does not execute the shared LocalSpeechBridgePlugin implementation.',
    'One pending Notes request, two successful recorder starts, and serialized main-queue callbacks bound the campaign. Recorder identity, segmented durability and service ownership have separate source receipts.',

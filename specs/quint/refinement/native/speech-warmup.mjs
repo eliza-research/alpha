@@ -12,7 +12,7 @@ export async function checkSpeechWarmup(extraSources=[]){
  try{
  const driverHashes=captureInputs(sources);
  const traces=javaTraces('SpeechWarmupTraces.java',compiled,speechWarmupScenarios,'ai.eliza.voice.SpeechWarmupTraces');
- return await checkTraces({model:'NativeSpeechWarmup',modelPath,sources,driverHashes,traces,scope:'bounded-component',assumptions:[
+ return await checkTraces({model:'NativeSpeechWarmup',modelPath,sources,driverHashes,generatedSources:compiled.filter(path=>platform.paths.includes(path)),traces,scope:'bounded-component',assumptions:[
   'Actual SpeechOutputWarmup executes on its real writer thread. Factory open, play, write, abort and release are primitive outputs or controlled faults.',
   'One warm-up instance with an exact 15 second deadline. A blocked write and factory open are held separately. Repeated short successful writes are bounded in the model; an additional source scenario checks another write just before expiry.',
   'Release observation records a release attempt. AudioTrack completion, bridge foreground/admission, reply playback and installed audibility remain separate obligations.'

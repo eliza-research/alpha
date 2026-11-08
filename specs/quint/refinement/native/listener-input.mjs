@@ -15,7 +15,7 @@ export async function checkListenerInput(extraSources=[]){
  try{
   const driverHashes=captureInputs(sources);
   const traces=javaTraceCampaign('ListenerInputTraces.java',compiled,listenerInputScenarios.map(name=>[join(state,name+'.json'),name]),'ai.eliza.sense.ListenerInputTraces');
-  return await checkTraces({model:'NativeListenerInput',modelPath,sources,driverHashes,traces,scope:'bounded-orchestration',assumptions:[
+  return await checkTraces({model:'NativeListenerInput',modelPath,sources,driverHashes,generatedSources:platform.paths,traces,scope:'bounded-orchestration',assumptions:[
    'Actual ListeningService capture, SpeechGate, WakePhrase, lease, policy and settings execute. Android audio callbacks, clocks, microphone/ASR/notification output and main dispatch are controlled ports.',
    'PCM batches use 14 or 15 synthetic speech frames followed by 35 silence frames and an optional two-part read partition. A held platform start fixes the initial read boundary; existing blocked reads retain their original entry ticket. Actual worker samples, queued callback identity and cleared frame/sample arrays are observed.',
    'The source checkpoint completes one fixed batch or callback boundary. Arbitrary PCM, Android timing, physical audio and real assistant invocation are external obligations.'

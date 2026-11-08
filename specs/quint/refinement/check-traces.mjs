@@ -1,14 +1,74 @@
 import {spawnSync} from 'node:child_process';
 import {createHash} from 'node:crypto';
-import {mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync} from 'node:fs';
+import {linkSync, lstatSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync} from 'node:fs';
 import {tmpdir} from 'node:os';
-import {dirname, isAbsolute, join, relative, resolve} from 'node:path';
+import {dirname, isAbsolute, join, relative, resolve, sep} from 'node:path';
 import {fileURLToPath} from 'node:url';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '../../..');
 const identifier = /^[A-Za-z][A-Za-z0-9_]*$/;
 const fieldPath = /^[A-Za-z][A-Za-z0-9_]*(?:(?:::|\.)[A-Za-z][A-Za-z0-9_]*)*$/;
-const hash = path => createHash('sha256').update(readFileSync(path)).digest('hex');
+const digest = bytes => createHash('sha256').update(bytes).digest('hex');
+const hash = path => digest(readFileSync(path));
+const hashPattern = /^[a-f0-9]{64}$/;
+const snapshotDirectory = join(root, 'test-results/quint-refinement/input-snapshots');
+
+function containsPath(directory, file) {
+  const name = relative(directory, file);
+  return name !== '' && !isAbsolute(name) && name !== '..' && !name.startsWith('..'+sep);
+}
+
+function isTemporarySource(path) {
+  return isAbsolute(path) && resolve(path) === path && containsPath(resolve(tmpdir()), path) && !containsPath(root, path);
+}
+
+function isGeneratedFile(path) {
+  if (!isTemporarySource(path) || !lstatSync(path).isFile()) return false;
+  const resolved = realpathSync(path);
+  return containsPath(realpathSync(tmpdir()), resolved) && !containsPath(realpathSync(root), resolved);
+}
+
+function matchesSnapshot(sha256) {
+  const path = join(snapshotDirectory, sha256);
+  return lstatSync(path, {throwIfNoEntry: false})?.isFile() && hash(path) === sha256;
+}
+
+function retainGeneratedSource(path, sha256) {
+  if (!isGeneratedFile(path)) throw new Error('Generated refinement input is no longer a temporary file: '+path);
+  const bytes = readFileSync(path);
+  if (digest(bytes) !== sha256) throw new Error('Generated refinement input changed during snapshot: '+path);
+  mkdirSync(snapshotDirectory, {recursive: true});
+  const snapshot = join(snapshotDirectory, sha256);
+  if (!lstatSync(snapshot, {throwIfNoEntry: false})) {
+    const stage = mkdtempSync(join(snapshotDirectory, '.publish-'));
+    try {
+      const staged = join(stage, 'source');
+      writeFileSync(staged, bytes, {mode: 0o600});
+      try {linkSync(staged, snapshot);}
+      catch (error) {if (error.code !== 'EEXIST') throw error;}
+    } finally {rmSync(stage, {recursive: true, force: true});}
+  }
+  if (!matchesSnapshot(sha256)) throw new Error('Retained refinement input does not match its address: '+sha256);
+}
+
+/** Revalidate live sources and use retained bytes only for a declared, removed generated input. */
+export function verifyRefinementReceiptInputs(receipt) {
+  const inputs = receipt.sourceHashesAfter;
+  const snapshots = receipt.generatedSourceSnapshots ?? {};
+  if (!inputs || typeof snapshots !== 'object' || Array.isArray(snapshots)) return false;
+  try {
+    for (const [path, sha256] of Object.entries(snapshots)) {
+      if (!isTemporarySource(path) || !hashPattern.test(sha256) || !Object.hasOwn(inputs, path)
+          || inputs[path] !== sha256 || receipt.sourceHashesBefore?.[path] !== sha256
+          || receipt.driverHashesBefore?.[path] !== sha256 || !matchesSnapshot(sha256)) return false;
+    }
+    return Object.entries(inputs).every(([path, sha256]) => {
+      const live = lstatSync(path, {throwIfNoEntry: false});
+      if (!live) return Object.hasOwn(snapshots, path);
+      return (!Object.hasOwn(snapshots, path) || isGeneratedFile(path)) && hash(path) === sha256;
+    });
+  } catch {return false;}
+}
 function registeredModelInputs() {
   const paths = new Set();
   for (const family of ['application', 'services', 'native', 'legacy']) {
@@ -98,7 +158,7 @@ function modelDependencies(path, paths = new Set()) {
 }
 
 /** Check concrete source observations at every named model transition. */
-export async function checkTraces({model, modelPath, sources, traces, assumptions = [], scope, id = model, out, batchSize = 60, driverHashes}) {
+export async function checkTraces({model, modelPath, sources, traces, assumptions = [], scope, id = model, out, batchSize = 60, driverHashes, generatedSources = []}) {
   if (!identifier.test(model) || !/^[A-Za-z0-9_-]+$/.test(id)) throw new Error('Invalid model or receipt identifier');
   if (!['complete-finite-helper', 'bounded-component', 'bounded-orchestration'].includes(scope)) throw new Error('An explicit refinement scope is required');
   if (!Array.isArray(traces) || !traces.length || !Array.isArray(sources) || !sources.length) throw new Error('Concrete traces and implementation source paths are required');
@@ -106,10 +166,16 @@ export async function checkTraces({model, modelPath, sources, traces, assumption
   const path = modelFile(model, modelPath);
   const invariant = invariantFor(model);
   const modelInputs = modelDependencies(path);
-  const inputs = [...new Set([
-    ...registeredModelInputs(), ...Object.keys(driverHashes || {}), ...modelInputs,
-    ...sources.map(source => resolve(root, source)), fileURLToPath(import.meta.url),
-  ])];
+  const stable = new Set([...registeredModelInputs(), ...modelInputs, fileURLToPath(import.meta.url)]);
+  const sourcePaths = new Set(sources.map(source => resolve(root, source)));
+  if (!Array.isArray(generatedSources) || generatedSources.some(input => typeof input !== 'string'))
+    throw new Error('Generated refinement sources must be an array of temporary input paths');
+  const generated = [...new Set(generatedSources.map(input => resolve(root, input)))];
+  for (const input of generated) {
+    if (stable.has(input) || !sourcePaths.has(input) || !isGeneratedFile(input) || !hashPattern.test(driverHashes?.[input]))
+      throw new Error('Generated refinement source must be an explicit driver-bound temporary file: '+input);
+  }
+  const inputs = [...new Set([...stable, ...Object.keys(driverHashes || {}), ...sourcePaths])];
   const before = Object.fromEntries(inputs.map(input => [input, hash(input)]));
   const receiptPath = out ? resolve(root, out) : join(root, 'test-results/quint-refinement', `${id}.json`);
   const receipt = {schemaVersion: 1, model, scope, assumptions, invariant, startedAt: new Date().toISOString(),
@@ -163,19 +229,27 @@ export async function checkTraces({model, modelPath, sources, traces, assumption
     }
   } catch (error) {
     failure = error;
-    receipt.error = error instanceof Error ? error.stack : String(error);
   } finally {
-    receipt.sourceHashesAfter = Object.fromEntries(inputs.map(input => [input, hash(input)]));
-    receipt.inputsUnchanged = inputs.every(input => before[input] === receipt.sourceHashesAfter[input]);
-    if (!receipt.inputsUnchanged) failure ||= new Error('Refinement input changed during checking');
-    receipt.driverInputsBound = !!driverHashes && inputs.every(input => driverHashes[input] === receipt.sourceHashesAfter[input]);
-    if (driverHashes && !receipt.driverInputsBound) failure ||= new Error('Model, implementation or adapter changed during observation generation');
+    try {
+      receipt.sourceHashesAfter = Object.fromEntries(inputs.map(input => [input, hash(input)]));
+      receipt.inputsUnchanged = inputs.every(input => before[input] === receipt.sourceHashesAfter[input]);
+      if (!receipt.inputsUnchanged) failure ||= new Error('Refinement input changed during checking');
+      receipt.driverInputsBound = !!driverHashes && inputs.every(input => driverHashes[input] === receipt.sourceHashesAfter[input]);
+      if (driverHashes && !receipt.driverInputsBound) failure ||= new Error('Model, implementation or adapter changed during observation generation');
+      if (!failure && generated.length) {
+        for (const input of generated) retainGeneratedSource(input, before[input]);
+        receipt.generatedSourceSnapshots = Object.fromEntries(generated.map(input => [input, before[input]]));
+      }
+    } catch (error) {
+      failure ||= error;
+    }
+    if (failure) receipt.error = failure instanceof Error ? failure.stack : String(failure);
     receipt.observedFields = [...fields].sort();
     receipt.finishedAt = new Date().toISOString();
     receipt.passed = !failure;
     receipt.status = failure ? 'failed' : 'passed';
-    writeFileSync(receiptPath, serialize(receipt));
-    rmSync(temporary, {recursive: true, force: true});
+    try {writeFileSync(receiptPath, serialize(receipt));}
+    finally {rmSync(temporary, {recursive: true, force: true});}
   }
   if (failure) throw failure;
   return {...receipt, receiptPath};

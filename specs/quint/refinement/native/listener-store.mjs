@@ -14,7 +14,7 @@ export async function checkListenerStore(extraSources=[]){
  try{
   const driverHashes=captureInputs(sources);
   const traces=javaTraces('ListenerStoreTraces.java',compiled,[state,'campaign',...listenerStoreScenarios],'ai.eliza.sense.ListenerStoreTraces');
-  return await checkTraces({model:'NativeListenerStore',sources,driverHashes,traces,scope:'bounded-orchestration',assumptions:[
+  return await checkTraces({model:'NativeListenerStore',sources,driverHashes,generatedSources:platform.paths,traces,scope:'bounded-orchestration',assumptions:[
    'Actual ListenerStore, ListeningEpoch and CrashLoopBreaker execute. Android SharedPreferences, clock/package facts and stopService are controlled ports.',
    'Four persistence outcomes separate acknowledgement, memory-only failure, pre-write exception and exception after durable replacement. Restart observations come from a new JVM loading the actual durable fixture file.',
    'Zero to eight seeded history timestamps and boundary clocks partition crash recovery; finite model uses the actual eight-entry history cap. Stored malformed text is normalized by the actual CrashLoopBreaker decoder.',

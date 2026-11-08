@@ -24,7 +24,7 @@ export async function checkNativeNavigationOwnership(extraSources=[]){
  try{
   const driverHashes=captureInputs(sources);
   const traces=javaTraceCampaign('NavigationServiceTraces.java',compiled,navigationServiceScenarios.map(name=>[name]));
-  return await checkTraces({model,modelPath,sources,driverHashes,traces,scope:'bounded-orchestration',assumptions:[
+  return await checkTraces({model,modelPath,sources,driverHashes,generatedSources:platform.paths,traces,scope:'bounded-orchestration',assumptions:[
    'The entire Java bridge and service execute against controlled command delivery, notification, permission and foreground ports. Regional network transport is disabled.',
    'Two renderer instances, two public session IDs and three internal authorities bound the projection. Actual UUIDs map to ordered admission identities; title and text fixtures remain independent.',
    'Task removal requires the component of the Activity captured at start. HOME and launcher roots of MainActivity share a component. The callback carries no task ID to distinguish two Android tasks with the same component.',
