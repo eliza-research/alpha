@@ -117,3 +117,23 @@ for(const destination of ['share','save'])for(const retirement of ['back','home-
  expect(await page.evaluate(()=>(window as any).mediaHandoffCalls)).toBe(0);expect(downloads).toEqual([]);
  await page.evaluate(()=>{(window as any).restoreMediaFetch();});
 });
+
+test('a library refresh keeps the Share panel open and a changed selection closes it',async({page})=>{
+ await page.evaluate(()=>{const w=window as any;w.sharedMedia=[];Object.defineProperty(navigator,'canShare',{configurable:true,value:()=>true});Object.defineProperty(navigator,'share',{configurable:true,value:async(data:ShareData)=>{w.sharedMedia.push(data.files?.length);}});});
+ const setPhotos=(patch:Record<string,unknown>)=>page.evaluate(patch=>{
+  const root=document.getElementById('root') as any,key=Object.keys(root).find(name=>name.startsWith('__reactContainer$'))!;const pending=[root[key]];
+  while(pending.length){const fiber=pending.pop();if(typeof fiber?.stateNode?.vset==='function'){fiber.stateNode.vset('photos',patch);return;}if(fiber?.sibling)pending.push(fiber.sibling);if(fiber?.child)pending.push(fiber.child);}
+  throw Error('No phone shell');
+ },patch);
+ await page.getByRole('button',{name:'Photos',exact:true}).click();
+ const tiles=page.locator('button[data-owned-media-id^="native-camera-"]');await expect(tiles).toHaveCount(3);await tiles.first().click();
+ const share=page.getByRole('button',{name:'Share photo',exact:true}),panel=page.getByRole('dialog',{name:'Share',exact:true});
+ await share.click();await expect(panel).toBeVisible();
+ // The same refresh counters the device library and capture loads write; the panel checks every 250 ms.
+ await setPhotos({nativeLibraryRevision:Date.now(),nativeCaptureRevision:Date.now()});await page.waitForTimeout(600);
+ await expect(panel).toBeVisible();await panel.getByRole('button',{name:'Share externally',exact:true}).click();
+ await expect.poll(()=>page.evaluate(()=>(window as any).sharedMedia)).toEqual([1]);
+ await share.click();await expect(panel).toBeVisible();
+ await setPhotos({open:null});await expect(panel).toHaveCount(0);
+ expect(await page.evaluate(()=>(window as any).sharedMedia)).toEqual([1]);
+});
