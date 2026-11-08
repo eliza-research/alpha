@@ -30,7 +30,7 @@ export function createManagedGoogleAgentBroker(options:{host:ReturnType<typeof c
    if(req.method!=='POST'||!['','/','/__alpha-owner-gmail'].includes(req.url||'')||req.headers.origin||!/^127\.0\.0\.1:\d+$/.test(req.headers.host||'')){send(403,{error:'Private agent request required'});return;}
    if(!await options.authorized(req.headers.authorization)){send(401,{error:'Agent authentication required'});return;}
    const chunks:Buffer[]=[];let bytes=0;for await(const chunk of req){const part=Buffer.from(chunk);bytes+=part.length;if(bytes>256*1024)throw new GoogleAgentRefusal('request-too-large','Agent request too large');chunks.push(part);}
-   const input=JSON.parse(Buffer.concat(chunks).toString('utf8'));
+   let input:any;try{input=JSON.parse(Buffer.concat(chunks).toString('utf8'));}catch{throw new GoogleAgentRefusal('invalid-request','Invalid Google tool request');}
    if(!input||typeof input!=='object'||Array.isArray(input)||Object.keys(input).some(key=>!['limit','query','since','messageId','calendar','send','mailbox'].includes(key))||input.query!==undefined&&(typeof input.query!=='string'||input.query.length>GMAIL_QUERY_MAX)||input.since!==undefined&&typeof input.since!=='string')throw new GoogleAgentRefusal('invalid-request','Invalid Google tool request');
    // Sends and Calendar event writes carry email or event text; everything else is a small read.
    const writesContent=input.send!==undefined||!!input.calendar&&typeof input.calendar==='object'&&['write-execute','linked-sync'].includes(input.calendar.operation);

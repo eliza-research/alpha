@@ -7,14 +7,14 @@ if(!process.versions.bun&&!process.execArgv.includes('tsx')){const child=spawnSy
 const {createManagedGoogleAgentBroker}=await import('../backend/managed-google-agent-broker.ts');
 const {GoogleAgentRefusal}=await import('../backend/managed-google-agent-host.ts');
 const secret='NEVER_EXPOSE_SYNTHETIC_HOST_TEXT';
-async function call(input,run){
+async function call(input,run,raw=false){
  const calls=[];
  const host=new Proxy({},{get(_target,name){return async(...args)=>{calls.push(String(name));return run(String(name),...args);};}});
  const broker=createManagedGoogleAgentBroker({host,authorized:async()=>true,diagnostic:()=>{}});
  const server=createServer((req,res)=>void broker(req,res));
  await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));
  try{
-  const response=await fetch(`http://127.0.0.1:${server.address().port}/__alpha-owner-gmail`,{method:'POST',headers:{authorization:'Bearer synthetic','content-type':'application/json'},body:JSON.stringify(input)});
+  const response=await fetch(`http://127.0.0.1:${server.address().port}/__alpha-owner-gmail`,{method:'POST',headers:{authorization:'Bearer synthetic','content-type':'application/json'},body:raw?input:JSON.stringify(input)});
   const text=await response.text();
   return {status:response.status,text,body:JSON.parse(text),calls};
  }finally{server.closeAllConnections();await new Promise(resolve=>server.close(resolve));}
@@ -41,4 +41,8 @@ test('a result over 256 KiB is refused as result-too-large',async()=>{
 test('a Gmail search longer than Cloud admits is refused before the host',async()=>{
  const r=await call({query:'q'.repeat(2049)},()=>[]);
  assert.deepEqual(r.body,{reason:'invalid-request'});assert.deepEqual(r.calls,[]);
+});
+test('a request that is not JSON is refused as invalid-request before the host',async()=>{
+ const r=await call('{"limit":',()=>[],true);
+ assert.equal(r.status,409);assert.deepEqual(r.body,{reason:'invalid-request'});assert.deepEqual(r.calls,[]);
 });
