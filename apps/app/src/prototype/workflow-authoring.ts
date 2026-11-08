@@ -123,7 +123,7 @@ export function createWorkflowAuthoring(owner:()=>any,publish:()=>void,onSaved:(
   const baseline=JSON.stringify(draft.spec),token=generation,target=connectionController.getWorkflowDeviceTarget()??undefined,prompt=descriptionPrompt;
   const operations=catalog.palette.flatMap(p=>p.operations.filter(o=>o.available&&offered(o.id)).map(o=>o.id));
   // Unsupported scope is refused on the phone; the request never reaches the agent or its model.
-  const scope=checkWorkflowScope(prompt,operations);if(scope.refused){generated=null;status=scope.message;toast(scope.message);publish();return;}
+  const scope=checkWorkflowScope(prompt,operations);if(scope.refused){generated=null;status=scope.message;toast('This can’t be a workflow here.');publish();return;}
   let existing:PhoneSpec|undefined;try{if(draft.spec.steps.length)existing=normalizePhoneSpec(draft.spec);}catch(error){status=(error as Error).message;publish();return;}
   const capabilities=catalog;controller=new AbortController();const signal=controller.signal;busy=true;generating=true;generated=null;status='Generating a draft for you to review…';publish();
   const valid=()=>active&&describeOn&&token===generation&&!signal.aborted&&!document.hidden&&binding.sessionId===connectionController.getWorkflowClient()?.sessionId&&JSON.stringify(draft?.spec)===baseline;
