@@ -1969,5 +1969,33 @@
       "Exact owner, retained result digest and card revision, redacted browser ledger and current tap token.",
       "Three result identities, two owner scopes, one publication in flight and serialized browser document ports. IndexedDB and mounted renderer settlement are separate."
     ]
+  },
+  {
+    "path": "specs/quint/application/GoogleCalendarDisconnect.qnt",
+    "module": "GoogleCalendarDisconnect",
+    "init": "init",
+    "step": "step",
+    "invariant": "safety",
+    "tests": [
+      "revokeStartsBeforeBothCleanupRepliesTest",
+      "staleCalendarLeaseCannotVetoIndependentPrivacyTest",
+      "confirmedPauseLosesRetiredCalendarGenerationTest",
+      "finiteTimeoutCannotPublishLateCleanupTest",
+      "privacyRetirementSuppressesCompletedCleanupTest",
+      "failedRevokeDoesNotWaitForCleanupTest"
+    ],
+    "invariants": [
+      "CleanupBudget",
+      "RevokeDoesNotWaitForCleanup",
+      "ExactPause",
+      "NoProviderDrainClaim"
+    ],
+    "sources": [
+      "apps/app/src/runtime/google-accounts.ts"
+    ],
+    "abstractions": [
+      "Current Calendar-aware Google disconnect helper. Exact captured lease, source, pause revision and key, independent Cloud privacy revoke and separate callback retirement.",
+      "One connection, bounded cleanup observers and controlled result order. The mounted callsite, native access publication, actual provider drain, remote effects and persistence remain separate."
+    ]
   }
 ]
