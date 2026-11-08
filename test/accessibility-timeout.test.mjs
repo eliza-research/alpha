@@ -39,3 +39,20 @@ test("the setting is read at start and again on each resume", async () => {
   await new Promise(resolve => setImmediate(resolve));
   assert.equal(native.calls.length, 2);
 });
+
+test("a delayed boot reply cannot shorten the timeout chosen on resume", async () => {
+  let finishBoot;
+  const boot = timeout.refreshAccessibilityTimeout(port(() => new Promise(resolve => { finishBoot = resolve; })));
+  assert.equal(await timeout.refreshAccessibilityTimeout(port(() => ({ timeoutMs: 30000 }))), 6);
+  finishBoot({ timeoutMs: 5000 });
+  assert.equal(await boot, 6);
+  assert.equal(timeout.accessibilityTimeoutScale(), 6);
+});
+
+test("resetting for a non-native port retires an outstanding native read", async () => {
+  let finishNative;
+  const pending = timeout.refreshAccessibilityTimeout(port(() => new Promise(resolve => { finishNative = resolve; })));
+  assert.equal(await timeout.refreshAccessibilityTimeout(null), 1);
+  finishNative({ timeoutMs: 30000 });
+  assert.equal(await pending, 1);
+});

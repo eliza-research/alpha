@@ -13,6 +13,7 @@ export type ResumePort={addListener(event:'appResumed',listener:()=>void):Promis
 
 export const ACCESSIBILITY_TIMEOUT_BASE_MS=5000;
 let scale=1;
+let latestRefresh: object | undefined;
 
 export function accessibilityTimeoutScale():number{return scale;}
 
@@ -20,10 +21,12 @@ const nativePort=():TimeoutPort|null=>Capacitor.getPlatform()==='android'?regist
 
 /** Reads the setting again; a failed or malformed reply keeps the last known scale. */
 export async function refreshAccessibilityTimeout(port:TimeoutPort|null=nativePort()):Promise<number>{
+ const refresh={};
+ latestRefresh=refresh;
  if(!port)return scale=1;
  try{
   const {timeoutMs}=await port.recommendedTimeout({baseMs:ACCESSIBILITY_TIMEOUT_BASE_MS});
-  if(typeof timeoutMs==='number'&&Number.isFinite(timeoutMs)&&timeoutMs>0)scale=Math.max(1,timeoutMs/ACCESSIBILITY_TIMEOUT_BASE_MS);
+  if(latestRefresh===refresh&&typeof timeoutMs==='number'&&Number.isFinite(timeoutMs)&&timeoutMs>0)scale=Math.max(1,timeoutMs/ACCESSIBILITY_TIMEOUT_BASE_MS);
  }catch{/* Keep the last scale: the toast still shows for its own minimum. */}
  return scale;
 }

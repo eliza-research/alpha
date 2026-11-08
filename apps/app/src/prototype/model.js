@@ -1,4 +1,5 @@
 import { externalVoiceInvocationEnabled } from '../runtime/voice-entry-policy';
+import { accessibilityTimeoutScale } from '../runtime/accessibility-timeout';
 import iconCatalog from '../icon-catalog.json';
 /* Seeds, scripted replies and fixture images. Production builds resolve this
    specifier to ./fixtures.empty.js (same names, empty values). */
@@ -5143,7 +5144,8 @@ class Component extends DCLogic {
     opts = opts || {}; var self = this;
     this.undoFn = opts.undo || null;
     this.setState({ toast: msg, toastUndo: !!opts.undo }); this.clear("t");
-    this.later(function () { self.undoFn = null; self.setState({ toast: "", toastUndo: false }); }, opts.undo ? 5000 : 1900, "t");
+    this.later(function () { self.undoFn = null; self.setState({ toast: "", toastUndo: false }); },
+      (opts.undo ? 5000 : 1900) * accessibilityTimeoutScale(), "t");
   }
 
   /* ---- per-app state ---- */
