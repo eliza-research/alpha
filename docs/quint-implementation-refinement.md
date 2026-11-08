@@ -126,6 +126,14 @@ The identity and named-provenance campaigns pass consecutively in one
 process. Aggregate errors retain source locations without embedding a copy
 of a generated JavaScript bundle in the report.
 
+Eleven native adapters compile generated Java fixtures in temporary
+directories. Strict reporting previously dropped their passing receipts
+after normal cleanup. The adapters now retain checksum-addressed copies
+of declared generated files after checking the original bytes before and
+after execution. The aggregate still rehashes live source and refuses
+missing stable inputs. The repaired receipt validation passed for all
+eleven adapters across 225 source traces and 1,264 checkpoints.
+
 ## Platform validation
 
 The initial local Android attempts stopped at input preflight. The current
@@ -484,3 +492,10 @@ checkpoints. Independent graph conformance reproduced 1,015 states and
 transition can keep the task active, retire its observation and prepared
 operation, and advance the epoch. That exact target state is outside the
 original finite graph and has a separate mismatch receipt.
+
+The Google Calendar link flow checks 42 schedules and 205 checkpoints.
+The actual renderer sequence compares the captured review and operation
+key through selection, repeated review, resume and final readback. It
+separates the caller's result from a publication that still owns the
+current mount. Linked Calendar control retains its own bounded source
+proof and passes symbolic safety through four steps.

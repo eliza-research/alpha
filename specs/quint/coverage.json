@@ -37266,7 +37266,8 @@
         "AgentCalendarRefresh",
         "AgentCalendarMutation",
         "AgentCalendarEventReturn",
-        "AgentCalendarSyncControl"
+        "AgentCalendarSyncControl",
+        "GoogleCalendarLinkFlow"
       ],
       "scope": "application",
       "treatment": "domain-contract-or-support",
@@ -41617,7 +41618,8 @@
       "sha256": "85d5c17894e2507fcd7c91ef5340474f97711e5befdcb24cf8d222027870e8a8",
       "models": [
         "GoogleAccounts",
-        "GoogleConsentAdmission"
+        "GoogleConsentAdmission",
+        "GoogleCalendarLinkFlow"
       ],
       "scope": "application",
       "treatment": "domain-contract-or-support",

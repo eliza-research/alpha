@@ -12,7 +12,7 @@
   "toolSha256": "403a33cab0dff7ace6219b29e7ffef373319677a7d8be6641466dd16a6750b5b",
   "dependencyLockSha256": "944123c801157a7ba3676a886d0b28a54bef32735ae96da5c6dd0f206c88c8bf",
   "sourcePin": "99b49439ce9d0cb5607e9831b9f7f58d89525029",
-  "ledgerSha256": "7d12176fa007cc0463d80f7c822326269367acca40caab45456572ec9fe92fdc",
+  "ledgerSha256": "fa0ed85241a1d34c51bad04786e605182a436c0a5dc409f8ec5dadcf5f1eef91",
   "method": "TypeScript syntax trees for JavaScript/TypeScript and JDK compiler trees for Java. Mutable fields, bindings, containers, state hooks, write sites and asynchronous registration calls are candidates for semantic review.",
   "limitations": [
     "Candidate extraction does not establish state-machine coverage or implementation refinement.",
@@ -40467,7 +40467,8 @@
         "AgentCalendarRefresh",
         "AgentCalendarMutation",
         "AgentCalendarEventReturn",
-        "AgentCalendarSyncControl"
+        "AgentCalendarSyncControl",
+        "GoogleCalendarLinkFlow"
       ],
       "sourcePathClass": "other-source-path",
       "classification": "syntactic-candidates",
@@ -42542,7 +42543,8 @@
       "sha256": "85d5c17894e2507fcd7c91ef5340474f97711e5befdcb24cf8d222027870e8a8",
       "allocatedModels": [
         "GoogleAccounts",
-        "GoogleConsentAdmission"
+        "GoogleConsentAdmission",
+        "GoogleCalendarLinkFlow"
       ],
       "sourcePathClass": "other-source-path",
       "classification": "syntactic-candidates",
@@ -218425,6 +218427,6 @@
   ],
   "detail": {
     "path": "test-results/quint-state-audit/details.json",
-    "sha256": "a4121c44cbe762336244d1a0b63d516e2384c4b8b2d074e6e9eacfafbc51297b"
+    "sha256": "8ecf583c41cbf82ed648a6d372694ff8b3f9e4fa8c801b6bde07867b90381437"
   }
 }
