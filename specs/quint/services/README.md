@@ -1,6 +1,6 @@
 # Service and data state models
 
-These fourteen modules model product-owned service boundaries in the current working
+These fifteen modules model product-owned service boundaries in the current working
 tree. The source-to-state map, exact source paths and finite-domain choices are
 listed in `manifest.json`. All transitions are local specification execution.
 
@@ -13,6 +13,7 @@ listed in `manifest.json`. All transitions are local specification execution.
 | [GoogleAccounts](GoogleAccounts.qnt) | attempt/pendingEpoch/phase/returnMatched, account/readGrant/modifyGrant/calendarGrant, cacheVisible/review, disconnectSent/revoked | `ReviewNeedsCurrentModify`, `CacheNeedsRead`, `ModifyIncludesRead`, `RevokedAccountEmpty` |
 | [CalendarSync](CalendarSync.qnt) | phase/kind/holder/instance, undoOpen/clockKnown, baseRevision/remoteRevision/checked, retryAuthorized/applied/sends, consent/localRevision/consentReview | `NoAutomaticUnknownCreate`, `UndoBeforeDispatch`, `PausedNeedsDecision`, `DurableClaim`, `VisibleOwnerBound` |
 | [InboxDelivery](InboxDelivery.qnt) | phase/durable/opOwner/opGrant, reviewedRevision/reviewedAttachments/exactReview, outcome/providerConfirmed/draftExists, dispatches | `AtMostOneDispatch`, `PersistBeforeDispatch`, `CacheBound`, `SuccessfulCleanup`, `UnknownCannotRearm` |
+| [InboxCoordinator](InboxCoordinator.qnt) | two retained operations, capability readback, confirmation CAS, selected account, composer/attachment identity, current/saved/retained/shelved copies | `AtMostOneNetworkRequest`, `EffectHasDurableIntent`, `UnavailableCannotConfirm`, `CurrentComposerRequired`, `EditedCopiesPreserved`, `CleanupRequiresFreshSuccess` |
 | [MapsNavigation](MapsNavigation.qnt) | generation/requestGeneration/requestEpoch, locationGranted/fixFresh, route/previousRoute/guidance/rerouting, assistant/foreground | `GuidanceHasRoute`, `RerouteKeepsRoute`, `RetiredRouteHidden`, `FailedRerouteKept` |
 | [WorkflowExecution](WorkflowExecution.qnt) | version/reviewedVersion/phase, queued/sourceCurrent/enabled/mocks, intentSaved/submission/admittedSubmission/executions, approval/requestDigest/reviewedDigest/effects, cancelRequested/outcome | `AtMostOneExecution`, `DurableSubmission`, `ReviewedEffect`, `DisabledTriggersEmpty`, `ProductionTriggerGate` |
 | [NoticesAndCaches](NoticesAndCaches.qnt) | epoch/phase/retry, notice/claim/posted/consumed/acknowledgements, cacheOwner/cacheEpoch/cacheAge/cacheWritePending | `CacheOwnerIsolation`, `PostedOwnerIsolation`, `OneAcknowledgement`, `ClaimExclusive`, `NoPostAfterConsume` |
@@ -40,9 +41,17 @@ retry can create another provider event if the first outcome remains unknown.
 The model therefore does not assert globally exactly-once Calendar creates.
 
 `InboxDelivery` follows the durable `preparing`, `review`, `dispatching` and
-`observed` phases. Restart recovery reads the original operation identity.
+`observed` phases. An optional `committing` state exposes the awaited confirmation
+CAS while storage still contains the review. Restart recovery reads the original operation identity.
 Local source-draft cleanup requires the provider to confirm the saved successful
 receipt again. It never rearms a send after an unknown outcome.
+
+`InboxCoordinator` imports two independently retained operations and adds current
+capability readback, composer binding, attachment identity and local-copy cleanup.
+Its source runner checks bounded schedules through the actual Inbox adapter,
+provider controls, composer and unsaved-draft controllers. External Gmail,
+storage and native picker ports remain controlled. Scope and remaining obligations
+are documented in the [coordinator refinement report](../refinement/services/inbox-coordinator.md).
 
 `WorkflowExecution` models one reviewed submission and one effect. The production
 authoring path has manual triggers. Automatic browser triggers belong to an
@@ -77,7 +86,7 @@ commands and aggregate verification are documented in the parent Quint guide.
 
 ## Validation record
 
-On 2026-11-07, Quint 0.33.1 parsed and typechecked all fourteen modules. All 84
+On 2026-11-07, Quint 0.33.1 parsed and typechecked the original fourteen modules. All 84
 scenario tests passed with the TypeScript backend and seed 123. Safety simulation
 passed for 1,000 traces per module, up to 60 steps per trace, with the same seed.
 This record describes sampled bounded exploration.

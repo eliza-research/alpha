@@ -22177,7 +22177,8 @@
       "sha256": "89c2aff9ea416d51f87a55b5868631127704d21c3ae35ec270f4faed5d4a9f3b",
       "models": [
         "AssistantConversation",
-        "DraftDispatch"
+        "DraftDispatch",
+        "InboxCoordinator"
       ],
       "scope": "application",
       "treatment": "state-and-transition-projection",
@@ -23770,7 +23771,8 @@
       "path": "apps/app/src/prototype/inbox-cloud-adapter.ts",
       "sha256": "a45d07c8e484393c41a01c76e6b270b6e366f42ac72baf785ba413d42d6f15f1",
       "models": [
-        "InboxDelivery"
+        "InboxDelivery",
+        "InboxCoordinator"
       ],
       "scope": "application",
       "treatment": "state-and-transition-projection",
@@ -24085,7 +24087,8 @@
       "path": "apps/app/src/prototype/inbox-drafts.ts",
       "sha256": "6a97d33b00bc96a856da50163bd25a887401f1ef13bf246c74e618e979b52680",
       "models": [
-        "InboxDelivery"
+        "InboxDelivery",
+        "InboxCoordinator"
       ],
       "scope": "application",
       "treatment": "state-and-transition-projection",
@@ -24254,9 +24257,10 @@
     },
     {
       "path": "apps/app/src/prototype/inbox-provider-controls.ts",
-      "sha256": "1970dd1838d8eb70c28bc71168c6db9a2b58e2b9f4f405aae79604fb39ebea60",
+      "sha256": "934cb899e5a10f436960c130118ae3f35a0161a8b0377d083bf301358b9074db",
       "models": [
-        "InboxDelivery"
+        "InboxDelivery",
+        "InboxCoordinator"
       ],
       "scope": "application",
       "treatment": "state-and-transition-projection",
@@ -24363,7 +24367,8 @@
       "path": "apps/app/src/prototype/inbox-unsaved.ts",
       "sha256": "67bd1b2be75a87340f9bddad61665afe56b8778d2652a32ad3d2d95d0320c5cd",
       "models": [
-        "InboxDelivery"
+        "InboxDelivery",
+        "InboxCoordinator"
       ],
       "scope": "application",
       "treatment": "state-and-transition-projection",
@@ -34395,7 +34400,8 @@
       "sha256": "c7b89a8874620a24dfa7f89f9103d5cd7f03a137d5290de8875cd12236535bad",
       "models": [
         "GoogleAccounts",
-        "InboxDelivery"
+        "InboxDelivery",
+        "InboxCoordinator"
       ],
       "scope": "application",
       "treatment": "domain-contract-or-support",
@@ -35134,7 +35140,8 @@
       "sha256": "174579c7f3fc7985fcaaf0d7bd7a8ee94376326023139cab28ae1173aa48a82d",
       "models": [
         "FilesAndSharing",
-        "InboxDelivery"
+        "InboxDelivery",
+        "InboxCoordinator"
       ],
       "scope": "application",
       "treatment": "domain-contract-or-support",
@@ -35144,7 +35151,8 @@
       "path": "apps/app/src/runtime/inbox-local-store.ts",
       "sha256": "999fd70749bfbdd61087ff3074992c78ab0086eddc5df23cb70aee5c610330b9",
       "models": [
-        "InboxDelivery"
+        "InboxDelivery",
+        "InboxCoordinator"
       ],
       "scope": "application",
       "treatment": "state-and-transition-projection",
@@ -35168,7 +35176,8 @@
       "sha256": "989bdd166d023b5c9d4ad92aa5c6e34900cc9a287a84f86f463bfac3c525f4cf",
       "models": [
         "ApplicationComposition",
-        "InboxDelivery"
+        "InboxDelivery",
+        "InboxCoordinator"
       ],
       "scope": "application",
       "treatment": "state-and-transition-projection",
@@ -35243,7 +35252,8 @@
       "path": "apps/app/src/runtime/inbox-unsaved-record.ts",
       "sha256": "6e8abb94a87d561ab23ff7e6a15dd5bd9df3893edbb0fa0951552b3a458178b9",
       "models": [
-        "InboxDelivery"
+        "InboxDelivery",
+        "InboxCoordinator"
       ],
       "scope": "application",
       "treatment": "domain-contract-or-support",

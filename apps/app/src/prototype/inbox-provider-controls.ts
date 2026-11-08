@@ -90,7 +90,12 @@ export function inboxProviderControls(publish:()=>void,toast:(message:string)=>v
   canEditDraft:record?.receipt?.state==='succeeded'&&['draft-create','draft-replace'].includes(record.receipt.kind),editDraft:()=>{if(!doubleTap())void editSavedDraft().finally(settle);},deleteDraft:()=>{if(!doubleTap())void followup('delete-draft').finally(settle);},canUndo:record?.receipt?.state==='succeeded'&&['archive','trash'].includes(record.receipt.kind)&&typeof record.receipt.providerResult?.historyId==='string',undo:()=>{if(!doubleTap())void followup('undo').finally(settle);},
   canRetry:!!failure&&!!record&&!busy,retryLabel:failure==='stale'?'Retry with the current message':'Retry',retry:()=>void retry(),
   confirm:()=>{if(doubleTap())return;const state=binding();if(replaced(state)){void discardEdited();return;}if(state==='absent'){toast(reviewBindingRefusal.absent);return;}
+   // A saved review cannot authorize a new request after the latest capability read was lost.
+   const record=operation?.snapshot();
+   if(!record||!gmailInboxAllows(caps,record.proposal.kind as GmailMailboxAction)){
+    toast('Reconnect Gmail, then try again.');return;
+   }
    // The composer is read in the same turn as the comparison inside confirm(), before any await.
-   void run(owned=>owned.confirm(composer&&composerKind(owned.snapshot()?.proposal.kind)?composer():undefined)).finally(settle);},canConfirm:!stale&&!absent&&!!record&&record.phase==='review'&&record.receipt?.state==='prepared',check:()=>void run(owned=>owned.refresh()),reload:()=>void run(owned=>owned.reloadReview()),canReload:record?.phase==='preparing',clear:()=>void run(async(owned,check)=>{await owned.clear();check();visible=false;}),canClear:record?.phase==='review'||record?.phase==='preparing'||['succeeded','rejected'].includes(record?.receipt?.state||''),close:()=>{visible=false;publish();}}};}
+   void run(owned=>owned.confirm(composer&&composerKind(owned.snapshot()?.proposal.kind)?composer():undefined)).finally(settle);},canConfirm:!stale&&!absent&&!!record&&record.phase==='review'&&record.receipt?.state==='prepared'&&gmailInboxAllows(caps,record.proposal.kind as GmailMailboxAction),check:()=>void run(owned=>owned.refresh()),reload:()=>void run(owned=>owned.reloadReview()),canReload:record?.phase==='preparing',clear:()=>void run(async(owned,check)=>{await owned.clear();check();visible=false;}),canClear:record?.phase==='review'||record?.phase==='preparing'||['succeeded','rejected'].includes(record?.receipt?.state||''),close:()=>{visible=false;publish();}}};}
  };
 }

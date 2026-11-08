@@ -250,7 +250,8 @@
         "One durable operation, one draft and two attachment revisions represent arbitrary mail content and attachment hashes.",
         "Recipient and byte equality are opaque identity comparisons. Parsing, SHA-256 and exact-byte copy remain runtime test responsibilities.",
         "Account changes hide and retire pending review while retaining durable unresolved receipts. Unknown delivery is never automatically resent.",
-        "The grant identity denotes the Google connection. As gmailReadCacheKey does, this model keeps a same-session/connection identity through revoke and regrant. Regrant cannot restore a discarded review or cache and cannot redispatch an unresolved operation."
+        "The grant identity denotes the Google connection. As gmailReadCacheKey does, this model keeps a same-session/connection identity through revoke and regrant. Regrant cannot restore a discarded review or cache and cannot redispatch an unresolved operation.",
+        "The optional reserve/persistDispatch/reserveFailed transitions split confirmation admission from its awaited local CAS. confirm remains the existing post-commit macro. committing retains the prior saved review and has not issued a provider request."
       ],
       "path": "specs/quint/services/InboxDelivery.qnt",
       "module": "InboxDelivery",
@@ -261,10 +262,11 @@
         "exactReviewTest",
         "changedDraftTest",
         "uncertainRecoveryTest",
-        "grantRevocationTest",
         "restoredGrantNeedsFreshReviewTest",
         "restoredGrantKeepsUnknownTest",
-        "restoredGrantKeepsOwnerFenceTest"
+        "restoredGrantKeepsOwnerFenceTest",
+        "grantRevocationTest",
+        "reservationBeforeDispatchTest"
       ],
       "invariants": [
         "AtMostOneDispatch",
@@ -714,6 +716,72 @@
         "maxSteps": 60,
         "seed": "123"
       }
+    },
+    {
+      "path": "specs/quint/services/InboxCoordinator.qnt",
+      "module": "InboxCoordinator",
+      "init": "init",
+      "step": "step",
+      "invariant": "safety",
+      "sources": [
+        "apps/app/src/prototype/inbox-cloud-adapter.ts",
+        "apps/app/src/prototype/inbox-provider-controls.ts",
+        "apps/app/src/prototype/inbox-drafts.ts",
+        "apps/app/src/prototype/inbox-unsaved.ts",
+        "apps/app/src/runtime/inbox-operation.ts",
+        "apps/app/src/runtime/inbox-local-store.ts",
+        "apps/app/src/runtime/inbox-attachment.ts",
+        "apps/app/src/runtime/inbox-unsaved-record.ts",
+        "apps/app/src/runtime/gmail-grants.ts",
+        "apps/app/src/prototype/assistant-draft-controller.ts"
+      ],
+      "components": [
+        "specs/quint/services/InboxDelivery.qnt"
+      ],
+      "tests": [
+        "unavailableCapabilitiesRefuseConfirmationTest",
+        "oldCapabilityReplyIgnoredTest",
+        "changedComposerRefusesReviewTest",
+        "lostOutcomeRetainsEveryCopyTest",
+        "renewedGrantNeedsFreshReviewTest",
+        "oldAccountCannotDispatchTest",
+        "knownSuccessCleansExactCopiesTest",
+        "editDuringSendPreservesAllCopiesTest",
+        "olderSavedVersionIsKeptTest",
+        "lateAttachmentCannotCrossOwnerTest",
+        "withdrawalDuringCommitKeepsUnknownTest",
+        "attachmentChangesInvalidateReviewTest",
+        "newDraftShelvesLatestCopyTest",
+        "oldAccountCapabilityIgnoredTest",
+        "oldInstanceCapabilityIgnoredTest",
+        "oldAccountCasRefusalRetainsReviewTest"
+      ],
+      "invariants": [
+        "AtMostOneNetworkRequest",
+        "EffectHasDurableIntent",
+        "UnavailableCannotConfirm",
+        "CurrentComposerRequired",
+        "EditedCopiesPreserved",
+        "CleanupRequiresFreshSuccess",
+        "TypeOK"
+      ],
+      "bounds": {
+        "maxSamples": 1000,
+        "maxSteps": 80,
+        "seed": "123"
+      },
+      "stateMapping": {
+        "First/Second": "Independent retained operation slots for two account/grant identities, preserving old unknown operations across selection changes",
+        "owner/epoch/known/capabilityToken": "current provider binding and capability callbacks fenced by captured account, binding epoch and latest read token",
+        "copies/sourceContent/sourceAttachment": "finite identities and content-equivalence classes for open, saved, retained and shelved drafts and their reviewed source",
+        "network/busy": "actual provider dispatch, separate from a pending local CAS",
+        "withdrawOwner": "deferred removal of undispatched reviews for a withdrawn grant"
+      },
+      "abstractions": [
+        "Two logical account/grant identities, two draft identities and content/attachment equivalence classes. Each retained operation instance issues at most one provider request in a trace.",
+        "Current capability readback gates confirmation. Capability callbacks retain account, binding epoch and read token. Grant withdrawal during an already admitted run is deferred, so an in-flight request can remain uncertain and its receipt is retained.",
+        "Cleanup requires a provider-confirmed current send. Edited copies are preserved and an older saved version is marked. Atomic cleanup transitions summarize its own account-scoped persistence boundaries."
+      ]
     }
   ]
 }

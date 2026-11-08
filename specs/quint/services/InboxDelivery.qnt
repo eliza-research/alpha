@@ -36,11 +36,22 @@ module InboxDelivery {
     s' = { ...s, phase: if (exact) "review" else "preparing",
       exactReview: exact, reviewedRevision: s.draftRevision, reviewedAttachments: s.attachments }
   }
-  action confirm = all {
+  val confirmable = all {
     s.phase == "review", s.modify, s.read, s.exactReview,
     s.opOwner == s.owner, s.opGrant == s.grant, s.requestEpoch == s.epoch,
     s.reviewedRevision == s.draftRevision, s.reviewedAttachments == s.attachments,
-    s.dispatches == 0,
+    s.dispatches == 0
+  }
+  /// The coordinator may observe an in-flight durable compare-and-exchange before its result.
+  action reserve = all { confirmable, s' = { ...s, phase: "committing" } }
+  action persistDispatch = all {
+    s.phase == "committing",
+    s' = { ...s, phase: "dispatching", dispatches: 1, durable: true, outcome: "unknown" }
+  }
+  action reserveFailed = all { s.phase == "committing", s' = { ...s, phase: "review" } }
+  /// Compatibility macro for callers whose observation starts after the durable commit.
+  action confirm = all {
+    confirmable,
     s' = { ...s, phase: "dispatching", dispatches: 1, durable: true, outcome: "unknown" }
   }
   action providerReply(outcome: str): bool = all {
@@ -82,7 +93,7 @@ module InboxDelivery {
       exactReview: false }
   }
   action step = any {
-    cacheRead, editDraft, attach, prepare, review(true), review(false), confirm,
+    cacheRead, editDraft, attach, prepare, review(true), review(false), reserve, persistDispatch, reserveFailed, confirm,
     providerReply("succeeded"), providerReply("rejected"), providerReply("unknown"),
     providerReply("prepared"), restart, readReceipt(false), readReceipt(true),
     cleanupDraft, cancelReview, withdrawModify, withdrawRead, restoreGrants, switchOwner, s' = s
@@ -92,7 +103,7 @@ module InboxDelivery {
   val CacheBound = s.cacheVisible implies s.read and s.cacheOwner == s.owner and s.cacheGrant == s.grant
   val SuccessfulCleanup = not(s.draftExists) implies s.outcome == "succeeded"
   val UnknownCannotRearm = s.outcome == "unknown" implies s.phase.in(Set("dispatching", "observed"))
-  val TypeOK = s.phase.in(Set("empty", "preparing", "review", "dispatching", "observed")) and s.outcome.in(Set("none", "unknown", "succeeded", "rejected")) and s.epoch.in(0.to(2)) and s.attachments.in(0.to(2)) and s.draftRevision.in(0.to(2))
+  val TypeOK = s.phase.in(Set("empty", "preparing", "review", "committing", "dispatching", "observed")) and s.outcome.in(Set("none", "unknown", "succeeded", "rejected")) and s.epoch.in(0.to(2)) and s.attachments.in(0.to(2)) and s.draftRevision.in(0.to(2))
   val safety = TypeOK and AtMostOneDispatch and PersistBeforeDispatch and CacheBound and SuccessfulCleanup and UnknownCannotRearm
   run exactReviewTest = init.then(attach).then(prepare).then(review(false))
     .expect(s.phase == "preparing").then(review(true)).then(confirm)
@@ -117,4 +128,9 @@ module InboxDelivery {
       and s.phase == "dispatching" and s.dispatches == 1 and not(s.providerConfirmed or s.cacheVisible) and safety)
   run grantRevocationTest = init.then(cacheRead).then(prepare).then(review(true))
     .then(withdrawRead).expect(s.phase == "empty" and not(s.cacheVisible) and safety)
+  run reservationBeforeDispatchTest = init.then(prepare).then(review(true)).then(reserve)
+    .expect(s.phase == "committing" and s.dispatches == 0 and safety)
+    .then(reserveFailed).then(reserve).then(persistDispatch)
+    .expect(s.phase == "dispatching" and s.dispatches == 1 and safety)
+
 }
