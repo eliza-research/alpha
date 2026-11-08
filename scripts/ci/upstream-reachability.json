@@ -5,138 +5,136 @@
   "baseCommit": "cf178c5bd3bad3c604bb1c430e6fd55f3eb74957",
   "head": "4dae580daa50fa6f0f9a220c6ac1fa0942879b02",
   "recordedAt": "2026-11-08",
-  "command": "gh api repos/elizaOS/eliza/branches/develop; git rev-list --left-right --count cf178c5bd3bad3c604bb1c430e6fd55f3eb74957...4dae580daa50fa6f0f9a220c6ac1fa0942879b02; git merge-base cf178c5bd3bad3c604bb1c430e6fd55f3eb74957 4dae580daa50fa6f0f9a220c6ac1fa0942879b02; git log --no-merges cf178c5bd3bad3c604bb1c430e6fd55f3eb74957..4dae580daa50fa6f0f9a220c6ac1fa0942879b02",
+  "command": "gh api repos/elizaOS/eliza/compare/develop...4dae580daa50fa6f0f9a220c6ac1fa0942879b02",
   "status": "diverged",
   "aheadBy": 34,
   "behindBy": 7,
   "mergeBase": "13fc7b637406372f68f05814e76267d690f144fd",
   "pinOnlyCommits": [
     {
-      "sha": "4dae580daa50fa6f0f9a220c6ac1fa0942879b02",
-      "subject": "Include Apps grid and Photos public exports in UI build"
-    },
-    {
-      "sha": "006c761bbe1817a81ceefa6283b9f1a9b436a117",
-      "subject": "Share owner-bound workflow approval notice polling"
-    },
-    {
-      "sha": "c99822703d4af00afed97fe2cfd15a22799cf803",
-      "subject": "Retain saved scan drafts through autosave and export"
-    },
-    {
-      "sha": "0f004fdb8ca80956517663da5994200b7efb4b8e",
-      "subject": "Overlap independent Calendar discovery and preserve grant narrowing"
-    },
-    {
-      "sha": "3cc7b939dc75cfb92375068711b97d6bbd8d25c3",
-      "subject": "Support Android 29 storage access in shared Files"
-    },
-    {
-      "sha": "6e8901312b927c6461691624739f36aa23737dc8",
-      "subject": "Share Photos window refresh and thumbnail retention rules"
-    },
-    {
-      "sha": "9237023aee3856b7375f21a6dfde0f9b957929a5",
-      "subject": "Reject absolute paths in agent Files operations"
-    },
-    {
-      "sha": "f27a70da32057c030d0f4b1eb91caf1a9116ab63",
-      "subject": "Require the reviewed Files surface to stay in the foreground"
-    },
-    {
-      "sha": "e67a6ded3bada3399a8f6862d4ad44e2f56d377c",
-      "subject": "Negotiate reviewed Files capability on real device routes"
-    },
-    {
-      "sha": "91c3c3d6e1c27264326e131792533b4b642a46a9",
-      "subject": "Carry reviewed Files identities from proposal display through storage mutation"
-    },
-    {
-      "sha": "aa9a50d96c6144e9d839ed65fd4f8a161514a570",
-      "subject": "Bind native reviewed Files mutations to the reviewed filesystem object"
-    },
-    {
-      "sha": "e7c4c2e10cac71fd83746fb24bc21b9e24c45eea",
-      "subject": "Refuse case-distinct existing destinations in shared Files rename"
-    },
-    {
-      "sha": "63f5bd055ec817a8e8d56b59ede1b7ac65b14a24",
-      "subject": "Keep the reviewed Maps admission error handling on the current mobile SDK"
-    },
-    {
-      "sha": "cb8ae55fa1ce589ce6e33d44af6a635bdc6f1b7c",
-      "subject": "Report exact Files usage when the browser cannot estimate storage"
-    },
-    {
-      "sha": "54b012dbad776574694e8757b9315a081ca0c983",
-      "subject": "Compose updater recovery and scoped Calendar on the shared mobile SDK"
-    },
-    {
-      "sha": "3b6bb8de0c619044b5375b3aba7cf63ef6850170",
-      "subject": "Type shared mobile Files and align shared source with repository checks"
-    },
-    {
-      "sha": "2f78926c67de217b537426d6a6c4c5225894fe87",
-      "subject": "Keep Files traversal inside the selected storage volume"
-    },
-    {
-      "sha": "eb896e01e51970111ff45ecfb76bbc8fbd11f10b",
-      "subject": "Share mobile Photos, Files, and installed-apps contracts"
-    },
-    {
-      "sha": "2f71806a6097db3e195343d17046343849355e8a",
-      "subject": "Expose owner-bound native turn timing in existing status"
-    },
-    {
-      "sha": "475a8d59dc1811c2cde093613519906a5a3f6457",
-      "subject": "Keep Maps admission errors visible during place search"
-    },
-    {
-      "sha": "3a2e43de288a5ec8a77212084772fede22577665",
-      "subject": "Verify restored Calendar bounds and settled Notes reply recovery"
-    },
-    {
-      "sha": "f72b44f03152577e403a426cad01deafb69cc5f0",
-      "subject": "Allow bounded larger managed Calendar feed responses"
-    },
-    {
-      "sha": "923f5d0b82faf28d3a70688e06ee30f53abd6ae7",
-      "subject": "Recover the reply after a confirmed Notes create"
-    },
-    {
-      "sha": "f7a7b56f8cff20bc64f2616ebcad902173d59e4c",
-      "subject": "Expose bounded availability in standalone Calendar"
-    },
-    {
-      "sha": "72004059deae7b03c850b4c48ccaa0d571ff47d9",
-      "subject": "Keep strict Cloud handler intents with Calendar evidence"
-    },
-    {
-      "sha": "5ce65673c621a8554205f64d61006cb11007ccc2",
-      "subject": "Fix strict voice reply tools on the staging Cloud mobile route"
-    },
-    {
-      "sha": "267ca242df18c30ecef0710e26f8043d6cbb5658",
-      "subject": "Keep native Google reads bound to the admitted service key"
-    },
-    {
-      "sha": "3c76d07819b253b3c8f071f84ec7e6a5374a9a66",
-      "subject": "Keep voice reply drafting notes out of visible text"
-    },
-    {
-      "sha": "130821d04f69c30af48c753f615cc429a6b9eb09",
-      "subject": "Integrate reviewed Google raster client and scoped native tile routes"
+      "sha": "e8484a964435d672f9423972d13779bbf8b54dfe",
+      "subject": "Let mobile hosts show an installed-only Apps drawer"
     },
     {
       "sha": "4c651368721fe6ef6df7720329a5e35f132aef05",
       "subject": "Admit explicit Cloud APK profiles only with exact voice evidence"
     },
     {
-      "sha": "e8484a964435d672f9423972d13779bbf8b54dfe",
-      "subject": "Let mobile hosts show an installed-only Apps drawer"
+      "sha": "130821d04f69c30af48c753f615cc429a6b9eb09",
+      "subject": "Integrate reviewed Google raster client and scoped native tile routes"
+    },
+    {
+      "sha": "3c76d07819b253b3c8f071f84ec7e6a5374a9a66",
+      "subject": "Keep voice reply drafting notes out of visible text"
+    },
+    {
+      "sha": "267ca242df18c30ecef0710e26f8043d6cbb5658",
+      "subject": "Keep native Google reads bound to the admitted service key"
+    },
+    {
+      "sha": "5ce65673c621a8554205f64d61006cb11007ccc2",
+      "subject": "Fix strict voice reply tools on the staging Cloud mobile route"
+    },
+    {
+      "sha": "72004059deae7b03c850b4c48ccaa0d571ff47d9",
+      "subject": "Keep strict Cloud handler intents with Calendar evidence"
+    },
+    {
+      "sha": "f7a7b56f8cff20bc64f2616ebcad902173d59e4c",
+      "subject": "Expose bounded availability in standalone Calendar"
+    },
+    {
+      "sha": "923f5d0b82faf28d3a70688e06ee30f53abd6ae7",
+      "subject": "Recover the reply after a confirmed Notes create"
+    },
+    {
+      "sha": "f72b44f03152577e403a426cad01deafb69cc5f0",
+      "subject": "Allow bounded larger managed Calendar feed responses"
+    },
+    {
+      "sha": "3a2e43de288a5ec8a77212084772fede22577665",
+      "subject": "Verify restored Calendar bounds and settled Notes reply recovery"
+    },
+    {
+      "sha": "475a8d59dc1811c2cde093613519906a5a3f6457",
+      "subject": "Keep Maps admission errors visible during place search"
+    },
+    {
+      "sha": "2f71806a6097db3e195343d17046343849355e8a",
+      "subject": "Expose owner-bound native turn timing in existing status"
+    },
+    {
+      "sha": "eb896e01e51970111ff45ecfb76bbc8fbd11f10b",
+      "subject": "Share mobile Photos, Files, and installed-apps contracts"
+    },
+    {
+      "sha": "2f78926c67de217b537426d6a6c4c5225894fe87",
+      "subject": "Keep Files traversal inside the selected storage volume"
+    },
+    {
+      "sha": "3b6bb8de0c619044b5375b3aba7cf63ef6850170",
+      "subject": "Type shared mobile Files and align shared source with repository checks"
+    },
+    {
+      "sha": "54b012dbad776574694e8757b9315a081ca0c983",
+      "subject": "Compose updater recovery and scoped Calendar on the shared mobile SDK"
+    },
+    {
+      "sha": "cb8ae55fa1ce589ce6e33d44af6a635bdc6f1b7c",
+      "subject": "Report exact Files usage when the browser cannot estimate storage"
+    },
+    {
+      "sha": "63f5bd055ec817a8e8d56b59ede1b7ac65b14a24",
+      "subject": "Keep the reviewed Maps admission error handling on the current mobile SDK"
+    },
+    {
+      "sha": "e7c4c2e10cac71fd83746fb24bc21b9e24c45eea",
+      "subject": "Refuse case-distinct existing destinations in shared Files rename"
+    },
+    {
+      "sha": "aa9a50d96c6144e9d839ed65fd4f8a161514a570",
+      "subject": "Bind native reviewed Files mutations to the reviewed filesystem object"
+    },
+    {
+      "sha": "91c3c3d6e1c27264326e131792533b4b642a46a9",
+      "subject": "Carry reviewed Files identities from proposal display through storage mutation"
+    },
+    {
+      "sha": "e67a6ded3bada3399a8f6862d4ad44e2f56d377c",
+      "subject": "Negotiate reviewed Files capability on real device routes"
+    },
+    {
+      "sha": "f27a70da32057c030d0f4b1eb91caf1a9116ab63",
+      "subject": "Require the reviewed Files surface to stay in the foreground"
+    },
+    {
+      "sha": "9237023aee3856b7375f21a6dfde0f9b957929a5",
+      "subject": "Reject absolute paths in agent Files operations"
+    },
+    {
+      "sha": "6e8901312b927c6461691624739f36aa23737dc8",
+      "subject": "Share Photos window refresh and thumbnail retention rules"
+    },
+    {
+      "sha": "3cc7b939dc75cfb92375068711b97d6bbd8d25c3",
+      "subject": "Support Android 29 storage access in shared Files"
+    },
+    {
+      "sha": "0f004fdb8ca80956517663da5994200b7efb4b8e",
+      "subject": "Overlap independent Calendar discovery and preserve grant narrowing"
+    },
+    {
+      "sha": "c99822703d4af00afed97fe2cfd15a22799cf803",
+      "subject": "Retain saved scan drafts through autosave and export"
+    },
+    {
+      "sha": "006c761bbe1817a81ceefa6283b9f1a9b436a117",
+      "subject": "Share owner-bound workflow approval notice polling"
+    },
+    {
+      "sha": "4dae580daa50fa6f0f9a220c6ac1fa0942879b02",
+      "subject": "Include Apps grid and Photos public exports in UI build"
     }
   ],
-  "pullRequests": [],
-  "measurement": "Local complete Git graph after fetching the exact public develop commit verified by GitHub API. The private candidate is supplied through verified bundles; this is not a GitHub compare response.",
-  "pullRequestsScope": "Prior manually tracked associations retained; not an assertion of public review or acceptance of this new private pin."
+  "pullRequests": []
 }
