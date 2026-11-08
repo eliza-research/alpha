@@ -320,9 +320,12 @@ export function HostedDigestPanel({composeQuestion,canComposeQuestion}:{composeQ
 				else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus(); }
 			}
 		};
+		const modal = panel.current;
+		modal?.addEventListener("cancel", back);
 		window.addEventListener("alpha-back", back, true);
 		window.addEventListener("keydown", key);
 		return () => {
+			modal?.removeEventListener("cancel", back);
 			window.removeEventListener("alpha-back", back, true);
 			window.removeEventListener("keydown", key);
 			releaseInert();

@@ -15,5 +15,15 @@ test('empty Enter, IME confirmation and multiline input preserve the draft witho
  await setup(page);const input=page.getByRole('textbox',{name:'Ask Alpha',exact:true});await input.focus();await input.press('Enter');await expect(input).toBeFocused();await input.fill('Keep this');await input.dispatchEvent('keydown',{key:'Enter',isComposing:true});await input.press('End');await input.press('Shift+Enter');await page.keyboard.type('second line');await expect(input).toHaveValue('Keep this\nsecond line');expect(await page.evaluate(()=>(window as any).sendFocus.sent.length)).toBe(0);
 });
 test('a background connection operation never blocks a send or claims the draft changed',async({page})=>{
- await setup(page);await page.evaluate(async()=>{const {connectionController:c}=await import('/src/runtime/connection-ui.tsx');const read=c.getSnapshot.bind(c);c.getSnapshot=()=>({...read(),busy:true}) as any;});const input=page.getByRole('textbox',{name:'Ask Alpha',exact:true});await input.fill('Send while starting');await input.press('Enter');await expect.poll(()=>page.evaluate(()=>(window as any).sendFocus.sent)).toEqual(['Send while starting']);await expect(page.getByText('The draft changed',{exact:false})).toHaveCount(0);await page.evaluate(()=>(window as any).sendFocus.reply());
+ await setup(page);await page.evaluate(async()=>{const {connectionController:c}=await import('/src/runtime/connection-ui.tsx');const read=c.getSnapshot.bind(c);c.getSnapshot=()=>({...read(),busy:true,backgroundWork:true}) as any;});const input=page.getByRole('textbox',{name:'Ask Alpha',exact:true});await input.fill('Send while starting');await input.press('Enter');await expect.poll(()=>page.evaluate(()=>(window as any).sendFocus.sent)).toEqual(['Send while starting']);await expect(page.getByText('The draft changed',{exact:false})).toHaveCount(0);await page.evaluate(()=>(window as any).sendFocus.reply());
+});
+
+test('a foreground connection operation keeps the typed draft undispatched',async({page})=>{
+ await setup(page);
+ await page.evaluate(async()=>{const {connectionController:c}=await import('/src/runtime/connection-ui.tsx');const read=c.getSnapshot.bind(c);c.getSnapshot=()=>({...read(),busy:true,backgroundWork:false}) as any;});
+ const input=page.getByRole('textbox',{name:'Ask Alpha',exact:true});
+ await input.fill('Keep while connecting');await input.press('Enter');
+ await expect.poll(()=>page.evaluate(()=>(window as any).sendFocus.shell.draftSendPending)).toBe(false);
+ await expect(input).toHaveValue('Keep while connecting');
+ expect(await page.evaluate(()=>(window as any).sendFocus.sent)).toEqual([]);
 });
