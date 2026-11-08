@@ -88,16 +88,21 @@ jobs:
           import fs from 'node:fs';
           import path from 'node:path';
           import { execFileSync } from 'node:child_process';
-          import { manifestFacts } from './scripts/apk.mjs';
+          import { manifestFacts, parseXmlTree } from './scripts/apk.mjs';
+          import { apkUpdateChannel, validateUpdateChannel } from './scripts/update-channel.mjs';
           const directory = process.env.ALPHA_ADMITTED_APK_DIR;
           const plan = JSON.parse(fs.readFileSync(path.join(directory, '..', 'pins.json'), 'utf8'));
           const identity = JSON.parse(fs.readFileSync('app.config.json', 'utf8'));
+          const channel = validateUpdateChannel(plan.updateChannel);
           const aapt = path.join(process.env.ANDROID_HOME, 'build-tools', '36.0.0', 'aapt');
           for (const variant of ['standalone', 'launcher']) {
             const apk = path.join(directory, variant + '-release-unsigned.apk');
             const badging = execFileSync(aapt, ['dump', 'badging', apk], { encoding: 'utf8' });
             const xml = execFileSync(aapt, ['dump', 'xmltree', apk, 'AndroidManifest.xml'], { encoding: 'utf8' });
             const facts = manifestFacts(xml, badging);
+            const compiledChannel = apkUpdateChannel(parseXmlTree(xml));
+            if (compiledChannel.kind !== channel.kind || compiledChannel.manifestUrlSha256 !== channel.manifestUrlSha256)
+              throw new Error('The ' + variant + ' APK compiled update channel differs from the reviewed signing plan');
             if (facts.packageName !== identity.appId || facts.versionCode !== plan.versionCode ||
                 xml.includes('android.intent.category.HOME') !== (variant === 'launcher'))
               throw new Error('The ' + variant + ' APK manifest differs from the reviewed release plan');

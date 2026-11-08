@@ -69,6 +69,7 @@ function retain(source,name){const target=path.join(destination,name);fs.copyFil
 const verification=JSON.parse(fs.readFileSync(path.join(sourceDir,'apk-manifest.json'),'utf8'));
 assert.equal(verification.testMocks,testMocks,`Archive expects a testMocks=${testMocks} build`);
 assert.equal(verification.runtimeProfile||'native',runtimeProfile,'Verified APK runtime profile differs from archive');
+assert.deepEqual(verification.updateChannel,updateChannel,'Verified APK update channel differs from archive');
 assert.equal(verification.localEmbeddings===true,localEmbeddings,'Verified embedding capability differs from archive');
 // apk-manifest.json keeps its six-APK name->hash shape for existing consumers;
 // release mappings are retained beside it with their own hashes.

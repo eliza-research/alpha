@@ -198,10 +198,11 @@ for (const testMocks of [false, true]) test(`archive retains actual APK web byte
 
 // Exercise the archive CLI, its child environments and real ZIP retention without
 // running Gradle. Only the Android builder and source snapshot are fixture commands.
-for (const mode of ['native', 'test-mocks', 'cloud', 'wrong-cloud-profile']) test(`build archive preserves its selected runtime profile: ${mode}`, t => {
+for (const mode of ['native', 'test-mocks', 'cloud', 'wrong-cloud-profile', 'private-cloud', 'wrong-cloud-channel']) test(`build archive preserves its selected runtime profile: ${mode}`, t => {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'alpha-build-archive-'));
   t.after(() => fs.rmSync(dir, {recursive:true, force:true}));
   for (const name of ['scripts', 'bin']) fs.mkdirSync(path.join(dir, name));
+  fs.writeFileSync(path.join(dir,'app.config.json'),JSON.stringify({updateManifestUrl:'https://example.test/public-update.json'}));
   fs.symlinkSync(path.join(root, 'scripts/audit-production-bundle.mjs'), path.join(dir, 'scripts/audit-production-bundle.mjs'));
   fs.writeFileSync(path.join(dir, 'scripts/stage-local-agent-sources.mjs'), '');
   // The generated Gradle host is written before the source snapshot; the stub stands in for it.
@@ -214,7 +215,7 @@ import {createHash} from 'node:crypto';
 import {execFileSync} from 'node:child_process';
 const args=process.argv.slice(2), profile=process.env.VITE_ELIZA_RUNTIME_PROFILE||'native';
 const mocks=process.env.ELIZA_DEV_ALLOW_TEST_MOCKS==='1';
-fs.appendFileSync('calls.jsonl',JSON.stringify({args,profile,mocks})+'\\n');
+fs.appendFileSync('calls.jsonl',JSON.stringify({args,profile,mocks,privateInputPresent:!!process.env.ALPHA_PRIVATE_UPDATE_MANIFEST_FILE})+'\\n');
 if(args[1]==='android:build'){
  const output=mocks?'artifacts/test-mocks':'artifacts';
  fs.mkdirSync(output,{recursive:true});
@@ -231,20 +232,28 @@ if(args[1]==='android:build'){
   const file=mocks?path.join(output,variant+'-androidTest.apk'):'android/app/build/outputs/apk/androidTest/'+variant+'/debug/app-'+variant+'-debug-androidTest.apk';
   fs.mkdirSync(path.dirname(file),{recursive:true});fs.writeFileSync(file,'synthetic instrumentation');
  }
- fs.writeFileSync(path.join(output,'apk-manifest.json'),JSON.stringify({testMocks:mocks,runtimeProfile:process.env.FIXTURE_WRONG_PROFILE?'native':profile,results}));
+ const updateChannel={kind:process.env.ALPHA_UPDATE_CHANNEL||'public',manifestUrlSha256:process.env.ALPHA_PRIVATE_UPDATE_MANIFEST_SHA256||createHash('sha256').update(JSON.parse(fs.readFileSync('app.config.json','utf8')).updateManifestUrl).digest('hex')};
+ if(process.env.FIXTURE_WRONG_CHANNEL)updateChannel.manifestUrlSha256='e'.repeat(64);
+ fs.writeFileSync(path.join(output,'apk-manifest.json'),JSON.stringify({testMocks:mocks,runtimeProfile:process.env.FIXTURE_WRONG_PROFILE?'native':profile,updateChannel,results}));
 }
 `, {mode:0o755});
   const cloud = mode.includes('cloud'), testMocks = mode === 'test-mocks';
   const args = cloud ? ['--runtime-profile=cloud'] : testMocks ? ['--test-mocks'] : [];
   const env = {...process.env, PATH:path.join(dir, 'bin')+path.delimiter+process.env.PATH};
-  for (const name of ['ELIZA_DEV_ALLOW_TEST_MOCKS', 'VITE_ELIZA_DEV_ALLOW_TEST_MOCKS', 'ORG_GRADLE_PROJECT_ELIZA_DEV_ALLOW_TEST_MOCKS', 'FIXTURE_WRONG_PROFILE']) delete env[name];
+  for (const name of ['ELIZA_DEV_ALLOW_TEST_MOCKS', 'VITE_ELIZA_DEV_ALLOW_TEST_MOCKS', 'ORG_GRADLE_PROJECT_ELIZA_DEV_ALLOW_TEST_MOCKS', 'FIXTURE_WRONG_PROFILE','FIXTURE_WRONG_CHANNEL','ALPHA_UPDATE_CHANNEL','ALPHA_PRIVATE_UPDATE_MANIFEST_FILE','ALPHA_PRIVATE_UPDATE_MANIFEST_SHA256']) delete env[name];
   if (cloud) Object.assign(env, {ELIZA_DEV_ALLOW_TEST_MOCKS:'1', VITE_ELIZA_DEV_ALLOW_TEST_MOCKS:'1', ORG_GRADLE_PROJECT_ELIZA_DEV_ALLOW_TEST_MOCKS:'1'});
   if (mode === 'wrong-cloud-profile') env.FIXTURE_WRONG_PROFILE='1';
+  if(mode==='wrong-cloud-channel')env.FIXTURE_WRONG_CHANNEL='1';
+  if(mode==='private-cloud'){
+    const url='https://storage.googleapis.com/alpha-aosp-lab-20261024-private-apks/update-qa/'+ 'a'.repeat(32)+'/alpha-update.json?X-Goog-Algorithm=GOOG4-RSA-SHA256&X-Goog-Expires=21600&X-Goog-Signature=synthetic';
+    const file=dir+'-private-url';fs.writeFileSync(file,url,{mode:0o600});t.after(()=>fs.unlinkSync(file));
+    Object.assign(env,{ALPHA_UPDATE_CHANNEL:'private-qa',ALPHA_PRIVATE_UPDATE_MANIFEST_FILE:file,ALPHA_PRIVATE_UPDATE_MANIFEST_SHA256:createHash('sha256').update(url).digest('hex')});
+  }
   const run = spawnSync(process.execPath, [path.join(root, 'scripts/build-archive.mjs'), ...args, 'test-results/archive'], {cwd:dir, env, encoding:'utf8'});
   const archive = path.join(dir, 'test-results/archive');
-  if (mode === 'wrong-cloud-profile') {
+  if (mode === 'wrong-cloud-profile'||mode==='wrong-cloud-channel') {
     assert.notEqual(run.status, 0);
-    assert.match(run.stderr, /Verified APK runtime profile differs from archive/);
+    assert.match(run.stderr, mode==='wrong-cloud-profile'?/Verified APK runtime profile differs from archive/:/Verified APK update channel differs from archive/);
     assert.ok(!fs.existsSync(path.join(archive, 'apk-manifest.json')));
     return;
   }
@@ -253,6 +262,8 @@ if(args[1]==='android:build'){
   assert.deepEqual(calls.map(row => row.args[1]), ['android:sync', 'verify', 'android:build']);
   assert.ok(calls.every(row => row.profile === (cloud ? 'cloud' : 'native')));
   assert.equal(calls[1].mocks, false, 'verification stays flag-off even for a fixture archive');
+  assert.equal(calls[1].privateInputPresent,false,'source verification never inherits the real private capability');
+  assert.equal(calls[2].privateInputPresent,mode==='private-cloud');
   assert.equal(calls[0].mocks, testMocks);
   assert.equal(calls[2].mocks, testMocks);
   assert.deepEqual(calls[2].args, ['run', 'android:build', ...(args.length ? ['--', ...args] : [])]);
