@@ -20,7 +20,7 @@ function fixture({heldStatus=false,heldOpen=false,heldRetry=false,panelClosed=fa
  const binding={client,environment:'production',userId:'owner',organizationId:'tenant',sessionId:'session',credentialId:'credential'};
  let current={...binding};const active={current:null};
  const liveCloud=()=>current?{client:current.client,sessionId:current.sessionId,credentialId:current.credentialId}:null;
- const globals={identity:"synthetic",AbortController,DOMException,returnedWorkspace:{current:null},returnedWorkspaceOwner:{current:null},sameGoogleWorkspaceBinding,prepareGoogleWorkspaceReturn,watchGoogleWorkspaceReturn,googleWorkspaceReturnPort:undefined,currentWorkspaceBinding:()=>current,createGoogleAccounts,sameGoogleConnectionReturnBinding,active,binding,cloud:liveCloud(),key:{environment:'production',userId:'owner',organizationId:'tenant'},serviceName:'Cloud',googleConnectionController:{getSnapshot:()=>panelOpen,close:()=>{panelOpen=false;},open:()=>{panelOpen=true;},calendar:()=>null},connectionController:{getCloudClient:liveCloud,rejectCloudSession(){throw Error('Unexpected sign-in mutation');},openCloudAccount(){throw Error('Unexpected sign-in');}},currentGoogleConnectionReturnBinding:()=>current,
+ const globals={identity:"synthetic",AbortController,DOMException,returnedWorkspace:{current:null},returnedWorkspaceOwner:{current:null},disconnectNotice:{current:null},sameGoogleWorkspaceBinding,prepareGoogleWorkspaceReturn,watchGoogleWorkspaceReturn,googleWorkspaceReturnPort:undefined,currentWorkspaceBinding:()=>current,createGoogleAccounts,sameGoogleConnectionReturnBinding,active,binding,cloud:liveCloud(),key:{environment:'production',userId:'owner',organizationId:'tenant'},serviceName:'Cloud',googleConnectionController:{getSnapshot:()=>panelOpen,close:()=>{panelOpen=false;},open:()=>{panelOpen=true;},calendar:()=>null},connectionController:{getCloudClient:liveCloud,rejectCloudSession(){throw Error('Unexpected sign-in mutation');},openCloudAccount(){throw Error('Unexpected sign-in');}},currentGoogleConnectionReturnBinding:()=>current,
   setRevision:update=>{revision=update(revision);loadPromise=globals.load();},setAccounts:rows=>published.push(rows),setConfirm(){},setBusy(){},setNotice:text=>notices.push(text),
   openConnectionBrowser:async()=>{opens++;return heldOpen?opening.promise:undefined;},returnWatch:{current:null},
   setTimeout(callback,delay){assert.equal(delay,350);waits++;if(heldRetry)void retry.promise.then(callback);else queueMicrotask(callback);},
@@ -148,4 +148,37 @@ for(const retire of ['panel close','owner change','new return'])test(`workspace 
 test('actual closed panel ignores unaccepted native callback without opening or reading',async()=>{
  const f=fixture({panelClosed:true});let cleanup;f.globals.googleWorkspaceReturnPort={async subscribe(){return{remove(){}}},async consume(){return{result:'none'}}};f.globals.useEffect=effect=>{cleanup=effect();};vm.runInNewContext(workspaceEffect,f.globals);
  for(let i=0;i<8;i++)await Promise.resolve();assert.equal(f.panelOpen,false);assert.equal(f.reads,0);cleanup?.();f.close();
+});
+
+
+const disconnectCode=stripTypeScriptTypes(ui.slice(ui.indexOf(' async function disconnect('),ui.indexOf(' /** Explicit Connect persists')),{mode:'strip'});
+function disconnectFixture(){
+ const f=fixture(),operation=deferred(),cleared=[];
+ f.globals.createGoogleAccounts=()=>({disconnect:()=>operation.promise,list:async()=>[]});
+ f.globals.clearGoogleCalendarSelectionForConnection=(...args)=>cleared.push(args);
+ f.globals.googleDisconnectMessage=(_outcome,label)=>'Disconnected '+label;
+ vm.runInNewContext(disconnectCode,f.globals);
+ return {...f,cleared,complete:()=>operation.resolve({outcome:'disconnected',accounts:[],calendarLifecycle:{calendarPause:'not-requested'}})};
+}
+test('a completed disconnect notice survives one same-owner account refresh',async()=>{
+ const f=disconnectFixture(),pending=f.globals.disconnect({connectionId:'grant-a',label:'Synthetic account'});
+ f.complete();await pending;
+ assert.equal(f.notices.at(-1),'Disconnected Synthetic account');assert.equal(f.cleared.length,1);
+ await f.globals.load();assert.equal(f.notices.at(-1),'Disconnected Synthetic account');
+ await f.globals.load();assert.equal(f.notices.at(-1),'No Google account connected.');f.close();
+});
+for(const change of ['owner','close','new-operation'])test(`a disconnect completion after ${change} retirement publishes nothing`,async()=>{
+ const f=disconnectFixture(),pending=f.globals.disconnect({connectionId:'grant-a',label:'Private account label'});
+ if(change==='owner')f.change({userId:'replacement-owner'});
+ else if(change==='close')f.close();
+ else f.globals.active.current=new AbortController();
+ f.complete();await pending;
+ assert.equal(f.cleared.length,0);assert.equal(f.globals.disconnectNotice.current,null);
+ assert.ok(!f.notices.some(text=>text.includes('Private account label')));assert.equal(f.published.length,0);f.close();
+});
+test('a retained disconnect notice cannot cross to a replacement owner',async()=>{
+ const f=disconnectFixture();f.globals.disconnectNotice.current={binding:f.binding,message:'Private prior account label'};
+ f.change({userId:'replacement-owner'});f.globals.binding={...f.binding,userId:'replacement-owner'};
+ await f.globals.load();assert.ok(!f.notices.some(text=>text.includes('Private prior account label')));
+ assert.equal(f.globals.disconnectNotice.current,null);f.close();
 });

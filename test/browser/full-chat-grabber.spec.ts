@@ -215,6 +215,30 @@ test.describe('landscape',()=>{
 // One rule for every raised dock (docs/ui-refresh-2026-11, tla/ChatInput.tla).
 test.describe('raised dock',()=>{
  const open=async(page:Page)=>{await page.addInitScript(()=>localStorage.setItem('alpha.connection.selection.v1',JSON.stringify({kind:'offline'})));await page.goto('/?shell=launcher&tools=1');};
+ for(const lateClick of [true,false])test(lateClick?'a delayed Android click stays on the raised scrim':'a released scrim press without a click still lowers the dock',async({page})=>{
+  await page.addInitScript(()=>localStorage.setItem('alpha.connection.selection.v1',JSON.stringify({kind:'offline'})));
+  await page.goto('/');await page.getByRole('button',{name:'Settings',exact:true}).click();
+  const pill=page.locator('[data-alpha-layer="pill"]');
+  await pill.getByRole('button',{name:'Type',exact:true}).click();
+  const composer=page.locator('[data-alpha-layer="composer"] textarea[data-alpha-composer]');
+  await composer.fill('Keep the delayed-tap draft');
+  const before=await page.locator('[data-alpha-layer="app"]').innerText();
+  const hit=await page.evaluate(async lateClick=>{
+   const x=206,y=300,element=document.elementFromPoint(x,y) as HTMLElement;
+   const init={bubbles:true,cancelable:true,composed:true,clientX:x,clientY:y,pointerId:7,pointerType:'touch',isPrimary:true};
+   element.dispatchEvent(new PointerEvent('pointerdown',init));element.dispatchEvent(new PointerEvent('pointerup',init));
+   await new Promise(resolve=>setTimeout(resolve,120));
+   const target=document.elementFromPoint(x,y) as HTMLElement;
+   const held=target.hasAttribute('data-alpha-chat-scrim');
+   if(lateClick)target.dispatchEvent(new MouseEvent('click',{bubbles:true,cancelable:true,clientX:x,clientY:y,detail:1}));
+   return {first:element.hasAttribute('data-alpha-chat-scrim'),held};
+  },lateClick);
+  expect(hit).toEqual({first:true,held:true});
+  await expect(pill).toBeVisible();await expect(page.locator('[data-alpha-chat-scrim]')).toHaveCSS('pointer-events','none');
+  await expect(page.locator('html')).toHaveAttribute('data-active-view','settings');
+  expect(await page.locator('[data-alpha-layer="app"]').innerText()).toBe(before);
+  await pill.getByRole('button',{name:'Type',exact:true}).click();await expect(composer).toHaveValue('Keep the delayed-tap draft');
+ });
  test('the bar raised from the pill lowers on the first outside tap, which reaches nothing; Back lowers it before leaving',async({page})=>{
   await open(page);
   await page.getByRole('button',{name:'Notes',exact:true}).click();
@@ -255,13 +279,13 @@ test.describe('raised dock',()=>{
   await open(page);
   const composer=page.locator('[data-alpha-layer="composer"] textarea[data-alpha-composer]');
   await composer.click();
-  await expect(page.locator('[data-alpha-dock-guard]')).toHaveCSS('pointer-events','auto');
+  await expect(page.locator('[data-alpha-chat-scrim]')).toHaveCSS('pointer-events','auto');
   // adjustResize: the window shrinks with the keyboard and grows back when it closes.
   const size=page.viewportSize()!;
   await page.setViewportSize({width:size.width,height:size.height-320});await page.waitForTimeout(300);
   await page.setViewportSize(size);
   await expect(composer).not.toBeFocused();
-  await expect(page.locator('[data-alpha-dock-guard]')).toHaveCSS('pointer-events','none');
+  await expect(page.locator('[data-alpha-chat-scrim]')).toHaveCSS('pointer-events','none');
   await page.getByRole('button',{name:'Calendar',exact:true}).click();
   await expect(page.locator('html')).toHaveAttribute('data-active-view','calendar');
  });

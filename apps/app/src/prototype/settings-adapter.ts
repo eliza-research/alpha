@@ -514,7 +514,7 @@ export function installSettingsAdapter(Component: any, views: Bag) {
   const settingsParents: Record<string,string> = {history:'agent-connection',problems:'about',licenses:'about','password-entry':'password-provider','settings-permissions':'settings-privacy','license-detail':'licenses'};
   definition.back = (state:Bag,api:Bag) => {
     if(!state.sheet&&((typeof state.page==='string'&&Object.hasOwn(categoryNames,state.page))||(!state.page&&activeSettingsCategory))){activeSettingsCategory=null;api.set({page:null});return true;}
-    if(!state.sheet&&settingsParents[state.page]){api.set({page:settingsParents[state.page]});return true;}
+    if(!state.sheet&&settingsParents[state.page]){if(state.page==='password-entry')leavePasswordEntry();api.set({page:settingsParents[state.page]});return true;}
     if(!state.sheet&&PASSWORD_PAGES.includes(state.page))leavePasswordManager();
     return settingsBack ? settingsBack(state,api) : false;
   };

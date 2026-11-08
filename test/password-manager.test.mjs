@@ -1,7 +1,8 @@
 // Settings → Password manager (password-manager.ts) against a recording vault bridge in Node.
 // No Keystore, WebView or Settings template is involved: this proves the renderer's draft,
 // lock and message handling, not a device unlock.
-import test, {mock} from 'node:test';import assert from 'node:assert/strict';import {build} from 'esbuild';import {mkdtempSync,writeFileSync,rmSync} from 'node:fs';import {tmpdir} from 'node:os';import {join,resolve} from 'node:path';import {pathToFileURL} from 'node:url';
+import {stripTypeScriptTypes} from './support/strip-types.mjs';
+import test, {mock} from 'node:test';import assert from 'node:assert/strict';import {build} from 'esbuild';import {mkdtempSync,writeFileSync,rmSync,readFileSync} from 'node:fs';import {tmpdir} from 'node:os';import {join,resolve} from 'node:path';import {pathToFileURL} from 'node:url';
 const stubs={
  '@capacitor/core':'export const Capacitor={isNativePlatform:()=>false,isPluginAvailable:()=>false};',
  '../platform-plugins':'export function registerPlugin(){return {};}',
@@ -89,4 +90,18 @@ test('leaving, backgrounding and Lock still forget the draft',async()=>{
  let t=await mount();await t.openShop();t.pm.leavePasswordManager();assert.equal(t.entryPage(),null);
  t=await mount();t.pm.passwordManagerLifecycle(()=>{});await t.openShop();document.hidden=true;listeners.visibilitychange();document.hidden=false;assert.equal(t.entryPage(),null);
  t=await mount();await t.openShop();await t.press(t.manager(),'Lock passwords');assert.equal(t.entryPage(),null);
+});
+
+
+test('the outer Settings Back handler retires the password draft before routing to the unlocked list',async()=>{
+ const t=await mount();await t.openShop();t.type('Password','unsaved-synthetic-password');
+ const source=readFileSync('apps/app/src/prototype/settings-adapter.ts','utf8');
+ const code=source.slice(source.indexOf('  const settingsBack = definition.back;'),source.indexOf('  definition.render = (state: Bag, api: Bag) => {',source.indexOf('  const settingsBack = definition.back;')));
+ const definition={back:()=>{throw Error('The inner Back handler is bypassed by this parent route');}};
+ const install=new Function('definition','leavePasswordEntry','leavePasswordManager','PASSWORD_PAGES','categoryNames','let activeSettingsCategory=null;'+stripTypeScriptTypes(code,{mode:'strip'}));
+ install(definition,t.pm.leavePasswordEntry,t.pm.leavePasswordManager,['password-provider','password-entry'],{});
+ const pages=[];assert.equal(definition.back({page:'password-entry'}, {set:next=>pages.push(next.page)}),true);
+ assert.deepEqual(pages,['password-provider']);assert.equal(t.entryPage(),null);
+ assert.ok(t.manager().some(row=>row.label==='Shop'),'the list remains unlocked');
+ assert.equal(t.calls.filter(([method])=>method==='save').length,0);
 });

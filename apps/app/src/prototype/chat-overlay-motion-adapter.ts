@@ -17,6 +17,8 @@ const RESIZE_TRANSITION = `height .42s ${SHEET_EASE}, border-radius .42s, opacit
 /** How long a tap close keeps the sheet's composer, then fades it to show the bar in its place. */
 const CLOSE_MS = 400;
 const CLOSE_FADE_MS = 120;
+/** Android may deliver the click in a later gesture task after pointerup. */
+const SCRIM_CLICK_WAIT_MS = 350;
 type Shell = any;
 // chat-release:begin (dependency-free; exercised by test/chat-release.test.mjs)
 type Mode = "hidden" | "input" | "sheet" | "full";
@@ -363,7 +365,7 @@ export function installChatOverlayMotion(Component: Shell) {
 			const active = document.activeElement;
 			if (active instanceof HTMLElement && active.matches("[data-alpha-composer]")) active.blur();
 			this.chatInputFocused = false;
-			this.dockGuardPress = undefined;
+			this.chatScrimPress = undefined;
 		};
 		document.addEventListener("visibilitychange", this.dockHiddenWatch);
 	};
@@ -373,9 +375,9 @@ export function installChatOverlayMotion(Component: Shell) {
 			s = this.S();
 		// The bar's composer unmounts without a blur event: its focus ends with it.
 		const previousView = args[1]?.view;
-		if ((s.chat !== "input" || (args[1] && previousView !== s.view)) && (this.chatInputFocused || this.dockGuardPress)) {
+		if ((s.chat !== "input" || (args[1] && previousView !== s.view)) && (this.chatInputFocused || this.chatScrimPress)) {
 			this.chatInputFocused = false;
-			this.dockGuardPress = undefined;
+			this.chatScrimPress = undefined;
 		}
 		if (
 			drag &&
@@ -392,6 +394,7 @@ export function installChatOverlayMotion(Component: Shell) {
 		}
 	};
 	p.componentWillUnmount = function () {
+		this.chatScrimPress = undefined;
 		retire(this, false);
 		window.removeEventListener("resize", this.cancelChatMotion);
 		window.removeEventListener("blur", this.cancelChatMotion);
@@ -743,7 +746,7 @@ export function installChatOverlayMotion(Component: Shell) {
 		};
 		if (!out.showComposer) shell.chatInputFocused = false;
 		const setInputFocus = (focused: boolean) => {
-			if (!!shell.chatInputFocused === focused) return;
+			if (!focused && shell.chatScrimPress || !!shell.chatInputFocused === focused) return;
 			shell.chatInputFocused = focused;
 			shell.setState({});
 		};
@@ -756,6 +759,7 @@ export function installChatOverlayMotion(Component: Shell) {
 		out.dockScrim = dockScrim;
 		out.scrimZ = dockScrim ? 39 : 45;
 		out.scrimTap = () => {
+			shell.chatScrimPress = undefined;
 			const active = document.activeElement;
 			if (dockScrim && active instanceof HTMLElement && active.matches("[data-alpha-composer]"))
 				active.blur();
@@ -799,11 +803,14 @@ export function installChatOverlayMotion(Component: Shell) {
 			up(event: PointerEvent) {
 				event.stopPropagation();
 				const press = shell.chatScrimPress;
-				shell.chatScrimPress = undefined;
-				if (press?.id === event.pointerId && press.moved) out.scrimTap();
+				if (press?.id !== event.pointerId) return;
+				if (press.moved) out.scrimTap();
+				else setTimeout(() => {
+					if (shell.chatScrimPress === press) out.scrimTap();
+				}, SCRIM_CLICK_WAIT_MS);
 			},
-			cancel() {
-				shell.chatScrimPress = undefined;
+			cancel(event: PointerEvent) {
+				if (shell.chatScrimPress?.id === event.pointerId) out.scrimTap();
 			},
 		};
 		return out;
