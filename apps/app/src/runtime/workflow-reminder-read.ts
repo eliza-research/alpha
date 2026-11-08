@@ -2,7 +2,7 @@ import type {Reminder} from '../daily';
 import {phoneWorkflowLocalDayBounds} from '../../../../.eliza/client-features/packages/contracts/src/phone-workflow.ts';
 import {validateWorkflowReadResult,workflowReminderRevisionInput,workflowSha,type WorkflowReminderReadOperation,type WorkflowReminderRow} from '../../../../.eliza/client-features/packages/contracts/src/workflow-device.ts';
 /** Thrown when the owner day holds more reminders than the reviewed bound: overflow is never presented as complete. */
-export class WorkflowReminderOverflow extends Error {constructor(readonly maximumItems:number,readonly overdue:number){super(overdue>0?`More than ${maximumItems} reminders match today, ${overdue} of them overdue, so none were shared. Mark old reminders done to include the rest.`:`More than ${maximumItems} reminders match today, so none were shared.`);}}
+export class WorkflowReminderOverflow extends Error {constructor(readonly maximumItems:number,readonly overdue:number){super(overdue>0?`More than ${maximumItems} reminders match today, ${overdue} of them overdue, so none were shared. Delete old reminders to include the rest.`:`More than ${maximumItems} reminders match today, so none were shared.`);}}
 const OPEN=new Set(['pending','scheduled','posted','permission-denied','scheduling-failed']);
 const iso=(ms:number)=>new Date(ms).toISOString();
 /**

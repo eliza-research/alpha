@@ -32,6 +32,6 @@ console.log(JSON.stringify(out));`;
 test('a selected-reminders read shares only today’s open and completed reminders within the reviewed bound',()=>{
  const out=JSON.parse(execFileSync(process.execPath,['--import=tsx','--input-type=module','-e',script],{cwd:root,encoding:'utf8',timeout:60000}));
  assert.deepEqual(out,{rows:[['overdue','open'],['done','completed'],['daily','completed'],['tonight','open']],noBodies:true,
-  overflow:'More than 3 reminders match today, 1 of them overdue, so none were shared. Mark old reminders done to include the rest.',
+  overflow:'More than 3 reminders match today, 1 of them overdue, so none were shared. Delete old reminders to include the rest.',
   todayOverflow:'More than 2 reminders match today, so none were shared.'});
 });
