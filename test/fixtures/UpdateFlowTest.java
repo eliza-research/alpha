@@ -36,7 +36,7 @@ import javax.net.ssl.HttpsURLConnection;
  * Host-JVM run of AlphaDevicePlugin's update members, compiled from the plugin source by
  * test/app-update.test.mjs against the stubs in test/fixtures/app-update-jvm: one Context is one process whose
  * bridges all hear each broadcast, and the HTTPS download is served in memory, with the plugin's deadline
- * shortened to three seconds. Not Android, PackageInstaller or network evidence: the stubs transcribe what AOSP's source
+ * shortened to three seconds (300 ms in the one scenario that waits it out). Not Android, PackageInstaller or network evidence: the stubs transcribe what AOSP's source
  * does, they do not prove it.
  */
 public final class UpdateFlowTest {
@@ -85,7 +85,7 @@ public final class UpdateFlowTest {
   @Override public Certificate[] getLocalCertificates(){return new Certificate[0];}
   @Override public Certificate[] getServerCertificates(){return new Certificate[0];}
  }
- /** A socket read in flight: an interrupt does not end it, only disconnect does, or the release that lets its bytes arrive. */
+ /** A socket read in flight: an interrupt does not end it, only disconnect does, or the release that lets its bytes arrive. One held 30 s fails, so a regression cannot keep its worker alive. */
  private static final class Held implements Body {
   final CountDownLatch reading=new CountDownLatch(1),released=new CountDownLatch(1);
   @Override public InputStream open(Served connection){
@@ -94,8 +94,11 @@ public final class UpdateFlowTest {
     @Override public int read()throws IOException{throw new IOException("A download reads whole buffers");}
     @Override public int read(byte[] buffer,int offset,int length)throws IOException{
      reading.countDown();
-     boolean interrupted=false;
-     while(released.getCount()>0&&connection.closed.getCount()>0)try{Thread.sleep(2);}catch(InterruptedException stillBlocked){interrupted=true;}
+     boolean interrupted=false;long bound=System.nanoTime()+TimeUnit.SECONDS.toNanos(30);
+     while(released.getCount()>0&&connection.closed.getCount()>0){
+      if(System.nanoTime()>bound)throw new IOException("A held read was never released or closed");
+      try{Thread.sleep(2);}catch(InterruptedException stillBlocked){interrupted=true;}
+     }
      if(interrupted)Thread.currentThread().interrupt();
      if(connection.closed.getCount()==0)throw new SocketException("Socket closed");
      return bytes.read(buffer,offset,length);
@@ -207,6 +210,8 @@ public final class UpdateFlowTest {
  private static void settled()throws Exception{plugin("updateAsked",0L);}
  /** Alpha's last exchange with Android was this long ago, for the tests that measure the wait itself. */
  private static void aged(long millis)throws Exception{plugin("updateAsked",System.nanoTime()-TimeUnit.MILLISECONDS.toNanos(millis));}
+ /** Every other scenario keeps three seconds, so a held download released after a few taps is still in time. */
+ private static void deadline(long nanos)throws Exception{plugin("UPDATE_DEADLINE_NANOS",nanos);}
  private static void resume(AlphaDevicePlugin plugin){plugin.activity.state=Lifecycle.State.RESUMED;plugin.handleOnResume();}
  private static void stop(AlphaDevicePlugin plugin){plugin.activity.state=Lifecycle.State.CREATED;}
  private static Context installing(File cache)throws Exception{retireFixtureWorkers();forgetProcess();Build.VERSION.SDK_INT=37;Build.VERSION.CODENAME="REL";Context context=new Context(cache);context.packages.archive=archive(context.getPackageName(),8);return context;}
@@ -453,13 +458,16 @@ public final class UpdateFlowTest {
  private static void theDeadlineEndsATrickleNotADownloadThatFinishesInTime(File cache)throws Exception{
   Context context=installing(cache);
   AlphaDevicePlugin owner=bridge(context,Lifecycle.State.RESUMED);
-  body=trickle(400);connections.clear();
-  PluginCall late=tap(owner);
+  deadline(TimeUnit.MILLISECONDS.toNanos(300));
+  body=trickle(40);connections.clear();
+  PluginCall late;
+  try{late=tap(owner);}finally{deadline(TimeUnit.SECONDS.toNanos(3));}
   check(late.rejected.get()==1&&late.resolved.get()==0,"a download still trickling at the deadline fails quietly");
   check(connections.get(0).closed.getCount()==0&&context.packages.installer.sessions.isEmpty(),"its connection closes and nothing is staged");
+  deadline(TimeUnit.MILLISECONDS.toNanos(300));
   body=trickle(2);
-  check(tap(owner).resolved.get()==1&&context.packages.installer.committed.size()==1,"a slow download inside the deadline installs, and nothing held the failed attempt");
-  body=IN_MEMORY;
+  try{check(tap(owner).resolved.get()==1&&context.packages.installer.committed.size()==1,"a slow download inside the deadline installs, and nothing held the failed attempt");}
+  finally{deadline(TimeUnit.SECONDS.toNanos(3));body=IN_MEMORY;}
  }
  private static void destroyClosesADownloadInFlight(File cache)throws Exception{
   Context context=installing(cache);
@@ -720,9 +728,9 @@ public final class UpdateFlowTest {
   stop(owner);resume(owner);
   tap(owner);
   check(owner.activity.started.size()==1,"and so does the return from a long dialog");
-  aged(2500);
+  aged(1000);
   tap(owner);
-  check(owner.activity.started.size()==1,"they are not over at 2.5 s");
+  check(owner.activity.started.size()==1,"they are not over at 1 s");
   aged(3100);
   tap(owner);
   check(owner.activity.started.equals(List.of(confirm,confirm)),"and are at 3.1 s, with no restart");
@@ -1537,6 +1545,34 @@ public final class UpdateFlowTest {
   resume(owner);
   check(owner.activity.started.isEmpty(),"a terminal status ends what was kept, listed or not");
  }
+ /** Android's last status for the session lands on main while a reopen tap is between reading what was kept and acting on it. */
+ private static void aTerminalStatusDuringAReopenTapOpensNothing(File cache)throws Exception{
+  Context context=installing(cache);
+  PackageInstaller installer=context.packages.installer;
+  AlphaDevicePlugin owner=bridge(context,Lifecycle.State.RESUMED);
+  tap(owner);
+  int pending=committed(context);
+  Intent shown=confirmation(context,pending);
+  dismissed(owner);
+  installer.asking=()->{installer.asking=()->{};ended(context,pending,PackageInstaller.STATUS_FAILURE_ABORTED);};
+  check(tap(owner).resolved.get()==1&&owner.activity.started.equals(List.of(shown)),"the tap opens nothing for a session that has ended");
+  stop(owner);resume(owner);
+  check(owner.activity.started.equals(List.of(shown)),"nor does the owner's next resume");
+  check(tap(owner).resolved.get()==1&&installer.committed.size()==2&&committed(context)!=pending,"and the next tap installs");
+ }
+ /** Two reopen taps both read what was kept before main takes up either. */
+ private static void twoReopenTapsAheadOfMainOpenOnce(File cache)throws Exception{
+  Context context=installing(cache);
+  AlphaDevicePlugin owner=bridge(context,Lifecycle.State.RESUMED);
+  tap(owner);
+  Intent shown=confirmation(context,committed(context));
+  dismissed(owner);
+  owner.activity.posted=new java.util.ArrayList<>();
+  tap(owner);tap(owner);
+  List<Runnable> posted=owner.activity.posted;owner.activity.posted=null;
+  posted.forEach(Runnable::run);
+  check(owner.activity.started.equals(List.of(shown,shown)),"the confirmation opens again once");
+ }
  /** A bridge left as owner after its destroy would hold every live bridge's tap for the rest of the process. */
  private static void aBridgeDestroyedDuringItsListReadTakesNothingOver(File cache)throws Exception{
   Context context=installing(cache);
@@ -1572,6 +1608,13 @@ public final class UpdateFlowTest {
   check(refused.rejected.get()==1&&refused.resolved.get()==0&&other.packages.installer.sessions.isEmpty(),"an archive of another versionCode gets no session");
   Context foreign=new Context(cache);foreign.packages.archive=archive("com.example.other",8);
   check(tap(bridge(foreign,Lifecycle.State.RESUMED)).rejected.get()==1&&foreign.packages.installer.sessions.isEmpty(),"nor an archive of another package");
+  // BuildConfig.VERSION_CODE is 7: Android would reinstall the same build and refuse only a downgrade it reads itself.
+  for(long installed:new long[]{7,6}){
+   Context same=installing(cache);same.packages.archive=archive(same.getPackageName(),installed);
+   connections.clear();
+   PluginCall older=offered(installed);bridge(same,Lifecycle.State.RESUMED).installUpdate(older);older.awaitAnswer();
+   check(older.rejected.get()==1&&older.resolved.get()==0&&same.packages.installer.sessions.isEmpty()&&connections.size()<=1&&!download(same).exists(),"nor an offer of build "+installed+", which is not newer than the installed 7");
+  }
   Context tampered=installing(cache);
   AlphaDevicePlugin tapped=bridge(tampered,Lifecycle.State.RESUMED);
   served="the offered updatf".getBytes(java.nio.charset.StandardCharsets.UTF_8);
@@ -1598,6 +1641,8 @@ public final class UpdateFlowTest {
  }
  public static void main(String[] args)throws Exception{
   URL.setURLStreamHandlerFactory(protocol->!"https".equals(protocol)?null:new URLStreamHandler(){@Override protected URLConnection openConnection(URL url){return new Served(url);}});
+  // A retired crash unwinds its worker by design; anything else a worker throws is still printed.
+  Thread.setDefaultUncaughtExceptionHandler((thread,thrown)->{if(!(thrown instanceof RetiredCrash)){System.err.print("Exception in thread \""+thread.getName()+"\" ");thrown.printStackTrace();}});
   File cache=Files.createTempDirectory("alpha-update-flow").toFile();
   int status=1;
   try{
@@ -1669,20 +1714,25 @@ public final class UpdateFlowTest {
    aTapTakenBeforeACommitStaysQuietPastTheWindow(cache);
    aStatusInsideCommitReachesItsOwner(cache);
    aTerminalStatusWithAnIntentDropsAKeptConfirmation(cache);
+   aTerminalStatusDuringAReopenTapOpensNothing(cache);
+   twoReopenTapsAheadOfMainOpenOnce(cache);
    aBridgeDestroyedDuringItsListReadTakesNothingOver(cache);
    everyFailureSettlesQuietly(cache);
    withoutTheGrantOnlyAndroidsPageOpens(cache);
    appSignerIsTheOriginalCertificateOfOneSigner(cache);
    System.out.println("PASS update flow");
    status=0;
-  }catch(RuntimeException|AssertionError failed){
+  }catch(Exception|Error failed){
    failed.printStackTrace();
   }finally{
-   retireFixtureWorkers();
-   for(File left:cache.listFiles())left.delete();
+   // A worker still blocked after a failure must not hide it: the first failure stands, and the run ends either way.
+   try{retireFixtureWorkers();}catch(Exception|Error stuck){stuck.printStackTrace();status=1;}
+   File[] left=cache.listFiles();
+   if(left!=null)for(File file:left)file.delete();
    cache.delete();
+   // Each bridge's update worker is a live non-daemon thread; on Android its destroy stops it. halt runs no shutdown hook, and none is used.
+   System.out.flush();System.err.flush();
+   Runtime.getRuntime().halt(status);
   }
-  // Each bridge's update worker is a live non-daemon thread; on Android its destroy stops it.
-  System.exit(status);
  }
 }

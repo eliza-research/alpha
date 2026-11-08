@@ -10,5 +10,7 @@ public class Activity {
   if(refused!=null)throw refused;
   started.add(intent);
  }
- public void runOnUiThread(Runnable work){work.run();}
+ /** Set, main's queue: each runOnUiThread waits here until the test runs it. Null, main runs it at once. */
+ public java.util.List<Runnable> posted;
+ public void runOnUiThread(Runnable work){if(posted!=null)posted.add(work);else work.run();}
 }

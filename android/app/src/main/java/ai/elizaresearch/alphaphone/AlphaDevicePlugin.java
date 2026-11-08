@@ -404,8 +404,14 @@ public final class AlphaDevicePlugin extends Plugin {
       // A kept confirmation opens again, the one thing a tap does here, unless Android is past asking; for three seconds after
       // Alpha's last exchange with it, which spares a status in flight, a start not yet covering Alpha (Android allows a pause
       // 500 ms) and, usually, an accept not yet listed, which waits for Android's one install thread; while a confirmation may
-      // be up behind its owner; and while another bridge owes the one it kept. A start Android dropped frees itself.
-      if(confirm!=null&&!pastConfirmation(pending,confirm)&&(asked==0||System.nanoTime()-asked>=java.util.concurrent.TimeUnit.SECONDS.toNanos(3))&&(!updateOpen||owner==null||owner.inFront())&&(!updateDue||owner==this)){updateOwner=this;updateOpen=false;updateDue=true;getActivity().runOnUiThread(()->{if(inFront())confirmUpdate();});}
+      // be up behind its owner; and while another bridge owes the one it kept. A start Android dropped frees itself. It is taken
+      // up on main, where updateStatus runs, unless since the reads above a status ended or replaced what was read, an exchange
+      // with Android (an earlier tap's open) restarted the window, another bridge took it, or a destroy stopped this bridge.
+      if(confirm!=null&&!pastConfirmation(pending,confirm)&&(asked==0||System.nanoTime()-asked>=java.util.concurrent.TimeUnit.SECONDS.toNanos(3))&&(!updateOpen||owner==null||owner.inFront())&&(!updateDue||owner==this))getActivity().runOnUiThread(()->{
+       if(confirm!=updateConfirm||updateAsked!=asked||updateDue&&updateOwner!=this||updateWorker.isShutdown())return;
+       updateOwner=this;updateOpen=false;updateDue=true;
+       if(inFront())confirmUpdate();
+      });
      }else{
       long deadline=System.nanoTime()+UPDATE_DEADLINE_NANOS;
       javax.net.ssl.HttpsURLConnection connection=updateConnection(apkUrl);
