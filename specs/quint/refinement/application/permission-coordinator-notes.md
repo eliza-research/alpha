@@ -16,7 +16,7 @@ The model bounds the sequence to six and permissions to the native six-step flow
 
 ## Source correction
 
-Changing credentials, changing the enabled prop or reopening setup now invalidates the old operation and releases its UI busy state. The old callback may still settle its platform request. It cannot update component state or advance the new context. Its catch and finally handlers also require the captured generation, so an old completion or rejection cannot clear a newer operation's busy state.
+Changing credentials or the enabled prop invalidates the old operation during the layout-effect commit. Reopening setup also invalidates it and releases its UI busy state. The old callback may still settle its platform request. It cannot update component state or advance the new context. Its catch and finally handlers also require the captured generation, so an old completion or rejection cannot clear a newer operation's busy state.
 
 The model separates pending platform operations from the current UI operation. A completed installation's ordinary remount goes directly to Home. Explicit authentication setup can still show Ready using the retained completion marker. The final Photos Continue does not write a new progress record. Failed completion and rewind writes retain the source's actual visible phase and persisted step.
 
@@ -26,7 +26,7 @@ The adapter checks finite native-port schedules. Browser-specific four-step orch
 
 ## Validation on 2026-11-07
 
-- The coordinator receipt passed 26 concrete source traces with 166 checker checkpoints and all 19 state fields observed. Source and driver input hashes remained unchanged.
+- The coordinator receipt passed 28 concrete source traces with 174 checker checkpoints and all 19 state fields observed. Source and driver input hashes remained unchanged.
 - The new coordinator test and 23 existing completion tests passed. Seven adjacent modal/identity tests also passed.
 - All eight model scenarios passed. Seed `20261107` completed 1,000 simulations of 80 steps without a safety violation.
 - Apalache 0.62.4 completed bounded symbolic safety checking through depth 4 without a violation. The model hash matched before and after the proof.
@@ -36,4 +36,4 @@ The adapter checks finite native-port schedules. Browser-specific four-step orch
 
 A live controller identity check also gates action entry, completion, catch and finally. The captured credential must still equal `connectionController.getSnapshot()` even before React runs the owner-change passive effect.
 
-The normal same-act owner update and promise completion passes under React's observed scheduling. A controlled scheduler additionally holds only the owner's actual passive-effect callback while committing the new external-store identity and completing or rejecting the old request. The preceding implementation advanced to step one in that completion schedule. The live-identity fence keeps the original step and permission state. Both scheduling classes remain in the source trace suite.
+The normal same-act owner update and promise completion passes under React's observed scheduling. A controlled scheduler additionally holds passive-effect callbacks while committing the new external-store identity or disabling the same owner's coordinator, then completing or rejecting the old request. The owner/enabled invalidation runs as a layout effect, outside that delayed queue. The preceding implementation advanced to step one in that completion schedule. The live-identity fence keeps the original step and permission state. Both scheduling classes remain in the source trace suite.

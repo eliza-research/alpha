@@ -12,6 +12,7 @@ test('actual permission coordinator traces refine the bounded walkthrough model'
     'stale-completion-keeps-newer-busy', 'stale-rejection-keeps-newer-busy',
     'same-turn-owner-completion', 'same-turn-owner-rejection',
     'deferred-effect-owner-completion', 'deferred-effect-owner-rejection',
+    'deferred-effect-disabled-completion', 'deferred-effect-disabled-rejection',
     'null-result-while-old-platform-call-is-pending', 'required-flow-dismissal-is-blocked']) {
     assert(result.scenarios.some(scenario => scenario.name === name), name);
   }

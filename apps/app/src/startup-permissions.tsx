@@ -105,7 +105,7 @@ export function StartupPermissions({active:enabled = true}: {active?: boolean} =
     alive.current && ticket === sequence.current &&
     connectionController.getSnapshot().cloudAccount?.credentialId === credentialId;
 
-  useEffect(() => { invalidatePending(); }, [enabled, connection.cloudAccount?.credentialId]);
+  useLayoutEffect(() => { invalidatePending(); }, [enabled, connection.cloudAccount?.credentialId]);
   useEffect(() => {
     if (!connection.setupRevision) return;
     invalidatePending();setReopened(false);setTarget(null);targetRef.current=null;

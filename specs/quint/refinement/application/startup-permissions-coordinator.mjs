@@ -25,9 +25,9 @@ export const googleConnectionController={subscribe:fn=>fixture().google.subscrib
 export const useState=(...args)=>{const result=React.useState(...args);globalThis.${fixtureKey}.hooks.states.push(result[0]);return result;};
 export const useRef=(...args)=>{const result=React.useRef(...args);globalThis.${fixtureKey}.hooks.refs.push(result);return result;};
 export const useEffect=(effect,deps)=>{
-  const fixture=globalThis.${fixtureKey},index=fixture.hooks.effects++;
+  const fixture=globalThis.${fixtureKey};
   return React.useEffect(()=>{
-    if(index===0&&fixture.pauseInvalidation){fixture.deferredEffects.push(effect);return;}
+    if(fixture.pauseInvalidation){fixture.deferredEffects.push(effect);return;}
     return effect();
   },deps);
 };
@@ -78,7 +78,7 @@ async function fixture(component, options = {}) {
   const state = {notifications:true,microphone:'granted',camera:'granted',location:'granted',calendar:'granted',photos:'selected',...options.permissions};
   const calls = [], held = new Map(), resumes = new Set(), inFlight = new Map();
   let instance = 0, ticket = 0;
-  const runtime = {platform:'android',hooks:{states:[],refs:[],effects:0},pauseInvalidation:false,deferredEffects:[],
+  const runtime = {platform:'android',hooks:{states:[],refs:[]},pauseInvalidation:false,deferredEffects:[],
     connection:observable({cloudAccount:options.signedOut?null:{credentialId:'owner-a',environment:'production'},open:false}),
     google:observable(false),ports:{}};
   globalThis[fixtureKey]=runtime;
@@ -113,7 +113,7 @@ async function fixture(component, options = {}) {
   const {createRoot}=await import('react-dom/client');
   let mounted=createRoot(document.getElementById('root'));
   function Observed(props) {
-    runtime.hooks={states:[],refs:[],effects:0};
+    runtime.hooks={states:[],refs:[]};
     return component.StartupPermissions(props);
   }
   const render=()=>mounted.render(React.createElement(Observed,{active:enabled}));
@@ -149,10 +149,18 @@ async function fixture(component, options = {}) {
         runtime.connection.update({cloudAccount:{credentialId,environment:'production'}});
         if(reject)held.get(key).reject(Error('Injected same-turn rejection'));
         else held.get(key).release();
-        // Keep the callback in this act turn while the queued passive effect
-        // has not yet invalidated the component's previous generation.
+        // Drain the old callback in the same act turn. The scheduler can hold
+        // passive effects while the committed layout fence remains active.
         for(let turn=0;turn<8;turn++)await Promise.resolve();
       });
+      runtime.pauseInvalidation=false;
+      await React.act(async()=>{for(const effect of runtime.deferredEffects.splice(0))effect();});
+    },
+    async disableAndSettle(key,reject){
+      runtime.pauseInvalidation=true;
+      enabled=false;
+      await React.act(async()=>render());
+      await React.act(async()=>reject?held.get(key).reject(Error('Injected disabled rejection')):held.get(key).release());
       runtime.pauseInvalidation=false;
       await React.act(async()=>{for(const effect of runtime.deferredEffects.splice(0))effect();});
     },
@@ -338,6 +346,16 @@ export async function runStartupPermissionsCoordinatorRefinement() {
     record('signed-in',action('signIn'));
     await f.click('Allow');
     record('new-owner-check',advance);
+  });
+  for(const rejects of [false,true])await scenario(`deferred-effect-disabled-${rejects?'rejection':'completion'}`,{permissions:{notifications:false}},async(f,record)=>{
+    f.hold('notifications');
+    await f.click('Allow');
+    record('old-request-held',[action('begin'),action('request')]);
+    f.state.notifications=true;
+    await f.disableAndSettle('notifications',rejects);
+    record('disabled-before-passive-effect',[action('suspend'),action('staleResult',0)]);
+    assert.equal(f.snapshot().component.progress.step,0,'Disabled coordinator advanced before its passive effect');
+    assert.equal(f.snapshot().component.states.notifications,'request','Disabled rejection changed permission UI state');
   });
   await scenario('disabled-coordinator-fences-held-completion',{permissions:{notifications:false}},async(f,record)=>{
     f.hold('notifications');
