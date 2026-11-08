@@ -126,7 +126,7 @@ public final class AccessibilityInstrumentedTest {
   configurator.setUiAutomationFlags(AUTOMATION_FLAGS);
   // AndroidShade shares the same connection: with its default flags each shade check reconnected
   // UiAutomation with accessibility services suppressed, which unbinds any enabled screen reader such
-  // as TalkBack in the middle of the click loop.
+  // as TalkBack in the middle of the journey and changes what WebView exposes to TalkBackOrder.
   AndroidShade.useAutomationFlags(AUTOMATION_FLAGS);
   String previous=shell("settings get system font_scale");
   UiDevice device=UiDevice.getInstance(InstrumentationRegistry.getInstrumentation());

@@ -17,6 +17,9 @@ test('the committed listener record is well formed and honestly not device-quali
  for(const gate of ['G1','G2','G3','G4','G5','G6'])assert.equal(record.gates[gate],'open',gate);
  assert.equal(record.evidence.apkBuild.current,false,'the historical sense build predates the indicator lease');
  assert.ok(fs.existsSync(path.join(root,record.evidence.apkBuild.record)));
+ const hostTests=record.evidence.hostTests.scope.match(/(?:vendor\/eliza\/[\w./-]+|test)\/[\w./-]+\.test\.mjs/g)??[];
+ assert.ok(hostTests.includes('test/always-on-listener.test.mjs'),'the record names the tests that run');
+ for(const file of hostTests)assert.ok(fs.existsSync(path.join(root,file)),`host test named in the record exists: ${file}`);
  assert.deepEqual([record.evidence.emulator.recorded,record.evidence.aospImage.recorded,record.evidence.deviceAcceptance.recorded],[false,false,false]);
  assert.deepEqual([record.indicatorLease.implemented,record.indicatorLease.systemUiCompiled,record.indicatorLease.qualified],['source',false,false]);
  const chip=JSON.parse(read('vendor/eliza/packages/os/android/sense/systemui/chip/manifest.json'));

@@ -241,22 +241,21 @@ delivers these callbacks in time, the 1 s value, and the exact callback signatur
 at the pinned revision are unverified until SystemUI compiles and runs on an image.
 The lease also does not prove that a person can see the chip.
 
-**Host checks only.** `test/aosp-listening-chip.test.mjs` type-checks the four
-Java chip sources (`-Werror`) against hand-written Android/SystemUI stubs in
-`test/fixtures/systemui-chip-jvm` (including hidden APIs SystemUI uses), runs the
-SystemUI lease client against the listener's real `IndicatorLease` rules (renewal,
-hidden chip/surface, hang, binder death, identity loss, provider substitution,
-unavailable provider, display off/AOD, fullscreen and shade pause and resume) and the controller's
-acknowledgement composition (`SystemUiAcknowledgementTest`: unlocked status bar,
-immersive with transient reveal, expanded shade with and without its measured dedicated chip, lock-screen transition debounce, lock screen, AOD with and without
-the chip, display off, unknown state, detached chip, and the reason each report
-carries). It also checks that the exact patch creates the staged chip
-sources byte for byte. These stubs mirror reviewed signatures; they are **not**
-the pinned SystemUI tree, so Dagger wiring (the new `@Background Executor`
-constructor argument), resources and the Kotlin binder are compiled only by a
-real SystemUI build. `test/always-on-listener.test.mjs` runs the listener-side
-lease and policy rules on the JVM and type-checks every listener source against
-the Android 36 platform jar. None of this executes Android, SystemUI or an image.
+**Host checks only.** The chip, lease and policy sources are upstream-owned at the
+`vendor/eliza` pin, and so are their host tests. `vendor/eliza/packages/app/test/android/sense.test.mjs`
+type-checks the chip sources against hand-written Android/SystemUI stubs in
+`sense-fixtures/systemui-chip-jvm` (including hidden APIs SystemUI uses), runs the
+SystemUI lease client against the listener's real `IndicatorLease` rules
+(`SystemUiLeaseClientTest`) and the controller's acknowledgement composition
+(`SystemUiAcknowledgementTest`), runs the listener-side policy and persistence rules on
+the JVM, and type-checks every shared listener source against the Android 36 platform
+jar. `vendor/eliza/packages/os/scripts/android/sense.test.mjs` checks that the exact
+SystemUI patch stages only into a new overlay and keeps its preimage fences. Alpha's
+`test/always-on-listener.test.mjs` and `test/aosp-listener.test.mjs` run those two
+suites and compile Alpha's own listener components against the shared sources. The
+stubs mirror reviewed signatures; they are **not** the pinned SystemUI tree, so Dagger
+wiring, resources and the Kotlin binder are compiled only by a real SystemUI build. None of this executes Android, SystemUI or an
+image.
 
 ## Exact source application
 
