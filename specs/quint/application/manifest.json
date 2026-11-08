@@ -1417,5 +1417,47 @@
       "Mounted Home long press, drag, click swallowing, keyboard focus and edit-sheet layering, including stale timer and owner retirement.",
       "Two pointers, three favorite keys, one keyboard frame and controlled geometry/storage ports. A completed drop is one macrostep. Multiple successful writes are observed at completion; partial storage failure and real touch delivery have separate scope."
     ]
+  },
+  {
+    "path": "specs/quint/application/ScreenFocusOwnership.qnt",
+    "module": "ScreenFocusOwnership",
+    "init": "init",
+    "step": "step",
+    "invariant": "safety",
+    "tests": [
+      "firstScreenLeavesFocusUntouchedTest",
+      "resizeCannotNarrowPendingNavigationTest",
+      "voluntaryBlurRemainsUnfocusedOnResizeTest",
+      "realFocusAndNativeModalKeepOwnershipTest",
+      "lateNameAndDrawerCanReceiveFocusTest",
+      "oldUninstallerCannotRemoveReplacementTest"
+    ],
+    "invariants": [
+      "exactObserver",
+      "pendingOwner"
+    ],
+    "sources": [
+      "apps/app/src/runtime/view-focus.ts",
+      "apps/app/src/main.tsx",
+      "vendor/eliza/packages/ui/src/accessibility/screen-focus.ts",
+      "patches/eliza/screen-focus-priority-client.patch",
+      "patches/eliza/screen-focus-priority-client-manifest.json"
+    ],
+    "stateMapping": {
+      "installed/generation": "Exact Alpha installer handle and replacement count",
+      "screen/active/held": "Host view, DOM active element and actual last focus event",
+      "composer/title/region/drawer/selfFocus": "Current exposed fixture controls and surfaces",
+      "phase/cause/remaining": "Actual scheduled callback, condition type and retry budget",
+      "resizeOwner": "Captured focus element in the resize closure, checked through behavior"
+    },
+    "abstractions": [
+      "One document, two screens plus startup, and one eligible inline modal per opening.",
+      "Controlled frame queue and DOM geometry. The exact closed-over resize element is not read directly."
+    ],
+    "bounds": {
+      "maxSamples": 1000,
+      "maxSteps": 80,
+      "maxVerifyDepth": 4
+    }
   }
 ]
