@@ -2,6 +2,13 @@ import {rendererDeletionClock,deletionWindow,type DeletionDeadline} from '../../
 /** Shared bounds for the browser Calendar and Reminder journals. Only definite rows retire:
  * an unacknowledged creation or an unresolved deletion stays until it is resolved. */
 const KEEP=200,AGE=30*86400000,SETTLED=127;
+/** Operation identities are opaque, including names inherited by ordinary JS objects. */
+export function journalEntry<T>(rows:Record<string,T>|undefined,id:string):T|undefined{
+ return rows&&Object.hasOwn(rows,id)?rows[id]:undefined;
+}
+export function writeJournalEntry<T>(rows:Record<string,T>,id:string,row:T){
+ Object.defineProperty(rows,id,{value:row,enumerable:true,writable:true,configurable:true});
+}
 /** Retire definite rows beyond the newest 200 or older than 30 days. Rows without a time
  * predate this policy; they count as oldest, in their saved order, and retire by count only. */
 export function retireJournal<T extends {at?:number}>(rows:Record<string,T>|undefined,definite:(row:T)=>boolean,now=Date.now()){
