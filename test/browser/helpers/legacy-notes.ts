@@ -19,7 +19,8 @@ export async function selectLegacyNotes(page:Page){
  // The source choice is only counted once the Notes view is active, not on the home screen.
  await expect(page.locator('html')).toHaveAttribute('data-active-view','notes');
  const older=page.getByRole('button',{name:/^(Older|Previous) notes$/});
- if(await older.count())await older.click();
+ await expect(older).toBeVisible();
+ await older.click();
 }
 
 /** Retained attachment metadata only; no file picker, file contents, or real user store. */

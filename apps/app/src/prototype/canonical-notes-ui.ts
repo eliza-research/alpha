@@ -303,7 +303,7 @@ export function installCanonicalNotesView(Component:any,views:Record<string,Bag>
  const notes=views.notes,render=notes.render;
  notes.render=(state:Bag,value:Bag)=>{
   const ui:CanonicalNotesUi|undefined=value.canonicalNotes,sources=value.notesSourceOptions??[],older=sources.find((source:Bag)=>source.id==='legacy'),main=sources.find((source:Bag)=>source.id==='canonical');
-  if(value.notesSourceMode!=='canonical')return {...render(state,value),notesTitle:'Older notes',primaryNotes:false,returnToNotesAction:main?.choose};
+  if(value.notesSourceMode!=='canonical')return {...render(state,value),notesTitle:'Previous notes',primaryNotes:false,returnToNotesAction:main?.choose};
   const olderNotesAction=older&&!older.selected?older.choose:null;
   if(ui)return {...ui.decorate(render(state,value),value,state),olderNotesAction,listActions:true};
   // A pending New note request waits for the binding instead of drafting into no collection.

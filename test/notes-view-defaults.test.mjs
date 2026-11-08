@@ -30,5 +30,5 @@ test('agent Notes waiting for a connection use Alpha\'s Notes view without retai
  assert.equal(out.notesTitle,'Notes');assert.equal(out.olderNotesAction,f.choose);assert.match(out.storageStatus,/unavailable for this agent connection/);assert.deepEqual(f.state,f.before);
 });
 test('an explicitly selected retained source keeps Previous notes naming and its return action',()=>{
- const f=fixture();installCanonicalProjection(f);const out=f.view.render(f.state,{...f.api,notesSourceOptions:[{id:'canonical',choose:f.choose},{id:'legacy',selected:true,choose(){}}]});assert.equal(out.notesTitle,'Older notes');assert.equal(out.primaryNotes,false);assert.equal(out.returnToNotesAction,f.choose);assert.equal(out.olderNotesAction,undefined);assert.equal(out.canCreate,true);assert.deepEqual(f.state,f.before);
+ const f=fixture();installCanonicalProjection(f);const out=f.view.render(f.state,{...f.api,notesSourceOptions:[{id:'canonical',choose:f.choose},{id:'legacy',selected:true,choose(){}}]});assert.equal(out.notesTitle,'Previous notes');assert.equal(out.primaryNotes,false);assert.equal(out.returnToNotesAction,f.choose);assert.equal(out.olderNotesAction,undefined);assert.equal(out.canCreate,true);assert.deepEqual(f.state,f.before);
 });

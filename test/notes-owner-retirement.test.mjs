@@ -33,13 +33,63 @@ test('empty previous Notes is distinct from retained keys and unreadable storage
  for(const key of keys.LEGACY_NOTES_SOURCE_KEYS){const old={...storage,getItem:found=>found===key?'retained':null};await assert.rejects(access.openExistingBrowserNotes(port,signal,()=>true,old),error=>error.constructor.name==='LegacyNotesReviewRequired');await assert.rejects(access.openExistingDeviceNotes(vault,old,signal,()=>true),error=>error.constructor.name!=='LegacyNotesAbsent');}
  const unreadable={...vault,read:async()=>{throw Error('Keystore locked');}};await assert.rejects(access.openExistingDeviceNotes(unreadable,storage,signal,()=>true),/Keystore locked/);assert.equal(writes,0);
 });
+test('previous Notes availability reads retained browser, encrypted collection and draft data without writing',async()=>{
+ const load=moduleLoader(),access=load(path.join(root,'apps/app/src/prototype/legacy-notes-access.ts')),keys=load(path.join(root,'apps/app/src/runtime/notes-secure-store.ts'));
+ const signal=new AbortController().signal,storage={getItem:()=>null};
+ assert.equal(await access.browserPreviousNotesAvailability({read:async()=>null},signal,()=>true,storage),'absent');
+ assert.equal(await access.browserPreviousNotesAvailability({read:async()=>({revision:'r',raw:'saved'})},signal,()=>true,storage),'present');
+ assert.equal(await access.browserPreviousNotesAvailability({read:async()=>{throw Error('Unreadable');}},signal,()=>true,storage),'unavailable');
+ for(const key of keys.LEGACY_NOTES_SOURCE_KEYS){
+  assert.equal(await access.browserPreviousNotesAvailability({read:async()=>null},signal,()=>true,{getItem:found=>found===key?'kept':null}),'present');
+ }
+ assert.equal(await access.devicePreviousNotesAvailability({readRaw:async()=>null},signal,()=>true,storage),'absent');
+ for(const slot of [keys.SECURE_NOTES_SLOT,keys.SECURE_NOTES_DRAFT_SLOT]){
+  assert.equal(await access.devicePreviousNotesAvailability({readRaw:async key=>key===slot?'retained encrypted bytes':null},signal,()=>true,storage),'present');
+ }
+ assert.equal(await access.devicePreviousNotesAvailability({readRaw:async()=>{throw Error('Locked');}},signal,()=>true,storage),'unavailable');
+ await assert.rejects(access.openExistingDeviceNotes({read:async key=>key===keys.SECURE_NOTES_DRAFT_SLOT?{draft:'kept'}:null,compareExchange:async()=>assert.fail('probe wrote')},storage,signal,()=>true),error=>error.constructor.name==='LegacyNotesDraftOnly');
+ await assert.rejects(access.openExistingDeviceNotes({read:async key=>{if(key===keys.SECURE_NOTES_DRAFT_SLOT)throw Error('Draft unreadable');return null;},compareExchange:async()=>assert.fail('probe wrote')},storage,signal,()=>true),error=>error.constructor.name==='LegacyNotesReviewRequired');
+});
+test('delayed previous Notes presence cannot publish after owner replacement or suspension',async()=>{
+ const access=moduleLoader()(path.join(root,'apps/app/src/prototype/legacy-notes-access.ts'));
+ for(const failed of [false,true]){
+  const held=Promise.withResolvers(),controller=new AbortController();let current=true;
+  const pending=access.browserPreviousNotesAvailability({read:()=>held.promise},controller.signal,()=>current,{getItem:()=>null});
+  current=false;failed?held.reject(Error('Unreadable')):held.resolve({revision:'old',raw:'retained'});
+  await assert.rejects(pending,error=>error.name==='AbortError');
+ }
+});
+test('an owner change during the native collection probe does not read its draft slot',async()=>{
+ const access=moduleLoader()(path.join(root,'apps/app/src/prototype/legacy-notes-access.ts'));
+ const held=Promise.withResolvers(),calls=[];let current=true;
+ const pending=access.devicePreviousNotesAvailability({readRaw:key=>{calls.push(key);return held.promise;}},new AbortController().signal,()=>current,{getItem:()=>null});
+ current=false;held.resolve(null);
+ await assert.rejects(pending,error=>error.name==='AbortError');assert.equal(calls.length,1);
+});
+test('the mounted Notes owner retires visible legacy records and ignores delayed presence from the old owner',async()=>{
+ const reads=[],paints=[],states=[],scope={AbortController,JSON,document:{hidden:false},isAndroid:false,browserNotesPort:{},secureConnectionStore:{},notesRecovery:{abort:()=>states.push('recovery retired')},owner:'owner-a',previousNotesOwnerKey:()=>scope.owner,browserPreviousNotesAvailability:(_port,signal,current)=>new Promise(resolve=>reads.push({resolve,signal,current})),originalSet:{call:(_shell,_key,patch)=>states.push(patch)},syncCanonicalNotes:()=>states.push('canonical')};
+ const shell={live:true,S:()=>({view:'notes'}),notesSourceMode:'canonical',notesSourceEpoch:0,setState:()=>paints.push(true)};
+ vm.createContext(scope);vm.runInContext(transform(slice('  function syncPreviousNotesAvailability(','  async function previousNotesObservation(')),scope);
+ scope.syncPreviousNotesAvailability(shell);scope.owner='owner-b';scope.syncPreviousNotesAvailability(shell);
+ assert.equal(reads[0].signal.aborted,true);reads[0].resolve('present');reads[1].resolve('absent');await new Promise(setImmediate);
+ assert.equal(shell.previousNotesAvailability,'absent');assert.equal(paints.length,1);
+ shell.notesSourceMode='legacy';shell.notesLegacyOwnerKey='owner-a';shell.notesStore={list:[{body:'Old owner text'}]};shell.notesRaw='old';shell.notesOpenAbort=new AbortController();
+ scope.syncPreviousNotesAvailability(shell);
+ assert.equal(shell.notesSourceMode,'canonical');assert.equal(shell.notesStore,null);assert.equal(shell.notesRaw,null);assert.equal(shell.notesOpenAbort.signal.aborted,true);assert.equal(states.includes('recovery retired'),true);assert.equal(states.includes('canonical'),true);
+ assert.equal(states.find(state=>typeof state==='object').list.length,0);
+});
 function notesSelectionFixture({retained={version:1,token:'older-draft'},readFailure=false,hold=false}={}){
  const list=[{id:'old',kind:'text',title:'Saved',body:'Saved body'}],store={list,raw:JSON.stringify({records:list})};
  const state={list:[],open:null},events=[],drafts=[];
  const shell={live:true,notesSourceMode:'canonical',notesSourceEpoch:0,notesPending:0,notesOpenAbort:new AbortController(),vget:()=>state,toast:text=>events.push(text)};
- const scope={AbortController,DOMException,clearTimeout,isAndroid:true,localStorage:{},secureConnectionStore:{},browserNotesPort:{},LegacyNotesAbsent:class LegacyNotesAbsent extends Error{},syncCanonicalNotes(){},context(){},notesDataset(){},previousNotesObservation:async()=>({id:'old'}),openExistingDeviceNotes:async()=>store,openExistingBrowserNotes:async()=>store,originalSet:{call(_shell,_key,patch){Object.assign(state,patch);}},SecureNotesStore:{readDraft:async()=>{if(hold)await new Promise(resolve=>scope.release=resolve);if(readFailure)throw Error('Unreadable');return retained;},saveDraft:async(_vault,input)=>{drafts.push(input);return {...input,token:'newer'};}}};
+ const scope={AbortController,DOMException,clearTimeout,previousNotesOwnerKey:()=>scope.owner??'owner-a',LegacyNotesDraftOnly:class LegacyNotesDraftOnly extends Error{},isAndroid:true,localStorage:{},secureConnectionStore:{},browserNotesPort:{},LegacyNotesAbsent:class LegacyNotesAbsent extends Error{},syncCanonicalNotes(){},context(){},notesDataset(){},previousNotesObservation:async()=>({id:'old'}),openExistingDeviceNotes:async()=>store,openExistingBrowserNotes:async()=>store,originalSet:{call(_shell,_key,patch){Object.assign(state,patch);}},SecureNotesStore:{readDraft:async()=>{if(hold)await new Promise(resolve=>scope.release=resolve);if(readFailure)throw Error('Unreadable');return retained;},saveDraft:async(_vault,input)=>{drafts.push(input);return {...input,token:'newer'};}}};
  vm.createContext(scope);vm.runInContext(transform(slice('  async function selectNotesSource(','  function context(shell: Shell)')+slice('  function keepNotesDraft(','  /** Android: after a clean open')),scope);return{scope,shell,state,store,events,drafts,select:mode=>scope.selectNotesSource(shell,mode)};
 }
+test('previous Notes opening discards a retained draft when the owner changes during the read',async()=>{
+ const f=notesSelectionFixture({hold:true}),opening=f.select('legacy');await new Promise(setImmediate);
+ f.scope.owner='owner-b';f.scope.release();await opening;
+ assert.equal(f.state.list.length,0);assert.equal(f.shell.notesDraftKept,null);assert.equal(f.shell.notesStorageFailed,true);
+});
 test('earlier encrypted draft is read before Notes becomes editable and passed into a later failed-save merge',async()=>{
  const f=notesSelectionFixture({hold:true});const opening=f.select('legacy');await new Promise(setImmediate);assert.equal(f.shell.notesStorageFailed,true);assert.equal(f.state.list.length,0);f.scope.release();assert.equal(await opening,true);assert.equal(f.shell.notesDraftKept.token,'older-draft');
  f.shell.notesStorageFailed=true;f.scope.failedNotesStatus=()=>'';f.scope.keepNotesDraft(f.shell,[{id:'new',body:'New unsaved text'}],'failed');await f.shell.notesDraftTask;assert.equal(f.drafts[0].kept.token,'older-draft');assert.equal(f.drafts[0].list[0].body,'New unsaved text');
