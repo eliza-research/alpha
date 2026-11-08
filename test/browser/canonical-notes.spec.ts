@@ -140,7 +140,10 @@ test('Stop saves canonical audio locally and Generate transcript later uses its 
  await expect(attachment).toBeVisible();await expect(attachment).not.toContainText('A closed Notes fixture.');
  await expect(page.getByRole('dialog',{name:'Ask about selected content'})).toHaveCount(0);
  const question=page.locator('textarea[data-alpha-composer]:visible').first();
- await expect(question).toHaveValue('');await question.fill('What did I say?');
+ await expect(question).toHaveValue('Summarize this for me');
+ const remove=attachment.getByRole('button',{name:'Remove transcript'});
+ await expect(remove.locator('.note-transcript-remove-icon')).toBeVisible();
+ await question.fill('What did I say?');
  await attachment.getByRole('button',{name:'Remove transcript'}).click();
  await expect(attachment).toHaveCount(0);await expect(question).toHaveValue('What did I say?');
  await page.evaluate(()=>(window as any).micContext.close());

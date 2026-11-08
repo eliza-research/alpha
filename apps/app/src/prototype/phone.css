@@ -696,9 +696,13 @@ button[aria-label$=" on or off"][aria-pressed]::before { content:""; position:ab
 .home-date-text { font-size:40px; line-height:1.08; letter-spacing:-.01em; overflow-wrap:anywhere; }
 .home-date-setup { min-height:48px; padding:0 18px; border-radius:24px; background:var(--s2); color:var(--fg); font-size:15px; font-weight:600; }
 
-.note-transcript-chip { display:flex; align-items:center; align-self:flex-start; max-width:calc(100% - 32px); margin:0 16px 6px; padding-left:12px; border-radius:14px; background:var(--s2); color:var(--fg); font-size:14px; }
-.note-transcript-chip span { min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-.note-transcript-chip button { flex-shrink:0; min-width:44px; min-height:44px; font:inherit; }
+.note-transcript-chip { display:inline-flex; align-items:center; align-self:flex-start; gap:12px; max-width:calc(100% - 32px); margin:0 16px 6px; padding:2px 2px 2px 14px; border:1px solid var(--line); border-radius:16px; background:var(--bg); color:var(--fg); }
+.note-transcript-chip-label { display:grid; min-width:0; line-height:1.25; }
+.note-transcript-chip-label small { color:var(--mut); font-size:12px; }
+.note-transcript-chip-label strong { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:14px; font-weight:600; }
+.note-transcript-chip button { display:grid; place-items:center; flex:none; width:44px; height:44px; border-radius:50%; color:var(--fg); }
+.note-transcript-remove-icon { display:grid; place-items:center; width:26px; height:26px; border-radius:50%; background:var(--s2); }
+.note-transcript-remove-icon::before { content:""; width:16px; height:16px; background:currentColor; mask:url('/icons/lucide/x.svg') center/contain no-repeat; }
 
 /* Keep full Settings labels and values readable when system text zoom multiplies the app size. */
 .alpha-text-xl [data-alpha-settings-nav] { flex-wrap:wrap; }

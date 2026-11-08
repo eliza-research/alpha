@@ -1300,7 +1300,7 @@ export function installAgentAdapter(Component: Shell, views: Shell) {
         this.toast('Reopen the recording before attaching its transcript.');return;
       }
       this.transcriptAttachment={title,selection:JSON.stringify(selection)};
-      this.setState({chat:'sheet',shade:false});
+      this.setState((previous:Shell)=>({chat:'sheet',shade:false,draft:previous.draft?.trim()?previous.draft:'Summarize this for me'}));
     };
     api.composeContentQuestion=(draft:string,source?:Source)=>{
       this.reviewedSourceDraft={draft,source:sourceOf(source)};
