@@ -269,7 +269,7 @@ export function installHomeShell(Component: any, views: Record<string, Bag>, bri
       'data-alpha-apps-drawer': '',
       onQuery: query => self.setState({...self.shellNavigate({type: 'drawer-query', query}), drawerMenu: null}),
       onClose: () => self.setState({...self.shellNavigate({type: 'drawer', open: false}), drawerMenu: null}),
-      menu: drawerOpen ? openMenu(S) : null,
+      menu: drawerOpen ? S.drawerMenu || null : null,
       onMenu: key => self.setState({drawerMenu: key}),
       onAddHome: (app: InstalledApp) => {
         if (launcher.isFavorite(app)) return;

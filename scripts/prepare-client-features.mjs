@@ -324,6 +324,7 @@ export const CLIENT_FEATURE_PATCHES = [
   ['launcherObserverPatch', 'launcher-observer-client', 'plugins/plugin-native-system/src/client/launcher.ts'],
   ['launcherLegacyViewKeyPatch', 'launcher-legacy-view-key-client', 'packages/ui/src/mobile-shell/view-registry.ts'],
   ['screenFocusPriorityPatch', 'screen-focus-priority-client', 'packages/ui/src/accessibility/screen-focus.ts'],
+  ['launcherDrawerOwnershipPatch', 'launcher-drawer-ownership-client', 'packages/ui/src/mobile-shell/InstalledAppsGridDrawer.tsx'],
 ];
 
 /** Copy authenticated upstream source outside the immutable vendor checkout. With check, only

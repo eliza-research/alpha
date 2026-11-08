@@ -169,12 +169,16 @@ test('long-pressing an app offers Add to Home and App info; Home order persists 
   await expect.poll(() => homeOrder(page)).toEqual(['Settings', 'Notes', 'Clock']);
   drawer = await openDrawer(page);
   // An app already on Home says so; App info opens Android's screen for exactly that entry.
-  await longPress(drawer.getByRole('button', { name: 'Open Clock', exact: true }));
+  const clockTile = drawer.getByRole('button', { name: 'Open Clock', exact: true });
+  await longPress(clockTile);
+  const appInfo = drawer.getByRole('menuitem', { name: 'App info', exact: true });
   await expect(drawer.getByRole('menuitem', { name: 'On Home', exact: true })).toBeDisabled();
+  await expect(appInfo).toBeFocused();
   await page.screenshot({ path: info.outputPath('apps-menu.png') });
-  await drawer.getByRole('menuitem', { name: 'App info', exact: true }).click();
+  await appInfo.click();
   await expect.poll(() => calls(page, 'openAppInfo')).toEqual([{ packageName: CLOCK.packageName, activityName: CLOCK.activityName }]);
   await expect(drawer.getByRole('menu')).toHaveCount(0);
+  await expect(clockTile).toBeFocused();
   // Back closes an open menu before the drawer.
   await longPress(drawer.getByRole('button', { name: 'Open Settings', exact: true }));
   await expect(drawer.getByRole('menu')).toBeVisible();
@@ -415,4 +419,59 @@ test('the entry menu is a keyboard menu: focus moves in, arrows move between ite
   const again = await openDrawer(page);
   await longPress(again.getByRole('button', { name: 'Open Settings', exact: true }));
   await expect(again.getByRole('menuitem', { name: 'App info', exact: true })).toBeFocused();
+});
+
+test('Drawer keeps one owner across another pointer release', async ({ page }) => {
+  await nativeStub(page, [CLOCK]);
+  await page.clock.install();
+  await page.goto('/');
+  const drawer = await openDrawer(page);
+  const clock = drawer.getByRole('button', {name: 'Open Clock', exact: true});
+  await expect(clock).toBeVisible();
+  const pointer = {pointerId: 101, pointerType: 'touch', button: 0, clientX: 10, clientY: 10};
+  await clock.dispatchEvent('pointerdown', pointer);
+  await clock.dispatchEvent('pointerup', {...pointer, pointerId: 102});
+  await page.clock.runFor(600);
+  await expect(drawer.getByRole('menu', {name: 'Clock', exact: true})).toBeVisible();
+});
+
+test('Drawer does not reopen a menu after removal and reinstall', async ({ page }) => {
+  await nativeStub(page, [CLOCK]);
+  await page.clock.install();
+  await page.goto('/');
+  const drawer = await openDrawer(page);
+  const clock = drawer.getByRole('button', {name: 'Open Clock', exact: true});
+  const menu = drawer.getByRole('menu', {name: 'Clock', exact: true});
+  await expect(clock).toBeVisible();
+  await expect.poll(() => page.evaluate(() => (window as any).deviceListening())).toBe(true);
+  await longPress(clock);
+  await expect(menu).toBeVisible();
+  await page.evaluate(() => (window as any).deviceChange([], true));
+  await page.clock.runFor(200);
+  await expect(clock).toHaveCount(0);
+  await expect(menu).toHaveCount(0);
+  await page.evaluate(app => (window as any).deviceChange([app], true), CLOCK);
+  await page.clock.runFor(200);
+  await expect(clock).toBeVisible();
+  await expect(menu).toHaveCount(0);
+  await clock.press('Enter');
+  await expect.poll(() => calls(page, 'launch')).toEqual([{packageName: CLOCK.packageName, activityName: CLOCK.activityName}]);
+});
+
+test('a retired drawer hold cannot open the reinstalled component', async ({ page }) => {
+  await nativeStub(page, [CLOCK]);
+  await page.clock.install();
+  await page.goto('/');
+  const drawer = await openDrawer(page);
+  const clock = drawer.getByRole('button', {name: 'Open Clock', exact: true});
+  await expect(clock).toBeVisible();
+  await expect.poll(() => page.evaluate(() => (window as any).deviceListening())).toBe(true);
+  await clock.dispatchEvent('pointerdown', {pointerId: 101, pointerType: 'touch', button: 0});
+  await page.evaluate(() => (window as any).deviceChange([], true));
+  await page.clock.runFor(150);
+  await expect(clock).toHaveCount(0);
+  await page.evaluate(app => (window as any).deviceChange([app], true), CLOCK);
+  await page.clock.runFor(500);
+  await expect(clock).toBeVisible();
+  await expect(drawer.getByRole('menu', {name: 'Clock', exact: true})).toHaveCount(0);
 });
