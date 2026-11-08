@@ -6,6 +6,7 @@ import {app, sense, directory, javaTraces, root} from './java.mjs';
 import {voiceTraces, navigationTraces} from './renderer.mjs';
 import {residentLifecycleTraces} from './local-agent.mjs';
 import {checkResetOrchestration} from './reset-orchestration.mjs';
+import {checkResidentCoordinator} from './resident-coordinator.mjs';
 
 export async function runNativeRefinement() {
   const models = ['VadSegmentation', 'RendererRecovery', 'ResidentScheduling'];
@@ -90,11 +91,12 @@ export async function runNativeRefinement() {
   const reset = await checkResetOrchestration([fileURLToPath(import.meta.url)]);
   if (reset.results.some(result => result.status !== 'passed')) throw Error('Reset orchestration trace checking failed');
   results.push(...reset.receipts);
+  results.push(await checkResidentCoordinator([fileURLToPath(import.meta.url)]));
   const obligations = [
     {model: 'RendererRecovery', obligation: 'Activity lifecycle and visible escape behavior', reason: 'Current adapter projects the pure budget only.', requires: ['Android Activity/WebView harness']},
     {model: 'ResidentScheduling', obligation: 'Plugin lifecycle and OS broadcasts', reason: 'Current adapter proves the pure admission table and same-lock callbacks.', requires: ['Android service integration']},
     {model: 'VadSegmentation', obligation: 'PCM model output and capture pre-roll', reason: 'The gate consumes probabilities; capture/model execution is external.', requires: ['native capture integration']},
-    {model: 'ResidentRuntime', obligation: 'Native plugin lifecycle and retained recovery records', reason: 'Provider helpers and actual renderer stop/connect-cancellation wrappers execute. AlphaLocalAgentPlugin lock/service behavior and the real resident remain outside this driver.'},
+    {model: 'ResidentRuntime', obligation: 'Broader credential/recovery/stream schedules and actual resident service', reason: 'Whole-plugin start, cancellation, stop, status, destruction and broadcast admission execute under controlled ports. Credential mutation, arbitrary streams, retained recovery combinations and the installed resident service remain separate obligations.'},
     {model: 'VoiceSession', obligation: 'Dictation, semantic endpoints, review resume and full barge-in interleavings', reason: 'One-turn/two-sentence actual controller traces cover mute, stop and account retirement with controlled ports.'},
     {model: 'SpeechResources', obligation: 'Combined native microphone/engine/focus lifecycle', reason: 'Capture reservation, PCM queue and focus helpers execute independently. Explicit-stop tail and native pipe ownership remain separate.'},
     {model: 'AlwaysOnListener', obligation: 'Consent store, ListeningEpoch and ListeningService integration', reason: 'Pairwise policy and indicator-loss cases execute without microphone, Android permissions or physical visibility.'},
@@ -113,9 +115,10 @@ export async function runNativeRefinement() {
     const related = results.filter(receipt => receipt.model === model);
     const coveredActions = new Set(related.flatMap(receipt => Object.keys(receipt.actions)));
     const coveredFields = new Set(related.flatMap(receipt => receipt.observedFields));
+    const initializers = new Set(related.flatMap(receipt => receipt.traceInputs.map(trace => trace.init?.name || 'init')));
     const text = readFileSync(join(root, 'specs/quint/native', `${model}.qnt`), 'utf8');
     const missing = [...text.matchAll(/\baction\s+(\w+)/g)].map(match => match[1])
-      .filter(name => !['init', 'check', 'step', 'initFor', 'counterInit', 'budgetInit'].includes(name) && !coveredActions.has(name));
+      .filter(name => !['init', 'check', 'step'].includes(name) && !initializers.has(name) && !coveredActions.has(name));
     if (missing.length) obligations.push({model, obligation: 'Unexecuted model transitions', reason: missing.join(', ')});
     const state = text.match(/type\s+(?:State|Gate|Recovery|Navigation)\s*=\s*\{([\s\S]*?)\n  \}/)?.[1] || '';
     const fields = [...state.matchAll(/\b([A-Za-z]\w*)\s*:/g)].map(match => match[1]);

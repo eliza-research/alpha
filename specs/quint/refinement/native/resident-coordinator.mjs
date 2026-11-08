@@ -10,10 +10,10 @@ export const residentSources = ['AlphaLocalAgentPlugin.java','LocalAgentProvider
   .map(name=>app+name);
 export const residentScenarios=['stop','stop-error','late-stop','late-cancel','owned-cancel',
   'attached-cancel','unowned-cancel','lost-pair','last-surface','broadcast-race'];
-export function generateResidentCoordinatorTraces(scenario){
+export function generateResidentCoordinatorTraces(scenario,extraSources=[]){
   const platform=residentPlatform();
   const sources=[...residentSources,`${directory}/ResidentTestPorts.java`,`${directory}/ResidentCoordinatorTraces.java`,
-    `${directory}/Trace.java`,`${directory}/java.mjs`,`${directory}/resident-platform.mjs`,fileURLToPath(import.meta.url)];
+    `${directory}/Trace.java`,`${directory}/java.mjs`,`${directory}/resident-platform.mjs`,fileURLToPath(import.meta.url),...extraSources];
   try {
     const driverHashes=captureInputs(sources);
     const traces=(scenario?[scenario]:residentScenarios).flatMap(name=>javaTraces('ResidentCoordinatorTraces.java',
@@ -23,8 +23,8 @@ export function generateResidentCoordinatorTraces(scenario){
   }
   finally{platform.close();}
 }
-export async function checkResidentCoordinator(){
-  const generated=generateResidentCoordinatorTraces();
+export async function checkResidentCoordinator(extraSources=[]){
+  const generated=generateResidentCoordinatorTraces(undefined,extraSources);
   return checkTraces({model:'ResidentRuntime',id:'ResidentRuntime-coordinator',scope:'bounded-orchestration',
     sources:generated.sources,driverHashes:generated.driverHashes,traces:generated.traces,assumptions:[
       `Whole AlphaLocalAgentPlugin executes with external Android, Capacitor, vault and service ports (${generated.fixtureSha256}).`,
