@@ -30,6 +30,7 @@ import {checkPhotosTrash} from './photos-trash.mjs';
 import {checkBrowserDeletionPoll} from './browser-deletion-poll.mjs';
 import {checkHomeFailureNotice} from './home-failure-notice.mjs';
 import {checkLauncherOwnership} from './launcher-ownership.mjs';
+import {checkLauncherObserver} from './launcher-observer.mjs';
 import {checkResidentLiveness} from './resident-liveness.mjs';
 
 const adapters = [application, shellNavigation, startupPermissions, assistantConversation, notesLifecycle,
@@ -37,7 +38,7 @@ const adapters = [application, shellNavigation, startupPermissions, assistantCon
   permissionWalkthrough, developmentDevice, permanentVoiceDeletion, developmentHost, filesTree,
   calendarPresentation, draftDispatch, notificationCollection, callbackLanding,
   runStartupPermissionsCoordinatorRefinement, checkVaultCoordinator, checkNotesCoordinator, listFocus, checkRecoveryUI, checkShellCoordinator, checkNativeViewSubscription, filesPreview, runPermissionChoicesRefinement, checkCanonicalNotesController, checkCanonicalNotesDraft,
-  checkCanonicalNotesFeedback, checkCanonicalNotesMutation, checkCanonicalNotesView, checkFilesBrowserController, checkFilesFilter, checkPhotosWindow, checkPhotosTrash, checkGoogleConsentAdmission, checkBrowserDeletionPoll, checkHomeFailureNotice, checkLauncherOwnership, checkResidentLiveness];
+  checkCanonicalNotesFeedback, checkCanonicalNotesMutation, checkCanonicalNotesView, checkFilesBrowserController, checkFilesFilter, checkPhotosWindow, checkPhotosTrash, checkGoogleConsentAdmission, checkBrowserDeletionPoll, checkHomeFailureNotice, checkLauncherOwnership, checkLauncherObserver, checkResidentLiveness];
 
 /** Component traces, with remaining obligations kept explicit for the aggregate report. */
 export async function runApplicationRefinement() {

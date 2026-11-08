@@ -1179,5 +1179,29 @@
       "Shared installed launcher inventory/default read generation and native handoff lifetime. Package/activity/profile identities remain distinct; default launch dispatches the dial role.",
       "Three app identities, two dial readback classes, eight generations and four launch calls. Builtins, favorites migration and watch scheduling remain separate."
     ]
+  },
+  {
+    "path": "specs/quint/application/LauncherObserver.qnt",
+    "module": "LauncherObserver",
+    "init": "init",
+    "step": "step",
+    "invariant": "safety",
+    "tests": [
+      "repeatedSignalsShareTimerTest",
+      "stopBeforeSubscriptionReplyRemovesOnceTest",
+      "stopDisarmsTimerTest",
+      "failedRemovalRetiresObserverTest"
+    ],
+    "sources": [
+      ".eliza/client-features/plugins/plugin-native-system/src/client/launcher.ts",
+      ".eliza/client-features/packages/ui/src/mobile-shell/mobile-launcher.ts",
+      "apps/app/src/prototype/home-shell.ts",
+      "patches/eliza/launcher-observer-client.patch",
+      "patches/eliza/launcher-observer-client-manifest.json"
+    ],
+    "abstractions": [
+      "Actual launcher package listener registration, document notifications, 120ms debounce and idempotent retirement with late or failed native removal.",
+      "One observer and one package subscription, up to four refreshes. Timer ordering and native replies are controlled ports. Inventory and actual Android removal remain separate."
+    ]
   }
 ]
