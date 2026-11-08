@@ -112,10 +112,15 @@ export function StartupPermissions({active:enabled = true}: {active?: boolean} =
     actionPending.current = false;
     setBusy(false);
   };
-  const contextCurrent = (ticket: number, credentialId: string | undefined) =>
-    alive.current && ticket === sequence.current &&
-    connectionController.getSnapshot().cloudAccount?.credentialId === credentialId;
-  useLayoutEffect(() => { invalidatePending(); }, [enabled, connection.cloudAccount?.credentialId]);
+  const contextCurrent = (ticket: number, credentialId: string | undefined) => {
+    const current = connectionController.getSnapshot();
+    return alive.current && ticket === sequence.current &&
+      current.cloudAccount?.credentialId === credentialId &&
+      current.cloudAccount?.environment === connection.cloudAccount?.environment &&
+      current.setupRevision === connection.setupRevision;
+  };
+  const currentInteraction = () => contextCurrent(sequence.current, connection.cloudAccount?.credentialId);
+  useLayoutEffect(() => { invalidatePending(); }, [enabled, connection.cloudAccount?.credentialId, connection.cloudAccount?.environment, connection.setupRevision]);
   useEffect(() => {
     const reactivated = enabled && !previousEnabled.current;
     previousEnabled.current = enabled;
@@ -200,13 +205,14 @@ export function StartupPermissions({active:enabled = true}: {active?: boolean} =
   useEffect(() => {if (visible) dialog.current?.querySelector<HTMLHeadingElement>('h2')?.focus({preventScroll: true});}, [key, visible, ready]);
 
   function advance(choice: Progress['choices'][number]) {
+    if (!currentInteraction()) return;
     if (target) {setActive(false); return;}
     const current = progress ?? {version: 3 as const, step: 0, choices: []};
     if (current.step + 1 < keys.length) writeProgress({version: 3, step: current.step + 1, choices: [...current.choices, choice]});
     else {finalChoices.current=[...current.choices, choice];writeProgress(null, finalChoices.current);setActive(false);setReady(true);}
   }
   function skip() {
-    if (!canSkip) return;
+    if (!canSkip || !currentInteraction()) return;
     ++sequence.current;flows[key].cancel();actionPending.current=false;setBusy(false);
     advance('skipped');
   }
@@ -236,7 +242,7 @@ export function StartupPermissions({active:enabled = true}: {active?: boolean} =
     finally {if (id === action.current) {actionPending.current = false; if (alive.current) setBusy(false);}}
   }
   function finish() {
-    if(actionPending.current)return;
+    if(actionPending.current || !currentInteraction())return;
     // Completing the walkthrough records choices, never permission authority.
     // Each feature still checks current OS/browser access when it is used.
     // A failed completion write is retried here; the session continues either way.
