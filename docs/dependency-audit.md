@@ -24,6 +24,12 @@ The audit reads the registry advisory database for the lockfile (`npm audit --js
 
 ## npm advisories (MVP-45)
 
+The 2026-11-08 UTC refresh covers the Quint tooling and declared Calendar host-test
+dependency in the current lockfile. The registry reports the same three moderate
+development findings on `@capacitor/cli`, `xcode` and `uuid`. The snapshot now
+binds to lock SHA-256 `81b4303a247d45dd6cb2b834fa98a0a7533cfdd4ac0e50a18ee962a76c6086c4`.
+The existing reviewed disposition covers all three paths.
+
 Audited 2026-10-10 with npm 11.18.0. Before triage `npm audit` reported 3 moderate and 1
 high finding, which reduce to two advisories. No finding is in a production dependency: all
 four packages are `dev` in `package-lock.json`, so none is in the web bundle or an APK
