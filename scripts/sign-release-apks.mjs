@@ -163,7 +163,7 @@ export async function approvedSigningRotation(signerRecord, lineage, targets) {
   const lastReleaseVersion = signerRecord.lastRelease?.versionCode ?? 0;
   if (typeof signerRecord.signerSha256 !== "string" || !HEX.test(signerRecord.signerSha256) ||
       !Number.isSafeInteger(lastReleaseVersion) || lastReleaseVersion < 0 ||
-      record?.schema !== 1 || !Number.isSafeInteger(record.versionCode) ||
+      record?.schema !== 1 || record.approval !== "approved" || !Number.isSafeInteger(record.versionCode) ||
       !Number.isSafeInteger(record.fromVersionCode) || record.fromVersionCode < 1 ||
       record.versionCode <= Math.max(record.fromVersionCode, lastReleaseVersion) ||
       !unsigned || Object.keys(unsigned).sort().join() !== "launcher,standalone" ||

@@ -1,1 +1,2 @@
-import '../vendor/eliza/packages/os/scripts/android/sense.test.mjs';
+import {loadListenerSystemuiTests} from '../scripts/aosp-listener-systemui.mjs';
+await loadListenerSystemuiTests();

@@ -5,11 +5,11 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { execFileSync, spawnSync } from "node:child_process";
-import { X509Certificate } from "node:crypto";
+import { createHash, X509Certificate } from "node:crypto";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { KEYSTORE_PASSWORD_ENV, PIN_ENV, PKCS11_JVM_OPTION, keyFileProblems, main, signArguments, toolMessage } from "../scripts/sign-release-apks.mjs";
+import { approvedSigningRotation, KEYSTORE_PASSWORD_ENV, PIN_ENV, PKCS11_JVM_OPTION, keyFileProblems, main, signArguments, toolMessage } from "../scripts/sign-release-apks.mjs";
 
 const RELEASE = "e5".repeat(32);
 
@@ -270,4 +270,31 @@ test("the real apksigner launcher accepts the PKCS#11 JVM option, and with a PKC
   assert.match(err.join("\n"), /"alpha-no-such-key"/);
   assert.equal(fs.existsSync(path.join(work, "p11.apk")), false);
   assert.equal(fs.existsSync(path.join(work, "p11.apk.partial")), false);
+});
+
+
+test("rotation admission requires explicit approval and preserves the exact reviewed scope", async t => {
+  const root = scratch(t, "alpha-rotation-admission-");
+  const lineage = path.join(root, "rotation.lineage");
+  const unsigned = path.join(root, "unsigned.apk");
+  fs.writeFileSync(lineage, "synthetic public lineage");
+  fs.writeFileSync(unsigned, "synthetic unsigned fixture");
+  const sha = bytes => createHash("sha256").update(bytes).digest("hex");
+  const rotation = {
+    schema: 1, approval: "approved", fromVersionCode: 44, versionCode: 45,
+    previousSignerSha256: "a1".repeat(32), lineageSha256: sha(fs.readFileSync(lineage)),
+    apksignerSha256: "b2".repeat(32), verifierJarSha256: "c3".repeat(32),
+    unsignedApkSHA256: {standalone: sha(fs.readFileSync(unsigned)), launcher: "d4".repeat(32)},
+  };
+  const descriptor = {signerSha256: RELEASE, lastRelease: {versionCode: 44}, apkSigningRotation: rotation};
+  const targets = [{input: unsigned}];
+  assert.equal(await approvedSigningRotation(descriptor, lineage, targets), rotation);
+  for (const approval of ["pending", undefined, "", true]) {
+    const unapproved = {...descriptor, apkSigningRotation: {...rotation, approval}};
+    await assert.rejects(approvedSigningRotation(unapproved, lineage, targets), /No reviewed APK signing rotation record/);
+  }
+  fs.appendFileSync(unsigned, " changed");
+  await assert.rejects(approvedSigningRotation(descriptor, lineage, targets), /outside the reviewed rotation scope/);
+  fs.appendFileSync(lineage, " changed");
+  await assert.rejects(approvedSigningRotation(descriptor, lineage, targets), /lineage differs from the reviewed digest/);
 });
