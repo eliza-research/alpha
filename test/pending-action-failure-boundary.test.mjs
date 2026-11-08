@@ -46,7 +46,7 @@ async function finish({kind='handler_error',limit=null,effectApplied=false,resid
  const run={...env,context,reply:{text:'PRIVATE_PROVIDER_FAILURE_CANARY',terminalFailure:record,...(hasServerId?{userMessageId}:{})},
    replyFailure:failure,effectAppliedBeforeFailure:()=>effectApplied,EFFECT_APPLIED_INTERRUPTED:appliedText,
    isAndroid:false,voiceTurnId:undefined,voiceTraceId:undefined,ownProviderSelected:()=>false,isCalendarReadFailureCode:()=>false,
-   failureKindOf:reply=>reply.terminalFailure?.kind,readServiceLimit:()=>limit,
+   calendarRefusalKept:()=>false,channelType:'DM',terminalCodeOf:reply=>reply.terminalFailure?.code,failureKindOf:reply=>reply.terminalFailure?.kind,readServiceLimit:()=>limit,
    retractReadiness(){state.message='';},validateUuid:value=>value===userMessageId,
    message:{context},id:'conversation',session:{...verifiedSession},generation:1,
    requestSignal:new AbortController().signal,assertCurrent(){},directRequestedActions:false,

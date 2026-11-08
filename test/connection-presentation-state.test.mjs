@@ -112,7 +112,7 @@ function preflightFixture(balance, options = {}) {
     AlphaClientError: class AlphaClientError extends Error {constructor(code, message) {super(message); this.code = code;}},
     residentCloudFlow: () => true, residentAlwaysPresent: true,
     residentStartInBackground: false, pendingBillingReview: null,
-    operation: null, providerStatusGeneration: 0, requestedCameraContinuation: undefined, clientObservationSession: undefined,
+    runQueuedResidentRebind:()=>{},runQueuedSignInReturn:()=>{},operation: null, providerStatusGeneration: 0, requestedCameraContinuation: undefined, clientObservationSession: undefined,
     NO_AGENT_SEND: 'No selected session', NO_AGENT_VOICE: 'No selected session',
     noSessionError: () => Error('No selected session'),
     phoneContextMessage: (text, context) => ({text, context}),
@@ -372,7 +372,7 @@ test('a network return held back by a reply, an edit or other work checks on the
 // still waiting, so an A→B→A change never spends it on a second plan read. An admission that runs
 // with no network records its own. Both run here from source up to their first Cloud or agent read,
 // which never settles; the provider read answers with the provider status shown.
-const admissionCode = stripTypeScriptTypes(section('async function residentSignedIn(', '/** The key is stored;') + section('async function connectResident(', 'async function connectCloud('), {mode: 'strip'});
+const admissionCode = stripTypeScriptTypes(section('async function readCloudCredential(', '/** Notice shown when Cloud inference') + section('async function residentSignedIn(', '/** The key is stored;') + section('async function connectResident(', 'async function connectCloud('), {mode: 'strip'});
 const signInAdmission = {binding: 'unbound'};
 function admissions(box) {
   vm.runInContext(admissionCode, box);
@@ -551,7 +551,7 @@ for (const [continuation, changes, run] of [
   ['Alpha hidden, then shown', classChanges, async (box, _, retire) => { await retire(); box.fire('visibilitychange', true); }],
   ['a render update', classChanges, async (box, _, retire) => { await retire(); box.update({message: 'Render update', open: true}); }],
   ['the optional Cloud account detached', classChanges.filter(([, , after]) => after === ownProvider), async (box, _, retire) => {
-    Object.assign(box, {retireReadReplies() {}, clearPersonalSetup() {}, appRequests: new Set(), membershipRead: null, pendingBillingReview: null});
+    Object.assign(box, {retireReadReplies() {}, clearPersonalSetup() {}, clearEntitlementKeyCache() {}, appRequests: new Set(), membershipRead: null, pendingBillingReview: null});
     vm.runInContext(stripTypeScriptTypes(section('function detachService()', '\n'), {mode: 'strip'}), box);
     await retire(); box.detachService(); assert.equal(box.state.cloudAccount, null);
   }],

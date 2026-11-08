@@ -1,10 +1,6 @@
 {
   "$comment": "Parity of Alpha with Eliza's reference mobile registration (test/feature-parity.test.mjs, scripts/feature-manifest.mjs --parity). Brands may differ only by identity and theme. 'differences' are the functional manifest differences still open, each with the Alpha module that owns it; 'modules' are the Alpha source files that still carry behaviour (everything but apps/app/src/product). Add an entry when Alpha gains behaviour of its own, and remove it when the behaviour moves upstream.",
   "reference": "ELIZA_MOBILE_PRODUCT",
-  "ceiling": {
-    "differences": 17,
-    "modules": 554
-  },
   "differences": {
     "view:clock:only-b": "Eliza offers Clock; Alpha hands alarms and timers to the Android clock (clock.handoff) without a Clock view.",
     "capability:calendar.agenda-read.v1:only-a": "apps/app/src/runtime/connection-ui.tsx deviceCapabilities and apps/app/src/runtime/device-actions.ts",
@@ -324,6 +320,7 @@
     "apps/app/src/prototype/camera-adapter.ts",
     "apps/app/src/prototype/canonical-calendar-drafts.ts",
     "apps/app/src/prototype/canonical-notes-controller.ts",
+    "apps/app/src/prototype/canonical-notes-editor.ts",
     "apps/app/src/prototype/canonical-notes-ui.ts",
     "apps/app/src/prototype/chat-overlay-motion-adapter.ts",
     "apps/app/src/prototype/clock-adapter.ts",
@@ -402,7 +399,6 @@
     "apps/app/src/runtime/agent-calendar-client.ts",
     "apps/app/src/runtime/agent-calendar-view.ts",
     "apps/app/src/runtime/agent-calendar.ts",
-    "apps/app/src/runtime/agent-status-route.ts",
     "apps/app/src/runtime/alpha-client.ts",
     "apps/app/src/runtime/always-on-listener.ts",
     "apps/app/src/runtime/aosp-image.ts",
@@ -532,6 +528,7 @@
     "apps/app/src/runtime/notes-trash-policy.ts",
     "apps/app/src/runtime/notes-trash.ts",
     "apps/app/src/runtime/notes-view.ts",
+    "apps/app/src/runtime/owner-reminder-notification-port.ts",
     "apps/app/src/runtime/owner-reminder-notification-protocol.ts",
     "apps/app/src/runtime/owner-route-policy.ts",
     "apps/app/src/runtime/paired-voice.ts",

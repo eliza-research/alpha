@@ -1,3 +1,4 @@
+import {execFileSync} from 'node:child_process';
 import { test } from 'node:test';
 import { runChildSuite } from './fixtures/child-suite.mjs';
 // Real Inbox adapter with a closed provider fixture: Home attention, bounded unread probe, links,

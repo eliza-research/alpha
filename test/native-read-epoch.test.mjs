@@ -1,3 +1,4 @@
+import {javaBinary as java} from './fixtures/jvm-tools.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {mkdtempSync,rmSync,readFileSync,writeFileSync} from 'node:fs';

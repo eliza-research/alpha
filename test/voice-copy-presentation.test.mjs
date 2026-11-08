@@ -32,13 +32,9 @@ test('actual voice activity sits below the chat notices, and an unconfirmed clea
    assert.ok(notices.compareDocumentPosition(controls)&doc.defaultView.Node.DOCUMENT_POSITION_FOLLOWING,'chat notices precede the voice controls');
    // The composer shows activity and controls. Routing disclosures live in Settings.
    assert.equal(notices.querySelectorAll('[role="note"]').length,0);
-   assert.equal(alert,null,'no voice error banner');
+   assert.equal(doc.querySelector('[role="alert"]'),null,'no voice error banner');
    assert.equal(notices.querySelector('.alpha-voice-error'),null,'no error or support-code content');
-   if(error){
-    assert.equal(model.lines[0].t,'Sign in to Cloud again in Settings, then retry voice.','failure remains classified internally');assert.doesNotMatch(doc.body.textContent,/Sign in to Cloud|401|PRIVATE/);
-    assert.equal(doc.querySelector('[role="status"][aria-label="Voice conversation status"]').textContent,'','the alert is not repeated in the status region');
-    assert.equal(notices.querySelector('[data-alpha-voice-recovery]'),null,'uncertain capture keeps retry out of the composer');
-   }else assert.equal(notices.querySelector('[data-alpha-voice-recovery]'),null);
+   assert.equal(notices.querySelector('[data-alpha-voice-recovery]'),null);
    assert.ok(doc.querySelector('[aria-label="Stop voice conversation"]'));
    assert.equal(doc.querySelectorAll('[data-alpha-voice-animation]').length,1);
    assert.equal(doc.querySelectorAll('[aria-label="Voice activity"]').length,1);

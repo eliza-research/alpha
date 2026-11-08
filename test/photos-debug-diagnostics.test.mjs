@@ -1,3 +1,4 @@
+import {javaBinary} from './fixtures/jvm-tools.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync,mkdtempSync,writeFileSync,mkdirSync,rmSync} from 'node:fs';
@@ -22,7 +23,7 @@ test('Photos QA emits only fixed debug enum markers; exception payloads and rele
   writeFileSync(join(dir,'android/util/Log.java'),'package android.util;public class Log {public static final java.util.List<String> entries=new java.util.ArrayList<>();public static int i(String tag,String message){entries.add(tag+":"+message);return 0;}}');
   writeFileSync(join(dir,'PhotosDiagnosticHarness.java'),`class BuildConfig {static boolean DEBUG;}
  public class PhotosDiagnosticHarness {
- static class PhotosPlugin {
+ static class PermittedPhotosPlugin {
  ${declaration(base,'public enum Diagnostic ')}
  }
  static class PhotosPlugin extends PermittedPhotosPlugin {}

@@ -66,7 +66,7 @@ test('a delayed absent credential read cannot clear a newly adopted service',asy
 test('foreground own-mode checks never refresh a prior Cloud inference plan, and recovery blocks all checks',()=>{
  const start=source.indexOf('  recheckPlanOnReturn('),end=source.indexOf('  /**',start);
  const method=stripTypeScriptTypes('const controller={'+source.slice(start,end)+'};globalThis.check=controller.recheckPlanOnReturn;',{mode:'strip'});
- let services=0;const box={residentCloudFlow:()=>true,operation:null,sending:null,state:{busy:false,session:{}},Date,planManagementReturn:false,lastPlanRecheck:0,PLAN_RECHECK_INTERVAL_MS:1,ownProviderSelected:()=>true,restoreOwnProviderCloudServices:()=>{services++;},ownCloudServiceRestore:null,networkLostUnder:null,planCheckScope:()=>'scope',residentBinding:'cloud',entitlementRefresher:{refreshNow(){throw Error('Old Cloud plan must not be used');}}};
+ let services=0;const box={residentCloudFlow:()=>true,operation:null,planRecheck:null,errorKindOf:()=>null,sending:null,state:{busy:false,session:{}},Date,planManagementReturn:false,lastPlanRecheck:0,PLAN_RECHECK_INTERVAL_MS:1,ownProviderSelected:()=>true,restoreOwnProviderCloudServices:()=>{services++;},ownCloudServiceRestore:null,networkLostUnder:null,planCheckScope:()=>'scope',residentBinding:'cloud',entitlementRefresher:{refreshNow(){throw Error('Old Cloud plan must not be used');}}};
  vm.createContext(box);vm.runInContext(method,box);box.check();assert.equal(services,1);box.state.residentRecoveryReason='blocked';box.planManagementReturn=true;box.check();assert.equal(services,1);
 });
 
@@ -79,7 +79,7 @@ const returnCode=stripTypeScriptTypes([
 ].join('\n'),{mode:'strip'});
 function returning(options){
  const restore=fixture(options),{box}=restore;
- Object.assign(box,{residentCloudFlow:()=>true,operation:null,sending:null,Date,planManagementReturn:false,lastPlanRecheck:-Infinity,PLAN_RECHECK_INTERVAL_MS:60000,residentBinding:'unbound',update:patch=>{Object.assign(box.state,patch);},retractReadiness(){}});
+ Object.assign(box,{residentCloudFlow:()=>true,operation:null,planRecheck:null,errorKindOf:()=>null,sending:null,Date,planManagementReturn:false,lastPlanRecheck:-Infinity,PLAN_RECHECK_INTERVAL_MS:60000,residentBinding:'unbound',update:patch=>{Object.assign(box.state,patch);},retractReadiness(){}});
  Object.assign(box.state,{busy:false,inferenceOffline:false});
  vm.runInContext(returnCode,box);
  return {...restore,settled:()=>new Promise(resolve=>setImmediate(resolve)),reads:()=>restore.calls.map(call=>typeof call==='string'?call:'verify')};
