@@ -13,3 +13,8 @@ test('failed contact edit keeps the draft and stored original until retry succee
 test('failed deletion undo stays retryable and restores one contact with the same identity',async({page})=>{
  await add(page,'Undo Retry');const original=await page.evaluate(()=>JSON.parse(localStorage.getItem('alpha.dev.app.contacts')!).list.find((p:any)=>p.first==='Undo Retry'));await page.getByRole('button',{name:'Delete contact',exact:true}).click();await page.evaluate(()=>{const set=Storage.prototype.setItem;(window as any).restoreUndo=()=>Storage.prototype.setItem=set;Storage.prototype.setItem=function(k,v){if(k==='alpha.dev.app.contacts')throw Error('Full');return set.call(this,k,v);};});await page.getByRole('button',{name:'Undo',exact:true}).click();await expect(page.getByRole('button',{name:'Undo',exact:true})).toBeVisible();expect(await page.evaluate(id=>JSON.parse(localStorage.getItem('alpha.dev.app.contacts')!).list.some((p:any)=>p.id===id),original.id)).toBe(false);await page.evaluate(()=>(window as any).restoreUndo());await page.getByRole('button',{name:'Undo',exact:true}).click();await expect(page.getByRole('button',{name:'Edit contact',exact:true})).toBeVisible();expect(await page.evaluate(id=>JSON.parse(localStorage.getItem('alpha.dev.app.contacts')!).list.filter((p:any)=>p.id===id),original.id)).toEqual([original]);
 });
+test('an opened contact is never an agent selection',async({page})=>{
+ await add(page,'Unselected Contact');await expect(page.getByRole('button',{name:'Edit contact',exact:true})).toBeVisible();
+ const context=await page.evaluate(async()=>(await import('/src/runtime/alpha-client.ts')).alphaClient.getState().context);
+ expect(context.view).toBe('contacts');expect(context.selectedObject??null).toBeNull();
+});
